@@ -4,6 +4,7 @@ import { getAddress } from "viem";
 import {
   IDENTITY,
   listingFixture,
+  listingFixtureFor,
   offerFixture,
   saleFixture,
   SOURCE,
@@ -126,6 +127,19 @@ try {
   await pool.query(
     "TRUNCATE nft_marketplace_order_snapshots,nft_marketplace_orders,nft_marketplace_sales,nft_marketplace_cursors,nft_marketplace_source_state,nft_marketplace_collection_identity CASCADE",
   );
+  const listingAActive = listingFixtureFor({ tokenId: 1n, price: 100n });
+  const listingACancelled = {
+    ...listingAActive,
+    status: "cancelled",
+    remaining_quantity: "0",
+  };
+  const listingBActive = listingFixtureFor({ tokenId: 2n, price: 200n });
+  const zeroRemaining = listingFixtureFor({
+    tokenId: 3n,
+    price: 50n,
+    remainingQuantity: 0n,
+  });
+  let phase = 1;
   const mockClient = new OpenSeaClient({
     baseUrl: "https://api.example.test",
     apiKey: "server-only",
@@ -155,17 +169,36 @@ try {
           ],
         };
       else if (url.pathname.includes("/listings/"))
-        body = { listings: [listingFixture()], next: null };
+        body = {
+          listings:
+            phase === 1
+              ? [listingAActive, listingBActive, zeroRemaining]
+              : [],
+          next: null,
+        };
       else if (url.pathname.includes("/offers/"))
         body = { offers: [offerFixture("COLLECTION")], next: null };
       else if (url.pathname.includes("/events/"))
         body = { asset_events: [saleFixture()], next: null };
+      else if (url.pathname.includes("/api/v2/orders/chain/")) {
+        if (phase === 3)
+          return new Response(JSON.stringify({ error: "transient" }), {
+            status: 503,
+            headers: { "content-type": "application/json" },
+          });
+        if (url.pathname.endsWith(listingAActive.order_hash))
+          body = { order: phase === 1 ? listingAActive : listingACancelled };
+        else if (url.pathname.endsWith(listingBActive.order_hash))
+          body = { order: listingBActive };
+        else throw new Error(`Unexpected exact order ${url.pathname}`);
+      }
       else throw new Error(`Unexpected mock path ${url.pathname}`);
       return new Response(JSON.stringify(body), {
         status: 200,
         headers: { "content-type": "application/json" },
       });
     },
+    sleep: async () => {},
   });
   const worker = new MarketplaceWorker(
     pool,
@@ -180,6 +213,7 @@ try {
       databasePoolSize: 2,
       maxPagesPerCycle: 2,
       pageSize: 25,
+      maxLowestListingCandidates: 8,
       port: 3012,
     },
     { client: mockClient, rpc: { getChainId: async () => 4663 } },
@@ -191,7 +225,7 @@ try {
       (await pool.query("SELECT count(*) FROM nft_marketplace_orders")).rows[0]
         .count,
     ),
-    2,
+    4,
   );
   assert.equal(
     Number(
@@ -204,6 +238,58 @@ try {
   assert.equal(
     worker.status.lowestNormalizedListings[IDENTITY.collectionAddress],
     "100",
+  );
+  assert.equal(
+    (
+      await pool.query(
+        "SELECT exact_revalidated_at IS NOT NULL AS fresh FROM nft_marketplace_orders WHERE order_hash=$1",
+        [listingAActive.order_hash],
+      )
+    ).rows[0].fresh,
+    true,
+  );
+  assert.equal(
+    (
+      await pool.query(
+        "SELECT remaining_quantity FROM nft_marketplace_orders WHERE order_hash=$1",
+        [zeroRemaining.order_hash],
+      )
+    ).rows[0].remaining_quantity,
+    "0",
+  );
+  phase = 2;
+  await worker.runCycle();
+  assert.equal(
+    worker.status.lowestNormalizedListings[IDENTITY.collectionAddress],
+    "200",
+  );
+  assert.equal(
+    (
+      await pool.query(
+        "SELECT normalized_status FROM nft_marketplace_orders WHERE order_hash=$1",
+        [listingAActive.order_hash],
+      )
+    ).rows[0].normalized_status,
+    "CANCELLED",
+  );
+  const history = await pool.query(
+    "SELECT normalized_status FROM nft_marketplace_order_snapshots WHERE order_hash=$1 ORDER BY observed_at",
+    [listingAActive.order_hash],
+  );
+  assert.ok(history.rows.some((row) => row.normalized_status === "ACTIVE"));
+  assert.ok(history.rows.some((row) => row.normalized_status === "CANCELLED"));
+  phase = 3;
+  await worker.runCycle();
+  assert.equal(
+    worker.status.lowestNormalizedListings[IDENTITY.collectionAddress],
+    null,
+  );
+  assert.equal((await statusRows(pool))[0].status, "ERROR");
+  assert.ok(
+    (await statusRows(pool))[0].last_provider_error.includes(
+      "bounded retries",
+    ) ||
+      (await statusRows(pool))[0].last_provider_error.includes("HTTP 503"),
   );
   assert.equal(
     worker.status.providerReportedFloors[IDENTITY.collectionAddress],

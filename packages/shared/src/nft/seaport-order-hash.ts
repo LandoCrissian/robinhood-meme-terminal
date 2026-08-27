@@ -121,12 +121,19 @@ type Rec = Record<string, unknown>;
 const rec = (v: unknown): v is Rec =>
   !!v && typeof v === "object" && !Array.isArray(v);
 function uint(v: unknown, label: string) {
-  if (
-    (typeof v !== "string" && typeof v !== "number") ||
-    !/^\d+$/.test(String(v))
-  )
+  if (typeof v === "number") {
+    if (!Number.isSafeInteger(v) || v < 0)
+      throw new Error(`${label} must be a safe non-negative integer.`);
+    return BigInt(v);
+  }
+  if (typeof v !== "string" || !/^\d+$/.test(v))
     throw new Error(`${label} must be an unsigned integer.`);
   return BigInt(v);
+}
+function uint8(v: unknown, label: string) {
+  const parsed = uint(v, label);
+  if (parsed > 255n) throw new Error(`${label} must fit uint8.`);
+  return Number(parsed);
 }
 function address(v: unknown, label: string) {
   if (typeof v !== "string" || !isAddress(v, { strict: false }))
@@ -141,7 +148,7 @@ function bytes32(v: unknown, label: string) {
 function item(v: unknown, label: string): RmtSeaportItem {
   if (!rec(v)) throw new Error(`${label} must be an object.`);
   return {
-    itemType: Number(uint(v.itemType, `${label}.itemType`)),
+    itemType: uint8(v.itemType, `${label}.itemType`),
     token: address(v.token, `${label}.token`),
     identifierOrCriteria: uint(
       v.identifierOrCriteria,
@@ -174,7 +181,7 @@ export function parseSeaportOrderComponents(
         recipient: address(v.recipient, `consideration[${i}].recipient`),
       };
     }),
-    orderType: Number(uint(value.orderType, "orderType")),
+    orderType: uint8(value.orderType, "orderType"),
     startTime: uint(value.startTime, "startTime"),
     endTime: uint(value.endTime, "endTime"),
     zoneHash: bytes32(value.zoneHash, "zoneHash"),

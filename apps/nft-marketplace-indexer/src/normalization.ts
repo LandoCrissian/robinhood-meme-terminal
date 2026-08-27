@@ -34,10 +34,12 @@ const str = (v: unknown, l: string) => {
   return v;
 };
 const uint = (v: unknown, l: string) => {
-  if (
-    (typeof v !== "string" && typeof v !== "number") ||
-    !/^\d+$/.test(String(v))
-  )
+  if (typeof v === "number") {
+    if (!Number.isSafeInteger(v) || v < 0)
+      throw new Error(`${l} must be a safe non-negative integer.`);
+    return BigInt(v);
+  }
+  if (typeof v !== "string" || !/^\d+$/.test(v))
     throw new Error(`${l} must be uint256.`);
   return BigInt(v);
 };
@@ -138,6 +140,19 @@ function asset(raw: Rec, identity: RmtNftCollectionMarketplaceIdentity) {
     ),
   };
 }
+const isPaymentItemType = (itemType: number) => itemType === 0 || itemType === 1;
+const isNftItemType = (itemType: number) =>
+  itemType === 2 || itemType === 3 || itemType === 4 || itemType === 5;
+function samePaymentAsset(
+  item: { itemType: number; token: Address; identifierOrCriteria: bigint },
+  expected: { itemType: number; token: Address },
+) {
+  return (
+    item.itemType === expected.itemType &&
+    isAddressEqual(item.token, expected.token) &&
+    item.identifierOrCriteria === 0n
+  );
+}
 export function normalizeListing(
   identity: RmtNftCollectionMarketplaceIdentity,
   raw: unknown,
@@ -145,27 +160,41 @@ export function normalizeListing(
 ): RmtNftListingEvidence {
   const c = common(identity, raw, retrievedAt);
   const a = asset(c.raw, identity);
-  const nft = c.components.offer.find(
-    (item) =>
-      [2, 3].includes(item.itemType) &&
-      isAddressEqual(item.token, a.contract) &&
-      item.identifierOrCriteria === a.tokenId,
-  );
-  if (!nft)
+  if (
+    c.components.offer.length !== 1 ||
+    !c.components.offer[0] ||
+    !isNftItemType(c.components.offer[0].itemType)
+  )
+    throw new Error("OpenSea V1 does not support NFT bundle listings.");
+  const nft = c.components.offer[0]!;
+  if (
+    !isAddressEqual(nft.token, a.contract) ||
+    nft.identifierOrCriteria !== a.tokenId
+  )
     throw new Error("Listing protocol data does not offer the admitted NFT.");
   const expectedItemType = identity.collectionStandard === "ERC721" ? 2 : 3;
   if (nft.itemType !== expectedItemType)
     throw new Error(
       "Listing item type does not match the admitted NFT standard.",
     );
-  if (nft.startAmount === 0n)
+  if (nft.startAmount === 0n || nft.startAmount !== nft.endAmount)
     throw new Error("NFT listing quantity must be positive.");
   if (identity.collectionStandard === "ERC721" && nft.startAmount !== 1n)
     throw new Error("ERC721 marketplace quantity must equal one.");
-  const paymentItem = c.components.consideration.find((item) =>
-    [0, 1].includes(item.itemType),
-  );
-  if (!paymentItem) throw new Error("Listing has no payment consideration.");
+  if (!c.components.consideration.length)
+    throw new Error("Listing has no payment consideration.");
+  const paymentItem = c.components.consideration[0]!;
+  if (
+    paymentItem.itemType !== 0 ||
+    !isAddressEqual(paymentItem.token, ZERO_ADDRESS) ||
+    paymentItem.identifierOrCriteria !== 0n ||
+    !c.components.consideration.every((item) =>
+      samePaymentAsset(item, { itemType: 0, token: ZERO_ADDRESS }),
+    )
+  )
+    throw new Error(
+      "Robinhood OpenSea V1 listing consideration must be coherent native ETH.",
+    );
   const p = price(c.raw, paymentItem.token);
   if (p.asset.kind !== "NATIVE")
     throw new Error("Robinhood OpenSea V1 listings must use native ETH.");
@@ -247,19 +276,40 @@ export function normalizeOffer(
 ): RmtNftOfferEvidence {
   const c = common(identity, raw, retrievedAt);
   const scoped = offerScope(c.raw, identity);
-  const paymentItem = c.components.offer.find((item) =>
-    [0, 1].includes(item.itemType),
-  );
-  if (!paymentItem) throw new Error("Offer has no payment offer item.");
+  if (
+    !c.components.offer.length ||
+    !c.components.offer[0] ||
+    !isPaymentItemType(c.components.offer[0].itemType)
+  )
+    throw new Error("Offer has no payment offer item.");
+  const paymentItem = c.components.offer[0]!;
+  if (
+    !c.components.offer.every((item) =>
+      isPaymentItemType(item.itemType) && samePaymentAsset(item, paymentItem),
+    )
+  )
+    throw new Error("OpenSea V1 offer has mixed payment assets.");
   const p = price(c.raw, paymentItem.token);
-  const nft = c.components.consideration.find(
-    (item) =>
-      [2, 3, 4, 5].includes(item.itemType) &&
-      isAddressEqual(item.token, identity.collectionAddress),
+  const nftItems = c.components.consideration.filter((item) =>
+    isNftItemType(item.itemType),
   );
-  if (!nft)
+  if (nftItems.length !== 1)
+    throw new Error("OpenSea V1 does not support bundled NFT offer targets.");
+  const nft = nftItems[0]!;
+  if (!isAddressEqual(nft.token, identity.collectionAddress))
     throw new Error(
       "Offer protocol data does not target the admitted collection.",
+    );
+  if (
+    !c.components.consideration.every(
+      (item) =>
+        item === nft ||
+        (isPaymentItemType(item.itemType) &&
+          samePaymentAsset(item, paymentItem)),
+    )
+  )
+    throw new Error(
+      "OpenSea V1 offer consideration contains an unsupported or mixed item.",
     );
   const expectedItemTypes =
     identity.collectionStandard === "ERC721" ? [2, 4] : [3, 5];
@@ -276,7 +326,7 @@ export function normalizeOffer(
   } else if (![4, 5].includes(nft.itemType)) {
     throw new Error("Criteria offer must use a Seaport criteria item type.");
   }
-  if (nft.startAmount === 0n)
+  if (nft.startAmount === 0n || nft.startAmount !== nft.endAmount)
     throw new Error("NFT offer quantity must be positive.");
   if (identity.collectionStandard === "ERC721" && nft.startAmount !== 1n)
     throw new Error("ERC721 marketplace quantity must equal one.");
@@ -341,6 +391,8 @@ export function normalizeSale(
       symbol: str(raw.payment.symbol, "payment.symbol"),
       decimals: Number(uint(raw.payment.decimals, "payment.decimals")),
     };
+    if (paymentAsset.decimals > 255)
+      throw new Error("payment.decimals is invalid.");
     grossAmount = uint(raw.payment.quantity, "payment.quantity");
   }
   const transactionHash =
@@ -354,10 +406,19 @@ export function normalizeSale(
   const eventTimestampRaw = raw.event_timestamp ?? raw.closing_date;
   const eventTimestamp =
     typeof eventTimestampRaw === "number"
-      ? new Date(eventTimestampRaw * 1000).toISOString()
+      ? Number.isSafeInteger(eventTimestampRaw) && eventTimestampRaw >= 0
+        ? new Date(eventTimestampRaw * 1000).toISOString()
+        : (() => {
+            throw new Error("event_timestamp must be a safe non-negative integer.");
+          })()
       : str(eventTimestampRaw, "event_timestamp");
   if (!Number.isFinite(Date.parse(eventTimestamp)))
     throw new Error("event_timestamp must be a timestamp.");
+  const quantity = uint(raw.quantity, "quantity");
+  if (quantity === 0n)
+    throw new Error("Sale quantity must be positive.");
+  if (identity.collectionStandard === "ERC721" && quantity !== 1n)
+    throw new Error("ERC721 marketplace quantity must equal one.");
   return {
     evidenceKind: "SALE",
     authority: "PROVIDER_REPORTED_SALE",
@@ -368,7 +429,7 @@ export function normalizeSale(
     projectId: identity.projectId,
     collectionAddress: identity.collectionAddress,
     tokenId: uint(raw.nft.identifier, "nft.identifier"),
-    quantity: uint(raw.quantity ?? 1, "quantity"),
+    quantity,
     seller: addr(raw.seller ?? raw.maker, "seller"),
     buyer: addr(raw.buyer ?? raw.taker, "buyer"),
     paymentAsset,
@@ -384,7 +445,10 @@ export function lowestNormalizedOpenSeaListing(
   listings: readonly RmtNftListingEvidence[],
 ): RmtLowestNormalizedOpenSeaListing | null {
   const active = listings.filter(
-    (v) => v.status === "ACTIVE" && v.paymentAsset.kind === "NATIVE",
+    (v) =>
+      v.status === "ACTIVE" &&
+      v.remainingQuantity > 0n &&
+      v.paymentAsset.kind === "NATIVE",
   );
   if (!active.length) return null;
   const lowest = active.reduce((a, b) =>

@@ -8,6 +8,7 @@ import {
   IDENTITY,
   listingFixture,
   offerFixture,
+  rehashOrderFixture,
   saleFixture,
   SOURCE,
 } from "./fixtures.js";
@@ -93,6 +94,34 @@ assert.equal(
     .quantity,
   2n,
 );
+const listingBundle = listingFixture() as Record<string, any>;
+listingBundle.protocol_data.parameters.offer.push({
+  ...listingBundle.protocol_data.parameters.offer[0],
+  identifierOrCriteria: "2",
+});
+assert.throws(
+  () => normalizeListing(IDENTITY, rehashOrderFixture(listingBundle), now),
+  /bundle listings/,
+);
+const foreignBundle = listingFixture() as Record<string, any>;
+foreignBundle.protocol_data.parameters.offer.push({
+  ...foreignBundle.protocol_data.parameters.offer[0],
+  token: "0x9999999999999999999999999999999999999999",
+});
+assert.throws(
+  () => normalizeListing(IDENTITY, rehashOrderFixture(foreignBundle), now),
+  /bundle listings/,
+);
+const mixedListing = listingFixture() as Record<string, any>;
+mixedListing.protocol_data.parameters.consideration.push({
+  ...mixedListing.protocol_data.parameters.consideration[0],
+  itemType: 1,
+  token: "0x8888888888888888888888888888888888888888",
+});
+assert.throws(
+  () => normalizeListing(IDENTITY, rehashOrderFixture(mixedListing), now),
+  /coherent native ETH/,
+);
 for (const scope of ["ITEM", "COLLECTION", "TRAIT"] as const)
   assert.equal(normalizeOffer(IDENTITY, offerFixture(scope), now).scope, scope);
 assert.throws(
@@ -103,6 +132,24 @@ assert.throws(
       now,
     ),
   /ambiguous/,
+);
+const mixedOffer = offerFixture("ITEM") as Record<string, any>;
+mixedOffer.protocol_data.parameters.offer.push({
+  ...mixedOffer.protocol_data.parameters.offer[0],
+  token: "0x8888888888888888888888888888888888888888",
+});
+assert.throws(
+  () => normalizeOffer(IDENTITY, rehashOrderFixture(mixedOffer), now),
+  /mixed payment assets/,
+);
+const offerBundle = offerFixture("ITEM") as Record<string, any>;
+offerBundle.protocol_data.parameters.consideration.push({
+  ...offerBundle.protocol_data.parameters.consideration[0],
+  identifierOrCriteria: "2",
+});
+assert.throws(
+  () => normalizeOffer(IDENTITY, rehashOrderFixture(offerBundle), now),
+  /bundled NFT offer targets/,
 );
 const sale = normalizeSale(IDENTITY, saleFixture(), now)!;
 assert.equal(sale.authority, "PROVIDER_REPORTED_SALE");
@@ -116,6 +163,86 @@ const missing = normalizeSale(
 assert.equal(missing.transactionHash, null);
 assert.equal(missing.orderHash, null);
 assert.equal(missing.paymentAsset, null);
+assert.throws(
+  () => normalizeSale(IDENTITY, saleFixture({ quantity: undefined }), now),
+  /quantity must be uint256/,
+);
+assert.throws(
+  () => normalizeSale(IDENTITY, saleFixture({ quantity: "0" }), now),
+  /quantity must be positive/,
+);
+assert.throws(
+  () => normalizeSale(IDENTITY, saleFixture({ quantity: "x" }), now),
+  /quantity must be uint256/,
+);
+assert.equal(
+  normalizeSale(
+    { ...IDENTITY, collectionStandard: "ERC1155" },
+    saleFixture({ quantity: "2" }),
+    now,
+  )?.quantity,
+  2n,
+);
+assert.throws(
+  () =>
+    normalizeListing(
+      IDENTITY,
+      listingFixture({ remaining_quantity: Number.MAX_SAFE_INTEGER + 1 }),
+      now,
+    ),
+  /safe non-negative integer/,
+);
+const unsafeProtocolNumber = listingFixture() as Record<string, any>;
+unsafeProtocolNumber.protocol_data.parameters.offer[0].startAmount =
+  Number.MAX_SAFE_INTEGER + 1;
+assert.throws(
+  () => normalizeListing(IDENTITY, unsafeProtocolNumber, now),
+  /safe non-negative integer/,
+);
+assert.throws(
+  () =>
+    normalizeListing(
+      IDENTITY,
+      listingFixture({
+        price: {
+          current: {
+            currency: "ETH",
+            decimals: 18,
+            value: Number.MAX_SAFE_INTEGER + 1,
+          },
+        },
+      }),
+      now,
+    ),
+  /safe non-negative integer/,
+);
+assert.throws(
+  () =>
+    normalizeListing(
+      IDENTITY,
+      listingFixture({
+        price: { current: { currency: "ETH", decimals: 256, value: "100" } },
+      }),
+      now,
+    ),
+  /decimals is invalid/,
+);
+assert.throws(
+  () =>
+    normalizeSale(
+      IDENTITY,
+      saleFixture({
+        payment: {
+          quantity: "100",
+          token_address: "0x0000000000000000000000000000000000000000",
+          decimals: 256,
+          symbol: "ETH",
+        },
+      }),
+      now,
+    ),
+  /decimals is invalid/,
+);
 assert.equal(
   lowestNormalizedOpenSeaListing([
     listing,

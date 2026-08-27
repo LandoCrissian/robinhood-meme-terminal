@@ -23,7 +23,9 @@ export const IDENTITY: RmtNftCollectionMarketplaceIdentity = {
   providerChain: "robinhood",
   providerCollectionSlug: "ccff00-161927574",
   scope: "EXACT_CONTRACT_SCOPE",
-  memberContracts: [SOURCE.collectionAddress],
+  providerMembers: [
+    { chain: "robinhood", address: SOURCE.collectionAddress },
+  ],
   verifiedAt: "2026-08-27T00:00:00.000Z",
   provenance: {
     provider: "OPENSEA",
@@ -76,6 +78,27 @@ export function listingFixture(overrides: Record<string, unknown> = {}) {
     status: "active",
     ...overrides,
   };
+}
+export function listingFixtureFor(options: {
+  tokenId: bigint;
+  price: bigint;
+  status?: string;
+  remainingQuantity?: bigint;
+}) {
+  const fixture = listingFixture() as Record<string, any>;
+  fixture.asset.identifier = options.tokenId.toString();
+  fixture.protocol_data.parameters.offer[0].identifierOrCriteria =
+    options.tokenId.toString();
+  fixture.protocol_data.parameters.consideration[0].startAmount =
+    options.price.toString();
+  fixture.protocol_data.parameters.consideration[0].endAmount =
+    options.price.toString();
+  fixture.price.current.value = options.price.toString();
+  fixture.status = options.status ?? "active";
+  fixture.remaining_quantity = (
+    options.remainingQuantity ?? 1n
+  ).toString();
+  return rehashOrderFixture(fixture);
 }
 export function offerFixture(
   scope: "ITEM" | "COLLECTION" | "TRAIT" = "ITEM",
@@ -145,6 +168,37 @@ function jsonOrder(value: RmtSeaportOrderComponents) {
       typeof v === "bigint" ? v.toString() : v,
     ),
   );
+}
+export function rehashOrderFixture(fixture: Record<string, any>) {
+  fixture["order_hash"] = seaportOrderHash(
+    parseFixtureOrder(fixture.protocol_data.parameters),
+  );
+  return fixture;
+}
+function parseFixtureOrder(value: unknown): RmtSeaportOrderComponents {
+  const parsed = value as Record<string, any>;
+  return {
+    ...parsed,
+    offer: parsed.offer.map((item: Record<string, unknown>) => ({
+      ...item,
+      identifierOrCriteria: BigInt(item.identifierOrCriteria as string),
+      startAmount: BigInt(item.startAmount as string),
+      endAmount: BigInt(item.endAmount as string),
+    })),
+    consideration: parsed.consideration.map(
+      (item: Record<string, unknown>) => ({
+        ...item,
+        identifierOrCriteria: BigInt(item.identifierOrCriteria as string),
+        startAmount: BigInt(item.startAmount as string),
+        endAmount: BigInt(item.endAmount as string),
+      }),
+    ),
+    orderType: Number(parsed.orderType),
+    startTime: BigInt(parsed.startTime),
+    endTime: BigInt(parsed.endTime),
+    salt: BigInt(parsed.salt),
+    counter: BigInt(parsed.counter),
+  } as RmtSeaportOrderComponents;
 }
 export function saleFixture(overrides: Record<string, unknown> = {}) {
   return {

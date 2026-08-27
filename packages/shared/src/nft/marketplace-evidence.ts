@@ -34,6 +34,10 @@ export type RmtNftMarketplaceProvenance = {
   retrievedAt: string;
   rawEvidenceDigest: Hex;
 };
+export type RmtNftMarketplaceCollectionMember = {
+  chain: string;
+  address: Address;
+};
 export type RmtNftCollectionMarketplaceIdentity = {
   provider: RmtNftMarketplaceProvider;
   chainId: 4663;
@@ -43,7 +47,7 @@ export type RmtNftCollectionMarketplaceIdentity = {
   providerChain: "robinhood";
   providerCollectionSlug: string;
   scope: RmtNftMarketplaceIdentityScope;
-  memberContracts: readonly Address[];
+  providerMembers: readonly RmtNftMarketplaceCollectionMember[];
   verifiedAt: string;
   provenance: RmtNftMarketplaceProvenance;
 };

@@ -45,6 +45,39 @@ assert.equal(
   ).scope,
   "MULTI_CONTRACT_COLLECTION_SCOPE",
 );
+for (const chain of ["ethereum", "base"]) {
+  const identity = resolveOpenSeaIdentity(
+    SOURCE,
+    contract,
+    {
+      ...collection,
+      contracts: [
+        ...collection.contracts,
+        {
+          address: "0x9999999999999999999999999999999999999999",
+          chain,
+        },
+      ],
+    },
+    "2026-08-27T00:00:00Z",
+  );
+  assert.equal(identity.scope, "MULTI_CONTRACT_COLLECTION_SCOPE");
+  assert.equal(identity.providerMembers.length, 2);
+  assert.equal(identity.providerMembers[1]?.chain, chain);
+}
+assert.throws(
+  () =>
+    resolveOpenSeaIdentity(
+      SOURCE,
+      contract,
+      {
+        ...collection,
+        contracts: [...collection.contracts, { chain: "ethereum" }],
+      },
+      "2026-08-27T00:00:00Z",
+    ),
+  /malformed provider contract member/,
+);
 assert.throws(
   () =>
     resolveOpenSeaIdentity(

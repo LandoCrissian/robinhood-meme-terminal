@@ -55,6 +55,7 @@ for (const collision of [
 for (const [key, value] of [
   ["NFT_MARKETPLACE_PAGE_SIZE", "0"],
   ["NFT_MARKETPLACE_MAX_PAGES_PER_CYCLE", "65"],
+  ["NFT_MARKETPLACE_MAX_LOWEST_LISTING_CANDIDATES", "33"],
   ["NFT_MARKETPLACE_REQUEST_TIMEOUT_MS", "x"],
 ] as const)
   assert.throws(

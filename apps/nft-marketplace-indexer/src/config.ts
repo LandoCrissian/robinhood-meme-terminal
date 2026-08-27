@@ -9,6 +9,7 @@ export type NftMarketplaceConfig = {
   databasePoolSize: number;
   maxPagesPerCycle: number;
   pageSize: number;
+  maxLowestListingCandidates: number;
   port: number;
 };
 function required(env: NodeJS.ProcessEnv, name: string) {
@@ -125,6 +126,13 @@ export function loadNftMarketplaceConfig(
       64,
     ),
     pageSize: integer(env, "NFT_MARKETPLACE_PAGE_SIZE", 50, 1, 200),
+    maxLowestListingCandidates: integer(
+      env,
+      "NFT_MARKETPLACE_MAX_LOWEST_LISTING_CANDIDATES",
+      8,
+      1,
+      32,
+    ),
     port: integer(env, "NFT_MARKETPLACE_PORT", 3012, 1, 65535),
   };
 }

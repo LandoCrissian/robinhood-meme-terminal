@@ -101,7 +101,7 @@ export async function readIdentity(
     providerChain: "robinhood",
     providerCollectionSlug: row.collection_slug,
     scope: row.scope,
-    memberContracts: row.member_contracts,
+    providerMembers: row.member_contracts,
     verifiedAt: new Date(row.verified_at).toISOString(),
     provenance: {
       provider: "OPENSEA",
@@ -140,7 +140,7 @@ export async function persistIdentity(
         "robinhood",
         identity.providerCollectionSlug,
         identity.scope,
-        json("members", identity.memberContracts),
+        json("members", identity.providerMembers),
         identity.verifiedAt,
         identity.provenance.rawEvidenceDigest,
       ],
@@ -157,7 +157,11 @@ export async function persistIdentity(
     client.release();
   }
 }
-async function persistOrder(client: PoolClient, order: Order) {
+async function persistOrder(
+  client: PoolClient,
+  order: Order,
+  exactRevalidatedAt: string | null = null,
+) {
   const existing = await client.query(
     "SELECT project_id,collection_address,evidence_kind,maker FROM nft_marketplace_orders WHERE provider=$1 AND chain_id=$2 AND protocol_address=$3 AND order_hash=$4 FOR UPDATE",
     [order.provider, order.chainId, order.protocolAddress, order.orderHash],
@@ -174,7 +178,7 @@ async function persistOrder(client: PoolClient, order: Order) {
     throw new Error("Conflicting immutable OpenSea order provenance.");
   const criteria = order.evidenceKind === "OFFER" ? order.criteria : null;
   await client.query(
-    `INSERT INTO nft_marketplace_orders(provider,chain_id,protocol_address,order_hash,project_id,collection_address,evidence_kind,order_scope,token_id,criteria,maker,payment_kind,payment_address,payment_symbol,payment_decimals,gross_amount,quantity,start_time,end_time,remaining_quantity,provider_status,normalized_status,order_identity_status,protocol_data,evidence_digest,first_seen_at,last_seen_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24::jsonb,$25,$26,$26) ON CONFLICT(provider,chain_id,protocol_address,order_hash) DO UPDATE SET remaining_quantity=EXCLUDED.remaining_quantity,provider_status=EXCLUDED.provider_status,normalized_status=EXCLUDED.normalized_status,evidence_digest=EXCLUDED.evidence_digest,last_seen_at=EXCLUDED.last_seen_at`,
+    `INSERT INTO nft_marketplace_orders(provider,chain_id,protocol_address,order_hash,project_id,collection_address,evidence_kind,order_scope,token_id,criteria,maker,payment_kind,payment_address,payment_symbol,payment_decimals,gross_amount,quantity,start_time,end_time,remaining_quantity,provider_status,normalized_status,order_identity_status,protocol_data,evidence_digest,first_seen_at,last_seen_at,exact_revalidated_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10::jsonb,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24::jsonb,$25,$26,$26,$27) ON CONFLICT(provider,chain_id,protocol_address,order_hash) DO UPDATE SET remaining_quantity=EXCLUDED.remaining_quantity,provider_status=EXCLUDED.provider_status,normalized_status=EXCLUDED.normalized_status,evidence_digest=EXCLUDED.evidence_digest,last_seen_at=EXCLUDED.last_seen_at,exact_revalidated_at=EXCLUDED.exact_revalidated_at`,
     [
       order.provider,
       order.chainId,
@@ -202,6 +206,7 @@ async function persistOrder(client: PoolClient, order: Order) {
       protocolData(order) ? json("protocol", protocolData(order)) : null,
       order.provenance.rawEvidenceDigest,
       order.provenance.retrievedAt,
+      exactRevalidatedAt,
     ],
   );
   await client.query(
@@ -296,6 +301,38 @@ export async function persistPage(
     client.release();
   }
 }
+export async function persistExactOrderRevalidation(
+  pool: Pool,
+  identity: RmtNftCollectionMarketplaceIdentity,
+  listing: RmtNftListingEvidence,
+) {
+  assertEvidenceIdentity(identity, listing);
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const admitted = await client.query(
+      "SELECT 1 FROM nft_marketplace_collection_identity WHERE provider='OPENSEA' AND chain_id=4663 AND project_id=$1 AND collection_standard=$2 AND collection_slug=$3 AND scope=$4 AND lower(collection_address)=lower($5) FOR SHARE",
+      [
+        identity.projectId,
+        identity.collectionStandard,
+        identity.providerCollectionSlug,
+        identity.scope,
+        identity.collectionAddress,
+      ],
+    );
+    if (!admitted.rowCount)
+      throw new Error(
+        "Marketplace exact-order identity is not durably admitted and verified.",
+      );
+    await persistOrder(client, listing, listing.provenance.retrievedAt);
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
 export async function cursor(
   pool: Pool,
   address: string,
@@ -334,13 +371,25 @@ export async function statusRows(pool: Pool) {
     )
   ).rows;
 }
-export async function lowestNormalizedListingAmount(
-  pool: Pool,
-  address: string,
-) {
-  const result = await pool.query(
-    `SELECT gross_amount FROM nft_marketplace_orders WHERE provider='OPENSEA' AND chain_id=4663 AND lower(collection_address)=lower($1) AND evidence_kind='LISTING' AND normalized_status='ACTIVE' AND payment_kind='NATIVE' ORDER BY gross_amount ASC LIMIT 1`,
+export type ListingRevalidationCandidate = {
+  protocolAddress: string;
+  orderHash: string;
+  grossAmount: string;
+};
+export async function beginListingRevalidation(pool: Pool, address: string) {
+  await pool.query(
+    `UPDATE nft_marketplace_orders SET exact_revalidated_at=NULL WHERE provider='OPENSEA' AND chain_id=4663 AND lower(collection_address)=lower($1) AND evidence_kind='LISTING'`,
     [address],
   );
-  return result.rows[0]?.gross_amount as string | undefined;
+}
+export async function listingRevalidationCandidates(
+  pool: Pool,
+  address: string,
+  limit: number,
+) {
+  const result = await pool.query(
+    `SELECT protocol_address AS "protocolAddress",order_hash AS "orderHash",gross_amount AS "grossAmount" FROM nft_marketplace_orders WHERE provider='OPENSEA' AND chain_id=4663 AND lower(collection_address)=lower($1) AND evidence_kind='LISTING' AND normalized_status='ACTIVE' AND remaining_quantity>0 AND payment_kind='NATIVE' AND order_identity_status='ORDER_IDENTITY_VERIFIED' ORDER BY gross_amount ASC,order_hash ASC LIMIT $2`,
+    [address, limit],
+  );
+  return result.rows as ListingRevalidationCandidate[];
 }

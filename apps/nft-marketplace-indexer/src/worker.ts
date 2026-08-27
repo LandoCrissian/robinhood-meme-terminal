@@ -23,9 +23,11 @@ import {
 import { OpenSeaClient, page } from "./opensea-client.js";
 import { assertMarketplaceSourceSet } from "./sources.js";
 import {
+  beginListingRevalidation,
   cursor,
-  lowestNormalizedListingAmount,
+  listingRevalidationCandidates,
   persistIdentity,
+  persistExactOrderRevalidation,
   persistPage,
   recordSourceError,
   recordSourceSuccess,
@@ -135,6 +137,7 @@ export class MarketplaceWorker {
     this.status.rateLimitState = this.safeRateLimit();
   }
   private async processSource(identity: RmtNftCollectionMarketplaceIdentity) {
+    this.status.lowestNormalizedListings[identity.collectionAddress] = null;
     const stats = await this.#client.stats(identity.providerCollectionSlug);
     const reported = openSeaReportedFloor(identity, stats);
     this.status.providerReportedFloors[identity.collectionAddress] =
@@ -143,15 +146,50 @@ export class MarketplaceWorker {
     const offers = await this.pages(identity, "offers");
     const sales = await this.pages(identity, "sales");
     this.status.lowestNormalizedListings[identity.collectionAddress] =
-      (await lowestNormalizedListingAmount(
-        this.#pool,
-        identity.collectionAddress,
-      )) ?? null;
+      await this.revalidateLowestListing(identity);
     await recordSourceSuccess(
       this.#pool,
       identity.collectionAddress,
       listings.hasMore || offers.hasMore || sales.hasMore,
     );
+  }
+  private async revalidateLowestListing(
+    identity: RmtNftCollectionMarketplaceIdentity,
+  ): Promise<string | null> {
+    await beginListingRevalidation(this.#pool, identity.collectionAddress);
+    const candidates = await listingRevalidationCandidates(
+      this.#pool,
+      identity.collectionAddress,
+      this.#config.maxLowestListingCandidates,
+    );
+    for (const candidate of candidates) {
+      const retrievedAt = new Date().toISOString();
+      const response = await this.#client.order(
+        OPENSEA_CHAIN,
+        candidate.protocolAddress,
+        candidate.orderHash,
+      );
+      if (!response || typeof response !== "object" || Array.isArray(response))
+        throw new Error("OpenSea exact-order response is malformed.");
+      const raw = (response as Record<string, unknown>).order;
+      const listing = normalizeListing(identity, raw, retrievedAt);
+      if (
+        listing.orderHash.toLowerCase() !== candidate.orderHash.toLowerCase() ||
+        listing.protocolAddress.toLowerCase() !==
+          candidate.protocolAddress.toLowerCase()
+      )
+        throw new Error(
+          "OpenSea exact-order response does not match the requested order identity.",
+        );
+      await persistExactOrderRevalidation(this.#pool, identity, listing);
+      if (listing.status === "ACTIVE" && listing.remainingQuantity > 0n)
+        return listing.grossAmount.toString();
+      if (listing.status === "UNKNOWN")
+        throw new Error(
+          "OpenSea exact-order status is unknown; lowest listing is unavailable.",
+        );
+    }
+    return null;
   }
   private async pages(
     identity: RmtNftCollectionMarketplaceIdentity,

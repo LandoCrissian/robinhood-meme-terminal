@@ -1,4 +1,4 @@
-import { getAddress, isAddress, isAddressEqual, type Address } from "viem";
+import { getAddress, isAddress, isAddressEqual } from "viem";
 import type { RmtNftActivitySource } from "@rmt/shared/nft/activity-sources";
 import type { RmtNftCollectionMarketplaceIdentity } from "@rmt/shared/nft/marketplace-evidence";
 import { evidenceDigest } from "./evidence-utils.js";
@@ -58,24 +58,37 @@ export function resolveOpenSeaIdentity(
     throw new Error(
       "OpenSea collection reverse identity is malformed or ambiguous.",
     );
-  const members: Address[] = [];
+  const providerMembers: { chain: string; address: ReturnType<typeof getAddress> }[] = [];
+  const seen = new Set<string>();
   for (const member of collectionRaw.contracts) {
     if (
       !record(member) ||
-      member.chain !== OPENSEA_CHAIN ||
+      typeof member.chain !== "string" ||
+      !member.chain.trim() ||
       typeof member.address !== "string" ||
       !isAddress(member.address, { strict: false })
     )
-      continue;
-    members.push(getAddress(member.address));
+      throw new Error(
+        "OpenSea collection contains a malformed provider contract member.",
+      );
+    const normalized = {
+      chain: member.chain.trim().toLowerCase(),
+      address: getAddress(member.address),
+    };
+    const key = `${normalized.chain}:${normalized.address.toLowerCase()}`;
+    if (seen.has(key))
+      throw new Error(
+        "OpenSea collection contains ambiguous duplicate provider members.",
+      );
+    seen.add(key);
+    providerMembers.push(normalized);
   }
-  const unique = [
-    ...new Map(
-      members.map((address) => [address.toLowerCase(), address]),
-    ).values(),
-  ];
   if (
-    !unique.some((address) => isAddressEqual(address, source.collectionAddress))
+    !providerMembers.some(
+      (member) =>
+        member.chain === OPENSEA_CHAIN &&
+        isAddressEqual(member.address, source.collectionAddress),
+    )
   )
     throw new Error(
       "OpenSea collection reverse identity omits the admitted contract.",
@@ -89,10 +102,10 @@ export function resolveOpenSeaIdentity(
     providerChain: OPENSEA_CHAIN,
     providerCollectionSlug: contractRaw.collection,
     scope:
-      unique.length === 1
+      providerMembers.length === 1
         ? "EXACT_CONTRACT_SCOPE"
         : "MULTI_CONTRACT_COLLECTION_SCOPE",
-    memberContracts: unique,
+    providerMembers,
     verifiedAt: new Date(retrievedAt).toISOString(),
     provenance: {
       provider: "OPENSEA",
