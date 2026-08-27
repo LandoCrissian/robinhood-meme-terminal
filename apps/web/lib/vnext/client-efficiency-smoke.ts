@@ -13,7 +13,7 @@ const spendBalance = source("../../app/vnext/spend-balance.tsx");
 const tradeComposer = source("../../app/vnext/trade-intent-composer.tsx");
 const layout = source("../../app/layout.tsx");
 
-assert.equal(VNEXT_CLIENT_REFRESH_POLICY.marketDirectoryMs, 60_000);
+assert.equal(VNEXT_CLIENT_REFRESH_POLICY.marketDirectoryMs, 300_000);
 assert.equal(VNEXT_CLIENT_REFRESH_POLICY.ecosystemDirectoryMs, 300_000);
 assert.equal(VNEXT_CLIENT_REFRESH_POLICY.assetWorkspaceMs, 60_000);
 assert.equal(VNEXT_CLIENT_REFRESH_POLICY.walletBalanceMs, 60_000);
@@ -41,6 +41,19 @@ assert.match(wallet, /useVisibilityRefresh/);
 assert.match(wallet, /VNEXT_CLIENT_REFRESH_POLICY\.walletDiscoveryMs/);
 assert.match(wallet, /cache: "no-store"/);
 assert.doesNotMatch(wallet, /setInterval/);
+const immediateSearch = directory.slice(
+  directory.indexOf("const submitUniversalSearch ="),
+  directory.indexOf("const refresh =")
+);
+assert.match(immediateSearch, /\/api\/vnext\/market-search/);
+assert.doesNotMatch(immediateSearch, /marketDirectoryMs|ecosystemDirectoryMs/);
+const immediateSelection = directory.slice(
+  directory.indexOf("const selectAddress"),
+  directory.indexOf("const clearUniversalSearch")
+);
+assert.match(immediateSelection, /\/api\/vnext\/asset-identity/);
+assert.match(immediateSelection, /\/api\/markets\/external/);
+assert.doesNotMatch(immediateSelection, /marketDirectoryMs|ecosystemDirectoryMs/);
 assert.match(spendBalance, /refreshBalances\.current\(false\)/);
 assert.match(tradeComposer, /document\.visibilityState === "hidden"/);
 assert.match(tradeComposer, /visibilitychange/);
