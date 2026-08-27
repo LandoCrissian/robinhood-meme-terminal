@@ -8,12 +8,33 @@ import {
   EXTERNAL_CONTRACT_CACHE_CONTROL,
   EXTERNAL_CONTRACT_RESOLVER_CACHE_CONTROL
 } from "./external-market-refresh-policy";
+import {
+  filterRmtCuratedProviderPairs,
+  missingRmtCuratedProviderTokens,
+  rmtCuratedEnrichmentTokens
+} from "./rmt-curated-market-enrichment";
+import { RMT_CURATED_MARKET_REGISTRY } from "../vnext/curated-market-registry";
 
 async function main() {
   assert.equal(EXTERNAL_BROAD_CACHE_CONTROL, "public, s-maxage=300, stale-while-revalidate=600");
   assert.equal(EXTERNAL_CONTRACT_CACHE_CONTROL, "public, s-maxage=30, stale-while-revalidate=90");
   assert.equal(EXTERNAL_CONTRACT_RESOLVER_CACHE_CONTROL, "public, s-maxage=20, stale-while-revalidate=60");
   assert.equal(EXTERNAL_BROAD_MAX_IN_FLIGHT, 1);
+
+  const curatedPairs = RMT_CURATED_MARKET_REGISTRY.map((entry) => ({
+    chainId: "robinhood",
+    pairAddress: entry.market.poolKey,
+    baseToken: { address: entry.market.token0 },
+    quoteToken: { address: entry.market.token1 }
+  }));
+  assert.equal(rmtCuratedEnrichmentTokens().length, 8, "Every enabled curated token must seed broad enrichment");
+  assert.equal(Math.ceil(rmtCuratedEnrichmentTokens().length / 30), 1, "The curated eight must fit in one provider batch");
+  assert.equal(filterRmtCuratedProviderPairs(curatedPairs).length, 8, "Exact address pools and V4 PoolIds must all bind to their curated entry");
+  assert.deepEqual(missingRmtCuratedProviderTokens(curatedPairs), []);
+  const wrongPool = { ...curatedPairs[0], pairAddress: curatedPairs[1].pairAddress };
+  assert.equal(filterRmtCuratedProviderPairs([wrongPool]).length, 0, "Provider ranking must not substitute another curated pool");
+  const missing = missingRmtCuratedProviderTokens(curatedPairs.slice(1));
+  assert.deepEqual(missing, [RMT_CURATED_MARKET_REGISTRY[0].token.toLowerCase()]);
 
   let releaseRefresh: ((value: number) => void) | undefined;
   const refreshGate = new Promise<number>((resolve) => {
@@ -71,6 +92,10 @@ async function main() {
   assert.match(route, /requestedContract\s*\?\s*EXTERNAL_CONTRACT_CACHE_CONTROL\s*:\s*EXTERNAL_BROAD_CACHE_CONTROL/);
   assert.match(route, /broadExternalRefreshes\.run\(\s*EXTERNAL_BROAD_REFRESH_KEY/);
   assert.match(route, /return response\.clone\(\)/);
+  assert.match(route, /const requestedTokens = requestedContract \? \[requestedContract\] : rmtCuratedEnrichmentTokens\(\)/);
+  assert.match(route, /missingRmtCuratedProviderTokens\(batchResults\.flat\(\)\)/);
+  assert.match(route, /filterRmtCuratedProviderPairs\(returnedPairs\)/);
+  assert.doesNotMatch(route, /fetchPublicDiscoveryTokens|fetchGeckoPoolSnapshot|DEXSCREENER_PROFILES_API|DEXSCREENER_(?:LATEST_)?BOOSTS_API/);
 
   console.info("External market refresh cache and coalescing checks passed.");
 }

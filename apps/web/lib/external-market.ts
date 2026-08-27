@@ -224,6 +224,7 @@ export type ExternalMarketResponse = {
   markets?: ExternalMarket[];
   assetRecords?: AssetMarketRecord[];
   directoryAdmission?: "admitted" | "not_admitted";
+  listingAdmission?: "not_listed" | "not_found";
   resolution?: UniversalMarketResolution;
   source?: string;
   rankingVersion?: string;

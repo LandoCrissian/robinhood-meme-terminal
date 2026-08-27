@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { hasSharedCachePolicy } from "./production-health-policy.mjs";
 
 const CHAIN_ID = 4_663;
-const TERMINAL_CHECK_KEYS = new Set(["rpc", "market-indexer", "canonical-inventory"]);
+const TERMINAL_CHECK_KEYS = new Set(["rpc", "curated-registry", "curated-markets"]);
 
 function timestamp(value, label) {
   const parsed = Date.parse(value);
@@ -56,22 +56,21 @@ export function verifyProductionLivenessArtifacts(
   const evidence = health.terminalEvidence;
   if (
     !evidence
-    || evidence.canonicalBrowseEnabled !== true
-    || evidence.marketIndexerConfigured !== true
-    || !["ready", "partial"].includes(evidence.inventoryStatus)
-    || !["complete", "partial"].includes(evidence.canonicalCoverage)
-    || (evidence.canonicalCoverage === "partial" && evidence.inventoryStatus !== "partial")
-    || (evidence.canonicalCoverage === "complete" && evidence.inventoryStatus !== "ready")
+    || evidence.curatedRegistryReady !== true
+    || evidence.curatedMarketsVerified !== true
+    || !Number.isSafeInteger(evidence.curatedMarketCount)
+    || evidence.curatedMarketCount < 1
+    || evidence.historicalMarketIndexerRequired !== false
   ) {
     throw new Error("Terminal inventory health evidence is unavailable or inconsistent.");
   }
 
-  return { latestBlock: health.latestBlock, coverage: evidence.canonicalCoverage };
+  return { latestBlock: health.latestBlock, curatedMarketCount: evidence.curatedMarketCount };
 }
 
 const isMain = process.argv[1]
   && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url));
 if (isMain) {
   const result = verifyProductionLivenessArtifacts(process.argv[2] ?? "health-artifacts");
-  console.info(`Terminal liveness healthy at block ${result.latestBlock}; canonical coverage ${result.coverage}.`);
+  console.info(`Terminal liveness healthy at block ${result.latestBlock}; ${result.curatedMarketCount} curated markets verified.`);
 }

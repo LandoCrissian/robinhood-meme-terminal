@@ -26,15 +26,6 @@ import type { SushiLaunchSnapshot } from "../../../../lib/server/sushi-launch-fe
 import { fetchCurrentLaunchpadSnapshot, type CurrentLaunchpadSnapshot } from "../../../../lib/server/current-launchpad-feed";
 import { mergeLaunchpadEvidenceOntoMarket } from "../../../../lib/launchpad-lifecycle";
 import {
-  fetchGeckoPoolSnapshot,
-  type GeckoPoolFeedId,
-  type GeckoPoolPair
-} from "../../../../lib/server/gecko-new-pool-feed";
-import {
-  parseDexDiscoveryMetadata,
-  type PublicDiscoverySnapshot
-} from "../../../../lib/server/dex-discovery-metadata";
-import {
   fetchRobinhoodStockRegistry,
   stockAssetRelationshipsForPair
 } from "../../../../lib/server/robinhood-stock-token-registry";
@@ -54,14 +45,23 @@ import {
   EXTERNAL_CONTRACT_CACHE_CONTROL,
   EXTERNAL_CONTRACT_RESOLVER_CACHE_CONTROL
 } from "../../../../lib/server/external-market-refresh-policy";
+import {
+  RMT_CURATED_MARKET_REGISTRY
+} from "../../../../lib/vnext/curated-market-registry";
+import {
+  classifyRmtCuratedContractListing,
+  type RmtCuratedContractListing
+} from "../../../../lib/server/rmt-curated-market-registry";
+import {
+  filterRmtCuratedProviderPairs,
+  missingRmtCuratedProviderTokens,
+  rmtCuratedEnrichmentTokens
+} from "../../../../lib/server/rmt-curated-market-enrichment";
 
 const CHAIN_SLUG = "robinhood";
 const DEXSCREENER_TOKEN_PAIRS_API = "https://api.dexscreener.com/token-pairs/v1";
 const DEXSCREENER_TOKENS_API = "https://api.dexscreener.com/tokens/v1";
 const DEXSCREENER_PAIR_API = "https://api.dexscreener.com/latest/dex/pairs";
-const DEXSCREENER_PROFILES_API = "https://api.dexscreener.com/token-profiles/latest/v1";
-const DEXSCREENER_LATEST_BOOSTS_API = "https://api.dexscreener.com/token-boosts/latest/v1";
-const DEXSCREENER_BOOSTS_API = "https://api.dexscreener.com/token-boosts/top/v1";
 const DEXSCREENER_PAGE = "https://dexscreener.com/robinhood/";
 const PREVIEW_MARKET_UPSTREAM = "https://www.rmtlaunch.fun/api/markets/external";
 const CANONICAL_MARKET_TOKENS = [
@@ -104,7 +104,6 @@ type RawPair = {
     websites?: unknown;
     socials?: unknown;
   };
-  discoveryFeeds?: unknown;
 };
 
 type RmtOriginClaim = {
@@ -265,28 +264,6 @@ function requestedTokenFromPair(
     if (quoteAddress === requestedContract) return pair.quoteToken;
   }
   return tokenFromPair(pair, stockTokenAddresses);
-}
-
-async function fetchPublicDiscoveryTokens() {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), DEX_TIMEOUT_MS);
-  try {
-    const payloads = await Promise.all(
-      [DEXSCREENER_PROFILES_API, DEXSCREENER_LATEST_BOOSTS_API, DEXSCREENER_BOOSTS_API].map(async (url) => {
-        const response = await fetch(url, {
-          headers: { Accept: "application/json" },
-          next: { revalidate: 60 },
-          signal: controller.signal
-        });
-        if (!response.ok) return [];
-        const payload: unknown = await response.json();
-        return Array.isArray(payload) ? payload : [];
-      })
-    );
-    return parseDexDiscoveryMetadata(payloads);
-  } finally {
-    clearTimeout(timeout);
-  }
 }
 
 async function fetchTokenBatch(tokenAddresses: string[]) {
@@ -481,6 +458,35 @@ function notAdmittedResponse() {
   );
 }
 
+function notListedResponse(
+  identity: Extract<RmtCuratedContractListing, { status: "not_listed" }>["identity"]
+) {
+  return NextResponse.json(
+    {
+      markets: [],
+      assetRecords: [],
+      listingAdmission: "not_listed",
+      identity,
+      source: "RMT curated market registry + verified Robinhood Chain contract reads",
+      updatedAt: new Date().toISOString()
+    },
+    { status: 409, headers: { "Cache-Control": "private, no-store, max-age=0" } }
+  );
+}
+
+function notFoundResponse() {
+  return NextResponse.json(
+    {
+      markets: [],
+      assetRecords: [],
+      listingAdmission: "not_found",
+      source: "Verified Robinhood Chain contract reads",
+      updatedAt: new Date().toISOString()
+    },
+    { status: 404, headers: { "Cache-Control": "private, no-store, max-age=0" } }
+  );
+}
+
 function withExternalMarketTiming(response: NextResponse, startedAt: number, cacheState: "fresh" | "last-known" | "error") {
   const totalMs = Math.max(0, Math.round((performance.now() - startedAt) * 10) / 10);
   response.headers.set("Server-Timing", `external_enrichment;dur=${totalMs}`);
@@ -505,9 +511,6 @@ async function readExternalMarketResponse(request: Request, requestedContract: s
       : null;
     let sushiLaunchSnapshot: SushiLaunchSnapshot;
     let currentLaunchpadSnapshot: CurrentLaunchpadSnapshot;
-    let publicDiscoverySnapshot: PublicDiscoverySnapshot;
-    let geckoPoolPairs: GeckoPoolPair[];
-    let geckoDelayedFeeds: GeckoPoolFeedId[];
     let stockRegistry: Awaited<ReturnType<typeof fetchRobinhoodStockRegistry>>;
     if (requestedContract) {
       [stockRegistry, currentLaunchpadSnapshot] = await Promise.all([
@@ -515,39 +518,34 @@ async function readExternalMarketResponse(request: Request, requestedContract: s
         fetchCurrentLaunchpadSnapshot(robinhoodClient, { token: getAddress(requestedContract) }).catch(emptyCurrentLaunchpadSnapshot)
       ]);
       sushiLaunchSnapshot = currentLaunchpadSnapshot.sushi;
-      publicDiscoverySnapshot = { tokenAddresses: [], metadata: new Map() };
-      geckoPoolPairs = [];
-      geckoDelayedFeeds = [];
     } else {
-      [currentLaunchpadSnapshot, publicDiscoverySnapshot, stockRegistry, { pairs: geckoPoolPairs, delayedFeeds: geckoDelayedFeeds }] = await Promise.all([
+      [currentLaunchpadSnapshot, stockRegistry] = await Promise.all([
         fetchCurrentLaunchpadSnapshot(robinhoodClient).catch(emptyCurrentLaunchpadSnapshot),
-        fetchPublicDiscoveryTokens().catch(() => ({ tokenAddresses: [], metadata: new Map() })),
-        fetchRobinhoodStockRegistry(),
-        fetchGeckoPoolSnapshot()
+        fetchRobinhoodStockRegistry()
       ]);
       sushiLaunchSnapshot = currentLaunchpadSnapshot.sushi;
     }
     const stockTokenAddresses = new Set(stockRegistry.assetsByAddress.keys());
-    const requestedTokens = [...new Set(
-      [
-        ...sushiLaunchSnapshot.candidateAddresses.map((address) => address.toLowerCase()),
-        ...currentLaunchpadSnapshot.markets.map((market) => market.address.toLowerCase()),
-        ...geckoPoolPairs.map((pair) => pair.baseToken.address.toLowerCase()),
-        ...publicDiscoverySnapshot.tokenAddresses,
-        ...(requestedContract ? [requestedContract] : [])
-      ]
-    )];
+    const requestedTokens = requestedContract ? [requestedContract] : rmtCuratedEnrichmentTokens();
     const tokenBatches = Array.from(
       { length: Math.ceil(requestedTokens.length / DEX_BATCH_SIZE) },
       (_, index) => requestedTokens.slice(index * DEX_BATCH_SIZE, (index + 1) * DEX_BATCH_SIZE)
     );
-    const results = directResultsPromise
-      ? await directResultsPromise
-      : await Promise.all([
-          ...CANONICAL_MARKET_TOKENS.map((address) => fetchCanonicalTokenPairs(address).catch(() => [])),
-          ...tokenBatches.map((addresses) => fetchTokenBatch(addresses).catch(() => []))
-        ]);
-    const pairs: RawPair[] = [...results.flat(), ...geckoPoolPairs];
+    let results: RawPair[][];
+    if (directResultsPromise) {
+      results = await directResultsPromise;
+    } else {
+      const batchResults = await Promise.all(tokenBatches.map((addresses) => fetchTokenBatch(addresses).catch(() => [])));
+      const missingTokens = missingRmtCuratedProviderTokens(batchResults.flat());
+      const exactFallbackResults = await Promise.all(
+        missingTokens.map((address) => fetchCanonicalTokenPairs(address).catch(() => []))
+      );
+      results = [...batchResults, ...exactFallbackResults];
+    }
+    const returnedPairs = results.flat();
+    const pairs: RawPair[] = requestedContract
+      ? returnedPairs
+      : filterRmtCuratedProviderPairs(returnedPairs);
     if (pairs.length === 0 && currentLaunchpadSnapshot.markets.length === 0) {
       if (requestedContract) {
         const resolution = await resolveUniversalMarketAddress(requestedContract, stockRegistry);
@@ -613,9 +611,7 @@ async function readExternalMarketResponse(request: Request, requestedContract: s
         assetQuoteAddresses: stockTokenAddresses,
         provenance: requestedContract
           ? "dexscreener-token-pairs"
-          : Array.isArray(pair.discoveryFeeds)
-            ? "geckoterminal-pool-feed"
-            : "dexscreener-token-batch"
+          : "dexscreener-token-batch"
       });
       if (!evidence) continue;
       const evidenceList = evidenceByToken.get(address.toLowerCase()) ?? [];
@@ -639,14 +635,13 @@ async function readExternalMarketResponse(request: Request, requestedContract: s
       const pairCreatedAt = nonNegativeNumber(pair.pairCreatedAt);
       const ranking = rankingFor(pair, evidence);
 
-      const discoveryMetadata = publicDiscoverySnapshot.metadata.get(address.toLowerCase());
       const market: ProviderDirectoryMarket = {
         assetId: evidence.assetId,
         address,
         name,
         symbol,
-        imageUri: safeDexImageUri(pair.info?.imageUrl) ?? discoveryMetadata?.imageUri,
-        socials: externalMarketSocialsFromPairInfo(pair.info) ?? discoveryMetadata?.socials,
+        imageUri: safeDexImageUri(pair.info?.imageUrl),
+        socials: externalMarketSocialsFromPairInfo(pair.info),
         pairAddress,
         url,
         dexId,
@@ -749,7 +744,9 @@ async function readExternalMarketResponse(request: Request, requestedContract: s
         : launchpadMarket as ProviderDirectoryMarket);
     }
 
-    const directoryAdmission = await applyProjectIdentityDirectoryAdmission([...marketsByToken.values()]);
+    const curatedAddresses = new Set(RMT_CURATED_MARKET_REGISTRY.map((entry) => entry.token.toLowerCase()));
+    const curatedMarkets = [...marketsByToken.values()].filter((market) => curatedAddresses.has(market.address.toLowerCase()));
+    const directoryAdmission = await applyProjectIdentityDirectoryAdmission(curatedMarkets);
     const admittedAddresses = new Set(directoryAdmission.admitted.map((market) => market.address.toLowerCase()));
     const admittedAssetRecords = assetRecords.filter((record) => admittedAddresses.has(record.token.address.toLowerCase()));
     const rankedMarkets = requestedContract
@@ -781,7 +778,7 @@ async function readExternalMarketResponse(request: Request, requestedContract: s
       markets,
       assetRecords: admittedAssetRecords,
       directoryAdmission: "admitted",
-      source: "Canonical DEX markets + bounded current launchpad discovery + provider observations + Robinhood Stock Token registry",
+      source: "RMT curated markets + exact provider observations + bounded launchpad evidence + Robinhood Stock Token registry",
       rankingVersion: "rmt-discovery-v7-lifecycle",
       thresholds: RUNNER_THRESHOLDS,
       originCoverage: currentLaunchpadSnapshot.coverage,
@@ -794,7 +791,6 @@ async function readExternalMarketResponse(request: Request, requestedContract: s
     const delayedSources = [
       ...(sushiLaunchSnapshot.delayed ? ["sushi-launch-metadata"] : []),
       ...currentLaunchpadSnapshot.delayedSources,
-      ...geckoDelayedFeeds.map((feed) => `geckoterminal-${feed}`),
       ...(rmtOrigins.coverage !== "complete" ? ["rmt-origin"] : [])
     ];
 
@@ -836,7 +832,13 @@ export async function GET(request: Request) {
     );
   }
 
-  if (requestedContract) return readExternalMarketResponse(request, requestedContract);
+  if (requestedContract) {
+    const listing = await classifyRmtCuratedContractListing(getAddress(requestedContract));
+    if (listing.status === "not_admitted") return notAdmittedResponse();
+    if (listing.status === "not_listed") return notListedResponse(listing.identity);
+    if (listing.status === "not_found") return notFoundResponse();
+    return readExternalMarketResponse(request, requestedContract);
+  }
 
   // All callers receive a clone; the original response remains the immutable
   // per-process coalescing value and is never consumed by a route response.

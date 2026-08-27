@@ -14,7 +14,7 @@ assert.match(liveness, /verify-production-liveness\.mjs/);
 assert.match(readiness, /cron: "17 \* \* \* \*"/);
 assert.match(readiness, /workflow_dispatch:/);
 assert.match(readiness, /api\/vnext\/market-directory/);
-assert.match(readiness, /check_endpoint directory-next/);
+assert.doesNotMatch(readiness, /check_endpoint directory-next/);
 assert.match(readiness, /api\/vnext\/market-search/);
 assert.match(readiness, /verify-production-health\.mjs/);
 assert.match(readiness, /verify-public-surface\.mjs/);

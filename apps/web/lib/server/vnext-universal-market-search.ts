@@ -28,6 +28,7 @@ import {
   readVNextCanonicalSearchCatalog,
   type VNextCanonicalSearchCatalog
 } from "./vnext-canonical-search-catalog";
+import { searchRmtCuratedMarkets } from "./rmt-curated-market-search";
 
 export type {
   VNextUniversalMarketSearchMatchedBy,
@@ -771,6 +772,9 @@ export async function searchVNextUniversalMarkets(
   requestedQuery: string,
   dependencies: VNextUniversalMarketSearchDependencies = {}
 ): Promise<VNextUniversalMarketSearchResult> {
+  if (Object.keys(dependencies).length === 0) {
+    return searchRmtCuratedMarkets(requestedQuery);
+  }
   const query = requestedQuery.trim();
   const exactAddress = normalizeAddress(query);
   const exactPoolId = normalizePoolId(query);

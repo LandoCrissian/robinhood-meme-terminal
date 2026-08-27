@@ -169,7 +169,10 @@ async function main() {
     }).catch((cause) => cause)
   );
   assert.equal(conflictResponse?.status, 409);
-  assert.deepEqual(await conflictResponse?.json(), { error: "Not admitted to the RMT directory." });
+  assert.deepEqual(await conflictResponse?.json(), {
+    error: "Not admitted to the RMT directory.",
+    directoryAdmission: "not_admitted"
+  });
 
   const boundaryMarkets = Array.from({ length: VNEXT_MARKET_DIRECTORY_PAGE_SIZE + 1 }, (_, index) => ({
     address: getAddress(`0x${(index + 1).toString(16).padStart(40, "0")}`),
@@ -223,12 +226,12 @@ async function main() {
     "canonical and supplemental candidates must be combined before quarantine"
   );
   assert.ok(combinedAdmission >= 0 && combinedAdmission < combinedLimit, "quarantine must happen before result limits");
-  assert.match(canonicalDirectory, /applyProjectIdentityDirectoryAdmission/);
+  assert.match(canonicalDirectory, /excludeKnownPositiveProjectIdentityQuarantines/);
   assert.match(providerDirectory, /directoryAdmission: "not_admitted"/);
   assert.match(providerDirectory, /applyProjectIdentityDirectoryAdmission/);
   assert.match(directoryHook, /canonicalPayload\?\.status === "not_admitted"/);
   assert.match(directoryHook, /marketPayload\?\.directoryAdmission === "not_admitted"/);
-  assert.match(presentation, /Not admitted to the RMT directory\./);
+  assert.match(presentation, /Not admitted to the RMT directory/);
   for (const route of [quoteRoute, verifyRoute, authorizeRoute]) {
     assert.match(route, /requireProjectIdentityDirectoryAdmitted/);
     assert.match(route, /projectIdentityAdmissionErrorResponse/);

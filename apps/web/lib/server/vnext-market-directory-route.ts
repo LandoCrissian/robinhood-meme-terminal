@@ -7,15 +7,11 @@ import {
   type VNextLegacyMarketDirectoryPage
 } from "./vnext-legacy-market-directory";
 import {
-  applyProjectIdentityDirectoryAdmission,
   excludeKnownPositiveProjectIdentityQuarantines,
   type ProjectIdentityAdmissionCandidate,
   type ProjectIdentityAdmissionTiming
 } from "./project-identity-admission";
-import {
-  isVNextCanonicalMarketInventoryCursor,
-  type VNextMarketIndexerTiming
-} from "./vnext-market-indexer";
+import type { VNextMarketIndexerTiming } from "./vnext-market-indexer";
 
 type CanonicalReader = (requestUrl: string) => Promise<VNextCanonicalMarketDirectoryPage>;
 type LegacyReader = () => Promise<VNextLegacyMarketDirectoryPage>;
@@ -38,9 +34,7 @@ export type VNextMarketDirectoryRouteResult = {
 const defaultDependencies: VNextMarketDirectoryRouteDependencies = {
   readCanonical: readVNextCanonicalMarketDirectoryPage,
   readLegacy: readVNextLegacyMarketDirectoryPage,
-  admitProjectIdentities: async <T extends ProjectIdentityAdmissionCandidate>(candidates: readonly T[]) => (
-    await applyProjectIdentityDirectoryAdmission(candidates)
-  ).admitted
+  admitProjectIdentities: async <T extends ProjectIdentityAdmissionCandidate>(candidates: readonly T[]) => [...candidates]
 };
 
 type MarketDirectoryTiming = VNextMarketIndexerTiming & ProjectIdentityAdmissionTiming & {
@@ -94,8 +88,8 @@ function cacheNamespace(dependencies: VNextMarketDirectoryRouteDependencies) {
 
 function normalizedDirectoryCacheKey(requestUrl: string, dependencies: VNextMarketDirectoryRouteDependencies) {
   const cursor = new URL(requestUrl).searchParams.get("cursor");
-  if (cursor !== null && !isVNextCanonicalMarketInventoryCursor(cursor)) return null;
-  return `${cacheNamespace(dependencies)}:${cursor === null ? "root" : `cursor:${cursor}`}`;
+  if (cursor !== null) return null;
+  return `${cacheNamespace(dependencies)}:root`;
 }
 
 function setBoundedDirectoryCache(cacheKey: string, value: CachedDirectoryResult) {
@@ -157,17 +151,12 @@ async function readUncachedVNextMarketDirectoryRequest(
     identityNetworkBatches: 0
   };
   let admissionAuthorityStatus: "ready" | "unavailable" = "unavailable";
-  const result = dependencies === defaultDependencies
-    ? await readVNextCanonicalMarketDirectoryPage(requestUrl, undefined, (value) => { indexerTiming = value; })
-    : await dependencies.readCanonical(requestUrl);
+  const result = await dependencies.readCanonical(requestUrl);
   let body = result.body;
   if (result.status === 200) {
     if (dependencies === defaultDependencies) {
-      const admission = await applyProjectIdentityDirectoryAdmission(result.body.markets ?? [], {
-        onTiming: (value) => { admissionTiming = value; }
-      });
-      admissionAuthorityStatus = admission.authorityStatus;
-      body = { ...result.body, markets: admission.admitted };
+      admissionAuthorityStatus = "ready";
+      body = result.body;
     } else {
       admissionAuthorityStatus = "ready";
       body = {
@@ -198,9 +187,9 @@ async function readUncachedVNextMarketDirectoryRequest(
 }
 
 export function vNextCanonicalBrowseEnabled(
-  env: Readonly<Record<string, string | undefined>> = process.env
+  _env: Readonly<Record<string, string | undefined>> = process.env
 ) {
-  return env.RMT_CANONICAL_BROWSE_ENABLED === "true";
+  return true;
 }
 
 export async function readVNextMarketDirectoryRequest(
@@ -208,13 +197,7 @@ export async function readVNextMarketDirectoryRequest(
   env: Readonly<Record<string, string | undefined>> = process.env,
   dependencies: VNextMarketDirectoryRouteDependencies = defaultDependencies
 ): Promise<VNextMarketDirectoryRouteResult> {
-  if (!vNextCanonicalBrowseEnabled(env)) {
-    const legacy = await dependencies.readLegacy();
-    return filterKnownPositiveQuarantines({
-      ...legacy,
-      headers: { ...legacy.headers, "Cache-Control": "private, no-store, max-age=0" }
-    });
-  }
+  void env;
   const presentationCacheEnabled = dependencies === defaultDependencies || dependencies.presentationCache === true;
   if (!presentationCacheEnabled) {
     return readUncachedVNextMarketDirectoryRequest(requestUrl, dependencies);

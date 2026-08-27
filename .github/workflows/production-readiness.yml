@@ -54,24 +54,19 @@ jobs:
 
           check_endpoint health "$base/api/health" "health-artifacts/health.headers"
           check_endpoint directory "$base/api/vnext/market-directory" "health-artifacts/directory.headers"
-          cursor="$(node -e '
-            const fs = require("node:fs");
-            const body = JSON.parse(fs.readFileSync("health-artifacts/directory.json", "utf8"));
-            if (typeof body.nextCursor !== "string" || body.nextCursor.length === 0) process.exit(1);
-            process.stdout.write(body.nextCursor);
-          ')"
-          encoded_cursor="$(node -e 'process.stdout.write(encodeURIComponent(process.argv[1]))' "$cursor")"
-          check_endpoint directory-next "$base/api/vnext/market-directory?cursor=$encoded_cursor" "health-artifacts/directory-next.headers"
-          while read -r name address; do
+          while read -r name symbol address; do
             check_endpoint "search-$name" "$base/api/vnext/market-search?q=$address"
+            check_endpoint "search-$name-text" "$base/api/vnext/market-search?q=$symbol"
           done <<'MARKET_CONTROLS'
-          stonkbroker 0xe934e36a439c94017b64a3fece66af12099abf50
-          pons 0x39dbed3a2bd333467115de45665cc57f813c4571
-          pipedog 0x5cb6f181081301b44905f3ae15419112ecabd8a6
-          cashcat 0x020bfc650a365f8bb26819deaabf3e21291018b4
-          lemon 0xf0e17e54239cd945cd7bea471a3a2ca6a8c7f7a3
+          stonkbroker STONKBROKER 0xe934e36a439c94017b64a3fece66af12099abf50
+          pons PONS 0x39dbed3a2bd333467115de45665cc57f813c4571
+          pipedog PIPEDOG 0x5cb6f181081301b44905f3ae15419112ecabd8a6
+          cashcat CASHCAT 0x020bfc650a365f8bb26819deaabf3e21291018b4
+          lemon LEMON 0xf0e17e54239cd945cd7bea471a3a2ca6a8c7f7a3
+          peep PEEP 0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f
+          hopium HOPIUM 0xb6ce51925c2e397ebf1a443b343d19267b3d4225
+          cannacat CANNACAT 0x1139d423c1706bdead91f03507f521635591ed92
           MARKET_CONTROLS
-          check_endpoint search-stonkbroker-text "$base/api/vnext/market-search?q=STONKBROKER"
           if ! curl --silent --show-error --fail --location --max-time 25 \
             --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/127.0.0.0 Safari/537.36" \
             --dump-header "health-artifacts/home.headers" "$base/" --output "health-artifacts/home.html"; then
