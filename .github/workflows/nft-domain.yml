@@ -21,6 +21,7 @@ jobs:
           node-version: 22
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter web exec tsx lib/nft/nft-domain-smoke.ts
+      - run: pnpm --filter web exec tsx lib/nft/project-intake-smoke.ts
       - run: pnpm --filter web exec tsx lib/nft/activity-sources-smoke.ts
       - run: pnpm --filter web exec tsx lib/nft/ownership-projection-smoke.ts
       - run: pnpm --filter web exec tsx lib/nft/activity-ingestion-smoke.ts
