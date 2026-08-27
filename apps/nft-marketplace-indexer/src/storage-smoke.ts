@@ -285,12 +285,78 @@ try {
     FROM nft_marketplace_sales LIMIT 1`, [`0x${"c".repeat(64)}`, "0x0bd7d308f8e1639fab988df18a8011f41eacad73"]);
   const exactTime = (await pool.query("SELECT exact_revalidated_at FROM nft_marketplace_orders WHERE order_hash=$1", [listingBActive.order_hash])).rows[0].exact_revalidated_at as Date;
   const readNow = new Date(exactTime.getTime() + 60_000);
+  const persistedPoll = new Date(readNow.getTime() - 30_000);
+  await pool.query(
+    "UPDATE nft_marketplace_source_state SET status='SYNCED',last_successful_poll=$2,last_provider_error=NULL WHERE collection_address=$1",
+    [IDENTITY.collectionAddress, persistedPoll],
+  );
   const freshRead = await readNftProjectMarketplace(pool, "ccff00", 60_000, readNow);
   assert.equal(freshRead.lowestNormalizedListing?.orderHash, listingBActive.order_hash);
   assert.equal(freshRead.lowestNormalizedListing?.authority, "LOWEST_NORMALIZED_OPENSEA_LISTING");
+  assert.equal(freshRead.asOf, persistedPoll.toISOString());
   assert.ok(freshRead.recentProviderSales.every((sale) => sale.authority === "PROVIDER_REPORTED_SALE" && sale.settlementVerificationStatus === "NOT_VERIFIED"));
   assert.equal(freshRead.volume24hByPaymentAsset.length, 2);
   assert.deepEqual(new Set(freshRead.volume24hByPaymentAsset.map((volume) => volume.paymentAsset.kind)), new Set(["NATIVE", "ERC20"]));
+
+  const laterRequestRead = await readNftProjectMarketplace(pool, "ccff00", 60_000, new Date(readNow.getTime() + 60_000));
+  assert.equal(laterRequestRead.asOf, persistedPoll.toISOString());
+
+  const historyBeforeStaleRead = {
+    orders: Number((await pool.query("SELECT count(*) FROM nft_marketplace_orders")).rows[0].count),
+    snapshots: Number((await pool.query("SELECT count(*) FROM nft_marketplace_order_snapshots")).rows[0].count),
+    sales: Number((await pool.query("SELECT count(*) FROM nft_marketplace_sales")).rows[0].count),
+  };
+  const stalePoll = new Date(readNow.getTime() - 600_000);
+  await pool.query(
+    "UPDATE nft_marketplace_source_state SET status='SYNCED',last_successful_poll=$2 WHERE collection_address=$1",
+    [IDENTITY.collectionAddress, stalePoll],
+  );
+  const staleSourceRead = await readNftProjectMarketplace(pool, "ccff00", 60_000, readNow);
+  assert.equal(staleSourceRead.availability, "UNAVAILABLE");
+  assert.equal(staleSourceRead.availabilityReason, "SOURCE_STALE");
+  assert.equal(staleSourceRead.asOf, stalePoll.toISOString());
+  assert.equal(staleSourceRead.lowestNormalizedListing, null);
+  assert.deepEqual(staleSourceRead.recentProviderSales, []);
+  assert.deepEqual(staleSourceRead.volume24hByPaymentAsset, []);
+  assert.deepEqual({
+    orders: Number((await pool.query("SELECT count(*) FROM nft_marketplace_orders")).rows[0].count),
+    snapshots: Number((await pool.query("SELECT count(*) FROM nft_marketplace_order_snapshots")).rows[0].count),
+    sales: Number((await pool.query("SELECT count(*) FROM nft_marketplace_sales")).rows[0].count),
+  }, historyBeforeStaleRead);
+
+  await pool.query(
+    "UPDATE nft_marketplace_source_state SET status='BACKFILLING',last_successful_poll=$2 WHERE collection_address=$1",
+    [IDENTITY.collectionAddress, persistedPoll],
+  );
+  const backfillingRead = await readNftProjectMarketplace(pool, "ccff00", 60_000, readNow);
+  assert.equal(backfillingRead.availability, "PARTIAL");
+  assert.equal(backfillingRead.lowestNormalizedListing?.orderHash, listingBActive.order_hash);
+
+  await pool.query(
+    "UPDATE nft_marketplace_source_state SET status='BACKFILLING',last_successful_poll=NULL WHERE collection_address=$1",
+    [IDENTITY.collectionAddress],
+  );
+  const notReadyRead = await readNftProjectMarketplace(pool, "ccff00", 60_000, readNow);
+  assert.equal(notReadyRead.availability, "UNAVAILABLE");
+  assert.equal(notReadyRead.availabilityReason, "SOURCE_NOT_READY");
+  assert.equal(notReadyRead.asOf, null);
+  assert.equal(notReadyRead.lowestNormalizedListing, null);
+  assert.deepEqual(notReadyRead.recentProviderSales, []);
+  assert.deepEqual(notReadyRead.volume24hByPaymentAsset, []);
+
+  await pool.query(
+    "UPDATE nft_marketplace_source_state SET status='ERROR',last_successful_poll=$2,last_provider_error='fixture error' WHERE collection_address=$1",
+    [IDENTITY.collectionAddress, persistedPoll],
+  );
+  const errorRead = await readNftProjectMarketplace(pool, "ccff00", 60_000, readNow);
+  assert.equal(errorRead.availabilityReason, "SOURCE_ERROR");
+  assert.equal(errorRead.asOf, persistedPoll.toISOString());
+  assert.deepEqual(errorRead.recentProviderSales, []);
+
+  await pool.query(
+    "UPDATE nft_marketplace_source_state SET status='SYNCED',last_successful_poll=$2,last_provider_error=NULL WHERE collection_address=$1",
+    [IDENTITY.collectionAddress, persistedPoll],
+  );
   await pool.query("UPDATE nft_marketplace_orders SET exact_revalidated_at=$2 WHERE order_hash=$1", [listingBActive.order_hash, new Date(readNow.getTime() - 600_000)]);
   const staleRead = await readNftProjectMarketplace(pool, "ccff00", 60_000, readNow);
   assert.equal(staleRead.lowestNormalizedListing, null);

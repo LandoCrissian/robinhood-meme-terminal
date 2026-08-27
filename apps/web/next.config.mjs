@@ -31,10 +31,20 @@ const nextConfig = {
       "@react-native-async-storage/async-storage": false,
       "@farcaster/mini-app-solana": false
     };
-    config.resolve.extensionAlias = {
-      ...config.resolve.extensionAlias,
-      ".js": [".ts", ".tsx", ".js"]
-    };
+    // @rmt/shared publishes raw TypeScript with Node ESM `.js` sibling
+    // specifiers. Limit the TypeScript fallback to that package's source;
+    // application and dependency resolution retain Webpack's defaults.
+    config.module.rules.push({
+      include: [
+        path.resolve(appDirectory, "../../packages/shared/src"),
+        /[\\/]node_modules[\\/](?:\.pnpm[\\/][^\\/]+[\\/]node_modules[\\/])?@rmt[\\/]shared[\\/]src[\\/]/
+      ],
+      resolve: {
+        extensionAlias: {
+          ".js": [".ts", ".tsx", ".js"]
+        }
+      }
+    });
     return config;
   }
 };

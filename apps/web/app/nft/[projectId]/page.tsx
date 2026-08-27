@@ -42,7 +42,7 @@ export default async function NftProjectMarketPage({ params }: { params: Promise
       <a className={styles.contract} href={`${robinhoodChain.blockExplorers.default.url}/address/${collection.contractAddress}`} target="_blank" rel="noreferrer">{collection.contractAddress}</a>
     </header>
 
-    <section className={styles.metrics} aria-label="CCFF00 project market metrics">
+    <section className={styles.metrics} aria-label={`${model.project.displayName} project market metrics`}>
       <article><span>HOLDERS</span><strong>{onchain?.holderCount ?? "Data unavailable"}</strong><small>{onchain?.completeness === "COMPLETE" ? "Canonical current ownership" : "Awaiting complete canonical history"}</small></article>
       <article><span>NFTS IN CIRCULATION</span><strong>{onchain?.circulatingTokenCount ?? "Data unavailable"}</strong><small>Current ERC721 ownership rows, not totalSupply</small></article>
       <article><span>LOWEST OPENSEA LISTING</span><strong>{listing ? `${amount(listing.grossAmount, listing.paymentAsset.decimals)} ${listing.paymentAsset.symbol}` : "Data unavailable"}</strong><small>{listing ? "Fresh normalized OpenSea evidence · not execution verified" : marketplace?.availabilityReason === "STALE" ? "Fresh exact-order evidence unavailable" : "No current qualifying evidence"}</small></article>

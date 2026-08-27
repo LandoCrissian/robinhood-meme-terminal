@@ -20,6 +20,10 @@ export function marketplaceListingFreshnessMs(pollIntervalMs: number) {
   return Math.max(pollIntervalMs * 3, 5 * 60_000);
 }
 
+export function marketplaceSourceFreshnessMs(pollIntervalMs: number) {
+  return Math.max(pollIntervalMs * 3, 5 * 60_000);
+}
+
 export async function readNftProjectMarketplace(
   pool: Pool,
   projectId: string,
@@ -35,8 +39,9 @@ export async function readNftProjectMarketplace(
     project_id: string; collection_address: Address; collection_standard: "ERC721" | "ERC1155";
     collection_slug: string; scope: "EXACT_CONTRACT_SCOPE" | "MULTI_CONTRACT_COLLECTION_SCOPE";
     status: "BACKFILLING" | "SYNCED" | "ERROR";
+    last_successful_poll: Date | null;
   }>(
-    `SELECT i.project_id,i.collection_address,i.collection_standard,i.collection_slug,i.scope,s.status
+    `SELECT i.project_id,i.collection_address,i.collection_standard,i.collection_slug,i.scope,s.status,s.last_successful_poll
      FROM nft_marketplace_collection_identity i JOIN nft_marketplace_source_state s
        USING(provider,chain_id,collection_address)
      WHERE i.provider='OPENSEA' AND i.chain_id=4663 AND i.project_id=$1
@@ -46,8 +51,36 @@ export async function readNftProjectMarketplace(
   const identity = identityResult.rows[0];
   if (!identity) throw new NftMarketplaceProjectNotFoundError("Marketplace identity is unavailable.");
 
+  const asOf = identity.last_successful_poll?.toISOString() ?? null;
+  const sourceUnavailableReason = identity.status === "ERROR"
+    ? "SOURCE_ERROR"
+    : identity.last_successful_poll === null
+      ? "SOURCE_NOT_READY"
+      : identity.last_successful_poll.getTime() < now.getTime() - marketplaceSourceFreshnessMs(pollIntervalMs)
+        ? "SOURCE_STALE"
+        : null;
+  if (sourceUnavailableReason) {
+    return {
+      schemaVersion: 1,
+      projectId: project.projectId,
+      chainId: 4663,
+      collectionAddress: getAddress(identity.collection_address),
+      provider: "OPENSEA",
+      protocol: "SEAPORT_1_6",
+      availability: "UNAVAILABLE",
+      availabilityReason: sourceUnavailableReason,
+      sourceStatus: identity.status,
+      identityScope: identity.scope,
+      providerCollectionSlug: identity.collection_slug,
+      lowestNormalizedListing: null,
+      recentProviderSales: [],
+      volume24hByPaymentAsset: [],
+      asOf,
+    };
+  }
+
   const freshnessCutoff = new Date(now.getTime() - marketplaceListingFreshnessMs(pollIntervalMs));
-  const listingResult = identity.status === "ERROR" ? { rows: [] } : await pool.query<{
+  const listingResult = await pool.query<{
     order_hash: Hex; protocol_address: Address; token_id: string; quantity: string; gross_amount: string;
     payment_kind: "NATIVE"; payment_symbol: string; payment_decimals: number; maker: Address; exact_revalidated_at: Date;
   }>(
@@ -63,7 +96,7 @@ export async function readNftProjectMarketplace(
   );
   const listing = listingResult.rows[0] ?? null;
 
-  const salesResult = identity.status === "ERROR" ? { rows: [] as SaleRow[] } : await pool.query<SaleRow>(
+  const salesResult = await pool.query<SaleRow>(
     `SELECT token_id::text,quantity::text,seller,buyer,payment_kind,payment_address,payment_symbol,
        payment_decimals,gross_amount::text,transaction_hash,order_hash,event_timestamp,authority,settlement_status
      FROM nft_marketplace_sales WHERE provider='OPENSEA' AND chain_id=4663 AND project_id=$1
@@ -73,7 +106,7 @@ export async function readNftProjectMarketplace(
   );
 
   const volumes = new Map<string, RmtNftPaymentAssetVolume>();
-  const volumeRows = identity.status === "ERROR" ? [] : (await pool.query<SaleRow>(
+  const volumeRows = (await pool.query<SaleRow>(
     `SELECT payment_kind,payment_address,payment_symbol,payment_decimals,gross_amount::text
      FROM nft_marketplace_sales WHERE provider='OPENSEA' AND chain_id=4663 AND project_id=$1
        AND lower(collection_address)=lower($2) AND event_timestamp >= $3
@@ -95,13 +128,13 @@ export async function readNftProjectMarketplace(
     });
   }
 
-  const staleCandidate = listing ? false : identity.status !== "ERROR" && (await pool.query(
+  const staleCandidate = listing ? false : (await pool.query(
     `SELECT 1 FROM nft_marketplace_orders WHERE provider='OPENSEA' AND chain_id=4663 AND project_id=$1
       AND lower(collection_address)=lower($2) AND evidence_kind='LISTING' AND normalized_status='ACTIVE'
       AND remaining_quantity>0 AND payment_kind='NATIVE' AND order_identity_status='ORDER_IDENTITY_VERIFIED' LIMIT 1`,
     [source.projectId, source.collectionAddress],
   )).rowCount! > 0;
-  const availability = identity.status === "ERROR" ? "UNAVAILABLE" : identity.status === "BACKFILLING" ? "PARTIAL" : "AVAILABLE";
+  const availability = identity.status === "BACKFILLING" ? "PARTIAL" : "AVAILABLE";
 
   return {
     schemaVersion: 1,
@@ -111,7 +144,7 @@ export async function readNftProjectMarketplace(
     provider: "OPENSEA",
     protocol: "SEAPORT_1_6",
     availability,
-    availabilityReason: identity.status === "ERROR" ? "SOURCE_ERROR" : staleCandidate ? "STALE" : null,
+    availabilityReason: staleCandidate ? "STALE" : null,
     sourceStatus: identity.status,
     identityScope: identity.scope,
     providerCollectionSlug: identity.collection_slug,
@@ -143,6 +176,6 @@ export async function readNftProjectMarketplace(
       eventTimestamp: sale.event_timestamp.toISOString(),
     })),
     volume24hByPaymentAsset: [...volumes.values()],
-    asOf: now.toISOString(),
+    asOf,
   };
 }

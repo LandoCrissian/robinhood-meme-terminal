@@ -93,7 +93,7 @@ export type RmtNftProjectMarketplaceRead = {
   lowestNormalizedListing: RmtLowestNormalizedListingRead | null;
   recentProviderSales: readonly RmtNftProviderSaleRead[];
   volume24hByPaymentAsset: readonly RmtNftPaymentAssetVolume[];
-  asOf: string;
+  asOf: string | null;
 };
 
 export type RmtNftProjectMarketReadModel = {
