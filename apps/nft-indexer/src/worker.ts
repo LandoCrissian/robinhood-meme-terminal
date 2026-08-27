@@ -19,6 +19,8 @@ import { verifyReviewedNftSources, type SourceVerificationRpc, type VerifiedNftS
 import {
   initializeVerifiedSources,
   persistProcessedRange,
+  recordSourceError,
+  recordSourceSuccess,
   readCheckpoint,
   retainedSyncPoints,
   rollbackToCommonAncestor
@@ -34,6 +36,12 @@ export type NftIndexerRpc = SourceVerificationRpc & {
   getBlock(input: { blockNumber: bigint }): Promise<{ hash: Hex }>;
   getLogs(input: { address: Address; fromBlock: bigint; toBlock: bigint; topics: readonly Hex[] }): Promise<readonly RpcLog[]>;
 };
+
+export function activityTopicsForStandard(standard: VerifiedNftSource['standard']): readonly Hex[] {
+  return standard === 'ERC721'
+    ? [RMT_ERC721_TRANSFER_TOPIC]
+    : [RMT_ERC1155_TRANSFER_SINGLE_TOPIC, RMT_ERC1155_TRANSFER_BATCH_TOPIC];
+}
 
 export function createNftIndexerRpc(rpcUrl: string): NftIndexerRpc {
   const client = createPublicClient({ chain: robinhoodChain, transport: http(rpcUrl) });
@@ -166,7 +174,7 @@ export class NftIndexerWorker {
         address: source.collectionAddress,
         fromBlock: range.fromBlock,
         toBlock: range.toBlock,
-        topics: [RMT_ERC721_TRANSFER_TOPIC, RMT_ERC1155_TRANSFER_SINGLE_TOPIC, RMT_ERC1155_TRANSFER_BATCH_TOPIC]
+        topics: activityTopicsForStandard(source.standard)
       });
       const events = this.decodeLogs(source, logs);
       const end = await this.rpc.getBlock({ blockNumber: range.toBlock });
@@ -175,6 +183,7 @@ export class NftIndexerWorker {
       });
       expectedNextBlock = range.toBlock + 1n;
     }
+    return plan.safeHead === null || expectedNextBlock > plan.safeHead ? 'SYNCED' as const : 'BACKFILLING' as const;
   }
 
   async runCycle() {
@@ -182,8 +191,22 @@ export class NftIndexerWorker {
     this.cyclePromise = (async () => {
       this.state = { ...this.state, lastCycleStartedAt: new Date().toISOString(), lastError: null };
       try {
-        const chainHead = await this.rpc.getBlockNumber();
-        for (const source of this.verifiedSources) await this.processSource(source, chainHead);
+        let chainHead: bigint;
+        try {
+          chainHead = await this.rpc.getBlockNumber();
+        } catch (error) {
+          await Promise.all(this.verifiedSources.map((source) => recordSourceError(this.pool, source, error)));
+          throw error;
+        }
+        for (const source of this.verifiedSources) {
+          try {
+            const sourceStatus = await this.processSource(source, chainHead);
+            await recordSourceSuccess(this.pool, source, sourceStatus);
+          } catch (error) {
+            await recordSourceError(this.pool, source, error);
+            throw error;
+          }
+        }
         this.state = { ...this.state, lastCycleCompletedAt: new Date().toISOString() };
       } catch (error) {
         this.state = { ...this.state, lastError: error instanceof Error ? error.message : 'unknown error' };

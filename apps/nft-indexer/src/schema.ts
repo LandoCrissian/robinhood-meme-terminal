@@ -36,9 +36,28 @@ export async function migrateNftIndexer(pool: Pool) {
         last_processed_hash text CHECK (last_processed_hash IS NULL OR last_processed_hash ~ '^0x[0-9A-Fa-f]{64}$'),
         deployment_transaction text NOT NULL CHECK (deployment_transaction ~ '^0x[0-9A-Fa-f]{64}$'),
         verified_at timestamptz NOT NULL,
+        status text NOT NULL DEFAULT 'BACKFILLING' CHECK (status IN ('BACKFILLING','SYNCED','ERROR')),
+        last_sync_at timestamptz,
+        last_error text CHECK (last_error IS NULL OR (length(last_error) BETWEEN 1 AND 4096)),
         CHECK ((last_processed_block IS NULL) = (last_processed_hash IS NULL)),
+        CONSTRAINT nft_indexer_source_state_error_consistency
+          CHECK ((status = 'ERROR') = (last_error IS NOT NULL)),
         PRIMARY KEY (chain_id, collection_address)
       );
+      ALTER TABLE nft_indexer_source_state
+        ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'BACKFILLING'
+          CHECK (status IN ('BACKFILLING','SYNCED','ERROR')),
+        ADD COLUMN IF NOT EXISTS last_sync_at timestamptz,
+        ADD COLUMN IF NOT EXISTS last_error text
+          CHECK (last_error IS NULL OR (length(last_error) BETWEEN 1 AND 4096));
+      DO $$ BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'nft_indexer_source_state_error_consistency'
+        ) THEN
+          ALTER TABLE nft_indexer_source_state ADD CONSTRAINT nft_indexer_source_state_error_consistency
+            CHECK ((status = 'ERROR') = (last_error IS NOT NULL));
+        END IF;
+      END $$;
       CREATE TABLE IF NOT EXISTS nft_indexer_sync_points (
         chain_id integer NOT NULL CHECK (chain_id = 4663),
         collection_address text NOT NULL,

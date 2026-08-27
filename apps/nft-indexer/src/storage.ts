@@ -2,6 +2,7 @@ import type { Pool, PoolClient } from 'pg';
 import type { RmtNftActivityEvent, RmtNftTokenMovement } from '@rmt/shared/nft/activity-domain';
 import type { RmtNftActivityCheckpoint } from '@rmt/shared/nft/activity-ingestion';
 import type { VerifiedNftSource } from './source-verification.js';
+import { isAddressEqual, zeroAddress } from 'viem';
 
 const lower = (value: string) => value.toLowerCase();
 
@@ -9,6 +10,43 @@ export type StoredSourceState = {
   source: VerifiedNftSource;
   checkpoint: RmtNftActivityCheckpoint;
 };
+
+export type NftSourceOperationalStatus = 'BACKFILLING' | 'SYNCED' | 'ERROR';
+
+export type NftSourceOperationalState = {
+  status: NftSourceOperationalStatus;
+  lastSyncAt: string | null;
+  lastError: string | null;
+};
+
+export async function readSourceOperationalState(pool: Pool, source: VerifiedNftSource): Promise<NftSourceOperationalState> {
+  const result = await pool.query<{ status: NftSourceOperationalStatus; last_sync_at: Date | null; last_error: string | null }>(
+    `SELECT status,last_sync_at,last_error FROM nft_indexer_source_state WHERE chain_id=$1 AND collection_address=$2`,
+    [source.chainId, lower(source.collectionAddress)]
+  );
+  const row = result.rows[0];
+  if (!row) throw new Error('Verified NFT source has no durable operational state');
+  return { status: row.status, lastSyncAt: row.last_sync_at?.toISOString() ?? null, lastError: row.last_error };
+}
+
+export async function recordSourceSuccess(
+  pool: Pool,
+  source: VerifiedNftSource,
+  status: Exclude<NftSourceOperationalStatus, 'ERROR'>,
+  syncedAt: Date = new Date()
+) {
+  await pool.query(`UPDATE nft_indexer_source_state SET status=$3,last_sync_at=$4,last_error=NULL
+    WHERE chain_id=$1 AND collection_address=$2`,
+  [source.chainId, lower(source.collectionAddress), status, syncedAt.toISOString()]);
+}
+
+export async function recordSourceError(pool: Pool, source: VerifiedNftSource, error: unknown) {
+  const raw = error instanceof Error ? error.message : String(error);
+  const message = (raw.trim() || 'unknown indexing error').slice(0, 4_096);
+  await pool.query(`UPDATE nft_indexer_source_state SET status='ERROR',last_error=$3
+    WHERE chain_id=$1 AND collection_address=$2`,
+  [source.chainId, lower(source.collectionAddress), message]);
+}
 
 export async function initializeVerifiedSources(pool: Pool, sources: readonly VerifiedNftSource[]) {
   const client = await pool.connect();
@@ -126,6 +164,35 @@ async function applyOwnership(client: PoolClient, event: RmtNftActivityEvent, mo
   if (movement.kind !== 'BURN') await mutate(movement.to, movement.amount);
 }
 
+function validateMovement(event: RmtNftActivityEvent, movement: RmtNftTokenMovement) {
+  if (movement.tokenId < 0n) throw new Error('NFT movement token id cannot be negative');
+  if (event.standard === 'ERC721' && movement.amount !== 1n) {
+    throw new Error('ERC721 activity must move exactly one token instance');
+  }
+  if (event.standard === 'ERC1155' && movement.amount < 0n) {
+    throw new Error('ERC1155 activity amount cannot be negative');
+  }
+  const fromZero = isAddressEqual(movement.from, zeroAddress);
+  const toZero = isAddressEqual(movement.to, zeroAddress);
+  const valid = movement.kind === 'MINT'
+    ? fromZero && !toZero
+    : movement.kind === 'TRANSFER'
+      ? !fromZero && !toZero
+      : !fromZero && toZero;
+  if (!valid) throw new Error(`Invalid ${movement.kind} movement endpoints`);
+}
+
+function validateEventForSource(source: VerifiedNftSource, event: RmtNftActivityEvent) {
+  if (event.chainId !== source.chainId) throw new Error('NFT event chain does not match its verified source');
+  if (event.projectId !== source.projectId) throw new Error('NFT event project does not match its verified source');
+  if (!isAddressEqual(event.collectionAddress, source.collectionAddress)) {
+    throw new Error('NFT event collection does not match its verified source');
+  }
+  if (event.standard !== source.standard) throw new Error('NFT event standard does not match its verified source');
+  if (event.movements.length === 0) throw new Error('NFT activity event must contain at least one movement');
+  for (const movement of event.movements) validateMovement(event, movement);
+}
+
 async function persistEvent(client: PoolClient, event: RmtNftActivityEvent) {
   const inserted = await client.query(
     `INSERT INTO nft_activity_events
@@ -175,6 +242,7 @@ export async function persistProcessedRange(input: {
     );
     if (locked.rows[0]?.next_block !== input.expectedNextBlock.toString()) throw new Error('NFT checkpoint changed concurrently');
     for (const event of input.events) {
+      validateEventForSource(input.source, event);
       if (event.blockNumber < input.expectedNextBlock || event.blockNumber > input.toBlock) throw new Error('NFT event falls outside the atomic range');
       await persistEvent(client, event);
     }

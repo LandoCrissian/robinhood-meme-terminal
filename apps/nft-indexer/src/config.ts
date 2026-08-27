@@ -27,6 +27,16 @@ function integer(name: string, fallback: number, minimum: number, maximum: numbe
   return value;
 }
 
+function requiredInteger(name: string, minimum: number, maximum: number, env: NodeJS.ProcessEnv) {
+  const raw = required(name, env);
+  if (!/^[0-9]+$/.test(raw)) throw new Error(`${name} must be an integer`);
+  const value = Number(raw);
+  if (!Number.isSafeInteger(value) || value < minimum || value > maximum) {
+    throw new Error(`${name} must be between ${minimum} and ${maximum}`);
+  }
+  return value;
+}
+
 function postgresUrl(name: string, value: string) {
   let parsed: URL;
   try {
@@ -77,7 +87,7 @@ export function loadNftIndexerConfig(env: NodeJS.ProcessEnv = process.env): NftI
     databaseUrl: database.value,
     databaseSsl: database.ssl,
     rpcUrl: rpcUrl(env),
-    finalityDepth: integer('NFT_INDEXER_FINALITY_DEPTH', 64, 0, 100_000, env),
+    finalityDepth: requiredInteger('NFT_INDEXER_FINALITY_DEPTH', 0, 100_000, env),
     batchSize: integer('NFT_INDEXER_BATCH_SIZE', 2_000, 1, 100_000, env),
     maxBatchesPerCycle: integer('NFT_INDEXER_MAX_BATCHES_PER_CYCLE', 16, 1, 512, env),
     pollIntervalMs: integer('NFT_INDEXER_POLL_INTERVAL_MS', 5_000, 250, 3_600_000, env),

@@ -4,11 +4,22 @@ import { RMT_NFT_ACTIVITY_SOURCES } from '@rmt/shared/nft/activity-sources';
 import { NFT_INDEXER_SOURCES } from './sources.js';
 import { createNftIndexerServer } from './server.js';
 import type { NftIndexerWorker } from './worker.js';
+import { activityTopicsForStandard } from './worker.js';
+import {
+  RMT_ERC1155_TRANSFER_BATCH_TOPIC,
+  RMT_ERC1155_TRANSFER_SINGLE_TOPIC,
+  RMT_ERC721_TRANSFER_TOPIC
+} from '@rmt/shared/nft/activity-domain';
 
 const source = RMT_NFT_ACTIVITY_SOURCES[0]!;
 assert.equal(NFT_INDEXER_SOURCES.length, 1);
 assert.equal(source.projectId, 'ccff00');
 assert.equal(source.startBlock, 10_929_152n);
+assert.deepEqual(activityTopicsForStandard('ERC721'), [RMT_ERC721_TRANSFER_TOPIC]);
+assert.deepEqual(activityTopicsForStandard('ERC1155'), [
+  RMT_ERC1155_TRANSFER_SINGLE_TOPIC,
+  RMT_ERC1155_TRANSFER_BATCH_TOPIC
+]);
 const checkpoint = {
   schemaVersion: 1 as const, chainId: 4663 as const, projectId: source.projectId,
   collectionAddress: source.collectionAddress, standard: source.standard,

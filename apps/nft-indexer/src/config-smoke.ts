@@ -3,7 +3,8 @@ import { loadNftIndexerConfig } from './config.js';
 
 const valid = {
   NFT_INDEXER_DATABASE_URL: 'postgres://nft:secret@localhost:5432/rmt_nft_indexer?sslmode=disable',
-  NFT_INDEXER_RPC_URL: 'https://rpc.example.test/'
+  NFT_INDEXER_RPC_URL: 'https://rpc.example.test/',
+  NFT_INDEXER_FINALITY_DEPTH: '64'
 } as NodeJS.ProcessEnv;
 
 assert.throws(() => loadNftIndexerConfig({ NFT_INDEXER_RPC_URL: valid.NFT_INDEXER_RPC_URL }), /DATABASE_URL is required/);
@@ -17,6 +18,8 @@ assert.throws(() => loadNftIndexerConfig({
 }), /must not equal MARKET_INDEXER_DATABASE_URL/);
 assert.throws(() => loadNftIndexerConfig({ ...valid, NFT_INDEXER_RPC_URL: 'http://rpc.example.test' }), /must use HTTPS/);
 assert.throws(() => loadNftIndexerConfig({ ...valid, NFT_INDEXER_RPC_URL: 'https://user:pass@rpc.example.test' }), /without embedded credentials/);
+const { NFT_INDEXER_FINALITY_DEPTH: _missingFinality, ...withoutFinality } = valid;
+assert.throws(() => loadNftIndexerConfig(withoutFinality), /NFT_INDEXER_FINALITY_DEPTH is required/);
 for (const [name, value] of [
   ['NFT_INDEXER_FINALITY_DEPTH', '-1'], ['NFT_INDEXER_BATCH_SIZE', '0'],
   ['NFT_INDEXER_MAX_BATCHES_PER_CYCLE', '513'], ['NFT_INDEXER_POLL_INTERVAL_MS', '12.5']
