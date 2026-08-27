@@ -1,5 +1,5 @@
 export const VNEXT_CLIENT_REFRESH_POLICY = Object.freeze({
-  marketDirectoryMs: 60_000,
+  marketDirectoryMs: 300_000,
   ecosystemDirectoryMs: 300_000,
   assetWorkspaceMs: 60_000,
   walletBalanceMs: 60_000,
