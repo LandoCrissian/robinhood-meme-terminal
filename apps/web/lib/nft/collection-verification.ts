@@ -131,10 +131,10 @@ async function readIdentity(client: PublicClient, address: Address) {
   };
 }
 
-function activityTopics(standard: RmtNftCollectionStandard) {
+function activityTopics(standard: RmtNftCollectionStandard): ReadonlySet<string> {
   return standard === "ERC721"
-    ? new Set([RMT_ERC721_TRANSFER_TOPIC])
-    : new Set([RMT_ERC1155_TRANSFER_SINGLE_TOPIC, RMT_ERC1155_TRANSFER_BATCH_TOPIC]);
+    ? new Set<string>([RMT_ERC721_TRANSFER_TOPIC])
+    : new Set<string>([RMT_ERC1155_TRANSFER_SINGLE_TOPIC, RMT_ERC1155_TRANSFER_BATCH_TOPIC]);
 }
 
 export async function readSampledRmtNftActivityEvidence(
