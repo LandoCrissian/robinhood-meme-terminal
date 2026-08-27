@@ -45,10 +45,13 @@ const MINIMUM_SEARCH_TIMEOUT_MS = 250;
 const MAXIMUM_SEARCH_TIMEOUT_MS = 10_000;
 const MAXIMUM_SEARCH_QUERY_LENGTH = 160;
 const MAXIMUM_PROVIDER_RESPONSE_BYTES = 1_000_000;
+const MAXIMUM_PROVIDER_CANDIDATE_HINTS = 96;
 const MAXIMUM_CANDIDATE_TOKENS = 12;
 const MAXIMUM_RESULTS = 12;
 const INVENTORY_LIMIT = 100;
 const CANONICAL_PROVIDER_SUPPLEMENT_GRACE_MS = 150;
+const CANONICAL_TOKEN_INDEX_TIMEOUT_MS = 1_200;
+const CANONICAL_TEXT_LANE_DEADLINE_MS = 2_500;
 
 const ADDRESS_INPUT_PATTERN = /^0x[0-9a-fA-F]{40}$/;
 const BYTES32_INPUT_PATTERN = /^0x[0-9a-fA-F]{64}$/;
@@ -96,8 +99,8 @@ export type VNextUniversalMarketSearchDependencies = {
 
 type CandidatePair = {
   chainId?: unknown;
-  baseToken?: { address?: unknown };
-  quoteToken?: { address?: unknown };
+  baseToken?: { address?: unknown; name?: unknown; symbol?: unknown };
+  quoteToken?: { address?: unknown; name?: unknown; symbol?: unknown };
 };
 
 type BlockscoutCandidate = {
@@ -112,6 +115,13 @@ type BlockscoutCandidate = {
 type CandidateDiscoveryResult =
   | { status: "ready"; addresses: string[] }
   | { status: "unavailable" };
+
+type CandidateHint = {
+  address: string;
+  name: string;
+  symbol: string;
+  sourceIndex: number;
+};
 
 type Match = {
   matchedBy: Extract<
@@ -191,6 +201,48 @@ function matchIdentity(query: string, identity: TokenIdentity): Match | null {
     return { matchedBy: "plural-alias", priority: 4 };
   }
   return null;
+}
+
+function rankCandidateHints(query: string, hints: readonly CandidateHint[]) {
+  const candidates = new Map<string, CandidateHint & { priority: number }>();
+  for (const hint of hints) {
+    const match = matchIdentity(query, {
+      address: hint.address,
+      name: hint.name,
+      symbol: hint.symbol,
+      decimals: 0
+    });
+    const ranked = { ...hint, priority: match?.priority ?? Number.MAX_SAFE_INTEGER };
+    const current = candidates.get(hint.address);
+    if (
+      !current ||
+      ranked.priority < current.priority ||
+      (ranked.priority === current.priority && ranked.sourceIndex < current.sourceIndex)
+    ) {
+      candidates.set(hint.address, ranked);
+    }
+  }
+  return [...candidates.values()].sort(
+    (left, right) => left.priority - right.priority || left.sourceIndex - right.sourceIndex
+  );
+}
+
+async function settleWithin<T>(
+  promise: Promise<T>,
+  milliseconds: number,
+  fallback: T
+) {
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((resolve) => {
+        timeout = setTimeout(() => resolve(fallback), milliseconds);
+      })
+    ]);
+  } finally {
+    if (timeout !== undefined) clearTimeout(timeout);
+  }
 }
 
 function inventoryUnavailable(result: VNextCanonicalMarketInventoryResult) {
@@ -500,63 +552,71 @@ async function discoverCandidates(
     Array.isArray((blockscoutBody as { items: unknown }).items);
   if (!dexScreenerReady && !blockscoutReady) return { status: "unavailable" };
 
-  const dexScreenerAddresses = new Set<string>();
+  const dexScreenerHints: CandidateHint[] = [];
   if (dexScreenerReady) {
-    for (const rawPair of (dexScreenerBody as { pairs: unknown[] }).pairs) {
+    for (const [pairIndex, rawPair] of (dexScreenerBody as { pairs: unknown[] }).pairs.entries()) {
       if (typeof rawPair !== "object" || rawPair === null) continue;
       const pair = rawPair as CandidatePair;
       if (pair.chainId !== ROBINHOOD_CHAIN_SLUG) continue;
-      for (const rawAddress of [pair.baseToken?.address, pair.quoteToken?.address]) {
-        if (typeof rawAddress !== "string") continue;
-        const address = normalizeAddress(rawAddress);
+      for (const [tokenIndex, token] of [pair.baseToken, pair.quoteToken].entries()) {
+        if (typeof token?.address !== "string") continue;
+        const address = normalizeAddress(token.address);
         if (!address) continue;
-        dexScreenerAddresses.add(address);
-        if (dexScreenerAddresses.size === MAXIMUM_CANDIDATE_TOKENS) break;
+        dexScreenerHints.push({
+          address,
+          name: typeof token.name === "string" ? token.name : "",
+          symbol: typeof token.symbol === "string" ? token.symbol : "",
+          sourceIndex: pairIndex * 2 + tokenIndex
+        });
+        if (dexScreenerHints.length === MAXIMUM_PROVIDER_CANDIDATE_HINTS) break;
       }
-      if (dexScreenerAddresses.size === MAXIMUM_CANDIDATE_TOKENS) break;
+      if (dexScreenerHints.length === MAXIMUM_PROVIDER_CANDIDATE_HINTS) break;
     }
   }
 
-  const blockscoutAddresses = new Set<string>();
+  const blockscoutHints: CandidateHint[] = [];
   if (blockscoutReady) {
-    const rankedItems = (blockscoutBody as { items: unknown[] }).items
-      .flatMap((rawItem, index) => {
-        if (typeof rawItem !== "object" || rawItem === null) return [];
-        const item = rawItem as BlockscoutCandidate;
-        if (item.type !== "token" || item.token_type !== "ERC-20") return [];
-        const hint = matchIdentity(query, {
-          address: ZERO_ADDRESS,
-          name: typeof item.name === "string" ? item.name : "",
-          symbol: typeof item.symbol === "string" ? item.symbol : "",
-          decimals: 0
-        });
-        return [{ item, index, priority: hint?.priority ?? Number.MAX_SAFE_INTEGER }];
-      })
-      .sort((left, right) => left.priority - right.priority || left.index - right.index);
-    for (const { item } of rankedItems) {
+    for (const [index, rawItem] of (blockscoutBody as { items: unknown[] }).items.entries()) {
+      if (typeof rawItem !== "object" || rawItem === null) continue;
+      const item = rawItem as BlockscoutCandidate;
+      if (item.type !== "token" || item.token_type !== "ERC-20") continue;
       const rawAddress = typeof item.address_hash === "string"
         ? item.address_hash
         : item.address;
       if (typeof rawAddress !== "string") continue;
       const address = normalizeAddress(rawAddress);
       if (!address) continue;
-      blockscoutAddresses.add(address);
-      if (blockscoutAddresses.size === MAXIMUM_CANDIDATE_TOKENS) break;
+      blockscoutHints.push({
+        address,
+        name: typeof item.name === "string" ? item.name : "",
+        symbol: typeof item.symbol === "string" ? item.symbol : "",
+        sourceIndex: index
+      });
+      if (blockscoutHints.length === MAXIMUM_PROVIDER_CANDIDATE_HINTS) break;
     }
   }
 
-  const sources = [[...dexScreenerAddresses], [...blockscoutAddresses]];
+  const sources = [
+    rankCandidateHints(query, dexScreenerHints),
+    rankCandidateHints(query, blockscoutHints)
+  ];
   const addresses = new Set<string>();
-  for (let index = 0; addresses.size < MAXIMUM_CANDIDATE_TOKENS; index += 1) {
-    let advanced = false;
-    for (const source of sources) {
-      const address = source[index];
-      if (!address) continue;
-      advanced = true;
-      addresses.add(address);
-      if (addresses.size === MAXIMUM_CANDIDATE_TOKENS) break;
+  const priorities = [...new Set(sources.flatMap((source) => source.map(({ priority }) => priority)))]
+    .sort((left, right) => left - right);
+  for (const priority of priorities) {
+    const rankedSources = sources.map((source) => source.filter((candidate) => candidate.priority === priority));
+    for (let index = 0; addresses.size < MAXIMUM_CANDIDATE_TOKENS; index += 1) {
+      let advanced = false;
+      for (const source of rankedSources) {
+        const candidate = source[index];
+        if (!candidate) continue;
+        advanced = true;
+        addresses.add(candidate.address);
+        if (addresses.size === MAXIMUM_CANDIDATE_TOKENS) break;
+      }
+      if (!advanced) break;
     }
-    if (!advanced) break;
+    if (addresses.size === MAXIMUM_CANDIDATE_TOKENS) break;
   }
   return { status: "ready", addresses: [...addresses] };
 }
@@ -570,98 +630,111 @@ async function textSearch(
     dependencies.fetch,
     dependencies.timeoutMs
   ).catch((): CandidateDiscoveryResult => ({ status: "unavailable" }));
-  const canonicalSearch = await dependencies.searchCanonicalTokens(query).catch(
-    (): VNextCanonicalTokenIdentitySearchResult => ({ status: "unavailable", entries: [] })
-  );
-  let canonicalMatches = canonicalSearch.status === "ready"
-    ? canonicalSearch.entries.flatMap((entry) => {
-        const match = matchIdentity(query, entry);
-        return match ? [{
-          priority: match.priority,
-          result: {
-            address: entry.address.toLowerCase(),
-            name: entry.name,
-            symbol: entry.symbol,
-            decimals: entry.decimals,
-            matchedBy: match.matchedBy,
-            markets: entry.markets.map(publicMarket)
-          } satisfies VNextUniversalMarketSearchResultItem
-        }] : [];
-      }).sort(
-        (left, right) => left.priority - right.priority || left.result.address.localeCompare(right.result.address)
-      )
-    : [];
-  if (canonicalMatches.length === 0 &&
-      (canonicalSearch.status === "unavailable" || !canonicalSearch.capacity.complete)) {
-    const fallbackCatalog = await dependencies.readCanonicalCatalog().catch(
-      (): VNextCanonicalSearchCatalog => ({ status: "unavailable", entries: [] })
+  const canonicalMatchesPromise = settleWithin((async () => {
+    const canonicalSearch = await dependencies.searchCanonicalTokens(query).catch(
+      (): VNextCanonicalTokenIdentitySearchResult => ({ status: "unavailable", entries: [] })
     );
-    if (fallbackCatalog.status === "ready") {
-      canonicalMatches = fallbackCatalog.entries.flatMap((entry) => {
-        const match = matchIdentity(query, entry.identity);
-        return match ? [{
-          priority: match.priority,
-          result: {
-            address: entry.identity.address.toLowerCase(),
-            name: entry.identity.name,
-            symbol: entry.identity.symbol,
-            decimals: entry.identity.decimals,
-            matchedBy: match.matchedBy,
-            markets: entry.markets.map(publicMarket)
-          } satisfies VNextUniversalMarketSearchResultItem
-        }] : [];
-      }).sort(
-        (left, right) => left.priority - right.priority || left.result.address.localeCompare(right.result.address)
+    let matches = canonicalSearch.status === "ready"
+      ? canonicalSearch.entries.flatMap((entry) => {
+          const match = matchIdentity(query, entry);
+          return match ? [{
+            priority: match.priority,
+            result: {
+              address: entry.address.toLowerCase(),
+              name: entry.name,
+              symbol: entry.symbol,
+              decimals: entry.decimals,
+              matchedBy: match.matchedBy,
+              markets: entry.markets.map(publicMarket)
+            } satisfies VNextUniversalMarketSearchResultItem
+          }] : [];
+        }).sort(
+          (left, right) => left.priority - right.priority || left.result.address.localeCompare(right.result.address)
+        )
+      : [];
+    if (matches.length === 0 &&
+        (canonicalSearch.status === "unavailable" || !canonicalSearch.capacity.complete)) {
+      const fallbackCatalog = await dependencies.readCanonicalCatalog().catch(
+        (): VNextCanonicalSearchCatalog => ({ status: "unavailable", entries: [] })
       );
+      if (fallbackCatalog.status === "ready") {
+        matches = fallbackCatalog.entries.flatMap((entry) => {
+          const match = matchIdentity(query, entry.identity);
+          return match ? [{
+            priority: match.priority,
+            result: {
+              address: entry.identity.address.toLowerCase(),
+              name: entry.identity.name,
+              symbol: entry.identity.symbol,
+              decimals: entry.identity.decimals,
+              matchedBy: match.matchedBy,
+              markets: entry.markets.map(publicMarket)
+            } satisfies VNextUniversalMarketSearchResultItem
+          }] : [];
+        }).sort(
+          (left, right) => left.priority - right.priority || left.result.address.localeCompare(right.result.address)
+        );
+      }
     }
-  }
+    return matches;
+  })(), CANONICAL_TEXT_LANE_DEADLINE_MS, []);
+
+  const providerCandidatesPromise = discoveryPromise.then(async (discovery) => ({
+    discovery,
+    candidates: discovery.status === "ready"
+      ? (await Promise.all(
+          discovery.addresses.map(async (address) => {
+            const [identityRead, inventoryRead] = await Promise.allSettled([
+              dependencies.readIdentity(getAddress(address)),
+              dependencies.readInventory({ token: address, limit: INVENTORY_LIMIT })
+            ]);
+            if (identityRead.status !== "fulfilled" || !identityRead.value) return null;
+            const identity = normalizeVerifiedIdentity(identityRead.value, address);
+            if (!identity) return null;
+            const match = matchIdentity(query, identity);
+            if (!match) return null;
+            const inventory = inventoryRead.status === "fulfilled" &&
+              inventoryRead.value.status === "verified_shadow"
+              ? inventoryRead.value
+              : null;
+            return {
+              priority: match.priority,
+              result: {
+                address,
+                name: identity.name,
+                symbol: identity.symbol,
+                decimals: identity.decimals,
+                matchedBy: match.matchedBy,
+                markets: (inventory?.pools ?? []).map(publicMarket)
+              } satisfies VNextUniversalMarketSearchResultItem
+            };
+          })
+        )).filter((candidate): candidate is NonNullable<typeof candidate> => candidate !== null)
+      : []
+  }));
+
+  const canonicalMatches = await canonicalMatchesPromise;
   let supplementTimeout: ReturnType<typeof setTimeout> | undefined;
-  const discovery = canonicalMatches.length === 0
-    ? await discoveryPromise
+  const providerLane = canonicalMatches.length === 0
+    ? await providerCandidatesPromise
     : await Promise.race([
-        discoveryPromise,
-        new Promise<CandidateDiscoveryResult>((resolve) => {
+        providerCandidatesPromise,
+        new Promise<Awaited<typeof providerCandidatesPromise>>((resolve) => {
           supplementTimeout = setTimeout(
-            () => resolve({ status: "ready", addresses: [] }),
+            () => resolve({
+              discovery: { status: "ready", addresses: [] },
+              candidates: []
+            }),
             CANONICAL_PROVIDER_SUPPLEMENT_GRACE_MS
           );
         })
       ]).finally(() => {
         if (supplementTimeout !== undefined) clearTimeout(supplementTimeout);
       });
-  if (canonicalMatches.length === 0 && discovery.status === "unavailable") {
+  if (canonicalMatches.length === 0 && providerLane.discovery.status === "unavailable") {
     return emptyResult(query, "text", "candidate_discovery_unavailable");
   }
-  const providerCandidates = discovery.status === "ready"
-    ? (await Promise.all(
-        discovery.addresses.map(async (address) => {
-          const [identityRead, inventoryRead] = await Promise.allSettled([
-            dependencies.readIdentity(getAddress(address)),
-            dependencies.readInventory({ token: address, limit: INVENTORY_LIMIT })
-          ]);
-          if (identityRead.status !== "fulfilled" || !identityRead.value) return null;
-          const identity = normalizeVerifiedIdentity(identityRead.value, address);
-          if (!identity) return null;
-          const match = matchIdentity(query, identity);
-          if (!match) return null;
-          const inventory = inventoryRead.status === "fulfilled" &&
-            inventoryRead.value.status === "verified_shadow"
-            ? inventoryRead.value
-            : null;
-          return {
-            priority: match.priority,
-            result: {
-              address,
-              name: identity.name,
-              symbol: identity.symbol,
-              decimals: identity.decimals,
-              matchedBy: match.matchedBy,
-              markets: (inventory?.pools ?? []).map(publicMarket)
-            } satisfies VNextUniversalMarketSearchResultItem
-          };
-        })
-      )).filter((candidate): candidate is NonNullable<typeof candidate> => candidate !== null)
-    : [];
+  const providerCandidates = providerLane.candidates;
   const matchedCandidates = [...new Map(
     [...canonicalMatches, ...providerCandidates]
       .sort(
@@ -776,7 +849,9 @@ export async function searchVNextUniversalMarkets(
                 }
               : { status: "unavailable", entries: [] };
           }
-        : searchVNextCanonicalTokenIdentities
+        : (textQuery: string) => searchVNextCanonicalTokenIdentities(textQuery, {
+            timeoutMs: CANONICAL_TOKEN_INDEX_TIMEOUT_MS
+          })
     )
   };
   let deadline: ReturnType<typeof setTimeout> | undefined;
