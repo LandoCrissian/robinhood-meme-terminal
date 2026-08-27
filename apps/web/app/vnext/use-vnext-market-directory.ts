@@ -244,6 +244,29 @@ export function useVNextMarketDirectory() {
           }
           return undefined;
         }
+        if (
+          canonicalPayload?.status === "not_listed"
+          || marketPayload?.listingAdmission === "not_listed"
+        ) {
+          if (requestSequence === selectionSequence.current) {
+            exactLookupMarket.current = undefined;
+            searchMarketsRef.current = [];
+            setSearchMarkets([]);
+            setSelectedAddress(null);
+            setSearchStatus("not_listed");
+          }
+          return undefined;
+        }
+        if (marketPayload?.listingAdmission === "not_found") {
+          if (requestSequence === selectionSequence.current) {
+            exactLookupMarket.current = undefined;
+            searchMarketsRef.current = [];
+            setSearchMarkets([]);
+            setSelectedAddress(null);
+            setSearchStatus("not_found");
+          }
+          return undefined;
+        }
         const canonical = canonicalPayload?.results
           .find((result) => result.address.toLowerCase() === address.toLowerCase());
         const canonicalMarket = canonical ? directoryMarketFromUniversalSearchResult(canonical) : null;

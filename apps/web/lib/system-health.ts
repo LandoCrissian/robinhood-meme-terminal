@@ -1,20 +1,17 @@
 export type SystemHealthState = "operational" | "degraded";
 
 export type SystemHealthCheck = {
-  key: "rpc" | "market-indexer" | "canonical-inventory";
+  key: "rpc" | "curated-registry" | "curated-markets";
   label: string;
   state: SystemHealthState;
   detail: string;
 };
 
-export type TerminalInventoryStatus = "ready" | "partial" | "unavailable";
-export type TerminalCanonicalCoverage = "complete" | "partial" | "unavailable";
-
 export type TerminalHealthEvidence = {
-  canonicalBrowseEnabled: boolean;
-  marketIndexerConfigured: boolean;
-  inventoryStatus: TerminalInventoryStatus;
-  canonicalCoverage: TerminalCanonicalCoverage;
+  curatedRegistryReady: boolean;
+  curatedMarketsVerified: boolean;
+  curatedMarketCount: number;
+  historicalMarketIndexerRequired: false;
 };
 
 export type SystemHealthReport = {

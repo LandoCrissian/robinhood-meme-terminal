@@ -2,15 +2,8 @@ import { unstable_cache } from "next/cache";
 import { createPublicClient, http } from "viem";
 import { activeChain, activeNetworkLabel, isMainnetRelease } from "../network";
 import type { SystemHealthCheck, SystemHealthReport } from "../system-health";
-import { directoryMarketsFromCanonicalPools } from "../vnext/market-directory";
-import {
-  publicVNextCanonicalMarketInventoryPool,
-  readVNextCanonicalMarketInventory,
-  type VNextCanonicalMarketInventoryQuery,
-  type VNextCanonicalMarketInventoryResult
-} from "./vnext-market-indexer";
-
-const ZERO_ADDRESS = `0x${"0".repeat(40)}`;
+import { RMT_CURATED_MARKET_REGISTRY } from "../vnext/curated-market-registry";
+import { readRmtCuratedMarketSnapshot, type RmtCuratedMarketSnapshot } from "./rmt-curated-market-registry";
 
 type HealthRpcClient = {
   getChainId(): Promise<number>;
@@ -18,14 +11,9 @@ type HealthRpcClient = {
   getBlock(input: { blockNumber: bigint }): Promise<{ timestamp: bigint }>;
 };
 
-type InventoryReader = (
-  query: VNextCanonicalMarketInventoryQuery
-) => Promise<VNextCanonicalMarketInventoryResult>;
-
 export type SystemHealthDependencies = {
   rpcClient?: HealthRpcClient;
-  readInventory?: InventoryReader;
-  env?: Readonly<Record<string, string | undefined>>;
+  readCuratedSnapshot?: () => Promise<RmtCuratedMarketSnapshot>;
   now?: () => number;
 };
 
@@ -48,14 +36,6 @@ function check(
   return { key, label, state: healthy ? "operational" : "degraded", detail };
 }
 
-function canonicalBrowseEnabled(env: Readonly<Record<string, string | undefined>>) {
-  return env.RMT_CANONICAL_BROWSE_ENABLED === "true";
-}
-
-function indexerConfigurationResolved(result: VNextCanonicalMarketInventoryResult | null) {
-  return result !== null && result.status !== "not_configured" && result.status !== "misconfigured";
-}
-
 export async function readFreshSystemHealth(
   dependencies: SystemHealthDependencies = {}
 ): Promise<SystemHealthReport> {
@@ -63,8 +43,7 @@ export async function readFreshSystemHealth(
   const startedAt = now();
   const checkedAt = new Date(startedAt).toISOString();
   const rpcClient = dependencies.rpcClient ?? defaultRpcClient;
-  const readInventory = dependencies.readInventory ?? readVNextCanonicalMarketInventory;
-  const env = dependencies.env ?? process.env;
+  const readCuratedSnapshot = dependencies.readCuratedSnapshot ?? readRmtCuratedMarketSnapshot;
   const checks: SystemHealthCheck[] = [];
   let observedChainId: number = activeChain.id;
   let latestBlock = "unavailable";
@@ -97,55 +76,29 @@ export async function readFreshSystemHealth(
     ));
   }
 
-  let inventory: VNextCanonicalMarketInventoryResult | null = null;
+  let curatedSnapshot: RmtCuratedMarketSnapshot | null = null;
   try {
-    inventory = await readInventory({ limit: 1 });
+    curatedSnapshot = await readCuratedSnapshot();
   } catch {
-    inventory = null;
+    curatedSnapshot = null;
   }
-
-  const marketIndexerConfigured = indexerConfigurationResolved(inventory);
-  const verifiedInventory = inventory?.status === "verified_shadow" ? inventory : null;
-  const canonicalCoverage = verifiedInventory
-    ? verifiedInventory.coverage.complete ? "complete" : "partial"
-    : "unavailable";
-  const inventoryStatus = verifiedInventory
-    ? verifiedInventory.coverage.complete ? "ready" : "partial"
-    : "unavailable";
-
+  const registryReady = RMT_CURATED_MARKET_REGISTRY.length > 0;
   checks.push(check(
-    "market-indexer",
-    "Canonical market-indexer boundary",
-    verifiedInventory !== null,
-    verifiedInventory
-      ? "Authenticated inventory boundary returned an accepted canonical response."
-      : marketIndexerConfigured
-        ? "Authenticated inventory verification is temporarily unavailable."
-        : "Canonical market-indexer configuration is unavailable."
+    "curated-registry",
+    "RMT curated market registry",
+    registryReady,
+    registryReady
+      ? `${RMT_CURATED_MARKET_REGISTRY.length} owner-admitted markets are configured.`
+      : "The owner-curated market registry is empty."
   ));
-
-  const directoryMarkets = verifiedInventory
-    ? directoryMarketsFromCanonicalPools(
-        verifiedInventory.pools.map(publicVNextCanonicalMarketInventoryPool)
-      )
-    : [];
-  const validPublicInventory = verifiedInventory !== null
-    && directoryMarkets.length > 0
-    && directoryMarkets.every((market) => market.address !== ZERO_ADDRESS);
-  const browseEnabled = canonicalBrowseEnabled(env);
-  const inventoryHealthy = browseEnabled && validPublicInventory;
-
+  const curatedMarketsVerified = curatedSnapshot?.markets.length === RMT_CURATED_MARKET_REGISTRY.length;
   checks.push(check(
-    "canonical-inventory",
-    "Canonical market inventory",
-    inventoryHealthy,
-    inventoryHealthy
-      ? `${directoryMarkets.length} public market ${directoryMarkets.length === 1 ? "identity" : "identities"} sampled · ${canonicalCoverage} coverage`
-      : !browseEnabled
-        ? "Canonical browse is not enabled for this Terminal configuration."
-        : verifiedInventory
-          ? "Canonical inventory did not contain usable public market evidence."
-          : "Canonical inventory is temporarily unavailable."
+    "curated-markets",
+    "Curated market and ERC20 verification",
+    curatedMarketsVerified,
+    curatedMarketsVerified
+      ? `${curatedSnapshot!.markets.length} curated ERC20 identities and canonical markets verified${curatedSnapshot!.stale ? " from the last-good snapshot" : ""}.`
+      : "Curated ERC20 identity or canonical market verification is unavailable."
   ));
 
   return {
@@ -159,10 +112,10 @@ export async function readFreshSystemHealth(
     latencyMs: Math.max(0, now() - startedAt),
     checkedAt,
     terminalEvidence: {
-      canonicalBrowseEnabled: browseEnabled,
-      marketIndexerConfigured,
-      inventoryStatus,
-      canonicalCoverage
+      curatedRegistryReady: registryReady,
+      curatedMarketsVerified,
+      curatedMarketCount: RMT_CURATED_MARKET_REGISTRY.length,
+      historicalMarketIndexerRequired: false
     },
     checks
   };
@@ -170,7 +123,7 @@ export async function readFreshSystemHealth(
 
 const readSystemHealthCached = unstable_cache(
   readFreshSystemHealth,
-  ["rmt-terminal-system-health-v2"],
+  ["rmt-terminal-system-health-curated-v1"],
   { revalidate: 15 }
 );
 

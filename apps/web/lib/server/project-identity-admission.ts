@@ -483,7 +483,7 @@ export async function requireProjectIdentityDirectoryAdmitted(
 export function projectIdentityAdmissionErrorResponse(cause: unknown) {
   if (!(cause instanceof ConflictingProjectIdentityError)) return null;
   return Response.json(
-    { error: cause.message },
+    { error: cause.message, directoryAdmission: "not_admitted" },
     { status: 409, headers: { "Cache-Control": "private, no-store, max-age=0" } }
   );
 }

@@ -9,7 +9,7 @@ import {
 } from "viem";
 import { robinhoodChain } from "@rmt/shared/chains";
 import { ROBINHOOD_V4_QUOTER } from "../uniswap-v4";
-import { readVNextCanonicalMarketInventory } from "./vnext-market-indexer";
+import { readRmtCuratedCanonicalMarketInventory } from "./rmt-curated-market-registry";
 import {
   prepareVNextUniswapV4Authorization,
   verifyVNextUniswapV4Route
@@ -63,7 +63,7 @@ const client = createPublicClient({
 });
 
 type V4QuoteDependencies = {
-  readInventory?: typeof readVNextCanonicalMarketInventory;
+  readInventory?: typeof readRmtCuratedCanonicalMarketInventory;
   quote?: (input: {
     poolKey: { currency0: Address; currency1: Address; fee: number; tickSpacing: number; hooks: Address };
     zeroForOne: boolean;
@@ -93,7 +93,7 @@ export function createVNextUniswapV4Adapter(
         const inventoryToken = request.inputAsset.toLowerCase() === "0x0000000000000000000000000000000000000000"
           ? request.outputAsset.toLowerCase()
           : request.inputAsset.toLowerCase();
-        const inventory = await (dependencies.readInventory ?? readVNextCanonicalMarketInventory)({
+        const inventory = await (dependencies.readInventory ?? readRmtCuratedCanonicalMarketInventory)({
           token: inventoryToken,
           source: "uniswap-v4",
           limit: 100

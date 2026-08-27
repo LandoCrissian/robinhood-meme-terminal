@@ -54,6 +54,13 @@ import {
   EXTERNAL_CONTRACT_CACHE_CONTROL,
   EXTERNAL_CONTRACT_RESOLVER_CACHE_CONTROL
 } from "../../../../lib/server/external-market-refresh-policy";
+import {
+  RMT_CURATED_MARKET_REGISTRY
+} from "../../../../lib/vnext/curated-market-registry";
+import {
+  classifyRmtCuratedContractListing,
+  type RmtCuratedContractListing
+} from "../../../../lib/server/rmt-curated-market-registry";
 
 const CHAIN_SLUG = "robinhood";
 const DEXSCREENER_TOKEN_PAIRS_API = "https://api.dexscreener.com/token-pairs/v1";
@@ -481,6 +488,35 @@ function notAdmittedResponse() {
   );
 }
 
+function notListedResponse(
+  identity: Extract<RmtCuratedContractListing, { status: "not_listed" }>["identity"]
+) {
+  return NextResponse.json(
+    {
+      markets: [],
+      assetRecords: [],
+      listingAdmission: "not_listed",
+      identity,
+      source: "RMT curated market registry + verified Robinhood Chain contract reads",
+      updatedAt: new Date().toISOString()
+    },
+    { status: 409, headers: { "Cache-Control": "private, no-store, max-age=0" } }
+  );
+}
+
+function notFoundResponse() {
+  return NextResponse.json(
+    {
+      markets: [],
+      assetRecords: [],
+      listingAdmission: "not_found",
+      source: "Verified Robinhood Chain contract reads",
+      updatedAt: new Date().toISOString()
+    },
+    { status: 404, headers: { "Cache-Control": "private, no-store, max-age=0" } }
+  );
+}
+
 function withExternalMarketTiming(response: NextResponse, startedAt: number, cacheState: "fresh" | "last-known" | "error") {
   const totalMs = Math.max(0, Math.round((performance.now() - startedAt) * 10) / 10);
   response.headers.set("Server-Timing", `external_enrichment;dur=${totalMs}`);
@@ -749,7 +785,9 @@ async function readExternalMarketResponse(request: Request, requestedContract: s
         : launchpadMarket as ProviderDirectoryMarket);
     }
 
-    const directoryAdmission = await applyProjectIdentityDirectoryAdmission([...marketsByToken.values()]);
+    const curatedAddresses = new Set(RMT_CURATED_MARKET_REGISTRY.map((entry) => entry.token.toLowerCase()));
+    const curatedMarkets = [...marketsByToken.values()].filter((market) => curatedAddresses.has(market.address.toLowerCase()));
+    const directoryAdmission = await applyProjectIdentityDirectoryAdmission(curatedMarkets);
     const admittedAddresses = new Set(directoryAdmission.admitted.map((market) => market.address.toLowerCase()));
     const admittedAssetRecords = assetRecords.filter((record) => admittedAddresses.has(record.token.address.toLowerCase()));
     const rankedMarkets = requestedContract
@@ -836,7 +874,13 @@ export async function GET(request: Request) {
     );
   }
 
-  if (requestedContract) return readExternalMarketResponse(request, requestedContract);
+  if (requestedContract) {
+    const listing = await classifyRmtCuratedContractListing(getAddress(requestedContract));
+    if (listing.status === "not_admitted") return notAdmittedResponse();
+    if (listing.status === "not_listed") return notListedResponse(listing.identity);
+    if (listing.status === "not_found") return notFoundResponse();
+    return readExternalMarketResponse(request, requestedContract);
+  }
 
   // All callers receive a clone; the original response remains the immutable
   // per-process coalescing value and is never consumed by a route response.

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { getAddress } from "viem";
 import {
   deriveVNextMarketState,
   directoryMarketFromUniversalSearchResult,
@@ -22,6 +23,22 @@ import {
   type VNextUniversalMarketSearchMatchedBy,
   type VNextUniversalMarketSearchPool
 } from "./universal-market-search-contract";
+import {
+  RMT_CURATED_MARKET_REGISTRY,
+  rmtCuratedMarketByPool,
+  rmtCuratedMarketByToken,
+  rmtCuratedMarketSearchCandidates
+} from "./curated-market-registry";
+import {
+  classifyRmtCuratedContractListing,
+  readRmtCuratedMarketSnapshot,
+  RmtCuratedMarketAdmissionError,
+  requireRmtCuratedExecutionAssets,
+  rmtCuratedMarketAdmissionErrorResponse,
+  resetRmtCuratedMarketSnapshotForTests
+} from "../server/rmt-curated-market-registry";
+import { searchRmtCuratedMarkets } from "../server/rmt-curated-market-search";
+import { ROBINHOOD_NATIVE_ASSET_ADDRESS } from "./robinhood-assets";
 
 const STONKBROKER = "0xe934e36a439c94017b64a3fece66af12099abf50";
 const TOKEN_TWO = "0x1111111111111111111111111111111111111111";
@@ -287,7 +304,7 @@ assert.equal(exactVNextLocalDirectoryMatches([v4Directory, duplicateName], "STON
 assert.equal(exactVNextLocalDirectoryMatches([v4Directory, duplicateName], "StonkBroker").length, 2);
 assert.equal(mergeVNextDirectoryAndSearchMarkets([], [v4Directory, duplicateName]).length, 2);
 
-for (const status of ["not_found", "not_admitted", "inventory_unavailable", "candidate_discovery_unavailable", "invalid_query"] as const) {
+for (const status of ["not_found", "not_listed", "not_admitted", "inventory_unavailable", "candidate_discovery_unavailable", "invalid_query"] as const) {
   const parsed = parseVNextUniversalMarketSearchResult({
     query: "missing",
     queryKind: "text",
@@ -339,6 +356,8 @@ assert.match(shell, /clearUniversalSearch\(\);[\s\S]*setQuery\(nextQuery\)/);
 assert.match(presentation, /Search token, contract or pool/);
 assert.match(presentation, /rmtSearchContract/);
 assert.match(presentation, /count=\{props\.expandedSearchResultCount\}/);
+assert.match(presentation, /status === "not_listed"/);
+assert.match(presentation, /Token exists on Robinhood Chain but is not currently listed on RMT\./);
 assert.match(presentation, /Not admitted to the RMT directory\./);
 assert.doesNotMatch(presentation, /SearchStatusMessage status=\{props\.searchStatus\} count=\{props\.filteredMarkets\.length\}/);
 assert.match(shell, /expandedSearchResultCount:[\s\S]*searchMarkets\.length/);
@@ -363,3 +382,109 @@ assert.doesNotMatch(serverSearch, /stateError: pool\.stateError/);
 assert.doesNotMatch(hook + shell + presentation, /rmt-market-indexer-shadow-production|RMT_MARKET_INDEXER_READ_TOKEN|sendTransaction|signTransaction|writeContract/);
 
 console.log("VNext Terminal universal search integration preserves local-first filtering, canonical evidence, null metrics, ambiguity, and race-safe explicit submission.");
+
+async function curatedRegistryChecks() {
+  assert.equal(RMT_CURATED_MARKET_REGISTRY.length, 8);
+  assert.equal(new Set(RMT_CURATED_MARKET_REGISTRY.map((entry) => entry.token.toLowerCase())).size, 8);
+  assert.deepEqual(
+    RMT_CURATED_MARKET_REGISTRY.map((entry) => entry.aliases[0]),
+    ["STONKBROKER", "PONS", "PIPEDOG", "CASHCAT", "LEMON.FUN", "PEEP", "HOPIUM", "CANNACAT"]
+  );
+  assert.equal(rmtCuratedMarketByToken("0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f")?.market.sourceId, "uniswap-v2");
+  assert.equal(rmtCuratedMarketByPool("0xc1dbd75280b6d117b4ac1e27fcd00c6dccb1a2b2fbfa9923a2c492711299d337")?.token.toLowerCase(), "0xb6ce51925c2e397ebf1a443b343d19267b3d4225");
+  assert.equal(rmtCuratedMarketSearchCandidates("Canna Cat")[0]?.token.toLowerCase(), "0x1139d423c1706bdead91f03507f521635591ed92");
+  assert.equal(rmtCuratedMarketSearchCandidates("STONKBROKERS")[0]?.token.toLowerCase(), STONKBROKER);
+  assert.equal(rmtCuratedMarketSearchCandidates("unknown").length, 0);
+
+  resetRmtCuratedMarketSnapshotForTests();
+  let verifiedMarkets = 0;
+  const snapshot = await readRmtCuratedMarketSnapshot({
+    readIdentities: async (addresses) => new Map(addresses.map((address) => {
+      const entry = RMT_CURATED_MARKET_REGISTRY.find((candidate) => candidate.token === address)!;
+      const symbol = entry.aliases[0].replace(/^\$/, "");
+      return [address.toLowerCase(), { address, name: symbol, symbol, decimals: 18, totalSupply: "1" }];
+    })),
+    verifyMarket: async () => { verifiedMarkets += 1; },
+    now: () => 1_700_000_000_000
+  });
+  assert.equal(snapshot.markets.length, 8);
+  assert.equal(verifiedMarkets, 8);
+  const peep = await searchRmtCuratedMarkets("PEEP", { readSnapshot: async () => snapshot });
+  assert.equal(peep.status, "found");
+  assert.equal(peep.results[0]?.address, "0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f");
+  assert.equal(
+    peep.results[0]?.markets[0]?.poolKey,
+    "0xe70dd15481ba143f145fbe23e8916236d554d3c7" // gitleaks:allow -- public test-only canonical pool
+  );
+  const unlisted = await searchRmtCuratedMarkets(TOKEN_TWO, {
+    readSnapshot: async () => snapshot,
+    readIdentity: async (address) => ({ address, name: "Unlisted", symbol: "UNLISTED", decimals: 18, totalSupply: "1" })
+  });
+  assert.equal(unlisted.status, "not_listed");
+  assert.equal(unlisted.results.length, 0);
+  assert.equal((await classifyRmtCuratedContractListing(RMT_CURATED_MARKET_REGISTRY[0].token, {
+    readIdentity: async () => { throw new Error("curated identity must not require unlisted classification"); }
+  })).status, "listed");
+  assert.equal((await classifyRmtCuratedContractListing(
+    getAddress(RMT_CURATED_MARKET_REGISTRY.find((entry) => entry.market.poolAddress)?.market.poolAddress ?? TOKEN_TWO),
+    { readIdentity: async () => { throw new Error("curated pool must remain a listed lookup identity"); } }
+  )).status, "listed");
+  const verifiedUnlistedIdentity = {
+    address: getAddress(TOKEN_TWO),
+    name: "Unlisted",
+    symbol: "UNLISTED",
+    decimals: 18,
+    totalSupply: "1"
+  };
+  const validUnlisted = await classifyRmtCuratedContractListing(getAddress(TOKEN_TWO), {
+    readIdentity: async () => verifiedUnlistedIdentity,
+    admitProjectIdentities: async () => ({ quarantined: [] })
+  });
+  assert.equal(validUnlisted.status, "not_listed");
+  const invalidContract = await classifyRmtCuratedContractListing(getAddress(TOKEN_TWO), {
+    readIdentity: async () => null
+  });
+  assert.equal(invalidContract.status, "not_found");
+  const positiveConflict = await classifyRmtCuratedContractListing(getAddress(TOKEN_THREE), {
+    readIdentity: async (address) => ({ ...verifiedUnlistedIdentity, address }),
+    admitProjectIdentities: async () => ({ quarantined: [{}] })
+  });
+  assert.equal(positiveConflict.status, "not_admitted");
+  const unlistedAdmissionResponse = rmtCuratedMarketAdmissionErrorResponse(
+    new RmtCuratedMarketAdmissionError()
+  );
+  assert.equal(unlistedAdmissionResponse?.status, 409);
+  assert.deepEqual(await unlistedAdmissionResponse?.json(), {
+    error: "Token exists but is not currently listed on RMT.",
+    listingAdmission: "not_listed"
+  });
+  assert.doesNotThrow(() => requireRmtCuratedExecutionAssets(
+    ROBINHOOD_NATIVE_ASSET_ADDRESS,
+    RMT_CURATED_MARKET_REGISTRY[0].token
+  ));
+  assert.throws(() => requireRmtCuratedExecutionAssets(
+    TOKEN_TWO,
+    RMT_CURATED_MARKET_REGISTRY[0].token
+  ), /not currently listed on RMT/);
+  for (const routePath of [
+    "../../app/api/vnext/quotes/route.ts",
+    "../../app/api/vnext/verify/route.ts",
+    "../../app/api/vnext/authorize/route.ts"
+  ]) {
+    const routeSource = readFileSync(new URL(routePath, import.meta.url), "utf8");
+    assert.match(routeSource, /requireRmtCuratedExecutionAssets\(inputAsset, outputAsset\)/);
+    assert.match(routeSource, /rmtCuratedMarketAdmissionErrorResponse\(cause\)/);
+  }
+  const externalRoute = readFileSync(new URL("../../app/api/markets/external/route.ts", import.meta.url), "utf8");
+  assert.match(externalRoute, /classifyRmtCuratedContractListing\(getAddress\(requestedContract\)\)/);
+  assert.match(externalRoute, /listing\.status === "not_listed"/);
+  assert.match(externalRoute, /listing\.status === "not_found"/);
+  assert.match(externalRoute, /listing\.status === "not_admitted"/);
+  assert.doesNotMatch(externalRoute, /!isRmtCuratedMarketIdentity\(requestedContract\)/);
+  console.log("RMT curated market registry, verified identity boundary, and not-listed exact-contract state passed.");
+}
+
+void curatedRegistryChecks().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

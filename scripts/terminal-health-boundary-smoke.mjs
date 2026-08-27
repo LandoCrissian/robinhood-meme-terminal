@@ -43,8 +43,9 @@ const readinessWorkflow = fs.readFileSync(path.join(repositoryRoot, ".github/wor
 assert.match(livenessWorkflow, /api\/health/);
 assert.doesNotMatch(livenessWorkflow, /api\/vnext\/market-directory/);
 assert.match(readinessWorkflow, /api\/vnext\/market-directory/);
-assert.match(readinessWorkflow, /check_endpoint directory-next/);
-assert.match(readinessWorkflow, /encodeURIComponent/);
+assert.doesNotMatch(readinessWorkflow, /check_endpoint directory-next/);
+assert.match(readinessWorkflow, /search-\$name-text/);
+assert.match(readinessWorkflow, /MARKET_CONTROLS/);
 assert.match(readinessWorkflow, /\/vnext/);
 
 const status = fs.readFileSync(path.join(repositoryRoot, "apps/web/app/status/system-status.tsx"), "utf8");
