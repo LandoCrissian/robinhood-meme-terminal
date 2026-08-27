@@ -87,7 +87,7 @@ try {
         [conflict],
         "must-not-advance",
       ),
-    /Conflicting immutable/,
+    /projection conflicts with protocol data/,
   );
   assert.equal(
     await cursor(pool, IDENTITY.collectionAddress, "listings-query"),
