@@ -46,6 +46,14 @@ import { readCompleteV6OriginTokensFromChain } from "../../../../lib/server/laun
 import { VNEXT_MARKET_DIRECTORY_MAX_MARKETS } from "../../../../lib/vnext/market-directory";
 import type { VNextDirectoryMarket } from "../../../../lib/vnext/market-directory";
 import { applyProjectIdentityDirectoryAdmission } from "../../../../lib/server/project-identity-admission";
+import {
+  BoundedInFlightCoalescer,
+  EXTERNAL_BROAD_CACHE_CONTROL,
+  EXTERNAL_BROAD_MAX_IN_FLIGHT,
+  EXTERNAL_BROAD_REFRESH_KEY,
+  EXTERNAL_CONTRACT_CACHE_CONTROL,
+  EXTERNAL_CONTRACT_RESOLVER_CACHE_CONTROL
+} from "../../../../lib/server/external-market-refresh-policy";
 
 const CHAIN_SLUG = "robinhood";
 const DEXSCREENER_TOKEN_PAIRS_API = "https://api.dexscreener.com/token-pairs/v1";
@@ -138,6 +146,7 @@ type SuccessfulMarketSnapshot = {
 };
 
 let lastSuccessfulSnapshot: SuccessfulMarketSnapshot | undefined;
+const broadExternalRefreshes = new BoundedInFlightCoalescer<Response>(EXTERNAL_BROAD_MAX_IN_FLIGHT);
 
 const robinhoodClient = createPublicClient({
   chain: robinhoodChain,
@@ -485,17 +494,8 @@ function withExternalMarketTiming(response: NextResponse, startedAt: number, cac
   return response;
 }
 
-export async function GET(request: Request) {
+async function readExternalMarketResponse(request: Request, requestedContract: string | null) {
   const startedAt = performance.now();
-  const lookupParameter = new URL(request.url).searchParams.get("contract");
-  const requestedContract = canonicalExternalMarketLookupAddress(lookupParameter);
-  if (lookupParameter !== null && !requestedContract) {
-    return NextResponse.json(
-      { error: "A complete nonzero EVM contract address is required." },
-      { status: 400, headers: { "Cache-Control": "no-store" } }
-    );
-  }
-
   try {
     const directResultsPromise = requestedContract
       ? Promise.all([
@@ -572,7 +572,7 @@ export async function GET(request: Request) {
             stockAssetCoverage: stockRegistry.coverage,
             updatedAt: new Date().toISOString()
           },
-          { headers: { "Cache-Control": "public, s-maxage=20, stale-while-revalidate=60" } }
+          { headers: { "Cache-Control": EXTERNAL_CONTRACT_RESOLVER_CACHE_CONTROL } }
         );
       }
       throw new Error("No external market source responded.");
@@ -804,7 +804,13 @@ export async function GET(request: Request) {
         resolution,
         ...(delayedSources.length > 0 ? { delayedSources } : {})
       },
-      { headers: { "Cache-Control": "public, s-maxage=30, stale-while-revalidate=90" } }
+      {
+        headers: {
+          "Cache-Control": requestedContract
+            ? EXTERNAL_CONTRACT_CACHE_CONTROL
+            : EXTERNAL_BROAD_CACHE_CONTROL
+        }
+      }
     ), startedAt, "fresh");
   } catch (error) {
     console.error(JSON.stringify({
@@ -818,4 +824,25 @@ export async function GET(request: Request) {
       { status: 503, headers: { "Cache-Control": "no-store" } }
     ), startedAt, "error");
   }
+}
+
+export async function GET(request: Request) {
+  const lookupParameter = new URL(request.url).searchParams.get("contract");
+  const requestedContract = canonicalExternalMarketLookupAddress(lookupParameter);
+  if (lookupParameter !== null && !requestedContract) {
+    return NextResponse.json(
+      { error: "A complete nonzero EVM contract address is required." },
+      { status: 400, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
+  if (requestedContract) return readExternalMarketResponse(request, requestedContract);
+
+  // All callers receive a clone; the original response remains the immutable
+  // per-process coalescing value and is never consumed by a route response.
+  const response = await broadExternalRefreshes.run(
+    EXTERNAL_BROAD_REFRESH_KEY,
+    () => readExternalMarketResponse(request, null)
+  );
+  return response.clone();
 }

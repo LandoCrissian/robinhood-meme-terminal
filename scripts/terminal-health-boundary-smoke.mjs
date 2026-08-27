@@ -10,6 +10,8 @@ const activeHealthFiles = [
   "apps/web/lib/server/system-health.ts",
   "apps/web/lib/system-health.ts",
   ".github/workflows/production-health.yml",
+  ".github/workflows/production-readiness.yml",
+  "scripts/verify-production-liveness.mjs",
   "scripts/verify-production-health.mjs"
 ];
 const retiredDependencies = [
@@ -36,11 +38,14 @@ for (const relativePath of activeHealthFiles) {
   }
 }
 
-const workflow = fs.readFileSync(path.join(repositoryRoot, ".github/workflows/production-health.yml"), "utf8");
-assert.match(workflow, /api\/vnext\/market-directory/);
-assert.match(workflow, /check_endpoint directory-next/);
-assert.match(workflow, /encodeURIComponent/);
-assert.match(workflow, /\/vnext/);
+const livenessWorkflow = fs.readFileSync(path.join(repositoryRoot, ".github/workflows/production-health.yml"), "utf8");
+const readinessWorkflow = fs.readFileSync(path.join(repositoryRoot, ".github/workflows/production-readiness.yml"), "utf8");
+assert.match(livenessWorkflow, /api\/health/);
+assert.doesNotMatch(livenessWorkflow, /api\/vnext\/market-directory/);
+assert.match(readinessWorkflow, /api\/vnext\/market-directory/);
+assert.match(readinessWorkflow, /check_endpoint directory-next/);
+assert.match(readinessWorkflow, /encodeURIComponent/);
+assert.match(readinessWorkflow, /\/vnext/);
 
 const status = fs.readFileSync(path.join(repositoryRoot, "apps/web/app/status/system-status.tsx"), "utf8");
 assert.match(status, /Terminal systems healthy/);

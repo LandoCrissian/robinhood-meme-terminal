@@ -661,6 +661,94 @@ async function assertProviderWorkIsBounded() {
   assert.equal(inventoryCalls, 13, "One bounded catalog page plus twelve supplemental candidates is the maximum for this fixture");
 }
 
+async function assertProviderCandidateHintsPrecedeVerificationBound() {
+  const distractorAddresses = Array.from({ length: 20 }, (_, index) =>
+    `0x${(index + 6_000).toString(16).padStart(40, "0")}`
+  );
+  const noisyPairs = distractorAddresses.map((address, index) => providerPair(
+    address,
+    ROBINHOOD_WETH_ADDRESS,
+    "robinhood",
+    {
+      baseToken: {
+        address,
+        name: `Unrelated ${index}`,
+        symbol: `WRONG${index}`
+      }
+    }
+  ));
+  const queries = [
+    "STONKBROKER",
+    "$STONKBROKER",
+    "StonkBroker",
+    "Stonk Broker",
+    "Stonk-Broker",
+    "Stonk_Broker",
+    "StonkBrokers"
+  ];
+
+  for (const query of queries) {
+    const verifiedAddresses: string[] = [];
+    const result = await searchVNextUniversalMarkets(query, {
+      readInventory: async (inventoryQuery) => verifiedInventory(
+        inventoryQuery.token === stonkBrokerAddress ? [v4Market] : []
+      ),
+      readIdentity: async (address) => {
+        verifiedAddresses.push(address.toLowerCase());
+        return identityReader(address);
+      },
+      fetch: candidateFetch({
+        pairs: [
+          ...noisyPairs,
+          providerPair(stonkBrokerAddress, ROBINHOOD_WETH_ADDRESS, "robinhood", {
+            baseToken: {
+              address: stonkBrokerAddress,
+              name: "StonkBroker",
+              symbol: "STONKBROKER"
+            }
+          })
+        ],
+        items: []
+      }),
+      readCanonicalCatalog: async () => ({ status: "unavailable", entries: [] }),
+      searchCanonicalTokens: async () => ({ status: "unavailable", entries: [] }),
+      admitProjectIdentities: async <T>(candidates: readonly T[]) => [...candidates],
+      timeoutMs: 500
+    });
+    assert.equal(result.status, "found", query);
+    assert.equal(result.results[0]?.address, stonkBrokerAddress, query);
+    assert.equal(verifiedAddresses.includes(stonkBrokerAddress), true, query);
+    assert.ok(verifiedAddresses.length <= 12, `${query} must preserve the final verification cap`);
+  }
+}
+
+async function assertSlowHistoricalIndexCannotStarveCurrentProviderHit() {
+  const startedAt = Date.now();
+  const result = await searchVNextUniversalMarkets("STONKBROKER", {
+    readInventory: async (inventoryQuery) => verifiedInventory(
+      inventoryQuery.token === stonkBrokerAddress ? [v4Market] : []
+    ),
+    readIdentity: identityReader,
+    fetch: candidateFetch({
+      pairs: [providerPair(stonkBrokerAddress, ROBINHOOD_WETH_ADDRESS, "robinhood", {
+        baseToken: {
+          address: stonkBrokerAddress,
+          name: "StonkBroker",
+          symbol: "STONKBROKER"
+        }
+      })],
+      items: []
+    }),
+    searchCanonicalTokens: async () => new Promise(() => undefined),
+    readCanonicalCatalog: async () => ({ status: "unavailable", entries: [] }),
+    admitProjectIdentities: async <T>(candidates: readonly T[]) => [...candidates],
+    timeoutMs: 500
+  });
+  assert.equal(result.status, "found");
+  assert.equal(result.results[0]?.address, stonkBrokerAddress);
+  assert.ok(Date.now() - startedAt < 3_000, "The current provider lane must settle before the 4-second server deadline");
+}
+
 async function assertChainFilteringPrecedesCandidateBound() {
   const nonRobinhoodPairs = Array.from({ length: 35 }, (_, index) =>
     providerPair(
@@ -1064,6 +1152,8 @@ async function main() {
   await assertFailureSemantics();
   await assertIncompleteCoverageSemantics();
   await assertProviderWorkIsBounded();
+  await assertProviderCandidateHintsPrecedeVerificationBound();
+  await assertSlowHistoricalIndexCannotStarveCurrentProviderHit();
   await assertChainFilteringPrecedesCandidateBound();
   await assertIndependentCandidateSources();
   await assertProviderIdentityClaimsNeverWin();
