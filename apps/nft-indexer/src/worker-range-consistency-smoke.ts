@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { Pool } from 'pg';
-import { encodeEventTopics, getAddress, zeroAddress, type Hex } from 'viem';
+import { encodeEventTopics, getAddress, keccak256, zeroAddress, type Hex } from 'viem';
 import { RMT_NFT_ACTIVITY_SOURCES } from '@rmt/shared/nft/activity-sources';
 import { RMT_ERC721_TRANSFER_TOPIC } from '@rmt/shared/nft/activity-domain';
 import type { NftIndexerConfig } from './config.js';
@@ -11,6 +11,12 @@ import { NftIndexerWorker, type NftIndexerRpc } from './worker.js';
 const databaseUrl = process.env.NFT_INDEXER_TEST_DATABASE_URL?.trim() ?? process.env.NFT_INDEXER_DATABASE_URL?.trim();
 if (!databaseUrl) throw new Error('NFT_INDEXER_TEST_DATABASE_URL is required for worker range consistency coverage');
 const pool = new Pool({ connectionString: databaseUrl, ssl: false });
+const testBytecode = '0x6000' as Hex;
+// This smoke runs in its own process. Rebind every reviewed source to the same
+// deterministic fixture bytecode so worker startup still verifies the exact set.
+for (const item of RMT_NFT_ACTIVITY_SOURCES) {
+  (item as { runtimeBytecodeHash: Hex }).runtimeBytecodeHash = keccak256(testBytecode);
+}
 const reviewed = RMT_NFT_ACTIVITY_SOURCES[0]!;
 const source = { ...reviewed, verifiedAt: '2026-08-27T00:00:00.000Z' };
 const alice = getAddress('0x1111111111111111111111111111111111111111');
@@ -33,15 +39,18 @@ let changeHashDuringLogs = false;
 let rangeHashReads = 0;
 const rpc: NftIndexerRpc = {
   getChainId: async () => 4663,
-  getTransactionReceipt: async () => ({
-    transactionHash: source.deploymentTransaction,
-    blockNumber: source.startBlock,
+  getTransactionReceipt: async ({ hash: deploymentTransaction }) => {
+    const requestedSource = RMT_NFT_ACTIVITY_SOURCES.find((item) => item.deploymentTransaction === deploymentTransaction);
+    if (!requestedSource) throw new Error('unexpected deployment transaction');
+    return {
+    transactionHash: requestedSource.deploymentTransaction,
+    blockNumber: requestedSource.startBlock,
     status: 'success',
-    contractAddress: source.collectionAddress,
+    contractAddress: requestedSource.collectionAddress,
     to: null
-  }),
-  getBytecode: async () => '0x6000',
-  readContract: async () => true,
+  }; },
+  getBytecode: async () => testBytecode,
+  readContract: async ({ args }) => args[0] !== '0xffffffff',
   getBlockNumber: async () => source.startBlock,
   getBlock: async ({ blockNumber }) => {
     assert.equal(blockNumber, source.startBlock);
