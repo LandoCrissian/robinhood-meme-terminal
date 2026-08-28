@@ -121,6 +121,8 @@ assert.match(catalogPage, /Lowest OpenSea listing/);
 assert.match(catalogPage, /Mint Radar/);
 assert.match(catalogPage, /DISCOVERY · NOT ADMISSION/);
 assert.match(catalogPage, /data-radar-admission=\{candidate\.rmtAdmission\}/);
+assert.match(catalogPage, /candidate\.state === "LIVE_NOW" \? <NftMintReadiness candidateId=\{candidate\.candidateId\}/);
+assert.doesNotMatch(catalogPage, />\s*(?:Mint|Buy|List|Offer|Fulfill|Sign|Submit)\s*</i);
 assert.match(catalogPage, /Active Collections/);
 assert.match(catalogPage, /Suspense fallback=\{<MintRadarFallback/);
 assert.match(catalogPage, /Schedule evidence could not be established\. Active RMT collections remain available\./);

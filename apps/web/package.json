@@ -104,7 +104,7 @@
     "test:external-trades": "tsx lib/external-trades-smoke.ts",
     "test:token-risk": "tsx lib/server/token-risk-evidence-smoke.ts",
     "test:wallet-constellation": "tsx lib/server/wallet-constellation-smoke.ts",
-    "typecheck": "tsx lib/vnext/across-funding-smoke.ts && tsx lib/vnext/cross-chain-funding-smoke.ts && tsx lib/server/nft-project-market-smoke.ts && tsx lib/server/nft-inventory-smoke.ts && tsx lib/server/nft-mint-radar-smoke.ts && tsx lib/server/nft-terminal-catalog-smoke.ts && tsx lib/server/nft-terminal-visual-shell-smoke.ts && tsc --noEmit"
+    "typecheck": "tsx lib/vnext/across-funding-smoke.ts && tsx lib/vnext/cross-chain-funding-smoke.ts && tsx lib/server/nft-project-market-smoke.ts && tsx lib/server/nft-inventory-smoke.ts && tsx lib/server/nft-mint-radar-smoke.ts && tsx lib/server/nft-mint-preflight-smoke.ts && tsx lib/server/nft-terminal-catalog-smoke.ts && tsx lib/server/nft-terminal-visual-shell-smoke.ts && tsc --noEmit"
   },
   "dependencies": {
     "@privy-io/node": "0.28.0",

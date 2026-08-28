@@ -306,6 +306,118 @@
   text-transform: uppercase;
 }
 
+.readiness {
+  display: grid;
+  gap: 6px;
+  border-top: 1px solid #1d2720;
+  padding-top: 7px;
+}
+
+.readinessControls {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 6px;
+}
+
+.readinessControls label {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 5px;
+  color: #6f7b73;
+  font: 700 7px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.readinessControls select,
+.readinessControls button {
+  min-height: 32px;
+  border: 1px solid #314038;
+  color: #f0f5f1;
+  background: #0b110d;
+  font: 740 8px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.readinessControls select {
+  width: 42px;
+  padding-inline: 5px;
+}
+
+.readinessControls button {
+  cursor: pointer;
+  color: #93e88e;
+  letter-spacing: .06em;
+}
+
+.readinessControls button:disabled {
+  cursor: wait;
+  opacity: .6;
+}
+
+.readinessMessage,
+.readinessPanel > p {
+  margin: 0;
+  color: #a5b0a8;
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.readinessPanel {
+  display: grid;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid #35433a;
+  background: rgba(4, 8, 5, .92);
+}
+
+.readinessPanel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #93e88e;
+  font: 750 7px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: .07em;
+}
+
+.readinessPanel dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  margin: 0;
+}
+
+.readinessPanel dt {
+  color: #6f7b73;
+  font: 690 6px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+  text-transform: uppercase;
+}
+
+.readinessPanel dd {
+  margin: 2px 0 0;
+  color: #f0f5f1;
+  font-size: 8px;
+  overflow-wrap: anywhere;
+}
+
+.readinessPanel small {
+  color: #6f7b73;
+  font-size: 7px;
+  line-height: 1.35;
+}
+
+.readinessPanel details {
+  color: #a5b0a8;
+  font-size: 7px;
+}
+
+.readinessPanel code {
+  display: block;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
 .activeCollections {
   margin-top: 18px;
 }
