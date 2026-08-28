@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { formatUnits } from "viem";
+import { Suspense } from "react";
+import { formatEther, formatUnits } from "viem";
+import {
+  readRmtNftMintRadar,
+  type RmtMintRadarCandidate,
+  type RmtMintRadarFeedStatus,
+} from "../../lib/server/nft-mint-radar";
 import {
   readRmtNftTerminalCatalog,
   type RmtNftTerminalCatalogView,
@@ -35,6 +41,80 @@ function amount(value: string, decimals: number) {
   const formatted = formatUnits(BigInt(value), decimals);
   const [whole, fraction = ""] = formatted.split(".");
   return fraction ? `${whole}.${fraction.slice(0, 4).replace(/0+$/, "")}`.replace(/\.$/, "") : whole;
+}
+
+function utcTime(value: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "UTC", timeZoneName: "short",
+  }).format(new Date(value));
+}
+
+function nativePrice(value: string | null) {
+  if (value === null) return "Price not reported";
+  const [whole, fraction = ""] = formatEther(BigInt(value)).split(".");
+  const boundedFraction = fraction.slice(0, 5).replace(/0+$/, "");
+  return `${boundedFraction ? `${whole}.${boundedFraction}` : whole} ETH`;
+}
+
+function feedMessage(status: RmtMintRadarFeedStatus, asOf: string | null) {
+  if (status === "UNAVAILABLE") return "Schedule evidence could not be established. Active RMT collections remain available.";
+  if (status === "STALE") return `Last known schedule evidence · ${asOf ? utcTime(asOf) : "time unavailable"}`;
+  if (status === "EMPTY") return "OpenSea returned no qualifying Robinhood Chain drops.";
+  return "Robinhood Chain · OpenSea schedule evidence · Fresh ≤ 90 sec";
+}
+
+function RadarCard({ candidate }: { candidate: RmtMintRadarCandidate }) {
+  const onchain = candidate.contractEvidence.status === "ONCHAIN_VERIFIED_CONTRACT";
+  const activity = candidate.mintActivity.status === "ONCHAIN_MINT_ACTIVITY";
+  return <article className={styles.radarCard} data-radar-candidate data-radar-admission={candidate.rmtAdmission} data-radar-chain={candidate.chainId}>
+    <div className={styles.radarIdentity}>
+      <span>{candidate.state === "LIVE_NOW" ? "LIVE NOW" : candidate.state === "UPCOMING" ? "UPCOMING" : "RECENTLY MINTED"}</span>
+      <h3>{candidate.collectionName}</h3>
+      <p>{candidate.stage?.label ?? "Stage not reported"} · {candidate.contractEvidence.standard}</p>
+    </div>
+    <dl className={styles.radarFacts}>
+      <div><dt>{candidate.state === "RECENTLY_MINTED" ? "Observed stage" : "Starts"}</dt><dd>{candidate.stage ? utcTime(candidate.stage.startTime) : "Not reported"}</dd></div>
+      <div><dt>Mint price</dt><dd>{nativePrice(candidate.stage?.nativePriceWei ?? null)}</dd></div>
+    </dl>
+    <div className={styles.radarEvidence} aria-label="Mint Radar evidence">
+      <span>Schedule · OpenSea</span>
+      {onchain ? <span>Contract · Onchain</span> : null}
+      {activity ? <span>Mint Activity · Onchain</span> : null}
+    </div>
+    <div className={styles.radarFoot}>
+      <code title={candidate.collectionAddress ?? undefined}>{candidate.collectionAddress ? short(candidate.collectionAddress) : "Contract not established"}</code>
+      <a href={candidate.sourceUrl} target="_blank" rel="noreferrer">OpenSea evidence</a>
+    </div>
+    <small className={styles.discoveryOnly}>Detected · Not RMT admitted</small>
+  </article>;
+}
+
+function RadarGroup({ title, candidates, className }: { title: string; candidates: readonly RmtMintRadarCandidate[]; className: string }) {
+  return <section className={`${styles.radarGroup} ${className}`} aria-label={`${title} Robinhood Chain NFT mints`}>
+    <header><h2>{title}</h2><span>{candidates.length}</span></header>
+    {candidates.length > 0 ? <div className={styles.radarRail}>{candidates.map((candidate) => <RadarCard candidate={candidate} key={candidate.candidateId} />)}</div>
+      : <p className={styles.radarEmpty}>No qualifying candidates in the latest established feed.</p>}
+  </section>;
+}
+
+async function MintRadarSurface() {
+  const radar = await readRmtNftMintRadar();
+  return <>
+    <section className={styles.radarHeading} data-nft-mint-radar data-radar-state={radar.status}>
+      <div><span>DISCOVERY · NOT ADMISSION</span><h2>Mint Radar</h2></div>
+      <p>{feedMessage(radar.status, radar.asOf)}</p>
+    </section>
+    <RadarGroup title="Live Now" candidates={radar.live} className={styles.liveRadar} />
+    <RadarGroup title="Upcoming" candidates={radar.upcoming} className={styles.upcomingRadar} />
+    <RadarGroup title="Recently Minted" candidates={radar.recent} className={styles.recentRadar} />
+  </>;
+}
+
+function MintRadarFallback() {
+  return <section className={styles.radarHeading} data-nft-mint-radar-loading>
+    <div><span>DISCOVERY · NOT ADMISSION</span><h2>Mint Radar</h2></div>
+    <p>Establishing bounded schedule evidence. Active RMT collections remain available.</p>
+  </section>;
 }
 
 function ProjectCard({ project }: { project: RmtNftTerminalProjectCard }) {
@@ -96,16 +176,24 @@ export default async function NftTerminalCatalogPage({ searchParams }: {
       {views.map((item) => <Link href={item.href} key={item.value} aria-current={view === item.value ? "page" : undefined}>{item.label}</Link>)}
     </nav>
 
-    <p className={styles.scopeNote}>RMT-curated Project Markets with canonical ownership and marketplace evidence.</p>
+    <p className={styles.scopeNote}>Discover Robinhood Chain mints, then enter RMT-curated Project Markets with canonical ownership and marketplace evidence.</p>
 
-    {view === "collections" ? <section className={styles.collectionList} aria-label="Active RMT NFT collections">
+    {view === "active" ? <>
+      <div className={styles.catalogFlow}>
+        <Suspense fallback={<MintRadarFallback />}><MintRadarSurface /></Suspense>
+        <section className={styles.activeCollections} aria-label="Active RMT NFT projects">
+          <header className={styles.activeHeading}><div><span>RMT DIRECTORY</span><h2>Active Collections</h2></div><p>Admission is independent from Mint Radar discovery.</p></header>
+          <div className={styles.projectGrid}>{catalog.projects.map((project) => <ProjectCard project={project} key={project.projectId} />)}</div>
+        </section>
+      </div>
+    </> : view === "collections" ? <section className={styles.collectionList} aria-label="Active RMT NFT collections">
       {catalog.collections.map((collection) => <article key={`${collection.projectId}:${collection.contractAddress}`}>
         <div><span>RMT CURATED COLLECTION</span><h2><Link href={`/nft/${collection.projectId}`}>{collection.displayName}</Link></h2></div>
         <p>{collection.standard ?? "Standard unavailable"} · Robinhood Chain</p>
         <code>{collection.contractAddress}</code>
         <small>Registry verification: {collection.verificationStatus}</small>
       </article>)}
-    </section> : <section className={styles.projectGrid} aria-label={`${view === "recent" ? "Recently added" : "Active"} RMT NFT projects`}>
+    </section> : <section className={styles.projectGrid} aria-label="Recently added RMT NFT projects">
       {catalog.projects.map((project) => <ProjectCard project={project} key={project.projectId} />)}
     </section>}
   </main>;

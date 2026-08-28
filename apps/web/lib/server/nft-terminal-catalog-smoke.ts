@@ -112,11 +112,22 @@ const projectPage = readFileSync(new URL("../../app/nft/[projectId]/page.tsx", i
 const terminal = readFileSync(new URL("../../app/vnext/terminal-presentations.tsx", import.meta.url), "utf8");
 const chrome = readFileSync(new URL("../../app/public-chrome.tsx", import.meta.url), "utf8");
 const catalogReader = readFileSync(new URL("./nft-terminal-catalog.ts", import.meta.url), "utf8");
+const radarReader = readFileSync(new URL("./nft-mint-radar.ts", import.meta.url), "utf8");
 const publicSources = [catalogPage, terminal, chrome, catalogReader].join("\n");
 
 assert.match(catalogPage, /RMT NFT Terminal/);
 assert.match(catalogPage, /Active[\s\S]*Recently Added[\s\S]*Collections/);
 assert.match(catalogPage, /Lowest OpenSea listing/);
+assert.match(catalogPage, /Mint Radar/);
+assert.match(catalogPage, /DISCOVERY · NOT ADMISSION/);
+assert.match(catalogPage, /data-radar-admission=\{candidate\.rmtAdmission\}/);
+assert.match(catalogPage, /Active Collections/);
+assert.match(catalogPage, /Suspense fallback=\{<MintRadarFallback/);
+assert.match(catalogPage, /Schedule evidence could not be established\. Active RMT collections remain available\./);
+assert.doesNotMatch(catalogPage, /No upcoming mints/i);
+assert.doesNotMatch(radarReader, /project-intake|RMT_NFT_PROJECT_INTAKE|RMT_CURATED_NFT_PROJECTS/);
+assert.match(radarReader, /projectTokenRelationship: null/);
+assert.match(radarReader, /rmtAdmission: "NOT_EVALUATED"/);
 assert.match(projectPage, /limit: 24/);
 assert.match(projectPage, /href="\/nft"/);
 assert.equal((terminal.match(/data-terminal-nav="nft" href="\/nft"/g) ?? []).length, 2);
@@ -130,7 +141,7 @@ for (const name of ["Hopium Machines", "Robin Rabbits", "CannaCats", "Pixel Hood
   assert.doesNotMatch(publicSources, new RegExp(name, "i"));
 }
 assert.doesNotMatch(publicSources, /HoodStreet|discoveryProvenance/i);
-assert.doesNotMatch(catalogPage, />\s*(BUY|LIST|OFFER|ACCEPT|SWEEP)\s*</i);
+assert.doesNotMatch(catalogPage, />\s*(BUY|LIST|OFFER|FULFILL|SIGN|SUBMIT|ACCEPT|SWEEP)\s*</i);
 console.info("NFT Terminal catalog admission, degradation, preview, and navigation smoke: PASS");
 }
 

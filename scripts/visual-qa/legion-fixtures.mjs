@@ -11,6 +11,45 @@ const WETH = "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 const V4_HOOKS = "0xe5e702641ea86f4ae6cc3cdaed2b886f976be044";
 
+const radarStage = (name, start, end, label = "Public") => ({
+  uuid: `legion-${name}`,
+  stage_type: "public_sale",
+  label,
+  price: "12500000000000000",
+  price_currency_address: ZERO_ADDRESS,
+  start_time: start,
+  end_time: end,
+  max_per_wallet: "2",
+});
+
+const radarDrop = (slug, name, overrides) => ({
+  collection_slug: slug,
+  collection_name: name,
+  chain: "robinhood",
+  contract_address: "provider-contract-not-established",
+  drop_type: "seadrop_v1_erc721",
+  is_minting: false,
+  image_url: "https://example.invalid/media-is-intentionally-not-rendered.png",
+  opensea_url: `https://opensea.io/collection/${slug}`,
+  active_stage: null,
+  next_stage: null,
+  ...overrides,
+});
+
+export const NFT_MINT_RADAR_PAGES = {
+  featured: { drops: [radarDrop("legion-live", "Neon Assembly", {
+    is_minting: true,
+    active_stage: radarStage("live", "2026-08-01T00:00:00.000Z", "2026-09-01T00:00:00.000Z"),
+  })], next: null },
+  upcoming: { drops: [
+    radarDrop("legion-upcoming-one", "Robinhood Relics", { next_stage: radarStage("upcoming-one", "2026-09-15T16:00:00.000Z", "2026-09-15T18:00:00.000Z", "Allowlist") }),
+    radarDrop("legion-upcoming-two", "Terminal Studies", { next_stage: radarStage("upcoming-two", "2026-09-20T20:00:00.000Z", "2026-09-20T23:00:00.000Z") }),
+  ], next: null },
+  recently_minted: { drops: [radarDrop("legion-recent", "Chain Impressions", {
+    active_stage: radarStage("recent", "2026-08-15T09:00:00.000Z", "2026-08-15T10:00:00.000Z"),
+  })], next: null },
+};
+
 const definitions = [
   { name: "STONKBROKER", symbol: "STONKBROKER", token: "0xe934e36a439c94017b64a3fece66af12099abf50", sourceId: "uniswap-v4", version: 4, poolKey: "0xd33c8fd38b06e989cdbd4dffdefab71c4bdd415b24964c8d69e38ff35b068f92", poolAddress: null, token0: ZERO_ADDRESS, token1: "0xe934e36a439c94017b64a3fece66af12099abf50", fee: 10_000, tickSpacing: 200, hooks: ZERO_ADDRESS, transactionHash: "0xd5c74c05e885ec3feed94ccbbc465ab91d687d7660692297011e49676f50e719", blockNumber: "12670814", blockHash: "0x8105c0eb7bcb8790e8ceee10dc56676148b648a7d6270463e04755429190bab9" },
   { name: "PONS", symbol: "PONS", token: "0x39dbed3a2bd333467115de45665cc57f813c4571", sourceId: "uniswap-v3", version: 3, poolKey: "0x10cc6bd38112cac182db90b6a71d8bb5939526ba", poolAddress: "0x10cc6bd38112cac182db90b6a71d8bb5939526ba", token0: WETH, token1: "0x39dbed3a2bd333467115de45665cc57f813c4571", fee: 10_000, tickSpacing: 200, hooks: null, transactionHash: "0x1f54f25fec2d963dcb338ecb8b46a6eb123198a5c7a746d34cb2dbe78d074af8", blockNumber: "8963150", blockHash: "0xd18718d02fe1da449333e477bc588a41e59b1fd169a2b945a14fb17339d684a3" },

@@ -109,6 +109,8 @@ try {
     NFT_INDEXER_READ_TOKEN = ("a" * 64)
     NFT_MARKETPLACE_INDEXER_URL = "http://127.0.0.1:43111"
     NFT_MARKETPLACE_INDEXER_READ_TOKEN = ("a" * 64)
+    NFT_MINT_RADAR_OPENSEA_API_KEY = "legion-radar-fixture"
+    NFT_MINT_RADAR_OPENSEA_BASE_URL = "http://127.0.0.1:43111"
   }
 
   $savedEnvironment = @{}

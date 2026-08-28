@@ -28,6 +28,8 @@ jobs:
       NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED: "false"
       NFT_INDEXER_URL: http://127.0.0.1:43111
       NFT_MARKETPLACE_INDEXER_URL: http://127.0.0.1:43111
+      NFT_MINT_RADAR_OPENSEA_API_KEY: legion-radar-fixture
+      NFT_MINT_RADAR_OPENSEA_BASE_URL: http://127.0.0.1:43111
       RMT_VISUAL_BASE_URL: http://127.0.0.1:3000
       RMT_VISUAL_OUTPUT: terminal-visual-v2
     steps:

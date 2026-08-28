@@ -4,7 +4,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
   FIXTURE_EPOCH_MS, FIXTURE_NOW, TOKEN_MARKETS, canonicalDirectoryMarkets,
-  NFT_ITEM, NFT_MARKETPLACE, NFT_ONCHAIN, nftInventory,
+  NFT_ITEM, NFT_MARKETPLACE, NFT_MINT_RADAR_PAGES, NFT_ONCHAIN, nftInventory,
 } from "./legion-fixtures.mjs";
 
 const argv = process.argv.slice(2);
@@ -44,6 +44,13 @@ const json = (response, body, status = 200) => {
 
 const fixtureServer = createServer((request, response) => {
   const url = new URL(request.url ?? "/", `http://127.0.0.1:${fixturePort}`);
+  if (url.pathname === "/api/v2/drops") {
+    if (request.headers["x-api-key"] !== "legion-radar-fixture") return json(response, { error: "unauthorized" }, 401);
+    const type = url.searchParams.get("type");
+    const chain = url.searchParams.get("chains");
+    if (chain !== "robinhood" || !type || !(type in NFT_MINT_RADAR_PAGES)) return json(response, { error: "invalid_radar_request" }, 400);
+    return json(response, NFT_MINT_RADAR_PAGES[type]);
+  }
   if (request.headers.authorization !== `Bearer ${"a".repeat(64)}`) return json(response, { error: "unauthorized" }, 401);
   if (/^\/internal\/v1\/projects\/ccff00\/inventory$/.test(url.pathname)) return json(response, nftInventory(Number(url.searchParams.get("limit") ?? 24)));
   if (url.pathname === "/internal/v1/projects/ccff00/items/1") return json(response, NFT_ITEM);
@@ -295,6 +302,16 @@ async function nftPage(browser, viewport, platform, route, state) {
   check(forbiddenCount === 0, state, "NFT execution controls are present.", { count: forbiddenCount });
   if (route === "/nft") {
     check(await page.locator("[data-nft-project-stage]").count() === 1, state, "Public ACTIVE NFT project count is not one.");
+    const radar = page.locator("[data-nft-mint-radar]");
+    check(await radar.getAttribute("data-radar-state") === "READY", state, "Mint Radar fixture is not READY.");
+    check(await page.getByRole("heading", { name: "Live Now", exact: true }).count() === 1, state, "Mint Radar Live Now state is absent.");
+    check(await page.getByRole("heading", { name: "Upcoming", exact: true }).count() === 1, state, "Mint Radar Upcoming state is absent.");
+    check(await page.getByRole("heading", { name: "Recently Minted", exact: true }).count() === 1, state, "Mint Radar Recently Minted state is absent.");
+    const radarCandidates = page.locator("[data-radar-candidate]");
+    check(await radarCandidates.count() === 4, state, "Deterministic Mint Radar candidate count changed.", { count: await radarCandidates.count() });
+    check(await page.locator('[data-radar-candidate]:not([data-radar-admission="NOT_EVALUATED"])').count() === 0, state, "Radar candidate crossed into RMT admission authority.");
+    check(await page.locator('[data-radar-candidate]:not([data-radar-chain="4663"])').count() === 0, state, "Mint Radar exposed a non-Robinhood Chain candidate.");
+    check(!/Token relationship/i.test(text), state, "Mint Radar inferred a Token relationship.");
     await registrationCorners(page, state, "[data-rmt-registration-frame]");
   } else if (route === "/nft/ccff00") {
     check(await page.locator("[data-nft-gallery]").isVisible(), state, "CCFF00 Project Market gallery is absent.");
