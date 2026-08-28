@@ -62,6 +62,8 @@ async function main() {
   assert.equal("provider" in complete!.marketplace && complete.marketplace.recentProviderSales[0]?.authority, "PROVIDER_REPORTED_SALE");
   assert.equal(JSON.stringify(complete).includes("discoveryProvenance"), false);
   assert.equal(await readRmtNftProjectMarket("unknown", { env, fetchImpl: fetchFor(onchain, marketplace) }), null);
+  assert.equal(await readRmtNftProjectMarket("robin-rabbits", { env, fetchImpl: fetchFor(onchain, marketplace) }), null,
+    "WATCHING projects must not acquire a public Project Market read.");
 
   const absent = await readRmtNftProjectMarket("ccff00", { env: {}, fetchImpl: fetchFor(onchain, marketplace) });
   assert.deepEqual(absent?.onchain, { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" });

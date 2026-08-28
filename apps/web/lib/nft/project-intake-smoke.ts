@@ -16,7 +16,11 @@ function intakeAddress(projectId: string) {
 }
 
 assert.equal(RMT_NFT_PROJECT_INTAKE.length, 8);
-assert.equal(readyRmtNftProjectIntakeRecords().length, 6);
+assert.equal(readyRmtNftProjectIntakeRecords().length, 4);
+assert.deepEqual(
+  RMT_NFT_PROJECT_INTAKE.filter((record) => record.state === "TECHNICALLY_VERIFIED").map((record) => record.projectId),
+  ["robin-rabbits", "gogh-punks"]
+);
 
 assert.equal(intakeAddress("hopium-machines"), "0x7da15c761409cb921a81f0e003704cff418b700b");
 const hopiumAssociation = rmtNftProjectIntakeRecord("hopium-machines")?.projectToken;
@@ -28,9 +32,11 @@ if (hopiumAssociation?.status === "CONFIRMED") {
 }
 
 assert.equal(intakeAddress("robin-rabbits"), "0xb87522e093858d992b7555077ff3541597deb34e");
+assert.equal(rmtNftProjectIntakeRecord("robin-rabbits")?.collections[0]?.verificationStatus, "VERIFIED");
 assert.equal(intakeAddress("cannacats"), "0x289c8ce652f38029867842048068b39bd0464a3f");
 assert.equal(intakeAddress("pixel-hood-minis"), "0x8215824669c453136cabe59a079c32aca2f87cd5");
 assert.equal(intakeAddress("gogh-punks"), "0xe0f92b3b0e6ded3654177fe3809cd300e5ffadf6");
+assert.equal(rmtNftProjectIntakeRecord("gogh-punks")?.collections[0]?.verificationStatus, "VERIFIED");
 assert.equal(intakeAddress("clay-stonkz"), "0xde0acefc89d4cf5f4ce45a4fb8a51aa355091b44");
 
 const worldWeedSeeds = rmtNftProjectIntakeRecord("world-weed-seeds");

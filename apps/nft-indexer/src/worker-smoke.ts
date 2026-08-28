@@ -12,7 +12,7 @@ import {
 } from '@rmt/shared/nft/activity-domain';
 
 const source = RMT_NFT_ACTIVITY_SOURCES[0]!;
-assert.equal(NFT_INDEXER_SOURCES.length, 1);
+assert.equal(NFT_INDEXER_SOURCES.length, 3);
 assert.equal(source.projectId, 'ccff00');
 assert.equal(source.startBlock, 10_929_152n);
 assert.deepEqual(activityTopicsForStandard('ERC721'), [RMT_ERC721_TRANSFER_TOPIC]);

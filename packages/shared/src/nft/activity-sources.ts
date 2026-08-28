@@ -10,6 +10,7 @@ import {
   type RmtCuratedNftProject,
   type RmtNftCollectionStandard
 } from "./project-registry.js";
+import { rmtNftCollectionTechnicalVerification } from "./technical-verification.js";
 
 export type RmtNftActivitySource = {
   chainId: typeof RMT_NFT_CHAIN_ID;
@@ -18,6 +19,7 @@ export type RmtNftActivitySource = {
   standard: RmtNftCollectionStandard;
   deploymentTransaction: Hex;
   startBlock: bigint;
+  runtimeBytecodeHash: Hex;
 };
 
 function reviewedSource(input: RmtNftActivitySource): RmtNftActivitySource {
@@ -27,6 +29,9 @@ function reviewedSource(input: RmtNftActivitySource): RmtNftActivitySource {
   if (input.startBlock < 0n) throw new Error("RMT NFT activity source start block cannot be negative.");
   if (!/^0x[0-9a-fA-F]{64}$/.test(input.deploymentTransaction)) {
     throw new Error("RMT NFT activity source deployment transaction must be a transaction hash.");
+  }
+  if (!/^0x[0-9a-fA-F]{64}$/.test(input.runtimeBytecodeHash)) {
+    throw new Error("RMT NFT activity source runtime bytecode hash must be a 32-byte hash.");
   }
 
   const projects = RMT_CURATED_NFT_PROJECTS as readonly RmtCuratedNftProject[];
@@ -48,17 +53,26 @@ function reviewedSource(input: RmtNftActivitySource): RmtNftActivitySource {
   };
 }
 
+function reviewedVerifiedSource(projectId: string, collectionAddress: Address): RmtNftActivitySource {
+  const verification = rmtNftCollectionTechnicalVerification(projectId, collectionAddress);
+  if (!verification) throw new Error("RMT NFT activity sources require reviewed technical verification evidence.");
+  return reviewedSource({
+    chainId: verification.chainId,
+    projectId: verification.projectId,
+    collectionAddress: verification.collectionAddress,
+    standard: verification.standard,
+    deploymentTransaction: verification.deploymentTransaction,
+    startBlock: verification.startBlock,
+    runtimeBytecodeHash: verification.runtimeBytecodeHash
+  });
+}
+
 export const RMT_NFT_ACTIVITY_SOURCES = [
-  reviewedSource({
-    chainId: RMT_NFT_CHAIN_ID,
-    projectId: "ccff00",
-    collectionAddress: getAddress("0x505A22Ffed8d37ebE580FfD98d2Cdb0021189146"),
-    standard: "ERC721",
-    // Verified contract-creation transaction. Runtime indexers must independently
-    // re-read the receipt and bytecode before using this reviewed source.
-    deploymentTransaction: "0x46b097f55f69ee1005f0e04bc6501e632ba4145355361498a156f8f401a5c96b",
-    startBlock: 10_929_152n
-  })
+  // Runtime sources derive their duplicated deployment/hash fields from the
+  // reviewed technical manifest; project intake is deliberately absent.
+  reviewedVerifiedSource("ccff00", getAddress("0x505A22Ffed8d37ebE580FfD98d2Cdb0021189146")),
+  reviewedVerifiedSource("robin-rabbits", getAddress("0xb87522e093858d992b7555077ff3541597deb34e")),
+  reviewedVerifiedSource("gogh-punks", getAddress("0xe0f92b3b0e6ded3654177fe3809cd300e5ffadf6"))
 ] as const satisfies readonly RmtNftActivitySource[];
 
 export function rmtNftActivitySource(collectionAddress: Address) {

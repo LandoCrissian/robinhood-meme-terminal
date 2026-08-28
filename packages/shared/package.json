@@ -15,6 +15,7 @@
     "./nft/marketplace-evidence": "./src/nft/marketplace-evidence.ts",
     "./nft/project-market": "./src/nft/project-market.ts",
     "./nft/project-inventory": "./src/nft/project-inventory.ts",
+    "./nft/technical-verification": "./src/nft/technical-verification.ts",
     "./nft/inline-svg-safety": "./src/nft/inline-svg-safety.ts",
     "./nft/seaport-order-hash": "./src/nft/seaport-order-hash.ts"
   },

@@ -10,7 +10,8 @@ function sourceKey(source: RmtNftActivitySource) {
     source.collectionAddress.toLowerCase(),
     source.standard,
     source.deploymentTransaction.toLowerCase(),
-    source.startBlock
+    source.startBlock,
+    source.runtimeBytecodeHash.toLowerCase()
   ].join(':');
 }
 

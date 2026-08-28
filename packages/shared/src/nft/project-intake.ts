@@ -7,6 +7,7 @@ import {
 
 export const RMT_NFT_INTAKE_STATES = [
   "READY_FOR_TECHNICAL_VERIFICATION",
+  "TECHNICALLY_VERIFIED",
   "NEEDS_COLLECTION_RESOLUTION",
   "WAITING_FOR_COLLECTION"
 ] as const;
@@ -118,6 +119,13 @@ export function defineRmtNftProjectIntakeRecord(input: RmtNftProjectIntakeRecord
       throw new Error("Ready RMT NFT intake projects require at least one resolved collection contract.");
     }
   }
+  if (input.state === "TECHNICALLY_VERIFIED" && (
+    collections.length === 0 || collections.some((collection) =>
+      collection.contractAddress === null || collection.verificationStatus !== "VERIFIED"
+    )
+  )) {
+    throw new Error("Technically verified RMT NFT intake projects require VERIFIED collection contracts.");
+  }
   if (input.state === "WAITING_FOR_COLLECTION" && collections.some((collection) => collection.contractAddress !== null)) {
     throw new Error("A project waiting for its collection must not claim a collection contract yet.");
   }
@@ -213,7 +221,7 @@ export const RMT_NFT_PROJECT_INTAKE = defineRmtNftProjectIntakeCatalog([
   {
     projectId: "robin-rabbits",
     displayName: "Robin Rabbits",
-    state: "READY_FOR_TECHNICAL_VERIFICATION",
+    state: "TECHNICALLY_VERIFIED",
     ownerApproved: true,
     approvedAt: APPROVED_AT,
     references: [{ kind: "OWNER_SUPPLIED_REFERENCE", url: "https://opensea.io/collection/robin-rabbits-834193084" }],
@@ -221,7 +229,7 @@ export const RMT_NFT_PROJECT_INTAKE = defineRmtNftProjectIntakeCatalog([
       chainId: RMT_NFT_CHAIN_ID,
       contractAddress: "0xb87522e093858d992b7555077ff3541597deb34e",
       declaredStandard: "ERC721",
-      verificationStatus: "PENDING",
+      verificationStatus: "VERIFIED",
       referenceUrl: "https://opensea.io/collection/robin-rabbits-834193084"
     }],
     projectToken: { status: "UNCONFIRMED", contractAddress: null, evidence: [] }
@@ -300,7 +308,7 @@ export const RMT_NFT_PROJECT_INTAKE = defineRmtNftProjectIntakeCatalog([
   {
     projectId: "gogh-punks",
     displayName: "Gogh Punks",
-    state: "READY_FOR_TECHNICAL_VERIFICATION",
+    state: "TECHNICALLY_VERIFIED",
     ownerApproved: true,
     approvedAt: APPROVED_AT,
     references: [{ kind: "OWNER_SUPPLIED_REFERENCE", url: "https://opensea.io/collection/gogh-punks-255843210" }],
@@ -308,7 +316,7 @@ export const RMT_NFT_PROJECT_INTAKE = defineRmtNftProjectIntakeCatalog([
       chainId: RMT_NFT_CHAIN_ID,
       contractAddress: "0xe0f92b3b0e6ded3654177fe3809cd300e5ffadf6",
       declaredStandard: "ERC721",
-      verificationStatus: "PENDING",
+      verificationStatus: "VERIFIED",
       referenceUrl: "https://opensea.io/collection/gogh-punks-255843210"
     }],
     projectToken: { status: "UNCONFIRMED", contractAddress: null, evidence: [] }
