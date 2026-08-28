@@ -73,7 +73,20 @@ await classify('CREATION_PROVENANCE_MISMATCH', { getTransactionReceipt: async ()
 await classify('CREATION_PROVENANCE_MISMATCH', {}, { startBlock: 99n });
 await classify('UNSUPPORTED_FACTORY_CREATION_V1', { getTransactionReceipt: async () => ({ transactionHash: deploymentTransaction, blockNumber: 100n, status: 'success', contractAddress: null, to: zeroAddress }) });
 await classify('CREATION_PROVENANCE_MISMATCH', { getTransactionReceipt: async () => ({ transactionHash: deploymentTransaction, blockNumber: 100n, status: 'success', contractAddress: zeroAddress, to: null }) });
+await classify('INCONCLUSIVE_PROVIDER_UNAVAILABLE', { getTransactionReceipt: async () => { throw new Error('receipt timeout'); } });
+await classify('INCONCLUSIVE_PROVIDER_UNAVAILABLE', { getBytecode: async () => { throw new Error('bytecode timeout'); } });
 await classify('NO_CURRENT_BYTECODE', { getBytecode: async () => '0x' });
+for (const failedInterface of ['0x01ffc9a7', '0xffffffff', '0x80ac58cd'] as const) {
+  await classify('INCONCLUSIVE_PROVIDER_UNAVAILABLE', {
+    readInterface: async ({ interfaceId }) => {
+      if (interfaceId === failedInterface) throw new Error(`${failedInterface} timeout`);
+      return interfaceId !== '0xffffffff';
+    }
+  });
+  await classify('INCONCLUSIVE_MALFORMED_PROVIDER_RESPONSE', {
+    readInterface: async ({ interfaceId }) => interfaceId === failedInterface ? 'true' : interfaceId !== '0xffffffff'
+  });
+}
 await classify('ERC165_UNSUPPORTED', { readInterface: async ({ interfaceId }) => interfaceId === '0xffffffff' ? false : interfaceId !== '0x01ffc9a7' });
 await classify('INVALID_INTERFACE_BEHAVIOR', { readInterface: async () => true });
 await classify('ERC721_UNSUPPORTED', { readInterface: async ({ interfaceId }) => interfaceId !== '0xffffffff' && interfaceId !== '0x80ac58cd' });
@@ -84,6 +97,48 @@ const metadataOptional = await verifyNftTechnicalCandidate(candidate, {
 });
 assert.equal(metadataOptional.classification, 'VERIFIED_TOP_LEVEL_CREATION');
 assert.equal(metadataOptional.supportsErc721Metadata, false);
+
+const metadataProviderFailure = await verifyNftTechnicalCandidate(candidate, {
+  rpc: rpc({
+    readInterface: async ({ interfaceId }) => {
+      if (interfaceId === '0x5b5e139f') throw new Error('optional metadata timeout');
+      return interfaceId !== '0xffffffff';
+    }
+  }),
+  provenance: provenance()
+});
+assert.equal(metadataProviderFailure.classification, 'VERIFIED_TOP_LEVEL_CREATION');
+assert.equal(metadataProviderFailure.supportsErc721Metadata, null);
+
+const identityProviderFailure = await verifyNftTechnicalCandidate(candidate, {
+  rpc: rpc({ readIdentity: async () => { throw new Error('optional identity timeout'); } }),
+  provenance: provenance()
+});
+assert.equal(identityProviderFailure.classification, 'VERIFIED_TOP_LEVEL_CREATION');
+assert.equal(identityProviderFailure.name, null);
+assert.equal(identityProviderFailure.symbol, null);
+
+const representativeProviderFailure = await verifyNftTechnicalCandidate(candidate, {
+  rpc: rpc({ inspectRepresentativeToken: async () => { throw new Error('optional token inspection timeout'); } }),
+  provenance: provenance()
+});
+assert.equal(representativeProviderFailure.classification, 'VERIFIED_TOP_LEVEL_CREATION');
+assert.equal(representativeProviderFailure.representativeTokenId, null);
+assert.equal(representativeProviderFailure.tokenUriKind, 'UNAVAILABLE');
+
+const implementation = '09a26fc8fcef18192e267d7a6da9dfb4be81dd6a';
+const minimalProxyCode = `0x363d3d373d3d3d363d73${implementation}5af43d82803e903d91602b57fd5bf3` as Hex;
+const implementationHashProviderFailure = await verifyNftTechnicalCandidate(candidate, {
+  rpc: rpc({
+    getBytecode: async ({ address }) => {
+      if (address.toLowerCase() !== collection.toLowerCase()) throw new Error('optional implementation timeout');
+      return minimalProxyCode;
+    }
+  }),
+  provenance: provenance()
+});
+assert.equal(implementationHashProviderFailure.classification, 'VERIFIED_TOP_LEVEL_CREATION');
+assert.equal(implementationHashProviderFailure.implementationRuntimeBytecodeHash, null);
 
 const unavailable = await verifyNftTechnicalCandidate(candidate, {
   rpc: rpc(),
@@ -96,8 +151,38 @@ const malformed = await verifyNftTechnicalCandidate(candidate, {
 });
 assert.equal(malformed.classification, 'INCONCLUSIVE_MALFORMED_PROVIDER_RESPONSE');
 
-const implementation = '09a26fc8fcef18192e267d7a6da9dfb4be81dd6a';
-assert.equal(minimalProxyImplementation(`0x363d3d373d3d3d363d73${implementation}5af43d82803e903d91602b57fd5bf3`)?.toLowerCase(), getAddressForTest(implementation));
+const pairedCollection = '0xb87522E093858d992B7555077FF3541597deB34E' as Address;
+const pairedTransaction = `0x${'2'.repeat(64)}` as Hex;
+const pairResults = await verifyNftTechnicalBatch([
+  candidate,
+  { projectId: 'paired-candidate', collectionAddress: pairedCollection, declaredStandard: 'ERC721' }
+], {
+  provenance: {
+    readCreationProvenance: async (address) => ({
+      deploymentTransaction: address.toLowerCase() === collection.toLowerCase() ? deploymentTransaction : pairedTransaction,
+      startBlock: 100n,
+      creator: zeroAddress,
+      proxyDetected: 'NO',
+      implementationAddress: null
+    })
+  },
+  rpc: rpc({
+    getTransactionReceipt: async ({ hash }) => {
+      if (hash === deploymentTransaction) throw new Error('isolated candidate timeout');
+      return {
+        transactionHash: pairedTransaction,
+        blockNumber: 100n,
+        status: 'success',
+        contractAddress: pairedCollection,
+        to: null
+      };
+    }
+  })
+});
+assert.equal(pairResults[0]?.classification, 'INCONCLUSIVE_PROVIDER_UNAVAILABLE');
+assert.equal(pairResults[1]?.classification, 'VERIFIED_TOP_LEVEL_CREATION');
+
+assert.equal(minimalProxyImplementation(minimalProxyCode)?.toLowerCase(), getAddressForTest(implementation));
 assert.equal(minimalProxyImplementation('0x6000'), null);
 
 function getAddressForTest(value: string) {

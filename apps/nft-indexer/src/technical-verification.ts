@@ -1,6 +1,7 @@
 import {
   getAddress,
   isAddressEqual,
+  isHex,
   keccak256,
   type Address,
   type Hex
@@ -81,6 +82,18 @@ export type NftTechnicalVerificationResult = {
 export class NftVerificationProviderUnavailableError extends Error {}
 export class NftVerificationMalformedProviderResponseError extends Error {}
 
+type InterfaceReadResult =
+  | { ok: true; value: boolean }
+  | {
+    ok: false;
+    classification: 'INCONCLUSIVE_PROVIDER_UNAVAILABLE' | 'INCONCLUSIVE_MALFORMED_PROVIDER_RESPONSE';
+    reason: string;
+  };
+
+function errorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 function baseResult(candidate: NftTechnicalVerificationCandidate, now: () => Date): NftTechnicalVerificationResult {
   return {
     projectId: candidate.projectId,
@@ -156,7 +169,11 @@ export async function verifyNftTechnicalCandidate(
   try {
     receipt = await dependencies.rpc.getTransactionReceipt({ hash: provenance.deploymentTransaction });
   } catch (error) {
-    return classify(result, 'CREATION_PROVENANCE_MISMATCH', `Creation receipt unavailable: ${error instanceof Error ? error.message : 'unknown error'}`);
+    return classify(
+      result,
+      'INCONCLUSIVE_PROVIDER_UNAVAILABLE',
+      `Creation receipt provider unavailable: ${errorMessage(error, 'unknown provider error')}`
+    );
   }
   result = { ...result, startBlock: receipt.blockNumber };
   if (receipt.transactionHash.toLowerCase() !== provenance.deploymentTransaction.toLowerCase() || receipt.status !== 'success') {
@@ -170,8 +187,20 @@ export async function verifyNftTechnicalCandidate(
     return classify(result, 'CREATION_PROVENANCE_MISMATCH', 'Top-level receipt contract address mismatched candidate collection');
   }
 
-  const bytecode = await dependencies.rpc.getBytecode({ address: candidate.collectionAddress });
+  let bytecode: Hex | undefined;
+  try {
+    bytecode = await dependencies.rpc.getBytecode({ address: candidate.collectionAddress });
+  } catch (error) {
+    return classify(
+      result,
+      'INCONCLUSIVE_PROVIDER_UNAVAILABLE',
+      `Collection bytecode provider unavailable: ${errorMessage(error, 'unknown provider error')}`
+    );
+  }
   if (!bytecode || bytecode === '0x') return classify(result, 'NO_CURRENT_BYTECODE', 'Collection has no current runtime bytecode');
+  if (!isHex(bytecode)) {
+    return classify(result, 'INCONCLUSIVE_MALFORMED_PROVIDER_RESPONSE', 'Collection bytecode response was malformed');
+  }
   const minimalProxy = minimalProxyImplementation(bytecode);
   if (minimalProxy !== null) {
     result = { ...result, proxyDetected: 'YES', implementationAddress: minimalProxy };
@@ -179,10 +208,15 @@ export async function verifyNftTechnicalCandidate(
   result = { ...result, runtimeBytecodeHash: keccak256(bytecode) };
 
   if (result.implementationAddress !== null) {
-    const implementationCode = await dependencies.rpc.getBytecode({ address: result.implementationAddress });
+    let implementationCode: Hex | undefined;
+    try {
+      implementationCode = await dependencies.rpc.getBytecode({ address: result.implementationAddress });
+    } catch {
+      implementationCode = undefined;
+    }
     result = {
       ...result,
-      implementationRuntimeBytecodeHash: implementationCode && implementationCode !== '0x'
+      implementationRuntimeBytecodeHash: implementationCode && implementationCode !== '0x' && isHex(implementationCode)
         ? keccak256(implementationCode)
         : null
     };
@@ -193,26 +227,58 @@ export async function verifyNftTechnicalCandidate(
     interfaceId,
     abi: ERC165_ABI
   });
-  const supportsErc165 = await readInterface('0x01ffc9a7');
-  result = { ...result, supportsErc165: supportsErc165 === true };
+  const readRequiredInterface = async (interfaceId: Hex, label: string): Promise<InterfaceReadResult> => {
+    let value: unknown;
+    try {
+      value = await readInterface(interfaceId);
+    } catch (error) {
+      if (error instanceof NftVerificationMalformedProviderResponseError) {
+        return { ok: false, classification: 'INCONCLUSIVE_MALFORMED_PROVIDER_RESPONSE', reason: `${label} response malformed: ${error.message}` };
+      }
+      return {
+        ok: false,
+        classification: 'INCONCLUSIVE_PROVIDER_UNAVAILABLE',
+        reason: `${label} provider unavailable: ${errorMessage(error, 'unknown provider error')}`
+      };
+    }
+    if (typeof value !== 'boolean') {
+      return { ok: false, classification: 'INCONCLUSIVE_MALFORMED_PROVIDER_RESPONSE', reason: `${label} response was not boolean` };
+    }
+    return { ok: true, value };
+  };
 
-  const supportsInvalidInterface = await readInterface('0xffffffff');
-  result = { ...result, supportsInvalidInterface: supportsInvalidInterface === true };
+  const erc165Read = await readRequiredInterface('0x01ffc9a7', 'ERC165 supportsInterface');
+  if (!erc165Read.ok) return classify(result, erc165Read.classification, erc165Read.reason);
+  const supportsErc165 = erc165Read.value;
+  result = { ...result, supportsErc165 };
 
-  const supportsErc721 = await readInterface('0x80ac58cd');
-  result = { ...result, supportsErc721: supportsErc721 === true };
+  const invalidInterfaceRead = await readRequiredInterface('0xffffffff', 'Invalid-interface supportsInterface');
+  if (!invalidInterfaceRead.ok) return classify(result, invalidInterfaceRead.classification, invalidInterfaceRead.reason);
+  const supportsInvalidInterface = invalidInterfaceRead.value;
+  result = { ...result, supportsInvalidInterface };
 
-  const supportsErc721Metadata = await readInterface('0x5b5e139f');
+  const erc721Read = await readRequiredInterface('0x80ac58cd', 'ERC721 supportsInterface');
+  if (!erc721Read.ok) return classify(result, erc721Read.classification, erc721Read.reason);
+  const supportsErc721 = erc721Read.value;
+  result = { ...result, supportsErc721 };
+
+  let supportsErc721Metadata: boolean | null = null;
+  try {
+    const metadataRead = await readInterface('0x5b5e139f');
+    supportsErc721Metadata = typeof metadataRead === 'boolean' ? metadataRead : null;
+  } catch {
+    supportsErc721Metadata = null;
+  }
   const [name, symbol, representative] = await Promise.all([
-    dependencies.rpc.readIdentity({ address: candidate.collectionAddress, field: 'name' }),
-    dependencies.rpc.readIdentity({ address: candidate.collectionAddress, field: 'symbol' }),
+    dependencies.rpc.readIdentity({ address: candidate.collectionAddress, field: 'name' }).catch(() => null),
+    dependencies.rpc.readIdentity({ address: candidate.collectionAddress, field: 'symbol' }).catch(() => null),
     supportsErc721Metadata === true
-      ? dependencies.rpc.inspectRepresentativeToken({ address: candidate.collectionAddress, startBlock: receipt.blockNumber })
+      ? dependencies.rpc.inspectRepresentativeToken({ address: candidate.collectionAddress, startBlock: receipt.blockNumber }).catch(() => null)
       : Promise.resolve(null)
   ]);
   result = {
     ...result,
-    supportsErc721Metadata: supportsErc721Metadata === true,
+    supportsErc721Metadata,
     name,
     symbol,
     representativeTokenId: representative?.tokenId ?? null,
