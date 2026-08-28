@@ -290,6 +290,22 @@ try {
     "UPDATE nft_marketplace_source_state SET status='SYNCED',last_successful_poll=$2,last_provider_error=NULL WHERE collection_address=$1",
     [IDENTITY.collectionAddress, persistedPoll],
   );
+  // Establish both payment-asset fixtures relative to the persisted provider
+  // observation so this 24-hour-volume assertion is independent of wall time.
+  const inWindowSaleTime = new Date(persistedPoll.getTime() - 60 * 60_000);
+  await pool.query("UPDATE nft_marketplace_sales SET event_timestamp=$1", [inWindowSaleTime]);
+  const observationRelativeSales = await pool.query(
+    "SELECT payment_kind,event_timestamp FROM nft_marketplace_sales ORDER BY payment_kind",
+  );
+  assert.deepEqual(
+    observationRelativeSales.rows.map((row) => row.payment_kind),
+    ["ERC20", "NATIVE"],
+  );
+  assert.ok(
+    observationRelativeSales.rows.every(
+      (row) => (row.event_timestamp as Date).getTime() === inWindowSaleTime.getTime(),
+    ),
+  );
   const freshRead = await readNftProjectMarketplace(pool, "ccff00", 60_000, readNow);
   assert.equal(freshRead.lowestNormalizedListing?.orderHash, listingBActive.order_hash);
   assert.equal(freshRead.lowestNormalizedListing?.authority, "LOWEST_NORMALIZED_OPENSEA_LISTING");
