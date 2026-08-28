@@ -20,6 +20,12 @@ const stateResults = [];
 let horizontalOverflowPixels = 0;
 let watchingPublicLeaks = 0;
 let nftExecutionControls = 0;
+let controlsAudited = 0;
+let controlHeightViolations = 0;
+let heroClippingViolations = 0;
+let communityOverlapViolations = 0;
+let mobileSignalHeightViolations = 0;
+let registrationCornerRoleViolations = 0;
 
 await mkdir(output, { recursive: true });
 
@@ -105,6 +111,52 @@ async function overflow(page, state) {
   return value;
 }
 
+async function legacyUxGuards(page, state, { focused = false, mobileScanner = false } = {}) {
+  const result = await page.evaluate(() => {
+    const visible = (element) => {
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity) !== 0 && rect.width > 0 && rect.height > 0;
+    };
+    const exempt = (element) => Boolean(element.closest(".siteFooter,.universalHeroSocials,.externalIdentityLink"));
+    const controls = Array.from(document.querySelectorAll("a,button,input,select,summary"))
+      .filter(visible)
+      .map((element) => {
+        const rect = element.getBoundingClientRect();
+        return { tag: element.tagName, text: (element.textContent ?? "").trim().slice(0, 80), height: rect.height, exempt: exempt(element) };
+      });
+    const undersized = controls.filter((control) => !control.exempt && control.height < 32);
+    const heroActions = document.querySelector(".universalHeroActions");
+    const heroRect = heroActions && visible(heroActions) ? heroActions.getBoundingClientRect() : null;
+    const clippedHeroActions = heroRect
+      ? Array.from(heroActions.children).filter(visible).map((element) => {
+          const rect = element.getBoundingClientRect();
+          return { text: (element.textContent ?? "").trim().slice(0, 80), left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+        }).filter((rect) => rect.left < heroRect.left - 1 || rect.right > heroRect.right + 1 || rect.top < heroRect.top - 1 || rect.bottom > heroRect.bottom + 1)
+      : [];
+    const community = document.querySelector(".communityLive");
+    const signalCard = document.querySelector(".liveSignalRail > a");
+    return {
+      controlCount: controls.length,
+      undersized,
+      clippedHeroActions,
+      communityVisible: Boolean(community && visible(community)),
+      signalCardHeight: signalCard && visible(signalCard) ? signalCard.getBoundingClientRect().height : null,
+    };
+  });
+
+  controlsAudited += result.controlCount;
+  controlHeightViolations += result.undersized.length;
+  heroClippingViolations += result.clippedHeroActions.length;
+  if (focused && result.communityVisible) communityOverlapViolations += 1;
+  if (mobileScanner && result.signalCardHeight !== null && result.signalCardHeight > 140) mobileSignalHeightViolations += 1;
+
+  check(result.undersized.length === 0, state, "Visible non-exempt interactive control is below 32 CSS px.", result.undersized);
+  check(result.clippedHeroActions.length === 0, state, "Visible market hero action overflows its container.", result.clippedHeroActions);
+  if (focused) check(!result.communityVisible, state, "Community/RMT Live overlay appears over a focused trading surface.");
+  if (mobileScanner && result.signalCardHeight !== null) check(result.signalCardHeight <= 140, state, "Mobile signal card exceeds the 140 CSS px bound.", { height: result.signalCardHeight });
+}
+
 async function capture(page, name) {
   const file = path.join(output, `${name}.png`);
   let previous = null;
@@ -145,6 +197,7 @@ async function tokenLane(browser, viewport, platform) {
   const rowText = await rows.allTextContents();
   for (const market of TOKEN_MARKETS) check(rowText.some((text) => text.includes(market.symbol)), `token-scanner-${platform}`, `Missing curated market ${market.symbol}.`);
   check(!rowText.some((text) => /Unavailable/i.test(text)), `token-scanner-${platform}`, "An admitted fixture row became Unavailable.");
+  await legacyUxGuards(page, `token-scanner-${platform}`, { mobileScanner: platform === "mobile" });
   await overflow(page, `token-scanner-${platform}`);
   await capture(page, `token-scanner-${platform}-${viewport.width}x${viewport.height}`);
 
@@ -157,6 +210,7 @@ async function tokenLane(browser, viewport, platform) {
   else check(await page.locator(".rmtMobileTradeDock").isVisible(), "token-asset-mobile", "Mobile sticky trade/quote control is absent.");
   const body = await page.locator("body").innerText();
   check(!/Submit transaction|Wallet submission enabled/i.test(body), `token-asset-${platform}`, "Public wallet submission appears enabled.");
+  await legacyUxGuards(page, `token-asset-${platform}`, { focused: true });
   await overflow(page, `token-asset-${platform}`);
   await capture(page, `token-asset-${platform}-${viewport.width}x${viewport.height}`);
   await context.close();
@@ -170,9 +224,13 @@ async function registrationCorners(page, state, selector) {
     const after = getComputedStyle(element, "::after");
     return { before: { width: before.width, height: before.height, top: before.borderTopColor, left: before.borderLeftColor }, after: { width: after.width, height: after.height, right: after.borderRightColor, bottom: after.borderBottomColor } };
   });
-  const transparent = (value) => value === "rgba(0, 0, 0, 0)" || value === "transparent";
-  check(corners.before.width !== "0px" && corners.before.height !== "0px" && !transparent(corners.before.top) && !transparent(corners.before.left), state, "Green upper-left registration corner is absent.", corners);
-  check(corners.after.width !== "0px" && corners.after.height !== "0px" && !transparent(corners.after.right) && !transparent(corners.after.bottom), state, "Neutral lower-right registration corner is absent.", corners);
+  const authorityGreen = "rgb(147, 232, 142)";
+  const technicalNeutral = "rgb(82, 96, 88)";
+  const upperLeftAuthority = corners.before.width !== "0px" && corners.before.height !== "0px" && corners.before.top === authorityGreen && corners.before.left === authorityGreen;
+  const lowerRightTechnical = corners.after.width !== "0px" && corners.after.height !== "0px" && corners.after.right === technicalNeutral && corners.after.bottom === technicalNeutral;
+  registrationCornerRoleViolations += Number(!upperLeftAuthority) + Number(!lowerRightTechnical);
+  check(upperLeftAuthority, state, "Upper-left registration corner does not use the RMT green authority role.", { expected: authorityGreen, actual: corners.before });
+  check(lowerRightTechnical, state, "Lower-right registration corner does not use the neutral technical role.", { expected: technicalNeutral, actual: corners.after });
 }
 
 async function nftPage(browser, viewport, platform, route, state) {
@@ -240,6 +298,14 @@ const summary = {
     watchingPublicLeaks,
     nftExecutionControls,
     horizontalOverflowPixels,
+    legacyVisualUxGuards: {
+      status: controlHeightViolations + heroClippingViolations + communityOverlapViolations + mobileSignalHeightViolations === 0 ? "PASS" : "FAIL",
+      controlHeight: { status: controlHeightViolations === 0 ? "PASS" : "FAIL", controlsAudited, violations: controlHeightViolations },
+      heroClipping: { status: heroClippingViolations === 0 ? "PASS" : "FAIL", violations: heroClippingViolations },
+      communityOverlap: { status: communityOverlapViolations === 0 ? "PASS" : "FAIL", violations: communityOverlapViolations },
+      mobileSignalHeight: { status: mobileSignalHeightViolations === 0 ? "PASS" : "FAIL", violations: mobileSignalHeightViolations, maximumCssPixels: 140 },
+    },
+    registrationCornerRoles: { status: registrationCornerRoleViolations === 0 ? "PASS" : "FAIL", violations: registrationCornerRoleViolations, authorityGreen: "rgb(147, 232, 142)", technicalNeutral: "rgb(82, 96, 88)" },
     publicWalletSubmissionEnabled: (process.env.NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED ?? "false").toLowerCase() !== "false",
   },
   states: stateResults,
@@ -250,5 +316,7 @@ if (failures.length) {
   console.error(JSON.stringify(summary, null, 2));
   process.exitCode = 1;
 } else {
+  console.info(`LEGACY_VISUAL_UX_GUARDS: ${summary.invariants.legacyVisualUxGuards.status}`);
+  console.info(`REGISTRATION_CORNER_ROLE_GUARD: ${summary.invariants.registrationCornerRoles.status}`);
   console.info(`RMT Legion semantic/capture lane: PASS (${stateResults.length} states)`);
 }

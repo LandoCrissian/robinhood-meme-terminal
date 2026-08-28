@@ -79,6 +79,12 @@ try {
   }
   Write-Host $playwrightProbe
 
+  & pnpm --filter web exec tsx "../../scripts/visual-qa/legion-token-fixture-authority-smoke.ts"
+  if ($LASTEXITCODE -ne 0) {
+    throw "Token fixture authority smoke failed."
+  }
+  $tokenFixtureAuthority = "PASS"
+
   & pnpm exec playwright install chromium
   if ($LASTEXITCODE -ne 0) {
     throw "Chromium installation/check failed."
@@ -201,6 +207,7 @@ try {
     generatedAt = [DateTime]::UtcNow.ToString("o")
     platform = "windows"
     comparisonTolerance = 0
+    tokenFixtureAuthority = $tokenFixtureAuthority
     semantic = $semanticSummary
     visual = [ordered]@{
       status = if ($failedComparisons.Count -eq 0) { "PASS" } else { "FAIL" }
@@ -214,6 +221,7 @@ try {
     "# RMT Legion Visual QA Report",
     "",
     "- Platform: Windows",
+    "- Token fixture authority: $tokenFixtureAuthority",
     "- Semantic: $($semanticSummary.semantic.status)",
     "- Visual: $($report.visual.status)",
     "- Unexpected diffs: $($failedComparisons.Count)",

@@ -39,6 +39,8 @@ jobs:
         with:
           node-version: 22
       - run: pnpm install --frozen-lockfile
+      - name: Verify Token fixture authority
+        run: pnpm --filter web exec tsx ../../scripts/visual-qa/legion-token-fixture-authority-smoke.ts
       - run: pnpm build
       - name: Start production build
         run: |

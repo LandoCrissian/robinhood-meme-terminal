@@ -1,6 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "ignore": [
+    "scripts/visual-qa/legion-token-fixture-authority-smoke.ts",
     "packages/contracts/scripts/export-consent-testnet-web-artifacts.mjs",
     "packages/contracts/scripts/export-mainnet-web-artifacts.mjs",
     "packages/contracts/scripts/export-testnet-web-artifacts.mjs"

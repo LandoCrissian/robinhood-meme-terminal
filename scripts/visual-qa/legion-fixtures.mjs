@@ -8,36 +8,36 @@ export const FIXTURE_HASH = `0x${"1".repeat(64)}`;
 export const SEAPORT_1_6 = "0x0000000000000068F116a894984e2DB1123eB395";
 
 const WETH = "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73";
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+const V4_HOOKS = "0xe5e702641ea86f4ae6cc3cdaed2b886f976be044";
 
 const definitions = [
-  { name: "STONKBROKER", symbol: "STONKBROKER", token: "0xe934e36a439c94017b64a3fece66af12099abf50", sourceId: "uniswap-v4", version: 4, poolKey: "0xd33c8fd38b06e989cdbd4dffdefab71c4bdd415b24964c8d69e38ff35b068f92", poolAddress: null, tokenFirst: false, fee: 10_000, hooks: "0x0000000000000000000000000000000000000000" },
-  { name: "PONS", symbol: "PONS", token: "0x39dbed3a2bd333467115de45665cc57f813c4571", sourceId: "uniswap-v3", version: 3, poolKey: "0x10cc6bd38112cac182db90b6a71d8bb5939526ba", poolAddress: "0x10cc6bd38112cac182db90b6a71d8bb5939526ba" },
-  { name: "PIPEDOG", symbol: "PIPEDOG", token: "0x5cb6f181081301b44905f3ae15419112ecabd8a6", sourceId: "uniswap-v3", version: 3, poolKey: "0xb7f10f74b39291b9290b779978e19a7637c742d6", poolAddress: "0xb7f10f74b39291b9290b779978e19a7637c742d6" },
-  { name: "CASHCAT", symbol: "CASHCAT", token: "0x020bfc650a365f8bb26819deaabf3e21291018b4", sourceId: "uniswap-v3", version: 3, poolKey: "0xa70fc67c9f69da90b63a0e4c05d229954574e313", poolAddress: "0xa70fc67c9f69da90b63a0e4c05d229954574e313" },
-  { name: "LEMON.FUN", symbol: "LEMON", token: "0xf0e17e54239cd945cd7bea471a3a2ca6a8c7f7a3", sourceId: "uniswap-v3", version: 3, poolKey: "0x01fe057d1c5fb09a4ac02860758ddf26df9336b5", poolAddress: "0x01fe057d1c5fb09a4ac02860758ddf26df9336b5" },
-  { name: "PEEP", symbol: "PEEP", token: "0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f", sourceId: "uniswap-v2", version: 2, poolKey: "0xe70dd15481ba143f145fbe23e8916236d554d3c7", poolAddress: "0xe70dd15481ba143f145fbe23e8916236d554d3c7" },
-  { name: "HOPIUM", symbol: "HOPIUM", token: "0xb6ce51925c2e397ebf1a443b343d19267b3d4225", sourceId: "uniswap-v4", version: 4, poolKey: "0xc1dbd75280b6d117b4ac1e27fcd00c6dccb1a2b2fbfa9923a2c492711299d337", poolAddress: null },
-  { name: "CANNACAT", symbol: "CANNACAT", token: "0x1139d423c1706bdead91f03507f521635591ed92", sourceId: "uniswap-v4", version: 4, poolKey: "0x5f5ec0e1016bae2f04c122bbcd2c141a4177cc681d7c2e4463a1d172ed8430b3", poolAddress: null },
+  { name: "STONKBROKER", symbol: "STONKBROKER", token: "0xe934e36a439c94017b64a3fece66af12099abf50", sourceId: "uniswap-v4", version: 4, poolKey: "0xd33c8fd38b06e989cdbd4dffdefab71c4bdd415b24964c8d69e38ff35b068f92", poolAddress: null, token0: ZERO_ADDRESS, token1: "0xe934e36a439c94017b64a3fece66af12099abf50", fee: 10_000, tickSpacing: 200, hooks: ZERO_ADDRESS, transactionHash: "0xd5c74c05e885ec3feed94ccbbc465ab91d687d7660692297011e49676f50e719", blockNumber: "12670814", blockHash: "0x8105c0eb7bcb8790e8ceee10dc56676148b648a7d6270463e04755429190bab9" },
+  { name: "PONS", symbol: "PONS", token: "0x39dbed3a2bd333467115de45665cc57f813c4571", sourceId: "uniswap-v3", version: 3, poolKey: "0x10cc6bd38112cac182db90b6a71d8bb5939526ba", poolAddress: "0x10cc6bd38112cac182db90b6a71d8bb5939526ba", token0: WETH, token1: "0x39dbed3a2bd333467115de45665cc57f813c4571", fee: 10_000, tickSpacing: 200, hooks: null, transactionHash: "0x1f54f25fec2d963dcb338ecb8b46a6eb123198a5c7a746d34cb2dbe78d074af8", blockNumber: "8963150", blockHash: "0xd18718d02fe1da449333e477bc588a41e59b1fd169a2b945a14fb17339d684a3" },
+  { name: "PIPEDOG", symbol: "PIPEDOG", token: "0x5cb6f181081301b44905f3ae15419112ecabd8a6", sourceId: "uniswap-v3", version: 3, poolKey: "0xb7f10f74b39291b9290b779978e19a7637c742d6", poolAddress: "0xb7f10f74b39291b9290b779978e19a7637c742d6", token0: WETH, token1: "0x5cb6f181081301b44905f3ae15419112ecabd8a6", fee: 10_000, tickSpacing: 200, hooks: null, transactionHash: "0x0abd4002d4a56e982ca813b486ceb16a0b5b97b49c95c1e58a78e6b29d83cab8", blockNumber: "21881211", blockHash: "0xab2e50c0111dc7c4461ff7cda76a924e29f32b9df19b27147b34463c6fab9118" },
+  { name: "CASHCAT", symbol: "CASHCAT", token: "0x020bfc650a365f8bb26819deaabf3e21291018b4", sourceId: "uniswap-v3", version: 3, poolKey: "0xa70fc67c9f69da90b63a0e4c05d229954574e313", poolAddress: "0xa70fc67c9f69da90b63a0e4c05d229954574e313", token0: "0x020bfc650a365f8bb26819deaabf3e21291018b4", token1: WETH, fee: 10_000, tickSpacing: 200, hooks: null, transactionHash: "0x0e6d23f0babd02ede4aefaa923486591d783e1180c277c71e2f2a39fc74a4661", blockNumber: "88836", blockHash: "0x5f7080d69cf24611a084a9c10196eabc148779ad8dd43a2a983aefdd17ab3fc6" },
+  { name: "LEMON.FUN", symbol: "LEMON", token: "0xf0e17e54239cd945cd7bea471a3a2ca6a8c7f7a3", sourceId: "uniswap-v3", version: 3, poolKey: "0x01fe057d1c5fb09a4ac02860758ddf26df9336b5", poolAddress: "0x01fe057d1c5fb09a4ac02860758ddf26df9336b5", token0: WETH, token1: "0xf0e17e54239cd945cd7bea471a3a2ca6a8c7f7a3", fee: 10_000, tickSpacing: 200, hooks: null, transactionHash: "0x48a82224ef11e3b49902c03f962bb64a74fd828b843774a18883c31e0759104d", blockNumber: "19020802", blockHash: "0xe265c314d348c67a572b14dd91c570745363f4ca2493ff309128a7ce9315d0fd" },
+  { name: "PEEP", symbol: "PEEP", token: "0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f", sourceId: "uniswap-v2", version: 2, poolKey: "0xe70dd15481ba143f145fbe23e8916236d554d3c7", poolAddress: "0xe70dd15481ba143f145fbe23e8916236d554d3c7", token0: WETH, token1: "0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f", fee: null, tickSpacing: null, hooks: null, transactionHash: "0xf7a26164fd139670f67ca05eef8cb7bc9bf07fd073c9385a2ba8cd5a52a4fe38", blockNumber: "9711277", blockHash: "0x5c884a41f8073cc5df3c915ec610e7f77fbb7889870d52f46f8ab6956201ab32" },
+  { name: "HOPIUM", symbol: "HOPIUM", token: "0xb6ce51925c2e397ebf1a443b343d19267b3d4225", sourceId: "uniswap-v4", version: 4, poolKey: "0xc1dbd75280b6d117b4ac1e27fcd00c6dccb1a2b2fbfa9923a2c492711299d337", poolAddress: null, token0: ZERO_ADDRESS, token1: "0xb6ce51925c2e397ebf1a443b343d19267b3d4225", fee: 0, tickSpacing: 200, hooks: V4_HOOKS, transactionHash: "0x82b7d0771002e7b6ed257445dd4f34f051408165ed8e64762c8980af397611ef", blockNumber: "46294063", blockHash: "0xaf1b3a61caf6515d5ad7f7a48a97d8ec0d0f0a3cd1224cebc214f990708a0578" },
+  { name: "CANNACAT", symbol: "CANNACAT", token: "0x1139d423c1706bdead91f03507f521635591ed92", sourceId: "uniswap-v4", version: 4, poolKey: "0x5f5ec0e1016bae2f04c122bbcd2c141a4177cc681d7c2e4463a1d172ed8430b3", poolAddress: null, token0: ZERO_ADDRESS, token1: "0x1139d423c1706bdead91f03507f521635591ed92", fee: 0, tickSpacing: 200, hooks: V4_HOOKS, transactionHash: "0x239660e071411e86da99eaad2f5bbe1427b40fae6868ce21475ef34f009994a9", blockNumber: "44544646", blockHash: "0x10582df74469058a95c64ea407d853cd640cf2d9365d12154e3f57da9f995788" },
 ];
 
-function canonicalMarket(definition, index) {
-  const v4 = definition.version === 4;
-  const tokenFirst = definition.tokenFirst ?? index === 3;
+function canonicalMarket(definition) {
   return {
     sourceId: definition.sourceId,
     protocol: "uniswap",
     version: definition.version,
     poolKey: definition.poolKey,
     poolAddress: definition.poolAddress,
-    token0: v4 ? "0x0000000000000000000000000000000000000000" : tokenFirst ? definition.token : WETH.toLowerCase(),
-    token1: v4 || !tokenFirst ? definition.token : WETH.toLowerCase(),
+    token0: definition.token0.toLowerCase(),
+    token1: definition.token1.toLowerCase(),
     stable: null,
-    fee: definition.version === 2 ? null : definition.fee ?? 10_000,
-    tickSpacing: definition.version === 2 ? null : 200,
-    hooks: definition.version === 4 ? (definition.hooks ?? "0xe5e702641ea86f4ae6cc3cdaed2b886f976be044") : null,
-    transactionHash: `0x${String(index + 2).repeat(64).slice(0, 64)}`,
-    blockNumber: String(12_670_814 + index),
-    blockHash: `0x${String(index + 3).repeat(64).slice(0, 64)}`,
+    fee: definition.fee,
+    tickSpacing: definition.tickSpacing,
+    hooks: definition.hooks,
+    transactionHash: definition.transactionHash,
+    blockNumber: definition.blockNumber,
+    blockHash: definition.blockHash,
     stateStatus: null, liveFee: null, feeDenominator: null,
     gaugeAddress: null, gaugeAlive: null, gaugeWeight: null, gaugeClaimable: null,
     feesAddress: null, bribeAddress: null, stateObservedBlock: null, stateObservedBlockHash: null,
@@ -45,9 +45,10 @@ function canonicalMarket(definition, index) {
 }
 
 export const TOKEN_MARKETS = definitions.map((definition, index) => {
+  // Rendering economics are deterministic test-only values; definitions above are canonical repository authority.
   const priceUsd = [0.001842, 0.000092, 0.00831, 0.000441, 0.0248, 0.0000162, 0.00377, 0.000815][index];
   const change = [8.4, 3.1, -2.2, 1.8, 6.7, -0.9, 4.5, 2.6][index];
-  const pool = canonicalMarket(definition, index);
+  const pool = canonicalMarket(definition);
   const assetId = `eip155:4663/contract:${definition.token}`;
   const evidence = {
     chainId: 4663,
