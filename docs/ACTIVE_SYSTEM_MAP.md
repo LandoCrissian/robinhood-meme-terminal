@@ -7,19 +7,24 @@
 
 | Domain | Authority | Status | Notes |
 | --- | --- | --- | --- |
-| Production terminal | `apps/web/lib/vnext/*`, `apps/web/lib/server/vnext-*`, `/` | ACTIVE / CANONICAL | VNext owns the public root. The selected-asset workspace independently checks exact displayed and USDG/WETH up. pools, live fees and gauge state without treating venue evidence as project origin. |
-| External wallet gateway | Privy external connectors, EIP-6963 discovery and the Privy Wagmi adapter | ACTIVE FOUNDATION | One terminal control; exact connector-qualified selection; embedded wallets cannot become the VNext trading signer. Supported-device acceptance remains required. See [`UNIFIED_WALLET_GATEWAY.md`](UNIFIED_WALLET_GATEWAY.md). |
+| Token Terminal | `apps/web/lib/vnext/*`, `apps/web/lib/server/vnext-*`, `/` | ACTIVE / CANONICAL | VNext owns the public root and the single Token state/execution architecture. Exactly eight owner-curated markets are admitted; exhaustive indexing is not a Terminal dependency. `RMT_TOP_TIER_TERMINAL_INTEGRATION_V1` is the current global product priority. |
+| NFT Terminal | `apps/web/app/nft/*`, `apps/web/lib/server/nft-*`, `packages/shared/src/nft/*`, `/nft` | ACTIVE / CURATED / READ-ONLY EXECUTION STATE | CCFF00 is the only public `ACTIVE` NFT project. Robin Rabbits and Gogh Punks are `WATCHING` and non-public. NFT execution is `NONE`; this is not a generic marketplace or OpenSea clone. |
+| NFT technical verification | `apps/nft-indexer/src/technical-verification.ts`, `packages/shared/src/nft/technical-verification.ts`, reviewed manifests under `docs/nft/technical-verification/*` | ACTIVE FOUNDATION | Creation provenance, runtime identity and ERC interface evidence fail closed. Provider/network failure remains inconclusive. `RMT_NFT_FACTORY_CLONE_PROVENANCE_V2` is the next NFT-specific technical task; successful verification may produce `WATCHING`, never automatic public admission. |
+| NFT marketplace evidence | `apps/nft-marketplace-indexer`, `packages/shared/src/nft/marketplace-evidence.ts` | ACTIVE READ-EVIDENCE FOUNDATION | Currently scoped to CCFF00. OpenSea/Seaport evidence may describe provider-reported listings, offers, sales and volume; it is not canonical ownership authority, verified settlement or execution authorization. |
+| Project Market | curated token and NFT authority domains | ACTIVE PRODUCT FOUNDATION | Future token/NFT connections require owner confirmation plus independent technical verification. Names, symbols, branding, metadata and contract functions never establish a relationship. |
+| External wallet gateway | Privy external connectors, EIP-6963 discovery and the Privy Wagmi adapter | ACTIVE FOUNDATION / PUBLIC SUBMISSION DISABLED | One terminal control and exact connector-qualified selection. Public authorization and wallet submission remain disabled until a separate explicit owner release. See [`UNIFIED_WALLET_GATEWAY.md`](UNIFIED_WALLET_GATEWAY.md). |
 | Retired terminal presentation | former root feed, market workspace and portfolio trees | RETIRED | Replaced market and portfolio URLs restore intent inside VNext; no second terminal shell or V7–V12 global cascade remains active. |
 | V6 protocol history | `apps/indexer` | ACTIVE COMPATIBILITY | Canonical deployed V6 launches, trades, graduation, fees and origin only. |
 | External project origin | `apps/external-origin-indexer` | ACTIVE FOUNDATION | Fail closed; `source-listed` and `token-created` remain distinct. StonkBrokers has candidate identity only: the production launcher contract/event is unverified, no claims are served and activation remains locked. |
 | Curated market admission | `apps/web/lib/vnext/curated-market-registry.ts` plus fresh RPC verification | ACTIVE / CANONICAL | Owner-reviewed entries exclusively admit normal browse, search, workspace and trading. Aliases are not identity authority. |
 | Historical external markets | `apps/market-indexer` | OPTIONAL / RETIREMENT PENDING | No production-health, directory, search or execution requirement remains. Stop compute only after curated-web acceptance; retain its database during a reviewed recovery window. |
-| Same-chain execution | VNext adapters plus current Sushi/Uniswap verifiers | ACTIVE / V2 FOUNDATION | Provider admission is capability-specific. `RMT_EXECUTION_V1` remains immutable public Uniswap V3 history. Under the additive universal V2 architecture, all current providers are quote-only until each has a reviewed and registered V2 atomic fee-settlement implementation; no direct fee-free wallet fallback is admitted. |
+| Same-chain execution | VNext intent, quote, verification, authorization and recovery domains | ACTIVE FOUNDATION / PUBLIC SUBMISSION DISABLED | Provider admission is capability-specific. Current owner policy is `RMT_FEE = 0`; dormant V2 fee work is not an execution prerequisite. The global client authorization, server authorization and wallet-submission gates remain false. |
 | Funding/recovery | VNext Across domain and server-side Firebase persistence | RELEASE-GATED | Asynchronous, wallet-bound and non-custodial. |
 | RWA registry/evidence | Robinhood stock-token registry and policy evidence | ACTIVE FOUNDATION | Canonical RWA and RWA-paired markets remain distinct. |
 | Profiles/referrals | preserved web source, Firebase records and rules | PAUSED | Not active terminal product; data is preserved. |
 | RMT Live/community | preserved web/API source and Firestore rules | PAUSED | No persistent trader overlay or active roadmap work. |
-| Creator/V7/NFT/marketplace | preserved app, docs, contracts and tests | PAUSED | Not current roadmap and not production-ready evidence. |
+| Creator/V7 | preserved creator apps, media, launch, consent, marketplace-creation, docs, contracts and tests | PAUSED | Separate from the active curated NFT Terminal. No creator launch or creator marketplace reactivation is implied. |
+| Distribution | VNext distribution domain, planner and preserved deployment foundations | FOUNDATION / FUTURE PRODUCTIZATION | Current work is planning/read-only foundation. No deployment, campaign execution, fee economics or CCFF00-specific architecture activation is authorized. |
 | Position Guard automation | existing local/release-gated source | PAUSED EXPANSION | Keep disabled; do not expand market-indexer coupling. |
 | Sushi deadline guard | PR #313 track | SEPARATE | Deployment/security track; not part of terminal consolidation. |
 
@@ -31,6 +36,9 @@
 | `/vnext` | Permanent compatibility redirect to `/`. |
 | `/market/[address]` | Compatibility redirect to the exact market inside `/`; optional Buy/Sell intent is preserved. |
 | `/portfolio` | Compatibility redirect to the wallet-held portfolio inside `/`. |
+| `/nft` | Active curated NFT Terminal catalog; only public `ACTIVE` projects render. |
+| `/nft/[projectId]` | Curated Project Market inventory/evidence route; admission remains registry-controlled. |
+| `/nft/[projectId]/[tokenId]` | Read-only NFT item evidence route; no purchase, sale or transfer execution. |
 | `/profile` | Paused; preserved source/data, not promoted by active navigation. |
 | `/launch` | Paused product notice; must not promise a V7 reopening roadmap. |
 | `/explore` | Allowed only as ecosystem/market discovery; creator-platform promotion is paused. |
@@ -38,11 +46,11 @@
 
 ## Environment status
 
-- `NEXT_PUBLIC_RMT_VNEXT_*` / `RMT_VNEXT_*`: independent shell, provider, authorization, submission and funding gates. Capability does not imply activation. Each up. provider requires its observation gate, its own server authorization gate, both global authorization gates and the wallet-submission gate before an actual wallet prompt.
+- `NEXT_PUBLIC_RMT_VNEXT_AUTHORIZATION_ENABLED=false`, `RMT_VNEXT_AUTHORIZATION_ENABLED=false` and `NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED=false` are the current owner-required public defaults. Capability does not imply activation; no wallet prompt or broadcast is authorized without a separate explicit owner release.
 - `NEXT_PUBLIC_RMT_LIVE_*`, creator/V7, profile and autonomous execution controls: paused unless required for preserved compatibility tests; must not be newly enabled.
-- `RMT_EXECUTION_FEE_ENABLED`: remains the disabled legacy fee setting; it is not the canonical VNext revenue gate.
-- `RMT_EXECUTION_V1` binds 25 basis points to the verified Safe `0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC`, block `35041945` and policy hash `0x295c900143405bb585a4d88c3788fadab522fd4313f69242f64e52e39827f141`. The exact-wallet controlled proof completed at block `37772345`. The separate production release action enabled public Uniswap V3 fee routing at block `37805030` on 2026-08-16; readiness must continue to prove the policy, provider, public authorization, proof binding and wallet-submission gates. Source defaults remain off so another environment cannot activate by inheritance.
-- `RMT_EXECUTION_V2` is the additive universal 25-bps input-side policy foundation. It has no token allowlist, no selected effective block, no deployed executor, and no production activation. Provider-specific V2 settlement must be separately implemented, reviewed, deployed, verified, registered and activated.
+- Current owner product policy is `RMT_FEE = 0`. `RMT_EXECUTION_FEE_ENABLED` remains disabled, and no current fee gate may be enabled.
+- `RMT_EXECUTION_V1` deployment, policy, proof, receipt and 2026-08-16 release-boundary records remain immutable historical technical evidence. They do not establish current fee policy or activation authority.
+- `RMT_EXECUTION_V2` is dormant preserved implementation work. It is not current roadmap authority, a provider admission requirement or a Terminal completion condition.
 - Production values are changed only through a separate authorized release action, never by architecture documentation.
 
 ## Contract source classification
@@ -51,9 +59,9 @@
 
 V6 governance, registry, gate, policy, factory, bootstrap, official migration, canonical V6 clones and exact deployment evidence. These remain truthful representations of current onchain state.
 
-### B. Terminal security / optional execution
+### B. Terminal security / preserved optional execution
 
-Position Guard source, the separate Sushi deadline-guard track and the corrected deployed `RMTUniswapV3FeeExecutorV1` atomic settlement primitive at `0xcB9c00524848038D211921e0f3975190D7Aa1e8f`. Its exact immutable-filled runtime, canonical Robinhood L2 policy block, deployment receipt, controlled settlement and public release boundary are verified. The first executor deployment is permanently inactive and retained only as historical evidence. Public routing is active only through the independent Uniswap V3 fee gates and can be disabled without changing other execution providers.
+Position Guard source, the separate Sushi deadline-guard track and the corrected deployed `RMTUniswapV3FeeExecutorV1` atomic settlement primitive at `0xcB9c00524848038D211921e0f3975190D7Aa1e8f`. Its exact immutable-filled runtime, canonical Robinhood L2 policy block, deployment receipt, controlled settlement and historical release boundary are verified. Both executor deployments and all fee foundations are preserved evidence; none authorizes current fee collection or public wallet submission.
 
 ### C. Paused experimental
 
@@ -69,19 +77,12 @@ V4/V5 and earlier launch factories, older bonding/graduation/reward experiments 
 | --- | --- |
 | CURRENT | `ARCHITECTURE_FREEZE.md`, `ACTIVE_SYSTEM_MAP.md`, `TERMINAL_COMPLETION_GATE.md`, `RMT_TERMINAL_VNEXT_ARCHITECTURE.md`, `RMT_TERMINAL_VNEXT_MIGRATION.md`, `RMT_TERMINAL_VNEXT_UI_OWNERSHIP.md`, current deployment/security/operations evidence. |
 | HISTORICAL | V4/V5 archives, previous deployment records, historical release handoffs after their baseline. |
-| PAUSED | profile, community/RMT Live, creator media/release/consent, V7, marketplace and autonomous Position Guard expansion documents. |
-| RESEARCH | provider benchmark, NFT research, terminal UX research, external audit inquiry and unadmitted provider research. |
+| PAUSED | profile, community/RMT Live, creator media/release/consent, V7, creator-marketplace and autonomous Position Guard expansion documents. |
+| RESEARCH | provider benchmark, historical NFT creator-platform research, terminal UX research, external audit inquiry and unadmitted provider research. |
 | SUPERSEDED | roadmap language that names V7 launching, creator ecosystem or profiles as the current next phase; `HANDOFF_2026-08-06.md` as a roadmap. |
 
 A more recent deployment/security record can remain factually authoritative for its narrow domain without becoming product-roadmap authority.
 
-## Open PR classification at freeze
+## Coordination state at this authority baseline
 
-- #340: newer correct UniswapX verification-plan foundation; preserve and review separately.
-- #357: SUPERSEDED / CLOSED 2026-08-16. Its Uniswap V3 fee-proof preparation was replaced by merged #383, #384 and the public release in #385; it must not be used as current fee-release guidance.
-- #313: separate Sushi deadline-guard security/deployment track.
-- #309: research/documentation, not runtime truth.
-- #302: temporary Terminal V11 diagnostics; stale owner decision pending.
-- #297: separate autonomous Position Guard track.
-
-No open PR is merged, closed or repurposed by this classification.
+At baseline `7a7d0e5be09f8c412f6d3c3be84ed7cf9b0f0ef5`, GitHub reported zero open PRs. Future work must inspect current PR and branch ownership before modifying shared Token/NFT web surfaces. Documentation never authorizes merge, deployment, wallet broadcast, NFT execution, fee activation, asset admission or `WATCHING` promotion.

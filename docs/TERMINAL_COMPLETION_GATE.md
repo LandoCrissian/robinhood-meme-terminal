@@ -1,7 +1,7 @@
 # RMT terminal completion gate
 
 **Status: CURRENT — release gate**
-**Rule:** Profiles/community/creator product work cannot re-enter the roadmap until this gate is explicitly reviewed and marked complete.
+**Rule:** Profiles/community/Creator/V7 product work cannot re-enter the roadmap until this gate is explicitly reviewed and marked complete. The active curated NFT Terminal is a separate product lane and is not paused by this gate.
 
 “100% complete” means every applicable item below has evidence. A polished screen or a merged cutover PR is not sufficient.
 
@@ -10,10 +10,11 @@
 - [x] VNext is served from production `/` and no competing terminal architecture remains active.
 - [x] Legacy routes are compatibility-only, redirected or retired after their VNext replacement is proven.
 - [x] One VNext state/execution and design-system ownership model serves dedicated mobile and desktop presentations.
+- [x] The NFT Terminal remains a separate curated, read-only-execution product lane; future token/NFT connections belong to evidence-backed Project Market identity.
 
 ## Discovery and workspace
 
-- [ ] Live market discovery, exact token/pool lookup, search, ranking/filtering and truthful stale/source-delay states are complete.
+- [ ] The exactly eight admitted markets have reliable bounded enrichment, exact configured pool matching, search, ranking/filtering and truthful stale/source-delay states.
 - [ ] Origin, venue, age, liquidity, activity/volume and valuation are available.
 - [x] Selected assets remain inside VNext for identity, chart, activity, holders, liquidity, risk, origin, verified markets, RWA relationships, wallet position and trading.
 - [x] No permanent `/market/[address]` dependency remains.
@@ -29,7 +30,7 @@
 
 - [ ] One VNext orchestrator owns intent, quote observation, normalized economics, selection, strict verification, authorization, wallet submission, reconciliation, failure classification and recovery.
 - [ ] Production-supported Sushi and Uniswap paths are regression clean.
-- [ ] up-v2 and up-cl reach their separately approved discovery/quote/verification levels with live fee evidence; Slipstream is never treated as Uniswap V3.
+- [ ] up-v2 and up-cl reach their separately approved discovery/quote/verification levels; Slipstream is never treated as Uniswap V3.
 - [ ] UniswapX, 0x and other providers stop at the highest independently safe capability level.
 - [ ] If Across remains baseline, quote verification, source submission, destination confirmation, refund/recovery, cross-device restoration and confirmed-only Spend Balance all pass.
 
@@ -39,7 +40,7 @@
 - [ ] Stonk projects show every verified market and are never forced through up.
 - [ ] up-v2 and up-cl discovery, live fees and gauge enrichment are independently anchored; nongauged pools remain visible.
 - [ ] Project origin, market venue and RMT execution origin remain separate records.
-- [ ] Ecosystem volume, RMT-originated volume and actual RMT fee evidence are independent metrics.
+- [ ] Ecosystem volume, RMT-originated volume and historical RMT fee evidence are independent metrics; current zero-fee policy is never presented as fee revenue.
 
 ## RWA and policy
 
@@ -49,10 +50,20 @@
 
 ## Economics
 
-- [x] No hidden RMT fee or implicit fee-free wallet fallback exists; V2 is exactly 25 bps on gross input for every wallet-executable RMT trade and providers without registered atomic V2 settlement remain quote-only.
-- [x] `RMT_EXECUTION_V1` is publicly active for the deployed, runtime-verified Uniswap V3 executor after approved disclosure, reconciliation, treasury, controlled-proof and release gates. No other provider inherits that activation.
-- [ ] Every wallet-executable provider has a separately reviewed, deployed, runtime-verified and registered `RMT_EXECUTION_V2` atomic settlement mode; foundation types alone do not satisfy this gate.
+- [x] Current owner product policy is `RMT_FEE = 0`; no hidden spread or RMT trading fee is authorized.
+- [x] Historical `RMT_EXECUTION_V1` deployment, controlled-proof, release, receipt and monitoring evidence remains preserved without being presented as current fee authority.
+- [x] `RMT_EXECUTION_V2` remains dormant implementation work and is not a provider-admission requirement or Terminal completion condition.
+- [ ] Any future fee requires a new explicit owner policy and separate implementation, verification, release and production-activation authorization.
 - [ ] No historical V6 split is reused as forward terminal policy.
+
+## NFT and Project Market
+
+- [x] CCFF00 is the only public `ACTIVE` NFT project.
+- [x] Robin Rabbits and Gogh Punks remain non-public `WATCHING`; no automatic promotion is permitted.
+- [x] Canonical ownership/mint/transfer/burn authority remains separate from marketplace evidence, and transfer is not labeled as sale.
+- [x] NFT execution remains `NONE`; marketplace polling does not imply transaction authority.
+- [ ] Generic collection capabilities, factory-clone provenance, safe remote metadata/media and product readiness pass their separate reviews before additional public activation.
+- [ ] Any future NFT-to-token Project Market relationship has owner confirmation and independent technical verification.
 
 ## Quality, reliability and security
 
@@ -72,7 +83,7 @@
 
 ## Current known gaps
 
-VNext is the production root and `/vnext`, `/market/[address]` and `/portfolio` converge on that canonical terminal. Retired terminal CSS generations are no longer globally loaded. External-wallet reliability still requires supported-device acceptance. The selected-asset workspace independently verifies exact displayed and USDG/WETH up. pools, live fees and gauge state directly onchain, while broader up-v2/up-cl discovery still requires shadow backfill evidence. Shadow market-indexer rows do not influence the public terminal. up. authorization remains default-off pending controlled proof. StonkBrokers remains a fail-closed candidate without production launcher evidence or authoritative claims. Across public funding remains incomplete and disabled. Profiles/community/creator source remains preserved and paused. The exact-wallet Uniswap V3 fee proof is complete and reconciled; public Uniswap V3 fee routing was explicitly released at Robinhood block `37805030`. Free read-only settlement monitoring is available, while an operational alerting decision remains separate from terminal completion.
+VNext is the production root and `/vnext`, `/market/[address]` and `/portfolio` converge on that canonical Token Terminal. Retired terminal CSS generations are no longer globally loaded. The curated registry admits exactly eight markets, and broader historical market-indexer rows do not control public Terminal admission. External-wallet reliability still requires supported-device acceptance. Public authorization and wallet submission remain disabled. Across public funding remains incomplete and disabled. Profiles/community/Creator/V7 source remains preserved and paused separately from the active NFT lane. Historical Uniswap V3 executor deployment, controlled proof and release evidence remains preserved; current owner policy is `RMT_FEE = 0`, so fee activation and universal V2 settlement are not completion requirements. `RMT_TOP_TIER_TERMINAL_INTEGRATION_V1` is the current overall product priority. `RMT_NFT_FACTORY_CLONE_PROVENANCE_V2` is the next NFT-specific technical task when separately authorized and non-conflicting.
 
 ## Explicit completion decision
 

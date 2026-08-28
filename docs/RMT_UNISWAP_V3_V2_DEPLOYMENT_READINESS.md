@@ -1,6 +1,8 @@
 # RMT Uniswap V3 V2 deployment readiness
 
-Status: `NOT_DEPLOYED`, `NOT_ACTIVATED`, `OWNER_AUTHORIZATION_REQUIRED`.
+Status: `DORMANT`, `NOT_DEPLOYED`, `NOT_ACTIVATED`, `NEW_OWNER_POLICY_REQUIRED`.
+
+Current owner product policy is `RMT_FEE = 0`. This package is preserved deployment-readiness evidence, not current roadmap authority or authorization to deploy or activate V2.
 
 This package prepares a deterministic, owner-authorized deployment of
 `RMTUniswapV3FeeExecutorV2`. It does not select a production treasury or effective block,

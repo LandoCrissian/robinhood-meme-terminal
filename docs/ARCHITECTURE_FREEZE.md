@@ -1,29 +1,34 @@
 # RMT architecture freeze
 
 **Status: CURRENT — system of record**
-**Effective:** 2026-08-12
-**Baseline:** `main` at or after `35bd37a1d81bcdeb47e7f7dc5c8e310e438a9e7e`
+**Effective:** 2026-08-28
+**Baseline:** `main` at `7a7d0e5be09f8c412f6d3c3be84ed7cf9b0f0ef5`
 
 This document records the durable product and system boundaries. It supersedes historical launchpad, V7 creator, profile, community and older terminal-roadmap language. It does not authorize deployment, production configuration changes, provider activation, fees, autonomous execution or destructive migration.
 
 ## Product
 
-RMT is an owner-curated Robinhood Chain:
+RMT is becoming the owner-curated market operating layer for Robinhood Chain:
 
-- discovery and market-intelligence terminal;
-- execution terminal;
-- wallet portfolio and asset terminal;
-- funding/access terminal;
-- project-origin, venue and execution-attribution layer;
-- RWA market surface.
+- discovery;
+- curated Token Terminal and market intelligence;
+- curated NFT Terminal and Project Market;
+- portfolio, ownership and market activity;
+- canonical project-origin, venue, ownership, marketplace-evidence and execution-attribution layers;
+- community and future distribution foundations;
+- funding/access and RWA market surfaces.
 
-The core loop is **scan → verify → analyze → execute → reconcile → manage**. New token launches, creator profiles, social profiles, NFT/marketplace creation and community chat are not part of the terminal-completion program.
+The core market loop is **discover → verify → analyze → act → reconcile → manage**. The Token and NFT lanes remain technically separate and may connect only through verified Project Market identity. An NFT-to-ERC20 relationship is never inferred from matching names, symbols, branding, metadata or contract functions; it requires owner confirmation plus independent technical verification.
 
-Normal Search, Active, Trending, New, market workspace and trading admission are bounded by `RMT_CURATED_MARKET_REGISTRY`. Token existence is separate from RMT directory admission. Registry aliases are discovery hints; displayed ERC20 identity and canonical market bindings remain independently verified. Exhaustive historical market or token-identity completion is not a Terminal dependency.
+Token Search, Active, Trending, New, market workspace and future trading admission are bounded by `RMT_CURATED_MARKET_REGISTRY`. Exactly eight token markets are currently admitted. Token existence and wallet ownership remain separate from RMT directory admission. Registry aliases are discovery hints; displayed ERC20 identity and canonical market bindings remain independently verified. Exhaustive historical market or token-identity completion is not a Terminal dependency.
+
+The NFT Terminal is an active curated, read-only-execution product lane. CCFF00 is the only public `ACTIVE` project. Robin Rabbits and Gogh Punks are technically verified `WATCHING` projects; `WATCHING` is non-public and never promotes automatically. NFT execution remains `NONE`, and marketplace providers remain evidence sources rather than canonical ownership authority.
 
 ## Canonical architecture
 
-VNext is the only forward terminal architecture. Its canonical domains live under `apps/web/lib/vnext/*` and `apps/web/lib/server/vnext-*`.
+VNext is the only forward Token Terminal architecture. Its canonical domains live under `apps/web/lib/vnext/*` and `apps/web/lib/server/vnext-*`. Do not create a second Token state, execution or routing framework.
+
+The NFT Terminal lives under `apps/web/app/nft/*`, its server readers under `apps/web/lib/server/nft-*`, and its shared authority domains under `packages/shared/src/nft/*`. The canonical NFT indexer owns mint, transfer, burn and ownership evidence. The NFT marketplace indexer owns provider-reported listing, offer, sale and volume evidence; a transfer is not a sale, and marketplace evidence is not ownership authority.
 
 The execution lifecycle is:
 
@@ -41,6 +46,14 @@ user intent
 
 Observation, strict verification, wallet authorization and production activation are four independent admissions. A provider may safely stop at any level. No provider is required merely to increase provider count.
 
+Public Token Terminal transaction submission is currently disabled. Preserve these values unless the owner explicitly authorizes a separate release action:
+
+```text
+NEXT_PUBLIC_RMT_VNEXT_AUTHORIZATION_ENABLED=false
+RMT_VNEXT_AUTHORIZATION_ENABLED=false
+NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED=false
+```
+
 VNext is served from production `/`. The former `/vnext` address redirects to `/`; it is not a competing terminal. Replaced `/market/[address]` and `/portfolio` presentation routes restore their intent inside `/` instead of mounting the retired frontend. Mature shared capabilities remain reusable through explicit boundaries, but they do not own a second terminal shell. Remaining completion evidence is governed by [`TERMINAL_COMPLETION_GATE.md`](TERMINAL_COMPLETION_GATE.md).
 
 ## Active security identity versus paused profile
@@ -57,21 +70,23 @@ The following remain preserved but inactive in the terminal roadmap:
 
 - RMT Live/community chat, presence and trader overlay;
 - creator applications, releases, media and collaborator products;
-- V7 launch, ERC-721/ERC-1155, NFT and marketplace preparation;
+- V7 launch, creator ERC-721/ERC-1155 creation and creator marketplace preparation;
 - new token launch work;
 - referral and invite products;
 - new autonomous Position Guard expansion.
 
-Paused source and tests remain available as preservation evidence. Paused workers must not remain scheduled merely because their endpoints fail closed.
+Paused source and tests remain available as preservation evidence. Paused workers must not remain scheduled merely because their endpoints fail closed. This paused classification does not include the active curated NFT Terminal, NFT technical verification or NFT marketplace read-evidence foundations.
 
 ## Data and service authority
 
 - `apps/indexer`: canonical deployed RMT V6 compatibility and history. It is not the universal ecosystem indexer.
 - `apps/external-origin-indexer`: external project-origin attribution. `source-listed` never implies `token-created`.
 - `apps/market-indexer`: preserved historical external-market index. It is optional to the curated Terminal and may be stopped after the cutover recovery window.
+- `apps/nft-indexer`: canonical admitted NFT mint, transfer, burn and ownership authority plus technical-verification support. Provider/network failures remain inconclusive rather than contradictory contract evidence.
+- `apps/nft-marketplace-indexer`: marketplace read evidence for explicitly admitted projects. It does not establish canonical ownership, verified settlement or NFT execution.
 - future execution workers: separate explicit domain; never hidden inside the market indexer.
 
-Project origin, market venue and execution origin are separate dimensions. RMT-originated volume or fees require authoritative RMT session/receipt evidence and may not be inferred from origin, pool, wallet, page view or route observation.
+Project origin, token venue, NFT ownership, marketplace evidence and execution origin are separate dimensions. RMT-originated volume or economics require authoritative RMT session/receipt evidence and may not be inferred from origin, pool, wallet, ownership, page view or route observation.
 
 ## Providers and future sources
 
@@ -85,14 +100,20 @@ Across remains an asynchronous funding domain: external payment asset → confir
 
 ## Economics
 
-The owner approved and explicitly released the versioned `RMT_EXECUTION_V1` policy for admitted public Uniswap V3 executions: 25 basis points, floor rounding, no minimum fee and 100% allocation to RMT operations. V1 remains immutable historical/public settlement evidence.
-
-The additive forward architecture is `RMT_EXECUTION_V2`: exactly 25 basis points on gross input for every successfully executed RMT wallet trade, without a static per-token allowlist. The provider is quoted with post-fee input; the fee and swap must revert atomically; approvals and failed swaps settle zero. A provider without an explicitly registered V2 atomic settlement implementation is quote-only, and configuration failure cannot expose a fee-free direct-router fallback. V2 foundation does not select an effective block, deploy a contract, or activate collection.
+Current owner product policy is:
 
 ```text
-fee policy: RMT_EXECUTION_V1 / version 1
-fee bps: 25
-public routing enabled: true for admitted Uniswap V3 fee-executor routes
+RMT_FEE = 0
+```
+
+No RMT trading fee is authorized for activation. Fee implementation is not a Token Terminal completion requirement, and no historical policy, contract, manifest, proof, release boundary or dormant foundation can self-authorize a future fee.
+
+The repository preserves the versioned `RMT_EXECUTION_V1` deployment and release record as immutable historical technical evidence. At its 2026-08-16 release boundary it described a 25-basis-point policy for admitted Uniswap V3 fee-executor routes. The following values record that historical event; they do not describe current owner product policy or current activation authority:
+
+```text
+historical fee policy: RMT_EXECUTION_V1 / version 1
+historical fee bps: 25
+historical public release: admitted Uniswap V3 fee-executor routes
 controlled proof: complete at Robinhood block 37772345
 public release boundary: Robinhood block 37805030 / 2026-08-16T07:42:40Z
 treasury: 0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC (verified 1-of-1 Safe)
@@ -100,7 +121,7 @@ policy from block: 35041945
 policy hash: 0x295c900143405bb585a4d88c3788fadab522fd4313f69242f64e52e39827f141
 ```
 
-The policy is explicit and hash-bound; execution logic must never infer 25 basis points as a fallback. The first exact-wallet controlled proof settled successfully, and the separately reviewed public release gate was enabled at Robinhood block `37805030` after PR #385. Missing treasury, effective boundary, proof binding, runtime identity or provider settlement admission still fails closed. Across funding, wallet transfers, failed executions and every provider without a separately admitted settlement path remain ineligible. Deployed V6 70/30 economics remain historical/current protocol facts and are not forward terminal economics. See [`RMT_EXECUTION_REVENUE.md`](RMT_EXECUTION_REVENUE.md).
+The historical V1 policy was explicit and hash-bound. Its first exact-wallet controlled proof settled successfully, and the separately reviewed release occurred at Robinhood block `37805030` after PR #385. Those facts, deployed contracts, receipts, runtime hashes and monitoring paths remain truthful history. `RMT_EXECUTION_V2` remains dormant implementation work, not the current product policy, roadmap or completion gate. Deployed V6 70/30 economics likewise remain protocol-history facts rather than forward Token Terminal economics. See [`RMT_EXECUTION_REVENUE.md`](RMT_EXECUTION_REVENUE.md).
 
 ## Contracts
 
