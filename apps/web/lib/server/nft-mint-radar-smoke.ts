@@ -1,12 +1,18 @@
 import assert from "node:assert/strict";
-import { zeroAddress, type Address, type PublicClient } from "viem";
+import { keccak256, zeroAddress, type Address, type PublicClient } from "viem";
 import {
   buildRmtMintRadar,
   createRmtMintRadarCache,
+  evaluatePublishedAllowlistOverlap,
   mintLog,
+  parseOpenSeaDetailedDrop,
   parseOpenSeaDrops,
+  parseReviewedSeaDropDeployments,
+  providerReportedCcff00Access,
   readRmtNftMintRadar,
   RMT_MINT_RADAR_FRESH_MS,
+  unknownCcff00Access,
+  verifyCcff00SeaDropGate,
   verifyMintRadarContract,
   type RmtMintRadarContractEvidence,
 } from "./nft-mint-radar";
@@ -19,6 +25,9 @@ import type { VerifiedContractLog } from "./blockscout-contract-logs";
 const NOW = new Date("2026-08-28T12:00:00.000Z");
 const CONTRACT = "0x1111111111111111111111111111111111111111" as Address;
 const CONTRACT_TWO = "0x2222222222222222222222222222222222222222" as Address;
+const SEADROP = "0x3333333333333333333333333333333333333333" as Address;
+const CCFF00 = "0x505A22Ffed8d37ebE580FfD98d2Cdb0021189146" as Address;
+const OWNER = "0x4444444444444444444444444444444444444444" as Address;
 const HASH = `0x${"1".repeat(64)}` as const;
 const ZERO_TOPIC = `0x${"0".repeat(64)}` as const;
 
@@ -55,6 +64,24 @@ function page(...drops: unknown[]) {
   return { drops, next: null };
 }
 
+function detailedDrop(overrides: Record<string, unknown> = {}) {
+  const next = stage("2026-08-28T13:00:00.000Z", "2026-08-28T14:00:00.000Z");
+  return {
+    collection_slug: "radar-one",
+    collection_name: "Radar One",
+    chain: "robinhood",
+    contract_address: CONTRACT,
+    drop_type: "seadrop_v1_erc721",
+    is_minting: false,
+    active_stage: null,
+    next_stage: next,
+    stages: [next],
+    total_supply: "12",
+    max_supply: "1000",
+    ...overrides,
+  };
+}
+
 const verified: RmtMintRadarContractEvidence = {
   status: "ONCHAIN_VERIFIED_CONTRACT",
   codeExists: true,
@@ -76,6 +103,70 @@ assert.equal(providerOnly[0]!.projectTokenRelationship, null);
 assert.throws(() => parseOpenSeaDrops(page(drop({ chain: "base" })), "upcoming", NOW), /wrong chain/);
 assert.throws(() => parseOpenSeaDrops({ results: [] }, "upcoming", NOW), /malformed/);
 assert.throws(() => parseOpenSeaDrops(page(drop({ next_stage: { bad: true } })), "upcoming", NOW), /currency|stage/);
+const parsedDetail = parseOpenSeaDetailedDrop(detailedDrop(), { providerCollectionSlug: "radar-one", collectionAddress: CONTRACT });
+assert.equal(parsedDetail.collectionAddress, CONTRACT);
+assert.equal(parsedDetail.stages.length, 1);
+assert.equal(parsedDetail.maxSupply, "1000");
+assert.throws(() => parseOpenSeaDetailedDrop(detailedDrop({ chain: "base" }), { providerCollectionSlug: "radar-one", collectionAddress: CONTRACT }), /wrong chain/);
+assert.throws(() => parseOpenSeaDetailedDrop(detailedDrop({ stages: "not-an-array" }), { providerCollectionSlug: "radar-one", collectionAddress: CONTRACT }), /stages/);
+
+const seaDropCode = "0x60016000" as const;
+const reviewed = parseReviewedSeaDropDeployments(`${SEADROP}@${keccak256(seaDropCode)}`);
+assert.equal(reviewed.length, 1);
+assert.throws(() => parseReviewedSeaDropDeployments(`${SEADROP}@0x01`), /address@runtimeBytecodeHash/);
+const seaDropClient = {
+  getChainId: async () => 4663,
+  getBytecode: async ({ address }: { address: Address }) => address === SEADROP ? seaDropCode : undefined,
+  readContract: async ({ functionName }: { functionName: string }) => functionName === "getTokenGatedAllowedTokens" ? [CCFF00] : {
+    mintPrice: 12_500_000_000_000_000n,
+    maxTotalMintableByWallet: 2n,
+    startTime: 1_787_922_000n,
+    endTime: 1_787_925_600n,
+    dropStageIndex: 7n,
+    maxTokenSupplyForStage: 500n,
+    feeBps: 0n,
+    restrictFeeRecipients: false,
+  },
+} as unknown as PublicClient;
+const verifiedAccess = await verifyCcff00SeaDropGate({
+  client: seaDropClient,
+  dropCollection: CONTRACT,
+  providerStage: parseOpenSeaDrops(page(drop()), "upcoming", NOW)[0]!.stage,
+  deployments: reviewed,
+  observedAt: NOW.toISOString(),
+});
+assert.equal(verifiedAccess.status, "VERIFIED_COMMUNITY_GATE");
+assert.equal(verifiedAccess.authority, "ONCHAIN_SEADROP_CONFIGURATION");
+assert.equal(verifiedAccess.stage?.maxPerWallet, "2");
+assert.equal(verifiedAccess.walletEligibility.status, "NOT_CHECKED");
+const networkUnknown = await verifyCcff00SeaDropGate({
+  client: { ...seaDropClient, getChainId: async () => { throw new Error("offline"); } } as unknown as PublicClient,
+  dropCollection: CONTRACT,
+  providerStage: null,
+  deployments: reviewed,
+  observedAt: NOW.toISOString(),
+});
+assert.equal(networkUnknown.status, "UNKNOWN", "network failure is inconclusive access evidence");
+
+const overlap = evaluatePublishedAllowlistOverlap({
+  allowlistAddresses: [OWNER, CONTRACT_TWO], canonicalCcff00Owners: [OWNER], observedAt: NOW.toISOString(), source: "DETERMINISTIC_PUBLIC_ALLOWLIST",
+});
+assert.equal(overlap.status, "HOLDER_MATCHES_DETECTED");
+assert.equal(overlap.holderMatches.matchingHolderCount, 1);
+const noOverlap = evaluatePublishedAllowlistOverlap({
+  allowlistAddresses: [CONTRACT_TWO], canonicalCcff00Owners: [OWNER], observedAt: NOW.toISOString(), source: "DETERMINISTIC_PUBLIC_ALLOWLIST",
+});
+assert.equal(noOverlap.status, "UNKNOWN");
+assert.equal(noOverlap.holderMatches.matchingHolderCount, 0);
+const merkleOnly = evaluatePublishedAllowlistOverlap({
+  allowlistAddresses: null, canonicalCcff00Owners: [OWNER], observedAt: NOW.toISOString(), source: "MERKLE_ROOT", merkleRootOnly: true,
+});
+assert.equal(merkleOnly.status, "UNKNOWN");
+assert.match(merkleOnly.evidence[0]!.detail, /cannot establish holder overlap/);
+const reported = providerReportedCcff00Access({ exactCollectionAddress: CCFF00, observedAt: NOW.toISOString(), source: "OPENSEA_EXPLICIT_ACCESS_FIELD" });
+assert.equal(reported.status, "PROVIDER_REPORTED");
+assert.equal(providerReportedCcff00Access({ exactCollectionAddress: null, observedAt: NOW.toISOString(), source: "STAGE_LABEL_ONLY" }).status, "UNKNOWN");
+assert.equal(unknownCcff00Access(NOW.toISOString()).walletEligibility.status, "NOT_CHECKED");
 
 const radar = await buildRmtMintRadar({
   featured: page(drop({
@@ -119,6 +210,18 @@ assert.equal(radar.upcoming[1]!.contractEvidence.status, "PROVIDER_ONLY");
 assert.equal(radar.upcoming[1]!.mintActivity.status, "NOT_CHECKED");
 assert.equal(radar.upcoming[1]!.rmtAdmission, "NOT_EVALUATED");
 assert.equal(radar.upcoming[1]!.projectTokenRelationship, null);
+assert.equal(radar.upcoming[1]!.ccff00Access.status, "UNKNOWN");
+
+const accessBoundRadar = await buildRmtMintRadar({ featured: page(), upcoming: page(drop()), recentlyMinted: page() }, {
+  now: () => NOW,
+  verifyContract: async () => verified,
+  readMintActivity: async () => ({ status: "NOT_OBSERVED_IN_SAMPLE", transactionHash: null, blockNumber: null, observedAt: null, marketMeaning: "NOT_ESTABLISHED" }),
+  readDetailedDrop: async () => parsedDetail,
+  readCcff00Access: async () => verifiedAccess,
+});
+assert.equal(accessBoundRadar.upcoming[0]!.ccff00Access.status, "VERIFIED_COMMUNITY_GATE");
+assert.equal(accessBoundRadar.upcoming[0]!.rmtAdmission, "NOT_EVALUATED", "access evidence never mutates RMT admission");
+assert.equal(accessBoundRadar.upcoming[0]!.projectTokenRelationship, null, "access evidence never creates a project-token relationship");
 
 const empty = await buildRmtMintRadar({ featured: page(), upcoming: page(), recentlyMinted: page() }, {
   now: () => NOW,

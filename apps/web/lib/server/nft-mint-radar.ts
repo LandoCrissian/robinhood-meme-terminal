@@ -1,5 +1,6 @@
-import { createPublicClient, getAddress, http, isAddress, isAddressEqual, zeroAddress, type Address, type PublicClient } from "viem";
+import { createPublicClient, getAddress, http, isAddress, isAddressEqual, keccak256, zeroAddress, type Address, type Hex, type PublicClient } from "viem";
 import { robinhoodChain } from "@rmt/shared/chains";
+import { CCFF00_COLLECTION } from "@rmt/shared/nft/project-registry";
 import {
   RMT_ERC1155_TRANSFER_BATCH_TOPIC,
   RMT_ERC1155_TRANSFER_SINGLE_TOPIC,
@@ -19,6 +20,9 @@ const MAX_PROVIDER_RECORDS = 100;
 const MAX_LIVE = 6;
 const MAX_UPCOMING = 8;
 const MAX_RECENT = 8;
+const MAX_DETAILED_DROPS = MAX_LIVE + MAX_UPCOMING;
+const MAX_DETAILED_STAGES = 50;
+const MAX_REVIEWED_SEADROP_DEPLOYMENTS = 4;
 const ERC165_ABI = [{
   type: "function",
   name: "supportsInterface",
@@ -26,6 +30,35 @@ const ERC165_ABI = [{
   inputs: [{ name: "interfaceId", type: "bytes4" }],
   outputs: [{ type: "bool" }],
 }] as const;
+const SEADROP_ABI = [
+  {
+    type: "function",
+    name: "getTokenGatedAllowedTokens",
+    stateMutability: "view",
+    inputs: [{ name: "nftContract", type: "address" }],
+    outputs: [{ name: "", type: "address[]" }],
+  },
+  {
+    type: "function",
+    name: "getTokenGatedDrop",
+    stateMutability: "view",
+    inputs: [{ name: "nftContract", type: "address" }, { name: "allowedNftToken", type: "address" }],
+    outputs: [{
+      name: "",
+      type: "tuple",
+      components: [
+        { name: "mintPrice", type: "uint80" },
+        { name: "maxTotalMintableByWallet", type: "uint16" },
+        { name: "startTime", type: "uint48" },
+        { name: "endTime", type: "uint48" },
+        { name: "dropStageIndex", type: "uint8" },
+        { name: "maxTokenSupplyForStage", type: "uint32" },
+        { name: "feeBps", type: "uint16" },
+        { name: "restrictFeeRecipients", type: "bool" },
+      ],
+    }],
+  },
+] as const;
 
 export type RmtMintRadarFeedStatus = "READY" | "EMPTY" | "STALE" | "UNAVAILABLE";
 export type RmtMintRadarState = "LIVE_NOW" | "UPCOMING" | "RECENTLY_MINTED";
@@ -38,6 +71,18 @@ export type RmtMintRadarContractStatus =
   | "INCONCLUSIVE_PROVIDER_UNAVAILABLE"
   | "INCONCLUSIVE_MALFORMED_PROVIDER_RESPONSE";
 export type RmtMintRadarActivityStatus = "ONCHAIN_MINT_ACTIVITY" | "NOT_OBSERVED_IN_SAMPLE" | "NOT_CHECKED" | "INCONCLUSIVE_PROVIDER_UNAVAILABLE";
+export type RmtMintRadarCcff00AccessStatus =
+  | "VERIFIED_COMMUNITY_GATE"
+  | "HOLDER_MATCHES_DETECTED"
+  | "PROVIDER_REPORTED"
+  | "CONNECTED_WALLET_ELIGIBLE"
+  | "UNKNOWN";
+export type RmtMintRadarCcff00AccessAuthority =
+  | "ONCHAIN_SEADROP_CONFIGURATION"
+  | "CANONICAL_CCFF00_OWNERSHIP_OVERLAP"
+  | "OPENSEA_REPORTED_ACCESS"
+  | "CONNECTED_WALLET_PROVIDER"
+  | "NONE";
 
 export type RmtMintRadarStage = {
   type: string;
@@ -69,6 +114,44 @@ export type RmtMintRadarActivityEvidence = {
   marketMeaning: "NOT_ESTABLISHED";
 };
 
+export type RmtMintRadarCcff00Access = {
+  status: RmtMintRadarCcff00AccessStatus;
+  authority: RmtMintRadarCcff00AccessAuthority;
+  stage: null | {
+    startTime: string;
+    endTime: string;
+    nativePriceWei: string;
+    maxPerWallet: string;
+    maxSupplyForStage: string;
+  };
+  holderMatches: {
+    status: "DETECTED" | "NONE" | "NOT_CHECKED" | "UNAVAILABLE";
+    matchingHolderCount: number | null;
+    observedAt: string | null;
+  };
+  walletEligibility: { status: "NOT_CHECKED" | "UNAVAILABLE" | "ELIGIBLE"; observedAt: string | null };
+  evidence: readonly {
+    kind: "EXACT_CCFF00_TOKEN_GATE" | "PUBLISHED_ALLOWLIST_OVERLAP" | "PROVIDER_REPORTED_CCFF00_ACCESS" | "CONNECTED_WALLET_ELIGIBILITY" | "INCONCLUSIVE";
+    source: string;
+    observedAt: string;
+    detail: string;
+  }[];
+};
+
+export type RmtMintRadarDetailedDrop = {
+  collectionSlug: string;
+  collectionName: string | null;
+  chain: typeof RMT_MINT_RADAR_PROVIDER_CHAIN;
+  collectionAddress: Address;
+  dropType: string;
+  isMinting: boolean;
+  activeStage: RmtMintRadarStage | null;
+  nextStage: RmtMintRadarStage | null;
+  stages: readonly RmtMintRadarStage[];
+  totalSupply: string | null;
+  maxSupply: string | null;
+};
+
 export type RmtMintRadarCandidate = {
   candidateId: string;
   chainId: typeof RMT_MINT_RADAR_CHAIN_ID;
@@ -85,6 +168,7 @@ export type RmtMintRadarCandidate = {
   scheduleObservedAt: string;
   contractEvidence: RmtMintRadarContractEvidence;
   mintActivity: RmtMintRadarActivityEvidence;
+  ccff00Access: RmtMintRadarCcff00Access;
   evidence: readonly ("PROVIDER_REPORTED" | "ONCHAIN_VERIFIED_CONTRACT" | "ONCHAIN_MINT_ACTIVITY" | "KNOWN_FACTORY_CANDIDATE")[];
   rmtAdmission: "NOT_EVALUATED";
   projectTokenRelationship: null;
@@ -103,10 +187,12 @@ export type RmtMintRadarResponse = {
 };
 
 type OpenSeaDropFeed = "featured" | "upcoming" | "recently_minted";
-type ParsedProviderCandidate = Omit<RmtMintRadarCandidate, "contractEvidence" | "mintActivity" | "evidence">;
+type ParsedProviderCandidate = Omit<RmtMintRadarCandidate, "contractEvidence" | "mintActivity" | "ccff00Access" | "evidence">;
 type FetchLike = (input: string | URL, init?: RequestInit) => Promise<Response>;
 type ContractVerifier = (address: Address, observedAt: string) => Promise<RmtMintRadarContractEvidence>;
 type ActivityReader = (address: Address, standard: RmtMintRadarStandard, now: Date) => Promise<RmtMintRadarActivityEvidence>;
+type DetailedDropReader = (candidate: ParsedProviderCandidate) => Promise<RmtMintRadarDetailedDrop | null>;
+type Ccff00AccessReader = (input: { candidate: ParsedProviderCandidate; detail: RmtMintRadarDetailedDrop | null; observedAt: string }) => Promise<RmtMintRadarCcff00Access>;
 
 export type RmtMintRadarCache = {
   current: { response: RmtMintRadarResponse; fetchedAtMs: number } | null;
@@ -120,6 +206,8 @@ export type RmtMintRadarReaderOptions = {
   cache?: RmtMintRadarCache;
   verifyContract?: ContractVerifier;
   readMintActivity?: ActivityReader;
+  readDetailedDrop?: DetailedDropReader;
+  readCcff00Access?: Ccff00AccessReader;
 };
 
 export function createRmtMintRadarCache(): RmtMintRadarCache {
@@ -251,6 +339,118 @@ export function parseOpenSeaDrops(raw: unknown, feed: OpenSeaDropFeed, now: Date
   });
 }
 
+export function parseOpenSeaDetailedDrop(raw: unknown, expected: Pick<ParsedProviderCandidate, "providerCollectionSlug" | "collectionAddress">) {
+  if (!record(raw)) throw new Error("OpenSea detailed drop response is malformed.");
+  const collectionSlug = boundedText(raw.collection_slug, 160, true)!;
+  if (collectionSlug !== expected.providerCollectionSlug) throw new Error("OpenSea detailed drop slug does not match its feed candidate.");
+  if (raw.chain !== RMT_MINT_RADAR_PROVIDER_CHAIN) throw new Error("OpenSea detailed drop is for the wrong chain.");
+  if (typeof raw.is_minting !== "boolean") throw new Error("OpenSea detailed drop minting state must be boolean.");
+  const address = contractAddress(raw.contract_address);
+  if (!address) throw new Error("OpenSea detailed drop contract address is malformed.");
+  if (expected.collectionAddress && !isAddressEqual(address, expected.collectionAddress)) {
+    throw new Error("OpenSea detailed drop contract does not match its feed candidate.");
+  }
+  if (!Array.isArray(raw.stages) || raw.stages.length > MAX_DETAILED_STAGES) {
+    throw new Error("OpenSea detailed drop stages are malformed or unbounded.");
+  }
+  const optionalDecimal = (value: unknown, label: string) => value === undefined || value === null ? null : decimal(value, label);
+  return {
+    collectionSlug,
+    collectionName: boundedText(raw.collection_name, 160),
+    chain: RMT_MINT_RADAR_PROVIDER_CHAIN,
+    collectionAddress: address,
+    dropType: boundedText(raw.drop_type, 100, true)!,
+    isMinting: raw.is_minting,
+    activeStage: stage(raw.active_stage),
+    nextStage: stage(raw.next_stage),
+    stages: raw.stages.map((item) => {
+      const parsed = stage(item);
+      if (!parsed) throw new Error("OpenSea detailed drop stage cannot be null.");
+      return parsed;
+    }),
+    totalSupply: optionalDecimal(raw.total_supply, "detailed drop total supply"),
+    maxSupply: optionalDecimal(raw.max_supply, "detailed drop maximum supply"),
+  } satisfies RmtMintRadarDetailedDrop;
+}
+
+export function unknownCcff00Access(
+  observedAt: string,
+  detail = "No independently established CCFF00 access evidence.",
+): RmtMintRadarCcff00Access {
+  return {
+    status: "UNKNOWN",
+    authority: "NONE",
+    stage: null,
+    holderMatches: { status: "NOT_CHECKED", matchingHolderCount: null, observedAt: null },
+    walletEligibility: { status: "NOT_CHECKED", observedAt: null },
+    evidence: [{ kind: "INCONCLUSIVE", source: "RMT_MINT_RADAR", observedAt, detail }],
+  };
+}
+
+export function evaluatePublishedAllowlistOverlap(input: {
+  allowlistAddresses: readonly string[] | null;
+  canonicalCcff00Owners: readonly string[] | null;
+  observedAt: string;
+  source: string;
+  merkleRootOnly?: boolean;
+  privateOrEncrypted?: boolean;
+}): RmtMintRadarCcff00Access {
+  if (input.merkleRootOnly || input.privateOrEncrypted || !input.allowlistAddresses || !input.canonicalCcff00Owners) {
+    return unknownCcff00Access(input.observedAt, input.merkleRootOnly
+      ? "A Merkle root does not disclose the wallet set and cannot establish holder overlap."
+      : "A bounded public allowlist and canonical current-owner set were not both available.");
+  }
+  const normalized = (values: readonly string[]) => new Set(values.flatMap((value) => (
+    isAddress(value, { strict: false }) ? [getAddress(value).toLowerCase()] : []
+  )));
+  const allowed = normalized(input.allowlistAddresses);
+  const owners = normalized(input.canonicalCcff00Owners);
+  const matches = [...allowed].filter((address) => owners.has(address)).length;
+  if (matches === 0) {
+    return {
+      ...unknownCcff00Access(input.observedAt, "A bounded public allowlist was compared with canonical current ownership; no overlap was detected."),
+      holderMatches: { status: "NONE", matchingHolderCount: 0, observedAt: input.observedAt },
+    };
+  }
+  return {
+    status: "HOLDER_MATCHES_DETECTED",
+    authority: "CANONICAL_CCFF00_OWNERSHIP_OVERLAP",
+    stage: null,
+    holderMatches: { status: "DETECTED", matchingHolderCount: matches, observedAt: input.observedAt },
+    walletEligibility: { status: "NOT_CHECKED", observedAt: null },
+    evidence: [{
+      kind: "PUBLISHED_ALLOWLIST_OVERLAP",
+      source: input.source,
+      observedAt: input.observedAt,
+      detail: `Detected ${matches} unique wallet match${matches === 1 ? "" : "es"}; address sets are not exposed.`,
+    }],
+  };
+}
+
+export function providerReportedCcff00Access(input: {
+  exactCollectionAddress: string | null;
+  observedAt: string;
+  source: string;
+}): RmtMintRadarCcff00Access {
+  if (!input.exactCollectionAddress || !isAddress(input.exactCollectionAddress, { strict: false })
+    || !isAddressEqual(getAddress(input.exactCollectionAddress), CCFF00_COLLECTION)) {
+    return unknownCcff00Access(input.observedAt, "Provider access evidence did not bind the exact CCFF00 collection.");
+  }
+  return {
+    status: "PROVIDER_REPORTED",
+    authority: "OPENSEA_REPORTED_ACCESS",
+    stage: null,
+    holderMatches: { status: "NOT_CHECKED", matchingHolderCount: null, observedAt: null },
+    walletEligibility: { status: "NOT_CHECKED", observedAt: null },
+    evidence: [{
+      kind: "PROVIDER_REPORTED_CCFF00_ACCESS",
+      source: input.source,
+      observedAt: input.observedAt,
+      detail: `Provider-reported access explicitly bound ${CCFF00_COLLECTION}; not independently proven.`,
+    }],
+  };
+}
+
 function unavailableContract(observedAt: string, status: RmtMintRadarContractStatus = "PROVIDER_ONLY"): RmtMintRadarContractEvidence {
   return {
     status,
@@ -277,6 +477,112 @@ function defaultClient(env: Partial<NodeJS.ProcessEnv>) {
       || env.ROBINHOOD_MAINNET_RPC_URL?.trim()
       || robinhoodChain.rpcUrls.default.http[0], { retryCount: 0, timeout: 5_000 }),
   });
+}
+
+export type ReviewedSeaDropDeployment = { address: Address; runtimeBytecodeHash: Hex };
+
+export function parseReviewedSeaDropDeployments(value: string | undefined): readonly ReviewedSeaDropDeployment[] {
+  if (!value?.trim()) return [];
+  const entries = value.split(",").map((item) => item.trim()).filter(Boolean);
+  if (entries.length > MAX_REVIEWED_SEADROP_DEPLOYMENTS) throw new Error("Too many reviewed SeaDrop deployments configured.");
+  return entries.map((entry) => {
+    const [rawAddress, rawHash, extra] = entry.split("@");
+    if (extra !== undefined || !rawAddress || !isAddress(rawAddress, { strict: false }) || !rawHash || !/^0x[0-9a-f]{64}$/i.test(rawHash)) {
+      throw new Error("Reviewed SeaDrop deployment must use address@runtimeBytecodeHash.");
+    }
+    return { address: getAddress(rawAddress), runtimeBytecodeHash: rawHash.toLowerCase() as Hex };
+  });
+}
+
+function bigintField(value: unknown, field: string) {
+  if (typeof value === "bigint" && value >= 0n) return value;
+  if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) return BigInt(value);
+  throw new TypeError(`SeaDrop ${field} response was malformed.`);
+}
+
+export async function verifyCcff00SeaDropGate(input: {
+  client: PublicClient;
+  dropCollection: Address;
+  providerStage: RmtMintRadarStage | null;
+  deployments: readonly ReviewedSeaDropDeployment[];
+  observedAt: string;
+}): Promise<RmtMintRadarCcff00Access> {
+  if (input.deployments.length === 0) {
+    return unknownCcff00Access(input.observedAt, "No Robinhood Chain SeaDrop deployment with a reviewed runtime hash is configured.");
+  }
+  let chainId: number;
+  try {
+    chainId = await input.client.getChainId();
+  } catch {
+    return unknownCcff00Access(input.observedAt, "Robinhood Chain RPC was unavailable while reading token-gate configuration.");
+  }
+  if (chainId !== RMT_MINT_RADAR_CHAIN_ID) {
+    return unknownCcff00Access(input.observedAt, "RPC chain identity did not match Robinhood Chain.");
+  }
+  for (const deployment of input.deployments) {
+    try {
+      const code = await input.client.getBytecode({ address: deployment.address });
+      if (!code || code === "0x" || keccak256(code).toLowerCase() !== deployment.runtimeBytecodeHash.toLowerCase()) continue;
+      const allowed = await input.client.readContract({
+        address: deployment.address,
+        abi: SEADROP_ABI,
+        functionName: "getTokenGatedAllowedTokens",
+        args: [input.dropCollection],
+      });
+      if (!Array.isArray(allowed) || !allowed.every((address) => typeof address === "string" && isAddress(address, { strict: false }))) {
+        throw new TypeError("SeaDrop token-gated allowed-token response was malformed.");
+      }
+      if (!allowed.some((address) => isAddressEqual(getAddress(address), CCFF00_COLLECTION))) continue;
+      const raw = await input.client.readContract({
+        address: deployment.address,
+        abi: SEADROP_ABI,
+        functionName: "getTokenGatedDrop",
+        args: [input.dropCollection, CCFF00_COLLECTION],
+      });
+      if (!record(raw)) throw new TypeError("SeaDrop token-gated stage response was malformed.");
+      const mintPrice = bigintField(raw.mintPrice, "mint price");
+      const maxPerWallet = bigintField(raw.maxTotalMintableByWallet, "wallet limit");
+      const startTime = bigintField(raw.startTime, "start time");
+      const endTime = bigintField(raw.endTime, "end time");
+      const dropStageIndex = bigintField(raw.dropStageIndex, "stage index");
+      const maxSupply = bigintField(raw.maxTokenSupplyForStage, "stage supply");
+      bigintField(raw.feeBps, "fee basis points");
+      if (typeof raw.restrictFeeRecipients !== "boolean") throw new TypeError("SeaDrop fee-recipient restriction response was malformed.");
+      if (startTime === 0n || endTime <= startTime || dropStageIndex === 0n || maxPerWallet === 0n || maxSupply === 0n) continue;
+      if (input.providerStage) {
+        const providerStart = BigInt(Math.trunc(Date.parse(input.providerStage.startTime) / 1_000));
+        const providerEnd = BigInt(Math.trunc(Date.parse(input.providerStage.endTime) / 1_000));
+        if (providerStart !== startTime || providerEnd !== endTime
+          || input.providerStage.nativePriceWei !== mintPrice.toString()
+          || input.providerStage.maxPerWallet !== maxPerWallet.toString()) continue;
+      }
+      return {
+        status: "VERIFIED_COMMUNITY_GATE",
+        authority: "ONCHAIN_SEADROP_CONFIGURATION",
+        stage: {
+          startTime: new Date(Number(startTime) * 1_000).toISOString(),
+          endTime: new Date(Number(endTime) * 1_000).toISOString(),
+          nativePriceWei: mintPrice.toString(),
+          maxPerWallet: maxPerWallet.toString(),
+          maxSupplyForStage: maxSupply.toString(),
+        },
+        holderMatches: { status: "NOT_CHECKED", matchingHolderCount: null, observedAt: null },
+        walletEligibility: { status: "NOT_CHECKED", observedAt: null },
+        evidence: [{
+          kind: "EXACT_CCFF00_TOKEN_GATE",
+          source: `SeaDrop ${deployment.address}`,
+          observedAt: input.observedAt,
+          detail: `Runtime hash pinned; drop ${input.dropCollection}; allowed NFT ${CCFF00_COLLECTION}; onchain stage ${dropStageIndex}.`,
+        }],
+      };
+    } catch (error) {
+      if (error instanceof TypeError) {
+        return unknownCcff00Access(input.observedAt, error.message);
+      }
+      return unknownCcff00Access(input.observedAt, "Robinhood Chain RPC was unavailable while reading token-gate configuration.");
+    }
+  }
+  return unknownCcff00Access(input.observedAt, "No reviewed SeaDrop deployment established an exact CCFF00 token gate for this drop.");
 }
 
 export async function verifyMintRadarContract(
@@ -385,19 +691,50 @@ async function boundedMap<T, U>(items: readonly T[], concurrency: number, map: (
 
 export async function buildRmtMintRadar(
   pages: { featured: unknown; upcoming: unknown; recentlyMinted: unknown },
-  options: Pick<RmtMintRadarReaderOptions, "now" | "verifyContract" | "readMintActivity" | "env"> = {},
+  options: Pick<RmtMintRadarReaderOptions, "now" | "verifyContract" | "readMintActivity" | "readDetailedDrop" | "readCcff00Access" | "env"> = {},
 ): Promise<RmtMintRadarResponse> {
   const now = (options.now ?? (() => new Date()))();
   const observedAt = now.toISOString();
   const client = options.verifyContract ? null : defaultClient(options.env ?? process.env);
   const verifyContract = options.verifyContract ?? ((address: Address, at: string) => verifyMintRadarContract(client!, address, at));
   const readActivity = options.readMintActivity ?? readSampledMintActivity;
-  const parsed = dedupe([
+  const parsedAll = dedupe([
     ...parseOpenSeaDrops(pages.featured, "featured", now),
     ...parseOpenSeaDrops(pages.upcoming, "upcoming", now),
     ...parseOpenSeaDrops(pages.recentlyMinted, "recently_minted", now),
   ]);
+  const time = (candidate: ParsedProviderCandidate | RmtMintRadarCandidate) => candidate.stage ? Date.parse(candidate.stage.startTime) : 0;
+  const parsed = [
+    ...parsedAll.filter((item) => item.state === "LIVE_NOW").sort((a, b) => time(a) - time(b)).slice(0, MAX_LIVE),
+    ...parsedAll.filter((item) => item.state === "UPCOMING").sort((a, b) => time(a) - time(b)).slice(0, MAX_UPCOMING),
+    ...parsedAll.filter((item) => item.state === "RECENTLY_MINTED").sort((a, b) => time(b) - time(a)).slice(0, MAX_RECENT),
+  ];
+  let deployments: readonly ReviewedSeaDropDeployment[] = [];
+  let accessClient: PublicClient | null = null;
+  if (!options.readCcff00Access) {
+    try {
+      deployments = parseReviewedSeaDropDeployments((options.env ?? process.env).NFT_MINT_RADAR_REVIEWED_SEADROP_DEPLOYMENTS);
+      if (deployments.length > 0) accessClient = client ?? defaultClient(options.env ?? process.env);
+    } catch {
+      deployments = [];
+    }
+  }
+  const readAccess = options.readCcff00Access ?? (async ({ candidate, detail, observedAt: at }) => (
+    candidate.collectionAddress && detail && accessClient
+      ? verifyCcff00SeaDropGate({ client: accessClient, dropCollection: candidate.collectionAddress, providerStage: detail.activeStage ?? detail.nextStage ?? candidate.stage, deployments, observedAt: at })
+      : unknownCcff00Access(at, detail
+        ? "No reviewed Robinhood Chain SeaDrop deployment is configured for independent access verification."
+        : "Detailed access evidence was not established for this candidate.")
+  ));
   const enriched = await boundedMap(parsed, 3, async (candidate): Promise<RmtMintRadarCandidate> => {
+    let detail: RmtMintRadarDetailedDrop | null = null;
+    if (options.readDetailedDrop && candidate.state !== "RECENTLY_MINTED") {
+      try {
+        detail = await options.readDetailedDrop(candidate);
+      } catch {
+        detail = null;
+      }
+    }
     const contractEvidence = candidate.collectionAddress
       ? await verifyContract(candidate.collectionAddress, observedAt)
       : unavailableContract(observedAt);
@@ -409,9 +746,9 @@ export async function buildRmtMintRadar(
       ...(contractEvidence.status === "ONCHAIN_VERIFIED_CONTRACT" ? ["ONCHAIN_VERIFIED_CONTRACT" as const] : []),
       ...(mintActivity.status === "ONCHAIN_MINT_ACTIVITY" ? ["ONCHAIN_MINT_ACTIVITY" as const] : []),
     ];
-    return { ...candidate, contractEvidence, mintActivity, evidence };
+    const ccff00Access = await readAccess({ candidate, detail, observedAt });
+    return { ...candidate, contractEvidence, mintActivity, ccff00Access, evidence };
   });
-  const time = (candidate: RmtMintRadarCandidate) => candidate.stage ? Date.parse(candidate.stage.startTime) : 0;
   const live = enriched.filter((item) => item.state === "LIVE_NOW")
     .sort((a, b) => Number(Boolean(b.mintActivity.status === "ONCHAIN_MINT_ACTIVITY")) - Number(Boolean(a.mintActivity.status === "ONCHAIN_MINT_ACTIVITY")) || time(a) - time(b))
     .slice(0, MAX_LIVE);
@@ -463,6 +800,26 @@ async function readProviderPage(fetchImpl: FetchLike, config: { apiKey: string; 
   return JSON.parse(body) as unknown;
 }
 
+async function readProviderDetail(
+  fetchImpl: FetchLike,
+  config: { apiKey: string; origin: string },
+  candidate: ParsedProviderCandidate,
+  timeoutMs: number,
+) {
+  const url = new URL(`/api/v2/drops/${encodeURIComponent(candidate.providerCollectionSlug)}`, config.origin);
+  const response = await fetchImpl(url, {
+    headers: { accept: "application/json", "x-api-key": config.apiKey },
+    cache: "no-store",
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!response.ok) throw new Error(`OpenSea detailed drop read failed with HTTP ${response.status}.`);
+  const announced = Number(response.headers.get("content-length"));
+  if (Number.isFinite(announced) && announced > MAX_RESPONSE_BYTES) throw new Error("OpenSea detailed drop response exceeded its size limit.");
+  const body = await response.text();
+  if (body.length > MAX_RESPONSE_BYTES) throw new Error("OpenSea detailed drop response exceeded its size limit.");
+  return parseOpenSeaDetailedDrop(JSON.parse(body) as unknown, candidate);
+}
+
 function unavailableResponse(status: "STALE" | "UNAVAILABLE", prior: RmtMintRadarResponse | null = null): RmtMintRadarResponse {
   return prior ? {
     ...prior,
@@ -494,7 +851,15 @@ export async function readRmtNftMintRadar(options: RmtMintRadarReaderOptions = {
       readProviderPage(fetchImpl, config, "upcoming", timeoutMs),
       readProviderPage(fetchImpl, config, "recently_minted", timeoutMs),
     ]);
-    const response = await buildRmtMintRadar({ featured, upcoming, recentlyMinted }, options);
+    let detailReads = 0;
+    const response = await buildRmtMintRadar({ featured, upcoming, recentlyMinted }, {
+      ...options,
+      readDetailedDrop: options.readDetailedDrop ?? (async (candidate) => {
+        if (detailReads >= MAX_DETAILED_DROPS) throw new Error("Detailed drop read bound exceeded.");
+        detailReads += 1;
+        return readProviderDetail(fetchImpl, config, candidate, timeoutMs);
+      }),
+    });
     cache.current = { response, fetchedAtMs: nowMs };
     return response;
   } catch {

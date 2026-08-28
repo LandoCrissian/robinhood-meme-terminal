@@ -147,7 +147,7 @@ export function defineRmtCuratedNftProject(input: RmtCuratedNftProject): RmtCura
   };
 }
 
-const CCFF00_COLLECTION = getAddress("0x505A22Ffed8d37ebE580FfD98d2Cdb0021189146");
+export const CCFF00_COLLECTION = getAddress("0x505A22Ffed8d37ebE580FfD98d2Cdb0021189146");
 
 export const RMT_CURATED_NFT_PROJECTS = [
   defineRmtCuratedNftProject({

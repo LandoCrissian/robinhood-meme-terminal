@@ -66,7 +66,13 @@ function feedMessage(status: RmtMintRadarFeedStatus, asOf: string | null) {
 function RadarCard({ candidate }: { candidate: RmtMintRadarCandidate }) {
   const onchain = candidate.contractEvidence.status === "ONCHAIN_VERIFIED_CONTRACT";
   const activity = candidate.mintActivity.status === "ONCHAIN_MINT_ACTIVITY";
-  return <article className={styles.radarCard} data-radar-candidate data-radar-admission={candidate.rmtAdmission} data-radar-chain={candidate.chainId}>
+  const access = candidate.ccff00Access;
+  const accessLabel = access.status === "VERIFIED_COMMUNITY_GATE" ? "#CCFF00 ACCESS · VERIFIED"
+    : access.status === "HOLDER_MATCHES_DETECTED" ? `CCFF00 HOLDERS DETECTED · ${access.holderMatches.matchingHolderCount ?? 0}`
+      : access.status === "PROVIDER_REPORTED" ? "CCFF00 ACCESS · REPORTED"
+        : access.status === "CONNECTED_WALLET_ELIGIBLE" ? "CCFF00 ACCESS · ELIGIBLE"
+          : null;
+  return <article className={styles.radarCard} data-radar-candidate data-radar-admission={candidate.rmtAdmission} data-radar-chain={candidate.chainId} data-ccff00-access={access.status}>
     <div className={styles.radarIdentity}>
       <span>{candidate.state === "LIVE_NOW" ? "LIVE NOW" : candidate.state === "UPCOMING" ? "UPCOMING" : "RECENTLY MINTED"}</span>
       <h3>{candidate.collectionName}</h3>
@@ -80,6 +86,7 @@ function RadarCard({ candidate }: { candidate: RmtMintRadarCandidate }) {
       <span>Schedule · OpenSea</span>
       {onchain ? <span>Contract · Onchain</span> : null}
       {activity ? <span>Mint Activity · Onchain</span> : null}
+      {accessLabel ? <span className={styles.ccff00Access}>{accessLabel}</span> : null}
     </div>
     <div className={styles.radarFoot}>
       <code title={candidate.collectionAddress ?? undefined}>{candidate.collectionAddress ? short(candidate.collectionAddress) : "Contract not established"}</code>

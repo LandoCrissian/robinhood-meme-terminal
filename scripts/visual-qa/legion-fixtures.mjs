@@ -6,6 +6,10 @@ export const FIXTURE_BUYER = "0x2222222222222222222222222222222222222222";
 export const FIXTURE_TBA = "0x3333333333333333333333333333333333333333";
 export const FIXTURE_HASH = `0x${"1".repeat(64)}`;
 export const SEAPORT_1_6 = "0x0000000000000068F116a894984e2DB1123eB395";
+export const RADAR_DROP_COLLECTION = "0x4444444444444444444444444444444444444444";
+export const RADAR_SEADROP = "0x5555555555555555555555555555555555555555";
+export const RADAR_SEADROP_CODE = "0x60016000";
+export const RADAR_SEADROP_RUNTIME_HASH = "0xcf61a6eb3b9b89e75f1dadf3dcd16509616896cb50eac765a68fa27bbbc6de82";
 
 const WETH = "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -42,13 +46,30 @@ export const NFT_MINT_RADAR_PAGES = {
     active_stage: radarStage("live", "2026-08-01T00:00:00.000Z", "2026-09-01T00:00:00.000Z"),
   })], next: null },
   upcoming: { drops: [
-    radarDrop("legion-upcoming-one", "Robinhood Relics", { next_stage: radarStage("upcoming-one", "2026-09-15T16:00:00.000Z", "2026-09-15T18:00:00.000Z", "Allowlist") }),
+    radarDrop("legion-upcoming-one", "Robinhood Relics", { contract_address: RADAR_DROP_COLLECTION, next_stage: radarStage("upcoming-one", "2026-09-15T16:00:00.000Z", "2026-09-15T18:00:00.000Z", "CCFF00 Gate") }),
     radarDrop("legion-upcoming-two", "Terminal Studies", { next_stage: radarStage("upcoming-two", "2026-09-20T20:00:00.000Z", "2026-09-20T23:00:00.000Z") }),
   ], next: null },
   recently_minted: { drops: [radarDrop("legion-recent", "Chain Impressions", {
     active_stage: radarStage("recent", "2026-08-15T09:00:00.000Z", "2026-08-15T10:00:00.000Z"),
   })], next: null },
 };
+
+export const NFT_MINT_RADAR_DETAILS = Object.fromEntries(Object.values(NFT_MINT_RADAR_PAGES).flatMap(({ drops }) => drops).map((drop) => {
+  const stages = [drop.active_stage, drop.next_stage].filter(Boolean);
+  return [drop.collection_slug, {
+    collection_slug: drop.collection_slug,
+    collection_name: drop.collection_name,
+    chain: drop.chain,
+    contract_address: drop.contract_address,
+    drop_type: drop.drop_type,
+    is_minting: drop.is_minting,
+    active_stage: drop.active_stage,
+    next_stage: drop.next_stage,
+    stages,
+    total_supply: "24",
+    max_supply: "1000",
+  }];
+}));
 
 const definitions = [
   { name: "STONKBROKER", symbol: "STONKBROKER", token: "0xe934e36a439c94017b64a3fece66af12099abf50", sourceId: "uniswap-v4", version: 4, poolKey: "0xd33c8fd38b06e989cdbd4dffdefab71c4bdd415b24964c8d69e38ff35b068f92", poolAddress: null, token0: ZERO_ADDRESS, token1: "0xe934e36a439c94017b64a3fece66af12099abf50", fee: 10_000, tickSpacing: 200, hooks: ZERO_ADDRESS, transactionHash: "0xd5c74c05e885ec3feed94ccbbc465ab91d687d7660692297011e49676f50e719", blockNumber: "12670814", blockHash: "0x8105c0eb7bcb8790e8ceee10dc56676148b648a7d6270463e04755429190bab9" },

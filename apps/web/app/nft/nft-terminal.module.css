@@ -272,6 +272,13 @@
   font: 690 7px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
 }
 
+.radarEvidence .ccff00Access {
+  border-color: #93e88e;
+  color: #93e88e;
+  background: rgba(147, 232, 142, .09);
+  font-weight: 780;
+}
+
 .radarFoot {
   display: flex;
   align-items: center;
