@@ -178,6 +178,32 @@ export type RmtNftMintProposal = {
   value: bigint;
 };
 
+export type RmtNftVerifiedMintPlan = {
+  schemaVersion: typeof RMT_NFT_MINT_PREFLIGHT_SCHEMA_VERSION;
+  chainId: typeof RMT_MINT_RADAR_CHAIN_ID;
+  status: "EXECUTION_PLAN_READY";
+  candidateId: string;
+  providerCollectionSlug: string;
+  collection: Address;
+  wallet: Address;
+  quantity: string;
+  method: Extract<RmtNftMintPreflightMethod, "MINT_PUBLIC" | "MINT_ALLOWED_TOKEN_HOLDER">;
+  target: Address;
+  calldata: Hex;
+  calldataHash: Hex;
+  value: string;
+  stage: NonNullable<RmtNftMintPreflightReport["stage"]>;
+  ccff00Access: RmtNftMintPreflightReport["ccff00Access"];
+  simulationBlockNumber: string;
+  gasEstimate: string | null;
+  digest: Hex;
+  checkedAt: string;
+  expiresAt: string;
+  rmtFeeWei: "0";
+  rmtAdmission: "NOT_EVALUATED";
+  projectTokenRelationship: null;
+};
+
 export type RmtNftMintPreflightReport = {
   schemaVersion: typeof RMT_NFT_MINT_PREFLIGHT_SCHEMA_VERSION;
   chainId: typeof RMT_MINT_RADAR_CHAIN_ID;
@@ -233,7 +259,7 @@ export type RmtNftMintPreflightReport = {
 };
 
 type FetchLike = (input: string | URL, init?: RequestInit) => Promise<Response>;
-type DecodedMint = {
+export type DecodedSeaDropMint = {
   method: RmtNftMintPreflightMethod;
   collection: Address | null;
   feeRecipient: Address | null;
@@ -263,6 +289,8 @@ export type RmtNftMintPreflightOptions = {
   deployments?: readonly ReviewedSeaDropDeployment[];
   now?: () => Date;
   proposal?: RmtNftMintProposal;
+  /** Internal one-shot sink used by the execution-plan endpoint after the exact proposal succeeds. */
+  verifiedPlanSink?: (plan: RmtNftVerifiedMintPlan) => void;
 };
 
 function record(value: unknown): value is Record<string, unknown> {
@@ -385,7 +413,7 @@ export async function readOpenSeaMintProposal(input: {
   }
 }
 
-export function decodeSeaDropMint(calldata: Hex): DecodedMint {
+export function decodeSeaDropMint(calldata: Hex): DecodedSeaDropMint {
   let decoded: ReturnType<typeof decodeFunctionData<typeof RMT_SEADROP_PREFLIGHT_ABI>>;
   try {
     decoded = decodeFunctionData({ abi: RMT_SEADROP_PREFLIGHT_ABI, data: calldata });
@@ -496,7 +524,7 @@ function canonicalJson(value: unknown): string {
   throw new TypeError("Preflight digest value was not JSON-safe.");
 }
 
-function deterministicDigest(value: Record<string, unknown>) {
+export function computeRmtNftMintPreflightDigest(value: Record<string, unknown>) {
   const json = canonicalJson(value);
   return `0x${createHash("sha256").update(json).digest("hex")}` as Hex;
 }
@@ -550,7 +578,7 @@ export async function runRmtNftMintPreflight(options: RmtNftMintPreflightOptions
     return fail(base, "EVIDENCE_UNAVAILABLE", "Robinhood Chain target evidence could not be established.", proposalPatch);
   }
 
-  let decoded: DecodedMint;
+  let decoded: DecodedSeaDropMint;
   try {
     decoded = decodeSeaDropMint(proposal.calldata);
   } catch {
@@ -692,7 +720,7 @@ export async function runRmtNftMintPreflight(options: RmtNftMintPreflightOptions
   } catch {
     gasEstimate = null;
   }
-  const digest = deterministicDigest({
+  const digest = computeRmtNftMintPreflightDigest({
     schemaVersion: RMT_NFT_MINT_PREFLIGHT_SCHEMA_VERSION,
     chainId: RMT_MINT_RADAR_CHAIN_ID,
     candidateId: candidate.candidateId,
@@ -708,6 +736,32 @@ export async function runRmtNftMintPreflight(options: RmtNftMintPreflightOptions
     simulationBlockNumber: blockNumber.toString(),
     checkedAt,
   });
+  const plan: RmtNftVerifiedMintPlan = {
+    schemaVersion: RMT_NFT_MINT_PREFLIGHT_SCHEMA_VERSION,
+    chainId: RMT_MINT_RADAR_CHAIN_ID,
+    status: "EXECUTION_PLAN_READY",
+    candidateId: candidate.candidateId,
+    providerCollectionSlug: candidate.providerCollectionSlug,
+    collection: candidate.collectionAddress,
+    wallet,
+    quantity: quantity.toString(),
+    method: decoded.method,
+    target: proposal.target,
+    calldata: proposal.calldata,
+    calldataHash: keccak256(proposal.calldata),
+    value: proposal.value.toString(),
+    stage: stageReport(stage),
+    ccff00Access,
+    simulationBlockNumber: blockNumber.toString(),
+    gasEstimate,
+    digest,
+    checkedAt,
+    expiresAt: new Date(Date.parse(checkedAt) + RMT_NFT_MINT_PREFLIGHT_MAX_AGE_MS).toISOString(),
+    rmtFeeWei: "0",
+    rmtAdmission: "NOT_EVALUATED",
+    projectTokenRelationship: null,
+  };
+  options.verifiedPlanSink?.(plan);
   return {
     ...base,
     ...fullPatch,
@@ -719,4 +773,12 @@ export async function runRmtNftMintPreflight(options: RmtNftMintPreflightOptions
     simulation: { status: "SUCCEEDED", blockNumber: blockNumber.toString(), gasEstimate, reason: null },
     digest,
   };
+}
+
+export async function runRmtNftMintPreflightWithPlan(
+  options: Omit<RmtNftMintPreflightOptions, "verifiedPlanSink">,
+): Promise<{ report: RmtNftMintPreflightReport; plan: RmtNftVerifiedMintPlan | null }> {
+  let plan: RmtNftVerifiedMintPlan | null = null;
+  const report = await runRmtNftMintPreflight({ ...options, verifiedPlanSink: (verified) => { plan = verified; } });
+  return { report, plan };
 }

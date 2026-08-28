@@ -13,6 +13,7 @@ import {
   type RmtNftTerminalProjectCard,
 } from "../../lib/server/nft-terminal-catalog";
 import { NftItemMedia } from "./_components/nft-item-media";
+import { NftMintExecutionRecovery } from "./_components/nft-mint-execution-recovery";
 import { NftMintReadiness } from "./_components/nft-mint-readiness";
 import styles from "./nft-terminal.module.css";
 
@@ -186,6 +187,8 @@ export default async function NftTerminalCatalogPage({ searchParams }: {
     </nav>
 
     <p className={styles.scopeNote}>Discover Robinhood Chain mints, then enter RMT-curated Project Markets with canonical ownership and marketplace evidence.</p>
+
+    <NftMintExecutionRecovery />
 
     {view === "active" ? <>
       <div className={styles.catalogFlow}>
