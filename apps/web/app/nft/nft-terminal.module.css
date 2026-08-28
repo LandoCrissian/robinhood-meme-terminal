@@ -97,6 +97,223 @@
   font-size: 11px;
 }
 
+.radarHeading,
+.activeHeading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 13px 4px 9px;
+  border-bottom: 1px solid #28342c;
+}
+
+.radarHeading {
+  grid-column: 1 / -1;
+}
+
+.radarHeading span,
+.activeHeading span {
+  color: #93e88e;
+  font: 750 8px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: .12em;
+}
+
+.radarHeading h2,
+.activeHeading h2 {
+  margin: 5px 0 0;
+  font-size: 20px;
+  letter-spacing: -.035em;
+}
+
+.radarHeading p,
+.activeHeading p {
+  margin: 0;
+  color: #6f7b73;
+  font: 9px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
+  text-align: right;
+}
+
+.catalogFlow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0 10px;
+}
+
+.liveRadar { order: 1; }
+.upcomingRadar { order: 2; }
+.recentRadar { order: 3; }
+.activeCollections {
+  grid-column: 1 / -1;
+  order: 4;
+}
+
+.radarGroup {
+  min-width: 0;
+  padding: 12px 0 2px;
+}
+
+.radarGroup > header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.radarGroup > header h2 {
+  margin: 0;
+  color: #a5b0a8;
+  font: 760 10px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.radarGroup > header span {
+  display: grid;
+  min-width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 1px solid #28342c;
+  color: #6f7b73;
+  font: 700 8px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.radarRail {
+  display: grid;
+  grid-auto-columns: minmax(250px, 100%);
+  grid-auto-flow: column;
+  gap: 8px;
+  max-width: 100%;
+  padding: 1px 1px 7px;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-color: #35433a transparent;
+  scrollbar-width: thin;
+}
+
+.radarCard {
+  position: relative;
+  display: grid;
+  min-height: 0;
+  align-content: start;
+  gap: 6px;
+  padding: 13px 14px 10px;
+  border: 1px solid #28342c;
+  background: linear-gradient(135deg, rgba(14, 21, 16, .92), rgba(8, 12, 9, .72));
+}
+
+.radarCard::before {
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 34px;
+  height: 1px;
+  content: "";
+  background: #93e88e;
+}
+
+.radarIdentity span {
+  color: #93e88e;
+  font: 760 8px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: .1em;
+}
+
+.radarIdentity h3 {
+  margin: 5px 0 3px;
+  font-size: 16px;
+  line-height: 1.1;
+  letter-spacing: -.025em;
+}
+
+.radarIdentity p,
+.radarEmpty {
+  margin: 0;
+  color: #6f7b73;
+  font-size: 9px;
+}
+
+.radarEmpty {
+  min-height: 42px;
+  padding: 14px;
+  border: 1px dashed #28342c;
+}
+
+.radarFacts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.radarFacts dt {
+  color: #6f7b73;
+  font: 700 7px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.radarFacts dd {
+  margin: 3px 0 0;
+  color: #f0f5f1;
+  font-size: 10px;
+  font-weight: 720;
+}
+
+.radarEvidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.radarEvidence span {
+  padding: 3px 5px;
+  border: 1px solid #314038;
+  color: #a5b0a8;
+  background: rgba(147, 232, 142, .035);
+  font: 690 7px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.radarEvidence .ccff00Access {
+  border-color: #93e88e;
+  color: #93e88e;
+  background: rgba(147, 232, 142, .09);
+  font-weight: 780;
+}
+
+.radarFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.radarFoot code,
+.discoveryOnly {
+  color: #6f7b73;
+  font: 7px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+.radarFoot a {
+  display: inline-grid;
+  min-height: 32px;
+  place-items: center;
+  color: #93e88e;
+  font: 720 8px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+  text-decoration: none;
+}
+
+.discoveryOnly {
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.activeCollections {
+  margin-top: 18px;
+}
+
+.activeHeading {
+  margin-bottom: 2px;
+}
+
 .projectGrid,
 .collectionList {
   display: grid;
@@ -412,6 +629,39 @@
 
   .scopeNote {
     margin-bottom: 15px;
+  }
+
+  .radarHeading,
+  .activeHeading {
+    align-items: flex-start;
+    padding-inline: 2px;
+  }
+
+  .radarHeading p,
+  .activeHeading p {
+    max-width: 170px;
+  }
+
+  .radarRail {
+    grid-auto-columns: minmax(248px, 82vw);
+    margin-inline: -12px;
+    padding-inline: 12px;
+  }
+
+  .radarCard {
+    min-height: 0;
+  }
+
+  .catalogFlow {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .recentRadar { order: 4; }
+  .activeCollections { order: 3; }
+
+  .activeCollections {
+    margin-top: 15px;
   }
 
   .projectCard {
