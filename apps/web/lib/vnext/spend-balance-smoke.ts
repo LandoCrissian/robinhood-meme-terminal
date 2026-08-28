@@ -44,6 +44,7 @@ const candidates = walletAssetCandidates([{
   priceUsd: 1,
   liquidityUsd: 1,
   marketCapUsd: 1,
+  fdvUsd: 1,
   volume5m: null,
   volume1h: null,
   volume24h: 1,

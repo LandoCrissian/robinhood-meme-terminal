@@ -33,7 +33,7 @@ export default async function NftItemPage({ params }: { params: Promise<{ projec
   const openSeaItem = marketplace ? `https://opensea.io/assets/robinhood/${item.collectionAddress}/${item.tokenId}` : null;
 
   return <main className={styles.page}>
-    <nav className={itemStyles.breadcrumb} aria-label="NFT Terminal breadcrumb"><Link href="/nft">NFT Terminal</Link><span aria-hidden="true"> → </span><Link href={`/nft/${model.project.projectId}`}>{model.project.displayName} Project Market</Link><span aria-hidden="true"> → Token #{item.tokenId}</span></nav>
+    <nav className={itemStyles.breadcrumb} aria-label="NFT Terminal breadcrumb"><Link href="/nft">NFTs</Link><span aria-hidden="true"> → </span><Link href={`/nft/${model.project.projectId}`}>{model.project.displayName} Project Market</Link><span aria-hidden="true"> → Token #{item.tokenId}</span></nav>
     <section className={itemStyles.itemWorkspace} data-nft-item-workspace>
       <NftItemMedia metadata={item.metadata} alt={`CCFF00 token ${item.tokenId}`} className={itemStyles.itemMedia} />
       <div className={itemStyles.itemDetails}>

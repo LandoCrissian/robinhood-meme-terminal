@@ -167,7 +167,7 @@ export function VNextMarketChart({ token, pair, symbol }: {
     <section className="vnChart" aria-labelledby="vn-chart-title">
       <header className="vnChartHeader">
         <div className="vnChartHeadline">
-          <span className="vnEyebrow">Verified pool chart</span>
+          <span className="vnEyebrow">Price Chart</span>
           <div><strong id="vn-chart-title">{formatPrice(hovered?.close ?? latest)}</strong><span className={positive ? "vnPositive" : "vnNegative"}>{positive ? "+" : "−"}{Math.abs(change).toFixed(2)}%</span></div>
           <small>{hovered ? timeLabel(hovered.timestamp, range) : `${symbol} · ${range}`} · {status === "stale" ? "Last loaded snapshot" : "GeckoTerminal OHLCV"}</small>
         </div>

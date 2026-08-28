@@ -66,7 +66,7 @@ export const TOKEN_MARKETS = definitions.map((definition, index) => {
     provenance: "legion-deterministic-fixture",
     priceUsd,
     liquidityUsd: 90_000 + index * 31_000,
-    marketCapUsd: 620_000 + index * 290_000,
+    marketCapUsd: index === 6 ? null : 620_000 + index * 290_000,
     fdvUsd: 710_000 + index * 330_000,
     volume24h: 410_000 + index * 97_000,
     priceChange24h: change,

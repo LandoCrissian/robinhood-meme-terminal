@@ -28,6 +28,14 @@ export function formatTerminalCompactUsd(value: number | null) {
   return COMPACT_USD_FORMAT.format(value);
 }
 
+export function terminalValuation(marketCapUsd: number | null, fdvUsd: number | null) {
+  return marketCapUsd !== null
+    ? { label: "Market Cap", shortLabel: "MCap", value: marketCapUsd }
+    : fdvUsd !== null
+      ? { label: "FDV", shortLabel: "FDV", value: fdvUsd }
+      : { label: "Valuation", shortLabel: "Value", value: null };
+}
+
 export function formatTerminalPercent(value: number | null) {
   if (value === null) return "Unavailable";
   if (!Number.isFinite(value)) return "—";

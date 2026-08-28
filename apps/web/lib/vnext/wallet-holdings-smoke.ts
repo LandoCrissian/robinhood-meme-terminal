@@ -73,6 +73,7 @@ const markets: VNextDirectoryMarket[] = [{
   priceUsd: 3,
   liquidityUsd: 10_000,
   marketCapUsd: 100_000,
+  fdvUsd: 100_000,
   volume5m: null,
   volume1h: null,
   volume24h: 5_000,

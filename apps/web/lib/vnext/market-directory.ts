@@ -34,6 +34,7 @@ export type VNextDirectoryMarket = Omit<Pick<ExternalMarket,
   | "priceUsd"
   | "liquidityUsd"
   | "marketCapUsd"
+  | "fdvUsd"
   | "volume24h"
   | "priceChange24h"
   | "ageMinutes"
@@ -45,10 +46,11 @@ export type VNextDirectoryMarket = Omit<Pick<ExternalMarket,
   | "verifiedMarkets"
   | "project"
   | "launchpadEvidence"
->, "priceUsd" | "liquidityUsd" | "marketCapUsd" | "volume24h" | "priceChange24h" | "signal"> & {
+>, "priceUsd" | "liquidityUsd" | "marketCapUsd" | "fdvUsd" | "volume24h" | "priceChange24h" | "signal"> & {
   priceUsd: VNextDirectoryMetric;
   liquidityUsd: VNextDirectoryMetric;
   marketCapUsd: VNextDirectoryMetric;
+  fdvUsd: VNextDirectoryMetric;
   volume5m: VNextDirectoryMetric;
   volume1h: VNextDirectoryMetric;
   volume24h: VNextDirectoryMetric;
@@ -182,6 +184,7 @@ export function directoryMarketsFromCanonicalPools(
         priceUsd: null,
         liquidityUsd: null,
         marketCapUsd: null,
+        fdvUsd: null,
         volume5m: null,
         volume1h: null,
         volume24h: null,
@@ -273,6 +276,7 @@ export function parseVNextCanonicalDirectoryResponse(value: unknown): VNextCanon
       priceUsd: null,
       liquidityUsd: null,
       marketCapUsd: null,
+      fdvUsd: null,
       volume5m: null,
       volume1h: null,
       volume24h: null,
@@ -374,6 +378,7 @@ export function normalizeDirectoryMarkets(payload: Pick<ExternalMarketResponse, 
       priceUsd: launchpadOnlyMetricsUnavailable ? null : nonNegative(market.priceUsd),
       liquidityUsd: launchpadOnlyMetricsUnavailable ? null : nonNegative(market.liquidityUsd),
       marketCapUsd: launchpadOnlyMetricsUnavailable ? null : nonNegative(market.marketCapUsd),
+      fdvUsd: launchpadOnlyMetricsUnavailable ? null : nonNegative(market.fdvUsd),
       volume5m: nonNegative(directoryMarket.volume5m),
       volume1h: nonNegative(directoryMarket.volume1h),
       volume24h: launchpadOnlyMetricsUnavailable ? null : nonNegative(market.volume24h),
@@ -711,6 +716,7 @@ export function directoryMarketFromUniversalSearchResult(
     priceUsd: null,
     liquidityUsd: null,
     marketCapUsd: null,
+    fdvUsd: null,
     volume5m: null,
     volume1h: null,
     volume24h: null,
@@ -770,6 +776,7 @@ export function mergeVNextDirectoryAndSearchMarkets(
       priceUsd: existing.priceUsd ?? market.priceUsd,
       liquidityUsd: existing.liquidityUsd ?? market.liquidityUsd,
       marketCapUsd: existing.marketCapUsd ?? market.marketCapUsd,
+      fdvUsd: existing.fdvUsd ?? market.fdvUsd,
       volume5m: existing.volume5m ?? market.volume5m,
       volume1h: existing.volume1h ?? market.volume1h,
       volume24h: existing.volume24h ?? market.volume24h,
@@ -895,6 +902,7 @@ export function directoryMarketFromVerifiedIdentity(
     priceUsd: null,
     liquidityUsd: null,
     marketCapUsd: null,
+    fdvUsd: null,
     volume5m: null,
     volume1h: null,
     volume24h: null,

@@ -26,6 +26,9 @@ let heroClippingViolations = 0;
 let communityOverlapViolations = 0;
 let mobileSignalHeightViolations = 0;
 let registrationCornerRoleViolations = 0;
+let crossSurfaceNavigationViolations = 0;
+let portfolioReturnPathViolations = 0;
+let valuationTruthViolations = 0;
 
 await mkdir(output, { recursive: true });
 
@@ -157,6 +160,18 @@ async function legacyUxGuards(page, state, { focused = false, mobileScanner = fa
   if (mobileScanner && result.signalCardHeight !== null) check(result.signalCardHeight <= 140, state, "Mobile signal card exceeds the 140 CSS px bound.", { height: result.signalCardHeight });
 }
 
+async function terminalNavigation(page, state, activeLabel) {
+  const nav = page.locator('nav[aria-label="Terminal navigation"]:visible');
+  await nav.waitFor();
+  const labels = (await nav.locator("a,button").allTextContents()).map((label) => label.trim());
+  const primary = labels.slice(0, 4);
+  const aligned = JSON.stringify(primary) === JSON.stringify(["Markets", "NFTs", "Portfolio", "Distribution"]);
+  const active = await nav.locator('[aria-current="page"]').allTextContents();
+  crossSurfaceNavigationViolations += Number(!aligned) + Number(!active.includes(activeLabel));
+  check(aligned, state, "Global market navigation is not aligned across RMT surfaces.", { primary });
+  check(active.includes(activeLabel), state, `${activeLabel} is not the unmistakable active product section.`, { active });
+}
+
 async function capture(page, name) {
   const file = path.join(output, `${name}.png`);
   let previous = null;
@@ -183,6 +198,7 @@ async function tokenLane(browser, viewport, platform) {
   await page.goto(base, { waitUntil: "domcontentloaded", timeout: 60_000 });
   await page.locator(platform === "mobile" ? ".rmtMobileTerminal" : ".rmtDesktopTerminal").waitFor();
   await stabilize(page);
+  await terminalNavigation(page, `token-scanner-${platform}`, "Markets");
   const categoryButtons = page.locator(".rmtMarketViews button");
   const labels = await categoryButtons.locator("span").allTextContents();
   check(labels[0] === "Active" && labels[1] === "Trending", `token-scanner-${platform}`, "ACTIVE must precede TRENDING.", { labels });
@@ -197,6 +213,10 @@ async function tokenLane(browser, viewport, platform) {
   const rowText = await rows.allTextContents();
   for (const market of TOKEN_MARKETS) check(rowText.some((text) => text.includes(market.symbol)), `token-scanner-${platform}`, `Missing curated market ${market.symbol}.`);
   check(!rowText.some((text) => /Unavailable/i.test(text)), `token-scanner-${platform}`, "An admitted fixture row became Unavailable.");
+  const hopium = rowText.find((text) => text.includes("HOPIUM")) ?? "";
+  const fdvTruthful = /FDV\s+\$/i.test(hopium) && !/MCap\s+\$/i.test(hopium);
+  valuationTruthViolations += Number(!fdvTruthful);
+  check(fdvTruthful, `token-scanner-${platform}`, "FDV-only fixture market is not labeled as FDV.", { row: hopium });
   await legacyUxGuards(page, `token-scanner-${platform}`, { mobileScanner: platform === "mobile" });
   await overflow(page, `token-scanner-${platform}`);
   await capture(page, `token-scanner-${platform}-${viewport.width}x${viewport.height}`);
@@ -205,7 +225,10 @@ async function tokenLane(browser, viewport, platform) {
   await pons.click();
   await page.locator(platform === "mobile" ? ".rmtMobileAssetView" : ".rmtDesktopAssetView").waitFor();
   await page.locator(".vnChartFrame").waitFor();
+  await terminalNavigation(page, `token-asset-${platform}`, "Markets");
   check(await page.locator(".vnChartFrame").isVisible(), `token-asset-${platform}`, "Price/chart region is absent.");
+  check(await page.getByText("Price Chart", { exact: true }).isVisible(), `token-asset-${platform}`, "Trader-facing Price Chart label is absent.");
+  check(await page.getByText("Verified pool chart", { exact: true }).count() === 0, `token-asset-${platform}`, "Internal chart terminology dominates the trader-facing hierarchy.");
   if (platform === "desktop") check(await page.locator(".vnTradePanel").isVisible(), "token-asset-desktop", "Desktop trade rail is absent.");
   else check(await page.locator(".rmtMobileTradeDock").isVisible(), "token-asset-mobile", "Mobile sticky trade/quote control is absent.");
   const body = await page.locator("body").innerText();
@@ -213,6 +236,16 @@ async function tokenLane(browser, viewport, platform) {
   await legacyUxGuards(page, `token-asset-${platform}`, { focused: true });
   await overflow(page, `token-asset-${platform}`);
   await capture(page, `token-asset-${platform}-${viewport.width}x${viewport.height}`);
+
+  await page.locator('[data-terminal-nav="portfolio"]:visible').click();
+  await page.locator(".rmtPortfolioSurface").waitFor();
+  const portfolioHeading = await page.getByRole("heading", { name: "Portfolio", exact: true }).isVisible();
+  const portfolioActive = await page.locator('[data-terminal-nav="portfolio"]:visible').getAttribute("aria-current") === "page";
+  portfolioReturnPathViolations += Number(!portfolioHeading) + Number(!portfolioActive);
+  check(portfolioHeading && portfolioActive, `portfolio-${platform}`, "Portfolio is not a coherent ownership return point.", { portfolioHeading, portfolioActive });
+  await overflow(page, `portfolio-${platform}`);
+  await page.locator('[data-terminal-nav="markets"]:visible').click();
+  await page.locator(platform === "mobile" ? ".rmtMobileMarketsView" : ".rmtDesktopMarketsView").waitFor();
   await context.close();
 }
 
@@ -240,6 +273,15 @@ async function nftPage(browser, viewport, platform, route, state) {
   await page.goto(`${base}${route}`, { waitUntil: "networkidle", timeout: 60_000 });
   await page.locator('[data-nft-terminal-shell="v1"]').waitFor();
   await stabilize(page);
+  const nftNav = page.locator('nav[aria-label="RMT Terminal navigation"]:visible');
+  const nftPrimary = (await nftNav.locator("a").allTextContents()).map((label) => label.trim()).slice(0, 4);
+  const nftNavAligned = JSON.stringify(nftPrimary) === JSON.stringify(["Markets", "NFTs", "Portfolio", "Distribution"]);
+  const nftActive = await nftNav.locator('[aria-current="page"]').allTextContents();
+  const walletReturnTo = await page.locator("[data-nft-wallet-return-to]").getAttribute("data-nft-wallet-return-to");
+  crossSurfaceNavigationViolations += Number(!nftNavAligned) + Number(!nftActive.includes("NFTs")) + Number(walletReturnTo !== route);
+  check(nftNavAligned, state, "NFT global market navigation is not aligned with the Token surface.", { primary: nftPrimary });
+  check(nftActive.includes("NFTs"), state, "NFTs is not the unmistakable active product section.", { active: nftActive });
+  check(walletReturnTo === route, state, "NFT wallet flow does not preserve the current market/item deep link.", { expected: route, actual: walletReturnTo });
   const text = await page.locator("body").innerText();
   check(page.url().endsWith(route), state, "NFT route did not resolve exactly.", { actual: page.url(), expected: route });
   check(text.includes("CCFF00"), state, "CCFF00 is absent from its public lane.");
@@ -262,6 +304,10 @@ async function nftPage(browser, viewport, platform, route, state) {
     check(await page.locator("[data-nft-item-workspace]").isVisible(), state, "Representative CCFF00 item workspace is absent.");
     check(/TOKEN-BOUND ACCOUNT\s*·?\s*ERC-6551 ACCOUNT/i.test(text), state, "CCFF00 token-bound account capability is absent.");
     check(text.includes("ONCHAIN TOKENURI"), state, "Fully onchain metadata authority is absent.");
+    const breadcrumbLinks = await page.locator('nav[aria-label="NFT Terminal breadcrumb"] a').allTextContents();
+    const contextualBreadcrumb = breadcrumbLinks[0]?.trim() === "NFTs" && breadcrumbLinks[1]?.includes("Project Market");
+    crossSurfaceNavigationViolations += Number(!contextualBreadcrumb);
+    check(contextualBreadcrumb, state, "NFT item breadcrumb does not preserve collection/project context.", { breadcrumbLinks });
     await registrationCorners(page, state, "[data-nft-item-workspace] > div:first-child");
   }
   await overflow(page, state);
@@ -306,6 +352,12 @@ const summary = {
       mobileSignalHeight: { status: mobileSignalHeightViolations === 0 ? "PASS" : "FAIL", violations: mobileSignalHeightViolations, maximumCssPixels: 140 },
     },
     registrationCornerRoles: { status: registrationCornerRoleViolations === 0 ? "PASS" : "FAIL", violations: registrationCornerRoleViolations, authorityGreen: "rgb(147, 232, 142)", technicalNeutral: "rgb(82, 96, 88)" },
+    productConvergence: {
+      status: crossSurfaceNavigationViolations + portfolioReturnPathViolations + valuationTruthViolations === 0 ? "PASS" : "FAIL",
+      crossSurfaceNavigation: { status: crossSurfaceNavigationViolations === 0 ? "PASS" : "FAIL", violations: crossSurfaceNavigationViolations },
+      portfolioReturnPath: { status: portfolioReturnPathViolations === 0 ? "PASS" : "FAIL", violations: portfolioReturnPathViolations },
+      valuationTruth: { status: valuationTruthViolations === 0 ? "PASS" : "FAIL", violations: valuationTruthViolations },
+    },
     publicWalletSubmissionEnabled: (process.env.NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED ?? "false").toLowerCase() !== "false",
   },
   states: stateResults,
@@ -318,5 +370,6 @@ if (failures.length) {
 } else {
   console.info(`LEGACY_VISUAL_UX_GUARDS: ${summary.invariants.legacyVisualUxGuards.status}`);
   console.info(`REGISTRATION_CORNER_ROLE_GUARD: ${summary.invariants.registrationCornerRoles.status}`);
+  console.info(`PRODUCT_CONVERGENCE_GUARDS: ${summary.invariants.productConvergence.status}`);
   console.info(`RMT Legion semantic/capture lane: PASS (${stateResults.length} states)`);
 }

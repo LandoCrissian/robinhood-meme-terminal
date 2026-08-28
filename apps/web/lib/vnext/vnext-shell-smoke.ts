@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { config as middlewareConfig, vnextRequestBoundary } from "../../middleware";
-import { formatTerminalAge, formatTerminalCompactUsd, formatTerminalPercent, formatTerminalPrice } from "../../app/vnext/terminal-format";
+import { formatTerminalAge, formatTerminalCompactUsd, formatTerminalPercent, formatTerminalPrice, terminalValuation } from "../../app/vnext/terminal-format";
 import { vnextShellAvailable, vnextShellMode } from "./vnext-shell-access";
 
 const page = readFileSync(new URL("../../app/vnext/page.tsx", import.meta.url), "utf8");
@@ -38,6 +38,9 @@ assert.equal(formatTerminalCompactUsd(1_000_000), "$1M");
 assert.equal(formatTerminalCompactUsd(1_000_000_000), "$1B");
 assert.equal(formatTerminalPercent(-0), "0.0%");
 assert.equal(formatTerminalAge(0), "1m");
+assert.deepEqual(terminalValuation(1_000_000, 2_000_000), { label: "Market Cap", shortLabel: "MCap", value: 1_000_000 });
+assert.deepEqual(terminalValuation(null, 2_000_000), { label: "FDV", shortLabel: "FDV", value: 2_000_000 });
+assert.deepEqual(terminalValuation(null, null), { label: "Valuation", shortLabel: "Value", value: null });
 
 assert.match(page, /readVNextReleaseReadiness\(process\.env\)/);
 assert.match(page, /!readiness\.shellEnabled \|\| !readiness\.configurationConsistent/);
@@ -120,7 +123,9 @@ assert.match(presentations, /className="rmtMobileHeader"[\s\S]*<VNextWalletConne
 assert.match(walletConnection, /showFunding = true/);
 assert.match(walletConnection, /<WalletButton target="mainnet" returnTo="\/" showFunding=\{showFunding\} compact=\{compact\} \/>/);
 assert.match(shell, /href="\/" aria-label="RMT Markets"/);
-assert.match(shell, /Robinhood Chain market intelligence/);
+assert.match(shell, /Curated Token Markets/);
+assert.match(chart, /Price Chart/);
+assert.doesNotMatch(chart, /Verified pool chart/);
 assert.doesNotMatch(shell, /Terminal preview/);
 assert.match(spendBalance, /<FundWalletButton variant="inline" label="Add funds" target="mainnet" \/>/);
 assert.match(spendBalance, /<FundWalletButton variant="inline" label="Receive" target="mainnet" directReceive \/>/);

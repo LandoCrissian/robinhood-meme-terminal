@@ -18,7 +18,7 @@ import {
 import type { VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
 import type { VNextUniversalMarketSearchStatus } from "../../lib/vnext/universal-market-search-contract";
 import { SpendBalance } from "./spend-balance";
-import { formatTerminalAge, formatTerminalCompactUsd, formatTerminalPercent, formatTerminalPrice } from "./terminal-format";
+import { formatTerminalAge, formatTerminalCompactUsd, formatTerminalPercent, formatTerminalPrice, terminalValuation } from "./terminal-format";
 import { TokenArtwork } from "./token-artwork";
 import { TradeIntentComposer } from "./trade-intent-composer";
 import type { DirectoryStatus, IdentityStatus } from "./use-vnext-market-directory";
@@ -89,6 +89,11 @@ function formatChange(value: number | null) {
 
 function formatAge(ageMinutes: number | null) {
   return formatTerminalAge(ageMinutes);
+}
+
+function compactValuation(market: Pick<VNextDirectoryMarket, "marketCapUsd" | "fdvUsd">) {
+  const valuation = terminalValuation(market.marketCapUsd, market.fdvUsd);
+  return `${valuation.shortLabel} ${compactUsd(valuation.value)}`;
 }
 
 function changeClass(value: number | null) {
@@ -183,14 +188,14 @@ function RwaLabel({ market }: { market: VNextDirectoryMarket }) {
 function DesktopMarketTable(props: TerminalPresentationProps) {
   return <div className="rmtMarketTable" role="table" aria-label="Robinhood Chain markets">
     <div className="rmtMarketTableHead" role="row">
-      <span role="columnheader">Token</span><span role="columnheader">Price</span><span role="columnheader">24h</span><span role="columnheader">MCap</span><span role="columnheader">Volume</span><span role="columnheader">Liquidity</span><span role="columnheader">Age</span><span role="columnheader">Type</span>
+      <span role="columnheader">Token</span><span role="columnheader">Price</span><span role="columnheader">24h</span><span role="columnheader">Valuation</span><span role="columnheader">Volume</span><span role="columnheader">Liquidity</span><span role="columnheader">Age</span><span role="columnheader">Type</span>
     </div>
     <div className="rmtMarketTableBody" role="rowgroup">
       {props.visibleMarkets.map((market) => <button className="rmtMarketTableRow" type="button" role="row" key={market.address} onClick={() => props.onSelectMarket(market.address)}>
         <span className="rmtMarketTokenCell" role="cell"><TokenArtwork className="rmtMarketArtwork" symbol={market.symbol} imageUrl={market.imageUri} /><span><strong>{market.symbol}</strong><small>{market.name}</small>{props.searchActive ? <code className="rmtSearchContract">{market.address}</code> : null}</span></span>
         <strong role="cell">{formatUsd(market.priceUsd)}</strong>
         <strong className={changeClass(market.priceChange24h)} role="cell">{formatChange(market.priceChange24h)}</strong>
-        <span role="cell">{compactUsd(market.marketCapUsd)}</span>
+        <span role="cell">{compactValuation(market)}</span>
         <span role="cell">{compactUsd(market.volume24h)}</span>
         <span role="cell">{compactUsd(market.liquidityUsd)}</span>
         <span role="cell">{formatAge(market.ageMinutes)}</span>
@@ -225,7 +230,7 @@ function MobileMarketList(props: TerminalPresentationProps) {
       <TokenArtwork className="rmtMarketArtwork" symbol={market.symbol} imageUrl={market.imageUri} />
       <span className="rmtMobileMarketIdentity"><span><strong>{market.symbol}</strong><RwaLabel market={market} /></span><small>{market.name}</small>{props.searchActive ? <code className="rmtSearchContract">{market.address}</code> : null}</span>
       <span className="rmtMobileMarketPrice"><strong>{formatUsd(market.priceUsd)}</strong><small className={changeClass(market.priceChange24h)}>{formatChange(market.priceChange24h)}</small></span>
-      <span className="rmtMobileMarketMeta">M {compactUsd(market.marketCapUsd)} · V {compactUsd(market.volume24h)} · {formatAge(market.ageMinutes)}</span>
+      <span className="rmtMobileMarketMeta">{compactValuation(market)} · V {compactUsd(market.volume24h)} · {formatAge(market.ageMinutes)}</span>
     </button>)}
     <SearchStatusMessage status={props.searchStatus} count={props.expandedSearchResultCount} />
     <DirectoryMessage status={props.directoryStatus} count={props.visibleMarkets.length} searchActive={props.searchActive} view={props.directoryView} onRefresh={props.onRefresh} />
@@ -283,10 +288,10 @@ function DesktopHeader(props: TerminalPresentationProps) {
   return <header className="rmtDesktopHeader">
     <RmtBrand onActivate={props.onShowMarkets} />
     <nav aria-label="Terminal navigation">
-      <button data-terminal-nav="markets" className={props.context === "markets" && props.directoryView !== "rwa" ? "isActive" : ""} type="button" onClick={props.onShowMarkets}>Markets</button>
+      <button data-terminal-nav="markets" className={(props.context === "markets" || props.context === "asset") && props.directoryView !== "rwa" ? "isActive" : ""} type="button" aria-current={(props.context === "markets" || props.context === "asset") && props.directoryView !== "rwa" ? "page" : undefined} onClick={props.onShowMarkets}>Markets</button>
       <Link data-terminal-nav="nft" href="/nft">NFTs</Link>
-      <button data-terminal-nav="portfolio" className={props.context === "portfolio" ? "isActive" : ""} type="button" onClick={props.onShowPortfolio}>Portfolio</button>
-      <button data-terminal-nav="distribution" className={props.context === "distribution" ? "isActive" : ""} type="button" onClick={props.onShowDistribution}>Distribution</button>
+      <button data-terminal-nav="portfolio" className={props.context === "portfolio" ? "isActive" : ""} type="button" aria-current={props.context === "portfolio" ? "page" : undefined} onClick={props.onShowPortfolio}>Portfolio</button>
+      <button data-terminal-nav="distribution" className={props.context === "distribution" ? "isActive" : ""} type="button" aria-current={props.context === "distribution" ? "page" : undefined} onClick={props.onShowDistribution}>Distribution</button>
       <button data-terminal-nav="rwa" className={props.context === "markets" && props.directoryView === "rwa" ? "isActive" : ""} type="button" onClick={props.onShowRwa}>RWA</button>
     </nav>
     <MarketSearch id="rmt-desktop-market-search" query={props.query} setQuery={props.setQuery} inputRef={props.marketSearch} onSubmit={props.onSearchSubmit} searchStatus={props.searchStatus} />
@@ -297,7 +302,7 @@ function DesktopHeader(props: TerminalPresentationProps) {
 
 function DesktopMarkets(props: TerminalPresentationProps) {
   return <section className="rmtDesktopMarketsView" id="rmt-markets" aria-labelledby="rmt-market-directory-heading">
-    <header className="rmtMarketsHeading"><div><h1 id="rmt-market-directory-heading">Markets</h1><p>Robinhood Chain market intelligence</p></div><span className={`rmtDirectoryFreshness is${props.directoryStatus}`}><i aria-hidden="true" />{props.directoryStatus === "ready" ? "Directory ready" : props.directoryStatus === "stale" ? "Last loaded data" : props.directoryStatus === "loading" ? "Syncing" : "Delayed"}</span></header>
+    <header className="rmtMarketsHeading"><div><h1 id="rmt-market-directory-heading">Markets</h1><p>Curated Token Markets · Robinhood Chain</p></div><span className={`rmtDirectoryFreshness is${props.directoryStatus}`}><i aria-hidden="true" />{props.directoryStatus === "ready" ? "Directory ready" : props.directoryStatus === "stale" ? "Last loaded data" : props.directoryStatus === "loading" ? "Syncing" : "Delayed"}</span></header>
     <div className="rmtScannerControls"><MarketCategoryNav view={props.directoryView} counts={props.directoryViewCounts} searchActive={props.searchActive} activityCoveragePending={props.activityCoveragePending} onChange={props.onDirectoryViewChange} /><span>{props.activityCoveragePending ? `${props.filteredMarkets.length} canonical markets · activity enrichment pending` : `${props.filteredMarkets.length} in view · routes checked on demand`}</span></div>
     <DesktopMarketTable {...props} />
     <VNextChainPulseCard />
@@ -310,7 +315,7 @@ function DesktopAsset(props: TerminalPresentationProps) {
     window.requestAnimationFrame(() => document.getElementById("vnext-trade-ticket")?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
   };
   return <section className="rmtDesktopAssetView" id="rmt-asset-workspace">
-    <div className="rmtAssetContextBar"><button type="button" onClick={props.onShowMarkets}>← Markets</button><span>{props.selected ? `${props.selected.symbol} · Robinhood Chain` : "Select a market"}</span></div>
+    <div className="rmtAssetContextBar"><button type="button" onClick={props.onShowMarkets}>← Markets</button><span>{props.selected ? `Token Market · ${props.selected.symbol}` : "Select a market"}</span></div>
     <div className="rmtDesktopWorkstation">
       <CompactMarketNavigator {...props} />
       <section className="rmtDesktopAsset">
@@ -363,17 +368,17 @@ function MobileHeader(props: TerminalPresentationProps) {
   return <>
     <header className="rmtMobileHeader"><RmtBrand compact onActivate={props.onShowMarkets} /><span className="rmtMobileChain"><i aria-hidden="true" /> 4663</span><VNextWalletConnection showFunding={false} compact /></header>
     <nav className="rmtMobilePrimaryNav" aria-label="Terminal navigation">
-      <button className={props.context === "markets" || props.context === "asset" ? "isActive" : ""} type="button" onClick={props.onShowMarkets}>Markets</button>
+      <button data-terminal-nav="markets" className={props.context === "markets" || props.context === "asset" ? "isActive" : ""} type="button" aria-current={props.context === "markets" || props.context === "asset" ? "page" : undefined} onClick={props.onShowMarkets}>Markets</button>
       <Link data-terminal-nav="nft" href="/nft">NFTs</Link>
-      <button className={props.context === "portfolio" ? "isActive" : ""} type="button" onClick={props.onShowPortfolio}>Portfolio</button>
-      <button className={props.context === "distribution" ? "isActive" : ""} type="button" onClick={props.onShowDistribution}>Distribution</button>
+      <button data-terminal-nav="portfolio" className={props.context === "portfolio" ? "isActive" : ""} type="button" aria-current={props.context === "portfolio" ? "page" : undefined} onClick={props.onShowPortfolio}>Portfolio</button>
+      <button data-terminal-nav="distribution" className={props.context === "distribution" ? "isActive" : ""} type="button" aria-current={props.context === "distribution" ? "page" : undefined} onClick={props.onShowDistribution}>Distribution</button>
     </nav>
   </>;
 }
 
 function MobileMarkets(props: TerminalPresentationProps) {
   return <section className="rmtMobileMarketsView" id="rmt-mobile-markets" aria-labelledby="rmt-mobile-markets-heading">
-    <header className="rmtMobileContextHeading"><div><h1 id="rmt-mobile-markets-heading">Markets</h1><p>Robinhood Chain</p></div><span>{props.directoryStatus === "ready" ? "Directory ready" : props.directoryStatus === "stale" ? "Last loaded" : props.directoryStatus === "loading" ? "Syncing" : "Delayed"}</span></header>
+    <header className="rmtMobileContextHeading"><div><h1 id="rmt-mobile-markets-heading">Markets</h1><p>Curated Token Markets</p></div><span>{props.directoryStatus === "ready" ? "Directory ready" : props.directoryStatus === "stale" ? "Last loaded" : props.directoryStatus === "loading" ? "Syncing" : "Delayed"}</span></header>
     <MarketCategoryNav view={props.directoryView} counts={props.directoryViewCounts} searchActive={props.searchActive} activityCoveragePending={props.activityCoveragePending} onChange={props.onDirectoryViewChange} />
     {props.activityCoveragePending ? <p className="rmtSearchStatus" role="status">Canonical markets ready · activity enrichment pending</p> : null}
     <MarketSearch id="rmt-mobile-market-search" query={props.query} setQuery={props.setQuery} inputRef={props.marketSearch} onSubmit={props.onSearchSubmit} searchStatus={props.searchStatus} />
@@ -384,7 +389,7 @@ function MobileMarkets(props: TerminalPresentationProps) {
 
 function MobileAsset(props: TerminalPresentationProps) {
   return <section className="rmtMobileAssetView" id="rmt-mobile-asset">
-    <div className="rmtMobileAssetBack"><button type="button" onClick={props.onShowMarkets}>← Markets</button><span>{props.selected?.symbol ?? "Asset"}</span></div>
+    <div className="rmtMobileAssetBack"><button type="button" onClick={props.onShowMarkets}>← Markets</button><span>{props.selected ? `Token Market · ${props.selected.symbol}` : "Select a market"}</span></div>
     {props.selected ? <VNextAssetWorkspace presentation="mobile" directoryMarket={props.selected} identityStatus={props.identityStatus} walletAssets={props.walletAssets} executionState={props.selectedExecutionState} executionUiState={props.executionUiState} onTradeSide={props.onRequestTradeSide} /> : <div className="rmtEmptyWorkspace"><strong>Select a market</strong><span>Live market intelligence will appear here.</span></div>}
   </section>;
 }

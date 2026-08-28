@@ -5,6 +5,7 @@ const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf
 const chrome = read("../../app/public-chrome.tsx");
 const layout = read("../../app/nft/layout.tsx");
 const shell = read("../../app/nft/_components/nft-terminal-chrome.tsx");
+const routeWallet = read("../../app/nft/_components/nft-route-wallet-connection.tsx");
 const shellStyles = read("../../app/nft/nft-terminal-shell.module.css");
 const catalog = read("../../app/nft/page.tsx");
 const catalogStyles = read("../../app/nft/nft-terminal.module.css");
@@ -24,7 +25,10 @@ assert.match(shell, /RMT Markets/);
 assert.match(shell, /Robinhood Chain 4663/);
 assert.match(shell, /Markets[\s\S]*NFTs[\s\S]*Portfolio[\s\S]*Distribution/);
 assert.match(shell, /aria-current=\{link\.active \? "page"/);
-assert.match(shell, /VNextRouteWalletConnection/);
+assert.match(shell, /NftRouteWalletConnection/);
+assert.match(routeWallet, /usePathname/);
+assert.match(routeWallet, /VNextRouteWalletConnection compact returnTo=\{returnTo\}/);
+assert.match(routeWallet, /data-nft-wallet-return-to=\{returnTo\}/);
 assert.match(wallet, /<WalletButton target="mainnet" returnTo=\{returnTo\}/);
 assert.match(shellStyles, /grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
 assert.match(shellStyles, /env\(safe-area-inset-top\)/);
@@ -55,6 +59,7 @@ assert.match(inventoryStyles, /@media\s*\(max-width:\s*700px\)[\s\S]*grid-templa
 assert.match(item, /TOKENURI|Metadata provenance/);
 assert.match(item, /Token-bound account · ERC-6551 account/);
 assert.match(item, /data-nft-item-workspace/);
+assert.match(item, /<Link href="\/nft">NFTs<\/Link>[\s\S]*Project Market/);
 assert.doesNotMatch([catalog, project, item].join("\n"), />\s*(BUY|LIST|OFFER|ACCEPT|SWEEP)\s*</i);
 
 console.info("NFT Terminal VNext visual route shell smoke: PASS");

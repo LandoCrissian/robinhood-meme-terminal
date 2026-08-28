@@ -31,6 +31,7 @@ import type { VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
 import { safeExternalNavigationUrl, safeExternalSocialNavigationUrl } from "../../lib/vnext/external-navigation";
 import type { IdentityStatus } from "./use-vnext-market-directory";
 import { CopyAddress, ExplorerLink, ExternalProjectLink } from "./terminal-links";
+import { terminalValuation } from "./terminal-format";
 import { TokenArtwork } from "./token-artwork";
 import { useVNextAssetWorkspace, workspaceTokenPresentation } from "./use-vnext-asset-workspace";
 import { VNextMarketChart } from "./vnext-market-chart";
@@ -497,6 +498,7 @@ export function VNextAssetWorkspace({
       : market?.origin?.state === "disputed" ? "Disputed"
         : market?.origin?.state === "unattributed" ? "Unattributed"
           : "Unknown";
+  const valuation = terminalValuation(directoryMarket.marketCapUsd, directoryMarket.fdvUsd);
 
   const sections = [
     { id: "activity", label: "Activity" },
@@ -523,11 +525,11 @@ export function VNextAssetWorkspace({
 
   return <section className={`vnAssetPanel vnAssetWorkspace is${presentation}`} aria-labelledby="vn-asset-heading">
     <header className="vnAssetWorkspaceHeader">
-      <div className="vnAssetWorkspaceIdentity"><TokenArtwork className="vnAssetWorkspaceMark" symbol={displaySymbol} imageUrl={directoryMarket.imageUri ?? canonicalStockRelationship?.logoUrl ?? undefined} /><span><span className="vnEyebrow">Asset workspace</span><h2 id="vn-asset-heading">{displayName} <b>{displaySymbol}</b></h2><small>Robinhood Chain · {presentationIdentity.verified || identityStatus === "verified" ? "onchain token identity proven" : identityStatus === "checking" ? "identity checking" : "identity evidence unavailable"}</small></span></div>
+      <div className="vnAssetWorkspaceIdentity"><TokenArtwork className="vnAssetWorkspaceMark" symbol={displaySymbol} imageUrl={directoryMarket.imageUri ?? canonicalStockRelationship?.logoUrl ?? undefined} /><span><span className="vnEyebrow">Token Market</span><h2 id="vn-asset-heading">{displayName} <b>{displaySymbol}</b></h2><small>Robinhood Chain · {presentationIdentity.verified || identityStatus === "verified" ? "onchain token identity proven" : identityStatus === "checking" ? "identity checking" : "identity evidence unavailable"}</small></span></div>
       <div className="vnWorkspaceStatusGroup">{executionState === "stock-token-view-only" ? <strong className="vnStockTokenViewOnlyBadge">View only</strong> : null}<span className={`vnWorkspaceStatus is${workspace.status}`}><i aria-hidden="true" />{workspace.status === "ready" ? "Live evidence" : workspace.status === "partial" ? "Partial evidence" : workspace.status === "stale" ? "Last loaded" : workspace.status === "loading" ? "Loading evidence" : "Evidence unavailable"}</span></div>
     </header>
     <div className="vnAssetPrice"><strong>{formatUsd(directoryMarket.priceUsd)}</strong><span className={directoryMarket.priceChange24h !== null && directoryMarket.priceChange24h > 0 ? "vnPositive" : directoryMarket.priceChange24h !== null && directoryMarket.priceChange24h < 0 ? "vnNegative" : ""}>{directoryMarket.priceChange24h === null ? "Unavailable" : `${directoryMarket.priceChange24h > 0 ? "+" : ""}${directoryMarket.priceChange24h.toFixed(1)}%`} <small>24h</small></span></div>
-    <dl className="vnAssetStats"><div><dt>Market cap</dt><dd>{compactUsd(directoryMarket.marketCapUsd)}</dd></div><div><dt>Liquidity</dt><dd>{compactUsd(directoryMarket.liquidityUsd)}</dd></div><div><dt>24h volume</dt><dd>{compactUsd(directoryMarket.volume24h)}</dd></div><div><dt>Market age</dt><dd>{formatAge(directoryMarket.ageMinutes)}</dd></div></dl>
+    <dl className="vnAssetStats"><div><dt>{valuation.label}</dt><dd>{compactUsd(valuation.value)}</dd></div><div><dt>Liquidity</dt><dd>{compactUsd(directoryMarket.liquidityUsd)}</dd></div><div><dt>24h volume</dt><dd>{compactUsd(directoryMarket.volume24h)}</dd></div><div><dt>Market age</dt><dd>{formatAge(directoryMarket.ageMinutes)}</dd></div></dl>
 
     <dl className="vnAssetIdentityFacts" aria-label="Selected market identity">
       <div><dt>Chain</dt><dd>Robinhood Chain · 4663</dd></div>

@@ -60,6 +60,7 @@ const payload = {
       priceUsd: 0.004,
       liquidityUsd: 100_000,
       marketCapUsd: 1_000_000,
+      fdvUsd: 1_500_000,
       volume24h: 20_000,
       priceChange24h: 4.2,
       ageMinutes: 100,
@@ -87,6 +88,9 @@ assert.equal(markets.length, 2);
 assert.equal(markets[1].priceUsd, null);
 assert.equal(markets[1].liquidityUsd, null);
 assert.equal(markets[1].priceChange24h, null);
+assert.equal(markets[0].marketCapUsd, 1_000_000);
+assert.equal(markets[0].fdvUsd, 1_500_000);
+assert.equal(markets[1].fdvUsd, null);
 assert.equal(assetKey(verifiedDirectoryAsset(markets[0])!.id), assetKey(ROBINHOOD_WETH.id));
 assert.equal(verifiedDirectoryAsset(markets[1]), null);
 
