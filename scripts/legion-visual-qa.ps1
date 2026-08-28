@@ -91,9 +91,16 @@ try {
   }
 
   if (-not $SkipBuild) {
-    & pnpm build
-    if ($LASTEXITCODE -ne 0) {
-      throw "Production build failed."
+    $savedNftMintClientFlag = [System.Environment]::GetEnvironmentVariable("NEXT_PUBLIC_RMT_NFT_MINT_EXECUTION_ENABLED", "Process")
+    [System.Environment]::SetEnvironmentVariable("NEXT_PUBLIC_RMT_NFT_MINT_EXECUTION_ENABLED", "false", "Process")
+    try {
+      & pnpm build
+      if ($LASTEXITCODE -ne 0) {
+        throw "Production build failed."
+      }
+    }
+    finally {
+      [System.Environment]::SetEnvironmentVariable("NEXT_PUBLIC_RMT_NFT_MINT_EXECUTION_ENABLED", $savedNftMintClientFlag, "Process")
     }
   }
 
@@ -105,6 +112,8 @@ try {
     NEXT_PUBLIC_RMT_VNEXT_AUTHORIZATION_ENABLED = "false"
     RMT_VNEXT_AUTHORIZATION_ENABLED = "false"
     NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED = "false"
+    RMT_NFT_MINT_EXECUTION_ENABLED = "false"
+    NEXT_PUBLIC_RMT_NFT_MINT_EXECUTION_ENABLED = "false"
     NFT_INDEXER_URL = "http://127.0.0.1:43111"
     NFT_INDEXER_READ_TOKEN = ("a" * 64)
     NFT_MARKETPLACE_INDEXER_URL = "http://127.0.0.1:43111"
