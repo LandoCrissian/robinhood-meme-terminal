@@ -191,21 +191,27 @@ export async function verifyNftTechnicalCandidate(
   try {
     bytecode = await dependencies.rpc.getBytecode({ address: candidate.collectionAddress });
   } catch (error) {
-    return classify(
-      result,
-      'INCONCLUSIVE_PROVIDER_UNAVAILABLE',
-      `Collection bytecode provider unavailable: ${errorMessage(error, 'unknown provider error')}`
-    );
+    if (!factoryCreation) {
+      return classify(
+        result,
+        'INCONCLUSIVE_PROVIDER_UNAVAILABLE',
+        `Collection bytecode provider unavailable: ${errorMessage(error, 'unknown provider error')}`
+      );
+    }
   }
-  if (!bytecode || bytecode === '0x') return classify(result, 'NO_CURRENT_BYTECODE', 'Collection has no current runtime bytecode');
-  if (!isHex(bytecode)) {
+  if ((!bytecode || bytecode === '0x') && !factoryCreation) {
+    return classify(result, 'NO_CURRENT_BYTECODE', 'Collection has no current runtime bytecode');
+  }
+  if (bytecode && bytecode !== '0x' && !isHex(bytecode) && !factoryCreation) {
     return classify(result, 'INCONCLUSIVE_MALFORMED_PROVIDER_RESPONSE', 'Collection bytecode response was malformed');
   }
-  const minimalProxy = minimalProxyImplementation(bytecode);
-  if (minimalProxy !== null) {
-    result = { ...result, proxyDetected: 'YES', implementationAddress: minimalProxy };
+  if (bytecode && bytecode !== '0x' && isHex(bytecode)) {
+    const minimalProxy = minimalProxyImplementation(bytecode);
+    if (minimalProxy !== null) {
+      result = { ...result, proxyDetected: 'YES', implementationAddress: minimalProxy };
+    }
+    result = { ...result, runtimeBytecodeHash: keccak256(bytecode) };
   }
-  result = { ...result, runtimeBytecodeHash: keccak256(bytecode) };
 
   if (result.implementationAddress !== null) {
     let implementationCode: Hex | undefined;
@@ -248,18 +254,20 @@ export async function verifyNftTechnicalCandidate(
   };
 
   const erc165Read = await readRequiredInterface('0x01ffc9a7', 'ERC165 supportsInterface');
-  if (!erc165Read.ok) return classify(result, erc165Read.classification, erc165Read.reason);
-  const supportsErc165 = erc165Read.value;
+  if (!erc165Read.ok && !factoryCreation) return classify(result, erc165Read.classification, erc165Read.reason);
+  const supportsErc165 = erc165Read.ok ? erc165Read.value : null;
   result = { ...result, supportsErc165 };
 
   const invalidInterfaceRead = await readRequiredInterface('0xffffffff', 'Invalid-interface supportsInterface');
-  if (!invalidInterfaceRead.ok) return classify(result, invalidInterfaceRead.classification, invalidInterfaceRead.reason);
-  const supportsInvalidInterface = invalidInterfaceRead.value;
+  if (!invalidInterfaceRead.ok && !factoryCreation) {
+    return classify(result, invalidInterfaceRead.classification, invalidInterfaceRead.reason);
+  }
+  const supportsInvalidInterface = invalidInterfaceRead.ok ? invalidInterfaceRead.value : null;
   result = { ...result, supportsInvalidInterface };
 
   const erc721Read = await readRequiredInterface('0x80ac58cd', 'ERC721 supportsInterface');
-  if (!erc721Read.ok) return classify(result, erc721Read.classification, erc721Read.reason);
-  const supportsErc721 = erc721Read.value;
+  if (!erc721Read.ok && !factoryCreation) return classify(result, erc721Read.classification, erc721Read.reason);
+  const supportsErc721 = erc721Read.ok ? erc721Read.value : null;
   result = { ...result, supportsErc721 };
 
   let supportsErc721Metadata: boolean | null = null;

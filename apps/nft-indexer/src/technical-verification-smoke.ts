@@ -128,6 +128,87 @@ assert.equal(representativeProviderFailure.tokenUriKind, 'UNAVAILABLE');
 
 const implementation = '09a26fc8fcef18192e267d7a6da9dfb4be81dd6a';
 const minimalProxyCode = `0x363d3d373d3d3d363d73${implementation}5af43d82803e903d91602b57fd5bf3` as Hex;
+const factoryResult = (rpcOverrides: Partial<NftTechnicalVerificationRpc> = {}) => verifyNftTechnicalCandidate(candidate, {
+  rpc: rpc({
+    getTransactionReceipt: async () => ({
+      transactionHash: deploymentTransaction,
+      blockNumber: 100n,
+      status: 'success',
+      contractAddress: null,
+      to: zeroAddress
+    }),
+    ...rpcOverrides
+  }),
+  provenance: provenance()
+});
+
+const factoryBytecodeTimeout = await factoryResult({ getBytecode: async () => { throw new Error('factory bytecode timeout'); } });
+assert.equal(factoryBytecodeTimeout.classification, 'UNSUPPORTED_FACTORY_CREATION_V1');
+assert.equal(factoryBytecodeTimeout.runtimeBytecodeHash, null);
+
+const factoryZeroBytecode = await factoryResult({ getBytecode: async () => '0x' });
+assert.equal(factoryZeroBytecode.classification, 'UNSUPPORTED_FACTORY_CREATION_V1');
+assert.equal(factoryZeroBytecode.runtimeBytecodeHash, null);
+
+const factoryErc165Timeout = await factoryResult({
+  readInterface: async ({ interfaceId }) => {
+    if (interfaceId === '0x01ffc9a7') throw new Error('factory ERC165 timeout');
+    return interfaceId !== '0xffffffff';
+  }
+});
+assert.equal(factoryErc165Timeout.classification, 'UNSUPPORTED_FACTORY_CREATION_V1');
+assert.equal(factoryErc165Timeout.supportsErc165, null);
+assert.equal(factoryErc165Timeout.supportsErc721, true, 'later successful factory diagnostics must be retained');
+
+const factoryMalformedErc165 = await factoryResult({
+  readInterface: async ({ interfaceId }) => interfaceId === '0x01ffc9a7' ? 'true' : interfaceId !== '0xffffffff'
+});
+assert.equal(factoryMalformedErc165.classification, 'UNSUPPORTED_FACTORY_CREATION_V1');
+assert.equal(factoryMalformedErc165.supportsErc165, null);
+
+const factoryErc721False = await factoryResult({
+  readInterface: async ({ interfaceId }) => interfaceId !== '0xffffffff' && interfaceId !== '0x80ac58cd'
+});
+assert.equal(factoryErc721False.classification, 'UNSUPPORTED_FACTORY_CREATION_V1');
+assert.equal(factoryErc721False.supportsErc165, true);
+assert.equal(factoryErc721False.supportsInvalidInterface, false);
+assert.equal(factoryErc721False.supportsErc721, false);
+
+const factoryMetadataTimeout = await factoryResult({
+  readInterface: async ({ interfaceId }) => {
+    if (interfaceId === '0x5b5e139f') throw new Error('factory metadata timeout');
+    return interfaceId !== '0xffffffff';
+  }
+});
+assert.equal(factoryMetadataTimeout.classification, 'UNSUPPORTED_FACTORY_CREATION_V1');
+assert.equal(factoryMetadataTimeout.supportsErc721Metadata, null);
+
+const factoryIdentityTimeout = await factoryResult({
+  readIdentity: async () => { throw new Error('factory identity timeout'); }
+});
+assert.equal(factoryIdentityTimeout.classification, 'UNSUPPORTED_FACTORY_CREATION_V1');
+assert.equal(factoryIdentityTimeout.name, null);
+assert.equal(factoryIdentityTimeout.symbol, null);
+
+const factoryImplementationTimeout = await factoryResult({
+  getBytecode: async ({ address }) => {
+    if (address.toLowerCase() !== collection.toLowerCase()) throw new Error('factory implementation timeout');
+    return minimalProxyCode;
+  }
+});
+assert.equal(factoryImplementationTimeout.classification, 'UNSUPPORTED_FACTORY_CREATION_V1');
+assert.equal(factoryImplementationTimeout.runtimeBytecodeHash, keccak256(minimalProxyCode));
+assert.equal(factoryImplementationTimeout.proxyDetected, 'YES');
+assert.equal(factoryImplementationTimeout.implementationRuntimeBytecodeHash, null);
+assert.equal(factoryImplementationTimeout.supportsErc165, true);
+assert.equal(factoryImplementationTimeout.supportsInvalidInterface, false);
+assert.equal(factoryImplementationTimeout.supportsErc721, true);
+assert.equal(factoryImplementationTimeout.supportsErc721Metadata, true);
+assert.equal(factoryImplementationTimeout.name, 'CCFF00');
+assert.equal(factoryImplementationTimeout.symbol, 'CCFF00');
+assert.equal(factoryImplementationTimeout.representativeTokenId, 7n);
+assert.equal(factoryImplementationTimeout.tokenUriKind, 'DATA_JSON');
+
 const implementationHashProviderFailure = await verifyNftTechnicalCandidate(candidate, {
   rpc: rpc({
     getBytecode: async ({ address }) => {
