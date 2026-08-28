@@ -114,8 +114,8 @@ const chrome = readFileSync(new URL("../../app/public-chrome.tsx", import.meta.u
 const catalogReader = readFileSync(new URL("./nft-terminal-catalog.ts", import.meta.url), "utf8");
 const publicSources = [catalogPage, terminal, chrome, catalogReader].join("\n");
 
-assert.match(catalogPage, /RMT NFT TERMINAL/);
-assert.match(catalogPage, /ACTIVE[\s\S]*RECENTLY ADDED[\s\S]*COLLECTIONS/);
+assert.match(catalogPage, /RMT NFT Terminal/);
+assert.match(catalogPage, /Active[\s\S]*Recently Added[\s\S]*Collections/);
 assert.match(catalogPage, /Lowest OpenSea listing/);
 assert.match(projectPage, /limit: 24/);
 assert.match(projectPage, /href="\/nft"/);

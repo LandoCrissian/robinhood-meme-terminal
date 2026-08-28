@@ -45,11 +45,10 @@ export default async function NftProjectMarketPage({ params, searchParams }: {
   const openSea = model.project.links.find((link) => link.label === "OpenSea collection");
 
   return <main className={styles.page}>
-    <nav className={inventoryStyles.breadcrumb} aria-label="NFT Terminal breadcrumb"><Link href="/nft">← NFT Terminal</Link></nav>
+    <nav className={inventoryStyles.breadcrumb} aria-label="NFT Terminal breadcrumb"><Link href="/nft">← NFTs</Link></nav>
     <header className={styles.hero}>
-      <div><p className={styles.eyebrow}>RMT NFT TERMINAL · PROJECT MARKET</p><h1>{model.project.displayName}</h1></div>
-      <span className={styles.curated}>RMT CURATED</span>
-      <p className={styles.identity}>Robinhood Chain · {collection.standard}</p>
+      <div><p className={styles.eyebrow}>PROJECT MARKET</p><h1>{model.project.displayName}</h1><p className={styles.identity}>{collection.standard} · Robinhood Chain · 4663</p></div>
+      <div className={styles.projectAuthority}><span className={styles.curated}>RMT CURATED</span>{openSea ? <a href={openSea.url} target="_blank" rel="noreferrer">OpenSea ↗</a> : null}</div>
       <a className={styles.contract} href={`${robinhoodChain.blockExplorers.default.url}/address/${collection.contractAddress}`} target="_blank" rel="noreferrer">{collection.contractAddress}</a>
     </header>
 
@@ -59,16 +58,6 @@ export default async function NftProjectMarketPage({ params, searchParams }: {
       <article><span>LOWEST OPENSEA LISTING</span><strong>{listing ? `${amount(listing.grossAmount, listing.paymentAsset.decimals)} ${listing.paymentAsset.symbol}` : "Data unavailable"}</strong><small>{listing ? "Fresh normalized OpenSea evidence · not execution verified" : marketplace?.availabilityReason === "STALE" ? "Fresh exact-order evidence unavailable" : "No current qualifying evidence"}</small></article>
       <article><span>OPENSEA REPORTED 24H VOLUME</span><strong>{marketplace?.volume24hByPaymentAsset.length ? marketplace.volume24hByPaymentAsset.map((entry) => `${amount(entry.grossAmount, entry.paymentAsset.decimals)} ${entry.paymentAsset.symbol}`).join(" · ") : "Data unavailable"}</strong><small>Grouped by exact payment asset · settlement not verified</small></article>
     </section>
-
-    <div className={styles.columns}>
-      <section className={styles.panel}><div className={styles.panelHead}><div><p>CANONICAL CHAIN EVIDENCE</p><h2>Recent project activity</h2></div><span>{onchain?.availability ?? "UNAVAILABLE"}</span></div>
-        {onchain?.recentActivity.length ? <ol className={styles.feed}>{onchain.recentActivity.map((event) => <li key={`${event.transactionHash}:${event.logIndex}:${event.movementIndex}`}><div><b className={styles[event.kind.toLowerCase()]}>{event.kind}</b><span>Token #{event.tokenId} · amount {event.amount}</span></div><p>{short(event.from)} → {short(event.to)}</p><small>Block {event.blockNumber} · {short(event.transactionHash)} · market meaning not established</small></li>)}</ol> : <p className={styles.empty}>Canonical recent activity is currently unavailable.</p>}
-      </section>
-
-      <section className={styles.panel}><div className={styles.panelHead}><div><p>PROVIDER MARKETPLACE EVIDENCE</p><h2>Recent OpenSea reported sales</h2></div><span>{marketplace?.availability ?? "UNAVAILABLE"}</span></div>
-        {marketplace?.recentProviderSales.length ? <ol className={styles.feed}>{marketplace.recentProviderSales.map((sale, index) => <li key={`${sale.orderHash ?? sale.transactionHash ?? sale.eventTimestamp}:${index}`}><div><b className={styles.sale}>OPENSEA REPORTED SALE</b><span>Token #{sale.tokenId} · quantity {sale.quantity}</span></div><p>{sale.paymentAsset && sale.grossAmount ? `${amount(sale.grossAmount, sale.paymentAsset.decimals)} ${sale.paymentAsset.symbol}` : "Payment evidence unavailable"}</p><small>Provider report · Seaport settlement not verified</small></li>)}</ol> : <p className={styles.empty}>No recent provider-reported sales are available.</p>}
-      </section>
-    </div>
 
     <section className={inventoryStyles.collection} aria-labelledby="collection-heading">
       <div className={inventoryStyles.collectionHead}><div><p>CANONICAL ONCHAIN INVENTORY</p><h2 id="collection-heading">Collection</h2><span>Current ERC721 ownership · metadata from onchain tokenURI</span></div>
@@ -85,6 +74,16 @@ export default async function NftProjectMarketPage({ params, searchParams }: {
         ? <nav className={inventoryStyles.pagination} aria-label="Collection pages"><Link href={`/nft/${model.project.projectId}?afterTokenId=${inventory.nextCursor}`}>Next 24 →</Link></nav>
         : null}
     </section>
+
+    <div className={styles.columns}>
+      <section className={styles.panel}><div className={styles.panelHead}><div><p>CANONICAL CHAIN EVIDENCE</p><h2>Recent project activity</h2></div><span>{onchain?.availability ?? "UNAVAILABLE"}</span></div>
+        {onchain?.recentActivity.length ? <ol className={styles.feed}>{onchain.recentActivity.map((event) => <li key={`${event.transactionHash}:${event.logIndex}:${event.movementIndex}`}><div><b className={styles[event.kind.toLowerCase()]}>{event.kind}</b><span>Token #{event.tokenId} · amount {event.amount}</span></div><p>{short(event.from)} → {short(event.to)}</p><small>Block {event.blockNumber} · {short(event.transactionHash)} · market meaning not established</small></li>)}</ol> : <p className={styles.empty}>Canonical recent activity is currently unavailable.</p>}
+      </section>
+
+      <section className={styles.panel}><div className={styles.panelHead}><div><p>PROVIDER MARKETPLACE EVIDENCE</p><h2>Recent OpenSea reported sales</h2></div><span>{marketplace?.availability ?? "UNAVAILABLE"}</span></div>
+        {marketplace?.recentProviderSales.length ? <ol className={styles.feed}>{marketplace.recentProviderSales.map((sale, index) => <li key={`${sale.orderHash ?? sale.transactionHash ?? sale.eventTimestamp}:${index}`}><div><b className={styles.sale}>OPENSEA REPORTED SALE</b><span>Token #{sale.tokenId} · quantity {sale.quantity}</span></div><p>{sale.paymentAsset && sale.grossAmount ? `${amount(sale.grossAmount, sale.paymentAsset.decimals)} ${sale.paymentAsset.symbol}` : "Payment evidence unavailable"}</p><small>Provider report · Seaport settlement not verified</small></li>)}</ol> : <p className={styles.empty}>No recent provider-reported sales are available.</p>}
+      </section>
+    </div>
 
     <section className={styles.marketplace}><div><p>MARKETPLACE</p><h2>OpenSea · Seaport 1.6</h2><span>Order identity verification and provider evidence remain separate from execution authorization.</span></div>{openSea ? <a href={openSea.url} target="_blank" rel="noreferrer">View on OpenSea ↗</a> : null}</section>
   </main>;

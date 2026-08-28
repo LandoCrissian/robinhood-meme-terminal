@@ -18,9 +18,9 @@ export const metadata: Metadata = {
 };
 
 const views: readonly { value: RmtNftTerminalCatalogView; label: string; href: string }[] = [
-  { value: "active", label: "ACTIVE", href: "/nft" },
-  { value: "recent", label: "RECENTLY ADDED", href: "/nft?view=recent" },
-  { value: "collections", label: "COLLECTIONS", href: "/nft?view=collections" },
+  { value: "active", label: "Active", href: "/nft" },
+  { value: "recent", label: "Recently Added", href: "/nft?view=recent" },
+  { value: "collections", label: "Collections", href: "/nft?view=collections" },
 ];
 
 function selectedView(value: string | string[] | undefined): RmtNftTerminalCatalogView {
@@ -48,9 +48,9 @@ function ProjectCard({ project }: { project: RmtNftTerminalProjectCard }) {
 
   return <article className={styles.projectCard} aria-label={`${project.displayName} RMT-curated NFT project`}>
     <div className={styles.cardIdentity}>
-      <span className={styles.curated}>RMT CURATED</span>
-      <p>Robinhood Chain · {collection.standard ?? "Standard unavailable"}</p>
+      <div className={styles.projectStatus}><span className={styles.curated}>RMT CURATED</span><i aria-hidden="true" /> ACTIVE</div>
       <h2><Link href={`/nft/${project.projectId}`}>{project.displayName}</Link></h2>
+      <p>{collection.standard ?? "Standard unavailable"} · Robinhood Chain</p>
       <code title={collection.contractAddress}>{short(collection.contractAddress)}</code>
     </div>
 
@@ -81,20 +81,21 @@ export default async function NftTerminalCatalogPage({ searchParams }: {
   const catalog = await readRmtNftTerminalCatalog(view);
 
   return <main className={styles.page}>
-    <header className={styles.hero}>
-      <p>RMT NFT TERMINAL</p>
-      <h1>Project Markets on Robinhood Chain</h1>
-      <span>Discover RMT-curated NFT projects using canonical ownership, collection activity, and marketplace evidence.</span>
+    <header className={styles.terminalHeading}>
+      <div><h1>NFTs</h1><p>Robinhood Chain</p></div>
+      <span><i aria-hidden="true" /> {catalog.projects.length} ACTIVE</span>
     </header>
 
     <nav className={styles.views} aria-label="NFT catalog views">
       {views.map((item) => <Link href={item.href} key={item.value} aria-current={view === item.value ? "page" : undefined}>{item.label}</Link>)}
     </nav>
 
+    <p className={styles.scopeNote}>RMT-curated Project Markets with canonical ownership and marketplace evidence.</p>
+
     {view === "collections" ? <section className={styles.collectionList} aria-label="Active RMT NFT collections">
       {catalog.collections.map((collection) => <article key={`${collection.projectId}:${collection.contractAddress}`}>
         <div><span>RMT CURATED COLLECTION</span><h2><Link href={`/nft/${collection.projectId}`}>{collection.displayName}</Link></h2></div>
-        <p>Robinhood Chain · {collection.standard ?? "Standard unavailable"}</p>
+        <p>{collection.standard ?? "Standard unavailable"} · Robinhood Chain</p>
         <code>{collection.contractAddress}</code>
         <small>Registry verification: {collection.verificationStatus}</small>
       </article>)}
