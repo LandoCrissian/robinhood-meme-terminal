@@ -101,4 +101,4 @@ Current owner product policy is `RMT_FEE = 0`, and no fee activation is authoriz
 
 Current policy and the preserved executor, exact fee math, release boundary, reconciliation rules and evidence-monitoring procedure are distinguished in [`RMT_EXECUTION_REVENUE.md`](RMT_EXECUTION_REVENUE.md) and [`PRODUCTION_MONITORING.md`](PRODUCTION_MONITORING.md#historical-uniswap-v3-fee-settlement-monitoring).
 
-The next phase requires a registered authorization-key quorum and a non-empty policy ID. RMT must never attach a signer with an empty policy list.
+Any future scoped-session execution would require a registered authorization-key quorum and a non-empty policy ID. RMT must never attach a signer with an empty policy list. This is not current roadmap authority and does not supersede the current Token Terminal integration priority.
