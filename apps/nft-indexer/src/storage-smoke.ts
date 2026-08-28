@@ -36,6 +36,7 @@ const erc1155Source = {
   standard: 'ERC1155',
   deploymentTransaction: hash('4'),
   startBlock: 20_000_000n,
+  runtimeBytecodeHash: hash('4'),
   verifiedAt: '2026-08-26T00:00:00.000Z'
 } satisfies VerifiedNftSource;
 let identity = 1;

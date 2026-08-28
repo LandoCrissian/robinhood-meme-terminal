@@ -5,7 +5,8 @@ import {
   resolveOpenSeaIdentity,
   assertSlugReplacement,
 } from "./identity.js";
-import { assertMarketplaceSourceSet } from "./sources.js";
+import { assertMarketplaceSourceSet, RMT_NFT_MARKETPLACE_SOURCES } from "./sources.js";
+assert.deepEqual(RMT_NFT_MARKETPLACE_SOURCES.map((source) => source.projectId), ["ccff00"]);
 assert.doesNotThrow(() =>
   assertRobinhoodChainSupported({ chains: [{ identifier: "robinhood" }] }),
 );
@@ -142,6 +143,6 @@ assert.throws(
     assertMarketplaceSourceSet([
       { ...SOURCE, projectId: "unreviewed-project" },
     ]),
-  /not in RMT_NFT_ACTIVITY_SOURCES/,
+  /not in the reviewed marketplace source set/,
 );
 console.info("nft-marketplace identity smoke: PASS");

@@ -1,4 +1,4 @@
-import { RMT_NFT_ACTIVITY_SOURCES } from "@rmt/shared/nft/activity-sources";
+import { RMT_NFT_MARKETPLACE_SOURCES } from "./sources.js";
 import { OPENSEA_CHAIN } from "./constants.js";
 import {
   resolveOpenSeaIdentity,
@@ -23,7 +23,7 @@ async function main() {
     pageSize: 10,
   });
   assertRobinhoodChainSupported(await client.chains());
-  for (const source of RMT_NFT_ACTIVITY_SOURCES) {
+  for (const source of RMT_NFT_MARKETPLACE_SOURCES) {
     const contract = await client.contract(
       OPENSEA_CHAIN,
       source.collectionAddress,

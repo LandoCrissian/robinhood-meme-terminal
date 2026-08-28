@@ -46,6 +46,7 @@ assert.ok("items" in (await readRmtNftProjectInventory("ccff00", { limit: 4 }, {
 assert.match(requestedInventoryUrl, /[?&]limit=4(?:&|$)/);
 assert.deepEqual(await readRmtNftProjectInventory("ccff00", { limit: 49 }, { env, fetchImpl: response(inventory) }), { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" });
 assert.equal(await readRmtNftProjectInventory("unknown", {}, { env, fetchImpl: response(inventory) }), null);
+assert.equal(await readRmtNftProjectInventory("robin-rabbits", {}, { env, fetchImpl: response(inventory) }), null);
 for (const malformed of [
   { ...inventory, collectionStandard: "ERC1155" },
   { ...inventory, items: [inventory.items[1], inventory.items[0]] },
@@ -98,6 +99,8 @@ for (const safeSvg of [
 const acceptedItem = await readRmtNftItem("ccff00", "1", { env, fetchImpl: response(item) });
 assert.equal(acceptedItem && "tokenId" in acceptedItem && acceptedItem.tokenBoundAccount.authority, "ONCHAIN_ERC6551_ACCOUNT");
 assert.equal(await readRmtNftItem("ccff00", "999", { env, fetchImpl: response({}, 404) }), null);
+assert.equal(await readRmtNftItem("robin-rabbits", "1", { env, fetchImpl: response(item) }), null,
+  "WATCHING item routes must remain non-public while ERC-6551 reads are CCFF00-specific.");
 for (const malformed of [
   { ...item, collectionAddress: account },
   { ...item, tokenBoundAccount: { ...item.tokenBoundAccount, chainId: 1 } },

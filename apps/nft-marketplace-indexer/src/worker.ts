@@ -1,9 +1,6 @@
 import type { Pool } from "pg";
 import { createPublicClient, http } from "viem";
-import {
-  RMT_NFT_ACTIVITY_SOURCES,
-  type RmtNftActivitySource,
-} from "@rmt/shared/nft/activity-sources";
+import type { RmtNftActivitySource } from "@rmt/shared/nft/activity-sources";
 import type {
   RmtNftCollectionMarketplaceIdentity,
   RmtNftListingEvidence,
@@ -21,7 +18,7 @@ import {
   openSeaReportedFloor,
 } from "./normalization.js";
 import { OpenSeaClient, page } from "./opensea-client.js";
-import { assertMarketplaceSourceSet } from "./sources.js";
+import { assertMarketplaceSourceSet, RMT_NFT_MARKETPLACE_SOURCES } from "./sources.js";
 import {
   beginListingRevalidation,
   cursor,
@@ -85,7 +82,7 @@ export class MarketplaceWorker {
     return { ...this.#client.rateLimitState };
   }
   async initialize(
-    sources: readonly RmtNftActivitySource[] = RMT_NFT_ACTIVITY_SOURCES,
+    sources: readonly RmtNftActivitySource[] = RMT_NFT_MARKETPLACE_SOURCES,
   ) {
     assertMarketplaceSourceSet(sources);
     if ((await this.#rpc.getChainId()) !== ROBINHOOD_CHAIN_ID)

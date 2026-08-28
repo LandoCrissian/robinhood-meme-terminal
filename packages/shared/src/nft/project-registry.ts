@@ -107,6 +107,9 @@ export function defineRmtCuratedNftProject(input: RmtCuratedNftProject): RmtCura
     if (collection.declaredStandard !== null && collection.declaredStandard !== "ERC721" && collection.declaredStandard !== "ERC1155") {
       throw new Error("RMT NFT collection standard is invalid.");
     }
+    if ((input.status === "ACTIVE" || input.status === "WATCHING") && collection.verificationStatus !== "VERIFIED") {
+      throw new Error(`${input.status} RMT NFT projects require technically VERIFIED collections.`);
+    }
     return { ...collection, contractAddress };
   });
 
@@ -166,12 +169,52 @@ export const RMT_CURATED_NFT_PROJECTS = [
         chainId: RMT_NFT_CHAIN_ID,
         contractAddress: CCFF00_COLLECTION,
         declaredStandard: "ERC721",
-        verificationStatus: "PENDING"
+        verificationStatus: "VERIFIED"
       }
     ],
     // The collection exposes a ccff00Token() relationship onchain, but the
     // curated registry intentionally leaves projectToken unset until the owner
     // explicitly confirms the project-token relationship for RMT presentation.
+    projectToken: null
+  }),
+  defineRmtCuratedNftProject({
+    projectId: "robin-rabbits",
+    displayName: "Robin Rabbits",
+    status: "WATCHING",
+    ownerApproved: true,
+    approvedAt: "2026-08-27T00:11:00.000Z",
+    officialProjectEvidence: [
+      { kind: "OWNER_SUPPLIED_REFERENCE", url: "https://opensea.io/collection/robin-rabbits-834193084" }
+    ],
+    links: [
+      { label: "OpenSea collection", url: "https://opensea.io/collection/robin-rabbits-834193084", visibility: "PUBLIC" }
+    ],
+    collections: [{
+      chainId: RMT_NFT_CHAIN_ID,
+      contractAddress: "0xb87522e093858d992b7555077ff3541597deb34e",
+      declaredStandard: "ERC721",
+      verificationStatus: "VERIFIED"
+    }],
+    projectToken: null
+  }),
+  defineRmtCuratedNftProject({
+    projectId: "gogh-punks",
+    displayName: "Gogh Punks",
+    status: "WATCHING",
+    ownerApproved: true,
+    approvedAt: "2026-08-27T00:11:00.000Z",
+    officialProjectEvidence: [
+      { kind: "OWNER_SUPPLIED_REFERENCE", url: "https://opensea.io/collection/gogh-punks-255843210" }
+    ],
+    links: [
+      { label: "OpenSea collection", url: "https://opensea.io/collection/gogh-punks-255843210", visibility: "PUBLIC" }
+    ],
+    collections: [{
+      chainId: RMT_NFT_CHAIN_ID,
+      contractAddress: "0xe0f92b3b0e6ded3654177fe3809cd300e5ffadf6",
+      declaredStandard: "ERC721",
+      verificationStatus: "VERIFIED"
+    }],
     projectToken: null
   })
 ] as const satisfies readonly RmtCuratedNftProject[];

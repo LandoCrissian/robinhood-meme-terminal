@@ -1,6 +1,6 @@
 # RMT NFT activity indexer
 
-Standalone, non-production backend foundation for the curated RMT NFT Terminal. It indexes only runtime-verified entries from the canonical `@rmt/shared/nft/activity-sources` manifest. V1 contains CCFF00 only and begins at its reviewed deployment block `10929152`.
+Standalone, non-production backend foundation for the curated RMT NFT Terminal. It indexes only runtime-verified entries from the canonical `@rmt/shared/nft/activity-sources` manifest. Public reads remain ACTIVE-project-only; technically verified WATCHING sources may backfill without becoming public product entries.
 
 The service has no public NFT data API and always reports `servingProductionTraffic: false`. It does not infer sales or any other marketplace meaning from transfers.
 

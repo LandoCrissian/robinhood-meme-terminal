@@ -12,6 +12,7 @@ import {
   activeRmtCuratedNftProjects,
   defineRmtCuratedNftProject,
   rmtCuratedNftProject,
+  type RmtCuratedNftProject,
   type RmtNftCollectionRegistryEntry,
   type RmtNftProjectTokenRegistryEntry
 } from "./project-registry";
@@ -62,8 +63,12 @@ function rawLog(overrides: Partial<RmtNftRawLog> = {}): RmtNftRawLog {
   };
 }
 
-assert.equal(RMT_CURATED_NFT_PROJECTS.length, 1, "The initial RMT NFT registry must contain only owner-supplied projects.");
+assert.equal(RMT_CURATED_NFT_PROJECTS.length, 3, "The registry contains ACTIVE plus technically verified WATCHING projects only.");
 assert.equal(activeRmtCuratedNftProjects().length, 1);
+assert.deepEqual(activeRmtCuratedNftProjects().map((project) => project.projectId), ["ccff00"]);
+assert.deepEqual(RMT_CURATED_NFT_PROJECTS.filter((project) => project.status === "WATCHING").map((project) => project.projectId), [
+  "robin-rabbits", "gogh-punks"
+]);
 assert.equal(rmtCuratedNftProject("CCFF00")?.displayName, "CCFF00");
 assert.equal(rmtCuratedNftProject("ccff00")?.collections[0]?.contractAddress, CCFF00_COLLECTION);
 assert.equal(rmtCuratedNftProject("ccff00")?.projectToken, null,
@@ -104,17 +109,39 @@ assert.throws(() => defineRmtCuratedNftProject({
       chainId: RMT_NFT_CHAIN_ID,
       contractAddress: "0x1111111111111111111111111111111111111111",
       declaredStandard: "ERC721",
-      verificationStatus: "PENDING"
+      verificationStatus: "VERIFIED"
     },
     {
       chainId: RMT_NFT_CHAIN_ID,
       contractAddress: "0x1111111111111111111111111111111111111111",
       declaredStandard: "ERC721",
-      verificationStatus: "PENDING"
+      verificationStatus: "VERIFIED"
     }
   ],
   projectToken: null
 }), /duplicate collection contracts/);
+
+const registryFixture = (status: "ACTIVE" | "WATCHING", verificationStatus: "PENDING" | "REJECTED" | "VERIFIED"): RmtCuratedNftProject => ({
+  projectId: `registry-${status.toLowerCase()}-${verificationStatus.toLowerCase()}`,
+  displayName: "Registry invariant fixture",
+  status,
+  ownerApproved: true,
+  approvedAt: "2026-08-26T00:00:00.000Z",
+  officialProjectEvidence: [],
+  links: [],
+  collections: [{
+    chainId: RMT_NFT_CHAIN_ID,
+    contractAddress: getAddress("0x7777777777777777777777777777777777777777"),
+    declaredStandard: "ERC721" as const,
+    verificationStatus
+  }],
+  projectToken: null
+});
+
+assert.throws(() => defineRmtCuratedNftProject(registryFixture("ACTIVE", "PENDING")), /technically VERIFIED/);
+assert.throws(() => defineRmtCuratedNftProject(registryFixture("ACTIVE", "REJECTED")), /technically VERIFIED/);
+assert.equal(defineRmtCuratedNftProject(registryFixture("ACTIVE", "VERIFIED")).status, "ACTIVE");
+assert.equal(defineRmtCuratedNftProject(registryFixture("WATCHING", "VERIFIED")).status, "WATCHING");
 
 const collection: RmtNftCollectionRegistryEntry = {
   chainId: RMT_NFT_CHAIN_ID,
