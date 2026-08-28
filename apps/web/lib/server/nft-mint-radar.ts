@@ -469,7 +469,7 @@ function noActivity(status: RmtMintRadarActivityStatus = "NOT_CHECKED"): RmtMint
   return { status, transactionHash: null, blockNumber: null, observedAt: null, marketMeaning: "NOT_ESTABLISHED" };
 }
 
-function defaultClient(env: Partial<NodeJS.ProcessEnv>) {
+export function createRmtMintRadarPublicClient(env: Partial<NodeJS.ProcessEnv>) {
   return createPublicClient({
     chain: robinhoodChain,
     transport: http(env.NFT_MINT_RADAR_RPC_URL?.trim()
@@ -695,7 +695,7 @@ export async function buildRmtMintRadar(
 ): Promise<RmtMintRadarResponse> {
   const now = (options.now ?? (() => new Date()))();
   const observedAt = now.toISOString();
-  const client = options.verifyContract ? null : defaultClient(options.env ?? process.env);
+  const client = options.verifyContract ? null : createRmtMintRadarPublicClient(options.env ?? process.env);
   const verifyContract = options.verifyContract ?? ((address: Address, at: string) => verifyMintRadarContract(client!, address, at));
   const readActivity = options.readMintActivity ?? readSampledMintActivity;
   const parsedAll = dedupe([
@@ -714,7 +714,7 @@ export async function buildRmtMintRadar(
   if (!options.readCcff00Access) {
     try {
       deployments = parseReviewedSeaDropDeployments((options.env ?? process.env).NFT_MINT_RADAR_REVIEWED_SEADROP_DEPLOYMENTS);
-      if (deployments.length > 0) accessClient = client ?? defaultClient(options.env ?? process.env);
+      if (deployments.length > 0) accessClient = client ?? createRmtMintRadarPublicClient(options.env ?? process.env);
     } catch {
       deployments = [];
     }
@@ -768,7 +768,7 @@ export async function buildRmtMintRadar(
   };
 }
 
-function providerConfiguration(env: Partial<NodeJS.ProcessEnv>) {
+export function rmtMintRadarProviderConfiguration(env: Partial<NodeJS.ProcessEnv>) {
   const apiKey = env.NFT_MINT_RADAR_OPENSEA_API_KEY?.trim();
   if (!apiKey) return null;
   const base = env.NFT_MINT_RADAR_OPENSEA_BASE_URL?.trim() || "https://api.opensea.io";
@@ -841,7 +841,7 @@ export async function readRmtNftMintRadar(options: RmtMintRadarReaderOptions = {
   const nowMs = now().getTime();
   const cache = options.cache ?? sharedCache;
   if (cache.current && nowMs - cache.current.fetchedAtMs <= RMT_MINT_RADAR_FRESH_MS) return cache.current.response;
-  const config = providerConfiguration(options.env ?? process.env);
+  const config = rmtMintRadarProviderConfiguration(options.env ?? process.env);
   if (!config) return unavailableResponse("UNAVAILABLE");
   try {
     const fetchImpl = options.fetchImpl ?? fetch;

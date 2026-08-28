@@ -343,6 +343,10 @@ async function nftPage(browser, viewport, platform, route, state) {
     check(await page.getByRole("heading", { name: "Recently Minted", exact: true }).count() === 1, state, "Mint Radar Recently Minted state is absent.");
     const radarCandidates = page.locator("[data-radar-candidate]");
     check(await radarCandidates.count() === 4, state, "Deterministic Mint Radar candidate count changed.", { count: await radarCandidates.count() });
+    const liveReadinessActions = page.locator('[data-radar-candidate][data-radar-state="LIVE_NOW"] [data-nft-readiness-action]');
+    check(await liveReadinessActions.count() === 1, state, "Live Mint Radar candidate is missing its non-executing readiness action.");
+    check((await liveReadinessActions.first().textContent())?.trim() === "CHECK READINESS", state, "Mint readiness action changed into an execution-like control.");
+    check(await page.locator("[data-nft-mint-readiness] form").count() === 0, state, "Mint readiness introduced a transaction submission form.");
     check(await page.locator('[data-radar-candidate]:not([data-radar-admission="NOT_EVALUATED"])').count() === 0, state, "Radar candidate crossed into RMT admission authority.");
     check(await page.locator('[data-radar-candidate]:not([data-radar-chain="4663"])').count() === 0, state, "Mint Radar exposed a non-Robinhood Chain candidate.");
     check(await page.locator('[data-ccff00-access="VERIFIED_COMMUNITY_GATE"]').count() === 1, state, "Exact CCFF00 token-gate fixture is not independently classified as verified.");

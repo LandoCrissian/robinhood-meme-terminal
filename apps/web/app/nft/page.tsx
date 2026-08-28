@@ -13,6 +13,7 @@ import {
   type RmtNftTerminalProjectCard,
 } from "../../lib/server/nft-terminal-catalog";
 import { NftItemMedia } from "./_components/nft-item-media";
+import { NftMintReadiness } from "./_components/nft-mint-readiness";
 import styles from "./nft-terminal.module.css";
 
 export const dynamic = "force-dynamic";
@@ -72,7 +73,7 @@ function RadarCard({ candidate }: { candidate: RmtMintRadarCandidate }) {
       : access.status === "PROVIDER_REPORTED" ? "CCFF00 ACCESS · REPORTED"
         : access.status === "CONNECTED_WALLET_ELIGIBLE" ? "CCFF00 ACCESS · ELIGIBLE"
           : null;
-  return <article className={styles.radarCard} data-radar-candidate data-radar-admission={candidate.rmtAdmission} data-radar-chain={candidate.chainId} data-ccff00-access={access.status}>
+  return <article className={styles.radarCard} data-radar-candidate data-radar-state={candidate.state} data-radar-admission={candidate.rmtAdmission} data-radar-chain={candidate.chainId} data-ccff00-access={access.status}>
     <div className={styles.radarIdentity}>
       <span>{candidate.state === "LIVE_NOW" ? "LIVE NOW" : candidate.state === "UPCOMING" ? "UPCOMING" : "RECENTLY MINTED"}</span>
       <h3>{candidate.collectionName}</h3>
@@ -92,6 +93,7 @@ function RadarCard({ candidate }: { candidate: RmtMintRadarCandidate }) {
       <code title={candidate.collectionAddress ?? undefined}>{candidate.collectionAddress ? short(candidate.collectionAddress) : "Contract not established"}</code>
       <a href={candidate.sourceUrl} target="_blank" rel="noreferrer">OpenSea evidence</a>
     </div>
+    {candidate.state === "LIVE_NOW" ? <NftMintReadiness candidateId={candidate.candidateId} /> : null}
     <small className={styles.discoveryOnly}>Detected · Not RMT admitted</small>
   </article>;
 }
