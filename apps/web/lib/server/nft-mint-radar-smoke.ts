@@ -114,7 +114,8 @@ const seaDropCode = "0x60016000" as const;
 const reviewed = parseReviewedSeaDropDeployments(`${SEADROP}@${keccak256(seaDropCode)}`);
 assert.equal(reviewed.length, 1);
 assert.throws(() => parseReviewedSeaDropDeployments(`${SEADROP}@0x01`), /address@runtimeBytecodeHash/);
-const seaDropClient = {
+function seaDropClientWithStage(overrides: Record<string, unknown> = {}) {
+  return {
   getChainId: async () => 4663,
   getBytecode: async ({ address }: { address: Address }) => address === SEADROP ? seaDropCode : undefined,
   readContract: async ({ functionName }: { functionName: string }) => functionName === "getTokenGatedAllowedTokens" ? [CCFF00] : {
@@ -126,8 +127,11 @@ const seaDropClient = {
     maxTokenSupplyForStage: 500n,
     feeBps: 0n,
     restrictFeeRecipients: false,
+    ...overrides,
   },
-} as unknown as PublicClient;
+  } as unknown as PublicClient;
+}
+const seaDropClient = seaDropClientWithStage();
 const verifiedAccess = await verifyCcff00SeaDropGate({
   client: seaDropClient,
   dropCollection: CONTRACT,
@@ -139,6 +143,23 @@ assert.equal(verifiedAccess.status, "VERIFIED_COMMUNITY_GATE");
 assert.equal(verifiedAccess.authority, "ONCHAIN_SEADROP_CONFIGURATION");
 assert.equal(verifiedAccess.stage?.maxPerWallet, "2");
 assert.equal(verifiedAccess.walletEligibility.status, "NOT_CHECKED");
+const zeroStageIndexAccess = await verifyCcff00SeaDropGate({
+  client: seaDropClientWithStage({ dropStageIndex: 0n }),
+  dropCollection: CONTRACT,
+  providerStage: parseOpenSeaDrops(page(drop()), "upcoming", NOW)[0]!.stage,
+  deployments: reviewed,
+  observedAt: NOW.toISOString(),
+});
+assert.equal(zeroStageIndexAccess.status, "VERIFIED_COMMUNITY_GATE", "token-gated stage index zero is valid evidence");
+assert.match(zeroStageIndexAccess.evidence[0]!.detail, /onchain stage 0/, "zero stage index remains preserved as evidence metadata");
+const removedGate = await verifyCcff00SeaDropGate({
+  client: seaDropClientWithStage({ maxTotalMintableByWallet: 0n }),
+  dropCollection: CONTRACT,
+  providerStage: parseOpenSeaDrops(page(drop()), "upcoming", NOW)[0]!.stage,
+  deployments: reviewed,
+  observedAt: NOW.toISOString(),
+});
+assert.equal(removedGate.status, "UNKNOWN", "empty or removed token-gated stage data must not verify");
 const networkUnknown = await verifyCcff00SeaDropGate({
   client: { ...seaDropClient, getChainId: async () => { throw new Error("offline"); } } as unknown as PublicClient,
   dropCollection: CONTRACT,

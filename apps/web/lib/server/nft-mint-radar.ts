@@ -548,7 +548,7 @@ export async function verifyCcff00SeaDropGate(input: {
       const maxSupply = bigintField(raw.maxTokenSupplyForStage, "stage supply");
       bigintField(raw.feeBps, "fee basis points");
       if (typeof raw.restrictFeeRecipients !== "boolean") throw new TypeError("SeaDrop fee-recipient restriction response was malformed.");
-      if (startTime === 0n || endTime <= startTime || dropStageIndex === 0n || maxPerWallet === 0n || maxSupply === 0n) continue;
+      if (startTime === 0n || endTime <= startTime || maxPerWallet === 0n || maxSupply === 0n) continue;
       if (input.providerStage) {
         const providerStart = BigInt(Math.trunc(Date.parse(input.providerStage.startTime) / 1_000));
         const providerEnd = BigInt(Math.trunc(Date.parse(input.providerStage.endTime) / 1_000));
