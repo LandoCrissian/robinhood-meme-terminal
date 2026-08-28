@@ -11,6 +11,7 @@ const publicRoutes = [
   ["/markets/robinhood-chain/trending", "hourly", 0.8],
   ["/markets/robinhood-chain/new", "hourly", 0.8],
   ["/markets/robinhood-chain/active", "hourly", 0.8],
+  ["/nft", "daily", 0.8],
   ["/status", "hourly", 0.8],
   ["/sources", "daily", 0.7],
   ["/support", "monthly", 0.5],

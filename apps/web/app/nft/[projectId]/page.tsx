@@ -35,7 +35,7 @@ export default async function NftProjectMarketPage({ params, searchParams }: {
   const afterTokenId = typeof query.afterTokenId === "string" && /^(0|[1-9]\d*)$/.test(query.afterTokenId) ? query.afterTokenId : undefined;
   const [model, inventory] = await Promise.all([
     readRmtNftProjectMarket(projectId),
-    readRmtNftProjectInventory(projectId, afterTokenId),
+    readRmtNftProjectInventory(projectId, { afterTokenId, limit: 24 }),
   ]);
   if (!model) notFound();
   const collection = model.project.collections[0]!;
@@ -45,6 +45,7 @@ export default async function NftProjectMarketPage({ params, searchParams }: {
   const openSea = model.project.links.find((link) => link.label === "OpenSea collection");
 
   return <main className={styles.page}>
+    <nav className={inventoryStyles.breadcrumb} aria-label="NFT Terminal breadcrumb"><Link href="/nft">← NFT Terminal</Link></nav>
     <header className={styles.hero}>
       <div><p className={styles.eyebrow}>RMT NFT TERMINAL · PROJECT MARKET</p><h1>{model.project.displayName}</h1></div>
       <span className={styles.curated}>RMT CURATED</span>

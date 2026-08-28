@@ -110,7 +110,7 @@ textarea{min-height:94px;resize:vertical}
 .grid{grid-template-columns:1fr}
 .zoneHeading{align-items:flex-start;flex-direction:column;gap:8px}
 .rewards{order:-1}
-.mobileDock{position:fixed;z-index:40;right:14px;bottom:max(12px,env(safe-area-inset-bottom));left:14px;display:grid;grid-template-columns:repeat(4,1fr);max-width:520px;margin:auto;padding:7px;border:1px solid rgba(64,85,70,.9);border-radius:18px;background:rgba(9,14,10,.94);box-shadow:0 14px 40px rgba(0,0,0,.55);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.mobileDock{position:fixed;z-index:40;right:14px;bottom:max(12px,env(safe-area-inset-bottom));left:14px;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));max-width:520px;margin:auto;padding:7px;border:1px solid rgba(64,85,70,.9);border-radius:18px;background:rgba(9,14,10,.94);box-shadow:0 14px 40px rgba(0,0,0,.55);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
 .mobileDock a{display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;border-radius:12px;color:#94a199;text-decoration:none;font-size:.72rem;font-weight:850}
 .mobileDock a:active{background:#16231a;color:#52ef74}
 .mobileDock span{color:#52ef74;font-size:.9rem}
@@ -223,7 +223,7 @@ main{max-width:1180px}
   .siteFooter{padding-bottom:0}
   .hero{padding:42px 0 32px}
   .mobileDock{right:0;bottom:0;left:0;width:100%;max-width:none;margin:0;padding:6px 10px calc(6px + env(safe-area-inset-bottom));border:0;border-top:1px solid rgba(64,85,70,.82);border-radius:0;background:rgba(7,11,8,.96);box-shadow:0 -10px 34px rgba(0,0,0,.3)}
-  .mobileDock a{min-height:44px;border-radius:10px;font-size:.7rem}
+  .mobileDock a{min-width:0;min-height:50px;flex-direction:column;gap:3px;padding:4px 2px;border-radius:10px;font-size:.66rem;white-space:nowrap}
   .mobileDock span{font-size:.84rem}
 }
 @media(max-width:640px){

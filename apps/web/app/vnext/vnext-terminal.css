@@ -3133,7 +3133,8 @@ body .rmtTerminal button {
   align-self: stretch;
 }
 
-.rmtDesktopHeader nav button {
+.rmtDesktopHeader nav button,
+.rmtDesktopHeader nav a {
   position: relative;
   min-width: 62px;
   padding: 0 10px;
@@ -3142,9 +3143,13 @@ body .rmtTerminal button {
   background: transparent;
   font-size: 12px;
   cursor: pointer;
+  text-decoration: none;
+  display: grid;
+  place-items: center;
 }
 
-.rmtDesktopHeader nav button::after {
+.rmtDesktopHeader nav button::after,
+.rmtDesktopHeader nav a::after {
   position: absolute;
   right: 10px;
   bottom: -1px;
@@ -3155,6 +3160,7 @@ body .rmtTerminal button {
 }
 
 .rmtDesktopHeader nav button:hover,
+.rmtDesktopHeader nav a:hover,
 .rmtDesktopHeader nav button.isActive {
   color: var(--rmt-text);
 }
@@ -3910,21 +3916,26 @@ body .rmtTerminal button {
   top: 56px;
   display: grid;
   height: 44px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   border-bottom: 1px solid var(--rmt-border);
   background: rgba(7, 11, 8, .98);
 }
 
-.rmtMobilePrimaryNav button {
+.rmtMobilePrimaryNav button,
+.rmtMobilePrimaryNav a {
   position: relative;
   border: 0;
   color: var(--rmt-text-muted);
   background: transparent;
   font-size: 12px;
   font-weight: 750;
+  display: grid;
+  place-items: center;
+  text-decoration: none;
 }
 
-.rmtMobilePrimaryNav button::after {
+.rmtMobilePrimaryNav button::after,
+.rmtMobilePrimaryNav a::after {
   position: absolute;
   right: 24%;
   bottom: -1px;
@@ -4869,7 +4880,8 @@ body .rmtTerminal button {
     padding-inline: 12px;
   }
 
-  .rmtDesktopHeader nav button {
+  .rmtDesktopHeader nav button,
+  .rmtDesktopHeader nav a {
     min-width: 54px;
     padding-inline: 6px;
   }

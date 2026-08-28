@@ -34,17 +34,25 @@ const response = (body: unknown, status = 200): typeof fetch => async () => new 
 const encodedSvg = (value: string) => `data:image/svg+xml;base64,${Buffer.from(value, "utf8").toString("base64")}`;
 
 async function main() {
-const acceptedInventory = await readRmtNftProjectInventory("ccff00", undefined, { env, fetchImpl: response(inventory) });
+const acceptedInventory = await readRmtNftProjectInventory("ccff00", {}, { env, fetchImpl: response(inventory) });
 assert.equal(acceptedInventory && "items" in acceptedInventory && acceptedInventory.items.length, 2);
 assert.equal(acceptedInventory && "items" in acceptedInventory && acceptedInventory.items[1]?.metadata.status, "INVALID");
-assert.equal(await readRmtNftProjectInventory("unknown", undefined, { env, fetchImpl: response(inventory) }), null);
+let requestedInventoryUrl = "";
+const boundedFetch: typeof fetch = async (input) => {
+  requestedInventoryUrl = String(input);
+  return new Response(JSON.stringify({ ...inventory, items: inventory.items.slice(0, 1), nextCursor: "1" }), { status: 200 });
+};
+assert.ok("items" in (await readRmtNftProjectInventory("ccff00", { limit: 4 }, { env, fetchImpl: boundedFetch }))!);
+assert.match(requestedInventoryUrl, /[?&]limit=4(?:&|$)/);
+assert.deepEqual(await readRmtNftProjectInventory("ccff00", { limit: 49 }, { env, fetchImpl: response(inventory) }), { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" });
+assert.equal(await readRmtNftProjectInventory("unknown", {}, { env, fetchImpl: response(inventory) }), null);
 for (const malformed of [
   { ...inventory, collectionStandard: "ERC1155" },
   { ...inventory, items: [inventory.items[1], inventory.items[0]] },
   { ...inventory, items: [inventory.items[0], inventory.items[0]] },
   { ...inventory, availability: "PARTIAL", availabilityReason: "SOURCE_BACKFILLING" },
   { ...inventory, items: [{ ...inventory.items[0]!, metadata: { ...metadata, image: `data:image/svg+xml;base64,${Buffer.from("<svg><script>x</script></svg>").toString("base64")}` } }] },
-]) assert.deepEqual(await readRmtNftProjectInventory("ccff00", undefined, { env, fetchImpl: response(malformed) }), { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" });
+]) assert.deepEqual(await readRmtNftProjectInventory("ccff00", {}, { env, fetchImpl: response(malformed) }), { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" });
 
 for (const unsafeSvg of [
   '<svg xmlns="http://www.w3.org/2000/svg"><rect fill="url(https://example.invalid/x)"/></svg>',
@@ -76,14 +84,14 @@ for (const unsafeSvg of [
   '<svg xmlns="http://www.w3.org/2000/svg"><!-- hidden --><rect fill="#CCFF00"/></svg>',
 ]) {
   const malicious = { ...inventory, items: [{ ...inventory.items[0]!, metadata: { ...metadata, image: encodedSvg(unsafeSvg) } }], nextCursor: "1" };
-  assert.deepEqual(await readRmtNftProjectInventory("ccff00", undefined, { env, fetchImpl: response(malicious) }), { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" });
+  assert.deepEqual(await readRmtNftProjectInventory("ccff00", {}, { env, fetchImpl: response(malicious) }), { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" });
 }
 for (const safeSvg of [
   '<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1000" viewBox="0 0 1000 1000"><rect width="1000" height="1000" fill="#CCFF00"/></svg>',
   '<svg xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="1" height="1" fill="#abcdef"/></svg>',
 ]) {
   const safe = { ...inventory, items: [{ ...inventory.items[0]!, metadata: { ...metadata, image: encodedSvg(safeSvg) } }], nextCursor: "1" };
-  const result = await readRmtNftProjectInventory("ccff00", undefined, { env, fetchImpl: response(safe) });
+  const result = await readRmtNftProjectInventory("ccff00", {}, { env, fetchImpl: response(safe) });
   assert.equal(result && "items" in result && result.items.length, 1);
 }
 
@@ -96,7 +104,7 @@ for (const malformed of [
   { ...item, tokenBoundAccount: { ...item.tokenBoundAccount, tokenId: "2" } },
   { ...item, tokenBoundAccount: { ...item.tokenBoundAccount, collectionAddress: account } },
 ]) assert.deepEqual(await readRmtNftItem("ccff00", "1", { env, fetchImpl: response(malformed) }), { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" });
-assert.deepEqual(await readRmtNftProjectInventory("ccff00", undefined, { env: {}, fetchImpl: response(inventory) }), { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" });
+assert.deepEqual(await readRmtNftProjectInventory("ccff00", {}, { env: {}, fetchImpl: response(inventory) }), { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" });
 
 const projectPage = readFileSync(new URL("../../app/nft/[projectId]/page.tsx", import.meta.url), "utf8");
 const itemPage = readFileSync(new URL("../../app/nft/[projectId]/[tokenId]/page.tsx", import.meta.url), "utf8");

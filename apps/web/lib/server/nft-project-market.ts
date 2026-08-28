@@ -145,12 +145,12 @@ function validateInventoryItem(input: unknown): RmtNftInventoryItem {
   return { tokenId: input.tokenId, owner: input.owner, metadata: validateMetadata(input.metadata) };
 }
 
-function validateInventory(input: unknown, projectId: string, address: `0x${string}`, standard: "ERC721" | "ERC1155", afterTokenId?: string) {
+function validateInventory(input: unknown, projectId: string, address: `0x${string}`, standard: "ERC721" | "ERC1155", limit: number, afterTokenId?: string) {
   if (!isRecord(input) || input.schemaVersion !== 1 || input.projectId !== projectId || input.chainId !== 4663
     || !sameAddress(input.collectionAddress, address) || input.collectionStandard !== standard
     || !["AVAILABLE", "PARTIAL", "UNAVAILABLE"].includes(String(input.availability))
     || ![null, "SOURCE_BACKFILLING", "SOURCE_ERROR", "SOURCE_STALE"].includes(input.availabilityReason as never)
-    || (input.asOf !== null && !isTimestamp(input.asOf)) || !Array.isArray(input.items) || input.items.length > 24
+    || (input.asOf !== null && !isTimestamp(input.asOf)) || !Array.isArray(input.items) || input.items.length > limit
     || (input.nextCursor !== null && !isDecimalInteger(input.nextCursor))) {
     throw new Error("NFT inventory response is malformed.");
   }
@@ -184,23 +184,33 @@ function validateItem(input: unknown, projectId: string, address: `0x${string}`,
 export type RmtNftInventoryReaderResult = RmtNftProjectInventoryRead | { availability: "UNAVAILABLE"; reason: "DATA_UNAVAILABLE" };
 export type RmtNftItemReaderResult = RmtNftItemRead | { availability: "UNAVAILABLE"; reason: "DATA_UNAVAILABLE" };
 
+export type RmtNftInventoryReadRequest = {
+  afterTokenId?: string;
+  limit?: number;
+};
+
 export async function readRmtNftProjectInventory(
   projectId: string,
-  afterTokenId?: string,
+  request: RmtNftInventoryReadRequest = {},
   options: ReaderOptions = {},
 ): Promise<RmtNftInventoryReaderResult | null> {
   const project = rmtCuratedNftProject(projectId);
   if (!project || project.status !== "ACTIVE") return null;
   const source = RMT_NFT_ACTIVITY_SOURCES.find((item) => item.projectId === project.projectId);
   if (!source) return null;
+  const limit = request.limit ?? 24;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 48
+    || (request.afterTokenId !== undefined && !isDecimalInteger(request.afterTokenId))) {
+    return { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" };
+  }
   const config = configuration(options.env ?? process.env, "NFT_INDEXER");
   if (!config) return { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" };
-  const query = new URLSearchParams({ limit: "24" });
-  if (afterTokenId !== undefined) query.set("afterTokenId", afterTokenId);
+  const query = new URLSearchParams({ limit: String(limit) });
+  if (request.afterTokenId !== undefined) query.set("afterTokenId", request.afterTokenId);
   try {
     const raw = await readService<unknown>(options.fetchImpl ?? fetch,
       `${config.url}/internal/v1/projects/${project.projectId}/inventory?${query}`, config.token, options.timeoutMs ?? 5_000);
-    return validateInventory(raw, project.projectId, source.collectionAddress, source.standard, afterTokenId);
+    return validateInventory(raw, project.projectId, source.collectionAddress, source.standard, limit, request.afterTokenId);
   } catch {
     return { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" };
   }
