@@ -324,16 +324,17 @@ function fail(
 export function parseOpenSeaMintProposal(raw: unknown): RmtNftMintProposal {
   if (!record(raw)) throw new TypeError("OpenSea mint proposal must be an object.");
   const keys = Object.keys(raw).sort();
-  if (keys.join(",") !== "calldata,target,value") throw new TypeError("OpenSea mint proposal fields changed.");
-  const target = addressField(raw.target, "OpenSea mint target");
+  if (keys.join(",") !== "chain,data,to,value") throw new TypeError("OpenSea mint proposal fields changed.");
+  if (raw.chain !== "robinhood") throw new TypeError("OpenSea mint proposal chain was not Robinhood Chain.");
+  const target = addressField(raw.to, "OpenSea mint target");
   if (isAddressEqual(target, zeroAddress)) throw new TypeError("OpenSea mint target was zero.");
-  if (typeof raw.calldata !== "string" || !/^0x(?:[0-9a-fA-F]{2}){4,}$/.test(raw.calldata)) {
+  if (typeof raw.data !== "string" || !/^0x(?:[0-9a-fA-F]{2}){4,}$/.test(raw.data)) {
     throw new TypeError("OpenSea mint calldata was malformed.");
   }
-  if (typeof raw.value !== "string" || !/^(0|[1-9]\d*)$/.test(raw.value)) {
+  if (typeof raw.value !== "string" || !/^0x(?:0|[1-9a-fA-F][0-9a-fA-F]*)$/.test(raw.value)) {
     throw new TypeError("OpenSea mint value was malformed.");
   }
-  return { target, calldata: raw.calldata as Hex, value: BigInt(raw.value) };
+  return { target, calldata: raw.data as Hex, value: BigInt(raw.value) };
 }
 
 class ProviderProposalError extends Error {

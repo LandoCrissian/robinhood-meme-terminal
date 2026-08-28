@@ -188,11 +188,28 @@ async function run(input: {
 }
 
 async function main() {
-const parsed = parseOpenSeaMintProposal({ target: SEADROP, calldata: publicData(), value: PRICE.toString() });
+const wireProposal = (overrides: Record<string, unknown> = {}) => ({
+  to: SEADROP,
+  data: publicData(),
+  value: `0x${PRICE.toString(16)}`,
+  chain: "robinhood",
+  ...overrides,
+});
+const parsed = parseOpenSeaMintProposal(wireProposal());
 assert.equal(parsed.target, SEADROP);
+assert.equal(parsed.calldata, publicData());
 assert.equal(parsed.value, PRICE);
-assert.throws(() => parseOpenSeaMintProposal({ target: SEADROP, calldata: publicData(), value: PRICE.toString(), chain: "robinhood" }), /fields changed/);
-assert.throws(() => parseOpenSeaMintProposal({ target: SEADROP, calldata: "0x123", value: "1" }), /calldata/);
+assert.throws(() => parseOpenSeaMintProposal(wireProposal({ chain: "base" })), /chain/);
+const { chain: _missingChain, ...missingChain } = wireProposal();
+assert.throws(() => parseOpenSeaMintProposal(missingChain), /fields changed/);
+assert.throws(() => parseOpenSeaMintProposal({ target: SEADROP, calldata: publicData(), value: `0x${PRICE.toString(16)}`, chain: "robinhood" }), /fields changed/);
+assert.throws(() => parseOpenSeaMintProposal(wireProposal({ value: PRICE.toString() })), /value/);
+assert.throws(() => parseOpenSeaMintProposal(wireProposal({ value: "0xxyz" })), /value/);
+assert.throws(() => parseOpenSeaMintProposal(wireProposal({ value: "-0x1" })), /value/);
+assert.equal(parseOpenSeaMintProposal(wireProposal({ value: "0x0" })).value, 0n);
+assert.equal(parseOpenSeaMintProposal(wireProposal({ value: "0x2386f26fc10000" })).value, 10_000_000_000_000_000n);
+assert.throws(() => parseOpenSeaMintProposal(wireProposal({ to: "0x123" })), /target/);
+assert.throws(() => parseOpenSeaMintProposal(wireProposal({ data: "0x123" })), /calldata/);
 
 let capturedProviderRequest: { url: string; headers: Headers; body: string } | null = null;
 const providerRead = await readOpenSeaMintProposal({
@@ -202,10 +219,12 @@ const providerRead = await readOpenSeaMintProposal({
   env: { NFT_MINT_RADAR_OPENSEA_API_KEY: "server-only-fixture", NFT_MINT_RADAR_OPENSEA_BASE_URL: "http://127.0.0.1:43111" },
   fetchImpl: async (url, init) => {
     capturedProviderRequest = { url: String(url), headers: new Headers(init?.headers), body: String(init?.body) };
-    return new Response(JSON.stringify({ target: SEADROP, calldata: publicData(), value: PRICE.toString() }), { status: 200 });
+    return new Response(JSON.stringify(wireProposal()), { status: 200 });
   },
 });
 assert.equal(providerRead.target, SEADROP);
+assert.equal(providerRead.calldata, publicData());
+assert.equal(providerRead.value, PRICE);
 assert.ok(capturedProviderRequest);
 const captured = capturedProviderRequest as { url: string; headers: Headers; body: string };
 assert.equal(captured.url, "http://127.0.0.1:43111/api/v2/drops/fixture-drop/mint");
