@@ -46,29 +46,35 @@ function ProjectCard({ project }: { project: RmtNftTerminalProjectCard }) {
     && project.inventoryPreview.availability === "AVAILABLE" ? project.inventoryPreview.items : [];
   const collection = project.collections[0]!;
 
-  return <article className={styles.projectCard} aria-label={`${project.displayName} RMT-curated NFT project`}>
+  return <article className={styles.projectCard} data-nft-project-stage aria-label={`${project.displayName} RMT-curated NFT project`}>
     <div className={styles.cardIdentity}>
       <div className={styles.projectStatus}><span className={styles.curated}>RMT CURATED</span><i aria-hidden="true" /> ACTIVE</div>
       <h2><Link href={`/nft/${project.projectId}`}>{project.displayName}</Link></h2>
-      <p>{collection.standard ?? "Standard unavailable"} · Robinhood Chain</p>
+      <p>{collection.standard ?? "Standard unavailable"} · Robinhood Chain · 4663</p>
       <code title={collection.contractAddress}>{short(collection.contractAddress)}</code>
     </div>
 
-    <div className={styles.preview} aria-label={`${project.displayName} canonical inventory preview`}>
-      {inventory.length > 0 ? inventory.map((item) => <Link href={`/nft/${project.projectId}/${item.tokenId}`} key={item.tokenId} aria-label={`View ${project.displayName} token ${item.tokenId}`}>
-        <NftItemMedia metadata={item.metadata} alt={`${project.displayName} token ${item.tokenId}`} className={styles.previewImage} />
-        <span>#{item.tokenId}</span>
-      </Link>) : <div className={styles.previewUnavailable}>Canonical inventory preview unavailable</div>}
+    <div className={styles.artField}>
+      <div className={styles.artFieldLabel}><span>CANONICAL ART</span><small>ONCHAIN INVENTORY</small></div>
+      <div className={styles.preview} aria-label={`${project.displayName} canonical inventory preview`}>
+        {inventory.length > 0 ? inventory.map((item) => <Link href={`/nft/${project.projectId}/${item.tokenId}`} key={item.tokenId} aria-label={`View ${project.displayName} token ${item.tokenId}`} data-rmt-registration-frame>
+          <NftItemMedia metadata={item.metadata} alt={`${project.displayName} token ${item.tokenId}`} className={styles.previewImage} />
+          <span>#{item.tokenId}</span>
+        </Link>) : <div className={styles.previewUnavailable}><span>MEDIA</span><strong>UNAVAILABLE</strong><small>CANONICAL IDENTITY PRESERVED</small></div>}
+      </div>
     </div>
 
-    <dl className={styles.metrics}>
-      <div><dt>Holders</dt><dd>{onchain?.holderCount ?? "Data unavailable"}</dd></div>
-      <div><dt>NFTs in circulation</dt><dd>{onchain?.circulatingTokenCount ?? "Data unavailable"}</dd></div>
-      <div><dt>Lowest OpenSea listing</dt><dd>{listing ? `${amount(listing.grossAmount, listing.paymentAsset.decimals)} ${listing.paymentAsset.symbol}` : "Data unavailable"}</dd></div>
-      <div><dt>OpenSea reported 24h volume</dt><dd>{marketplace?.volume24hByPaymentAsset.length
-        ? marketplace.volume24hByPaymentAsset.map((entry) => `${amount(entry.grossAmount, entry.paymentAsset.decimals)} ${entry.paymentAsset.symbol}`).join(" · ")
-        : "Data unavailable"}</dd></div>
-    </dl>
+    <div className={styles.marketSignal} data-nft-market-tape>
+      <span>MARKET SIGNAL</span>
+      <dl className={styles.metrics}>
+        <div><dt>Holders</dt><dd>{onchain?.holderCount ?? "Data unavailable"}</dd></div>
+        <div><dt>NFTs in circulation</dt><dd>{onchain?.circulatingTokenCount ?? "Data unavailable"}</dd></div>
+        <div><dt>Lowest OpenSea listing</dt><dd>{listing ? `${amount(listing.grossAmount, listing.paymentAsset.decimals)} ${listing.paymentAsset.symbol}` : "Data unavailable"}</dd></div>
+        <div><dt>OpenSea reported 24h volume</dt><dd>{marketplace?.volume24hByPaymentAsset.length
+          ? marketplace.volume24hByPaymentAsset.map((entry) => `${amount(entry.grossAmount, entry.paymentAsset.decimals)} ${entry.paymentAsset.symbol}`).join(" · ")
+          : "Data unavailable"}</dd></div>
+      </dl>
+    </div>
     <Link className={styles.openProject} href={`/nft/${project.projectId}`}>Open Project Market <span aria-hidden="true">→</span></Link>
   </article>;
 }

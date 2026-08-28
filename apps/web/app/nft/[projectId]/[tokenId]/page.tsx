@@ -34,16 +34,16 @@ export default async function NftItemPage({ params }: { params: Promise<{ projec
 
   return <main className={styles.page}>
     <nav className={itemStyles.breadcrumb} aria-label="NFT Terminal breadcrumb"><Link href="/nft">NFT Terminal</Link><span aria-hidden="true"> → </span><Link href={`/nft/${model.project.projectId}`}>{model.project.displayName} Project Market</Link><span aria-hidden="true"> → Token #{item.tokenId}</span></nav>
-    <section className={itemStyles.itemWorkspace}>
+    <section className={itemStyles.itemWorkspace} data-nft-item-workspace>
       <NftItemMedia metadata={item.metadata} alt={`CCFF00 token ${item.tokenId}`} className={itemStyles.itemMedia} />
       <div className={itemStyles.itemDetails}>
         <p className={itemStyles.eyebrow}>RMT CURATED · ONCHAIN ITEM</p>
         <h1>#CCFF00</h1><h2>Token #{item.tokenId}</h2>
         <p className={itemStyles.itemDescription}>{item.metadata.description ?? "Metadata presentation unavailable."}</p>
-        {attribute ? <dl className={itemStyles.traits}><div><dt>{attribute.traitType}</dt><dd>{attribute.value}</dd></div></dl> : null}
         <dl className={itemStyles.identityList}>
           <div><dt>Current owner</dt><dd><a href={`${explorer}/address/${item.owner}`} target="_blank" rel="noreferrer">{short(item.owner)} ↗</a></dd></div>
-          <div><dt>ERC-6551 account</dt><dd><a href={`${explorer}/address/${item.tokenBoundAccount.accountAddress}`} target="_blank" rel="noreferrer">{short(item.tokenBoundAccount.accountAddress)} ↗</a></dd></div>
+          <div><dt>Token-bound account · ERC-6551 account</dt><dd><a href={`${explorer}/address/${item.tokenBoundAccount.accountAddress}`} target="_blank" rel="noreferrer">{short(item.tokenBoundAccount.accountAddress)} ↗</a></dd></div>
+          {attribute ? <div><dt>{attribute.traitType}</dt><dd>{attribute.value}</dd></div> : null}
           <div><dt>Collection contract</dt><dd><a href={`${explorer}/address/${item.collectionAddress}`} target="_blank" rel="noreferrer">{short(item.collectionAddress)} ↗</a></dd></div>
           <div><dt>Chain</dt><dd>Robinhood Chain · 4663</dd></div>
           <div><dt>Metadata provenance</dt><dd>ONCHAIN TOKENURI</dd></div>

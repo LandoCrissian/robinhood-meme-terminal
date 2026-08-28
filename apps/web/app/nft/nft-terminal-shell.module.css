@@ -4,27 +4,48 @@
 }
 
 .shell {
-  --nft-canvas: #070b08;
-  --nft-surface: #0b100c;
-  --nft-surface-raised: #0f1510;
-  --nft-border: #202921;
-  --nft-border-strong: #344137;
-  --nft-text: #edf4ee;
-  --nft-text-soft: #a6b0a8;
-  --nft-text-muted: #727d75;
+  --nft-canvas: #050806;
+  --nft-workspace: #090d0a;
+  --nft-surface: #0c120e;
+  --nft-surface-raised: #101712;
+  --nft-border: #1d2720;
+  --nft-border-strong: #34453a;
+  --nft-text: #f0f5f1;
+  --nft-text-soft: #a5b0a8;
+  --nft-text-muted: #6f7b73;
   --nft-accent: #93e88e;
+  position: relative;
+  isolation: isolate;
   min-height: 100svh;
+  overflow-x: clip;
   color: var(--nft-text);
-  background: var(--nft-canvas);
+  background:
+    radial-gradient(circle at 78% 18%, rgba(147, 232, 142, .025), transparent 32rem),
+    radial-gradient(circle at 8% 72%, rgba(170, 191, 255, .018), transparent 28rem),
+    var(--nft-canvas);
   font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
 
+.shell::before {
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  opacity: .26;
+  background-image:
+    linear-gradient(rgba(151, 176, 157, .025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(151, 176, 157, .02) 1px, transparent 1px);
+  background-size: 56px 56px;
+  mask-image: linear-gradient(to bottom, #000 0, rgba(0, 0, 0, .45) 55%, transparent 100%);
+}
+
 .shell a:focus-visible,
 .shell button:focus-visible {
-  outline: 3px solid rgba(147, 232, 142, .55);
-  outline-offset: 2px;
+  outline: 2px solid rgba(147, 232, 142, .8);
+  outline-offset: 3px;
 }
 
 .skipLink {
@@ -35,7 +56,7 @@
   padding: 9px 12px;
   color: #071008;
   background: var(--nft-accent);
-  border-radius: 6px;
+  border-radius: 4px;
   font-weight: 800;
   transform: translateY(-180%);
 }
@@ -54,8 +75,20 @@
   align-items: center;
   gap: 18px;
   padding: max(0px, env(safe-area-inset-top)) 20px 0;
-  border-bottom: 1px solid var(--nft-border);
-  background: rgba(7, 11, 8, .98);
+  border-bottom: 1px solid rgba(52, 69, 58, .72);
+  background: rgba(5, 8, 6, .94);
+  backdrop-filter: blur(12px);
+}
+
+.header::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 1px;
+  pointer-events: none;
+  content: "";
+  background: linear-gradient(90deg, transparent, rgba(147, 232, 142, .18) 40%, transparent 82%);
 }
 
 .brand {
@@ -71,7 +104,7 @@
   width: 34px;
   height: 34px;
   border: 1px solid var(--nft-border-strong);
-  border-radius: 6px;
+  border-radius: 4px;
 }
 
 .brand strong {
@@ -93,6 +126,7 @@
   font-size: 12px;
   font-weight: 650;
   text-decoration: none;
+  transition: color .18s ease;
 }
 
 .desktopNav a {
@@ -107,6 +141,8 @@
   height: 2px;
   content: "";
   background: transparent;
+  transform: scaleX(.35);
+  transition: background-color .18s ease, transform .18s ease;
 }
 
 .desktopNav a::after {
@@ -124,6 +160,7 @@
 .desktopNav a[aria-current="page"]::after,
 .mobileNav a[aria-current="page"]::after {
   background: var(--nft-accent);
+  transform: scaleX(1);
 }
 
 .chain {
@@ -132,7 +169,7 @@
   justify-self: end;
   gap: 6px;
   color: var(--nft-text-muted);
-  font-size: 10px;
+  font: 10px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
   white-space: nowrap;
 }
 
@@ -141,7 +178,7 @@
   height: 6px;
   border-radius: 50%;
   background: var(--nft-accent);
-  box-shadow: 0 0 0 3px rgba(147, 232, 142, .1);
+  box-shadow: 0 0 0 3px rgba(147, 232, 142, .08);
 }
 
 .chain b {
@@ -153,7 +190,7 @@
 .wallet :global(.connectTrigger),
 .wallet :global(.network) {
   min-height: 36px;
-  border-radius: 6px;
+  border-radius: 5px;
 }
 
 .mobileNav {
@@ -161,10 +198,16 @@
 }
 
 .content {
+  position: relative;
+  z-index: 1;
   min-width: 0;
 }
 
 @media (max-width: 760px) {
+  .shell::before {
+    background-size: 36px 36px;
+  }
+
   .header {
     min-height: calc(56px + env(safe-area-inset-top));
     grid-template-columns: minmax(0, 1fr) auto auto;
@@ -205,7 +248,8 @@
     height: 44px;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     border-bottom: 1px solid var(--nft-border);
-    background: rgba(7, 11, 8, .98);
+    background: rgba(5, 8, 6, .96);
+    backdrop-filter: blur(12px);
   }
 
   .mobileNav a::after {
@@ -223,6 +267,7 @@
   .shell *::before,
   .shell *::after {
     scroll-behavior: auto;
-    transition-duration: .01ms;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
   }
 }
