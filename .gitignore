@@ -9,6 +9,7 @@ coverage/
 .DS_Store
 *.log
 *.tsbuildinfo
+.artifacts/legion-visual-qa/
 
 # Foundry
 packages/contracts/cache/

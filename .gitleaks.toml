@@ -27,3 +27,10 @@ condition = "AND"
 targetRules = ["generic-api-key"]
 regexes = ['''^0x[0-9A-Fa-f]{40}$''']
 paths = ['''^apps/web/lib/vnext/distribution-ccff00-presentation\.ts$''']
+
+[[allowlists]]
+description = "Public curated Token and NFT EVM addresses and V4 pool IDs in deterministic visual-QA fixtures"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''^0x(?:[0-9A-Fa-f]{40}|[0-9A-Fa-f]{64})$''']
+paths = ['''^scripts/visual-qa/legion-fixtures\.mjs$''']
