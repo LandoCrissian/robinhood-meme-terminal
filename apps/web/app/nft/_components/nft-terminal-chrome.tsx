@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { VNextRouteWalletConnection } from "../../vnext/vnext-wallet-connection";
+import { NftRouteWalletConnection } from "./nft-route-wallet-connection";
 import styles from "../nft-terminal-shell.module.css";
 
 const primaryLinks = [
@@ -24,7 +24,7 @@ export function NftTerminalChrome() {
       </nav>
 
       <span className={styles.chain} aria-label="Robinhood Chain 4663"><i aria-hidden="true" /> <b>Robinhood</b> · 4663</span>
-      <div className={styles.wallet}><VNextRouteWalletConnection compact returnTo="/nft" /></div>
+      <NftRouteWalletConnection />
     </header>
 
     <nav className={styles.mobileNav} aria-label="RMT Terminal navigation">

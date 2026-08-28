@@ -47,6 +47,7 @@ function directorySnapshot(markets: VNextDirectoryMarket[]) {
     market.priceUsd,
     market.liquidityUsd,
     market.marketCapUsd,
+    market.fdvUsd,
     market.volume5m,
     market.volume1h,
     market.volume24h,
