@@ -28,9 +28,9 @@ every 1–5 minutes and alert on:
 
 The endpoint contains no secrets and performs read-only contract calls. The repository asks GitHub to run `.github/workflows/production-health.yml` every five minutes to check the canonical redirect, protocol state, confirmed launch feed, Railway indexer, and official-market trade proxy. GitHub scheduling is best-effort and may be delayed, so the external uptime provider is the required independent 1–5 minute alert path rather than an optional duplicate.
 
-## Uniswap V3 fee-settlement monitoring
+## Historical Uniswap V3 fee-settlement monitoring
 
-The public `RMT_EXECUTION_V1` release has a separate on-demand monitor. It is intentionally free and read-only: it does not use a Vercel function, cron, hosted scheduler, paid RPC, wallet, signing key or transaction.
+Current owner product policy is `RMT_FEE = 0`, and no current fee activation is authorized. The historical public `RMT_EXECUTION_V1` release retains a separate on-demand evidence monitor. It is intentionally free and read-only: it does not use a Vercel function, cron, hosted scheduler, paid RPC, wallet, signing key or transaction. Its existence and output do not authorize fee collection.
 
 Run from the repository root:
 
@@ -76,4 +76,4 @@ Treat any nonzero exit, `healthy: false`, readiness mismatch, release-block hash
 4. use the existing provider-specific public authorization kill switch to stop new fee-bearing Uniswap V3 authorizations only if the owner authorizes the production change; and
 5. follow [`INCIDENT_RESPONSE.md`](INCIDENT_RESPONSE.md) without moving treasury funds or changing contracts from the monitor.
 
-Run the command after a fee release, after any relevant deployment/configuration change, when reconciling a reported trade, and during manual operational review. Continuous paid monitoring is not required by this runbook; adding hosted scheduling is a separate cost and operations decision.
+Run the command when reviewing the historical release evidence, after any separately authorized relevant configuration change, when reconciling a recorded trade, and during manual operational review. Continuous paid monitoring is not required by this runbook; adding hosted scheduling is a separate cost and operations decision.

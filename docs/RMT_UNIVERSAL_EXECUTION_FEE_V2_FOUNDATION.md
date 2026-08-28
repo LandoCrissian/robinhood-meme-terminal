@@ -1,10 +1,12 @@
 # RMT universal execution fee V2 foundation
 
-Status: foundation only; no V2 executor is deployed or production-active.
+**Status: DORMANT / PRESERVED IMPLEMENTATION REFERENCE — NOT CURRENT OWNER POLICY**
 
-## Owner policy
+Current owner product policy is `RMT_FEE = 0`. No V2 fee activation is authorized, and universal fee settlement is not a provider-admission requirement, roadmap prerequisite or Terminal completion gate. Any future fee requires a new explicit owner decision and separately reviewed implementation, release and production activation.
 
-`RMT_EXECUTION_V2` is the additive forward policy for every RMT wallet-executable trade on Robinhood Chain. It charges exactly 25 basis points on gross input, with floor rounding and no minimum fee. The provider is quoted with `providerInput = userGrossInput - floor(userGrossInput * 25 / 10000)`. The fee and swap must settle atomically; a reverted or failed swap settles zero RMT fee. Discovery, search, quotes, simulations, approvals, ordinary transfers, and bridge/funding transactions are not fee-bearing under this policy.
+## Preserved V2 design record
+
+`RMT_EXECUTION_V2` was designed as an additive universal policy for RMT wallet-executable trades on Robinhood Chain. The preserved design charges exactly 25 basis points on gross input, with floor rounding and no minimum fee. The provider is quoted with `providerInput = userGrossInput - floor(userGrossInput * 25 / 10000)`. The fee and swap must settle atomically; a reverted or failed swap settles zero RMT fee. Discovery, search, quotes, simulations, approvals, ordinary transfers, and bridge/funding transactions are not fee-bearing under that dormant design.
 
 V1 remains immutable historical policy and deployment evidence. V2 does not change its descriptor, policy hash, deployment manifest, or settlement receipts.
 
@@ -12,7 +14,7 @@ V2 deliberately has no per-token registry. A standard Robinhood Chain asset is b
 
 The final V2 treasury and effective block are owner-reserved activation inputs, not foundation defaults. A candidate V2 policy requires a valid nonzero treasury that is not a Universal Router sentinel, and its policy hash binds that exact configured treasury and effective boundary. Missing activation configuration returns no active policy; partial or mismatched enabled configuration fails closed. The historical V1 treasury and artifacts remain unchanged and do not implicitly select the V2 treasury.
 
-## Current executable-provider inventory
+## Provider inventory at the foundation baseline
 
 | Provider | Adapter | Quote | Strict verification | Wallet authorization after this foundation | Exact current wallet target | Current fee commitment / settlement | Atomic RMT fee in exact wallet transaction | Current bypass class | Required V2 implementation |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -26,11 +28,11 @@ The final V2 treasury and effective block are owner-reserved activation inputs, 
 
 The presence of normalized economics is not settlement proof. Wallet admission requires the exact signed transaction to use an explicitly registered V2 settlement implementation and bind the active policy, economics, settlement proof, authorization, execution target, provider target, calldata hash, recipient, deadline, and execution ID.
 
-## Foundation admission rule
+## Dormant foundation admission design
 
 The server-owned settlement registry has three conceptual outcomes: quote only, V2 atomic input fee, and (reserved for future review) other explicitly versioned modes. Every current provider is `QUOTE_ONLY` in this tranche.
 
-A provider becomes wallet-authorizable only when all are true:
+If V2 is explicitly reauthorized in the future, this design requires all of the following before a provider becomes wallet-authorizable:
 
 1. the exact active V2 policy is configured;
 2. its reviewed V2 settlement implementation is registered;
@@ -41,7 +43,9 @@ A provider becomes wallet-authorizable only when all are true:
 
 Missing policy, configuration, commitment, proof, binding, or settlement registration fails closed. It cannot downgrade to a direct fee-free router. Quote-only attempts remain visible for price observation.
 
-## Implementation sequence
+## Preserved implementation sequence
+
+The sequence below records the prior design order. It is not the current roadmap and does not authorize implementation, deployment or activation.
 
 1. Shared V2 policy, economics, settlement registry, admission and wallet contracts (this foundation).
 2. Uniswap V3 universal atomic fee executor V2.

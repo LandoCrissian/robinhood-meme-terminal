@@ -1,6 +1,6 @@
 # Robinhood Meme Terminal
 
-Robinhood Meme Terminal (RMT) is a mobile-first, non-custodial Robinhood Chain terminal for discovering, comparing and trading ecosystem markets.
+Robinhood Meme Terminal (RMT) is the market operating layer for Robinhood Chain: a mobile-first, non-custodial system for discovering and understanding curated token and NFT markets, ownership, activity, portfolio state and canonical evidence.
 
 - **Live application:** [www.rmtlaunch.fun](https://www.rmtlaunch.fun)
 - **Live status:** [www.rmtlaunch.fun/status](https://www.rmtlaunch.fun/status)
@@ -11,7 +11,7 @@ RMT is independent software. It is not Robinhood Markets, Inc., an official Robi
 
 ## Product direction
 
-RMT is a discovery, market-intelligence, execution, wallet portfolio, funding, attribution and RWA terminal. It is not a launchpad.
+RMT connects discovery, the curated Token Terminal, the curated NFT Terminal, Project Market, portfolio/ownership, market activity, community and future distribution. It is not a launchpad or a generic NFT marketplace clone.
 
 The terminal loop is:
 
@@ -19,7 +19,7 @@ The terminal loop is:
 SCAN → VERIFY → ANALYZE → EXECUTE → RECONCILE → MANAGE
 ```
 
-Terminal VNext is the canonical production terminal served from `/`. The former `/vnext` address redirects to the public root; preserved legacy market and portfolio routes are compatibility-only and are not separate terminal architectures.
+Terminal VNext is the canonical Token Terminal architecture served from `/`. The former `/vnext` address redirects to the public root; preserved legacy market and portfolio routes are compatibility-only and are not separate terminal architectures. The curated NFT Terminal is an active product lane served from `/nft`; future token/NFT connections require verified Project Market identity rather than inferred branding relationships.
 
 Read the current system-of-record documents before substantial work:
 
@@ -31,11 +31,13 @@ Read the current system-of-record documents before substantial work:
 
 ## Current terminal behavior
 
-RMT provides:
+RMT currently provides:
 
-- Robinhood Chain market discovery with origin, venue, age, liquidity, activity and market evidence;
-- self-custodial wallet connection and wallet-reviewed transactions;
-- verified Sushi and Uniswap execution where an independently supported route exists;
+- exactly eight owner-curated Robinhood Chain token markets with live enrichment, canonical identity and venue evidence;
+- self-custodial wallet connection plus VNext quote, verification, authorization, recovery and portfolio foundations while public wallet submission remains disabled;
+- an active curated NFT Terminal with CCFF00 as the only public `ACTIVE` project;
+- technically verified, non-public `WATCHING` status for Robin Rabbits and Gogh Punks;
+- canonical NFT ownership/activity foundations and separately labeled OpenSea marketplace evidence, with no NFT execution;
 - VNext Spend Balance, asset-to-asset intent, provider comparison, authorization, settlement and recovery foundations;
 - disabled-by-default up. v2 and up. Slipstream quote, strict-verification and exact wallet-authorization paths with live onchain fee evidence; controlled mainnet proofs and explicit release activation remain pending;
 - canonical V6 compatibility for the existing official RMT market;
@@ -43,13 +45,13 @@ RMT provides:
 - chain-qualified asset and Robinhood stock-token evidence;
 - release-gated, asynchronous cross-chain funding/recovery foundations.
 
-RMT never receives a private key or recovery phrase. A provider quote is not permission to execute. Strict verification, wallet authorization and production activation are independently admitted.
+RMT never receives a private key or recovery phrase. A provider quote is not permission to execute. Strict verification, wallet authorization, wallet submission and production activation are independently admitted. Public Token Terminal wallet execution remains disabled through the default-false client authorization, server authorization and wallet-submission gates.
 
-RMT's explicit, versioned `RMT_EXECUTION_V1` policy is live for admitted public Uniswap V3 executions: 25 basis points (0.25%), floor rounding, no minimum and 100% RMT operations. The wallet shows the fee before review, the user remains the only signer, and the non-upgradeable provider-specific executor settles a fee only when the swap succeeds. Other providers, funding, transfers and failed transactions do not inherit this fee. Venue fees, price impact, slippage, approvals and network gas remain separately visible. See the [execution revenue record](docs/RMT_EXECUTION_REVENUE.md) and [read-only monitoring runbook](docs/PRODUCTION_MONITORING.md#uniswap-v3-fee-settlement-monitoring).
+Current owner product policy is `RMT_FEE = 0`. No RMT trading fee is authorized for activation, and fee work is not a Token Terminal completion prerequisite. The repository preserves the prior `RMT_EXECUTION_V1` deployment, controlled proof, release boundary, receipts and monitoring as historical technical evidence, and preserves `RMT_EXECUTION_V2` as dormant implementation work. Neither record self-authorizes current or future fee activation. See the [execution revenue historical record](docs/RMT_EXECUTION_REVENUE.md).
 
 ## Paused product systems
 
-Profiles, referrals, RMT Live/community, creator applications, creator media/releases, V7 launches, NFT/marketplace preparation and new token launches are paused during terminal completion.
+Profiles, referrals, RMT Live/community, creator applications, creator media/releases, V7 launches, creator marketplace creation and new token launches remain paused unless separately reauthorized. The active curated NFT Terminal, NFT technical verification and NFT marketplace read-evidence foundations are not part of this paused Creator/V7 classification.
 
 Their source, tests, Firestore rules and stored user data are preserved. They are not current roadmap authority and are not required for wallet trading. Minimal authenticated wallet identity remains active security infrastructure so protected endpoints can bind the session to the exact recipient wallet.
 
@@ -76,7 +78,9 @@ RMT V4/V5 and earlier generations are retired historical systems. Their source a
 - `apps/web` — canonical production VNext terminal plus preserved compatibility routes, trading, wallet, evidence and recovery UI
 - `apps/indexer` — canonical deployed V6 event/history authority
 - `apps/external-origin-indexer` — fail-closed external project-origin attribution
-- `apps/market-indexer` — read-oriented external market discovery and enrichment
+- `apps/market-indexer` — optional historical external-market infrastructure; not a curated Token Terminal admission dependency
+- `apps/nft-indexer` — canonical NFT ownership, mint, transfer and burn evidence
+- `apps/nft-marketplace-indexer` — marketplace read evidence, separate from canonical ownership and NFT execution
 - `packages/contracts` — deployed compatibility, terminal security, paused experimental and retired historical contract source
 - `packages/shared` — shared chain and market-origin types
 - `docs` — architecture, deployment, operations, security, historical and research records with status defined by the active system map

@@ -97,8 +97,8 @@ The completed production sequence was:
 
 Privy's wallet-action swap economics do not define RMT revenue policy. RMT must not replace its independently admitted same-chain routes merely to add monetization.
 
-The earlier generic fee-path description in this document is superseded by the provider-specific [`RMT_EXECUTION_V1` architecture](RMT_EXECUTION_REVENUE.md). The approved 25-bps policy is publicly active only for admitted Uniswap V3 fee-executor routes. The fee is disclosed before wallet confirmation, bound into independently decoded execution economics and atomically settled to the approved treasury only when the trade succeeds. There is no implicit fallback fee, no public Uniswap V4 fee activation and no fee inheritance by Privy, transfers, funding or other providers.
+Current owner product policy is `RMT_FEE = 0`, and no fee activation is authorized. The earlier generic fee-path description in this document is superseded by the historical provider-specific [`RMT_EXECUTION_V1` record](RMT_EXECUTION_REVENUE.md). Its approved 25-bps release, disclosures, settlement proof and boundary remain immutable historical evidence; they do not authorize current fee collection or fee inheritance by Privy, transfers, funding or other providers.
 
-The current policy, executor, exact fee math, release boundary, reconciliation rules and monitoring procedure are authoritative in [`RMT_EXECUTION_REVENUE.md`](RMT_EXECUTION_REVENUE.md) and [`PRODUCTION_MONITORING.md`](PRODUCTION_MONITORING.md#uniswap-v3-fee-settlement-monitoring).
+Current policy and the preserved executor, exact fee math, release boundary, reconciliation rules and evidence-monitoring procedure are distinguished in [`RMT_EXECUTION_REVENUE.md`](RMT_EXECUTION_REVENUE.md) and [`PRODUCTION_MONITORING.md`](PRODUCTION_MONITORING.md#historical-uniswap-v3-fee-settlement-monitoring).
 
-The next phase requires a registered authorization-key quorum and a non-empty policy ID. RMT must never attach a signer with an empty policy list.
+Any future scoped-session execution would require a registered authorization-key quorum and a non-empty policy ID. RMT must never attach a signer with an empty policy list. This is not current roadmap authority and does not supersede the current Token Terminal integration priority.

@@ -1,5 +1,9 @@
 # Uniswap V3 universal atomic fee executor V2
 
+**Status: DORMANT / PRESERVED IMPLEMENTATION REFERENCE — NOT CURRENT OWNER POLICY**
+
+Current owner product policy is `RMT_FEE = 0`. This document records prior V2 design and implementation evidence; it is not current roadmap authority, a Terminal completion prerequisite or authorization to deploy or activate fees.
+
 `RMTUniswapV3FeeExecutorV2` is an additive, ownerless execution primitive for
 the `RMT_EXECUTION_V2` policy. It does not replace or modify the historical V1
 contract or its deployment evidence.
