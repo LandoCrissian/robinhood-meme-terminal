@@ -2181,7 +2181,7 @@ async function inspectV4PreviewUserJourney(browser, fixture) {
 
   await page.locator(".vnEvidenceTabs").getByRole("tab", { name: "risk", exact: true }).click();
   const riskText = await page.locator(".vnEvidencePane").innerText();
-  for (const required of ["Token identity", "Onchain verified", "Market evidence", "Uniswap V4 canonical", "Source published", "Yes", "Proxy", "Not detected", "Contract controls", "review required", "Sell evidence", "not run"] ) {
+  for (const required of ["Token identity", "Onchain verified", "Market evidence", "Uniswap V4 canonical", "Contract source", "Published", "Proxy", "Not detected", "Privileged controls", "review required", "Sell check", "not run"] ) {
     if (!riskText.toLowerCase().includes(required.toLowerCase())) throw new Error(`V4 token risk findings omitted ${required}: ${riskText}`);
   }
   if (/holder-to-pool.*passed|holder-to-pool.*blocked/i.test(riskText)) throw new Error(`V4 findings fabricated sell-direction evidence: ${riskText}`);
