@@ -9,6 +9,10 @@ import { vNextUniswapV4Adapter } from "./vnext-uniswap-v4-adapter";
 import { configuredVNextUniswapXAdapters, prepareVNextUniswapXIntent } from "./vnext-uniswapx-adapter";
 import { configuredVNextZeroXAdapters } from "./vnext-zero-x-adapter";
 import { configuredVNextUpAdapters } from "./vnext-up-adapter";
+import {
+  requireVNextExecutionProvider,
+  resolveVNextExecutionEligibility
+} from "./vnext-execution-eligibility";
 
 export const robinhoodVNextQuoteAdapters: readonly VNextQuoteProviderAdapter[] = [
   vNextSushiAdapter,
@@ -21,7 +25,15 @@ export const robinhoodVNextQuoteAdapters: readonly VNextQuoteProviderAdapter[] =
 ];
 
 export function quoteRobinhoodVNextExecution(input: Parameters<typeof quoteVNextExecutionProviders>[0]) {
-  return quoteVNextExecutionProviders(input, robinhoodVNextQuoteAdapters);
+  const eligibility = resolveVNextExecutionEligibility(
+    input.inputAsset,
+    input.outputAsset,
+    robinhoodVNextQuoteAdapters.map((adapter) => adapter.provider)
+  );
+  return quoteVNextExecutionProviders(
+    input,
+    robinhoodVNextQuoteAdapters.filter((adapter) => eligibility.providers.includes(adapter.provider))
+  );
 }
 
 export async function withVNextStockTokenExecutionAdmission<T>(
@@ -34,12 +46,24 @@ export async function withVNextStockTokenExecutionAdmission<T>(
 }
 
 export function verifyRobinhoodVNextExecution(provider: VNextQuoteProvider, input: VNextProviderVerificationRequest) {
+  requireVNextExecutionProvider(
+    input.inputAsset,
+    input.outputAsset,
+    provider,
+    robinhoodVNextQuoteAdapters.map((adapter) => adapter.provider)
+  );
   return withVNextStockTokenExecutionAdmission(input, () => (
     verifyVNextExecutionProvider(provider, input, robinhoodVNextQuoteAdapters)
   ));
 }
 
 export function prepareRobinhoodVNextAuthorization(provider: VNextQuoteProvider, input: VNextProviderAuthorizationRequest) {
+  requireVNextExecutionProvider(
+    input.inputAsset,
+    input.outputAsset,
+    provider,
+    robinhoodVNextQuoteAdapters.map((adapter) => adapter.provider)
+  );
   return withVNextStockTokenExecutionAdmission(input, () => (
     prepareVNextProviderAuthorization(provider, input, robinhoodVNextQuoteAdapters)
   ));

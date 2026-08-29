@@ -10,7 +10,7 @@ Before substantial work, read:
 
 Working rules:
 
-- VNext (`apps/web/lib/vnext/*`, `apps/web/lib/server/vnext-*`) remains the canonical Token Terminal architecture. It is an owner-curated market terminal; do not restore exhaustive chain-wide indexing as a Terminal dependency or create another state/execution framework.
+- VNext (`apps/web/lib/vnext/*`, `apps/web/lib/server/vnext-*`) remains the canonical Token Terminal architecture. Its eight owner-curated markets are canonical seed authority, not a ceiling on bounded public Robinhood Chain market visibility. Visibility, curated authority and execution eligibility remain separate; do not restore exhaustive chain-wide indexing as a Terminal dependency or create another state/execution framework.
 - The NFT Terminal is an active, curated, read-only-execution product lane. CCFF00 is the only public `ACTIVE` NFT project. Robin Rabbits and Gogh Punks are technically verified `WATCHING` projects; `WATCHING` never implies public admission.
 - Creator/V7 launch, creator media/marketplace creation, profiles/referrals, and community/RMT Live remain separate preserved domains and are paused unless explicitly reauthorized. Do not bundle the active NFT Terminal back into Creator/V7.
 - Project Market is the future evidence-backed connection between token and NFT lanes. Never infer an NFT-to-ERC20 relationship from names, symbols, branding, metadata, or contract functions; require owner confirmation plus independent technical verification.

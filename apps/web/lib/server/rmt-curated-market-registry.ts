@@ -8,11 +8,6 @@ import {
   type RmtCuratedMarketEntry
 } from "../vnext/curated-market-registry";
 import { directoryMarketsFromCanonicalPools, type VNextDirectoryMarket } from "../vnext/market-directory";
-import {
-  ROBINHOOD_NATIVE_ASSET_ADDRESS,
-  ROBINHOOD_USDG_ADDRESS,
-  ROBINHOOD_WETH_ADDRESS
-} from "../vnext/robinhood-assets";
 import { ROBINHOOD_V4_STATE_VIEW } from "../uniswap-v4";
 import {
   readRobinhoodTokenIdentities,
@@ -79,19 +74,6 @@ type SnapshotDependencies = {
 let lastGood: { freshUntil: number; staleUntil: number; snapshot: RmtCuratedMarketSnapshot } | null = null;
 let inFlight: Promise<RmtCuratedMarketSnapshot> | null = null;
 
-const SETTLEMENT_ASSETS = new Set([
-  ROBINHOOD_NATIVE_ASSET_ADDRESS.toLowerCase(),
-  ROBINHOOD_USDG_ADDRESS.toLowerCase(),
-  ROBINHOOD_WETH_ADDRESS.toLowerCase()
-]);
-
-export class RmtCuratedMarketAdmissionError extends Error {
-  constructor() {
-    super("Token exists but is not currently listed on RMT.");
-    this.name = "RmtCuratedMarketAdmissionError";
-  }
-}
-
 type RmtCuratedContractListingDependencies = {
   readIdentity?: typeof readRobinhoodTokenIdentity;
   admitProjectIdentities?: (
@@ -134,24 +116,6 @@ export async function classifyRmtCuratedContractListing(
   return admission.quarantined.length > 0
     ? { status: "not_admitted", identity }
     : { status: "not_listed", identity };
-}
-
-export function requireRmtCuratedExecutionAssets(inputAsset: Address, outputAsset: Address) {
-  const assets = [inputAsset, outputAsset].map((address) => address.toLowerCase());
-  const marketAssets = assets.filter((address) => !SETTLEMENT_ASSETS.has(address));
-  if (
-    marketAssets.length === 0
-    || marketAssets.some((address) => !RMT_CURATED_MARKET_REGISTRY.some((entry) => entry.token.toLowerCase() === address))
-  ) throw new RmtCuratedMarketAdmissionError();
-}
-
-export function rmtCuratedMarketAdmissionErrorResponse(cause: unknown) {
-  return cause instanceof RmtCuratedMarketAdmissionError
-    ? Response.json({ error: cause.message, listingAdmission: "not_listed" }, {
-        status: 409,
-        headers: { "Cache-Control": "no-store" }
-      })
-    : null;
 }
 
 async function verifyAddressMarket(entry: RmtCuratedMarketEntry) {

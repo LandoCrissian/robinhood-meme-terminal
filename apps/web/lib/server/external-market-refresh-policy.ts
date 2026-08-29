@@ -1,4 +1,4 @@
-export const EXTERNAL_BROAD_CACHE_CONTROL = "public, s-maxage=300, stale-while-revalidate=600";
+export const EXTERNAL_BROAD_CACHE_CONTROL = "public, s-maxage=60, stale-while-revalidate=120";
 export const EXTERNAL_CONTRACT_CACHE_CONTROL = "public, s-maxage=30, stale-while-revalidate=90";
 export const EXTERNAL_CONTRACT_RESOLVER_CACHE_CONTROL = "public, s-maxage=20, stale-while-revalidate=60";
 export const EXTERNAL_BROAD_REFRESH_KEY = "broad";

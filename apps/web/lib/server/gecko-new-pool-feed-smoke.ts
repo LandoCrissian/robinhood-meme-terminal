@@ -6,6 +6,7 @@ import {
   geckoPoolFeedUrl,
   parseGeckoPoolPairs
 } from "./gecko-new-pool-feed";
+import { ROBINHOOD_USDG_ADDRESS, ROBINHOOD_WETH_ADDRESS } from "../vnext/robinhood-assets";
 
 const base = "0x1111111111111111111111111111111111111111";
 const quote = "0x2222222222222222222222222222222222222222";
@@ -49,6 +50,20 @@ assert.equal(parsed[0]?.pairCreatedAt, Date.parse("2026-08-03T15:49:16Z"));
 assert.match(parsed[0]?.info?.imageUrl ?? "", /coin-images\.coingecko\.com/);
 assert.deepEqual(parsed[0]?.discoveryFeeds, ["new"]);
 assert.deepEqual(parseGeckoPoolPairs({ malformed: true }, "new"), []);
+assert.deepEqual(parseGeckoPoolPairs({
+  ...payload,
+  data: [{ ...payload.data[0]!, id: `base_${pair}` }]
+}, "top"), [], "Wrong-chain pool resources must be rejected");
+assert.deepEqual(parseGeckoPoolPairs({
+  ...payload,
+  data: [{
+    ...payload.data[0]!,
+    relationships: {
+      ...payload.data[0]!.relationships,
+      base_token: { data: { id: `base_${base}`, type: "token" } }
+    }
+  }]
+}, "top"), [], "Wrong-chain token resources must be rejected");
 
 const missingMetrics = {
   ...payload,
@@ -93,9 +108,46 @@ const nativeV4 = parseGeckoPoolPairs(nativeV4Payload, "trending-1h")[0];
 assert.equal(nativeV4?.baseToken.address.toLowerCase(), base);
 assert.equal(nativeV4?.quoteToken.address.toLowerCase(), zeroAddress);
 assert.equal(nativeV4?.priceUsd, 0.00012);
+assert.equal(nativeV4?.marketCap, null, "Flipped provider base-token valuation must not be assigned to the displayed quote token");
+assert.equal(nativeV4?.fdv, null, "Flipped provider base-token FDV must not be assigned to the displayed quote token");
+
+const wethBasePayload = {
+  ...nativeV4Payload,
+  data: [{
+    ...nativeV4Payload.data[0]!,
+    relationships: {
+      ...nativeV4Payload.data[0]!.relationships,
+      base_token: { data: { id: `robinhood_${ROBINHOOD_WETH_ADDRESS}`, type: "token" } }
+    }
+  }],
+  included: [
+    { id: `robinhood_${ROBINHOOD_WETH_ADDRESS}`, type: "token", attributes: { address: ROBINHOOD_WETH_ADDRESS, name: "Wrapped Ether", symbol: "WETH", image_url: null } },
+    payload.included[0]!,
+    payload.included[2]!
+  ]
+};
+assert.equal(parseGeckoPoolPairs(wethBasePayload, "top")[0]?.baseToken.address.toLowerCase(), base);
+
+const infrastructureOnlyPayload = {
+  ...wethBasePayload,
+  data: [{
+    ...wethBasePayload.data[0]!,
+    relationships: {
+      ...wethBasePayload.data[0]!.relationships,
+      quote_token: { data: { id: `robinhood_${ROBINHOOD_USDG_ADDRESS}`, type: "token" } }
+    }
+  }],
+  included: [
+    wethBasePayload.included[0]!,
+    { id: `robinhood_${ROBINHOOD_USDG_ADDRESS}`, type: "token", attributes: { address: ROBINHOOD_USDG_ADDRESS, name: "USDG", symbol: "USDG", image_url: null } },
+    payload.included[2]!
+  ]
+};
+assert.deepEqual(parseGeckoPoolPairs(infrastructureOnlyPayload, "top"), [], "Infrastructure assets must not become displayed candidates");
 
 const expectedRequests = GECKO_POOL_FEEDS.reduce((total, feed) => total + feed.pages.length, 0);
-assert.equal(expectedRequests, 11, "The broad provider fan-in must remain explicitly bounded");
+assert.equal(expectedRequests, 3, "The broad provider fan-in must remain explicitly bounded");
+assert.deepEqual(GECKO_POOL_FEEDS.map((feed) => feed.id), ["new", "top", "trending-1h"]);
 for (const feed of GECKO_POOL_FEEDS) {
   for (const page of feed.pages) {
     const url = geckoPoolFeedUrl(feed, page);
@@ -108,25 +160,24 @@ for (const feed of GECKO_POOL_FEEDS) {
 async function main() {
   const requested: string[] = [];
   const snapshot = await fetchGeckoPoolSnapshot({
-    fetch: async (input) => {
+    fetch: async (input, init) => {
       const url = new URL(String(input));
       requested.push(url.toString());
-      if (url.pathname.endsWith("/trending_pools") && url.searchParams.get("duration") === "5m") {
+      assert.equal(new Headers(init?.headers).get("accept"), "application/json");
+      if (url.pathname.endsWith("/trending_pools") && url.searchParams.get("duration") === "1h") {
         return new Response("delayed", { status: 503 });
       }
       return Response.json(payload);
     }
   });
   assert.equal(requested.length, expectedRequests);
-  assert.equal(requested.filter((url) => url.includes("/new_pools?")).length, 2);
-  assert.equal(requested.filter((url) => url.includes("/pools?") && !url.includes("trending_pools")).length, 3);
-  assert.equal(requested.filter((url) => url.includes("duration=5m")).length, 1);
-  assert.equal(requested.filter((url) => url.includes("duration=1h")).length, 3);
-  assert.equal(requested.filter((url) => url.includes("duration=24h")).length, 2);
+  assert.equal(requested.filter((url) => url.includes("/new_pools?")).length, 1);
+  assert.equal(requested.filter((url) => url.includes("/pools?") && !url.includes("trending_pools")).length, 1);
+  assert.equal(requested.filter((url) => url.includes("duration=1h")).length, 1);
   assert.equal(snapshot.delayed, true);
-  assert.deepEqual(snapshot.delayedFeeds, ["trending-5m"]);
+  assert.deepEqual(snapshot.delayedFeeds, ["trending-1h"]);
   assert.equal(snapshot.pairs.length, 1, "Duplicate chain + pool observations must collapse deterministically");
-  assert.deepEqual(snapshot.pairs[0]?.discoveryFeeds, ["new", "top", "trending-1h", "trending-24h"]);
+  assert.deepEqual(snapshot.pairs[0]?.discoveryFeeds, ["new", "top"]);
 
   const allDelayed = await fetchGeckoPoolSnapshot({
     fetch: async () => new Response("delayed", { status: 503 })

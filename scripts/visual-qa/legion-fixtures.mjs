@@ -169,6 +169,84 @@ export const TOKEN_MARKETS = definitions.map((definition, index) => {
   };
 });
 
+const broadDefinitions = [
+  { name: "V2 RUNNER", symbol: "V2RUN", token: "0x6000000000000000000000000000000000000001", pair: "0x7000000000000000000000000000000000000001", dexId: "uniswap-v2", version: 2, execution: "EXECUTION_ELIGIBLE_V2", ageMinutes: 180, signal: "moving", activity: true },
+  { name: "V3 DEPTH", symbol: "V3DEPTH", token: "0x6000000000000000000000000000000000000002", pair: "0x7000000000000000000000000000000000000002", dexId: "uniswap-v3", version: 3, execution: "EXECUTION_ELIGIBLE_V3", ageMinutes: 6_000, signal: "active", activity: true },
+  { name: "V4 OBSERVED", symbol: "V4VIEW", token: "0x6000000000000000000000000000000000000003", pair: "0x7000000000000000000000000000000000000003", dexId: "uniswap-v4", version: 4, execution: "EXECUTION_UNAVAILABLE", ageMinutes: 2_400, signal: null, activity: false },
+  { name: "OTHER DEX", symbol: "OTHER", token: "0x6000000000000000000000000000000000000004", pair: "0x7000000000000000000000000000000000000004", dexId: "observed-dex", version: 2, execution: "EXECUTION_UNAVAILABLE", ageMinutes: 8_000, signal: null, activity: true },
+  { name: "HELD OBSERVED", symbol: "HELDX", token: "0x6000000000000000000000000000000000000005", pair: "0x7000000000000000000000000000000000000005", dexId: "uniswap-v2", version: 2, execution: "EXECUTION_ELIGIBLE_V2", ageMinutes: 12_000, signal: null, activity: false, held: true },
+  { name: "PARTIAL DATA", symbol: "PARTIAL", token: "0x6000000000000000000000000000000000000006", pair: "0x7000000000000000000000000000000000000006", dexId: "uniswap-v3", version: 3, execution: "EXECUTION_ELIGIBLE_V3", ageMinutes: 20_000, signal: null, activity: false, partial: true },
+];
+
+export const BROAD_TOKEN_MARKETS = broadDefinitions.map((definition, index) => {
+  const assetId = `eip155:4663/contract:${definition.token}`;
+  const evidence = {
+    chainId: 4663,
+    assetId,
+    token: { address: definition.token, name: definition.name, symbol: definition.symbol },
+    venue: definition.dexId,
+    protocolVersion: definition.version,
+    pool: { kind: "evm-address", value: definition.pair },
+    baseToken: { address: definition.token, name: definition.name, symbol: definition.symbol },
+    quoteToken: { address: WETH, name: "Wrapped Ether", symbol: "WETH" },
+    assetSide: "BASE",
+    displayEligibility: "eligible",
+    chartEligibility: definition.version === 4 ? "unavailable" : "eligible",
+    executionEligibility: "view-only",
+    provenance: "geckoterminal-pool-feed",
+    priceUsd: definition.partial ? null : 0.00031 + index * 0.00007,
+    liquidityUsd: definition.partial ? 18_000 : 48_000 + index * 17_500,
+    marketCapUsd: definition.partial ? null : 310_000 + index * 95_000,
+    fdvUsd: 410_000 + index * 110_000,
+    volume24h: definition.partial ? null : 82_000 + index * 21_000,
+    priceChange24h: definition.partial ? null : 1.4 + index * 0.7,
+    pairCreatedAt: FIXTURE_EPOCH_MS - definition.ageMinutes * 60_000,
+  };
+  return {
+    fixtureAuthority: "SYNTHETIC_RENDERING_DATA",
+    executionFixture: definition.execution,
+    heldFixture: definition.held === true,
+    assetId,
+    address: definition.token,
+    name: definition.name,
+    symbol: definition.symbol,
+    pairAddress: definition.pair,
+    url: `https://dexscreener.com/robinhood/${definition.pair}`,
+    dexId: definition.dexId,
+    project: null,
+    socials: { x: null, telegram: null, discord: null, website: null, farcaster: null, provenance: "none" },
+    origin: { kind: "external", state: "unknown", coverage: "unavailable" },
+    venue: { kind: "dex", dexId: definition.dexId, pairAddress: definition.pair, url: null, execution: "read-only" },
+    priceUsd: evidence.priceUsd,
+    liquidityUsd: evidence.liquidityUsd,
+    marketCapUsd: evidence.marketCapUsd,
+    fdvUsd: evidence.fdvUsd,
+    volume5m: definition.activity ? 1_800 + index * 100 : null,
+    volume1h: definition.activity ? 11_000 + index * 1_000 : null,
+    volume24h: evidence.volume24h,
+    priceChange5m: definition.activity ? 0.8 : null,
+    priceChange1h: definition.activity ? 1.2 : null,
+    priceChange24h: evidence.priceChange24h,
+    buys5m: definition.activity ? 12 + index : null,
+    sells5m: definition.activity ? 5 + index : null,
+    buys1h: definition.activity ? 42 + index : null,
+    sells1h: definition.activity ? 21 + index : null,
+    buys24h: definition.activity ? 310 + index : null,
+    sells24h: definition.activity ? 180 + index : null,
+    pairCreatedAt: evidence.pairCreatedAt,
+    ageMinutes: definition.ageMinutes,
+    momentumScore: definition.signal === "moving" ? 74 : null,
+    buyPressureBps: definition.activity ? 6_300 : null,
+    signal: definition.signal,
+    riskFlags: [],
+    primaryMarket: evidence,
+    verifiedMarkets: [evidence],
+    stockAssetRelationships: [],
+  };
+});
+
+export const VISIBLE_TOKEN_MARKETS = [...TOKEN_MARKETS, ...BROAD_TOKEN_MARKETS];
+
 export function canonicalDirectoryMarkets() {
   return TOKEN_MARKETS.map((market) => ({
     address: market.address, assetId: market.assetId, name: market.name, symbol: market.symbol,
