@@ -209,7 +209,7 @@ assert.deepEqual(deriveVNextMarketState(v4Directory), {
   asset: "verified",
   market: "canonical",
   metrics: "unavailable",
-  chart: "unavailable",
+  chart: "available",
   execution: "not-evaluated"
 });
 assert.equal(shouldRequestVNextExternalWorkspaceMarket(v4Directory), false);

@@ -595,7 +595,7 @@ export function deriveVNextMarketState(market: VNextDirectoryMarket): VNextMarke
     market.priceChange24h
   ];
   const availableMetricCount = summaryMetrics.filter((value) => typeof value === "number" && Number.isFinite(value)).length;
-  const chartAvailable = Boolean(selectVNextChartPool(market));
+  const chartAvailable = Boolean(selectVNextChartIdentity(market));
   return {
     asset: verifiedDirectoryAsset(market) ? "verified" : "observed",
     market: market.canonicalMarkets?.length
@@ -637,16 +637,30 @@ export function selectVNextCanonicalMarket(
   })[0];
 }
 
-export function selectVNextChartPool(market: Pick<VNextDirectoryMarket, "address" | "verifiedMarkets" | "canonicalMarkets">) {
-  const verified = market.verifiedMarkets?.find((evidence) => (
+type VNextChartMarketAuthority = Pick<
+  VNextDirectoryMarket,
+  "address" | "verifiedMarkets" | "canonicalMarkets" | "primaryMarket" | "launchpadEvidence"
+>;
+
+export function selectVNextObservedChartPool(
+  market: Pick<VNextDirectoryMarket, "verifiedMarkets">
+) {
+  return market.verifiedMarkets?.find((evidence) => (
     evidence.chartEligibility === "eligible" && evidence.pool.kind === "evm-address"
   ))?.pool.value;
-  if (verified) return verified;
-  const token = market.address.toLowerCase();
-  return market.canonicalMarkets?.find((evidence) => (
-    evidence.poolAddress !== null
-    && (evidence.token0 === token || evidence.token1 === token)
-  ))?.poolAddress ?? undefined;
+}
+
+export function selectVNextChartPool(market: VNextChartMarketAuthority) {
+  const canonical = selectVNextCanonicalMarket(market);
+  if (canonical?.poolAddress) return canonical.poolAddress;
+  if (canonical) return undefined;
+  return selectVNextObservedChartPool(market);
+}
+
+export function selectVNextChartIdentity(market: VNextChartMarketAuthority) {
+  const canonical = selectVNextCanonicalMarket(market);
+  if (canonical) return canonical.poolAddress ?? canonical.poolKey;
+  return selectVNextObservedChartPool(market);
 }
 
 export function isVNextDirectoryMarketSelectable(market: VNextDirectoryMarket) {

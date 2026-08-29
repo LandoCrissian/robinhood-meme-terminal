@@ -19,7 +19,7 @@ import { useTokenRiskEvidence } from "../../lib/use-token-risk-evidence";
 import { useWalletConstellation } from "../../lib/use-wallet-constellation";
 import {
   selectVNextCanonicalMarket,
-  selectVNextChartPool,
+  selectVNextObservedChartPool,
   shouldRequestVNextExternalWorkspaceMarket,
   type VNextDirectoryMarket,
   type VNextExecutionUiState,
@@ -148,12 +148,14 @@ function WorkspacePosition({
 function WorkspaceQuickLinks({
   directoryMarket,
   market,
-  primaryPool,
+  canonicalPool,
+  observedPool,
   canonicalMarket
 }: {
   directoryMarket: VNextDirectoryMarket;
   market?: ExternalMarket;
-  primaryPool?: string;
+  canonicalPool?: string;
+  observedPool?: string;
   canonicalMarket?: VNextUniversalMarketSearchPool;
 }) {
   const projectLinks = safeSocialEntries(market?.project?.socials);
@@ -181,8 +183,9 @@ function WorkspaceQuickLinks({
       <ExplorerLink kind="token" value={directoryMarket.address} accessibleName={`Open ${directoryMarket.symbol} token contract in Robinhood Chain explorer`}>Explorer ↗</ExplorerLink>
     </div>
     <div className="vnAssetQuickLinkRows">
-      {primaryPool ? <ExplorerLink kind="pool" value={primaryPool} accessibleName={`Open ${directoryMarket.symbol} canonical pool in Robinhood Chain explorer`}>Canonical pool ↗</ExplorerLink> : null}
-      {!primaryPool && canonicalMarket?.version === 4 ? <ExplorerLink kind="transaction" value={canonicalMarket.transactionHash} accessibleName={`Open ${directoryMarket.symbol} Uniswap V4 initialization evidence in Robinhood Chain explorer`}>V4 PoolId {shortAddress(canonicalMarket.poolKey)} ↗</ExplorerLink> : null}
+      {canonicalPool ? <ExplorerLink kind="pool" value={canonicalPool} accessibleName={`Open ${directoryMarket.symbol} canonical pool in Robinhood Chain explorer`}>Canonical pool ↗</ExplorerLink> : null}
+      {!canonicalPool && canonicalMarket?.version === 4 ? <ExplorerLink kind="transaction" value={canonicalMarket.transactionHash} accessibleName={`Open ${directoryMarket.symbol} Uniswap V4 initialization evidence in Robinhood Chain explorer`}>V4 PoolId {shortAddress(canonicalMarket.poolKey)} ↗</ExplorerLink> : null}
+      {!canonicalMarket && observedPool ? <ExplorerLink kind="pool" value={observedPool} accessibleName={`Open ${directoryMarket.symbol} observed pool in Robinhood Chain explorer`}>Observed pool ↗</ExplorerLink> : null}
       <ExternalProjectLink href={marketUrl} accessibleName={`Open ${directoryMarket.symbol} market source`}>{marketHost} ↗</ExternalProjectLink>
       {market?.project?.creator ? <ExplorerLink kind="address" value={market.project.creator} accessibleName={`Open reported creator address for ${directoryMarket.symbol}`}>Creator address ↗</ExplorerLink> : null}
       {creationTransaction ? <ExplorerLink kind="transaction" value={creationTransaction} accessibleName={`Open creation evidence for ${directoryMarket.symbol}`}>Creation transaction ↗</ExplorerLink> : null}
@@ -492,10 +495,14 @@ export function VNextAssetWorkspace({
     relationship.relationship === "canonical-stock-token"
     && relationship.contractAddress.toLowerCase() === directoryMarket.address.toLowerCase()
   ));
-  const workspacePool = market ? selectVNextChartPool(market) : undefined;
-  const directoryPool = selectVNextChartPool(directoryMarket);
-  const selectedPool = workspacePool ?? directoryPool;
   const selectedCanonicalMarket = selectVNextCanonicalMarket(directoryMarket);
+  const canonicalChartIdentity = selectedCanonicalMarket
+    ? selectedCanonicalMarket.poolAddress ?? selectedCanonicalMarket.poolKey
+    : undefined;
+  const observedChartPool = market
+    ? selectVNextObservedChartPool(market) ?? selectVNextObservedChartPool(directoryMarket)
+    : selectVNextObservedChartPool(directoryMarket);
+  const selectedChartIdentity = canonicalChartIdentity ?? observedChartPool;
   const lifecycleBySource = new Map<string, LaunchpadLifecycleEvidence>();
   for (const evidence of [...(directoryMarket.launchpadEvidence ?? []), ...(market?.launchpadEvidence ?? [])]) {
     lifecycleBySource.set(`${evidence.sourceId}:${evidence.version}:${evidence.factory}`.toLowerCase(), evidence);
@@ -524,7 +531,7 @@ export function VNextAssetWorkspace({
     : section === "evidence"
       ? <WorkspaceEvidence market={market} directoryMarket={directoryMarket} />
       : section === "markets"
-        ? <div className="vnMarketEvidenceStack"><VerifiedMarkets canonicalMarkets={directoryMarket.canonicalMarkets} resolution={resolution} selectedPool={selectedPool} /><WorkspaceEcosystemIntelligence ecosystem={workspace.ecosystem} /></div>
+        ? <div className="vnMarketEvidenceStack"><VerifiedMarkets canonicalMarkets={directoryMarket.canonicalMarkets} resolution={resolution} selectedPool={selectedChartIdentity} /><WorkspaceEcosystemIntelligence ecosystem={workspace.ecosystem} /></div>
         : section === "position"
           ? <WorkspacePosition directoryMarket={directoryMarket} walletAssets={walletAssets} executionState={executionState} executionUiState={executionUiState} onTradeSide={onTradeSide} />
           : section === "origin"
@@ -545,10 +552,16 @@ export function VNextAssetWorkspace({
       <div><dt>Project origin</dt><dd>{originState}</dd></div>
       <div><dt>RWA relationship</dt><dd>{canonicalStockRelationship ? "Canonical stock token" : workspace.stockAssetRelationships.some((relationship) => relationship.relationship === "paired-market-asset") || directoryMarket.rwaRelationship === "paired-market-asset" ? "RWA-paired market" : "Not reported"}</dd></div>
     </dl>
-    <WorkspaceQuickLinks directoryMarket={directoryMarket} market={market} primaryPool={selectedPool} canonicalMarket={selectedCanonicalMarket} />
+    <WorkspaceQuickLinks
+      directoryMarket={directoryMarket}
+      market={market}
+      canonicalPool={selectedCanonicalMarket?.poolAddress ?? undefined}
+      observedPool={observedChartPool}
+      canonicalMarket={selectedCanonicalMarket}
+    />
 
-    {selectedPool || selectedCanonicalMarket?.version === 4
-      ? <VNextMarketChart token={directoryMarket.address} pair={selectedPool ?? selectedCanonicalMarket!.poolKey} symbol={directoryMarket.symbol} referencePriceUsd={directoryMarket.priceUsd} />
+    {selectedChartIdentity
+      ? <VNextMarketChart token={directoryMarket.address} pair={selectedChartIdentity} symbol={directoryMarket.symbol} referencePriceUsd={directoryMarket.priceUsd} />
       : <div className="vnChart vnChartEmpty"><strong>Chart coverage unavailable</strong><span>No supported canonical-market OHLCV source is attached. RMT will not render invented price history.</span></div>}
 
     <div className="rmtWorkspaceTabs" role="tablist" aria-label="Asset intelligence">
