@@ -688,7 +688,7 @@ async function installRoutes(page) {
   await page.route(/\/api\/markets\/ohlcv(?:\?.*)?$/, async (route) => {
     ohlcvRequests.set(page, (ohlcvRequests.get(page) ?? 0) + 1);
     const query = new URL(route.request().url()).searchParams;
-    const range = query.get("range") ?? "LIVE";
+    const range = query.get("range") ?? "1H";
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -2134,7 +2134,7 @@ async function inspectV4PreviewUserJourney(browser, fixture) {
   if (!heading.includes("STONKBROKER") || new URL(page.url()).searchParams.get("market")?.toLowerCase() !== stonkBrokerToken) {
     throw new Error(`V4 Preview journey did not preserve exact token identity: ${heading}`);
   }
-  await page.locator('.vnChartState').getByText("Live data", { exact: true }).waitFor({ state: "visible" });
+  await page.locator('.vnChartState').getByText("Market data", { exact: true }).waitFor({ state: "visible" });
   const chartText = await page.locator(".vnChart").innerText();
   if (!chartText.includes("GeckoTerminal OHLCV")) {
     throw new Error(`V4 Preview journey did not render authoritative PoolId chart coverage: ${chartText}`);

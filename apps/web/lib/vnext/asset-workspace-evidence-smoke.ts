@@ -71,6 +71,8 @@ assert.deepEqual(workspaceTokenPresentation({
 }), { name: "Verified NVIDIA Token", symbol: "NVDA", verified: true });
 
 const workspaceSource = readFileSync(new URL("../../app/vnext/vnext-asset-workspace.tsx", import.meta.url), "utf8");
+const chartSource = readFileSync(new URL("../../app/vnext/vnext-market-chart.tsx", import.meta.url), "utf8");
+const stylesSource = readFileSync(new URL("../../app/vnext/vnext-terminal.css", import.meta.url), "utf8");
 const riskHookSource = readFileSync(new URL("../use-token-risk-evidence.ts", import.meta.url), "utf8");
 const constellationHookSource = readFileSync(new URL("../use-wallet-constellation.ts", import.meta.url), "utf8");
 assert.equal((workspaceSource.match(/currentMultiplier/g) ?? []).length, 1, "Stock multiplier must be displayed exactly once");
@@ -80,6 +82,25 @@ assert.match(workspaceSource, /selectedPool \?\? selectedCanonicalMarket!\.poolK
   "PoolId-only V4 markets must use their exact canonical identity for OHLCV coverage");
 assert.doesNotMatch(workspaceSource, /PoolManager.*VNextMarketChart|poolAddress.*selectedCanonicalMarket.*poolKey/,
   "V4 chart coverage must not fabricate an address-style pool");
+assert.match(workspaceSource, /referencePriceUsd=\{directoryMarket\.priceUsd\}/,
+  "The resting chart headline must use the selected Token Market price authority");
+assert.match(chartSource, /hovered\?\.close \?\? referencePriceUsd \?\? latest/,
+  "Hover must retain exact historical candle close while rest uses the selected market price");
+assert.match(chartSource, /Math\.abs\(change\)\.toFixed\(2\)\}% · \{range\}/,
+  "Chart movement must be explicitly scoped to its selected range");
+assert.doesNotMatch(chartSource, /"LIVE"/, "The chart must not expose a false LIVE range");
+assert.match(workspaceSource, /vnMarketEvidenceStack[\s\S]*<VerifiedMarkets[\s\S]*<WorkspaceEcosystemIntelligence/,
+  "up. venue evidence must remain nested under Markets");
+assert.doesNotMatch(workspaceSource, /id: "ecosystem", label: "up\."/,
+  "up. must not remain a permanent top-level workspace tab");
+assert.match(workspaceSource, /marketHost[\s\S]*DexScreener[\s\S]*GeckoTerminal/,
+  "Market actions must truthfully identify recognized external hosts");
+assert.match(stylesSource, /\.vnEvidencePane \{ min-height: 0; \}/,
+  "Unavailable holder evidence must not reserve an artificial 300px pane");
+assert.doesNotMatch(stylesSource, /\.vnEvidencePane\s*\{\s*min-height:\s*300px/,
+  "The legacy stretched Safety empty state must remain removed");
+assert.match(stylesSource, /\.rmtMobileAssetView\s*\{\s*padding-bottom:\s*calc\(82px \+ env\(safe-area-inset-bottom\)\)/,
+  "Mobile content must clear the fixed safe-area-aware trade dock");
 const canonicalPool = (version: 2 | 3 | 4, protocol: "uniswap" | "sushiswap") => ({
   protocol,
   version,

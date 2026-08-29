@@ -163,16 +163,27 @@ function WorkspaceQuickLinks({
   const creationTransaction = origin?.kind === "rmt-v6"
     ? origin.launchTransactionHash
     : origin?.state === "attributed" ? origin.claim.transactionHash : undefined;
+  const marketUrl = market?.url ?? directoryMarket.url;
+  const marketHost = (() => {
+    try {
+      const host = new URL(marketUrl ?? "").hostname.toLowerCase();
+      if (host === "dexscreener.com" || host.endsWith(".dexscreener.com")) return "DexScreener";
+      if (host === "geckoterminal.com" || host.endsWith(".geckoterminal.com")) return "GeckoTerminal";
+    } catch {
+      // ExternalProjectLink remains the final safe-navigation authority.
+    }
+    return "Market";
+  })();
 
   return <section className="vnAssetQuickLinks" aria-label="Selected asset identity and links">
     <div className="vnAssetContractIdentity">
-      <span><small>Token contract · Robinhood Chain</small><CopyAddress address={directoryMarket.address} /></span>
+      <span><small>Token contract</small><CopyAddress address={directoryMarket.address} /></span>
       <ExplorerLink kind="token" value={directoryMarket.address} accessibleName={`Open ${directoryMarket.symbol} token contract in Robinhood Chain explorer`}>Explorer ↗</ExplorerLink>
     </div>
     <div className="vnAssetQuickLinkRows">
       {primaryPool ? <ExplorerLink kind="pool" value={primaryPool} accessibleName={`Open ${directoryMarket.symbol} canonical pool in Robinhood Chain explorer`}>Canonical pool ↗</ExplorerLink> : null}
       {!primaryPool && canonicalMarket?.version === 4 ? <ExplorerLink kind="transaction" value={canonicalMarket.transactionHash} accessibleName={`Open ${directoryMarket.symbol} Uniswap V4 initialization evidence in Robinhood Chain explorer`}>V4 PoolId {shortAddress(canonicalMarket.poolKey)} ↗</ExplorerLink> : null}
-      <ExternalProjectLink href={market?.url ?? directoryMarket.url} accessibleName={`Open ${directoryMarket.symbol} market source`}>Market source ↗</ExternalProjectLink>
+      <ExternalProjectLink href={marketUrl} accessibleName={`Open ${directoryMarket.symbol} market source`}>{marketHost} ↗</ExternalProjectLink>
       {market?.project?.creator ? <ExplorerLink kind="address" value={market.project.creator} accessibleName={`Open reported creator address for ${directoryMarket.symbol}`}>Creator address ↗</ExplorerLink> : null}
       {creationTransaction ? <ExplorerLink kind="transaction" value={creationTransaction} accessibleName={`Open creation evidence for ${directoryMarket.symbol}`}>Creation transaction ↗</ExplorerLink> : null}
     </div>
@@ -460,7 +471,7 @@ export function VNextAssetWorkspace({
   executionUiState: VNextExecutionUiState;
   onTradeSide: (side: "buy" | "sell") => void;
 }) {
-  const [section, setSection] = useState<"activity" | "evidence" | "markets" | "origin" | "position" | "ecosystem" | "rwa">("activity");
+  const [section, setSection] = useState<"activity" | "evidence" | "markets" | "origin" | "position" | "rwa">("activity");
   const workspace = useVNextAssetWorkspace(
     directoryMarket.address,
     directoryMarket.pairAddress,
@@ -506,7 +517,6 @@ export function VNextAssetWorkspace({
     { id: "markets", label: "Markets" },
     { id: "position", label: "Position" },
     { id: "origin", label: "Origin" },
-    { id: "ecosystem", label: "up." },
     { id: "rwa", label: "RWA" }
   ] as const;
   const intelligence = section === "activity"
@@ -514,14 +524,12 @@ export function VNextAssetWorkspace({
     : section === "evidence"
       ? <WorkspaceEvidence market={market} directoryMarket={directoryMarket} />
       : section === "markets"
-        ? <VerifiedMarkets canonicalMarkets={directoryMarket.canonicalMarkets} resolution={resolution} selectedPool={selectedPool} />
+        ? <div className="vnMarketEvidenceStack"><VerifiedMarkets canonicalMarkets={directoryMarket.canonicalMarkets} resolution={resolution} selectedPool={selectedPool} /><WorkspaceEcosystemIntelligence ecosystem={workspace.ecosystem} /></div>
         : section === "position"
           ? <WorkspacePosition directoryMarket={directoryMarket} walletAssets={walletAssets} executionState={executionState} executionUiState={executionUiState} onTradeSide={onTradeSide} />
           : section === "origin"
             ? <WorkspaceOrigin market={market} token={directoryMarket.address} launchpadEvidence={launchpadEvidence} />
-            : section === "ecosystem"
-              ? <WorkspaceEcosystemIntelligence ecosystem={workspace.ecosystem} />
-              : <WorkspaceRwaRelationships relationships={workspace.stockAssetRelationships} coverage={workspace.stockAssetCoverage} />;
+            : <WorkspaceRwaRelationships relationships={workspace.stockAssetRelationships} coverage={workspace.stockAssetCoverage} />;
 
   return <section className={`vnAssetPanel vnAssetWorkspace is${presentation}`} aria-labelledby="vn-asset-heading">
     <header className="vnAssetWorkspaceHeader">
@@ -540,7 +548,7 @@ export function VNextAssetWorkspace({
     <WorkspaceQuickLinks directoryMarket={directoryMarket} market={market} primaryPool={selectedPool} canonicalMarket={selectedCanonicalMarket} />
 
     {selectedPool || selectedCanonicalMarket?.version === 4
-      ? <VNextMarketChart token={directoryMarket.address} pair={selectedPool ?? selectedCanonicalMarket!.poolKey} symbol={directoryMarket.symbol} />
+      ? <VNextMarketChart token={directoryMarket.address} pair={selectedPool ?? selectedCanonicalMarket!.poolKey} symbol={directoryMarket.symbol} referencePriceUsd={directoryMarket.priceUsd} />
       : <div className="vnChart vnChartEmpty"><strong>Chart coverage unavailable</strong><span>No supported canonical-market OHLCV source is attached. RMT will not render invented price history.</span></div>}
 
     <div className="rmtWorkspaceTabs" role="tablist" aria-label="Asset intelligence">

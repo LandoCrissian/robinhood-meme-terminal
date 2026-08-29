@@ -1,7 +1,7 @@
 import { isAddress } from "viem";
 import type { ExternalPoolTrade } from "./external-trades";
 
-export const EXTERNAL_CHART_RANGES = ["LIVE", "5M", "15M", "1H", "6H", "24H", "7D"] as const;
+export const EXTERNAL_CHART_RANGES = ["5M", "15M", "1H", "6H", "24H", "7D"] as const;
 
 export type ExternalChartRange = typeof EXTERNAL_CHART_RANGES[number];
 
@@ -23,6 +23,7 @@ export type ExternalOhlcvPayload = {
   updatedAt: string;
   lastTradeAt: string | null;
   refreshMs: number;
+  stale?: boolean;
 };
 
 const RANGE_CONFIG: Record<ExternalChartRange, {
@@ -31,7 +32,6 @@ const RANGE_CONFIG: Record<ExternalChartRange, {
   limit: number;
   revalidate: number;
 }> = {
-  "LIVE": { timeframe: "minute", aggregate: 1, limit: 15, revalidate: 3 },
   "5M": { timeframe: "minute", aggregate: 1, limit: 5, revalidate: 5 },
   "15M": { timeframe: "minute", aggregate: 1, limit: 15, revalidate: 10 },
   "1H": { timeframe: "minute", aggregate: 1, limit: 60, revalidate: 30 },
@@ -41,7 +41,6 @@ const RANGE_CONFIG: Record<ExternalChartRange, {
 };
 
 const RANGE_REFRESH_MS: Record<ExternalChartRange, number> = {
-  LIVE: 60_000,
   "5M": 15_000,
   "15M": 20_000,
   "1H": 30_000,
@@ -75,9 +74,10 @@ export function normalizeExternalPoolIdentity(value: string) {
 export function externalOhlcvRequestUrl(
   pair: string,
   range: ExternalChartRange,
-  tokenSide: "base" | "quote"
+  token: string
 ) {
   if (!isExternalPoolIdentity(pair)) throw new Error("Invalid pool identity.");
+  if (!isAddress(token)) throw new Error("Invalid token identity.");
   const config = RANGE_CONFIG[range];
   const url = new URL(
     `https://api.geckoterminal.com/api/v2/networks/robinhood/pools/${pair}/ohlcv/${config.timeframe}`
@@ -85,8 +85,24 @@ export function externalOhlcvRequestUrl(
   url.searchParams.set("aggregate", String(config.aggregate));
   url.searchParams.set("limit", String(config.limit));
   url.searchParams.set("currency", "usd");
-  url.searchParams.set("token", tokenSide);
+  url.searchParams.set("token", token);
   return { url: url.toString(), revalidate: config.revalidate };
+}
+
+/**
+ * A deliberately coarse secondary guard. Exact pool + token metadata remains
+ * primary authority; this only rejects a whole candle set that is at least
+ * three orders of magnitude away from the selected market reference price.
+ */
+export function hasCatastrophicOhlcvPriceMismatch(
+  candles: ExternalOhlcvCandle[],
+  referencePriceUsd: number | null | undefined
+) {
+  if (!Number.isFinite(referencePriceUsd) || (referencePriceUsd ?? 0) <= 0 || candles.length < 2) return false;
+  const reference = referencePriceUsd!;
+  const allAbove = candles.every((candle) => candle.low >= reference * 1_000);
+  const allBelow = candles.every((candle) => candle.high <= reference / 1_000);
+  return allAbove || allBelow;
 }
 
 export function parseExternalOhlcvList(value: unknown) {
