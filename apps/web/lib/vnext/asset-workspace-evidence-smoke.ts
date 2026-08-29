@@ -117,6 +117,12 @@ assert.match(workspaceSource, /tokenIdentityVerified[\s\S]*Onchain verified/,
   "Safety must reuse the selected workspace token-identity authority");
 assert.match(workspaceSource, /Contract risk evidence unavailable/,
   "A full risk transport failure must collapse to one truthful compact state");
+assert.match(workspaceSource, /riskUnavailable \|\| !domainAvailable\("liquidity"\)/,
+  "A complete risk outage must use the compact liquidity-unavailable branch");
+assert.match(workspaceSource, /poolShareBps !== null[\s\S]*Liquidity-control evidence unavailable/,
+  "Known holder-derived pool share must survive an unavailable liquidity-control domain");
+assert.match(workspaceSource, /Displayed market liquidity and exact pool identity remain available where shown/,
+  "The compact liquidity outage must preserve truthful displayed-market and pool evidence");
 assert.doesNotMatch(workspaceSource, /Source published[\s\S]*Bytecode change[\s\S]*Contract controls[\s\S]*Coverage/,
   "A transport failure must not render the legacy wall of Unknown fields");
 assert.match(stylesSource, /\.vnEvidencePane \{ min-height: 0; \}/,

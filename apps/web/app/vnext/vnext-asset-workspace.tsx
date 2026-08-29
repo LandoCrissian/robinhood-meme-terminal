@@ -330,6 +330,7 @@ function WorkspaceEvidence({ market, directoryMarket, tokenIdentityVerified }: {
     ? market.pairAddress
     : undefined;
   const warnings = [...new Set([...(market?.riskFlags ?? []).map(riskFlagLabel), ...(evidence?.warnings ?? [])])];
+  const poolShareBps = evidence?.holders.poolShareBps ?? graph?.holderSnapshot.poolShareBps ?? null;
   const evidenceUnavailable = risk.status === "unavailable" && constellation.status === "unavailable";
   const riskUnavailable = risk.status === "unavailable" || !evidence;
   const evidencePartial = evidence?.coverage === "partial" || evidence?.freshness === "stale";
@@ -358,10 +359,10 @@ function WorkspaceEvidence({ market, directoryMarket, tokenIdentityVerified }: {
 
     {tab === "liquidity" && <div className="vnEvidencePane" role="tabpanel">
       <div className="vnLiquidityHeadline"><span><small>Displayed pool liquidity</small><strong>{market ? compactUsd(market.liquidityUsd) : "Unavailable"}</strong></span>{canonicalAddressPool ? <ExplorerLink kind="pool" value={canonicalAddressPool}>Canonical pool {shortAddress(canonicalAddressPool)} ↗</ExplorerLink> : canonicalMarket?.version === 4 ? <span>V4 PoolId {shortAddress(canonicalMarket.poolKey)}</span> : observedAddressPool ? <ExplorerLink kind="pool" value={observedAddressPool}>Observed pool {shortAddress(observedAddressPool)} ↗</ExplorerLink> : null}</div>
-      {!domainAvailable("liquidity") ? <><div className="vnEvidenceGrid">
-        <span><small>Pool token share</small><strong>{formatOwnershipBps(evidence?.holders.poolShareBps ?? graph?.holderSnapshot.poolShareBps ?? null)}</strong></span>
-      </div><div className="vnEvidenceUnavailable"><strong>Liquidity-control evidence unavailable</strong><span>Displayed market liquidity remains provider evidence. Position ownership and transfer control remain unknown.</span></div></> : <div className="vnEvidenceGrid">
-        <span><small>Pool token share</small><strong>{formatOwnershipBps(evidence?.holders.poolShareBps ?? graph?.holderSnapshot.poolShareBps ?? null)}</strong></span>
+      {riskUnavailable || !domainAvailable("liquidity") ? <>{poolShareBps !== null ? <div className="vnEvidenceGrid">
+        <span><small>Pool token share</small><strong>{formatOwnershipBps(poolShareBps)}</strong></span>
+      </div> : null}<div className="vnEvidenceUnavailable"><strong>Liquidity-control evidence unavailable</strong><span>Displayed market liquidity and exact pool identity remain available where shown. Position ownership and transfer control remain unknown.</span></div></> : <div className="vnEvidenceGrid">
+        <span><small>Pool token share</small><strong>{formatOwnershipBps(poolShareBps)}</strong></span>
         <span><small>Liquidity control</small><strong>{evidence?.liquidity.controlStatus.replaceAll("-", " ") ?? "Not proven"}</strong></span>
         <span><small>Position owner</small><strong>{evidence?.liquidity.owner ? shortAddress(evidence.liquidity.owner) : "Unknown"}</strong></span>
         <span><small>Creator transfer</small><strong>{evidence?.liquidity.creatorCanTransfer === true ? "Possible" : evidence?.liquidity.creatorCanTransfer === false ? "Not observed" : "Unknown"}</strong></span>
