@@ -20,9 +20,12 @@ import {
   type RegisteredLiquiditySource
 } from "./registered-liquidity-position";
 
-const BLOCKSCOUT = "https://robinhoodchain.blockscout.com";
+const BLOCKSCOUT_PRO = "https://api.blockscout.com/4663";
+const BLOCKSCOUT_CHAIN_ID = 4663;
 const DEAD_ADDRESS = "0x000000000000000000000000000000000000dead";
 const MAX_TIMEOUT_MS = 12_000;
+const EVIDENCE_CACHE_TTL_MS = 5 * 60_000;
+const EVIDENCE_STALE_TTL_MS = 30 * 60_000;
 const abiParameterSchema = z.object({ type: z.string().min(1).max(80) }).passthrough();
 const abiFunctionSchema = z.object({
   type: z.literal("function"),
@@ -36,14 +39,9 @@ const contractSchema = z.object({
   is_verified: z.boolean(),
   proxy_type: z.string().nullable().optional(),
   implementations: z.array(z.unknown()).optional(),
-  is_changed_bytecode: z.boolean().nullable().optional(),
-  abi: z.array(z.unknown()).max(2_000).optional()
+  is_changed_bytecode: z.boolean().nullable().optional()
 }).passthrough();
-const contractAbiEnvelopeSchema = z.object({
-  status: z.string(),
-  message: z.string(),
-  result: z.string()
-}).passthrough();
+const contractAbiSchema = z.array(z.unknown()).max(2_000);
 
 const tokenSchema = z.object({
   address_hash: z.string(),
@@ -91,6 +89,27 @@ type SimulateSellTransfer = (
   pair: Address,
   amount: bigint
 ) => Promise<SellSimulation>;
+type RiskEvidenceDependencies = {
+  fetch?: RiskFetch;
+  timeoutMs?: number;
+  now?: () => number;
+  apiKey?: string;
+  readCreatorBalance?: ReadCreatorBalance;
+  readControlState?: ReadControlState;
+  readLiquidityPosition?: typeof resolveRegisteredLiquidityPosition;
+  simulateSellTransfer?: SimulateSellTransfer;
+  useCache?: boolean;
+};
+type BlockscoutRead<T = unknown> =
+  | { status: "ready"; value: T }
+  | { status: "unavailable"; reason: "configuration" | "rate-limited" | "provider" | "timeout" | "malformed" };
+
+const evidenceCache = new Map<string, {
+  evidence: TokenRiskEvidence;
+  freshUntil: number;
+  staleUntil: number;
+}>();
+const evidenceInflight = new Map<string, Promise<TokenRiskEvidence>>();
 
 const STANDARD_TOKEN_WRITES = new Set([
   "approve",
@@ -272,28 +291,42 @@ async function readControlState(
 
 async function fetchJson(
   path: string,
-  dependencies: { fetch?: RiskFetch; timeoutMs?: number },
-  optional = false,
+  dependencies: RiskEvidenceDependencies,
   timeoutOverrideMs?: number
-) {
+): Promise<BlockscoutRead> {
+  const apiKey = dependencies.apiKey
+    ?? (dependencies.fetch ? "test-only-blockscout-key" : process.env.RMT_BLOCKSCOUT_PRO_API_KEY);
+  if (!apiKey) return { status: "unavailable", reason: "configuration" };
   const controller = new AbortController();
   const timeout = setTimeout(
     () => controller.abort(),
     timeoutOverrideMs ?? dependencies.timeoutMs ?? MAX_TIMEOUT_MS
   );
   try {
-    const response = await (dependencies.fetch ?? fetch)(`${BLOCKSCOUT}${path}`, {
-      headers: { Accept: "application/json" },
+    const response = await (dependencies.fetch ?? fetch)(`${BLOCKSCOUT_PRO}${path}`, {
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${apiKey}`
+      },
       cache: "no-store",
       signal: controller.signal
     });
-    if (optional && response.status === 404) return null;
-    if (!response.ok) throw new Error("Blockscout risk evidence is unavailable.");
-    return await response.json();
-  } catch (cause) {
-    if (optional) return undefined;
-    if (controller.signal.aborted) throw new Error("Blockscout risk evidence timed out.");
-    throw cause;
+    if (response.status === 429 || response.status === 402) {
+      return { status: "unavailable", reason: "rate-limited" };
+    }
+    if (response.status === 404 || !response.ok) {
+      return { status: "unavailable", reason: "provider" };
+    }
+    try {
+      return { status: "ready", value: await response.json() };
+    } catch {
+      return { status: "unavailable", reason: "malformed" };
+    }
+  } catch {
+    return {
+      status: "unavailable",
+      reason: controller.signal.aborted ? "timeout" : "provider"
+    };
   } finally {
     clearTimeout(timeout);
   }
@@ -383,32 +416,35 @@ function evidenceWarnings(evidence: Omit<TokenRiskEvidence, "warnings">) {
   return warnings;
 }
 
-export async function fetchTokenRiskEvidence(
+async function fetchTokenRiskEvidenceUncached(
   params: {
     token: Address;
     pair?: Address;
     creator?: Address;
     sourceId?: RegisteredLiquiditySource;
   },
-  dependencies: {
-    fetch?: RiskFetch;
-    timeoutMs?: number;
-    now?: () => number;
-    readCreatorBalance?: ReadCreatorBalance;
-    readControlState?: ReadControlState;
-    readLiquidityPosition?: typeof resolveRegisteredLiquidityPosition;
-    simulateSellTransfer?: SimulateSellTransfer;
-  } = {}
+  dependencies: RiskEvidenceDependencies = {}
 ): Promise<TokenRiskEvidence> {
   const tokenPath = `/api/v2/tokens/${params.token}`;
-  const [rawToken, rawHolders, rawContract, rawContractAbi, rawCreatorBalance, liquidity] = await Promise.all([
+  const emptyLiquidity: TokenRiskEvidence["liquidity"] = {
+    controlStatus: "not-proven",
+    evidenceSource: "none",
+    positionManager: null,
+    positionId: null,
+    owner: null,
+    approvedOperator: null,
+    creatorCanTransfer: null,
+    positionLiquidity: null
+  };
+  const [tokenRead, holdersRead, contractRead, creatorRead, liquidityRead] = await Promise.all([
     fetchJson(tokenPath, dependencies),
     fetchJson(`${tokenPath}/holders`, dependencies),
-    fetchJson(`/api/v2/smart-contracts/${params.token}`, dependencies, true, 3_000),
-    fetchJson(`/api?module=contract&action=getabi&address=${params.token}`, dependencies, true, 12_000),
+    fetchJson(`/api/v2/smart-contracts/${params.token}`, dependencies, 6_000),
     params.creator
       ? (dependencies.readCreatorBalance ?? readCreatorBalance)(params.token, params.creator)
-      : Promise.resolve(null),
+          .then((value) => ({ status: "ready" as const, value }))
+          .catch(() => ({ status: "unavailable" as const }))
+      : Promise.resolve({ status: "not-applicable" as const }),
     params.pair
       ? (dependencies.readLiquidityPosition ?? resolveRegisteredLiquidityPosition)({
           token: params.token,
@@ -416,33 +452,33 @@ export async function fetchTokenRiskEvidence(
           creator: params.creator,
           sourceId: params.sourceId
         })
-      : Promise.resolve({
-          controlStatus: "not-proven" as const,
-          evidenceSource: "none" as const,
-          positionManager: null,
-          positionId: null,
-          owner: null,
-          approvedOperator: null,
-          creatorCanTransfer: null,
-          positionLiquidity: null
-        })
+          .then((value) => ({ status: "ready" as const, value }))
+          .catch(() => ({ status: "unavailable" as const }))
+      : Promise.resolve({ status: "not-applicable" as const })
   ]);
-  const token = tokenSchema.safeParse(rawToken);
-  const holders = holdersSchema.safeParse(rawHolders);
-  const contract = rawContract === null || rawContract === undefined
-    ? { success: true as const, data: null }
-    : contractSchema.safeParse(rawContract);
-  const abiEnvelope = rawContractAbi === null || rawContractAbi === undefined
-    ? { success: true as const, data: null }
-    : contractAbiEnvelopeSchema.safeParse(rawContractAbi);
-  if (!token.success || !holders.success || !contract.success || !abiEnvelope.success) {
-    throw new Error("Blockscout returned invalid token risk evidence.");
-  }
-  if (safeAddress(token.data.address_hash)?.toLowerCase() !== params.token.toLowerCase()) {
+
+  const token = tokenRead.status === "ready" ? tokenSchema.safeParse(tokenRead.value) : null;
+  const holders = holdersRead.status === "ready" ? holdersSchema.safeParse(holdersRead.value) : null;
+  const contractObject = contractRead.status === "ready"
+    && contractRead.value !== null
+    && typeof contractRead.value === "object"
+      ? contractRead.value as Record<string, unknown>
+      : null;
+  const contract = contractObject ? contractSchema.safeParse(contractObject) : null;
+  const abi = contractObject && "abi" in contractObject
+    ? contractAbiSchema.safeParse(contractObject.abi)
+    : null;
+  if (token?.success && safeAddress(token.data.address_hash)?.toLowerCase() !== params.token.toLowerCase()) {
     throw new Error("Blockscout returned risk evidence for a different token.");
   }
-  const totalSupply = BigInt(token.data.total_supply);
-  if (totalSupply <= 0n) throw new Error("Token supply evidence is unavailable.");
+  const totalSupply = token?.success ? BigInt(token.data.total_supply) : null;
+  const tokenReady = Boolean(token?.success && totalSupply && totalSupply > 0n);
+  const holdersReady = Boolean(holders?.success && tokenReady);
+  const contractReady = Boolean(contract?.success);
+  const abiReady = Boolean(abi?.success);
+  if (!tokenReady && !holdersReady && !contractReady && !abiReady) {
+    throw new Error("Token-scoped risk evidence is unavailable.");
+  }
 
   const ignored = new Set([
     zeroAddress.toLowerCase(),
@@ -455,17 +491,18 @@ export async function fetchTokenRiskEvidence(
   const topHolders: TokenRiskEvidence["holders"]["topHolders"] = [];
   let largestHolder: TokenRiskEvidence["holders"]["largestHolder"] = null;
   let sellProbeCandidate: { address: Address; value: bigint } | null = null;
-  const creatorShareBps = rawCreatorBalance === null
-    ? null
-    : shareBps(rawCreatorBalance, totalSupply);
-  for (const holder of holders.data.items) {
+  const creatorShareBps = creatorRead.status === "ready" && totalSupply && totalSupply > 0n
+    ? shareBps(creatorRead.value, totalSupply)
+    : null;
+  const holderSupply = holdersReady ? totalSupply ?? 0n : 0n;
+  for (const holder of holderSupply > 0n && holders?.success ? holders.data.items : []) {
     const address = safeAddress(holder.address.hash);
     if (!address) continue;
     const value = BigInt(holder.value);
     const normalized = address.toLowerCase();
-    if (normalized === pair) poolShareBps = shareBps(value, totalSupply);
+    if (normalized === pair) poolShareBps = shareBps(value, holderSupply);
     if (!ignored.has(normalized)) {
-      const candidate = { address, shareBps: shareBps(value, totalSupply) };
+      const candidate = { address, shareBps: shareBps(value, holderSupply) };
       const holderEvidence = {
         ...candidate,
         isContract: holder.address.is_contract === true,
@@ -506,17 +543,19 @@ export async function fetchTokenRiskEvidence(
   const topNonPoolShareBps = visibleTopNonPoolHolders.length
     ? Math.min(10_000, visibleTopNonPoolHolders.reduce((total, holder) => total + holder.shareBps, 0))
     : null;
-  const probeAmount = sellProbeCandidate
+  const probeAmount = sellProbeCandidate && totalSupply
     ? [sellProbeCandidate.value, totalSupply / 1_000_000n || 1n]
         .reduce((smallest, value) => value < smallest ? value : smallest)
     : null;
   const sellSimulation = params.pair && sellProbeCandidate && probeAmount
-    ? await (dependencies.simulateSellTransfer ?? simulateSellDirectionTransfer)(
-        params.token,
-        sellProbeCandidate.address,
-        params.pair,
-        probeAmount
-      )
+    ? await (dependencies.simulateSellTransfer ?? simulateSellDirectionTransfer)(params.token, sellProbeCandidate.address, params.pair, probeAmount)
+        .catch(() => ({
+          status: "unavailable" as const,
+          method: "holder-to-pool-transfer" as const,
+          holder: sellProbeCandidate.address,
+          amount: probeAmount.toString(),
+          returnStyle: null
+        }))
     : {
         status: "not-run" as const,
         method: "holder-to-pool-transfer" as const,
@@ -525,21 +564,17 @@ export async function fetchTokenRiskEvidence(
         returnStyle: null
       };
 
-  let publishedAbi: unknown[] | undefined;
-  if (abiEnvelope.data?.status === "1") {
-    try {
-      const parsedAbi = JSON.parse(abiEnvelope.data.result);
-      if (Array.isArray(parsedAbi)) publishedAbi = parsedAbi;
-    } catch {
-      publishedAbi = undefined;
-    }
-  }
-  const contractDetailsUnavailable = rawContract === undefined;
-  const abiUnavailable = rawContractAbi === undefined;
-  const controlScan = scanPublishedTokenControls(publishedAbi ?? contract.data?.abi);
+  const publishedAbi = abi?.success ? abi.data : undefined;
+  const controlScan = scanPublishedTokenControls(publishedAbi);
   const publishedAbiAvailable = Boolean(controlScan.functions.length > 0);
   const controlState = publishedAbiAvailable
-    ? await (dependencies.readControlState ?? readControlState)(params.token, controlScan.functions)
+    ? await (dependencies.readControlState ?? readControlState)(params.token, controlScan.functions).catch(() => ({
+        administrator: null,
+        currentBlock: null,
+        restrictionEndBlock: null,
+        maxTransactionBps: null,
+        maxWalletBps: null
+      }))
     : {
         administrator: null,
         currentBlock: null,
@@ -552,7 +587,8 @@ export async function fetchTokenRiskEvidence(
     ? null
     : controlState.restrictionEndBlock > controlState.currentBlock;
   const knownExpiredPonsLaunchControl = params.sourceId === "pons"
-    && liquidity.evidenceSource === "launchpad-registry"
+    && liquidityRead.status === "ready"
+    && liquidityRead.value.evidenceSource === "launchpad-registry"
     && activeLaunchRestrictions === false
     && controlScan.customWriteFunctions.length === 1
     && controlScan.customWriteFunctions[0] === "setInitialBuyRecipient"
@@ -575,7 +611,7 @@ export async function fetchTokenRiskEvidence(
     maxTransactionBps: controlState.maxTransactionBps,
     maxWalletBps: controlState.maxWalletBps
   };
-  const contractEvidence = contract.data
+  const contractEvidence = contract?.success
     ? {
         sourcePublished: publishedAbiAvailable || contract.data.is_verified,
         isProxy: Boolean(
@@ -588,18 +624,27 @@ export async function fetchTokenRiskEvidence(
     : {
         sourcePublished: publishedAbiAvailable
           ? true
-          : abiUnavailable
-            ? null
-            : false,
+          : null,
         isProxy: null,
         bytecodeChanged: null,
         controls: controlsEvidence
       };
-  const partial = largestHolder === null
+  const domains = {
+    token: tokenReady ? "ready" as const : "unavailable" as const,
+    holders: holdersReady ? "ready" as const : "unavailable" as const,
+    contract: contractReady ? "ready" as const : "unavailable" as const,
+    abi: abiReady && publishedAbiAvailable ? "ready" as const : "unavailable" as const,
+    creator: creatorRead.status,
+    liquidity: liquidityRead.status,
+    sell: !params.pair ? "not-applicable" as const
+      : sellSimulation.status === "passed" || sellSimulation.status === "blocked" ? "ready" as const
+        : "unavailable" as const
+  };
+  const partial = Object.values(domains).some((status) => status === "unavailable")
+    || largestHolder === null
+    || !token?.success
     || token.data.holders_count === null
     || token.data.holders_count === undefined
-    || contractDetailsUnavailable
-    || abiUnavailable
     || (Boolean(params.pair) && (
       poolShareBps === null
       || largestNonPoolHolder === null
@@ -612,9 +657,9 @@ export async function fetchTokenRiskEvidence(
     marketVerified: Boolean(params.pair),
     coverage: partial ? "partial" as const : "complete" as const,
     contract: contractEvidence,
-    liquidity,
+    liquidity: liquidityRead.status === "ready" ? liquidityRead.value : emptyLiquidity,
     holders: {
-      count: token.data.holders_count ? Number(token.data.holders_count) : null,
+      count: token?.success && token.data.holders_count ? Number(token.data.holders_count) : null,
       poolShareBps,
       topNonPoolShareBps,
       topNonPoolHolders: visibleTopNonPoolHolders,
@@ -626,7 +671,119 @@ export async function fetchTokenRiskEvidence(
       creatorShareBps
     },
     sellSimulation,
+    domains,
+    freshness: "fresh" as const,
     checkedAt: new Date(dependencies.now?.() ?? Date.now()).toISOString()
   };
   return { ...base, warnings: evidenceWarnings(base) };
+}
+
+function evidenceKey(params: { token: Address; pair?: Address; creator?: Address; sourceId?: RegisteredLiquiditySource }) {
+  return [
+    BLOCKSCOUT_CHAIN_ID,
+    params.token.toLowerCase(),
+    params.pair?.toLowerCase() ?? "none",
+    params.creator?.toLowerCase() ?? "none",
+    params.sourceId ?? "none"
+  ].join(":");
+}
+
+function mergeLastGoodEvidence(current: TokenRiskEvidence, previous: TokenRiskEvidence) {
+  if (!current.domains || !previous.domains) return current;
+  const domains = { ...current.domains };
+  let holders = current.holders;
+  let contract = current.contract;
+  let liquidity = current.liquidity;
+  let sellSimulation = current.sellSimulation;
+  if (domains.token === "unavailable" && previous.domains.token !== "unavailable") {
+    domains.token = "stale";
+    holders = { ...holders, count: previous.holders.count };
+  }
+  if (domains.holders === "unavailable" && previous.domains.holders !== "unavailable") {
+    domains.holders = "stale";
+    holders = previous.holders;
+  }
+  if (domains.contract === "unavailable" && previous.domains.contract !== "unavailable") {
+    domains.contract = "stale";
+    contract = previous.contract;
+  }
+  if (domains.abi === "unavailable" && previous.domains.abi !== "unavailable") {
+    domains.abi = "stale";
+    contract = { ...contract, controls: previous.contract.controls };
+  }
+  if (domains.creator === "unavailable" && previous.domains.creator !== "unavailable") {
+    domains.creator = "stale";
+    holders = { ...holders, creator: previous.holders.creator, creatorShareBps: previous.holders.creatorShareBps };
+  }
+  if (domains.liquidity === "unavailable" && previous.domains.liquidity !== "unavailable") {
+    domains.liquidity = "stale";
+    liquidity = previous.liquidity;
+  }
+  if (domains.sell === "unavailable" && previous.domains.sell !== "unavailable") {
+    domains.sell = "stale";
+    sellSimulation = previous.sellSimulation;
+  }
+  const usedStale = Object.values(domains).some((status) => status === "stale");
+  return usedStale ? {
+    ...current,
+    coverage: "partial" as const,
+    freshness: "stale" as const,
+    domains,
+    holders,
+    contract,
+    liquidity,
+    sellSimulation,
+    warnings: [...new Set([...current.warnings, ...previous.warnings, "Some evidence is last-loaded while Blockscout refresh is delayed."])]
+  } : current;
+}
+
+export async function fetchTokenRiskEvidence(
+  params: {
+    token: Address;
+    pair?: Address;
+    creator?: Address;
+    sourceId?: RegisteredLiquiditySource;
+  },
+  dependencies: RiskEvidenceDependencies = {}
+): Promise<TokenRiskEvidence> {
+  if (Object.keys(dependencies).length > 0 && !dependencies.useCache) {
+    return fetchTokenRiskEvidenceUncached(params, dependencies);
+  }
+  const key = evidenceKey(params);
+  const now = dependencies.now?.() ?? Date.now();
+  const cached = evidenceCache.get(key);
+  if (cached && cached.freshUntil > now) return cached.evidence;
+  const existing = evidenceInflight.get(key);
+  if (existing) return existing;
+  const request = fetchTokenRiskEvidenceUncached(params, dependencies)
+    .then((evidence) => {
+      const merged = cached && cached.staleUntil > now
+        ? mergeLastGoodEvidence(evidence, cached.evidence)
+        : evidence;
+      evidenceCache.set(key, {
+        evidence: merged,
+        freshUntil: now + EVIDENCE_CACHE_TTL_MS,
+        staleUntil: now + EVIDENCE_STALE_TTL_MS
+      });
+      return merged;
+    })
+    .catch((cause) => {
+      if (cached && cached.staleUntil > now) {
+        return {
+          ...cached.evidence,
+          coverage: "partial" as const,
+          freshness: "stale" as const,
+          warnings: [...new Set([...cached.evidence.warnings, "Blockscout refresh is delayed; showing last-loaded evidence."])]
+        };
+      }
+      throw cause;
+    })
+    .finally(() => evidenceInflight.delete(key));
+  evidenceInflight.set(key, request);
+  return request;
+}
+
+export function resetTokenRiskEvidenceCacheForTesting() {
+  evidenceCache.clear();
+  evidenceInflight.clear();
 }

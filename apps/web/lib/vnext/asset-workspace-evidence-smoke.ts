@@ -105,6 +105,26 @@ assert.doesNotMatch(workspaceSource, /id: "ecosystem", label: "up\."/,
   "up. must not remain a permanent top-level workspace tab");
 assert.match(workspaceSource, /marketHost[\s\S]*DexScreener[\s\S]*GeckoTerminal/,
   "Market actions must truthfully identify recognized external hosts");
+assert.match(workspaceSource, /aria-expanded=\{linksOpen\}/,
+  "Additional safe links must use an explicit accessible disclosure control");
+assert.match(workspaceSource, /More links \{moreLinkCount\}/,
+  "The disclosure count must come from the actual safe rendered links");
+assert.match(workspaceSource, /linksOpen && moreLinkCount/,
+  "A zero-link disclosure must not reserve empty workspace space");
+assert.match(workspaceSource, /Observed from market metadata/,
+  "Observed links must preserve their provider-metadata provenance");
+assert.match(workspaceSource, /tokenIdentityVerified[\s\S]*Onchain verified/,
+  "Safety must reuse the selected workspace token-identity authority");
+assert.match(workspaceSource, /Contract risk evidence unavailable/,
+  "A full risk transport failure must collapse to one truthful compact state");
+assert.match(workspaceSource, /riskUnavailable \|\| !domainAvailable\("liquidity"\)/,
+  "A complete risk outage must use the compact liquidity-unavailable branch");
+assert.match(workspaceSource, /poolShareBps !== null[\s\S]*Liquidity-control evidence unavailable/,
+  "Known holder-derived pool share must survive an unavailable liquidity-control domain");
+assert.match(workspaceSource, /Displayed market liquidity and exact pool identity remain available where shown/,
+  "The compact liquidity outage must preserve truthful displayed-market and pool evidence");
+assert.doesNotMatch(workspaceSource, /Source published[\s\S]*Bytecode change[\s\S]*Contract controls[\s\S]*Coverage/,
+  "A transport failure must not render the legacy wall of Unknown fields");
 assert.match(stylesSource, /\.vnEvidencePane \{ min-height: 0; \}/,
   "Unavailable holder evidence must not reserve an artificial 300px pane");
 assert.doesNotMatch(stylesSource, /\.vnEvidencePane\s*\{\s*min-height:\s*300px/,

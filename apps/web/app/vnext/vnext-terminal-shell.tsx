@@ -28,6 +28,7 @@ export function VNextTerminalShell() {
   const [query, setQuery] = useState("");
   const [walletAssets, setWalletAssets] = useState<VNextDetectedWalletAsset[]>([]);
   const [nativeBalance, setNativeBalance] = useState<bigint>();
+  const [walletReadStatus, setWalletReadStatus] = useState<"idle" | "loading" | "ready" | "stale" | "error">("idle");
   const [portfolioRevealRequest, setPortfolioRevealRequest] = useState(0);
   const [tradeSideRequest, setTradeSideRequest] = useState<TradeSideRequest>();
   const [directoryView, setDirectoryView] = useState<VNextMarketDirectoryView>("active");
@@ -265,6 +266,7 @@ export function VNextTerminalShell() {
       : 0,
     directoryStatus: status,
     activityCoveragePending: enrichmentStatus === "pending",
+    activityCoverageDelayed: enrichmentStatus === "delayed",
     hasMoreDirectoryMarkets: !query.trim() && hasMoreCanonicalMarkets,
     selected,
     selectedExecutionState,
@@ -273,12 +275,14 @@ export function VNextTerminalShell() {
     identityStatus,
     walletAssets,
     nativeBalance,
+    walletReadStatus,
     executionRecord: executionRecovery.record,
     executionStatus: executionRecovery.status,
     portfolioRevealRequest,
     tradeSideRequest,
     onAssetsChange: setWalletAssets,
     onNativeBalanceChange: setNativeBalance,
+    onWalletReadStatusChange: setWalletReadStatus,
     onSelectMarket: selectMarket,
     onSearchSubmit: submitSearch,
     onRefresh: () => void refresh(),

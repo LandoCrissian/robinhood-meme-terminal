@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { assetKey, spendableAtomic } from "./execution-domain";
+import { NATIVE_GAS_RESERVE_ATOMIC, spendableNativeAtomic } from "./intent-draft";
 import type { ExternalMarketResponse } from "../external-market";
 import {
   ROBINHOOD_MAINNET_CHAIN_ID,
@@ -35,6 +36,7 @@ assert.equal(ROBINHOOD_USDG.decimals, 6);
 assert.equal(ROBINHOOD_WETH.decimals, 18);
 assert.equal(assetKey(ROBINHOOD_USDG.id), `eip155:4663/contract:${ROBINHOOD_USDG_ADDRESS.toLowerCase()}`);
 assert.equal(spendableAtomic(balance), "428160000");
+assert.equal(spendableNativeAtomic(NATIVE_GAS_RESERVE_ATOMIC + 10_300_000_000_000_000n), 10_300_000_000_000_000n);
 assert.equal(balance.pendingIncomingAtomic, "0");
 assert.equal(balance.pendingOutgoingAtomic, "0");
 const candidates = walletAssetCandidates([{
@@ -130,7 +132,9 @@ assert.equal(trustedPaymentMetadataFromDetectedWalletAsset({
   balanceAtomic: "1000000",
   routeState: "detected"
 }), null);
-assert.match(component, /Confirmed wallet-held USDG/);
+assert.match(component, /Trade funding \+ network gas/);
+assert.match(component, /Canonical trade balance · settlement asset/);
+assert.match(component, /spendableNativeAtomic\(nativeBalance\)/);
 assert.match(component, /<FundWalletButton variant="inline" label="Add funds" target="mainnet" \/>/);
 assert.doesNotMatch(component, /Verify USDG/);
 assert.match(component, /Unconfirmed proceeds are never spendable/);
@@ -143,6 +147,7 @@ assert.match(component, /Indexer finds assets; onchain reads confirm balances/);
 assert.match(component, /route not checked/);
 assert.match(component, /useVNextWalletAssets/);
 assert.match(component, /onNativeBalanceChange\?\.\(nativeBalance\)/);
+assert.match(component, /onWalletReadStatusChange\?\.\(status\)/);
 assert.match(component, /\/api\/vnext\/asset-identity/);
 assert.match(component, /functionName: "balanceOf"/);
 assert.match(component, /balance <= 0n/);

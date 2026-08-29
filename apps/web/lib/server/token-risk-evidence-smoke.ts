@@ -6,6 +6,7 @@ import {
 } from "./registered-liquidity-position";
 import {
   fetchTokenRiskEvidence,
+  resetTokenRiskEvidenceCacheForTesting,
   scanPublishedTokenControls,
   simulateSellDirectionTransfer,
   solidityBlockNumber
@@ -19,12 +20,16 @@ const zero = "0x0000000000000000000000000000000000000000";
 
 function mockFetch(options: {
   tokenAddress?: string;
+  tokenStatus?: number;
+  holdersStatus?: number;
   contractStatus?: number;
   contract?: Record<string, unknown>;
   holders?: unknown[];
+  onRequest?: (url: string, init?: RequestInit) => void;
 } = {}) {
-  return async (input: string | URL) => {
+  return async (input: string | URL, init?: RequestInit) => {
     const url = input.toString();
+    options.onRequest?.(url, init);
     if (url.includes("action=getabi")) {
       if (options.contractStatus === 503) return new Response("missing", { status: 503 });
       const abi = options.contract?.abi;
@@ -38,10 +43,18 @@ function mockFetch(options: {
         is_verified: true,
         proxy_type: null,
         implementations: [],
-        is_changed_bytecode: false
+        is_changed_bytecode: false,
+        abi: [{
+          type: "function",
+          name: "transfer",
+          stateMutability: "nonpayable",
+          inputs: [{ type: "address" }, { type: "uint256" }],
+          outputs: [{ type: "bool" }]
+        }]
       });
     }
     if (url.endsWith("/holders")) {
+      if (options.holdersStatus) return new Response("missing", { status: options.holdersStatus });
       return Response.json({
         items: options.holders ?? [
           { address: { hash: whale, is_contract: false }, value: "80" },
@@ -51,6 +64,7 @@ function mockFetch(options: {
         ]
       });
     }
+    if (options.tokenStatus) return new Response("missing", { status: options.tokenStatus });
     return Response.json({
       address_hash: options.tokenAddress ?? token,
       holders_count: "92",
@@ -129,7 +143,7 @@ async function main() {
   assert.equal(evidence.contract.sourcePublished, true);
   assert.equal(evidence.contract.isProxy, false);
   assert.equal(evidence.contract.bytecodeChanged, false);
-  assert.equal(evidence.contract.controls.assessment, "unknown");
+  assert.equal(evidence.contract.controls.assessment, "no-common-controls-found");
   assert.equal(evidence.liquidity.controlStatus, "not-proven");
   assert.equal(evidence.liquidity.evidenceSource, "none");
   assert.equal(evidence.liquidity.positionId, null);
@@ -190,9 +204,9 @@ async function main() {
       now: () => 0
     }
   );
-  assert.equal(opaque.contract.sourcePublished, false);
+  assert.equal(opaque.contract.sourcePublished, null);
   assert.equal(opaque.contract.isProxy, null);
-  assert.match(opaque.warnings.join(" "), /source is not published/);
+  assert.match(opaque.warnings.join(" "), /publication could not be verified/);
 
   const delayedContract = await fetchTokenRiskEvidence(
     { token, pair },
@@ -205,7 +219,108 @@ async function main() {
   assert.equal(delayedContract.coverage, "partial");
   assert.equal(delayedContract.contract.sourcePublished, null);
   assert.equal(delayedContract.contract.controls.assessment, "unknown");
+  assert.equal(delayedContract.domains?.holders, "ready");
+  assert.equal(delayedContract.domains?.contract, "unavailable");
   assert.match(delayedContract.warnings.join(" "), /publication could not be verified/);
+
+  const delayedHolders = await fetchTokenRiskEvidence(
+    { token, pair },
+    {
+      fetch: mockFetch({ holdersStatus: 429 }),
+      simulateSellTransfer: passedSellSimulation
+    }
+  );
+  assert.equal(delayedHolders.coverage, "partial");
+  assert.equal(delayedHolders.domains?.holders, "unavailable");
+  assert.equal(delayedHolders.domains?.contract, "ready");
+  assert.equal(delayedHolders.contract.sourcePublished, true);
+  assert.equal(delayedHolders.holders.count, 92);
+
+  const delayedLiquidity = await fetchTokenRiskEvidence(
+    { token, pair },
+    {
+      fetch: mockFetch(),
+      readLiquidityPosition: async () => { throw new Error("RPC delayed"); },
+      simulateSellTransfer: passedSellSimulation
+    }
+  );
+  assert.equal(delayedLiquidity.domains?.liquidity, "unavailable");
+  assert.equal(delayedLiquidity.domains?.holders, "ready");
+  assert.equal(delayedLiquidity.contract.sourcePublished, true);
+
+  const delayedSell = await fetchTokenRiskEvidence(
+    { token, pair },
+    {
+      fetch: mockFetch(),
+      simulateSellTransfer: async () => { throw new Error("RPC delayed"); }
+    }
+  );
+  assert.equal(delayedSell.domains?.sell, "unavailable");
+  assert.equal(delayedSell.sellSimulation.status, "unavailable");
+  assert.equal(delayedSell.domains?.holders, "ready");
+  assert.equal(delayedSell.domains?.contract, "ready");
+
+  const delayedToken = await fetchTokenRiskEvidence(
+    { token, pair },
+    {
+      fetch: mockFetch({ tokenStatus: 503 }),
+      simulateSellTransfer: passedSellSimulation
+    }
+  );
+  assert.equal(delayedToken.domains?.token, "unavailable");
+  assert.equal(delayedToken.domains?.contract, "ready");
+  assert.equal(delayedToken.contract.sourcePublished, true);
+
+  let proRequestCount = 0;
+  resetTokenRiskEvidenceCacheForTesting();
+  const proFetch = mockFetch({
+    onRequest: (url, init) => {
+      proRequestCount += 1;
+      assert.match(url, /^https:\/\/api\.blockscout\.com\/4663\/api\/v2\//);
+      assert.equal(new Headers(init?.headers).get("authorization"), "Bearer test-only-blockscout-key");
+      assert.equal(url.includes("apikey="), false);
+    }
+  });
+  const cachedDependencies = {
+    fetch: proFetch,
+    apiKey: "test-only-blockscout-key",
+    useCache: true,
+    simulateSellTransfer: passedSellSimulation
+  };
+  const [coalescedA, coalescedB] = await Promise.all([
+    fetchTokenRiskEvidence({ token, pair }, cachedDependencies),
+    fetchTokenRiskEvidence({ token, pair }, cachedDependencies)
+  ]);
+  assert.deepEqual(coalescedA, coalescedB);
+  assert.equal(proRequestCount, 3);
+  await fetchTokenRiskEvidence({ token, pair }, cachedDependencies);
+  assert.equal(proRequestCount, 3);
+  resetTokenRiskEvidenceCacheForTesting();
+
+  let cacheClock = 0;
+  let quotaLimited = false;
+  const quotaFetch = async (input: string | URL, init?: RequestInit) => {
+    const url = input.toString();
+    if (quotaLimited) return new Response("quota", { status: 429 });
+    return mockFetch()(url, init);
+  };
+  const quotaDependencies = {
+    fetch: quotaFetch,
+    apiKey: "test-only-blockscout-key",
+    useCache: true,
+    now: () => cacheClock,
+    simulateSellTransfer: passedSellSimulation
+  };
+  const freshEvidence = await fetchTokenRiskEvidence({ token, pair }, quotaDependencies);
+  assert.equal(freshEvidence.freshness, "fresh");
+  quotaLimited = true;
+  cacheClock = 5 * 60_000 + 1;
+  const quotaStale = await fetchTokenRiskEvidence({ token, pair }, quotaDependencies);
+  assert.equal(quotaStale.freshness, "stale");
+  assert.equal(quotaStale.contract.sourcePublished, true);
+  assert.equal(quotaStale.holders.count, 92);
+  assert.match(quotaStale.warnings.join(" "), /last-loaded|refresh is delayed/i);
+  resetTokenRiskEvidenceCacheForTesting();
 
   const proxy = await fetchTokenRiskEvidence(
     { token, pair },

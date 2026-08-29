@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { assetKey, evmAsset, evmChain, type AssetMetadata, type WalletAccount } from "./execution-domain";
-import { affordableDefaultAmount, assetsForSide, createExactInputIntent, decimalToAtomic, percentageOfAtomic } from "./intent-draft";
+import { NATIVE_GAS_RESERVE_ATOMIC, affordableDefaultAmount, assetsForSide, createExactInputIntent, decimalToAtomic, percentageOfAtomic, spendableNativeAtomic } from "./intent-draft";
 import { ROBINHOOD_USDG, robinhoodWalletAccount } from "./robinhood-assets";
 
 const wallet = robinhoodWalletAccount("0x1111111111111111111111111111111111111111");
@@ -30,6 +30,14 @@ assert.equal(affordableDefaultAmount("10123456", 6, "25"), "10.123456");
 assert.equal(affordableDefaultAmount("1", 6, "25"), "0.000001");
 assert.equal(affordableDefaultAmount("0", 6, "25"), "");
 assert.throws(() => affordableDefaultAmount("-1", 6, "25"), /unsigned atomic/);
+assert.equal(spendableNativeAtomic(undefined), undefined);
+assert.equal(spendableNativeAtomic(NATIVE_GAS_RESERVE_ATOMIC), 0n);
+assert.equal(spendableNativeAtomic(NATIVE_GAS_RESERVE_ATOMIC - 1n), 0n);
+assert.equal(spendableNativeAtomic(NATIVE_GAS_RESERVE_ATOMIC + 10_000n), 10_000n);
+for (const basisPoints of [2_500, 5_000, 7_500, 10_000]) {
+  const spendable = spendableNativeAtomic(NATIVE_GAS_RESERVE_ATOMIC + 1_000_000n)!;
+  assert.ok(BigInt(percentageOfAtomic(spendable.toString(), basisPoints)) <= spendable);
+}
 
 const buy = assetsForSide("buy", currentMarketControl, ROBINHOOD_USDG);
 assert.equal(assetKey(buy.inputAsset.id), assetKey(ROBINHOOD_USDG.id));
@@ -114,7 +122,7 @@ assert.match(composer, /setAmount\(next === "buy" \? selectedDefaultBuyAmount : 
 assert.match(composer, /Confirmed balance percentages/);
 assert.match(composer, /Amount exceeds the confirmed/);
 assert.match(composer, /Authorization must remain blocked/);
-assert.match(composer, /BigInt\(draft\.intent\.amountAtomic\) > BigInt\(inputBalanceAtomic\)/);
+assert.match(composer, /BigInt\(draft\.intent\.amountAtomic\) > BigInt\(spendableInputAtomic\)/);
 assert.match(composer, /This preview asset has no verified chain-qualified contract identity/);
 assert.match(composer, /!identity\.enabled/);
 assert.match(composer, /Trading identity unavailable/);

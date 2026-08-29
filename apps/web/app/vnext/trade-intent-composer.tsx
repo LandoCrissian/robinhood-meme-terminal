@@ -6,7 +6,7 @@ import { useAccount } from "wagmi";
 import type { AssetMetadata } from "../../lib/vnext/execution-domain";
 import { assetKey } from "../../lib/vnext/execution-domain";
 import { vNextExecutionProviderLabel, type VNextExecutionRecord } from "../../lib/vnext/execution-recovery";
-import { affordableDefaultAmount, createExactInputIntent, percentageOfAtomic, type TradeSide } from "../../lib/vnext/intent-draft";
+import { NATIVE_GAS_RESERVE_ATOMIC, affordableDefaultAmount, createExactInputIntent, percentageOfAtomic, spendableNativeAtomic, type TradeSide } from "../../lib/vnext/intent-draft";
 import { parseVNextQuoteResponse, selectVNextRoute, type VNextQuoteResponse } from "../../lib/vnext/quote-observation";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "../../lib/vnext/pre-sign-evidence";
 import {
@@ -65,14 +65,14 @@ function uniqueAssets(assets: AssetMetadata[]) {
 
 const DEFAULT_BUY_AMOUNT = "25";
 const DEFAULT_NATIVE_BUY_AMOUNT = "0.0005";
-const NATIVE_GAS_RESERVE_ATOMIC = 100_000_000_000_000n;
 
-export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, walletAssets, nativeBalance, executionRecord, onContinueTrading, sideRequest, executionState, executionUiState, canonicalMarket }: {
+export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, walletAssets, nativeBalance, walletReadStatus, executionRecord, onContinueTrading, sideRequest, executionState, executionUiState, canonicalMarket }: {
   marketName: string;
   marketSymbol: string;
   marketAsset?: AssetMetadata;
   walletAssets: VNextDetectedWalletAsset[];
   nativeBalance?: bigint;
+  walletReadStatus: "idle" | "loading" | "ready" | "stale" | "error";
   executionRecord?: VNextExecutionRecord | null;
   onContinueTrading: () => void;
   sideRequest?: { side: TradeSide; nonce: number };
@@ -192,6 +192,11 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       && /^(0|[1-9][0-9]*)$/.test(asset.balanceAtomic)
     ))?.balanceAtomic;
   }, [nativeBalance, pair, pairInputDecimals, walletAssets]);
+  const spendableInputAtomic = inputBalanceAtomic === undefined
+    ? undefined
+    : pair?.inputAsset.id.locator.kind === "native"
+      ? spendableNativeAtomic(BigInt(inputBalanceAtomic))?.toString()
+      : inputBalanceAtomic;
   const buyUsesUsdg = side === "buy"
     && pair?.inputAsset.id.locator.kind === "contract"
     && pair.inputAsset.id.locator.address.toLowerCase() === ROBINHOOD_USDG_ADDRESS.toLowerCase();
@@ -380,13 +385,13 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         verifiedRmtFee.feeSide === "input" ? pair.inputAsset.decimals ?? 18 : pair.outputAsset.decimals ?? 18
       )}`
     : "Not enabled";
-  const availableDisplay = inputBalanceAtomic && pairInputDecimals !== null
-    ? formatAtomicDisplay(inputBalanceAtomic, pairInputDecimals)
+  const availableDisplay = spendableInputAtomic !== undefined && pairInputDecimals !== null
+    ? formatAtomicDisplay(spendableInputAtomic, pairInputDecimals)
     : null;
   const amountExceedsBalance = Boolean(
     draft.intent
-    && inputBalanceAtomic
-    && BigInt(draft.intent.amountAtomic) > BigInt(inputBalanceAtomic)
+    && spendableInputAtomic !== undefined
+    && BigInt(draft.intent.amountAtomic) > BigInt(spendableInputAtomic)
   );
   const confirmedInputDisplay = postExecutionState.state === "swap_confirmed"
     && executionRecord?.kind === "swap"
@@ -417,11 +422,9 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     : null;
 
   const useBalancePercentage = (basisPoints: number) => {
-    if (!inputBalanceAtomic || pair?.inputAsset.decimals === null || pair?.inputAsset.decimals === undefined) return;
+    if (spendableInputAtomic === undefined || pair?.inputAsset.decimals === null || pair?.inputAsset.decimals === undefined) return;
     try {
-      const balance = pair.inputAsset.id.locator.kind === "native"
-        ? BigInt(inputBalanceAtomic) - NATIVE_GAS_RESERVE_ATOMIC
-        : BigInt(inputBalanceAtomic);
+      const balance = BigInt(spendableInputAtomic);
       if (balance <= 0n) return;
       const atomic = percentageOfAtomic(balance.toString(), basisPoints);
       autoFitBuyAmount.current = false;
@@ -901,12 +904,12 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         </div>
       </label>
       <div className="vnConfirmedBalance">
-        <span><small>Available</small><strong>{availableDisplay ? `${availableDisplay} ${inputSymbol}` : isConnected ? "Not detected" : "Wallet required"}</strong></span>
+        <span><small>Available</small><strong>{!isConnected ? "Wallet required" : walletReadStatus === "idle" || walletReadStatus === "loading" ? "Reading wallet…" : walletReadStatus === "error" ? "Balance read delayed" : spendableInputAtomic === "0" ? `No ${inputSymbol} balance found` : availableDisplay ? `${availableDisplay} ${inputSymbol}` : `${inputSymbol} balance unavailable`}</strong></span>
         <div aria-label="Confirmed balance percentages">
           {[2_500, 5_000, 7_500, 10_000].map((basisPoints) => <button
             type="button"
             key={basisPoints}
-            disabled={!inputBalanceAtomic}
+            disabled={!spendableInputAtomic || spendableInputAtomic === "0"}
             onClick={() => useBalancePercentage(basisPoints)}
           >{basisPoints === 10_000 ? "Max" : `${basisPoints / 100}%`}</button>)}
         </div>
@@ -915,9 +918,9 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         <div className="vnQuickAmounts">
           {["25", "50", "100", "250"].map((preset) => {
             const exceedsBalance = Boolean(
-              inputBalanceAtomic
+              spendableInputAtomic
               && pairInputDecimals !== null
-              && parseUnits(preset, pairInputDecimals) > BigInt(inputBalanceAtomic)
+              && parseUnits(preset, pairInputDecimals) > BigInt(spendableInputAtomic)
             );
             return <button
               className={preset === amount ? "isActive" : ""}
@@ -1013,9 +1016,9 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         <p className="vnIntentStatus">{quoteState.state === "error" ? quoteState.message : draft.message}</p>
         {address && pair ? <p className={`vnBalanceEvidence${amountExceedsBalance ? " isBlocking" : ""}`}>{amountExceedsBalance
           ? `Amount exceeds the confirmed ${inputSymbol} balance. Authorization must remain blocked.`
-          : inputBalanceAtomic
+          : spendableInputAtomic !== undefined
             ? `Confirmed ${inputSymbol} balance is the source for percentage and Max controls.`
-            : `Confirmed ${inputSymbol} balance is not detected. Percentage controls remain disabled.`}</p> : null}
+            : `Confirmed ${inputSymbol} balance is delayed. Percentage controls remain disabled.`}</p> : null}
         {visibleQuote ? <div className="vnQuoteAttempts">
           {visibleQuote.attempts.map((attempt) => (
             <div className={attempt.status === "indicative" ? "isReady" : ""} key={attempt.provider}>

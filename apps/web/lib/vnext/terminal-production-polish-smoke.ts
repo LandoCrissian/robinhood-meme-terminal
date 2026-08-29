@@ -62,6 +62,7 @@ const presentation = readFileSync(new URL("../../app/vnext/terminal-presentation
 const shell = readFileSync(new URL("../../app/vnext/vnext-terminal-shell.tsx", import.meta.url), "utf8");
 const directoryHook = readFileSync(new URL("../../app/vnext/use-vnext-market-directory.ts", import.meta.url), "utf8");
 const workspace = readFileSync(new URL("../../app/vnext/vnext-asset-workspace.tsx", import.meta.url), "utf8");
+const terminalLinks = readFileSync(new URL("../../app/vnext/terminal-links.tsx", import.meta.url), "utf8");
 const receipt = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
 const walletReview = readFileSync(new URL("../../app/vnext/vnext-wallet-review.tsx", import.meta.url), "utf8");
 const recovery = readFileSync(new URL("../../app/vnext/vnext-execution-recovery-banner.tsx", import.meta.url), "utf8");
@@ -72,8 +73,13 @@ assert.match(shell, /parseVNextTerminalLocation/, "deep links use one validated 
 assert.match(directoryHook, /requestSequence !== selectionSequence\.current/, "BACK_FORWARD_NAVIGATION selection races must fail closed");
 assert.doesNotMatch(presentation, /Searching verified Robinhood Chain markets|Verified market found|No verified market found/i, "SEARCH_COPY_DOES_NOT_CALL_EXISTENCE_VERIFIED");
 assert.match(workspace, /Project links · \{market\?\.project \? externalProjectProvenanceLabel/);
-assert.match(workspace, /Observed links · market metadata/);
+assert.match(workspace, /Observed from market metadata/);
 assert.match(workspace, /CopyAddress/);
+assert.match(workspace, /aria-expanded=\{linksOpen\}/);
+assert.match(terminalLinks, /navigator\.clipboard\?\.writeText/);
+assert.match(terminalLinks, /document\.execCommand\("copy"\)/);
+assert.match(terminalLinks, /input\.value = normalized/);
+assert.match(terminalLinks, /Full token contract copied/);
 assert.match(workspace, /Unknown|Unavailable|Not reported/, "PARTIAL_METADATA_REMAINS_VISIBLE");
 assert.match(receipt, /vnFeeV2Summary[\s\S]*RMT execution fee/, "V2_FEE_VISIBLE_MAIN_SURFACE");
 assert.match(walletReview, /RMT execution fee on this approval: 0/, "APPROVAL_FEE_ZERO");

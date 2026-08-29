@@ -8,6 +8,12 @@ import {
 } from "./execution-domain";
 
 export type TradeSide = "buy" | "sell";
+export const NATIVE_GAS_RESERVE_ATOMIC = 100_000_000_000_000n;
+
+export function spendableNativeAtomic(balance: bigint | undefined) {
+  if (balance === undefined) return undefined;
+  return balance > NATIVE_GAS_RESERVE_ATOMIC ? balance - NATIVE_GAS_RESERVE_ATOMIC : 0n;
+}
 
 function requireVerifiedAsset(asset: AssetMetadata, label: string) {
   if (asset.metadataState !== "verified" || asset.decimals === null) {

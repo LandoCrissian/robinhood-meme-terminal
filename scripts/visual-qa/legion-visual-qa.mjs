@@ -31,6 +31,7 @@ let registrationCornerRoleViolations = 0;
 let crossSurfaceNavigationViolations = 0;
 let portfolioReturnPathViolations = 0;
 let valuationTruthViolations = 0;
+let startupMetrics = null;
 
 await mkdir(output, { recursive: true });
 await mkdir(acceptanceOutput, { recursive: true });
@@ -117,6 +118,7 @@ function candles(range, referencePrice = 0.000092) {
 
 async function installTokenRoutes(page, { riskUnavailable = false } = {}) {
   let chartMode = "ready";
+  let riskMode = riskUnavailable ? "unavailable" : "ready";
   await page.route("**/api/**", (route) => route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ error: "fixture_route_not_registered" }) }));
   await page.route(/\/api\/vnext\/market-directory(?:\?.*)?$/, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ canonical: true, coverage: "complete", nextCursor: null, markets: canonicalDirectoryMarkets(), updatedAt: FIXTURE_NOW }) }));
   await page.route(/\/api\/markets\/external(?:\?.*)?$/, (route) => {
@@ -134,11 +136,14 @@ async function installTokenRoutes(page, { riskUnavailable = false } = {}) {
   await page.route(/\/api\/trade\/external-venues(?:\?.*)?$/, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ token, venues: [{ venue: "uniswap-v3", pair, dexId: "uniswap-v3", liquidityUsd: TOKEN_MARKETS[1].liquidityUsd, verification: "dex-and-route" }] }) }));
   await page.route(/\/api\/markets\/external-trades(?:\?.*)?$/, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ token, pair, source: "LEGION_FIXTURE", updatedAt: FIXTURE_NOW, trades }) }));
   await page.route(/\/api\/markets\/external-stream(?:\?.*)?$/, (route) => route.fulfill({ status: 204, body: "" }));
-  await page.route(/\/api\/markets\/token-risk(?:\?.*)?$/, (route) => riskUnavailable
-    ? route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "fixture_unavailable" }) })
-    : route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ token, pair, marketVerified: true, coverage: "complete", contract: { sourcePublished: true, isProxy: false, bytecodeChanged: false, controls: { assessment: "no-common-controls-found", detected: [], customWriteFunctions: [], administrator: null, activeLaunchRestrictions: false, restrictionEndBlock: null, maxTransactionBps: null, maxWalletBps: null } }, liquidity: { controlStatus: "not-proven", evidenceSource: "none", positionManager: null, positionId: null, owner: null, approvedOperator: null, creatorCanTransfer: null, positionLiquidity: null }, holders: { count: 975, poolShareBps: 4200, topNonPoolShareBps: 740, topNonPoolHolders: [], largestNonPoolHolder: null, creator: null, creatorShareBps: null }, sellSimulation: { status: "not-run", method: "holder-to-pool-transfer", holder: null, amount: null, returnStyle: null }, warnings: [], checkedAt: FIXTURE_NOW }) }));
+  await page.route(/\/api\/markets\/token-risk(?:\?.*)?$/, (route) => {
+    if (riskMode === "unavailable") return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "fixture_unavailable" }) });
+    const requestUrl = new URL(route.request().url());
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ token: requestUrl.searchParams.get("token"), pair: requestUrl.searchParams.get("pair"), marketVerified: true, coverage: riskMode === "partial" ? "partial" : "complete", freshness: "fresh", domains: { token: "ready", holders: "ready", contract: "ready", abi: "ready", creator: "not-applicable", liquidity: riskMode === "partial" ? "unavailable" : "ready", sell: "ready" }, contract: { sourcePublished: true, isProxy: false, bytecodeChanged: false, controls: { assessment: "no-common-controls-found", detected: [], customWriteFunctions: [], administrator: null, activeLaunchRestrictions: false, restrictionEndBlock: null, maxTransactionBps: null, maxWalletBps: null } }, liquidity: { controlStatus: "not-proven", evidenceSource: "none", positionManager: null, positionId: null, owner: null, approvedOperator: null, creatorCanTransfer: null, positionLiquidity: null }, holders: { count: 975, poolShareBps: 4200, topNonPoolShareBps: 740, topNonPoolHolders: [], largestNonPoolHolder: null, creator: null, creatorShareBps: null }, sellSimulation: { status: "not-run", method: "holder-to-pool-transfer", holder: null, amount: null, returnStyle: null }, warnings: [], checkedAt: FIXTURE_NOW }) });
+  });
   await page.route(/\/api\/vnext\/chain-pulse(?:\?.*)?$/, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ chainId: 4663, chain: "Robinhood Chain", source: "LEGION_FIXTURE", authoritative: false, status: "ready", tvlUsd: 580000000, dexVolume24hUsd: 640000000, dexVolume7dUsd: 3460000000, dexChange1dPct: 3.4, dexChange7dPct: 8.2, fees24hUsd: null, fees7dUsd: null, revenue24hUsd: null, revenue7dUsd: null, protocolRevenue24hUsd: null, protocolRevenue7dUsd: null }) }));
-  return { setChartMode: (mode) => { chartMode = mode; } };
+  await page.route(/\/api\/vnext\/capital-flow(?:\?.*)?$/, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ schemaVersion: 1, chainId: 4663, chain: "Robinhood Chain", source: "DEFILLAMA", authoritative: false, status: "ready", asOf: FIXTURE_NOW, stablecoinMarketCapUsd: 148000000, stablecoinChange7dPct: 2.3, usdgMarketCapUsd: 91000000, usdgDominancePct: 61.5 }) }));
+  return { setChartMode: (mode) => { chartMode = mode; }, setRiskMode: (mode) => { riskMode = mode; } };
 }
 
 async function createContext(browser, viewport) {
@@ -149,6 +154,89 @@ async function createContext(browser, viewport) {
     localStorage.setItem("rmt:experience-preferences", JSON.stringify({ schemaVersion: 1, onboardingVersion: 1, diagnosticsEnabled: false, updatedAt: fixedNow }));
   }, { fixedNow: FIXTURE_EPOCH_MS });
   return context;
+}
+
+function deferred() {
+  let resolve;
+  const promise = new Promise((next) => { resolve = next; });
+  return { promise, resolve };
+}
+
+async function startupLane(browser) {
+  const context = await createContext(browser, { width: 390, height: 844 });
+  const page = await context.newPage();
+  const canonicalGate = deferred();
+  const enrichmentGate = deferred();
+  let canonicalStartedAt = null;
+  let enrichmentStartedAt = null;
+  let enrichmentRequests = 0;
+  await page.route("**/api/**", async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === "/api/vnext/market-directory") {
+      canonicalStartedAt ??= performance.now();
+      await canonicalGate.promise;
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ canonical: true, coverage: "complete", nextCursor: null, markets: canonicalDirectoryMarkets(), updatedAt: FIXTURE_NOW }) });
+    }
+    if (url.pathname === "/api/markets/external") {
+      enrichmentRequests += 1;
+      enrichmentStartedAt ??= performance.now();
+      await enrichmentGate.promise;
+      return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ markets: VISIBLE_TOKEN_MARKETS, source: "legion-startup-fixture", rankingVersion: "deterministic-v1", thresholds: {}, originCoverage: "complete", rmtOriginCoverage: "complete", stockAssetCoverage: "complete", delayedSources: [], updatedAt: FIXTURE_NOW, stale: false }) });
+    }
+    if (url.pathname === "/api/vnext/chain-pulse" || url.pathname === "/api/vnext/capital-flow") return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ status: "unavailable" }) });
+    return route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ error: "startup_fixture_unregistered" }) });
+  });
+  const openedAt = performance.now();
+  await page.goto(base, { waitUntil: "domcontentloaded", timeout: 60_000 });
+  await page.waitForFunction(() => document.querySelector(".rmtMobileTerminal"));
+  for (let attempt = 0; attempt < 100 && (canonicalStartedAt === null || enrichmentStartedAt === null); attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  check(canonicalStartedAt !== null && enrichmentStartedAt !== null, "token-startup", "Canonical inventory and provider enrichment did not start concurrently.", { canonicalStartedAt, enrichmentStartedAt });
+  canonicalGate.resolve();
+  const canonicalRows = page.locator(".rmtMobileMarketRow");
+  await canonicalRows.first().waitFor();
+  const canonicalVisibleAt = performance.now();
+  const pendingText = await canonicalRows.allTextContents();
+  check(pendingText.some((text) => /Loading market data|Market data pending/.test(text)), "token-startup", "Canonical first paint did not expose a truthful pending metric state.");
+  check(pendingText.every((text) => !/Unavailable/.test(text)), "token-startup", "Canonical first paint flashed a false Unavailable metric.", pendingText);
+  await stabilize(page);
+  await acceptanceCapture(page, "canonical-metrics-pending-390x844");
+  enrichmentGate.resolve();
+  await page.waitForFunction(() => {
+    const row = [...document.querySelectorAll(".rmtMobileMarketRow")].find((element) => element.textContent?.includes("PONS"));
+    return Boolean(row && !/Loading market data|Market data pending/.test(row.textContent ?? ""));
+  });
+  const enrichedAt = performance.now();
+  startupMetrics = {
+    timeToCanonicalRowsMs: Math.round(canonicalVisibleAt - openedAt),
+    timeCanonicalToEnrichedMs: Math.round(enrichedAt - canonicalVisibleAt),
+    providerRequestStarted: enrichmentStartedAt !== null && canonicalStartedAt !== null && enrichmentStartedAt <= canonicalVisibleAt ? "BEFORE_CANONICAL_COMPLETE" : "AFTER_CANONICAL_COMPLETE",
+    initialProviderRequests: enrichmentRequests,
+    falseUnavailableFlash: pendingText.filter((text) => /Unavailable/.test(text)).length
+  };
+  check(enrichmentRequests === 1, "token-startup", "Initial provider enrichment request was duplicated.", { enrichmentRequests });
+  await context.close();
+
+  const delayedContext = await createContext(browser, { width: 390, height: 844 });
+  const delayedPage = await delayedContext.newPage();
+  await delayedPage.route("**/api/**", (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === "/api/vnext/market-directory") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ canonical: true, coverage: "complete", nextCursor: null, markets: canonicalDirectoryMarkets(), updatedAt: FIXTURE_NOW }) });
+    if (url.pathname === "/api/markets/external") return route.fulfill({ status: 429, contentType: "application/json", body: JSON.stringify({ error: "fixture_rate_limited" }) });
+    return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ status: "unavailable" }) });
+  });
+  await delayedPage.goto(base, { waitUntil: "domcontentloaded", timeout: 60_000 });
+  await delayedPage.getByRole("button", { name: /^All\b/ }).click();
+  try {
+    await delayedPage.locator(".rmtMobileMarketRow").first().waitFor();
+  } catch (error) {
+    throw new Error(`Delayed startup fixture did not render canonical rows. BODY=${(await delayedPage.locator("body").innerText()).slice(0, 2_000)}`, { cause: error });
+  }
+  await delayedPage.getByText(/Canonical markets ready · market data delayed/).waitFor();
+  const delayedRows = await delayedPage.locator(".rmtMobileMarketRow").allTextContents();
+  check(delayedRows.every((text) => !/Unavailable/.test(text)), "token-startup-delayed", "Provider failure produced repeated false Unavailable cells.", delayedRows);
+  await delayedContext.close();
 }
 
 async function stabilize(page) {
@@ -249,7 +337,7 @@ async function tokenLane(browser, viewport, platform) {
   const context = await createContext(browser, viewport);
   const page = await context.newPage();
   page.setDefaultTimeout(30_000);
-  const fixture = await installTokenRoutes(page, { riskUnavailable: platform === "mobile" });
+  const fixture = await installTokenRoutes(page);
   await page.goto(base, { waitUntil: "domcontentloaded", timeout: 60_000 });
   await page.locator(platform === "mobile" ? ".rmtMobileTerminal" : ".rmtDesktopTerminal").waitFor();
   await stabilize(page);
@@ -279,15 +367,38 @@ async function tokenLane(browser, viewport, platform) {
   const fdvTruthful = /FDV\s+\$/i.test(hopium) && !/MCap\s+\$/i.test(hopium);
   valuationTruthViolations += Number(!fdvTruthful);
   check(fdvTruthful, `token-scanner-${platform}`, "FDV-only fixture market is not labeled as FDV.", { row: hopium });
+  await page.evaluate(() => scrollTo(0, 0));
   await legacyUxGuards(page, `token-scanner-${platform}`, { mobileScanner: platform === "mobile" });
   await overflow(page, `token-scanner-${platform}`);
   await capture(page, `token-scanner-${platform}-${viewport.width}x${viewport.height}`);
+
+  if (platform === "mobile") {
+    const scannerFocusSizes = await page.locator(".rmtMobileTerminal input,.rmtMobileTerminal select").evaluateAll((elements) => elements.filter((element) => {
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+    }).map((element) => Number.parseFloat(getComputedStyle(element).fontSize)));
+    check(scannerFocusSizes.length >= 1 && scannerFocusSizes.every((fontSize) => fontSize >= 16), "token-scanner-mobile", "Mobile market controls can trigger iOS focus zoom.", scannerFocusSizes);
+    const chainPulse = page.locator('section[aria-label="Robinhood chain pulse"]');
+    const capitalFlow = page.locator('section[aria-label="Robinhood Chain capital flow"]');
+    await chainPulse.scrollIntoViewIfNeeded();
+    await acceptanceCapture(page, "chain-pulse-collapsed-390x844");
+    await chainPulse.locator("button").first().click();
+    await acceptanceCapture(page, "chain-pulse-expanded-390x844");
+    await chainPulse.locator("button").first().click();
+    await capitalFlow.scrollIntoViewIfNeeded();
+    await acceptanceCapture(page, "capital-flow-collapsed-390x844");
+    await capitalFlow.locator("button").first().click();
+    await acceptanceCapture(page, "capital-flow-expanded-390x844");
+    await overflow(page, "capital-flow-mobile");
+    await capitalFlow.locator("button").first().click();
+  }
 
   const pons = rows.filter({ hasText: "PONS" }).first();
   await pons.click();
   await page.locator(platform === "mobile" ? ".rmtMobileAssetView" : ".rmtDesktopAssetView").waitFor();
   await page.locator(".vnChartFrame").waitFor();
-  if (platform === "mobile") await page.evaluate(() => scrollTo(0, 0));
+  await page.evaluate(() => scrollTo(0, 0));
   await terminalNavigation(page, `token-asset-${platform}`, "Markets");
   check(await page.locator(".vnChartFrame").isVisible(), `token-asset-${platform}`, "Price/chart region is absent.");
   check(await page.getByText("Price Chart", { exact: true }).isVisible(), `token-asset-${platform}`, "Trader-facing Price Chart label is absent.");
@@ -313,13 +424,53 @@ async function tokenLane(browser, viewport, platform) {
     await acceptanceCapture(page, "pons-selected-chart-390x844");
     await page.locator(".vnAssetQuickLinks").scrollIntoViewIfNeeded();
     await acceptanceCapture(page, "compact-quick-links-390x844");
+    const moreLinks = page.locator(".vnMoreLinksButton");
+    if (await moreLinks.count()) {
+      await moreLinks.click();
+      check(await moreLinks.getAttribute("aria-expanded") === "true", "token-links-mobile", "More links disclosure did not expose its expanded state.");
+      await acceptanceCapture(page, "compact-quick-links-open-390x844");
+      await moreLinks.click();
+    }
 
     await page.getByRole("tab", { name: "Safety", exact: true }).click();
     await page.locator(".vnEvidencePane").waitFor();
-    const emptySafetyHeight = await page.locator(".vnEvidencePane").evaluate((element) => element.getBoundingClientRect().height);
-    check(emptySafetyHeight < 260, "token-safety-mobile", "Unavailable Safety evidence still reserves excessive vertical space.", { height: emptySafetyHeight });
     await page.locator(".vnEvidencePane").scrollIntoViewIfNeeded();
-    await acceptanceCapture(page, "safety-unavailable-compact-390x844");
+    await acceptanceCapture(page, "safety-holders-ready-390x844");
+    await page.getByRole("tab", { name: "liquidity", exact: true }).click();
+    await acceptanceCapture(page, "safety-liquidity-ready-390x844");
+    await page.getByRole("tab", { name: "risk", exact: true }).click();
+    check(await page.getByText("Onchain verified", { exact: true }).count() === 1, "token-safety-mobile", "Safety does not reuse the workspace onchain token identity.");
+    await acceptanceCapture(page, "safety-risk-ready-390x844");
+
+    await page.locator(".rmtMobileTradeDock .isBuy").click();
+    const tradeSheet = page.locator(".rmtMobileTradeSheet");
+    await tradeSheet.waitFor();
+    const focusableSizes = await tradeSheet.locator("input,select").evaluateAll((elements) => elements.filter((element) => {
+      const style = getComputedStyle(element);
+      const rect = element.getBoundingClientRect();
+      return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+    }).map((element) => ({ tag: element.tagName, fontSize: Number.parseFloat(getComputedStyle(element).fontSize) })));
+    check(focusableSizes.length >= 2 && focusableSizes.every((control) => control.fontSize >= 16), "token-trade-mobile", "Focusable Token trade controls can trigger iOS focus zoom.", focusableSizes);
+    const amountControl = tradeSheet.locator('input[inputmode="decimal"]').first();
+    await amountControl.focus();
+    check(await overflow(page, "token-trade-amount-focus") === 0, "token-trade-amount-focus", "Amount focus changed the application width.");
+    await acceptanceCapture(page, "trade-buy-amount-focused-390x844");
+    const assetSelect = tradeSheet.locator("select").first();
+    await assetSelect.focus();
+    check(await overflow(page, "token-trade-asset-focus") === 0, "token-trade-asset-focus", "Funding-asset focus changed the application width.");
+    await acceptanceCapture(page, "trade-buy-asset-focused-390x844");
+    const advancedCard = tradeSheet.locator(".vnRouteCard");
+    if (await advancedCard.count()) {
+      await advancedCard.locator("summary").click();
+      const advanced = advancedCard.locator(".vnRouteDetails");
+      const nestedScroll = await advanced.evaluate((element) => {
+        const style = getComputedStyle(element);
+        return { overflowY: style.overflowY, scrollHeight: element.scrollHeight, clientHeight: element.clientHeight };
+      });
+      check(!["auto", "scroll"].includes(nestedScroll.overflowY), "token-trade-mobile", "Advanced Details remains a nested mobile scroll surface.", nestedScroll);
+      await acceptanceCapture(page, "trade-advanced-details-390x844");
+    }
+    await tradeSheet.getByRole("button", { name: "Close trade sheet" }).click();
 
     await page.getByRole("tab", { name: "Markets", exact: true }).click();
     check(await page.getByRole("tab", { name: "up.", exact: true }).count() === 0, "token-markets-mobile", "up. remains a top-level workspace tab.");
@@ -343,6 +494,7 @@ async function tokenLane(browser, viewport, platform) {
     await page.locator(".rmtMobileAssetBack button").click();
     await page.locator(".rmtMobileMarketsView").waitFor();
     await page.locator(".rmtMarketViews button").filter({ hasText: "All" }).click();
+    fixture.setRiskMode("unavailable");
     await page.locator(".rmtMobileMarketRow").filter({ hasText: "CASHCAT" }).first().click();
     await page.locator(".vnChartFrame svg").waitFor();
     const cashcatHeader = (await page.locator(".vnAssetPrice > strong").innerText()).trim();
@@ -350,6 +502,22 @@ async function tokenLane(browser, viewport, platform) {
     check(cashcatHeader === cashcatChart, "cashcat-chart-mobile", "CASHCAT chart headline contradicts its selected-market price.", { cashcatHeader, cashcatChart });
     await page.locator(".vnChart").scrollIntoViewIfNeeded();
     await acceptanceCapture(page, "cashcat-selected-chart-390x844");
+    await page.getByRole("tab", { name: "Safety", exact: true }).click();
+    await page.getByRole("tab", { name: "risk", exact: true }).click();
+    await page.getByText("Contract risk evidence unavailable", { exact: true }).waitFor();
+    const emptySafetyHeight = await page.locator(".vnEvidencePane").evaluate((element) => element.getBoundingClientRect().height);
+    check(emptySafetyHeight < 260, "token-safety-mobile", "Unavailable Safety evidence still reserves excessive vertical space.", { height: emptySafetyHeight });
+    await acceptanceCapture(page, "safety-unavailable-compact-390x844");
+
+    await page.locator(".rmtMobileAssetBack button").click();
+    await page.locator(".rmtMobileMarketsView").waitFor();
+    await page.locator(".rmtMarketViews button").filter({ hasText: "All" }).click();
+    fixture.setRiskMode("partial");
+    await page.locator(".rmtMobileMarketRow").filter({ hasText: "PIPEDOG" }).first().click();
+    await page.getByRole("tab", { name: "Safety", exact: true }).click();
+    await page.getByRole("tab", { name: "liquidity", exact: true }).click();
+    await page.getByText("Liquidity-control evidence unavailable", { exact: true }).waitFor();
+    await acceptanceCapture(page, "safety-partial-390x844");
 
     const dock = page.locator(".rmtMobileTradeDock");
     const dockOverlap = await page.evaluate(() => {
@@ -378,6 +546,8 @@ async function tokenLane(browser, viewport, platform) {
   portfolioReturnPathViolations += Number(!portfolioHeading) + Number(!portfolioActive);
   check(portfolioHeading && portfolioActive, `portfolio-${platform}`, "Portfolio is not a coherent ownership return point.", { portfolioHeading, portfolioActive });
   await overflow(page, `portfolio-${platform}`);
+  if (platform === "mobile") await acceptanceCapture(page, "portfolio-premium-mobile-390x844");
+  else await acceptanceCapture(page, "portfolio-premium-desktop-1440x900");
   await page.locator('[data-terminal-nav="markets"]:visible').click();
   await page.locator(platform === "mobile" ? ".rmtMobileMarketsView" : ".rmtDesktopMarketsView").waitFor();
   await context.close();
@@ -470,6 +640,7 @@ async function nftPage(browser, viewport, platform, route, state) {
 let browser;
 try {
   browser = await chromium.launch({ headless: true, args: ["--disable-gpu", "--force-device-scale-factor=1"] });
+  await startupLane(browser);
   await tokenLane(browser, { width: 1440, height: 900 }, "desktop");
   await tokenLane(browser, { width: 390, height: 844 }, "mobile");
   for (const [route, suffix] of [["/nft", "nft-catalog"], ["/nft/ccff00", "nft-project"], ["/nft/ccff00/1", "nft-item"]]) {
@@ -513,6 +684,7 @@ const summary = {
       valuationTruth: { status: valuationTruthViolations === 0 ? "PASS" : "FAIL", violations: valuationTruthViolations },
     },
     publicWalletSubmissionEnabled: (process.env.NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED ?? "false").toLowerCase() !== "false",
+    startup: startupMetrics,
   },
   states: stateResults,
   semantic: { status: failures.length === 0 ? "PASS" : "FAIL", failures },
