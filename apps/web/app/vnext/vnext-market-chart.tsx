@@ -4,6 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   EXTERNAL_CHART_RANGES,
   externalChartRefreshMs,
+  hasCatastrophicOhlcvPriceMismatch,
   type ExternalChartRange,
   type ExternalOhlcvCandle,
   type ExternalOhlcvPayload
@@ -36,7 +37,7 @@ function timeLabel(timestamp: number, range: ExternalChartRange) {
     : date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
-function acceptPayload(value: unknown, token: string, pair: string, range: ExternalChartRange) {
+function acceptPayload(value: unknown, token: string, pair: string, range: ExternalChartRange, referencePriceUsd: number | null) {
   if (!value || typeof value !== "object") return null;
   const payload = value as Partial<ExternalOhlcvPayload>;
   if (
@@ -47,6 +48,7 @@ function acceptPayload(value: unknown, token: string, pair: string, range: Exter
     || !Array.isArray(payload.candles)
     || payload.candles.length < 2
   ) return null;
+  if (hasCatastrophicOhlcvPriceMismatch(payload.candles as ExternalOhlcvCandle[], referencePriceUsd)) return null;
   return payload as ExternalOhlcvPayload;
 }
 
@@ -55,10 +57,11 @@ function payloadSignature(payload: ExternalOhlcvPayload) {
   return `${payload.range}:${payload.candles.length}:${latest?.timestamp}:${latest?.close}:${latest?.volume}`;
 }
 
-export function VNextMarketChart({ token, pair, symbol }: {
+export function VNextMarketChart({ token, pair, symbol, referencePriceUsd }: {
   token: string;
   pair: string;
   symbol: string;
+  referencePriceUsd: number | null;
 }) {
   const gradientId = useId().replaceAll(":", "");
   const [range, setRange] = useState<ExternalChartRange>("1H");
@@ -93,8 +96,11 @@ export function VNextMarketChart({ token, pair, symbol }: {
     const timeout = window.setTimeout(() => controller.abort(), 5_500);
     try {
       const query = new URLSearchParams({ token, pair, range });
+      if (referencePriceUsd !== null && Number.isFinite(referencePriceUsd) && referencePriceUsd > 0) {
+        query.set("referencePrice", String(referencePriceUsd));
+      }
       const response = await fetch(`/api/markets/ohlcv?${query}`, { signal: controller.signal });
-      const next = acceptPayload(await response.json(), token, pair, range);
+      const next = acceptPayload(await response.json(), token, pair, range, referencePriceUsd);
       if (!response.ok || !next) throw new Error("Chart response unavailable.");
       if (id !== requestId.current) return;
       const nextSignature = payloadSignature(next);
@@ -102,7 +108,7 @@ export function VNextMarketChart({ token, pair, symbol }: {
         signature.current = nextSignature;
         setPayload(next);
       }
-      setStatus("ready");
+      setStatus(next.stale ? "stale" : "ready");
     } catch {
       if (id !== requestId.current) return;
       setStatus(signature.current ? "stale" : "unavailable");
@@ -168,7 +174,7 @@ export function VNextMarketChart({ token, pair, symbol }: {
       <header className="vnChartHeader">
         <div className="vnChartHeadline">
           <span className="vnEyebrow">Price Chart</span>
-          <div><strong id="vn-chart-title">{formatPrice(hovered?.close ?? latest)}</strong><span className={positive ? "vnPositive" : "vnNegative"}>{positive ? "+" : "−"}{Math.abs(change).toFixed(2)}%</span></div>
+          <div><strong id="vn-chart-title">{formatPrice(hovered?.close ?? referencePriceUsd ?? latest)}</strong><span className={positive ? "vnPositive" : "vnNegative"}>{positive ? "+" : "−"}{Math.abs(change).toFixed(2)}% · {range}</span></div>
           <small>{hovered ? timeLabel(hovered.timestamp, range) : `${symbol} · ${range}`} · {status === "stale" ? "Last loaded snapshot" : "GeckoTerminal OHLCV"}</small>
         </div>
         <div className="vnChartControls">
@@ -176,7 +182,7 @@ export function VNextMarketChart({ token, pair, symbol }: {
             <button type="button" aria-pressed={mode === "candles"} className={mode === "candles" ? "isActive" : ""} onClick={() => changeMode("candles")}>Candles</button>
             <button type="button" aria-pressed={mode === "line"} className={mode === "line" ? "isActive" : ""} onClick={() => changeMode("line")}>Line</button>
           </div>
-          <span className={`vnChartState is${status}`} role="status"><i aria-hidden="true" />{status === "loading" ? "Loading" : status === "ready" ? "Live data" : status === "stale" ? "Retrying" : "Unavailable"}</span>
+          <span className={`vnChartState is${status}`} role="status"><i aria-hidden="true" />{status === "loading" || status === "ready" ? "Market data" : status === "stale" ? "Retrying" : "Unavailable"}</span>
         </div>
       </header>
       <div className="vnChartRanges" role="tablist" aria-label="Price chart range">
@@ -217,9 +223,9 @@ export function VNextMarketChart({ token, pair, symbol }: {
           })}
           {hoveredPoint && <g className="vnChartCrosshair"><line x1={hoveredPoint.x} x2={hoveredPoint.x} y1={geometry.top} y2={geometry.volumeBottom} /><line x1={geometry.left} x2={geometry.width - geometry.right + 8} y1={hoveredPoint.y} y2={hoveredPoint.y} /><circle cx={hoveredPoint.x} cy={hoveredPoint.y} r="4" /></g>}
           {latestPoint && <g className="vnChartLatest"><line x1={latestPoint.x} x2={geometry.width - geometry.right + 8} y1={latestPoint.y} y2={latestPoint.y} /><circle cx={latestPoint.x} cy={latestPoint.y} r="4" /></g>}
-        </svg> : <div className="vnChartEmpty" role="status"><strong>{status === "loading" ? "Loading price history" : "Chart temporarily unavailable"}</strong><span>{status === "loading" ? "The rest of the terminal remains usable while OHLCV loads." : "RMT will retry quietly. No price history is being invented."}</span></div>}
+        </svg> : <div className="vnChartEmpty" role="status"><strong>{status === "loading" ? "Loading market data" : "Price history unavailable"}</strong><span>{status === "loading" ? "The rest of the terminal remains usable while OHLCV loads." : "RMT will retry quietly. No price history is being invented."}</span></div>}
       </div>
-      <footer className="vnChartFooter"><span>{candles[0] ? timeLabel(candles[0].timestamp, range) : "—"}</span><span>Volume {formatVolume(totalVolume)}</span><span>{candles.at(-1) ? timeLabel(candles.at(-1)!.timestamp, range) : "—"}</span></footer>
+      <footer className="vnChartFooter"><span>{candles[0] ? timeLabel(candles[0].timestamp, range) : "—"}</span><span>{range} volume {formatVolume(totalVolume)}</span><span>{candles.at(-1) ? timeLabel(candles.at(-1)!.timestamp, range) : "—"}</span></footer>
     </section>
   );
 }

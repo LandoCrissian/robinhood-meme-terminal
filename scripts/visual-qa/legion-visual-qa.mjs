@@ -13,6 +13,7 @@ const captureOnly = argv.includes("--capture-only");
 const option = (name) => argv.find((argument) => argument.startsWith(`${name}=`))?.slice(name.length + 1);
 const base = option("--base-url") ?? process.env.RMT_VISUAL_BASE_URL ?? "http://127.0.0.1:3111";
 const output = path.resolve(option("--output") ?? process.env.RMT_VISUAL_OUTPUT ?? ".artifacts/legion-visual-qa/latest/actual");
+const acceptanceOutput = path.join(output, "release-polish-acceptance");
 const fixturePort = Number(process.env.RMT_VISUAL_FIXTURE_PORT ?? 43111);
 const token = TOKEN_MARKETS[1].address;
 const pair = TOKEN_MARKETS[1].pairAddress;
@@ -32,6 +33,7 @@ let portfolioReturnPathViolations = 0;
 let valuationTruthViolations = 0;
 
 await mkdir(output, { recursive: true });
+await mkdir(acceptanceOutput, { recursive: true });
 
 function check(condition, state, message, evidence = null) {
   if (condition) return;
@@ -102,18 +104,19 @@ const trades = Array.from({ length: 10 }, (_, index) => ({
   timestamp: new Date(FIXTURE_EPOCH_MS - index * 27_000).toISOString(),
 }));
 
-function candles(range) {
+function candles(range, referencePrice = 0.000092) {
   const count = range === "7D" ? 84 : range === "24H" ? 72 : 42;
   const step = range === "7D" ? 7200 : range === "24H" ? 1200 : 60;
   const start = Math.floor(FIXTURE_EPOCH_MS / 1000) - count * step;
   return Array.from({ length: count }, (_, index) => {
-    const close = 0.000072 + index * 0.00000035 + Math.sin(index / 3.2) * 0.0000012;
-    const open = close - Math.cos(index / 2.8) * 0.0000005;
-    return { timestamp: start + index * step, open, high: Math.max(open, close) + 0.0000007, low: Math.min(open, close) - 0.0000006, close, volume: 3200 + Math.abs(Math.sin(index / 2)) * 9600 };
+    const close = referencePrice * (0.94 + index * 0.0012 + Math.sin(index / 3.2) * 0.004);
+    const open = close - referencePrice * Math.cos(index / 2.8) * 0.002;
+    return { timestamp: start + index * step, open, high: Math.max(open, close) + referencePrice * 0.003, low: Math.min(open, close) - referencePrice * 0.0025, close, volume: 3200 + Math.abs(Math.sin(index / 2)) * 9600 };
   });
 }
 
-async function installTokenRoutes(page) {
+async function installTokenRoutes(page, { riskUnavailable = false } = {}) {
+  let chartMode = "ready";
   await page.route("**/api/**", (route) => route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ error: "fixture_route_not_registered" }) }));
   await page.route(/\/api\/vnext\/market-directory(?:\?.*)?$/, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ canonical: true, coverage: "complete", nextCursor: null, markets: canonicalDirectoryMarkets(), updatedAt: FIXTURE_NOW }) }));
   await page.route(/\/api\/markets\/external(?:\?.*)?$/, (route) => {
@@ -122,14 +125,20 @@ async function installTokenRoutes(page) {
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ markets, source: "legion-visual-fixture", rankingVersion: "deterministic-v1", thresholds: {}, originCoverage: "complete", rmtOriginCoverage: "complete", stockAssetCoverage: "complete", delayedSources: [], updatedAt: FIXTURE_NOW, stale: false }) });
   });
   await page.route(/\/api\/markets\/ohlcv(?:\?.*)?$/, (route) => {
-    const range = new URL(route.request().url()).searchParams.get("range") ?? "LIVE";
-    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ token, pair, range, candles: candles(range), source: "LEGION_FIXTURE", updatedAt: FIXTURE_NOW, lastTradeAt: trades[0].timestamp, refreshMs: 60_000 }) });
+    const requestUrl = new URL(route.request().url());
+    const range = requestUrl.searchParams.get("range") ?? "1H";
+    if (chartMode === "unavailable") return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "fixture_unavailable" }) });
+    const referencePrice = Number(requestUrl.searchParams.get("referencePrice") ?? 0.000092);
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ token: requestUrl.searchParams.get("token"), pair: requestUrl.searchParams.get("pair"), range, candles: candles(range, referencePrice), source: "GeckoTerminal", updatedAt: FIXTURE_NOW, lastTradeAt: trades[0].timestamp, refreshMs: 60_000, stale: chartMode === "stale" }) });
   });
   await page.route(/\/api\/trade\/external-venues(?:\?.*)?$/, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ token, venues: [{ venue: "uniswap-v3", pair, dexId: "uniswap-v3", liquidityUsd: TOKEN_MARKETS[1].liquidityUsd, verification: "dex-and-route" }] }) }));
   await page.route(/\/api\/markets\/external-trades(?:\?.*)?$/, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ token, pair, source: "LEGION_FIXTURE", updatedAt: FIXTURE_NOW, trades }) }));
   await page.route(/\/api\/markets\/external-stream(?:\?.*)?$/, (route) => route.fulfill({ status: 204, body: "" }));
-  await page.route(/\/api\/markets\/token-risk(?:\?.*)?$/, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ token, pair, marketVerified: true, coverage: "complete", contract: { sourcePublished: true, isProxy: false, bytecodeChanged: false, controls: { assessment: "no-common-controls-found", detected: [], customWriteFunctions: [], administrator: null, activeLaunchRestrictions: false, restrictionEndBlock: null, maxTransactionBps: null, maxWalletBps: null } }, liquidity: { controlStatus: "not-proven", evidenceSource: "none", positionManager: null, positionId: null, owner: null, approvedOperator: null, creatorCanTransfer: null, positionLiquidity: null }, holders: { count: 975, poolShareBps: 4200, topNonPoolShareBps: 740, topNonPoolHolders: [], largestNonPoolHolder: null, creator: null, creatorShareBps: null }, sellSimulation: { status: "not-run", method: "holder-to-pool-transfer", holder: null, amount: null, returnStyle: null }, warnings: [], checkedAt: FIXTURE_NOW }) }));
+  await page.route(/\/api\/markets\/token-risk(?:\?.*)?$/, (route) => riskUnavailable
+    ? route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "fixture_unavailable" }) })
+    : route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ token, pair, marketVerified: true, coverage: "complete", contract: { sourcePublished: true, isProxy: false, bytecodeChanged: false, controls: { assessment: "no-common-controls-found", detected: [], customWriteFunctions: [], administrator: null, activeLaunchRestrictions: false, restrictionEndBlock: null, maxTransactionBps: null, maxWalletBps: null } }, liquidity: { controlStatus: "not-proven", evidenceSource: "none", positionManager: null, positionId: null, owner: null, approvedOperator: null, creatorCanTransfer: null, positionLiquidity: null }, holders: { count: 975, poolShareBps: 4200, topNonPoolShareBps: 740, topNonPoolHolders: [], largestNonPoolHolder: null, creator: null, creatorShareBps: null }, sellSimulation: { status: "not-run", method: "holder-to-pool-transfer", holder: null, amount: null, returnStyle: null }, warnings: [], checkedAt: FIXTURE_NOW }) }));
   await page.route(/\/api\/vnext\/chain-pulse(?:\?.*)?$/, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ chainId: 4663, chain: "Robinhood Chain", source: "LEGION_FIXTURE", authoritative: false, status: "ready", tvlUsd: 580000000, dexVolume24hUsd: 640000000, dexVolume7dUsd: 3460000000, dexChange1dPct: 3.4, dexChange7dPct: 8.2, fees24hUsd: null, fees7dUsd: null, revenue24hUsd: null, revenue7dUsd: null, protocolRevenue24hUsd: null, protocolRevenue7dUsd: null }) }));
+  return { setChartMode: (mode) => { chartMode = mode; } };
 }
 
 async function createContext(browser, viewport) {
@@ -231,11 +240,16 @@ async function capture(page, name) {
   stateResults.push({ name, viewport: await page.evaluate(() => ({ width: innerWidth, height: innerHeight })), file });
 }
 
+async function acceptanceCapture(page, name) {
+  await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  await page.screenshot({ path: path.join(acceptanceOutput, `${name}.png`), fullPage: false, animations: "disabled", timeout: 30_000 });
+}
+
 async function tokenLane(browser, viewport, platform) {
   const context = await createContext(browser, viewport);
   const page = await context.newPage();
   page.setDefaultTimeout(30_000);
-  await installTokenRoutes(page);
+  const fixture = await installTokenRoutes(page, { riskUnavailable: platform === "mobile" });
   await page.goto(base, { waitUntil: "domcontentloaded", timeout: 60_000 });
   await page.locator(platform === "mobile" ? ".rmtMobileTerminal" : ".rmtDesktopTerminal").waitFor();
   await stabilize(page);
@@ -273,6 +287,7 @@ async function tokenLane(browser, viewport, platform) {
   await pons.click();
   await page.locator(platform === "mobile" ? ".rmtMobileAssetView" : ".rmtDesktopAssetView").waitFor();
   await page.locator(".vnChartFrame").waitFor();
+  if (platform === "mobile") await page.evaluate(() => scrollTo(0, 0));
   await terminalNavigation(page, `token-asset-${platform}`, "Markets");
   check(await page.locator(".vnChartFrame").isVisible(), `token-asset-${platform}`, "Price/chart region is absent.");
   check(await page.getByText("Price Chart", { exact: true }).isVisible(), `token-asset-${platform}`, "Trader-facing Price Chart label is absent.");
@@ -284,6 +299,77 @@ async function tokenLane(browser, viewport, platform) {
   await legacyUxGuards(page, `token-asset-${platform}`, { focused: true });
   await overflow(page, `token-asset-${platform}`);
   await capture(page, `token-asset-${platform}-${viewport.width}x${viewport.height}`);
+
+  const headerPrice = (await page.locator(".vnAssetPrice > strong").innerText()).trim();
+  const restingChartPrice = (await page.locator("#vn-chart-title").innerText()).trim();
+  check(headerPrice === restingChartPrice, `token-asset-${platform}`, "Resting chart price contradicts the selected Token Market headline.", { headerPrice, restingChartPrice });
+  await page.locator(".vnChartFrame svg").hover({ position: { x: 120, y: 100 } });
+  const historicalHoverPrice = (await page.locator("#vn-chart-title").innerText()).trim();
+  check(historicalHoverPrice !== restingChartPrice, `token-asset-${platform}`, "Chart hover does not expose historical candle price.", { restingChartPrice, historicalHoverPrice });
+  await page.locator(".vnAssetWorkspaceHeader").hover();
+
+  if (platform === "mobile") {
+    await page.locator(".vnChart").scrollIntoViewIfNeeded();
+    await acceptanceCapture(page, "pons-selected-chart-390x844");
+    await page.locator(".vnAssetQuickLinks").scrollIntoViewIfNeeded();
+    await acceptanceCapture(page, "compact-quick-links-390x844");
+
+    await page.getByRole("tab", { name: "Safety", exact: true }).click();
+    await page.locator(".vnEvidencePane").waitFor();
+    const emptySafetyHeight = await page.locator(".vnEvidencePane").evaluate((element) => element.getBoundingClientRect().height);
+    check(emptySafetyHeight < 260, "token-safety-mobile", "Unavailable Safety evidence still reserves excessive vertical space.", { height: emptySafetyHeight });
+    await page.locator(".vnEvidencePane").scrollIntoViewIfNeeded();
+    await acceptanceCapture(page, "safety-unavailable-compact-390x844");
+
+    await page.getByRole("tab", { name: "Markets", exact: true }).click();
+    check(await page.getByRole("tab", { name: "up.", exact: true }).count() === 0, "token-markets-mobile", "up. remains a top-level workspace tab.");
+    check(await page.getByRole("heading", { name: "up. markets & gauge evidence", exact: true }).count() === 1, "token-markets-mobile", "up. venue evidence was not preserved under Markets.");
+    await page.locator(".vnMarketEvidenceStack").scrollIntoViewIfNeeded();
+    await acceptanceCapture(page, "markets-with-up-evidence-390x844");
+
+    await page.getByRole("tab", { name: "Activity", exact: true }).click();
+    fixture.setChartMode("unavailable");
+    await page.getByRole("tab", { name: "5M", exact: true }).click();
+    await page.getByText("Unavailable", { exact: true }).waitFor();
+    await page.locator(".vnChart").scrollIntoViewIfNeeded();
+    await acceptanceCapture(page, "chart-unavailable-390x844");
+
+    fixture.setChartMode("stale");
+    await page.getByRole("tab", { name: "15M", exact: true }).click();
+    await page.getByText("Retrying", { exact: true }).waitFor();
+    await acceptanceCapture(page, "chart-stale-retrying-390x844");
+
+    fixture.setChartMode("ready");
+    await page.locator(".rmtMobileAssetBack button").click();
+    await page.locator(".rmtMobileMarketsView").waitFor();
+    await page.locator(".rmtMarketViews button").filter({ hasText: "All" }).click();
+    await page.locator(".rmtMobileMarketRow").filter({ hasText: "CASHCAT" }).first().click();
+    await page.locator(".vnChartFrame svg").waitFor();
+    const cashcatHeader = (await page.locator(".vnAssetPrice > strong").innerText()).trim();
+    const cashcatChart = (await page.locator("#vn-chart-title").innerText()).trim();
+    check(cashcatHeader === cashcatChart, "cashcat-chart-mobile", "CASHCAT chart headline contradicts its selected-market price.", { cashcatHeader, cashcatChart });
+    await page.locator(".vnChart").scrollIntoViewIfNeeded();
+    await acceptanceCapture(page, "cashcat-selected-chart-390x844");
+
+    const dock = page.locator(".rmtMobileTradeDock");
+    const dockOverlap = await page.evaluate(() => {
+      const dockElement = document.querySelector(".rmtMobileTradeDock");
+      const workspace = document.querySelector(".vnAssetWorkspace");
+      if (!dockElement || !workspace) return null;
+      const dockRect = dockElement.getBoundingClientRect();
+      const finalControl = [...workspace.querySelectorAll("button,a,summary")].filter((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      }).at(-1);
+      if (!finalControl) return null;
+      finalControl.scrollIntoView({ block: "center" });
+      const rect = finalControl.getBoundingClientRect();
+      return Math.max(0, rect.bottom - dockRect.top);
+    });
+    check(dockOverlap === 0, "mobile-trade-dock", "Fixed trade dock obscures the final usable workspace control.", { overlap: dockOverlap });
+    check(await dock.isVisible(), "mobile-trade-dock", "Mobile Buy/Sell dock is not reachable.");
+    await overflow(page, "token-release-polish-mobile");
+  }
 
   await page.locator('[data-terminal-nav="portfolio"]:visible').click();
   await page.locator(".rmtPortfolioSurface").waitFor();
