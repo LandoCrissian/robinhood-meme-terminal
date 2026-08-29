@@ -14,7 +14,7 @@
 
 ## Discovery and workspace
 
-- [ ] The exactly eight admitted markets have reliable bounded enrichment, exact configured pool matching, search, ranking/filtering and truthful stale/source-delay states.
+- [ ] The eight canonical seed markets have reliable bounded enrichment and exact configured pool matching, while bounded Robinhood Chain discovery provides truthful search, ranking/filtering and stale/source-delay states without conflating visibility with curated authority.
 - [ ] Origin, venue, age, liquidity, activity/volume and valuation are available.
 - [x] Selected assets remain inside VNext for identity, chart, activity, holders, liquidity, risk, origin, verified markets, RWA relationships, wallet position and trading.
 - [x] No permanent `/market/[address]` dependency remains.
@@ -83,7 +83,7 @@
 
 ## Current known gaps
 
-VNext is the production root and `/vnext`, `/market/[address]` and `/portfolio` converge on that canonical Token Terminal. Retired terminal CSS generations are no longer globally loaded. The curated registry admits exactly eight markets, and broader historical market-indexer rows do not control public Terminal admission. External-wallet reliability still requires supported-device acceptance. Public authorization and wallet submission remain disabled. Across public funding remains incomplete and disabled. Profiles/community/Creator/V7 source remains preserved and paused separately from the active NFT lane. Historical Uniswap V3 executor deployment, controlled proof and release evidence remains preserved; current owner policy is `RMT_FEE = 0`, so fee activation and universal V2 settlement are not completion requirements. `RMT_TOP_TIER_TERMINAL_INTEGRATION_V1` is the current overall product priority. `RMT_NFT_FACTORY_CLONE_PROVENANCE_V2` is the next NFT-specific technical task when separately authorized and non-conflicting.
+VNext is the production root and `/vnext`, `/market/[address]` and `/portfolio` converge on that canonical Token Terminal. Retired terminal CSS generations are no longer globally loaded. The curated registry contains exactly eight canonical seed markets; bounded provider discovery may expose additional markets but cannot confer curated authority or execution eligibility, and historical market-indexer rows do not control the public Terminal. External-wallet reliability still requires supported-device acceptance. Public authorization and wallet submission remain disabled. Across public funding remains incomplete and disabled. Profiles/community/Creator/V7 source remains preserved and paused separately from the active NFT lane. Historical Uniswap V3 executor deployment, controlled proof and release evidence remains preserved; current owner policy is `RMT_FEE = 0`, so fee activation and universal V2 settlement are not completion requirements. The current priority is completing the trade-worthy zero-platform-fee Token Terminal. NFT work remains separately authorized and non-conflicting.
 
 ## Explicit completion decision
 

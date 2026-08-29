@@ -812,19 +812,25 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               ? "Gas estimate unavailable"
           : "Simulation failed"
     : null;
+  const executionRouteNotVerified = quoteState.state === "error"
+    && quoteState.message.includes("no independently verified execution route");
   const expectedOutputLabel = expectedOutput
     ? `${expectedOutput} ${outputSymbol}`
     : !draft.intent
       ? "Enter trade amount"
       : quoteState.state === "error"
-        ? "Route temporarily unavailable"
+        ? executionRouteNotVerified
+          ? "Trading route not verified by RMT"
+          : "Route temporarily unavailable"
         : "Finding best route…";
   const routeStatusLabel = visibleVerification
     ? verificationLabel
     : visibleQuote
       ? "Routes compared"
       : quoteState.state === "error"
-        ? "Route unavailable"
+        ? executionRouteNotVerified
+          ? "Market data available · trading unavailable"
+          : "Route unavailable"
         : draft.intent
           ? "Finding route"
           : "Not ready";

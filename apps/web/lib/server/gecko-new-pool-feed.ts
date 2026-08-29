@@ -1,6 +1,10 @@
 import { getAddress, isAddress, zeroAddress } from "viem";
 import { z } from "zod";
 import { canonicalExternalPoolIdentity } from "../external-market-identity";
+import {
+  ROBINHOOD_USDG_ADDRESS,
+  ROBINHOOD_WETH_ADDRESS
+} from "../vnext/robinhood-assets";
 
 const GECKO_POOLS_API = "https://api.geckoterminal.com/api/v2/networks/robinhood";
 const DEXSCREENER_PAGE = "https://dexscreener.com/robinhood/";
@@ -8,7 +12,7 @@ const TIMEOUT_MS = 7_000;
 const MAX_POOLS_PER_PAGE = 20;
 const MAX_INCLUDED_PER_PAGE = 80;
 
-export type GeckoPoolFeedId = "new" | "top" | "trending-5m" | "trending-1h" | "trending-24h";
+export type GeckoPoolFeedId = "new" | "top" | "trending-1h";
 
 export const GECKO_POOL_FEEDS: ReadonlyArray<{
   id: GeckoPoolFeedId;
@@ -16,12 +20,16 @@ export const GECKO_POOL_FEEDS: ReadonlyArray<{
   pages: readonly number[];
   duration?: "5m" | "1h" | "24h";
 }> = [
-  { id: "new", endpoint: "new_pools", pages: [1, 2] },
-  { id: "top", endpoint: "pools", pages: [1, 2, 3] },
-  { id: "trending-5m", endpoint: "trending_pools", duration: "5m", pages: [1] },
-  { id: "trending-1h", endpoint: "trending_pools", duration: "1h", pages: [1, 2, 3] },
-  { id: "trending-24h", endpoint: "trending_pools", duration: "24h", pages: [1, 2] }
+  { id: "new", endpoint: "new_pools", pages: [1] },
+  { id: "top", endpoint: "pools", pages: [1] },
+  { id: "trending-1h", endpoint: "trending_pools", duration: "1h", pages: [1] }
 ];
+
+const INFRASTRUCTURE_ASSETS = new Set([
+  zeroAddress,
+  ROBINHOOD_WETH_ADDRESS.toLowerCase(),
+  ROBINHOOD_USDG_ADDRESS.toLowerCase()
+]);
 
 const relationshipSchema = z.object({
   data: z.object({ id: z.string().max(160), type: z.string().max(40) })
@@ -112,8 +120,8 @@ function nonNegativeInteger(value: unknown) {
 }
 
 function resourceAddress(id: string) {
-  const separator = id.indexOf("_");
-  const address = separator >= 0 ? id.slice(separator + 1) : "";
+  const prefix = "robinhood_";
+  const address = id.toLowerCase().startsWith(prefix) ? id.slice(prefix.length) : "";
   return isAddress(address, { strict: false }) ? getAddress(address) : null;
 }
 
@@ -153,17 +161,21 @@ export function parseGeckoPoolPairs(payload: unknown, feed: GeckoPoolFeedId): Ge
     const dexId = pool.relationships.dex.data.id.trim().toLowerCase();
     if (
       !canonicalExternalPoolIdentity(pairAddress)
+      || pool.id.toLowerCase() !== `robinhood_${pairAddress.toLowerCase()}`
       || !baseAddress
       || !quoteAddress
       || (baseAddress.toLowerCase() === zeroAddress && quoteAddress.toLowerCase() === zeroAddress)
       || !dexId
     ) continue;
 
-    const nativeCurrencyIsBase = baseAddress.toLowerCase() === zeroAddress;
-    const directoryBaseAddress = nativeCurrencyIsBase ? quoteAddress : baseAddress;
-    const directoryQuoteAddress = nativeCurrencyIsBase ? baseAddress : quoteAddress;
-    const directoryBase = nativeCurrencyIsBase ? quote : base;
-    const directoryQuote = nativeCurrencyIsBase ? base : quote;
+    const baseIsInfrastructure = INFRASTRUCTURE_ASSETS.has(baseAddress.toLowerCase());
+    const quoteIsInfrastructure = INFRASTRUCTURE_ASSETS.has(quoteAddress.toLowerCase());
+    if (baseIsInfrastructure && quoteIsInfrastructure) continue;
+    const displayQuoteSide = baseIsInfrastructure && !quoteIsInfrastructure;
+    const directoryBaseAddress = displayQuoteSide ? quoteAddress : baseAddress;
+    const directoryQuoteAddress = displayQuoteSide ? baseAddress : quoteAddress;
+    const directoryBase = displayQuoteSide ? quote : base;
+    const directoryQuote = displayQuoteSide ? base : quote;
     const baseLabel = tokenLabel(directoryBaseAddress);
     const quoteLabel = tokenLabel(directoryQuoteAddress);
     const transactions = Object.fromEntries(Object.entries(pool.attributes.transactions ?? {}).map(
@@ -189,15 +201,18 @@ export function parseGeckoPoolPairs(payload: unknown, feed: GeckoPoolFeedId): Ge
         name: directoryQuote?.attributes.name?.trim().slice(0, 80) || quoteLabel,
         symbol: directoryQuote?.attributes.symbol?.trim().slice(0, 20) || quoteLabel
       },
-      priceUsd: finite(nativeCurrencyIsBase
+      priceUsd: finite(displayQuoteSide
         ? pool.attributes.quote_token_price_usd
         : pool.attributes.base_token_price_usd),
       txns: transactions,
       volume: numberRecord(pool.attributes.volume_usd),
       priceChange: numberRecord(pool.attributes.price_change_percentage),
       liquidity: { usd: nonNegative(pool.attributes.reserve_in_usd) },
-      fdv: nonNegative(pool.attributes.fdv_usd),
-      marketCap: nonNegative(pool.attributes.market_cap_usd),
+      // Gecko's pool-level valuation fields describe its original base token.
+      // When RMT flips an infrastructure base to display the quote token, those
+      // values are not evidence for the displayed asset.
+      fdv: displayQuoteSide ? null : nonNegative(pool.attributes.fdv_usd),
+      marketCap: displayQuoteSide ? null : nonNegative(pool.attributes.market_cap_usd),
       pairCreatedAt: Number.isFinite(createdAt) ? createdAt : null,
       ...(imageUrl ? { info: { imageUrl } } : {}),
       discoveryFeeds: [feed]
@@ -215,7 +230,7 @@ async function fetchGeckoPoolPage(
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
     const response = await fetcher(geckoPoolFeedUrl(feed, page), {
-      headers: { Accept: "application/json" },
+      headers: { Accept: "application/json;version=20230203" },
       next: { revalidate: 60 },
       signal: controller.signal
     });

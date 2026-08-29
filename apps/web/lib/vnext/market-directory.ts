@@ -698,7 +698,12 @@ export function shouldUseExactAddressDegradedFallback(
   rawQuery: string,
   status: VNextUniversalMarketSearchStatus
 ) {
-  if (status !== "inventory_unavailable" && status !== "unavailable") return false;
+  if (
+    status !== "inventory_unavailable"
+    && status !== "unavailable"
+    && status !== "not_listed"
+    && status !== "not_found"
+  ) return false;
   if (!isAddress(rawQuery, { strict: false })) return false;
   return getAddress(rawQuery) !== "0x0000000000000000000000000000000000000000";
 }

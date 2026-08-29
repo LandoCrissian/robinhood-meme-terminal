@@ -9,10 +9,7 @@ import {
   projectIdentityAdmissionErrorResponse,
   requireProjectIdentityDirectoryAdmitted
 } from "../../../../lib/server/project-identity-admission";
-import {
-  requireRmtCuratedExecutionAssets,
-  rmtCuratedMarketAdmissionErrorResponse
-} from "../../../../lib/server/rmt-curated-market-registry";
+import { vNextExecutionEligibilityErrorResponse } from "../../../../lib/server/vnext-execution-eligibility";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -49,7 +46,6 @@ export async function POST(request: Request) {
     if (!inputIdentity || !outputIdentity) {
       return Response.json({ error: "Both quote assets require verified Robinhood Chain identity and decimals." }, { status: 422, headers: { "Cache-Control": "no-store" } });
     }
-    requireRmtCuratedExecutionAssets(inputAsset, outputAsset);
     await requireProjectIdentityDirectoryAdmitted([
       { address: inputAsset },
       { address: outputAsset }
@@ -86,8 +82,8 @@ export async function POST(request: Request) {
   } catch (cause) {
     const identityResponse = tradeIdentityErrorResponse(cause);
     if (identityResponse) return identityResponse;
-    const curatedResponse = rmtCuratedMarketAdmissionErrorResponse(cause);
-    if (curatedResponse) return curatedResponse;
+    const eligibilityResponse = vNextExecutionEligibilityErrorResponse(cause);
+    if (eligibilityResponse) return eligibilityResponse;
     const projectIdentityResponse = projectIdentityAdmissionErrorResponse(cause);
     if (projectIdentityResponse) return projectIdentityResponse;
     return Response.json({ error: "Unable to compare live VNext routes." }, { status: 422, headers: { "Cache-Control": "no-store" } });

@@ -32,11 +32,9 @@ import {
 import {
   classifyRmtCuratedContractListing,
   readRmtCuratedMarketSnapshot,
-  RmtCuratedMarketAdmissionError,
-  requireRmtCuratedExecutionAssets,
-  rmtCuratedMarketAdmissionErrorResponse,
   resetRmtCuratedMarketSnapshotForTests
 } from "../server/rmt-curated-market-registry";
+import { requireVNextExecutionProvider } from "../server/vnext-execution-eligibility";
 import { searchRmtCuratedMarkets } from "../server/rmt-curated-market-search";
 import { ROBINHOOD_NATIVE_ASSET_ADDRESS } from "./robinhood-assets";
 
@@ -264,7 +262,8 @@ assert.equal(exactVNextLocalDirectoryMatches([richDirectory], "STONKBROKER").len
 
 assert.equal(shouldUseExactAddressDegradedFallback(STONKBROKER, "inventory_unavailable"), true);
 assert.equal(shouldUseExactAddressDegradedFallback(STONKBROKER, "unavailable"), true);
-assert.equal(shouldUseExactAddressDegradedFallback(STONKBROKER, "not_found"), false);
+assert.equal(shouldUseExactAddressDegradedFallback(STONKBROKER, "not_listed"), true);
+assert.equal(shouldUseExactAddressDegradedFallback(STONKBROKER, "not_found"), true);
 assert.equal(shouldUseExactAddressDegradedFallback(STONKBROKER, "invalid_query"), false);
 assert.equal(shouldUseExactAddressDegradedFallback("STONKBROKER", "inventory_unavailable"), false);
 assert.equal(shouldUseExactAddressDegradedFallback(V4_POOL, "inventory_unavailable"), false);
@@ -357,7 +356,7 @@ assert.match(presentation, /Search token, contract or pool/);
 assert.match(presentation, /rmtSearchContract/);
 assert.match(presentation, /count=\{props\.expandedSearchResultCount\}/);
 assert.match(presentation, /status === "not_listed"/);
-assert.match(presentation, /Token exists on Robinhood Chain but is not currently listed on RMT\./);
+assert.match(presentation, /RMT is checking the exact Robinhood Chain token\./);
 assert.match(presentation, /Not admitted to the RMT directory\./);
 assert.doesNotMatch(presentation, /SearchStatusMessage status=\{props\.searchStatus\} count=\{props\.filteredMarkets\.length\}/);
 assert.match(shell, /expandedSearchResultCount:[\s\S]*searchMarkets\.length/);
@@ -450,38 +449,40 @@ async function curatedRegistryChecks() {
     admitProjectIdentities: async () => ({ quarantined: [{}] })
   });
   assert.equal(positiveConflict.status, "not_admitted");
-  const unlistedAdmissionResponse = rmtCuratedMarketAdmissionErrorResponse(
-    new RmtCuratedMarketAdmissionError()
-  );
-  assert.equal(unlistedAdmissionResponse?.status, 409);
-  assert.deepEqual(await unlistedAdmissionResponse?.json(), {
-    error: "Token exists but is not currently listed on RMT.",
-    listingAdmission: "not_listed"
-  });
-  assert.doesNotThrow(() => requireRmtCuratedExecutionAssets(
+  const providers = ["sushi", "uniswap-v2", "uniswap-v3", "uniswap-v4", "up-v2", "up-cl"] as const;
+  assert.doesNotThrow(() => requireVNextExecutionProvider(
     ROBINHOOD_NATIVE_ASSET_ADDRESS,
-    RMT_CURATED_MARKET_REGISTRY[0].token
+    RMT_CURATED_MARKET_REGISTRY[0].token,
+    "uniswap-v4",
+    providers
   ));
-  assert.throws(() => requireRmtCuratedExecutionAssets(
-    TOKEN_TWO,
-    RMT_CURATED_MARKET_REGISTRY[0].token
-  ), /not currently listed on RMT/);
+  assert.doesNotThrow(() => requireVNextExecutionProvider(
+    ROBINHOOD_NATIVE_ASSET_ADDRESS,
+    getAddress(TOKEN_TWO),
+    "uniswap-v2",
+    providers
+  ));
+  assert.throws(() => requireVNextExecutionProvider(
+    ROBINHOOD_NATIVE_ASSET_ADDRESS,
+    getAddress(TOKEN_TWO),
+    "uniswap-v4",
+    providers
+  ), /no independently verified execution route/);
   for (const routePath of [
     "../../app/api/vnext/quotes/route.ts",
     "../../app/api/vnext/verify/route.ts",
     "../../app/api/vnext/authorize/route.ts"
   ]) {
     const routeSource = readFileSync(new URL(routePath, import.meta.url), "utf8");
-    assert.match(routeSource, /requireRmtCuratedExecutionAssets\(inputAsset, outputAsset\)/);
-    assert.match(routeSource, /rmtCuratedMarketAdmissionErrorResponse\(cause\)/);
+    assert.doesNotMatch(routeSource, /requireRmtCuratedExecutionAssets/);
+    assert.match(routeSource, /vNextExecutionEligibilityErrorResponse\(cause\)/);
   }
   const externalRoute = readFileSync(new URL("../../app/api/markets/external/route.ts", import.meta.url), "utf8");
-  assert.match(externalRoute, /classifyRmtCuratedContractListing\(getAddress\(requestedContract\)\)/);
-  assert.match(externalRoute, /listing\.status === "not_listed"/);
-  assert.match(externalRoute, /listing\.status === "not_found"/);
-  assert.match(externalRoute, /listing\.status === "not_admitted"/);
-  assert.doesNotMatch(externalRoute, /!isRmtCuratedMarketIdentity\(requestedContract\)/);
-  console.log("RMT curated market registry, verified identity boundary, and not-listed exact-contract state passed.");
+  assert.match(externalRoute, /fetchGeckoPoolSnapshot\(\)/);
+  assert.match(externalRoute, /applyProjectIdentityDirectoryAdmission\(\[\.\.\.marketsByToken\.values\(\)\]\)/);
+  assert.doesNotMatch(externalRoute, /classifyRmtCuratedContractListing\(getAddress\(requestedContract\)\)/);
+  assert.match(externalRoute, /if \(requestedContract\) return readExternalMarketResponse\(request, requestedContract\)/);
+  console.log("RMT curated authority, broad visibility, exact-contract selection, and dynamic execution boundary passed.");
 }
 
 void curatedRegistryChecks().catch((error) => {

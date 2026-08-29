@@ -16,7 +16,7 @@ import {
 import { RMT_CURATED_MARKET_REGISTRY } from "../vnext/curated-market-registry";
 
 async function main() {
-  assert.equal(EXTERNAL_BROAD_CACHE_CONTROL, "public, s-maxage=300, stale-while-revalidate=600");
+  assert.equal(EXTERNAL_BROAD_CACHE_CONTROL, "public, s-maxage=60, stale-while-revalidate=120");
   assert.equal(EXTERNAL_CONTRACT_CACHE_CONTROL, "public, s-maxage=30, stale-while-revalidate=90");
   assert.equal(EXTERNAL_CONTRACT_RESOLVER_CACHE_CONTROL, "public, s-maxage=20, stale-while-revalidate=60");
   assert.equal(EXTERNAL_BROAD_MAX_IN_FLIGHT, 1);
@@ -92,10 +92,12 @@ async function main() {
   assert.match(route, /requestedContract\s*\?\s*EXTERNAL_CONTRACT_CACHE_CONTROL\s*:\s*EXTERNAL_BROAD_CACHE_CONTROL/);
   assert.match(route, /broadExternalRefreshes\.run\(\s*EXTERNAL_BROAD_REFRESH_KEY/);
   assert.match(route, /return response\.clone\(\)/);
-  assert.match(route, /const requestedTokens = requestedContract \? \[requestedContract\] : rmtCuratedEnrichmentTokens\(\)/);
+  assert.match(route, /\.\.\.rmtCuratedEnrichmentTokens\(\)/);
+  assert.match(route, /\.\.\.geckoSnapshot\.pairs\.map/);
   assert.match(route, /missingRmtCuratedProviderTokens\(batchResults\.flat\(\)\)/);
-  assert.match(route, /filterRmtCuratedProviderPairs\(returnedPairs\)/);
-  assert.doesNotMatch(route, /fetchPublicDiscoveryTokens|fetchGeckoPoolSnapshot|DEXSCREENER_PROFILES_API|DEXSCREENER_(?:LATEST_)?BOOSTS_API/);
+  assert.match(route, /preserveCuratedProviderAuthority\(returnedPairs\)/);
+  assert.match(route, /fetchGeckoPoolSnapshot\(\)/);
+  assert.doesNotMatch(route, /fetchPublicDiscoveryTokens|DEXSCREENER_PROFILES_API|DEXSCREENER_(?:LATEST_)?BOOSTS_API/);
 
   console.info("External market refresh cache and coalescing checks passed.");
 }

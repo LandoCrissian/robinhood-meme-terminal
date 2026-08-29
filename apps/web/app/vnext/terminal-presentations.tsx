@@ -134,7 +134,7 @@ function SearchStatusMessage({ status, count }: { status: VNextUniversalMarketSe
   if (status === "idle") return null;
   if (status === "searching") return <div className="rmtSearchStatus" role="status">Searching Robinhood Chain markets…</div>;
   if (status === "found") return <div className="rmtSearchStatus" role="status">{count === 1 ? "Market found." : `${count} market matches found. Choose one.`}</div>;
-  if (status === "not_listed") return <div className="rmtSearchStatus isDelayed" role="status">Token exists on Robinhood Chain but is not currently listed on RMT.</div>;
+  if (status === "not_listed") return <div className="rmtSearchStatus isDelayed" role="status">No indexed market is attached yet. RMT is checking the exact Robinhood Chain token.</div>;
   if (status === "not_admitted") return <div className="rmtSearchStatus isDelayed" role="status">Not admitted to the RMT directory.</div>;
   if (status === "not_found") return <div className="rmtSearchStatus" role="status">No additional market match found.</div>;
   if (status === "inventory_unavailable") return <div className="rmtSearchStatus isDelayed" role="status">Expanded search unavailable: canonical inventory is delayed.</div>;
@@ -302,7 +302,7 @@ function DesktopHeader(props: TerminalPresentationProps) {
 
 function DesktopMarkets(props: TerminalPresentationProps) {
   return <section className="rmtDesktopMarketsView" id="rmt-markets" aria-labelledby="rmt-market-directory-heading">
-    <header className="rmtMarketsHeading"><div><h1 id="rmt-market-directory-heading">Markets</h1><p>Curated Token Markets · Robinhood Chain</p></div><span className={`rmtDirectoryFreshness is${props.directoryStatus}`}><i aria-hidden="true" />{props.directoryStatus === "ready" ? "Directory ready" : props.directoryStatus === "stale" ? "Last loaded data" : props.directoryStatus === "loading" ? "Syncing" : "Delayed"}</span></header>
+    <header className="rmtMarketsHeading"><div><h1 id="rmt-market-directory-heading">Markets</h1><p>Robinhood Chain Token Markets</p></div><span className={`rmtDirectoryFreshness is${props.directoryStatus}`}><i aria-hidden="true" />{props.directoryStatus === "ready" ? "Directory ready" : props.directoryStatus === "stale" ? "Last loaded data" : props.directoryStatus === "loading" ? "Syncing" : "Delayed"}</span></header>
     <div className="rmtScannerControls"><MarketCategoryNav view={props.directoryView} counts={props.directoryViewCounts} searchActive={props.searchActive} activityCoveragePending={props.activityCoveragePending} onChange={props.onDirectoryViewChange} /><span>{props.activityCoveragePending ? `${props.filteredMarkets.length} canonical markets · activity enrichment pending` : `${props.filteredMarkets.length} in view · routes checked on demand`}</span></div>
     <DesktopMarketTable {...props} />
     <VNextChainPulseCard />
@@ -378,7 +378,7 @@ function MobileHeader(props: TerminalPresentationProps) {
 
 function MobileMarkets(props: TerminalPresentationProps) {
   return <section className="rmtMobileMarketsView" id="rmt-mobile-markets" aria-labelledby="rmt-mobile-markets-heading">
-    <header className="rmtMobileContextHeading"><div><h1 id="rmt-mobile-markets-heading">Markets</h1><p>Curated Token Markets</p></div><span>{props.directoryStatus === "ready" ? "Directory ready" : props.directoryStatus === "stale" ? "Last loaded" : props.directoryStatus === "loading" ? "Syncing" : "Delayed"}</span></header>
+    <header className="rmtMobileContextHeading"><div><h1 id="rmt-mobile-markets-heading">Markets</h1><p>Robinhood Chain Token Markets</p></div><span>{props.directoryStatus === "ready" ? "Directory ready" : props.directoryStatus === "stale" ? "Last loaded" : props.directoryStatus === "loading" ? "Syncing" : "Delayed"}</span></header>
     <MarketCategoryNav view={props.directoryView} counts={props.directoryViewCounts} searchActive={props.searchActive} activityCoveragePending={props.activityCoveragePending} onChange={props.onDirectoryViewChange} />
     {props.activityCoveragePending ? <p className="rmtSearchStatus" role="status">Canonical markets ready · activity enrichment pending</p> : null}
     <MarketSearch id="rmt-mobile-market-search" query={props.query} setQuery={props.setQuery} inputRef={props.marketSearch} onSubmit={props.onSearchSubmit} searchStatus={props.searchStatus} />

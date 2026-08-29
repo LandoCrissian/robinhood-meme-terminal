@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
-  FIXTURE_EPOCH_MS, FIXTURE_NOW, TOKEN_MARKETS, canonicalDirectoryMarkets,
+  FIXTURE_EPOCH_MS, FIXTURE_NOW, BROAD_TOKEN_MARKETS, TOKEN_MARKETS, VISIBLE_TOKEN_MARKETS, canonicalDirectoryMarkets,
   CCFF00_COLLECTION, NFT_ITEM, NFT_MARKETPLACE, NFT_MINT_RADAR_DETAILS, NFT_MINT_RADAR_PAGES, NFT_ONCHAIN,
   RADAR_DROP_COLLECTION, RADAR_SEADROP, RADAR_SEADROP_CODE, nftInventory,
 } from "./legion-fixtures.mjs";
@@ -118,7 +118,7 @@ async function installTokenRoutes(page) {
   await page.route(/\/api\/vnext\/market-directory(?:\?.*)?$/, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ canonical: true, coverage: "complete", nextCursor: null, markets: canonicalDirectoryMarkets(), updatedAt: FIXTURE_NOW }) }));
   await page.route(/\/api\/markets\/external(?:\?.*)?$/, (route) => {
     const contract = new URL(route.request().url()).searchParams.get("contract")?.toLowerCase();
-    const markets = contract ? TOKEN_MARKETS.filter((market) => market.address === contract || market.pairAddress === contract) : TOKEN_MARKETS;
+    const markets = contract ? VISIBLE_TOKEN_MARKETS.filter((market) => market.address === contract || market.pairAddress === contract) : VISIBLE_TOKEN_MARKETS;
     return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ markets, source: "legion-visual-fixture", rankingVersion: "deterministic-v1", thresholds: {}, originCoverage: "complete", rmtOriginCoverage: "complete", stockAssetCoverage: "complete", delayedSources: [], updatedAt: FIXTURE_NOW, stale: false }) });
   });
   await page.route(/\/api\/markets\/ohlcv(?:\?.*)?$/, (route) => {
@@ -244,16 +244,23 @@ async function tokenLane(browser, viewport, platform) {
   const labels = await categoryButtons.locator("span").allTextContents();
   check(labels[0] === "Active" && labels[1] === "Trending", `token-scanner-${platform}`, "ACTIVE must precede TRENDING.", { labels });
   await categoryButtons.filter({ hasText: "Trending" }).click();
-  check(await page.locator(platform === "mobile" ? ".rmtMobileMarketRow" : ".rmtMarketTableRow").count() === 0, `token-scanner-${platform}`, "TRENDING fixture must remain empty.");
+  const marketRowSelector = platform === "mobile" ? ".rmtMobileMarketRow" : ".rmtMarketTableRow";
+  const trendingRows = page.locator(marketRowSelector);
+  check(await trendingRows.count() === BROAD_TOKEN_MARKETS.filter((market) => market.signal === "moving" || market.signal === "early").length, `token-scanner-${platform}`, "TRENDING must derive from explicit activity/ranking evidence.");
   await categoryButtons.filter({ hasText: "New" }).click();
-  check(await page.locator(platform === "mobile" ? ".rmtMobileMarketRow" : ".rmtMarketTableRow").count() === 0, `token-scanner-${platform}`, "NEW fixture must remain empty.");
+  const newRows = page.locator(marketRowSelector);
+  check(await newRows.count() === BROAD_TOKEN_MARKETS.filter((market) => market.ageMinutes !== null && market.ageMinutes <= 24 * 60).length, `token-scanner-${platform}`, "NEW must derive from actual pool age evidence.");
   await categoryButtons.filter({ hasText: "All" }).click();
-  const rows = page.locator(platform === "mobile" ? ".rmtMobileMarketRow" : ".rmtMarketTableRow");
+  const rows = page.locator(marketRowSelector);
   await rows.first().waitFor();
-  check(await rows.count() === 8, `token-scanner-${platform}`, "ALL must expose exactly eight curated markets.", { count: await rows.count() });
+  check(await rows.count() === VISIBLE_TOKEN_MARKETS.length, `token-scanner-${platform}`, "ALL must expose the canonical seeds plus bounded broad markets.", { count: await rows.count() });
   const rowText = await rows.allTextContents();
-  for (const market of TOKEN_MARKETS) check(rowText.some((text) => text.includes(market.symbol)), `token-scanner-${platform}`, `Missing curated market ${market.symbol}.`);
-  check(!rowText.some((text) => /Unavailable/i.test(text)), `token-scanner-${platform}`, "An admitted fixture row became Unavailable.");
+  for (const market of TOKEN_MARKETS) {
+    const text = rowText.find((row) => row.includes(market.symbol)) ?? "";
+    check(Boolean(text), `token-scanner-${platform}`, `Missing curated market ${market.symbol}.`);
+    check(!/Unavailable/i.test(text), `token-scanner-${platform}`, `Curated market ${market.symbol} became Unavailable.`);
+  }
+  for (const market of BROAD_TOKEN_MARKETS) check(rowText.some((text) => text.includes(market.symbol)), `token-scanner-${platform}`, `Missing broad visible market ${market.symbol}.`);
   const hopium = rowText.find((text) => text.includes("HOPIUM")) ?? "";
   const fdvTruthful = /FDV\s+\$/i.test(hopium) && !/MCap\s+\$/i.test(hopium);
   valuationTruthViolations += Number(!fdvTruthful);
@@ -399,6 +406,8 @@ const summary = {
   nftPublicActiveProjects: ["ccff00"],
   invariants: {
     tokenCuratedMarketCount: TOKEN_MARKETS.length,
+    tokenVisibleMarketCount: VISIBLE_TOKEN_MARKETS.length,
+    broadExecutionFixtures: Object.fromEntries(BROAD_TOKEN_MARKETS.map((market) => [market.symbol, market.executionFixture])),
     nftPublicActiveProjectCount: 1,
     watchingPublicLeaks,
     nftExecutionControls,

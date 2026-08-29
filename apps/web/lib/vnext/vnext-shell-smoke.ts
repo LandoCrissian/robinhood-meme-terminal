@@ -123,7 +123,7 @@ assert.match(presentations, /className="rmtMobileHeader"[\s\S]*<VNextWalletConne
 assert.match(walletConnection, /showFunding = true/);
 assert.match(walletConnection, /<WalletButton target="mainnet" returnTo="\/" showFunding=\{showFunding\} compact=\{compact\} \/>/);
 assert.match(shell, /href="\/" aria-label="RMT Markets"/);
-assert.match(shell, /Curated Token Markets/);
+assert.match(shell, /Robinhood Chain Token Markets/);
 assert.match(chart, /Price Chart/);
 assert.doesNotMatch(chart, /Verified pool chart/);
 assert.doesNotMatch(shell, /Terminal preview/);
