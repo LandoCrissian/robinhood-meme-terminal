@@ -1,0 +1,26 @@
+# Example only. Do not store credentials here.
+# Use `hermes model` / current Hermes provider setup on the host so OAuth/API
+# credentials stay in machine-local Hermes/Codex auth storage.
+
+model:
+  # Preferred RMT coordinator path: Hermes using OpenAI Codex via supported
+  # ChatGPT/Codex OAuth. Select the current model interactively on the host.
+  provider: openai-codex
+  default: "<select-with-hermes-model>"
+
+# OpenRouter is optional availability/cost fallback. Choose the model on the
+# host; do not commit an API key or hard-code a paid-model decision as RMT
+# repository authority.
+fallback_providers:
+  - provider: openrouter
+    model: "<operator-selected-openrouter-model>"
+
+provider_routing:
+  # Applies when OpenRouter is active. Prefer no provider data collection where
+  # the selected OpenRouter route supports the requested parameters.
+  data_collection: deny
+
+cron:
+  # Scheduled RMT jobs should be pinned explicitly on the host rather than
+  # silently following future chat-model changes.
+  allow_agent_scheduling: false
