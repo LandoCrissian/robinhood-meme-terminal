@@ -1,0 +1,119 @@
+name: RMT Agent Task
+description: Queue one bounded read-only or isolated-development task for the RMT agent loop.
+title: "[agent-task] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is an RMT development control-plane task, not general issue intake.
+        The worker must obey `AGENTS.md` and `docs/RMT_AGENT_CONTROL_PLANE.md`.
+        Merge, deployment, production mutation, fees, signing, and mainnet execution are never implied by this form.
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: Goal
+      description: One concrete outcome only.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: risk_class
+    attributes:
+      label: Risk class
+      options:
+        - R0 — observe only
+        - R1 — isolated development
+        - R2 — host/dependency/security boundary; exact owner approval required
+    validations:
+      required: true
+
+  - type: input
+    id: base_ref
+    attributes:
+      label: Base ref
+      value: main
+    validations:
+      required: true
+
+  - type: input
+    id: base_sha
+    attributes:
+      label: Exact base SHA
+      description: Exact 40-character commit SHA. A worker must fail closed if it no longer matches the authorized base ref.
+    validations:
+      required: true
+
+  - type: textarea
+    id: allowed_scope
+    attributes:
+      label: Allowed repository scope
+      description: State exact read/write paths. R1 writes outside this scope are a hard stop.
+      placeholder: |
+        Read: AGENTS.md, docs/**, affected source/tests
+        Write: apps/web/path/a.ts, apps/web/path/b.ts
+    validations:
+      required: true
+
+  - type: textarea
+    id: prohibited_actions
+    attributes:
+      label: Additional prohibited actions
+      description: Global control-plane prohibitions remain active even if blank.
+
+  - type: textarea
+    id: validation
+    attributes:
+      label: Independent validation
+      description: Exact commands/evidence the host validator must require. The coding agent cannot weaken these to obtain a pass.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Observable conditions for READY_FOR_OWNER_REVIEW.
+    validations:
+      required: true
+
+  - type: input
+    id: max_iterations
+    attributes:
+      label: Maximum loop iterations
+      value: "3"
+      description: Must remain within the runner hard cap (1-6).
+    validations:
+      required: true
+
+  - type: input
+    id: max_minutes
+    attributes:
+      label: Maximum loop minutes
+      value: "60"
+      description: Must remain within the runner hard cap (5-120).
+    validations:
+      required: true
+
+  - type: dropdown
+    id: output
+    attributes:
+      label: Expected output
+      options:
+        - Read-only report
+        - READY_FOR_OWNER_REVIEW worktree/report; draft PR may be created by a separately admitted coordinator step
+        - R2 plan only; wait for exact owner approval
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: authority
+    attributes:
+      label: Authority confirmation
+      options:
+        - label: This task does not authorize merge, deployment, production config changes, mainnet trading, contract deployment/upgrade, treasury/Safe signing, private-key use, fee/provider/wallet-execution activation, or destructive user-data changes.
+          required: true
+        - label: If the authorized base ref moves, the worker must stop rather than silently rebase/merge.
+          required: true
+        - label: R2 requires exact owner approval and R3 is never autonomous.
+          required: true
