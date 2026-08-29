@@ -78,10 +78,20 @@ const constellationHookSource = readFileSync(new URL("../use-wallet-constellatio
 assert.equal((workspaceSource.match(/currentMultiplier/g) ?? []).length, 1, "Stock multiplier must be displayed exactly once");
 assert.doesNotMatch(workspaceSource, /priceUsd\s*\*\s*[^\n]*currentMultiplier|currentMultiplier\s*\*\s*[^\n]*priceUsd/);
 assert.match(workspaceSource, /last known, non-authoritative/, "Stale registry presentation must be explicitly non-authoritative");
-assert.match(workspaceSource, /selectedPool \?\? selectedCanonicalMarket!\.poolKey/,
-  "PoolId-only V4 markets must use their exact canonical identity for OHLCV coverage");
-assert.doesNotMatch(workspaceSource, /PoolManager.*VNextMarketChart|poolAddress.*selectedCanonicalMarket.*poolKey/,
+assert.match(workspaceSource, /canonicalChartIdentity = selectedCanonicalMarket[\s\S]*selectedCanonicalMarket\.poolAddress \?\? selectedCanonicalMarket\.poolKey/,
+  "Canonical V2/V3 pool addresses and V4 PoolIds must define canonical chart identity");
+assert.match(workspaceSource, /selectedChartIdentity = canonicalChartIdentity \?\? observedChartPool/,
+  "Canonical chart authority must precede provider-observed chart evidence");
+assert.match(workspaceSource, /pair=\{selectedChartIdentity\}/,
+  "The chart request must use the authority-separated selected chart identity");
+assert.doesNotMatch(workspaceSource, /PoolManager.*VNextMarketChart/,
   "V4 chart coverage must not fabricate an address-style pool");
+assert.match(workspaceSource, /canonicalPool=\{selectedCanonicalMarket\?\.poolAddress \?\? undefined\}/,
+  "Canonical quick links must receive only canonical inventory pool addresses");
+assert.match(workspaceSource, /!canonicalMarket && observedPool[\s\S]*Observed pool ↗/,
+  "Provider-only chart pools must be labeled observed rather than canonical");
+assert.doesNotMatch(workspaceSource, /primaryPool=\{selected/,
+  "One ambiguous selected pool must not drive both canonical and observed labels");
 assert.match(workspaceSource, /referencePriceUsd=\{directoryMarket\.priceUsd\}/,
   "The resting chart headline must use the selected Token Market price authority");
 assert.match(chartSource, /hovered\?\.close \?\? referencePriceUsd \?\? latest/,

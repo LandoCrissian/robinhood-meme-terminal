@@ -22,6 +22,7 @@ import {
   validateCompleteV6OriginRecords
 } from "../server/launch-feed";
 import { assetKey } from "./execution-domain";
+import { RMT_CURATED_MARKET_REGISTRY } from "./curated-market-registry";
 import {
   VNEXT_MARKET_DIRECTORY_MAX_MARKETS,
   VNEXT_MARKET_DIRECTORY_PAGE_SIZE,
@@ -37,8 +38,11 @@ import {
   mergeVNextExplicitSelectionMarket,
   normalizeDirectoryMarkets,
   parseVNextCanonicalDirectoryResponse,
+  selectVNextCanonicalMarket,
+  selectVNextChartIdentity,
   resolutionFromLookup,
   selectVNextChartPool,
+  selectVNextObservedChartPool,
   vNextExecutionUiState,
   vNextSelectedMarketExecutionState,
   selectVNextMarketDirectoryView,
@@ -560,6 +564,68 @@ const nonChartPrimaryWithChartAlternative = {
 };
 assert.equal(deriveVNextMarketState(nonChartPrimaryWithChartAlternative).chart, "available");
 assert.equal(selectVNextChartPool(nonChartPrimaryWithChartAlternative), poolA);
+
+const ponsRegistryEntry = RMT_CURATED_MARKET_REGISTRY.find((entry) => entry.aliases.includes("PONS"));
+assert.ok(ponsRegistryEntry, "PONS must remain in the curated registry");
+const ponsToken = ponsRegistryEntry.token.toLowerCase();
+const ponsCanonicalPool = ponsRegistryEntry.market.poolAddress;
+const ponsObservedPool = "0x544e1492315f24ec61C2A500a1C75e55E5bb20EB";
+assert.ok(ponsCanonicalPool, "PONS must retain an address-style canonical pool");
+const ponsCanonicalMarket = ponsRegistryEntry.market;
+const ponsObservedEvidence = {
+  ...firstEvidence,
+  pool: { kind: "evm-address" as const, value: ponsObservedPool },
+  chartEligibility: "eligible" as const
+};
+const ponsAuthorityFixture = {
+  ...nonChartPrimaryWithChartAlternative,
+  address: ponsToken,
+  canonicalMarkets: [ponsCanonicalMarket],
+  primaryMarket: ponsObservedEvidence,
+  verifiedMarkets: [ponsObservedEvidence]
+};
+assert.equal(selectVNextCanonicalMarket(ponsAuthorityFixture)?.poolAddress, ponsCanonicalPool,
+  "PONS canonical inventory must remain authority over a provider-observed primary market");
+assert.equal(selectVNextChartPool(ponsAuthorityFixture), ponsCanonicalPool,
+  "PONS default address-style chart pool must be its canonical pool");
+assert.equal(selectVNextChartIdentity(ponsAuthorityFixture), ponsCanonicalPool,
+  "PONS selected chart identity must remain canonical");
+assert.equal(selectVNextObservedChartPool(ponsAuthorityFixture), ponsObservedPool,
+  "PONS provider-observed pool must remain available as noncanonical evidence");
+
+const canonicalV4WithObservedAddress = {
+  ...ponsAuthorityFixture,
+  address: v4Canonical.address,
+  canonicalMarkets: v4Canonical.canonicalMarkets,
+  primaryMarket: ponsObservedEvidence,
+  verifiedMarkets: [ponsObservedEvidence]
+};
+assert.equal(selectVNextChartIdentity(canonicalV4WithObservedAddress), v4PoolId,
+  "Canonical V4 PoolId must precede any provider-observed address");
+assert.equal(selectVNextChartPool(canonicalV4WithObservedAddress), undefined,
+  "Canonical V4 authority must never be fabricated as an address-style chart pool");
+
+const providerOnlyChartMarket = {
+  ...ponsAuthorityFixture,
+  canonicalMarkets: undefined
+};
+assert.equal(selectVNextChartIdentity(providerOnlyChartMarket), ponsObservedPool,
+  "A noncurated provider-only market must retain observed chart coverage");
+assert.equal(selectVNextChartPool(providerOnlyChartMarket), ponsObservedPool);
+
+for (const entry of RMT_CURATED_MARKET_REGISTRY) {
+  const fixture = {
+    ...ponsAuthorityFixture,
+    address: entry.token,
+    canonicalMarkets: [entry.market],
+    primaryMarket: ponsObservedEvidence,
+    verifiedMarkets: [ponsObservedEvidence]
+  };
+  assert.equal(selectVNextCanonicalMarket(fixture)?.poolKey, entry.market.poolKey,
+    `Canonical authority must survive provider evidence for ${entry.token}`);
+  assert.equal(selectVNextChartIdentity(fixture), entry.market.poolAddress ?? entry.market.poolKey,
+    `Canonical chart identity must precede provider evidence for ${entry.token}`);
+}
 const exactRecord = buildAssetMarketRecord([firstEvidence, secondEvidence, malformedQuoteEvidence], { requireChart: true })!;
 const exactLookupPayload = {
   markets: [{
