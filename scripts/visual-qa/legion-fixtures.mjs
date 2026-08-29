@@ -137,6 +137,7 @@ export const TOKEN_MARKETS = definitions.map((definition, index) => {
     address: definition.token,
     name: definition.name,
     symbol: definition.symbol,
+    verifiedIdentity: { address: definition.token, name: definition.name, symbol: definition.symbol, decimals: 18 },
     pairAddress: definition.poolAddress ?? definition.poolKey,
     url: `https://robinhoodchain.blockscout.com/${definition.poolAddress ? "address" : "tx"}/${definition.poolAddress ?? pool.transactionHash}`,
     dexId: definition.sourceId,

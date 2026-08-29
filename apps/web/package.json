@@ -75,7 +75,7 @@
     "test:project-identity-admission": "tsx lib/server/project-identity-admission-smoke.ts",
     "test:vnext-market-search": "pnpm test:project-identity-admission && tsx lib/server/vnext-canonical-search-catalog-smoke.ts && tsx lib/server/vnext-universal-market-search-smoke.ts && tsx lib/server/vnext-universal-market-search-route-smoke.ts && tsx lib/vnext/launch-zero-retirement-smoke.ts",
     "test:vnext-directory": "tsx lib/vnext/market-directory-smoke.ts && tsx lib/vnext/token-terminal-trade-worthy-smoke.ts && pnpm test:vnext-market-inventory && pnpm test:vnext-market-search && pnpm test:vnext-defillama",
-    "test:vnext-defillama": "tsx lib/server/vnext-defillama-smoke.ts && tsx lib/server/vnext-defillama-chain-pulse-smoke.ts && tsx lib/server/vnext-defillama-chain-pulse-route-smoke.ts",
+    "test:vnext-defillama": "tsx lib/server/vnext-defillama-smoke.ts && tsx lib/server/vnext-defillama-chain-pulse-smoke.ts && tsx lib/server/vnext-defillama-chain-pulse-route-smoke.ts && tsx lib/server/vnext-defillama-capital-flow-smoke.ts",
     "test:vnext-ecosystem": "tsx lib/vnext/ecosystem-intelligence-smoke.ts",
     "test:vnext-workspace": "tsx lib/vnext/asset-workspace-evidence-smoke.ts && pnpm test:stock-assets && pnpm test:external-trades",
     "test:vnext-browser-fixture": "tsx lib/vnext/browser-acceptance-v2-fixture.ts",
@@ -103,6 +103,8 @@
     "test:experience": "tsx lib/experience-funnel-smoke.ts",
     "test:external-trades": "tsx lib/external-trades-smoke.ts",
     "test:token-risk": "tsx lib/server/token-risk-evidence-smoke.ts",
+    "test:token-risk:live": "tsx lib/server/token-risk-evidence-live-smoke.ts",
+    "test:vnext-capital-flow": "tsx lib/server/vnext-defillama-capital-flow-smoke.ts",
     "test:wallet-constellation": "tsx lib/server/wallet-constellation-smoke.ts",
     "typecheck": "tsx lib/vnext/across-funding-smoke.ts && tsx lib/vnext/cross-chain-funding-smoke.ts && tsx lib/server/nft-project-market-smoke.ts && tsx lib/server/nft-inventory-smoke.ts && tsx lib/server/nft-mint-radar-smoke.ts && tsx lib/server/nft-mint-preflight-smoke.ts && tsx lib/server/nft-mint-execution-smoke.ts && tsx lib/server/nft-terminal-catalog-smoke.ts && tsx lib/server/nft-terminal-visual-shell-smoke.ts && tsc --noEmit"
   },

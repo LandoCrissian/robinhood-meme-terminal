@@ -146,7 +146,6 @@ export function useVNextMarketDirectory() {
   const completedCanonicalExactQueries = useRef(new Set<string>());
   const explicitSelectionRequests = useRef(new Map<string, Promise<VNextDirectoryMarket | undefined>>());
   const searchMarketsRef = useRef<VNextDirectoryMarket[]>([]);
-  const initialEnrichmentStarted = useRef(false);
 
   const publishMarkets = useCallback(() => {
     const byAddress = new Map<string, VNextDirectoryMarket>();
@@ -459,7 +458,6 @@ export function useVNextMarketDirectory() {
   }, [publishMarkets]);
 
   const refreshEcosystemDirectory = useCallback(async () => {
-    if (!hasData.current) return;
     replacePerformanceMark("rmt:market-enrichment:request-start");
     try {
       const response = await fetch("/api/markets/external");
@@ -469,7 +467,7 @@ export function useVNextMarketDirectory() {
         return;
       }
       providerEnrichmentMarkets.current = normalizeDirectoryMarkets(payload);
-      publishMarkets();
+      if (hasData.current) publishMarkets();
       setEnrichmentStatus("ready");
       replacePerformanceMark("rmt:market-enrichment:published");
       replacePerformanceMeasure(
@@ -485,22 +483,6 @@ export function useVNextMarketDirectory() {
 
   useVisibilityRefresh(refresh, VNEXT_CLIENT_REFRESH_POLICY.marketDirectoryMs);
   useVisibilityRefresh(refreshEcosystemDirectory, VNEXT_CLIENT_REFRESH_POLICY.ecosystemDirectoryMs);
-
-  useEffect(() => {
-    if (!hasData.current || initialEnrichmentStarted.current) return;
-    initialEnrichmentStarted.current = true;
-    const start = () => void refreshEcosystemDirectory();
-    const windowWithIdleCallback = window as Window & {
-      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number;
-      cancelIdleCallback?: (handle: number) => void;
-    };
-    if (windowWithIdleCallback.requestIdleCallback) {
-      const handle = windowWithIdleCallback.requestIdleCallback(start, { timeout: 500 });
-      return () => windowWithIdleCallback.cancelIdleCallback?.(handle);
-    }
-    const handle = window.setTimeout(start, 0);
-    return () => window.clearTimeout(handle);
-  }, [refreshEcosystemDirectory, status]);
 
   const selected = useMemo(
     () => markets.find((market) => market.address.toLowerCase() === selectedAddress?.toLowerCase()),

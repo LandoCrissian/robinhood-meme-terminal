@@ -158,6 +158,7 @@ function WorkspaceQuickLinks({
   observedPool?: string;
   canonicalMarket?: VNextUniversalMarketSearchPool;
 }) {
+  const [linksOpen, setLinksOpen] = useState(false);
   const projectLinks = safeSocialEntries(market?.project?.socials);
   const projectUrls = new Set(projectLinks.map((link) => link.href));
   const observedLinks = safeSocialEntries(market?.socials).filter((link) => !projectUrls.has(link.href));
@@ -165,6 +166,8 @@ function WorkspaceQuickLinks({
   const creationTransaction = origin?.kind === "rmt-v6"
     ? origin.launchTransactionHash
     : origin?.state === "attributed" ? origin.claim.transactionHash : undefined;
+  const safeCreator = market?.project?.creator && isAddress(market.project.creator) ? market.project.creator : undefined;
+  const safeCreationTransaction = creationTransaction && /^0x[0-9a-fA-F]{64}$/.test(creationTransaction) ? creationTransaction : undefined;
   const marketUrl = market?.url ?? directoryMarket.url;
   const marketHost = (() => {
     try {
@@ -176,10 +179,13 @@ function WorkspaceQuickLinks({
     }
     return "Market";
   })();
+  const moreLinkCount = projectLinks.length + observedLinks.length
+    + (safeCreator ? 1 : 0)
+    + (safeCreationTransaction ? 1 : 0);
 
   return <section className="vnAssetQuickLinks" aria-label="Selected asset identity and links">
     <div className="vnAssetContractIdentity">
-      <span><small>Token contract</small><CopyAddress address={directoryMarket.address} /></span>
+      <span><small>Contract</small><CopyAddress address={directoryMarket.address} /></span>
       <ExplorerLink kind="token" value={directoryMarket.address} accessibleName={`Open ${directoryMarket.symbol} token contract in Robinhood Chain explorer`}>Explorer ↗</ExplorerLink>
     </div>
     <div className="vnAssetQuickLinkRows">
@@ -187,18 +193,13 @@ function WorkspaceQuickLinks({
       {!canonicalPool && canonicalMarket?.version === 4 ? <ExplorerLink kind="transaction" value={canonicalMarket.transactionHash} accessibleName={`Open ${directoryMarket.symbol} Uniswap V4 initialization evidence in Robinhood Chain explorer`}>V4 PoolId {shortAddress(canonicalMarket.poolKey)} ↗</ExplorerLink> : null}
       {!canonicalMarket && observedPool ? <ExplorerLink kind="pool" value={observedPool} accessibleName={`Open ${directoryMarket.symbol} observed pool in Robinhood Chain explorer`}>Observed pool ↗</ExplorerLink> : null}
       <ExternalProjectLink href={marketUrl} accessibleName={`Open ${directoryMarket.symbol} market source`}>{marketHost} ↗</ExternalProjectLink>
-      {market?.project?.creator ? <ExplorerLink kind="address" value={market.project.creator} accessibleName={`Open reported creator address for ${directoryMarket.symbol}`}>Creator address ↗</ExplorerLink> : null}
-      {creationTransaction ? <ExplorerLink kind="transaction" value={creationTransaction} accessibleName={`Open creation evidence for ${directoryMarket.symbol}`}>Creation transaction ↗</ExplorerLink> : null}
+      {moreLinkCount ? <button className="vnMoreLinksButton" type="button" aria-expanded={linksOpen} aria-controls="vn-more-market-links" onClick={() => setLinksOpen((open) => !open)}>More links {moreLinkCount}<span aria-hidden="true">⌄</span></button> : null}
     </div>
-    {projectLinks.length ? <details className="vnProjectLinkGroup">
-      <summary>Project links · {market?.project ? externalProjectProvenanceLabel(market.project) : "cross-checked metadata"}</summary>
-      <div>{projectLinks.map((link) => <ExternalProjectLink href={link.href} socialKind={link.kind === "website" ? undefined : link.kind} accessibleName={`Open ${directoryMarket.symbol} project ${link.label}`} key={`${link.kind}:${link.href}`}>{link.label} ↗</ExternalProjectLink>)}</div>
-    </details> : null}
-    {observedLinks.length ? <details className="vnProjectLinkGroup isObserved">
-      <summary>Observed links · market metadata</summary>
-      <div>{observedLinks.map((link) => <ExternalProjectLink href={link.href} socialKind={link.kind === "website" ? undefined : link.kind} accessibleName={`Open ${directoryMarket.symbol} ${link.label} from market metadata`} key={`${link.kind}:${link.href}`}>{link.label} ↗</ExternalProjectLink>)}</div>
-      <p>Reported by DEX market metadata; RMT does not guarantee project control of these destinations.</p>
-    </details> : null}
+    {linksOpen && moreLinkCount ? <div className="vnProjectLinkDisclosure" id="vn-more-market-links">
+      {(safeCreator || safeCreationTransaction) ? <div className="vnProjectLinkGroup"><small>Technical evidence</small><div>{safeCreator ? <ExplorerLink kind="address" value={safeCreator} accessibleName={`Open reported creator address for ${directoryMarket.symbol}`}>Creator ↗</ExplorerLink> : null}{safeCreationTransaction ? <ExplorerLink kind="transaction" value={safeCreationTransaction} accessibleName={`Open creation evidence for ${directoryMarket.symbol}`}>Creation ↗</ExplorerLink> : null}</div></div> : null}
+      {projectLinks.length ? <div className="vnProjectLinkGroup"><small>Project links · {market?.project ? externalProjectProvenanceLabel(market.project) : "cross-checked"}</small><div>{projectLinks.map((link) => <ExternalProjectLink href={link.href} socialKind={link.kind === "website" ? undefined : link.kind} accessibleName={`Open ${directoryMarket.symbol} project ${link.label}`} key={`${link.kind}:${link.href}`}>{link.label} ↗</ExternalProjectLink>)}</div></div> : null}
+      {observedLinks.length ? <div className="vnProjectLinkGroup isObserved"><small>Observed from market metadata</small><div>{observedLinks.map((link) => <ExternalProjectLink href={link.href} socialKind={link.kind === "website" ? undefined : link.kind} accessibleName={`Open ${directoryMarket.symbol} ${link.label} from market metadata`} key={`${link.kind}:${link.href}`}>{link.label} ↗</ExternalProjectLink>)}</div></div> : null}
+    </div> : null}
   </section>;
 }
 
@@ -296,7 +297,7 @@ function WorkspaceActivity({ market }: { market: ExternalMarket }) {
 
 type EvidenceTab = "holders" | "liquidity" | "risk";
 
-function WorkspaceEvidence({ market, directoryMarket }: { market?: ExternalMarket; directoryMarket: VNextDirectoryMarket }) {
+function WorkspaceEvidence({ market, directoryMarket, tokenIdentityVerified }: { market?: ExternalMarket; directoryMarket: VNextDirectoryMarket; tokenIdentityVerified: boolean }) {
   const [tab, setTab] = useState<EvidenceTab>("holders");
   const canonicalMarket = selectVNextCanonicalMarket(directoryMarket);
   const risk = useTokenRiskEvidence(directoryMarket.address, market, canonicalMarket);
@@ -329,15 +330,22 @@ function WorkspaceEvidence({ market, directoryMarket }: { market?: ExternalMarke
     ? market.pairAddress
     : undefined;
   const warnings = [...new Set([...(market?.riskFlags ?? []).map(riskFlagLabel), ...(evidence?.warnings ?? [])])];
+  const evidenceUnavailable = risk.status === "unavailable" && constellation.status === "unavailable";
+  const riskUnavailable = risk.status === "unavailable" || !evidence;
+  const evidencePartial = evidence?.coverage === "partial" || evidence?.freshness === "stale";
+  const domainAvailable = (domain: "token" | "holders" | "contract" | "abi" | "creator" | "liquidity" | "sell") => {
+    const status = evidence?.domains?.[domain];
+    return status === undefined || status === "ready" || status === "stale";
+  };
 
   return <section className="vnWorkspaceCard vnEvidenceDeck" aria-labelledby="vn-evidence-heading">
-    <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Read-only evidence</span><h3 id="vn-evidence-heading">Holders, liquidity &amp; risk</h3></div><span>{risk.status === "ready" || constellation.status === "ready" ? "Evidence loaded" : risk.status === "loading" || constellation.status === "loading" ? "Checking…" : "Coverage limited"}</span></header>
+    <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Read-only evidence</span><h3 id="vn-evidence-heading">Holders, liquidity &amp; risk</h3></div><span>{risk.status === "ready" || constellation.status === "ready" ? evidencePartial ? "Partial evidence" : "Evidence loaded" : risk.status === "loading" || constellation.status === "loading" ? "Checking…" : "Coverage limited"}</span></header>
     <div className="vnEvidenceTabs" role="tablist" aria-label="Market evidence">
       {(["holders", "liquidity", "risk"] as const).map((item) => <button type="button" role="tab" aria-selected={tab === item} className={tab === item ? "isActive" : ""} onClick={() => setTab(item)} key={item}>{item}</button>)}
     </div>
 
     {tab === "holders" && <div className="vnEvidencePane" role="tabpanel">
-      <div className="vnEvidenceGrid">
+      {evidenceUnavailable ? <div className="vnEvidenceUnavailable"><strong>Holder evidence unavailable</strong><span>Token identity remains available. Concentration is unknown until the evidence service recovers.</span></div> : <><div className="vnEvidenceGrid">
         <span><small>Known holders</small><strong>{graph?.holderSnapshot.count?.toLocaleString() ?? evidence?.holders.count?.toLocaleString() ?? "—"}</strong></span>
         <span><small>{graph || evidence?.marketVerified ? "Top 10 · no pool" : "Top 10 visible"}</small><strong>{formatOwnershipBps(graph?.holderSnapshot.topNonPoolShareBps ?? evidenceTopShare ?? null)}</strong></span>
         <span><small>{graph || evidence?.marketVerified ? "Largest wallet" : "Largest visible"}</small><strong>{formatOwnershipBps(graph?.holderSnapshot.largestNonPoolShareBps ?? evidenceLargestShare ?? null)}</strong></span>
@@ -345,37 +353,37 @@ function WorkspaceEvidence({ market, directoryMarket }: { market?: ExternalMarke
       </div>
       {holders.length > 0 ? <><div className="vnConcentrationTrack" aria-label={`Visible top-holder concentration ${formatOwnershipBps(graph?.holderSnapshot.topNonPoolShareBps ?? evidenceTopShare ?? null)}`}>{holders.slice(0, 6).map((holder, index) => <i className={holder.isFlagged ? "isFlagged" : holder.isContract ? "isContract" : ""} style={{ width: `${Math.max(.75, (holder.supplyShareBps ?? 0) / 100)}%` }} title={`${shortAddress(holder.address)} · ${formatOwnershipBps(holder.supplyShareBps)}`} key={holder.address} data-rank={index + 1} />)}</div><div className="vnHolderList">{holders.slice(0, 8).map((holder, index) => <ExplorerLink kind="address" value={holder.address} accessibleName={`Open holder ${shortAddress(holder.address)} in Robinhood Chain explorer`} key={holder.address}><b>{index + 1}</b><span><strong>{shortAddress(holder.address)}</strong><small>{holder.role === "creator" ? "Reported creator" : holder.isFlagged ? "Explorer flagged" : holder.isContract ? "Contract" : "Wallet"}</small></span><strong>{formatOwnershipBps(holder.supplyShareBps)}</strong><i aria-hidden="true">↗</i></ExplorerLink>)}</div></> : <p className="vnEvidenceCaution">Holder rows are unavailable. Missing concentration data remains unknown, never safe.</p>}
       {graph?.signals.length ? <details className="vnEvidenceDetails"><summary>Observed wallet relationships <b>{graph.signals.length}</b></summary><div>{graph.signals.slice(0, 4).map((signal) => <span className={signal.severity} key={`${signal.code}:${signal.relatedAddresses.join(":")}`}><strong>{signal.label}</strong><small>{signal.relatedAddresses.map(shortAddress).join(" ↔ ")}</small><small>{signal.description}</small></span>)}</div></details> : null}
-      {graph && <p className="vnCoverageNote">{graph.coverage.description} · {graph.coverage.sampledTransfers} transfers sampled.</p>}
+      {graph && <p className="vnCoverageNote">{graph.coverage.description} · {graph.coverage.sampledTransfers} transfers sampled.</p>}</>}
     </div>}
 
     {tab === "liquidity" && <div className="vnEvidencePane" role="tabpanel">
       <div className="vnLiquidityHeadline"><span><small>Displayed pool liquidity</small><strong>{market ? compactUsd(market.liquidityUsd) : "Unavailable"}</strong></span>{canonicalAddressPool ? <ExplorerLink kind="pool" value={canonicalAddressPool}>Canonical pool {shortAddress(canonicalAddressPool)} ↗</ExplorerLink> : canonicalMarket?.version === 4 ? <span>V4 PoolId {shortAddress(canonicalMarket.poolKey)}</span> : observedAddressPool ? <ExplorerLink kind="pool" value={observedAddressPool}>Observed pool {shortAddress(observedAddressPool)} ↗</ExplorerLink> : null}</div>
-      <div className="vnEvidenceGrid">
+      {!domainAvailable("liquidity") ? <><div className="vnEvidenceGrid">
+        <span><small>Pool token share</small><strong>{formatOwnershipBps(evidence?.holders.poolShareBps ?? graph?.holderSnapshot.poolShareBps ?? null)}</strong></span>
+      </div><div className="vnEvidenceUnavailable"><strong>Liquidity-control evidence unavailable</strong><span>Displayed market liquidity remains provider evidence. Position ownership and transfer control remain unknown.</span></div></> : <div className="vnEvidenceGrid">
         <span><small>Pool token share</small><strong>{formatOwnershipBps(evidence?.holders.poolShareBps ?? graph?.holderSnapshot.poolShareBps ?? null)}</strong></span>
         <span><small>Liquidity control</small><strong>{evidence?.liquidity.controlStatus.replaceAll("-", " ") ?? "Not proven"}</strong></span>
         <span><small>Position owner</small><strong>{evidence?.liquidity.owner ? shortAddress(evidence.liquidity.owner) : "Unknown"}</strong></span>
         <span><small>Creator transfer</small><strong>{evidence?.liquidity.creatorCanTransfer === true ? "Possible" : evidence?.liquidity.creatorCanTransfer === false ? "Not observed" : "Unknown"}</strong></span>
         <span><small>Position ID</small><strong>{evidence?.liquidity.positionId ?? "Not available"}</strong></span>
         <span><small>Evidence source</small><strong>{evidence?.liquidity.evidenceSource.replaceAll("-", " ") ?? "None"}</strong></span>
-      </div>
+      </div>}
       <p className="vnEvidenceCaution">Liquidity and ownership can change. The execution engine rechecks its selected route independently before wallet review.</p>
     </div>}
 
     {tab === "risk" && <div className="vnEvidencePane" role="tabpanel">
-      <div className="vnEvidenceGrid">
-        <span><small>Token identity</small><strong>{directoryMarket.verifiedIdentity ? "Onchain verified" : "Observed"}</strong></span>
+      <div className="vnEvidenceGrid isRisk">
+        <span><small>Token identity</small><strong>{tokenIdentityVerified ? "Onchain verified" : "Observed"}</strong></span>
         <span><small>Market evidence</small><strong>{canonicalMarket ? `${canonicalVenueLabel(canonicalMarket)} canonical` : market ? "Provider observed" : "Unavailable"}</strong></span>
-        <span><small>Source published</small><strong>{evidence?.contract.sourcePublished === true ? "Yes" : evidence?.contract.sourcePublished === false ? "No" : "Unknown"}</strong></span>
-        <span><small>Proxy</small><strong>{evidence?.contract.isProxy === true ? "Detected" : evidence?.contract.isProxy === false ? "Not detected" : "Unknown"}</strong></span>
-        <span><small>Bytecode change</small><strong>{evidence?.contract.bytecodeChanged === true ? "Detected" : evidence?.contract.bytecodeChanged === false ? "Not detected" : "Unknown"}</strong></span>
-        <span><small>Contract controls</small><strong>{evidence?.contract.controls.assessment.replaceAll("-", " ") ?? "Unknown"}</strong></span>
-        <span><small>Sell evidence</small><strong>{evidence?.sellSimulation.status.replaceAll("-", " ") ?? "Not run"}</strong></span>
-        <span><small>Coverage</small><strong>{evidence?.coverage ?? "Unavailable"}</strong></span>
+        {!riskUnavailable && domainAvailable("contract") ? <><span><small>Contract source</small><strong>{evidence.contract.sourcePublished === true ? "Published" : evidence.contract.sourcePublished === false ? "Not published" : "Unknown"}</strong></span><span><small>Proxy</small><strong>{evidence.contract.isProxy === true ? "Detected" : evidence.contract.isProxy === false ? "Not detected" : "Unknown"}</strong></span></> : null}
+        {!riskUnavailable && domainAvailable("abi") ? <span><small>Privileged controls</small><strong>{evidence.contract.controls.assessment.replaceAll("-", " ")}</strong></span> : null}
+        {!riskUnavailable && domainAvailable("sell") ? <span><small>Sell check</small><strong>{evidence.sellSimulation.status.replaceAll("-", " ")}</strong></span> : null}
+        {!riskUnavailable ? <span><small>Evidence freshness</small><strong>{evidence.freshness === "stale" ? "Last loaded" : evidence.coverage}</strong></span> : null}
       </div>
-      {warnings.length ? <div className="vnRiskFindings">{warnings.slice(0, 8).map((warning) => <span key={warning}>{warning}</span>)}</div> : <p className="vnEvidenceCaution">No warning is displayed from available evidence. Missing coverage remains unknown; this is not a safety guarantee.</p>}
+      {riskUnavailable ? <div className="vnEvidenceUnavailable"><strong>Contract risk evidence unavailable</strong><span>Onchain token and canonical market identity remain separate known evidence. Contract controls and sell behavior are unknown.</span></div> : warnings.length ? <div className="vnRiskFindings">{warnings.slice(0, 8).map((warning) => <span key={warning}>{warning}</span>)}</div> : <p className="vnEvidenceCaution">No warning is present in available evidence. Missing coverage remains unknown, never safe.</p>}
       {(evidence?.contract.controls.detected.length || evidence?.contract.controls.customWriteFunctions.length) ? <details className="vnEvidenceDetails"><summary>Detected contract controls <b>{evidence.contract.controls.detected.length + evidence.contract.controls.customWriteFunctions.length}</b></summary><div>{evidence.contract.controls.detected.map((control) => <span key={`${control.category}:${control.functionName}`}><strong>{control.category}</strong><small>{control.functionName}</small></span>)}{evidence.contract.controls.customWriteFunctions.slice(0, 6).map((name) => <span key={name}><strong>Custom write</strong><small>{name}</small></span>)}</div></details> : null}
     </div>}
-    <footer>Warnings inform the trader. Exact recipient, route, minimum output, freshness, authorization and simulation remain hard execution requirements.</footer>
+    <footer>Evidence informs the trader; route, recipient, minimum output, freshness and simulation remain independent execution requirements.</footer>
   </section>;
 }
 
@@ -491,6 +499,7 @@ export function VNextAssetWorkspace({
   });
   const displayName = presentationIdentity.name;
   const displaySymbol = presentationIdentity.symbol;
+  const tokenIdentityVerified = presentationIdentity.verified || identityStatus === "verified";
   const canonicalStockRelationship = workspace.stockAssetRelationships.find((relationship) => (
     relationship.relationship === "canonical-stock-token"
     && relationship.contractAddress.toLowerCase() === directoryMarket.address.toLowerCase()
@@ -529,7 +538,7 @@ export function VNextAssetWorkspace({
   const intelligence = section === "activity"
     ? market ? <WorkspaceActivity market={market} /> : <div className="vnWorkspaceCard vnWorkspaceEmpty"><strong>Trade activity loading</strong><span>Exact-pool activity appears when canonical market evidence and telemetry are available.</span></div>
     : section === "evidence"
-      ? <WorkspaceEvidence market={market} directoryMarket={directoryMarket} />
+      ? <WorkspaceEvidence market={market} directoryMarket={directoryMarket} tokenIdentityVerified={tokenIdentityVerified} />
       : section === "markets"
         ? <div className="vnMarketEvidenceStack"><VerifiedMarkets canonicalMarkets={directoryMarket.canonicalMarkets} resolution={resolution} selectedPool={selectedChartIdentity} /><WorkspaceEcosystemIntelligence ecosystem={workspace.ecosystem} /></div>
         : section === "position"
@@ -540,7 +549,7 @@ export function VNextAssetWorkspace({
 
   return <section className={`vnAssetPanel vnAssetWorkspace is${presentation}`} aria-labelledby="vn-asset-heading">
     <header className="vnAssetWorkspaceHeader">
-      <div className="vnAssetWorkspaceIdentity"><TokenArtwork className="vnAssetWorkspaceMark" symbol={displaySymbol} imageUrl={directoryMarket.imageUri ?? canonicalStockRelationship?.logoUrl ?? undefined} /><span><span className="vnEyebrow">Token Market</span><h2 id="vn-asset-heading">{displayName} <b>{displaySymbol}</b></h2><small>Robinhood Chain · {presentationIdentity.verified || identityStatus === "verified" ? "onchain token identity proven" : identityStatus === "checking" ? "identity checking" : "identity evidence unavailable"}</small></span></div>
+      <div className="vnAssetWorkspaceIdentity"><TokenArtwork className="vnAssetWorkspaceMark" symbol={displaySymbol} imageUrl={directoryMarket.imageUri ?? canonicalStockRelationship?.logoUrl ?? undefined} /><span><span className="vnEyebrow">Token Market</span><h2 id="vn-asset-heading">{displayName} <b>{displaySymbol}</b></h2><small>Robinhood Chain · {tokenIdentityVerified ? "onchain token identity proven" : identityStatus === "checking" ? "identity checking" : "identity evidence unavailable"}</small></span></div>
       <div className="vnWorkspaceStatusGroup">{executionState === "stock-token-view-only" ? <strong className="vnStockTokenViewOnlyBadge">View only</strong> : null}<span className={`vnWorkspaceStatus is${workspace.status}`}><i aria-hidden="true" />{workspace.status === "ready" ? "Live evidence" : workspace.status === "partial" ? "Partial evidence" : workspace.status === "stale" ? "Last loaded" : workspace.status === "loading" ? "Loading evidence" : "Evidence unavailable"}</span></div>
     </header>
     <div className="vnAssetPrice"><strong>{formatUsd(directoryMarket.priceUsd)}</strong><span className={directoryMarket.priceChange24h !== null && directoryMarket.priceChange24h > 0 ? "vnPositive" : directoryMarket.priceChange24h !== null && directoryMarket.priceChange24h < 0 ? "vnNegative" : ""}>{directoryMarket.priceChange24h === null ? "Unavailable" : `${directoryMarket.priceChange24h > 0 ? "+" : ""}${directoryMarket.priceChange24h.toFixed(1)}%`} <small>24h</small></span></div>

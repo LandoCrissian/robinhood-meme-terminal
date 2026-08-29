@@ -75,9 +75,25 @@ export type TokenRiskEvidence = {
     amount: string | null;
     returnStyle: "boolean-true" | "no-return-data" | null;
   };
+  domains?: {
+    token: TokenRiskEvidenceDomainStatus;
+    holders: TokenRiskEvidenceDomainStatus;
+    contract: TokenRiskEvidenceDomainStatus;
+    abi: TokenRiskEvidenceDomainStatus;
+    creator: TokenRiskEvidenceDomainStatus;
+    liquidity: TokenRiskEvidenceDomainStatus;
+    sell: TokenRiskEvidenceDomainStatus;
+  };
+  freshness?: "fresh" | "stale";
   warnings: string[];
   checkedAt: string;
 };
+
+export type TokenRiskEvidenceDomainStatus =
+  | "ready"
+  | "stale"
+  | "unavailable"
+  | "not-applicable";
 
 export type TokenRiskEvidenceState =
   | { status: "loading"; evidence?: undefined }

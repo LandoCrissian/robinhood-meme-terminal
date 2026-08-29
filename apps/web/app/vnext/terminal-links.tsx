@@ -65,7 +65,27 @@ export function CopyAddress({ address }: { address: string }) {
   }
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(normalized);
+      let copied = false;
+      if (navigator.clipboard?.writeText) {
+        try {
+          await navigator.clipboard.writeText(normalized);
+          copied = true;
+        } catch {
+          copied = false;
+        }
+      }
+      if (!copied) {
+        const input = document.createElement("textarea");
+        input.value = normalized;
+        input.readOnly = true;
+        input.style.position = "fixed";
+        input.style.opacity = "0";
+        document.body.appendChild(input);
+        input.select();
+        copied = document.execCommand("copy");
+        input.remove();
+      }
+      if (!copied) throw new Error("Copy unavailable");
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1_500);
     } catch {
@@ -73,7 +93,7 @@ export function CopyAddress({ address }: { address: string }) {
     }
   };
   return <span className="vnCopyAddress">
-    <code title={normalized}>{normalized}</code>
+    <code title={normalized} aria-label={`Token contract ${normalized}`}>{`${normalized.slice(0, 6)}…${normalized.slice(-4)}`}</code>
     <button type="button" onClick={() => void copy()} aria-live="polite" aria-label={copied ? "Full token contract copied" : `Copy full token contract ${normalized}`}>{copied ? "Copied" : "Copy"}</button>
   </span>;
 }

@@ -5,6 +5,7 @@ import { erc20Abi, formatUnits, getAddress, isAddress, zeroAddress, type Address
 import { useAccount, usePublicClient } from "wagmi";
 import type { ExternalMarketResponse } from "../../lib/external-market";
 import { spendableAtomic } from "../../lib/vnext/execution-domain";
+import { spendableNativeAtomic } from "../../lib/vnext/intent-draft";
 import type { VNextExecutionRecord } from "../../lib/vnext/execution-recovery";
 import type { VNextDirectoryMarket } from "../../lib/vnext/market-directory";
 import {
@@ -42,13 +43,6 @@ function assetAmount(asset: VNextDetectedWalletAsset) {
   return amount(BigInt(asset.balanceAtomic), asset.decimals, asset.address.toLowerCase() === ROBINHOOD_USDG_ADDRESS.toLowerCase() ? 2 : 5);
 }
 
-function dollars(value: bigint | undefined) {
-  if (value === undefined) return "—";
-  const formatted = Number(formatUnits(value, ROBINHOOD_USDG.decimals ?? 6));
-  if (!Number.isFinite(formatted)) return "—";
-  return formatted.toLocaleString(undefined, { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
 function portfolioDollars(value: number | undefined) {
   if (value === undefined || !Number.isFinite(value)) return "—";
   return value.toLocaleString(undefined, { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -66,11 +60,12 @@ function stateLabel(asset: VNextDetectedWalletAsset, marketFound: boolean) {
   return asset.identityState === "verified" ? "Detected · route not checked" : "Detected · identity reported";
 }
 
-export function SpendBalance({ visible = true, markets, onAssetsChange, onNativeBalanceChange, onSelectAsset, executionRecord, portfolioRevealRequest = 0 }: {
+export function SpendBalance({ visible = true, markets, onAssetsChange, onNativeBalanceChange, onWalletReadStatusChange, onSelectAsset, executionRecord, portfolioRevealRequest = 0 }: {
   visible?: boolean;
   markets: VNextDirectoryMarket[];
   onAssetsChange?: (assets: VNextDetectedWalletAsset[]) => void;
   onNativeBalanceChange?: (balance: bigint | undefined) => void;
+  onWalletReadStatusChange?: (status: "idle" | "loading" | "ready" | "stale" | "error") => void;
   onSelectAsset?: (address: string) => void;
   executionRecord?: VNextExecutionRecord | null;
   portfolioRevealRequest?: number;
@@ -91,7 +86,7 @@ export function SpendBalance({ visible = true, markets, onAssetsChange, onNative
   const usdg = assets.find((asset) => asset.address.toLowerCase() === ROBINHOOD_USDG_ADDRESS.toLowerCase());
   const confirmedUsdg = usdg ? BigInt(usdg.balanceAtomic) : status === "ready" ? 0n : undefined;
   const assetCountReady = status === "ready" || status === "stale";
-  const spendable = wallet && confirmedUsdg !== undefined
+  const usdgSpendable = wallet && confirmedUsdg !== undefined
     ? BigInt(spendableAtomic(confirmedBalanceSnapshot({
         account: robinhoodWalletAccount(wallet),
         asset: ROBINHOOD_USDG,
@@ -99,15 +94,22 @@ export function SpendBalance({ visible = true, markets, onAssetsChange, onNative
         observedAtMs: Date.now()
       })))
     : undefined;
+  const nativeSpendable = spendableNativeAtomic(nativeBalance);
   const delayed = enabled && (status === "stale" || status === "error");
   const refreshedResolution = useRef<string | undefined>(undefined);
   const refreshBalances = useRef(refresh);
   const marketAddresses = useMemo(() => new Set(markets.map((market) => market.address.toLowerCase())), [markets]);
   const portfolio = useMemo(() => walletPortfolioSummary({ assets, markets, nativeBalance, ethUsd }), [assets, ethUsd, markets, nativeBalance]);
+  const tradeBalanceUsd = usdgSpendable === undefined || nativeSpendable === undefined
+    ? undefined
+    : Number(formatUnits(usdgSpendable, ROBINHOOD_USDG.decimals ?? 6))
+      + (ethUsd ? Number(formatUnits(nativeSpendable, ROBINHOOD_ETH.decimals ?? 18)) * ethUsd : 0);
+  const tradeBalanceFullyPriced = nativeSpendable === 0n || ethUsd !== undefined;
   const visibleAssets = showAllAssets ? assets : assets.slice(0, 12);
 
   useEffect(() => onAssetsChange?.(assets), [assets, onAssetsChange]);
   useEffect(() => onNativeBalanceChange?.(nativeBalance), [nativeBalance, onNativeBalanceChange]);
+  useEffect(() => onWalletReadStatusChange?.(status), [onWalletReadStatusChange, status]);
   useEffect(() => {
     if (portfolioRevealRequest > 0) setHoldingsExpanded(true);
   }, [portfolioRevealRequest]);
@@ -195,14 +197,14 @@ export function SpendBalance({ visible = true, markets, onAssetsChange, onNative
   return (
     <section id="vnext-portfolio" className="vnBalanceBar" aria-labelledby="vn-balance-heading" aria-busy={status === "loading"}>
       <div className="vnBalancePrimary">
-        <span id="vn-balance-heading">Available to trade</span>
-        <strong>{enabled ? dollars(spendable) : "—"}</strong>
-        <small><i aria-hidden="true" />{!isConnected ? "Connect a wallet" : !onRobinhood ? "Switch to Robinhood Chain" : delayed ? "Balance read delayed" : status === "loading" ? "Reading confirmed USDG" : "Confirmed wallet-held USDG"}</small>
+        <span id="vn-balance-heading">Portfolio</span>
+        <strong>{enabled && assetCountReady && portfolio.hasKnownValue ? portfolioDollars(portfolio.knownPortfolioUsd) : "—"}</strong>
+        <small><i aria-hidden="true" />{!isConnected ? "Connect a wallet" : !onRobinhood ? "Switch to Robinhood Chain" : delayed ? "Wallet read delayed" : status === "loading" ? "Reading wallet" : `${shortAddress(wallet!)} · Robinhood Chain`}</small>
       </div>
       <div className="vnBalanceMetric">
-        <span>Portfolio · known value</span>
-        <strong>{enabled && assetCountReady && portfolio.hasKnownValue ? portfolioDollars(portfolio.knownPortfolioUsd) : "—"}</strong>
-        <small>{enabled && assetCountReady ? `${portfolio.pricedPositionCount} priced · ${portfolio.unpricedPositionCount} unpriced` : "No estimated value invented"}</small>
+        <span>Trade balance</span>
+        <strong>{enabled && tradeBalanceFullyPriced ? portfolioDollars(tradeBalanceUsd) : enabled && nativeSpendable && nativeSpendable > 0n ? "Value pending" : "—"}</strong>
+        <small>{enabled ? `${amount(nativeSpendable, ROBINHOOD_ETH.decimals, 6)} ETH · ${amount(usdgSpendable, ROBINHOOD_USDG.decimals, 2)} USDG` : "Confirmed funding assets"}</small>
       </div>
       <div className="vnBalanceMetric">
         <span>Pending</span>
@@ -215,23 +217,27 @@ export function SpendBalance({ visible = true, markets, onAssetsChange, onNative
         {wallet ? <button className="vnBalanceSend" type="button" onClick={() => setTransferOpen(true)} disabled={!onRobinhood || nativeBalance === undefined || nativeBalance <= 0n}>Send ETH</button> : null}
       </div>
 
-      {enabled && <div className={`vnDetectedAssets${holdingsExpanded ? " isExpanded" : ""}`} aria-live="polite">
+      {enabled && <div className={`vnDetectedAssets isExpanded${holdingsExpanded ? " hasDetails" : ""}`} aria-live="polite">
+        <div className="vnTradeBalance" aria-label="Spendable trade balance">
+          <div><span>ETH</span><strong>{amount(nativeSpendable, ROBINHOOD_ETH.decimals, 6)}</strong><small>Trade funding + network gas · reserve excluded</small></div>
+          <div><span>USDG</span><strong>{amount(usdgSpendable, ROBINHOOD_USDG.decimals, 2)}</strong><small>Canonical trade balance · settlement asset</small></div>
+        </div>
         <div className="vnDetectedAssetsHead">
-          <span><strong>Onchain holdings</strong><small>{assets.length + (nativeBalance && nativeBalance > 0n ? 1 : 0)} detected · {wallet ? shortAddress(wallet) : "No wallet"}</small></span>
+          <span><strong>Holdings</strong><small>{assets.length + (nativeBalance && nativeBalance > 0n ? 1 : 0)} onchain assets</small></span>
           <div className="vnDetectedAssetsControls">
             <button
               className="vnDetectedAssetsToggle"
               type="button"
               aria-expanded={holdingsExpanded}
-              aria-controls="vn-detected-assets-body"
+              aria-controls="vn-wallet-details"
               onClick={() => setHoldingsExpanded((expanded) => !expanded)}
-            >{holdingsExpanded ? "Hide assets" : "View assets"}</button>
+            >{holdingsExpanded ? "Hide details" : "Wallet details"}</button>
             <button className="vnDetectedAssetsRefresh" type="button" onClick={() => void refresh()} disabled={status === "loading"}>{status === "loading" ? "Scanning…" : "Refresh"}</button>
           </div>
         </div>
         <div className="vnDetectedAssetsBody" id="vn-detected-assets-body">
-          <div className="vnPortfolioTruth">
-            <div><span>Network gas</span><strong>{amount(nativeBalance, ROBINHOOD_ETH.decimals, 6)} ETH</strong><small>Kept separate from Spend Balance</small></div>
+          {holdingsExpanded ? <div className="vnWalletDetails" id="vn-wallet-details"><div className="vnPortfolioTruth">
+            <div><span>Native balance</span><strong>{amount(nativeBalance, ROBINHOOD_ETH.decimals, 6)} ETH</strong><small>Trade funding plus protected network-gas reserve</small></div>
             <div><span>Wallet discovery</span><strong>{discoveryStatus === "ready" ? "Complete" : discoveryStatus === "partial" ? "Partial" : discoveryStatus === "stale" ? "Last known" : discoveryStatus === "unavailable" ? "Delayed" : "Checking"}</strong><small>Indexer finds assets; onchain reads confirm balances</small></div>
             <div><span>Last balance check</span><strong>{observedAtMs ? new Date(observedAtMs).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }) : "—"}</strong><small>Refresh runs quietly in the background</small></div>
           </div>
@@ -257,14 +263,14 @@ export function SpendBalance({ visible = true, markets, onAssetsChange, onNative
               <button type="submit" disabled={importState === "checking" || importAddress.trim().length === 0}>{importState === "checking" ? "Checking…" : "Check balance"}</button>
             </div>
             <small id="vn-import-token-status" className={importState === "error" ? "isError" : importState === "success" ? "isSuccess" : ""} role="status">{importMessage}</small>
-          </form>
+          </form></div> : null}
           {status === "error" && assets.length === 0 ? <p className="vnDetectedAssetsEmpty">Wallet reads are temporarily unavailable. No asset was marked unavailable.</p> : null}
           {status === "ready" && assets.length === 0 && (!nativeBalance || nativeBalance === 0n) ? <p className="vnDetectedAssetsEmpty">No positive Robinhood Chain balance was found for this wallet.</p> : null}
           {(assets.length > 0 || (nativeBalance && nativeBalance > 0n)) ? <div className="vnDetectedAssetList">
             {nativeBalance && nativeBalance > 0n ? <div className="vnDetectedAsset">
               <TokenArtwork className="vnDetectedMark" symbol="ETH" imageUrl={null} />
-              <span><strong>ETH</strong><small>Ether</small></span>
-              <span><strong>{amount(nativeBalance, ROBINHOOD_ETH.decimals, 5)}</strong><small>{portfolio.nativeValueUsd === null ? "Network gas asset" : `${portfolioDollars(portfolio.nativeValueUsd)} · network gas`}</small></span>
+              <span><strong>ETH</strong><small>Ether · trade funding</small></span>
+              <span><strong>{amount(nativeBalance, ROBINHOOD_ETH.decimals, 5)}</strong><small>{portfolio.nativeValueUsd === null ? "Trade funding + network gas" : `${portfolioDollars(portfolio.nativeValueUsd)} · funding + gas`}</small></span>
             </div> : null}
             {visibleAssets.map((asset) => {
               const marketFound = marketAddresses.has(asset.address.toLowerCase());

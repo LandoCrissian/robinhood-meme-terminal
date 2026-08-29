@@ -652,11 +652,10 @@ body .rmtVnext {
 
 .vnAssetQuickLinks {
   display: grid;
-  gap: 7px;
-  padding: 9px 10px;
-  border: 1px solid rgba(130, 242, 143, .18);
-  border-radius: 14px;
-  background: linear-gradient(135deg, rgba(130, 242, 143, .055), rgba(255, 255, 255, .012));
+  gap: 8px;
+  padding: 8px 0;
+  border-block: 1px solid var(--vn-border);
+  background: transparent;
 }
 
 .vnAssetContractIdentity {
@@ -689,7 +688,8 @@ body .rmtVnext {
 }
 
 .vnCopyAddress button,
-.vnAssetQuickLinks a {
+.vnAssetQuickLinks a,
+.vnMoreLinksButton {
   display: inline-flex;
   min-height: 34px;
   align-items: center;
@@ -703,6 +703,58 @@ body .rmtVnext {
   font-weight: 780;
   text-decoration: none;
 }
+
+.rmtMetricPending {
+  display: grid;
+  min-width: 72px;
+  color: var(--vn-text-muted);
+}
+
+.rmtMetricPending small {
+  overflow: hidden;
+  font-size: 7px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vnTradeBalance {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  margin: 18px 0 2px;
+  overflow: hidden;
+  border: 1px solid var(--vn-border);
+  border-radius: 12px;
+  background: var(--vn-border);
+}
+
+.vnTradeBalance > div {
+  display: grid;
+  gap: 3px;
+  padding: 13px 14px;
+  background: rgba(9, 14, 10, .97);
+}
+
+.vnTradeBalance span { color: var(--vn-text-muted); font-size: 9px; font-weight: 760; }
+.vnTradeBalance strong { font-size: 17px; letter-spacing: -.02em; }
+.vnTradeBalance small { color: var(--vn-text-muted); font-size: 9px; }
+
+.vnWalletDetails {
+  margin-bottom: 12px;
+  padding: 12px;
+  border: 1px solid var(--vn-border);
+  border-radius: 12px;
+  background: rgba(5, 9, 6, .28);
+}
+
+.vnMoreLinksButton {
+  gap: 7px;
+  cursor: pointer;
+}
+
+.vnMoreLinksButton span { transition: transform .16s ease; }
+.vnMoreLinksButton[aria-expanded="true"] span { transform: rotate(180deg); }
 
 .vnCopyAddress button {
   flex: 0 0 auto;
@@ -736,7 +788,8 @@ body .rmtVnext {
 
 .vnAssetQuickLinks a:hover,
 .vnAssetQuickLinks a:focus-visible,
-.vnCopyAddress button:focus-visible {
+.vnCopyAddress button:focus-visible,
+.vnMoreLinksButton:focus-visible {
   border-color: var(--vn-accent);
   background: rgba(130, 242, 143, .08);
   outline: 2px solid rgba(130, 242, 143, .28);
@@ -1490,6 +1543,22 @@ body .rmtVnext {
 .vnMarketEvidenceStack {
   display: grid;
   gap: 10px;
+}
+
+.vnEvidenceUnavailable {
+  display: grid;
+  gap: 4px;
+  padding: 12px 0;
+  color: var(--vn-text-secondary);
+}
+
+.vnEvidenceUnavailable strong { color: var(--vn-text-primary); font-size: 12px; }
+.vnEvidenceUnavailable span { max-width: 58ch; font-size: 10px; line-height: 1.45; }
+
+.vnProjectLinkDisclosure {
+  display: grid;
+  gap: 7px;
+  padding-top: 2px;
 }
 
 .vnConcentrationTrack {
@@ -5780,7 +5849,7 @@ body .rmtTerminal button {
   .rmtDistributionPanel[data-presentation="mobile"] { min-height: calc(100dvh - 130px); align-content: start; }
 
   .vnAssetIdentityFacts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .vnAssetQuickLinks { gap: 5px; padding: 7px 8px; }
+  .vnAssetQuickLinks { gap: 7px; padding: 7px 0; }
   .vnAssetContractIdentity { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 7px; }
   .vnAssetContractIdentity > a { align-self: end; }
   .vnCopyAddress { flex-direction: row; }
@@ -5791,8 +5860,22 @@ body .rmtTerminal button {
     white-space: nowrap;
   }
   .vnCopyAddress button { min-width: 40px; min-height: 40px; padding-inline: 8px; }
-  .vnAssetQuickLinks a { min-height: 40px; padding-inline: 8px; }
-  .vnAssetQuickLinkRows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .vnAssetQuickLinks a,
+  .vnMoreLinksButton { min-height: 40px; padding-inline: 9px; }
+  .vnAssetQuickLinkRows { display: flex; flex-wrap: wrap; gap: 6px; }
+  .vnAssetQuickLinkRows > * { flex: 0 0 auto; }
   .vnProjectLinkGroup { padding-top: 6px; }
   .vnProjectLinkGroup summary { min-height: 40px; }
+  .rmtMobileTerminal.rmtTerminal input,
+  .rmtMobileTerminal.rmtTerminal select { font-size: 16px; }
+  .vnRouteDetails { height: auto; max-height: none; padding-right: 0; overflow: visible; overscroll-behavior: auto; scrollbar-gutter: auto; }
+  .vnRouteCard dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .vnRouteCard dl div { display: grid; align-content: start; gap: 3px; }
+  .vnRouteCard dd { text-align: left; }
+  .vnTradeBalance { grid-template-columns: 1fr; }
+  .vnDetectedAssetList { grid-template-columns: 1fr; }
+  .vnDetectedAsset { grid-template-columns: 32px minmax(0, 1fr) auto; }
+  .vnDetectedAsset > span:nth-child(3) { grid-column: 2 / -1; align-items: flex-start; text-align: left; }
+  .vnDetectedAssetOpen,
+  .vnDetectedAssetNoRoute { grid-column: 3; grid-row: 1; }
 }
