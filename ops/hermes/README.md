@@ -29,6 +29,11 @@ Current Hermes supports interactive provider selection through `hermes model`, i
 
 No provider secret belongs in this repository.
 
+The repository-local Hermes skill lives at
+`.agents/skills/rmt-control-plane/SKILL.md`. On an owner-authorized host, trust
+this exact repository checkout with `hermes skills trust <RMT_REPOSITORY_ROOT>`;
+do not install the skill from a public URL or copy it into another repository.
+
 ## One-time host setup (R2)
 
 The initial machine setup changes the development host and therefore requires owner approval.
@@ -86,6 +91,8 @@ The validator runs outside the Codex worktree and receives:
 - `RMT_LOOP_BASE_SHA`
 - `RMT_LOOP_TASK_ID`
 - `RMT_LOOP_ITERATION`
+- `RMT_LOOP_TASK_FILE` and its immutable `RMT_LOOP_TASK_HASH`
+- `RMT_LOOP_VALIDATOR_FILE` and its immutable `RMT_LOOP_VALIDATOR_HASH`
 - worktree path as its first argument
 
 It returns exit `0` only when the task's acceptance criteria pass.

@@ -33,6 +33,10 @@ The validator is invoked with environment variables:
   RMT_LOOP_BASE_SHA
   RMT_LOOP_TASK_ID
   RMT_LOOP_ITERATION
+  RMT_LOOP_TASK_FILE
+  RMT_LOOP_TASK_HASH
+  RMT_LOOP_VALIDATOR_FILE
+  RMT_LOOP_VALIDATOR_HASH
 
 and receives the worktree path as argv[1].
 EOF
@@ -76,8 +80,18 @@ stop() {
   exit 20
 }
 
-if [ -z "$repo_root" ] || [ ! -d "$repo_root/.git" ]; then
-  stop STOP_FOR_OWNER_REVIEW "RMT_REPO_ROOT is not a normal git checkout."
+if [ -z "$repo_root" ] || [ "$(git -C "$repo_root" rev-parse --is-inside-work-tree 2>/dev/null || true)" != "true" ]; then
+  stop STOP_FOR_OWNER_REVIEW "RMT_REPO_ROOT is not a Git worktree."
+fi
+if [ "$(git -C "$repo_root" rev-parse --is-bare-repository 2>/dev/null || true)" != "false" ]; then
+  stop STOP_FOR_OWNER_REVIEW "RMT_REPO_ROOT must not be a bare repository."
+fi
+git_common_dir="$(git -C "$repo_root" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+if [ -z "$git_common_dir" ] || [ ! -d "$git_common_dir" ]; then
+  stop STOP_FOR_OWNER_REVIEW "RMT_REPO_ROOT has no resolvable common Git directory."
+fi
+if ! git -C "$repo_root" remote get-url origin >/dev/null 2>&1; then
+  stop STOP_FOR_OWNER_REVIEW "RMT_REPO_ROOT has no origin remote."
 fi
 if ! [[ "$task_id" =~ ^[A-Za-z0-9._-]+$ ]]; then
   stop STOP_FOR_OWNER_REVIEW "Unsafe or missing task id."
@@ -117,6 +131,11 @@ done
 # copied into the agent worktree.
 task_file="$(cd "$(dirname "$task_file")" && pwd)/$(basename "$task_file")"
 validator="$(cd "$(dirname "$validator")" && pwd)/$(basename "$validator")"
+task_file_hash="$(git -C "$repo_root" hash-object --no-filters -- "$task_file" 2>/dev/null || true)"
+validator_hash="$(git -C "$repo_root" hash-object --no-filters -- "$validator" 2>/dev/null || true)"
+if ! [[ "$task_file_hash" =~ ^[0-9a-f]{40}$ ]] || ! [[ "$validator_hash" =~ ^[0-9a-f]{40}$ ]]; then
+  stop STOP_VALIDATOR_ERROR "Unable to establish immutable task/validator identities."
+fi
 
 mkdir -p "$worktree_root" "$run_root"
 worktree="$worktree_root/$task_id"
@@ -128,6 +147,11 @@ if [ -e "$worktree" ]; then
 fi
 if git -C "$repo_root" show-ref --verify --quiet "refs/heads/$branch"; then
   stop STOP_FOR_OWNER_REVIEW "Task branch already exists; refusing to reuse: $branch"
+fi
+if [ -e "$run_dir" ]; then
+  if [ ! -d "$run_dir" ] || [ -n "$(ls -A "$run_dir" 2>/dev/null)" ]; then
+    stop STOP_FOR_OWNER_REVIEW "Task run directory already contains evidence; refusing to reuse: $run_dir"
+  fi
 fi
 
 mkdir -p "$run_dir"
@@ -149,6 +173,40 @@ fetch_and_require_base() {
 fetch_and_require_base
 
 git -C "$repo_root" worktree add -b "$branch" "$worktree" "$base_sha" >/dev/null
+
+expected_branch="$branch"
+expected_head="$base_sha"
+initial_local_refs="$(git -C "$repo_root" for-each-ref --format='%(refname) %(objectname)' refs/heads refs/tags | sort)"
+
+require_host_inputs_unchanged() {
+  local current_task_hash current_validator_hash
+  current_task_hash="$(git -C "$repo_root" hash-object --no-filters -- "$task_file" 2>/dev/null || true)"
+  current_validator_hash="$(git -C "$repo_root" hash-object --no-filters -- "$validator" 2>/dev/null || true)"
+  if [ "$current_task_hash" != "$task_file_hash" ]; then
+    stop STOP_VALIDATOR_ERROR "Task contract changed during the run. Worktree preserved: $worktree"
+  fi
+  if [ "$current_validator_hash" != "$validator_hash" ]; then
+    stop STOP_VALIDATOR_ERROR "Host validator changed during the run. Worktree preserved: $worktree"
+  fi
+}
+
+require_git_identity() {
+  local current_branch current_head task_branch_head current_local_refs
+  current_branch="$(git -C "$worktree" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+  current_head="$(git -C "$worktree" rev-parse HEAD 2>/dev/null || true)"
+  task_branch_head="$(git -C "$repo_root" rev-parse "refs/heads/$expected_branch" 2>/dev/null || true)"
+  current_local_refs="$(git -C "$repo_root" for-each-ref --format='%(refname) %(objectname)' refs/heads refs/tags | sort)"
+
+  if [ "$current_branch" != "$expected_branch" ]; then
+    stop STOP_SCOPE_VIOLATION "Task worktree branch identity changed. Worktree preserved: $worktree"
+  fi
+  if [ "$current_head" != "$expected_head" ] || [ "$task_branch_head" != "$expected_head" ]; then
+    stop STOP_SCOPE_VIOLATION "A worker commit or task-branch ref mutation was detected. Worktree preserved: $worktree"
+  fi
+  if [ "$current_local_refs" != "$initial_local_refs" ]; then
+    stop STOP_SCOPE_VIOLATION "A local branch or tag ref changed during the run. Worktree preserved: $worktree"
+  fi
+}
 
 started_epoch="$(date +%s)"
 last_validation_log=""
@@ -257,6 +315,8 @@ for ((iteration=1; iteration<=max_iterations; iteration++)); do
   fi
 
   fetch_and_require_base
+  require_host_inputs_unchanged
+  require_git_identity
   prompt_file="$(build_prompt "$iteration")"
   codex_log="$run_dir/codex-$iteration.log"
 
@@ -269,11 +329,15 @@ for ((iteration=1; iteration<=max_iterations; iteration++)); do
   codex_status=$?
   set -e
 
+  require_host_inputs_unchanged
+  require_git_identity
   if ! scope_check; then
     stop STOP_SCOPE_VIOLATION "Codex changed a path outside the task allowlist. Worktree preserved: $worktree"
   fi
 
   fetch_and_require_base
+  require_host_inputs_unchanged
+  require_git_identity
 
   validation_log="$run_dir/validator-$iteration.log"
   printf '\nITERATION %s/%s — VALIDATE\n' "$iteration" "$max_iterations"
@@ -283,13 +347,22 @@ for ((iteration=1; iteration<=max_iterations; iteration++)); do
   RMT_LOOP_BASE_SHA="$base_sha" \
   RMT_LOOP_TASK_ID="$task_id" \
   RMT_LOOP_ITERATION="$iteration" \
+  RMT_LOOP_TASK_FILE="$task_file" \
+  RMT_LOOP_TASK_HASH="$task_file_hash" \
+  RMT_LOOP_VALIDATOR_FILE="$validator" \
+  RMT_LOOP_VALIDATOR_HASH="$validator_hash" \
     "$validator" "$worktree" > >(tee "$validation_log") 2>&1
   validator_status=$?
   set -e
 
+  require_host_inputs_unchanged
+  require_git_identity
   if ! scope_check; then
     stop STOP_SCOPE_VIOLATION "Out-of-scope changes detected after validation. Worktree preserved: $worktree"
   fi
+  fetch_and_require_base
+  require_host_inputs_unchanged
+  require_git_identity
 
   if [ "$validator_status" -eq 0 ]; then
     printf '\nREADY_FOR_OWNER_REVIEW\n'

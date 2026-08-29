@@ -4,7 +4,6 @@ description: Coordinate bounded RMT engineering tasks without autonomous release
 version: 1.0.0
 author: RMT
 license: UNLICENSED
-platforms: [linux]
 metadata:
   hermes:
     tags: [rmt, github, codex, loop, devops, worktree]

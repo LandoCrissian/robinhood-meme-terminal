@@ -1,5 +1,10 @@
 # RMT Agent Control Plane
 
+The repository-local Hermes authority skill is
+`.agents/skills/rmt-control-plane/SKILL.md`. It intentionally has no host
+platform restriction and requires only the terminal toolset. Host trust is
+explicit and repository-scoped: `hermes skills trust <RMT_REPOSITORY_ROOT>`.
+
 **Status:** EXPERIMENTAL — DEVELOPMENT OPERATIONS ONLY
 **Base authority when introduced:** `a547683513084298a519a7ceb7b7c6ab62dab2cd`
 
