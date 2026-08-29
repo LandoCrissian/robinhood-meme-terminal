@@ -891,15 +891,26 @@ function visibleAudit() {
 async function inspectAssetQuickLinks(page, label) {
   const links = page.locator(".vnAssetQuickLinks");
   await links.waitFor({ state: "visible" });
+  const disclosure = links.locator(".vnMoreLinksButton");
+  await disclosure.waitFor({ state: "visible", timeout: 5_000 });
+  if (await disclosure.getAttribute("aria-expanded") !== "false") {
+    throw new Error(`${label}: asset-link disclosure did not start collapsed`);
+  }
+  await disclosure.click();
+  if (await disclosure.getAttribute("aria-expanded") !== "true") {
+    throw new Error(`${label}: asset-link disclosure did not expose its expanded state`);
+  }
   await links.locator(".vnProjectLinkGroup").first().waitFor({ state: "visible", timeout: 5_000 });
   const audit = await links.evaluate((root) => {
     const market = new URLSearchParams(window.location.search).get("market")?.toLowerCase() ?? null;
     const anchors = [...root.querySelectorAll("a[href]")];
+    const copyControl = root.querySelector('button[aria-label^="Copy full token contract"]');
     return {
       market,
-      fullContractVisible: Boolean(market && root.textContent?.toLowerCase().includes(market)),
-      copyAvailable: Boolean(root.querySelector('button[aria-label^="Copy full token contract"]')),
-      provenance: [...root.querySelectorAll("small, .vnProjectLinkGroup > summary")]
+      fullContractAccessible: Boolean(market && copyControl?.getAttribute("aria-label")?.toLowerCase().includes(market)),
+      copyAvailable: Boolean(copyControl),
+      disclosureExpanded: root.querySelector(".vnMoreLinksButton")?.getAttribute("aria-expanded") === "true",
+      provenance: [...root.querySelectorAll(".vnProjectLinkGroup > small")]
         .map((entry) => entry.textContent?.trim())
         .filter(Boolean),
       anchors: anchors.map((anchor) => ({
@@ -910,7 +921,8 @@ async function inspectAssetQuickLinks(page, label) {
       }))
     };
   });
-  if (!audit.fullContractVisible || !audit.copyAvailable) throw new Error(`${label}: selected asset contract is not fully accessible/copyable ${JSON.stringify(audit)}`);
+  if (!audit.fullContractAccessible || !audit.copyAvailable) throw new Error(`${label}: selected asset contract is not fully accessible/copyable ${JSON.stringify(audit)}`);
+  if (!audit.disclosureExpanded) throw new Error(`${label}: asset-link disclosure did not remain expanded ${JSON.stringify(audit)}`);
   if (!audit.provenance.some((entry) => entry?.startsWith("Project links ·"))) throw new Error(`${label}: project-link provenance is missing ${JSON.stringify(audit)}`);
   if (audit.anchors.length < 3) throw new Error(`${label}: selected asset quick links are unexpectedly sparse ${JSON.stringify(audit)}`);
   for (const anchor of audit.anchors) {
