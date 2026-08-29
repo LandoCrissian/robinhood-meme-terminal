@@ -163,7 +163,7 @@ async function main() {
     fetch: async (input, init) => {
       const url = new URL(String(input));
       requested.push(url.toString());
-      assert.equal(new Headers(init?.headers).get("accept"), "application/json");
+      assert.equal(new Headers(init?.headers).get("accept"), "application/json;version=20230203");
       if (url.pathname.endsWith("/trending_pools") && url.searchParams.get("duration") === "1h") {
         return new Response("delayed", { status: 503 });
       }

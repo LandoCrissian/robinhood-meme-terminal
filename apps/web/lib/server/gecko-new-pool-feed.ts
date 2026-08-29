@@ -230,7 +230,7 @@ async function fetchGeckoPoolPage(
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
     const response = await fetcher(geckoPoolFeedUrl(feed, page), {
-      headers: { Accept: "application/json" },
+      headers: { Accept: "application/json;version=20230203" },
       next: { revalidate: 60 },
       signal: controller.signal
     });
