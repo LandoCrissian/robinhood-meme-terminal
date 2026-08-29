@@ -21,7 +21,7 @@ Hermes is the coordinator, not product authority. Never invent work, widen scope
 
 Before substantive work read, in order:
 
-1. `AGENTS.md`
+1. the repository-root agent authority instructions supplied by the host
 2. `docs/ARCHITECTURE_FREEZE.md`
 3. `docs/ACTIVE_SYSTEM_MAP.md`
 4. `docs/TERMINAL_COMPLETION_GATE.md`
