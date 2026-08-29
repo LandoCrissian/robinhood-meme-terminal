@@ -128,9 +128,21 @@ for allowed in "${allowed_paths[@]}"; do
 done
 
 # Resolve files before entering a worktree. The validator is intentionally not
-# copied into the agent worktree.
-task_file="$(cd "$(dirname "$task_file")" && pwd)/$(basename "$task_file")"
-validator="$(cd "$(dirname "$validator")" && pwd)/$(basename "$validator")"
+# copied into the agent worktree. On Git for Windows, preserve a Windows path:
+# Bash's /tmp mount can differ from the parent PowerShell host's virtualized
+# Temp location, so round-tripping an explicit C:/ path through `pwd` can point
+# at a different file inside an agent sandbox.
+normalize_host_file_path() {
+  local input="$1"
+  if command -v cygpath >/dev/null 2>&1; then
+    cygpath -am "$input"
+  else
+    printf '%s/%s\n' "$(cd "$(dirname "$input")" && pwd)" "$(basename "$input")"
+  fi
+}
+
+task_file="$(normalize_host_file_path "$task_file")"
+validator="$(normalize_host_file_path "$validator")"
 task_file_hash="$(git -C "$repo_root" hash-object --no-filters -- "$task_file" 2>/dev/null || true)"
 validator_hash="$(git -C "$repo_root" hash-object --no-filters -- "$validator" 2>/dev/null || true)"
 if ! [[ "$task_file_hash" =~ ^[0-9a-f]{40}$ ]] || ! [[ "$validator_hash" =~ ^[0-9a-f]{40}$ ]]; then

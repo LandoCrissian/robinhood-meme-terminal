@@ -100,10 +100,17 @@ run_case() {
   local worktrees="$case_root/worktrees"
   local runs="$case_root/runs"
   local output="$case_root/output.log"
+  local task_arg validator_arg
   mkdir -p "$case_root"
   printf 'Create the allowed smoke fixture only.\n' > "$task_file"
   cp "$validator_template" "$validator"
   chmod +x "$validator"
+  task_arg="$task_file"
+  validator_arg="$validator"
+  if command -v cygpath >/dev/null 2>&1; then
+    task_arg="$(cygpath -am "$task_file")"
+    validator_arg="$(cygpath -am "$validator")"
+  fi
 
   set +e
   RMT_REPO_ROOT="$repo" \
@@ -119,8 +126,8 @@ run_case() {
       --task-id "$task_id" \
       --base-ref main \
       --base-sha "$base_sha" \
-      --task-file "$task_file" \
-      --validator "$validator" \
+      --task-file "$task_arg" \
+      --validator "$validator_arg" \
       --allow ops/hermes/canary/ \
       --max-iterations 1 \
       --max-minutes 5 > "$output" 2>&1
