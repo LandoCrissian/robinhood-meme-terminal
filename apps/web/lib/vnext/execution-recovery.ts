@@ -138,7 +138,9 @@ export type VNextWalletRequestState =
   | "USER_REJECTED"
   | "EXPIRED_UNSUBMITTED"
   | "UNRESOLVED"
-  | "HASH_RECEIVED";
+  | "HASH_RECEIVED"
+  | "RECEIPT_CONFIRMED"
+  | "RECEIPT_REVERTED";
 
 export type VNextWalletRequestRecord = {
   schemaVersion: typeof SCHEMA_VERSION;
@@ -416,10 +418,14 @@ export function normalizeVNextExecutionJournal(value: unknown, nowMs = Date.now(
 
 const WALLET_REQUEST_STATES = new Set<VNextWalletRequestState>([
   "PREPARED", "PROMPT_REQUESTED", "PROVIDER_PENDING", "USER_REJECTED",
-  "EXPIRED_UNSUBMITTED", "UNRESOLVED", "HASH_RECEIVED"
+  "EXPIRED_UNSUBMITTED", "UNRESOLVED", "HASH_RECEIVED",
+  "RECEIPT_CONFIRMED", "RECEIPT_REVERTED"
 ]);
 const BLOCKING_WALLET_REQUEST_STATES = new Set<VNextWalletRequestState>([
   "PROMPT_REQUESTED", "PROVIDER_PENDING", "UNRESOLVED", "HASH_RECEIVED"
+]);
+const HASHED_WALLET_REQUEST_STATES = new Set<VNextWalletRequestState>([
+  "HASH_RECEIVED", "RECEIPT_CONFIRMED", "RECEIPT_REVERTED"
 ]);
 
 function normalizeWalletRequest(value: unknown): VNextWalletRequestRecord | null {
@@ -502,8 +508,8 @@ function normalizeWalletRequest(value: unknown): VNextWalletRequestRecord | null
     || (candidate.provider === "uniswap-v4" && candidate.planKind === "swap" && v4DirectSettlement === undefined)
     || !candidate.state || !WALLET_REQUEST_STATES.has(candidate.state)
     || (candidate.txHash !== undefined && !isHash(candidate.txHash))
-    || (candidate.state === "HASH_RECEIVED" && !candidate.txHash)
-    || (candidate.state !== "HASH_RECEIVED" && candidate.txHash !== undefined)
+    || (HASHED_WALLET_REQUEST_STATES.has(candidate.state) && !candidate.txHash)
+    || (!HASHED_WALLET_REQUEST_STATES.has(candidate.state) && candidate.txHash !== undefined)
   ) return null;
   return {
     schemaVersion: SCHEMA_VERSION,
@@ -700,7 +706,9 @@ export function transitionVNextWalletRequest(
     USER_REJECTED: [],
     EXPIRED_UNSUBMITTED: [],
     UNRESOLVED: ["USER_REJECTED", "HASH_RECEIVED", "EXPIRED_UNSUBMITTED"],
-    HASH_RECEIVED: []
+    HASH_RECEIVED: [],
+    RECEIPT_CONFIRMED: [],
+    RECEIPT_REVERTED: []
   };
   if (!allowed[existing.state].includes(state)) return null;
   const updated = { ...existing, state, txHash: undefined, updatedAtMs: nowMs } as VNextWalletRequestRecord;
@@ -1148,8 +1156,8 @@ export function resolveVNextExecution(
 ) {
   if (!isHash(txHash)) return null;
   const normalizedHash = txHash.toLowerCase();
-  const current = readVNextExecutionJournal(storage, nowMs);
-  const existing = current.find((record) => record.txHash === normalizedHash);
+  const current = readStoredEnvelope(storage, nowMs);
+  const existing = current.executions.find((record) => record.txHash === normalizedHash);
   if (!existing) return null;
   const outputAmountAtomic = settlement?.outputAmountAtomic;
   if (outputAmountAtomic !== undefined && (
@@ -1188,5 +1196,21 @@ export function resolveVNextExecution(
     ...(state === "reverted" && failure?.networkGasSpentWei ? { networkGasSpentWei: failure.networkGasSpentWei } : { networkGasSpentWei: undefined }),
     updatedAtMs: nowMs
   };
-  return writeJournal([resolved, ...current.filter((record) => record.txHash !== normalizedHash)], storage, nowMs) ? resolved : null;
+  const matchingRequest = current.walletRequests.find((request) =>
+    request.state === "HASH_RECEIVED"
+    && request.txHash === normalizedHash
+    && request.wallet === existing.wallet
+    && request.planId === existing.planId
+    && request.payloadHash === existing.payloadHash
+  );
+  const terminalRequest = matchingRequest ? {
+    ...matchingRequest,
+    state: state === "confirmed" ? "RECEIPT_CONFIRMED" as const : "RECEIPT_REVERTED" as const,
+    updatedAtMs: nowMs
+  } : null;
+  const executions = [resolved, ...current.executions.filter((record) => record.txHash !== normalizedHash)];
+  const walletRequests = terminalRequest
+    ? [terminalRequest, ...current.walletRequests.filter((request) => request.requestId !== terminalRequest.requestId)]
+    : current.walletRequests;
+  return writeCombinedJournal(executions, walletRequests, storage, nowMs) ? resolved : null;
 }

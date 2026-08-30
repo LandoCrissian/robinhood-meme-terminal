@@ -28,11 +28,12 @@ import { assessVNextWalletGasReadiness } from "./wallet-submission";
 
 function memoryStorage() {
   const values = new Map<string, string>();
+  let writes = 0;
   const storage: VNextExecutionStorage = {
     getItem: (key) => values.get(key) ?? null,
-    setItem: (key, value) => { values.set(key, value); }
+    setItem: (key, value) => { writes += 1; values.set(key, value); }
   };
-  return { values, storage };
+  return { values, storage, get writes() { return writes; } };
 }
 
 async function main() {
@@ -246,12 +247,32 @@ assert.equal(promoteVNextWalletRequestToSubmitted({ requestId, wallet: DIRECT_SM
 assert.equal(readVNextExecutionJournal(lateHash.storage, now + 4)[0]?.state, "submitted");
 assert.equal(readVNextWalletRequestJournal(lateHash.storage, now + 4)[0]?.state, "HASH_RECEIVED");
 assert.equal(findBlockingVNextWalletRequest(DIRECT_SMOKE_RECIPIENT, lateHash.storage, now + 4)?.state, "HASH_RECEIVED");
+const writesBeforeConfirmedReceipt = lateHash.writes;
 assert.equal(resolveVNextExecution(txHash, "confirmed", lateHash.storage, now + 5, { outputAmountAtomic: "1" })?.state, "confirmed");
+assert.equal(lateHash.writes, writesBeforeConfirmedReceipt + 1,
+  "terminal execution and matching wallet request resolve through one combined journal write");
+const confirmedRequest = readVNextWalletRequestJournal(lateHash.storage, now + 6)[0]!;
+assert.equal(confirmedRequest.state, "RECEIPT_CONFIRMED");
+assert.equal(confirmedRequest.requestId, requestId);
+assert.equal(confirmedRequest.planId, DIRECT_SMOKE_SWAP_PLAN.planId);
+assert.equal(confirmedRequest.payloadHash, DIRECT_SMOKE_SWAP_PLAN.payloadHash);
+assert.equal(confirmedRequest.txHash, txHash);
+assert.equal(transitionVNextWalletRequest(requestId, "PROMPT_REQUESTED", lateHash.storage, now + 7), null,
+  "a terminal receipt request cannot return to a blocking state");
 assert.equal(findBlockingVNextWalletRequest(DIRECT_SMOKE_RECIPIENT, lateHash.storage, now + 6), null,
   "a hash blocks while submitted but not after the exact receipt resolves");
 const storedEnvelope = JSON.parse(lateHash.values.get(VNEXT_EXECUTION_STORAGE_KEY) ?? "null") as { executions?: unknown[]; walletRequests?: unknown[] };
 assert.equal(storedEnvelope.executions?.length, 1, "hash promotion writes the submitted execution in the same journal replacement");
 assert.equal(storedEnvelope.walletRequests?.length, 1);
+const sevenDaysMs = 7 * 24 * 60 * 60 * 1_000;
+const eightDaysMs = 8 * 24 * 60 * 60 * 1_000;
+assert.equal(readVNextWalletRequestJournal(lateHash.storage, now + 5 + sevenDaysMs)[0]?.state, "RECEIPT_CONFIRMED",
+  "confirmed request audit history remains bounded through seven days");
+assert.equal(findBlockingVNextWalletRequest(DIRECT_SMOKE_RECIPIENT, lateHash.storage, now + 5 + sevenDaysMs), null);
+assert.equal(readVNextExecutionJournal(lateHash.storage, now + 5 + eightDaysMs).length, 0);
+assert.equal(readVNextWalletRequestJournal(lateHash.storage, now + 5 + eightDaysMs).length, 0);
+assert.equal(findBlockingVNextWalletRequest(DIRECT_SMOKE_RECIPIENT, lateHash.storage, now + 5 + eightDaysMs), null,
+  "expired terminal execution history cannot resurrect a confirmed wallet-request block");
 
 const exactDiscoveryRequest = readVNextWalletRequestJournal(lateHash.storage, now + 4)[0]!;
 const exactDiscoveryAuthority = vNextWalletRequestDiscoverySchema.parse({
@@ -312,7 +333,12 @@ assert.equal(findBlockingVNextWalletRequest(DIRECT_SMOKE_RECIPIENT, hashFailClos
 hashFailClosed.values.set(VNEXT_EXECUTION_STORAGE_KEY, JSON.stringify(hashEnvelope));
 assert.equal(findBlockingVNextWalletRequest(DIRECT_SMOKE_RECIPIENT, hashFailClosed.storage, now + 6)?.state, "HASH_RECEIVED", "a known hash blocks while submitted");
 resolveVNextExecution(txHash, "reverted", hashFailClosed.storage, now + 7);
+assert.equal(readVNextWalletRequestJournal(hashFailClosed.storage, now + 8)[0]?.state, "RECEIPT_REVERTED");
 assert.equal(findBlockingVNextWalletRequest(DIRECT_SMOKE_RECIPIENT, hashFailClosed.storage, now + 8), null, "a matching terminal reverted execution clears the known-hash block");
+assert.equal(readVNextExecutionJournal(hashFailClosed.storage, now + 7 + eightDaysMs).length, 0);
+assert.equal(readVNextWalletRequestJournal(hashFailClosed.storage, now + 7 + eightDaysMs).length, 0);
+assert.equal(findBlockingVNextWalletRequest(DIRECT_SMOKE_RECIPIENT, hashFailClosed.storage, now + 7 + eightDaysMs), null,
+  "expired terminal execution history cannot resurrect a reverted wallet-request block");
 
 const knownFailure = {
   transactionHash: "0x3bc8e1b1b6c725a288b9a95a9bb1aa1d77dd55c12ed81e34085766dfec9f299d",
