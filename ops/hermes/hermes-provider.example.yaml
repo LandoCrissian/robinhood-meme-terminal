@@ -1,0 +1,15 @@
+# Example only. Do not store credentials here.
+# This example is a separate local-only profile. Do not clone credentials from
+# a default profile or add a cloud fallback.
+
+model:
+  provider: custom
+  base_url: http://127.0.0.1:18080/v1
+  default: qwen3-4b-q4-k-m
+
+fallback_providers: []
+
+cron:
+  # Scheduled RMT jobs should be pinned explicitly on the host rather than
+  # silently following future chat-model changes.
+  allow_agent_scheduling: false
