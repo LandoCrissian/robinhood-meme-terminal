@@ -1844,7 +1844,7 @@ async function installV2WalletAcceptanceRoutes(page, fixture, state) {
   };
   const freshPlan = (plan) => {
     const now = Date.now();
-    return { ...plan, preparedAtMs: now, expiresAtMs: Math.min(now + 60_000, Number(BigInt(plan.deadline) * 1_000n)) };
+    return { ...plan, preparedAtMs: now, expiresAtMs: Math.min(now + 60_000, Number(BigInt(plan.deadline) * 1_000n) - 180_000) };
   };
   await page.route("https://browser-acceptance.invalid/**", async (route) => {
     const requests = route.request().postDataJSON();
@@ -2367,7 +2367,7 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
   };
   const freshPlan = () => {
     const nowMs = Date.now();
-    return { ...fixture.v4.plan, preparedAtMs: nowMs, expiresAtMs: Math.min(nowMs + 60_000, Number(BigInt(fixture.v4.plan.deadline) * 1_000n)) };
+    return { ...fixture.v4.plan, preparedAtMs: nowMs, expiresAtMs: Math.min(nowMs + 60_000, Number(BigInt(fixture.v4.plan.deadline) * 1_000n) - 180_000) };
   };
   await page.route(/\/api\/vnext\/quotes$/, async (route) => {
     const request = route.request().postDataJSON();
@@ -2671,7 +2671,7 @@ async function inspectV4FreshWalletSellJourney(browser, fixture) {
     return {
       ...scenario.plan,
       preparedAtMs: nowMs,
-      expiresAtMs: Math.min(nowMs + 60_000, Number(BigInt(scenario.plan.deadline) * 1_000n))
+      expiresAtMs: Math.min(nowMs + 60_000, Number(BigInt(scenario.plan.deadline) * 1_000n) - 180_000)
     };
   };
   await page.route(/\/api\/vnext\/quotes$/, async (route) => {
@@ -3294,6 +3294,12 @@ try {
     await writeFile(`${output}/report.json`, JSON.stringify({ previewEvidence, v4PreviewEvidence }, null, 2));
     console.log(`Terminal Preview-mode acceptance passed: ${JSON.stringify({ previewEvidence, v4PreviewEvidence })}`);
   } else {
+  const v4WalletReviewEvidence = browserAcceptanceFixture && !mobileOnly
+    ? await inspectV4WalletReviewJourney(browser, browserAcceptanceFixture)
+    : null;
+  const v4FreshWalletSellEvidence = browserAcceptanceFixture && !mobileOnly
+    ? await inspectV4FreshWalletSellJourney(browser, browserAcceptanceFixture)
+    : null;
   const marketLoadPerformance = await inspectMarketLoadPerformanceMatrix(browser);
   const v2BrowserEvidence = browserAcceptanceFixture
     ? await (async () => {
@@ -3306,12 +3312,6 @@ try {
           mobileFailure: await inspectV2WalletBrowserJourney(browser, browserAcceptanceFixture, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, "mobile-390x844", "missing-event")
         };
       })()
-    : null;
-  const v4WalletReviewEvidence = browserAcceptanceFixture && !mobileOnly
-    ? await inspectV4WalletReviewJourney(browser, browserAcceptanceFixture)
-    : null;
-  const v4FreshWalletSellEvidence = browserAcceptanceFixture && !mobileOnly
-    ? await inspectV4FreshWalletSellJourney(browser, browserAcceptanceFixture)
     : null;
   const workspaceEvidence = mobileOnly ? null : {
     v4: await inspectV4PoolIdWorkspace(browser),
