@@ -554,12 +554,15 @@ export function recordPreparedVNextWalletRequest(input: {
   walletNonceBeforeRequest: bigint;
 }, storage?: VNextExecutionStorage, nowMs = Date.now()) {
   const boundCalldataHash = input.plan.directAuthorization?.calldataHash ?? input.plan.feeV2Authorization?.calldataHash;
+  const calldataHash = keccak256(input.plan.data);
   if (
     !/^[0-9a-f-]{36}$/i.test(input.requestId)
     || !isAddress(input.wallet, { strict: false })
     || input.walletNonceBeforeRequest < 0n
     || authorizationPayloadHash(input.plan).toLowerCase() !== input.plan.payloadHash.toLowerCase()
-    || !boundCalldataHash || keccak256(input.plan.data).toLowerCase() !== boundCalldataHash.toLowerCase()
+    || (input.plan.kind === "swap" && (
+      !boundCalldataHash || calldataHash.toLowerCase() !== boundCalldataHash.toLowerCase()
+    ))
   ) return null;
   const wallet = getAddress(input.wallet);
   if (wallet !== getAddress(input.plan.recipient) || findBlockingVNextWalletRequest(wallet, storage, nowMs)) return null;
@@ -575,7 +578,7 @@ export function recordPreparedVNextWalletRequest(input: {
     planKind: input.plan.kind,
     target: getAddress(input.plan.target),
     value: input.plan.value,
-    calldataHash: keccak256(input.plan.data),
+    calldataHash,
     inputAsset: getAddress(input.plan.inputAsset),
     outputAsset: getAddress(input.plan.outputAsset),
     inputAmountAtomic: input.plan.inputAmountAtomic,

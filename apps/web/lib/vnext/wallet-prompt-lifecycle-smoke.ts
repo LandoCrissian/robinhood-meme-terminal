@@ -13,6 +13,7 @@ import {
   VNEXT_EXECUTION_STORAGE_KEY,
   type VNextExecutionStorage
 } from "./execution-recovery";
+import { authorizationPayloadHash, type VNextAuthorizationPlan } from "./authorization-plan";
 import { DIRECT_SMOKE_RECIPIENT, DIRECT_SMOKE_SWAP_PLAN } from "./direct-no-rmt-fee-smoke-fixture";
 import { assessVNextWalletGasReadiness } from "./wallet-submission";
 
@@ -94,12 +95,21 @@ assert.equal(reconcileExpiredVNextWalletRequest({
 }, unavailable.storage).state, "UNRESOLVED", "unavailable nonce evidence fails closed");
 
 const approval = memoryStorage();
-recordPreparedVNextWalletRequest({
+const approvalPlan: VNextAuthorizationPlan = {
+  ...DIRECT_SMOKE_SWAP_PLAN,
+  kind: "erc20_approval",
+  data: "0x095ea7b3",
+  payloadHash: DIRECT_SMOKE_SWAP_PLAN.payloadHash
+};
+approvalPlan.payloadHash = authorizationPayloadHash(approvalPlan);
+assert.notEqual(approvalPlan.payloadHash, DIRECT_SMOKE_SWAP_PLAN.payloadHash,
+  "the exact approval payload must be independently journaled rather than compared with later swap calldata");
+assert.ok(recordPreparedVNextWalletRequest({
   requestId,
   wallet: DIRECT_SMOKE_RECIPIENT,
-  plan: { ...DIRECT_SMOKE_SWAP_PLAN, kind: "erc20_approval" },
+  plan: approvalPlan,
   walletNonceBeforeRequest: 7n
-}, approval.storage, now);
+}, approval.storage, now));
 transitionVNextWalletRequest(requestId, "PROMPT_REQUESTED", approval.storage, now + 1);
 transitionVNextWalletRequest(requestId, "PROVIDER_PENDING", approval.storage, now + 2);
 const approvalRequest = readVNextWalletRequestJournal(approval.storage, now + 3)[0];
