@@ -23,6 +23,7 @@ const JOURNAL_ENVELOPE_VERSION = 2 as const;
 const MAX_RECORDS = 20;
 const RECOVERABLE_AGE_MS = 24 * 60 * 60 * 1_000;
 const HISTORY_AGE_MS = 7 * 24 * 60 * 60 * 1_000;
+const ACTIVE_PROVIDER_REQUESTS = new Set<string>();
 const NATIVE_OUTPUT_ROUTERS = new Set([
   getAddress(ROBINHOOD_SWAP_ROUTER_02),
   getAddress(UP_V2_EXECUTION_ROUTER),
@@ -159,12 +160,28 @@ export type VNextWalletRequestRecord = {
   planExpiresAtMs: number;
   requestedAtMs: number;
   walletNonceBeforeRequest: string;
+  requestBlockNumber?: string;
+  requestBlockHash?: Hash;
+  recoveryPlan?: VNextAuthorizationPlan;
+  v4DirectSettlement?: VNextExecutionRecord["v4DirectSettlement"];
   state: VNextWalletRequestState;
   txHash?: Hash;
   updatedAtMs: number;
 };
 
 export type VNextExecutionStorage = Pick<Storage, "getItem" | "setItem">;
+
+export function markVNextWalletProviderRequestActive(requestId: string) {
+  if (/^[0-9a-f-]{36}$/i.test(requestId)) ACTIVE_PROVIDER_REQUESTS.add(requestId);
+}
+
+export function clearVNextWalletProviderRequestActive(requestId: string) {
+  ACTIVE_PROVIDER_REQUESTS.delete(requestId);
+}
+
+export function isVNextWalletProviderRequestActive(requestId: string) {
+  return ACTIVE_PROVIDER_REQUESTS.has(requestId);
+}
 
 function targetStorage(storage?: VNextExecutionStorage) {
   if (storage) return storage;
@@ -411,6 +428,56 @@ function normalizeWalletRequest(value: unknown): VNextWalletRequestRecord | null
   const requestedAtMs = normalizeTimestamp(candidate.requestedAtMs);
   const updatedAtMs = normalizeTimestamp(candidate.updatedAtMs);
   const planExpiresAtMs = normalizeTimestamp(candidate.planExpiresAtMs);
+  const requestBlockNumber = candidate.requestBlockNumber === undefined
+    ? undefined
+    : /^(0|[1-9][0-9]*)$/.test(candidate.requestBlockNumber) ? candidate.requestBlockNumber : null;
+  const requestBlockHash = candidate.requestBlockHash === undefined
+    ? undefined
+    : isHash(candidate.requestBlockHash) ? candidate.requestBlockHash.toLowerCase() as Hash : null;
+  const v4Candidate = candidate.planKind === "swap" ? candidate.v4DirectSettlement : undefined;
+  const v4DirectSettlement = v4Candidate === undefined ? undefined : (
+    candidate.provider === "uniswap-v4"
+    && isHash(v4Candidate.poolId)
+    && isAddress(v4Candidate.poolManager, { strict: false })
+    && getAddress(v4Candidate.poolManager) === getAddress(ROBINHOOD_V4_POOL_MANAGER)
+    && (v4Candidate.outputCurrencyIndex === 0 || v4Candidate.outputCurrencyIndex === 1)
+    && /^[1-9][0-9]*$/.test(v4Candidate.protectedOutputAtomic)
+    && v4Candidate.rmtFeeAtomic === "0"
+    && v4Candidate.treasuryTransferAtomic === "0"
+      ? {
+          poolId: v4Candidate.poolId.toLowerCase() as Hex,
+          poolManager: ROBINHOOD_V4_POOL_MANAGER,
+          outputCurrencyIndex: v4Candidate.outputCurrencyIndex,
+          protectedOutputAtomic: v4Candidate.protectedOutputAtomic,
+          rmtFeeAtomic: "0" as const,
+          treasuryTransferAtomic: "0" as const
+        }
+      : null
+  );
+  const recoveryPlan = (() => {
+    if (candidate.recoveryPlan === undefined) return undefined;
+    try {
+      const plan = candidate.recoveryPlan as VNextAuthorizationPlan;
+      if (
+        !plan || typeof plan !== "object"
+        || !isHash(plan.payloadHash) || authorizationPayloadHash(plan).toLowerCase() !== plan.payloadHash.toLowerCase()
+        || plan.planId !== candidate.planId || plan.payloadHash.toLowerCase() !== candidate.payloadHash?.toLowerCase()
+        || plan.chainId !== 4_663 || plan.provider !== candidate.provider || plan.kind !== candidate.planKind
+        || getAddress(plan.recipient) !== getAddress(candidate.wallet ?? "")
+        || getAddress(plan.target) !== getAddress(candidate.target ?? "")
+        || plan.value !== candidate.value || keccak256(plan.data).toLowerCase() !== candidate.calldataHash?.toLowerCase()
+        || getAddress(plan.inputAsset) !== getAddress(candidate.inputAsset ?? "")
+        || getAddress(plan.outputAsset) !== getAddress(candidate.outputAsset ?? "")
+        || plan.inputAmountAtomic !== candidate.inputAmountAtomic
+        || plan.protectedOutputAtomic !== candidate.protectedOutputAtomic
+        || plan.deadline !== candidate.finalOnchainDeadline
+        || plan.expiresAtMs !== candidate.planExpiresAtMs
+      ) return null;
+      return plan;
+    } catch {
+      return null;
+    }
+  })();
   if (
     candidate.schemaVersion !== SCHEMA_VERSION
     || typeof candidate.requestId !== "string" || !/^[0-9a-f-]{36}$/i.test(candidate.requestId)
@@ -430,6 +497,9 @@ function normalizeWalletRequest(value: unknown): VNextWalletRequestRecord | null
     || !/^[1-9][0-9]*$/.test(candidate.finalOnchainDeadline ?? "")
     || !planExpiresAtMs || !requestedAtMs || !updatedAtMs || updatedAtMs < requestedAtMs
     || !/^(0|[1-9][0-9]*)$/.test(candidate.walletNonceBeforeRequest ?? "")
+    || requestBlockNumber === null || requestBlockHash === null || v4DirectSettlement === null || recoveryPlan === null
+    || (requestBlockHash !== undefined && requestBlockNumber === undefined)
+    || (candidate.provider === "uniswap-v4" && candidate.planKind === "swap" && v4DirectSettlement === undefined)
     || !candidate.state || !WALLET_REQUEST_STATES.has(candidate.state)
     || (candidate.txHash !== undefined && !isHash(candidate.txHash))
     || (candidate.state === "HASH_RECEIVED" && !candidate.txHash)
@@ -455,6 +525,10 @@ function normalizeWalletRequest(value: unknown): VNextWalletRequestRecord | null
     planExpiresAtMs,
     requestedAtMs,
     walletNonceBeforeRequest: candidate.walletNonceBeforeRequest!,
+    ...(requestBlockNumber !== undefined ? { requestBlockNumber } : {}),
+    ...(requestBlockHash !== undefined ? { requestBlockHash } : {}),
+    ...(recoveryPlan ? { recoveryPlan } : {}),
+    ...(v4DirectSettlement ? { v4DirectSettlement } : {}),
     state: candidate.state,
     ...(candidate.txHash ? { txHash: candidate.txHash.toLowerCase() as Hash } : {}),
     updatedAtMs
@@ -538,13 +612,12 @@ export function findBlockingVNextWalletRequest(wallet: string, storage?: VNextEx
   if (!isAddress(wallet, { strict: false })) return null;
   const normalizedWallet = getAddress(wallet);
   const journal = readStoredEnvelope(storage, nowMs);
-  return journal.walletRequests.find((record) =>
-    record.wallet === normalizedWallet
-    && BLOCKING_WALLET_REQUEST_STATES.has(record.state)
-    && (record.state !== "HASH_RECEIVED" || journal.executions.some((execution) =>
-      execution.txHash === record.txHash && execution.state === "submitted"
-    ))
-  ) ?? null;
+  return journal.walletRequests.find((record) => {
+    if (record.wallet !== normalizedWallet || !BLOCKING_WALLET_REQUEST_STATES.has(record.state)) return false;
+    if (record.state !== "HASH_RECEIVED") return true;
+    const execution = journal.executions.find((candidate) => candidate.txHash === record.txHash);
+    return !execution || execution.state === "submitted";
+  }) ?? null;
 }
 
 export function recordPreparedVNextWalletRequest(input: {
@@ -552,6 +625,8 @@ export function recordPreparedVNextWalletRequest(input: {
   wallet: string;
   plan: VNextAuthorizationPlan;
   walletNonceBeforeRequest: bigint;
+  requestBlockNumber: bigint;
+  requestBlockHash?: string;
 }, storage?: VNextExecutionStorage, nowMs = Date.now()) {
   const boundCalldataHash = input.plan.directAuthorization?.calldataHash ?? input.plan.feeV2Authorization?.calldataHash;
   const calldataHash = keccak256(input.plan.data);
@@ -559,6 +634,8 @@ export function recordPreparedVNextWalletRequest(input: {
     !/^[0-9a-f-]{36}$/i.test(input.requestId)
     || !isAddress(input.wallet, { strict: false })
     || input.walletNonceBeforeRequest < 0n
+    || input.requestBlockNumber < 0n
+    || (input.requestBlockHash !== undefined && !isHash(input.requestBlockHash))
     || authorizationPayloadHash(input.plan).toLowerCase() !== input.plan.payloadHash.toLowerCase()
     || (input.plan.kind === "swap" && (
       !boundCalldataHash || calldataHash.toLowerCase() !== boundCalldataHash.toLowerCase()
@@ -567,6 +644,16 @@ export function recordPreparedVNextWalletRequest(input: {
   const wallet = getAddress(input.wallet);
   if (wallet !== getAddress(input.plan.recipient) || findBlockingVNextWalletRequest(wallet, storage, nowMs)) return null;
   const current = readStoredEnvelope(storage, nowMs);
+  const v4DirectSettlement = input.plan.kind === "swap" && input.plan.provider === "uniswap-v4" && input.plan.v4Execution
+    ? {
+        poolId: input.plan.v4Execution.poolId,
+        poolManager: getAddress(input.plan.v4Execution.poolManager),
+        outputCurrencyIndex: getAddress(input.plan.outputAsset) === getAddress(input.plan.v4Execution.poolKey.currency0) ? 0 as const : 1 as const,
+        protectedOutputAtomic: input.plan.protectedOutputAtomic,
+        rmtFeeAtomic: "0" as const,
+        treasuryTransferAtomic: "0" as const
+      }
+    : undefined;
   const record: VNextWalletRequestRecord = {
     schemaVersion: SCHEMA_VERSION,
     requestId: input.requestId,
@@ -587,6 +674,10 @@ export function recordPreparedVNextWalletRequest(input: {
     planExpiresAtMs: input.plan.expiresAtMs,
     requestedAtMs: nowMs,
     walletNonceBeforeRequest: input.walletNonceBeforeRequest.toString(),
+    requestBlockNumber: input.requestBlockNumber.toString(),
+    ...(input.requestBlockHash ? { requestBlockHash: input.requestBlockHash.toLowerCase() as Hash } : {}),
+    recoveryPlan: input.plan,
+    ...(v4DirectSettlement ? { v4DirectSettlement } : {}),
     state: "PREPARED",
     updatedAtMs: nowMs
   };
@@ -608,7 +699,7 @@ export function transitionVNextWalletRequest(
     PROVIDER_PENDING: ["USER_REJECTED", "UNRESOLVED", "HASH_RECEIVED", "EXPIRED_UNSUBMITTED"],
     USER_REJECTED: [],
     EXPIRED_UNSUBMITTED: [],
-    UNRESOLVED: ["HASH_RECEIVED", "EXPIRED_UNSUBMITTED"],
+    UNRESOLVED: ["USER_REJECTED", "HASH_RECEIVED", "EXPIRED_UNSUBMITTED"],
     HASH_RECEIVED: []
   };
   if (!allowed[existing.state].includes(state)) return null;
@@ -827,6 +918,27 @@ export function promoteVNextWalletRequestToSubmitted(input: {
     || request.payloadHash.toLowerCase() !== record.payloadHash.toLowerCase()
     || !["PROMPT_REQUESTED", "PROVIDER_PENDING", "UNRESOLVED"].includes(request.state)
   ) return null;
+  const hashReceived: VNextWalletRequestRecord = {
+    ...request,
+    state: "HASH_RECEIVED",
+    txHash: record.txHash,
+    updatedAtMs: nowMs
+  };
+  const executions = [record, ...current.executions.filter((candidate) => candidate.txHash !== record.txHash)];
+  const requests = [hashReceived, ...current.walletRequests.filter((candidate) => candidate.requestId !== request.requestId)];
+  return writeCombinedJournal(executions, requests, storage, nowMs) ? record : null;
+}
+
+export function promoteDiscoveredVNextWalletRequestToSubmitted(input: {
+  requestId: string;
+  txHash: string;
+}, storage?: VNextExecutionStorage, nowMs = Date.now()) {
+  if (!isHash(input.txHash)) return null;
+  const current = readStoredEnvelope(storage, nowMs);
+  const request = current.walletRequests.find((candidate) => candidate.requestId === input.requestId);
+  if (!request || !request.recoveryPlan || !["PROMPT_REQUESTED", "PROVIDER_PENDING", "UNRESOLVED"].includes(request.state)) return null;
+  const record = buildSubmittedVNextExecutionRecord({ wallet: request.wallet, plan: request.recoveryPlan, txHash: input.txHash }, nowMs);
+  if (!record) return null;
   const hashReceived: VNextWalletRequestRecord = {
     ...request,
     state: "HASH_RECEIVED",

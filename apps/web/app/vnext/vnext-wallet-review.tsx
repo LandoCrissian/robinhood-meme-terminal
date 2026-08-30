@@ -6,8 +6,10 @@ import { useAccount, usePublicClient, useSendTransaction } from "wagmi";
 import { FundWalletButton } from "../fund-wallet-button";
 import type { VNextAuthorizationPlan } from "../../lib/vnext/authorization-plan";
 import {
+  clearVNextWalletProviderRequestActive,
   findBlockingVNextWalletRequest,
   findUnresolvedVNextExecution,
+  markVNextWalletProviderRequestActive,
   promoteVNextWalletRequestToSubmitted,
   recordPreparedVNextWalletRequest,
   transitionVNextWalletRequest
@@ -15,6 +17,8 @@ import {
 import type { VNextPreSignEvidence } from "../../lib/vnext/pre-sign-evidence";
 import { ROBINHOOD_MAINNET_CHAIN_ID } from "../../lib/vnext/robinhood-assets";
 import { assessVNextWalletGasReadiness, prepareVNextWalletTransaction } from "../../lib/vnext/wallet-submission";
+import { isVNextUserRejectedRequest } from "../../lib/vnext/wallet-request-error";
+import { withVNextWalletRequestLock } from "../../lib/vnext/wallet-request-lock";
 import { ExplorerLink } from "./terminal-links";
 
 export function VNextWalletFeeDisclosure({
@@ -124,69 +128,74 @@ export function VNextWalletReview({
       setLocalError("Live Robinhood gas readiness is unavailable. RMT did not open the wallet.");
       return;
     }
-    const unresolved = findUnresolvedVNextExecution(address);
-    if (unresolved) {
-      setLocalError(`An RMT transaction is still unresolved (${unresolved.txHash.slice(0, 10)}…). Do not resubmit.`);
-      return;
-    }
-    const unresolvedRequest = findBlockingVNextWalletRequest(address);
-    if (unresolvedRequest) {
-      setLocalError("A wallet request is still unresolved. Check the wallet and do not retry.");
-      return;
-    }
     setPreflightPending(true);
     let requestId: string | null = null;
     try {
-      const [nativeBalanceWei, currentGasPriceWei, walletNonceBeforeRequest] = await Promise.all([
-        publicClient.getBalance({ address }),
-        publicClient.getGasPrice(),
-        publicClient.getTransactionCount({ address, blockTag: "pending" })
-      ]);
-      const gasReadiness = assessVNextWalletGasReadiness({
-        nativeBalanceWei,
-        currentGasPriceWei,
-        evidenceFeeCeilingWei: evidence.feeCeilingWei,
-        gasLimitUnits: plan.gasLimit,
-        transactionValueAtomic: plan.value
+      const locked = await withVNextWalletRequestLock(address, async () => {
+        const unresolved = findUnresolvedVNextExecution(address);
+        if (unresolved) throw new Error(`An RMT transaction is still unresolved (${unresolved.txHash.slice(0, 10)}…). Do not resubmit.`);
+        if (findBlockingVNextWalletRequest(address)) throw new Error("A wallet request is already active.");
+        const [nativeBalanceWei, currentGasPriceWei, walletNonceBeforeRequest, requestBlock] = await Promise.all([
+          publicClient.getBalance({ address }),
+          publicClient.getGasPrice(),
+          publicClient.getTransactionCount({ address, blockTag: "pending" }),
+          publicClient.getBlock({ blockTag: "latest" })
+        ]);
+        const gasReadiness = assessVNextWalletGasReadiness({
+          nativeBalanceWei,
+          currentGasPriceWei,
+          evidenceFeeCeilingWei: evidence.feeCeilingWei,
+          gasLimitUnits: plan.gasLimit,
+          transactionValueAtomic: plan.value
+        });
+        if (!gasReadiness.ready) {
+          const shortfall = formatUnits(gasReadiness.shortfallWei, 18);
+          setGasShortfall(shortfall);
+          throw new Error(`Add at least ${shortfall} ETH on Robinhood Chain for this transaction. RMT did not open the wallet.`);
+        }
+        const transaction = prepareVNextWalletTransaction({
+          plan,
+          evidence,
+          connectedAddress: address,
+          connectedChainId: chainId,
+          nowMs: Date.now()
+        });
+        requestId = crypto.randomUUID();
+        if (!recordPreparedVNextWalletRequest({
+          requestId,
+          wallet: address,
+          plan,
+          walletNonceBeforeRequest: BigInt(walletNonceBeforeRequest),
+          requestBlockNumber: requestBlock.number,
+          ...(requestBlock.hash ? { requestBlockHash: requestBlock.hash } : {})
+        })) throw new Error("RMT could not durably record the wallet request. The wallet was not opened.");
+        if (!transitionVNextWalletRequest(requestId, "PROMPT_REQUESTED")) {
+          throw new Error("RMT could not mark the wallet request as requested. The wallet was not opened.");
+        }
+        markVNextWalletProviderRequestActive(requestId);
+        const pendingHash = submission.sendTransactionAsync(transaction);
+        transitionVNextWalletRequest(requestId, "PROVIDER_PENDING");
+        const txHash = await pendingHash;
+        if (!promoteVNextWalletRequestToSubmitted({ requestId, wallet: address, plan, txHash })) {
+          throw new Error("Transaction submitted, but local recovery storage is unavailable. Use the transaction link and do not resubmit.");
+        }
       });
-      if (!gasReadiness.ready) {
-        const shortfall = formatUnits(gasReadiness.shortfallWei, 18);
-        setGasShortfall(shortfall);
-        setLocalError(`Add at least ${shortfall} ETH on Robinhood Chain for this transaction. RMT did not open the wallet.`);
-        return;
-      }
-      const transaction = prepareVNextWalletTransaction({
-        plan,
-        evidence,
-        connectedAddress: address,
-        connectedChainId: chainId,
-        nowMs: Date.now()
-      });
-      requestId = crypto.randomUUID();
-      if (!recordPreparedVNextWalletRequest({ requestId, wallet: address, plan, walletNonceBeforeRequest: BigInt(walletNonceBeforeRequest) })) {
-        setLocalError("RMT could not durably record the wallet request. The wallet was not opened.");
-        return;
-      }
-      if (!transitionVNextWalletRequest(requestId, "PROMPT_REQUESTED")) {
-        setLocalError("RMT could not mark the wallet request as requested. The wallet was not opened.");
-        return;
-      }
-      const pendingHash = submission.sendTransactionAsync(transaction);
-      transitionVNextWalletRequest(requestId, "PROVIDER_PENDING");
-      const txHash = await pendingHash;
-      if (!promoteVNextWalletRequestToSubmitted({ requestId, wallet: address, plan, txHash })) {
-        setLocalError("Transaction submitted, but local recovery storage is unavailable. Use the transaction link and do not resubmit.");
+      if (!locked.acquired) {
+        setLocalError(locked.reason === "contended"
+          ? "A wallet request is already active."
+          : "Secure cross-tab wallet serialization is unavailable. RMT did not open the wallet.");
       }
     } catch (cause) {
-      const rejected = cause instanceof Error && /rejected|denied|cancelled|canceled/i.test(cause.message);
+      const rejected = isVNextUserRejectedRequest(cause);
       if (requestId) transitionVNextWalletRequest(requestId, rejected ? "USER_REJECTED" : "UNRESOLVED");
       setRequiresRefresh(rejected);
       setLocalError(rejected
         ? "Wallet request was rejected by the owner. Nothing was broadcast."
         : requestId
           ? "Wallet request is still unresolved. Check the wallet and do not retry."
-          : "The exact transaction request was not accepted. Verify the route again.");
+          : cause instanceof Error ? cause.message : "The exact transaction request was not accepted. Verify the route again.");
     } finally {
+      if (requestId) clearVNextWalletProviderRequestActive(requestId);
       setPreflightPending(false);
     }
   };

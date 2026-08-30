@@ -54,6 +54,7 @@ export async function POST(request: Request) {
     ]);
 
     const chainTimestampSeconds = await readVNextAuthorizationChainTimestamp();
+    const authorizationWallClockMs = Date.now();
     const finalDeadlineSeconds = chainTimestampSeconds + VNEXT_AUTHORIZATION_WINDOW_SECONDS;
     const prepared = await prepareRobinhoodVNextAuthorization(parsed.data.provider, {
       chainId: 4_663,
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
       deadlineSeconds: finalDeadlineSeconds,
       indicativeProtectedOutputFloorAtomic: BigInt(parsed.data.indicativeProtectedOutputFloorAtomic),
       protectedOutputFloorAtomic: BigInt(parsed.data.expectedProtectedOutputAtomic),
-      nowMs: Number(chainTimestampSeconds * 1_000n),
+      nowMs: authorizationWallClockMs,
       settlementMode: VNEXT_DIRECT_NO_RMT_FEE,
       ...(parsed.data.canonicalMarket ? { canonicalMarket: parsed.data.canonicalMarket as { sourceId: "uniswap-v4"; poolId: `0x${string}` } } : {}),
       ...(parsed.data.v4QuoteEvidence ? { v4QuoteEvidence: parsed.data.v4QuoteEvidence as typeof parsed.data.v4QuoteEvidence & { poolId: `0x${string}`; observedBlockHash: `0x${string}` } } : {}),
@@ -81,7 +82,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Route evidence changed. Verify the route again." }, { status: 409, headers: noStore });
     }
 
-    const timing = deriveVNextAuthorizationTiming(chainTimestampSeconds, Date.now());
+    const timing = deriveVNextAuthorizationTiming(chainTimestampSeconds, authorizationWallClockMs);
     if (BigInt(prepared.evidence.deadline) !== timing.deadlineSeconds) {
       return Response.json({ error: "The final server deadline changed during authorization." }, { status: 409, headers: noStore });
     }

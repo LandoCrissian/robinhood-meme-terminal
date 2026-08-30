@@ -1745,7 +1745,11 @@ async function createWalletAcceptanceContext(browser, options, transactionTarget
       if (!pendingWalletRequest) return false;
       const request = pendingWalletRequest;
       pendingWalletRequest = null;
-      if (mode === "cancel") request.reject(new Error("User rejected the request"));
+      if (mode === "cancel") {
+        const rejection = new Error("User rejected the request");
+        rejection.code = 4001;
+        request.reject(rejection);
+      }
       else request.resolve(request.hash);
       return true;
     };
@@ -1779,7 +1783,15 @@ async function createWalletAcceptanceContext(browser, options, transactionTarget
             pendingWalletRequest = { resolve, reject, hash: canonicalHash };
           });
         }
-        if (method === "eth_getBlockByNumber") return { number: "0x2faf090", baseFeePerGas: "0x3b9aca00" };
+        if (method === "eth_getBlockByNumber") return {
+          number: "0x2faf090",
+          hash: `0x${"a".repeat(64)}`,
+          timestamp: `0x${Math.floor(Date.now() / 1000).toString(16)}`,
+          baseFeePerGas: "0x3b9aca00",
+          gasLimit: "0x1c9c380",
+          gasUsed: "0x0",
+          transactions: []
+        };
         if (method === "eth_getTransactionCount") return "0x1";
         if (method === "eth_estimateGas") return "0x1d4c0";
         return null;
@@ -1802,7 +1814,7 @@ function rpcReceipt(hash, fixture, state) {
     : null;
   if (!state.receiptsAvailable) return null;
   const logs = approval || state.missingSettlementEvent ? [] : [{
-    ...fixture.erc20.settlementLog,
+    ...(state.nativeSettlement ? fixture.native.settlementLog : fixture.erc20.settlementLog),
     blockHash: `0x${"d".repeat(64)}`,
     blockNumber: "0x2faf080",
     logIndex: "0x0",
@@ -1888,7 +1900,15 @@ async function installV2WalletAcceptanceRoutes(page, fixture, state) {
           s: `0x${"2".repeat(64)}`
         };
       }
-      else if (method === "eth_getBlockByNumber") result = { number: "0x2faf090", baseFeePerGas: "0x3b9aca00", timestamp: "0x68a00000" };
+      else if (method === "eth_getBlockByNumber") result = {
+        number: "0x2faf090",
+        hash: `0x${"a".repeat(64)}`,
+        baseFeePerGas: "0x3b9aca00",
+        gasLimit: "0x1c9c380",
+        gasUsed: "0x0",
+        timestamp: `0x${Math.floor(Date.now() / 1000).toString(16)}`,
+        transactions: []
+      };
       else if (method === "eth_call") result = "0x";
       return { jsonrpc: "2.0", id: request?.id ?? 1, result };
     };
@@ -1926,6 +1946,14 @@ async function installV2WalletAcceptanceRoutes(page, fixture, state) {
       ? fixture.native.swapPlan
       : state.approved ? fixture.erc20.swapPlan : fixture.erc20.approvalPlan;
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ evidence: freshEvidence(evidence), plan: freshPlan(plan) }) });
+  });
+  await page.route(/\/api\/vnext\/wallet-request-recovery$/, async (route) => {
+    state.walletRecoveryRequests = (state.walletRecoveryRequests ?? 0) + 1;
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(state.recoveryHash ? { status: "found", txHash: state.recoveryHash } : { status: "not_found" })
+    });
   });
 }
 
@@ -2818,6 +2846,123 @@ async function inspectV4FreshWalletSellJourney(browser, fixture) {
   };
 }
 
+async function inspectWalletPromptReloadAndCrossTab(browser, fixture) {
+  const openSwapPrompt = async (page, state) => {
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await installV2WalletAcceptanceRoutes(page, fixture, state);
+    await openFixtureTrade(page, true);
+    const advanced = page.locator(".vnRouteCard");
+    await advanced.evaluate((element) => { element.open = true; });
+    try {
+      await page.getByRole("button", { name: "Review verified swap in wallet", exact: true }).click({ timeout: 30_000 });
+    } catch (error) {
+      const diagnostic = await page.evaluate(() => ({
+        body: document.body.innerText.slice(-6_000),
+        buttons: [...document.querySelectorAll("button")].map((entry) => entry.textContent?.trim()).filter(Boolean).slice(-30)
+      }));
+      throw new Error(`swap prompt fixture was not ready: ${JSON.stringify({ diagnostic, state })}`, { cause: error });
+    }
+    await page.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter((method) => method === "eth_sendTransaction").length === 1);
+  };
+
+  const swapState = { approved: true, receiptsAvailable: false, missingSettlementEvent: false, nativeSettlement: true, recoveryHash: null, quotes: 0, verifications: 0, authorizations: 0, rpcMethods: [], blockNumber: 50_000_016 };
+  const mobileContext = await createWalletAcceptanceContext(browser, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const firstPage = await mobileContext.newPage();
+  await openSwapPrompt(firstPage, swapState);
+  const prehashCount = await firstPage.evaluate(() => {
+    const envelope = JSON.parse(localStorage.getItem("rmt:vnext-execution-journal:v1:4663") ?? "null");
+    return envelope?.walletRequests?.filter((request) => request.state === "PROMPT_REQUESTED" || request.state === "PROVIDER_PENDING").length ?? 0;
+  });
+  if (prehashCount !== 1) throw new Error(`swap reload acceptance did not persist exactly one pre-hash request: ${prehashCount}`);
+  await firstPage.close();
+
+  const replacementPage = await mobileContext.newPage();
+  await replacementPage.emulateMedia({ reducedMotion: "reduce" });
+  await installV2WalletAcceptanceRoutes(replacementPage, fixture, swapState);
+  await gotoReady(replacementPage, base, ".rmtMobileTerminal");
+  await replacementPage.getByText("Wallet request is still unresolved", { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+  const recheck = replacementPage.getByRole("button", { name: "Recheck unresolved wallet request", exact: true });
+  await recheck.waitFor({ state: "visible" });
+  swapState.recoveryHash = `0x${"c".repeat(64)}`;
+  swapState.receiptsAvailable = true;
+  await recheck.click();
+  try {
+    await replacementPage.getByText("Swap confirmed", { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+  } catch (error) {
+    const diagnostic = await replacementPage.evaluate(() => ({
+      body: document.body.innerText.slice(0, 8_000),
+      journal: localStorage.getItem("rmt:vnext-execution-journal:v1:4663"),
+      walletMethods: window.__RMT_ACCEPTANCE_WALLET_METHODS__
+    }));
+    throw new Error(`swap reload recovery did not confirm: ${JSON.stringify({ diagnostic, state: swapState })}`, { cause: error });
+  }
+  const mobileOverflow = await replacementPage.evaluate(() => Math.max(0, document.documentElement.scrollWidth - innerWidth));
+  if (mobileOverflow > 2) throw new Error(`mobile late-hash recovery overflowed by ${mobileOverflow}px`);
+  await replacementPage.screenshot({ path: `${output}/wallet-request-reload-mobile-390x844.png`, fullPage: false, animations: "disabled" });
+  await mobileContext.close();
+
+  const approvalState = { approved: false, receiptsAvailable: false, recoveryHash: null, quotes: 0, verifications: 0, authorizations: 0, rpcMethods: [], blockNumber: 50_000_016 };
+  const approvalContext = await createWalletAcceptanceContext(browser, { viewport: { width: 1_440, height: 900 } });
+  const approvalPage = await approvalContext.newPage();
+  await approvalPage.emulateMedia({ reducedMotion: "reduce" });
+  await installV2WalletAcceptanceRoutes(approvalPage, fixture, approvalState);
+  await openFixtureTrade(approvalPage, false);
+  const advancedApproval = approvalPage.locator(".vnRouteCard");
+  await advancedApproval.evaluate((element) => { element.open = true; });
+  await approvalPage.getByRole("button", { name: "Review exact approval in wallet", exact: true }).click();
+  await approvalPage.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter((method) => method === "eth_sendTransaction").length === 1);
+  await approvalPage.close();
+  approvalState.recoveryHash = `0x${"b".repeat(64)}`;
+  approvalState.receiptsAvailable = true;
+  const approvalReplacement = await approvalContext.newPage();
+  await approvalReplacement.emulateMedia({ reducedMotion: "reduce" });
+  await installV2WalletAcceptanceRoutes(approvalReplacement, fixture, approvalState);
+  await gotoReady(approvalReplacement, base, ".rmtDesktopTerminal");
+  await approvalReplacement.getByText("Exact approval confirmed", { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+  await approvalReplacement.screenshot({ path: `${output}/wallet-approval-reload-desktop-1440x900.png`, fullPage: false, animations: "disabled" });
+  await approvalContext.close();
+
+  const raceStateA = { approved: true, receiptsAvailable: false, recoveryHash: null, quotes: 0, verifications: 0, authorizations: 0, rpcMethods: [], blockNumber: 50_000_016 };
+  const raceStateB = { ...raceStateA, rpcMethods: [] };
+  const raceContext = await createWalletAcceptanceContext(browser, { viewport: { width: 1_440, height: 900 } });
+  const tabA = await raceContext.newPage();
+  const tabB = await raceContext.newPage();
+  await Promise.all([
+    (async () => { await tabA.emulateMedia({ reducedMotion: "reduce" }); await installV2WalletAcceptanceRoutes(tabA, fixture, raceStateA); await openFixtureTrade(tabA, true); await tabA.locator(".vnRouteCard").evaluate((element) => { element.open = true; }); })(),
+    (async () => { await tabB.emulateMedia({ reducedMotion: "reduce" }); await installV2WalletAcceptanceRoutes(tabB, fixture, raceStateB); await openFixtureTrade(tabB, true); await tabB.locator(".vnRouteCard").evaluate((element) => { element.open = true; }); })()
+  ]);
+  await Promise.all([
+    tabA.getByRole("button", { name: "Review verified swap in wallet", exact: true }).click(),
+    tabB.getByRole("button", { name: "Review verified swap in wallet", exact: true }).click()
+  ]);
+  await Promise.race([
+    tabA.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.includes("eth_sendTransaction")),
+    tabB.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.includes("eth_sendTransaction"))
+  ]);
+  await Promise.race([
+    tabA.getByText("A wallet request is already active.", { exact: true }).waitFor({ state: "visible" }),
+    tabB.getByText("A wallet request is already active.", { exact: true }).waitFor({ state: "visible" })
+  ]);
+  const invocations = (await tabA.evaluate(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter((method) => method === "eth_sendTransaction").length))
+    + (await tabB.evaluate(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter((method) => method === "eth_sendTransaction").length));
+  const racePrehashCount = await tabA.evaluate(() => {
+    const envelope = JSON.parse(localStorage.getItem("rmt:vnext-execution-journal:v1:4663") ?? "null");
+    return envelope?.walletRequests?.filter((request) => ["PROMPT_REQUESTED", "PROVIDER_PENDING", "UNRESOLVED"].includes(request.state)).length ?? 0;
+  });
+  if (invocations !== 1 || racePrehashCount !== 1) throw new Error(`same-wallet cross-tab guard failed: ${JSON.stringify({ invocations, racePrehashCount })}`);
+  await Promise.all([tabA.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("cancel")), tabB.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("cancel"))]);
+  await raceContext.close();
+
+  return {
+    swapReloadRecovery: true,
+    approvalReloadRecovery: true,
+    unresolvedRecheckVisible: true,
+    sameWalletProviderInvocations: invocations,
+    prehashRecordsCreated: racePrehashCount,
+    mobileOverflow
+  };
+}
+
 async function inspectV2WalletBrowserJourney(browser, fixture, options, label, mode) {
   const state = { approved: mode === "native" || mode === "missing-event" || mode === "cancel", receiptsAvailable: false, missingSettlementEvent: mode === "missing-event", quotes: 0, verifications: 0, authorizations: 0, rpcMethods: [], blockNumber: 50_000_016 };
   const context = await createWalletAcceptanceContext(browser, options);
@@ -3267,6 +3412,7 @@ try {
     ? JSON.parse(await readFile(`${output}/v2-fixture.json`, "utf8"))
     : null;
   const v4WalletReviewOnly = process.env.RMT_ACCEPTANCE_ONLY_V4_WALLET_REVIEW === "true";
+  const walletLifecycleOnly = process.env.RMT_ACCEPTANCE_ONLY_WALLET_LIFECYCLE === "true";
   const marketLoadPerformanceOnly = process.env.RMT_ACCEPTANCE_ONLY_MARKET_LOAD_PERFORMANCE === "true";
   const compatibilityOnly = process.env.RMT_ACCEPTANCE_ONLY_COMPATIBILITY === "true";
   if (compatibilityOnly) {
@@ -3276,6 +3422,11 @@ try {
     const marketLoadPerformance = await inspectMarketLoadPerformanceMatrix(browser);
     await writeFile(`${output}/report.json`, JSON.stringify({ marketLoadPerformance }, null, 2));
     console.log(`Terminal market-load performance acceptance passed: ${JSON.stringify(marketLoadPerformance)}`);
+  } else if (walletLifecycleOnly) {
+    if (!browserAcceptanceFixture) throw new Error("Wallet-lifecycle acceptance requires the loopback-only browser fixture profile.");
+    const walletLifecycleEvidence = await inspectWalletPromptReloadAndCrossTab(browser, browserAcceptanceFixture);
+    await writeFile(`${output}/report.json`, JSON.stringify({ walletLifecycleEvidence }, null, 2));
+    console.log(`Terminal wallet-lifecycle acceptance passed: ${JSON.stringify(walletLifecycleEvidence)}`);
   } else if (v4WalletReviewOnly) {
     if (!browserAcceptanceFixture) throw new Error("V4 wallet-review acceptance requires the loopback-only browser fixture profile.");
     const v4FreshWalletSellEvidence = await inspectV4FreshWalletSellJourney(browser, browserAcceptanceFixture);
@@ -3301,6 +3452,9 @@ try {
     ? await inspectV4FreshWalletSellJourney(browser, browserAcceptanceFixture)
     : null;
   const marketLoadPerformance = await inspectMarketLoadPerformanceMatrix(browser);
+  const walletLifecycleEvidence = browserAcceptanceFixture && !mobileOnly
+    ? await inspectWalletPromptReloadAndCrossTab(browser, browserAcceptanceFixture)
+    : null;
   const v2BrowserEvidence = browserAcceptanceFixture
     ? await (async () => {
         return {
@@ -3368,7 +3522,7 @@ try {
   }
   await writeFile(
     `${output}/report.json`,
-    JSON.stringify({ productAcceptanceEvidence, marketLoadPerformance, workspaceEvidence, marketsHierarchy, discoveryDesktop, discoveryMobile, projectIdentityQuarantine, desktop, laptop, laptop720, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile393, mobile390, mobile375, mobile360, v2BrowserEvidence, v4WalletReviewEvidence, v4FreshWalletSellEvidence, exploratoryTouch }, null, 2)
+    JSON.stringify({ productAcceptanceEvidence, marketLoadPerformance, walletLifecycleEvidence, workspaceEvidence, marketsHierarchy, discoveryDesktop, discoveryMobile, projectIdentityQuarantine, desktop, laptop, laptop720, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile393, mobile390, mobile375, mobile360, v2BrowserEvidence, v4WalletReviewEvidence, v4FreshWalletSellEvidence, exploratoryTouch }, null, 2)
   );
   console.log(`Terminal active discovery product acceptance passed: ${JSON.stringify(productAcceptanceEvidence)}`);
   }

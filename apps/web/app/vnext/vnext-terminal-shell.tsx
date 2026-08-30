@@ -279,6 +279,8 @@ export function VNextTerminalShell() {
     executionRecord: executionRecovery.record,
     walletRequest: executionRecovery.walletRequest,
     executionStatus: executionRecovery.status,
+    onRecheckWalletRequest: executionRecovery.recheckWalletRequest,
+    walletRequestRecheckPending: executionRecovery.walletRequestRecheckPending,
     portfolioRevealRequest,
     tradeSideRequest,
     onAssetsChange: setWalletAssets,

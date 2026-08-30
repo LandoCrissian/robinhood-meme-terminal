@@ -5,7 +5,8 @@ import {
   VNEXT_AUTHORIZATION_WINDOW_SECONDS,
   VNEXT_MAX_AUTHORIZATION_WINDOW_SECONDS,
   VNEXT_MINIMUM_WALLET_REVIEW_RUNWAY_MS,
-  VNEXT_PLAN_MAX_AGE_MS
+  VNEXT_PLAN_MAX_AGE_MS,
+  vNextAuthorizationRpcUrl
 } from "./vnext-authorization-time";
 import { vNextAuthorizationRequestSchema } from "./vnext-authorization-request";
 
@@ -21,6 +22,12 @@ assert.equal(timing.expiresAtMs, preparedAtMs + 59_000);
 assert.equal(timing.expiresAtMs <= timing.deadlineMs - 180_000, true);
 assert.throws(() => deriveVNextAuthorizationTiming(chainTimestamp, preparedAtMs + 31_000), /Chain time/);
 assert.throws(() => deriveVNextAuthorizationTiming(chainTimestamp, preparedAtMs - 7_000), /Chain time/);
+assert.equal(vNextAuthorizationRpcUrl({
+  RMT_RPC_URL: "https://server-authority.invalid",
+  RMT_MAINNET_RPC_URL: "https://legacy-server.invalid",
+  ROBINHOOD_MAINNET_RPC_URL: "https://compatible-server.invalid",
+  NEXT_PUBLIC_RMT_RPC_URL: "https://public-fallback.invalid"
+}, "https://default.invalid"), "https://server-authority.invalid");
 
 const request = {
   chainId: 4_663,
@@ -40,9 +47,13 @@ assert.equal(vNextAuthorizationRequestSchema.safeParse({ ...request, deadline: "
   "the browser cannot supply, preserve, shorten, or extend the final onchain deadline");
 
 const route = readFileSync(new URL("../../app/api/vnext/authorize/route.ts", import.meta.url), "utf8");
+const timeAuthority = readFileSync(new URL("./vnext-authorization-time.ts", import.meta.url), "utf8");
 const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
 assert.match(route, /readVNextAuthorizationChainTimestamp/);
 assert.match(route, /deadlineSeconds: finalDeadlineSeconds/);
+assert.match(route, /nowMs: authorizationWallClockMs/);
+assert.doesNotMatch(route, /nowMs: Number\(chainTimestampSeconds \* 1_000n\)/);
+assert.ok(timeAuthority.lastIndexOf("env.RMT_RPC_URL") < timeAuthority.lastIndexOf("env.RMT_MAINNET_RPC_URL"));
 assert.doesNotMatch(composer, /deadline:\s*evidence\.deadline/);
 
 console.log("RMT server-owned authorization deadline and wallet-review runway smoke checks passed.");

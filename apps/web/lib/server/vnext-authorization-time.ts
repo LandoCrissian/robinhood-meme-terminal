@@ -9,13 +9,21 @@ export const VNEXT_MINIMUM_WALLET_REVIEW_RUNWAY_MS = 180_000;
 const MAX_CHAIN_CLOCK_LAG_MS = 30_000;
 const MAX_CHAIN_CLOCK_LEAD_MS = 5_000;
 
+export function vNextAuthorizationRpcUrl(
+  env: Readonly<Record<string, string | undefined>>,
+  fallback: string
+) {
+  return env.RMT_RPC_URL?.trim()
+    || env.RMT_MAINNET_RPC_URL?.trim()
+    || env.ROBINHOOD_MAINNET_RPC_URL?.trim()
+    || env.NEXT_PUBLIC_RMT_RPC_URL?.trim()
+    || fallback;
+}
+
 const client = createPublicClient({
   chain: robinhoodChain,
   transport: http(
-    process.env.RMT_MAINNET_RPC_URL?.trim()
-      || process.env.ROBINHOOD_MAINNET_RPC_URL?.trim()
-      || process.env.NEXT_PUBLIC_RMT_RPC_URL?.trim()
-      || robinhoodChain.rpcUrls.default.http[0],
+    vNextAuthorizationRpcUrl(process.env, robinhoodChain.rpcUrls.default.http[0]),
     { retryCount: 2, timeout: 8_000 }
   )
 });

@@ -333,6 +333,32 @@ const settlementLog = {
     treasury
   ])
 };
+const nativeTopics = encodeEventTopics({
+  abi: rmtUniswapV3FeeExecutorV2Abi,
+  eventName: "RMTUniswapV3FeeSettledV2",
+  args: { executionId: native.execution.executionId, policyHash: native.execution.policyHash, trader: wallet }
+}).flatMap((topic) => typeof topic === "string" ? [topic] : []);
+const nativeSettlementLog = {
+  address: executor,
+  topics: nativeTopics,
+  data: encodeAbiParameters(eventDataParameters, [
+    native.execution.policyIdHash,
+    2n,
+    RMT_UNISWAP_V3_V2_PROVIDER_ID,
+    ROBINHOOD_SWAP_ROUTER_02,
+    native.execution.routeIdentity,
+    ROBINHOOD_NATIVE_ASSET_ADDRESS,
+    token,
+    ROBINHOOD_NATIVE_ASSET_ADDRESS,
+    25,
+    0,
+    500_000_000_000_000n,
+    498_750_000_000_000n,
+    20_000_000_000_000_000_000n,
+    1_250_000_000_000n,
+    treasury
+  ])
+};
 
 async function buildV4BrowserScenario() {
   const sourceQuoteRequestId = uuid("b");
@@ -768,7 +794,7 @@ async function writeBrowserFixture() {
     treasury,
     router: ROBINHOOD_SWAP_ROUTER_02,
     erc20: { ...erc20, approvalEvidence, approvalPlan, settlementLog },
-    native,
+    native: { ...native, settlementLog: nativeSettlementLog },
     v4
   }, null, 2));
 }

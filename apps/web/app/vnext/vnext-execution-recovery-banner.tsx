@@ -3,16 +3,21 @@
 import type { VNextExecutionRecord, VNextWalletRequestRecord } from "../../lib/vnext/execution-recovery";
 import { ExplorerLink } from "./terminal-links";
 
-export function VNextExecutionRecoveryBanner({ record, walletRequest, status }: {
+export function VNextExecutionRecoveryBanner({ record, walletRequest, status, onRecheckWalletRequest, walletRequestRecheckPending = false }: {
   record: VNextExecutionRecord | null;
   walletRequest?: VNextWalletRequestRecord | null;
   status: "idle" | "confirming" | "confirmation_unavailable" | "reconciliation_failed" | "confirmed" | "reverted";
+  onRecheckWalletRequest?: () => void;
+  walletRequestRecheckPending?: boolean;
 }) {
   if (!record && walletRequest) return <section className="vnRecoveryBanner isconfirming" role="status">
     <span><strong>{walletRequest.state === "HASH_RECEIVED" ? "Transaction hash received · recovery active" : "Wallet request is still unresolved"}</strong><small>{walletRequest.state === "HASH_RECEIVED"
       ? "RMT recorded the returned hash and blocks duplicate submission while receipt recovery continues."
       : "Check the wallet and do not retry. A deployment or page change cannot prove that this request was never broadcast."}</small></span>
     {walletRequest.txHash ? <ExplorerLink kind="transaction" value={walletRequest.txHash} accessibleName="Open recovered transaction in Robinhood Chain explorer">View transaction ↗</ExplorerLink> : null}
+    {walletRequest.state === "UNRESOLVED" && onRecheckWalletRequest ? <button type="button" onClick={onRecheckWalletRequest} disabled={walletRequestRecheckPending}>
+      {walletRequestRecheckPending ? "Rechecking wallet request…" : "Recheck unresolved wallet request"}
+    </button> : null}
   </section>;
   if (!record || status === "idle") return null;
   const title = status === "confirming"
