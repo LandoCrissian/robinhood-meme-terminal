@@ -395,7 +395,7 @@ function evidenceWarnings(evidence: Omit<TokenRiskEvidence, "warnings">) {
   } else if (evidence.sellSimulation.status === "unavailable") {
     warnings.push("Sell-direction transfer simulation is temporarily unavailable. Treat sellability as unknown.");
   } else if (evidence.sellSimulation.status === "not-run") {
-    warnings.push("No eligible non-contract holder was available for sell-direction simulation. Treat sellability as unknown.");
+    warnings.push("Sell check was not run because no holder row was independently classified as a non-contract wallet. Sellability remains unknown.");
   } else {
     warnings.push("A read-only holder-to-pool transfer passed now; this does not guarantee a future sale, output amount, tax, or unchanged token behavior.");
   }
@@ -505,7 +505,7 @@ async function fetchTokenRiskEvidenceUncached(
       const candidate = { address, shareBps: shareBps(value, holderSupply) };
       const holderEvidence = {
         ...candidate,
-        isContract: holder.address.is_contract === true,
+        isContract: typeof holder.address.is_contract === "boolean" ? holder.address.is_contract : null,
         isScam: holder.address.is_scam === true
       };
       topHolders.push(holderEvidence);

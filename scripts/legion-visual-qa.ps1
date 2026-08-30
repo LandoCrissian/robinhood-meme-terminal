@@ -2,6 +2,7 @@ param(
   [switch]$UpdateBaselines,
   [switch]$SkipBuild,
   [switch]$CaptureOnly,
+  [switch]$BrowserAcceptanceProfile,
   [string]$BaselineRoot
 )
 
@@ -65,6 +66,7 @@ $gateEnvironment = @{
   NEXT_PUBLIC_RMT_VNEXT_AUTHORIZATION_ENABLED = "false"
   RMT_VNEXT_AUTHORIZATION_ENABLED = "false"
   NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED = "false"
+  NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE = if ($BrowserAcceptanceProfile) { "true" } else { "false" }
 }
 $savedGateEnvironment = @{}
 foreach ($entry in $gateEnvironment.GetEnumerator()) {
@@ -167,7 +169,11 @@ try {
     throw "Local RMT server did not become ready within 30 seconds. See $serverStderr"
   }
 
-  & node "scripts/visual-qa/legion-visual-qa.mjs" "--base-url=http://127.0.0.1:3111" "--output=$actualRoot"
+  $visualArgs = @("scripts/visual-qa/legion-visual-qa.mjs", "--base-url=http://127.0.0.1:3111", "--output=$actualRoot")
+  if ($BrowserAcceptanceProfile) {
+    $visualArgs += "--browser-acceptance-profile"
+  }
+  & node @visualArgs
   if ($LASTEXITCODE -ne 0) {
     throw "Semantic/capture lane failed. See $actualRoot\semantic-summary.json"
   }

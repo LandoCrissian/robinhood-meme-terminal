@@ -135,6 +135,10 @@ assert.equal(trustedPaymentMetadataFromDetectedWalletAsset({
 assert.match(component, /Trade funding \+ network gas/);
 assert.match(component, /Canonical trade balance · settlement asset/);
 assert.match(component, /spendableNativeAtomic\(nativeBalance\)/);
+assert.match(component, /Reserved for network gas/);
+assert.match(component, /NATIVE_GAS_RESERVE_ATOMIC/);
+assert.match(component, /onchain \{assets\.length[\s\S]*=== 1 \? "asset" : "assets"\}/);
+assert.match(component, /Indexer delayed · onchain balances confirmed/);
 assert.match(component, /<FundWalletButton variant="inline" label="Add funds" target="mainnet" \/>/);
 assert.doesNotMatch(component, /Verify USDG/);
 assert.match(component, /Unconfirmed proceeds are never spendable/);

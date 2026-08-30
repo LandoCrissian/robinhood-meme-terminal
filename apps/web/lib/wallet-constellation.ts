@@ -15,7 +15,7 @@ export type WalletConstellationNode = {
   label: string | null;
   holderRank: number | null;
   supplyShareBps: number | null;
-  isContract: boolean;
+  isContract: boolean | null;
   isFlagged: boolean;
   evidence: string[];
 };

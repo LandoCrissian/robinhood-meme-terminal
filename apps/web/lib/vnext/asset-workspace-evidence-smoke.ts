@@ -7,11 +7,14 @@ import {
   workspaceTokenPresentation
 } from "../../app/vnext/use-vnext-asset-workspace";
 import { tokenRiskEvidenceRequestUrl } from "../use-token-risk-evidence";
+import { tokenRiskCoverageLabel, tokenRiskFreshnessLabel } from "../token-risk-evidence";
 import type { VNextUniversalMarketSearchPool } from "./universal-market-search-contract";
 
 const selected = "0x1111111111111111111111111111111111111111";
 const exactPair = "0x2222222222222222222222222222222222222222";
 const mismatchedPair = "0x3333333333333333333333333333333333333333";
+const ponsContract = "0x39dbed3a2bd333467115de45665cc57f813c4571";
+const ponsCanonicalPool = "0x10cc6bd38112cac182db90b6a71d8bb5939526ba";
 const stockAsset: RobinhoodStockAssetRelationship = {
   relationship: "canonical-stock-token",
   assetId: "stock-spcx",
@@ -141,11 +144,43 @@ const uniswapV2RiskUrl = tokenRiskEvidenceRequestUrl(selected, providerMarket, c
 const uniswapV3RiskUrl = tokenRiskEvidenceRequestUrl(selected, providerMarket, canonicalPool(3, "uniswap"));
 const sushiRiskUrl = tokenRiskEvidenceRequestUrl(selected, providerMarket, canonicalPool(2, "sushiswap"));
 const uniswapV4RiskUrl = tokenRiskEvidenceRequestUrl(selected, providerMarket, canonicalPool(4, "uniswap"));
+const ponsRiskUrl = tokenRiskEvidenceRequestUrl(
+  ponsContract,
+  undefined,
+  { ...canonicalPool(3, "uniswap"), poolKey: ponsCanonicalPool }
+);
 assert.equal(new URL(tokenOnlyRiskUrl!, "http://localhost").searchParams.get("pair"), null);
 assert.equal(new URL(uniswapV4RiskUrl!, "http://localhost").searchParams.get("pair"), null);
 assert.equal(new URL(uniswapV2RiskUrl!, "http://localhost").searchParams.get("pair"), exactPair);
 assert.equal(new URL(uniswapV3RiskUrl!, "http://localhost").searchParams.get("pair"), exactPair);
 assert.equal(new URL(sushiRiskUrl!, "http://localhost").searchParams.get("venue"), "sushi");
+assert.deepEqual(Object.fromEntries(new URL(ponsRiskUrl!, "http://localhost").searchParams), {
+  token: ponsContract,
+  pair: ponsCanonicalPool,
+  venue: "uniswap",
+  sourceId: "pons"
+}, "PONS risk evidence must retain exact canonical request authority without provider metadata");
+assert.equal(tokenRiskCoverageLabel("complete"), "Complete evidence");
+assert.equal(tokenRiskCoverageLabel("partial"), "Partial evidence");
+assert.equal(tokenRiskFreshnessLabel("fresh"), "Fresh");
+assert.equal(tokenRiskFreshnessLabel("stale"), "Stale");
+assert.match(workspaceSource, /<small>Coverage<\/small>/);
+assert.match(workspaceSource, /<small>Evidence freshness<\/small><strong>\{tokenRiskFreshnessLabel\(evidence\.freshness\)\}/);
+assert.doesNotMatch(workspaceSource, /<small>Evidence freshness<\/small><strong>\{[^}]*evidence\.coverage/);
+assert.match(workspaceSource, /Concentration details are temporarily unavailable/);
+assert.match(workspaceSource, /LP ownership\/control · Not verified/);
+assert.match(workspaceSource, /Pool swap fee ·/);
+assert.doesNotMatch(workspaceSource, /% live fee/);
+assert.match(workspaceSource, /Other verified venues · \{markets\.length\}/);
+assert.match(workspaceSource, /Venue evidence does not prove project origin/);
+assert.match(workspaceSource, /hasVerifiedRwaRelationship \? \[\{ id: "rwa"/);
+assert.match(chartSource, /Sparse \$\{labels\[range\]\} market history/);
+assert.match(chartSource, /candles\.length >= 1/);
+assert.match(chartSource, /vnChartSparsePoint/);
+assert.match(chartSource, /candles\.length === 1[\s\S]*left \+ usableWidth \/ 2/,
+  "A single real observation must be centered instead of looking like a broken left-edge chart");
+assert.match(chartSource, /const volumeWidth = Math\.max\(2, Math\.min\(11,/,
+  "Sparse volume bars must remain visually bounded without inventing observations");
 assert.match(riskHookSource, /canonicalMarket && canonicalMarket\.version !== 4/,
   "PoolId-only V4 markets must not be passed into an address validator");
 assert.match(workspaceSource, /useTokenRiskEvidence\(directoryMarket\.address/,

@@ -47,7 +47,7 @@ export type TokenRiskEvidence = {
     topNonPoolHolders: Array<{
       address: string;
       shareBps: number;
-      isContract: boolean;
+      isContract: boolean | null;
       isScam: boolean;
     }>;
     largestNonPoolHolder: {
@@ -58,7 +58,7 @@ export type TokenRiskEvidence = {
     topHolders: Array<{
       address: string;
       shareBps: number;
-      isContract: boolean;
+      isContract: boolean | null;
       isScam: boolean;
     }>;
     largestHolder: {
@@ -94,6 +94,16 @@ export type TokenRiskEvidenceDomainStatus =
   | "stale"
   | "unavailable"
   | "not-applicable";
+
+export function tokenRiskCoverageLabel(coverage: TokenRiskEvidence["coverage"]) {
+  return coverage === "complete" ? "Complete evidence"
+    : coverage === "partial" ? "Partial evidence"
+      : "Evidence unavailable";
+}
+
+export function tokenRiskFreshnessLabel(freshness: TokenRiskEvidence["freshness"]) {
+  return freshness === "stale" ? "Stale" : "Fresh";
+}
 
 export type TokenRiskEvidenceState =
   | { status: "loading"; evidence?: undefined }

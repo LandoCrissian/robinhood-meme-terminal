@@ -10,6 +10,7 @@ import {
 
 const argv = process.argv.slice(2);
 const captureOnly = argv.includes("--capture-only");
+const browserAcceptanceProfile = argv.includes("--browser-acceptance-profile");
 const option = (name) => argv.find((argument) => argument.startsWith(`${name}=`))?.slice(name.length + 1);
 const base = option("--base-url") ?? process.env.RMT_VISUAL_BASE_URL ?? "http://127.0.0.1:3111";
 const output = path.resolve(option("--output") ?? process.env.RMT_VISUAL_OUTPUT ?? ".artifacts/legion-visual-qa/latest/actual");
@@ -121,6 +122,24 @@ async function installTokenRoutes(page, { riskUnavailable = false } = {}) {
   let riskMode = riskUnavailable ? "unavailable" : "ready";
   await page.route("**/api/**", (route) => route.fulfill({ status: 404, contentType: "application/json", body: JSON.stringify({ error: "fixture_route_not_registered" }) }));
   await page.route(/\/api\/vnext\/market-directory(?:\?.*)?$/, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ canonical: true, coverage: "complete", nextCursor: null, markets: canonicalDirectoryMarkets(), updatedAt: FIXTURE_NOW }) }));
+  await page.route(/\/api\/vnext\/asset-workspace(?:\?.*)?$/, (route) => {
+    const requestUrl = new URL(route.request().url());
+    const selectedToken = requestUrl.searchParams.get("address");
+    const upMarkets = Array.from({ length: 5 }, (_, index) => ({
+      venue: index % 2 ? "up-cl" : "up-v2",
+      poolAddress: `0x${(0x7100 + index).toString(16).padStart(40, "0")}`,
+      token0: selectedToken,
+      token1: `0x${(0x8100 + index).toString(16).padStart(40, "0")}`,
+      quoteToken: `0x${(0x8100 + index).toString(16).padStart(40, "0")}`,
+      stable: index % 2 ? null : false,
+      tickSpacing: index % 2 ? 200 : null,
+      liveFee: index === 0 ? 100 : index === 1 ? 2_500 : 3_000,
+      feeDenominator: index === 0 ? 10_000 : 1_000_000,
+      gaugeState: index === 0 ? "live" : "none",
+      gaugeAddress: null, gaugeWeight: null, gaugeClaimable: null, feesAddress: null, bribeAddress: null
+    }));
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ecosystem: { chainId: 4663, token: selectedToken, status: "ready", authoritative: false, observedBlock: "50000000", observedBlockHash: `0x${"a".repeat(64)}`, observedAt: FIXTURE_NOW, upMarkets, stonkBrokers: { sourceId: "stonkbrokers", sourceName: "StonkBrokers", attributionState: "production-source-unverified", tokenCreated: false, sourceListed: false, authoritative: false } }, stockAssetRelationships: [], stockAssetCoverage: "complete", updatedAt: FIXTURE_NOW }) });
+  });
   await page.route(/\/api\/markets\/external(?:\?.*)?$/, (route) => {
     const contract = new URL(route.request().url()).searchParams.get("contract")?.toLowerCase();
     const markets = contract ? VISIBLE_TOKEN_MARKETS.filter((market) => market.address === contract || market.pairAddress === contract) : VISIBLE_TOKEN_MARKETS;
@@ -131,7 +150,8 @@ async function installTokenRoutes(page, { riskUnavailable = false } = {}) {
     const range = requestUrl.searchParams.get("range") ?? "1H";
     if (chartMode === "unavailable") return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "fixture_unavailable" }) });
     const referencePrice = Number(requestUrl.searchParams.get("referencePrice") ?? 0.000092);
-    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ token: requestUrl.searchParams.get("token"), pair: requestUrl.searchParams.get("pair"), range, candles: candles(range, referencePrice), source: "GeckoTerminal", updatedAt: FIXTURE_NOW, lastTradeAt: trades[0].timestamp, refreshMs: 60_000, stale: chartMode === "stale" }) });
+    const history = chartMode === "sparse" ? candles(range, referencePrice).slice(-1) : candles(range, referencePrice);
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ token: requestUrl.searchParams.get("token"), pair: requestUrl.searchParams.get("pair"), range, candles: history, source: "GeckoTerminal", updatedAt: FIXTURE_NOW, lastTradeAt: trades[0].timestamp, refreshMs: 60_000, stale: chartMode === "stale" }) });
   });
   await page.route(/\/api\/trade\/external-venues(?:\?.*)?$/, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ token, venues: [{ venue: "uniswap-v3", pair, dexId: "uniswap-v3", liquidityUsd: TOKEN_MARKETS[1].liquidityUsd, verification: "dex-and-route" }] }) }));
   await page.route(/\/api\/markets\/external-trades(?:\?.*)?$/, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ token, pair, source: "LEGION_FIXTURE", updatedAt: FIXTURE_NOW, trades }) }));
@@ -139,7 +159,9 @@ async function installTokenRoutes(page, { riskUnavailable = false } = {}) {
   await page.route(/\/api\/markets\/token-risk(?:\?.*)?$/, (route) => {
     if (riskMode === "unavailable") return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "fixture_unavailable" }) });
     const requestUrl = new URL(route.request().url());
-    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ token: requestUrl.searchParams.get("token"), pair: requestUrl.searchParams.get("pair"), marketVerified: true, coverage: riskMode === "partial" ? "partial" : "complete", freshness: "fresh", domains: { token: "ready", holders: "ready", contract: "ready", abi: "ready", creator: "not-applicable", liquidity: riskMode === "partial" ? "unavailable" : "ready", sell: "ready" }, contract: { sourcePublished: true, isProxy: false, bytecodeChanged: false, controls: { assessment: "no-common-controls-found", detected: [], customWriteFunctions: [], administrator: null, activeLaunchRestrictions: false, restrictionEndBlock: null, maxTransactionBps: null, maxWalletBps: null } }, liquidity: { controlStatus: "not-proven", evidenceSource: "none", positionManager: null, positionId: null, owner: null, approvedOperator: null, creatorCanTransfer: null, positionLiquidity: null }, holders: { count: 975, poolShareBps: 4200, topNonPoolShareBps: 740, topNonPoolHolders: [], largestNonPoolHolder: null, creator: null, creatorShareBps: null }, sellSimulation: { status: "not-run", method: "holder-to-pool-transfer", holder: null, amount: null, returnStyle: null }, warnings: [], checkedAt: FIXTURE_NOW }) });
+    const holderRows = riskMode === "count-only" ? [] : [{ address: `0x${"9".repeat(40)}`, shareBps: 420, isContract: false, isScam: false }, { address: `0x${"8".repeat(40)}`, shareBps: 320, isContract: null, isScam: false }];
+    const verifiedPosition = riskMode === "verified-position";
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ token: requestUrl.searchParams.get("token"), pair: requestUrl.searchParams.get("pair"), marketVerified: true, coverage: riskMode === "partial" ? "partial" : "complete", freshness: "fresh", domains: { token: "ready", holders: "ready", contract: "ready", abi: "ready", creator: "not-applicable", liquidity: riskMode === "partial" ? "unavailable" : "ready", sell: "ready" }, contract: { sourcePublished: true, isProxy: false, bytecodeChanged: false, controls: { assessment: "no-common-controls-found", detected: [], customWriteFunctions: [], administrator: null, activeLaunchRestrictions: false, restrictionEndBlock: null, maxTransactionBps: null, maxWalletBps: null } }, liquidity: verifiedPosition ? { controlStatus: "contract-held", evidenceSource: "launchpad-registry", positionManager: `0x${"7".repeat(40)}`, positionId: "393642", owner: `0x${"6".repeat(40)}`, approvedOperator: null, creatorCanTransfer: false, positionLiquidity: "1000" } : { controlStatus: "not-proven", evidenceSource: "none", positionManager: null, positionId: null, owner: null, approvedOperator: null, creatorCanTransfer: null, positionLiquidity: null }, holders: { count: 975, poolShareBps: 4200, topNonPoolShareBps: riskMode === "count-only" ? null : 740, topNonPoolHolders: holderRows, largestNonPoolHolder: holderRows[0] ? { address: holderRows[0].address, shareBps: holderRows[0].shareBps } : null, creator: null, creatorShareBps: null }, sellSimulation: { status: "not-run", method: "holder-to-pool-transfer", holder: null, amount: null, returnStyle: null }, warnings: [], checkedAt: FIXTURE_NOW }) });
   });
   await page.route(/\/api\/vnext\/chain-pulse(?:\?.*)?$/, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ chainId: 4663, chain: "Robinhood Chain", source: "LEGION_FIXTURE", authoritative: false, status: "ready", tvlUsd: 580000000, dexVolume24hUsd: 640000000, dexVolume7dUsd: 3460000000, dexChange1dPct: 3.4, dexChange7dPct: 8.2, fees24hUsd: null, fees7dUsd: null, revenue24hUsd: null, revenue7dUsd: null, protocolRevenue24hUsd: null, protocolRevenue7dUsd: null }) }));
   await page.route(/\/api\/vnext\/capital-flow(?:\?.*)?$/, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ schemaVersion: 1, chainId: 4663, chain: "Robinhood Chain", source: "DEFILLAMA", authoritative: false, status: "ready", asOf: FIXTURE_NOW, stablecoinMarketCapUsd: 148000000, stablecoinChange7dPct: 2.3, usdgMarketCapUsd: 91000000, usdgDominancePct: 61.5 }) }));
@@ -149,6 +171,29 @@ async function installTokenRoutes(page, { riskUnavailable = false } = {}) {
 async function createContext(browser, viewport) {
   const context = await browser.newContext({ viewport, deviceScaleFactor: 1, colorScheme: "dark", locale: "en-US", timezoneId: "UTC" });
   await context.addInitScript(({ fixedNow }) => {
+    const acceptanceWallet = "0x3333333333333333333333333333333333333333";
+    const listeners = new Map();
+    Object.defineProperty(window, "ethereum", {
+      configurable: false,
+      value: {
+        isMetaMask: false,
+        on(event, listener) {
+          const handlers = listeners.get(event) ?? new Set();
+          handlers.add(listener);
+          listeners.set(event, handlers);
+        },
+        removeListener(event, listener) {
+          listeners.get(event)?.delete(listener);
+        },
+        async request({ method }) {
+          if (method === "eth_accounts" || method === "eth_requestAccounts") return [acceptanceWallet];
+          if (method === "eth_chainId") return "0x1237";
+          if (method === "wallet_switchEthereumChain") return null;
+          if (method === "wallet_getCapabilities") return {};
+          throw new Error(`Unsupported deterministic acceptance wallet method: ${method}`);
+        }
+      }
+    });
     Date.now = () => fixedNow;
     localStorage.setItem("rmt:trading-terms", JSON.stringify({ version: "2026-07-28", acceptedAt: new Date(fixedNow).toISOString() }));
     localStorage.setItem("rmt:experience-preferences", JSON.stringify({ schemaVersion: 1, onboardingVersion: 1, diagnosticsEnabled: false, updatedAt: fixedNow }));
@@ -437,10 +482,40 @@ async function tokenLane(browser, viewport, platform) {
     await page.locator(".vnEvidencePane").scrollIntoViewIfNeeded();
     await acceptanceCapture(page, "safety-holders-ready-390x844");
     await page.getByRole("tab", { name: "liquidity", exact: true }).click();
+    await page.getByText("LP ownership/control · Not verified", { exact: true }).evaluate((element) => element.scrollIntoView({ block: "center" }));
     await acceptanceCapture(page, "safety-liquidity-ready-390x844");
     await page.getByRole("tab", { name: "risk", exact: true }).click();
     check(await page.getByText("Onchain verified", { exact: true }).count() === 1, "token-safety-mobile", "Safety does not reuse the workspace onchain token identity.");
+    check(await page.getByText("Complete evidence", { exact: true }).count() >= 1, "token-safety-mobile", "Complete risk coverage is not labeled independently.");
+    check(await page.getByText("Fresh", { exact: true }).count() === 1, "token-safety-mobile", "Freshness is not labeled independently from coverage.");
     await acceptanceCapture(page, "safety-risk-ready-390x844");
+
+    const reopenPonsAfterFixtureReload = async () => {
+      await page.locator(".rmtMobileMarketsView").waitFor();
+      await page.locator(".rmtMarketViews button").filter({ hasText: "All" }).click();
+      await page.locator(".rmtMobileMarketRow").filter({ hasText: "PONS" }).first().click();
+      await page.locator(".rmtMobileAssetView").waitFor();
+    };
+
+    fixture.setRiskMode("count-only");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await reopenPonsAfterFixtureReload();
+    await page.getByRole("tab", { name: "Safety", exact: true }).click();
+    await page.getByText("975 holders", { exact: true }).scrollIntoViewIfNeeded();
+    await acceptanceCapture(page, "safety-holders-count-only-390x844");
+
+    fixture.setRiskMode("verified-position");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await reopenPonsAfterFixtureReload();
+    await page.getByRole("tab", { name: "Safety", exact: true }).click();
+    await page.getByRole("tab", { name: "liquidity", exact: true }).click();
+    await page.getByText("launchpad registry", { exact: true }).evaluate((element) => element.scrollIntoView({ block: "center" }));
+    await acceptanceCapture(page, "safety-liquidity-verified-position-390x844");
+
+    fixture.setRiskMode("ready");
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await reopenPonsAfterFixtureReload();
+    await page.locator(".rmtMobileTradeDock").waitFor();
 
     await page.locator(".rmtMobileTradeDock .isBuy").click();
     const tradeSheet = page.locator(".rmtMobileTradeSheet");
@@ -474,16 +549,27 @@ async function tokenLane(browser, viewport, platform) {
 
     await page.getByRole("tab", { name: "Markets", exact: true }).click();
     check(await page.getByRole("tab", { name: "up.", exact: true }).count() === 0, "token-markets-mobile", "up. remains a top-level workspace tab.");
-    check(await page.getByRole("heading", { name: "up. markets & gauge evidence", exact: true }).count() === 1, "token-markets-mobile", "up. venue evidence was not preserved under Markets.");
+    check(await page.getByText("Other verified venues · 5", { exact: true }).count() === 1, "token-markets-mobile", "Verified venue evidence was not preserved under Markets.");
+    check(await page.getByRole("tab", { name: "RWA", exact: true }).count() === 0, "token-markets-mobile", "RWA remains a primary tab without a verified relationship.");
     await page.locator(".vnMarketEvidenceStack").scrollIntoViewIfNeeded();
-    await acceptanceCapture(page, "markets-with-up-evidence-390x844");
+    await acceptanceCapture(page, "other-verified-venues-collapsed-390x844");
+    const venueDisclosure = page.locator(".vnVenueDisclosure");
+    await venueDisclosure.locator("summary").click();
+    check(await page.getByText(/Pool swap fee · 1\.00%/).count() >= 1, "token-markets-mobile", "Venue fee is not explicitly labeled as a pool swap fee.");
+    await acceptanceCapture(page, "other-verified-venues-expanded-390x844");
 
     await page.getByRole("tab", { name: "Activity", exact: true }).click();
     fixture.setChartMode("unavailable");
     await page.getByRole("tab", { name: "5M", exact: true }).click();
-    await page.getByText("Unavailable", { exact: true }).waitFor();
+    await page.locator(".vnChartState").getByText("Unavailable", { exact: true }).waitFor();
     await page.locator(".vnChart").scrollIntoViewIfNeeded();
     await acceptanceCapture(page, "chart-unavailable-390x844");
+
+    fixture.setChartMode("sparse");
+    await page.getByRole("tab", { name: "1H", exact: true }).click();
+    await page.getByRole("tab", { name: "5M", exact: true }).click();
+    await page.getByText("Sparse 5-minute market history", { exact: false }).waitFor();
+    await acceptanceCapture(page, "chart-sparse-5m-390x844");
 
     fixture.setChartMode("stale");
     await page.getByRole("tab", { name: "15M", exact: true }).click();
@@ -518,6 +604,10 @@ async function tokenLane(browser, viewport, platform) {
     await page.getByRole("tab", { name: "liquidity", exact: true }).click();
     await page.getByText("Liquidity-control evidence unavailable", { exact: true }).waitFor();
     await acceptanceCapture(page, "safety-partial-390x844");
+    await page.getByRole("tab", { name: "risk", exact: true }).click();
+    check(await page.getByText("Partial evidence", { exact: true }).count() >= 1, "token-safety-partial-mobile", "Partial coverage is not labeled independently.");
+    check(await page.getByText("Fresh", { exact: true }).count() === 1, "token-safety-partial-mobile", "Partial coverage incorrectly replaces freshness.");
+    await acceptanceCapture(page, "safety-risk-partial-fresh-390x844");
 
     const dock = page.locator(".rmtMobileTradeDock");
     const dockOverlap = await page.evaluate(() => {
@@ -545,6 +635,16 @@ async function tokenLane(browser, viewport, platform) {
   const portfolioActive = await page.locator('[data-terminal-nav="portfolio"]:visible').getAttribute("aria-current") === "page";
   portfolioReturnPathViolations += Number(!portfolioHeading) + Number(!portfolioActive);
   check(portfolioHeading && portfolioActive, `portfolio-${platform}`, "Portfolio is not a coherent ownership return point.", { portfolioHeading, portfolioActive });
+  if (platform === "mobile") {
+    const walletDetails = page.getByRole("button", { name: "Wallet details", exact: true });
+    if (await walletDetails.count()) await walletDetails.click();
+    const portfolioText = await page.locator(".rmtPortfolioSurface").innerText();
+    if (browserAcceptanceProfile) {
+      check(/Wallet ETH[\s\S]*Spendable ETH[\s\S]*Reserved for network gas/i.test(portfolioText), "portfolio-mobile", "Portfolio does not explain the native gas reserve explicitly.", portfolioText.slice(0, 1_200));
+      await page.locator(".vnPortfolioTruth").scrollIntoViewIfNeeded();
+    }
+    check(!/1 onchain assets/.test(portfolioText), "portfolio-mobile", "Portfolio uses incorrect singular asset grammar.");
+  }
   await overflow(page, `portfolio-${platform}`);
   if (platform === "mobile") await acceptanceCapture(page, "portfolio-premium-mobile-390x844");
   else await acceptanceCapture(page, "portfolio-premium-desktop-1440x900");

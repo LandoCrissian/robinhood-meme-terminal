@@ -165,6 +165,19 @@ async function main() {
   assert.match(evidence.warnings.join(" "), /does not prove the liquidity position is locked/);
   assert.equal(evidence.checkedAt, "2026-07-27T12:00:00.000Z");
 
+  const unknownHolderClassification = await fetchTokenRiskEvidence(
+    { token, pair },
+    {
+      fetch: mockFetch({ holders: [{ address: { hash: whale }, value: "80" }] }),
+      simulateSellTransfer: async () => {
+        throw new Error("A holder without explicit contract classification must not be used for sell simulation.");
+      }
+    }
+  );
+  assert.equal(unknownHolderClassification.holders.topNonPoolHolders[0]?.isContract, null);
+  assert.equal(unknownHolderClassification.sellSimulation.status, "not-run");
+  assert.match(unknownHolderClassification.warnings.join(" "), /independently classified as a non-contract wallet/);
+
   let tokenOnlyLiquidityCalls = 0;
   let tokenOnlySellCalls = 0;
   const tokenOnly = await fetchTokenRiskEvidence(

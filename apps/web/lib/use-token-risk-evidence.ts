@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ExternalMarket } from "./external-market";
 import type { TokenRiskEvidence, TokenRiskEvidenceState } from "./token-risk-evidence";
 import type { VNextUniversalMarketSearchPool } from "./vnext/universal-market-search-contract";
+import { rmtCuratedRiskSourceId } from "./vnext/curated-market-registry";
 
 export function tokenRiskEvidenceRequestUrl(
   token?: string,
@@ -25,7 +26,7 @@ export function tokenRiskEvidenceRequestUrl(
     params.set("venue", venue);
   }
   const creator = market?.project?.creator;
-  const sourceId = market?.project?.sourceId;
+  const sourceId = rmtCuratedRiskSourceId(token) ?? market?.project?.sourceId;
   if (creator) params.set("creator", creator);
   if (sourceId === "pons" || sourceId === "noxa") {
     params.set("sourceId", sourceId);

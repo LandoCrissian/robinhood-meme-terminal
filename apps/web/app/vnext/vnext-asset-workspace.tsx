@@ -13,7 +13,7 @@ import {
   type UniversalMarketResolution
 } from "../../lib/external-market";
 import { summarizeExternalTradeActors, summarizeExternalSellPressure } from "../../lib/external-trades";
-import { formatOwnershipBps } from "../../lib/token-risk-evidence";
+import { formatOwnershipBps, tokenRiskCoverageLabel, tokenRiskFreshnessLabel } from "../../lib/token-risk-evidence";
 import { useExternalMarketStream } from "../../lib/use-external-market-stream";
 import { useTokenRiskEvidence } from "../../lib/use-token-risk-evidence";
 import { useWalletConstellation } from "../../lib/use-wallet-constellation";
@@ -104,6 +104,12 @@ function riskFlagLabel(flag: ExternalMarket["riskFlags"][number]) {
     "one-sided-activity": "One-sided activity"
   };
   return labels[flag];
+}
+
+function poolSwapFeeLabel(fee: number | null) {
+  return fee === null
+    ? "Pool swap fee · read at quote"
+    : `Pool swap fee · ${(fee / 10_000).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}%`;
 }
 
 function WorkspacePosition({
@@ -331,28 +337,34 @@ function WorkspaceEvidence({ market, directoryMarket, tokenIdentityVerified }: {
     : undefined;
   const warnings = [...new Set([...(market?.riskFlags ?? []).map(riskFlagLabel), ...(evidence?.warnings ?? [])])];
   const poolShareBps = evidence?.holders.poolShareBps ?? graph?.holderSnapshot.poolShareBps ?? null;
+  const holderCount = graph?.holderSnapshot.count ?? evidence?.holders.count ?? null;
+  const holderTopShare = graph?.holderSnapshot.topNonPoolShareBps ?? evidenceTopShare ?? null;
+  const holderLargestShare = graph?.holderSnapshot.largestNonPoolShareBps ?? evidenceLargestShare ?? null;
+  const hasHolderConcentration = holders.length > 0 || holderTopShare !== null || holderLargestShare !== null;
   const evidenceUnavailable = risk.status === "unavailable" && constellation.status === "unavailable";
   const riskUnavailable = risk.status === "unavailable" || !evidence;
-  const evidencePartial = evidence?.coverage === "partial" || evidence?.freshness === "stale";
+  const evidenceCoverageLabel = evidence ? tokenRiskCoverageLabel(evidence.coverage) : null;
+  const hasIdentifiedLiquidityPosition = evidence?.liquidity.evidenceSource !== undefined
+    && evidence.liquidity.evidenceSource !== "none";
   const domainAvailable = (domain: "token" | "holders" | "contract" | "abi" | "creator" | "liquidity" | "sell") => {
     const status = evidence?.domains?.[domain];
     return status === undefined || status === "ready" || status === "stale";
   };
 
   return <section className="vnWorkspaceCard vnEvidenceDeck" aria-labelledby="vn-evidence-heading">
-    <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Read-only evidence</span><h3 id="vn-evidence-heading">Holders, liquidity &amp; risk</h3></div><span>{risk.status === "ready" || constellation.status === "ready" ? evidencePartial ? "Partial evidence" : "Evidence loaded" : risk.status === "loading" || constellation.status === "loading" ? "Checking…" : "Coverage limited"}</span></header>
+    <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Read-only evidence</span><h3 id="vn-evidence-heading">Holders, liquidity &amp; risk</h3></div><span>{risk.status === "ready" && evidenceCoverageLabel ? evidenceCoverageLabel : constellation.status === "ready" ? "Wallet evidence loaded" : risk.status === "loading" || constellation.status === "loading" ? "Checking…" : "Coverage limited"}</span></header>
     <div className="vnEvidenceTabs" role="tablist" aria-label="Market evidence">
       {(["holders", "liquidity", "risk"] as const).map((item) => <button type="button" role="tab" aria-selected={tab === item} className={tab === item ? "isActive" : ""} onClick={() => setTab(item)} key={item}>{item}</button>)}
     </div>
 
     {tab === "holders" && <div className="vnEvidencePane" role="tabpanel">
-      {evidenceUnavailable ? <div className="vnEvidenceUnavailable"><strong>Holder evidence unavailable</strong><span>Token identity remains available. Concentration is unknown until the evidence service recovers.</span></div> : <><div className="vnEvidenceGrid">
-        <span><small>Known holders</small><strong>{graph?.holderSnapshot.count?.toLocaleString() ?? evidence?.holders.count?.toLocaleString() ?? "—"}</strong></span>
-        <span><small>{graph || evidence?.marketVerified ? "Top 10 · no pool" : "Top 10 visible"}</small><strong>{formatOwnershipBps(graph?.holderSnapshot.topNonPoolShareBps ?? evidenceTopShare ?? null)}</strong></span>
-        <span><small>{graph || evidence?.marketVerified ? "Largest wallet" : "Largest visible"}</small><strong>{formatOwnershipBps(graph?.holderSnapshot.largestNonPoolShareBps ?? evidenceLargestShare ?? null)}</strong></span>
+      {evidenceUnavailable ? <div className="vnEvidenceUnavailable"><strong>Holder evidence unavailable</strong><span>Token identity remains available. Concentration is unknown until the evidence service recovers.</span></div> : <>{holderCount !== null && !hasHolderConcentration ? <div className="vnEvidenceUnavailable vnEvidenceCountOnly"><strong>{holderCount.toLocaleString()} holders</strong><span>Concentration details are temporarily unavailable. Missing holder rows remain unknown, never safe.</span></div> : <div className="vnEvidenceGrid">
+        <span><small>Known holders</small><strong>{holderCount?.toLocaleString() ?? "—"}</strong></span>
+        <span><small>{graph || evidence?.marketVerified ? "Top 10 · no pool" : "Top 10 visible"}</small><strong>{formatOwnershipBps(holderTopShare)}</strong></span>
+        <span><small>{graph || evidence?.marketVerified ? "Largest wallet" : "Largest visible"}</small><strong>{formatOwnershipBps(holderLargestShare)}</strong></span>
         <span><small>Creator reported</small><strong>{formatOwnershipBps(graph?.holderSnapshot.creatorShareBps ?? evidence?.holders.creatorShareBps ?? null)}</strong></span>
-      </div>
-      {holders.length > 0 ? <><div className="vnConcentrationTrack" aria-label={`Visible top-holder concentration ${formatOwnershipBps(graph?.holderSnapshot.topNonPoolShareBps ?? evidenceTopShare ?? null)}`}>{holders.slice(0, 6).map((holder, index) => <i className={holder.isFlagged ? "isFlagged" : holder.isContract ? "isContract" : ""} style={{ width: `${Math.max(.75, (holder.supplyShareBps ?? 0) / 100)}%` }} title={`${shortAddress(holder.address)} · ${formatOwnershipBps(holder.supplyShareBps)}`} key={holder.address} data-rank={index + 1} />)}</div><div className="vnHolderList">{holders.slice(0, 8).map((holder, index) => <ExplorerLink kind="address" value={holder.address} accessibleName={`Open holder ${shortAddress(holder.address)} in Robinhood Chain explorer`} key={holder.address}><b>{index + 1}</b><span><strong>{shortAddress(holder.address)}</strong><small>{holder.role === "creator" ? "Reported creator" : holder.isFlagged ? "Explorer flagged" : holder.isContract ? "Contract" : "Wallet"}</small></span><strong>{formatOwnershipBps(holder.supplyShareBps)}</strong><i aria-hidden="true">↗</i></ExplorerLink>)}</div></> : <p className="vnEvidenceCaution">Holder rows are unavailable. Missing concentration data remains unknown, never safe.</p>}
+      </div>}
+      {holders.length > 0 ? <><div className="vnConcentrationTrack" aria-label={`Visible top-holder concentration ${formatOwnershipBps(holderTopShare)}`}>{holders.slice(0, 6).map((holder, index) => <i className={holder.isFlagged ? "isFlagged" : holder.isContract === true ? "isContract" : ""} style={{ width: `${Math.max(.75, (holder.supplyShareBps ?? 0) / 100)}%` }} title={`${shortAddress(holder.address)} · ${formatOwnershipBps(holder.supplyShareBps)}`} key={holder.address} data-rank={index + 1} />)}</div><div className="vnHolderList">{holders.slice(0, 8).map((holder, index) => <ExplorerLink kind="address" value={holder.address} accessibleName={`Open holder ${shortAddress(holder.address)} in Robinhood Chain explorer`} key={holder.address}><b>{index + 1}</b><span><strong>{shortAddress(holder.address)}</strong><small>{holder.role === "creator" ? "Reported creator" : holder.isFlagged ? "Explorer flagged" : holder.isContract === true ? "Contract" : holder.isContract === false ? "Wallet" : "Classification unknown"}</small></span><strong>{formatOwnershipBps(holder.supplyShareBps)}</strong><i aria-hidden="true">↗</i></ExplorerLink>)}</div></> : holderCount === null ? <p className="vnEvidenceCaution">Holder rows are unavailable. Missing concentration data remains unknown, never safe.</p> : null}
       {graph?.signals.length ? <details className="vnEvidenceDetails"><summary>Observed wallet relationships <b>{graph.signals.length}</b></summary><div>{graph.signals.slice(0, 4).map((signal) => <span className={signal.severity} key={`${signal.code}:${signal.relatedAddresses.join(":")}`}><strong>{signal.label}</strong><small>{signal.relatedAddresses.map(shortAddress).join(" ↔ ")}</small><small>{signal.description}</small></span>)}</div></details> : null}
       {graph && <p className="vnCoverageNote">{graph.coverage.description} · {graph.coverage.sampledTransfers} transfers sampled.</p>}</>}
     </div>}
@@ -361,7 +373,7 @@ function WorkspaceEvidence({ market, directoryMarket, tokenIdentityVerified }: {
       <div className="vnLiquidityHeadline"><span><small>Displayed pool liquidity</small><strong>{market ? compactUsd(market.liquidityUsd) : "Unavailable"}</strong></span>{canonicalAddressPool ? <ExplorerLink kind="pool" value={canonicalAddressPool}>Canonical pool {shortAddress(canonicalAddressPool)} ↗</ExplorerLink> : canonicalMarket?.version === 4 ? <span>V4 PoolId {shortAddress(canonicalMarket.poolKey)}</span> : observedAddressPool ? <ExplorerLink kind="pool" value={observedAddressPool}>Observed pool {shortAddress(observedAddressPool)} ↗</ExplorerLink> : null}</div>
       {riskUnavailable || !domainAvailable("liquidity") ? <>{poolShareBps !== null ? <div className="vnEvidenceGrid">
         <span><small>Pool token share</small><strong>{formatOwnershipBps(poolShareBps)}</strong></span>
-      </div> : null}<div className="vnEvidenceUnavailable"><strong>Liquidity-control evidence unavailable</strong><span>Displayed market liquidity and exact pool identity remain available where shown. Position ownership and transfer control remain unknown.</span></div></> : <div className="vnEvidenceGrid">
+      </div> : null}<div className="vnEvidenceUnavailable"><strong>Liquidity-control evidence unavailable</strong><span>Displayed market liquidity and exact pool identity remain available where shown. Position ownership and transfer control remain unknown.</span></div></> : !hasIdentifiedLiquidityPosition ? <>{poolShareBps !== null ? <div className="vnEvidenceGrid"><span><small>Pool token share</small><strong>{formatOwnershipBps(poolShareBps)}</strong></span></div> : null}<div className="vnEvidenceUnavailable"><strong>LP ownership/control · Not verified</strong><span>No registered liquidity-position evidence is attached. Displayed liquidity and exact pool identity remain separate market evidence.</span></div></> : <div className="vnEvidenceGrid">
         <span><small>Pool token share</small><strong>{formatOwnershipBps(poolShareBps)}</strong></span>
         <span><small>Liquidity control</small><strong>{evidence?.liquidity.controlStatus.replaceAll("-", " ") ?? "Not proven"}</strong></span>
         <span><small>Position owner</small><strong>{evidence?.liquidity.owner ? shortAddress(evidence.liquidity.owner) : "Unknown"}</strong></span>
@@ -379,7 +391,7 @@ function WorkspaceEvidence({ market, directoryMarket, tokenIdentityVerified }: {
         {!riskUnavailable && domainAvailable("contract") ? <><span><small>Contract source</small><strong>{evidence.contract.sourcePublished === true ? "Published" : evidence.contract.sourcePublished === false ? "Not published" : "Unknown"}</strong></span><span><small>Proxy</small><strong>{evidence.contract.isProxy === true ? "Detected" : evidence.contract.isProxy === false ? "Not detected" : "Unknown"}</strong></span></> : null}
         {!riskUnavailable && domainAvailable("abi") ? <span><small>Privileged controls</small><strong>{evidence.contract.controls.assessment.replaceAll("-", " ")}</strong></span> : null}
         {!riskUnavailable && domainAvailable("sell") ? <span><small>Sell check</small><strong>{evidence.sellSimulation.status.replaceAll("-", " ")}</strong></span> : null}
-        {!riskUnavailable ? <span><small>Evidence freshness</small><strong>{evidence.freshness === "stale" ? "Last loaded" : evidence.coverage}</strong></span> : null}
+        {!riskUnavailable ? <><span><small>Coverage</small><strong>{tokenRiskCoverageLabel(evidence.coverage)}</strong></span><span><small>Evidence freshness</small><strong>{tokenRiskFreshnessLabel(evidence.freshness)}</strong></span></> : null}
       </div>
       {riskUnavailable ? <div className="vnEvidenceUnavailable"><strong>Contract risk evidence unavailable</strong><span>Onchain token and canonical market identity remain separate known evidence. Contract controls and sell behavior are unknown.</span></div> : warnings.length ? <div className="vnRiskFindings">{warnings.slice(0, 8).map((warning) => <span key={warning}>{warning}</span>)}</div> : <p className="vnEvidenceCaution">No warning is present in available evidence. Missing coverage remains unknown, never safe.</p>}
       {(evidence?.contract.controls.detected.length || evidence?.contract.controls.customWriteFunctions.length) ? <details className="vnEvidenceDetails"><summary>Detected contract controls <b>{evidence.contract.controls.detected.length + evidence.contract.controls.customWriteFunctions.length}</b></summary><div>{evidence.contract.controls.detected.map((control) => <span key={`${control.category}:${control.functionName}`}><strong>{control.category}</strong><small>{control.functionName}</small></span>)}{evidence.contract.controls.customWriteFunctions.slice(0, 6).map((name) => <span key={name}><strong>Custom write</strong><small>{name}</small></span>)}</div></details> : null}
@@ -408,7 +420,7 @@ function VerifiedMarkets({
         const selected = Boolean(pool.poolAddress && selectedPool?.toLowerCase() === pool.poolAddress.toLowerCase());
         const identity = pool.poolAddress ?? pool.poolKey;
         return <ExplorerLink kind={pool.poolAddress ? "pool" : "transaction"} value={pool.poolAddress ?? pool.transactionHash} className={selected ? "isSelected" : ""} accessibleName={`Open ${canonicalVenueLabel(pool)} market evidence in Robinhood Chain explorer`} key={`${pool.sourceId}:${pool.poolKey}`}>
-          <span><strong>{canonicalVenueLabel(pool)}{selected ? " · displayed" : ""}</strong><small>{pool.version === 4 ? `PoolId ${shortAddress(pool.poolKey)}` : `Pool ${shortAddress(identity)}`} · tokens {shortAddress(pool.token0)} / {shortAddress(pool.token1)}</small></span>
+          <span><strong>{canonicalVenueLabel(pool)}{selected ? " · displayed" : ""}</strong><small>{pool.version === 4 ? `PoolId ${shortAddress(pool.poolKey)}` : `Pool ${shortAddress(identity)}`} · {poolSwapFeeLabel(pool.fee)}</small></span>
           <b>Canonical inventory</b>
           <i aria-hidden="true">↗</i>
         </ExplorerLink>;
@@ -422,7 +434,7 @@ function VerifiedMarkets({
     {pools.length ? <div className="vnVerifiedMarkets">{pools.map((pool) => {
       const selected = selectedPool?.toLowerCase() === pool.poolAddress.toLowerCase();
       return <ExplorerLink kind="pool" value={pool.poolAddress} className={selected ? "isSelected" : ""} accessibleName={`Open ${venueLabel(pool)} pool in Robinhood Chain explorer`} key={pool.poolAddress}>
-        <span><strong>{venueLabel(pool)}{selected ? " · displayed" : ""}</strong><small>{shortAddress(pool.poolAddress)} · quote {shortAddress(pool.quoteToken)} · {pool.fee === null ? "fee read at quote" : `${pool.fee / 10_000}% fee`}</small></span>
+        <span><strong>{venueLabel(pool)}{selected ? " · displayed" : ""}</strong><small>{shortAddress(pool.poolAddress)} · quote {shortAddress(pool.quoteToken)} · {poolSwapFeeLabel(pool.fee)}</small></span>
         <b>{pool.execution === "route-check-required" ? "Quote on demand" : "View only"}</b>
         <i aria-hidden="true">↗</i>
       </ExplorerLink>;
@@ -446,7 +458,7 @@ function upVenueLabel(market: VNextUpMarketIntelligence) {
 }
 
 function upFeeLabel(market: VNextUpMarketIntelligence) {
-  return `${(market.liveFee / market.feeDenominator * 100).toLocaleString(undefined, { maximumFractionDigits: 4 })}% live fee`;
+  return `Pool swap fee · ${(market.liveFee / market.feeDenominator * 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}%`;
 }
 
 function WorkspaceEcosystemIntelligence({ ecosystem }: { ecosystem?: VNextEcosystemIntelligence }) {
@@ -454,16 +466,18 @@ function WorkspaceEcosystemIntelligence({ ecosystem }: { ecosystem?: VNextEcosys
   const status = ecosystem?.status === "ready" ? "Onchain verified"
     : ecosystem?.status === "partial" ? "Partial evidence"
       : ecosystem ? "Unavailable" : "Checking";
-  return <section className="vnWorkspaceCard vnEcosystemCard" aria-labelledby="vn-ecosystem-heading">
-    <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Ecosystem intelligence</span><h3 id="vn-ecosystem-heading">up. markets &amp; gauge evidence</h3></div><span>{status}</span></header>
+  return <details className="vnWorkspaceCard vnEcosystemCard vnVenueDisclosure">
+    <summary><span><small>Additional venue evidence</small><strong>Other verified venues · {markets.length}</strong></span><span>{status}<i aria-hidden="true">⌄</i></span></summary>
+    <div className="vnVenueDisclosureBody">
     {markets.length ? <div className="vnEcosystemMarkets">{markets.map((market) => <ExplorerLink kind="pool" value={market.poolAddress} accessibleName={`Open ${upVenueLabel(market)} pool in Robinhood Chain explorer`} key={market.poolAddress}>
       <span><strong>{upVenueLabel(market)}</strong><small>{shortAddress(market.poolAddress)} · quote {shortAddress(market.quoteToken)}</small></span>
       <span><b>{upFeeLabel(market)}</b><small>{market.gaugeState === "live" ? "Gauge live" : market.gaugeState === "inactive" ? "Gauge inactive" : market.gaugeState === "none" ? "No gauge" : "Gauge state delayed"}</small></span>
       <i aria-hidden="true">↗</i>
     </ExplorerLink>)}</div> : <p className="vnEvidenceCaution">{!ecosystem ? "Checking exact up. market identity without blocking the rest of the workspace." : ecosystem.status === "unavailable" ? "up. market evidence is temporarily unavailable. RMT does not convert that into a no-market claim." : "No canonical USDG, WETH, or displayed up. pool was found for this asset at the verified block."}</p>}
-    {ecosystem?.observedBlock && <p className="vnCoverageNote">Factory, pool, live fee and Voter state checked at Robinhood block {Number(ecosystem.observedBlock).toLocaleString()}.</p>}
-    <footer>up. is a market venue, not project origin. It never proves StonkBrokers creation. StonkBrokers token-created and source-listed claims remain unavailable until production launcher or registry evidence is independently admitted.</footer>
-  </section>;
+    {ecosystem?.observedBlock && <p className="vnCoverageNote">Factory, pool, swap fee and Voter state checked at Robinhood block {Number(ecosystem.observedBlock).toLocaleString()}.</p>}
+    <footer>Venue evidence does not prove project origin. It never replaces canonical market or execution authority.</footer>
+    </div>
+  </details>;
 }
 
 export function VNextAssetWorkspace({
@@ -528,23 +542,25 @@ export function VNextAssetWorkspace({
           : "Unknown";
   const valuation = terminalValuation(directoryMarket.marketCapUsd, directoryMarket.fdvUsd);
 
+  const hasVerifiedRwaRelationship = workspace.stockAssetRelationships.length > 0;
   const sections = [
     { id: "activity", label: "Activity" },
     { id: "evidence", label: "Safety" },
     { id: "markets", label: "Markets" },
     { id: "position", label: "Position" },
     { id: "origin", label: "Origin" },
-    { id: "rwa", label: "RWA" }
+    ...(hasVerifiedRwaRelationship ? [{ id: "rwa" as const, label: "RWA" }] : [])
   ] as const;
-  const intelligence = section === "activity"
+  const activeSection = section === "rwa" && !hasVerifiedRwaRelationship ? "origin" : section;
+  const intelligence = activeSection === "activity"
     ? market ? <WorkspaceActivity market={market} /> : <div className="vnWorkspaceCard vnWorkspaceEmpty"><strong>Trade activity loading</strong><span>Exact-pool activity appears when canonical market evidence and telemetry are available.</span></div>
-    : section === "evidence"
+    : activeSection === "evidence"
       ? <WorkspaceEvidence market={market} directoryMarket={directoryMarket} tokenIdentityVerified={tokenIdentityVerified} />
-      : section === "markets"
+      : activeSection === "markets"
         ? <div className="vnMarketEvidenceStack"><VerifiedMarkets canonicalMarkets={directoryMarket.canonicalMarkets} resolution={resolution} selectedPool={selectedChartIdentity} /><WorkspaceEcosystemIntelligence ecosystem={workspace.ecosystem} /></div>
-        : section === "position"
+        : activeSection === "position"
           ? <WorkspacePosition directoryMarket={directoryMarket} walletAssets={walletAssets} executionState={executionState} executionUiState={executionUiState} onTradeSide={onTradeSide} />
-          : section === "origin"
+          : activeSection === "origin"
             ? <WorkspaceOrigin market={market} token={directoryMarket.address} launchpadEvidence={launchpadEvidence} />
             : <WorkspaceRwaRelationships relationships={workspace.stockAssetRelationships} coverage={workspace.stockAssetCoverage} />;
 
@@ -575,7 +591,7 @@ export function VNextAssetWorkspace({
       : <div className="vnChart vnChartEmpty"><strong>Chart coverage unavailable</strong><span>No supported canonical-market OHLCV source is attached. RMT will not render invented price history.</span></div>}
 
     <div className="rmtWorkspaceTabs" role="tablist" aria-label="Asset intelligence">
-      {sections.map((item) => <button key={item.id} type="button" role="tab" aria-selected={section === item.id} className={section === item.id ? "isActive" : ""} onClick={() => setSection(item.id)}>{item.label}</button>)}
+      {sections.map((item) => <button key={item.id} type="button" role="tab" aria-selected={activeSection === item.id} className={activeSection === item.id ? "isActive" : ""} onClick={() => setSection(item.id)}>{item.label}</button>)}
     </div>
     <div className="rmtWorkspaceIntelligence" role="tabpanel">{intelligence}</div>
   </section>;
