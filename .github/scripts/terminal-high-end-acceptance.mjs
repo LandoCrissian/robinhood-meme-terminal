@@ -2184,8 +2184,11 @@ async function inspectV4PreviewUserJourney(browser, fixture) {
 
   await page.locator(".vnEvidenceTabs").getByRole("tab", { name: "liquidity", exact: true }).click();
   const liquidityText = await page.locator(".vnEvidencePane").innerText();
-  for (const required of ["V4 PoolId", "Pool token share", "Unavailable", "Liquidity control", "not proven", "Evidence source", "none"] ) {
+  for (const required of ["V4 PoolId", "LP ownership/control", "Not verified", "No registered liquidity-position evidence is attached"] ) {
     if (!liquidityText.toLowerCase().includes(required.toLowerCase())) throw new Error(`V4 liquidity findings omitted ${required}: ${liquidityText}`);
+  }
+  if (/Pool token share|Position owner|Position ID|Evidence source/i.test(liquidityText)) {
+    throw new Error(`V4 liquidity findings rendered the legacy no-position detail grid: ${liquidityText}`);
   }
   if (/contract held|creator controlled|third party wallet|burn address/i.test(liquidityText)) {
     throw new Error(`V4 findings fabricated address-pool ownership: ${liquidityText}`);
