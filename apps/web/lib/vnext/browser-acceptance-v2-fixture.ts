@@ -49,6 +49,10 @@ const runtimeHash = `0x${"8".repeat(64)}` as Hex;
 const policy = createRmtExecutionFeeV2Policy({ treasury, fromBlock: "40000000" });
 const generatedAtMs = Date.now();
 const deadline = Math.floor((generatedAtMs + 300_000) / 1_000).toString();
+const walletPlanExpiresAt = (onchainDeadline: string | bigint) => Math.min(
+  generatedAtMs + 60_000,
+  Number(BigInt(onchainDeadline) * 1_000n) - 180_000
+);
 
 const v4Token = getAddress("0x1139d423C1706BDeaD91f03507F521635591eD92");
 const v4Hooks = getAddress("0xE5e702641Ea86F4ae6cC3cDaeD2B886f976Be044");
@@ -201,7 +205,7 @@ function buildScenario(input: {
     feeV2Authorization: feeAuthorization,
     deadline,
     preparedAtMs: generatedAtMs,
-    expiresAtMs: generatedAtMs + 60_000,
+    expiresAtMs: walletPlanExpiresAt(deadline),
     userAuthorizationRequired: true,
     serverSubmissionEnabled: false
   };
@@ -476,7 +480,7 @@ async function buildV4BrowserScenario() {
     v4Execution: evidence.v4Execution,
     deadline: evidence.deadline,
     preparedAtMs: generatedAtMs,
-    expiresAtMs: generatedAtMs + 60_000,
+    expiresAtMs: walletPlanExpiresAt(evidence.deadline),
     userAuthorizationRequired: true,
     serverSubmissionEnabled: false
   };
@@ -616,7 +620,7 @@ async function buildV4BrowserScenario() {
       v4Execution: stageEvidence.v4Execution,
       deadline: stageEvidence.deadline,
       preparedAtMs: generatedAtMs,
-      expiresAtMs: generatedAtMs + 60_000,
+      expiresAtMs: walletPlanExpiresAt(stageEvidence.deadline),
       userAuthorizationRequired: true,
       serverSubmissionEnabled: false
     };

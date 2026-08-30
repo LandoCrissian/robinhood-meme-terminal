@@ -150,7 +150,10 @@ assert.match(hook, /receipt\.data\.transactionHash\.toLowerCase\(\) !== record\.
 assert.match(hook, /VNEXT_EXECUTION_STORAGE_KEY/);
 assert.match(banner, /Do not resubmit/);
 assert.match(walletReview, /findUnresolvedVNextExecution/);
-assert.match(walletReview, /recordSubmittedVNextExecution/);
+assert.match(walletReview, /recordPreparedVNextWalletRequest/);
+assert.match(walletReview, /PROMPT_REQUESTED/);
+assert.match(walletReview, /promoteVNextWalletRequestToSubmitted/);
+assert.doesNotMatch(walletReview, /autoRequest/);
 assert.match(spendBalance, /executionRecord\.state !== "confirmed"/);
 assert.match(spendBalance, /SETTLEMENT_BALANCE_REFRESH_DELAYS_MS/);
 assert.match(spendBalance, /void refreshBalances\.current\(false\)/);

@@ -296,12 +296,6 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     return () => window.clearTimeout(timeout);
   }, [quoteState]);
   useEffect(() => {
-    if (authorizationState.state !== "ready") return;
-    const delay = Math.max(0, authorizationState.plan.expiresAtMs - Date.now());
-    const timeout = window.setTimeout(() => setAuthorizationState({ state: "error", message: "Wallet-review plan expired. Verify the route again." }), delay);
-    return () => window.clearTimeout(timeout);
-  }, [authorizationState]);
-  useEffect(() => {
     if (postExecutionState.state !== "swap_confirmed") return;
     const previousOverflow = document.body.style.overflow;
     const handleReceiptKeyboard = (event: KeyboardEvent) => {
@@ -634,7 +628,6 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       outputAsset: outputAddress,
       inputAmountAtomic: draft.intent.amountAtomic,
       recipient: address,
-      deadline: evidence.deadline,
       expectedStatus: evidence.status,
       indicativeProtectedOutputFloorAtomic: evidence.indicativeProtectedOutputFloorAtomic,
       expectedProtectedOutputAtomic: evidence.protectedOutputAtomic,
@@ -1004,7 +997,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
                   : "Fresh verification blocked"}</strong>
         <small>{postExecutionState.message}</small>
       </div> : null}
-      <details className="vnRouteCard">
+      <details className="vnRouteCard" open={authorizationState.state === "ready" || undefined}>
         <summary className="vnRouteTop"><span><i aria-hidden="true" /> Advanced details</span><strong>{routeStatusLabel}</strong></summary>
         <div className="vnRouteDetails">
         <dl className="vnIntentSummary">
@@ -1084,18 +1077,23 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
             </div> : null}
             {authorizationState.state === "error" ? <p className="vnAuthorizationError" role="status">{authorizationState.message}</p> : null}
             {authorizationState.state === "ready" ? <div className="vnAuthorizationPlan" role="status">
-              <span><strong>{authorizationState.plan.kind === "erc20_approval" ? "Exact token approval prepared" : "Verified swap prepared"}</strong><small>RMT is opening the exact request in your wallet automatically.</small></span>
+              <span><strong>{authorizationState.plan.kind === "erc20_approval" ? "Exact token approval prepared" : "Verified swap prepared"}</strong><small>Review the verified request, then explicitly choose when to open your wallet.</small></span>
               <dl>
+                <div><dt>{authorizationState.plan.kind === "erc20_approval" ? "Approval amount" : "Exact input"}</dt><dd>{formatAtomicDisplay(authorizationState.plan.inputAmountAtomic, pair?.inputAsset.decimals ?? 18)} {inputSymbol}</dd></div>
+                <div><dt>Expected output</dt><dd>{formatAtomicDisplay(visibleVerification.expectedOutputAtomic, pair?.outputAsset.decimals ?? 18)} {outputSymbol}</dd></div>
+                <div><dt>Protected minimum</dt><dd>{formatAtomicDisplay(authorizationState.plan.protectedOutputAtomic, pair?.outputAsset.decimals ?? 18)} {outputSymbol}</dd></div>
+                <div><dt>Route</dt><dd>{visibleVerification.route === "v4_pool" ? "Canonical V4 PoolKey" : visibleVerification.route === "direct" ? `Direct ${visibleVerification.provider === "uniswap-v2" || visibleVerification.provider === "up-v2" ? "V2" : "V3"}` : "V3 via WETH"}</dd></div>
+                <div><dt>Network</dt><dd>Robinhood Chain · 4663</dd></div>
                 <div><dt>Target</dt><dd>{shortAddress(authorizationState.plan.target)}</dd></div>
                 <div><dt>Gas limit</dt><dd>{BigInt(authorizationState.plan.gasLimit).toLocaleString()}</dd></div>
                 <div><dt>Payload</dt><dd>{shortAddress(authorizationState.plan.payloadHash)}</dd></div>
                 <div><dt>Expires</dt><dd>{new Date(authorizationState.plan.expiresAtMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</dd></div>
               </dl>
               <VNextWalletReview
-                autoRequest
                 key={authorizationState.plan.planId}
                 plan={authorizationState.plan}
                 evidence={visibleVerification}
+                onRefresh={() => void startTrade()}
                 inputSymbol={inputSymbol}
                 outputSymbol={outputSymbol}
                 inputDecimals={pair?.inputAsset.decimals ?? 18}

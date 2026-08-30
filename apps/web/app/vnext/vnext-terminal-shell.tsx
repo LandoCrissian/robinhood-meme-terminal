@@ -277,6 +277,7 @@ export function VNextTerminalShell() {
     nativeBalance,
     walletReadStatus,
     executionRecord: executionRecovery.record,
+    walletRequest: executionRecovery.walletRequest,
     executionStatus: executionRecovery.status,
     portfolioRevealRequest,
     tradeSideRequest,

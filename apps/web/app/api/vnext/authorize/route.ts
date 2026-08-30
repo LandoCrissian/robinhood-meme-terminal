@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { getAddress, isAddress, type Hex } from "viem";
-import { z } from "zod";
+import { getAddress, type Hex } from "viem";
 import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
 import { stockTokenExecutionPolicyErrorResponse } from "../../../../lib/server/robinhood-stock-token-registry";
 import { readVNextVerifiedAssetIdentity } from "../../../../lib/server/vnext-asset-identity";
@@ -12,40 +11,15 @@ import {
 } from "../../../../lib/server/project-identity-admission";
 import { directExecutionBinding, VNEXT_DIRECT_NO_RMT_FEE } from "../../../../lib/vnext/execution-settlement";
 import { vNextExecutionEligibilityErrorResponse } from "../../../../lib/server/vnext-execution-eligibility";
+import {
+  deriveVNextAuthorizationTiming,
+  VNEXT_AUTHORIZATION_WINDOW_SECONDS,
+  readVNextAuthorizationChainTimestamp
+} from "../../../../lib/server/vnext-authorization-time";
+import { vNextAuthorizationRequestSchema } from "../../../../lib/server/vnext-authorization-request";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-const requestSchema = z.object({
-  chainId: z.literal(4_663),
-  quoteRequestId: z.string().uuid(),
-  verificationId: z.string().uuid(),
-  provider: z.enum(["sushi", "uniswap-v2", "uniswap-v3", "uniswap-v4", "up-v2", "up-cl"]),
-  inputAsset: z.string().refine((value) => isAddress(value, { strict: false })),
-  outputAsset: z.string().refine((value) => isAddress(value, { strict: false })),
-  inputAmountAtomic: z.string().regex(/^[1-9][0-9]*$/),
-  recipient: z.string().refine((value) => isAddress(value, { strict: false })),
-  deadline: z.string().regex(/^[1-9][0-9]*$/),
-  expectedStatus: z.enum(["approval_required", "verified"]),
-  indicativeProtectedOutputFloorAtomic: z.string().regex(/^[1-9][0-9]*$/),
-  expectedProtectedOutputAtomic: z.string().regex(/^[1-9][0-9]*$/),
-  executionId: z.string().regex(/^0x[0-9a-fA-F]{64}$/).optional(),
-  canonicalMarket: z.object({ sourceId: z.literal("uniswap-v4"), poolId: z.string().regex(/^0x[0-9a-fA-F]{64}$/) }).optional(),
-  v4QuoteEvidence: z.object({
-    poolId: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
-    currency0: z.string().refine((value) => isAddress(value, { strict: false })),
-    currency1: z.string().refine((value) => isAddress(value, { strict: false })),
-    fee: z.number().int().nonnegative().max(16_777_215),
-    tickSpacing: z.number().int().positive().max(32_767),
-    hooks: z.string().refine((value) => isAddress(value, { strict: false })),
-    recipient: z.string().refine((value) => isAddress(value, { strict: false })),
-    observedBlock: z.string().regex(/^[1-9][0-9]*$/),
-    observedBlockHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/),
-    observedAtMs: z.number().int().positive(),
-    quotedAtMs: z.number().int().positive(),
-    expiresAtMs: z.number().int().positive()
-  }).optional()
-});
 
 const noStore = { "Cache-Control": "no-store" };
 
@@ -54,7 +28,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "VNext wallet authorization is not enabled." }, { status: 503, headers: noStore });
   }
   try {
-    const parsed = requestSchema.safeParse(await request.json());
+    const parsed = vNextAuthorizationRequestSchema.safeParse(await request.json());
     if (!parsed.success) return Response.json({ error: "Invalid VNext authorization request." }, { status: 400, headers: noStore });
     const hasCompleteV4Binding = Boolean(parsed.data.canonicalMarket && parsed.data.v4QuoteEvidence);
     if ((parsed.data.provider === "uniswap-v4") !== hasCompleteV4Binding) {
@@ -79,7 +53,8 @@ export async function POST(request: Request) {
       { address: outputAsset }
     ]);
 
-    const preparedAtMs = Date.now();
+    const chainTimestampSeconds = await readVNextAuthorizationChainTimestamp();
+    const finalDeadlineSeconds = chainTimestampSeconds + VNEXT_AUTHORIZATION_WINDOW_SECONDS;
     const prepared = await prepareRobinhoodVNextAuthorization(parsed.data.provider, {
       chainId: 4_663,
       inputAsset,
@@ -87,10 +62,10 @@ export async function POST(request: Request) {
       amountIn: BigInt(parsed.data.inputAmountAtomic),
       inputAmountAtomic: parsed.data.inputAmountAtomic,
       recipient,
-      deadlineSeconds: BigInt(parsed.data.deadline),
+      deadlineSeconds: finalDeadlineSeconds,
       indicativeProtectedOutputFloorAtomic: BigInt(parsed.data.indicativeProtectedOutputFloorAtomic),
       protectedOutputFloorAtomic: BigInt(parsed.data.expectedProtectedOutputAtomic),
-      nowMs: preparedAtMs,
+      nowMs: Number(chainTimestampSeconds * 1_000n),
       settlementMode: VNEXT_DIRECT_NO_RMT_FEE,
       ...(parsed.data.canonicalMarket ? { canonicalMarket: parsed.data.canonicalMarket as { sourceId: "uniswap-v4"; poolId: `0x${string}` } } : {}),
       ...(parsed.data.v4QuoteEvidence ? { v4QuoteEvidence: parsed.data.v4QuoteEvidence as typeof parsed.data.v4QuoteEvidence & { poolId: `0x${string}`; observedBlockHash: `0x${string}` } } : {}),
@@ -106,7 +81,12 @@ export async function POST(request: Request) {
       return Response.json({ error: "Route evidence changed. Verify the route again." }, { status: 409, headers: noStore });
     }
 
-    const expiresAtMs = Math.min(preparedAtMs + 60_000, Number(BigInt(prepared.evidence.deadline) * 1_000n));
+    const timing = deriveVNextAuthorizationTiming(chainTimestampSeconds, Date.now());
+    if (BigInt(prepared.evidence.deadline) !== timing.deadlineSeconds) {
+      return Response.json({ error: "The final server deadline changed during authorization." }, { status: 409, headers: noStore });
+    }
+    const preparedAtMs = timing.preparedAtMs;
+    const expiresAtMs = timing.expiresAtMs;
     const unsignedPlan = {
       planId: randomUUID(),
       sourceQuoteRequestId: parsed.data.quoteRequestId,
