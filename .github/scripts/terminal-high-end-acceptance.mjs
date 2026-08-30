@@ -2807,7 +2807,8 @@ async function inspectV2WalletBrowserJourney(browser, fixture, options, label, m
   await page.emulateMedia({ reducedMotion: "reduce" });
   await installV2WalletAcceptanceRoutes(page, fixture, state);
   await openFixtureTrade(page, mode === "native");
-  await page.locator(".vnRouteCard summary").click();
+  const advanced = page.locator(".vnRouteCard");
+  await advanced.evaluate((element) => { element.open = true; });
   const visibleWalletFeeDisclosure = () => page.locator(".vnWalletFeeDisclosure:visible").last();
   const requestWalletReview = async (buttonName) => {
     const before = await page.evaluate(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter((method) => method === "eth_sendTransaction").length);
@@ -2819,7 +2820,6 @@ async function inspectV2WalletBrowserJourney(browser, fixture, options, label, m
   try {
     await visibleWalletFeeDisclosure().waitFor({ state: "visible", timeout: 30_000 });
   } catch (error) {
-    const advanced = page.locator(".vnRouteCard");
     if (await advanced.count()) await advanced.evaluate((element) => { element.open = true; });
     const diagnostic = await page.evaluate(() => ({
       url: location.href,
