@@ -61,6 +61,24 @@ body:
       label: Additional prohibited actions
       description: Global control-plane prohibitions remain active even if blank.
 
+  - type: dropdown
+    id: worker_kind
+    attributes:
+      label: Worker kind
+      description: Selection is explicit; no automatic worker/provider fallback is permitted.
+      options:
+        - LOCAL_PATCH — admitted R0/R1 low-risk UTF-8 text changes only
+        - CODEX_OPTIONAL — dormant unless separately owner-authorized
+        - NONE — R0 report or R2 plan only
+    validations:
+      required: true
+
+  - type: textarea
+    id: context_paths
+    attributes:
+      label: Explicit worker context paths
+      description: Relative UTF-8 repository files only. LOCAL_PATCH permits at most 8 files and 64 KiB total; context does not grant write authority.
+
   - type: textarea
     id: validation
     attributes:

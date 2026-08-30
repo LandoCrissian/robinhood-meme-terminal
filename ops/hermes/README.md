@@ -10,9 +10,9 @@ It is **not** part of the RMT web app, Token Terminal, NFT Terminal, trading exe
 RMT owner/operator
   -> bounded task contract
   -> Hermes coordinator
-  -> rmt-codex-loop.sh
+  -> rmt-agent-loop.sh
   -> exact-SHA isolated worktree
-  -> Codex implementation iteration
+  -> explicitly selected implementation worker adapter
   -> path guard
   -> independent host validator
   -> fail: bounded retry
@@ -21,11 +21,29 @@ RMT owner/operator
 
 The runner stops before commit/push/PR/merge/deploy. A later reviewed coordinator step may create a **draft** PR after `READY_FOR_OWNER_REVIEW`; it still may never merge it.
 
-## Why Hermes + Codex + OpenRouter
+## Coordinator, worker, and validator separation
 
-Hermes is the persistent coordinator. Codex is the primary bounded implementation worker for RMT coding tasks. OpenRouter is optional as a Hermes fallback/auxiliary inference gateway; it is not execution authority and is not required for Codex CLI itself.
+Hermes is task intake and a future bounded coordinator. `rmt-agent-loop.sh` is
+the exact-SHA orchestration and guard layer. A selected worker proposes a
+bounded implementation, while the independent host validator is the sole
+pass/fail authority.
 
-Current Hermes supports interactive provider selection through `hermes model`, including OpenAI Codex via ChatGPT/Codex OAuth and OpenRouter. Current Hermes also supports configured fallback providers. Re-check current Hermes documentation during host setup because provider configuration changes faster than RMT repository authority.
+V1 has two explicit worker kinds:
+
+- `LOCAL_PATCH`: a loopback-only OpenAI-compatible local model behind the
+  patch-only adapter. It receives admitted text context and can propose only
+  complete UTF-8 create/replace edits in allowed paths. It has no shell,
+  general file, web, GitHub, credential, or production access.
+- `CODEX_OPTIONAL`: an optional dormant compatibility adapter. It is never an
+  automatic fallback and may be selected only by a separate owner-authorized
+  task.
+
+The retained local-model authority classification is only `R0_AND_R1_LOW_RISK`:
+documentation, test fixtures, CSS/presentation, deterministic visual-QA or
+smoke-test corrections, non-security developer tooling, and other small UTF-8
+text changes. It is prohibited from execution, fees, funds, contracts,
+credentials, admissions, provenance/security verification, production config,
+or deployment.
 
 No provider secret belongs in this repository.
 
@@ -40,47 +58,60 @@ The initial machine setup changes the development host and therefore requires ow
 
 On the target machine:
 
-1. install/verify Hermes from its reviewed current source;
-2. install/verify Codex CLI from its reviewed current source;
-3. authenticate Codex/Hermes locally using supported OAuth/provider flows;
-4. if OpenRouter is desired, configure its key only in Hermes machine-local secret storage;
+1. install/verify Hermes from an owner-reviewed pinned source;
+2. install/verify the explicitly authorized local runtime/model;
+3. create a separate Hermes profile without cloning credentials;
+4. bind the local inference server to `127.0.0.1` only, with no cloud fallback;
 5. clone/fetch RMT;
 6. ensure the worktree/run roots are isolated from wallet/browser/personal data;
-7. run the R0 canary before unattended R1 work.
+7. run the authority benchmark and validator-gated canary before R1 use.
 
 Do **not** paste API keys, OAuth tokens, `~/.codex/auth.json`, `~/.hermes/.env`, browser-wallet state, SSH keys, or production `.env` files into chat, GitHub, issue bodies, PRs, or the agent worktree.
 
 ## Runner
 
-`rmt-codex-loop.sh` requires:
+`rmt-agent-loop.sh` requires:
 
 - exact task id;
 - exact base ref and SHA;
 - a local task contract file;
 - an explicit write allowlist;
 - an independent host-side validator executable;
+- an exact host-controlled worker adapter and worker kind;
+- explicit admitted context paths for `LOCAL_PATCH`;
 - bounded iteration/time budget.
 
 Example:
 
 ```bash
-bash ops/hermes/rmt-codex-loop.sh \
-  --task-id token-polish-001 \
+bash ops/hermes/rmt-agent-loop.sh \
+  --task-id docs-polish-001 \
   --base-ref main \
   --base-sha <EXACT_SHA> \
-  --task-file ~/.rmt-agent/tasks/token-polish-001.md \
-  --validator ~/.rmt-agent/validators/token-polish-001.sh \
-  --allow apps/web/app/api/markets/ohlcv/route.ts \
-  --allow apps/web/lib/external-ohlcv.ts \
-  --allow apps/web/app/vnext/vnext-market-chart.tsx \
-  --allow apps/web/app/vnext/vnext-asset-workspace.tsx \
-  --allow apps/web/app/vnext/vnext-terminal.css \
-  --allow apps/web/lib/server/external-ohlcv-smoke.ts \
+  --task-file ~/.rmt-agent/tasks/docs-polish-001.md \
+  --validator ~/.rmt-agent/validators/docs-polish-001.sh \
+  --worker-adapter /host/rmt/ops/hermes/workers/local-openai-patch-worker.py \
+  --worker-kind LOCAL_PATCH \
+  --worker-endpoint http://127.0.0.1:18080/v1 \
+  --worker-model qwen3-4b-q4-k-m \
+  --context docs/TERMINAL_COMPLETION_GATE.md \
+  --allow docs/example.md \
   --max-iterations 3 \
   --max-minutes 60
 ```
 
-The task file and validator above are host-controlled inputs. Do not place secrets in either one.
+The task, validator, and adapter are host-controlled immutable inputs. The
+runner pins and rechecks their content identities around each stage. It also
+guards HEAD, branch identity, local heads/tags, origin SHA, and the write-path
+allowlist. Do not place secrets in any input.
+
+For `LOCAL_PATCH`, context paths must be relative, nonsymlink UTF-8 files in the
+disposable worktree. V1 admits at most 8 files and 64 KiB total without silent
+truncation. The model response must be one strict JSON object; the adapter
+validates the complete edit batch before atomically applying any file.
+
+`rmt-codex-loop.sh` remains only a `CODEX_OPTIONAL` compatibility wrapper and
+does not contain a second copy of the security logic.
 
 ## Independent validator
 
@@ -93,6 +124,8 @@ The validator runs outside the Codex worktree and receives:
 - `RMT_LOOP_ITERATION`
 - `RMT_LOOP_TASK_FILE` and its immutable `RMT_LOOP_TASK_HASH`
 - `RMT_LOOP_VALIDATOR_FILE` and its immutable `RMT_LOOP_VALIDATOR_HASH`
+- `RMT_LOOP_WORKER_FILE`, immutable `RMT_LOOP_WORKER_HASH`, and
+  `RMT_LOOP_WORKER_KIND`
 - worktree path as its first argument
 
 It returns exit `0` only when the task's acceptance criteria pass.
@@ -144,7 +177,9 @@ Have Hermes read current RMT authority documents at an exact SHA and report:
 
 ### R1
 
-Use a deliberately bounded existing RMT task. The first useful target should be product work already approved by the owner—not agent infrastructure for its own sake.
+Use a deliberately bounded low-risk task admitted for the selected worker.
+Passing the local authority benchmark does not make the model production-grade
+or generally autonomous.
 
 ## Current RMT owner boundaries
 

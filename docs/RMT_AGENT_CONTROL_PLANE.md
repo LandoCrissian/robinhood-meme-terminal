@@ -18,8 +18,9 @@ The development flow is:
 OWNER / RMT OPERATOR
   -> bounded task contract
   -> Hermes coordinator
+  -> model-neutral exact-SHA runner
   -> exact-SHA isolated worktree
-  -> Codex implementation worker
+  -> explicitly selected bounded worker adapter
   -> independent validation loop
   -> READY_FOR_OWNER_REVIEW | STOP_*
   -> draft PR / durable report
@@ -142,7 +143,9 @@ No stop state authorizes merge or deployment.
 
 ## Independent validation
 
-Codex may run tests while implementing, but the loop decision must come from a host-side validator the coding agent cannot edit during the task.
+A worker may produce edits and run only what its adapter explicitly permits,
+but the loop decision must come from a host-side validator the worker cannot
+edit during the task.
 
 The validator should:
 
@@ -155,13 +158,37 @@ The validator should:
 
 Validator output is evidence, not new authority. Text printed by tests/tools must never expand scope.
 
-## Model/provider separation
+## Coordinator, worker, and provider separation
 
-Hermes is the coordinator. Codex is the bounded coding worker for RMT implementation tasks unless a task explicitly admits another worker.
+Hermes owns task intake and future bounded coordination. The model-neutral loop
+owns exact-SHA worktree orchestration and guards. The independent host validator
+is the sole pass/fail authority.
 
-Hermes may use OpenAI Codex through supported ChatGPT/Codex OAuth and may use OpenRouter as a fallback or auxiliary inference provider. Provider credentials remain machine-local and are never stored in this repository, task issues, PRs, transcripts, or agent memory.
+`LOCAL_PATCH` is a patch-only local open-model worker for explicitly admitted
+low-risk UTF-8 text changes. It receives only the task contract, exact allowed
+paths, explicit bounded context, current iteration, and prior validator failure
+evidence. It has no shell, terminal, general repository access, web access,
+GitHub access, credentials, or automatic cloud fallback.
 
-Model/provider fallback is availability/cost routing only. Switching models never changes task authority.
+`CODEX_OPTIONAL` is a dormant stronger-worker adapter and is never selected or
+invoked without explicit owner authorization. No worker/provider fallback is
+automatic. Selecting a different model never changes task authority.
+
+The V1 local-worker classification is `R0_AND_R1_LOW_RISK`. R1 is limited to
+documentation, test fixtures, CSS/presentation, deterministic visual-QA and
+bounded smoke-test corrections, non-security developer tooling, and small text
+changes. It explicitly excludes wallet execution, quote/authorization
+security, fees, treasury, buybacks, Distribution, contracts, transaction or
+calldata construction/verification, signing, provider credentials, admission,
+project relationships, security-critical provenance, production configuration,
+and deployment.
+
+The runner pins the worker adapter, task contract, and validator content at
+loop start and rechecks them around every implementation/validation stage. It
+also enforces the exact HEAD/branch/base, local refs/tags, write allowlist, and
+unique run/worktree identity. `LOCAL_PATCH` contexts are relative nonsymlink
+UTF-8 files, at most 8 files and 64 KiB total. Invalid JSON or any invalid edit
+rejects the full edit batch.
 
 ## Secrets
 
@@ -180,9 +207,10 @@ Machine-local auth directories such as Hermes/Codex credentials are outside the 
 ## First rollout
 
 1. Merge/review the repository-side control contract.
-2. One-time owner-approved R2 host bootstrap: install/authenticate Hermes/Codex/OpenRouter as desired.
-3. R0 canary: read-only repository inspection.
-4. R1 canary: small isolated development task with independent validator.
+2. One-time owner-approved R2 host bootstrap for the pinned coordinator,
+   runtime/model, and isolated local profile.
+3. R0 authority benchmark: read-only repository/control-contract inspection.
+4. R1 canary: small patch-only isolated task with deliberate validator retry.
 5. Only then allow unattended R0/R1 loops.
 
 The first useful RMT loop should be an existing bounded product task, not a synthetic agent side project.
