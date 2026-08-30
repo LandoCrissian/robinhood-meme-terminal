@@ -2808,8 +2808,16 @@ async function inspectV2WalletBrowserJourney(browser, fixture, options, label, m
   await installV2WalletAcceptanceRoutes(page, fixture, state);
   await openFixtureTrade(page, mode === "native");
   await page.locator(".vnRouteCard summary").click();
+  const visibleWalletFeeDisclosure = () => page.locator(".vnWalletFeeDisclosure:visible").last();
+  const requestWalletReview = async (buttonName) => {
+    const before = await page.evaluate(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter((method) => method === "eth_sendTransaction").length);
+    await page.getByRole("button", { name: buttonName, exact: true }).click();
+    await page.waitForFunction((requestCount) => (
+      window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter((method) => method === "eth_sendTransaction").length > requestCount
+    ), before);
+  };
   try {
-    await page.locator(".vnWalletFeeDisclosure").last().waitFor({ state: "visible", timeout: 30_000 });
+    await visibleWalletFeeDisclosure().waitFor({ state: "visible", timeout: 30_000 });
   } catch (error) {
     const advanced = page.locator(".vnRouteCard");
     if (await advanced.count()) await advanced.evaluate((element) => { element.open = true; });
@@ -2821,38 +2829,42 @@ async function inspectV2WalletBrowserJourney(browser, fixture, options, label, m
     await page.screenshot({ path: `${output}/v2-wallet-diagnostic-${label}.png`, fullPage: true });
     throw new Error(`${label}: V2 wallet review did not render ${JSON.stringify({ ...diagnostic, requests: state })}`, { cause: error });
   }
-  const review = page.locator(".vnWalletFeeDisclosure").last();
+  const review = visibleWalletFeeDisclosure();
   const reviewText = await review.innerText();
   for (const required of ["Gross input", "Exact fee / asset", "Provider input", "Expected receive", "Protected minimum", "Uniswap V3", "Atomic with swap", "Treasury", "Execution target"]) {
     if (!reviewText.includes(required)) throw new Error(`${label}: V2 wallet review omitted ${required}`);
   }
   await page.getByText("Your wallet displays and authorizes this exact request. RMT cannot sign or submit it for you.", { exact: true }).waitFor({ state: "visible" });
+  const promptRequestsBeforeOwnerAction = await page.evaluate(() => (
+    window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter((method) => method === "eth_sendTransaction").length
+  ));
+  if (promptRequestsBeforeOwnerAction !== 0) throw new Error(`${label}: wallet provider was invoked before explicit owner action`);
 
   if (mode === "native") {
     await page.screenshot({ path: `${output}/v2-wallet-review-${label}.png`, fullPage: false, animations: "disabled" });
-    await page.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.includes("eth_sendTransaction"));
+    await requestWalletReview("Review verified swap in wallet");
     await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("cancel"));
-    await page.getByText("Wallet review was cancelled. Nothing was submitted.", { exact: true }).waitFor({ state: "visible" });
+    await page.getByText("Wallet request was rejected by the owner. Nothing was broadcast.", { exact: true }).waitFor({ state: "visible" });
     await context.close();
     return { nativeReview: true, cancellation: true };
   }
 
   if (mode === "cancel") {
-    await page.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.includes("eth_sendTransaction"));
+    await requestWalletReview("Review verified swap in wallet");
     await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("cancel"));
-    await page.getByText("Wallet review was cancelled. Nothing was submitted.", { exact: true }).waitFor({ state: "visible" });
+    await page.getByText("Wallet request was rejected by the owner. Nothing was broadcast.", { exact: true }).waitFor({ state: "visible" });
     await context.close();
     return { cancellation: true };
   }
 
   if (!state.approved) {
-    const approvalText = await page.locator(".vnWalletFeeDisclosure").last().innerText();
+    const approvalText = await visibleWalletFeeDisclosure().innerText();
     for (const required of ["RMT execution fee on this approval: 0", "Planned trade fee: 0.25%", "It is not collected during approval"]) {
       if (!approvalText.includes(required)) throw new Error(`${label}: approval review omitted ${required}`);
     }
     if (/unlimited/i.test(approvalText)) throw new Error(`${label}: approval review mentions unlimited authority`);
     await page.screenshot({ path: `${output}/v2-approval-review-${label}.png`, fullPage: false, animations: "disabled" });
-    await page.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.includes("eth_sendTransaction"));
+    await requestWalletReview("Review exact approval in wallet");
     await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("approve"));
     await page.getByText("Transaction submitted · confirmation pending", { exact: true }).waitFor({ state: "visible" });
     state.approved = true;
@@ -2863,12 +2875,12 @@ async function inspectV2WalletBrowserJourney(browser, fixture, options, label, m
       const body = await page.locator("body").innerText();
       throw new Error(`${label}: approval receipt did not resolve ${JSON.stringify({ body: body.slice(-2500), state })}`, { cause: error });
     }
-    await page.locator(".vnWalletFeeDisclosure").last().waitFor({ state: "visible", timeout: 30_000 });
+    await visibleWalletFeeDisclosure().waitFor({ state: "visible", timeout: 30_000 });
     await page.screenshot({ path: `${output}/v2-wallet-review-${label}.png`, fullPage: false, animations: "disabled" });
   }
 
   state.receiptsAvailable = false;
-  await page.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.includes("eth_sendTransaction"));
+  await requestWalletReview("Review verified swap in wallet");
   await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("approve"));
   await page.getByText("Transaction submitted · confirmation pending", { exact: true }).waitFor({ state: "visible" });
   state.receiptsAvailable = true;
