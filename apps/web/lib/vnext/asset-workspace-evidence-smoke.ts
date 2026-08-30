@@ -76,6 +76,7 @@ assert.deepEqual(workspaceTokenPresentation({
 const workspaceSource = readFileSync(new URL("../../app/vnext/vnext-asset-workspace.tsx", import.meta.url), "utf8");
 const chartSource = readFileSync(new URL("../../app/vnext/vnext-market-chart.tsx", import.meta.url), "utf8");
 const stylesSource = readFileSync(new URL("../../app/vnext/vnext-terminal.css", import.meta.url), "utf8");
+const visualQaSource = readFileSync(new URL("../../../../scripts/visual-qa/legion-visual-qa.mjs", import.meta.url), "utf8");
 const riskHookSource = readFileSync(new URL("../use-token-risk-evidence.ts", import.meta.url), "utf8");
 const constellationHookSource = readFileSync(new URL("../use-wallet-constellation.ts", import.meta.url), "utf8");
 assert.equal((workspaceSource.match(/currentMultiplier/g) ?? []).length, 1, "Stock multiplier must be displayed exactly once");
@@ -169,6 +170,24 @@ assert.match(workspaceSource, /<small>Evidence freshness<\/small><strong>\{token
 assert.doesNotMatch(workspaceSource, /<small>Evidence freshness<\/small><strong>\{[^}]*evidence\.coverage/);
 assert.match(workspaceSource, /Concentration details are temporarily unavailable/);
 assert.match(workspaceSource, /LP ownership\/control · Not verified/);
+assert.match(workspaceSource, /Largest non-pool holder/,
+  "An address-style market must label concentration without inferring an EOA wallet");
+assert.match(workspaceSource, /Largest visible holder/,
+  "Token-only evidence must retain a neutral visible-holder label");
+assert.doesNotMatch(workspaceSource, /Largest wallet/,
+  "Unknown holder classification must never be promoted to wallet evidence");
+assert.match(workspaceSource, /isContract === false \? "Wallet" : "Classification unknown"/,
+  "Only explicit non-contract classification may render a holder row as Wallet");
+assert.match(workspaceSource, /className="vnEvidenceFact"><small>Pool token share/,
+  "A no-position pool share must use one compact fact instead of a multi-column grid");
+assert.match(stylesSource, /\.vnEvidenceFact\s*\{[\s\S]*display:\s*flex/,
+  "The compact liquidity fact must not reserve an empty grid companion cell");
+assert.match(visualQaSource, /coverage: riskMode === "partial" \|\| countOnly \? "partial" : "complete"/,
+  "Count-only fixtures must downgrade overall coverage to partial");
+assert.match(visualQaSource, /sell: countOnly \? "unavailable" : "ready"/,
+  "Count-only fixtures must not claim a ready sell domain");
+assert.match(visualQaSource, /countOnly \? \{ status: "not-run"[\s\S]*\} : \{ status: "passed"/,
+  "Ready fixtures must complete the sell check while count-only fixtures remain not-run");
 assert.match(workspaceSource, /Pool swap fee ·/);
 assert.doesNotMatch(workspaceSource, /% live fee/);
 assert.match(workspaceSource, /Other verified venues · \{markets\.length\}/);

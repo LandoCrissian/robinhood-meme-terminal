@@ -159,9 +159,10 @@ async function installTokenRoutes(page, { riskUnavailable = false } = {}) {
   await page.route(/\/api\/markets\/token-risk(?:\?.*)?$/, (route) => {
     if (riskMode === "unavailable") return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: "fixture_unavailable" }) });
     const requestUrl = new URL(route.request().url());
-    const holderRows = riskMode === "count-only" ? [] : [{ address: `0x${"9".repeat(40)}`, shareBps: 420, isContract: false, isScam: false }, { address: `0x${"8".repeat(40)}`, shareBps: 320, isContract: null, isScam: false }];
+    const countOnly = riskMode === "count-only";
+    const holderRows = countOnly ? [] : [{ address: `0x${"9".repeat(40)}`, shareBps: 420, isContract: null, isScam: false }, { address: `0x${"8".repeat(40)}`, shareBps: 320, isContract: false, isScam: false }];
     const verifiedPosition = riskMode === "verified-position";
-    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ token: requestUrl.searchParams.get("token"), pair: requestUrl.searchParams.get("pair"), marketVerified: true, coverage: riskMode === "partial" ? "partial" : "complete", freshness: "fresh", domains: { token: "ready", holders: "ready", contract: "ready", abi: "ready", creator: "not-applicable", liquidity: riskMode === "partial" ? "unavailable" : "ready", sell: "ready" }, contract: { sourcePublished: true, isProxy: false, bytecodeChanged: false, controls: { assessment: "no-common-controls-found", detected: [], customWriteFunctions: [], administrator: null, activeLaunchRestrictions: false, restrictionEndBlock: null, maxTransactionBps: null, maxWalletBps: null } }, liquidity: verifiedPosition ? { controlStatus: "contract-held", evidenceSource: "launchpad-registry", positionManager: `0x${"7".repeat(40)}`, positionId: "393642", owner: `0x${"6".repeat(40)}`, approvedOperator: null, creatorCanTransfer: false, positionLiquidity: "1000" } : { controlStatus: "not-proven", evidenceSource: "none", positionManager: null, positionId: null, owner: null, approvedOperator: null, creatorCanTransfer: null, positionLiquidity: null }, holders: { count: 975, poolShareBps: 4200, topNonPoolShareBps: riskMode === "count-only" ? null : 740, topNonPoolHolders: holderRows, largestNonPoolHolder: holderRows[0] ? { address: holderRows[0].address, shareBps: holderRows[0].shareBps } : null, creator: null, creatorShareBps: null }, sellSimulation: { status: "not-run", method: "holder-to-pool-transfer", holder: null, amount: null, returnStyle: null }, warnings: [], checkedAt: FIXTURE_NOW }) });
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ token: requestUrl.searchParams.get("token"), pair: requestUrl.searchParams.get("pair"), marketVerified: true, coverage: riskMode === "partial" || countOnly ? "partial" : "complete", freshness: "fresh", domains: { token: "ready", holders: "ready", contract: "ready", abi: "ready", creator: "not-applicable", liquidity: riskMode === "partial" ? "unavailable" : "ready", sell: countOnly ? "unavailable" : "ready" }, contract: { sourcePublished: true, isProxy: false, bytecodeChanged: false, controls: { assessment: "no-common-controls-found", detected: [], customWriteFunctions: [], administrator: null, activeLaunchRestrictions: false, restrictionEndBlock: null, maxTransactionBps: null, maxWalletBps: null } }, liquidity: verifiedPosition ? { controlStatus: "contract-held", evidenceSource: "launchpad-registry", positionManager: `0x${"7".repeat(40)}`, positionId: "393642", owner: `0x${"6".repeat(40)}`, approvedOperator: null, creatorCanTransfer: false, positionLiquidity: "1000" } : { controlStatus: "not-proven", evidenceSource: "none", positionManager: null, positionId: null, owner: null, approvedOperator: null, creatorCanTransfer: null, positionLiquidity: null }, holders: { count: 975, poolShareBps: 4200, topNonPoolShareBps: countOnly ? null : 740, topNonPoolHolders: holderRows, largestNonPoolHolder: holderRows[0] ? { address: holderRows[0].address, shareBps: holderRows[0].shareBps } : null, creator: null, creatorShareBps: null }, sellSimulation: countOnly ? { status: "not-run", method: "holder-to-pool-transfer", holder: null, amount: null, returnStyle: null } : { status: "passed", method: "holder-to-pool-transfer", holder: holderRows[1].address, amount: "1", returnStyle: "boolean-true" }, warnings: countOnly ? ["Concentration rows and sell-direction evidence are temporarily unavailable."] : [], checkedAt: FIXTURE_NOW }) });
   });
   await page.route(/\/api\/vnext\/chain-pulse(?:\?.*)?$/, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ chainId: 4663, chain: "Robinhood Chain", source: "LEGION_FIXTURE", authoritative: false, status: "ready", tvlUsd: 580000000, dexVolume24hUsd: 640000000, dexVolume7dUsd: 3460000000, dexChange1dPct: 3.4, dexChange7dPct: 8.2, fees24hUsd: null, fees7dUsd: null, revenue24hUsd: null, revenue7dUsd: null, protocolRevenue24hUsd: null, protocolRevenue7dUsd: null }) }));
   await page.route(/\/api\/vnext\/capital-flow(?:\?.*)?$/, (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ schemaVersion: 1, chainId: 4663, chain: "Robinhood Chain", source: "DEFILLAMA", authoritative: false, status: "ready", asOf: FIXTURE_NOW, stablecoinMarketCapUsd: 148000000, stablecoinChange7dPct: 2.3, usdgMarketCapUsd: 91000000, usdgDominancePct: 61.5 }) }));
@@ -480,14 +481,23 @@ async function tokenLane(browser, viewport, platform) {
     await page.getByRole("tab", { name: "Safety", exact: true }).click();
     await page.locator(".vnEvidencePane").waitFor();
     await page.locator(".vnEvidencePane").scrollIntoViewIfNeeded();
+    const readyHoldersText = await page.locator(".vnEvidencePane").innerText();
+    const readyHoldersTextLower = readyHoldersText.toLowerCase();
+    check(readyHoldersTextLower.includes("largest non-pool holder"), "token-safety-mobile", "Verified address-market concentration is not labeled as the largest non-pool holder.");
+    check(!readyHoldersTextLower.includes("largest wallet"), "token-safety-mobile", "Unknown holder classification was inferred to be a wallet in the aggregate label.");
+    check(readyHoldersTextLower.includes("classification unknown"), "token-safety-mobile", "Unknown classification is not preserved on the largest holder row.");
+    check(readyHoldersText.includes("4.2%"), "token-safety-mobile", "Largest-holder concentration disappeared when classification remained unknown.");
     await acceptanceCapture(page, "safety-holders-ready-390x844");
     await page.getByRole("tab", { name: "liquidity", exact: true }).click();
     await page.getByText("LP ownership/control · Not verified", { exact: true }).evaluate((element) => element.scrollIntoView({ block: "center" }));
+    check(await page.locator(".vnEvidenceFact").filter({ hasText: "Pool token share" }).count() === 1, "token-safety-mobile", "No-position pool share did not render as one compact fact.");
+    check(await page.locator(".vnEvidenceGrid").filter({ hasText: "Pool token share" }).count() === 0, "token-safety-mobile", "No-position pool share retained the multi-column evidence grid.");
     await acceptanceCapture(page, "safety-liquidity-ready-390x844");
     await page.getByRole("tab", { name: "risk", exact: true }).click();
     check(await page.getByText("Onchain verified", { exact: true }).count() === 1, "token-safety-mobile", "Safety does not reuse the workspace onchain token identity.");
     check(await page.getByText("Complete evidence", { exact: true }).count() >= 1, "token-safety-mobile", "Complete risk coverage is not labeled independently.");
     check(await page.getByText("Fresh", { exact: true }).count() === 1, "token-safety-mobile", "Freshness is not labeled independently from coverage.");
+    check(await page.getByText("passed", { exact: true }).count() === 1, "token-safety-mobile", "Complete fixture does not expose its completed sell check.");
     await acceptanceCapture(page, "safety-risk-ready-390x844");
 
     const reopenPonsAfterFixtureReload = async () => {
@@ -502,7 +512,11 @@ async function tokenLane(browser, viewport, platform) {
     await reopenPonsAfterFixtureReload();
     await page.getByRole("tab", { name: "Safety", exact: true }).click();
     await page.getByText("975 holders", { exact: true }).scrollIntoViewIfNeeded();
+    check(await page.getByText("Partial evidence", { exact: true }).count() >= 1, "token-safety-count-only", "Count-only evidence did not downgrade coverage to partial.");
     await acceptanceCapture(page, "safety-holders-count-only-390x844");
+    await page.getByRole("tab", { name: "risk", exact: true }).click();
+    check(await page.getByText("Fresh", { exact: true }).count() === 1, "token-safety-count-only", "Count-only evidence lost truthful fresh provenance.");
+    check(await page.getByText("Sell check", { exact: true }).count() === 0, "token-safety-count-only", "Unavailable count-only sell evidence was presented as a completed check.");
 
     fixture.setRiskMode("verified-position");
     await page.reload({ waitUntil: "domcontentloaded" });

@@ -1557,6 +1557,28 @@ body .rmtVnext {
 .vnEvidenceUnavailable span { max-width: 58ch; font-size: 10px; line-height: 1.45; }
 .vnEvidenceCountOnly { margin-top: 12px; }
 
+.vnEvidenceFact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--vn-border);
+}
+
+.vnEvidenceFact small {
+  color: var(--vn-text-muted);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.vnEvidenceFact strong {
+  color: var(--vn-text-primary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .vnProjectLinkDisclosure {
   display: grid;
   gap: 7px;
