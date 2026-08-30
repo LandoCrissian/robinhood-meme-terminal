@@ -11,7 +11,7 @@ import statistics
 import sys
 import time
 from typing import Any, Callable
-from urllib.request import Request, urlopen
+from urllib.request import Request
 
 
 HERE = Path(__file__).resolve().parent
@@ -223,7 +223,7 @@ def streaming_first_token_ms(endpoint: str, model: str) -> float:
         method="POST",
     )
     started = time.perf_counter()
-    with urlopen(request, timeout=120) as response:
+    with worker.open_no_redirect(request, timeout=120) as response:
         for raw_line in response:
             line = raw_line.decode("utf-8").strip()
             if not line.startswith("data: ") or line == "data: [DONE]":

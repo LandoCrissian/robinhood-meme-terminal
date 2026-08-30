@@ -6,7 +6,6 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 runner="$script_dir/rmt-agent-loop.sh"
-compat_runner="$script_dir/rmt-codex-loop.sh"
 skill="$script_dir/../../.agents/skills/rmt-control-plane/SKILL.md"
 scratch="$(mktemp -d "${TMPDIR:-/tmp}/rmt-loop-smoke.XXXXXX")"
 trap 'rm -rf -- "$scratch"' EXIT
@@ -42,13 +41,14 @@ make_worker() {
   {
     printf '#!/usr/bin/env bash\nset -euo pipefail\naction=%q\n' "$action"
     cat <<'EOF'
-worktree="" task_file="" validator_file=""
+worktree="" task_file="" validator_file="" iteration=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --worktree) worktree="$2"; shift 2 ;;
     --task-file) task_file="$2"; shift 2 ;;
     --validator-file) validator_file="$2"; shift 2 ;;
-    --worker-file|--task-id|--base-sha|--iteration|--allow|--context|--validator-evidence|--immutable-relative) shift 2 ;;
+    --iteration) iteration="$2"; shift 2 ;;
+    --worker-file|--task-id|--base-sha|--allow|--context|--validator-evidence|--immutable-relative) shift 2 ;;
     *) exit 2 ;;
   esac
 done
@@ -59,6 +59,16 @@ case "$action" in
     mkdir -p ops/hermes/canary
     printf 'PASS\n' > ops/hermes/canary/SMOKE.txt
     ;;
+  write-then-stop)
+    if [ "$iteration" -eq 1 ]; then
+      mkdir -p ops/hermes/canary
+      printf 'PASS\n' > ops/hermes/canary/SMOKE.txt
+    else
+      exit 10
+    fi
+    ;;
+  stop) exit 10 ;;
+  error) exit 20 ;;
   task-mutation) printf 'mutated\n' >> "$task_file" ;;
   validator-mutation) printf '# mutated\n' >> "$validator_file" ;;
   worker-mutation) printf '# mutated\n' >> "$0" ;;
@@ -82,6 +92,52 @@ esac
 EOF
   } > "$path"
   chmod +x "$path"
+}
+
+run_worker_gate_case() {
+  local label="$1" action="$2" expected="$3" iterations="$4"
+  case_number=$((case_number + 1))
+  local task_id="gate-${case_number}-${label}"
+  local case_root="$scratch/cases/$task_id" marker="$scratch/cases/$task_id/validator-invoked.log"
+  local task_file="$case_root/task.md" validator="$case_root/validator.sh"
+  local worker="$case_root/worker.sh" worktrees="$case_root/worktrees"
+  local runs="$case_root/runs" output="$case_root/output.log"
+  mkdir -p "$case_root"
+  printf 'Exercise worker status gating only.\n' > "$task_file"
+  cat > "$validator" <<EOF
+#!/usr/bin/env bash
+set -euo pipefail
+printf '%s\n' "\$RMT_LOOP_ITERATION" >> "$marker"
+if [ "$action" = write-then-stop ] && [ "\$RMT_LOOP_ITERATION" -eq 1 ]; then
+  test "\$(cat "\$1/ops/hermes/canary/SMOKE.txt")" = PASS
+  exit 42
+fi
+exit 0
+EOF
+  chmod +x "$validator"
+  make_worker "$worker" "$action"
+
+  set +e
+  RMT_REPO_ROOT="$clone" RMT_WORKTREE_ROOT="$worktrees" RMT_RUN_ROOT="$runs" \
+    "$runner" --task-id "$task_id" --base-ref main --base-sha "$base_sha" \
+      --task-file "$task_file" --validator "$validator" \
+      --worker-adapter "$worker" --worker-kind LOCAL_PATCH \
+      --worker-endpoint http://127.0.0.1:65535/v1 --worker-model smoke-local \
+      --allow ops/hermes/canary/ --max-iterations "$iterations" --max-minutes 5 \
+      > "$output" 2>&1
+  local status=$?
+  set -e
+  [ "$status" -ne 0 ] || fail "$label must not pass"
+  require_text "$output" "$expected"
+  if grep -Fq READY_FOR_OWNER_REVIEW "$output"; then fail "$label was overridden by validator"; fi
+  if [ "$action" = write-then-stop ]; then
+    test "$(cat "$marker")" = 1 || fail "validator ran after worker stop"
+  else
+    [ ! -e "$marker" ] || fail "validator ran after worker error"
+  fi
+  git -C "$clone" worktree remove --force "$worktrees/$task_id" >/dev/null 2>&1 || true
+  git -C "$clone" branch -D "agent/$task_id" >/dev/null 2>&1 || true
+  printf 'PASS: %s\n' "$label"
 }
 
 validator_template="$scratch/validator-template.sh"
@@ -193,7 +249,7 @@ if grep -Eq '^platforms:' "$skill"; then fail "repo-local skill must not be plat
 require_text "$skill" 'requires_toolsets: [terminal]'
 require_text "$runner" 'max_iterations=3'
 require_text "$runner" '[ "$max_iterations" -gt 6 ]'
-require_text "$compat_runner" 'CODEX_OPTIONAL'
+require_text "$runner" 'V1 worker-kind must be LOCAL_PATCH.'
 if grep -En '^[[:space:]]*git[[:space:]].*[[:space:]](commit|push|merge)([[:space:]]|$)' "$runner"; then
   fail "canonical runner contains a prohibited Git mutation command"
 fi
@@ -235,6 +291,8 @@ run_case new-commit "$clone" commit STOP_SCOPE_VIOLATION
 run_case new-tag "$clone" tag STOP_SCOPE_VIOLATION
 run_case out-of-scope "$clone" out-of-scope STOP_SCOPE_VIOLATION
 run_case moving-main "$clone" main-drift STOP_FOR_OWNER_REVIEW
+run_worker_gate_case worker-stop-cannot-be-overridden write-then-stop STOP_FOR_OWNER_REVIEW 2
+run_worker_gate_case worker-error-cannot-be-overridden error STOP_VALIDATOR_ERROR 1
 
 collision_root="$scratch/cases/collision"
 mkdir -p "$collision_root/worktrees" "$collision_root/runs/collision"

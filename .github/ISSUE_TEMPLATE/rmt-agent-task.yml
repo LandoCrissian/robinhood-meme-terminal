@@ -68,7 +68,6 @@ body:
       description: Selection is explicit; no automatic worker/provider fallback is permitted.
       options:
         - LOCAL_PATCH — admitted R0/R1 low-risk UTF-8 text changes only
-        - CODEX_OPTIONAL — dormant unless separately owner-authorized
         - NONE — R0 report or R2 plan only
     validations:
       required: true

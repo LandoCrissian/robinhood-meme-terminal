@@ -20,10 +20,10 @@ import subprocess
 import sys
 import tempfile
 import time
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 from urllib.parse import urlparse
-from urllib.error import HTTPError
-from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
+from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
 
 MAX_CONTEXT_FILES = 8
@@ -33,6 +33,7 @@ MAX_EDIT_BYTES_TOTAL = 64 * 1024
 MAX_REASON_BYTES = 2 * 1024
 MAX_PROVIDER_RESPONSE_BYTES = 2 * 1024 * 1024
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+WINDOWS_RESERVED_RE = re.compile(r"^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$", re.IGNORECASE)
 
 
 class PatchProtocolError(ValueError):
@@ -58,13 +59,20 @@ def read_utf8_text(path: Path, *, max_bytes: int) -> tuple[str, bytes]:
 def validate_relative_path(value: Any) -> PurePosixPath:
     if not isinstance(value, str) or not value or "\\" in value or ":" in value:
         raise PatchProtocolError("path must be a non-empty repository-relative POSIX path")
+    if any(ord(character) < 32 or ord(character) == 127 for character in value):
+        raise PatchProtocolError("ASCII control characters are not permitted in paths")
     path = PurePosixPath(value)
     if path.is_absolute() or value.startswith("/"):
         raise PatchProtocolError(f"absolute path rejected: {value}")
     if any(part in ("", ".", "..") for part in path.parts):
         raise PatchProtocolError(f"ambiguous or traversing path rejected: {value}")
-    if path.parts[0].lower() == ".git":
-        raise PatchProtocolError(f"Git metadata path rejected: {value}")
+    for part in path.parts:
+        if part.casefold() == ".git":
+            raise PatchProtocolError(f"Git metadata path component rejected: {value}")
+        if part.endswith((".", " ")):
+            raise PatchProtocolError(f"Windows trailing dot/space path rejected: {value}")
+        if WINDOWS_RESERVED_RE.fullmatch(part.split(".", 1)[0]):
+            raise PatchProtocolError(f"Windows reserved device path rejected: {value}")
     return path
 
 
@@ -215,27 +223,60 @@ def validate_edit_batch(
     return reason, prepared
 
 
-def apply_prepared_edits(prepared: list[tuple[dict[str, Any], Path, bytes]]) -> None:
-    staged: list[tuple[Path, Path, int | None]] = []
+def apply_prepared_edits(
+    prepared: list[tuple[dict[str, Any], Path, bytes]],
+    *,
+    replace_file: Callable[[Path, Path], None] = os.replace,
+) -> None:
+    staged: list[tuple[Path, Path, int | None, Path | None]] = []
+    applied: list[tuple[Path, Path | None]] = []
     try:
         for edit, target, data in prepared:
             target.parent.mkdir(parents=True, exist_ok=True)
             mode = stat.S_IMODE(target.stat().st_mode) if target.exists() else None
+            backup: Path | None = None
+            if target.exists():
+                with tempfile.NamedTemporaryFile(
+                    mode="wb", prefix=".rmt-backup-", dir=target.parent, delete=False
+                ) as backup_handle:
+                    backup_handle.write(target.read_bytes())
+                    backup_handle.flush()
+                    os.fsync(backup_handle.fileno())
+                    backup = Path(backup_handle.name)
+                if mode is not None:
+                    os.chmod(backup, mode)
             with tempfile.NamedTemporaryFile(
                 mode="wb", prefix=".rmt-patch-", dir=target.parent, delete=False
             ) as handle:
                 handle.write(data)
                 handle.flush()
                 os.fsync(handle.fileno())
-                staged.append((Path(handle.name), target, mode))
-        for temporary, target, mode in staged:
+                staged.append((Path(handle.name), target, mode, backup))
+        for temporary, target, mode, backup in staged:
             if mode is not None:
                 os.chmod(temporary, mode)
-            os.replace(temporary, target)
+            replace_file(temporary, target)
+            applied.append((target, backup))
+    except Exception as apply_error:
+        rollback_errors: list[str] = []
+        for target, backup in reversed(applied):
+            try:
+                if backup is None:
+                    target.unlink(missing_ok=True)
+                else:
+                    os.replace(backup, target)
+            except Exception as rollback_error:  # preserve the worktree for review
+                rollback_errors.append(f"{target}: {type(rollback_error).__name__}")
+        if rollback_errors:
+            raise RuntimeError(
+                "edit application failed and rollback was incomplete: " + "; ".join(rollback_errors)
+            ) from apply_error
+        raise PatchProtocolError("edit application failed; previously applied edits were rolled back") from apply_error
     finally:
-        for temporary, _, _ in staged:
-            if temporary.exists():
-                temporary.unlink()
+        for temporary, _, _, backup in staged:
+            temporary.unlink(missing_ok=True)
+            if backup is not None:
+                backup.unlink(missing_ok=True)
 
 
 def build_messages(
@@ -291,18 +332,34 @@ response MUST contain "edits": []."""
 
 def require_loopback_endpoint(endpoint: str) -> str:
     parsed = urlparse(endpoint)
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise PatchProtocolError("loopback endpoint port is invalid") from exc
     if (
         parsed.scheme != "http"
-        or parsed.hostname not in ("127.0.0.1", "localhost")
-        or parsed.port is None
+        or parsed.hostname != "127.0.0.1"
+        or port is None
+        or not 1 <= port <= 65535
         or parsed.username is not None
         or parsed.password is not None
         or parsed.query
         or parsed.fragment
-        or parsed.path.rstrip("/") != "/v1"
+        or parsed.path != "/v1"
     ):
         raise PatchProtocolError("only an explicit loopback http://host:port/v1 endpoint is allowed")
-    return endpoint.rstrip("/")
+    return endpoint
+
+
+class NoRedirectHandler(HTTPRedirectHandler):
+    """Reject every redirect before urllib can contact the destination."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001
+        raise HTTPError(req.full_url, code, "redirect rejected", headers, fp)
+
+
+def open_no_redirect(request: Request, *, timeout: int):
+    return build_opener(ProxyHandler({}), NoRedirectHandler()).open(request, timeout=timeout)
 
 
 def request_model(endpoint: str, model: str, messages: list[dict[str, str]]) -> tuple[str, dict[str, Any]]:
@@ -330,7 +387,7 @@ def request_model(endpoint: str, model: str, messages: list[dict[str, str]]) -> 
         method="POST",
     )
     started = time.perf_counter()
-    with urlopen(request, timeout=120) as response:
+    with open_no_redirect(request, timeout=120) as response:
         raw = response.read(MAX_PROVIDER_RESPONSE_BYTES + 1)
     elapsed = time.perf_counter() - started
     if len(raw) > MAX_PROVIDER_RESPONSE_BYTES:
@@ -443,7 +500,10 @@ def main() -> int:
         return 20
     except HTTPError as exc:  # report status only; never echo provider response bodies
         print(f"LOCAL_PATCH_PROVIDER_HTTP_STATUS={exc.code}", file=sys.stderr)
-        return 20
+        return 20 if 300 <= exc.code <= 399 else 30
+    except (URLError, TimeoutError):
+        print("LOCAL_PATCH_PROVIDER_TRANSPORT_UNAVAILABLE", file=sys.stderr)
+        return 30
     except Exception as exc:  # fail closed without provider response leakage
         print(f"LOCAL_PATCH_FAILED={type(exc).__name__}", file=sys.stderr)
         return 20

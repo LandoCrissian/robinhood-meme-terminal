@@ -1,0 +1,51 @@
+name: RMT agent control plane
+
+on:
+  pull_request:
+    paths:
+      - ".agents/skills/rmt-control-plane/**"
+      - ".github/ISSUE_TEMPLATE/rmt-agent-task.yml"
+      - ".github/workflows/rmt-agent-control-plane.yml"
+      - "docs/RMT_AGENT_CONTROL_PLANE.md"
+      - "ops/hermes/**"
+  push:
+    branches: [main]
+    paths:
+      - ".agents/skills/rmt-control-plane/**"
+      - ".github/ISSUE_TEMPLATE/rmt-agent-task.yml"
+      - ".github/workflows/rmt-agent-control-plane.yml"
+      - "docs/RMT_AGENT_CONTROL_PLANE.md"
+      - "ops/hermes/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  control-plane:
+    name: RMT agent control plane
+    runs-on: windows-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Shell syntax
+        run: |
+          set -euo pipefail
+          bash -n ops/hermes/rmt-agent-loop.sh
+          bash -n ops/hermes/rmt-codex-loop-smoke.sh
+      - name: Python compile
+        run: |
+          set -euo pipefail
+          python -m py_compile \
+            ops/hermes/workers/local-openai-patch-worker.py \
+            ops/hermes/local-openai-patch-worker-smoke.py \
+            ops/hermes/local-rmt-worker-benchmark.py
+      - name: Model-neutral runner smoke
+        run: bash ops/hermes/rmt-codex-loop-smoke.sh
+      - name: Local patch protocol smoke
+        run: python ops/hermes/local-openai-patch-worker-smoke.py
+      - name: Diff check
+        run: git diff --check

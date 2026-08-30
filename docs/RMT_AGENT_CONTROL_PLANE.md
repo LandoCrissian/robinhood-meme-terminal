@@ -170,9 +170,10 @@ paths, explicit bounded context, current iteration, and prior validator failure
 evidence. It has no shell, terminal, general repository access, web access,
 GitHub access, credentials, or automatic cloud fallback.
 
-`CODEX_OPTIONAL` is a dormant stronger-worker adapter and is never selected or
-invoked without explicit owner authorization. No worker/provider fallback is
-automatic. Selecting a different model never changes task authority.
+V1 ships only the `LOCAL_PATCH` executable worker kind. Future stronger worker
+adapters, including Codex, require a separate owner-reviewed implementation and
+canary. No worker/provider fallback is automatic. Selecting a different model
+never changes task authority.
 
 The V1 local-worker classification is `R0_AND_R1_LOW_RISK`. R1 is limited to
 documentation, test fixtures, CSS/presentation, deterministic visual-QA and
@@ -211,9 +212,19 @@ Machine-local auth directories such as Hermes/Codex credentials are outside the 
    runtime/model, and isolated local profile.
 3. R0 authority benchmark: read-only repository/control-contract inspection.
 4. R1 canary: small patch-only isolated task with deliberate validator retry.
-5. Only then allow unattended R0/R1 loops.
+5. Return to the owner. V1 remains manually triggered.
 
 The first useful RMT loop should be an existing bounded product task, not a synthetic agent side project.
+
+## V1 invocation boundary
+
+V1 is owner-triggered/manual. The local patch worker is bounded by code, but
+Hermes general terminal access is not an adversarial sandbox and is not part of
+the V1 worker surface. Do not enable unattended gateway, cron, scheduled tasks,
+messaging, or generic autonomous terminal operation.
+
+A future narrowly exposed Hermes coordinator command/tool may invoke the
+reviewed runner only after separate owner review and canary evidence.
 
 ## Owner boundary
 

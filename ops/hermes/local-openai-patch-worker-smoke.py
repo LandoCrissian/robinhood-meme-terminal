@@ -4,12 +4,15 @@
 from __future__ import annotations
 
 import hashlib
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import importlib.util
 import json
 import os
 from pathlib import Path
 import subprocess
 import tempfile
+from threading import Thread
+from urllib.error import HTTPError
 
 
 HERE = Path(__file__).resolve().parent
@@ -31,6 +34,15 @@ def expect_rejected(label: str, function) -> None:
         print(f"PASS: {label}")
         return
     fail(f"{label} should be rejected")
+
+
+def expect_http_rejected(label: str, function) -> None:
+    try:
+        function()
+    except HTTPError:
+        print(f"PASS: {label}")
+        return
+    fail(f"{label} should reject the HTTP redirect")
 
 
 def edit(path: str, operation: str, expected, content: str) -> dict:
@@ -123,6 +135,43 @@ with tempfile.TemporaryDirectory(prefix="rmt-patch-smoke-") as temporary:
         ".git path",
         lambda: validate(root, document([edit(".git/config", "replace", "0" * 64, "x")]), [".git/"]),
     )
+    for nested_git in ("ops/.git/config", "ops/hermes/canary/.GIT/config"):
+        expect_rejected(
+            f"nested .git component {nested_git}",
+            lambda nested_git=nested_git: validate(
+                root,
+                document([edit(nested_git, "create", None, "x")]),
+                ["ops/"],
+            ),
+        )
+    for reserved_path in (
+        "ops/hermes/canary/CON",
+        "ops/hermes/canary/PRN.txt",
+        "ops/hermes/canary/AUX.json",
+        "ops/hermes/canary/NUL.log",
+        "ops/hermes/canary/COM1.txt",
+        "ops/hermes/canary/COM9",
+        "ops/hermes/canary/LPT1.txt",
+        "ops/hermes/canary/LPT9",
+    ):
+        expect_rejected(
+            f"Windows reserved name {reserved_path}",
+            lambda reserved_path=reserved_path: validate(
+                root, document([edit(reserved_path, "create", None, "x")])
+            ),
+        )
+    for ambiguous_windows_path in (
+        "ops/hermes/canary/trailing.",
+        "ops/hermes/canary/trailing ",
+        "ops/hermes/canary/control\x1f.txt",
+        "ops/hermes/canary/delete\x7f.txt",
+    ):
+        expect_rejected(
+            f"Windows ambiguous path {ambiguous_windows_path!r}",
+            lambda ambiguous_windows_path=ambiguous_windows_path: validate(
+                root, document([edit(ambiguous_windows_path, "create", None, "x")])
+            ),
+        )
     expect_rejected(
         "out-of-scope path",
         lambda: validate(root, document([edit("FORBIDDEN.txt", "create", None, "x")]), ["ops/"]),
@@ -154,6 +203,47 @@ with tempfile.TemporaryDirectory(prefix="rmt-patch-smoke-") as temporary:
     expect_rejected("one invalid edit rejects batch", lambda: validate(root, invalid_batch))
     assert not atomic_target.exists(), "invalid batch changed a file"
     print("PASS: invalid batch applies zero edits")
+
+    rollback_existing = canary / "rollback-existing.txt"
+    rollback_existing.write_text("original\n", encoding="utf-8")
+    rollback_sha = hashlib.sha256(rollback_existing.read_bytes()).hexdigest()
+    rollback_created = canary / "rollback-created.txt"
+    _, rollback_prepared = validate(
+        root,
+        document(
+            [
+                edit(
+                    "ops/hermes/canary/rollback-existing.txt",
+                    "replace",
+                    rollback_sha,
+                    "changed\n",
+                ),
+                edit(
+                    "ops/hermes/canary/rollback-created.txt",
+                    "create",
+                    None,
+                    "created\n",
+                ),
+            ]
+        ),
+    )
+    replacement_count = {"value": 0}
+
+    def fail_second_replacement(source: Path, target: Path) -> None:
+        replacement_count["value"] += 1
+        if replacement_count["value"] == 2:
+            raise OSError("deterministic second-file failure")
+        os.replace(source, target)
+
+    expect_rejected(
+        "second-file failure triggers rollback",
+        lambda: worker.apply_prepared_edits(
+            rollback_prepared, replace_file=fail_second_replacement
+        ),
+    )
+    assert rollback_existing.read_text(encoding="utf-8") == "original\n"
+    assert not rollback_created.exists()
+    print("PASS: previously applied file restored after batch failure")
 
     outside = sandbox / "outside"
     outside.mkdir()
@@ -190,10 +280,93 @@ with tempfile.TemporaryDirectory(prefix="rmt-patch-smoke-") as temporary:
         lambda: worker.require_loopback_endpoint("http://0.0.0.0:8080/v1"),
     )
     expect_rejected(
+        "localhost hostname",
+        lambda: worker.require_loopback_endpoint("http://localhost:8080/v1"),
+    )
+    expect_rejected(
+        "IPv6 loopback",
+        lambda: worker.require_loopback_endpoint("http://[::1]:8080/v1"),
+    )
+    expect_rejected(
+        "credentials in endpoint",
+        lambda: worker.require_loopback_endpoint("http://user:pass@127.0.0.1:8080/v1"),
+    )
+    expect_rejected(
+        "query in endpoint",
+        lambda: worker.require_loopback_endpoint("http://127.0.0.1:8080/v1?x=1"),
+    )
+    expect_rejected(
+        "fragment in endpoint",
+        lambda: worker.require_loopback_endpoint("http://127.0.0.1:8080/v1#x"),
+    )
+    expect_rejected(
+        "trailing slash in endpoint",
+        lambda: worker.require_loopback_endpoint("http://127.0.0.1:8080/v1/"),
+    )
+    expect_rejected(
+        "out-of-range endpoint port",
+        lambda: worker.require_loopback_endpoint("http://127.0.0.1:65536/v1"),
+    )
+    expect_rejected(
         "remote endpoint",
         lambda: worker.require_loopback_endpoint("https://example.com/v1"),
     )
     assert worker.require_loopback_endpoint("http://127.0.0.1:8080/v1")
     print("PASS: loopback endpoint")
+
+    destination_contacts = {"value": 0}
+
+    class DestinationHandler(BaseHTTPRequestHandler):
+        def do_POST(self):  # noqa: N802
+            self.rfile.read(int(self.headers.get("Content-Length", "0")))
+            destination_contacts["value"] += 1
+            self.send_response(200)
+            self.end_headers()
+
+        def log_message(self, format, *args):  # noqa: A002
+            return
+
+    destination = ThreadingHTTPServer(("127.0.0.1", 0), DestinationHandler)
+
+    redirect_status = {"value": 302}
+
+    class RedirectHandler(BaseHTTPRequestHandler):
+        def do_POST(self):  # noqa: N802
+            self.rfile.read(int(self.headers.get("Content-Length", "0")))
+            self.send_response(redirect_status["value"])
+            self.send_header(
+                "Location",
+                f"http://127.0.0.1:{destination.server_port}/v1/chat/completions",
+            )
+            self.end_headers()
+
+        def log_message(self, format, *args):  # noqa: A002
+            return
+
+    redirect = ThreadingHTTPServer(("127.0.0.1", 0), RedirectHandler)
+    threads = [
+        Thread(target=destination.serve_forever, daemon=True),
+        Thread(target=redirect.serve_forever, daemon=True),
+    ]
+    for thread in threads:
+        thread.start()
+    try:
+        for status_code in (301, 302, 303, 307, 308):
+            redirect_status["value"] = status_code
+            expect_http_rejected(
+                f"HTTP {status_code} redirect rejected",
+                lambda: worker.request_model(
+                    f"http://127.0.0.1:{redirect.server_port}/v1",
+                    "redirect-smoke",
+                    [{"role": "user", "content": "redirect must fail"}],
+                ),
+            )
+        assert destination_contacts["value"] == 0
+        print("PASS: redirect destination not contacted")
+    finally:
+        redirect.shutdown()
+        destination.shutdown()
+        redirect.server_close()
+        destination.server_close()
 
 print("RMT_LOCAL_PATCH_PROTOCOL_SMOKE=PASS")

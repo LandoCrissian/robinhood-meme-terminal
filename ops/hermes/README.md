@@ -28,15 +28,16 @@ the exact-SHA orchestration and guard layer. A selected worker proposes a
 bounded implementation, while the independent host validator is the sole
 pass/fail authority.
 
-V1 has two explicit worker kinds:
+V1 has one executable worker kind:
 
 - `LOCAL_PATCH`: a loopback-only OpenAI-compatible local model behind the
   patch-only adapter. It receives admitted text context and can propose only
   complete UTF-8 create/replace edits in allowed paths. It has no shell,
   general file, web, GitHub, credential, or production access.
-- `CODEX_OPTIONAL`: an optional dormant compatibility adapter. It is never an
-  automatic fallback and may be selected only by a separate owner-authorized
-  task.
+
+Future stronger worker adapters, including Codex, require a separate
+owner-reviewed implementation and canary. V1 ships no Codex executable adapter
+and has no automatic worker/provider fallback.
 
 The retained local-model authority classification is only `R0_AND_R1_LOW_RISK`:
 documentation, test fixtures, CSS/presentation, deterministic visual-QA or
@@ -108,14 +109,14 @@ allowlist. Do not place secrets in any input.
 For `LOCAL_PATCH`, context paths must be relative, nonsymlink UTF-8 files in the
 disposable worktree. V1 admits at most 8 files and 64 KiB total without silent
 truncation. The model response must be one strict JSON object; the adapter
-validates the complete edit batch before atomically applying any file.
-
-`rmt-codex-loop.sh` remains only a `CODEX_OPTIONAL` compatibility wrapper and
-does not contain a second copy of the security logic.
+validates the complete edit batch before application. Each replacement is
+atomic, and host I/O exceptions trigger rollback of previously applied
+replacements and removal of newly created targets. An incomplete rollback is a
+hard stop that preserves the worktree for owner inspection.
 
 ## Independent validator
 
-The validator runs outside the Codex worktree and receives:
+The validator runs outside the disposable task worktree and receives:
 
 - `RMT_LOOP_WORKTREE`
 - `RMT_LOOP_BASE_REF`
@@ -160,9 +161,25 @@ Expected outputs:
 
 `READY_FOR_OWNER_REVIEW` means the engineering loop passed. It does **not** mean merge or release is authorized.
 
+Worker status is authoritative before validation: `0` may proceed to the host
+validator, `10` (`decision=stop`) stops for owner review, and the explicitly
+classified transport status `30` may retry only within the existing iteration
+and time budgets. Any other nonzero worker status is a non-retryable control-
+plane failure. A validator cannot override a stopped or failed worker.
+
 ## Main-drift behavior
 
 The runner refreshes the authorized base ref before work and between implementation/validation stages. If the remote base ref no longer equals the task's exact SHA, it stops. It does not silently rebase or decide whether intervening changes overlap.
+
+## Owner-triggered V1
+
+V1 is owner-triggered/manual. The local patch worker is bounded by the runner
+and patch protocol. Hermes general terminal access is **not** claimed to be an
+adversarial sandbox, and this repository does not enable unattended gateway,
+cron, scheduled-task, messaging, or generic autonomous terminal operation.
+
+A future narrowly exposed Hermes coordinator command/tool may invoke the
+reviewed runner only after separate owner review.
 
 ## First canaries
 

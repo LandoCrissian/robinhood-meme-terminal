@@ -18,7 +18,7 @@ Usage:
     --task-file <host-side-path> \
     --validator <host-side-executable> \
     --worker-adapter <host-controlled-executable> \
-    --worker-kind <LOCAL_PATCH|CODEX_OPTIONAL> \
+    --worker-kind <LOCAL_PATCH> \
     --allow <repo-path> [--allow <repo-path> ...] \
     [--context <repo-relative-text-file> ...] \
     [--worker-endpoint <http://127.0.0.1:port/v1>] \
@@ -70,12 +70,21 @@ is_safe_repo_path() {
   [[ "$value" != /* ]] || return 1
   [[ "$value" != *\\* ]] || return 1
   [[ "$value" != .git && "$value" != .git/* ]] || return 1
-  local segment
+  [[ ! "$value" =~ [[:cntrl:]] ]] || return 1
+  local segment stem reserved
   IFS='/' read -r -a segments <<< "$value"
   for segment in "${segments[@]}"; do
     [ -n "$segment" ] || return 1
     [ "$segment" != . ] || return 1
     [ "$segment" != .. ] || return 1
+    [ "${segment,,}" != .git ] || return 1
+    [[ "$segment" != *"." ]] || return 1
+    [[ "$segment" != *" " ]] || return 1
+    stem="${segment%%.*}"
+    reserved="${stem^^}"
+    case "$reserved" in
+      CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9]) return 1 ;;
+    esac
   done
 }
 
@@ -160,18 +169,12 @@ fi
 if [ -z "$worker_adapter" ] || [ ! -f "$worker_adapter" ] || [ ! -x "$worker_adapter" ]; then
   stop STOP_R2_APPROVAL_REQUIRED "Worker adapter must be an existing executable host file."
 fi
-case "$worker_kind" in
-  LOCAL_PATCH|CODEX_OPTIONAL) ;;
-  *) stop STOP_FOR_OWNER_REVIEW "worker-kind must be LOCAL_PATCH or CODEX_OPTIONAL." ;;
-esac
-if [ "$worker_kind" = LOCAL_PATCH ]; then
-  if ! [[ "$worker_endpoint" =~ ^http://(127\.0\.0\.1|localhost):[0-9]+/v1/?$ ]]; then
-    stop STOP_FOR_OWNER_REVIEW "LOCAL_PATCH requires an explicit loopback-only OpenAI-compatible /v1 endpoint."
-  fi
-  [ -n "$worker_model" ] || stop STOP_FOR_OWNER_REVIEW "LOCAL_PATCH requires an explicit model id."
-elif [ -n "$worker_endpoint" ]; then
-  stop STOP_FOR_OWNER_REVIEW "Only LOCAL_PATCH may receive a local model endpoint."
+[ "$worker_kind" = LOCAL_PATCH ] || stop STOP_FOR_OWNER_REVIEW "V1 worker-kind must be LOCAL_PATCH."
+if ! [[ "$worker_endpoint" =~ ^http://127\.0\.0\.1:([1-9][0-9]{0,4})/v1$ ]] \
+  || [ "$((10#${BASH_REMATCH[1]:-0}))" -gt 65535 ]; then
+  stop STOP_FOR_OWNER_REVIEW "LOCAL_PATCH requires exactly http://127.0.0.1:<port>/v1."
 fi
+[ -n "$worker_model" ] || stop STOP_FOR_OWNER_REVIEW "LOCAL_PATCH requires an explicit model id."
 if [ "${#allowed_paths[@]}" -eq 0 ]; then
   stop STOP_FOR_OWNER_REVIEW "At least one allowed repository path is required."
 fi
@@ -414,6 +417,20 @@ for ((iteration=1; iteration<=max_iterations; iteration++)); do
   fetch_and_require_base
   require_host_inputs_unchanged
   require_git_identity
+
+  if [ "$worker_status" -eq 10 ]; then
+    stop STOP_FOR_OWNER_REVIEW "Worker returned decision=stop. Independent validation cannot override a worker stop. Worktree preserved: $worktree"
+  fi
+  if [ "$worker_status" -ne 0 ]; then
+    if [ "$worker_status" -eq 30 ]; then
+      printf 'Retryable worker transport failure: %s\n' "$worker_status"
+      if [ "$iteration" -eq "$max_iterations" ] || ! within_time_budget; then
+        stop STOP_BUDGET_EXHAUSTED "Retryable worker transport failure exhausted the bounded loop. Worktree preserved: $worktree"
+      fi
+      continue
+    fi
+    stop STOP_VALIDATOR_ERROR "Worker failed with non-retryable status $worker_status. Validator was not permitted to override it. Worktree preserved: $worktree"
+  fi
 
   validation_log="$run_dir/validator-$iteration.log"
   printf '\nITERATION %s/%s — VALIDATE\n' "$iteration" "$max_iterations"
