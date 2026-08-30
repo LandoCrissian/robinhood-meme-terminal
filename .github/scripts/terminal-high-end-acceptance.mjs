@@ -2501,12 +2501,18 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
     throw new Error(`V4 wallet fixture did not observe the passive quote: ${JSON.stringify({ diagnostic, state })}`, { cause: error });
   }
   await panel.locator(".vnReviewButton").click();
-  await panel.locator(".vnRouteCard summary").click();
+  const advanced = panel.locator(".vnRouteCard");
+  await advanced.evaluate((element) => { element.open = true; });
   await page.locator(".vnWalletFeeDisclosure").last().waitFor({ state: "visible", timeout: 30_000 });
   const reviewText = await page.locator(".vnWalletFeeDisclosure").last().innerText();
   for (const required of ["RMT platform fee: 0", "Direct · no RMT platform fee", "RMT receives no treasury transfer"]) {
     if (!reviewText.includes(required)) throw new Error(`V4 wallet review omitted ${required}: ${reviewText}`);
   }
+  const promptRequestsBeforeOwnerAction = await page.evaluate(() => (
+    window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter((method) => method === "eth_sendTransaction").length
+  ));
+  if (promptRequestsBeforeOwnerAction !== 0) throw new Error("V4 wallet provider was invoked before explicit owner action");
+  await page.getByRole("button", { name: "Review verified swap in wallet", exact: true }).click();
   await page.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.includes("eth_sendTransaction"));
   const walletMethods = await page.evaluate(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__);
   if (walletMethods.some((method) => method === "eth_sign" || method === "personal_sign" || method.startsWith("eth_signTypedData"))) {
@@ -2523,7 +2529,7 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
   }
   await page.screenshot({ path: `${output}/v4-wallet-review-cannacat-desktop-1440x900.png`, fullPage: false, animations: "disabled" });
   await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("cancel"));
-  await page.getByText("Wallet review was cancelled. Nothing was submitted.", { exact: true }).waitFor({ state: "visible" });
+  await page.getByText("Wallet request was rejected by the owner. Nothing was broadcast.", { exact: true }).waitFor({ state: "visible" });
   await context.close();
   return {
     token: cannaCatToken,
@@ -2736,8 +2742,16 @@ async function inspectV4FreshWalletSellJourney(browser, fixture) {
   await panel.getByLabel("Receive asset").selectOption("eip155:4663/native");
   await panel.getByLabel("Exact input amount").fill("1");
   await panel.locator(".vnReviewButton").click();
+  const advanced = panel.locator(".vnRouteCard");
+  await advanced.evaluate((element) => { element.open = true; });
 
   try {
+    await page.getByRole("button", { name: "Review exact approval in wallet", exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+    const promptRequestsBeforeOwnerAction = await page.evaluate(() => (
+      window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter((method) => method === "eth_sendTransaction").length
+    ));
+    if (promptRequestsBeforeOwnerAction !== 0) throw new Error("V4 approval provider was invoked before explicit owner action");
+    await page.getByRole("button", { name: "Review exact approval in wallet", exact: true }).click();
     await page.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter((method) => method === "eth_sendTransaction").length === 1);
   } catch (error) {
     const panelText = await panel.innerText().catch(() => "<trade panel unavailable>");
@@ -2749,22 +2763,25 @@ async function inspectV4FreshWalletSellJourney(browser, fixture) {
   state.sellStage = 1;
   await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("approve"));
 
-  await page.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter((method) => method === "eth_sendTransaction").length === 2, null, { timeout: 30_000 });
   await page.getByText("Next exact approval ready", { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
   if (state.authorizeRequests.length !== 2 || stages[1].evidence.approvalKind !== "permit2_to_router") {
     throw new Error(`V4 fresh-wallet sell blocked the Permit2 -> Router approval: ${JSON.stringify(state)}`);
   }
+  await advanced.evaluate((element) => { element.open = true; });
+  await page.getByRole("button", { name: "Review exact approval in wallet", exact: true }).click();
+  await page.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter((method) => method === "eth_sendTransaction").length === 2, null, { timeout: 30_000 });
   state.sellStage = 2;
   await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("approve"));
 
-  await page.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter((method) => method === "eth_sendTransaction").length === 3, null, { timeout: 30_000 });
   await page.getByText("Fresh swap verification passed", { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
-  await panel.locator(".vnRouteCard summary").click();
+  await advanced.evaluate((element) => { element.open = true; });
   await page.locator(".vnWalletFeeDisclosure").last().waitFor({ state: "visible" });
   const finalReview = await page.locator(".vnWalletFeeDisclosure").last().innerText();
   for (const required of ["RMT platform fee: 0", "Direct · no RMT platform fee", "RMT receives no treasury transfer"]) {
     if (!finalReview.includes(required)) throw new Error(`V4 fresh-wallet sell review omitted ${required}: ${finalReview}`);
   }
+  await page.getByRole("button", { name: "Review verified swap in wallet", exact: true }).click();
+  await page.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter((method) => method === "eth_sendTransaction").length === 3, null, { timeout: 30_000 });
   const quoteIds = state.authorizeRequests.map((request) => request.quoteRequestId);
   const verificationIds = state.authorizeRequests.map((request) => request.verificationId);
   if (new Set(quoteIds).size !== 3 || new Set(verificationIds).size !== 3) {
@@ -2781,7 +2798,7 @@ async function inspectV4FreshWalletSellJourney(browser, fixture) {
   }
   await page.screenshot({ path: `${output}/v4-fresh-wallet-sell-review-cannacat-desktop-1440x900.png`, fullPage: false, animations: "disabled" });
   await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("cancel"));
-  await page.getByText("Wallet review was cancelled. Nothing was submitted.", { exact: true }).waitFor({ state: "visible" });
+  await page.getByText("Wallet request was rejected by the owner. Nothing was broadcast.", { exact: true }).waitFor({ state: "visible" });
   const walletMethods = await page.evaluate(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__);
   await context.close();
   return {
