@@ -50,7 +50,7 @@ function nodeRole(
   input: {
     pair: Address;
     creator: Address | null;
-    isContract: boolean;
+    isContract: boolean | null;
   }
 ): WalletConstellationNodeRole {
   const normalized = address.toLowerCase();
@@ -88,7 +88,9 @@ function upsertNode(
     label: current.label ?? input.label,
     holderRank: current.holderRank ?? input.holderRank,
     supplyShareBps: current.supplyShareBps ?? input.supplyShareBps,
-    isContract: current.isContract || input.isContract,
+    isContract: current.isContract === true || input.isContract === true
+      ? true
+      : current.isContract === false || input.isContract === false ? false : null,
     isFlagged: current.isFlagged || input.isFlagged,
     evidence: Array.from(new Set([...current.evidence, ...input.evidence]))
   });
@@ -270,12 +272,12 @@ export function buildWalletConstellationGraph(input: {
         role: nodeRole(address, {
           pair,
           creator,
-          isContract: details.is_contract === true
+          isContract: typeof details.is_contract === "boolean" ? details.is_contract : null
         }),
         label: details.name ?? null,
         holderRank: null,
         supplyShareBps: null,
-        isContract: details.is_contract === true,
+        isContract: typeof details.is_contract === "boolean" ? details.is_contract : null,
         isFlagged: details.is_scam === true,
         evidence: [
           "confirmed-token-transfer",

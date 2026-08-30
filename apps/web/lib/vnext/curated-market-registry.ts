@@ -215,6 +215,16 @@ export const RMT_CURATED_MARKET_MANIFEST_HASH = keccak256(toHex(JSON.stringify(
 const byToken = new Map(RMT_CURATED_MARKET_REGISTRY.map((entry) => [entry.token.toLowerCase(), entry]));
 const byPool = new Map(RMT_CURATED_MARKET_REGISTRY.map((entry) => [entry.market.poolKey.toLowerCase(), entry]));
 
+const RMT_CURATED_RISK_SOURCE_IDS = new Map<string, "pons" | "noxa">([
+  [getAddress("0x39dbed3a2bd333467115de45665cc57f813c4571").toLowerCase(), "pons"]
+]);
+
+export function rmtCuratedRiskSourceId(token: string) {
+  return byToken.has(token.toLowerCase())
+    ? RMT_CURATED_RISK_SOURCE_IDS.get(token.toLowerCase())
+    : undefined;
+}
+
 export function rmtCuratedMarketByToken(address: string) {
   return byToken.get(address.toLowerCase()) ?? null;
 }

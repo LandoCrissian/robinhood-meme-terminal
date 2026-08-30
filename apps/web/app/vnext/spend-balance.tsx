@@ -5,7 +5,7 @@ import { erc20Abi, formatUnits, getAddress, isAddress, zeroAddress, type Address
 import { useAccount, usePublicClient } from "wagmi";
 import type { ExternalMarketResponse } from "../../lib/external-market";
 import { spendableAtomic } from "../../lib/vnext/execution-domain";
-import { spendableNativeAtomic } from "../../lib/vnext/intent-draft";
+import { NATIVE_GAS_RESERVE_ATOMIC, spendableNativeAtomic } from "../../lib/vnext/intent-draft";
 import type { VNextExecutionRecord } from "../../lib/vnext/execution-recovery";
 import type { VNextDirectoryMarket } from "../../lib/vnext/market-directory";
 import {
@@ -95,6 +95,9 @@ export function SpendBalance({ visible = true, markets, onAssetsChange, onNative
       })))
     : undefined;
   const nativeSpendable = spendableNativeAtomic(nativeBalance);
+  const nativeGasReserve = nativeBalance === undefined
+    ? undefined
+    : nativeBalance < NATIVE_GAS_RESERVE_ATOMIC ? nativeBalance : NATIVE_GAS_RESERVE_ATOMIC;
   const delayed = enabled && (status === "stale" || status === "error");
   const refreshedResolution = useRef<string | undefined>(undefined);
   const refreshBalances = useRef(refresh);
@@ -199,7 +202,7 @@ export function SpendBalance({ visible = true, markets, onAssetsChange, onNative
       <div className="vnBalancePrimary">
         <span id="vn-balance-heading">Portfolio</span>
         <strong>{enabled && assetCountReady && portfolio.hasKnownValue ? portfolioDollars(portfolio.knownPortfolioUsd) : "—"}</strong>
-        <small><i aria-hidden="true" />{!isConnected ? "Connect a wallet" : !onRobinhood ? "Switch to Robinhood Chain" : delayed ? "Wallet read delayed" : status === "loading" ? "Reading wallet" : `${shortAddress(wallet!)} · Robinhood Chain`}</small>
+        <small><i aria-hidden="true" />{!isConnected ? "Connect a wallet" : !onRobinhood ? "Switch to Robinhood Chain" : delayed && assetCountReady ? "Indexer delayed · onchain balances confirmed" : delayed ? "Wallet read delayed" : status === "loading" ? "Reading wallet" : `${shortAddress(wallet!)} · Robinhood Chain`}</small>
       </div>
       <div className="vnBalanceMetric">
         <span>Trade balance</span>
@@ -223,7 +226,7 @@ export function SpendBalance({ visible = true, markets, onAssetsChange, onNative
           <div><span>USDG</span><strong>{amount(usdgSpendable, ROBINHOOD_USDG.decimals, 2)}</strong><small>Canonical trade balance · settlement asset</small></div>
         </div>
         <div className="vnDetectedAssetsHead">
-          <span><strong>Holdings</strong><small>{assets.length + (nativeBalance && nativeBalance > 0n ? 1 : 0)} onchain assets</small></span>
+          <span><strong>Holdings</strong><small>{assets.length + (nativeBalance && nativeBalance > 0n ? 1 : 0)} onchain {assets.length + (nativeBalance && nativeBalance > 0n ? 1 : 0) === 1 ? "asset" : "assets"}</small></span>
           <div className="vnDetectedAssetsControls">
             <button
               className="vnDetectedAssetsToggle"
@@ -237,7 +240,9 @@ export function SpendBalance({ visible = true, markets, onAssetsChange, onNative
         </div>
         <div className="vnDetectedAssetsBody" id="vn-detected-assets-body">
           {holdingsExpanded ? <div className="vnWalletDetails" id="vn-wallet-details"><div className="vnPortfolioTruth">
-            <div><span>Native balance</span><strong>{amount(nativeBalance, ROBINHOOD_ETH.decimals, 6)} ETH</strong><small>Trade funding plus protected network-gas reserve</small></div>
+            <div><span>Wallet ETH</span><strong>{amount(nativeBalance, ROBINHOOD_ETH.decimals, 6)} ETH</strong><small>Total confirmed native balance</small></div>
+            <div><span>Spendable ETH</span><strong>{amount(nativeSpendable, ROBINHOOD_ETH.decimals, 6)} ETH</strong><small>Available for trade funding</small></div>
+            <div><span>Reserved for network gas</span><strong>{amount(nativeGasReserve, ROBINHOOD_ETH.decimals, 6)} ETH</strong><small>Excluded from spendable ETH</small></div>
             <div><span>Wallet discovery</span><strong>{discoveryStatus === "ready" ? "Complete" : discoveryStatus === "partial" ? "Partial" : discoveryStatus === "stale" ? "Last known" : discoveryStatus === "unavailable" ? "Delayed" : "Checking"}</strong><small>Indexer finds assets; onchain reads confirm balances</small></div>
             <div><span>Last balance check</span><strong>{observedAtMs ? new Date(observedAtMs).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" }) : "—"}</strong><small>Refresh runs quietly in the background</small></div>
           </div>

@@ -1116,6 +1116,7 @@ body .rmtVnext {
 .vnChartLine.isUp { stroke: #82f28f; }
 .vnChartLine.isDown { stroke: #ff8c8c; }
 .vnChartArea { pointer-events: none; }
+.vnChartSparsePoint { fill: var(--vn-accent); stroke: #071008; stroke-width: 2; }
 
 .vnChartCrosshair line {
   stroke: rgba(244, 247, 243, .24);
@@ -1554,6 +1555,29 @@ body .rmtVnext {
 
 .vnEvidenceUnavailable strong { color: var(--vn-text-primary); font-size: 12px; }
 .vnEvidenceUnavailable span { max-width: 58ch; font-size: 10px; line-height: 1.45; }
+.vnEvidenceCountOnly { margin-top: 12px; }
+
+.vnEvidenceFact {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--vn-border);
+}
+
+.vnEvidenceFact small {
+  color: var(--vn-text-muted);
+  font-size: 9px;
+  text-transform: uppercase;
+}
+
+.vnEvidenceFact strong {
+  color: var(--vn-text-primary);
+  font-size: 12px;
+  white-space: nowrap;
+}
 
 .vnProjectLinkDisclosure {
   display: grid;
@@ -1723,9 +1747,35 @@ body .rmtVnext {
 
 .vnEcosystemMarkets strong,
 .vnEcosystemMarkets b { font-size: 9px; }
-.vnEcosystemMarkets b { color: var(--vn-accent); }
+.vnEcosystemMarkets b { color: var(--vn-text-secondary); }
 .vnEcosystemMarkets small { color: var(--vn-text-muted); font-size: 8px; }
 .vnEcosystemMarkets i { color: var(--vn-text-muted); font-size: 9px; font-style: normal; }
+
+.vnVenueDisclosure {
+  padding: 0;
+  overflow: hidden;
+}
+
+.vnVenueDisclosure > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 10px 14px;
+  color: var(--vn-text-secondary);
+  cursor: pointer;
+  list-style: none;
+}
+
+.vnVenueDisclosure > summary::-webkit-details-marker { display: none; }
+.vnVenueDisclosure > summary > span { display: grid; gap: 2px; }
+.vnVenueDisclosure > summary > span:last-child { grid-auto-flow: column; align-items: center; gap: 8px; color: var(--vn-text-muted); font-size: 8px; text-transform: uppercase; }
+.vnVenueDisclosure > summary small { color: var(--vn-text-muted); font-size: 8px; text-transform: uppercase; }
+.vnVenueDisclosure > summary strong { color: var(--vn-text-primary); font-size: 11px; }
+.vnVenueDisclosure > summary i { font-style: normal; transition: transform .16s ease; }
+.vnVenueDisclosure[open] > summary i { transform: rotate(180deg); }
+.vnVenueDisclosureBody { padding: 0 14px 12px; border-top: 1px solid var(--vn-border); }
 
 .vnVerifiedMarkets a.isSelected {
   border-color: rgba(130, 242, 143, .22);

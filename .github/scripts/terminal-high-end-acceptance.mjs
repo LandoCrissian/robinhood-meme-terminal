@@ -269,6 +269,16 @@ const riskPayload = {
   pair,
   marketVerified: true,
   coverage: "complete",
+  freshness: "fresh",
+  domains: {
+    token: "ready",
+    holders: "ready",
+    contract: "ready",
+    abi: "ready",
+    creator: "ready",
+    liquidity: "ready",
+    sell: "ready"
+  },
   contract: {
     sourcePublished: true,
     isProxy: false,
@@ -298,7 +308,10 @@ const riskPayload = {
     count: 1_842,
     poolShareBps: 4_200,
     topNonPoolShareBps: 740,
-    topNonPoolHolders: [],
+    topNonPoolHolders: [
+      { address: address(0x7001), shareBps: 210, isContract: null, isScam: false },
+      { address: address(0x7002), shareBps: 180, isContract: false, isScam: false }
+    ],
     largestNonPoolHolder: { address: address(0x7001), shareBps: 210 },
     creator,
     creatorShareBps: 95
@@ -306,7 +319,7 @@ const riskPayload = {
   sellSimulation: {
     status: "passed",
     method: "holder-to-pool-transfer",
-    holder: address(0x7001),
+    holder: address(0x7002),
     amount: "1000000000000000000",
     returnStyle: "boolean-true"
   },
@@ -2177,15 +2190,18 @@ async function inspectV4PreviewUserJourney(browser, fixture) {
     throw new Error(`V4 token findings request was not token-only: ${JSON.stringify(riskRequest)}`);
   }
   const holdersText = await page.locator(".vnEvidencePane").innerText();
-  for (const required of ["Known holders", "1,842", "Top 10 visible", "7.4%", "Largest visible", "2.1%"] ) {
+  for (const required of ["Known holders", "1,842", "Top 10 visible", "7.4%", "Largest visible holder", "2.1%"] ) {
     if (!holdersText.toLowerCase().includes(required.toLowerCase())) throw new Error(`V4 token findings omitted ${required}: ${holdersText}`);
   }
   if (/Top 10 · no pool|Largest wallet/i.test(holdersText)) throw new Error(`V4 findings fabricated pool-excluded concentration: ${holdersText}`);
 
   await page.locator(".vnEvidenceTabs").getByRole("tab", { name: "liquidity", exact: true }).click();
   const liquidityText = await page.locator(".vnEvidencePane").innerText();
-  for (const required of ["V4 PoolId", "Pool token share", "Unavailable", "Liquidity control", "not proven", "Evidence source", "none"] ) {
+  for (const required of ["V4 PoolId", "LP ownership/control", "Not verified", "No registered liquidity-position evidence is attached"] ) {
     if (!liquidityText.toLowerCase().includes(required.toLowerCase())) throw new Error(`V4 liquidity findings omitted ${required}: ${liquidityText}`);
+  }
+  if (/Pool token share|Position owner|Position ID|Evidence source/i.test(liquidityText)) {
+    throw new Error(`V4 liquidity findings rendered the legacy no-position detail grid: ${liquidityText}`);
   }
   if (/contract held|creator controlled|third party wallet|burn address/i.test(liquidityText)) {
     throw new Error(`V4 findings fabricated address-pool ownership: ${liquidityText}`);

@@ -214,6 +214,7 @@ assert.match(workspace, /Contract source/);
 assert.match(workspace, /Sell check/);
 assert.match(workspace, /Canonical markets/);
 assert.match(workspace, /Displayed price source, project origin and selected execution venue remain independent/);
+assert.match(workspace, /hasVerifiedRwaRelationship/);
 assert.match(workspace, /Stock-token classification/);
 assert.match(workspace, /RMT does not infer RWA status from a name, symbol, or trading pair/);
 assert.match(workspace, /Exact connected-wallet balance/);
