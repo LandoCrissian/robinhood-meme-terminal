@@ -93,6 +93,20 @@ The completed production sequence was:
 5. cut `/` to the same reviewed VNext shell; and
 6. retain the server-only shell switch as the immediate rollback control.
 
+### Wallet-prompt deadline and recovery boundary
+
+Final executable deadlines are server authority. The authorization endpoint authenticates the wallet, rechecks asset and directory authority, re-quotes, rebinds the protected output, rechecks runtimes and re-simulates the exact calldata against authoritative Robinhood Chain time. The browser cannot supply or preserve the final deadline. The reviewed Uniswap V3 authorization window is 240 seconds and may never exceed 300 seconds. A wallet plan is usable for at most 60 seconds and must preserve at least 180 seconds of onchain runway when the owner explicitly chooses **Review verified swap in wallet**. Quote freshness, wallet-plan freshness and the onchain deadline are separate checks.
+
+RMT records a pre-hash wallet-request journal before invoking the provider. `PROMPT_REQUESTED`, `PROVIDER_PENDING`, `UNRESOLVED`, `HASH_RECEIVED` and submitted execution states block another wallet request for the same wallet. Explicit owner rejection permits a fresh request. A swap request without a hash may be classified `EXPIRED_UNSUBMITTED` only after its onchain deadline and only when both latest and pending wallet nonces still equal the recorded pre-request nonce. Advanced or unavailable nonce evidence remains `UNRESOLVED`. Standard ERC-20 approvals do not auto-clear merely because a UI plan expires; they require explicit rejection or exact onchain reconciliation.
+
+Prompt issuance is serialized per wallet across same-origin browser contexts. The lock owner rechecks the durable journals and writes `PROMPT_REQUESTED` before invoking the provider; another context fails closed. Owner rejection is accepted only from the provider's typed rejection signal or EIP-1193 code `4001`, never from message text. After a reload loses the provider promise, recovery may discover a transaction only by exact chain, wallet, recorded nonce, target, value and calldata hash inside the bounded request-block window. A known hash remains blocking unless its exact execution record is terminal.
+
+Exact receipt reconciliation terminalizes the matching known-hash wallet request in the same combined journal write as the execution: `RECEIPT_CONFIRMED` for a successful receipt or `RECEIPT_REVERTED` for a reverted receipt. These terminal request records never block, retain their exact request, plan, payload and transaction-hash audit linkage for the bounded seven-day history window, and age out with the matching execution history. A missing, malformed or still-submitted execution remains fail-closed while its request is `HASH_RECEIVED`.
+
+Turning the public authorization, server authorization and wallet-submission flags off prevents new RMT requests. It cannot revoke a transaction already displayed by a wallet. Release disable and rollback procedures must preserve every pre-hash record and must not claim zero prompts or zero transactions while a request remains pending. Each request must become owner-rejected, hash-received, safely expired with unchanged nonce evidence, or explicitly unresolved before release accounting is final. RMT never silently generates a replacement request.
+
+A reverted transaction whose decoded reason is `Transaction too old`, or whose decoded calldata deadline predates the receipt block timestamp, is classified `EXPIRED_ONCHAIN_DEADLINE`. The swap principal did not move, output was not received, RMT and treasury transfers remain zero, and network gas was spent. The transaction link and actual gas evidence remain part of recovery.
+
 ## Revenue boundary
 
 Privy's wallet-action swap economics do not define RMT revenue policy. RMT must not replace its independently admitted same-chain routes merely to add monetization.

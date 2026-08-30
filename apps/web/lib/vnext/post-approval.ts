@@ -24,7 +24,9 @@ export function resolvedVNextExecutionOutcome(input: {
   ) return null;
   if (record.state === "reverted") return {
     state: "reverted",
-    message: "The transaction reverted. Fresh route and wallet state are required before retrying."
+    message: record.failureClassification === "EXPIRED_ONCHAIN_DEADLINE"
+      ? "The swap expired before it reached the chain. No swap value moved. Network gas was spent. Get a fresh verified request before trying again."
+      : "The transaction reverted. Fresh route and wallet state are required before retrying."
   };
   return record.kind === "erc20_approval" ? {
     state: "approval_confirmed",

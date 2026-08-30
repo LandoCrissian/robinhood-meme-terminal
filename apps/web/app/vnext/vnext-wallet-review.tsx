@@ -1,14 +1,24 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { formatUnits } from "viem";
 import { useAccount, usePublicClient, useSendTransaction } from "wagmi";
 import { FundWalletButton } from "../fund-wallet-button";
 import type { VNextAuthorizationPlan } from "../../lib/vnext/authorization-plan";
-import { findUnresolvedVNextExecution, recordSubmittedVNextExecution } from "../../lib/vnext/execution-recovery";
+import {
+  clearVNextWalletProviderRequestActive,
+  findBlockingVNextWalletRequest,
+  findUnresolvedVNextExecution,
+  markVNextWalletProviderRequestActive,
+  promoteVNextWalletRequestToSubmitted,
+  recordPreparedVNextWalletRequest,
+  transitionVNextWalletRequest
+} from "../../lib/vnext/execution-recovery";
 import type { VNextPreSignEvidence } from "../../lib/vnext/pre-sign-evidence";
 import { ROBINHOOD_MAINNET_CHAIN_ID } from "../../lib/vnext/robinhood-assets";
 import { assessVNextWalletGasReadiness, prepareVNextWalletTransaction } from "../../lib/vnext/wallet-submission";
+import { isVNextUserRejectedRequest } from "../../lib/vnext/wallet-request-error";
+import { withVNextWalletRequestLock } from "../../lib/vnext/wallet-request-lock";
 import { ExplorerLink } from "./terminal-links";
 
 export function VNextWalletFeeDisclosure({
@@ -69,7 +79,7 @@ export function VNextWalletFeeDisclosure({
 export function VNextWalletReview({
   plan,
   evidence,
-  autoRequest = false,
+  onRefresh,
   inputSymbol = "input asset",
   outputSymbol = "output asset",
   inputDecimals = 18,
@@ -77,7 +87,7 @@ export function VNextWalletReview({
 }: {
   plan: VNextAuthorizationPlan;
   evidence: VNextPreSignEvidence;
-  autoRequest?: boolean;
+  onRefresh?: () => void;
   inputSymbol?: string;
   outputSymbol?: string;
   inputDecimals?: number;
@@ -89,14 +99,27 @@ export function VNextWalletReview({
   const [localError, setLocalError] = useState("");
   const [gasShortfall, setGasShortfall] = useState("");
   const [preflightPending, setPreflightPending] = useState(false);
-  const automaticallyRequestedPlan = useRef<string | undefined>(undefined);
+  const [nowMs, setNowMs] = useState(() => Date.now());
+  const [requiresRefresh, setRequiresRefresh] = useState(false);
   const submissionEnabled = process.env.NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED === "true";
   const busy = preflightPending || submission.isPending || Boolean(submission.data);
+  const expired = nowMs >= plan.expiresAtMs;
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   const requestWalletReview = async () => {
     setLocalError("");
     setGasShortfall("");
+    setRequiresRefresh(false);
     if (!submissionEnabled) return;
+    if (Date.now() >= plan.expiresAtMs) {
+      setRequiresRefresh(true);
+      setLocalError("The verified request expired before wallet review. Refresh it before opening the wallet.");
+      return;
+    }
     if (!isConnected || !address || chainId !== ROBINHOOD_MAINNET_CHAIN_ID) {
       setLocalError("Connect your external trading wallet on Robinhood Chain before continuing.");
       return;
@@ -105,77 +128,96 @@ export function VNextWalletReview({
       setLocalError("Live Robinhood gas readiness is unavailable. RMT did not open the wallet.");
       return;
     }
-    const unresolved = findUnresolvedVNextExecution(address);
-    if (unresolved) {
-      setLocalError(`An RMT transaction is still unresolved (${unresolved.txHash.slice(0, 10)}…). Do not resubmit.`);
-      return;
-    }
     setPreflightPending(true);
+    let requestId: string | null = null;
     try {
-      const [nativeBalanceWei, currentGasPriceWei] = await Promise.all([
-        publicClient.getBalance({ address }),
-        publicClient.getGasPrice()
-      ]);
-      const gasReadiness = assessVNextWalletGasReadiness({
-        nativeBalanceWei,
-        currentGasPriceWei,
-        evidenceFeeCeilingWei: evidence.feeCeilingWei,
-        gasLimitUnits: plan.gasLimit,
-        transactionValueAtomic: plan.value
+      const locked = await withVNextWalletRequestLock(address, async () => {
+        const unresolved = findUnresolvedVNextExecution(address);
+        if (unresolved) throw new Error(`An RMT transaction is still unresolved (${unresolved.txHash.slice(0, 10)}…). Do not resubmit.`);
+        if (findBlockingVNextWalletRequest(address)) throw new Error("A wallet request is already active.");
+        const [nativeBalanceWei, currentGasPriceWei, walletNonceBeforeRequest, requestBlock] = await Promise.all([
+          publicClient.getBalance({ address }),
+          publicClient.getGasPrice(),
+          publicClient.getTransactionCount({ address, blockTag: "pending" }),
+          publicClient.getBlock({ blockTag: "latest" })
+        ]);
+        const gasReadiness = assessVNextWalletGasReadiness({
+          nativeBalanceWei,
+          currentGasPriceWei,
+          evidenceFeeCeilingWei: evidence.feeCeilingWei,
+          gasLimitUnits: plan.gasLimit,
+          transactionValueAtomic: plan.value
+        });
+        if (!gasReadiness.ready) {
+          const shortfall = formatUnits(gasReadiness.shortfallWei, 18);
+          setGasShortfall(shortfall);
+          throw new Error(`Add at least ${shortfall} ETH on Robinhood Chain for this transaction. RMT did not open the wallet.`);
+        }
+        const transaction = prepareVNextWalletTransaction({
+          plan,
+          evidence,
+          connectedAddress: address,
+          connectedChainId: chainId,
+          nowMs: Date.now()
+        });
+        requestId = crypto.randomUUID();
+        if (!recordPreparedVNextWalletRequest({
+          requestId,
+          wallet: address,
+          plan,
+          walletNonceBeforeRequest: BigInt(walletNonceBeforeRequest),
+          requestBlockNumber: requestBlock.number,
+          ...(requestBlock.hash ? { requestBlockHash: requestBlock.hash } : {})
+        })) throw new Error("RMT could not durably record the wallet request. The wallet was not opened.");
+        if (!transitionVNextWalletRequest(requestId, "PROMPT_REQUESTED")) {
+          throw new Error("RMT could not mark the wallet request as requested. The wallet was not opened.");
+        }
+        markVNextWalletProviderRequestActive(requestId);
+        const pendingHash = submission.sendTransactionAsync(transaction);
+        transitionVNextWalletRequest(requestId, "PROVIDER_PENDING");
+        const txHash = await pendingHash;
+        if (!promoteVNextWalletRequestToSubmitted({ requestId, wallet: address, plan, txHash })) {
+          throw new Error("Transaction submitted, but local recovery storage is unavailable. Use the transaction link and do not resubmit.");
+        }
       });
-      if (!gasReadiness.ready) {
-        const shortfall = formatUnits(gasReadiness.shortfallWei, 18);
-        setGasShortfall(shortfall);
-        setLocalError(`Add at least ${shortfall} ETH on Robinhood Chain for this transaction. RMT did not open the wallet.`);
-        return;
-      }
-      const transaction = prepareVNextWalletTransaction({
-        plan,
-        evidence,
-        connectedAddress: address,
-        connectedChainId: chainId,
-        nowMs: Date.now()
-      });
-      const txHash = await submission.sendTransactionAsync(transaction);
-      if (!recordSubmittedVNextExecution({ wallet: address, plan, txHash })) {
-        setLocalError("Transaction submitted, but local recovery storage is unavailable. Use the transaction link and do not resubmit.");
+      if (!locked.acquired) {
+        setLocalError(locked.reason === "contended"
+          ? "A wallet request is already active."
+          : "Secure cross-tab wallet serialization is unavailable. RMT did not open the wallet.");
       }
     } catch (cause) {
-      const rejected = cause instanceof Error && /rejected|denied|cancelled|canceled/i.test(cause.message);
+      const rejected = isVNextUserRejectedRequest(cause);
+      if (requestId) transitionVNextWalletRequest(requestId, rejected ? "USER_REJECTED" : "UNRESOLVED");
+      setRequiresRefresh(rejected);
       setLocalError(rejected
-        ? "Wallet review was cancelled. Nothing was submitted."
-        : "The exact transaction request was not accepted. Verify the route again.");
+        ? "Wallet request was rejected by the owner. Nothing was broadcast."
+        : requestId
+          ? "Wallet request is still unresolved. Check the wallet and do not retry."
+          : cause instanceof Error ? cause.message : "The exact transaction request was not accepted. Verify the route again.");
     } finally {
+      if (requestId) clearVNextWalletProviderRequestActive(requestId);
       setPreflightPending(false);
     }
   };
-
-  useEffect(() => {
-    if (!autoRequest || !submissionEnabled || automaticallyRequestedPlan.current === plan.planId) return;
-    automaticallyRequestedPlan.current = plan.planId;
-    void requestWalletReview();
-  }, [autoRequest, plan.planId, submissionEnabled]);
 
   return <div className="vnWalletSubmission">
     <button
       type="button"
       disabled={!submissionEnabled || busy}
-      onClick={() => void requestWalletReview()}
+      onClick={() => expired || requiresRefresh ? onRefresh?.() : void requestWalletReview()}
     >{!submissionEnabled
       ? "Wallet submission disabled"
+      : expired || requiresRefresh
+        ? "Refresh verified request"
       : preflightPending
         ? "Checking Robinhood ETH reserve…"
         : submission.isPending
           ? "Review exact request in wallet…"
           : submission.data
             ? "Submitted · recovery active"
-            : localError
-              ? "Retry wallet review"
-              : autoRequest
-                ? "Opening verified wallet request…"
-                : plan.kind === "erc20_approval"
-                  ? "Review exact approval in wallet"
-                  : "Review verified swap in wallet"}</button>
+            : plan.kind === "erc20_approval"
+              ? "Review exact approval in wallet"
+              : "Review verified swap in wallet"}</button>
     <small>{submissionEnabled
       ? "Your wallet displays and authorizes this exact request. RMT cannot sign or submit it for you."
       : "The final wallet-submission gate remains off in production."}</small>
@@ -188,6 +230,7 @@ export function VNextWalletReview({
       outputDecimals={outputDecimals}
     />
     {plan.kind === "erc20_approval" ? <small>Standard ERC-20 approvals have no onchain expiry. This request is limited to the exact input amount, and RMT requires fresh verification before the swap.</small> : <small>The verified swap calldata enforces its onchain deadline and protected output.</small>}
+    <small>{expired ? "Verified request expired. Prepare a fresh server-verified request." : `Wallet review window · ${Math.max(0, Math.ceil((plan.expiresAtMs - nowMs) / 1_000))}s remaining`}</small>
     {localError ? <p className="vnAuthorizationError" role="status">{localError}</p> : null}
     {gasShortfall ? <FundWalletButton directReceive variant="inline" label="Add Robinhood ETH" /> : null}
     {submission.data ? <ExplorerLink kind="transaction" value={submission.data} accessibleName="Open submitted transaction in Robinhood Chain explorer">View transaction ↗</ExplorerLink> : null}

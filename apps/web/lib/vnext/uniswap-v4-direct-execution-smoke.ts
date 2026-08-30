@@ -148,6 +148,19 @@ async function main() {
   assert.equal(preparedBuy.transaction.target, ROBINHOOD_UNIVERSAL_ROUTER);
   assert.equal(preparedBuy.transaction.value, buyRequest.inputAmountAtomic);
 
+  for (const chainClockLagSeconds of [1n, 15n, 30n]) {
+    const chainTimestamp = BigInt(Math.floor(now / 1_000)) - chainClockLagSeconds;
+    const lagged = await prepareVNextUniswapV4Authorization({
+      ...buyRequest,
+      v4QuoteEvidence: { ...quoteEvidence, quotedAtMs: now - 100, expiresAtMs: now + 29_000 },
+      deadlineSeconds: chainTimestamp + 240n,
+      protectedOutputFloorAtomic: 3_900_000n,
+      nowMs: now
+    }, dependencies());
+    assert.equal(lagged.transaction.kind, "swap", `wall-clock V4 freshness must survive ${chainClockLagSeconds}s chain-clock lag`);
+    assert.equal(lagged.evidence.deadline, (chainTimestamp + 240n).toString(), "the final deadline remains chain-time derived");
+  }
+
   const sellRequest = {
     ...buyRequest,
     inputAsset: token,

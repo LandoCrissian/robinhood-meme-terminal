@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent, type RefObject } from "react";
 import type { AssetMetadata } from "../../lib/vnext/execution-domain";
-import type { VNextExecutionRecord } from "../../lib/vnext/execution-recovery";
+import type { VNextExecutionRecord, VNextWalletRequestRecord } from "../../lib/vnext/execution-recovery";
 import {
   VNEXT_MARKET_DIRECTORY_PAGE_SIZE,
   VNEXT_MARKET_DIRECTORY_VIEWS,
@@ -60,7 +60,10 @@ export type TerminalPresentationProps = {
   nativeBalance?: bigint;
   walletReadStatus: VNextWalletReadStatus;
   executionRecord: VNextExecutionRecord | null;
+  walletRequest: VNextWalletRequestRecord | null;
   executionStatus: "idle" | "confirming" | "confirmation_unavailable" | "reconciliation_failed" | "confirmed" | "reverted";
+  onRecheckWalletRequest: () => void;
+  walletRequestRecheckPending: boolean;
   portfolioRevealRequest: number;
   tradeSideRequest?: TradeSideRequest;
   onAssetsChange: (assets: VNextDetectedWalletAsset[]) => void;
@@ -284,13 +287,13 @@ function PortfolioController({ visible, ...props }: TerminalPresentationProps & 
       executionRecord={props.executionRecord}
       portfolioRevealRequest={props.portfolioRevealRequest}
     />
-    {visible ? <VNextExecutionRecoveryBanner record={props.executionRecord} status={props.executionStatus} /> : null}
+    {visible ? <VNextExecutionRecoveryBanner record={props.executionRecord} walletRequest={props.walletRequest} status={props.executionStatus} onRecheckWalletRequest={props.onRecheckWalletRequest} walletRequestRecheckPending={props.walletRequestRecheckPending} /> : null}
   </>;
 }
 
 function RecoveryStatus(props: TerminalPresentationProps) {
-  return props.context !== "portfolio" && props.executionRecord
-    ? <VNextExecutionRecoveryBanner record={props.executionRecord} status={props.executionStatus} />
+  return props.context !== "portfolio" && (props.executionRecord || props.walletRequest)
+    ? <VNextExecutionRecoveryBanner record={props.executionRecord} walletRequest={props.walletRequest} status={props.executionStatus} onRecheckWalletRequest={props.onRecheckWalletRequest} walletRequestRecheckPending={props.walletRequestRecheckPending} />
     : null;
 }
 

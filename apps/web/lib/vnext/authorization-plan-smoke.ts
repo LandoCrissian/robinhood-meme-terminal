@@ -6,7 +6,8 @@ import {
   DIRECT_SMOKE_APPROVAL_EVIDENCE,
   DIRECT_SMOKE_APPROVAL_PLAN,
   DIRECT_SMOKE_SWAP_EVIDENCE,
-  DIRECT_SMOKE_SWAP_PLAN
+  DIRECT_SMOKE_SWAP_PLAN,
+  DIRECT_SMOKE_NOW_MS
 } from "./direct-no-rmt-fee-smoke-fixture";
 import {
   FEE_V2_SMOKE_APPROVAL_EVIDENCE,
@@ -21,6 +22,35 @@ assert.equal(parseVNextAuthorizationPlan(FEE_V2_SMOKE_APPROVAL_PLAN, FEE_V2_SMOK
 assert.equal(parseVNextAuthorizationPlan(FEE_V2_SMOKE_SWAP_PLAN, FEE_V2_SMOKE_SWAP_EVIDENCE, now).kind, "swap");
 assert.equal(parseVNextAuthorizationPlan(DIRECT_SMOKE_APPROVAL_PLAN, DIRECT_SMOKE_APPROVAL_EVIDENCE, now).kind, "erc20_approval");
 assert.equal(parseVNextAuthorizationPlan(DIRECT_SMOKE_SWAP_PLAN, DIRECT_SMOKE_SWAP_EVIDENCE, now).kind, "swap");
+
+const serverFreshDeadline = "1786000420";
+const serverFreshEvidence = {
+  ...DIRECT_SMOKE_SWAP_EVIDENCE,
+  deadline: serverFreshDeadline,
+  verifiedAtMs: DIRECT_SMOKE_NOW_MS
+};
+const serverFreshPlanWithoutHash = {
+  ...DIRECT_SMOKE_SWAP_PLAN,
+  deadline: serverFreshDeadline,
+  preparedAtMs: DIRECT_SMOKE_NOW_MS,
+  expiresAtMs: DIRECT_SMOKE_NOW_MS + 60_000,
+  directAuthorization: {
+    ...DIRECT_SMOKE_SWAP_PLAN.directAuthorization!,
+    deadline: serverFreshDeadline
+  }
+};
+const serverFreshPlan = {
+  ...serverFreshPlanWithoutHash,
+  payloadHash: authorizationPayloadHash(serverFreshPlanWithoutHash)
+};
+assert.equal(parseVNextAuthorizationBundle({ evidence: serverFreshEvidence, plan: serverFreshPlan }, DIRECT_SMOKE_SWAP_EVIDENCE, {
+  quoteRequestId: DIRECT_SMOKE_SWAP_EVIDENCE.sourceQuoteRequestId,
+  inputAsset: DIRECT_SMOKE_SWAP_EVIDENCE.inputAsset,
+  outputAsset: DIRECT_SMOKE_SWAP_EVIDENCE.outputAsset,
+  inputAmountAtomic: DIRECT_SMOKE_SWAP_EVIDENCE.inputAmountAtomic,
+  recipient: DIRECT_SMOKE_SWAP_EVIDENCE.recipient
+}, DIRECT_SMOKE_NOW_MS + 1).plan.deadline, serverFreshDeadline,
+"authorization accepts a fresh server deadline while preserving all other verified route authority");
 assert.equal(plannedRmtExecutionFeeV2ForWalletAction("erc20_approval", FEE_V2_SMOKE_APPROVAL_PLAN.feeV2Economics!), "0");
 assert.equal(plannedRmtExecutionFeeV2ForWalletAction("swap", FEE_V2_SMOKE_SWAP_PLAN.feeV2Economics!), "2500");
 

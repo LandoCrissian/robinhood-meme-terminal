@@ -1,5 +1,9 @@
 import { getAddress, type Address, type Hex } from "viem";
-import { parseVNextAuthorizationPlan, type VNextAuthorizationPlan } from "./authorization-plan";
+import {
+  parseVNextAuthorizationPlan,
+  VNEXT_MINIMUM_WALLET_REVIEW_RUNWAY_MS,
+  type VNextAuthorizationPlan
+} from "./authorization-plan";
 import type { VNextPreSignEvidence } from "./pre-sign-evidence";
 import { ROBINHOOD_MAINNET_CHAIN_ID } from "./robinhood-assets";
 
@@ -58,6 +62,9 @@ export function prepareVNextWalletTransaction(input: {
     throw new Error("RMT rejected a wallet that does not match the verified recipient.");
   }
   const exact = parseVNextAuthorizationPlan(input.plan, input.evidence, input.nowMs);
+  if (Number(BigInt(exact.deadline) * 1_000n) - input.nowMs < VNEXT_MINIMUM_WALLET_REVIEW_RUNWAY_MS) {
+    throw new Error("The verified wallet-review runway expired. Refresh the verified request before opening the wallet.");
+  }
   return {
     account,
     chainId: ROBINHOOD_MAINNET_CHAIN_ID,

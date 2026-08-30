@@ -37,6 +37,8 @@ import {
 } from "./execution-settlement";
 
 const MAX_CLOCK_SKEW_MS = 5_000;
+export const VNEXT_PLAN_MAX_AGE_MS = 60_000;
+export const VNEXT_MINIMUM_WALLET_REVIEW_RUNWAY_MS = 180_000;
 
 export type VNextAuthorizationPlan = {
   planId: string;
@@ -126,8 +128,8 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
     ))
     || plan.payloadHash !== authorizationPayloadHash(plan)
     || plan.preparedAtMs > nowMs + MAX_CLOCK_SKEW_MS || plan.expiresAtMs <= nowMs
-    || plan.expiresAtMs - plan.preparedAtMs > 60_000
-    || plan.expiresAtMs > Number(BigInt(plan.deadline) * 1_000n)
+    || plan.expiresAtMs - plan.preparedAtMs > VNEXT_PLAN_MAX_AGE_MS
+    || plan.expiresAtMs > Number(BigInt(plan.deadline) * 1_000n) - VNEXT_MINIMUM_WALLET_REVIEW_RUNWAY_MS
   ) throw new Error("RMT rejected an inconsistent authorization plan.");
 
   if (plan.provider === "uniswap-v4") {
@@ -295,7 +297,6 @@ export function parseVNextAuthorizationBundle(value: unknown, priorEvidence: VNe
     evidence.verificationId !== priorEvidence.verificationId
     || evidence.provider !== priorEvidence.provider
     || evidence.status !== priorEvidence.status
-    || evidence.deadline !== priorEvidence.deadline
     || evidence.rmtFeeEnabled !== priorEvidence.rmtFeeEnabled
     || evidence.settlementMode !== priorEvidence.settlementMode
     || evidence.directNoRmtFee?.userGrossInputAtomic !== priorEvidence.directNoRmtFee?.userGrossInputAtomic

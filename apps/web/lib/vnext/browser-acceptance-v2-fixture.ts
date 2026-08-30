@@ -49,6 +49,10 @@ const runtimeHash = `0x${"8".repeat(64)}` as Hex;
 const policy = createRmtExecutionFeeV2Policy({ treasury, fromBlock: "40000000" });
 const generatedAtMs = Date.now();
 const deadline = Math.floor((generatedAtMs + 300_000) / 1_000).toString();
+const walletPlanExpiresAt = (onchainDeadline: string | bigint) => Math.min(
+  generatedAtMs + 60_000,
+  Number(BigInt(onchainDeadline) * 1_000n) - 180_000
+);
 
 const v4Token = getAddress("0x1139d423C1706BDeaD91f03507F521635591eD92");
 const v4Hooks = getAddress("0xE5e702641Ea86F4ae6cC3cDaeD2B886f976Be044");
@@ -201,7 +205,7 @@ function buildScenario(input: {
     feeV2Authorization: feeAuthorization,
     deadline,
     preparedAtMs: generatedAtMs,
-    expiresAtMs: generatedAtMs + 60_000,
+    expiresAtMs: walletPlanExpiresAt(deadline),
     userAuthorizationRequired: true,
     serverSubmissionEnabled: false
   };
@@ -326,6 +330,32 @@ const settlementLog = {
     24_937_500n,
     995_000_000_000_000_000_000n,
     62_500n,
+    treasury
+  ])
+};
+const nativeTopics = encodeEventTopics({
+  abi: rmtUniswapV3FeeExecutorV2Abi,
+  eventName: "RMTUniswapV3FeeSettledV2",
+  args: { executionId: native.execution.executionId, policyHash: native.execution.policyHash, trader: wallet }
+}).flatMap((topic) => typeof topic === "string" ? [topic] : []);
+const nativeSettlementLog = {
+  address: executor,
+  topics: nativeTopics,
+  data: encodeAbiParameters(eventDataParameters, [
+    native.execution.policyIdHash,
+    2n,
+    RMT_UNISWAP_V3_V2_PROVIDER_ID,
+    ROBINHOOD_SWAP_ROUTER_02,
+    native.execution.routeIdentity,
+    ROBINHOOD_NATIVE_ASSET_ADDRESS,
+    token,
+    ROBINHOOD_NATIVE_ASSET_ADDRESS,
+    25,
+    0,
+    500_000_000_000_000n,
+    498_750_000_000_000n,
+    20_000_000_000_000_000_000n,
+    1_250_000_000_000n,
     treasury
   ])
 };
@@ -476,7 +506,7 @@ async function buildV4BrowserScenario() {
     v4Execution: evidence.v4Execution,
     deadline: evidence.deadline,
     preparedAtMs: generatedAtMs,
-    expiresAtMs: generatedAtMs + 60_000,
+    expiresAtMs: walletPlanExpiresAt(evidence.deadline),
     userAuthorizationRequired: true,
     serverSubmissionEnabled: false
   };
@@ -616,7 +646,7 @@ async function buildV4BrowserScenario() {
       v4Execution: stageEvidence.v4Execution,
       deadline: stageEvidence.deadline,
       preparedAtMs: generatedAtMs,
-      expiresAtMs: generatedAtMs + 60_000,
+      expiresAtMs: walletPlanExpiresAt(stageEvidence.deadline),
       userAuthorizationRequired: true,
       serverSubmissionEnabled: false
     };
@@ -764,7 +794,7 @@ async function writeBrowserFixture() {
     treasury,
     router: ROBINHOOD_SWAP_ROUTER_02,
     erc20: { ...erc20, approvalEvidence, approvalPlan, settlementLog },
-    native,
+    native: { ...native, settlementLog: nativeSettlementLog },
     v4
   }, null, 2));
 }
