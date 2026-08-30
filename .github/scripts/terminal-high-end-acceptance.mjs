@@ -1856,6 +1856,7 @@ async function installV2WalletAcceptanceRoutes(page, fixture, state) {
       if (method === "eth_chainId") result = "0x1237";
       else if (method === "eth_getBalance") result = "0x8ac7230489e80000";
       else if (method === "eth_gasPrice") result = "0x3b9aca00";
+      else if (method === "eth_getTransactionCount") result = "0x1";
       else if (method === "eth_blockNumber") {
         state.blockNumber += 1;
         result = `0x${state.blockNumber.toString(16)}`;
