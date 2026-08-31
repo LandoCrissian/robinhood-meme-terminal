@@ -6,21 +6,21 @@ import {RMTUniswapV3FeeExecutorV2Deployment as Deployment} from "../script/RMTUn
 
 contract RMTUniswapV3FeeExecutorV2ProposedPackageTest is Test {
     address private constant TREASURY = 0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC;
-    uint256 private constant EFFECTIVE_FROM_BLOCK = 52_031_325;
+    uint256 private constant EFFECTIVE_FROM_BLOCK = 51_296_658;
     uint256 private constant EFFECTIVE_BEFORE_BLOCK = 0;
     bytes32 private constant EXPECTED_POLICY_HASH =
-        0x817c811c7d6f5d4d7fd5740f6169114394415292e7a4c6043e15efbc23da003a;
+        0x91c988a28bd8b308e57bfbd3a991571b663f1c5d8430f96dfa1db2e5cfb93484;
     bytes32 private constant EXPECTED_CONSTRUCTOR_ARGS_HASH =
-        0x10d3f6c445ac7e746a72f858f37a94512b27cf214e1d748aaec043f4fb382ce5;
+        0x6198dd3a8fd00ad064846dc2c4418755a16871a694975811b0e98ab154dbff50;
     bytes32 private constant EXPECTED_CREATION_CODE_HASH =
         0x4aad11354c2be1ac4632ddfa1968e40394fdd3127e51038e369c73d389d79a02;
     bytes32 private constant EXPECTED_INIT_CODE_HASH =
-        0x6d92231b7b5435809c57a91139b98624b729709ec67c60e029b8d471214fd3b3;
+        0xbaf7664de34dd6c2713a7eb0df80bcd39564fa9c55e6669ac111fe1a9e7c646f;
     bytes32 private constant EXPECTED_SALT =
-        0xd9d5e78f113848ce84aedd7c54f0b44bcf232e679856f6156c82aa4ae02861bc;
-    address private constant EXPECTED_EXECUTOR = 0x6D4CdBC3000Ae0C3d23C00BF70E48c9682f77CE2;
+        0x8042491cf951a01116a97dc3ec93870a88f8f92a9f28cc20db0bbf2c304aeb69;
+    address private constant EXPECTED_EXECUTOR = 0xef729FbC9aDfC431ae46ECc198144160e2dD7832;
     bytes32 private constant EXPECTED_DEPLOYMENT_CALLDATA_HASH =
-        0xe2a27bc21ddd89cf122ad6b410acd1c7b9dade16ff49cc95549b404bfb2b6d97;
+        0x11b8155284275c8edabdc24ee0f404b0cb8178f25912a21f75cac2f6393afd43;
 
     function testProposedOwnerAuthorizationPackageIsExact() public pure {
         Deployment.Plan memory result = Deployment.plan(TREASURY, EFFECTIVE_FROM_BLOCK, EFFECTIVE_BEFORE_BLOCK);

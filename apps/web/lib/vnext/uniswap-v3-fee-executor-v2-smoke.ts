@@ -233,6 +233,16 @@ const manifest = JSON.parse(await readFile(new URL(
   activationAuthorized: boolean;
   chainId: number;
   sourceHead: string;
+  chainSnapshot: {
+    blockNumber: number;
+    blockHash: Hex;
+    timestampUnix: number;
+    cadenceSampleStartBlock: number;
+    cadenceSampleBlocks: number;
+    observedSecondsPerBlock: number;
+    effectiveBlockLead: number;
+    estimatedLeadSeconds: number;
+  };
   policy: { policyHash: Hex; effectiveFromBlock: number; effectiveBeforeBlock: number };
   dependencies: { deterministicFactory: `0x${string}` };
   deterministicDeployment: {
@@ -259,7 +269,21 @@ assert.equal(manifest.deploymentAuthorized, false);
 assert.equal(manifest.activationAuthorized, false);
 assert.equal(manifest.chainId, 4_663);
 assert.equal(manifest.sourceHead, "9cd69b20cad70f5302ea4b900174b3610250eeb7");
-assert.equal(manifest.policy.effectiveFromBlock, 52_031_325);
+assert.equal(manifest.chainSnapshot.blockNumber, 51_071_658);
+assert.equal(manifest.chainSnapshot.blockHash, "0x76c535778fd4f0f3a2c447e41114bd636d9aff6b658a1cc2be205596d87ecd1e");
+assert.equal(manifest.chainSnapshot.timestampUnix, 1_788_200_267);
+assert.equal(manifest.chainSnapshot.cadenceSampleStartBlock, 50_971_658);
+assert.equal(manifest.chainSnapshot.cadenceSampleBlocks, 100_000);
+assert.equal(manifest.chainSnapshot.observedSecondsPerBlock, 0.10134);
+assert.equal(manifest.chainSnapshot.effectiveBlockLead, 225_000);
+assert.equal(manifest.chainSnapshot.estimatedLeadSeconds, 22_801.5);
+assert.equal(manifest.policy.effectiveFromBlock, 51_296_658);
+assert.equal(
+  manifest.policy.effectiveFromBlock - manifest.chainSnapshot.blockNumber,
+  manifest.chainSnapshot.effectiveBlockLead
+);
+assert.ok(manifest.chainSnapshot.effectiveBlockLead >= 100_000);
+assert.ok(manifest.chainSnapshot.effectiveBlockLead <= 250_000);
 assert.equal(manifest.policy.effectiveBeforeBlock, 0);
 assert.equal(keccak256(creationCode), manifest.deterministicDeployment.creationCodeHash);
 assert.equal(keccak256(constructorArguments), manifest.deterministicDeployment.constructorArgsHash);
@@ -274,7 +298,7 @@ assert.equal(getCreate2Address({
   bytecodeHash: manifest.deterministicDeployment.initCodeHash
 }), getAddress(manifest.deterministicDeployment.predictedExecutor));
 assert.equal(manifest.deterministicDeployment.predictedExecutorHasCode, false);
-assert.equal(manifest.deterministicDeployment.expectedRuntimeHash, "0x974250439f6cce7c355c1b91547cbd9a6667a68f2486076edeaf54a168f0df4e");
+assert.equal(manifest.deterministicDeployment.expectedRuntimeHash, "0xed8ec8cd44f2c228044678358bb7c4565953067ceab42319b169358354b9693d");
 assert.equal(manifest.applicationWiring.quote, "CODE_CHANGE_REQUIRED");
 assert.equal(manifest.applicationWiring.authorize, "CODE_CHANGE_REQUIRED");
 assert.equal(manifest.applicationWiring.providerRegistry, "QUOTE_ONLY");

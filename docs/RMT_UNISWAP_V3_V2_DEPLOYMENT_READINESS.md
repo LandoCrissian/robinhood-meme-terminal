@@ -19,20 +19,20 @@ The complete machine-readable package, including the exact 13,439-byte factory c
 It is derived from canonical main `9cd69b20cad70f5302ea4b900174b3610250eeb7`.
 
 - Treasury: `0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC`
-- Effective block: `52,031,325`; no `effectiveBeforeBlock`
-- Policy hash: `0x817c811c7d6f5d4d7fd5740f6169114394415292e7a4c6043e15efbc23da003a`
-- Constructor arguments hash: `0x10d3f6c445ac7e746a72f858f37a94512b27cf214e1d748aaec043f4fb382ce5`
+- Effective block: `51,296,658`; no `effectiveBeforeBlock`
+- Policy hash: `0x91c988a28bd8b308e57bfbd3a991571b663f1c5d8430f96dfa1db2e5cfb93484`
+- Constructor arguments hash: `0x6198dd3a8fd00ad064846dc2c4418755a16871a694975811b0e98ab154dbff50`
 - Creation-code hash: `0x4aad11354c2be1ac4632ddfa1968e40394fdd3127e51038e369c73d389d79a02`
-- Init-code hash: `0x6d92231b7b5435809c57a91139b98624b729709ec67c60e029b8d471214fd3b3`
-- Salt: `0xd9d5e78f113848ce84aedd7c54f0b44bcf232e679856f6156c82aa4ae02861bc`
-- Predicted executor: `0x6D4CdBC3000Ae0C3d23C00BF70E48c9682f77CE2`
+- Init-code hash: `0xbaf7664de34dd6c2713a7eb0df80bcd39564fa9c55e6669ac111fe1a9e7c646f`
+- Salt: `0x8042491cf951a01116a97dc3ec93870a88f8f92a9f28cc20db0bbf2c304aeb69`
+- Predicted executor: `0xef729FbC9aDfC431ae46ECc198144160e2dD7832`
 - Expected constructor-bound runtime hash:
-  `0x974250439f6cce7c355c1b91547cbd9a6667a68f2486076edeaf54a168f0df4e`
+  `0xed8ec8cd44f2c228044678358bb7c4565953067ceab42319b169358354b9693d`
 - Deployment target: deterministic factory `0x4e59b44847b379578588920cA78FbF26c0B4956C`
 - Deployment value: `0`
-- Deployment calldata hash: `0xe2a27bc21ddd89cf122ad6b410acd1c7b9dade16ff49cc95549b404bfb2b6d97`
-- Live estimate: 2,531,956 gas; bounded 120% gas limit 3,038,348; bounded estimate
-  `921451951352000` wei (`0.000921451951352 ETH`) at the recorded gas-price snapshot
+- Deployment calldata hash: `0x11b8155284275c8edabdc24ee0f404b0cb8178f25912a21f75cac2f6393afd43`
+- Live estimate: 2,532,242 gas; bounded 120% gas limit 3,038,691; bounded estimate
+  `958311980670000` wei (`0.00095831198067 ETH`) at the recorded gas-price snapshot
 
 A no-broadcast Robinhood mainnet fork deployed the exact init code at the predicted address,
 verified every immutable, and produced the expected runtime hash. The live predicted address
@@ -131,12 +131,16 @@ Fresh read-only Robinhood mainnet verification on 2026-08-31 found:
 
 ## Effective boundary
 
-`policyBeforeBlock = 0` is the proposed open-ended value. The final proposed
-`policyFromBlock` is `52,031,325`, selected as exactly 1,000,000 blocks after canonical snapshot
-block `51,031,325` (`0x0f062d...ee71`, 2026-08-31T17:09:43Z). At the previously measured
-cadence this is approximately 27 hours 53 minutes, leaving a full operational day for owner
-review, deployment, verification, and aborting before the policy boundary. The stale rehearsal
-block `50,000,000` has no authority.
+`policyBeforeBlock = 0` is the proposed open-ended value. The accelerated proposed
+`policyFromBlock` is `51,296,658`, selected as exactly 225,000 blocks after fresh canonical
+snapshot block `51,071,658` (`0x76c535...ecd1e`, 2026-08-31T18:17:47Z). The preceding
+100,000-block sample began at block `50,971,658` (`0x10c621...b26c5`,
+2026-08-31T15:28:53Z), yielding an observed cadence of 0.10134 seconds per block. At that
+cadence, the boundary is approximately 6 hours 20 minutes after the snapshot, around
+2026-09-01T00:37:49Z. This is inside the owner-approved 100,000-250,000-block and roughly
+3-7-hour bounds while retaining time for owner review, deployment, immutable verification,
+and aborting before activation. The prior 1,000,000-block proposal and stale rehearsal block
+`50,000,000` have no authority.
 
 ## Application wiring inventory
 
