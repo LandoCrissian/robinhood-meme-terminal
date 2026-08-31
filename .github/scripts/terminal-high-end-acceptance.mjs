@@ -2859,7 +2859,8 @@ async function inspectWalletPromptReloadAndCrossTab(browser, fixture) {
       "0x3333…3333",
       "Robinhood Chain · 4663",
       "Protected minimum",
-      "RMT platform fee",
+      "RMT execution fee",
+      "0.25%",
       "Wallet review window"
     ]) {
       if (!text.includes(expected)) throw new Error(`${label}: primary wallet handoff omitted ${expected}: ${text}`);
