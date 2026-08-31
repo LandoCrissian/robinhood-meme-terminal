@@ -1,4 +1,4 @@
-import { getAddress, type Address, type Hex } from "viem";
+import { getAddress, toHex, type Address, type Hex } from "viem";
 import {
   parseVNextAuthorizationPlan,
   VNEXT_MINIMUM_WALLET_REVIEW_RUNWAY_MS,
@@ -14,6 +14,14 @@ export type VNextWalletTransaction = {
   data: Hex;
   value: bigint;
   gas: bigint;
+};
+
+export type VNextWalletRpcTransaction = {
+  from: Address;
+  to: Address;
+  data: Hex;
+  value: Hex;
+  gas: Hex;
 };
 
 const WALLET_FEE_CEILING_MULTIPLIER = 3n;
@@ -72,5 +80,20 @@ export function prepareVNextWalletTransaction(input: {
     data: exact.data,
     value: BigInt(exact.value),
     gas: BigInt(exact.gasLimit)
+  };
+}
+
+/**
+ * Produces the exact already-verified JSON-RPC transaction. The mobile
+ * WalletConnect click path uses this object directly so the wallet library
+ * cannot insert an asynchronous chain lookup after the owner's gesture.
+ */
+export function vNextWalletRpcTransaction(transaction: VNextWalletTransaction): VNextWalletRpcTransaction {
+  return {
+    from: transaction.account,
+    to: transaction.to,
+    data: transaction.data,
+    value: toHex(transaction.value),
+    gas: toHex(transaction.gas)
   };
 }

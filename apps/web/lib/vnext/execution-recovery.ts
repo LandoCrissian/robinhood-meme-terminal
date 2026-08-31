@@ -734,7 +734,7 @@ export function transitionVNextWalletRequest(
   const existing = current.walletRequests.find((record) => record.requestId === requestId);
   if (!existing) return null;
   const allowed: Record<VNextWalletRequestState, readonly VNextWalletRequestState[]> = {
-    PREPARED: ["PROMPT_REQUESTED", "UNRESOLVED"],
+    PREPARED: ["PROMPT_REQUESTED", "EXPIRED_UNSUBMITTED", "UNRESOLVED"],
     PROMPT_REQUESTED: ["PROVIDER_PENDING", "USER_REJECTED", "EXPIRED_UNSUBMITTED", "UNRESOLVED", "HASH_RECEIVED"],
     PROVIDER_PENDING: ["USER_REJECTED", "UNRESOLVED", "HASH_RECEIVED", "EXPIRED_UNSUBMITTED"],
     USER_REJECTED: [],

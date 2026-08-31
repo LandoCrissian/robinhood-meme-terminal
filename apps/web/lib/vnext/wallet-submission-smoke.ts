@@ -10,7 +10,7 @@ import {
   FEE_V2_SMOKE_NOW_MS,
   FEE_V2_SMOKE_RECIPIENT
 } from "./fee-v2-smoke-fixture";
-import { assessVNextWalletGasReadiness, prepareVNextWalletTransaction } from "./wallet-submission";
+import { assessVNextWalletGasReadiness, prepareVNextWalletTransaction, vNextWalletRpcTransaction } from "./wallet-submission";
 import { DIRECT_SMOKE_APPROVAL_EVIDENCE } from "./direct-no-rmt-fee-smoke-fixture";
 
 const transaction = prepareVNextWalletTransaction({
@@ -26,6 +26,13 @@ assert.equal(transaction.to, FEE_V2_SMOKE_APPROVAL_EVIDENCE.inputAsset);
 assert.equal(transaction.data, FEE_V2_SMOKE_APPROVAL_DATA);
 assert.equal(transaction.value, 0n);
 assert.equal(transaction.gas, 60_000n);
+assert.deepEqual(vNextWalletRpcTransaction(transaction), {
+  from: FEE_V2_SMOKE_RECIPIENT,
+  to: FEE_V2_SMOKE_APPROVAL_EVIDENCE.inputAsset,
+  data: FEE_V2_SMOKE_APPROVAL_DATA,
+  value: "0x0",
+  gas: "0xea60"
+}, "the immediate provider request remains byte-for-byte bound to the prepared authorization transaction");
 assert.throws(() => prepareVNextWalletTransaction({
   plan: FEE_V2_SMOKE_APPROVAL_PLAN, evidence: FEE_V2_SMOKE_APPROVAL_EVIDENCE,
   connectedAddress: FEE_V2_SMOKE_RECIPIENT, connectedChainId: 1, nowMs: FEE_V2_SMOKE_NOW_MS + 1

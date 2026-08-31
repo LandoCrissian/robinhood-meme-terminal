@@ -15,7 +15,7 @@ import {
   type VNextExecutionStorage
 } from "./execution-recovery";
 import { isVNextUserRejectedRequest } from "./wallet-request-error";
-import { withVNextWalletRequestLock } from "./wallet-request-lock";
+import { acquireVNextWalletRequestLease, withVNextWalletRequestLock } from "./wallet-request-lock";
 import {
   discoverExactVNextWalletRequestTransaction,
   findExactVNextWalletRequestTransaction,
@@ -211,6 +211,21 @@ const otherWallet = await withVNextWalletRequestLock("0x444444444444444444444444
 assert.deepEqual(otherWallet, { acquired: true, value: "other-wallet" }, "different wallets are not serialized together");
 releaseFirstLock();
 assert.deepEqual(await tabA, { acquired: true, value: "tab-a" });
+const leaseA = await acquireVNextWalletRequestLease(DIRECT_SMOKE_RECIPIENT);
+assert.equal(leaseA.acquired, true);
+const leaseB = await acquireVNextWalletRequestLease(DIRECT_SMOKE_RECIPIENT);
+assert.deepEqual(leaseB, { acquired: false, reason: "contended" },
+  "a second tab cannot enter the mobile signing boundary while preparation owns the wallet lease");
+const independentLease = await acquireVNextWalletRequestLease("0x4444444444444444444444444444444444444444");
+assert.equal(independentLease.acquired, true, "two different wallets remain independently serialized");
+if (independentLease.acquired) {
+  independentLease.lease.release();
+  await independentLease.lease.released;
+}
+if (leaseA.acquired) {
+  leaseA.lease.release();
+  await leaseA.lease.released;
+}
 Object.defineProperty(globalThis, "navigator", { configurable: true, value: {} });
 assert.deepEqual(await withVNextWalletRequestLock(DIRECT_SMOKE_RECIPIENT, async () => "unsafe"), {
   acquired: false,
@@ -377,14 +392,18 @@ const recoveryBanner = readFileSync(new URL("../../app/vnext/vnext-execution-rec
 const discoveryServer = readFileSync(new URL("../server/vnext-wallet-request-discovery.ts", import.meta.url), "utf8");
 assert.ok(walletReview.indexOf("recordPreparedVNextWalletRequest") < walletReview.lastIndexOf("invokeVNextExternalWalletRequest"));
 assert.ok(walletReview.indexOf('"PROMPT_REQUESTED"') < walletReview.lastIndexOf("invokeVNextExternalWalletRequest"));
-assert.ok(walletReview.indexOf("withVNextWalletRequestLock") < walletReview.lastIndexOf("invokeVNextExternalWalletRequest"));
+assert.ok(walletReview.indexOf("acquireVNextWalletRequestLease") < walletReview.lastIndexOf("invokeVNextExternalWalletRequest"));
 assert.match(walletReview, /A wallet request is already active\./);
 assert.match(walletReview, /isVNextUserRejectedRequest/);
 assert.doesNotMatch(walletReview, /rejected\|denied\|cancelled\|canceled/);
-assert.match(walletReview, /Wallet request is still unresolved\. Check the wallet and do not retry\./);
+assert.match(walletReview, /Wallet request is still unresolved\. Check the selected wallet and do not retry\./);
 assert.match(walletReview, /Wallet request was rejected by the owner\. Nothing was broadcast\./);
 assert.match(walletReview, /Review verified swap in/);
 assert.match(walletReview, /Refresh verified request/);
+const explicitOpenBoundary = walletReview.slice(walletReview.indexOf("function openPreparedWalletRequest"), walletReview.indexOf("const prepareWalletReview"));
+assert.doesNotMatch(explicitOpenBoundary, /\bawait\b/);
+assert.match(explicitOpenBoundary, /method: "eth_sendTransaction"/);
+assert.doesNotMatch(explicitOpenBoundary, /sendTransaction\(/);
 assert.doesNotMatch(walletReview, /autoRequest/);
 assert.doesNotMatch(composer, /<VNextWalletReview[\s\S]{0,80}autoRequest/);
 assert.ok(composer.indexOf("<VNextWalletReview") < composer.indexOf('<details className="vnRouteCard">'),

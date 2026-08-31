@@ -3,7 +3,10 @@ import { readFileSync } from "node:fs";
 import { walletGatewayKey } from "../wallet-gateway";
 import {
   bindVNextExternalWallet,
+  inspectVNextWalletTransport,
+  isVNextMobileBrowser,
   invokeVNextExternalWalletRequest,
+  openVNextSelectedWallet,
   vNextMobileHandoffLabel
 } from "./wallet-handoff";
 import {
@@ -56,6 +59,7 @@ for (const scenario of [
     recipient: scenario.wallet.address
   });
   assert.equal(binding.connectorId, scenario.wallet.meta.id, `${scenario.name} must reach its exact selected connector`);
+  assert.equal(binding.selectedConnectorType, scenario.wallet.connectorType);
   assert.equal(binding.walletName, scenario.wallet.meta.name);
   assert.equal(binding.chainId, 4_663);
 }
@@ -94,13 +98,61 @@ const providerResult = await invokeVNextExternalWalletRequest(async () => {
 });
 assert.equal(providerResult, expectedHash);
 assert.equal(providerInvocations, 1, "the exact connector-native request is invoked once");
+assert.equal(vNextMobileHandoffLabel("ready_to_open", "MetaMask"), "Open MetaMask & review");
 assert.equal(vNextMobileHandoffLabel("opening", "MetaMask"), "Opening MetaMask…");
-assert.equal(vNextMobileHandoffLabel("provider_pending", "MetaMask"), "Waiting for wallet review…");
+assert.equal(vNextMobileHandoffLabel("provider_pending", "MetaMask"), "Transaction request sent to MetaMask");
 assert.equal(vNextMobileHandoffLabel("unresolved", "MetaMask"), "Wallet request unresolved");
+
+const walletConnectProvider = {
+  isWalletConnect: true,
+  session: {
+    peer: {
+      metadata: {
+        name: "MetaMask",
+        redirect: { native: "metamask://", universal: "https://metamask.app.link" }
+      }
+    }
+  }
+};
+const transport = inspectVNextWalletTransport(walletConnectProvider, "wallet_connect");
+assert.equal(transport.kind, "walletconnect");
+assert.equal(transport.sessionPeerBound, true);
+assert.equal(transport.peerWalletName, "MetaMask");
+assert.equal(transport.safeMobileOpenUri, "metamask://");
+assert.equal(transport.mobileOpenSource, "session_peer_redirect_native");
+assert.equal(inspectVNextWalletTransport({ isWalletConnect: true }, "wallet_connect").safeMobileOpenUri, null,
+  "RMT does not invent a wallet URL when exact session metadata has none");
+assert.equal(inspectVNextWalletTransport({
+  isWalletConnect: true,
+  session: { peer: { metadata: { name: "Unsafe", redirect: { native: "javascript:alert(1)" } } } }
+}, "wallet_connect").safeMobileOpenUri, null);
+assert.equal(inspectVNextWalletTransport({ request() {} }, "injected").kind, "injected");
+assert.equal(isVNextMobileBrowser("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)"), true);
+assert.equal(isVNextMobileBrowser("Mozilla/5.0 (Windows NT 10.0; Win64; x64)"), false);
+
+const openedWallets: string[] = [];
+assert.equal(openVNextSelectedWallet(transport.safeMobileOpenUri!, (uri) => openedWallets.push(uri)), true);
+assert.deepEqual(openedWallets, ["metamask://"]);
+assert.equal(providerInvocations, 1, "opening or reopening the wallet never sends another transaction request");
 
 const storage = memoryStorage();
 const nowMs = 1_786_000_000_000;
 const requestId = "abababab-abab-4bab-8bab-abababababab";
+const expiredPreparedStorage = memoryStorage();
+const expiredPreparedRequestId = "acacacac-acac-4cac-8cac-acacacacacac";
+assert.ok(recordPreparedVNextWalletRequest({
+  requestId: expiredPreparedRequestId,
+  wallet: DIRECT_SMOKE_RECIPIENT,
+  plan: DIRECT_SMOKE_SWAP_PLAN,
+  walletNonceBeforeRequest: 7n,
+  requestBlockNumber: 50_000_000n
+}, expiredPreparedStorage, nowMs));
+assert.equal(transitionVNextWalletRequest(
+  expiredPreparedRequestId,
+  "EXPIRED_UNSUBMITTED",
+  expiredPreparedStorage,
+  nowMs + 1
+)?.state, "EXPIRED_UNSUBMITTED", "an expired prepared plan is cleared without invoking the provider");
 assert.ok(recordPreparedVNextWalletRequest({
   requestId,
   wallet: DIRECT_SMOKE_RECIPIENT,
@@ -133,12 +185,29 @@ assert.match(composer, /Nothing opens automatically/);
 assert.match(review, /useWalletClient\(\{ connector \}\)/, "the transaction client must be bound to the exact active connector");
 assert.match(review, /bindVNextExternalWallet/);
 assert.match(review, /invokeVNextExternalWalletRequest/);
-assert.match(review, /transitionVNextWalletRequest\(requestId, "PROMPT_REQUESTED"\)[\s\S]*invokeVNextExternalWalletRequest/,
+const openBoundary = review.slice(review.indexOf("function openPreparedWalletRequest"), review.indexOf("const prepareWalletReview"));
+const prepareBoundary = review.slice(review.indexOf("const prepareWalletReview"), review.indexOf("const reopenSelectedWallet"));
+assert.doesNotMatch(openBoundary, /\bawait\b/, "the second owner action performs no awaited RPC before provider invocation");
+assert.match(openBoundary, /transitionVNextWalletRequest\(prepared\.requestId, "PROMPT_REQUESTED"\)[\s\S]*walletClient\.request\(\{[\s\S]*method: "eth_sendTransaction"/,
   "the durable prompt record must precede the provider invocation");
+assert.doesNotMatch(openBoundary, /walletClient\.sendTransaction/, "the mobile click must not insert Viem's asynchronous chain lookup");
+assert.doesNotMatch(prepareBoundary, /eth_sendTransaction|walletClient\.request/,
+  "mobile preflight prepares and journals the request without invoking the provider");
+assert.match(openBoundary, /walletClient\.request[\s\S]*"PROVIDER_PENDING"/,
+  "provider-pending follows the single provider invocation");
+assert.ok(review.indexOf("recordPreparedVNextWalletRequest") < review.indexOf("function openPreparedWalletRequest")
+  || review.indexOf("recordPreparedVNextWalletRequest") < review.lastIndexOf("walletClient.request"));
+assert.match(review, /Open \{walletName\}/, "an exact session-bound wallet can be reopened without resending");
+assert.match(review, /Transaction request sent to/);
+assert.match(review, /Verified request prepared/);
+assert.match(review, /Transaction request sent to/);
+assert.doesNotMatch(review, /Complete review in wallet/);
 assert.doesNotMatch(review, /metamask:\/\/|rabby:\/\//i, "RMT must not invent wallet URL schemes");
 assert.doesNotMatch(review, /autoRequest/);
 assert.match(css, /@media \(max-width: 639px\)[\s\S]*\.vnWalletPrimaryReview > dl,[\s\S]*grid-template-columns: 1fr/,
   "the verified wallet request must collapse to one column on 390px and 430px mobile widths");
+assert.match(css, /\.vnWalletSubmission\s*\{[\s\S]*display: grid/,
+  "the same bounded wallet lifecycle surface remains usable at 1440x900");
 
 console.log("RMT iOS external-wallet handoff uses the exact selected connector, exposes the real explicit action, and preserves provider-pending recovery.");
 }
