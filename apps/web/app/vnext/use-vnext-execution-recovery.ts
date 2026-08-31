@@ -221,7 +221,8 @@ export function useVNextExecutionRecovery() {
           outputAmountAtomic,
           ...(feeSettlement ? {
             actualFeeAtomic: feeSettlement.actualFeeAtomic,
-            grossActualOutputAtomic: feeSettlement.grossActualOutputAtomic
+            grossActualOutputAtomic: feeSettlement.grossActualOutputAtomic,
+            actualUserNetOutputAtomic: feeSettlement.actualUserNetOutputAtomic
           } : {}),
           ...(feeV2Settlement ? {
             actualRmtFeeAtomic: feeV2Settlement.actualRmtFeeAtomic,
@@ -229,7 +230,12 @@ export function useVNextExecutionRecovery() {
           } : {})
         } : undefined,
         failure
-      ) ?? {
+      );
+      if (!resolved && state === "confirmed" && record.kind === "swap" && (record.feeSettlement || record.feeV2Settlement)) {
+        if (!cancelled) setReconciliationFailed(true);
+        return;
+      }
+      const visibleRecord = resolved ?? {
         ...record,
         state,
         ...(outputAmountAtomic ? { outputAmountAtomic } : {}),
@@ -237,7 +243,7 @@ export function useVNextExecutionRecovery() {
         ...(failure?.networkGasSpentWei ? { networkGasSpentWei: failure.networkGasSpentWei } : {}),
         updatedAtMs: Date.now()
       };
-      if (!cancelled) setRecord(address ? findUnresolvedVNextExecution(address) ?? resolved : resolved);
+      if (!cancelled) setRecord(address ? findUnresolvedVNextExecution(address) ?? visibleRecord : visibleRecord);
     })();
     return () => { cancelled = true; };
   }, [address, publicClient, receipt.data, receipt.isSuccess, receiptRequired, record]);

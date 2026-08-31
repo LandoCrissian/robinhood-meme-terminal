@@ -18,6 +18,7 @@ import {
 import { parseVNextAuthorizationBundle, type VNextAuthorizationPlan } from "../../lib/vnext/authorization-plan";
 import { cachedVNextQuoteForRequest, isVNextQuoteReusableForTrade, VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS, VNEXT_BACKGROUND_QUOTE_REFRESH_MS, type VNextCachedQuote } from "../../lib/vnext/background-quote";
 import type { VNextExecutionUiState, VNextSelectedMarketExecutionState } from "../../lib/vnext/market-directory";
+import { confirmedVNextFeePresentation } from "../../lib/vnext/confirmed-fee-receipt";
 import type { VNextUniversalMarketSearchPool } from "../../lib/vnext/universal-market-search-contract";
 import {
   ROBINHOOD_ETH,
@@ -401,16 +402,13 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     && pair?.outputAsset.decimals !== undefined
       ? formatAtomicDisplay(executionRecord.outputAmountAtomic, pair.outputAsset.decimals)
       : null;
-  const confirmedV2Fee = executionRecord?.feeV2Settlement?.actualRmtFeeAtomic;
-  const confirmedLegacyFee = executionRecord?.feeSettlement?.actualFeeAtomic;
-  const confirmedFeeDisplay = confirmedV2Fee !== undefined
-    ? `${formatAtomicDisplay(confirmedV2Fee, pair?.inputAsset.decimals ?? 18)} ${inputSymbol} · 0.25%`
-    : confirmedLegacyFee !== undefined && executionRecord?.feeSettlement
-      ? `${formatAtomicDisplay(
-          confirmedLegacyFee,
-          executionRecord.feeSettlement.feeSide === "input" ? pair?.inputAsset.decimals ?? 18 : pair?.outputAsset.decimals ?? 18
-        )} ${executionRecord.feeSettlement.feeSide === "input" ? inputSymbol : outputSymbol}`
-      : null;
+  const confirmedFee = confirmedVNextFeePresentation({
+    record: executionRecord,
+    inputDecimals: pair?.inputAsset.decimals ?? 18,
+    outputDecimals: pair?.outputAsset.decimals ?? 18,
+    inputSymbol,
+    outputSymbol
+  });
   const confirmedProvider = executionRecord
     ? vNextExecutionProviderLabel(executionRecord.provider ?? (executionRecord.feeSettlement || executionRecord.feeV2Settlement ? "uniswap-v3" : undefined))
     : null;
@@ -1140,7 +1138,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
             <dl>
               <div><dt>{executionRecord.feeV2Settlement ? "Gross input" : side === "buy" ? "Paid" : "Sold"}</dt><dd>{confirmedInputDisplay ? `${confirmedInputDisplay} ${inputSymbol}` : `${inputSymbol} confirmed`}</dd></div>
               <div><dt>{side === "buy" ? "Asset received" : "Proceeds"}</dt><dd>{confirmedOutputDisplay ? `${confirmedOutputDisplay} ${outputSymbol}` : `${outputSymbol} · confirmed onchain`}</dd></div>
-              {confirmedFeeDisplay ? <div><dt>RMT fee settled</dt><dd>{confirmedFeeDisplay}</dd></div> : null}
+              {confirmedFee.state !== "not_applicable" ? <div><dt>RMT fee settled</dt><dd>{confirmedFee.display}</dd></div> : null}
               {confirmedProvider ? <div><dt>Provider</dt><dd>{confirmedProvider}{executionRecord.feeSettlement || executionRecord.feeV2Settlement ? " · RMT atomic settlement" : ""}</dd></div> : null}
               <div><dt>Transaction</dt><dd>{shortAddress(executionRecord.txHash)}</dd></div>
             </dl>
