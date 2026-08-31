@@ -355,7 +355,8 @@ const settlement = settledVNextFeeExecution(record, [canonicalSettlementLog]);
 assert.deepEqual(settlement, {
   outputAmountAtomic: actualNet.toString(),
   actualFeeAtomic: actualFee.toString(),
-  grossActualOutputAtomic: actualGross.toString()
+  grossActualOutputAtomic: actualGross.toString(),
+  actualUserNetOutputAtomic: actualNet.toString()
 });
 assert.equal(settledVNextFeeExecution(record, [canonicalSettlementLog, canonicalSettlementLog]), null);
 assert.equal(settledVNextFeeExecution({ ...record, wallet: token }, [canonicalSettlementLog]), null);
@@ -421,7 +422,8 @@ const buySettlement = settlementLog({
 assert.deepEqual(settledVNextFeeExecution(buyRecord, [buySettlement]), {
   outputAmountAtomic: buyGrossOutput.toString(),
   actualFeeAtomic: buyFee.toString(),
-  grossActualOutputAtomic: buyGrossOutput.toString()
+  grossActualOutputAtomic: buyGrossOutput.toString(),
+  actualUserNetOutputAtomic: buyGrossOutput.toString()
 });
 assert.equal(settledVNextFeeExecution(buyRecord, [settlementLog({
   executionId: buy.executionId,

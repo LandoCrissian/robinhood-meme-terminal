@@ -378,10 +378,12 @@ assert.equal(normalizeVNextExecutionJournal([oldRecord], now)[0]?.provider, unde
 
 const hook = readFileSync(new URL("../../app/vnext/use-vnext-execution-recovery.ts", import.meta.url), "utf8");
 const receipt = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
+const feeReceipt = readFileSync(new URL("./confirmed-fee-receipt.ts", import.meta.url), "utf8");
 const walletReview = readFileSync(new URL("../../app/vnext/vnext-wallet-review.tsx", import.meta.url), "utf8");
 assert.match(hook, /settledVNextFeeExecutionV2/);
 assert.match(hook, /record\.feeV2Settlement && !feeV2Settlement/);
-assert.match(receipt, /feeV2Settlement\?\.actualRmtFeeAtomic/);
+assert.match(receipt, /confirmedVNextFeePresentation/);
+assert.match(feeReceipt, /feeV2Settlement\.actualRmtFeeAtomic/);
 assert.match(receipt, /vNextExecutionProviderLabel/);
 assert.match(walletReview, /Open RMT V2 fee treasury in Robinhood Chain explorer/);
 assert.match(walletReview, /Open RMT V2 executor in Robinhood Chain explorer/);

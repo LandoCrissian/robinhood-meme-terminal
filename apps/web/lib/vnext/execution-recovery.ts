@@ -95,6 +95,7 @@ export type VNextExecutionRecord = {
     maximumFeeAtomic: string;
     actualFeeAtomic?: string;
     grossActualOutputAtomic?: string;
+    actualUserNetOutputAtomic?: string;
   };
   feeV2Settlement?: {
     provider: "uniswap-v3";
@@ -258,8 +259,15 @@ function normalizeRecord(value: unknown): VNextExecutionRecord | null {
       || !/^(0|[1-9][0-9]*)$/.test(feeCandidate.maximumFeeAtomic)
       || (feeCandidate.actualFeeAtomic !== undefined && !/^(0|[1-9][0-9]*)$/.test(feeCandidate.actualFeeAtomic))
       || (feeCandidate.grossActualOutputAtomic !== undefined && !/^[1-9][0-9]*$/.test(feeCandidate.grossActualOutputAtomic))
-      || ((feeCandidate.actualFeeAtomic !== undefined || feeCandidate.grossActualOutputAtomic !== undefined)
-        && (!outputAmountAtomic || candidate.state !== "confirmed"))
+      || (feeCandidate.actualUserNetOutputAtomic !== undefined && !/^[1-9][0-9]*$/.test(feeCandidate.actualUserNetOutputAtomic))
+      || ((feeCandidate.actualFeeAtomic !== undefined || feeCandidate.grossActualOutputAtomic !== undefined
+        || feeCandidate.actualUserNetOutputAtomic !== undefined)
+        && (
+          !outputAmountAtomic || candidate.state !== "confirmed"
+          || feeCandidate.actualFeeAtomic === undefined || feeCandidate.grossActualOutputAtomic === undefined
+          || (feeCandidate.actualUserNetOutputAtomic !== undefined
+            && feeCandidate.actualUserNetOutputAtomic !== outputAmountAtomic)
+        ))
     ) return null;
     return {
       executor: getAddress(feeCandidate.executor), executionId: feeCandidate.executionId.toLowerCase() as Hex,
@@ -271,7 +279,10 @@ function normalizeRecord(value: unknown): VNextExecutionRecord | null {
       protectedUserNetOutputAtomic: feeCandidate.protectedUserNetOutputAtomic,
       maximumFeeAtomic: feeCandidate.maximumFeeAtomic,
       ...(feeCandidate.actualFeeAtomic !== undefined ? { actualFeeAtomic: feeCandidate.actualFeeAtomic } : {}),
-      ...(feeCandidate.grossActualOutputAtomic !== undefined ? { grossActualOutputAtomic: feeCandidate.grossActualOutputAtomic } : {})
+      ...(feeCandidate.grossActualOutputAtomic !== undefined ? { grossActualOutputAtomic: feeCandidate.grossActualOutputAtomic } : {}),
+      ...(feeCandidate.actualFeeAtomic !== undefined && feeCandidate.grossActualOutputAtomic !== undefined && outputAmountAtomic
+        ? { actualUserNetOutputAtomic: feeCandidate.actualUserNetOutputAtomic ?? outputAmountAtomic }
+        : {})
     };
   })();
   const feeV2Candidate = candidate.kind === "swap" ? candidate.feeV2Settlement : undefined;
@@ -1110,7 +1121,8 @@ export function settledVNextFeeExecution(record: VNextExecutionRecord, logs: rea
   return {
     outputAmountAtomic: netOutput.toString(),
     actualFeeAtomic: actualFee.toString(),
-    grossActualOutputAtomic: grossOutput.toString()
+    grossActualOutputAtomic: grossOutput.toString(),
+    actualUserNetOutputAtomic: netOutput.toString()
   };
 }
 
@@ -1245,6 +1257,7 @@ export function resolveVNextExecution(
     outputAmountAtomic: string;
     actualFeeAtomic?: string;
     grossActualOutputAtomic?: string;
+    actualUserNetOutputAtomic?: string;
     actualRmtFeeAtomic?: string;
     actualProviderOutputAtomic?: string;
   },
@@ -1268,6 +1281,31 @@ export function resolveVNextExecution(
     || settlement.actualRmtFeeAtomic !== existing.feeV2Settlement.expectedFeeAtomic
     || !/^[1-9][0-9]*$/.test(settlement.actualProviderOutputAtomic)
   )) return null;
+  if (state === "confirmed" && existing.feeSettlement && (
+    settlement?.actualFeeAtomic === undefined || settlement.grossActualOutputAtomic === undefined
+    || settlement.actualUserNetOutputAtomic === undefined
+    || settlement.outputAmountAtomic !== settlement.actualUserNetOutputAtomic
+    || !/^(0|[1-9][0-9]*)$/.test(settlement.actualFeeAtomic)
+    || !/^[1-9][0-9]*$/.test(settlement.grossActualOutputAtomic)
+    || !/^[1-9][0-9]*$/.test(settlement.actualUserNetOutputAtomic)
+  )) return null;
+  if (state === "confirmed" && existing.feeSettlement && settlement) {
+    const actualFee = BigInt(settlement.actualFeeAtomic!);
+    const grossOutput = BigInt(settlement.grossActualOutputAtomic!);
+    const userNetOutput = BigInt(settlement.actualUserNetOutputAtomic!);
+    const maximumFee = BigInt(existing.feeSettlement.maximumFeeAtomic);
+    const outputSideCandidate = BigInt(calculateRmtFeeFloor(grossOutput.toString(), existing.feeSettlement.feeBps));
+    const expectedActualFee = existing.feeSettlement.feeSide === "input"
+      ? maximumFee
+      : outputSideCandidate < maximumFee ? outputSideCandidate : maximumFee;
+    if (
+      actualFee !== expectedActualFee || actualFee > maximumFee
+      || userNetOutput < BigInt(existing.feeSettlement.protectedUserNetOutputAtomic)
+      || (existing.feeSettlement.feeSide === "input"
+        ? userNetOutput !== grossOutput
+        : userNetOutput + actualFee !== grossOutput)
+    ) return null;
+  }
   if (failure?.networkGasSpentWei !== undefined && !/^[1-9][0-9]*$/.test(failure.networkGasSpentWei)) return null;
   if (state !== "reverted" && (failure?.classification || failure?.networkGasSpentWei)) return null;
   const resolved: VNextExecutionRecord = {
@@ -1278,9 +1316,14 @@ export function resolveVNextExecution(
       : { outputAmountAtomic: undefined }),
     ...(existing.feeSettlement ? { feeSettlement: {
       ...existing.feeSettlement,
-      ...(state === "confirmed" && settlement?.actualFeeAtomic !== undefined && settlement.grossActualOutputAtomic !== undefined
-        ? { actualFeeAtomic: settlement.actualFeeAtomic, grossActualOutputAtomic: settlement.grossActualOutputAtomic }
-        : { actualFeeAtomic: undefined, grossActualOutputAtomic: undefined })
+      ...(state === "confirmed" && settlement?.actualFeeAtomic !== undefined
+        && settlement.grossActualOutputAtomic !== undefined && settlement.actualUserNetOutputAtomic !== undefined
+        ? {
+            actualFeeAtomic: settlement.actualFeeAtomic,
+            grossActualOutputAtomic: settlement.grossActualOutputAtomic,
+            actualUserNetOutputAtomic: settlement.actualUserNetOutputAtomic
+          }
+        : { actualFeeAtomic: undefined, grossActualOutputAtomic: undefined, actualUserNetOutputAtomic: undefined })
     } } : {}),
     ...(existing.feeV2Settlement ? { feeV2Settlement: {
       ...existing.feeV2Settlement,
