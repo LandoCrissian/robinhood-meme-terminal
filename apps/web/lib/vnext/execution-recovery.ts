@@ -1,9 +1,20 @@
 import { decodeEventLog, getAddress, isAddress, isHash, keccak256, type Address, type Hash, type Hex } from "viem";
 import { authorizationPayloadHash, type VNextAuthorizationPlan } from "./authorization-plan";
-import { calculateRmtFeeFloor } from "./execution-fee-policy";
+import { assertRmtNetExecutionEconomics, calculateRmtFeeFloor } from "./execution-fee-policy";
 import { assertRmtExecutionFeeV2Economics } from "./execution-fee-policy-v2";
 import { assertVNextAtomicFeeAuthorizationBinding } from "./provider-fee-settlement";
-import { RMT_UNISWAP_V3_PROVIDER_ID, rmtUniswapV3FeeExecutorAbi } from "./uniswap-v3-fee-executor";
+import {
+  assertRmtUniswapV3FeeExecution,
+  encodeRmtUniswapV3FeeExecution,
+  RMT_UNISWAP_V3_PROVIDER_ID,
+  rmtUniswapV3FeeExecutorAbi
+} from "./uniswap-v3-fee-executor";
+import { RMT_UNISWAP_V3_FEE_MAINNET_PROOF } from "./uniswap-v3-fee-mainnet-proof";
+import {
+  VNEXT_DIRECT_NO_RMT_FEE,
+  VNEXT_LEGACY_V1_FEE,
+  VNEXT_V2_ATOMIC_INPUT_FEE
+} from "./execution-settlement";
 import {
   decodeRmtUniswapV3FeeAuthorizationV2,
   RMT_UNISWAP_V3_V2_IMPLEMENTATION_ID,
@@ -649,6 +660,53 @@ export function findBlockingVNextWalletRequest(wallet: string, storage?: VNextEx
   }) ?? null;
 }
 
+function boundVNextSwapCalldataHash(plan: VNextAuthorizationPlan): Hex | null {
+  if (plan.settlementMode === VNEXT_DIRECT_NO_RMT_FEE) {
+    return plan.directAuthorization?.calldataHash ?? null;
+  }
+  if (plan.settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE) {
+    return plan.feeV2Authorization?.calldataHash ?? null;
+  }
+  if (plan.settlementMode !== VNEXT_LEGACY_V1_FEE) return null;
+
+  const execution = plan.feeExecution;
+  const economics = plan.netEconomics;
+  if (
+    plan.provider !== "uniswap-v3"
+    || !execution
+    || !economics
+    || economics.rmtFee.state !== "planned"
+    || plan.directNoRmtFee !== undefined
+    || plan.directAuthorization !== undefined
+    || plan.feeV2Economics !== undefined
+    || plan.feeV2Authorization !== undefined
+  ) return null;
+
+  try {
+    assertRmtNetExecutionEconomics(economics);
+    assertRmtUniswapV3FeeExecution(execution, economics);
+    const canonicalData = encodeRmtUniswapV3FeeExecution(execution);
+    if (
+      getAddress(plan.target) !== RMT_UNISWAP_V3_FEE_MAINNET_PROOF.executor
+      || getAddress(execution.executor) !== RMT_UNISWAP_V3_FEE_MAINNET_PROOF.executor
+      || execution.executorRuntimeHash.toLowerCase() !== RMT_UNISWAP_V3_FEE_MAINNET_PROOF.executorRuntimeHash
+      || getAddress(execution.treasury) !== RMT_UNISWAP_V3_FEE_MAINNET_PROOF.treasury
+      || execution.policyIdHash.toLowerCase() !== RMT_UNISWAP_V3_FEE_MAINNET_PROOF.policyIdHash
+      || execution.policyVersion !== RMT_UNISWAP_V3_FEE_MAINNET_PROOF.policyVersion
+      || execution.policyHash.toLowerCase() !== RMT_UNISWAP_V3_FEE_MAINNET_PROOF.policyHash
+      || execution.feeBps !== RMT_UNISWAP_V3_FEE_MAINNET_PROOF.feeBps
+      || getAddress(execution.trader) !== getAddress(plan.recipient)
+      || execution.userGrossInputAtomic !== plan.inputAmountAtomic
+      || execution.protectedUserNetOutputAtomic !== plan.protectedOutputAtomic
+      || execution.deadline !== plan.deadline
+      || canonicalData.toLowerCase() !== plan.data.toLowerCase()
+    ) return null;
+    return keccak256(canonicalData);
+  } catch {
+    return null;
+  }
+}
+
 export function recordPreparedVNextWalletRequest(input: {
   requestId: string;
   wallet: string;
@@ -661,7 +719,7 @@ export function recordPreparedVNextWalletRequest(input: {
   walletClientType?: string;
   walletName?: string;
 }, storage?: VNextExecutionStorage, nowMs = Date.now()) {
-  const boundCalldataHash = input.plan.directAuthorization?.calldataHash ?? input.plan.feeV2Authorization?.calldataHash;
+  const boundCalldataHash = input.plan.kind === "swap" ? boundVNextSwapCalldataHash(input.plan) : null;
   const calldataHash = keccak256(input.plan.data);
   if (
     !/^[0-9a-f-]{36}$/i.test(input.requestId)
