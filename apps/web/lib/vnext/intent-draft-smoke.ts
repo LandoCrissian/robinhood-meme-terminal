@@ -100,7 +100,7 @@ const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx
 assert.match(composer, /Finding best route/);
 assert.match(composer, /Route temporarily unavailable/);
 assert.match(composer, /RMT sets and verifies the protected minimum during the one-tap execution check/);
-assert.match(composer, /One tap checks the best route and opens the final wallet confirmation/);
+assert.match(composer, /One tap checks the best route and prepares an explicit external-wallet review/);
 assert.doesNotMatch(composer, /Check live routes|Verify best route|Prepare wallet review/);
 assert.match(composer, /Pay with asset/);
 assert.match(composer, /Receive asset/);

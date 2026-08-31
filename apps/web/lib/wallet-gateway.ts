@@ -59,6 +59,33 @@ export function walletGatewayKey(wallet: WalletGatewayCandidate) {
   ]);
 }
 
+export type WalletGatewayIdentity = {
+  connectorType: string;
+  walletClientType: string;
+  reportedId: string;
+  address: string;
+};
+
+export function parseWalletGatewayKey(value?: string | null): WalletGatewayIdentity | null {
+  if (!value) return null;
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!Array.isArray(parsed) || parsed.length !== 4 || parsed.some((part) => typeof part !== "string" || !part)) {
+      return null;
+    }
+    const [connectorType, walletClientType, reportedId, address] = parsed;
+    if (!/^0x[0-9a-f]{40}$/i.test(address)) return null;
+    return {
+      connectorType: connectorType.toLowerCase(),
+      walletClientType: walletClientType.toLowerCase(),
+      reportedId: reportedId.toLowerCase(),
+      address: address.toLowerCase()
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function externalEthereumWallets<T extends WalletGatewayCandidate>(wallets: readonly T[]) {
   const seen = new Set<string>();
   return wallets.filter((wallet) => {
