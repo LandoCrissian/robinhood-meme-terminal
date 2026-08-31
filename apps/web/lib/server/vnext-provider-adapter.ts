@@ -1,6 +1,6 @@
 import { getAddress, isAddress, keccak256, type Address, type Hex } from "viem";
 import { assertVNextQuoteAttempt, type VNextQuoteAttempt, type VNextQuoteAttemptStatus, type VNextQuoteProvider } from "../vnext/quote-observation";
-import { normalizeDisabledRmtFee, type RmtNetExecutionEconomics } from "../vnext/execution-fee-policy";
+import { assertRmtNetExecutionEconomics, normalizeDisabledRmtFee, type RmtNetExecutionEconomics } from "../vnext/execution-fee-policy";
 import {
   configuredRmtExecutionFeeV2Policy,
   type RmtExecutionFeeV2Economics,
@@ -13,10 +13,11 @@ import {
   type VNextAtomicFeeSettlementProof,
   type VNextProviderFeeSettlement
 } from "../vnext/provider-fee-settlement";
-import type { RmtUniswapV3FeeExecution } from "../vnext/uniswap-v3-fee-executor";
+import { assertRmtUniswapV3FeeExecution, type RmtUniswapV3FeeExecution } from "../vnext/uniswap-v3-fee-executor";
 import {
   assertVNextDirectNoRmtFeeSettlement,
   VNEXT_DIRECT_NO_RMT_FEE,
+  VNEXT_LEGACY_V1_FEE,
   VNEXT_V2_ATOMIC_INPUT_FEE,
   type VNextDirectNoRmtFeeSettlement,
   type VNextExecutionSettlementMode
@@ -57,6 +58,7 @@ export type VNextUniswapV4QuoteBinding = {
 
 export type VNextProviderSettlementSelection =
   | typeof VNEXT_DIRECT_NO_RMT_FEE
+  | typeof VNEXT_LEGACY_V1_FEE
   | typeof VNEXT_V2_ATOMIC_INPUT_FEE;
 
 export type VNextProviderVerificationRequest = Pick<VNextProviderQuoteRequest,
@@ -316,6 +318,20 @@ export async function prepareVNextProviderAuthorization(
       throw new Error(`${adapter.providerLabel} returned fee authority for a fee-free wallet request.`);
     }
     assertVNextDirectNoRmtFeeSettlement(prepared.evidence.directNoRmtFee, request.inputAmountAtomic);
+  } else if (settlementMode === VNEXT_LEGACY_V1_FEE) {
+    if (
+      provider !== "uniswap-v3"
+      || prepared.evidence.settlementMode !== VNEXT_LEGACY_V1_FEE
+      || prepared.evidence.rmtFeeEnabled !== true
+      || !prepared.evidence.netEconomics
+      || prepared.evidence.netEconomics.rmtFee.state !== "planned"
+      || !prepared.evidence.feeExecution
+      || prepared.evidence.directNoRmtFee !== undefined
+      || prepared.evidence.feeV2Economics !== undefined
+      || prepared.feeV2Authorization !== undefined
+    ) throw new Error("Uniswap V3 did not return complete V1 atomic fee authority.");
+    assertRmtNetExecutionEconomics(prepared.evidence.netEconomics);
+    assertRmtUniswapV3FeeExecution(prepared.evidence.feeExecution, prepared.evidence.netEconomics);
   } else {
     const capability = feeAdmission.capability ?? VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY[provider];
     if (capability.state !== "V2_ATOMIC_INPUT_FEE") {

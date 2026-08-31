@@ -1,14 +1,14 @@
 # RMT execution revenue
 
-**Status: HISTORICAL V1 EVIDENCE; DORMANT V2 IMPLEMENTATION WORK; CURRENT OWNER POLICY IS FEE-FREE**
+**Status: CURRENT V1 RELEASE AUTHORITY; DORMANT V2 IMPLEMENTATION WORK**
 
 ## Current owner product policy
 
-`RMT_FEE = 0`.
+The owner authorizes exactly 25 basis points on trades that execute atomically through the admitted `RMT_EXECUTION_V1` Uniswap V3 fee executor.
 
-No current RMT trading-fee activation is authorized. Public Token Terminal authorization and wallet submission remain disabled, and fee implementation is not a Terminal completion prerequisite. A future fee would require a new explicit owner policy plus separately reviewed implementation, release and production activation.
+Every other provider and every route the V1 settlement rules cannot admit remains direct/no-RMT-fee. The fee-bearing route must rank on trader net economics, disclose the fee before wallet review, use the exact executor and treasury, and reconcile exactly one canonical settlement. A quote or enabled source path is not revenue; only a successful, final settlement is.
 
-This document preserves immutable historical `RMT_EXECUTION_V1` deployment, controlled-proof, receipt, release-boundary and monitoring evidence. It also records dormant `RMT_EXECUTION_V2` design work. Neither body of evidence self-authorizes present or future collection.
+This 2026-08-30 owner decision reauthorizes the immutable `RMT_EXECUTION_V1` identity below for a separately reviewed production release. The historical deployment, controlled proof, receipt and release boundary remain unchanged. `RMT_EXECUTION_V2` stays dormant and self-authorizes nothing.
 
 ## Historical V1 policy and release record
 
@@ -50,7 +50,7 @@ The approved treasury is the independently verified one-owner Safe at `0x6170047
 
 That confirmed treasury-deployment block is the immutable V1 policy `fromBlock`. It anchors the policy identity; it does not activate collection or make transactions before the executor deployment fee-bearing. With canonical WETH, USDG and native Robinhood ETH as the reviewed settlement identities, the exact policy hash is `0x295c900143405bb585a4d88c3788fadab522fd4313f69242f64e52e39827f141`. A runtime configuration missing or changing any of these values still fails closed.
 
-Under the preserved V1 implementation, every indicative provider observation carried explicit net economics. An admitted Uniswap V3 fee route carried the exact active policy commitment. Every ineligible or disabled route remained structurally `disabled`, exposed no policy or treasury authority, carried zero expected/maximum fee and left gross/provider/net amounts unchanged. These implementation facts do not supersede the current `RMT_FEE = 0` owner policy.
+Under V1, every indicative provider observation carries explicit net economics. An admitted Uniswap V3 fee route carries the exact active policy commitment. Every ineligible or disabled route remains structurally `disabled`, exposes no policy or treasury authority, carries zero expected/maximum fee and leaves gross/provider/net amounts unchanged.
 
 ## Net execution math
 
@@ -285,4 +285,4 @@ Production revenue is not booked from a quote or plan. It exists only after a su
 - Public fee-routing mode: historically required every policy, proof-binding, authorization and wallet-submission gate to agree and failed closed on mismatch.
 - Initial public monitoring baseline: no confirmed public settlement events observed through block `37836628` at `2026-08-16T08:35:42Z`; executor balances and router allowances were zero. This is an observation, not a promise that the count remains zero.
 
-Current owner policy is `RMT_FEE = 0`. All entries above preserve historical evidence only. The older disabled Uniswap fee capability and dormant V2 work are not authorization to activate revenue and are not current Terminal completion requirements.
+Current owner policy authorizes the exact V1 Uniswap V3 path described above at 25 basis points. All other providers and unsupported routes remain fee-free. Dormant V2 work is not authorization to activate another provider or settlement path.

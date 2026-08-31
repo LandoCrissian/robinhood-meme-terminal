@@ -32,6 +32,12 @@ import { settledVNextFeeExecution, type VNextExecutionRecord } from "./execution
 import { ROBINHOOD_SWAP_ROUTER_02, ROBINHOOD_WETH } from "../uniswap-v4";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "./pre-sign-evidence";
 import { VNEXT_LEGACY_V1_FEE } from "./execution-settlement";
+import {
+  authorizationPayloadHash,
+  parseVNextAuthorizationPlan,
+  type VNextAuthorizationPlan
+} from "./authorization-plan";
+import { vnextSpotTradeInstruction } from "./execution-authority";
 
 const treasury = "0x1111111111111111111111111111111111111111";
 const executor = "0x2222222222222222222222222222222222222222";
@@ -118,6 +124,65 @@ assert.equal(parseVNextPreSignEvidence(feeEvidence, feeExpected, now + 1).rmtFee
 assert.throws(() => parseVNextPreSignEvidence({ ...feeEvidence, approvalSpender: ROBINHOOD_SWAP_ROUTER_02 }, feeExpected, now + 1), /fee-executor economics/);
 assert.throws(() => parseVNextPreSignEvidence({ ...feeEvidence, calldataHash: `0x${"9".repeat(64)}` }, feeExpected, now + 1), /fee-executor economics/);
 assert.throws(() => parseVNextPreSignEvidence({ ...feeEvidence, feeExecution: { ...buy, treasury: token } }, feeExpected, now + 1), /treasury/);
+
+function v1Plan(input: {
+  kind: "erc20_approval" | "swap";
+  evidence: VNextPreSignEvidence;
+  target: Address;
+  data: Hex;
+  value: string;
+}) {
+  const unsigned = {
+    planId: "33333333-3333-4333-8333-333333333333",
+    sourceQuoteRequestId: input.evidence.sourceQuoteRequestId,
+    sourceVerificationId: input.evidence.verificationId,
+    provider: "uniswap-v3" as const,
+    kind: input.kind,
+    chainId: 4_663 as const,
+    target: input.target,
+    data: input.data,
+    value: input.value,
+    gasLimit: input.evidence.gasLimitUnits!,
+    inputAsset: input.evidence.inputAsset,
+    outputAsset: input.evidence.outputAsset,
+    inputAmountAtomic: input.evidence.inputAmountAtomic,
+    protectedOutputAtomic: input.evidence.protectedOutputAtomic,
+    recipient: input.evidence.recipient,
+    router: input.evidence.router,
+    settlementMode: VNEXT_LEGACY_V1_FEE,
+    netEconomics: input.evidence.netEconomics!,
+    feeExecution: input.evidence.feeExecution!,
+    deadline: input.evidence.deadline,
+    preparedAtMs: now,
+    expiresAtMs: now + 60_000,
+    userAuthorizationRequired: true as const,
+    serverSubmissionEnabled: false as const
+  };
+  return { ...unsigned, payloadHash: authorizationPayloadHash(unsigned) } as VNextAuthorizationPlan;
+}
+
+const approvalPlan = v1Plan({ kind: "erc20_approval", evidence: feeEvidence, target: usdg, data: approvalData, value: "0" });
+assert.equal(parseVNextAuthorizationPlan(approvalPlan, feeEvidence, now + 1).settlementMode, VNEXT_LEGACY_V1_FEE);
+assert.equal(vnextSpotTradeInstruction(approvalPlan).target, usdg);
+assert.throws(() => parseVNextAuthorizationPlan({ ...approvalPlan, data: encodeFunctionData({
+  abi: erc20Abi, functionName: "approve", args: [executor, BigInt(buy.userGrossInputAtomic) + 1n]
+}) }, feeEvidence, now + 1), /inconsistent|approval|payload/);
+
+const swapEvidence: VNextPreSignEvidence = {
+  ...feeEvidence,
+  status: "verified",
+  approvalRequired: false,
+  allowanceAtomic: buy.userGrossInputAtomic,
+  exactSimulationPassed: true,
+  nextAction: "swap",
+  nextActionTarget: executor,
+  nextActionCalldataHash: keccak256(buyData),
+  calldataHash: keccak256(buyData)
+};
+const swapPlan = v1Plan({ kind: "swap", evidence: swapEvidence, target: executor, data: buyData, value: "0" });
+assert.equal(parseVNextAuthorizationPlan(swapPlan, swapEvidence, now + 1).target, executor);
+assert.equal(vnextSpotTradeInstruction(swapPlan).target, executor);
+assert.throws(() => parseVNextAuthorizationPlan({ ...swapPlan, target: ROBINHOOD_SWAP_ROUTER_02 }, swapEvidence, now + 1), /inconsistent|fee-bearing|payload/);
 
 const sellEconomics = normalizeOutputSideRmtFee({
   policy,

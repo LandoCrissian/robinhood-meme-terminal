@@ -11,6 +11,7 @@ import {
 } from "../../../../lib/server/project-identity-admission";
 import { VNEXT_DIRECT_NO_RMT_FEE } from "../../../../lib/vnext/execution-settlement";
 import { vNextExecutionEligibilityErrorResponse } from "../../../../lib/server/vnext-execution-eligibility";
+import { selectVNextUniswapV3SettlementMode } from "../../../../lib/server/vnext-uniswap-quote";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -68,6 +69,9 @@ export async function POST(request: Request) {
       { address: outputAsset }
     ]);
     const executionId = `0x${randomBytes(32).toString("hex")}` as const;
+    const settlementMode = parsed.data.provider === "uniswap-v3"
+      ? selectVNextUniswapV3SettlementMode({ inputAsset, outputAsset, recipient })
+      : VNEXT_DIRECT_NO_RMT_FEE;
     const evidence = await verifyRobinhoodVNextExecution(parsed.data.provider, {
       chainId: 4_663,
       inputAsset,
@@ -76,7 +80,7 @@ export async function POST(request: Request) {
       inputAmountAtomic: parsed.data.inputAmountAtomic,
       recipient,
       indicativeProtectedOutputFloorAtomic: BigInt(parsed.data.protectedOutputFloorAtomic),
-      settlementMode: VNEXT_DIRECT_NO_RMT_FEE,
+      settlementMode,
       executionId,
       ...(parsed.data.canonicalMarket ? { canonicalMarket: parsed.data.canonicalMarket as { sourceId: "uniswap-v4"; poolId: `0x${string}` } } : {}),
       ...(parsed.data.v4QuoteEvidence ? { v4QuoteEvidence: parsed.data.v4QuoteEvidence as typeof parsed.data.v4QuoteEvidence & { poolId: `0x${string}`; observedBlockHash: `0x${string}` } } : {})

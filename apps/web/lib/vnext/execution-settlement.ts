@@ -10,7 +10,8 @@ export type VNextExecutionSettlementMode =
   | typeof VNEXT_LEGACY_V1_FEE;
 export type VNextWalletSettlementMode =
   | typeof VNEXT_DIRECT_NO_RMT_FEE
-  | typeof VNEXT_V2_ATOMIC_INPUT_FEE;
+  | typeof VNEXT_V2_ATOMIC_INPUT_FEE
+  | typeof VNEXT_LEGACY_V1_FEE;
 
 export type VNextDirectNoRmtFeeSettlement = {
   mode: typeof VNEXT_DIRECT_NO_RMT_FEE;

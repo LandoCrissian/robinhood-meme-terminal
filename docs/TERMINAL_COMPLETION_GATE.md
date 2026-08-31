@@ -50,10 +50,10 @@
 
 ## Economics
 
-- [x] Current owner product policy is `RMT_FEE = 0`; no hidden spread or RMT trading fee is authorized.
-- [x] Historical `RMT_EXECUTION_V1` deployment, controlled-proof, release, receipt and monitoring evidence remains preserved without being presented as current fee authority.
+- [x] Current owner product policy is 25 basis points only for atomically settled admitted `RMT_EXECUTION_V1` Uniswap V3 executor trades; all other providers and unsupported V1 routes remain direct/no-fee.
+- [x] `RMT_EXECUTION_V1` deployment, controlled-proof, release, receipt and monitoring evidence remains preserved and pinned to the current owner-authorized policy identity.
 - [x] `RMT_EXECUTION_V2` remains dormant implementation work and is not a provider-admission requirement or Terminal completion condition.
-- [ ] Any future fee requires a new explicit owner policy and separate implementation, verification, release and production-activation authorization.
+- [x] The V1 fee has a new explicit owner policy and requires separate implementation, verification, release and production-activation evidence before collection is reported active.
 - [ ] No historical V6 split is reused as forward terminal policy.
 
 ## NFT and Project Market
@@ -83,7 +83,7 @@
 
 ## Current known gaps
 
-VNext is the production root and `/vnext`, `/market/[address]` and `/portfolio` converge on that canonical Token Terminal. Retired terminal CSS generations are no longer globally loaded. The curated registry contains exactly eight canonical seed markets; bounded provider discovery may expose additional markets but cannot confer curated authority or execution eligibility, and historical market-indexer rows do not control the public Terminal. External-wallet reliability still requires supported-device acceptance. Public authorization and wallet submission remain disabled. Across public funding remains incomplete and disabled. Profiles/community/Creator/V7 source remains preserved and paused separately from the active NFT lane. Historical Uniswap V3 executor deployment, controlled proof and release evidence remains preserved; current owner policy is `RMT_FEE = 0`, so fee activation and universal V2 settlement are not completion requirements. The current priority is completing the trade-worthy zero-platform-fee Token Terminal. NFT work remains separately authorized and non-conflicting.
+VNext is the production root and `/vnext`, `/market/[address]` and `/portfolio` converge on that canonical Token Terminal. Retired terminal CSS generations are no longer globally loaded. The curated registry contains exactly eight canonical seed markets; bounded provider discovery may expose additional markets but cannot confer curated authority or execution eligibility, and historical market-indexer rows do not control the public Terminal. External-wallet reliability still requires supported-device acceptance. Public authorization and wallet submission remain release-gated. Across public funding remains incomplete and disabled. Profiles/community/Creator/V7 source remains preserved and paused separately from the active NFT lane. The admitted Uniswap V3 V1 executor is the only current fee-bearing path; universal V2 settlement remains dormant. NFT work remains separately authorized and non-conflicting.
 
 ## Explicit completion decision
 

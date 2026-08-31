@@ -62,8 +62,9 @@ assert.match(component, /Provider input/);
 assert.match(component, /Protected minimum/);
 assert.match(component, /Atomic with swap/);
 assert.match(composer, /aria-label="RMT execution fee summary"/);
-assert.match(composer, /bestQuote\.feeV2Economics\.expectedFeeAtomic/);
-assert.match(composer, /bestQuote\.feeV2Economics\.providerInputAtomic/);
+assert.match(composer, /bestRmtFee\.expectedFeeAtomic/);
+assert.match(composer, /bestQuote\?\.netEconomics\?\.providerInputAtomic/);
+assert.match(composer, /RMT execution fee/);
 
 const approvalDisclosure = renderToStaticMarkup(createElement(VNextWalletFeeDisclosure, {
   planKind: "erc20_approval",
