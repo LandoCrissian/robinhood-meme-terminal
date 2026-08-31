@@ -244,6 +244,8 @@ function buildScenario(input: {
       gasSponsorshipFeeAsset: null,
       gasSponsorshipFeeAtomic: null,
       explicitProviderFeeOutputAtomic: null,
+      settlementMode: VNEXT_V2_ATOMIC_INPUT_FEE,
+      executionTarget: executor,
       feeV2Economics: economics,
       netEconomics: null,
       networkFeeNativeAtomic: null,
