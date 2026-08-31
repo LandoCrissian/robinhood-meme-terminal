@@ -1,12 +1,43 @@
 # RMT Uniswap V3 V2 deployment readiness
 
-Status: `DORMANT`, `NOT_DEPLOYED`, `NOT_ACTIVATED`, `NEW_OWNER_POLICY_REQUIRED`.
+Status: `PROPOSED_OWNER_AUTHORIZATION`, `NOT_DEPLOYED`, `NOT_ACTIVATED`.
 
-Current owner product policy is `RMT_FEE = 0`. This package is preserved deployment-readiness evidence, not current roadmap authority or authorization to deploy or activate V2.
+The owner selected the exact V2 economics and proposed treasury documented below for deployment
+review. This package is not authorization to deploy or activate V2. Deployment remains blocked
+until the owner issues `DEPLOY RMT V3 FEE EXECUTOR V2`; activation requires a later, separate
+decision. No Distribution, Spotlight, buyback, or NFT authority is implied.
 
 This package prepares a deterministic, owner-authorized deployment of
-`RMTUniswapV3FeeExecutorV2`. It does not select a production treasury or effective block,
-does not hold a private key, and does not enable wallet authorization.
+`RMTUniswapV3FeeExecutorV2`. It fixes the proposed treasury, effective block, constructor,
+CREATE2 salt, predicted address, runtime hash, and exact unsigned deployment transaction. It
+does not hold a private key and does not enable wallet authorization.
+
+## Final proposed package
+
+The complete machine-readable package, including the exact 13,439-byte factory calldata, is
+[`packages/contracts/deployments/rmt-uniswap-v3-fee-executor-v2.template.json`](../packages/contracts/deployments/rmt-uniswap-v3-fee-executor-v2.template.json).
+It is derived from canonical main `9cd69b20cad70f5302ea4b900174b3610250eeb7`.
+
+- Treasury: `0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC`
+- Effective block: `52,031,325`; no `effectiveBeforeBlock`
+- Policy hash: `0x817c811c7d6f5d4d7fd5740f6169114394415292e7a4c6043e15efbc23da003a`
+- Constructor arguments hash: `0x10d3f6c445ac7e746a72f858f37a94512b27cf214e1d748aaec043f4fb382ce5`
+- Creation-code hash: `0x4aad11354c2be1ac4632ddfa1968e40394fdd3127e51038e369c73d389d79a02`
+- Init-code hash: `0x6d92231b7b5435809c57a91139b98624b729709ec67c60e029b8d471214fd3b3`
+- Salt: `0xd9d5e78f113848ce84aedd7c54f0b44bcf232e679856f6156c82aa4ae02861bc`
+- Predicted executor: `0x6D4CdBC3000Ae0C3d23C00BF70E48c9682f77CE2`
+- Expected constructor-bound runtime hash:
+  `0x974250439f6cce7c355c1b91547cbd9a6667a68f2486076edeaf54a168f0df4e`
+- Deployment target: deterministic factory `0x4e59b44847b379578588920cA78FbF26c0B4956C`
+- Deployment value: `0`
+- Deployment calldata hash: `0xe2a27bc21ddd89cf122ad6b410acd1c7b9dade16ff49cc95549b404bfb2b6d97`
+- Live estimate: 2,531,956 gas; bounded 120% gas limit 3,038,348; bounded estimate
+  `921451951352000` wei (`0.000921451951352 ETH`) at the recorded gas-price snapshot
+
+A no-broadcast Robinhood mainnet fork deployed the exact init code at the predicted address,
+verified every immutable, and produced the expected runtime hash. The live predicted address
+had no code at the recorded snapshot and did not collide with V1, the treasury, Router02, the
+factory, WETH, or another known RMT production role.
 
 ## Reproducible build
 
@@ -55,8 +86,9 @@ keccak256(abi.encode(
 The expected address is standard CREATE2 using the historical deterministic factory, that
 salt, and the complete constructor-bearing init-code hash. V1 salt material is never reused.
 
-The deterministic rehearsal uses candidate Safe `0x6170...d2eC` and future test block
-`50,000,000` only. These values are **REHEARSAL_ONLY_NOT_OWNER_AUTHORIZED**:
+The older rehearsal used candidate Safe `0x6170...d2eC` and test block `50,000,000`. Those
+values remain historical **REHEARSAL_ONLY_NOT_OWNER_AUTHORIZED** evidence and are not the
+proposed package:
 
 - Policy hash: `0xf5d958e3438913decc845c20c71385484f9e727ce8010e1b63e226cc149a547a`
 - Constructor arguments hash: `0x4d9430040afdacc5dc584a1db1350080e8c611ed9ed8906f22b1e1415611ff64`
@@ -74,16 +106,16 @@ local fork. `DeployRMTUniswapV3FeeExecutorV2.s.sol` reads no private key; a futu
 broadcast must use the preserved deployer through an external Foundry signer. It requires
 every dependency, policy, hash, salt, and expected address as explicit matching inputs.
 
-## Candidate treasury architecture
+## Proposed treasury architecture
 
-The existing Safe at `0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC` is a candidate, not an
-authorization. The executor needs only a stable recipient capable of receiving native ETH and
+The existing Safe at `0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC` is the sole proposed V2
+treasury, not a deployment authorization. The executor needs only a stable recipient capable of receiving native ETH and
 standard ERC-20s. The Safe can later execute or authorize separately reviewed calls/modules
 that route collected assets to buyback, creator-reward, community-distribution, or Mint Engine
 contracts. None of that downstream policy belongs in the immutable executor, and changing
 downstream Safe-authorized routing does not require redeploying it.
 
-Fresh read-only Robinhood mainnet verification on 2026-08-23 found:
+Fresh read-only Robinhood mainnet verification on 2026-08-31 found:
 
 - Safe proxy runtime hash:
   `0x4e381985ca68b3e5d27b4425fa581c19cf33146d3f887a3cfca96f55528ea46f`
@@ -99,12 +131,29 @@ Fresh read-only Robinhood mainnet verification on 2026-08-23 found:
 
 ## Effective boundary
 
-`policyBeforeBlock = 0` is the recommended open-ended production value. The owner must select
-a future Robinhood L2 `policyFromBlock`. A lead of `1,000,000` L2 blocks is recommended; the
-live preflight must convert that into current wall-clock time immediately before authorization.
-At the observed 2026-08-23 cadence of about 0.1004 seconds per block, this is approximately
-27 hours 53 minutes. That leaves a full operational day for confirmation, immutable verification,
-artifact finalization, controlled proof preparation, and aborting before activation.
+`policyBeforeBlock = 0` is the proposed open-ended value. The final proposed
+`policyFromBlock` is `52,031,325`, selected as exactly 1,000,000 blocks after canonical snapshot
+block `51,031,325` (`0x0f062d...ee71`, 2026-08-31T17:09:43Z). At the previously measured
+cadence this is approximately 27 hours 53 minutes, leaving a full operational day for owner
+review, deployment, verification, and aborting before the policy boundary. The stale rehearsal
+block `50,000,000` has no authority.
+
+## Application wiring inventory
+
+Contract readiness is not application activation readiness. On this exact source:
+
+| Stage | Status | Evidence |
+| --- | --- | --- |
+| Quote | `CODE_CHANGE_REQUIRED` | The ordinary V3 quote path still chooses V1/direct settlement rather than V2 net economics. |
+| Verify | `READY` | Exact V2 route, runtime, policy, pool, recipient, deadline, gas, calldata, and simulation verification exists. |
+| Authorize | `CODE_CHANGE_REQUIRED` | The exact V2 authorization implementation exists, but the global `uniswap-v3` fee-settlement registry remains `QUOTE_ONLY`. |
+| Wallet review | `READY` | The authorization-plan codec accepts explicit `VNEXT_V2_ATOMIC_INPUT_FEE` authority. |
+| Prehash journal | `READY` | V2 calldata hashes and recovery plans are durably bound. |
+| Receipt recovery | `READY` | Exact V2 settlement-event reconciliation and terminal recovery exist. |
+| Confirmation UI | `READY` | Confirmed V2 actual fee and net output fields are supported. |
+
+The quote and provider-admission changes are a separate activation/wiring tranche. This
+deployment-package PR does not silently switch production routing or the provider registry.
 
 ## Controlled proof after deployment and before public activation
 
@@ -113,12 +162,14 @@ authorization remains off.
 
 1. Confirm deployed code, all immutable getters, WETH EIP-1967 link, policy hash, treasury,
    boundary, and deterministic transaction receipt against the finalized artifact.
-2. Native ETH to USDG: quote on `providerInput = gross - floor(gross * 25 / 10_000)`, bind a
-   protected output and short ArbSys deadline, send the wallet transaction to the V2 executor,
-   and confirm exact native treasury delta, USDG output, consumed execution ID, zero executor
+2. At canary time choose the highest-liquidity verified ERC-20 for which ordinary net route
+   ranking independently selects V3 V2; do not privilege a project token. Native ETH to that
+   token: quote on `providerInput = gross - floor(gross * 25 / 10_000)`, bind a protected
+   output and short ArbSys deadline, send the wallet transaction to the V2 executor, and
+   confirm exact native treasury delta, token output, consumed execution ID, zero executor
    ETH/token/WETH residue, and internal Router02-only routing.
-3. USDG to native ETH: approve the executor for exactly gross input, confirm the allowance is
-   exactly consumed to zero, execute to the V2 executor, and confirm exact USDG treasury delta,
+3. The same token to native ETH: approve the executor for exactly gross input, confirm the allowance is
+   exactly consumed to zero, execute to the V2 executor, and confirm exact input-token treasury delta,
    protected native output, exact WETH unwrap, consumed execution ID, zero executor residue,
    and zero Router02 allowance.
 4. Re-submit each consumed execution ID as a read-only simulation and require replay rejection.

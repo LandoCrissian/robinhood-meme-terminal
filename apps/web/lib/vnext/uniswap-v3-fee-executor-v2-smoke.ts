@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { getAddress, keccak256, zeroAddress, type Hex } from "viem";
+import { readFile } from "node:fs/promises";
+import { getAddress, getCreate2Address, keccak256, zeroAddress, type Hex } from "viem";
 import {
   prepareVNextProviderAuthorization,
   type VNextQuoteProviderAdapter
@@ -222,6 +223,62 @@ const adapter: VNextQuoteProviderAdapter = {
   }
 };
 async function run() {
+const manifest = JSON.parse(await readFile(new URL(
+  "../../../../packages/contracts/deployments/rmt-uniswap-v3-fee-executor-v2.template.json",
+  import.meta.url
+), "utf8")) as {
+  status: string;
+  authorizationStatus: string;
+  deploymentAuthorized: boolean;
+  activationAuthorized: boolean;
+  chainId: number;
+  sourceHead: string;
+  policy: { policyHash: Hex; effectiveFromBlock: number; effectiveBeforeBlock: number };
+  dependencies: { deterministicFactory: `0x${string}` };
+  deterministicDeployment: {
+    salt: Hex;
+    creationCodeHash: Hex;
+    encodedConstructorArguments: Hex;
+    constructorArgsHash: Hex;
+    initCodeHash: Hex;
+    predictedExecutor: `0x${string}`;
+    predictedExecutorHasCode: boolean;
+    expectedRuntimeHash: Hex;
+  };
+  deploymentTransaction: { data: Hex; dataHash: Hex; dataBytes: number; valueWei: string; to: `0x${string}` };
+  applicationWiring: { quote: string; authorize: string; providerRegistry: string };
+};
+const deploymentData = manifest.deploymentTransaction.data;
+const initCode = `0x${deploymentData.slice(66)}` as Hex;
+const constructorArguments = manifest.deterministicDeployment.encodedConstructorArguments;
+assert.ok(initCode.endsWith(constructorArguments.slice(2)));
+const creationCode = `0x${initCode.slice(2, -constructorArguments.slice(2).length)}` as Hex;
+assert.equal(manifest.status, "NOT_DEPLOYED");
+assert.equal(manifest.authorizationStatus, "PROPOSED_OWNER_AUTHORIZATION");
+assert.equal(manifest.deploymentAuthorized, false);
+assert.equal(manifest.activationAuthorized, false);
+assert.equal(manifest.chainId, 4_663);
+assert.equal(manifest.sourceHead, "9cd69b20cad70f5302ea4b900174b3610250eeb7");
+assert.equal(manifest.policy.effectiveFromBlock, 52_031_325);
+assert.equal(manifest.policy.effectiveBeforeBlock, 0);
+assert.equal(keccak256(creationCode), manifest.deterministicDeployment.creationCodeHash);
+assert.equal(keccak256(constructorArguments), manifest.deterministicDeployment.constructorArgsHash);
+assert.equal(keccak256(initCode), manifest.deterministicDeployment.initCodeHash);
+assert.equal(keccak256(deploymentData), manifest.deploymentTransaction.dataHash);
+assert.equal((deploymentData.length - 2) / 2, manifest.deploymentTransaction.dataBytes);
+assert.equal(manifest.deploymentTransaction.valueWei, "0");
+assert.equal(getAddress(manifest.deploymentTransaction.to), getAddress(manifest.dependencies.deterministicFactory));
+assert.equal(getCreate2Address({
+  from: manifest.dependencies.deterministicFactory,
+  salt: manifest.deterministicDeployment.salt,
+  bytecodeHash: manifest.deterministicDeployment.initCodeHash
+}), getAddress(manifest.deterministicDeployment.predictedExecutor));
+assert.equal(manifest.deterministicDeployment.predictedExecutorHasCode, false);
+assert.equal(manifest.deterministicDeployment.expectedRuntimeHash, "0x974250439f6cce7c355c1b91547cbd9a6667a68f2486076edeaf54a168f0df4e");
+assert.equal(manifest.applicationWiring.quote, "CODE_CHANGE_REQUIRED");
+assert.equal(manifest.applicationWiring.authorize, "CODE_CHANGE_REQUIRED");
+assert.equal(manifest.applicationWiring.providerRegistry, "QUOTE_ONLY");
+
 const prepared = await prepareVNextProviderAuthorization("uniswap-v3", {
   chainId: 4_663,
   inputAsset,
