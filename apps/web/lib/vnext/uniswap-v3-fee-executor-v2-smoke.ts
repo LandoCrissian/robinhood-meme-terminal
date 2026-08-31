@@ -229,6 +229,7 @@ const manifest = JSON.parse(await readFile(new URL(
 ), "utf8")) as {
   status: string;
   authorizationStatus: string;
+  ownerDeploymentAuthorizationRequired: boolean;
   deploymentAuthorized: boolean;
   activationAuthorized: boolean;
   chainId: number;
@@ -255,6 +256,36 @@ const manifest = JSON.parse(await readFile(new URL(
     predictedExecutorHasCode: boolean;
     expectedRuntimeHash: Hex;
   };
+  deploymentEvidence: {
+    verificationBase: string;
+    deploymentTransactionHash: Hex;
+    receiptStatus: string;
+    deploymentBlock: number;
+    deploymentBlockHash: Hex;
+    deploymentTimestampUnix: number;
+    transactionIndex: number;
+    deployerNonce: number;
+    gasLimit: string;
+    gasUsed: string;
+    effectiveGasPriceWei: string;
+    costWei: string;
+    factory: `0x${string}`;
+    transactionValueWei: string;
+    deploymentCalldataHash: Hex;
+    deployedExecutor: `0x${string}`;
+    deployedRuntimeHash: Hex;
+    deployedRuntimeBytes: number;
+    receiptLogCount: number;
+    exactDeploymentCalldataMatches: boolean;
+    create2AddressMatches: boolean;
+    runtimeMatches: boolean;
+    immutablesMatch: boolean;
+    dependenciesMatch: boolean;
+    matchingSuccessfulDeploymentTransactions: number;
+    duplicateSuccessfulDeploymentTransactions: number;
+    deployerNonceAfter: number;
+    v1ExecutorUnchanged: boolean;
+  };
   deploymentTransaction: { data: Hex; dataHash: Hex; dataBytes: number; valueWei: string; to: `0x${string}` };
   applicationWiring: { quote: string; authorize: string; providerRegistry: string };
 };
@@ -263,9 +294,10 @@ const initCode = `0x${deploymentData.slice(66)}` as Hex;
 const constructorArguments = manifest.deterministicDeployment.encodedConstructorArguments;
 assert.ok(initCode.endsWith(constructorArguments.slice(2)));
 const creationCode = `0x${initCode.slice(2, -constructorArguments.slice(2).length)}` as Hex;
-assert.equal(manifest.status, "NOT_DEPLOYED");
-assert.equal(manifest.authorizationStatus, "PROPOSED_OWNER_AUTHORIZATION");
-assert.equal(manifest.deploymentAuthorized, false);
+assert.equal(manifest.status, "DEPLOYED");
+assert.equal(manifest.authorizationStatus, "DEPLOYED_NOT_ACTIVATED");
+assert.equal(manifest.ownerDeploymentAuthorizationRequired, false);
+assert.equal(manifest.deploymentAuthorized, true);
 assert.equal(manifest.activationAuthorized, false);
 assert.equal(manifest.chainId, 4_663);
 assert.equal(manifest.sourceHead, "9cd69b20cad70f5302ea4b900174b3610250eeb7");
@@ -297,8 +329,39 @@ assert.equal(getCreate2Address({
   salt: manifest.deterministicDeployment.salt,
   bytecodeHash: manifest.deterministicDeployment.initCodeHash
 }), getAddress(manifest.deterministicDeployment.predictedExecutor));
-assert.equal(manifest.deterministicDeployment.predictedExecutorHasCode, false);
+assert.equal(manifest.deterministicDeployment.predictedExecutorHasCode, true);
 assert.equal(manifest.deterministicDeployment.expectedRuntimeHash, "0xed8ec8cd44f2c228044678358bb7c4565953067ceab42319b169358354b9693d");
+assert.equal(manifest.deploymentEvidence.verificationBase, "5631dc5d7b70a22e593e6845650401f52e09ce7c");
+assert.equal(manifest.deploymentEvidence.deploymentTransactionHash, "0xc25e1d4265c47fa08fd81c5296fab1ec1e73e732a7fd989b3313f45c8764356d");
+assert.equal(manifest.deploymentEvidence.receiptStatus, "success");
+assert.equal(manifest.deploymentEvidence.deploymentBlock, 51_119_538);
+assert.equal(manifest.deploymentEvidence.deploymentBlockHash, "0xed8d05d267fc7315636e34200d672ed22678c7aa9d6c03413091e6f6d35465ed");
+assert.equal(manifest.deploymentEvidence.deploymentTimestampUnix, 1_788_205_107);
+assert.equal(manifest.deploymentEvidence.transactionIndex, 3);
+assert.equal(manifest.deploymentEvidence.deployerNonce, 202);
+assert.equal(manifest.deploymentEvidence.gasLimit, "3038363");
+assert.equal(manifest.deploymentEvidence.gasUsed, "2490107");
+assert.equal(manifest.deploymentEvidence.effectiveGasPriceWei, "328550000");
+assert.equal(
+  BigInt(manifest.deploymentEvidence.costWei),
+  BigInt(manifest.deploymentEvidence.gasUsed) * BigInt(manifest.deploymentEvidence.effectiveGasPriceWei)
+);
+assert.equal(getAddress(manifest.deploymentEvidence.factory), getAddress(manifest.dependencies.deterministicFactory));
+assert.equal(manifest.deploymentEvidence.transactionValueWei, "0");
+assert.equal(manifest.deploymentEvidence.deploymentCalldataHash, manifest.deploymentTransaction.dataHash);
+assert.equal(getAddress(manifest.deploymentEvidence.deployedExecutor), getAddress(manifest.deterministicDeployment.predictedExecutor));
+assert.equal(manifest.deploymentEvidence.deployedRuntimeHash, manifest.deterministicDeployment.expectedRuntimeHash);
+assert.equal(manifest.deploymentEvidence.deployedRuntimeBytes, 10_968);
+assert.equal(manifest.deploymentEvidence.receiptLogCount, 0);
+assert.equal(manifest.deploymentEvidence.exactDeploymentCalldataMatches, true);
+assert.equal(manifest.deploymentEvidence.create2AddressMatches, true);
+assert.equal(manifest.deploymentEvidence.runtimeMatches, true);
+assert.equal(manifest.deploymentEvidence.immutablesMatch, true);
+assert.equal(manifest.deploymentEvidence.dependenciesMatch, true);
+assert.equal(manifest.deploymentEvidence.matchingSuccessfulDeploymentTransactions, 1);
+assert.equal(manifest.deploymentEvidence.duplicateSuccessfulDeploymentTransactions, 0);
+assert.equal(manifest.deploymentEvidence.deployerNonceAfter, 203);
+assert.equal(manifest.deploymentEvidence.v1ExecutorUnchanged, true);
 assert.equal(manifest.applicationWiring.quote, "CODE_CHANGE_REQUIRED");
 assert.equal(manifest.applicationWiring.authorize, "CODE_CHANGE_REQUIRED");
 assert.equal(manifest.applicationWiring.providerRegistry, "QUOTE_ONLY");

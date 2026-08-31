@@ -1,18 +1,29 @@
 # RMT Uniswap V3 V2 deployment readiness
 
-Status: `PROPOSED_OWNER_AUTHORIZATION`, `NOT_DEPLOYED`, `NOT_ACTIVATED`.
+Status: `DEPLOYED`, `DEPLOYED_NOT_ACTIVATED`, `APPLICATION_ADMISSION_INCOMPLETE`.
 
-The owner selected the exact V2 economics and proposed treasury documented below for deployment
-review. This package is not authorization to deploy or activate V2. Deployment remains blocked
-until the owner issues `DEPLOY RMT V3 FEE EXECUTOR V2`; activation requires a later, separate
-decision. No Distribution, Spotlight, buyback, or NFT authority is implied.
+The owner authorized and confirmed the exact deterministic V2 deployment documented below.
+Deployment is complete at `0xef729FbC9aDfC431ae46ECc198144160e2dD7832`. Activation remains
+unauthorized, the public fee remains off, and the application has not admitted this executor.
+No Distribution, Spotlight, buyback, or NFT authority is implied.
 
-This package prepares a deterministic, owner-authorized deployment of
-`RMTUniswapV3FeeExecutorV2`. It fixes the proposed treasury, effective block, constructor,
-CREATE2 salt, predicted address, runtime hash, and exact unsigned deployment transaction. It
-does not hold a private key and does not enable wallet authorization.
+This package preserves the complete deterministic proposal and the independently verified
+post-deployment evidence for `RMTUniswapV3FeeExecutorV2`. It fixes the treasury, effective
+block, constructor, CREATE2 salt, deployed address, runtime hash, exact unsigned deployment
+transaction, and canonical receipt. It does not hold a private key and does not enable wallet
+authorization.
 
-## Final proposed package
+## Current release boundary
+
+- Deployment: **COMPLETE**
+- Executor: `0xef729FbC9aDfC431ae46ECc198144160e2dD7832`
+- Activation: **NOT AUTHORIZED**
+- Public fee: **OFF**
+- Application admission: **NOT COMPLETE**
+- Quote wiring: **STILL REQUIRED**
+- Authorize/provider registry wiring: **STILL REQUIRED**
+
+## Deployed package and preserved proposal
 
 The complete machine-readable package, including the exact 13,439-byte factory calldata, is
 [`packages/contracts/deployments/rmt-uniswap-v3-fee-executor-v2.template.json`](../packages/contracts/deployments/rmt-uniswap-v3-fee-executor-v2.template.json).
@@ -34,10 +45,46 @@ It is derived from canonical main `9cd69b20cad70f5302ea4b900174b3610250eeb7`.
 - Live estimate: 2,532,242 gas; bounded 120% gas limit 3,038,691; bounded estimate
   `958311980670000` wei (`0.00095831198067 ETH`) at the recorded gas-price snapshot
 
-A no-broadcast Robinhood mainnet fork deployed the exact init code at the predicted address,
-verified every immutable, and produced the expected runtime hash. The live predicted address
-had no code at the recorded snapshot and did not collide with V1, the treasury, Router02, the
-factory, WETH, or another known RMT production role.
+A no-broadcast Robinhood mainnet fork first deployed the exact init code at the predicted
+address, verified every immutable, and produced the expected runtime hash. The live predicted
+address had no code at that proposal snapshot and did not collide with V1, the treasury,
+Router02, the factory, WETH, or another known RMT production role.
+
+## Canonical deployment receipt
+
+Independent Robinhood Chain `4663` verification established:
+
+- Transaction: `0xc25e1d4265c47fa08fd81c5296fab1ec1e73e732a7fd989b3313f45c8764356d`
+- Status: `success`
+- Block: `51,119,538`
+- Block hash: `0xed8d05d267fc7315636e34200d672ed22678c7aa9d6c03413091e6f6d35465ed`
+- Timestamp: `2026-08-31T19:38:27Z`
+- Transaction index: `3`
+- Deployer nonce: `202`
+- Sender: `0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA`
+- Factory target: `0x4e59b44847b379578588920cA78FbF26c0B4956C`
+- Value: `0`
+- Gas used: `2,490,107`
+- Effective gas price: `328,550,000` wei
+- Total cost: `818,124,654,850,000` wei (`0.00081812465485 ETH`)
+- Calldata hash: `0x11b8155284275c8edabdc24ee0f404b0cb8178f25912a21f75cac2f6393afd43`
+- Deployed runtime: 10,968 bytes
+- Deployed runtime hash: `0xed8ec8cd44f2c228044678358bb7c4565953067ceab42319b169358354b9693d`
+
+The transaction calldata exactly matches the preserved unsigned package. CREATE2 recomputes
+the deployed executor exactly. Every immutable getter and dependency runtime matches the
+package, the canonical WETH implementation slot still resolves to the pinned implementation,
+and V1 remains unchanged at its distinct address and runtime. CREATE2 permits only one
+successful creation at this exact salt and init code. The deployment is the owner's nonce 202
+transaction, while current latest and pending nonces are both 203; no later owner broadcast or
+duplicate successful deployment exists.
+The receipt contains no unexplained value transfer.
+
+At verification snapshot block `51,130,537`
+(`0xb192273885d02ff576a5979ebc50b94c0625bb739e0f75221e104b35e2d473bf`,
+2026-08-31T19:56:59Z), `166,121` blocks remained before the immutable policy boundary.
+Crossing that boundary never authorizes application admission, wallet submission, or public
+fee collection.
 
 ## Reproducible build
 
@@ -106,10 +153,11 @@ local fork. `DeployRMTUniswapV3FeeExecutorV2.s.sol` reads no private key; a futu
 broadcast must use the preserved deployer through an external Foundry signer. It requires
 every dependency, policy, hash, salt, and expected address as explicit matching inputs.
 
-## Proposed treasury architecture
+## Deployed treasury binding
 
-The existing Safe at `0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC` is the sole proposed V2
-treasury, not a deployment authorization. The executor needs only a stable recipient capable of receiving native ETH and
+The existing Safe at `0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC` is the sole immutable V2
+treasury. The owner's deployment authorization applied to this exact constructor binding only;
+it did not authorize activation. The executor needs only a stable recipient capable of receiving native ETH and
 standard ERC-20s. The Safe can later execute or authorize separately reviewed calls/modules
 that route collected assets to buyback, creator-reward, community-distribution, or Mint Engine
 contracts. None of that downstream policy belongs in the immutable executor, and changing
@@ -131,7 +179,7 @@ Fresh read-only Robinhood mainnet verification on 2026-08-31 found:
 
 ## Effective boundary
 
-`policyBeforeBlock = 0` is the proposed open-ended value. The accelerated proposed
+`policyBeforeBlock = 0` is the immutable open-ended value. The accelerated
 `policyFromBlock` is `51,296,658`, selected as exactly 225,000 blocks after fresh canonical
 snapshot block `51,071,658` (`0x76c535...ecd1e`, 2026-08-31T18:17:47Z). The preceding
 100,000-block sample began at block `50,971,658` (`0x10c621...b26c5`,
@@ -194,31 +242,17 @@ The later activation PR should be minimal:
 5. Keep the final wallet-submission release gate separately disabled until the explicit owner
    public-activation operation.
 
-## Recommended merge and release choreography
+## Remaining release choreography
 
-1. Owner authorizes the candidate treasury, future effective block, exact rehearsal hashes,
-   and deployment only after this readiness review.
-2. Deploy through the deterministic factory from the preserved admin wallet; verify runtime,
-   immutables, receipt, and source. Do not activate.
-3. Run and finalize the two controlled proofs above while every production adapter remains
-   quote-only.
-4. Commit the completed deployment artifact in a narrow stacked artifact PR.
-5. Build/review the activation tranche on top of the exact foundation + executor + readiness +
-   artifact stack, with its final submission gate still off.
-6. Incorporate #429, readiness, artifact, and activation into the #428 integration branch after
-   each component review; compare the resulting tree to the reviewed stack.
-7. Run protected CI on that exact combined head, then merge the complete #428 release stack to
-   main once. This avoids a meaningful main interval where the fee foundation disables legacy
-   execution but V2 integration is absent.
-8. Let the unchanged protected main deploy with wallet submission still off. Verify health,
-   quote visibility, configuration fail-closed behavior, and no Router02 wallet target.
-9. Bind only the owner-authorized V2 policy/executor environment metadata and redeploy the same
-   main SHA. Re-verify exact runtime/immutables and keep public submission off.
-10. After the effective block and a separate owner activation, enable the final submission gate,
-    redeploy the same SHA, and immediately smoke-test one controlled route.
-11. On any mismatch, disable the final submission/provider gate and redeploy the same SHA. All
-    providers return to quote-only; there is no fee-free fallback and the deployed ownerless
-    executor retains no privileged control surface.
+1. Merge this narrow post-deployment evidence only after owner review.
+2. Add and review the separate quote and `uniswap-v3` provider-admission wiring while every
+   production execution and fee gate remains disabled.
+3. Reverify the deployed runtime, immutables, policy boundary, WETH implementation link, and
+   exact application configuration before each controlled proof.
+4. Run the separately owner-authorized bidirectional controlled proofs and finalize their
+   receipt, fee, treasury, residual, allowance, replay, recovery, and UI evidence.
+5. Request a separate owner decision before any production application admission or public
+   activation.
 
-No deployment, treasury authorization, effective-block selection, environment mutation, or
-wallet activation is performed by this package.
+This evidence finalization changes no contract, application logic, treasury, fee rate, route
+ranking, production environment, deployment, or wallet state.
