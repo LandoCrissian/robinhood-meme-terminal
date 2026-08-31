@@ -2392,6 +2392,19 @@ body .rmtVnext {
   line-height: 1.45;
 }
 
+.vnAuthorizationStatus {
+  margin: 8px 0 0;
+  color: var(--vn-text-secondary);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
+.vnWalletSubmission > .vnWalletReopen {
+  border-color: rgba(130, 242, 143, 0.32);
+  background: rgba(130, 242, 143, 0.08);
+  color: var(--vn-accent);
+}
+
 .vnGasRecovery {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
