@@ -44,7 +44,9 @@ function formatAtomicDisplay(value: string, decimals: number) {
   const formatted = formatUnits(BigInt(value), decimals);
   const [whole, fraction = ""] = formatted.split(".");
   const grouped = BigInt(whole).toLocaleString();
-  const visibleFraction = fraction.slice(0, 6).replace(/0+$/, "");
+  const firstNonzero = fraction.search(/[1-9]/);
+  const visibleDigits = firstNonzero < 0 ? 0 : Math.max(6, firstNonzero + 3);
+  const visibleFraction = fraction.slice(0, visibleDigits).replace(/0+$/, "");
   return visibleFraction ? `${grouped}.${visibleFraction}` : grouped;
 }
 
@@ -1090,6 +1092,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               {visibleVerification.feeExecution ? <div><dt>Fee treasury</dt><dd>{shortAddress(visibleVerification.feeExecution.treasury)}</dd></div> : null}
               {visibleVerification.feeExecution ? <div><dt>Settlement</dt><dd>Atomic with swap · policy v{visibleVerification.feeExecution.policyVersion}</dd></div> : null}
               {visibleVerification.feeV2Economics ? <div><dt>Gross input</dt><dd>{formatAtomicDisplay(visibleVerification.feeV2Economics.userGrossInputAtomic, pair?.inputAsset.decimals ?? 18)} {inputSymbol}</dd></div> : null}
+              {visibleVerification.feeV2Economics ? <div><dt>Fee asset</dt><dd>{inputSymbol} · paid in the sold/input asset</dd></div> : null}
               {visibleVerification.feeV2Economics ? <div><dt>Provider input</dt><dd>{formatAtomicDisplay(visibleVerification.feeV2Economics.providerInputAtomic, pair?.inputAsset.decimals ?? 18)} {inputSymbol}</dd></div> : null}
               {visibleVerification.feeV2Economics ? <div><dt>Fee treasury</dt><dd>{shortAddress(visibleVerification.feeV2Economics.treasury)}</dd></div> : null}
               {visibleVerification.feeV2Settlement ? <div><dt>Settlement</dt><dd>Atomic with swap · RMT V2 executor {shortAddress(visibleVerification.feeV2Settlement.executionTarget)}</dd></div> : null}
@@ -1139,7 +1142,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               <div><dt>{executionRecord.feeV2Settlement ? "Gross input" : side === "buy" ? "Paid" : "Sold"}</dt><dd>{confirmedInputDisplay ? `${confirmedInputDisplay} ${inputSymbol}` : `${inputSymbol} confirmed`}</dd></div>
               <div><dt>{side === "buy" ? "Asset received" : "Proceeds"}</dt><dd>{confirmedOutputDisplay ? `${confirmedOutputDisplay} ${outputSymbol}` : `${outputSymbol} · confirmed onchain`}</dd></div>
               {confirmedFee.state !== "not_applicable" ? <div><dt>RMT fee settled</dt><dd>{confirmedFee.display}</dd></div> : null}
-              {confirmedProvider ? <div><dt>Provider</dt><dd>{confirmedProvider}{executionRecord.feeSettlement || executionRecord.feeV2Settlement ? " · RMT atomic settlement" : ""}</dd></div> : null}
+              {confirmedProvider ? <div><dt>Provider</dt><dd>{confirmedProvider}{executionRecord.feeV2Settlement ? " · RMT atomic settlement V2" : executionRecord.feeSettlement ? " · RMT atomic settlement" : ""}</dd></div> : null}
               <div><dt>Transaction</dt><dd>{shortAddress(executionRecord.txHash)}</dd></div>
             </dl>
             <button ref={receiptAction} className="vnTradeReceiptContinue" type="button" onClick={continueTrading}>Continue trading</button>

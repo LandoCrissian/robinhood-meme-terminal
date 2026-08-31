@@ -12,7 +12,7 @@ import {
   hasVNextWalletAuthorizationCodec,
   isVNextWalletExecutionAdmitted
 } from "./provider-execution-capability";
-import { VNEXT_LEGACY_V1_FEE } from "./execution-settlement";
+import { VNEXT_LEGACY_V1_FEE, VNEXT_V2_ATOMIC_INPUT_FEE } from "./execution-settlement";
 
 export { hasVNextWalletAuthorizationCodec } from "./provider-execution-capability";
 
@@ -64,7 +64,7 @@ export type VNextQuoteAttempt = {
   gasSponsorshipFeeAtomic: string | null;
   explicitProviderFeeOutputAtomic: string | null;
   netEconomics: RmtNetExecutionEconomics | null;
-  settlementMode?: typeof VNEXT_LEGACY_V1_FEE;
+  settlementMode?: typeof VNEXT_LEGACY_V1_FEE | typeof VNEXT_V2_ATOMIC_INPUT_FEE;
   executionTarget?: string;
   feeV2Economics?: RmtExecutionFeeV2Economics;
   networkFeeNativeAtomic: string | null;
@@ -135,7 +135,7 @@ const attemptSchema = z.object({
   gasSponsorshipFeeAtomic: z.string().nullable(),
   explicitProviderFeeOutputAtomic: z.string().nullable(),
   netEconomics: z.unknown().nullable(),
-  settlementMode: z.literal(VNEXT_LEGACY_V1_FEE).optional(),
+  settlementMode: z.union([z.literal(VNEXT_LEGACY_V1_FEE), z.literal(VNEXT_V2_ATOMIC_INPUT_FEE)]).optional(),
   executionTarget: z.string().optional(),
   feeV2Economics: z.unknown().optional(),
   networkFeeNativeAtomic: z.string().nullable(),
@@ -255,7 +255,11 @@ export function assertVNextQuoteAttempt(
     if (attempt.feeV2Economics) {
       assertRmtExecutionFeeV2Economics(attempt.feeV2Economics);
       if (
-        attempt.netEconomics !== null
+        attempt.provider !== "uniswap-v3"
+        || attempt.settlementMode !== VNEXT_V2_ATOMIC_INPUT_FEE
+        || !attempt.executionTarget
+        || !isAddress(attempt.executionTarget)
+        || attempt.netEconomics !== null
         || attempt.feeV2Economics.inputAsset !== (isRobinhoodNativeAssetForQuote(attempt.inputAsset)
           ? "eip155:4663/native"
           : `eip155:4663/contract:${getAddress(attempt.inputAsset).toLowerCase()}`)
@@ -329,6 +333,7 @@ export function assertVNextQuoteAttempt(
     || attempt.explicitProviderFeeOutputAtomic !== null
     || attempt.netEconomics !== null
     || attempt.settlementMode !== undefined
+    || attempt.feeV2Economics !== undefined
     || attempt.executionTarget !== undefined
     || attempt.networkFeeNativeAtomic !== null
     || attempt.networkFeeNativeSymbol !== null

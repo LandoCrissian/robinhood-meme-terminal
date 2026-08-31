@@ -7,6 +7,7 @@ import {
   type RmtExecutionFeeV2Policy,
   type RmtExecutionFeeV2SettlementMode
 } from "./execution-fee-policy-v2";
+import { RMT_UNISWAP_V3_V2_IMPLEMENTATION_ID } from "./uniswap-v3-fee-executor-v2";
 
 export type VNextQuoteOnlyFeeSettlement = {
   state: "QUOTE_ONLY";
@@ -36,10 +37,10 @@ export const VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY: Readonly<Record<VNextQuoteP
     requiredImplementation: "A separately audited Uniswap V2 atomic input-fee settlement path."
   }),
   "uniswap-v3": Object.freeze({
-    state: "QUOTE_ONLY", requiredMode: "v2-atomic-input-fee", implementationId: null,
+    state: "V2_ATOMIC_INPUT_FEE", requiredMode: "v2-atomic-input-fee", implementationId: RMT_UNISWAP_V3_V2_IMPLEMENTATION_ID,
     walletCodecImplemented: true,
-    currentSettlement: "RMT_EXECUTION_V1 is atomic only for admitted settlement assets; direct Router02 fallback is fee-free.",
-    requiredImplementation: "Universal Uniswap V3 atomic input-fee executor V2 without a per-token allowlist."
+    currentSettlement: "The deployed RMTUniswapV3FeeExecutorV2 is source-admitted behind exact server-only policy and executor gates.",
+    requiredImplementation: "Exact deployed V2 runtime, immutable policy verification, and explicit Production activation."
   }),
   "uniswap-v4": Object.freeze({
     state: "QUOTE_ONLY", requiredMode: "v2-atomic-input-fee", implementationId: null,

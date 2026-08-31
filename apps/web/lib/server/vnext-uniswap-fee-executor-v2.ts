@@ -45,6 +45,25 @@ export type VNextUniswapFeeExecutorV2Config = {
   policy: RmtExecutionFeeV2Policy;
 };
 
+export function isVNextUniswapV3V2AuthorizationEnabled(
+  env: NodeJS.ProcessEnv = process.env
+) {
+  const enabled = env.RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED;
+  if (enabled === undefined || enabled === "false") return false;
+  if (enabled !== "true") {
+    throw new Error("RMT Uniswap V3 V2 authorization gate must be exact lowercase true or false.");
+  }
+  return true;
+}
+
+export function requireVNextUniswapV3V2AuthorizationEnabled(
+  env: NodeJS.ProcessEnv = process.env
+) {
+  if (!isVNextUniswapV3V2AuthorizationEnabled(env)) {
+    throw new Error("RMT Uniswap V3 V2 wallet authorization is disabled.");
+  }
+}
+
 function required(env: NodeJS.ProcessEnv, name: string) {
   const value = env[name]?.trim();
   if (!value) throw new Error(`RMT Uniswap V3 V2 execution is configured incompletely (${name}).`);
@@ -74,7 +93,8 @@ export function configuredVNextUniswapFeeExecutorV2(
 const client = createPublicClient({
   chain: robinhoodChain,
   transport: http(
-    process.env.RMT_MAINNET_RPC_URL
+    process.env.RMT_RPC_URL
+      ?? process.env.RMT_MAINNET_RPC_URL
       ?? process.env.ROBINHOOD_MAINNET_RPC_URL
       ?? process.env.NEXT_PUBLIC_RMT_RPC_URL
       ?? robinhoodChain.rpcUrls.default.http[0],
@@ -90,8 +110,24 @@ async function readExecutor<T>(address: Address, functionName: string) {
   }) as Promise<T>;
 }
 
+export function assertVNextUniswapV3V2PolicyBlock(input: {
+  currentBlock: bigint;
+  fromBlock: bigint;
+  beforeBlock: bigint;
+  requireEffective?: boolean;
+}) {
+  if (input.beforeBlock !== 0n && input.currentBlock >= input.beforeBlock) {
+    throw new Error("RMT Uniswap V3 V2 executor immutable policy or dependency identity changed.");
+  }
+  if (input.requireEffective !== false && input.currentBlock < input.fromBlock) {
+    throw new Error(`RMT_EXECUTION_V2 policy is not effective until block ${input.fromBlock}.`);
+  }
+  return input.currentBlock >= input.fromBlock;
+}
+
 export async function verifyConfiguredVNextUniswapFeeExecutorV2(
-  config: VNextUniswapFeeExecutorV2Config
+  config: VNextUniswapFeeExecutorV2Config,
+  options: { requirePolicyEffective?: boolean } = {}
 ) {
   assertRmtExecutionFeeV2Policy(config.policy);
   // The infrastructure verifier performs the fresh EIP-1967 slot read that
@@ -142,8 +178,17 @@ export async function verifyConfiguredVNextUniswapFeeExecutorV2(
     || Number(feeBps) !== 25
     || policyFromBlock !== BigInt(config.policy.effectiveBoundary.fromBlock)
     || policyBeforeBlock !== BigInt(config.policy.effectiveBoundary.beforeBlock ?? "0")
-    || currentPolicyBlock < policyFromBlock
-    || (policyBeforeBlock !== 0n && currentPolicyBlock >= policyBeforeBlock)
   ) throw new Error("RMT Uniswap V3 V2 executor immutable policy or dependency identity changed.");
-  return { ...config, infrastructure, verifiedAtBlock: currentPolicyBlock.toString() };
+  const policyEffective = assertVNextUniswapV3V2PolicyBlock({
+    currentBlock: currentPolicyBlock,
+    fromBlock: policyFromBlock,
+    beforeBlock: policyBeforeBlock,
+    requireEffective: options.requirePolicyEffective
+  });
+  return {
+    ...config,
+    infrastructure,
+    verifiedAtBlock: currentPolicyBlock.toString(),
+    policyEffective
+  };
 }

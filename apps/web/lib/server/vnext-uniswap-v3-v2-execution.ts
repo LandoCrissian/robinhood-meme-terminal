@@ -56,7 +56,8 @@ export type VerifiedVNextUniswapFeeExecutorV2Config = VNextUniswapFeeExecutorV2C
 const client = createPublicClient({
   chain: robinhoodChain,
   transport: http(
-    process.env.RMT_MAINNET_RPC_URL
+    process.env.RMT_RPC_URL
+      ?? process.env.RMT_MAINNET_RPC_URL
       ?? process.env.ROBINHOOD_MAINNET_RPC_URL
       ?? process.env.NEXT_PUBLIC_RMT_RPC_URL
       ?? robinhoodChain.rpcUrls.default.http[0],
@@ -71,11 +72,12 @@ function assetId(address: Address) {
 }
 
 async function resolveConfig(
-  configured: VerifiedVNextUniswapFeeExecutorV2Config | null | undefined
+  configured: VerifiedVNextUniswapFeeExecutorV2Config | null | undefined,
+  requirePolicyEffective = true
 ) {
   if (configured !== undefined) return configured;
   const config = configuredVNextUniswapFeeExecutorV2();
-  return config ? verifyConfiguredVNextUniswapFeeExecutorV2(config) : null;
+  return config ? verifyConfiguredVNextUniswapFeeExecutorV2(config, { requirePolicyEffective }) : null;
 }
 
 export async function quoteVNextUniswapForUserV2(input: {
@@ -83,8 +85,9 @@ export async function quoteVNextUniswapForUserV2(input: {
   outputAsset: Address;
   userGrossInput: bigint;
   config?: VerifiedVNextUniswapFeeExecutorV2Config | null;
+  quoteProvider?: typeof quoteVNextUniswapDirect;
 }) {
-  const config = await resolveConfig(input.config);
+  const config = await resolveConfig(input.config, false);
   if (!config) return null;
   const requestedInputAsset = getAddress(input.inputAsset);
   const requestedOutputAsset = getAddress(input.outputAsset);
@@ -93,7 +96,7 @@ export async function quoteVNextUniswapForUserV2(input: {
   const fee = input.userGrossInput * 25n / 10_000n;
   const providerInput = input.userGrossInput - fee;
   if (input.userGrossInput <= 0n || providerInput <= 0n) throw new Error("RMT V2 fee leaves no Uniswap provider input.");
-  const quote = await quoteVNextUniswapDirect({
+  const quote = await (input.quoteProvider ?? quoteVNextUniswapDirect)({
     inputAsset: routedInputAsset,
     outputAsset: routedOutputAsset,
     amountIn: providerInput
@@ -122,16 +125,20 @@ export async function evaluateVNextUniswapRouteV2(input: {
   deadlineSeconds?: bigint;
   nowMs?: number;
   config?: VerifiedVNextUniswapFeeExecutorV2Config | null;
+  quoteProvider?: typeof quoteVNextUniswapDirect;
 }) {
   if (!/^0x[0-9a-fA-F]{64}$/.test(input.executionId) || input.executionId === `0x${"0".repeat(64)}`) {
     throw new Error("RMT Uniswap V3 V2 execution requires an exact nonzero execution ID.");
   }
   const recipient = getAddress(input.recipient);
+  const effectiveConfig = await resolveConfig(input.config, true);
+  if (!effectiveConfig) throw new Error("RMT Uniswap V3 V2 wallet authorization is not configured.");
   const quoted = await quoteVNextUniswapForUserV2({
     inputAsset: input.inputAsset,
     outputAsset: input.outputAsset,
     userGrossInput: input.amountIn,
-    config: input.config
+    config: effectiveConfig,
+    ...(input.quoteProvider ? { quoteProvider: input.quoteProvider } : {})
   });
   if (!quoted) throw new Error("RMT Uniswap V3 V2 execution is quote-only until the executor is configured and verified.");
   const { config, quote, requestedInputAsset, requestedOutputAsset } = quoted;

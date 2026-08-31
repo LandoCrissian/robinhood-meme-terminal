@@ -13,7 +13,7 @@ import {
 import { robinhoodChain } from "@rmt/shared/chains";
 import { ROBINHOOD_SWAP_ROUTER_02, ROBINHOOD_V3_FACTORY, ROBINHOOD_V3_QUOTER, ROBINHOOD_WETH } from "../uniswap-v4";
 import { ROBINHOOD_USDG_ADDRESS, isRobinhoodNativeAsset } from "../vnext/robinhood-assets";
-import { directNoRmtFeeSettlement, VNEXT_DIRECT_NO_RMT_FEE, VNEXT_LEGACY_V1_FEE } from "../vnext/execution-settlement";
+import { directNoRmtFeeSettlement, VNEXT_DIRECT_NO_RMT_FEE, VNEXT_LEGACY_V1_FEE, VNEXT_V2_ATOMIC_INPUT_FEE } from "../vnext/execution-settlement";
 import {
   calculateRmtFeeFloor,
   normalizeDisabledRmtFee,
@@ -35,6 +35,10 @@ import {
   verifyConfiguredVNextUniswapFeeExecutor,
   vNextFeeAssetId
 } from "./vnext-uniswap-fee-executor";
+import {
+  configuredVNextUniswapFeeExecutorV2,
+  isVNextUniswapV3V2AuthorizationEnabled
+} from "./vnext-uniswap-fee-executor-v2";
 
 const FEES = [100, 500, 3_000, 10_000] as const;
 const BPS = 10_000n;
@@ -261,7 +265,14 @@ export function selectVNextUniswapV3SettlementMode(input: {
   inputAsset: Address;
   outputAsset: Address;
   recipient: Address;
+  v2Configured?: boolean;
 }) {
+  if (isVNextUniswapV3V2AuthorizationEnabled()) {
+    if (input.v2Configured !== true && !configuredVNextUniswapFeeExecutorV2()) {
+      throw new Error("RMT Uniswap V3 V2 authorization is enabled without a complete executor policy.");
+    }
+    return VNEXT_V2_ATOMIC_INPUT_FEE;
+  }
   const configured = configuredVNextUniswapFeeExecutor();
   if (!configured || !isVNextUniswapFeeRecipientEligible(configured, input.recipient)) {
     return VNEXT_DIRECT_NO_RMT_FEE;

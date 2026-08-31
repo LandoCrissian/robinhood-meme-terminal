@@ -81,7 +81,8 @@ export async function POST(request: Request) {
     }
     const evidenceChanged = prepared.evidence.status !== parsed.data.expectedStatus
       || BigInt(prepared.evidence.protectedOutputAtomic) < BigInt(parsed.data.expectedProtectedOutputAtomic)
-      || (parsed.data.executionId !== undefined && prepared.evidence.feeExecution?.executionId !== parsed.data.executionId);
+      || (parsed.data.executionId !== undefined
+        && (prepared.evidence.feeExecution?.executionId ?? prepared.evidence.feeV2Settlement?.executionId) !== parsed.data.executionId);
     if (evidenceChanged) {
       return Response.json({ error: "Route evidence changed. Verify the route again." }, { status: 409, headers: noStore });
     }
@@ -160,7 +161,7 @@ export async function POST(request: Request) {
     if (projectIdentityResponse) return projectIdentityResponse;
     const stockTokenResponse = stockTokenExecutionPolicyErrorResponse(cause);
     if (stockTokenResponse) return stockTokenResponse;
-    const message = cause instanceof Error && /deadline is stale|exact next action is not ready|wallet authorization is not available|rejected Uniswap V4 execution/.test(cause.message)
+    const message = cause instanceof Error && /deadline is stale|exact next action is not ready|wallet authorization is not available|V2 wallet authorization is disabled|V2 authorization is enabled without a complete executor policy|RMT_EXECUTION_V2 policy is not effective until block|rejected Uniswap V4 execution/.test(cause.message)
       ? cause.message
       : "Unable to prepare an exact wallet-review payload.";
     return Response.json({ error: message }, { status: 422, headers: noStore });

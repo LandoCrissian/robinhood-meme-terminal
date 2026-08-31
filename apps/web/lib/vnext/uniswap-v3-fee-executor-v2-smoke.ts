@@ -6,11 +6,14 @@ import {
   type VNextQuoteProviderAdapter
 } from "../server/vnext-provider-adapter";
 import {
+  assertVNextUniswapV3V2PolicyBlock,
   configuredVNextUniswapFeeExecutorV2,
+  isVNextUniswapV3V2AuthorizationEnabled,
   RMT_UNISWAP_V3_V2_IMPLEMENTATION_ID
 } from "../server/vnext-uniswap-fee-executor-v2";
-import { vNextUniswapV3Adapter } from "../server/vnext-uniswap-v3-adapter";
+import { createVNextUniswapV3Adapter, vNextUniswapV3Adapter } from "../server/vnext-uniswap-v3-adapter";
 import {
+  quoteVNextUniswapForUserV2,
   requiresExactV2TraderApproval,
   vNextUniswapV3V2Capability
 } from "../server/vnext-uniswap-v3-v2-execution";
@@ -112,6 +115,8 @@ assertVNextQuoteAttempt({
   gasSponsorshipFeeAtomic: null,
   explicitProviderFeeOutputAtomic: null,
   netEconomics: null,
+  settlementMode: VNEXT_V2_ATOMIC_INPUT_FEE,
+  executionTarget: executor,
   feeV2Economics: economics,
   networkFeeNativeAtomic: null,
   networkFeeNativeSymbol: "ETH",
@@ -362,9 +367,9 @@ assert.equal(manifest.deploymentEvidence.matchingSuccessfulDeploymentTransaction
 assert.equal(manifest.deploymentEvidence.duplicateSuccessfulDeploymentTransactions, 0);
 assert.equal(manifest.deploymentEvidence.deployerNonceAfter, 203);
 assert.equal(manifest.deploymentEvidence.v1ExecutorUnchanged, true);
-assert.equal(manifest.applicationWiring.quote, "CODE_CHANGE_REQUIRED");
-assert.equal(manifest.applicationWiring.authorize, "CODE_CHANGE_REQUIRED");
-assert.equal(manifest.applicationWiring.providerRegistry, "QUOTE_ONLY");
+assert.equal(manifest.applicationWiring.quote, "READY");
+assert.equal(manifest.applicationWiring.authorize, "READY");
+assert.equal(manifest.applicationWiring.providerRegistry, "V2_ATOMIC_INPUT_FEE_SOURCE_ADMITTED");
 
 const prepared = await prepareVNextProviderAuthorization("uniswap-v3", {
   chainId: 4_663,
@@ -400,7 +405,7 @@ assert.throws(
   /canonical WETH implementation address changed/
 );
 
-assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v3"].state, "QUOTE_ONLY");
+assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v3"].state, "V2_ATOMIC_INPUT_FEE");
 assert.equal(vNextUniswapV3Adapter.capabilities.walletAuthorization, true);
 assert.equal(configuredVNextUniswapFeeExecutorV2({ NODE_ENV: "test" }), null);
 assert.throws(() => configuredVNextUniswapFeeExecutorV2({
@@ -411,6 +416,84 @@ assert.throws(() => configuredVNextUniswapFeeExecutorV2({
   NODE_ENV: "test",
   RMT_VNEXT_UNISWAP_V3_V2_EXECUTOR_ENABLED: "TRUE"
 }), /exact lowercase true or false/);
+assert.equal(isVNextUniswapV3V2AuthorizationEnabled({ NODE_ENV: "test" }), false);
+assert.equal(isVNextUniswapV3V2AuthorizationEnabled({
+  NODE_ENV: "test", RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED: "true"
+}), true);
+assert.throws(() => isVNextUniswapV3V2AuthorizationEnabled({
+  NODE_ENV: "test", RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED: "TRUE"
+}), /exact lowercase true or false/);
+assert.throws(() => assertVNextUniswapV3V2PolicyBlock({
+  currentBlock: 99n, fromBlock: 100n, beforeBlock: 0n
+}), /not effective until block 100/);
+assert.equal(assertVNextUniswapV3V2PolicyBlock({
+  currentBlock: 99n, fromBlock: 100n, beforeBlock: 0n, requireEffective: false
+}), false, "pre-boundary observation remains truthful while authorization is denied");
+assert.equal(assertVNextUniswapV3V2PolicyBlock({
+  currentBlock: 100n, fromBlock: 100n, beforeBlock: 0n
+}), true);
+
+const savedV2Gate = process.env.RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED;
+process.env.RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED = "true";
+try {
+  const verifiedConfig = { executor, executorRuntimeHash, policy, verifiedAtBlock: "101" };
+  const quoteProvider = async ({ inputAsset: routedInput, outputAsset: routedOutput, amountIn }: {
+    inputAsset: typeof inputAsset; outputAsset: typeof outputAsset; amountIn: bigint;
+  }) => ({
+    route: "direct" as const,
+    fees: [500], pools: [pool], quoteOut: 1_000n, gasEstimate: 100_000n,
+    inputAsset: routedInput, outputAsset: routedOutput, amountIn, minimumOut: 990n
+  });
+  const quoteAdapter = createVNextUniswapV3Adapter({
+    walletAuthorization: true,
+    v2Config: verifiedConfig,
+    v2QuoteProvider: quoteProvider
+  });
+  const attempt = await quoteAdapter.quote({
+    chainId: 4_663, inputAsset, outputAsset, amountIn: 40_000n, inputAmountAtomic: "40000",
+    recipient: trader,
+    inputIdentity: { address: inputAsset, symbol: "IN", decimals: 18 },
+    outputIdentity: { address: outputAsset, symbol: "OUT", decimals: 18 }
+  });
+  assert.equal(attempt.status, "indicative");
+  assert.equal(attempt.settlementMode, VNEXT_V2_ATOMIC_INPUT_FEE);
+  assert.equal(attempt.feeV2Economics?.expectedFeeAtomic, "100");
+  assert.equal(attempt.feeV2Economics?.providerInputAtomic, "39900");
+  assert.equal(attempt.executionTarget, executor);
+  assert.equal(attempt.netEconomics, null);
+
+  const nativeBuy = await quoteVNextUniswapForUserV2({
+    inputAsset: zeroAddress, outputAsset, userGrossInput: 100_000n,
+    config: verifiedConfig, quoteProvider
+  });
+  assert.equal(nativeBuy?.economics.expectedFeeAtomic, "250");
+  assert.equal(nativeBuy?.economics.providerInputAtomic, "99750");
+  assert.equal(nativeBuy?.economics.feeAsset, "eip155:4663/native");
+
+  const tokenSell = await quoteVNextUniswapForUserV2({
+    inputAsset, outputAsset: zeroAddress, userGrossInput: 100_000n,
+    config: verifiedConfig, quoteProvider
+  });
+  assert.equal(tokenSell?.economics.expectedFeeAtomic, "250");
+  assert.equal(tokenSell?.economics.providerInputAtomic, "99750");
+  assert.equal(tokenSell?.economics.feeAsset, `eip155:4663/contract:${inputAsset.toLowerCase()}`);
+  assert.equal(tokenSell?.economics.outputAsset, "eip155:4663/native");
+
+  const wethHop = await quoteVNextUniswapForUserV2({
+    inputAsset, outputAsset, userGrossInput: 100_000n, config: verifiedConfig,
+    quoteProvider: async ({ inputAsset: routedInput, outputAsset: routedOutput, amountIn }) => ({
+      route: "weth_hop" as const, fees: [500, 3_000], pools: [pool, executor],
+      quoteOut: 900n, gasEstimate: 140_000n, inputAsset: routedInput,
+      outputAsset: routedOutput, amountIn, minimumOut: 891n
+    })
+  });
+  assert.equal(wethHop?.quote.route, "weth_hop");
+  assert.deepEqual(wethHop?.quote.fees, [500, 3_000]);
+  assert.equal(wethHop?.economics.providerInputAtomic, "99750");
+} finally {
+  if (savedV2Gate === undefined) delete process.env.RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED;
+  else process.env.RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED = savedV2Gate;
+}
 
 console.log("RMT Uniswap V3 universal atomic fee executor V2 smoke checks passed.");
 }

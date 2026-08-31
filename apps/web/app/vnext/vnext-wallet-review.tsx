@@ -74,11 +74,11 @@ export function VNextWalletFeeDisclosure({
     {planKind === "erc20_approval" ? <small>Planned trade fee: {feeV2.feeBps / 100}% of gross trade input · {formatUnits(BigInt(feeV2.expectedFeeAtomic), inputDecimals)} {inputSymbol}. It is not collected during approval.</small> : null}
     <dl>
       <div><dt>Gross input</dt><dd>{formatUnits(BigInt(feeV2.userGrossInputAtomic), inputDecimals)} {inputSymbol}</dd></div>
-      <div><dt>Exact fee / asset</dt><dd>{formatUnits(BigInt(feeV2.expectedFeeAtomic), inputDecimals)} {inputSymbol}</dd></div>
+      <div><dt>Exact fee / asset</dt><dd>{formatUnits(BigInt(feeV2.expectedFeeAtomic), inputDecimals)} {inputSymbol} · paid in the sold/input asset</dd></div>
       <div><dt>Provider input</dt><dd>{formatUnits(BigInt(feeV2.providerInputAtomic), inputDecimals)} {inputSymbol}</dd></div>
       <div><dt>Expected receive</dt><dd>{formatUnits(BigInt(feeV2.expectedUserNetOutputAtomic), outputDecimals)} {outputSymbol}</dd></div>
       <div><dt>Protected minimum</dt><dd>{formatUnits(BigInt(feeV2.protectedUserNetOutputAtomic), outputDecimals)} {outputSymbol}</dd></div>
-      <div><dt>Provider</dt><dd>Uniswap V3</dd></div>
+      <div><dt>Provider</dt><dd>Uniswap V3 · RMT atomic settlement V2</dd></div>
       <div><dt>Settlement</dt><dd>Atomic with swap</dd></div>
       <div><dt>Treasury</dt><dd><ExplorerLink kind="address" value={feeV2.treasury} accessibleName="Open RMT V2 fee treasury in Robinhood Chain explorer">{feeV2.treasury.slice(0, 6)}…{feeV2.treasury.slice(-4)} ↗</ExplorerLink></dd></div>
       <div><dt>Execution target</dt><dd><ExplorerLink kind="address" value={evidence.feeV2Settlement.executionTarget} accessibleName="Open RMT V2 executor in Robinhood Chain explorer">RMT V2 executor · {evidence.feeV2Settlement.executionTarget.slice(0, 6)}…{evidence.feeV2Settlement.executionTarget.slice(-4)} ↗</ExplorerLink></dd></div>

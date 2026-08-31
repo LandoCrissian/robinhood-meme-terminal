@@ -206,15 +206,15 @@
     "failedOrRevertedFee": "zero"
   },
   "applicationWiring": {
-    "quote": "CODE_CHANGE_REQUIRED",
+    "quote": "READY",
     "verify": "READY",
-    "authorize": "CODE_CHANGE_REQUIRED",
+    "authorize": "READY",
     "walletReview": "READY",
     "prehashJournal": "READY",
     "receiptRecovery": "READY",
     "confirmationUi": "READY",
-    "providerRegistry": "QUOTE_ONLY",
-    "blocker": "The ordinary V3 quote path still selects V1/direct settlement and the global uniswap-v3 V2 registry entry remains QUOTE_ONLY. Contract deployment alone does not admit V2 production authorization."
+    "providerRegistry": "V2_ATOMIC_INPUT_FEE_SOURCE_ADMITTED",
+    "blocker": "Source admission is complete, but every V2 gate defaults false. Owner-controlled bidirectional canaries and a separate Production activation remain required."
   },
   "canaryPlan": {
     "tokenSelection": "At canary time choose the highest-liquidity verified ERC20 for which normal net route ranking independently selects Uniswap V3 V2; do not hardcode PONS.",
