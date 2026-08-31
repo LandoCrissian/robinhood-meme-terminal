@@ -375,20 +375,21 @@ const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx
 const recoveryHook = readFileSync(new URL("../../app/vnext/use-vnext-execution-recovery.ts", import.meta.url), "utf8");
 const recoveryBanner = readFileSync(new URL("../../app/vnext/vnext-execution-recovery-banner.tsx", import.meta.url), "utf8");
 const discoveryServer = readFileSync(new URL("../server/vnext-wallet-request-discovery.ts", import.meta.url), "utf8");
-assert.ok(walletReview.indexOf("recordPreparedVNextWalletRequest") < walletReview.indexOf("submission.sendTransactionAsync"));
-assert.ok(walletReview.indexOf('"PROMPT_REQUESTED"') < walletReview.indexOf("submission.sendTransactionAsync"));
-assert.ok(walletReview.indexOf("withVNextWalletRequestLock") < walletReview.indexOf("submission.sendTransactionAsync"));
+assert.ok(walletReview.indexOf("recordPreparedVNextWalletRequest") < walletReview.lastIndexOf("invokeVNextExternalWalletRequest"));
+assert.ok(walletReview.indexOf('"PROMPT_REQUESTED"') < walletReview.lastIndexOf("invokeVNextExternalWalletRequest"));
+assert.ok(walletReview.indexOf("withVNextWalletRequestLock") < walletReview.lastIndexOf("invokeVNextExternalWalletRequest"));
 assert.match(walletReview, /A wallet request is already active\./);
 assert.match(walletReview, /isVNextUserRejectedRequest/);
 assert.doesNotMatch(walletReview, /rejected\|denied\|cancelled\|canceled/);
 assert.match(walletReview, /Wallet request is still unresolved\. Check the wallet and do not retry\./);
 assert.match(walletReview, /Wallet request was rejected by the owner\. Nothing was broadcast\./);
-assert.match(walletReview, /Review verified swap in wallet/);
+assert.match(walletReview, /Review verified swap in/);
 assert.match(walletReview, /Refresh verified request/);
 assert.doesNotMatch(walletReview, /autoRequest/);
 assert.doesNotMatch(composer, /<VNextWalletReview[\s\S]{0,80}autoRequest/);
-assert.match(composer, /open=\{authorizationState\.state === "ready" \|\| undefined\}/,
-  "the explicit wallet-review action becomes visible when authorization completes without invoking the provider");
+assert.ok(composer.indexOf("<VNextWalletReview") < composer.indexOf('<details className="vnRouteCard">'),
+  "the explicit wallet-review action becomes visible on the primary surface without invoking the provider");
+assert.doesNotMatch(composer, /vnRouteCard" open=/, "Advanced details must not become a nested mobile scroll trap");
 assert.match(composer, /<dt>Network<\/dt><dd>Robinhood Chain · 4663<\/dd>/);
 assert.match(composer, /<dt>Protected minimum<\/dt>/);
 assert.match(recoveryHook, /wallet-request-recovery/);

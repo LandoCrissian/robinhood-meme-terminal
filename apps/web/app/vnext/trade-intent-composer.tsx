@@ -949,37 +949,60 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         <span><small>RMT execution fee</small><strong>{bestQuote.feeV2Economics.feeBps / 100}% · {formatAtomicDisplay(bestQuote.feeV2Economics.expectedFeeAtomic, pair.inputAsset.decimals ?? 18)} {inputSymbol}</strong></span>
         <span><small>Provider input</small><strong>{formatAtomicDisplay(bestQuote.feeV2Economics.providerInputAtomic, pair.inputAsset.decimals ?? 18)} {inputSymbol}</strong></span>
       </div> : null}
-      <button
-        className="vnReviewButton"
-        type="button"
-        disabled={!authorizationEnabled || stockTokenViewOnly || flowBusy || walletPlanActive || transactionPending || amountExceedsBalance || !identity.enabled || !identity.ready || Boolean(identity.authenticated && address && identity.activeWalletKind === "external" && !draft.intent)}
-        aria-describedby={stockTokenViewOnly ? "vn-stock-token-execution-policy" : previewOnly ? "vn-preview-execution-policy" : undefined}
-        onClick={triggerPrimaryAction}
-      >{stockTokenViewOnly
-        ? "View only"
-        : previewOnly
-          ? "Trading activation pending"
-        : postExecutionState.state === "refreshing"
-        ? "Preparing verified swap…"
-        : transactionPending
-          ? "Transaction confirming…"
-          : walletPlanActive
-            ? "Complete review in wallet…"
-          : flowBusy
-            ? "Finding best execution…"
-            : !identity.enabled
-              ? "Trading identity unavailable"
-            : !address || identity.activeWalletKind !== "external"
-              ? `${side === "buy" ? "Connect & buy" : "Connect & sell"} ${marketSymbol}`
-            : !identity.authenticated
-              ? `${side === "buy" ? "Connect & buy" : "Connect & sell"} ${marketSymbol}`
-              : `${side === "buy" ? "Buy" : "Sell"} ${marketSymbol}`}</button>
+      {authorizationState.state === "ready" && visibleVerification ? <section className="vnWalletPrimaryReview" aria-label="Verified external wallet request">
+        <span><strong>Verified request ready</strong><small>Nothing opens automatically. Use the explicit action below when the selected external wallet is unlocked.</small></span>
+        <dl>
+          <div><dt>Exact input</dt><dd>{formatAtomicDisplay(authorizationState.plan.inputAmountAtomic, pair?.inputAsset.decimals ?? 18)} {inputSymbol}</dd></div>
+          <div><dt>Expected output</dt><dd>{formatAtomicDisplay(visibleVerification.expectedOutputAtomic, pair?.outputAsset.decimals ?? 18)} {outputSymbol}</dd></div>
+          <div><dt>Protected minimum</dt><dd>{formatAtomicDisplay(authorizationState.plan.protectedOutputAtomic, pair?.outputAsset.decimals ?? 18)} {outputSymbol}</dd></div>
+          <div><dt>Route</dt><dd>{visibleVerification.route === "v4_pool" ? "Canonical V4 PoolKey" : visibleVerification.route === "direct" ? `Direct ${visibleVerification.provider === "uniswap-v2" || visibleVerification.provider === "up-v2" ? "V2" : "V3"}` : "V3 via WETH"}</dd></div>
+          <div><dt>Target</dt><dd>{shortAddress(authorizationState.plan.target)}</dd></div>
+          <div><dt>RMT platform fee</dt><dd>0</dd></div>
+        </dl>
+        <VNextWalletReview
+          key={authorizationState.plan.planId}
+          plan={authorizationState.plan}
+          evidence={visibleVerification}
+          onRefresh={() => void startTrade()}
+          inputSymbol={inputSymbol}
+          outputSymbol={outputSymbol}
+          inputDecimals={pair?.inputAsset.decimals ?? 18}
+          outputDecimals={pair?.outputAsset.decimals ?? 18}
+          selectedWalletKey={identity.activeWalletKey}
+          selectedWalletKind={identity.activeWalletKind}
+          selectedWalletName={identity.activeWalletName}
+        />
+      </section> : <button
+          className="vnReviewButton"
+          type="button"
+          disabled={!authorizationEnabled || stockTokenViewOnly || flowBusy || transactionPending || amountExceedsBalance || !identity.enabled || !identity.ready || Boolean(identity.authenticated && address && identity.activeWalletKind === "external" && !draft.intent)}
+          aria-describedby={stockTokenViewOnly ? "vn-stock-token-execution-policy" : previewOnly ? "vn-preview-execution-policy" : undefined}
+          onClick={triggerPrimaryAction}
+        >{stockTokenViewOnly
+          ? "View only"
+          : previewOnly
+            ? "Trading activation pending"
+          : postExecutionState.state === "refreshing"
+          ? "Preparing verified swap…"
+          : transactionPending
+            ? "Transaction confirming…"
+            : flowBusy
+              ? "Finding best execution…"
+              : !identity.enabled
+                ? "Trading identity unavailable"
+              : !address || identity.activeWalletKind !== "external"
+                ? `${side === "buy" ? "Connect & buy" : "Connect & sell"} ${marketSymbol}`
+              : !identity.authenticated
+                ? `${side === "buy" ? "Connect & buy" : "Connect & sell"} ${marketSymbol}`
+                : `${side === "buy" ? "Buy" : "Sell"} ${marketSymbol}`}</button>}
       <p className="vnTradeSafety" id={stockTokenViewOnly ? "vn-stock-token-execution-policy" : previewOnly ? "vn-preview-execution-policy" : undefined}>{stockTokenViewOnly
         ? "Official Robinhood Stock Tokens are view-only in RMT until jurisdiction controls are available. Indicative market and route information remains available."
         : previewOnly
           ? "Preview mode shows informational routes only. RMT will not connect your wallet or prepare a transaction until verified execution is activated."
+        : walletPlanActive
+          ? "The verified request is ready. Only your explicit wallet-review action can send it to the selected external wallet."
         : identity.enabled
-          ? "One tap checks the best route and opens the final wallet confirmation."
+          ? "One tap checks the best route and prepares an explicit external-wallet review."
         : "Trading identity is not configured in this environment. RMT will not request a quote or prepare a wallet transaction."}</p>
       {postExecutionState.state !== "idle" ? <div className={`vnPostExecution is${postExecutionState.state}`} role="status">
         <strong>{postExecutionState.state === "approval_confirmed"
@@ -997,7 +1020,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
                   : "Fresh verification blocked"}</strong>
         <small>{postExecutionState.message}</small>
       </div> : null}
-      <details className="vnRouteCard" open={authorizationState.state === "ready" || undefined}>
+      <details className="vnRouteCard">
         <summary className="vnRouteTop"><span><i aria-hidden="true" /> Advanced details</span><strong>{routeStatusLabel}</strong></summary>
         <div className="vnRouteDetails">
         <dl className="vnIntentSummary">
@@ -1089,16 +1112,6 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
                 <div><dt>Payload</dt><dd>{shortAddress(authorizationState.plan.payloadHash)}</dd></div>
                 <div><dt>Expires</dt><dd>{new Date(authorizationState.plan.expiresAtMs).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}</dd></div>
               </dl>
-              <VNextWalletReview
-                key={authorizationState.plan.planId}
-                plan={authorizationState.plan}
-                evidence={visibleVerification}
-                onRefresh={() => void startTrade()}
-                inputSymbol={inputSymbol}
-                outputSymbol={outputSymbol}
-                inputDecimals={pair?.inputAsset.decimals ?? 18}
-                outputDecimals={pair?.outputAsset.decimals ?? 18}
-              />
             </div> : null}
           </div> : null}
         </div> : null}

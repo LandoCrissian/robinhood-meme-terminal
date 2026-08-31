@@ -2847,12 +2847,38 @@ async function inspectV4FreshWalletSellJourney(browser, fixture) {
 }
 
 async function inspectWalletPromptReloadAndCrossTab(browser, fixture) {
+  const auditPrimaryWalletHandoff = async (page, label) => {
+    const primary = page.locator(".vnWalletPrimaryReview");
+    await primary.waitFor({ state: "visible", timeout: 30_000 });
+    const text = await primary.innerText();
+    for (const expected of [
+      "Verified request ready",
+      "Nothing opens automatically",
+      "External signer",
+      "Deterministic browser wallet",
+      "0x3333…3333",
+      "Robinhood Chain · 4663",
+      "Protected minimum",
+      "RMT platform fee",
+      "Wallet review window"
+    ]) {
+      if (!text.includes(expected)) throw new Error(`${label}: primary wallet handoff omitted ${expected}: ${text}`);
+    }
+    if (/Complete review in wallet/i.test(text)) throw new Error(`${label}: authorization preparation impersonated a wallet handoff`);
+    const promptRequests = await page.evaluate(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter((method) => method === "eth_sendTransaction").length);
+    if (promptRequests !== 0) throw new Error(`${label}: wallet provider was invoked before explicit owner action`);
+    const overflow = await page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - innerWidth));
+    if (overflow > 2) throw new Error(`${label}: wallet handoff overflowed by ${overflow}px`);
+    await page.screenshot({ path: `${output}/wallet-handoff-primary-${label}.png`, fullPage: false, animations: "disabled" });
+    return { overflow, promptRequests };
+  };
+
   const openSwapPrompt = async (page, state) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await installV2WalletAcceptanceRoutes(page, fixture, state);
     await openFixtureTrade(page, true);
-    const advanced = page.locator(".vnRouteCard");
-    await advanced.evaluate((element) => { element.open = true; });
+    const viewport = page.viewportSize();
+    await auditPrimaryWalletHandoff(page, `${viewport?.width ?? "unknown"}x${viewport?.height ?? "unknown"}`);
     try {
       await page.getByRole("button", { name: "Review verified swap in wallet", exact: true }).click({ timeout: 30_000 });
     } catch (error) {
@@ -2901,12 +2927,22 @@ async function inspectWalletPromptReloadAndCrossTab(browser, fixture) {
   await replacementPage.screenshot({ path: `${output}/wallet-request-reload-mobile-390x844.png`, fullPage: false, animations: "disabled" });
   await mobileContext.close();
 
+  const mobile430State = { approved: true, receiptsAvailable: false, recoveryHash: null, quotes: 0, verifications: 0, authorizations: 0, rpcMethods: [], blockNumber: 50_000_016 };
+  const mobile430Context = await createWalletAcceptanceContext(browser, { viewport: { width: 430, height: 932 }, isMobile: true, hasTouch: true });
+  const mobile430Page = await mobile430Context.newPage();
+  await mobile430Page.emulateMedia({ reducedMotion: "reduce" });
+  await installV2WalletAcceptanceRoutes(mobile430Page, fixture, mobile430State);
+  await openFixtureTrade(mobile430Page, true);
+  const mobile430 = await auditPrimaryWalletHandoff(mobile430Page, "430x932");
+  await mobile430Context.close();
+
   const approvalState = { approved: false, receiptsAvailable: false, recoveryHash: null, quotes: 0, verifications: 0, authorizations: 0, rpcMethods: [], blockNumber: 50_000_016 };
   const approvalContext = await createWalletAcceptanceContext(browser, { viewport: { width: 1_440, height: 900 } });
   const approvalPage = await approvalContext.newPage();
   await approvalPage.emulateMedia({ reducedMotion: "reduce" });
   await installV2WalletAcceptanceRoutes(approvalPage, fixture, approvalState);
   await openFixtureTrade(approvalPage, false);
+  const desktopHandoff = await auditPrimaryWalletHandoff(approvalPage, "1440x900");
   const advancedApproval = approvalPage.locator(".vnRouteCard");
   await advancedApproval.evaluate((element) => { element.open = true; });
   await approvalPage.getByRole("button", { name: "Review exact approval in wallet", exact: true }).click();
@@ -2959,7 +2995,10 @@ async function inspectWalletPromptReloadAndCrossTab(browser, fixture) {
     unresolvedRecheckVisible: true,
     sameWalletProviderInvocations: invocations,
     prehashRecordsCreated: racePrehashCount,
-    mobileOverflow
+    mobileOverflow,
+    mobile430Overflow: mobile430.overflow,
+    desktopOverflow: desktopHandoff.overflow,
+    automaticWalletRequests: mobile430.promptRequests + desktopHandoff.promptRequests
   };
 }
 

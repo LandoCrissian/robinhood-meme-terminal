@@ -105,7 +105,13 @@ export function BrowserAcceptanceIdentityBridge({ children }: { children: ReactN
 
   const value = useMemo<RmtIdentityContextValue>(() => acceptanceEnabled ? {
     authenticated: isConnected,
-    activeWalletKey: isConnected ? "browser-acceptance-injected" : null,
+    activeWalletKey: isConnected && address && connector ? walletGatewayKey({
+      address,
+      connectorType: connector.type,
+      walletClientType: "browser-acceptance",
+      meta: { id: connector.id, name: "Deterministic browser wallet" },
+      type: "ethereum"
+    }) : null,
     activeWalletKind: isConnected ? "external" : null,
     activeWalletName: isConnected ? "Deterministic browser wallet" : null,
     clearTradingWalletPreference: () => undefined,
@@ -130,7 +136,7 @@ export function BrowserAcceptanceIdentityBridge({ children }: { children: ReactN
     userId: isConnected && address ? `browser-acceptance:${address.toLowerCase()}` : "",
     walletConnectionError: "",
     walletSelectionRequired: false
-  } : unavailableIdentity, [acceptanceEnabled, address, connectTradingWallet, isConnected]);
+  } : unavailableIdentity, [acceptanceEnabled, address, connectTradingWallet, connector, isConnected]);
 
   return <RmtIdentityContext.Provider value={value}>{children}</RmtIdentityContext.Provider>;
 }

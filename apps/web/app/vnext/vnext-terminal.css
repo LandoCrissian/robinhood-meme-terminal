@@ -2444,9 +2444,73 @@ body .rmtVnext {
   border-top: 1px solid var(--vn-border);
 }
 
+.vnWalletPrimaryReview {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(130, 242, 143, 0.32);
+  border-radius: 11px;
+  background: rgba(130, 242, 143, 0.055);
+}
+
+.vnWalletPrimaryReview > span {
+  display: grid;
+  gap: 3px;
+}
+
+.vnWalletPrimaryReview > span strong {
+  color: var(--vn-text-secondary);
+  font-size: 11px;
+}
+
+.vnWalletPrimaryReview > span small,
+.vnWalletHandoffIdentity small {
+  color: var(--vn-text-muted);
+  font-size: 8px;
+  line-height: 1.45;
+}
+
+.vnWalletPrimaryReview > dl,
+.vnWalletHandoffIdentity {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0;
+}
+
+.vnWalletPrimaryReview > dl div,
+.vnWalletHandoffIdentity > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+  padding: 8px;
+  border: 1px solid var(--vn-border);
+  border-radius: 8px;
+  background: rgba(4, 7, 5, 0.28);
+}
+
+.vnWalletPrimaryReview dt,
+.vnWalletPrimaryReview dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 8px;
+}
+
+.vnWalletPrimaryReview dt {
+  color: var(--vn-text-muted);
+}
+
+.vnWalletPrimaryReview dd,
+.vnWalletHandoffIdentity strong {
+  overflow-wrap: anywhere;
+  color: var(--vn-text-secondary);
+  font-size: 9px;
+  font-weight: 700;
+}
+
 .vnWalletSubmission > button {
   width: 100%;
-  min-height: 42px;
+  min-height: 48px;
 }
 
 .vnWalletSubmission > .fundWalletMenu,
@@ -5922,6 +5986,8 @@ body .rmtTerminal button {
   .vnRouteCard dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .vnRouteCard dl div { display: grid; align-content: start; gap: 3px; }
   .vnRouteCard dd { text-align: left; }
+  .vnWalletPrimaryReview > dl,
+  .vnWalletHandoffIdentity { grid-template-columns: 1fr; }
   .vnTradeBalance { grid-template-columns: 1fr; }
   .vnDetectedAssetList { grid-template-columns: 1fr; }
   .vnDetectedAsset { grid-template-columns: 32px minmax(0, 1fr) auto; }

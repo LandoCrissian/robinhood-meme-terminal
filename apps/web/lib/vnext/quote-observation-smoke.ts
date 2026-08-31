@@ -261,7 +261,7 @@ assert.doesNotMatch(route, /writeContract|sendTransaction|signTypedData|calldata
 assert.match(sushi, /quoteSushiAssetRoute/);
 assert.match(uniswap, /quoteExactInputSingle/);
 assert.match(composer, /\/api\/vnext\/quotes/);
-assert.match(composer, /One tap checks the best route and opens the final wallet confirmation/);
+assert.match(composer, /One tap checks the best route and prepares an explicit external-wallet review/);
 assert.match(composer, /Protected output before network fee/);
 assert.match(composer, /attempt\.userPaysGas === null \? "gas unknown"/);
 assert.doesNotMatch(composer, /writeContract|sendTransaction|signTypedData/);

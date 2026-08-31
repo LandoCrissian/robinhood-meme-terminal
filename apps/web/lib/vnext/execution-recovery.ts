@@ -164,6 +164,12 @@ export type VNextWalletRequestRecord = {
   walletNonceBeforeRequest: string;
   requestBlockNumber?: string;
   requestBlockHash?: Hash;
+  connectorId?: string;
+  connectorType?: string;
+  walletClientType?: string;
+  walletName?: string;
+  promptRequestedAtMs?: number;
+  providerPendingAtMs?: number;
   recoveryPlan?: VNextAuthorizationPlan;
   v4DirectSettlement?: VNextExecutionRecord["v4DirectSettlement"];
   state: VNextWalletRequestState;
@@ -440,6 +446,16 @@ function normalizeWalletRequest(value: unknown): VNextWalletRequestRecord | null
   const requestBlockHash = candidate.requestBlockHash === undefined
     ? undefined
     : isHash(candidate.requestBlockHash) ? candidate.requestBlockHash.toLowerCase() as Hash : null;
+  const connectorId = typeof candidate.connectorId === "string" && /^[\x20-\x7e]{1,160}$/.test(candidate.connectorId)
+    ? candidate.connectorId : undefined;
+  const connectorType = typeof candidate.connectorType === "string" && /^[\x20-\x7e]{1,80}$/.test(candidate.connectorType)
+    ? candidate.connectorType : undefined;
+  const walletClientType = typeof candidate.walletClientType === "string" && /^[\x20-\x7e]{1,80}$/.test(candidate.walletClientType)
+    ? candidate.walletClientType : undefined;
+  const walletName = typeof candidate.walletName === "string" && /^[\x20-\x7e]{1,80}$/.test(candidate.walletName)
+    ? candidate.walletName : undefined;
+  const promptRequestedAtMs = candidate.promptRequestedAtMs === undefined ? undefined : normalizeTimestamp(candidate.promptRequestedAtMs);
+  const providerPendingAtMs = candidate.providerPendingAtMs === undefined ? undefined : normalizeTimestamp(candidate.providerPendingAtMs);
   const v4Candidate = candidate.planKind === "swap" ? candidate.v4DirectSettlement : undefined;
   const v4DirectSettlement = v4Candidate === undefined ? undefined : (
     candidate.provider === "uniswap-v4"
@@ -503,7 +519,8 @@ function normalizeWalletRequest(value: unknown): VNextWalletRequestRecord | null
     || !/^[1-9][0-9]*$/.test(candidate.finalOnchainDeadline ?? "")
     || !planExpiresAtMs || !requestedAtMs || !updatedAtMs || updatedAtMs < requestedAtMs
     || !/^(0|[1-9][0-9]*)$/.test(candidate.walletNonceBeforeRequest ?? "")
-    || requestBlockNumber === null || requestBlockHash === null || v4DirectSettlement === null || recoveryPlan === null
+    || requestBlockNumber === null || requestBlockHash === null || promptRequestedAtMs === null || providerPendingAtMs === null
+    || v4DirectSettlement === null || recoveryPlan === null
     || (requestBlockHash !== undefined && requestBlockNumber === undefined)
     || (candidate.provider === "uniswap-v4" && candidate.planKind === "swap" && v4DirectSettlement === undefined)
     || !candidate.state || !WALLET_REQUEST_STATES.has(candidate.state)
@@ -533,6 +550,12 @@ function normalizeWalletRequest(value: unknown): VNextWalletRequestRecord | null
     walletNonceBeforeRequest: candidate.walletNonceBeforeRequest!,
     ...(requestBlockNumber !== undefined ? { requestBlockNumber } : {}),
     ...(requestBlockHash !== undefined ? { requestBlockHash } : {}),
+    ...(connectorId ? { connectorId } : {}),
+    ...(connectorType ? { connectorType } : {}),
+    ...(walletClientType ? { walletClientType } : {}),
+    ...(walletName ? { walletName } : {}),
+    ...(promptRequestedAtMs ? { promptRequestedAtMs } : {}),
+    ...(providerPendingAtMs ? { providerPendingAtMs } : {}),
     ...(recoveryPlan ? { recoveryPlan } : {}),
     ...(v4DirectSettlement ? { v4DirectSettlement } : {}),
     state: candidate.state,
@@ -633,6 +656,10 @@ export function recordPreparedVNextWalletRequest(input: {
   walletNonceBeforeRequest: bigint;
   requestBlockNumber: bigint;
   requestBlockHash?: string;
+  connectorId?: string;
+  connectorType?: string;
+  walletClientType?: string;
+  walletName?: string;
 }, storage?: VNextExecutionStorage, nowMs = Date.now()) {
   const boundCalldataHash = input.plan.directAuthorization?.calldataHash ?? input.plan.feeV2Authorization?.calldataHash;
   const calldataHash = keccak256(input.plan.data);
@@ -642,6 +669,9 @@ export function recordPreparedVNextWalletRequest(input: {
     || input.walletNonceBeforeRequest < 0n
     || input.requestBlockNumber < 0n
     || (input.requestBlockHash !== undefined && !isHash(input.requestBlockHash))
+    || [input.connectorId, input.connectorType, input.walletClientType, input.walletName].some((value) => (
+      value !== undefined && !/^[\x20-\x7e]{1,160}$/.test(value)
+    ))
     || authorizationPayloadHash(input.plan).toLowerCase() !== input.plan.payloadHash.toLowerCase()
     || (input.plan.kind === "swap" && (
       !boundCalldataHash || calldataHash.toLowerCase() !== boundCalldataHash.toLowerCase()
@@ -682,6 +712,10 @@ export function recordPreparedVNextWalletRequest(input: {
     walletNonceBeforeRequest: input.walletNonceBeforeRequest.toString(),
     requestBlockNumber: input.requestBlockNumber.toString(),
     ...(input.requestBlockHash ? { requestBlockHash: input.requestBlockHash.toLowerCase() as Hash } : {}),
+    ...(input.connectorId ? { connectorId: input.connectorId } : {}),
+    ...(input.connectorType ? { connectorType: input.connectorType } : {}),
+    ...(input.walletClientType ? { walletClientType: input.walletClientType } : {}),
+    ...(input.walletName ? { walletName: input.walletName } : {}),
     recoveryPlan: input.plan,
     ...(v4DirectSettlement ? { v4DirectSettlement } : {}),
     state: "PREPARED",
@@ -711,7 +745,14 @@ export function transitionVNextWalletRequest(
     RECEIPT_REVERTED: []
   };
   if (!allowed[existing.state].includes(state)) return null;
-  const updated = { ...existing, state, txHash: undefined, updatedAtMs: nowMs } as VNextWalletRequestRecord;
+  const updated = {
+    ...existing,
+    state,
+    txHash: undefined,
+    ...(state === "PROMPT_REQUESTED" ? { promptRequestedAtMs: nowMs } : {}),
+    ...(state === "PROVIDER_PENDING" ? { providerPendingAtMs: nowMs } : {}),
+    updatedAtMs: nowMs
+  } as VNextWalletRequestRecord;
   return writeCombinedJournal(
     current.executions,
     [updated, ...current.walletRequests.filter((record) => record.requestId !== requestId)],

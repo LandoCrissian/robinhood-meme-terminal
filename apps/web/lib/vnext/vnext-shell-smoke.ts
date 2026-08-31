@@ -261,7 +261,7 @@ assert.match(capitalFlow, /capitalFlowStatusLabel\(status\)/);
 assert.match(capitalFlow, /Market context · DeFiLlama/);
 assert.match(capitalFlow, /Non-authoritative · not execution evidence/);
 assert.match(composer, /`Trade \$\{marketSymbol\}`/);
-assert.match(composer, /One tap checks the best route and opens the final wallet confirmation/);
+assert.match(composer, /One tap checks the best route and prepares an explicit external-wallet review/);
 assert.match(composer, /Finding best execution/);
 assert.match(composer, /className="vnRouteDetails"/);
 assert.match(composer, /Expected receive/);
