@@ -1,5 +1,10 @@
-import { prepareVNextUniswapAuthorization, quoteVNextUniswapForUser, verifyVNextUniswapRoute } from "./vnext-uniswap-quote";
-import { VNEXT_DIRECT_NO_RMT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE } from "../vnext/execution-settlement";
+import {
+  prepareVNextUniswapAuthorization,
+  quoteVNextUniswapForUser,
+  selectVNextUniswapV3SettlementMode,
+  verifyVNextUniswapRoute
+} from "./vnext-uniswap-quote";
+import { VNEXT_DIRECT_NO_RMT_FEE, VNEXT_LEGACY_V1_FEE, VNEXT_V2_ATOMIC_INPUT_FEE } from "../vnext/execution-settlement";
 import { unavailableVNextQuoteAttempt, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
 import {
   evaluateVNextUniswapRouteV2,
@@ -22,11 +27,17 @@ export function createVNextUniswapV3Adapter(input: {
   async quote(request) {
     const startedAtMs = Date.now();
     try {
+      const settlementMode = selectVNextUniswapV3SettlementMode({
+        inputAsset: request.inputAsset,
+        outputAsset: request.outputAsset,
+        recipient: request.recipient
+      });
       const result = await quoteVNextUniswapForUser({
         inputAsset: request.inputAsset,
         outputAsset: request.outputAsset,
         userGrossInput: request.amountIn,
-        recipient: request.recipient
+        recipient: request.recipient,
+        settlementMode
       });
       if (!result) return unavailableVNextQuoteAttempt({
         adapter,
@@ -66,12 +77,18 @@ export function createVNextUniswapV3Adapter(input: {
         gasSponsorshipFeeAtomic: null,
         explicitProviderFeeOutputAtomic: null,
         netEconomics: result.netEconomics,
+        ...(result.netEconomics.rmtFee.state === "planned" ? {
+          settlementMode: VNEXT_LEGACY_V1_FEE,
+          executionTarget: result.feeContext!.verified.executor
+        } : {}),
         networkFeeNativeAtomic: null,
         networkFeeNativeSymbol: "ETH",
         protectedNetOutputAtomic: null,
         costState: "network_fee_pending",
         authorizationReady: false,
-        detail: "Live direct-pool quote with no RMT platform fee. Price impact and executable verification have not run."
+        detail: result.netEconomics.rmtFee.state === "planned"
+          ? "Live Uniswap V3 quote net of the disclosed 0.25% RMT execution fee. Exact executor verification has not run."
+          : "Live Uniswap V3 route with no RMT platform fee. Price impact and executable verification have not run."
       };
     } catch {
       return unavailableVNextQuoteAttempt({
@@ -104,7 +121,8 @@ export function createVNextUniswapV3Adapter(input: {
       recipient: request.recipient,
       protectedOutputFloorAtomic: request.indicativeProtectedOutputFloorAtomic,
       indicativeProtectedOutputFloorAtomic: request.indicativeProtectedOutputFloorAtomic,
-      executionId: request.executionId
+      executionId: request.executionId,
+      settlementMode
     }) };
   },
   async prepareAuthorization(request) {
@@ -124,6 +142,10 @@ export function createVNextUniswapV3Adapter(input: {
     };
     if (settlementMode === VNEXT_DIRECT_NO_RMT_FEE) {
       return prepareVNextUniswapAuthorization({ ...common, executionId: request.executionId });
+    }
+    if (settlementMode === VNEXT_LEGACY_V1_FEE) {
+      if (!request.executionId) throw new Error("Uniswap V3 V1 authorization requires an execution ID.");
+      return prepareVNextUniswapAuthorization({ ...common, executionId: request.executionId, settlementMode });
     }
     if (!request.executionId) throw new Error("Uniswap V3 V2 authorization requires an execution ID.");
     const prepared = await prepareVNextUniswapAuthorizationV2({

@@ -1,8 +1,10 @@
 import { decodeFunctionData, erc20Abi, getAddress, isAddress, isHash, keccak256, type Hex } from "viem";
 import { authorizationPayloadHash, type VNextAuthorizationPlan } from "./authorization-plan";
+import { assertRmtNetExecutionEconomics } from "./execution-fee-policy";
 import { assertRmtExecutionFeeV2Economics } from "./execution-fee-policy-v2";
 import { assertVNextAtomicFeeAuthorizationBinding } from "./provider-fee-settlement";
-import { assertVNextDirectExecutionBinding, assertVNextDirectNoRmtFeeSettlement, VNEXT_DIRECT_NO_RMT_FEE } from "./execution-settlement";
+import { assertVNextDirectExecutionBinding, assertVNextDirectNoRmtFeeSettlement, VNEXT_DIRECT_NO_RMT_FEE, VNEXT_LEGACY_V1_FEE } from "./execution-settlement";
+import { assertRmtUniswapV3FeeExecution, encodeRmtUniswapV3FeeExecution } from "./uniswap-v3-fee-executor";
 import { PERMIT2_ADDRESS, ROBINHOOD_UNIVERSAL_ROUTER, permit2Abi } from "../uniswap-v4";
 
 const PRIVY_RESOURCE_ID = /^[A-Za-z0-9_-]{8,160}$/;
@@ -180,6 +182,38 @@ export function vnextSpotTradeInstruction(plan: VNextAuthorizationPlan): VNextEx
           throw new Error("RMT rejected broadened token approval authority.");
         }
       }
+    }
+  } else if (plan.settlementMode === VNEXT_LEGACY_V1_FEE) {
+    if (
+      plan.provider !== "uniswap-v3"
+      || !plan.netEconomics
+      || plan.netEconomics.rmtFee.state !== "planned"
+      || !plan.feeExecution
+      || plan.directAuthorization !== undefined
+      || plan.directNoRmtFee !== undefined
+      || plan.feeV2Economics !== undefined
+      || plan.feeV2Authorization !== undefined
+    ) throw new Error("RMT rejected spot execution authority without complete V1 fee settlement.");
+    assertRmtNetExecutionEconomics(plan.netEconomics);
+    assertRmtUniswapV3FeeExecution(plan.feeExecution, plan.netEconomics);
+    if (plan.payloadHash.toLowerCase() !== authorizationPayloadHash(plan).toLowerCase()) {
+      throw new Error("RMT rejected changed V1 spot execution payload.");
+    }
+    if (plan.kind === "erc20_approval") {
+      if (getAddress(plan.target) !== getAddress(plan.inputAsset) || plan.value !== "0") {
+        throw new Error("RMT rejected changed V1 approval target or value.");
+      }
+      const decoded = decodeFunctionData({ abi: erc20Abi, data: plan.data });
+      if (decoded.functionName !== "approve") throw new Error("RMT rejected non-approval V1 token authority.");
+      const [spender, amount] = decoded.args;
+      if (getAddress(spender) !== getAddress(plan.feeExecution.executor) || amount !== BigInt(plan.inputAmountAtomic)) {
+        throw new Error("RMT rejected broadened V1 token approval authority.");
+      }
+    } else if (
+      getAddress(plan.target) !== getAddress(plan.feeExecution.executor)
+      || plan.data.toLowerCase() !== encodeRmtUniswapV3FeeExecution(plan.feeExecution).toLowerCase()
+    ) {
+      throw new Error("RMT rejected changed V1 fee-executor swap authority.");
     }
   } else {
     if (!plan.feeV2Economics || !plan.feeV2Authorization) {

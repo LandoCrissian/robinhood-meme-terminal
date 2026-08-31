@@ -17,19 +17,24 @@ import {
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "./pre-sign-evidence";
 import { UP_CL_EXECUTION_ROUTER, UP_V2_EXECUTION_ROUTER } from "./up-authorization-codec";
 import { ROBINHOOD_UNISWAP_V2_ROUTER } from "./uniswap-v2-authorization-codec";
-import type { RmtNetExecutionEconomics } from "./execution-fee-policy";
+import { assertRmtNetExecutionEconomics, type RmtNetExecutionEconomics } from "./execution-fee-policy";
 import { assertRmtExecutionFeeV2Economics, type RmtExecutionFeeV2Economics } from "./execution-fee-policy-v2";
 import {
   assertVNextAtomicFeeAuthorizationBinding,
   type VNextAtomicFeeAuthorizationBinding,
   type VNextAtomicFeeSettlementProof
 } from "./provider-fee-settlement";
-import type { RmtUniswapV3FeeExecution } from "./uniswap-v3-fee-executor";
+import {
+  assertRmtUniswapV3FeeExecution,
+  encodeRmtUniswapV3FeeExecution,
+  type RmtUniswapV3FeeExecution
+} from "./uniswap-v3-fee-executor";
 import type { VNextUniswapV4ExecutionEvidence } from "../server/vnext-uniswap-v4-execution";
 import {
   assertVNextDirectNoRmtFeeSettlement,
   assertVNextDirectExecutionBinding,
   VNEXT_DIRECT_NO_RMT_FEE,
+  VNEXT_LEGACY_V1_FEE,
   VNEXT_V2_ATOMIC_INPUT_FEE,
   type VNextDirectNoRmtFeeSettlement,
   type VNextDirectExecutionBinding,
@@ -80,7 +85,7 @@ const planSchema = z.object({
   target: z.string(), data: z.string().regex(/^0x[0-9a-fA-F]+$/), value: atomic, gasLimit: atomic,
   payloadHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/), inputAsset: z.string(), outputAsset: z.string(),
   inputAmountAtomic: atomic, protectedOutputAtomic: atomic, recipient: z.string(), router: z.string(), deadline: atomic,
-  settlementMode: z.enum([VNEXT_DIRECT_NO_RMT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE]),
+  settlementMode: z.enum([VNEXT_DIRECT_NO_RMT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE, VNEXT_LEGACY_V1_FEE]),
   directNoRmtFee: z.unknown().optional(), directAuthorization: z.unknown().optional(),
   netEconomics: z.unknown().optional(), feeExecution: z.unknown().nullable().optional(),
   feeV2Economics: z.unknown().optional(), feeV2Authorization: z.unknown().optional(),
@@ -155,9 +160,7 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
     ) throw new Error("RMT rejected changed V4 execution authority.");
   }
 
-  if (evidence.rmtFeeEnabled || evidence.feeExecution != null || plan.feeExecution != null) {
-    throw new Error("RMT_EXECUTION_V1 evidence is historical and cannot authorize a universal V2 wallet trade.");
-  }
+  let validatedV1Execution: RmtUniswapV3FeeExecution | null = null;
   let validatedV2Authorization: VNextAtomicFeeAuthorizationBinding | null = null;
   let validatedV2Settlement: VNextAtomicFeeSettlementProof | null = null;
   if (plan.settlementMode === VNEXT_DIRECT_NO_RMT_FEE) {
@@ -186,6 +189,41 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
       || evidence.feeV2Economics !== undefined
       || evidence.feeV2Settlement !== undefined
     ) throw new Error("RMT rejected hidden V2 authority in DIRECT_NO_RMT_FEE mode.");
+  } else if (plan.settlementMode === VNEXT_LEGACY_V1_FEE) {
+    if (
+      plan.provider !== "uniswap-v3"
+      || evidence.provider !== "uniswap-v3"
+      || evidence.settlementMode !== VNEXT_LEGACY_V1_FEE
+      || !evidence.rmtFeeEnabled
+      || !plan.netEconomics
+      || !evidence.netEconomics
+      || plan.netEconomics.rmtFee.state !== "planned"
+      || evidence.netEconomics.rmtFee.state !== "planned"
+      || !plan.feeExecution
+      || !evidence.feeExecution
+      || plan.directAuthorization !== undefined
+      || plan.directNoRmtFee !== undefined
+      || plan.feeV2Economics !== undefined
+      || plan.feeV2Authorization !== undefined
+      || evidence.feeV2Economics !== undefined
+      || evidence.feeV2Settlement !== undefined
+    ) throw new Error("RMT rejected a wallet plan without complete V1 fee authority.");
+    assertRmtNetExecutionEconomics(plan.netEconomics);
+    assertRmtNetExecutionEconomics(evidence.netEconomics);
+    assertRmtUniswapV3FeeExecution(plan.feeExecution, plan.netEconomics);
+    assertRmtUniswapV3FeeExecution(evidence.feeExecution, evidence.netEconomics);
+    if (
+      encodeRmtUniswapV3FeeExecution(plan.feeExecution).toLowerCase()
+        !== encodeRmtUniswapV3FeeExecution(evidence.feeExecution).toLowerCase()
+      || plan.netEconomics.userGrossInputAtomic !== evidence.netEconomics.userGrossInputAtomic
+      || plan.netEconomics.providerInputAtomic !== evidence.netEconomics.providerInputAtomic
+      || plan.netEconomics.expectedUserNetOutputAtomic !== evidence.netEconomics.expectedUserNetOutputAtomic
+      || plan.netEconomics.protectedUserNetOutputAtomic !== evidence.netEconomics.protectedUserNetOutputAtomic
+      || plan.netEconomics.rmtFee.feePolicyHash !== evidence.netEconomics.rmtFee.feePolicyHash
+      || plan.netEconomics.rmtFee.expectedFeeAtomic !== evidence.netEconomics.rmtFee.expectedFeeAtomic
+      || plan.netEconomics.rmtFee.maximumFeeAtomic !== evidence.netEconomics.rmtFee.maximumFeeAtomic
+    ) throw new Error("RMT rejected changed V1 fee authority.");
+    validatedV1Execution = plan.feeExecution;
   } else {
     if (
       !plan.feeV2Economics
@@ -246,7 +284,9 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
     const [spender, amount] = decoded.args;
     const requiredSpender = plan.settlementMode === VNEXT_DIRECT_NO_RMT_FEE
       ? plan.provider === "uniswap-v4" ? PERMIT2_ADDRESS : evidence.router
-      : validatedV2Settlement!.executionTarget;
+      : plan.settlementMode === VNEXT_LEGACY_V1_FEE
+        ? validatedV1Execution!.executor
+        : validatedV2Settlement!.executionTarget;
     if (
       getAddress(spender) !== getAddress(evidence.approvalSpender)
       || getAddress(spender) !== getAddress(requiredSpender)
@@ -263,6 +303,16 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
       || getAddress(plan.target) !== getAddress(evidence.router)
       || keccak256(plan.data) !== evidence.calldataHash
     ) throw new Error("RMT rejected a fee-free swap plan that does not match strict evidence.");
+    return plan;
+  }
+
+  if (plan.settlementMode === VNEXT_LEGACY_V1_FEE) {
+    if (
+      evidence.status !== "verified"
+      || getAddress(plan.target) !== getAddress(validatedV1Execution!.executor)
+      || keccak256(plan.data) !== evidence.calldataHash
+      || plan.data.toLowerCase() !== encodeRmtUniswapV3FeeExecution(validatedV1Execution!).toLowerCase()
+    ) throw new Error("RMT rejected a V1 fee-bearing swap plan that does not match strict evidence.");
     return plan;
   }
 

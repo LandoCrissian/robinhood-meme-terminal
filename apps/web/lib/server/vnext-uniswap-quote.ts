@@ -130,7 +130,8 @@ const routerAbi = [{
 const client = createPublicClient({
   chain: robinhoodChain,
   transport: http(
-    process.env.RMT_MAINNET_RPC_URL
+    process.env.RMT_RPC_URL
+      ?? process.env.RMT_MAINNET_RPC_URL
       ?? process.env.ROBINHOOD_MAINNET_RPC_URL
       ?? process.env.NEXT_PUBLIC_RMT_RPC_URL
       ?? robinhoodChain.rpcUrls.default.http[0],
@@ -256,6 +257,28 @@ async function vNextUniswapFeeContext(input: {
   return { verified, feeSide, inputAssetId, outputAssetId, providerInput };
 }
 
+export function selectVNextUniswapV3SettlementMode(input: {
+  inputAsset: Address;
+  outputAsset: Address;
+  recipient: Address;
+}) {
+  const configured = configuredVNextUniswapFeeExecutor();
+  if (!configured || !isVNextUniswapFeeRecipientEligible(configured, input.recipient)) {
+    return VNEXT_DIRECT_NO_RMT_FEE;
+  }
+  const requestedInputAsset = getAddress(input.inputAsset);
+  const requestedOutputAsset = getAddress(input.outputAsset);
+  if (isRobinhoodNativeAsset(requestedOutputAsset)) return VNEXT_DIRECT_NO_RMT_FEE;
+  const routedInputAsset = isRobinhoodNativeAsset(requestedInputAsset) ? ROBINHOOD_WETH : requestedInputAsset;
+  const routedOutputAsset = requestedOutputAsset;
+  const inputAssetId = vNextFeeAssetId(routedInputAsset, isRobinhoodNativeAsset(requestedInputAsset));
+  const outputAssetId = vNextFeeAssetId(routedOutputAsset, false);
+  return configured.policy.eligibleSettlementAssetIds.includes(inputAssetId)
+    || configured.policy.eligibleSettlementAssetIds.includes(outputAssetId)
+      ? VNEXT_LEGACY_V1_FEE
+      : VNEXT_DIRECT_NO_RMT_FEE;
+}
+
 export async function quoteVNextUniswapForUser(input: {
   inputAsset: Address;
   outputAsset: Address;
@@ -324,6 +347,7 @@ async function evaluateVNextUniswapRoute(input: {
   protectedOutputFloorAtomic?: bigint;
   indicativeProtectedOutputFloorAtomic?: bigint;
   executionId?: Hex;
+  settlementMode?: typeof VNEXT_DIRECT_NO_RMT_FEE | typeof VNEXT_LEGACY_V1_FEE;
 }) {
   const recipient = getAddress(input.recipient);
   const requestedInputAsset = getAddress(input.inputAsset);
@@ -336,7 +360,8 @@ async function evaluateVNextUniswapRoute(input: {
       inputAsset: requestedInputAsset,
       outputAsset: input.outputAsset,
       userGrossInput: input.amountIn,
-      recipient
+      recipient,
+      settlementMode: input.settlementMode ?? VNEXT_DIRECT_NO_RMT_FEE
     }),
     requireRuntimeHash(ROBINHOOD_SWAP_ROUTER_02, ROUTER_RUNTIME_HASH, "Uniswap router")
   ]);
@@ -606,6 +631,7 @@ export async function verifyVNextUniswapRoute(input: {
   indicativeProtectedOutputFloorAtomic: bigint;
   executionId?: Hex;
   nowMs?: number;
+  settlementMode?: typeof VNEXT_DIRECT_NO_RMT_FEE | typeof VNEXT_LEGACY_V1_FEE;
 }) {
   return (await evaluateVNextUniswapRoute(input)).evidence;
 }
@@ -620,6 +646,7 @@ export async function prepareVNextUniswapAuthorization(input: {
   indicativeProtectedOutputFloorAtomic: bigint;
   executionId?: Hex;
   nowMs?: number;
+  settlementMode?: typeof VNEXT_DIRECT_NO_RMT_FEE | typeof VNEXT_LEGACY_V1_FEE;
 }) {
   const evaluated = await evaluateVNextUniswapRoute(input);
   const { evidence, payloads } = evaluated;

@@ -377,7 +377,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       )} ${verifiedRmtFee.feeSide === "input" ? inputSymbol : outputSymbol} · maximum ${formatAtomicDisplay(
         verifiedRmtFee.maximumFeeAtomic,
         verifiedRmtFee.feeSide === "input" ? pair.inputAsset.decimals ?? 18 : pair.outputAsset.decimals ?? 18
-      )}`
+      )} · ${verifiedRmtFee.feeBps / 100}%`
     : "Not enabled";
   const availableDisplay = spendableInputAtomic !== undefined && pairInputDecimals !== null
     ? formatAtomicDisplay(spendableInputAtomic, pairInputDecimals)
@@ -945,9 +945,12 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         <div className="vnOutputProtection"><span>Protected minimum</span><strong>{protectedOutput ? `${protectedOutput} ${outputSymbol}` : "Set when you trade"}</strong></div>
         <small>{protectedOutput ? `Best observed: ${bestQuote?.providerLabel}. Quotes update quietly; RMT verifies the executable route when you trade.` : "RMT sets and verifies the protected minimum during the one-tap execution check."}</small>
       </div>
-      {bestQuote?.feeV2Economics && pair ? <div className="vnFeeV2Summary" role="note" aria-label="RMT execution fee summary">
-        <span><small>RMT execution fee</small><strong>{bestQuote.feeV2Economics.feeBps / 100}% · {formatAtomicDisplay(bestQuote.feeV2Economics.expectedFeeAtomic, pair.inputAsset.decimals ?? 18)} {inputSymbol}</strong></span>
-        <span><small>Provider input</small><strong>{formatAtomicDisplay(bestQuote.feeV2Economics.providerInputAtomic, pair.inputAsset.decimals ?? 18)} {inputSymbol}</strong></span>
+      {bestRmtFee && pair ? <div className="vnFeeV2Summary" role="note" aria-label="RMT execution fee summary">
+        <span><small>RMT execution fee</small><strong>{bestRmtFee.feeBps / 100}% · {formatAtomicDisplay(
+          bestRmtFee.expectedFeeAtomic,
+          bestRmtFee.feeSide === "input" ? pair.inputAsset.decimals ?? 18 : pair.outputAsset.decimals ?? 18
+        )} {bestRmtFee.feeSide === "input" ? inputSymbol : outputSymbol}</strong></span>
+        <span><small>Provider input</small><strong>{formatAtomicDisplay(bestQuote?.netEconomics?.providerInputAtomic ?? bestQuote?.feeV2Economics?.providerInputAtomic ?? "0", pair.inputAsset.decimals ?? 18)} {inputSymbol}</strong></span>
       </div> : null}
       {authorizationState.state === "ready" && visibleVerification ? <section className="vnWalletPrimaryReview" aria-label="Verified external wallet request">
         <span><strong>Verified request ready</strong><small>Nothing opens automatically. Use the explicit action below when the selected external wallet is unlocked.</small></span>
@@ -957,7 +960,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
           <div><dt>Protected minimum</dt><dd>{formatAtomicDisplay(authorizationState.plan.protectedOutputAtomic, pair?.outputAsset.decimals ?? 18)} {outputSymbol}</dd></div>
           <div><dt>Route</dt><dd>{visibleVerification.route === "v4_pool" ? "Canonical V4 PoolKey" : visibleVerification.route === "direct" ? `Direct ${visibleVerification.provider === "uniswap-v2" || visibleVerification.provider === "up-v2" ? "V2" : "V3"}` : "V3 via WETH"}</dd></div>
           <div><dt>Target</dt><dd>{shortAddress(authorizationState.plan.target)}</dd></div>
-          <div><dt>RMT platform fee</dt><dd>0</dd></div>
+          <div><dt>{verifiedRmtFee ? "RMT execution fee" : "RMT platform fee"}</dt><dd>{verifiedRmtFee ? `${verifiedRmtFee.feeBps / 100}%` : "0"}</dd></div>
         </dl>
         <VNextWalletReview
           key={authorizationState.plan.planId}
@@ -1041,7 +1044,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               <span><strong>{attempt.providerLabel}</strong><small>{attempt.executionKind === "rfq_intent" ? "Intent" : attempt.executionKind === "gasless" ? "Gasless" : attempt.executionKind === "aggregator" ? "Aggregator" : "Direct AMM"} · {attempt.userPaysGas === null ? "gas unknown" : attempt.userPaysGas ? "wallet gas" : "filler pays gas"} · {attempt.latencyMs}ms</small></span>
               <span><strong>{attempt.status === "indicative" && attempt.outputDecimals !== null ? `${formatAtomicDisplay(attempt.protectedOutputAtomic!, attempt.outputDecimals)} ${outputSymbol}` : attempt.status === "no_route" ? "No route" : attempt.status === "invalid_response" ? "Rejected" : "Unavailable"}</strong><small>{attempt.status === "indicative"
                 ? attempt.provider === bestQuote?.provider
-                  ? "Highest before network fee · indicative floor"
+                  ? "Highest protected user output before network fee · indicative floor"
                   : routeSelection.usesVerifiedBackup && attempt.provider === verificationQuote?.provider
                     ? "Strict-verification backup · indicative floor"
                     : "Indicative floor"
@@ -1054,7 +1057,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
           <div><dt>RMT fee</dt><dd>{bestRmtFeeLabel}</dd></div>
         </dl>}
         {visibleQuote ? <dl>
-          <div><dt>Ranking basis</dt><dd>Protected output before network fee</dd></div>
+          <div><dt>Ranking basis</dt><dd>Protected user output after RMT fee, before network fee</dd></div>
           <div><dt>Trader gas</dt><dd>{visibleQuote.attempts.some((attempt) => attempt.userPaysGas === false) ? "Route-specific · sponsored option observed" : "Estimated during strict verification"}</dd></div>
           <div><dt>Provider fee</dt><dd>{visibleQuote.attempts.some((attempt) => attempt.providerFeeAtomic !== null) ? "Disclosed by provider and reflected in output" : "Not separately reported"}</dd></div>
           <div><dt>RMT fee</dt><dd>{bestRmtFeeLabel}</dd></div>

@@ -12,6 +12,7 @@ import {
   hasVNextWalletAuthorizationCodec,
   isVNextWalletExecutionAdmitted
 } from "./provider-execution-capability";
+import { VNEXT_LEGACY_V1_FEE } from "./execution-settlement";
 
 export { hasVNextWalletAuthorizationCodec } from "./provider-execution-capability";
 
@@ -63,6 +64,8 @@ export type VNextQuoteAttempt = {
   gasSponsorshipFeeAtomic: string | null;
   explicitProviderFeeOutputAtomic: string | null;
   netEconomics: RmtNetExecutionEconomics | null;
+  settlementMode?: typeof VNEXT_LEGACY_V1_FEE;
+  executionTarget?: string;
   feeV2Economics?: RmtExecutionFeeV2Economics;
   networkFeeNativeAtomic: string | null;
   networkFeeNativeSymbol: "ETH" | null;
@@ -132,6 +135,8 @@ const attemptSchema = z.object({
   gasSponsorshipFeeAtomic: z.string().nullable(),
   explicitProviderFeeOutputAtomic: z.string().nullable(),
   netEconomics: z.unknown().nullable(),
+  settlementMode: z.literal(VNEXT_LEGACY_V1_FEE).optional(),
+  executionTarget: z.string().optional(),
   feeV2Economics: z.unknown().optional(),
   networkFeeNativeAtomic: z.string().nullable(),
   networkFeeNativeSymbol: z.literal("ETH").nullable(),
@@ -264,6 +269,12 @@ export function assertVNextQuoteAttempt(
     } else {
       if (!attempt.netEconomics) throw new Error("Indicative quote omitted explicit RMT fee economics.");
       assertRmtNetExecutionEconomics(attempt.netEconomics);
+      const legacyFeePlanned = attempt.netEconomics.rmtFee.state === "planned";
+      if (
+        legacyFeePlanned !== (attempt.settlementMode === VNEXT_LEGACY_V1_FEE)
+        || legacyFeePlanned !== (attempt.executionTarget !== undefined)
+        || (attempt.executionTarget !== undefined && !isAddress(attempt.executionTarget))
+      ) throw new Error("Indicative quote exposed incomplete V1 settlement identity.");
     }
     if (
       (attempt.providerFeeAsset === null) !== (attempt.providerFeeAtomic === null)
@@ -317,6 +328,8 @@ export function assertVNextQuoteAttempt(
     || attempt.gasSponsorshipFeeAtomic !== null
     || attempt.explicitProviderFeeOutputAtomic !== null
     || attempt.netEconomics !== null
+    || attempt.settlementMode !== undefined
+    || attempt.executionTarget !== undefined
     || attempt.networkFeeNativeAtomic !== null
     || attempt.networkFeeNativeSymbol !== null
     || attempt.protectedNetOutputAtomic !== null

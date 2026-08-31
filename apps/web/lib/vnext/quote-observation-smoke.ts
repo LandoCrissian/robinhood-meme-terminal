@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { bestIndicativeAttempt, hasVNextWalletAuthorizationCodec, parseVNextQuoteResponse, selectVNextRoute, type VNextQuoteResponse } from "./quote-observation";
-import { normalizeDisabledRmtFee } from "./execution-fee-policy";
+import { createRmtExecutionV1Policy, normalizeDisabledRmtFee, normalizeInputSideRmtFee } from "./execution-fee-policy";
+import { VNEXT_LEGACY_V1_FEE } from "./execution-settlement";
 
 const now = 1_786_000_000_000;
 const inputAsset = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168";
@@ -120,6 +121,39 @@ const backupSelection = selectVNextRoute(withVerifiedBackup.attempts);
 assert.equal(backupSelection.bestObserved?.provider, "sushi");
 assert.equal(backupSelection.verificationCandidate?.provider, "uniswap-v3", "fee-free execution admission is independent from dormant fee settlement");
 assert.equal(backupSelection.usesVerifiedBackup, true);
+
+const feePolicy = createRmtExecutionV1Policy({
+  treasury: "0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC",
+  chainId: 4_663,
+  fromBlock: "35041945",
+  eligibleSettlementAssetIds: [
+    `eip155:4663/contract:${inputAsset.toLowerCase()}`,
+    "eip155:4663/contract:0x0bd7d308f8e1639fab988df18a8011f41eacad73"
+  ]
+});
+const feeBearingV3 = parseVNextQuoteResponse({
+  ...response,
+  attempts: [response.attempts[0], {
+    ...withVerifiedBackup.attempts[1],
+    expectedOutputAtomic: "980000000000000000000",
+    protectedOutputAtomic: "970000000000000000000",
+    netEconomics: normalizeInputSideRmtFee({
+      policy: feePolicy,
+      inputAssetId: `eip155:4663/contract:${inputAsset.toLowerCase()}`,
+      outputAssetId: `eip155:4663/contract:${outputAsset.toLowerCase()}`,
+      feeAssetId: `eip155:4663/contract:${inputAsset.toLowerCase()}`,
+      settlementMode: "rmt-direct-executor-v1",
+      userGrossInputAtomic: "100000000",
+      providerGrossExpectedOutputAtomic: "980000000000000000000",
+      providerProtectedOutputAtomic: "970000000000000000000"
+    }),
+    settlementMode: VNEXT_LEGACY_V1_FEE,
+    executionTarget: "0xcB9c00524848038D211921e0f3975190D7Aa1e8f"
+  }]
+}, expected, now);
+const netEconomicsSelection = selectVNextRoute(feeBearingV3.attempts);
+assert.equal(netEconomicsSelection.bestObserved?.provider, "sushi", "a lower-net fee-bearing V3 route cannot outrank a better fee-free route");
+assert.equal(netEconomicsSelection.verificationCandidate?.provider, "uniswap-v3", "the fee-bearing route remains an explicit verified fallback");
 assert.equal(hasVNextWalletAuthorizationCodec("uniswap-v3"), true);
 assert.equal(hasVNextWalletAuthorizationCodec("uniswap-v4"), true);
 assert.equal(hasVNextWalletAuthorizationCodec("zero-x-swap"), false);
@@ -262,7 +296,7 @@ assert.match(sushi, /quoteSushiAssetRoute/);
 assert.match(uniswap, /quoteExactInputSingle/);
 assert.match(composer, /\/api\/vnext\/quotes/);
 assert.match(composer, /One tap checks the best route and prepares an explicit external-wallet review/);
-assert.match(composer, /Protected output before network fee/);
+assert.match(composer, /Protected user output after RMT fee, before network fee/);
 assert.match(composer, /attempt\.userPaysGas === null \? "gas unknown"/);
 assert.doesNotMatch(composer, /writeContract|sendTransaction|signTypedData/);
 

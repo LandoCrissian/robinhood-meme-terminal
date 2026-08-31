@@ -17,6 +17,7 @@ import {
   readVNextAuthorizationChainTimestamp
 } from "../../../../lib/server/vnext-authorization-time";
 import { vNextAuthorizationRequestSchema } from "../../../../lib/server/vnext-authorization-request";
+import { selectVNextUniswapV3SettlementMode } from "../../../../lib/server/vnext-uniswap-quote";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -56,6 +57,9 @@ export async function POST(request: Request) {
     const chainTimestampSeconds = await readVNextAuthorizationChainTimestamp();
     const authorizationWallClockMs = Date.now();
     const finalDeadlineSeconds = chainTimestampSeconds + VNEXT_AUTHORIZATION_WINDOW_SECONDS;
+    const settlementMode = parsed.data.provider === "uniswap-v3"
+      ? selectVNextUniswapV3SettlementMode({ inputAsset, outputAsset, recipient })
+      : VNEXT_DIRECT_NO_RMT_FEE;
     const prepared = await prepareRobinhoodVNextAuthorization(parsed.data.provider, {
       chainId: 4_663,
       inputAsset,
@@ -67,7 +71,7 @@ export async function POST(request: Request) {
       indicativeProtectedOutputFloorAtomic: BigInt(parsed.data.indicativeProtectedOutputFloorAtomic),
       protectedOutputFloorAtomic: BigInt(parsed.data.expectedProtectedOutputAtomic),
       nowMs: authorizationWallClockMs,
-      settlementMode: VNEXT_DIRECT_NO_RMT_FEE,
+      settlementMode,
       ...(parsed.data.canonicalMarket ? { canonicalMarket: parsed.data.canonicalMarket as { sourceId: "uniswap-v4"; poolId: `0x${string}` } } : {}),
       ...(parsed.data.v4QuoteEvidence ? { v4QuoteEvidence: parsed.data.v4QuoteEvidence as typeof parsed.data.v4QuoteEvidence & { poolId: `0x${string}`; observedBlockHash: `0x${string}` } } : {}),
       ...(parsed.data.executionId ? { executionId: parsed.data.executionId as Hex } : {})
@@ -105,9 +109,9 @@ export async function POST(request: Request) {
       protectedOutputAtomic: prepared.evidence.protectedOutputAtomic,
       recipient: prepared.evidence.recipient,
       router: prepared.evidence.router,
-      settlementMode: VNEXT_DIRECT_NO_RMT_FEE,
+      settlementMode: prepared.evidence.settlementMode,
       ...(prepared.evidence.directNoRmtFee ? { directNoRmtFee: prepared.evidence.directNoRmtFee } : {}),
-      directAuthorization: directExecutionBinding({
+      ...(prepared.evidence.settlementMode === VNEXT_DIRECT_NO_RMT_FEE ? { directAuthorization: directExecutionBinding({
         provider: prepared.evidence.provider,
         kind: prepared.transaction.kind,
         chainId: 4_663,
@@ -123,7 +127,7 @@ export async function POST(request: Request) {
         data: prepared.transaction.data,
         valueAtomic: prepared.transaction.value,
         deadline: prepared.evidence.deadline
-      }),
+      }) } : {}),
       ...(prepared.evidence.netEconomics ? { netEconomics: prepared.evidence.netEconomics } : {}),
       ...(prepared.evidence.feeExecution !== undefined ? { feeExecution: prepared.evidence.feeExecution } : {}),
       ...(prepared.evidence.feeV2Economics ? { feeV2Economics: prepared.evidence.feeV2Economics } : {}),
