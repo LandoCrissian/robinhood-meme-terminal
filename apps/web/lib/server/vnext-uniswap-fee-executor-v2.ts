@@ -64,6 +64,36 @@ export function requireVNextUniswapV3V2AuthorizationEnabled(
   }
 }
 
+export const VNEXT_UNISWAP_V3_V2_RELEASE_SCOPE = "PROOF_WALLET_ONLY" as const;
+
+export function configuredVNextUniswapV3V2ProofWallet(
+  env: NodeJS.ProcessEnv = process.env
+): Address | null {
+  const value = env.RMT_VNEXT_UNISWAP_V3_V2_PROOF_WALLET?.trim();
+  if (!value) return null;
+  if (!isAddress(value, { strict: false }) || getAddress(value) === zeroAddress) {
+    throw new Error("RMT Uniswap V3 V2 proof wallet must be a valid nonzero EVM address.");
+  }
+  return getAddress(value);
+}
+
+export function isVNextUniswapV3V2ProofWalletRecipient(
+  recipient: Address,
+  env: NodeJS.ProcessEnv = process.env
+) {
+  const proofWallet = configuredVNextUniswapV3V2ProofWallet(env);
+  return proofWallet !== null && getAddress(recipient) === proofWallet;
+}
+
+export function requireVNextUniswapV3V2ProofWalletRecipient(
+  recipient: Address,
+  env: NodeJS.ProcessEnv = process.env
+) {
+  if (!isVNextUniswapV3V2ProofWalletRecipient(recipient, env)) {
+    throw new Error("RMT Uniswap V3 V2 controlled authorization is restricted to the configured proof wallet.");
+  }
+}
+
 function required(env: NodeJS.ProcessEnv, name: string) {
   const value = env[name]?.trim();
   if (!value) throw new Error(`RMT Uniswap V3 V2 execution is configured incompletely (${name}).`);

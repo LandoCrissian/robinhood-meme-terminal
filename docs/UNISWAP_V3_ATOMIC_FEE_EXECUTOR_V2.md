@@ -43,6 +43,8 @@ Future activation requires all of the following exact server configuration:
 - an active, hash-matched `RMT_EXECUTION_V2` policy;
 - `RMT_VNEXT_UNISWAP_V3_V2_EXECUTOR_ENABLED=true`;
 - `RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED=true`;
+- a valid, nonzero `RMT_VNEXT_UNISWAP_V3_V2_PROOF_WALLET` matching the exact
+  authenticated recipient for the controlled canary;
 - an exact executor address and runtime hash;
 - onchain immutable and runtime verification for Router02, factory, WETH proxy,
   WETH implementation, treasury, policy hash, and policy boundary;
@@ -50,6 +52,26 @@ Future activation requires all of the following exact server configuration:
 
 Missing, partial, or mismatched configuration remains quote-only. There is no
 direct Router02 wallet fallback.
+
+The V2 proof-wallet authority is version-specific and server-only. It does not
+inherit from, or grant authority to, the historical V1 proof-wallet setting.
+Public V2 authorization is outside this release scope.
+
+The complete controlled-canary server inventory is version-explicit:
+
+- `RMT_VNEXT_EXECUTION_V2_POLICY_ENABLED`
+- `RMT_VNEXT_EXECUTION_V2_TREASURY`
+- `RMT_VNEXT_EXECUTION_V2_EFFECTIVE_BLOCK`
+- `RMT_VNEXT_EXECUTION_V2_POLICY_HASH`
+- `RMT_VNEXT_UNISWAP_V3_V2_EXECUTOR_ENABLED`
+- `RMT_VNEXT_UNISWAP_V3_V2_EXECUTOR_ADDRESS`
+- `RMT_VNEXT_UNISWAP_V3_V2_EXECUTOR_RUNTIME_HASH`
+- `RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED`
+- `RMT_VNEXT_UNISWAP_V3_V2_PROOF_WALLET`
+- `RMT_VNEXT_VERIFICATION_COMMITMENT_SECRET`
+- the separate global `NEXT_PUBLIC_RMT_VNEXT_AUTHORIZATION_ENABLED`,
+  `RMT_VNEXT_AUTHORIZATION_ENABLED`, and
+  `NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED` gates
 
 ## Wallet authority
 

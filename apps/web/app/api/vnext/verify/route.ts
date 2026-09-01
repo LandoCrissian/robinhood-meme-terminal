@@ -16,7 +16,10 @@ import {
   readVNextAuthorizationChainTimestamp,
   VNEXT_AUTHORIZATION_WINDOW_SECONDS
 } from "../../../../lib/server/vnext-authorization-time";
-import { configuredVNextUniswapFeeExecutorV2 } from "../../../../lib/server/vnext-uniswap-fee-executor-v2";
+import {
+  configuredVNextUniswapFeeExecutorV2,
+  requireVNextUniswapV3V2ProofWalletRecipient
+} from "../../../../lib/server/vnext-uniswap-fee-executor-v2";
 import {
   createVNextV2VerificationCommitment,
   VNextV2VerificationCommitmentConfigurationError
@@ -107,6 +110,7 @@ export async function POST(request: Request) {
       ...evidence
     } as VNextPreSignEvidence;
     if (settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE && (evidence.status === "verified" || evidence.status === "approval_required")) {
+      requireVNextUniswapV3V2ProofWalletRecipient(recipient);
       const config = configuredVNextUniswapFeeExecutorV2();
       if (!config || !evidence.feeV2Settlement || getAddress(config.executor) !== getAddress(evidence.feeV2Settlement.executionTarget)) {
         throw new Error("RMT Uniswap V3 V2 verification authority is not configured exactly.");
