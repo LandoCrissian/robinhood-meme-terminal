@@ -118,6 +118,35 @@ assert.equal(same.separateContexts, false);
 assert.equal(same.bestObserved?.state, "planned");
 assert.equal(same.bestExecutable?.state, "planned");
 
+const v2FeeCandidate = attempt({
+  provider: "uniswap-v2",
+  providerLabel: "Uniswap V2",
+  expectedOutputAtomic: v3Economics.expectedUserNetOutputAtomic,
+  protectedOutputAtomic: v3Economics.protectedUserNetOutputAtomic,
+  publicWalletExecutionEligible: true,
+  settlementMode: VNEXT_V2_ATOMIC_INPUT_FEE,
+  executionTarget: getAddress("0x2222222222222222222222222222222222222222"),
+  feeV2Economics: v3Economics
+});
+const v2CandidatePresentation = vNextQuoteFeePresentation({
+  bestObserved: v2FeeCandidate,
+  bestExecutable: v2FeeCandidate
+});
+assert.equal(v2CandidatePresentation.separateContexts, false);
+assert.equal(v2CandidatePresentation.bestExecutable?.state, "planned");
+assert.equal(
+  v2CandidatePresentation.bestExecutable?.state === "planned"
+    ? v2CandidatePresentation.bestExecutable.feeBps
+    : null,
+  25
+);
+assert.equal(
+  v2CandidatePresentation.bestExecutable?.state === "planned"
+    ? v2CandidatePresentation.bestExecutable.providerInputAtomic
+    : null,
+  "99750000000000"
+);
+
 const noExecutable = vNextQuoteFeePresentation({ bestObserved: v2, bestExecutable: undefined });
 assert.equal(noExecutable.bestObserved?.state, "no_rmt_fee");
 assert.equal(noExecutable.bestExecutable, null);
