@@ -45,6 +45,60 @@ export type VNextUniswapFeeExecutorV2Config = {
   policy: RmtExecutionFeeV2Policy;
 };
 
+export type VNextUniswapFeeExecutorV2LiveIdentity = {
+  router: Address;
+  factory: Address;
+  weth: Address;
+  wethImplementation: Address;
+  treasury: Address;
+  routerRuntimeHash: Hex;
+  factoryRuntimeHash: Hex;
+  wethRuntimeHash: Hex;
+  wethImplementationRuntimeHash: Hex;
+  policyIdHash: Hex;
+  policyVersion: bigint;
+  policyHash: Hex;
+  feeBps: number;
+  policyFromBlock: bigint;
+  policyBeforeBlock: bigint;
+};
+
+export function sameVNextUniswapV3V2Address(actual: Address, expected: Address) {
+  return getAddress(actual) === getAddress(expected);
+}
+
+export function assertVNextUniswapV3V2ExecutorRuntimeHash(
+  actualRuntimeHash: Hex | null,
+  expectedRuntimeHash: Hex
+) {
+  if (!actualRuntimeHash || actualRuntimeHash.toLowerCase() !== expectedRuntimeHash.toLowerCase()) {
+    throw new Error("RMT Uniswap V3 V2 executor runtime bytecode is not approved.");
+  }
+}
+
+export function assertVNextUniswapFeeExecutorV2LiveIdentity(
+  actual: VNextUniswapFeeExecutorV2LiveIdentity,
+  config: VNextUniswapFeeExecutorV2Config
+) {
+  if (
+    !sameVNextUniswapV3V2Address(actual.router, ROBINHOOD_SWAP_ROUTER_02)
+    || !sameVNextUniswapV3V2Address(actual.factory, ROBINHOOD_V3_FACTORY)
+    || !sameVNextUniswapV3V2Address(actual.weth, ROBINHOOD_WETH)
+    || !sameVNextUniswapV3V2Address(actual.wethImplementation, ROBINHOOD_WETH_IMPLEMENTATION)
+    || !sameVNextUniswapV3V2Address(actual.treasury, config.policy.treasury)
+    || actual.routerRuntimeHash.toLowerCase() !== ROBINHOOD_UNISWAP_ROUTER_RUNTIME_HASH
+    || actual.factoryRuntimeHash.toLowerCase() !== ROBINHOOD_UNISWAP_FACTORY_RUNTIME_HASH
+    || actual.wethRuntimeHash.toLowerCase() !== ROBINHOOD_WETH_RUNTIME_HASH
+    || actual.wethImplementationRuntimeHash.toLowerCase() !== ROBINHOOD_WETH_IMPLEMENTATION_RUNTIME_HASH
+    || actual.policyIdHash.toLowerCase() !== RMT_UNISWAP_V3_V2_POLICY_ID_HASH.toLowerCase()
+    || actual.policyVersion !== 2n
+    || actual.policyHash.toLowerCase() !== config.policy.policyHash.toLowerCase()
+    || Number(actual.feeBps) !== 25
+    || actual.policyFromBlock !== BigInt(config.policy.effectiveBoundary.fromBlock)
+    || actual.policyBeforeBlock !== BigInt(config.policy.effectiveBoundary.beforeBlock ?? "0")
+  ) throw new Error("RMT Uniswap V3 V2 executor immutable policy or dependency identity changed.");
+}
+
 export function isVNextUniswapV3V2AuthorizationEnabled(
   env: NodeJS.ProcessEnv = process.env
 ) {
@@ -167,9 +221,7 @@ export async function verifyConfiguredVNextUniswapFeeExecutorV2(
     verifyVNextUniswapFeeInfrastructure(),
     client.getBytecode({ address: config.executor })
   ]);
-  if (!code || keccak256(code).toLowerCase() !== config.executorRuntimeHash.toLowerCase()) {
-    throw new Error("RMT Uniswap V3 V2 executor runtime bytecode is not approved.");
-  }
+  assertVNextUniswapV3V2ExecutorRuntimeHash(code ? keccak256(code) : null, config.executorRuntimeHash);
   const [
     router, factory, weth, wethImplementation, treasury, routerHash, factoryHash, wethHash,
     wethImplementationHash, policyIdHash, policyVersion, policyHash, feeBps, policyFromBlock,
@@ -192,23 +244,23 @@ export async function verifyConfiguredVNextUniswapFeeExecutorV2(
     readExecutor<bigint>(config.executor, "policyBeforeBlock"),
     readExecutor<bigint>(config.executor, "currentPolicyBlock")
   ]);
-  if (
-    getAddress(router) !== ROBINHOOD_SWAP_ROUTER_02
-    || getAddress(factory) !== ROBINHOOD_V3_FACTORY
-    || getAddress(weth) !== ROBINHOOD_WETH
-    || getAddress(wethImplementation) !== ROBINHOOD_WETH_IMPLEMENTATION
-    || getAddress(treasury) !== config.policy.treasury
-    || routerHash.toLowerCase() !== ROBINHOOD_UNISWAP_ROUTER_RUNTIME_HASH
-    || factoryHash.toLowerCase() !== ROBINHOOD_UNISWAP_FACTORY_RUNTIME_HASH
-    || wethHash.toLowerCase() !== ROBINHOOD_WETH_RUNTIME_HASH
-    || wethImplementationHash.toLowerCase() !== ROBINHOOD_WETH_IMPLEMENTATION_RUNTIME_HASH
-    || policyIdHash.toLowerCase() !== RMT_UNISWAP_V3_V2_POLICY_ID_HASH.toLowerCase()
-    || policyVersion !== 2n
-    || policyHash.toLowerCase() !== config.policy.policyHash.toLowerCase()
-    || Number(feeBps) !== 25
-    || policyFromBlock !== BigInt(config.policy.effectiveBoundary.fromBlock)
-    || policyBeforeBlock !== BigInt(config.policy.effectiveBoundary.beforeBlock ?? "0")
-  ) throw new Error("RMT Uniswap V3 V2 executor immutable policy or dependency identity changed.");
+  assertVNextUniswapFeeExecutorV2LiveIdentity({
+    router,
+    factory,
+    weth,
+    wethImplementation,
+    treasury,
+    routerRuntimeHash: routerHash,
+    factoryRuntimeHash: factoryHash,
+    wethRuntimeHash: wethHash,
+    wethImplementationRuntimeHash: wethImplementationHash,
+    policyIdHash,
+    policyVersion,
+    policyHash,
+    feeBps: Number(feeBps),
+    policyFromBlock,
+    policyBeforeBlock
+  }, config);
   const policyEffective = assertVNextUniswapV3V2PolicyBlock({
     currentBlock: currentPolicyBlock,
     fromBlock: policyFromBlock,
