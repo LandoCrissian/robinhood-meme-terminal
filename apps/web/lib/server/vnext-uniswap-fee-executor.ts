@@ -22,14 +22,22 @@ import {
   RMT_UNISWAP_V3_FEE_MAINNET_PROOF_COMPLETE,
   assertRmtUniswapV3FeeMainnetProof
 } from "../vnext/uniswap-v3-fee-mainnet-proof";
+import {
+  ROBINHOOD_WETH_RUNTIME_HASH,
+  assertVNextRobinhoodBlockContext,
+  verifyCanonicalRobinhoodWethAuthority,
+  type VNextRobinhoodWethAuthorityClient
+} from "./vnext-robinhood-weth-authority";
+
+export {
+  ROBINHOOD_WETH_IMPLEMENTATION,
+  ROBINHOOD_WETH_IMPLEMENTATION_RUNTIME_HASH,
+  ROBINHOOD_WETH_RUNTIME_HASH,
+  assertCanonicalWethImplementationSlot
+} from "./vnext-robinhood-weth-authority";
 
 export const ROBINHOOD_UNISWAP_ROUTER_RUNTIME_HASH = "0x6f36c378e272c6324c48f045182bcb54bd8ad654cf9ebd42e8893d52c4cb25dc" as Hex;
 export const ROBINHOOD_UNISWAP_FACTORY_RUNTIME_HASH = "0xec72b1abd1f2faee020cfea9c646bd8994f9fb389054f6e574f103a895091739" as Hex;
-export const ROBINHOOD_WETH_RUNTIME_HASH = "0x5706be52f64875fee65a2cec0d80e47a23d8793cbe85d214b48445e2d05f5353" as Hex;
-export const ROBINHOOD_WETH_IMPLEMENTATION = getAddress("0xC6B81b429797E0f555440b70cD99e032D7AE947e");
-export const ROBINHOOD_WETH_IMPLEMENTATION_RUNTIME_HASH = "0xbe1295f37be34ffe03ad779bda0ef278907e1856b51a3be2f35ee541d75d4650" as Hex;
-
-const EIP1967_IMPLEMENTATION_SLOT = "0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc" as Hex;
 
 const HASH = /^0x[0-9a-fA-F]{64}$/;
 const ASSET_ID = /^eip155:4663\/(native|contract:(0x[0-9a-f]{40}))$/;
@@ -164,6 +172,14 @@ const client = createPublicClient({
   )
 });
 
+const wethAuthorityClient: VNextRobinhoodWethAuthorityClient = {
+  getChainId: () => client.getChainId(),
+  getBlockNumber: () => client.getBlockNumber(),
+  getBlock: (input) => client.getBlock(input),
+  getBytecode: (input) => client.getBytecode(input),
+  getStorageAt: (input) => client.getStorageAt(input)
+};
+
 async function readExecutor<T>(address: Address, functionName: string, args?: readonly unknown[]) {
   return client.readContract({
     address,
@@ -184,46 +200,25 @@ function requireIdentity(actual: string, expected: string, label: string) {
   }
 }
 
-export function assertCanonicalWethImplementationSlot(implementationSlot: Hex | undefined) {
-  if (!implementationSlot || implementationSlot === `0x${"0".repeat(64)}`) {
-    throw new Error("Canonical WETH proxy implementation is unavailable.");
-  }
-  const implementation = getAddress(`0x${implementationSlot.slice(-40)}`);
-  requireIdentity(implementation, ROBINHOOD_WETH_IMPLEMENTATION, "canonical WETH implementation address");
-  return implementation;
-}
-
 export async function verifyVNextUniswapFeeInfrastructure() {
-  const [routerCode, factoryCode, wethCode, implementationSlot, routerFactory, routerWeth, currentBlock] = await Promise.all([
-    client.getBytecode({ address: ROBINHOOD_SWAP_ROUTER_02 }),
-    client.getBytecode({ address: ROBINHOOD_V3_FACTORY }),
-    client.getBytecode({ address: ROBINHOOD_WETH }),
-    client.getStorageAt({ address: ROBINHOOD_WETH, slot: EIP1967_IMPLEMENTATION_SLOT }),
-    client.readContract({ address: ROBINHOOD_SWAP_ROUTER_02, abi: routerDependencyAbi, functionName: "factory" }),
-    client.readContract({ address: ROBINHOOD_SWAP_ROUTER_02, abi: routerDependencyAbi, functionName: "WETH9" }),
-    client.getBlockNumber()
+  const wethAuthority = await verifyCanonicalRobinhoodWethAuthority(wethAuthorityClient);
+  const blockNumber = BigInt(wethAuthority.verifiedAtBlock);
+  const [routerCode, factoryCode, routerFactory, routerWeth] = await Promise.all([
+    client.getBytecode({ address: ROBINHOOD_SWAP_ROUTER_02, blockNumber }),
+    client.getBytecode({ address: ROBINHOOD_V3_FACTORY, blockNumber }),
+    client.readContract({ address: ROBINHOOD_SWAP_ROUTER_02, abi: routerDependencyAbi, functionName: "factory", blockNumber }),
+    client.readContract({ address: ROBINHOOD_SWAP_ROUTER_02, abi: routerDependencyAbi, functionName: "WETH9", blockNumber })
   ]);
-  // eth_getStorageAt is the pre-sign authority for the proxy-to-
-  // implementation link. The proxy exposes no trustworthy non-admin getter;
-  // the executor independently pins both runtime identities onchain.
-  const wethImplementation = assertCanonicalWethImplementationSlot(implementationSlot);
-  const implementationCode = await client.getBytecode({ address: wethImplementation });
   requireIdentity(runtimeHash(routerCode, "Uniswap Router02"), ROBINHOOD_UNISWAP_ROUTER_RUNTIME_HASH, "Uniswap Router02 runtime");
   requireIdentity(runtimeHash(factoryCode, "Uniswap V3 factory"), ROBINHOOD_UNISWAP_FACTORY_RUNTIME_HASH, "Uniswap V3 factory runtime");
-  requireIdentity(runtimeHash(wethCode, "canonical WETH proxy"), ROBINHOOD_WETH_RUNTIME_HASH, "canonical WETH proxy runtime");
-  requireIdentity(
-    runtimeHash(implementationCode, "canonical WETH implementation"),
-    ROBINHOOD_WETH_IMPLEMENTATION_RUNTIME_HASH,
-    "canonical WETH implementation runtime"
-  );
   requireIdentity(getAddress(routerFactory), ROBINHOOD_V3_FACTORY, "Router02 factory dependency");
   requireIdentity(getAddress(routerWeth), ROBINHOOD_WETH, "Router02 WETH dependency");
+  await assertVNextRobinhoodBlockContext(wethAuthorityClient, blockNumber, wethAuthority.verifiedAtBlockHash);
   return {
-    verifiedAtBlock: currentBlock.toString(),
+    ...wethAuthority,
     router: ROBINHOOD_SWAP_ROUTER_02,
     factory: ROBINHOOD_V3_FACTORY,
-    weth: ROBINHOOD_WETH,
-    wethImplementation
+    weth: ROBINHOOD_WETH
   };
 }
 

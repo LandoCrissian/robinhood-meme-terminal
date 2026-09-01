@@ -30,7 +30,9 @@
     "factoryRuntimeHash": "0xbab145d02e7005f0d84c6c1639d39b799b0ea16df99ebbdaf5a14d9da820b4e0",
     "pairRuntimeHash": "0x5b83bdbcc56b2e630f2807bbadd2b0c21619108066b92a58de081261089e9ce5",
     "weth": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
-    "wethRuntimeHash": "0x5706be52f64875fee65a2cec0d80e47a23d8793cbe85d214b48445e2d05f5353"
+    "wethRuntimeHash": "0x5706be52f64875fee65a2cec0d80e47a23d8793cbe85d214b48445e2d05f5353",
+    "wethImplementation": "0xC6B81b429797E0f555440b70cD99e032D7AE947e",
+    "wethImplementationRuntimeHash": "0xbe1295f37be34ffe03ad779bda0ef278907e1856b51a3be2f35ee541d75d4650"
   },
   "deployment": {
     "executor": null,
@@ -44,6 +46,7 @@
     "sourceCandidateGate": "RMT_VNEXT_UNISWAP_V2_FEE_CANDIDATE_ENABLED",
     "sourceCandidateDefault": false,
     "productionCandidateRejected": true,
+    "wethImplementationPreSignAuthority": "IMPLEMENTED_SERVER_ONLY_BLOCK_PINNED",
     "walletAuthorization": "NOT_ADMITTED",
     "publicProviderScope": ["uniswap-v3"]
   }
