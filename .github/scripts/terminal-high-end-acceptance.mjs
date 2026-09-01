@@ -6,6 +6,7 @@ const output = process.env.RMT_ACCEPTANCE_OUTPUT
   ?? `${process.env.GITHUB_WORKSPACE}/terminal-high-end-evidence`;
 const focusDebug = process.env.RMT_ACCEPTANCE_FOCUS_DEBUG === "true";
 const previewOnly = process.env.RMT_ACCEPTANCE_PREVIEW_ONLY === "true";
+const v4WalletReviewOnly = process.env.RMT_ACCEPTANCE_ONLY_V4_WALLET_REVIEW === "true";
 const now = new Date().toISOString();
 const address = (seed) => `0x${seed.toString(16).padStart(40, "0")}`;
 const txHash = (seed) => `0x${seed.toString(16).repeat(64).slice(0, 64)}`;
@@ -3479,7 +3480,6 @@ try {
   const browserAcceptanceFixture = process.env.NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE === "true"
     ? JSON.parse(await readFile(`${output}/v2-fixture.json`, "utf8"))
     : null;
-  const v4WalletReviewOnly = process.env.RMT_ACCEPTANCE_ONLY_V4_WALLET_REVIEW === "true";
   const walletLifecycleOnly = process.env.RMT_ACCEPTANCE_ONLY_WALLET_LIFECYCLE === "true";
   const marketLoadPerformanceOnly = process.env.RMT_ACCEPTANCE_ONLY_MARKET_LOAD_PERFORMANCE === "true";
   const compatibilityOnly = process.env.RMT_ACCEPTANCE_ONLY_COMPATIBILITY === "true";
