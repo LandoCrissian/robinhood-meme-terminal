@@ -10,6 +10,9 @@ import {
   requireProjectIdentityDirectoryAdmitted
 } from "../../../../lib/server/project-identity-admission";
 import { vNextExecutionEligibilityErrorResponse } from "../../../../lib/server/vnext-execution-eligibility";
+import { isVNextWalletExecutionAdmitted } from "../../../../lib/vnext/provider-execution-capability";
+import { readVNextPublicExecutionProviderScope } from "../../../../lib/server/vnext-public-execution-provider-scope";
+import { VNEXT_V2_ATOMIC_INPUT_FEE } from "../../../../lib/vnext/execution-settlement";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -68,6 +71,7 @@ export async function POST(request: Request) {
         }
       } : {})
     });
+    const publicExecutionScope = readVNextPublicExecutionProviderScope();
     const response: VNextQuoteResponse = {
       requestId: randomUUID(),
       chainId: 4_663,
@@ -76,7 +80,14 @@ export async function POST(request: Request) {
       inputAmountAtomic: parsed.data.inputAmountAtomic,
       requestedAtMs,
       completedAtMs: Date.now(),
-      attempts
+      attempts: attempts.map((attempt) => ({
+        ...attempt,
+        publicWalletExecutionEligible: publicExecutionScope.valid
+          && publicExecutionScope.providers.includes(attempt.provider)
+          && attempt.strictVerificationAvailable
+          && isVNextWalletExecutionAdmitted(attempt.provider)
+          && (attempt.provider !== "uniswap-v3" || attempt.settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE)
+      }))
     };
     return Response.json(response, { headers: { "Cache-Control": "no-store" } });
   } catch (cause) {

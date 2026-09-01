@@ -203,7 +203,7 @@ Contract readiness is not application activation readiness. On this exact source
 | --- | --- | --- |
 | Quote | `READY` | The ordinary V3 adapter quotes provider input after the exact floored 25-bps input fee and exposes explicit V2 economics. |
 | Verify | `READY` | Exact V2 route, runtime, policy, pool, recipient, deadline, gas, calldata, and simulation verification exists. |
-| Authorize | `READY` | The registry is source-admitted as version-explicit V2, with exact executor/policy verification and a separate server-only gate that defaults false. |
+| Authorize | `READY` | The registry is source-admitted as version-explicit V2, with exact executor/policy verification, a separate server-only V2 gate, and an exact server-only public provider scope. |
 | Wallet review | `READY` | The authorization-plan codec accepts explicit `VNEXT_V2_ATOMIC_INPUT_FEE` authority. |
 | Prehash journal | `READY` | V2 calldata hashes and recovery plans are durably bound. |
 | Receipt recovery | `READY` | Exact V2 settlement-event reconciliation and terminal recovery exist. |
@@ -219,6 +219,16 @@ server-only, and cannot activate V2 without the independent authorization, execu
 global wallet gates. Neither V2 gate inherits the historical V1
 `RMT_VNEXT_UNISWAP_V3_FEE_PROOF_WALLET`. Once a recipient enters the V2 lane, missing or mismatched
 V2 authority fails closed and never downgrades to V1 or fee-free V3 execution.
+
+Public provider execution is independently scoped by the server-only
+`RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS` list. The initial V3 V2 release requires that list to contain
+exactly `uniswap-v3`; an absent list admits no public wallet provider, and malformed, duplicate,
+unknown, empty, or wildcard members fail closed. Quote observation and ranking remain broad. A
+quote-only winner remains the best observed quote, while the interface separately identifies the
+best currently executable quote. The verify and authorize routes independently enforce the same
+server scope, so browser state cannot promote Uniswap V2, Uniswap V4, Sushi, UP, 0x, or UniswapX.
+Within the admitted Uniswap V3 lane, public wallet execution additionally requires explicit
+`VNEXT_V2_ATOMIC_INPUT_FEE` settlement authority; a fee-free or legacy V3 quote remains quote-only.
 
 ## Accepted V2 live canary and owner waiver
 
@@ -264,10 +274,12 @@ never enter the browser bundle.
 
 ## Public activation tranche (decision pending)
 
-The smallest version-explicit public transition is now represented by the default-off server gate
-`RMT_VNEXT_UNISWAP_V3_V2_PUBLIC_AUTHORIZATION_ENABLED`. A later owner-authorized operational release
+The smallest version-explicit public transition is represented by the default-off server gate
+`RMT_VNEXT_UNISWAP_V3_V2_PUBLIC_AUTHORIZATION_ENABLED` plus the exact server-only provider scope
+`RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS=uniswap-v3`. A later owner-authorized operational release
 must independently verify and enable the existing global authorization/wallet gates, V2 policy and
-executor gates, V2 authorization gate, exact immutable configuration, and this V2 public gate. The
+executor gates, V2 authorization gate, exact immutable configuration, the V2 public gate, and this
+single-provider public scope. The
 proof-wallet value does not become public authority and no token allowlist is introduced. Quotes
 continue to compete normally on protected user outcome after the RMT fee; V3 is not preferred merely
 because it earns revenue. No Production value is changed by this source-readiness work.
@@ -283,5 +295,5 @@ because it earns revenue. No Production value is changed by this source-readines
 4. Request a separate owner decision before changing any Production environment value or enabling
    public wallet execution.
 
-This evidence finalization changes no contract, application logic, treasury, fee rate, route
-ranking, production environment, deployment, or wallet state.
+This provider-scope finalization changes no contract, treasury, fee rate, route ranking, production
+environment, deployment, or wallet state.

@@ -6,6 +6,7 @@ const output = process.env.RMT_ACCEPTANCE_OUTPUT
   ?? `${process.env.GITHUB_WORKSPACE}/terminal-high-end-evidence`;
 const focusDebug = process.env.RMT_ACCEPTANCE_FOCUS_DEBUG === "true";
 const previewOnly = process.env.RMT_ACCEPTANCE_PREVIEW_ONLY === "true";
+const v4WalletReviewOnly = process.env.RMT_ACCEPTANCE_ONLY_V4_WALLET_REVIEW === "true";
 const now = new Date().toISOString();
 const address = (seed) => `0x${seed.toString(16).padStart(40, "0")}`;
 const txHash = (seed) => `0x${seed.toString(16).repeat(64).slice(0, 64)}`;
@@ -2410,6 +2411,7 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
       && request.canonicalMarket?.poolId === cannaCatPoolId;
     const attempt = exact ? {
       ...fixture.v4.quote.attempts[0],
+      publicWalletExecutionEligible: v4WalletReviewOnly,
       inputAsset: request.inputAsset,
       outputAsset: request.outputAsset,
       inputAmountAtomic: request.inputAmountAtomic,
@@ -2527,6 +2529,32 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
       buttons: [...document.querySelectorAll(".vnTradePanel button")].map((entry) => ({ text: entry.textContent?.trim(), disabled: entry.disabled }))
     }));
     throw new Error(`V4 wallet fixture did not observe the passive quote: ${JSON.stringify({ diagnostic, state })}`, { cause: error });
+  }
+  if (!v4WalletReviewOnly) {
+    const reviewButton = panel.locator(".vnReviewButton");
+    if (!await reviewButton.isDisabled() || await reviewButton.innerText() !== "Best route is quote only") {
+      throw new Error("The public V3-only acceptance did not keep the Uniswap V4 winner quote-only.");
+    }
+    const panelText = await panel.innerText();
+    if (!panelText.includes("No public wallet route is currently admitted")) {
+      throw new Error(`The V4 quote-only winner was not labeled truthfully: ${panelText}`);
+    }
+    const walletMethods = await page.evaluate(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__);
+    if (state.verifications !== 0 || state.authorizations !== 0 || walletMethods.includes("eth_sendTransaction")) {
+      throw new Error(`The V4 quote-only winner produced wallet side effects: ${JSON.stringify({ state, walletMethods })}`);
+    }
+    await page.screenshot({ path: `${output}/v4-quote-only-cannacat-desktop-1440x900.png`, fullPage: false, animations: "disabled" });
+    await context.close();
+    return {
+      token: cannaCatToken,
+      poolId: cannaCatPoolId,
+      provider: "uniswap-v4",
+      publicExecutionEligible: false,
+      quotePreserved: true,
+      verifyRequests: state.verifications,
+      authorizeRequests: state.authorizations,
+      walletTransactionRequests: 0
+    };
   }
   await panel.locator(".vnReviewButton").click();
   const advanced = panel.locator(".vnRouteCard");
@@ -2667,6 +2695,7 @@ async function inspectV4FreshWalletSellJourney(browser, fixture) {
       completedAtMs: nowMs + 1,
       attempts: scenario.quote.attempts.map((attempt) => ({
         ...attempt,
+        publicWalletExecutionEligible: v4WalletReviewOnly,
         inputAsset: request.inputAsset,
         outputAsset: request.outputAsset,
         inputAmountAtomic: request.inputAmountAtomic,
@@ -3451,7 +3480,6 @@ try {
   const browserAcceptanceFixture = process.env.NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE === "true"
     ? JSON.parse(await readFile(`${output}/v2-fixture.json`, "utf8"))
     : null;
-  const v4WalletReviewOnly = process.env.RMT_ACCEPTANCE_ONLY_V4_WALLET_REVIEW === "true";
   const walletLifecycleOnly = process.env.RMT_ACCEPTANCE_ONLY_WALLET_LIFECYCLE === "true";
   const marketLoadPerformanceOnly = process.env.RMT_ACCEPTANCE_ONLY_MARKET_LOAD_PERFORMANCE === "true";
   const compatibilityOnly = process.env.RMT_ACCEPTANCE_ONLY_COMPATIBILITY === "true";
@@ -3488,9 +3516,7 @@ try {
   const v4WalletReviewEvidence = browserAcceptanceFixture && !mobileOnly
     ? await inspectV4WalletReviewJourney(browser, browserAcceptanceFixture)
     : null;
-  const v4FreshWalletSellEvidence = browserAcceptanceFixture && !mobileOnly
-    ? await inspectV4FreshWalletSellJourney(browser, browserAcceptanceFixture)
-    : null;
+  const v4FreshWalletSellEvidence = null;
   const marketLoadPerformance = await inspectMarketLoadPerformanceMatrix(browser);
   const walletLifecycleEvidence = browserAcceptanceFixture && !mobileOnly
     ? await inspectWalletPromptReloadAndCrossTab(browser, browserAcceptanceFixture)

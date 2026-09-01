@@ -16,7 +16,7 @@ export function cachedVNextQuoteForRequest(cached: VNextCachedQuote | undefined,
 
 export function isVNextQuoteReusableForTrade(response: VNextQuoteResponse | undefined, nowMs: number) {
   if (!response || !Number.isFinite(nowMs)) return false;
-  const candidate = selectVNextRoute(response.attempts).verificationCandidate;
+  const candidate = selectVNextRoute(response.attempts, { publicExecutionOnly: true }).verificationCandidate;
   if (
     !candidate
     || candidate.status !== "indicative"
