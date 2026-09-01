@@ -341,7 +341,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     return () => window.clearTimeout(timeout);
   }, [visibleVerification?.networkCostValuationExpiresAtMs, visibleVerification?.verificationId]);
   const observedRouteSelection = visibleQuote
-    ? selectVNextRoute(visibleQuote.attempts)
+    ? selectVNextRoute(visibleQuote.attempts, { publicExecutionOnly: true })
     : { bestObserved: undefined, verificationCandidate: undefined, usesVerifiedBackup: false, selectionBasis: "none" as const, netOutcomeReady: false as const };
   const routeSelection = stockTokenViewOnly
     ? { ...observedRouteSelection, verificationCandidate: undefined, usesVerifiedBackup: false }
@@ -544,7 +544,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const requestStrictVerification = async (quoteResponse: VNextQuoteResponse) => {
     if (!authorizationEnabled) throw new Error("Wallet execution remains disabled in this build.");
     if (stockTokenViewOnly) throw new Error("Official Robinhood Stock Tokens are view-only in RMT until jurisdiction controls are available.");
-    const selectedRoute = selectVNextRoute(quoteResponse.attempts);
+    const selectedRoute = selectVNextRoute(quoteResponse.attempts, { publicExecutionOnly: true });
     const winningQuote = selectedRoute.verificationCandidate;
     if (
       !draft.intent
@@ -556,7 +556,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       || !winningQuote
       || (winningQuote.provider !== "uniswap-v2" && winningQuote.provider !== "uniswap-v3" && winningQuote.provider !== "uniswap-v4" && winningQuote.provider !== "up-v2" && winningQuote.provider !== "up-cl")
       || !winningQuote.protectedOutputAtomic
-    ) throw new Error("No observed route is supported by a strict verifier yet.");
+    ) throw new Error("No observed route is currently admitted to public wallet execution.");
     const expected = {
       quoteRequestId: quoteResponse.requestId,
       inputAsset: inputAddress,
@@ -944,7 +944,13 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
           </select> : <button type="button" disabled>{outputSymbol}</button>}
         </div>
         <div className="vnOutputProtection"><span>Protected minimum</span><strong>{protectedOutput ? `${protectedOutput} ${outputSymbol}` : "Set when you trade"}</strong></div>
-        <small>{protectedOutput ? `Best observed: ${bestQuote?.providerLabel}. Quotes update quietly; RMT verifies the executable route when you trade.` : "RMT sets and verifies the protected minimum during the one-tap execution check."}</small>
+        <small>{protectedOutput
+          ? routeSelection.usesVerifiedBackup
+            ? `Best observed: ${bestQuote?.providerLabel} (quote-only). Best currently executable: ${verificationQuote?.providerLabel}.`
+            : verificationQuote
+              ? `Best observed: ${bestQuote?.providerLabel}. Quotes update quietly; RMT verifies the executable route when you trade.`
+              : `Best observed: ${bestQuote?.providerLabel} (quote-only). No public wallet route is currently admitted.`
+          : "RMT sets and verifies the protected minimum during the one-tap execution check."}</small>
       </div>
       {bestRmtFee && pair ? <div className="vnFeeV2Summary" role="note" aria-label="RMT execution fee summary">
         <span><small>RMT execution fee</small><strong>{bestRmtFee.feeBps / 100}% · {formatAtomicDisplay(
@@ -979,13 +985,15 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       </section> : <button
           className="vnReviewButton"
           type="button"
-          disabled={!authorizationEnabled || stockTokenViewOnly || flowBusy || transactionPending || amountExceedsBalance || !identity.enabled || !identity.ready || Boolean(identity.authenticated && address && identity.activeWalletKind === "external" && !draft.intent)}
+          disabled={!authorizationEnabled || stockTokenViewOnly || flowBusy || transactionPending || amountExceedsBalance || !identity.enabled || !identity.ready || Boolean(visibleQuote && bestQuote && !verificationQuote) || Boolean(identity.authenticated && address && identity.activeWalletKind === "external" && !draft.intent)}
           aria-describedby={stockTokenViewOnly ? "vn-stock-token-execution-policy" : previewOnly ? "vn-preview-execution-policy" : undefined}
           onClick={triggerPrimaryAction}
         >{stockTokenViewOnly
           ? "View only"
           : previewOnly
             ? "Trading activation pending"
+          : visibleQuote && bestQuote && !verificationQuote
+            ? "Best route is quote only"
           : postExecutionState.state === "refreshing"
           ? "Preparing verified swap…"
           : transactionPending
@@ -1003,7 +1011,9 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         ? "Official Robinhood Stock Tokens are view-only in RMT until jurisdiction controls are available. Indicative market and route information remains available."
         : previewOnly
           ? "Preview mode shows informational routes only. RMT will not connect your wallet or prepare a transaction until verified execution is activated."
-        : walletPlanActive
+         : visibleQuote && bestQuote && !verificationQuote
+           ? "The best observed route is not admitted to public wallet execution. Its quote remains visible and unchanged."
+         : walletPlanActive
           ? "The verified request is ready. Only your explicit wallet-review action can send it to the selected external wallet."
         : identity.enabled
           ? "One tap checks the best route and prepares an explicit external-wallet review."
@@ -1045,9 +1055,11 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               <span><strong>{attempt.providerLabel}</strong><small>{attempt.executionKind === "rfq_intent" ? "Intent" : attempt.executionKind === "gasless" ? "Gasless" : attempt.executionKind === "aggregator" ? "Aggregator" : "Direct AMM"} · {attempt.userPaysGas === null ? "gas unknown" : attempt.userPaysGas ? "wallet gas" : "filler pays gas"} · {attempt.latencyMs}ms</small></span>
               <span><strong>{attempt.status === "indicative" && attempt.outputDecimals !== null ? `${formatAtomicDisplay(attempt.protectedOutputAtomic!, attempt.outputDecimals)} ${outputSymbol}` : attempt.status === "no_route" ? "No route" : attempt.status === "invalid_response" ? "Rejected" : "Unavailable"}</strong><small>{attempt.status === "indicative"
                 ? attempt.provider === bestQuote?.provider
-                  ? "Highest protected user output before network fee · indicative floor"
+                  ? attempt.publicWalletExecutionEligible
+                    ? "Highest protected user output before network fee · indicative floor"
+                    : "Highest protected user output before network fee · quote-only"
                   : routeSelection.usesVerifiedBackup && attempt.provider === verificationQuote?.provider
-                    ? "Strict-verification backup · indicative floor"
+                    ? "Best currently executable quote · indicative floor"
                     : "Indicative floor"
                 : attempt.detail}</small></span>
             </div>
@@ -1067,11 +1079,11 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
           <div>
             <span><strong>Strict pre-sign evidence</strong><small>{verificationQuote
               ? routeSelection.usesVerifiedBackup
-                ? `${bestQuote?.providerLabel} leads indicatively; ${verificationQuote.providerLabel} is the best strict-verification candidate`
+                ? `${bestQuote?.providerLabel} leads indicatively but is quote-only; ${verificationQuote.providerLabel} is the best currently executable quote`
                 : "Fresh provider-specific contracts + exact wallet state"
               : stockTokenViewOnly
                 ? "Indicative routes are informational; stock-token execution verification is not admitted."
-                : "No observed route has a strict verifier available yet"}</small></span>
+                : "No observed route is currently admitted to public wallet execution"}</small></span>
           </div>
           {verificationState.state === "error" ? <p className="isError" role="status">{verificationState.message}</p> : null}
           {visibleVerification ? <div className={`vnVerificationEvidence is${visibleVerification.status}`} aria-busy={verificationState.state === "loading"}>

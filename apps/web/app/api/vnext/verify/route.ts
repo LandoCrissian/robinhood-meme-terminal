@@ -25,6 +25,11 @@ import {
   VNextV2VerificationCommitmentConfigurationError
 } from "../../../../lib/server/vnext-v2-verification-commitment";
 import type { VNextPreSignEvidence } from "../../../../lib/vnext/pre-sign-evidence";
+import {
+  requireVNextPublicExecutionProvider,
+  requireVNextPublicExecutionSettlement,
+  vNextPublicExecutionProviderScopeErrorResponse
+} from "../../../../lib/server/vnext-public-execution-provider-scope";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -66,6 +71,7 @@ export async function POST(request: Request) {
     if ((parsed.data.provider === "uniswap-v4") !== hasCompleteV4Binding) {
       return Response.json({ error: "Invalid VNext V4 verification binding." }, { status: 400, headers: { "Cache-Control": "no-store" } });
     }
+    requireVNextPublicExecutionProvider(parsed.data.provider);
     const recipient = getAddress(parsed.data.recipient);
     const inputAsset = getAddress(parsed.data.inputAsset);
     const outputAsset = getAddress(parsed.data.outputAsset);
@@ -85,6 +91,7 @@ export async function POST(request: Request) {
     const settlementMode = parsed.data.provider === "uniswap-v3"
       ? selectVNextUniswapV3SettlementMode({ inputAsset, outputAsset, recipient })
       : VNEXT_DIRECT_NO_RMT_FEE;
+    requireVNextPublicExecutionSettlement(parsed.data.provider, settlementMode);
     const verificationId = randomUUID();
     const verificationWallClockMs = Date.now();
     const finalDeadlineSeconds = settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE
@@ -126,6 +133,8 @@ export async function POST(request: Request) {
     }
     return Response.json(responseEvidence, { headers: { "Cache-Control": "no-store" } });
   } catch (cause) {
+    const publicProviderResponse = vNextPublicExecutionProviderScopeErrorResponse(cause);
+    if (publicProviderResponse) return publicProviderResponse;
     const identityResponse = tradeIdentityErrorResponse(cause);
     if (identityResponse) return identityResponse;
     const eligibilityResponse = vNextExecutionEligibilityErrorResponse(cause);

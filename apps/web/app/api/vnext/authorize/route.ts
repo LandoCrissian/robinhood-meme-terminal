@@ -35,6 +35,11 @@ import {
   VNextV2VerificationCommitmentConfigurationError,
   VNextV2VerificationCommitmentError
 } from "../../../../lib/server/vnext-v2-verification-commitment";
+import {
+  requireVNextPublicExecutionProvider,
+  requireVNextPublicExecutionSettlement,
+  vNextPublicExecutionProviderScopeErrorResponse
+} from "../../../../lib/server/vnext-public-execution-provider-scope";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -57,6 +62,7 @@ export async function POST(request: Request) {
     if ((parsed.data.provider === "uniswap-v4") !== hasCompleteV4Binding) {
       return Response.json({ error: "Invalid VNext V4 authorization binding." }, { status: 400, headers: noStore });
     }
+    requireVNextPublicExecutionProvider(parsed.data.provider);
     if (BigInt(parsed.data.indicativeProtectedOutputFloorAtomic) > BigInt(parsed.data.expectedProtectedOutputAtomic)) {
       return Response.json({ error: "Invalid VNext quote-continuity floor." }, { status: 400, headers: noStore });
     }
@@ -79,6 +85,7 @@ export async function POST(request: Request) {
     const settlementMode = parsed.data.provider === "uniswap-v3"
       ? selectVNextUniswapV3SettlementMode({ inputAsset, outputAsset, recipient })
       : VNEXT_DIRECT_NO_RMT_FEE;
+    requireVNextPublicExecutionSettlement(parsed.data.provider, settlementMode);
     if (parsed.data.settlementMode !== settlementMode) {
       return verifyAgain("The exact verified settlement authority changed. Verify again.");
     }
@@ -235,6 +242,8 @@ export async function POST(request: Request) {
       plan
     }, { headers: noStore });
   } catch (cause) {
+    const publicProviderResponse = vNextPublicExecutionProviderScopeErrorResponse(cause);
+    if (publicProviderResponse) return publicProviderResponse;
     const identityResponse = tradeIdentityErrorResponse(cause);
     if (identityResponse) return identityResponse;
     const eligibilityResponse = vNextExecutionEligibilityErrorResponse(cause);

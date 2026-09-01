@@ -149,6 +149,7 @@ const feePublicReady = readVNextReleaseReadiness({
   RMT_VNEXT_EXECUTION_FEE_POLICY_ENABLED: "true",
   RMT_VNEXT_UNISWAP_V3_FEE_AUTHORIZATION_ENABLED: "true",
   RMT_VNEXT_UNISWAP_V3_FEE_PUBLIC_AUTHORIZATION_ENABLED: "true",
+  RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "uniswap-v3"
 });
 assert.equal(feePublicReady.mode, "interactive");
 assert.equal(feePublicReady.configurationConsistent, true);
@@ -201,7 +202,8 @@ const v2PublicReady = readVNextReleaseReadiness({
   RMT_VNEXT_AUTHORIZATION_ENABLED: "true",
   NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED: "true",
   ...v2ExactConfiguration,
-  RMT_VNEXT_UNISWAP_V3_V2_PUBLIC_AUTHORIZATION_ENABLED: "true"
+  RMT_VNEXT_UNISWAP_V3_V2_PUBLIC_AUTHORIZATION_ENABLED: "true",
+  RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "uniswap-v3"
 });
 assert.equal(v2PublicReady.configurationConsistent, true);
 assert.equal(v2PublicReady.providers.uniswapV3V2FeeExecutor.releaseScope, "public");
@@ -210,6 +212,9 @@ assert.equal(v2PublicReady.providers.uniswapV3V2FeeExecutor.exactAuthorityValid,
 assert.equal(v2PublicReady.providers.uniswapV3V2FeeExecutor.nativeInputMainnetCanaryComplete, true);
 assert.equal(v2PublicReady.providers.uniswapV3V2FeeExecutor.erc20ToNativeLiveCanary, "OWNER_WAIVED_NOT_EXECUTED");
 assert.equal(v2PublicReady.providers.uniswapV3V2FeeExecutor.bidirectionalLiveProof, false);
+assert.deepEqual(v2PublicReady.publicExecution.providers, ["uniswap-v3"]);
+assert.deepEqual(v2PublicReady.publicExecution.unintendedProviders, []);
+assert.equal(v2PublicReady.publicExecution.exactV3V2ReleaseScope, true);
 
 const invalidV2PublicGate = readVNextReleaseReadiness({
   NODE_ENV: "production",
@@ -304,6 +309,8 @@ assert.doesNotMatch(route, /RMT_INDEXER_READ_TOKEN|RMT_ZEROX_API_KEY|RMT_UNISWAP
 assert.match(envExample, /^RMT_VNEXT_SHELL_ENABLED=false$/m);
 assert.match(envExample, /^RMT_VNEXT_UNISWAP_V3_FEE_PUBLIC_AUTHORIZATION_ENABLED=false$/m);
 assert.match(envExample, /^RMT_VNEXT_UNISWAP_V3_V2_PUBLIC_AUTHORIZATION_ENABLED=false$/m);
+assert.match(envExample, /^# RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS=uniswap-v3$/m);
+assert.doesNotMatch(envExample, /NEXT_PUBLIC_RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS/);
 assert.doesNotMatch(envExample, /^NEXT_PUBLIC_RMT_VNEXT_SHELL_ENABLED=/m);
 
 console.log("RMT VNext production release-readiness smoke checks passed.");

@@ -160,7 +160,7 @@ assert.match(composer, /estimatedNetworkCostWei/);
 assert.match(composer, /estimatedNetworkCostUsdgAtomic/);
 assert.match(composer, /selectVNextRoute/);
 assert.match(composer, /selectedRoute\.verificationCandidate/);
-assert.match(composer, /best strict-verification candidate/);
+assert.match(composer, /best currently executable quote/);
 assert.match(composer, /Quote continuity/);
 assert.match(composer, /Indicative floor held/);
 assert.doesNotMatch(composer, /writeContract|sendTransaction|signTypedData|useSendTransaction/);

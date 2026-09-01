@@ -57,6 +57,7 @@ export type VNextQuoteAttempt = {
   latencyMs: number;
   executionKind: "aggregator" | "direct_amm" | "gasless" | "rfq_intent";
   strictVerificationAvailable: boolean;
+  publicWalletExecutionEligible?: boolean;
   userPaysGas: boolean | null;
   providerFeeAsset: string | null;
   providerFeeAtomic: string | null;
@@ -128,6 +129,7 @@ const attemptSchema = z.object({
   latencyMs: z.number(),
   executionKind: z.enum(["aggregator", "direct_amm", "gasless", "rfq_intent"]),
   strictVerificationAvailable: z.boolean(),
+  publicWalletExecutionEligible: z.boolean().optional(),
   userPaysGas: z.boolean().nullable(),
   providerFeeAsset: z.string().nullable(),
   providerFeeAtomic: z.string().nullable(),
@@ -367,13 +369,17 @@ export type VNextRouteSelection = {
   netOutcomeReady: false;
 };
 
-export function selectVNextRoute(attempts: VNextQuoteAttempt[]): VNextRouteSelection {
+export function selectVNextRoute(
+  attempts: VNextQuoteAttempt[],
+  options: { publicExecutionOnly?: boolean } = {}
+): VNextRouteSelection {
   const bestObserved = bestIndicativeAttempt(attempts);
   const verificationCandidate = bestIndicativeAttempt(
     attempts.filter((attempt) => (
       attempt.strictVerificationAvailable
       && hasVNextWalletAuthorizationCodec(attempt.provider)
       && isVNextWalletExecutionAdmitted(attempt.provider)
+      && (!options.publicExecutionOnly || attempt.publicWalletExecutionEligible === true)
     ))
   );
   return {

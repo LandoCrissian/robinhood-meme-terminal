@@ -8,6 +8,10 @@ import {
   RMT_UNISWAP_V3_V2_PRODUCTION_CANARY_EVIDENCE_VALID
 } from "./uniswap-v3-v2-production-canary-evidence";
 import { acrossReviewedDeploymentPins } from "./across-funding-deployment";
+import {
+  hasExactVNextV3V2PublicExecutionProviderScope,
+  readVNextPublicExecutionProviderScope
+} from "../server/vnext-public-execution-provider-scope";
 
 export type VNextReleaseEnvironment = VNextShellEnvironment & Partial<Pick<
   NodeJS.ProcessEnv,
@@ -56,6 +60,7 @@ export type VNextReleaseEnvironment = VNextShellEnvironment & Partial<Pick<
   | "RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED"
   | "RMT_VNEXT_UNISWAP_V3_V2_PROOF_WALLET"
   | "RMT_VNEXT_UNISWAP_V3_V2_PUBLIC_AUTHORIZATION_ENABLED"
+  | "RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS"
   | "RMT_VNEXT_VERIFICATION_COMMITMENT_SECRET"
   | "RMT_ETHEREUM_RPC_URL"
   | "RMT_ETHEREUM_RPC_AUTH_TOKEN"
@@ -155,6 +160,9 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
   const v2ExecutorRequested = enabled(env.RMT_VNEXT_UNISWAP_V3_V2_EXECUTOR_ENABLED);
   const v2AuthorizationRequested = enabled(env.RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED);
   const v2PublicAuthorizationRequested = enabled(env.RMT_VNEXT_UNISWAP_V3_V2_PUBLIC_AUTHORIZATION_ENABLED);
+  const publicExecutionProviderScope = readVNextPublicExecutionProviderScope(env);
+  const exactV3V2PublicExecutionProviderScope = hasExactVNextV3V2PublicExecutionProviderScope(env);
+  const publicV3AuthorizationRequested = uniswapFeePublicAuthorizationRequested || v2PublicAuthorizationRequested;
   const v2GateValuesValid = [
     env.RMT_VNEXT_EXECUTION_V2_POLICY_ENABLED,
     env.RMT_VNEXT_UNISWAP_V3_V2_EXECUTOR_ENABLED,
@@ -195,6 +203,7 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
       && feeExecutorConfigured
       && publicFeeProofBindingValid
       && RMT_UNISWAP_V3_FEE_MAINNET_PROOF_COMPLETE
+      && exactV3V2PublicExecutionProviderScope
     ));
   const v2AuthorizationValid = v2GateValuesValid
     && v2PolicyRequested === v2ExecutorRequested
@@ -209,8 +218,11 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
       && v2ExactAuthorityValid
       && v2CommitmentConfigured
       && RMT_UNISWAP_V3_V2_PRODUCTION_CANARY_EVIDENCE_VALID
+      && exactV3V2PublicExecutionProviderScope
     ));
   const configurationConsistent = authorizationConsistent && sushiConsistent && walletSubmissionValid
+    && publicExecutionProviderScope.valid
+    && (!publicV3AuthorizationRequested || exactV3V2PublicExecutionProviderScope)
     && acrossConfigurationValid && upAuthorizationValid && feeAuthorizationValid && v2AuthorizationValid;
 
   let mode: VNextReleaseMode = "disabled";
@@ -229,6 +241,13 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
       authorizationClientEnabled,
       authorizationServerEnabled,
       walletSubmissionEnabled
+    },
+    publicExecution: {
+      configured: publicExecutionProviderScope.configured,
+      configurationValid: publicExecutionProviderScope.valid,
+      providers: publicExecutionProviderScope.providers,
+      exactV3V2ReleaseScope: exactV3V2PublicExecutionProviderScope,
+      unintendedProviders: publicExecutionProviderScope.providers.filter((provider) => provider !== "uniswap-v3")
     },
     providers: {
       sushiClientEnabled,
@@ -264,7 +283,8 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
           && feeExecutorConfigured && authorizationClientEnabled && authorizationServerEnabled,
         publicAuthorizationEnabled: feePolicyRequested && uniswapFeeAuthorizationRequested
           && uniswapFeePublicAuthorizationRequested && feeExecutorConfigured
-          && publicFeeProofBindingValid && authorizationClientEnabled && authorizationServerEnabled,
+          && publicFeeProofBindingValid && exactV3V2PublicExecutionProviderScope
+          && authorizationClientEnabled && authorizationServerEnabled,
         publicProofBindingValid: publicFeeProofBindingValid,
         deployedAndVerified: true,
         mainnetProofComplete: RMT_UNISWAP_V3_FEE_MAINNET_PROOF_COMPLETE
@@ -290,6 +310,7 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
           && authorizationClientEnabled && authorizationServerEnabled,
         publicAuthorizationEnabled: v2PublicAuthorizationRequested && v2AuthorizationRequested
           && v2ExactAuthorityValid && v2CommitmentConfigured
+          && exactV3V2PublicExecutionProviderScope
           && authorizationClientEnabled && authorizationServerEnabled,
         exactAuthorityValid: v2ExactAuthorityValid,
         nativeInputMainnetCanaryComplete: RMT_UNISWAP_V3_V2_PRODUCTION_CANARY_EVIDENCE_VALID,

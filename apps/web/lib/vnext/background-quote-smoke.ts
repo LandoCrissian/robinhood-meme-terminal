@@ -14,6 +14,7 @@ const response = {
     provider: "uniswap-v3",
     status: "indicative",
     strictVerificationAvailable: true,
+    publicWalletExecutionEligible: true,
     protectedOutputAtomic: "990",
     quotedAtMs: now - 1_000,
     expiresAtMs: now + 29_000,
@@ -24,7 +25,11 @@ const response = {
 assert.equal(VNEXT_BACKGROUND_QUOTE_REFRESH_MS, 4_000);
 assert.equal(cachedVNextQuoteForRequest({ requestKey: "wallet:buy:1:usdg:token", response }, "wallet:buy:1:usdg:token"), response);
 assert.equal(cachedVNextQuoteForRequest({ requestKey: "wallet:buy:1:usdg:token", response }, "wallet:buy:2:usdg:token"), undefined);
-assert.equal(isVNextQuoteReusableForTrade(response, now), true, "fee-free execution-capable providers can reuse a fresh quote before exact verification");
+assert.equal(isVNextQuoteReusableForTrade(response, now), true, "publicly admitted execution providers can reuse a fresh quote before exact verification");
+assert.equal(isVNextQuoteReusableForTrade({
+  ...response,
+  attempts: [{ ...response.attempts[0], publicWalletExecutionEligible: false }]
+} as VNextQuoteResponse, now), false);
 assert.equal(isVNextQuoteReusableForTrade({
   ...response,
   attempts: [{ ...response.attempts[0], quotedAtMs: now - VNEXT_TRADE_QUOTE_MAX_AGE_MS - 1 }]
