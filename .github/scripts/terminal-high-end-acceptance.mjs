@@ -2309,7 +2309,7 @@ async function inspectV4PreviewUserJourney(browser, fixture) {
   };
 }
 
-async function inspectV4WalletReviewJourney(browser, fixture) {
+async function inspectV4WalletReviewJourney(browser, fixture, publicExecutionEligible = false) {
   const state = {
     approved: true,
     receiptsAvailable: false,
@@ -2410,6 +2410,7 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
       && request.canonicalMarket?.poolId === cannaCatPoolId;
     const attempt = exact ? {
       ...fixture.v4.quote.attempts[0],
+      publicWalletExecutionEligible,
       inputAsset: request.inputAsset,
       outputAsset: request.outputAsset,
       inputAmountAtomic: request.inputAmountAtomic,
@@ -2528,6 +2529,32 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
     }));
     throw new Error(`V4 wallet fixture did not observe the passive quote: ${JSON.stringify({ diagnostic, state })}`, { cause: error });
   }
+  if (!publicExecutionEligible) {
+    const reviewButton = panel.locator(".vnReviewButton");
+    if (!await reviewButton.isDisabled() || await reviewButton.innerText() !== "Best route is quote only") {
+      throw new Error("The public V3-only acceptance did not keep the Uniswap V4 winner quote-only.");
+    }
+    const panelText = await panel.innerText();
+    if (!panelText.includes("No public wallet route is currently admitted")) {
+      throw new Error(`The V4 quote-only winner was not labeled truthfully: ${panelText}`);
+    }
+    const walletMethods = await page.evaluate(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__);
+    if (state.verifications !== 0 || state.authorizations !== 0 || walletMethods.includes("eth_sendTransaction")) {
+      throw new Error(`The V4 quote-only winner produced wallet side effects: ${JSON.stringify({ state, walletMethods })}`);
+    }
+    await page.screenshot({ path: `${output}/v4-quote-only-cannacat-desktop-1440x900.png`, fullPage: false, animations: "disabled" });
+    await context.close();
+    return {
+      token: cannaCatToken,
+      poolId: cannaCatPoolId,
+      provider: "uniswap-v4",
+      publicExecutionEligible: false,
+      quotePreserved: true,
+      verifyRequests: state.verifications,
+      authorizeRequests: state.authorizations,
+      walletTransactionRequests: 0
+    };
+  }
   await panel.locator(".vnReviewButton").click();
   const advanced = panel.locator(".vnRouteCard");
   await advanced.evaluate((element) => { element.open = true; });
@@ -2574,7 +2601,7 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
   };
 }
 
-async function inspectV4FreshWalletSellJourney(browser, fixture) {
+async function inspectV4FreshWalletSellJourney(browser, fixture, publicExecutionEligible = false) {
   const sell = fixture.v4.sell;
   const stages = [sell.tokenApproval, sell.permit2Approval, sell.swap];
   const state = {
@@ -2667,6 +2694,7 @@ async function inspectV4FreshWalletSellJourney(browser, fixture) {
       completedAtMs: nowMs + 1,
       attempts: scenario.quote.attempts.map((attempt) => ({
         ...attempt,
+        publicWalletExecutionEligible,
         inputAsset: request.inputAsset,
         outputAsset: request.outputAsset,
         inputAmountAtomic: request.inputAmountAtomic,
@@ -3469,8 +3497,8 @@ try {
     console.log(`Terminal wallet-lifecycle acceptance passed: ${JSON.stringify(walletLifecycleEvidence)}`);
   } else if (v4WalletReviewOnly) {
     if (!browserAcceptanceFixture) throw new Error("V4 wallet-review acceptance requires the loopback-only browser fixture profile.");
-    const v4FreshWalletSellEvidence = await inspectV4FreshWalletSellJourney(browser, browserAcceptanceFixture);
-    const v4WalletReviewEvidence = await inspectV4WalletReviewJourney(browser, browserAcceptanceFixture);
+    const v4FreshWalletSellEvidence = await inspectV4FreshWalletSellJourney(browser, browserAcceptanceFixture, true);
+    const v4WalletReviewEvidence = await inspectV4WalletReviewJourney(browser, browserAcceptanceFixture, true);
     await writeFile(`${output}/report.json`, JSON.stringify({ v4WalletReviewEvidence, v4FreshWalletSellEvidence }, null, 2));
     console.log(`Terminal V4 wallet-review acceptance passed: ${JSON.stringify({ v4WalletReviewEvidence, v4FreshWalletSellEvidence })}`);
   } else if (previewOnly) {
@@ -3488,9 +3516,7 @@ try {
   const v4WalletReviewEvidence = browserAcceptanceFixture && !mobileOnly
     ? await inspectV4WalletReviewJourney(browser, browserAcceptanceFixture)
     : null;
-  const v4FreshWalletSellEvidence = browserAcceptanceFixture && !mobileOnly
-    ? await inspectV4FreshWalletSellJourney(browser, browserAcceptanceFixture)
-    : null;
+  const v4FreshWalletSellEvidence = null;
   const marketLoadPerformance = await inspectMarketLoadPerformanceMatrix(browser);
   const walletLifecycleEvidence = browserAcceptanceFixture && !mobileOnly
     ? await inspectWalletPromptReloadAndCrossTab(browser, browserAcceptanceFixture)

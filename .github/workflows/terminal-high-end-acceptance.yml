@@ -101,6 +101,7 @@ jobs:
       NEXT_PUBLIC_RMT_RPC_URL: "https://browser-acceptance.invalid"
       NEXT_PUBLIC_RMT_VNEXT_AUTHORIZATION_ENABLED: "true"
       NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED: "true"
+      RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "uniswap-v3"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
