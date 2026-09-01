@@ -131,7 +131,7 @@ assert.throws(() => assertVNextV2VerificationContinuity({
   claims: hopClaims,
   evidence,
   executorRuntimeHash: runtimeHash
-}), undefined, "a committed WETH-hop route must reject substitution with a direct route");
+}));
 rejectsEvidence({ ...evidence, pools: ["0x8888888888888888888888888888888888888888"] });
 rejectsEvidence({ ...evidence, fees: [500] });
 rejectsEvidence({ ...evidence, feeV2Economics: { ...evidence.feeV2Economics!, expectedFeeAtomic: "2499", maximumFeeAtomic: "2499", providerInputAtomic: "997501" } });
