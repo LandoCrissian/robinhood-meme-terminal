@@ -118,7 +118,18 @@ export function requireVNextUniswapV3V2AuthorizationEnabled(
   }
 }
 
-export const VNEXT_UNISWAP_V3_V2_RELEASE_SCOPE = "PROOF_WALLET_ONLY" as const;
+export type VNextUniswapV3V2ReleaseScope = "DISABLED" | "PROOF_WALLET_ONLY" | "PUBLIC";
+
+export function isVNextUniswapV3V2PublicAuthorizationEnabled(
+  env: NodeJS.ProcessEnv = process.env
+) {
+  const enabled = env.RMT_VNEXT_UNISWAP_V3_V2_PUBLIC_AUTHORIZATION_ENABLED;
+  if (enabled === undefined || enabled === "false") return false;
+  if (enabled !== "true") {
+    throw new Error("RMT Uniswap V3 V2 public authorization gate must be exact lowercase true or false.");
+  }
+  return true;
+}
 
 export function configuredVNextUniswapV3V2ProofWallet(
   env: NodeJS.ProcessEnv = process.env
@@ -145,6 +156,32 @@ export function requireVNextUniswapV3V2ProofWalletRecipient(
 ) {
   if (!isVNextUniswapV3V2ProofWalletRecipient(recipient, env)) {
     throw new Error("RMT Uniswap V3 V2 controlled authorization is restricted to the configured proof wallet.");
+  }
+}
+
+export function configuredVNextUniswapV3V2ReleaseScope(
+  env: NodeJS.ProcessEnv = process.env
+): VNextUniswapV3V2ReleaseScope {
+  if (!isVNextUniswapV3V2AuthorizationEnabled(env)) return "DISABLED";
+  return isVNextUniswapV3V2PublicAuthorizationEnabled(env) ? "PUBLIC" : "PROOF_WALLET_ONLY";
+}
+
+export function isVNextUniswapV3V2ReleaseRecipientEligible(
+  recipient: Address,
+  env: NodeJS.ProcessEnv = process.env
+) {
+  const scope = configuredVNextUniswapV3V2ReleaseScope(env);
+  if (scope === "DISABLED") return false;
+  if (scope === "PUBLIC") return true;
+  return isVNextUniswapV3V2ProofWalletRecipient(recipient, env);
+}
+
+export function requireVNextUniswapV3V2ReleaseRecipient(
+  recipient: Address,
+  env: NodeJS.ProcessEnv = process.env
+) {
+  if (!isVNextUniswapV3V2ReleaseRecipientEligible(recipient, env)) {
+    throw new Error("RMT Uniswap V3 V2 wallet authorization is unavailable for this recipient and release scope.");
   }
 }
 

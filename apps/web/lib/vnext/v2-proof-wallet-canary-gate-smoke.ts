@@ -2,10 +2,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { getAddress, zeroAddress } from "viem";
 import {
+  configuredVNextUniswapV3V2ReleaseScope,
   configuredVNextUniswapV3V2ProofWallet,
+  isVNextUniswapV3V2PublicAuthorizationEnabled,
+  isVNextUniswapV3V2ReleaseRecipientEligible,
   isVNextUniswapV3V2ProofWalletRecipient,
+  requireVNextUniswapV3V2ReleaseRecipient,
   requireVNextUniswapV3V2ProofWalletRecipient,
-  VNEXT_UNISWAP_V3_V2_RELEASE_SCOPE
 } from "../server/vnext-uniswap-fee-executor-v2";
 import { selectVNextUniswapV3SettlementMode } from "../server/vnext-uniswap-quote";
 import {
@@ -29,7 +32,8 @@ const enabledProofEnv = {
   RMT_VNEXT_UNISWAP_V3_V2_PROOF_WALLET: proofWallet.toLowerCase()
 } as unknown as NodeJS.ProcessEnv;
 
-assert.equal(VNEXT_UNISWAP_V3_V2_RELEASE_SCOPE, "PROOF_WALLET_ONLY");
+assert.equal(configuredVNextUniswapV3V2ReleaseScope({} as NodeJS.ProcessEnv), "DISABLED");
+assert.equal(configuredVNextUniswapV3V2ReleaseScope(enabledProofEnv), "PROOF_WALLET_ONLY");
 assert.equal(configuredVNextUniswapV3V2ProofWallet({} as NodeJS.ProcessEnv), null);
 assert.equal(configuredVNextUniswapV3V2ProofWallet({
   RMT_VNEXT_UNISWAP_V3_V2_PROOF_WALLET: proofWallet.toLowerCase()
@@ -54,6 +58,8 @@ assert.equal(isVNextUniswapV3V2ProofWalletRecipient(proofWallet, enabledProofEnv
 assert.equal(isVNextUniswapV3V2ProofWalletRecipient(otherWallet, enabledProofEnv), false);
 assert.doesNotThrow(() => requireVNextUniswapV3V2ProofWalletRecipient(proofWallet, enabledProofEnv));
 assert.throws(() => requireVNextUniswapV3V2ProofWalletRecipient(otherWallet, enabledProofEnv), /restricted to the configured proof wallet/);
+assert.doesNotThrow(() => requireVNextUniswapV3V2ReleaseRecipient(proofWallet, enabledProofEnv));
+assert.throws(() => requireVNextUniswapV3V2ReleaseRecipient(otherWallet, enabledProofEnv), /unavailable for this recipient/);
 assert.throws(() => select(proofWallet, enabledProofEnv, false), /enabled without a complete executor policy/,
   "a proof-wallet V2 authority failure must not downgrade to direct or V1 settlement");
 assert.throws(() => select(otherWallet, {
@@ -61,6 +67,27 @@ assert.throws(() => select(otherWallet, {
   RMT_VNEXT_UNISWAP_V3_V2_PROOF_WALLET: "malformed"
 } as unknown as NodeJS.ProcessEnv), /valid nonzero EVM address/,
 "malformed enabled proof authority must fail closed");
+
+const publicEnv = {
+  RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED: "true",
+  RMT_VNEXT_UNISWAP_V3_V2_PUBLIC_AUTHORIZATION_ENABLED: "true"
+} as unknown as NodeJS.ProcessEnv;
+assert.equal(configuredVNextUniswapV3V2ReleaseScope(publicEnv), "PUBLIC");
+assert.equal(isVNextUniswapV3V2PublicAuthorizationEnabled(publicEnv), true);
+assert.equal(isVNextUniswapV3V2ReleaseRecipientEligible(proofWallet, publicEnv), true);
+assert.equal(isVNextUniswapV3V2ReleaseRecipientEligible(otherWallet, publicEnv), true);
+assert.equal(select(otherWallet, publicEnv), VNEXT_V2_ATOMIC_INPUT_FEE,
+  "the explicit public gate may admit an otherwise eligible recipient without proof-wallet inheritance");
+assert.equal(select(otherWallet, {
+  RMT_VNEXT_UNISWAP_V3_V2_PUBLIC_AUTHORIZATION_ENABLED: "true"
+} as unknown as NodeJS.ProcessEnv), VNEXT_DIRECT_NO_RMT_FEE,
+"the public gate cannot activate V2 without the independent V2 authorization gate");
+assert.throws(() => configuredVNextUniswapV3V2ReleaseScope({
+  RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED: "true",
+  RMT_VNEXT_UNISWAP_V3_V2_PUBLIC_AUTHORIZATION_ENABLED: "TRUE"
+} as unknown as NodeJS.ProcessEnv), /exact lowercase true or false/);
+assert.throws(() => select(otherWallet, publicEnv, false), /enabled without a complete executor policy/,
+  "public release authority must still require the complete executor policy");
 
 const v1BaselineEnv = {
   ...enabledProofEnv,
@@ -91,13 +118,15 @@ const authorizeRoute = readFileSync(new URL("../../app/api/vnext/authorize/route
 const adapter = readFileSync(new URL("../server/vnext-uniswap-v3-adapter.ts", import.meta.url), "utf8");
 const commitment = readFileSync(new URL("../server/vnext-v2-verification-commitment.ts", import.meta.url), "utf8");
 const envExample = readFileSync(new URL("../../.env.example", import.meta.url), "utf8");
-assert.match(verifyRoute, /requireVNextUniswapV3V2ProofWalletRecipient\(recipient\)/);
-assert.match(authorizeRoute, /requireVNextUniswapV3V2ProofWalletRecipient\(recipient\)/);
-assert.equal((adapter.match(/requireVNextUniswapV3V2ProofWalletRecipient\(request\.recipient\)/g) ?? []).length, 2,
-  "both direct adapter verification and authorization entry points must enforce proof-wallet authority");
+assert.match(verifyRoute, /requireVNextUniswapV3V2ReleaseRecipient\(recipient\)/);
+assert.match(authorizeRoute, /requireVNextUniswapV3V2ReleaseRecipient\(recipient\)/);
+assert.equal((adapter.match(/requireVNextUniswapV3V2ReleaseRecipient\(request\.recipient\)/g) ?? []).length, 2,
+  "both direct adapter verification and authorization entry points must enforce the exact configured release scope");
 assert.match(commitment, /wallet:\s*getAddress\(input\.evidence\.recipient\)/);
 assert.match(commitment, /getAddress\(claims\.wallet\) !== getAddress\(input\.wallet\)/);
 assert.match(envExample, /^RMT_VNEXT_UNISWAP_V3_V2_PROOF_WALLET=$/m);
+assert.match(envExample, /^RMT_VNEXT_UNISWAP_V3_V2_PUBLIC_AUTHORIZATION_ENABLED=false$/m);
 assert.doesNotMatch(envExample, /NEXT_PUBLIC_RMT_VNEXT_UNISWAP_V3_V2_PROOF_WALLET/);
+assert.doesNotMatch(envExample, /NEXT_PUBLIC_RMT_VNEXT_UNISWAP_V3_V2_PUBLIC_AUTHORIZATION_ENABLED/);
 
 console.log("RMT Uniswap V3 V2 proof-wallet canary admission smoke checks passed.");

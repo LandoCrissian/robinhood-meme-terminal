@@ -1,6 +1,7 @@
 # RMT Uniswap V3 V2 deployment readiness
 
-Status: `DEPLOYED`, `DEPLOYED_NOT_ACTIVATED`, `APPLICATION_SOURCE_ADMITTED`.
+Status: `DEPLOYED`, `DEPLOYED_NOT_ACTIVATED`, `APPLICATION_SOURCE_ADMITTED`,
+`PUBLIC_RELEASE_SOURCE_PREPARED`.
 
 The owner authorized and confirmed the exact deterministic V2 deployment documented below.
 Deployment is complete at `0xef729FbC9aDfC431ae46ECc198144160e2dD7832`. Activation remains
@@ -22,6 +23,10 @@ authorization.
 - Application source admission: **COMPLETE; PRODUCTION GATE OFF**
 - Quote wiring: **READY IN SOURCE; PRODUCTION GATE OFF**
 - Authorize/provider registry wiring: **READY IN SOURCE; PRODUCTION GATE OFF**
+- Accepted live native-input canary: **PASS**
+- Live ERC-20-to-native canary: **OWNER_WAIVED_NOT_EXECUTED**
+- Bidirectional live proof: **NO**
+- Bidirectional implementation tests: **READY; MUST REMAIN GREEN**
 
 ## Deployed package and preserved proposal
 
@@ -205,60 +210,78 @@ Contract readiness is not application activation readiness. On this exact source
 | Confirmation UI | `READY` | Confirmed V2 actual fee and net output fields are supported. |
 
 Source admission does not activate Production. `RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED`
-defaults false and is required in addition to the exact policy and executor gates. The controlled
-canary release scope is `PROOF_WALLET_ONLY`: the separate server-only
-`RMT_VNEXT_UNISWAP_V3_V2_PROOF_WALLET` must contain the exact authenticated recipient before the
-V2 lane can be selected. It never inherits the historical V1
-`RMT_VNEXT_UNISWAP_V3_FEE_PROOF_WALLET`. Non-proof recipients retain their pre-V2 provider and
-settlement behavior; once the proof wallet enters the V2 lane, missing or mismatched V2 authority
-fails closed and never downgrades to V1 or fee-free V3 execution.
+defaults false and is required in addition to the exact policy and executor gates. With the
+separate server-only `RMT_VNEXT_UNISWAP_V3_V2_PUBLIC_AUTHORIZATION_ENABLED` absent or false, the
+release scope remains `PROOF_WALLET_ONLY`: `RMT_VNEXT_UNISWAP_V3_V2_PROOF_WALLET` must contain the
+exact authenticated recipient before the V2 lane can be selected. Public source eligibility exists
+only when the version-explicit public gate is exact lowercase `true`; that gate is also default-off,
+server-only, and cannot activate V2 without the independent authorization, executor, policy, and
+global wallet gates. Neither V2 gate inherits the historical V1
+`RMT_VNEXT_UNISWAP_V3_FEE_PROOF_WALLET`. Once a recipient enters the V2 lane, missing or mismatched
+V2 authority fails closed and never downgrades to V1 or fee-free V3 execution.
 
-## Controlled proof after deployment and before public activation
+## Accepted V2 live canary and owner waiver
 
-Use only the preserved admin/deployer wallet and small owner-approved amounts. Public wallet
-authorization remains off.
+The owner accepted the completed controlled native-ETH-input transaction as the required live V2
+canary. Its immutable source artifact is
+[`apps/web/lib/vnext/uniswap-v3-v2-production-canary-evidence.ts`](../apps/web/lib/vnext/uniswap-v3-v2-production-canary-evidence.ts).
+That artifact is evidence only and cannot activate a release.
 
-1. Confirm deployed code, all immutable getters, WETH EIP-1967 link, policy hash, treasury,
-   boundary, and deterministic transaction receipt against the finalized artifact.
-2. At canary time choose the highest-liquidity verified ERC-20 for which ordinary net route
-   ranking independently selects V3 V2; do not privilege a project token. Native ETH to that
-   token: quote on `providerInput = gross - floor(gross * 25 / 10_000)`, bind a protected
-   output and short ArbSys deadline, send the wallet transaction to the V2 executor, and
-   confirm exact native treasury delta, token output, consumed execution ID, zero executor
-   ETH/token/WETH residue, and internal Router02-only routing.
-3. The same token to native ETH: approve the executor for exactly gross input, confirm the allowance is
-   exactly consumed to zero, execute to the V2 executor, and confirm exact input-token treasury delta,
-   protected native output, exact WETH unwrap, consumed execution ID, zero executor residue,
-   and zero Router02 allowance.
-4. Re-submit each consumed execution ID as a read-only simulation and require replay rejection.
-5. Require finalized confirmations and record receipt, block, gas, fee, balances, runtime hashes,
-   and negative proofs in the deployment artifact. This proof does not enable public trading.
+- Transaction: `0x2b01ed1cf59a1514236d73d2e5eab2827cd20d516d623a5b86db14536f27890a`
+- Block: `51,452,517`
+- Execution ID: `0x522cd323ae5795778774432af8b0ddd319fcba473fe9a8f654508f947cb07de5`
+- Token: The Index (`Index`), `0x56910D4409F3a0C78C64DD8D0545FF0705389870`
+- Direct V3 pool: `0xD29893fFac8b29eC4Db2cfE0CDB3FE1377c028Ff`, fee tier `10000`
+- Gross input: `100000000000000` wei; RMT fee: `250000000000` wei; provider input:
+  `99750000000000` wei
+- Expected/actual output: `8586172043977260462` Index atomic; protected output:
+  `8500310323537487857` Index atomic
+- Settlement events: one; treasury native delta: `250000000000` wei; replay: rejected
+- Final executor ETH, WETH, Index, and Router02 allowance: zero
+- Ordinary route ranking selected V3 after including the 25-bps RMT fee
 
-## Activation tranche (plan only)
+The owner explicitly waived the live ERC-20-to-native canary. Its status is
+`OWNER_WAIVED_NOT_EXECUTED`; it is not `PASS`, and RMT does not claim a bidirectional live proof.
+Bidirectional release readiness instead depends on deterministic unit and canonical Robinhood-fork
+coverage for the sold-token fee, exact executor approval, provider input, WETH unwrap, native
+delivery, treasury token delta, residuals, allowances, and replay protection.
 
-The later activation PR should be minimal:
+## Lost-tab and lost-hash recovery boundary
 
-1. Admit only `uniswap-v3` as `V2_ATOMIC_INPUT_FEE` in
-   `VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY`.
-2. Enable adapter wallet authorization only when the exact active V2 policy, verified executor
-   runtime/immutables, WETH EIP-1967 link, and deployment artifact all match.
-3. Keep all missing or mismatched configuration quote-only and preserve rejection of Router02
-   as a wallet target.
-4. Keep UP, Sushi, 0x, and UniswapX quote-only.
-5. Keep the final wallet-submission release gate separately disabled until the explicit owner
-   public-activation operation.
+The durable pre-hash journal remains authoritative when a browser disappears before the wallet
+provider returns a transaction hash. The authenticated server first attempts the bounded Blockscout
+lookup when `RMT_BLOCKSCOUT_PRO_API_KEY` is present. It also has a canonical Robinhood RPC fallback,
+so recovery correctness does not exclusively depend on a Blockscout Pro credential or service.
+
+The fallback is server-only, chain-pinned to `4663`, limited to 256 blocks and an eight-second
+overall discovery budget, and binds the stored wallet, pre-request nonce, target, value, calldata
+hash, request block, and request-block hash. The discovery record remains eligible for the same
+bounded seven-day history window as the durable journal, while a Blockscout candidate transaction
+must still fall within 15 minutes of the original request. It accepts one exact canonical match only. A same-nonce
+replacement, multiple matches, wrong chain, reorg inconsistency, incomplete scan, or unavailable
+discovery remains unresolved and cannot authorize another execution. RPC and Blockscout credentials
+never enter the browser bundle.
+
+## Public activation tranche (decision pending)
+
+The smallest version-explicit public transition is now represented by the default-off server gate
+`RMT_VNEXT_UNISWAP_V3_V2_PUBLIC_AUTHORIZATION_ENABLED`. A later owner-authorized operational release
+must independently verify and enable the existing global authorization/wallet gates, V2 policy and
+executor gates, V2 authorization gate, exact immutable configuration, and this V2 public gate. The
+proof-wallet value does not become public authority and no token allowlist is introduced. Quotes
+continue to compete normally on protected user outcome after the RMT fee; V3 is not preferred merely
+because it earns revenue. No Production value is changed by this source-readiness work.
 
 ## Remaining release choreography
 
-1. Merge this narrow post-deployment evidence only after owner review.
-2. Add and review the separate quote and `uniswap-v3` provider-admission wiring while every
-   production execution and fee gate remains disabled.
-3. Reverify the deployed runtime, immutables, policy boundary, WETH implementation link, and
-   exact application configuration before each controlled proof.
-4. Run the separately owner-authorized bidirectional controlled proofs and finalize their
-   receipt, fee, treasury, residual, allowance, replay, recovery, and UI evidence.
-5. Request a separate owner decision before any production application admission or public
-   activation.
+1. Merge the accepted canary evidence, recovery hardening, and default-off public release source
+   gate only after owner review and exact-head CI.
+2. Reverify the deployed runtime, immutables, policy boundary, WETH implementation link, recovery
+   dependency readiness, and exact application configuration before an operational release.
+3. Preserve the live Canary B status as `OWNER_WAIVED_NOT_EXECUTED` and require deterministic
+   ERC-20-to-native unit/fork evidence to remain green.
+4. Request a separate owner decision before changing any Production environment value or enabling
+   public wallet execution.
 
 This evidence finalization changes no contract, application logic, treasury, fee rate, route
 ranking, production environment, deployment, or wallet state.
