@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "contract": "RMTUniswapV2FeeExecutorV2",
+  "chainId": 4663,
+  "status": "SOURCE_FOUNDATION_ONLY_NOT_DEPLOYED",
+  "deploymentAuthorized": false,
+  "activationAuthorized": false,
+  "publicExecutionAuthorized": false,
+  "provider": {
+    "id": "uniswap-v2",
+    "implementationDomain": "RMT_UNISWAP_V2_ROUTER_V2",
+    "implementationId": "rmt-uniswap-v2-fee-executor-v2"
+  },
+  "policy": {
+    "id": "RMT_EXECUTION_V2",
+    "version": 2,
+    "hash": "0x91c988a28bd8b308e57bfbd3a991571b663f1c5d8430f96dfa1db2e5cfb93484",
+    "feeBps": 25,
+    "feeSide": "INPUT",
+    "feeBasis": "user_gross_input",
+    "rounding": "floor",
+    "effectiveFromBlock": "51296658",
+    "effectiveBeforeBlock": null,
+    "treasury": "0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC"
+  },
+  "dependencies": {
+    "router": "0x89e5DB8B5aA49aA85AC63f691524311AEB649eba",
+    "routerRuntimeHash": "0xbd55ea26b2f8d42a8ff151511cef92a326a9817686899fe96a8a8f81ee7fc55e",
+    "factory": "0x8bcEaA40B9AcdfAedF85AdF4FF01F5Ad6517937f",
+    "factoryRuntimeHash": "0xbab145d02e7005f0d84c6c1639d39b799b0ea16df99ebbdaf5a14d9da820b4e0",
+    "pairRuntimeHash": "0x5b83bdbcc56b2e630f2807bbadd2b0c21619108066b92a58de081261089e9ce5",
+    "weth": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
+    "wethRuntimeHash": "0x5706be52f64875fee65a2cec0d80e47a23d8793cbe85d214b48445e2d05f5353"
+  },
+  "deployment": {
+    "executor": null,
+    "runtimeHash": null,
+    "transactionHash": null,
+    "deploymentBlock": null,
+    "deterministicPackage": null
+  },
+  "applicationAdmission": {
+    "productionRegistryState": "QUOTE_ONLY",
+    "sourceCandidateGate": "RMT_VNEXT_UNISWAP_V2_FEE_CANDIDATE_ENABLED",
+    "sourceCandidateDefault": false,
+    "productionCandidateRejected": true,
+    "walletAuthorization": "NOT_ADMITTED",
+    "publicProviderScope": ["uniswap-v3"]
+  }
+}
