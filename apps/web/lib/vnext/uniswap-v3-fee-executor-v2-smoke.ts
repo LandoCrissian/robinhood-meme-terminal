@@ -434,7 +434,9 @@ assert.equal(assertVNextUniswapV3V2PolicyBlock({
 }), true);
 
 const savedV2Gate = process.env.RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED;
+const savedV2ProofWallet = process.env.RMT_VNEXT_UNISWAP_V3_V2_PROOF_WALLET;
 process.env.RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED = "true";
+process.env.RMT_VNEXT_UNISWAP_V3_V2_PROOF_WALLET = trader;
 try {
   const verifiedConfig = { executor, executorRuntimeHash, policy, verifiedAtBlock: "101" };
   const quoteProvider = async ({ inputAsset: routedInput, outputAsset: routedOutput, amountIn }: {
@@ -493,6 +495,8 @@ try {
 } finally {
   if (savedV2Gate === undefined) delete process.env.RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED;
   else process.env.RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED = savedV2Gate;
+  if (savedV2ProofWallet === undefined) delete process.env.RMT_VNEXT_UNISWAP_V3_V2_PROOF_WALLET;
+  else process.env.RMT_VNEXT_UNISWAP_V3_V2_PROOF_WALLET = savedV2ProofWallet;
 }
 
 console.log("RMT Uniswap V3 universal atomic fee executor V2 smoke checks passed.");

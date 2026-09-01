@@ -205,9 +205,13 @@ Contract readiness is not application activation readiness. On this exact source
 | Confirmation UI | `READY` | Confirmed V2 actual fee and net output fields are supported. |
 
 Source admission does not activate Production. `RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED`
-defaults false and is required in addition to the exact policy and executor gates. Missing or
-mismatched authority keeps V3 wallet admission closed; it never downgrades a configured V2
-attempt to a fee-free V3 wallet request.
+defaults false and is required in addition to the exact policy and executor gates. The controlled
+canary release scope is `PROOF_WALLET_ONLY`: the separate server-only
+`RMT_VNEXT_UNISWAP_V3_V2_PROOF_WALLET` must contain the exact authenticated recipient before the
+V2 lane can be selected. It never inherits the historical V1
+`RMT_VNEXT_UNISWAP_V3_FEE_PROOF_WALLET`. Non-proof recipients retain their pre-V2 provider and
+settlement behavior; once the proof wallet enters the V2 lane, missing or mismatched V2 authority
+fails closed and never downgrades to V1 or fee-free V3 execution.
 
 ## Controlled proof after deployment and before public activation
 

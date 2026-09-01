@@ -37,6 +37,7 @@ import {
 } from "./vnext-uniswap-fee-executor";
 import {
   configuredVNextUniswapFeeExecutorV2,
+  configuredVNextUniswapV3V2ProofWallet,
   isVNextUniswapV3V2AuthorizationEnabled
 } from "./vnext-uniswap-fee-executor-v2";
 
@@ -266,14 +267,19 @@ export function selectVNextUniswapV3SettlementMode(input: {
   outputAsset: Address;
   recipient: Address;
   v2Configured?: boolean;
+  env?: NodeJS.ProcessEnv;
 }) {
-  if (isVNextUniswapV3V2AuthorizationEnabled()) {
-    if (input.v2Configured !== true && !configuredVNextUniswapFeeExecutorV2()) {
+  const env = input.env ?? process.env;
+  const v2ProofWallet = isVNextUniswapV3V2AuthorizationEnabled(env)
+    ? configuredVNextUniswapV3V2ProofWallet(env)
+    : null;
+  if (v2ProofWallet !== null && getAddress(input.recipient) === v2ProofWallet) {
+    if (input.v2Configured !== true && !configuredVNextUniswapFeeExecutorV2(env)) {
       throw new Error("RMT Uniswap V3 V2 authorization is enabled without a complete executor policy.");
     }
     return VNEXT_V2_ATOMIC_INPUT_FEE;
   }
-  const configured = configuredVNextUniswapFeeExecutor();
+  const configured = configuredVNextUniswapFeeExecutor(env);
   if (!configured || !isVNextUniswapFeeRecipientEligible(configured, input.recipient)) {
     return VNEXT_DIRECT_NO_RMT_FEE;
   }
