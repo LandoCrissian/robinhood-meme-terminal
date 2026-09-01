@@ -26,7 +26,7 @@ import { vNextAuthorizationRequestSchema } from "../../../../lib/server/vnext-au
 import { selectVNextUniswapV3SettlementMode } from "../../../../lib/server/vnext-uniswap-quote";
 import {
   configuredVNextUniswapFeeExecutorV2,
-  requireVNextUniswapV3V2ProofWalletRecipient
+  requireVNextUniswapV3V2ReleaseRecipient
 } from "../../../../lib/server/vnext-uniswap-fee-executor-v2";
 import {
   assertVNextV2AuthorizationRequestContinuity,
@@ -83,7 +83,7 @@ export async function POST(request: Request) {
       return verifyAgain("The exact verified settlement authority changed. Verify again.");
     }
     v2ContinuityRequired = settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE;
-    if (v2ContinuityRequired) requireVNextUniswapV3V2ProofWalletRecipient(recipient);
+    if (v2ContinuityRequired) requireVNextUniswapV3V2ReleaseRecipient(recipient);
     if (settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE && (
       !parsed.data.executionId
       || parsed.data.executionId === `0x${"0".repeat(64)}`

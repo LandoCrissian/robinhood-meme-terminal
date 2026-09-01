@@ -167,6 +167,66 @@ assert.equal(invalidFeePublicGate.mode, "misconfigured");
 assert.equal(invalidFeePublicGate.configurationConsistent, false);
 assert.equal(invalidFeePublicGate.providers.uniswapV3FeeExecutor.publicAuthorizationEnabled, false);
 
+const v2ExactConfiguration = {
+  RMT_VNEXT_EXECUTION_V2_POLICY_ENABLED: "true",
+  RMT_VNEXT_EXECUTION_V2_TREASURY: "0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC",
+  RMT_VNEXT_EXECUTION_V2_EFFECTIVE_BLOCK: "51296658",
+  RMT_VNEXT_EXECUTION_V2_POLICY_HASH: "0x91c988a28bd8b308e57bfbd3a991571b663f1c5d8430f96dfa1db2e5cfb93484",
+  RMT_VNEXT_UNISWAP_V3_V2_EXECUTOR_ENABLED: "true",
+  RMT_VNEXT_UNISWAP_V3_V2_EXECUTOR_ADDRESS: "0xef729FbC9aDfC431ae46ECc198144160e2dD7832",
+  RMT_VNEXT_UNISWAP_V3_V2_EXECUTOR_RUNTIME_HASH: "0xed8ec8cd44f2c228044678358bb7c4565953067ceab42319b169358354b9693d",
+  RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED: "true",
+  RMT_VNEXT_VERIFICATION_COMMITMENT_SECRET: "s".repeat(32)
+};
+const v2ProofReady = readVNextReleaseReadiness({
+  NODE_ENV: "production",
+  VERCEL_ENV: "production",
+  RMT_VNEXT_SHELL_ENABLED: "true",
+  NEXT_PUBLIC_RMT_VNEXT_AUTHORIZATION_ENABLED: "true",
+  RMT_VNEXT_AUTHORIZATION_ENABLED: "true",
+  NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED: "true",
+  ...v2ExactConfiguration,
+  RMT_VNEXT_UNISWAP_V3_V2_PROOF_WALLET: "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA"
+});
+assert.equal(v2ProofReady.configurationConsistent, true);
+assert.equal(v2ProofReady.providers.uniswapV3V2FeeExecutor.releaseScope, "proof-wallet");
+assert.equal(v2ProofReady.providers.uniswapV3V2FeeExecutor.authorizationEnabled, true);
+assert.equal(v2ProofReady.providers.uniswapV3V2FeeExecutor.publicAuthorizationEnabled, false);
+
+const v2PublicReady = readVNextReleaseReadiness({
+  NODE_ENV: "production",
+  VERCEL_ENV: "production",
+  RMT_VNEXT_SHELL_ENABLED: "true",
+  NEXT_PUBLIC_RMT_VNEXT_AUTHORIZATION_ENABLED: "true",
+  RMT_VNEXT_AUTHORIZATION_ENABLED: "true",
+  NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED: "true",
+  ...v2ExactConfiguration,
+  RMT_VNEXT_UNISWAP_V3_V2_PUBLIC_AUTHORIZATION_ENABLED: "true"
+});
+assert.equal(v2PublicReady.configurationConsistent, true);
+assert.equal(v2PublicReady.providers.uniswapV3V2FeeExecutor.releaseScope, "public");
+assert.equal(v2PublicReady.providers.uniswapV3V2FeeExecutor.publicAuthorizationEnabled, true);
+assert.equal(v2PublicReady.providers.uniswapV3V2FeeExecutor.exactAuthorityValid, true);
+assert.equal(v2PublicReady.providers.uniswapV3V2FeeExecutor.nativeInputMainnetCanaryComplete, true);
+assert.equal(v2PublicReady.providers.uniswapV3V2FeeExecutor.erc20ToNativeLiveCanary, "OWNER_WAIVED_NOT_EXECUTED");
+assert.equal(v2PublicReady.providers.uniswapV3V2FeeExecutor.bidirectionalLiveProof, false);
+
+const invalidV2PublicGate = readVNextReleaseReadiness({
+  NODE_ENV: "production",
+  VERCEL_ENV: "production",
+  RMT_VNEXT_SHELL_ENABLED: "true",
+  RMT_VNEXT_UNISWAP_V3_V2_PUBLIC_AUTHORIZATION_ENABLED: "true"
+});
+assert.equal(invalidV2PublicGate.configurationConsistent, false);
+assert.equal(invalidV2PublicGate.providers.uniswapV3V2FeeExecutor.publicAuthorizationEnabled, false);
+const malformedV2PublicGate = readVNextReleaseReadiness({
+  NODE_ENV: "production",
+  VERCEL_ENV: "production",
+  RMT_VNEXT_SHELL_ENABLED: "true",
+  RMT_VNEXT_UNISWAP_V3_V2_PUBLIC_AUTHORIZATION_ENABLED: "TRUE"
+});
+assert.equal(malformedV2PublicGate.configurationConsistent, false);
+
 const mismatchedSushi = readVNextReleaseReadiness({
   NODE_ENV: "production",
   VERCEL_ENV: "production",
@@ -243,6 +303,7 @@ assert.match(route, /noindex, nofollow/);
 assert.doesNotMatch(route, /RMT_INDEXER_READ_TOKEN|RMT_ZEROX_API_KEY|RMT_UNISWAP_API_KEY|PRIVY_APP_SECRET/);
 assert.match(envExample, /^RMT_VNEXT_SHELL_ENABLED=false$/m);
 assert.match(envExample, /^RMT_VNEXT_UNISWAP_V3_FEE_PUBLIC_AUTHORIZATION_ENABLED=false$/m);
+assert.match(envExample, /^RMT_VNEXT_UNISWAP_V3_V2_PUBLIC_AUTHORIZATION_ENABLED=false$/m);
 assert.doesNotMatch(envExample, /^NEXT_PUBLIC_RMT_VNEXT_SHELL_ENABLED=/m);
 
 console.log("RMT VNext production release-readiness smoke checks passed.");

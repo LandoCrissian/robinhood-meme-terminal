@@ -14,7 +14,7 @@ import {
 } from "./vnext-uniswap-v3-v2-execution";
 import {
   requireVNextUniswapV3V2AuthorizationEnabled,
-  requireVNextUniswapV3V2ProofWalletRecipient
+  requireVNextUniswapV3V2ReleaseRecipient
 } from "./vnext-uniswap-fee-executor-v2";
 
 export function createVNextUniswapV3Adapter(input: {
@@ -145,7 +145,7 @@ export function createVNextUniswapV3Adapter(input: {
     const settlementMode = request.settlementMode ?? VNEXT_DIRECT_NO_RMT_FEE;
     if (settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE) {
       requireVNextUniswapV3V2AuthorizationEnabled();
-      requireVNextUniswapV3V2ProofWalletRecipient(request.recipient);
+      requireVNextUniswapV3V2ReleaseRecipient(request.recipient);
       if (!request.executionId) throw new Error("Uniswap V3 V2 verification requires an execution ID.");
       return (await evaluateVNextUniswapRouteV2({
         inputAsset: request.inputAsset,
@@ -193,7 +193,7 @@ export function createVNextUniswapV3Adapter(input: {
     }
     if (!request.executionId) throw new Error("Uniswap V3 V2 authorization requires an execution ID.");
     requireVNextUniswapV3V2AuthorizationEnabled();
-    requireVNextUniswapV3V2ProofWalletRecipient(request.recipient);
+    requireVNextUniswapV3V2ReleaseRecipient(request.recipient);
     const prepared = await prepareVNextUniswapAuthorizationV2({
       ...common,
       executionId: request.executionId,

@@ -20,7 +20,8 @@ import {
   discoverExactVNextWalletRequestTransaction,
   findExactVNextWalletRequestTransaction,
   VNEXT_WALLET_REQUEST_DISCOVERY_BOUNDARY,
-  vNextWalletRequestDiscoverySchema
+  vNextWalletRequestDiscoverySchema,
+  type VNextWalletRequestDiscoveryRpc
 } from "../server/vnext-wallet-request-discovery";
 import { authorizationPayloadHash, type VNextAuthorizationPlan } from "./authorization-plan";
 import { DIRECT_SMOKE_RECIPIENT, DIRECT_SMOKE_SWAP_PLAN } from "./direct-no-rmt-fee-smoke-fixture";
@@ -319,6 +320,7 @@ assert.equal(VNEXT_WALLET_REQUEST_DISCOVERY_BOUNDARY.maximumResults, 50);
 let discoveryRequests = 0;
 const liveShapeDiscovery = await discoverExactVNextWalletRequestTransaction(exactDiscoveryAuthority, {
   nowMs: exactDiscoveryRequest.requestedAtMs + 3_000,
+  rpc: null,
   fetch: async (_url, init) => {
     discoveryRequests += 1;
     assert.equal(new Headers(init?.headers).get("authorization"), "Bearer test-only-blockscout-key");
@@ -327,6 +329,106 @@ const liveShapeDiscovery = await discoverExactVNextWalletRequestTransaction(exac
 });
 assert.deepEqual(liveShapeDiscovery, { status: "found", txHash });
 assert.equal(discoveryRequests, 1, "late-hash discovery is one bounded Blockscout page");
+
+const replacementHash = `0x${"c".repeat(64)}` as `0x${string}`;
+const requestBlock = BigInt(exactDiscoveryAuthority.requestBlockNumber);
+const transactionBlock = requestBlock + 3n;
+const rpcTransaction = {
+  hash: txHash as `0x${string}`,
+  from: DIRECT_SMOKE_RECIPIENT,
+  to: exactDiscoveryAuthority.target,
+  blockNumber: transactionBlock,
+  nonce: Number(exactDiscoveryAuthority.walletNonceBeforeRequest),
+  input: DIRECT_SMOKE_SWAP_PLAN.data,
+  value: BigInt(exactDiscoveryAuthority.value)
+} as const;
+const makeRpc = (transactions: readonly (typeof rpcTransaction)[] = [rpcTransaction], requestHash = requestBlockEvidence.requestBlockHash): VNextWalletRequestDiscoveryRpc => ({
+  getChainId: async () => 4_663,
+  getBlockNumber: async () => transactionBlock,
+  getBlock: async ({ blockNumber }) => ({
+    number: blockNumber,
+    hash: blockNumber === requestBlock ? requestHash : `0x${"d".repeat(64)}`,
+    transactions: blockNumber === transactionBlock ? transactions : []
+  })
+});
+const rpcDiscovery = await discoverExactVNextWalletRequestTransaction(exactDiscoveryAuthority, {
+  nowMs: exactDiscoveryRequest.requestedAtMs + 3_000,
+  apiKey: "",
+  rpc: makeRpc()
+});
+assert.deepEqual(rpcDiscovery, { status: "found", txHash },
+  "canonical RPC recovers the exact transaction when the Blockscout credential is unavailable");
+assert.deepEqual(await discoverExactVNextWalletRequestTransaction(exactDiscoveryAuthority, {
+  nowMs: exactDiscoveryRequest.requestedAtMs + 24 * 60 * 60_000,
+  apiKey: "",
+  rpc: makeRpc()
+}), { status: "found", txHash }, "a later browser restart can recover the exact historical request-block transaction");
+assert.deepEqual(await discoverExactVNextWalletRequestTransaction(exactDiscoveryAuthority, {
+  nowMs: exactDiscoveryRequest.requestedAtMs + 8 * 24 * 60 * 60_000,
+  apiKey: "",
+  rpc: makeRpc()
+}), { status: "not_found" }, "discovery cannot outlive the durable journal history boundary");
+
+for (const [label, mutation] of [
+  ["wallet", { from: "0x9999999999999999999999999999999999999999" }],
+  ["nonce", { nonce: rpcTransaction.nonce + 1 }],
+  ["target", { to: "0x9999999999999999999999999999999999999999" }],
+  ["value", { value: rpcTransaction.value + 1n }],
+  ["calldata", { input: "0x00" }]
+] as const) {
+  const result = await discoverExactVNextWalletRequestTransaction(exactDiscoveryAuthority, {
+    nowMs: exactDiscoveryRequest.requestedAtMs + 3_000,
+    apiKey: "",
+    rpc: makeRpc([{ ...rpcTransaction, ...mutation }] as readonly (typeof rpcTransaction)[])
+  });
+  assert.deepEqual(result, { status: "not_found" }, `${label} mismatch must never be promoted`);
+}
+assert.deepEqual(await discoverExactVNextWalletRequestTransaction(exactDiscoveryAuthority, {
+  nowMs: exactDiscoveryRequest.requestedAtMs + 3_000,
+  apiKey: "",
+  rpc: makeRpc([{ ...rpcTransaction, hash: replacementHash, input: "0x00" }] as readonly (typeof rpcTransaction)[])
+}), { status: "not_found" }, "a same-nonce replacement with different calldata is not the authorized request");
+assert.deepEqual(await discoverExactVNextWalletRequestTransaction(exactDiscoveryAuthority, {
+  nowMs: exactDiscoveryRequest.requestedAtMs + 3_000,
+  apiKey: "",
+  rpc: makeRpc([rpcTransaction], `0x${"f".repeat(64)}`)
+}), { status: "unavailable" }, "request-block reorg inconsistency fails closed");
+assert.deepEqual(await discoverExactVNextWalletRequestTransaction(exactDiscoveryAuthority, {
+  nowMs: exactDiscoveryRequest.requestedAtMs + 3_000,
+  apiKey: "",
+  rpc: makeRpc([rpcTransaction, { ...rpcTransaction, hash: replacementHash }] as readonly (typeof rpcTransaction)[])
+}), { status: "unavailable" }, "multiple exact transaction matches are ambiguous and fail closed");
+assert.deepEqual(await discoverExactVNextWalletRequestTransaction(exactDiscoveryAuthority, {
+  nowMs: exactDiscoveryRequest.requestedAtMs + 3_000,
+  apiKey: "configured",
+  fetch: async () => new Response(JSON.stringify({ items: [exactIndexedTransaction], next_page_params: null }), { status: 200 }),
+  rpc: makeRpc([{ ...rpcTransaction, hash: replacementHash }] as readonly (typeof rpcTransaction)[])
+}), { status: "unavailable" }, "conflicting exact source hashes are ambiguous and fail closed");
+assert.deepEqual(await discoverExactVNextWalletRequestTransaction(exactDiscoveryAuthority, {
+  nowMs: exactDiscoveryRequest.requestedAtMs + 3_000,
+  apiKey: "",
+  rpc: { ...makeRpc(), getChainId: async () => 1 }
+}), { status: "unavailable" }, "a non-Robinhood RPC cannot become recovery authority");
+assert.deepEqual(await discoverExactVNextWalletRequestTransaction(exactDiscoveryAuthority, {
+  nowMs: exactDiscoveryRequest.requestedAtMs + 3_000,
+  apiKey: "",
+  rpc: { ...makeRpc(), getBlockNumber: async () => { throw new Error("unavailable"); } }
+}), { status: "unavailable" }, "discovery unavailability never fabricates a transaction hash");
+assert.equal(VNEXT_WALLET_REQUEST_DISCOVERY_BOUNDARY.maximumRpcBlocks, 256);
+assert.equal(VNEXT_WALLET_REQUEST_DISCOVERY_BOUNDARY.maximumRecordAgeMs, 7 * 24 * 60 * 60_000);
+assert.equal(VNEXT_WALLET_REQUEST_DISCOVERY_BOUNDARY.maximumTransactionDelayMs, 15 * 60_000);
+assert.equal(VNEXT_WALLET_REQUEST_DISCOVERY_BOUNDARY.discoveryTimeoutMs, 8_000);
+assert.equal(VNEXT_WALLET_REQUEST_DISCOVERY_BOUNDARY.blockscoutCredentialRequired, false);
+assert.equal(VNEXT_WALLET_REQUEST_DISCOVERY_BOUNDARY.canonicalRpcFallback, true);
+
+const rpcRecovered = memoryStorage();
+recordPreparedVNextWalletRequest({ requestId, wallet: DIRECT_SMOKE_RECIPIENT, plan: DIRECT_SMOKE_SWAP_PLAN, walletNonceBeforeRequest: 7n, ...requestBlockEvidence }, rpcRecovered.storage, now);
+transitionVNextWalletRequest(requestId, "PROMPT_REQUESTED", rpcRecovered.storage, now + 1);
+transitionVNextWalletRequest(requestId, "UNRESOLVED", rpcRecovered.storage, now + 2);
+assert.equal(promoteDiscoveredVNextWalletRequestToSubmitted({ requestId, txHash: rpcDiscovery.status === "found" ? rpcDiscovery.txHash : txHash }, rpcRecovered.storage, now + 3)?.state, "submitted");
+assert.equal(resolveVNextExecution(txHash, "confirmed", rpcRecovered.storage, now + 4)?.state, "confirmed");
+assert.equal(readVNextWalletRequestJournal(rpcRecovered.storage, now + 5)[0]?.state, "RECEIPT_CONFIRMED",
+  "an exact RPC-discovered transaction follows the canonical receipt reconciliation path");
 
 const discovered = memoryStorage();
 recordPreparedVNextWalletRequest({ requestId, wallet: DIRECT_SMOKE_RECIPIENT, plan: DIRECT_SMOKE_SWAP_PLAN, walletNonceBeforeRequest: 7n, ...requestBlockEvidence }, discovered.storage, now);
@@ -415,8 +517,10 @@ assert.match(recoveryHook, /wallet-request-recovery/);
 assert.match(recoveryHook, /"UNRESOLVED"/);
 assert.match(recoveryBanner, /Recheck unresolved wallet request/);
 assert.match(discoveryServer, /process\.env\.RMT_BLOCKSCOUT_PRO_API_KEY/);
+assert.match(discoveryServer, /robinhoodChain/);
 for (const clientSource of [walletReview, composer, recoveryHook, recoveryBanner]) {
   assert.doesNotMatch(clientSource, /RMT_BLOCKSCOUT_PRO_API_KEY/, "the server-only Blockscout credential must not enter the client bundle");
+  assert.doesNotMatch(clientSource, /RMT_MAINNET_RPC_URL|ROBINHOOD_MAINNET_RPC_URL/, "server-only RPC configuration must not enter the client bundle");
 }
 
 console.log("RMT pre-hash wallet prompt journal, deadline expiry, duplicate guard, nonce reconciliation, and late-hash recovery smoke checks passed.");

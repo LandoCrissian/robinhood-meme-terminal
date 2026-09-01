@@ -3,6 +3,10 @@ import {
   RMT_UNISWAP_V3_FEE_MAINNET_PROOF,
   RMT_UNISWAP_V3_FEE_MAINNET_PROOF_COMPLETE
 } from "./uniswap-v3-fee-mainnet-proof";
+import {
+  RMT_UNISWAP_V3_V2_PRODUCTION_CANARY_EVIDENCE,
+  RMT_UNISWAP_V3_V2_PRODUCTION_CANARY_EVIDENCE_VALID
+} from "./uniswap-v3-v2-production-canary-evidence";
 import { acrossReviewedDeploymentPins } from "./across-funding-deployment";
 
 export type VNextReleaseEnvironment = VNextShellEnvironment & Partial<Pick<
@@ -42,6 +46,17 @@ export type VNextReleaseEnvironment = VNextShellEnvironment & Partial<Pick<
   | "RMT_VNEXT_EXECUTION_FEE_POLICY_FROM_BLOCK"
   | "RMT_VNEXT_EXECUTION_FEE_POLICY_BEFORE_BLOCK"
   | "RMT_VNEXT_EXECUTION_FEE_SETTLEMENT_ASSET_IDS"
+  | "RMT_VNEXT_EXECUTION_V2_POLICY_ENABLED"
+  | "RMT_VNEXT_EXECUTION_V2_TREASURY"
+  | "RMT_VNEXT_EXECUTION_V2_EFFECTIVE_BLOCK"
+  | "RMT_VNEXT_EXECUTION_V2_POLICY_HASH"
+  | "RMT_VNEXT_UNISWAP_V3_V2_EXECUTOR_ENABLED"
+  | "RMT_VNEXT_UNISWAP_V3_V2_EXECUTOR_ADDRESS"
+  | "RMT_VNEXT_UNISWAP_V3_V2_EXECUTOR_RUNTIME_HASH"
+  | "RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED"
+  | "RMT_VNEXT_UNISWAP_V3_V2_PROOF_WALLET"
+  | "RMT_VNEXT_UNISWAP_V3_V2_PUBLIC_AUTHORIZATION_ENABLED"
+  | "RMT_VNEXT_VERIFICATION_COMMITMENT_SECRET"
   | "RMT_ETHEREUM_RPC_URL"
   | "RMT_ETHEREUM_RPC_AUTH_TOKEN"
   | "RMT_ARBITRUM_RPC_URL"
@@ -136,6 +151,35 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
       "eip155:4663/contract:0x5fc5360d0400a0fd4f2af552add042d716f1d168",
       "eip155:4663/native"
     ].every((assetId) => configuredFeeAssetIds.has(assetId));
+  const v2PolicyRequested = enabled(env.RMT_VNEXT_EXECUTION_V2_POLICY_ENABLED);
+  const v2ExecutorRequested = enabled(env.RMT_VNEXT_UNISWAP_V3_V2_EXECUTOR_ENABLED);
+  const v2AuthorizationRequested = enabled(env.RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED);
+  const v2PublicAuthorizationRequested = enabled(env.RMT_VNEXT_UNISWAP_V3_V2_PUBLIC_AUTHORIZATION_ENABLED);
+  const v2GateValuesValid = [
+    env.RMT_VNEXT_EXECUTION_V2_POLICY_ENABLED,
+    env.RMT_VNEXT_UNISWAP_V3_V2_EXECUTOR_ENABLED,
+    env.RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED,
+    env.RMT_VNEXT_UNISWAP_V3_V2_PUBLIC_AUTHORIZATION_ENABLED
+  ].every((value) => value === undefined || value === "false" || value === "true");
+  const v2ProofWalletConfigured = /^0x[0-9a-fA-F]{40}$/.test(env.RMT_VNEXT_UNISWAP_V3_V2_PROOF_WALLET?.trim() ?? "")
+    && !/^0x0{40}$/i.test(env.RMT_VNEXT_UNISWAP_V3_V2_PROOF_WALLET?.trim() ?? "");
+  const v2CommitmentSecretLength = env.RMT_VNEXT_VERIFICATION_COMMITMENT_SECRET?.trim().length ?? 0;
+  const v2CommitmentConfigured = v2CommitmentSecretLength >= 32 && v2CommitmentSecretLength <= 512;
+  const v2PolicyConfigured = v2PolicyRequested
+    && /^0x[0-9a-fA-F]{40}$/.test(env.RMT_VNEXT_EXECUTION_V2_TREASURY?.trim() ?? "")
+    && /^[1-9][0-9]*$/.test(env.RMT_VNEXT_EXECUTION_V2_EFFECTIVE_BLOCK?.trim() ?? "")
+    && /^0x[0-9a-fA-F]{64}$/.test(env.RMT_VNEXT_EXECUTION_V2_POLICY_HASH?.trim() ?? "");
+  const v2ExecutorConfigured = v2ExecutorRequested
+    && /^0x[0-9a-fA-F]{40}$/.test(env.RMT_VNEXT_UNISWAP_V3_V2_EXECUTOR_ADDRESS?.trim() ?? "")
+    && /^0x[0-9a-fA-F]{64}$/.test(env.RMT_VNEXT_UNISWAP_V3_V2_EXECUTOR_RUNTIME_HASH?.trim() ?? "");
+  const v2ExactAuthorityValid = v2PolicyConfigured && v2ExecutorConfigured
+    && env.RMT_VNEXT_EXECUTION_V2_TREASURY?.trim().toLowerCase() === RMT_UNISWAP_V3_V2_PRODUCTION_CANARY_EVIDENCE.treasury.toLowerCase()
+    && env.RMT_VNEXT_EXECUTION_V2_EFFECTIVE_BLOCK?.trim() === "51296658"
+    && env.RMT_VNEXT_EXECUTION_V2_POLICY_HASH?.trim().toLowerCase() === RMT_UNISWAP_V3_V2_PRODUCTION_CANARY_EVIDENCE.policyHash
+    && env.RMT_VNEXT_UNISWAP_V3_V2_EXECUTOR_ADDRESS?.trim().toLowerCase() === RMT_UNISWAP_V3_V2_PRODUCTION_CANARY_EVIDENCE.executor.toLowerCase()
+    && env.RMT_VNEXT_UNISWAP_V3_V2_EXECUTOR_RUNTIME_HASH?.trim().toLowerCase() === RMT_UNISWAP_V3_V2_PRODUCTION_CANARY_EVIDENCE.executorRuntimeHash;
+  const v2ReleaseAuthorityConfigured = v2ExactAuthorityValid && v2CommitmentConfigured
+    && (v2PublicAuthorizationRequested || v2ProofWalletConfigured);
   const acrossConfigurationValid = (!acrossQuotesRequested || acrossConfigured)
     && (!acrossAuthorizationRequested || (acrossConfigured && acrossQuotesRequested));
   const authorizationConsistent = authorizationClientEnabled === authorizationServerEnabled;
@@ -152,7 +196,22 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
       && publicFeeProofBindingValid
       && RMT_UNISWAP_V3_FEE_MAINNET_PROOF_COMPLETE
     ));
-  const configurationConsistent = authorizationConsistent && sushiConsistent && walletSubmissionValid && acrossConfigurationValid && upAuthorizationValid && feeAuthorizationValid;
+  const v2AuthorizationValid = v2GateValuesValid
+    && v2PolicyRequested === v2ExecutorRequested
+    && v2ExecutorRequested === v2AuthorizationRequested
+    && (!v2AuthorizationRequested || (
+      v2ReleaseAuthorityConfigured
+      && authorizationClientEnabled
+      && authorizationServerEnabled
+    ))
+    && (!v2PublicAuthorizationRequested || (
+      v2AuthorizationRequested
+      && v2ExactAuthorityValid
+      && v2CommitmentConfigured
+      && RMT_UNISWAP_V3_V2_PRODUCTION_CANARY_EVIDENCE_VALID
+    ));
+  const configurationConsistent = authorizationConsistent && sushiConsistent && walletSubmissionValid
+    && acrossConfigurationValid && upAuthorizationValid && feeAuthorizationValid && v2AuthorizationValid;
 
   let mode: VNextReleaseMode = "disabled";
   if (shellEnabled && !configurationConsistent) mode = "misconfigured";
@@ -209,6 +268,33 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
         publicProofBindingValid: publicFeeProofBindingValid,
         deployedAndVerified: true,
         mainnetProofComplete: RMT_UNISWAP_V3_FEE_MAINNET_PROOF_COMPLETE
+      },
+      uniswapV3V2FeeExecutor: {
+        policyEnabled: v2PolicyRequested,
+        executorEnabled: v2ExecutorRequested,
+        configured: v2ExactAuthorityValid,
+        proofWalletConfigured: v2ProofWalletConfigured,
+        commitmentConfigured: v2CommitmentConfigured,
+        releaseScope: v2PolicyRequested && v2ExecutorRequested && v2AuthorizationRequested
+          ? v2PublicAuthorizationRequested
+            ? v2ExactAuthorityValid && v2CommitmentConfigured
+              ? "public" as const
+              : "blocked" as const
+            : v2ExactAuthorityValid && v2CommitmentConfigured && v2ProofWalletConfigured
+              ? "proof-wallet" as const
+              : "blocked" as const
+          : "disabled" as const,
+        strictVerificationAvailable: true,
+        walletAuthorizationAvailable: true,
+        authorizationEnabled: v2AuthorizationRequested && v2ReleaseAuthorityConfigured
+          && authorizationClientEnabled && authorizationServerEnabled,
+        publicAuthorizationEnabled: v2PublicAuthorizationRequested && v2AuthorizationRequested
+          && v2ExactAuthorityValid && v2CommitmentConfigured
+          && authorizationClientEnabled && authorizationServerEnabled,
+        exactAuthorityValid: v2ExactAuthorityValid,
+        nativeInputMainnetCanaryComplete: RMT_UNISWAP_V3_V2_PRODUCTION_CANARY_EVIDENCE_VALID,
+        erc20ToNativeLiveCanary: "OWNER_WAIVED_NOT_EXECUTED" as const,
+        bidirectionalLiveProof: false
       },
       acrossFunding: {
         configured: acrossConfigured,

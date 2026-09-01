@@ -37,8 +37,7 @@ import {
 } from "./vnext-uniswap-fee-executor";
 import {
   configuredVNextUniswapFeeExecutorV2,
-  configuredVNextUniswapV3V2ProofWallet,
-  isVNextUniswapV3V2AuthorizationEnabled
+  isVNextUniswapV3V2ReleaseRecipientEligible
 } from "./vnext-uniswap-fee-executor-v2";
 
 const FEES = [100, 500, 3_000, 10_000] as const;
@@ -270,10 +269,7 @@ export function selectVNextUniswapV3SettlementMode(input: {
   env?: NodeJS.ProcessEnv;
 }) {
   const env = input.env ?? process.env;
-  const v2ProofWallet = isVNextUniswapV3V2AuthorizationEnabled(env)
-    ? configuredVNextUniswapV3V2ProofWallet(env)
-    : null;
-  if (v2ProofWallet !== null && getAddress(input.recipient) === v2ProofWallet) {
+  if (isVNextUniswapV3V2ReleaseRecipientEligible(input.recipient, env)) {
     if (input.v2Configured !== true && !configuredVNextUniswapFeeExecutorV2(env)) {
       throw new Error("RMT Uniswap V3 V2 authorization is enabled without a complete executor policy.");
     }
