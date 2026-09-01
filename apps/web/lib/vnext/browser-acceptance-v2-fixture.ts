@@ -46,6 +46,7 @@ const executor = "0x5555555555555555555555555555555555555555" as Address;
 const treasury = "0x7777777777777777777777777777777777777777" as Address;
 const pool = "0x6666666666666666666666666666666666666666" as Address;
 const runtimeHash = `0x${"8".repeat(64)}` as Hex;
+const v2VerificationCommitment = "v1.browser_acceptance_fixture.browser_acceptance_fixture";
 const policy = createRmtExecutionFeeV2Policy({ treasury, fromBlock: "40000000" });
 const generatedAtMs = Date.now();
 const deadline = Math.floor((generatedAtMs + 300_000) / 1_000).toString();
@@ -160,6 +161,7 @@ function buildScenario(input: {
     feeExecution: null,
     feeV2Economics: economics,
     feeV2Settlement: proof,
+    v2VerificationCommitment,
     verifiedAtMs: generatedAtMs,
     expiresAtMs: generatedAtMs + 300_000,
     authorizationReady: false as const,
@@ -244,6 +246,8 @@ function buildScenario(input: {
       gasSponsorshipFeeAsset: null,
       gasSponsorshipFeeAtomic: null,
       explicitProviderFeeOutputAtomic: null,
+      settlementMode: VNEXT_V2_ATOMIC_INPUT_FEE,
+      executionTarget: executor,
       feeV2Economics: economics,
       netEconomics: null,
       networkFeeNativeAtomic: null,

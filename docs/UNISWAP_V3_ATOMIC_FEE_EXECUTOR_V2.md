@@ -1,8 +1,8 @@
 # Uniswap V3 universal atomic fee executor V2
 
-**Status: DORMANT / PRESERVED IMPLEMENTATION REFERENCE — NOT CURRENT OWNER POLICY**
+**Status: DEPLOYED / SOURCE-ADMITTED — PRODUCTION ACTIVATION NOT AUTHORIZED**
 
-Current owner product policy is `RMT_FEE = 0`. This document records prior V2 design and implementation evidence; it is not current roadmap authority, a Terminal completion prerequisite or authorization to deploy or activate fees.
+The owner has authorized the deployed V2 executor and the application source admission described here. Production execution and fee gates remain false; this document is not authorization to activate fees or open a wallet request.
 
 `RMTUniswapV3FeeExecutorV2` is an additive, ownerless execution primitive for
 the `RMT_EXECUTION_V2` policy. It does not replace or modify the historical V1
@@ -32,19 +32,21 @@ The existing RMT admin/deployment wallet remains
 reviewed bytecode artifact, but it receives no authority inside the deployed V2
 executor.
 
-This tranche selects no Production treasury, effective block, executor
-address, or runtime hash. The default provider settlement registry remains
-`QUOTE_ONLY`, and the exported Production Uniswap adapter keeps wallet
-authorization disabled.
+The deployed executor is `0xef729FbC9aDfC431ae46ECc198144160e2dD7832`, runtime hash
+`0xed8ec8cd44f2c228044678358bb7c4565953067ceab42319b169358354b9693d`,
+and its immutable policy begins at block `51296658`. The source provider registry admits only
+this version-explicit V2 lane. The server admission gate defaults false, and Production wallet
+authorization remains disabled.
 
 Future activation requires all of the following exact server configuration:
 
 - an active, hash-matched `RMT_EXECUTION_V2` policy;
 - `RMT_VNEXT_UNISWAP_V3_V2_EXECUTOR_ENABLED=true`;
+- `RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED=true`;
 - an exact executor address and runtime hash;
 - onchain immutable and runtime verification for Router02, factory, WETH proxy,
   WETH implementation, treasury, policy hash, and policy boundary;
-- a separately reviewed settlement-registry admission.
+- the ordinary global wallet authorization and submission gates.
 
 Missing, partial, or mismatched configuration remains quote-only. There is no
 direct Router02 wallet fallback.

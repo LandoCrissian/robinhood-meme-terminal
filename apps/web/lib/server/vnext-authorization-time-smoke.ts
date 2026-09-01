@@ -34,6 +34,7 @@ const request = {
   quoteRequestId: "11111111-1111-4111-8111-111111111111",
   verificationId: "22222222-2222-4222-8222-222222222222",
   provider: "uniswap-v3",
+  settlementMode: "DIRECT_NO_RMT_FEE",
   inputAsset: "0x1111111111111111111111111111111111111111",
   outputAsset: "0x2222222222222222222222222222222222222222",
   inputAmountAtomic: "100000000000000",

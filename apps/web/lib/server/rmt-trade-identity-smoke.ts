@@ -81,14 +81,14 @@ async function run() {
     wallet,
     async () => identity(wallet.toLowerCase())
   );
-  assert.deepEqual(authorization, { status: "identity-wallet-bound", wallet });
+  assert.deepEqual(authorization, { status: "identity-wallet-bound", wallet, identityId: "did:privy:rmt-trader" });
 
   const secondLinkedWallet = await requireAuthenticatedTradeWallet(
     request(),
     otherWallet,
     async () => identityWithMultipleWallets()
   );
-  assert.deepEqual(secondLinkedWallet, { status: "identity-wallet-bound", wallet: otherWallet });
+  assert.deepEqual(secondLinkedWallet, { status: "identity-wallet-bound", wallet: otherWallet, identityId: "did:privy:rmt-trader" });
 }
 
 void run().then(() => console.log("protected trade identity smoke passed"));

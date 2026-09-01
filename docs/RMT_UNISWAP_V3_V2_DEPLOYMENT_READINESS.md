@@ -1,10 +1,10 @@
 # RMT Uniswap V3 V2 deployment readiness
 
-Status: `DEPLOYED`, `DEPLOYED_NOT_ACTIVATED`, `APPLICATION_ADMISSION_INCOMPLETE`.
+Status: `DEPLOYED`, `DEPLOYED_NOT_ACTIVATED`, `APPLICATION_SOURCE_ADMITTED`.
 
 The owner authorized and confirmed the exact deterministic V2 deployment documented below.
 Deployment is complete at `0xef729FbC9aDfC431ae46ECc198144160e2dD7832`. Activation remains
-unauthorized, the public fee remains off, and the application has not admitted this executor.
+unauthorized, the public fee remains off, and source admission does not change Production.
 No Distribution, Spotlight, buyback, or NFT authority is implied.
 
 This package preserves the complete deterministic proposal and the independently verified
@@ -19,9 +19,9 @@ authorization.
 - Executor: `0xef729FbC9aDfC431ae46ECc198144160e2dD7832`
 - Activation: **NOT AUTHORIZED**
 - Public fee: **OFF**
-- Application admission: **NOT COMPLETE**
-- Quote wiring: **STILL REQUIRED**
-- Authorize/provider registry wiring: **STILL REQUIRED**
+- Application source admission: **COMPLETE; PRODUCTION GATE OFF**
+- Quote wiring: **READY IN SOURCE; PRODUCTION GATE OFF**
+- Authorize/provider registry wiring: **READY IN SOURCE; PRODUCTION GATE OFF**
 
 ## Deployed package and preserved proposal
 
@@ -196,16 +196,18 @@ Contract readiness is not application activation readiness. On this exact source
 
 | Stage | Status | Evidence |
 | --- | --- | --- |
-| Quote | `CODE_CHANGE_REQUIRED` | The ordinary V3 quote path still chooses V1/direct settlement rather than V2 net economics. |
+| Quote | `READY` | The ordinary V3 adapter quotes provider input after the exact floored 25-bps input fee and exposes explicit V2 economics. |
 | Verify | `READY` | Exact V2 route, runtime, policy, pool, recipient, deadline, gas, calldata, and simulation verification exists. |
-| Authorize | `CODE_CHANGE_REQUIRED` | The exact V2 authorization implementation exists, but the global `uniswap-v3` fee-settlement registry remains `QUOTE_ONLY`. |
+| Authorize | `READY` | The registry is source-admitted as version-explicit V2, with exact executor/policy verification and a separate server-only gate that defaults false. |
 | Wallet review | `READY` | The authorization-plan codec accepts explicit `VNEXT_V2_ATOMIC_INPUT_FEE` authority. |
 | Prehash journal | `READY` | V2 calldata hashes and recovery plans are durably bound. |
 | Receipt recovery | `READY` | Exact V2 settlement-event reconciliation and terminal recovery exist. |
 | Confirmation UI | `READY` | Confirmed V2 actual fee and net output fields are supported. |
 
-The quote and provider-admission changes are a separate activation/wiring tranche. This
-deployment-package PR does not silently switch production routing or the provider registry.
+Source admission does not activate Production. `RMT_VNEXT_UNISWAP_V3_V2_AUTHORIZATION_ENABLED`
+defaults false and is required in addition to the exact policy and executor gates. Missing or
+mismatched authority keeps V3 wallet admission closed; it never downgrades a configured V2
+attempt to a fee-free V3 wallet request.
 
 ## Controlled proof after deployment and before public activation
 

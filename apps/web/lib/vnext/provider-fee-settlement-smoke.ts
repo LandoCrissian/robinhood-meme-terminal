@@ -14,11 +14,13 @@ import {
   type VNextAtomicFeeSettlementProof
 } from "./provider-fee-settlement";
 
-const providers = ["sushi", "uniswap-v2", "uniswap-v3", "uniswap-v4", "uniswapx", "zero-x-swap", "zero-x-gasless", "up-v2", "up-cl"] as const;
+const providers = ["sushi", "uniswap-v2", "uniswap-v4", "uniswapx", "zero-x-swap", "zero-x-gasless", "up-v2", "up-cl"] as const;
 for (const provider of providers) {
   assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY[provider].state, "QUOTE_ONLY");
   assert.equal(isVNextWalletFeeSettlementAdmitted(provider), false);
 }
+assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v3"].state, "V2_ATOMIC_INPUT_FEE");
+assert.equal(isVNextWalletFeeSettlementAdmitted("uniswap-v3"), true);
 assert.equal(hasVNextWalletAuthorizationCodec("uniswap-v3"), true);
 assert.equal(hasVNextWalletAuthorizationCodec("uniswap-v4"), true, "V4 has a fee-independent wallet codec while fee settlement remains quote-only");
 assert.equal(hasVNextWalletAuthorizationCodec("up-v2"), true);
@@ -64,7 +66,7 @@ assert.equal(assertVNextWalletFeeAdmission({
 }), true);
 assert.throws(() => assertVNextWalletFeeAdmission({
   provider: "uniswap-v3", policy, economics, verification: proof, authorization
-}), /no admitted V2/);
+}), /settlement implementation changed/);
 assert.throws(() => assertVNextWalletFeeAdmission({
   provider: "uniswap-v3", policy: null, economics, verification: proof, authorization, capability
 }), /active V2 policy/);

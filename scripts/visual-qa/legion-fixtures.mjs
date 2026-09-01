@@ -43,7 +43,7 @@ const radarDrop = (slug, name, overrides) => ({
 export const NFT_MINT_RADAR_PAGES = {
   featured: { drops: [radarDrop("legion-live", "Neon Assembly", {
     is_minting: true,
-    active_stage: radarStage("live", "2026-08-01T00:00:00.000Z", "2026-09-01T00:00:00.000Z"),
+    active_stage: radarStage("live", "2026-08-01T00:00:00.000Z", "2036-09-01T00:00:00.000Z"),
   })], next: null },
   upcoming: { drops: [
     radarDrop("legion-upcoming-one", "Robinhood Relics", { contract_address: RADAR_DROP_COLLECTION, next_stage: radarStage("upcoming-one", "2026-09-15T16:00:00.000Z", "2026-09-15T18:00:00.000Z", "CCFF00 Gate") }),

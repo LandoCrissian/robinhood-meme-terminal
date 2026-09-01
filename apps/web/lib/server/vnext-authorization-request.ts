@@ -1,5 +1,10 @@
 import { isAddress } from "viem";
 import { z } from "zod";
+import {
+  VNEXT_DIRECT_NO_RMT_FEE,
+  VNEXT_LEGACY_V1_FEE,
+  VNEXT_V2_ATOMIC_INPUT_FEE
+} from "../vnext/execution-settlement";
 
 export const vNextAuthorizationRequestSchema = z.object({
   chainId: z.literal(4_663),
@@ -13,7 +18,9 @@ export const vNextAuthorizationRequestSchema = z.object({
   expectedStatus: z.enum(["approval_required", "verified"]),
   indicativeProtectedOutputFloorAtomic: z.string().regex(/^[1-9][0-9]*$/),
   expectedProtectedOutputAtomic: z.string().regex(/^[1-9][0-9]*$/),
+  settlementMode: z.enum([VNEXT_DIRECT_NO_RMT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE, VNEXT_LEGACY_V1_FEE]),
   executionId: z.string().regex(/^0x[0-9a-fA-F]{64}$/).optional(),
+  v2VerificationCommitment: z.string().regex(/^v1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/).max(8_192).optional(),
   canonicalMarket: z.object({ sourceId: z.literal("uniswap-v4"), poolId: z.string().regex(/^0x[0-9a-fA-F]{64}$/) }).optional(),
   v4QuoteEvidence: z.object({
     poolId: z.string().regex(/^0x[0-9a-fA-F]{64}$/),

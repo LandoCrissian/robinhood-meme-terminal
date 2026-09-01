@@ -88,6 +88,7 @@ export type VNextPreSignEvidence = {
   feeExecution?: RmtUniswapV3FeeExecution | null;
   feeV2Economics?: RmtExecutionFeeV2Economics;
   feeV2Settlement?: VNextAtomicFeeSettlementProof;
+  v2VerificationCommitment?: string;
   approvalKind?: "erc20_to_permit2" | "permit2_to_router" | null;
   v4Execution?: VNextUniswapV4ExecutionEvidence;
   verifiedAtMs: number;
@@ -152,6 +153,7 @@ const evidenceSchema = z.object({
   feeExecution: z.unknown().nullable().optional(),
   feeV2Economics: z.unknown().optional(),
   feeV2Settlement: z.unknown().optional(),
+  v2VerificationCommitment: z.string().regex(/^v1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/).max(8_192).optional(),
   approvalKind: z.enum(["erc20_to_permit2", "permit2_to_router"]).nullable().optional(),
   v4Execution: z.unknown().optional(),
   verifiedAtMs: z.number().int().positive(),
@@ -208,6 +210,16 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
   }
   if (evidence.settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE && (!hasV2Economics || !hasV2Settlement)) {
     throw new Error("RMT rejected incomplete V2 fee-settlement evidence.");
+  }
+  if (
+    evidence.settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE
+    && (evidence.status === "verified" || evidence.status === "approval_required")
+    && !evidence.v2VerificationCommitment
+  ) {
+    throw new Error("RMT rejected V2 evidence without server authorization authority.");
+  }
+  if (evidence.settlementMode !== VNEXT_V2_ATOMIC_INPUT_FEE && evidence.v2VerificationCommitment !== undefined) {
+    throw new Error("RMT rejected V2 authorization authority outside V2 mode.");
   }
   if (evidence.settlementMode !== VNEXT_V2_ATOMIC_INPUT_FEE && hasV2Economics) {
     throw new Error("RMT rejected V2 fee evidence outside V2_ATOMIC_INPUT_FEE mode.");
