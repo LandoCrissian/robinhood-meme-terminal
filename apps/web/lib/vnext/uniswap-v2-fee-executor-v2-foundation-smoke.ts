@@ -42,9 +42,13 @@ async function main() {
   assert.equal(manifest.activationAuthorized, false);
   assert.equal(manifest.publicExecutionAuthorized, false);
   const applicationAdmission = manifest.applicationAdmission as Record<string, unknown>;
+  const dependencies = manifest.dependencies as Record<string, unknown>;
   assert.equal(applicationAdmission.productionRegistryState, "QUOTE_ONLY");
+  assert.equal(applicationAdmission.wethImplementationPreSignAuthority, "IMPLEMENTED_SERVER_ONLY_BLOCK_PINNED");
   assert.equal(applicationAdmission.walletAuthorization, "NOT_ADMITTED");
   assert.deepEqual(applicationAdmission.publicProviderScope, ["uniswap-v3"]);
+  assert.equal(dependencies.wethImplementation, "0xC6B81b429797E0f555440b70cD99e032D7AE947e");
+  assert.equal(dependencies.wethImplementationRuntimeHash, "0xbe1295f37be34ffe03ad779bda0ef278907e1856b51a3be2f35ee541d75d4650");
 
 let quotedAmount = 0n;
 const candidate = await quoteVNextUniswapV2FeeCandidate({

@@ -22,3 +22,11 @@ The server quote candidate is guarded by the server-only `RMT_VNEXT_UNISWAP_V2_F
 The authoritative settlement registry therefore remains `QUOTE_ONLY` for `uniswap-v2`, with no implementation ID admitted. Existing direct/no-RMT-fee V2 verification remains preserved. Future deployment and future wallet/public admission each require separate owner decisions, an immutable deployment package, runtime verification, application admission, and controlled proof.
 
 The opt-in fork suite uses the canonical Robinhood Chain Router, factory, WETH, and WETH/PONS V2 pair only as deterministic fork infrastructure. It broadcasts nothing. PONS is not an allowlisted fee asset or a public product preference.
+
+## Server pre-sign WETH authority
+
+Canonical Robinhood WETH is an EIP-1967 proxy. Proxy bytecode alone is not sufficient execution authority because the implementation can change without changing the proxy address or proxy runtime. The shared server-only WETH verifier now pins one explicit Robinhood Chain block and verifies, at that block, the chain ID, block hash, WETH proxy runtime, EIP-1967 implementation slot, exact implementation address, and implementation runtime. It rereads the same block hash after the observations and rejects missing, malformed, mixed-block, or changed evidence.
+
+The dormant `verifyVNextUniswapV2FeeInfrastructure()` verifier composes that proof with the exact Uniswap V2 Router and factory runtimes plus `Router.factory()` and `Router.WETH()`. The dormant future executor verifier additionally verifies the executor runtime, immutable Router/factory/WETH/treasury and runtime pins, pair runtime, provider identity, and exact `RMT_EXECUTION_V2` policy constants at the same block. Its returned evidence carries `verifiedAtBlock` and `verifiedAtBlockHash` so a later deployment/admission tranche can bind the fresh infrastructure proof into the existing short-lived server commitment before returning an approval or swap transaction.
+
+This is readiness code, not admission. `requireVNextUniswapV2FeeWalletAdmission()` still fails closed, the deployment artifact remains `SOURCE_FOUNDATION_ONLY_NOT_DEPLOYED`, the provider settlement registry remains `QUOTE_ONLY`, and Production provider scope remains `[uniswap-v3]`. No browser or `NEXT_PUBLIC_*` value can define WETH implementation authority.
