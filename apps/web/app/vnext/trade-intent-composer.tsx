@@ -20,6 +20,11 @@ import { parseVNextAuthorizationBundle, type VNextAuthorizationPlan } from "../.
 import { cachedVNextQuoteForRequest, isVNextQuoteReusableForTrade, VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS, VNEXT_BACKGROUND_QUOTE_REFRESH_MS, type VNextCachedQuote } from "../../lib/vnext/background-quote";
 import type { VNextExecutionUiState, VNextSelectedMarketExecutionState } from "../../lib/vnext/market-directory";
 import { confirmedVNextFeePresentation } from "../../lib/vnext/confirmed-fee-receipt";
+import {
+  formatVNextFeeAtomic,
+  vNextQuoteFeePresentation,
+  type VNextIndicativeFeePresentation
+} from "../../lib/vnext/executable-quote-fee-presentation";
 import type { VNextUniversalMarketSearchPool } from "../../lib/vnext/universal-market-search-contract";
 import {
   ROBINHOOD_ETH,
@@ -362,14 +367,37 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const protectedOutput = bestQuote && bestQuote.outputDecimals !== null
     ? formatAtomicDisplay(bestQuote.protectedOutputAtomic!, bestQuote.outputDecimals)
     : null;
-  const bestRmtFee = bestQuote?.feeV2Economics
-    ?? (bestQuote?.netEconomics?.rmtFee.state === "planned" ? bestQuote.netEconomics.rmtFee : null);
-  const bestRmtFeeLabel = bestRmtFee && pair
-    ? `${formatAtomicDisplay(
-        bestRmtFee.expectedFeeAtomic,
-        bestRmtFee.feeSide === "input" ? pair.inputAsset.decimals ?? 18 : pair.outputAsset.decimals ?? 18
-      )} ${bestRmtFee.feeSide === "input" ? inputSymbol : outputSymbol} · ${bestRmtFee.feeBps / 100}%`
-    : "Not enabled";
+  const indicativeFeePresentation = vNextQuoteFeePresentation({
+    bestObserved: bestQuote,
+    bestExecutable: verificationQuote
+  });
+  const indicativeFeeLabel = (
+    fee: VNextIndicativeFeePresentation | null,
+    context: "observed" | "executable"
+  ) => {
+    if (!fee) return context === "observed" ? "No observed route" : "No executable route";
+    if (fee.state === "unavailable") return "Fee economics unavailable · verification required";
+    if (fee.state === "no_rmt_fee") {
+      return context === "observed" && bestQuote?.publicWalletExecutionEligible !== true
+        ? "No RMT fee · quote-only"
+        : "No RMT fee";
+    }
+    if (!pair) return "Fee economics unavailable · asset metadata required";
+    return `${formatVNextFeeAtomic(
+      fee.expectedFeeAtomic,
+      fee.feeSide === "input" ? pair.inputAsset.decimals ?? 18 : pair.outputAsset.decimals ?? 18
+    )} ${fee.feeSide === "input" ? inputSymbol : outputSymbol} · ${fee.feeBps / 100}%`;
+  };
+  const observedRmtFeeLabel = indicativeFeeLabel(indicativeFeePresentation.bestObserved, "observed");
+  const executableRmtFeeLabel = indicativeFeeLabel(indicativeFeePresentation.bestExecutable, "executable");
+  const executableRmtFee = indicativeFeePresentation.bestExecutable?.state === "planned"
+    ? indicativeFeePresentation.bestExecutable
+    : null;
+  const showExecutableFeeSummary = Boolean(
+    pair
+    && verificationQuote
+    && indicativeFeePresentation.bestExecutable?.state !== "no_rmt_fee"
+  );
   const verifiedRmtFee = visibleVerification?.feeV2Economics
     ?? (visibleVerification?.netEconomics?.rmtFee.state === "planned"
       ? visibleVerification.netEconomics.rmtFee
@@ -952,12 +980,13 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               : `Best observed: ${bestQuote?.providerLabel} (quote-only). No public wallet route is currently admitted.`
           : "RMT sets and verifies the protected minimum during the one-tap execution check."}</small>
       </div>
-      {bestRmtFee && pair ? <div className="vnFeeV2Summary" role="note" aria-label="RMT execution fee summary">
-        <span><small>RMT execution fee</small><strong>{bestRmtFee.feeBps / 100}% · {formatAtomicDisplay(
-          bestRmtFee.expectedFeeAtomic,
-          bestRmtFee.feeSide === "input" ? pair.inputAsset.decimals ?? 18 : pair.outputAsset.decimals ?? 18
-        )} {bestRmtFee.feeSide === "input" ? inputSymbol : outputSymbol}</strong></span>
-        <span><small>Provider input</small><strong>{formatAtomicDisplay(bestQuote?.netEconomics?.providerInputAtomic ?? bestQuote?.feeV2Economics?.providerInputAtomic ?? "0", pair.inputAsset.decimals ?? 18)} {inputSymbol}</strong></span>
+      {showExecutableFeeSummary && pair ? <div className="vnFeeV2Summary" role="note" aria-label="RMT execution fee summary">
+        <span><small>{indicativeFeePresentation.separateContexts ? "Executable RMT fee" : "RMT execution fee"}</small><strong>{executableRmtFee
+          ? `${executableRmtFee.feeBps / 100}% · ${formatVNextFeeAtomic(executableRmtFee.expectedFeeAtomic, executableRmtFee.feeSide === "input" ? pair.inputAsset.decimals ?? 18 : pair.outputAsset.decimals ?? 18)} ${executableRmtFee.feeSide === "input" ? inputSymbol : outputSymbol}`
+          : executableRmtFeeLabel}</strong></span>
+        <span><small>Executable provider input</small><strong>{executableRmtFee
+          ? `${formatVNextFeeAtomic(executableRmtFee.providerInputAtomic, pair.inputAsset.decimals ?? 18)} ${inputSymbol}`
+          : "Unavailable until fee economics verify"}</strong></span>
       </div> : null}
       {authorizationState.state === "ready" && visibleVerification ? <section className="vnWalletPrimaryReview" aria-label="Verified external wallet request">
         <span><strong>Verified request ready</strong><small>Nothing opens automatically. Use the explicit action below when the selected external wallet is unlocked.</small></span>
@@ -1067,13 +1096,19 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         </div> : <dl>
           <div><dt>Providers</dt><dd>Not requested</dd></div>
           <div><dt>Trader gas</dt><dd>Unknown until executable route</dd></div>
-          <div><dt>RMT fee</dt><dd>{bestRmtFeeLabel}</dd></div>
+          <div><dt>RMT fee</dt><dd>No route selected</dd></div>
         </dl>}
         {visibleQuote ? <dl>
           <div><dt>Ranking basis</dt><dd>Protected user output after RMT fee, before network fee</dd></div>
           <div><dt>Trader gas</dt><dd>{visibleQuote.attempts.some((attempt) => attempt.userPaysGas === false) ? "Route-specific · sponsored option observed" : "Estimated during strict verification"}</dd></div>
           <div><dt>Provider fee</dt><dd>{visibleQuote.attempts.some((attempt) => attempt.providerFeeAtomic !== null) ? "Disclosed by provider and reflected in output" : "Not separately reported"}</dd></div>
-          <div><dt>RMT fee</dt><dd>{bestRmtFeeLabel}</dd></div>
+          {indicativeFeePresentation.separateContexts ? <>
+            <div><dt>Best observed RMT fee</dt><dd>{observedRmtFeeLabel}</dd></div>
+            <div><dt>Executable RMT fee</dt><dd>{executableRmtFeeLabel}</dd></div>
+            <div><dt>Executable provider input</dt><dd>{executableRmtFee && pair
+              ? `${formatVNextFeeAtomic(executableRmtFee.providerInputAtomic, pair.inputAsset.decimals ?? 18)} ${inputSymbol}`
+              : "Unavailable until fee economics verify"}</dd></div>
+          </> : <div><dt>RMT fee</dt><dd>{verificationQuote ? executableRmtFeeLabel : observedRmtFeeLabel}</dd></div>}
         </dl> : null}
         {visibleQuote ? <div className="vnVerificationGate">
           <div>
@@ -1106,7 +1141,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               {visibleVerification.feeExecution ? <div><dt>Settlement</dt><dd>Atomic with swap · policy v{visibleVerification.feeExecution.policyVersion}</dd></div> : null}
               {visibleVerification.feeV2Economics ? <div><dt>Gross input</dt><dd>{formatAtomicDisplay(visibleVerification.feeV2Economics.userGrossInputAtomic, pair?.inputAsset.decimals ?? 18)} {inputSymbol}</dd></div> : null}
               {visibleVerification.feeV2Economics ? <div><dt>Fee asset</dt><dd>{inputSymbol} · paid in the sold/input asset</dd></div> : null}
-              {visibleVerification.feeV2Economics ? <div><dt>Provider input</dt><dd>{formatAtomicDisplay(visibleVerification.feeV2Economics.providerInputAtomic, pair?.inputAsset.decimals ?? 18)} {inputSymbol}</dd></div> : null}
+              {visibleVerification.feeV2Economics ? <div><dt>Provider input</dt><dd>{formatVNextFeeAtomic(visibleVerification.feeV2Economics.providerInputAtomic, pair?.inputAsset.decimals ?? 18)} {inputSymbol}</dd></div> : null}
               {visibleVerification.feeV2Economics ? <div><dt>Fee treasury</dt><dd>{shortAddress(visibleVerification.feeV2Economics.treasury)}</dd></div> : null}
               {visibleVerification.feeV2Settlement ? <div><dt>Settlement</dt><dd>Atomic with swap · RMT V2 executor {shortAddress(visibleVerification.feeV2Settlement.executionTarget)}</dd></div> : null}
               <div><dt>Calldata</dt><dd>{shortAddress(visibleVerification.calldataHash)}</dd></div>

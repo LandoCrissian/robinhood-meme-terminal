@@ -55,6 +55,7 @@ assert.equal(missingGas.shortfallWei, 100_000n);
 
 const component = readFileSync(new URL("../../app/vnext/vnext-wallet-review.tsx", import.meta.url), "utf8");
 const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
+const indicativeFeePresentation = readFileSync(new URL("./executable-quote-fee-presentation.ts", import.meta.url), "utf8");
 const helper = readFileSync(new URL("./wallet-submission.ts", import.meta.url), "utf8");
 assert.match(component, /useWalletClient/);
 assert.match(component, /bindVNextExternalWallet/);
@@ -69,8 +70,10 @@ assert.match(component, /Provider input/);
 assert.match(component, /Protected minimum/);
 assert.match(component, /Atomic with swap/);
 assert.match(composer, /aria-label="RMT execution fee summary"/);
-assert.match(composer, /bestRmtFee\.expectedFeeAtomic/);
-assert.match(composer, /bestQuote\?\.netEconomics\?\.providerInputAtomic/);
+assert.match(composer, /executableRmtFee\.expectedFeeAtomic/);
+assert.match(composer, /executableRmtFee\.providerInputAtomic/);
+assert.match(composer, /Executable provider input/);
+assert.match(indicativeFeePresentation, /bestExecutable: feePresentationForQuote\(input\.bestExecutable\)/);
 assert.match(composer, /RMT execution fee/);
 
 const approvalDisclosure = renderToStaticMarkup(createElement(VNextWalletFeeDisclosure, {

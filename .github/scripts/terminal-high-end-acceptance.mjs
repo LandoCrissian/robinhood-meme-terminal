@@ -1922,14 +1922,17 @@ async function installV2WalletAcceptanceRoutes(page, fixture, state) {
   await page.route(/\/api\/vnext\/quotes$/, async (route) => {
     state.quotes = (state.quotes ?? 0) + 1;
     const request = route.request().postDataJSON();
-    const selected = String(request.inputAsset).toLowerCase() === fixture.native.quote.inputAsset.toLowerCase()
-      ? fixture.native
-      : fixture.erc20;
-    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(freshQuote(selected.quote)) });
+    const selectedQuote = state.quoteOverride ?? (
+      String(request.inputAsset).toLowerCase() === fixture.native.quote.inputAsset.toLowerCase()
+        ? fixture.native.quote
+        : fixture.erc20.quote
+    );
+    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(freshQuote(selectedQuote)) });
   });
   await page.route(/\/api\/vnext\/verify$/, async (route) => {
     state.verifications = (state.verifications ?? 0) + 1;
     const request = route.request().postDataJSON();
+    state.verifyRequests = [...(state.verifyRequests ?? []), request];
     const nativeInput = String(request.inputAsset).toLowerCase() === fixture.native.quote.inputAsset.toLowerCase();
     const evidence = nativeInput
       ? fixture.native.swapEvidence
@@ -1939,6 +1942,7 @@ async function installV2WalletAcceptanceRoutes(page, fixture, state) {
   await page.route(/\/api\/vnext\/authorize$/, async (route) => {
     state.authorizations = (state.authorizations ?? 0) + 1;
     const request = route.request().postDataJSON();
+    state.authorizeRequests = [...(state.authorizeRequests ?? []), request];
     const nativeInput = String(request.inputAsset).toLowerCase() === fixture.native.quote.inputAsset.toLowerCase();
     const evidence = nativeInput
       ? fixture.native.swapEvidence
@@ -3141,6 +3145,104 @@ async function inspectV2WalletBrowserJourney(browser, fixture, options, label, m
   return { approval: true, swap: true, receipt: true };
 }
 
+async function inspectExecutableQuoteFeeDisclosure(browser, fixture) {
+  const executableAttempt = fixture.releaseBlocker.quote.attempts.find((attempt) => attempt.provider === "uniswap-v3");
+  if (!executableAttempt?.feeV2Economics) throw new Error("Executable-fee disclosure fixture omitted its V3 V2 economics.");
+  const state = {
+    approved: true,
+    receiptsAvailable: false,
+    missingSettlementEvent: false,
+    quotes: 0,
+    verifications: 0,
+    authorizations: 0,
+    rpcMethods: [],
+    blockNumber: 50_000_016,
+    quoteOverride: fixture.releaseBlocker.quote
+  };
+  const context = await createWalletAcceptanceContext(browser, { viewport: { width: 1_440, height: 900 } });
+  const page = await context.newPage();
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await installV2WalletAcceptanceRoutes(page, fixture, state);
+  await installRoutes(page);
+  await gotoReady(page, `${base}/?market=${token}&side=buy`, ".vnTradePanel");
+  const panel = page.locator(".vnTradePanel").last();
+  await panel.getByLabel("Pay with asset").selectOption("eip155:4663/native");
+  await panel.getByLabel("Exact input amount").fill("0.0005");
+  await page.waitForFunction(() => {
+    const text = document.querySelector(".vnTradePanel")?.textContent ?? "";
+    return text.includes("Best observed: Uniswap V2 (quote-only). Best currently executable: Uniswap V3.");
+  });
+
+  const passiveText = await panel.innerText();
+  const passiveTextNormalized = passiveText.toLowerCase();
+  for (const expected of [
+    "Best observed: Uniswap V2 (quote-only)",
+    "Best currently executable: Uniswap V3",
+    "Executable RMT fee",
+    "0.25%",
+    "0.00000125 ETH",
+    "Executable provider input",
+    "0.00049875 ETH"
+  ]) {
+    if (!passiveTextNormalized.includes(expected.toLowerCase())) throw new Error(`Executable-fee disclosure omitted ${expected}: ${passiveText}`);
+  }
+  const advanced = panel.locator(".vnRouteCard");
+  await advanced.evaluate((element) => { element.open = true; });
+  const advancedText = await advanced.innerText();
+  const advancedTextNormalized = advancedText.toLowerCase();
+  for (const expected of [
+    "Uniswap V2",
+    "Highest protected user output before network fee · quote-only",
+    "Uniswap V3",
+    "Best currently executable quote · indicative floor",
+    "Best observed RMT fee",
+    "No RMT fee · quote-only",
+    "Executable RMT fee",
+    "0.25%"
+  ]) {
+    if (!advancedTextNormalized.includes(expected.toLowerCase())) throw new Error(`Executable-fee advanced details omitted ${expected}: ${advancedText}`);
+  }
+  if (advancedTextNormalized.includes("rmt fee\nnot enabled")) throw new Error("Executable V3 context still renders the release-blocking generic fee-disabled statement.");
+  const passiveWalletMethods = await page.evaluate(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__ ?? []);
+  if (state.verifications !== 0 || state.authorizations !== 0 || passiveWalletMethods.includes("eth_sendTransaction")) {
+    throw new Error(`Passive executable-fee quote caused wallet side effects: ${JSON.stringify({ state, passiveWalletMethods })}`);
+  }
+  await page.screenshot({ path: `${output}/v3-v2-executable-fee-disclosure-desktop-1440x900.png`, fullPage: false, animations: "disabled" });
+
+  await panel.locator(".vnReviewButton").click();
+  try {
+    await page.locator(".vnVerificationEvidence").last().waitFor({ state: "visible", timeout: 30_000 });
+  } catch (error) {
+    const diagnostic = await page.evaluate(() => ({
+      panel: document.querySelector(".vnTradePanel")?.textContent ?? "<trade panel unavailable>",
+      walletMethods: window.__RMT_ACCEPTANCE_WALLET_METHODS__ ?? []
+    }));
+    throw new Error(`Executable-fee strict verification did not become visible: ${JSON.stringify({ diagnostic, state })}`, { cause: error });
+  }
+  const verifiedText = await page.locator(".vnVerificationEvidence").last().innerText();
+  const verifiedTextNormalized = verifiedText.toLowerCase();
+  for (const expected of ["RMT fee", "0.00000125 ETH", "0.25%", "Provider input", "0.00049875 ETH", "Fee asset", "ETH"] ) {
+    if (!verifiedTextNormalized.includes(expected.toLowerCase())) throw new Error(`Verified executable-fee evidence omitted ${expected}: ${verifiedText}`);
+  }
+  const strictWalletMethods = await page.evaluate(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__ ?? []);
+  if (state.verifications !== 1 || state.authorizations !== 1 || strictWalletMethods.includes("eth_sendTransaction")) {
+    throw new Error(`Strict executable-fee verification crossed the owner wallet boundary: ${JSON.stringify({ state, strictWalletMethods })}`);
+  }
+  await page.screenshot({ path: `${output}/v3-v2-verified-fee-disclosure-desktop-1440x900.png`, fullPage: false, animations: "disabled" });
+  await context.close();
+  return {
+    bestObserved: "uniswap-v2",
+    bestObservedExecution: "quote-only",
+    bestExecutable: "uniswap-v3",
+    executableFeeBps: 25,
+    executableFeeAsset: "ETH",
+    executableProviderInputAtomic: executableAttempt.feeV2Economics.providerInputAtomic,
+    passiveWalletRequests: 0,
+    strictWalletRequests: 0,
+    strictVerification: true
+  };
+}
+
 async function inspectV4PoolIdWorkspace(browser) {
   const context = await createContext(browser, { viewport: { width: 1_440, height: 900 }, deviceScaleFactor: 1 });
   const page = await context.newPage();
@@ -3481,11 +3583,17 @@ try {
     ? JSON.parse(await readFile(`${output}/v2-fixture.json`, "utf8"))
     : null;
   const walletLifecycleOnly = process.env.RMT_ACCEPTANCE_ONLY_WALLET_LIFECYCLE === "true";
+  const executableQuoteFeeDisclosureOnly = process.env.RMT_ACCEPTANCE_ONLY_EXECUTABLE_QUOTE_FEE_DISCLOSURE === "true";
   const marketLoadPerformanceOnly = process.env.RMT_ACCEPTANCE_ONLY_MARKET_LOAD_PERFORMANCE === "true";
   const compatibilityOnly = process.env.RMT_ACCEPTANCE_ONLY_COMPATIBILITY === "true";
   if (compatibilityOnly) {
     const compatibilityEntries = await inspectCompatibilityEntries(browser);
     console.log(`Terminal compatibility acceptance passed: ${JSON.stringify(compatibilityEntries)}`);
+  } else if (executableQuoteFeeDisclosureOnly) {
+    if (!browserAcceptanceFixture) throw new Error("Executable-quote fee disclosure acceptance requires the loopback-only browser fixture profile.");
+    const executableQuoteFeeDisclosure = await inspectExecutableQuoteFeeDisclosure(browser, browserAcceptanceFixture);
+    await writeFile(`${output}/report.json`, JSON.stringify({ executableQuoteFeeDisclosure }, null, 2));
+    console.log(`Terminal executable-quote fee disclosure acceptance passed: ${JSON.stringify(executableQuoteFeeDisclosure)}`);
   } else if (marketLoadPerformanceOnly) {
     const marketLoadPerformance = await inspectMarketLoadPerformanceMatrix(browser);
     await writeFile(`${output}/report.json`, JSON.stringify({ marketLoadPerformance }, null, 2));
@@ -3532,6 +3640,9 @@ try {
           mobileFailure: await inspectV2WalletBrowserJourney(browser, browserAcceptanceFixture, { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true }, "mobile-390x844", "missing-event")
         };
       })()
+    : null;
+  const executableQuoteFeeDisclosure = browserAcceptanceFixture && !mobileOnly
+    ? await inspectExecutableQuoteFeeDisclosure(browser, browserAcceptanceFixture)
     : null;
   const workspaceEvidence = mobileOnly ? null : {
     v4: await inspectV4PoolIdWorkspace(browser),
@@ -3588,7 +3699,7 @@ try {
   }
   await writeFile(
     `${output}/report.json`,
-    JSON.stringify({ productAcceptanceEvidence, marketLoadPerformance, walletLifecycleEvidence, workspaceEvidence, marketsHierarchy, discoveryDesktop, discoveryMobile, projectIdentityQuarantine, desktop, laptop, laptop720, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile393, mobile390, mobile375, mobile360, v2BrowserEvidence, v4WalletReviewEvidence, v4FreshWalletSellEvidence, exploratoryTouch }, null, 2)
+    JSON.stringify({ productAcceptanceEvidence, marketLoadPerformance, walletLifecycleEvidence, workspaceEvidence, marketsHierarchy, discoveryDesktop, discoveryMobile, projectIdentityQuarantine, desktop, laptop, laptop720, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile393, mobile390, mobile375, mobile360, v2BrowserEvidence, executableQuoteFeeDisclosure, v4WalletReviewEvidence, v4FreshWalletSellEvidence, exploratoryTouch }, null, 2)
   );
   console.log(`Terminal active discovery product acceptance passed: ${JSON.stringify(productAcceptanceEvidence)}`);
   }

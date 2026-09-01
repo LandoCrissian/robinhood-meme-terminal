@@ -12,6 +12,7 @@ import {
   type Hex
 } from "viem";
 import { authorizationPayloadHash, parseVNextAuthorizationBundle, type VNextAuthorizationPlan } from "./authorization-plan";
+import { normalizeDisabledRmtFee } from "./execution-fee-policy";
 import { createRmtExecutionFeeV2Policy, normalizeRmtExecutionFeeV2Input } from "./execution-fee-policy-v2";
 import { bindVNextAtomicFeeAuthorization, type VNextAtomicFeeSettlementProof } from "./provider-fee-settlement";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "./pre-sign-evidence";
@@ -308,6 +309,40 @@ const native = buildScenario({
   protectedOutput: "19800000000000000000",
   native: true
 });
+const quoteOnlyWinnerExpectedOutput = "20100000000000000000";
+const quoteOnlyWinnerProtectedOutput = "19900000000000000000";
+const quoteOnlyWinner = {
+  ...native.quote,
+  requestId: native.quote.requestId,
+  attempts: [{
+    ...native.quote.attempts[0],
+    provider: "uniswap-v2" as const,
+    providerLabel: "Uniswap V2",
+    expectedOutputAtomic: quoteOnlyWinnerExpectedOutput,
+    protectedOutputAtomic: quoteOnlyWinnerProtectedOutput,
+    liquidityFeeEvidence: [{
+      source: "uniswap-v2-factory" as const,
+      poolAddress: getAddress("0x4444444444444444444444444444444444444444"),
+      fee: 30,
+      denominator: 10_000 as const,
+      stable: null,
+      tickSpacing: null,
+      observedBlock: "50000016",
+      observedBlockHash: `0x${"5".repeat(64)}` as Hex
+    }],
+    publicWalletExecutionEligible: false,
+    settlementMode: undefined,
+    executionTarget: undefined,
+    feeV2Economics: undefined,
+    netEconomics: normalizeDisabledRmtFee({
+      userGrossInputAtomic: native.quote.inputAmountAtomic,
+      providerGrossExpectedOutputAtomic: quoteOnlyWinnerExpectedOutput,
+      providerProtectedOutputAtomic: quoteOnlyWinnerProtectedOutput,
+      reason: "provider_not_admitted"
+    }),
+    detail: "Better protected output remains visible as a quote-only route."
+  }, native.quote.attempts[0]]
+};
 
 const eventDataParameters = parseAbiParameters(
   "bytes32 policyIdHash, uint256 policyVersion, bytes32 providerId, address router, bytes32 routeIdentity, address requestedInputAsset, address requestedOutputAsset, address feeAsset, uint16 feeBps, uint8 feeSide, uint256 userGrossInput, uint256 providerInput, uint256 actualProviderOutput, uint256 actualRmtFee, address treasury"
@@ -775,6 +810,11 @@ async function writeBrowserFixture() {
     outputAsset: token,
     inputAmountAtomic: "500000000000000"
   }, generatedAtMs);
+  parseVNextQuoteResponse(quoteOnlyWinner, {
+    inputAsset: ROBINHOOD_NATIVE_ASSET_ADDRESS,
+    outputAsset: token,
+    inputAmountAtomic: "500000000000000"
+  }, generatedAtMs);
   const parsedApprovalEvidence = parseVNextPreSignEvidence(approvalEvidence, {
     quoteRequestId: erc20.quote.requestId,
     inputAsset: ROBINHOOD_USDG_ADDRESS,
@@ -801,6 +841,7 @@ async function writeBrowserFixture() {
     router: ROBINHOOD_SWAP_ROUTER_02,
     erc20: { ...erc20, approvalEvidence, approvalPlan, settlementLog },
     native: { ...native, settlementLog: nativeSettlementLog },
+    releaseBlocker: { quote: quoteOnlyWinner },
     v4
   }, null, 2));
 }
