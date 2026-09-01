@@ -108,6 +108,14 @@ contract V2RouterMock {
     }
 }
 
+contract ForceNativeBalance {
+    constructor() payable {}
+
+    function force(address payable recipient) external {
+        selfdestruct(recipient);
+    }
+}
+
 contract RMTUniswapV2FeeExecutorV2Test is Test {
     address private constant TRADER = address(0xA11CE);
     address private constant TREASURY = address(0xBEEF);
@@ -144,6 +152,7 @@ contract RMTUniswapV2FeeExecutorV2Test is Test {
         other.mint(TRADER, 1_000_000);
         vm.deal(TRADER, 1 ether);
         vm.deal(address(router), 1 ether);
+        vm.deal(address(this), 1 ether);
     }
 
     function testNativeToErc20DirectSettlesExactInputFee() public {
@@ -184,6 +193,8 @@ contract RMTUniswapV2FeeExecutorV2Test is Test {
     }
 
     function testErc20ToErc20WethHopUsesOnlyCanonicalPath() public {
+        _forceNative(1);
+        input.mint(address(executor), 1);
         V2PairMock otherPair = new V2PairMock(address(factory), address(weth), address(other));
         factory.setPair(address(weth), address(other), address(otherPair));
         RMTUniswapV2FeeExecutorV2.Route memory route = RMTUniswapV2FeeExecutorV2.Route({
@@ -199,6 +210,9 @@ contract RMTUniswapV2FeeExecutorV2Test is Test {
         assertEq(path[0], address(input));
         assertEq(path[1], address(weth));
         assertEq(path[2], address(other));
+        assertEq(address(executor).balance, 1, "forced native baseline changed");
+        assertEq(input.balanceOf(address(executor)), 1, "forced input baseline changed");
+        assertEq(input.allowance(address(executor), address(router)), 0);
     }
 
     function testExactApprovalReplayDeadlineAndMutationsFailClosed() public {
@@ -322,7 +336,7 @@ contract RMTUniswapV2FeeExecutorV2Test is Test {
         _expectRejected(changed, route);
     }
 
-    function testFeeTransferFailureAndForcedResidualRevertAtomically() public {
+    function testFeeTransferFailureRevertsAtomicallyAndDirectNativeTransferIsRejected() public {
         RMTUniswapV2FeeExecutorV2.Route memory route = _direct(address(input), address(output), address(directPair));
         RMTUniswapV2FeeExecutorV2.FeeAuthorization memory auth =
             _auth(route, address(input), address(output), 40_000, keccak256("fee-failure"));
@@ -336,14 +350,147 @@ contract RMTUniswapV2FeeExecutorV2Test is Test {
         assertEq(output.balanceOf(TRADER), 0);
         assertFalse(executor.executionConsumed(auth.executionId));
         input.setFailingRecipient(address(0));
-        vm.deal(address(executor), 1);
-        auth.executionId = keccak256("forced-residual");
-        vm.expectRevert(RMTUniswapV2FeeExecutorV2.UnsupportedTransferBehavior.selector);
-        vm.prank(TRADER);
-        executor.execute(auth, route);
         vm.prank(TRADER);
         (bool ok,) = address(executor).call{value: 1}("");
         assertFalse(ok, "unsolicited native accepted");
+    }
+
+    function testForcedNativeBaselineDoesNotBrickNativeToErc20() public {
+        _forceNative(1);
+        RMTUniswapV2FeeExecutorV2.Route memory route = _direct(address(weth), address(output), address(wethOutputPair));
+        RMTUniswapV2FeeExecutorV2.FeeAuthorization memory auth =
+            _auth(route, address(0), address(output), 40_000, keccak256("forced-native-buy"));
+        uint256 treasuryBefore = TREASURY.balance;
+
+        vm.prank(TRADER);
+        executor.execute{value: 40_000}(auth, route);
+
+        assertEq(router.lastAmountIn(), 39_900);
+        assertEq(TREASURY.balance - treasuryBefore, 100);
+        assertEq(output.balanceOf(TRADER), 39_900);
+        assertEq(address(executor).balance, 1, "forced native baseline changed");
+        assertEq(output.balanceOf(address(executor)), 0);
+    }
+
+    function testForcedNativeBaselineDoesNotCountAsErc20ToNativeOutput() public {
+        _forceNative(1);
+        RMTUniswapV2FeeExecutorV2.Route memory route = _direct(address(input), address(weth), address(inputWethPair));
+        RMTUniswapV2FeeExecutorV2.FeeAuthorization memory auth =
+            _auth(route, address(input), address(0), 40_000, keccak256("forced-native-sell"));
+        vm.prank(TRADER);
+        input.approve(address(executor), 40_000);
+        uint256 traderBefore = TRADER.balance;
+
+        vm.prank(TRADER);
+        executor.execute(auth, route);
+
+        assertEq(TRADER.balance - traderBefore, 39_900, "forced native counted as output");
+        assertEq(input.balanceOf(TREASURY), 100);
+        assertEq(address(executor).balance, 1, "forced native baseline changed");
+        assertEq(input.balanceOf(address(executor)), 0);
+        assertEq(input.allowance(address(executor), address(router)), 0);
+    }
+
+    function testForcedInputTokenBaselineDoesNotBrickErc20ToErc20() public {
+        input.mint(address(executor), 1);
+        RMTUniswapV2FeeExecutorV2.Route memory route = _direct(address(input), address(output), address(directPair));
+        RMTUniswapV2FeeExecutorV2.FeeAuthorization memory auth =
+            _auth(route, address(input), address(output), 40_000, keccak256("forced-token-direct"));
+        vm.prank(TRADER);
+        input.approve(address(executor), 40_000);
+
+        vm.prank(TRADER);
+        executor.execute(auth, route);
+
+        assertEq(router.lastAmountIn(), 39_900);
+        assertEq(input.balanceOf(TREASURY), 100);
+        assertEq(output.balanceOf(TRADER), 39_900);
+        assertEq(input.balanceOf(address(executor)), 1, "forced input baseline changed");
+        assertEq(input.allowance(address(executor), address(router)), 0);
+    }
+
+    function testForcedInputTokenBaselineDoesNotBrickErc20ToNative() public {
+        input.mint(address(executor), 1);
+        RMTUniswapV2FeeExecutorV2.Route memory route = _direct(address(input), address(weth), address(inputWethPair));
+        RMTUniswapV2FeeExecutorV2.FeeAuthorization memory auth =
+            _auth(route, address(input), address(0), 40_000, keccak256("forced-token-native"));
+        vm.prank(TRADER);
+        input.approve(address(executor), 40_000);
+        uint256 traderBefore = TRADER.balance;
+
+        vm.prank(TRADER);
+        executor.execute(auth, route);
+
+        assertEq(TRADER.balance - traderBefore, 39_900);
+        assertEq(input.balanceOf(TREASURY), 100);
+        assertEq(input.balanceOf(address(executor)), 1, "forced input baseline changed");
+        assertEq(address(executor).balance, 0);
+        assertEq(input.allowance(address(executor), address(router)), 0);
+    }
+
+    function testPreexistingWethInputBaselineDoesNotBrickExecution() public {
+        weth.mint(TRADER, 40_000);
+        weth.mint(address(executor), 1);
+        RMTUniswapV2FeeExecutorV2.Route memory route = _direct(address(weth), address(output), address(wethOutputPair));
+        RMTUniswapV2FeeExecutorV2.FeeAuthorization memory auth =
+            _auth(route, address(weth), address(output), 40_000, keccak256("forced-weth-input"));
+        vm.prank(TRADER);
+        weth.approve(address(executor), 40_000);
+
+        vm.prank(TRADER);
+        executor.execute(auth, route);
+
+        assertEq(router.lastAmountIn(), 39_900);
+        assertEq(weth.balanceOf(TREASURY), 100);
+        assertEq(output.balanceOf(TRADER), 39_900);
+        assertEq(weth.balanceOf(address(executor)), 1, "pre-existing WETH baseline changed");
+        assertEq(weth.allowance(address(executor), address(router)), 0);
+    }
+
+    function testForcedBalancesAreNeverExtractedByAuthorizationOrRouteMutations() public {
+        _forceNative(7);
+        input.mint(address(executor), 11);
+        RMTUniswapV2FeeExecutorV2.Route memory route = _direct(address(input), address(output), address(directPair));
+        RMTUniswapV2FeeExecutorV2.FeeAuthorization memory base =
+            _auth(route, address(input), address(output), 40_000, keccak256("forced-mutation-base"));
+        RMTUniswapV2FeeExecutorV2.FeeAuthorization memory changed = base;
+
+        changed.trader = address(0xB0B);
+        _expectRejectedWithForcedBaselines(changed, route);
+        changed = _auth(route, address(input), address(output), 40_000, base.executionId);
+        changed.feeAsset = address(output);
+        _expectRejectedWithForcedBaselines(changed, route);
+        changed = _auth(route, address(input), address(output), 40_000, base.executionId);
+        changed.treasury = address(0xB0B);
+        _expectRejectedWithForcedBaselines(changed, route);
+        changed = _auth(route, address(input), address(output), 40_000, base.executionId);
+        changed.userGrossInput += 1;
+        _expectRejectedWithForcedBaselines(changed, route);
+        changed = _auth(route, address(input), address(output), 40_000, base.executionId);
+        changed.providerInput -= 1;
+        _expectRejectedWithForcedBaselines(changed, route);
+        changed = _auth(route, address(input), address(output), 40_000, base.executionId);
+        changed.deadline = block.timestamp - 1;
+        _expectRejectedWithForcedBaselines(changed, route);
+
+        RMTUniswapV2FeeExecutorV2.Route memory changedRoute =
+            _direct(address(input), address(output), address(inputWethPair));
+        changed = _auth(route, address(input), address(output), 40_000, base.executionId);
+        changed.routeIdentity = executor.routeIdentity(changedRoute);
+        _expectRejectedWithForcedBaselines(changed, changedRoute);
+
+        changed = _auth(route, address(input), address(output), 40_000, keccak256("forced-mutation-new-execution-id"));
+        vm.prank(TRADER);
+        input.approve(address(executor), 40_000);
+        vm.prank(TRADER);
+        executor.execute(changed, route);
+        _assertForcedBaselines(7, 11);
+        assertEq(input.allowance(address(executor), address(router)), 0);
+
+        vm.expectRevert(RMTUniswapV2FeeExecutorV2.ExecutionAlreadyConsumed.selector);
+        vm.prank(TRADER);
+        executor.execute(changed, route);
+        _assertForcedBaselines(7, 11);
     }
 
     function testTransferTaxInputAndArbitrarySurfacesRejected() public {
@@ -503,6 +650,27 @@ contract RMTUniswapV2FeeExecutorV2Test is Test {
         vm.prank(TRADER);
         executor.execute(auth, route);
         vm.etch(target, code);
+    }
+
+    function _forceNative(uint256 amount) private {
+        ForceNativeBalance forceSender = new ForceNativeBalance{value: amount}();
+        forceSender.force(payable(address(executor)));
+        assertEq(address(executor).balance, amount, "force-send fixture failed");
+    }
+
+    function _expectRejectedWithForcedBaselines(
+        RMTUniswapV2FeeExecutorV2.FeeAuthorization memory auth,
+        RMTUniswapV2FeeExecutorV2.Route memory route
+    ) private {
+        vm.expectRevert();
+        vm.prank(TRADER);
+        executor.execute(auth, route);
+        _assertForcedBaselines(7, 11);
+    }
+
+    function _assertForcedBaselines(uint256 nativeBaseline, uint256 tokenBaseline) private view {
+        assertEq(address(executor).balance, nativeBaseline, "forced native extracted");
+        assertEq(input.balanceOf(address(executor)), tokenBaseline, "forced token extracted");
     }
 
     function _assertClean(address inputToken, address outputToken) private view {

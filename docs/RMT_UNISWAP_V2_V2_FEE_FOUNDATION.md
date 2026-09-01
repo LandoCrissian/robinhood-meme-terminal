@@ -4,6 +4,8 @@ Status: **SOURCE FOUNDATION ONLY — NOT DEPLOYED — NOT ACTIVATED**
 
 `RMTUniswapV2FeeExecutorV2` extends the existing verified Uniswap V2 route model without changing the live Uniswap V3 release. It is an ownerless, non-upgradeable exact-input settlement primitive for the universal `RMT_EXECUTION_V2` policy. It has no admin, rescue, arbitrary target, arbitrary calldata, arbitrary path, token allowlist, or mutable fee/treasury surface.
 
+Native value can be force-sent at EVM level without invoking `receive()`, and any holder can transfer ERC20 dust directly to an address. The executor therefore treats those balances as immutable pre-execution baselines: every successful execution must return native and input-token balances to their exact starting values. Forced balances remain stranded and cannot subsidize provider input, fees, or trader output. Ordinary unsolicited native transfers remain rejected; only Router-originated native output is accepted during execution.
+
 The executor supports only a canonical direct pair or a canonical two-pair WETH hop. Every pair is resolved through the immutable factory and checked for exact factory, unordered token identity, deployed code, and the approved pair runtime hash. The path is constructed by the contract. Native and ERC20 input, ERC20 and native output, exact gross-input trader approval, exact provider-input Router approval, protected output, replay, deadline, runtime, residual, and transfer-delta checks are contract invariants.
 
 Economics remain the shared policy:

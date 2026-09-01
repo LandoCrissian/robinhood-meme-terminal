@@ -44,6 +44,8 @@ interface IRMTArbSysUniswapV2 {
 
 /// @notice Ownerless atomic settlement primitive for RMT_EXECUTION_V2 Uniswap V2 exact-input trades.
 /// @dev There is no owner, proxy, upgrade, rescue, arbitrary target, calldata, path, treasury, or fee surface.
+/// Forced native or ERC20 balances cannot be prevented on the EVM and remain permanently stranded. Each execution
+/// preserves those pre-existing baselines exactly while rejecting any native, token, or allowance residue it creates.
 contract RMTUniswapV2FeeExecutorV2 is ReentrancyGuard {
     using SafeERC20 for IERC20;
 
@@ -225,7 +227,6 @@ contract RMTUniswapV2FeeExecutorV2 is ReentrancyGuard {
 
         executionConsumed[authorization.executionId] = true;
         uint256 nativeBalanceBefore = address(this).balance - msg.value;
-        if (nativeBalanceBefore != 0) revert UnsupportedTransferBehavior();
         uint256 inputBalanceBefore = 0;
         if (!nativeInput) {
             inputBalanceBefore = _pullExact(route.tokenIn, authorization.userGrossInput);
@@ -413,7 +414,6 @@ contract RMTUniswapV2FeeExecutorV2 is ReentrancyGuard {
         IERC20 asset = IERC20(token);
         if (asset.allowance(msg.sender, address(this)) != amount) revert UnsupportedTransferBehavior();
         balanceBefore = asset.balanceOf(address(this));
-        if (balanceBefore != 0) revert UnsupportedTransferBehavior();
         asset.safeTransferFrom(msg.sender, address(this), amount);
         if (asset.allowance(msg.sender, address(this)) != 0) revert UnsupportedTransferBehavior();
         uint256 afterBalance = asset.balanceOf(address(this));
