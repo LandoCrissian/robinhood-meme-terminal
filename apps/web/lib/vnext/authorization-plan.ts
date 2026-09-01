@@ -349,6 +349,7 @@ export function parseVNextAuthorizationBundle(value: unknown, priorEvidence: VNe
     || evidence.status !== priorEvidence.status
     || evidence.rmtFeeEnabled !== priorEvidence.rmtFeeEnabled
     || evidence.settlementMode !== priorEvidence.settlementMode
+    || evidence.v2VerificationCommitment !== priorEvidence.v2VerificationCommitment
     || evidence.directNoRmtFee?.userGrossInputAtomic !== priorEvidence.directNoRmtFee?.userGrossInputAtomic
     || evidence.directNoRmtFee?.providerInputAtomic !== priorEvidence.directNoRmtFee?.providerInputAtomic
     || evidence.feeV2Economics?.policyHash !== priorEvidence.feeV2Economics?.policyHash

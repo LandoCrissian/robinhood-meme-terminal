@@ -24,6 +24,7 @@ export const FEE_V2_SMOKE_APPROVAL_DATA = encodeFunctionData({
   functionName: "approve",
   args: [FEE_V2_SMOKE_EXECUTOR, 1_000_000n]
 });
+export const FEE_V2_SMOKE_COMMITMENT = "v1.eyJ0ZXN0IjoidjIifQ.c2lnbmF0dXJl";
 
 const policy = createRmtExecutionFeeV2Policy({
   treasury: FEE_V2_SMOKE_TREASURY,
@@ -104,6 +105,7 @@ export const FEE_V2_SMOKE_APPROVAL_EVIDENCE: VNextPreSignEvidence = {
   feeExecution: null,
   feeV2Economics: economics,
   feeV2Settlement: proof,
+  v2VerificationCommitment: FEE_V2_SMOKE_COMMITMENT,
   verifiedAtMs: FEE_V2_SMOKE_NOW_MS - 1_000,
   expiresAtMs: FEE_V2_SMOKE_NOW_MS + 300_000,
   authorizationReady: false

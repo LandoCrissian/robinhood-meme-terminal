@@ -17,6 +17,7 @@ function sameAddress(left: Address, right: Address) {
 export type TradeWalletAuthorization = {
   status: "identity-wallet-bound";
   wallet: Address;
+  identityId: string;
 };
 
 export class TradeIdentityError extends Error {
@@ -67,7 +68,7 @@ export async function requireAuthenticatedTradeWallet(
   if (!verifiedWalletAddress(identity, recipient)) {
     throw new TradeIdentityError("Link and select this wallet in your RMT account before trading.", 403);
   }
-  return { status: "identity-wallet-bound", wallet: recipient };
+  return { status: "identity-wallet-bound", wallet: recipient, identityId: identity.id };
 }
 
 export function tradeIdentityErrorResponse(cause: unknown) {

@@ -9,9 +9,19 @@ import {
   projectIdentityAdmissionErrorResponse,
   requireProjectIdentityDirectoryAdmitted
 } from "../../../../lib/server/project-identity-admission";
-import { VNEXT_DIRECT_NO_RMT_FEE } from "../../../../lib/vnext/execution-settlement";
+import { VNEXT_DIRECT_NO_RMT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE } from "../../../../lib/vnext/execution-settlement";
 import { vNextExecutionEligibilityErrorResponse } from "../../../../lib/server/vnext-execution-eligibility";
 import { selectVNextUniswapV3SettlementMode } from "../../../../lib/server/vnext-uniswap-quote";
+import {
+  readVNextAuthorizationChainTimestamp,
+  VNEXT_AUTHORIZATION_WINDOW_SECONDS
+} from "../../../../lib/server/vnext-authorization-time";
+import { configuredVNextUniswapFeeExecutorV2 } from "../../../../lib/server/vnext-uniswap-fee-executor-v2";
+import {
+  createVNextV2VerificationCommitment,
+  VNextV2VerificationCommitmentConfigurationError
+} from "../../../../lib/server/vnext-v2-verification-commitment";
+import type { VNextPreSignEvidence } from "../../../../lib/vnext/pre-sign-evidence";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -56,7 +66,7 @@ export async function POST(request: Request) {
     const recipient = getAddress(parsed.data.recipient);
     const inputAsset = getAddress(parsed.data.inputAsset);
     const outputAsset = getAddress(parsed.data.outputAsset);
-    await requireAuthenticatedTradeWallet(request, recipient);
+    const tradeAuthorization = await requireAuthenticatedTradeWallet(request, recipient);
     const [inputIdentity, outputIdentity] = await Promise.all([
       readVNextVerifiedAssetIdentity(inputAsset),
       readVNextVerifiedAssetIdentity(outputAsset)
@@ -72,6 +82,11 @@ export async function POST(request: Request) {
     const settlementMode = parsed.data.provider === "uniswap-v3"
       ? selectVNextUniswapV3SettlementMode({ inputAsset, outputAsset, recipient })
       : VNEXT_DIRECT_NO_RMT_FEE;
+    const verificationId = randomUUID();
+    const verificationWallClockMs = Date.now();
+    const finalDeadlineSeconds = settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE
+      ? await readVNextAuthorizationChainTimestamp().then((timestamp) => timestamp + VNEXT_AUTHORIZATION_WINDOW_SECONDS)
+      : undefined;
     const evidence = await verifyRobinhoodVNextExecution(parsed.data.provider, {
       chainId: 4_663,
       inputAsset,
@@ -82,14 +97,30 @@ export async function POST(request: Request) {
       indicativeProtectedOutputFloorAtomic: BigInt(parsed.data.protectedOutputFloorAtomic),
       settlementMode,
       executionId,
+      ...(finalDeadlineSeconds ? { deadlineSeconds: finalDeadlineSeconds, nowMs: verificationWallClockMs } : {}),
       ...(parsed.data.canonicalMarket ? { canonicalMarket: parsed.data.canonicalMarket as { sourceId: "uniswap-v4"; poolId: `0x${string}` } } : {}),
       ...(parsed.data.v4QuoteEvidence ? { v4QuoteEvidence: parsed.data.v4QuoteEvidence as typeof parsed.data.v4QuoteEvidence & { poolId: `0x${string}`; observedBlockHash: `0x${string}` } } : {})
     });
-    return Response.json({
-      verificationId: randomUUID(),
+    const responseEvidence = {
+      verificationId,
       sourceQuoteRequestId: parsed.data.quoteRequestId,
       ...evidence
-    }, { headers: { "Cache-Control": "no-store" } });
+    } as VNextPreSignEvidence;
+    if (settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE && (evidence.status === "verified" || evidence.status === "approval_required")) {
+      const config = configuredVNextUniswapFeeExecutorV2();
+      if (!config || !evidence.feeV2Settlement || getAddress(config.executor) !== getAddress(evidence.feeV2Settlement.executionTarget)) {
+        throw new Error("RMT Uniswap V3 V2 verification authority is not configured exactly.");
+      }
+      responseEvidence.v2VerificationCommitment = createVNextV2VerificationCommitment({
+        evidence: responseEvidence,
+        identityId: tradeAuthorization.identityId,
+        quoteRequestId: parsed.data.quoteRequestId,
+        verificationId,
+        executorRuntimeHash: config.executorRuntimeHash,
+        nowMs: verificationWallClockMs
+      });
+    }
+    return Response.json(responseEvidence, { headers: { "Cache-Control": "no-store" } });
   } catch (cause) {
     const identityResponse = tradeIdentityErrorResponse(cause);
     if (identityResponse) return identityResponse;
@@ -99,6 +130,9 @@ export async function POST(request: Request) {
     if (projectIdentityResponse) return projectIdentityResponse;
     const stockTokenResponse = stockTokenExecutionPolicyErrorResponse(cause);
     if (stockTokenResponse) return stockTokenResponse;
+    if (cause instanceof VNextV2VerificationCommitmentConfigurationError) {
+      return Response.json({ error: cause.message }, { status: 503, headers: { "Cache-Control": "no-store" } });
+    }
     const message = cause instanceof Error && /No canonical Uniswap|No up-|runtime bytecode is not approved|dependencies changed|strict verification is not available|V2 wallet authorization is disabled|V2 authorization is enabled without a complete executor policy|RMT_EXECUTION_V2 policy is not effective until block|moved below the indicative protected-output floor|quote block was reorganized|rejected Uniswap V4 execution/.test(cause.message)
       ? cause.message
       : "Unable to produce strict pre-sign evidence.";

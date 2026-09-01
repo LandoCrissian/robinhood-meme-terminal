@@ -9,6 +9,7 @@ import { vNextExecutionProviderLabel, type VNextExecutionRecord } from "../../li
 import { NATIVE_GAS_RESERVE_ATOMIC, affordableDefaultAmount, createExactInputIntent, percentageOfAtomic, spendableNativeAtomic, type TradeSide } from "../../lib/vnext/intent-draft";
 import { parseVNextQuoteResponse, selectVNextRoute, type VNextQuoteResponse } from "../../lib/vnext/quote-observation";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "../../lib/vnext/pre-sign-evidence";
+import { vNextAuthorizationAuthorityRequest } from "../../lib/vnext/authorization-request";
 import {
   postApprovalVerificationOutcome,
   repeatsConfirmedVNextApproval,
@@ -646,7 +647,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
             }
           }
         : {}),
-      ...(evidence.feeExecution ? { executionId: evidence.feeExecution.executionId } : {})
+      ...vNextAuthorizationAuthorityRequest(evidence)
     }, {
       identityScope: identity.userId,
       identityToken: identity.identityToken,
