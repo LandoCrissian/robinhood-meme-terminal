@@ -42,7 +42,14 @@ const WALLET_FEE_CEILING_MULTIPLIER = 3n;
 export type VerifiedVNextUniswapV2FeeExecutorV2Config = VNextUniswapV2FeeExecutorV2Config & {
   verifiedAtBlock: string;
   verifiedAtBlockHash: Hex;
+  authorizationInfrastructureVerifiedAtBlock?: string;
+  authorizationInfrastructureVerifiedAtBlockHash?: Hex;
 };
+
+export type VNextUniswapV2V2AuthorityVerifier = (
+  config: VNextUniswapV2FeeExecutorV2Config,
+  expectedBlock?: { blockNumber: bigint; blockHash: Hex }
+) => Promise<{ verifiedAtBlock: string; verifiedAtBlockHash: Hex }>;
 
 export type VNextUniswapV2V2ExecutionClient = {
   readContract(input: { address: Address; abi: readonly unknown[]; functionName: string; args: readonly Address[] }): Promise<bigint>;
@@ -71,24 +78,47 @@ function assetId(address: Address) {
 
 async function resolveConfig(
   configured: VerifiedVNextUniswapV2FeeExecutorV2Config | null | undefined,
-  expectedInfrastructure?: { verifiedAtBlock: string; verifiedAtBlockHash: Hex }
+  expectedInfrastructure?: { verifiedAtBlock: string; verifiedAtBlockHash: Hex },
+  authorityVerifier: VNextUniswapV2V2AuthorityVerifier = (config, expectedBlock) =>
+    verifyConfiguredVNextUniswapV2FeeExecutorV2(config, undefined, expectedBlock)
 ) {
-  if (configured !== undefined) {
-    if (configured && expectedInfrastructure && (
-      configured.verifiedAtBlock !== expectedInfrastructure.verifiedAtBlock
-      || configured.verifiedAtBlockHash.toLowerCase() !== expectedInfrastructure.verifiedAtBlockHash.toLowerCase()
-    )) throw new Error("The committed Uniswap V2 infrastructure authority changed.");
-    return configured;
+  const config = configured === undefined ? configuredVNextUniswapV2FeeExecutorV2() : configured;
+  if (!config) return null;
+  if (!expectedInfrastructure) {
+    if (configured !== undefined) return configured;
+    const verified = await authorityVerifier(config);
+    return {
+      ...config,
+      verifiedAtBlock: verified.verifiedAtBlock,
+      verifiedAtBlockHash: verified.verifiedAtBlockHash
+    };
   }
-  const config = configuredVNextUniswapV2FeeExecutorV2();
-  return config ? verifyConfiguredVNextUniswapV2FeeExecutorV2(config, undefined, expectedInfrastructure ? {
+
+  const verificationAuthority = await authorityVerifier(config, {
     blockNumber: BigInt(expectedInfrastructure.verifiedAtBlock),
     blockHash: expectedInfrastructure.verifiedAtBlockHash
-  } : undefined).then((verified) => ({
+  });
+  if (
+    verificationAuthority.verifiedAtBlock !== expectedInfrastructure.verifiedAtBlock
+    || verificationAuthority.verifiedAtBlockHash.toLowerCase() !== expectedInfrastructure.verifiedAtBlockHash.toLowerCase()
+  ) {
+    throw new Error("The committed Uniswap V2 verification-time infrastructure authority changed.");
+  }
+
+  // The historical read above proves block A is still canonical. This second,
+  // unpinned read independently proves current authority at block B immediately
+  // before an approval or swap wallet plan can be returned.
+  const authorizationAuthority = await authorityVerifier(config);
+  if (BigInt(authorizationAuthority.verifiedAtBlock) < BigInt(verificationAuthority.verifiedAtBlock)) {
+    throw new Error("The fresh Uniswap V2 authorization authority predates verification.");
+  }
+  return {
     ...config,
-    verifiedAtBlock: verified.verifiedAtBlock,
-    verifiedAtBlockHash: verified.verifiedAtBlockHash
-  })) : null;
+    verifiedAtBlock: verificationAuthority.verifiedAtBlock,
+    verifiedAtBlockHash: verificationAuthority.verifiedAtBlockHash,
+    authorizationInfrastructureVerifiedAtBlock: authorizationAuthority.verifiedAtBlock,
+    authorizationInfrastructureVerifiedAtBlockHash: authorizationAuthority.verifiedAtBlockHash
+  };
 }
 
 export function selectVNextUniswapV2SettlementMode(input: {
@@ -150,6 +180,7 @@ export async function evaluateVNextUniswapV2RouteV2(input: {
   config?: VerifiedVNextUniswapV2FeeExecutorV2Config | null;
   quoteProvider?: typeof quoteVNextUniswapV2;
   executionClient?: VNextUniswapV2V2ExecutionClient;
+  authorityVerifier?: VNextUniswapV2V2AuthorityVerifier;
 }) {
   if (!/^0x[0-9a-fA-F]{64}$/.test(input.executionId) || input.executionId === `0x${"0".repeat(64)}`) {
     throw new Error("RMT Uniswap V2 V2 execution requires an exact nonzero execution ID.");
@@ -161,7 +192,7 @@ export async function evaluateVNextUniswapV2RouteV2(input: {
   const config = await resolveConfig(input.config, input.infrastructureVerifiedAtBlock && input.infrastructureVerifiedAtBlockHash ? {
     verifiedAtBlock: input.infrastructureVerifiedAtBlock,
     verifiedAtBlockHash: input.infrastructureVerifiedAtBlockHash
-  } : undefined);
+  } : undefined, input.authorityVerifier);
   if (!config) throw new Error("RMT Uniswap V2 V2 wallet authorization is not configured.");
   const quoted = await quoteVNextUniswapV2ForUserV2({
     inputAsset: input.inputAsset,
@@ -304,6 +335,10 @@ export async function evaluateVNextUniswapV2RouteV2(input: {
     feeExecution: null, feeV2Economics: economics, feeV2Settlement: proof,
     infrastructureVerifiedAtBlock: config.verifiedAtBlock,
     infrastructureVerifiedAtBlockHash: config.verifiedAtBlockHash,
+    ...(config.authorizationInfrastructureVerifiedAtBlock && config.authorizationInfrastructureVerifiedAtBlockHash ? {
+      authorizationInfrastructureVerifiedAtBlock: config.authorizationInfrastructureVerifiedAtBlock,
+      authorizationInfrastructureVerifiedAtBlockHash: config.authorizationInfrastructureVerifiedAtBlockHash
+    } : {}),
     verifiedAtMs: nowMs, expiresAtMs: Number(deadline) * 1_000, authorizationReady: false as const
   };
   return {

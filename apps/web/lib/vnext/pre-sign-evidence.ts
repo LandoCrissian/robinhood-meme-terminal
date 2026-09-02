@@ -90,6 +90,8 @@ export type VNextPreSignEvidence = {
   feeV2Settlement?: VNextAtomicFeeSettlementProof;
   infrastructureVerifiedAtBlock?: string;
   infrastructureVerifiedAtBlockHash?: string;
+  authorizationInfrastructureVerifiedAtBlock?: string;
+  authorizationInfrastructureVerifiedAtBlockHash?: string;
   v2VerificationCommitment?: string;
   approvalKind?: "erc20_to_permit2" | "permit2_to_router" | null;
   v4Execution?: VNextUniswapV4ExecutionEvidence;
@@ -157,6 +159,8 @@ const evidenceSchema = z.object({
   feeV2Settlement: z.unknown().optional(),
   infrastructureVerifiedAtBlock: atomic.optional(),
   infrastructureVerifiedAtBlockHash: hash.optional(),
+  authorizationInfrastructureVerifiedAtBlock: atomic.optional(),
+  authorizationInfrastructureVerifiedAtBlockHash: hash.optional(),
   v2VerificationCommitment: z.string().regex(/^v1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/).max(8_192).optional(),
   approvalKind: z.enum(["erc20_to_permit2", "permit2_to_router"]).nullable().optional(),
   v4Execution: z.unknown().optional(),
@@ -177,6 +181,20 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
   const parsed = evidenceSchema.safeParse(value);
   if (!parsed.success) throw new Error("RMT rejected malformed pre-sign evidence.");
   const evidence = parsed.data as VNextPreSignEvidence;
+  const hasAuthorizationBlock = evidence.authorizationInfrastructureVerifiedAtBlock !== undefined;
+  const hasAuthorizationBlockHash = evidence.authorizationInfrastructureVerifiedAtBlockHash !== undefined;
+  if (hasAuthorizationBlock !== hasAuthorizationBlockHash) {
+    throw new Error("RMT rejected incomplete authorization-time infrastructure authority.");
+  }
+  if (hasAuthorizationBlock && (
+    evidence.provider !== "uniswap-v2"
+    || evidence.settlementMode !== VNEXT_V2_ATOMIC_INPUT_FEE
+    || !evidence.infrastructureVerifiedAtBlock
+    || !evidence.infrastructureVerifiedAtBlockHash
+    || BigInt(evidence.authorizationInfrastructureVerifiedAtBlock!) < BigInt(evidence.infrastructureVerifiedAtBlock)
+  )) {
+    throw new Error("RMT rejected invalid authorization-time infrastructure authority.");
+  }
   if (
     evidence.sourceQuoteRequestId !== expected.quoteRequestId
     || !isAddress(evidence.inputAsset)

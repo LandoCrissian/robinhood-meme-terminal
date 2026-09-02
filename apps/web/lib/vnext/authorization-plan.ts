@@ -344,6 +344,13 @@ export function parseVNextAuthorizationBundle(value: unknown, priorEvidence: VNe
     protectedOutputFloorAtomic: priorEvidence.indicativeProtectedOutputFloorAtomic
   }, nowMs);
   if (
+    priorEvidence.provider === "uniswap-v2"
+    && priorEvidence.settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE
+    && (!evidence.authorizationInfrastructureVerifiedAtBlock || !evidence.authorizationInfrastructureVerifiedAtBlockHash)
+  ) {
+    throw new Error("RMT rejected authorization without fresh Uniswap V2 infrastructure authority.");
+  }
+  if (
     evidence.verificationId !== priorEvidence.verificationId
     || evidence.provider !== priorEvidence.provider
     || evidence.status !== priorEvidence.status

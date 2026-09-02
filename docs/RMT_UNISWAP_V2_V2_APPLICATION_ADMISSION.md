@@ -30,7 +30,7 @@ Production remains unchanged: its public execution provider scope is `[uniswap-v
 
 ## Pre-sign authority
 
-The strict V2 fee path verifies the executor and its immutable policy, Router, factory, pair-runtime and WETH dependencies before returning a wallet plan. Canonical WETH proxy runtime, EIP-1967 implementation and implementation runtime are checked at one block-pinned server snapshot. The verification block number and hash are committed into the short-lived HMAC continuity token and are freshly re-read at that exact canonical block during authorization.
+The strict V2 fee path verifies the executor and its immutable policy, Router, factory, pair-runtime and WETH dependencies before returning a wallet plan. Canonical WETH proxy runtime, EIP-1967 implementation and implementation runtime are checked at one block-pinned server snapshot. The verify-time block number and hash are committed into the short-lived HMAC continuity token. Authorization first re-reads that historical block to prove it remains canonical, then independently verifies the complete live executor and infrastructure authority at a fresh current block before returning either an approval or swap. The authorization block must be greater than or equal to the committed verification block; the two coordinates remain distinct in server evidence.
 
 Native input targets the executor with gross input as transaction value. ERC20 input grants an exact gross-input approval to the executor, never to the Router; after approval the route must be verified again. Once atomic V2 settlement is selected, failures do not downgrade to direct fee-free Router execution or substitute another provider.
 

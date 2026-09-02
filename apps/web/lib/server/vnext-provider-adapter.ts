@@ -100,6 +100,8 @@ export type VNextProviderVerificationEvidence = Record<string, unknown> & {
   feeV2Settlement?: VNextAtomicFeeSettlementProof;
   infrastructureVerifiedAtBlock?: string;
   infrastructureVerifiedAtBlockHash?: Hex;
+  authorizationInfrastructureVerifiedAtBlock?: string;
+  authorizationInfrastructureVerifiedAtBlockHash?: Hex;
   settlementMode: VNextExecutionSettlementMode;
   directNoRmtFee?: VNextDirectNoRmtFeeSettlement;
   approvalKind?: "erc20_to_permit2" | "permit2_to_router" | null;
