@@ -87,7 +87,8 @@ assert.equal(ROBINHOOD_UNISWAP_V2_ROUTER, getAddress("0x89e5db8b5aa49aa85ac63f69
 assert.deepEqual(VNEXT_PROVIDER_EXECUTION_CAPABILITY_REGISTRY["uniswap-v2"], {
   state: "WALLET_EXECUTION", strictVerificationImplemented: true, walletAuthorizationCodecImplemented: true
 });
-assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v2"].state, "QUOTE_ONLY");
+assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v2"].state, "V2_ATOMIC_INPUT_FEE");
+assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v2"].requiredMode, "v2-atomic-input-fee");
 assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v2"].walletCodecImplemented, true);
 
-console.log("Generic fee-free Uniswap V2 exact calldata, router authority, and settlement containment checks passed.");
+console.log("Generic fee-free Uniswap V2 exact calldata and source-admitted atomic settlement registry checks passed.");

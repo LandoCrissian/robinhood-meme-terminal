@@ -88,6 +88,10 @@ export type VNextPreSignEvidence = {
   feeExecution?: RmtUniswapV3FeeExecution | null;
   feeV2Economics?: RmtExecutionFeeV2Economics;
   feeV2Settlement?: VNextAtomicFeeSettlementProof;
+  infrastructureVerifiedAtBlock?: string;
+  infrastructureVerifiedAtBlockHash?: string;
+  authorizationInfrastructureVerifiedAtBlock?: string;
+  authorizationInfrastructureVerifiedAtBlockHash?: string;
   v2VerificationCommitment?: string;
   approvalKind?: "erc20_to_permit2" | "permit2_to_router" | null;
   v4Execution?: VNextUniswapV4ExecutionEvidence;
@@ -153,6 +157,10 @@ const evidenceSchema = z.object({
   feeExecution: z.unknown().nullable().optional(),
   feeV2Economics: z.unknown().optional(),
   feeV2Settlement: z.unknown().optional(),
+  infrastructureVerifiedAtBlock: atomic.optional(),
+  infrastructureVerifiedAtBlockHash: hash.optional(),
+  authorizationInfrastructureVerifiedAtBlock: atomic.optional(),
+  authorizationInfrastructureVerifiedAtBlockHash: hash.optional(),
   v2VerificationCommitment: z.string().regex(/^v1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/).max(8_192).optional(),
   approvalKind: z.enum(["erc20_to_permit2", "permit2_to_router"]).nullable().optional(),
   v4Execution: z.unknown().optional(),
@@ -173,6 +181,20 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
   const parsed = evidenceSchema.safeParse(value);
   if (!parsed.success) throw new Error("RMT rejected malformed pre-sign evidence.");
   const evidence = parsed.data as VNextPreSignEvidence;
+  const hasAuthorizationBlock = evidence.authorizationInfrastructureVerifiedAtBlock !== undefined;
+  const hasAuthorizationBlockHash = evidence.authorizationInfrastructureVerifiedAtBlockHash !== undefined;
+  if (hasAuthorizationBlock !== hasAuthorizationBlockHash) {
+    throw new Error("RMT rejected incomplete authorization-time infrastructure authority.");
+  }
+  if (hasAuthorizationBlock && (
+    evidence.provider !== "uniswap-v2"
+    || evidence.settlementMode !== VNEXT_V2_ATOMIC_INPUT_FEE
+    || !evidence.infrastructureVerifiedAtBlock
+    || !evidence.infrastructureVerifiedAtBlockHash
+    || BigInt(evidence.authorizationInfrastructureVerifiedAtBlock!) < BigInt(evidence.infrastructureVerifiedAtBlock)
+  )) {
+    throw new Error("RMT rejected invalid authorization-time infrastructure authority.");
+  }
   if (
     evidence.sourceQuoteRequestId !== expected.quoteRequestId
     || !isAddress(evidence.inputAsset)
@@ -247,6 +269,15 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
       || evidence.feeV2Settlement.atomicFeeSettlement !== true
       || evidence.feeV2Settlement.revertsAtomically !== true
     ) throw new Error("RMT rejected inconsistent V2 fee-settlement evidence.");
+    if (evidence.provider === "uniswap-v2" && (
+      !evidence.infrastructureVerifiedAtBlock
+      || evidence.infrastructureVerifiedAtBlock === "0"
+      || !evidence.infrastructureVerifiedAtBlockHash
+    )) throw new Error("RMT rejected Uniswap V2 fee evidence without block-pinned infrastructure authority.");
+    if (evidence.provider !== "uniswap-v2" && (
+      evidence.infrastructureVerifiedAtBlock !== undefined
+      || evidence.infrastructureVerifiedAtBlockHash !== undefined
+    )) throw new Error("RMT rejected foreign Uniswap V2 infrastructure authority.");
   }
   if (evidence.rmtFeeEnabled) {
     if (evidence.provider !== "uniswap-v3" || !evidence.netEconomics || !evidence.feeExecution) {

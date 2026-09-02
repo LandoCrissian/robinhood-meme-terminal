@@ -15,7 +15,6 @@ function assetId(address: Address) {
     ? "eip155:4663/native"
     : `eip155:4663/contract:${getAddress(address).toLowerCase()}`;
 }
-
 export function configuredVNextUniswapV2FeeCandidate(
   env: Partial<Record<string, string | undefined>> = process.env
 ): { policy: RmtExecutionFeeV2Policy } | null {
@@ -23,7 +22,7 @@ export function configuredVNextUniswapV2FeeCandidate(
   if (enabled === undefined || enabled === "false") return null;
   if (enabled !== "true") throw new Error("The Uniswap V2 fee-candidate gate must be exact lowercase true or false.");
   if (env.VERCEL_ENV === "production") {
-    throw new Error("The undeployed Uniswap V2 fee executor is source-only and cannot be admitted in Production.");
+    throw new Error("The Uniswap V2 fee candidate is not admitted in Production.");
   }
   const policy = configuredRmtExecutionFeeV2Policy(env as NodeJS.ProcessEnv);
   if (!policy) throw new Error("The Uniswap V2 fee candidate requires the exact RMT_EXECUTION_V2 policy.");
@@ -61,8 +60,4 @@ export async function quoteVNextUniswapV2FeeCandidate(input: {
     settlementMode: "v2-atomic-input-fee"
   });
   return { quote, economics, providerInput };
-}
-
-export function requireVNextUniswapV2FeeWalletAdmission(): never {
-  throw new Error("Uniswap V2 atomic fee execution is QUOTE_ONLY until an exact executor deployment is separately admitted.");
 }

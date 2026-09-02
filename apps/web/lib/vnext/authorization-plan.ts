@@ -344,6 +344,13 @@ export function parseVNextAuthorizationBundle(value: unknown, priorEvidence: VNe
     protectedOutputFloorAtomic: priorEvidence.indicativeProtectedOutputFloorAtomic
   }, nowMs);
   if (
+    priorEvidence.provider === "uniswap-v2"
+    && priorEvidence.settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE
+    && (!evidence.authorizationInfrastructureVerifiedAtBlock || !evidence.authorizationInfrastructureVerifiedAtBlockHash)
+  ) {
+    throw new Error("RMT rejected authorization without fresh Uniswap V2 infrastructure authority.");
+  }
+  if (
     evidence.verificationId !== priorEvidence.verificationId
     || evidence.provider !== priorEvidence.provider
     || evidence.status !== priorEvidence.status
@@ -357,6 +364,8 @@ export function parseVNextAuthorizationBundle(value: unknown, priorEvidence: VNe
     || evidence.feeV2Economics?.maximumFeeAtomic !== priorEvidence.feeV2Economics?.maximumFeeAtomic
     || evidence.feeV2Settlement?.executionId !== priorEvidence.feeV2Settlement?.executionId
     || evidence.feeV2Settlement?.calldataHash !== priorEvidence.feeV2Settlement?.calldataHash
+    || evidence.infrastructureVerifiedAtBlock !== priorEvidence.infrastructureVerifiedAtBlock
+    || evidence.infrastructureVerifiedAtBlockHash !== priorEvidence.infrastructureVerifiedAtBlockHash
     || evidence.v4Execution?.poolId !== priorEvidence.v4Execution?.poolId
     || evidence.v4Execution?.commands !== priorEvidence.v4Execution?.commands
     || evidence.v4Execution?.simulationBlockHash !== priorEvidence.v4Execution?.simulationBlockHash

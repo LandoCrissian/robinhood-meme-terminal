@@ -86,7 +86,8 @@ export async function POST(request: Request) {
           && publicExecutionScope.providers.includes(attempt.provider)
           && attempt.strictVerificationAvailable
           && isVNextWalletExecutionAdmitted(attempt.provider)
-          && (attempt.provider !== "uniswap-v3" || attempt.settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE)
+          && ((attempt.provider !== "uniswap-v2" && attempt.provider !== "uniswap-v3")
+            || attempt.settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE)
       }))
     };
     return Response.json(response, { headers: { "Cache-Control": "no-store" } });

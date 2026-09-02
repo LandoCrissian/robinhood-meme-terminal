@@ -12,6 +12,11 @@ import {
 import { VNEXT_DIRECT_NO_RMT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE } from "../../../../lib/vnext/execution-settlement";
 import { vNextExecutionEligibilityErrorResponse } from "../../../../lib/server/vnext-execution-eligibility";
 import { selectVNextUniswapV3SettlementMode } from "../../../../lib/server/vnext-uniswap-quote";
+import { selectVNextUniswapV2SettlementMode } from "../../../../lib/server/vnext-uniswap-v2-v2-execution";
+import {
+  configuredVNextUniswapV2FeeExecutorV2,
+  requireVNextUniswapV2V2ReleaseRecipient
+} from "../../../../lib/server/vnext-uniswap-v2-fee-executor-v2";
 import {
   readVNextAuthorizationChainTimestamp,
   VNEXT_AUTHORIZATION_WINDOW_SECONDS
@@ -90,7 +95,9 @@ export async function POST(request: Request) {
     const executionId = `0x${randomBytes(32).toString("hex")}` as const;
     const settlementMode = parsed.data.provider === "uniswap-v3"
       ? selectVNextUniswapV3SettlementMode({ inputAsset, outputAsset, recipient })
-      : VNEXT_DIRECT_NO_RMT_FEE;
+      : parsed.data.provider === "uniswap-v2"
+        ? selectVNextUniswapV2SettlementMode({ recipient })
+        : VNEXT_DIRECT_NO_RMT_FEE;
     requireVNextPublicExecutionSettlement(parsed.data.provider, settlementMode);
     const verificationId = randomUUID();
     const verificationWallClockMs = Date.now();
@@ -117,10 +124,11 @@ export async function POST(request: Request) {
       ...evidence
     } as VNextPreSignEvidence;
     if (settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE && (evidence.status === "verified" || evidence.status === "approval_required")) {
-      requireVNextUniswapV3V2ReleaseRecipient(recipient);
-      const config = configuredVNextUniswapFeeExecutorV2();
+      const config = parsed.data.provider === "uniswap-v2"
+        ? (requireVNextUniswapV2V2ReleaseRecipient(recipient), configuredVNextUniswapV2FeeExecutorV2())
+        : (requireVNextUniswapV3V2ReleaseRecipient(recipient), configuredVNextUniswapFeeExecutorV2());
       if (!config || !evidence.feeV2Settlement || getAddress(config.executor) !== getAddress(evidence.feeV2Settlement.executionTarget)) {
-        throw new Error("RMT Uniswap V3 V2 verification authority is not configured exactly.");
+        throw new Error(`RMT ${parsed.data.provider} V2 verification authority is not configured exactly.`);
       }
       responseEvidence.v2VerificationCommitment = createVNextV2VerificationCommitment({
         evidence: responseEvidence,
