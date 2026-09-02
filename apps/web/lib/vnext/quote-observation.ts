@@ -12,6 +12,7 @@ import {
   hasVNextWalletAuthorizationCodec,
   isVNextWalletExecutionAdmitted
 } from "./provider-execution-capability";
+import { isVNextWalletFeeSettlementAdmitted } from "./provider-fee-settlement";
 import { VNEXT_LEGACY_V1_FEE, VNEXT_V2_ATOMIC_INPUT_FEE } from "./execution-settlement";
 
 export { hasVNextWalletAuthorizationCodec } from "./provider-execution-capability";
@@ -257,7 +258,7 @@ export function assertVNextQuoteAttempt(
     if (attempt.feeV2Economics) {
       assertRmtExecutionFeeV2Economics(attempt.feeV2Economics);
       if (
-        attempt.provider !== "uniswap-v3"
+        !isVNextWalletFeeSettlementAdmitted(attempt.provider)
         || attempt.settlementMode !== VNEXT_V2_ATOMIC_INPUT_FEE
         || !attempt.executionTarget
         || !isAddress(attempt.executionTarget)
