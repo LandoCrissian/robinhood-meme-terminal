@@ -24,8 +24,14 @@ import {
   ROBINHOOD_UNISWAP_V2_ROUTER_RUNTIME_HASH
 } from "../vnext/uniswap-v2-authorization-codec";
 import {
+  RMT_UNISWAP_V2_V2_DEPLOYED_EXECUTOR,
+  RMT_UNISWAP_V2_V2_DEPLOYED_RUNTIME_HASH,
   RMT_UNISWAP_V2_V2_POLICY_ID_HASH,
   RMT_UNISWAP_V2_V2_PROVIDER_ID
+} from "../vnext/uniswap-v2-fee-executor-v2";
+export {
+  RMT_UNISWAP_V2_V2_DEPLOYED_EXECUTOR,
+  RMT_UNISWAP_V2_V2_DEPLOYED_RUNTIME_HASH
 } from "../vnext/uniswap-v2-fee-executor-v2";
 import {
   ROBINHOOD_WETH_RUNTIME_HASH,
@@ -69,9 +75,6 @@ export type VNextUniswapV2FeeExecutorV2Config = {
 
 export type VNextUniswapV2V2ReleaseScope = "DISABLED" | "PROOF_WALLET_ONLY" | "PUBLIC";
 const HASH = /^0x[0-9a-fA-F]{64}$/;
-
-export const RMT_UNISWAP_V2_V2_DEPLOYED_EXECUTOR = getAddress("0xB4bF1d99a3BF9201f8197682dcD2bF97725D6230");
-export const RMT_UNISWAP_V2_V2_DEPLOYED_RUNTIME_HASH = "0x3a0518035f7a47c752eba630e02db8a72b14c175977fbfcbf6d708ea1a36c647" as Hex;
 
 function exactBoolean(env: NodeJS.ProcessEnv, name: string) {
   const value = env[name];

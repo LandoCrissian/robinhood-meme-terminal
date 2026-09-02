@@ -3067,7 +3067,7 @@ async function inspectV2WalletBrowserJourney(browser, fixture, options, label, m
   }
   const review = visibleWalletFeeDisclosure();
   const reviewText = await review.innerText();
-  for (const required of ["Gross input", "Exact fee / asset", "Provider input", "Expected receive", "Protected minimum", "Uniswap V3", "Atomic with swap", "Treasury", "Execution target"]) {
+  for (const required of ["Gross input", "Exact fee / asset", "Provider input", "Expected receive", "Protected minimum", "Uniswap V3", "RMT atomic fee settlement · policy v2", "Treasury", "Execution target"]) {
     if (!reviewText.includes(required)) throw new Error(`${label}: V2 wallet review omitted ${required}`);
   }
   await page.getByText("Your wallet displays and authorizes this exact request. RMT cannot sign or submit it for you.", { exact: true }).waitFor({ state: "visible" });

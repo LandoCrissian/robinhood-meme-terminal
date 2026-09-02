@@ -299,7 +299,7 @@ assert.equal(recordPreparedVNextWalletRequest({
   plan: FEE_V2_SMOKE_SWAP_PLAN,
   walletNonceBeforeRequest: 1n,
   requestBlockNumber: 1n
-}, v2Journal.storage, now)?.state, "PREPARED");
+}, v2Journal.storage, now), null, "a synthetic V2 plan without exact recovery calldata cannot reach the wallet provider boundary");
 
 const hook = readFileSync(new URL("../../app/vnext/use-vnext-execution-recovery.ts", import.meta.url), "utf8");
 const banner = readFileSync(new URL("../../app/vnext/vnext-execution-recovery-banner.tsx", import.meta.url), "utf8");

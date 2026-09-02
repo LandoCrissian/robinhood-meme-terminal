@@ -384,7 +384,8 @@ assert.match(hook, /settledVNextFeeExecutionV2/);
 assert.match(hook, /record\.feeV2Settlement && !feeV2Settlement/);
 assert.match(receipt, /confirmedVNextFeePresentation/);
 assert.match(feeReceipt, /feeV2Settlement\.actualRmtFeeAtomic/);
-assert.match(receipt, /vNextExecutionProviderLabel/);
+assert.match(receipt, /vNextProviderLabel/);
+assert.match(receipt, /vNextProviderRoutePresentation/);
 assert.match(walletReview, /Open RMT V2 fee treasury in Robinhood Chain explorer/);
 assert.match(walletReview, /Open RMT V2 executor in Robinhood Chain explorer/);
 

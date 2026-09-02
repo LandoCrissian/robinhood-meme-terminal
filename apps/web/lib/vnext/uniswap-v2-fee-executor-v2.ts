@@ -8,6 +8,10 @@ import { ROBINHOOD_WETH_ADDRESS, isRobinhoodNativeAsset } from "./robinhood-asse
 export const RMT_UNISWAP_V2_V2_PROVIDER_ID = keccak256(stringToHex("RMT_UNISWAP_V2_ROUTER_V2"));
 export const RMT_UNISWAP_V2_V2_POLICY_ID_HASH = keccak256(stringToHex("RMT_EXECUTION_V2"));
 export const RMT_UNISWAP_V2_V2_IMPLEMENTATION_ID = "rmt-uniswap-v2-fee-executor-v2" as const;
+export const RMT_UNISWAP_V2_V2_DEPLOYED_EXECUTOR = getAddress("0xB4bF1d99a3BF9201f8197682dcD2bF97725D6230");
+export const RMT_UNISWAP_V2_V2_DEPLOYED_RUNTIME_HASH = "0x3a0518035f7a47c752eba630e02db8a72b14c175977fbfcbf6d708ea1a36c647" as Hex;
+export const RMT_UNISWAP_V2_V2_POLICY_HASH = "0x91c988a28bd8b308e57bfbd3a991571b663f1c5d8430f96dfa1db2e5cfb93484" as Hex;
+export const RMT_UNISWAP_V2_V2_TREASURY = getAddress("0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC");
 const ROUTE_DOMAIN = keccak256(stringToHex("RMT_UNISWAP_V2_ROUTE_V2"));
 
 export const rmtUniswapV2FeeExecutorV2Abi = [{
@@ -30,6 +34,28 @@ export const rmtUniswapV2FeeExecutorV2Abi = [{
     { name: "pair1", type: "address" }
   ] }],
   outputs: [{ name: "actualProviderOutput", type: "uint256" }, { name: "actualRmtFee", type: "uint256" }]
+}, {
+  type: "event", name: "RMTUniswapV2FeeSettledV2", anonymous: false,
+  inputs: [
+    { indexed: true, name: "executionId", type: "bytes32" },
+    { indexed: true, name: "policyHash", type: "bytes32" },
+    { indexed: true, name: "trader", type: "address" },
+    { indexed: false, name: "policyIdHash", type: "bytes32" },
+    { indexed: false, name: "policyVersion", type: "uint256" },
+    { indexed: false, name: "providerId", type: "bytes32" },
+    { indexed: false, name: "router", type: "address" },
+    { indexed: false, name: "routeIdentity", type: "bytes32" },
+    { indexed: false, name: "requestedInputAsset", type: "address" },
+    { indexed: false, name: "requestedOutputAsset", type: "address" },
+    { indexed: false, name: "feeAsset", type: "address" },
+    { indexed: false, name: "feeBps", type: "uint16" },
+    { indexed: false, name: "feeSide", type: "uint8" },
+    { indexed: false, name: "userGrossInput", type: "uint256" },
+    { indexed: false, name: "providerInput", type: "uint256" },
+    { indexed: false, name: "actualProviderOutput", type: "uint256" },
+    { indexed: false, name: "actualRmtFee", type: "uint256" },
+    { indexed: false, name: "treasury", type: "address" }
+  ]
 }] as const;
 
 export type RmtUniswapV2FeeRouteV2 = {
@@ -137,9 +163,43 @@ export function encodeRmtUniswapV2FeeExecutionV2(execution: RmtUniswapV2FeeExecu
   return encodeFunctionData({ abi: rmtUniswapV2FeeExecutorV2Abi, functionName: "execute", args: [authorizationTuple(execution), execution.route] });
 }
 
-export function assertRmtUniswapV2FeeCalldataV2(data: Hex, expected: RmtUniswapV2FeeExecutionV2, economics: RmtExecutionFeeV2Economics) {
-  assertRmtUniswapV2FeeExecutionV2(expected, economics);
+export function decodeRmtUniswapV2FeeAuthorizationV2(data: Hex) {
   const decoded = decodeFunctionData({ abi: rmtUniswapV2FeeExecutorV2Abi, data });
   invariant(decoded.functionName === "execute", "execution method changed");
+  invariant(
+    encodeFunctionData({ abi: rmtUniswapV2FeeExecutorV2Abi, functionName: "execute", args: decoded.args }).toLowerCase() === data.toLowerCase(),
+    "calldata is trailing, unknown, or noncanonical"
+  );
+  const [authorization, decodedRoute] = decoded.args;
+  invariant(decodedRoute.kind === 0 || decodedRoute.kind === 1, "decoded route kind changed");
+  const route: RmtUniswapV2FeeRouteV2 = {
+    kind: decodedRoute.kind,
+    tokenIn: getAddress(decodedRoute.tokenIn),
+    tokenOut: getAddress(decodedRoute.tokenOut),
+    pair0: getAddress(decodedRoute.pair0),
+    pair1: getAddress(decodedRoute.pair1)
+  };
+  invariant(authorization.routeIdentity.toLowerCase() === rmtUniswapV2RouteIdentityV2(route).toLowerCase(), "decoded route identity changed");
+  invariant(route.pair0 !== zeroAddress, "decoded first pair is missing");
+  if (route.kind === 0) invariant(route.pair1 === zeroAddress, "decoded direct route has a second pair");
+  else invariant(route.tokenIn !== ROBINHOOD_WETH_ADDRESS && route.tokenOut !== ROBINHOOD_WETH_ADDRESS && route.pair1 !== zeroAddress, "decoded WETH-hop route is invalid");
+  return {
+    authorization: {
+      ...authorization,
+      feeAsset: getAddress(authorization.feeAsset),
+      treasury: getAddress(authorization.treasury),
+      trader: getAddress(authorization.trader),
+      requestedInputAsset: getAddress(authorization.requestedInputAsset),
+      requestedOutputAsset: getAddress(authorization.requestedOutputAsset),
+      routedInputAsset: getAddress(authorization.routedInputAsset),
+      routedOutputAsset: getAddress(authorization.routedOutputAsset)
+    },
+    route
+  } as const;
+}
+
+export function assertRmtUniswapV2FeeCalldataV2(data: Hex, expected: RmtUniswapV2FeeExecutionV2, economics: RmtExecutionFeeV2Economics) {
+  assertRmtUniswapV2FeeExecutionV2(expected, economics);
+  decodeRmtUniswapV2FeeAuthorizationV2(data);
   invariant(encodeRmtUniswapV2FeeExecutionV2(expected).toLowerCase() === data.toLowerCase(), "calldata changed"); return true;
 }
