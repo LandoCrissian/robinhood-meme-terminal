@@ -98,6 +98,8 @@ export type VNextProviderVerificationEvidence = Record<string, unknown> & {
   feeExecution?: RmtUniswapV3FeeExecution | null;
   feeV2Economics?: RmtExecutionFeeV2Economics;
   feeV2Settlement?: VNextAtomicFeeSettlementProof;
+  infrastructureVerifiedAtBlock?: string;
+  infrastructureVerifiedAtBlockHash?: Hex;
   settlementMode: VNextExecutionSettlementMode;
   directNoRmtFee?: VNextDirectNoRmtFeeSettlement;
   approvalKind?: "erc20_to_permit2" | "permit2_to_router" | null;
@@ -108,6 +110,8 @@ export type VNextProviderAuthorizationRequest = VNextProviderVerificationRequest
   deadlineSeconds: bigint;
   protectedOutputFloorAtomic: bigint;
   nowMs: number;
+  infrastructureVerifiedAtBlock?: string;
+  infrastructureVerifiedAtBlockHash?: Hex;
 };
 
 export type VNextPreparedProviderAuthorization = {

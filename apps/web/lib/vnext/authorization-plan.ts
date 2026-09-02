@@ -357,6 +357,8 @@ export function parseVNextAuthorizationBundle(value: unknown, priorEvidence: VNe
     || evidence.feeV2Economics?.maximumFeeAtomic !== priorEvidence.feeV2Economics?.maximumFeeAtomic
     || evidence.feeV2Settlement?.executionId !== priorEvidence.feeV2Settlement?.executionId
     || evidence.feeV2Settlement?.calldataHash !== priorEvidence.feeV2Settlement?.calldataHash
+    || evidence.infrastructureVerifiedAtBlock !== priorEvidence.infrastructureVerifiedAtBlock
+    || evidence.infrastructureVerifiedAtBlockHash !== priorEvidence.infrastructureVerifiedAtBlockHash
     || evidence.v4Execution?.poolId !== priorEvidence.v4Execution?.poolId
     || evidence.v4Execution?.commands !== priorEvidence.v4Execution?.commands
     || evidence.v4Execution?.simulationBlockHash !== priorEvidence.v4Execution?.simulationBlockHash

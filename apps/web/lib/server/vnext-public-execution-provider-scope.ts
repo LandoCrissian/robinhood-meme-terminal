@@ -99,7 +99,7 @@ export function requireVNextPublicExecutionSettlement(
   env: VNextPublicExecutionProviderEnvironment = process.env as unknown as VNextPublicExecutionProviderEnvironment
 ) {
   requireVNextPublicExecutionProvider(provider, env);
-  if (provider === "uniswap-v3" && settlementMode !== VNEXT_V2_ATOMIC_INPUT_FEE) {
+  if ((provider === "uniswap-v2" || provider === "uniswap-v3") && settlementMode !== VNEXT_V2_ATOMIC_INPUT_FEE) {
     throw new VNextPublicExecutionSettlementNotReleasedError(provider);
   }
 }

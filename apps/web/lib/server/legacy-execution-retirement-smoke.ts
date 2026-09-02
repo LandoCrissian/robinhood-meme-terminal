@@ -72,7 +72,10 @@ const authorizeRoute = readFileSync(join(webRoot, "app/api/vnext/authorize/route
 assert.match(authorizeRoute, /prepareRobinhoodVNextAuthorization/);
 assert.match(authorizeRoute, /stockTokenExecutionPolicyErrorResponse/);
 assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v3"].state, "V2_ATOMIC_INPUT_FEE");
-assert.ok(Object.entries(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY).every(([provider, entry]) => provider === "uniswap-v3" || entry.state === "QUOTE_ONLY"));
+assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v2"].state, "V2_ATOMIC_INPUT_FEE");
+assert.ok(Object.entries(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY).every(([provider, entry]) =>
+  provider === "uniswap-v2" || provider === "uniswap-v3" || entry.state === "QUOTE_ONLY"
+));
 const providerAdapter = readFileSync(join(webRoot, "lib/server/vnext-provider-adapter.ts"), "utf8");
 assert.match(providerAdapter, /assertVNextWalletFeeAdmission/);
 assert.match(providerAdapter, /VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY/);

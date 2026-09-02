@@ -14,12 +14,14 @@ import {
   type VNextAtomicFeeSettlementProof
 } from "./provider-fee-settlement";
 
-const providers = ["sushi", "uniswap-v2", "uniswap-v4", "uniswapx", "zero-x-swap", "zero-x-gasless", "up-v2", "up-cl"] as const;
+const providers = ["sushi", "uniswap-v4", "uniswapx", "zero-x-swap", "zero-x-gasless", "up-v2", "up-cl"] as const;
 for (const provider of providers) {
   assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY[provider].state, "QUOTE_ONLY");
   assert.equal(isVNextWalletFeeSettlementAdmitted(provider), false);
 }
 assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v3"].state, "V2_ATOMIC_INPUT_FEE");
+assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v2"].state, "V2_ATOMIC_INPUT_FEE");
+assert.equal(isVNextWalletFeeSettlementAdmitted("uniswap-v2"), true);
 assert.equal(isVNextWalletFeeSettlementAdmitted("uniswap-v3"), true);
 assert.equal(hasVNextWalletAuthorizationCodec("uniswap-v3"), true);
 assert.equal(hasVNextWalletAuthorizationCodec("uniswap-v4"), true, "V4 has a fee-independent wallet codec while fee settlement remains quote-only");

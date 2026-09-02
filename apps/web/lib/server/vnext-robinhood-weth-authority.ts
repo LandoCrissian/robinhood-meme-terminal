@@ -122,15 +122,22 @@ export function assertCanonicalRobinhoodWethAuthorityEvidence(
  * hash is re-read after verification so mixed or reorged evidence fails closed.
  */
 export async function verifyCanonicalRobinhoodWethAuthority(
-  client: VNextRobinhoodWethAuthorityClient
+  client: VNextRobinhoodWethAuthorityClient,
+  expectedBlock?: { blockNumber: bigint; blockHash: Hex }
 ): Promise<VNextRobinhoodWethAuthority> {
-  const [chainId, blockNumber] = await Promise.all([client.getChainId(), client.getBlockNumber()]);
+  const [chainId, blockNumber] = await Promise.all([
+    client.getChainId(),
+    expectedBlock ? Promise.resolve(expectedBlock.blockNumber) : client.getBlockNumber()
+  ]);
   if (chainId !== 4_663) {
     throw new Error(`Canonical WETH authority requires Robinhood Chain 4663 (received ${chainId}).`);
   }
   const block = await client.getBlock({ blockNumber });
   if (block.number !== blockNumber || !block.hash) {
     throw new Error("Canonical Robinhood Chain verification block hash is unavailable.");
+  }
+  if (expectedBlock && block.hash.toLowerCase() !== expectedBlock.blockHash.toLowerCase()) {
+    throw new Error("Canonical Robinhood Chain verification block changed.");
   }
 
   const [wethCode, implementationSlot] = await Promise.all([

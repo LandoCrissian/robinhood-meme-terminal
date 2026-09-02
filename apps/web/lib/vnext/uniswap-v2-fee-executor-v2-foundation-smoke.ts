@@ -7,8 +7,7 @@ import {
   RMT_UNISWAP_V2_V2_CANDIDATE_GATE,
   RMT_UNISWAP_V2_V2_IMPLEMENTATION_ID,
   configuredVNextUniswapV2FeeCandidate,
-  quoteVNextUniswapV2FeeCandidate,
-  requireVNextUniswapV2FeeWalletAdmission
+  quoteVNextUniswapV2FeeCandidate
 } from "../server/vnext-uniswap-v2-fee-candidate";
 import { VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY } from "./provider-fee-settlement";
 import {
@@ -31,22 +30,28 @@ async function main() {
   assert.throws(() => configuredVNextUniswapV2FeeCandidate({
     [RMT_UNISWAP_V2_V2_CANDIDATE_GATE]: "true",
     VERCEL_ENV: "production"
-  }), /source-only/);
+  }), /not admitted in Production/);
 
   const manifest = JSON.parse(readFileSync(resolve(
     process.cwd(),
-    "../../packages/contracts/deployments/rmt-uniswap-v2-fee-executor-v2.template.json"
+    "../../packages/contracts/deployments/rmt-uniswap-v2-fee-executor-v2.json"
   ), "utf8")) as Record<string, unknown>;
-  assert.equal(manifest.status, "SOURCE_FOUNDATION_ONLY_NOT_DEPLOYED");
-  assert.equal(manifest.deploymentAuthorized, false);
+  assert.equal(manifest.status, "DEPLOYED_APPLICATION_SOURCE_ADMITTED_CONTROLLED_PROOF_PENDING");
+  assert.equal(manifest.deploymentAuthorized, true);
   assert.equal(manifest.activationAuthorized, false);
   assert.equal(manifest.publicExecutionAuthorized, false);
   const applicationAdmission = manifest.applicationAdmission as Record<string, unknown>;
   const dependencies = manifest.dependencies as Record<string, unknown>;
-  assert.equal(applicationAdmission.productionRegistryState, "QUOTE_ONLY");
+  assert.equal(applicationAdmission.sourceRegistryState, "V2_ATOMIC_INPUT_FEE");
   assert.equal(applicationAdmission.wethImplementationPreSignAuthority, "IMPLEMENTED_SERVER_ONLY_BLOCK_PINNED");
-  assert.equal(applicationAdmission.walletAuthorization, "NOT_ADMITTED");
-  assert.deepEqual(applicationAdmission.publicProviderScope, ["uniswap-v3"]);
+  assert.equal(applicationAdmission.walletAuthorization, "SOURCE_ADMITTED_RELEASE_GATED");
+  assert.equal(applicationAdmission.publicExecution, false);
+  assert.deepEqual(applicationAdmission.productionProviderScope, ["uniswap-v3"]);
+  const deployment = manifest.deployment as Record<string, unknown>;
+  assert.equal(deployment.executor, "0xB4bF1d99a3BF9201f8197682dcD2bF97725D6230");
+  assert.equal(deployment.runtimeHash, "0x3a0518035f7a47c752eba630e02db8a72b14c175977fbfcbf6d708ea1a36c647");
+  assert.equal(deployment.transactionHash, "0xaeb0e8f4c235fa76136d52ce1563eeb5648dc9448d8b9dc888cdb554bb7b5aea");
+  assert.equal(deployment.deploymentBlock, "52166832");
   assert.equal(dependencies.wethImplementation, "0xC6B81b429797E0f555440b70cD99e032D7AE947e");
   assert.equal(dependencies.wethImplementationRuntimeHash, "0xbe1295f37be34ffe03ad779bda0ef278907e1856b51a3be2f35ee541d75d4650");
 
@@ -98,9 +103,8 @@ assert.equal(assertRmtUniswapV2FeeCalldataV2(calldata, execution, candidate.econ
 assert.throws(() => assertRmtUniswapV2FeeExecutionV2({ ...execution, providerInputAtomic: "39899" }, candidate.economics), /provider input changed/);
 assert.throws(() => assertRmtUniswapV2FeeExecutionV2({ ...execution, route: { ...execution.route, pair0: getAddress("0x4444444444444444444444444444444444444444") } }, candidate.economics), /route identity changed/);
 
-assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v2"].state, "QUOTE_ONLY");
-assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v2"].implementationId, null);
-assert.throws(() => requireVNextUniswapV2FeeWalletAdmission(), /QUOTE_ONLY/);
+assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v2"].state, "V2_ATOMIC_INPUT_FEE");
+assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v2"].implementationId, "rmt-uniswap-v2-fee-executor-v2");
 
 const tokenInput = await quoteVNextUniswapV2FeeCandidate({
   inputAsset: token,

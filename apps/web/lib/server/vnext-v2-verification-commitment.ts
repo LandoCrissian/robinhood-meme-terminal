@@ -54,7 +54,7 @@ const claimsSchema = z.object({
   chainId: z.literal(4_663),
   quoteRequestId: z.string().uuid(),
   verificationId: z.string().uuid(),
-  provider: z.literal("uniswap-v3"),
+  provider: z.enum(["uniswap-v2", "uniswap-v3"]),
   status: z.enum(["verified", "approval_required"]),
   settlementMode: z.literal(VNEXT_V2_ATOMIC_INPUT_FEE),
   executor: z.string().refine((value) => isAddress(value, { strict: false })),
@@ -88,6 +88,8 @@ const claimsSchema = z.object({
   transactionCalldataHash: z.string().regex(HASH),
   transactionValueAtomic: z.string().regex(/^(0|[1-9][0-9]*)$/),
   gasLimitUnits: z.string().regex(/^[1-9][0-9]*$/),
+  infrastructureVerifiedAtBlock: z.string().regex(/^[1-9][0-9]*$/).nullable(),
+  infrastructureVerifiedAtBlockHash: z.string().regex(HASH).nullable(),
   issuedAtMs: z.number().int().positive(),
   expiresAtMs: z.number().int().positive()
 }).strict();
@@ -102,14 +104,14 @@ function evidenceFields(input: {
   const economics = evidence.feeV2Economics;
   const settlement = evidence.feeV2Settlement;
   if (
-    evidence.provider !== "uniswap-v3"
+    (evidence.provider !== "uniswap-v2" && evidence.provider !== "uniswap-v3")
     || evidence.settlementMode !== VNEXT_V2_ATOMIC_INPUT_FEE
     || evidence.rmtFeeEnabled
     || evidence.feeExecution != null
     || evidence.directNoRmtFee !== undefined
     || !economics
     || !settlement
-    || settlement.provider !== "uniswap-v3"
+    || settlement.provider !== evidence.provider
     || settlement.settlementMode !== "v2-atomic-input-fee"
     || settlement.executionId === ZERO_HASH
     || !HASH.test(settlement.executionId)
@@ -132,8 +134,16 @@ function evidenceFields(input: {
     || settlement.deadline !== evidence.deadline
     || settlement.calldataHash.toLowerCase() !== evidence.calldataHash.toLowerCase()
   ) fail("The V2 verification economics or settlement authority changed.");
+  const infrastructureVerifiedAtBlock = evidence.infrastructureVerifiedAtBlock ?? null;
+  const infrastructureVerifiedAtBlockHash = evidence.infrastructureVerifiedAtBlockHash ?? null;
+  if (evidence.provider === "uniswap-v2" && (!infrastructureVerifiedAtBlock || !infrastructureVerifiedAtBlockHash)) {
+    fail("The Uniswap V2 infrastructure verification block is missing.");
+  }
+  if (evidence.provider === "uniswap-v3" && (infrastructureVerifiedAtBlock || infrastructureVerifiedAtBlockHash)) {
+    fail("The verification contains foreign infrastructure authority.");
+  }
   return {
-    provider: "uniswap-v3" as const,
+    provider: evidence.provider,
     status: evidence.status === "verified" || evidence.status === "approval_required"
       ? evidence.status
       : fail("The V2 verification is not ready for authorization."),
@@ -168,7 +178,11 @@ function evidenceFields(input: {
     transactionTarget: getAddress(evidence.nextActionTarget),
     transactionCalldataHash: evidence.nextActionCalldataHash.toLowerCase() as Hex,
     transactionValueAtomic: evidence.transactionValueAtomic,
-    gasLimitUnits: evidence.gasLimitUnits
+    gasLimitUnits: evidence.gasLimitUnits,
+    infrastructureVerifiedAtBlock,
+    infrastructureVerifiedAtBlockHash: infrastructureVerifiedAtBlockHash === null
+      ? null
+      : infrastructureVerifiedAtBlockHash.toLowerCase() as Hex
   };
 }
 
@@ -328,7 +342,9 @@ export function assertVNextV2VerificationContinuity(input: {
     transactionTarget: getAddress(input.claims.transactionTarget),
     transactionCalldataHash: input.claims.transactionCalldataHash.toLowerCase(),
     transactionValueAtomic: input.claims.transactionValueAtomic,
-    gasLimitUnits: input.claims.gasLimitUnits
+    gasLimitUnits: input.claims.gasLimitUnits,
+    infrastructureVerifiedAtBlock: input.claims.infrastructureVerifiedAtBlock,
+    infrastructureVerifiedAtBlockHash: input.claims.infrastructureVerifiedAtBlockHash?.toLowerCase() ?? null
   };
   if (JSON.stringify(actual) !== JSON.stringify(expected)) fail("The exact verified V2 transaction changed. Verify again.");
   return true;

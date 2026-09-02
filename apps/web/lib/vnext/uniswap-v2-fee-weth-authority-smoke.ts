@@ -16,8 +16,7 @@ import {
 } from "./uniswap-v2-fee-executor-v2";
 import {
   RMT_UNISWAP_V2_V2_CANDIDATE_GATE,
-  configuredVNextUniswapV2FeeCandidate,
-  requireVNextUniswapV2FeeWalletAdmission
+  configuredVNextUniswapV2FeeCandidate
 } from "../server/vnext-uniswap-v2-fee-candidate";
 import {
   ROBINHOOD_WETH_IMPLEMENTATION,
@@ -166,11 +165,10 @@ assert.throws(
 );
 
 assert.equal(configuredVNextUniswapV2FeeCandidate({}), null);
-assert.throws(() => requireVNextUniswapV2FeeWalletAdmission(), /QUOTE_ONLY/);
 assert.throws(() => configuredVNextUniswapV2FeeCandidate({
   [RMT_UNISWAP_V2_V2_CANDIDATE_GATE]: "true",
   VERCEL_ENV: "production"
-}), /source-only/);
+}), /not admitted in Production/);
 assert.deepEqual(
   readVNextPublicExecutionProviderScope({ RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "uniswap-v3" }).providers,
   ["uniswap-v3"]
@@ -181,8 +179,8 @@ const v2AuthoritySource = readFileSync(resolve(process.cwd(), "lib/server/vnext-
 const v3AuthoritySource = readFileSync(resolve(process.cwd(), "lib/server/vnext-uniswap-fee-executor.ts"), "utf8");
 assert.doesNotMatch(sharedSource, /NEXT_PUBLIC_/);
 assert.doesNotMatch(v2AuthoritySource, /NEXT_PUBLIC_/);
-assert.match(v2AuthoritySource, /verifyCanonicalRobinhoodWethAuthority\(authorityClient\)/);
-assert.match(v2AuthoritySource, /verifyVNextUniswapV2FeeInfrastructure\(authorityClient\)/);
+assert.match(v2AuthoritySource, /verifyCanonicalRobinhoodWethAuthority\(authorityClient, expectedBlock\)/);
+assert.match(v2AuthoritySource, /verifyVNextUniswapV2FeeInfrastructure\(authorityClient, expectedBlock\)/);
 assert.match(v3AuthoritySource, /verifyCanonicalRobinhoodWethAuthority\(wethAuthorityClient\)/);
 assert.equal((v3AuthoritySource.match(/0xC6B81b429797E0f555440b70cD99e032D7AE947e/g) ?? []).length, 0);
 

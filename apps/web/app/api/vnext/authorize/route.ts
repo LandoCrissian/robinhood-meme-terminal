@@ -24,6 +24,11 @@ import {
 } from "../../../../lib/server/vnext-authorization-time";
 import { vNextAuthorizationRequestSchema } from "../../../../lib/server/vnext-authorization-request";
 import { selectVNextUniswapV3SettlementMode } from "../../../../lib/server/vnext-uniswap-quote";
+import { selectVNextUniswapV2SettlementMode } from "../../../../lib/server/vnext-uniswap-v2-v2-execution";
+import {
+  configuredVNextUniswapV2FeeExecutorV2,
+  requireVNextUniswapV2V2ReleaseRecipient
+} from "../../../../lib/server/vnext-uniswap-v2-fee-executor-v2";
 import {
   configuredVNextUniswapFeeExecutorV2,
   requireVNextUniswapV3V2ReleaseRecipient
@@ -84,13 +89,18 @@ export async function POST(request: Request) {
 
     const settlementMode = parsed.data.provider === "uniswap-v3"
       ? selectVNextUniswapV3SettlementMode({ inputAsset, outputAsset, recipient })
-      : VNEXT_DIRECT_NO_RMT_FEE;
+      : parsed.data.provider === "uniswap-v2"
+        ? selectVNextUniswapV2SettlementMode({ recipient })
+        : VNEXT_DIRECT_NO_RMT_FEE;
     requireVNextPublicExecutionSettlement(parsed.data.provider, settlementMode);
     if (parsed.data.settlementMode !== settlementMode) {
       return verifyAgain("The exact verified settlement authority changed. Verify again.");
     }
     v2ContinuityRequired = settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE;
-    if (v2ContinuityRequired) requireVNextUniswapV3V2ReleaseRecipient(recipient);
+    if (v2ContinuityRequired) {
+      if (parsed.data.provider === "uniswap-v2") requireVNextUniswapV2V2ReleaseRecipient(recipient);
+      else requireVNextUniswapV3V2ReleaseRecipient(recipient);
+    }
     if (settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE && (
       !parsed.data.executionId
       || parsed.data.executionId === `0x${"0".repeat(64)}`
@@ -141,7 +151,11 @@ export async function POST(request: Request) {
       settlementMode,
       ...(parsed.data.canonicalMarket ? { canonicalMarket: parsed.data.canonicalMarket as { sourceId: "uniswap-v4"; poolId: `0x${string}` } } : {}),
       ...(parsed.data.v4QuoteEvidence ? { v4QuoteEvidence: parsed.data.v4QuoteEvidence as typeof parsed.data.v4QuoteEvidence & { poolId: `0x${string}`; observedBlockHash: `0x${string}` } } : {}),
-      ...(parsed.data.executionId ? { executionId: parsed.data.executionId as Hex } : {})
+      ...(parsed.data.executionId ? { executionId: parsed.data.executionId as Hex } : {}),
+      ...(v2Claims?.provider === "uniswap-v2" && v2Claims.infrastructureVerifiedAtBlock && v2Claims.infrastructureVerifiedAtBlockHash ? {
+        infrastructureVerifiedAtBlock: v2Claims.infrastructureVerifiedAtBlock,
+        infrastructureVerifiedAtBlockHash: v2Claims.infrastructureVerifiedAtBlockHash as Hex
+      } : {})
     });
     if (prepared.evidence.provider !== "uniswap-v2" && prepared.evidence.provider !== "uniswap-v3" && prepared.evidence.provider !== "uniswap-v4" && prepared.evidence.provider !== "up-v2" && prepared.evidence.provider !== "up-cl") {
       return Response.json({ error: "This provider does not have a supported wallet-plan codec yet." }, { status: 422, headers: noStore });
@@ -157,7 +171,9 @@ export async function POST(request: Request) {
     }
 
     if (v2Claims) {
-      const config = configuredVNextUniswapFeeExecutorV2();
+      const config = parsed.data.provider === "uniswap-v2"
+        ? configuredVNextUniswapV2FeeExecutorV2()
+        : configuredVNextUniswapFeeExecutorV2();
       if (!config || getAddress(config.executor) !== getAddress(v2Claims.executor)) {
         throw new VNextV2VerificationCommitmentError("The V2 executor authority is unavailable or changed.");
       }

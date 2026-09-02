@@ -2,8 +2,10 @@ import {
   createPublicClient,
   getAddress,
   http,
+  isAddress,
   keccak256,
   parseAbi,
+  zeroAddress,
   type Address,
   type Hex
 } from "viem";
@@ -11,6 +13,7 @@ import { robinhoodChain } from "@rmt/shared/chains";
 import { ROBINHOOD_WETH } from "../uniswap-v4";
 import {
   assertRmtExecutionFeeV2Policy,
+  configuredRmtExecutionFeeV2Policy,
   type RmtExecutionFeeV2Policy
 } from "../vnext/execution-fee-policy-v2";
 import {
@@ -63,6 +66,83 @@ export type VNextUniswapV2FeeExecutorV2Config = {
   executorRuntimeHash: Hex;
   policy: RmtExecutionFeeV2Policy;
 };
+
+export type VNextUniswapV2V2ReleaseScope = "DISABLED" | "PROOF_WALLET_ONLY" | "PUBLIC";
+const HASH = /^0x[0-9a-fA-F]{64}$/;
+
+export const RMT_UNISWAP_V2_V2_DEPLOYED_EXECUTOR = getAddress("0xB4bF1d99a3BF9201f8197682dcD2bF97725D6230");
+export const RMT_UNISWAP_V2_V2_DEPLOYED_RUNTIME_HASH = "0x3a0518035f7a47c752eba630e02db8a72b14c175977fbfcbf6d708ea1a36c647" as Hex;
+
+function exactBoolean(env: NodeJS.ProcessEnv, name: string) {
+  const value = env[name];
+  if (value === undefined || value === "false") return false;
+  if (value !== "true") throw new Error(`${name} must be exact lowercase true or false.`);
+  return true;
+}
+
+function required(env: NodeJS.ProcessEnv, name: string) {
+  const value = env[name]?.trim();
+  if (!value) throw new Error(`RMT Uniswap V2 V2 execution is configured incompletely (${name}).`);
+  return value;
+}
+
+export function isVNextUniswapV2V2AuthorizationEnabled(env: NodeJS.ProcessEnv = process.env) {
+  return exactBoolean(env, "RMT_VNEXT_UNISWAP_V2_V2_AUTHORIZATION_ENABLED");
+}
+
+export function isVNextUniswapV2V2PublicAuthorizationEnabled(env: NodeJS.ProcessEnv = process.env) {
+  return exactBoolean(env, "RMT_VNEXT_UNISWAP_V2_V2_PUBLIC_AUTHORIZATION_ENABLED");
+}
+
+export function configuredVNextUniswapV2V2ProofWallet(env: NodeJS.ProcessEnv = process.env): Address | null {
+  const value = env.RMT_VNEXT_UNISWAP_V2_V2_PROOF_WALLET?.trim();
+  if (!value) return null;
+  if (!isAddress(value, { strict: false }) || getAddress(value) === zeroAddress) {
+    throw new Error("RMT Uniswap V2 V2 proof wallet must be a valid nonzero EVM address.");
+  }
+  return getAddress(value);
+}
+
+export function configuredVNextUniswapV2V2ReleaseScope(env: NodeJS.ProcessEnv = process.env): VNextUniswapV2V2ReleaseScope {
+  if (!isVNextUniswapV2V2AuthorizationEnabled(env)) return "DISABLED";
+  return isVNextUniswapV2V2PublicAuthorizationEnabled(env) ? "PUBLIC" : "PROOF_WALLET_ONLY";
+}
+
+export function isVNextUniswapV2V2ReleaseRecipientEligible(recipient: Address, env: NodeJS.ProcessEnv = process.env) {
+  const scope = configuredVNextUniswapV2V2ReleaseScope(env);
+  if (scope === "DISABLED") return false;
+  if (scope === "PUBLIC") return true;
+  const proofWallet = configuredVNextUniswapV2V2ProofWallet(env);
+  return proofWallet !== null && getAddress(recipient) === proofWallet;
+}
+
+export function requireVNextUniswapV2V2ReleaseRecipient(recipient: Address, env: NodeJS.ProcessEnv = process.env) {
+  if (!isVNextUniswapV2V2ReleaseRecipientEligible(recipient, env)) {
+    throw new Error("RMT Uniswap V2 V2 wallet authorization is unavailable for this recipient and release scope.");
+  }
+}
+
+export function requireVNextUniswapV2V2AuthorizationEnabled(env: NodeJS.ProcessEnv = process.env) {
+  if (!isVNextUniswapV2V2AuthorizationEnabled(env)) {
+    throw new Error("RMT Uniswap V2 V2 wallet authorization is disabled.");
+  }
+}
+
+export function configuredVNextUniswapV2FeeExecutorV2(env: NodeJS.ProcessEnv = process.env): VNextUniswapV2FeeExecutorV2Config | null {
+  if (!exactBoolean(env, "RMT_VNEXT_UNISWAP_V2_V2_EXECUTOR_ENABLED")) return null;
+  const policy = configuredRmtExecutionFeeV2Policy(env);
+  if (!policy) throw new Error("RMT Uniswap V2 V2 execution requires an active RMT_EXECUTION_V2 policy.");
+  const executorValue = required(env, "RMT_VNEXT_UNISWAP_V2_V2_EXECUTOR_ADDRESS");
+  const runtimeHash = required(env, "RMT_VNEXT_UNISWAP_V2_V2_EXECUTOR_RUNTIME_HASH");
+  if (!isAddress(executorValue, { strict: false }) || getAddress(executorValue) === zeroAddress || !HASH.test(runtimeHash)) {
+    throw new Error("RMT Uniswap V2 V2 execution has an invalid executor identity.");
+  }
+  if (getAddress(executorValue) !== RMT_UNISWAP_V2_V2_DEPLOYED_EXECUTOR
+    || runtimeHash.toLowerCase() !== RMT_UNISWAP_V2_V2_DEPLOYED_RUNTIME_HASH) {
+    throw new Error("RMT Uniswap V2 V2 execution does not match the admitted deployment.");
+  }
+  return { executor: getAddress(executorValue), executorRuntimeHash: runtimeHash.toLowerCase() as Hex, policy };
+}
 
 export type VNextUniswapV2FeeExecutorV2LiveIdentity = {
   router: Address;
@@ -163,9 +243,10 @@ export function assertVNextUniswapV2FeeInfrastructureEvidence(
 }
 
 export async function verifyVNextUniswapV2FeeInfrastructure(
-  authorityClient: VNextUniswapV2FeeAuthorityClient = liveClient
+  authorityClient: VNextUniswapV2FeeAuthorityClient = liveClient,
+  expectedBlock?: { blockNumber: bigint; blockHash: Hex }
 ) {
-  const wethAuthority = await verifyCanonicalRobinhoodWethAuthority(authorityClient);
+  const wethAuthority = await verifyCanonicalRobinhoodWethAuthority(authorityClient, expectedBlock);
   const blockNumber = BigInt(wethAuthority.verifiedAtBlock);
   const [routerCode, factoryCode, routerFactory, routerWeth] = await Promise.all([
     authorityClient.getBytecode({ address: ROBINHOOD_UNISWAP_V2_ROUTER, blockNumber }),
@@ -222,10 +303,11 @@ export function assertVNextUniswapV2FeeExecutorV2LiveIdentity(
  */
 export async function verifyConfiguredVNextUniswapV2FeeExecutorV2(
   config: VNextUniswapV2FeeExecutorV2Config,
-  authorityClient: VNextUniswapV2FeeAuthorityClient = liveClient
+  authorityClient: VNextUniswapV2FeeAuthorityClient = liveClient,
+  expectedBlock?: { blockNumber: bigint; blockHash: Hex }
 ) {
   assertRmtExecutionFeeV2Policy(config.policy);
-  const infrastructure = await verifyVNextUniswapV2FeeInfrastructure(authorityClient);
+  const infrastructure = await verifyVNextUniswapV2FeeInfrastructure(authorityClient, expectedBlock);
   const blockNumber = BigInt(infrastructure.verifiedAtBlock);
   const code = await authorityClient.getBytecode({ address: config.executor, blockNumber });
   requireIdentity(runtimeHash(code, "RMT Uniswap V2 V2 executor"), config.executorRuntimeHash, "RMT Uniswap V2 V2 executor runtime");
