@@ -27,6 +27,7 @@ import {
   ROBINHOOD_UNISWAP_V2_ROUTER_RUNTIME_HASH
 } from "../vnext/uniswap-v2-authorization-codec";
 import {
+  assertCommittedVNextUniswapV2VerificationBlockCanonical,
   configuredVNextUniswapV2FeeExecutorV2,
   isVNextUniswapV2V2ReleaseRecipientEligible,
   verifyConfiguredVNextUniswapV2FeeExecutorV2,
@@ -47,8 +48,11 @@ export type VerifiedVNextUniswapV2FeeExecutorV2Config = VNextUniswapV2FeeExecuto
 };
 
 export type VNextUniswapV2V2AuthorityVerifier = (
-  config: VNextUniswapV2FeeExecutorV2Config,
-  expectedBlock?: { blockNumber: bigint; blockHash: Hex }
+  config: VNextUniswapV2FeeExecutorV2Config
+) => Promise<{ verifiedAtBlock: string; verifiedAtBlockHash: Hex }>;
+
+export type VNextUniswapV2V2CanonicalityVerifier = (
+  expectedBlock: { blockNumber: bigint; blockHash: Hex }
 ) => Promise<{ verifiedAtBlock: string; verifiedAtBlockHash: Hex }>;
 
 export type VNextUniswapV2V2ExecutionClient = {
@@ -79,8 +83,10 @@ function assetId(address: Address) {
 async function resolveConfig(
   configured: VerifiedVNextUniswapV2FeeExecutorV2Config | null | undefined,
   expectedInfrastructure?: { verifiedAtBlock: string; verifiedAtBlockHash: Hex },
-  authorityVerifier: VNextUniswapV2V2AuthorityVerifier = (config, expectedBlock) =>
-    verifyConfiguredVNextUniswapV2FeeExecutorV2(config, undefined, expectedBlock)
+  authorityVerifier: VNextUniswapV2V2AuthorityVerifier = (config) =>
+    verifyConfiguredVNextUniswapV2FeeExecutorV2(config),
+  canonicalityVerifier: VNextUniswapV2V2CanonicalityVerifier =
+    assertCommittedVNextUniswapV2VerificationBlockCanonical
 ) {
   const config = configured === undefined ? configuredVNextUniswapV2FeeExecutorV2() : configured;
   if (!config) return null;
@@ -94,7 +100,7 @@ async function resolveConfig(
     };
   }
 
-  const verificationAuthority = await authorityVerifier(config, {
+  const verificationAuthority = await canonicalityVerifier({
     blockNumber: BigInt(expectedInfrastructure.verifiedAtBlock),
     blockHash: expectedInfrastructure.verifiedAtBlockHash
   });
@@ -105,9 +111,9 @@ async function resolveConfig(
     throw new Error("The committed Uniswap V2 verification-time infrastructure authority changed.");
   }
 
-  // The historical read above proves block A is still canonical. This second,
-  // unpinned read independently proves current authority at block B immediately
-  // before an approval or swap wallet plan can be returned.
+  // The canonicality-only read above proves block A has not been replaced by a
+  // reorg. This complete, unpinned read independently proves current authority
+  // at block B immediately before an approval or swap wallet plan can be returned.
   const authorizationAuthority = await authorityVerifier(config);
   if (BigInt(authorizationAuthority.verifiedAtBlock) < BigInt(verificationAuthority.verifiedAtBlock)) {
     throw new Error("The fresh Uniswap V2 authorization authority predates verification.");
@@ -181,6 +187,7 @@ export async function evaluateVNextUniswapV2RouteV2(input: {
   quoteProvider?: typeof quoteVNextUniswapV2;
   executionClient?: VNextUniswapV2V2ExecutionClient;
   authorityVerifier?: VNextUniswapV2V2AuthorityVerifier;
+  canonicalityVerifier?: VNextUniswapV2V2CanonicalityVerifier;
 }) {
   if (!/^0x[0-9a-fA-F]{64}$/.test(input.executionId) || input.executionId === `0x${"0".repeat(64)}`) {
     throw new Error("RMT Uniswap V2 V2 execution requires an exact nonzero execution ID.");
@@ -192,7 +199,7 @@ export async function evaluateVNextUniswapV2RouteV2(input: {
   const config = await resolveConfig(input.config, input.infrastructureVerifiedAtBlock && input.infrastructureVerifiedAtBlockHash ? {
     verifiedAtBlock: input.infrastructureVerifiedAtBlock,
     verifiedAtBlockHash: input.infrastructureVerifiedAtBlockHash
-  } : undefined, input.authorityVerifier);
+  } : undefined, input.authorityVerifier, input.canonicalityVerifier);
   if (!config) throw new Error("RMT Uniswap V2 V2 wallet authorization is not configured.");
   const quoted = await quoteVNextUniswapV2ForUserV2({
     inputAsset: input.inputAsset,
