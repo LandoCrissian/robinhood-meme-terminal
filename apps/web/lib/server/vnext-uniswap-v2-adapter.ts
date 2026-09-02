@@ -9,6 +9,7 @@ import {
   selectVNextUniswapV2SettlementMode,
   type VerifiedVNextUniswapV2FeeExecutorV2Config,
   type VNextUniswapV2V2AuthorityVerifier,
+  type VNextUniswapV2V2CanonicalityVerifier,
   type VNextUniswapV2V2ExecutionClient
 } from "./vnext-uniswap-v2-v2-execution";
 import {
@@ -24,6 +25,7 @@ export function createVNextUniswapV2Adapter(input: {
   v2QuoteProvider?: Parameters<typeof quoteVNextUniswapV2ForUserV2>[0]["quoteProvider"];
   v2ExecutionClient?: VNextUniswapV2V2ExecutionClient;
   v2AuthorityVerifier?: VNextUniswapV2V2AuthorityVerifier;
+  v2CanonicalityVerifier?: VNextUniswapV2V2CanonicalityVerifier;
 } = {}): VNextQuoteProviderAdapter {
   const walletAuthorization = input.walletAuthorization !== false;
   const adapter: VNextQuoteProviderAdapter = {
@@ -140,7 +142,8 @@ export function createVNextUniswapV2Adapter(input: {
         ...(input.v2Config !== undefined ? { config: input.v2Config } : {}),
         ...(input.v2QuoteProvider ? { quoteProvider: input.v2QuoteProvider } : {}),
         ...(input.v2ExecutionClient ? { executionClient: input.v2ExecutionClient } : {}),
-        ...(input.v2AuthorityVerifier ? { authorityVerifier: input.v2AuthorityVerifier } : {})
+        ...(input.v2AuthorityVerifier ? { authorityVerifier: input.v2AuthorityVerifier } : {}),
+        ...(input.v2CanonicalityVerifier ? { canonicalityVerifier: input.v2CanonicalityVerifier } : {})
       });
       return { evidence: prepared.evidence, feeV2Authorization: prepared.feeV2Authorization, transaction: prepared.transaction };
     }

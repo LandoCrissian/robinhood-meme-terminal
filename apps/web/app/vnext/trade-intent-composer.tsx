@@ -37,6 +37,11 @@ import {
 import { deriveVNextVerifiedUsdgOutcome } from "../../lib/vnext/verified-cost-outcome";
 import { trustedPaymentMetadataFromDetectedWalletAsset, type VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
 import { clearTradeQuoteCache, requestTradeQuote, tradeQuoteFailureFromResponse } from "../../lib/trade-quote-client";
+import {
+  isCurrentTradeAuthorizationAttempt,
+  requestTradeAuthorization,
+  tradeAuthorizationFailureFromResponse
+} from "../../lib/vnext/trade-authorization-client";
 import { useRmtIdentity } from "../rmt-identity";
 import { FundWalletButton } from "../fund-wallet-button";
 import { VNextWalletReview } from "./vnext-wallet-review";
@@ -128,6 +133,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const preparedApprovalAuthority = useRef<VNextApprovalAuthority | undefined>(undefined);
   const autoFitBuyAmount = useRef(true);
   const backgroundQuoteEpoch = useRef(0);
+  const authorizationAttemptEpoch = useRef(0);
   const backgroundQuoteImmediate = useRef(false);
   const backgroundQuoteAttempted = useRef(false);
   const lastReadyQuote = useRef<VNextCachedQuote | undefined>(undefined);
@@ -266,6 +272,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const cachedQuote = cachedVNextQuoteForRequest(lastReadyQuote.current, requestKey);
   useEffect(() => {
     backgroundQuoteEpoch.current += 1;
+    authorizationAttemptEpoch.current += 1;
     backgroundQuoteAttempted.current = false;
     setQuoteState({ state: "idle" });
     setVerificationState({ state: "idle" });
@@ -648,7 +655,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       || !evidence.nextActionCalldataHash
       || !evidence.gasLimitUnits
     ) throw new Error("This route is not ready for exact wallet authorization.");
-    const response = await requestTradeQuote("/api/vnext/authorize", {
+    const response = await requestTradeAuthorization("/api/vnext/authorize", {
       chainId: ROBINHOOD_MAINNET_CHAIN_ID,
       quoteRequestId: evidence.sourceQuoteRequestId,
       verificationId: evidence.verificationId,
@@ -677,12 +684,9 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         : {}),
       ...vNextAuthorizationAuthorityRequest(evidence)
     }, {
-      identityScope: identity.userId,
-      identityToken: identity.identityToken,
-      timeoutMs: 15_000,
-      maxAttempts: 1
+      identityToken: identity.identityToken
     });
-    const failure = tradeQuoteFailureFromResponse(response);
+    const failure = tradeAuthorizationFailureFromResponse(response);
     if (failure) throw failure;
     return parseVNextAuthorizationBundle(response.payload, evidence, {
       quoteRequestId: evidence.sourceQuoteRequestId,
@@ -696,6 +700,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const startTrade = async () => {
     if (!authorizationEnabled || stockTokenViewOnly || !draft.intent || amountExceedsBalance) return;
     backgroundQuoteEpoch.current += 1;
+    const authorizationAttempt = ++authorizationAttemptEpoch.current;
     const cachedQuoteForTrade = cachedVNextQuoteForRequest(lastReadyQuote.current, requestKey);
     const reusableQuote = isVNextQuoteReusableForTrade(cachedQuoteForTrade, Date.now())
       ? cachedQuoteForTrade
@@ -708,10 +713,12 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     try {
       if (!reusableQuote) clearTradeQuoteCache();
       const freshQuote = reusableQuote ?? await requestLiveRoutes();
+      if (!isCurrentTradeAuthorizationAttempt(authorizationAttempt, authorizationAttemptEpoch.current)) return;
       lastReadyQuote.current = { requestKey, response: freshQuote };
       setQuoteState({ state: "ready", response: freshQuote });
       stage = "verification";
       const freshEvidence = await requestStrictVerification(freshQuote);
+      if (!isCurrentTradeAuthorizationAttempt(authorizationAttempt, authorizationAttemptEpoch.current)) return;
       lastReadyVerification.current = freshEvidence;
       setVerificationState({ state: "ready", evidence: freshEvidence });
       if (!["verified", "approval_required"].includes(freshEvidence.status)) {
@@ -727,6 +734,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       }
       stage = "authorization";
       const authorization = await requestAuthorizationPlan(freshEvidence);
+      if (!isCurrentTradeAuthorizationAttempt(authorizationAttempt, authorizationAttemptEpoch.current)) return;
       lastReadyVerification.current = authorization.evidence;
       setVerificationState({ state: "ready", evidence: authorization.evidence });
       setAuthorizationState({ state: "ready", plan: authorization.plan });
@@ -739,6 +747,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
           }
         : undefined;
     } catch (cause) {
+      if (!isCurrentTradeAuthorizationAttempt(authorizationAttempt, authorizationAttemptEpoch.current)) return;
       const message = cause instanceof Error ? cause.message : "RMT could not prepare this trade.";
       if (stage === "quote") {
         setQuoteState({ state: "error", message });
@@ -758,6 +767,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     const confirmedApprovalAuthority = preparedApprovalAuthority.current;
     preparedApprovalAuthority.current = undefined;
     backgroundQuoteEpoch.current += 1;
+    const authorizationAttempt = ++authorizationAttemptEpoch.current;
     setPostExecutionState({ state: "refreshing", message: "Approval confirmed. RMT discarded the prior payload and is refreshing the exact next action…" });
     setQuoteState({ state: "loading" });
     setVerificationState({ state: "loading" });
@@ -767,9 +777,11 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     clearTradeQuoteCache();
     try {
       const freshQuote = await requestLiveRoutes();
+      if (!isCurrentTradeAuthorizationAttempt(authorizationAttempt, authorizationAttemptEpoch.current)) return;
       lastReadyQuote.current = { requestKey, response: freshQuote };
       setQuoteState({ state: "ready", response: freshQuote });
       const freshEvidence = await requestStrictVerification(freshQuote);
+      if (!isCurrentTradeAuthorizationAttempt(authorizationAttempt, authorizationAttemptEpoch.current)) return;
       lastReadyVerification.current = freshEvidence;
       setVerificationState({ state: "ready", evidence: freshEvidence });
       if (repeatsConfirmedVNextApproval(confirmedApprovalAuthority, freshEvidence)) {
@@ -778,6 +790,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       const outcome = postApprovalVerificationOutcome(freshEvidence);
       if (outcome.state === "blocked") throw new Error(outcome.message);
       const authorization = await requestAuthorizationPlan(freshEvidence);
+      if (!isCurrentTradeAuthorizationAttempt(authorizationAttempt, authorizationAttemptEpoch.current)) return;
       if (
         (outcome.state === "next_approval_ready" && authorization.plan.kind !== "erc20_approval")
         || (outcome.state === "swap_ready" && authorization.plan.kind !== "swap")
@@ -795,6 +808,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         : undefined;
       setPostExecutionState(outcome);
     } catch (cause) {
+      if (!isCurrentTradeAuthorizationAttempt(authorizationAttempt, authorizationAttemptEpoch.current)) return;
       const message = cause instanceof Error ? cause.message : "Fresh post-approval verification failed.";
       setVerificationState({ state: "error", message });
       setAuthorizationState({ state: "error", message });
@@ -876,6 +890,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   };
   const continueTrading = () => {
     backgroundQuoteEpoch.current += 1;
+    authorizationAttemptEpoch.current += 1;
     backgroundQuoteImmediate.current = true;
     clearTradeQuoteCache();
     setQuoteState({ state: "loading" });

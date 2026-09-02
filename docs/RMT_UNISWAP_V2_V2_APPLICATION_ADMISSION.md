@@ -32,6 +32,8 @@ Production remains unchanged: its public execution provider scope is `[uniswap-v
 
 The strict V2 fee path verifies the executor and its immutable policy, Router, factory, pair-runtime and WETH dependencies before returning a wallet plan. Canonical WETH proxy runtime, EIP-1967 implementation and implementation runtime are checked at one block-pinned server snapshot. The verify-time block number and hash are committed into the short-lived HMAC continuity token. Authorization first re-reads that historical block to prove it remains canonical, then independently verifies the complete live executor and infrastructure authority at a fresh current block before returning either an approval or swap. The authorization block must be greater than or equal to the committed verification block; the two coordinates remain distinct in server evidence.
 
+Authorization uses a dedicated one-shot browser transport with a bounded 30-second budget, no shared quote cache and no automatic retry. Indicative quotes retain their shorter request budget. An authorization timeout installs no wallet plan and requires verification again; attempt-epoch continuity prevents a late response from replacing a newer trade attempt. On the server, the historical verification block is reread only to prove its committed number/hash remain canonical. Complete Router, factory, WETH implementation, executor and policy authority is then proved once at a fresh current authorization block before simulation, gas estimation or wallet-plan return.
+
 Native input targets the executor with gross input as transaction value. ERC20 input grants an exact gross-input approval to the executor, never to the Router; after approval the route must be verified again. Once atomic V2 settlement is selected, failures do not downgrade to direct fee-free Router execution or substitute another provider.
 
 ## Current state
@@ -42,3 +44,7 @@ Native input targets the executor with gross input as transaction value. ERC20 i
 - Public Uniswap V2 execution: off
 - Production public provider scope: `[uniswap-v3]`
 - Production mutation in this admission tranche: none
+
+## Controlled Preview deployment identity preflight
+
+Before a future controlled proof creates any Vercel deployment, record and verify the intended Vercel team, the exact RMT project ID and name, the repository root, the exact Git SHA, and `Preview` as the deployment environment. The target must be the RMT project and must not be the unrelated project named `web`. No proof configuration or deployment may proceed while any of those identities is implicit.

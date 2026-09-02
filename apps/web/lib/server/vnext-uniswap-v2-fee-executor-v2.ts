@@ -195,6 +195,21 @@ const liveClient: VNextUniswapV2FeeAuthorityClient = {
   readContract: (input) => client.readContract(input as never) as Promise<unknown>
 };
 
+export async function assertCommittedVNextUniswapV2VerificationBlockCanonical(
+  expectedBlock: { blockNumber: bigint; blockHash: Hex },
+  authorityClient: Pick<VNextUniswapV2FeeAuthorityClient, "getBlock"> = liveClient
+) {
+  const block = await assertVNextRobinhoodBlockContext(
+    authorityClient,
+    expectedBlock.blockNumber,
+    expectedBlock.blockHash
+  );
+  return {
+    verifiedAtBlock: block.number.toString(),
+    verifiedAtBlockHash: expectedBlock.blockHash
+  };
+}
+
 function requireIdentity(actual: string, expected: string, label: string) {
   if (actual.toLowerCase() !== expected.toLowerCase()) {
     throw new Error(`${label} changed (expected ${expected}, received ${actual}).`);

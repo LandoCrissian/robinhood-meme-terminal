@@ -1,15 +1,18 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { getAddress, zeroAddress, type Hex } from "viem";
 import { createRmtExecutionFeeV2Policy } from "./execution-fee-policy-v2";
 import { vNextAuthorizationRequestSchema } from "../server/vnext-authorization-request";
 import {
   RMT_UNISWAP_V2_V2_DEPLOYED_EXECUTOR,
   RMT_UNISWAP_V2_V2_DEPLOYED_RUNTIME_HASH,
+  assertCommittedVNextUniswapV2VerificationBlockCanonical,
   configuredVNextUniswapV2FeeExecutorV2
 } from "../server/vnext-uniswap-v2-fee-executor-v2";
 import {
   prepareVNextUniswapV2AuthorizationV2,
   type VNextUniswapV2V2AuthorityVerifier,
+  type VNextUniswapV2V2CanonicalityVerifier,
   type VNextUniswapV2V2ExecutionClient,
   type VerifiedVNextUniswapV2FeeExecutorV2Config
 } from "../server/vnext-uniswap-v2-v2-execution";
@@ -57,25 +60,32 @@ function authoritySequence(input: {
   historicalFailure?: Error;
   currentFailure?: Error;
 }) {
-  const calls: Array<{ blockNumber: bigint; blockHash: Hex } | undefined> = [];
-  const verifier: VNextUniswapV2V2AuthorityVerifier = async (_config, expectedBlock) => {
-    calls.push(expectedBlock);
-    if (expectedBlock) {
-      if (input.historicalFailure) throw input.historicalFailure;
-      assert.equal(expectedBlock.blockNumber, BigInt(verificationBlock));
-      assert.equal(expectedBlock.blockHash, verificationBlockHash);
-      return { verifiedAtBlock: verificationBlock, verifiedAtBlockHash: verificationBlockHash };
-    }
+  const canonicalityCalls: Array<{ blockNumber: bigint; blockHash: Hex }> = [];
+  const authorityCalls: Array<typeof config> = [];
+  const canonicalityVerifier: VNextUniswapV2V2CanonicalityVerifier = async (expectedBlock) => {
+    canonicalityCalls.push(expectedBlock);
+    if (input.historicalFailure) throw input.historicalFailure;
+    assert.equal(expectedBlock.blockNumber, BigInt(verificationBlock));
+    assert.equal(expectedBlock.blockHash, verificationBlockHash);
+    return { verifiedAtBlock: verificationBlock, verifiedAtBlockHash: verificationBlockHash };
+  };
+  const authorityVerifier: VNextUniswapV2V2AuthorityVerifier = async (receivedConfig) => {
+    authorityCalls.push(receivedConfig as typeof config);
     if (input.currentFailure) throw input.currentFailure;
     return {
       verifiedAtBlock: input.authorizationBlock,
       verifiedAtBlockHash: input.authorizationBlockHash ?? authorizationBlockHash
     };
   };
-  return { calls, verifier };
+  return { authorityCalls, authorityVerifier, canonicalityCalls, canonicalityVerifier };
 }
 
-function request(input: { allowance: bigint; executionId: Hex; verifier: VNextUniswapV2V2AuthorityVerifier }) {
+function request(input: {
+  allowance: bigint;
+  executionId: Hex;
+  authorityVerifier: VNextUniswapV2V2AuthorityVerifier;
+  canonicalityVerifier: VNextUniswapV2V2CanonicalityVerifier;
+}) {
   return prepareVNextUniswapV2AuthorizationV2({
     inputAsset: inputToken,
     outputAsset: zeroAddress,
@@ -90,30 +100,51 @@ function request(input: { allowance: bigint; executionId: Hex; verifier: VNextUn
     config,
     quoteProvider,
     executionClient: executionClient(input.allowance),
-    authorityVerifier: input.verifier
+    authorityVerifier: input.authorityVerifier,
+    canonicalityVerifier: input.canonicalityVerifier
   });
 }
 
 async function main() {
+  assert.deepEqual(await assertCommittedVNextUniswapV2VerificationBlockCanonical({
+    blockNumber: BigInt(verificationBlock),
+    blockHash: verificationBlockHash
+  }, {
+    getBlock: async ({ blockNumber }) => ({ number: blockNumber, hash: verificationBlockHash })
+  }), {
+    verifiedAtBlock: verificationBlock,
+    verifiedAtBlockHash: verificationBlockHash
+  });
+  await assert.rejects(
+    assertCommittedVNextUniswapV2VerificationBlockCanonical({
+      blockNumber: BigInt(verificationBlock),
+      blockHash: verificationBlockHash
+    }, {
+      getBlock: async ({ blockNumber }) => ({ number: blockNumber, hash: `0x${"7".repeat(64)}` as Hex })
+    }),
+    /verification block changed/
+  );
+
   const later = authoritySequence({ authorizationBlock: "52170001" });
-  const approval = await request({ allowance: 0n, executionId: `0x${"1".repeat(64)}`, verifier: later.verifier });
+  const approval = await request({ allowance: 0n, executionId: `0x${"1".repeat(64)}`, ...later });
   assert.equal(approval.transaction.kind, "erc20_approval");
   assert.equal(approval.evidence.infrastructureVerifiedAtBlock, verificationBlock);
   assert.equal(approval.evidence.infrastructureVerifiedAtBlockHash, verificationBlockHash);
   assert.equal(approval.evidence.authorizationInfrastructureVerifiedAtBlock, "52170001");
   assert.equal(approval.evidence.authorizationInfrastructureVerifiedAtBlockHash, authorizationBlockHash);
-  assert.deepEqual(later.calls, [
-    { blockNumber: BigInt(verificationBlock), blockHash: verificationBlockHash },
-    undefined
+  assert.deepEqual(later.canonicalityCalls, [
+    { blockNumber: BigInt(verificationBlock), blockHash: verificationBlockHash }
   ]);
+  assert.equal(later.authorityCalls.length, 1);
+  assert.equal(later.authorityCalls[0], config);
 
   const same = authoritySequence({ authorizationBlock: verificationBlock, authorizationBlockHash: verificationBlockHash });
-  const sameBlockPlan = await request({ allowance: 0n, executionId: `0x${"2".repeat(64)}`, verifier: same.verifier });
+  const sameBlockPlan = await request({ allowance: 0n, executionId: `0x${"2".repeat(64)}`, ...same });
   assert.equal(sameBlockPlan.evidence.authorizationInfrastructureVerifiedAtBlock, verificationBlock);
 
   const earlier = authoritySequence({ authorizationBlock: "52169999" });
   await assert.rejects(
-    request({ allowance: 0n, executionId: `0x${"3".repeat(64)}`, verifier: earlier.verifier }),
+    request({ allowance: 0n, executionId: `0x${"3".repeat(64)}`, ...earlier }),
     /predates verification/
   );
 
@@ -122,10 +153,11 @@ async function main() {
     historicalFailure: new Error("The committed verification block hash changed.")
   });
   await assert.rejects(
-    request({ allowance: 0n, executionId: `0x${"4".repeat(64)}`, verifier: reorg.verifier }),
+    request({ allowance: 0n, executionId: `0x${"4".repeat(64)}`, ...reorg }),
     /block hash changed/
   );
-  assert.equal(reorg.calls.length, 1);
+  assert.equal(reorg.canonicalityCalls.length, 1);
+  assert.equal(reorg.authorityCalls.length, 0);
 
   const currentDrifts = [
     "WETH implementation changed",
@@ -145,21 +177,20 @@ async function main() {
       request({
         allowance: 0n,
         executionId: `0x${(index + 5).toString(16).repeat(64)}` as Hex,
-        verifier: drift.verifier
+        ...drift
       }),
       new RegExp(message.replace(".", "\\."))
     );
-    assert.equal(drift.calls.length, 2);
+    assert.equal(drift.canonicalityCalls.length, 1);
+    assert.equal(drift.authorityCalls.length, 1);
   }
 
   const postApproval = authoritySequence({ authorizationBlock: "52170002" });
-  const swap = await request({ allowance: 1_000_000n, executionId: `0x${"d".repeat(64)}`, verifier: postApproval.verifier });
+  const swap = await request({ allowance: 1_000_000n, executionId: `0x${"d".repeat(64)}`, ...postApproval });
   assert.equal(swap.transaction.kind, "swap");
   assert.equal(swap.transaction.target, RMT_UNISWAP_V2_V2_DEPLOYED_EXECUTOR);
-  assert.deepEqual(postApproval.calls, [
-    { blockNumber: BigInt(verificationBlock), blockHash: verificationBlockHash },
-    undefined
-  ]);
+  assert.equal(postApproval.canonicalityCalls.length, 1);
+  assert.equal(postApproval.authorityCalls.length, 1);
 
   const browserAttempt = vNextAuthorizationRequestSchema.safeParse({
     chainId: 4_663,
@@ -184,6 +215,17 @@ async function main() {
   assert.equal(configuredVNextUniswapV2FeeExecutorV2({
     NEXT_PUBLIC_RMT_VNEXT_UNISWAP_V2_V2_AUTHORIZATION_BLOCK: "99999999"
   } as unknown as NodeJS.ProcessEnv), null);
+
+  const executionSource = readFileSync(new URL("../server/vnext-uniswap-v2-v2-execution.ts", import.meta.url), "utf8");
+  const historicalBoundary = executionSource.slice(
+    executionSource.indexOf("const verificationAuthority = await canonicalityVerifier"),
+    executionSource.indexOf("const authorizationAuthority = await authorityVerifier")
+  );
+  assert.match(historicalBoundary, /canonicalityVerifier/);
+  assert.doesNotMatch(historicalBoundary, /verifyConfiguredVNextUniswapV2FeeExecutorV2|authorityVerifier\(config/,
+    "historical block A is checked only for canonicality, not fully reproved");
+  assert.match(executionSource, /const authorizationAuthority = await authorityVerifier\(config\)/,
+    "fresh block B still performs complete current executor and infrastructure authority");
 
   console.log("Uniswap V2 V2 authorization rechecks canonical block A and fresh live block B before approval and swap.");
 }
