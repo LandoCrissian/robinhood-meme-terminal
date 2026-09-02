@@ -68,7 +68,7 @@ assert.match(component, /Gross input/);
 assert.match(component, /Exact fee \/ asset/);
 assert.match(component, /Provider input/);
 assert.match(component, /Protected minimum/);
-assert.match(component, /Atomic with swap/);
+assert.match(component, /RMT atomic fee settlement · policy v2/);
 assert.match(composer, /aria-label="RMT execution fee summary"/);
 assert.match(composer, /executableRmtFee\.expectedFeeAtomic/);
 assert.match(composer, /executableRmtFee\.providerInputAtomic/);
@@ -88,7 +88,7 @@ assert.match(approvalDisclosure, /RMT execution fee on this approval: 0/);
 assert.match(approvalDisclosure, /Planned trade fee:.*0\.25% of gross trade input/);
 assert.match(approvalDisclosure, /1 USDG/);
 assert.match(approvalDisclosure, /0\.9975 USDG/);
-assert.match(approvalDisclosure, /Atomic with swap/);
+assert.match(approvalDisclosure, /RMT atomic fee settlement · policy v2/);
 
 const swapDisclosure = renderToStaticMarkup(createElement(VNextWalletFeeDisclosure, {
   planKind: "swap",

@@ -9,12 +9,14 @@ import {
   clearVNextWalletProviderRequestActive,
   findBlockingVNextWalletRequest,
   findUnresolvedVNextExecution,
+  isVNextPlanRecoveryAdmissible,
   markVNextWalletProviderRequestActive,
   promoteVNextWalletRequestToSubmitted,
   readVNextWalletRequestJournal,
   recordPreparedVNextWalletRequest,
   transitionVNextWalletRequest
 } from "../../lib/vnext/execution-recovery";
+import { vNextProviderLabel } from "../../lib/vnext/provider-presentation";
 import type { VNextPreSignEvidence } from "../../lib/vnext/pre-sign-evidence";
 import { ROBINHOOD_MAINNET_CHAIN_ID } from "../../lib/vnext/robinhood-assets";
 import {
@@ -78,8 +80,8 @@ export function VNextWalletFeeDisclosure({
       <div><dt>Provider input</dt><dd>{formatUnits(BigInt(feeV2.providerInputAtomic), inputDecimals)} {inputSymbol}</dd></div>
       <div><dt>Expected receive</dt><dd>{formatUnits(BigInt(feeV2.expectedUserNetOutputAtomic), outputDecimals)} {outputSymbol}</dd></div>
       <div><dt>Protected minimum</dt><dd>{formatUnits(BigInt(feeV2.protectedUserNetOutputAtomic), outputDecimals)} {outputSymbol}</dd></div>
-      <div><dt>Provider</dt><dd>Uniswap V3 · RMT atomic settlement V2</dd></div>
-      <div><dt>Settlement</dt><dd>Atomic with swap</dd></div>
+      <div><dt>Provider</dt><dd>{vNextProviderLabel(evidence.provider)}</dd></div>
+      <div><dt>Settlement</dt><dd>RMT atomic fee settlement · policy v2</dd></div>
       <div><dt>Treasury</dt><dd><ExplorerLink kind="address" value={feeV2.treasury} accessibleName="Open RMT V2 fee treasury in Robinhood Chain explorer">{feeV2.treasury.slice(0, 6)}…{feeV2.treasury.slice(-4)} ↗</ExplorerLink></dd></div>
       <div><dt>Execution target</dt><dd><ExplorerLink kind="address" value={evidence.feeV2Settlement.executionTarget} accessibleName="Open RMT V2 executor in Robinhood Chain explorer">RMT V2 executor · {evidence.feeV2Settlement.executionTarget.slice(0, 6)}…{evidence.feeV2Settlement.executionTarget.slice(-4)} ↗</ExplorerLink></dd></div>
     </dl>
@@ -264,6 +266,9 @@ export function VNextWalletReview({
         throw new Error("The selected wallet changed after preparation. RMT did not send the request.");
       }
       if (findUnresolvedVNextExecution(address)) throw new Error("An RMT transaction is still unresolved. Do not resubmit.");
+      if (!isVNextPlanRecoveryAdmissible(plan, address)) {
+        throw new Error("RMT cannot durably recover this verified wallet request. The wallet was not opened.");
+      }
       const durable = readVNextWalletRequestJournal().find((record) => record.requestId === prepared.requestId);
       if (!durable || durable.state !== "PREPARED") throw new Error("The durable prepared request is no longer available. RMT did not send another request.");
       const blocking = findBlockingVNextWalletRequest(address);
@@ -413,6 +418,9 @@ export function VNextWalletReview({
           connectedChainId: chainId,
           nowMs: Date.now()
         });
+        if (!isVNextPlanRecoveryAdmissible(plan, address)) {
+          throw new Error("RMT cannot durably recover this verified wallet request. The wallet was not opened.");
+        }
         const requestId = crypto.randomUUID();
         if (!recordPreparedVNextWalletRequest({
           requestId,

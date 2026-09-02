@@ -5,7 +5,8 @@ import { formatUnits, parseUnits, type Address } from "viem";
 import { useAccount } from "wagmi";
 import type { AssetMetadata } from "../../lib/vnext/execution-domain";
 import { assetKey } from "../../lib/vnext/execution-domain";
-import { vNextExecutionProviderLabel, type VNextExecutionRecord } from "../../lib/vnext/execution-recovery";
+import type { VNextExecutionRecord } from "../../lib/vnext/execution-recovery";
+import { vNextProviderLabel, vNextProviderRoutePresentation } from "../../lib/vnext/provider-presentation";
 import { NATIVE_GAS_RESERVE_ATOMIC, affordableDefaultAmount, createExactInputIntent, percentageOfAtomic, spendableNativeAtomic, type TradeSide } from "../../lib/vnext/intent-draft";
 import { parseVNextQuoteResponse, selectVNextRoute, type VNextQuoteResponse } from "../../lib/vnext/quote-observation";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "../../lib/vnext/pre-sign-evidence";
@@ -368,6 +369,9 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   const verifiedUsdgOutcome = visibleVerification
     ? deriveVNextVerifiedUsdgOutcome(visibleVerification, costValuationClockMs)
     : null;
+  const visibleRoutePresentation = visibleVerification
+    ? vNextProviderRoutePresentation({ provider: visibleVerification.provider, route: visibleVerification.route })
+    : null;
   const expectedOutput = bestQuote?.expectedOutputAtomic && bestQuote.outputDecimals !== null
     ? formatAtomicDisplay(bestQuote.expectedOutputAtomic, bestQuote.outputDecimals)
     : null;
@@ -448,7 +452,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     outputSymbol
   });
   const confirmedProvider = executionRecord
-    ? vNextExecutionProviderLabel(executionRecord.provider ?? (executionRecord.feeSettlement || executionRecord.feeV2Settlement ? "uniswap-v3" : undefined))
+    ? vNextProviderLabel(executionRecord.provider ?? (executionRecord.feeSettlement ? "uniswap-v3" : undefined))
     : null;
 
   const useBalancePercentage = (basisPoints: number) => {
@@ -1009,7 +1013,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
           <div><dt>Exact input</dt><dd>{formatAtomicDisplay(authorizationState.plan.inputAmountAtomic, pair?.inputAsset.decimals ?? 18)} {inputSymbol}</dd></div>
           <div><dt>Expected output</dt><dd>{formatAtomicDisplay(visibleVerification.expectedOutputAtomic, pair?.outputAsset.decimals ?? 18)} {outputSymbol}</dd></div>
           <div><dt>Protected minimum</dt><dd>{formatAtomicDisplay(authorizationState.plan.protectedOutputAtomic, pair?.outputAsset.decimals ?? 18)} {outputSymbol}</dd></div>
-          <div><dt>Route</dt><dd>{visibleVerification.route === "v4_pool" ? "Canonical V4 PoolKey" : visibleVerification.route === "direct" ? `Direct ${visibleVerification.provider === "uniswap-v2" || visibleVerification.provider === "up-v2" ? "V2" : "V3"}` : "V3 via WETH"}</dd></div>
+          <div><dt>Route</dt><dd>{visibleRoutePresentation?.routeLabel}</dd></div>
           <div><dt>Target</dt><dd>{shortAddress(authorizationState.plan.target)}</dd></div>
           <div><dt>{verifiedRmtFee ? "RMT execution fee" : "RMT platform fee"}</dt><dd>{verifiedRmtFee ? `${verifiedRmtFee.feeBps / 100}%` : "0"}</dd></div>
         </dl>
@@ -1141,7 +1145,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               ? "Last verified evidence remains stable while its replacement is checked"
               : authorizationEnabled ? "RMT completed the internal checks from your single trade action" : "Authorization remains disabled in this preview"}</small></span>
             <dl>
-              <div><dt>Route</dt><dd>{visibleVerification.route === "v4_pool" ? "Canonical V4 PoolKey" : visibleVerification.route === "direct" ? "Direct V3" : "V3 via WETH"}</dd></div>
+              <div><dt>Provider</dt><dd>{visibleRoutePresentation?.providerLabel}</dd></div>
+              <div><dt>Route</dt><dd>{visibleRoutePresentation?.routeLabel}</dd></div>
               <div><dt>Protected</dt><dd>{formatAtomicDisplay(visibleVerification.protectedOutputAtomic, verificationQuote?.outputDecimals ?? 18)} {outputSymbol}</dd></div>
               <div><dt>Quote continuity</dt><dd>{describeProtectedOutputContinuity(visibleVerification.protectedOutputAtomic, visibleVerification.indicativeProtectedOutputFloorAtomic)}</dd></div>
               <div><dt>Simulation</dt><dd>{visibleVerification.exactSimulationPassed ? "Passed" : "Not passed"}</dd></div>
@@ -1172,7 +1177,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
                 <div><dt>{authorizationState.plan.kind === "erc20_approval" ? "Approval amount" : "Exact input"}</dt><dd>{formatAtomicDisplay(authorizationState.plan.inputAmountAtomic, pair?.inputAsset.decimals ?? 18)} {inputSymbol}</dd></div>
                 <div><dt>Expected output</dt><dd>{formatAtomicDisplay(visibleVerification.expectedOutputAtomic, pair?.outputAsset.decimals ?? 18)} {outputSymbol}</dd></div>
                 <div><dt>Protected minimum</dt><dd>{formatAtomicDisplay(authorizationState.plan.protectedOutputAtomic, pair?.outputAsset.decimals ?? 18)} {outputSymbol}</dd></div>
-                <div><dt>Route</dt><dd>{visibleVerification.route === "v4_pool" ? "Canonical V4 PoolKey" : visibleVerification.route === "direct" ? `Direct ${visibleVerification.provider === "uniswap-v2" || visibleVerification.provider === "up-v2" ? "V2" : "V3"}` : "V3 via WETH"}</dd></div>
+                <div><dt>Route</dt><dd>{visibleRoutePresentation?.routeLabel}</dd></div>
                 <div><dt>Network</dt><dd>Robinhood Chain · 4663</dd></div>
                 <div><dt>Target</dt><dd>{shortAddress(authorizationState.plan.target)}</dd></div>
                 <div><dt>Gas limit</dt><dd>{BigInt(authorizationState.plan.gasLimit).toLocaleString()}</dd></div>
@@ -1205,7 +1210,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               <div><dt>{executionRecord.feeV2Settlement ? "Gross input" : side === "buy" ? "Paid" : "Sold"}</dt><dd>{confirmedInputDisplay ? `${confirmedInputDisplay} ${inputSymbol}` : `${inputSymbol} confirmed`}</dd></div>
               <div><dt>{side === "buy" ? "Asset received" : "Proceeds"}</dt><dd>{confirmedOutputDisplay ? `${confirmedOutputDisplay} ${outputSymbol}` : `${outputSymbol} · confirmed onchain`}</dd></div>
               {confirmedFee.state !== "not_applicable" ? <div><dt>RMT fee settled</dt><dd>{confirmedFee.display}</dd></div> : null}
-              {confirmedProvider ? <div><dt>Provider</dt><dd>{confirmedProvider}{executionRecord.feeV2Settlement ? " · RMT atomic settlement V2" : executionRecord.feeSettlement ? " · RMT atomic settlement" : ""}</dd></div> : null}
+              {confirmedProvider ? <div><dt>Provider</dt><dd>{confirmedProvider}{executionRecord.feeV2Settlement ? " · RMT atomic fee settlement · policy v2" : executionRecord.feeSettlement ? " · RMT atomic settlement" : ""}</dd></div> : null}
               <div><dt>Transaction</dt><dd>{shortAddress(executionRecord.txHash)}</dd></div>
             </dl>
             <button ref={receiptAction} className="vnTradeReceiptContinue" type="button" onClick={continueTrading}>Continue trading</button>
