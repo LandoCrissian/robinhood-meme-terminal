@@ -3,9 +3,11 @@ import { readFileSync } from "node:fs";
 import {
   TRADE_AUTHORIZATION_MAX_ATTEMPTS,
   TRADE_AUTHORIZATION_TIMEOUT_MS,
+  TRADE_AUTHORIZATION_VERIFY_AGAIN_REASONS,
   TradeAuthorizationRequestError,
   isCurrentTradeAuthorizationAttempt,
   requestTradeAuthorization,
+  tradeAuthorizationFailureFromResponse,
   type TradeAuthorizationTransport
 } from "./vnext/trade-authorization-client";
 
@@ -119,6 +121,24 @@ async function main() {
   assert.equal(isCurrentTradeAuthorizationAttempt(3, 4), false,
     "a late response from an older authorization attempt cannot install over a newer attempt");
 
+  const verifyAgain = tradeAuthorizationFailureFromResponse({
+    ok: false,
+    status: 409,
+    payload: {
+      error: "VERIFY_AGAIN",
+      reason: "MARKET_BELOW_VERIFIED_FLOOR",
+      message: "sanitized",
+      secret: "must-not-escape"
+    },
+    attempts: 1,
+    latencyMs: 10
+  });
+  assert(verifyAgain instanceof TradeAuthorizationRequestError);
+  assert.equal(verifyAgain.code, "verify-again");
+  assert.equal(verifyAgain.verifyAgainReason, "MARKET_BELOW_VERIFIED_FLOOR");
+  assert.equal(verifyAgain.message, "VERIFY_AGAIN: MARKET_BELOW_VERIFIED_FLOOR");
+  assert.doesNotMatch(verifyAgain.message, /must-not-escape|secret|sanitized/);
+
   const composer = readFileSync(new URL("../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
   const quoteRequest = composer.slice(composer.indexOf("const requestLiveRoutes"), composer.indexOf("useEffect", composer.indexOf("const requestLiveRoutes")));
   const verifyRequest = composer.slice(composer.indexOf("const requestStrictVerification"), composer.indexOf("const requestAuthorizationPlan"));
@@ -133,6 +153,22 @@ async function main() {
   assert.match(composer, /setAuthorizationState\(\{ state: "ready", plan: authorization\.plan \}\)/);
   assert.match(backgroundRefresh, /authorizationState\.state === "idle"/,
     "background quote refresh stays suspended while authorization or wallet review is active");
+  const authorizeRoute = readFileSync(new URL("../app/api/vnext/authorize/route.ts", import.meta.url), "utf8");
+  const failureSource = readFileSync(new URL("vnext/authorization-failure.ts", import.meta.url), "utf8");
+  assert.match(authorizeRoute, /\{ error: "VERIFY_AGAIN", reason, message \}/);
+  assert.deepEqual(TRADE_AUTHORIZATION_VERIFY_AGAIN_REASONS, [
+    "AUTHORITY_CHANGED",
+    "COMMITMENT_INVALID_OR_EXPIRED",
+    "MARKET_BELOW_VERIFIED_FLOOR",
+    "ROUTE_CHANGED",
+    "IMMUTABLE_CONTINUITY_CHANGED",
+    "DEADLINE_CHANGED_OR_EXPIRED",
+    "APPROVAL_CHANGED",
+    "PREPARE_FAILED"
+  ]);
+  for (const reason of TRADE_AUTHORIZATION_VERIFY_AGAIN_REASONS) {
+    assert.match(`${authorizeRoute}\n${failureSource}`, new RegExp(reason));
+  }
 
   console.log("Dedicated one-shot authorization transport and stale-response handoff guards passed.");
 }

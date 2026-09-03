@@ -119,6 +119,7 @@ export type VNextProviderAuthorizationRequest = VNextProviderVerificationRequest
 export type VNextPreparedProviderAuthorization = {
   evidence: VNextProviderVerificationEvidence;
   feeV2Authorization?: VNextAtomicFeeAuthorizationBinding;
+  feeV2SwapCalldata?: Hex;
   transaction: {
     kind: "erc20_approval" | "swap";
     target: Address;

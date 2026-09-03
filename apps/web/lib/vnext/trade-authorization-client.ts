@@ -1,3 +1,9 @@
+import {
+  VNEXT_VERIFY_AGAIN_REASONS,
+  vNextVerifyAgainReason,
+  type VNextVerifyAgainReason
+} from "./authorization-failure";
+
 export const TRADE_AUTHORIZATION_TIMEOUT_MS = 30_000;
 export const TRADE_AUTHORIZATION_MAX_ATTEMPTS = 1;
 
@@ -5,18 +11,24 @@ export type TradeAuthorizationFailureCode =
   | "timeout"
   | "network"
   | "rate-limited"
-  | "service-unavailable";
+  | "service-unavailable"
+  | "verify-again";
+
+export const TRADE_AUTHORIZATION_VERIFY_AGAIN_REASONS = VNEXT_VERIFY_AGAIN_REASONS;
+export type TradeAuthorizationVerifyAgainReason = VNextVerifyAgainReason;
 
 export class TradeAuthorizationRequestError extends Error {
   readonly code: TradeAuthorizationFailureCode;
   readonly attempts = TRADE_AUTHORIZATION_MAX_ATTEMPTS;
   readonly status?: number;
+  readonly verifyAgainReason?: TradeAuthorizationVerifyAgainReason;
 
-  constructor(code: TradeAuthorizationFailureCode, message: string, status?: number) {
+  constructor(code: TradeAuthorizationFailureCode, message: string, status?: number, verifyAgainReason?: TradeAuthorizationVerifyAgainReason) {
     super(message);
     this.name = "TradeAuthorizationRequestError";
     this.code = code;
     this.status = status;
+    this.verifyAgainReason = verifyAgainReason;
   }
 }
 
@@ -129,15 +141,20 @@ export async function requestTradeAuthorization(
 
 export function tradeAuthorizationFailureFromResponse(response: TradeAuthorizationResponse) {
   if (response.ok) return null;
-  const code = failureCodeForStatus(response.status);
-  const error = typeof response.payload.error === "string"
-    ? response.payload.error
+  const verifyAgainReason = response.payload.error === "VERIFY_AGAIN"
+    ? vNextVerifyAgainReason(response.payload.reason)
+    : undefined;
+  const code = verifyAgainReason ? "verify-again" : failureCodeForStatus(response.status);
+  const error = verifyAgainReason
+    ? `VERIFY_AGAIN: ${verifyAgainReason}`
+    : typeof response.payload.error === "string"
+      ? response.payload.error
     : response.status === 429
       ? "The wallet authorization service is receiving too many requests. Verify the route again."
       : response.status >= 500
         ? "The wallet authorization service is temporarily unavailable. Verify the route again."
         : "The wallet authorization request was rejected. Verify the route again.";
-  return new TradeAuthorizationRequestError(code, error, response.status);
+  return new TradeAuthorizationRequestError(code, error, response.status, verifyAgainReason);
 }
 
 export function isCurrentTradeAuthorizationAttempt(attempt: number, currentAttempt: number) {
