@@ -145,7 +145,12 @@ export function createVNextUniswapV2Adapter(input: {
         ...(input.v2AuthorityVerifier ? { authorityVerifier: input.v2AuthorityVerifier } : {}),
         ...(input.v2CanonicalityVerifier ? { canonicalityVerifier: input.v2CanonicalityVerifier } : {})
       });
-      return { evidence: prepared.evidence, feeV2Authorization: prepared.feeV2Authorization, transaction: prepared.transaction };
+      return {
+        evidence: prepared.evidence,
+        feeV2Authorization: prepared.feeV2Authorization,
+        feeV2SwapCalldata: prepared.payloads.swapCalldata,
+        transaction: prepared.transaction
+      };
     }
   };
   return adapter;

@@ -6,7 +6,8 @@ import {
   assertVNextV2AuthorizationRequestContinuity,
   assertVNextV2VerificationContinuity,
   createVNextV2VerificationCommitment,
-  verifyVNextV2VerificationCommitment
+  verifyVNextV2VerificationCommitment,
+  VNextV2VerificationCommitmentError
 } from "../server/vnext-v2-verification-commitment";
 import { vNextAuthorizationAuthorityRequest } from "./authorization-request";
 import { parseVNextAuthorizationBundle } from "./authorization-plan";
@@ -149,8 +150,12 @@ rejectsEvidence({ ...evidence, nextActionCalldataHash: `0x${"b".repeat(64)}` });
 rejectsEvidence({ ...evidence, transactionValueAtomic: "1" });
 rejectsEvidence({ ...evidence, gasLimitUnits: "120001", estimatedNetworkCostWei: "360003000000000" });
 
-assert.throws(() => verifyVNextV2VerificationCommitment({ ...requestIdentity(), token: "v1.bad.bad" }));
-assert.throws(() => verifyVNextV2VerificationCommitment({ ...requestIdentity(), nowMs: nowMs + 60_000 }));
+assert.throws(() => verifyVNextV2VerificationCommitment({ ...requestIdentity(), token: "v1.bad.bad" }), (cause: unknown) => (
+  cause instanceof VNextV2VerificationCommitmentError && cause.reason === "COMMITMENT_INVALID_OR_EXPIRED"
+));
+assert.throws(() => verifyVNextV2VerificationCommitment({ ...requestIdentity(), nowMs: nowMs + 60_000 }), (cause: unknown) => (
+  cause instanceof VNextV2VerificationCommitmentError && cause.reason === "COMMITMENT_INVALID_OR_EXPIRED"
+));
 assert.throws(() => verifyVNextV2VerificationCommitment({ ...requestIdentity(), identityId: "did:privy:other" }));
 assert.throws(() => verifyVNextV2VerificationCommitment({ ...requestIdentity(), wallet: getAddress("0x8888888888888888888888888888888888888888") }));
 

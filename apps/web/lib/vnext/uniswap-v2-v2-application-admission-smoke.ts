@@ -5,7 +5,11 @@ import { decodeFunctionData, encodeFunctionData, erc20Abi, getAddress, keccak256
 import { createRmtExecutionFeeV2Policy, normalizeRmtExecutionFeeV2Input } from "./execution-fee-policy-v2";
 import { VNEXT_DIRECT_NO_RMT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE } from "./execution-settlement";
 import { VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY, bindVNextAtomicFeeAuthorization, type VNextAtomicFeeSettlementProof } from "./provider-fee-settlement";
-import { RMT_UNISWAP_V2_V2_IMPLEMENTATION_ID } from "./uniswap-v2-fee-executor-v2";
+import {
+  RMT_UNISWAP_V2_V2_IMPLEMENTATION_ID,
+  createRmtUniswapV2FeeExecutionV2,
+  encodeRmtUniswapV2FeeExecutionV2
+} from "./uniswap-v2-fee-executor-v2";
 import { ROBINHOOD_UNISWAP_V2_ROUTER } from "./uniswap-v2-authorization-codec";
 import {
   RMT_UNISWAP_V2_V2_DEPLOYED_EXECUTOR,
@@ -29,7 +33,10 @@ import {
 import {
   assertVNextV2VerificationContinuity,
   createVNextV2VerificationCommitment,
-  verifyVNextV2VerificationCommitment
+  verifyVNextV2VerificationCommitment,
+  VNextV2VerificationCommitmentError,
+  type VNextV2VerificationCommitmentClaims,
+  type VNextVerifyAgainReason
 } from "../server/vnext-v2-verification-commitment";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "./pre-sign-evidence";
 
@@ -197,14 +204,26 @@ const economics = normalizeRmtExecutionFeeV2Input({
   providerProtectedOutputAtomic: "1980000",
   settlementMode: "v2-atomic-input-fee"
 });
-const calldata = "0x12345678" as Hex;
+const executionId = `0x${"6".repeat(64)}` as Hex;
+const deadline = "1788000300";
+const calldata = encodeRmtUniswapV2FeeExecutionV2(createRmtUniswapV2FeeExecutionV2({
+  executor: RMT_UNISWAP_V2_V2_DEPLOYED_EXECUTOR,
+  executorRuntimeHash: RMT_UNISWAP_V2_V2_DEPLOYED_RUNTIME_HASH,
+  executionId,
+  economics,
+  trader: proofWallet,
+  inputAsset: inputToken,
+  outputAsset: outputToken,
+  deadline,
+  route: { kind: 0, tokenIn: inputToken, tokenOut: outputToken, pair0: pair, pair1: zeroAddress }
+}));
 const proof: VNextAtomicFeeSettlementProof = {
   verificationState: "verified_atomic", provider: "uniswap-v2", settlementMode: "v2-atomic-input-fee",
   implementationId: RMT_UNISWAP_V2_V2_IMPLEMENTATION_ID,
   executionTarget: RMT_UNISWAP_V2_V2_DEPLOYED_EXECUTOR,
   providerTarget: ROBINHOOD_UNISWAP_V2_ROUTER,
-  calldataHash: keccak256(calldata), executionId: `0x${"6".repeat(64)}`,
-  recipient: proofWallet, deadline: "1788000300", atomicFeeSettlement: true, revertsAtomically: true
+  calldataHash: keccak256(calldata), executionId,
+  recipient: proofWallet, deadline, atomicFeeSettlement: true, revertsAtomically: true
 };
 const approvalData = encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [RMT_UNISWAP_V2_V2_DEPLOYED_EXECUTOR, 1_000_000n] });
 const evidence: VNextPreSignEvidence = {
@@ -240,26 +259,294 @@ const claims = verifyVNextV2VerificationCommitment({
   token: commitment, identityId: "did:privy:uniswap-v2-proof", wallet: proofWallet,
   quoteRequestId: evidence.sourceQuoteRequestId, verificationId: evidence.verificationId, nowMs: nowMs + 1, secret
 });
+const assertContinuity = (candidate: VNextPreSignEvidence, input: { swapCalldata?: Hex; transactionCalldata?: Hex } = {}) => (
+  assertVNextV2VerificationContinuity({
+    claims,
+    evidence: candidate,
+    executorRuntimeHash: RMT_UNISWAP_V2_V2_DEPLOYED_RUNTIME_HASH,
+    swapCalldata: input.swapCalldata ?? calldata,
+    transactionCalldata: input.transactionCalldata ?? approvalData
+  })
+);
 assert.equal(claims.provider, "uniswap-v2");
 assert.equal(claims.infrastructureVerifiedAtBlock, verifiedConfig.verifiedAtBlock);
 assert.equal(claims.infrastructureVerifiedAtBlockHash, verifiedConfig.verifiedAtBlockHash);
-assert.equal(assertVNextV2VerificationContinuity({ claims, evidence: committedEvidence, executorRuntimeHash: RMT_UNISWAP_V2_V2_DEPLOYED_RUNTIME_HASH }), true);
+assert.equal(assertContinuity(committedEvidence), true);
 assert.doesNotThrow(() => parseVNextPreSignEvidence(committedEvidence, {
   quoteRequestId: evidence.sourceQuoteRequestId, inputAsset: inputToken, outputAsset: outputToken,
   inputAmountAtomic: "1000000", provider: "uniswap-v2", protectedOutputFloorAtomic: "1970000", recipient: proofWallet
 }, nowMs + 1));
-assert.throws(() => assertVNextV2VerificationContinuity({
-  claims, evidence: { ...committedEvidence, infrastructureVerifiedAtBlock: "52170001" },
-  executorRuntimeHash: RMT_UNISWAP_V2_V2_DEPLOYED_RUNTIME_HASH
-}), /changed/);
-assert.throws(() => assertVNextV2VerificationContinuity({
-  claims, evidence: { ...committedEvidence, infrastructureVerifiedAtBlockHash: `0x${"7".repeat(64)}` },
-  executorRuntimeHash: RMT_UNISWAP_V2_V2_DEPLOYED_RUNTIME_HASH
-}), /changed/);
-assert.throws(() => assertVNextV2VerificationContinuity({
-  claims, evidence: { ...committedEvidence, pools: [otherWallet] },
-  executorRuntimeHash: RMT_UNISWAP_V2_V2_DEPLOYED_RUNTIME_HASH
-}), /changed/);
+assert.throws(() => assertContinuity({ ...committedEvidence, infrastructureVerifiedAtBlock: "52170001" }), /changed/);
+assert.throws(() => assertContinuity({ ...committedEvidence, infrastructureVerifiedAtBlockHash: `0x${"7".repeat(64)}` }), /changed/);
+assert.throws(() => assertContinuity({ ...committedEvidence, pools: [otherWallet] }), /route changed/);
+
+const nativeEvidence = {
+  verificationId: "33333333-3333-4333-8333-333333333333",
+  sourceQuoteRequestId: "44444444-4444-4444-8444-444444444444",
+  ...nativePlan.evidence
+} as VNextPreSignEvidence;
+const nativeCommitment = createVNextV2VerificationCommitment({
+  evidence: nativeEvidence,
+  identityId: "did:privy:uniswap-v2-native-proof",
+  quoteRequestId: nativeEvidence.sourceQuoteRequestId,
+  verificationId: nativeEvidence.verificationId,
+  executorRuntimeHash: RMT_UNISWAP_V2_V2_DEPLOYED_RUNTIME_HASH,
+  nowMs,
+  secret
+});
+const nativeClaims = verifyVNextV2VerificationCommitment({
+  token: nativeCommitment,
+  identityId: "did:privy:uniswap-v2-native-proof",
+  wallet: proofWallet,
+  quoteRequestId: nativeEvidence.sourceQuoteRequestId,
+  verificationId: nativeEvidence.verificationId,
+  nowMs: nowMs + 1,
+  secret
+});
+
+function nativeMarketEvidence(expectedOutputAtomic: string, protectedOutputAtomic: string, gasLimitUnits = "120001") {
+  const freshEconomics = normalizeRmtExecutionFeeV2Input({
+    policy,
+    inputAssetId: "eip155:4663/native",
+    outputAssetId: `eip155:4663/contract:${outputToken.toLowerCase()}`,
+    userGrossInputAtomic: nativeEvidence.inputAmountAtomic,
+    providerGrossExpectedOutputAtomic: expectedOutputAtomic,
+    providerProtectedOutputAtomic: protectedOutputAtomic,
+    settlementMode: "v2-atomic-input-fee"
+  });
+  const freshExecution = createRmtUniswapV2FeeExecutionV2({
+    executor: RMT_UNISWAP_V2_V2_DEPLOYED_EXECUTOR,
+    executorRuntimeHash: RMT_UNISWAP_V2_V2_DEPLOYED_RUNTIME_HASH,
+    executionId: nativeClaims.executionId as Hex,
+    economics: freshEconomics,
+    trader: proofWallet,
+    inputAsset: zeroAddress,
+    outputAsset: outputToken,
+    deadline: nativeClaims.deadline,
+    route: {
+      kind: 0,
+      tokenIn: nativePlan.execution.route.tokenIn,
+      tokenOut: nativePlan.execution.route.tokenOut,
+      pair0: pair,
+      pair1: zeroAddress
+    }
+  });
+  const freshCalldata = encodeRmtUniswapV2FeeExecutionV2(freshExecution);
+  const freshHash = keccak256(freshCalldata);
+  const freshEvidence = {
+    ...nativeEvidence,
+    expectedOutputAtomic,
+    protectedOutputAtomic,
+    feeV2Economics: freshEconomics,
+    feeV2Settlement: {
+      ...nativeEvidence.feeV2Settlement!,
+      calldataHash: freshHash
+    },
+    calldataHash: freshHash,
+    nextActionCalldataHash: freshHash,
+    gasLimitUnits,
+    estimatedNetworkCostWei: (BigInt(gasLimitUnits) * BigInt(nativeEvidence.feeCeilingWei)).toString()
+  } as VNextPreSignEvidence;
+  return { freshCalldata, freshEvidence };
+}
+
+function assertNativeContinuity(
+  market: ReturnType<typeof nativeMarketEvidence>,
+  claimsOverride: VNextV2VerificationCommitmentClaims = nativeClaims
+) {
+  return assertVNextV2VerificationContinuity({
+    claims: claimsOverride,
+    evidence: market.freshEvidence,
+    executorRuntimeHash: RMT_UNISWAP_V2_V2_DEPLOYED_RUNTIME_HASH,
+    swapCalldata: market.freshCalldata,
+    transactionCalldata: market.freshCalldata
+  });
+}
+
+function rejectsWithReason(action: () => unknown, reason: VNextVerifyAgainReason, label?: string) {
+  let cause: unknown;
+  try {
+    action();
+  } catch (caught) {
+    cause = caught;
+  }
+  assert(cause instanceof VNextV2VerificationCommitmentError);
+  assert.equal(cause.reason, reason, label);
+}
+
+assert.equal(assertNativeContinuity(nativeMarketEvidence(
+  nativeClaims.expectedOutputAtomic,
+  nativeClaims.protectedOutputAtomic,
+  nativeClaims.gasLimitUnits
+)), true, "identical Uniswap V2 market state remains authorized");
+assert.equal(assertNativeContinuity(nativeMarketEvidence("2100000", "2000000")), true,
+  "fresh expected and protected output may strengthen");
+assert.equal(assertNativeContinuity(nativeMarketEvidence(
+  "2100000",
+  "2000000",
+  (BigInt(nativeClaims.gasLimitUnits) + 1n).toString()
+)), true, "fresh server-estimated Uniswap V2 gas may move with canonical block-B calldata");
+assert.equal(assertNativeContinuity(nativeMarketEvidence("1980000", nativeClaims.protectedOutputAtomic)), true,
+  "fresh expected output may worsen while remaining above the verified floor");
+rejectsWithReason(
+  () => assertNativeContinuity(nativeMarketEvidence("1970000", "1960000")),
+  "MARKET_BELOW_VERIFIED_FLOOR"
+);
+rejectsWithReason(
+  () => assertNativeContinuity(nativeMarketEvidence("2100000", "1970000")),
+  "MARKET_BELOW_VERIFIED_FLOOR"
+);
+
+const improved = nativeMarketEvidence("2100000", "2000000");
+assert.notEqual(improved.freshEvidence.calldataHash, nativeClaims.swapCalldataHash,
+  "fresh market output creates fresh canonical executor calldata");
+assert.notEqual(improved.freshEvidence.nextActionCalldataHash, nativeClaims.transactionCalldataHash,
+  "fresh market output creates a fresh canonical wallet transaction");
+assert.equal(assertNativeContinuity(improved), true);
+rejectsWithReason(() => assertNativeContinuity({
+  ...improved,
+  freshCalldata: `${improved.freshCalldata}00` as Hex
+}), "IMMUTABLE_CONTINUITY_CHANGED");
+
+for (const routeMutation of [
+  { route: "weth_hop" as const, pools: [pair, otherWallet], fees: [30, 30] },
+  { pools: [otherWallet] },
+  { pools: [pair, otherWallet] }
+]) {
+  rejectsWithReason(() => assertNativeContinuity({
+    ...improved,
+    freshEvidence: { ...improved.freshEvidence, ...routeMutation } as VNextPreSignEvidence
+  }), "ROUTE_CHANGED");
+}
+
+for (const [mutationIndex, immutableMutation] of [
+  { feeV2Settlement: { ...improved.freshEvidence.feeV2Settlement!, executionId: `0x${"9".repeat(64)}` as Hex } },
+  { feeV2Settlement: { ...improved.freshEvidence.feeV2Settlement!, executionTarget: otherWallet } },
+  { feeV2Economics: { ...improved.freshEvidence.feeV2Economics!, policyHash: `0x${"9".repeat(64)}` as Hex } },
+  { feeV2Economics: { ...improved.freshEvidence.feeV2Economics!, treasury: otherWallet } },
+  { feeV2Economics: { ...improved.freshEvidence.feeV2Economics!, expectedFeeAtomic: "2499", maximumFeeAtomic: "2499", providerInputAtomic: "997501" } },
+  { inputAmountAtomic: "1000001" },
+  { recipient: otherWallet, feeV2Settlement: { ...improved.freshEvidence.feeV2Settlement!, recipient: otherWallet } }
+].entries()) {
+  rejectsWithReason(() => assertNativeContinuity({
+    ...improved,
+    freshEvidence: { ...improved.freshEvidence, ...immutableMutation } as VNextPreSignEvidence
+  }), "IMMUTABLE_CONTINUITY_CHANGED", `immutable mutation ${mutationIndex}`);
+}
+rejectsWithReason(() => assertNativeContinuity({
+  ...improved,
+  freshEvidence: {
+    ...improved.freshEvidence,
+    feeV2Settlement: { ...improved.freshEvidence.feeV2Settlement!, providerTarget: otherWallet }
+  } as VNextPreSignEvidence
+}), "AUTHORITY_CHANGED");
+rejectsWithReason(() => assertNativeContinuity({
+  ...improved,
+  freshEvidence: {
+    ...improved.freshEvidence,
+    feeV2Settlement: {
+      ...improved.freshEvidence.feeV2Settlement!,
+      implementationId: "rmt-uniswap-v3-fee-executor-v2"
+    }
+  } as VNextPreSignEvidence
+}), "AUTHORITY_CHANGED");
+rejectsWithReason(() => assertNativeContinuity(improved, {
+  ...nativeClaims,
+  providerId: `0x${"9".repeat(64)}`
+}), "IMMUTABLE_CONTINUITY_CHANGED");
+rejectsWithReason(() => assertNativeContinuity(improved, {
+  ...nativeClaims,
+  provider: "uniswap-v3"
+}), "IMMUTABLE_CONTINUITY_CHANGED");
+rejectsWithReason(() => assertNativeContinuity(improved, {
+  ...nativeClaims,
+  routeIdentity: `0x${"9".repeat(64)}`
+}), "ROUTE_CHANGED");
+rejectsWithReason(() => assertNativeContinuity({
+  ...improved,
+  freshEvidence: {
+    ...improved.freshEvidence,
+    approvalSpender: otherWallet
+  } as VNextPreSignEvidence
+}), "APPROVAL_CHANGED");
+rejectsWithReason(() => assertNativeContinuity({
+  ...improved,
+  freshEvidence: {
+    ...improved.freshEvidence,
+    deadline: (BigInt(improved.freshEvidence.deadline) + 1n).toString(),
+    feeV2Settlement: {
+      ...improved.freshEvidence.feeV2Settlement!,
+      deadline: (BigInt(improved.freshEvidence.deadline) + 1n).toString()
+    }
+  } as VNextPreSignEvidence
+}), "DEADLINE_CHANGED_OR_EXPIRED");
+
+const hopRoute = {
+  kind: 1 as const,
+  tokenIn: inputToken,
+  tokenOut: outputToken,
+  pair0: pair,
+  pair1: otherWallet
+};
+const hopCalldata = encodeRmtUniswapV2FeeExecutionV2(createRmtUniswapV2FeeExecutionV2({
+  executor: RMT_UNISWAP_V2_V2_DEPLOYED_EXECUTOR,
+  executorRuntimeHash: RMT_UNISWAP_V2_V2_DEPLOYED_RUNTIME_HASH,
+  executionId,
+  economics,
+  trader: proofWallet,
+  inputAsset: inputToken,
+  outputAsset: outputToken,
+  deadline,
+  route: hopRoute
+}));
+const hopHash = keccak256(hopCalldata);
+const v2HopEvidence = {
+  ...committedEvidence,
+  route: "weth_hop" as const,
+  pools: [pair, otherWallet],
+  fees: [30, 30],
+  calldataHash: hopHash,
+  feeV2Settlement: { ...committedEvidence.feeV2Settlement!, calldataHash: hopHash }
+} as VNextPreSignEvidence;
+const hopV2Commitment = createVNextV2VerificationCommitment({
+  evidence: v2HopEvidence,
+  identityId: "did:privy:uniswap-v2-hop-proof",
+  quoteRequestId: v2HopEvidence.sourceQuoteRequestId,
+  verificationId: v2HopEvidence.verificationId,
+  executorRuntimeHash: RMT_UNISWAP_V2_V2_DEPLOYED_RUNTIME_HASH,
+  nowMs,
+  secret
+});
+const hopV2Claims = verifyVNextV2VerificationCommitment({
+  token: hopV2Commitment,
+  identityId: "did:privy:uniswap-v2-hop-proof",
+  wallet: proofWallet,
+  quoteRequestId: v2HopEvidence.sourceQuoteRequestId,
+  verificationId: v2HopEvidence.verificationId,
+  nowMs: nowMs + 1,
+  secret
+});
+assert.equal(assertVNextV2VerificationContinuity({
+  claims: hopV2Claims,
+  evidence: v2HopEvidence,
+  executorRuntimeHash: RMT_UNISWAP_V2_V2_DEPLOYED_RUNTIME_HASH,
+  swapCalldata: hopCalldata,
+  transactionCalldata: approvalData
+}), true);
+rejectsWithReason(() => assertVNextV2VerificationContinuity({
+  claims: hopV2Claims,
+  evidence: { ...v2HopEvidence, pools: [pair, getAddress("0x2222222222222222222222222222222222222222")] },
+  executorRuntimeHash: RMT_UNISWAP_V2_V2_DEPLOYED_RUNTIME_HASH,
+  swapCalldata: hopCalldata,
+  transactionCalldata: approvalData
+}), "ROUTE_CHANGED");
+rejectsWithReason(() => assertVNextV2VerificationContinuity({
+  claims: hopV2Claims,
+  evidence: { ...v2HopEvidence, route: "direct", pools: [pair], fees: [30] },
+  executorRuntimeHash: RMT_UNISWAP_V2_V2_DEPLOYED_RUNTIME_HASH,
+  swapCalldata: hopCalldata,
+  transactionCalldata: approvalData
+}), "ROUTE_CHANGED");
 
 const manifest = JSON.parse(readFileSync(resolve(process.cwd(), "../../packages/contracts/deployments/rmt-uniswap-v2-fee-executor-v2.json"), "utf8"));
 assert.equal(manifest.deployment.executor, RMT_UNISWAP_V2_V2_DEPLOYED_EXECUTOR);

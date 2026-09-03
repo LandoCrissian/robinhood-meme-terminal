@@ -37,6 +37,7 @@ import {
   assertVNextV2AuthorizationRequestContinuity,
   assertVNextV2VerificationContinuity,
   verifyVNextV2VerificationCommitment,
+  type VNextVerifyAgainReason,
   VNextV2VerificationCommitmentConfigurationError,
   VNextV2VerificationCommitmentError
 } from "../../../../lib/server/vnext-v2-verification-commitment";
@@ -51,8 +52,8 @@ export const runtime = "nodejs";
 
 const noStore = { "Cache-Control": "no-store" };
 
-function verifyAgain(message: string) {
-  return Response.json({ error: "VERIFY_AGAIN", message }, { status: 409, headers: noStore });
+function verifyAgain(reason: VNextVerifyAgainReason, message: string) {
+  return Response.json({ error: "VERIFY_AGAIN", reason, message }, { status: 409, headers: noStore });
 }
 
 export async function POST(request: Request) {
@@ -63,6 +64,7 @@ export async function POST(request: Request) {
   try {
     const parsed = vNextAuthorizationRequestSchema.safeParse(await request.json());
     if (!parsed.success) return Response.json({ error: "Invalid VNext authorization request." }, { status: 400, headers: noStore });
+    v2ContinuityRequired = parsed.data.settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE;
     const hasCompleteV4Binding = Boolean(parsed.data.canonicalMarket && parsed.data.v4QuoteEvidence);
     if ((parsed.data.provider === "uniswap-v4") !== hasCompleteV4Binding) {
       return Response.json({ error: "Invalid VNext V4 authorization binding." }, { status: 400, headers: noStore });
@@ -94,7 +96,7 @@ export async function POST(request: Request) {
         : VNEXT_DIRECT_NO_RMT_FEE;
     requireVNextPublicExecutionSettlement(parsed.data.provider, settlementMode);
     if (parsed.data.settlementMode !== settlementMode) {
-      return verifyAgain("The exact verified settlement authority changed. Verify again.");
+      return verifyAgain("AUTHORITY_CHANGED", "The exact verified settlement authority changed. Verify again.");
     }
     v2ContinuityRequired = settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE;
     if (v2ContinuityRequired) {
@@ -106,19 +108,19 @@ export async function POST(request: Request) {
       || parsed.data.executionId === `0x${"0".repeat(64)}`
       || !parsed.data.v2VerificationCommitment
     )) {
-      return verifyAgain("The exact verified V2 authority is missing. Verify again.");
+      return verifyAgain("COMMITMENT_INVALID_OR_EXPIRED", "The exact verified V2 authority is missing. Verify again.");
     }
     if (settlementMode === VNEXT_LEGACY_V1_FEE && (
       !parsed.data.executionId
       || parsed.data.executionId === `0x${"0".repeat(64)}`
       || parsed.data.v2VerificationCommitment !== undefined
     )) {
-      return verifyAgain("The exact verified V1 authority is missing or contradictory. Verify again.");
+      return verifyAgain("IMMUTABLE_CONTINUITY_CHANGED", "The exact verified V1 authority is missing or contradictory. Verify again.");
     }
     if (settlementMode === VNEXT_DIRECT_NO_RMT_FEE && (
       parsed.data.executionId !== undefined || parsed.data.v2VerificationCommitment !== undefined
     )) {
-      return verifyAgain("The direct execution request contains contradictory fee authority. Verify again.");
+      return verifyAgain("IMMUTABLE_CONTINUITY_CHANGED", "The direct execution request contains contradictory fee authority. Verify again.");
     }
 
     const authorizationWallClockMs = Date.now();
@@ -166,7 +168,14 @@ export async function POST(request: Request) {
       || (settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE && prepared.evidence.feeV2Settlement?.executionId !== parsed.data.executionId);
     if (evidenceChanged) {
       return v2Claims
-        ? verifyAgain("The exact verified V2 route evidence changed. Verify again.")
+        ? verifyAgain(
+            BigInt(prepared.evidence.protectedOutputAtomic) < BigInt(parsed.data.expectedProtectedOutputAtomic)
+              ? "MARKET_BELOW_VERIFIED_FLOOR"
+              : prepared.evidence.status !== parsed.data.expectedStatus
+                ? "APPROVAL_CHANGED"
+              : "IMMUTABLE_CONTINUITY_CHANGED",
+            "The exact verified V2 route evidence changed. Verify again."
+          )
         : Response.json({ error: "Route evidence changed. Verify the route again." }, { status: 409, headers: noStore });
     }
 
@@ -175,7 +184,10 @@ export async function POST(request: Request) {
         ? configuredVNextUniswapV2FeeExecutorV2()
         : configuredVNextUniswapFeeExecutorV2();
       if (!config || getAddress(config.executor) !== getAddress(v2Claims.executor)) {
-        throw new VNextV2VerificationCommitmentError("The V2 executor authority is unavailable or changed.");
+        throw new VNextV2VerificationCommitmentError(
+          "The V2 executor authority is unavailable or changed.",
+          "AUTHORITY_CHANGED"
+        );
       }
       assertVNextV2VerificationContinuity({
         claims: v2Claims,
@@ -184,7 +196,9 @@ export async function POST(request: Request) {
           sourceQuoteRequestId: parsed.data.quoteRequestId,
           ...prepared.evidence
         } as never,
-        executorRuntimeHash: config.executorRuntimeHash
+        executorRuntimeHash: config.executorRuntimeHash,
+        swapCalldata: prepared.feeV2SwapCalldata,
+        transactionCalldata: prepared.transaction.data
       });
     }
     const timing = v2Claims
@@ -192,7 +206,7 @@ export async function POST(request: Request) {
       : deriveVNextAuthorizationTiming(chainTimestampSeconds, authorizationWallClockMs);
     if (BigInt(prepared.evidence.deadline) !== timing.deadlineSeconds) {
       return v2Claims
-        ? verifyAgain("The final server deadline changed during V2 authorization. Verify again.")
+        ? verifyAgain("DEADLINE_CHANGED_OR_EXPIRED", "The final server deadline changed during V2 authorization. Verify again.")
         : Response.json({ error: "The final server deadline changed during authorization." }, { status: 409, headers: noStore });
     }
     const preparedAtMs = timing.preparedAtMs;
@@ -271,8 +285,18 @@ export async function POST(request: Request) {
     if (cause instanceof VNextV2VerificationCommitmentConfigurationError) {
       return Response.json({ error: cause.message }, { status: 503, headers: noStore });
     }
-    if (cause instanceof VNextV2VerificationCommitmentError || v2ContinuityRequired) {
-      return verifyAgain("The exact verified V2 transaction can no longer be authorized. Verify again.");
+    if (cause instanceof VNextV2VerificationCommitmentError) {
+      return verifyAgain(cause.reason, "The exact verified V2 transaction can no longer be authorized. Verify again.");
+    }
+    if (v2ContinuityRequired) {
+      const reason: VNextVerifyAgainReason = cause instanceof Error && /protected output exceeds the fresh provider quote/.test(cause.message)
+        ? "MARKET_BELOW_VERIFIED_FLOOR"
+        : cause instanceof Error && /deadline is stale|deadline.*window/.test(cause.message)
+          ? "DEADLINE_CHANGED_OR_EXPIRED"
+          : cause instanceof Error && /authority|runtime|implementation|factory|router|policy/i.test(cause.message)
+            ? "AUTHORITY_CHANGED"
+            : "PREPARE_FAILED";
+      return verifyAgain(reason, "The exact verified V2 transaction can no longer be authorized. Verify again.");
     }
     const message = cause instanceof Error && /deadline is stale|exact next action is not ready|wallet authorization is not available|V2 wallet authorization is disabled|V2 authorization is enabled without a complete executor policy|RMT_EXECUTION_V2 policy is not effective until block|rejected Uniswap V4 execution/.test(cause.message)
       ? cause.message
