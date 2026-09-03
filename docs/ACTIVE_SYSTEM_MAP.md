@@ -12,13 +12,13 @@
 | NFT technical verification | `apps/nft-indexer/src/technical-verification.ts`, `packages/shared/src/nft/technical-verification.ts`, reviewed manifests under `docs/nft/technical-verification/*` | ACTIVE FOUNDATION | Creation provenance, runtime identity and ERC interface evidence fail closed. Provider/network failure remains inconclusive. `RMT_NFT_FACTORY_CLONE_PROVENANCE_V2` is the next NFT-specific technical task; successful verification may produce `WATCHING`, never automatic public admission. |
 | NFT marketplace evidence | `apps/nft-marketplace-indexer`, `packages/shared/src/nft/marketplace-evidence.ts` | ACTIVE READ-EVIDENCE FOUNDATION | Currently scoped to CCFF00. OpenSea/Seaport evidence may describe provider-reported listings, offers, sales and volume; it is not canonical ownership authority, verified settlement or execution authorization. |
 | Project Market | curated token and NFT authority domains | ACTIVE PRODUCT FOUNDATION | Future token/NFT connections require owner confirmation plus independent technical verification. Names, symbols, branding, metadata and contract functions never establish a relationship. |
-| External wallet gateway | Privy external connectors, EIP-6963 discovery and the Privy Wagmi adapter | ACTIVE FOUNDATION / PUBLIC SUBMISSION DISABLED | One terminal control and exact connector-qualified selection. Public authorization and wallet submission remain disabled until a separate explicit owner release. See [`UNIFIED_WALLET_GATEWAY.md`](UNIFIED_WALLET_GATEWAY.md). |
+| External wallet gateway | Privy external connectors, EIP-6963 discovery and the Privy Wagmi adapter | ACTIVE / PROVIDER-RELEASE-SCOPED | One terminal control and exact connector-qualified selection. Uniswap V3 V2 wallet execution is public/live; Uniswap V2 V2 remains public-off pending a separate explicit release. See [`UNIFIED_WALLET_GATEWAY.md`](UNIFIED_WALLET_GATEWAY.md). |
 | Retired terminal presentation | former root feed, market workspace and portfolio trees | RETIRED | Replaced market and portfolio URLs restore intent inside VNext; no second terminal shell or V7–V12 global cascade remains active. |
 | V6 protocol history | `apps/indexer` | ACTIVE COMPATIBILITY | Canonical deployed V6 launches, trades, graduation, fees and origin only. |
 | External project origin | `apps/external-origin-indexer` | ACTIVE FOUNDATION | Fail closed; `source-listed` and `token-created` remain distinct. StonkBrokers has candidate identity only: the production launcher contract/event is unverified, no claims are served and activation remains locked. |
 | Curated market authority | `apps/web/lib/vnext/curated-market-registry.ts` plus fresh RPC verification | ACTIVE / CANONICAL | Owner-reviewed entries pin canonical market identity for the eight seeds. Curated authority is separate from broad visibility and dynamic provider-specific execution eligibility. Aliases are not identity authority. |
 | Historical external markets | `apps/market-indexer` | OPTIONAL / RETIREMENT PENDING | No production-health, directory, search or execution requirement remains. Stop compute only after curated-web acceptance; retain its database during a reviewed recovery window. |
-| Same-chain execution | VNext intent, quote, verification, authorization and recovery domains | ACTIVE FOUNDATION / RELEASE-GATED | Provider admission is capability-specific. The admitted V1 Uniswap V3 executor may collect exactly 25 basis points atomically; every other provider and unsupported V1 route remains direct/no-fee. Dormant V2 work is not an execution prerequisite. |
+| Same-chain execution | VNext intent, quote, verification, authorization and recovery domains | ACTIVE / PROVIDER-RELEASE-SCOPED | `RMT_EXECUTION_V2` is the shared 25-basis-point input-fee policy. Uniswap V3 V2 is public/live. Uniswap V2 V2 is deployed and passed its controlled native-input mainnet proof, but remains public-off pending a separate release. Provider admission remains capability-specific. |
 | Funding/recovery | VNext Across domain and server-side Firebase persistence | RELEASE-GATED | Asynchronous, wallet-bound and non-custodial. |
 | RWA registry/evidence | Robinhood stock-token registry and policy evidence | ACTIVE FOUNDATION | Canonical RWA and RWA-paired markets remain distinct. |
 | Profiles/referrals | preserved web source, Firebase records and rules | PAUSED | Not active terminal product; data is preserved. |
@@ -46,11 +46,11 @@
 
 ## Environment status
 
-- `NEXT_PUBLIC_RMT_VNEXT_AUTHORIZATION_ENABLED=false`, `RMT_VNEXT_AUTHORIZATION_ENABLED=false` and `NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED=false` are the current owner-required public defaults. Capability does not imply activation; no wallet prompt or broadcast is authorized without a separate explicit owner release.
+- Wallet execution is exact-provider release-scoped. Uniswap V3 V2 is public/live; Uniswap V2 V2 remains public-off. Capability, deployment and controlled proof do not imply another provider's public activation.
 - `NEXT_PUBLIC_RMT_LIVE_*`, creator/V7, profile and autonomous execution controls: paused unless required for preserved compatibility tests; must not be newly enabled.
-- Current owner product policy authorizes exactly 25 basis points only on atomically settled `RMT_EXECUTION_V1` Uniswap V3 executor trades. `RMT_EXECUTION_FEE_ENABLED` remains disabled; the V1 path uses only its three exact provider-specific gates.
-- `RMT_EXECUTION_V1` deployment, policy, proof, receipt and 2026-08-16 release-boundary records remain immutable technical evidence. The explicit 2026-08-30 owner decision supplies current policy authority; production activation still requires the reviewed release sequence.
-- `RMT_EXECUTION_V2` is dormant preserved implementation work. It is not current roadmap authority, a provider admission requirement or a Terminal completion condition.
+- Current owner product policy is the shared `RMT_EXECUTION_V2` version-2 policy: exactly 25 basis points on gross input, atomically settled through an independently admitted provider executor. Uniswap V3 V2 is public/live in Production.
+- `RMT_EXECUTION_V1` deployment, policy, proof, receipt and 2026-08-16 release-boundary records remain immutable historical evidence; they are not the forward policy.
+- The Uniswap V2 V2 executor is deployed and its controlled native ETH-to-PONS settlement passed in transaction `0xb8ff9e561d4a333f5f91eb707daf6e8b00d0d0565de68355cf5966c1a6cdbb9e` at block `53089890`. Public V2 execution remains off pending a separate owner-authorized Production release; no bidirectional live proof is claimed.
 - Production values are changed only through a separate authorized release action, never by architecture documentation.
 
 ## Contract source classification
@@ -61,7 +61,7 @@ V6 governance, registry, gate, policy, factory, bootstrap, official migration, c
 
 ### B. Terminal security / preserved optional execution
 
-Position Guard source, the separate Sushi deadline-guard track and the corrected deployed `RMTUniswapV3FeeExecutorV1` atomic settlement primitive at `0xcB9c00524848038D211921e0f3975190D7Aa1e8f`. Its exact immutable-filled runtime, canonical Robinhood L2 policy block, deployment receipt, controlled settlement and historical release boundary are verified. Both executor deployments and all fee foundations are preserved evidence; none authorizes current fee collection or public wallet submission.
+Position Guard source, the separate Sushi deadline-guard track, historical `RMTUniswapV3FeeExecutorV1` evidence, and the deployed V2 atomic-settlement executors. Uniswap V3 V2 is public/live under the shared `RMT_EXECUTION_V2` policy. Uniswap V2 V2 is deployed and controlled-live-proven but public-off pending a separate release. Exact runtime, policy, settlement and release boundaries remain independently enforced.
 
 ### C. Paused experimental
 

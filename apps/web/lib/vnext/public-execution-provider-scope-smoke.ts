@@ -4,7 +4,9 @@ import {
   VNextPublicExecutionProviderConfigurationError,
   VNextPublicExecutionProviderNotReleasedError,
   VNextPublicExecutionSettlementNotReleasedError,
+  hasExactVNextV2V3PublicExecutionProviderScope,
   hasExactVNextV3V2PublicExecutionProviderScope,
+  readVNextPublicExecutionReleaseScope,
   readVNextPublicExecutionProviderScope,
   requireVNextPublicExecutionProvider,
   requireVNextPublicExecutionSettlement,
@@ -33,6 +35,32 @@ assert.throws(
   VNextPublicExecutionSettlementNotReleasedError
 );
 assert.equal(hasExactVNextV3V2PublicExecutionProviderScope(v3OnlyEnv), true);
+assert.equal(readVNextPublicExecutionReleaseScope(v3OnlyEnv), "v3-only");
+
+const v2V3Env = { RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "uniswap-v2,uniswap-v3" };
+assert.deepEqual(scope(v2V3Env.RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS), {
+  configured: true,
+  valid: true,
+  providers: ["uniswap-v2", "uniswap-v3"]
+});
+assert.equal(hasExactVNextV2V3PublicExecutionProviderScope(v2V3Env), true);
+assert.equal(hasExactVNextV3V2PublicExecutionProviderScope(v2V3Env), false);
+assert.equal(readVNextPublicExecutionReleaseScope(v2V3Env), "v2-v3");
+assert.doesNotThrow(() => requireVNextPublicExecutionProvider("uniswap-v2", v2V3Env));
+assert.doesNotThrow(() => requireVNextPublicExecutionProvider("uniswap-v3", v2V3Env));
+assert.doesNotThrow(() => requireVNextPublicExecutionSettlement("uniswap-v2", VNEXT_V2_ATOMIC_INPUT_FEE, v2V3Env));
+
+for (const noncanonical of [
+  "uniswap-v2",
+  "uniswap-v3,uniswap-v2",
+  "uniswap-v2, uniswap-v3",
+  " uniswap-v2,uniswap-v3",
+  "uniswap-v2,uniswap-v3,uniswap-v4"
+]) {
+  assert.equal(scope(noncanonical).valid, true, `${noncanonical} remains a structurally known provider list`);
+  assert.equal(readVNextPublicExecutionReleaseScope({ RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: noncanonical }), "invalid-unreleased");
+  assert.equal(hasExactVNextV2V3PublicExecutionProviderScope({ RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: noncanonical }), false);
+}
 
 for (const provider of ["uniswap-v2", "uniswap-v4", "sushi", "up-v2", "up-cl", "zero-x-swap", "zero-x-gasless", "uniswapx"] as const) {
   assert.throws(() => requireVNextPublicExecutionProvider(provider, v3OnlyEnv), VNextPublicExecutionProviderNotReleasedError);

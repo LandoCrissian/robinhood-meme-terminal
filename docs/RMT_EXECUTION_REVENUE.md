@@ -1,14 +1,14 @@
 # RMT execution revenue
 
-**Status: CURRENT V1 RELEASE AUTHORITY; DORMANT V2 IMPLEMENTATION WORK**
+**Status: CURRENT V2 POLICY; V3 PUBLIC/LIVE; V2 PROVIDER PUBLIC-OFF**
 
 ## Current owner product policy
 
-The owner authorizes exactly 25 basis points on trades that execute atomically through the admitted `RMT_EXECUTION_V1` Uniswap V3 fee executor.
+The owner authorizes the shared `RMT_EXECUTION_V2` version-2 policy: exactly 25 basis points on gross input for trades that execute atomically through an independently admitted provider executor. Uniswap V3 V2 is public/live in Production. Uniswap V2 V2 is deployed and controlled-live-proven, but remains public-off pending a separate explicit release.
 
-Every other provider and every route the V1 settlement rules cannot admit remains direct/no-RMT-fee. The fee-bearing route must rank on trader net economics, disclose the fee before wallet review, use the exact executor and treasury, and reconcile exactly one canonical settlement. A quote or enabled source path is not revenue; only a successful, final settlement is.
+Every provider requires its own exact settlement, execution and public-release authority. The fee-bearing route must rank on trader net economics, disclose the fee before wallet review, use the exact executor and treasury, and reconcile exactly one canonical settlement. A quote, deployed executor, controlled proof or enabled source path is not public activation or revenue; only a successful final settlement is revenue.
 
-This 2026-08-30 owner decision reauthorizes the immutable `RMT_EXECUTION_V1` identity below for a separately reviewed production release. The historical deployment, controlled proof, receipt and release boundary remain unchanged. `RMT_EXECUTION_V2` stays dormant and self-authorizes nothing.
+`RMT_EXECUTION_V1` remains preserved below as historical deployment, controlled-proof, receipt and release evidence. It is not the forward policy. `RMT_EXECUTION_V2` is current policy authority, but it does not self-authorize a provider: Uniswap V2 public activation still requires a separate explicit owner-authorized Production release.
 
 ## Historical V1 policy and release record
 
@@ -27,7 +27,7 @@ The owner has approved implementation support for the first forward terminal exe
 
 The provider-specific public release action completed on 2026-08-16. At that historical release, `RMT_EXECUTION_V1` applied only to admitted public Uniswap V3 fee-executor routes. The recorded activation boundary is Robinhood block `37805030` (`0xdfb2560bb21f75c08e2ddaeac71075fb71523f45a543149018891c5fa673b9b2`, timestamp `2026-08-16T07:42:40Z`). The historical release did not make another provider, route or transaction class fee-bearing.
 
-The repository also preserves a prior additive `RMT_EXECUTION_V2` design for exactly 25 basis points on gross input, without a static per-token allowlist or fee-free provider fallback. V1 artifacts and receipts remain immutable. V2 is dormant implementation work, not current owner policy, roadmap authority or a completion gate; see [`RMT_UNIVERSAL_EXECUTION_FEE_V2_FOUNDATION.md`](RMT_UNIVERSAL_EXECUTION_FEE_V2_FOUNDATION.md).
+The repository implements `RMT_EXECUTION_V2` as the current shared atomic input-fee policy: exactly 25 basis points on gross input, without a static per-token allowlist or fee-free fallback after atomic settlement is selected. V1 artifacts and receipts remain immutable historical evidence. The Uniswap V2 V2 controlled native ETH-to-PONS proof passed in transaction `0xb8ff9e561d4a333f5f91eb707daf6e8b00d0d0565de68355cf5966c1a6cdbb9e` at block `53089890`, settling to treasury `0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC`. This proves that controlled direction only; it neither claims a bidirectional live proof nor activates public V2.
 
 Across funding, wallet transfers, failed transactions, quote requests and unrelated transactions are not eligible. V6 economics, Stonk/up allocations, PoH allocations, subscriptions, hidden spread, positive-slippage capture and automatic fee-conversion swaps are not part of this policy.
 
@@ -285,4 +285,4 @@ Production revenue is not booked from a quote or plan. It exists only after a su
 - Public fee-routing mode: historically required every policy, proof-binding, authorization and wallet-submission gate to agree and failed closed on mismatch.
 - Initial public monitoring baseline: no confirmed public settlement events observed through block `37836628` at `2026-08-16T08:35:42Z`; executor balances and router allowances were zero. This is an observation, not a promise that the count remains zero.
 
-Current owner policy authorizes the exact V1 Uniswap V3 path described above at 25 basis points. All other providers and unsupported routes remain fee-free. Dormant V2 work is not authorization to activate another provider or settlement path.
+Current owner policy is the shared `RMT_EXECUTION_V2` version-2, 25-basis-point input-fee policy. Uniswap V3 V2 is public/live. Uniswap V2 V2 is deployed and controlled-live-proven, but public execution remains off until a separate owner-authorized Production release. Historical V1 evidence and V2 provider proof do not authorize any additional provider or route.

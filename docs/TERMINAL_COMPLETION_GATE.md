@@ -40,7 +40,7 @@
 - [ ] Stonk projects show every verified market and are never forced through up.
 - [ ] up-v2 and up-cl discovery, live fees and gauge enrichment are independently anchored; nongauged pools remain visible.
 - [ ] Project origin, market venue and RMT execution origin remain separate records.
-- [ ] Ecosystem volume, RMT-originated volume and historical RMT fee evidence are independent metrics; current zero-fee policy is never presented as fee revenue.
+- [ ] Ecosystem volume, RMT-originated volume and confirmed RMT fee settlements are independent metrics; quote or plan fees are never presented as settled revenue.
 
 ## RWA and policy
 
@@ -50,10 +50,10 @@
 
 ## Economics
 
-- [x] Current owner product policy is 25 basis points only for atomically settled admitted `RMT_EXECUTION_V1` Uniswap V3 executor trades; all other providers and unsupported V1 routes remain direct/no-fee.
-- [x] `RMT_EXECUTION_V1` deployment, controlled-proof, release, receipt and monitoring evidence remains preserved and pinned to the current owner-authorized policy identity.
-- [x] `RMT_EXECUTION_V2` remains dormant implementation work and is not a provider-admission requirement or Terminal completion condition.
-- [x] The V1 fee has a new explicit owner policy and requires separate implementation, verification, release and production-activation evidence before collection is reported active.
+- [x] Current owner product policy is `RMT_EXECUTION_V2` version 2: 25 basis points on input, atomically settled through an independently admitted provider executor.
+- [x] Uniswap V3 V2 is public/live in Production under the exact shared V2 policy, executor, treasury, verification and recovery authority.
+- [x] Uniswap V2 V2 is deployed and its controlled native ETH-to-PONS mainnet proof passed in transaction `0xb8ff9e561d4a333f5f91eb707daf6e8b00d0d0565de68355cf5966c1a6cdbb9e` at block `53089890`; public V2 remains off pending a separate release. This does not claim a bidirectional live proof.
+- [x] `RMT_EXECUTION_V1` deployment, controlled-proof, release, receipt and monitoring evidence remains preserved as immutable historical evidence, not forward policy authority.
 - [ ] No historical V6 split is reused as forward terminal policy.
 
 ## NFT and Project Market
@@ -83,7 +83,7 @@
 
 ## Current known gaps
 
-VNext is the production root and `/vnext`, `/market/[address]` and `/portfolio` converge on that canonical Token Terminal. Retired terminal CSS generations are no longer globally loaded. The curated registry contains exactly eight canonical seed markets; bounded provider discovery may expose additional markets but cannot confer curated authority or execution eligibility, and historical market-indexer rows do not control the public Terminal. External-wallet reliability still requires supported-device acceptance. Public authorization and wallet submission remain release-gated. Across public funding remains incomplete and disabled. Profiles/community/Creator/V7 source remains preserved and paused separately from the active NFT lane. The admitted Uniswap V3 V1 executor is the only current fee-bearing path; universal V2 settlement remains dormant. NFT work remains separately authorized and non-conflicting.
+VNext is the production root and `/vnext`, `/market/[address]` and `/portfolio` converge on that canonical Token Terminal. Retired terminal CSS generations are no longer globally loaded. The curated registry contains exactly eight canonical seed markets; bounded provider discovery may expose additional markets but cannot confer curated authority or execution eligibility, and historical market-indexer rows do not control the public Terminal. External-wallet reliability still requires supported-device acceptance. Wallet execution remains exact-provider release-gated. Across public funding remains incomplete and disabled. Profiles/community/Creator/V7 source remains preserved and paused separately from the active NFT lane. Uniswap V3 V2 is the current public/live fee-bearing path; Uniswap V2 V2 is deployed and controlled-live-proven but public-off pending a separate release. NFT work remains separately authorized and non-conflicting.
 
 ## Explicit completion decision
 

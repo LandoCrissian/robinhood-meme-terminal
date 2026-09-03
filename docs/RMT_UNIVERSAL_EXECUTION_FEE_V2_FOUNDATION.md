@@ -1,12 +1,12 @@
 # RMT universal execution fee V2 foundation
 
-**Status: DORMANT / PRESERVED IMPLEMENTATION REFERENCE — NOT CURRENT OWNER POLICY**
+**Status: HISTORICAL FOUNDATION FOR CURRENT SHARED V2 POLICY**
 
-Current owner product policy is `RMT_FEE = 0`. No V2 fee activation is authorized, and universal fee settlement is not a provider-admission requirement, roadmap prerequisite or Terminal completion gate. Any future fee requires a new explicit owner decision and separately reviewed implementation, release and production activation.
+Current owner product policy is `RMT_EXECUTION_V2` version 2: an atomic 25-basis-point input fee for independently admitted provider execution. Uniswap V3 V2 is public/live. Uniswap V2 V2 is deployed and controlled-live-proven but public-off pending a separate release. This foundation remains a historical design record; it does not admit another provider or replace provider-specific implementation, proof and release authority.
 
 ## Preserved V2 design record
 
-`RMT_EXECUTION_V2` was designed as an additive universal policy for RMT wallet-executable trades on Robinhood Chain. The preserved design charges exactly 25 basis points on gross input, with floor rounding and no minimum fee. The provider is quoted with `providerInput = userGrossInput - floor(userGrossInput * 25 / 10000)`. The fee and swap must settle atomically; a reverted or failed swap settles zero RMT fee. Discovery, search, quotes, simulations, approvals, ordinary transfers, and bridge/funding transactions are not fee-bearing under that dormant design.
+`RMT_EXECUTION_V2` was designed as an additive universal policy for RMT wallet-executable trades on Robinhood Chain and is now the shared current policy. It charges exactly 25 basis points on gross input, with floor rounding and no minimum fee. The provider is quoted with `providerInput = userGrossInput - floor(userGrossInput * 25 / 10000)`. The fee and swap must settle atomically; a reverted or failed swap settles zero RMT fee. Discovery, search, quotes, simulations, approvals, ordinary transfers, and bridge/funding transactions are not fee-bearing.
 
 V1 remains immutable historical policy and deployment evidence. V2 does not change its descriptor, policy hash, deployment manifest, or settlement receipts.
 
@@ -28,9 +28,9 @@ The final V2 treasury and effective block are owner-reserved activation inputs, 
 
 The presence of normalized economics is not settlement proof. Wallet admission requires the exact signed transaction to use an explicitly registered V2 settlement implementation and bind the active policy, economics, settlement proof, authorization, execution target, provider target, calldata hash, recipient, deadline, and execution ID.
 
-## Dormant foundation admission design
+## Historical foundation admission design
 
-The server-owned settlement registry has three conceptual outcomes: quote only, V2 atomic input fee, and (reserved for future review) other explicitly versioned modes. Every current provider is `QUOTE_ONLY` in this tranche.
+The server-owned settlement registry has three conceptual outcomes: quote only, V2 atomic input fee, and (reserved for future review) other explicitly versioned modes. At this historical foundation baseline every provider was `QUOTE_ONLY`; later provider-specific admissions supersede that baseline without rewriting its design record.
 
 If V2 is explicitly reauthorized in the future, this design requires all of the following before a provider becomes wallet-authorizable:
 

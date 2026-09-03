@@ -28,6 +28,11 @@ export type VNextPublicExecutionProviderScope = Readonly<{
   providers: readonly VNextQuoteProvider[];
 }>;
 
+export type VNextPublicExecutionReleaseScope = "v3-only" | "v2-v3" | "invalid-unreleased";
+
+export const VNEXT_PUBLIC_EXECUTION_RELEASE_SCOPE_V3_ONLY = "uniswap-v3" as const;
+export const VNEXT_PUBLIC_EXECUTION_RELEASE_SCOPE_V2_V3 = "uniswap-v2,uniswap-v3" as const;
+
 export class VNextPublicExecutionProviderConfigurationError extends Error {
   constructor() {
     super("RMT public execution provider scope is malformed.");
@@ -129,6 +134,21 @@ export function vNextPublicExecutionProviderScopeErrorResponse(cause: unknown) {
 export function hasExactVNextV3V2PublicExecutionProviderScope(
   env: VNextPublicExecutionProviderEnvironment = process.env as unknown as VNextPublicExecutionProviderEnvironment
 ) {
+  return readVNextPublicExecutionReleaseScope(env) === "v3-only";
+}
+
+export function hasExactVNextV2V3PublicExecutionProviderScope(
+  env: VNextPublicExecutionProviderEnvironment = process.env as unknown as VNextPublicExecutionProviderEnvironment
+) {
+  return readVNextPublicExecutionReleaseScope(env) === "v2-v3";
+}
+
+export function readVNextPublicExecutionReleaseScope(
+  env: VNextPublicExecutionProviderEnvironment = process.env as unknown as VNextPublicExecutionProviderEnvironment
+): VNextPublicExecutionReleaseScope {
   const scope = readVNextPublicExecutionProviderScope(env);
-  return scope.valid && scope.providers.length === 1 && scope.providers[0] === "uniswap-v3";
+  if (!scope.configured || !scope.valid) return "invalid-unreleased";
+  if (env.RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS === VNEXT_PUBLIC_EXECUTION_RELEASE_SCOPE_V3_ONLY) return "v3-only";
+  if (env.RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS === VNEXT_PUBLIC_EXECUTION_RELEASE_SCOPE_V2_V3) return "v2-v3";
+  return "invalid-unreleased";
 }

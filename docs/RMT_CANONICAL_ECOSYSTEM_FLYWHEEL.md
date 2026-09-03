@@ -23,8 +23,8 @@ The Token Terminal must first become useful and trade-worthy. Platform fees, buy
 - Broad Robinhood Chain Token market visibility is desired. Visibility is discovery and market-data presentation; it does not imply RMT endorsement, curated authority, execution eligibility, Project Market identity, or Distribution eligibility.
 - The eight reviewed Token markets remain the canonical curated seed set. They are not the maximum public catalog.
 - `ACTIVE` remains ahead of `TRENDING`. Membership in `ACTIVE`, `TRENDING`, and `NEW` must come from real market evidence rather than presentation fill.
-- Current RMT platform fee policy is `RMT_FEE = 0`. No platform-fee recipient, hidden surcharge, buyback, or Distribution routing is part of the current Token trade path.
-- Fee activation requires a new explicit owner decision plus separately reviewed implementation, release, and production activation.
+- Current RMT platform fee policy is `RMT_EXECUTION_V2` version 2: 25 basis points on gross input for atomic, independently admitted provider execution. Uniswap V3 V2 is public/live; Uniswap V2 V2 remains public-off pending a separate release. No hidden surcharge, buyback, or Distribution routing is part of the Token trade path.
+- Each additional provider activation requires an explicit owner decision plus separately reviewed implementation, proof, release, and Production activation.
 - Future owner-authorized ecosystem revenue may market-buy RMT. This is a future policy direction, not current execution authority.
 - RMT-token fee economics remain a separate accounting domain from any future RMT platform fee.
 - The Distribution Center is intended to return value to participating communities.
