@@ -216,6 +216,90 @@ assert.deepEqual(v2PublicReady.publicExecution.providers, ["uniswap-v3"]);
 assert.deepEqual(v2PublicReady.publicExecution.unintendedProviders, []);
 assert.equal(v2PublicReady.publicExecution.exactV3V2ReleaseScope, true);
 
+const exactV2V3PublicAuthority = {
+  NODE_ENV: "production",
+  VERCEL_ENV: "production",
+  RMT_VNEXT_SHELL_ENABLED: "true",
+  NEXT_PUBLIC_RMT_VNEXT_AUTHORIZATION_ENABLED: "true",
+  RMT_VNEXT_AUTHORIZATION_ENABLED: "true",
+  NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED: "true",
+  ...v2ExactConfiguration,
+  RMT_VNEXT_UNISWAP_V3_V2_PUBLIC_AUTHORIZATION_ENABLED: "true",
+  RMT_VNEXT_UNISWAP_V2_V2_EXECUTOR_ENABLED: "true",
+  RMT_VNEXT_UNISWAP_V2_V2_EXECUTOR_ADDRESS: "0xB4bF1d99a3BF9201f8197682dcD2bF97725D6230",
+  RMT_VNEXT_UNISWAP_V2_V2_EXECUTOR_RUNTIME_HASH: "0x3a0518035f7a47c752eba630e02db8a72b14c175977fbfcbf6d708ea1a36c647",
+  RMT_VNEXT_UNISWAP_V2_V2_AUTHORIZATION_ENABLED: "true",
+  RMT_VNEXT_UNISWAP_V2_V2_PUBLIC_AUTHORIZATION_ENABLED: "true",
+  RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "uniswap-v2,uniswap-v3"
+} as const;
+
+function v2V3Readiness(overrides: Record<string, string | undefined> = {}) {
+  return readVNextReleaseReadiness({ ...exactV2V3PublicAuthority, ...overrides });
+}
+
+const exactV2V3PublicReady = v2V3Readiness();
+assert.equal(exactV2V3PublicReady.configurationConsistent, true);
+assert.equal(exactV2V3PublicReady.publicExecution.releaseScope, "v2-v3");
+assert.equal(exactV2V3PublicReady.publicExecution.exactV3V2ReleaseScope, false);
+assert.equal(exactV2V3PublicReady.publicExecution.exactV2V3ReleaseScope, true);
+assert.deepEqual(exactV2V3PublicReady.publicExecution.providers, ["uniswap-v2", "uniswap-v3"]);
+assert.deepEqual(exactV2V3PublicReady.publicExecution.unintendedProviders, []);
+assert.equal(exactV2V3PublicReady.providers.uniswapV3V2FeeExecutor.publicAuthorizationEnabled, true);
+assert.equal(exactV2V3PublicReady.providers.uniswapV3V2FeeExecutor.exactAuthorityValid, true);
+assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.policyEnabled, true);
+assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.executorEnabled, true);
+assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.configured, true);
+assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.proofWalletConfigured, false);
+assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.commitmentConfigured, true);
+assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.releaseScope, "public");
+assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.strictVerificationAvailable, true);
+assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.walletAuthorizationAvailable, true);
+assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.authorizationEnabled, true);
+assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.publicAuthorizationEnabled, true);
+assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.exactAuthorityValid, true);
+assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.controlledLiveProofComplete, true);
+assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.liveErc20ToNativeStatus, "OWNER_WAIVED_NOT_EXECUTED");
+assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.bidirectionalLiveProof, false);
+
+for (const [label, overrides] of Object.entries({
+  missingV2Executor: { RMT_VNEXT_UNISWAP_V2_V2_EXECUTOR_ADDRESS: undefined },
+  wrongV2Executor: { RMT_VNEXT_UNISWAP_V2_V2_EXECUTOR_ADDRESS: "0x1111111111111111111111111111111111111111" },
+  wrongV2Runtime: { RMT_VNEXT_UNISWAP_V2_V2_EXECUTOR_RUNTIME_HASH: `0x${"1".repeat(64)}` },
+  missingV2Authorization: { RMT_VNEXT_UNISWAP_V2_V2_AUTHORIZATION_ENABLED: undefined },
+  missingV2PublicAuthorization: { RMT_VNEXT_UNISWAP_V2_V2_PUBLIC_AUTHORIZATION_ENABLED: undefined },
+  v2ScopeWithPublicOff: { RMT_VNEXT_UNISWAP_V2_V2_PUBLIC_AUTHORIZATION_ENABLED: "false" },
+  v2PublicWithV3OnlyScope: { RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "uniswap-v3" },
+  v2OnlyScope: { RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "uniswap-v2" },
+  reverseScope: { RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "uniswap-v3,uniswap-v2" },
+  thirdProvider: { RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "uniswap-v2,uniswap-v3,uniswap-v4" },
+  duplicateProvider: { RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "uniswap-v2,uniswap-v3,uniswap-v2" },
+  emptyMember: { RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "uniswap-v2,,uniswap-v3" },
+  wildcard: { RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "*" },
+  brokenV3Authority: { RMT_VNEXT_UNISWAP_V3_V2_EXECUTOR_ADDRESS: "0x1111111111111111111111111111111111111111" },
+  wrongSharedTreasury: { RMT_VNEXT_EXECUTION_V2_TREASURY: "0x1111111111111111111111111111111111111111" },
+  wrongSharedPolicyHash: { RMT_VNEXT_EXECUTION_V2_POLICY_HASH: `0x${"2".repeat(64)}` },
+  wrongSharedEffectiveBlock: { RMT_VNEXT_EXECUTION_V2_EFFECTIVE_BLOCK: "51296659" },
+  missingCommitmentSecret: { RMT_VNEXT_VERIFICATION_COMMITMENT_SECRET: undefined },
+  shortCommitmentSecret: { RMT_VNEXT_VERIFICATION_COMMITMENT_SECRET: "short" }
+})) {
+  const readiness = v2V3Readiness(overrides);
+  assert.equal(readiness.configurationConsistent, false, `${label} must fail closed`);
+}
+
+const brokenV2Authority = v2V3Readiness({
+  RMT_VNEXT_UNISWAP_V2_V2_EXECUTOR_ADDRESS: "0x1111111111111111111111111111111111111111"
+});
+assert.equal(brokenV2Authority.providers.uniswapV3V2FeeExecutor.publicAuthorizationEnabled, true);
+assert.equal(brokenV2Authority.providers.uniswapV2V2FeeExecutor.publicAuthorizationEnabled, false);
+assert.deepEqual(brokenV2Authority.publicExecution.unintendedProviders, ["uniswap-v2"]);
+
+const brokenV3Authority = v2V3Readiness({
+  RMT_VNEXT_UNISWAP_V3_V2_EXECUTOR_ADDRESS: "0x1111111111111111111111111111111111111111"
+});
+assert.equal(brokenV3Authority.providers.uniswapV3V2FeeExecutor.publicAuthorizationEnabled, false);
+assert.equal(brokenV3Authority.providers.uniswapV2V2FeeExecutor.publicAuthorizationEnabled, true);
+assert.equal(brokenV3Authority.configurationConsistent, false);
+
 const invalidV2PublicGate = readVNextReleaseReadiness({
   NODE_ENV: "production",
   VERCEL_ENV: "production",

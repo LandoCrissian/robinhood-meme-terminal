@@ -103,13 +103,16 @@ Across remains an asynchronous funding domain: external payment asset → confir
 Current owner product policy is:
 
 ```text
-admitted RMT_EXECUTION_V1 Uniswap V3 fee-executor route: 25 basis points
-every other provider or unsupported V1 route: RMT_FEE = 0
+shared fee policy: RMT_EXECUTION_V2 / version 2
+fee: 25 basis points on the input asset
+public provider: admitted Uniswap V3 V2 atomic settlement
+controlled only: deployed and live-proven Uniswap V2 V2 atomic settlement
+all other providers and unsupported routes: RMT_FEE = 0
 ```
 
-The fee is permitted only when the exact V1 executor atomically settles the disclosed fee and swap. It is ranked on the trader's protected net output, targets the approved treasury, uses an exact approval, and fails closed if its runtime, policy, controlled proof, route, simulation or settlement identity changes. Direct/no-fee providers remain available and must never be labeled fee-bearing. No hidden spread or other fee is authorized.
+The fee is permitted only when the exact provider-specific V2 executor atomically settles the disclosed input fee and swap. It is ranked on fee-adjusted trader economics, targets the approved treasury, uses exact approvals where required, and fails closed if its runtime, policy, controlled proof, route, simulation or settlement identity changes. Direct/no-fee providers remain available only where separately admitted and must never be labeled fee-bearing. No hidden spread or other fee is authorized.
 
-The repository preserves the versioned `RMT_EXECUTION_V1` deployment and release record as immutable historical technical evidence. At its 2026-08-16 release boundary it described the same 25-basis-point policy now reauthorized for admitted Uniswap V3 fee-executor routes. The following values remain immutable identity and proof evidence; this 2026-08-30 owner decision, not the historical record alone, supplies current policy authority:
+The repository preserves the versioned `RMT_EXECUTION_V1` deployment and release record as immutable historical technical evidence. At its 2026-08-16 release boundary it authorized only the admitted Uniswap V3 V1 route. It no longer supplies forward policy authority:
 
 ```text
 historical fee policy: RMT_EXECUTION_V1 / version 1
@@ -122,7 +125,7 @@ policy from block: 35041945
 policy hash: 0x295c900143405bb585a4d88c3788fadab522fd4313f69242f64e52e39827f141
 ```
 
-The V1 policy is explicit and hash-bound. Its first exact-wallet controlled proof settled successfully, and the separately reviewed historical release occurred at Robinhood block `37805030` after PR #385. Those facts, deployed contracts, receipts, runtime hashes and monitoring paths remain truthful evidence. `RMT_EXECUTION_V2` remains dormant implementation work, not the current product policy, roadmap or completion gate. Deployed V6 70/30 economics likewise remain protocol-history facts rather than forward Token Terminal economics. See [`RMT_EXECUTION_REVENUE.md`](RMT_EXECUTION_REVENUE.md).
+The V1 policy remains explicit, hash-bound historical evidence. The current shared `RMT_EXECUTION_V2` policy is version `2`, charges exactly 25 basis points on input, uses treasury `0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC`, and is publicly live only through the admitted Uniswap V3 V2 corridor. The deployed Uniswap V2 V2 executor completed its controlled native ETH-to-PONS proof in transaction `0xb8ff9e561d4a333f5f91eb707daf6e8b00d0d0565de68355cf5966c1a6cdbb9e` at Robinhood block `53089890`; its public execution remains off until a separate explicit Production release. This does not claim a bidirectional V2 live proof. Deployed V6 70/30 economics likewise remain protocol-history facts rather than forward Token Terminal economics. See [`RMT_EXECUTION_REVENUE.md`](RMT_EXECUTION_REVENUE.md).
 
 ## Contracts
 

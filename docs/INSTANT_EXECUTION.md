@@ -111,7 +111,7 @@ A reverted transaction whose decoded reason is `Transaction too old`, or whose d
 
 Privy's wallet-action swap economics do not define RMT revenue policy. RMT must not replace its independently admitted same-chain routes merely to add monetization.
 
-Current owner product policy is `RMT_FEE = 0`, and no fee activation is authorized. The earlier generic fee-path description in this document is superseded by the historical provider-specific [`RMT_EXECUTION_V1` record](RMT_EXECUTION_REVENUE.md). Its approved 25-bps release, disclosures, settlement proof and boundary remain immutable historical evidence; they do not authorize current fee collection or fee inheritance by Privy, transfers, funding or other providers.
+Current owner product policy is the shared `RMT_EXECUTION_V2` atomic 25-basis-point input fee. Uniswap V3 V2 is public/live; Uniswap V2 V2 is deployed and controlled-live-proven but public-off pending a separate release. The historical provider-specific [`RMT_EXECUTION_V1` record](RMT_EXECUTION_REVENUE.md) remains immutable evidence. Neither policy nor proof authorizes fee inheritance by Privy, transfers, funding or an unadmitted provider.
 
 Current policy and the preserved executor, exact fee math, release boundary, reconciliation rules and evidence-monitoring procedure are distinguished in [`RMT_EXECUTION_REVENUE.md`](RMT_EXECUTION_REVENUE.md) and [`PRODUCTION_MONITORING.md`](PRODUCTION_MONITORING.md#historical-uniswap-v3-fee-settlement-monitoring).
 

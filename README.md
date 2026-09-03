@@ -45,9 +45,9 @@ RMT currently provides:
 - chain-qualified asset and Robinhood stock-token evidence;
 - release-gated, asynchronous cross-chain funding/recovery foundations.
 
-RMT never receives a private key or recovery phrase. A provider quote is not permission to execute. Strict verification, wallet authorization, wallet submission and production activation are independently admitted. Public Token Terminal wallet execution remains disabled through the default-false client authorization, server authorization and wallet-submission gates.
+RMT never receives a private key or recovery phrase. A provider quote is not permission to execute. Strict verification, wallet authorization, wallet submission and production activation are independently admitted. Public Token Terminal execution is exact-provider release-scoped: Uniswap V3 V2 is public/live, while every unreleased provider remains blocked by its independent authority and public-scope gates.
 
-Current owner product policy is `RMT_FEE = 0`. No RMT trading fee is authorized for activation, and fee work is not a Token Terminal completion prerequisite. The repository preserves the prior `RMT_EXECUTION_V1` deployment, controlled proof, release boundary, receipts and monitoring as historical technical evidence, and preserves `RMT_EXECUTION_V2` as dormant implementation work. Neither record self-authorizes current or future fee activation. See the [execution revenue historical record](docs/RMT_EXECUTION_REVENUE.md).
+Current owner product policy is the shared `RMT_EXECUTION_V2` version-2 policy: 25 basis points on gross input for atomically settled, independently admitted provider execution. Uniswap V3 V2 is public/live. Uniswap V2 V2 is deployed and has one successful controlled native-input mainnet proof, but remains public-off pending a separate explicit Production release. `RMT_EXECUTION_V1` deployment, proof, receipts and release boundaries remain immutable historical evidence. See the [execution revenue authority](docs/RMT_EXECUTION_REVENUE.md).
 
 ## Paused product systems
 

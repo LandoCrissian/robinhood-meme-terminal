@@ -30,7 +30,7 @@ The endpoint contains no secrets and performs read-only contract calls. The repo
 
 ## Historical Uniswap V3 fee-settlement monitoring
 
-Current owner product policy is `RMT_FEE = 0`, and no current fee activation is authorized. The historical public `RMT_EXECUTION_V1` release retains a separate on-demand evidence monitor. It is intentionally free and read-only: it does not use a Vercel function, cron, hosted scheduler, paid RPC, wallet, signing key or transaction. Its existence and output do not authorize fee collection.
+Current owner product policy is the shared `RMT_EXECUTION_V2` atomic 25-basis-point input fee. Uniswap V3 V2 is public/live; Uniswap V2 V2 remains public-off pending a separate release. The historical public `RMT_EXECUTION_V1` release retains this separate on-demand evidence monitor. It is intentionally free and read-only: it does not use a Vercel function, cron, hosted scheduler, paid RPC, wallet, signing key or transaction. Its existence and output do not authorize another provider or release.
 
 Run from the repository root:
 
