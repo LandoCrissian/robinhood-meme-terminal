@@ -34,3 +34,10 @@ condition = "AND"
 targetRules = ["generic-api-key"]
 regexes = ['''^0x(?:[0-9A-Fa-f]{40}|[0-9A-Fa-f]{64})$''']
 paths = ['''^scripts/visual-qa/legion-fixtures\.mjs$''']
+
+[[allowlists]]
+description = "Public PONS token contract address in deterministic 0x browser acceptance"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''^0x39dbed3a2bd333467115de45665cc57f813c4571$''']
+paths = ['''^\.github/scripts/zerox-browser-acceptance\.mjs$''']
