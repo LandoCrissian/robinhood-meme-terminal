@@ -663,6 +663,10 @@ async function installRoutes(page) {
       body: JSON.stringify({
         markets: selected,
         source: "high-end-acceptance",
+        discoveryCoverage: {
+          mode: "bounded", completeWithinObservedCandidates: true, truncated: false,
+          returnedCount: selected.length, observedCandidateCount: selected.length, limit: 144
+        },
         rankingVersion: "terminal-v10",
         thresholds: {},
         originCoverage: "complete",
@@ -1624,7 +1628,13 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
     await route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ markets: [peepMarket, ...markets], updatedAt: now, source: "delayed-optional-acceptance" })
+      body: JSON.stringify({
+        markets: [peepMarket, ...markets], updatedAt: now, source: "delayed-optional-acceptance",
+        discoveryCoverage: {
+          mode: "bounded", completeWithinObservedCandidates: true, truncated: false,
+          returnedCount: markets.length + 1, observedCandidateCount: markets.length + 1, limit: 144
+        }
+      })
     });
   });
   const navigationStartedAt = performance.now();
@@ -3586,7 +3596,14 @@ try {
   const executableQuoteFeeDisclosureOnly = process.env.RMT_ACCEPTANCE_ONLY_EXECUTABLE_QUOTE_FEE_DISCLOSURE === "true";
   const marketLoadPerformanceOnly = process.env.RMT_ACCEPTANCE_ONLY_MARKET_LOAD_PERFORMANCE === "true";
   const compatibilityOnly = process.env.RMT_ACCEPTANCE_ONLY_COMPATIBILITY === "true";
-  if (compatibilityOnly) {
+  if (process.env.RMT_ACCEPTANCE_ONLY_DISCOVERY === "true") {
+    const discoveryDesktop = await inspectDiscoveryAcceptance(browser,
+      { viewport: { width: 1_440, height: 900 }, deviceScaleFactor: 1 }, "desktop-1440x900", false);
+    const discoveryMobile = await inspectDiscoveryAcceptance(browser,
+      { viewport: { width: 390, height: 844 }, deviceScaleFactor: 1, isMobile: true, hasTouch: true }, "mobile-390x844", true);
+    await writeFile(`${output}/report.json`, JSON.stringify({ discoveryDesktop, discoveryMobile }, null, 2));
+    console.log(`Terminal bounded discovery acceptance passed: ${JSON.stringify({ discoveryDesktop, discoveryMobile })}`);
+  } else if (compatibilityOnly) {
     const compatibilityEntries = await inspectCompatibilityEntries(browser);
     console.log(`Terminal compatibility acceptance passed: ${JSON.stringify(compatibilityEntries)}`);
   } else if (executableQuoteFeeDisclosureOnly) {
