@@ -7,6 +7,9 @@
     "packages/contracts/scripts/export-testnet-web-artifacts.mjs"
   ],
   "workspaces": {
+    ".": {
+      "entry": [".github/scripts/zerox-browser-boundary.cjs"]
+    },
     "apps/web": {
       "entry": [
         "app/**/*.{ts,tsx}",
