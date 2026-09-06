@@ -1,4 +1,5 @@
 import { getAddress, type Address } from "viem";
+import { rmtCuratedMarketByPool, rmtCuratedMarketByToken } from "../vnext/curated-market-registry";
 import {
   publicVNextCanonicalMarketInventoryPool,
   readVNextCanonicalMarketInventory,
@@ -8,7 +9,7 @@ import {
   type VNextCanonicalMarketInventoryResult
 } from "./vnext-market-indexer";
 import type { VNextCanonicalTokenIdentitySearchResult } from "./vnext-market-indexer";
-import { readRobinhoodTokenIdentity } from "./universal-market-resolver";
+import { readRobinhoodTokenIdentityEvidence } from "./universal-market-resolver";
 import {
   ROBINHOOD_USDG_ADDRESS,
   ROBINHOOD_WETH_ADDRESS
@@ -114,7 +115,7 @@ type BlockscoutCandidate = {
 };
 
 type CandidateDiscoveryResult =
-  | { status: "ready"; addresses: string[] }
+  | { status: "ready"; addresses: string[]; complete: boolean }
   | { status: "unavailable" };
 
 type CandidateHint = {
@@ -388,6 +389,7 @@ async function exactAddressSearch(
   if (
     verifiedResults.length === 0 &&
     (
+      identityReads.some((read) => read.status === "rejected") ||
       tokenInventory === null ||
       poolInventory === null ||
       inventoryUnavailable(tokenInventory) ||
@@ -455,7 +457,7 @@ async function exactPoolIdSearch(
   return {
     query,
     queryKind: "v4-pool-id",
-    status: results.length > 0 ? "found" : "not_found",
+    status: results.length > 0 ? "found" : verifiedResults.length > 0 ? "not_admitted" : "not_found",
     results: results.map(({ verifiedIdentity: _verifiedIdentity, ...result }) => result)
   };
 }
@@ -619,23 +621,28 @@ async function discoverCandidates(
     }
     if (addresses.size === MAXIMUM_CANDIDATE_TOKENS) break;
   }
-  return { status: "ready", addresses: [...addresses] };
+  return { status: "ready", addresses: [...addresses], complete: dexScreenerReady && blockscoutReady };
 }
 
 async function textSearch(
   query: string,
-  dependencies: Required<VNextUniversalMarketSearchDependencies>
+  dependencies: Required<VNextUniversalMarketSearchDependencies>,
+  includeCuratedEvidence = false
 ): Promise<VNextUniversalMarketSearchResult> {
   const discoveryPromise = discoverCandidates(
     query,
     dependencies.fetch,
     dependencies.timeoutMs
   ).catch((): CandidateDiscoveryResult => ({ status: "unavailable" }));
+  const curatedMatchesPromise = includeCuratedEvidence
+    ? settleWithin(searchRmtCuratedMarkets(query).catch(() => emptyResult(query, "text", "inventory_unavailable")),
+        CANONICAL_TEXT_LANE_DEADLINE_MS, emptyResult(query, "text", "inventory_unavailable"))
+    : Promise.resolve(emptyResult(query, "text", "not_found"));
   const canonicalMatchesPromise = settleWithin((async () => {
     const canonicalSearch = await dependencies.searchCanonicalTokens(query).catch(
       (): VNextCanonicalTokenIdentitySearchResult => ({ status: "unavailable", entries: [] })
     );
-    let matches = canonicalSearch.status === "ready"
+    let matches: Array<{ priority: number; result: VNextUniversalMarketSearchResultItem }> = canonicalSearch.status === "ready"
       ? canonicalSearch.entries.flatMap((entry) => {
           const match = matchIdentity(query, entry);
           return match ? [{
@@ -677,9 +684,16 @@ async function textSearch(
         );
       }
     }
+    const curated = await curatedMatchesPromise;
+    for (const result of curated.results) {
+      const match = matchIdentity(query, result);
+      // The curated helper also verifies explicit registry aliases.
+      matches.push({ priority: match?.priority ?? 4, result });
+    }
     return matches;
   })(), CANONICAL_TEXT_LANE_DEADLINE_MS, []);
 
+  let identityReadUnavailable = false;
   const providerCandidatesPromise = discoveryPromise.then(async (discovery) => ({
     discovery,
     candidates: discovery.status === "ready"
@@ -689,7 +703,11 @@ async function textSearch(
               dependencies.readIdentity(getAddress(address)),
               dependencies.readInventory({ token: address, limit: INVENTORY_LIMIT })
             ]);
-            if (identityRead.status !== "fulfilled" || !identityRead.value) return null;
+            if (identityRead.status === "rejected") {
+              identityReadUnavailable = true;
+              return null;
+            }
+            if (!identityRead.value) return null;
             const identity = normalizeVerifiedIdentity(identityRead.value, address);
             if (!identity) return null;
             const match = matchIdentity(query, identity);
@@ -723,7 +741,7 @@ async function textSearch(
         new Promise<Awaited<typeof providerCandidatesPromise>>((resolve) => {
           supplementTimeout = setTimeout(
             () => resolve({
-              discovery: { status: "ready", addresses: [] },
+              discovery: { status: "ready", addresses: [], complete: false },
               candidates: []
             }),
             CANONICAL_PROVIDER_SUPPLEMENT_GRACE_MS
@@ -737,11 +755,11 @@ async function textSearch(
   }
   const providerCandidates = providerLane.candidates;
   const matchedCandidates = [...new Map(
-    [...canonicalMatches, ...providerCandidates]
+    [...providerCandidates, ...canonicalMatches]
       .sort(
         (left, right) =>
           left.priority - right.priority ||
-          Number(right.result.markets.length > 0) - Number(left.result.markets.length > 0) ||
+          Number(left.result.markets.length > 0) - Number(right.result.markets.length > 0) ||
           left.result.address.localeCompare(right.result.address)
       )
       .map((candidate) => [candidate.result.address, candidate] as const)
@@ -760,10 +778,16 @@ async function textSearch(
   const results = admittedCandidates
     .slice(0, MAXIMUM_RESULTS)
     .map(({ result }) => result);
+  if (matchedCandidates.length === 0 && identityReadUnavailable) {
+    return emptyResult(query, "text", "inventory_unavailable");
+  }
+  if (matchedCandidates.length === 0 && providerLane.discovery.status === "ready" && !providerLane.discovery.complete) {
+    return emptyResult(query, "text", "candidate_discovery_unavailable");
+  }
   return {
     query,
     queryKind: "text",
-    status: results.length > 0 ? "found" : "not_found",
+    status: results.length > 0 ? "found" : matchedCandidates.length > 0 ? "not_admitted" : "not_found",
     results
   };
 }
@@ -772,9 +796,6 @@ export async function searchVNextUniversalMarkets(
   requestedQuery: string,
   dependencies: VNextUniversalMarketSearchDependencies = {}
 ): Promise<VNextUniversalMarketSearchResult> {
-  if (Object.keys(dependencies).length === 0) {
-    return searchRmtCuratedMarkets(requestedQuery);
-  }
   const query = requestedQuery.trim();
   const exactAddress = normalizeAddress(query);
   const exactPoolId = normalizePoolId(query);
@@ -791,19 +812,48 @@ export async function searchVNextUniversalMarkets(
     return emptyResult(query, queryKind, "invalid_query");
   }
 
+  const positiveNonContracts = new Set<string>();
   const readDependencies = {
     readInventory:
       dependencies.readInventory ??
       ((inventoryQuery: VNextCanonicalMarketInventoryQuery) =>
         readVNextCanonicalMarketInventory(inventoryQuery)),
-    readIdentity: dependencies.readIdentity ?? readRobinhoodTokenIdentity,
+    readIdentity: dependencies.readIdentity ?? (async (address: Address) => {
+      const evidence = await readRobinhoodTokenIdentityEvidence(address);
+      if (evidence.status === "identity_read_unavailable") throw new Error("Token identity read unavailable.");
+      if (evidence.status === "not_erc20") {
+        if (evidence.reason === "no_contract") positiveNonContracts.add(address.toLowerCase());
+        return null;
+      }
+      return evidence.token;
+    }),
     admitProjectIdentities: dependencies.admitProjectIdentities ?? defaultProjectAdmissionFilter
   };
-  if (exactAddress) {
-    return exactAddressSearch(query, exactAddress, readDependencies);
-  }
-  if (exactPoolId) {
-    return exactPoolIdSearch(query, exactPoolId, readDependencies);
+  if (exactAddress || exactPoolId) {
+    // Preserve independently verified seed market evidence without replacing
+    // universal discovery. Non-curated helper negatives are never authoritative.
+    const curatedExact = (exactAddress && rmtCuratedMarketByToken(exactAddress))
+      || rmtCuratedMarketByPool(exactAddress ?? exactPoolId!);
+    const curatedEvidence = Object.keys(dependencies).length === 0 && curatedExact
+      ? settleWithin(searchRmtCuratedMarkets(query).catch(() => null), CANONICAL_TEXT_LANE_DEADLINE_MS, null)
+      : Promise.resolve(null);
+    const result = exactAddress
+      ? await exactAddressSearch(query, exactAddress, readDependencies)
+      : await exactPoolIdSearch(query, exactPoolId!, readDependencies);
+    const curated = await curatedEvidence;
+    if (curated?.status === "found") {
+      const admitted = await readDependencies.admitProjectIdentities(curated.results.map((result) => ({
+        ...result, verifiedIdentity: result
+      })));
+      return {
+        ...curated, status: admitted.length > 0 ? "found" : "not_admitted",
+        results: admitted.map(({ verifiedIdentity: _verifiedIdentity, ...result }) => result)
+      };
+    }
+    if (exactAddress && result.results.length === 0 && positiveNonContracts.has(exactAddress)) {
+      return emptyResult(query, "token-or-pool-address", "not_found");
+    }
+    return result;
   }
 
   const timeoutMs = dependencies.timeoutMs ?? DEFAULT_SEARCH_TIMEOUT_MS;
@@ -861,7 +911,7 @@ export async function searchVNextUniversalMarkets(
   let deadline: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
-      textSearch(query, resolvedDependencies),
+      textSearch(query, resolvedDependencies, Object.keys(dependencies).length === 0),
       new Promise<VNextUniversalMarketSearchResult>((resolve) => {
         deadline = setTimeout(() => resolve(emptyResult(
           query,

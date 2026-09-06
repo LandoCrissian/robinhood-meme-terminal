@@ -1,0 +1,48 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { boundedDiscoveryCoverage, mergeBoundedDiscoveryRefresh, parseBoundedDiscoveryCoverage } from "./bounded-discovery";
+import { VNEXT_MARKET_DIRECTORY_MAX_MARKETS } from "./market-directory";
+import * as directory from "./market-directory";
+import { RMT_CURATED_MARKET_REGISTRY } from "./curated-market-registry";
+
+const address = (id: number) => `0x${id.toString(16).padStart(40, "0")}`;
+const previous = [{ address: address(1), price: 1 }, { address: address(2), price: 2 }];
+const fresh = [{ address: address(2).toUpperCase(), price: 20 }, { address: address(3), price: 3 }];
+const partial = boundedDiscoveryCoverage(fresh.length, true);
+const complete = boundedDiscoveryCoverage(fresh.length, false);
+assert.equal(VNEXT_MARKET_DIRECTORY_MAX_MARKETS, 144);
+assert.deepEqual(mergeBoundedDiscoveryRefresh(previous, fresh, partial, false), [previous[0], ...fresh]);
+assert.deepEqual(mergeBoundedDiscoveryRefresh(previous, fresh, complete, false), fresh);
+assert.deepEqual(mergeBoundedDiscoveryRefresh(previous, fresh, complete, true), [previous[0], ...fresh]);
+assert.deepEqual(mergeBoundedDiscoveryRefresh(previous, fresh, null, false), [previous[0], ...fresh]);
+assert.deepEqual(mergeBoundedDiscoveryRefresh(previous, fresh, partial, false, [address(1)]), fresh);
+assert.deepEqual(mergeBoundedDiscoveryRefresh(previous, [], boundedDiscoveryCoverage(0, true), false), previous);
+assert.deepEqual(mergeBoundedDiscoveryRefresh(previous, [], boundedDiscoveryCoverage(0, false), false), []);
+const candidates = Array.from({ length: 145 }, (_, index) => ({ address: address(index + 1), price: 0 }));
+const coverage = boundedDiscoveryCoverage(candidates.length, false);
+const loaded = candidates.slice(0, VNEXT_MARKET_DIRECTORY_MAX_MARKETS);
+assert.equal(coverage.truncated, true);
+assert.equal(coverage.completeWithinObservedCandidates, false);
+assert.equal(coverage.observedCandidateCount, 145);
+assert.equal(coverage.returnedCount, 144);
+assert.equal(coverage.mode, "bounded");
+assert.deepEqual(parseBoundedDiscoveryCoverage(coverage, loaded.length), coverage);
+assert.equal(parseBoundedDiscoveryCoverage({ ...coverage, completeWithinObservedCandidates: true }, 144), null);
+assert.equal(parseBoundedDiscoveryCoverage({ ...coverage, truncated: false }, 144), null);
+assert.equal(parseBoundedDiscoveryCoverage(complete, 1), null);
+assert.equal(mergeBoundedDiscoveryRefresh([candidates[144]], loaded, coverage, false).length, 145);
+assert.equal(RMT_CURATED_MARKET_REGISTRY.length, 8);
+const views = Object.values(directory).find((value) => Array.isArray(value)
+  && value.some((entry: unknown) => entry && typeof entry === "object" && "label" in entry && entry.label === "Active"));
+assert.ok(Array.isArray(views), "Directory must expose its existing category order");
+assert.deepEqual(views.map((view: { label: string }) => view.label), ["Active", "Trending", "New", "RWA", "Held", "All"]);
+// Guard production integration, not merely isolated helper behavior.
+const route = readFileSync(new URL("../../app/api/markets/external/route.ts", import.meta.url), "utf8");
+const coverageIndex = route.indexOf("const observationCoverage = boundedDiscoveryCoverage(directoryAdmission.admitted.length");
+assert.ok(coverageIndex >= 0 && coverageIndex < route.indexOf(".slice(0, VNEXT_MARKET_DIRECTORY_MAX_MARKETS)"));
+assert.ok(route.includes("...observationCoverage"));
+assert.ok(route.includes("providerReadsDelayed = true"));
+const hook = readFileSync(new URL("../../app/vnext/use-vnext-market-directory.ts", import.meta.url), "utf8");
+assert.ok(hook.includes("providerEnrichmentMarkets.current = mergeBoundedDiscoveryRefresh("));
+assert.ok(!hook.includes("providerEnrichmentMarkets.current = normalizeDirectoryMarkets(payload)"));
+console.log("Bounded discovery: PASS (partial retention, fresh duplicate, complete replacement, stale, quarantine, 144 cap, truncation, seeds).");

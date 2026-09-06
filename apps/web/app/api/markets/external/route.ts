@@ -40,6 +40,7 @@ import {
 } from "../../../../lib/server/universal-market-resolver";
 import { readCompleteV6OriginTokensFromChain } from "../../../../lib/server/launch-feed";
 import { VNEXT_MARKET_DIRECTORY_MAX_MARKETS } from "../../../../lib/vnext/market-directory";
+import { boundedDiscoveryCoverage } from "../../../../lib/vnext/bounded-discovery";
 import type { VNextDirectoryMarket } from "../../../../lib/vnext/market-directory";
 import { applyProjectIdentityDirectoryAdmission } from "../../../../lib/server/project-identity-admission";
 import {
@@ -484,6 +485,7 @@ function withExternalMarketTiming(response: NextResponse, startedAt: number, cac
 }
 
 async function readExternalMarketResponse(request: Request, requestedContract: string | null) {
+  let providerReadsDelayed = false;
   const startedAt = performance.now();
   try {
     const directResultsPromise = requestedContract
@@ -532,10 +534,16 @@ async function readExternalMarketResponse(request: Request, requestedContract: s
     if (directResultsPromise) {
       results = await directResultsPromise;
     } else {
-      const batchResults = await Promise.all(tokenBatches.map((addresses) => fetchTokenBatch(addresses).catch(() => [])));
+      const batchResults = await Promise.all(tokenBatches.map((addresses) => fetchTokenBatch(addresses).catch(() => {
+        providerReadsDelayed = true;
+        return [];
+      })));
       const missingTokens = missingRmtCuratedProviderTokens(batchResults.flat());
       const exactFallbackResults = await Promise.all(
-        missingTokens.map((address) => fetchCanonicalTokenPairs(address).catch(() => []))
+        missingTokens.map((address) => fetchCanonicalTokenPairs(address).catch(() => {
+          providerReadsDelayed = true;
+          return [];
+        }))
       );
       results = [...batchResults, ...exactFallbackResults];
     }
@@ -746,6 +754,7 @@ async function readExternalMarketResponse(request: Request, requestedContract: s
     const directoryAdmission = await applyProjectIdentityDirectoryAdmission([...marketsByToken.values()]);
     const admittedAddresses = new Set(directoryAdmission.admitted.map((market) => market.address.toLowerCase()));
     const admittedAssetRecords = assetRecords.filter((record) => admittedAddresses.has(record.token.address.toLowerCase()));
+    const observationCoverage = boundedDiscoveryCoverage(directoryAdmission.admitted.length, false);
     const rankedMarkets = requestedContract
       ? directoryAdmission.admitted.filter((market) =>
           market.address.toLowerCase() === requestedContract
@@ -796,7 +805,19 @@ async function readExternalMarketResponse(request: Request, requestedContract: s
       {
         ...snapshot,
         resolution,
-        ...(delayedSources.length > 0 ? { delayedSources } : {})
+        ...(!requestedContract ? {
+          discoveryCoverage: {
+            ...observationCoverage,
+            completeWithinObservedCandidates: observationCoverage.completeWithinObservedCandidates
+              && !providerReadsDelayed && delayedSources.length === 0 && !geckoSnapshot.delayed
+              // Launchpad "partial" denotes non-exhaustive chain coverage;
+              // delayedSources above records failures within its bounded read.
+              && currentLaunchpadSnapshot.coverage !== "unavailable" && directoryAdmission.authorityStatus === "ready"
+          },
+          quarantinedAddresses: directoryAdmission.quarantined.map(({ candidate }) => candidate.address)
+        } : {}),
+        ...(delayedSources.length > 0 || providerReadsDelayed
+          ? { delayedSources: [...delayedSources, ...(providerReadsDelayed ? ["provider-market-discovery"] : [])] } : {})
       },
       {
         headers: {

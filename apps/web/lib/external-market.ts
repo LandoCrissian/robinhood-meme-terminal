@@ -221,6 +221,8 @@ export type ExternalMarket = {
 };
 
 export type ExternalMarketResponse = {
+  discoveryCoverage?: import("./vnext/bounded-discovery").BoundedDiscoveryCoverage;
+  quarantinedAddresses?: string[];
   markets?: ExternalMarket[];
   assetRecords?: AssetMarketRecord[];
   directoryAdmission?: "admitted" | "not_admitted";

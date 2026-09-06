@@ -920,7 +920,7 @@ async function assertProjectAdmissionPrecedesPresentationAndResultBounds() {
       (candidate) => candidate.address.toLowerCase() !== stonkBrokerAddress
     )
   });
-  assert.equal(text.status, "not_found");
+  assert.equal(text.status, "not_admitted");
   assert.deepEqual(text.results, []);
 }
 
