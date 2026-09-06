@@ -19,6 +19,9 @@ const DYNAMIC_EXECUTION_PROVIDERS = new Set<VNextQuoteProvider>([
   "uniswap-v2",
   "uniswap-v3"
 ]);
+const ROUTE_ON_DEMAND_EXECUTION_PROVIDERS = new Set<VNextQuoteProvider>([
+  "zero-x-swap"
+]);
 
 export type VNextExecutionEligibility = {
   marketAssets: Address[];
@@ -42,7 +45,11 @@ export function resolveVNextExecutionEligibility(
     (address) => !SETTLEMENT_ASSETS.has(address.toLowerCase())
   );
   if (marketAssets.length === 0) {
-    throw new VNextExecutionEligibilityError("A Token Market asset is required for execution.");
+    return {
+      marketAssets,
+      curated: false,
+      providers: availableProviders.filter((provider) => ROUTE_ON_DEMAND_EXECUTION_PROVIDERS.has(provider))
+    };
   }
   const curated = marketAssets.every((address) => CURATED_MARKET_ASSETS.has(address.toLowerCase()));
   if (!curated && marketAssets.length !== 1) {
@@ -53,7 +60,9 @@ export function resolveVNextExecutionEligibility(
     curated,
     providers: curated
       ? [...availableProviders]
-      : availableProviders.filter((provider) => DYNAMIC_EXECUTION_PROVIDERS.has(provider))
+      : availableProviders.filter((provider) => (
+        DYNAMIC_EXECUTION_PROVIDERS.has(provider) || ROUTE_ON_DEMAND_EXECUTION_PROVIDERS.has(provider)
+      ))
   };
 }
 

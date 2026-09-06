@@ -283,7 +283,7 @@ function WorkspaceActivity({ market }: { market: ExternalMarket }) {
   ];
   return <section className="vnWorkspaceCard vnActivityCard" aria-labelledby="vn-activity-heading">
     <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Confirmed activity</span><h3 id="vn-activity-heading">Market flow &amp; trade tape</h3></div><span className={`vnLiveState is${stream.status}`}><i aria-hidden="true" />{stream.status === "live" ? "Streaming" : stream.status === "fallback" ? "Fallback live" : stream.status === "connecting" ? "Connecting" : stream.status === "unsupported" ? "Unavailable" : "Reconnecting"}</span></header>
-    <div className="vnMarketFlow" aria-label="Market activity by time window">{windows.map((window) => <span key={window.label}><b>{window.label}</b><small>{window.buys.toLocaleString()} buys · {window.sells.toLocaleString()} sells</small><strong>{compactUsd(window.volume)}</strong></span>)}</div>
+    <div className="vnMarketFlow" aria-label="Market activity by time window">{windows.map((window) => <span key={window.label}><b>{window.label}</b><small>{window.buys?.toLocaleString() ?? "Unknown"} buys · {window.sells?.toLocaleString() ?? "Unknown"} sells</small><strong>{compactUsd(window.volume)}</strong></span>)}</div>
     <div className="vnActivitySummary">
       <span><small>Swaps shown</small><strong>{trades.length}</strong></span>
       <span><small>Active wallets</small><strong>{actors.uniqueActors}</strong></span>

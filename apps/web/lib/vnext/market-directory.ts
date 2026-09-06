@@ -101,9 +101,8 @@ export function vNextSelectedMarketExecutionState(
   market: VNextDirectoryMarket | undefined
 ): VNextSelectedMarketExecutionState {
   if (market?.rwaRelationship === "canonical-stock-token") return "stock-token-view-only";
-  if (market && isVNextDirectoryMarketSelectable(market) && deriveVNextMarketState(market).market === "none") {
-    return "asset-only";
-  }
+  // Directory market evidence is not route authority. Verified asset identity
+  // remains required by the trade intent; the admitted provider discovers routes.
   return "normal";
 }
 
