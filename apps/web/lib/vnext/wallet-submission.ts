@@ -14,6 +14,7 @@ export type VNextWalletTransaction = {
   data: Hex;
   value: bigint;
   gas: bigint;
+  gasPrice?: bigint;
 };
 
 export type VNextWalletRpcTransaction = {
@@ -22,6 +23,7 @@ export type VNextWalletRpcTransaction = {
   data: Hex;
   value: Hex;
   gas: Hex;
+  gasPrice?: Hex;
 };
 
 const WALLET_FEE_CEILING_MULTIPLIER = 3n;
@@ -79,7 +81,8 @@ export function prepareVNextWalletTransaction(input: {
     to: getAddress(exact.target),
     data: exact.data,
     value: BigInt(exact.value),
-    gas: BigInt(exact.gasLimit)
+    gas: BigInt(exact.gasLimit),
+    ...(exact.gasPrice !== undefined ? { gasPrice: BigInt(exact.gasPrice) } : {})
   };
 }
 
@@ -94,6 +97,7 @@ export function vNextWalletRpcTransaction(transaction: VNextWalletTransaction): 
     to: transaction.to,
     data: transaction.data,
     value: toHex(transaction.value),
-    gas: toHex(transaction.gas)
+    gas: toHex(transaction.gas),
+    ...(transaction.gasPrice !== undefined ? { gasPrice: toHex(transaction.gasPrice) } : {})
   };
 }

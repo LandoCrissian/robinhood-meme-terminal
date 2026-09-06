@@ -4,6 +4,7 @@ import type { VNextExecutionRecord } from "./execution-recovery";
 export type VNextConfirmedFeePresentation =
   | { state: "not_applicable" }
   | { state: "unavailable"; display: "RMT fee reconciliation unavailable" }
+  | { state: "quoted"; display: string }
   | { state: "settled"; display: string };
 
 function formatExactAtomic(value: string, decimals: number) {
@@ -23,6 +24,11 @@ export function confirmedVNextFeePresentation(input: {
 }): VNextConfirmedFeePresentation {
   const { record } = input;
   if (!record || record.kind !== "swap" || record.state !== "confirmed") return { state: "not_applicable" };
+  // A successful aggregate receipt alone is not transfer-level fee reconciliation.
+  if (record.providerNativeFee) return {
+    state: "quoted",
+    display: `${formatExactAtomic(record.providerNativeFee.feeAmountAtomic, input.inputDecimals)} ${input.inputSymbol} · 0.25% · transfer reconciliation unavailable`
+  };
   if (record.feeV2Settlement) {
     const actualFee = record.feeV2Settlement.actualRmtFeeAtomic;
     if (actualFee === undefined || BigInt(actualFee) <= 0n) {

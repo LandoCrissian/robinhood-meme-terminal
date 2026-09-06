@@ -12,7 +12,7 @@ import {
 import { vNextExecutionEligibilityErrorResponse } from "../../../../lib/server/vnext-execution-eligibility";
 import { isVNextWalletExecutionAdmitted } from "../../../../lib/vnext/provider-execution-capability";
 import { readVNextPublicExecutionProviderScope } from "../../../../lib/server/vnext-public-execution-provider-scope";
-import { VNEXT_V2_ATOMIC_INPUT_FEE } from "../../../../lib/vnext/execution-settlement";
+import { VNEXT_PROVIDER_NATIVE_INPUT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE } from "../../../../lib/vnext/execution-settlement";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -88,6 +88,7 @@ export async function POST(request: Request) {
           && isVNextWalletExecutionAdmitted(attempt.provider)
           && ((attempt.provider !== "uniswap-v2" && attempt.provider !== "uniswap-v3")
             || attempt.settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE)
+          && (attempt.provider !== "zero-x-swap" || attempt.settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE)
       }))
     };
     return Response.json(response, { headers: { "Cache-Control": "no-store" } });

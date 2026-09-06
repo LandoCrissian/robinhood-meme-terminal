@@ -49,7 +49,7 @@ assert.equal(isVNextQuoteReusableForTrade({
     provider: "zero-x-swap",
     strictVerificationAvailable: true
   }]
-} as VNextQuoteResponse, now), false);
+} as VNextQuoteResponse, now), true, "fresh public 0x prices may lead to a separate fresh firm quote, never cached swap calldata");
 
 const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
 assert.match(composer, /backgroundQuoteEpoch/);

@@ -19,10 +19,12 @@ import {
   assertVNextDirectNoRmtFeeSettlement,
   VNEXT_DIRECT_NO_RMT_FEE,
   VNEXT_LEGACY_V1_FEE,
+  VNEXT_PROVIDER_NATIVE_INPUT_FEE,
   VNEXT_V2_ATOMIC_INPUT_FEE,
   type VNextDirectNoRmtFeeSettlement,
   type VNextExecutionSettlementMode
 } from "./execution-settlement";
+import { assertVNextZeroXProviderNativeFee, type VNextZeroXProviderNativeFee } from "./zero-x-settlement";
 import { assertRmtUniswapV3FeeExecution, encodeRmtUniswapV3FeeExecution, type RmtUniswapV3FeeExecution } from "./uniswap-v3-fee-executor";
 
 const MAX_CLOCK_SKEW_MS = 5_000;
@@ -36,7 +38,7 @@ function feeAssetIdentity(address: string) {
 export type VNextPreSignEvidence = {
   verificationId: string;
   sourceQuoteRequestId: string;
-  provider: "uniswap-v2" | "uniswap-v3" | "uniswap-v4" | "up-v2" | "up-cl";
+  provider: "uniswap-v2" | "uniswap-v3" | "uniswap-v4" | "zero-x-swap" | "up-v2" | "up-cl";
   status: "verified" | "approval_required" | "approval_simulation_failed" | "insufficient_balance" | "insufficient_gas" | "gas_unavailable" | "simulation_failed";
   chainId: 4_663;
   inputAsset: string;
@@ -52,7 +54,7 @@ export type VNextPreSignEvidence = {
   sufficientBalance: boolean;
   allowanceAtomic: string;
   balanceAtomic: string;
-  route: "direct" | "weth_hop" | "v4_pool";
+  route: "direct" | "weth_hop" | "v4_pool" | "aggregated";
   fees: number[];
   pools: string[];
   stableFlags?: boolean[];
@@ -77,8 +79,8 @@ export type VNextPreSignEvidence = {
   networkCostValuationExpiresAtMs: number | null;
   gasState: "sufficient" | "insufficient" | "unavailable" | "not_checked";
   routerRuntimeHash: string;
-  factoryRuntimeHash: string;
-  quoterRuntimeHash: string;
+  factoryRuntimeHash: string | null;
+  quoterRuntimeHash: string | null;
   exactSimulationPassed: boolean;
   userPaysGas: true;
   rmtFeeEnabled: boolean;
@@ -88,16 +90,17 @@ export type VNextPreSignEvidence = {
   feeExecution?: RmtUniswapV3FeeExecution | null;
   feeV2Economics?: RmtExecutionFeeV2Economics;
   feeV2Settlement?: VNextAtomicFeeSettlementProof;
+  providerNativeFee?: VNextZeroXProviderNativeFee;
   infrastructureVerifiedAtBlock?: string;
   infrastructureVerifiedAtBlockHash?: string;
   authorizationInfrastructureVerifiedAtBlock?: string;
   authorizationInfrastructureVerifiedAtBlockHash?: string;
   v2VerificationCommitment?: string;
-  approvalKind?: "erc20_to_permit2" | "permit2_to_router" | null;
+  approvalKind?: "erc20_to_permit2" | "permit2_to_router" | "erc20_to_allowance_holder" | null;
   v4Execution?: VNextUniswapV4ExecutionEvidence;
   verifiedAtMs: number;
   expiresAtMs: number;
-  authorizationReady: false;
+  authorizationReady: boolean;
 };
 
 const atomic = z.string().regex(/^(0|[1-9][0-9]*)$/);
@@ -105,7 +108,7 @@ const hash = z.string().regex(/^0x[0-9a-fA-F]{64}$/);
 const evidenceSchema = z.object({
   verificationId: z.string().uuid(),
   sourceQuoteRequestId: z.string().uuid(),
-  provider: z.enum(["uniswap-v2", "uniswap-v3", "uniswap-v4", "up-v2", "up-cl"]),
+  provider: z.enum(["uniswap-v2", "uniswap-v3", "uniswap-v4", "zero-x-swap", "up-v2", "up-cl"]),
   status: z.enum(["verified", "approval_required", "approval_simulation_failed", "insufficient_balance", "insufficient_gas", "gas_unavailable", "simulation_failed"]),
   chainId: z.literal(4_663),
   inputAsset: z.string(),
@@ -121,9 +124,9 @@ const evidenceSchema = z.object({
   sufficientBalance: z.boolean(),
   allowanceAtomic: atomic,
   balanceAtomic: atomic,
-  route: z.enum(["direct", "weth_hop", "v4_pool"]),
-  fees: z.array(z.number().int().nonnegative()).min(1).max(2),
-  pools: z.array(z.string()).min(1).max(2),
+  route: z.enum(["direct", "weth_hop", "v4_pool", "aggregated"]),
+  fees: z.array(z.number().int().nonnegative()).max(2),
+  pools: z.array(z.string()).max(2),
   stableFlags: z.array(z.boolean()).min(1).max(2).optional(),
   tickSpacings: z.array(z.number().int().positive().max(16_383)).min(1).max(2).optional(),
   quoteBlock: atomic.optional(),
@@ -146,27 +149,28 @@ const evidenceSchema = z.object({
   networkCostValuationExpiresAtMs: z.number().int().positive().nullable(),
   gasState: z.enum(["sufficient", "insufficient", "unavailable", "not_checked"]),
   routerRuntimeHash: hash,
-  factoryRuntimeHash: hash,
-  quoterRuntimeHash: hash,
+  factoryRuntimeHash: hash.nullable(),
+  quoterRuntimeHash: hash.nullable(),
   exactSimulationPassed: z.boolean(),
   userPaysGas: z.literal(true),
   rmtFeeEnabled: z.boolean(),
-  settlementMode: z.enum([VNEXT_DIRECT_NO_RMT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE, VNEXT_LEGACY_V1_FEE]),
+  settlementMode: z.enum([VNEXT_DIRECT_NO_RMT_FEE, VNEXT_PROVIDER_NATIVE_INPUT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE, VNEXT_LEGACY_V1_FEE]),
   directNoRmtFee: z.unknown().optional(),
   netEconomics: z.unknown().optional(),
   feeExecution: z.unknown().nullable().optional(),
   feeV2Economics: z.unknown().optional(),
   feeV2Settlement: z.unknown().optional(),
+  providerNativeFee: z.unknown().optional(),
   infrastructureVerifiedAtBlock: atomic.optional(),
   infrastructureVerifiedAtBlockHash: hash.optional(),
   authorizationInfrastructureVerifiedAtBlock: atomic.optional(),
   authorizationInfrastructureVerifiedAtBlockHash: hash.optional(),
   v2VerificationCommitment: z.string().regex(/^v1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/).max(8_192).optional(),
-  approvalKind: z.enum(["erc20_to_permit2", "permit2_to_router"]).nullable().optional(),
+  approvalKind: z.enum(["erc20_to_permit2", "permit2_to_router", "erc20_to_allowance_holder"]).nullable().optional(),
   v4Execution: z.unknown().optional(),
   verifiedAtMs: z.number().int().positive(),
   expiresAtMs: z.number().int().positive(),
-  authorizationReady: z.literal(false)
+  authorizationReady: z.boolean()
 });
 
 export function parseVNextPreSignEvidence(value: unknown, expected: {
@@ -174,7 +178,7 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
   inputAsset: string;
   outputAsset: string;
   inputAmountAtomic: string;
-  provider: "uniswap-v2" | "uniswap-v3" | "uniswap-v4" | "up-v2" | "up-cl";
+  provider: "uniswap-v2" | "uniswap-v3" | "uniswap-v4" | "zero-x-swap" | "up-v2" | "up-cl";
   protectedOutputFloorAtomic: string;
   recipient: string;
 }, nowMs: number): VNextPreSignEvidence {
@@ -208,16 +212,18 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
     || BigInt(evidence.protectedOutputAtomic) < BigInt(expected.protectedOutputFloorAtomic)
     || !isAddress(evidence.recipient)
     || getAddress(evidence.recipient) !== getAddress(expected.recipient)
-    || getAddress(evidence.router) !== getAddress(evidence.provider === "uniswap-v2" ? ROBINHOOD_UNISWAP_V2_ROUTER : evidence.provider === "uniswap-v3" ? ROBINHOOD_SWAP_ROUTER_02 : evidence.provider === "uniswap-v4" ? ROBINHOOD_UNIVERSAL_ROUTER : evidence.provider === "up-v2" ? UP_V2_EXECUTION_ROUTER : UP_CL_EXECUTION_ROUTER)
+    || (evidence.provider !== "zero-x-swap" && getAddress(evidence.router) !== getAddress(evidence.provider === "uniswap-v2" ? ROBINHOOD_UNISWAP_V2_ROUTER : evidence.provider === "uniswap-v3" ? ROBINHOOD_SWAP_ROUTER_02 : evidence.provider === "uniswap-v4" ? ROBINHOOD_UNIVERSAL_ROUTER : evidence.provider === "up-v2" ? UP_V2_EXECUTION_ROUTER : UP_CL_EXECUTION_ROUTER))
     || evidence.protectedOutputAtomic === "0"
     || BigInt(evidence.protectedOutputAtomic) > BigInt(evidence.expectedOutputAtomic)
     || evidence.verifiedAtMs > nowMs + MAX_CLOCK_SKEW_MS
     || evidence.expiresAtMs <= nowMs
     || evidence.expiresAtMs - evidence.verifiedAtMs > 300_000
-    || evidence.authorizationReady !== false
+    || evidence.authorizationReady !== (evidence.provider === "zero-x-swap" && evidence.status === "verified")
+    || (evidence.provider !== "zero-x-swap" && (evidence.factoryRuntimeHash === null || evidence.quoterRuntimeHash === null))
   ) throw new Error("RMT rejected inconsistent pre-sign evidence.");
   const hasV2Economics = evidence.feeV2Economics !== undefined;
   const hasV2Settlement = evidence.feeV2Settlement !== undefined;
+  const hasProviderNativeFee = evidence.providerNativeFee !== undefined;
   if (hasV2Economics !== hasV2Settlement) throw new Error("RMT rejected incomplete V2 fee-settlement evidence.");
   if (evidence.settlementMode === VNEXT_DIRECT_NO_RMT_FEE) {
     assertVNextDirectNoRmtFeeSettlement(evidence.directNoRmtFee, evidence.inputAmountAtomic);
@@ -226,6 +232,7 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
       || evidence.feeExecution != null
       || hasV2Economics
       || evidence.netEconomics?.rmtFee.state === "planned"
+      || hasProviderNativeFee
     ) throw new Error("RMT rejected hidden fee authority in DIRECT_NO_RMT_FEE evidence.");
   } else if (evidence.directNoRmtFee !== undefined) {
     throw new Error("RMT rejected fee-free settlement fields in a fee-bearing mode.");
@@ -233,6 +240,51 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
   if (evidence.settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE && (!hasV2Economics || !hasV2Settlement)) {
     throw new Error("RMT rejected incomplete V2 fee-settlement evidence.");
   }
+  if (evidence.settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE) {
+    const providerNativeFee = evidence.providerNativeFee;
+    if (
+      evidence.provider !== "zero-x-swap"
+      || !providerNativeFee
+      || !evidence.rmtFeeEnabled
+      || evidence.directNoRmtFee !== undefined
+      || evidence.feeExecution != null
+      || hasV2Economics
+      || hasV2Settlement
+      || evidence.netEconomics !== undefined
+      || evidence.v4Execution !== undefined
+    ) throw new Error("RMT rejected incomplete 0x provider-native fee evidence.");
+    assertVNextZeroXProviderNativeFee(providerNativeFee);
+    const firmQuote = providerNativeFee.firmQuote;
+    if (!firmQuote || evidence.factoryRuntimeHash !== null || evidence.quoterRuntimeHash !== null
+      || providerNativeFee.chainId !== evidence.chainId
+      || getAddress(providerNativeFee.feeAsset) !== getAddress(evidence.inputAsset)
+      || getAddress(providerNativeFee.outputAsset) !== getAddress(evidence.outputAsset)
+      || evidence.routerRuntimeHash !== firmQuote.targetRuntimeHash
+      || evidence.gasLimitUnits !== firmQuote.nextActionGasLimitUnits
+      || (firmQuote.gasPriceWei !== null && evidence.gasPriceWei !== firmQuote.gasPriceWei)
+      || evidence.exactSimulationPassed !== firmQuote.exactSimulationPassed
+      || evidence.verifiedAtMs < firmQuote.observedAtMs || evidence.expiresAtMs !== firmQuote.expiresAtMs
+      || evidence.approvalRequired !== (!isRobinhoodNativeAsset(evidence.inputAsset) && BigInt(evidence.allowanceAtomic) < BigInt(evidence.inputAmountAtomic))
+      || evidence.approvalKind !== (evidence.approvalRequired ? "erc20_to_allowance_holder" : null)
+      || (firmQuote.allowanceTarget !== null && getAddress(evidence.approvalSpender) !== getAddress(firmQuote.allowanceTarget))
+      || evidence.sufficientBalance !== (BigInt(evidence.balanceAtomic) >= BigInt(isRobinhoodNativeAsset(evidence.inputAsset) ? providerNativeFee.transactionValueAtomic! : evidence.inputAmountAtomic))
+      || (!["verified", "approval_required"].includes(evidence.status) && (evidence.nextAction !== null || evidence.nextActionTarget !== null || evidence.nextActionCalldataHash !== null))
+    ) throw new Error("RMT rejected incomplete 0x firm quote, balance, allowance or simulation binding.");
+    if (
+      providerNativeFee.userGrossInputAtomic !== evidence.inputAmountAtomic
+      || providerNativeFee.expectedOutputAtomic !== evidence.expectedOutputAtomic
+      || providerNativeFee.protectedOutputAtomic !== evidence.protectedOutputAtomic
+      || getAddress(providerNativeFee.recipient) !== getAddress(evidence.recipient)
+      || getAddress(providerNativeFee.transactionTarget!) !== getAddress(evidence.router)
+      || providerNativeFee.transactionCalldataHash?.toLowerCase() !== evidence.calldataHash.toLowerCase()
+      || (evidence.status === "verified" && providerNativeFee.authorizationState !== "verified")
+      || (evidence.status === "approval_required" && providerNativeFee.authorizationState !== "approval_required")
+      || (!["verified", "approval_required"].includes(evidence.status) && providerNativeFee.authorizationState !== "blocked")
+    ) throw new Error("RMT rejected changed 0x provider-native fee authority.");
+  } else if (hasProviderNativeFee) {
+    throw new Error("RMT rejected 0x provider-native fee evidence outside its settlement mode.");
+  }
+  if (evidence.provider === "zero-x-swap" && evidence.settlementMode !== VNEXT_PROVIDER_NATIVE_INPUT_FEE) throw new Error("RMT rejected 0x claiming custom or fee-free settlement.");
   if (
     evidence.settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE
     && (evidence.status === "verified" || evidence.status === "approval_required")
@@ -279,7 +331,7 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
       || evidence.infrastructureVerifiedAtBlockHash !== undefined
     )) throw new Error("RMT rejected foreign Uniswap V2 infrastructure authority.");
   }
-  if (evidence.rmtFeeEnabled) {
+  if (evidence.rmtFeeEnabled && evidence.settlementMode !== VNEXT_PROVIDER_NATIVE_INPUT_FEE) {
     if (evidence.provider !== "uniswap-v3" || !evidence.netEconomics || !evidence.feeExecution) {
       throw new Error("RMT rejected incomplete fee-executor evidence.");
     }
@@ -314,6 +366,10 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
   if (evidence.route === "v4_pool" && (evidence.provider !== "uniswap-v4" || evidence.fees.length !== 1 || evidence.pools.length !== 1)) {
     throw new Error("RMT rejected inconsistent V4 route evidence.");
   }
+  if (evidence.route === "aggregated" && (evidence.provider !== "zero-x-swap" || evidence.fees.length !== 0 || evidence.pools.length !== 0)) {
+    throw new Error("RMT rejected inconsistent 0x aggregated-route evidence.");
+  }
+  if (evidence.provider === "zero-x-swap" && evidence.route !== "aggregated") throw new Error("RMT rejected recursive 0x route classification.");
   if (evidence.provider === "up-v2" && (
     evidence.stableFlags?.length !== evidence.pools.length || evidence.tickSpacings !== undefined
     || evidence.quoteBlock === undefined || evidence.quoteBlockHash === undefined
@@ -350,7 +406,7 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
       || (!evidence.approvalRequired && evidence.approvalKind != null)
       || (!evidence.approvalRequired && getAddress(evidence.approvalSpender) !== getAddress(ROBINHOOD_UNIVERSAL_ROUTER))
     ) throw new Error("RMT rejected malformed V4 execution evidence.");
-  } else {
+  } else if (evidence.provider !== "zero-x-swap") {
     if (evidence.v4Execution !== undefined || evidence.approvalKind !== undefined) throw new Error("RMT rejected foreign V4 execution evidence.");
     evidence.pools.forEach((pool) => {
       if (!isAddress(pool)) throw new Error("RMT rejected an invalid route pool.");
@@ -359,7 +415,10 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
   if (evidence.nextActionTarget !== null && !isAddress(evidence.nextActionTarget)) throw new Error("RMT rejected an invalid next-action target.");
   const nativeInput = isRobinhoodNativeAsset(evidence.inputAsset);
   if (
-    evidence.transactionValueAtomic !== (nativeInput ? evidence.inputAmountAtomic : "0")
+    (evidence.settlementMode !== VNEXT_PROVIDER_NATIVE_INPUT_FEE && evidence.transactionValueAtomic !== (nativeInput ? evidence.inputAmountAtomic : "0"))
+    || (evidence.settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE && evidence.status === "verified" && evidence.transactionValueAtomic !== evidence.providerNativeFee?.transactionValueAtomic)
+    || (evidence.settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE && evidence.status === "approval_required" && evidence.transactionValueAtomic !== "0")
+    || (evidence.settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE && nativeInput && evidence.providerNativeFee?.transactionValueAtomic === "0")
     || (nativeInput && evidence.approvalRequired)
   ) throw new Error("RMT rejected inconsistent native transaction value.");
   const completeGasEstimate = evidence.estimatedGasUnits !== null && evidence.gasLimitUnits !== null && evidence.estimatedNetworkCostWei !== null;

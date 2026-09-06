@@ -2,6 +2,7 @@ import type { VNextPreSignEvidence } from "./pre-sign-evidence";
 import {
   VNEXT_DIRECT_NO_RMT_FEE,
   VNEXT_LEGACY_V1_FEE,
+  VNEXT_PROVIDER_NATIVE_INPUT_FEE,
   VNEXT_V2_ATOMIC_INPUT_FEE
 } from "./execution-settlement";
 
@@ -34,6 +35,12 @@ export function vNextAuthorizationAuthorityRequest(evidence: VNextPreSignEvidenc
       throw new Error("RMT rejected missing or contradictory V1 authorization authority.");
     }
     return { settlementMode: VNEXT_LEGACY_V1_FEE, executionId } as const;
+  }
+  if (evidence.settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE) {
+    if (evidence.provider !== "zero-x-swap" || hasV1 || hasV2 || hasDirect || !evidence.providerNativeFee || evidence.v2VerificationCommitment !== undefined) {
+      throw new Error("RMT rejected missing or contradictory 0x provider-native authorization authority.");
+    }
+    return { settlementMode: VNEXT_PROVIDER_NATIVE_INPUT_FEE } as const;
   }
   if (evidence.settlementMode !== VNEXT_DIRECT_NO_RMT_FEE || hasV1 || hasV2 || !hasDirect || evidence.v2VerificationCommitment !== undefined) {
     throw new Error("RMT rejected contradictory direct authorization authority.");

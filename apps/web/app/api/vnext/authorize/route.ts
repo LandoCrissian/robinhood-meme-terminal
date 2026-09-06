@@ -13,6 +13,7 @@ import {
   directExecutionBinding,
   VNEXT_DIRECT_NO_RMT_FEE,
   VNEXT_LEGACY_V1_FEE,
+  VNEXT_PROVIDER_NATIVE_INPUT_FEE,
   VNEXT_V2_ATOMIC_INPUT_FEE
 } from "../../../../lib/vnext/execution-settlement";
 import { vNextExecutionEligibilityErrorResponse } from "../../../../lib/server/vnext-execution-eligibility";
@@ -93,6 +94,8 @@ export async function POST(request: Request) {
       ? selectVNextUniswapV3SettlementMode({ inputAsset, outputAsset, recipient })
       : parsed.data.provider === "uniswap-v2"
         ? selectVNextUniswapV2SettlementMode({ recipient })
+        : parsed.data.provider === "zero-x-swap"
+          ? VNEXT_PROVIDER_NATIVE_INPUT_FEE
         : VNEXT_DIRECT_NO_RMT_FEE;
     requireVNextPublicExecutionSettlement(parsed.data.provider, settlementMode);
     if (parsed.data.settlementMode !== settlementMode) {
@@ -121,6 +124,9 @@ export async function POST(request: Request) {
       parsed.data.executionId !== undefined || parsed.data.v2VerificationCommitment !== undefined
     )) {
       return verifyAgain("IMMUTABLE_CONTINUITY_CHANGED", "The direct execution request contains contradictory fee authority. Verify again.");
+    }
+    if (settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE && (parsed.data.executionId !== undefined || parsed.data.v2VerificationCommitment !== undefined)) {
+      return verifyAgain("IMMUTABLE_CONTINUITY_CHANGED", "The 0x provider-native request contains contradictory executor authority. Verify again.");
     }
 
     const authorizationWallClockMs = Date.now();
@@ -159,7 +165,7 @@ export async function POST(request: Request) {
         infrastructureVerifiedAtBlockHash: v2Claims.infrastructureVerifiedAtBlockHash as Hex
       } : {})
     });
-    if (prepared.evidence.provider !== "uniswap-v2" && prepared.evidence.provider !== "uniswap-v3" && prepared.evidence.provider !== "uniswap-v4" && prepared.evidence.provider !== "up-v2" && prepared.evidence.provider !== "up-cl") {
+    if (prepared.evidence.provider !== "uniswap-v2" && prepared.evidence.provider !== "uniswap-v3" && prepared.evidence.provider !== "uniswap-v4" && prepared.evidence.provider !== "zero-x-swap" && prepared.evidence.provider !== "up-v2" && prepared.evidence.provider !== "up-cl") {
       return Response.json({ error: "This provider does not have a supported wallet-plan codec yet." }, { status: 422, headers: noStore });
     }
     const evidenceChanged = prepared.evidence.status !== parsed.data.expectedStatus
@@ -209,8 +215,10 @@ export async function POST(request: Request) {
         ? verifyAgain("DEADLINE_CHANGED_OR_EXPIRED", "The final server deadline changed during V2 authorization. Verify again.")
         : Response.json({ error: "The final server deadline changed during authorization." }, { status: 409, headers: noStore });
     }
-    const preparedAtMs = timing.preparedAtMs;
-    const expiresAtMs = timing.expiresAtMs;
+    const zeroXQuote = prepared.evidence.providerNativeFee?.firmQuote;
+    const preparedAtMs = zeroXQuote ? Math.max(timing.preparedAtMs, zeroXQuote.observedAtMs) : timing.preparedAtMs;
+    const expiresAtMs = zeroXQuote ? Math.min(timing.expiresAtMs, zeroXQuote.expiresAtMs) : timing.expiresAtMs;
+    if (expiresAtMs <= Date.now()) return Response.json({ error: "The firm quote expired. Requote and retry." }, { status: 409, headers: noStore });
     const unsignedPlan = {
       planId: randomUUID(),
       sourceQuoteRequestId: parsed.data.quoteRequestId,
@@ -222,6 +230,7 @@ export async function POST(request: Request) {
       data: prepared.transaction.data,
       value: prepared.transaction.value,
       gasLimit: prepared.transaction.gasLimit,
+      ...(prepared.transaction.gasPrice !== undefined ? { gasPrice: prepared.transaction.gasPrice } : {}),
       inputAsset: prepared.evidence.inputAsset,
       outputAsset: prepared.evidence.outputAsset,
       inputAmountAtomic: prepared.evidence.inputAmountAtomic,
@@ -230,7 +239,7 @@ export async function POST(request: Request) {
       router: prepared.evidence.router,
       settlementMode: prepared.evidence.settlementMode,
       ...(prepared.evidence.directNoRmtFee ? { directNoRmtFee: prepared.evidence.directNoRmtFee } : {}),
-      ...(prepared.evidence.settlementMode === VNEXT_DIRECT_NO_RMT_FEE ? { directAuthorization: directExecutionBinding({
+      ...(prepared.evidence.settlementMode === VNEXT_DIRECT_NO_RMT_FEE && prepared.evidence.provider !== "zero-x-swap" ? { directAuthorization: directExecutionBinding({
         provider: prepared.evidence.provider,
         kind: prepared.transaction.kind,
         chainId: 4_663,
@@ -251,6 +260,7 @@ export async function POST(request: Request) {
       ...(prepared.evidence.feeExecution !== undefined ? { feeExecution: prepared.evidence.feeExecution } : {}),
       ...(prepared.evidence.feeV2Economics ? { feeV2Economics: prepared.evidence.feeV2Economics } : {}),
       ...(prepared.feeV2Authorization ? { feeV2Authorization: prepared.feeV2Authorization } : {}),
+      ...(prepared.evidence.providerNativeFee ? { providerNativeFee: prepared.evidence.providerNativeFee } : {}),
       ...(prepared.evidence.v4Execution ? { v4Execution: prepared.evidence.v4Execution } : {}),
       deadline: prepared.evidence.deadline,
       preparedAtMs,

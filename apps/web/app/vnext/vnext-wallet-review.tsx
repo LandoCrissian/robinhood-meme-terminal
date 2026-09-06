@@ -70,6 +70,25 @@ export function VNextWalletFeeDisclosure({
   inputDecimals: number;
   outputDecimals: number;
 }) {
+  const providerNativeFee = evidence.providerNativeFee;
+  if (providerNativeFee) return <div className="vnWalletFeeDisclosure" role="note">
+    <strong>{planKind === "erc20_approval" ? "RMT execution fee on this approval: 0" : `RMT execution fee: ${formatUnits(BigInt(providerNativeFee.feeAmountAtomic), inputDecimals)} ${inputSymbol} (${providerNativeFee.feeBps / 100}%)`}</strong>
+    {planKind === "erc20_approval" ? <small>Planned swap fee: 0.25% of the gross sell amount. It is not collected by the approval transaction, and the swap quote will be fetched again after confirmation.</small> : null}
+    <dl>
+      <div><dt>Gross sell</dt><dd>{formatUnits(BigInt(providerNativeFee.userGrossInputAtomic), inputDecimals)} {inputSymbol}</dd></div>
+      <div><dt>RMT fee asset / amount</dt><dd>{formatUnits(BigInt(providerNativeFee.feeAmountAtomic), inputDecimals)} {inputSymbol}</dd></div>
+      <div><dt>Expected receive</dt><dd>{formatUnits(BigInt(providerNativeFee.expectedOutputAtomic), outputDecimals)} {outputSymbol}</dd></div>
+      <div><dt>Minimum receive</dt><dd>{formatUnits(BigInt(providerNativeFee.protectedOutputAtomic), outputDecimals)} {outputSymbol}</dd></div>
+      <div><dt>0x/provider fee</dt><dd>{providerNativeFee.providerFeeAtomic && providerNativeFee.providerFeeAsset ? `${providerNativeFee.providerFeeAtomic} atomic · ${providerNativeFee.providerFeeAsset.slice(0, 6)}…${providerNativeFee.providerFeeAsset.slice(-4)}` : "None reported"}</dd></div>
+      <div><dt>Network fee estimate</dt><dd>{evidence.estimatedNetworkCostWei ? `${formatUnits(BigInt(evidence.estimatedNetworkCostWei), 18)} ETH` : "Unavailable"}</dd></div>
+      <div><dt>Provider</dt><dd>0x</dd></div>
+      <div><dt>Route</dt><dd>Best available Robinhood liquidity</dd></div>
+      <div><dt>Settlement</dt><dd>Collected atomically in the 0x swap</dd></div>
+      <div><dt>Treasury</dt><dd><ExplorerLink kind="address" value={providerNativeFee.treasury} accessibleName="Open RMT fee treasury in Robinhood Chain explorer">{providerNativeFee.treasury.slice(0, 6)}…{providerNativeFee.treasury.slice(-4)} ↗</ExplorerLink></dd></div>
+    </dl>
+    <small>Your wallet receives only the exact target, calldata, value, and gas envelope that passed local simulation.</small>
+  </div>;
+
   const feeV2 = evidence.feeV2Economics;
   if (feeV2 && evidence.feeV2Settlement) return <div className="vnWalletFeeDisclosure" role="note">
     <strong>{planKind === "erc20_approval" ? "RMT execution fee on this approval: 0" : `RMT execution fee: ${formatUnits(BigInt(feeV2.expectedFeeAtomic), inputDecimals)} ${inputSymbol} (${feeV2.feeBps / 100}%)`}</strong>
@@ -526,7 +545,7 @@ export function VNextWalletReview({
       inputDecimals={inputDecimals}
       outputDecimals={outputDecimals}
     />
-    {plan.kind === "erc20_approval" ? <small>Standard ERC-20 approvals have no onchain expiry. This request is limited to the exact input amount, and RMT requires fresh verification before the swap.</small> : <small>The verified swap calldata enforces its onchain deadline and protected output.</small>}
+    {plan.kind === "erc20_approval" ? <small>Standard ERC-20 approvals have no onchain expiry. This request is limited to the exact input amount, and RMT requires fresh verification before the swap.</small> : plan.provider === "zero-x-swap" ? <small>RMT presents the exact simulated 0x transaction. Quote expiry limits when RMT opens wallet review; it is not a guaranteed onchain expiry.</small> : <small>The verified swap calldata enforces its onchain deadline and protected output.</small>}
     <small>{expired ? "Verified request expired. Prepare a fresh server-verified request." : `Wallet review window · ${Math.max(0, Math.ceil((plan.expiresAtMs - nowMs) / 1_000))}s remaining`}</small>
     {localStatus ? <p className="vnAuthorizationStatus" role="status">{localStatus}</p> : null}
     {localError ? <p className="vnAuthorizationError" role="status">{localError}</p> : null}

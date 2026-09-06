@@ -118,7 +118,7 @@ assert.doesNotThrow(() => assertVNextQuoteAttempt(validV2, expected, now));
 assert.doesNotThrow(() => assertVNextQuoteAttempt(validV3, expected, now));
 
 const quoteOnlyProviders = [
-  "uniswap-v4", "up-v2", "up-cl", "sushi", "uniswapx", "zero-x-swap", "zero-x-gasless"
+  "uniswap-v4", "up-v2", "up-cl", "sushi", "uniswapx", "zero-x-gasless"
 ] as const satisfies readonly VNextQuoteProvider[];
 
 function quoteOnlyAttempt(provider: (typeof quoteOnlyProviders)[number]) {
@@ -151,7 +151,7 @@ function quoteOnlyAttempt(provider: (typeof quoteOnlyProviders)[number]) {
         ? "up"
         : provider === "uniswapx"
           ? "uniswapx"
-          : provider === "zero-x-swap" || provider === "zero-x-gasless"
+          : provider === "zero-x-gasless"
             ? "zeroex"
             : "uniswap",
     liquidityFeeEvidence,

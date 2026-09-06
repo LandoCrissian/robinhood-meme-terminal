@@ -4,7 +4,7 @@ import {
   selectVNextUniswapV3SettlementMode,
   verifyVNextUniswapRoute
 } from "./vnext-uniswap-quote";
-import { VNEXT_DIRECT_NO_RMT_FEE, VNEXT_LEGACY_V1_FEE, VNEXT_V2_ATOMIC_INPUT_FEE } from "../vnext/execution-settlement";
+import { VNEXT_DIRECT_NO_RMT_FEE, VNEXT_LEGACY_V1_FEE, VNEXT_PROVIDER_NATIVE_INPUT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE } from "../vnext/execution-settlement";
 import { unavailableVNextQuoteAttempt, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
 import {
   evaluateVNextUniswapRouteV2,
@@ -143,6 +143,9 @@ export function createVNextUniswapV3Adapter(input: {
   },
   async verify(request) {
     const settlementMode = request.settlementMode ?? VNEXT_DIRECT_NO_RMT_FEE;
+    if (settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE) {
+      throw new Error("Uniswap V3 does not support provider-native fee settlement.");
+    }
     if (settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE) {
       requireVNextUniswapV3V2AuthorizationEnabled();
       requireVNextUniswapV3V2ReleaseRecipient(request.recipient);
@@ -174,6 +177,9 @@ export function createVNextUniswapV3Adapter(input: {
       throw new Error("Uniswap V3 wallet authorization is not available yet.");
     }
     const settlementMode = request.settlementMode ?? VNEXT_DIRECT_NO_RMT_FEE;
+    if (settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE) {
+      throw new Error("Uniswap V3 does not support provider-native fee settlement.");
+    }
     const common = {
       inputAsset: request.inputAsset,
       outputAsset: request.outputAsset,

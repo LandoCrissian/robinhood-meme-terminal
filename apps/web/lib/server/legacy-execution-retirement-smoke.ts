@@ -74,7 +74,7 @@ assert.match(authorizeRoute, /stockTokenExecutionPolicyErrorResponse/);
 assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v3"].state, "V2_ATOMIC_INPUT_FEE");
 assert.equal(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY["uniswap-v2"].state, "V2_ATOMIC_INPUT_FEE");
 assert.ok(Object.entries(VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY).every(([provider, entry]) =>
-  provider === "uniswap-v2" || provider === "uniswap-v3" || entry.state === "QUOTE_ONLY"
+  provider === "uniswap-v2" || provider === "uniswap-v3" || provider === "zero-x-swap" || entry.state === "QUOTE_ONLY"
 ));
 const providerAdapter = readFileSync(join(webRoot, "lib/server/vnext-provider-adapter.ts"), "utf8");
 assert.match(providerAdapter, /assertVNextWalletFeeAdmission/);

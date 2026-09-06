@@ -9,7 +9,7 @@ import {
   projectIdentityAdmissionErrorResponse,
   requireProjectIdentityDirectoryAdmitted
 } from "../../../../lib/server/project-identity-admission";
-import { VNEXT_DIRECT_NO_RMT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE } from "../../../../lib/vnext/execution-settlement";
+import { VNEXT_DIRECT_NO_RMT_FEE, VNEXT_PROVIDER_NATIVE_INPUT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE } from "../../../../lib/vnext/execution-settlement";
 import { vNextExecutionEligibilityErrorResponse } from "../../../../lib/server/vnext-execution-eligibility";
 import { selectVNextUniswapV3SettlementMode } from "../../../../lib/server/vnext-uniswap-quote";
 import { selectVNextUniswapV2SettlementMode } from "../../../../lib/server/vnext-uniswap-v2-v2-execution";
@@ -42,7 +42,7 @@ export const runtime = "nodejs";
 const requestSchema = z.object({
   chainId: z.literal(4_663),
   quoteRequestId: z.string().uuid(),
-  provider: z.enum(["sushi", "uniswap-v2", "uniswap-v3", "uniswap-v4", "up-v2", "up-cl"]),
+  provider: z.enum(["sushi", "uniswap-v2", "uniswap-v3", "uniswap-v4", "zero-x-swap", "up-v2", "up-cl"]),
   inputAsset: z.string().refine((value) => isAddress(value, { strict: false })),
   outputAsset: z.string().refine((value) => isAddress(value, { strict: false })),
   inputAmountAtomic: z.string().regex(/^[1-9][0-9]*$/),
@@ -97,11 +97,13 @@ export async function POST(request: Request) {
       ? selectVNextUniswapV3SettlementMode({ inputAsset, outputAsset, recipient })
       : parsed.data.provider === "uniswap-v2"
         ? selectVNextUniswapV2SettlementMode({ recipient })
+        : parsed.data.provider === "zero-x-swap"
+          ? VNEXT_PROVIDER_NATIVE_INPUT_FEE
         : VNEXT_DIRECT_NO_RMT_FEE;
     requireVNextPublicExecutionSettlement(parsed.data.provider, settlementMode);
     const verificationId = randomUUID();
     const verificationWallClockMs = Date.now();
-    const finalDeadlineSeconds = settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE
+    const finalDeadlineSeconds = settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE || settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE
       ? await readVNextAuthorizationChainTimestamp().then((timestamp) => timestamp + VNEXT_AUTHORIZATION_WINDOW_SECONDS)
       : undefined;
     const evidence = await verifyRobinhoodVNextExecution(parsed.data.provider, {
@@ -154,7 +156,7 @@ export async function POST(request: Request) {
     if (cause instanceof VNextV2VerificationCommitmentConfigurationError) {
       return Response.json({ error: cause.message }, { status: 503, headers: { "Cache-Control": "no-store" } });
     }
-    const message = cause instanceof Error && /No canonical Uniswap|No up-|runtime bytecode is not approved|dependencies changed|strict verification is not available|V2 wallet authorization is disabled|V2 authorization is enabled without a complete executor policy|RMT_EXECUTION_V2 policy is not effective until block|moved below the indicative protected-output floor|quote block was reorganized|rejected Uniswap V4 execution/.test(cause.message)
+    const message = cause instanceof Error && /No canonical Uniswap|No up-|No complete 0x|0x |runtime bytecode is not approved|transaction target has no contract code|dependencies changed|strict verification is not available|V2 wallet authorization is disabled|V2 authorization is enabled without a complete executor policy|RMT_EXECUTION_V2 policy is not effective until block|moved below the indicative protected-output floor|quote block was reorganized|rejected Uniswap V4 execution/.test(cause.message)
       ? cause.message
       : "Unable to produce strict pre-sign evidence.";
     return Response.json({ error: message }, { status: 422, headers: { "Cache-Control": "no-store" } });

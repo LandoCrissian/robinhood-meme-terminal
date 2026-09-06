@@ -6,6 +6,7 @@ import {
   VNextPublicExecutionSettlementNotReleasedError,
   hasExactVNextV2V3PublicExecutionProviderScope,
   hasExactVNextV3V2PublicExecutionProviderScope,
+  hasExactVNextZeroXOnlyPublicExecutionProviderScope,
   readVNextPublicExecutionReleaseScope,
   readVNextPublicExecutionProviderScope,
   requireVNextPublicExecutionProvider,
@@ -14,7 +15,7 @@ import {
 } from "../server/vnext-public-execution-provider-scope";
 import { selectVNextRoute, type VNextQuoteAttempt, type VNextQuoteProvider } from "./quote-observation";
 import { readVNextReleaseReadiness } from "./release-readiness";
-import { VNEXT_DIRECT_NO_RMT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE } from "./execution-settlement";
+import { VNEXT_DIRECT_NO_RMT_FEE, VNEXT_PROVIDER_NATIVE_INPUT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE } from "./execution-settlement";
 
 function scope(value?: string) {
   return readVNextPublicExecutionProviderScope(value === undefined
@@ -49,6 +50,14 @@ assert.equal(readVNextPublicExecutionReleaseScope(v2V3Env), "v2-v3");
 assert.doesNotThrow(() => requireVNextPublicExecutionProvider("uniswap-v2", v2V3Env));
 assert.doesNotThrow(() => requireVNextPublicExecutionProvider("uniswap-v3", v2V3Env));
 assert.doesNotThrow(() => requireVNextPublicExecutionSettlement("uniswap-v2", VNEXT_V2_ATOMIC_INPUT_FEE, v2V3Env));
+
+const zeroXOnlyEnv = { RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "zero-x-swap" };
+assert.deepEqual(scope("zero-x-swap"), { configured: true, valid: true, providers: ["zero-x-swap"] });
+assert.equal(readVNextPublicExecutionReleaseScope(zeroXOnlyEnv), "ZERO_X_ONLY");
+assert.equal(hasExactVNextZeroXOnlyPublicExecutionProviderScope(zeroXOnlyEnv), true);
+assert.doesNotThrow(() => requireVNextPublicExecutionSettlement("zero-x-swap", VNEXT_PROVIDER_NATIVE_INPUT_FEE, zeroXOnlyEnv));
+assert.throws(() => requireVNextPublicExecutionSettlement("zero-x-swap", VNEXT_DIRECT_NO_RMT_FEE, zeroXOnlyEnv), VNextPublicExecutionSettlementNotReleasedError);
+assert.throws(() => requireVNextPublicExecutionProvider("uniswap-v3", zeroXOnlyEnv), VNextPublicExecutionProviderNotReleasedError);
 
 for (const noncanonical of [
   "uniswap-v2",
@@ -181,6 +190,25 @@ const globalOnly = readVNextReleaseReadiness({
 });
 assert.deepEqual(globalOnly.publicExecution.providers, []);
 assert.equal(globalOnly.providers.uniswapV3V2FeeExecutor.publicAuthorizationEnabled, false);
+
+const exactPublicZeroX = readVNextReleaseReadiness({
+  NODE_ENV: "production",
+  VERCEL_ENV: "production",
+  RMT_VNEXT_SHELL_ENABLED: "true",
+  NEXT_PUBLIC_RMT_VNEXT_AUTHORIZATION_ENABLED: "true",
+  RMT_VNEXT_AUTHORIZATION_ENABLED: "true",
+  NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED: "true",
+  RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "zero-x-swap",
+  RMT_VNEXT_ZEROX_OBSERVATION_ENABLED: "true",
+  RMT_VNEXT_ZEROX_FIRM_QUOTE_VERIFICATION_ENABLED: "true",
+  RMT_ZEROX_API_KEY: "present-not-real",
+  RMT_ZEROX_ALLOWANCE_HOLDER: "0x0000000000001fF3684f28c67538d4D072C22734",
+  RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH: `0x${"1".repeat(64)}`
+});
+assert.equal(exactPublicZeroX.configurationConsistent, true);
+assert.deepEqual(exactPublicZeroX.publicExecution.providers, ["zero-x-swap"]);
+assert.equal(exactPublicZeroX.publicExecution.exactZeroXOnlyReleaseScope, true);
+assert.equal(exactPublicZeroX.providers.zeroXSwap.publicAuthorizationEnabled, true);
 
 const verifyRoute = readFileSync(new URL("../../app/api/vnext/verify/route.ts", import.meta.url), "utf8");
 const authorizeRoute = readFileSync(new URL("../../app/api/vnext/authorize/route.ts", import.meta.url), "utf8");

@@ -11,17 +11,19 @@ import {
   assertVNextWalletFeeAdmission,
   type VNextAtomicFeeAuthorizationBinding,
   type VNextAtomicFeeSettlementProof,
-  type VNextProviderFeeSettlement
+  type VNextProviderFeeSettlementCapability
 } from "../vnext/provider-fee-settlement";
 import { assertRmtUniswapV3FeeExecution, type RmtUniswapV3FeeExecution } from "../vnext/uniswap-v3-fee-executor";
 import {
   assertVNextDirectNoRmtFeeSettlement,
   VNEXT_DIRECT_NO_RMT_FEE,
   VNEXT_LEGACY_V1_FEE,
+  VNEXT_PROVIDER_NATIVE_INPUT_FEE,
   VNEXT_V2_ATOMIC_INPUT_FEE,
   type VNextDirectNoRmtFeeSettlement,
   type VNextExecutionSettlementMode
 } from "../vnext/execution-settlement";
+import { assertVNextZeroXProviderNativeFee, type VNextZeroXProviderNativeFee } from "../vnext/zero-x-settlement";
 
 export type VNextVerifiedTokenIdentity = {
   address: Address;
@@ -59,6 +61,7 @@ export type VNextUniswapV4QuoteBinding = {
 export type VNextProviderSettlementSelection =
   | typeof VNEXT_DIRECT_NO_RMT_FEE
   | typeof VNEXT_LEGACY_V1_FEE
+  | typeof VNEXT_PROVIDER_NATIVE_INPUT_FEE
   | typeof VNEXT_V2_ATOMIC_INPUT_FEE;
 
 export type VNextProviderVerificationRequest = Pick<VNextProviderQuoteRequest,
@@ -69,6 +72,8 @@ export type VNextProviderVerificationRequest = Pick<VNextProviderQuoteRequest,
   settlementMode?: VNextProviderSettlementSelection;
   canonicalMarket?: { sourceId: "uniswap-v4"; poolId: Hex };
   v4QuoteEvidence?: VNextUniswapV4QuoteBinding;
+  deadlineSeconds?: bigint;
+  nowMs?: number;
 };
 
 export type VNextProviderVerificationEvidence = Record<string, unknown> & {
@@ -80,6 +85,7 @@ export type VNextProviderVerificationEvidence = Record<string, unknown> & {
   inputAmountAtomic: string;
   indicativeProtectedOutputFloorAtomic: string;
   protectedOutputAtomic: string;
+  expectedOutputAtomic?: string;
   recipient: Address;
   router: Address;
   approvalSpender: Address;
@@ -98,13 +104,14 @@ export type VNextProviderVerificationEvidence = Record<string, unknown> & {
   feeExecution?: RmtUniswapV3FeeExecution | null;
   feeV2Economics?: RmtExecutionFeeV2Economics;
   feeV2Settlement?: VNextAtomicFeeSettlementProof;
+  providerNativeFee?: VNextZeroXProviderNativeFee;
   infrastructureVerifiedAtBlock?: string;
   infrastructureVerifiedAtBlockHash?: Hex;
   authorizationInfrastructureVerifiedAtBlock?: string;
   authorizationInfrastructureVerifiedAtBlockHash?: Hex;
   settlementMode: VNextExecutionSettlementMode;
   directNoRmtFee?: VNextDirectNoRmtFeeSettlement;
-  approvalKind?: "erc20_to_permit2" | "permit2_to_router" | null;
+  approvalKind?: "erc20_to_permit2" | "permit2_to_router" | "erc20_to_allowance_holder" | null;
   v4Execution?: import("./vnext-uniswap-v4-execution").VNextUniswapV4ExecutionEvidence;
 };
 
@@ -126,12 +133,13 @@ export type VNextPreparedProviderAuthorization = {
     data: Hex;
     value: string;
     gasLimit: string;
+    gasPrice?: string;
   };
 };
 
 export type VNextWalletFeeAdmissionContext = {
   policy?: RmtExecutionFeeV2Policy | null;
-  capability?: VNextProviderFeeSettlement;
+  capability?: VNextProviderFeeSettlementCapability;
 };
 
 export type VNextQuoteProviderAdapter = {
@@ -339,6 +347,24 @@ export async function prepareVNextProviderAuthorization(
     ) throw new Error("Uniswap V3 did not return complete V1 atomic fee authority.");
     assertRmtNetExecutionEconomics(prepared.evidence.netEconomics);
     assertRmtUniswapV3FeeExecution(prepared.evidence.feeExecution, prepared.evidence.netEconomics);
+  } else if (settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE) {
+    const capability = feeAdmission.capability ?? VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY[provider];
+    if (provider !== "zero-x-swap" || capability.state !== "PROVIDER_NATIVE_INPUT_FEE") {
+      throw new Error(`${adapter.providerLabel} does not have admitted provider-native fee settlement.`);
+    }
+    if (
+      prepared.evidence.settlementMode !== VNEXT_PROVIDER_NATIVE_INPUT_FEE
+      || prepared.evidence.rmtFeeEnabled !== true
+      || prepared.evidence.directNoRmtFee !== undefined
+      || prepared.evidence.feeExecution != null
+      || prepared.evidence.feeV2Economics !== undefined
+      || prepared.evidence.feeV2Settlement !== undefined
+      || prepared.feeV2Authorization !== undefined
+    ) throw new Error("0x did not return complete provider-native fee authority.");
+    assertVNextZeroXProviderNativeFee(prepared.evidence.providerNativeFee);
+    if ((prepared.transaction.gasPrice ?? null) !== prepared.evidence.providerNativeFee!.firmQuote?.gasPriceWei
+      || (prepared.transaction.kind === "swap" && (prepared.evidence.exactSimulationPassed !== true || prepared.evidence.authorizationReady !== true))
+    ) throw new Error("0x did not bind the exact simulated gas-price envelope.");
   } else {
     const capability = feeAdmission.capability ?? VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY[provider];
     if (capability.state !== "V2_ATOMIC_INPUT_FEE") {

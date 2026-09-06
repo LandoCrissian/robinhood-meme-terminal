@@ -22,6 +22,16 @@ export type VNextQuoteFeePresentation = {
 
 function feePresentationForQuote(attempt: VNextQuoteAttempt | undefined): VNextIndicativeFeePresentation | null {
   if (!attempt) return null;
+  if (attempt.providerNativeFee) {
+    return {
+      state: "planned",
+      feeBps: attempt.providerNativeFee.feeBps,
+      feeSide: "input",
+      feeAsset: attempt.providerNativeFee.feeAsset,
+      expectedFeeAtomic: attempt.providerNativeFee.feeAmountAtomic,
+      providerInputAtomic: attempt.providerNativeFee.providerInputAtomic
+    };
+  }
   if (attempt.feeV2Economics) {
     return {
       state: "planned",
