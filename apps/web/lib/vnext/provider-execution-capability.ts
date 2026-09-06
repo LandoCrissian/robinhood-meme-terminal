@@ -19,7 +19,7 @@ export const VNEXT_PROVIDER_EXECUTION_CAPABILITY_REGISTRY: Readonly<Record<VNext
   "up-cl": Object.freeze({ state: "WALLET_EXECUTION", strictVerificationImplemented: true, walletAuthorizationCodecImplemented: true }),
   sushi: Object.freeze({ state: "QUOTE_ONLY", strictVerificationImplemented: false, walletAuthorizationCodecImplemented: false }),
   uniswapx: Object.freeze({ state: "QUOTE_ONLY", strictVerificationImplemented: false, walletAuthorizationCodecImplemented: false }),
-  "zero-x-swap": Object.freeze({ state: "QUOTE_ONLY", strictVerificationImplemented: false, walletAuthorizationCodecImplemented: false }),
+  "zero-x-swap": Object.freeze({ state: "WALLET_EXECUTION", strictVerificationImplemented: true, walletAuthorizationCodecImplemented: true }),
   "zero-x-gasless": Object.freeze({ state: "QUOTE_ONLY", strictVerificationImplemented: false, walletAuthorizationCodecImplemented: false })
 });
 

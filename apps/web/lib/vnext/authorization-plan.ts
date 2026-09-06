@@ -35,11 +35,13 @@ import {
   assertVNextDirectExecutionBinding,
   VNEXT_DIRECT_NO_RMT_FEE,
   VNEXT_LEGACY_V1_FEE,
+  VNEXT_PROVIDER_NATIVE_INPUT_FEE,
   VNEXT_V2_ATOMIC_INPUT_FEE,
   type VNextDirectNoRmtFeeSettlement,
   type VNextDirectExecutionBinding,
   type VNextWalletSettlementMode
 } from "./execution-settlement";
+import { assertVNextZeroXPlanBinding, assertVNextZeroXProviderNativeFee, type VNextZeroXProviderNativeFee } from "./zero-x-settlement";
 
 const MAX_CLOCK_SKEW_MS = 5_000;
 export const VNEXT_PLAN_MAX_AGE_MS = 60_000;
@@ -49,13 +51,14 @@ export type VNextAuthorizationPlan = {
   planId: string;
   sourceQuoteRequestId: string;
   sourceVerificationId: string;
-  provider: "uniswap-v2" | "uniswap-v3" | "uniswap-v4" | "up-v2" | "up-cl";
+  provider: "uniswap-v2" | "uniswap-v3" | "uniswap-v4" | "zero-x-swap" | "up-v2" | "up-cl";
   kind: "erc20_approval" | "swap";
   chainId: 4_663;
   target: string;
   data: Hex;
   value: string;
   gasLimit: string;
+  gasPrice?: string;
   payloadHash: Hex;
   inputAsset: string;
   outputAsset: string;
@@ -70,6 +73,7 @@ export type VNextAuthorizationPlan = {
   feeExecution?: RmtUniswapV3FeeExecution | null;
   feeV2Economics?: RmtExecutionFeeV2Economics;
   feeV2Authorization?: VNextAtomicFeeAuthorizationBinding;
+  providerNativeFee?: VNextZeroXProviderNativeFee;
   v4Execution?: VNextUniswapV4ExecutionEvidence;
   deadline: string;
   preparedAtMs: number;
@@ -81,14 +85,15 @@ export type VNextAuthorizationPlan = {
 const atomic = z.string().regex(/^(0|[1-9][0-9]*)$/);
 const planSchema = z.object({
   planId: z.string().uuid(), sourceQuoteRequestId: z.string().uuid(), sourceVerificationId: z.string().uuid(),
-  provider: z.enum(["uniswap-v2", "uniswap-v3", "uniswap-v4", "up-v2", "up-cl"]), kind: z.enum(["erc20_approval", "swap"]), chainId: z.literal(4_663),
-  target: z.string(), data: z.string().regex(/^0x[0-9a-fA-F]+$/), value: atomic, gasLimit: atomic,
+  provider: z.enum(["uniswap-v2", "uniswap-v3", "uniswap-v4", "zero-x-swap", "up-v2", "up-cl"]), kind: z.enum(["erc20_approval", "swap"]), chainId: z.literal(4_663),
+  target: z.string(), data: z.string().regex(/^0x(?:[0-9a-fA-F]{2})+$/), value: atomic, gasLimit: atomic, gasPrice: atomic.optional(),
   payloadHash: z.string().regex(/^0x[0-9a-fA-F]{64}$/), inputAsset: z.string(), outputAsset: z.string(),
   inputAmountAtomic: atomic, protectedOutputAtomic: atomic, recipient: z.string(), router: z.string(), deadline: atomic,
-  settlementMode: z.enum([VNEXT_DIRECT_NO_RMT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE, VNEXT_LEGACY_V1_FEE]),
+  settlementMode: z.enum([VNEXT_DIRECT_NO_RMT_FEE, VNEXT_PROVIDER_NATIVE_INPUT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE, VNEXT_LEGACY_V1_FEE]),
   directNoRmtFee: z.unknown().optional(), directAuthorization: z.unknown().optional(),
   netEconomics: z.unknown().optional(), feeExecution: z.unknown().nullable().optional(),
   feeV2Economics: z.unknown().optional(), feeV2Authorization: z.unknown().optional(),
+  providerNativeFee: z.unknown().optional(),
   v4Execution: z.unknown().optional(),
   preparedAtMs: z.number().int().positive(), expiresAtMs: z.number().int().positive(),
   userAuthorizationRequired: z.literal(true), serverSubmissionEnabled: z.literal(false)
@@ -116,26 +121,43 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
     || getAddress(plan.outputAsset) !== getAddress(evidence.outputAsset)
     || getAddress(plan.recipient) !== getAddress(evidence.recipient)
     || plan.provider !== evidence.provider
-    || getAddress(plan.router) !== getAddress(evidence.provider === "uniswap-v2" ? ROBINHOOD_UNISWAP_V2_ROUTER : evidence.provider === "uniswap-v3" ? ROBINHOOD_SWAP_ROUTER_02 : evidence.provider === "uniswap-v4" ? ROBINHOOD_UNIVERSAL_ROUTER : evidence.provider === "up-v2" ? UP_V2_EXECUTION_ROUTER : UP_CL_EXECUTION_ROUTER)
+    || getAddress(plan.router) !== getAddress(evidence.router)
     || plan.inputAmountAtomic !== evidence.inputAmountAtomic
     || plan.protectedOutputAtomic !== evidence.protectedOutputAtomic
     || plan.value !== evidence.transactionValueAtomic
     || plan.deadline !== evidence.deadline
     || plan.settlementMode !== evidence.settlementMode
     || plan.gasLimit !== evidence.gasLimitUnits
-    || Boolean(plan.feeExecution) !== evidence.rmtFeeEnabled
+    || (plan.settlementMode !== VNEXT_PROVIDER_NATIVE_INPUT_FEE && Boolean(plan.feeExecution) !== evidence.rmtFeeEnabled)
+    || (plan.provider !== "zero-x-swap" && plan.gasPrice !== undefined)
     || (plan.provider === "uniswap-v4" && plan.v4Execution?.poolId !== evidence.v4Execution?.poolId)
     || (plan.provider !== "uniswap-v4" && plan.v4Execution !== undefined)
-    || (evidence.rmtFeeEnabled && (
+    || (evidence.rmtFeeEnabled && plan.settlementMode !== VNEXT_PROVIDER_NATIVE_INPUT_FEE && (
       plan.feeExecution?.executionId !== evidence.feeExecution?.executionId
       || plan.feeExecution?.policyHash !== evidence.feeExecution?.policyHash
       || plan.feeExecution?.routeIdentity !== evidence.feeExecution?.routeIdentity
     ))
     || plan.payloadHash !== authorizationPayloadHash(plan)
     || plan.preparedAtMs > nowMs + MAX_CLOCK_SKEW_MS || plan.expiresAtMs <= nowMs
+    || plan.expiresAtMs <= plan.preparedAtMs
     || plan.expiresAtMs - plan.preparedAtMs > VNEXT_PLAN_MAX_AGE_MS
     || plan.expiresAtMs > Number(BigInt(plan.deadline) * 1_000n) - VNEXT_MINIMUM_WALLET_REVIEW_RUNWAY_MS
   ) throw new Error("RMT rejected an inconsistent authorization plan.");
+  if (plan.provider === "zero-x-swap" || plan.settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE) {
+    parseVNextPreSignEvidence(evidence, {
+      quoteRequestId: plan.sourceQuoteRequestId, inputAsset: plan.inputAsset, outputAsset: plan.outputAsset,
+      inputAmountAtomic: plan.inputAmountAtomic, provider: plan.provider, recipient: plan.recipient,
+      protectedOutputFloorAtomic: evidence.indicativeProtectedOutputFloorAtomic
+    }, nowMs);
+    assertVNextZeroXPlanBinding(plan);
+    if (!evidence.rmtFeeEnabled || plan.expiresAtMs > evidence.expiresAtMs
+      || evidence.nextAction !== (plan.kind === "swap" ? "swap" : "approval")
+      || !evidence.nextActionTarget || getAddress(plan.target) !== getAddress(evidence.nextActionTarget)
+      || keccak256(plan.data) !== evidence.nextActionCalldataHash
+    ) throw new Error("RMT rejected incomplete 0x next-action authority.");
+  } else if (plan.providerNativeFee !== undefined) {
+    throw new Error("RMT rejected foreign provider-native fee authority.");
+  }
 
   if (plan.provider === "uniswap-v4") {
     const planned = plan.v4Execution;
@@ -164,6 +186,7 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
   let validatedV2Authorization: VNextAtomicFeeAuthorizationBinding | null = null;
   let validatedV2Settlement: VNextAtomicFeeSettlementProof | null = null;
   if (plan.settlementMode === VNEXT_DIRECT_NO_RMT_FEE) {
+    if (plan.provider === "zero-x-swap") throw new Error("RMT rejected 0x under fee-free direct settlement.");
     assertVNextDirectNoRmtFeeSettlement(plan.directNoRmtFee, plan.inputAmountAtomic);
     assertVNextDirectNoRmtFeeSettlement(evidence.directNoRmtFee, evidence.inputAmountAtomic);
     assertVNextDirectExecutionBinding({
@@ -224,6 +247,28 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
       || plan.netEconomics.rmtFee.maximumFeeAtomic !== evidence.netEconomics.rmtFee.maximumFeeAtomic
     ) throw new Error("RMT rejected changed V1 fee authority.");
     validatedV1Execution = plan.feeExecution;
+  } else if (plan.settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE) {
+    if (
+      plan.provider !== "zero-x-swap"
+      || evidence.provider !== "zero-x-swap"
+      || evidence.settlementMode !== VNEXT_PROVIDER_NATIVE_INPUT_FEE
+      || !plan.providerNativeFee
+      || !evidence.providerNativeFee
+      || plan.directAuthorization !== undefined
+      || plan.directNoRmtFee !== undefined
+      || plan.feeExecution != null
+      || plan.feeV2Economics !== undefined
+      || plan.feeV2Authorization !== undefined
+      || evidence.feeV2Economics !== undefined
+      || evidence.feeV2Settlement !== undefined
+    ) throw new Error("RMT rejected a wallet plan without complete 0x provider-native fee authority.");
+    assertVNextZeroXProviderNativeFee(plan.providerNativeFee);
+    assertVNextZeroXProviderNativeFee(evidence.providerNativeFee);
+    if (
+      JSON.stringify(plan.providerNativeFee) !== JSON.stringify(evidence.providerNativeFee)
+      || plan.providerNativeFee.transactionCalldataHash?.toLowerCase() !== evidence.calldataHash.toLowerCase()
+      || getAddress(plan.providerNativeFee.transactionTarget!) !== getAddress(evidence.router)
+    ) throw new Error("RMT rejected changed 0x provider-native fee authority.");
   } else {
     if (
       !plan.feeV2Economics
@@ -286,7 +331,9 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
       ? plan.provider === "uniswap-v4" ? PERMIT2_ADDRESS : evidence.router
       : plan.settlementMode === VNEXT_LEGACY_V1_FEE
         ? validatedV1Execution!.executor
-        : validatedV2Settlement!.executionTarget;
+        : plan.settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE
+          ? evidence.approvalSpender
+          : validatedV2Settlement!.executionTarget;
     if (
       getAddress(spender) !== getAddress(evidence.approvalSpender)
       || getAddress(spender) !== getAddress(requiredSpender)
@@ -313,6 +360,16 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
       || keccak256(plan.data) !== evidence.calldataHash
       || plan.data.toLowerCase() !== encodeRmtUniswapV3FeeExecution(validatedV1Execution!).toLowerCase()
     ) throw new Error("RMT rejected a V1 fee-bearing swap plan that does not match strict evidence.");
+    return plan;
+  }
+
+  if (plan.settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE) {
+    if (
+      evidence.status !== "verified"
+      || getAddress(plan.target) !== getAddress(evidence.providerNativeFee!.transactionTarget!)
+      || keccak256(plan.data).toLowerCase() !== evidence.providerNativeFee!.transactionCalldataHash!.toLowerCase()
+      || plan.value !== evidence.providerNativeFee!.transactionValueAtomic
+    ) throw new Error("RMT rejected a 0x swap plan that differs from the simulated envelope.");
     return plan;
   }
 
@@ -364,6 +421,9 @@ export function parseVNextAuthorizationBundle(value: unknown, priorEvidence: VNe
     || evidence.feeV2Economics?.maximumFeeAtomic !== priorEvidence.feeV2Economics?.maximumFeeAtomic
     || evidence.feeV2Settlement?.executionId !== priorEvidence.feeV2Settlement?.executionId
     || evidence.feeV2Settlement?.calldataHash !== priorEvidence.feeV2Settlement?.calldataHash
+    || evidence.providerNativeFee?.feeAmountAtomic !== priorEvidence.providerNativeFee?.feeAmountAtomic
+    || evidence.providerNativeFee?.feeAsset !== priorEvidence.providerNativeFee?.feeAsset
+    || evidence.providerNativeFee?.treasury !== priorEvidence.providerNativeFee?.treasury
     || evidence.infrastructureVerifiedAtBlock !== priorEvidence.infrastructureVerifiedAtBlock
     || evidence.infrastructureVerifiedAtBlockHash !== priorEvidence.infrastructureVerifiedAtBlockHash
     || evidence.v4Execution?.poolId !== priorEvidence.v4Execution?.poolId

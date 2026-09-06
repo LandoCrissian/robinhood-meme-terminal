@@ -13,7 +13,8 @@ import {
   isVNextWalletExecutionAdmitted
 } from "./provider-execution-capability";
 import { isVNextWalletFeeSettlementAdmitted } from "./provider-fee-settlement";
-import { VNEXT_LEGACY_V1_FEE, VNEXT_V2_ATOMIC_INPUT_FEE } from "./execution-settlement";
+import { VNEXT_LEGACY_V1_FEE, VNEXT_PROVIDER_NATIVE_INPUT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE } from "./execution-settlement";
+import { assertVNextZeroXProviderNativeFee, type VNextZeroXProviderNativeFee } from "./zero-x-settlement";
 
 export { hasVNextWalletAuthorizationCodec } from "./provider-execution-capability";
 
@@ -66,9 +67,10 @@ export type VNextQuoteAttempt = {
   gasSponsorshipFeeAtomic: string | null;
   explicitProviderFeeOutputAtomic: string | null;
   netEconomics: RmtNetExecutionEconomics | null;
-  settlementMode?: typeof VNEXT_LEGACY_V1_FEE | typeof VNEXT_V2_ATOMIC_INPUT_FEE;
+  settlementMode?: typeof VNEXT_LEGACY_V1_FEE | typeof VNEXT_PROVIDER_NATIVE_INPUT_FEE | typeof VNEXT_V2_ATOMIC_INPUT_FEE;
   executionTarget?: string;
   feeV2Economics?: RmtExecutionFeeV2Economics;
+  providerNativeFee?: VNextZeroXProviderNativeFee;
   networkFeeNativeAtomic: string | null;
   networkFeeNativeSymbol: "ETH" | null;
   protectedNetOutputAtomic: string | null;
@@ -138,9 +140,10 @@ const attemptSchema = z.object({
   gasSponsorshipFeeAtomic: z.string().nullable(),
   explicitProviderFeeOutputAtomic: z.string().nullable(),
   netEconomics: z.unknown().nullable(),
-  settlementMode: z.union([z.literal(VNEXT_LEGACY_V1_FEE), z.literal(VNEXT_V2_ATOMIC_INPUT_FEE)]).optional(),
+  settlementMode: z.union([z.literal(VNEXT_LEGACY_V1_FEE), z.literal(VNEXT_PROVIDER_NATIVE_INPUT_FEE), z.literal(VNEXT_V2_ATOMIC_INPUT_FEE)]).optional(),
   executionTarget: z.string().optional(),
   feeV2Economics: z.unknown().optional(),
+  providerNativeFee: z.unknown().optional(),
   networkFeeNativeAtomic: z.string().nullable(),
   networkFeeNativeSymbol: z.literal("ETH").nullable(),
   protectedNetOutputAtomic: z.string().nullable(),
@@ -195,6 +198,7 @@ export function assertVNextQuoteAttempt(
   if (!Number.isFinite(attempt.latencyMs) || attempt.latencyMs < 0) throw new Error("Quote attempt latency is invalid.");
   if (attempt.authorizationReady !== false) throw new Error("Indicative quote cannot claim authorization readiness.");
   if (attempt.status === "indicative") {
+    if (attempt.provider === "zero-x-swap" && !attempt.providerNativeFee) throw new Error("0x quote omitted required provider-native fee authority.");
     const expectedOutput = attempt.expectedOutputAtomic ? atomic(attempt.expectedOutputAtomic) : null;
     const protectedOutput = attempt.protectedOutputAtomic ? atomic(attempt.protectedOutputAtomic) : null;
     if (!expectedOutput || !protectedOutput || expectedOutput <= 0n || protectedOutput <= 0n || protectedOutput > expectedOutput) throw new Error("Quote attempt output is invalid.");
@@ -255,7 +259,23 @@ export function assertVNextQuoteAttempt(
     }
     const providerFee = attempt.providerFeeAtomic === null ? null : atomic(attempt.providerFeeAtomic);
     const gasSponsorshipFee = attempt.gasSponsorshipFeeAtomic === null ? null : atomic(attempt.gasSponsorshipFeeAtomic);
-    if (attempt.feeV2Economics) {
+    if (attempt.providerNativeFee) {
+      assertVNextZeroXProviderNativeFee(attempt.providerNativeFee);
+      if (
+        attempt.provider !== "zero-x-swap"
+        || attempt.settlementMode !== VNEXT_PROVIDER_NATIVE_INPUT_FEE
+        || attempt.netEconomics !== null
+        || attempt.feeV2Economics !== undefined
+        || attempt.providerNativeFee.authorizationState !== "indicative"
+        || attempt.providerNativeFee.userGrossInputAtomic !== attempt.inputAmountAtomic
+        || getAddress(attempt.providerNativeFee.feeAsset) !== getAddress(attempt.inputAsset)
+        || getAddress(attempt.providerNativeFee.outputAsset) !== getAddress(attempt.outputAsset)
+        || attempt.providerNativeFee.expectedOutputAtomic !== attempt.expectedOutputAtomic
+        || attempt.providerNativeFee.protectedOutputAtomic !== attempt.protectedOutputAtomic
+        || attempt.providerNativeFee.providerFeeAsset !== attempt.providerFeeAsset
+        || attempt.providerNativeFee.providerFeeAtomic !== attempt.providerFeeAtomic
+      ) throw new Error("Indicative quote exposed inconsistent provider-native fee economics.");
+    } else if (attempt.feeV2Economics) {
       assertRmtExecutionFeeV2Economics(attempt.feeV2Economics);
       if (
         !isVNextWalletFeeSettlementAdmitted(attempt.provider)
@@ -337,6 +357,7 @@ export function assertVNextQuoteAttempt(
     || attempt.netEconomics !== null
     || attempt.settlementMode !== undefined
     || attempt.feeV2Economics !== undefined
+    || attempt.providerNativeFee !== undefined
     || attempt.executionTarget !== undefined
     || attempt.networkFeeNativeAtomic !== null
     || attempt.networkFeeNativeSymbol !== null

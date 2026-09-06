@@ -1,6 +1,7 @@
 import type { VNextQuoteProvider } from "../vnext/quote-observation";
 import {
   VNEXT_V2_ATOMIC_INPUT_FEE,
+  VNEXT_PROVIDER_NATIVE_INPUT_FEE,
   type VNextExecutionSettlementMode
 } from "../vnext/execution-settlement";
 
@@ -28,10 +29,11 @@ export type VNextPublicExecutionProviderScope = Readonly<{
   providers: readonly VNextQuoteProvider[];
 }>;
 
-export type VNextPublicExecutionReleaseScope = "v3-only" | "v2-v3" | "invalid-unreleased";
+export type VNextPublicExecutionReleaseScope = "v3-only" | "v2-v3" | "ZERO_X_ONLY" | "invalid-unreleased";
 
 export const VNEXT_PUBLIC_EXECUTION_RELEASE_SCOPE_V3_ONLY = "uniswap-v3" as const;
 export const VNEXT_PUBLIC_EXECUTION_RELEASE_SCOPE_V2_V3 = "uniswap-v2,uniswap-v3" as const;
+export const VNEXT_PUBLIC_EXECUTION_RELEASE_SCOPE_ZERO_X_ONLY = "zero-x-swap" as const;
 
 export class VNextPublicExecutionProviderConfigurationError extends Error {
   constructor() {
@@ -86,7 +88,7 @@ export function isVNextPublicExecutionProviderReleased(
   env: VNextPublicExecutionProviderEnvironment = process.env as unknown as VNextPublicExecutionProviderEnvironment
 ) {
   const scope = readVNextPublicExecutionProviderScope(env);
-  return scope.valid && scope.providers.includes(provider);
+  return scope.valid && (!scope.providers.includes("zero-x-swap") || hasExactVNextZeroXOnlyPublicExecutionProviderScope(env)) && scope.providers.includes(provider);
 }
 
 export function requireVNextPublicExecutionProvider(
@@ -95,6 +97,7 @@ export function requireVNextPublicExecutionProvider(
 ) {
   const scope = readVNextPublicExecutionProviderScope(env);
   if (!scope.valid) throw new VNextPublicExecutionProviderConfigurationError();
+  if (scope.providers.includes("zero-x-swap") && !hasExactVNextZeroXOnlyPublicExecutionProviderScope(env)) throw new VNextPublicExecutionProviderConfigurationError();
   if (!scope.providers.includes(provider)) throw new VNextPublicExecutionProviderNotReleasedError(provider);
 }
 
@@ -105,6 +108,9 @@ export function requireVNextPublicExecutionSettlement(
 ) {
   requireVNextPublicExecutionProvider(provider, env);
   if ((provider === "uniswap-v2" || provider === "uniswap-v3") && settlementMode !== VNEXT_V2_ATOMIC_INPUT_FEE) {
+    throw new VNextPublicExecutionSettlementNotReleasedError(provider);
+  }
+  if (provider === "zero-x-swap" && settlementMode !== VNEXT_PROVIDER_NATIVE_INPUT_FEE) {
     throw new VNextPublicExecutionSettlementNotReleasedError(provider);
   }
 }
@@ -143,6 +149,12 @@ export function hasExactVNextV2V3PublicExecutionProviderScope(
   return readVNextPublicExecutionReleaseScope(env) === "v2-v3";
 }
 
+export function hasExactVNextZeroXOnlyPublicExecutionProviderScope(
+  env: VNextPublicExecutionProviderEnvironment = process.env as unknown as VNextPublicExecutionProviderEnvironment
+) {
+  return readVNextPublicExecutionReleaseScope(env) === "ZERO_X_ONLY";
+}
+
 export function readVNextPublicExecutionReleaseScope(
   env: VNextPublicExecutionProviderEnvironment = process.env as unknown as VNextPublicExecutionProviderEnvironment
 ): VNextPublicExecutionReleaseScope {
@@ -150,5 +162,6 @@ export function readVNextPublicExecutionReleaseScope(
   if (!scope.configured || !scope.valid) return "invalid-unreleased";
   if (env.RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS === VNEXT_PUBLIC_EXECUTION_RELEASE_SCOPE_V3_ONLY) return "v3-only";
   if (env.RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS === VNEXT_PUBLIC_EXECUTION_RELEASE_SCOPE_V2_V3) return "v2-v3";
+  if (env.RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS === VNEXT_PUBLIC_EXECUTION_RELEASE_SCOPE_ZERO_X_ONLY) return "ZERO_X_ONLY";
   return "invalid-unreleased";
 }

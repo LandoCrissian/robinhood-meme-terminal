@@ -12,6 +12,7 @@ import {
   type Hex
 } from "viem";
 import { authorizationPayloadHash, type VNextAuthorizationPlan } from "./authorization-plan";
+import { assertVNextZeroXPlanBinding, RMT_ZERO_X_FEE_TREASURY, zeroXIntegratorFeeAmount } from "./zero-x-settlement";
 import { assertRmtNetExecutionEconomics, calculateRmtFeeFloor } from "./execution-fee-policy";
 import { assertRmtExecutionFeeV2Economics } from "./execution-fee-policy-v2";
 import {
@@ -151,6 +152,19 @@ export type VNextExecutionRecord = {
     actualRmtFeeAtomic?: string;
     actualProviderOutputAtomic?: string;
   };
+  providerNativeFee?: {
+    provider: "zero-x-swap";
+    treasury: Address;
+    feeAsset: Address;
+    feeBps: 25;
+    feeAmountAtomic: string;
+    expectedOutputAtomic: string;
+    protectedOutputAtomic: string;
+    providerFeeAsset: Address | null;
+    providerFeeAtomic: string | null;
+    transactionTarget: Address;
+    calldataHash: Hex;
+  };
   v4DirectSettlement?: {
     poolId: Hex;
     poolManager: Address;
@@ -239,7 +253,7 @@ function normalizeTimestamp(value: unknown) {
   return typeof value === "number" && Number.isSafeInteger(value) && value > 0 ? value : null;
 }
 
-const JOURNAL_PROVIDERS = new Set<VNextAuthorizationPlan["provider"]>(["uniswap-v2", "uniswap-v3", "uniswap-v4", "up-v2", "up-cl"]);
+const JOURNAL_PROVIDERS = new Set<VNextAuthorizationPlan["provider"]>(["uniswap-v2", "uniswap-v3", "uniswap-v4", "zero-x-swap", "up-v2", "up-cl"]);
 
 type VNextFeeV2RecoveryProvider = "uniswap-v2" | "uniswap-v3";
 
@@ -410,6 +424,36 @@ function normalizeRecord(value: unknown): VNextExecutionRecord | null {
       ...(actualProviderOutputAtomic !== undefined ? { actualProviderOutputAtomic } : {})
     };
   })();
+  const providerNativeCandidate = candidate.kind === "swap" ? candidate.providerNativeFee : undefined;
+  const providerNativeFee = providerNativeCandidate === undefined ? undefined : (
+    providerNativeCandidate.provider === "zero-x-swap"
+    && isAddress(providerNativeCandidate.treasury, { strict: false })
+    && getAddress(providerNativeCandidate.treasury) === RMT_ZERO_X_FEE_TREASURY
+    && isAddress(providerNativeCandidate.feeAsset, { strict: false })
+    && isAddress(candidate.inputAsset ?? "", { strict: false })
+    && getAddress(providerNativeCandidate.feeAsset) === getAddress(candidate.inputAsset!)
+    && providerNativeCandidate.feeBps === 25
+    && /^[1-9][0-9]*$/.test(providerNativeCandidate.feeAmountAtomic)
+    && /^[1-9][0-9]*$/.test(candidate.inputAmountAtomic ?? "")
+    && providerNativeCandidate.feeAmountAtomic === zeroXIntegratorFeeAmount(candidate.inputAmountAtomic!)
+    && /^[1-9][0-9]*$/.test(providerNativeCandidate.expectedOutputAtomic)
+    && /^[1-9][0-9]*$/.test(providerNativeCandidate.protectedOutputAtomic)
+    && BigInt(providerNativeCandidate.protectedOutputAtomic) <= BigInt(providerNativeCandidate.expectedOutputAtomic)
+    && isAddress(providerNativeCandidate.transactionTarget, { strict: false })
+    && isHash(providerNativeCandidate.calldataHash)
+    && (providerNativeCandidate.providerFeeAsset === null) === (providerNativeCandidate.providerFeeAtomic === null)
+    && (providerNativeCandidate.providerFeeAsset === null || isAddress(providerNativeCandidate.providerFeeAsset, { strict: false }))
+    && (providerNativeCandidate.providerFeeAtomic === null || /^[1-9][0-9]*$/.test(providerNativeCandidate.providerFeeAtomic))
+      ? {
+          ...providerNativeCandidate,
+          treasury: getAddress(providerNativeCandidate.treasury),
+          feeAsset: getAddress(providerNativeCandidate.feeAsset),
+          providerFeeAsset: providerNativeCandidate.providerFeeAsset ? getAddress(providerNativeCandidate.providerFeeAsset) : null,
+          transactionTarget: getAddress(providerNativeCandidate.transactionTarget),
+          calldataHash: providerNativeCandidate.calldataHash.toLowerCase() as Hex
+        }
+      : null
+  );
   const v4Candidate = candidate.kind === "swap" ? candidate.v4DirectSettlement : undefined;
   const v4DirectSettlement = v4Candidate === undefined ? undefined : (
     candidate.provider === "uniswap-v4"
@@ -444,9 +488,11 @@ function normalizeRecord(value: unknown): VNextExecutionRecord | null {
     || !candidate.planId || !/^[0-9a-f-]{36}$/i.test(candidate.planId)
     || !candidate.inputAmountAtomic || !/^[1-9][0-9]*$/.test(candidate.inputAmountAtomic)
     || outputAmountAtomic === null || deadline === null || failureClassification === null || networkGasSpentWei === null
-    || feeSettlement === null || feeV2Settlement === null || v4DirectSettlement === null || provider === null
-    || (feeSettlement !== undefined && feeV2Settlement !== undefined)
+    || feeSettlement === null || feeV2Settlement === null || providerNativeFee === null || v4DirectSettlement === null || provider === null
+    || [feeSettlement, feeV2Settlement, providerNativeFee].filter((value) => value !== undefined).length > 1
     || (feeV2Settlement !== undefined && provider !== feeV2Settlement.provider)
+    || (providerNativeFee !== undefined && provider !== "zero-x-swap")
+    || (provider === "zero-x-swap" && candidate.kind === "swap" && providerNativeFee === undefined)
     || (v4DirectSettlement !== undefined && provider !== "uniswap-v4")
     || (provider === "uniswap-v4" && candidate.kind === "swap" && v4DirectSettlement === undefined)
     || !submittedAtMs || !updatedAtMs || updatedAtMs < submittedAtMs
@@ -468,6 +514,7 @@ function normalizeRecord(value: unknown): VNextExecutionRecord | null {
     ...(outputAmountAtomic ? { outputAmountAtomic } : {}),
     ...(feeSettlement ? { feeSettlement } : {}),
     ...(feeV2Settlement ? { feeV2Settlement } : {}),
+    ...(providerNativeFee ? { providerNativeFee } : {}),
     ...(v4DirectSettlement ? { v4DirectSettlement } : {}),
     planId: candidate.planId,
     payloadHash: candidate.payloadHash.toLowerCase() as Hex,
@@ -722,6 +769,9 @@ export function findBlockingVNextWalletRequest(wallet: string, storage?: VNextEx
 }
 
 function boundVNextSwapCalldataHash(plan: VNextAuthorizationPlan): Hex | null {
+  if (plan.settlementMode === "PROVIDER_NATIVE_INPUT_FEE") {
+    try { assertVNextZeroXPlanBinding(plan); return plan.providerNativeFee!.transactionCalldataHash; } catch { return null; }
+  }
   if (plan.settlementMode === VNEXT_DIRECT_NO_RMT_FEE) {
     return plan.directAuthorization?.calldataHash ?? null;
   }
@@ -888,6 +938,9 @@ export function reconcileExpiredVNextWalletRequest(input: {
   nowMs: number;
 }, storage?: VNextExecutionStorage) {
   const { request } = input;
+  // Opaque 0x calldata has no RMT-proven onchain deadline. Never infer that
+  // an unanswered wallet request is safely unsubmitted from a local timeout.
+  if (request.provider === "zero-x-swap") return request;
   if (request.planKind !== "swap" || input.nowMs < Number(BigInt(request.finalOnchainDeadline) * 1_000n)) return request;
   const before = BigInt(request.walletNonceBeforeRequest);
   const safelyUnsubmitted = input.latestNonce !== null && input.pendingNonce !== null
@@ -1053,6 +1106,10 @@ function v2SettlementFromPlan(plan: VNextAuthorizationPlan, wallet: Address): VN
 export function isVNextPlanRecoveryAdmissible(plan: VNextAuthorizationPlan, wallet: string) {
   try {
     if (!isAddress(wallet, { strict: false }) || getAddress(wallet) !== getAddress(plan.recipient)) return false;
+    if (plan.settlementMode === "PROVIDER_NATIVE_INPUT_FEE") {
+      assertVNextZeroXPlanBinding(plan);
+      return plan.payloadHash === authorizationPayloadHash(plan);
+    }
     const carriesV2Authority = Boolean(plan.feeV2Economics || plan.feeV2Authorization);
     if (!carriesV2Authority) return plan.settlementMode !== VNEXT_V2_ATOMIC_INPUT_FEE;
     if (!plan.feeV2Economics || !plan.feeV2Authorization || plan.feeExecution) return false;
@@ -1091,6 +1148,21 @@ function buildSubmittedVNextExecutionRecord(input: {
         treasuryTransferAtomic: "0" as const
       }
     : undefined;
+  const providerNativeFee = input.plan.kind === "swap" && input.plan.provider === "zero-x-swap" && input.plan.providerNativeFee
+    ? {
+        provider: "zero-x-swap" as const,
+        treasury: getAddress(input.plan.providerNativeFee.treasury),
+        feeAsset: getAddress(input.plan.providerNativeFee.feeAsset),
+        feeBps: 25 as const,
+        feeAmountAtomic: input.plan.providerNativeFee.feeAmountAtomic,
+        expectedOutputAtomic: input.plan.providerNativeFee.expectedOutputAtomic,
+        protectedOutputAtomic: input.plan.providerNativeFee.protectedOutputAtomic,
+        providerFeeAsset: input.plan.providerNativeFee.providerFeeAsset ? getAddress(input.plan.providerNativeFee.providerFeeAsset) : null,
+        providerFeeAtomic: input.plan.providerNativeFee.providerFeeAtomic,
+        transactionTarget: getAddress(input.plan.providerNativeFee.transactionTarget!),
+        calldataHash: input.plan.providerNativeFee.transactionCalldataHash!
+      }
+    : undefined;
   const record: VNextExecutionRecord = {
     schemaVersion: SCHEMA_VERSION,
     chainId: 4_663,
@@ -1116,10 +1188,11 @@ function buildSubmittedVNextExecutionRecord(input: {
       maximumFeeAtomic: input.plan.feeExecution.maximumFeeAtomic
     } } : {}),
     ...(feeV2Settlement ? { feeV2Settlement } : {}),
+    ...(providerNativeFee ? { providerNativeFee } : {}),
     ...(v4DirectSettlement ? { v4DirectSettlement } : {}),
     planId: input.plan.planId,
     payloadHash: input.plan.payloadHash.toLowerCase() as Hex,
-    deadline: input.plan.deadline,
+    ...(input.plan.provider !== "zero-x-swap" ? { deadline: input.plan.deadline } : {}),
     txHash: normalizedHash,
     state: "submitted",
     submittedAtMs: nowMs,
@@ -1394,6 +1467,8 @@ export function settledVNextOutputAtomic(record: VNextExecutionRecord, logs: rea
   if (record.kind !== "swap") return null;
   if (record.feeV2Settlement) return null;
   if (isRobinhoodNativeAsset(record.outputAsset)) {
+    // WETH withdrawals inside an aggregate route do not prove ETH delivery.
+    if (record.provider === "zero-x-swap") return null;
     if (record.provider === "uniswap-v4") {
       const expected = record.v4DirectSettlement;
       if (!expected) return null;

@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { bestIndicativeAttempt, hasVNextWalletAuthorizationCodec, parseVNextQuoteResponse, selectVNextRoute, type VNextQuoteResponse } from "./quote-observation";
 import { createRmtExecutionV1Policy, normalizeDisabledRmtFee, normalizeInputSideRmtFee } from "./execution-fee-policy";
-import { VNEXT_LEGACY_V1_FEE } from "./execution-settlement";
+import { VNEXT_LEGACY_V1_FEE, VNEXT_PROVIDER_NATIVE_INPUT_FEE } from "./execution-settlement";
+import { createVNextZeroXProviderNativeFee } from "./zero-x-settlement";
 
 const now = 1_786_000_000_000;
 const inputAsset = "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168";
@@ -156,7 +157,7 @@ assert.equal(netEconomicsSelection.bestObserved?.provider, "sushi", "a lower-net
 assert.equal(netEconomicsSelection.verificationCandidate?.provider, "uniswap-v3", "the fee-bearing route remains an explicit verified fallback");
 assert.equal(hasVNextWalletAuthorizationCodec("uniswap-v3"), true);
 assert.equal(hasVNextWalletAuthorizationCodec("uniswap-v4"), true);
-assert.equal(hasVNextWalletAuthorizationCodec("zero-x-swap"), false);
+assert.equal(hasVNextWalletAuthorizationCodec("zero-x-swap"), true);
 assert.equal(hasVNextWalletAuthorizationCodec("zero-x-gasless"), false);
 assert.equal(hasVNextWalletAuthorizationCodec("uniswapx"), false);
 assert.equal(hasVNextWalletAuthorizationCodec("up-v2"), true);
@@ -188,12 +189,21 @@ const strictOnlyZeroX = parseVNextQuoteResponse({
     provider: "zero-x-swap",
     providerLabel: "0x Swap",
     providerFamily: "zeroex",
-    strictVerificationAvailable: true
+    strictVerificationAvailable: true,
+    netEconomics: null,
+    settlementMode: VNEXT_PROVIDER_NATIVE_INPUT_FEE,
+    providerNativeFee: createVNextZeroXProviderNativeFee({
+      inputAsset, outputAsset, recipient: "0x0000000000000000000000000000000000010000",
+      userGrossInputAtomic: expected.inputAmountAtomic,
+      expectedOutputAtomic: response.attempts[0].expectedOutputAtomic!,
+      protectedOutputAtomic: response.attempts[0].protectedOutputAtomic!, authorizationState: "indicative"
+    })
   }]
 }, expected, now);
 const strictOnlySelection = selectVNextRoute(strictOnlyZeroX.attempts);
 assert.equal(strictOnlySelection.bestObserved?.provider, "zero-x-swap");
-assert.equal(strictOnlySelection.verificationCandidate, undefined);
+assert.equal(strictOnlySelection.verificationCandidate?.provider, "zero-x-swap");
+assert.throws(() => parseVNextQuoteResponse({ ...strictOnlyZeroX, attempts: [{ ...strictOnlyZeroX.attempts[0], providerNativeFee: undefined }] }, expected, now), /provider-native fee authority/);
 assert.equal(strictOnlySelection.usesVerifiedBackup, false);
 
 const feeCoveredProviderUnavailable = parseVNextQuoteResponse({

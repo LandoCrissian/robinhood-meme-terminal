@@ -3,14 +3,17 @@ import { getAddress, isAddress, keccak256, type Hex } from "viem";
 export const VNEXT_DIRECT_NO_RMT_FEE = "DIRECT_NO_RMT_FEE" as const;
 export const VNEXT_V2_ATOMIC_INPUT_FEE = "V2_ATOMIC_INPUT_FEE" as const;
 export const VNEXT_LEGACY_V1_FEE = "LEGACY_V1_FEE" as const;
+export const VNEXT_PROVIDER_NATIVE_INPUT_FEE = "PROVIDER_NATIVE_INPUT_FEE" as const;
 
 export type VNextExecutionSettlementMode =
   | typeof VNEXT_DIRECT_NO_RMT_FEE
   | typeof VNEXT_V2_ATOMIC_INPUT_FEE
+  | typeof VNEXT_PROVIDER_NATIVE_INPUT_FEE
   | typeof VNEXT_LEGACY_V1_FEE;
 export type VNextWalletSettlementMode =
   | typeof VNEXT_DIRECT_NO_RMT_FEE
   | typeof VNEXT_V2_ATOMIC_INPUT_FEE
+  | typeof VNEXT_PROVIDER_NATIVE_INPUT_FEE
   | typeof VNEXT_LEGACY_V1_FEE;
 
 export type VNextDirectNoRmtFeeSettlement = {

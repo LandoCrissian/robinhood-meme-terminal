@@ -6,6 +6,7 @@ import { assertVNextAtomicFeeAuthorizationBinding } from "./provider-fee-settlem
 import { assertVNextDirectExecutionBinding, assertVNextDirectNoRmtFeeSettlement, VNEXT_DIRECT_NO_RMT_FEE, VNEXT_LEGACY_V1_FEE } from "./execution-settlement";
 import { assertRmtUniswapV3FeeExecution, encodeRmtUniswapV3FeeExecution } from "./uniswap-v3-fee-executor";
 import { PERMIT2_ADDRESS, ROBINHOOD_UNIVERSAL_ROUTER, permit2Abi } from "../uniswap-v4";
+import { assertVNextZeroXPlanBinding } from "./zero-x-settlement";
 
 const PRIVY_RESOURCE_ID = /^[A-Za-z0-9_-]{8,160}$/;
 const SELECTOR = /^0x[0-9a-fA-F]{8}$/;
@@ -136,6 +137,7 @@ export function vnextSpotTradeInstruction(plan: VNextAuthorizationPlan): VNextEx
     throw new Error("RMT rejected a spot plan that bypasses wallet authorization.");
   }
   if (plan.settlementMode === VNEXT_DIRECT_NO_RMT_FEE) {
+    if (plan.provider === "zero-x-swap") throw new Error("RMT rejected 0x under fee-free direct settlement.");
     const approvalSpender = plan.directAuthorization?.approvalSpender ?? plan.router;
     assertVNextDirectNoRmtFeeSettlement(plan.directNoRmtFee, plan.inputAmountAtomic);
     assertVNextDirectExecutionBinding({
@@ -215,6 +217,9 @@ export function vnextSpotTradeInstruction(plan: VNextAuthorizationPlan): VNextEx
     ) {
       throw new Error("RMT rejected changed V1 fee-executor swap authority.");
     }
+  } else if (plan.settlementMode === "PROVIDER_NATIVE_INPUT_FEE") {
+    assertVNextZeroXPlanBinding(plan);
+    if (plan.payloadHash !== authorizationPayloadHash(plan)) throw new Error("RMT rejected changed 0x spot execution payload.");
   } else {
     if (!plan.feeV2Economics || !plan.feeV2Authorization) {
       throw new Error("RMT rejected spot execution authority without complete V2 fee settlement.");

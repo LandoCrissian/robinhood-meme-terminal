@@ -9,6 +9,7 @@ import {
 } from "./execution-fee-policy-v2";
 import { RMT_UNISWAP_V3_V2_IMPLEMENTATION_ID } from "./uniswap-v3-fee-executor-v2";
 import { RMT_UNISWAP_V2_V2_IMPLEMENTATION_ID } from "./uniswap-v2-fee-executor-v2";
+import { VNEXT_PROVIDER_NATIVE_INPUT_FEE } from "./execution-settlement";
 
 export type VNextQuoteOnlyFeeSettlement = {
   state: "QUOTE_ONLY";
@@ -29,8 +30,18 @@ export type VNextAdmittedFeeSettlement = {
 };
 
 export type VNextProviderFeeSettlement = VNextQuoteOnlyFeeSettlement | VNextAdmittedFeeSettlement;
+export type VNextProviderNativeFeeSettlement = {
+  state: "PROVIDER_NATIVE_INPUT_FEE";
+  requiredMode: typeof VNEXT_PROVIDER_NATIVE_INPUT_FEE;
+  implementationId: null;
+  walletCodecImplemented: true;
+  currentSettlement: string;
+  requiredImplementation: string;
+};
 
-export const VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY: Readonly<Record<VNextQuoteProvider, VNextProviderFeeSettlement>> = Object.freeze({
+export type VNextProviderFeeSettlementCapability = VNextProviderFeeSettlement | VNextProviderNativeFeeSettlement;
+
+export const VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY: Readonly<Record<VNextQuoteProvider, VNextProviderFeeSettlementCapability>> = Object.freeze({
   "uniswap-v2": Object.freeze({
     state: "V2_ATOMIC_INPUT_FEE", requiredMode: "v2-atomic-input-fee", implementationId: RMT_UNISWAP_V2_V2_IMPLEMENTATION_ID,
     walletCodecImplemented: true,
@@ -74,10 +85,10 @@ export const VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY: Readonly<Record<VNextQuoteP
     requiredImplementation: "Provider-native or bounded order settlement proving the exact universal V2 fee."
   }),
   "zero-x-swap": Object.freeze({
-    state: "QUOTE_ONLY", requiredMode: "v2-atomic-input-fee", implementationId: null,
-    walletCodecImplemented: false,
-    currentSettlement: "Indicative allowance-holder quote only; provider fees are not an RMT V2 commitment.",
-    requiredImplementation: "Verified 0x settlement mode atomically binding the exact RMT V2 fee."
+    state: "PROVIDER_NATIVE_INPUT_FEE", requiredMode: VNEXT_PROVIDER_NATIVE_INPUT_FEE, implementationId: null,
+    walletCodecImplemented: true,
+    currentSettlement: "The provider-produced 0x swap atomically settles the exact 25-bps sell-token integrator fee.",
+    requiredImplementation: "Exact request binding, response economics, AllowanceHolder authority, and local envelope simulation."
   }),
   "zero-x-gasless": Object.freeze({
     state: "QUOTE_ONLY", requiredMode: "v2-atomic-input-fee", implementationId: null,
@@ -135,7 +146,7 @@ function atomic(value: string) {
 }
 
 export function isVNextWalletFeeSettlementAdmitted(provider: VNextQuoteProvider) {
-  return VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY[provider].state === "V2_ATOMIC_INPUT_FEE";
+  return VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY[provider].state !== "QUOTE_ONLY";
 }
 
 export function assertVNextAtomicFeeSettlementProof(
@@ -190,7 +201,7 @@ export function assertVNextWalletFeeAdmission(input: {
   economics: RmtExecutionFeeV2Economics | null | undefined;
   verification: VNextAtomicFeeSettlementProof | null | undefined;
   authorization: VNextAtomicFeeAuthorizationBinding | null | undefined;
-  capability?: VNextProviderFeeSettlement;
+  capability?: VNextProviderFeeSettlementCapability;
 }) {
   const capability = input.capability ?? VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY[input.provider];
   invariant(capability.state === "V2_ATOMIC_INPUT_FEE", "provider has no admitted V2 atomic settlement mode");

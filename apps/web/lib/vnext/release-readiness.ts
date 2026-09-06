@@ -15,6 +15,7 @@ import { acrossReviewedDeploymentPins } from "./across-funding-deployment";
 import {
   hasExactVNextV2V3PublicExecutionProviderScope,
   hasExactVNextV3V2PublicExecutionProviderScope,
+  hasExactVNextZeroXOnlyPublicExecutionProviderScope,
   readVNextPublicExecutionReleaseScope,
   readVNextPublicExecutionProviderScope
 } from "../server/vnext-public-execution-provider-scope";
@@ -74,6 +75,11 @@ export type VNextReleaseEnvironment = VNextShellEnvironment & Partial<Pick<
   | "RMT_VNEXT_UNISWAP_V2_V2_PUBLIC_AUTHORIZATION_ENABLED"
   | "RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS"
   | "RMT_VNEXT_VERIFICATION_COMMITMENT_SECRET"
+  | "RMT_ZEROX_API_KEY"
+  | "RMT_VNEXT_ZEROX_OBSERVATION_ENABLED"
+  | "RMT_VNEXT_ZEROX_FIRM_QUOTE_VERIFICATION_ENABLED"
+  | "RMT_ZEROX_ALLOWANCE_HOLDER"
+  | "RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH"
   | "RMT_ETHEREUM_RPC_URL"
   | "RMT_ETHEREUM_RPC_AUTH_TOKEN"
   | "RMT_ARBITRUM_RPC_URL"
@@ -179,6 +185,7 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
   const publicExecutionReleaseScope = readVNextPublicExecutionReleaseScope(env);
   const exactV3V2PublicExecutionProviderScope = hasExactVNextV3V2PublicExecutionProviderScope(env);
   const exactV2V3PublicExecutionProviderScope = hasExactVNextV2V3PublicExecutionProviderScope(env);
+  const exactZeroXOnlyPublicExecutionProviderScope = hasExactVNextZeroXOnlyPublicExecutionProviderScope(env);
   const v3V2PublicScopeAuthorized = exactV3V2PublicExecutionProviderScope || exactV2V3PublicExecutionProviderScope;
   const sharedV2GateValuesValid = [
     env.RMT_VNEXT_EXECUTION_V2_POLICY_ENABLED,
@@ -288,6 +295,14 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
     && RMT_UNISWAP_V2_V2_PRODUCTION_PROOF_EVIDENCE_VALID
     && authorizationClientEnabled
     && authorizationServerEnabled;
+  const zeroXSwapAuthorityReady = enabled(env.RMT_VNEXT_ZEROX_OBSERVATION_ENABLED)
+    && enabled(env.RMT_VNEXT_ZEROX_FIRM_QUOTE_VERIFICATION_ENABLED)
+    && Boolean(env.RMT_ZEROX_API_KEY?.trim())
+    && /^0x[0-9a-fA-F]{40}$/.test(env.RMT_ZEROX_ALLOWANCE_HOLDER?.trim() ?? "")
+    && !/^0x0{40}$/i.test(env.RMT_ZEROX_ALLOWANCE_HOLDER?.trim() ?? "")
+    && /^0x[0-9a-fA-F]{64}$/.test(env.RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH?.trim() ?? "")
+    && authorizationClientEnabled
+    && authorizationServerEnabled;
   const anyPublicAuthorizationRequested = uniswapFeePublicAuthorizationRequested
     || uniswapV3V2PublicAuthorizationRequested
     || uniswapV2V2PublicAuthorizationRequested;
@@ -299,6 +314,9 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
         && !uniswapFeePublicAuthorizationRequested
         && uniswapV3V2PublicAuthorityReady
         && uniswapV2V2PublicAuthorityReady
+        || publicExecutionReleaseScope === "ZERO_X_ONLY"
+        && !anyPublicAuthorizationRequested
+        && zeroXSwapAuthorityReady
     : !anyPublicAuthorizationRequested;
   const configurationConsistent = authorizationConsistent && sushiConsistent && walletSubmissionValid
     && publicExecutionProviderScope.valid
@@ -330,12 +348,22 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
       releaseScope: publicExecutionReleaseScope,
       exactV3V2ReleaseScope: exactV3V2PublicExecutionProviderScope,
       exactV2V3ReleaseScope: exactV2V3PublicExecutionProviderScope,
+      exactZeroXOnlyReleaseScope: exactZeroXOnlyPublicExecutionProviderScope,
       unintendedProviders: publicExecutionProviderScope.providers.filter((provider) => (
-        provider !== "uniswap-v3"
+        !(provider === "zero-x-swap" && exactZeroXOnlyPublicExecutionProviderScope && publicReleaseConfigurationValid)
+        && provider !== "uniswap-v3"
         && !(provider === "uniswap-v2" && exactV2V3PublicExecutionProviderScope && publicReleaseConfigurationValid)
       ))
     },
     providers: {
+      zeroXSwap: {
+        observationEnabled: enabled(env.RMT_VNEXT_ZEROX_OBSERVATION_ENABLED),
+        strictVerificationAvailable: true,
+        walletAuthorizationAvailable: true,
+        authorizationEnabled: zeroXSwapAuthorityReady,
+        providerNativeFeeBps: 25 as const,
+        publicAuthorizationEnabled: zeroXSwapAuthorityReady && exactZeroXOnlyPublicExecutionProviderScope
+      },
       sushiClientEnabled,
       sushiServerEnabled,
       upV2: {

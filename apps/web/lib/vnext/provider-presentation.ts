@@ -1,6 +1,6 @@
 import type { VNextQuoteProvider } from "./quote-observation";
 
-export type VNextProviderRoute = "direct" | "weth_hop" | "v4_pool";
+export type VNextProviderRoute = "direct" | "weth_hop" | "v4_pool" | "aggregated";
 
 const PROVIDER_LABELS: Readonly<Record<VNextQuoteProvider, string>> = Object.freeze({
   "uniswap-v2": "Uniswap V2",
@@ -10,7 +10,7 @@ const PROVIDER_LABELS: Readonly<Record<VNextQuoteProvider, string>> = Object.fre
   "up-cl": "UP CL",
   sushi: "Sushi",
   uniswapx: "UniswapX",
-  "zero-x-swap": "0x Swap",
+  "zero-x-swap": "0x",
   "zero-x-gasless": "0x Gasless"
 });
 
@@ -24,6 +24,9 @@ export function vNextProviderRoutePresentation(input: {
 }) {
   const providerLabel = vNextProviderLabel(input.provider);
   if (!providerLabel) throw new Error("RMT cannot present an unknown execution provider.");
+  if (input.provider === "zero-x-swap" && input.route === "aggregated") {
+    return { providerLabel, routeLabel: "Best available Robinhood liquidity" } as const;
+  }
   if (input.route === "v4_pool") {
     return { providerLabel, routeLabel: "Canonical V4 PoolKey" } as const;
   }

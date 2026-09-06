@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { formatUnits, parseUnits, type Address } from "viem";
+import { formatUnits, getAddress, parseUnits, type Address } from "viem";
 import { useAccount } from "wagmi";
 import type { AssetMetadata } from "../../lib/vnext/execution-domain";
 import { assetKey } from "../../lib/vnext/execution-domain";
@@ -409,7 +409,14 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     && verificationQuote
     && indicativeFeePresentation.bestExecutable?.state !== "no_rmt_fee"
   );
-  const verifiedRmtFee = visibleVerification?.feeV2Economics
+  const verifiedRmtFee = visibleVerification?.providerNativeFee
+    ? {
+        expectedFeeAtomic: visibleVerification.providerNativeFee.feeAmountAtomic,
+        maximumFeeAtomic: visibleVerification.providerNativeFee.feeAmountAtomic,
+        feeBps: visibleVerification.providerNativeFee.feeBps,
+        feeSide: "input" as const
+      }
+    : visibleVerification?.feeV2Economics
     ?? (visibleVerification?.netEconomics?.rmtFee.state === "planned"
       ? visibleVerification.netEconomics.rmtFee
       : null);
@@ -1157,6 +1164,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               {verifiedUsdgOutcome?.kind === "buy_cost_ceiling" ? <div><dt>Trade + gas ceiling</dt><dd>{formatAtomicDisplay(verifiedUsdgOutcome.totalCostUsdgAtomic, 6)} USDG equivalent</dd></div> : null}
               {verifiedUsdgOutcome?.kind === "sell_proceeds_after_gas" ? <div><dt>Protected after gas</dt><dd>{verifiedUsdgOutcome.gasExceedsProtectedProceeds ? "Gas exceeds protected proceeds" : `${formatAtomicDisplay(verifiedUsdgOutcome.proceedsAfterGasUsdgAtomic, 6)} USDG equivalent`}</dd></div> : null}
               <div><dt>RMT fee</dt><dd>{verifiedRmtFeeLabel}</dd></div>
+              {visibleVerification.providerNativeFee ? <div><dt>RMT fee settlement</dt><dd>0.25% · provider-native · sell token · no RMT executor</dd></div> : null}
+              {visibleVerification.providerNativeFee?.providerFeeAtomic && visibleVerification.providerNativeFee.providerFeeAsset ? <div><dt>0x/provider fee</dt><dd>{formatAtomicDisplay(visibleVerification.providerNativeFee.providerFeeAtomic, getAddress(visibleVerification.providerNativeFee.providerFeeAsset) === getAddress(visibleVerification.inputAsset) ? pair?.inputAsset.decimals ?? 18 : pair?.outputAsset.decimals ?? 18)} · separate from RMT fee and network gas</dd></div> : null}
               {visibleVerification.feeExecution ? <div><dt>Fee treasury</dt><dd>{shortAddress(visibleVerification.feeExecution.treasury)}</dd></div> : null}
               {visibleVerification.feeExecution ? <div><dt>Settlement</dt><dd>Atomic with swap · policy v{visibleVerification.feeExecution.policyVersion}</dd></div> : null}
               {visibleVerification.feeV2Economics ? <div><dt>Gross input</dt><dd>{formatAtomicDisplay(visibleVerification.feeV2Economics.userGrossInputAtomic, pair?.inputAsset.decimals ?? 18)} {inputSymbol}</dd></div> : null}
@@ -1207,9 +1216,15 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               ? `You bought ${outputSymbol} with ${inputSymbol}.`
               : `You sold ${inputSymbol} for ${outputSymbol}.`}</p>
             <dl>
-              <div><dt>{executionRecord.feeV2Settlement ? "Gross input" : side === "buy" ? "Paid" : "Sold"}</dt><dd>{confirmedInputDisplay ? `${confirmedInputDisplay} ${inputSymbol}` : `${inputSymbol} confirmed`}</dd></div>
-              <div><dt>{side === "buy" ? "Asset received" : "Proceeds"}</dt><dd>{confirmedOutputDisplay ? `${confirmedOutputDisplay} ${outputSymbol}` : `${outputSymbol} · confirmed onchain`}</dd></div>
-              {confirmedFee.state !== "not_applicable" ? <div><dt>RMT fee settled</dt><dd>{confirmedFee.display}</dd></div> : null}
+              <div><dt>{executionRecord.feeV2Settlement || executionRecord.providerNativeFee ? "Gross input" : side === "buy" ? "Paid" : "Sold"}</dt><dd>{confirmedInputDisplay ? `${confirmedInputDisplay} ${inputSymbol}` : `${inputSymbol} confirmed`}</dd></div>
+              <div><dt>{side === "buy" ? "Asset received" : "Proceeds"}</dt><dd>{confirmedOutputDisplay ? `${confirmedOutputDisplay} ${outputSymbol}` : executionRecord.provider === "zero-x-swap" ? "Transaction confirmed; amount not reconciled" : `${outputSymbol} · confirmed onchain`}</dd></div>
+              {confirmedFee.state !== "not_applicable" ? <div><dt>{confirmedFee.state === "quoted" ? "RMT fee quoted" : "RMT fee settled"}</dt><dd>{confirmedFee.display}</dd></div> : null}
+              {executionRecord.providerNativeFee ? <>
+                <div><dt>0x/provider fee quoted</dt><dd>{executionRecord.providerNativeFee.providerFeeAtomic ? `${executionRecord.providerNativeFee.providerFeeAtomic} atomic · ${executionRecord.providerNativeFee.providerFeeAsset}` : "None reported"}</dd></div>
+                <div><dt>Expected receive quoted</dt><dd>{formatAtomicDisplay(executionRecord.providerNativeFee.expectedOutputAtomic, pair?.outputAsset.decimals ?? 18)} {outputSymbol}</dd></div>
+                <div><dt>Minimum receive quoted</dt><dd>{formatAtomicDisplay(executionRecord.providerNativeFee.protectedOutputAtomic, pair?.outputAsset.decimals ?? 18)} {outputSymbol}</dd></div>
+                <div><dt>Transaction target</dt><dd>{shortAddress(executionRecord.providerNativeFee.transactionTarget)}</dd></div>
+              </> : null}
               {confirmedProvider ? <div><dt>Provider</dt><dd>{confirmedProvider}{executionRecord.feeV2Settlement ? " · RMT atomic fee settlement · policy v2" : executionRecord.feeSettlement ? " · RMT atomic settlement" : ""}</dd></div> : null}
               <div><dt>Transaction</dt><dd>{shortAddress(executionRecord.txHash)}</dd></div>
             </dl>
