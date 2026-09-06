@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getAddress, isAddress } from "viem";
 import type { AssetMetadata } from "../../lib/vnext/execution-domain";
 import type { ExternalMarketResponse } from "../../lib/external-market";
+import { mergeBoundedDiscoveryRefresh, parseBoundedDiscoveryCoverage, type BoundedDiscoveryCoverage } from "../../lib/vnext/bounded-discovery";
 import {
   directoryMarketFromExactLookup,
   directoryMarketFromUniversalSearchResult,
@@ -121,6 +122,7 @@ export function useVNextMarketDirectory() {
   const [markets, setMarkets] = useState<VNextDirectoryMarket[]>([]);
   const [status, setStatus] = useState<DirectoryStatus>("loading");
   const [enrichmentStatus, setEnrichmentStatus] = useState<DirectoryEnrichmentStatus>("pending");
+  const discoveryCoverage = useRef<BoundedDiscoveryCoverage | null>(null);
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<AssetMetadata>();
   const [identityStatus, setIdentityStatus] = useState<IdentityStatus>("idle");
@@ -466,9 +468,17 @@ export function useVNextMarketDirectory() {
         setEnrichmentStatus("delayed");
         return;
       }
-      providerEnrichmentMarkets.current = normalizeDirectoryMarkets(payload);
+      const freshMarkets = normalizeDirectoryMarkets(payload);
+      discoveryCoverage.current = parseBoundedDiscoveryCoverage(payload.discoveryCoverage, freshMarkets.length);
+      const delayed = payload.stale === true || Boolean(payload.delayedSources?.length);
+      providerEnrichmentMarkets.current = mergeBoundedDiscoveryRefresh(
+        providerEnrichmentMarkets.current, freshMarkets, discoveryCoverage.current, delayed,
+        Array.isArray(payload.quarantinedAddresses)
+          ? payload.quarantinedAddresses.filter((address) => typeof address === "string" && isAddress(address))
+          : []
+      );
       if (hasData.current) publishMarkets();
-      setEnrichmentStatus("ready");
+      setEnrichmentStatus(!delayed && discoveryCoverage.current?.completeWithinObservedCandidates ? "ready" : "delayed");
       replacePerformanceMark("rmt:market-enrichment:published");
       replacePerformanceMeasure(
         "rmt:market-enrichment:request-publish",

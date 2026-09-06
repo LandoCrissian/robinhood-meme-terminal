@@ -142,6 +142,37 @@ export async function readRobinhoodTokenIdentities(addresses: readonly Address[]
   return identities;
 }
 
+export type RobinhoodTokenIdentityEvidence =
+  | { status: "verified_token"; token: TokenIdentity }
+  | { status: "not_erc20"; reason: "no_contract" | "invalid_metadata" }
+  | { status: "identity_read_unavailable" };
+
+// Search needs positive negatives, not a null that also conceals RPC failures.
+// Keep the legacy reader below unchanged for its existing callers.
+export async function readRobinhoodTokenIdentityEvidence(address: Address): Promise<RobinhoodTokenIdentityEvidence> {
+  try {
+    const code = await client.getBytecode({ address });
+    if (!code || code === "0x") return { status: "not_erc20", reason: "no_contract" };
+    const [name, symbol, decimals, totalSupply] = await Promise.all([
+      client.readContract({ address, abi: erc20Abi, functionName: "name" }),
+      client.readContract({ address, abi: erc20Abi, functionName: "symbol" }),
+      client.readContract({ address, abi: erc20Abi, functionName: "decimals" }),
+      client.readContract({ address, abi: erc20Abi, functionName: "totalSupply" })
+    ]);
+    if (!name.trim() || name.length > 80 || !symbol.trim() || symbol.length > 20
+      || /[\u0000-\u001f\u007f]/.test(name + symbol)
+      || decimals > 36 || totalSupply <= 0n) {
+      return { status: "not_erc20", reason: "invalid_metadata" };
+    }
+    return {
+      status: "verified_token",
+      token: { address: getAddress(address), name: name.trim(), symbol: symbol.trim(), decimals, totalSupply: totalSupply.toString() }
+    };
+  } catch {
+    return { status: "identity_read_unavailable" };
+  }
+}
+
 export async function readRobinhoodTokenIdentity(address: Address): Promise<TokenIdentity | null> {
   try {
     const [code, name, symbol, decimals, totalSupply] = await Promise.all([
