@@ -863,10 +863,13 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     : null;
   const executionRouteNotVerified = quoteState.state === "error"
     && quoteState.message.includes("no independently verified execution route");
+  const noObservedRoute = Boolean(visibleQuote && !bestQuote);
   const expectedOutputLabel = expectedOutput
     ? `${expectedOutput} ${outputSymbol}`
     : !draft.intent
       ? "Enter trade amount"
+      : noObservedRoute
+        ? "Route temporarily unavailable"
       : quoteState.state === "error"
         ? executionRouteNotVerified
           ? "Trading route not verified by RMT"
@@ -874,6 +877,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
         : "Finding best route…";
   const routeStatusLabel = visibleVerification
     ? verificationLabel
+    : noObservedRoute
+      ? "Route unavailable"
     : visibleQuote
       ? "Routes compared"
       : quoteState.state === "error"

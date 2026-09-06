@@ -7,6 +7,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { runZeroXWalletJourneys } from './zerox-browser-wallet-journeys.mjs';
+import { createRouteOnDemandFixtures, runRouteOnDemandJourneys } from './zerox-browser-route-on-demand.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const requireWeb = createRequire(path.join(root, 'apps/web/package.json'));
@@ -30,6 +31,7 @@ const string = (s) => encodeAbiParameters([{ type: 'string' }], [s]);
 const hash = `0x${'a'.repeat(64)}`;
 const output = process.env.RMT_ACCEPTANCE_OUTPUT ?? path.join(root, 'terminal-zerox-evidence');
 const state = { prices: [], quotes: [], simulations: [], rpc: [], outbound: [], unexpected: [], approved: true };
+const routeFixtures = createRouteOnDemandFixtures({ word, string, weth, runtime });
 
 function call(transaction) {
   const data = transaction.data ?? transaction.input ?? '0x';
@@ -42,6 +44,8 @@ function call(transaction) {
     });
     return encodeFunctionResult({ abi: aggregateAbi, functionName: 'aggregate3', result: results });
   }
+  const routeResult = routeFixtures.call(transaction);
+  if (routeResult !== undefined) return routeResult;
   const seed = seeds.find((entry) => entry.token.toLowerCase() === to);
   if (seed) {
     if (data.startsWith('0x06fdde03')) return string(seed.aliases[0]);
@@ -107,7 +111,7 @@ function rpc(request) {
       case 'eth_getTransactionCount': result = '0x1'; break;
       case 'eth_getLogs': result = []; break;
       case 'eth_getTransactionReceipt': case 'eth_getTransactionByHash': result = null; break;
-      case 'eth_getCode': result = [token, usdg, weth, holder, '0x0000000000000000000000000000000000012345', ...seeds.flatMap((entry) => [entry.token.toLowerCase(), entry.market.poolAddress])].includes(String(request.params[0]).toLowerCase()) ? runtime : '0x'; break;
+      case 'eth_getCode': result = [token, usdg, weth, holder, '0x0000000000000000000000000000000000012345', ...routeFixtures.contracts, ...seeds.flatMap((entry) => [entry.token.toLowerCase(), entry.market.poolAddress])].includes(String(request.params[0]).toLowerCase()) ? runtime : '0x'; break;
       case 'eth_call': result = call(request.params[0]); break;
       case 'eth_getBlockByNumber': result = { number: '0x2faf080', hash, parentHash: hash, timestamp: hex(Math.floor(Date.now() / 1000)), baseFeePerGas: hex(50000000), gasLimit: '0x1c9c380', gasUsed: '0x0', transactions: [], nonce: '0x0000000000000000', difficulty: '0x0', extraData: '0x', size: '0x1', miner: wallet, receiptsRoot: hash, stateRoot: hash, transactionsRoot: hash, logsBloom: `0x${'0'.repeat(512)}` }; break;
       default: throw new Error(`Unmocked read-only RPC method ${request.method}`);
@@ -121,6 +125,8 @@ function rpc(request) {
 function external(input) {
   const url = new URL(input.url);
   state.outbound.push(`${input.method} ${url.origin}${url.pathname}`);
+  const routeResponse = routeFixtures.external(input);
+  if (routeResponse) return routeResponse;
   if (url.hostname === 'browser-acceptance.invalid') {
     const body = JSON.parse(input.body);
     assert.ok(body.jsonrpc || Array.isArray(body), 'Expected JSON-RPC at the explicit fixture endpoint');
@@ -149,6 +155,7 @@ function external(input) {
     assert.equal(q.recipient.toLowerCase(), wallet);
     const firm = url.pathname.endsWith('/quote');
     (firm ? state.quotes : state.prices).push(q);
+    if (q.buyToken.toLowerCase() === routeFixtures.assets.noRoute) return { status: 400, body: { name: 'NO_LIQUIDITY_AVAILABLE' } };
     const nativeSell = q.sellToken.toLowerCase() === native;
     const response = { status: 200, body: {
       liquidityAvailable: true, chainId: 4663, sellToken: q.sellToken, buyToken: q.buyToken,
@@ -219,7 +226,7 @@ export async function runZeroXBrowserAcceptance() {
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
     browser = await chromium.launch({ headless: true });
-    for (const [name, viewport] of [['desktop', { width: 1440, height: 900 }], ['mobile', { width: 390, height: 844 }]]) {
+    for (const [name, viewport] of (process.env.RMT_ACCEPTANCE_ROUTE_ON_DEMAND_ONLY === 'true' ? [] : [['desktop', { width: 1440, height: 900 }], ['mobile', { width: 390, height: 844 }]])) {
       const context = await browser.newContext({ viewport, ...(name === 'mobile' ? { isMobile: true, hasTouch: true } : {}) });
       await context.addInitScript(({ wallet }) => {
         const listeners = new Map();
@@ -278,7 +285,8 @@ export async function runZeroXBrowserAcceptance() {
         await context.close();
       }
     }
-    results.push(...await runZeroXWalletJourneys({ browser, base, identity, external, state, wallet, token, usdg, holder, output }));
+    if (process.env.RMT_ACCEPTANCE_ROUTE_ON_DEMAND_ONLY !== 'true') results.push(...await runZeroXWalletJourneys({ browser, base, identity, external, state, wallet, token, usdg, holder, output }));
+    results.push(...await runRouteOnDemandJourneys({ browser, base, identity, external, state, wallet, usdg, output, fixtures: routeFixtures }));
   } finally {
     await browser?.close();
     child.kill();

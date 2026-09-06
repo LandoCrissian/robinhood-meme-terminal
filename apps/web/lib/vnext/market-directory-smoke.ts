@@ -353,6 +353,13 @@ assert.deepEqual(deriveVNextMarketState(identityOnlyMarket!), {
   execution: "not-evaluated"
 });
 assert.equal(isVNextDirectoryMarketSelectable(identityOnlyMarket!), true);
+assert.equal(vNextSelectedMarketExecutionState(identityOnlyMarket!), "normal");
+assert.equal(vNextExecutionUiState(vNextSelectedMarketExecutionState(identityOnlyMarket!), true), "live-execution");
+assert.equal(identityOnlyMarket!.canonicalMarkets?.length ?? 0, 0);
+assert.equal(identityOnlyMarket!.verifiedMarkets?.length ?? 0, 0);
+assert.equal(identityOnlyMarket!.primaryMarket, undefined);
+assert.equal(verifiedDirectoryAsset({ ...identityOnlyMarket!, resolution: undefined }), null);
+assert.equal(vNextSelectedMarketExecutionState({ ...identityOnlyMarket!, rwaRelationship: "canonical-stock-token" }), "stock-token-view-only");
 assert.equal(shouldRequestVNextExternalWorkspaceMarket(identityOnlyMarket!), true);
 assert.equal(directoryMarketFromVerifiedIdentity({
   resolution: { ...resolution, chainId: 1 }

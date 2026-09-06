@@ -127,7 +127,9 @@ assert.deepEqual(deriveVNextMarketState(tokenOnlyDirectory), {
   chart: "unavailable",
   execution: "not-evaluated"
 });
-assert.equal(vNextSelectedMarketExecutionState(tokenOnlyDirectory), "asset-only");
+assert.equal(vNextSelectedMarketExecutionState(tokenOnlyDirectory), "normal");
+assert.equal(vNextExecutionUiState(vNextSelectedMarketExecutionState(tokenOnlyDirectory), true), "live-execution");
+assert.equal(vNextExecutionUiState(vNextSelectedMarketExecutionState(tokenOnlyDirectory), false), "preview-only");
 assert.equal(vNextExecutionUiState("asset-only", true), "asset-only");
 assert.equal(vNextExecutionUiState("asset-only", false), "asset-only");
 assert.equal(parseVNextUniversalMarketSearchResult(response(V2_POOL, "pool", [])), null);
