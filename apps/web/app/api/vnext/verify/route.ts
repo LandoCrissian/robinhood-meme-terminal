@@ -115,7 +115,7 @@ export async function POST(request: Request) {
       recipient,
       indicativeProtectedOutputFloorAtomic: BigInt(parsed.data.protectedOutputFloorAtomic),
       settlementMode,
-      executionId,
+      ...(settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE ? {} : { executionId }),
       ...(finalDeadlineSeconds ? { deadlineSeconds: finalDeadlineSeconds, nowMs: verificationWallClockMs } : {}),
       ...(parsed.data.canonicalMarket ? { canonicalMarket: parsed.data.canonicalMarket as { sourceId: "uniswap-v4"; poolId: `0x${string}` } } : {}),
       ...(parsed.data.v4QuoteEvidence ? { v4QuoteEvidence: parsed.data.v4QuoteEvidence as typeof parsed.data.v4QuoteEvidence & { poolId: `0x${string}`; observedBlockHash: `0x${string}` } } : {})

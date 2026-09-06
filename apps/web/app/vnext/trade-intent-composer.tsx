@@ -600,7 +600,6 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       || !identity.identityToken
       || !identity.userId
       || !winningQuote
-      || (winningQuote.provider !== "uniswap-v2" && winningQuote.provider !== "uniswap-v3" && winningQuote.provider !== "uniswap-v4" && winningQuote.provider !== "up-v2" && winningQuote.provider !== "up-cl")
       || !winningQuote.protectedOutputAtomic
     ) throw new Error("No observed route is currently admitted to public wallet execution.");
     const expected = {
@@ -608,7 +607,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       inputAsset: inputAddress,
       outputAsset: outputAddress,
       inputAmountAtomic: draft.intent.amountAtomic,
-      provider: winningQuote.provider,
+      provider: winningQuote.provider as VNextPreSignEvidence["provider"],
       protectedOutputFloorAtomic: winningQuote.protectedOutputAtomic,
       recipient: address,
       ...(winningQuote.provider === "uniswap-v4" && winningQuote.v4Evidence && winningQuote.quotedAtMs && winningQuote.expiresAtMs

@@ -1,6 +1,12 @@
 import { chromium, devices } from "playwright";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 
+if (process.env.RMT_ACCEPTANCE_ONLY_ZEROX === "true") {
+  const { runZeroXBrowserAcceptance } = await import("./zerox-browser-acceptance.mjs");
+  await runZeroXBrowserAcceptance();
+  process.exit(0);
+}
+
 const base = process.env.RMT_ACCEPTANCE_BASE_URL ?? "http://127.0.0.1:3000";
 const output = process.env.RMT_ACCEPTANCE_OUTPUT
   ?? `${process.env.GITHUB_WORKSPACE}/terminal-high-end-evidence`;

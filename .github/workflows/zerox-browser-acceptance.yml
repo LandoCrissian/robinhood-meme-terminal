@@ -1,0 +1,61 @@
+name: 0x browser acceptance
+
+on:
+  pull_request:
+    paths:
+      - '.github/scripts/zerox-browser-*'
+      - '.github/scripts/terminal-high-end-acceptance.mjs'
+      - '.github/workflows/zerox-browser-acceptance.yml'
+      - 'apps/web/app/vnext/**'
+      - 'apps/web/app/api/vnext/**'
+      - 'apps/web/lib/vnext/**'
+      - 'apps/web/lib/server/vnext-*'
+      - 'apps/web/package.json'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zerox-browser-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zerox-desktop-mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      NEXT_PUBLIC_RMT_NETWORK: mainnet
+      RMT_VNEXT_SHELL_ENABLED: 'true'
+      NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE: 'true'
+      NEXT_PUBLIC_RMT_RPC_URL: https://browser-acceptance.invalid
+      NEXT_PUBLIC_RMT_VNEXT_AUTHORIZATION_ENABLED: 'true'
+      NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED: 'true'
+      RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: zero-x-swap
+      RMT_ACCEPTANCE_ONLY_ZEROX: 'true'
+      RMT_ACCEPTANCE_OUTPUT: '${{ github.workspace }}/terminal-zerox-evidence'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm --filter web exec tsx lib/vnext/zero-x-adapter-smoke.ts
+      - run: pnpm --filter web test:vnext-wallet-submission
+      - run: pnpm typecheck
+      - run: pnpm build
+      - name: Real API, deterministic external boundaries, both viewports
+        run: pnpm test:terminal-high-end
+      - name: Upload acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v6.0.0
+        with:
+          name: zerox-browser-acceptance-evidence
+          path: terminal-zerox-evidence
+          retention-days: 7
