@@ -1,3 +1,4 @@
+import { RMT_ZERO_X_SLIPPAGE_BPS, zeroXMinimumRespectsSlippage } from "./zero-x-settlement";
 import { getAddress, isAddress, keccak256 } from "viem";
 import { z } from "zod";
 import {
@@ -95,6 +96,7 @@ export type VNextPreSignEvidence = {
   infrastructureVerifiedAtBlockHash?: string;
   authorizationInfrastructureVerifiedAtBlock?: string;
   authorizationInfrastructureVerifiedAtBlockHash?: string;
+  requestedSlippageBps?: typeof RMT_ZERO_X_SLIPPAGE_BPS;
   zeroXFirmQuoteCommitment?: string;
   v2VerificationCommitment?: string;
   approvalKind?: "erc20_to_permit2" | "permit2_to_router" | "erc20_to_allowance_holder" | null;
@@ -166,6 +168,7 @@ const evidenceSchema = z.object({
   infrastructureVerifiedAtBlockHash: hash.optional(),
   authorizationInfrastructureVerifiedAtBlock: atomic.optional(),
   authorizationInfrastructureVerifiedAtBlockHash: hash.optional(),
+  requestedSlippageBps: z.literal(RMT_ZERO_X_SLIPPAGE_BPS).optional(),
   zeroXFirmQuoteCommitment: z.string().regex(/^zx1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/).max(262_144).optional(),
   v2VerificationCommitment: z.string().regex(/^v1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/).max(8_192).optional(),
   approvalKind: z.enum(["erc20_to_permit2", "permit2_to_router", "erc20_to_allowance_holder"]).nullable().optional(),
@@ -286,6 +289,10 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
     ) throw new Error("RMT rejected changed 0x provider-native fee authority.");
   } else if (hasProviderNativeFee) {
     throw new Error("RMT rejected 0x provider-native fee evidence outside its settlement mode.");
+  }
+  if (evidence.provider === "zero-x-swap" && (evidence.requestedSlippageBps !== RMT_ZERO_X_SLIPPAGE_BPS
+    || !zeroXMinimumRespectsSlippage(evidence.expectedOutputAtomic, evidence.protectedOutputAtomic))) {
+    throw new Error("RMT rejected 0x firm minimum outside the requested slippage policy.");
   }
   if (evidence.provider === "zero-x-swap" && evidence.settlementMode !== VNEXT_PROVIDER_NATIVE_INPUT_FEE) throw new Error("RMT rejected 0x claiming custom or fee-free settlement.");
   if (

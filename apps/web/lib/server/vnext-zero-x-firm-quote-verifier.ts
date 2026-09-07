@@ -1,3 +1,4 @@
+import { RMT_ZERO_X_SLIPPAGE_BPS, zeroXMinimumRespectsSlippage } from "../vnext/zero-x-settlement";
 import { committedZeroXAuthorizationEvidence } from "./vnext-zero-x-firm-quote-commitment";
 
 export class ZeroXRepriceRequiredError extends Error {
@@ -66,6 +67,7 @@ type ParsedFirmQuote = {
 export type ZeroXSwapFirmQuoteVerificationEvidence = VNextProviderVerificationEvidence & {
   provider: "zero-x-swap";
   route: "aggregated";
+  requestedSlippageBps: typeof RMT_ZERO_X_SLIPPAGE_BPS;
   transactionData: Hex;
   swapTransactionValueAtomic: string;
   providerFeeAsset: Address | null;
@@ -213,6 +215,9 @@ function parseFirmQuote(body: unknown, request: VNextProviderVerificationRequest
     || !expectedOutputAtomic || !protectedOutputAtomic || networkFeeNativeAtomic === null
     || BigInt(protectedOutputAtomic) > BigInt(expectedOutputAtomic)
   ) throw new ZeroXInvalidResponseError("0x changed the requested firm-quote economics.");
+  if (!zeroXMinimumRespectsSlippage(expectedOutputAtomic, protectedOutputAtomic)) {
+    throw new ZeroXInvalidResponseError("0x firm minimum violates the requested slippage envelope.");
+  }
 
   const issues = isObject(body.issues) ? body.issues : null;
   if (!issues || !Object.hasOwn(issues, "allowance") || !Object.hasOwn(issues, "balance")
@@ -293,7 +298,7 @@ async function fetchFirmQuote(request: VNextProviderVerificationRequest) {
   const url = new URL("/swap/allowance-holder/quote", ZERO_X_API_URL);
   url.search = new URLSearchParams({
     chainId: String(request.chainId), sellToken: toZeroXToken(request.inputAsset), buyToken: toZeroXToken(request.outputAsset),
-    sellAmount: request.inputAmountAtomic, taker: request.recipient, recipient: request.recipient, slippageBps: "100",
+    sellAmount: request.inputAmountAtomic, taker: request.recipient, recipient: request.recipient, slippageBps: String(RMT_ZERO_X_SLIPPAGE_BPS),
     swapFeeRecipient: RMT_ZERO_X_FEE_TREASURY, swapFeeBps: String(RMT_ZERO_X_FEE_BPS), swapFeeToken: toZeroXToken(request.inputAsset)
   }).toString();
   const response = await fetch(url, { headers: { Accept: "application/json", "0x-api-key": apiKey, "0x-version": "v2" }, cache: "no-store", signal: AbortSignal.timeout(ZERO_X_TIMEOUT_MS) });
@@ -404,6 +409,7 @@ export async function verifyZeroXSwapFirmQuote(request: VNextProviderVerificatio
     quoterRuntimeHash: null, exactSimulationPassed, userPaysGas: true, rmtFeeEnabled: true,
     settlementMode: VNEXT_PROVIDER_NATIVE_INPUT_FEE, providerNativeFee,
     approvalKind: approvalData ? "erc20_to_allowance_holder" : null,
+    requestedSlippageBps: RMT_ZERO_X_SLIPPAGE_BPS,
     transactionData: quote.calldata, swapTransactionValueAtomic: quote.transactionValueAtomic,
     providerFeeAsset: quote.providerFee?.asset ?? null, providerFeeAtomic: quote.providerFee?.amountAtomic ?? null,
     providerQuoteId: quote.zid, blockNumber: quote.blockNumber, providerSimulationIncomplete: quote.simulationIncomplete,
