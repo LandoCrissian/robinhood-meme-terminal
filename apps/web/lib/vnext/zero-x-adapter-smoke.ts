@@ -50,6 +50,11 @@ try {
     const inputAsset = fromZeroXToken(url.searchParams.get("sellToken")!);
     const outputAsset = fromZeroXToken(url.searchParams.get("buyToken")!);
     assert.equal(url.pathname, "/swap/allowance-holder/price");
+    assert.equal(url.searchParams.get("slippageBps"), "100");
+    assert.equal(url.searchParams.get("chainId"), "4663");
+    assert.equal(url.searchParams.get("sellAmount"), "1000000");
+    assert.equal(url.searchParams.get("taker"), recipient);
+    assert.equal(url.searchParams.get("recipient"), recipient);
     assert.equal(url.searchParams.get("swapFeeRecipient"), RMT_ZERO_X_FEE_TREASURY);
     assert.equal(url.searchParams.get("swapFeeBps"), "25");
     assert.equal(url.searchParams.get("swapFeeToken"), toZeroXToken(inputAsset));

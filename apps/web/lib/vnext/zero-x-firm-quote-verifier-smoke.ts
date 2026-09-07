@@ -114,6 +114,10 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
       if (url.origin === "https://api.0x.org") {
         quoteCalls += 1;
         assert.equal(url.pathname, "/swap/allowance-holder/quote");
+        assert.equal(url.searchParams.get("slippageBps"), "100");
+        assert.equal(url.searchParams.get("sellAmount"), "1000000");
+        assert.equal(url.searchParams.get("taker"), recipient);
+        assert.equal(url.searchParams.get("recipient"), recipient);
         assert.equal(url.searchParams.get("chainId"), "4663");
         assert.equal(url.searchParams.get("sellToken"), input === zeroAddress ? ZERO_X_NATIVE_TOKEN : input);
         assert.equal(url.searchParams.get("buyToken"), output === zeroAddress ? ZERO_X_NATIVE_TOKEN : output);
@@ -158,6 +162,8 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     const swap = await prepareVNextProviderAuthorization("zero-x-swap", committed, [vNextZeroXSwapAdapter]);
     assert.equal(quoteCalls, beforeAuthorize, "verify -> authorize must have exactly one firm quote");
     await assertZeroXCommitmentAdversarialMatrix(committed);
+    assert.equal(verified.requestedSlippageBps, 100);
+    assert.throws(() => createZeroXFirmQuoteCommitment({ ...verified, requestedSlippageBps: 101 }, context, Date.now()), /invalid or expired/);
     assert.equal(swap.transaction.kind, "swap");
     assert.equal(swap.transaction.data, "0x12345678");
     assert.equal(swap.transaction.value, "0");
@@ -228,6 +234,26 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     quoteMutation = () => {};
     assert.equal(quoteCalls, beforeFresh + 1, "post-approval verification fetches fresh authority; authorization reuses it");
 
+    // Exact integer boundary: 100 bps plus at most one ppm, no indicative continuity prerequisite.
+    for (const [expected, minimum, valid] of [
+      ["397592518509179", "393616593315000", true],
+      ["100000000", "99000000", true],
+      ["1000000", "989999", true],
+      ["1000000", "989998", false],
+      ["100000", "1", false],
+      ["100000", "90000", false]
+    ] as const) {
+      quoteMutation = body => { body.buyAmount = expected; body.minBuyAmount = minimum; };
+      const boundedRequest = { ...baseRequest, indicativeProtectedOutputFloorAtomic: 1n, protectedOutputFloorAtomic: 1n };
+      if (valid) {
+        const bounded = await prepare(boundedRequest);
+        assert.equal(bounded.evidence.protectedOutputAtomic, minimum);
+        assert.equal(bounded.evidence.requestedSlippageBps, 100);
+      } else {
+        await assert.rejects(() => verifyZeroXSwapFirmQuote(boundedRequest), error => error instanceof Error
+          && !(error instanceof ZeroXRepriceRequiredError) && /slippage envelope/.test(error.message));
+      }
+    }
     output = zeroAddress;
     allowance = true;
     quoteMutation = body => { body.buyAmount = "99500"; body.minBuyAmount = "98505"; };

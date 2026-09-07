@@ -10,7 +10,7 @@ export async function assertZeroXCommitmentAdversarialMatrix(request: VNextProvi
   const [prefix, payload, signature] = token.split(".");
   const original = JSON.parse(Buffer.from(payload, "base64url").toString());
   const fields = [
-    "provider", "chainId", "inputAsset", "outputAsset", "inputAmountAtomic", "recipient",
+    "requestedSlippageBps", "provider", "chainId", "inputAsset", "outputAsset", "inputAmountAtomic", "recipient",
     "expectedOutputAtomic", "protectedOutputAtomic", "indicativeProtectedOutputFloorAtomic",
     "router", "calldataHash", "transactionData", "transactionValueAtomic", "swapTransactionValueAtomic",
     "gasLimitUnits", "gasPriceWei", "approvalSpender", "approvalRequired", "allowanceAtomic",

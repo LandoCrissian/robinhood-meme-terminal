@@ -148,6 +148,7 @@ function external(input) {
     assert.equal(input.version, 'v2');
     const q = Object.fromEntries(url.searchParams);
     assert.equal(q.chainId, '4663');
+    assert.equal(q.slippageBps, '100', 'Both price and firm quote must explicitly bind the shared slippage policy');
     assert.equal(q.swapFeeRecipient.toLowerCase(), treasury);
     assert.equal(q.swapFeeBps, '25');
     assert.equal(q.swapFeeToken, q.sellToken);

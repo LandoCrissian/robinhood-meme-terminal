@@ -1,3 +1,4 @@
+import { RMT_ZERO_X_SLIPPAGE_BPS, zeroXMinimumRespectsSlippage } from "../vnext/zero-x-settlement";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { getAddress, keccak256 } from "viem";
 import { parseVNextPreSignEvidence } from "../vnext/pre-sign-evidence";
@@ -60,6 +61,8 @@ export function verifyZeroXFirmQuoteCommitment(token: string, context: ZeroXFirm
     const evidence = claims.evidence as ZeroXSwapFirmQuoteVerificationEvidence;
     const firm = evidence.providerNativeFee?.firmQuote;
     if (evidence.provider !== "zero-x-swap" || evidence.chainId !== 4_663
+      || evidence.requestedSlippageBps !== RMT_ZERO_X_SLIPPAGE_BPS
+      || !zeroXMinimumRespectsSlippage(evidence.expectedOutputAtomic ?? "", evidence.protectedOutputAtomic)
       || evidence.settlementMode !== VNEXT_PROVIDER_NATIVE_INPUT_FEE
       || (evidence.status !== "verified" && evidence.status !== "approval_required")
       || !firm || !Number.isSafeInteger(nowMs) || nowMs < firm.observedAtMs || nowMs >= firm.expiresAtMs

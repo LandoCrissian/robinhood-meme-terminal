@@ -16,14 +16,23 @@ async function until(predicate, message) {
 export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, external, state, wallet, usdg, holder, output }) {
   const results = [];
   const mutations = {
-    expected: 'expectedOutputAtomic', protected: 'protectedOutputAtomic',
+    requestedSlippage: 'requestedSlippageBps', expected: 'expectedOutputAtomic', protected: 'protectedOutputAtomic',
     feeAsset: 'providerNativeFee.feeAsset', feeAmount: 'providerNativeFee.feeAmountAtomic',
     treasury: 'providerNativeFee.treasury', target: 'router', calldataHash: 'calldataHash',
     value: 'transactionValueAtomic', gas: 'gasLimitUnits', spender: 'approvalSpender',
     expiry: 'providerNativeFee.firmQuote.expiresAtMs', wallet: 'binding', recipient: 'recipient'
   };
+  const slippageCases = {
+    'slippage-live-rounding': ['397592518509179', '393616593315000', true],
+    'slippage-exact-100bps': ['100000000', '99000000', true],
+    'slippage-rounding-boundary': ['1000000', '989999', true],
+    'slippage-outside-boundary': ['1000000', '989998', false],
+    'slippage-catastrophic': ['100000', '1', false],
+    'slippage-ten-percent': ['100000', '90000', false]
+  };
   for (const viewport of ['desktop', 'mobile']) {
-    for (const scenario of ['one-usdg-normal-reprice', 'native-normal-reprice-rejection', 'material-reprice', 'expired-commitment', ...Object.keys(mutations).map((key) => `tamper-${key}`)]) {
+    for (const scenario of ['one-usdg-normal-reprice', 'native-normal-reprice-rejection', 'material-reprice', 'expired-commitment', ...Object.keys(slippageCases), ...Object.keys(mutations).map((key) => `tamper-${key}`)]) {
+      const slippageCase = slippageCases[scenario];
       const native = scenario === 'native-normal-reprice-rejection';
       state.approved = native;
       state.priceDisabled = false;
@@ -33,6 +42,7 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
       state.modifyFirm = (quote) => {
         quote.buyAmount = scenario === 'material-reprice' ? '98999' : '99500';
         quote.minBuyAmount = scenario === 'material-reprice' ? '98009' : '98505';
+        if (slippageCase) [quote.buyAmount, quote.minBuyAmount] = slippageCase;
         quote.fees.zeroExFee = null;
       };
       const quoteStart = state.quotes.length;
@@ -97,7 +107,16 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
         await page.getByLabel('Exact input amount').fill(native ? '0.001' : '1');
         await page.locator('.vnReviewButton').click();
         await until(() => api.some((entry) => entry.path.endsWith('/verify')), 'Real verification was not reached');
-        if (scenario === 'material-reprice') {
+        if (slippageCase && !slippageCase[2]) {
+          const verified = api.find((entry) => entry.path.endsWith('/verify'));
+          assert.equal(verified.status, 422);
+          assert.match(verified.body.error, /slippage envelope/);
+          assert.notEqual(verified.body.error, 'ZERO_X_REPRICE_REQUIRED');
+          assert.equal(verified.body.zeroXFirmQuoteCommitment, undefined);
+          await pause(300);
+          assert.equal(api.filter((entry) => entry.path.endsWith('/authorize')).length, 0);
+          assert.equal(prompts.length, 0);
+        } else if (scenario === 'material-reprice') {
           const verified = api.find((entry) => entry.path.endsWith('/verify'));
           assert.equal(verified.status, 409);
           assert.equal(verified.body.error, 'ZERO_X_REPRICE_REQUIRED');
@@ -110,8 +129,9 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
           await until(() => api.some((entry) => entry.path.endsWith('/authorize')), 'Real authorization was not reached');
           const verification = api.find((entry) => entry.path.endsWith('/verify')).body;
           const authorized = api.find((entry) => entry.path.endsWith('/authorize'));
-          assert.equal(verification.expectedOutputAtomic, '99500');
-          assert.equal(verification.protectedOutputAtomic, '98505');
+          assert.equal(verification.expectedOutputAtomic, slippageCase?.[0] ?? '99500');
+          assert.equal(verification.protectedOutputAtomic, slippageCase?.[1] ?? '98505');
+          assert.equal(verification.requestedSlippageBps, 100);
           assert.match(verification.zeroXFirmQuoteCommitment, /^zx1\./);
           if (scenario.startsWith('tamper-') || scenario === 'expired-commitment') {
             assert.equal(authorized.status, 409);
@@ -121,7 +141,8 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
             assert.equal(authorized.status, 200);
             const { plan, evidence } = authorized.body;
             assert.equal(evidence.zeroXFirmQuoteCommitment, verification.zeroXFirmQuoteCommitment);
-            assert.equal(plan.protectedOutputAtomic, '98505');
+            assert.equal(plan.protectedOutputAtomic, slippageCase?.[1] ?? '98505');
+            assert.equal(evidence.requestedSlippageBps, 100);
             assert.equal(plan.providerNativeFee.firmQuote.identity, verification.providerNativeFee.firmQuote.identity);
             assert.equal(plan.providerNativeFee.feeBps, 25);
             assert.equal(plan.providerNativeFee.treasury.toLowerCase(), '0x61700479a4a1f62584fd3aba2c2b290ea727d2ec');
