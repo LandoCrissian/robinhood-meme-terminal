@@ -26,6 +26,9 @@ for (const { path, source } of vnextSources) {
 }
 
 const allowedSharedImports = new Set([
+  // Existing wallet-gateway selection shared with the explicit injected handoff.
+  "../../lib/injected-wallet-signer",
+  "../injected-signer-selection",
   "../../lib/external-market",
   "../../lib/external-ohlcv",
   "../../lib/external-trades",
