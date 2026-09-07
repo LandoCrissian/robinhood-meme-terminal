@@ -1,4 +1,5 @@
-import { RMT_ZERO_X_SLIPPAGE_BPS, zeroXMinimumRespectsSlippage } from "../vnext/zero-x-settlement";
+import { decodeZeroXExecutableMinimum, ZERO_X_SLIPPAGE_SETTLER_RUNTIME_HASH } from "./vnext-zero-x-execution-decoder";
+import { RMT_ZERO_X_MAX_SLIPPAGE_PPM, RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM, zeroXMinimumRespectsSlippage } from "../vnext/zero-x-settlement";
 import { committedZeroXAuthorizationEvidence } from "./vnext-zero-x-firm-quote-commitment";
 
 export class ZeroXRepriceRequiredError extends Error {
@@ -51,6 +52,8 @@ type ParsedFirmQuote = {
   allowanceSpender: Address | null;
   balanceActualAtomic: string | null;
   blockNumber: string | null;
+  providerReportedMinBuyAmount: string;
+  settlerTarget: Address;
   calldata: Hex;
   expectedOutputAtomic: string;
   gasLimitUnits: string;
@@ -67,7 +70,12 @@ type ParsedFirmQuote = {
 export type ZeroXSwapFirmQuoteVerificationEvidence = VNextProviderVerificationEvidence & {
   provider: "zero-x-swap";
   route: "aggregated";
-  requestedSlippageBps: typeof RMT_ZERO_X_SLIPPAGE_BPS;
+  providerRequestedSlippagePpm: typeof RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM;
+  maximumUserSlippagePpm: typeof RMT_ZERO_X_MAX_SLIPPAGE_PPM;
+  providerReportedMinBuyAmount: string;
+  encodedExecutableMinBuyAmount: string;
+  executableSettlerTarget: Address;
+  executableSettlerRuntimeHash: Hex;
   transactionData: Hex;
   swapTransactionValueAtomic: string;
   providerFeeAsset: Address | null;
@@ -204,7 +212,7 @@ function parseFirmQuote(body: unknown, request: VNextProviderVerificationRequest
     || (body.recipient !== undefined && (typeof body.recipient !== "string" || getAddress(body.recipient) !== request.recipient))
   ) throw new ZeroXInvalidResponseError("0x changed the chain, taker or recipient binding.");
   const expectedOutputAtomic = positiveAtomic(body.buyAmount);
-  const protectedOutputAtomic = positiveAtomic(body.minBuyAmount);
+  const providerReportedMinBuyAmount = positiveAtomic(body.minBuyAmount);
   const networkFeeNativeAtomic = nonNegativeAtomic(body.totalNetworkFee);
   const nativeInput = request.inputAsset === zeroAddress;
   if (
@@ -212,12 +220,10 @@ function parseFirmQuote(body: unknown, request: VNextProviderVerificationRequest
     || typeof body.buyToken !== "string" || fromZeroXToken(body.buyToken) !== request.outputAsset
     || body.sellAmount !== request.inputAmountAtomic
     || (body.mode !== undefined && body.mode !== "exact-in")
-    || !expectedOutputAtomic || !protectedOutputAtomic || networkFeeNativeAtomic === null
-    || BigInt(protectedOutputAtomic) > BigInt(expectedOutputAtomic)
+    || !expectedOutputAtomic || !providerReportedMinBuyAmount || networkFeeNativeAtomic === null
+    || BigInt(providerReportedMinBuyAmount) > BigInt(expectedOutputAtomic)
   ) throw new ZeroXInvalidResponseError("0x changed the requested firm-quote economics.");
-  if (!zeroXMinimumRespectsSlippage(expectedOutputAtomic, protectedOutputAtomic)) {
-    throw new ZeroXInvalidResponseError("0x firm minimum violates the requested slippage envelope.");
-  }
+
 
   const issues = isObject(body.issues) ? body.issues : null;
   if (!issues || !Object.hasOwn(issues, "allowance") || !Object.hasOwn(issues, "balance")
@@ -280,12 +286,21 @@ function parseFirmQuote(body: unknown, request: VNextProviderVerificationRequest
   }
   if (nativeInput && transactionValueAtomic === "0") throw new ZeroXInvalidResponseError("0x returned zero transaction value for native ETH.");
 
+  const executable = decodeZeroXExecutableMinimum({ target: transactionTarget, data: transaction.data as Hex,
+    inputAsset: request.inputAsset, outputAsset: request.outputAsset, inputAmountAtomic: request.inputAmountAtomic,
+    recipient: request.recipient, valueAtomic: transactionValueAtomic });
+  const protectedOutputAtomic = executable.minimumAtomic;
+  if (!zeroXMinimumRespectsSlippage(expectedOutputAtomic, protectedOutputAtomic)) {
+    throw new ZeroXInvalidResponseError("0x firm minimum violates the requested slippage envelope.");
+  }
+
   const blockNumber = body.blockNumber == null ? null : positiveAtomic(typeof body.blockNumber === "number" && Number.isSafeInteger(body.blockNumber) ? String(body.blockNumber) : body.blockNumber);
   if (body.blockNumber != null && !blockNumber) throw new ZeroXInvalidResponseError("0x returned an invalid quote block.");
   const zid = body.zid == null ? null : typeof body.zid === "string" && /^(?:0x[0-9a-fA-F]{1,128}|[A-Za-z0-9_-]{8,128})$/.test(body.zid) ? body.zid : null;
   if (body.zid != null && !zid) throw new ZeroXInvalidResponseError("0x returned an invalid quote identity.");
   return {
     allowanceActualAtomic, allowanceSpender, balanceActualAtomic, blockNumber,
+    providerReportedMinBuyAmount, settlerTarget: executable.settlerTarget,
     calldata: transaction.data as Hex, expectedOutputAtomic, gasLimitUnits, gasPriceWei,
     networkFeeNativeAtomic, protectedOutputAtomic, providerFee,
     simulationIncomplete: issues.simulationIncomplete, transactionTarget, transactionValueAtomic, zid
@@ -298,7 +313,7 @@ async function fetchFirmQuote(request: VNextProviderVerificationRequest) {
   const url = new URL("/swap/allowance-holder/quote", ZERO_X_API_URL);
   url.search = new URLSearchParams({
     chainId: String(request.chainId), sellToken: toZeroXToken(request.inputAsset), buyToken: toZeroXToken(request.outputAsset),
-    sellAmount: request.inputAmountAtomic, taker: request.recipient, recipient: request.recipient, slippageBps: String(RMT_ZERO_X_SLIPPAGE_BPS),
+    sellAmount: request.inputAmountAtomic, taker: request.recipient, recipient: request.recipient, slippagePpm: String(RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM),
     swapFeeRecipient: RMT_ZERO_X_FEE_TREASURY, swapFeeBps: String(RMT_ZERO_X_FEE_BPS), swapFeeToken: toZeroXToken(request.inputAsset)
   }).toString();
   const response = await fetch(url, { headers: { Accept: "application/json", "0x-api-key": apiKey, "0x-version": "v2" }, cache: "no-store", signal: AbortSignal.timeout(ZERO_X_TIMEOUT_MS) });
@@ -333,6 +348,10 @@ export async function verifyZeroXSwapFirmQuote(request: VNextProviderVerificatio
     nativeInput ? Promise.resolve(null) : tokenUint(request.inputAsset, encodeFunctionData({ abi: erc20Abi, functionName: "allowance", args: [request.recipient, configuration.allowanceHolder] }))
   ]);
   const targetRuntimeHash = keccak256(targetCode);
+  const executableSettlerRuntimeHash = quote.settlerTarget === quote.transactionTarget
+    ? targetRuntimeHash : keccak256(await runtimeCode(quote.settlerTarget));
+  if (executableSettlerRuntimeHash !== ZERO_X_SLIPPAGE_SETTLER_RUNTIME_HASH) throw new Error("0x executable slippage runtime is not verified.");
+  if (quote.transactionTarget === configuration.allowanceHolder && targetRuntimeHash !== configuration.runtimeHash) throw new Error("0x AllowanceHolder execution target changed.");
   if (!nativeInput && holderHash !== targetRuntimeHash) throw new Error("0x AllowanceHolder execution target changed.");
 
   const needsApproval = !nativeInput && (tokenAllowance! < request.amountIn || quote.allowanceActualAtomic !== null);
@@ -409,7 +428,11 @@ export async function verifyZeroXSwapFirmQuote(request: VNextProviderVerificatio
     quoterRuntimeHash: null, exactSimulationPassed, userPaysGas: true, rmtFeeEnabled: true,
     settlementMode: VNEXT_PROVIDER_NATIVE_INPUT_FEE, providerNativeFee,
     approvalKind: approvalData ? "erc20_to_allowance_holder" : null,
-    requestedSlippageBps: RMT_ZERO_X_SLIPPAGE_BPS,
+    providerRequestedSlippagePpm: RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM,
+    maximumUserSlippagePpm: RMT_ZERO_X_MAX_SLIPPAGE_PPM,
+    providerReportedMinBuyAmount: quote.providerReportedMinBuyAmount,
+    encodedExecutableMinBuyAmount: quote.protectedOutputAtomic,
+    executableSettlerTarget: quote.settlerTarget, executableSettlerRuntimeHash,
     transactionData: quote.calldata, swapTransactionValueAtomic: quote.transactionValueAtomic,
     providerFeeAsset: quote.providerFee?.asset ?? null, providerFeeAtomic: quote.providerFee?.amountAtomic ?? null,
     providerQuoteId: quote.zid, blockNumber: quote.blockNumber, providerSimulationIncomplete: quote.simulationIncomplete,

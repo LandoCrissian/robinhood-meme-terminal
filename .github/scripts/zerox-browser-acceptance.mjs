@@ -25,6 +25,7 @@ const holder = '0x0000000000001ff3684f28c67538d4d072c22734';
 const native = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
 const treasury = '0x61700479a4a1f62584fd3aba2c2b290ea727d2ec';
 const runtime = '0x60006000';
+const executableFixture = requireRoot('./.github/scripts/zerox-execution-fixture.cjs');
 const aggregateAbi = parseAbi(['function aggregate3((address target,bool allowFailure,bytes callData)[] calls) payable returns ((bool success,bytes returnData)[] returnData)']);
 const word = (n) => `0x${BigInt(n).toString(16).padStart(64, '0')}`;
 const hex = (n) => `0x${BigInt(n).toString(16)}`;
@@ -112,7 +113,7 @@ function rpc(request) {
       case 'eth_getTransactionCount': result = '0x1'; break;
       case 'eth_getLogs': result = []; break;
       case 'eth_getTransactionReceipt': case 'eth_getTransactionByHash': result = null; break;
-      case 'eth_getCode': result = [token, usdg, weth, holder, '0x0000000000000000000000000000000000012345', ...routeFixtures.contracts, ...seeds.flatMap((entry) => [entry.token.toLowerCase(), entry.market.poolAddress])].includes(String(request.params[0]).toLowerCase()) ? runtime : '0x'; break;
+      case 'eth_getCode': result = String(request.params[0]).toLowerCase() === executableFixture.settler ? executableFixture.runtime : [token, usdg, weth, holder, '0x0000000000000000000000000000000000012345', ...routeFixtures.contracts, ...seeds.flatMap((entry) => [entry.token.toLowerCase(), entry.market.poolAddress])].includes(String(request.params[0]).toLowerCase()) ? runtime : '0x'; break;
       case 'eth_call': result = call(request.params[0]); break;
       case 'eth_getBlockByNumber': result = { number: '0x2faf080', hash, parentHash: hash, timestamp: hex(Math.floor(Date.now() / 1000)), baseFeePerGas: hex(50000000), gasLimit: '0x1c9c380', gasUsed: '0x0', transactions: [], nonce: '0x0000000000000000', difficulty: '0x0', extraData: '0x', size: '0x1', miner: wallet, receiptsRoot: hash, stateRoot: hash, transactionsRoot: hash, logsBloom: `0x${'0'.repeat(512)}` }; break;
       default: throw new Error(`Unmocked read-only RPC method ${request.method}`);
@@ -148,7 +149,8 @@ function external(input) {
     assert.equal(input.version, 'v2');
     const q = Object.fromEntries(url.searchParams);
     assert.equal(q.chainId, '4663');
-    assert.equal(q.slippageBps, '100', 'Both price and firm quote must explicitly bind the shared slippage policy');
+    assert.equal(q.slippagePpm, '9900', 'Price and quote use the tighter provider PPM request');
+    assert.equal(q.slippageBps, undefined);
     assert.equal(q.swapFeeRecipient.toLowerCase(), treasury);
     assert.equal(q.swapFeeBps, '25');
     assert.equal(q.swapFeeToken, q.sellToken);
@@ -170,6 +172,7 @@ function external(input) {
     } };
     if (firm) state.modifyFirm?.(response.body);
     else state.modifyPrice?.(response.body);
+    if (firm && ['0x1234567822222222', '0x1234567811111111'].includes(response.body.transaction.data)) response.body.transaction.data = executableFixture.encodeQuote(response.body, wallet, response.body.transaction.data);
     return response;
   }
   if ((url.origin === 'https://api.0x.org' && url.pathname === '/gasless/price')

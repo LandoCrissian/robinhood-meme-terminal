@@ -246,7 +246,7 @@ export async function runZeroXWalletJourneys(options) {
               assert.equal(fresh.plan.kind, 'swap');
               await review.click();
               await until(() => requests.length === 2, 'Fresh swap wallet request missing');
-              assert.equal(requests[1].data, '0x1234567822222222');
+              assert.equal(requests[1].data, fresh.plan.data);
               assert.notEqual(keccak256(requests[1].data), bundle.plan.providerNativeFee.transactionCalldataHash);
             } else {
               assert.equal(bundle.plan.kind, 'swap');
