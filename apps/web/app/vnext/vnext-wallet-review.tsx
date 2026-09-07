@@ -1,5 +1,7 @@
 "use client";
 
+import { recordVNextWalletRequestError } from "../../lib/vnext/execution-recovery";
+
 import React, { useEffect, useRef, useState } from "react";
 import { formatUnits } from "viem";
 import { useAccount, usePublicClient, useWalletClient } from "wagmi";
@@ -235,6 +237,7 @@ export function VNextWalletReview({
     }).catch((cause: unknown) => {
       const rejected = isVNextUserRejectedRequest(cause);
       transitionVNextWalletRequest(prepared.requestId, rejected ? "USER_REJECTED" : "UNRESOLVED");
+      recordVNextWalletRequestError(prepared.requestId, cause);
       emitVNextWalletHandoffDiagnostic({
         event: rejected ? "provider_rejected_4001" : "provider_error_unresolved",
         connectorId: prepared.binding.connectorId,
@@ -347,6 +350,7 @@ export function VNextWalletReview({
       const record = readVNextWalletRequestJournal().find((candidate) => candidate.requestId === prepared.requestId);
       if (record && ["PROMPT_REQUESTED", "PROVIDER_PENDING"].includes(record.state)) {
         transitionVNextWalletRequest(prepared.requestId, "UNRESOLVED");
+        recordVNextWalletRequestError(prepared.requestId, cause);
         setHandoffState("unresolved");
         setLocalError("Wallet request is still unresolved. Check the selected wallet and do not retry.");
       } else {
