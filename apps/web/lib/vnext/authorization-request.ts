@@ -9,6 +9,7 @@ import {
 const ZERO_HASH = `0x${"0".repeat(64)}`;
 
 export function vNextAuthorizationAuthorityRequest(evidence: VNextPreSignEvidence) {
+  if (evidence.provider !== "zero-x-swap" && evidence.zeroXFirmQuoteCommitment !== undefined) throw new Error("RMT rejected foreign firm-quote authority.");
   const hasV1 = evidence.feeExecution != null;
   const hasV2 = evidence.feeV2Economics !== undefined || evidence.feeV2Settlement !== undefined;
   const hasDirect = evidence.directNoRmtFee !== undefined;
@@ -37,10 +38,10 @@ export function vNextAuthorizationAuthorityRequest(evidence: VNextPreSignEvidenc
     return { settlementMode: VNEXT_LEGACY_V1_FEE, executionId } as const;
   }
   if (evidence.settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE) {
-    if (evidence.provider !== "zero-x-swap" || hasV1 || hasV2 || hasDirect || !evidence.providerNativeFee || evidence.v2VerificationCommitment !== undefined) {
+    if (evidence.provider !== "zero-x-swap" || hasV1 || hasV2 || hasDirect || !evidence.providerNativeFee || !evidence.zeroXFirmQuoteCommitment || evidence.v2VerificationCommitment !== undefined) {
       throw new Error("RMT rejected missing or contradictory 0x provider-native authorization authority.");
     }
-    return { settlementMode: VNEXT_PROVIDER_NATIVE_INPUT_FEE } as const;
+    return { settlementMode: VNEXT_PROVIDER_NATIVE_INPUT_FEE, zeroXFirmQuoteCommitment: evidence.zeroXFirmQuoteCommitment } as const;
   }
   if (evidence.settlementMode !== VNEXT_DIRECT_NO_RMT_FEE || hasV1 || hasV2 || !hasDirect || evidence.v2VerificationCommitment !== undefined) {
     throw new Error("RMT rejected contradictory direct authorization authority.");

@@ -43,7 +43,7 @@ export async function runZeroXWalletJourneys(options) {
     'wrong-fee-asset': (quote) => { quote.fees.integratorFee.token = quote.buyToken; },
     'wrong-fee-amount': (quote) => { quote.fees.integratorFee.amount = '1'; },
     'missing-integrator-fee': (quote) => { quote.fees.integratorFee = null; },
-    'weakened-protected-output': (quote) => { quote.minBuyAmount = '1'; },
+    'weakened-protected-output': (quote) => { quote.buyAmount = '2'; quote.minBuyAmount = '1'; },
     'malformed-target': (quote) => { quote.transaction.to = '0x1234'; },
     'changed-target': (quote) => { quote.transaction.to = token; },
     'empty-calldata': (quote) => { quote.transaction.data = '0x'; },
@@ -251,8 +251,9 @@ export async function runZeroXWalletJourneys(options) {
             } else {
               assert.equal(bundle.plan.kind, 'swap');
               if (scenario === 'native') { assert.ok(BigInt(requests[0].value) > 0n); assert.notEqual(lower(requests[0].to), usdg); }
-              await until(async () => /confirmed/i.test(await page.locator('body').innerText()), 'Confirmed receipt missing', 30000);
-              const receipt = await page.locator('body').innerText();
+              await page.locator('.vnTradeReceipt').waitFor({ state: 'visible', timeout: 30000 });
+              const receipt = await page.locator('.vnTradeReceipt').innerText();
+              assert.match(receipt, /confirmed/i);
               assert.match(receipt, /quoted/i);
               assert.doesNotMatch(receipt, /RMT fee settled|confirmed RMT revenue/i);
               assert.equal(requests.length, 1);

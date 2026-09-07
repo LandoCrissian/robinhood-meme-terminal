@@ -646,6 +646,25 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       timeoutMs: 15_000,
       maxAttempts: 1
     });
+    if (response.payload && typeof response.payload === "object" && "error" in response.payload && response.payload.error === "ZERO_X_REPRICE_REQUIRED") {
+      lastReadyQuote.current = undefined;
+      lastReadyVerification.current = undefined;
+      preparedApprovalAuthority.current = undefined;
+      setVerificationState({ state: "idle" });
+      setAuthorizationState({ state: "idle" });
+      clearTradeQuoteCache();
+      const refreshEpoch = authorizationAttemptEpoch.current;
+      try {
+        const refreshed = await requestLiveRoutes();
+        if (refreshEpoch === authorizationAttemptEpoch.current) {
+          lastReadyQuote.current = { requestKey, response: refreshed };
+          setQuoteState({ state: "ready", response: refreshed });
+        }
+      } catch {
+        if (refreshEpoch === authorizationAttemptEpoch.current) setQuoteState({ state: "error", message: "Refreshed price is delayed. Retry for a new quote." });
+      }
+      throw new Error("Price moved. Review the refreshed quote.");
+    }
     const failure = tradeQuoteFailureFromResponse(response);
     if (failure) throw failure;
     return parseVNextPreSignEvidence(response.payload, expected, Date.now());
@@ -1025,7 +1044,9 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
           <div><dt>Expected output</dt><dd>{formatAtomicDisplay(visibleVerification.expectedOutputAtomic, pair?.outputAsset.decimals ?? 18)} {outputSymbol}</dd></div>
           <div><dt>Protected minimum</dt><dd>{formatAtomicDisplay(authorizationState.plan.protectedOutputAtomic, pair?.outputAsset.decimals ?? 18)} {outputSymbol}</dd></div>
           <div><dt>Route</dt><dd>{visibleRoutePresentation?.routeLabel}</dd></div>
-          <div><dt>Target</dt><dd>{shortAddress(authorizationState.plan.target)}</dd></div>
+          <div><dt>Target</dt><dd style={{ overflowWrap: "anywhere" }}>{authorizationState.plan.target}</dd></div>
+                <div><dt>Native value (wei)</dt><dd>{authorizationState.plan.value}</dd></div>
+                {authorizationState.plan.gasPrice !== undefined ? <div><dt>Gas price (wei)</dt><dd>{authorizationState.plan.gasPrice}</dd></div> : null}
           <div><dt>{verifiedRmtFee ? "RMT execution fee" : "RMT platform fee"}</dt><dd>{verifiedRmtFee ? `${verifiedRmtFee.feeBps / 100}%` : "0"}</dd></div>
         </dl>
         <VNextWalletReview
@@ -1159,7 +1180,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
               <div><dt>Provider</dt><dd>{visibleRoutePresentation?.providerLabel}</dd></div>
               <div><dt>Route</dt><dd>{visibleRoutePresentation?.routeLabel}</dd></div>
               <div><dt>Protected</dt><dd>{formatAtomicDisplay(visibleVerification.protectedOutputAtomic, verificationQuote?.outputDecimals ?? 18)} {outputSymbol}</dd></div>
-              <div><dt>Quote continuity</dt><dd>{describeProtectedOutputContinuity(visibleVerification.protectedOutputAtomic, visibleVerification.indicativeProtectedOutputFloorAtomic)}</dd></div>
+              <div><dt>{visibleVerification.provider === "zero-x-swap" ? "Fresh firm quote" : "Quote continuity"}</dt><dd>{visibleVerification.provider === "zero-x-swap" ? "Updated executable minimum" : describeProtectedOutputContinuity(visibleVerification.protectedOutputAtomic, visibleVerification.indicativeProtectedOutputFloorAtomic)}</dd></div>
               <div><dt>Simulation</dt><dd>{visibleVerification.exactSimulationPassed ? "Passed" : "Not passed"}</dd></div>
               <div><dt>Next action</dt><dd>{visibleVerification.nextAction === "approval" ? "Exact approval" : visibleVerification.nextAction === "swap" ? "Verified swap" : "Blocked"}</dd></div>
               <div><dt>Gas</dt><dd>{visibleVerification.gasState}</dd></div>

@@ -1,3 +1,9 @@
+import { committedZeroXAuthorizationEvidence } from "./vnext-zero-x-firm-quote-commitment";
+
+export class ZeroXRepriceRequiredError extends Error {
+  constructor() { super("Price moved. Review the refreshed quote."); }
+}
+
 import {
   encodeFunctionData,
   erc20Abi,
@@ -206,7 +212,6 @@ function parseFirmQuote(body: unknown, request: VNextProviderVerificationRequest
     || (body.mode !== undefined && body.mode !== "exact-in")
     || !expectedOutputAtomic || !protectedOutputAtomic || networkFeeNativeAtomic === null
     || BigInt(protectedOutputAtomic) > BigInt(expectedOutputAtomic)
-    || BigInt(protectedOutputAtomic) < request.indicativeProtectedOutputFloorAtomic
   ) throw new ZeroXInvalidResponseError("0x changed the requested firm-quote economics.");
 
   const issues = isObject(body.issues) ? body.issues : null;
@@ -358,6 +363,8 @@ export async function verifyZeroXSwapFirmQuote(request: VNextProviderVerificatio
     }
   }
 
+  if (BigInt(quote.expectedOutputAtomic) < request.indicativeProtectedOutputFloorAtomic) throw new ZeroXRepriceRequiredError();
+
   const authorizationState = status === "approval_required" ? "approval_required" : status === "verified" ? "verified" : "blocked";
   const providerNativeFee = createVNextZeroXProviderNativeFee({
     inputAsset: request.inputAsset, outputAsset: request.outputAsset, userGrossInputAtomic: request.inputAmountAtomic,
@@ -406,7 +413,13 @@ export async function verifyZeroXSwapFirmQuote(request: VNextProviderVerificatio
 }
 
 export async function prepareZeroXSwapAuthorization(request: VNextProviderAuthorizationRequest): Promise<VNextPreparedProviderAuthorization> {
-  const evidence = await verifyZeroXSwapFirmQuote(request);
+  const evidence = committedZeroXAuthorizationEvidence(request);
+  const configuration = zeroXSwapFirmQuoteVerificationConfiguration();
+  const firm = evidence.providerNativeFee!.firmQuote!;
+  if (!configuration || (firm.allowanceTarget !== null && (
+    getAddress(firm.allowanceTarget) !== getAddress(configuration.allowanceHolder!)
+    || firm.allowanceHolderRuntimeHash?.toLowerCase() !== configuration.runtimeHash.toLowerCase()
+  ))) throw new Error("0x committed AllowanceHolder authority is unavailable or changed.");
   if (BigInt(evidence.protectedOutputAtomic) < request.protectedOutputFloorAtomic) throw new Error("0x firm quote weakened the accepted protected output; requote and retry.");
   if (evidence.status !== "verified" && evidence.status !== "approval_required") throw new Error("0x exact next action is not ready; requote and retry.");
   if (evidence.status === "approval_required") {

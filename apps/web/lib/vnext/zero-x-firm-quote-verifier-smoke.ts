@@ -1,3 +1,7 @@
+import { randomUUID } from "node:crypto";
+import { createZeroXFirmQuoteCommitment } from "../server/vnext-zero-x-firm-quote-commitment";
+import { ZeroXRepriceRequiredError } from "../server/vnext-zero-x-firm-quote-verifier";
+import { assertZeroXCommitmentAdversarialMatrix } from "./zero-x-firm-quote-commitment-smoke";
 import assert from "node:assert/strict";
 import { getAddress, keccak256, zeroAddress, type Hex } from "viem";
 import {
@@ -14,6 +18,7 @@ import { vNextZeroXSwapAdapter, vNextZeroXGaslessAdapter } from "../server/vnext
 export async function runZeroXFirmQuoteVerifierSmoke() {
   const savedFetch = globalThis.fetch;
   const saved = {
+    RMT_VNEXT_VERIFICATION_COMMITMENT_SECRET: process.env.RMT_VNEXT_VERIFICATION_COMMITMENT_SECRET,
     RMT_RPC_URL: process.env.RMT_RPC_URL,
     RMT_ZEROX_ALLOWANCE_HOLDER: process.env.RMT_ZEROX_ALLOWANCE_HOLDER,
     RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH: process.env.RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH,
@@ -56,6 +61,20 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
   let rpcAllowance: bigint | null = null;
   let quoteMutation: (body: any) => void = () => {};
 
+  const context = { identityId: "test-identity", sessionToken: "test-session", wallet: recipient, quoteRequestId: randomUUID(), verificationId: randomUUID() };
+  async function committedRequest(request: typeof baseRequest, evidence = undefined as Awaited<ReturnType<typeof verifyZeroXSwapFirmQuote>> | undefined) {
+    const firm = evidence ?? await verifyZeroXSwapFirmQuote(request);
+    return { ...request, protectedOutputFloorAtomic: BigInt(firm.protectedOutputAtomic),
+      zeroXExpectedStatus: firm.status as "verified" | "approval_required", zeroXFirmQuoteContext: context,
+      zeroXFirmQuoteCommitment: createZeroXFirmQuoteCommitment(firm, context, Date.now()) };
+  }
+  async function prepare(request: typeof baseRequest) {
+    const committed = await committedRequest(request);
+    const calls = quoteCalls;
+    const result = await prepareZeroXSwapAuthorization(committed);
+    assert.equal(quoteCalls, calls, "authorization must not fetch another firm quote");
+    return result;
+  }
   const quote = () => ({
     allowanceTarget: input === zeroAddress ? null : allowanceHolder,
     blockNumber: "12345678",
@@ -84,6 +103,7 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
   });
 
   try {
+    process.env.RMT_VNEXT_VERIFICATION_COMMITMENT_SECRET = "deterministic-zero-x-commitment-test-secret-only";
     process.env.RMT_ZEROX_API_KEY = "server-only-test-key";
     process.env.RMT_VNEXT_ZEROX_FIRM_QUOTE_VERIFICATION_ENABLED = "true";
     process.env.RMT_ZEROX_ALLOWANCE_HOLDER = allowanceHolder;
@@ -133,13 +153,17 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     assert.equal(verified.providerNativeFee?.feeExecutorRequired, false);
     assert.equal(verified.providerFeeAtomic, "1500");
     assert.deepEqual(simulatedEnvelope, { from: recipient, to: allowanceHolder, data: "0x12345678", value: "0x0", gas: "0x2bf20", gasPrice: "0x2faf080" });
-    const swap = await prepareVNextProviderAuthorization("zero-x-swap", baseRequest, [vNextZeroXSwapAdapter]);
+    const committed = await committedRequest(baseRequest, verified);
+    const beforeAuthorize = quoteCalls;
+    const swap = await prepareVNextProviderAuthorization("zero-x-swap", committed, [vNextZeroXSwapAdapter]);
+    assert.equal(quoteCalls, beforeAuthorize, "verify -> authorize must have exactly one firm quote");
+    await assertZeroXCommitmentAdversarialMatrix(committed);
     assert.equal(swap.transaction.kind, "swap");
     assert.equal(swap.transaction.data, "0x12345678");
     assert.equal(swap.transaction.value, "0");
     assertZeroXSharedWalletAuthorization(swap);
     await assert.rejects(() => prepareVNextProviderAuthorization("zero-x-gasless", baseRequest, [vNextZeroXGaslessAdapter]), /not available/);
-    await assert.rejects(() => prepareZeroXSwapAuthorization({ ...baseRequest, protectedOutputFloorAtomic: 999_999_999_999_999n }), /protected output/);
+    await assert.rejects(() => prepareZeroXSwapAuthorization({ ...committed, protectedOutputFloorAtomic: 999_999_999_999_999n }), /invalid or expired/);
 
     const malformed: ((body: any) => void)[] = [
       body => { body.chainId = 1; }, body => { body.taker = zeroAddress; }, body => { body.recipient = zeroAddress; },
@@ -162,10 +186,10 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     ];
     for (const mutate of malformed) {
       quoteMutation = mutate;
-      await assert.rejects(() => prepareZeroXSwapAuthorization(baseRequest));
+      await assert.rejects(() => prepare(baseRequest));
     }
     quoteMutation = body => { delete body.transaction.gasPrice; body.blockNumber = 12345678; };
-    assertZeroXSharedWalletAuthorization(await prepareZeroXSwapAuthorization(baseRequest));
+    assertZeroXSharedWalletAuthorization(await prepare(baseRequest));
     quoteMutation = () => {};
     tokenBalance = 0n;
     assert.equal((await verifyZeroXSwapFirmQuote(baseRequest)).status, "insufficient_balance", "local balance must fail closed even when provider reports no issue");
@@ -178,7 +202,7 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     nativeBalance = 10n ** 20n;
 
     allowance = true;
-    const approval = await prepareZeroXSwapAuthorization(baseRequest);
+    const approval = await prepare(baseRequest);
     assert.equal(approval.evidence.status, "approval_required");
     assert.equal(approval.transaction.kind, "erc20_approval");
     assert.equal(approval.transaction.target, inputAsset);
@@ -186,21 +210,40 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     assert.match(approval.transaction.data, /^0x095ea7b3/);
     assertZeroXSharedWalletAuthorization(approval);
     quoteMutation = body => { delete body.allowanceTarget; };
-    assertZeroXSharedWalletAuthorization(await prepareZeroXSwapAuthorization(baseRequest));
+    assertZeroXSharedWalletAuthorization(await prepare(baseRequest));
     quoteMutation = () => {};
     simulationIncomplete = true;
-    assertZeroXSharedWalletAuthorization(await prepareZeroXSwapAuthorization(baseRequest));
+    assertZeroXSharedWalletAuthorization(await prepare(baseRequest));
     simulationIncomplete = false;
+    const preApprovalCommitment = await committedRequest(baseRequest);
     const beforeFresh = quoteCalls;
     allowance = false;
     quoteMutation = body => { body.transaction.data = "0x87654321"; };
-    const fresh = await prepareZeroXSwapAuthorization(baseRequest);
+    const fresh = await prepare(baseRequest);
+    await assert.rejects(() => prepareZeroXSwapAuthorization({ ...preApprovalCommitment, zeroXExpectedStatus: "verified" }), /invalid or expired/);
+    assert.notEqual(fresh.evidence.zeroXFirmQuoteCommitment, preApprovalCommitment.zeroXFirmQuoteCommitment);
     assert.equal(fresh.transaction.kind, "swap");
     assert.equal(fresh.transaction.data, "0x87654321");
     assertZeroXSharedWalletAuthorization(fresh);
     quoteMutation = () => {};
-    assert.equal(quoteCalls, beforeFresh + 1, "authorization must always fetch a fresh firm quote");
+    assert.equal(quoteCalls, beforeFresh + 1, "post-approval verification fetches fresh authority; authorization reuses it");
 
+    output = zeroAddress;
+    allowance = true;
+    quoteMutation = body => { body.buyAmount = "99500"; body.minBuyAmount = "98505"; };
+    const repricedRequest = { ...baseRequest, outputAsset: zeroAddress, indicativeProtectedOutputFloorAtomic: 99000n, protectedOutputFloorAtomic: 99000n };
+    const repriced = await prepare(repricedRequest);
+    assert.equal(repriced.evidence.expectedOutputAtomic, "99500");
+    assert.equal(repriced.evidence.protectedOutputAtomic, "98505");
+    assert.equal(repriced.transaction.kind, "erc20_approval");
+    assert.equal(repriced.evidence.approvalSpender, allowanceHolder);
+    assert.equal(repriced.evidence.inputAmountAtomic, "1000000");
+    quoteMutation = body => { body.buyAmount = "98999"; body.minBuyAmount = "98009"; };
+    await assert.rejects(() => verifyZeroXSwapFirmQuote(repricedRequest), ZeroXRepriceRequiredError);
+    quoteMutation = body => { body.buyAmount = "98999"; body.minBuyAmount = "98009"; body.sellAmount = "999999"; };
+    await assert.rejects(() => verifyZeroXSwapFirmQuote(repricedRequest), error => error instanceof Error && !(error instanceof ZeroXRepriceRequiredError));
+    quoteMutation = () => {};
+    output = outputAsset;
     allowance = false;
     balanceIssue = true;
     assert.equal((await verifyZeroXSwapFirmQuote(baseRequest)).status, "insufficient_balance");
@@ -223,11 +266,11 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     assert.equal(native.transactionValueAtomic, "1000000");
     assert.equal(native.providerNativeFee?.feeAsset, zeroAddress);
     assert.equal(native.providerNativeFee?.requestFeeToken, ZERO_X_NATIVE_TOKEN);
-    const nativePrepared = await prepareZeroXSwapAuthorization(nativeRequest);
+    const nativePrepared = await prepare(nativeRequest);
     assertZeroXSharedWalletAuthorization(nativePrepared);
     assert.equal((simulatedEnvelope as unknown as Record<string, string>).value, `0x${BigInt(nativePrepared.transaction.value).toString(16)}`);
     quoteMutation = body => { body.issues.allowance = { actual: "0", spender: allowanceHolder }; };
-    await assert.rejects(() => prepareZeroXSwapAuthorization(nativeRequest), /native ETH/);
+    await assert.rejects(() => prepare(nativeRequest), /native ETH/);
     quoteMutation = () => {};
 
     nativeBalance = 1n;

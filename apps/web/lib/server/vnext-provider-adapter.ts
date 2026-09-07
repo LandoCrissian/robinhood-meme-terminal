@@ -116,6 +116,9 @@ export type VNextProviderVerificationEvidence = Record<string, unknown> & {
 };
 
 export type VNextProviderAuthorizationRequest = VNextProviderVerificationRequest & {
+  zeroXFirmQuoteCommitment?: string;
+  zeroXFirmQuoteContext?: import("./vnext-zero-x-firm-quote-commitment").ZeroXFirmQuoteContext;
+  zeroXExpectedStatus?: "verified" | "approval_required";
   deadlineSeconds: bigint;
   protectedOutputFloorAtomic: bigint;
   nowMs: number;
@@ -285,7 +288,9 @@ function assertVerificationEvidence(
     || !isAddress(evidence.approvalSpender)
     || evidence.settlementMode !== (request.settlementMode ?? VNEXT_DIRECT_NO_RMT_FEE)
     || !/^[1-9][0-9]*$/.test(evidence.protectedOutputAtomic)
-    || BigInt(evidence.protectedOutputAtomic) < request.indicativeProtectedOutputFloorAtomic
+    || (evidence.provider === "zero-x-swap" && evidence.settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE
+      ? !evidence.expectedOutputAtomic || !/^[1-9][0-9]*$/.test(evidence.expectedOutputAtomic) || BigInt(evidence.expectedOutputAtomic) < request.indicativeProtectedOutputFloorAtomic
+      : BigInt(evidence.protectedOutputAtomic) < request.indicativeProtectedOutputFloorAtomic)
     || !/^[1-9][0-9]*$/.test(evidence.deadline)
     || !/^0x[0-9a-fA-F]{64}$/.test(evidence.calldataHash)
     || (evidence.nextActionTarget !== null && !isAddress(evidence.nextActionTarget))
@@ -319,7 +324,8 @@ export async function prepareVNextProviderAuthorization(
   if (
     request.protectedOutputFloorAtomic <= 0n
     || request.indicativeProtectedOutputFloorAtomic <= 0n
-    || request.indicativeProtectedOutputFloorAtomic > request.protectedOutputFloorAtomic
+    || (!(provider === "zero-x-swap" && request.settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE)
+      && request.indicativeProtectedOutputFloorAtomic > request.protectedOutputFloorAtomic)
   ) throw new Error("RMT rejected an invalid protected output floor.");
   const adapter = adapterForProvider(provider, adapters);
   if (!adapter.capabilities.walletAuthorization || !adapter.prepareAuthorization) {
