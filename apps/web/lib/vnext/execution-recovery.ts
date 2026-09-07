@@ -1,3 +1,4 @@
+import { createVNextWalletRequestErrorDiagnostic, normalizeVNextWalletRequestErrorDiagnostic, type VNextWalletRequestErrorDiagnostic } from "./wallet-request-diagnostics";
 import {
   decodeEventLog,
   decodeFunctionData,
@@ -228,6 +229,7 @@ export type VNextWalletRequestRecord = {
   state: VNextWalletRequestState;
   txHash?: Hash;
   updatedAtMs: number;
+  errorDiagnostic?: VNextWalletRequestErrorDiagnostic;
 };
 
 export type VNextExecutionStorage = Pick<Storage, "getItem" | "setItem">;
@@ -555,6 +557,7 @@ const HASHED_WALLET_REQUEST_STATES = new Set<VNextWalletRequestState>([
 function normalizeWalletRequest(value: unknown): VNextWalletRequestRecord | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const candidate = value as Partial<VNextWalletRequestRecord>;
+  const errorDiagnostic = normalizeVNextWalletRequestErrorDiagnostic(candidate.errorDiagnostic);
   const requestedAtMs = normalizeTimestamp(candidate.requestedAtMs);
   const updatedAtMs = normalizeTimestamp(candidate.updatedAtMs);
   const planExpiresAtMs = normalizeTimestamp(candidate.planExpiresAtMs);
@@ -679,6 +682,7 @@ function normalizeWalletRequest(value: unknown): VNextWalletRequestRecord | null
     ...(v4DirectSettlement ? { v4DirectSettlement } : {}),
     state: candidate.state,
     ...(candidate.txHash ? { txHash: candidate.txHash.toLowerCase() as Hash } : {}),
+    ...(errorDiagnostic ? { errorDiagnostic } : {}),
     updatedAtMs
   };
 }
@@ -721,6 +725,28 @@ export function readVNextExecutionJournal(storage?: VNextExecutionStorage, nowMs
 
 export function readVNextWalletRequestJournal(storage?: VNextExecutionStorage, nowMs = Date.now()) {
   return readStoredEnvelope(storage, nowMs).walletRequests;
+}
+
+export function recordVNextWalletRequestError(
+  requestId: string,
+  error: unknown,
+  storage?: VNextExecutionStorage,
+  nowMs = Date.now()
+) {
+  const current = readStoredEnvelope(storage, nowMs);
+  const request = current.walletRequests.find((record) => record.requestId === requestId);
+  if (!request || !Number.isSafeInteger(nowMs) || nowMs < request.requestedAtMs) return null;
+  const errorDiagnostic = createVNextWalletRequestErrorDiagnostic({
+    error,
+    elapsedMs: nowMs - (request.providerPendingAtMs ?? request.promptRequestedAtMs ?? request.requestedAtMs),
+    connectorId: request.connectorId,
+    connectorType: request.connectorType,
+    walletClientType: request.walletClientType
+  });
+  // Diagnostics are not execution or cancellation authority. Preserve all state and history.
+  return writeCombinedJournal(current.executions, current.walletRequests.map((record) =>
+    record.requestId === requestId ? { ...record, errorDiagnostic } : record
+  ), storage, nowMs) ? errorDiagnostic : null;
 }
 
 function writeCombinedJournal(records: VNextExecutionRecord[], walletRequests: VNextWalletRequestRecord[], storage?: VNextExecutionStorage, nowMs = Date.now()) {
