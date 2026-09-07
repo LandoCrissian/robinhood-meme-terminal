@@ -414,6 +414,16 @@ export function parseVNextAuthorizationBundle(value: unknown, priorEvidence: VNe
     || evidence.rmtFeeEnabled !== priorEvidence.rmtFeeEnabled
     || evidence.settlementMode !== priorEvidence.settlementMode
     || evidence.v2VerificationCommitment !== priorEvidence.v2VerificationCommitment
+    || evidence.zeroXFirmQuoteCommitment !== priorEvidence.zeroXFirmQuoteCommitment
+    || (evidence.provider === "zero-x-swap" && (
+      evidence.expectedOutputAtomic !== priorEvidence.expectedOutputAtomic
+      || evidence.protectedOutputAtomic !== priorEvidence.protectedOutputAtomic
+      || JSON.stringify(evidence.providerNativeFee) !== JSON.stringify(priorEvidence.providerNativeFee)
+      || evidence.deadline !== priorEvidence.deadline
+      || evidence.nextActionCalldataHash !== priorEvidence.nextActionCalldataHash
+      || evidence.transactionValueAtomic !== priorEvidence.transactionValueAtomic
+      || evidence.gasLimitUnits !== priorEvidence.gasLimitUnits
+    ))
     || evidence.directNoRmtFee?.userGrossInputAtomic !== priorEvidence.directNoRmtFee?.userGrossInputAtomic
     || evidence.directNoRmtFee?.providerInputAtomic !== priorEvidence.directNoRmtFee?.providerInputAtomic
     || evidence.feeV2Economics?.policyHash !== priorEvidence.feeV2Economics?.policyHash

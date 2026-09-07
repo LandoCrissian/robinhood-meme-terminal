@@ -1,3 +1,4 @@
+import { verifyZeroXFirmQuoteCommitment, ZeroXFirmQuoteCommitmentError } from "../../../../lib/server/vnext-zero-x-firm-quote-commitment";
 import { randomUUID } from "node:crypto";
 import { getAddress, type Hex } from "viem";
 import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Invalid VNext V4 authorization binding." }, { status: 400, headers: noStore });
     }
     requireVNextPublicExecutionProvider(parsed.data.provider);
-    if (BigInt(parsed.data.indicativeProtectedOutputFloorAtomic) > BigInt(parsed.data.expectedProtectedOutputAtomic)) {
+    if (!(parsed.data.provider === "zero-x-swap" && parsed.data.settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE) && BigInt(parsed.data.indicativeProtectedOutputFloorAtomic) > BigInt(parsed.data.expectedProtectedOutputAtomic)) {
       return Response.json({ error: "Invalid VNext quote-continuity floor." }, { status: 400, headers: noStore });
     }
     const recipient = getAddress(parsed.data.recipient);
@@ -129,7 +130,16 @@ export async function POST(request: Request) {
       return verifyAgain("IMMUTABLE_CONTINUITY_CHANGED", "The 0x provider-native request contains contradictory executor authority. Verify again.");
     }
 
+    if (parsed.data.provider !== "zero-x-swap" && parsed.data.zeroXFirmQuoteCommitment !== undefined) throw new ZeroXFirmQuoteCommitmentError();
     const authorizationWallClockMs = Date.now();
+    const zeroXFirmQuoteContext = {
+      identityId: tradeAuthorization.identityId,
+      sessionToken: request.headers.get("privy-id-token") ?? "",
+      wallet: recipient, quoteRequestId: parsed.data.quoteRequestId, verificationId: parsed.data.verificationId
+    };
+    const zeroXEvidence = parsed.data.provider === "zero-x-swap"
+      ? verifyZeroXFirmQuoteCommitment(parsed.data.zeroXFirmQuoteCommitment ?? "", zeroXFirmQuoteContext, authorizationWallClockMs)
+      : null;
     const v2Claims = settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE
       ? verifyVNextV2VerificationCommitment({
           token: parsed.data.v2VerificationCommitment!,
@@ -144,7 +154,7 @@ export async function POST(request: Request) {
     const chainTimestampSeconds = await readVNextAuthorizationChainTimestamp();
     const finalDeadlineSeconds = v2Claims
       ? BigInt(v2Claims.deadline)
-      : chainTimestampSeconds + VNEXT_AUTHORIZATION_WINDOW_SECONDS;
+      : zeroXEvidence ? BigInt(zeroXEvidence.deadline) : chainTimestampSeconds + VNEXT_AUTHORIZATION_WINDOW_SECONDS;
     const prepared = await prepareRobinhoodVNextAuthorization(parsed.data.provider, {
       chainId: 4_663,
       inputAsset,
@@ -156,6 +166,7 @@ export async function POST(request: Request) {
       indicativeProtectedOutputFloorAtomic: BigInt(parsed.data.indicativeProtectedOutputFloorAtomic),
       protectedOutputFloorAtomic: BigInt(parsed.data.expectedProtectedOutputAtomic),
       nowMs: authorizationWallClockMs,
+      ...(zeroXEvidence ? { zeroXFirmQuoteCommitment: parsed.data.zeroXFirmQuoteCommitment, zeroXFirmQuoteContext, zeroXExpectedStatus: parsed.data.expectedStatus } : {}),
       settlementMode,
       ...(parsed.data.canonicalMarket ? { canonicalMarket: parsed.data.canonicalMarket as { sourceId: "uniswap-v4"; poolId: `0x${string}` } } : {}),
       ...(parsed.data.v4QuoteEvidence ? { v4QuoteEvidence: parsed.data.v4QuoteEvidence as typeof parsed.data.v4QuoteEvidence & { poolId: `0x${string}`; observedBlockHash: `0x${string}` } } : {}),
@@ -209,7 +220,9 @@ export async function POST(request: Request) {
     }
     const timing = v2Claims
       ? deriveVNextCommittedAuthorizationTiming(chainTimestampSeconds, authorizationWallClockMs, BigInt(v2Claims.deadline))
-      : deriveVNextAuthorizationTiming(chainTimestampSeconds, authorizationWallClockMs);
+      : zeroXEvidence
+        ? deriveVNextCommittedAuthorizationTiming(chainTimestampSeconds, authorizationWallClockMs, BigInt(zeroXEvidence.deadline))
+        : deriveVNextAuthorizationTiming(chainTimestampSeconds, authorizationWallClockMs);
     if (BigInt(prepared.evidence.deadline) !== timing.deadlineSeconds) {
       return v2Claims
         ? verifyAgain("DEADLINE_CHANGED_OR_EXPIRED", "The final server deadline changed during V2 authorization. Verify again.")
@@ -282,6 +295,9 @@ export async function POST(request: Request) {
       plan
     }, { headers: noStore });
   } catch (cause) {
+    if (cause instanceof ZeroXFirmQuoteCommitmentError) {
+      return Response.json({ error: "REQUOTE_REQUIRED", message: cause.message }, { status: 409, headers: noStore });
+    }
     const publicProviderResponse = vNextPublicExecutionProviderScopeErrorResponse(cause);
     if (publicProviderResponse) return publicProviderResponse;
     const identityResponse = tradeIdentityErrorResponse(cause);

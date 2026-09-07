@@ -95,6 +95,7 @@ export type VNextPreSignEvidence = {
   infrastructureVerifiedAtBlockHash?: string;
   authorizationInfrastructureVerifiedAtBlock?: string;
   authorizationInfrastructureVerifiedAtBlockHash?: string;
+  zeroXFirmQuoteCommitment?: string;
   v2VerificationCommitment?: string;
   approvalKind?: "erc20_to_permit2" | "permit2_to_router" | "erc20_to_allowance_holder" | null;
   v4Execution?: VNextUniswapV4ExecutionEvidence;
@@ -165,6 +166,7 @@ const evidenceSchema = z.object({
   infrastructureVerifiedAtBlockHash: hash.optional(),
   authorizationInfrastructureVerifiedAtBlock: atomic.optional(),
   authorizationInfrastructureVerifiedAtBlockHash: hash.optional(),
+  zeroXFirmQuoteCommitment: z.string().regex(/^zx1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/).max(262_144).optional(),
   v2VerificationCommitment: z.string().regex(/^v1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/).max(8_192).optional(),
   approvalKind: z.enum(["erc20_to_permit2", "permit2_to_router", "erc20_to_allowance_holder"]).nullable().optional(),
   v4Execution: z.unknown().optional(),
@@ -209,7 +211,8 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
     || evidence.provider !== expected.provider
     || evidence.indicativeProtectedOutputFloorAtomic !== expected.protectedOutputFloorAtomic
     || evidence.indicativeProtectedOutputFloorAtomic === "0"
-    || BigInt(evidence.protectedOutputAtomic) < BigInt(expected.protectedOutputFloorAtomic)
+    || BigInt(evidence.provider === "zero-x-swap" && evidence.settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE
+      ? evidence.expectedOutputAtomic : evidence.protectedOutputAtomic) < BigInt(expected.protectedOutputFloorAtomic)
     || !isAddress(evidence.recipient)
     || getAddress(evidence.recipient) !== getAddress(expected.recipient)
     || (evidence.provider !== "zero-x-swap" && getAddress(evidence.router) !== getAddress(evidence.provider === "uniswap-v2" ? ROBINHOOD_UNISWAP_V2_ROUTER : evidence.provider === "uniswap-v3" ? ROBINHOOD_SWAP_ROUTER_02 : evidence.provider === "uniswap-v4" ? ROBINHOOD_UNIVERSAL_ROUTER : evidence.provider === "up-v2" ? UP_V2_EXECUTION_ROUTER : UP_CL_EXECUTION_ROUTER))
@@ -291,6 +294,12 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
     && !evidence.v2VerificationCommitment
   ) {
     throw new Error("RMT rejected V2 evidence without server authorization authority.");
+  }
+  if (evidence.provider === "zero-x-swap" && ["verified", "approval_required"].includes(evidence.status) && !evidence.zeroXFirmQuoteCommitment) {
+    throw new Error("RMT rejected 0x evidence without committed firm-quote authority.");
+  }
+  if (evidence.provider !== "zero-x-swap" && evidence.zeroXFirmQuoteCommitment !== undefined) {
+    throw new Error("RMT rejected 0x commitment outside its provider.");
   }
   if (evidence.settlementMode !== VNEXT_V2_ATOMIC_INPUT_FEE && evidence.v2VerificationCommitment !== undefined) {
     throw new Error("RMT rejected V2 authorization authority outside V2 mode.");

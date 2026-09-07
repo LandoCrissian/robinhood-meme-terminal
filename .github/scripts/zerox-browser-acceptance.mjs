@@ -1,3 +1,4 @@
+import { runZeroXFirmCommitmentJourneys } from "./zerox-browser-firm-commitment.mjs";
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
@@ -167,6 +168,7 @@ function external(input) {
       transaction: { to: nativeSell ? '0x0000000000000000000000000000000000012345' : holder, data: state.approved ? '0x1234567822222222' : '0x1234567811111111', value: nativeSell ? q.sellAmount : '0', gas: '180000', gasPrice: '50000000' }
     } };
     if (firm) state.modifyFirm?.(response.body);
+    else state.modifyPrice?.(response.body);
     return response;
   }
   if ((url.origin === 'https://api.0x.org' && url.pathname === '/gasless/price')
@@ -207,7 +209,8 @@ export async function runZeroXBrowserAcceptance() {
     RMT_RPC_URL: 'https://browser-acceptance.invalid', RMT_MAINNET_RPC_URL: 'https://browser-acceptance.invalid', ROBINHOOD_MAINNET_RPC_URL: 'https://browser-acceptance.invalid', NEXT_PUBLIC_RMT_RPC_URL: 'https://browser-acceptance.invalid',
     RMT_VNEXT_AUTHORIZATION_ENABLED: 'true', RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: 'zero-x-swap',
     RMT_VNEXT_ZEROX_OBSERVATION_ENABLED: 'true', RMT_VNEXT_ZEROX_FIRM_QUOTE_VERIFICATION_ENABLED: 'true',
-    RMT_ZEROX_API_KEY: 'server-only-test-key', RMT_ZEROX_ALLOWANCE_HOLDER: holder, RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH: keccak256(runtime),
+    RMT_ZEROX_API_KEY: 'server-only-test-key',
+    RMT_VNEXT_VERIFICATION_COMMITMENT_SECRET: "deterministic-browser-commitment-secret-local-only", RMT_ZEROX_ALLOWANCE_HOLDER: holder, RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH: keccak256(runtime),
     NEXT_PUBLIC_PRIVY_APP_ID: claims.aud, PRIVY_VERIFICATION_KEY: publicKey.export({ format: 'pem', type: 'spki' })
   };
   const port = 3100;
@@ -286,6 +289,7 @@ export async function runZeroXBrowserAcceptance() {
       }
     }
     if (process.env.RMT_ACCEPTANCE_ROUTE_ON_DEMAND_ONLY !== 'true') results.push(...await runZeroXWalletJourneys({ browser, base, identity, external, state, wallet, token, usdg, holder, output }));
+    results.push(...await runZeroXFirmCommitmentJourneys({ browser, base, identity, external, state, wallet, usdg, holder, output }));
     results.push(...await runRouteOnDemandJourneys({ browser, base, identity, external, state, wallet, usdg, output, fixtures: routeFixtures }));
   } finally {
     await browser?.close();

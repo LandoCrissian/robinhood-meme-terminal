@@ -1,3 +1,5 @@
+import { createZeroXFirmQuoteCommitment } from "../../../../lib/server/vnext-zero-x-firm-quote-commitment";
+import { ZeroXRepriceRequiredError } from "../../../../lib/server/vnext-zero-x-firm-quote-verifier";
 import { randomBytes, randomUUID } from "node:crypto";
 import { getAddress, isAddress } from "viem";
 import { z } from "zod";
@@ -141,8 +143,18 @@ export async function POST(request: Request) {
         nowMs: verificationWallClockMs
       });
     }
+    if (evidence.provider === "zero-x-swap" && (evidence.status === "verified" || evidence.status === "approval_required")) {
+      responseEvidence.zeroXFirmQuoteCommitment = createZeroXFirmQuoteCommitment(evidence, {
+        identityId: tradeAuthorization.identityId,
+        sessionToken: request.headers.get("privy-id-token") ?? "",
+        wallet: recipient, quoteRequestId: parsed.data.quoteRequestId, verificationId
+      }, Date.now());
+    }
     return Response.json(responseEvidence, { headers: { "Cache-Control": "no-store" } });
   } catch (cause) {
+    if (cause instanceof ZeroXRepriceRequiredError) {
+      return Response.json({ error: "ZERO_X_REPRICE_REQUIRED", message: "Price moved. Review the refreshed quote." }, { status: 409, headers: { "Cache-Control": "no-store" } });
+    }
     const publicProviderResponse = vNextPublicExecutionProviderScopeErrorResponse(cause);
     if (publicProviderResponse) return publicProviderResponse;
     const identityResponse = tradeIdentityErrorResponse(cause);
