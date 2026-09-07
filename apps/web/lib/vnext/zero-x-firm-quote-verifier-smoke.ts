@@ -1,3 +1,5 @@
+import { createRequire } from "node:module";
+const executableFixture = createRequire(import.meta.url)("../../../../.github/scripts/zerox-execution-fixture.cjs");
 import { randomUUID } from "node:crypto";
 import { createZeroXFirmQuoteCommitment } from "../server/vnext-zero-x-firm-quote-commitment";
 import { ZeroXRepriceRequiredError } from "../server/vnext-zero-x-firm-quote-verifier";
@@ -114,7 +116,8 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
       if (url.origin === "https://api.0x.org") {
         quoteCalls += 1;
         assert.equal(url.pathname, "/swap/allowance-holder/quote");
-        assert.equal(url.searchParams.get("slippageBps"), "100");
+        assert.equal(url.searchParams.get("slippagePpm"), "9900");
+        assert.equal(url.searchParams.has("slippageBps"), false);
         assert.equal(url.searchParams.get("sellAmount"), "1000000");
         assert.equal(url.searchParams.get("taker"), recipient);
         assert.equal(url.searchParams.get("recipient"), recipient);
@@ -127,12 +130,13 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
         assert.equal(url.searchParams.has("tradeSurplusRecipient"), false);
         const body = quote();
         quoteMutation(body);
+        if (["0x12345678", "0x87654321"].includes(body.transaction.data)) body.transaction.data = executableFixture.encodeQuote(body, recipient, body.transaction.data);
         return Response.json(body);
       }
       const payload = JSON.parse(String(init?.body)) as { method: string; params: unknown[] };
       if (payload.method === "eth_chainId") return Response.json({ jsonrpc: "2.0", id: 1, result: "0x1237" });
       if (payload.method === "eth_gasPrice") return Response.json({ jsonrpc: "2.0", id: 1, result: "0x2faf080" });
-      if (payload.method === "eth_getCode") return Response.json({ jsonrpc: "2.0", id: 1, result: noTargetCode ? "0x" : runtimeCode });
+      if (payload.method === "eth_getCode") return Response.json({ jsonrpc: "2.0", id: 1, result: noTargetCode ? "0x" : String(payload.params[0]).toLowerCase() === settler.toLowerCase() ? executableFixture.runtime : runtimeCode });
       if (payload.method === "eth_getBalance") return Response.json({ jsonrpc: "2.0", id: 1, result: `0x${nativeBalance.toString(16)}` });
       if (payload.method === "eth_estimateGas") return Response.json({ jsonrpc: "2.0", id: 1, result: "0xc350" });
       if (payload.method === "eth_call") {
@@ -156,16 +160,16 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     assert.equal(verified.providerNativeFee?.feeAmountAtomic, "2500");
     assert.equal(verified.providerNativeFee?.feeExecutorRequired, false);
     assert.equal(verified.providerFeeAtomic, "1500");
-    assert.deepEqual(simulatedEnvelope, { from: recipient, to: allowanceHolder, data: "0x12345678", value: "0x0", gas: "0x2bf20", gasPrice: "0x2faf080" });
+    assert.deepEqual(simulatedEnvelope, { from: recipient, to: allowanceHolder, data: verified.transactionData, value: "0x0", gas: "0x2bf20", gasPrice: "0x2faf080" });
     const committed = await committedRequest(baseRequest, verified);
     const beforeAuthorize = quoteCalls;
     const swap = await prepareVNextProviderAuthorization("zero-x-swap", committed, [vNextZeroXSwapAdapter]);
     assert.equal(quoteCalls, beforeAuthorize, "verify -> authorize must have exactly one firm quote");
     await assertZeroXCommitmentAdversarialMatrix(committed);
-    assert.equal(verified.requestedSlippageBps, 100);
-    assert.throws(() => createZeroXFirmQuoteCommitment({ ...verified, requestedSlippageBps: 101 }, context, Date.now()), /invalid or expired/);
+    assert.equal(verified.providerRequestedSlippagePpm, 9900);
+    assert.throws(() => createZeroXFirmQuoteCommitment({ ...verified, providerRequestedSlippagePpm: 101 }, context, Date.now()), /invalid or expired/);
     assert.equal(swap.transaction.kind, "swap");
-    assert.equal(swap.transaction.data, "0x12345678");
+    assert.equal(swap.transaction.data, verified.transactionData);
     assert.equal(swap.transaction.value, "0");
     assertZeroXSharedWalletAuthorization(swap);
     await assert.rejects(() => prepareVNextProviderAuthorization("zero-x-gasless", baseRequest, [vNextZeroXGaslessAdapter]), /not available/);
@@ -229,17 +233,18 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     await assert.rejects(() => prepareZeroXSwapAuthorization({ ...preApprovalCommitment, zeroXExpectedStatus: "verified" }), /invalid or expired/);
     assert.notEqual(fresh.evidence.zeroXFirmQuoteCommitment, preApprovalCommitment.zeroXFirmQuoteCommitment);
     assert.equal(fresh.transaction.kind, "swap");
-    assert.equal(fresh.transaction.data, "0x87654321");
+    assert.equal(keccak256(fresh.transaction.data), fresh.evidence.calldataHash);
+    assert.notEqual(fresh.transaction.data, verified.transactionData);
     assertZeroXSharedWalletAuthorization(fresh);
     quoteMutation = () => {};
     assert.equal(quoteCalls, beforeFresh + 1, "post-approval verification fetches fresh authority; authorization reuses it");
 
-    // Exact integer boundary: 100 bps plus at most one ppm, no indicative continuity prerequisite.
+    // Exact integer boundary: exactly 10,000 ppm without user-side rounding, no indicative continuity prerequisite.
     for (const [expected, minimum, valid] of [
-      ["397592518509179", "393616593315000", true],
+      ["397592518509179", "393616593315000", false],
       ["100000000", "99000000", true],
-      ["1000000", "989999", true],
-      ["1000000", "989998", false],
+      ["1000000", "990000", true],
+      ["1000000", "989999", false],
       ["100000", "1", false],
       ["100000", "90000", false]
     ] as const) {
@@ -248,10 +253,25 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
       if (valid) {
         const bounded = await prepare(boundedRequest);
         assert.equal(bounded.evidence.protectedOutputAtomic, minimum);
-        assert.equal(bounded.evidence.requestedSlippageBps, 100);
+        assert.equal(bounded.evidence.providerRequestedSlippagePpm, 9900);
       } else {
         await assert.rejects(() => verifyZeroXSwapFirmQuote(boundedRequest), error => error instanceof Error
           && !(error instanceof ZeroXRepriceRequiredError) && /slippage envelope/.test(error.message));
+      }
+    }
+    for (const [reported, encoded, valid] of [
+      ["989999", "990000", true], ["999000", "990000", true], ["990000", "989999", false]
+    ] as const) {
+      quoteMutation = body => { body.buyAmount = "1000000"; body.minBuyAmount = reported; body.executableMinimumForTest = encoded; };
+      const boundedRequest = { ...baseRequest, indicativeProtectedOutputFloorAtomic: 1n, protectedOutputFloorAtomic: 1n };
+      if (valid) {
+        const accepted = await prepare(boundedRequest);
+        assert.equal(accepted.evidence.providerReportedMinBuyAmount, reported);
+        assert.equal(accepted.evidence.encodedExecutableMinBuyAmount, encoded);
+        assert.equal(accepted.evidence.protectedOutputAtomic, encoded);
+        assert.equal(accepted.evidence.maximumUserSlippagePpm, 10000);
+      } else {
+        await assert.rejects(() => prepare(boundedRequest), /slippage envelope/);
       }
     }
     output = zeroAddress;
@@ -264,9 +284,9 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     assert.equal(repriced.transaction.kind, "erc20_approval");
     assert.equal(repriced.evidence.approvalSpender, allowanceHolder);
     assert.equal(repriced.evidence.inputAmountAtomic, "1000000");
-    quoteMutation = body => { body.buyAmount = "98999"; body.minBuyAmount = "98009"; };
+    quoteMutation = body => { body.buyAmount = "98999"; body.minBuyAmount = "98010"; };
     await assert.rejects(() => verifyZeroXSwapFirmQuote(repricedRequest), ZeroXRepriceRequiredError);
-    quoteMutation = body => { body.buyAmount = "98999"; body.minBuyAmount = "98009"; body.sellAmount = "999999"; };
+    quoteMutation = body => { body.buyAmount = "98999"; body.minBuyAmount = "98010"; body.sellAmount = "999999"; };
     await assert.rejects(() => verifyZeroXSwapFirmQuote(repricedRequest), error => error instanceof Error && !(error instanceof ZeroXRepriceRequiredError));
     quoteMutation = () => {};
     output = outputAsset;

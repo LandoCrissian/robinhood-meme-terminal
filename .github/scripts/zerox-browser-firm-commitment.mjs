@@ -16,19 +16,23 @@ async function until(predicate, message) {
 export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, external, state, wallet, usdg, holder, output }) {
   const results = [];
   const mutations = {
-    requestedSlippage: 'requestedSlippageBps', expected: 'expectedOutputAtomic', protected: 'protectedOutputAtomic',
+    requestedSlippage: 'providerRequestedSlippagePpm', maximumUserSlippage: 'maximumUserSlippagePpm', providerMinimum: 'providerReportedMinBuyAmount', executableMinimum: 'encodedExecutableMinBuyAmount', settlerRuntime: 'executableSettlerRuntimeHash', expected: 'expectedOutputAtomic', protected: 'protectedOutputAtomic',
     feeAsset: 'providerNativeFee.feeAsset', feeAmount: 'providerNativeFee.feeAmountAtomic',
     treasury: 'providerNativeFee.treasury', target: 'router', calldataHash: 'calldataHash',
     value: 'transactionValueAtomic', gas: 'gasLimitUnits', spender: 'approvalSpender',
     expiry: 'providerNativeFee.firmQuote.expiresAtMs', wallet: 'binding', recipient: 'recipient'
   };
   const slippageCases = {
-    'slippage-live-rounding': ['397592518509179', '393616593315000', true],
+    'slippage-live-rounding': ['397592518509179', '393616593315000', false],
     'slippage-exact-100bps': ['100000000', '99000000', true],
-    'slippage-rounding-boundary': ['1000000', '989999', true],
-    'slippage-outside-boundary': ['1000000', '989998', false],
+    'slippage-rounding-boundary': ['1000000', '990000', true],
+    'slippage-outside-boundary': ['1000000', '989999', false],
     'slippage-catastrophic': ['100000', '1', false],
-    'slippage-ten-percent': ['100000', '90000', false]
+    'slippage-ten-percent': ['100000', '90000', false],
+    'slippage-api-weaker-safe-executable': ['1000000', '989999', true, '990000'],
+    'slippage-api-stronger-unsafe-executable': ['1000000', '990000', false, '989999'],
+    'slippage-api-stronger-safe-executable': ['1000000', '999000', true, '990000'],
+    'slippage-captured-native': ['2500750', '2476000', true]
   };
   for (const viewport of ['desktop', 'mobile']) {
     for (const scenario of ['one-usdg-normal-reprice', 'native-normal-reprice-rejection', 'material-reprice', 'expired-commitment', ...Object.keys(slippageCases), ...Object.keys(mutations).map((key) => `tamper-${key}`)]) {
@@ -41,8 +45,8 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
       state.modifyPrice = (quote) => { quote.buyAmount = '100000'; quote.minBuyAmount = '99000'; quote.fees.zeroExFee = null; };
       state.modifyFirm = (quote) => {
         quote.buyAmount = scenario === 'material-reprice' ? '98999' : '99500';
-        quote.minBuyAmount = scenario === 'material-reprice' ? '98009' : '98505';
-        if (slippageCase) [quote.buyAmount, quote.minBuyAmount] = slippageCase;
+        quote.minBuyAmount = scenario === 'material-reprice' ? '98010' : '98505';
+        if (slippageCase) { [quote.buyAmount, quote.minBuyAmount] = slippageCase; quote.executableMinimumForTest = slippageCase[3] ?? slippageCase[1]; }
         quote.fees.zeroExFee = null;
       };
       const quoteStart = state.quotes.length;
@@ -130,8 +134,8 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
           const verification = api.find((entry) => entry.path.endsWith('/verify')).body;
           const authorized = api.find((entry) => entry.path.endsWith('/authorize'));
           assert.equal(verification.expectedOutputAtomic, slippageCase?.[0] ?? '99500');
-          assert.equal(verification.protectedOutputAtomic, slippageCase?.[1] ?? '98505');
-          assert.equal(verification.requestedSlippageBps, 100);
+          assert.equal(verification.protectedOutputAtomic, slippageCase?.[3] ?? slippageCase?.[1] ?? '98505');
+          assert.equal(verification.providerRequestedSlippagePpm, 9900);
           assert.match(verification.zeroXFirmQuoteCommitment, /^zx1\./);
           if (scenario.startsWith('tamper-') || scenario === 'expired-commitment') {
             assert.equal(authorized.status, 409);
@@ -141,8 +145,8 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
             assert.equal(authorized.status, 200);
             const { plan, evidence } = authorized.body;
             assert.equal(evidence.zeroXFirmQuoteCommitment, verification.zeroXFirmQuoteCommitment);
-            assert.equal(plan.protectedOutputAtomic, slippageCase?.[1] ?? '98505');
-            assert.equal(evidence.requestedSlippageBps, 100);
+            assert.equal(plan.protectedOutputAtomic, slippageCase?.[3] ?? slippageCase?.[1] ?? '98505');
+            assert.equal(evidence.providerRequestedSlippagePpm, 9900);
             assert.equal(plan.providerNativeFee.firmQuote.identity, verification.providerNativeFee.firmQuote.identity);
             assert.equal(plan.providerNativeFee.feeBps, 25);
             assert.equal(plan.providerNativeFee.treasury.toLowerCase(), '0x61700479a4a1f62584fd3aba2c2b290ea727d2ec');

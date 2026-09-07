@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import "./zero-x-executable-slippage-smoke";
 import { getAddress, zeroAddress } from "viem";
 import { parseZeroXPrice, vNextZeroXGaslessAdapter, vNextZeroXSwapAdapter } from "../server/vnext-zero-x-adapter";
 import type { VNextProviderQuoteRequest } from "../server/vnext-provider-adapter";
@@ -50,7 +51,8 @@ try {
     const inputAsset = fromZeroXToken(url.searchParams.get("sellToken")!);
     const outputAsset = fromZeroXToken(url.searchParams.get("buyToken")!);
     assert.equal(url.pathname, "/swap/allowance-holder/price");
-    assert.equal(url.searchParams.get("slippageBps"), "100");
+    assert.equal(url.searchParams.get("slippagePpm"), "9900");
+        assert.equal(url.searchParams.has("slippageBps"), false);
     assert.equal(url.searchParams.get("chainId"), "4663");
     assert.equal(url.searchParams.get("sellAmount"), "1000000");
     assert.equal(url.searchParams.get("taker"), recipient);

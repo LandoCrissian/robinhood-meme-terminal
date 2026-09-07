@@ -1,4 +1,5 @@
-import { RMT_ZERO_X_SLIPPAGE_BPS, zeroXMinimumRespectsSlippage } from "../vnext/zero-x-settlement";
+import { decodeZeroXExecutableMinimum, ZERO_X_SLIPPAGE_SETTLER_RUNTIME_HASH } from "./vnext-zero-x-execution-decoder";
+import { RMT_ZERO_X_MAX_SLIPPAGE_PPM, RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM, zeroXMinimumRespectsSlippage } from "../vnext/zero-x-settlement";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { getAddress, keccak256 } from "viem";
 import { parseVNextPreSignEvidence } from "../vnext/pre-sign-evidence";
@@ -61,7 +62,10 @@ export function verifyZeroXFirmQuoteCommitment(token: string, context: ZeroXFirm
     const evidence = claims.evidence as ZeroXSwapFirmQuoteVerificationEvidence;
     const firm = evidence.providerNativeFee?.firmQuote;
     if (evidence.provider !== "zero-x-swap" || evidence.chainId !== 4_663
-      || evidence.requestedSlippageBps !== RMT_ZERO_X_SLIPPAGE_BPS
+      || evidence.maximumUserSlippagePpm !== RMT_ZERO_X_MAX_SLIPPAGE_PPM
+      || evidence.encodedExecutableMinBuyAmount !== evidence.protectedOutputAtomic
+      || evidence.executableSettlerRuntimeHash !== ZERO_X_SLIPPAGE_SETTLER_RUNTIME_HASH
+      || evidence.providerRequestedSlippagePpm !== RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM
       || !zeroXMinimumRespectsSlippage(evidence.expectedOutputAtomic ?? "", evidence.protectedOutputAtomic)
       || evidence.settlementMode !== VNEXT_PROVIDER_NATIVE_INPUT_FEE
       || (evidence.status !== "verified" && evidence.status !== "approval_required")
@@ -72,6 +76,11 @@ export function verifyZeroXFirmQuoteCommitment(token: string, context: ZeroXFirm
       || keccak256(evidence.transactionData) !== evidence.calldataHash
       || evidence.swapTransactionValueAtomic !== evidence.providerNativeFee?.transactionValueAtomic
       || BigInt(evidence.deadline) * 1_000n <= BigInt(nowMs)) throw new ZeroXFirmQuoteCommitmentError();
+    const decoded = decodeZeroXExecutableMinimum({ target: evidence.router, data: evidence.transactionData,
+      inputAsset: evidence.inputAsset, outputAsset: evidence.outputAsset, inputAmountAtomic: evidence.inputAmountAtomic,
+      recipient: evidence.recipient, valueAtomic: evidence.swapTransactionValueAtomic });
+    if (decoded.minimumAtomic !== evidence.encodedExecutableMinBuyAmount
+      || decoded.settlerTarget !== evidence.executableSettlerTarget) throw new ZeroXFirmQuoteCommitmentError();
     parseVNextPreSignEvidence({
       ...evidence, verificationId: context.verificationId, sourceQuoteRequestId: context.quoteRequestId,
       zeroXFirmQuoteCommitment: token

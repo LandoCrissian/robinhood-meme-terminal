@@ -4,10 +4,11 @@ import type { VNextAuthorizationPlan } from "./authorization-plan";
 export const ZERO_X_NATIVE_TOKEN = getAddress("0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE");
 export const RMT_ZERO_X_FEE_TREASURY = getAddress("0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC");
 export const RMT_ZERO_X_FEE_BPS = 25 as const;
-export const RMT_ZERO_X_SLIPPAGE_BPS = 100 as const;
-export const RMT_ZERO_X_SLIPPAGE_ROUNDING_PPM = 1 as const;
+export const RMT_ZERO_X_MAX_SLIPPAGE_PPM = 10000 as const;
+// Provider rounding reserve, NOT additional user tolerance. Live calibrated on chain 4663.
+export const RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM = 9900 as const;
 const PPM_DENOMINATOR = 1_000_000n;
-const MAX_EFFECTIVE_SLIPPAGE_PPM = BigInt(RMT_ZERO_X_SLIPPAGE_BPS) * 100n + BigInt(RMT_ZERO_X_SLIPPAGE_ROUNDING_PPM);
+const MAX_EFFECTIVE_SLIPPAGE_PPM = BigInt(RMT_ZERO_X_MAX_SLIPPAGE_PPM);
 
 // Bound each executable minimum against its own firm expected output, never
 // against an earlier indicative minimum. No floating-point or token-decimal rounding.

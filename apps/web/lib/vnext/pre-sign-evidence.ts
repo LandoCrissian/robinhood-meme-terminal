@@ -1,4 +1,4 @@
-import { RMT_ZERO_X_SLIPPAGE_BPS, zeroXMinimumRespectsSlippage } from "./zero-x-settlement";
+import { RMT_ZERO_X_MAX_SLIPPAGE_PPM, RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM, zeroXMinimumRespectsSlippage } from "./zero-x-settlement";
 import { getAddress, isAddress, keccak256 } from "viem";
 import { z } from "zod";
 import {
@@ -96,7 +96,12 @@ export type VNextPreSignEvidence = {
   infrastructureVerifiedAtBlockHash?: string;
   authorizationInfrastructureVerifiedAtBlock?: string;
   authorizationInfrastructureVerifiedAtBlockHash?: string;
-  requestedSlippageBps?: typeof RMT_ZERO_X_SLIPPAGE_BPS;
+  providerRequestedSlippagePpm?: typeof RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM;
+  maximumUserSlippagePpm?: typeof RMT_ZERO_X_MAX_SLIPPAGE_PPM;
+  providerReportedMinBuyAmount?: string;
+  encodedExecutableMinBuyAmount?: string;
+  executableSettlerTarget?: string;
+  executableSettlerRuntimeHash?: string;
   zeroXFirmQuoteCommitment?: string;
   v2VerificationCommitment?: string;
   approvalKind?: "erc20_to_permit2" | "permit2_to_router" | "erc20_to_allowance_holder" | null;
@@ -168,7 +173,12 @@ const evidenceSchema = z.object({
   infrastructureVerifiedAtBlockHash: hash.optional(),
   authorizationInfrastructureVerifiedAtBlock: atomic.optional(),
   authorizationInfrastructureVerifiedAtBlockHash: hash.optional(),
-  requestedSlippageBps: z.literal(RMT_ZERO_X_SLIPPAGE_BPS).optional(),
+  providerRequestedSlippagePpm: z.literal(RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM).optional(),
+  maximumUserSlippagePpm: z.literal(RMT_ZERO_X_MAX_SLIPPAGE_PPM).optional(),
+  providerReportedMinBuyAmount: atomic.optional(),
+  encodedExecutableMinBuyAmount: atomic.optional(),
+  executableSettlerTarget: z.string().regex(/^0x[0-9a-fA-F]{40}$/).optional(),
+  executableSettlerRuntimeHash: hash.optional(),
   zeroXFirmQuoteCommitment: z.string().regex(/^zx1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/).max(262_144).optional(),
   v2VerificationCommitment: z.string().regex(/^v1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/).max(8_192).optional(),
   approvalKind: z.enum(["erc20_to_permit2", "permit2_to_router", "erc20_to_allowance_holder"]).nullable().optional(),
@@ -290,7 +300,12 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
   } else if (hasProviderNativeFee) {
     throw new Error("RMT rejected 0x provider-native fee evidence outside its settlement mode.");
   }
-  if (evidence.provider === "zero-x-swap" && (evidence.requestedSlippageBps !== RMT_ZERO_X_SLIPPAGE_BPS
+  if (evidence.provider === "zero-x-swap" && (evidence.providerRequestedSlippagePpm !== RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM
+    || evidence.maximumUserSlippagePpm !== RMT_ZERO_X_MAX_SLIPPAGE_PPM
+    || !evidence.providerReportedMinBuyAmount || BigInt(evidence.providerReportedMinBuyAmount) <= 0n
+    || BigInt(evidence.providerReportedMinBuyAmount) > BigInt(evidence.expectedOutputAtomic)
+    || evidence.encodedExecutableMinBuyAmount !== evidence.protectedOutputAtomic
+    || !evidence.executableSettlerTarget || !evidence.executableSettlerRuntimeHash
     || !zeroXMinimumRespectsSlippage(evidence.expectedOutputAtomic, evidence.protectedOutputAtomic))) {
     throw new Error("RMT rejected 0x firm minimum outside the requested slippage policy.");
   }

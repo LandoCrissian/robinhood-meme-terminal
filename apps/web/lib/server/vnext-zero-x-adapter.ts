@@ -1,4 +1,4 @@
-import { RMT_ZERO_X_SLIPPAGE_BPS } from "../vnext/zero-x-settlement";
+import { RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM } from "../vnext/zero-x-settlement";
 import { getAddress, isAddress, type Address } from "viem";
 import { disabledVNextFeeEconomics, unavailableVNextQuoteAttempt, type VNextProviderQuoteRequest, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
 import { prepareZeroXSwapAuthorization, verifyZeroXSwapFirmQuote } from "./vnext-zero-x-firm-quote-verifier";
@@ -110,7 +110,7 @@ async function quoteZeroX(request: VNextProviderQuoteRequest, mode: ZeroXMode) {
     swapFeeRecipient: RMT_ZERO_X_FEE_TREASURY,
     swapFeeBps: String(RMT_ZERO_X_FEE_BPS),
     swapFeeToken: toZeroXToken(request.inputAsset),
-    slippageBps: String(RMT_ZERO_X_SLIPPAGE_BPS)
+    slippagePpm: String(RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM)
   });
   url.search = new URLSearchParams(params).toString();
   const response = await fetch(url, {
