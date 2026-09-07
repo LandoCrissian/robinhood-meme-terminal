@@ -121,12 +121,13 @@ export async function runZeroXWalletJourneys(options) {
       await context.addInitScript(({ wallet, scenario }) => {
         const listeners = new Map();
         window.__ZEROX_PROMPTS__ = 0;
-        window.ethereum = {
+        const selectedSigner = {
           isMetaMask: true,
           on(event, fn) { listeners.set(event, [...(listeners.get(event) ?? []), fn]); },
           removeListener(event, fn) { listeners.set(event, (listeners.get(event) ?? []).filter((item) => item !== fn)); },
           async request({ method, params }) {
             if (method === 'eth_chainId') return '0x1237';
+            if (method === 'eth_requestAccounts' && scenario === 'multi-account-owner-second') throw new Error('Selected signer must not request new permissions');
             if (method === 'eth_accounts' || method === 'eth_requestAccounts') return scenario === 'multi-account-owner-second'
               ? ['0x1111111111111111111111111111111111111111', wallet] : [wallet];
             if (method === 'eth_getTransactionCount') return '0x1';
@@ -144,9 +145,19 @@ export async function runZeroXWalletJourneys(options) {
             return null;
           }
         };
+        // Model the already-selected authenticated identity independently from
+        // the raw signer permitted account set, just as the normal integration does.
+        window.ethereum = scenario === 'multi-account-owner-second' ? {
+          ...selectedSigner,
+          async request(args) {
+            if (args.method === 'eth_accounts' || args.method === 'eth_requestAccounts') return [wallet];
+            if (args.method === 'eth_sendTransaction') throw new Error('Identity-facing provider must not dispatch the selected signer transaction');
+            return selectedSigner.request(args);
+          }
+        } : selectedSigner;
         const announce = () => window.dispatchEvent(new CustomEvent('eip6963:announceProvider', { detail: {
           info: { uuid: 'd0d0d0d0-d0d0-40d0-80d0-d0d0d0d0d0d0', name: 'Explicit test signer', rdns: 'io.rmt.test', icon: 'data:image/png;base64,' },
-          provider: window.ethereum
+          provider: selectedSigner
         } }));
         window.addEventListener('eip6963:requestProvider', announce);
         announce();
