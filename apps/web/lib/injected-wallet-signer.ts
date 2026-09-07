@@ -1,3 +1,4 @@
+import { getAddress, isAddress } from "viem";
 import { parseWalletGatewayKey } from "./wallet-gateway";
 
 export type InjectedSignerProvider = {
@@ -117,8 +118,12 @@ export function createInjectedSignerSelection() {
         ticket.request.call(ticket.provider, { method: "eth_chainId" })
       ]);
       assertCurrent(ticket, walletKey, recipient);
-      if (!Array.isArray(accounts) || accounts.length !== 1 || typeof accounts[0] !== "string"
-        || accounts[0].toLowerCase() !== wallet || typeof chain !== "string" || !/^0x[0-9a-f]+$/i.test(chain) || BigInt(chain) !== 4663n) {
+      // eth_accounts is a permitted account set, not a new trading-wallet selection.
+      // Validate the whole response, then require the already-bound owner regardless of order.
+      if (!Array.isArray(accounts) || accounts.length === 0
+        || !accounts.every((account) => typeof account === "string" && isAddress(account, { strict: false }))
+        || !accounts.some((account) => getAddress(account) === getAddress(wallet))
+        || typeof chain !== "string" || !/^0x[0-9a-f]+$/i.test(chain) || BigInt(chain) !== 4663n) {
         invalidate();
         throw new Error("Selected injected signer account or chain does not match the authenticated trading wallet.");
       }
