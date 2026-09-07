@@ -171,7 +171,7 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     assert.equal(swap.transaction.kind, "swap");
     assert.equal(swap.transaction.data, verified.transactionData);
     assert.equal(swap.transaction.value, "0");
-    assertZeroXSharedWalletAuthorization(swap);
+    await assertZeroXSharedWalletAuthorization(swap);
     await assert.rejects(() => prepareVNextProviderAuthorization("zero-x-gasless", baseRequest, [vNextZeroXGaslessAdapter]), /not available/);
     await assert.rejects(() => prepareZeroXSwapAuthorization({ ...committed, protectedOutputFloorAtomic: 999_999_999_999_999n }), /invalid or expired/);
 
@@ -199,7 +199,7 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
       await assert.rejects(() => prepare(baseRequest));
     }
     quoteMutation = body => { delete body.transaction.gasPrice; body.blockNumber = 12345678; };
-    assertZeroXSharedWalletAuthorization(await prepare(baseRequest));
+    await assertZeroXSharedWalletAuthorization(await prepare(baseRequest));
     quoteMutation = () => {};
     tokenBalance = 0n;
     assert.equal((await verifyZeroXSwapFirmQuote(baseRequest)).status, "insufficient_balance", "local balance must fail closed even when provider reports no issue");
@@ -218,12 +218,12 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     assert.equal(approval.transaction.target, inputAsset);
     assert.equal(approval.transaction.value, "0");
     assert.match(approval.transaction.data, /^0x095ea7b3/);
-    assertZeroXSharedWalletAuthorization(approval);
+    await assertZeroXSharedWalletAuthorization(approval);
     quoteMutation = body => { delete body.allowanceTarget; };
-    assertZeroXSharedWalletAuthorization(await prepare(baseRequest));
+    await assertZeroXSharedWalletAuthorization(await prepare(baseRequest));
     quoteMutation = () => {};
     simulationIncomplete = true;
-    assertZeroXSharedWalletAuthorization(await prepare(baseRequest));
+    await assertZeroXSharedWalletAuthorization(await prepare(baseRequest));
     simulationIncomplete = false;
     const preApprovalCommitment = await committedRequest(baseRequest);
     const beforeFresh = quoteCalls;
@@ -235,7 +235,7 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     assert.equal(fresh.transaction.kind, "swap");
     assert.equal(keccak256(fresh.transaction.data), fresh.evidence.calldataHash);
     assert.notEqual(fresh.transaction.data, verified.transactionData);
-    assertZeroXSharedWalletAuthorization(fresh);
+    await assertZeroXSharedWalletAuthorization(fresh);
     quoteMutation = () => {};
     assert.equal(quoteCalls, beforeFresh + 1, "post-approval verification fetches fresh authority; authorization reuses it");
 
@@ -313,7 +313,7 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     assert.equal(native.providerNativeFee?.feeAsset, zeroAddress);
     assert.equal(native.providerNativeFee?.requestFeeToken, ZERO_X_NATIVE_TOKEN);
     const nativePrepared = await prepare(nativeRequest);
-    assertZeroXSharedWalletAuthorization(nativePrepared);
+    await assertZeroXSharedWalletAuthorization(nativePrepared);
     assert.equal((simulatedEnvelope as unknown as Record<string, string>).value, `0x${BigInt(nativePrepared.transaction.value).toString(16)}`);
     quoteMutation = body => { body.issues.allowance = { actual: "0", spender: allowanceHolder }; };
     await assert.rejects(() => prepare(nativeRequest), /native ETH/);

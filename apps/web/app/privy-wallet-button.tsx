@@ -18,6 +18,7 @@ import { WalletReceiveDialog } from "./wallet-receive-dialog";
 import { WalletTransferDialog } from "./wallet-transfer-dialog";
 import { OverlayPortal } from "./overlay-portal";
 import { useRmtIdentity } from "./rmt-identity";
+import { InjectedSignerSelection } from "./injected-signer-selection";
 
 function shortAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
@@ -323,6 +324,7 @@ export function PrivyWalletButton({
                   </button>;
                 })}
               </div>
+              {walletFirstTerminal ? <InjectedSignerSelection /> : null}
               <div className="privyWalletActions">
                 <button type="button" onClick={() => {
                   identity.clearWalletConnectionError();

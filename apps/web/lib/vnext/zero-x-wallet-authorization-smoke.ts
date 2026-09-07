@@ -11,8 +11,9 @@ import { FEE_V2_SMOKE_SWAP_EVIDENCE, FEE_V2_SMOKE_SWAP_PLAN, FEE_V2_SMOKE_NOW_MS
 import { zeroXFirmQuoteIdentity, type VNextZeroXProviderNativeFee } from "./zero-x-settlement";
 import { readVNextPublicExecutionReleaseScope, requireVNextPublicExecutionProvider } from "../server/vnext-public-execution-provider-scope";
 import { confirmedVNextFeePresentation } from "./confirmed-fee-receipt";
+import { assertInjectedSignerHandoff } from "./injected-signer-handoff-smoke";
 
-export function assertZeroXSharedWalletAuthorization(prepared: VNextPreparedProviderAuthorization) {
+export async function assertZeroXSharedWalletAuthorization(prepared: VNextPreparedProviderAuthorization) {
   const now = Date.now();
   const raw = { ...prepared.evidence, verificationId: randomUUID(), sourceQuoteRequestId: randomUUID() };
   const expected = {
@@ -31,6 +32,7 @@ export function assertZeroXSharedWalletAuthorization(prepared: VNextPreparedProv
     expiresAtMs: evidence.expiresAtMs, userAuthorizationRequired: true as const, serverSubmissionEnabled: false as const
   };
   const plan: VNextAuthorizationPlan = { ...unsigned, payloadHash: authorizationPayloadHash(unsigned) };
+  await assertInjectedSignerHandoff(plan, evidence);
   assert.equal(parseVNextAuthorizationPlan(plan, evidence, now).kind, plan.kind);
   const wallet = prepareVNextWalletTransaction({ plan, evidence, connectedAddress: plan.recipient, connectedChainId: 4_663, nowMs: now });
   assert.deepEqual(vNextWalletRpcTransaction(wallet), {

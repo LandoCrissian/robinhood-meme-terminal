@@ -140,6 +140,12 @@ export async function runZeroXWalletJourneys(options) {
             return null;
           }
         };
+        const announce = () => window.dispatchEvent(new CustomEvent('eip6963:announceProvider', { detail: {
+          info: { uuid: 'd0d0d0d0-d0d0-40d0-80d0-d0d0d0d0d0d0', name: 'Explicit test signer', rdns: 'io.rmt.test', icon: 'data:image/png;base64,' },
+          provider: window.ethereum
+        } }));
+        window.addEventListener('eip6963:requestProvider', announce);
+        announce();
       }, { wallet, scenario });
       page.on('response', async (response) => {
         if (/\/api\/vnext\/(quotes|verify|authorize|wallet-request-recovery)$/.test(new URL(response.url()).pathname)) {
@@ -215,6 +221,7 @@ export async function runZeroXWalletJourneys(options) {
             await page.locator('button').filter({ hasText: /^Refresh verified request$/ }).waitFor();
             assert.equal(requests.length, 0);
           } else {
+            await page.getByRole('region', { name: 'Injected signer selection' }).getByRole('button', { name: /Explicit test signer/ }).click();
             await review.click();
             await until(() => requests.length === 1, `${scenario} wallet request missing`);
             if (scenario === 'rejection') {
@@ -244,7 +251,8 @@ export async function runZeroXWalletJourneys(options) {
               assert.notEqual(fresh.plan.providerNativeFee.firmQuote.zid, bundle.plan.providerNativeFee.firmQuote.zid);
               assert.notEqual(fresh.plan.providerNativeFee.transactionCalldataHash, bundle.plan.providerNativeFee.transactionCalldataHash);
               assert.equal(fresh.plan.kind, 'swap');
-              await review.click();
+              await page.getByRole('region', { name: 'Injected signer selection' }).getByRole('button', { name: /Explicit test signer/ }).click();
+            await review.click();
               await until(() => requests.length === 2, 'Fresh swap wallet request missing');
               assert.equal(requests[1].data, fresh.plan.data);
               assert.notEqual(keccak256(requests[1].data), bundle.plan.providerNativeFee.transactionCalldataHash);

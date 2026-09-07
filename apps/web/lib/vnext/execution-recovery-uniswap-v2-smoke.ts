@@ -305,7 +305,7 @@ assert.equal(recordPreparedVNextWalletRequest({
 const walletReview = readFileSync(new URL("../../app/vnext/vnext-wallet-review.tsx", import.meta.url), "utf8");
 const openBoundary = walletReview.slice(walletReview.indexOf("function openPreparedWalletRequest"), walletReview.indexOf("const prepareWalletReview"));
 const prepareBoundary = walletReview.slice(walletReview.indexOf("const prepareWalletReview"), walletReview.indexOf("const reopenSelectedWallet"));
-assert(openBoundary.indexOf("isVNextPlanRecoveryAdmissible(plan, address)") < openBoundary.indexOf("invokeVNextExternalWalletRequest"));
+assert(openBoundary.indexOf("isVNextPlanRecoveryAdmissible(plan, address)") < openBoundary.indexOf("dispatchVNextWalletReview"));
 assert(prepareBoundary.indexOf("isVNextPlanRecoveryAdmissible(plan, address)") < prepareBoundary.indexOf("recordPreparedVNextWalletRequest({"));
 
 console.log("RMT Uniswap V2 exact plan recovery, durable wallet lifecycle, settlement reconciliation, and fail-closed admission checks passed.");

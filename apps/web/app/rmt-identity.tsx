@@ -2,7 +2,8 @@
 
 import { useConnectWallet, useIdentityToken, usePrivy, useWallets } from "@privy-io/react-auth";
 import { useSetActiveWallet } from "@privy-io/wagmi";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { injectedSignerSelection, startInjectedSignerDiscovery } from "../lib/injected-wallet-signer";
 import { useAccount, useConnect } from "wagmi";
 import { walletBrowserEnvironment, type WalletBrowserEnvironment } from "../lib/mobile-wallet-link";
 import {
@@ -138,6 +139,18 @@ export function BrowserAcceptanceIdentityBridge({ children }: { children: ReactN
     walletSelectionRequired: false
   } : unavailableIdentity, [acceptanceEnabled, address, connectTradingWallet, connector, isConnected]);
 
+  useLayoutEffect(() => {
+    if (!acceptanceEnabled) return;
+    injectedSignerSelection.setIdentity({ authenticated: value.authenticated, userId: value.userId,
+      linkedAddress: value.authenticated ? address : undefined, activeWalletKey: value.activeWalletKey,
+      address, chainId: isConnected ? 4663 : undefined });
+  }, [acceptanceEnabled, value.authenticated, value.userId, value.activeWalletKey, address, isConnected]);
+  useEffect(() => {
+    if (!acceptanceEnabled) return;
+    startInjectedSignerDiscovery();
+    return () => injectedSignerSelection.setIdentity({ authenticated: false, userId: "", activeWalletKey: null });
+  }, [acceptanceEnabled]);
+
   return <RmtIdentityContext.Provider value={value}>{children}</RmtIdentityContext.Provider>;
 }
 
@@ -156,7 +169,7 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
   } = usePrivy();
   const { wallets } = useWallets();
   const { setActiveWallet } = useSetActiveWallet();
-  const { address } = useAccount();
+  const { address, chainId } = useAccount();
   const { identityToken } = useIdentityToken();
   const [preferredWalletKey, setPreferredWalletKey] = useState<string | null>(null);
   const [pendingActivationKey, setPendingActivationKey] = useState<string | null>(null);
@@ -196,11 +209,26 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
       : embeddedAddressMatch
         ? "embedded"
         : null;
+  const linkedSignerAddress = authenticated && activeExternalWallet?.linked
+    && user?.linkedAccounts.some((account) => account.type === "wallet"
+      && !isEmbeddedWalletClientType(account.walletClientType)
+      && account.address.toLowerCase() === activeExternalWallet.address.toLowerCase())
+    ? activeExternalWallet.address : undefined;
+  const signerWalletKey = activeConnectorConfirmed && activeExternalWallet ? walletGatewayKey(activeExternalWallet) : null;
+  useLayoutEffect(() => {
+    injectedSignerSelection.setIdentity({ authenticated, userId: user?.id ?? "", linkedAddress: linkedSignerAddress,
+      activeWalletKey: signerWalletKey, address, chainId });
+  }, [authenticated, user?.id, linkedSignerAddress, signerWalletKey, address, chainId]);
+  useEffect(() => {
+    startInjectedSignerDiscovery();
+    return () => injectedSignerSelection.setIdentity({ authenticated: false, userId: "", activeWalletKey: null });
+  }, []);
   const rememberTradingWallet = useCallback((walletKey: string) => {
     setPreferredWalletKey(walletKey);
     if (typeof window !== "undefined") window.sessionStorage.setItem(RMT_ACTIVE_WALLET_SESSION_KEY, walletKey);
   }, []);
   const clearTradingWalletPreference = useCallback(() => {
+    injectedSignerSelection.invalidate();
     lastAppliedWalletKey.current = null;
     setAppliedWalletKey(null);
     setPendingActivationKey(null);
@@ -208,6 +236,7 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined") window.sessionStorage.removeItem(RMT_ACTIVE_WALLET_SESSION_KEY);
   }, []);
   const activateTradingWallet = useCallback(async (walletKey: string) => {
+    injectedSignerSelection.invalidate();
     const wallet = externalWallets.find((candidate) => walletGatewayKey(candidate) === walletKey);
     if (!wallet) throw new Error("The selected external wallet is no longer connected.");
     if (!authenticated || !wallet.linked) await wallet.loginOrLink();
