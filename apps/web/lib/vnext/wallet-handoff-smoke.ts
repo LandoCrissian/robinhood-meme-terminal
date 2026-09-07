@@ -184,19 +184,17 @@ assert.doesNotMatch(composer, /vnRouteCard" open=/, "authorization must not open
 assert.match(composer, /Nothing opens automatically/);
 assert.match(review, /useWalletClient\(\{ connector \}\)/, "the transaction client must be bound to the exact active connector");
 assert.match(review, /bindVNextExternalWallet/);
-assert.match(review, /invokeVNextExternalWalletRequest/);
+assert.match(review, /dispatchVNextWalletReview/);
 const openBoundary = review.slice(review.indexOf("function openPreparedWalletRequest"), review.indexOf("const prepareWalletReview"));
 const prepareBoundary = review.slice(review.indexOf("const prepareWalletReview"), review.indexOf("const reopenSelectedWallet"));
 assert.doesNotMatch(openBoundary, /\bawait\b/, "the second owner action performs no awaited RPC before provider invocation");
-assert.match(openBoundary, /transitionVNextWalletRequest\(prepared\.requestId, "PROMPT_REQUESTED"\)[\s\S]*walletClient\.request\(\{[\s\S]*method: "eth_sendTransaction"/,
-  "the durable prompt record must precede the provider invocation");
-assert.doesNotMatch(openBoundary, /walletClient\.sendTransaction/, "the mobile click must not insert Viem's asynchronous chain lookup");
-assert.doesNotMatch(prepareBoundary, /eth_sendTransaction|walletClient\.request/,
-  "mobile preflight prepares and journals the request without invoking the provider");
-assert.match(openBoundary, /walletClient\.request[\s\S]*"PROVIDER_PENDING"/,
-  "provider-pending follows the single provider invocation");
-assert.ok(review.indexOf("recordPreparedVNextWalletRequest") < review.indexOf("function openPreparedWalletRequest")
-  || review.indexOf("recordPreparedVNextWalletRequest") < review.lastIndexOf("walletClient.request"));
+assert.match(openBoundary, /dispatchVNextWalletReview/);
+assert.doesNotMatch(openBoundary, /walletClient\.sendTransaction/);
+assert.doesNotMatch(prepareBoundary, /eth_sendTransaction|walletClient\.request/);
+const dispatch = readFileSync(new URL("./wallet-review-dispatch.ts", import.meta.url), "utf8");
+assert.ok(dispatch.indexOf('"PROMPT_REQUESTED", storage') < dispatch.indexOf('pending = invokeVNextExternalWalletRequest'));
+assert.ok(dispatch.indexOf('pending = invokeVNextExternalWalletRequest') < dispatch.indexOf('"PROVIDER_PENDING", storage'));
+assert.match(dispatch, /isVNextUserRejectedRequest/);
 assert.match(review, /Open \{walletName\}/, "an exact session-bound wallet can be reopened without resending");
 assert.match(review, /Transaction request sent to/);
 assert.match(review, /Verified request prepared/);

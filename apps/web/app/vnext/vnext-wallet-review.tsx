@@ -1,19 +1,19 @@
 "use client";
 
-import { recordVNextWalletRequestError } from "../../lib/vnext/execution-recovery";
+import { recordVNextWalletRequestError, isVNextWalletProviderRequestActive } from "../../lib/vnext/execution-recovery";
+import { injectedSignerSelection, type InjectedSignerTicket } from "../../lib/injected-wallet-signer";
+import { dispatchVNextWalletReview, type VNextWalletDispatchResult } from "../../lib/vnext/wallet-review-dispatch";
 
 import React, { useEffect, useRef, useState } from "react";
 import { formatUnits } from "viem";
 import { useAccount, usePublicClient, useWalletClient } from "wagmi";
 import { FundWalletButton } from "../fund-wallet-button";
+import { InjectedSignerSelection } from "../injected-signer-selection";
 import type { VNextAuthorizationPlan } from "../../lib/vnext/authorization-plan";
 import {
-  clearVNextWalletProviderRequestActive,
   findBlockingVNextWalletRequest,
   findUnresolvedVNextExecution,
   isVNextPlanRecoveryAdmissible,
-  markVNextWalletProviderRequestActive,
-  promoteVNextWalletRequestToSubmitted,
   readVNextWalletRequestJournal,
   recordPreparedVNextWalletRequest,
   transitionVNextWalletRequest
@@ -33,14 +33,12 @@ import {
   emitVNextWalletHandoffDiagnostic,
   inspectVNextWalletTransport,
   isVNextMobileBrowser,
-  invokeVNextExternalWalletRequest,
   openVNextSelectedWallet,
   vNextMobileHandoffLabel,
   type VNextMobileHandoffState,
   type VNextWalletHandoffBinding,
   type VNextWalletTransport
 } from "../../lib/vnext/wallet-handoff";
-import { isVNextUserRejectedRequest } from "../../lib/vnext/wallet-request-error";
 import {
   acquireVNextWalletRequestLease,
   type VNextWalletRequestLease
@@ -48,6 +46,9 @@ import {
 import { ExplorerLink } from "./terminal-links";
 
 type PreparedVNextWalletHandoff = {
+  plan: VNextAuthorizationPlan;
+  injected?: InjectedSignerTicket;
+  contextKey: string;
   requestId: string;
   binding: VNextWalletHandoffBinding;
   transaction: VNextWalletTransaction;
@@ -166,6 +167,10 @@ export function VNextWalletReview({
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [requiresRefresh, setRequiresRefresh] = useState(false);
   const preparedRef = useRef<PreparedVNextWalletHandoff | null>(null);
+  const mounted = useRef(true);
+  const contextKey = `${plan.planId}:${plan.payloadHash}:${selectedWalletKey}:${address}:${chainId}`;
+  const currentContext = useRef(contextKey);
+  currentContext.current = contextKey;
   const submissionEnabled = process.env.NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED === "true";
   const busy = preflightPending || ["opening", "provider_pending", "unresolved", "hash_received"].includes(handoffState);
   const expired = nowMs >= plan.expiresAtMs;
@@ -176,8 +181,13 @@ export function VNextWalletReview({
     return () => window.clearInterval(timer);
   }, []);
 
-  useEffect(() => () => {
-    preparedRef.current?.lease.release();
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      const prepared = preparedRef.current;
+      if (prepared && !isVNextWalletProviderRequestActive(prepared.requestId)) prepared.lease.release();
+    };
   }, []);
 
   useEffect(() => {
@@ -216,51 +226,27 @@ export function VNextWalletReview({
     };
   }, [chainId, connector?.id, connector?.type, handoffState, walletName]);
 
-  function completeProviderRequest(prepared: PreparedVNextWalletHandoff, pendingHash: Promise<`0x${string}`>) {
-    void pendingHash.then((txHash) => {
-      emitVNextWalletHandoffDiagnostic({
-        event: "provider_returned_hash",
-        connectorId: prepared.binding.connectorId,
-        connectorType: prepared.binding.connectorType,
-        walletClientType: prepared.binding.walletClientType,
-        selectedWalletName: prepared.binding.walletName,
-        chainId: prepared.binding.chainId,
-        lifecycleState: "hash_received",
-        requestId: prepared.requestId
-      });
-      setTransactionHash(txHash);
-      setHandoffState("hash_received");
-      setLocalStatus("Transaction hash received. Recovery is active.");
-      if (!promoteVNextWalletRequestToSubmitted({ requestId: prepared.requestId, wallet: prepared.binding.wallet, plan, txHash })) {
-        setLocalError("Transaction submitted, but local recovery storage is unavailable. Use the transaction link and do not resubmit.");
+  function completeProviderRequest(prepared: PreparedVNextWalletHandoff, pending: Promise<VNextWalletDispatchResult>) {
+    // Durable completion is owned by wallet-review-dispatch, not this component.
+    void pending.then((result) => {
+      if (!mounted.current || currentContext.current !== prepared.contextKey) return;
+      if (result.txHash) {
+        setTransactionHash(result.txHash);
+        setHandoffState("hash_received");
+        setLocalStatus("Transaction hash received. Recovery is active.");
+        if (!result.durable) setLocalError("Transaction submitted, but local recovery storage is unavailable. Use the transaction link and do not resubmit.");
+      } else {
+        const rejected = result.state === "USER_REJECTED";
+        setRequiresRefresh(rejected);
+        setHandoffState(rejected ? "idle" : "unresolved");
+        setLocalStatus("");
+        setLocalError(rejected
+          ? "Wallet request was rejected by the owner. Nothing was broadcast."
+          : "Wallet request is still unresolved. Check the selected wallet and do not retry.");
       }
-    }).catch((cause: unknown) => {
-      const rejected = isVNextUserRejectedRequest(cause);
-      transitionVNextWalletRequest(prepared.requestId, rejected ? "USER_REJECTED" : "UNRESOLVED");
-      recordVNextWalletRequestError(prepared.requestId, cause);
-      emitVNextWalletHandoffDiagnostic({
-        event: rejected ? "provider_rejected_4001" : "provider_error_unresolved",
-        connectorId: prepared.binding.connectorId,
-        connectorType: prepared.binding.connectorType,
-        walletClientType: prepared.binding.walletClientType,
-        selectedWalletName: prepared.binding.walletName,
-        chainId: prepared.binding.chainId,
-        lifecycleState: rejected ? "USER_REJECTED" : "unresolved",
-        requestId: prepared.requestId
-      });
-      setRequiresRefresh(rejected);
-      setHandoffState(rejected ? "idle" : "unresolved");
-      setLocalStatus("");
-      setLocalError(rejected
-        ? "Wallet request was rejected by the owner. Nothing was broadcast."
-        : "Wallet request is still unresolved. Check the selected wallet and do not retry.");
-    }).finally(() => {
-      clearVNextWalletProviderRequestActive(prepared.requestId);
-      prepared.lease.release();
       if (preparedRef.current?.requestId === prepared.requestId) preparedRef.current = null;
     });
   }
-
   /** This function deliberately performs no awaited work before provider invocation. */
   function openPreparedWalletRequest() {
     const prepared = preparedRef.current;
@@ -306,30 +292,15 @@ export function VNextWalletReview({
       if (JSON.stringify(exactRpcTransaction) !== JSON.stringify(prepared.rpcTransaction)) {
         throw new Error("The prepared transaction no longer matches the verified request. RMT did not open the wallet.");
       }
-      if (!transitionVNextWalletRequest(prepared.requestId, "PROMPT_REQUESTED")) {
-        throw new Error("RMT could not durably mark the wallet request before provider invocation.");
-      }
-      markVNextWalletProviderRequestActive(prepared.requestId);
+      if (!mounted.current || currentContext.current !== prepared.contextKey) throw new Error("Trading context changed before dispatch. Prepare fresh authority.");
       setHandoffState("opening");
-      emitVNextWalletHandoffDiagnostic({
-        event: "provider_request_invoked",
-        connectorId: binding.connectorId,
-        connectorType: binding.connectorType,
-        walletClientType: binding.walletClientType,
-        selectedWalletName: binding.walletName,
-        chainId: binding.chainId,
-        redirectCapable: Boolean(prepared.transport.safeMobileOpenUri),
-        lifecycleState: "PROMPT_REQUESTED",
-        requestId: prepared.requestId
+      const pending = dispatchVNextWalletReview({
+        requestId: prepared.requestId, plan: prepared.plan, evidence, binding,
+        selectedWalletKey: selectedWalletKey!, rpcTransaction: prepared.rpcTransaction,
+        lease: prepared.lease, injected: prepared.injected,
+        walletClientRequest: (args) => walletClient.request(args)
       });
-      const pendingHash = invokeVNextExternalWalletRequest(() => walletClient.request({
-        method: "eth_sendTransaction",
-        params: [prepared.rpcTransaction]
-      }) as Promise<`0x${string}`>);
-      completeProviderRequest(prepared, pendingHash);
-      if (!transitionVNextWalletRequest(prepared.requestId, "PROVIDER_PENDING")) {
-        throw new Error("The connector request began but its durable state could not be updated. Do not retry.");
-      }
+      completeProviderRequest(prepared, pending);
       setHandoffState("provider_pending");
       setLocalStatus(`Transaction request sent to ${binding.walletName}. Review the exact transaction there. RMT cannot approve or sign it.`);
       if (prepared.mobileWalletConnect && prepared.transport.safeMobileOpenUri) {
@@ -412,6 +383,8 @@ export function VNextWalletReview({
           walletClientChainId: walletClient.chain?.id,
           recipient: plan.recipient
         });
+        const injected = plan.provider === "zero-x-swap" && binding.selectedConnectorType === "injected"
+          ? await injectedSignerSelection.prepare(selectedWalletKey!, plan.recipient) : undefined;
         const unresolved = findUnresolvedVNextExecution(address);
         if (unresolved) throw new Error(`An RMT transaction is still unresolved (${unresolved.txHash.slice(0, 10)}…). Do not resubmit.`);
         if (findBlockingVNextWalletRequest(address)) throw new Error("A wallet request is already active.");
@@ -444,6 +417,8 @@ export function VNextWalletReview({
         if (!isVNextPlanRecoveryAdmissible(plan, address)) {
           throw new Error("RMT cannot durably recover this verified wallet request. The wallet was not opened.");
         }
+        if (!mounted.current || currentContext.current !== contextKey) throw new Error("Trading context changed during preparation. Prepare fresh authority.");
+        if (injected) injectedSignerSelection.assertCurrent(injected, selectedWalletKey!, plan.recipient);
         const requestId = crypto.randomUUID();
         if (!recordPreparedVNextWalletRequest({
           requestId,
@@ -459,6 +434,7 @@ export function VNextWalletReview({
         })) throw new Error("RMT could not durably record the wallet request. The wallet was not opened.");
         const transport = inspectVNextWalletTransport(provider, binding.selectedConnectorType);
         const prepared: PreparedVNextWalletHandoff = {
+          plan: structuredClone(plan), injected, contextKey,
           requestId,
           binding,
           transaction,
@@ -513,6 +489,7 @@ export function VNextWalletReview({
   };
 
   return <div className="vnWalletSubmission">
+    {plan.provider === "zero-x-swap" ? <InjectedSignerSelection /> : null}
     <div className="vnWalletHandoffIdentity" aria-label="Selected external wallet handoff">
       <span><small>External signer</small><strong>{walletName}</strong></span>
       <span><small>Wallet</small><strong>{address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "Unavailable"}</strong></span>
@@ -550,6 +527,7 @@ export function VNextWalletReview({
       outputDecimals={outputDecimals}
     />
     {plan.kind === "erc20_approval" ? <small>Standard ERC-20 approvals have no onchain expiry. This request is limited to the exact input amount, and RMT requires fresh verification before the swap.</small> : plan.provider === "zero-x-swap" ? <small>RMT presents the exact simulated 0x transaction. Quote expiry limits when RMT opens wallet review; it is not a guaranteed onchain expiry.</small> : <small>The verified swap calldata enforces its onchain deadline and protected output.</small>}
+    {handoffState === "provider_pending" && expired ? <p role="status">This wallet request is stale. Cancel it in the selected wallet, then obtain a fresh quote. RMT is still waiting for the original response and will not open another request.</p> : null}
     <small>{expired ? "Verified request expired. Prepare a fresh server-verified request." : `Wallet review window · ${Math.max(0, Math.ceil((plan.expiresAtMs - nowMs) / 1_000))}s remaining`}</small>
     {localStatus ? <p className="vnAuthorizationStatus" role="status">{localStatus}</p> : null}
     {localError ? <p className="vnAuthorizationError" role="status">{localError}</p> : null}

@@ -67,6 +67,12 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
             return null;
           }
         };
+        const announce = () => window.dispatchEvent(new CustomEvent('eip6963:announceProvider', { detail: {
+          info: { uuid: 'd0d0d0d0-d0d0-40d0-80d0-d0d0d0d0d0d0', name: 'Explicit test signer', rdns: 'io.rmt.test', icon: 'data:image/png;base64,' },
+          provider: window.ethereum
+        } }));
+        window.addEventListener('eip6963:requestProvider', announce);
+        announce();
       }, { wallet });
       const page = await context.newPage();
       page.on('response', async (response) => {
@@ -158,6 +164,7 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
             assert.equal(prompts.length, 0, 'Fresh economics must not automatically open the wallet');
             const review = page.locator('button').filter({ hasText: /^Review .*Deterministic browser wallet/ });
             await review.scrollIntoViewIfNeeded();
+            await page.getByRole('region', { name: 'Injected signer selection' }).getByRole('button', { name: /Explicit test signer/ }).click();
             await review.click();
             await until(() => prompts.length === 1, 'Explicit wallet action must open the exact request');
             const transaction = prompts[0];
