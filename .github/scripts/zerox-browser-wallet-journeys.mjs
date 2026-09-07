@@ -54,7 +54,7 @@ export async function runZeroXWalletJourneys(options) {
     'duplicate-integrator-fee': (quote) => { quote.fees.integratorFees = [quote.fees.integratorFee, quote.fees.integratorFee]; }
   };
   for (const viewportName of ['desktop', 'mobile']) {
-    const scenarios = ['direct-confirmation', 'approval-requote', 'native', 'rejection', 'pending', 'expired-quote', 'quote-only', ...Object.keys(faults), 'simulation-failure', ...Object.keys(wireFaults)];
+    const scenarios = ['direct-confirmation', 'multi-account-owner-second', 'approval-requote', 'native', 'rejection', 'pending', 'expired-quote', 'quote-only', ...Object.keys(faults), 'simulation-failure', ...Object.keys(wireFaults)];
     for (const scenario of scenarios) {
       state.approved = !['approval-requote', 'approval-over-sell', 'approval-unlimited', 'stale-post-approval'].includes(scenario);
       state.priceDisabled = scenario === 'quote-only';
@@ -127,10 +127,14 @@ export async function runZeroXWalletJourneys(options) {
           removeListener(event, fn) { listeners.set(event, (listeners.get(event) ?? []).filter((item) => item !== fn)); },
           async request({ method, params }) {
             if (method === 'eth_chainId') return '0x1237';
-            if (method === 'eth_accounts' || method === 'eth_requestAccounts') return [wallet];
+            if (method === 'eth_accounts' || method === 'eth_requestAccounts') return scenario === 'multi-account-owner-second'
+              ? ['0x1111111111111111111111111111111111111111', wallet] : [wallet];
             if (method === 'eth_getTransactionCount') return '0x1';
             if (method === 'eth_estimateGas') return '0x2bf20';
             if (method === 'eth_sendTransaction') {
+              if (scenario === 'multi-account-owner-second' && params[0].from.toLowerCase() !== wallet.toLowerCase()) {
+                throw new Error('Permitted account order changed the authenticated transaction sender');
+              }
               window.__ZEROX_PROMPTS__++;
               const result = await window.__ZEROX_CAPTURE__(params[0]);
               if (scenario === 'rejection') { const error = new Error('User rejected the request'); error.code = 4001; throw error; }

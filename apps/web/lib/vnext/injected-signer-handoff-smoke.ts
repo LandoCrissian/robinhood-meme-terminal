@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { mock } from "node:test";
-import { createWalletClient, custom } from "viem";
+import { createWalletClient, custom, getAddress } from "viem";
 import { createInjectedSignerSelection, type InjectedSignerProvider } from "../injected-wallet-signer";
 import { walletGatewayKey } from "../wallet-gateway";
 import { bindVNextExternalWallet } from "./wallet-handoff";
@@ -24,6 +24,8 @@ export async function assertInjectedSignerHandoff(plan: VNextAuthorizationPlan, 
   testedKinds.add(plan.kind);
   assert.equal(plan.provider, "zero-x-swap");
   const wallet = plan.recipient;
+  const other = wallet.toLowerCase() === "0x1111111111111111111111111111111111111111"
+    ? "0x2222222222222222222222222222222222222222" : "0x1111111111111111111111111111111111111111";
   const candidate = { address: wallet, connectorType: "injected", walletClientType: "metamask", meta: { id: "io.metamask" }, type: "ethereum" as const };
   const walletKey = walletGatewayKey(candidate);
   const identity = { authenticated: true, userId: "authenticated-fixture-user", linkedAddress: wallet, activeWalletKey: walletKey, address: wallet, chainId: 4663 };
@@ -34,7 +36,7 @@ export async function assertInjectedSignerHandoff(plan: VNextAuthorizationPlan, 
   // TEST ONLY: exercise the exact installed SDK class, without altering or using internal fields in production.
   const sdkDir = path.dirname(requireWeb.resolve("@privy-io/react-auth"));
   const { PrivyProxyProvider } = requireWeb(path.join(sdkDir, "index-BKa2zZmu.js"));
-  const scenarios = ["immediate-4001", "late-4001", "late-hash", "context-change", "unknown", "lost-response", "pre-storage-failure", "post-storage-failure", "expired-before-dispatch", "wrong-envelope", "walletconnect"];
+  const scenarios = ["immediate-4001", "multi-owner-first", "multi-owner-second", "late-4001", "late-hash", "context-change", "unknown", "lost-response", "pre-storage-failure", "post-storage-failure", "expired-before-dispatch", "wrong-envelope", "walletconnect"];
   for (const scenario of scenarios) {
     let now = plan.preparedAtMs;
     let raw = "";
@@ -51,11 +53,13 @@ export async function assertInjectedSignerHandoff(plan: VNextAuthorizationPlan, 
       removeListener(event, fn) { events.get(event)?.delete(fn); },
       request(args) {
         assert.equal(this, provider, "correct EIP-1193 method receiver is retained");
-        if (args.method === "eth_accounts") return Promise.resolve([wallet]);
+        if (args.method === "eth_accounts") return Promise.resolve(scenario === "multi-owner-first"
+          ? [wallet, other] : scenario === "multi-owner-second" ? [other, wallet] : [wallet]);
         if (args.method === "eth_chainId") return Promise.resolve("0x1237");
         assert.equal(args.method, "eth_sendTransaction");
         sends++;
         assert.deepEqual(args.params, [rpc], "exact authorized envelope, including gas price");
+        assert.equal(rpc.from, getAddress(wallet), "permitted account order never changes the authenticated sender");
         return pending;
       }
     };
@@ -151,8 +155,8 @@ export async function assertInjectedSignerHandoff(plan: VNextAuthorizationPlan, 
   }
 
   // Selection adversaries use the same production registry and identity inputs.
-  for (const scenario of ["wrong-account", "wrong-chain", "two-wallets", "conflict", "events", "logout", "replacement", "unlinked"]) {
-    let accounts = [wallet]; let chain = "0x1237";
+  for (const scenario of ["wrong-account", "empty", "not-array", "invalid-address", "mixed-invalid", "wrong-chain", "two-wallets", "conflict", "events", "chain-event", "disconnect-event", "generation", "logout", "replacement", "unlinked"]) {
+    let accounts: unknown = [wallet]; let chain = "0x1237";
     const listeners = new Map<string, (...args: unknown[]) => void>();
     const provider: InjectedSignerProvider = { on: (event, fn) => { listeners.set(event, fn); }, removeListener: (event) => { listeners.delete(event); },
       request: async ({ method }) => { assert.notEqual(method, "eth_sendTransaction"); return method === "eth_accounts" ? accounts : chain; } };
@@ -166,15 +170,34 @@ export async function assertInjectedSignerHandoff(plan: VNextAuthorizationPlan, 
     selection.select(uuid);
     const ticket = await selection.prepare(walletKey, wallet);
     if (scenario === "two-wallets") { selection.assertCurrent(ticket, walletKey, wallet); continue; }
-    if (scenario === "wrong-account") accounts = ["0x1111111111111111111111111111111111111111"];
+    if (scenario === "wrong-account") accounts = [other];
+    if (scenario === "empty") accounts = [];
+    if (scenario === "not-array") accounts = { 0: wallet, length: 1 };
+    if (scenario === "invalid-address") accounts = ["0x1234"];
+    if (scenario === "mixed-invalid") accounts = [wallet, "not-an-address"];
     if (scenario === "wrong-chain") chain = "0x1";
     if (scenario === "conflict") selection.announce({ info: { uuid, name: "Wallet", rdns: "io.metamask" }, provider: { ...provider } });
     if (scenario === "events") listeners.get("accountsChanged")?.([wallet]);
+    if (scenario === "chain-event") listeners.get("chainChanged")?.("0x1");
+    if (scenario === "disconnect-event") listeners.get("disconnect")?.();
+    if (scenario === "generation") selection.select(uuid);
     if (scenario === "logout") selection.setIdentity({ ...identity, authenticated: false });
     if (scenario === "unlinked") selection.setIdentity({ ...identity, linkedAddress: undefined });
     if (scenario === "replacement") provider.request = async () => [];
-    if (scenario === "wrong-account" || scenario === "wrong-chain") await assert.rejects(() => selection.prepare(walletKey, wallet));
+    if (["wrong-account", "empty", "not-array", "invalid-address", "mixed-invalid", "wrong-chain"].includes(scenario)) await assert.rejects(() => selection.prepare(walletKey, wallet));
     assert.throws(() => selection.assertCurrent(ticket, walletKey, wallet));
   }
+  // A letter-bearing address proves normalization even when the main fixture owner is all digits.
+  const caseOwner = getAddress("0xabcdefabcdefabcdefabcdefabcdefabcdefabcd");
+  const caseKey = walletGatewayKey({ ...candidate, address: caseOwner });
+  const caseSelection = createInjectedSignerSelection();
+  caseSelection.setIdentity({ ...identity, address: caseOwner, linkedAddress: caseOwner, activeWalletKey: caseKey });
+  const caseProvider: InjectedSignerProvider = { on() {}, removeListener() {}, request: async ({ method }) => {
+    assert.ok(method === "eth_accounts" || method === "eth_chainId", "no account switch or permission request");
+    return method === "eth_accounts" ? [other, caseOwner.toLowerCase()] : "0x1237";
+  } };
+  caseSelection.announce({ info: { uuid, name: "Case-normalized wallet", rdns: "io.metamask" }, provider: caseProvider });
+  caseSelection.select(uuid);
+  assert.equal((await caseSelection.prepare(caseKey, caseOwner)).wallet, caseOwner.toLowerCase());
   console.log(`Injected production signer-selection/dispatch integration passed (${plan.kind}): proxy sends 0, selected sends 1; installed Privy timeout retained for WalletConnect control.`);
 }
