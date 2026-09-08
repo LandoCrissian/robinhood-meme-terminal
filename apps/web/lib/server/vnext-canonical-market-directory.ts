@@ -45,6 +45,8 @@ export async function readVNextCanonicalMarketDirectoryPage(
       status: 200,
       body: {
         canonical: true,
+        inventorySource: "indexed",
+        revalidationComplete: true,
         coverage: inventory.coverage.complete ? "complete" : "partial",
         nextCursor: inventory.nextCursor,
         updatedAt: new Date().toISOString(),
@@ -64,6 +66,8 @@ export async function readVNextCanonicalMarketDirectoryPage(
       status: 200,
       body: {
         canonical: true,
+        inventorySource: "curated-fallback",
+        revalidationComplete: false,
         coverage: "partial",
         nextCursor: null,
         updatedAt: snapshot.verifiedAt,

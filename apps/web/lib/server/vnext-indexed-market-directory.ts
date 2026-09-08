@@ -46,6 +46,8 @@ export async function readVNextIndexedMarketDirectoryPage(
   const admission = await (dependencies.admit ?? applyProjectIdentityDirectoryAdmission)(identified);
   return { status: 200, body: {
     canonical: true,
+    inventorySource: "indexed",
+    revalidationComplete: identified.length === candidates.length && admission.authorityStatus === "ready",
     coverage: inventory.coverage.complete && identified.length === candidates.length && admission.authorityStatus === "ready" ? "complete" : "partial",
     nextCursor: inventory.nextCursor,
     updatedAt: new Date().toISOString(),

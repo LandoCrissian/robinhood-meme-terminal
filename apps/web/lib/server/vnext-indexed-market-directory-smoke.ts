@@ -39,6 +39,15 @@ export async function verifyIndexedDirectory() {
   assert.equal(parsed.markets!.length, 48);
   assert.equal(parsed.nextCursor, "next_page");
   assert.equal(parsed.coverage, "partial");
+  assert.equal(parsed.inventorySource, "indexed");
+  assert.equal(parsed.revalidationComplete, true, "partial source coverage does not mean an incomplete page read");
+  const incomplete = await readVNextIndexedMarketDirectoryPage("https://fixture.invalid", {
+    ...dependencies, readIdentities: async (addresses) => {
+      const identities = await dependencies.readIdentities!(addresses);
+      const partial = new Map(identities); partial.delete(addresses[0].toLowerCase()); return partial;
+    }
+  });
+  assert.equal(parseVNextCanonicalDirectoryResponse(incomplete.body)?.revalidationComplete, false);
   assert.equal(parsed.markets!.some((market) => market.address === address(100)), false, "Positive identity conflict remains quarantined");
   assert.equal(vNextSelectedMarketExecutionState(parsed.markets!.find((market) => market.address === address(101))), "stock-token-view-only");
   assert.equal(selectVNextMarketDirectoryView(parsed.markets!, "active").length, 0);
