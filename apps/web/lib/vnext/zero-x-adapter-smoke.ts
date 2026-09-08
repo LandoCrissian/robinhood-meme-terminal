@@ -6,6 +6,7 @@ import type { VNextProviderQuoteRequest } from "../server/vnext-provider-adapter
 import { VNEXT_PROVIDER_NATIVE_INPUT_FEE } from "./execution-settlement";
 import { RMT_ZERO_X_FEE_TREASURY, ZERO_X_NATIVE_TOKEN, fromZeroXToken, toZeroXToken } from "./zero-x-settlement";
 import { runZeroXFirmQuoteVerifierSmoke } from "./zero-x-firm-quote-verifier-smoke";
+import { runZeroXResponseReasonsSmoke } from "./zero-x-response-reasons-smoke";
 
 const originalFetch = globalThis.fetch;
 const originalKey = process.env.RMT_ZEROX_API_KEY;
@@ -84,6 +85,7 @@ try {
   assert.throws(() => parseZeroXPrice({ ...base, sellToken: zeroAddress }, request(zeroAddress, erc20B), "swap"), /zeroAddress/);
 
   await runZeroXFirmQuoteVerifierSmoke();
+  await runZeroXResponseReasonsSmoke();
   console.log("RMT VNext 0x AllowanceHolder execution smoke checks passed.");
 } finally {
   globalThis.fetch = originalFetch;

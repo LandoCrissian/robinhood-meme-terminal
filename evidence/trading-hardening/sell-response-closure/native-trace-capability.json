@@ -1,0 +1,35 @@
+{
+  "observedAt": "2026-09-08T13:55:03.192Z",
+  "chainId": 4663,
+  "transactionHash": "0xc60aee39ad2299370bec76f1bb3023a02b89c8f1417bd92b0cd8a055f7ed70a3",
+  "receiptStatus": "success",
+  "blockNumber": "57198450",
+  "blockHash": "0x56a028e08ac45f9088132efb202eb3b59ee6608183787bba6f2265a06a73a7f3",
+  "path": "Production walletTransports[4663] via Viem publicClient.request, as used by useVNextExecutionRecovery",
+  "productionPublicRpcOverride": "ABSENT_CANONICAL_DEFAULT",
+  "methods": [
+    {
+      "method": "debug_traceTransaction",
+      "supported": false,
+      "code": -32601
+    },
+    {
+      "method": "trace_transaction",
+      "supported": false,
+      "code": -32601
+    },
+    {
+      "method": "arbtrace_transaction",
+      "supported": false,
+      "code": -32601
+    }
+  ],
+  "nativeSettlementProof": "NOT_ESTABLISHED",
+  "verifierResult": "NOT_REACHED_TRACE_UNAVAILABLE",
+  "canaryDirection": "ETH_TO_USDG_CAPABILITY_CONTROL_NOT_NATIVE_OUTPUT_PROOF",
+  "blocker": "Existing Production RPC exposes no transaction trace. Native settlement remains confirmed_unsettled; a supported transaction-specific evidence source requires owner review before a new authority is introduced.",
+  "walletRequests": 0,
+  "signatures": 0,
+  "transactions": 0,
+  "productionChanged": false
+}

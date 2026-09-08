@@ -1,5 +1,5 @@
 "use client";
-import { hasVerifiedVNextSwapSettlement, verifyVNextErc20OutputSettlement, verifyVNextNativeOutputSettlement, type VNextOutputSettlement } from "../../lib/vnext/output-settlement";
+import { boundVNextNativeSettlementEnvelope, hasVerifiedVNextSwapSettlement, verifyVNextErc20OutputSettlement, verifyVNextNativeOutputSettlement, type VNextOutputSettlement } from "../../lib/vnext/output-settlement";
 
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -193,10 +193,15 @@ export function useVNextExecutionRecovery() {
         try {
           const transaction = await publicClient.getTransaction({ hash: record.txHash });
           outputSettlement = verifyVNextErc20OutputSettlement(record, receipt.data, transaction);
-          if (record.kind === "swap" && /^0x0{40}$/i.test(record.outputAsset)) {
-            const request = publicClient.request as unknown as (input: { method: string; params: unknown[] }) => Promise<unknown>;
-            const trace = await request({ method: "debug_traceTransaction", params: [record.txHash, { tracer: "callTracer", timeout: "5s" }] });
-            outputSettlement = verifyVNextNativeOutputSettlement(record, receipt.data, transaction, trace);
+          if (identity.identityToken && boundVNextNativeSettlementEnvelope(record, receipt.data, transaction)) {
+            const response = await fetch("/api/vnext/native-settlement-trace", { method: "POST", cache: "no-store", credentials: "same-origin",
+              headers: { "Content-Type": "application/json", "privy-id-token": identity.identityToken },
+              body: JSON.stringify({ txHash: record.txHash, wallet: record.wallet }), signal: AbortSignal.timeout(25000) });
+            const result = response.ok ? await response.json() : null;
+            if (result?.status === "available" && result.txHash?.toLowerCase() === record.txHash.toLowerCase()
+              && result.blockHash?.toLowerCase() === receipt.data.blockHash.toLowerCase()) {
+              outputSettlement = verifyVNextNativeOutputSettlement(record, receipt.data, transaction, result.trace);
+            }
           }
         } catch { /* Receipt confirmation does not prove output delivery. */ }
       }
@@ -269,7 +274,7 @@ export function useVNextExecutionRecovery() {
       if (!cancelled) setRecord(address ? findUnresolvedVNextExecution(address) ?? visibleRecord : visibleRecord);
     })();
     return () => { cancelled = true; };
-  }, [address, publicClient, receipt.data, receipt.isSuccess, receiptRequired, record]);
+  }, [address, identity.identityToken, publicClient, receipt.data, receipt.isSuccess, receiptRequired, record]);
 
   const status = record?.state === "submitted"
     ? reconciliationFailed ? "reconciliation_failed" : receipt.isError ? "confirmation_unavailable" : "confirming"

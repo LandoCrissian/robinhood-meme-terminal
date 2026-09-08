@@ -65,22 +65,33 @@ export function verifyVNextErc20OutputSettlement(record: VNextExecutionRecord, r
   return validVNextOutputSettlement(record, proof) ? proof : null;
 }
 
-/** Native settlement needs successful transaction-specific delivery, not WETH logs or balance guesses. */
-export function verifyVNextNativeOutputSettlement(record: VNextExecutionRecord,
+/** Independent saved-envelope binding, required before requesting trace evidence. */
+export function boundVNextNativeSettlementEnvelope(record: VNextExecutionRecord,
   receipt: Parameters<typeof verifyVNextErc20OutputSettlement>[1],
-  transaction: Parameters<typeof verifyVNextErc20OutputSettlement>[2], trace: unknown): VNextOutputSettlement | null {
+  transaction: Parameters<typeof verifyVNextErc20OutputSettlement>[2]): boolean {
   const authority = record.providerNativeFee;
   if (record.provider !== "zero-x-swap" || record.kind !== "swap" || !authority || !same(record.outputAsset, zeroAddress)
     || record.chainId !== 4663 || transaction.chainId !== 4663 || receipt.status !== "success"
     || !same(receipt.transactionHash, record.txHash) || !same(transaction.hash, record.txHash)
     || !same(receipt.blockHash, transaction.blockHash) || !same(receipt.from, record.wallet) || !same(transaction.from, record.wallet)
     || !same(receipt.to, authority.transactionTarget) || !same(transaction.to, authority.transactionTarget)
-    || !same(keccak256(transaction.input), authority.calldataHash) || transaction.value !== 0n) return null;
+    || !same(keccak256(transaction.input), authority.calldataHash) || transaction.value !== 0n
+    || !record.planId || !/^0x[0-9a-f]{64}$/i.test(record.payloadHash)
+    || !/^[1-9][0-9]*$/.test(authority.protectedOutputAtomic)) return false;
+  return true;
+}
+
+/** Native settlement needs successful transaction-specific delivery, not WETH logs or balance guesses. */
+export function verifyVNextNativeOutputSettlement(record: VNextExecutionRecord,
+  receipt: Parameters<typeof verifyVNextErc20OutputSettlement>[1],
+  transaction: Parameters<typeof verifyVNextErc20OutputSettlement>[2], trace: unknown): VNextOutputSettlement | null {
+  if (!boundVNextNativeSettlementEnvelope(record, receipt, transaction)) return null;
   try {
     if (!trace || typeof trace !== "object" || Array.isArray(trace)) return null;
     const root = trace as Record<string, unknown>;
     if (root.type !== "CALL" || root.error || !same(root.from as string, transaction.from)
-      || !same(root.to as string, transaction.to) || !same(root.input as string, transaction.input)
+      || !same(root.to as string, transaction.to)
+      || (root.inputHash !== undefined ? !same(root.inputHash as string, keccak256(transaction.input)) : !same(root.input as string, transaction.input))
       || typeof root.value !== "string" || BigInt(root.value) !== transaction.value) return null;
     let nodes = 0;
     let net = 0n;

@@ -113,8 +113,12 @@
     "test:wallet-constellation": "tsx lib/server/wallet-constellation-smoke.ts",
     "pretypecheck": "tsx lib/vnext/uniswap-v2-v2-application-admission-smoke.ts && tsx lib/vnext/uniswap-v2-v2-authorization-fresh-authority-smoke.ts",
     "typecheck": "tsx lib/vnext/across-funding-smoke.ts && tsx lib/vnext/cross-chain-funding-smoke.ts && tsx lib/server/nft-project-market-smoke.ts && tsx lib/server/nft-inventory-smoke.ts && tsx lib/server/nft-mint-radar-smoke.ts && tsx lib/server/nft-mint-preflight-smoke.ts && tsx lib/server/nft-mint-execution-smoke.ts && tsx lib/server/nft-terminal-catalog-smoke.ts && tsx lib/server/nft-terminal-visual-shell-smoke.ts && tsc --noEmit",
-    "test:trading-hardening": "tsx lib/vnext/trading-hardening-smoke.ts && tsx lib/vnext/native-output-settlement-smoke.ts && node ../../.github/scripts/trading-matrix-evidence-check.mjs",
-    "proof:zero-x:50-token": "tsx scripts/zero-x-50-token-matrix.ts"
+    "test:trading-hardening": "tsx lib/vnext/trading-hardening-smoke.ts && tsx lib/vnext/native-output-settlement-smoke.ts && tsx lib/server/vnext-settlement-trace-client-smoke.ts && node ../../.github/scripts/trading-matrix-evidence-check.mjs",
+    "proof:zero-x:50-token": "tsx scripts/zero-x-50-token-matrix.ts",
+    "proof:zero-x:sell-closure": "tsx scripts/zero-x-sell-response-closure.ts",
+    "proof:zero-x:fee-rounding": "tsx scripts/zero-x-fee-rounding-proof.ts",
+    "proof:zero-x:ordinary-trace-capability": "tsx scripts/zero-x-native-trace-capability.ts",
+    "proof:zero-x:settlement-trace": "tsx scripts/zero-x-settlement-trace-proof.ts"
   },
   "dependencies": {
     "@privy-io/node": "0.28.0",
