@@ -3,7 +3,7 @@ import { directoryMarketsFromCanonicalPools, VNEXT_CANONICAL_DIRECTORY_PAGE_LIMI
 import { boundedDirectoryFailureReasons, identityReadFailureReason, type DirectoryFailureReason } from "../vnext/directory-availability";
 import { readVNextCanonicalMarketInventory, publicVNextCanonicalMarketInventoryPool, type VNextMarketIndexerTiming } from "./vnext-market-indexer";
 import { readRobinhoodTokenIdentities } from "./universal-market-resolver";
-import { applyProjectIdentityDirectoryAdmission } from "./project-identity-admission";
+import { applyProjectIdentityDirectoryAdmission, excludeKnownPositiveProjectIdentityQuarantines, knownPositiveProjectIdentityQuarantineAddresses } from "./project-identity-admission";
 import { fetchRobinhoodStockRegistry } from "./robinhood-stock-token-registry";
 
 type Dependencies = {
@@ -55,10 +55,18 @@ export async function readVNextIndexedMarketDirectoryPage(
   if (candidates.length > 0 && identified.length === 0) return fail("IDENTITY_RPC_UNAVAILABLE", "Canonical token identity evidence is temporarily unavailable.");
   if (identified.length !== candidates.length && ![...reasons].some((reason) => reason.startsWith("IDENTITY_"))) reasons.add("IDENTITY_RESPONSE_INVALID");
   let admission;
-  try { admission = await (dependencies.admit ?? applyProjectIdentityDirectoryAdmission)(identified); }
+  // Last-known browse metadata cannot revoke an established identity conflict.
+  // Fresh identities still use the existing authority reevaluation policy.
+  const retainedQuarantines = new Set(knownPositiveProjectIdentityQuarantineAddresses()
+    .filter((address) => durable.has(address)));
+  const admissionCandidates = identified.filter((market) => !retainedQuarantines.has(market.address.toLowerCase()));
+  try { admission = await (dependencies.admit ?? applyProjectIdentityDirectoryAdmission)(admissionCandidates); }
   catch { return fail("PROJECT_IDENTITY_AUTHORITY_UNAVAILABLE", "Project identity authority is temporarily unavailable."); }
   if (admission.authorityStatus !== "ready") reasons.add("PROJECT_IDENTITY_AUTHORITY_UNAVAILABLE");
   const complete = identified.length === candidates.length && admission.authorityStatus === "ready";
+  const candidateAddresses = new Set(candidates.map((market) => market.address.toLowerCase()));
+  const quarantinedAddresses = [...new Set([...retainedQuarantines, ...knownPositiveProjectIdentityQuarantineAddresses()])]
+    .filter((address) => candidateAddresses.has(address));
   return { status: 200, body: {
     canonical: true, inventorySource: "indexed", revalidationComplete: complete,
     coverage: inventory.coverage.complete && complete ? "complete" : "partial",
@@ -66,6 +74,7 @@ export async function readVNextIndexedMarketDirectoryPage(
     identityEvidence: durable.size ? (live.size ? "mixed" : "last-known") : "live",
     failureReasons: boundedDirectoryFailureReasons([...reasons]),
     ...(stocks.coverage === "stale" || durable.size > 0 || !complete ? { stale: true } : {}),
-    markets: admission.admitted
+    quarantinedAddresses,
+    markets: excludeKnownPositiveProjectIdentityQuarantines(admission.admitted)
   } };
 }
