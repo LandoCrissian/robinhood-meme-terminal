@@ -14,6 +14,7 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 const requireWeb = createRequire(path.join(root, 'apps/web/package.json'));
 const { encodeAbiParameters, decodeFunctionData, encodeFunctionResult, parseAbi, keccak256, toFunctionSelector, multicall3Abi } = requireWeb('viem');
 requireWeb('tsx/cjs');
+const { zeroXIntegratorFeeAmount } = requireWeb('./lib/vnext/zero-x-settlement.ts');
 const { RMT_CURATED_MARKET_REGISTRY: seeds } = requireWeb('./lib/vnext/curated-market-registry.ts');
 const requireRoot = createRequire(path.join(root, 'package.json'));
 const { chromium } = requireRoot('playwright');
@@ -178,7 +179,7 @@ function external(input) {
       liquidityAvailable: true, chainId: 4663, sellToken: q.sellToken, buyToken: q.buyToken,
       sellAmount: q.sellAmount, buyAmount: '1000000000000000000000', minBuyAmount: '990000000000000000000',
       totalNetworkFee: '9000000000000',
-      fees: { integratorFee: { token: q.sellToken, amount: (BigInt(q.sellAmount) * 25n / 10000n).toString(), type: 'volume' }, zeroExFee: { token: q.buyToken, amount: '1000000000000000000', type: 'volume' }, gasFee: null },
+      fees: { integratorFee: { token: q.sellToken, amount: zeroXIntegratorFeeAmount(q.sellAmount), type: 'volume' }, zeroExFee: { token: q.buyToken, amount: '1000000000000000000', type: 'volume' }, gasFee: null },
       issues: { allowance: nativeSell || state.approved ? null : { actual: '0', spender: holder }, balance: null, simulationIncomplete: false, invalidSourcesPassed: [] },
       allowanceTarget: nativeSell ? null : holder, blockNumber: '50000000', zid: state.approved ? '0x222222222222222222222222' : '0x111111111111111111111111',
       transaction: { to: nativeSell ? '0x0000000000000000000000000000000000012345' : holder, data: state.approved ? '0x1234567822222222' : '0x1234567811111111', value: nativeSell ? q.sellAmount : '0', gas: '180000', gasPrice: '50000000' }

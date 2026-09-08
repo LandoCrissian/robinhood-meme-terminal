@@ -31,7 +31,7 @@ export async function POST(request: Request) {
       || receipt.to?.toLowerCase() !== transaction.to.toLowerCase() || transaction.value !== 0n) return unavailable();
     const result = await readSettlementTrace(hash);
     if (result.status !== "available" || result.blockHash !== receipt.blockHash.toLowerCase()) return unavailable();
-    // The browser additionally binds its durable exact plan, payload, calldata,
+    // The browser additionally binds its durable exact plan, payload, input bytes,
     // recipient, native output and minimum. This response never grants authority.
     return Response.json(result, { headers });
   } catch (cause) { return tradeIdentityErrorResponse(cause) ?? unavailable(); }
