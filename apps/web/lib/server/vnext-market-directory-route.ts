@@ -235,7 +235,7 @@ export async function readVNextMarketDirectoryRequest(
           });
           return result;
         })
-        .catch(() => cached.result)
+        .catch(() => cachedResult(cached.result, "STALE"))
         .finally(() => {
           if (directoryInFlight.get(cacheKey) === refresh) directoryInFlight.delete(cacheKey);
         });

@@ -141,6 +141,25 @@ async function main() {
     const staleHit = await readVNextMarketDirectoryRequest("https://fixture.invalid", {}, staleDependencies);
     assert.equal(staleHit.headers["X-RMT-Directory-Cache"], "HIT");
     assert.equal(staleHit.headers["X-RMT-Directory-Freshness"], "last-known");
+    let rejectRefresh: ((reason: Error) => void) | undefined;
+    let reads = 0;
+    let raceNow = 0;
+    const raceDependencies = { ...dependencies, presentationCache: true, now: () => raceNow,
+      readCanonical: async (url: string) => {
+        if (reads++ === 0) return readVNextCanonicalMarketDirectoryPage(url);
+        return new Promise((_resolve, reject) => { rejectRefresh = reject; });
+      }
+    };
+    mode = "indexed";
+    await readVNextMarketDirectoryRequest("https://fixture.invalid", {}, raceDependencies);
+    raceNow = 15001;
+    await readVNextMarketDirectoryRequest("https://fixture.invalid", {}, raceDependencies);
+    raceNow = 120001;
+    const waiting = readVNextMarketDirectoryRequest("https://fixture.invalid", {}, raceDependencies);
+    assert.ok(rejectRefresh); rejectRefresh(new Error("Refresh transport failed"));
+    const failedRefreshCache = await waiting;
+    assert.equal(failedRefreshCache.headers["X-RMT-Directory-Freshness"], "last-known", "failed in-flight refresh cannot relabel old cache as current");
+    assert.equal(failedRefreshCache.body.stale, true);
     mode = "indexed";
     const quarantine = createDirectory(); await quarantine.hook.refresh(); await quarantine.hook.loadNextCanonicalPage(); await quarantine.hook.loadNextCanonicalPage();
     const conflict = await applyProjectIdentityDirectoryAdmission([{ address: address(45), verifiedIdentity: { address: address(45), name: "Established Project", symbol: "EST" } }], {
