@@ -43,6 +43,12 @@ export async function readVNextIndexedMarketDirectoryPage(
       ...(stock ? { rwaRelationship: "canonical-stock-token" as const }
         : paired ? { rwaRelationship: "paired-market-asset" as const } : {}) }];
   });
+  // A nonempty inventory with no usable identity evidence is unavailable,
+  // not a verified empty directory. Let canonical fallback and last-good
+  // window retention handle this without erasing a usable browse snapshot.
+  if (candidates.length > 0 && identified.length === 0) {
+    return { status: 503, body: { canonical: true, error: "Canonical token identity evidence is temporarily unavailable." } };
+  }
   const admission = await (dependencies.admit ?? applyProjectIdentityDirectoryAdmission)(identified);
   return { status: 200, body: {
     canonical: true,
