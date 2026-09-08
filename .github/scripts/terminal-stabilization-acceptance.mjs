@@ -100,15 +100,15 @@ export async function inspectTerminalStabilization(browser, { base, createContex
       directoryMode = "fallback";
       await refreshRoot();
       assert.equal(await page.locator(row).count(), canonical.length, "HTTP 200 fallback retains all loaded rows");
-      assert.match(await freshness.innerText(), /Last loaded/);
+      await freshness.getByText(/Last loaded/).waitFor();
       await refreshRoot();
       assert.equal(await page.locator(row).count(), canonical.length, "repeated fallback does not corrupt the window");
       directoryMode = "indexed"; await refresh();
-      assert.match(await freshness.innerText(), /Directory ready/);
+      await freshness.getByText("Directory ready", { exact: true }).waitFor();
       directoryMode = "stale"; await refresh();
-      assert.match(await freshness.innerText(), /Last loaded/);
+      await freshness.getByText(/Last loaded/).waitFor();
       directoryMode = "partial"; await refresh();
-      assert.match(await freshness.innerText(), /Directory ready/);
+      await freshness.getByText("Directory ready", { exact: true }).waitFor();
       directoryMode = "indexed"; removedAddress = canonical.at(-1).address;
       await refreshRoot();
       for (let n = 0; n < 100 && await page.locator(row).count() !== canonical.length - 1; n++) await page.waitForTimeout(25);
@@ -118,7 +118,7 @@ export async function inspectTerminalStabilization(browser, { base, createContex
       await page.getByRole("button", { name: /^All\s+/ }).click();
       await page.locator(row).first().waitFor();
       assert.equal(await page.locator(row).count(), 8);
-      assert.match(await freshness.innerText(), /Limited fallback/);
+      await freshness.getByText(/Limited fallback/).waitFor();
       directoryMode = "indexed"; removedAddress = null;
       failPage = -1;
       await page.goto(`${base}/?market=${first.address}`, { waitUntil: "domcontentloaded" });
