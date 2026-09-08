@@ -109,11 +109,18 @@ export async function runZeroXWalletJourneys(options) {
           })(), logsBloom: `0x${'0'.repeat(512)}`,
           status: scenario === 'reverted' ? '0x0' : '0x1', to: tx.to, transactionHash: txHash, transactionIndex: '0x0', type: '0x0' };
       };
-      await page.exposeFunction('__ZEROX_CAPTURE__', (transaction) => {
+      await page.exposeFunction('__ZEROX_CAPTURE__', async (transaction) => {
         requests.push(transaction);
         const bundle = api.filter((entry) => entry.path === '/api/vnext/authorize' && entry.status === 200).at(-1)?.body;
         assert.ok(bundle, 'Wallet requests require a real server authorization');
         const plan = bundle.plan;
+        if (scenario === 'approval-requote' && plan.kind === 'swap') {
+          const remembered = page.getByRole('region', { name: 'Injected signer selection' });
+          assert.equal(await remembered.getByText('Selected signer: Explicit test signer', { exact: true }).count(), 1);
+          assert.equal(await remembered.getByRole('button', { name: 'Change signer', exact: true }).count(), 1);
+          assert.equal(await remembered.getByText('Choose the injected signer for 0x', { exact: true }).count(), 0,
+            'the exact explicit signer is reused at the fresh swap dispatch, before its result can close the panel');
+        }
         assert.equal(lower(transaction.from), wallet);
         assert.equal(lower(transaction.to), lower(plan.target));
         assert.equal(transaction.data, plan.data);
@@ -342,10 +349,6 @@ export async function runZeroXWalletJourneys(options) {
               assert.notEqual(fresh.plan.providerNativeFee.firmQuote.zid, bundle.plan.providerNativeFee.firmQuote.zid);
               assert.notEqual(fresh.plan.providerNativeFee.transactionCalldataHash, bundle.plan.providerNativeFee.transactionCalldataHash);
               assert.equal(fresh.plan.kind, 'swap');
-              const remembered = page.getByRole('region', { name: 'Injected signer selection' });
-              await remembered.getByText('Selected signer: Explicit test signer', { exact: true }).waitFor();
-              assert.equal(await remembered.getByRole('button', { name: 'Change signer', exact: true }).count(), 1);
-              assert.equal(await remembered.getByText('Choose the injected signer for 0x', { exact: true }).count(), 0, 'post-approval fresh authority reuses the exact explicit provider, without reselecting');
               await until(() => requests.length === 2, 'Fresh swap wallet request missing after original trade action');
               assert.equal(requests[1].data, fresh.plan.data);
               assert.notEqual(keccak256(requests[1].data), bundle.plan.providerNativeFee.transactionCalldataHash);
