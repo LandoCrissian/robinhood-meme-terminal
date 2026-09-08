@@ -83,9 +83,16 @@ calldata hash cross the server boundary. Credentials/endpoint are never returned
 
 [QuickNode documents Robinhood callTracer support](https://www.quicknode.com/docs/robinhood/debug_traceTransaction),
 but documentation and deterministic fixtures are NOT live endpoint proof.
-`dedicated-native-trace-proof.json` records that no dedicated endpoint was supplied
-to this process. No provider URL or token is included in artifacts. Supplying the
-server-only endpoint and obtaining live proof remain required before release.
+`dedicated-native-trace-proof.json` records a successful live public-documentation
+control through the actual production trace client: chain 4663, successful receipt,
+callTracer, bounded normalization and matching receipt block before/after tracing.
+The control uses the already-mined ETH -> USDG canary and is NOT native-output
+settlement proof. Bounded discovery did not establish a suitable native-output
+transaction, so live 0x native settlement is explicitly NOT_AVAILABLE. Exhaustive
+deterministic production-verifier tests remain separate positive settlement proof.
+The documented endpoint was used only in an ephemeral development process. No
+Production endpoint was provisioned and no CI/Production configuration changed.
+No provider URL or token is included in artifacts.
 `native-trace-capability.json` separately preserves the old ordinary-RPC method-not-
 found result; it is not confused with the new dedicated client's capability.
 
