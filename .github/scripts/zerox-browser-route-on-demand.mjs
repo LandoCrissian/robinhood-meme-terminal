@@ -121,6 +121,9 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
           if (viewport === 'mobile') await page.locator('button.isBuy').click();
           else await page.getByRole('tab', { name: 'Buy', exact: true }).click();
           assert.deepEqual(await page.evaluate(() => window.ethereum.request({ method: 'eth_accounts' })), [], 'PEEP Buy begins disconnected');
+          // Keep each mock provider outcome independent of the real quote cache.
+          const peepInput = String(26 + (viewport === 'mobile' ? 2 : 0) + (scenario === 'peepNoRoute' ? 1 : 0));
+          await page.getByLabel('Exact input amount').fill(peepInput);
           await page.getByRole('button', { name: 'Connect & buy PEEP', exact: true }).click();
           await until(() => api.some((entry) => entry.path === '/api/vnext/quotes' && entry.status === 200), 'PEEP Connect & buy must resume without a second Buy click');
           assert.equal(new URL(page.url()).searchParams.get('market')?.toLowerCase(), peep);

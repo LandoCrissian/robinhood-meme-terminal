@@ -2,7 +2,9 @@ import { chromium, devices } from "playwright";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 
-const directoryRequire = createRequire(new URL("../../apps/web/package.json", import.meta.url));
+const directoryRequire = createRequire(process.env.GITHUB_WORKSPACE
+  ? `${process.env.GITHUB_WORKSPACE}/apps/web/package.json`
+  : new URL("../../apps/web/package.json", import.meta.url));
 directoryRequire("tsx/cjs");
 const { normalizeDirectoryMarkets, mergeVNextCanonicalBrowseMarkets, vNextMarketDirectoryViewCounts } = directoryRequire("./lib/vnext/market-directory.ts");
 

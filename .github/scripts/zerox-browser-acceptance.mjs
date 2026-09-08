@@ -144,7 +144,6 @@ function external(input) {
       fees: { zeroExFee: { token: q.buyToken, amount: '1000000000000000000' }, gasFee: { token: q.buyToken, amount: '2000000000000000000' } } } };
   }
   if (url.origin === 'https://api.0x.org' && url.pathname.startsWith('/swap/allowance-holder/')) {
-    if (state.priceDisabled && url.pathname.endsWith('/price')) return { status: 400, body: { name: 'NO_LIQUIDITY_AVAILABLE' } };
     assert.equal(input.credentialIsFixture, true);
     assert.equal(input.version, 'v2');
     const q = Object.fromEntries(url.searchParams);
@@ -159,6 +158,7 @@ function external(input) {
     assert.equal(q.recipient.toLowerCase(), wallet);
     const firm = url.pathname.endsWith('/quote');
     (firm ? state.quotes : state.prices).push(q);
+    if (state.priceDisabled && !firm) return { status: 400, body: { name: 'NO_LIQUIDITY_AVAILABLE' } };
     if (q.buyToken.toLowerCase() === routeFixtures.assets.noRoute) return { status: 400, body: { name: 'NO_LIQUIDITY_AVAILABLE' } };
     const nativeSell = q.sellToken.toLowerCase() === native;
     const response = { status: 200, body: {
