@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - ".github/scripts/terminal-high-end-acceptance.mjs"
+      - ".github/scripts/terminal-stabilization-acceptance.mjs"
       - ".github/workflows/terminal-high-end-acceptance.yml"
       - "apps/web/app/vnext/**"
       - "apps/web/app/market/**"
@@ -75,6 +76,8 @@ jobs:
         run: |
           pnpm --filter web test:vnext-browser-fixture -- "$GITHUB_WORKSPACE/terminal-preview-evidence/v2-fixture.json"
           cp .github/scripts/terminal-high-end-acceptance.mjs /tmp/rmt-preview/acceptance.mjs
+
+          cp .github/scripts/terminal-stabilization-acceptance.mjs /tmp/rmt-preview/terminal-stabilization-acceptance.mjs
           set +e
           node /tmp/rmt-preview/acceptance.mjs 2>&1 | tee /tmp/terminal-preview.log
           status=${PIPESTATUS[0]}
@@ -136,6 +139,8 @@ jobs:
         run: |
           pnpm --filter web test:vnext-browser-fixture -- "$GITHUB_WORKSPACE/terminal-high-end-evidence/v2-fixture.json"
           cp .github/scripts/terminal-high-end-acceptance.mjs /tmp/rmt-high-end/acceptance.mjs
+
+          cp .github/scripts/terminal-stabilization-acceptance.mjs /tmp/rmt-high-end/terminal-stabilization-acceptance.mjs
           set +e
           node /tmp/rmt-high-end/acceptance.mjs 2>&1 | tee /tmp/terminal-high-end.log
           status=${PIPESTATUS[0]}

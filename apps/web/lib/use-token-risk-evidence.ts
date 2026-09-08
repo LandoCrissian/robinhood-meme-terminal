@@ -5,6 +5,7 @@ import type { ExternalMarket } from "./external-market";
 import type { TokenRiskEvidence, TokenRiskEvidenceState } from "./token-risk-evidence";
 import type { VNextUniversalMarketSearchPool } from "./vnext/universal-market-search-contract";
 import { rmtCuratedRiskSourceId } from "./vnext/curated-market-registry";
+import { loadBoundedWorkspaceEvidence } from "./bounded-workspace-evidence";
 
 export function tokenRiskEvidenceRequestUrl(
   token?: string,
@@ -53,10 +54,10 @@ export function useTokenRiskEvidence(
       setState({ status: "unavailable" });
       return;
     }
-    const controller = new AbortController();
     setState({ status: "loading" });
-    void fetch(url, { signal: controller.signal })
-      .then(async (response) => {
+    return loadBoundedWorkspaceEvidence({
+      read: async (signal) => {
+        const response = await fetch(url, { signal });
         if (!response.ok) throw new Error("Risk evidence is unavailable.");
         const evidence = await response.json() as TokenRiskEvidence;
         if (
@@ -69,12 +70,11 @@ export function useTokenRiskEvidence(
         ) {
           throw new Error("Risk evidence does not match this market.");
         }
-        setState({ status: "ready", evidence });
-      })
-      .catch(() => {
-        if (!controller.signal.aborted) setState({ status: "unavailable" });
-      });
-    return () => controller.abort();
+        return evidence;
+      },
+      ready: (evidence) => setState({ status: "ready", evidence }),
+      unavailable: () => setState({ status: "unavailable" })
+    });
   }, [pair, token, url]);
 
   return state;

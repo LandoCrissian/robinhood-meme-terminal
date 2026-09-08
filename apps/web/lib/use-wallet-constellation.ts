@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ExternalMarket } from "./external-market";
 import type { VNextUniversalMarketSearchPool } from "./vnext/universal-market-search-contract";
 import type { WalletConstellationGraph } from "./wallet-constellation";
+import { loadBoundedWorkspaceEvidence } from "./bounded-workspace-evidence";
 
 export type WalletConstellationState =
   | { status: "loading"; graph?: undefined }
@@ -50,12 +51,10 @@ export function useWalletConstellation(
       setState({ status: "unavailable" });
       return;
     }
-    let active = true;
-    const controller = new AbortController();
-    const timeout = window.setTimeout(() => controller.abort(), 15_000);
     setState({ status: "loading" });
-    void fetch(url, { signal: controller.signal })
-      .then(async (response) => {
+    return loadBoundedWorkspaceEvidence({
+      read: async (signal) => {
+        const response = await fetch(url, { signal });
         if (!response.ok) throw new Error("Wallet evidence unavailable.");
         const graph = await response.json() as WalletConstellationGraph;
         if (
@@ -69,19 +68,11 @@ export function useWalletConstellation(
         ) {
           throw new Error("Wallet evidence does not match this market.");
         }
-        setState({ status: "ready", graph });
-      })
-      .catch(() => {
-        if (active) {
-          setState({ status: "unavailable" });
-        }
-      })
-      .finally(() => window.clearTimeout(timeout));
-    return () => {
-      active = false;
-      controller.abort();
-      window.clearTimeout(timeout);
-    };
+        return graph;
+      },
+      ready: (graph) => setState({ status: "ready", graph }),
+      unavailable: () => setState({ status: "unavailable" })
+    });
   }, [pair, token, url]);
 
   return state;

@@ -115,7 +115,7 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
         const select = page.getByLabel(native ? 'Pay with asset' : 'Receive asset');
         if (await select.inputValue() !== 'eip155:4663/native') await select.selectOption('eip155:4663/native');
         await page.getByLabel('Exact input amount').fill(native ? '0.001' : '1');
-        await page.locator('.vnReviewButton').click();
+        // Read-only 0x preparation follows amount readiness; the wallet still needs its explicit CTA.
         await until(() => api.some((entry) => entry.path.endsWith('/verify')), 'Real verification was not reached');
         if (slippageCase && !slippageCase[2]) {
           const verified = api.find((entry) => entry.path.endsWith('/verify'));

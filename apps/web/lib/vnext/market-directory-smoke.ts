@@ -730,8 +730,9 @@ assert.match(hook, /identityCache/);
 assert.match(hook, /nextSnapshot !== marketSnapshot\.current/);
 const canonicalRefreshFailure = hook.slice(
   hook.indexOf('if (!response.ok || !payload || requestSequence !== canonicalRequestSequence.current)'),
-  hook.indexOf('const canonicalMarkets = payload.markets ?? []')
+  hook.indexOf('let canonicalMarkets = payload.markets ?? []')
 );
+assert.ok(canonicalRefreshFailure.length > 0 && canonicalRefreshFailure.length < 500, "inspect the actual fail-closed block, not the remainder of the source");
 assert.doesNotMatch(canonicalRefreshFailure, /canonicalDirectoryMarkets\.current = \[\]|canonicalNextCursor\.current = null|publishMarkets\(\)/);
 assert.match(hook, /The selected serving mode retains its last-good browse inventory/);
 assert.doesNotMatch(hook, /external-availability|external-sushi-quote|external-uniswap/);

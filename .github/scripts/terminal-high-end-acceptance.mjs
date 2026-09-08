@@ -1,6 +1,7 @@
 import { chromium, devices } from "playwright";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
+import { inspectTerminalStabilization } from "./terminal-stabilization-acceptance.mjs";
 
 const directoryRequire = createRequire(process.env.GITHUB_WORKSPACE
   ? `${process.env.GITHUB_WORKSPACE}/apps/web/package.json`
@@ -3646,6 +3647,10 @@ try {
     const executableQuoteFeeDisclosure = await inspectExecutableQuoteFeeDisclosure(browser, browserAcceptanceFixture);
     await writeFile(`${output}/report.json`, JSON.stringify({ executableQuoteFeeDisclosure }, null, 2));
     console.log(`Terminal executable-quote fee disclosure acceptance passed: ${JSON.stringify(executableQuoteFeeDisclosure)}`);
+  } else if (process.env.RMT_ACCEPTANCE_ONLY_STABILIZATION === "true") {
+    const stabilization = await inspectTerminalStabilization(browser, { base, createContext, installRoutes, markets, canonicalDirectoryMarket, riskPayload });
+    await writeFile(`${output}/report.json`, JSON.stringify({ stabilization }, null, 2));
+    console.log(`Terminal stabilization acceptance passed: ${JSON.stringify(stabilization)}`);
   } else if (marketLoadPerformanceOnly) {
     const marketLoadPerformance = await inspectMarketLoadPerformanceMatrix(browser);
     await writeFile(`${output}/report.json`, JSON.stringify({ marketLoadPerformance }, null, 2));
@@ -3748,12 +3753,13 @@ try {
       ["414x896", { width: 414, height: 896 }]
     ]) exploratoryTouch[entryLabel] = await inspectMobile(browser, entryViewport, entryLabel);
   }
+  const stabilization = await inspectTerminalStabilization(browser, { base, createContext, installRoutes, markets, canonicalDirectoryMarket, riskPayload });
   // Deliberate 45-second enrichment delays must not age the earlier wallet
   // fixtures past their exact review/deadline authority.
   const marketLoadPerformance = await inspectMarketLoadPerformanceMatrix(browser);
   await writeFile(
     `${output}/report.json`,
-    JSON.stringify({ productAcceptanceEvidence, marketLoadPerformance, walletLifecycleEvidence, workspaceEvidence, marketsHierarchy, discoveryDesktop, discoveryMobile, projectIdentityQuarantine, desktop, laptop, laptop720, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile393, mobile390, mobile375, mobile360, v2BrowserEvidence, executableQuoteFeeDisclosure, v4WalletReviewEvidence, v4FreshWalletSellEvidence, exploratoryTouch }, null, 2)
+    JSON.stringify({ stabilization, productAcceptanceEvidence, marketLoadPerformance, walletLifecycleEvidence, workspaceEvidence, marketsHierarchy, discoveryDesktop, discoveryMobile, projectIdentityQuarantine, desktop, laptop, laptop720, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile393, mobile390, mobile375, mobile360, v2BrowserEvidence, executableQuoteFeeDisclosure, v4WalletReviewEvidence, v4FreshWalletSellEvidence, exploratoryTouch }, null, 2)
   );
   console.log(`Terminal active discovery product acceptance passed: ${JSON.stringify(productAcceptanceEvidence)}`);
   }
