@@ -65,6 +65,7 @@ export async function runZeroXWalletJourneys(options) {
       const requests = [];
       const api = [];
       let corrupted = 0;
+      let validatedDispatches = 0;
       let block = 50000000;
       let receiptsEnabled = true;
       let settledOutputAsset = null;
@@ -143,6 +144,7 @@ export async function runZeroXWalletJourneys(options) {
         }
         const txHash = h(plan.kind === 'erc20_approval' ? 'b' : 'c');
         if (!['rejection', 'pending'].includes(scenario)) transactions.set(txHash, transaction);
+        validatedDispatches++;
         return txHash;
       });
       await context.addInitScript(({ wallet, scenario }) => {
@@ -349,7 +351,7 @@ export async function runZeroXWalletJourneys(options) {
               assert.notEqual(fresh.plan.providerNativeFee.firmQuote.zid, bundle.plan.providerNativeFee.firmQuote.zid);
               assert.notEqual(fresh.plan.providerNativeFee.transactionCalldataHash, bundle.plan.providerNativeFee.transactionCalldataHash);
               assert.equal(fresh.plan.kind, 'swap');
-              await until(() => requests.length === 2, 'Fresh swap wallet request missing after original trade action');
+              await until(() => requests.length === 2 && validatedDispatches === 2, 'Fresh swap wallet request or exact signer/envelope validation missing after original trade action');
               assert.equal(requests[1].data, fresh.plan.data);
               assert.notEqual(keccak256(requests[1].data), bundle.plan.providerNativeFee.transactionCalldataHash);
             } else {
