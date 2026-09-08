@@ -14,6 +14,8 @@ const address = (n: number) => `0x${n.toString(16).padStart(40, "0")}`;
 let unavailable = true;
 let durable = false;
 let partial = false;
+let singlePage = false;
+let durableTailOnly = false;
 let generation = 0;
 let removed = false;
 let identityCalls = 0;
@@ -24,7 +26,7 @@ function inventory(url: string) {
   const page = cursor ? Number(cursor.split("_")[1]) : 0;
   if (cursor) assert.equal(cursor.split("_")[0], `g${generation}`);
   requests.push(cursor ?? "root");
-  const rows = Array.from({ length: page < 2 ? 20 : 10 }, (_, i) => page * 40 + i * 2 + 1)
+  const rows = Array.from({ length: singlePage ? 50 : page < 2 ? 20 : 10 }, (_, i) => page * 40 + i * 2 + 1)
     .filter((n) => !removed || n !== 99);
   const pools = rows.map((n) => ({ sourceId: "uniswap-v3", protocol: "uniswap", version: 3,
     poolKey: address(1000 + n), poolAddress: address(1000 + n), token0: address(n), token1: address(n + 1),
@@ -33,8 +35,8 @@ function inventory(url: string) {
     ...Object.fromEntries(["stateStatus", "liveFee", "feeDenominator", "gaugeAddress", "gaugeAlive", "gaugeWeight", "gaugeClaimable", "feesAddress", "bribeAddress", "stateError", "stateObservedBlock", "stateObservedBlockHash"].map((key) => [key, null])) }));
   return { chainId: 4663, mode: "shadow", authoritative: false, sourceManifestHash: `0x${"a".repeat(64)}`,
     coverage: { complete: true, finalizedHead: "200", sources: sources.map((sourceId) => ({ sourceId, status: "shadow-ready", indexedThrough: "200" })) },
-    pools, nextCursor: page < 2 ? `g${generation}_${page + 1}` : null,
-    ...(durable ? { browseIdentities: { source: "verified-token-identity-index", freshness: "last-known", identities: pools.flatMap((pool) => [pool.token0, pool.token1]).map((a) => ({ address: a, name: `Token ${Number(BigInt(a))}`, symbol: `T${Number(BigInt(a))}`, decimals: 18 })) } } : {}) };
+    pools, nextCursor: !singlePage && page < 2 ? `g${generation}_${page + 1}` : null,
+    ...(durable ? { browseIdentities: { source: "verified-token-identity-index", freshness: "last-known", identities: pools.flatMap((pool) => [pool.token0, pool.token1]).filter((a) => !durableTailOnly || Number(BigInt(a)) > 80).map((a) => ({ address: a, name: `Token ${Number(BigInt(a))}`, symbol: `T${Number(BigInt(a))}`, decimals: 18 })) } } : {}) };
 }
 Module._load = function(id: string, ...args: unknown[]) {
   if (id === "react") return { ...react, useState(initial: unknown) { const i = states.length; states.push(typeof initial === "function" ? initial() : initial); return [states[i], (next: unknown) => { states[i] = typeof next === "function" ? next(states[i]) : next; }]; },
@@ -124,6 +126,33 @@ async function main() {
   assert.equal(identityReadFailureReason({ name: "HttpRequestError" }), "IDENTITY_RPC_UNAVAILABLE");
   assert.equal(identityReadFailureReason({ name: "ContractFunctionExecutionError" }), "IDENTITY_MULTICALL_FAILURE");
   assert.deepEqual(boundedDirectoryFailureReasons(["secret provider message", "IDENTITY_RPC_TIMEOUT", "IDENTITY_RPC_TIMEOUT"]), ["IDENTITY_RPC_TIMEOUT"]);
+  singlePage = true; removed = false; durable = false; unavailable = false; partial = true;
+  const partialCold = createDirectory(); await partialCold.hook.refresh();
+  assert.equal(partialCold.count(), 80); assert.equal(partialCold.status(), "stale");
+  const partialResponse = await readVNextCanonicalMarketDirectoryPage("https://fixture.invalid");
+  assert.equal(partialResponse.status, 200); assert.equal(partialResponse.body.revalidationComplete, false);
+  assert.equal(partialResponse.body.markets.length, 80);
+  durable = true; durableTailOnly = true;
+  const mixed = await readVNextCanonicalMarketDirectoryPage("https://fixture.invalid");
+  assert.equal(mixed.body.markets.length, 100); assert.equal(mixed.body.identityEvidence, "mixed");
+  assert.equal(mixed.body.revalidationComplete, true); assert.equal(mixed.body.stale, true);
+  const { applyProjectIdentityDirectoryAdmission, knownPositiveProjectIdentityQuarantineAddresses } = require("../server/project-identity-admission");
+  const quarantined = createDirectory(); await quarantined.hook.refresh();
+  assert.equal(quarantined.count(), 100);
+  const conflict = await applyProjectIdentityDirectoryAdmission([{ address: address(90), verifiedIdentity: { address: address(90), name: "Established Project", symbol: "EST" } }], {
+    readAuthority: async () => ({ status: "ready", entries: [{ projectId: "est", name: "Established Project", symbol: "EST", contractAddress: address(9999), authority: "coingecko-robinhood-contract-registry" }] }),
+    readIdentity: async () => ({ address: address(9999), name: "Established Project", symbol: "EST" })
+  });
+  assert.equal(conflict.quarantined.length, 1, "fixture establishes a positive identity conflict");
+  assert.ok(knownPositiveProjectIdentityQuarantineAddresses().includes(address(90)));
+  await quarantined.hook.refresh();
+  assert.equal(quarantined.count(), 99, "durable metadata must not resurrect a positively quarantined identity");
+  await quarantined.hook.refresh();
+  assert.equal(quarantined.count(), 99, "repeated refresh retains the positive quarantine without duplicates");
+  assert.ok(knownPositiveProjectIdentityQuarantineAddresses().includes(address(90)), "last-known metadata cannot clear positive conflict evidence");
+  const quarantineResponse = await readVNextCanonicalMarketDirectoryPage("https://fixture.invalid");
+  assert.equal(quarantineResponse.status, 200);
+  assert.ok(quarantineResponse.body.quarantinedAddresses.includes(address(90)), "retained windows receive explicit quarantine removal evidence");
   console.log(JSON.stringify({ baselineFreshRows: 0, baselineStatus: "error", correctedUnknownCounts: "unavailable", recoveredRows: 100, durableColdRows: 100, firstMs, identityCalls, loadedWindowRetention: "PASS", sequence: "GOOD_503_503_GOOD_PARTIAL_GOOD" }));
 }
 void main().catch((error) => { console.error(error); process.exitCode = 1; }).finally(() => { globalThis.fetch = originalFetch; Module._load = originalLoad; });
