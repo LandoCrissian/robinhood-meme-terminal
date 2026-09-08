@@ -173,7 +173,7 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
             assert.match(await page.locator('.vnTradePanel').innerText(), /Fresh firm quote[\s\S]*Updated executable minimum/);
             assert.doesNotMatch(await page.locator('.vnTradePanel').innerText(), /Continuity check failed/);
             assert.equal(prompts.length, 0, 'Fresh economics must not automatically open the wallet');
-            const review = page.locator('button').filter({ hasText: /^Review .*Deterministic browser wallet/ });
+            const review = page.getByRole('button', { name: /Review (exact approval|verified swap) in wallet/, exact: true });
             await review.scrollIntoViewIfNeeded();
             await page.getByRole('region', { name: 'Injected signer selection' }).getByRole('button', { name: /Explicit test signer/ }).click();
             await review.click();

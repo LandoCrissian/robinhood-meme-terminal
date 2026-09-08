@@ -67,12 +67,17 @@ export async function runZeroXWalletJourneys(options) {
       let corrupted = 0;
       let block = 50000000;
       let receiptsEnabled = true;
+      let settledOutputAsset = null;
+      let settledOutputBalanceReads = 0;
       const isMobile = viewportName === 'mobile';
       const context = await browser.newContext({ viewport: isMobile ? { width: 390, height: 844 } : { width: 1440, height: 900 }, ...(isMobile ? { isMobile: true, hasTouch: true, userAgent: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/128.0.0.0 Mobile Safari/537.36' } : {}) });
       const page = await context.newPage();
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.clock.install();
       state.rpcOverride = (request) => {
+        if (settledOutputAsset && (request.method === 'eth_call'
+          && lower(request.params[0]?.to) === settledOutputAsset && request.params[0]?.data?.startsWith('0x70a08231')
+          || request.method === 'eth_getBalance' && settledOutputAsset === '0x0000000000000000000000000000000000000000' && lower(request.params[0]) === wallet)) settledOutputBalanceReads++;
         if (request.method === 'eth_blockNumber') return hex(++block);
         if (request.method === 'debug_traceTransaction') {
           const tx = transactions.get(lower(request.params[0]));
@@ -96,6 +101,7 @@ export async function runZeroXWalletJourneys(options) {
           from: wallet, gasUsed: approval ? '0xc350' : '0x186a0', logs: approval || ['confirmed-without-output', 'reverted'].includes(scenario) ? [] : (() => {
             const plan = api.filter((entry) => entry.path === '/api/vnext/authorize' && entry.status === 200 && entry.body.plan.data === tx.data).at(-1)?.body.plan;
             assert.ok(plan, 'Settlement receipt must match the exact submitted plan');
+            settledOutputAsset = lower(plan.outputAsset);
             return [{ address: plan.outputAsset, data: '0x' + BigInt(plan.providerNativeFee.expectedOutputAtomic).toString(16).padStart(64, '0'),
               topics: encodeEventTopics({ abi: erc20Abi, eventName: 'Transfer', args: { from: holder, to: wallet } }),
               blockHash: h('a'), blockNumber: hex(50000000), transactionHash: txHash, transactionIndex: '0x0', logIndex: '0x0', removed: false }];
@@ -349,6 +355,7 @@ export async function runZeroXWalletJourneys(options) {
               assert.match(receipt, /confirmed/i);
               assert.match(receipt, /quoted/i);
               assert.doesNotMatch(receipt, /RMT fee settled|confirmed RMT revenue/i);
+              await until(() => settledOutputBalanceReads > 0, 'Verified settlement must refresh the exact output wallet balance');
               assert.equal(requests.length, 1);
             }
           }
