@@ -258,7 +258,11 @@ export async function runZeroXWalletJourneys(options) {
             await selector.getByRole('button', { name: /Explicit test signer/ }).click();
             if (['signer-disappeared', 'signer-account-change', 'signer-provider-conflict'].includes(scenario)) {
               await page.evaluate(() => window.__ZEROX_INVALIDATE_SIGNER__());
-              await selector.getByText('Choose the injected signer for 0x', { exact: true }).waitFor();
+              // A disconnect may also unmount the now-ineligible wallet review.
+              // Neither an absent review nor an eligible-but-unselected review may dispatch.
+              await until(async () => await page.getByText('Selected signer: Explicit test signer', { exact: true }).count() === 0, 'Changed wallet context must invalidate the remembered signer');
+              if (await review.isVisible()) await review.click();
+              await pause(200);
               assert.equal(requests.length, 0);
               assert.equal(await selector.getByText(/Selected signer:/).count(), 0);
               results.push({ viewport: viewportName, scenario, status: 'PASS', walletPrompts: 0 });
