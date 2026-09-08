@@ -1,5 +1,6 @@
 import type { VNextCanonicalDirectoryResponse } from "../vnext/market-directory";
 import { readRmtCuratedMarketSnapshot } from "./rmt-curated-market-registry";
+import { readVNextIndexedMarketDirectoryPage } from "./vnext-indexed-market-directory";
 import {
   publicVNextCanonicalMarketInventoryPool,
   type VNextCanonicalMarketInventoryQuery,
@@ -51,14 +52,19 @@ export async function readVNextCanonicalMarketDirectoryPage(
       }
     };
   }
-  if (cursor !== null) return { status: 400, body: { canonical: true, error: "The curated directory has one bounded page." } };
+  try {
+    const indexed = await readVNextIndexedMarketDirectoryPage(requestUrl, {}, onTiming);
+    if (indexed.status !== 503 || cursor !== null) return indexed;
+  } catch {
+    if (cursor !== null) return { status: 503, body: { canonical: true, error: "Canonical inventory is temporarily unavailable." } };
+  }
   try {
     const snapshot = await readRmtCuratedMarketSnapshot();
     return {
       status: 200,
       body: {
         canonical: true,
-        coverage: "complete",
+        coverage: "partial",
         nextCursor: null,
         updatedAt: snapshot.verifiedAt,
         ...(snapshot.stale ? { stale: true } : {}),

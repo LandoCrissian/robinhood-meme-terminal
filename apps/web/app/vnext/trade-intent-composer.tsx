@@ -44,6 +44,7 @@ import {
   tradeAuthorizationFailureFromResponse
 } from "../../lib/vnext/trade-authorization-client";
 import { useRmtIdentity } from "../rmt-identity";
+import { pendingTradeEntryMatches, type PendingTradeEntry } from "../../lib/vnext/pending-trade-entry";
 import { FundWalletButton } from "../fund-wallet-button";
 import { VNextWalletReview } from "./vnext-wallet-review";
 import { ExplorerLink } from "./terminal-links";
@@ -81,9 +82,10 @@ function uniqueAssets(assets: AssetMetadata[]) {
 const DEFAULT_BUY_AMOUNT = "25";
 const DEFAULT_NATIVE_BUY_AMOUNT = "0.0005";
 
-export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, walletAssets, nativeBalance, walletReadStatus, executionRecord, onContinueTrading, sideRequest, executionState, executionUiState, canonicalMarket }: {
+export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, marketAsset, walletAssets, nativeBalance, walletReadStatus, executionRecord, onContinueTrading, sideRequest, executionState, executionUiState, canonicalMarket }: {
   marketName: string;
   marketSymbol: string;
+  marketAddress?: string;
   marketAsset?: AssetMetadata;
   walletAssets: VNextDetectedWalletAsset[];
   nativeBalance?: bigint;
@@ -129,7 +131,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   >({ state: "idle" });
   const [costValuationClockMs, setCostValuationClockMs] = useState(() => Date.now());
   const handledExecution = useRef<string | undefined>(undefined);
-  const pendingTradeAfterLogin = useRef(false);
+  const pendingTradeAfterLogin = useRef<PendingTradeEntry | undefined>(undefined);
+  const selectedMarketAddress = marketAddress ?? (marketAsset?.id.locator.kind === "contract" ? marketAsset.id.locator.address : "");
   const continuedApproval = useRef<string | undefined>(undefined);
   const preparedApprovalAuthority = useRef<VNextApprovalAuthority | undefined>(undefined);
   const autoFitBuyAmount = useRef(true);
@@ -281,7 +284,6 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     setPostExecutionState({ state: "idle" });
     lastReadyQuote.current = undefined;
     lastReadyVerification.current = undefined;
-    pendingTradeAfterLogin.current = false;
     continuedApproval.current = undefined;
     preparedApprovalAuthority.current = undefined;
   }, [requestKey]);
@@ -745,6 +747,10 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
       if (!isCurrentTradeAuthorizationAttempt(authorizationAttempt, authorizationAttemptEpoch.current)) return;
       lastReadyQuote.current = { requestKey, response: freshQuote };
       setQuoteState({ state: "ready", response: freshQuote });
+      if (!selectVNextRoute(freshQuote.attempts, { publicExecutionOnly: true }).verificationCandidate
+        && freshQuote.attempts.some((attempt) => attempt.provider === "zero-x-swap" && attempt.status === "no_route")) {
+        throw new Error("No 0x route currently available for this trade.");
+      }
       stage = "verification";
       const freshEvidence = await requestStrictVerification(freshQuote);
       if (!isCurrentTradeAuthorizationAttempt(authorizationAttempt, authorizationAttemptEpoch.current)) return;
@@ -846,10 +852,16 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
   };
 
   useEffect(() => {
-    if (!authorizationEnabled || stockTokenViewOnly || !identity.authenticated || !address || identity.activeWalletKind !== "external" || !draft.intent || !pendingTradeAfterLogin.current) return;
-    pendingTradeAfterLogin.current = false;
+    const pending = pendingTradeAfterLogin.current;
+    if (!pending) return;
+    if (!pendingTradeEntryMatches(pending, selectedMarketAddress, side, address)) {
+      pendingTradeAfterLogin.current = undefined;
+      return;
+    }
+    if (!authorizationEnabled || stockTokenViewOnly || !identity.authenticated || !identity.identityToken || !identity.userId || !address || identity.activeWalletKind !== "external" || !draft.intent || amountExceedsBalance || walletReadStatus !== "ready") return;
+    pendingTradeAfterLogin.current = undefined;
     void startTrade();
-  }, [address, authorizationEnabled, draft.intent, identity.activeWalletKind, identity.authenticated, stockTokenViewOnly]);
+  }, [address, authorizationEnabled, draft.intent, identity.activeWalletKind, identity.authenticated, identity.identityToken, identity.userId, stockTokenViewOnly, selectedMarketAddress, side, amountExceedsBalance, walletReadStatus]);
 
   useEffect(() => {
     if (
@@ -916,7 +928,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAsset, wal
     if (!authorizationEnabled || stockTokenViewOnly) return;
     if (!identity.enabled) return;
     if (!identity.authenticated || !address || identity.activeWalletKind !== "external") {
-      pendingTradeAfterLogin.current = true;
+      pendingTradeAfterLogin.current = { marketAddress: selectedMarketAddress, side, wallet: address };
       identity.connectTradingWallet();
       return;
     }

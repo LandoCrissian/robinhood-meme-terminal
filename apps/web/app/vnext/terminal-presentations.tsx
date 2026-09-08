@@ -50,6 +50,7 @@ export type TerminalPresentationProps = {
   directoryStatus: DirectoryStatus;
   activityCoveragePending: boolean;
   activityCoverageDelayed: boolean;
+  activitySnapshotPublished?: boolean;
   hasMoreDirectoryMarkets: boolean;
   selected?: VNextDirectoryMarket;
   selectedExecutionState: VNextSelectedMarketExecutionState;
@@ -221,7 +222,7 @@ function DesktopMarketTable(props: TerminalPresentationProps) {
 function CompactMarketNavigator(props: TerminalPresentationProps) {
   return <aside className="rmtAssetNavigator" aria-label="Market navigator">
     <header><strong>Markets</strong><button type="button" onClick={props.onShowMarkets}>Full scanner</button></header>
-    <MarketCategoryNav view={props.directoryView} counts={props.directoryViewCounts} searchActive={props.searchActive} activityCoveragePending={props.activityCoveragePending || props.activityCoverageDelayed} walletReadStatus={props.walletReadStatus} onChange={props.onDirectoryViewChange} />
+    <MarketCategoryNav view={props.directoryView} counts={props.directoryViewCounts} searchActive={props.searchActive} activityCoveragePending={props.activitySnapshotPublished === false} walletReadStatus={props.walletReadStatus} onChange={props.onDirectoryViewChange} />
     <div className="rmtCompactMarketList">
       {props.visibleMarkets.map((market) => <button className={props.selected?.address === market.address ? "isSelected" : ""} type="button" key={market.address} aria-pressed={props.selected?.address === market.address} onClick={() => props.onSelectMarket(market.address)}>
         <TokenArtwork className="rmtMarketArtwork" symbol={market.symbol} imageUrl={market.imageUri} />
@@ -262,6 +263,7 @@ function TradeComposer(props: TerminalPresentationProps) {
   return <TradeIntentComposer
     marketName={props.selected?.name ?? "No market selected"}
     marketSymbol={props.selected?.symbol ?? "—"}
+    marketAddress={props.selected?.address}
     marketAsset={props.selectedAsset}
     walletAssets={props.walletAssets}
     nativeBalance={props.nativeBalance}
@@ -313,11 +315,25 @@ function DesktopHeader(props: TerminalPresentationProps) {
   </header>;
 }
 
+function DirectoryRows({ mobile = false, ...props }: TerminalPresentationProps & { mobile?: boolean }) {
+  const activityPending = !props.searchActive && props.directoryView === "active"
+    && props.activitySnapshotPublished === false && props.directoryViewCounts.active === 0 && props.markets.length > 0;
+  if (!activityPending) return mobile ? <MobileMarketList {...props} /> : <DesktopMarketTable {...props} />;
+  const browseProps = { ...props, directoryView: "all" as const, filteredMarkets: props.markets,
+    visibleMarkets: props.markets.slice(0, VNEXT_MARKET_DIRECTORY_PAGE_SIZE),
+    onLoadMoreMarkets: () => props.onDirectoryViewChange("all") };
+  return <section aria-label="All admitted markets while activity is pending">
+    <h2>All admitted markets</h2>
+    <p className="rmtSearchStatus" role="status">Activity classification is pending. These directory assets are not classified as Active.</p>
+    {mobile ? <MobileMarketList {...browseProps} /> : <DesktopMarketTable {...browseProps} />}
+  </section>;
+}
+
 function DesktopMarkets(props: TerminalPresentationProps) {
   return <section className="rmtDesktopMarketsView" id="rmt-markets" aria-labelledby="rmt-market-directory-heading">
     <header className="rmtMarketsHeading"><div><h1 id="rmt-market-directory-heading">Markets</h1><p>Robinhood Chain Token Markets</p></div><span className={`rmtDirectoryFreshness is${props.directoryStatus}`}><i aria-hidden="true" />{props.directoryStatus === "ready" ? "Directory ready" : props.directoryStatus === "stale" ? "Last loaded data" : props.directoryStatus === "loading" ? "Syncing" : "Delayed"}</span></header>
-    <div className="rmtScannerControls"><MarketCategoryNav view={props.directoryView} counts={props.directoryViewCounts} searchActive={props.searchActive} activityCoveragePending={props.activityCoveragePending || props.activityCoverageDelayed} walletReadStatus={props.walletReadStatus} onChange={props.onDirectoryViewChange} /><span>{props.activityCoveragePending ? `${props.filteredMarkets.length} canonical markets · activity enrichment pending` : props.activityCoverageDelayed ? `${props.filteredMarkets.length} canonical markets · market data delayed` : `${props.filteredMarkets.length} in view · routes checked on demand`}</span></div>
-    <DesktopMarketTable {...props} />
+    <div className="rmtScannerControls"><MarketCategoryNav view={props.directoryView} counts={props.directoryViewCounts} searchActive={props.searchActive} activityCoveragePending={props.activitySnapshotPublished === false} walletReadStatus={props.walletReadStatus} onChange={props.onDirectoryViewChange} /><span>{props.activityCoveragePending ? `${props.markets.length} canonical markets · activity enrichment pending` : props.activityCoverageDelayed ? `${props.filteredMarkets.length} in view · market data delayed` : `${props.filteredMarkets.length} in view · routes checked on demand`}</span></div>
+    <DirectoryRows {...props} />
     <VNextChainPulseCard />
     <VNextCapitalFlowCard />
   </section>;
@@ -393,10 +409,10 @@ function MobileHeader(props: TerminalPresentationProps) {
 function MobileMarkets(props: TerminalPresentationProps) {
   return <section className="rmtMobileMarketsView" id="rmt-mobile-markets" aria-labelledby="rmt-mobile-markets-heading">
     <header className="rmtMobileContextHeading"><div><h1 id="rmt-mobile-markets-heading">Markets</h1><p>Robinhood Chain Token Markets</p></div><span>{props.directoryStatus === "ready" ? "Directory ready" : props.directoryStatus === "stale" ? "Last loaded" : props.directoryStatus === "loading" ? "Syncing" : "Delayed"}</span></header>
-    <MarketCategoryNav view={props.directoryView} counts={props.directoryViewCounts} searchActive={props.searchActive} activityCoveragePending={props.activityCoveragePending || props.activityCoverageDelayed} walletReadStatus={props.walletReadStatus} onChange={props.onDirectoryViewChange} />
+    <MarketCategoryNav view={props.directoryView} counts={props.directoryViewCounts} searchActive={props.searchActive} activityCoveragePending={props.activitySnapshotPublished === false} walletReadStatus={props.walletReadStatus} onChange={props.onDirectoryViewChange} />
     {props.activityCoveragePending ? <p className="rmtSearchStatus" role="status">Canonical markets ready · activity enrichment pending</p> : props.activityCoverageDelayed ? <p className="rmtSearchStatus isDelayed" role="status">Canonical markets ready · market data delayed</p> : null}
     <MarketSearch id="rmt-mobile-market-search" query={props.query} setQuery={props.setQuery} inputRef={props.marketSearch} onSubmit={props.onSearchSubmit} searchStatus={props.searchStatus} />
-    <MobileMarketList {...props} />
+    <DirectoryRows {...props} mobile />
     <VNextChainPulseCard />
     <VNextCapitalFlowCard />
   </section>;

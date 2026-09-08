@@ -57,14 +57,23 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
   state.simulationFails = false;
   state.modifyFirm = undefined;
   state.rpcOverride = undefined;
+  const peep = '0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f';
   for (const viewport of ['desktop', 'mobile']) {
-    for (const [scenario, token] of Object.entries({ ...fixtures.assets, nativeToUsdg: usdg, usdgToNative: usdg })) {
+    for (const [scenario, token] of Object.entries({ ...fixtures.assets, nativeToUsdg: usdg, usdgToNative: usdg, peep, peepNoRoute: peep })) {
+      const peepEntry = scenario === 'peep' || scenario === 'peepNoRoute';
+      state.priceDisabled = scenario === 'peepNoRoute';
       const context = await browser.newContext({ viewport: viewport === 'desktop' ? { width: 1440, height: 900 } : { width: 390, height: 844 }, ...(viewport === 'mobile' ? { isMobile: true, hasTouch: true } : {}) });
       const api = [];
       const errors = [];
       const priceStart = state.prices.length;
-      await context.addInitScript(({ wallet }) => {
+      await context.addInitScript(({ wallet, peepEntry }) => {
         const listeners = new Map();
+        let permitted = !peepEntry;
+        let connectionRequestedByUser = !peepEntry;
+        document.addEventListener('click', (event) => {
+          if (event.target instanceof Element
+            && event.target.closest('button')?.textContent?.trim() === 'Connect & buy PEEP') connectionRequestedByUser = true;
+        }, true);
         window.__ROUTE_ON_DEMAND_PROMPTS__ = 0;
         window.ethereum = {
           isMetaMask: true,
@@ -72,12 +81,17 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
           removeListener(event, fn) { listeners.set(event, (listeners.get(event) ?? []).filter((item) => item !== fn)); },
           async request({ method }) {
             if (method === 'eth_chainId') return '0x1237';
-            if (method === 'eth_accounts' || method === 'eth_requestAccounts') return [wallet];
+            if (method === 'eth_requestAccounts') {
+              if (!connectionRequestedByUser) throw Object.assign(new Error('Fixture awaits explicit connection'), { code: 4001 });
+              permitted = true;
+              return [wallet];
+            }
+            if (method === 'eth_accounts') return permitted ? [wallet] : [];
             if (method === 'eth_sendTransaction' || /sign/i.test(method)) { window.__ROUTE_ON_DEMAND_PROMPTS__++; throw new Error('No wallet action allowed in route-on-demand review acceptance'); }
             return null;
           }
         };
-      }, { wallet });
+      }, { wallet, peepEntry });
       const page = await context.newPage();
       page.on('pageerror', (error) => errors.push(error.stack ?? error.message));
       page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
@@ -98,11 +112,19 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
       const prefix = `${viewport}-route-on-demand-${scenario}`;
       const sellingToken = scenario === 'usdgToNative' || scenario === 'identityOnly';
       try {
-        await page.goto(`${base}/?market=${token}&side=${sellingToken ? 'sell' : 'buy'}`, { waitUntil: 'domcontentloaded' });
+        await page.goto(`${base}/?market=${token}${peepEntry ? '' : `&side=${sellingToken ? 'sell' : 'buy'}`}`, { waitUntil: 'domcontentloaded' });
         await page.getByRole('button', { name: 'I understand', exact: false }).click();
         const welcome = page.getByRole('button', { name: 'Start with live markets', exact: true });
         try { await welcome.click({ timeout: 1500 }); }
         catch (error) { if (await welcome.isVisible()) throw error; }
+        if (peepEntry) {
+          if (viewport === 'mobile') await page.locator('button.isBuy').click();
+          else await page.getByRole('tab', { name: 'Buy', exact: true }).click();
+          assert.deepEqual(await page.evaluate(() => window.ethereum.request({ method: 'eth_accounts' })), [], 'PEEP Buy begins disconnected');
+          await page.getByRole('button', { name: 'Connect & buy PEEP', exact: true }).click();
+          await until(() => api.some((entry) => entry.path === '/api/vnext/quotes' && entry.status === 200), 'PEEP Connect & buy must resume without a second Buy click');
+          assert.equal(new URL(page.url()).searchParams.get('market')?.toLowerCase(), peep);
+        }
         if (scenario === 'stock' || scenario === 'unverified') {
           await until(() => api.some((entry) => entry.path === '/api/markets/external' && entry.query.toLowerCase().includes(token)), 'Selected asset evidence was not evaluated');
           await pause(1500);
@@ -117,13 +139,15 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
           await page.getByLabel('Exact input amount').waitFor({ timeout: 30000 });
           assert.doesNotMatch(await page.locator('.vnTradePanel').innerText(), /Asset only|Market evidence unavailable/);
           if (scenario === 'identityOnly') await page.getByLabel('Receive asset').selectOption({ label: 'USDG' });
-          else {
+          else if (!peepEntry) {
             const settlementSelect = page.getByLabel(scenario === 'usdgToNative' ? 'Receive asset' : 'Pay with asset');
             if (await settlementSelect.inputValue() !== 'eip155:4663/native') await settlementSelect.selectOption('eip155:4663/native');
             assert.equal(await settlementSelect.inputValue(), 'eip155:4663/native');
           }
-          await page.getByLabel('Exact input amount').fill(sellingToken ? '1' : '0.001');
-          await page.locator('.vnReviewButton').click();
+          if (!peepEntry) {
+            await page.getByLabel('Exact input amount').fill(sellingToken ? '1' : '0.001');
+            await page.locator('.vnReviewButton').click();
+          }
           await until(() => api.some((entry) => entry.path === '/api/vnext/quotes' && entry.status === 200), 'Identity-only asset must reach real quote API');
           assert.ok(state.prices.slice(priceStart).some((quote) => sellingToken ? quote.sellToken.toLowerCase() === token : quote.buyToken.toLowerCase() === token), 'Actual 0x price boundary must be reached');
           if (['nativeToUsdg', 'usdgToNative'].includes(scenario)) {
@@ -131,11 +155,14 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
           } else {
             const selected = api.find((entry) => entry.path === '/api/vnext/market-search' && entry.body?.results?.some((item) => item.address.toLowerCase() === token));
             assert.ok(selected, 'Real exact search must establish the selected asset');
-            assert.deepEqual(selected.body.results.find((item) => item.address.toLowerCase() === token).markets, [], 'No canonical directory market may be fabricated');
+            const evidence = selected.body.results.find((item) => item.address.toLowerCase() === token).markets;
+            if (peepEntry) assert.ok(evidence.some((market) => market.sourceId === 'uniswap-v2'), 'PEEP retains its canonical V2 market evidence');
+            else assert.deepEqual(evidence, [], 'No canonical directory market may be fabricated');
           }
-          if (scenario === 'noRoute') {
+          if (scenario === 'noRoute' || scenario === 'peepNoRoute') {
             await until(async () => /no route|route.*unavailable/i.test(await page.locator('.vnTradePanel').innerText()), 'No liquidity must produce a truthful unavailable route');
             assert.ok(api.some((entry) => entry.path === '/api/vnext/quotes' && entry.body?.attempts?.some((attempt) => attempt.provider === 'zero-x-swap' && attempt.status === 'no_route')));
+            if (peepEntry) await until(async () => (await page.locator('.vnTradePanel').innerText()).includes('No 0x route currently available for this trade.'), 'PEEP no-route explanation must be explicit');
           } else {
             await until(() => api.some((entry) => entry.path === '/api/vnext/authorize' && entry.status === 200), 'Identity-only asset must reach real authorization');
             assert.ok(api.some((entry) => entry.path === '/api/vnext/verify' && entry.status === 200));
@@ -144,14 +171,14 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
             assert.equal(bundle.plan.provider, 'zero-x-swap');
             assert.equal(bundle.plan.providerNativeFee.feeBps, 25);
             assert.equal(bundle.plan.kind, 'swap');
-            assert.equal(bundle.plan.value, sellingToken ? '0' : '1000000000000000');
+            assert.equal(bundle.plan.value, sellingToken || peepEntry ? '0' : '1000000000000000');
             if (scenario === 'observed') {
               assert.match(await page.locator('body').innerText(), /provider observed/i);
               assert.match(await page.getByLabel('Market activity by time window').innerText(), /Unknown buys.*Unknown sells/);
             }
           }
         }
-        if (['noRoute', 'stock', 'unverified'].includes(scenario)) {
+        if (['noRoute', 'peepNoRoute', 'stock', 'unverified'].includes(scenario)) {
           assert.equal(api.filter((entry) => entry.path === '/api/vnext/verify' || entry.path === '/api/vnext/authorize').length, 0);
         }
         assert.equal(await page.evaluate(() => window.__ROUTE_ON_DEMAND_PROMPTS__), 0);

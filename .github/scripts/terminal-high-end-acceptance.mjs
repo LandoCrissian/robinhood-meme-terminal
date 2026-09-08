@@ -1,5 +1,10 @@
 import { chromium, devices } from "playwright";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+
+const directoryRequire = createRequire(new URL("../../apps/web/package.json", import.meta.url));
+directoryRequire("tsx/cjs");
+const { normalizeDirectoryMarkets, mergeVNextCanonicalBrowseMarkets, vNextMarketDirectoryViewCounts } = directoryRequire("./lib/vnext/market-directory.ts");
 
 if (process.env.RMT_ACCEPTANCE_ONLY_ZEROX === "true") {
   const { runZeroXBrowserAcceptance } = await import("./zerox-browser-acceptance.mjs");
@@ -1629,13 +1634,14 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
       return;
     }
     enrichmentStarted = true;
-    await new Promise((resolve) => setTimeout(resolve, 5_000));
+    await new Promise((resolve) => setTimeout(resolve, 45_000));
     enrichmentResolved = true;
     await route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
         markets: [peepMarket, ...markets], updatedAt: now, source: "delayed-optional-acceptance",
+        delayedSources: ["fixture-partial-activity-feed"],
         discoveryCoverage: {
           mode: "bounded", completeWithinObservedCandidates: true, truncated: false,
           returnedCount: markets.length + 1, observedCandidateCount: markets.length + 1, limit: 144
@@ -1656,7 +1662,10 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
     firstText: rows[0]?.textContent ?? ""
   }));
   if (enrichmentResolved) throw new Error(`${label}: optional enrichment resolved before canonical rows were usable`);
-  if (firstRowsMs > (directoryDelayMs > 0 ? 4_000 : 1_000)) throw new Error(`${label}: first canonical rows exceeded the performance budget (${firstRowsMs}ms)`);
+  if (firstRowsMs > 2_000) throw new Error(`${label}: first canonical rows exceeded the performance budget (${firstRowsMs}ms)`);
+  if (await page.locator(rowSelector).count() <= 8) throw new Error(`${label}: canonical directory remained capped at the curated eight`);
+  await page.getByRole("region", { name: "All admitted markets while activity is pending" }).waitFor();
+  if (!(await page.locator("body").innerText()).includes("not classified as Active")) throw new Error(`${label}: pending canonical assets were mislabeled Active`);
   const active = page.getByRole("button", { name: /^Active\s+/ });
   if (await active.getAttribute("aria-pressed") !== "true") throw new Error(`${label}: Active is not the default view`);
   const search = page.getByRole("textbox", { name: "Search Robinhood Chain markets" });
@@ -1705,7 +1714,7 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
   if (!new URL(page.url()).searchParams.has("market")) await page.locator(rowSelector).first().click();
   await page.waitForFunction(() => new URL(location.href).searchParams.has("market"), undefined, { timeout: 5_000 });
   const selectedBeforeEnrichment = new URL(page.url()).searchParams.get("market")?.toLowerCase();
-  await page.waitForFunction(() => performance.getEntriesByName("rmt:market-enrichment:request-publish").length > 0, undefined, { timeout: 10_000 });
+  await page.waitForFunction(() => performance.getEntriesByName("rmt:market-enrichment:request-publish").length > 0, undefined, { timeout: 60_000 });
   const afterEnrichment = await page.locator(rowSelector).evaluateAll((rows) => ({
     addresses: rows.map((row) => row.querySelector(".rmtSearchContract")?.textContent?.trim().toLowerCase()).filter(Boolean),
     firstText: rows[0]?.textContent ?? ""
@@ -1722,6 +1731,21 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
   if (!selectedBeforeEnrichment || selectedAfterEnrichment !== selectedBeforeEnrichment) throw new Error(`${label}: selected market identity drifted during enrichment`);
   if (afterEnrichment.addresses.length > 0 && !beforeEnrichment.addresses.every((address) => uniqueAfter.has(address))) throw new Error(`${label}: enrichment replaced canonical row identity`);
   if (afterEnrichment.firstText && beforeEnrichment.firstText === afterEnrichment.firstText) throw new Error(`${label}: optional enrichment did not incrementally enhance the visible row`);
+  await page.getByRole("button", { name: "Markets", exact: true }).click();
+  const observed = mergeVNextCanonicalBrowseMarkets(
+    [peepCanonicalDirectoryMarket(), hopiumCanonicalDirectoryMarket(), ...markets.map(canonicalDirectoryMarket)],
+    normalizeDirectoryMarkets({ markets: [peepMarket, ...markets] })
+  );
+  const counts = vNextMarketDirectoryViewCounts(observed);
+  for (const view of ["active", "trending", "new", "rwa", "all"]) {
+    const category = page.getByRole("button", { name: new RegExp(`^${view}\\s+${counts[view]}$`, "i") });
+    await category.click();
+    for (let pageIndex = 0; pageIndex < 10 && await page.locator(rowSelector).count() < counts[view]; pageIndex++) {
+      await page.getByRole("button", { name: /^Load \d+ more/ }).click();
+    }
+    if (await page.locator(rowSelector).count() !== counts[view]) throw new Error(`${label}: ${view} count differs from its list`);
+  }
+  if (!/market data delayed/i.test(await page.locator("body").innerText())) throw new Error(`${label}: partial coverage warning was hidden`);
   await context.close();
   return {
     label,
@@ -1730,6 +1754,9 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
     parsePublishMs: timing.parsePublishMs,
     directoryRequestPublishMs: timing.requestPublishMs,
     enrichmentMs: timing.enrichmentMs,
+    externalFixtureDelayMs: 45_000,
+    observedCounts: counts,
+    delayedCountsNumeric: true,
     canonicalRowsBeforeEnrichment: true,
     searchDuringEnrichment: true,
     selectionDuringEnrichment: true,

@@ -5,6 +5,7 @@ import type { ExternalMarketResponse, UniversalMarketResolution } from "../exter
 import { buildAssetMarketRecord } from "../external-market";
 import { normalizeProviderPairForAsset } from "../external-market-identity";
 import { readVNextCanonicalMarketDirectoryPage } from "../server/vnext-canonical-market-directory";
+import { verifyIndexedDirectory } from "../server/vnext-indexed-market-directory-smoke";
 import { readVNextLegacyMarketDirectoryPage } from "../server/vnext-legacy-market-directory";
 import {
   readVNextMarketDirectoryRequest,
@@ -1332,6 +1333,6 @@ assert.match(shell, /current \+ VNEXT_MARKET_DIRECTORY_PAGE_SIZE/);
 const localPagination = shell.slice(shell.indexOf("const loadMoreMarkets"), shell.indexOf("const requestTradeSide"));
 assert.doesNotMatch(localPagination, /fetch\(|refresh\(|selectAddress\(|quote/i);
 
-void verifyCanonicalBrowsePages().then(() => {
+void verifyCanonicalBrowsePages().then(verifyIndexedDirectory).then(() => {
   console.log("RMT VNext market directory smoke checks passed.");
 });

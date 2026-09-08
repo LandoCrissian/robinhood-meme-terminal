@@ -267,6 +267,13 @@ export function parseVNextCanonicalDirectoryResponse(value: unknown): VNextCanon
     const name = text(market.name, 80);
     const symbol = text(market.symbol, 16);
     if (!name || !symbol) return [];
+    const identity = record(market.verifiedIdentity);
+    if (market.verifiedIdentity !== undefined && (!identity
+      || !isAddress(String(identity.address ?? ""), { strict: false })
+      || getAddress(String(identity.address)) !== address
+      || !text(identity.name, 80) || !text(identity.symbol, 16)
+      || !Number.isSafeInteger(identity.decimals) || Number(identity.decimals) < 0 || Number(identity.decimals) > 255)) return [];
+    if (market.rwaRelationship !== undefined && market.rwaRelationship !== "canonical-stock-token" && market.rwaRelationship !== "paired-market-asset") return [];
     return [{
       address,
       assetId: canonicalExternalAssetId(4_663, address) ?? undefined,
@@ -294,7 +301,9 @@ export function parseVNextCanonicalDirectoryResponse(value: unknown): VNextCanon
       buyPressureBps: null,
       riskFlags: null,
       signal: null,
-      canonicalMarkets: canonicalMarkets as VNextUniversalMarketSearchPool[]
+      canonicalMarkets: canonicalMarkets as VNextUniversalMarketSearchPool[],
+      ...(identity ? { verifiedIdentity: { address, name: text(identity.name, 80), symbol: text(identity.symbol, 16), decimals: Number(identity.decimals) } } : {}),
+      ...(market.rwaRelationship ? { rwaRelationship: market.rwaRelationship as VNextRwaRelationship } : {})
     }];
   });
   if (
@@ -306,6 +315,7 @@ export function parseVNextCanonicalDirectoryResponse(value: unknown): VNextCanon
     coverage: candidate.coverage,
     nextCursor: candidate.nextCursor as string | null,
     updatedAt: candidate.updatedAt,
+    ...(candidate.stale === true ? { stale: true } : {}),
     markets
   };
 }
