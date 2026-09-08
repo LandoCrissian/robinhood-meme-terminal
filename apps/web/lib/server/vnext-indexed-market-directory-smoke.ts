@@ -48,6 +48,31 @@ export async function verifyIndexedDirectory() {
     }
   });
   assert.equal(parseVNextCanonicalDirectoryResponse(incomplete.body)?.revalidationComplete, false);
+  let emptyIdentityAdmissionCalled = false;
+  const emptyIdentities = await readVNextIndexedMarketDirectoryPage("https://fixture.invalid", {
+    ...dependencies,
+    readIdentities: async () => new Map(),
+    admit: async (rows) => {
+      emptyIdentityAdmissionCalled = true;
+      return dependencies.admit!(rows);
+    }
+  });
+  assert.equal(emptyIdentities.status, 503, "Unavailable identities must not publish an empty indexed success");
+  assert.equal("markets" in emptyIdentities.body, false);
+  assert.equal(emptyIdentityAdmissionCalled, false, "Missing identities are not positive identity quarantine");
+  const genuinelyEmpty = await readVNextIndexedMarketDirectoryPage("https://fixture.invalid", {
+    ...dependencies,
+    readInventory: async () => ({ ...inventory, pools: [], nextCursor: null }),
+    readIdentities: async () => new Map()
+  });
+  assert.equal(genuinelyEmpty.status, 200, "A genuinely empty verified inventory remains valid");
+  assert.equal(parseVNextCanonicalDirectoryResponse(genuinelyEmpty.body)?.markets?.length, 0);
+  const positivelyQuarantined = await readVNextIndexedMarketDirectoryPage("https://fixture.invalid", {
+    ...dependencies,
+    admit: async (rows) => ({ ...(await dependencies.admit!(rows)), admitted: [] })
+  });
+  assert.equal(positivelyQuarantined.status, 200, "Positive quarantine is not identity-read unavailability");
+  assert.equal(parseVNextCanonicalDirectoryResponse(positivelyQuarantined.body)?.markets?.length, 0);
   assert.equal(parsed.markets!.some((market) => market.address === address(100)), false, "Positive identity conflict remains quarantined");
   assert.equal(vNextSelectedMarketExecutionState(parsed.markets!.find((market) => market.address === address(101))), "stock-token-view-only");
   assert.equal(selectVNextMarketDirectoryView(parsed.markets!, "active").length, 0);
