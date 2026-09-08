@@ -11,6 +11,9 @@ import { VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY } from "../vnext/provider-fee-se
 const webRoot = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const apiRoot = join(webRoot, "app/api");
 const transactionAuthorityKeys = /approvalSpender|approvalTransaction|depositTransaction|calldata|executionId|transactionTarget/;
+for (const key of ["approvalSpender", "approvalTransaction", "depositTransaction", "calldata", "executionId", "transactionTarget"]) {
+  assert.ok(transactionAuthorityKeys.test(`return Response.json({ ${key}: authority });`), `prohibited route surface ${key} must remain detected`);
+}
 const forbiddenPreparationImports = /external-uniswap-trade|external-uniswap-v4-trade|rmt-v4-trade|sushi-trade|vnext-across-funding|live-position-guard-execution|sendLivePositionGuardTransaction/;
 
 function routesBelow(root: string): string[] {

@@ -1,9 +1,10 @@
 {
-  "observedAt": "2026-09-08T14:06:48.324Z",
+  "observedAt": "2026-09-08T14:52:11.626Z",
   "chainId": 4663,
   "requestFeeBps": 25,
   "requestSlippagePpm": 9900,
-  "feeAdmissionChanged": false,
+  "feeAdmissionChanged": true,
+  "atomicPolicy": "OWNER_AUTHORIZED_NEAREST_INTEGER_HALF_UP",
   "officialDocumentation": "https://docs.0x.org/evm/0x-swap-api/guides/monetize-your-app-using-swap",
   "documentationFinding": "Formula documented; no explicit integer tie/rounding rule found. Live observations are not a contractual specification.",
   "rows": [
@@ -100,8 +101,8 @@
       "nearestHalfEvenMatch": false,
       "differenceFromFloor": "1",
       "deviationNumerator": "5000",
-      "status": "invalid_response",
-      "reason": "WRONG_INTEGRATOR_FEE_AMOUNT"
+      "status": "indicative",
+      "reason": null
     },
     {
       "observation": 1,
@@ -124,8 +125,8 @@
       "nearestHalfEvenMatch": true,
       "differenceFromFloor": "1",
       "deviationNumerator": "4975",
-      "status": "invalid_response",
-      "reason": "WRONG_INTEGRATOR_FEE_AMOUNT"
+      "status": "indicative",
+      "reason": null
     },
     {
       "observation": 1,
@@ -148,8 +149,8 @@
       "nearestHalfEvenMatch": true,
       "differenceFromFloor": "1",
       "deviationNumerator": "25",
-      "status": "invalid_response",
-      "reason": "WRONG_INTEGRATOR_FEE_AMOUNT"
+      "status": "indicative",
+      "reason": null
     },
     {
       "observation": 1,
@@ -172,8 +173,8 @@
       "nearestHalfEvenMatch": true,
       "differenceFromFloor": "1",
       "deviationNumerator": "5000",
-      "status": "invalid_response",
-      "reason": "WRONG_INTEGRATOR_FEE_AMOUNT"
+      "status": "indicative",
+      "reason": null
     },
     {
       "observation": 1,
@@ -268,8 +269,8 @@
       "nearestHalfEvenMatch": true,
       "differenceFromFloor": "1",
       "deviationNumerator": "5000",
-      "status": "invalid_response",
-      "reason": "WRONG_INTEGRATOR_FEE_AMOUNT"
+      "status": "indicative",
+      "reason": null
     },
     {
       "observation": 1,
@@ -292,8 +293,8 @@
       "nearestHalfEvenMatch": true,
       "differenceFromFloor": "1",
       "deviationNumerator": "4975",
-      "status": "invalid_response",
-      "reason": "WRONG_INTEGRATOR_FEE_AMOUNT"
+      "status": "indicative",
+      "reason": null
     },
     {
       "observation": 1,
@@ -316,8 +317,8 @@
       "nearestHalfEvenMatch": true,
       "differenceFromFloor": "1",
       "deviationNumerator": "25",
-      "status": "invalid_response",
-      "reason": "WRONG_INTEGRATOR_FEE_AMOUNT"
+      "status": "indicative",
+      "reason": null
     },
     {
       "observation": 1,
@@ -340,8 +341,8 @@
       "nearestHalfEvenMatch": false,
       "differenceFromFloor": "1",
       "deviationNumerator": "5000",
-      "status": "invalid_response",
-      "reason": "WRONG_INTEGRATOR_FEE_AMOUNT"
+      "status": "indicative",
+      "reason": null
     },
     {
       "observation": 1,
@@ -364,8 +365,8 @@
       "nearestHalfEvenMatch": true,
       "differenceFromFloor": "1",
       "deviationNumerator": "4525",
-      "status": "invalid_response",
-      "reason": "WRONG_INTEGRATOR_FEE_AMOUNT"
+      "status": "indicative",
+      "reason": null
     },
     {
       "observation": 1,
@@ -460,8 +461,8 @@
       "nearestHalfEvenMatch": false,
       "differenceFromFloor": "1",
       "deviationNumerator": "5000",
-      "status": "invalid_response",
-      "reason": "WRONG_INTEGRATOR_FEE_AMOUNT"
+      "status": "indicative",
+      "reason": null
     },
     {
       "observation": 1,
@@ -477,14 +478,14 @@
       "integerCeil": "2501",
       "nearestHalfUp": "2501",
       "nearestHalfEven": "2501",
-      "zeroXReturnedAmount": null,
+      "zeroXReturnedAmount": "2501",
       "floorMatch": false,
-      "ceilMatch": false,
-      "nearestHalfUpMatch": false,
-      "nearestHalfEvenMatch": false,
-      "differenceFromFloor": null,
-      "deviationNumerator": null,
-      "status": "temporarily_unavailable",
+      "ceilMatch": true,
+      "nearestHalfUpMatch": true,
+      "nearestHalfEvenMatch": true,
+      "differenceFromFloor": "1",
+      "deviationNumerator": "4975",
+      "status": "indicative",
       "reason": null
     },
     {
@@ -501,14 +502,14 @@
       "integerCeil": "2501",
       "nearestHalfUp": "2501",
       "nearestHalfEven": "2501",
-      "zeroXReturnedAmount": null,
+      "zeroXReturnedAmount": "2501",
       "floorMatch": false,
-      "ceilMatch": false,
-      "nearestHalfUpMatch": false,
-      "nearestHalfEvenMatch": false,
-      "differenceFromFloor": null,
-      "deviationNumerator": null,
-      "status": "temporarily_unavailable",
+      "ceilMatch": true,
+      "nearestHalfUpMatch": true,
+      "nearestHalfEvenMatch": true,
+      "differenceFromFloor": "1",
+      "deviationNumerator": "25",
+      "status": "indicative",
       "reason": null
     },
     {
@@ -532,8 +533,8 @@
       "nearestHalfEvenMatch": true,
       "differenceFromFloor": "1",
       "deviationNumerator": "5000",
-      "status": "invalid_response",
-      "reason": "WRONG_INTEGRATOR_FEE_AMOUNT"
+      "status": "indicative",
+      "reason": null
     },
     {
       "observation": 2,
@@ -573,14 +574,14 @@
       "integerCeil": "1250000000001",
       "nearestHalfUp": "1250000000000",
       "nearestHalfEven": "1250000000000",
-      "zeroXReturnedAmount": "1250000000000",
-      "floorMatch": true,
+      "zeroXReturnedAmount": null,
+      "floorMatch": false,
       "ceilMatch": false,
-      "nearestHalfUpMatch": true,
-      "nearestHalfEvenMatch": true,
-      "differenceFromFloor": "0",
-      "deviationNumerator": "-25",
-      "status": "indicative",
+      "nearestHalfUpMatch": false,
+      "nearestHalfEvenMatch": false,
+      "differenceFromFloor": null,
+      "deviationNumerator": null,
+      "status": "temporarily_unavailable",
       "reason": null
     },
     {
@@ -597,14 +598,14 @@
       "integerCeil": "1250000000001",
       "nearestHalfUp": "1250000000000",
       "nearestHalfEven": "1250000000000",
-      "zeroXReturnedAmount": "1250000000000",
-      "floorMatch": true,
+      "zeroXReturnedAmount": null,
+      "floorMatch": false,
       "ceilMatch": false,
-      "nearestHalfUpMatch": true,
-      "nearestHalfEvenMatch": true,
-      "differenceFromFloor": "0",
-      "deviationNumerator": "-4975",
-      "status": "indicative",
+      "nearestHalfUpMatch": false,
+      "nearestHalfEvenMatch": false,
+      "differenceFromFloor": null,
+      "deviationNumerator": null,
+      "status": "temporarily_unavailable",
       "reason": null
     },
     {
@@ -621,15 +622,15 @@
       "integerCeil": "1250000000001",
       "nearestHalfUp": "1250000000001",
       "nearestHalfEven": "1250000000000",
-      "zeroXReturnedAmount": "1250000000001",
+      "zeroXReturnedAmount": null,
       "floorMatch": false,
-      "ceilMatch": true,
-      "nearestHalfUpMatch": true,
+      "ceilMatch": false,
+      "nearestHalfUpMatch": false,
       "nearestHalfEvenMatch": false,
-      "differenceFromFloor": "1",
-      "deviationNumerator": "5000",
-      "status": "invalid_response",
-      "reason": "WRONG_INTEGRATOR_FEE_AMOUNT"
+      "differenceFromFloor": null,
+      "deviationNumerator": null,
+      "status": "temporarily_unavailable",
+      "reason": null
     },
     {
       "observation": 2,
@@ -652,8 +653,8 @@
       "nearestHalfEvenMatch": true,
       "differenceFromFloor": "1",
       "deviationNumerator": "4975",
-      "status": "invalid_response",
-      "reason": "WRONG_INTEGRATOR_FEE_AMOUNT"
+      "status": "indicative",
+      "reason": null
     },
     {
       "observation": 2,
@@ -676,8 +677,8 @@
       "nearestHalfEvenMatch": true,
       "differenceFromFloor": "1",
       "deviationNumerator": "25",
-      "status": "invalid_response",
-      "reason": "WRONG_INTEGRATOR_FEE_AMOUNT"
+      "status": "indicative",
+      "reason": null
     },
     {
       "observation": 2,
@@ -700,8 +701,8 @@
       "nearestHalfEvenMatch": true,
       "differenceFromFloor": "1",
       "deviationNumerator": "5000",
-      "status": "invalid_response",
-      "reason": "WRONG_INTEGRATOR_FEE_AMOUNT"
+      "status": "indicative",
+      "reason": null
     },
     {
       "observation": 2,
@@ -796,8 +797,8 @@
       "nearestHalfEvenMatch": true,
       "differenceFromFloor": "1",
       "deviationNumerator": "5000",
-      "status": "invalid_response",
-      "reason": "WRONG_INTEGRATOR_FEE_AMOUNT"
+      "status": "indicative",
+      "reason": null
     },
     {
       "observation": 2,
@@ -820,8 +821,8 @@
       "nearestHalfEvenMatch": true,
       "differenceFromFloor": "1",
       "deviationNumerator": "4975",
-      "status": "invalid_response",
-      "reason": "WRONG_INTEGRATOR_FEE_AMOUNT"
+      "status": "indicative",
+      "reason": null
     },
     {
       "observation": 2,
@@ -844,8 +845,8 @@
       "nearestHalfEvenMatch": true,
       "differenceFromFloor": "1",
       "deviationNumerator": "25",
-      "status": "invalid_response",
-      "reason": "WRONG_INTEGRATOR_FEE_AMOUNT"
+      "status": "indicative",
+      "reason": null
     },
     {
       "observation": 2,
@@ -868,8 +869,8 @@
       "nearestHalfEvenMatch": false,
       "differenceFromFloor": "1",
       "deviationNumerator": "5000",
-      "status": "invalid_response",
-      "reason": "WRONG_INTEGRATOR_FEE_AMOUNT"
+      "status": "indicative",
+      "reason": null
     },
     {
       "observation": 2,
@@ -892,8 +893,8 @@
       "nearestHalfEvenMatch": true,
       "differenceFromFloor": "1",
       "deviationNumerator": "4525",
-      "status": "invalid_response",
-      "reason": "WRONG_INTEGRATOR_FEE_AMOUNT"
+      "status": "indicative",
+      "reason": null
     },
     {
       "observation": 2,
@@ -988,8 +989,8 @@
       "nearestHalfEvenMatch": false,
       "differenceFromFloor": "1",
       "deviationNumerator": "5000",
-      "status": "invalid_response",
-      "reason": "WRONG_INTEGRATOR_FEE_AMOUNT"
+      "status": "indicative",
+      "reason": null
     },
     {
       "observation": 2,
@@ -1012,8 +1013,8 @@
       "nearestHalfEvenMatch": true,
       "differenceFromFloor": "1",
       "deviationNumerator": "4975",
-      "status": "invalid_response",
-      "reason": "WRONG_INTEGRATOR_FEE_AMOUNT"
+      "status": "indicative",
+      "reason": null
     },
     {
       "observation": 2,
@@ -1029,15 +1030,15 @@
       "integerCeil": "2501",
       "nearestHalfUp": "2501",
       "nearestHalfEven": "2501",
-      "zeroXReturnedAmount": "2501",
+      "zeroXReturnedAmount": null,
       "floorMatch": false,
-      "ceilMatch": true,
-      "nearestHalfUpMatch": true,
-      "nearestHalfEvenMatch": true,
-      "differenceFromFloor": "1",
-      "deviationNumerator": "25",
-      "status": "invalid_response",
-      "reason": "WRONG_INTEGRATOR_FEE_AMOUNT"
+      "ceilMatch": false,
+      "nearestHalfUpMatch": false,
+      "nearestHalfEvenMatch": false,
+      "differenceFromFloor": null,
+      "deviationNumerator": null,
+      "status": "temporarily_unavailable",
+      "reason": null
     },
     {
       "observation": 2,
@@ -1053,15 +1054,15 @@
       "integerCeil": "2502",
       "nearestHalfUp": "2502",
       "nearestHalfEven": "2502",
-      "zeroXReturnedAmount": "2502",
+      "zeroXReturnedAmount": null,
       "floorMatch": false,
-      "ceilMatch": true,
-      "nearestHalfUpMatch": true,
-      "nearestHalfEvenMatch": true,
-      "differenceFromFloor": "1",
-      "deviationNumerator": "5000",
-      "status": "invalid_response",
-      "reason": "WRONG_INTEGRATOR_FEE_AMOUNT"
+      "ceilMatch": false,
+      "nearestHalfUpMatch": false,
+      "nearestHalfEvenMatch": false,
+      "differenceFromFloor": null,
+      "deviationNumerator": null,
+      "status": "temporarily_unavailable",
+      "reason": null
     }
   ],
   "walletRequests": 0,

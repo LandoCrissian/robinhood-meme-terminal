@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { getAddress, zeroAddress } from "viem";
 import { createZeroXSwapDiagnosticAdapter } from "../lib/server/vnext-zero-x-adapter";
 import type { ZeroXPriceDiagnostic } from "../lib/server/vnext-zero-x-response-diagnostics";
+import { zeroXIntegratorFeeAmount } from "../lib/vnext/zero-x-settlement";
 
 async function main() {
   if (!process.env.RMT_ZEROX_API_KEY) process.loadEnvFile(".env.local");
@@ -28,7 +29,7 @@ async function main() {
         inputIdentity: { address: input.asset, symbol: input.symbol, decimals: input.decimals },
         outputIdentity: { address: input.output, symbol: input.output === usdg ? "USDG" : "PEEP", decimals: input.output === usdg ? 6 : 18 } });
       const numerator = amount * 25n, floor = numerator / 10000n, ceil = (numerator + 9999n) / 10000n;
-      const nearest = (numerator + 5000n) / 10000n;
+      const nearest = BigInt(zeroXIntegratorFeeAmount(amount.toString()));
       const bankers = numerator % 10000n === 5000n ? floor + floor % 2n : nearest;
       const returned = seen[0]?.economics.integratorFee?.amount ?? null;
       rows.push({ observation, symbol: input.symbol, assetContract: input.asset, outputAsset: input.output, decimals: input.decimals,
@@ -43,7 +44,7 @@ async function main() {
   }
   const out = resolve("../../evidence/trading-hardening/sell-response-closure"); mkdirSync(out, { recursive: true });
   const report = { observedAt: new Date().toISOString(), chainId: 4663, requestFeeBps: 25, requestSlippagePpm: 9900,
-    feeAdmissionChanged: false, officialDocumentation: "https://docs.0x.org/evm/0x-swap-api/guides/monetize-your-app-using-swap",
+    feeAdmissionChanged: true, atomicPolicy: "OWNER_AUTHORIZED_NEAREST_INTEGER_HALF_UP", officialDocumentation: "https://docs.0x.org/evm/0x-swap-api/guides/monetize-your-app-using-swap",
     documentationFinding: "Formula documented; no explicit integer tie/rounding rule found. Live observations are not a contractual specification.",
     rows, walletRequests: 0, signatures: 0, transactions: 0 };
   writeFileSync(resolve(out, "fee-rounding.json"), JSON.stringify(report, null, 2) + "\n");
@@ -52,6 +53,6 @@ async function main() {
   const observed = rows.filter(row => row.zeroXReturnedAmount !== null);
   console.log(JSON.stringify({ cases: rows.length, observed: observed.length, floorMatches: observed.filter(row => row.floorMatch).length,
     ceilMatches: observed.filter(row => row.ceilMatch).length, halfUpMatches: observed.filter(row => row.nearestHalfUpMatch).length,
-    halfEvenMatches: observed.filter(row => row.nearestHalfEvenMatch).length, feeAdmissionChanged: false }));
+    halfEvenMatches: observed.filter(row => row.nearestHalfEvenMatch).length, feeAdmissionChanged: true }));
 }
 void main().catch(() => { console.error("ROUNDING_PROOF_UNAVAILABLE_NO_RAW_ERROR_RETAINED"); process.exitCode = 1; });

@@ -16,6 +16,8 @@ type Row = Record<string, any>;
 const root = resolve("../../evidence/trading-hardening");
 const baseline = JSON.parse(readFileSync(resolve(root, "zero-x-50-token-matrix.json"), "utf8"));
 const out = resolve(root, "sell-response-closure");
+const previous = JSON.parse(readFileSync(resolve(out, "pre-half-up-matrix.json"), "utf8"));
+const previousFeeMismatchCases: Row[] = [];
 const rows: Row[] = [], peepCases: Row[] = [], originalInvalidCases: Row[] = [], admissions: Row[] = [];
 const recipient = getAddress(baseline.testWallet);
 const seen: ZeroXPriceDiagnostic[] = [];
@@ -34,11 +36,13 @@ function save() {
     originalHead: "3a8bc7f8ee266c0f350a477334df93888df8c00c", observedAt: new Date().toISOString(), complete,
     source: "Frozen original 50 contracts; current exact-contract canonical search admission; fresh BUY output funds paired SELL amount; no replacement sampling",
     firmVerifiedMeaning: "Strict executable-envelope verification reached; actual test wallet remains unfunded and is NOT authorized. Funded read-only simulation is separate evidence.",
-    distribution: baseline.distribution, admissions, rows, peepCases, originalInvalidCases,
+    atomicFeePolicy: "OWNER_AUTHORIZED_NEAREST_INTEGER_HALF_UP",
+    distribution: baseline.distribution, admissions, rows, peepCases, originalInvalidCases, previousFeeMismatchCases,
     legacyExecutorCalls: 0, walletRequests: 0, signatures: 0, transactions: 0 };
   writeFileSync(resolve(out, "matrix.json"), JSON.stringify(report, null, 2) + "\n");
   const all = [...rows.map(row => ({ ...row, section: "matrix" })), ...peepCases.map(row => ({ ...row, section: "peep" })),
-    ...originalInvalidCases.map(row => ({ ...row, section: "original_invalid_replay" }))];
+    ...originalInvalidCases.map(row => ({ ...row, section: "original_invalid_replay" })),
+    ...previousFeeMismatchCases.map(row => ({ ...row, section: "previous_fee_mismatch_replay" }))];
   const columns = [...new Set(all.flatMap(Object.keys))];
   const cell = (value: unknown) => `"${(typeof value === "object" && value !== null ? JSON.stringify(value) : String(value ?? "")).replaceAll('"', '""')}"`;
   writeFileSync(resolve(out, "matrix.csv"), [columns.map(cell).join(","), ...all.map(row => columns.map(key => cell((row as Row)[key])).join(","))].join("\n") + "\n");
@@ -115,6 +119,10 @@ async function main() {
   for (const oldBuy of baseline.rows.filter((row: Row) => row.direction === "BUY")) {
     const oldSell = baseline.rows.find((row: Row) => row.sampleIndex === oldBuy.sampleIndex && row.direction === "SELL");
     const identity = await admit(oldBuy.assetContract);
+    for (const old of previous.rows.filter((row: Row) => row.sampleIndex === oldBuy.sampleIndex && row.invalidResponseReason === "WRONG_INTEGRATOR_FEE_AMOUNT")) {
+      previousFeeMismatchCases.push({ ...await runCase(old, identity, old.testAmount, true),
+        previousExpectedFee: old.expectedIntegratorFee, previousReturnedFee: old.responseEconomics.integratorFee.amount });
+    }
     for (const old of [oldBuy, oldSell].filter(row => row.errorClassification === "invalid_response")) {
       originalInvalidCases.push({ ...await runCase(old, identity, old.testAmount, false), originalStatus: "invalid_response", originalInputAmount: old.testAmount });
     }

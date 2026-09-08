@@ -35,7 +35,9 @@ export function fromZeroXToken(address: string): Address {
 
 export function zeroXIntegratorFeeAmount(userGrossInputAtomic: string) {
   if (!POSITIVE_ATOMIC.test(userGrossInputAtomic)) throw new Error("RMT rejected an invalid 0x gross input.");
-  return (BigInt(userGrossInputAtomic) * BigInt(RMT_ZERO_X_FEE_BPS) / RMT_ZERO_X_FEE_DENOMINATOR).toString();
+  // Owner-authorized atomic realization of 25 bps: nearest integer, ties upward.
+  const numerator = BigInt(userGrossInputAtomic) * BigInt(RMT_ZERO_X_FEE_BPS);
+  return ((numerator + RMT_ZERO_X_FEE_DENOMINATOR / 2n) / RMT_ZERO_X_FEE_DENOMINATOR).toString();
 }
 
 export type VNextZeroXProviderNativeFee = {

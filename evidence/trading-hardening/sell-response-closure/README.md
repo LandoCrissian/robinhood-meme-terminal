@@ -1,8 +1,12 @@
 # PR 508: response reasons, fee rounding and native trace boundary
 
 Base: `df77bafe05417426baff0ea139649e6d7be951ae`.
-Starting PR head: `3a8bc7f8ee266c0f350a477334df93888df8c00c`.
-Production, wallet journals, fee admission and ordinary RPC configuration are unchanged.
+Starting PR head for final closure: `af21da49785a0901add1ea19ca631f74ce9a47bd`.
+Production, wallet journals and ordinary RPC configuration are unchanged.
+The owner authorized nearest-integer half-up atomic realization of the unchanged
+25-bps sell-token fee. `zeroXIntegratorFeeAmount` is the shared calculation used by
+the price parser, firm verifier, fee/plan binding, tests and evidence harness.
+Missing fees, wrong tokens and any amount other than this exact result remain rejected.
 
 ## Corrected frozen matrix
 
@@ -17,40 +21,46 @@ run without these fields is not firm or simulation evidence. Final results:
 | Direction | Firm envelope verified | No route | Fee-policy rejected | Provider unavailable |
 |---|---:|---:|---:|---:|
 | Buy | 44 | 5 | 1 | 0 |
-| Sell | 12 | 21 | 15 | 2 |
+| Sell | 24 | 21 | 1 | 4 |
 
-Of 56 firm envelopes, 54 passed the existing exact-envelope funded `eth_call`.
-Two Sell storage layouts (VANTRA and ONE) remain unsupported, not passes. The
+Of 68 firm envelopes, 65 passed the existing exact-envelope funded `eth_call`.
+Three storage-layout simulations remain unsupported, not passes. The
 ordinary unfunded test identity cannot authorize these swaps. Ephemeral diagnostic
 funding grants no wallet authority and changes no transaction envelope or pool.
 
-PEEP ETH Buy, ETH Sell and USDG Buy also passed firm verification and read-only
-simulation, outside the 100-row matrix. PEEP USDG Sell remains rejected for an
-integrator fee one atomic unit above RMT's canonical floor. All current invalid
-responses have explicit bounded reasons: 14 `WRONG_INTEGRATOR_FEE_AMOUNT` and two
-`MISSING_INTEGRATOR_FEE` in the matrix. Wrapping/unwrapping WETH omits the RMT fee.
-Historical CRUMBS and MONID invalid amounts now return no route; those historical
-reasons cannot be reconstructed from a newly absent quote.
+All four PEEP directions passed firm verification and read-only simulation outside
+the 100-row matrix. The two remaining policy rejections are `MISSING_INTEGRATOR_FEE`
+for WETH wrapping/unwrapping. There are no unexplained current matrix responses.
 
-## Controlled rounding observations, not permission to change fees
+`pre-half-up-matrix.json` preserves the actual preceding run unchanged. Its 14
+fee mismatches are replayed at their exact original amounts in
+`previousFeeMismatchCases`: 13 reached firm verification, one was temporarily
+unavailable, and none returned a fee mismatch. Their extra simulations are separate
+from the 100-case totals: 11 passed, two storage layouts were unsupported.
+
+The original PEEP -> USDG amount `46344563744511694555819` now has exact canonical
+and returned fee `115861409361279236390`, versus floor `115861409361279236389`.
+The fresh paired PEEP -> USDG trade also passed firm verification and simulation.
+
+## Controlled rounding observations and authorized atomic policy
 
 `fee-rounding.json` and `.csv` contain 44 queries: two repetitions over native ETH,
 18-decimal PEEP and 6-decimal USDG, including zero/small/midpoint/large remainders,
 both midpoint parities, and the original PEEP USDG Sell amount.
 
-42 returned fee observations all match nearest-integer half-up:
+39 returned fee observations all match nearest-integer half-up:
 `floor((sellAmount * 25 + 5000) / 10000)`.
-Two requests were temporarily unavailable and contribute no rounding evidence.
-Only 18 observations match floor and 30 match ceiling; this is NOT a ceiling rule.
+Five requests supplied no fee observation and contribute no rounding evidence.
+Only 16 observations match floor and 29 match ceiling; this is NOT a ceiling rule.
 The maximum observed absolute rational deviation is 5000/10000 = 0.5 atomic units.
-Half-up can exceed the existing integer floor by one atomic unit. For 18 decimals,
+Half-up can exceed integer floor by one atomic unit. For 18 decimals,
 half an atomic unit is 0.0000000000000000005 tokens; for 6 decimals it is 0.0000005.
 
 The [official 0x monetization guide](https://docs.0x.org/evm/0x-swap-api/guides/monetize-your-app-using-swap)
 documents the proportional formula but no explicit integer rounding/tie rule was
-found. Live behavior is not an authoritative contractual specification. No fee
-admission change was made. Owner review is required before changing the canonical
-atomic fee rule to admit responses that do not match the current floor.
+found. The authority for this atomic rule is the owner's explicit product-policy
+decision, not an inferred provider specification. No fee-bps or fee-token change
+was made, and arbitrary floor-plus-one admission is not permitted.
 
 ## Dedicated native trace authority
 
