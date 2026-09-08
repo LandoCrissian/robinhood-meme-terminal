@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { keccak256, zeroAddress } from "viem";
 import { verifyVNextNativeOutputSettlement } from "./output-settlement";
+import { normalizeNativeTrace } from "./normalized-native-trace";
 
 const owner = "0x1111111111111111111111111111111111111111";
 const holder = "0x0000000000001fF3684f28c67538d4D072C22734";
@@ -23,6 +24,12 @@ const trace = { type: "CALL", from: owner, to: holder, input, value: "0x0", call
 ] };
 const verify = (candidate: unknown) => verifyVNextNativeOutputSettlement(record, receipt, transaction, candidate);
 assert.equal(verify(trace)?.amountAtomic, "150", "exact transaction trace proves native output");
+assert.equal(verify(normalizeNativeTrace(trace))?.amountAtomic, "150", "server-normalized calldata hash retains exact binding");
+assert.equal(verify({ ...normalizeNativeTrace(trace), inputHash: hash }), null);
+assert.equal(verify({ ...trace, calls: [{ ...trace.calls[0], to: holder }] }), null, "unrelated recipient grants no output");
+assert.equal(verify({ ...trace, calls: [{ ...trace.calls[0], value: "0x63" }] }), null, "positive but below minimum remains unsettled");
+assert.equal(verify({ ...trace, calls: [{ ...trace.calls[0], value: "0x64" }] })?.amountAtomic, "100", "exact minimum is sufficient");
+assert.equal(verify({ ...trace, calls: [...trace.calls, { ...trace.calls[0], from: owner, to: holder, value: "0x64", error: "reverted" }] })?.amountAtomic, "150");
 assert.equal(verify({ ...trace, error: "execution reverted" }), null);
 assert.equal(verify({ ...trace, input: "0x99999999" }), null);
 assert.equal(verify({ ...trace, calls: [] }), null);

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import "./zero-x-closure-evidence-check.mjs";
 import { readFileSync } from "node:fs";
 
 const artifact = JSON.parse(readFileSync(new URL("../../evidence/trading-hardening/zero-x-50-token-matrix.json", import.meta.url), "utf8"));

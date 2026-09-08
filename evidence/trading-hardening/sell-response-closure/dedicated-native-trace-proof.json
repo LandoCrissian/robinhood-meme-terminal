@@ -1,0 +1,18 @@
+{
+  "observedAt": "2026-09-08T14:15:20.701Z",
+  "chainId": 4663,
+  "traceMethod": "debug_traceTransaction",
+  "traceProviderKind": "NOT_CONFIGURED",
+  "traceSupported": "UNPROVEN",
+  "callTracerSupported": "UNPROVEN",
+  "traceTxHash": null,
+  "traceNormalization": "NOT_REACHED",
+  "verifierResult": "NOT_REACHED",
+  "liveNativeSettlementProof": "NOT_ESTABLISHED",
+  "credentialServerOnly": true,
+  "walletRequests": 0,
+  "signatures": 0,
+  "transactions": 0,
+  "journalChanged": false,
+  "blocker": "SERVER_ONLY_TRACE_ENDPOINT_NOT_SUPPLIED"
+}

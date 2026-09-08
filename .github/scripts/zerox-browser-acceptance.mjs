@@ -227,6 +227,7 @@ export async function runZeroXBrowserAcceptance() {
     RMT_VNEXT_AUTHORIZATION_ENABLED: 'true', RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: 'zero-x-swap',
     RMT_VNEXT_ZEROX_OBSERVATION_ENABLED: 'true', RMT_VNEXT_ZEROX_FIRM_QUOTE_VERIFICATION_ENABLED: 'true',
     RMT_ZEROX_API_KEY: 'server-only-test-key',
+    RMT_SETTLEMENT_TRACE_RPC_URL: 'https://browser-acceptance.invalid',
     RMT_VNEXT_VERIFICATION_COMMITMENT_SECRET: "deterministic-browser-commitment-secret-local-only", RMT_ZEROX_ALLOWANCE_HOLDER: holder, RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH: keccak256(runtime),
     NEXT_PUBLIC_PRIVY_APP_ID: claims.aud, PRIVY_VERIFICATION_KEY: publicKey.export({ format: 'pem', type: 'spki' })
   };

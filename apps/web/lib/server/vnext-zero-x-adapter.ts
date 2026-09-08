@@ -3,6 +3,8 @@ import { getAddress, isAddress, type Address } from "viem";
 import { disabledVNextFeeEconomics, unavailableVNextQuoteAttempt, type VNextProviderQuoteRequest, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
 import { prepareZeroXSwapAuthorization, verifyZeroXSwapFirmQuote } from "./vnext-zero-x-firm-quote-verifier";
 import { VNEXT_PROVIDER_NATIVE_INPUT_FEE } from "../vnext/execution-settlement";
+import { ZeroXInvalidResponseError, safeZeroXPriceEconomics, type ZeroXPriceDiagnostic } from "./vnext-zero-x-response-diagnostics";
+export { ZeroXInvalidResponseError } from "./vnext-zero-x-response-diagnostics";
 import {
   createVNextZeroXProviderNativeFee,
   fromZeroXToken,
@@ -19,7 +21,17 @@ const ZERO_X_QUOTE_TTL_MS = 10_000;
 type JsonObject = Record<string, unknown>;
 type ZeroXMode = "swap" | "gasless";
 
-export class ZeroXInvalidResponseError extends Error {}
+function responseToken(value: string, gasless = false): Address {
+  try {
+    if (gasless) {
+      if (!isAddress(value)) throw new Error();
+      return getAddress(value);
+    }
+    return fromZeroXToken(value);
+  } catch {
+    throw new ZeroXInvalidResponseError("0x returned an invalid token or zeroAddress instead of its native sentinel.", "INVALID_TOKEN_BINDING");
+  }
+}
 
 function isObject(value: unknown): value is JsonObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -32,37 +44,37 @@ function positiveAtomic(value: unknown) {
 function parseFee(value: unknown, requestedInput: Address, requestedOutput: Address, gasless = false) {
   if (value === null || value === undefined) return null;
   if (!isObject(value) || typeof value.token !== "string" || !isAddress(value.token, { strict: false }) || !positiveAtomic(value.amount)) {
-    throw new ZeroXInvalidResponseError("0x returned an invalid fee.");
+    throw new ZeroXInvalidResponseError("0x returned an invalid fee.", "INVALID_PROVIDER_FEE");
   }
   if (gasless) {
-    if (!isAddress(value.token)) throw new ZeroXInvalidResponseError("0x returned an invalid fee.");
+    if (!isAddress(value.token)) throw new ZeroXInvalidResponseError("0x returned an invalid fee.", "INVALID_PROVIDER_FEE");
     return { asset: getAddress(value.token), amountAtomic: value.amount as string };
   }
-  const asset = fromZeroXToken(value.token);
-  if (asset !== requestedInput && asset !== requestedOutput) throw new ZeroXInvalidResponseError("0x returned a fee in an unrelated token.");
+  const asset = responseToken(value.token);
+  if (asset !== requestedInput && asset !== requestedOutput) throw new ZeroXInvalidResponseError("0x returned a fee in an unrelated token.", "INVALID_PROVIDER_FEE");
   return { asset, amountAtomic: value.amount as string };
 }
 
 export function parseZeroXIntegratorFee(fees: JsonObject, request: Pick<VNextProviderQuoteRequest, "inputAsset" | "inputAmountAtomic">) {
   const singularEntries = fees.integratorFee == null ? [] : [fees.integratorFee];
   const pluralEntries = fees.integratorFees == null ? [] : Array.isArray(fees.integratorFees) ? fees.integratorFees : [fees.integratorFees];
-  if (pluralEntries.length > 1) throw new ZeroXInvalidResponseError("0x returned duplicate integrator fees.");
+  if (pluralEntries.length > 1) throw new ZeroXInvalidResponseError("0x returned duplicate integrator fees.", "DUPLICATE_INTEGRATOR_FEE");
   const parse = (value: unknown) => {
     if (!isObject(value) || typeof value.token !== "string" || !isAddress(value.token, { strict: false }) || !positiveAtomic(value.amount)) {
-      throw new ZeroXInvalidResponseError("0x returned an invalid integrator fee.");
+      throw new ZeroXInvalidResponseError("0x returned an invalid integrator fee.", "INVALID_INTEGRATOR_FEE");
     }
-    if (value.type !== undefined && value.type !== "volume") throw new ZeroXInvalidResponseError("0x returned an invalid integrator fee type.");
-    const token = fromZeroXToken(value.token);
-    if (token !== request.inputAsset) throw new ZeroXInvalidResponseError("0x returned the integrator fee in the wrong token.");
+    if (value.type !== undefined && value.type !== "volume") throw new ZeroXInvalidResponseError("0x returned an invalid integrator fee type.", "INVALID_INTEGRATOR_FEE_TYPE");
+    const token = responseToken(value.token);
+    if (token !== request.inputAsset) throw new ZeroXInvalidResponseError("0x returned the integrator fee in the wrong token.", "WRONG_INTEGRATOR_FEE_TOKEN");
     const expected = zeroXIntegratorFeeAmount(request.inputAmountAtomic);
-    if (value.amount !== expected || expected === "0") throw new ZeroXInvalidResponseError("0x returned the wrong integrator fee amount.");
+    if (value.amount !== expected || expected === "0") throw new ZeroXInvalidResponseError("0x returned the wrong integrator fee amount.", "WRONG_INTEGRATOR_FEE_AMOUNT");
     return { token, amountAtomic: value.amount as string, type: value.type ?? null };
   };
   const singularFee = singularEntries.map(parse)[0] ?? null;
   const pluralFee = pluralEntries.map(parse)[0] ?? null;
-  if (!singularFee && !pluralFee) throw new ZeroXInvalidResponseError("0x omitted the RMT integrator fee.");
+  if (!singularFee && !pluralFee) throw new ZeroXInvalidResponseError("0x omitted the RMT integrator fee.", "MISSING_INTEGRATOR_FEE");
   if (singularFee && pluralFee && (singularFee.token !== pluralFee.token || singularFee.amountAtomic !== pluralFee.amountAtomic || singularFee.type !== pluralFee.type)) {
-    throw new ZeroXInvalidResponseError("0x returned duplicate integrator fees.");
+    throw new ZeroXInvalidResponseError("0x returned duplicate integrator fees.", "DUPLICATE_INTEGRATOR_FEE");
   }
   return singularFee ?? pluralFee!;
 }
@@ -72,29 +84,27 @@ export function parseZeroXPrice(body: unknown, request: VNextProviderQuoteReques
   if (!body.liquidityAvailable) return null;
   const expectedOutputAtomic = positiveAtomic(body.buyAmount);
   const protectedOutputAtomic = positiveAtomic(body.minBuyAmount);
-  const normalize = mode === "swap" ? fromZeroXToken : (token: string) => {
-    if (!isAddress(token)) throw new ZeroXInvalidResponseError("0x returned an invalid token.");
-    return getAddress(token);
-  };
+  const normalize = (token: string) => responseToken(token, mode === "gasless");
   if (
     typeof body.sellToken !== "string" || normalize(body.sellToken) !== request.inputAsset
     || typeof body.buyToken !== "string" || normalize(body.buyToken) !== request.outputAsset
-    || body.sellAmount !== request.inputAmountAtomic
-    || !expectedOutputAtomic || !protectedOutputAtomic
-    || BigInt(protectedOutputAtomic) > BigInt(expectedOutputAtomic)
-  ) throw new ZeroXInvalidResponseError("0x changed the requested trade economics.");
+  ) throw new ZeroXInvalidResponseError("0x changed the requested trade economics.", "INVALID_TOKEN_BINDING");
+  if (body.sellAmount !== request.inputAmountAtomic) throw new ZeroXInvalidResponseError("0x changed the requested trade economics.", "CHANGED_SELL_AMOUNT");
+  if (!expectedOutputAtomic) throw new ZeroXInvalidResponseError("0x changed the requested trade economics.", "INVALID_EXPECTED_OUTPUT");
+  if (!protectedOutputAtomic || BigInt(protectedOutputAtomic) > BigInt(expectedOutputAtomic)) throw new ZeroXInvalidResponseError("0x changed the requested trade economics.", "INVALID_MINIMUM_OUTPUT");
   const fees = isObject(body.fees) ? body.fees : null;
-  if (!fees) throw new ZeroXInvalidResponseError("0x omitted fee disclosure.");
+  if (!fees) throw new ZeroXInvalidResponseError("0x omitted fee disclosure.", "MISSING_FEE_DISCLOSURE");
   const providerFee = parseFee(fees.zeroExFee, request.inputAsset, request.outputAsset, mode === "gasless");
   const gasSponsorshipFee = parseFee(fees.gasFee, request.inputAsset, request.outputAsset, mode === "gasless");
   const integratorFee = mode === "swap" ? parseZeroXIntegratorFee(fees, request) : null;
   const networkFeeNativeAtomic = mode === "swap" ? positiveAtomic(body.totalNetworkFee) : null;
-  if (mode === "swap" && (!networkFeeNativeAtomic || gasSponsorshipFee)) throw new ZeroXInvalidResponseError("0x omitted or contradicted direct-swap network fees.");
+  if (mode === "swap" && !networkFeeNativeAtomic) throw new ZeroXInvalidResponseError("0x omitted or contradicted direct-swap network fees.", "MISSING_NETWORK_FEE");
+  if (mode === "swap" && gasSponsorshipFee) throw new ZeroXInvalidResponseError("0x omitted or contradicted direct-swap network fees.", "CONTRADICTORY_NETWORK_FEE");
   if (mode === "gasless" && !gasSponsorshipFee) throw new ZeroXInvalidResponseError("0x omitted the gasless sponsorship fee.");
   return { expectedOutputAtomic, protectedOutputAtomic, providerFee, gasSponsorshipFee, integratorFee, networkFeeNativeAtomic };
 }
 
-async function quoteZeroX(request: VNextProviderQuoteRequest, mode: ZeroXMode) {
+async function quoteZeroX(request: VNextProviderQuoteRequest, mode: ZeroXMode, observe?: (value: ZeroXPriceDiagnostic) => void) {
   const apiKey = process.env.RMT_ZEROX_API_KEY?.trim();
   if (!apiKey) throw new Error("0x server credential is not configured.");
   const url = new URL(mode === "gasless" ? "/gasless/price" : "/swap/allowance-holder/price", ZERO_X_API_URL);
@@ -123,10 +133,17 @@ async function quoteZeroX(request: VNextProviderQuoteRequest, mode: ZeroXMode) {
     if (response.status === 400 && isObject(body) && body.name === "NO_LIQUIDITY_AVAILABLE") return null;
     throw new Error(`0x price request failed with ${response.status}.`);
   }
-  return parseZeroXPrice(body, request, mode);
+  try {
+    const result = parseZeroXPrice(body, request, mode);
+    observe?.({ reason: null, economics: safeZeroXPriceEconomics(body) });
+    return result;
+  } catch (error) {
+    observe?.({ reason: error instanceof ZeroXInvalidResponseError ? error.reason : "OTHER_SCHEMA_VIOLATION", economics: safeZeroXPriceEconomics(body) });
+    throw error;
+  }
 }
 
-function createZeroXAdapter(mode: ZeroXMode): VNextQuoteProviderAdapter {
+function createZeroXAdapter(mode: ZeroXMode, observe?: (value: ZeroXPriceDiagnostic) => void): VNextQuoteProviderAdapter {
   const gasless = mode === "gasless";
   const adapter: VNextQuoteProviderAdapter = {
     provider: gasless ? "zero-x-gasless" : "zero-x-swap",
@@ -138,7 +155,7 @@ function createZeroXAdapter(mode: ZeroXMode): VNextQuoteProviderAdapter {
     async quote(request) {
       const startedAtMs = Date.now();
       try {
-        const price = await quoteZeroX(request, mode);
+        const price = await quoteZeroX(request, mode, observe);
         if (!price) return unavailableVNextQuoteAttempt({ adapter, request, status: "no_route", detail: `No complete ${adapter.providerLabel} route was found for this amount.`, startedAtMs });
         const quotedAtMs = Date.now();
         const providerNativeFee = gasless ? undefined : createVNextZeroXProviderNativeFee({
@@ -182,6 +199,10 @@ function createZeroXAdapter(mode: ZeroXMode): VNextQuoteProviderAdapter {
 
 export const vNextZeroXSwapAdapter = createZeroXAdapter("swap");
 export const vNextZeroXGaslessAdapter = createZeroXAdapter("gasless");
+
+// Test/server diagnostic entrypoint, identical adapter admission. No diagnostics
+// are added to the public quote response and no observer runs in normal use.
+export const createZeroXSwapDiagnosticAdapter = (observe: (value: ZeroXPriceDiagnostic) => void) => createZeroXAdapter("swap", observe);
 
 export function configuredVNextZeroXAdapters() {
   return process.env.RMT_VNEXT_ZEROX_OBSERVATION_ENABLED === "true" && Boolean(process.env.RMT_ZEROX_API_KEY?.trim())
