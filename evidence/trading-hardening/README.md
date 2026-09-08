@@ -28,6 +28,12 @@ PEEP ETH Buy, ETH Sell and USDG Buy returned verified firm envelopes and passed 
 
 No exact owner PEEP transaction hash was recoverable from the available local evidence. The hash in the retained PEEP search result is a pool-creation transaction, not evidence of the owner's purchase. The owner's historical attempt remains `UNRECOVERABLE_WITH_AVAILABLE_EVIDENCE`; this PR does not manufacture a classification or alter its journal.
 
+## Wallet journey coverage
+
+The authenticated 0x browser journeys use the production wallet-assets hook with network-boundary multicall fixtures, not the old fixed balance snapshot. They assert a fresh exact output-asset balance read after verified settlement. Recently settled input/output assets are included in bounded balance discovery even outside the first 48 directory candidates; receipt amounts are never copied into wallet balances. Unknown balances remain unknown.
+
+The single-action post-approval continuation is scoped to zero-x-swap. Dormant legacy fixture paths retain their existing independent review behavior and are not enabled publicly.
+
 ## Reproduction
 
 From `apps/web`, run `pnpm proof:zero-x:50-token` with the already-authorized 0x credential supplied securely to the process. Never print it. The optional `RMT_MATRIX_DISCOVERY_MANIFEST` supplies discovery hints only. Live prices and inventory may differ; the frozen artifact's seed and population reproduce its sample exactly.

@@ -19,7 +19,7 @@ export type VNextWalletAssetCandidate = {
   name: string;
   decimals: number | null;
   identityState: "verified" | "reported";
-  source: "canonical" | "live_directory" | "manual_import" | "wallet_index";
+  source: "canonical" | "live_directory" | "manual_import" | "wallet_index" | "settled_transaction";
   reputation: "ok" | "suspicious" | "unknown";
   imageUrl: string | null;
 };

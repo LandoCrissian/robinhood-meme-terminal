@@ -879,7 +879,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
           }
         : undefined;
       setPostExecutionState(outcome);
-      if (intentionalTradeContext.current === `${identity.userId}:${identity.activeWalletKey}:${requestKey}`) setWalletActionId(++walletActionCounter.current);
+      if (authorization.plan.provider === "zero-x-swap" && intentionalTradeContext.current === `${identity.userId}:${identity.activeWalletKey}:${requestKey}`) setWalletActionId(++walletActionCounter.current);
     } catch (cause) {
       if (!isCurrentTradeAuthorizationAttempt(authorizationAttempt, authorizationAttemptEpoch.current)) return;
       const message = cause instanceof Error ? cause.message : "Fresh post-approval verification failed.";

@@ -76,7 +76,8 @@ export async function runZeroXWalletJourneys(options) {
       await page.clock.install();
       state.rpcOverride = (request) => {
         if (settledOutputAsset && (request.method === 'eth_call'
-          && lower(request.params[0]?.to) === settledOutputAsset && request.params[0]?.data?.startsWith('0x70a08231')
+          && (lower(request.params[0]?.to) === settledOutputAsset && request.params[0]?.data?.startsWith('0x70a08231')
+            || !request.params[0]?.to && request.params[0]?.data?.toLowerCase().includes(settledOutputAsset.slice(2)) && request.params[0]?.data?.includes('70a08231'))
           || request.method === 'eth_getBalance' && settledOutputAsset === '0x0000000000000000000000000000000000000000' && lower(request.params[0]) === wallet)) settledOutputBalanceReads++;
         if (request.method === 'eth_blockNumber') return hex(++block);
         if (request.method === 'debug_traceTransaction') {
@@ -138,6 +139,7 @@ export async function runZeroXWalletJourneys(options) {
         return txHash;
       });
       await context.addInitScript(({ wallet, scenario }) => {
+        window.__RMT_ACCEPTANCE_READ_WALLET_ASSETS__ = true;
         const listeners = new Map();
         window.__ZEROX_PROMPTS__ = 0;
         const selectedSigner = {

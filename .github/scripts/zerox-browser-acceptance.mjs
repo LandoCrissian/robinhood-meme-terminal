@@ -12,7 +12,7 @@ import { createRouteOnDemandFixtures, runRouteOnDemandJourneys } from './zerox-b
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const requireWeb = createRequire(path.join(root, 'apps/web/package.json'));
-const { encodeAbiParameters, decodeFunctionData, encodeFunctionResult, parseAbi, keccak256, toFunctionSelector } = requireWeb('viem');
+const { encodeAbiParameters, decodeFunctionData, encodeFunctionResult, parseAbi, keccak256, toFunctionSelector, multicall3Abi } = requireWeb('viem');
 requireWeb('tsx/cjs');
 const { RMT_CURATED_MARKET_REGISTRY: seeds } = requireWeb('./lib/vnext/curated-market-registry.ts');
 const requireRoot = createRequire(path.join(root, 'package.json'));
@@ -114,7 +114,20 @@ function rpc(request) {
       case 'eth_getLogs': result = []; break;
       case 'eth_getTransactionReceipt': case 'eth_getTransactionByHash': result = null; break;
       case 'eth_getCode': result = String(request.params[0]).toLowerCase() === executableFixture.settler ? executableFixture.runtime : [token, usdg, weth, holder, '0x0000000000000000000000000000000000012345', ...routeFixtures.contracts, ...seeds.flatMap((entry) => [entry.token.toLowerCase(), entry.market.poolAddress])].includes(String(request.params[0]).toLowerCase()) ? runtime : '0x'; break;
-      case 'eth_call': result = call(request.params[0]); break;
+      case 'eth_call': {
+        const transaction = request.params[0];
+        // Network-boundary fixture for the real wallet-assets deployless multicall.
+        const aggregate = transaction.data?.lastIndexOf('82ad56cb') ?? -1;
+        if (!transaction.to && aggregate >= 0) {
+          const decoded = decodeFunctionData({ abi: multicall3Abi, data: '0x' + transaction.data.slice(aggregate) });
+          const results = decoded.args[0].map((entry) => {
+            try { return { success: true, returnData: call({ to: entry.target, data: entry.callData }) }; }
+            catch { return { success: false, returnData: '0x' }; }
+          });
+          result = encodeFunctionResult({ abi: multicall3Abi, functionName: 'aggregate3', result: results });
+        } else result = call(transaction);
+        break;
+      }
       case 'eth_getBlockByNumber': result = { number: '0x2faf080', hash, parentHash: hash, timestamp: hex(Math.floor(Date.now() / 1000)), baseFeePerGas: hex(50000000), gasLimit: '0x1c9c380', gasUsed: '0x0', transactions: [], nonce: '0x0000000000000000', difficulty: '0x0', extraData: '0x', size: '0x1', miner: wallet, receiptsRoot: hash, stateRoot: hash, transactionsRoot: hash, logsBloom: `0x${'0'.repeat(512)}` }; break;
       default: throw new Error(`Unmocked read-only RPC method ${request.method}`);
     }
