@@ -99,8 +99,8 @@ assert.throws(() => createExactInputIntent({
 const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
 assert.match(composer, /Finding best route/);
 assert.match(composer, /Route temporarily unavailable/);
-assert.match(composer, /RMT sets and verifies the protected minimum during the one-tap execution check/);
-assert.match(composer, /One tap checks the best route and prepares an explicit external-wallet review/);
+assert.match(composer, /RMT verifies the protected minimum before the explicit wallet-review action/);
+assert.match(composer, /One explicit review action opens your wallet; nothing signs automatically/);
 assert.doesNotMatch(composer, /Check live routes|Verify best route|Prepare wallet review/);
 assert.match(composer, /Pay with asset/);
 assert.match(composer, /Receive asset/);

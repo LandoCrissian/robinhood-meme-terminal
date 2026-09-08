@@ -359,7 +359,7 @@ function WorkspaceEvidence({ market, directoryMarket, tokenIdentityVerified }: {
   return <section className="vnWorkspaceCard vnEvidenceDeck" aria-labelledby="vn-evidence-heading">
     <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Read-only evidence</span><h3 id="vn-evidence-heading">Holders, liquidity &amp; risk</h3></div><span>Independent evidence sources</span></header>
     <div className="vnEvidenceTabs" role="tablist" aria-label="Market evidence">
-      {(["holders", "liquidity", "risk"] as const).map((item) => <button type="button" role="tab" aria-label={item} aria-selected={tab === item} className={tab === item ? "isActive" : ""} onClick={() => setTab(item)} key={item}>{item}<small data-evidence-domain={item} data-evidence-state={domainStates[item]}>{domainStates[item] === "checking" ? "Checking..." : domainStates[item]}</small></button>)}
+      {(["holders", "liquidity", "risk"] as const).map((item) => <button type="button" role="tab" aria-selected={tab === item} aria-label={item} className={tab === item ? "isActive" : ""} onClick={() => setTab(item)} key={item}>{item}<small data-evidence-domain={item} data-evidence-state={domainStates[item]}>{domainStates[item] === "checking" ? "Checking..." : domainStates[item]}</small></button>)}
     </div>
 
     {tab === "holders" && <div className="vnEvidencePane" role="tabpanel">
@@ -443,7 +443,7 @@ function VerifiedMarkets({ canonicalMarkets, resolution, selectedPool, directory
   return <section className="vnWorkspaceCard vnMarketsCard" aria-labelledby="vn-verified-markets-heading">
     <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Onchain resolution</span><h3 id="vn-verified-markets-heading">Canonical markets</h3></div><span>Pool evidence</span></header>
     {pools.length ? <><div className="vnVerifiedMarkets">{pools.slice(0, 3).map(renderPool)}</div>{pools.length > 3 ? <details className="vnEvidenceDetails"><summary>All alternate canonical markets ({pools.length - 3} more)</summary><div className="vnVerifiedMarkets">{pools.slice(3).map((pool, index) => renderPool(pool, index + 3))}</div></details> : null}</> : <div className="vnWorkspaceEmpty"><strong>No canonical market evidence attached</strong><span>Verified asset identity remains available. Metrics, chart activity, and execution are not evaluated without a supported market.</span></div>}
-    <footer>Displayed market evidence and the independently verified 0x execution route remain separate.</footer>
+    <footer>Displayed price source, project origin and selected execution venue remain independent. The 0x execution route is verified separately from this market evidence.</footer>
   </section>;
 }
 
