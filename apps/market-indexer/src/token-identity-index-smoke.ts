@@ -9,6 +9,7 @@ import {
 } from "viem";
 import {
   normalizeTokenIdentitySearch,
+  readCanonicalBrowseIdentities,
   readCanonicalTokenIdentityIndexStats,
   refreshCanonicalTokenIdentityIndex,
   searchCanonicalTokenIdentityIndex
@@ -52,6 +53,15 @@ assert.equal(normalized.compact, "afteroldboundary");
 assert.equal(normalizeTokenIdentitySearch("Stonk Brokers").singular, "stonkbroker");
 
 const stats = await readCanonicalTokenIdentityIndexStats(pool);
+// A new Pool object represents a cold process cache. The persisted compressed
+// shard alone supplies metadata; no live RPC is present in this read path.
+for (let cold = 0; cold < 3; cold++) {
+  const freshPool = { query: pool.query.bind(pool) } as unknown as Pool;
+  const page = await readCanonicalBrowseIdentities(freshPool, ["0x0000000000000000000000000000000000000801", "0x0000000000000000000000000000000000000801", "0x000000000000000000000000000000000000ffff"]);
+  assert.equal(page.length, 1);
+  assert.equal(page[0]?.symbol, "POSTBOUND");
+}
+queries.splice(2);
 assert.deepEqual(stats, {
   totalCanonicalMarkets: 4_001,
   totalUniqueCanonicalTokens: 2_049,

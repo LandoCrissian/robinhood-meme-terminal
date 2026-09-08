@@ -11,6 +11,7 @@ import {
 import type { MarketIndexerWorker } from "./worker.js";
 import type { PositionGuardHeartbeat } from "./position-guard-heartbeat.js";
 import {
+  readCanonicalBrowseIdentities,
   readCanonicalTokenIdentityIndexStats,
   searchCanonicalTokenIdentityIndex
 } from "./token-identity-index.js";
@@ -472,6 +473,12 @@ export function createMarketIndexerServer(
         const rows = result.rows as PoolRow[];
         const hasNextPage = rows.length > limit;
         const page = rows.slice(0, limit);
+        // Opt-in keeps the existing strict inventory contract for older readers.
+        const browseIdentities = url.searchParams.get("includeBrowseIdentities") === "true"
+          ? await readCanonicalBrowseIdentities(pool, page.flatMap((row) => [String(row.token0), String(row.token1)]))
+              .then((identities) => ({ source: "verified-token-identity-index", freshness: "last-known", identities }))
+              .catch(() => undefined)
+          : undefined;
         const lastRow = page.at(-1);
         json(response, 200, {
           chainId: MARKET_INDEXER_CHAIN_ID,
@@ -482,7 +489,8 @@ export function createMarketIndexerServer(
           nextCursor: hasNextPage && lastRow
             ? encodeCursor(source, token, poolKey, lastRow)
             : null,
-          pools: page.map(publicPool)
+          pools: page.map(publicPool),
+          ...(browseIdentities ? { browseIdentities } : {})
         });
         return;
       }

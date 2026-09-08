@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 
 export async function inspectTerminalStabilization(browser, { base, createContext, installRoutes, markets, canonicalDirectoryMarket, riskPayload }) {
   const results = {};
+  results.freshWindow = await inspectFreshDirectoryWindow(browser, { base, createContext, installRoutes, markets, canonicalDirectoryMarket });
   for (const [label, options] of Object.entries({ desktop: { viewport: { width: 1440, height: 900 } }, mobile: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } })) {
     const context = await createContext(browser, options);
     const page = await context.newPage();
@@ -63,6 +64,20 @@ export async function inspectTerminalStabilization(browser, { base, createContex
       });
       await page.route(/\/api\/markets\/(?:wallet-constellation|external-stream|external-trades)(?:\?.*)?$/, (route) => route.fulfill({ status: 503, body: "{}" }));
       const row = options.isMobile ? ".rmtMobileMarketRow" : ".rmtMarketTableRow";
+      // Fresh browser, no server/client last-good window: unavailable is not 0.
+      failPage = 0;
+      await page.goto(base, { waitUntil: "domcontentloaded" });
+      await page.getByText("Directory temporarily unavailable", { exact: true }).waitFor();
+      const unknownCounts = await page.locator(".rmtMarketViews").first().innerText();
+      assert.doesNotMatch(unknownCounts, /(?:Active|Trending|New|RWA|All)\s+0(?:\s|$)/);
+      assert.match(unknownCounts, /All\s+—/);
+      generation++; await page.clock.fastForward(300001);
+      await page.getByText("Directory temporarily unavailable", { exact: true }).waitFor();
+      assert.match(await page.locator(".rmtMarketViews").first().innerText(), /All\s+—/);
+      failPage = -1;
+      await page.getByRole("button", { name: "Try again", exact: true }).click();
+      await page.locator(row).first().waitFor();
+      assert.match(await page.locator(".rmtMarketViews").first().innerText(), /All\s+18/);
       const start = performance.now();
       await page.goto(base, { waitUntil: "domcontentloaded" });
       await page.locator(row).first().waitFor();
@@ -147,6 +162,7 @@ export async function inspectTerminalStabilization(browser, { base, createContex
       await page.locator('[data-evidence-domain="risk"][data-evidence-state="unavailable"]').waitFor();
       await page.locator('[data-evidence-domain="liquidity"][data-evidence-state="ready"]').waitFor();
       results[label] = { directoryMs, enrichmentDelayMs: 45000, canonicalPages: 3, loadedBeforeRefresh: canonical.length,
+        freshUnavailableCounts: "unknown-not-zero", cold503Recovery: "PASS",
         fallbackRetention: "PASS", repeatedFallbackRetention: "PASS", fallbackStatus: "stale", coldFallbackStatus: "limited",
         indexedRecovery: "PASS", legitimateRemoval: "PASS", partialIndexedCoverage: "PASS", staleCanonicalStatus: "PASS",
         loadedAfterRefresh: canonical.length, failedRefreshRetention: "PASS", marketDisclosure: "PASS", feeSemantics: "PASS", separateActivityScopes: "PASS", independentSafety: "PASS", boundedLoading: "PASS" };
@@ -155,6 +171,69 @@ export async function inspectTerminalStabilization(browser, { base, createContex
       for (const timer of timers) clearTimeout(timer);
       await context.close();
     }
+  }
+  return results;
+}
+
+async function inspectFreshDirectoryWindow(browser, { base, createContext, installRoutes, markets, canonicalDirectoryMarket }) {
+  const results = {};
+  const addr = (n) => `0x${n.toString(16).padStart(40, "0")}`;
+  const template = canonicalDirectoryMarket(markets[0]);
+  const canonical = Array.from({ length: 120 }, (_, i) => {
+    const address = addr(50000 + i);
+    return { ...template, address, assetId: `eip155:4663/contract:${address}`, name: `Browse ${i}`, symbol: `B${i}`,
+      verifiedIdentity: { address, name: `Browse ${i}`, symbol: `B${i}`, decimals: 18 },
+      canonicalMarkets: [{ ...template.canonicalMarkets[0], sourceId: "uniswap-v3", protocol: "uniswap", version: 3,
+        token0: address, token1: addr(999), poolKey: addr(60000 + i), poolAddress: addr(60000 + i), fee: 3000, tickSpacing: 60, hooks: null }] };
+  });
+  for (const [label, options] of Object.entries({ desktop: { viewport: { width: 1440, height: 900 } }, mobile: { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } })) {
+    const context = await createContext(browser, options);
+    const page = await context.newPage();
+    const timers = new Set();
+    let closed = false, mode = "503", generation = 0, reads = 0;
+    try {
+      await page.clock.install(); await installRoutes(page);
+      await page.route(/\/api\/markets\/external(?:\?.*)?$/, async (route) => {
+        await new Promise((resolve) => { const timer = setTimeout(resolve, 45000); timers.add(timer); });
+        if (!closed) await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ markets: [], updatedAt: new Date().toISOString() }) });
+      });
+      await page.route(/\/api\/vnext\/market-directory(?:\?.*)?$/, (route) => {
+        reads++;
+        if (mode === "503") return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ canonical: true, error: "Directory evidence unavailable", failureReasons: ["IDENTITY_RPC_UNAVAILABLE"] }) });
+        const cursor = new URL(route.request().url()).searchParams.get("cursor");
+        const index = cursor ? Number(cursor.split("_")[1]) : 0;
+        if (cursor) assert.equal(cursor.split("_")[0], `fresh${generation}`);
+        return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ canonical: true, inventorySource: "indexed",
+          revalidationComplete: mode !== "PARTIAL", coverage: mode === "PARTIAL" ? "partial" : "complete", stale: mode === "PARTIAL",
+          markets: canonical.slice(index * 40, index * 40 + (mode === "PARTIAL" ? 32 : 40)), updatedAt: new Date().toISOString(), nextCursor: index < 2 ? `fresh${generation}_${index + 1}` : null }) });
+      });
+      await page.goto(base, { waitUntil: "domcontentloaded" });
+      await page.getByText("Directory temporarily unavailable", { exact: true }).waitFor();
+      assert.match(await page.locator(".rmtMarketViews").first().innerText(), /All\s+—/);
+      await page.getByRole("button", { name: "Try again", exact: true }).click();
+      await page.getByText("Directory temporarily unavailable", { exact: true }).waitFor();
+      assert.match(await page.locator(".rmtMarketViews").first().innerText(), /All\s+—/);
+      mode = "GOOD";
+      const start = performance.now();
+      await page.getByRole("button", { name: "Try again", exact: true }).click();
+      const row = options.isMobile ? ".rmtMobileMarketRow" : ".rmtMarketTableRow";
+      await page.locator(row).first().waitFor();
+      const firstMs = Math.round(performance.now() - start);
+      assert.ok(firstMs <= 2000, `${label}: healthy first publication ${firstMs}ms`);
+      await page.getByRole("button", { name: /^All\s+/ }).click();
+      for (let i = 0; i < 12 && await page.locator(row).count() < 120; i++) { await page.locator(".rmtMarketLoadMore").click(); await page.waitForTimeout(100); }
+      assert.equal(await page.locator(row).count(), 120);
+      for (const state of ["GOOD", "503", "503", "GOOD", "PARTIAL", "GOOD"]) {
+        mode = state; generation++; const prior = reads;
+        await page.clock.fastForward(300001);
+        for (let i = 0; i < 100 && reads === prior; i++) await page.waitForTimeout(20);
+        assert.ok(reads > prior);
+        await page.waitForTimeout(150);
+        assert.equal(await page.locator(row).count(), 120, `${label}: ${state} must retain the loaded window`);
+        assert.match(await page.locator(".rmtMarketViews").first().innerText(), /All\s+120/);
+      }
+      results[label] = { firstMs, canonicalPages: 3, loaded: 120, sequence: "GOOD_503_503_GOOD_PARTIAL_GOOD", falseZero: false, enrichmentDelayMs: 45000 };
+    } finally { closed = true; for (const timer of timers) clearTimeout(timer); await context.close(); }
   }
   return results;
 }

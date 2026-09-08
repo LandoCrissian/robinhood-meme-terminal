@@ -1,3 +1,4 @@
+import { boundedDirectoryFailureReasons, type DirectoryFailureReason } from "./directory-availability";
 import { getAddress, isAddress, zeroAddress } from "viem";
 import {
   buildAssetMarketRecord,
@@ -140,6 +141,8 @@ export type VNextDirectoryResponse = {
 export type VNextCanonicalDirectoryResponse = VNextDirectoryResponse & {
   canonical: true;
   inventorySource?: "indexed" | "curated-fallback";
+  identityEvidence?: "live" | "last-known" | "mixed";
+  failureReasons?: DirectoryFailureReason[];
   revalidationComplete?: boolean;
   quarantinedAddresses?: string[];
   coverage: "partial" | "complete";
@@ -216,6 +219,7 @@ export function parseVNextCanonicalDirectoryResponse(value: unknown): VNextCanon
   if (
     !candidate ||
     candidate.canonical !== true ||
+    (candidate.identityEvidence !== undefined && !["live", "last-known", "mixed"].includes(String(candidate.identityEvidence))) ||
     (candidate.inventorySource !== undefined && candidate.inventorySource !== "indexed" && candidate.inventorySource !== "curated-fallback") ||
     (candidate.revalidationComplete !== undefined && typeof candidate.revalidationComplete !== "boolean") ||
     (candidate.inventorySource !== undefined && typeof candidate.revalidationComplete !== "boolean") ||
@@ -322,6 +326,8 @@ export function parseVNextCanonicalDirectoryResponse(value: unknown): VNextCanon
   return {
     canonical: true,
     coverage: candidate.coverage,
+    ...(candidate.identityEvidence ? { identityEvidence: candidate.identityEvidence as "live" | "last-known" | "mixed" } : {}),
+    ...(candidate.failureReasons !== undefined ? { failureReasons: boundedDirectoryFailureReasons(candidate.failureReasons) } : {}),
     ...(candidate.inventorySource !== undefined ? { inventorySource: candidate.inventorySource as "indexed" | "curated-fallback" } : {}),
     ...(typeof candidate.revalidationComplete === "boolean" ? { revalidationComplete: candidate.revalidationComplete } : {}),
     ...(Array.isArray(candidate.quarantinedAddresses) ? { quarantinedAddresses: [...new Set((candidate.quarantinedAddresses as string[]).map((address) => address.toLowerCase()))] } : {}),

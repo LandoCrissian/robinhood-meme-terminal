@@ -306,6 +306,17 @@ const marketInventoryCoverageSchema = z
     }
   });
 
+const browseIdentitiesSchema = z.object({
+  source: z.literal("verified-token-identity-index"),
+  freshness: z.literal("last-known"),
+  identities: z.array(z.object({
+    address: nonzeroAddressSchema,
+    name: z.string().min(1).max(80).refine((value) => value === value.trim() && !/[\u0000-\u001f\u007f]/.test(value)),
+    symbol: z.string().min(1).max(20).refine((value) => value === value.trim() && !/[\u0000-\u001f\u007f]/.test(value)),
+    decimals: z.number().int().min(0).max(36)
+  }).strict()).max(MAXIMUM_MARKET_INVENTORY_LIMIT * 2)
+}).strict();
+
 const marketInventoryResponseSchema = z
   .object({
     chainId: z.literal(MARKET_INDEXER_CHAIN_ID),
@@ -314,7 +325,8 @@ const marketInventoryResponseSchema = z
     sourceManifestHash: nonzeroBytes32Schema,
     coverage: marketInventoryCoverageSchema,
     nextCursor: opaqueCursorSchema.nullable(),
-    pools: z.array(marketPoolSchema).max(MAXIMUM_MARKET_INVENTORY_LIMIT)
+    pools: z.array(marketPoolSchema).max(MAXIMUM_MARKET_INVENTORY_LIMIT),
+    browseIdentities: browseIdentitiesSchema.optional()
   })
   .strict();
 
@@ -331,6 +343,7 @@ export type VNextCanonicalMarketInventoryResult =
       coverage: VNextCanonicalMarketInventoryCoverage;
       nextCursor: string | null;
       pools: VNextCanonicalMarketInventoryPool[];
+      browseIdentities?: z.infer<typeof browseIdentitiesSchema>;
     }
   | {
       status: "not_configured";
@@ -417,6 +430,7 @@ export type VNextMarketIndexerTiming = {
 };
 
 type MarketIndexerDependencies = {
+  includeBrowseIdentities?: boolean;
   env?: MarketIndexerEnvironment;
   fetch?: MarketIndexerFetch;
   timeoutMs?: number;
@@ -693,6 +707,7 @@ export async function readVNextCanonicalMarketInventory(
   }
   if (normalizedQuery.source !== null) search.set("source", normalizedQuery.source);
   search.set("limit", String(normalizedQuery.limit));
+  if (dependencies.includeBrowseIdentities) search.set("includeBrowseIdentities", "true");
   if (normalizedQuery.cursor !== null) search.set("cursor", normalizedQuery.cursor);
 
   const requestUrl = new URL(configuration.endpoint);
@@ -769,8 +784,14 @@ export async function readVNextCanonicalMarketInventory(
     sourceManifestHash: parsed.data.sourceManifestHash,
     coverage: parsed.data.coverage,
     nextCursor: parsed.data.nextCursor,
-    pools: parsed.data.pools
+    pools: parsed.data.pools,
+    ...(parsed.data.browseIdentities ? { browseIdentities: parsed.data.browseIdentities } : {})
   };
+  const poolTokens = new Set(result.pools.flatMap((pool) => [pool.token0, pool.token1]));
+  const identityAddresses = result.browseIdentities?.identities.map((identity) => identity.address) ?? [];
+  if (identityAddresses.some((address) => !poolTokens.has(address)) || new Set(identityAddresses).size !== identityAddresses.length) {
+    return { status: "invalid_upstream_response", reason: "query_mismatch" };
+  }
   if (containsConfiguredSecret(result, configuration)) {
     return { status: "invalid_upstream_response", reason: "sensitive_echo" };
   }

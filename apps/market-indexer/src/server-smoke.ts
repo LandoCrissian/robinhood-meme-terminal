@@ -652,6 +652,16 @@ try {
     await fetch(`${origin}/v1/pools?limit=1`, { headers: poolHeaders })
   ).json()) as { coverage: typeof allPools.coverage };
   assert.equal(completeCoverage.coverage.complete, true);
+  const browsePage = await (await fetch(`${origin}/v1/pools?limit=100&includeBrowseIdentities=true`, { headers: poolHeaders })).json() as {
+    pools: { token0: string; token1: string }[];
+    browseIdentities: { source: string; freshness: string; identities: { address: string; decimals: number }[] };
+  };
+  assert.equal(browsePage.browseIdentities.source, "verified-token-identity-index");
+  assert.equal(browsePage.browseIdentities.freshness, "last-known");
+  assert.ok(browsePage.browseIdentities.identities.length > 0);
+  const pageTokens = new Set(browsePage.pools.flatMap((pool) => [pool.token0, pool.token1]));
+  assert.ok(browsePage.browseIdentities.identities.every((identity) => pageTokens.has(identity.address)));
+  assert.equal(new Set(browsePage.browseIdentities.identities.map((identity) => identity.address)).size, browsePage.browseIdentities.identities.length);
   assert.equal(
     completeCoverage.coverage.sources.every(
       (source) =>
