@@ -3677,7 +3677,6 @@ try {
     ? await inspectV4WalletReviewJourney(browser, browserAcceptanceFixture)
     : null;
   const v4FreshWalletSellEvidence = null;
-  const marketLoadPerformance = await inspectMarketLoadPerformanceMatrix(browser);
   const walletLifecycleEvidence = browserAcceptanceFixture && !mobileOnly
     ? await inspectWalletPromptReloadAndCrossTab(browser, browserAcceptanceFixture)
     : null;
@@ -3749,6 +3748,9 @@ try {
       ["414x896", { width: 414, height: 896 }]
     ]) exploratoryTouch[entryLabel] = await inspectMobile(browser, entryViewport, entryLabel);
   }
+  // Deliberate 45-second enrichment delays must not age the earlier wallet
+  // fixtures past their exact review/deadline authority.
+  const marketLoadPerformance = await inspectMarketLoadPerformanceMatrix(browser);
   await writeFile(
     `${output}/report.json`,
     JSON.stringify({ productAcceptanceEvidence, marketLoadPerformance, walletLifecycleEvidence, workspaceEvidence, marketsHierarchy, discoveryDesktop, discoveryMobile, projectIdentityQuarantine, desktop, laptop, laptop720, compact, wide, seamDesktop, marketAudit, compatibilityEntries, publicRoutes, touch1023, mobile430, mobile393, mobile390, mobile375, mobile360, v2BrowserEvidence, executableQuoteFeeDisclosure, v4WalletReviewEvidence, v4FreshWalletSellEvidence, exploratoryTouch }, null, 2)
