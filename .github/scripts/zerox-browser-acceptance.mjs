@@ -236,6 +236,21 @@ export async function runZeroXBrowserAcceptance() {
     for (const [name, viewport] of (process.env.RMT_ACCEPTANCE_ROUTE_ON_DEMAND_ONLY === 'true' ? [] : [['desktop', { width: 1440, height: 900 }], ['mobile', { width: 390, height: 844 }]])) {
       const context = await browser.newContext({ viewport, ...(name === 'mobile' ? { isMobile: true, hasTouch: true } : {}) });
       await context.addInitScript(({ wallet }) => {
+        const timers = new Set();
+        const schedule = window.setTimeout.bind(window);
+        const cancel = window.clearTimeout.bind(window);
+        window.__QUOTE_SCHEDULER__ = { scheduled: 0, canceled: 0, fired: 0 };
+        window.setTimeout = (callback, delay, ...args) => {
+          if (delay !== 120 || typeof callback !== 'function') return schedule(callback, delay, ...args);
+          window.__QUOTE_SCHEDULER__.scheduled++;
+          const id = schedule(() => { timers.delete(id); window.__QUOTE_SCHEDULER__.fired++; callback(...args); }, delay);
+          timers.add(id);
+          return id;
+        };
+        window.clearTimeout = (id) => {
+          if (timers.delete(id)) window.__QUOTE_SCHEDULER__.canceled++;
+          cancel(id);
+        };
         const listeners = new Map();
         window.__ZEROX_WALLET_REQUESTS__ = [];
         window.ethereum = {
@@ -279,6 +294,8 @@ export async function runZeroXBrowserAcceptance() {
         await page.getByLabel('Exact input amount').fill('25');
         // Read-only 0x preparation follows amount readiness; the wallet still needs its explicit CTA.
         await page.waitForResponse((r) => r.url().endsWith('/api/vnext/authorize') && r.status() === 200, { timeout: 20000 });
+        assert.ok(await page.evaluate(() => window.__QUOTE_SCHEDULER__.fired > 0), 'equivalent renders must not starve the read-only quote debounce');
+        assert.equal(await page.evaluate(() => window.__ZEROX_WALLET_REQUESTS__.length), 0, 'automatic quote preparation never opens the wallet');
         assert.ok(api.some((r) => r.path === '/api/vnext/verify' && r.status === 200), '0x reaches real verification');
         await page.locator('.vnWalletFeeDisclosure').waitFor();
         const disclosure = await page.locator('.vnWalletFeeDisclosure').innerText();
@@ -288,7 +305,9 @@ export async function runZeroXBrowserAcceptance() {
         results.push({ viewport: name, status: 'wallet-review-ready' });
       } finally {
         await page.screenshot({ path: path.join(output, `${name}.png`), fullPage: true });
-        await writeFile(path.join(output, `${name}-evidence.json`), JSON.stringify({ api, state, text: await page.locator('body').innerText() }, null, 2));
+        await writeFile(path.join(output, `${name}-evidence.json`), JSON.stringify({ api, state,
+          scheduler: await page.evaluate(() => ({ ...window.__QUOTE_SCHEDULER__, visibility: document.visibilityState })),
+          text: await page.locator('body').innerText() }, null, 2));
         await context.close();
       }
     }

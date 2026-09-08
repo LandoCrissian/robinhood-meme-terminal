@@ -368,7 +368,11 @@ assert.doesNotMatch(workspace, /volume5m:\s*0|buys5m:\s*0|sells5m:\s*0|momentumS
 assert.match(workspace, /canonicalMarkets=\{directoryMarket\.canonicalMarkets\}/);
 assert.match(workspace, /PoolId \$\{shortAddress\(pool\.poolKey\)\}/);
 assert.doesNotMatch(workspace, /address\/\$\{pool\.poolKey\}/);
-assert.ok(workspace.indexOf("if (canonicalMarkets?.length)") < workspace.indexOf("No canonical market evidence attached"));
+assert.ok(workspace.indexOf("if (admitted.length)") >= 0);
+assert.ok(workspace.indexOf("if (admitted.length)") < workspace.indexOf("No canonical market evidence attached"));
+assert.match(workspace, /workspaceCanonicalMarkets\(\{ \.\.\.directoryMarket, canonicalMarkets \}\)/);
+assert.match(workspace, /admitted\.slice\(0, 3\)/);
+assert.match(workspace, /All alternate canonical markets/);
 assert.match(workspace, /executionState === "asset-only"/);
 assert.match(workspace, /No supported market evidence is attached, so execution is not evaluated/);
 assert.match(presentation, /executionUiState === "asset-only"/);
