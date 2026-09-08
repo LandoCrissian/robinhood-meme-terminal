@@ -182,10 +182,13 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
             assert.ok(api.some((entry) => entry.path === '/api/vnext/quotes' && entry.body?.attempts?.some((attempt) => attempt.provider === 'zero-x-swap' && attempt.status === 'no_route')));
             if (peepEntry) await until(async () => (await page.locator('.vnTradePanel').innerText()).includes('No 0x route currently available for this trade.'), 'PEEP no-route explanation must be explicit');
           } else {
-            await until(() => api.some((entry) => entry.path === '/api/vnext/authorize' && entry.status === 200), 'Identity-only asset must reach real authorization');
+            const expectedValue = sellingToken || peepEntry ? '0' : '1000000000000000';
+            const currentAuthorization = () => api.find((entry) => entry.path === '/api/vnext/authorize'
+              && entry.status === 200 && entry.body?.plan?.value === expectedValue);
+            await until(() => currentAuthorization(), 'The selected input must reach real authorization, not an earlier default amount');
             assert.ok(api.some((entry) => entry.path === '/api/vnext/verify' && entry.status === 200));
             await page.locator('.vnWalletFeeDisclosure').waitFor();
-            const bundle = api.find((entry) => entry.path === '/api/vnext/authorize' && entry.status === 200).body;
+            const bundle = currentAuthorization().body;
             assert.equal(bundle.plan.provider, 'zero-x-swap');
             assert.equal(bundle.plan.providerNativeFee.feeBps, 25);
             assert.equal(bundle.plan.kind, 'swap');
