@@ -163,7 +163,7 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
             else assert.deepEqual(evidence, [], 'No canonical directory market may be fabricated');
           }
           if (scenario === 'noRoute' || scenario === 'peepNoRoute') {
-            await until(async () => /no route|route.*unavailable/i.test(await page.locator('.vnTradePanel').innerText()), 'No liquidity must produce a truthful unavailable route');
+            await until(async () => /no (?:0x )?route|route.*unavailable/i.test(await page.locator('.vnTradePanel').innerText()), 'No liquidity must produce a truthful unavailable route');
             assert.ok(api.some((entry) => entry.path === '/api/vnext/quotes' && entry.body?.attempts?.some((attempt) => attempt.provider === 'zero-x-swap' && attempt.status === 'no_route')));
             if (peepEntry) await until(async () => (await page.locator('.vnTradePanel').innerText()).includes('No 0x route currently available for this trade.'), 'PEEP no-route explanation must be explicit');
           } else {

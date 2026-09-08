@@ -811,7 +811,7 @@ function hopiumCanonicalDirectoryMarket() {
     name: "Hopium Machines",
     symbol: "HOPIUM",
     pairAddress: null,
-    verifiedIdentity: { address: hopiumToken, name: "Hopium Machines", symbol: "HOPIUM" },
+    verifiedIdentity: { address: hopiumToken, name: "Hopium Machines", symbol: "HOPIUM", decimals: 18 },
     canonicalMarkets: [{
       ...peepCanonicalDirectoryMarket().canonicalMarkets[0],
       sourceId: "uniswap-v4",
