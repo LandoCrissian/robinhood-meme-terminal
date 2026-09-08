@@ -1,6 +1,7 @@
 "use client";
 
 import type { VNextExecutionRecord, VNextWalletRequestRecord } from "../../lib/vnext/execution-recovery";
+import { hasVerifiedVNextSwapSettlement } from "../../lib/vnext/output-settlement";
 import { ExplorerLink } from "./terminal-links";
 
 export function VNextExecutionRecoveryBanner({ record, walletRequest, status, onRecheckWalletRequest, walletRequestRecheckPending = false }: {
@@ -20,6 +21,10 @@ export function VNextExecutionRecoveryBanner({ record, walletRequest, status, on
     </button> : null}
   </section>;
   if (!record || status === "idle") return null;
+  if (record.kind === "swap" && record.state === "confirmed" && !hasVerifiedVNextSwapSettlement(record)) return <section className="vnRecoveryBanner isconfirming" role="status">
+    <span><strong>Transaction confirmed. Swap settlement not yet verified.</strong><small>No successful purchase or proceeds are credited without exact output evidence. Do not repeat this trade to resolve the uncertainty.</small></span>
+    <ExplorerLink kind="transaction" value={record.txHash} accessibleName="Inspect transaction with unverified swap settlement">View transaction</ExplorerLink>
+  </section>;
   const title = status === "confirming"
     ? "Transaction submitted · confirmation pending"
     : status === "confirmation_unavailable"

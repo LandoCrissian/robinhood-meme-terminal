@@ -1,6 +1,7 @@
 import { robinhoodChain, robinhoodChainTestnet } from "@rmt/shared/chains";
 import { http } from "wagmi";
 import { coinbaseWallet, injected, metaMask, walletConnect } from "wagmi/connectors";
+import { browserWalletConnectFixture } from "../lib/vnext/browser-walletconnect-fixture";
 
 const walletConnectProjectId = process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID;
 const mainnetRpcUrl = process.env.NEXT_PUBLIC_RMT_RPC_URL ?? robinhoodChain.rpcUrls.default.http[0];
@@ -13,6 +14,7 @@ const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://www.rmtlaunch.fun";
 export const walletChains = [robinhoodChainTestnet, robinhoodChain] as const;
 export function createLegacyWalletConnectors() {
   return [
+    ...browserWalletConnectFixture(),
     metaMask({
       dappMetadata: {
         name: "Robinhood Meme Terminal",

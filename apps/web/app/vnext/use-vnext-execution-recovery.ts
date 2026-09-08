@@ -1,7 +1,10 @@
 "use client";
+import { hasVerifiedVNextSwapSettlement, verifyVNextErc20OutputSettlement, verifyVNextNativeOutputSettlement, type VNextOutputSettlement } from "../../lib/vnext/output-settlement";
+
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useAccount, usePublicClient, useWaitForTransactionReceipt } from "wagmi";
+import { useAccount, usePublicClient } from "wagmi";
+import { useQuery } from "@tanstack/react-query";
 import {
   classifyVNextRevertedExecution,
   findBlockingVNextWalletRequest,
@@ -37,11 +40,18 @@ export function useVNextExecutionRecovery() {
   const [walletRequestRecheckPending, setWalletRequestRecheckPending] = useState(false);
   const lastExplicitRecheckAt = useRef(0);
   const receiptRequired = record?.state === "submitted"
-    || (record?.state === "confirmed" && record.kind === "swap" && !record.outputAmountAtomic);
-  const receipt = useWaitForTransactionReceipt({
-    hash: receiptRequired ? record?.txHash : undefined,
-    chainId: ROBINHOOD_MAINNET_CHAIN_ID,
-    confirmations: record?.feeSettlement || record?.feeV2Settlement ? 2 : 1
+    || (record?.state === "confirmed" && record.kind === "swap" && !hasVerifiedVNextSwapSettlement(record));
+  const confirmations = record?.feeSettlement || record?.feeV2Settlement ? 2 : 1;
+  // Wagmi's wrapper throws after a reverted receipt and discards its status.
+  // Recovery must retain the canonical receipt, including a mined failure.
+  const receipt = useQuery({
+    queryKey: ["vnext-exact-execution-receipt", ROBINHOOD_MAINNET_CHAIN_ID, record?.txHash, confirmations],
+    enabled: Boolean(receiptRequired && record?.txHash && publicClient),
+    queryFn: () => {
+      if (!publicClient || !record?.txHash) throw new Error("Receipt client unavailable");
+      return publicClient.waitForTransactionReceipt({ hash: record.txHash, confirmations, timeout: 60_000 });
+    },
+    retry: 2
   });
 
   useEffect(() => {
@@ -178,13 +188,25 @@ export function useVNextExecutionRecovery() {
       const feeSettlement = state === "confirmed" && record.kind === "swap" && record.feeSettlement
         ? settledVNextFeeExecution(record, receipt.data.logs)
         : null;
-      const outputAmountAtomic = state === "confirmed"
+      let outputSettlement: VNextOutputSettlement | null = null;
+      if (record.provider === "zero-x-swap" && state === "confirmed" && publicClient) {
+        try {
+          const transaction = await publicClient.getTransaction({ hash: record.txHash });
+          outputSettlement = verifyVNextErc20OutputSettlement(record, receipt.data, transaction);
+          if (record.kind === "swap" && /^0x0{40}$/i.test(record.outputAsset)) {
+            const request = publicClient.request as unknown as (input: { method: string; params: unknown[] }) => Promise<unknown>;
+            const trace = await request({ method: "debug_traceTransaction", params: [record.txHash, { tracer: "callTracer", timeout: "5s" }] });
+            outputSettlement = verifyVNextNativeOutputSettlement(record, receipt.data, transaction, trace);
+          }
+        } catch { /* Receipt confirmation does not prove output delivery. */ }
+      }
+      const outputAmountAtomic = record.provider === "zero-x-swap" ? outputSettlement?.amountAtomic ?? null : (state === "confirmed"
         ? feeV2Settlement?.outputAmountAtomic
           ?? feeSettlement?.outputAmountAtomic
           ?? (record.kind === "swap" && (record.feeSettlement || record.feeV2Settlement)
             ? null
             : settledVNextOutputAtomic(record, receipt.data.logs))
-        : null;
+        : null);
       if (state === "confirmed" && record.kind === "swap" && (
         record.feeV2Settlement && !feeV2Settlement
         || record.feeSettlement && !feeSettlement
@@ -219,6 +241,7 @@ export function useVNextExecutionRecovery() {
         Date.now(),
         outputAmountAtomic ? {
           outputAmountAtomic,
+          ...(outputSettlement ? { outputSettlement } : {}),
           ...(feeSettlement ? {
             actualFeeAtomic: feeSettlement.actualFeeAtomic,
             grossActualOutputAtomic: feeSettlement.grossActualOutputAtomic,
@@ -251,5 +274,11 @@ export function useVNextExecutionRecovery() {
   const status = record?.state === "submitted"
     ? reconciliationFailed ? "reconciliation_failed" : receipt.isError ? "confirmation_unavailable" : "confirming"
     : record?.state ?? "idle";
+  useEffect(() => {
+    if (!record || record.state !== "confirmed" || record.kind !== "swap" || hasVerifiedVNextSwapSettlement(record)) return;
+    const timers = [3000, 10000, 30000].map((delay) => window.setTimeout(() => void receipt.refetch(), delay));
+    return () => timers.forEach(window.clearTimeout);
+  }, [record?.txHash, record?.state]);
+
   return { record, walletRequest, status, recheckWalletRequest, walletRequestRecheckPending } as const;
 }

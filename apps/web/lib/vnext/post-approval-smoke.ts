@@ -32,7 +32,8 @@ const matching = {
 const approvalOutcome = resolvedVNextExecutionOutcome(matching);
 assert.equal(approvalOutcome?.state, "approval_confirmed");
 assert.match(approvalOutcome?.message ?? "", /previous quote and payload were discarded/);
-assert.equal(resolvedVNextExecutionOutcome({ ...matching, record: { ...record, kind: "swap" } })?.state, "swap_confirmed");
+assert.equal(resolvedVNextExecutionOutcome({ ...matching, record: { ...record, kind: "swap" } })?.state, "confirmed_unsettled");
+assert.equal(resolvedVNextExecutionOutcome({ ...matching, record: { ...record, kind: "swap", outputAmountAtomic: "1000" } })?.state, "swap_confirmed");
 assert.equal(resolvedVNextExecutionOutcome({ ...matching, record: { ...record, state: "reverted" } })?.state, "reverted");
 assert.equal(resolvedVNextExecutionOutcome({ ...matching, record: { ...record, state: "submitted" } }), null);
 assert.equal(resolvedVNextExecutionOutcome({ ...matching, wallet: record.outputAsset }), null);

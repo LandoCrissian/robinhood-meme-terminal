@@ -18,6 +18,8 @@ import {
 } from "../../lib/vnext/wallet-assets";
 import { VNEXT_CLIENT_REFRESH_POLICY } from "../../lib/vnext/client-refresh-policy";
 import { useVisibilityRefresh } from "./use-visibility-refresh";
+import { readVNextExecutionJournal, VNEXT_EXECUTION_EVENT } from "../../lib/vnext/execution-recovery";
+import { hasVerifiedVNextSwapSettlement } from "../../lib/vnext/output-settlement";
 
 export type VNextWalletAssetStatus = "idle" | "loading" | "ready" | "stale" | "error";
 export type VNextWalletDiscoveryStatus = "idle" | "loading" | "ready" | "partial" | "stale" | "unavailable";
@@ -237,6 +239,20 @@ export function useVNextWalletAssets(markets: VNextDirectoryMarket[], imported: 
     enabled,
     refreshKey: address?.toLowerCase() ?? "disconnected"
   });
+
+  useEffect(() => {
+    if (!enabled || !address) return;
+    const seen = new Set(readVNextExecutionJournal().filter(hasVerifiedVNextSwapSettlement).map((record) => record.txHash));
+    const settled = () => {
+      const fresh = readVNextExecutionJournal().filter((record) => record.wallet.toLowerCase() === address.toLowerCase()
+        && hasVerifiedVNextSwapSettlement(record) && !seen.has(record.txHash));
+      if (!fresh.length) return;
+      fresh.forEach((record) => seen.add(record.txHash));
+      void refresh(true);
+    };
+    window.addEventListener(VNEXT_EXECUTION_EVENT, settled);
+    return () => window.removeEventListener(VNEXT_EXECUTION_EVENT, settled);
+  }, [address, enabled, refresh]);
 
   const snapshotIsCurrent = Boolean(address && snapshotWallet.current === address.toLowerCase());
   return {

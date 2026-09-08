@@ -1,8 +1,9 @@
 import type { VNextExecutionRecord } from "./execution-recovery";
+import { hasVerifiedVNextSwapSettlement } from "./output-settlement";
 import type { VNextPreSignEvidence } from "./pre-sign-evidence";
 
 export type VNextResolvedExecutionOutcome = {
-  state: "approval_confirmed" | "swap_confirmed" | "reverted";
+  state: "approval_confirmed" | "swap_confirmed" | "confirmed_unsettled" | "reverted";
   message: string;
 };
 
@@ -31,6 +32,9 @@ export function resolvedVNextExecutionOutcome(input: {
   return record.kind === "erc20_approval" ? {
     state: "approval_confirmed",
     message: "Exact approval confirmed. The previous quote and payload were discarded."
+  } : !hasVerifiedVNextSwapSettlement(record) ? {
+    state: "confirmed_unsettled",
+    message: "Transaction confirmed. Swap settlement not yet verified. No purchase is credited; inspect the transaction while reconciliation continues."
   } : {
     state: "swap_confirmed",
     message: "Swap settlement confirmed onchain."
@@ -40,7 +44,7 @@ export function resolvedVNextExecutionOutcome(input: {
 export function postApprovalVerificationOutcome(evidence: VNextPreSignEvidence) {
   if (evidence.status === "verified") return {
     state: "swap_ready" as const,
-    message: "Fresh allowance, balance, gas, route, and exact simulation passed. Prepare a separate swap review when ready."
+    message: "Fresh allowance, balance, gas, route, and exact simulation passed. The swap still requires its own wallet confirmation."
   };
   if (evidence.status === "approval_required") return {
     state: "next_approval_ready" as const,

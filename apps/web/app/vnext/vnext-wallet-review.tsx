@@ -143,7 +143,7 @@ export function VNextWalletReview({
   selectedWalletKey,
   selectedWalletKind,
   selectedWalletName
-}: {
+, tradeActionLabel, actionId = 0, onTradeAction, onDispatched }: {
   plan: VNextAuthorizationPlan;
   evidence: VNextPreSignEvidence;
   onRefresh?: () => void;
@@ -154,7 +154,11 @@ export function VNextWalletReview({
   selectedWalletKey?: string | null;
   selectedWalletKind?: "embedded" | "external" | null;
   selectedWalletName?: string | null;
+
+ tradeActionLabel?: string; actionId?: number; onTradeAction?: () => void; onDispatched?: (plan: VNextAuthorizationPlan) => void;
 }) {
+  const consumedAction = useRef(0);
+
   const { address, chainId, connector, isConnected } = useAccount();
   const publicClient = usePublicClient({ chainId: ROBINHOOD_MAINNET_CHAIN_ID });
   const { data: walletClient } = useWalletClient({ connector });
@@ -301,6 +305,7 @@ export function VNextWalletReview({
         walletClientRequest: (args) => walletClient.request(args)
       });
       completeProviderRequest(prepared, pending);
+      onDispatched?.(prepared.plan);
       setHandoffState("provider_pending");
       setLocalStatus(`Transaction request sent to ${binding.walletName}. Review the exact transaction there. RMT cannot approve or sign it.`);
       if (prepared.mobileWalletConnect && prepared.transport.safeMobileOpenUri) {
@@ -455,12 +460,7 @@ export function VNextWalletReview({
           lifecycleState: "ready_to_open",
           requestId
         });
-        if (prepared.mobileWalletConnect) {
-          setHandoffState("ready_to_open");
-          setLocalStatus("Verified request prepared. Open the selected wallet only when you are ready to review it.");
-        } else {
-          openPreparedWalletRequest();
-        }
+        openPreparedWalletRequest();
         lease = null;
     } catch (cause) {
       setHandoffState("idle");
@@ -470,6 +470,13 @@ export function VNextWalletReview({
       setPreflightPending(false);
     }
   };
+
+  useEffect(() => {
+    // IDs originate only from intentional trade actions, never from quote arrival.
+    if (actionId <= 0 || consumedAction.current === actionId || !walletClient || !connector || !publicClient || !isConnected || !address) return;
+    consumedAction.current = actionId;
+    void prepareWalletReview();
+  }, [actionId, walletClient, connector, publicClient, isConnected, address]);
 
   const reopenSelectedWallet = () => {
     const prepared = preparedRef.current;
@@ -500,10 +507,10 @@ export function VNextWalletReview({
       type="button"
       aria-label={plan.kind === "erc20_approval" ? "Review exact approval in wallet" : "Review verified swap in wallet"}
       disabled={!submissionEnabled || busy}
-      onClick={() => expired || requiresRefresh
+      onClick={() => (onTradeAction?.(), expired || requiresRefresh
         ? onRefresh?.()
-        : handoffState === "ready_to_open" ? openPreparedWalletRequest() : void prepareWalletReview()}
-    >{!submissionEnabled
+        : handoffState === "ready_to_open" ? openPreparedWalletRequest() : void prepareWalletReview())}
+    >{tradeActionLabel && !busy && !expired && !requiresRefresh ? tradeActionLabel : !submissionEnabled
       ? "Wallet submission disabled"
       : expired || requiresRefresh
         ? "Refresh verified request"
