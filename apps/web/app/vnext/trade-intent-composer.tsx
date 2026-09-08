@@ -363,6 +363,9 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
     : observedRouteSelection;
   const bestQuote = routeSelection.bestObserved;
   const verificationQuote = routeSelection.verificationCandidate;
+  const zeroXNoRoute = !verificationQuote && visibleQuote?.attempts.some(
+    (attempt) => attempt.provider === "zero-x-swap" && attempt.status === "no_route"
+  );
   const freshVerifiedNetworkCostUsdgAtomic = visibleVerification?.estimatedNetworkCostUsdgAtomic
     && visibleVerification.networkCostValuationExpiresAtMs
     && visibleVerification.networkCostValuationExpiresAtMs > costValuationClockMs
@@ -1103,6 +1106,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
         ? "Official Robinhood Stock Tokens are view-only in RMT until jurisdiction controls are available. Indicative market and route information remains available."
         : previewOnly
           ? "Preview mode shows informational routes only. RMT will not connect your wallet or prepare a transaction until verified execution is activated."
+         : zeroXNoRoute
+           ? "No 0x route currently available for this trade. Other informational quotes do not authorize wallet execution."
          : visibleQuote && bestQuote && !verificationQuote
            ? "The best observed route is not admitted to public wallet execution. Its quote remains visible and unchanged."
          : walletPlanActive
