@@ -187,7 +187,7 @@ assert.match(review, /bindVNextExternalWallet/);
 assert.match(review, /dispatchVNextWalletReview/);
 const openBoundary = review.slice(review.indexOf("function openPreparedWalletRequest"), review.indexOf("const prepareWalletReview"));
 const prepareBoundary = review.slice(review.indexOf("const prepareWalletReview"), review.indexOf("const reopenSelectedWallet"));
-assert.doesNotMatch(openBoundary, /\bawait\b/, "the second owner action performs no awaited RPC before provider invocation");
+assert.doesNotMatch(openBoundary, /\bawait\b/, "the prepared dispatch boundary performs no awaited RPC before provider invocation");
 assert.match(openBoundary, /dispatchVNextWalletReview/);
 assert.doesNotMatch(openBoundary, /walletClient\.sendTransaction/);
 assert.doesNotMatch(prepareBoundary, /eth_sendTransaction|walletClient\.request/);
@@ -197,7 +197,8 @@ assert.ok(dispatch.indexOf('pending = invokeVNextExternalWalletRequest') < dispa
 assert.match(dispatch, /isVNextUserRejectedRequest/);
 assert.match(review, /Open \{walletName\}/, "an exact session-bound wallet can be reopened without resending");
 assert.match(review, /Transaction request sent to/);
-assert.match(review, /Verified request prepared/);
+assert.match(prepareBoundary, /openPreparedWalletRequest\(\)/, "one intentional action must prepare and dispatch without an intermediate confirmation");
+assert.doesNotMatch(prepareBoundary, /setHandoffState\("ready_to_open"\)/, "mobile preparation cannot require a normal-path second click");
 assert.match(review, /Transaction request sent to/);
 assert.doesNotMatch(review, /Complete review in wallet/);
 assert.doesNotMatch(review, /metamask:\/\/|rabby:\/\//i, "RMT must not invent wallet URL schemes");

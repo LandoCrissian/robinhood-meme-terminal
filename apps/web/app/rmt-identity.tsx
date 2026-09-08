@@ -95,7 +95,8 @@ export function BrowserAcceptanceIdentityBridge({ children }: { children: ReactN
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const acceptanceEnabled = process.env.NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE === "true" && isLoopbackAcceptanceHost();
-  const connector = connectors.find((candidate) => candidate.id === "injected" || candidate.type === "injected");
+  const connector = connectors.find((candidate) => candidate.id === "rmt-walletconnect-fixture")
+    ?? connectors.find((candidate) => candidate.id === "injected" || candidate.type === "injected");
   const connectTradingWallet = useCallback(() => {
     if (acceptanceEnabled && connector) connect({ connector, chainId: 4_663 });
   }, [acceptanceEnabled, connect, connector]);

@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 
 const requireWeb = createRequire(new URL('../../apps/web/package.json', import.meta.url));
-const { decodeFunctionData, encodeFunctionData, erc20Abi, keccak256, maxUint256 } = requireWeb('viem');
+const { decodeFunctionData, encodeFunctionData, encodeEventTopics, erc20Abi, keccak256, maxUint256 } = requireWeb('viem');
 requireWeb('tsx/cjs');
 const { authorizationPayloadHash } = requireWeb('./lib/vnext/authorization-plan.ts');
 const hex = (value) => `0x${BigInt(value).toString(16)}`;
@@ -54,9 +54,9 @@ export async function runZeroXWalletJourneys(options) {
     'duplicate-integrator-fee': (quote) => { quote.fees.integratorFees = [quote.fees.integratorFee, quote.fees.integratorFee]; }
   };
   for (const viewportName of ['desktop', 'mobile']) {
-    const scenarios = ['direct-confirmation', 'multi-account-owner-second', 'signer-two-providers', 'signer-disappeared', 'signer-account-change', 'signer-provider-conflict', 'approval-requote', 'native', 'rejection', 'pending', 'expired-quote', 'quote-only', ...Object.keys(faults), 'simulation-failure', ...Object.keys(wireFaults)];
+    const scenarios = ['direct-confirmation', 'returning-signer', 'mobile-walletconnect', 'mobile-walletconnect-sell', 'native-sell', 'approval-only', 'confirmed-without-output', 'reverted', 'multi-account-owner-second', 'signer-two-providers', 'signer-disappeared', 'signer-account-change', 'signer-provider-conflict', 'approval-requote', 'native', 'rejection', 'pending', 'expired-quote', 'quote-only', ...Object.keys(faults), 'simulation-failure', ...Object.keys(wireFaults)];
     for (const scenario of scenarios) {
-      state.approved = !['approval-requote', 'approval-over-sell', 'approval-unlimited', 'stale-post-approval'].includes(scenario);
+      state.approved = !['approval-only', 'approval-requote', 'approval-over-sell', 'approval-unlimited', 'stale-post-approval'].includes(scenario);
       state.priceDisabled = scenario === 'quote-only';
       state.simulationFails = scenario === 'simulation-failure';
       state.modifyFirm = faults[scenario];
@@ -68,26 +68,39 @@ export async function runZeroXWalletJourneys(options) {
       let block = 50000000;
       let receiptsEnabled = true;
       const isMobile = viewportName === 'mobile';
-      const context = await browser.newContext({ viewport: isMobile ? { width: 390, height: 844 } : { width: 1440, height: 900 }, ...(isMobile ? { isMobile: true, hasTouch: true } : {}) });
+      const context = await browser.newContext({ viewport: isMobile ? { width: 390, height: 844 } : { width: 1440, height: 900 }, ...(isMobile ? { isMobile: true, hasTouch: true, userAgent: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/128.0.0.0 Mobile Safari/537.36' } : {}) });
       const page = await context.newPage();
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.clock.install();
       state.rpcOverride = (request) => {
         if (request.method === 'eth_blockNumber') return hex(++block);
+        if (request.method === 'debug_traceTransaction') {
+          const tx = transactions.get(lower(request.params[0]));
+          const plan = tx && api.filter((entry) => entry.path === '/api/vnext/authorize' && entry.status === 200 && entry.body.plan.data === tx.data).at(-1)?.body.plan;
+          if (!tx || !plan) return null;
+          return { type: 'CALL', from: wallet, to: tx.to, value: tx.value, input: tx.data,
+            calls: [{ type: 'CALL', from: holder, to: wallet, input: '0x', value: hex(BigInt(plan.providerNativeFee.expectedOutputAtomic)) }] };
+        }
         if (!['eth_getTransactionReceipt', 'eth_getTransactionByHash'].includes(request.method)) return undefined;
         const txHash = lower(request.params[0]);
         const tx = transactions.get(txHash);
         if (!tx || !receiptsEnabled) return null;
         const approval = lower(tx.to) === usdg;
-        if (approval) state.approved = true;
+        if (approval) { state.approved = true; if (scenario === 'approval-only') state.priceDisabled = true; }
         if (request.method === 'eth_getTransactionByHash') return {
           blockHash: h('a'), blockNumber: hex(50000000), chainId: '0x1237', from: wallet, gas: tx.gas, gasPrice: tx.gasPrice,
           hash: txHash, input: tx.data, nonce: approval ? '0x1' : '0x2', to: tx.to, transactionIndex: '0x0', type: '0x0', value: tx.value,
           v: '0x1b', r: h('1'), s: h('2')
         };
         return { blockHash: h('a'), blockNumber: hex(50000000), contractAddress: null, cumulativeGasUsed: '0x30d40', effectiveGasPrice: tx.gasPrice,
-          from: wallet, gasUsed: approval ? '0xc350' : '0x186a0', logs: [], logsBloom: `0x${'0'.repeat(512)}`,
-          status: '0x1', to: tx.to, transactionHash: txHash, transactionIndex: '0x0', type: '0x0' };
+          from: wallet, gasUsed: approval ? '0xc350' : '0x186a0', logs: approval || ['confirmed-without-output', 'reverted'].includes(scenario) ? [] : (() => {
+            const plan = api.filter((entry) => entry.path === '/api/vnext/authorize' && entry.status === 200 && entry.body.plan.data === tx.data).at(-1)?.body.plan;
+            assert.ok(plan, 'Settlement receipt must match the exact submitted plan');
+            return [{ address: plan.outputAsset, data: '0x' + BigInt(plan.providerNativeFee.expectedOutputAtomic).toString(16).padStart(64, '0'),
+              topics: encodeEventTopics({ abi: erc20Abi, eventName: 'Transfer', args: { from: holder, to: wallet } }),
+              blockHash: h('a'), blockNumber: hex(50000000), transactionHash: txHash, transactionIndex: '0x0', logIndex: '0x0', removed: false }];
+          })(), logsBloom: `0x${'0'.repeat(512)}`,
+          status: scenario === 'reverted' ? '0x0' : '0x1', to: tx.to, transactionHash: txHash, transactionIndex: '0x0', type: '0x0' };
       };
       await page.exposeFunction('__ZEROX_CAPTURE__', (transaction) => {
         requests.push(transaction);
@@ -145,6 +158,7 @@ export async function runZeroXWalletJourneys(options) {
             return null;
           }
         };
+        if (scenario.startsWith('mobile-walletconnect')) window.__RMT_ACCEPTANCE_WALLETCONNECT_PROVIDER__ = selectedSigner;
         // Model the already-selected authenticated identity independently from
         // the raw signer permitted account set, just as the normal integration does.
         window.ethereum = scenario === 'multi-account-owner-second' ? {
@@ -205,11 +219,13 @@ export async function runZeroXWalletJourneys(options) {
       });
       const prefix = `${viewportName}-${scenario}`;
       try {
-        await page.goto(`${base}/?market=${token}&side=buy`, { waitUntil: 'domcontentloaded' });
+        const sell = ['native-sell', 'mobile-walletconnect-sell'].includes(scenario);
+        await page.goto(`${base}/?market=${token}&side=${sell ? 'sell' : 'buy'}`, { waitUntil: 'domcontentloaded' });
         await page.getByRole('button', { name: 'I understand', exact: false }).click();
         await page.getByRole('button', { name: 'Start with live markets', exact: true }).click();
         await page.getByLabel('Exact input amount').waitFor();
         if (scenario === 'native') await page.getByLabel('Pay with asset').selectOption('eip155:4663/native');
+        if (sell) await page.locator('.vnTradePanel select').first().selectOption('eip155:4663/native');
         await page.getByLabel('Exact input amount').fill(scenario === 'native' ? '0.0005' : '25');
         // Connected 0x amount readiness prepares authority without another RMT confirmation.
         if (scenario === 'quote-only') {
@@ -241,7 +257,7 @@ export async function runZeroXWalletJourneys(options) {
           const quote = api.find((entry) => entry.path.endsWith('/quotes') && entry.status === 200).body;
           assert.deepEqual(quote.attempts.filter((attempt) => attempt.publicWalletExecutionEligible).map((attempt) => attempt.provider), ['zero-x-swap']);
           assert.ok(quote.attempts.filter((attempt) => attempt.provider !== 'zero-x-swap').every((attempt) => !attempt.publicWalletExecutionEligible));
-          const review = page.locator('button').filter({ hasText: /^Review .*Deterministic browser wallet/ });
+          const review = page.getByRole('button', { name: /Review (exact approval|verified swap) in wallet/, exact: true });
           await review.scrollIntoViewIfNeeded();
           assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2), 'No horizontal overflow');
           if (scenario === 'expired-quote') {
@@ -255,7 +271,14 @@ export async function runZeroXWalletJourneys(options) {
               assert.equal(await selector.getByRole('button', { name: /Other explicit signer/ }).count(), 1);
               assert.equal(await selector.getByText(/Selected signer:/).count(), 0, 'multiple new providers require explicit choice');
             }
-            await selector.getByRole('button', { name: /Explicit test signer/ }).click();
+            if (!scenario.startsWith('mobile-walletconnect')) await selector.getByRole('button', { name: /Explicit test signer/ }).click();
+            if (scenario === 'returning-signer') {
+              await page.reload({ waitUntil: 'domcontentloaded' });
+              await page.getByText('Selected signer: Explicit test signer', { exact: true }).waitFor();
+              await review.waitFor();
+              assert.equal(await page.getByRole('button', { name: /Explicit test signer.*SELECT/ }).count(), 0);
+              assert.equal(requests.length, 0, 'preference restoration cannot dispatch');
+            }
             if (['signer-disappeared', 'signer-account-change', 'signer-provider-conflict'].includes(scenario)) {
               await page.evaluate(() => window.__ZEROX_INVALIDATE_SIGNER__());
               // A disconnect may also unmount the now-ineligible wallet review.
@@ -285,6 +308,19 @@ export async function runZeroXWalletJourneys(options) {
               await page.reload({ waitUntil: 'domcontentloaded' });
               await until(async () => /pending|unknown|recovery|waiting/i.test(await page.locator('body').innerText()), 'Durable recovery state missing');
               assert.equal(requests.length, 1, 'Recovery must not resubmit');
+            } else if (scenario === 'approval-only') {
+              await page.getByText('Exact approval confirmed', { exact: true }).waitFor({ timeout: 30000 });
+              await pause(500);
+              assert.equal(await page.locator('.vnTradeReceipt').count(), 0, 'approval is not a purchase');
+              assert.equal(requests.length, 1, 'no executable fresh swap means no second wallet request');
+            } else if (scenario === 'confirmed-without-output') {
+              await page.getByText('Transaction confirmed. Swap settlement not yet verified.', { exact: true }).waitFor({ timeout: 30000 });
+              assert.equal(await page.locator('.vnTradeReceipt').count(), 0, 'receipt without output cannot claim a purchase');
+              assert.equal(requests.length, 1);
+            } else if (scenario === 'reverted') {
+              await until(async () => /reverted/i.test(await page.locator('body').innerText()), 'Revert must be visible');
+              assert.equal(await page.locator('.vnTradeReceipt').count(), 0);
+              assert.equal(requests.length, 1);
             } else if (scenario === 'stale-post-approval') {
               await until(() => corrupted === 1, 'Fresh post-approval response was not exercised', 30000);
               await until(async () => /reject|changed|inconsistent|invalid|authority|mismatch/i.test(await page.locator('.vnTradePanel').innerText()), 'Stale post-approval calldata must be rejected');
@@ -302,8 +338,7 @@ export async function runZeroXWalletJourneys(options) {
               await remembered.getByText('Selected signer: Explicit test signer', { exact: true }).waitFor();
               assert.equal(await remembered.getByRole('button', { name: 'Change signer', exact: true }).count(), 1);
               assert.equal(await remembered.getByText('Choose the injected signer for 0x', { exact: true }).count(), 0, 'post-approval fresh authority reuses the exact explicit provider, without reselecting');
-              await review.click();
-              await until(() => requests.length === 2, 'Fresh swap wallet request missing');
+              await until(() => requests.length === 2, 'Fresh swap wallet request missing after original trade action');
               assert.equal(requests[1].data, fresh.plan.data);
               assert.notEqual(keccak256(requests[1].data), bundle.plan.providerNativeFee.transactionCalldataHash);
             } else {

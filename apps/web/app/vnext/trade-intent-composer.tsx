@@ -126,10 +126,14 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
     | { state: "next_approval_ready"; message: string }
     | { state: "swap_ready"; message: string }
     | { state: "blocked"; message: string }
+    | { state: "confirmed_unsettled"; message: string }
     | { state: "swap_confirmed"; message: string }
     | { state: "reverted"; message: string }
   >({ state: "idle" });
   const [costValuationClockMs, setCostValuationClockMs] = useState(() => Date.now());
+  const [walletActionId, setWalletActionId] = useState(0);
+  const walletActionCounter = useRef(0);
+  const intentionalTradeContext = useRef<string | null>(null);
   const handledExecution = useRef<string | undefined>(undefined);
   const pendingTradeAfterLogin = useRef<PendingTradeEntry | undefined>(undefined);
   const automaticPreparationKey = useRef("");
@@ -278,6 +282,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
   useEffect(() => {
     backgroundQuoteEpoch.current += 1;
     authorizationAttemptEpoch.current += 1;
+    intentionalTradeContext.current = null;
+    setWalletActionId(0);
     backgroundQuoteAttempted.current = false;
     setQuoteState({ state: "idle" });
     setVerificationState({ state: "idle" });
@@ -298,7 +304,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
       inputAmountAtomic: draft.intent?.amountAtomic
     });
     if (!executionRecord || !outcome) return;
-    handledExecution.current = executionRecord.txHash;
+    if (outcome.state !== "confirmed_unsettled") handledExecution.current = executionRecord.txHash;
     setQuoteState({ state: "idle" });
     setVerificationState({ state: "idle" });
     setAuthorizationState({ state: "idle" });
@@ -737,9 +743,10 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
     }, Date.now());
   };
 
-  const startTrade = async () => {
+  const startTrade = async (openWallet = false) => {
     if (!authorizationEnabled || stockTokenViewOnly || !draft.intent || amountExceedsBalance) return;
     automaticPreparationKey.current = `${identity.userId}:${identity.activeWalletKey}:${requestKey}`;
+    if (openWallet) intentionalTradeContext.current = `${identity.userId}:${identity.activeWalletKey}:${requestKey}`;
     backgroundQuoteEpoch.current += 1;
     const authorizationAttempt = ++authorizationAttemptEpoch.current;
     const cachedQuoteForTrade = cachedVNextQuoteForRequest(lastReadyQuote.current, requestKey);
@@ -783,6 +790,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
       lastReadyVerification.current = authorization.evidence;
       setVerificationState({ state: "ready", evidence: authorization.evidence });
       setAuthorizationState({ state: "ready", plan: authorization.plan });
+      if (openWallet && authorization.plan.provider === "zero-x-swap") setWalletActionId(++walletActionCounter.current);
       preparedApprovalAuthority.current = authorization.plan.kind === "erc20_approval"
         ? {
             approvalKind: authorization.evidence.approvalKind!,
@@ -871,6 +879,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
           }
         : undefined;
       setPostExecutionState(outcome);
+      if (intentionalTradeContext.current === `${identity.userId}:${identity.activeWalletKey}:${requestKey}`) setWalletActionId(++walletActionCounter.current);
     } catch (cause) {
       if (!isCurrentTradeAuthorizationAttempt(authorizationAttempt, authorizationAttemptEpoch.current)) return;
       const message = cause instanceof Error ? cause.message : "Fresh post-approval verification failed.";
@@ -961,7 +970,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
       identity.connectTradingWallet();
       return;
     }
-    void startTrade();
+    void startTrade(true);
   };
   const continueTrading = () => {
     backgroundQuoteEpoch.current += 1;
@@ -1094,7 +1103,11 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
           key={authorizationState.plan.planId}
           plan={authorizationState.plan}
           evidence={visibleVerification}
-          onRefresh={() => void startTrade()}
+          onRefresh={() => void startTrade(true)}
+          actionId={walletActionId}
+          tradeActionLabel={authorizationState.plan.provider === "zero-x-swap" ? `${side === "buy" ? "Buy" : "Sell"} ${marketSymbol}` : undefined}
+          onTradeAction={() => { if (authorizationState.plan.provider === "zero-x-swap") intentionalTradeContext.current = `${identity.userId}:${identity.activeWalletKey}:${requestKey}`; }}
+          onDispatched={(dispatched) => { setWalletActionId(0); if (dispatched.kind === "swap") intentionalTradeContext.current = null; }}
           inputSymbol={inputSymbol}
           outputSymbol={outputSymbol}
           inputDecimals={pair?.inputAsset.decimals ?? 18}
@@ -1152,6 +1165,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
                 ? "Next exact approval ready"
               : postExecutionState.state === "swap_confirmed"
                 ? "Settlement confirmed"
+                : postExecutionState.state === "confirmed_unsettled"
+                  ? "Transaction confirmed; swap settlement unverified"
                 : postExecutionState.state === "reverted"
                   ? "Transaction reverted"
                   : "Fresh verification blocked"}</strong>
@@ -1266,7 +1281,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
         </div> : null}
         </div>
       </details>
-      {postExecutionState.state === "swap_confirmed" && executionRecord?.kind === "swap" && executionRecord.state === "confirmed" ? (
+      {postExecutionState.state === "swap_confirmed" && executionRecord?.kind === "swap" && executionRecord.state === "confirmed" && confirmedOutputDisplay ? (
         <div className="vnTradeReceiptBackdrop" role="presentation">
           <section
             ref={receiptDialog}

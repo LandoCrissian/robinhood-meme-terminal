@@ -55,6 +55,8 @@ import {
 } from "./uniswap-v2-fee-executor-v2";
 export { vNextProviderLabel as vNextExecutionProviderLabel } from "./provider-presentation";
 
+import { validVNextOutputSettlement, type VNextOutputSettlement } from "./output-settlement";
+
 export const VNEXT_EXECUTION_STORAGE_KEY = "rmt:vnext-execution-journal:v1:4663";
 export const VNEXT_EXECUTION_EVENT = "rmt:vnext-execution-changed";
 export const VNEXT_WALLET_REQUEST_EVENT = "rmt:vnext-wallet-request-changed";
@@ -108,6 +110,7 @@ export type VNextExecutionRecord = {
   outputAsset: Address;
   inputAmountAtomic: string;
   outputAmountAtomic?: string;
+  outputSettlement?: VNextOutputSettlement;
   feeSettlement?: {
     executor: Address;
     executionId: Hex;
@@ -514,6 +517,9 @@ function normalizeRecord(value: unknown): VNextExecutionRecord | null {
     outputAsset: getAddress(candidate.outputAsset),
     inputAmountAtomic: candidate.inputAmountAtomic,
     ...(outputAmountAtomic ? { outputAmountAtomic } : {}),
+    ...(candidate.outputSettlement && validVNextOutputSettlement(candidate as VNextExecutionRecord, candidate.outputSettlement)
+      && candidate.outputSettlement.amountAtomic === outputAmountAtomic
+      ? { outputSettlement: candidate.outputSettlement } : {}),
     ...(feeSettlement ? { feeSettlement } : {}),
     ...(feeV2Settlement ? { feeV2Settlement } : {}),
     ...(providerNativeFee ? { providerNativeFee } : {}),
@@ -1559,6 +1565,7 @@ export function resolveVNextExecution(
   nowMs = Date.now(),
   settlement?: {
     outputAmountAtomic: string;
+    outputSettlement?: VNextOutputSettlement;
     actualFeeAtomic?: string;
     grossActualOutputAtomic?: string;
     actualUserNetOutputAtomic?: string;
@@ -1576,6 +1583,9 @@ export function resolveVNextExecution(
   const existing = current.executions.find((record) => record.txHash === normalizedHash);
   if (!existing) return null;
   const outputAmountAtomic = settlement?.outputAmountAtomic;
+  if (existing.provider === "zero-x-swap" && outputAmountAtomic !== undefined
+    && (!validVNextOutputSettlement(existing, settlement?.outputSettlement)
+      || settlement?.outputSettlement?.amountAtomic !== outputAmountAtomic)) return null;
   if (outputAmountAtomic !== undefined && (
     state !== "confirmed" || existing.kind !== "swap" || !/^[1-9][0-9]*$/.test(outputAmountAtomic)
   )) return null;
@@ -1616,7 +1626,8 @@ export function resolveVNextExecution(
     ...existing,
     state,
     ...(state === "confirmed" && existing.kind === "swap" && (outputAmountAtomic ?? existing.outputAmountAtomic)
-      ? { outputAmountAtomic: outputAmountAtomic ?? existing.outputAmountAtomic }
+      ? { outputAmountAtomic: outputAmountAtomic ?? existing.outputAmountAtomic,
+          ...(settlement?.outputSettlement ? { outputSettlement: settlement.outputSettlement } : {}) }
       : { outputAmountAtomic: undefined }),
     ...(existing.feeSettlement ? { feeSettlement: {
       ...existing.feeSettlement,

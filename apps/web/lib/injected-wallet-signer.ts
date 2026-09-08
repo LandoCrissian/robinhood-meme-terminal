@@ -1,4 +1,5 @@
 import { getAddress, isAddress } from "viem";
+import { browserSignerPreferenceStorage, INJECTED_SIGNER_PREFERENCE_KEY, readInjectedSignerPreference, type SignerPreferenceStorage } from "./injected-signer-preference";
 import { parseWalletGatewayKey } from "./wallet-gateway";
 
 export type InjectedSignerProvider = {
@@ -24,8 +25,13 @@ export type InjectedSignerTicket = Readonly<{
   request: InjectedSignerProvider["request"];
 }>;
 
-/** Page-session selection, not a second connected-wallet manager. No provider is auto-selected. */
-export function createInjectedSignerSelection() {
+/** Provider objects remain page-local. Only an explicit non-secret preference survives reload. */
+export function createInjectedSignerSelection(options: { storage?: () => SignerPreferenceStorage | undefined } = {}) {
+  const preferenceStorage = options.storage ?? browserSignerPreferenceStorage;
+  let restoredSelection = false;
+  const forgetPreference = () => {
+    try { preferenceStorage()?.removeItem(INJECTED_SIGNER_PREFERENCE_KEY); } catch { /* Manual selection remains available. */ }
+  };
   const announcements = new Map<string, Announcement>();
   const listeners = new Set<() => void>();
   let identity: InjectedSignerIdentity = { authenticated: false, userId: "", activeWalletKey: null };
@@ -66,17 +72,20 @@ export function createInjectedSignerSelection() {
     const wallet = requireIdentity(walletKey, recipient);
     if (!selected || selected.conflicted || generation !== ticket.generation || selected.uuid !== ticket.uuid
       || selected.provider !== ticket.provider || selected.provider.request !== ticket.request
-      || ticket.walletKey !== walletKey || ticket.wallet !== wallet) {
+      || ticket.walletKey !== walletKey || ticket.wallet !== wallet
+      || (restoredSelection && [...announcements.values()].filter((entry) => entry.rdns === selected?.rdns).length !== 1)) {
       throw new Error("Injected signer selection changed. Select it again and prepare fresh authority.");
     }
   }
   return {
     subscribe(listener: () => void) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     getSnapshot: () => snapshot,
-    invalidate,
+    invalidate: () => { forgetPreference(); invalidate(); },
     setIdentity(next: InjectedSignerIdentity) {
       const key = JSON.stringify([next.authenticated, next.userId, next.activeWalletKey,
         next.address?.toLowerCase(), next.linkedAddress?.toLowerCase(), next.chainId]);
+      if (selected && next.authenticated && (next.activeWalletKey !== identity.activeWalletKey
+        || next.address?.toLowerCase() !== identity.address?.toLowerCase() || next.chainId !== identity.chainId)) forgetPreference();
       identity = { ...next };
       if (key !== identityKey) { identityKey = key; invalidate(); }
     },
@@ -94,10 +103,41 @@ export function createInjectedSignerSelection() {
         if (existing) existing.conflicted = true;
         aliases.forEach((item) => { item.conflicted = true; });
         if (!existing && announcements.size < 32) announcements.set(uuid, { uuid, name: info.name, rdns: info.rdns, provider, conflicted: true });
+        forgetPreference();
         invalidate();
         return;
       }
-      if (!existing && announcements.size < 32) { announcements.set(uuid, { uuid, name: info.name, rdns: info.rdns, provider, conflicted: false }); publish(); }
+      if (!existing && announcements.size < 32) {
+        announcements.set(uuid, { uuid, name: info.name, rdns: info.rdns, provider, conflicted: false });
+        if (restoredSelection && selected?.rdns === info.rdns) { forgetPreference(); invalidate(); }
+        else publish();
+      }
+    },
+    async restorePreference() {
+      if (selected) return false;
+      const preference = readInjectedSignerPreference(preferenceStorage());
+      if (!preference) return false;
+      const before = generation;
+      try {
+        const wallet = requireIdentity();
+        if (wallet.toLowerCase() !== preference.wallet.toLowerCase() || identity.activeWalletKey !== preference.walletKey) return false;
+        const matches = [...announcements.values()].filter((entry) => entry.rdns === preference.rdns);
+        if (matches.length !== 1 || matches[0].conflicted || matches[0].name !== preference.name) return false;
+        const choice = matches[0];
+        const request = choice.provider.request;
+        const accounts = await request.call(choice.provider, { method: "eth_accounts" });
+        const chain = await request.call(choice.provider, { method: "eth_chainId" });
+        if (generation !== before || selected || choice.provider.request !== request
+          || requireIdentity() !== wallet || choice.conflicted
+          || [...announcements.values()].filter((entry) => entry.rdns === preference.rdns).length !== 1
+          || !Array.isArray(accounts) || accounts.length === 0
+          || !accounts.every((account) => typeof account === "string" && isAddress(account, { strict: false }))
+          || !accounts.some((account) => getAddress(account).toLowerCase() === wallet.toLowerCase())
+          || typeof chain !== "string" || !/^0x[0-9a-f]+$/i.test(chain) || BigInt(chain) !== 4663n) return false;
+        this.select(choice.uuid);
+        restoredSelection = true;
+        return true;
+      } catch { return false; }
     },
     select(uuid: string) {
       requireIdentity();
@@ -105,18 +145,25 @@ export function createInjectedSignerSelection() {
       if (!choice || choice.conflicted) throw new Error("That injected provider announcement is unavailable or conflicting.");
       invalidate();
       selected = choice;
+      restoredSelection = false;
       selectedRequest = choice.provider.request;
       const events = ["accountsChanged", "chainChanged", "disconnect"];
+      const changed = () => { forgetPreference(); invalidate(); };
       // Each event revokes unsent preparation, even if an address changes away and back.
-      unlisten = () => { for (const event of events) { try { choice.provider.removeListener(event, invalidate); } catch { /* already invalidated */ } } };
-      try { for (const event of events) choice.provider.on(event, invalidate); }
+      unlisten = () => { for (const event of events) { try { choice.provider.removeListener(event, changed); } catch { /* already invalidated */ } } };
+      try { for (const event of events) choice.provider.on(event, changed); }
       catch { invalidate(); throw new Error("Injected signer event binding is unavailable."); }
+      try {
+        preferenceStorage()?.setItem(INJECTED_SIGNER_PREFERENCE_KEY, JSON.stringify({ version: 1,
+          wallet: requireIdentity(), walletKey: identity.activeWalletKey, rdns: choice.rdns, name: choice.name, chainId: 4663, connectorType: "injected" }));
+      } catch { /* Storage failure never changes dispatch or grants authority. */ }
       publish();
     },
     async prepare(walletKey: string, recipient: string): Promise<InjectedSignerTicket> {
       const wallet = requireIdentity(walletKey, recipient);
       if (!selected || selected.conflicted) throw new Error("Choose an injected signer in the existing wallet menu before reviewing this 0x request.");
       if (selected.provider.request !== selectedRequest) {
+        forgetPreference();
         invalidate();
         throw new Error("Selected provider request method changed. Choose the injected signer again.");
       }
@@ -124,7 +171,7 @@ export function createInjectedSignerSelection() {
       const [accounts, chain] = await Promise.all([
         ticket.request.call(ticket.provider, { method: "eth_accounts" }),
         ticket.request.call(ticket.provider, { method: "eth_chainId" })
-      ]).catch((cause: unknown) => { if (generation === ticket.generation) invalidate(); throw cause; });
+      ]).catch((cause: unknown) => { if (generation === ticket.generation) { forgetPreference(); invalidate(); } throw cause; });
       assertCurrent(ticket, walletKey, recipient);
       // eth_accounts is a permitted account set, not a new trading-wallet selection.
       // Validate the whole response, then require the already-bound owner regardless of order.
@@ -133,6 +180,7 @@ export function createInjectedSignerSelection() {
         || !accounts.some((account) => getAddress(account) === getAddress(wallet))
         || typeof chain !== "string" || !/^0x[0-9a-f]+$/i.test(chain) || BigInt(chain) !== 4663n) {
         invalidate();
+        forgetPreference();
         throw new Error("Selected injected signer account or chain does not match the authenticated trading wallet.");
       }
       return ticket;
