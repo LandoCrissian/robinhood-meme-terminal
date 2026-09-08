@@ -92,6 +92,12 @@ type CachedIdentity = {
 const identityCache = new Map<string, CachedIdentity>();
 const positiveQuarantineCache = new Map<string, Extract<ProjectIdentityAdmission, { status: "conflicting-project-identity" }>>();
 
+// Read-only presentation metadata. Admission, revocation and eviction remain
+// governed by the existing positive-conflict cache policy below.
+export function knownPositiveProjectIdentityQuarantineAddresses() {
+  return [...positiveQuarantineCache.keys()];
+}
+
 export function excludeKnownPositiveProjectIdentityQuarantines<T extends ProjectIdentityAdmissionCandidate>(
   candidates: readonly T[]
 ) {

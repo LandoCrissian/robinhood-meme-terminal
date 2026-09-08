@@ -30,10 +30,16 @@ import {
 const IDENTITY_LOOKUP_TIMEOUT_MS = 5_000;
 const UNIVERSAL_SEARCH_TIMEOUT_MS = 6_000;
 
-export type DirectoryStatus = "loading" | "ready" | "stale" | "error";
+export type DirectoryStatus = "loading" | "ready" | "stale" | "fallback" | "error";
 export type DirectoryEnrichmentStatus = "pending" | "ready" | "delayed";
 export type IdentityStatus = "idle" | "checking" | "verified" | "unverified";
 type DirectoryServingMode = "unknown" | "legacy" | "canonical";
+
+function directoryResponseStale(response: Response, payload: { stale?: boolean }) {
+  return payload.stale === true
+    || response.headers.get("X-RMT-Directory-Cache")?.toUpperCase() === "STALE"
+    || ["last-known", "stale", "limited"].includes(response.headers.get("X-RMT-Directory-Freshness")?.toLowerCase() ?? "");
+}
 
 function claimsCanonicalDirectory(value: unknown) {
   return value !== null && typeof value === "object" && !Array.isArray(value)
@@ -145,6 +151,9 @@ export function useVNextMarketDirectory() {
   const canonicalLoadedPages = useRef(1);
   const canonicalLoadedCursors = useRef(new Set<string>());
   const canonicalRefreshLoading = useRef<number | null>(null);
+  const canonicalInventorySource = useRef<"indexed" | "curated-fallback" | undefined>(undefined);
+  const canonicalWindowStale = useRef(false);
+  const positiveQuarantines = useRef(new Set<string>());
   const searchController = useRef<AbortController | undefined>(undefined);
   const searchSequence = useRef(0);
   const selectionSequence = useRef(0);
@@ -171,7 +180,7 @@ export function useVNextMarketDirectory() {
         ? mergeVNextDirectoryAndSearchMarkets([existing], [exactLookupMarket.current])[0]
         : exactLookupMarket.current);
     }
-    const nextMarkets = [...byAddress.values()].sort((left, right) => (right.liquidityUsd ?? -1) - (left.liquidityUsd ?? -1) || (right.volume24h ?? -1) - (left.volume24h ?? -1));
+    const nextMarkets = [...byAddress.values()].filter((market) => !positiveQuarantines.current.has(market.address.toLowerCase())).sort((left, right) => (right.liquidityUsd ?? -1) - (left.liquidityUsd ?? -1) || (right.volume24h ?? -1) - (left.volume24h ?? -1));
     const nextSnapshot = directorySnapshot(nextMarkets);
     if (nextSnapshot !== marketSnapshot.current) {
       marketSnapshot.current = nextSnapshot;
@@ -179,6 +188,16 @@ export function useVNextMarketDirectory() {
     }
     return nextMarkets;
   }, []);
+
+  const retainPositiveQuarantines = useCallback((addresses: readonly string[] = []) => {
+    if (!addresses.length) return;
+    for (const address of addresses) positiveQuarantines.current.add(address.toLowerCase());
+    if (exactLookupMarket.current && positiveQuarantines.current.has(exactLookupMarket.current.address.toLowerCase())) exactLookupMarket.current = undefined;
+    searchMarketsRef.current = searchMarketsRef.current.filter((market) => !positiveQuarantines.current.has(market.address.toLowerCase()));
+    setSearchMarkets(searchMarketsRef.current);
+    setSelectedAddress((current) => current && positiveQuarantines.current.has(current.toLowerCase()) ? null : current);
+    publishMarkets();
+  }, [publishMarkets]);
 
   const selectAddress = useCallback(async (rawAddress: string) => {
     const exactDirectory = markets.find((market) => market.address.toLowerCase() === rawAddress.toLowerCase());
@@ -375,6 +394,7 @@ export function useVNextMarketDirectory() {
     canonicalRefreshLoading.current = requestSequence;
     canonicalPageLoading.current = null;
     const loadedPageCount = canonicalLoadedPages.current;
+    let nextStatus: DirectoryStatus = "ready";
     replacePerformanceMark("rmt:market-directory:request-start");
     try {
       const response = await fetch("/api/vnext/market-directory", {
@@ -390,6 +410,14 @@ export function useVNextMarketDirectory() {
         if (!response.ok || !payload || requestSequence !== canonicalRequestSequence.current) {
           throw new Error("Canonical market directory unavailable.");
         }
+        retainPositiveQuarantines(payload.quarantinedAddresses);
+        if (canonicalDirectoryMarkets.current.length > 0 && canonicalInventorySource.current !== "curated-fallback" && (
+          payload.inventorySource === "curated-fallback"
+          || payload.revalidationComplete === false
+          || (canonicalInventorySource.current === "indexed" && payload.inventorySource !== "indexed")
+        )) throw new Error("Retaining indexed browse window while canonical inventory is degraded.");
+        let windowStale = directoryResponseStale(response, payload) || payload.revalidationComplete === false;
+        const windowQuarantines = new Set(payload.quarantinedAddresses ?? []);
         let canonicalMarkets = payload.markets ?? [];
         let nextCursor = payload.nextCursor;
         let pagesRead = 1;
@@ -404,14 +432,28 @@ export function useVNextMarketDirectory() {
           });
           const page = parseVNextCanonicalDirectoryResponse(await pageResponse.json());
           if (requestSequence !== canonicalRequestSequence.current) return;
-          if (!pageResponse.ok || !page || (page.nextCursor !== null && cursors.has(page.nextCursor))) {
+          if (pageResponse.ok && page) retainPositiveQuarantines(page.quarantinedAddresses);
+          if (!pageResponse.ok || !page || page.inventorySource !== payload.inventorySource
+            || page.inventorySource === "curated-fallback" || page.revalidationComplete === false
+            || (page.nextCursor !== null && cursors.has(page.nextCursor))) {
             throw new Error("Loaded canonical directory window could not be revalidated.");
           }
+          for (const address of page.quarantinedAddresses ?? []) windowQuarantines.add(address);
+          windowStale ||= directoryResponseStale(pageResponse, page);
           canonicalMarkets = mergeVNextDirectoryAndSearchMarkets(canonicalMarkets, page.markets ?? []);
           nextCursor = page.nextCursor;
           pagesRead += 1;
         }
         if (canonicalMarkets.length === 0 && payload.coverage !== "complete") throw new Error("Canonical market directory returned no markets.");
+        canonicalMarkets = canonicalMarkets.filter((market) => !windowQuarantines.has(market.address.toLowerCase()));
+        // Only a fresh, fully revalidated indexed admission may supersede an
+        // earlier positive conflict; fallback/telemetry cannot resurrect it.
+        if (payload.inventorySource === "indexed" && payload.revalidationComplete === true && !windowStale) {
+          for (const market of canonicalMarkets) positiveQuarantines.current.delete(market.address.toLowerCase());
+        }
+        canonicalInventorySource.current = payload.inventorySource;
+        canonicalWindowStale.current = windowStale;
+        nextStatus = payload.inventorySource === "curated-fallback" ? "fallback" : windowStale ? "stale" : "ready";
         directoryServingMode.current = "canonical";
         legacyDirectoryMarkets.current = [];
         canonicalDirectoryMarkets.current = canonicalMarkets;
@@ -422,6 +464,7 @@ export function useVNextMarketDirectory() {
       } else {
         if (directoryServingMode.current === "canonical") throw new Error("Canonical directory authority unavailable.");
         const payload = rawPayload as VNextDirectoryResponse;
+        nextStatus = directoryResponseStale(response, payload) ? "stale" : "ready";
         const legacyMarkets = normalizeDirectoryMarkets(payload);
         if (!response.ok || legacyMarkets.length === 0 || requestSequence !== canonicalRequestSequence.current) {
           throw new Error(payload.error ?? "Market directory unavailable.");
@@ -450,13 +493,16 @@ export function useVNextMarketDirectory() {
         ? current
         : nextMarkets[0]?.address ?? null);
       hasData.current = true;
-      setStatus(!claimsCanonicalDirectory(rawPayload) && (rawPayload as VNextDirectoryResponse).stale ? "stale" : "ready");
+      setStatus(nextStatus);
     } catch {
-      if (requestSequence === canonicalRequestSequence.current) setStatus(hasData.current ? "stale" : "error");
+      if (requestSequence === canonicalRequestSequence.current) {
+        canonicalWindowStale.current = true;
+        setStatus(hasData.current ? "stale" : "error");
+      }
     } finally {
       if (canonicalRefreshLoading.current === requestSequence) canonicalRefreshLoading.current = null;
     }
-  }, [publishMarkets]);
+  }, [publishMarkets, retainPositiveQuarantines]);
 
   const loadNextCanonicalPage = useCallback(async () => {
     const cursor = canonicalNextCursor.current;
@@ -472,14 +518,19 @@ export function useVNextMarketDirectory() {
         signal: AbortSignal.timeout(8_000)
       });
       const payload = parseVNextCanonicalDirectoryResponse(await response.json());
+      if (requestSequence !== canonicalRequestSequence.current || cursor !== canonicalNextCursor.current) return false;
+      if (response.ok && payload) retainPositiveQuarantines(payload.quarantinedAddresses);
       if (
         !response.ok ||
         !payload ||
         payload.nextCursor === cursor ||
         (payload.nextCursor !== null && canonicalLoadedCursors.current.has(payload.nextCursor)) ||
         requestSequence !== canonicalRequestSequence.current ||
-        cursor !== canonicalNextCursor.current
-      ) return false;
+        cursor !== canonicalNextCursor.current ||
+        payload.inventorySource !== canonicalInventorySource.current ||
+        payload.inventorySource === "curated-fallback" || payload.revalidationComplete === false
+      ) throw new Error("Canonical pagination is degraded.");
+      canonicalWindowStale.current ||= directoryResponseStale(response, payload);
       canonicalDirectoryMarkets.current = mergeVNextDirectoryAndSearchMarkets(
         canonicalDirectoryMarkets.current,
         payload.markets ?? []
@@ -490,15 +541,18 @@ export function useVNextMarketDirectory() {
       setHasMoreCanonicalMarkets(payload.nextCursor !== null);
       publishMarkets();
       hasData.current = true;
-      setStatus("ready");
+      setStatus(canonicalWindowStale.current ? "stale" : "ready");
       return true;
     } catch {
-      if (requestSequence === canonicalRequestSequence.current) setStatus(hasData.current ? "stale" : "error");
+      if (requestSequence === canonicalRequestSequence.current) {
+        canonicalWindowStale.current = true;
+        setStatus(hasData.current ? "stale" : "error");
+      }
       return false;
     } finally {
       if (canonicalPageLoading.current === pageRequest) canonicalPageLoading.current = null;
     }
-  }, [publishMarkets]);
+  }, [publishMarkets, retainPositiveQuarantines]);
 
   const refreshEcosystemDirectory = useCallback(async () => {
     replacePerformanceMark("rmt:market-enrichment:request-start");

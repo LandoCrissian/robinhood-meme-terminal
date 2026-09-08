@@ -12,6 +12,8 @@ export async function inspectTerminalStabilization(browser, { base, createContex
     let riskPending = false;
     let riskStarted = false;
     let enrichmentResolved = false;
+    let directoryMode = "indexed";
+    let removedAddress = null;
     const calls = [];
     const canonical = markets.map(canonicalDirectoryMarket);
     const first = canonical[0];
@@ -30,9 +32,16 @@ export async function inspectTerminalStabilization(browser, { base, createContex
         if (cursor) assert.equal(cursor.split("_")[0], `g${generation}`, "refresh must follow the new cursor chain");
         calls.push({ generation, index });
         if (index === failPage) return route.fulfill({ status: 503, body: "{}" });
+        if (directoryMode === "fallback") return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+          canonical: true, inventorySource: "curated-fallback", revalidationComplete: false,
+          coverage: "partial", updatedAt: new Date().toISOString(), markets: canonical.slice(0, 8), nextCursor: null
+        }) });
+        const inventory = canonical.filter((market) => market.address !== removedAddress);
         return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ canonical: true,
-          coverage: "complete", updatedAt: new Date().toISOString(), markets: canonical.slice(index * 18, (index + 1) * 18),
-          nextCursor: (index + 1) * 18 < canonical.length ? `g${generation}_${index + 1}` : null }) });
+          inventorySource: "indexed", revalidationComplete: true,
+          coverage: directoryMode === "partial" ? "partial" : "complete", stale: directoryMode === "stale",
+          updatedAt: new Date().toISOString(), markets: inventory.slice(index * 18, (index + 1) * 18),
+          nextCursor: (index + 1) * 18 < inventory.length ? `g${generation}_${index + 1}` : null }) });
       });
       await page.route(/\/api\/markets\/external(?:\?.*)?$/, async (route) => {
         const contract = new URL(route.request().url()).searchParams.get("contract");
@@ -80,6 +89,37 @@ export async function inspectTerminalStabilization(browser, { base, createContex
       await refresh(true);
       await refresh();
       assert.equal(enrichmentResolved, false);
+      const freshness = page.locator(options.isMobile ? ".rmtMobileContextHeading" : ".rmtMarketsHeading");
+      const refreshRoot = async () => {
+        generation++;
+        await page.clock.fastForward(300001);
+        for (let n = 0; n < 100 && !calls.some((call) => call.generation === generation && call.index === 0); n++) await page.waitForTimeout(25);
+        assert.ok(calls.some((call) => call.generation === generation && call.index === 0));
+        await page.waitForTimeout(100);
+      };
+      directoryMode = "fallback";
+      await refreshRoot();
+      assert.equal(await page.locator(row).count(), canonical.length, "HTTP 200 fallback retains all loaded rows");
+      assert.match(await freshness.innerText(), /Last loaded/);
+      await refreshRoot();
+      assert.equal(await page.locator(row).count(), canonical.length, "repeated fallback does not corrupt the window");
+      directoryMode = "indexed"; await refresh();
+      assert.match(await freshness.innerText(), /Directory ready/);
+      directoryMode = "stale"; await refresh();
+      assert.match(await freshness.innerText(), /Last loaded/);
+      directoryMode = "partial"; await refresh();
+      assert.match(await freshness.innerText(), /Directory ready/);
+      directoryMode = "indexed"; removedAddress = canonical.at(-1).address;
+      await refreshRoot();
+      for (let n = 0; n < 100 && await page.locator(row).count() !== canonical.length - 1; n++) await page.waitForTimeout(25);
+      assert.equal(await page.locator(row).count(), canonical.length - 1, "authoritative removal remains effective");
+      directoryMode = "fallback";
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.getByRole("button", { name: /^All\s+/ }).click();
+      await page.locator(row).first().waitFor();
+      assert.equal(await page.locator(row).count(), 8);
+      assert.match(await freshness.innerText(), /Limited fallback/);
+      directoryMode = "indexed"; removedAddress = null;
       failPage = -1;
       await page.goto(`${base}/?market=${first.address}`, { waitUntil: "domcontentloaded" });
       await page.getByRole("heading", { name: "Observed market activity", exact: true }).waitFor();
@@ -107,6 +147,8 @@ export async function inspectTerminalStabilization(browser, { base, createContex
       await page.locator('[data-evidence-domain="risk"][data-evidence-state="unavailable"]').waitFor();
       await page.locator('[data-evidence-domain="liquidity"][data-evidence-state="ready"]').waitFor();
       results[label] = { directoryMs, enrichmentDelayMs: 45000, canonicalPages: 3, loadedBeforeRefresh: canonical.length,
+        fallbackRetention: "PASS", repeatedFallbackRetention: "PASS", fallbackStatus: "stale", coldFallbackStatus: "limited",
+        indexedRecovery: "PASS", legitimateRemoval: "PASS", partialIndexedCoverage: "PASS", staleCanonicalStatus: "PASS",
         loadedAfterRefresh: canonical.length, failedRefreshRetention: "PASS", marketDisclosure: "PASS", feeSemantics: "PASS", separateActivityScopes: "PASS", independentSafety: "PASS", boundedLoading: "PASS" };
     } finally {
       closed = true;

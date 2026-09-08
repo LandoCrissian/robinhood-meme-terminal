@@ -730,7 +730,7 @@ assert.match(hook, /identityCache/);
 assert.match(hook, /nextSnapshot !== marketSnapshot\.current/);
 const canonicalRefreshFailure = hook.slice(
   hook.indexOf('if (!response.ok || !payload || requestSequence !== canonicalRequestSequence.current)'),
-  hook.indexOf('let canonicalMarkets = payload.markets ?? []')
+  hook.indexOf('retainPositiveQuarantines(payload.quarantinedAddresses)', hook.indexOf('if (!response.ok || !payload || requestSequence !== canonicalRequestSequence.current)'))
 );
 assert.ok(canonicalRefreshFailure.length > 0 && canonicalRefreshFailure.length < 500, "inspect the actual fail-closed block, not the remainder of the source");
 assert.doesNotMatch(canonicalRefreshFailure, /canonicalDirectoryMarkets\.current = \[\]|canonicalNextCursor\.current = null|publishMarkets\(\)/);

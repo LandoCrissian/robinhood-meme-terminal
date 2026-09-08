@@ -8,6 +8,7 @@ import {
 } from "./vnext-legacy-market-directory";
 import {
   excludeKnownPositiveProjectIdentityQuarantines,
+  knownPositiveProjectIdentityQuarantineAddresses,
   type ProjectIdentityAdmissionCandidate,
   type ProjectIdentityAdmissionTiming
 } from "./project-identity-admission";
@@ -117,6 +118,7 @@ function filterKnownPositiveQuarantines(result: VNextMarketDirectoryRouteResult)
     ...result,
     body: {
       ...result.body,
+      quarantinedAddresses: knownPositiveProjectIdentityQuarantineAddresses(),
       markets: excludeKnownPositiveProjectIdentityQuarantines(result.body.markets)
     }
   } as VNextMarketDirectoryRouteResult;
@@ -126,13 +128,20 @@ function cachedResult(result: VNextMarketDirectoryRouteResult, state: "HIT" | "S
   const filtered = filterKnownPositiveQuarantines(result);
   return {
     ...filtered,
+    body: state === "STALE" && "markets" in filtered.body ? { ...filtered.body, stale: true } : filtered.body,
     headers: {
       ...filtered.headers,
       "Cache-Control": "private, no-store, max-age=0",
       "X-RMT-Directory-Cache": state,
-      "X-RMT-Directory-Freshness": state === "HIT" ? "current" : "last-known"
+      "X-RMT-Directory-Freshness": state === "STALE" ? "last-known" : directoryFreshness(filtered.body)
     }
   };
+}
+
+function directoryFreshness(body: VNextMarketDirectoryRouteResult["body"]) {
+  if ("stale" in body && body.stale === true) return "last-known";
+  if ("inventorySource" in body && (body.inventorySource === "curated-fallback" || body.revalidationComplete === false)) return "limited";
+  return "current";
 }
 
 async function readUncachedVNextMarketDirectoryRequest(
@@ -175,6 +184,7 @@ async function readUncachedVNextMarketDirectoryRequest(
     ...timingHeaders(timing, "MISS" as const)
   };
   headers["X-RMT-Project-Authority"] = admissionAuthorityStatus;
+  headers["X-RMT-Directory-Freshness"] = directoryFreshness(body);
   console.info(JSON.stringify({
     event: "vnext_market_directory_timing",
     status: result.status,

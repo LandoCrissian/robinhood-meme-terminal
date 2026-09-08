@@ -139,6 +139,9 @@ export type VNextDirectoryResponse = {
 
 export type VNextCanonicalDirectoryResponse = VNextDirectoryResponse & {
   canonical: true;
+  inventorySource?: "indexed" | "curated-fallback";
+  revalidationComplete?: boolean;
+  quarantinedAddresses?: string[];
   coverage: "partial" | "complete";
   nextCursor: string | null;
 };
@@ -213,6 +216,12 @@ export function parseVNextCanonicalDirectoryResponse(value: unknown): VNextCanon
   if (
     !candidate ||
     candidate.canonical !== true ||
+    (candidate.inventorySource !== undefined && candidate.inventorySource !== "indexed" && candidate.inventorySource !== "curated-fallback") ||
+    (candidate.revalidationComplete !== undefined && typeof candidate.revalidationComplete !== "boolean") ||
+    (candidate.inventorySource !== undefined && typeof candidate.revalidationComplete !== "boolean") ||
+    (candidate.inventorySource === "curated-fallback" && (candidate.revalidationComplete !== false || candidate.nextCursor !== null || candidate.coverage !== "partial")) ||
+    (candidate.quarantinedAddresses !== undefined && (!Array.isArray(candidate.quarantinedAddresses)
+      || !candidate.quarantinedAddresses.every((address) => typeof address === "string" && isAddress(address, { strict: false })))) ||
     (candidate.coverage !== "partial" && candidate.coverage !== "complete") ||
     typeof candidate.updatedAt !== "string" ||
     !Number.isFinite(Date.parse(candidate.updatedAt)) ||
@@ -313,6 +322,9 @@ export function parseVNextCanonicalDirectoryResponse(value: unknown): VNextCanon
   return {
     canonical: true,
     coverage: candidate.coverage,
+    ...(candidate.inventorySource !== undefined ? { inventorySource: candidate.inventorySource as "indexed" | "curated-fallback" } : {}),
+    ...(typeof candidate.revalidationComplete === "boolean" ? { revalidationComplete: candidate.revalidationComplete } : {}),
+    ...(Array.isArray(candidate.quarantinedAddresses) ? { quarantinedAddresses: [...new Set((candidate.quarantinedAddresses as string[]).map((address) => address.toLowerCase()))] } : {}),
     nextCursor: candidate.nextCursor as string | null,
     updatedAt: candidate.updatedAt,
     ...(candidate.stale === true ? { stale: true } : {}),
