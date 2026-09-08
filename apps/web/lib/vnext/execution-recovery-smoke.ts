@@ -305,7 +305,10 @@ const hook = readFileSync(new URL("../../app/vnext/use-vnext-execution-recovery.
 const banner = readFileSync(new URL("../../app/vnext/vnext-execution-recovery-banner.tsx", import.meta.url), "utf8");
 const walletReview = readFileSync(new URL("../../app/vnext/vnext-wallet-review.tsx", import.meta.url), "utf8");
 const spendBalance = readFileSync(new URL("../../app/vnext/spend-balance.tsx", import.meta.url), "utf8");
-assert.match(hook, /useWaitForTransactionReceipt/);
+assert.match(hook, /publicClient\.waitForTransactionReceipt\(\{ hash: record\.txHash, confirmations, timeout: 60_000 \}\)/,
+  "use the canonical Viem receipt without Wagmi converting a mined revert into an unknown error");
+assert.match(hook, /receipt\.data\.status === "success" \? "confirmed" : "reverted"/);
+assert.match(hook, /!hasVerifiedVNextSwapSettlement\(record\)/, "unsettled confirmed output remains eligible for reconciliation");
 assert.match(hook, /resolveVNextExecution/);
 assert.match(hook, /settledVNextOutputAtomic/);
 assert.match(hook, /record\.kind === "swap" && record\.feeSettlement/);
