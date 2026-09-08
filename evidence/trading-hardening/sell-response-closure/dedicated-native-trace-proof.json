@@ -1,18 +1,36 @@
 {
-  "observedAt": "2026-09-08T14:52:12.820Z",
+  "observedAt": "2026-09-08T14:55:45.630Z",
   "chainId": 4663,
   "traceMethod": "debug_traceTransaction",
-  "traceProviderKind": "NOT_CONFIGURED",
-  "traceSupported": "UNPROVEN",
-  "callTracerSupported": "UNPROVEN",
-  "traceTxHash": null,
-  "traceNormalization": "NOT_REACHED",
+  "traceProviderKind": "QUICKNODE_PUBLIC_DOCUMENTATION_CONTROL",
+  "traceSupported": "YES_PUBLIC_CONTROL",
+  "callTracerSupported": "YES_PUBLIC_CONTROL",
+  "traceTxHash": "0xc60aee39ad2299370bec76f1bb3023a02b89c8f1417bd92b0cd8a055f7ed70a3",
+  "traceNormalization": "PASS",
   "verifierResult": "NOT_REACHED",
-  "liveNativeSettlementProof": "NOT_ESTABLISHED",
+  "liveNativeSettlementProof": "NOT_AVAILABLE",
   "credentialServerOnly": true,
   "walletRequests": 0,
   "signatures": 0,
   "transactions": 0,
   "journalChanged": false,
-  "blocker": "SERVER_ONLY_TRACE_ENDPOINT_NOT_SUPPLIED"
+  "blocker": null,
+  "configurationScope": "Ephemeral development process only; no Production or CI credential/configuration mutation",
+  "productionEndpointProvisioned": false,
+  "publicNativeInputControl": {
+    "chainId": 4663,
+    "method": "debug_traceTransaction",
+    "tracer": "callTracer",
+    "txHash": "0xc60aee39ad2299370bec76f1bb3023a02b89c8f1417bd92b0cd8a055f7ed70a3",
+    "blockHash": "0x56a028e08ac45f9088132efb202eb3b59ee6608183787bba6f2265a06a73a7f3",
+    "supported": true,
+    "normalization": "PASS",
+    "nativeOutputSettlementProof": "NOT_APPLICABLE"
+  },
+  "nativeOutputDiscoveryResult": "CAPABILITY_READ_UNAVAILABLE",
+  "limitations": [
+    "Public documentation endpoint is a read-only development control, not a provisioned Production endpoint",
+    "Bounded discovery did not establish a suitable native-output execution; no live native settlement success is claimed",
+    "Positive native-output settlement remains covered by exhaustive deterministic production-verifier tests"
+  ]
 }
