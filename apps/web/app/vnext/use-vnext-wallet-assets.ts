@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { erc20Abi } from "viem";
+import { erc20Abi, getAddress, zeroAddress } from "viem";
 import { useAccount, usePublicClient } from "wagmi";
 import type { VNextDirectoryMarket } from "../../lib/vnext/market-directory";
 import { ROBINHOOD_MAINNET_CHAIN_ID, ROBINHOOD_USDG_ADDRESS } from "../../lib/vnext/robinhood-assets";
@@ -31,6 +31,7 @@ function browserAcceptanceWalletSnapshot() {
     process.env.NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE !== "true"
     || typeof window === "undefined"
     || !["localhost", "127.0.0.1"].includes(window.location.hostname)
+    || (window as Window & { __RMT_ACCEPTANCE_READ_WALLET_ASSETS__?: boolean }).__RMT_ACCEPTANCE_READ_WALLET_ASSETS__ === true
   ) return null;
   return {
     assets: [{
@@ -152,7 +153,14 @@ export function useVNextWalletAssets(markets: VNextDirectoryMarket[], imported: 
       })));
     };
 
-    const cachedDiscovery = discoveredAssets.current.map(walletDiscoveryCandidate);
+    const recentSettledCandidates: VNextWalletAssetCandidate[] = [...new Set(readVNextExecutionJournal()
+      .filter((record) => record.wallet.toLowerCase() === walletKey && hasVerifiedVNextSwapSettlement(record))
+      .slice(0, 16).flatMap((record) => [record.inputAsset.toLowerCase(), record.outputAsset.toLowerCase()]))]
+      .filter((asset) => asset !== zeroAddress).map((asset) => ({
+        address: getAddress(asset), symbol: `${asset.slice(0, 6)}...${asset.slice(-4)}`, name: "Recently traded asset",
+        decimals: null, identityState: "reported", source: "settled_transaction", reputation: "unknown", imageUrl: null
+      }));
+    const cachedDiscovery = [...recentSettledCandidates, ...discoveredAssets.current.map(walletDiscoveryCandidate)];
     const initialCandidates = walletAssetCandidates(markets, 48, [...imported, ...cachedDiscovery]);
     const discoveryDue = forceDiscovery
       || lastDiscoveryAt.current === null
@@ -202,6 +210,7 @@ export function useVNextWalletAssets(markets: VNextDirectoryMarket[], imported: 
     setDiscoveryStatus(discovery.payload.complete ? "ready" : "partial");
     const finalCandidates = walletAssetCandidates(markets, 48, [
       ...imported,
+      ...recentSettledCandidates,
       ...discovery.payload.assets.map(walletDiscoveryCandidate)
     ]);
     if (sameCandidateAddresses(initialCandidates, finalCandidates)) return;
