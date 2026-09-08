@@ -74,5 +74,16 @@ assert.match(continuation, /setAuthorizationState\(\{ state: "idle" \}\)/);
 assert.match(continuation, /backgroundQuoteImmediate\.current = true/);
 assert.doesNotMatch(continuation, /requestAuthorizationPlan|sendTransaction|writeContract|signTypedData/);
 assert.doesNotMatch(composer, /setInterval/);
+const schedulerStart = composer.indexOf('const canRefresh = Boolean(');
+const schedulerEnd = composer.indexOf('const requestStrictVerification', schedulerStart);
+assert.ok(schedulerStart >= 0 && schedulerEnd > schedulerStart);
+const scheduler = composer.slice(schedulerStart, schedulerEnd);
+const dependencies = scheduler.slice(scheduler.lastIndexOf('}, ['));
+assert.match(dependencies, /identity\.activeWalletKey/);
+assert.match(dependencies, /draft\.intent\?\.amountAtomic/);
+for (const field of ['sourceId', 'version', 'poolKey', 'token0', 'token1']) {
+  assert.ok(dependencies.includes(`canonicalMarket?.${field}`));
+}
+assert.doesNotMatch(dependencies, /\n\s*(?:canonicalMarket|draft\.intent),/, 'equivalent new objects must not restart every quote debounce');
 
 console.log("RMT VNext quiet background quote refresh smoke checks passed.");

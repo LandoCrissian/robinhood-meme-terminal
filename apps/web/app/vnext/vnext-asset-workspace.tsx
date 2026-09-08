@@ -359,7 +359,7 @@ function WorkspaceEvidence({ market, directoryMarket, tokenIdentityVerified }: {
   return <section className="vnWorkspaceCard vnEvidenceDeck" aria-labelledby="vn-evidence-heading">
     <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Read-only evidence</span><h3 id="vn-evidence-heading">Holders, liquidity &amp; risk</h3></div><span>Independent evidence sources</span></header>
     <div className="vnEvidenceTabs" role="tablist" aria-label="Market evidence">
-      {(["holders", "liquidity", "risk"] as const).map((item) => <button type="button" role="tab" aria-selected={tab === item} aria-label={item} className={tab === item ? "isActive" : ""} onClick={() => setTab(item)} key={item}>{item}<small data-evidence-domain={item} data-evidence-state={domainStates[item]}>{domainStates[item] === "checking" ? "Checking..." : domainStates[item]}</small></button>)}
+      {(["holders", "liquidity", "risk"] as const).map((item) => <button type="button" role="tab" aria-selected={tab === item} aria-label={item} className={tab === item ? "isActive" : ""} onClick={() => setTab(item)} key={item}>{item}<small style={{ display: "block", fontSize: "0.65rem", fontWeight: 400 }} data-evidence-domain={item} data-evidence-state={domainStates[item]}>{domainStates[item] === "checking" ? "Checking..." : domainStates[item]}</small></button>)}
     </div>
 
     {tab === "holders" && <div className="vnEvidencePane" role="tabpanel">
@@ -420,7 +420,7 @@ function VerifiedMarkets({ canonicalMarkets, resolution, selectedPool, directory
       return <ExplorerLink kind={pool.poolAddress ? "pool" : "transaction"} value={pool.poolAddress ?? pool.transactionHash}
         className={index === 0 ? "isSelected" : ""} accessibleName={`Open ${canonicalVenueLabel(pool)} market evidence in Robinhood Chain explorer`} key={`${pool.sourceId}:${pool.poolKey}`}>
         <span><strong>{index === 0 ? "Primary canonical market" : "Alternate market evidence"} - {canonicalVenueLabel(pool)}{selected ? " · displayed" : ""}</strong>
-        <small>{pool.version === 4 ? "PoolId" : "Pool"} {shortAddress(pool.poolKey)} · {poolSwapFeeLabel(pool.fee, pool.version, pool.protocol)}</small></span>
+        <small>{pool.version === 4 ? `PoolId ${shortAddress(pool.poolKey)}` : `Pool ${shortAddress(pool.poolKey)}`} · {poolSwapFeeLabel(pool.fee, pool.version, pool.protocol)}</small></span>
         <b>Canonical inventory</b><i aria-hidden="true">↗</i>
       </ExplorerLink>;
     };

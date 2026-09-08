@@ -10,7 +10,7 @@ export function InjectedSignerSelection() {
   const [changing, setChanging] = useState(false);
   if (!state.eligible) return null;
   const selected = state.choices.find((choice) => choice.uuid === state.selectedUuid && !choice.conflicted);
-  if (selected && !changing) return <section aria-label="Injected signer selection">
+  if (selected && !changing) return <section aria-label="Injected signer selection" style={{ display: "grid", gap: 8 }}>
     <strong>Selected signer: {selected.name}</strong>
     <small>Bound for this page session. Account and network are checked again before every request.</small>
     <button type="button" onClick={() => setChanging(true)}>Change signer</button>
