@@ -216,7 +216,7 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
         if (['noRoute', 'peepNoRoute', 'stock', 'unverified'].includes(scenario)) {
           assert.equal(api.filter((entry) => entry.path === '/api/vnext/verify' || entry.path === '/api/vnext/authorize').length, 0);
         }
-        assert.equal(await page.evaluate(() => window.__ROUTE_ON_DEMAND_PROMPTS__), 0);
+        assert.equal(await page.evaluate(() => window.__ROUTE_ON_DEMAND_PROMPTS__), walletReviewScenario ? 1 : 0, 'only the explicit mock wallet-review cases may dispatch once');
         assert.ok(!errors.some((error) => /TypeError|client recovery activated/.test(error)), 'Partial evidence must not crash the workspace');
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2), 'No horizontal overflow');
         assert.deepEqual(state.unexpected, []);

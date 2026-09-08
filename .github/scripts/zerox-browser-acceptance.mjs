@@ -311,8 +311,10 @@ export async function runZeroXBrowserAcceptance() {
         await context.close();
       }
     }
-    if (process.env.RMT_ACCEPTANCE_ROUTE_ON_DEMAND_ONLY !== 'true') results.push(...await runZeroXWalletJourneys({ browser, base, identity, external, state, wallet, token, usdg, holder, output }));
-    results.push(...await runZeroXFirmCommitmentJourneys({ browser, base, identity, external, state, wallet, usdg, holder, output }));
+    if (process.env.RMT_ACCEPTANCE_ROUTE_ON_DEMAND_ONLY !== 'true') {
+      results.push(...await runZeroXWalletJourneys({ browser, base, identity, external, state, wallet, token, usdg, holder, output }));
+      results.push(...await runZeroXFirmCommitmentJourneys({ browser, base, identity, external, state, wallet, usdg, holder, output }));
+    }
     results.push(...await runRouteOnDemandJourneys({ browser, base, identity, external, state, wallet, usdg, output, fixtures: routeFixtures }));
   } finally {
     await browser?.close();
