@@ -54,7 +54,7 @@ export async function runZeroXWalletJourneys(options) {
     'duplicate-integrator-fee': (quote) => { quote.fees.integratorFees = [quote.fees.integratorFee, quote.fees.integratorFee]; }
   };
   for (const viewportName of ['desktop', 'mobile']) {
-    const scenarios = ['direct-confirmation', 'multi-account-owner-second', 'approval-requote', 'native', 'rejection', 'pending', 'expired-quote', 'quote-only', ...Object.keys(faults), 'simulation-failure', ...Object.keys(wireFaults)];
+    const scenarios = ['direct-confirmation', 'multi-account-owner-second', 'signer-two-providers', 'signer-disappeared', 'signer-account-change', 'signer-provider-conflict', 'approval-requote', 'native', 'rejection', 'pending', 'expired-quote', 'quote-only', ...Object.keys(faults), 'simulation-failure', ...Object.keys(wireFaults)];
     for (const scenario of scenarios) {
       state.approved = !['approval-requote', 'approval-over-sell', 'approval-unlimited', 'stale-post-approval'].includes(scenario);
       state.priceDisabled = scenario === 'quote-only';
@@ -160,6 +160,19 @@ export async function runZeroXWalletJourneys(options) {
           provider: selectedSigner
         } }));
         window.addEventListener('eip6963:requestProvider', announce);
+        window.__ZEROX_INVALIDATE_SIGNER__ = () => {
+          if (scenario === 'signer-provider-conflict') window.dispatchEvent(new CustomEvent('eip6963:announceProvider', { detail: {
+            info: { uuid: 'd0d0d0d0-d0d0-40d0-80d0-d0d0d0d0d0d0', name: 'Changed provider identity', rdns: 'io.changed.test' }, provider: { ...selectedSigner }
+          } }));
+          else for (const listener of listeners.get(scenario === 'signer-account-change' ? 'accountsChanged' : 'disconnect') ?? []) listener(scenario === 'signer-account-change' ? ['0x1111111111111111111111111111111111111111'] : { code: 4900 });
+        };
+        if (scenario === 'signer-two-providers') {
+          const second = { ...selectedSigner };
+          const announceSecond = () => window.dispatchEvent(new CustomEvent('eip6963:announceProvider', { detail: {
+            info: { uuid: 'a0a0a0a0-a0a0-40a0-80a0-a0a0a0a0a0a0', name: 'Other explicit signer', rdns: 'io.other.test' }, provider: second
+          } }));
+          window.addEventListener('eip6963:requestProvider', announceSecond); announceSecond();
+        }
         announce();
       }, { wallet, scenario });
       page.on('response', async (response) => {
@@ -198,7 +211,7 @@ export async function runZeroXWalletJourneys(options) {
         await page.getByLabel('Exact input amount').waitFor();
         if (scenario === 'native') await page.getByLabel('Pay with asset').selectOption('eip155:4663/native');
         await page.getByLabel('Exact input amount').fill(scenario === 'native' ? '0.0005' : '25');
-        await page.locator('.vnReviewButton').click();
+        // Connected 0x amount readiness prepares authority without another RMT confirmation.
         if (scenario === 'quote-only') {
           await until(() => api.some((entry) => entry.path.endsWith('/quotes')), 'Quote-only observation missing');
           const gasless = api.find((entry) => entry.path.endsWith('/quotes')).body.attempts.find((attempt) => attempt.provider === 'zero-x-gasless');
@@ -236,7 +249,22 @@ export async function runZeroXWalletJourneys(options) {
             await page.locator('button').filter({ hasText: /^Refresh verified request$/ }).waitFor();
             assert.equal(requests.length, 0);
           } else {
-            await page.getByRole('region', { name: 'Injected signer selection' }).getByRole('button', { name: /Explicit test signer/ }).click();
+            assert.equal(requests.length, 0, 'quote, verification and signer discovery never auto-open a wallet');
+            const selector = page.getByRole('region', { name: 'Injected signer selection' });
+            if (scenario === 'signer-two-providers') {
+              assert.equal(await selector.getByRole('button', { name: /Other explicit signer/ }).count(), 1);
+              assert.equal(await selector.getByText(/Selected signer:/).count(), 0, 'multiple new providers require explicit choice');
+            }
+            await selector.getByRole('button', { name: /Explicit test signer/ }).click();
+            if (['signer-disappeared', 'signer-account-change', 'signer-provider-conflict'].includes(scenario)) {
+              await page.evaluate(() => window.__ZEROX_INVALIDATE_SIGNER__());
+              await selector.getByText('Choose the injected signer for 0x', { exact: true }).waitFor();
+              assert.equal(requests.length, 0);
+              assert.equal(await selector.getByText(/Selected signer:/).count(), 0);
+              results.push({ viewport: viewportName, scenario, status: 'PASS', walletPrompts: 0 });
+              console.log(prefix + ': PASS');
+              continue;
+            }
             await review.click();
             await until(() => requests.length === 1, `${scenario} wallet request missing`);
             if (scenario === 'rejection') {
@@ -266,8 +294,11 @@ export async function runZeroXWalletJourneys(options) {
               assert.notEqual(fresh.plan.providerNativeFee.firmQuote.zid, bundle.plan.providerNativeFee.firmQuote.zid);
               assert.notEqual(fresh.plan.providerNativeFee.transactionCalldataHash, bundle.plan.providerNativeFee.transactionCalldataHash);
               assert.equal(fresh.plan.kind, 'swap');
-              await page.getByRole('region', { name: 'Injected signer selection' }).getByRole('button', { name: /Explicit test signer/ }).click();
-            await review.click();
+              const remembered = page.getByRole('region', { name: 'Injected signer selection' });
+              await remembered.getByText('Selected signer: Explicit test signer', { exact: true }).waitFor();
+              assert.equal(await remembered.getByRole('button', { name: 'Change signer', exact: true }).count(), 1);
+              assert.equal(await remembered.getByText('Choose the injected signer for 0x', { exact: true }).count(), 0, 'post-approval fresh authority reuses the exact explicit provider, without reselecting');
+              await review.click();
               await until(() => requests.length === 2, 'Fresh swap wallet request missing');
               assert.equal(requests[1].data, fresh.plan.data);
               assert.notEqual(keccak256(requests[1].data), bundle.plan.providerNativeFee.transactionCalldataHash);

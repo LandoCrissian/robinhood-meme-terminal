@@ -141,7 +141,10 @@ export function useVNextMarketDirectory() {
   const providerEnrichmentMarkets = useRef<VNextDirectoryMarket[]>([]);
   const canonicalNextCursor = useRef<string | null>(null);
   const canonicalRequestSequence = useRef(0);
-  const canonicalPageLoading = useRef(false);
+  const canonicalPageLoading = useRef<object | null>(null);
+  const canonicalLoadedPages = useRef(1);
+  const canonicalLoadedCursors = useRef(new Set<string>());
+  const canonicalRefreshLoading = useRef<number | null>(null);
   const searchController = useRef<AbortController | undefined>(undefined);
   const searchSequence = useRef(0);
   const selectionSequence = useRef(0);
@@ -369,36 +372,66 @@ export function useVNextMarketDirectory() {
   const refresh = useCallback(async () => {
     const requestSequence = canonicalRequestSequence.current + 1;
     canonicalRequestSequence.current = requestSequence;
+    canonicalRefreshLoading.current = requestSequence;
+    canonicalPageLoading.current = null;
+    const loadedPageCount = canonicalLoadedPages.current;
     replacePerformanceMark("rmt:market-directory:request-start");
     try {
       const response = await fetch("/api/vnext/market-directory", {
         method: "GET",
-        headers: { Accept: "application/json" }
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(8_000)
       });
       const rawPayload: unknown = await response.json();
       replacePerformanceMark("rmt:market-directory:parsed");
+      if (requestSequence !== canonicalRequestSequence.current) return;
       if (claimsCanonicalDirectory(rawPayload)) {
-        directoryServingMode.current = "canonical";
-        legacyDirectoryMarkets.current = [];
         const payload = parseVNextCanonicalDirectoryResponse(rawPayload);
         if (!response.ok || !payload || requestSequence !== canonicalRequestSequence.current) {
           throw new Error("Canonical market directory unavailable.");
         }
-        const canonicalMarkets = payload.markets ?? [];
-        if (canonicalMarkets.length === 0) throw new Error("Canonical market directory returned no markets.");
+        let canonicalMarkets = payload.markets ?? [];
+        let nextCursor = payload.nextCursor;
+        let pagesRead = 1;
+        const cursors = new Set<string>();
+        // Revalidate the loaded browse window through a fresh cursor chain. Do not
+        // publish page one over last-good later pages while this work is pending.
+        while (pagesRead < loadedPageCount && nextCursor !== null) {
+          if (cursors.has(nextCursor)) throw new Error("Canonical directory cursor cycle.");
+          cursors.add(nextCursor);
+          const pageResponse = await fetch(`/api/vnext/market-directory?${new URLSearchParams({ cursor: nextCursor })}`, {
+            method: "GET", headers: { Accept: "application/json" }, signal: AbortSignal.timeout(8_000)
+          });
+          const page = parseVNextCanonicalDirectoryResponse(await pageResponse.json());
+          if (requestSequence !== canonicalRequestSequence.current) return;
+          if (!pageResponse.ok || !page || (page.nextCursor !== null && cursors.has(page.nextCursor))) {
+            throw new Error("Loaded canonical directory window could not be revalidated.");
+          }
+          canonicalMarkets = mergeVNextDirectoryAndSearchMarkets(canonicalMarkets, page.markets ?? []);
+          nextCursor = page.nextCursor;
+          pagesRead += 1;
+        }
+        if (canonicalMarkets.length === 0 && payload.coverage !== "complete") throw new Error("Canonical market directory returned no markets.");
+        directoryServingMode.current = "canonical";
+        legacyDirectoryMarkets.current = [];
         canonicalDirectoryMarkets.current = canonicalMarkets;
-        canonicalNextCursor.current = payload.nextCursor;
-        setHasMoreCanonicalMarkets(payload.nextCursor !== null);
+        canonicalNextCursor.current = nextCursor;
+        canonicalLoadedPages.current = pagesRead;
+        canonicalLoadedCursors.current = cursors;
+        setHasMoreCanonicalMarkets(nextCursor !== null);
       } else {
-        directoryServingMode.current = "legacy";
-        canonicalDirectoryMarkets.current = [];
-        canonicalNextCursor.current = null;
-        setHasMoreCanonicalMarkets(false);
+        if (directoryServingMode.current === "canonical") throw new Error("Canonical directory authority unavailable.");
         const payload = rawPayload as VNextDirectoryResponse;
         const legacyMarkets = normalizeDirectoryMarkets(payload);
         if (!response.ok || legacyMarkets.length === 0 || requestSequence !== canonicalRequestSequence.current) {
           throw new Error(payload.error ?? "Market directory unavailable.");
         }
+        directoryServingMode.current = "legacy";
+        canonicalDirectoryMarkets.current = [];
+        canonicalNextCursor.current = null;
+        canonicalLoadedPages.current = 1;
+        canonicalLoadedCursors.current = new Set();
+        setHasMoreCanonicalMarkets(false);
         legacyDirectoryMarkets.current = legacyMarkets;
       }
       const nextMarkets = publishMarkets();
@@ -415,30 +448,35 @@ export function useVNextMarketDirectory() {
       );
       setSelectedAddress((current) => current && nextMarkets.some((market) => market.address.toLowerCase() === current.toLowerCase())
         ? current
-        : nextMarkets[0].address);
+        : nextMarkets[0]?.address ?? null);
       hasData.current = true;
       setStatus(!claimsCanonicalDirectory(rawPayload) && (rawPayload as VNextDirectoryResponse).stale ? "stale" : "ready");
     } catch {
-      setStatus(hasData.current ? "stale" : "error");
+      if (requestSequence === canonicalRequestSequence.current) setStatus(hasData.current ? "stale" : "error");
+    } finally {
+      if (canonicalRefreshLoading.current === requestSequence) canonicalRefreshLoading.current = null;
     }
   }, [publishMarkets]);
 
   const loadNextCanonicalPage = useCallback(async () => {
     const cursor = canonicalNextCursor.current;
-    if (directoryServingMode.current !== "canonical" || !cursor || canonicalPageLoading.current) return false;
-    canonicalPageLoading.current = true;
+    if (directoryServingMode.current !== "canonical" || !cursor || canonicalPageLoading.current || canonicalRefreshLoading.current !== null) return false;
+    const pageRequest = {};
+    canonicalPageLoading.current = pageRequest;
     const requestSequence = canonicalRequestSequence.current;
     try {
       const parameters = new URLSearchParams({ cursor });
       const response = await fetch(`/api/vnext/market-directory?${parameters}`, {
         method: "GET",
-        headers: { Accept: "application/json" }
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(8_000)
       });
       const payload = parseVNextCanonicalDirectoryResponse(await response.json());
       if (
         !response.ok ||
         !payload ||
         payload.nextCursor === cursor ||
+        (payload.nextCursor !== null && canonicalLoadedCursors.current.has(payload.nextCursor)) ||
         requestSequence !== canonicalRequestSequence.current ||
         cursor !== canonicalNextCursor.current
       ) return false;
@@ -447,16 +485,18 @@ export function useVNextMarketDirectory() {
         payload.markets ?? []
       );
       canonicalNextCursor.current = payload.nextCursor;
+      canonicalLoadedPages.current += 1;
+      canonicalLoadedCursors.current.add(cursor);
       setHasMoreCanonicalMarkets(payload.nextCursor !== null);
       publishMarkets();
       hasData.current = true;
       setStatus("ready");
       return true;
     } catch {
-      setStatus(hasData.current ? "stale" : "error");
+      if (requestSequence === canonicalRequestSequence.current) setStatus(hasData.current ? "stale" : "error");
       return false;
     } finally {
-      canonicalPageLoading.current = false;
+      if (canonicalPageLoading.current === pageRequest) canonicalPageLoading.current = null;
     }
   }, [publishMarkets]);
 

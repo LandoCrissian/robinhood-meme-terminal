@@ -32,6 +32,7 @@ export function createInjectedSignerSelection() {
   let identityKey = "";
   let generation = 0;
   let selected: Announcement | null = null;
+  let selectedRequest: InjectedSignerProvider["request"] | null = null;
   let unlisten = () => {};
   let snapshot: { eligible: boolean; generation: number; selectedUuid: string | null; choices: readonly { uuid: string; name: string; rdns: string; conflicted: boolean }[] } = {
     eligible: false, generation, selectedUuid: null, choices: []
@@ -45,6 +46,7 @@ export function createInjectedSignerSelection() {
   function invalidate() {
     generation += 1;
     selected = null;
+    selectedRequest = null;
     unlisten();
     unlisten = () => {};
     publish();
@@ -73,7 +75,8 @@ export function createInjectedSignerSelection() {
     getSnapshot: () => snapshot,
     invalidate,
     setIdentity(next: InjectedSignerIdentity) {
-      const key = JSON.stringify(next);
+      const key = JSON.stringify([next.authenticated, next.userId, next.activeWalletKey,
+        next.address?.toLowerCase(), next.linkedAddress?.toLowerCase(), next.chainId]);
       identity = { ...next };
       if (key !== identityKey) { identityKey = key; invalidate(); }
     },
@@ -102,6 +105,7 @@ export function createInjectedSignerSelection() {
       if (!choice || choice.conflicted) throw new Error("That injected provider announcement is unavailable or conflicting.");
       invalidate();
       selected = choice;
+      selectedRequest = choice.provider.request;
       const events = ["accountsChanged", "chainChanged", "disconnect"];
       // Each event revokes unsent preparation, even if an address changes away and back.
       unlisten = () => { for (const event of events) { try { choice.provider.removeListener(event, invalidate); } catch { /* already invalidated */ } } };
@@ -112,11 +116,15 @@ export function createInjectedSignerSelection() {
     async prepare(walletKey: string, recipient: string): Promise<InjectedSignerTicket> {
       const wallet = requireIdentity(walletKey, recipient);
       if (!selected || selected.conflicted) throw new Error("Choose an injected signer in the existing wallet menu before reviewing this 0x request.");
+      if (selected.provider.request !== selectedRequest) {
+        invalidate();
+        throw new Error("Selected provider request method changed. Choose the injected signer again.");
+      }
       const ticket = Object.freeze({ generation, uuid: selected.uuid, walletKey, wallet, provider: selected.provider, request: selected.provider.request });
       const [accounts, chain] = await Promise.all([
         ticket.request.call(ticket.provider, { method: "eth_accounts" }),
         ticket.request.call(ticket.provider, { method: "eth_chainId" })
-      ]);
+      ]).catch((cause: unknown) => { if (generation === ticket.generation) invalidate(); throw cause; });
       assertCurrent(ticket, walletKey, recipient);
       // eth_accounts is a permitted account set, not a new trading-wallet selection.
       // Validate the whole response, then require the already-bound owner regardless of order.

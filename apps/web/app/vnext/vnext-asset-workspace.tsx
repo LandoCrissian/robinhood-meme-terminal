@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { workspaceCanonicalMarkets, workspaceEvidenceStates, workspacePoolFeeLabel } from "../../lib/vnext/workspace-presentation";
 import { formatUnits, isAddress } from "viem";
 import { useAccount } from "wagmi";
 import {
@@ -106,10 +107,9 @@ function riskFlagLabel(flag: ExternalMarket["riskFlags"][number]) {
   return labels[flag];
 }
 
-function poolSwapFeeLabel(fee: number | null) {
-  return fee === null
-    ? "Pool swap fee · read at quote"
-    : `Pool swap fee · ${(fee / 10_000).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}%`;
+function poolSwapFeeLabel(fee: number | null, version: number, protocol = "uniswap") {
+  // Pool swap fee evidence is protocol-specific, never execution-route authority.
+  return workspacePoolFeeLabel(fee, version, protocol);
 }
 
 function WorkspacePosition({
@@ -282,12 +282,15 @@ function WorkspaceActivity({ market }: { market: ExternalMarket }) {
     { label: "24h", buys: market.buys24h, sells: market.sells24h, volume: market.volume24h }
   ];
   return <section className="vnWorkspaceCard vnActivityCard" aria-labelledby="vn-activity-heading">
-    <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Confirmed activity</span><h3 id="vn-activity-heading">Market flow &amp; trade tape</h3></div><span className={`vnLiveState is${stream.status}`}><i aria-hidden="true" />{stream.status === "live" ? "Streaming" : stream.status === "fallback" ? "Fallback live" : stream.status === "connecting" ? "Connecting" : stream.status === "unsupported" ? "Unavailable" : "Reconnecting"}</span></header>
+    <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Provider aggregate telemetry</span><h3 id="vn-activity-heading">Observed market activity</h3></div><span>{windows.some((window) => window.buys !== null && window.buys !== undefined || window.sells !== null && window.sells !== undefined || window.volume !== null && window.volume !== undefined) ? "Observed" : "Unavailable"}</span></header>
     <div className="vnMarketFlow" aria-label="Market activity by time window">{windows.map((window) => <span key={window.label}><b>{window.label}</b><small>{window.buys?.toLocaleString() ?? "Unknown"} buys · {window.sells?.toLocaleString() ?? "Unknown"} sells</small><strong>{compactUsd(window.volume)}</strong></span>)}</div>
+    <p>Aggregate provider observations are independent of the exact-pool trade tape below.</p>
+    <section aria-label="Exact-pool trade tape">
+    <header className="vnWorkspaceCardHead"><h3>Exact-pool trade tape</h3><span className={`vnLiveState is${stream.status}`}><i aria-hidden="true" />{stream.status === "live" ? "Streaming" : stream.status === "fallback" ? "Fallback live" : stream.status === "connecting" ? "Connecting" : "Unavailable"}</span></header>
     <div className="vnActivitySummary">
-      <span><small>Swaps shown</small><strong>{trades.length}</strong></span>
-      <span><small>Active wallets</small><strong>{actors.uniqueActors}</strong></span>
-      <span><small>5m net sells</small><strong className={pressure.level === "urgent" ? "vnNegative" : ""}>{compactUsd(pressure.netSellVolume5mUsd)}</strong></span>
+      <span><small>Swaps shown</small><strong>{stream.payload ? trades.length : "Unknown"}</strong></span>
+      <span><small>Active wallets</small><strong>{stream.payload ? actors.uniqueActors : "Unknown"}</strong></span>
+      <span><small>5m net sells</small><strong className={pressure.level === "urgent" ? "vnNegative" : ""}>{stream.payload ? compactUsd(pressure.netSellVolume5mUsd) : "Unknown"}</strong></span>
     </div>
     {actors.actors.length > 0 && <div className="vnActorStrip" aria-label="Most active confirmed wallets">{actors.actors.slice(0, 4).map((actor) => <ExplorerLink kind="address" value={actor.trader} accessibleName={`Open active wallet ${shortAddress(actor.trader)} in Robinhood Chain explorer`} key={actor.trader}><span><strong>{shortAddress(actor.trader)}</strong><small>{actor.buyCount} buys · {actor.sellCount} sells</small></span><b className={actor.netVolumeUsd < 0 ? "vnNegative" : "vnPositive"}>{actor.netVolumeUsd < 0 ? "−" : "+"}{compactUsd(Math.abs(actor.netVolumeUsd))}</b></ExplorerLink>)}</div>}
     {trades.length ? <details className="vnTapeDetails"><summary>Latest confirmed swaps <b>{trades.length}</b></summary><div className="vnTradeTape">
@@ -296,8 +299,9 @@ function WorkspaceActivity({ market }: { market: ExternalMarket }) {
         <span><strong>{trade.tokenAmount.toLocaleString(undefined, { maximumFractionDigits: 4 })} {market.symbol}</strong><small>{shortAddress(trade.trader)}</small></span>
         <span><strong>{compactUsd(trade.volumeUsd)}</strong><small>{relativeTime(trade.timestamp)} ago ↗</small></span>
       </ExplorerLink>)}
-    </div></details> : <div className="vnWorkspaceEmpty"><strong>{stream.status === "unsupported" ? "Exact-pool activity unavailable" : stream.status === "connecting" ? "Opening exact-pool stream" : "No recent swaps"}</strong><span>{stream.status === "unsupported" ? "This market representation does not expose a conventional verified EVM pool address. The canonical market remains visible." : "New confirmed swaps appear without resetting the workspace."}</span></div>}
+    </div></details> : <div className="vnWorkspaceEmpty"><strong>{stream.status === "connecting" ? "Opening exact-pool stream" : stream.status === "live" || stream.status === "fallback" ? "No recent swaps" : "Exact-pool activity unavailable"}</strong><span>{stream.status === "unsupported" ? "This market representation does not expose a conventional verified EVM pool address. The canonical market remains visible." : "New confirmed swaps appear without resetting the workspace."}</span></div>}
     <footer>Exact pool only · confirmed swaps · visible wallet flow is not identity, P&amp;L, or a copy signal.</footer>
+    </section>
   </section>;
 }
 
@@ -341,7 +345,8 @@ function WorkspaceEvidence({ market, directoryMarket, tokenIdentityVerified }: {
   const holderTopShare = graph?.holderSnapshot.topNonPoolShareBps ?? evidenceTopShare ?? null;
   const holderLargestShare = graph?.holderSnapshot.largestNonPoolShareBps ?? evidenceLargestShare ?? null;
   const hasHolderConcentration = holders.length > 0 || holderTopShare !== null || holderLargestShare !== null;
-  const evidenceUnavailable = risk.status === "unavailable" && constellation.status === "unavailable";
+  const domainStates = workspaceEvidenceStates(risk, constellation, market?.liquidityUsd);
+  const evidenceUnavailable = domainStates.holders === "unavailable";
   const riskUnavailable = risk.status === "unavailable" || !evidence;
   const evidenceCoverageLabel = evidence ? tokenRiskCoverageLabel(evidence.coverage) : null;
   const hasIdentifiedLiquidityPosition = evidence?.liquidity.evidenceSource !== undefined
@@ -352,9 +357,9 @@ function WorkspaceEvidence({ market, directoryMarket, tokenIdentityVerified }: {
   };
 
   return <section className="vnWorkspaceCard vnEvidenceDeck" aria-labelledby="vn-evidence-heading">
-    <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Read-only evidence</span><h3 id="vn-evidence-heading">Holders, liquidity &amp; risk</h3></div><span>{risk.status === "ready" && evidenceCoverageLabel ? evidenceCoverageLabel : constellation.status === "ready" ? "Wallet evidence loaded" : risk.status === "loading" || constellation.status === "loading" ? "Checking…" : "Coverage limited"}</span></header>
+    <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Read-only evidence</span><h3 id="vn-evidence-heading">Holders, liquidity &amp; risk</h3></div><span>Independent evidence sources</span></header>
     <div className="vnEvidenceTabs" role="tablist" aria-label="Market evidence">
-      {(["holders", "liquidity", "risk"] as const).map((item) => <button type="button" role="tab" aria-selected={tab === item} className={tab === item ? "isActive" : ""} onClick={() => setTab(item)} key={item}>{item}</button>)}
+      {(["holders", "liquidity", "risk"] as const).map((item) => <button type="button" role="tab" aria-label={item} aria-selected={tab === item} className={tab === item ? "isActive" : ""} onClick={() => setTab(item)} key={item}>{item}<small data-evidence-domain={item} data-evidence-state={domainStates[item]}>{domainStates[item] === "checking" ? "Checking..." : domainStates[item]}</small></button>)}
     </div>
 
     {tab === "holders" && <div className="vnEvidencePane" role="tabpanel">
@@ -402,42 +407,43 @@ function canonicalVenueLabel(pool: VNextUniversalMarketSearchPool) {
   return `${pool.protocol === "uniswap" ? "Uniswap" : pool.protocol === "sushiswap" ? "Sushi" : "up."} V${pool.version}`;
 }
 
-function VerifiedMarkets({
-  canonicalMarkets,
-  resolution,
-  selectedPool
-}: {
+function VerifiedMarkets({ canonicalMarkets, resolution, selectedPool, directoryMarket }: {
   canonicalMarkets?: VNextUniversalMarketSearchPool[];
   resolution?: UniversalMarketResolution;
   selectedPool?: string;
+  directoryMarket: VNextDirectoryMarket;
 }) {
-  if (canonicalMarkets?.length) {
+  const admitted = workspaceCanonicalMarkets({ ...directoryMarket, canonicalMarkets });
+  if (admitted.length) {
+    const renderMarket = (pool: VNextUniversalMarketSearchPool, index: number) => {
+      const selected = selectedPool?.toLowerCase() === pool.poolKey.toLowerCase();
+      return <ExplorerLink kind={pool.poolAddress ? "pool" : "transaction"} value={pool.poolAddress ?? pool.transactionHash}
+        className={index === 0 ? "isSelected" : ""} accessibleName={`Open ${canonicalVenueLabel(pool)} market evidence in Robinhood Chain explorer`} key={`${pool.sourceId}:${pool.poolKey}`}>
+        <span><strong>{index === 0 ? "Primary canonical market" : "Alternate market evidence"} - {canonicalVenueLabel(pool)}{selected ? " · displayed" : ""}</strong>
+        <small>{pool.version === 4 ? "PoolId" : "Pool"} {shortAddress(pool.poolKey)} · {poolSwapFeeLabel(pool.fee, pool.version, pool.protocol)}</small></span>
+        <b>Canonical inventory</b><i aria-hidden="true">↗</i>
+      </ExplorerLink>;
+    };
     return <section className="vnWorkspaceCard vnMarketsCard" aria-labelledby="vn-verified-markets-heading">
-      <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Canonical inventory</span><h3 id="vn-verified-markets-heading">Canonical markets</h3></div><span>{canonicalMarkets.length} found</span></header>
-      <div className="vnVerifiedMarkets">{canonicalMarkets.map((pool) => {
-        const selected = Boolean(pool.poolAddress && selectedPool?.toLowerCase() === pool.poolAddress.toLowerCase());
-        const identity = pool.poolAddress ?? pool.poolKey;
-        return <ExplorerLink kind={pool.poolAddress ? "pool" : "transaction"} value={pool.poolAddress ?? pool.transactionHash} className={selected ? "isSelected" : ""} accessibleName={`Open ${canonicalVenueLabel(pool)} market evidence in Robinhood Chain explorer`} key={`${pool.sourceId}:${pool.poolKey}`}>
-          <span><strong>{canonicalVenueLabel(pool)}{selected ? " · displayed" : ""}</strong><small>{pool.version === 4 ? `PoolId ${shortAddress(pool.poolKey)}` : `Pool ${shortAddress(identity)}`} · {poolSwapFeeLabel(pool.fee)}</small></span>
-          <b>Canonical inventory</b>
-          <i aria-hidden="true">↗</i>
-        </ExplorerLink>;
-      })}</div>
-      <footer>Canonical market existence does not imply chart coverage or execution availability. The execution engine evaluates routes only when the trader asks.</footer>
+      <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Canonical inventory</span><h3 id="vn-verified-markets-heading">Canonical markets</h3></div><span>Pool evidence</span></header>
+      <div className="vnVerifiedMarkets">{admitted.slice(0, 3).map(renderMarket)}</div>
+      {admitted.length > 3 ? <details className="vnEvidenceDetails"><summary>All alternate canonical markets ({admitted.length - 3} more)</summary><div className="vnVerifiedMarkets">{admitted.slice(3).map((pool, index) => renderMarket(pool, index + 3))}</div></details> : null}
+      <footer>Canonical market evidence is not an execution route. 0x independently selects the authorized route; the displayed pool does not select a legacy executor.</footer>
     </section>;
   }
-  const pools = resolution?.pools ?? [];
+  const token = directoryMarket.address.toLowerCase();
+  const pools = resolution?.token.address.toLowerCase() === token
+    ? [...new Map(resolution.pools.filter((pool) => pool.token0.toLowerCase() === token || pool.token1.toLowerCase() === token).map((pool) => [pool.poolAddress.toLowerCase(), pool])).values()]
+    : [];
+  const renderPool = (pool: UniversalMarketPool, index: number) => <ExplorerLink kind="pool" value={pool.poolAddress} className={index === 0 ? "isSelected" : ""}
+    accessibleName={`Open ${venueLabel(pool)} pool in Robinhood Chain explorer`} key={pool.poolAddress}>
+    <span><strong>{index === 0 ? "Primary canonical market" : "Alternate market evidence"} - {venueLabel(pool)}</strong><small>{shortAddress(pool.poolAddress)} · quote {shortAddress(pool.quoteToken)} · {poolSwapFeeLabel(pool.fee, pool.protocolVersion)}</small></span>
+    <b>Market evidence only</b><i aria-hidden="true">↗</i>
+  </ExplorerLink>;
   return <section className="vnWorkspaceCard vnMarketsCard" aria-labelledby="vn-verified-markets-heading">
-    <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Onchain resolution</span><h3 id="vn-verified-markets-heading">Canonical markets</h3></div><span>{pools.length} found</span></header>
-    {pools.length ? <div className="vnVerifiedMarkets">{pools.map((pool) => {
-      const selected = selectedPool?.toLowerCase() === pool.poolAddress.toLowerCase();
-      return <ExplorerLink kind="pool" value={pool.poolAddress} className={selected ? "isSelected" : ""} accessibleName={`Open ${venueLabel(pool)} pool in Robinhood Chain explorer`} key={pool.poolAddress}>
-        <span><strong>{venueLabel(pool)}{selected ? " · displayed" : ""}</strong><small>{shortAddress(pool.poolAddress)} · quote {shortAddress(pool.quoteToken)} · {poolSwapFeeLabel(pool.fee)}</small></span>
-        <b>{pool.execution === "route-check-required" ? "Quote on demand" : "View only"}</b>
-        <i aria-hidden="true">↗</i>
-      </ExplorerLink>;
-    })}</div> : <div className="vnWorkspaceEmpty"><strong>No canonical market evidence attached</strong><span>Verified asset identity remains available. Metrics, chart activity, and execution are not evaluated without a supported market.</span></div>}
-    <footer>Displayed price source, project origin and selected execution venue remain independent. The execution engine compares eligible routes only when the trader asks.</footer>
+    <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Onchain resolution</span><h3 id="vn-verified-markets-heading">Canonical markets</h3></div><span>Pool evidence</span></header>
+    {pools.length ? <><div className="vnVerifiedMarkets">{pools.slice(0, 3).map(renderPool)}</div>{pools.length > 3 ? <details className="vnEvidenceDetails"><summary>All alternate canonical markets ({pools.length - 3} more)</summary><div className="vnVerifiedMarkets">{pools.slice(3).map((pool, index) => renderPool(pool, index + 3))}</div></details> : null}</> : <div className="vnWorkspaceEmpty"><strong>No canonical market evidence attached</strong><span>Verified asset identity remains available. Metrics, chart activity, and execution are not evaluated without a supported market.</span></div>}
+    <footer>Displayed market evidence and the independently verified 0x execution route remain separate.</footer>
   </section>;
 }
 
@@ -555,7 +561,7 @@ export function VNextAssetWorkspace({
     : activeSection === "evidence"
       ? <WorkspaceEvidence market={market} directoryMarket={directoryMarket} tokenIdentityVerified={tokenIdentityVerified} />
       : activeSection === "markets"
-        ? <div className="vnMarketEvidenceStack"><VerifiedMarkets canonicalMarkets={directoryMarket.canonicalMarkets} resolution={resolution} selectedPool={selectedChartIdentity} /><WorkspaceEcosystemIntelligence ecosystem={workspace.ecosystem} /></div>
+        ? <div className="vnMarketEvidenceStack"><VerifiedMarkets directoryMarket={directoryMarket} canonicalMarkets={directoryMarket.canonicalMarkets} resolution={resolution} selectedPool={selectedChartIdentity} /><WorkspaceEcosystemIntelligence ecosystem={workspace.ecosystem} /></div>
         : activeSection === "position"
           ? <WorkspacePosition directoryMarket={directoryMarket} walletAssets={walletAssets} executionState={executionState} executionUiState={executionUiState} onTradeSide={onTradeSide} />
           : activeSection === "origin"

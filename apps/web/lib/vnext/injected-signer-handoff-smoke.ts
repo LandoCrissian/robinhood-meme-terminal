@@ -70,6 +70,12 @@ export async function assertInjectedSignerHandoff(plan: VNextAuthorizationPlan, 
     await assert.rejects(() => selection.prepare(walletKey, wallet), /Choose an injected signer/);
     selection.select(uuid);
     const ticket = await selection.prepare(walletKey, wallet);
+    selection.setIdentity({ ...identity, address: identity.address.toLowerCase(), linkedAddress: identity.linkedAddress.toLowerCase() });
+    selection.announce({ info: { uuid, name: "Selected injected wallet", rdns: "io.metamask" }, provider });
+    assert.equal(selection.getSnapshot().selectedUuid, uuid, "the same explicit page-session provider choice is retained");
+    const reusedTicket = await selection.prepare(walletKey, wallet);
+    assert.equal(reusedTicket.generation, ticket.generation, "same wallet/account/chain does not require another signer click");
+    assert.equal(reusedTicket.provider, ticket.provider);
     const rpc = vNextWalletRpcTransaction(prepareVNextWalletTransaction({ plan, evidence, connectedAddress: wallet, connectedChainId: 4663, nowMs: now }));
     const storage = { getItem: () => raw, setItem: (_key: string, value: string) => { if (failStorage) throw new Error("storage unavailable"); raw = value; } };
     const requestId = randomUUID();

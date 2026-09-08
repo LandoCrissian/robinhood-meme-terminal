@@ -132,6 +132,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
   const [costValuationClockMs, setCostValuationClockMs] = useState(() => Date.now());
   const handledExecution = useRef<string | undefined>(undefined);
   const pendingTradeAfterLogin = useRef<PendingTradeEntry | undefined>(undefined);
+  const automaticPreparationKey = useRef("");
   const selectedMarketAddress = marketAddress ?? (marketAsset?.id.locator.kind === "contract" ? marketAsset.id.locator.address : "");
   const continuedApproval = useRef<string | undefined>(undefined);
   const preparedApprovalAuthority = useRef<VNextApprovalAuthority | undefined>(undefined);
@@ -286,7 +287,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
     lastReadyVerification.current = undefined;
     continuedApproval.current = undefined;
     preparedApprovalAuthority.current = undefined;
-  }, [requestKey]);
+  }, [requestKey, identity.userId, identity.activeWalletKey]);
   useEffect(() => {
     const outcome = resolvedVNextExecutionOutcome({
       record: executionRecord,
@@ -733,6 +734,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
 
   const startTrade = async () => {
     if (!authorizationEnabled || stockTokenViewOnly || !draft.intent || amountExceedsBalance) return;
+    automaticPreparationKey.current = `${identity.userId}:${identity.activeWalletKey}:${requestKey}`;
     backgroundQuoteEpoch.current += 1;
     const authorizationAttempt = ++authorizationAttemptEpoch.current;
     const cachedQuoteForTrade = cachedVNextQuoteForRequest(lastReadyQuote.current, requestKey);
@@ -799,6 +801,25 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
       if (stage === "authorization") setAuthorizationState({ state: "error", message });
     }
   };
+
+  useEffect(() => {
+    // Read-only quote/verification/authorization work is not a wallet dispatch.
+    // A stable amount gets one preparation attempt; expiry/reprice/error requires
+    // an explicit retry, and only VNextWalletReview's user CTA can open the wallet.
+    const key = `${identity.userId}:${identity.activeWalletKey}:${requestKey}`;
+    if (automaticPreparationKey.current === key || pendingTradeAfterLogin.current
+      || !authorizationEnabled || stockTokenViewOnly || !onRobinhood || !draft.intent || amountExceedsBalance
+      || !identity.authenticated || !identity.identityToken || !identity.userId || !address
+      || identity.activeWalletKind !== "external" || !identity.activeWalletKey || walletReadStatus !== "ready"
+      || verificationQuote?.provider !== "zero-x-swap" || quoteState.state !== "ready"
+      || cachedVNextQuoteForRequest(lastReadyQuote.current, requestKey) !== quoteState.response
+      || verificationState.state !== "idle" || authorizationState.state !== "idle"
+      || executionRecord?.state === "submitted" || postExecutionState.state !== "idle") return;
+    void startTrade();
+  }, [requestKey, identity.userId, identity.activeWalletKey, identity.activeWalletKind, identity.authenticated,
+    identity.identityToken, address, authorizationEnabled, stockTokenViewOnly, onRobinhood, draft.intent,
+    amountExceedsBalance, walletReadStatus, verificationQuote?.provider, quoteState, verificationState.state,
+    authorizationState.state, executionRecord?.state, postExecutionState.state]);
 
   const continueAfterApproval = async () => {
     if (!authorizationEnabled || stockTokenViewOnly) return;
@@ -1042,7 +1063,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
             : verificationQuote
               ? `Best observed: ${bestQuote?.providerLabel}. Quotes update quietly; RMT verifies the executable route when you trade.`
               : `Best observed: ${bestQuote?.providerLabel} (quote-only). No public wallet route is currently admitted.`
-          : "RMT sets and verifies the protected minimum during the one-tap execution check."}</small>
+          : "RMT verifies the protected minimum before the explicit wallet-review action."}</small>
       </div>
       {showExecutableFeeSummary && pair ? <div className="vnFeeV2Summary" role="note" aria-label="RMT execution fee summary">
         <span><small>{indicativeFeePresentation.separateContexts ? "Executable RMT fee" : "RMT execution fee"}</small><strong>{executableRmtFee
@@ -1113,7 +1134,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
          : walletPlanActive
           ? "The verified request is ready. Only your explicit wallet-review action can send it to the selected external wallet."
         : identity.enabled
-          ? "One tap checks the best route and prepares an explicit external-wallet review."
+          ? "RMT prepares the verified 0x request. One explicit review action opens your wallet; nothing signs automatically."
         : "Trading identity is not configured in this environment. RMT will not request a quote or prepare a wallet transaction."}</p>
       {postExecutionState.state !== "idle" ? <div className={`vnPostExecution is${postExecutionState.state}`} role="status">
         <strong>{postExecutionState.state === "approval_confirmed"

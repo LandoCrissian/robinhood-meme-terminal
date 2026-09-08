@@ -236,15 +236,17 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined") window.sessionStorage.removeItem(RMT_ACTIVE_WALLET_SESSION_KEY);
   }, []);
   const activateTradingWallet = useCallback(async (walletKey: string) => {
-    injectedSignerSelection.invalidate();
     const wallet = externalWallets.find((candidate) => walletGatewayKey(candidate) === walletKey);
     if (!wallet) throw new Error("The selected external wallet is no longer connected.");
+    if (authenticated && wallet.linked && signerWalletKey === walletKey
+      && address?.toLowerCase() === wallet.address.toLowerCase() && chainId === 4663) return;
+    injectedSignerSelection.invalidate();
     if (!authenticated || !wallet.linked) await wallet.loginOrLink();
     await setActiveWallet(wallet);
     lastAppliedWalletKey.current = walletKey;
     setAppliedWalletKey(walletKey);
     rememberTradingWallet(walletKey);
-  }, [authenticated, externalWallets, rememberTradingWallet, setActiveWallet]);
+  }, [authenticated, externalWallets, rememberTradingWallet, setActiveWallet, signerWalletKey, address, chainId]);
   const { connectWallet: openExternalWalletConnect } = useConnectWallet({
     onSuccess: ({ wallet }) => {
       if (wallet.type !== "ethereum" || isEmbeddedWalletClientType(wallet.walletClientType)) {

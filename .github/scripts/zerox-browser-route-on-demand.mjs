@@ -59,14 +59,15 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
   state.rpcOverride = undefined;
   const peep = '0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f';
   for (const viewport of ['desktop', 'mobile']) {
-    for (const [scenario, token] of Object.entries({ ...fixtures.assets, nativeToUsdg: usdg, usdgToNative: usdg, peep, peepNoRoute: peep })) {
-      const peepEntry = scenario === 'peep' || scenario === 'peepNoRoute';
+    for (const [scenario, token] of Object.entries({ ...fixtures.assets, nativeToUsdg: usdg, usdgToNative: usdg, peep, peepNoRoute: peep, peepDisconnectedReview: peep, peepConnectedReview: peep })) {
+      const peepEntry = ['peep', 'peepNoRoute', 'peepDisconnectedReview'].includes(scenario);
+      const walletReviewScenario = scenario === 'peepDisconnectedReview' || scenario === 'peepConnectedReview';
       state.priceDisabled = scenario === 'peepNoRoute';
       const context = await browser.newContext({ viewport: viewport === 'desktop' ? { width: 1440, height: 900 } : { width: 390, height: 844 }, ...(viewport === 'mobile' ? { isMobile: true, hasTouch: true } : {}) });
       const api = [];
       const errors = [];
       const priceStart = state.prices.length;
-      await context.addInitScript(({ wallet, peepEntry }) => {
+      await context.addInitScript(({ wallet, peepEntry, walletReviewScenario }) => {
         const listeners = new Map();
         let permitted = !peepEntry;
         let connectionRequestedByUser = !peepEntry;
@@ -79,7 +80,7 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
           isMetaMask: true,
           on(event, fn) { listeners.set(event, [...(listeners.get(event) ?? []), fn]); },
           removeListener(event, fn) { listeners.set(event, (listeners.get(event) ?? []).filter((item) => item !== fn)); },
-          async request({ method }) {
+          async request({ method, params }) {
             if (method === 'eth_chainId') return '0x1237';
             if (method === 'eth_requestAccounts') {
               if (!connectionRequestedByUser) throw Object.assign(new Error('Fixture awaits explicit connection'), { code: 4001 });
@@ -87,11 +88,25 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
               return [wallet];
             }
             if (method === 'eth_accounts') return permitted ? [wallet] : [];
-            if (method === 'eth_sendTransaction' || /sign/i.test(method)) { window.__ROUTE_ON_DEMAND_PROMPTS__++; throw new Error('No wallet action allowed in route-on-demand review acceptance'); }
+            if (method === 'eth_sendTransaction' || /sign/i.test(method)) {
+              window.__ROUTE_ON_DEMAND_PROMPTS__++;
+              if (walletReviewScenario && method === 'eth_sendTransaction') {
+                window.__PEEP_EXACT_REQUEST__ = params[0];
+                throw Object.assign(new Error('Deterministic owner rejection'), { code: 4001 });
+              }
+              throw new Error('No wallet action allowed in route-on-demand review acceptance');
+            }
             return null;
           }
         };
-      }, { wallet, peepEntry });
+        if (walletReviewScenario) {
+          const provider = window.ethereum;
+          const announce = () => window.dispatchEvent(new CustomEvent('eip6963:announceProvider', { detail: {
+            info: { uuid: 'b0b0b0b0-b0b0-40b0-80b0-b0b0b0b0b0b0', name: 'Explicit PEEP signer', rdns: 'io.peep.test' }, provider
+          } }));
+          window.addEventListener('eip6963:requestProvider', announce); announce();
+        }
+      }, { wallet, peepEntry, walletReviewScenario });
       const page = await context.newPage();
       page.on('pageerror', (error) => errors.push(error.stack ?? error.message));
       page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
@@ -149,7 +164,7 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
           }
           if (!peepEntry) {
             await page.getByLabel('Exact input amount').fill(sellingToken ? '1' : '0.001');
-            await page.locator('.vnReviewButton').click();
+            // Amount readiness starts read-only 0x preparation; no extra RMT confirmation.
           }
           await until(() => api.some((entry) => entry.path === '/api/vnext/quotes' && entry.status === 200), 'Identity-only asset must reach real quote API');
           assert.ok(state.prices.slice(priceStart).some((quote) => sellingToken ? quote.sellToken.toLowerCase() === token : quote.buyToken.toLowerCase() === token), 'Actual 0x price boundary must be reached');
@@ -159,7 +174,7 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
             const selected = api.find((entry) => entry.path === '/api/vnext/market-search' && entry.body?.results?.some((item) => item.address.toLowerCase() === token));
             assert.ok(selected, 'Real exact search must establish the selected asset');
             const evidence = selected.body.results.find((item) => item.address.toLowerCase() === token).markets;
-            if (peepEntry) assert.ok(evidence.some((market) => market.sourceId === 'uniswap-v2'), 'PEEP retains its canonical V2 market evidence');
+            if (token === peep) assert.ok(evidence.some((market) => market.sourceId === 'uniswap-v2'), 'PEEP retains its canonical V2 market evidence');
             else assert.deepEqual(evidence, [], 'No canonical directory market may be fabricated');
           }
           if (scenario === 'noRoute' || scenario === 'peepNoRoute') {
@@ -175,6 +190,23 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
             assert.equal(bundle.plan.providerNativeFee.feeBps, 25);
             assert.equal(bundle.plan.kind, 'swap');
             assert.equal(bundle.plan.value, sellingToken || peepEntry ? '0' : '1000000000000000');
+            if (walletReviewScenario) {
+              assert.equal(await page.evaluate(() => window.__ROUTE_ON_DEMAND_PROMPTS__), 0);
+              await page.getByRole('region', { name: 'Injected signer selection' }).getByRole('button', { name: /Explicit PEEP signer/ }).click();
+              const verifyCount = api.filter((entry) => entry.path === '/api/vnext/verify').length;
+              await page.getByRole('button', { name: 'Review verified swap in wallet', exact: true }).click();
+              await until(async () => await page.evaluate(() => window.__ROUTE_ON_DEMAND_PROMPTS__) === 1, 'The one RMT CTA must reach the exact mock wallet');
+              const sent = await page.evaluate(() => window.__PEEP_EXACT_REQUEST__);
+              assert.equal(sent.from.toLowerCase(), wallet.toLowerCase());
+              assert.equal(sent.to.toLowerCase(), bundle.plan.target.toLowerCase());
+              assert.equal(sent.data, bundle.plan.data);
+              assert.equal(BigInt(sent.value), BigInt(bundle.plan.value));
+              assert.equal(BigInt(sent.gas), BigInt(bundle.plan.gasLimit));
+              assert.equal(BigInt(sent.gasPrice), BigInt(bundle.plan.gasPrice));
+              await page.getByRole('button', { name: 'Review verified swap in wallet', exact: true }).filter({ hasText: 'Refresh verified request' }).waitFor();
+              assert.equal(api.filter((entry) => entry.path === '/api/vnext/verify').length, verifyCount, 'wallet CTA consumes existing firm authority');
+              assert.equal(new URL(page.url()).searchParams.get('market')?.toLowerCase(), peep);
+            }
             if (scenario === 'observed') {
               assert.match(await page.locator('body').innerText(), /provider observed/i);
               assert.match(await page.getByLabel('Market activity by time window').innerText(), /Unknown buys.*Unknown sells/);
@@ -188,7 +220,7 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
         assert.ok(!errors.some((error) => /TypeError|client recovery activated/.test(error)), 'Partial evidence must not crash the workspace');
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2), 'No horizontal overflow');
         assert.deepEqual(state.unexpected, []);
-        results.push({ viewport, scenario: `route-on-demand-${scenario}`, status: 'PASS', walletPrompts: 0 });
+        results.push({ viewport, scenario: `route-on-demand-${scenario}`, status: 'PASS', walletPrompts: walletReviewScenario ? 1 : 0, executionCtas: walletReviewScenario ? 1 : 0 });
         console.log(`${prefix}: PASS`);
       } finally {
         await page.screenshot({ path: path.join(output, `${prefix}.png`), fullPage: true });

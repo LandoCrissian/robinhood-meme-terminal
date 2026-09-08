@@ -277,7 +277,7 @@ export async function runZeroXBrowserAcceptance() {
         await page.getByRole('button', { name: 'Start with live markets', exact: true }).click({ timeout: 15000 });
         await page.locator('.vnTradePanel').waitFor({ timeout: 30000 });
         await page.getByLabel('Exact input amount').fill('25');
-        await page.locator('.vnReviewButton').click();
+        // Read-only 0x preparation follows amount readiness; the wallet still needs its explicit CTA.
         await page.waitForResponse((r) => r.url().endsWith('/api/vnext/authorize') && r.status() === 200, { timeout: 20000 });
         assert.ok(api.some((r) => r.path === '/api/vnext/verify' && r.status === 200), '0x reaches real verification');
         await page.locator('.vnWalletFeeDisclosure').waitFor();

@@ -7,14 +7,21 @@ import { injectedSignerSelection } from "../lib/injected-wallet-signer";
 export function InjectedSignerSelection() {
   const state = useSyncExternalStore(injectedSignerSelection.subscribe, injectedSignerSelection.getSnapshot, injectedSignerSelection.getSnapshot);
   const [error, setError] = useState("");
+  const [changing, setChanging] = useState(false);
   if (!state.eligible) return null;
+  const selected = state.choices.find((choice) => choice.uuid === state.selectedUuid && !choice.conflicted);
+  if (selected && !changing) return <section aria-label="Injected signer selection">
+    <strong>Selected signer: {selected.name}</strong>
+    <small>Bound for this page session. Account and network are checked again before every request.</small>
+    <button type="button" onClick={() => setChanging(true)}>Change signer</button>
+  </section>;
   return <section aria-label="Injected signer selection">
     <strong>Choose the injected signer for 0x</strong>
     <p>Select the extension you intend to use. Its announced name is not proof of identity; RMT also checks your linked account and network.</p>
     <div className="privyWalletList">
       {state.choices.map((choice) => <button type="button" key={choice.uuid} disabled={choice.conflicted}
         aria-pressed={state.selectedUuid === choice.uuid}
-        onClick={() => { try { injectedSignerSelection.select(choice.uuid); setError(""); } catch { setError("Signer selection could not be bound. Recheck the active trading wallet."); } }}>
+        onClick={() => { try { injectedSignerSelection.select(choice.uuid); setError(""); setChanging(false); } catch { setError("Signer selection could not be bound. Recheck the active trading wallet."); } }}>
         <span><strong>{choice.name}</strong><small style={{ overflowWrap: "anywhere", whiteSpace: "normal" }}>{choice.rdns} / {choice.uuid}</small></span>
         <em>{choice.conflicted ? "CONFLICT" : state.selectedUuid === choice.uuid ? "SELECTED" : "SELECT"}</em>
       </button>)}
