@@ -38,6 +38,7 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
     for (const scenario of ['one-usdg-normal-reprice', 'native-normal-reprice-rejection', 'material-reprice', 'expired-commitment', ...Object.keys(slippageCases), ...Object.keys(mutations).map((key) => `tamper-${key}`)]) {
       const slippageCase = slippageCases[scenario];
       const native = scenario === 'native-normal-reprice-rejection';
+      const inputAmountAtomic = native ? '1000000000000000' : '1000000';
       state.approved = native;
       state.priceDisabled = false;
       state.simulationFails = false;
@@ -51,6 +52,7 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
       };
       const quoteStart = state.quotes.length;
       const api = [], prompts = [];
+      const currentApi = () => api.filter((entry) => entry.inputAmountAtomic === inputAmountAtomic);
       const context = await browser.newContext({ viewport: viewport === 'desktop' ? { width: 1440, height: 900 } : { width: 390, height: 844 }, ...(viewport === 'mobile' ? { isMobile: true, hasTouch: true } : {}) });
       await context.exposeFunction('__FIRM_CAPTURE__', (transaction) => { prompts.push(transaction); });
       await context.addInitScript(({ wallet }) => {
@@ -77,7 +79,9 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
       const page = await context.newPage();
       page.on('response', async (response) => {
         const pathname = new URL(response.url()).pathname;
-        if (/\/api\/vnext\/(quotes|verify|authorize)$/.test(pathname)) api.push({ path: pathname, status: response.status(), body: await response.json().catch(() => null) });
+        if (/\/api\/vnext\/(quotes|verify|authorize)$/.test(pathname)) api.push({ path: pathname,
+          inputAmountAtomic: response.request().postDataJSON()?.inputAmountAtomic,
+          status: response.status(), body: await response.json().catch(() => null) });
       });
       await page.route('**/*', async (route) => {
         const request = route.request(), url = new URL(request.url());
@@ -114,11 +118,17 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
         await page.getByLabel('Exact input amount').waitFor({ timeout: 30000 });
         const select = page.getByLabel(native ? 'Pay with asset' : 'Receive asset');
         if (await select.inputValue() !== 'eip155:4663/native') await select.selectOption('eip155:4663/native');
+        if (native) {
+          await page.getByLabel('Exact input amount').fill('0.0005');
+          await until(() => api.some((entry) => entry.path.endsWith('/authorize') && entry.status === 200
+            && entry.inputAmountAtomic === '500000000000000'), 'Prepare the earlier amount before deliberately replacing it');
+          assert.equal(prompts.length, 0, 'Preparing an earlier amount does not open a wallet request');
+        }
         await page.getByLabel('Exact input amount').fill(native ? '0.001' : '1');
         // Read-only 0x preparation follows amount readiness; the wallet still needs its explicit CTA.
-        await until(() => api.some((entry) => entry.path.endsWith('/verify')), 'Real verification was not reached');
+        await until(() => currentApi().some((entry) => entry.path.endsWith('/verify')), 'Real verification for the exact entered amount was not reached');
         if (slippageCase && !slippageCase[2]) {
-          const verified = api.find((entry) => entry.path.endsWith('/verify'));
+          const verified = currentApi().find((entry) => entry.path.endsWith('/verify'));
           assert.equal(verified.status, 422);
           assert.match(verified.body.error, /slippage envelope/);
           assert.notEqual(verified.body.error, 'ZERO_X_REPRICE_REQUIRED');
@@ -127,7 +137,7 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
           assert.equal(api.filter((entry) => entry.path.endsWith('/authorize')).length, 0);
           assert.equal(prompts.length, 0);
         } else if (scenario === 'material-reprice') {
-          const verified = api.find((entry) => entry.path.endsWith('/verify'));
+          const verified = currentApi().find((entry) => entry.path.endsWith('/verify'));
           assert.equal(verified.status, 409);
           assert.equal(verified.body.error, 'ZERO_X_REPRICE_REQUIRED');
           assert.equal(verified.body.zeroXFirmQuoteCommitment, undefined);
@@ -136,9 +146,9 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
           assert.equal(api.filter((entry) => entry.path.endsWith('/authorize')).length, 0);
           assert.equal(prompts.length, 0);
         } else {
-          await until(() => api.some((entry) => entry.path.endsWith('/authorize')), 'Real authorization was not reached');
-          const verification = api.find((entry) => entry.path.endsWith('/verify')).body;
-          const authorized = api.find((entry) => entry.path.endsWith('/authorize'));
+          await until(() => currentApi().some((entry) => entry.path.endsWith('/authorize')), 'Real authorization for the exact entered amount was not reached');
+          const verification = currentApi().find((entry) => entry.path.endsWith('/verify')).body;
+          const authorized = currentApi().find((entry) => entry.path.endsWith('/authorize'));
           assert.equal(verification.expectedOutputAtomic, slippageCase?.[0] ?? '99500');
           assert.equal(verification.protectedOutputAtomic, slippageCase?.[3] ?? slippageCase?.[1] ?? '98505');
           assert.equal(verification.providerRequestedSlippagePpm, 9900);
@@ -150,6 +160,7 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
           } else {
             assert.equal(authorized.status, 200);
             const { plan, evidence } = authorized.body;
+            assert.equal(plan.inputAmountAtomic, inputAmountAtomic);
             assert.equal(evidence.zeroXFirmQuoteCommitment, verification.zeroXFirmQuoteCommitment);
             assert.equal(plan.protectedOutputAtomic, slippageCase?.[3] ?? slippageCase?.[1] ?? '98505');
             assert.equal(evidence.providerRequestedSlippagePpm, 9900);
@@ -193,7 +204,7 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
             assert.doesNotMatch(journal, /"state":"(?:submitted|confirmed)"/);
           }
         }
-        assert.equal(state.quotes.length - quoteStart, 1, 'Exactly one firm quote; authorization never refetches');
+        assert.equal(state.quotes.slice(quoteStart).filter((quote) => quote.sellAmount === inputAmountAtomic).length, 1, 'Exactly one firm quote for the entered amount; authorization never refetches');
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2));
         assert.deepEqual(state.unexpected, []);
         results.push({ viewport, scenario: `firm-commitment-${scenario}`, status: 'PASS', firmQuoteCalls: 1, walletPrompts: prompts.length });
