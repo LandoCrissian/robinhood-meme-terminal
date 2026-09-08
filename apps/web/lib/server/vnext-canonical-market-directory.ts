@@ -1,3 +1,4 @@
+import { boundedDirectoryFailureReasons, type DirectoryFailureReason } from "../vnext/directory-availability";
 import type { VNextCanonicalDirectoryResponse } from "../vnext/market-directory";
 import { readRmtCuratedMarketSnapshot } from "./rmt-curated-market-registry";
 import { readVNextIndexedMarketDirectoryPage } from "./vnext-indexed-market-directory";
@@ -16,7 +17,7 @@ type LegacyInventoryReader = (query: VNextCanonicalMarketInventoryQuery) => Prom
 
 export type VNextCanonicalMarketDirectoryPage =
   | { status: 200; body: VNextCanonicalDirectoryResponse }
-  | { status: 400 | 503; body: { canonical: true; error: string } };
+  | { status: 400 | 503; body: { canonical: true; error: string; failureReasons?: DirectoryFailureReason[] } };
 
 export async function readVNextCanonicalMarketDirectoryPage(
   requestUrl: string,
@@ -54,10 +55,13 @@ export async function readVNextCanonicalMarketDirectoryPage(
       }
     };
   }
+  let failureReasons: DirectoryFailureReason[] = [];
   try {
     const indexed = await readVNextIndexedMarketDirectoryPage(requestUrl, {}, onTiming);
     if (indexed.status !== 503 || cursor !== null) return indexed;
+    failureReasons = boundedDirectoryFailureReasons(indexed.body.failureReasons);
   } catch {
+    failureReasons = ["OTHER_BOUNDED_REASON"];
     if (cursor !== null) return { status: 503, body: { canonical: true, error: "Canonical inventory is temporarily unavailable." } };
   }
   try {
@@ -67,6 +71,7 @@ export async function readVNextCanonicalMarketDirectoryPage(
       body: {
         canonical: true,
         inventorySource: "curated-fallback",
+        failureReasons,
         revalidationComplete: false,
         coverage: "partial",
         nextCursor: null,
@@ -76,6 +81,6 @@ export async function readVNextCanonicalMarketDirectoryPage(
       }
     };
   } catch {
-    return { status: 503, body: { canonical: true, error: "The curated market registry is temporarily unavailable." } };
+    return { status: 503, body: { canonical: true, error: "The curated market registry is temporarily unavailable.", failureReasons: boundedDirectoryFailureReasons([...failureReasons, "OTHER_BOUNDED_REASON"]) } };
   }
 }

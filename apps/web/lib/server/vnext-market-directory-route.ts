@@ -1,3 +1,4 @@
+import { boundedDirectoryFailureReasons } from "../vnext/directory-availability";
 import {
   readVNextCanonicalMarketDirectoryPage,
   type VNextCanonicalMarketDirectoryPage
@@ -139,6 +140,7 @@ function cachedResult(result: VNextMarketDirectoryRouteResult, state: "HIT" | "S
 }
 
 function directoryFreshness(body: VNextMarketDirectoryRouteResult["body"]) {
+  if ("error" in body && body.error) return "unavailable";
   if ("stale" in body && body.stale === true) return "last-known";
   if ("inventorySource" in body && (body.inventorySource === "curated-fallback" || body.revalidationComplete === false)) return "limited";
   return "current";
@@ -187,6 +189,7 @@ async function readUncachedVNextMarketDirectoryRequest(
   headers["X-RMT-Directory-Freshness"] = directoryFreshness(body);
   console.info(JSON.stringify({
     event: "vnext_market_directory_timing",
+    failureReasons: boundedDirectoryFailureReasons("failureReasons" in result.body ? result.body.failureReasons : undefined),
     status: result.status,
     ...Object.fromEntries(Object.entries(timing).map(([key, value]) => [key, rounded(value)])),
     candidateIdentityCount: admissionTiming.candidateIdentityCount,

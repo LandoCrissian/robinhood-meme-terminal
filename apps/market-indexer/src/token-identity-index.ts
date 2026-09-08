@@ -443,6 +443,20 @@ export async function refreshCanonicalTokenIdentityIndex(
   return selected.length;
 }
 
+// Already-verified durable browse metadata, bounded to the requested page.
+// No RPC, names-based discovery, or execution authority.
+export async function readCanonicalBrowseIdentities(pool: Pool, addresses: readonly string[]) {
+  if (addresses.length > 1000 || addresses.some((address) => !/^0x[0-9a-fA-F]{40}$/.test(address))) {
+    throw new Error("Invalid bounded browse identity request");
+  }
+  const state = await stateFor(pool);
+  return [...new Set(addresses.map((address) => address.toLowerCase()))].flatMap((address) => {
+    const entry = state.readyIdentities.get(address);
+    if (!entry) return [];
+    return [{ address, name: entry[2], symbol: entry[3], decimals: entry[4] }];
+  });
+}
+
 export async function searchCanonicalTokenIdentityIndex(pool: Pool, query: string, limit: number) {
   const state = await stateFor(pool);
   const normalized = normalizeTokenIdentitySearch(query);

@@ -1,3 +1,4 @@
+import { identityReadFailureReason } from "../vnext/directory-availability";
 import {
   createPublicClient,
   erc20Abi,
@@ -80,7 +81,7 @@ function strictIdentityText(value: unknown, maximum: number) {
   return normalized || null;
 }
 
-export async function readRobinhoodTokenIdentities(addresses: readonly Address[]) {
+export async function readRobinhoodTokenIdentities(addresses: readonly Address[], onFailure?: (reason: import("../vnext/directory-availability").DirectoryFailureReason) => void) {
   const unique = [...new Map(addresses.slice(0, MAXIMUM_BATCH_TOKEN_IDENTITIES).map((address) => {
     const normalized = getAddress(address);
     return [normalized.toLowerCase(), normalized] as const;
@@ -105,11 +106,11 @@ export async function readRobinhoodTokenIdentities(addresses: readonly Address[]
             { address, abi: erc20Abi, functionName: "decimals" as const },
             { address, abi: erc20Abi, functionName: "totalSupply" as const }
           ])
-        }).catch(() => []),
+        }).catch((error: unknown) => { onFailure?.(identityReadFailureReason(error)); return []; }),
         new Promise<never>((_resolve, reject) => {
-          timeout = setTimeout(() => reject(new Error("Token identity batch timed out.")), TOKEN_IDENTITY_BATCH_DEADLINE_MS);
+          timeout = setTimeout(() => reject(Object.assign(new Error("Token identity batch timed out."), { name: "TimeoutError" })), TOKEN_IDENTITY_BATCH_DEADLINE_MS);
         })
-      ]).catch(() => []);
+      ]).catch((error: unknown) => { onFailure?.(identityReadFailureReason(error)); return []; });
       return { batch, results };
     } finally {
       if (timeout !== undefined) clearTimeout(timeout);
@@ -129,7 +130,7 @@ export async function readRobinhoodTokenIdentities(addresses: readonly Address[]
       if (
         !name || !symbol || typeof decimals !== "number" || decimals < 0 || decimals > 36
         || typeof totalSupply !== "bigint" || totalSupply <= 0n
-      ) return;
+      ) { onFailure?.(results.length === 0 ? "IDENTITY_RPC_UNAVAILABLE" : [nameResult, symbolResult, decimalsResult, supplyResult].some((result) => result?.status === "failure") ? "IDENTITY_MULTICALL_FAILURE" : "IDENTITY_RESPONSE_INVALID"); return; }
       identities.set(address.toLowerCase(), {
         address,
         name,
