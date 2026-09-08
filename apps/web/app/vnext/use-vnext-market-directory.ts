@@ -122,6 +122,7 @@ export function useVNextMarketDirectory() {
   const [markets, setMarkets] = useState<VNextDirectoryMarket[]>([]);
   const [status, setStatus] = useState<DirectoryStatus>("loading");
   const [enrichmentStatus, setEnrichmentStatus] = useState<DirectoryEnrichmentStatus>("pending");
+  const [activitySnapshotPublished, setActivitySnapshotPublished] = useState(false);
   const discoveryCoverage = useRef<BoundedDiscoveryCoverage | null>(null);
   const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
   const [selectedAsset, setSelectedAsset] = useState<AssetMetadata>();
@@ -478,6 +479,7 @@ export function useVNextMarketDirectory() {
           : []
       );
       if (hasData.current) publishMarkets();
+      setActivitySnapshotPublished(true);
       setEnrichmentStatus(!delayed && discoveryCoverage.current?.completeWithinObservedCandidates ? "ready" : "delayed");
       replacePerformanceMark("rmt:market-enrichment:published");
       replacePerformanceMeasure(
@@ -560,6 +562,7 @@ export function useVNextMarketDirectory() {
     markets,
     status,
     enrichmentStatus,
+    activitySnapshotPublished,
     selected,
     selectedAsset,
     identityStatus,

@@ -40,6 +40,7 @@ export function VNextTerminalShell() {
     markets,
     status,
     enrichmentStatus,
+    activitySnapshotPublished,
     selected,
     selectedAsset,
     identityStatus,
@@ -64,11 +65,8 @@ export function VNextTerminalShell() {
   const directoryViewCounts = useMemo(() => vNextMarketDirectoryViewCounts(markets, heldAddresses), [heldAddresses, markets]);
   const localFilteredMarkets = useMemo(() => {
     if (query.trim()) return filterVNextLocalDirectoryMarkets(markets, query);
-    const selectedView = selectVNextMarketDirectoryView(markets, directoryView, heldAddresses);
-    return directoryView === "active" && enrichmentStatus === "pending" && selectedView.length === 0
-      ? markets
-      : selectedView;
-  }, [directoryView, enrichmentStatus, heldAddresses, markets, query]);
+    return selectVNextMarketDirectoryView(markets, directoryView, heldAddresses);
+  }, [directoryView, heldAddresses, markets, query]);
   const filteredMarkets = useMemo(() => {
     if (!query.trim()) return localFilteredMarkets;
     const submittedQueryIsCurrent = submittedSearchQuery.trim().toLowerCase() === query.trim().toLowerCase();
@@ -266,6 +264,7 @@ export function VNextTerminalShell() {
       : 0,
     directoryStatus: status,
     activityCoveragePending: enrichmentStatus === "pending",
+    activitySnapshotPublished,
     activityCoverageDelayed: enrichmentStatus === "delayed",
     hasMoreDirectoryMarkets: !query.trim() && hasMoreCanonicalMarkets,
     selected,
