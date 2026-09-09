@@ -2929,7 +2929,7 @@ async function inspectWalletPromptReloadAndCrossTab(browser, fixture) {
   const auditPrimaryWalletHandoff = async (page, label) => {
     const primary = page.locator(".vnTradeActionDock");
     await primary.waitFor({ state: "visible", timeout: 30_000 });
-    const action = primary.getByRole("button", { name: "Review verified swap in wallet", exact: true });
+    const action = primary.getByRole("button", { name: /Review (exact approval|verified swap) in wallet/, exact: true });
     await action.waitFor({ state: "visible" });
     if (await action.evaluate(element => Boolean(element.closest("details")))) throw new Error(`${label}: trade action is hidden inside Advanced details`);
     await page.locator(".vnRouteTop").click();
