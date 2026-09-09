@@ -13,6 +13,7 @@ import { vNextExecutionEligibilityErrorResponse } from "../../../../lib/server/v
 import { isVNextWalletExecutionAdmitted } from "../../../../lib/vnext/provider-execution-capability";
 import { readVNextPublicExecutionProviderScope } from "../../../../lib/server/vnext-public-execution-provider-scope";
 import { VNEXT_PROVIDER_NATIVE_INPUT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE } from "../../../../lib/vnext/execution-settlement";
+import { emitTradeJourney, observedZeroXPhase } from "../../../../lib/vnext/trade-journey";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -30,6 +31,7 @@ const requestSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  let providerRequestAttempted = false;
   try {
     const parsed = requestSchema.safeParse(await request.json());
     if (!parsed.success) {
@@ -47,7 +49,8 @@ export async function POST(request: Request) {
       readVNextVerifiedAssetIdentity(outputAsset)
     ]);
     if (!inputIdentity || !outputIdentity) {
-      return Response.json({ error: "Both quote assets require verified Robinhood Chain identity and decimals." }, { status: 422, headers: { "Cache-Control": "no-store" } });
+      emitTradeJourney({ phase: "IDENTITY_UNAVAILABLE", quoteRequestAttempted: true, providerRequestAttempted: false });
+      return Response.json({ error: "Both quote assets require verified Robinhood Chain identity and decimals.", phase: "IDENTITY_UNAVAILABLE", providerRequestAttempted: false }, { status: 422, headers: { "Cache-Control": "no-store" } });
     }
     await requireProjectIdentityDirectoryAdmitted([
       { address: inputAsset },
@@ -55,6 +58,7 @@ export async function POST(request: Request) {
     ]);
 
     const requestedAtMs = Date.now();
+    providerRequestAttempted = process.env.RMT_VNEXT_ZEROX_OBSERVATION_ENABLED === "true" && Boolean(process.env.RMT_ZEROX_API_KEY?.trim());
     const attempts = await quoteRobinhoodVNextExecution({
       chainId: 4_663,
       inputAsset,
@@ -72,6 +76,8 @@ export async function POST(request: Request) {
       } : {})
     });
     const publicExecutionScope = readVNextPublicExecutionProviderScope();
+    providerRequestAttempted = attempts.some((attempt) => attempt.provider === "zero-x-swap");
+    emitTradeJourney({ phase: observedZeroXPhase(attempts), quoteRequestAttempted: true, providerRequestAttempted });
     const response: VNextQuoteResponse = {
       requestId: randomUUID(),
       chainId: 4_663,
@@ -99,6 +105,7 @@ export async function POST(request: Request) {
     if (eligibilityResponse) return eligibilityResponse;
     const projectIdentityResponse = projectIdentityAdmissionErrorResponse(cause);
     if (projectIdentityResponse) return projectIdentityResponse;
-    return Response.json({ error: "Unable to compare live VNext routes." }, { status: 422, headers: { "Cache-Control": "no-store" } });
+    emitTradeJourney({ phase: "QUOTE_SERVICE_UNAVAILABLE", quoteRequestAttempted: true, providerRequestAttempted });
+    return Response.json({ error: "Unable to compare live VNext routes.", phase: "QUOTE_SERVICE_UNAVAILABLE", providerRequestAttempted }, { status: 422, headers: { "Cache-Control": "no-store" } });
   }
 }

@@ -54,9 +54,9 @@ export async function runZeroXWalletJourneys(options) {
     'duplicate-integrator-fee': (quote) => { quote.fees.integratorFees = [quote.fees.integratorFee, quote.fees.integratorFee]; }
   };
   for (const viewportName of ['desktop', 'mobile']) {
-    const scenarios = ['direct-confirmation', 'returning-signer', 'mobile-walletconnect', 'mobile-walletconnect-sell', 'native-sell', 'approval-only', 'confirmed-without-output', 'reverted', 'multi-account-owner-second', 'signer-two-providers', 'signer-disappeared', 'signer-account-change', 'signer-provider-conflict', 'approval-requote', 'native', 'rejection', 'pending', 'expired-quote', 'quote-only', ...Object.keys(faults), 'simulation-failure', ...Object.keys(wireFaults)];
+    const scenarios = ['identity-not-requested', 'sell-approval-identity-retry', 'sell-approval-expired', 'sell-approval-provider-retry', 'sell-approval-return', 'sell-approval-uuid-return', 'sell-approval-account-change', 'sell-approval-chain-change', 'sell-approval-rejected', 'direct-confirmation', 'returning-signer', 'mobile-walletconnect', 'mobile-walletconnect-sell', 'native-sell', 'approval-only', 'confirmed-without-output', 'reverted', 'multi-account-owner-second', 'signer-two-providers', 'signer-disappeared', 'signer-account-change', 'signer-provider-conflict', 'approval-requote', 'native', 'rejection', 'pending', 'expired-quote', 'quote-only', ...Object.keys(faults), 'simulation-failure', ...Object.keys(wireFaults)];
     for (const scenario of scenarios) {
-      state.approved = !['approval-only', 'approval-requote', 'approval-over-sell', 'approval-unlimited', 'stale-post-approval'].includes(scenario);
+      state.approved = !scenario.startsWith('sell-approval') && !['approval-only', 'approval-requote', 'approval-over-sell', 'approval-unlimited', 'stale-post-approval'].includes(scenario);
       state.priceDisabled = scenario === 'quote-only';
       state.simulationFails = scenario === 'simulation-failure';
       state.modifyFirm = faults[scenario];
@@ -67,7 +67,8 @@ export async function runZeroXWalletJourneys(options) {
       let corrupted = 0;
       let validatedDispatches = 0;
       let block = 50000000;
-      let receiptsEnabled = true;
+      let receiptsEnabled = !['sell-approval-return', 'sell-approval-uuid-return', 'sell-approval-account-change', 'sell-approval-chain-change'].includes(scenario);
+      let transientInjected = false;
       let settledOutputAsset = null;
       let settledOutputBalanceReads = 0;
       const isMobile = viewportName === 'mobile';
@@ -92,7 +93,7 @@ export async function runZeroXWalletJourneys(options) {
         const txHash = lower(request.params[0]);
         const tx = transactions.get(txHash);
         if (!tx || !receiptsEnabled) return null;
-        const approval = lower(tx.to) === usdg;
+        const approval = tx.data.startsWith('0x095ea7b3');
         if (approval) { state.approved = true; if (scenario === 'approval-only') state.priceDisabled = true; }
         if (request.method === 'eth_getTransactionByHash') return {
           blockHash: h('a'), blockNumber: hex(50000000), chainId: '0x1237', from: wallet, gas: tx.gas, gasPrice: tx.gasPrice,
@@ -136,14 +137,14 @@ export async function runZeroXWalletJourneys(options) {
         } else {
           const decoded = decodeFunctionData({ abi: erc20Abi, data: transaction.data });
           assert.equal(decoded.functionName, 'approve');
-          assert.equal(lower(transaction.to), usdg);
+          assert.equal(lower(transaction.to), lower(plan.inputAsset));
           assert.equal(lower(decoded.args[0]), holder);
           assert.equal(decoded.args[1], BigInt(plan.inputAmountAtomic));
-          assert.equal(decoded.args[1], 25000000n);
+          assert.equal(decoded.args[1], lower(plan.inputAsset) === usdg ? 25000000n : 25n * 10n ** 18n);
           assert.equal(BigInt(transaction.value), 0n);
         }
         const txHash = h(plan.kind === 'erc20_approval' ? 'b' : 'c');
-        if (!['rejection', 'pending'].includes(scenario)) transactions.set(txHash, transaction);
+        if (!['rejection', 'pending', 'sell-approval-rejected'].includes(scenario)) transactions.set(txHash, transaction);
         validatedDispatches++;
         return txHash;
       });
@@ -151,15 +152,20 @@ export async function runZeroXWalletJourneys(options) {
         window.__RMT_ACCEPTANCE_READ_WALLET_ASSETS__ = true;
         const listeners = new Map();
         window.__ZEROX_PROMPTS__ = 0;
+        const lifecycle = Number(sessionStorage.getItem('journey-lifecycle') || '0') + 1;
+        sessionStorage.setItem('journey-lifecycle', String(lifecycle));
+        let signerAccounts = [wallet], signerChain = '0x1237';
+        const uuid = (scenario === 'sell-approval-uuid-return' || scenario === 'returning-signer') && lifecycle > 1
+          ? 'e0e0e0e0-e0e0-40e0-80e0-e0e0e0e0e0e0' : 'd0d0d0d0-d0d0-40d0-80d0-d0d0d0d0d0d0';
         const selectedSigner = {
           isMetaMask: true,
           on(event, fn) { listeners.set(event, [...(listeners.get(event) ?? []), fn]); },
           removeListener(event, fn) { listeners.set(event, (listeners.get(event) ?? []).filter((item) => item !== fn)); },
           async request({ method, params }) {
-            if (method === 'eth_chainId') return '0x1237';
+            if (method === 'eth_chainId') return signerChain;
             if (method === 'eth_requestAccounts' && scenario === 'multi-account-owner-second') throw new Error('Selected signer must not request new permissions');
             if (method === 'eth_accounts' || method === 'eth_requestAccounts') return scenario === 'multi-account-owner-second'
-              ? ['0x1111111111111111111111111111111111111111', wallet] : [wallet];
+              ? ['0x1111111111111111111111111111111111111111', wallet] : signerAccounts;
             if (method === 'eth_getTransactionCount') return '0x1';
             if (method === 'eth_estimateGas') return '0x2bf20';
             if (method === 'eth_sendTransaction') {
@@ -168,7 +174,7 @@ export async function runZeroXWalletJourneys(options) {
               }
               window.__ZEROX_PROMPTS__++;
               const result = await window.__ZEROX_CAPTURE__(params[0]);
-              if (scenario === 'rejection') { const error = new Error('User rejected the request'); error.code = 4001; throw error; }
+              if (scenario === 'rejection' || scenario === 'sell-approval-rejected') { const error = new Error('User rejected the request'); error.code = 4001; throw error; }
               if (scenario === 'pending') return new Promise(() => {});
               return result;
             }
@@ -187,10 +193,14 @@ export async function runZeroXWalletJourneys(options) {
           }
         } : selectedSigner;
         const announce = () => window.dispatchEvent(new CustomEvent('eip6963:announceProvider', { detail: {
-          info: { uuid: 'd0d0d0d0-d0d0-40d0-80d0-d0d0d0d0d0d0', name: 'Explicit test signer', rdns: 'io.rmt.test', icon: 'data:image/png;base64,' },
+          info: { uuid, name: 'Explicit test signer', rdns: 'io.rmt.test', icon: 'data:image/png;base64,' },
           provider: selectedSigner
         } }));
         window.addEventListener('eip6963:requestProvider', announce);
+        window.__ZEROX_CHANGE_CONTEXT__ = (kind) => {
+          if (kind === 'chain') { signerChain = '0x1'; for (const fn of listeners.get('chainChanged') ?? []) fn(signerChain); }
+          else { signerAccounts = ['0x1111111111111111111111111111111111111111']; for (const fn of listeners.get('accountsChanged') ?? []) fn(signerAccounts); }
+        };
         window.__ZEROX_INVALIDATE_SIGNER__ = () => {
           if (scenario === 'signer-provider-conflict') window.dispatchEvent(new CustomEvent('eip6963:announceProvider', { detail: {
             info: { uuid: 'd0d0d0d0-d0d0-40d0-80d0-d0d0d0d0d0d0', name: 'Changed provider identity', rdns: 'io.changed.test' }, provider: { ...selectedSigner }
@@ -215,6 +225,18 @@ export async function runZeroXWalletJourneys(options) {
         const request = route.request();
         if (new URL(request.url()).origin === base) {
           const headers = request.headers();
+          const apiPath = new URL(request.url()).pathname;
+          if (scenario === 'identity-not-requested' && apiPath === '/api/vnext/quotes') {
+            return route.fulfill({ status: 422, json: { error: 'Both quote assets require verified Robinhood Chain identity and decimals.', phase: 'IDENTITY_UNAVAILABLE', providerRequestAttempted: false } });
+          }
+          if (state.approved && requests.length === 1 && !transientInjected &&
+            ((['sell-approval-identity-retry', 'sell-approval-expired'].includes(scenario) && apiPath === '/api/vnext/authorize')
+              || scenario === 'sell-approval-provider-retry' && apiPath === '/api/vnext/quotes')) {
+            transientInjected = true;
+            return route.fulfill({ status: scenario === 'sell-approval-expired' ? 409 : 503,
+              json: { error: 'Controlled transient readiness failure', phase: scenario === 'sell-approval-expired' ? 'QUOTE_EXPIRED'
+                : scenario === 'sell-approval-provider-retry' ? 'ZEROX_PROVIDER_UNAVAILABLE' : 'IDENTITY_UNAVAILABLE' } });
+          }
           if (headers['privy-id-token']) headers['privy-id-token'] = identity;
           if (wireFaults[scenario] && new URL(request.url()).pathname === '/api/vnext/authorize') {
             const response = await route.fetch({ headers });
@@ -236,16 +258,23 @@ export async function runZeroXWalletJourneys(options) {
       });
       const prefix = `${viewportName}-${scenario}`;
       try {
-        const sell = ['native-sell', 'mobile-walletconnect-sell'].includes(scenario);
+        const sell = scenario.startsWith('sell-approval') || ['native-sell', 'mobile-walletconnect-sell'].includes(scenario);
         await page.goto(`${base}/?market=${token}&side=${sell ? 'sell' : 'buy'}`, { waitUntil: 'domcontentloaded' });
         await page.getByRole('button', { name: 'I understand', exact: false }).click();
         await page.getByRole('button', { name: 'Start with live markets', exact: true }).click();
         await page.getByLabel('Exact input amount').waitFor();
         if (scenario === 'native') await page.getByLabel('Pay with asset').selectOption('eip155:4663/native');
-        if (sell) await page.locator('.vnTradePanel select').first().selectOption('eip155:4663/native');
+        if (sell && !scenario.startsWith('sell-approval')) await page.locator('.vnTradePanel select').first().selectOption('eip155:4663/native');
         await page.getByLabel('Exact input amount').fill(scenario === 'native' ? '0.0005' : '25');
         // Connected 0x amount readiness prepares authority without another RMT confirmation.
-        if (scenario === 'quote-only') {
+        if (scenario === 'identity-not-requested') {
+          await page.getByText('Token verification temporarily unavailable', { exact: true }).first().waitFor();
+          assert.equal(await page.getByText('Route temporarily unavailable', { exact: true }).count(), 0);
+          assert.equal(await page.getByText('Route provider temporarily unavailable', { exact: true }).count(), 0);
+          assert.equal(await page.getByRole('button', { name: 'Retry token verification', exact: true }).count(), 1);
+          assert.equal(api.filter((entry) => entry.path.endsWith('/verify')).length, 0);
+          assert.equal(requests.length, 0);
+        } else if (scenario === 'quote-only') {
           await until(() => api.some((entry) => entry.path.endsWith('/quotes')), 'Quote-only observation missing');
           const gasless = api.find((entry) => entry.path.endsWith('/quotes')).body.attempts.find((attempt) => attempt.provider === 'zero-x-gasless');
           assert.equal(gasless.status, 'indicative', 'A genuine quote-only candidate must be observed');
@@ -311,7 +340,7 @@ export async function runZeroXWalletJourneys(options) {
             }
             await review.click();
             await until(() => requests.length === 1, `${scenario} wallet request missing`);
-            if (scenario === 'rejection') {
+            if (scenario === 'rejection' || scenario === 'sell-approval-rejected') {
               await until(async () => /reject|cancel/i.test(await page.locator('body').innerText()), 'Rejection state missing');
               const journal = await page.evaluate(() => Object.values(localStorage).join('\n'));
               assert.ok(!journal.includes('"state":"submitted"') && !journal.includes('"state":"confirmed"'), 'Rejection must not fake a submission');
@@ -325,6 +354,30 @@ export async function runZeroXWalletJourneys(options) {
               await page.reload({ waitUntil: 'domcontentloaded' });
               await until(async () => /pending|unknown|recovery|waiting/i.test(await page.locator('body').innerText()), 'Durable recovery state missing');
               assert.equal(requests.length, 1, 'Recovery must not resubmit');
+            } else if (scenario.startsWith('sell-approval')) {
+              if (scenario.endsWith('account-change') || scenario.endsWith('chain-change')) {
+                await page.evaluate((kind) => window.__ZEROX_CHANGE_CONTEXT__(kind), scenario.endsWith('chain-change') ? 'chain' : 'account');
+                receiptsEnabled = true;
+                await page.clock.runFor(16000);
+                assert.equal(requests.length, 1, 'Changed account/chain cannot continue to a swap');
+              } else {
+                if (scenario.endsWith('return')) {
+                  await page.reload({ waitUntil: 'domcontentloaded' });
+                  receiptsEnabled = true;
+                }
+                for (let tick = 0; tick < 15 && requests.length < 2; tick++) { await page.clock.runFor(2000); await pause(300); }
+                await until(() => requests.length === 2, `${scenario} must continue after one Sell initiation`, 30000);
+                const plans = api.filter((entry) => entry.path.endsWith('/authorize') && entry.status === 200).map((entry) => entry.body.plan);
+                assert.equal(plans[0].kind, 'erc20_approval');
+                assert.equal(plans.at(-1).kind, 'swap');
+                assert.notEqual(plans[0].sourceQuoteRequestId, plans.at(-1).sourceQuoteRequestId);
+                assert.equal(lower(plans.at(-1).inputAsset), token);
+                assert.equal(lower(plans.at(-1).outputAsset), usdg);
+                if (scenario.includes('retry') || scenario.endsWith('expired')) assert.equal(transientInjected, true);
+                await page.locator('.vnTradeReceipt').waitFor({ state: 'visible', timeout: 30000 });
+                assert.match(await page.locator('.vnTradeReceipt').innerText(), /Sell confirmed/i);
+                await until(() => settledOutputBalanceReads > 0, 'Settled sell must refresh its exact proceeds balance');
+              }
             } else if (scenario === 'approval-only') {
               await page.getByText('Exact approval confirmed', { exact: true }).waitFor({ timeout: 30000 });
               await pause(500);

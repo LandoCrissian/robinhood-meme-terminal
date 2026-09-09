@@ -1,5 +1,6 @@
 import { recordExperienceStage } from "./experience-funnel";
 import { quoteRequestKey, SHARED_QUOTE_CACHE_MS } from "./trade-speed";
+import { tradeJourneyPhase, type TradeJourneyPhase } from "./vnext/trade-journey";
 
 export type TradeQuoteFailureCode =
   | "timeout"
@@ -12,18 +13,21 @@ export class TradeQuoteRequestError extends Error {
   readonly code: TradeQuoteFailureCode;
   readonly attempts: number;
   readonly status?: number;
+  readonly phase: TradeJourneyPhase;
 
   constructor(
     code: TradeQuoteFailureCode,
     message: string,
     attempts: number,
-    status?: number
+    status?: number,
+    phase: TradeJourneyPhase = "QUOTE_SERVICE_UNAVAILABLE"
   ) {
     super(message);
     this.name = "TradeQuoteRequestError";
     this.code = code;
     this.attempts = attempts;
     this.status = status;
+    this.phase = phase;
   }
 }
 
@@ -208,5 +212,6 @@ export function tradeQuoteFailureFromResponse(response: TradeQuoteResponse) {
       : response.status >= 500
         ? "The quote service is temporarily unavailable."
         : "The quote request was rejected.";
-  return new TradeQuoteRequestError(code, error, response.attempts, response.status);
+  return new TradeQuoteRequestError(code, error, response.attempts, response.status,
+    tradeJourneyPhase(response.payload.phase) ?? (response.status === 409 ? "QUOTE_EXPIRED" : "QUOTE_SERVICE_UNAVAILABLE"));
 }

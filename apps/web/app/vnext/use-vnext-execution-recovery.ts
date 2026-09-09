@@ -55,7 +55,9 @@ export function useVNextExecutionRecovery() {
   });
 
   useEffect(() => {
-    setRecord(address ? findUnresolvedVNextExecution(address) : null);
+    // A reload after an approval receipt must also recover the latest confirmed approval.
+    setRecord(address ? findUnresolvedVNextExecution(address)
+      ?? readVNextExecutionJournal().find((candidate) => candidate.wallet.toLowerCase() === address.toLowerCase()) ?? null : null);
     setWalletRequest(address ? findBlockingVNextWalletRequest(address) : null);
     if (!address) return;
     const wallet = address.toLowerCase();

@@ -1,4 +1,5 @@
 import { verifyZeroXFirmQuoteCommitment, ZeroXFirmQuoteCommitmentError } from "../../../../lib/server/vnext-zero-x-firm-quote-commitment";
+import { emitTradeJourney } from "../../../../lib/vnext/trade-journey";
 import { randomUUID } from "node:crypto";
 import { getAddress, type Hex } from "viem";
 import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
@@ -84,7 +85,8 @@ export async function POST(request: Request) {
       readVNextVerifiedAssetIdentity(outputAsset)
     ]);
     if (!inputIdentity || !outputIdentity) {
-      return Response.json({ error: "Both assets require verified Robinhood Chain identity before wallet review." }, { status: 422, headers: noStore });
+      emitTradeJourney({ phase: "IDENTITY_UNAVAILABLE", providerRequestAttempted: false });
+      return Response.json({ error: "Both assets require verified Robinhood Chain identity before wallet review.", phase: "IDENTITY_UNAVAILABLE" }, { status: 422, headers: noStore });
     }
     await requireProjectIdentityDirectoryAdmitted([
       { address: inputAsset },
@@ -296,7 +298,8 @@ export async function POST(request: Request) {
     }, { headers: noStore });
   } catch (cause) {
     if (cause instanceof ZeroXFirmQuoteCommitmentError) {
-      return Response.json({ error: "REQUOTE_REQUIRED", message: cause.message }, { status: 409, headers: noStore });
+      emitTradeJourney({ phase: "QUOTE_EXPIRED" });
+      return Response.json({ error: "REQUOTE_REQUIRED", message: cause.message, phase: "QUOTE_EXPIRED" }, { status: 409, headers: noStore });
     }
     const publicProviderResponse = vNextPublicExecutionProviderScopeErrorResponse(cause);
     if (publicProviderResponse) return publicProviderResponse;
@@ -327,6 +330,7 @@ export async function POST(request: Request) {
     const message = cause instanceof Error && /deadline is stale|exact next action is not ready|wallet authorization is not available|V2 wallet authorization is disabled|V2 authorization is enabled without a complete executor policy|RMT_EXECUTION_V2 policy is not effective until block|rejected Uniswap V4 execution/.test(cause.message)
       ? cause.message
       : "Unable to prepare an exact wallet-review payload.";
-    return Response.json({ error: message }, { status: 422, headers: noStore });
+    emitTradeJourney({ phase: "AUTHORIZATION_FAILED" });
+    return Response.json({ error: message, phase: "AUTHORIZATION_FAILED" }, { status: 422, headers: noStore });
   }
 }

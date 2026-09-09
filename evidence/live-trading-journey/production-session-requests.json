@@ -1,0 +1,16 @@
+{
+  "window": [
+    "2026-09-09T02:14:00Z",
+    "2026-09-09T02:24:00Z"
+  ],
+  "scope": "exact failed post-approval request; raw application rejection reason not retained",
+  "requests": [
+    {
+      "id": "fgdkz-1788920355819-80cb2e21e3a5",
+      "time": "2026-09-09T02:19:15.819Z",
+      "path": "/api/vnext/authorize",
+      "status": 422,
+      "phaseLogsPresent": false
+    }
+  ]
+}

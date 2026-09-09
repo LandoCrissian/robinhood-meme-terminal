@@ -1,0 +1,162 @@
+{
+  "chainId": 4663,
+  "wallet": "0x7e8e7d3af28584a8b9eeddbe16cd3308bd1e76ca",
+  "window": [
+    "2026-09-09T02:14:00Z",
+    "2026-09-09T02:24:00Z"
+  ],
+  "transactions": [
+    {
+      "hash": "0xcdd80d5330461f450278f1670087d0d709772bba2ebba17fc2c5d113cb45c44b",
+      "time": "2026-09-09T02:16:53.000Z",
+      "nonce": 228,
+      "chainId": 4663,
+      "from": "0x7e8e7d3af28584a8b9eeddbe16cd3308bd1e76ca",
+      "to": "0x0000000000001ff3684f28c67538d4d072c22734",
+      "receiptStatus": "0x1",
+      "kind": "BUY",
+      "netTransfers": [
+        {
+          "address": "0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f",
+          "symbol": "PEEP",
+          "decimals": 18,
+          "netAtomic": "46359241823037302757237",
+          "netDisplay": "46359.241823037302757237"
+        },
+        {
+          "address": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+          "symbol": "USDG",
+          "decimals": 6,
+          "netAtomic": "-1000000",
+          "netDisplay": "-1"
+        }
+      ],
+      "approvals": []
+    },
+    {
+      "hash": "0x55c208817e0cd278e19e3623aa53d23ca79abd23cdfac7b8e315ee8c4d0fea32",
+      "time": "2026-09-09T02:19:13.000Z",
+      "nonce": 229,
+      "chainId": 4663,
+      "from": "0x7e8e7d3af28584a8b9eeddbe16cd3308bd1e76ca",
+      "to": "0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f",
+      "receiptStatus": "0x1",
+      "kind": "APPROVAL",
+      "netTransfers": [
+        {
+          "address": "0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f",
+          "symbol": "PEEP",
+          "decimals": 18,
+          "netAtomic": "0",
+          "netDisplay": "0"
+        },
+        {
+          "address": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+          "symbol": "USDG",
+          "decimals": 6,
+          "netAtomic": "0",
+          "netDisplay": "0"
+        }
+      ],
+      "approvals": [
+        {
+          "token": "0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f",
+          "owner": "0x7e8e7d3af28584a8b9eeddbe16cd3308bd1e76ca",
+          "spender": "0x0000000000001ff3684f28c67538d4d072c22734",
+          "amountAtomic": "46359241823037302757237"
+        }
+      ]
+    },
+    {
+      "hash": "0xf30963ed12080258e486fd9376e3d008d214a2327b0425e55661c3dea1db323f",
+      "time": "2026-09-09T02:20:26.000Z",
+      "nonce": 230,
+      "chainId": 4663,
+      "from": "0x7e8e7d3af28584a8b9eeddbe16cd3308bd1e76ca",
+      "to": "0x0000000000001ff3684f28c67538d4d072c22734",
+      "receiptStatus": "0x1",
+      "kind": "SELL",
+      "netTransfers": [
+        {
+          "address": "0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f",
+          "symbol": "PEEP",
+          "decimals": 18,
+          "netAtomic": "-46359241823037302757237",
+          "netDisplay": "-46359.241823037302757237"
+        },
+        {
+          "address": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+          "symbol": "USDG",
+          "decimals": 6,
+          "netAtomic": "984366",
+          "netDisplay": "0.984366"
+        }
+      ],
+      "approvals": []
+    }
+  ],
+  "firstSellTimeline": [
+    {
+      "time": "2026-09-09T02:19:00.949Z",
+      "phase": "QUOTE",
+      "http": 200
+    },
+    {
+      "time": "2026-09-09T02:19:01.657Z",
+      "phase": "VERIFY",
+      "http": 200
+    },
+    {
+      "time": "2026-09-09T02:19:02.163Z",
+      "phase": "AUTHORIZE_APPROVAL",
+      "http": 200
+    },
+    {
+      "time": "2026-09-09T02:19:13.000Z",
+      "phase": "APPROVAL_MINED"
+    },
+    {
+      "time": "2026-09-09T02:19:14.609Z",
+      "phase": "QUOTE_AFTER_APPROVAL",
+      "http": 200
+    },
+    {
+      "time": "2026-09-09T02:19:15.378Z",
+      "phase": "VERIFY_AFTER_APPROVAL",
+      "http": 200
+    },
+    {
+      "time": "2026-09-09T02:19:15.819Z",
+      "phase": "AUTHORIZE_AFTER_APPROVAL",
+      "http": 422,
+      "requestId": "fgdkz-1788920355819-80cb2e21e3a5"
+    },
+    {
+      "time": "2026-09-09T02:20:17.274Z",
+      "phase": "SECOND_ATTEMPT_QUOTE",
+      "http": 200
+    },
+    {
+      "time": "2026-09-09T02:20:20.597Z",
+      "phase": "SECOND_ATTEMPT_VERIFY",
+      "http": 200
+    },
+    {
+      "time": "2026-09-09T02:20:21.135Z",
+      "phase": "SECOND_ATTEMPT_AUTHORIZE",
+      "http": 200
+    },
+    {
+      "time": "2026-09-09T02:20:26.000Z",
+      "phase": "SELL_MINED"
+    }
+  ],
+  "stoppingBoundary": "POST_APPROVAL_AUTHORIZATION_HTTP_422",
+  "exactRejectedRule": "NOT_RETAINED_IN_PRODUCTION_LOGS",
+  "providerRequestCounts": "NOT_RETAINED_ACCOUNT_ATTRIBUTION_UNAVAILABLE",
+  "identityFailureCounts": "NOT_RETAINED",
+  "quoteExpiryCounts": "NOT_RETAINED",
+  "simulationResults": "NOT_RETAINED",
+  "sourceDefect": "Post-approval continuation marks an attempt consumed before one fresh authorization succeeds, with no bounded retry or durable continuation across page restoration.",
+  "codexRealTransactions": 0
+}

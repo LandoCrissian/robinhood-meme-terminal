@@ -61,8 +61,9 @@ assert.match(composer, /document\.addEventListener\("visibilitychange", onVisibi
 assert.match(composer, /document\.removeEventListener\("visibilitychange", onVisibilityChange\)/);
 assert.match(composer, /lastReadyQuote\.current = \{ requestKey, response: freshQuote \}/);
 assert.match(composer, /const visibleQuote = cachedQuote/);
-assert.match(composer, /Route temporarily unavailable/);
-assert.match(composer, /Route unavailable/);
+assert.doesNotMatch(composer, /Route temporarily unavailable/);
+assert.match(composer, /tradeJourneyLabels/);
+assert.match(composer, /observedZeroXPhase/);
 assert.match(composer, /Finding route/);
 assert.doesNotMatch(composer, /Fresh quote required|Checking live routes/);
 assert.match(composer, /isVNextQuoteReusableForTrade/);
