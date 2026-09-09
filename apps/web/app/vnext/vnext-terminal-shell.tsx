@@ -25,6 +25,7 @@ export function VNextTerminalShell() {
   const desktop = useDesktopTerminalPresentation();
   const [context, setContext] = useState<TerminalContext>("markets");
   const [tradeOpen, setTradeOpen] = useState(false);
+  const [dismissedExecutionHash, setDismissedExecutionHash] = useState<string>();
   const [query, setQuery] = useState("");
   const [walletAssets, setWalletAssets] = useState<VNextDetectedWalletAsset[]>([]);
   const [nativeBalance, setNativeBalance] = useState<bigint>();
@@ -103,6 +104,10 @@ export function VNextTerminalShell() {
     writeLocation("markets");
   }, [writeLocation]);
   const continueTrading = useCallback(() => {
+    // Dismiss only this settled receipt's presentation, never its recovery evidence.
+    if (executionRecovery.record?.kind === "swap" && executionRecovery.record.state === "confirmed") {
+      setDismissedExecutionHash(executionRecovery.record.txHash);
+    }
     clearUniversalSearch();
     setQuery("");
     setVisibleMarketLimit(VNEXT_MARKET_DIRECTORY_PAGE_SIZE);
@@ -113,7 +118,7 @@ export function VNextTerminalShell() {
       marketSearch.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       marketSearch.current?.focus({ preventScroll: true });
     });
-  }, [clearUniversalSearch, writeLocation]);
+  }, [clearUniversalSearch, writeLocation, executionRecovery.record]);
   const updateQuery = useCallback((nextQuery: string) => {
     clearUniversalSearch();
     setQuery(nextQuery);
@@ -276,6 +281,7 @@ export function VNextTerminalShell() {
     nativeBalance,
     walletReadStatus,
     executionRecord: executionRecovery.record,
+    dismissedExecutionHash,
     walletRequest: executionRecovery.walletRequest,
     executionStatus: executionRecovery.status,
     onRecheckWalletRequest: executionRecovery.recheckWalletRequest,

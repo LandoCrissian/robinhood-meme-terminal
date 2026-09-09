@@ -25,7 +25,7 @@ export const tradeJourneyLabels: Record<TradeJourneyPhase, string> = {
   QUOTE_SERVICE_UNAVAILABLE: "Quote service temporarily unavailable", ZEROX_NO_ROUTE: "No 0x route currently available",
   ZEROX_PROVIDER_UNAVAILABLE: "Route provider temporarily unavailable", ZEROX_POLICY_REJECTED: "0x response rejected by execution policy",
   FIRM_VERIFY_FAILED: "Firm quote verification failed", SIMULATION_FAILED: "Transaction simulation failed",
-  AUTHORIZATION_FAILED: "Exact wallet request verification failed", ROUTE_READY: "Route ready", QUOTE_EXPIRED: "Refreshing quote...",
+  AUTHORIZATION_FAILED: "Exact wallet request verification failed", ROUTE_READY: "Route ready", QUOTE_EXPIRED: "Refreshing price...",
   APPROVAL_REQUIRED: "Exact approval required", APPROVAL_PENDING: "Waiting for wallet approval",
   APPROVAL_CONFIRMED: "Approval confirmed. Preparing swap", SWAP_READY: "Swap ready",
   SWAP_PENDING: "Waiting for wallet swap confirmation", SETTLEMENT_PENDING: "Verifying swap settlement",

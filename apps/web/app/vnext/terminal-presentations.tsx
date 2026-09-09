@@ -62,6 +62,7 @@ export type TerminalPresentationProps = {
   nativeBalance?: bigint;
   walletReadStatus: VNextWalletReadStatus;
   executionRecord: VNextExecutionRecord | null;
+  dismissedExecutionHash?: string;
   walletRequest: VNextWalletRequestRecord | null;
   executionStatus: "idle" | "confirming" | "confirmation_unavailable" | "reconciliation_failed" | "confirmed" | "reverted";
   onRecheckWalletRequest: () => void;
@@ -271,6 +272,7 @@ function TradeComposer(props: TerminalPresentationProps) {
     nativeBalance={props.nativeBalance}
     walletReadStatus={props.walletReadStatus}
     executionRecord={props.executionRecord}
+    dismissedExecutionHash={props.dismissedExecutionHash}
     onContinueTrading={props.onContinueTrading}
     sideRequest={props.tradeSideRequest}
     executionState={props.selectedExecutionState}

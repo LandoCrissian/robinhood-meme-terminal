@@ -1,5 +1,7 @@
 "use client";
 
+import { createPortal } from "react-dom";
+import { isVerifiedRequestFresh } from "../../lib/vnext/verified-request-refresh";
 import { recordVNextWalletRequestError, isVNextWalletProviderRequestActive } from "../../lib/vnext/execution-recovery";
 import { injectedSignerSelection, type InjectedSignerTicket } from "../../lib/injected-wallet-signer";
 import { dispatchVNextWalletReview, type VNextWalletDispatchResult } from "../../lib/vnext/wallet-review-dispatch";
@@ -136,6 +138,8 @@ export function VNextWalletReview({
   plan,
   evidence,
   onRefresh,
+  detailsTarget,
+  onActivityChange,
   inputSymbol = "input asset",
   outputSymbol = "output asset",
   inputDecimals = 18,
@@ -147,6 +151,8 @@ export function VNextWalletReview({
   plan: VNextAuthorizationPlan;
   evidence: VNextPreSignEvidence;
   onRefresh?: () => void;
+  detailsTarget?: HTMLDivElement | null;
+  onActivityChange?: (active: boolean) => void;
   inputSymbol?: string;
   outputSymbol?: string;
   inputDecimals?: number;
@@ -177,6 +183,7 @@ export function VNextWalletReview({
   currentContext.current = contextKey;
   const submissionEnabled = process.env.NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED === "true";
   const busy = preflightPending || ["opening", "provider_pending", "unresolved", "hash_received"].includes(handoffState);
+  useEffect(() => { onActivityChange?.(busy); }, [busy, onActivityChange]);
   const expired = nowMs >= plan.expiresAtMs;
   const walletName = selectedWalletName ?? "selected wallet";
 
@@ -346,11 +353,7 @@ export function VNextWalletReview({
     setRequiresRefresh(false);
     setTransactionHash(null);
     if (!submissionEnabled) return;
-    if (Date.now() >= plan.expiresAtMs) {
-      setRequiresRefresh(true);
-      setLocalError("The verified request expired before wallet review. Refresh it before opening the wallet.");
-      return;
-    }
+    if (!isVerifiedRequestFresh(plan.expiresAtMs, Date.now())) { onRefresh?.(); return; }
     if (!isConnected || !address || chainId !== ROBINHOOD_MAINNET_CHAIN_ID) {
       setLocalError("Connect your external trading wallet on Robinhood Chain before continuing.");
       return;
@@ -412,6 +415,7 @@ export function VNextWalletReview({
           setGasShortfall(shortfall);
           throw new Error(`Add at least ${shortfall} ETH on Robinhood Chain for this transaction. RMT did not open the wallet.`);
         }
+        if (!isVerifiedRequestFresh(plan.expiresAtMs, Date.now())) { lease?.release(); lease = null; onRefresh?.(); return; }
         const transaction = prepareVNextWalletTransaction({
           plan,
           evidence,
@@ -496,36 +500,41 @@ export function VNextWalletReview({
   };
 
   return <div className="vnWalletSubmission">
-    {plan.provider === "zero-x-swap" ? <InjectedSignerSelection /> : null}
-    <div className="vnWalletHandoffIdentity" aria-label="Selected external wallet handoff">
-      <span><small>External signer</small><strong>{walletName}</strong></span>
-      <span><small>Wallet</small><strong>{address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "Unavailable"}</strong></span>
-      <span><small>Network</small><strong>Robinhood Chain · 4663</strong></span>
-      <span><small>Connector</small><strong>{connector ? `${connector.name} · ${connector.id}` : "Unavailable"}</strong></span>
-    </div>
-    <button
+{plan.provider === "zero-x-swap" ? <InjectedSignerSelection detailsTarget={detailsTarget} /> : null}
+<button
       type="button"
+      className="vnReviewButton"
       aria-label={plan.kind === "erc20_approval" ? "Review exact approval in wallet" : "Review verified swap in wallet"}
       disabled={!submissionEnabled || busy}
-      onClick={() => (onTradeAction?.(), expired || requiresRefresh
+      onClick={() => (onTradeAction?.(), !isVerifiedRequestFresh(plan.expiresAtMs, Date.now()) || requiresRefresh
         ? onRefresh?.()
         : handoffState === "ready_to_open" ? openPreparedWalletRequest() : void prepareWalletReview())}
     >{tradeActionLabel && !busy && !expired && !requiresRefresh ? tradeActionLabel : !submissionEnabled
       ? "Wallet submission disabled"
       : expired || requiresRefresh
-        ? "Refresh verified request"
+        ? "Refreshing price..."
       : handoffState !== "idle"
         ? vNextMobileHandoffLabel(handoffState, walletName)
         : plan.kind === "erc20_approval"
           ? `Review exact approval in ${walletName}`
           : `Review verified swap in ${walletName}`}</button>
-    {handoffState === "provider_pending" && preparedRef.current?.transport.safeMobileOpenUri
+{handoffState === "provider_pending" && preparedRef.current?.transport.safeMobileOpenUri
       ? <button type="button" className="vnWalletReopen" onClick={reopenSelectedWallet}>Open {walletName}</button>
       : null}
-    <small>{submissionEnabled
+{handoffState === "provider_pending" && expired ? <p role="status">This wallet request is stale. Cancel it in the selected wallet, then obtain a fresh quote. RMT is still waiting for the original response and will not open another request.</p> : null}
+{localStatus ? <p className="vnAuthorizationStatus" role="status">{localStatus}</p> : null}
+{localError ? <p className="vnAuthorizationError" role="status">{localError}</p> : null}
+{gasShortfall ? <FundWalletButton directReceive variant="inline" label="Add Robinhood ETH" /> : null}
+{detailsTarget ? createPortal(<><div className="vnWalletHandoffIdentity" aria-label="Selected external wallet handoff">
+      <span><small>External signer</small><strong>{walletName}</strong></span>
+      <span><small>Wallet</small><strong>{address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "Unavailable"}</strong></span>
+      <span><small>Network</small><strong>Robinhood Chain · 4663</strong></span>
+      <span><small>Connector</small><strong>{connector ? `${connector.name} · ${connector.id}` : "Unavailable"}</strong></span>
+    </div>
+<small>{submissionEnabled
       ? "Your wallet displays and authorizes this exact request. RMT cannot sign or submit it for you."
       : "The final wallet-submission gate remains off in production."}</small>
-    <VNextWalletFeeDisclosure
+<VNextWalletFeeDisclosure
       planKind={plan.kind}
       evidence={evidence}
       inputSymbol={inputSymbol}
@@ -533,12 +542,8 @@ export function VNextWalletReview({
       inputDecimals={inputDecimals}
       outputDecimals={outputDecimals}
     />
-    {plan.kind === "erc20_approval" ? <small>Standard ERC-20 approvals have no onchain expiry. This request is limited to the exact input amount, and RMT requires fresh verification before the swap.</small> : plan.provider === "zero-x-swap" ? <small>RMT presents the exact simulated 0x transaction. Quote expiry limits when RMT opens wallet review; it is not a guaranteed onchain expiry.</small> : <small>The verified swap calldata enforces its onchain deadline and protected output.</small>}
-    {handoffState === "provider_pending" && expired ? <p role="status">This wallet request is stale. Cancel it in the selected wallet, then obtain a fresh quote. RMT is still waiting for the original response and will not open another request.</p> : null}
-    <small>{expired ? "Verified request expired. Prepare a fresh server-verified request." : `Wallet review window · ${Math.max(0, Math.ceil((plan.expiresAtMs - nowMs) / 1_000))}s remaining`}</small>
-    {localStatus ? <p className="vnAuthorizationStatus" role="status">{localStatus}</p> : null}
-    {localError ? <p className="vnAuthorizationError" role="status">{localError}</p> : null}
-    {gasShortfall ? <FundWalletButton directReceive variant="inline" label="Add Robinhood ETH" /> : null}
-    {transactionHash ? <ExplorerLink kind="transaction" value={transactionHash} accessibleName="Open submitted transaction in Robinhood Chain explorer">View transaction ↗</ExplorerLink> : null}
-  </div>;
+{plan.kind === "erc20_approval" ? <small>Standard ERC-20 approvals have no onchain expiry. This request is limited to the exact input amount, and RMT requires fresh verification before the swap.</small> : plan.provider === "zero-x-swap" ? <small>RMT presents the exact simulated 0x transaction. Quote expiry limits when RMT opens wallet review; it is not a guaranteed onchain expiry.</small> : <small>The verified swap calldata enforces its onchain deadline and protected output.</small>}
+<small>{expired ? "Verified request expired. Prepare a fresh server-verified request." : `Wallet review window · ${Math.max(0, Math.ceil((plan.expiresAtMs - nowMs) / 1_000))}s remaining`}</small>
+{transactionHash ? <ExplorerLink kind="transaction" value={transactionHash} accessibleName="Open submitted transaction in Robinhood Chain explorer">View transaction ↗</ExplorerLink> : null}</>, detailsTarget) : null}
+</div>;
 }

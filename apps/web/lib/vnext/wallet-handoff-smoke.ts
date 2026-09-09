@@ -178,8 +178,11 @@ const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx
 const review = readFileSync(new URL("../../app/vnext/vnext-wallet-review.tsx", import.meta.url), "utf8");
 const css = readFileSync(new URL("../../app/vnext/vnext-terminal.css", import.meta.url), "utf8");
 assert.doesNotMatch(composer, /Complete review in wallet/, "authorization preparation must not impersonate a wallet handoff");
-assert.ok(composer.indexOf("<VNextWalletReview") < composer.indexOf('<details className="vnRouteCard">'),
-  "the real explicit wallet action must be on the primary surface above Advanced details");
+const actionDock = composer.slice(composer.indexOf('<footer className="vnTradeActionDock"'), composer.indexOf("</footer>"));
+assert.match(actionDock, /<VNextWalletReview/, "the real explicit wallet action must remain in the non-scrolling primary footer");
+assert.doesNotMatch(actionDock, /<details|vnRouteCard/, "advanced evidence must not displace the primary action");
+assert.match(css, /\.vnTradeActionDock\s*\{[^}]*flex: 0 0 auto/);
+assert.match(css, /\.vnTradeScroll\s*\{[^}]*overflow-y: auto/);
 assert.doesNotMatch(composer, /vnRouteCard" open=/, "authorization must not open a nested mobile detail surface");
 assert.match(composer, /Nothing opens automatically/);
 assert.match(review, /useWalletClient\(\{ connector \}\)/, "the transaction client must be bound to the exact active connector");

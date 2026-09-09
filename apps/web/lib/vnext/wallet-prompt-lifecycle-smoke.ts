@@ -502,15 +502,17 @@ assert.doesNotMatch(walletReview, /rejected\|denied\|cancelled\|canceled/);
 assert.match(walletReview, /Wallet request is still unresolved\. Check the selected wallet and do not retry\./);
 assert.match(walletReview, /Wallet request was rejected by the owner\. Nothing was broadcast\./);
 assert.match(walletReview, /Review verified swap in/);
-assert.match(walletReview, /Refresh verified request/);
+assert.doesNotMatch(walletReview, /Refresh verified request/);
+assert.match(walletReview, /isVerifiedRequestFresh\(plan\.expiresAtMs, Date\.now\(\)\)/);
+assert.match(walletReview, /Refreshing price\.\.\./);
 const explicitOpenBoundary = walletReview.slice(walletReview.indexOf("function openPreparedWalletRequest"), walletReview.indexOf("const prepareWalletReview"));
 assert.doesNotMatch(explicitOpenBoundary, /\bawait\b/);
 assert.match(explicitOpenBoundary, /dispatchVNextWalletReview/);
 assert.doesNotMatch(explicitOpenBoundary, /sendTransaction\(/);
 assert.doesNotMatch(walletReview, /autoRequest/);
 assert.doesNotMatch(composer, /<VNextWalletReview[\s\S]{0,80}autoRequest/);
-assert.ok(composer.indexOf("<VNextWalletReview") < composer.indexOf('<details className="vnRouteCard">'),
-  "the explicit wallet-review action becomes visible on the primary surface without invoking the provider");
+assert.match(composer.slice(composer.indexOf('<footer className="vnTradeActionDock"'), composer.indexOf("</footer>")), /<VNextWalletReview/,
+  "the explicit wallet-review action stays outside scrolling evidence without invoking the provider");
 assert.doesNotMatch(composer, /vnRouteCard" open=/, "Advanced details must not become a nested mobile scroll trap");
 assert.match(composer, /<dt>Network<\/dt><dd>Robinhood Chain · 4663<\/dd>/);
 assert.match(composer, /<dt>Protected minimum<\/dt>/);
