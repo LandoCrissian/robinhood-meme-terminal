@@ -2927,9 +2927,14 @@ async function inspectV4FreshWalletSellJourney(browser, fixture) {
 
 async function inspectWalletPromptReloadAndCrossTab(browser, fixture) {
   const auditPrimaryWalletHandoff = async (page, label) => {
-    const primary = page.locator(".vnWalletPrimaryReview");
+    const primary = page.locator(".vnTradeActionDock");
     await primary.waitFor({ state: "visible", timeout: 30_000 });
-    const text = await primary.innerText();
+    const action = primary.getByRole("button", { name: "Review verified swap in wallet", exact: true });
+    await action.waitFor({ state: "visible" });
+    if (await action.evaluate(element => Boolean(element.closest("details")))) throw new Error(`${label}: trade action is hidden inside Advanced details`);
+    await page.locator(".vnRouteTop").click();
+    await page.locator(".vnWalletPrimaryReview").waitFor({ state: "visible" });
+    const text = await page.locator(".vnRouteCard").innerText();
     for (const expected of [
       "Verified request ready",
       "Nothing opens automatically",
@@ -2942,9 +2947,11 @@ async function inspectWalletPromptReloadAndCrossTab(browser, fixture) {
       "0.25%",
       "Wallet review window"
     ]) {
-      if (!text.includes(expected)) throw new Error(`${label}: primary wallet handoff omitted ${expected}: ${text}`);
+      if (!text.includes(expected)) throw new Error(`${label}: advanced wallet evidence omitted ${expected}: ${text}`);
     }
     if (/Complete review in wallet/i.test(text)) throw new Error(`${label}: authorization preparation impersonated a wallet handoff`);
+    await page.locator(".vnRouteTop").click();
+    await action.waitFor({ state: "visible" });
     const promptRequests = await page.evaluate(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter((method) => method === "eth_sendTransaction").length);
     if (promptRequests !== 0) throw new Error(`${label}: wallet provider was invoked before explicit owner action`);
     const overflow = await page.evaluate(() => Math.max(0, document.documentElement.scrollWidth - innerWidth));
