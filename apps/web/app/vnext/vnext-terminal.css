@@ -6008,3 +6008,26 @@ body .rmtTerminal button {
   .vnDetectedAssetOpen,
   .vnDetectedAssetNoRoute { grid-column: 3; grid-row: 1; }
 }
+
+/* Trade-direction controls stay outside the evidence scroll area. */
+.vnTradePanel { display: flex; flex-direction: column; overflow: hidden; padding: 0; }
+.vnTradeScroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 24px; }
+.vnTradeActionDock { flex: 0 0 auto; padding: 14px 24px; border-top: 1px solid var(--vn-line, #26332d); background: #0d1712; }
+.vnTradeActionDock .vnWalletSubmission { margin: 0; padding: 0; border: 0; }
+.vnTradeActionDock [aria-label="Injected signer selection"] { max-height: 128px; overflow-y: auto; margin-bottom: 10px; font-size: 12px; }
+.vnTradeActionDock .vnReviewButton { width: 100%; margin: 0; min-height: 48px; }
+.vnTradeActionDock .vnWalletSubmission > p { max-height: 64px; overflow-y: auto; margin-bottom: 0; }
+.vnTradePriceSummary { display: grid; gap: 8px; font-size: 12px; }
+.vnTradePriceSummary > div { display: flex; justify-content: space-between; gap: 12px; }
+.vnTradePriceSummary dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+.vnTradePanel.is-sell .vnReviewButton, .vnPositionActions button.isSell, .rmtMobileTradeDock button.isSell { background: #ec5965; color: #230b10; border-color: #ec5965; }
+.vnTradePanel.is-sell .vnReviewButton:disabled, .vnPositionActions button.isSell:disabled, .rmtMobileTradeDock button.isSell:disabled { background: #77333d; color: #d29ca3; opacity: .65; }
+.vnTradePanel.is-sell .vnSideTabs .isActive, .vnTradePanel.is-sell .vnConfirmedBalance button { border-color: #ec5965; color: #ff9da5; }
+@media (max-width: 1023px) {
+ .rmtMobileSheetLayer { top: var(--trade-viewport-top, 0px); bottom: auto; height: var(--trade-viewport-height, 100dvh); }
+ .rmtMobileTradeSheet { height: min(92dvh, var(--trade-viewport-height, 92dvh)); max-height: 100%; }
+ .rmtMobileTradeSheetScroll { display: flex; overflow: hidden; padding-bottom: 0; }
+ .rmtMobileTradeSheet .vnTradePanel { flex: 1; position: static; min-height: 0; max-height: none; padding: 0; }
+ .rmtMobileTradeSheet .vnTradeScroll { flex: 1 1 auto; padding: 14px; }
+ .rmtMobileTradeSheet .vnTradeActionDock { padding: 10px 14px max(12px, env(safe-area-inset-bottom)); }
+}

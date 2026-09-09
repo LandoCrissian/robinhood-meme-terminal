@@ -1,3 +1,4 @@
+import { exerciseTradeRefresh } from './trade-refresh-browser-checks.mjs';
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -54,7 +55,7 @@ export async function runZeroXWalletJourneys(options) {
     'duplicate-integrator-fee': (quote) => { quote.fees.integratorFees = [quote.fees.integratorFee, quote.fees.integratorFee]; }
   };
   for (const viewportName of ['desktop', 'mobile']) {
-    const scenarios = ['identity-not-requested', 'sell-approval-identity-retry', 'sell-approval-expired', 'sell-approval-provider-retry', 'sell-approval-return', 'sell-approval-uuid-return', 'sell-approval-account-change', 'sell-approval-chain-change', 'sell-approval-rejected', 'direct-confirmation', 'returning-signer', 'mobile-walletconnect', 'mobile-walletconnect-sell', 'native-sell', 'approval-only', 'confirmed-without-output', 'reverted', 'multi-account-owner-second', 'signer-two-providers', 'signer-disappeared', 'signer-account-change', 'signer-provider-conflict', 'approval-requote', 'native', 'rejection', 'pending', 'expired-quote', 'quote-only', ...Object.keys(faults), 'simulation-failure', ...Object.keys(wireFaults)];
+    const scenarios = ['identity-not-requested', 'sell-approval-identity-retry', 'sell-approval-expired', 'sell-approval-provider-retry', 'sell-approval-return', 'sell-approval-uuid-return', 'sell-approval-account-change', 'sell-approval-chain-change', 'sell-approval-rejected', 'direct-confirmation', 'returning-signer', 'mobile-walletconnect', 'mobile-walletconnect-sell', 'native-sell', 'approval-only', 'confirmed-without-output', 'reverted', 'multi-account-owner-second', 'signer-two-providers', 'signer-disappeared', 'signer-account-change', 'signer-provider-conflict', 'approval-requote', 'native', 'rejection', 'pending', 'expired-quote', 'expired-quote-sell', 'refresh-click-buy', 'refresh-click-buy-again', 'refresh-click-sell', 'refresh-provider-recovery', 'refresh-provider-failure', 'quote-only', ...Object.keys(faults), 'simulation-failure', ...Object.keys(wireFaults)];
     for (const scenario of scenarios) {
       state.approved = !scenario.startsWith('sell-approval') && !['approval-only', 'approval-requote', 'approval-over-sell', 'approval-unlimited', 'stale-post-approval'].includes(scenario);
       state.priceDisabled = scenario === 'quote-only';
@@ -258,7 +259,7 @@ export async function runZeroXWalletJourneys(options) {
       });
       const prefix = `${viewportName}-${scenario}`;
       try {
-        const sell = scenario.startsWith('sell-approval') || ['native-sell', 'mobile-walletconnect-sell'].includes(scenario);
+        const sell = scenario.startsWith('sell-approval') || ['native-sell', 'mobile-walletconnect-sell', 'expired-quote-sell', 'refresh-click-sell'].includes(scenario);
         await page.goto(`${base}/?market=${token}&side=${sell ? 'sell' : 'buy'}`, { waitUntil: 'domcontentloaded' });
         await page.getByRole('button', { name: 'I understand', exact: false }).click();
         await page.getByRole('button', { name: 'Start with live markets', exact: true }).click();
@@ -295,7 +296,7 @@ export async function runZeroXWalletJourneys(options) {
           assert.equal(requests.length, 0, 'Invalid firm evidence cannot prompt wallet');
         } else {
           await until(() => api.some((entry) => entry.path.endsWith('/authorize') && entry.status === 200), `${scenario} did not authorize`);
-          await page.locator('.vnWalletFeeDisclosure').waitFor();
+          await page.locator('.vnWalletFeeDisclosure').waitFor({ state: 'attached' });
           const bundle = api.filter((entry) => entry.path.endsWith('/authorize')).at(-1).body;
           assert.equal(bundle.plan.provider, 'zero-x-swap');
           assert.equal(bundle.plan.providerNativeFee.feeBps, 25);
@@ -306,11 +307,7 @@ export async function runZeroXWalletJourneys(options) {
           const review = page.getByRole('button', { name: /Review (exact approval|verified swap) in wallet/, exact: true });
           await review.scrollIntoViewIfNeeded();
           assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2), 'No horizontal overflow');
-          if (scenario === 'expired-quote') {
-            await page.clock.fastForward(11000);
-            await page.locator('button').filter({ hasText: /^Refresh verified request$/ }).waitFor();
-            assert.equal(requests.length, 0);
-          } else {
+          if (scenario.startsWith('expired-quote') || scenario.startsWith('refresh-')) { await exerciseTradeRefresh({ page, api, requests, scenario, viewportName }); } else {
             assert.equal(requests.length, 0, 'quote, verification and signer discovery never auto-open a wallet');
             const selector = page.getByRole('region', { name: 'Injected signer selection' });
             if (scenario === 'signer-two-providers') {

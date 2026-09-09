@@ -141,8 +141,9 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
           assert.equal(verified.status, 409);
           assert.equal(verified.body.error, 'ZERO_X_REPRICE_REQUIRED');
           assert.equal(verified.body.zeroXFirmQuoteCommitment, undefined);
-          await page.locator('.vnRouteTop').click();
-          await until(async () => /Price moved\. Refreshing the quote\./.test(await page.locator('.vnTradePanel').innerText()), 'Market repricing must be classified separately without another review screen');
+          await page.getByRole('button', { name: 'Retry quote', exact: true }).waitFor();
+          assert.equal(currentApi().filter(entry => entry.path.endsWith('/verify') && entry.status === 409).length, 4, 'Material repricing retries are bounded and every rejected firm quote remains rejected');
+          assert.match(await page.locator('.vnTradePanel').innerText(), /Price changed\. Retry quote\./);
           assert.equal(api.filter((entry) => entry.path.endsWith('/authorize')).length, 0);
           assert.equal(prompts.length, 0);
         } else {
@@ -167,9 +168,9 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
             assert.equal(plan.providerNativeFee.firmQuote.identity, verification.providerNativeFee.firmQuote.identity);
             assert.equal(plan.providerNativeFee.feeBps, 25);
             assert.equal(plan.providerNativeFee.treasury.toLowerCase(), '0x61700479a4a1f62584fd3aba2c2b290ea727d2ec');
+            await page.locator('.vnRouteTop').click();
             await page.locator('.vnWalletFeeDisclosure').waitFor();
             assert.match(await page.locator('.vnWalletFeeDisclosure').innerText(), /Expected receive[\s\S]*Minimum receive/);
-            await page.locator('.vnRouteTop').click();
             assert.match(await page.locator('.vnTradePanel').innerText(), /Fresh firm quote[\s\S]*Updated executable minimum/);
             assert.doesNotMatch(await page.locator('.vnTradePanel').innerText(), /Continuity check failed/);
             assert.equal(prompts.length, 0, 'Fresh economics must not automatically open the wallet');
@@ -204,10 +205,11 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
             assert.doesNotMatch(journal, /"state":"(?:submitted|confirmed)"/);
           }
         }
-        assert.equal(state.quotes.slice(quoteStart).filter((quote) => quote.sellAmount === inputAmountAtomic).length, 1, 'Exactly one firm quote for the entered amount; authorization never refetches');
+        const expectedFirmCalls = scenario === 'material-reprice' ? 4 : 1;
+        assert.equal(state.quotes.slice(quoteStart).filter((quote) => quote.sellAmount === inputAmountAtomic).length, expectedFirmCalls, 'One firm quote per preparation attempt; authorization never refetches, repricing has exactly four bounded attempts');
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2));
         assert.deepEqual(state.unexpected, []);
-        results.push({ viewport, scenario: `firm-commitment-${scenario}`, status: 'PASS', firmQuoteCalls: 1, walletPrompts: prompts.length });
+        results.push({ viewport, scenario: `firm-commitment-${scenario}`, status: 'PASS', firmQuoteCalls: expectedFirmCalls, walletPrompts: prompts.length });
         console.log(`${prefix}: PASS`);
       } finally {
         await page.screenshot({ path: path.join(output, `${prefix}.png`), fullPage: true });

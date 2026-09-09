@@ -313,9 +313,14 @@ export async function runZeroXBrowserAcceptance() {
         assert.ok(await page.evaluate(() => window.__QUOTE_SCHEDULER__.fired > 0), 'equivalent renders must not starve the read-only quote debounce');
         assert.equal(await page.evaluate(() => window.__ZEROX_WALLET_REQUESTS__.length), 0, 'automatic quote preparation never opens the wallet');
         assert.ok(api.some((r) => r.path === '/api/vnext/verify' && r.status === 200), '0x reaches real verification');
+        await page.locator('.vnWalletFeeDisclosure').waitFor({ state: 'attached' });
+        assert.equal(await page.locator('.vnWalletFeeDisclosure').isVisible(), false, 'technical evidence is disclosed progressively');
+        await page.locator('.vnRouteTop').click();
         await page.locator('.vnWalletFeeDisclosure').waitFor();
         const disclosure = await page.locator('.vnWalletFeeDisclosure').innerText();
         for (const text of ['0.25%', 'USDG', 'Expected receive', 'Minimum receive', '0x/provider fee', 'Network fee']) assert.ok(disclosure.includes(text), `Missing disclosure: ${text}`);
+        await page.locator('.vnRouteTop').click();
+        assert.equal(await page.locator('.vnTradeActionDock .vnReviewButton').isVisible(), true, 'disclosure never owns the primary trade action');
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2), 'No horizontal overflow');
         assert.deepEqual(state.unexpected, [], 'Unexpected external traffic fails acceptance');
         results.push({ viewport: name, status: 'wallet-review-ready' });

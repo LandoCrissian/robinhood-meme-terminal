@@ -146,7 +146,7 @@ function WorkspacePosition({
     </> : executionState === "asset-only" ? <>
       <div className="vnPositionActions isViewOnly"><button type="button" disabled>Asset only</button></div>
       <p className="vnStockTokenViewOnlyPolicy">Onchain identity is verified. No supported market evidence is attached, so execution is not evaluated.</p>
-    </> : <div className="vnPositionActions"><button type="button" onClick={() => onTradeSide("buy")}>{executionUiState === "preview-only" ? "Buy quote" : "Buy"}</button><button type="button" disabled={!hasPosition} onClick={() => onTradeSide("sell")}>{executionUiState === "preview-only" ? "Sell quote" : "Sell"}</button></div>}
+    </> : <div className="vnPositionActions"><button className="isBuy" type="button" onClick={() => onTradeSide("buy")}>{executionUiState === "preview-only" ? "Buy quote" : "Buy"}</button><button className="isSell" type="button" disabled={!hasPosition} onClick={() => onTradeSide("sell")}>{executionUiState === "preview-only" ? "Sell quote" : "Sell"}</button></div>}
     <footer>Exact connected-wallet balance. Cost basis and P&amp;L remain hidden until complete wallet history can be proven.</footer>
   </section>;
 }
