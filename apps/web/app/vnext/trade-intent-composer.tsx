@@ -48,6 +48,12 @@ import { pendingTradeEntryMatches, type PendingTradeEntry } from "../../lib/vnex
 import { FundWalletButton } from "../fund-wallet-button";
 import { VNextWalletReview } from "./vnext-wallet-review";
 import { ExplorerLink } from "./terminal-links";
+import {
+  clearPendingApprovalJourney, emitTradeJourney, failureJourneyPhase, observedZeroXPhase,
+  pendingApprovalRecordMatches, pendingApprovalWalletMatches, readPendingApprovalJourney,
+  revalidateAfterApproval, savePendingApprovalJourney, TradeJourneyError, tradeJourneyLabels,
+  tradeJourneyPhase, type TradeJourneyPhase
+} from "../../lib/vnext/trade-journey";
 
 function shortAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
@@ -105,7 +111,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
     | { state: "idle" }
     | { state: "loading" }
     | { state: "ready"; response: VNextQuoteResponse }
-    | { state: "error"; message: string }
+    | { state: "error"; message: string; phase?: TradeJourneyPhase }
   >({ state: "idle" });
   const [verificationState, setVerificationState] = useState<
     | { state: "idle" }
@@ -131,9 +137,28 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
     | { state: "reverted"; message: string }
   >({ state: "idle" });
   const [costValuationClockMs, setCostValuationClockMs] = useState(() => Date.now());
+  useEffect(() => {
+    if (verificationState.state === "ready" && ["verified", "approval_required"].includes(verificationState.evidence.status)) {
+      emitTradeJourney({ phase: verificationState.evidence.status === "approval_required" ? "APPROVAL_REQUIRED"
+        : verificationState.evidence.status === "verified" ? "SWAP_READY" : "FIRM_VERIFY_FAILED",
+        approvalRequired: verificationState.evidence.status === "approval_required" });
+    } else if (verificationState.state === "ready" && verificationState.evidence.status.endsWith("simulation_failed")) {
+      emitTradeJourney({ phase: "SIMULATION_FAILED" });
+    } else if (verificationState.state === "error") emitTradeJourney({ phase: "FIRM_VERIFY_FAILED" });
+  }, [verificationState]);
+  useEffect(() => {
+    const phase = postExecutionState.state === "approval_confirmed" ? "APPROVAL_CONFIRMED"
+      : postExecutionState.state === "refreshing" ? "QUOTE_REQUESTING"
+      : postExecutionState.state === "next_approval_ready" ? "APPROVAL_REQUIRED"
+      : postExecutionState.state === "swap_ready" ? "SWAP_READY"
+      : postExecutionState.state === "confirmed_unsettled" ? "SETTLEMENT_PENDING"
+      : postExecutionState.state === "swap_confirmed" ? "SWAP_SETTLED" : null;
+    if (phase) emitTradeJourney({ phase });
+  }, [postExecutionState.state]);
   const [walletActionId, setWalletActionId] = useState(0);
   const walletActionCounter = useRef(0);
   const intentionalTradeContext = useRef<string | null>(null);
+  const restoredApprovalIntent = useRef(false);
   const handledExecution = useRef<string | undefined>(undefined);
   const pendingTradeAfterLogin = useRef<PendingTradeEntry | undefined>(undefined);
   const automaticPreparationKey = useRef("");
@@ -278,6 +303,23 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
       ? ROBINHOOD_NATIVE_ASSET_ADDRESS
       : null;
   const requestKey = `${address ?? ""}:${side}:${amount}:${inputAddress ?? ""}:${outputAddress ?? ""}:${canonicalMarket?.poolKey ?? "auto"}`;
+  useEffect(() => () => { authorizationAttemptEpoch.current += 1; }, []);
+  useEffect(() => {
+    const pending = readPendingApprovalJourney();
+    if (!pending) return;
+    if ((address && pending.wallet.toLowerCase() !== address.toLowerCase()) || (chainId !== undefined && chainId !== 4663)
+      || (identity.authenticated && identity.userId && pending.userId !== identity.userId)) {
+      clearPendingApprovalJourney();
+      return;
+    }
+    if (restoredApprovalIntent.current || !identity.authenticated || !pendingApprovalWalletMatches(pending,
+      { userId: identity.userId, wallet: address, walletKey: identity.activeWalletKey, chainId })
+      || pending.marketAddress.toLowerCase() !== selectedMarketAddress.toLowerCase()) return;
+    restoredApprovalIntent.current = true;
+    autoFitBuyAmount.current = false;
+    setSide(pending.side); setAmount(pending.amount);
+    setBuyInputKey(pending.buyInputKey); setSellOutputKey(pending.sellOutputKey);
+  }, [address, chainId, identity.authenticated, identity.userId, identity.activeWalletKey, selectedMarketAddress]);
   const cachedQuote = cachedVNextQuoteForRequest(lastReadyQuote.current, requestKey);
   useEffect(() => {
     backgroundQuoteEpoch.current += 1;
@@ -318,7 +360,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
     const expiries = quoteState.response.attempts.flatMap((attempt) => attempt.expiresAtMs === null ? [] : [attempt.expiresAtMs]);
     if (expiries.length === 0) return;
     const delay = Math.max(0, Math.min(...expiries) - Date.now());
-    const timeout = window.setTimeout(() => setQuoteState({ state: "error", message: "Live quote expired. Check routes again." }), delay);
+    const timeout = window.setTimeout(() => setQuoteState({ state: "error", message: "Refreshing quote...", phase: "QUOTE_EXPIRED" }), delay);
     return () => window.clearTimeout(timeout);
   }, [quoteState]);
   useEffect(() => {
@@ -490,6 +532,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
   const requestLiveRoutes = async () => {
     if (!draft.intent || !address || !inputAddress || !outputAddress || !identity.identityToken || !identity.userId) throw new Error("Trade intent is not ready for route comparison.");
     const expected = { inputAsset: inputAddress, outputAsset: outputAddress, inputAmountAtomic: draft.intent.amountAtomic };
+    emitTradeJourney({ phase: "QUOTE_REQUESTING", quoteRequestAttempted: true });
     const response = await requestTradeQuote("/api/vnext/quotes", {
       chainId: ROBINHOOD_MAINNET_CHAIN_ID,
       inputAsset: inputAddress,
@@ -555,7 +598,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
         if (!cachedVNextQuoteForRequest(lastReadyQuote.current, requestKey)) {
           setQuoteState({
             state: "error",
-            message: cause instanceof Error ? cause.message : "Live routes are temporarily unavailable."
+            message: cause instanceof Error ? cause.message : "Quote service temporarily unavailable.",
+            phase: failureJourneyPhase(cause, "QUOTE_SERVICE_UNAVAILABLE")
           });
         }
       }
@@ -609,6 +653,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
     if (stockTokenViewOnly) throw new Error("Official Robinhood Stock Tokens are view-only in RMT until jurisdiction controls are available.");
     const selectedRoute = selectVNextRoute(quoteResponse.attempts, { publicExecutionOnly: true });
     const winningQuote = selectedRoute.verificationCandidate;
+    const observedPhase = observedZeroXPhase(quoteResponse.attempts);
+    if (!winningQuote) throw new TradeJourneyError(observedPhase, tradeJourneyLabels[observedPhase]);
     if (
       !draft.intent
       || !address
@@ -680,7 +726,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
       } catch {
         if (refreshEpoch === authorizationAttemptEpoch.current) setQuoteState({ state: "error", message: "Refreshed price is delayed. Retry for a new quote." });
       }
-      throw new Error("Price moved. Review the refreshed quote.");
+      throw new TradeJourneyError("QUOTE_EXPIRED", "Price moved. Refreshing the quote.");
     }
     const failure = tradeQuoteFailureFromResponse(response);
     if (failure) throw failure;
@@ -733,7 +779,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
       identityToken: identity.identityToken
     });
     const failure = tradeAuthorizationFailureFromResponse(response);
-    if (failure) throw failure;
+    if (failure) throw new TradeJourneyError(tradeJourneyPhase(response.payload.phase)
+      ?? (response.status === 409 ? "QUOTE_EXPIRED" : response.status >= 500 || response.status === 429 ? "QUOTE_SERVICE_UNAVAILABLE" : "AUTHORIZATION_FAILED"), failure.message);
     return parseVNextAuthorizationBundle(response.payload, evidence, {
       quoteRequestId: evidence.sourceQuoteRequestId,
       inputAsset: inputAddress,
@@ -743,6 +790,16 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
     }, Date.now());
   };
 
+  function rememberApprovalIntent(plan: VNextAuthorizationPlan) {
+    if (plan.provider !== "zero-x-swap" || plan.kind !== "erc20_approval" || !identity.activeWalletKey || !address) return;
+    const now = Date.now();
+    savePendingApprovalJourney({ version: 1, chainId: 4663, userId: identity.userId, wallet: address,
+      walletKey: identity.activeWalletKey, marketAddress: selectedMarketAddress, side, amount,
+      buyInputKey: selectedBuyInput ? assetKey(selectedBuyInput.id) : undefined,
+      sellOutputKey: selectedSellOutput ? assetKey(selectedSellOutput.id) : sellOutputKey,
+      inputAsset: plan.inputAsset, outputAsset: plan.outputAsset, inputAmountAtomic: plan.inputAmountAtomic,
+      approvalPlanId: plan.planId, approvalPayloadHash: plan.payloadHash, createdAtMs: now, expiresAtMs: now + 10 * 60_000 });
+  }
   const startTrade = async (openWallet = false) => {
     if (!authorizationEnabled || stockTokenViewOnly || !draft.intent || amountExceedsBalance) return;
     automaticPreparationKey.current = `${identity.userId}:${identity.activeWalletKey}:${requestKey}`;
@@ -790,7 +847,10 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
       lastReadyVerification.current = authorization.evidence;
       setVerificationState({ state: "ready", evidence: authorization.evidence });
       setAuthorizationState({ state: "ready", plan: authorization.plan });
-      if (openWallet && authorization.plan.provider === "zero-x-swap") setWalletActionId(++walletActionCounter.current);
+      if (openWallet && authorization.plan.provider === "zero-x-swap") {
+        rememberApprovalIntent(authorization.plan);
+        setWalletActionId(++walletActionCounter.current);
+      }
       preparedApprovalAuthority.current = authorization.plan.kind === "erc20_approval"
         ? {
             approvalKind: authorization.evidence.approvalKind!,
@@ -803,7 +863,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
       if (!isCurrentTradeAuthorizationAttempt(authorizationAttempt, authorizationAttemptEpoch.current)) return;
       const message = cause instanceof Error ? cause.message : "RMT could not prepare this trade.";
       if (stage === "quote") {
-        setQuoteState({ state: "error", message });
+        setQuoteState({ state: "error", message, phase: failureJourneyPhase(cause, "QUOTE_SERVICE_UNAVAILABLE") });
         setVerificationState({ state: "idle" });
         setAuthorizationState({ state: "idle" });
       }
@@ -836,7 +896,17 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
 
   const continueAfterApproval = async () => {
     if (!authorizationEnabled || stockTokenViewOnly) return;
-    const confirmedApprovalAuthority = preparedApprovalAuthority.current;
+    const pending = readPendingApprovalJourney();
+    const resume = pendingApprovalRecordMatches(pending, executionRecord) && pending
+      && pendingApprovalWalletMatches(pending, { userId: identity.userId, wallet: address, walletKey: identity.activeWalletKey, chainId });
+    if (resume && pending && executionRecord) {
+      intentionalTradeContext.current = `${identity.userId}:${identity.activeWalletKey}:${requestKey}`;
+      savePendingApprovalJourney({ ...pending, approvalTxHash: executionRecord.txHash });
+    }
+    const confirmedApprovalAuthority = preparedApprovalAuthority.current ?? (resume && pending ? {
+      approvalKind: "erc20_to_allowance_holder" as const, target: pending.inputAsset,
+      spender: "0x0000000000001fF3684f28c67538d4D072C22734", amountAtomic: pending.inputAmountAtomic
+    } : undefined);
     preparedApprovalAuthority.current = undefined;
     backgroundQuoteEpoch.current += 1;
     const authorizationAttempt = ++authorizationAttemptEpoch.current;
@@ -848,6 +918,14 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
     lastReadyVerification.current = undefined;
     clearTradeQuoteCache();
     try {
+      const refreshed = await revalidateAfterApproval({
+        current: () => isCurrentTradeAuthorizationAttempt(authorizationAttempt, authorizationAttemptEpoch.current),
+        onRetry: (phase, retry) => {
+          emitTradeJourney({ phase, retry, approvalHashAvailable: Boolean(executionRecord?.txHash) });
+          setPostExecutionState({ state: "refreshing", message: `Approval confirmed. ${tradeJourneyLabels[phase]}. Retrying fresh verification...` });
+        },
+        attempt: async () => {
+      clearTradeQuoteCache();
       const freshQuote = await requestLiveRoutes();
       if (!isCurrentTradeAuthorizationAttempt(authorizationAttempt, authorizationAttemptEpoch.current)) return;
       lastReadyQuote.current = { requestKey, response: freshQuote };
@@ -867,6 +945,11 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
         (outcome.state === "next_approval_ready" && authorization.plan.kind !== "erc20_approval")
         || (outcome.state === "swap_ready" && authorization.plan.kind !== "swap")
       ) throw new Error("Fresh verification and wallet authorization disagreed about the next action.");
+      return { authorization, outcome };
+        }
+      });
+      if (!refreshed || !isCurrentTradeAuthorizationAttempt(authorizationAttempt, authorizationAttemptEpoch.current)) return;
+      const { authorization, outcome } = refreshed;
       lastReadyVerification.current = authorization.evidence;
       setVerificationState({ state: "ready", evidence: authorization.evidence });
       setAuthorizationState({ state: "ready", plan: authorization.plan });
@@ -879,6 +962,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
           }
         : undefined;
       setPostExecutionState(outcome);
+      emitTradeJourney({ phase: outcome.state === "swap_ready" ? "SWAP_READY" : "APPROVAL_REQUIRED", quoteRefreshedAfterApproval: true, approvalHashAvailable: true });
       if (authorization.plan.provider === "zero-x-swap" && intentionalTradeContext.current === `${identity.userId}:${identity.activeWalletKey}:${requestKey}`) setWalletActionId(++walletActionCounter.current);
     } catch (cause) {
       if (!isCurrentTradeAuthorizationAttempt(authorizationAttempt, authorizationAttemptEpoch.current)) return;
@@ -906,14 +990,19 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
       !authorizationEnabled
       || stockTokenViewOnly
       ||
-      postExecutionState.state !== "approval_confirmed"
+      (postExecutionState.state !== "approval_confirmed" && !pendingApprovalRecordMatches(readPendingApprovalJourney(), executionRecord))
       || !executionRecord
       || executionRecord.kind !== "erc20_approval"
+      || !draft.intent || !identity.authenticated || !identity.identityToken || !identity.activeWalletKey || !onRobinhood
+      || executionRecord.inputAmountAtomic !== draft.intent.amountAtomic
+      || executionRecord.inputAsset.toLowerCase() !== inputAddress?.toLowerCase()
+      || executionRecord.outputAsset.toLowerCase() !== outputAddress?.toLowerCase()
       || continuedApproval.current === executionRecord.txHash
     ) return;
     continuedApproval.current = executionRecord.txHash;
     void continueAfterApproval();
-  }, [authorizationEnabled, executionRecord, postExecutionState.state, stockTokenViewOnly]);
+  }, [authorizationEnabled, executionRecord, postExecutionState.state, stockTokenViewOnly, draft.intent,
+    identity.authenticated, identity.identityToken, identity.activeWalletKey, onRobinhood, inputAddress, outputAddress]);
 
   const verificationLabel = visibleVerification
     ? visibleVerification.status === "verified"
@@ -930,33 +1019,27 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
               ? "Gas estimate unavailable"
           : "Simulation failed"
     : null;
-  const executionRouteNotVerified = quoteState.state === "error"
-    && quoteState.message.includes("no independently verified execution route");
   const noObservedRoute = Boolean(visibleQuote && !bestQuote);
-  const expectedOutputLabel = expectedOutput
+  const quotePhase: TradeJourneyPhase = quoteState.state === "error" ? quoteState.phase ?? "QUOTE_SERVICE_UNAVAILABLE"
+    : !marketAsset || !pair || pair.inputAsset.decimals === null || pair.outputAsset.decimals === null ? "IDENTITY_PENDING"
+    : visibleQuote ? observedZeroXPhase(visibleQuote.attempts)
+    : quoteState.state === "loading" ? "QUOTE_REQUESTING" : "QUOTE_NOT_REQUESTED";
+  const expectedOutputLabel = quoteState.state === "error" ? tradeJourneyLabels[quotePhase] : expectedOutput
     ? `${expectedOutput} ${outputSymbol}`
     : !draft.intent
       ? "Enter trade amount"
       : noObservedRoute
-        ? "Route temporarily unavailable"
-      : quoteState.state === "error"
-        ? executionRouteNotVerified
-          ? "Trading route not verified by RMT"
-          : "Route temporarily unavailable"
+        ? tradeJourneyLabels[quotePhase]
         : "Finding best route…";
-  const routeStatusLabel = visibleVerification
+  const routeStatusLabel = quoteState.state === "error" ? tradeJourneyLabels[quotePhase] : visibleVerification
     ? verificationLabel
     : noObservedRoute
-      ? "Route unavailable"
+      ? tradeJourneyLabels[quotePhase]
     : visibleQuote
       ? "Routes compared"
-      : quoteState.state === "error"
-        ? executionRouteNotVerified
-          ? "Market data available · trading unavailable"
-          : "Route unavailable"
-        : draft.intent
-          ? "Finding route"
-          : "Not ready";
+      : draft.intent
+        ? "Finding route"
+        : "Not ready";
   const flowBusy = verificationState.state === "loading"
     || authorizationState.state === "loading"
     || postExecutionState.state === "refreshing";
@@ -1004,6 +1087,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
       <label className="vnAmountField">
         <span>{side === "buy" ? "You pay" : "You sell"}</span>
         <div><input inputMode="decimal" value={amount} onChange={(event) => {
+          clearPendingApprovalJourney();
           autoFitBuyAmount.current = false;
           setAmount(event.target.value);
         }} aria-label="Exact input amount" placeholder="0" />
@@ -1012,6 +1096,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
             value={selectedBuyInput ? assetKey(selectedBuyInput.id) : ""}
             disabled={displayedBuyInputs.length < 2}
             onChange={(event) => {
+              clearPendingApprovalJourney();
               const nextKey = event.target.value;
               const nextUsesUsdg = nextKey === assetKey(ROBINHOOD_USDG.id);
               const nextUsesNative = nextKey === assetKey(ROBINHOOD_ETH.id);
@@ -1065,7 +1150,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
             aria-label="Receive asset"
             value={selectedSellOutput ? assetKey(selectedSellOutput.id) : ""}
             disabled={sellOutputs.length < 2}
-            onChange={(event) => setSellOutputKey(event.target.value)}
+            onChange={(event) => { clearPendingApprovalJourney(); setSellOutputKey(event.target.value); }}
           >
             {sellOutputs.map((asset) => <option value={assetKey(asset.id)} key={assetKey(asset.id)}>{asset.id.locator.kind === "native" ? "ETH (native)" : asset.symbol ?? "Asset"}</option>)}
           </select> : <button type="button" disabled>{outputSymbol}</button>}
@@ -1106,8 +1191,11 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
           onRefresh={() => void startTrade(true)}
           actionId={walletActionId}
           tradeActionLabel={authorizationState.plan.provider === "zero-x-swap" ? `${side === "buy" ? "Buy" : "Sell"} ${marketSymbol}` : undefined}
-          onTradeAction={() => { if (authorizationState.plan.provider === "zero-x-swap") intentionalTradeContext.current = `${identity.userId}:${identity.activeWalletKey}:${requestKey}`; }}
-          onDispatched={(dispatched) => { setWalletActionId(0); if (dispatched.kind === "swap") intentionalTradeContext.current = null; }}
+          onTradeAction={() => { if (authorizationState.plan.provider === "zero-x-swap") {
+            intentionalTradeContext.current = `${identity.userId}:${identity.activeWalletKey}:${requestKey}`;
+            rememberApprovalIntent(authorizationState.plan);
+          } }}
+          onDispatched={(dispatched) => { setWalletActionId(0); if (dispatched.kind === "swap") { intentionalTradeContext.current = null; clearPendingApprovalJourney(); } }}
           inputSymbol={inputSymbol}
           outputSymbol={outputSymbol}
           inputDecimals={pair?.inputAsset.decimals ?? 18}
@@ -1140,6 +1228,10 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
                 ? `${side === "buy" ? "Connect & buy" : "Connect & sell"} ${marketSymbol}`
               : !identity.authenticated
                 ? `${side === "buy" ? "Connect & buy" : "Connect & sell"} ${marketSymbol}`
+                : quotePhase === "IDENTITY_PENDING" ? "Verifying token..."
+                : quotePhase === "IDENTITY_UNAVAILABLE" ? "Retry token verification"
+                : quoteState.state === "loading" ? "Finding route..."
+                : quoteState.state === "error" || zeroXNoRoute || noObservedRoute ? "Retry quote"
                 : `${side === "buy" ? "Buy" : "Sell"} ${marketSymbol}`}</button>}
       <p className="vnTradeSafety" id={stockTokenViewOnly ? "vn-stock-token-execution-policy" : previewOnly ? "vn-preview-execution-policy" : undefined}>{stockTokenViewOnly
         ? "Official Robinhood Stock Tokens are view-only in RMT until jurisdiction controls are available. Indicative market and route information remains available."

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import "./trade-journey-smoke";
 import { encodeAbiParameters, encodeEventTopics, erc20Abi, keccak256, zeroAddress, type Address, type Hex } from "viem";
 import { createInjectedSignerSelection, type InjectedSignerProvider } from "../injected-wallet-signer";
 import { INJECTED_SIGNER_PREFERENCE_KEY } from "../injected-signer-preference";

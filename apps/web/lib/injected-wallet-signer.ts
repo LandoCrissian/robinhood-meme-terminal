@@ -1,5 +1,5 @@
 import { getAddress, isAddress } from "viem";
-import { browserSignerPreferenceStorage, INJECTED_SIGNER_PREFERENCE_KEY, readInjectedSignerPreference, type SignerPreferenceStorage } from "./injected-signer-preference";
+import { browserSignerPreferenceStorage, INJECTED_SIGNER_PREFERENCE_KEY, readInjectedSignerPreference, sameInjectedPreferenceWallet, type SignerPreferenceStorage } from "./injected-signer-preference";
 import { parseWalletGatewayKey } from "./wallet-gateway";
 
 export type InjectedSignerProvider = {
@@ -84,7 +84,7 @@ export function createInjectedSignerSelection(options: { storage?: () => SignerP
     setIdentity(next: InjectedSignerIdentity) {
       const key = JSON.stringify([next.authenticated, next.userId, next.activeWalletKey,
         next.address?.toLowerCase(), next.linkedAddress?.toLowerCase(), next.chainId]);
-      if (selected && next.authenticated && (next.activeWalletKey !== identity.activeWalletKey
+      if (selected && next.authenticated && (!sameInjectedPreferenceWallet(identity.activeWalletKey, next.activeWalletKey)
         || next.address?.toLowerCase() !== identity.address?.toLowerCase() || next.chainId !== identity.chainId)) forgetPreference();
       identity = { ...next };
       if (key !== identityKey) { identityKey = key; invalidate(); }
@@ -120,9 +120,9 @@ export function createInjectedSignerSelection(options: { storage?: () => SignerP
       const before = generation;
       try {
         const wallet = requireIdentity();
-        if (wallet.toLowerCase() !== preference.wallet.toLowerCase() || identity.activeWalletKey !== preference.walletKey) return false;
+        if (wallet.toLowerCase() !== preference.wallet.toLowerCase() || !sameInjectedPreferenceWallet(preference.walletKey, identity.activeWalletKey)) return false;
         const matches = [...announcements.values()].filter((entry) => entry.rdns === preference.rdns);
-        if (matches.length !== 1 || matches[0].conflicted || matches[0].name !== preference.name) return false;
+        if (matches.length !== 1 || matches[0].conflicted) return false;
         const choice = matches[0];
         const request = choice.provider.request;
         const accounts = await request.call(choice.provider, { method: "eth_accounts" });
@@ -161,6 +161,8 @@ export function createInjectedSignerSelection(options: { storage?: () => SignerP
     },
     async prepare(walletKey: string, recipient: string): Promise<InjectedSignerTicket> {
       const wallet = requireIdentity(walletKey, recipient);
+      // Discovery can precede mounting the selector. Rebind before consuming the trade action.
+      if (!selected) await this.restorePreference();
       if (!selected || selected.conflicted) throw new Error("Choose an injected signer in the existing wallet menu before reviewing this 0x request.");
       if (selected.provider.request !== selectedRequest) {
         forgetPreference();

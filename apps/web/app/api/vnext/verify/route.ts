@@ -1,4 +1,5 @@
 import { createZeroXFirmQuoteCommitment } from "../../../../lib/server/vnext-zero-x-firm-quote-commitment";
+import { emitTradeJourney } from "../../../../lib/vnext/trade-journey";
 import { ZeroXRepriceRequiredError } from "../../../../lib/server/vnext-zero-x-firm-quote-verifier";
 import { randomBytes, randomUUID } from "node:crypto";
 import { getAddress, isAddress } from "viem";
@@ -88,7 +89,8 @@ export async function POST(request: Request) {
       readVNextVerifiedAssetIdentity(outputAsset)
     ]);
     if (!inputIdentity || !outputIdentity) {
-      return Response.json({ error: "Both assets require verified Robinhood Chain identity before route verification." }, { status: 422, headers: { "Cache-Control": "no-store" } });
+      emitTradeJourney({ phase: "IDENTITY_UNAVAILABLE", providerRequestAttempted: false });
+      return Response.json({ error: "Both assets require verified Robinhood Chain identity before route verification.", phase: "IDENTITY_UNAVAILABLE" }, { status: 422, headers: { "Cache-Control": "no-store" } });
     }
     await requireProjectIdentityDirectoryAdmitted([
       { address: inputAsset },

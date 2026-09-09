@@ -1,0 +1,1278 @@
+{
+  "baseSha": "a79a78fd0025eb12456c4adbdde713a237439dba",
+  "mode": "deterministic authenticated real production handlers; external providers and wallet mocked",
+  "results": [
+    {
+      "viewport": "desktop",
+      "status": "wallet-review-ready"
+    },
+    {
+      "viewport": "mobile",
+      "status": "wallet-review-ready"
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "identity-not-requested",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "sell-approval-identity-retry",
+      "status": "PASS",
+      "walletPrompts": 2
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "sell-approval-expired",
+      "status": "PASS",
+      "walletPrompts": 2
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "sell-approval-provider-retry",
+      "status": "PASS",
+      "walletPrompts": 2
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "sell-approval-return",
+      "status": "PASS",
+      "walletPrompts": 2
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "sell-approval-uuid-return",
+      "status": "PASS",
+      "walletPrompts": 2
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "sell-approval-account-change",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "sell-approval-chain-change",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "sell-approval-rejected",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "direct-confirmation",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "returning-signer",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "mobile-walletconnect",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "mobile-walletconnect-sell",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "native-sell",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "approval-only",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "confirmed-without-output",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "reverted",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "multi-account-owner-second",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "signer-two-providers",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "signer-disappeared",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "signer-account-change",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "signer-provider-conflict",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "approval-requote",
+      "status": "PASS",
+      "walletPrompts": 2
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "native",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "rejection",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "pending",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "expired-quote",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "quote-only",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "wrong-fee-asset",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "wrong-fee-amount",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "missing-integrator-fee",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "weakened-protected-output",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "malformed-target",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "changed-target",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "empty-calldata",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "unexplained-value",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "invalid-gas",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "simulation-incomplete",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "wrong-allowance-holder",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "duplicate-integrator-fee",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "simulation-failure",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "wrong-treasury",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "wrong-bps",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "wrong-bound-fee-asset",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "wrong-bound-fee-amount",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "missing-bound-fee",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "changed-protected-output",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "changed-wallet-target",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "changed-wallet-calldata",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "changed-wallet-value",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "changed-wallet-gas",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "changed-wallet-gas-price",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "approval-over-sell",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "approval-unlimited",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "stale-post-approval",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "identity-not-requested",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "sell-approval-identity-retry",
+      "status": "PASS",
+      "walletPrompts": 2
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "sell-approval-expired",
+      "status": "PASS",
+      "walletPrompts": 2
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "sell-approval-provider-retry",
+      "status": "PASS",
+      "walletPrompts": 2
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "sell-approval-return",
+      "status": "PASS",
+      "walletPrompts": 2
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "sell-approval-uuid-return",
+      "status": "PASS",
+      "walletPrompts": 2
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "sell-approval-account-change",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "sell-approval-chain-change",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "sell-approval-rejected",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "direct-confirmation",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "returning-signer",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "mobile-walletconnect",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "mobile-walletconnect-sell",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "native-sell",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "approval-only",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "confirmed-without-output",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "reverted",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "multi-account-owner-second",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "signer-two-providers",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "signer-disappeared",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "signer-account-change",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "signer-provider-conflict",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "approval-requote",
+      "status": "PASS",
+      "walletPrompts": 2
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "native",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "rejection",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "pending",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "expired-quote",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "quote-only",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "wrong-fee-asset",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "wrong-fee-amount",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "missing-integrator-fee",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "weakened-protected-output",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "malformed-target",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "changed-target",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "empty-calldata",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "unexplained-value",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "invalid-gas",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "simulation-incomplete",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "wrong-allowance-holder",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "duplicate-integrator-fee",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "simulation-failure",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "wrong-treasury",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "wrong-bps",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "wrong-bound-fee-asset",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "wrong-bound-fee-amount",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "missing-bound-fee",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "changed-protected-output",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "changed-wallet-target",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "changed-wallet-calldata",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "changed-wallet-value",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "changed-wallet-gas",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "changed-wallet-gas-price",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "approval-over-sell",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "approval-unlimited",
+      "status": "PASS",
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "stale-post-approval",
+      "status": "PASS",
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-one-usdg-normal-reprice",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-native-normal-reprice-rejection",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-material-reprice",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-expired-commitment",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-slippage-live-rounding",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-slippage-exact-100bps",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-slippage-rounding-boundary",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-slippage-outside-boundary",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-slippage-catastrophic",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-slippage-ten-percent",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-slippage-api-weaker-safe-executable",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-slippage-api-stronger-unsafe-executable",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-slippage-api-stronger-safe-executable",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-slippage-captured-native",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-tamper-requestedSlippage",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-tamper-maximumUserSlippage",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-tamper-providerMinimum",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-tamper-executableMinimum",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-tamper-settlerRuntime",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-tamper-expected",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-tamper-protected",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-tamper-feeAsset",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-tamper-feeAmount",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-tamper-treasury",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-tamper-target",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-tamper-calldataHash",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-tamper-value",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-tamper-gas",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-tamper-spender",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-tamper-expiry",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-tamper-wallet",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "firm-commitment-tamper-recipient",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-one-usdg-normal-reprice",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-native-normal-reprice-rejection",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-material-reprice",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-expired-commitment",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-slippage-live-rounding",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-slippage-exact-100bps",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-slippage-rounding-boundary",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-slippage-outside-boundary",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-slippage-catastrophic",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-slippage-ten-percent",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-slippage-api-weaker-safe-executable",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-slippage-api-stronger-unsafe-executable",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-slippage-api-stronger-safe-executable",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-slippage-captured-native",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-tamper-requestedSlippage",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-tamper-maximumUserSlippage",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-tamper-providerMinimum",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-tamper-executableMinimum",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-tamper-settlerRuntime",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-tamper-expected",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-tamper-protected",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-tamper-feeAsset",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-tamper-feeAmount",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-tamper-treasury",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-tamper-target",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-tamper-calldataHash",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-tamper-value",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-tamper-gas",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-tamper-spender",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-tamper-expiry",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-tamper-wallet",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "firm-commitment-tamper-recipient",
+      "status": "PASS",
+      "firmQuoteCalls": 1,
+      "walletPrompts": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "route-on-demand-identityOnly",
+      "status": "PASS",
+      "walletPrompts": 0,
+      "executionCtas": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "route-on-demand-noRoute",
+      "status": "PASS",
+      "walletPrompts": 0,
+      "executionCtas": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "route-on-demand-observed",
+      "status": "PASS",
+      "walletPrompts": 0,
+      "executionCtas": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "route-on-demand-stock",
+      "status": "PASS",
+      "walletPrompts": 0,
+      "executionCtas": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "route-on-demand-unverified",
+      "status": "PASS",
+      "walletPrompts": 0,
+      "executionCtas": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "route-on-demand-nativeToUsdg",
+      "status": "PASS",
+      "walletPrompts": 0,
+      "executionCtas": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "route-on-demand-usdgToNative",
+      "status": "PASS",
+      "walletPrompts": 0,
+      "executionCtas": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "route-on-demand-peep",
+      "status": "PASS",
+      "walletPrompts": 0,
+      "executionCtas": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "route-on-demand-peepNoRoute",
+      "status": "PASS",
+      "walletPrompts": 0,
+      "executionCtas": 0
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "route-on-demand-peepDisconnectedReview",
+      "status": "PASS",
+      "walletPrompts": 1,
+      "executionCtas": 1
+    },
+    {
+      "viewport": "desktop",
+      "scenario": "route-on-demand-peepConnectedReview",
+      "status": "PASS",
+      "walletPrompts": 1,
+      "executionCtas": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "route-on-demand-identityOnly",
+      "status": "PASS",
+      "walletPrompts": 0,
+      "executionCtas": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "route-on-demand-noRoute",
+      "status": "PASS",
+      "walletPrompts": 0,
+      "executionCtas": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "route-on-demand-observed",
+      "status": "PASS",
+      "walletPrompts": 0,
+      "executionCtas": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "route-on-demand-stock",
+      "status": "PASS",
+      "walletPrompts": 0,
+      "executionCtas": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "route-on-demand-unverified",
+      "status": "PASS",
+      "walletPrompts": 0,
+      "executionCtas": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "route-on-demand-nativeToUsdg",
+      "status": "PASS",
+      "walletPrompts": 0,
+      "executionCtas": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "route-on-demand-usdgToNative",
+      "status": "PASS",
+      "walletPrompts": 0,
+      "executionCtas": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "route-on-demand-peep",
+      "status": "PASS",
+      "walletPrompts": 0,
+      "executionCtas": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "route-on-demand-peepNoRoute",
+      "status": "PASS",
+      "walletPrompts": 0,
+      "executionCtas": 0
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "route-on-demand-peepDisconnectedReview",
+      "status": "PASS",
+      "walletPrompts": 1,
+      "executionCtas": 1
+    },
+    {
+      "viewport": "mobile",
+      "scenario": "route-on-demand-peepConnectedReview",
+      "status": "PASS",
+      "walletPrompts": 1,
+      "executionCtas": 1
+    }
+  ],
+  "signatures": 0,
+  "transactions": 0
+}

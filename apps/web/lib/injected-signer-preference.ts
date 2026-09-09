@@ -8,6 +8,18 @@ export type InjectedSignerPreference = {
 };
 export type SignerPreferenceStorage = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
+const sessionUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/** Only a session UUID may change. Brand, connector and account never migrate. */
+export function sameInjectedPreferenceWallet(previousKey: string | null, currentKey: string | null) {
+  const previous = parseWalletGatewayKey(previousKey);
+  const current = parseWalletGatewayKey(currentKey);
+  return Boolean(previous && current && previous.connectorType === "injected" && current.connectorType === "injected"
+    && previous.walletClientType === current.walletClientType && previous.address === current.address
+    && (previous.reportedId === current.reportedId
+      || (sessionUuid.test(previous.reportedId) && sessionUuid.test(current.reportedId))));
+}
+
 export function readInjectedSignerPreference(storage?: SignerPreferenceStorage): InjectedSignerPreference | null {
   try {
     const value = JSON.parse(storage?.getItem(INJECTED_SIGNER_PREFERENCE_KEY) ?? "null");

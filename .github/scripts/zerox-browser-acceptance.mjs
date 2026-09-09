@@ -150,7 +150,8 @@ function external(input) {
   }
   if (['cca-lite.coinbase.com', 'cca.coinbase.com', 'pulse.walletconnect.org'].includes(url.hostname)) return { status: 200, body: {} };
   if (url.origin === 'https://api.robinhood.com' && url.pathname === '/rhj/assets') return { status: 200, body: { assets: [] } };
-  if (url.origin === 'https://robinhoodchain.blockscout.com' && url.pathname === `/api/v2/addresses/${wallet}/token-balances`) return { status: 200, body: [] };
+  if (url.origin === 'https://robinhoodchain.blockscout.com'
+    && [wallet, '0x1111111111111111111111111111111111111111'].some((account) => url.pathname === `/api/v2/addresses/${account}/token-balances`)) return { status: 200, body: [] };
   if (state.priceDisabled && url.origin === 'https://api.0x.org' && url.pathname === '/gasless/price') {
     const q = Object.fromEntries(url.searchParams);
     return { status: 200, body: { liquidityAvailable: true, sellToken: q.sellToken, buyToken: q.buyToken, sellAmount: q.sellAmount,

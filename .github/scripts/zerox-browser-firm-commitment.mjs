@@ -142,7 +142,7 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
           assert.equal(verified.body.error, 'ZERO_X_REPRICE_REQUIRED');
           assert.equal(verified.body.zeroXFirmQuoteCommitment, undefined);
           await page.locator('.vnRouteTop').click();
-          await until(async () => /Price moved\. Review the refreshed quote\./.test(await page.locator('.vnTradePanel').innerText()), 'Market repricing must have its own review-required state');
+          await until(async () => /Price moved\. Refreshing the quote\./.test(await page.locator('.vnTradePanel').innerText()), 'Market repricing must be classified separately without another review screen');
           assert.equal(api.filter((entry) => entry.path.endsWith('/authorize')).length, 0);
           assert.equal(prompts.length, 0);
         } else {

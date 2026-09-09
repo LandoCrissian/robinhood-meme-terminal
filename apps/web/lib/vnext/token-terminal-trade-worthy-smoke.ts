@@ -100,7 +100,9 @@ for (const source of [quoteRoute, verifyRoute, authorizeRoute]) {
   assert.doesNotMatch(source, /target:\s*z\.|calldata:\s*z\.|value:\s*z\./, "Browser-controlled transaction fields must not enter quote/verify/authorize intent schemas");
   assert.match(source, /requireProjectIdentityDirectoryAdmitted/);
 }
-assert.match(tradeComposer, /Trading route not verified by RMT/);
-assert.match(tradeComposer, /Market data available · trading unavailable/);
+assert.match(tradeComposer, /tradeJourneyLabels/);
+assert.match(tradeComposer, /IDENTITY_UNAVAILABLE/);
+assert.match(tradeComposer, /observedZeroXPhase/);
+assert.doesNotMatch(tradeComposer, /Route temporarily unavailable/);
 
 console.info(`Token Terminal trade-worthy integration smoke passed (${curated.length} canonical; ${visible.length} deterministic visible)`);
