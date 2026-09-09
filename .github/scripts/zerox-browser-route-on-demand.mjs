@@ -187,6 +187,7 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
               && entry.status === 200 && entry.body?.plan?.value === expectedValue);
             await until(() => currentAuthorization(), 'The selected input must reach real authorization, not an earlier default amount');
             assert.ok(api.some((entry) => entry.path === '/api/vnext/verify' && entry.status === 200));
+            await page.locator('.vnRouteTop').click();
             await page.locator('.vnWalletFeeDisclosure').waitFor();
             const bundle = currentAuthorization().body;
             assert.equal(bundle.plan.provider, 'zero-x-swap');
@@ -206,7 +207,8 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
               assert.equal(BigInt(sent.value), BigInt(bundle.plan.value));
               assert.equal(BigInt(sent.gas), BigInt(bundle.plan.gasLimit));
               assert.equal(BigInt(sent.gasPrice), BigInt(bundle.plan.gasPrice));
-              await page.getByRole('button', { name: 'Review verified swap in wallet', exact: true }).filter({ hasText: 'Refresh verified request' }).waitFor();
+              await page.getByText('Wallet request was rejected by the owner. Nothing was broadcast.', { exact: true }).waitFor();
+              assert.equal(await page.getByRole('button', { name: 'Refresh verified request', exact: true }).count(), 0);
               assert.equal(api.filter((entry) => entry.path === '/api/vnext/verify').length, verifyCount, 'wallet CTA consumes existing firm authority');
               assert.equal(new URL(page.url()).searchParams.get('market')?.toLowerCase(), peep);
             }
