@@ -264,8 +264,12 @@ async function rescanCanonicalTokens(pool: Pool, state: IdentityIndexState) {
     const identity = state.shards.get(Number.parseInt(address.slice(2, 4), 16))?.get(address);
     if (identity) {
       evaluated += 1;
-      if (identity[1] === "r") verified += 1;
-      continue;
+      if (identity[1] === "r") {
+        verified += 1;
+        continue;
+      }
+      // Legacy negative entries are not permanent token identity evidence.
+      // The existing bounded worker retries them; ready identities stay durable.
     }
     if ((state.retryAfter.get(address) ?? 0) > now) continue;
     const shardNumber = Number.parseInt(address.slice(2, 4), 16);
@@ -382,7 +386,7 @@ export async function refreshCanonicalTokenIdentityIndex(
           ])
           });
           const rawResults = aggregate.some((result) =>
-            result.status === "failure" && isTransientReadFailure(result.error)
+            result.status === "failure"
           ) ? (await Promise.all(
               batch.map((address) => readIdentityIndividually(rpc, address, observedBlock))
             )).flat() : aggregate;
@@ -396,8 +400,9 @@ export async function refreshCanonicalTokenIdentityIndex(
       }
     }
   ));
-  const shard = state.shards.get(selectedShard) ?? new Map<string, StoredIdentity>();
-  state.shards.set(selectedShard, shard);
+  // Stage changes separately: a successful RPC read is not durable evidence
+  // until PostgreSQL accepts the shard. Keep the existing single worker writer.
+  const shard = new Map(state.shards.get(selectedShard) ?? []);
   let evaluatedAdded = 0;
   let verifiedAdded = 0;
   for (const read of reads) {
@@ -412,24 +417,43 @@ export async function refreshCanonicalTokenIdentityIndex(
       const symbolResult = read.results[index * 4 + 1];
       const decimalsResult = read.results[index * 4 + 2];
       const supplyResult = read.results[index * 4 + 3];
+      if ([nameResult, symbolResult, decimalsResult, supplyResult].some((result) => result?.status !== "success")) {
+        // A failed/missing contract read is unavailable evidence, not proof
+        // that this canonical token can never have a verified identity.
+        state.retryAfter.set(key, Date.now() + RETRY_ERROR_AFTER_MS);
+        continue;
+      }
       const name = cleanIdentityText(nameResult?.status === "success" ? nameResult.result : null, 80);
       const symbol = cleanIdentityText(symbolResult?.status === "success" ? symbolResult.result : null, 20);
       const decimals = decimalsResult?.status === "success" ? decimalsResult.result : null;
       const totalSupply = supplyResult?.status === "success" ? supplyResult.result : null;
-      const ready = Boolean(name && symbol && typeof decimals === "number" && decimals >= 0 && decimals <= 36 &&
+      const ready = Boolean(name && symbol && typeof decimals === "number" && Number.isInteger(decimals) && decimals >= 0 && decimals <= 36 &&
         typeof totalSupply === "bigint" && totalSupply > 0n);
       const stored: StoredIdentity = ready
         ? [key.slice(2), "r", name!, symbol!, decimals as number]
         : [key.slice(2), "i"];
+      const previous = shard.get(key);
       shard.set(key, stored);
-      if (stored[1] === "r") state.readyIdentities.set(key, stored);
-      else state.readyIdentities.delete(key);
-      state.retryAfter.delete(key);
-      evaluatedAdded += 1;
-      if (ready) verifiedAdded += 1;
+      if (ready) state.retryAfter.delete(key);
+      else state.retryAfter.set(key, Date.now() + RETRY_ERROR_AFTER_MS);
+      if (!previous) evaluatedAdded += 1;
+      if (ready && previous?.[1] !== "r") verifiedAdded += 1;
     }
   }
-  await persistShard(pool, selectedShard, shard);
+  try {
+    await persistShard(pool, selectedShard, shard);
+  } catch (error) {
+    // A failed write must not strand verified reads outside the durable shard.
+    const pending = state.pendingByShard.get(selectedShard) ?? [];
+    state.pendingByShard.set(selectedShard, [...selected, ...pending]);
+    throw error;
+  }
+  state.shards.set(selectedShard, shard);
+  for (const key of selected) {
+    const stored = shard.get(key);
+    if (stored?.[1] === "r") state.readyIdentities.set(key, stored);
+    else state.readyIdentities.delete(key);
+  }
   const evaluated = state.stats.totalUniqueCanonicalTokens - state.stats.unresolvedTokenIdentities + evaluatedAdded;
   const verified = state.stats.totalVerifiedErc20Identities + verifiedAdded;
   state.stats = {
