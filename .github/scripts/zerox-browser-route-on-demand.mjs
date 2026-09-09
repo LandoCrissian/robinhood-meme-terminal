@@ -180,7 +180,11 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
           if (scenario === 'noRoute' || scenario === 'peepNoRoute') {
             await until(async () => /no (?:0x )?route|route.*unavailable/i.test(await page.locator('.vnTradePanel').innerText()), 'No liquidity must produce a truthful unavailable route');
             assert.ok(api.some((entry) => entry.path === '/api/vnext/quotes' && entry.body?.attempts?.some((attempt) => attempt.provider === 'zero-x-swap' && attempt.status === 'no_route')));
-            if (peepEntry) await until(async () => (await page.locator('.vnTradePanel').innerText()).includes('No 0x route currently available for this trade.'), 'PEEP no-route explanation must be explicit');
+            if (peepEntry) {
+              assert.match(await page.locator('.vnTradePanel').innerText(), /No 0x route currently available/);
+              await page.locator('.vnRouteTop').click();
+              await until(async () => (await page.locator('.vnTradePanel').innerText()).includes('No 0x route currently available for this trade.'), 'PEEP no-route evidence remains explicit under Advanced details');
+            }
           } else {
             const expectedValue = sellingToken || peepEntry ? '0' : '1000000000000000';
             const currentAuthorization = () => api.find((entry) => entry.path === '/api/vnext/authorize'
