@@ -19,8 +19,12 @@ export function identityCoverageFixture(identities: readonly CoverageIdentity[],
       }
       if (sql.startsWith("SELECT total_canonical_markets")) return { rows: catalog };
       if (sql.includes("COUNT(*)::text AS count")) return { rows: [{ count: String(poolCount) }] };
-      if (sql.includes("encode(token,'hex')")) {
-        return { rows: [...values.keys()].sort().map((token) => ({ token: token.slice(2) })) };
+      if (sql.includes("encode(token0,'hex') AS token0")) {
+        const tokens = [...values.keys()].sort();
+        return { rows: tokens.map((token, index) => ({ token0: token.slice(2), token1: token.slice(2),
+          block_number: tokens.length - index, log_index: 0 }))
+          .filter((row) => row.block_number < Number(args[0]) || (row.block_number === Number(args[0]) && row.log_index < Number(args[1])))
+          .slice(0, 4096) };
       }
       if (sql.startsWith("INSERT INTO market_token_identity_shard")) {
         if (failWrite) throw new Error("TEST_STORAGE_WRITE_UNAVAILABLE");

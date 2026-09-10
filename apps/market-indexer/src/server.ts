@@ -12,6 +12,7 @@ import type { MarketIndexerWorker } from "./worker.js";
 import type { PositionGuardHeartbeat } from "./position-guard-heartbeat.js";
 import {
   readCanonicalBrowseIdentities,
+  readCanonicalIdentityDiagnostics,
   readCanonicalTokenIdentityIndexStats,
   searchCanonicalTokenIdentityIndex
 } from "./token-identity-index.js";
@@ -328,6 +329,31 @@ export function createMarketIndexerServer(
           activationLocked: true,
           reason: "shadow market data cannot receive production traffic"
         });
+        return;
+      }
+      if (url.pathname === "/v1/token-identities/priority") {
+        if (!bearer(request, config.readToken)) {
+          json(response, 401, { error: "unauthorized" });
+          return;
+        }
+        if (request.method !== "GET") {
+          json(response, 405, { error: "method_not_allowed" });
+          return;
+        }
+        try {
+          const diagnostics = await readCanonicalIdentityDiagnostics(pool);
+          json(response, 200, {
+            ...diagnostics,
+            workerStatus: worker.status.running ? "running" : worker.status.lastError !== null
+              ? "degraded" : worker.status.cycleSequence > 0 ? "healthy" : "starting",
+            lastWorkerSuccessAt: worker.status.lastWorkerSuccessAt ?? null,
+            lastWorkerFailureAt: worker.status.lastWorkerFailureAt ?? null,
+            consecutiveWorkerFailures: worker.status.consecutiveWorkerFailures ?? 0,
+            totalWorkerFailures: worker.status.totalWorkerFailures ?? 0,
+          });
+        } catch {
+          json(response, 503, { error: "identity_diagnostics_unavailable" });
+        }
         return;
       }
       if (request.method === "GET" && url.pathname === "/v1/status") {

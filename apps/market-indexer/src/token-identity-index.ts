@@ -9,9 +9,9 @@ import {
   type PublicClient
 } from "viem";
 import type { Pool } from "pg";
-import { refreshIdentityPriority, selectIdentityBatch } from "./token-identity-priority.js";
+import { refreshIdentityPriority, selectIdentityBatch, readIdentityPriorityDiagnostics } from "./token-identity-priority.js";
+import { readCanonicalTokenCatalog } from "./token-identity-catalog.js";
 
-const ZERO_ADDRESS_BYTES = Buffer.alloc(20);
 const ROBINHOOD_MULTICALL3 = getAddress("0xcA11bde05977b3631167028862bE2a173976CA11");
 // Robinhood Chain's public eth_call gas ceiling rejects larger aggregate3
 // identity reads. Five identities (20 calls) stays below the observed ceiling.
@@ -233,18 +233,10 @@ async function persistStats(pool: Pool, stats: TokenIdentityIndexStats) {
 }
 
 async function rescanCanonicalTokens(pool: Pool, state: IdentityIndexState) {
-  const [marketResult, tokenResult] = await Promise.all([
+  const [marketResult, canonicalTokens] = await Promise.all([
     pool.query<{ count: string }>("SELECT COUNT(*)::text AS count FROM market_pools"),
-    pool.query<{ token: string }>(
-      `SELECT encode(token,'hex') AS token FROM (
-         SELECT token0 AS token FROM market_pools WHERE token0 <> $1
-         UNION
-         SELECT token1 AS token FROM market_pools WHERE token1 <> $1
-       ) AS canonical_tokens ORDER BY token`,
-      [ZERO_ADDRESS_BYTES]
-    )
+    readCanonicalTokenCatalog(pool)
   ]);
-  const canonicalTokens = new Set(tokenResult.rows.map((row) => `0x${row.token}`));
   const dirtyShards = new Set<number>();
   for (const [shardNumber, shard] of state.shards) {
     for (const address of shard.keys()) {
@@ -515,4 +507,29 @@ export function refreshCanonicalTokenIdentityIndex(
     .finally(() => { if (identityRefreshes.get(pool) === refresh) identityRefreshes.delete(pool); });
   identityRefreshes.set(pool, refresh);
   return refresh;
+}
+
+// Peek only: diagnostics must not initialize state, scan, or persist anything.
+export async function readCanonicalIdentityDiagnostics(pool: Pool) {
+  const pending = states.get(pool);
+  const state = pending ? await pending : null;
+  const priority = readIdentityPriorityDiagnostics(pool, state?.readyIdentities ?? new Map());
+  return {
+    prioritySource: priority.source,
+    maxPriorityCandidates: priority.maxPriorityCandidates,
+    priorityCandidateCount: priority.priorityCandidateCount,
+    priorityAlreadyReadyCount: priority.priorityAlreadyReadyCount,
+    priorityPendingCount: priority.priorityPendingCount,
+    priorityStatus: priority.status,
+    prioritySelectionMs: priority.selectionMs,
+    prioritySelectionQueryCount: priority.selectionQueryCount,
+    prioritySetDigest: priority.prioritySetDigest,
+    backgroundFairness: priority.backgroundFairness,
+    identityStats: state ? {
+      totalCanonicalMarkets: state.stats.totalCanonicalMarkets,
+      totalUniqueCanonicalTokens: state.stats.totalUniqueCanonicalTokens,
+      totalVerifiedErc20Identities: state.stats.totalVerifiedErc20Identities,
+      unresolvedTokenIdentities: state.stats.unresolvedTokenIdentities,
+    } : null,
+  };
 }

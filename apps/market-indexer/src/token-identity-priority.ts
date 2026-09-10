@@ -1,4 +1,5 @@
 import type { Pool } from "pg";
+import { createHash } from "node:crypto";
 
 export const MAX_PRIORITY_CANDIDATES = 2_000;
 const REFRESH_MS = 15 * 60_000;
@@ -138,17 +139,19 @@ export function selectIdentityBatch(
 }
 
 export function readIdentityPriorityDiagnostics(pool: Pool, ready: ReadonlyMap<string, unknown>) {
-  const state = stateFor(pool);
-  const readyCount = state.addresses.filter((address) => ready.has(address)).length;
+  const state = priorities.get(pool);
+  const addresses = state?.addresses ?? [];
+  const readyCount = addresses.filter((address) => ready.has(address)).length;
   return {
     source: "canonical-browse-newest-pools" as const,
-    status: state.status,
+    status: state?.status ?? "not_requested",
     maxPriorityCandidates: MAX_PRIORITY_CANDIDATES,
-    priorityCandidateCount: state.addresses.length,
+    priorityCandidateCount: addresses.length,
     priorityAlreadyReadyCount: readyCount,
-    priorityPendingCount: state.addresses.length - readyCount,
-    selectionMs: state.selectionMs,
-    selectionQueryCount: state.queryCount,
+    priorityPendingCount: addresses.length - readyCount,
+    prioritySetDigest: createHash("sha256").update(addresses.join("\n")).digest("hex"),
+    selectionMs: state?.selectionMs ?? null,
+    selectionQueryCount: state?.queryCount ?? 0,
     backgroundFairness: "one-background-batch-after-four-priority-batches" as const,
   };
 }

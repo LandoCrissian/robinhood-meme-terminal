@@ -109,7 +109,7 @@ const fallbackPool = {
     if (text.startsWith("SELECT shard,payload")) return { rows: [] };
     if (text.startsWith("SELECT total_canonical_markets")) return { rows: [] };
     if (text.includes("COUNT(*)::text AS count")) return { rows: [{ count: "1" }] };
-    if (text.includes("encode(token,'hex')")) return { rows: [{ token: fallbackAddress.slice(2) }] };
+    if (text.includes("encode(token0,'hex') AS token0")) return { rows: [{ token0: fallbackAddress.slice(2), token1: fallbackAddress.slice(2), block_number: 1, log_index: 0 }] };
     if (text.startsWith("INSERT INTO market_token_identity_")) return { rows: [] };
     throw new Error(`unexpected fallback query: ${text}`);
   }
