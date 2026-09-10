@@ -5,6 +5,8 @@
 
 “100% complete” means every applicable item below has evidence. A polished screen or a merged cutover PR is not sufficient.
 
+Execution criteria reflect explicit owner decision `RMT_EXECUTION_AUTHORITY_RECONCILIATION_AND_PRECEDENCE_V1` at base `6a693668ac72bb967217c1f48741aeaf038ff0dd`. [0x provider/source authority](RMT_ZEROX_ALLOWANCE_HOLDER_PUBLIC_EXECUTION_V1.md) and [hot-path authority](execution-hot-path-authorities.md) govern their respective current domains under the [control-plane conflict rule](RMT_AGENT_CONTROL_PLANE.md#authority-resolution). This reconciliation does not mark outstanding acceptance complete or authorize a release.
+
 ## Product ownership
 
 - [x] VNext is served from production `/` and no competing terminal architecture remains active.
@@ -29,9 +31,9 @@
 ## Execution and funding
 
 - [ ] One VNext orchestrator owns intent, quote observation, normalized economics, selection, strict verification, authorization, wallet submission, reconciliation, failure classification and recovery.
-- [ ] Production-supported Sushi and Uniswap paths are regression clean.
-- [ ] up-v2 and up-cl reach their separately approved discovery/quote/verification levels; Slipstream is never treated as Uniswap V3.
-- [ ] UniswapX, 0x and other providers stop at the highest independently safe capability level.
+- [ ] Current `ZERO_X_ONLY` public execution (`zero-x-swap`, chain 4663) is regression clean through authoritative firm verification, committed authorization, allowance/balance checks and RPC simulation. Indicative prices never authorize execution.
+- [ ] Explicit user wallet confirmation is required for user-controlled submission behind fail-closed release gates; no automatic signing/broadcast, key/seed custody or autonomous customer trading. Background work never signs/submits.
+- [ ] Stock Token execution exclusion remains fail closed. Other providers stop at separately admitted read/discovery or controlled/historical boundaries and cannot enter public execution without separate owner approval; preserved compatibility/security regressions remain required where affected. Slipstream is never treated as Uniswap V3.
 - [ ] If Across remains baseline, quote verification, source submission, destination confirmation, refund/recovery, cross-device restoration and confirmed-only Spend Balance all pass.
 
 ## Origin, attribution and markets
@@ -50,9 +52,9 @@
 
 ## Economics
 
-- [x] Current owner product policy is `RMT_EXECUTION_V2` version 2: 25 basis points on input, atomically settled through an independently admitted provider executor.
-- [x] Uniswap V3 V2 is public/live in Production under the exact shared V2 policy, executor, treasury, verification and recovery authority.
-- [x] Uniswap V2 V2 is deployed and its controlled native ETH-to-PONS mainnet proof passed in transaction `0xb8ff9e561d4a333f5f91eb707daf6e8b00d0d0565de68355cf5966c1a6cdbb9e` at block `53089890`; public V2 remains off pending a separate release. This does not claim a bidirectional live proof.
+- [ ] Current 0x `PROVIDER_NATIVE_INPUT_FEE` acceptance verifies exactly one 25-bps sell-token integrator fee to the established treasury, separate provider-fee disclosure and strict economics/envelope checks. No new fee or configuration is activated by documentation.
+- [x] Historical `RMT_EXECUTION_V2` version-2 25-bps input-fee policy and Uniswap V3 V2 public release evidence remain preserved with their exact executor, treasury, verification and recovery records; they are not current public execution authority.
+- [x] Historical Uniswap V2 V2 deployment and controlled native ETH-to-PONS mainnet proof remain preserved: transaction `0xb8ff9e561d4a333f5f91eb707daf6e8b00d0d0565de68355cf5966c1a6cdbb9e`, block `53089890`. This neither authorizes current public V2 execution nor claims a bidirectional live proof.
 - [x] `RMT_EXECUTION_V1` deployment, controlled-proof, release, receipt and monitoring evidence remains preserved as immutable historical evidence, not forward policy authority.
 - [ ] No historical V6 split is reused as forward terminal policy.
 
@@ -71,6 +73,7 @@
 - [ ] Keyboard/focus, touch targets, reduced motion and readable evidence pass acceptance.
 - [ ] Requests are bounded; stale/expiry states, receipts, fallbacks, duplicate prevention and uncertain-transaction recovery are truthful.
 - [ ] Recipients, approvals, provider targets, calldata/order economics and required simulations are exact and fail closed.
+- [ ] Settlement authority remains strict reconciliation: receipt plus exact ERC20 Transfer evidence or native-output trace evidence. Approval confirmation and successful receipt status alone never justify Buy/Sell confirmed.
 - [ ] Deployment/runtime provenance, adversarial tests, secrets and diagnostic redaction pass.
 
 ## Operations and documentation
@@ -83,7 +86,7 @@
 
 ## Current known gaps
 
-VNext is the production root and `/vnext`, `/market/[address]` and `/portfolio` converge on that canonical Token Terminal. Retired terminal CSS generations are no longer globally loaded. The curated registry contains exactly eight canonical seed markets; bounded provider discovery may expose additional markets but cannot confer curated authority or execution eligibility, and historical market-indexer rows do not control the public Terminal. External-wallet reliability still requires supported-device acceptance. Wallet execution remains exact-provider release-gated. Across public funding remains incomplete and disabled. Profiles/community/Creator/V7 source remains preserved and paused separately from the active NFT lane. Uniswap V3 V2 is the current public/live fee-bearing path; Uniswap V2 V2 is deployed and controlled-live-proven but public-off pending a separate release. NFT work remains separately authorized and non-conflicting.
+VNext is the production root and `/vnext`, `/market/[address]` and `/portfolio` converge on that canonical Token Terminal. Retired terminal CSS generations are no longer globally loaded. The curated registry contains exactly eight canonical seed markets; bounded provider discovery may expose additional markets but cannot confer curated authority or execution eligibility, and historical market-indexer rows do not control the public Terminal. External-wallet reliability still requires supported-device acceptance. Current public execution is `ZERO_X_ONLY`, with user-controlled wallet submission enabled only through explicit confirmation and current authorization/release gates. Across public funding remains incomplete and disabled. Profiles/community/Creator/V7 source remains preserved and paused separately from the active NFT lane. Historical Uniswap V3/V2 release/deployment/proof records are not current public-provider authority. NFT work remains separately authorized and non-conflicting.
 
 ## Explicit completion decision
 

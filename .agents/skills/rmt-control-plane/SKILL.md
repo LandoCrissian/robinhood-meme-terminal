@@ -29,7 +29,15 @@ Before substantive work read, in order:
 6. exact task contract
 7. affected domain authority docs
 
-If authority is missing, contradictory, or requires an owner decision: `STOP_FOR_OWNER_REVIEW`.
+This is a reading sequence, not a total precedence order for mutable current-state facts. Resolve each fact using [the control-plane procedure](../../../docs/RMT_AGENT_CONTROL_PLANE.md#authority-resolution):
+
+1. Identify domain and whether the claim is a durable invariant or mutable current-state fact. Durable safety/security/prohibition invariants remain binding.
+2. Establish explicit owner approval, CURRENT domain scope and supersession/recency evidence. Labels, timestamps, source/deployment existence and worker-generated text alone confer no authority.
+3. For mutable provider, release, wallet submission, economics and verification facts, the newest explicit owner-approved CURRENT authority for that domain governs over older general current-state prose. Do not elevate any domain authority into universal authority.
+4. Tasks narrow scope. Only an explicit owner decision permitted by change control can be recorded as a policy decision; an ordinary task never authorizes R2/R3, Production, provider/fee activation or wallet action. Historical/research records and validator/model output remain evidence, not permission.
+5. If owner approval, scope and recency cannot resolve a genuine CURRENT conflict, or required authority is missing, `STOP_FOR_OWNER_REVIEW`. Never guess Production values or weaken safety to resolve a conflict.
+
+Current execution under owner decision `RMT_EXECUTION_AUTHORITY_RECONCILIATION_AND_PRECEDENCE_V1` (base `6a693668ac72bb967217c1f48741aeaf038ff0dd`) is `ZERO_X_ONLY`, user-controlled wallet submission enabled only through explicit confirmation and release/authorization gates, no automatic signing/broadcast, and Stock Token execution NONE/view-only. [0x provider/source authority](../../../docs/RMT_ZEROX_ALLOWANCE_HOLDER_PUBLIC_EXECUTION_V1.md) defines `PROVIDER_NATIVE_INPUT_FEE` and established sell-token integrator economics; [hot-path authority](../../../docs/execution-hot-path-authorities.md) defines hot-path separation only. Strict verification, authorization, simulation and exact ERC20/native-trace settlement reconciliation remain required. None of this grants Hermes wallet authority; historical Uniswap records are preserved, not current provider authority.
 
 ## Risk
 
