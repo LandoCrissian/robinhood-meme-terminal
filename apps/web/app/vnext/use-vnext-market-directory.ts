@@ -161,6 +161,12 @@ export function useVNextMarketDirectory() {
   const completedCanonicalExactQueries = useRef(new Set<string>());
   const explicitSelectionRequests = useRef(new Map<string, Promise<VNextDirectoryMarket | undefined>>());
   const searchMarketsRef = useRef<VNextDirectoryMarket[]>([]);
+  const identityEnrichments = useRef(new Map<string, AbortController>());
+  useEffect(() => () => {
+    canonicalRequestSequence.current++;
+    for (const controller of identityEnrichments.current.values()) controller.abort();
+    identityEnrichments.current.clear();
+  }, []);
 
   const publishMarkets = useCallback(() => {
     const byAddress = new Map<string, VNextDirectoryMarket>();
@@ -388,13 +394,47 @@ export function useVNextMarketDirectory() {
     }
   }, []);
 
+  const enrichCanonicalPage = useCallback((cursor: string | null, sequence: number) => {
+    const key = cursor ?? "root";
+    if (identityEnrichments.current.has(key) || identityEnrichments.current.size >= 4) return;
+    const controller = new AbortController();
+    identityEnrichments.current.set(key, controller);
+    const timeout = setTimeout(() => controller.abort(), 60_000);
+    void (async () => {
+      try {
+        const query = new URLSearchParams({ identityEnrichment: "1" });
+        if (cursor !== null) query.set("cursor", cursor);
+        const response = await fetch(`/api/vnext/market-directory?${query}`, {
+          headers: { Accept: "application/json" }, signal: controller.signal
+        });
+        const payload = parseVNextCanonicalDirectoryResponse(await response.json());
+        if (controller.signal.aborted || sequence !== canonicalRequestSequence.current
+          || !response.ok || !payload || payload.inventorySource !== "indexed") return;
+        retainPositiveQuarantines(payload.quarantinedAddresses);
+        canonicalDirectoryMarkets.current = mergeVNextDirectoryAndSearchMarkets(
+          canonicalDirectoryMarkets.current, payload.markets ?? []
+        ).filter((market) => !positiveQuarantines.current.has(market.address.toLowerCase()));
+        // Enrichment never replaces the cursor chain, selection or loaded window.
+        publishMarkets();
+      } catch {
+        // Retain observed rows. The ordinary bounded refresh retries later.
+      } finally {
+        clearTimeout(timeout);
+        if (identityEnrichments.current.get(key) === controller) identityEnrichments.current.delete(key);
+      }
+    })();
+  }, [publishMarkets, retainPositiveQuarantines]);
+
   const refresh = useCallback(async () => {
+    for (const controller of identityEnrichments.current.values()) controller.abort();
+    identityEnrichments.current.clear();
     const requestSequence = canonicalRequestSequence.current + 1;
     canonicalRequestSequence.current = requestSequence;
     canonicalRefreshLoading.current = requestSequence;
     canonicalPageLoading.current = null;
     const loadedPageCount = canonicalLoadedPages.current;
     let nextStatus: DirectoryStatus = "ready";
+    const enrichmentPages: (string | null)[] = [];
     replacePerformanceMark("rmt:market-directory:request-start");
     try {
       const response = await fetch("/api/vnext/market-directory", {
@@ -413,10 +453,11 @@ export function useVNextMarketDirectory() {
         retainPositiveQuarantines(payload.quarantinedAddresses);
         if (canonicalDirectoryMarkets.current.length > 0 && canonicalInventorySource.current !== "curated-fallback" && (
           payload.inventorySource === "curated-fallback"
-          || payload.revalidationComplete === false
           || (canonicalInventorySource.current === "indexed" && payload.inventorySource !== "indexed")
         )) throw new Error("Retaining indexed browse window while canonical inventory is degraded.");
         let windowStale = directoryResponseStale(response, payload) || payload.revalidationComplete === false;
+        let windowPartial = payload.revalidationComplete === false;
+        if (windowPartial && payload.inventorySource === "indexed" && payload.markets?.some((market) => market.verifiedIdentity)) enrichmentPages.push(null);
         const windowQuarantines = new Set(payload.quarantinedAddresses ?? []);
         let canonicalMarkets = payload.markets ?? [];
         let nextCursor = payload.nextCursor;
@@ -434,18 +475,25 @@ export function useVNextMarketDirectory() {
           if (requestSequence !== canonicalRequestSequence.current) return;
           if (pageResponse.ok && page) retainPositiveQuarantines(page.quarantinedAddresses);
           if (!pageResponse.ok || !page || page.inventorySource !== payload.inventorySource
-            || page.inventorySource === "curated-fallback" || page.revalidationComplete === false
+            || page.inventorySource === "curated-fallback"
             || (page.nextCursor !== null && cursors.has(page.nextCursor))) {
             throw new Error("Loaded canonical directory window could not be revalidated.");
           }
           for (const address of page.quarantinedAddresses ?? []) windowQuarantines.add(address);
           windowStale ||= directoryResponseStale(pageResponse, page);
+          windowStale ||= page.revalidationComplete === false;
+          windowPartial ||= page.revalidationComplete === false;
+          if (page.revalidationComplete === false && page.markets?.some((market) => market.verifiedIdentity)) enrichmentPages.push(nextCursor);
           canonicalMarkets = mergeVNextDirectoryAndSearchMarkets(canonicalMarkets, page.markets ?? []);
           nextCursor = page.nextCursor;
           pagesRead += 1;
         }
         if (canonicalMarkets.length === 0 && payload.coverage !== "complete") throw new Error("Canonical market directory returned no markets.");
         canonicalMarkets = canonicalMarkets.filter((market) => !windowQuarantines.has(market.address.toLowerCase()));
+        if (windowPartial && canonicalInventorySource.current === "indexed") {
+          canonicalMarkets = mergeVNextDirectoryAndSearchMarkets(canonicalDirectoryMarkets.current, canonicalMarkets)
+            .filter((market) => !positiveQuarantines.current.has(market.address.toLowerCase()));
+        }
         // Only a fresh, fully revalidated indexed admission may supersede an
         // earlier positive conflict; fallback/telemetry cannot resurrect it.
         if (payload.inventorySource === "indexed" && payload.revalidationComplete === true && !windowStale) {
@@ -494,6 +542,7 @@ export function useVNextMarketDirectory() {
         : nextMarkets[0]?.address ?? null);
       hasData.current = true;
       setStatus(nextStatus);
+      for (const cursor of enrichmentPages) enrichCanonicalPage(cursor, requestSequence);
     } catch {
       if (requestSequence === canonicalRequestSequence.current) {
         canonicalWindowStale.current = true;
@@ -502,7 +551,7 @@ export function useVNextMarketDirectory() {
     } finally {
       if (canonicalRefreshLoading.current === requestSequence) canonicalRefreshLoading.current = null;
     }
-  }, [publishMarkets, retainPositiveQuarantines]);
+  }, [publishMarkets, retainPositiveQuarantines, enrichCanonicalPage]);
 
   const loadNextCanonicalPage = useCallback(async () => {
     const cursor = canonicalNextCursor.current;
@@ -528,9 +577,10 @@ export function useVNextMarketDirectory() {
         requestSequence !== canonicalRequestSequence.current ||
         cursor !== canonicalNextCursor.current ||
         payload.inventorySource !== canonicalInventorySource.current ||
-        payload.inventorySource === "curated-fallback" || payload.revalidationComplete === false
+        payload.inventorySource === "curated-fallback"
       ) throw new Error("Canonical pagination is degraded.");
       canonicalWindowStale.current ||= directoryResponseStale(response, payload);
+      canonicalWindowStale.current ||= payload.revalidationComplete === false;
       canonicalDirectoryMarkets.current = mergeVNextDirectoryAndSearchMarkets(
         canonicalDirectoryMarkets.current,
         payload.markets ?? []
@@ -542,6 +592,7 @@ export function useVNextMarketDirectory() {
       publishMarkets();
       hasData.current = true;
       setStatus(canonicalWindowStale.current ? "stale" : "ready");
+      if (payload.revalidationComplete === false && payload.markets?.some((market) => market.verifiedIdentity)) enrichCanonicalPage(cursor, requestSequence);
       return true;
     } catch {
       if (requestSequence === canonicalRequestSequence.current) {
@@ -552,7 +603,7 @@ export function useVNextMarketDirectory() {
     } finally {
       if (canonicalPageLoading.current === pageRequest) canonicalPageLoading.current = null;
     }
-  }, [publishMarkets, retainPositiveQuarantines]);
+  }, [publishMarkets, retainPositiveQuarantines, enrichCanonicalPage]);
 
   const refreshEcosystemDirectory = useCallback(async () => {
     replacePerformanceMark("rmt:market-enrichment:request-start");

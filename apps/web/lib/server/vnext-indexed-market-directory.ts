@@ -5,6 +5,7 @@ import { readVNextCanonicalMarketInventory, publicVNextCanonicalMarketInventoryP
 import { readRobinhoodTokenIdentities } from "./universal-market-resolver";
 import { applyProjectIdentityDirectoryAdmission, excludeKnownPositiveProjectIdentityQuarantines, knownPositiveProjectIdentityQuarantineAddresses } from "./project-identity-admission";
 import { fetchRobinhoodStockRegistry } from "./robinhood-stock-token-registry";
+import { readDirectoryIdentityEnrichment } from "./vnext-directory-identity-enrichment";
 
 type Dependencies = {
   readInventory?: typeof readVNextCanonicalMarketInventory;
@@ -37,8 +38,15 @@ export async function readVNextIndexedMarketDirectoryPage(
   const durable = new Map<string, BrowseIdentity>((inventory.browseIdentities?.identities ?? []).map((identity) => [identity.address.toLowerCase(), identity]));
   const missing = candidates.filter((market) => !durable.has(market.address.toLowerCase()));
   if (missing.length) reasons.add("INDEXED_IDENTITY_SNAPSHOT_UNAVAILABLE");
+  // The separate browser enrichment request owns the live read lifetime. Do not
+  // leave untracked work running after a serverless response has completed.
+  const enrich = new URL(requestUrl).searchParams.get("identityEnrichment") === "1";
+  const readLive = missing.length > 0 && (enrich || durable.size === 0);
   const [live, stocks] = await Promise.all([
-    missing.length ? (dependencies.readIdentities ?? readRobinhoodTokenIdentities)(missing.map((market) => getAddress(market.address)), (reason) => reasons.add(reason))
+    readLive ? (enrich ? readDirectoryIdentityEnrichment : (dependencies.readIdentities ?? readRobinhoodTokenIdentities))(
+      missing.map((market) => getAddress(market.address)), (reason) => reasons.add(reason),
+      ...(enrich ? [dependencies.readIdentities ?? readRobinhoodTokenIdentities] as const : [])
+    )
       .catch((error: unknown) => { reasons.add(identityReadFailureReason(error)); return new Map<string, BrowseIdentity>(); }) : Promise.resolve(new Map<string, BrowseIdentity>()),
     (dependencies.readStocks ?? fetchRobinhoodStockRegistry)().catch(() => null)
   ]);
@@ -53,7 +61,7 @@ export async function readVNextIndexedMarketDirectoryPage(
       ...(stock ? { rwaRelationship: "canonical-stock-token" as const } : paired ? { rwaRelationship: "paired-market-asset" as const } : {}) }];
   });
   if (candidates.length > 0 && identified.length === 0) return fail("IDENTITY_RPC_UNAVAILABLE", "Canonical token identity evidence is temporarily unavailable.");
-  if (identified.length !== candidates.length && ![...reasons].some((reason) => reason.startsWith("IDENTITY_"))) reasons.add("IDENTITY_RESPONSE_INVALID");
+  if (readLive && identified.length !== candidates.length && ![...reasons].some((reason) => reason.startsWith("IDENTITY_"))) reasons.add("IDENTITY_RESPONSE_INVALID");
   let admission;
   // Last-known browse metadata cannot revoke an established identity conflict.
   // Fresh identities still use the existing authority reevaluation policy.

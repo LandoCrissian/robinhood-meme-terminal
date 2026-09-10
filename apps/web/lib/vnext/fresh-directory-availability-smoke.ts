@@ -133,11 +133,12 @@ async function main() {
   assert.equal(partialResponse.status, 200); assert.equal(partialResponse.body.revalidationComplete, false);
   assert.equal(partialResponse.body.markets.length, 80);
   durable = true; durableTailOnly = true;
-  const mixed = await readVNextCanonicalMarketDirectoryPage("https://fixture.invalid");
+  const mixed = await readVNextCanonicalMarketDirectoryPage("https://fixture.invalid?identityEnrichment=1");
   assert.equal(mixed.body.markets.length, 100); assert.equal(mixed.body.identityEvidence, "mixed");
   assert.equal(mixed.body.revalidationComplete, true); assert.equal(mixed.body.stale, true);
   const { applyProjectIdentityDirectoryAdmission, knownPositiveProjectIdentityQuarantineAddresses } = require("../server/project-identity-admission");
   const quarantined = createDirectory(); await quarantined.hook.refresh();
+  await new Promise<void>((resolve) => setImmediate(resolve));
   assert.equal(quarantined.count(), 100);
   const conflict = await applyProjectIdentityDirectoryAdmission([{ address: address(90), verifiedIdentity: { address: address(90), name: "Established Project", symbol: "EST" } }], {
     readAuthority: async () => ({ status: "ready", entries: [{ projectId: "est", name: "Established Project", symbol: "EST", contractAddress: address(9999), authority: "coingecko-robinhood-contract-registry" }] }),

@@ -22,7 +22,7 @@
     "test:terminal-release": "pnpm --filter web test:terminal-release",
     "test:paused-integrity": "pnpm --filter web test:paused-integrity && pnpm test:community-readiness && pnpm check:community-readiness -- --repository-only",
     "test:production-health": "node scripts/production-health-smoke.mjs",
-    "test:terminal-high-end": "node .github/scripts/terminal-high-end-acceptance.mjs",
+    "test:terminal-high-end": "node .github/scripts/terminal-high-end-acceptance.mjs && node .github/scripts/partial-directory-browser-acceptance.mjs",
     "typecheck": "pnpm --filter web typecheck"
   },
   "devDependencies": {
