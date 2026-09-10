@@ -9,6 +9,7 @@ import {
   type PublicClient
 } from "viem";
 import type { Pool } from "pg";
+import { refreshIdentityPriority, selectIdentityBatch } from "./token-identity-priority.js";
 
 const ZERO_ADDRESS_BYTES = Buffer.alloc(20);
 const ROBINHOOD_MULTICALL3 = getAddress("0xcA11bde05977b3631167028862bE2a173976CA11");
@@ -333,7 +334,7 @@ export async function enqueueCanonicalTokenIdentityCandidates(
   await persistStats(pool, state.stats);
 }
 
-export async function refreshCanonicalTokenIdentityIndex(
+async function refreshCanonicalTokenIdentityIndexOnce(
   pool: Pool,
   rpc: PublicClient,
   batchSize: number,
@@ -344,15 +345,8 @@ export async function refreshCanonicalTokenIdentityIndex(
   if (state.canonicalTokens === null || state.lastScanAt + CATALOG_RESCAN_MS <= Date.now()) {
     await rescanCanonicalTokens(pool, state);
   }
-  const selected: string[] = [];
-  let selectedShard: number | null = null;
-  for (let shardNumber = 0; shardNumber <= 255; shardNumber += 1) {
-    const pending = state.pendingByShard.get(shardNumber);
-    if (!pending?.length) continue;
-    selectedShard = shardNumber;
-    selected.push(...pending.splice(0, batchSize));
-    break;
-  }
+  await refreshIdentityPriority(pool, Date.now());
+  const { addresses: selected, shard: selectedShard } = selectIdentityBatch(pool, state, batchSize, Date.now());
   if (selected.length === 0 || selectedShard === null) return 0;
   const addresses = selected.map((address) => getAddress(address));
   const batches = Array.from(
@@ -508,4 +502,17 @@ export async function searchCanonicalTokenIdentityIndex(pool: Pool, query: strin
       symbol: identity[3],
       decimals: identity[4]
     }));
+}
+
+// One in-flight refresh per existing database worker, including shard persistence.
+const identityRefreshes = new WeakMap<Pool, Promise<number>>();
+export function refreshCanonicalTokenIdentityIndex(
+  pool: Pool, rpc: PublicClient, batchSize: number, observedBlock: bigint, observedBlockHash: Hex
+): Promise<number> {
+  const existing = identityRefreshes.get(pool);
+  if (existing) return existing;
+  const refresh = refreshCanonicalTokenIdentityIndexOnce(pool, rpc, batchSize, observedBlock, observedBlockHash)
+    .finally(() => { if (identityRefreshes.get(pool) === refresh) identityRefreshes.delete(pool); });
+  identityRefreshes.set(pool, refresh);
+  return refresh;
 }
