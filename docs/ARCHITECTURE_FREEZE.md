@@ -4,6 +4,8 @@
 **Effective:** 2026-08-28
 **Baseline:** `main` at `7a7d0e5be09f8c412f6d3c3be84ed7cf9b0f0ef5`
 
+**Execution authority reconciliation:** explicit owner decision `RMT_EXECUTION_AUTHORITY_RECONCILIATION_AND_PRECEDENCE_V1`, based on `6a693668ac72bb967217c1f48741aeaf038ff0dd`. The original baseline and historical proofs remain preserved; current execution statements below reflect this decision, not a new activation.
+
 This document records the durable product and system boundaries. It supersedes historical launchpad, V7 creator, profile, community and older terminal-roadmap language. It does not authorize deployment, production configuration changes, provider activation, fees, autonomous execution or destructive migration.
 
 ## Product
@@ -30,29 +32,31 @@ VNext is the only forward Token Terminal architecture. Its canonical domains liv
 
 The NFT Terminal lives under `apps/web/app/nft/*`, its server readers under `apps/web/lib/server/nft-*`, and its shared authority domains under `packages/shared/src/nft/*`. The canonical NFT indexer owns mint, transfer, burn and ownership evidence. The NFT marketplace indexer owns provider-reported listing, offer, sale and volume evidence; a transfer is not a sale, and marketplace evidence is not ownership authority.
 
-The execution lifecycle is:
+Current public execution is `ZERO_X_ONLY`: `zero-x-swap` on Robinhood Chain, chain ID 4663. The execution lifecycle is:
 
 ```text
 user intent
-→ provider quote observation
-→ normalized comparison
-→ candidate selection
-→ provider-specific strict verification
-→ local wallet codec / authorization plan
-→ wallet review and submission
-→ receipt or asynchronous settlement
-→ recovery and reconciliation
+-> exact authenticated wallet / chain / asset / amount context
+-> trusted durable ERC20 identity (native ETH: local chain primitive)
+-> known positive project-conflict check
+-> Stock Token execution exclusion
+-> 0x price observation
+-> authoritative 0x firm quote
+-> strict provider-specific verification
+-> committed authorization
+-> allowance / balance verification as applicable
+-> RPC simulation
+-> explicit user wallet review / confirmation
+-> user-controlled submission
+-> receipt
+-> strict settlement reconciliation
 ```
 
 Observation, strict verification, wallet authorization and production activation are four independent admissions. A provider may safely stop at any level. No provider is required merely to increase provider count.
 
-Public Token Terminal transaction submission is currently disabled. Preserve these values unless the owner explicitly authorizes a separate release action:
+Public Token Terminal wallet submission is user-controlled and enabled only behind the established authorization/release boundaries and explicit user wallet confirmation. Those gates remain fail closed; this document does not assert or change individual Production environment values. Indicative price responses are observations, never executable authority. RMT does not custody private keys or seed phrases, automatically sign or broadcast, or autonomously execute customer trades. Background quote, identity and intelligence work never signs or submits.
 
-```text
-NEXT_PUBLIC_RMT_VNEXT_AUTHORIZATION_ENABLED=false
-RMT_VNEXT_AUTHORIZATION_ENABLED=false
-NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED=false
-```
+The [0x AllowanceHolder source boundary](RMT_ZEROX_ALLOWANCE_HOLDER_PUBLIC_EXECUTION_V1.md) governs provider-specific execution; [execution hot-path authorities](execution-hot-path-authorities.md) governs hot-path separation. Trusted durable identity may support known-token execution while freshness/intelligence updates run independently. Unknown identity and positive conflicts remain blocking under current policy. Stock Tokens remain visible/readable where admitted but execution-ineligible/view-only, fail closed. A successful receipt or approval is not settlement: exact ERC20 Transfer or native-output trace reconciliation is required.
 
 VNext is served from production `/`. The former `/vnext` address redirects to `/`; it is not a competing terminal. Replaced `/market/[address]` and `/portfolio` presentation routes restore their intent inside `/` instead of mounting the retired frontend. Mature shared capabilities remain reusable through explicit boundaries, but they do not own a second terminal shell. Remaining completion evidence is governed by [`TERMINAL_COMPLETION_GATE.md`](TERMINAL_COMPLETION_GATE.md).
 
@@ -90,7 +94,7 @@ Project origin, token venue, NFT ownership, marketplace evidence and execution o
 
 ## Providers and future sources
 
-Current provider work includes Sushi, direct Uniswap, UniswapX and 0x foundations. New providers use VNext provider admission.
+Current public execution authority is only `zero-x-swap`. Sushi, direct Uniswap, UniswapX and other integrations may retain discovery/read, controlled or historical evidence; none is current public execution authority merely because its source or deployment exists. New provider activation requires separate owner-approved admission and release.
 
 Future up. support uses two independent identities: `up-v2` and `up-cl`. Slipstream is not Uniswap V3-compatible. StonkBrokers belongs to project-origin attribution and never forces up. routing. Neither is activated by this freeze.
 
@@ -100,17 +104,20 @@ Across remains an asynchronous funding domain: external payment asset → confir
 
 ## Economics
 
-Current owner product policy is:
+Current 0x economics are defined by the existing [0x source boundary](RMT_ZEROX_ALLOWANCE_HOLDER_PUBLIC_EXECUTION_V1.md):
 
 ```text
-shared fee policy: RMT_EXECUTION_V2 / version 2
-fee: 25 basis points on the input asset
-public provider: admitted Uniswap V3 V2 atomic settlement
-controlled only: deployed and live-proven Uniswap V2 V2 atomic settlement
-all other providers and unsupported routes: RMT_FEE = 0
+current public scope: ZERO_X_ONLY / zero-x-swap
+settlement mode: PROVIDER_NATIVE_INPUT_FEE
+integrator fee: exactly 25 basis points on the sell token
+treasury: 0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC
 ```
 
-The fee is permitted only when the exact provider-specific V2 executor atomically settles the disclosed input fee and swap. It is ranked on fee-adjusted trader economics, targets the approved treasury, uses exact approvals where required, and fails closed if its runtime, policy, controlled proof, route, simulation or settlement identity changes. Direct/no-fee providers remain available only where separately admitted and must never be labeled fee-bearing. No hidden spread or other fee is authorized.
+Exactly one integrator fee is required; aliases are not summed. Provider fees are separately disclosed and are not treasury revenue. The 0x mode does not require a custom RMT executor implementation ID or Solidity settlement evidence. Strict economics, target/runtime, executable minimum, allowance/balance and simulation checks remain mandatory, as does settlement reconciliation. This records existing policy; it neither activates nor changes a fee, treasury or configuration. No hidden spread or new fee is authorized.
+
+### Historical/versioned executor economics
+
+`RMT_EXECUTION_V1/V2` and Uniswap fee-executor deployments retain their provider-specific historical authority and release boundaries. They are not current provider-independent authority for 0x. Their exact approvals, proofs and fail-closed custom-executor requirements are not relaxed or deleted.
 
 The repository preserves the versioned `RMT_EXECUTION_V1` deployment and release record as immutable historical technical evidence. At its 2026-08-16 release boundary it authorized only the admitted Uniswap V3 V1 route. It no longer supplies forward policy authority:
 
@@ -125,7 +132,7 @@ policy from block: 35041945
 policy hash: 0x295c900143405bb585a4d88c3788fadab522fd4313f69242f64e52e39827f141
 ```
 
-The V1 policy remains explicit, hash-bound historical evidence. The current shared `RMT_EXECUTION_V2` policy is version `2`, charges exactly 25 basis points on input, uses treasury `0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC`, and is publicly live only through the admitted Uniswap V3 V2 corridor. The deployed Uniswap V2 V2 executor completed its controlled native ETH-to-PONS proof in transaction `0xb8ff9e561d4a333f5f91eb707daf6e8b00d0d0565de68355cf5966c1a6cdbb9e` at Robinhood block `53089890`; its public execution remains off until a separate explicit Production release. This does not claim a bidirectional V2 live proof. Deployed V6 70/30 economics likewise remain protocol-history facts rather than forward Token Terminal economics. See [`RMT_EXECUTION_REVENUE.md`](RMT_EXECUTION_REVENUE.md).
+The V1 policy remains explicit, hash-bound historical evidence. The historical shared `RMT_EXECUTION_V2` policy is version `2`, charges exactly 25 basis points on input, uses treasury `0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC`, and had a public release through the admitted Uniswap V3 V2 corridor. The deployed Uniswap V2 V2 executor completed its controlled native ETH-to-PONS proof in transaction `0xb8ff9e561d4a333f5f91eb707daf6e8b00d0d0565de68355cf5966c1a6cdbb9e` at Robinhood block `53089890`; that record did not authorize public V2 execution or establish a bidirectional live proof. Neither historical corridor is current public execution authority. Deployed V6 70/30 economics likewise remain protocol-history facts rather than forward Token Terminal economics. See [`RMT_EXECUTION_REVENUE.md`](RMT_EXECUTION_REVENUE.md) for versioned evidence.
 
 ## Contracts
 
@@ -139,3 +146,4 @@ Contract source presence is not roadmap authority. The current classification is
 - Production behavior stays fail closed.
 - Open PRs and research documents remain inputs until explicitly admitted.
 - The architecture changes only through an explicit owner decision recorded here and in the system map.
+- Durable safety/security/prohibition invariants remain binding. Mutable current-state facts follow the newest explicit owner-approved CURRENT authority for the exact domain, not stale general prose. Domain scope and owner approval must be established; source existence, worker output and timestamps alone grant no authority. Tasks narrow scope, historical/research evidence cannot override current authority, and unresolved CURRENT conflicts require `STOP_FOR_OWNER_REVIEW`. See [the control-plane resolution procedure](RMT_AGENT_CONTROL_PLANE.md#authority-resolution).

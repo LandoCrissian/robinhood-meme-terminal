@@ -29,9 +29,9 @@ OWNER / RMT OPERATOR
 
 This control plane is development operations only. It does not create a customer-facing agent product, change the Token/NFT product architecture, authorize trading, deploy production, activate fees, or supersede repository authority.
 
-## Authority order
+## Authority resolution
 
-A worker must obey, in order:
+Read the following mandatory context; this is a reading sequence, not a total precedence order for mutable current-state facts:
 
 1. `AGENTS.md`
 2. `docs/ARCHITECTURE_FREEZE.md`
@@ -41,7 +41,19 @@ A worker must obey, in order:
 6. the exact queued task contract
 7. affected domain authority/release documents
 
-A task may narrow authority. It may never broaden authority above these documents.
+Resolve authority deterministically:
+
+1. Identify the exact disputed fact and domain. Durable safety/security/prohibition invariants remain binding across all domains: no autonomous signing/broadcast, credential custody, inferred activation, merge or Production authority.
+2. Separate explicit owner decisions, CURRENT domain/release authority, exact task scope, and historical/research evidence. Establish explicit owner approval, applicable domain, and supersession/recency evidence. A date, source file, deployment, worker assertion or CURRENT label alone is insufficient.
+3. For mutable current-state facts (active/released provider, wallet release state, execution economics, provider verification), use the newest explicit owner-approved CURRENT authority for that exact domain. An older general document's stale current-state prose cannot invalidate that authority. Do not apply a domain document outside its scope.
+4. An exact task narrows implementation scope and never implicitly broadens product or R2/R3 authority. An explicit owner decision in a task may be recorded only where repository change control permits; it is not itself permission to deploy, activate fees/providers or perform privileged actions.
+5. Historical/research records and model/validator output are evidence, never current authority or permission. Preserve historical proofs. If two CURRENT authorities genuinely conflict and owner decision, scope and recency cannot resolve them, `STOP_FOR_OWNER_REVIEW`. Never resolve ambiguity by weakening a safety invariant.
+
+### Current execution application
+
+Explicit owner decision `RMT_EXECUTION_AUTHORITY_RECONCILIATION_AND_PRECEDENCE_V1`, base `6a693668ac72bb967217c1f48741aeaf038ff0dd`, reconciles current public execution to `ZERO_X_ONLY` (`zero-x-swap`, chain 4663). The [0x AllowanceHolder boundary](RMT_ZEROX_ALLOWANCE_HOLDER_PUBLIC_EXECUTION_V1.md) governs provider/source semantics, including `PROVIDER_NATIVE_INPUT_FEE` and the established 25-bps sell-token integrator fee; [execution hot-path authorities](execution-hot-path-authorities.md) governs hot-path architecture only. Neither is universal authority or evidence of specific Production environment values.
+
+Public wallet submission is user-controlled and enabled only behind established release/authorization gates and explicit wallet confirmation. Background work never signs or submits; RMT does not custody keys/seeds or automatically sign/broadcast customer trades. Stock Token execution remains NONE/view-only, fail closed. Strict firm verification, committed authorization, simulation and receipt plus exact ERC20/native-trace settlement reconciliation remain mandatory. Historical Uniswap and `RMT_EXECUTION_V1/V2` records remain evidence, not current public-provider authority. These facts do not grant Hermes wallet, merge, deployment or R2/R3 authority.
 
 ## Risk classes
 
