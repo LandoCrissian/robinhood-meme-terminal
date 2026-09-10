@@ -22,6 +22,7 @@ import {
 } from "../../lib/vnext/market-directory";
 import { VNEXT_CLIENT_REFRESH_POLICY } from "../../lib/vnext/client-refresh-policy";
 import { useVisibilityRefresh } from "./use-visibility-refresh";
+import { createDirectoryEnrichmentQueue } from "../../lib/vnext/directory-enrichment-queue";
 import {
   parseVNextUniversalMarketSearchResult,
   type VNextUniversalMarketSearchStatus
@@ -161,11 +162,11 @@ export function useVNextMarketDirectory() {
   const completedCanonicalExactQueries = useRef(new Set<string>());
   const explicitSelectionRequests = useRef(new Map<string, Promise<VNextDirectoryMarket | undefined>>());
   const searchMarketsRef = useRef<VNextDirectoryMarket[]>([]);
-  const identityEnrichments = useRef(new Map<string, AbortController>());
+  const identityEnrichments = useRef<ReturnType<typeof createDirectoryEnrichmentQueue> | null>(null);
   useEffect(() => () => {
     canonicalRequestSequence.current++;
-    for (const controller of identityEnrichments.current.values()) controller.abort();
-    identityEnrichments.current.clear();
+    identityEnrichments.current?.dispose();
+    identityEnrichments.current = null;
   }, []);
 
   const publishMarkets = useCallback(() => {
@@ -395,20 +396,17 @@ export function useVNextMarketDirectory() {
   }, []);
 
   const enrichCanonicalPage = useCallback((cursor: string | null, sequence: number) => {
-    const key = cursor ?? "root";
-    if (identityEnrichments.current.has(key) || identityEnrichments.current.size >= 4) return;
-    const controller = new AbortController();
-    identityEnrichments.current.set(key, controller);
-    const timeout = setTimeout(() => controller.abort(), 60_000);
-    void (async () => {
+    if (sequence !== canonicalRequestSequence.current) return;
+    if (!identityEnrichments.current) {
+      identityEnrichments.current = createDirectoryEnrichmentQueue(async (pageCursor, signal, generation) => {
       try {
         const query = new URLSearchParams({ identityEnrichment: "1" });
-        if (cursor !== null) query.set("cursor", cursor);
+        if (pageCursor !== null) query.set("cursor", pageCursor);
         const response = await fetch(`/api/vnext/market-directory?${query}`, {
-          headers: { Accept: "application/json" }, signal: controller.signal
+          headers: { Accept: "application/json" }, signal
         });
         const payload = parseVNextCanonicalDirectoryResponse(await response.json());
-        if (controller.signal.aborted || sequence !== canonicalRequestSequence.current
+        if (signal.aborted || generation !== canonicalRequestSequence.current
           || !response.ok || !payload || payload.inventorySource !== "indexed") return;
         retainPositiveQuarantines(payload.quarantinedAddresses);
         canonicalDirectoryMarkets.current = mergeVNextDirectoryAndSearchMarkets(
@@ -418,18 +416,17 @@ export function useVNextMarketDirectory() {
         publishMarkets();
       } catch {
         // Retain observed rows. The ordinary bounded refresh retries later.
-      } finally {
-        clearTimeout(timeout);
-        if (identityEnrichments.current.get(key) === controller) identityEnrichments.current.delete(key);
       }
-    })();
+      });
+      identityEnrichments.current.beginGeneration(sequence);
+    }
+    identityEnrichments.current.enqueue(cursor, sequence, canonicalLoadedPages.current);
   }, [publishMarkets, retainPositiveQuarantines]);
 
   const refresh = useCallback(async () => {
-    for (const controller of identityEnrichments.current.values()) controller.abort();
-    identityEnrichments.current.clear();
     const requestSequence = canonicalRequestSequence.current + 1;
     canonicalRequestSequence.current = requestSequence;
+    identityEnrichments.current?.beginGeneration(requestSequence);
     canonicalRefreshLoading.current = requestSequence;
     canonicalPageLoading.current = null;
     const loadedPageCount = canonicalLoadedPages.current;

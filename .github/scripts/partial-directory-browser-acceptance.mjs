@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import { spawn } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 import { chromium } from "playwright";
+import { runDirectoryQueueBrowserAcceptance } from "./directory-queue-browser-acceptance.mjs";
 
 const web = createRequire(new URL("../../apps/web/package.json", import.meta.url));
 web("tsx/cjs");
@@ -81,6 +82,7 @@ try {
     console.log(JSON.stringify({ test: "partial-directory-browser", viewport, sequence: [9, 9, 76, 76, 76, 76], requests, falseAllZero: false, walletRequests: 0 }));
     await context.close();
   }
+  await runDirectoryQueueBrowserAcceptance(browser, `http://127.0.0.1:${port}`, expanded.body);
 } finally {
   await browser?.close();
   server.kill();
