@@ -56,6 +56,9 @@ export async function runZeroXWalletJourneys(options) {
   };
   for (const viewportName of ['desktop', 'mobile']) {
     const scenarios = ['identity-not-requested', 'sell-approval-identity-retry', 'sell-approval-expired', 'sell-approval-provider-retry', 'sell-approval-return', 'sell-approval-uuid-return', 'sell-approval-account-change', 'sell-approval-chain-change', 'sell-approval-rejected', 'direct-confirmation', 'returning-signer', 'mobile-walletconnect', 'mobile-walletconnect-sell', 'native-sell', 'approval-only', 'confirmed-without-output', 'reverted', 'multi-account-owner-second', 'signer-two-providers', 'signer-disappeared', 'signer-account-change', 'signer-provider-conflict', 'approval-requote', 'native', 'rejection', 'pending', 'expired-quote', 'expired-quote-sell', 'refresh-click-buy', 'refresh-click-buy-again', 'refresh-click-sell', 'refresh-provider-recovery', 'refresh-provider-failure', 'quote-only', ...Object.keys(faults), 'simulation-failure', ...Object.keys(wireFaults)];
+    scenarios.splice(2, 0, 'sell-approval-healthy', 'sell-approval-identity-multiple-retry',
+      'sell-approval-identity-persistent', 'sell-approval-identity-account-change',
+      'sell-approval-identity-chain-change', 'sell-approval-identity-uuid-return');
     for (const scenario of scenarios) {
       state.approved = !scenario.startsWith('sell-approval') && !['approval-only', 'approval-requote', 'approval-over-sell', 'approval-unlimited', 'stale-post-approval'].includes(scenario);
       state.priceDisabled = scenario === 'quote-only';
@@ -70,6 +73,11 @@ export async function runZeroXWalletJourneys(options) {
       let block = 50000000;
       let receiptsEnabled = !['sell-approval-return', 'sell-approval-uuid-return', 'sell-approval-account-change', 'sell-approval-chain-change'].includes(scenario);
       let transientInjected = false;
+      let identityFailuresInjected = 0;
+      const identityFailureLimit = scenario === 'sell-approval-identity-persistent' ? 4
+        : scenario === 'sell-approval-identity-multiple-retry' ? 3 : 1;
+      const approvalJourney = scenario.startsWith('sell-approval');
+      const identityRecovery = scenario.startsWith('sell-approval-identity');
       let settledOutputAsset = null;
       let settledOutputBalanceReads = 0;
       const isMobile = viewportName === 'mobile';
@@ -77,6 +85,11 @@ export async function runZeroXWalletJourneys(options) {
       const page = await context.newPage();
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.clock.install();
+      // These journeys call a real Next server with real Date.now() deadlines.
+      // Advancing only browser time made a fresh ~10s server plan expire before
+      // arrival (9,847ms clock skew in the regression). Keep both clocks moving
+      // together; expiry-specific scenarios still inject their explicit failure.
+      if (approvalJourney) await page.clock.resume();
       state.rpcOverride = (request) => {
         if (settledOutputAsset && (request.method === 'eth_call'
           && (lower(request.params[0]?.to) === settledOutputAsset && request.params[0]?.data?.startsWith('0x70a08231')
@@ -156,7 +169,7 @@ export async function runZeroXWalletJourneys(options) {
         const lifecycle = Number(sessionStorage.getItem('journey-lifecycle') || '0') + 1;
         sessionStorage.setItem('journey-lifecycle', String(lifecycle));
         let signerAccounts = [wallet], signerChain = '0x1237';
-        const uuid = (scenario === 'sell-approval-uuid-return' || scenario === 'returning-signer') && lifecycle > 1
+        const uuid = (scenario.includes('uuid-return') || scenario === 'returning-signer') && lifecycle > 1
           ? 'e0e0e0e0-e0e0-40e0-80e0-e0e0e0e0e0e0' : 'd0d0d0d0-d0d0-40d0-80d0-d0d0d0d0d0d0';
         const selectedSigner = {
           isMetaMask: true,
@@ -219,7 +232,8 @@ export async function runZeroXWalletJourneys(options) {
       }, { wallet, scenario });
       page.on('response', async (response) => {
         if (/\/api\/vnext\/(quotes|verify|authorize|wallet-request-recovery)$/.test(new URL(response.url()).pathname)) {
-          api.push({ path: new URL(response.url()).pathname, status: response.status(), body: await response.json().catch(() => null) });
+          api.push({ clientObservedAtMs: await page.evaluate(() => Date.now()).catch(() => null),
+            path: new URL(response.url()).pathname, status: response.status(), body: await response.json().catch(() => null) });
         }
       });
       await page.route('**/*', async (route) => {
@@ -230,14 +244,19 @@ export async function runZeroXWalletJourneys(options) {
           if (scenario === 'identity-not-requested' && apiPath === '/api/vnext/quotes') {
             return route.fulfill({ status: 422, json: { error: 'Both quote assets require verified Robinhood Chain identity and decimals.', phase: 'IDENTITY_UNAVAILABLE', providerRequestAttempted: false } });
           }
-          if (state.approved && requests.length === 1 && !transientInjected &&
-            ((['sell-approval-identity-retry', 'sell-approval-expired'].includes(scenario) && apiPath === '/api/vnext/authorize')
-              || scenario === 'sell-approval-provider-retry' && apiPath === '/api/vnext/quotes')) {
+          if (state.approved && requests.length === 1 &&
+            ((identityRecovery && identityFailuresInjected < identityFailureLimit && apiPath === '/api/vnext/authorize')
+              || !transientInjected && scenario === 'sell-approval-expired' && apiPath === '/api/vnext/authorize'
+              || !transientInjected && scenario === 'sell-approval-provider-retry' && apiPath === '/api/vnext/quotes')) {
             transientInjected = true;
+            if (identityRecovery) identityFailuresInjected++;
             return route.fulfill({ status: scenario === 'sell-approval-expired' ? 409 : 503,
               json: { error: 'Controlled transient readiness failure', phase: scenario === 'sell-approval-expired' ? 'QUOTE_EXPIRED'
                 : scenario === 'sell-approval-provider-retry' ? 'ZEROX_PROVIDER_UNAVAILABLE' : 'IDENTITY_UNAVAILABLE' } });
           }
+          // Reproduce nonzero transport latency without moving the client ahead
+          // of the authority that issued the transaction envelope.
+          if (identityRecovery && state.approved && requests.length === 1 && apiPath === '/api/vnext/authorize') await pause(750);
           if (headers['privy-id-token']) headers['privy-id-token'] = identity;
           if (wireFaults[scenario] && new URL(request.url()).pathname === '/api/vnext/authorize') {
             const response = await route.fetch({ headers });
@@ -353,21 +372,30 @@ export async function runZeroXWalletJourneys(options) {
               assert.equal(requests.length, 1, 'Recovery must not resubmit');
             } else if (scenario.startsWith('sell-approval')) {
               if (scenario.endsWith('account-change') || scenario.endsWith('chain-change')) {
+                if (identityRecovery) await until(() => identityFailuresInjected > 0, 'Identity retry must begin before the binding changes');
                 await page.evaluate((kind) => window.__ZEROX_CHANGE_CONTEXT__(kind), scenario.endsWith('chain-change') ? 'chain' : 'account');
                 receiptsEnabled = true;
-                await page.clock.runFor(16000);
+                await pause(16000);
                 assert.equal(requests.length, 1, 'Changed account/chain cannot continue to a swap');
+              } else if (scenario === 'sell-approval-identity-persistent') {
+                await until(() => identityFailuresInjected === 4, 'Bounded identity retries must exhaust', 30000);
+                await until(async () => /Retry quote|Retry token verification/.test(await page.locator('body').innerText()), 'Exhaustion must expose truthful recovery');
+                await pause(2500);
+                assert.equal(identityFailuresInjected, 4, 'No tight or unbounded identity retry loop');
+                assert.equal(requests.length, 1, 'No duplicate approval or swap after exhausted identity recovery');
+                assert.equal(await page.locator('.vnTradeReceipt').count(), 0, 'Approval is not settlement');
               } else {
                 if (scenario.endsWith('return')) {
                   await page.reload({ waitUntil: 'domcontentloaded' });
                   receiptsEnabled = true;
                 }
-                for (let tick = 0; tick < 15 && requests.length < 2; tick++) { await page.clock.runFor(2000); await pause(300); }
                 await until(() => requests.length === 2, `${scenario} must continue after one Sell initiation`, 30000);
                 const plans = api.filter((entry) => entry.path.endsWith('/authorize') && entry.status === 200).map((entry) => entry.body.plan);
                 assert.equal(plans[0].kind, 'erc20_approval');
                 assert.equal(plans.at(-1).kind, 'swap');
                 assert.notEqual(plans[0].sourceQuoteRequestId, plans.at(-1).sourceQuoteRequestId);
+                assert.equal(requests.filter((request) => request.data.startsWith('0x095ea7b3')).length, 1, 'Retry never repeats approval');
+                if (identityRecovery) assert.equal(identityFailuresInjected, identityFailureLimit);
                 assert.equal(lower(plans.at(-1).inputAsset), token);
                 assert.equal(lower(plans.at(-1).outputAsset), usdg);
                 if (scenario.includes('retry') || scenario.endsWith('expired')) assert.equal(transientInjected, true);
@@ -428,7 +456,13 @@ export async function runZeroXWalletJourneys(options) {
           }
         }
         assert.deepEqual(state.unexpected, []);
-        results.push({ viewport: viewportName, scenario, status: 'PASS', walletPrompts: requests.length });
+        results.push({ viewport: viewportName, scenario, status: 'PASS', walletPrompts: requests.length,
+          ...(approvalJourney ? { approvalWalletRequests: requests.filter((request) => request.data.startsWith('0x095ea7b3')).length,
+            swapWalletRequests: requests.filter((request) => !request.data.startsWith('0x095ea7b3')).length,
+            identityFailuresInjected, clockMode: 'real-client-and-server',
+            authorizationTimeline: api.filter((entry) => entry.path.endsWith('/authorize')).map((entry) => ({
+              httpStatus: entry.status, phase: entry.body?.phase ?? null, kind: entry.body?.plan?.kind ?? null,
+              remainingMs: entry.body?.plan ? entry.body.plan.expiresAtMs - entry.clientObservedAtMs : null })) } : {}) });
         console.log(`${prefix}: PASS`);
       } finally {
         await page.screenshot({ path: path.join(output, `${prefix}.png`), fullPage: true });
