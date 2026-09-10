@@ -24,7 +24,16 @@ try {
     ) AS canonical_tokens ORDER BY token`, [Buffer.alloc(20)]), /temporary file size exceeds temp_file_limit/);
   await pool.query("ROLLBACK TO SAVEPOINT old_query");
   const started = performance.now();
-  const tokens = await readCanonicalTokenCatalog(pool as unknown as Pool);
+  const inspected = { query: async (sql: string, values: unknown[]) => {
+    const plan = await pool.query(`EXPLAIN (FORMAT JSON) ${sql}`, values);
+    try {
+      return await pool.query(sql, values);
+    } catch (error) {
+      console.log(JSON.stringify({ failedCatalogPage: values, plan: plan.rows[0]["QUERY PLAN"] }));
+      throw error;
+    }
+  } } as unknown as Pool;
+  const tokens = await readCanonicalTokenCatalog(inspected);
   assert.equal(tokens.size, 50001);
   assert.deepEqual([...tokens], [...tokens].sort());
   assert.equal([...tokens][0], `0x${"1".padStart(40, "0")}`);
