@@ -1,10 +1,10 @@
 "use client";
 
 import { useConnectWallet, useIdentityToken, usePrivy, useWallets } from "@privy-io/react-auth";
-import { useSetActiveWallet } from "@privy-io/wagmi";
-import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { activateSelectedWallet, idleWalletConnection, WalletConnectionController, type WalletConnectionSnapshot } from "../lib/wallet-connection-controller";
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { injectedSignerSelection, startInjectedSignerDiscovery } from "../lib/injected-wallet-signer";
-import { useAccount, useConnect } from "wagmi";
+import { useAccount, useConnect, useConfig, useSwitchAccount } from "wagmi";
 import { walletBrowserEnvironment, type WalletBrowserEnvironment } from "../lib/mobile-wallet-link";
 import {
   RMT_ACTIVE_WALLET_SESSION_KEY,
@@ -51,6 +51,8 @@ type RmtIdentityContextValue = {
   selectTradingWallet: (walletKey: string) => Promise<void>;
   supportsOAuth: boolean;
   userId: string;
+  walletConnection: WalletConnectionSnapshot;
+  retryWalletConnection: () => void;
   walletConnectionError: string;
   walletSelectionRequired: boolean;
 };
@@ -80,6 +82,8 @@ const unavailableIdentity: RmtIdentityContextValue = {
   selectTradingWallet: async () => undefined,
   supportsOAuth: true,
   userId: "",
+  walletConnection: idleWalletConnection,
+  retryWalletConnection: () => undefined,
   walletConnectionError: "",
   walletSelectionRequired: false
 };
@@ -136,6 +140,8 @@ export function BrowserAcceptanceIdentityBridge({ children }: { children: ReactN
     selectTradingWallet: async () => connectTradingWallet(),
     supportsOAuth: false,
     userId: isConnected && address ? `browser-acceptance:${address.toLowerCase()}` : "",
+    walletConnection: idleWalletConnection,
+    retryWalletConnection: connectTradingWallet,
     walletConnectionError: "",
     walletSelectionRequired: false
   } : unavailableIdentity, [acceptanceEnabled, address, connectTradingWallet, connector, isConnected]);
@@ -169,14 +175,20 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     user
   } = usePrivy();
   const { wallets } = useWallets();
-  const { setActiveWallet } = useSetActiveWallet();
-  const { address, chainId } = useAccount();
+  const config = useConfig();
+  const { connectAsync } = useConnect();
+  const { switchAccountAsync } = useSwitchAccount();
+  const { address, chainId, connector } = useAccount();
+  const [connectionController] = useState(() => new WalletConnectionController());
+  const walletConnection = useSyncExternalStore(connectionController.subscribe, connectionController.getSnapshot, () => idleWalletConnection);
   const { identityToken } = useIdentityToken();
   const [preferredWalletKey, setPreferredWalletKey] = useState<string | null>(null);
-  const [pendingActivationKey, setPendingActivationKey] = useState<string | null>(null);
   const [appliedWalletKey, setAppliedWalletKey] = useState<string | null>(null);
   const [walletConnectionError, setWalletConnectionError] = useState("");
-  const lastAppliedWalletKey = useRef<string | null>(null);
+  const restored = useRef(false);
+  const currentIdentity = useRef({ wallets, authenticated, userId: user?.id });
+  useLayoutEffect(() => { currentIdentity.current = { wallets, authenticated, userId: user?.id }; }, [wallets, authenticated, user?.id]);
+  useEffect(() => () => connectionController.dispose(), [connectionController]);
   const [environment] = useState<WalletBrowserEnvironment>(() => {
     if (typeof window === "undefined") return "desktop";
     return walletBrowserEnvironment(window.navigator.userAgent, Boolean((window as Window & { ethereum?: unknown }).ethereum));
@@ -197,7 +209,11 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     wallet.address.toLowerCase() === address?.toLowerCase()
     && isEmbeddedWalletClientType(wallet.walletClientType)
   ));
-  const activeConnectorConfirmed = isConnectorSelectionConfirmed({
+  const activeConnectorConfirmed = walletConnection.state === "CONNECTED"
+    && walletConnection.connectorUid === connector?.uid
+    && walletConnection.walletKey === appliedWalletKey
+    && walletConnection.walletKey === (activeExternalWallet ? walletGatewayKey(activeExternalWallet) : null)
+    && isConnectorSelectionConfirmed({
     appliedWalletKey,
     authenticated,
     matchingWalletCount: addressMatches.length,
@@ -229,68 +245,97 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined") window.sessionStorage.setItem(RMT_ACTIVE_WALLET_SESSION_KEY, walletKey);
   }, []);
   const clearTradingWalletPreference = useCallback(() => {
+    connectionController.cancel();
     injectedSignerSelection.invalidate();
-    lastAppliedWalletKey.current = null;
+    restored.current = true;
     setAppliedWalletKey(null);
-    setPendingActivationKey(null);
     setPreferredWalletKey(null);
-    if (typeof window !== "undefined") window.sessionStorage.removeItem(RMT_ACTIVE_WALLET_SESSION_KEY);
-  }, []);
-  const activateTradingWallet = useCallback(async (walletKey: string) => {
-    const wallet = externalWallets.find((candidate) => walletGatewayKey(candidate) === walletKey);
-    if (!wallet) throw new Error("The selected external wallet is no longer connected.");
-    if (authenticated && wallet.linked && signerWalletKey === walletKey
-      && address?.toLowerCase() === wallet.address.toLowerCase() && chainId === 4663) return;
+    window.sessionStorage.removeItem(RMT_ACTIVE_WALLET_SESSION_KEY);
+  }, [connectionController]);
+  // Privy's connectWallet events are global {wallet} notifications without attempt IDs.
+  // They are discovery only: no callback may select, authenticate, or activate a wallet.
+  const { connectWallet: openExternalWalletConnect } = useConnectWallet();
+  const connectTradingWallet = useCallback(() => {
+    restored.current = true;
     injectedSignerSelection.invalidate();
-    if (!authenticated || !wallet.linked) await wallet.loginOrLink();
-    await setActiveWallet(wallet);
-    lastAppliedWalletKey.current = walletKey;
-    setAppliedWalletKey(walletKey);
-    rememberTradingWallet(walletKey);
-  }, [authenticated, externalWallets, rememberTradingWallet, setActiveWallet, signerWalletKey, address, chainId]);
-  const { connectWallet: openExternalWalletConnect } = useConnectWallet({
-    onSuccess: ({ wallet }) => {
-      if (wallet.type !== "ethereum" || isEmbeddedWalletClientType(wallet.walletClientType)) {
-        setWalletConnectionError("RMT trading requires an external Ethereum wallet.");
-        return;
-      }
-      setWalletConnectionError("");
-      setPendingActivationKey(walletGatewayKey(wallet));
-    },
-    onError: () => setWalletConnectionError("The external wallet connection did not complete.")
-  });
-
-  useEffect(() => {
-    if (!pendingActivationKey) return;
-    if (!externalWallets.some((wallet) => walletGatewayKey(wallet) === pendingActivationKey)) return;
-    const walletKey = pendingActivationKey;
-    setPendingActivationKey(null);
-    void activateTradingWallet(walletKey).catch((error) => {
-      setWalletConnectionError(error instanceof Error ? error.message : "The external wallet could not be activated.");
-    });
-  }, [activateTradingWallet, externalWallets, pendingActivationKey]);
-
-  useEffect(() => {
-    if (!preferredWalletKey || lastAppliedWalletKey.current === preferredWalletKey) return;
-    const wallet = externalWallets.find((candidate) => walletGatewayKey(candidate) === preferredWalletKey);
-    if (!wallet || wallet.address.toLowerCase() !== address?.toLowerCase()) return;
-    if (authenticated && !wallet.linked) return;
-    lastAppliedWalletKey.current = preferredWalletKey;
-    void setActiveWallet(wallet)
-      .then(() => setAppliedWalletKey(preferredWalletKey))
-      .catch(() => {
-        lastAppliedWalletKey.current = null;
-        setAppliedWalletKey(null);
-        setWalletConnectionError("RMT could not restore the selected wallet connector. Choose it again.");
+    setAppliedWalletKey(null);
+    setWalletConnectionError("");
+    connectionController.begin();
+    try {
+      openExternalWalletConnect({
+        description: "Connect a wallet, then explicitly choose it in RMT.",
+        walletChainType: "ethereum-only",
+        walletList: environment === "mobile-wallet-browser" ? rmtInjectedWalletOptions() : rmtExternalWalletOptions()
       });
-  }, [address, authenticated, externalWallets, preferredWalletKey, setActiveWallet]);
+    } catch { connectionController.fail(); }
+  }, [connectionController, environment, openExternalWalletConnect]);
+  const activateTradingWallet = useCallback(async (walletKey: string) => {
+    restored.current = true;
+    injectedSignerSelection.invalidate();
+    setAppliedWalletKey(null);
+    setWalletConnectionError("");
+    // Do not deduplicate here: indistinguishable SDK bindings must fail closed.
+    const matches = currentIdentity.current.wallets.filter(candidate => candidate.type === "ethereum"
+      && !isEmbeddedWalletClientType(candidate.walletClientType) && walletGatewayKey(candidate) === walletKey);
+    if (matches.length !== 1) { connectionController.begin(walletKey); connectionController.fail("Wallet binding is ambiguous or unavailable. Choose another wallet."); return; }
+    const wallet = matches[0];
+    const startingUser = currentIdentity.current.userId;
+    let activatedUid: string | null = null;
+    await connectionController.select(walletKey, scope => activateSelectedWallet(scope, wallet, {
+      stillSelected: () => {
+        const current = currentIdentity.current;
+        return (!startingUser || current.userId === startingUser) && (!activatedUid || config.state.current === activatedUid) && current.wallets.filter(candidate => walletGatewayKey(candidate) === walletKey).length === 1;
+      },
+      currentProvider: () => {
+        const matches = currentIdentity.current.wallets.filter(candidate => walletGatewayKey(candidate) === walletKey);
+        if (matches.length !== 1) throw new Error("Wallet binding changed.");
+        return matches[0].getEthereumProvider();
+      },
+      needsLogin: () => !currentIdentity.current.authenticated || !wallet.linked,
+      activate: async (provider, check) => {
+        // @privy-io/wagmi 4.0.15 setActiveWallet dispatches void mutations.
+        // Await the real Wagmi mutation instead, with independently checked provider identity.
+        const candidates = config.connectors.filter(candidate => candidate.id === wallet.meta.id);
+        if (candidates.length !== 1) throw new Error("Connector binding is ambiguous.");
+        const selected = candidates[0];
+        check();
+        const connectorProvider = await selected.getProvider();
+        check();
+        if (connectorProvider !== provider) throw new Error("Connector provider does not match selected wallet.");
+        await config.storage?.removeItem(`${selected.id}.disconnected`);
+        check();
+        if (config.state.connections.has(selected.uid)) await switchAccountAsync({ connector: selected });
+        else await connectAsync({ connector: selected });
+        check();
+        if (config.state.current !== selected.uid || !config.state.connections.get(selected.uid)?.accounts.some(account => account.toLowerCase() === wallet.address.toLowerCase())) {
+          throw new Error("Active connector does not match selected wallet.");
+        }
+        activatedUid = selected.uid;
+        return selected.uid;
+      }
+    }), () => {
+      if (!activatedUid || config.state.current !== activatedUid) throw new Error("Active connector changed before commit.");
+      setAppliedWalletKey(walletKey);
+      rememberTradingWallet(walletKey);
+    });
+  }, [connectionController, config, connectAsync, switchAccountAsync, rememberTradingWallet]);
 
   useEffect(() => {
-    if (!activeExternalWallet || addressMatches.length !== 1 || (authenticated && !activeExternalWallet.linked)) return;
-    const activeKey = walletGatewayKey(activeExternalWallet);
-    if (preferredWalletKey === activeKey) return;
-    rememberTradingWallet(activeKey);
-  }, [activeExternalWallet, addressMatches.length, authenticated, preferredWalletKey, rememberTradingWallet]);
+    if (restored.current || !preferredWalletKey || connectionController.getSnapshot().state !== "IDLE") return;
+    if (!externalWallets.some(wallet => walletGatewayKey(wallet) === preferredWalletKey)) return;
+    // Restore uses the same bounded, independently validated path as an explicit choice.
+    void activateTradingWallet(preferredWalletKey);
+  }, [activateTradingWallet, connectionController, externalWallets, preferredWalletKey]);
+  const previousUser = useRef(user?.id);
+  useLayoutEffect(() => {
+    if (previousUser.current && previousUser.current !== user?.id) clearTradingWalletPreference();
+    previousUser.current = user?.id;
+  }, [user?.id, clearTradingWalletPreference]);
+  useLayoutEffect(() => {
+    if (walletConnection.state !== "CONNECTED" || activeConnectorConfirmed) return;
+    injectedSignerSelection.invalidate();
+    connectionController.fail("The active wallet changed. Choose your wallet again.");
+  }, [activeConnectorConfirmed, connectionController, walletConnection.state]);
   const linked = useMemo(() => ({
     email: Boolean(user?.linkedAccounts.some((account) => account.type === "email")),
     google: Boolean(user?.linkedAccounts.some((account) => account.type === "google_oauth")),
@@ -307,15 +352,7 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     activeWalletName: activeExternalWallet ? walletGatewayDisplayName(activeExternalWallet) : null,
     clearTradingWalletPreference,
     clearWalletConnectionError: () => setWalletConnectionError(""),
-    connectTradingWallet: () => {
-      openExternalWalletConnect({
-        description: "Connect the external Ethereum wallet RMT should use for trading.",
-        walletChainType: "ethereum-only",
-        walletList: environment === "mobile-wallet-browser"
-          ? rmtInjectedWalletOptions()
-          : rmtExternalWalletOptions()
-      });
-    },
+    connectTradingWallet,
     enabled: true,
     environment,
     externalWalletCount: externalWallets.length,
@@ -341,8 +378,13 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     selectTradingWallet: activateTradingWallet,
     supportsOAuth,
     userId: user?.id ?? "",
-    walletConnectionError,
-    walletSelectionRequired: requiresExplicitWalletSelection({
+    walletConnection,
+    retryWalletConnection: () => {
+      if (walletConnection.walletKey) void activateTradingWallet(walletConnection.walletKey);
+      else connectTradingWallet();
+    },
+    walletConnectionError: walletConnection.error || walletConnectionError,
+    walletSelectionRequired: walletConnection.state !== "CONNECTED" && externalWallets.length > 0 || requiresExplicitWalletSelection({
       activeEmbeddedWallet: activeWalletKind === "embedded",
       activeExternalWalletConfirmed: activeConnectorConfirmed,
       externalWalletCount: externalWallets.length,
@@ -368,7 +410,8 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     linkWallet,
     linked,
     openPrivyLogin,
-    openExternalWalletConnect,
+    connectTradingWallet,
+    walletConnection,
     logout,
     ready,
     supportsOAuth,

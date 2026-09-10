@@ -233,12 +233,12 @@ async function main() {
   assert.match(directoryHook, /marketPayload\?\.directoryAdmission === "not_admitted"/);
   assert.match(presentation, /Not admitted to the RMT directory/);
   for (const route of [quoteRoute, verifyRoute, authorizeRoute]) {
-    assert.match(route, /requireProjectIdentityDirectoryAdmitted/);
+    assert.match(route, /requireProjectIdentityExecutionAdmitted/);
     assert.match(route, /projectIdentityAdmissionErrorResponse/);
   }
-  assert.ok(quoteRoute.indexOf("requireProjectIdentityDirectoryAdmitted") < quoteRoute.indexOf("quoteRobinhoodVNextExecution({"));
-  assert.ok(verifyRoute.indexOf("requireProjectIdentityDirectoryAdmitted") < verifyRoute.indexOf("verifyRobinhoodVNextExecution(parsed.data.provider"));
-  assert.ok(authorizeRoute.indexOf("requireProjectIdentityDirectoryAdmitted") < authorizeRoute.indexOf("prepareRobinhoodVNextAuthorization(parsed.data.provider"));
+  assert.ok(quoteRoute.indexOf("requireProjectIdentityExecutionAdmitted") < quoteRoute.indexOf("quoteRobinhoodVNextExecution({"));
+  assert.ok(verifyRoute.indexOf("requireProjectIdentityExecutionAdmitted") < verifyRoute.indexOf("verifyRobinhoodVNextExecution(parsed.data.provider"));
+  assert.ok(authorizeRoute.indexOf("requireProjectIdentityExecutionAdmitted") < authorizeRoute.indexOf("prepareRobinhoodVNextAuthorization(parsed.data.provider"));
 
   console.log("Project identity authority, positive-conflict quarantine, uncertainty admission, and no-blacklist controls passed.");
 }

@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { createZeroXFirmQuoteCommitment } from "../../../../lib/server/vnext-zero-x-firm-quote-commitment";
 import { emitTradeJourney } from "../../../../lib/vnext/trade-journey";
 import { ZeroXRepriceRequiredError } from "../../../../lib/server/vnext-zero-x-firm-quote-verifier";
@@ -6,11 +7,11 @@ import { getAddress, isAddress } from "viem";
 import { z } from "zod";
 import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
 import { stockTokenExecutionPolicyErrorResponse } from "../../../../lib/server/robinhood-stock-token-registry";
-import { readVNextVerifiedAssetIdentity } from "../../../../lib/server/vnext-asset-identity";
+import { readVNextVerifiedAssetIdentity, vNextExecutionIdentityErrorResponse } from "../../../../lib/server/vnext-asset-identity";
 import { verifyRobinhoodVNextExecution } from "../../../../lib/server/vnext-execution-engine";
 import {
   projectIdentityAdmissionErrorResponse,
-  requireProjectIdentityDirectoryAdmitted
+  requireProjectIdentityExecutionAdmitted
 } from "../../../../lib/server/project-identity-admission";
 import { VNEXT_DIRECT_NO_RMT_FEE, VNEXT_PROVIDER_NATIVE_INPUT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE } from "../../../../lib/vnext/execution-settlement";
 import { vNextExecutionEligibilityErrorResponse } from "../../../../lib/server/vnext-execution-eligibility";
@@ -85,17 +86,14 @@ export async function POST(request: Request) {
     const outputAsset = getAddress(parsed.data.outputAsset);
     const tradeAuthorization = await requireAuthenticatedTradeWallet(request, recipient);
     const [inputIdentity, outputIdentity] = await Promise.all([
-      readVNextVerifiedAssetIdentity(inputAsset),
-      readVNextVerifiedAssetIdentity(outputAsset)
+      readVNextVerifiedAssetIdentity(inputAsset, { scheduleRevalidation: after }),
+      readVNextVerifiedAssetIdentity(outputAsset, { scheduleRevalidation: after })
     ]);
     if (!inputIdentity || !outputIdentity) {
       emitTradeJourney({ phase: "IDENTITY_UNAVAILABLE", providerRequestAttempted: false });
       return Response.json({ error: "Both assets require verified Robinhood Chain identity before route verification.", phase: "IDENTITY_UNAVAILABLE" }, { status: 422, headers: { "Cache-Control": "no-store" } });
     }
-    await requireProjectIdentityDirectoryAdmitted([
-      { address: inputAsset },
-      { address: outputAsset }
-    ]);
+    await requireProjectIdentityExecutionAdmitted([inputIdentity, outputIdentity].filter(identity => !identity.native).map(identity => ({ address: identity.address, verifiedIdentity: identity })), after);
     const executionId = `0x${randomBytes(32).toString("hex")}` as const;
     const settlementMode = parsed.data.provider === "uniswap-v3"
       ? selectVNextUniswapV3SettlementMode({ inputAsset, outputAsset, recipient })
@@ -159,6 +157,8 @@ export async function POST(request: Request) {
     }
     const publicProviderResponse = vNextPublicExecutionProviderScopeErrorResponse(cause);
     if (publicProviderResponse) return publicProviderResponse;
+    const assetIdentityResponse = vNextExecutionIdentityErrorResponse(cause);
+    if (assetIdentityResponse) return assetIdentityResponse;
     const identityResponse = tradeIdentityErrorResponse(cause);
     if (identityResponse) return identityResponse;
     const eligibilityResponse = vNextExecutionEligibilityErrorResponse(cause);

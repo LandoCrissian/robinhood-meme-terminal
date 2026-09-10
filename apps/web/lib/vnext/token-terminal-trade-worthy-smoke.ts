@@ -98,7 +98,8 @@ assert.doesNotMatch(hook, /canonicalPayload\?\.status === "not_listed"[\s\S]{0,2
 for (const source of [quoteRoute, verifyRoute, authorizeRoute]) {
   assert.doesNotMatch(source, /requireRmtCuratedExecutionAssets/);
   assert.doesNotMatch(source, /target:\s*z\.|calldata:\s*z\.|value:\s*z\./, "Browser-controlled transaction fields must not enter quote/verify/authorize intent schemas");
-  assert.match(source, /requireProjectIdentityDirectoryAdmitted/);
+  assert.match(source, /requireProjectIdentityExecutionAdmitted/);
+  assert.match(source, /verifiedIdentity: identity/, "Execution admission retains the trusted server-read identity");
 }
 assert.match(tradeComposer, /tradeJourneyLabels/);
 assert.match(tradeComposer, /IDENTITY_UNAVAILABLE/);
