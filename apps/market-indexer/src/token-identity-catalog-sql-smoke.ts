@@ -5,7 +5,8 @@ import { readCanonicalTokenCatalog } from "./token-identity-catalog.js";
 const connectionString = process.env.MARKET_INDEXER_DATABASE_URL;
 assert.ok(connectionString);
 assert.ok(["localhost", "127.0.0.1", "[::1]"].includes(new URL(connectionString).hostname));
-const pool = new Pool({ connectionString, ssl: false, max: 1 });
+const connections = new Pool({ connectionString, ssl: false, max: 1 });
+const pool = await connections.connect();
 try {
   await pool.query("BEGIN");
   await pool.query(`CREATE TEMP TABLE market_pools(token0 bytea,token1 bytea,
@@ -23,7 +24,7 @@ try {
     ) AS canonical_tokens ORDER BY token`, [Buffer.alloc(20)]), /temporary file size exceeds temp_file_limit/);
   await pool.query("ROLLBACK TO SAVEPOINT old_query");
   const started = performance.now();
-  const tokens = await readCanonicalTokenCatalog(pool);
+  const tokens = await readCanonicalTokenCatalog(pool as unknown as Pool);
   assert.equal(tokens.size, 50001);
   assert.deepEqual([...tokens], [...tokens].sort());
   assert.equal([...tokens][0], `0x${"1".padStart(40, "0")}`);
@@ -31,6 +32,10 @@ try {
     boundedCatalogPassWithZeroTemporaryFileBudget: true, pools: 50000,
     tokens: tokens.size, elapsedMs: performance.now() - started }));
 } finally {
-  await pool.query("ROLLBACK");
-  await pool.end();
+  try {
+    await pool.query("ROLLBACK");
+  } finally {
+    pool.release();
+    await connections.end();
+  }
 }
