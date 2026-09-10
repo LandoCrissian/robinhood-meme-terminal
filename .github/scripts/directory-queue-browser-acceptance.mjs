@@ -29,9 +29,11 @@ export async function runDirectoryQueueBrowserAcceptance(browser, base, complete
     try {
       await page.goto(base, { waitUntil: "domcontentloaded" });
       const enter = page.getByRole("button", { name: /I understand/ });
-      if (await enter.isVisible()) await enter.click();
+      await enter.waitFor({ state: "visible", timeout: 20000 });
+      await enter.click();
       const start = page.getByRole("button", { name: "Start with live markets", exact: true });
-      if (await start.isVisible()) await start.click();
+      await start.waitFor({ state: "visible", timeout: 20000 });
+      await start.click();
       const all = page.getByRole("button", { name: /^All/ }).first();
       const until = async (condition, message) => {
         for (let i = 0; i < 100; i++) { if (await condition()) return; await delay(100); }
