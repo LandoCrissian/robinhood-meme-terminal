@@ -1,13 +1,15 @@
+import { after } from "next/server";
+import { requireVNextStockTokenExecutionEligible, stockTokenExecutionPolicyErrorResponse } from "../../../../lib/server/robinhood-stock-token-registry";
 import { randomUUID } from "node:crypto";
 import { getAddress, isAddress } from "viem";
 import { z } from "zod";
 import { quoteRobinhoodVNextExecution } from "../../../../lib/server/vnext-execution-engine";
 import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
-import { readVNextVerifiedAssetIdentity } from "../../../../lib/server/vnext-asset-identity";
+import { readVNextVerifiedAssetIdentity, vNextExecutionIdentityErrorResponse } from "../../../../lib/server/vnext-asset-identity";
 import type { VNextQuoteResponse } from "../../../../lib/vnext/quote-observation";
 import {
   projectIdentityAdmissionErrorResponse,
-  requireProjectIdentityDirectoryAdmitted
+  requireProjectIdentityExecutionAdmitted
 } from "../../../../lib/server/project-identity-admission";
 import { vNextExecutionEligibilityErrorResponse } from "../../../../lib/server/vnext-execution-eligibility";
 import { isVNextWalletExecutionAdmitted } from "../../../../lib/vnext/provider-execution-capability";
@@ -45,18 +47,16 @@ export async function POST(request: Request) {
     }
     await requireAuthenticatedTradeWallet(request, recipient);
     const [inputIdentity, outputIdentity] = await Promise.all([
-      readVNextVerifiedAssetIdentity(inputAsset),
-      readVNextVerifiedAssetIdentity(outputAsset)
+      readVNextVerifiedAssetIdentity(inputAsset, { scheduleRevalidation: after }),
+      readVNextVerifiedAssetIdentity(outputAsset, { scheduleRevalidation: after })
     ]);
     if (!inputIdentity || !outputIdentity) {
       emitTradeJourney({ phase: "IDENTITY_UNAVAILABLE", quoteRequestAttempted: true, providerRequestAttempted: false });
       return Response.json({ error: "Both quote assets require verified Robinhood Chain identity and decimals.", phase: "IDENTITY_UNAVAILABLE", providerRequestAttempted: false }, { status: 422, headers: { "Cache-Control": "no-store" } });
     }
-    await requireProjectIdentityDirectoryAdmitted([
-      { address: inputAsset },
-      { address: outputAsset }
-    ]);
+    await requireProjectIdentityExecutionAdmitted([inputIdentity, outputIdentity].filter(identity => !identity.native).map(identity => ({ address: identity.address, verifiedIdentity: identity })), after);
 
+    await requireVNextStockTokenExecutionEligible({ inputAsset, outputAsset });
     const requestedAtMs = Date.now();
     providerRequestAttempted = process.env.RMT_VNEXT_ZEROX_OBSERVATION_ENABLED === "true" && Boolean(process.env.RMT_ZEROX_API_KEY?.trim());
     const attempts = await quoteRobinhoodVNextExecution({
@@ -99,6 +99,10 @@ export async function POST(request: Request) {
     };
     return Response.json(response, { headers: { "Cache-Control": "no-store" } });
   } catch (cause) {
+    const stockTokenResponse = stockTokenExecutionPolicyErrorResponse(cause);
+    if (stockTokenResponse) return stockTokenResponse;
+    const assetIdentityResponse = vNextExecutionIdentityErrorResponse(cause);
+    if (assetIdentityResponse) return assetIdentityResponse;
     const identityResponse = tradeIdentityErrorResponse(cause);
     if (identityResponse) return identityResponse;
     const eligibilityResponse = vNextExecutionEligibilityErrorResponse(cause);

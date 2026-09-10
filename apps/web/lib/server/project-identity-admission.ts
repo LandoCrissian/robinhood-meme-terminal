@@ -272,16 +272,72 @@ export function createProjectIdentityAuthorityReader(
       clearTimeout(timeout);
     }
   };
-  return async () => {
+  const read = async () => {
     if (inFlight) return inFlight;
     inFlight = readFresh().finally(() => {
       inFlight = undefined;
     });
     return inFlight;
   };
+  return Object.assign(read, {
+    peek: (): ProjectIdentityAuthoritySnapshot => cachedAuthority
+      ? { ...cachedAuthority.snapshot, freshness: "last-known" }
+      : { status: "unavailable", entries: [] }
+  });
 }
 
 const fetchAuthoritySnapshot = createProjectIdentityAuthorityReader();
+
+const executionRevalidations = new Map<string, number>();
+
+/** Known positive conflicts block now. Fresh discovery never serializes a quote. */
+export async function requireProjectIdentityExecutionAdmitted(
+  candidates: readonly ProjectIdentityAdmissionCandidate[],
+  schedule: (work: () => Promise<void>) => void,
+  dependencies: {
+    snapshot?: ProjectIdentityAuthoritySnapshot;
+    readKnownIdentity?: (address: Address) => Promise<ProjectTokenIdentity | null>;
+    revalidate?: () => Promise<void>;
+  } = {}
+) {
+  const assertNotQuarantined = () => {
+    if (candidates.some(({ address }) => positiveQuarantineCache.has(address.toLowerCase()))) {
+      throw new ConflictingProjectIdentityError();
+    }
+  };
+  assertNotQuarantined();
+  const readKnownIdentity = dependencies.readKnownIdentity
+    ?? (async (address: Address) => identityCache.get(address.toLowerCase())?.identity ?? null);
+  const result = await applyProjectIdentityDirectoryAdmission(candidates, {
+    readAuthority: async () => dependencies.snapshot ?? fetchAuthoritySnapshot.peek(),
+    readIdentity: readKnownIdentity
+  });
+  if (result.quarantined.length > 0) throw new ConflictingProjectIdentityError();
+  assertNotQuarantined();
+
+  const key = candidates.map(({ address, verifiedIdentity }) => (
+    `${address.toLowerCase()}:${verifiedIdentity?.name ?? ""}:${verifiedIdentity?.symbol ?? ""}`
+  )).sort().join("|");
+  const now = Date.now();
+  if ((executionRevalidations.get(key) ?? 0) > now) return;
+  for (const [oldKey, until] of executionRevalidations) {
+    if (until <= now) executionRevalidations.delete(oldKey);
+  }
+  if (executionRevalidations.size >= MAXIMUM_BATCH_IDENTITIES) return;
+  executionRevalidations.set(key, now + REGISTRY_CACHE_TTL_MS);
+  try {
+    schedule(async () => {
+      try {
+        if (dependencies.revalidate) await dependencies.revalidate();
+        else await applyProjectIdentityDirectoryAdmission(candidates);
+      } catch {
+        executionRevalidations.set(key, Date.now() + REGISTRY_FAILURE_BACKOFF_MS);
+      }
+    });
+  } catch {
+    executionRevalidations.delete(key);
+  }
+}
 
 function boundedIdentityText(value: unknown, maximum: number) {
   return typeof value === "string" ? boundedText(value, maximum) : null;

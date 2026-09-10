@@ -226,7 +226,10 @@ async function main() {
     verificationStatus: "PENDING"
   };
   const verifiedProjectToken = await verifyRmtNftProjectToken(exampleProjectToken, {
-    readIdentity: async (address) => ({ address, symbol: "EXAMPLE", decimals: 18, native: false }),
+    readIdentity: async (address) => ({
+      address, chainId: 4663, name: "Example", symbol: "EXAMPLE", decimals: 18, native: false,
+      provenance: "verified-onchain-token-identity", sourceManifestHash: null, freshness: "current"
+    }),
     now: () => new Date("2026-08-26T12:00:00.000Z")
   });
   assert.equal(verifiedProjectToken.status, "VERIFIED");

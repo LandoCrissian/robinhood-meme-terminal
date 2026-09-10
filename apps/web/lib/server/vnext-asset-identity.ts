@@ -1,33 +1,35 @@
-import { getAddress, type Address } from "viem";
+import type { Address } from "viem";
 import {
-  ROBINHOOD_ETH,
-  ROBINHOOD_NATIVE_ASSET_ADDRESS,
-  isRobinhoodNativeAsset
-} from "../vnext/robinhood-assets";
-import { readRobinhoodTokenIdentity } from "./universal-market-resolver";
+  createVNextExecutionIdentityAuthority,
+  type VNextExecutionIdentityReadOptions
+} from "./vnext-execution-identity-authority";
 
-export type VNextVerifiedAssetIdentity = {
-  address: Address;
-  symbol: string;
-  decimals: number;
-  native: boolean;
-};
+export {
+  createVNextExecutionIdentityAuthority,
+  VNextExecutionIdentityConflictError,
+  vNextExecutionIdentityErrorResponse,
+  type VNextExecutionIdentityReadOptions,
+  type VNextExecutionIdentityDependencies,
+  type VNextTrustedAssetIdentity,
+  type VNextIdentityConflict
+} from "./vnext-execution-identity-authority";
+export type { VNextTrustedAssetIdentity as VNextVerifiedAssetIdentity } from "./vnext-execution-identity-authority";
 
-export async function readVNextVerifiedAssetIdentity(address: Address): Promise<VNextVerifiedAssetIdentity | null> {
-  if (isRobinhoodNativeAsset(address)) {
-    if (ROBINHOOD_ETH.decimals === null || !ROBINHOOD_ETH.symbol) return null;
-    return {
-      address: ROBINHOOD_NATIVE_ASSET_ADDRESS,
-      symbol: ROBINHOOD_ETH.symbol,
-      decimals: ROBINHOOD_ETH.decimals,
-      native: true
-    };
+// One read-only authority per process. Persistence remains owned by the indexer.
+const executionIdentityAuthority = createVNextExecutionIdentityAuthority({
+  readLive: async (address) => {
+    const { readRobinhoodTokenIdentityEvidence } = await import("./universal-market-resolver");
+    return readRobinhoodTokenIdentityEvidence(address);
   }
-  const identity = await readRobinhoodTokenIdentity(address);
-  return identity ? {
-    address: getAddress(address),
-    symbol: identity.symbol,
-    decimals: identity.decimals,
-    native: false
-  } : null;
+});
+
+/** Pass { scheduleRevalidation: task => after(task) } from a request lifecycle. */
+export function readVNextVerifiedAssetIdentity(
+  address: Address,
+  options: VNextExecutionIdentityReadOptions = {}
+) {
+  return executionIdentityAuthority.read(address, options);
 }
+
+// Only positive, independently observed contract/decimals evidence belongs here.
+export const blockVNextExecutionIdentityOnPositiveConflict = executionIdentityAuthority.blockOnPositiveConflict;

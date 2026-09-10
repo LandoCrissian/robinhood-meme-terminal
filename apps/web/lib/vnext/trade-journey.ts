@@ -3,7 +3,7 @@ import { sameInjectedPreferenceWallet } from "../injected-signer-preference";
 import type { VNextExecutionRecord } from "./execution-recovery";
 
 export const tradeJourneyPhases = [
-  "IDENTITY_PENDING", "IDENTITY_UNAVAILABLE", "QUOTE_NOT_REQUESTED", "QUOTE_REQUESTING",
+  "IDENTITY_PENDING", "IDENTITY_UNAVAILABLE", "IDENTITY_CONFLICT", "QUOTE_NOT_REQUESTED", "QUOTE_REQUESTING",
   "QUOTE_SERVICE_UNAVAILABLE", "ZEROX_NO_ROUTE", "ZEROX_PROVIDER_UNAVAILABLE", "ZEROX_POLICY_REJECTED",
   "FIRM_VERIFY_FAILED", "SIMULATION_FAILED", "AUTHORIZATION_FAILED", "ROUTE_READY", "QUOTE_EXPIRED",
   "APPROVAL_REQUIRED", "APPROVAL_PENDING", "APPROVAL_CONFIRMED", "SWAP_READY", "SWAP_PENDING",
@@ -21,6 +21,7 @@ export function failureJourneyPhase(error: unknown, fallback: TradeJourneyPhase)
 }
 export const tradeJourneyLabels: Record<TradeJourneyPhase, string> = {
   IDENTITY_PENDING: "Verifying token...", IDENTITY_UNAVAILABLE: "Token verification temporarily unavailable",
+  IDENTITY_CONFLICT: "Token identity conflict. Trading is blocked",
   QUOTE_NOT_REQUESTED: "Quote not requested", QUOTE_REQUESTING: "Finding best route...",
   QUOTE_SERVICE_UNAVAILABLE: "Quote service temporarily unavailable", ZEROX_NO_ROUTE: "No 0x route currently available",
   ZEROX_PROVIDER_UNAVAILABLE: "Route provider temporarily unavailable", ZEROX_POLICY_REJECTED: "0x response rejected by execution policy",

@@ -18,6 +18,7 @@ import { WalletReceiveDialog } from "./wallet-receive-dialog";
 import { WalletTransferDialog } from "./wallet-transfer-dialog";
 import { OverlayPortal } from "./overlay-portal";
 import { useRmtIdentity } from "./rmt-identity";
+import { WalletConnectionPanel } from "./wallet-connection-panel";
 import { InjectedSignerSelection } from "./injected-signer-selection";
 
 function shortAddress(address: string) {
@@ -93,6 +94,13 @@ export function PrivyWalletButton({
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [close, open]);
+
+  if (["CONNECTING", "SLOW", "FAILED"].includes(identity.walletConnection.state)) {
+    return <WalletConnectionPanel connection={identity.walletConnection}
+      wallets={externalWallets.map(wallet => ({ key: walletGatewayKey(wallet), name: walletGatewayDisplayName(wallet), address: wallet.address }))}
+      retry={identity.retryWalletConnection} chooseAnother={identity.connectTradingWallet}
+      cancel={identity.clearTradingWalletPreference} select={key => void identity.selectTradingWallet(key)} />;
+  }
 
   if (!ready || (authenticated && !walletsReady)) {
     return <button className="wallet live connectTrigger" type="button" disabled>{compact ? "Loading…" : "Wallet loading…"}</button>;
@@ -264,6 +272,7 @@ export function PrivyWalletButton({
   const signOut = async () => {
     setMessage("");
     try {
+      identity.clearTradingWalletPreference();
       await Promise.allSettled(
         externalWallets.map((wallet) => Promise.resolve(wallet.disconnect()))
       );

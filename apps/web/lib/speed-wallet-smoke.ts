@@ -11,6 +11,7 @@ const walletConfig = readFileSync(`${appRoot}wallet-config.ts`, "utf8");
 const walletButton = readFileSync(`${appRoot}wallet-button.tsx`, "utf8");
 const privyWalletButton = readFileSync(`${appRoot}privy-wallet-button.tsx`, "utf8");
 const rmtIdentity = readFileSync(`${appRoot}rmt-identity.tsx`, "utf8");
+const walletConnectionController = readFileSync(fileURLToPath(new URL("./wallet-connection-controller.ts", import.meta.url)), "utf8");
 const walletGateway = readFileSync(fileURLToPath(new URL("./wallet-gateway.ts", import.meta.url)), "utf8");
 const walletTransferDialog = readFileSync(`${appRoot}wallet-transfer-dialog.tsx`, "utf8");
 const walletReceiveDialog = readFileSync(`${appRoot}wallet-receive-dialog.tsx`, "utf8");
@@ -76,13 +77,17 @@ assert.match(
   /environment === "mobile-wallet-browser"[\s\S]*?rmtInjectedWalletOptions\(\)[\s\S]*?: rmtExternalWalletOptions\(\)/,
   "Wallet in-app browsers must show only their detected injected wallet without narrowing desktop or standard-mobile choices."
 );
-assert.match(rmtIdentity, /if \(!authenticated \|\| !wallet\.linked\) await wallet\.loginOrLink\(\)/, "A newly connected external wallet must authenticate or link through its own SIWE signature.");
+assert.match(rmtIdentity, /needsLogin: \(\) => !currentIdentity\.current\.authenticated \|\| !wallet\.linked/, "The selected external wallet must authenticate or link when needed.");
+assert.match(walletConnectionController, /scope\.step\(\(\) => wallet\.loginOrLink\(\)\)/, "Wallet SIWE must run through the bounded selection scope.");
 assert.doesNotMatch(
   rmtIdentity.match(/connectTradingWallet:\s*\(\) => \{[\s\S]*?\n\s*\},\n\s*enabled:/)?.[0] ?? "",
   /openPrivyLogin/,
   "Terminal wallet connection must not enter Privy's social, passkey, or embedded-wallet login chooser."
 );
-assert.match(rmtIdentity, /useSetActiveWallet/, "The identity boundary must bind the exact selected connector into Wagmi.");
+assert.match(rmtIdentity, /await switchAccountAsync\(\{ connector: selected \}\)/, "Switching must await the exact connector mutation.");
+assert.match(rmtIdentity, /await connectAsync\(\{ connector: selected \}\)/, "Connecting must await the exact connector mutation.");
+assert.match(rmtIdentity, /connectorProvider !== provider/, "The connector must match the independently selected provider instance.");
+assert.match(rmtIdentity, /useConnectWallet\(\)/, "Uncorrelated global connection callbacks must not activate a wallet.");
 assert.match(rmtIdentity, /walletGatewayKey/, "Trading identity must be connector-qualified rather than address-only.");
 assert.match(privyWalletButton, /identity\.selectTradingWallet\(walletKey\)/, "The wallet menu must activate an exact gateway identity.");
 assert.match(privyWalletButton, /RMT will not guess/, "Same-address connector ambiguity must fail closed.");

@@ -1,15 +1,16 @@
+import { after } from "next/server";
 import { verifyZeroXFirmQuoteCommitment, ZeroXFirmQuoteCommitmentError } from "../../../../lib/server/vnext-zero-x-firm-quote-commitment";
 import { emitTradeJourney } from "../../../../lib/vnext/trade-journey";
 import { randomUUID } from "node:crypto";
 import { getAddress, type Hex } from "viem";
 import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
 import { stockTokenExecutionPolicyErrorResponse } from "../../../../lib/server/robinhood-stock-token-registry";
-import { readVNextVerifiedAssetIdentity } from "../../../../lib/server/vnext-asset-identity";
+import { readVNextVerifiedAssetIdentity, vNextExecutionIdentityErrorResponse } from "../../../../lib/server/vnext-asset-identity";
 import { prepareRobinhoodVNextAuthorization } from "../../../../lib/server/vnext-execution-engine";
 import { authorizationPayloadHash, type VNextAuthorizationPlan } from "../../../../lib/vnext/authorization-plan";
 import {
   projectIdentityAdmissionErrorResponse,
-  requireProjectIdentityDirectoryAdmitted
+  requireProjectIdentityExecutionAdmitted
 } from "../../../../lib/server/project-identity-admission";
 import {
   directExecutionBinding,
@@ -81,17 +82,14 @@ export async function POST(request: Request) {
     const outputAsset = getAddress(parsed.data.outputAsset);
     const tradeAuthorization = await requireAuthenticatedTradeWallet(request, recipient);
     const [inputIdentity, outputIdentity] = await Promise.all([
-      readVNextVerifiedAssetIdentity(inputAsset),
-      readVNextVerifiedAssetIdentity(outputAsset)
+      readVNextVerifiedAssetIdentity(inputAsset, { scheduleRevalidation: after }),
+      readVNextVerifiedAssetIdentity(outputAsset, { scheduleRevalidation: after })
     ]);
     if (!inputIdentity || !outputIdentity) {
       emitTradeJourney({ phase: "IDENTITY_UNAVAILABLE", providerRequestAttempted: false });
       return Response.json({ error: "Both assets require verified Robinhood Chain identity before wallet review.", phase: "IDENTITY_UNAVAILABLE" }, { status: 422, headers: noStore });
     }
-    await requireProjectIdentityDirectoryAdmitted([
-      { address: inputAsset },
-      { address: outputAsset }
-    ]);
+    await requireProjectIdentityExecutionAdmitted([inputIdentity, outputIdentity].filter(identity => !identity.native).map(identity => ({ address: identity.address, verifiedIdentity: identity })), after);
 
     const settlementMode = parsed.data.provider === "uniswap-v3"
       ? selectVNextUniswapV3SettlementMode({ inputAsset, outputAsset, recipient })
@@ -303,6 +301,8 @@ export async function POST(request: Request) {
     }
     const publicProviderResponse = vNextPublicExecutionProviderScopeErrorResponse(cause);
     if (publicProviderResponse) return publicProviderResponse;
+    const assetIdentityResponse = vNextExecutionIdentityErrorResponse(cause);
+    if (assetIdentityResponse) return assetIdentityResponse;
     const identityResponse = tradeIdentityErrorResponse(cause);
     if (identityResponse) return identityResponse;
     const eligibilityResponse = vNextExecutionEligibilityErrorResponse(cause);

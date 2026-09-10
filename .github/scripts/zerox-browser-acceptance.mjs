@@ -1,4 +1,5 @@
 import { runZeroXFirmCommitmentJourneys } from "./zerox-browser-firm-commitment.mjs";
+import { hotPathInventory, runHotPathBrowserAcceptance } from './execution-hot-path-browser.mjs';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
@@ -39,6 +40,9 @@ const routeFixtures = createRouteOnDemandFixtures({ word, string, weth, runtime 
 function call(transaction) {
   const data = transaction.data ?? transaction.input ?? '0x';
   const to = String(transaction.to).toLowerCase();
+  if (state.metadataUnavailable && ['0x06fdde03', '0x95d89b41', '0x313ce567', '0x18160ddd'].some(selector => data.startsWith(selector))) {
+    throw new Error('Deterministic fresh metadata unavailable');
+  }
   if (data.startsWith('0x82ad56cb')) {
     const { args } = decodeFunctionData({ abi: aggregateAbi, data });
     const results = args[0].map((item) => {
@@ -102,6 +106,9 @@ function call(transaction) {
 function rpc(request) {
   state.rpc.push({ method: request.method, params: request.params });
   try {
+    if (request.method === 'eth_getCode' && String(request.params[0]).toLowerCase() === `0x${'9'.repeat(40)}`) {
+      return { jsonrpc: '2.0', id: request.id, result: runtime };
+    }
     const overridden = state.rpcOverride?.(request);
     if (overridden !== undefined) return { jsonrpc: '2.0', id: request.id, result: overridden };
     let result;
@@ -141,6 +148,8 @@ function rpc(request) {
 function external(input) {
   const url = new URL(input.url);
   state.outbound.push(`${input.method} ${url.origin}${url.pathname}`);
+  const inventory = hotPathInventory(url, state, usdg);
+  if (inventory) return inventory;
   const routeResponse = routeFixtures.external(input);
   if (routeResponse) return routeResponse;
   if (url.hostname === 'browser-acceptance.invalid') {
@@ -229,6 +238,8 @@ export async function runZeroXBrowserAcceptance() {
     RMT_VNEXT_AUTHORIZATION_ENABLED: 'true', RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: 'zero-x-swap',
     RMT_VNEXT_ZEROX_OBSERVATION_ENABLED: 'true', RMT_VNEXT_ZEROX_FIRM_QUOTE_VERIFICATION_ENABLED: 'true',
     RMT_ZEROX_API_KEY: 'server-only-test-key',
+    RMT_MARKET_INDEXER_URL: 'https://identity-indexer.fixture.invalid',
+    RMT_MARKET_INDEXER_READ_TOKEN: ['local', 'identity', 'fixture', 'read', 'credential'].join('-'),
     RMT_SETTLEMENT_TRACE_RPC_URL: 'https://browser-acceptance.invalid',
     RMT_VNEXT_VERIFICATION_COMMITMENT_SECRET: "deterministic-browser-commitment-secret-local-only", RMT_ZEROX_ALLOWANCE_HOLDER: holder, RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH: keccak256(runtime),
     NEXT_PUBLIC_PRIVY_APP_ID: claims.aud, PRIVY_VERIFICATION_KEY: publicKey.export({ format: 'pem', type: 'spki' })
@@ -249,6 +260,7 @@ export async function runZeroXBrowserAcceptance() {
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
     browser = await chromium.launch({ headless: true });
+    results.push(...await runHotPathBrowserAcceptance({ browser, base, identity, state, wallet, usdg, stock: routeFixtures.assets.stock }));
     for (const [name, viewport] of (process.env.RMT_ACCEPTANCE_ROUTE_ON_DEMAND_ONLY === 'true' ? [] : [['desktop', { width: 1440, height: 900 }], ['mobile', { width: 390, height: 844 }]])) {
       const context = await browser.newContext({ viewport, ...(name === 'mobile' ? { isMobile: true, hasTouch: true } : {}) });
       await context.addInitScript(({ wallet }) => {
