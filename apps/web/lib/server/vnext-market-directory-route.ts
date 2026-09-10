@@ -89,6 +89,7 @@ function cacheNamespace(dependencies: VNextMarketDirectoryRouteDependencies) {
 }
 
 function normalizedDirectoryCacheKey(requestUrl: string, dependencies: VNextMarketDirectoryRouteDependencies) {
+  if (new URL(requestUrl).searchParams.get("identityEnrichment") === "1") return null;
   const cursor = new URL(requestUrl).searchParams.get("cursor");
   if (cursor !== null) return null;
   return `${cacheNamespace(dependencies)}:root`;
