@@ -44,6 +44,10 @@ import {
 } from "./token-identity-index.js";
 
 export type WorkerStatus = {
+  lastWorkerSuccessAt?: string | null;
+  lastWorkerFailureAt?: string | null;
+  consecutiveWorkerFailures?: number;
+  totalWorkerFailures?: number;
   running: boolean;
   cycleSequence: number;
   verifiedSources: string[];
@@ -691,6 +695,14 @@ export class MarketIndexerWorker {
       const completedAt = Date.now();
       this.status.lastCycleCompletedAt = new Date(completedAt).toISOString();
       this.status.lastCycleDurationMs = completedAt - startedAt;
+      if (this.status.lastError === null) {
+        this.status.lastWorkerSuccessAt = this.status.lastCycleCompletedAt;
+        this.status.consecutiveWorkerFailures = 0;
+      } else {
+        this.status.lastWorkerFailureAt = this.status.lastCycleCompletedAt;
+        this.status.consecutiveWorkerFailures = (this.status.consecutiveWorkerFailures ?? 0) + 1;
+        this.status.totalWorkerFailures = (this.status.totalWorkerFailures ?? 0) + 1;
+      }
       this.status.running = false;
       this.logHeartbeat();
     }
