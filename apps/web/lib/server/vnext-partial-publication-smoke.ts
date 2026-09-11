@@ -45,7 +45,7 @@ async function main() {
   assert.equal(parsed.identityEvidence, "last-known"); assert.equal(parsed.nextCursor, "page2");
   assert.equal(selectVNextMarketDirectoryView(parsed.markets!, "active").length, 0);
   assert.equal(vNextSelectedMarketExecutionState(parsed.markets!.find(m => m.address.toLowerCase() === address(0).toLowerCase())), "stock-token-view-only");
-  mock.timers.enable({ apis: ["setTimeout"] });
+  mock.timers.enable({ apis: ["Date", "setTimeout"], now: Date.now() });
   const enriched = readVNextIndexedMarketDirectoryPage("https://fixture.invalid?identityEnrichment=1", dependencies);
   const duplicate = readVNextIndexedMarketDirectoryPage("https://fixture.invalid?identityEnrichment=1", dependencies);
   await new Promise<void>(resolve => setImmediate(resolve));
