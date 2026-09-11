@@ -147,12 +147,12 @@ try {
   rejectsPages(p => p[1].page.nextCursor = "bad cursor!", /Invalid directory cursor/);
   rejectsPages(p => delete p[1].page.nextCursor, /Invalid directory cursor/);
   rejectsPages(p => p[1].page.nextCursor = "a".repeat(1025), /Invalid directory cursor/);
-  rejectsPages(p => p[1].page.markets[0] = structuredClone(p[0].page.markets[0]), /Cross-page duplicate address\/asset/);
+  rejectsPages(p => p[1].page.markets[0] = structuredClone(p[0].page.markets[0]), /CROSS_PAGE_DUPLICATE_MARKET_EVIDENCE/);
   rejectsPages(p => {
     const original = p[0].page.markets[0].canonicalMarkets[0];
     const later = p[1].page.markets[0].canonicalMarkets[0];
     later.poolKey = original.poolKey; later.poolAddress = original.poolAddress;
-  }, /Cross-page duplicate market/);
+  }, /CONTRADICTORY_CANONICAL_POOL_BINDING/);
   rejectsPages(p => p[1].headers = jsonHeaders.replace("MISS", "HIT"), /bypass presentation cache/);
   rejectsPages(p => p[1].headers = jsonHeaders.replace("MISS", "STALE"), /bypass presentation cache/);
   rejectsPages(p => p[1].headers = jsonHeaders.replace("no-store", "public"), /bypass presentation cache/);
@@ -196,7 +196,7 @@ try {
   for (const [response, pattern] of [
     [observation(page(101, cursor())), /cursor loop/],
     [observation(page(101, cursor(101))), /forward progress/],
-    [observation(page(1, null)), /Cross-page duplicate/],
+    [observation(page(1, null)), /CROSS_PAGE_DUPLICATE_MARKET_EVIDENCE/],
     [{ ...observation(page(101, null)), status: 500 }, /HTTP\/JSON/],
     [observation({ ...page(101, null), failureReasons: ["INDEXED_INVENTORY_UNAVAILABLE"] }), /inventory\/classification failure/]
   ]) {
@@ -215,6 +215,87 @@ try {
     fetchPage: async () => assert.fail("Expired budget must not fetch") }), /budget exhausted/);
   collectorCases++;
   const monitor = createDirectoryMonitor(); assert.throws(() => monitor.finish(), /incomplete/);
+
+  const aggregate = observations => {
+    const monitor = createDirectoryMonitor();
+    for (const entry of observations) monitor.accept(entry);
+    return monitor.finish();
+  };
+  const repeatedAssetPages = () => {
+    const entries = healthyPages();
+    const first = entries[0].page.markets[0];
+    for (const entry of entries.slice(1)) {
+      const nextPool = structuredClone(entry.page.markets[0].canonicalMarkets[0]);
+      nextPool.token0 = first.address;
+      entry.page.markets[0] = { ...structuredClone(first), canonicalMarkets: [nextPool] };
+    }
+    return entries;
+  };
+  const repeated = repeatedAssetPages();
+  const snapshot = JSON.stringify(repeated);
+  const union = aggregate(repeated);
+  const assetA = union.assets.find(asset => asset.address === address(1));
+  assert.equal(assetA.canonicalMarkets.length, 3);
+  assert.equal(union.uniqueAssets, 25);
+  assert.equal(union.observedMarkets, 27);
+  assert.equal(union.coverage, "partial");
+  assert.equal(union.tradingAuthorization, false);
+  assert.equal(JSON.stringify(repeated), snapshot, "Aggregation must not mutate raw observations");
+  const two = repeatedAssetPages().slice(0, 2); two[1].page.nextCursor = null;
+  assert.equal(aggregate(two).assets.find(asset => asset.address === address(1)).canonicalMarkets.length, 2);
+
+  for (const change of [
+    market => market.assetId = "eip155:1/contract:" + market.address,
+    market => { market.verifiedIdentity.name = "Conflicting"; market.name = "Conflicting"; },
+    market => { market.verifiedIdentity.symbol = "BAD"; market.symbol = "BAD"; },
+    market => market.verifiedIdentity.decimals = 6,
+    market => market.verifiedIdentity.address = address(999)
+  ]) {
+    const entries = repeatedAssetPages(); change(entries[1].page.markets[0]);
+    assert.throws(() => aggregate(entries), /CROSS_PAGE_ASSET_IDENTITY_CONFLICT/);
+    negativeCases++;
+  }
+  const delayedDuplicate = repeatedAssetPages();
+  delayedDuplicate[2].page.markets[0].canonicalMarkets = structuredClone(delayedDuplicate[0].page.markets[0].canonicalMarkets);
+  assert.throws(() => aggregate(delayedDuplicate), /CROSS_PAGE_DUPLICATE_MARKET_EVIDENCE/); negativeCases++;
+
+  const sharedPoolPages = () => {
+    const entries = [observation(page(1, cursor(), 1)), observation(page(2, null, 1), cursor())];
+    const shared = entries[0].page.markets[0].canonicalMarkets[0];
+    shared.token1 = address(2);
+    entries[1].page.markets[0].canonicalMarkets = [structuredClone(shared)];
+    return entries;
+  };
+  const shared = aggregate(sharedPoolPages());
+  assert.equal(shared.uniqueAssets, 2);
+  assert.equal(shared.assets[0].canonicalMarkets[0].poolKey, shared.assets[1].canonicalMarkets[0].poolKey);
+  assert.equal(shared.tradingAuthorization, false);
+  const invalidShared = sharedPoolPages();
+  invalidShared[1].page.markets[0].canonicalMarkets[0].token1 = address(777);
+  assert.throws(() => aggregate(invalidShared), /unbound market/); negativeCases++;
+  const contradictoryShared = sharedPoolPages();
+  contradictoryShared[1].page.markets[0].canonicalMarkets[0].token0 = address(777);
+  assert.throws(() => aggregate(contradictoryShared), /CONTRADICTORY_CANONICAL_POOL_BINDING/); negativeCases++;
+  const neitherBound = sharedPoolPages();
+  for (const entry of neitherBound) {
+    entry.page.markets[0].canonicalMarkets[0].token0 = address(777);
+    entry.page.markets[0].canonicalMarkets[0].token1 = address(778);
+  }
+  assert.throws(() => aggregate(neitherBound), /unbound market/); negativeCases++;
+
+  let raw = [];
+  let reads = 0;
+  await assert.rejects(collectProductionDirectory({ first: delayedDuplicate[0],
+    fetchPage: async () => delayedDuplicate[++reads], record: entries => { raw = structuredClone(entries); }
+  }), /CROSS_PAGE_DUPLICATE_MARKET_EVIDENCE/);
+  assert.equal(raw.length, 3, "Failing duplicate must remain in raw audit evidence");
+  assert.deepEqual(raw[2], delayedDuplicate[2]); collectorCases++;
+  reads = 0;
+  const collectedUnion = await collectProductionDirectory({ first: repeated[0],
+    fetchPage: async () => repeated[++reads], record: entries => { raw = structuredClone(entries); }
+  });
+  assert.equal(collectedUnion.assets.find(asset => asset.address === address(1)).canonicalMarkets.length, 3);
+  assert.equal(raw.length, 3); assert.equal(JSON.stringify(raw), snapshot); collectorCases++;
 } finally {
   fs.rmSync(directory, { recursive: true, force: true });
 }

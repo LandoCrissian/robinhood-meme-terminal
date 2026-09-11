@@ -86,7 +86,6 @@ export function validateDirectoryPage(page, label) {
   if (!Array.isArray(page.quarantinedAddresses) || page.quarantinedAddresses.some(value => !addressValid(value))
     || new Set(page.quarantinedAddresses.map(lower)).size !== page.quarantinedAddresses.length) throw new Error(`${label} has invalid quarantine metadata.`);
   const addresses = new Set();
-  const pools = new Set();
   for (const market of page.markets) {
     const address = lower(market?.address);
     const identity = market?.verifiedIdentity;
@@ -110,16 +109,33 @@ export function validateDirectoryPage(page, label) {
         || (lower(pool.token0) === ZERO_ADDRESS && !(pool.sourceId === "uniswap-v4" && pool.version === 4))) throw new Error(`${label} has malformed or unbound market evidence.`);
       const key = `${pool.sourceId}:${pool.poolKey}`.toLowerCase();
       if (marketPools.has(key)) throw new Error(`${label} contains duplicate market identity.`);
-      marketPools.add(key); pools.add(key);
+      marketPools.add(key);
     }
   }
-  return { addresses, pools };
+  return { addresses };
+}
+
+function monitoredIdentity(market) {
+  return { address: lower(market?.address), assetId: lower(market?.assetId),
+    verifiedIdentity: { address: lower(market?.verifiedIdentity?.address),
+      name: market?.verifiedIdentity?.name, symbol: market?.verifiedIdentity?.symbol,
+      decimals: market?.verifiedIdentity?.decimals } };
+}
+
+function poolBinding(pool) {
+  // Compare immutable canonical evidence, not changing live pool telemetry.
+  return JSON.stringify({ sourceId: pool.sourceId, protocol: pool.protocol, version: pool.version,
+    poolKey: lower(pool.poolKey), poolAddress: lower(pool.poolAddress),
+    token0: lower(pool.token0), token1: lower(pool.token1), stable: pool.stable,
+    fee: pool.fee, tickSpacing: pool.tickSpacing, hooks: lower(pool.hooks),
+    transactionHash: lower(pool.transactionHash), blockNumber: pool.blockNumber, blockHash: lower(pool.blockHash) });
 }
 
 export function createDirectoryMonitor() {
   const seenCursors = new Set();
-  const addresses = new Set();
-  const pools = new Set();
+  const assets = new Map();
+  // Shared pools may appear under both assets. This is consistency, NOT uniqueness.
+  const poolBindings = new Map();
   const quarantines = new Set();
   const failureReasons = new Set();
   let expectedCursor = null;
@@ -135,7 +151,14 @@ export function createDirectoryMonitor() {
       if (status !== 200 || typeof headers !== "string" || !/^content-type:\s*application\/json\b/im.test(headers)) throw new Error("Directory HTTP/JSON response is invalid.");
       if (pages > 0 && (!/^x-rmt-directory-cache:\s*MISS\s*$/im.test(headers)
         || !/^cache-control:.*\bno-store\b/im.test(headers))) throw new Error("Continuation must bypass presentation cache with no-store.");
-      const identities = validateDirectoryPage(page, `Indexed page ${pages + 1}`);
+      for (const market of Array.isArray(page?.markets) ? page.markets : []) {
+        const identity = monitoredIdentity(market);
+        const previous = assets.get(identity.address);
+        if (previous && JSON.stringify(previous.identity) !== JSON.stringify(identity)) {
+          throw new Error("CROSS_PAGE_ASSET_IDENTITY_CONFLICT");
+        }
+      }
+      validateDirectoryPage(page, `Indexed page ${pages + 1}`);
       if (page.nextCursor !== null) {
         if (seenCursors.has(page.nextCursor)) throw new Error("Directory cursor loop detected.");
         const next = directoryCursorPosition(page.nextCursor);
@@ -146,16 +169,21 @@ export function createDirectoryMonitor() {
         }
         seenCursors.add(page.nextCursor);
       }
-      for (const value of identities.addresses) {
-        if (addresses.has(value)) throw new Error("Cross-page duplicate address/asset identity.");
-        addresses.add(value);
-      }
-      for (const value of identities.pools) {
-        if (pools.has(value)) throw new Error("Cross-page duplicate market identity.");
-        pools.add(value);
+      for (const market of page.markets) {
+        const identity = monitoredIdentity(market);
+        const asset = assets.get(identity.address) ?? { identity, pools: new Map() };
+        for (const pool of market.canonicalMarkets) {
+          const key = `${pool.sourceId}:${pool.poolKey}`.toLowerCase();
+          if (asset.pools.has(key)) throw new Error("CROSS_PAGE_DUPLICATE_MARKET_EVIDENCE");
+          const binding = poolBinding(pool);
+          if (poolBindings.has(key) && poolBindings.get(key) !== binding) throw new Error("CONTRADICTORY_CANONICAL_POOL_BINDING");
+          poolBindings.set(key, binding);
+          asset.pools.set(key, structuredClone(pool));
+        }
+        assets.set(identity.address, asset);
       }
       for (const value of page.quarantinedAddresses) quarantines.add(lower(value));
-      if ([...quarantines].some(value => addresses.has(value))) throw new Error("Directory publishes quarantined identity.");
+      if ([...quarantines].some(value => assets.has(value))) throw new Error("Directory publishes quarantined identity.");
       for (const reason of page.failureReasons) failureReasons.add(reason);
       if (pages === 0) firstPageMarkets = page.markets.length;
       pages++; markets += page.markets.length;
@@ -166,6 +194,8 @@ export function createDirectoryMonitor() {
       if (pages === 0 || expectedCursor !== null) throw new Error("Directory pagination incomplete; no terminal page observed.");
       return { coverage: partial ? "partial" : "complete", inventorySource: "indexed", pages,
         firstPageMarkets, observedMarkets: markets, failureReasons: [...failureReasons],
+        uniqueAssets: assets.size,
+        assets: [...assets.values()].map(asset => ({ ...structuredClone(asset.identity), canonicalMarkets: [...asset.pools.values()].map(pool => structuredClone(pool)) })),
         paginationTerminal: true, tradingAuthorization: false };
     }
   };

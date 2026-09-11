@@ -42,12 +42,38 @@ market-indexer server contract. Descending block/log coordinates must strictly
 progress. Unknown versions, loops, changing filters and backward coordinates fail.
 The monitor observes and follows cursors; it never generates or rewrites them.
 
-As explicitly requested, cross-page address/asset and canonical market duplicates
-fail. The pool-paginated runtime can legitimately repeat an asset with additional
-pool evidence: such a response fails this stricter monitor, not proof of a trading
-regression. This PR neither deduplicates that failure away nor changes runtime.
-Within one page a pool may support both token identities, but duplicate evidence
-within one asset is rejected. Quarantine is checked across the entire collection.
+### Asset-scoped successor reconciliation
+
+Successor base: `0b3a3262a12a7bb2bc79284a66385af5d32aae22`.
+Saved live run `34654888636` failed under the original strict cross-page duplicate
+rule. Its two partial pages contain 17 and 20 asset observations; five assets recur
+with distinct additional pools. Classification: `STRICT_MONITOR_DUPLICATE_FALSE_NEGATIVE`.
+This is historical captured evidence, not a new live Production rerun.
+
+Upstream `directoryMarketsFromCanonicalPools` associates each pool with both its
+token0 and token1 assets. Duplicate authority is therefore asset-scoped:
+`normalizedAssetAddress:sourceId:poolKey`, not global pool-key uniqueness.
+Coherent repeated assets union distinct canonical pool evidence. Repeated evidence
+for the same asset/pool fails `CROSS_PAGE_DUPLICATE_MARKET_EVIDENCE`, including after
+intervening pages. A shared pool under different assets is valid if it binds both
+assets and its immutable canonical metadata agrees. A global metadata map checks
+consistency only, never rejects a pool merely because another asset uses it.
+Mutable live pool telemetry is not treated as immutable identity.
+
+Each asset retains one normalized address/assetId/verified-address and exact verified
+name, symbol and decimals. Cross-page conflicts fail
+`CROSS_PAGE_ASSET_IDENTITY_CONFLICT`; no page silently wins. Quarantine remains
+collection-wide. Within-page duplicate evidence remains invalid.
+
+The collector still records raw pages before validation; aggregation never edits
+them or hides a rejected duplicate. `observedMarkets` counts raw asset occurrences,
+`uniqueAssets` counts aggregated assets, and `assets` exposes coherent identities
+and their union of asset-scoped canonical pools. Coverage and cursor semantics are
+unchanged: repeated assets never imply complete coverage or trading authorization.
+
+This successor changes only the monitor verifier, its smoke tests and this document.
+Collector code, workflow behavior and all application/runtime boundaries remain
+unchanged. No live rerun is authorized before independent PR review.
 
 Known identity-enrichment failures may accompany truthful partial coverage.
 Explicit inventory/classification errors, unknown reasons, false-empty pages,
