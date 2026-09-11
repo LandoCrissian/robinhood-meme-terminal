@@ -54,6 +54,8 @@ jobs:
 
           check_endpoint health "$base/api/health" "health-artifacts/health.headers"
           check_endpoint directory "$base/api/vnext/market-directory" "health-artifacts/directory.headers"
+          # Follow genuine cursors to terminal pagination within a fail-closed budget.
+          node scripts/collect-production-directory.mjs health-artifacts
           while read -r name symbol address; do
             check_endpoint "search-$name" "$base/api/vnext/market-search?q=$address"
             check_endpoint "search-$name-text" "$base/api/vnext/market-search?q=$symbol"
@@ -84,6 +86,8 @@ jobs:
           mv health-artifacts/robots.json health-artifacts/robots.txt
           mv health-artifacts/sitemap.json health-artifacts/sitemap.xml
 
+          # Preserve freshness after bounded directory/search collection.
+          check_endpoint health "$base/api/health" "health-artifacts/health.headers"
           node scripts/verify-production-health.mjs health-artifacts
           node scripts/verify-public-surface.mjs health-artifacts
 

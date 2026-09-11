@@ -36,28 +36,139 @@ function requireHtml(read, name, label) {
   }
 }
 
-function validateDirectoryPage(page, label, { requireCursor }) {
-  if (page?.canonical !== true) throw new Error(`${label} is not canonical.`);
-  if (page.coverage !== "partial" && page.coverage !== "complete") {
-    throw new Error(`${label} coverage is invalid.`);
+export const MAX_DIRECTORY_MONITOR_PAGES = 8;
+const FAILURE_REASONS = new Set([
+  "IDENTITY_RPC_TIMEOUT", "IDENTITY_RPC_UNAVAILABLE", "IDENTITY_MULTICALL_FAILURE",
+  "IDENTITY_RESPONSE_INVALID", "STOCK_CLASSIFICATION_UNAVAILABLE",
+  "PROJECT_IDENTITY_AUTHORITY_UNAVAILABLE", "INDEXED_INVENTORY_UNAVAILABLE",
+  "INDEXED_IDENTITY_SNAPSHOT_UNAVAILABLE", "CURATED_POOL_VERIFICATION_UNAVAILABLE",
+  "OTHER_BOUNDED_REASON"
+]);
+const addressValid = value => typeof value === "string" && ADDRESS_PATTERN.test(value) && lower(value) !== ZERO_ADDRESS;
+const bytes32 = value => typeof value === "string" && /^0x[0-9a-fA-F]{64}$/.test(value);
+const integer = value => typeof value === "string" && /^(?:0|[1-9][0-9]*)$/.test(value) && value.length <= 78;
+const textValid = (value, max) => typeof value === "string" && value.trim().length > 0
+  && value.length <= max && !/[\u0000-\u001f\u007f]/.test(value);
+
+// Read, never synthesize/rewrite, the current unfiltered v2 cursor contract.
+// Source: market-indexer server.ts decodeCursor and descending (block, log) SQL.
+export function directoryCursorPosition(cursor) {
+  if (typeof cursor !== "string" || !/^[A-Za-z0-9_-]{1,1024}$/.test(cursor)) throw new Error("Invalid directory cursor.");
+  let value;
+  try {
+    const bytes = Buffer.from(cursor, "base64url");
+    if (bytes.toString("base64url") !== cursor) throw new Error();
+    value = JSON.parse(bytes.toString("utf8"));
+  } catch { throw new Error("Invalid directory cursor encoding."); }
+  if (!value || Object.keys(value).sort().join(",") !== "blockNumber,chainId,logIndex,poolKey,source,token,v"
+    || value.v !== 2 || value.chainId !== CHAIN_ID || value.source !== null || value.token !== null || value.poolKey !== null
+    || !integer(value.blockNumber) || !Number.isSafeInteger(value.logIndex) || value.logIndex < 0) {
+    throw new Error("Invalid directory cursor contract or query binding.");
   }
-  if (!Array.isArray(page.markets) || page.markets.length === 0) {
-    throw new Error(`${label} is empty.`);
+  return value;
+}
+
+export function validateDirectoryPage(page, label) {
+  if (page?.canonical !== true || page.inventorySource !== "indexed") throw new Error(`${label} must be canonical indexed inventory, not curated fallback.`);
+  if (!["partial", "complete"].includes(page.coverage) || typeof page.revalidationComplete !== "boolean"
+    || !["live", "last-known", "mixed"].includes(page.identityEvidence)
+    || (page.stale !== undefined && typeof page.stale !== "boolean")) throw new Error(`${label} has invalid coverage metadata.`);
+  timestamp(page.updatedAt, `${label} updatedAt`);
+  if (!Array.isArray(page.failureReasons) || page.failureReasons.some(reason => !FAILURE_REASONS.has(reason))
+    || new Set(page.failureReasons).size !== page.failureReasons.length) throw new Error(`${label} has invalid failure reasons.`);
+  if (page.error !== undefined || page.failureReasons.some(reason => ["INDEXED_INVENTORY_UNAVAILABLE", "STOCK_CLASSIFICATION_UNAVAILABLE", "OTHER_BOUNDED_REASON"].includes(reason))) {
+    throw new Error(`${label} reports an inventory/classification failure, not healthy partial coverage.`);
   }
-  const addresses = page.markets.map((market) => lower(market?.address));
-  if (addresses.some((address) => !ADDRESS_PATTERN.test(address) || address === ZERO_ADDRESS)) {
-    throw new Error(`${label} contains an invalid or zero token address.`);
+  if (page.nextCursor !== null) directoryCursorPosition(page.nextCursor);
+  if ((page.coverage === "complete" && (!page.revalidationComplete || page.nextCursor !== null || page.failureReasons.length > 0))
+    || (!page.revalidationComplete && (page.coverage !== "partial" || page.stale !== true))) throw new Error(`${label} has contradictory coverage.`);
+  if (!Array.isArray(page.markets) || page.markets.length === 0 || page.markets.length > 200) throw new Error(`${label} is empty or exceeds the page bound.`);
+  if (!Array.isArray(page.quarantinedAddresses) || page.quarantinedAddresses.some(value => !addressValid(value))
+    || new Set(page.quarantinedAddresses.map(lower)).size !== page.quarantinedAddresses.length) throw new Error(`${label} has invalid quarantine metadata.`);
+  const addresses = new Set();
+  const pools = new Set();
+  for (const market of page.markets) {
+    const address = lower(market?.address);
+    const identity = market?.verifiedIdentity;
+    if (!addressValid(address) || !identity || lower(identity.address) !== address
+      || lower(market.assetId) !== `eip155:${CHAIN_ID}/contract:${address}`
+      || !textValid(identity.name, 80) || !textValid(identity.symbol, 16)
+      || !Number.isSafeInteger(identity.decimals) || identity.decimals < 0 || identity.decimals > 255
+      || market.name !== identity.name || market.symbol !== identity.symbol) throw new Error(`${label} contains malformed or mismatched verified identity.`);
+    if (addresses.has(address)) throw new Error(`${label} contains duplicate identity.`);
+    addresses.add(address);
+    if (!Array.isArray(market.canonicalMarkets) || market.canonicalMarkets.length < 1 || market.canonicalMarkets.length > 100) throw new Error(`${label} has malformed canonical markets.`);
+    const marketPools = new Set();
+    for (const pool of market.canonicalMarkets) {
+      if (!pool || !textValid(pool.sourceId, 64) || !/^[a-z0-9]+(?:[._-][a-z0-9]+)*$/.test(pool.sourceId)
+        || !["sushiswap", "uniswap", "up"].includes(pool.protocol) || ![2, 3, 4].includes(pool.version)
+        || !ADDRESS_PATTERN.test(pool.token0) || !addressValid(pool.token1) || lower(pool.token0) === lower(pool.token1)
+        || ![lower(pool.token0), lower(pool.token1)].includes(address)
+        || !bytes32(pool.transactionHash) || !bytes32(pool.blockHash) || !integer(pool.blockNumber)
+        || (pool.version === 4 ? (!bytes32(pool.poolKey) || /^0x0+$/.test(pool.poolKey) || pool.poolAddress !== null || pool.protocol !== "uniswap")
+          : (!addressValid(pool.poolKey) || lower(pool.poolAddress) !== lower(pool.poolKey)))
+        || (lower(pool.token0) === ZERO_ADDRESS && !(pool.sourceId === "uniswap-v4" && pool.version === 4))) throw new Error(`${label} has malformed or unbound market evidence.`);
+      const key = `${pool.sourceId}:${pool.poolKey}`.toLowerCase();
+      if (marketPools.has(key)) throw new Error(`${label} contains duplicate market identity.`);
+      marketPools.add(key); pools.add(key);
+    }
   }
-  if (new Set(addresses).size !== addresses.length) {
-    throw new Error(`${label} contains a duplicate token address.`);
-  }
-  if (requireCursor && (typeof page.nextCursor !== "string" || page.nextCursor.length === 0)) {
-    throw new Error(`${label} is missing its opaque next cursor.`);
-  }
-  if (page.nextCursor !== null && typeof page.nextCursor !== "string") {
-    throw new Error(`${label} next cursor is invalid.`);
-  }
-  return addresses;
+  return { addresses, pools };
+}
+
+export function createDirectoryMonitor() {
+  const seenCursors = new Set();
+  const addresses = new Set();
+  const pools = new Set();
+  const quarantines = new Set();
+  const failureReasons = new Set();
+  let expectedCursor = null;
+  let pages = 0;
+  let markets = 0;
+  let partial = false;
+  let firstPageMarkets = 0;
+  return {
+    accept({ requestCursor, status, headers, page }) {
+      if (pages >= MAX_DIRECTORY_MONITOR_PAGES) throw new Error("Directory monitor page budget exceeded; pagination incomplete.");
+      if (pages > 0 && expectedCursor === null) throw new Error("Unexpected page after terminal pagination.");
+      if (requestCursor !== expectedCursor) throw new Error("Continuation request is not bound to returned cursor.");
+      if (status !== 200 || typeof headers !== "string" || !/^content-type:\s*application\/json\b/im.test(headers)) throw new Error("Directory HTTP/JSON response is invalid.");
+      if (pages > 0 && (!/^x-rmt-directory-cache:\s*MISS\s*$/im.test(headers)
+        || !/^cache-control:.*\bno-store\b/im.test(headers))) throw new Error("Continuation must bypass presentation cache with no-store.");
+      const identities = validateDirectoryPage(page, `Indexed page ${pages + 1}`);
+      if (page.nextCursor !== null) {
+        if (seenCursors.has(page.nextCursor)) throw new Error("Directory cursor loop detected.");
+        const next = directoryCursorPosition(page.nextCursor);
+        if (requestCursor !== null) {
+          const previous = directoryCursorPosition(requestCursor);
+          if (BigInt(next.blockNumber) > BigInt(previous.blockNumber)
+            || (next.blockNumber === previous.blockNumber && next.logIndex >= previous.logIndex)) throw new Error("Directory cursor did not make forward progress.");
+        }
+        seenCursors.add(page.nextCursor);
+      }
+      for (const value of identities.addresses) {
+        if (addresses.has(value)) throw new Error("Cross-page duplicate address/asset identity.");
+        addresses.add(value);
+      }
+      for (const value of identities.pools) {
+        if (pools.has(value)) throw new Error("Cross-page duplicate market identity.");
+        pools.add(value);
+      }
+      for (const value of page.quarantinedAddresses) quarantines.add(lower(value));
+      if ([...quarantines].some(value => addresses.has(value))) throw new Error("Directory publishes quarantined identity.");
+      for (const reason of page.failureReasons) failureReasons.add(reason);
+      if (pages === 0) firstPageMarkets = page.markets.length;
+      pages++; markets += page.markets.length;
+      partial ||= page.coverage === "partial";
+      expectedCursor = page.nextCursor;
+    },
+    finish() {
+      if (pages === 0 || expectedCursor !== null) throw new Error("Directory pagination incomplete; no terminal page observed.");
+      return { coverage: partial ? "partial" : "complete", inventorySource: "indexed", pages,
+        firstPageMarkets, observedMarkets: markets, failureReasons: [...failureReasons],
+        paginationTerminal: true, tradingAuthorization: false };
+    }
+  };
 }
 
 export function verifyProductionHealthArtifacts(
@@ -114,10 +225,11 @@ export function verifyProductionHealthArtifacts(
     throw new Error("Terminal inventory health evidence is unavailable or inconsistent.");
   }
 
-  const directory = JSON.parse(read("directory.json"));
-  const firstAddresses = validateDirectoryPage(directory, "Curated directory", { requireCursor: false });
-  if (directory.nextCursor !== null || directory.coverage !== "complete") throw new Error("Curated directory must be one complete bounded page.");
-  if (firstAddresses.length !== CURRENT_MARKET_CONTROLS.length) throw new Error("Curated directory count is inconsistent.");
+  const observations = JSON.parse(read("directory-pages.json"));
+  if (!Array.isArray(observations) || observations.length > MAX_DIRECTORY_MONITOR_PAGES) throw new Error("Invalid directory page observations.");
+  const monitor = createDirectoryMonitor();
+  for (const observation of observations) monitor.accept(observation);
+  const directory = monitor.finish();
 
   for (const [name, address] of CURRENT_MARKET_CONTROLS) {
     const result = JSON.parse(read(`search-${name}.json`));
@@ -142,8 +254,7 @@ export function verifyProductionHealthArtifacts(
 
   return {
     latestBlock: health.latestBlock,
-    coverage: directory.coverage,
-    firstPageMarkets: directory.markets.length,
+    ...directory,
     exactSearchControls: CURRENT_MARKET_CONTROLS.length
   };
 }
@@ -153,8 +264,8 @@ const isMain = process.argv[1]
 if (isMain) {
   const result = verifyProductionHealthArtifacts(process.argv[2] ?? "health-artifacts");
   console.info(
-    `Terminal healthy at block ${result.latestBlock}; canonical coverage ${result.coverage}; `
-      + `${result.firstPageMarkets} curated markets; `
-      + `${result.exactSearchControls} exact and text search controls passed.`
+    `Monitor contract passed at block ${result.latestBlock}; observed coverage ${result.coverage}; `
+      + `${result.firstPageMarkets} indexed first-page markets; ${result.pages} pages; `
+      + `${result.exactSearchControls} exact and text search controls passed. Not trading or universal-coverage authorization.`
   );
 }
