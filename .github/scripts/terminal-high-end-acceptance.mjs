@@ -2309,8 +2309,10 @@ async function inspectV4PreviewUserJourney(browser, fixture) {
   });
   await panel.getByLabel("Exact input amount").fill("0.01");
   await page.waitForFunction(() => document.querySelector(".vnQuoteAttempts")?.textContent?.includes("Uniswap V4"));
+  await panel.locator(".vnRouteCard > summary").click();
   const quoteText = await panel.innerText();
-  if (!quoteText.includes("Best observed: Uniswap V4") || !quoteText.includes("Uniswap V4")) {
+  if (!quoteText.includes("Uniswap V4") || !quoteText.includes("non-executable")
+    || !quoteText.includes("No protected minimum is established before verification")) {
     throw new Error(`V4 observed provider was not visible in the Terminal: ${quoteText}`);
   }
   const quoteRequest = state.quoteRequests.find((request) =>
@@ -2585,8 +2587,11 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
     if (!await reviewButton.isDisabled() || await reviewButton.innerText() !== "Best route is quote only") {
       throw new Error("The public V3-only acceptance did not keep the Uniswap V4 winner quote-only.");
     }
+    await panel.locator(".vnRouteCard > summary").click();
     const panelText = await panel.innerText();
-    if (!panelText.includes("No public wallet route is currently admitted")) {
+    if (!panelText.includes("non-executable") || !panelText.includes("Uniswap V4")
+      || !panelText.includes("No protected minimum is established before verification")
+      || !await panel.locator(".vnOutputProtection").innerText().then(text => text.includes("Set when you trade"))) {
       throw new Error(`The V4 quote-only winner was not labeled truthfully: ${panelText}`);
     }
     const walletMethods = await page.evaluate(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__);
