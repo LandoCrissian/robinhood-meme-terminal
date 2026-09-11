@@ -36,28 +36,67 @@ function requireHtml(read, name, label) {
   }
 }
 
-function validateDirectoryPage(page, label, { requireCursor }) {
-  if (page?.canonical !== true) throw new Error(`${label} is not canonical.`);
-  if (page.coverage !== "partial" && page.coverage !== "complete") {
-    throw new Error(`${label} coverage is invalid.`);
+export function validateDirectoryPage(page, label) {
+  if (!page || page.canonical !== true || page.inventorySource !== "indexed") {
+    throw new Error(label + " must be canonical indexed inventory, not curated fallback.");
   }
-  if (!Array.isArray(page.markets) || page.markets.length === 0) {
-    throw new Error(`${label} is empty.`);
+  if (!["partial", "complete"].includes(page.coverage)
+    || typeof page.revalidationComplete !== "boolean"
+    || !["live", "last-known", "mixed"].includes(page.identityEvidence)
+    || (page.stale !== undefined && typeof page.stale !== "boolean")) {
+    throw new Error(label + " has invalid coverage metadata.");
   }
-  const addresses = page.markets.map((market) => lower(market?.address));
-  if (addresses.some((address) => !ADDRESS_PATTERN.test(address) || address === ZERO_ADDRESS)) {
-    throw new Error(`${label} contains an invalid or zero token address.`);
+  timestamp(page.updatedAt, label + " updatedAt");
+  const reasons = new Set([
+    "IDENTITY_RPC_TIMEOUT", "IDENTITY_RPC_UNAVAILABLE", "IDENTITY_MULTICALL_FAILURE",
+    "IDENTITY_RESPONSE_INVALID", "STOCK_CLASSIFICATION_UNAVAILABLE",
+    "PROJECT_IDENTITY_AUTHORITY_UNAVAILABLE", "INDEXED_INVENTORY_UNAVAILABLE",
+    "INDEXED_IDENTITY_SNAPSHOT_UNAVAILABLE", "CURATED_POOL_VERIFICATION_UNAVAILABLE",
+    "OTHER_BOUNDED_REASON"
+  ]);
+  if (!Array.isArray(page.failureReasons) || page.failureReasons.some(reason => !reasons.has(reason))
+    || new Set(page.failureReasons).size !== page.failureReasons.length) {
+    throw new Error(label + " has invalid failure reasons.");
   }
-  if (new Set(addresses).size !== addresses.length) {
-    throw new Error(`${label} contains a duplicate token address.`);
+  if (page.error || page.failureReasons.includes("INDEXED_INVENTORY_UNAVAILABLE")
+    || page.failureReasons.includes("STOCK_CLASSIFICATION_UNAVAILABLE")) {
+    throw new Error(label + " reports unavailable indexed inventory or classification.");
   }
-  if (requireCursor && (typeof page.nextCursor !== "string" || page.nextCursor.length === 0)) {
-    throw new Error(`${label} is missing its opaque next cursor.`);
+  if (page.nextCursor !== null && (typeof page.nextCursor !== "string"
+    || !/^[A-Za-z0-9_-]{1,1024}$/.test(page.nextCursor))) {
+    throw new Error(label + " has invalid cursor.");
   }
-  if (page.nextCursor !== null && typeof page.nextCursor !== "string") {
-    throw new Error(`${label} next cursor is invalid.`);
+  if ((page.coverage === "complete" && (!page.revalidationComplete || page.nextCursor !== null))
+    || (!page.revalidationComplete && (page.coverage !== "partial" || page.stale !== true))) {
+    throw new Error(label + " has contradictory coverage.");
   }
-  return addresses;
+  // A successful readiness observation needs useful inventory, not an authoritative false zero.
+  // A legitimate empty terminal page can still be reported as not ready, never fabricated healthy.
+  if (!Array.isArray(page.markets) || page.markets.length === 0 || page.markets.length > 200) {
+    throw new Error(label + " is empty or exceeds the 100-pool/two-token page bound.");
+  }
+  const quarantine = page.quarantinedAddresses;
+  if (!Array.isArray(quarantine) || quarantine.some(address => !ADDRESS_PATTERN.test(address) || lower(address) === ZERO_ADDRESS)
+    || new Set(quarantine.map(lower)).size !== quarantine.length) {
+    throw new Error(label + " has invalid quarantine metadata.");
+  }
+  const addresses = new Set();
+  for (const market of page.markets) {
+    const address = lower(market?.address);
+    const identity = market?.verifiedIdentity;
+    if (!ADDRESS_PATTERN.test(address) || address === ZERO_ADDRESS || !identity
+      || lower(identity.address) !== address || lower(market.assetId) !== "eip155:4663/contract:" + address
+      || !Number.isInteger(identity.decimals) || identity.decimals < 0 || identity.decimals > 255
+      || typeof identity.name !== "string" || !identity.name.trim()
+      || typeof identity.symbol !== "string" || !identity.symbol.trim()
+      || market.name !== identity.name || market.symbol !== identity.symbol) {
+      throw new Error(label + " contains malformed or mismatched verified identity.");
+    }
+    if (addresses.has(address)) throw new Error(label + " contains duplicate identity.");
+    if (quarantine.map(lower).includes(address)) throw new Error(label + " publishes quarantined identity.");
+    addresses.add(address);
+  }
+  return [...addresses];
 }
 
 export function verifyProductionHealthArtifacts(
@@ -115,9 +154,21 @@ export function verifyProductionHealthArtifacts(
   }
 
   const directory = JSON.parse(read("directory.json"));
-  const firstAddresses = validateDirectoryPage(directory, "Curated directory", { requireCursor: false });
-  if (directory.nextCursor !== null || directory.coverage !== "complete") throw new Error("Curated directory must be one complete bounded page.");
-  if (firstAddresses.length !== CURRENT_MARKET_CONTROLS.length) throw new Error("Curated directory count is inconsistent.");
+  validateDirectoryPage(directory, "Indexed directory");
+  let continuationMarkets = null;
+  if (directory.nextCursor !== null) {
+    const request = JSON.parse(read("directory-next-request.json"));
+    if (request.cursor !== directory.nextCursor) throw new Error("Continuation request is not bound to returned cursor.");
+    const next = JSON.parse(read("directory-next.json"));
+    validateDirectoryPage(next, "Indexed continuation");
+    if (next.nextCursor === directory.nextCursor) throw new Error("Continuation cursor did not advance.");
+    const headers = read("directory-next.headers");
+    if (!/^x-rmt-directory-cache:\s*MISS\s*$/im.test(headers)
+      || !/^cache-control:.*\bno-store\b/im.test(headers)) {
+      throw new Error("Continuation must bypass presentation cache with no-store.");
+    }
+    continuationMarkets = next.markets.length;
+  }
 
   for (const [name, address] of CURRENT_MARKET_CONTROLS) {
     const result = JSON.parse(read(`search-${name}.json`));
@@ -144,6 +195,8 @@ export function verifyProductionHealthArtifacts(
     latestBlock: health.latestBlock,
     coverage: directory.coverage,
     firstPageMarkets: directory.markets.length,
+    continuationMarkets,
+    inventorySource: directory.inventorySource,
     exactSearchControls: CURRENT_MARKET_CONTROLS.length
   };
 }
@@ -154,7 +207,7 @@ if (isMain) {
   const result = verifyProductionHealthArtifacts(process.argv[2] ?? "health-artifacts");
   console.info(
     `Terminal healthy at block ${result.latestBlock}; canonical coverage ${result.coverage}; `
-      + `${result.firstPageMarkets} curated markets; `
+      + `${result.firstPageMarkets} indexed first-page markets; `
       + `${result.exactSearchControls} exact and text search controls passed.`
   );
 }

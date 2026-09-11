@@ -54,6 +54,20 @@ jobs:
 
           check_endpoint health "$base/api/health" "health-artifacts/health.headers"
           check_endpoint directory "$base/api/vnext/market-directory" "health-artifacts/directory.headers"
+          # Follow one actual opaque cursor, not an exhaustive scan or identity enrichment.
+          cursor=$(node --input-type=module -e '
+            import fs from "node:fs";
+            import { validateDirectoryPage } from "./scripts/verify-production-health.mjs";
+            const page = JSON.parse(fs.readFileSync("health-artifacts/directory.json", "utf8"));
+            validateDirectoryPage(page, "Indexed directory");
+            if (page.nextCursor !== null) {
+              fs.writeFileSync("health-artifacts/directory-next-request.json", JSON.stringify({ cursor: page.nextCursor }));
+              process.stdout.write(encodeURIComponent(page.nextCursor));
+            }
+          ')
+          if [ -n "$cursor" ]; then
+            check_endpoint directory-next "$base/api/vnext/market-directory?cursor=$cursor" health-artifacts/directory-next.headers
+          fi
           while read -r name symbol address; do
             check_endpoint "search-$name" "$base/api/vnext/market-search?q=$address"
             check_endpoint "search-$name-text" "$base/api/vnext/market-search?q=$symbol"
@@ -84,6 +98,8 @@ jobs:
           mv health-artifacts/robots.json health-artifacts/robots.txt
           mv health-artifacts/sitemap.json health-artifacts/sitemap.xml
 
+          # Refresh the health timestamp after bounded search/page collection.
+          check_endpoint health "$base/api/health" health-artifacts/health.headers
           node scripts/verify-production-health.mjs health-artifacts
           node scripts/verify-public-surface.mjs health-artifacts
 
