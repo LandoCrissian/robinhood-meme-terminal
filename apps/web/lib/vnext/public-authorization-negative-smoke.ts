@@ -3,11 +3,12 @@ import { readFileSync } from "node:fs";
 import { POST } from "../../app/api/vnext/authorize/route";
 import { VNEXT_DIRECT_NO_RMT_FEE } from "./execution-settlement";
 
-export async function publicAuthorizationNegativeSmoke() {
+export async function publicAuthorizationNegativeSmoke(injectFailure = false) {
   const savedScope = process.env.RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS;
   const savedEnabled = process.env.RMT_VNEXT_AUTHORIZATION_ENABLED;
   const savedFetch = globalThis.fetch;
   let externalRequests = 0;
+  let completedCases = 0;
   const address = (n: number) => `0x${n.toString(16).padStart(40, "0")}`;
   try {
     process.env.RMT_VNEXT_AUTHORIZATION_ENABLED = "true";
@@ -48,13 +49,20 @@ export async function publicAuthorizationNegativeSmoke() {
           assert.equal(payload.retryable, false);
         }
         assert.equal(payload.plan, undefined);
+        completedCases++;
       }
     }
     assert.equal(externalRequests, 0, "No identity, authentication discovery, provider or wallet network calls");
+    assert.equal(completedCases, 32, "Every advertised authorization route case must complete");
+    // Test-only fault after awaited owned-route assertions; never used by application code.
+    if (injectFailure) assert.fail("INJECTED_ASYNC_NEGATIVE_SMOKE_FAILURE_AFTER_32_CASES");
     const banner = readFileSync(new URL("../../app/vnext/vnext-execution-recovery-banner.tsx", import.meta.url), "utf8");
     assert.match(banner, /Approval transaction confirmed/);
     assert.match(banner, /must verify the current allowance/);
     assert.doesNotMatch(banner, /Exact approval confirmed|The exact allowance is confirmed/);
+    const walletReview = readFileSync(new URL("../../app/vnext/vnext-wallet-review.tsx", import.meta.url), "utf8");
+    assert.match(walletReview, /Included in the verified 0x execution plan/);
+    assert.doesNotMatch(walletReview, /Collected atomically in the 0x swap/);
     console.log("32 actual authorize-route negative controls passed; approval receipt wording does not assert allowance.");
   } finally {
     globalThis.fetch = savedFetch;

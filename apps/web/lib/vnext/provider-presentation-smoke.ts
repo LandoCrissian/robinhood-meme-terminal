@@ -18,7 +18,9 @@ const walletReview = readFileSync(new URL("../../app/vnext/vnext-wallet-review.t
 const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
 assert.match(walletReview, /vNextProviderLabel\(evidence\.provider\)/);
 assert.match(walletReview, /RMT atomic fee settlement · policy v2/);
-assert.match(walletReview, /Collected atomically in the 0x swap/);
+assert.match(walletReview, /Included in the verified 0x execution plan/);
+assert.match(walletReview, /treasury delivery is not independently reconciled/);
+assert.doesNotMatch(walletReview, /Collected atomically in the 0x swap/);
 assert.doesNotMatch(walletReview, /Uniswap V3 · RMT atomic settlement V2/);
 assert.match(composer, /vNextProviderRoutePresentation/);
 assert.match(composer, /RMT atomic fee settlement · policy v2/);
