@@ -3058,7 +3058,7 @@ async function inspectWalletPromptReloadAndCrossTab(browser, fixture) {
   await approvalReplacement.emulateMedia({ reducedMotion: "reduce" });
   await installV2WalletAcceptanceRoutes(approvalReplacement, fixture, approvalState);
   await gotoReady(approvalReplacement, base, ".rmtDesktopTerminal");
-  await approvalReplacement.getByText("Exact approval confirmed", { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+  await approvalReplacement.getByText("Approval transaction confirmed", { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
   await approvalReplacement.screenshot({ path: `${output}/wallet-approval-reload-desktop-1440x900.png`, fullPage: false, animations: "disabled" });
   await approvalContext.close();
 
@@ -3176,7 +3176,7 @@ async function inspectV2WalletBrowserJourney(browser, fixture, options, label, m
     state.approved = true;
     state.receiptsAvailable = true;
     try {
-      await page.getByText("Exact approval confirmed", { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+      await page.getByText("Approval transaction confirmed", { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
     } catch (error) {
       const body = await page.locator("body").innerText();
       throw new Error(`${label}: approval receipt did not resolve ${JSON.stringify({ body: body.slice(-2500), state })}`, { cause: error });

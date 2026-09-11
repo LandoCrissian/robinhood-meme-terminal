@@ -430,7 +430,8 @@ export async function runZeroXWalletJourneys(options) {
                 await until(() => settledOutputBalanceReads > 0, 'Settled sell must refresh its exact proceeds balance');
               }
             } else if (scenario === 'approval-only') {
-              await page.getByText('Exact approval confirmed', { exact: true }).waitFor({ timeout: 30000 });
+              await page.getByText('Approval transaction confirmed', { exact: true }).waitFor({ timeout: 30000 });
+              assert.match(await page.locator('.vnRecoveryBanner').innerText(), /must verify the current allowance/);
               await pause(500);
               assert.equal(await page.locator('.vnTradeReceipt').count(), 0, 'approval is not a purchase');
               assert.equal(requests.length, 1, 'no executable fresh swap means no second wallet request');
