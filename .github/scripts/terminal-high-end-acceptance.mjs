@@ -3006,7 +3006,7 @@ async function inspectWalletPromptReloadAndCrossTab(browser, fixture) {
   await recheck.click();
   try {
     await replacementPage.getByText("Verified swap history", { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
-    const historicalLink = await replacementPage.getByRole("link", { name: "View historical transaction", exact: true }).getAttribute("href");
+    const historicalLink = await replacementPage.getByRole("link", { name: "Open historical verified swap", exact: true }).getAttribute("href");
     if (!historicalLink?.includes(swapState.recoveryHash)) throw new Error("Restored history lost its actual transaction");
     const restored = await replacementPage.evaluate(() => ({
       journal: JSON.parse(localStorage.getItem("rmt:vnext-execution-journal:v1:4663") ?? "null"),
