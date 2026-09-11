@@ -3240,34 +3240,37 @@ async function inspectExecutableQuoteFeeDisclosure(browser, fixture) {
   await panel.getByLabel("Exact input amount").fill("0.0005");
   await page.waitForFunction(() => {
     const text = document.querySelector(".vnTradePanel")?.textContent ?? "";
-    return text.includes("Best observed: Uniswap V2 (quote-only). Best currently executable: Uniswap V3.");
+    return text.includes("Uniswap V3 (estimate)") && text.includes("Estimated candidate RMT fee");
   });
 
   const passiveText = await panel.innerText();
   const passiveTextNormalized = passiveText.toLowerCase();
   for (const expected of [
-    "Best observed: Uniswap V2 (quote-only)",
-    "Best currently executable: Uniswap V3",
-    "Executable RMT fee",
+    "Estimated receive (not verified)",
+    "Uniswap V3 (estimate)",
+    "Estimated candidate RMT fee",
     "0.25%",
     "0.00000125 ETH",
-    "Executable provider input",
+    "Estimated candidate input",
     "0.00049875 ETH"
   ]) {
     if (!passiveTextNormalized.includes(expected.toLowerCase())) throw new Error(`Executable-fee disclosure omitted ${expected}: ${passiveText}`);
   }
+  if (await panel.locator(".vnOutputProtection strong").innerText() !== "Set when you trade") {
+    throw new Error("Comparison-only economics established a protected minimum before verification");
+  }
   const advanced = panel.locator(".vnRouteCard");
-  await advanced.evaluate((element) => { element.open = true; });
+  await advanced.locator("summary").click();
   const advancedText = await advanced.innerText();
   const advancedTextNormalized = advancedText.toLowerCase();
   for (const expected of [
     "Uniswap V2",
-    "Highest protected user output before network fee · quote-only",
+    "Highest estimated user output before network fee · quote-only",
     "Uniswap V3",
-    "Best currently executable quote · indicative floor",
+    "Verification candidate (not executable) · indicative floor",
     "Best observed RMT fee",
     "No RMT fee · quote-only",
-    "Executable RMT fee",
+    "Estimated candidate RMT fee",
     "0.25%"
   ]) {
     if (!advancedTextNormalized.includes(expected.toLowerCase())) throw new Error(`Executable-fee advanced details omitted ${expected}: ${advancedText}`);
