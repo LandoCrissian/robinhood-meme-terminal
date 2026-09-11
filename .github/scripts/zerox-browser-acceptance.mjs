@@ -40,6 +40,11 @@ const routeFixtures = createRouteOnDemandFixtures({ word, string, weth, runtime 
 function call(transaction) {
   const data = transaction.data ?? transaction.input ?? '0x';
   const to = String(transaction.to).toLowerCase();
+  if (to === '0x00000000000004533fe15556b1e086bb1a72ceae') {
+    if (state.registryPaused) throw new Error('Paused registry fixture');
+    const isPrevious = data.startsWith(toFunctionSelector('prev(uint128)'));
+    return word(state.registryUnregistered ? usdg : state.registryPrevious && !isPrevious ? usdg : executableFixture.settler);
+  }
   if (state.metadataUnavailable && ['0x06fdde03', '0x95d89b41', '0x313ce567', '0x18160ddd'].some(selector => data.startsWith(selector))) {
     throw new Error('Deterministic fresh metadata unavailable');
   }
@@ -59,6 +64,8 @@ function call(transaction) {
     if (data.startsWith('0x95d89b41')) return string(seed.aliases[0]);
     if (data.startsWith('0x313ce567')) return word(18);
     if (data.startsWith('0x18160ddd') || data.startsWith('0x70a08231')) return word(10n ** 27n);
+    if (data.startsWith('0xdd62ed3e')) return word(state.approved ? 10n ** 27n : 0n);
+    if (data.startsWith('0x095ea7b3')) return word(1);
   }
   const pool = seeds.find((entry) => entry.market.poolAddress === to)?.market;
   if (pool) {
@@ -121,7 +128,7 @@ function rpc(request) {
       case 'eth_getTransactionCount': result = '0x1'; break;
       case 'eth_getLogs': result = []; break;
       case 'eth_getTransactionReceipt': case 'eth_getTransactionByHash': result = null; break;
-      case 'eth_getCode': result = String(request.params[0]).toLowerCase() === executableFixture.settler ? executableFixture.runtime : [token, usdg, weth, holder, '0x0000000000000000000000000000000000012345', ...routeFixtures.contracts, ...seeds.flatMap((entry) => [entry.token.toLowerCase(), entry.market.poolAddress])].includes(String(request.params[0]).toLowerCase()) ? runtime : '0x'; break;
+      case 'eth_getCode': if (state.incompatibleRuntime && String(request.params[0]).toLowerCase() === executableFixture.settler) return {jsonrpc:'2.0',id:request.id,result:runtime}; result = String(request.params[0]).toLowerCase() === executableFixture.settler ? executableFixture.runtime : [token, usdg, weth, holder, '0x0000000000000000000000000000000000012345', ...routeFixtures.contracts, ...seeds.flatMap((entry) => [entry.token.toLowerCase(), entry.market.poolAddress])].includes(String(request.params[0]).toLowerCase()) ? runtime : '0x'; break;
       case 'eth_call': {
         const transaction = request.params[0];
         // Network-boundary fixture for the real wallet-assets deployless multicall.
@@ -346,6 +353,13 @@ export async function runZeroXBrowserAcceptance() {
     }
     if (process.env.RMT_ACCEPTANCE_ROUTE_ON_DEMAND_ONLY !== 'true') {
       results.push(...await runZeroXWalletJourneys({ browser, base, identity, external, state, wallet, token, usdg, holder, output }));
+      state.hotPathDurable = true;
+      state.metadataUnavailable = true;
+      try {
+        results.push(...await runZeroXWalletJourneys({ browser, base, identity, external, state, wallet,
+          token: ['0xf0821f2b','f570ca4e','7499a9ed','9db7c788','fed9946f'].join(''), usdg, holder, output,
+          scenarios: ['direct-confirmation', 'native', 'native-sell', 'sell-approval-healthy'] }));
+      } finally { state.hotPathDurable = false; state.metadataUnavailable = false; }
       results.push(...await runZeroXFirmCommitmentJourneys({ browser, base, identity, external, state, wallet, usdg, holder, output }));
     }
     results.push(...await runRouteOnDemandJourneys({ browser, base, identity, external, state, wallet, usdg, output, fixtures: routeFixtures }));

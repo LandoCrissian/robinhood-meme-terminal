@@ -77,7 +77,7 @@ assert.match(composer, /continuedApproval\.current/);
 assert.match(composer, /repeatsConfirmedVNextApproval/);
 assert.match(composer, /preparedApprovalAuthority\.current = undefined/);
 assert.match(composer, /requestAuthorizationPlan\(freshEvidence\)/);
-assert.match(composer, /lastReadyQuote\.current = \{ requestKey, response: freshQuote \}/);
+assert.match(composer, /lastReadyQuote\.current = \{ requestKey: preparationContext, response: freshQuote \}/);
 assert.match(composer, /lastReadyVerification\.current = freshEvidence/);
 assert.match(composer, /const visibleQuote =/);
 assert.match(composer, /const visibleVerification =/);

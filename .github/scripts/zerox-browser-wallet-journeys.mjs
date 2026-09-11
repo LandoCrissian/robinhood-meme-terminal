@@ -5,7 +5,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 
 const requireWeb = createRequire(new URL('../../apps/web/package.json', import.meta.url));
-const { decodeFunctionData, encodeFunctionData, encodeEventTopics, erc20Abi, keccak256, maxUint256 } = requireWeb('viem');
+const { decodeFunctionData, encodeFunctionData, encodeEventTopics, erc20Abi, keccak256, maxUint256, parseUnits } = requireWeb('viem');
 requireWeb('tsx/cjs');
 const { authorizationPayloadHash } = requireWeb('./lib/vnext/authorization-plan.ts');
 const hex = (value) => `0x${BigInt(value).toString(16)}`;
@@ -59,7 +59,12 @@ export async function runZeroXWalletJourneys(options) {
     scenarios.splice(2, 0, 'sell-approval-healthy', 'sell-approval-identity-multiple-retry',
       'sell-approval-identity-persistent', 'sell-approval-identity-account-change',
       'sell-approval-identity-chain-change', 'sell-approval-identity-uuid-return');
-    for (const scenario of scenarios) {
+    for (const scenario of (options.scenarios ?? [...scenarios, 'contract-paused', 'contract-unregistered', 'contract-incompatible', 'contract-previous', 'contract-history'])) {
+      state.registryPaused = scenario === 'contract-paused';
+      state.registryUnregistered = scenario === 'contract-unregistered';
+      state.incompatibleRuntime = scenario === 'contract-incompatible';
+      state.registryPrevious = scenario === 'contract-previous';
+      const contractRejected = ['contract-paused','contract-unregistered','contract-incompatible'].includes(scenario);
       state.approved = !scenario.startsWith('sell-approval') && !['approval-only', 'approval-requote', 'approval-over-sell', 'approval-unlimited', 'stale-post-approval'].includes(scenario);
       state.priceDisabled = scenario === 'quote-only';
       state.simulationFails = scenario === 'simulation-failure';
@@ -89,7 +94,7 @@ export async function runZeroXWalletJourneys(options) {
       // Advancing only browser time made a fresh ~10s server plan expire before
       // arrival (9,847ms clock skew in the regression). Keep both clocks moving
       // together; expiry-specific scenarios still inject their explicit failure.
-      if (approvalJourney) await page.clock.resume();
+      await page.clock.resume();
       state.rpcOverride = (request) => {
         if (settledOutputAsset && (request.method === 'eth_call'
           && (lower(request.params[0]?.to) === settledOutputAsset && request.params[0]?.data?.startsWith('0x70a08231')
@@ -308,16 +313,37 @@ export async function runZeroXWalletJourneys(options) {
           await page.locator('.vnRouteTop').click();
           await until(async () => /reject|changed|inconsistent|invalid|authority|mismatch/i.test(await page.locator('.vnTradePanel').innerText()), 'Corrupted authority must produce a rejection state');
           assert.equal(requests.length, 0, 'Corrupted authority cannot prompt the wallet');
-        } else if (faults[scenario] || scenario === 'simulation-failure') {
+        } else if (faults[scenario] || scenario === 'simulation-failure' || contractRejected) {
           await until(() => api.some((entry) => entry.path.endsWith('/verify')), `Verification missing for ${scenario}`);
           await pause(200);
           assert.equal(api.filter((entry) => entry.path.endsWith('/authorize')).length, 0, 'Invalid firm evidence cannot authorize');
           assert.equal(requests.length, 0, 'Invalid firm evidence cannot prompt wallet');
+          assert.match(await page.locator('.vnOutputProtection').innerText(), /Set when you trade/);
+          if (contractRejected) {
+            const failed = api.find(entry => entry.path.endsWith('/verify') && entry.status === 422);
+            assert.equal(failed.body.phase, 'FIRM_VERIFY_FAILED');
+            assert.equal(failed.body.retryable, false);
+            await pause(1800);
+            assert.equal(api.filter(entry => entry.path.endsWith('/verify')).length, 1, 'No automatic recovery for unchanged incompatible authority');
+            assert.equal(await page.locator('.vnTradeReceipt').count(), 0);
+          }
         } else {
           await until(() => api.some((entry) => entry.path.endsWith('/authorize') && entry.status === 200), `${scenario} did not authorize`);
           await page.locator('.vnWalletFeeDisclosure').waitFor({ state: 'attached' });
           const bundle = api.filter((entry) => entry.path.endsWith('/authorize')).at(-1).body;
           assert.equal(bundle.plan.provider, 'zero-x-swap');
+          const economics = async () => {
+            const minimum = await page.locator('.vnOutputProtection strong').innerText();
+            const output = await page.locator('.vnReceiveField > div > strong').first().innerText();
+            const quote = api.filter(entry => entry.path.endsWith('/quotes') && entry.status === 200).at(-1).body;
+            const decimals = quote.attempts.find(attempt => attempt.provider === bundle.plan.provider).outputDecimals;
+            const atomic = text => parseUnits(text.split(' ')[0].replaceAll(',', ''), decimals).toString();
+            assert.equal(atomic(minimum), bundle.plan.protectedOutputAtomic);
+            assert.equal(atomic(output), bundle.evidence.expectedOutputAtomic);
+            assert.equal(bundle.evidence.sourceQuoteRequestId, bundle.plan.sourceQuoteRequestId);
+            assert.equal(bundle.evidence.verificationId, bundle.plan.sourceVerificationId);
+          };
+          await economics();
           assert.equal(bundle.plan.providerNativeFee.feeBps, 25);
           assert.equal(lower(bundle.plan.providerNativeFee.treasury), '0x61700479a4a1f62584fd3aba2c2b290ea727d2ec');
           const quote = api.find((entry) => entry.path.endsWith('/quotes') && entry.status === 200).body;
@@ -442,6 +468,18 @@ export async function runZeroXWalletJourneys(options) {
               assert.doesNotMatch(receipt, /RMT fee settled|confirmed RMT revenue/i);
               await until(() => settledOutputBalanceReads > 0, 'Verified settlement must refresh the exact output wallet balance');
               assert.equal(requests.length, 1);
+              if (scenario === 'contract-history') {
+                state.incompatibleRuntime = true;
+                await page.reload({waitUntil:'domcontentloaded'});
+                await page.getByText('Verified swap history', {exact:true}).waitFor();
+                const history = page.locator('.vnRecoveryBanner').filter({hasText:'Verified swap history'});
+                assert.match(await history.innerText(), /Submitted:/);
+                assert.ok((await history.locator('a').getAttribute('href')).includes(h('c')));
+                await page.getByLabel('Exact input amount').fill('26');
+                await until(() => api.some(entry => entry.path.endsWith('/verify') && entry.body?.code === 'CONTRACT_VERSION_UNSUPPORTED'), 'New attempt must reject runtime');
+                assert.equal(await page.locator('.vnTradeReceipt').count(), 0, 'History must not become a new success dialog');
+                assert.equal(requests.length, 1, 'New failed attempt cannot hand off');
+              }
             }
           }
           // Server is final authority even when a caller directly requests another provider.
@@ -469,6 +507,7 @@ export async function runZeroXWalletJourneys(options) {
         await writeFile(path.join(output, `${prefix}.json`), JSON.stringify({ api, requests, text: await page.locator('body').innerText(), journal: await page.evaluate(() => Object.fromEntries(Object.entries(localStorage).filter(([key]) => /execution|wallet.request/i.test(key)))) }, null, 2));
         await context.close();
         state.rpcOverride = undefined;
+        state.registryPaused = state.registryUnregistered = state.incompatibleRuntime = state.registryPrevious = false;
       }
     }
   }

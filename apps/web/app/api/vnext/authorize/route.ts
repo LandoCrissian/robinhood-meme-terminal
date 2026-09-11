@@ -1,3 +1,4 @@
+import { executionFailureResponse, structureTradeFailure } from "../../../../lib/vnext/trade-failure";
 import { after } from "next/server";
 import { verifyZeroXFirmQuoteCommitment, ZeroXFirmQuoteCommitmentError } from "../../../../lib/server/vnext-zero-x-firm-quote-commitment";
 import { emitTradeJourney } from "../../../../lib/vnext/trade-journey";
@@ -60,7 +61,7 @@ function verifyAgain(reason: VNextVerifyAgainReason, message: string) {
   return Response.json({ error: "VERIFY_AGAIN", reason, message }, { status: 409, headers: noStore });
 }
 
-export async function POST(request: Request) {
+async function handleRequest(request: Request) {
   if (process.env.RMT_VNEXT_AUTHORIZATION_ENABLED !== "true") {
     return Response.json({ error: "VNext wallet authorization is not enabled." }, { status: 503, headers: noStore });
   }
@@ -295,6 +296,8 @@ export async function POST(request: Request) {
       plan
     }, { headers: noStore });
   } catch (cause) {
+    const typedFailure = executionFailureResponse(cause, "authorization");
+    if (typedFailure) return typedFailure;
     if (cause instanceof ZeroXFirmQuoteCommitmentError) {
       emitTradeJourney({ phase: "QUOTE_EXPIRED" });
       return Response.json({ error: "REQUOTE_REQUIRED", message: cause.message, phase: "QUOTE_EXPIRED" }, { status: 409, headers: noStore });
@@ -333,4 +336,8 @@ export async function POST(request: Request) {
     emitTradeJourney({ phase: "AUTHORIZATION_FAILED" });
     return Response.json({ error: message, phase: "AUTHORIZATION_FAILED" }, { status: 422, headers: noStore });
   }
+}
+
+export async function POST(request: Request) {
+  return structureTradeFailure(await handleRequest(request), "authorization");
 }

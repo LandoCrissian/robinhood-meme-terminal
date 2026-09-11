@@ -1,3 +1,4 @@
+import { executionFailureResponse, structureTradeFailure } from "../../../../lib/vnext/trade-failure";
 import { after } from "next/server";
 import { createZeroXFirmQuoteCommitment } from "../../../../lib/server/vnext-zero-x-firm-quote-commitment";
 import { emitTradeJourney } from "../../../../lib/vnext/trade-journey";
@@ -72,7 +73,7 @@ const requestSchema = z.object({
   }).optional()
 });
 
-export async function POST(request: Request) {
+async function handleRequest(request: Request) {
   try {
     const parsed = requestSchema.safeParse(await request.json());
     if (!parsed.success) return Response.json({ error: "Invalid VNext verification request." }, { status: 400, headers: { "Cache-Control": "no-store" } });
@@ -152,6 +153,8 @@ export async function POST(request: Request) {
     }
     return Response.json(responseEvidence, { headers: { "Cache-Control": "no-store" } });
   } catch (cause) {
+    const typedFailure = executionFailureResponse(cause, "verification");
+    if (typedFailure) return typedFailure;
     if (cause instanceof ZeroXRepriceRequiredError) {
       return Response.json({ error: "ZERO_X_REPRICE_REQUIRED", message: "Price moved. Review the refreshed quote." }, { status: 409, headers: { "Cache-Control": "no-store" } });
     }
@@ -175,4 +178,8 @@ export async function POST(request: Request) {
       : "Unable to produce strict pre-sign evidence.";
     return Response.json({ error: message }, { status: 422, headers: { "Cache-Control": "no-store" } });
   }
+}
+
+export async function POST(request: Request) {
+  return structureTradeFailure(await handleRequest(request), "verification");
 }

@@ -59,7 +59,7 @@ assert.match(composer, /VNEXT_BACKGROUND_QUOTE_REFRESH_MS/);
 assert.match(composer, /document\.visibilityState === "hidden"/);
 assert.match(composer, /document\.addEventListener\("visibilitychange", onVisibilityChange\)/);
 assert.match(composer, /document\.removeEventListener\("visibilitychange", onVisibilityChange\)/);
-assert.match(composer, /lastReadyQuote\.current = \{ requestKey, response: freshQuote \}/);
+assert.match(composer, /lastReadyQuote\.current = \{ requestKey: preparationContext, response: freshQuote \}/);
 assert.match(composer, /const visibleQuote = cachedQuote/);
 assert.doesNotMatch(composer, /Route temporarily unavailable/);
 assert.match(composer, /tradeJourneyLabels/);

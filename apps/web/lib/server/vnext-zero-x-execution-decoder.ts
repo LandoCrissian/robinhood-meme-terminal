@@ -1,3 +1,4 @@
+import { TradeExecutionFailure } from "../vnext/trade-failure";
 import { decodeFunctionData, getAddress, parseAbi, toFunctionSelector, zeroAddress, type Address, type Hex } from "viem";
 import { fromZeroXToken } from "../vnext/zero-x-settlement";
 
@@ -37,6 +38,6 @@ export function decodeZeroXExecutableMinimum(input: {
     return { minimumAtomic: slippage.minAmountOut.toString(), settlerTarget: target };
   } catch {
     // Never include raw calldata or decoder exceptions in public diagnostics.
-    throw new Error("0x executable minimum authority could not be decoded or changed its binding.");
+    throw new TradeExecutionFailure("EXECUTION_ENVELOPE_REJECTED");
   }
 }

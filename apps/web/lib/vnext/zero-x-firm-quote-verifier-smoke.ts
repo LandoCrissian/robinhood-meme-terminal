@@ -1,3 +1,4 @@
+import { TradeExecutionFailure } from "./trade-failure";
 import { createRequire } from "node:module";
 const executableFixture = createRequire(import.meta.url)("../../../../.github/scripts/zerox-execution-fixture.cjs");
 import { randomUUID } from "node:crypto";
@@ -135,6 +136,8 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
       }
       const payload = JSON.parse(String(init?.body)) as { method: string; params: unknown[] };
       if (payload.method === "eth_chainId") return Response.json({ jsonrpc: "2.0", id: 1, result: "0x1237" });
+      if (payload.method === "eth_blockNumber") return Response.json({ jsonrpc: "2.0", id: 1, result: "0xbc614e" });
+      if (payload.method === "eth_call" && String((payload.params[0] as any).to).toLowerCase() === "0x00000000000004533fe15556b1e086bb1a72ceae") return Response.json({ jsonrpc: "2.0", id: 1, result: "0x" + settler.slice(2).toLowerCase().padStart(64, "0") });
       if (payload.method === "eth_gasPrice") return Response.json({ jsonrpc: "2.0", id: 1, result: "0x2faf080" });
       if (payload.method === "eth_getCode") return Response.json({ jsonrpc: "2.0", id: 1, result: noTargetCode ? "0x" : String(payload.params[0]).toLowerCase() === settler.toLowerCase() ? executableFixture.runtime : runtimeCode });
       if (payload.method === "eth_getBalance") return Response.json({ jsonrpc: "2.0", id: 1, result: `0x${nativeBalance.toString(16)}` });
@@ -255,8 +258,7 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
         assert.equal(bounded.evidence.protectedOutputAtomic, minimum);
         assert.equal(bounded.evidence.providerRequestedSlippagePpm, 9900);
       } else {
-        await assert.rejects(() => verifyZeroXSwapFirmQuote(boundedRequest), error => error instanceof Error
-          && !(error instanceof ZeroXRepriceRequiredError) && /slippage envelope/.test(error.message));
+        await assert.rejects(() => verifyZeroXSwapFirmQuote(boundedRequest), error => error instanceof TradeExecutionFailure && error.code === "PROVIDER_POLICY_REJECTED" && !error.retryable);
       }
     }
     for (const [reported, encoded, valid] of [
@@ -271,7 +273,7 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
         assert.equal(accepted.evidence.protectedOutputAtomic, encoded);
         assert.equal(accepted.evidence.maximumUserSlippagePpm, 10000);
       } else {
-        await assert.rejects(() => prepare(boundedRequest), /slippage envelope/);
+        await assert.rejects(() => prepare(boundedRequest), (error: unknown) => error instanceof TradeExecutionFailure && error.code === "PROVIDER_POLICY_REJECTED");
       }
     }
     output = zeroAddress;
@@ -316,7 +318,7 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     await assertZeroXSharedWalletAuthorization(nativePrepared);
     assert.equal((simulatedEnvelope as unknown as Record<string, string>).value, `0x${BigInt(nativePrepared.transaction.value).toString(16)}`);
     quoteMutation = body => { body.issues.allowance = { actual: "0", spender: allowanceHolder }; };
-    await assert.rejects(() => prepare(nativeRequest), /native ETH/);
+    await assert.rejects(() => prepare(nativeRequest), (error: unknown) => error instanceof TradeExecutionFailure && error.code === "PROVIDER_POLICY_REJECTED");
     quoteMutation = () => {};
 
     nativeBalance = 1n;
@@ -325,7 +327,7 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     assert.equal((await verifyZeroXSwapFirmQuote(nativeRequest)).status, "insufficient_gas");
     nativeBalance = 10n ** 20n;
     noTargetCode = true;
-    await assert.rejects(() => verifyZeroXSwapFirmQuote(nativeRequest), /no contract code/);
+    await assert.rejects(() => verifyZeroXSwapFirmQuote(nativeRequest), (error: unknown) => error instanceof TradeExecutionFailure && error.code === "CONTRACT_VERSION_UNSUPPORTED");
   } finally {
     globalThis.fetch = savedFetch;
     for (const [key, value] of Object.entries(saved)) {
