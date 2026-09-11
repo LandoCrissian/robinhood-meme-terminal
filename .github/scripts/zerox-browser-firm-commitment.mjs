@@ -130,7 +130,9 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
         if (slippageCase && !slippageCase[2]) {
           const verified = currentApi().find((entry) => entry.path.endsWith('/verify'));
           assert.equal(verified.status, 422);
-          assert.match(verified.body.error, /slippage envelope/);
+          assert.equal(verified.body.code, 'PROVIDER_POLICY_REJECTED');
+          assert.equal(verified.body.stage, 'verification');
+          assert.equal(verified.body.retryable, false);
           assert.notEqual(verified.body.error, 'ZERO_X_REPRICE_REQUIRED');
           assert.equal(verified.body.zeroXFirmQuoteCommitment, undefined);
           await pause(300);
