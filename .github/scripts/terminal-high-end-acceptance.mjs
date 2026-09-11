@@ -3005,7 +3005,19 @@ async function inspectWalletPromptReloadAndCrossTab(browser, fixture) {
   swapState.receiptsAvailable = true;
   await recheck.click();
   try {
-    await replacementPage.getByText("Swap confirmed", { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+    await replacementPage.getByText("Verified swap history", { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+    const historicalLink = await replacementPage.getByRole("link", { name: "View historical transaction", exact: true }).getAttribute("href");
+    if (!historicalLink?.includes(swapState.recoveryHash)) throw new Error("Restored history lost its actual transaction");
+    const restored = await replacementPage.evaluate(() => ({
+      journal: JSON.parse(localStorage.getItem("rmt:vnext-execution-journal:v1:4663") ?? "null"),
+      submittedTime: document.querySelector(".vnRecoveryBanner time")?.getAttribute("datetime"),
+      submissions: window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter(method => method === "eth_sendTransaction").length
+    }));
+    const historicalRecord = restored.journal?.executions?.find(record => record.txHash === swapState.recoveryHash);
+    if (!historicalRecord || historicalRecord.state !== "confirmed" || restored.submissions !== 0
+      || restored.submittedTime !== new Date(historicalRecord.submittedAtMs).toISOString()) {
+      throw new Error("Reload recovery must preserve confirmed history/time without resubmission");
+    }
   } catch (error) {
     const diagnostic = await replacementPage.evaluate(() => ({
       body: document.body.innerText.slice(0, 8_000),
