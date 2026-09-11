@@ -2,6 +2,9 @@ import { tradeJourneyPhase, type TradeJourneyPhase } from "./trade-journey";
 
 export type TradeFailureStage = "quote" | "verification" | "authorization";
 const definitions = {
+  PROVIDER_QUOTE_ONLY: ["ZEROX_POLICY_REJECTED", false, 403, "This provider is not admitted to public wallet execution."],
+  PROVIDER_SETTLEMENT_QUOTE_ONLY: ["ZEROX_POLICY_REJECTED", false, 403, "This provider has no admitted public settlement authority."],
+  PROVIDER_SCOPE_INVALID: ["ZEROX_POLICY_REJECTED", false, 503, "Public wallet execution is blocked by invalid provider release configuration."],
   CONTRACT_VERSION_UNSUPPORTED: ["FIRM_VERIFY_FAILED", false, 422, "The returned 0x contract version has not passed RMT compatibility review."],
   SETTLER_UNREGISTERED: ["FIRM_VERIFY_FAILED", false, 422, "The returned Settler is not an eligible official deployment."],
   SETTLER_REGISTRY_UNAVAILABLE: ["FIRM_VERIFY_FAILED", false, 422, "Official Settler eligibility could not be established. Execution is blocked."],

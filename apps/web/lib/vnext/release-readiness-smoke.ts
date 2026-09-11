@@ -151,10 +151,10 @@ const feePublicReady = readVNextReleaseReadiness({
   RMT_VNEXT_UNISWAP_V3_FEE_PUBLIC_AUTHORIZATION_ENABLED: "true",
   RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "uniswap-v3"
 });
-assert.equal(feePublicReady.mode, "interactive");
-assert.equal(feePublicReady.configurationConsistent, true);
+assert.equal(feePublicReady.mode, "misconfigured");
+assert.equal(feePublicReady.configurationConsistent, false);
 assert.equal(feePublicReady.providers.uniswapV3FeeExecutor.releaseScope, "public");
-assert.equal(feePublicReady.providers.uniswapV3FeeExecutor.publicAuthorizationEnabled, true);
+assert.equal(feePublicReady.providers.uniswapV3FeeExecutor.publicAuthorizationEnabled, false);
 assert.equal(feePublicReady.providers.uniswapV3FeeExecutor.publicProofBindingValid, true);
 assert.equal(feePublicReady.providers.uniswapV3FeeExecutor.mainnetProofComplete, true);
 
@@ -205,16 +205,16 @@ const v2PublicReady = readVNextReleaseReadiness({
   RMT_VNEXT_UNISWAP_V3_V2_PUBLIC_AUTHORIZATION_ENABLED: "true",
   RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "uniswap-v3"
 });
-assert.equal(v2PublicReady.configurationConsistent, true);
+assert.equal(v2PublicReady.configurationConsistent, false);
 assert.equal(v2PublicReady.providers.uniswapV3V2FeeExecutor.releaseScope, "public");
-assert.equal(v2PublicReady.providers.uniswapV3V2FeeExecutor.publicAuthorizationEnabled, true);
+assert.equal(v2PublicReady.providers.uniswapV3V2FeeExecutor.publicAuthorizationEnabled, false);
 assert.equal(v2PublicReady.providers.uniswapV3V2FeeExecutor.exactAuthorityValid, true);
 assert.equal(v2PublicReady.providers.uniswapV3V2FeeExecutor.nativeInputMainnetCanaryComplete, true);
 assert.equal(v2PublicReady.providers.uniswapV3V2FeeExecutor.erc20ToNativeLiveCanary, "OWNER_WAIVED_NOT_EXECUTED");
 assert.equal(v2PublicReady.providers.uniswapV3V2FeeExecutor.bidirectionalLiveProof, false);
 assert.deepEqual(v2PublicReady.publicExecution.providers, ["uniswap-v3"]);
-assert.deepEqual(v2PublicReady.publicExecution.unintendedProviders, []);
-assert.equal(v2PublicReady.publicExecution.exactV3V2ReleaseScope, true);
+assert.deepEqual(v2PublicReady.publicExecution.unintendedProviders, ["uniswap-v3"]);
+assert.equal(v2PublicReady.publicExecution.exactV3V2ReleaseScope, false);
 
 const exactV2V3PublicAuthority = {
   NODE_ENV: "production",
@@ -238,13 +238,13 @@ function v2V3Readiness(overrides: Record<string, string | undefined> = {}) {
 }
 
 const exactV2V3PublicReady = v2V3Readiness();
-assert.equal(exactV2V3PublicReady.configurationConsistent, true);
-assert.equal(exactV2V3PublicReady.publicExecution.releaseScope, "v2-v3");
+assert.equal(exactV2V3PublicReady.configurationConsistent, false);
+assert.equal(exactV2V3PublicReady.publicExecution.releaseScope, "invalid-unreleased");
 assert.equal(exactV2V3PublicReady.publicExecution.exactV3V2ReleaseScope, false);
-assert.equal(exactV2V3PublicReady.publicExecution.exactV2V3ReleaseScope, true);
+assert.equal(exactV2V3PublicReady.publicExecution.exactV2V3ReleaseScope, false);
 assert.deepEqual(exactV2V3PublicReady.publicExecution.providers, ["uniswap-v2", "uniswap-v3"]);
-assert.deepEqual(exactV2V3PublicReady.publicExecution.unintendedProviders, []);
-assert.equal(exactV2V3PublicReady.providers.uniswapV3V2FeeExecutor.publicAuthorizationEnabled, true);
+assert.deepEqual(exactV2V3PublicReady.publicExecution.unintendedProviders, ["uniswap-v2", "uniswap-v3"]);
+assert.equal(exactV2V3PublicReady.providers.uniswapV3V2FeeExecutor.publicAuthorizationEnabled, false);
 assert.equal(exactV2V3PublicReady.providers.uniswapV3V2FeeExecutor.exactAuthorityValid, true);
 assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.policyEnabled, true);
 assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.executorEnabled, true);
@@ -255,7 +255,7 @@ assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.releaseScope,
 assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.strictVerificationAvailable, true);
 assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.walletAuthorizationAvailable, true);
 assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.authorizationEnabled, true);
-assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.publicAuthorizationEnabled, true);
+assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.publicAuthorizationEnabled, false);
 assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.exactAuthorityValid, true);
 assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.controlledLiveProofComplete, true);
 assert.equal(exactV2V3PublicReady.providers.uniswapV2V2FeeExecutor.liveErc20ToNativeStatus, "OWNER_WAIVED_NOT_EXECUTED");
@@ -289,15 +289,15 @@ for (const [label, overrides] of Object.entries({
 const brokenV2Authority = v2V3Readiness({
   RMT_VNEXT_UNISWAP_V2_V2_EXECUTOR_ADDRESS: "0x1111111111111111111111111111111111111111"
 });
-assert.equal(brokenV2Authority.providers.uniswapV3V2FeeExecutor.publicAuthorizationEnabled, true);
+assert.equal(brokenV2Authority.providers.uniswapV3V2FeeExecutor.publicAuthorizationEnabled, false);
 assert.equal(brokenV2Authority.providers.uniswapV2V2FeeExecutor.publicAuthorizationEnabled, false);
-assert.deepEqual(brokenV2Authority.publicExecution.unintendedProviders, ["uniswap-v2"]);
+assert.deepEqual(brokenV2Authority.publicExecution.unintendedProviders, ["uniswap-v2", "uniswap-v3"]);
 
 const brokenV3Authority = v2V3Readiness({
   RMT_VNEXT_UNISWAP_V3_V2_EXECUTOR_ADDRESS: "0x1111111111111111111111111111111111111111"
 });
 assert.equal(brokenV3Authority.providers.uniswapV3V2FeeExecutor.publicAuthorizationEnabled, false);
-assert.equal(brokenV3Authority.providers.uniswapV2V2FeeExecutor.publicAuthorizationEnabled, true);
+assert.equal(brokenV3Authority.providers.uniswapV2V2FeeExecutor.publicAuthorizationEnabled, false);
 assert.equal(brokenV3Authority.configurationConsistent, false);
 
 const invalidV2PublicGate = readVNextReleaseReadiness({

@@ -37,7 +37,7 @@ export function VNextExecutionRecoveryBanner({ record, walletRequest, status, on
       : status === "reconciliation_failed"
         ? record.kind === "erc20_approval" ? "Approval evidence requires review" : "Settlement evidence requires review"
       : status === "confirmed"
-        ? record.kind === "erc20_approval" ? "Exact approval confirmed" : "Swap confirmed"
+        ? record.kind === "erc20_approval" ? "Approval transaction confirmed" : "Swap confirmed"
         : record.failureClassification === "EXPIRED_ONCHAIN_DEADLINE" ? "Verified swap expired onchain" : "Transaction reverted";
   const detail = status === "confirming"
     ? "RMT recovered this transaction and blocks duplicate submission until its receipt is resolved."
@@ -48,7 +48,7 @@ export function VNextExecutionRecoveryBanner({ record, walletRequest, status, on
           ? "The approval was mined, but its receipt could not be reconciled. Do not resubmit."
           : "The transaction was mined, but its exact RMT fee settlement event did not reconcile. Do not resubmit or credit proceeds."
       : status === "confirmed" && record.kind === "erc20_approval"
-        ? "The exact allowance is confirmed. RMT will verify a fresh route before preparing the swap."
+        ? "The approval receipt succeeded. RMT must verify the current allowance and a fresh route before preparing the swap."
       : status === "confirmed"
           ? record.outputAmountAtomic
             ? "Onchain settlement and the exact received amount are confirmed."

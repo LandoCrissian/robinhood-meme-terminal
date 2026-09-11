@@ -88,7 +88,7 @@ export function isVNextPublicExecutionProviderReleased(
   env: VNextPublicExecutionProviderEnvironment = process.env as unknown as VNextPublicExecutionProviderEnvironment
 ) {
   const scope = readVNextPublicExecutionProviderScope(env);
-  return scope.valid && (!scope.providers.includes("zero-x-swap") || hasExactVNextZeroXOnlyPublicExecutionProviderScope(env)) && scope.providers.includes(provider);
+  return scope.valid && provider === "zero-x-swap" && hasExactVNextZeroXOnlyPublicExecutionProviderScope(env);
 }
 
 export function requireVNextPublicExecutionProvider(
@@ -98,7 +98,8 @@ export function requireVNextPublicExecutionProvider(
   const scope = readVNextPublicExecutionProviderScope(env);
   if (!scope.valid) throw new VNextPublicExecutionProviderConfigurationError();
   if (scope.providers.includes("zero-x-swap") && !hasExactVNextZeroXOnlyPublicExecutionProviderScope(env)) throw new VNextPublicExecutionProviderConfigurationError();
-  if (!scope.providers.includes(provider)) throw new VNextPublicExecutionProviderNotReleasedError(provider);
+  // Current-release authority is immutable. Historical codecs/configuration grant no wallet permission.
+  if (provider !== "zero-x-swap" || !hasExactVNextZeroXOnlyPublicExecutionProviderScope(env)) throw new VNextPublicExecutionProviderNotReleasedError(provider);
 }
 
 export function requireVNextPublicExecutionSettlement(
@@ -118,7 +119,7 @@ export function requireVNextPublicExecutionSettlement(
 export function vNextPublicExecutionProviderScopeErrorResponse(cause: unknown) {
   if (cause instanceof VNextPublicExecutionProviderConfigurationError) {
     return Response.json(
-      { error: "Public wallet execution is unavailable because its provider release scope is invalid." },
+      { error: "Public wallet execution is unavailable because its provider release scope is invalid.", code: "PROVIDER_SCOPE_INVALID" },
       { status: 503, headers: { "Cache-Control": "no-store" } }
     );
   }
@@ -160,8 +161,6 @@ export function readVNextPublicExecutionReleaseScope(
 ): VNextPublicExecutionReleaseScope {
   const scope = readVNextPublicExecutionProviderScope(env);
   if (!scope.configured || !scope.valid) return "invalid-unreleased";
-  if (env.RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS === VNEXT_PUBLIC_EXECUTION_RELEASE_SCOPE_V3_ONLY) return "v3-only";
-  if (env.RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS === VNEXT_PUBLIC_EXECUTION_RELEASE_SCOPE_V2_V3) return "v2-v3";
   if (env.RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS === VNEXT_PUBLIC_EXECUTION_RELEASE_SCOPE_ZERO_X_ONLY) return "ZERO_X_ONLY";
   return "invalid-unreleased";
 }

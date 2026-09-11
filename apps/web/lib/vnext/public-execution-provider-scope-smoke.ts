@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { publicAuthorizationNegativeSmoke } from "./public-authorization-negative-smoke";
 import { readFileSync } from "node:fs";
 import {
   VNextPublicExecutionProviderConfigurationError,
@@ -29,14 +30,14 @@ assert.throws(() => requireVNextPublicExecutionProvider("uniswap-v3", {}), VNext
 const v3OnlyEnv = { RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "uniswap-v3" };
 assert.deepEqual(scope("uniswap-v3"), { configured: true, valid: true, providers: ["uniswap-v3"] });
 assert.deepEqual(scope("  uniswap-v3  "), { configured: true, valid: true, providers: ["uniswap-v3"] });
-assert.doesNotThrow(() => requireVNextPublicExecutionProvider("uniswap-v3", v3OnlyEnv));
-assert.doesNotThrow(() => requireVNextPublicExecutionSettlement("uniswap-v3", VNEXT_V2_ATOMIC_INPUT_FEE, v3OnlyEnv));
+assert.throws(() => requireVNextPublicExecutionProvider("uniswap-v3", v3OnlyEnv), VNextPublicExecutionProviderNotReleasedError);
+assert.throws(() => requireVNextPublicExecutionSettlement("uniswap-v3", VNEXT_V2_ATOMIC_INPUT_FEE, v3OnlyEnv), VNextPublicExecutionProviderNotReleasedError);
 assert.throws(
   () => requireVNextPublicExecutionSettlement("uniswap-v3", VNEXT_DIRECT_NO_RMT_FEE, v3OnlyEnv),
-  VNextPublicExecutionSettlementNotReleasedError
+  VNextPublicExecutionProviderNotReleasedError
 );
-assert.equal(hasExactVNextV3V2PublicExecutionProviderScope(v3OnlyEnv), true);
-assert.equal(readVNextPublicExecutionReleaseScope(v3OnlyEnv), "v3-only");
+assert.equal(hasExactVNextV3V2PublicExecutionProviderScope(v3OnlyEnv), false);
+assert.equal(readVNextPublicExecutionReleaseScope(v3OnlyEnv), "invalid-unreleased");
 
 const v2V3Env = { RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "uniswap-v2,uniswap-v3" };
 assert.deepEqual(scope(v2V3Env.RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS), {
@@ -44,12 +45,12 @@ assert.deepEqual(scope(v2V3Env.RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS), {
   valid: true,
   providers: ["uniswap-v2", "uniswap-v3"]
 });
-assert.equal(hasExactVNextV2V3PublicExecutionProviderScope(v2V3Env), true);
+assert.equal(hasExactVNextV2V3PublicExecutionProviderScope(v2V3Env), false);
 assert.equal(hasExactVNextV3V2PublicExecutionProviderScope(v2V3Env), false);
-assert.equal(readVNextPublicExecutionReleaseScope(v2V3Env), "v2-v3");
-assert.doesNotThrow(() => requireVNextPublicExecutionProvider("uniswap-v2", v2V3Env));
-assert.doesNotThrow(() => requireVNextPublicExecutionProvider("uniswap-v3", v2V3Env));
-assert.doesNotThrow(() => requireVNextPublicExecutionSettlement("uniswap-v2", VNEXT_V2_ATOMIC_INPUT_FEE, v2V3Env));
+assert.equal(readVNextPublicExecutionReleaseScope(v2V3Env), "invalid-unreleased");
+assert.throws(() => requireVNextPublicExecutionProvider("uniswap-v2", v2V3Env), VNextPublicExecutionProviderNotReleasedError);
+assert.throws(() => requireVNextPublicExecutionProvider("uniswap-v3", v2V3Env), VNextPublicExecutionProviderNotReleasedError);
+assert.throws(() => requireVNextPublicExecutionSettlement("uniswap-v2", VNEXT_V2_ATOMIC_INPUT_FEE, v2V3Env), VNextPublicExecutionProviderNotReleasedError);
 
 const zeroXOnlyEnv = { RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "zero-x-swap" };
 assert.deepEqual(scope("zero-x-swap"), { configured: true, valid: true, providers: ["zero-x-swap"] });
@@ -167,11 +168,11 @@ const exactPublicV3 = readVNextReleaseReadiness({
   ...exactV2Authority,
   RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "uniswap-v3"
 });
-assert.equal(exactPublicV3.configurationConsistent, true);
-assert.equal(exactPublicV3.providers.uniswapV3V2FeeExecutor.publicAuthorizationEnabled, true);
+assert.equal(exactPublicV3.configurationConsistent, false);
+assert.equal(exactPublicV3.providers.uniswapV3V2FeeExecutor.publicAuthorizationEnabled, false);
 assert.deepEqual(exactPublicV3.publicExecution.providers, ["uniswap-v3"]);
-assert.deepEqual(exactPublicV3.publicExecution.unintendedProviders, []);
-assert.equal(exactPublicV3.publicExecution.exactV3V2ReleaseScope, true);
+assert.deepEqual(exactPublicV3.publicExecution.unintendedProviders, ["uniswap-v3"]);
+assert.equal(exactPublicV3.publicExecution.exactV3V2ReleaseScope, false);
 
 for (const largerScope of ["uniswap-v3,uniswap-v2", "uniswap-v3,uniswap-v4", "uniswap-v3,up-v2"]) {
   const readiness = readVNextReleaseReadiness({ ...exactV2Authority, RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: largerScope });
@@ -232,3 +233,14 @@ assert.match(envExample, /^# RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS=uniswap-v3$/m)
 assert.doesNotMatch(envExample, /NEXT_PUBLIC_RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS/);
 
 console.log("RMT VNext public execution provider-scope smoke checks passed.");
+void publicAuthorizationNegativeSmoke();
+
+// Every historical public provider remains non-authorizable, even with its own configured scope.
+for (const provider of ["sushi", "uniswap-v2", "uniswap-v3", "uniswap-v4", "uniswapx", "zero-x-gasless", "up-v2", "up-cl"] as const) {
+  for (const value of [provider, "zero-x-swap", "uniswap-v2,uniswap-v3", provider + ",zero-x-swap"]) {
+    assert.throws(() => requireVNextPublicExecutionSettlement(provider, VNEXT_V2_ATOMIC_INPUT_FEE, { RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: value }));
+  }
+}
+for (const value of [undefined, "", "zero-x-swap ", "zero-x-swap,uniswap-v3", "uniswap-v3"]) {
+  assert.throws(() => requireVNextPublicExecutionProvider("zero-x-swap", { RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: value }));
+}

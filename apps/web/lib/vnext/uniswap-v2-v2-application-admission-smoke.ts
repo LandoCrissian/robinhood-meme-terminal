@@ -89,9 +89,10 @@ assert.equal(selectVNextUniswapV2SettlementMode({ recipient: otherWallet, env: {
 assert.equal(selectVNextUniswapV2SettlementMode({ recipient: proofWallet, env: authorityEnv }), VNEXT_V2_ATOMIC_INPUT_FEE);
 assert.equal(selectVNextUniswapV2SettlementMode({ recipient: otherWallet, env: authorityEnv }), VNEXT_DIRECT_NO_RMT_FEE);
 assert.throws(() => requireVNextPublicExecutionProvider("uniswap-v2", { RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "uniswap-v3" }), /not admitted/);
-assert.doesNotThrow(() => requireVNextPublicExecutionProvider("uniswap-v2", { RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "uniswap-v2,uniswap-v3" }));
-assert.doesNotThrow(() => requireVNextPublicExecutionSettlement("uniswap-v2", VNEXT_V2_ATOMIC_INPUT_FEE, { RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "uniswap-v2,uniswap-v3" }));
-assert.throws(() => requireVNextPublicExecutionSettlement("uniswap-v2", VNEXT_DIRECT_NO_RMT_FEE, { RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "uniswap-v2,uniswap-v3" }), /settlement authority/);
+// Historical codecs below remain independently testable, not public release authority.
+assert.throws(() => requireVNextPublicExecutionProvider("uniswap-v2", { RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "uniswap-v2,uniswap-v3" }), /not admitted/);
+assert.throws(() => requireVNextPublicExecutionSettlement("uniswap-v2", VNEXT_V2_ATOMIC_INPUT_FEE, { RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "uniswap-v2,uniswap-v3" }), /not admitted/);
+assert.throws(() => requireVNextPublicExecutionSettlement("uniswap-v2", VNEXT_DIRECT_NO_RMT_FEE, { RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "uniswap-v2,uniswap-v3" }), /not admitted/);
 
 const policy = createRmtExecutionFeeV2Policy({ treasury, fromBlock: "51296658" });
 const verifiedConfig: VerifiedVNextUniswapV2FeeExecutorV2Config = {
