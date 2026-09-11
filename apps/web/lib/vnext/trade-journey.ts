@@ -3,7 +3,7 @@ import { sameInjectedPreferenceWallet } from "../injected-signer-preference";
 import type { VNextExecutionRecord } from "./execution-recovery";
 
 export const tradeJourneyPhases = [
-  "IDENTITY_PENDING", "IDENTITY_UNAVAILABLE", "IDENTITY_CONFLICT", "QUOTE_NOT_REQUESTED", "QUOTE_REQUESTING",
+  "AUTHENTICATION_FAILED", "IDENTITY_PENDING", "IDENTITY_UNAVAILABLE", "IDENTITY_CONFLICT", "QUOTE_NOT_REQUESTED", "QUOTE_REQUESTING",
   "QUOTE_SERVICE_UNAVAILABLE", "ZEROX_NO_ROUTE", "ZEROX_PROVIDER_UNAVAILABLE", "ZEROX_POLICY_REJECTED",
   "FIRM_VERIFY_FAILED", "SIMULATION_FAILED", "AUTHORIZATION_FAILED", "ROUTE_READY", "QUOTE_EXPIRED",
   "APPROVAL_REQUIRED", "APPROVAL_PENDING", "APPROVAL_CONFIRMED", "SWAP_READY", "SWAP_PENDING",
@@ -20,6 +20,7 @@ export function failureJourneyPhase(error: unknown, fallback: TradeJourneyPhase)
   return tradeJourneyPhase(error && typeof error === "object" && "phase" in error ? error.phase : undefined) ?? fallback;
 }
 export const tradeJourneyLabels: Record<TradeJourneyPhase, string> = {
+  AUTHENTICATION_FAILED: "Trading authentication is required",
   IDENTITY_PENDING: "Verifying token...", IDENTITY_UNAVAILABLE: "Token verification temporarily unavailable",
   IDENTITY_CONFLICT: "Token identity conflict. Trading is blocked",
   QUOTE_NOT_REQUESTED: "Quote not requested", QUOTE_REQUESTING: "Finding best route...",
@@ -69,7 +70,7 @@ export async function revalidateAfterApproval<T>(options: {
     try { return await options.attempt(); }
     catch (error) {
       const phase = failureJourneyPhase(error, "AUTHORIZATION_FAILED");
-      if (!RETRYABLE.has(phase) || retry === 3 || !options.current()) throw error;
+      if ((error && typeof error === "object" && "retryable" in error && error.retryable === false) || !RETRYABLE.has(phase) || retry === 3 || !options.current()) throw error;
       options.onRetry(phase, retry + 1);
       await (options.wait ?? ((ms) => new Promise<void>((resolve) => setTimeout(resolve, ms))))([1500, 4000, 8000][retry]);
     }

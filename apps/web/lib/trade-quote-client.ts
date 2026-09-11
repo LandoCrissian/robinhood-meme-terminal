@@ -1,8 +1,10 @@
+import { responseTradeFailure, type TradeFailure, type TradeFailureStage } from "./vnext/trade-failure";
 import { recordExperienceStage } from "./experience-funnel";
 import { quoteRequestKey, SHARED_QUOTE_CACHE_MS } from "./trade-speed";
-import { tradeJourneyPhase, type TradeJourneyPhase } from "./vnext/trade-journey";
+import { type TradeJourneyPhase } from "./vnext/trade-journey";
 
 export type TradeQuoteFailureCode =
+  | "rejected"
   | "timeout"
   | "network"
   | "rate-limited"
@@ -14,20 +16,25 @@ export class TradeQuoteRequestError extends Error {
   readonly attempts: number;
   readonly status?: number;
   readonly phase: TradeJourneyPhase;
+  readonly retryable: boolean;
+  readonly failure?: TradeFailure;
 
   constructor(
     code: TradeQuoteFailureCode,
     message: string,
     attempts: number,
     status?: number,
-    phase: TradeJourneyPhase = "QUOTE_SERVICE_UNAVAILABLE"
+    phase: TradeJourneyPhase = "QUOTE_SERVICE_UNAVAILABLE",
+    failure?: TradeFailure
   ) {
     super(message);
     this.name = "TradeQuoteRequestError";
     this.code = code;
     this.attempts = attempts;
     this.status = status;
-    this.phase = phase;
+    this.phase = failure?.phase ?? phase;
+    this.failure = failure;
+    this.retryable = failure?.retryable ?? ["timeout", "network", "rate-limited", "service-unavailable"].includes(code);
   }
 }
 
@@ -37,6 +44,7 @@ export type TradeQuoteResponse = {
   payload: Record<string, unknown>;
   attempts: number;
   latencyMs: number;
+  stage?: TradeFailureStage;
 };
 
 type QuoteEntry = {
@@ -68,7 +76,7 @@ function retryableStatus(status: number) {
 function failureCodeForStatus(status: number): TradeQuoteFailureCode {
   if (status === 429) return "rate-limited";
   if (status >= 500) return "service-unavailable";
-  return "network";
+  return "rejected";
 }
 
 function wait(milliseconds: number) {
@@ -115,6 +123,7 @@ async function requestOnce(
     return {
       ok: response.ok,
       status: response.status,
+      stage: endpoint.endsWith("/verify") ? "verification" : "quote",
       payload: await responsePayload(response),
       attempts: attempt,
       latencyMs: Math.max(0, Date.now() - startedAt)
@@ -155,7 +164,7 @@ async function requestWithRetry(
         attempt
       );
       lastResponse = response;
-      if (response.ok || !retryableStatus(response.status) || attempt === maxAttempts) return response;
+      if (response.ok || !retryableStatus(response.status) || response.payload.retryable === false || attempt === maxAttempts) return response;
     } catch (cause) {
       lastError = cause instanceof TradeQuoteRequestError
         ? cause
@@ -204,6 +213,7 @@ export function requestTradeQuote(
 
 export function tradeQuoteFailureFromResponse(response: TradeQuoteResponse) {
   if (response.ok) return null;
+  const structured = responseTradeFailure(response.payload, response.status, response.stage ?? "verification");
   const code = failureCodeForStatus(response.status);
   const error = typeof response.payload.error === "string"
     ? response.payload.error
@@ -213,5 +223,5 @@ export function tradeQuoteFailureFromResponse(response: TradeQuoteResponse) {
         ? "The quote service is temporarily unavailable."
         : "The quote request was rejected.";
   return new TradeQuoteRequestError(code, error, response.attempts, response.status,
-    tradeJourneyPhase(response.payload.phase) ?? (response.status === 409 ? "QUOTE_EXPIRED" : "QUOTE_SERVICE_UNAVAILABLE"));
+    structured.phase, structured);
 }

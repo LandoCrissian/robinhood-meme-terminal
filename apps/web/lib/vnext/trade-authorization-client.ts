@@ -1,3 +1,4 @@
+import { responseTradeFailure, type TradeFailure } from "./trade-failure";
 import {
   VNEXT_VERIFY_AGAIN_REASONS,
   vNextVerifyAgainReason,
@@ -8,6 +9,7 @@ export const TRADE_AUTHORIZATION_TIMEOUT_MS = 30_000;
 export const TRADE_AUTHORIZATION_MAX_ATTEMPTS = 1;
 
 export type TradeAuthorizationFailureCode =
+  | "rejected"
   | "timeout"
   | "network"
   | "rate-limited"
@@ -22,13 +24,19 @@ export class TradeAuthorizationRequestError extends Error {
   readonly attempts = TRADE_AUTHORIZATION_MAX_ATTEMPTS;
   readonly status?: number;
   readonly verifyAgainReason?: TradeAuthorizationVerifyAgainReason;
+  readonly failure?: TradeFailure;
+  readonly phase: TradeFailure["phase"];
+  readonly retryable: boolean;
 
-  constructor(code: TradeAuthorizationFailureCode, message: string, status?: number, verifyAgainReason?: TradeAuthorizationVerifyAgainReason) {
+  constructor(code: TradeAuthorizationFailureCode, message: string, status?: number, verifyAgainReason?: TradeAuthorizationVerifyAgainReason, failure?: TradeFailure) {
     super(message);
     this.name = "TradeAuthorizationRequestError";
     this.code = code;
     this.status = status;
     this.verifyAgainReason = verifyAgainReason;
+    this.failure = failure;
+    this.phase = failure?.phase ?? (code === "verify-again" ? "QUOTE_EXPIRED" : "QUOTE_SERVICE_UNAVAILABLE");
+    this.retryable = failure?.retryable ?? true;
   }
 }
 
@@ -71,7 +79,7 @@ function boundedTimeout(value: number | undefined) {
 function failureCodeForStatus(status: number): TradeAuthorizationFailureCode {
   if (status === 429) return "rate-limited";
   if (status >= 500) return "service-unavailable";
-  return "network";
+  return "rejected";
 }
 
 async function responsePayload(response: Response) {
@@ -154,7 +162,8 @@ export function tradeAuthorizationFailureFromResponse(response: TradeAuthorizati
       : response.status >= 500
         ? "The wallet authorization service is temporarily unavailable. Verify the route again."
         : "The wallet authorization request was rejected. Verify the route again.";
-  return new TradeAuthorizationRequestError(code, error, response.status, verifyAgainReason);
+  return new TradeAuthorizationRequestError(code, error, response.status, verifyAgainReason,
+    responseTradeFailure(response.payload, response.status, "authorization"));
 }
 
 export function isCurrentTradeAuthorizationAttempt(attempt: number, currentAttempt: number) {

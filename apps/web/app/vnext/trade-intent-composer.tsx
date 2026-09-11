@@ -1,5 +1,6 @@
 "use client";
 
+import { currentTradeEvidence } from "../../lib/vnext/current-trade-evidence";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { VerifiedRequestRefresh, verifiedRequestRefreshDelay, isVerifiedRequestFresh, waitForVerifiedRequestRetry } from "../../lib/vnext/verified-request-refresh";
 import { formatUnits, getAddress, parseUnits, type Address } from "viem";
@@ -159,6 +160,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
   }, [postExecutionState.state]);
   const [walletActionId, setWalletActionId] = useState(0);
   const walletActionCounter = useRef(0);
+  const publishedPreparation = useRef<string | null>(null);
+  const ownedSwapPlans = useRef(new Set<string>());
   const intentionalTradeContext = useRef<string | null>(null);
   const restoredApprovalIntent = useRef(false);
   const handledExecution = useRef<string | undefined>(dismissedExecutionHash);
@@ -333,7 +336,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
     setSide(pending.side); setAmount(pending.amount);
     setBuyInputKey(pending.buyInputKey); setSellOutputKey(pending.sellOutputKey);
   }, [address, chainId, identity.authenticated, identity.userId, identity.activeWalletKey, selectedMarketAddress]);
-  const cachedQuote = cachedVNextQuoteForRequest(lastReadyQuote.current, requestKey);
+  const cachedQuote = cachedVNextQuoteForRequest(lastReadyQuote.current, preparationContext);
   useEffect(() => {
     backgroundQuoteEpoch.current += 1;
     authorizationAttemptEpoch.current += 1;
@@ -352,6 +355,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
     preparedApprovalAuthority.current = undefined;
   }, [requestKey, identity.userId, identity.activeWalletKey]);
   useEffect(() => {
+    if (executionRecord?.kind === "swap" && executionRecord.state === "confirmed"
+      && !ownedSwapPlans.current.has(executionRecord.planId)) return;
     const outcome = resolvedVNextExecutionOutcome({
       record: executionRecord,
       handledTxHash: handledExecution.current,
@@ -406,11 +411,11 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
   }, [postExecutionState.state]);
   const visibleQuote = cachedQuote;
   const indicativeQuoteFresh = isVNextQuoteReusableForTrade(cachedQuote, Date.now());
-  const visibleVerification = verificationState.state === "ready"
-    ? verificationState.evidence
-    : verificationState.state === "loading"
-      ? lastReadyVerification.current
-      : undefined;
+  const visibleVerification = currentTradeEvidence(
+    verificationState.state === "ready" ? verificationState.evidence : undefined,
+    authorizationState.state === "ready" ? authorizationState.plan : undefined,
+    { published: publishedPreparation.current, current: preparationContext, wallet: address,
+      input: inputAddress, output: outputAddress, amount: draft.intent?.amountAtomic, now: Date.now() });
   useEffect(() => {
     const expiry = visibleVerification?.networkCostValuationExpiresAtMs;
     if (!expiry) return;
@@ -444,13 +449,11 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
     : null;
   const expectedOutput = visibleVerification && pair?.outputAsset.decimals != null
     ? formatAtomicDisplay(visibleVerification.expectedOutputAtomic, pair.outputAsset.decimals)
-    : bestQuote?.expectedOutputAtomic && bestQuote.outputDecimals !== null
-    ? formatAtomicDisplay(bestQuote.expectedOutputAtomic, bestQuote.outputDecimals)
+    : quoteState.state === "ready" && verificationQuote?.expectedOutputAtomic && verificationQuote.outputDecimals !== null
+    ? formatAtomicDisplay(verificationQuote.expectedOutputAtomic, verificationQuote.outputDecimals)
     : null;
   const protectedOutput = visibleVerification && pair?.outputAsset.decimals != null
     ? formatAtomicDisplay(visibleVerification.protectedOutputAtomic, pair.outputAsset.decimals)
-    : bestQuote && bestQuote.outputDecimals !== null
-    ? formatAtomicDisplay(bestQuote.protectedOutputAtomic!, bestQuote.outputDecimals)
     : null;
   const indicativeFeePresentation = vNextQuoteFeePresentation({
     bestObserved: bestQuote,
@@ -480,6 +483,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
     : null;
   const showExecutableFeeSummary = Boolean(
     pair
+    && quoteState.state === "ready"
+    && !visibleVerification
     && verificationQuote
     && indicativeFeePresentation.bestExecutable?.state !== "no_rmt_fee"
   );
@@ -605,17 +610,17 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
     };
     const refresh = async () => {
       if (cancelled || backgroundQuoteEpoch.current !== epoch || document.visibilityState === "hidden") return;
-      const hadVisibleQuote = Boolean(cachedVNextQuoteForRequest(lastReadyQuote.current, requestKey));
+      const hadVisibleQuote = Boolean(cachedVNextQuoteForRequest(lastReadyQuote.current, preparationContext));
       if (!hadVisibleQuote && !backgroundQuoteAttempted.current) setQuoteState({ state: "loading" });
       backgroundQuoteAttempted.current = true;
       try {
         const freshQuote = await requestLiveRoutes();
         if (cancelled || backgroundQuoteEpoch.current !== epoch) return;
-        lastReadyQuote.current = { requestKey, response: freshQuote };
+        lastReadyQuote.current = { requestKey: preparationContext, response: freshQuote };
         setQuoteState({ state: "ready", response: freshQuote });
       } catch (cause) {
         if (cancelled || backgroundQuoteEpoch.current !== epoch) return;
-        if (!cachedVNextQuoteForRequest(lastReadyQuote.current, requestKey)) {
+        if (!cachedVNextQuoteForRequest(lastReadyQuote.current, preparationContext)) {
           setQuoteState({
             state: "error",
             message: cause instanceof Error ? cause.message : "Quote service temporarily unavailable.",
@@ -633,7 +638,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
       }
       schedule(VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS);
     };
-    const initialDelay = backgroundQuoteImmediate.current || !cachedVNextQuoteForRequest(lastReadyQuote.current, requestKey)
+    const initialDelay = backgroundQuoteImmediate.current || !cachedVNextQuoteForRequest(lastReadyQuote.current, preparationContext)
       ? VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS
       : VNEXT_BACKGROUND_QUOTE_REFRESH_MS;
     backgroundQuoteImmediate.current = false;
@@ -781,8 +786,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
       identityToken: identity.identityToken
     });
     const failure = tradeAuthorizationFailureFromResponse(response);
-    if (failure) throw new TradeJourneyError(tradeJourneyPhase(response.payload.phase)
-      ?? (response.status === 409 ? "QUOTE_EXPIRED" : response.status >= 500 || response.status === 429 ? "QUOTE_SERVICE_UNAVAILABLE" : "AUTHORIZATION_FAILED"), failure.message);
+    if (failure) throw failure;
     return parseVNextAuthorizationBundle(response.payload, evidence, {
       quoteRequestId: evidence.sourceQuoteRequestId,
       inputAsset: inputAddress,
@@ -829,7 +833,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
             setQuoteState({ state: "loading" });
             const freshQuote = await requestLiveRoutes();
             if (!bound()) throw new TradeJourneyError("UNRESOLVED", "Trade intent changed.");
-            lastReadyQuote.current = { requestKey, response: freshQuote };
+            lastReadyQuote.current = { requestKey: preparationContext, response: freshQuote };
             setQuoteState({ state: "ready", response: freshQuote });
             stage = "verification";
             const freshEvidence = await requestStrictVerification(freshQuote);
@@ -851,11 +855,13 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
       ready: (authorization, handoff) => {
         if (currentPreparationContext.current !== key) return;
         setRefreshingPrice(false);
-        lastReadyVerification.current = authorization.evidence;
+        publishedPreparation.current = preparationContext;
+      lastReadyVerification.current = authorization.evidence;
         setVerificationState({ state: "ready", evidence: authorization.evidence });
         setAuthorizationState({ state: "ready", plan: authorization.plan });
         // A fresh quote cannot create wallet intent. Only a retained explicit click may hand off.
         if (handoff && intentionalTradeContext.current === key && authorization.plan.provider === "zero-x-swap") {
+          if (authorization.plan.kind === "swap") ownedSwapPlans.current.add(authorization.plan.planId);
           walletBusyRef.current = true; setWalletBusy(true);
           rememberApprovalIntent(authorization.plan);
           setWalletActionId(++walletActionCounter.current);
@@ -927,6 +933,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
       intentionalTradeContext.current = `${identity.userId}:${identity.activeWalletKey}:${requestKey}`;
       savePendingApprovalJourney({ ...pending, approvalTxHash: executionRecord.txHash });
     }
+    const approvalContext = preparationContext;
+    const approvalCurrent = (attempt: number) => currentPreparationContext.current === approvalContext && isCurrentTradeAuthorizationAttempt(attempt, authorizationAttemptEpoch.current);
     const confirmedApprovalAuthority = preparedApprovalAuthority.current ?? (resume && pending ? {
       approvalKind: "erc20_to_allowance_holder" as const, target: pending.inputAsset,
       spender: "0x0000000000001fF3684f28c67538d4D072C22734", amountAtomic: pending.inputAmountAtomic
@@ -943,7 +951,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
     clearTradeQuoteCache();
     try {
       const refreshed = await revalidateAfterApproval({
-        current: () => isCurrentTradeAuthorizationAttempt(authorizationAttempt, authorizationAttemptEpoch.current),
+        current: () => approvalCurrent(authorizationAttempt),
         onRetry: (phase, retry) => {
           emitTradeJourney({ phase, retry, approvalHashAvailable: Boolean(executionRecord?.txHash) });
           setPostExecutionState({ state: "refreshing", message: `Approval confirmed. ${tradeJourneyLabels[phase]}. Retrying fresh verification...` });
@@ -951,11 +959,11 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
         attempt: async () => {
       clearTradeQuoteCache();
       const freshQuote = await requestLiveRoutes();
-      if (!isCurrentTradeAuthorizationAttempt(authorizationAttempt, authorizationAttemptEpoch.current)) return;
-      lastReadyQuote.current = { requestKey, response: freshQuote };
+      if (!approvalCurrent(authorizationAttempt)) return;
+      lastReadyQuote.current = { requestKey: preparationContext, response: freshQuote };
       setQuoteState({ state: "ready", response: freshQuote });
       const freshEvidence = await requestStrictVerification(freshQuote);
-      if (!isCurrentTradeAuthorizationAttempt(authorizationAttempt, authorizationAttemptEpoch.current)) return;
+      if (!approvalCurrent(authorizationAttempt)) return;
       lastReadyVerification.current = freshEvidence;
       setVerificationState({ state: "ready", evidence: freshEvidence });
       if (repeatsConfirmedVNextApproval(confirmedApprovalAuthority, freshEvidence)) {
@@ -964,7 +972,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
       const outcome = postApprovalVerificationOutcome(freshEvidence);
       if (outcome.state === "blocked") throw new Error(outcome.message);
       const authorization = await requestAuthorizationPlan(freshEvidence);
-      if (!isCurrentTradeAuthorizationAttempt(authorizationAttempt, authorizationAttemptEpoch.current)) return;
+      if (!approvalCurrent(authorizationAttempt)) return;
       if (
         (outcome.state === "next_approval_ready" && authorization.plan.kind !== "erc20_approval")
         || (outcome.state === "swap_ready" && authorization.plan.kind !== "swap")
@@ -972,8 +980,9 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
       return { authorization, outcome };
         }
       });
-      if (!refreshed || !isCurrentTradeAuthorizationAttempt(authorizationAttempt, authorizationAttemptEpoch.current)) return;
+      if (!refreshed || !approvalCurrent(authorizationAttempt)) return;
       const { authorization, outcome } = refreshed;
+      publishedPreparation.current = preparationContext;
       lastReadyVerification.current = authorization.evidence;
       setVerificationState({ state: "ready", evidence: authorization.evidence });
       setAuthorizationState({ state: "ready", plan: authorization.plan });
@@ -987,9 +996,12 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
         : undefined;
       setPostExecutionState(outcome);
       emitTradeJourney({ phase: outcome.state === "swap_ready" ? "SWAP_READY" : "APPROVAL_REQUIRED", quoteRefreshedAfterApproval: true, approvalHashAvailable: true });
-      if (authorization.plan.provider === "zero-x-swap" && intentionalTradeContext.current === `${identity.userId}:${identity.activeWalletKey}:${requestKey}`) setWalletActionId(++walletActionCounter.current);
+      if (authorization.plan.provider === "zero-x-swap" && intentionalTradeContext.current === `${identity.userId}:${identity.activeWalletKey}:${requestKey}`) {
+        if (authorization.plan.kind === "swap") ownedSwapPlans.current.add(authorization.plan.planId);
+        setWalletActionId(++walletActionCounter.current);
+      }
     } catch (cause) {
-      if (!isCurrentTradeAuthorizationAttempt(authorizationAttempt, authorizationAttemptEpoch.current)) return;
+      if (!approvalCurrent(authorizationAttempt)) return;
       const message = cause instanceof Error ? cause.message : "Fresh post-approval verification failed.";
       setVerificationState({ state: "error", message });
       setAuthorizationState({ state: "error", message });
@@ -1070,7 +1082,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
   const flowBusy = verificationState.state === "loading"
     || authorizationState.state === "loading"
     || postExecutionState.state === "refreshing";
-  const walletPlanActive = authorizationState.state === "ready";
+  const walletPlanActive = authorizationState.state === "ready" && Boolean(visibleVerification);
   const transactionPending = executionRecord?.state === "submitted";
   const triggerPrimaryAction = () => {
     if (!authorizationEnabled || stockTokenViewOnly) return;
@@ -1178,7 +1190,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
       ) : <p className="vnIntentHint">Enter the exact {inputSymbol === "—" ? "input asset" : inputSymbol} amount. RMT does not estimate or inflate wallet balances.</p>}
 <div className="vnSwapDivider"><span aria-hidden="true">↓</span></div>
 <div className="vnReceiveField">
-        <span>Expected receive</span>
+        <span>{visibleVerification ? "Expected receive" : "Estimated receive (not verified)"}</span>
         <div><strong>{expectedOutputLabel}</strong>
           {side === "sell" ? <select
             aria-label="Receive asset"
@@ -1190,19 +1202,13 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
           </select> : <button type="button" disabled>{outputSymbol}</button>}
         </div>
         <div className="vnOutputProtection"><span>Protected minimum</span><strong>{protectedOutput ? `${protectedOutput} ${outputSymbol}` : "Set when you trade"}</strong></div>
-        <small>{protectedOutput
-          ? routeSelection.usesVerifiedBackup
-            ? `Best observed: ${bestQuote?.providerLabel} (quote-only). Best currently executable: ${verificationQuote?.providerLabel}.`
-            : verificationQuote
-              ? `Best observed: ${bestQuote?.providerLabel}. Quotes update quietly; RMT verifies the executable route when you trade.`
-              : `Best observed: ${bestQuote?.providerLabel} (quote-only). No public wallet route is currently admitted.`
-          : "RMT verifies the protected minimum before the explicit wallet-review action."}</small>
+        <small>{visibleVerification ? "Minimum and fees belong to the selected verified transaction." : "Comparison quotes are estimates only. No protected minimum is established before verification."}</small>
       </div>
 {showExecutableFeeSummary && pair ? <div className="vnFeeV2Summary" role="note" aria-label="RMT execution fee summary">
-        <span><small>{indicativeFeePresentation.separateContexts ? "Executable RMT fee" : "RMT execution fee"}</small><strong>{executableRmtFee
+        <span><small>{indicativeFeePresentation.separateContexts ? "Estimated candidate RMT fee" : "Estimated RMT fee"}</small><strong>{executableRmtFee
           ? `${executableRmtFee.feeBps / 100}% · ${formatVNextFeeAtomic(executableRmtFee.expectedFeeAtomic, executableRmtFee.feeSide === "input" ? pair.inputAsset.decimals ?? 18 : pair.outputAsset.decimals ?? 18)} ${executableRmtFee.feeSide === "input" ? inputSymbol : outputSymbol}`
           : executableRmtFeeLabel}</strong></span>
-        <span><small>Executable provider input</small><strong>{executableRmtFee
+        <span><small>Estimated candidate input</small><strong>{executableRmtFee
           ? `${formatVNextFeeAtomic(executableRmtFee.providerInputAtomic, pair.inputAsset.decimals ?? 18)} ${inputSymbol}`
           : "Unavailable until fee economics verify"}</strong></span>
       </div> : null}
@@ -1225,7 +1231,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
         <small>{postExecutionState.message}</small>
       </div> : null}
 <dl className="vnTradePriceSummary" aria-label="Trade costs">
-  <div><dt>Provider</dt><dd>0x</dd></div>
+  <div><dt>Provider</dt><dd>{visibleVerification ? vNextProviderLabel(visibleVerification.provider) : verificationQuote && quoteState.state === "ready" ? `${verificationQuote.providerLabel} (estimate)` : "Not verified"}</dd></div>
   <div><dt>Network fee estimate</dt><dd>{visibleVerification?.estimatedNetworkCostWei
     ? formatUnits(BigInt(visibleVerification.estimatedNetworkCostWei), 18) + " ETH" : "Not available yet"}</dd></div>
 </dl>
@@ -1273,17 +1279,17 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
           : spendableInputAtomic !== undefined
             ? `Confirmed ${inputSymbol} balance is the source for percentage and Max controls.`
             : `Confirmed ${inputSymbol} balance is delayed. Percentage controls remain disabled.`}</p> : null}
-        {visibleQuote ? <div className="vnQuoteAttempts">
+        {visibleQuote ? <div className="vnQuoteAttempts"><p>{quoteState.state === "error" || !indicativeQuoteFresh ? "Retained comparisons (stale, non-executable)" : "Comparison estimates (non-executable)"}</p>
           {visibleQuote.attempts.map((attempt) => (
             <div className={attempt.status === "indicative" ? "isReady" : ""} key={attempt.provider}>
               <span><strong>{attempt.providerLabel}</strong><small>{attempt.executionKind === "rfq_intent" ? "Intent" : attempt.executionKind === "gasless" ? "Gasless" : attempt.executionKind === "aggregator" ? "Aggregator" : "Direct AMM"} · {attempt.userPaysGas === null ? "gas unknown" : attempt.userPaysGas ? "wallet gas" : "filler pays gas"} · {attempt.latencyMs}ms</small></span>
               <span><strong>{attempt.status === "indicative" && attempt.outputDecimals !== null ? `${formatAtomicDisplay(attempt.protectedOutputAtomic!, attempt.outputDecimals)} ${outputSymbol}` : attempt.status === "no_route" ? "No route" : attempt.status === "invalid_response" ? "Rejected" : "Unavailable"}</strong><small>{attempt.status === "indicative"
                 ? attempt.provider === bestQuote?.provider
                   ? attempt.publicWalletExecutionEligible
-                    ? "Highest protected user output before network fee · indicative floor"
-                    : "Highest protected user output before network fee · quote-only"
+                    ? "Highest estimated user output before network fee · indicative floor"
+                    : "Highest estimated user output before network fee · quote-only"
                   : routeSelection.usesVerifiedBackup && attempt.provider === verificationQuote?.provider
-                    ? "Best currently executable quote · indicative floor"
+                    ? "Verification candidate (not executable) · indicative floor"
                     : "Indicative floor"
                 : attempt.detail}</small></span>
             </div>
@@ -1299,8 +1305,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
           <div><dt>Provider fee</dt><dd>{visibleQuote.attempts.some((attempt) => attempt.providerFeeAtomic !== null) ? "Disclosed by provider and reflected in output" : "Not separately reported"}</dd></div>
           {indicativeFeePresentation.separateContexts ? <>
             <div><dt>Best observed RMT fee</dt><dd>{observedRmtFeeLabel}</dd></div>
-            <div><dt>Executable RMT fee</dt><dd>{executableRmtFeeLabel}</dd></div>
-            <div><dt>Executable provider input</dt><dd>{executableRmtFee && pair
+            <div><dt>Estimated candidate RMT fee</dt><dd>{executableRmtFeeLabel}</dd></div>
+            <div><dt>Estimated candidate input</dt><dd>{executableRmtFee && pair
               ? `${formatVNextFeeAtomic(executableRmtFee.providerInputAtomic, pair.inputAsset.decimals ?? 18)} ${inputSymbol}`
               : "Unavailable until fee economics verify"}</dd></div>
           </> : <div><dt>RMT fee</dt><dd>{verificationQuote ? executableRmtFeeLabel : observedRmtFeeLabel}</dd></div>}
@@ -1309,7 +1315,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
           <div>
             <span><strong>Strict pre-sign evidence</strong><small>{verificationQuote
               ? routeSelection.usesVerifiedBackup
-                ? `${bestQuote?.providerLabel} leads indicatively but is quote-only; ${verificationQuote.providerLabel} is the best currently executable quote`
+                ? `${bestQuote?.providerLabel} leads indicatively but is quote-only; ${verificationQuote.providerLabel} is the verification candidate, not executable evidence`
                 : "Fresh provider-specific contracts + exact wallet state"
               : stockTokenViewOnly
                 ? "Indicative routes are informational; stock-token execution verification is not admitted."
@@ -1378,7 +1384,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
           onActivityChange={(active) => { walletBusyRef.current = active; setWalletBusy(active); }}
           actionId={walletActionId}
           tradeActionLabel={authorizationState.plan.provider === "zero-x-swap" ? `${side === "buy" ? "Buy" : "Sell"} ${marketSymbol}` : undefined}
-          onTradeAction={() => { walletBusyRef.current = true; setWalletBusy(true); if (authorizationState.plan.provider === "zero-x-swap") {
+          onTradeAction={() => { if (authorizationState.plan.kind === "swap") ownedSwapPlans.current.add(authorizationState.plan.planId); walletBusyRef.current = true; setWalletBusy(true); if (authorizationState.plan.provider === "zero-x-swap") {
             intentionalTradeContext.current = `${identity.userId}:${identity.activeWalletKey}:${requestKey}`;
             rememberApprovalIntent(authorizationState.plan);
           } }}

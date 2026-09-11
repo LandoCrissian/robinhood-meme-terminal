@@ -6,7 +6,7 @@ const zero = `0x${'0'.repeat(40)}`;
 export function hotPathInventory(url, state, usdg) {
   if (url.hostname !== 'identity-indexer.fixture.invalid') return undefined;
   const target = url.searchParams.get('token')?.toLowerCase();
-  if (!state.hotPathDurable || ![peep, usdg].includes(target)) return { status: 503, body: { error: 'Fixture inventory unavailable' } };
+  if (!state.hotPathDurable || (target !== undefined && ![peep, usdg].includes(target))) return { status: 503, body: { error: 'Fixture inventory unavailable' } };
   state.durableReads = (state.durableReads ?? 0) + 1;
   const pool = {
     sourceId: 'uniswap-v2', protocol: 'uniswap', version: 2,

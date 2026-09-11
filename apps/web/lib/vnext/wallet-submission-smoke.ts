@@ -72,7 +72,8 @@ assert.match(component, /RMT atomic fee settlement · policy v2/);
 assert.match(composer, /aria-label="RMT execution fee summary"/);
 assert.match(composer, /executableRmtFee\.expectedFeeAtomic/);
 assert.match(composer, /executableRmtFee\.providerInputAtomic/);
-assert.match(composer, /Executable provider input/);
+assert.match(composer, /Estimated candidate input/);
+assert.match(composer, /currentTradeEvidence/);
 assert.match(indicativeFeePresentation, /bestExecutable: feePresentationForQuote\(input\.bestExecutable\)/);
 assert.match(composer, /RMT execution fee/);
 

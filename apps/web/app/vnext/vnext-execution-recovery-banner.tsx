@@ -25,6 +25,11 @@ export function VNextExecutionRecoveryBanner({ record, walletRequest, status, on
     <span><strong>Transaction confirmed. Swap settlement not yet verified.</strong><small>No successful purchase or proceeds are credited without exact output evidence. Do not repeat this trade to resolve the uncertainty.</small></span>
     <ExplorerLink kind="transaction" value={record.txHash} accessibleName="Inspect transaction with unverified swap settlement">View transaction</ExplorerLink>
   </section>;
+  if (record.kind === "swap" && status === "confirmed" && hasVerifiedVNextSwapSettlement(record)) return <section className="vnRecoveryBanner isconfirmed" role="status">
+    <span><strong>Verified swap history</strong><small>Previously recorded settlement. This is not confirmation of a new trade attempt.</small>
+      <small>Submitted: <time dateTime={new Date(record.submittedAtMs).toISOString()}>{new Date(record.submittedAtMs).toLocaleString()}</time></small></span>
+    <ExplorerLink kind="transaction" value={record.txHash} accessibleName="Open historical verified swap">View historical transaction</ExplorerLink>
+  </section>;
   const title = status === "confirming"
     ? "Transaction submitted · confirmation pending"
     : status === "confirmation_unavailable"

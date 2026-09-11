@@ -1,4 +1,6 @@
-import { decodeZeroXExecutableMinimum, ZERO_X_SLIPPAGE_SETTLER_RUNTIME_HASH } from "./vnext-zero-x-execution-decoder";
+import { requireZeroXDeployment } from "./vnext-zero-x-deployment-authority";
+import { TradeExecutionFailure } from "../vnext/trade-failure";
+import { decodeZeroXExecutableMinimum } from "./vnext-zero-x-execution-decoder";
 import { RMT_ZERO_X_MAX_SLIPPAGE_PPM, RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM, zeroXMinimumRespectsSlippage } from "../vnext/zero-x-settlement";
 import { committedZeroXAuthorizationEvidence } from "./vnext-zero-x-firm-quote-commitment";
 
@@ -88,7 +90,9 @@ export type ZeroXSwapFirmQuoteVerificationEvidence = VNextProviderVerificationEv
   admissionReady: boolean;
 };
 
-class ZeroXInvalidResponseError extends Error {}
+class ZeroXInvalidResponseError extends TradeExecutionFailure {
+  constructor(_detail: string) { super("PROVIDER_POLICY_REJECTED"); }
+}
 
 function isObject(value: unknown): value is JsonObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -150,7 +154,7 @@ async function rpc(method: string, params: unknown[]) {
     signal: AbortSignal.timeout(ZERO_X_RPC_TIMEOUT_MS)
   });
   const body: unknown = await response.json().catch(() => null);
-  if (!response.ok || !isObject(body) || body.error !== undefined || body.result === undefined) throw new Error(`Robinhood RPC ${method} failed.`);
+  if (!response.ok || !isObject(body) || body.error !== undefined || body.result === undefined) throw new TradeExecutionFailure("RPC_UNAVAILABLE");
   return body.result;
 }
 
@@ -162,8 +166,8 @@ export function zeroXSwapFirmQuoteVerificationConfiguration(): ZeroXSwapFirmQuot
   return { allowanceHolder: getAddress(configuredAddress), runtimeHash: configuredHash.toLowerCase() as Hex };
 }
 
-async function runtimeCode(address: Address) {
-  const result = await rpc("eth_getCode", [address, "latest"]);
+async function runtimeCode(address: Address, block = "latest") {
+  const result = await rpc("eth_getCode", [address, block]);
   if (typeof result !== "string" || !isHex(result) || !/^0x(?:[0-9a-fA-F]{2})+$/.test(result)) throw new Error("0x transaction target has no contract code.");
   return result as Hex;
 }
@@ -320,7 +324,7 @@ async function fetchFirmQuote(request: VNextProviderVerificationRequest) {
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) {
     if (response.status === 400 && isObject(body) && body.name === "NO_LIQUIDITY_AVAILABLE") return null;
-    throw new Error(`0x firm-quote request failed with ${response.status}.`);
+    throw new TradeExecutionFailure(response.status === 429 ? "RATE_LIMITED" : response.status >= 500 ? "PROVIDER_UNAVAILABLE" : "PROVIDER_POLICY_REJECTED");
   }
   return body;
 }
@@ -337,20 +341,19 @@ export async function verifyZeroXSwapFirmQuote(request: VNextProviderVerificatio
   if (typeof chainId !== "string" || !/^0x[0-9a-fA-F]+$/.test(chainId) || BigInt(chainId) !== 4_663n) throw new Error("Robinhood RPC chain identity changed.");
   const observedAtMs = Date.now();
   const body = await fetchFirmQuote(request);
-  if (body === null) throw new Error("No complete 0x Swap route is available for firm-quote verification.");
+  if (body === null) throw new TradeExecutionFailure("NO_ROUTE");
   const quote = parseFirmQuote(body, request, configuration);
+  const deployment = await requireZeroXDeployment(quote.settlerTarget, rpc);
   const nativeInput = request.inputAsset === zeroAddress;
   const [balance, targetCode, holderHash, tokenBalance, tokenAllowance] = await Promise.all([
     nativeBalance(request.recipient),
-    runtimeCode(quote.transactionTarget),
+    runtimeCode(quote.transactionTarget, deployment.block),
     nativeInput ? Promise.resolve(null) : requireAllowanceHolderRuntime(configuration),
     nativeInput ? Promise.resolve(null) : tokenUint(request.inputAsset, encodeFunctionData({ abi: erc20Abi, functionName: "balanceOf", args: [request.recipient] })),
     nativeInput ? Promise.resolve(null) : tokenUint(request.inputAsset, encodeFunctionData({ abi: erc20Abi, functionName: "allowance", args: [request.recipient, configuration.allowanceHolder] }))
   ]);
   const targetRuntimeHash = keccak256(targetCode);
-  const executableSettlerRuntimeHash = quote.settlerTarget === quote.transactionTarget
-    ? targetRuntimeHash : keccak256(await runtimeCode(quote.settlerTarget));
-  if (executableSettlerRuntimeHash !== ZERO_X_SLIPPAGE_SETTLER_RUNTIME_HASH) throw new Error("0x executable slippage runtime is not verified.");
+  const executableSettlerRuntimeHash = deployment.runtimeHash;
   if (quote.transactionTarget === configuration.allowanceHolder && targetRuntimeHash !== configuration.runtimeHash) throw new Error("0x AllowanceHolder execution target changed.");
   if (!nativeInput && holderHash !== targetRuntimeHash) throw new Error("0x AllowanceHolder execution target changed.");
 
@@ -445,6 +448,11 @@ export async function prepareZeroXSwapAuthorization(request: VNextProviderAuthor
   const evidence = committedZeroXAuthorizationEvidence(request);
   const configuration = zeroXSwapFirmQuoteVerificationConfiguration();
   const firm = evidence.providerNativeFee!.firmQuote!;
+  const deployment = await requireZeroXDeployment(evidence.executableSettlerTarget, rpc, "authorization");
+  const outerHash = keccak256(await runtimeCode(evidence.router, deployment.block));
+  if (deployment.runtimeHash !== evidence.executableSettlerRuntimeHash || outerHash !== firm.targetRuntimeHash) {
+    throw new TradeExecutionFailure("EXECUTION_ENVELOPE_REJECTED", "authorization");
+  }
   if (!configuration || (firm.allowanceTarget !== null && (
     getAddress(firm.allowanceTarget) !== getAddress(configuration.allowanceHolder!)
     || firm.allowanceHolderRuntimeHash?.toLowerCase() !== configuration.runtimeHash.toLowerCase()

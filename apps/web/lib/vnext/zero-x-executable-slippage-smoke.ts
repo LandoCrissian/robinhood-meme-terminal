@@ -1,3 +1,4 @@
+import { TradeExecutionFailure } from "./trade-failure";
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { encodeFunctionData, getAddress, keccak256, parseAbi, zeroAddress, type Hex } from "viem";
@@ -27,13 +28,13 @@ for (const [expected, reported, encoded, valid] of [
   const decoded = decodeZeroXExecutableMinimum(input);
   assert.equal(decoded.minimumAtomic, encoded);
   assert.equal(zeroXMinimumRespectsSlippage(expected, decoded.minimumAtomic), valid);
-  assert.throws(() => decodeZeroXExecutableMinimum({ ...input, recipient: zeroAddress }), /binding/);
-  assert.throws(() => decodeZeroXExecutableMinimum({ ...input, outputAsset: zeroAddress }), /binding/);
-  assert.throws(() => decodeZeroXExecutableMinimum({ ...input, valueAtomic: "999999" }), /binding/);
-  assert.throws(() => decodeZeroXExecutableMinimum({ ...input, data: "0x12345678" }), /binding/);
+  assert.throws(() => decodeZeroXExecutableMinimum({ ...input, recipient: zeroAddress }), (error: unknown) => error instanceof TradeExecutionFailure && error.code === "EXECUTION_ENVELOPE_REJECTED" && !error.retryable);
+  assert.throws(() => decodeZeroXExecutableMinimum({ ...input, outputAsset: zeroAddress }), (error: unknown) => error instanceof TradeExecutionFailure && error.code === "EXECUTION_ENVELOPE_REJECTED" && !error.retryable);
+  assert.throws(() => decodeZeroXExecutableMinimum({ ...input, valueAtomic: "999999" }), (error: unknown) => error instanceof TradeExecutionFailure && error.code === "EXECUTION_ENVELOPE_REJECTED" && !error.retryable);
+  assert.throws(() => decodeZeroXExecutableMinimum({ ...input, data: "0x12345678" }), (error: unknown) => error instanceof TradeExecutionFailure && error.code === "EXECUTION_ENVELOPE_REJECTED" && !error.retryable);
 }
 const abi = parseAbi(["function execute((address recipient,address buyToken,uint256 minAmountOut) slippage,bytes[] actions,bytes32 tag) payable returns(bool)"]);
 const early = encodeFunctionData({ abi: parseAbi(["function CHECK_SLIPPAGE(bool transferExactLimit)"]), functionName: "CHECK_SLIPPAGE", args: [false] });
 const data: Hex = encodeFunctionData({ abi, functionName: "execute", args: [{ recipient, buyToken: output, minAmountOut: 990000n }, [early], `0x${"0".repeat(64)}`] });
 assert.throws(() => decodeZeroXExecutableMinimum({ target, data, inputAsset: zeroAddress, outputAsset: output,
-  inputAmountAtomic: "1000000", recipient, valueAtomic: "1000000" }), /binding/);
+  inputAmountAtomic: "1000000", recipient, valueAtomic: "1000000" }), (error: unknown) => error instanceof TradeExecutionFailure && error.code === "EXECUTION_ENVELOPE_REJECTED" && !error.retryable);
