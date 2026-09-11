@@ -1,4 +1,5 @@
 import { vnextShellAvailable, vnextShellMode, type VNextShellEnvironment } from "./vnext-shell-access";
+import { isCanonicalZeroXAllowanceHolder } from "./zero-x-authority";
 import {
   RMT_UNISWAP_V3_FEE_MAINNET_PROOF,
   RMT_UNISWAP_V3_FEE_MAINNET_PROOF_COMPLETE
@@ -298,8 +299,7 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
   const zeroXSwapAuthorityReady = enabled(env.RMT_VNEXT_ZEROX_OBSERVATION_ENABLED)
     && enabled(env.RMT_VNEXT_ZEROX_FIRM_QUOTE_VERIFICATION_ENABLED)
     && Boolean(env.RMT_ZEROX_API_KEY?.trim())
-    && /^0x[0-9a-fA-F]{40}$/.test(env.RMT_ZEROX_ALLOWANCE_HOLDER?.trim() ?? "")
-    && !/^0x0{40}$/i.test(env.RMT_ZEROX_ALLOWANCE_HOLDER?.trim() ?? "")
+    && isCanonicalZeroXAllowanceHolder(env.RMT_ZEROX_ALLOWANCE_HOLDER?.trim())
     && /^0x[0-9a-fA-F]{64}$/.test(env.RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH?.trim() ?? "")
     && authorizationClientEnabled
     && authorizationServerEnabled;
@@ -307,14 +307,7 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
     || uniswapV3V2PublicAuthorizationRequested
     || uniswapV2V2PublicAuthorizationRequested;
   const publicReleaseConfigurationValid = publicExecutionProviderScope.configured
-    ? publicExecutionReleaseScope === "v3-only"
-      ? !uniswapV2V2PublicAuthorizationRequested
-        && (legacyV1PublicAuthorityReady || uniswapV3V2PublicAuthorityReady)
-      : publicExecutionReleaseScope === "v2-v3"
-        && !uniswapFeePublicAuthorizationRequested
-        && uniswapV3V2PublicAuthorityReady
-        && uniswapV2V2PublicAuthorityReady
-        || publicExecutionReleaseScope === "ZERO_X_ONLY"
+    ? publicExecutionReleaseScope === "ZERO_X_ONLY"
         && !anyPublicAuthorizationRequested
         && zeroXSwapAuthorityReady
     : !anyPublicAuthorizationRequested;
@@ -351,8 +344,6 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
       exactZeroXOnlyReleaseScope: exactZeroXOnlyPublicExecutionProviderScope,
       unintendedProviders: publicExecutionProviderScope.providers.filter((provider) => (
         !(provider === "zero-x-swap" && exactZeroXOnlyPublicExecutionProviderScope && publicReleaseConfigurationValid)
-        && provider !== "uniswap-v3"
-        && !(provider === "uniswap-v2" && exactV2V3PublicExecutionProviderScope && publicReleaseConfigurationValid)
       ))
     },
     providers: {

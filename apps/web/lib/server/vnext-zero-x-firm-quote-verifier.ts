@@ -1,4 +1,5 @@
 import { requireZeroXDeployment } from "./vnext-zero-x-deployment-authority";
+import { isCanonicalZeroXAllowanceHolder, RMT_ZERO_X_CANONICAL_ALLOWANCE_HOLDER } from "../vnext/zero-x-authority";
 import { TradeExecutionFailure } from "../vnext/trade-failure";
 import { decodeZeroXExecutableMinimum } from "./vnext-zero-x-execution-decoder";
 import { RMT_ZERO_X_MAX_SLIPPAGE_PPM, RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM, zeroXMinimumRespectsSlippage } from "../vnext/zero-x-settlement";
@@ -162,8 +163,8 @@ export function zeroXSwapFirmQuoteVerificationConfiguration(): ZeroXSwapFirmQuot
   if (process.env.RMT_VNEXT_ZEROX_FIRM_QUOTE_VERIFICATION_ENABLED !== "true") return null;
   const configuredAddress = process.env.RMT_ZEROX_ALLOWANCE_HOLDER?.trim();
   const configuredHash = process.env.RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH?.trim();
-  if (!configuredAddress || !isAddress(configuredAddress, { strict: false }) || /^0x0{40}$/i.test(configuredAddress) || !configuredHash || !/^0x[0-9a-fA-F]{64}$/.test(configuredHash)) return null;
-  return { allowanceHolder: getAddress(configuredAddress), runtimeHash: configuredHash.toLowerCase() as Hex };
+  if (!isCanonicalZeroXAllowanceHolder(configuredAddress) || !configuredHash || !/^0x[0-9a-fA-F]{64}$/.test(configuredHash)) return null;
+  return { allowanceHolder: RMT_ZERO_X_CANONICAL_ALLOWANCE_HOLDER, runtimeHash: configuredHash.toLowerCase() as Hex };
 }
 
 async function runtimeCode(address: Address, block = "latest") {

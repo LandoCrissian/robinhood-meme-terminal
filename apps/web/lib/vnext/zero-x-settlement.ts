@@ -1,5 +1,6 @@
 import { decodeFunctionData, erc20Abi, getAddress, isAddress, keccak256, stringToHex, zeroAddress, type Address, type Hex } from "viem";
 import type { VNextAuthorizationPlan } from "./authorization-plan";
+import { isCanonicalZeroXAllowanceHolder } from "./zero-x-authority";
 
 export const ZERO_X_NATIVE_TOKEN = getAddress("0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE");
 export const RMT_ZERO_X_FEE_TREASURY = getAddress("0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC");
@@ -194,7 +195,7 @@ export function assertVNextZeroXProviderNativeFee(value: VNextZeroXProviderNativ
       || (quote.exactSimulationPassed && (quote.providerSimulationIncomplete || quote.swapGasLimitUnits !== quote.nextActionGasLimitUnits))
       || (native && (quote.allowanceTarget !== null || quote.allowanceHolderRuntimeHash !== null || value.authorizationState === "approval_required" || value.transactionValueAtomic === "0"))
       || (!native && (!quote.allowanceTarget || !isAddress(quote.allowanceTarget, { strict: false })
-        || getAddress(quote.allowanceTarget) === zeroAddress || getAddress(quote.allowanceTarget) !== getAddress(value.transactionTarget!)
+        || !isCanonicalZeroXAllowanceHolder(quote.allowanceTarget) || getAddress(quote.allowanceTarget) !== getAddress(value.transactionTarget!)
         || quote.allowanceHolderRuntimeHash !== quote.targetRuntimeHash || value.transactionValueAtomic !== "0"))
     ) throw new Error("RMT rejected incomplete 0x firm quote or simulation authority.");
   }
@@ -222,7 +223,7 @@ export function assertVNextZeroXPlanBinding(plan: VNextAuthorizationPlan) {
       || plan.value !== fee.transactionValueAtomic
     ) throw new Error("RMT rejected a 0x swap that differs from exact simulation.");
   } else {
-    if (fee.authorizationState !== "approval_required" || !fee.firmQuote.allowanceTarget || getAddress(plan.inputAsset) === zeroAddress
+    if (fee.authorizationState !== "approval_required" || !fee.firmQuote.allowanceTarget || !isCanonicalZeroXAllowanceHolder(fee.firmQuote.allowanceTarget) || getAddress(plan.inputAsset) === zeroAddress
       || getAddress(plan.target) !== getAddress(plan.inputAsset) || plan.value !== "0"
     ) throw new Error("RMT rejected invalid 0x approval authority.");
     const decoded = decodeFunctionData({ abi: erc20Abi, data: plan.data });

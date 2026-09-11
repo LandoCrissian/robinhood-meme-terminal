@@ -155,6 +155,21 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     };
 
     assert.equal(zeroXSwapFirmQuoteVerificationConfiguration()?.allowanceHolder, allowanceHolder);
+    // Address authority is source-pinned independently of any environment runtime hash.
+    for (const address of [settler, zeroAddress, "malformed", "0x1234"]) {
+      for (const hash of [runtimeHash, keccak256("0x60016001")]) {
+        process.env.RMT_ZEROX_ALLOWANCE_HOLDER = address;
+        process.env.RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH = hash;
+        assert.equal(zeroXSwapFirmQuoteVerificationConfiguration(), null);
+        const calls = quoteCalls;
+        await assert.rejects(() => verifyZeroXSwapFirmQuote(baseRequest));
+        assert.equal(quoteCalls, calls, "invalid approval authority must stop before the provider");
+      }
+    }
+    process.env.RMT_ZEROX_ALLOWANCE_HOLDER = allowanceHolder;
+    process.env.RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH = keccak256("0x60016001");
+    await assert.rejects(() => verifyZeroXSwapFirmQuote(baseRequest), /runtime/);
+    process.env.RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH = runtimeHash;
     const verified = await verifyZeroXSwapFirmQuote(baseRequest);
     assert.equal(verified.status, "verified");
     assert.equal(verified.strictVerificationAvailable, true);
@@ -228,6 +243,15 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     simulationIncomplete = true;
     await assertZeroXSharedWalletAuthorization(await prepare(baseRequest));
     simulationIncomplete = false;
+    // A successful approve receipt with no allowance change cannot authorize a swap.
+    // Models a false-returning/non-standard approve: mined success, allowance remains zero.
+    rpcAllowance = 0n;
+    allowance = false;
+    const unchangedAllowance = await prepare(baseRequest);
+    assert.equal(unchangedAllowance.evidence.status, "approval_required");
+    assert.notEqual(unchangedAllowance.transaction.kind, "swap");
+    rpcAllowance = null;
+    allowance = true;
     const preApprovalCommitment = await committedRequest(baseRequest);
     const beforeFresh = quoteCalls;
     allowance = false;
