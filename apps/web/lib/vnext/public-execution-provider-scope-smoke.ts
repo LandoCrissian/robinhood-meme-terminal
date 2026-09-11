@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { publicAuthorizationNegativeSmoke } from "./public-authorization-negative-smoke";
+import { assertPublicAuthorizationHarnessFailure } from "./public-authorization-harness-smoke";
 import { readFileSync } from "node:fs";
 import {
   VNextPublicExecutionProviderConfigurationError,
@@ -232,8 +233,6 @@ assert.doesNotMatch(composer, /RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS/);
 assert.match(envExample, /^# RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS=uniswap-v3$/m);
 assert.doesNotMatch(envExample, /NEXT_PUBLIC_RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS/);
 
-console.log("RMT VNext public execution provider-scope smoke checks passed.");
-void publicAuthorizationNegativeSmoke();
 
 // Every historical public provider remains non-authorizable, even with its own configured scope.
 for (const provider of ["sushi", "uniswap-v2", "uniswap-v3", "uniswap-v4", "uniswapx", "zero-x-gasless", "up-v2", "up-cl"] as const) {
@@ -244,3 +243,15 @@ for (const provider of ["sushi", "uniswap-v2", "uniswap-v3", "uniswap-v4", "unis
 for (const value of [undefined, "", "zero-x-swap ", "zero-x-swap,uniswap-v3", "uniswap-v3"]) {
   assert.throws(() => requireVNextPublicExecutionProvider("zero-x-swap", { RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: value }));
 }
+
+async function main() {
+  const injectFailure = process.argv.includes("--inject-negative-smoke-failure");
+  await publicAuthorizationNegativeSmoke(injectFailure);
+  if (!injectFailure) assertPublicAuthorizationHarnessFailure();
+  console.log("RMT VNext public execution provider-scope smoke checks passed after 32 awaited route cases.");
+}
+
+main().catch((cause: unknown) => {
+  console.error(cause);
+  process.exitCode = 1;
+});

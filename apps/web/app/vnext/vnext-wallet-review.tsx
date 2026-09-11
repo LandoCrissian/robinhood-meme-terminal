@@ -88,7 +88,7 @@ export function VNextWalletFeeDisclosure({
       <div><dt>Network fee estimate</dt><dd>{evidence.estimatedNetworkCostWei ? `${formatUnits(BigInt(evidence.estimatedNetworkCostWei), 18)} ETH` : "Unavailable"}</dd></div>
       <div><dt>Provider</dt><dd>0x</dd></div>
       <div><dt>Route</dt><dd>Best available Robinhood liquidity</dd></div>
-      <div><dt>Settlement</dt><dd>Collected atomically in the 0x swap</dd></div>
+      <div><dt>Fee commitment</dt><dd>Included in the verified 0x execution plan; treasury delivery is not independently reconciled</dd></div>
       <div><dt>Treasury</dt><dd><ExplorerLink kind="address" value={providerNativeFee.treasury} accessibleName="Open RMT fee treasury in Robinhood Chain explorer">{providerNativeFee.treasury.slice(0, 6)}…{providerNativeFee.treasury.slice(-4)} ↗</ExplorerLink></dd></div>
     </dl>
     <small>Your wallet receives only the exact target, calldata, value, and gas envelope that passed local simulation.</small>
