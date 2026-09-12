@@ -312,6 +312,7 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
         && zeroXSwapAuthorityReady
     : !anyPublicAuthorizationRequested;
   const configurationConsistent = authorizationConsistent && sushiConsistent && walletSubmissionValid
+    && (!walletSubmissionEnabled || (exactZeroXOnlyPublicExecutionProviderScope && zeroXSwapAuthorityReady))
     && publicExecutionProviderScope.valid
     && publicReleaseConfigurationValid
     && acrossConfigurationValid && upAuthorizationValid && feeAuthorizationValid
@@ -462,4 +463,11 @@ export function readVNextReleaseReadiness(env: VNextReleaseEnvironment) {
       }
     }
   } as const;
+}
+
+// Shared server-render boundary for the canonical root and compatibility page.
+// This reports release readiness; it never grants transaction authorization.
+export function vNextProductionShellReady(env: VNextReleaseEnvironment) {
+  const readiness = readVNextReleaseReadiness(env);
+  return readiness.shellEnabled && readiness.configurationConsistent;
 }

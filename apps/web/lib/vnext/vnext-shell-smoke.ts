@@ -59,8 +59,9 @@ assert.deepEqual(terminalValuation(1_000_000, 2_000_000), { label: "Market Cap",
 assert.deepEqual(terminalValuation(null, 2_000_000), { label: "FDV", shortLabel: "FDV", value: 2_000_000 });
 assert.deepEqual(terminalValuation(null, null), { label: "Valuation", shortLabel: "Value", value: null });
 
-assert.match(page, /readVNextReleaseReadiness\(process\.env\)/);
-assert.match(page, /!readiness\.shellEnabled \|\| !readiness\.configurationConsistent/);
+assert.match(page, /if \(!vNextProductionShellReady\(process\.env\)\) notFound\(\)/);
+assert.match(rootPage, /if \(!vNextProductionShellReady\(process\.env\)\) notFound\(\)/);
+assert.match(rootPage, /export const dynamic = "force-dynamic"/);
 assert.match(page, /notFound\(\)/);
 assert.match(page, /export const dynamic = "force-dynamic"/);
 assert.match(page, /alternates: \{ canonical: "\/" \}/);
