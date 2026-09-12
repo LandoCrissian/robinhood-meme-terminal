@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { readVNextReleaseReadiness } from "./release-readiness";
+import { readVNextReleaseReadiness, vNextProductionShellReady } from "./release-readiness";
 import { RMT_UNISWAP_V3_FEE_MAINNET_PROOF } from "./uniswap-v3-fee-mainnet-proof";
 import { ACROSS_FUNDING_DEPLOYMENT_V1 } from "./across-funding-deployment";
 
@@ -37,7 +37,7 @@ const walletReview = readVNextReleaseReadiness({
 assert.equal(walletReview.mode, "wallet-review");
 assert.equal(walletReview.productionObservationReady, false);
 
-const interactive = readVNextReleaseReadiness({
+const interactiveEnvironment = {
   NODE_ENV: "production",
   VERCEL_ENV: "production",
   RMT_VNEXT_SHELL_ENABLED: "true",
@@ -45,10 +45,36 @@ const interactive = readVNextReleaseReadiness({
   RMT_VNEXT_AUTHORIZATION_ENABLED: "true",
   NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED: "true",
   NEXT_PUBLIC_RMT_SUSHI_QUOTES_ENABLED: "true",
-  RMT_SUSHI_QUOTES_ENABLED: "true"
-});
+  RMT_SUSHI_QUOTES_ENABLED: "true",
+  RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "zero-x-swap",
+  RMT_VNEXT_ZEROX_OBSERVATION_ENABLED: "true",
+  RMT_VNEXT_ZEROX_FIRM_QUOTE_VERIFICATION_ENABLED: "true",
+  RMT_ZEROX_API_KEY: "release-readiness-test-only",
+  RMT_ZEROX_ALLOWANCE_HOLDER: "0x0000000000001fF3684f28c67538d4D072C22734",
+  RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH: `0x${"1".repeat(64)}`
+} as const;
+const interactive = readVNextReleaseReadiness(interactiveEnvironment);
 assert.equal(interactive.mode, "interactive");
 assert.equal(interactive.configurationConsistent, true);
+assert.equal(vNextProductionShellReady(interactiveEnvironment), true);
+assert.equal(vNextProductionShellReady({ NODE_ENV: "production", VERCEL_ENV: "production" }), false);
+assert.equal(vNextProductionShellReady({ NODE_ENV: "production", RMT_VNEXT_SHELL_ENABLED: "true" }), true);
+for (const scope of [undefined, "", " ", "zero-x-swap ", " zero-x-swap", "ZERO-X-SWAP", "*",
+  "uniswap-v3", "uniswap-v2,uniswap-v3", "sushi", "up-v2", "up-cl", "zero-x-gasless",
+  "uniswapx", "zero-x-swap,uniswap-v3", "zero-x-swap,zero-x-swap", "zero-x-swap,", "unknown"]) {
+  const env = { ...interactiveEnvironment, RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: scope };
+  assert.equal(readVNextReleaseReadiness(env).mode, "misconfigured", `Scope ${String(scope)} must not be interactive`);
+  assert.equal(vNextProductionShellReady(env), false);
+}
+for (const overrides of [
+  { RMT_VNEXT_SHELL_ENABLED: "false" },
+  { RMT_VNEXT_AUTHORIZATION_ENABLED: "false" },
+  { RMT_VNEXT_ZEROX_OBSERVATION_ENABLED: "false" },
+  { RMT_VNEXT_ZEROX_FIRM_QUOTE_VERIFICATION_ENABLED: "false" },
+  { RMT_ZEROX_API_KEY: "" },
+  { RMT_ZEROX_ALLOWANCE_HOLDER: `0x${"2".repeat(40)}` },
+  { RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH: "malformed" }
+]) assert.equal(vNextProductionShellReady({ ...interactiveEnvironment, ...overrides }), false);
 
 const mismatchedAuthorization = readVNextReleaseReadiness({
   NODE_ENV: "production",
@@ -121,8 +147,8 @@ const feeProofReady = readVNextReleaseReadiness({
   RMT_VNEXT_UNISWAP_V3_FEE_PROOF_WALLET: `0x${"5".repeat(40)}`,
   ...feeProofConfiguration
 });
-assert.equal(feeProofReady.mode, "interactive");
-assert.equal(feeProofReady.configurationConsistent, true);
+assert.equal(feeProofReady.mode, "misconfigured");
+assert.equal(feeProofReady.configurationConsistent, false);
 assert.equal(feeProofReady.providers.uniswapV3FeeExecutor.proofWalletConfigured, true);
 assert.equal(feeProofReady.providers.uniswapV3FeeExecutor.releaseScope, "proof-wallet");
 assert.equal(feeProofReady.providers.uniswapV3FeeExecutor.authorizationEnabled, true);
@@ -189,7 +215,8 @@ const v2ProofReady = readVNextReleaseReadiness({
   ...v2ExactConfiguration,
   RMT_VNEXT_UNISWAP_V3_V2_PROOF_WALLET: "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA"
 });
-assert.equal(v2ProofReady.configurationConsistent, true);
+assert.equal(v2ProofReady.configurationConsistent, false);
+assert.equal(v2ProofReady.mode, "misconfigured");
 assert.equal(v2ProofReady.providers.uniswapV3V2FeeExecutor.releaseScope, "proof-wallet");
 assert.equal(v2ProofReady.providers.uniswapV3V2FeeExecutor.authorizationEnabled, true);
 assert.equal(v2ProofReady.providers.uniswapV3V2FeeExecutor.publicAuthorizationEnabled, false);

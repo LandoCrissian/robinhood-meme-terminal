@@ -182,7 +182,7 @@ async function main() {
   const quarantinedBoundaryAddress = boundaryMarkets[VNEXT_MARKET_DIRECTORY_PAGE_SIZE - 1]!.address;
   const boundaryResult = await readVNextMarketDirectoryRequest(
     "https://example.test/api/vnext/market-directory",
-    { RMT_CANONICAL_BROWSE_ENABLED: "true" },
+    {},
     {
       readCanonical: async () => ({
         status: 200,
