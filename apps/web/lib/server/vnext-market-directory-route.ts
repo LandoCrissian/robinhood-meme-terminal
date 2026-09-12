@@ -200,12 +200,6 @@ async function readUncachedVNextMarketDirectoryRequest(
   return filterKnownPositiveQuarantines({ ...result, body, headers } as VNextMarketDirectoryRouteResult);
 }
 
-export function vNextCanonicalBrowseEnabled(
-  _env: Readonly<Record<string, string | undefined>> = process.env
-) {
-  return true;
-}
-
 export async function readVNextMarketDirectoryRequest(
   requestUrl: string,
   env: Readonly<Record<string, string | undefined>> = process.env,

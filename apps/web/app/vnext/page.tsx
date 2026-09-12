@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { readVNextReleaseReadiness } from "../../lib/vnext/release-readiness";
+import { vNextProductionShellReady } from "../../lib/vnext/release-readiness";
 import { VNextTerminalShell } from "./vnext-terminal-shell";
 
 export const dynamic = "force-dynamic";
@@ -25,8 +25,7 @@ export const metadata: Metadata = {
 };
 
 export default function VNextProductionPage() {
-  const readiness = readVNextReleaseReadiness(process.env);
-  if (!readiness.shellEnabled || !readiness.configurationConsistent) notFound();
+  if (!vNextProductionShellReady(process.env)) notFound();
 
   return <VNextTerminalShell />;
 }
