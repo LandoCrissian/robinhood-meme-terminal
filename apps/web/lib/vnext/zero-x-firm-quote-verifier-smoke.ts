@@ -340,6 +340,51 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     assert.equal(native.providerNativeFee?.requestFeeToken, ZERO_X_NATIVE_TOKEN);
     const nativePrepared = await prepare(nativeRequest);
     await assertZeroXSharedWalletAuthorization(nativePrepared);
+    // Owner Option B: the fixed AllowanceHolder API flow may return a verified
+    // native Settler entrypoint. This is not an approval or a public Settler API.
+    assert.equal(nativePrepared.transaction.kind, "swap");
+    assert.equal(nativePrepared.transaction.target, settler);
+    assert.equal(nativePrepared.evidence.approvalRequired, false);
+    assert.equal(nativePrepared.evidence.approvalKind, null);
+    assert.equal(nativePrepared.evidence.providerNativeFee?.firmQuote?.allowanceTarget, null);
+    assert.equal(nativePrepared.transaction.data, nativePrepared.evidence.transactionData);
+    assert.equal(nativePrepared.transaction.value, nativeRequest.inputAmountAtomic);
+    await assertZeroXCommitmentAdversarialMatrix(await committedRequest(nativeRequest));
+
+    // Reuse the complete firm -> commitment -> authorization -> wallet parser
+    // journey for native ETH -> canonical USDG, not only the wrapped-token case.
+    output = inputAsset;
+    const nativeUsdgRequest = { ...nativeRequest, outputAsset: inputAsset };
+    const nativeUsdgPrepared = await prepare(nativeUsdgRequest);
+    assert.equal(nativeUsdgPrepared.evidence.outputAsset, inputAsset);
+    assert.equal(nativeUsdgPrepared.transaction.target, settler);
+    assert.equal(nativeUsdgPrepared.transaction.kind, "swap");
+    await assertZeroXSharedWalletAuthorization(nativeUsdgPrepared);
+    await assertZeroXCommitmentAdversarialMatrix(await committedRequest(nativeUsdgRequest));
+    output = outputAsset;
+
+    // Only a provider-returned, registry/runtime-verified native envelope is
+    // eligible. None of these failures may produce an authorization plan.
+    const nativeEnvelopeMutations: Array<[string, string, (body: any) => void]> = [
+      ["unregistered target", "SETTLER_UNREGISTERED", body => { body.transaction.to = recipient; }],
+      ["zero target", "PROVIDER_POLICY_REJECTED", body => { body.transaction.to = zeroAddress; }],
+      ["value below input", "EXECUTION_ENVELOPE_REJECTED", body => { body.transaction.value = "999999"; }],
+      ["value above input", "EXECUTION_ENVELOPE_REJECTED", body => { body.transaction.value = "1000001"; }],
+      ["malformed calldata", "EXECUTION_ENVELOPE_REJECTED", body => { body.transaction.data = "0x1234567890"; }],
+      ["encoded recipient mismatch", "EXECUTION_ENVELOPE_REJECTED", body => { body.transaction.data = executableFixture.encodeQuote(body, inputAsset); }],
+      ["response recipient mismatch", "PROVIDER_POLICY_REJECTED", body => { body.recipient = inputAsset; }],
+      ["input asset mismatch", "PROVIDER_POLICY_REJECTED", body => { body.sellToken = inputAsset; }],
+      ["output asset mismatch", "PROVIDER_POLICY_REJECTED", body => { body.buyToken = inputAsset; }],
+      ["unsafe encoded minimum", "PROVIDER_POLICY_REJECTED", body => { body.executableMinimumForTest = "1"; }],
+      ["Settler allowance target", "PROVIDER_POLICY_REJECTED", body => { body.allowanceTarget = settler; }]
+    ];
+    for (const [name, expectedCode, mutation] of nativeEnvelopeMutations) {
+      quoteMutation = mutation;
+      await assert.rejects(() => prepare(nativeRequest),
+        (error: unknown) => error instanceof TradeExecutionFailure && error.code === expectedCode,
+        `Option B must reject ${name} at the expected verification boundary`);
+    }
+    quoteMutation = () => {};
     assert.equal((simulatedEnvelope as unknown as Record<string, string>).value, `0x${BigInt(nativePrepared.transaction.value).toString(16)}`);
     quoteMutation = body => { body.issues.allowance = { actual: "0", spender: allowanceHolder }; };
     await assert.rejects(() => prepare(nativeRequest), (error: unknown) => error instanceof TradeExecutionFailure && error.code === "PROVIDER_POLICY_REJECTED");

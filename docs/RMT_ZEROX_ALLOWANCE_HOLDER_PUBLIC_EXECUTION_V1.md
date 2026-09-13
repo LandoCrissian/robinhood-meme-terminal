@@ -1,5 +1,65 @@
 # 0x AllowanceHolder public execution source boundary
 
+## Owner Option B clarification
+
+Policy review base: `de3cadfebd15c8c2103ec109d44de80e6b041168`.
+
+0x Swap API v2 AllowanceHolder flow only, including the documented native ETH
+Settler entrypoint exception. The exception does not authorize a standalone
+Settler route, caller-selected target, or direct Settler public executor.
+
+The API route, allowance spender, outer transaction target and encoded execution
+target are distinct authorities. The server constructs `/swap/allowance-holder/quote`
+with version `v2`; a caller cannot select a different API route or transaction.
+For ERC20 input, the spender is the canonical AllowanceHolder
+`0x0000000000001fF3684f28c67538d4D072C22734`, approval is exactly gross input,
+and the swap outer target remains that runtime-verified AllowanceHolder.
+The approval transaction itself targets the input token, never Settler.
+
+For native input, no ERC20 approval action is created. A provider-returned native
+Settler outer entrypoint is eligible only through the same AllowanceHolder API
+flow and existing registry eligibility, pause, reviewed runtime and decoder
+checks. Calldata, native value equal to input, recipient, assets and final encoded
+minimum remain independently verified. The full firm evidence is commitment-bound;
+authorization rechecks deployment authority and wallet review recomputes the saved
+envelope. An encoded inner Settler inside an AllowanceHolder envelope is not a
+separate public executor. Native evidence's legacy `approvalSpender` metadata is
+not approval authority: `approvalRequired=false`, `approvalKind=null` and firm
+`allowanceTarget=null` are required for the native swap tested here.
+
+Permit2, Gasless, historical providers, standalone Settler routes and caller-selected
+targets remain non-executable. Option B admits no new runtime and changes no fee,
+authorization, wallet or settlement behavior. Existing runtime incompatibility
+continues to fail closed; policy permission is not live quote or execution proof.
+
+### Option B regression evidence
+
+- `zero-x-firm-quote-verifier-smoke.ts`: fixed API route for every fixture request;
+  ERC20 spender/target controls; native ETH to ERC20 and USDG; malformed or untrusted
+  native envelopes; no native approval; existing exact runtime policy.
+- `zero-x-executable-slippage-smoke.ts`: native value, recipient, asset and final
+  executable minimum decoding, including rejection of early slippage actions.
+- `zero-x-firm-quote-commitment-smoke.ts`: reused for both native output fixtures;
+  altered evidence, binding, amount, protected floor, expiration and context reject.
+- `zero-x-wallet-authorization-smoke.ts`: exact saved envelope recomputation and
+  adversarial plan/fee/provider/approval mutations, also exercised for native input.
+- `public-authorization-negative-smoke.ts`: strict caller request schema plus the
+  existing awaited 32 actual authorization-route rejection cases. Schema checks do
+  not substitute for authentication or positive route authorization evidence.
+
+The helper smokes run through `zero-x-adapter-smoke.ts`; they must not be counted as
+executed by merely loading their export-only modules. All RPC, provider, signer,
+journal and transaction responses in these fixtures are mocked. This is source/test
+conformance, not a live provider quote, real simulation, treasury settlement proof or
+Production conformance. Production serves a different SHA and needs a separately
+authorized deployment decision; this document authorizes none.
+
+Official native-entrypoint distinction:
+https://docs.0x.org/docs/upgrading/upgrading-to-swap-v2 and
+https://docs.0x.org/docs/core-concepts/contracts.
+
+## Original implementation record
+
 Authorized base: `a94400d1a201a9423424e6cde78ca1fe83ca9390`.
 
 This implementation is source-only. It does not activate Production, deploy,

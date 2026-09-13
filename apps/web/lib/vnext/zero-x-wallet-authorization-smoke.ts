@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { RMT_ZERO_X_CANONICAL_ALLOWANCE_HOLDER } from "./zero-x-authority";
 import { randomUUID } from "node:crypto";
 import { encodeFunctionData, erc20Abi, keccak256, maxUint256, zeroAddress, type Hex } from "viem";
 import type { VNextPreparedProviderAuthorization } from "../server/vnext-provider-adapter";
@@ -14,6 +15,20 @@ import { confirmedVNextFeePresentation } from "./confirmed-fee-receipt";
 import { assertInjectedSignerHandoff } from "./injected-signer-handoff-smoke";
 
 export async function assertZeroXSharedWalletAuthorization(prepared: VNextPreparedProviderAuthorization) {
+  // Option B does not turn the native entrypoint into an ERC20 spender.
+  if (prepared.evidence.inputAsset === "0x0000000000000000000000000000000000000000") {
+    assert.equal(prepared.transaction.kind, "swap");
+    assert.equal(prepared.evidence.approvalRequired, false);
+    assert.equal(prepared.evidence.approvalKind, null);
+    assert.equal(prepared.evidence.providerNativeFee?.firmQuote?.allowanceTarget, null);
+    assert.equal(prepared.transaction.value, prepared.evidence.inputAmountAtomic);
+    assert.equal(prepared.transaction.target, prepared.evidence.router);
+    assert.equal(prepared.transaction.data, prepared.evidence.transactionData);
+  } else {
+    assert.equal(prepared.evidence.approvalSpender, RMT_ZERO_X_CANONICAL_ALLOWANCE_HOLDER);
+    assert.equal(prepared.evidence.router, RMT_ZERO_X_CANONICAL_ALLOWANCE_HOLDER);
+    assert.equal(prepared.transaction.value, "0");
+  }
   const now = Date.now();
   const raw = { ...prepared.evidence, verificationId: randomUUID(), sourceQuoteRequestId: randomUUID() };
   const expected = {
