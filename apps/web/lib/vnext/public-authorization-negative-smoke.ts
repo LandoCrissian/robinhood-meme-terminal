@@ -1,4 +1,42 @@
 import assert from "node:assert/strict";
+import { vNextAuthorizationRequestSchema } from "../server/vnext-authorization-request";
+import { VNEXT_PROVIDER_NATIVE_INPUT_FEE } from "./execution-settlement";
+
+// Option B changes neither the public provider schema nor its caller authority.
+// The following is valid request shape, not authenticated execution evidence.
+const optionBNativeRequest = {
+  chainId: 4663,
+  quoteRequestId: "11111111-1111-4111-8111-111111111111",
+  verificationId: "22222222-2222-4222-8222-222222222222",
+  provider: "zero-x-swap",
+  inputAsset: "0x0000000000000000000000000000000000000000",
+  outputAsset: "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+  inputAmountAtomic: "1000000",
+  recipient: "0x0000000000000000000000000000000000010000",
+  expectedStatus: "verified",
+  indicativeProtectedOutputFloorAtomic: "1",
+  expectedProtectedOutputAtomic: "1",
+  settlementMode: VNEXT_PROVIDER_NATIVE_INPUT_FEE
+};
+assert.equal(vNextAuthorizationRequestSchema.safeParse(optionBNativeRequest).success, true);
+for (const provider of ["settler", "zero-x-settler", "permit2", "zero-x-gasless"]) {
+  assert.equal(vNextAuthorizationRequestSchema.safeParse({ ...optionBNativeRequest, provider }).success, false,
+    `${provider} must not become a standalone public authorization route`);
+}
+for (const inputAsset of [optionBNativeRequest.inputAsset, optionBNativeRequest.outputAsset]) {
+  for (const selected of [
+    { target: "0x0000000000000000000000000000000000012345" },
+    { transaction: { to: "0x0000000000000000000000000000000000012345", data: "0x12345678", value: "1000000" } },
+    { calldata: "0x12345678" },
+    { data: "0x12345678" },
+    { value: "1000000" },
+    { apiRoute: "/swap/settler/quote" },
+    { apiRoute: "/swap/permit2/quote" }
+  ]) {
+    assert.equal(vNextAuthorizationRequestSchema.safeParse({ ...optionBNativeRequest, inputAsset, ...selected }).success, false,
+      "caller-selected route, target, calldata or value must not enter authorization");
+  }
+}
 import { readFileSync } from "node:fs";
 import { POST } from "../../app/api/vnext/authorize/route";
 import { VNEXT_DIRECT_NO_RMT_FEE } from "./execution-settlement";
