@@ -1,4 +1,5 @@
 "use client";
+import { appendResponseDiagnostic, serializeResponseDiagnostic } from "../../lib/vnext/quote-response-diagnostic";
 
 import { currentTradeEvidence } from "../../lib/vnext/current-trade-evidence";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -178,6 +179,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
   const preparedApprovalAuthority = useRef<VNextApprovalAuthority | undefined>(undefined);
   const autoFitBuyAmount = useRef(true);
   const backgroundQuoteEpoch = useRef(0);
+  const [responseDiagnostics, setResponseDiagnostics] = useState<ReturnType<typeof appendResponseDiagnostic>>([]);
   const authorizationAttemptEpoch = useRef(0);
   const backgroundQuoteImmediate = useRef(false);
   const backgroundQuoteAttempted = useRef(false);
@@ -317,6 +319,14 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
   const preparationContext = `${identity.userId}:${identity.activeWalletKey}:${requestKey}`;
   const currentPreparationContext = useRef(preparationContext);
   currentPreparationContext.current = preparationContext;
+  const recordResponseDiagnostic = (
+    consumption: Parameters<typeof appendResponseDiagnostic>[1],
+    context: string,
+  ) => {
+    setResponseDiagnostics((entries) => appendResponseDiagnostic(
+      entries, consumption, context, currentPreparationContext.current, backgroundQuoteEpoch.current,
+    ));
+  };
 
   useEffect(() => () => { authorizationAttemptEpoch.current += 1;
     refreshCoordinator.current.invalidate(); }, []);
@@ -346,6 +356,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
     setWalletActionId(0);
     backgroundQuoteAttempted.current = false;
     setQuoteState({ state: "idle" });
+    setResponseDiagnostics([]);
     setVerificationState({ state: "idle" });
     setAuthorizationState({ state: "idle" });
     setPostExecutionState({ state: "idle" });
@@ -555,6 +566,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
   };
 
   const requestLiveRoutes = async () => {
+    const diagnosticContext = preparationContext;
+    const diagnosticGeneration = backgroundQuoteEpoch.current;
     if (!draft.intent || !address || !inputAddress || !outputAddress || !identity.identityToken || !identity.userId) throw new Error("Trade intent is not ready for route comparison.");
     const expected = { inputAsset: inputAddress, outputAsset: outputAddress, inputAmountAtomic: draft.intent.amountAtomic };
     emitTradeJourney({ phase: "QUOTE_REQUESTING", quoteRequestAttempted: true });
@@ -574,6 +587,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
       identityScope: identity.userId,
       identityToken: identity.identityToken,
       timeoutMs: 12_000,
+      diagnosticGeneration,
+      onDiagnostic: (consumption) => recordResponseDiagnostic(consumption, diagnosticContext),
       maxAttempts: 1
     });
     const failure = tradeQuoteFailureFromResponse(response);
@@ -674,6 +689,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
   ]);
 
   const requestStrictVerification = async (quoteResponse: VNextQuoteResponse) => {
+    const diagnosticContext = preparationContext;
+    const diagnosticGeneration = backgroundQuoteEpoch.current;
     if (!authorizationEnabled) throw new Error("Wallet execution remains disabled in this build.");
     if (stockTokenViewOnly) throw new Error("Official Robinhood Stock Tokens are view-only in RMT until jurisdiction controls are available.");
     const selectedRoute = selectVNextRoute(quoteResponse.attempts, { publicExecutionOnly: true });
@@ -732,6 +749,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
       identityScope: identity.userId,
       identityToken: identity.identityToken,
       timeoutMs: 15_000,
+      diagnosticGeneration,
+      onDiagnostic: (consumption) => recordResponseDiagnostic(consumption, diagnosticContext),
       maxAttempts: 1
     });
     if (response.payload && typeof response.payload === "object" && "error" in response.payload && response.payload.error === "ZERO_X_REPRICE_REQUIRED") { throw new TradeJourneyError("QUOTE_EXPIRED", "Refreshing price..."); }
@@ -1374,6 +1393,24 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
         </div>
       </details>
 </div>
+{responseDiagnostics.some((entry) => entry.context === preparationContext) && (
+  <details aria-label="Quote response diagnostics">
+    <summary>Quote response diagnostics</summary>
+    <p>Sanitized response evidence only, not execution readiness. Select a record to copy it. No wallet action is needed.</p>
+    {responseDiagnostics.filter((entry) => entry.context === preparationContext).map((entry, index) => (
+      <label key={`${entry.record.receivedAt}:${entry.consumerGenerationId}:${index}`} style={{ display: "block" }}>
+        {entry.consumerGenerationId === backgroundQuoteEpoch.current ? "Current consumer generation" : "Earlier consumer generation; not current readiness"}
+        {entry.evidence === "CACHED_OR_IN_FLIGHT_REUSE" ? " - Cached/shared response; not a new network result" : " - Original network response"}
+        <textarea
+          aria-label={`Sanitized quote response ${index + 1}`}
+          readOnly rows={12} value={serializeResponseDiagnostic(entry)}
+          onFocus={(event) => event.currentTarget.select()}
+          style={{ width: "100%", boxSizing: "border-box" }}
+        />
+      </label>
+    ))}
+  </details>
+)}
 <footer className="vnTradeActionDock" data-indicative-fresh={indicativeQuoteFresh}>
 {authorizationState.state === "ready" && visibleVerification ? <VNextWalletReview
           key={authorizationState.plan.planId}
