@@ -1,4 +1,5 @@
 import { responseTradeFailure, type TradeFailure, type TradeFailureStage } from "./vnext/trade-failure";
+import { captureResponseDiagnostic, consumeResponseDiagnostic } from "./vnext/quote-response-diagnostic";
 import { recordExperienceStage } from "./experience-funnel";
 import { quoteRequestKey, SHARED_QUOTE_CACHE_MS } from "./trade-speed";
 import { type TradeJourneyPhase } from "./vnext/trade-journey";
@@ -39,6 +40,7 @@ export class TradeQuoteRequestError extends Error {
 }
 
 export type TradeQuoteResponse = {
+  diagnostic?: ReturnType<typeof captureResponseDiagnostic>;
   ok: boolean;
   status: number;
   payload: Record<string, unknown>;
@@ -55,6 +57,8 @@ type QuoteEntry = {
 const quoteRequests = new Map<string, QuoteEntry>();
 
 export type TradeQuoteRequestOptions = {
+  diagnosticGeneration?: number;
+  onDiagnostic?: (consumption: NonNullable<ReturnType<typeof consumeResponseDiagnostic>>) => void;
   identityScope?: string;
   identityToken?: string | null;
   now?: number;
@@ -103,11 +107,13 @@ async function requestOnce(
   body: Record<string, unknown>,
   identityToken: string | null | undefined,
   timeoutMs: number,
-  attempt: number
+  attempt: number,
+  originGeneration: number | undefined
 ): Promise<TradeQuoteResponse> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort("quote-timeout"), timeoutMs);
   const startedAt = Date.now();
+  const originalQuoteRequestId = endpoint.endsWith("/verify") ? body.quoteRequestId : undefined;
   try {
     const response = await fetch(endpoint, {
       method: "POST",
@@ -120,11 +126,19 @@ async function requestOnce(
       credentials: "same-origin",
       signal: controller.signal
     });
+    const payload = await responsePayload(response);
+    const receivedAt = Date.now();
     return {
       ok: response.ok,
       status: response.status,
       stage: endpoint.endsWith("/verify") ? "verification" : "quote",
-      payload: await responsePayload(response),
+      payload,
+      diagnostic: captureResponseDiagnostic(
+        payload, receivedAt,
+        endpoint.endsWith("/verify") ? originalQuoteRequestId : payload.requestId,
+        response.headers.get("x-vercel-id") ?? response.headers.get("x-request-id"),
+        originGeneration,
+      ),
       attempts: attempt,
       latencyMs: Math.max(0, Date.now() - startedAt)
     };
@@ -145,7 +159,8 @@ async function requestOnce(
 async function requestWithRetry(
   endpoint: string,
   body: Record<string, unknown>,
-  options: TradeQuoteRequestOptions
+  options: TradeQuoteRequestOptions,
+  originGeneration: number | undefined
 ) {
   const timeoutMs = positiveInteger(options.timeoutMs, 8_000, 30_000);
   const maxAttempts = positiveInteger(options.maxAttempts, 2, 3);
@@ -161,7 +176,8 @@ async function requestWithRetry(
         body,
         options.identityToken,
         timeoutMs,
-        attempt
+        attempt,
+        originGeneration
       );
       lastResponse = response;
       if (response.ok || !retryableStatus(response.status) || response.payload.retryable === false || attempt === maxAttempts) return response;
@@ -187,11 +203,25 @@ export function requestTradeQuote(
   options: TradeQuoteRequestOptions = {}
 ) {
   const now = options.now ?? Date.now();
+  // Snapshot each caller's metadata without changing the shared promise or cache key.
+  const consumerGeneration = options.diagnosticGeneration;
+  const observer = options.onDiagnostic;
+  const observe = (shared: Promise<TradeQuoteResponse>, reused: boolean) => {
+    if (observer) void shared.then((response) => {
+      try {
+        const consumption = consumeResponseDiagnostic(response.diagnostic, consumerGeneration, reused);
+        if (consumption) observer(consumption);
+      } catch {
+        // Diagnostic presentation must not change request results, retries, or execution.
+      }
+    }, () => { /* No HTTP response evidence exists for a transport failure. */ });
+    return shared;
+  };
   const key = `${options.identityScope ?? "anonymous"}:${quoteRequestKey(endpoint, body)}`;
   const existing = quoteRequests.get(key);
-  if (existing && now - existing.createdAt <= SHARED_QUOTE_CACHE_MS) return existing.promise;
+  if (existing && now - existing.createdAt <= SHARED_QUOTE_CACHE_MS) return observe(existing.promise, true);
 
-  const promise = requestWithRetry(endpoint, body, options).then((response) => {
+  const promise = requestWithRetry(endpoint, body, options, consumerGeneration).then((response) => {
     if (!response.ok) {
       recordExperienceStage("quote_failed");
       if (quoteRequests.get(key)?.promise === promise) quoteRequests.delete(key);
@@ -208,7 +238,7 @@ export function requestTradeQuote(
     );
   });
   quoteRequests.set(key, { createdAt: now, promise });
-  return promise;
+  return observe(promise, false);
 }
 
 export function tradeQuoteFailureFromResponse(response: TradeQuoteResponse) {

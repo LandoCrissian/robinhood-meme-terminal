@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { runQuoteResponseDiagnosticSmoke } from "./quote-response-diagnostic-smoke";
 import { createRequire } from "node:module";
 import { getAddress, toFunctionSelector } from "viem";
 import { requireZeroXDeployment } from "../server/vnext-zero-x-deployment-authority";
@@ -15,6 +16,7 @@ const word = (address: string) => "0x" + address.slice(2).toLowerCase().padStart
 const prevSelector = toFunctionSelector("prev(uint128)");
 
 async function main() {
+  await runQuoteResponseDiagnosticSmoke();
   for (const mode of ["current", "previous", "paused", "unregistered", "incompatible", "malformed"] as const) {
     let previousReads = 0;
     const rpc = async (method: string, params: unknown[]): Promise<unknown> => {
