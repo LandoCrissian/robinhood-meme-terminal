@@ -87,8 +87,8 @@ async function handleRequest(request: Request) {
     const outputAsset = getAddress(parsed.data.outputAsset);
     const tradeAuthorization = await requireAuthenticatedTradeWallet(request, recipient);
     const [inputIdentity, outputIdentity] = await Promise.all([
-      readVNextVerifiedAssetIdentity(inputAsset, { scheduleRevalidation: after }),
-      readVNextVerifiedAssetIdentity(outputAsset, { scheduleRevalidation: after })
+      readVNextVerifiedAssetIdentity(inputAsset, { scheduleRevalidation: after, required: true }),
+      readVNextVerifiedAssetIdentity(outputAsset, { scheduleRevalidation: after, required: true })
     ]);
     if (!inputIdentity || !outputIdentity) {
       emitTradeJourney({ phase: "IDENTITY_UNAVAILABLE", providerRequestAttempted: false });
@@ -160,7 +160,7 @@ async function handleRequest(request: Request) {
     }
     const publicProviderResponse = vNextPublicExecutionProviderScopeErrorResponse(cause);
     if (publicProviderResponse) return publicProviderResponse;
-    const assetIdentityResponse = vNextExecutionIdentityErrorResponse(cause);
+    const assetIdentityResponse = vNextExecutionIdentityErrorResponse(cause, "verification");
     if (assetIdentityResponse) return assetIdentityResponse;
     const identityResponse = tradeIdentityErrorResponse(cause);
     if (identityResponse) return identityResponse;

@@ -6,24 +6,45 @@ import {
 } from "../vnext/robinhood-assets";
 import { readVNextCanonicalMarketInventory } from "./vnext-market-indexer";
 import type { RobinhoodTokenIdentityEvidence } from "./universal-market-resolver";
+import { classifyIdentityReadFailure, identityFailureDefinitions, type IdentityReadFailure } from "../vnext/identity-failure";
+import type { TradeFailureStage } from "../vnext/trade-failure";
+
+export class VNextExecutionIdentityReadError extends Error {
+  constructor(readonly failure: IdentityReadFailure, readonly address: Address) {
+    super(identityFailureDefinitions[failure.code][3]);
+    this.name = "VNextExecutionIdentityReadError";
+  }
+}
 
 export type VNextIdentityConflict = "contract_invalid" | "decimals_conflict";
 export class VNextExecutionIdentityConflictError extends Error {
   readonly code = "VNEXT_EXECUTION_IDENTITY_CONFLICT";
   readonly status = 409;
   readonly phase = "IDENTITY_CONFLICT";
-  constructor(readonly reason: VNextIdentityConflict) {
+  constructor(readonly reason: VNextIdentityConflict, readonly failure?: IdentityReadFailure, readonly address?: Address) {
     super("Token identity conflicts with verified contract evidence.");
     this.name = "VNextExecutionIdentityConflictError";
   }
 }
 
-export function vNextExecutionIdentityErrorResponse(cause: unknown): Response | null {
+export function vNextExecutionIdentityErrorResponse(cause: unknown, stage: TradeFailureStage = "verification"): Response | null {
+  if (cause instanceof VNextExecutionIdentityConflictError && cause.failure && cause.address) {
+    return vNextExecutionIdentityErrorResponse(new VNextExecutionIdentityReadError(cause.failure, cause.address), stage);
+  }
+  if (cause instanceof VNextExecutionIdentityReadError) {
+    const { code, operation } = cause.failure;
+    const [phase, retryable, status, error] = identityFailureDefinitions[code];
+    console.info(JSON.stringify({ event: "rmt_execution_identity_failure", code, stage,
+      identityOperation: operation, identityAsset: cause.address, retryable }));
+    return Response.json({ error, code, phase, retryable, stage,
+      identityOperation: operation, identityAsset: cause.address, providerRequestAttempted: false
+    }, { status, headers: { "Cache-Control": "no-store" } });
+  }
   return cause instanceof VNextExecutionIdentityConflictError
     ? Response.json({
         error: "Token identity conflicts with verified contract evidence.",
         code: "VNEXT_EXECUTION_IDENTITY_CONFLICT",
-        phase: "IDENTITY_CONFLICT"
+        phase: "IDENTITY_CONFLICT", stage, retryable: false
       }, { status: 409, headers: { "Cache-Control": "no-store" } })
     : null;
 }
@@ -42,6 +63,8 @@ export type VNextTrustedAssetIdentity = Readonly<{
 
 export type VNextExecutionIdentityReadOptions = {
   chainId?: number;
+  // Execution routes request a typed failure; discovery/NFT callers keep null.
+  required?: boolean;
   // Pass task => after(task) from an owned request lifecycle. No hook means no
   // background work; unknown identities can still require an awaited live read.
   scheduleRevalidation?: (task: () => Promise<void>) => void;
@@ -66,6 +89,7 @@ type Entry = {
   nextValidationAt: number;
   loading?: Promise<void>;
   scheduled?: object;
+  failure?: IdentityReadFailure;
 };
 const INVENTORY_LIMIT = 16;
 const RETRY_MS = 5_000;
@@ -87,7 +111,7 @@ export function createVNextExecutionIdentityAuthority(dependencies: VNextExecuti
   const maximumConflicts = bound(dependencies.maximumConflicts, 1_024, 4_096);
   const entries = new Map<string, Entry>();
   // Conflict tombstones are independent of the evictable ordinary LRU cache.
-  const conflicts = new Map<string, VNextIdentityConflict>();
+  const conflicts = new Map<string, { reason: VNextIdentityConflict; failure?: IdentityReadFailure }>();
   let conflictSpaceExhausted = false;
   let pending = 0;
   let durablePending = 0;
@@ -99,9 +123,9 @@ export function createVNextExecutionIdentityAuthority(dependencies: VNextExecuti
       return { address: normalized, key: `${chainId}:${normalized.toLowerCase()}` };
     } catch { return null; }
   }
-  function requireNoConflict(key: string) {
-    const reason = conflicts.get(key);
-    if (reason) throw new VNextExecutionIdentityConflictError(reason);
+  function requireNoConflict(key: string, address: Address) {
+    const conflict = conflicts.get(key);
+    if (conflict) throw new VNextExecutionIdentityConflictError(conflict.reason, conflict.failure, address);
   }
   function current(key: string, entry: Entry, generation: number) {
     return !conflictSpaceExhausted && !conflicts.has(key)
@@ -117,13 +141,13 @@ export function createVNextExecutionIdentityAuthority(dependencies: VNextExecuti
     } finally { if (timer !== undefined) clearTimeout(timer); }
   }
 
-  function blockOnPositiveConflict(address: Address, reason: VNextIdentityConflict, chainId: number = ROBINHOOD_MAINNET_CHAIN_ID) {
+  function blockOnPositiveConflict(address: Address, reason: VNextIdentityConflict, chainId: number = ROBINHOOD_MAINNET_CHAIN_ID, failure?: IdentityReadFailure) {
     const target = binding(address, chainId);
     if (!target || target.address === ROBINHOOD_NATIVE_ASSET_ADDRESS
       || (reason !== "contract_invalid" && reason !== "decimals_conflict")) return;
     if (!conflicts.has(target.key)) {
       if (conflicts.size >= maximumConflicts) conflictSpaceExhausted = true;
-      else conflicts.set(target.key, reason);
+      else conflicts.set(target.key, { reason, failure });
     }
     const entry = entries.get(target.key);
     if (entry) { entry.generation++; entry.identity = null; }
@@ -140,22 +164,30 @@ export function createVNextExecutionIdentityAuthority(dependencies: VNextExecuti
     if (!text(token.name, 80) || !text(token.symbol, 20)
       || !Number.isInteger(token.decimals) || token.decimals < 0 || token.decimals > 36
       || typeof token.totalSupply !== "string" || !/^[1-9][0-9]{0,77}$/.test(token.totalSupply)) {
-      blockOnPositiveConflict(address, "contract_invalid");
+      blockOnPositiveConflict(address, "contract_invalid", ROBINHOOD_MAINNET_CHAIN_ID, { code: "TOKEN_METADATA_INVALID", operation: "metadata" });
       return null;
     }
     return token;
   }
 
   async function fresh(address: Address, key: string, entry: Entry, generation: number) {
-    if (pending >= maximumPending) return;
+    if (pending >= maximumPending) { entry.failure = { code: "IDENTITY_CAPACITY_EXCEEDED", operation: "capacity" }; return; }
     pending++;
     const operation = Promise.resolve().then(() => dependencies.readLive(address))
+      .catch((cause): RobinhoodTokenIdentityEvidence => ({ status: "identity_read_unavailable", failure: classifyIdentityReadFailure(cause, "live_reader") }))
       .finally(() => { pending--; });
     const evidence = await bounded(operation, freshDeadline);
     if (!current(key, entry, generation)) return;
-    if (evidence?.status === "not_erc20") { blockOnPositiveConflict(address, "contract_invalid"); return; }
+    entry.failure = evidence === undefined ? { code: "IDENTITY_TIMEOUT", operation: "live_reader" }
+      : evidence.status === "identity_read_unavailable" ? evidence.failure ?? { code: "IDENTITY_EVIDENCE_UNAVAILABLE", operation: "live_reader" }
+      : undefined;
+    if (evidence?.status === "not_erc20") { blockOnPositiveConflict(address, "contract_invalid", ROBINHOOD_MAINNET_CHAIN_ID,
+      { code: evidence.reason === "no_contract" ? "TOKEN_NOT_FOUND" : "TOKEN_METADATA_INVALID", operation: evidence.reason === "no_contract" ? "eth_getCode" : "metadata" }); return; }
     const token = usableLiveToken(evidence, address);
-    if (!token || !current(key, entry, generation)) return;
+    if (!token || !current(key, entry, generation)) {
+      entry.failure ??= { code: "TOKEN_METADATA_INVALID", operation: "metadata" };
+      return;
+    }
     entry.identity = Object.freeze({
       address, chainId: ROBINHOOD_MAINNET_CHAIN_ID, name: token.name, symbol: token.symbol,
       decimals: token.decimals, native: false, provenance: "verified-onchain-token-identity",
@@ -226,7 +258,8 @@ export function createVNextExecutionIdentityAuthority(dependencies: VNextExecuti
       void operation.then(release, release);
       const evidence = await bounded(operation, deadline);
       if (!current(key, entry, generation)) return;
-      if (evidence?.status === "not_erc20") { blockOnPositiveConflict(address, "contract_invalid"); return; }
+      if (evidence?.status === "not_erc20") { blockOnPositiveConflict(address, "contract_invalid", ROBINHOOD_MAINNET_CHAIN_ID,
+        { code: evidence.reason === "no_contract" ? "TOKEN_NOT_FOUND" : "TOKEN_METADATA_INVALID", operation: evidence.reason === "no_contract" ? "eth_getCode" : "metadata" }); return; }
       const token = usableLiveToken(evidence, address);
       if (!token || !current(key, entry, generation)) return;
       if (token.decimals !== original.decimals) blockOnPositiveConflict(address, "decimals_conflict");
@@ -239,8 +272,12 @@ export function createVNextExecutionIdentityAuthority(dependencies: VNextExecuti
   }
 
   async function read(address: Address, options: VNextExecutionIdentityReadOptions = {}): Promise<VNextTrustedAssetIdentity | null> {
+    const unavailable = (failure: IdentityReadFailure): null => {
+      if (options.required) throw new VNextExecutionIdentityReadError(failure, address);
+      return null;
+    };
     const target = binding(address, options.chainId);
-    if (!target) return null;
+    if (!target) return unavailable({ code: options.chainId !== undefined && options.chainId !== ROBINHOOD_MAINNET_CHAIN_ID ? "IDENTITY_CHAIN_MISMATCH" : "TOKEN_METADATA_INVALID", operation: "binding" });
     if (target.address === ROBINHOOD_NATIVE_ASSET_ADDRESS) {
       if (ROBINHOOD_ETH.decimals === null || !ROBINHOOD_ETH.symbol || !ROBINHOOD_ETH.name) return null;
       return Object.freeze({
@@ -249,13 +286,13 @@ export function createVNextExecutionIdentityAuthority(dependencies: VNextExecuti
         native: true, provenance: "robinhood-native-asset", sourceManifestHash: null, freshness: "local"
       });
     }
-    requireNoConflict(target.key);
-    if (conflictSpaceExhausted) return null;
+    requireNoConflict(target.key, target.address);
+    if (conflictSpaceExhausted) return unavailable({ code: "IDENTITY_CAPACITY_EXCEEDED", operation: "capacity" });
     let entry = entries.get(target.key);
     if (!entry) {
       if (entries.size >= maximumEntries) {
         const victim = [...entries].find(([, value]) => !value.loading && !value.scheduled);
-        if (!victim) return null; // All bounded slots are actively owned.
+        if (!victim) return unavailable({ code: "IDENTITY_CAPACITY_EXCEEDED", operation: "capacity" }); // All bounded slots are actively owned.
         entries.delete(victim[0]);
       }
       entry = { identity: null, generation: 0, nextReadAt: 0, nextValidationAt: 0 };
@@ -269,10 +306,10 @@ export function createVNextExecutionIdentityAuthority(dependencies: VNextExecuti
       }
       await entry.loading;
     }
-    requireNoConflict(target.key);
-    if (conflictSpaceExhausted || entries.get(target.key) !== entry) return null;
+    requireNoConflict(target.key, target.address);
+    if (conflictSpaceExhausted || entries.get(target.key) !== entry) return unavailable({ code: "IDENTITY_CAPACITY_EXCEEDED", operation: "capacity" });
     schedule(target.address, target.key, entry, options.scheduleRevalidation);
-    return entry.identity;
+    return entry.identity ?? unavailable(entry.failure ?? { code: "IDENTITY_EVIDENCE_UNAVAILABLE", operation: "live_reader" });
   }
 
   return { read, blockOnPositiveConflict };

@@ -1,4 +1,5 @@
 import { identityReadFailureReason } from "../vnext/directory-availability";
+import { classifyIdentityReadFailure, type IdentityReadFailure, type IdentityOperation } from "../vnext/identity-failure";
 import {
   createPublicClient,
   erc20Abi,
@@ -146,19 +147,25 @@ export async function readRobinhoodTokenIdentities(addresses: readonly Address[]
 export type RobinhoodTokenIdentityEvidence =
   | { status: "verified_token"; token: TokenIdentity }
   | { status: "not_erc20"; reason: "no_contract" | "invalid_metadata" }
-  | { status: "identity_read_unavailable" };
+  | { status: "identity_read_unavailable"; failure?: IdentityReadFailure };
 
 // Search needs positive negatives, not a null that also conceals RPC failures.
 // Keep the legacy reader below unchanged for its existing callers.
 export async function readRobinhoodTokenIdentityEvidence(address: Address): Promise<RobinhoodTokenIdentityEvidence> {
+  // Preserve the first failed operation even when parallel contract calls fail.
+  let failure: IdentityReadFailure | undefined;
+  const observe = async <T>(operation: IdentityOperation, read: () => Promise<T>) => {
+    try { return await read(); }
+    catch (cause) { failure ??= classifyIdentityReadFailure(cause, operation); throw cause; }
+  };
   try {
-    const code = await client.getBytecode({ address });
+    const code = await observe("eth_getCode", () => client.getBytecode({ address }));
     if (!code || code === "0x") return { status: "not_erc20", reason: "no_contract" };
     const [name, symbol, decimals, totalSupply] = await Promise.all([
-      client.readContract({ address, abi: erc20Abi, functionName: "name" }),
-      client.readContract({ address, abi: erc20Abi, functionName: "symbol" }),
-      client.readContract({ address, abi: erc20Abi, functionName: "decimals" }),
-      client.readContract({ address, abi: erc20Abi, functionName: "totalSupply" })
+      observe("name", () => client.readContract({ address, abi: erc20Abi, functionName: "name" })),
+      observe("symbol", () => client.readContract({ address, abi: erc20Abi, functionName: "symbol" })),
+      observe("decimals", () => client.readContract({ address, abi: erc20Abi, functionName: "decimals" })),
+      observe("totalSupply", () => client.readContract({ address, abi: erc20Abi, functionName: "totalSupply" }))
     ]);
     if (!name.trim() || name.length > 80 || !symbol.trim() || symbol.length > 20
       || /[\u0000-\u001f\u007f]/.test(name + symbol)
@@ -169,8 +176,8 @@ export async function readRobinhoodTokenIdentityEvidence(address: Address): Prom
       status: "verified_token",
       token: { address: getAddress(address), name: name.trim(), symbol: symbol.trim(), decimals, totalSupply: totalSupply.toString() }
     };
-  } catch {
-    return { status: "identity_read_unavailable" };
+  } catch (cause) {
+    return { status: "identity_read_unavailable", failure: failure ?? classifyIdentityReadFailure(cause, "metadata") };
   }
 }
 

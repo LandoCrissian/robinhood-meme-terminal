@@ -16,6 +16,7 @@ import { isVNextWalletExecutionAdmitted } from "../../../../lib/vnext/provider-e
 import { readVNextPublicExecutionProviderScope } from "../../../../lib/server/vnext-public-execution-provider-scope";
 import { VNEXT_PROVIDER_NATIVE_INPUT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE } from "../../../../lib/vnext/execution-settlement";
 import { emitTradeJourney, observedZeroXPhase } from "../../../../lib/vnext/trade-journey";
+import { structureTradeFailure } from "../../../../lib/vnext/trade-failure";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -32,7 +33,7 @@ const requestSchema = z.object({
   }).optional()
 });
 
-export async function POST(request: Request) {
+async function handleRequest(request: Request) {
   let providerRequestAttempted = false;
   try {
     const parsed = requestSchema.safeParse(await request.json());
@@ -47,8 +48,8 @@ export async function POST(request: Request) {
     }
     await requireAuthenticatedTradeWallet(request, recipient);
     const [inputIdentity, outputIdentity] = await Promise.all([
-      readVNextVerifiedAssetIdentity(inputAsset, { scheduleRevalidation: after }),
-      readVNextVerifiedAssetIdentity(outputAsset, { scheduleRevalidation: after })
+      readVNextVerifiedAssetIdentity(inputAsset, { scheduleRevalidation: after, required: true }),
+      readVNextVerifiedAssetIdentity(outputAsset, { scheduleRevalidation: after, required: true })
     ]);
     if (!inputIdentity || !outputIdentity) {
       emitTradeJourney({ phase: "IDENTITY_UNAVAILABLE", quoteRequestAttempted: true, providerRequestAttempted: false });
@@ -101,7 +102,7 @@ export async function POST(request: Request) {
   } catch (cause) {
     const stockTokenResponse = stockTokenExecutionPolicyErrorResponse(cause);
     if (stockTokenResponse) return stockTokenResponse;
-    const assetIdentityResponse = vNextExecutionIdentityErrorResponse(cause);
+    const assetIdentityResponse = vNextExecutionIdentityErrorResponse(cause, "quote");
     if (assetIdentityResponse) return assetIdentityResponse;
     const identityResponse = tradeIdentityErrorResponse(cause);
     if (identityResponse) return identityResponse;
@@ -112,4 +113,8 @@ export async function POST(request: Request) {
     emitTradeJourney({ phase: "QUOTE_SERVICE_UNAVAILABLE", quoteRequestAttempted: true, providerRequestAttempted });
     return Response.json({ error: "Unable to compare live VNext routes.", phase: "QUOTE_SERVICE_UNAVAILABLE", providerRequestAttempted }, { status: 422, headers: { "Cache-Control": "no-store" } });
   }
+}
+
+export async function POST(request: Request) {
+  return structureTradeFailure(await handleRequest(request), "quote");
 }
