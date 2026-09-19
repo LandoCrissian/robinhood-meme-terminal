@@ -37,6 +37,7 @@ export function useExternalMarketStream(market?: ExternalMarket): ExternalMarket
     let lastSignature = "";
     let lastEventAt = Date.now();
     let reconnectAttempt = 0;
+    const canRead = () => active && document.visibilityState === "visible" && navigator.onLine;
     const query = new URLSearchParams({ token: telemetryToken, pair: telemetryPair });
     const accept = (value: unknown) => {
       const next = acceptExternalPoolTradesPayload(value, telemetryToken, telemetryPair);
@@ -55,7 +56,7 @@ export function useExternalMarketStream(market?: ExternalMarket): ExternalMarket
       fallbackController = undefined;
     };
     const fallbackLoad = async () => {
-      fallbackController?.abort();
+      if (!canRead() || fallbackController) return;
       const controller = new AbortController();
       fallbackController = controller;
       try {
@@ -64,14 +65,17 @@ export function useExternalMarketStream(market?: ExternalMarket): ExternalMarket
           signal: controller.signal
         });
         const next = await response.json() as unknown;
+        if (!canRead() || controller.signal.aborted) return;
         if (!response.ok || !accept(next)) throw new Error("Fallback feed unavailable.");
         if (active) setStatus("fallback");
       } catch {
-        if (active && !controller.signal.aborted) setStatus("reconnecting");
+        if (canRead() && !controller.signal.aborted) setStatus("reconnecting");
+      } finally {
+        if (fallbackController === controller) fallbackController = undefined;
       }
     };
     const startFallback = () => {
-      if (fallbackTimer !== undefined) return;
+      if (!canRead() || fallbackTimer !== undefined) return;
       void fallbackLoad();
       fallbackTimer = window.setInterval(() => void fallbackLoad(), 6_000);
     };
@@ -84,15 +88,15 @@ export function useExternalMarketStream(market?: ExternalMarket): ExternalMarket
     };
 
     const openStream = () => {
-      if (!active || source || !navigator.onLine) return;
+      if (!canRead() || source) return;
       const nextSource = new EventSource(`/api/markets/external-stream?${query}`);
       source = nextSource;
       nextSource.onopen = () => {
-        if (!active || source !== nextSource) return;
+        if (!canRead() || source !== nextSource) return;
         markStreamHealthy();
       };
       nextSource.addEventListener("snapshot", (message) => {
-        if (!active || source !== nextSource || !(message instanceof MessageEvent)) return;
+        if (!canRead() || source !== nextSource || !(message instanceof MessageEvent)) return;
         try {
           if (accept(JSON.parse(message.data))) markStreamHealthy();
         } catch {
@@ -101,23 +105,26 @@ export function useExternalMarketStream(market?: ExternalMarket): ExternalMarket
         }
       });
       nextSource.addEventListener("heartbeat", () => {
-        if (active && source === nextSource) markStreamHealthy();
+        if (canRead() && source === nextSource) markStreamHealthy();
       });
       nextSource.addEventListener("upstream-delay", () => {
-        if (!active || source !== nextSource) return;
+        if (!canRead() || source !== nextSource) return;
         lastEventAt = Date.now();
         startFallback();
         setStatus("fallback");
       });
       nextSource.addEventListener("rotate", () => {
-        if (!active || source !== nextSource) return;
+        if (!canRead() || source !== nextSource) return;
         lastEventAt = Date.now();
         source = undefined;
         nextSource.close();
-        window.setTimeout(openStream, 50);
+        reconnectTimer = window.setTimeout(() => {
+          reconnectTimer = undefined;
+          openStream();
+        }, 50);
       });
       nextSource.onerror = () => {
-        if (!active || source !== nextSource) return;
+        if (!canRead() || source !== nextSource) return;
         source = undefined;
         nextSource.close();
         startFallback();
@@ -132,46 +139,50 @@ export function useExternalMarketStream(market?: ExternalMarket): ExternalMarket
       };
     };
 
-    const recoverStream = () => {
-      if (!active || !navigator.onLine) return;
+    const stopReads = () => {
+      const previousSource = source;
+      source = undefined;
+      previousSource?.close();
       if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer);
       reconnectTimer = undefined;
-      source?.close();
-      source = undefined;
+      if (watchdogTimer !== undefined) window.clearInterval(watchdogTimer);
+      watchdogTimer = undefined;
+      stopFallback();
+    };
+    const recoverStream = () => {
+      if (!canRead()) return;
+      stopReads();
+      lastEventAt = Date.now();
       setStatus("connecting");
       openStream();
+      watchdogTimer = window.setInterval(() => {
+        if (canRead() && Date.now() - lastEventAt > 20_000) recoverStream();
+      }, 5_000);
     };
-
-    const handleOffline = () => {
-      source?.close();
-      source = undefined;
-      startFallback();
-      setStatus("reconnecting");
+    const pauseReads = () => {
+      stopReads();
+      // Retain the last snapshot, but never label a paused feed as live.
+      if (active) setStatus("reconnecting");
+    };
+    const resumeReads = () => {
+      if (canRead() && !source && reconnectTimer === undefined) recoverStream();
     };
     const handleVisibility = () => {
-      if (document.visibilityState === "visible" && Date.now() - lastEventAt > 12_000) {
-        recoverStream();
-      }
+      if (!canRead()) pauseReads();
+      else resumeReads();
     };
 
     setPayload(undefined);
-    setStatus("connecting");
-    openStream();
-    watchdogTimer = window.setInterval(() => {
-      if (active && navigator.onLine && Date.now() - lastEventAt > 20_000) recoverStream();
-    }, 5_000);
-    window.addEventListener("online", recoverStream);
-    window.addEventListener("offline", handleOffline);
+    handleVisibility();
+    window.addEventListener("online", resumeReads);
+    window.addEventListener("offline", pauseReads);
     document.addEventListener("visibilitychange", handleVisibility);
 
     return () => {
       active = false;
-      source?.close();
-      if (reconnectTimer !== undefined) window.clearTimeout(reconnectTimer);
-      if (watchdogTimer !== undefined) window.clearInterval(watchdogTimer);
-      stopFallback();
-      window.removeEventListener("online", recoverStream);
-      window.removeEventListener("offline", handleOffline);
+      stopReads();
+      window.removeEventListener("online", resumeReads);
+      window.removeEventListener("offline", pauseReads);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [telemetryPair, telemetryToken]);
