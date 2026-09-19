@@ -59,8 +59,13 @@ export async function runHotPathBrowserAcceptance({ browser, base, identity, sta
         }
         const before = state.prices.length;
         const unknown = await request({ chainId: 4663, inputAsset: zero, outputAsset: `0x${'9'.repeat(40)}`, inputAmountAtomic: '1000', recipient: wallet });
-        assert.equal(unknown.status, 422);
+        assert.equal(unknown.status, 503);
         assert.equal(unknown.body.phase, 'IDENTITY_UNAVAILABLE');
+        assert.equal(unknown.body.code, 'IDENTITY_RPC_UNAVAILABLE');
+        assert.equal(unknown.body.stage, 'quote');
+        assert.equal(unknown.body.retryable, true);
+        assert.equal(unknown.body.identityOperation, 'name');
+        assert.equal(unknown.body.identityAsset, `0x${'9'.repeat(40)}`);
         assert.equal(state.prices.length, before);
         const wrongChain = await request({ chainId: 1, inputAsset: zero, outputAsset: peep, inputAmountAtomic: '1000', recipient: wallet });
         assert.equal(wrongChain.status, 400);

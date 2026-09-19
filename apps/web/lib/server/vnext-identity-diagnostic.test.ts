@@ -107,11 +107,12 @@ test("transport cause classification and client diagnostic discard provider secr
 
 test("actual onchain reader reports eth_getCode / decimals failures without exporting RPC payloads", async () => {
   const original = globalThis.fetch;
-  let mode: "ok" | "no-code" | "decimals" | "rate-limit" = "ok";
+  let mode: "ok" | "no-code" | "decimals" | "rate-limit" | "rpc-error" = "ok";
   globalThis.fetch = (async (_input, init) => {
     if (mode === "rate-limit") return new Response("secret provider body", { status: 429 });
     const requests = JSON.parse(String(init?.body));
     const answer = (request: { id: number; method: string; params: Array<{ data?: string }> }) => {
+      if (mode === "rpc-error" && request.method === "eth_call") return { jsonrpc: "2.0", id: request.id, error: { code: -32000, message: "private provider error" } };
       const selector = request.params[0]?.data;
       const result = request.method === "eth_getCode" ? mode === "no-code" ? "0x" : "0x6000"
         : selector === "0x06fdde03" ? encodeAbiParameters([{ type: "string" }], ["CannaCat"])
@@ -132,6 +133,8 @@ test("actual onchain reader reports eth_getCode / decimals failures without expo
     assert.deepEqual(await readRobinhoodTokenIdentityEvidence(cannacat), { status: "identity_read_unavailable", failure: { code: "IDENTITY_CALL_FAILED", operation: "decimals" } });
     mode = "rate-limit";
     assert.deepEqual(await readRobinhoodTokenIdentityEvidence(cannacat), { status: "identity_read_unavailable", failure: { code: "IDENTITY_RATE_LIMITED", operation: "eth_getCode" } });
+    mode = "rpc-error";
+    assert.deepEqual(await readRobinhoodTokenIdentityEvidence(cannacat), { status: "identity_read_unavailable", failure: { code: "IDENTITY_RPC_UNAVAILABLE", operation: "name" } });
   } finally { globalThis.fetch = original; }
 });
 
