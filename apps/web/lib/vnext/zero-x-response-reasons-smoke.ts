@@ -3,7 +3,7 @@ import { getAddress } from "viem";
 import { createZeroXSwapDiagnosticAdapter, parseZeroXPrice, vNextZeroXSwapAdapter, ZeroXInvalidResponseError } from "../server/vnext-zero-x-adapter";
 import { safeZeroXPriceEconomics, type ZeroXInvalidResponseReason, type ZeroXPriceDiagnostic } from "../server/vnext-zero-x-response-diagnostics";
 import type { VNextProviderQuoteRequest } from "../server/vnext-provider-adapter";
-import { zeroXIntegratorFeeAmount } from "./zero-x-settlement";
+import { zeroXIntegratorFeeEstimateAtomic } from "./zero-x-settlement";
 
 const asset = getAddress("0xccc331d2f8e102a606e1fff194e65ea9bed767c2");
 const output = getAddress("0x5fc5360d0400a0fd4f2af552add042d716f1d168");
@@ -50,7 +50,7 @@ for (const [amount, expected] of [
   ["46344563744511694555819", "115861409361279236389"],
   ["4000000000000000000000000000000000000000000000000000000000000200", "10000000000000000000000000000000000000000000000000000000000000"]
 ]) {
-  assert.equal(zeroXIntegratorFeeAmount(amount), expected);
+  assert.equal(zeroXIntegratorFeeEstimateAtomic(amount), expected);
   if (expected === "0") continue;
   const boundRequest = { ...request, inputAmountAtomic: amount, amountIn: BigInt(amount) };
   const response = { ...base(), sellAmount: amount, fees: { ...base().fees, integratorFee: { token: asset, amount: expected, type: "volume" } } };
@@ -59,7 +59,7 @@ for (const [amount, expected] of [
     assert.ok(parseZeroXPrice({ ...response, fees: { ...response.fees, integratorFee: { ...response.fees.integratorFee, amount: reported.toString() } } }, boundRequest, "swap"));
   }
 }
-for (const invalid of ["0", "-1", "1.5", "01", "NaN"]) assert.throws(() => zeroXIntegratorFeeAmount(invalid));
+for (const invalid of ["0", "-1", "1.5", "01", "NaN"]) assert.throws(() => zeroXIntegratorFeeEstimateAtomic(invalid));
 
 export async function runZeroXResponseReasonsSmoke() {
   const previousFetch = globalThis.fetch, previousKey = process.env.RMT_ZEROX_API_KEY;
