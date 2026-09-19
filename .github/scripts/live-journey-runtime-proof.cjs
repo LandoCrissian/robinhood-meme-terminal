@@ -23,7 +23,7 @@ import {verifyZeroXSwapFirmQuote} from './lib/server/vnext-zero-x-firm-quote-ver
 import {readVNextVerifiedAssetIdentity} from './lib/server/vnext-asset-identity';
 import {requireProjectIdentityDirectoryAdmitted} from './lib/server/project-identity-admission';
 import {VNEXT_PROVIDER_NATIVE_INPUT_FEE} from './lib/vnext/execution-settlement';
-import {zeroXIntegratorFeeAmount} from './lib/vnext/zero-x-settlement';
+import {zeroXIntegratorFeeEstimateAtomic} from './lib/vnext/zero-x-settlement';
 import {simulateFundedZeroXEnvelope} from './scripts/zero-x-read-only-funded-simulation';
 const sample=${JSON.stringify(sample)};
 const peep=${JSON.stringify(original.peepCases)};
@@ -67,7 +67,7 @@ async function probeImpl(template,amount,simulate){
   canonicalProtocol:template.canonicalProtocol,canonicalVersion:template.canonicalVersion,canonicalPool:template.canonicalPool,
   direction:template.direction,inputAsset:template.inputAsset,outputAsset:template.outputAsset,inputAmountAtomic:amount,
   observedAt:new Date().toISOString(),identityStatus:'IDENTITY_UNAVAILABLE',providerRequestAttempted:false,
-  provider:'zero-x-swap',chainId:4663,feeBps:25,feeToken:template.inputAsset,feeAtomic:zeroXIntegratorFeeAmount(amount),
+  provider:'zero-x-swap',chainId:4663,feeBps:25,feeToken:template.inputAsset,feeAtomic:zeroXIntegratorFeeEstimateAtomic(amount),
   slippagePpm:9900,hardMaxPpm:10000,simulation:'NOT_REACHED'};
  let identities;
  try{identities=await Promise.all([readVNextVerifiedAssetIdentity(getAddress(template.inputAsset)),readVNextVerifiedAssetIdentity(getAddress(template.outputAsset))]);}catch{return {...row,status:'IDENTITY_UNAVAILABLE'};}
