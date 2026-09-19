@@ -1,4 +1,5 @@
 import { TradeExecutionFailure } from "./trade-failure";
+import { feeMutations, mutateZeroXActions, ppmRuntime } from "./zero-x-provider-native-fee-smoke";
 import { createRequire } from "node:module";
 const executableFixture = createRequire(import.meta.url)("../../../../.github/scripts/zerox-execution-fixture.cjs");
 import { randomUUID } from "node:crypto";
@@ -55,6 +56,8 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
   let simulationIncomplete = false;
   let callFailure = false;
   let noTargetCode = false;
+  let settlerCode = executableFixture.runtime;
+  let actionBasis = 10_000n;
   let nativeBalance = 10n ** 20n;
   let nativeValue = "0";
   let transactionTarget = allowanceHolder;
@@ -129,17 +132,18 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
         assert.equal(url.searchParams.get("swapFeeBps"), "25");
         assert.equal(url.searchParams.get("swapFeeToken"), input === zeroAddress ? ZERO_X_NATIVE_TOKEN : input);
         assert.equal(url.searchParams.has("tradeSurplusRecipient"), false);
-        const body = quote();
+        const body = { ...quote(), actionBasisForTest: actionBasis };
         quoteMutation(body);
         if (["0x12345678", "0x87654321"].includes(body.transaction.data)) body.transaction.data = executableFixture.encodeQuote(body, recipient, body.transaction.data);
-        return Response.json(body);
+        const { actionBasisForTest: _basis, ...response } = body;
+        return Response.json(response);
       }
       const payload = JSON.parse(String(init?.body)) as { method: string; params: unknown[] };
       if (payload.method === "eth_chainId") return Response.json({ jsonrpc: "2.0", id: 1, result: "0x1237" });
       if (payload.method === "eth_blockNumber") return Response.json({ jsonrpc: "2.0", id: 1, result: "0xbc614e" });
       if (payload.method === "eth_call" && String((payload.params[0] as any).to).toLowerCase() === "0x00000000000004533fe15556b1e086bb1a72ceae") return Response.json({ jsonrpc: "2.0", id: 1, result: "0x" + settler.slice(2).toLowerCase().padStart(64, "0") });
       if (payload.method === "eth_gasPrice") return Response.json({ jsonrpc: "2.0", id: 1, result: "0x2faf080" });
-      if (payload.method === "eth_getCode") return Response.json({ jsonrpc: "2.0", id: 1, result: noTargetCode ? "0x" : String(payload.params[0]).toLowerCase() === settler.toLowerCase() ? executableFixture.runtime : runtimeCode });
+      if (payload.method === "eth_getCode") return Response.json({ jsonrpc: "2.0", id: 1, result: noTargetCode ? "0x" : String(payload.params[0]).toLowerCase() === settler.toLowerCase() ? settlerCode : runtimeCode });
       if (payload.method === "eth_getBalance") return Response.json({ jsonrpc: "2.0", id: 1, result: `0x${nativeBalance.toString(16)}` });
       if (payload.method === "eth_estimateGas") return Response.json({ jsonrpc: "2.0", id: 1, result: "0xc350" });
       if (payload.method === "eth_call") {
@@ -170,6 +174,31 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     process.env.RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH = keccak256("0x60016001");
     await assert.rejects(() => verifyZeroXSwapFirmQuote(baseRequest), /runtime/);
     process.env.RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH = runtimeHash;
+    for (const [code, basis] of [[executableFixture.runtime, 10_000n], [ppmRuntime, 1_000_000n]] as const) {
+      settlerCode = code; actionBasis = basis;
+      for (const pair of [[zeroAddress, inputAsset], [inputAsset, zeroAddress], [inputAsset, outputAsset]] as const) {
+        input = pair[0]; output = pair[1]; nativeValue = input === zeroAddress ? "1000000" : "0";
+        const request = { ...baseRequest, inputAsset: input, outputAsset: output };
+        quoteMutation = body => { body.fees.integratorFee.amount = "2501"; };
+        const evidence = await verifyZeroXSwapFirmQuote(request);
+        assert.equal(evidence.status, "verified", "provider-reported rounding does not reinstate half-up authority");
+        assert.equal(evidence.providerNativeFee?.feeAmountAtomic, "2501");
+        const commitment = await committedRequest(request, evidence);
+        await prepareZeroXSwapAuthorization(commitment);
+        if (basis === 1_000_000n) {
+          settlerCode = executableFixture.runtime;
+          await assert.rejects(() => prepareZeroXSwapAuthorization(commitment), "runtime cannot change between verification and authorization");
+          settlerCode = code;
+        }
+        for (const [label, mutate] of feeMutations) {
+          quoteMutation = body => { body.transaction.data = mutateZeroXActions(executableFixture.encodeQuote(body, recipient), mutate); };
+          await assert.rejects(() => verifyZeroXSwapFirmQuote(request),
+            error => error instanceof TradeExecutionFailure && error.code === "EXECUTION_ENVELOPE_REJECTED", label);
+        }
+      }
+    }
+    settlerCode = executableFixture.runtime; actionBasis = 10_000n;
+    input = inputAsset; output = outputAsset; nativeValue = "0"; quoteMutation = () => {};
     const verified = await verifyZeroXSwapFirmQuote(baseRequest);
     assert.equal(verified.status, "verified");
     assert.equal(verified.strictVerificationAvailable, true);
@@ -206,8 +235,8 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
       body => { body.issues.invalidSourcesPassed = ["unexpected"]; },
       body => { body.issues.allowance = { actual: "0", spender: settler }; },
       body => { body.allowanceTarget = settler; }, body => { body.issues.balance = { token: outputAsset, actual: "0", expected: "1000000" }; },
-      body => { body.fees.integratorFee = null; }, body => { body.fees.integratorFee.amount = "0"; },
-      body => { body.fees.integratorFee.amount = "2501"; }, body => { body.fees.integratorFee.token = outputAsset; },
+      body => { body.fees.integratorFee = null; }, body => { body.fees.integratorFee.amount = "-1"; },
+      body => { body.fees.integratorFee.amount = "1000000"; }, body => { body.fees.integratorFee.token = outputAsset; },
       body => { body.fees.integratorFee.type = "surplus"; }, body => { body.fees.integratorFees = [body.fees.integratorFee, body.fees.integratorFee]; },
       body => { body.fees.zeroExFee.amount = "-1"; }, body => { body.fees.zeroExFee.token = "invalid"; },
       body => { body.zid = "!"; }, body => { body.blockNumber = -1; }

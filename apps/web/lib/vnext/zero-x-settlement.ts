@@ -36,9 +36,11 @@ export function fromZeroXToken(address: string): Address {
 
 export function zeroXIntegratorFeeAmount(userGrossInputAtomic: string) {
   if (!POSITIVE_ATOMIC.test(userGrossInputAtomic)) throw new Error("RMT rejected an invalid 0x gross input.");
-  // Owner-authorized atomic realization of 25 bps: nearest integer, ties upward.
+  // Zero-residual display estimate only. The reviewed provider-native action uses
+  // current Settler balance and floor rounding. Neither this estimate nor quoted
+  // fee JSON is execution or settled-revenue authority.
   const numerator = BigInt(userGrossInputAtomic) * BigInt(RMT_ZERO_X_FEE_BPS);
-  return ((numerator + RMT_ZERO_X_FEE_DENOMINATOR / 2n) / RMT_ZERO_X_FEE_DENOMINATOR).toString();
+  return (numerator / RMT_ZERO_X_FEE_DENOMINATOR).toString();
 }
 
 export type VNextZeroXProviderNativeFee = {
@@ -49,9 +51,11 @@ export type VNextZeroXProviderNativeFee = {
   feeExecutorRequired: false;
   feeBps: 25;
   feeAsset: Address;
+  // Provider quote disclosure (or indicative estimate), never settled revenue.
   feeAmountAtomic: string;
   treasury: Address;
   userGrossInputAtomic: string;
+  // Gross minus disclosed RMT fee; not the actual post-provider-fee pool balance.
   providerInputAtomic: string;
   expectedOutputAtomic: string;
   protectedOutputAtomic: string;
@@ -90,6 +94,7 @@ export function zeroXFirmQuoteIdentity(value: VNextZeroXProviderNativeFee): Hex 
 }
 
 export function createVNextZeroXProviderNativeFee(input: {
+  quotedFeeAmountAtomic?: string;
   inputAsset: Address;
   outputAsset: Address;
   userGrossInputAtomic: string;
@@ -104,8 +109,7 @@ export function createVNextZeroXProviderNativeFee(input: {
   authorizationState: VNextZeroXProviderNativeFee["authorizationState"];
   firmQuote?: Omit<NonNullable<VNextZeroXProviderNativeFee["firmQuote"]>, "identity">;
 }): VNextZeroXProviderNativeFee {
-  const feeAmountAtomic = zeroXIntegratorFeeAmount(input.userGrossInputAtomic);
-  if (feeAmountAtomic === "0") throw new Error("RMT rejected a zero 0x integrator fee.");
+  const feeAmountAtomic = input.quotedFeeAmountAtomic ?? zeroXIntegratorFeeAmount(input.userGrossInputAtomic);
   const providerInputAtomic = (BigInt(input.userGrossInputAtomic) - BigInt(feeAmountAtomic)).toString();
   const result: VNextZeroXProviderNativeFee = {
     provider: "zero-x-swap",
@@ -141,7 +145,9 @@ export function createVNextZeroXProviderNativeFee(input: {
 
 export function assertVNextZeroXProviderNativeFee(value: VNextZeroXProviderNativeFee | undefined) {
   if (!value) throw new Error("RMT rejected missing 0x provider-native fee evidence.");
-  const expectedFee = zeroXIntegratorFeeAmount(value.userGrossInputAtomic);
+  const quotedFeeValid = POSITIVE_ATOMIC.test(value.userGrossInputAtomic)
+    && NON_NEGATIVE_ATOMIC.test(value.feeAmountAtomic)
+    && BigInt(value.feeAmountAtomic) < BigInt(value.userGrossInputAtomic);
   const indicative = value.authorizationState === "indicative";
   if (
     value.provider !== "zero-x-swap"
@@ -154,9 +160,8 @@ export function assertVNextZeroXProviderNativeFee(value: VNextZeroXProviderNativ
     || value.feeExecutorRequired !== false
     || value.feeBps !== RMT_ZERO_X_FEE_BPS
     || getAddress(value.feeAsset) !== fromZeroXToken(value.requestSellToken)
-    || value.feeAmountAtomic !== expectedFee
-    || expectedFee === "0"
-    || value.providerInputAtomic !== (BigInt(value.userGrossInputAtomic) - BigInt(expectedFee)).toString()
+    || !quotedFeeValid
+    || value.providerInputAtomic !== (BigInt(value.userGrossInputAtomic) - BigInt(value.feeAmountAtomic)).toString()
     || !POSITIVE_ATOMIC.test(value.expectedOutputAtomic)
     || !POSITIVE_ATOMIC.test(value.protectedOutputAtomic)
     || BigInt(value.protectedOutputAtomic) > BigInt(value.expectedOutputAtomic)

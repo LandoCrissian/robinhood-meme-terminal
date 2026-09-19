@@ -10,8 +10,7 @@ import {
   fromZeroXToken,
   RMT_ZERO_X_FEE_BPS,
   RMT_ZERO_X_FEE_TREASURY,
-  toZeroXToken,
-  zeroXIntegratorFeeAmount
+  toZeroXToken
 } from "../vnext/zero-x-settlement";
 
 const ZERO_X_API_URL = "https://api.0x.org";
@@ -60,14 +59,14 @@ export function parseZeroXIntegratorFee(fees: JsonObject, request: Pick<VNextPro
   const pluralEntries = fees.integratorFees == null ? [] : Array.isArray(fees.integratorFees) ? fees.integratorFees : [fees.integratorFees];
   if (pluralEntries.length > 1) throw new ZeroXInvalidResponseError("0x returned duplicate integrator fees.", "DUPLICATE_INTEGRATOR_FEE");
   const parse = (value: unknown) => {
-    if (!isObject(value) || typeof value.token !== "string" || !isAddress(value.token, { strict: false }) || !positiveAtomic(value.amount)) {
+    if (!isObject(value) || typeof value.token !== "string" || !isAddress(value.token, { strict: false })
+      || typeof value.amount !== "string" || !/^(0|[1-9][0-9]*)$/.test(value.amount)) {
       throw new ZeroXInvalidResponseError("0x returned an invalid integrator fee.", "INVALID_INTEGRATOR_FEE");
     }
     if (value.type !== undefined && value.type !== "volume") throw new ZeroXInvalidResponseError("0x returned an invalid integrator fee type.", "INVALID_INTEGRATOR_FEE_TYPE");
     const token = responseToken(value.token);
     if (token !== request.inputAsset) throw new ZeroXInvalidResponseError("0x returned the integrator fee in the wrong token.", "WRONG_INTEGRATOR_FEE_TOKEN");
-    const expected = zeroXIntegratorFeeAmount(request.inputAmountAtomic);
-    if (value.amount !== expected || expected === "0") throw new ZeroXInvalidResponseError("0x returned the wrong integrator fee amount.", "WRONG_INTEGRATOR_FEE_AMOUNT");
+    if (BigInt(value.amount) >= BigInt(request.inputAmountAtomic)) throw new ZeroXInvalidResponseError("0x returned an invalid fee disclosure.", "WRONG_INTEGRATOR_FEE_AMOUNT");
     return { token, amountAtomic: value.amount as string, type: value.type ?? null };
   };
   const singularFee = singularEntries.map(parse)[0] ?? null;
@@ -159,6 +158,7 @@ function createZeroXAdapter(mode: ZeroXMode, observe?: (value: ZeroXPriceDiagnos
         if (!price) return unavailableVNextQuoteAttempt({ adapter, request, status: "no_route", detail: `No complete ${adapter.providerLabel} route was found for this amount.`, startedAtMs });
         const quotedAtMs = Date.now();
         const providerNativeFee = gasless ? undefined : createVNextZeroXProviderNativeFee({
+          quotedFeeAmountAtomic: price.integratorFee!.amountAtomic,
           inputAsset: request.inputAsset,
           outputAsset: request.outputAsset,
           userGrossInputAtomic: request.inputAmountAtomic,

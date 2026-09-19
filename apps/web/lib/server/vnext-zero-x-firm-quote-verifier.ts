@@ -1,7 +1,7 @@
 import { requireZeroXDeployment } from "./vnext-zero-x-deployment-authority";
 import { isCanonicalZeroXAllowanceHolder, RMT_ZERO_X_CANONICAL_ALLOWANCE_HOLDER } from "../vnext/zero-x-authority";
 import { TradeExecutionFailure } from "../vnext/trade-failure";
-import { decodeZeroXExecutableMinimum } from "./vnext-zero-x-execution-decoder";
+import { decodeZeroXExecutableMinimum, verifyZeroXEncodedFee } from "./vnext-zero-x-execution-decoder";
 import { RMT_ZERO_X_MAX_SLIPPAGE_PPM, RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM, zeroXMinimumRespectsSlippage } from "../vnext/zero-x-settlement";
 import { committedZeroXAuthorizationEvidence } from "./vnext-zero-x-firm-quote-commitment";
 
@@ -32,8 +32,7 @@ import {
   fromZeroXToken,
   RMT_ZERO_X_FEE_BPS,
   RMT_ZERO_X_FEE_TREASURY,
-  toZeroXToken,
-  zeroXIntegratorFeeAmount
+  toZeroXToken
 } from "../vnext/zero-x-settlement";
 
 const ZERO_X_API_URL = "https://api.0x.org";
@@ -51,6 +50,7 @@ type ZeroXSwapFirmQuoteVerificationConfiguration = {
 };
 
 type ParsedFirmQuote = {
+  quotedIntegratorFeeAtomic: string;
   allowanceActualAtomic: string | null;
   allowanceSpender: Address | null;
   balanceActualAtomic: string | null;
@@ -122,20 +122,21 @@ function parseIntegratorFee(fees: JsonObject, request: VNextProviderVerification
   const plural = fees.integratorFees == null ? [] : Array.isArray(fees.integratorFees) ? fees.integratorFees : [fees.integratorFees];
   if (plural.length > 1) throw new ZeroXInvalidResponseError("0x returned duplicate integrator fees.");
   const parse = (value: unknown) => {
-    if (!isObject(value) || typeof value.token !== "string" || !isAddress(value.token, { strict: false }) || !positiveAtomic(value.amount)) {
+    if (!isObject(value) || typeof value.token !== "string" || !isAddress(value.token, { strict: false }) || nonNegativeAtomic(value.amount) === null) {
       throw new ZeroXInvalidResponseError("0x returned an invalid integrator fee.");
     }
     if (value.type !== undefined && value.type !== "volume") throw new ZeroXInvalidResponseError("0x returned an invalid integrator fee type.");
     const token = fromZeroXToken(value.token);
     const amount = value.amount as string;
     if (token !== request.inputAsset) throw new ZeroXInvalidResponseError("0x returned the integrator fee in the wrong token.");
-    if (amount !== zeroXIntegratorFeeAmount(request.inputAmountAtomic)) throw new ZeroXInvalidResponseError("0x returned the wrong integrator fee amount.");
+    if (BigInt(amount) >= request.amountIn) throw new ZeroXInvalidResponseError("0x returned an invalid fee disclosure.");
     return `${token}:${amount}:${String(value.type ?? "")}`;
   };
   const singularKey = singular.map(parse)[0] ?? null;
   const pluralKey = plural.map(parse)[0] ?? null;
   if (!singularKey && !pluralKey) throw new ZeroXInvalidResponseError("0x omitted the RMT integrator fee.");
   if (singularKey && pluralKey && singularKey !== pluralKey) throw new ZeroXInvalidResponseError("0x returned duplicate integrator fees.");
+  return (singularKey ?? pluralKey)!.split(":")[1];
 }
 
 function rpcUrl() {
@@ -245,7 +246,7 @@ function parseFirmQuote(body: unknown, request: VNextProviderVerificationRequest
 
   const fees = isObject(body.fees) ? body.fees : null;
   if (!fees) throw new ZeroXInvalidResponseError("0x omitted fee disclosure.");
-  parseIntegratorFee(fees, request);
+  const quotedIntegratorFeeAtomic = parseIntegratorFee(fees, request);
   if (fees.gasFee != null) throw new ZeroXInvalidResponseError("0x returned a gas-sponsorship fee for a wallet-paid swap.");
   const providerFee = parseProviderFee(fees.zeroExFee, request);
 
@@ -304,6 +305,7 @@ function parseFirmQuote(body: unknown, request: VNextProviderVerificationRequest
   const zid = body.zid == null ? null : typeof body.zid === "string" && /^(?:0x[0-9a-fA-F]{1,128}|[A-Za-z0-9_-]{8,128})$/.test(body.zid) ? body.zid : null;
   if (body.zid != null && !zid) throw new ZeroXInvalidResponseError("0x returned an invalid quote identity.");
   return {
+    quotedIntegratorFeeAtomic,
     allowanceActualAtomic, allowanceSpender, balanceActualAtomic, blockNumber,
     providerReportedMinBuyAmount, settlerTarget: executable.settlerTarget,
     calldata: transaction.data as Hex, expectedOutputAtomic, gasLimitUnits, gasPriceWei,
@@ -345,6 +347,11 @@ export async function verifyZeroXSwapFirmQuote(request: VNextProviderVerificatio
   if (body === null) throw new TradeExecutionFailure("NO_ROUTE");
   const quote = parseFirmQuote(body, request, configuration);
   const deployment = await requireZeroXDeployment(quote.settlerTarget, rpc);
+  verifyZeroXEncodedFee({ target: quote.transactionTarget, data: quote.calldata,
+    inputAsset: request.inputAsset, outputAsset: request.outputAsset, inputAmountAtomic: request.inputAmountAtomic,
+    recipient: request.recipient, valueAtomic: quote.transactionValueAtomic, runtimeHash: deployment.runtimeHash,
+    expectedOutputAtomic: quote.expectedOutputAtomic, providerFeeAsset: quote.providerFee?.asset ?? null,
+    providerFeeAtomic: quote.providerFee?.amountAtomic ?? null });
   const nativeInput = request.inputAsset === zeroAddress;
   const [balance, targetCode, holderHash, tokenBalance, tokenAllowance] = await Promise.all([
     nativeBalance(request.recipient),
@@ -395,6 +402,7 @@ export async function verifyZeroXSwapFirmQuote(request: VNextProviderVerificatio
 
   const authorizationState = status === "approval_required" ? "approval_required" : status === "verified" ? "verified" : "blocked";
   const providerNativeFee = createVNextZeroXProviderNativeFee({
+    quotedFeeAmountAtomic: quote.quotedIntegratorFeeAtomic,
     inputAsset: request.inputAsset, outputAsset: request.outputAsset, userGrossInputAtomic: request.inputAmountAtomic,
     expectedOutputAtomic: quote.expectedOutputAtomic, protectedOutputAtomic: quote.protectedOutputAtomic,
     recipient: request.recipient, providerFeeAsset: quote.providerFee?.asset ?? null,
