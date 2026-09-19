@@ -42,6 +42,8 @@ async function run() {
   assert.equal(rows[2].amountMode, "ABSOLUTE"); assert.equal(rows[2].amountLiteral, "2500");
   assert.equal(rows[2].literalOverwritten, false);
   assert.equal(rows[2].feeAttribution, "RMT_FEE_CANDIDATE_NOT_PROVEN");
+  assert.equal(decode([basic(zeroAddress, 0n, other, 0n, transfer(RMT_ZERO_X_FEE_TREASURY, 2500n))]).records[0].semanticsComplete, false,
+    "an arbitrary target with a transfer-shaped selector does not establish token semantics");
   assert.equal(decode([native], CANDIDATE_SEMANTIC_HASH).records[0].denominator, "1000000");
   assert.equal(decode([native], null).records[0].denominator, null);
   assert.equal(decode([native], null).records[0].semanticsComplete, false);

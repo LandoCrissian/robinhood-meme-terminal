@@ -98,7 +98,7 @@ export function inspectActions(envelope: ZeroXExecutableInspection, roles: Roles
               r.semanticFamily = "ERC20_TRANSFER_CALL_INTENT"; transfer(target, inner.args[0]); r.tokenBehaviorVerified = false;
               r.amountLiteral = scalar(inner.args[1], roles); r.literalOverwritten = !noPatch;
               if (noPatch) { r.amountMode = "ABSOLUTE"; r.rounding = "NONE"; r.balanceBasis = "ENCODED_LITERAL"; r.denominator = null; }
-              r.semanticsComplete = noPatch || denominator !== null;
+              r.semanticsComplete = (noPatch || denominator !== null) && (same(target, roles.sell) || same(target, roles.buy));
             } else if (inner.functionName === "withdraw" && noPatch && offset === 0n) {
               r.semanticFamily = "POSSIBLE_UNWRAP_TARGET_NOT_ATTESTED"; r.amountLiteral = scalar(inner.args[0], roles);
             } else { r.recipientRole = "UNKNOWN_PATCH_OR_TARGET_SEMANTICS"; }
