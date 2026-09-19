@@ -1,0 +1,5 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm exec tsx scripts/private-zero-x-proof.ts --execute-read-only; exit 1",
+  "ignoreCommand": "exit 1"
+}
