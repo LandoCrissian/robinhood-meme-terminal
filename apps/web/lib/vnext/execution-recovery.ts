@@ -13,7 +13,7 @@ import {
   type Hex
 } from "viem";
 import { authorizationPayloadHash, type VNextAuthorizationPlan } from "./authorization-plan";
-import { assertVNextZeroXPlanBinding, RMT_ZERO_X_FEE_TREASURY, zeroXIntegratorFeeAmount } from "./zero-x-settlement";
+import { assertVNextZeroXPlanBinding, RMT_ZERO_X_FEE_TREASURY } from "./zero-x-settlement";
 import { assertRmtNetExecutionEconomics, calculateRmtFeeFloor } from "./execution-fee-policy";
 import { assertRmtExecutionFeeV2Economics } from "./execution-fee-policy-v2";
 import {
@@ -438,9 +438,10 @@ function normalizeRecord(value: unknown): VNextExecutionRecord | null {
     && isAddress(candidate.inputAsset ?? "", { strict: false })
     && getAddress(providerNativeCandidate.feeAsset) === getAddress(candidate.inputAsset!)
     && providerNativeCandidate.feeBps === 25
-    && /^[1-9][0-9]*$/.test(providerNativeCandidate.feeAmountAtomic)
+    // This journal retains quote disclosure, not an atomic fee execution gate.
+    && /^(0|[1-9][0-9]*)$/.test(providerNativeCandidate.feeAmountAtomic)
     && /^[1-9][0-9]*$/.test(candidate.inputAmountAtomic ?? "")
-    && providerNativeCandidate.feeAmountAtomic === zeroXIntegratorFeeAmount(candidate.inputAmountAtomic!)
+    && BigInt(providerNativeCandidate.feeAmountAtomic) < BigInt(candidate.inputAmountAtomic!)
     && /^[1-9][0-9]*$/.test(providerNativeCandidate.expectedOutputAtomic)
     && /^[1-9][0-9]*$/.test(providerNativeCandidate.protectedOutputAtomic)
     && BigInt(providerNativeCandidate.protectedOutputAtomic) <= BigInt(providerNativeCandidate.expectedOutputAtomic)

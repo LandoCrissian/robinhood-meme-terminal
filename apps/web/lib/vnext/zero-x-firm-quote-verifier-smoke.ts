@@ -184,7 +184,7 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
         assert.equal(evidence.status, "verified", "provider-reported rounding does not reinstate half-up authority");
         assert.equal(evidence.providerNativeFee?.feeAmountAtomic, "2501");
         const commitment = await committedRequest(request, evidence);
-        await prepareZeroXSwapAuthorization(commitment);
+        await assertZeroXSharedWalletAuthorization(await prepareZeroXSwapAuthorization(commitment));
         if (basis === 1_000_000n) {
           settlerCode = executableFixture.runtime;
           await assert.rejects(() => prepareZeroXSwapAuthorization(commitment), "runtime cannot change between verification and authorization");

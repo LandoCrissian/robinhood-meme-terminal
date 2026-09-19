@@ -34,7 +34,7 @@ export function fromZeroXToken(address: string): Address {
   return getAddress(address) === ZERO_X_NATIVE_TOKEN ? zeroAddress : getAddress(address);
 }
 
-export function zeroXIntegratorFeeAmount(userGrossInputAtomic: string) {
+export function zeroXIntegratorFeeEstimateAtomic(userGrossInputAtomic: string) {
   if (!POSITIVE_ATOMIC.test(userGrossInputAtomic)) throw new Error("RMT rejected an invalid 0x gross input.");
   // Zero-residual display estimate only. The reviewed provider-native action uses
   // current Settler balance and floor rounding. Neither this estimate nor quoted
@@ -109,7 +109,7 @@ export function createVNextZeroXProviderNativeFee(input: {
   authorizationState: VNextZeroXProviderNativeFee["authorizationState"];
   firmQuote?: Omit<NonNullable<VNextZeroXProviderNativeFee["firmQuote"]>, "identity">;
 }): VNextZeroXProviderNativeFee {
-  const feeAmountAtomic = input.quotedFeeAmountAtomic ?? zeroXIntegratorFeeAmount(input.userGrossInputAtomic);
+  const feeAmountAtomic = input.quotedFeeAmountAtomic ?? zeroXIntegratorFeeEstimateAtomic(input.userGrossInputAtomic);
   const providerInputAtomic = (BigInt(input.userGrossInputAtomic) - BigInt(feeAmountAtomic)).toString();
   const result: VNextZeroXProviderNativeFee = {
     provider: "zero-x-swap",

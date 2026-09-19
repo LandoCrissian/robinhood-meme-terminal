@@ -7,7 +7,7 @@ import { verifyZeroXSwapFirmQuote } from "../lib/server/vnext-zero-x-firm-quote-
 import type { VNextProviderQuoteRequest } from "../lib/server/vnext-provider-adapter";
 import { parseVNextUniversalMarketSearchResult, type VNextUniversalMarketSearchResultItem } from "../lib/vnext/universal-market-search-contract";
 import { VNEXT_PROVIDER_NATIVE_INPUT_FEE } from "../lib/vnext/execution-settlement";
-import { zeroXIntegratorFeeAmount } from "../lib/vnext/zero-x-settlement";
+import { zeroXIntegratorFeeEstimateAtomic } from "../lib/vnext/zero-x-settlement";
 import { simulateFundedZeroXEnvelope } from "./zero-x-read-only-funded-simulation";
 
 // Frozen contracts, fresh current admission, paired fresh economic amounts. No
@@ -36,7 +36,7 @@ function save() {
     originalHead: "3a8bc7f8ee266c0f350a477334df93888df8c00c", observedAt: new Date().toISOString(), complete,
     source: "Frozen original 50 contracts; current exact-contract canonical search admission; fresh BUY output funds paired SELL amount; no replacement sampling",
     firmVerifiedMeaning: "Strict executable-envelope verification reached; actual test wallet remains unfunded and is NOT authorized. Funded read-only simulation is separate evidence.",
-    atomicFeePolicy: "OWNER_AUTHORIZED_NEAREST_INTEGER_HALF_UP",
+    atomicFeePolicy: "REVIEWED_PROVIDER_NATIVE_PERCENTAGE",
     distribution: baseline.distribution, admissions, rows, peepCases, originalInvalidCases, previousFeeMismatchCases,
     legacyExecutorCalls: 0, walletRequests: 0, signatures: 0, transactions: 0 };
   writeFileSync(resolve(out, "matrix.json"), JSON.stringify(report, null, 2) + "\n");
@@ -66,7 +66,7 @@ async function runCase(template: Row, identity: VNextUniversalMarketSearchResult
     recipient, chainId: 4663, provider: "zero-x-swap", rmtFeeBps: 25, feeAsset: template.inputAsset,
     providerSlippagePpm: 9900, maximumUserSlippagePpm: 10000, zeroXQuoteStatus: "NOT_REACHED",
     zeroXRouteStatus: "IDENTITY_REJECTED", invalidResponseReason: null, policyViolation: "NOT_APPLICABLE", rmtParserDefect: "NO",
-    expectedIntegratorFee: zeroXIntegratorFeeAmount(amount), readOnlySimulationStatus: "NOT_REACHED" };
+    zeroResidualFeeEstimate: zeroXIntegratorFeeEstimateAtomic(amount), readOnlySimulationStatus: "NOT_REACHED" };
   if (!identity) return row;
   const token = getAddress(identity.address);
   const identityFor = (asset: string) => ({ address: getAddress(asset), symbol: asset.toLowerCase() === token.toLowerCase() ? identity.symbol : /^0x0{40}$/i.test(asset) ? "ETH" : "USDG",
