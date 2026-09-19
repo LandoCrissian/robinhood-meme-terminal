@@ -1,7 +1,10 @@
 import { TradeExecutionFailure, type ExecutionFailureCode } from "./trade-failure";
 import { tradeJourneyLabels, tradeJourneyPhase } from "./trade-journey";
+import { identityFailureDefinitions, identityOperations, type IdentityFailureCode } from "./identity-failure";
 
 const codes: readonly ExecutionFailureCode[] = [
+  ...Object.keys(identityFailureDefinitions) as IdentityFailureCode[],
+  "AUTH_FAILURE", "PROJECT_IDENTITY_CONFLICT", "STOCK_TOKEN_INELIGIBLE", "STOCK_TOKEN_POLICY_UNAVAILABLE",
   "PROVIDER_QUOTE_ONLY", "PROVIDER_SETTLEMENT_QUOTE_ONLY", "PROVIDER_SCOPE_INVALID",
   "CONTRACT_VERSION_UNSUPPORTED", "SETTLER_UNREGISTERED", "SETTLER_REGISTRY_UNAVAILABLE",
   "EXECUTION_ENVELOPE_REJECTED", "RPC_UNAVAILABLE", "PROVIDER_UNAVAILABLE", "RATE_LIMITED",
@@ -26,6 +29,8 @@ function safeFields(payload: Record<string, unknown>) {
   const code = executionCode ?? phaseCode ?? null;
   return {
     code,
+    identityOperation: typeof payload.identityOperation === "string" && (identityOperations as readonly string[]).includes(payload.identityOperation) ? payload.identityOperation : null,
+    identityAsset: typeof payload.identityAsset === "string" && /^0x[0-9a-f]{40}$/i.test(payload.identityAsset) ? payload.identityAsset : null,
     stage: typeof payload.stage === "string" && stages.includes(payload.stage) ? payload.stage : null,
     phase,
     retryable: typeof payload.retryable === "boolean" ? payload.retryable : null,

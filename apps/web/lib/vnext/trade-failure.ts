@@ -1,7 +1,13 @@
 import { tradeJourneyPhase, type TradeJourneyPhase } from "./trade-journey";
+import { identityFailureDefinitions } from "./identity-failure";
 
 export type TradeFailureStage = "quote" | "verification" | "authorization";
 const definitions = {
+  ...identityFailureDefinitions,
+  AUTH_FAILURE: ["AUTHENTICATION_FAILED", false, 401, "Sign in and select the exact verified trading wallet."],
+  PROJECT_IDENTITY_CONFLICT: ["IDENTITY_CONFLICT", false, 409, "The selected token conflicts with established project identity."],
+  STOCK_TOKEN_INELIGIBLE: ["IDENTITY_CONFLICT", false, 451, "Robinhood Stock Tokens are view-only in RMT."],
+  STOCK_TOKEN_POLICY_UNAVAILABLE: ["IDENTITY_UNAVAILABLE", true, 503, "Stock Token execution policy is temporarily unavailable."],
   PROVIDER_QUOTE_ONLY: ["ZEROX_POLICY_REJECTED", false, 403, "This provider is not admitted to public wallet execution."],
   PROVIDER_SETTLEMENT_QUOTE_ONLY: ["ZEROX_POLICY_REJECTED", false, 403, "This provider has no admitted public settlement authority."],
   PROVIDER_SCOPE_INVALID: ["ZEROX_POLICY_REJECTED", false, 503, "Public wallet execution is blocked by invalid provider release configuration."],

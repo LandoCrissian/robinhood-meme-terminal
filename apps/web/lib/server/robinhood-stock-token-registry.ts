@@ -237,7 +237,8 @@ export async function requireVNextStockTokenExecutionEligible(
 export function stockTokenExecutionPolicyErrorResponse(cause: unknown) {
   if (!(cause instanceof StockTokenExecutionPolicyError)) return null;
   return Response.json(
-    { error: cause.message },
+    { error: cause.message, code: cause.status === 451 ? "STOCK_TOKEN_INELIGIBLE" : "STOCK_TOKEN_POLICY_UNAVAILABLE",
+      phase: cause.status === 451 ? "IDENTITY_CONFLICT" : "IDENTITY_UNAVAILABLE", retryable: cause.status !== 451 },
     { status: cause.status, headers: { "Cache-Control": "no-store" } }
   );
 }

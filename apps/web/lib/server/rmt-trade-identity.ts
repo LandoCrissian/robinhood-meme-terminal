@@ -74,7 +74,7 @@ export async function requireAuthenticatedTradeWallet(
 export function tradeIdentityErrorResponse(cause: unknown) {
   if (!(cause instanceof TradeIdentityError)) return null;
   return Response.json(
-    { error: cause.message },
+    { error: cause.message, code: cause.status === 503 ? "SERVER_CONFIGURATION_ERROR" : "AUTH_FAILURE", phase: "AUTHENTICATION_FAILED", retryable: false },
     {
       status: cause.status,
       headers: {

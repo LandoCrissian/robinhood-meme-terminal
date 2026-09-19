@@ -171,7 +171,8 @@ async function main() {
   assert.equal(conflictResponse?.status, 409);
   assert.deepEqual(await conflictResponse?.json(), {
     error: "Not admitted to the RMT directory.",
-    directoryAdmission: "not_admitted"
+    directoryAdmission: "not_admitted",
+    code: "PROJECT_IDENTITY_CONFLICT", phase: "IDENTITY_CONFLICT", retryable: false
   });
 
   const boundaryMarkets = Array.from({ length: VNEXT_MARKET_DIRECTORY_PAGE_SIZE + 1 }, (_, index) => ({
