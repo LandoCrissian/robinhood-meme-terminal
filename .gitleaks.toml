@@ -2,6 +2,13 @@
 useDefault = true
 
 [[allowlists]]
+description = "Exact public EVM token address reused by the market-stream lifecycle fixture"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''^0x232CDFc415D10b673845D83Dc02ba2eaBe7e30d1$''']
+paths = ['''^apps/web/lib/external-market-stream-lifecycle-smoke\.ts$''']
+
+[[allowlists]]
 description = "Public EVM token addresses in external-market smoke fixtures"
 condition = "AND"
 targetRules = ["generic-api-key"]
