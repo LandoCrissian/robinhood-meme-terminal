@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { runZeroXProviderNativeFeeSmoke } from "./zero-x-provider-native-fee-smoke";
 import "./zero-x-executable-slippage-smoke";
 import { getAddress, zeroAddress } from "viem";
 import { parseZeroXPrice, vNextZeroXGaslessAdapter, vNextZeroXSwapAdapter } from "../server/vnext-zero-x-adapter";
@@ -78,12 +79,13 @@ try {
 
   const base = response(erc20A, erc20B);
   assert.throws(() => parseZeroXPrice({ ...base, fees: { ...base.fees, integratorFee: null } }, request(), "swap"), /omitted/);
-  assert.throws(() => parseZeroXPrice({ ...base, fees: { ...base.fees, integratorFee: { amount: "2501", token: erc20A, type: "volume" } } }, request(), "swap"), /wrong integrator fee amount/);
+  assert.doesNotThrow(() => parseZeroXPrice({ ...base, fees: { ...base.fees, integratorFee: { amount: "2501", token: erc20A, type: "volume" } } }, request(), "swap"));
   assert.throws(() => parseZeroXPrice({ ...base, fees: { ...base.fees, integratorFee: { amount: "2500", token: erc20B, type: "volume" } } }, request(), "swap"), /wrong token/);
   assert.throws(() => parseZeroXPrice({ ...base, fees: { ...base.fees, integratorFees: [{ amount: "2500", token: erc20A, type: "volume" }, { amount: "2500", token: erc20A, type: "volume" }] } }, request(), "swap"), /duplicate/);
   assert.doesNotThrow(() => parseZeroXPrice({ ...base, fees: { ...base.fees, integratorFees: [{ amount: "2500", token: erc20A, type: "volume" }] } }, request(), "swap"));
   assert.throws(() => parseZeroXPrice({ ...base, sellToken: zeroAddress }, request(zeroAddress, erc20B), "swap"), /zeroAddress/);
 
+  await runZeroXProviderNativeFeeSmoke();
   await runZeroXFirmQuoteVerifierSmoke();
   await runZeroXResponseReasonsSmoke();
   console.log("RMT VNext 0x AllowanceHolder execution smoke checks passed.");

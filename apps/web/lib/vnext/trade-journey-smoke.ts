@@ -7,7 +7,8 @@ import { PENDING_APPROVAL_JOURNEY_KEY, TradeJourneyError, emitTradeJourney, obse
   pendingApprovalWalletMatches, readPendingApprovalJourney, revalidateAfterApproval, savePendingApprovalJourney,
   tradeJourneyLabels, type PendingApprovalJourney } from "./trade-journey";
 import type { VNextExecutionRecord } from "./execution-recovery";
-import { zeroXIntegratorFeeAmount } from "./zero-x-settlement";
+// These immutable historical reports used the superseded half-up policy.
+const historicalFeeAmount = (amount: string) => ((BigInt(amount) * 25n + 5000n) / 10000n).toString();
 
 async function main() {
   const wallet = "0x1111111111111111111111111111111111111111";
@@ -135,7 +136,7 @@ async function main() {
   for (const row of [...matrix.rows, ...peep.rows]) {
     assert.equal(row.provider, "zero-x-swap"); assert.equal(row.chainId, 4663);
     assert.equal(row.feeBps, 25); assert.equal(row.feeToken, row.inputAsset);
-    assert.equal(row.feeAtomic, zeroXIntegratorFeeAmount(row.inputAmountAtomic));
+    assert.equal(row.feeAtomic, historicalFeeAmount(row.inputAmountAtomic));
     assert.equal(row.slippagePpm, 9900); assert.equal(row.hardMaxPpm, 10000);
     assert.equal(row.providerRequestAttempted, row.providerRequestCount > 0);
     if (row.status === "FIRM_VERIFIED") {

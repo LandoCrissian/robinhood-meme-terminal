@@ -1,4 +1,4 @@
-import { decodeZeroXExecutableMinimum, ZERO_X_SLIPPAGE_SETTLER_RUNTIME_HASH } from "./vnext-zero-x-execution-decoder";
+import { decodeZeroXExecutableMinimum, verifyZeroXEncodedFee } from "./vnext-zero-x-execution-decoder";
 import { RMT_ZERO_X_MAX_SLIPPAGE_PPM, RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM, zeroXMinimumRespectsSlippage } from "../vnext/zero-x-settlement";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { getAddress, keccak256 } from "viem";
@@ -64,7 +64,6 @@ export function verifyZeroXFirmQuoteCommitment(token: string, context: ZeroXFirm
     if (evidence.provider !== "zero-x-swap" || evidence.chainId !== 4_663
       || evidence.maximumUserSlippagePpm !== RMT_ZERO_X_MAX_SLIPPAGE_PPM
       || evidence.encodedExecutableMinBuyAmount !== evidence.protectedOutputAtomic
-      || evidence.executableSettlerRuntimeHash !== ZERO_X_SLIPPAGE_SETTLER_RUNTIME_HASH
       || evidence.providerRequestedSlippagePpm !== RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM
       || !zeroXMinimumRespectsSlippage(evidence.expectedOutputAtomic ?? "", evidence.protectedOutputAtomic)
       || evidence.settlementMode !== VNEXT_PROVIDER_NATIVE_INPUT_FEE
@@ -81,6 +80,11 @@ export function verifyZeroXFirmQuoteCommitment(token: string, context: ZeroXFirm
       recipient: evidence.recipient, valueAtomic: evidence.swapTransactionValueAtomic });
     if (decoded.minimumAtomic !== evidence.encodedExecutableMinBuyAmount
       || decoded.settlerTarget !== evidence.executableSettlerTarget) throw new ZeroXFirmQuoteCommitmentError();
+    verifyZeroXEncodedFee({ target: evidence.router, data: evidence.transactionData,
+      inputAsset: evidence.inputAsset, outputAsset: evidence.outputAsset, inputAmountAtomic: evidence.inputAmountAtomic,
+      recipient: evidence.recipient, valueAtomic: evidence.swapTransactionValueAtomic,
+      runtimeHash: evidence.executableSettlerRuntimeHash, expectedOutputAtomic: evidence.expectedOutputAtomic!,
+      providerFeeAsset: evidence.providerFeeAsset, providerFeeAtomic: evidence.providerFeeAtomic });
     parseVNextPreSignEvidence({
       ...evidence, verificationId: context.verificationId, sourceQuoteRequestId: context.quoteRequestId,
       zeroXFirmQuoteCommitment: token

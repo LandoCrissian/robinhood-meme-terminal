@@ -1,9 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createRequire } from 'node:module';
-const requireWeb = createRequire(new URL('../../apps/web/package.json', import.meta.url));
-requireWeb('tsx/cjs');
-const { zeroXIntegratorFeeAmount } = requireWeb('./lib/vnext/zero-x-settlement.ts');
+// Preserve the policy in this dated historical artifact. It is no longer the
+// public execution gate; current provider-native tests live in the decoder suite.
+const zeroXIntegratorFeeAmount = amount => ((BigInt(amount) * 25n + 5000n) / 10000n).toString();
 const root = new URL('../../evidence/trading-hardening/', import.meta.url);
 const read = name => JSON.parse(readFileSync(new URL(name, root), 'utf8'));
 const old = read('zero-x-50-token-matrix.json');

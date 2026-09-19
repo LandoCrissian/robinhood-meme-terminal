@@ -18,13 +18,14 @@ const reject = (value: unknown, reason: ZeroXInvalidResponseReason) => assert.th
   error => error instanceof ZeroXInvalidResponseError && error.reason === reason);
 const fee = (patch: Record<string, unknown>) => ({ ...base(), fees: { ...base().fees, integratorFee: { ...base().fees.integratorFee, ...patch } } });
 assert.ok(parseZeroXPrice(base(), request, "swap"));
-reject(fee({ amount: "52321076904758245223" }), "WRONG_INTEGRATOR_FEE_AMOUNT");
-reject(fee({ amount: "52321076904758245221" }), "WRONG_INTEGRATOR_FEE_AMOUNT");
-reject(fee({ amount: "52321076904758245220" }), "WRONG_INTEGRATOR_FEE_AMOUNT");
+// Provider-reported estimates are disclosure, not the encoded fee authority.
+for (const amount of ["52321076904758245223", "52321076904758245221", "52321076904758245220", "0"])
+  assert.ok(parseZeroXPrice(fee({ amount }), request, "swap"));
+reject(fee({ amount: request.inputAmountAtomic }), "WRONG_INTEGRATOR_FEE_AMOUNT");
 reject({ ...base(), fees: { ...base().fees, integratorFee: null } }, "MISSING_INTEGRATOR_FEE"); // Live wrapping response.
 reject(fee({ token: output }), "WRONG_INTEGRATOR_FEE_TOKEN");
 reject(fee({ type: "gas" }), "INVALID_INTEGRATOR_FEE_TYPE");
-reject(fee({ amount: "0" }), "INVALID_INTEGRATOR_FEE");
+reject(fee({ amount: "-1" }), "INVALID_INTEGRATOR_FEE");
 reject({ ...base(), fees: { ...base().fees, integratorFees: [base().fees.integratorFee, base().fees.integratorFee] } }, "DUPLICATE_INTEGRATOR_FEE");
 reject({ ...base(), sellToken: output }, "INVALID_TOKEN_BINDING");
 reject({ ...base(), buyToken: "not-an-address" }, "INVALID_TOKEN_BINDING");
@@ -41,21 +42,21 @@ const safe = safeZeroXPriceEconomics({ ...base(), transaction: { data: marker },
   fees: { integratorFee: { token: marker, amount: marker, type: marker }, integratorFees: Array(100).fill({ amount: marker }) } });
 assert.ok(!JSON.stringify(safe).includes(marker)); assert.equal(safe.integratorFees.length, 2); assert.equal(safe.integratorFeesOverflow, true);
 
-// Independent literal expectations, including both tie parities and 6/18-decimal units.
+// Zero-residual floor estimates only; never an execution acceptance test.
 for (const [amount, expected] of [
-  ["1", "0"], ["199", "0"], ["200", "1"], ["201", "1"], ["400", "1"], ["600", "2"],
-  ["1000000", "2500"], ["1000001", "2500"], ["1000199", "2500"], ["1000200", "2501"], ["1000399", "2501"],
-  ["1000000000000000000", "2500000000000000"], ["1000000000000000200", "2500000000000001"],
-  ["46344563744511694555819", "115861409361279236390"],
-  ["4000000000000000000000000000000000000000000000000000000000000200", "10000000000000000000000000000000000000000000000000000000000001"]
+  ["1", "0"], ["199", "0"], ["200", "0"], ["201", "0"], ["400", "1"], ["600", "1"],
+  ["1000000", "2500"], ["1000001", "2500"], ["1000199", "2500"], ["1000200", "2500"], ["1000399", "2500"],
+  ["1000000000000000000", "2500000000000000"], ["1000000000000000200", "2500000000000000"],
+  ["46344563744511694555819", "115861409361279236389"],
+  ["4000000000000000000000000000000000000000000000000000000000000200", "10000000000000000000000000000000000000000000000000000000000000"]
 ]) {
   assert.equal(zeroXIntegratorFeeAmount(amount), expected);
   if (expected === "0") continue;
   const boundRequest = { ...request, inputAmountAtomic: amount, amountIn: BigInt(amount) };
   const response = { ...base(), sellAmount: amount, fees: { ...base().fees, integratorFee: { token: asset, amount: expected, type: "volume" } } };
   assert.ok(parseZeroXPrice(response, boundRequest, "swap"));
-  for (const wrong of [BigInt(expected) - 1n, BigInt(expected) + 1n]) {
-    assert.throws(() => parseZeroXPrice({ ...response, fees: { ...response.fees, integratorFee: { ...response.fees.integratorFee, amount: wrong.toString() } } }, boundRequest, "swap"));
+  for (const reported of [BigInt(expected) - 1n, BigInt(expected) + 1n]) {
+    assert.ok(parseZeroXPrice({ ...response, fees: { ...response.fees, integratorFee: { ...response.fees.integratorFee, amount: reported.toString() } } }, boundRequest, "swap"));
   }
 }
 for (const invalid of ["0", "-1", "1.5", "01", "NaN"]) assert.throws(() => zeroXIntegratorFeeAmount(invalid));
@@ -65,7 +66,7 @@ export async function runZeroXResponseReasonsSmoke() {
   const diagnostics: ZeroXPriceDiagnostic[] = [];
   try {
     process.env.RMT_ZEROX_API_KEY = "test-only";
-    globalThis.fetch = async () => Response.json(fee({ amount: "52321076904758245223" }));
+    globalThis.fetch = async () => Response.json(fee({ amount: request.inputAmountAtomic }));
     const publicResult = await vNextZeroXSwapAdapter.quote(request);
     const result = await createZeroXSwapDiagnosticAdapter(value => diagnostics.push(value)).quote(request);
     assert.equal(result.status, "invalid_response"); assert.equal(publicResult.status, "invalid_response");
@@ -74,5 +75,5 @@ export async function runZeroXResponseReasonsSmoke() {
     globalThis.fetch = async () => Response.json({ ...base(), buyToken: "invalid" });
     assert.equal((await vNextZeroXSwapAdapter.quote(request)).status, "invalid_response", "malformed token is not a transport outage");
   } finally { globalThis.fetch = previousFetch; if (previousKey === undefined) delete process.env.RMT_ZEROX_API_KEY; else process.env.RMT_ZEROX_API_KEY = previousKey; }
-  console.log("Bounded 0x rejection reasons, exact half-up fee and public fail-closed behavior PASS.");
+  console.log("Bounded 0x rejection reasons and provider-reported fee disclosure PASS.");
 }

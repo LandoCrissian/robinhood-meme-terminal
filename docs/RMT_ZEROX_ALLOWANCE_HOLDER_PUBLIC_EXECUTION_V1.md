@@ -1,5 +1,88 @@
 # 0x AllowanceHolder public execution source boundary
 
+## Current owner decision: provider-native fee and reachable balance
+
+Authority: `RMT_PROVIDER_NATIVE_REACHABLE_BALANCE_DECISION_V1`, following
+`RMT_EXECUTION_VERIFICATION_POLICY_SIMPLIFICATION_V1`; implementation base
+`aefc2a2fb4da7a38213e9fecd58914577b560858`. This section supersedes historical
+half-up atomic equality and zero-residual requirements for public 0x execution.
+It does not authorize deployment, a wallet action, or settlement acceptance.
+
+The immutable request is `swapFeeBps=25`, `swapFeeToken=exact sell token`, and
+`swapFeeRecipient=0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC` through Swap API v2
+AllowanceHolder on chain 4663. [Official fee documentation](https://docs.0x.org/evm/0x-swap-api/guides/monetize-your-app-using-swap)
+defines the percentage request and separately returned fee disclosure. The
+reviewed contract's percentage arithmetic governs executable fees. Quoted atomic
+amounts and the zero-residual floor estimate are not an execution equality gate.
+Historical reports retain their historical half-up policy, not current authority.
+
+### Explicit runtime and action review
+
+The reviewed runtime table contains exactly:
+
+| Official source commit | Ethereum runtime keccak256 | Action denominator |
+| --- | --- | --- |
+| `95184a23336b52d99aaa528c5b1259e3bb04eafe` | `0xb6c0bf3b83bc9ae4f6ed65a4f5f6c188eb3e4258d8d3b3705dff4ac02ed4a966` | 10,000 |
+| `1df908742d38cf407f667df6518dae6e04a01ac3` | `0xa1a2a85048dd0f8cccc5f2012ff175b88d928c87c84e66691357842ec34e572f` | 1,000,000 |
+
+The second runtime was reproduced byte-for-byte (19,872 bytes) from official
+source and pinned dependencies using the published flatten ordering/names:
+solc `0.8.34+commit.80d5c536`, viaIR, optimizer 2,000 runs, Osaka, no appended
+CBOR/bytecode metadata, no links or runtime immutables. Plain multi-file output
+was not the matching build; the source flattening transformation matters.
+The retained runtime fixture is checked with Ethereum keccak256. Registry
+current/previous eligibility and pause behavior remain necessary at verification
+and authorization; registry membership alone never admits a runtime.
+
+The fee decoder admits a bounded grammar, rather than arbitrary BASIC calls:
+
+1. Native `NATIVE_CHECK` bound to gross value, or ERC20 `TRANSFER_FROM` of exact
+   gross input to Settler through the canonical AllowanceHolder.
+2. Exactly one BASIC fee at index 1: sell asset, canonical treasury, 25 bps
+   (25/10,000 or 2,500/1,000,000), current balance, floor arithmetic. ERC20 uses
+   canonical `transfer` with the reviewed amount patch; native uses an empty call.
+3. A separately disclosed optional 15-bps provider fee in its reviewed sell-asset
+   or buy-asset position. Its destination cannot be the RMT treasury, user,
+   envelope targets or traded tokens. This classifies the observed provider
+   charge; it does not attest ownership of the provider destination.
+4. Necessary canonical WETH wrap/unwrap and one non-VIP routing action returning
+   output to Settler: UNISWAPV3, or candidate-runtime PANCAKE_INFINITY with bounded
+   packed fills, reviewed manager IDs and no hooks. Routing spends Settler funds,
+   not a second user allowance withdrawal. Unknown hooks/actions fail closed.
+5. Optional buy-asset POSITIVE_SLIPPAGE above the quoted expected output, then
+   any buy-asset provider fee, followed by the final global recipient/buy-token
+   minimum. Early CHECK_SLIPPAGE and arbitrary transfers are rejected.
+
+Relevant pinned source: [BASIC](https://github.com/0xProject/0x-settler/blob/1df908742d38cf407f667df6518dae6e04a01ac3/src/core/Basic.sol),
+[Settler](https://github.com/0xProject/0x-settler/blob/1df908742d38cf407f667df6518dae6e04a01ac3/src/Settler.sol),
+[action definitions](https://github.com/0xProject/0x-settler/blob/1df908742d38cf407f667df6518dae6e04a01ac3/src/ISettlerActions.sol).
+The final minimum is post-action and post-fee. Canonical envelope/action encoding,
+exact gross approval/value, runtime, simulation and commitment checks remain in
+force. A quote using an unsupported route shape is rejected, not silently widened.
+
+### Residual balance and settlement limits
+
+The owner accepts ordinary donated/pre-existing Settler balances participating in
+the reviewed percentage fee. A local isolated EVM test with retained Settler and
+AllowanceHolder bytecode confirms the native example: gross `1000000000000000`
+wei plus an ordinary 400-wei donation yields treasury inflow `2500000000001` wei.
+The extra wei comes from prior Settler funds; authorized user input stays fixed.
+Mock ERC20/output routes provide analogous deterministic input-bound tests; these
+are not funded route or production acceptance proofs.
+
+Treasury inflow is not automatically user-generated trading revenue. A future
+transaction-specific reconciliation must distinguish user output, provider fees,
+integrator-fee attribution and unrelated residual where technically possible.
+Unexplained surplus must not fund community distribution. Neither quoted fee,
+encoded percentage nor receipt success constitutes verified settlement.
+
+`zero-x-provider-native-fee-smoke.ts` and the actual firm-verifier smoke cover both
+runtime profiles, three directions, rounding/donation acceptance and adversarial
+fee/envelope mutations. These are local/mocked evidence. Retained live structural
+records do not contain full routing payloads, so they do not establish that every
+current provider route satisfies this deliberately narrow grammar. Controlled
+acceptance after independent review must exercise the exact deployed path.
+
 ## Owner Option B clarification
 
 Policy review base: `de3cadfebd15c8c2103ec109d44de80e6b041168`.
