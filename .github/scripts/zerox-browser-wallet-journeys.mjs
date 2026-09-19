@@ -8,6 +8,8 @@ const requireWeb = createRequire(new URL('../../apps/web/package.json', import.m
 const { decodeFunctionData, encodeFunctionData, encodeEventTopics, erc20Abi, keccak256, maxUint256, parseUnits } = requireWeb('viem');
 requireWeb('tsx/cjs');
 const { authorizationPayloadHash } = requireWeb('./lib/vnext/authorization-plan.ts');
+const { mutateZeroXActions, feeMutations } = requireWeb('./lib/vnext/zero-x-provider-native-fee-smoke.ts');
+const executableFixture = createRequire(import.meta.url)('./zerox-execution-fixture.cjs');
 const hex = (value) => `0x${BigInt(value).toString(16)}`;
 const h = (letter) => `0x${letter.repeat(64)}`;
 const lower = (value) => String(value).toLowerCase();
@@ -40,9 +42,17 @@ export async function runZeroXWalletJourneys(options) {
     'approval-unlimited': (plan) => { plan.data = encodeFunctionData({ abi: erc20Abi, functionName: 'approve', args: [holder, maxUint256] }); },
     'stale-post-approval': (plan) => { plan.data = '0x1234567811111111'; }
   };
+  const encodedFeeFault = (label) => (quote) => {
+    const mutation = feeMutations.find(([name]) => name === label)?.[1];
+    assert.ok(mutation);
+    quote.transaction.data = mutateZeroXActions(executableFixture.encodeQuote(quote, wallet), mutation);
+  };
   const faults = {
     'wrong-fee-asset': (quote) => { quote.fees.integratorFee.token = quote.buyToken; },
-    'wrong-fee-amount': (quote) => { quote.fees.integratorFee.amount = '1'; },
+    'malformed-fee-disclosure': (quote) => { quote.fees.integratorFee.amount = '-1'; },
+    'wrong-encoded-fee-treasury': encodedFeeFault('wrong treasury'),
+    'wrong-encoded-fee-rate': encodedFeeFault('low rate'),
+    'duplicate-encoded-fee': encodedFeeFault('duplicate fee'),
     'missing-integrator-fee': (quote) => { quote.fees.integratorFee = null; },
     'weakened-protected-output': (quote) => { quote.buyAmount = '2'; quote.minBuyAmount = '1'; },
     'malformed-target': (quote) => { quote.transaction.to = '0x1234'; },
@@ -55,7 +65,7 @@ export async function runZeroXWalletJourneys(options) {
     'duplicate-integrator-fee': (quote) => { quote.fees.integratorFees = [quote.fees.integratorFee, quote.fees.integratorFee]; }
   };
   for (const viewportName of ['desktop', 'mobile']) {
-    const scenarios = ['identity-not-requested', 'sell-approval-identity-retry', 'sell-approval-expired', 'sell-approval-provider-retry', 'sell-approval-return', 'sell-approval-uuid-return', 'sell-approval-account-change', 'sell-approval-chain-change', 'sell-approval-rejected', 'direct-confirmation', 'returning-signer', 'mobile-walletconnect', 'mobile-walletconnect-sell', 'native-sell', 'approval-only', 'confirmed-without-output', 'reverted', 'multi-account-owner-second', 'signer-two-providers', 'signer-disappeared', 'signer-account-change', 'signer-provider-conflict', 'approval-requote', 'native', 'rejection', 'pending', 'expired-quote', 'expired-quote-sell', 'refresh-click-buy', 'refresh-click-buy-again', 'refresh-click-sell', 'refresh-provider-recovery', 'refresh-provider-failure', 'quote-only', ...Object.keys(faults), 'simulation-failure', ...Object.keys(wireFaults)];
+    const scenarios = ['identity-not-requested', 'sell-approval-identity-retry', 'sell-approval-expired', 'sell-approval-provider-retry', 'sell-approval-return', 'sell-approval-uuid-return', 'sell-approval-account-change', 'sell-approval-chain-change', 'sell-approval-rejected', 'direct-confirmation', 'returning-signer', 'mobile-walletconnect', 'mobile-walletconnect-sell', 'native-sell', 'approval-only', 'confirmed-without-output', 'reverted', 'multi-account-owner-second', 'signer-two-providers', 'signer-disappeared', 'signer-account-change', 'signer-provider-conflict', 'approval-requote', 'native', 'rejection', 'pending', 'expired-quote', 'expired-quote-sell', 'refresh-click-buy', 'refresh-click-buy-again', 'refresh-click-sell', 'refresh-provider-recovery', 'refresh-provider-failure', 'quote-only', 'provider-native-rounding', ...Object.keys(faults), 'simulation-failure', ...Object.keys(wireFaults)];
     scenarios.splice(2, 0, 'sell-approval-healthy', 'sell-approval-identity-multiple-retry',
       'sell-approval-identity-persistent', 'sell-approval-identity-account-change',
       'sell-approval-identity-chain-change', 'sell-approval-identity-uuid-return');
@@ -68,7 +78,9 @@ export async function runZeroXWalletJourneys(options) {
       state.approved = !scenario.startsWith('sell-approval') && !['approval-only', 'approval-requote', 'approval-over-sell', 'approval-unlimited', 'stale-post-approval'].includes(scenario);
       state.priceDisabled = scenario === 'quote-only';
       state.simulationFails = scenario === 'simulation-failure';
-      state.modifyFirm = faults[scenario];
+      state.modifyFirm = scenario === 'provider-native-rounding'
+        ? (quote) => { quote.fees.integratorFee.amount = (BigInt(quote.fees.integratorFee.amount) + 1n).toString(); }
+        : faults[scenario];
       state.simulations = [];
       const transactions = new Map();
       const requests = [];
