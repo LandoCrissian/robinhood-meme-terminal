@@ -147,6 +147,38 @@
   order: 4;
 }
 
+.watchingCollections {
+  grid-column: 1 / -1;
+  order: 5;
+  margin-top: 18px;
+}
+
+.radarUnavailable {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 10px 0 2px;
+  padding: 12px 14px;
+  border: 1px solid #28342c;
+  background: rgba(12, 18, 14, .52);
+}
+
+.radarUnavailable strong {
+  color: #a5b0a8;
+  font: 740 10px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
+  text-transform: uppercase;
+}
+
+.radarUnavailable span {
+  max-width: 620px;
+  color: #6f7b73;
+  font-size: 9px;
+  line-height: 1.45;
+  text-align: right;
+}
+
 .radarGroup {
   min-width: 0;
   padding: 12px 0 2px;
@@ -701,6 +733,22 @@
   overflow-wrap: anywhere;
 }
 
+.collectionList article > a {
+  margin-inline: 18px;
+  color: #93e88e;
+  font: 720 9px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
+  text-decoration: none;
+}
+
+.collectionList article[data-nft-collection-status="WATCHING"] {
+  border-color: #202a24;
+  background: linear-gradient(90deg, rgba(12, 18, 14, .48), transparent 78%);
+}
+
+.collectionList article[data-nft-collection-status="WATCHING"] span {
+  color: #a5b0a8;
+}
+
 @media (max-width: 900px) {
   .projectCard {
     grid-template-columns: minmax(180px, .55fr) minmax(380px, 1.45fr);
@@ -771,6 +819,16 @@
 
   .recentRadar { order: 4; }
   .activeCollections { order: 3; }
+  .watchingCollections { order: 5; }
+
+  .radarUnavailable {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .radarUnavailable span {
+    text-align: left;
+  }
 
   .activeCollections {
     margin-top: 15px;
