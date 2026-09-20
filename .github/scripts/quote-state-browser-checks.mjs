@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { writeFile } from 'node:fs/promises';
+import path from 'node:path';
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function until(predicate, message, timeout = 20000) {
   const end = Date.now() + timeout;
@@ -8,7 +10,7 @@ async function until(predicate, message, timeout = 20000) {
 
 // Real component/API lifecycle; only network/wallet boundaries are synthetic.
 // Restore a receipt without a retained wallet-handoff intent, then expire it.
-export async function exerciseRestoredQuoteState({ page, api, requests, scenario, enableReceipts }) {
+export async function exerciseRestoredQuoteState({ page, api, requests, scenario, enableReceipts, output, prefix }) {
   await until(async () => (await page.evaluate(() => localStorage.getItem('rmt:vnext-execution-journal:v1:4663') ?? '')).includes('submitted'), 'approval must be journaled');
   await page.evaluate(() => sessionStorage.removeItem('rmt:pending-approval-journey:v1:4663'));
   await page.reload({ waitUntil: 'domcontentloaded' });
@@ -51,6 +53,12 @@ export async function exerciseRestoredQuoteState({ page, api, requests, scenario
   await pause(1500);
   assert.equal(calls, 1, 'slow response must not start concurrent refresh');
   assert.equal(maximumPending, 1);
+  await page.screenshot({ path: path.join(output, `${prefix}-refreshing.png`), fullPage: true });
+  await writeFile(path.join(output, `${prefix}-refreshing.json`), JSON.stringify({
+    evidence: 'LOCAL_MOCKED', scenario, expiredPlanId: prior.plan.planId, retainedOutput: estimate,
+    pendingRequests: pending, refreshCalls: calls, maximumPending,
+    panel: await page.locator('.vnTradePanel').innerText()
+  }, null, 2));
   if (scenario.endsWith('click')) {
     const action = page.locator('.vnTradeActionDock .vnReviewButton');
     assert.equal(await action.isEnabled(), true, 'Trade can retain explicit intent during refresh');

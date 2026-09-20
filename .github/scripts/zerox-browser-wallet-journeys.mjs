@@ -421,7 +421,7 @@ export async function runZeroXWalletJourneys(options) {
               await until(async () => /pending|unknown|recovery|waiting/i.test(await page.locator('body').innerText()), 'Durable recovery state missing');
               assert.equal(requests.length, 1, 'Recovery must not resubmit');
             } else if (scenario.startsWith('sell-approval-idle-')) {
-              await exerciseRestoredQuoteState({page,api,requests,scenario,enableReceipts:()=>{receiptsEnabled=true;}});
+              await exerciseRestoredQuoteState({page,api,requests,scenario,output,prefix,enableReceipts:()=>{receiptsEnabled=true;}});
             } else if (scenario.startsWith('sell-approval')) {
               if (scenario.endsWith('account-change') || scenario.endsWith('chain-change')) {
                 if (identityRecovery) await until(() => identityFailuresInjected > 0, 'Identity retry must begin before the binding changes');
