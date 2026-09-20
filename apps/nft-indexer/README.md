@@ -17,3 +17,7 @@ NFT_INDEXER_TEST_DATABASE_URL=postgres://... pnpm --filter nft-indexer test
 The worker processes bounded finalized ranges atomically. It persists canonical event evidence and normalized movements, applies strict ownership, records a retained sync point, and advances the checkpoint in one transaction. Reorg recovery requires a retained common canonical ancestor and rebuilds ownership from retained canonical activity; otherwise it fails closed.
 
 Bearer-protected internal reads expose the admitted project summary, canonical ERC721 inventory, and individual item identity. Inventory is served only from a fresh, fully synchronized ownership projection. CCFF00 metadata is resolved from its onchain `tokenURI` with bounded decoding and strict inline SVG validation; remote metadata is classified but never fetched. Item metadata failures do not change activity-source status.
+
+## Production wiring
+
+A Railway service can use `apps/nft-indexer/railway.json`. Keep its database and read token dedicated to this service. The web application consumes it server-side through `NFT_INDEXER_URL` and `NFT_INDEXER_READ_TOKEN`; neither credential belongs in browser-visible configuration. Creating the Railway service/database or changing production environment variables is an owner-controlled infrastructure action, not part of repository CI.
