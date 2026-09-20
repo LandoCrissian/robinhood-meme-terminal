@@ -1,4 +1,5 @@
 import {
+  RMT_CURATED_NFT_PROJECTS,
   activeRmtCuratedNftProjects,
   type RmtCuratedNftProject,
 } from "@rmt/shared/nft/project-registry";
@@ -36,6 +37,8 @@ export type RmtNftTerminalCollectionCard = {
   contractAddress: `0x${string}`;
   standard: "ERC721" | "ERC1155" | null;
   verificationStatus: "PENDING" | "VERIFIED" | "REJECTED";
+  projectStatus: "ACTIVE" | "WATCHING";
+  publicUrl: string | null;
 };
 
 export type RmtNftTerminalCatalog = {
@@ -43,6 +46,7 @@ export type RmtNftTerminalCatalog = {
   view: RmtNftTerminalCatalogView;
   projects: readonly RmtNftTerminalProjectCard[];
   collections: readonly RmtNftTerminalCollectionCard[];
+  watchingCollections: readonly RmtNftTerminalCollectionCard[];
 };
 
 export function activePublicRmtNftProjects(
@@ -59,17 +63,36 @@ export function recentlyAddedPublicRmtNftProjects(
     right.approvedAt.localeCompare(left.approvedAt) || left.projectId.localeCompare(right.projectId));
 }
 
-export function activePublicRmtNftCollections(
-  projects?: readonly RmtCuratedNftProject[],
-): RmtNftTerminalCollectionCard[] {
-  return activePublicRmtNftProjects(projects).flatMap((project) => project.collections.map((collection) => ({
+export function watchingPublicRmtNftProjects(
+  projects: readonly RmtCuratedNftProject[] = RMT_CURATED_NFT_PROJECTS,
+) {
+  return projects.filter((project): project is RmtCuratedNftProject & { status: "WATCHING" } =>
+    project.status === "WATCHING" && project.collections.every((collection) => collection.verificationStatus === "VERIFIED"));
+}
+
+function publicCollectionCards(projects: readonly RmtCuratedNftProject[]): RmtNftTerminalCollectionCard[] {
+  return projects.flatMap((project) => project.collections.map((collection) => ({
     projectId: project.projectId,
     displayName: project.displayName,
     chainId: collection.chainId,
     contractAddress: collection.contractAddress,
     standard: collection.declaredStandard,
     verificationStatus: collection.verificationStatus,
+    projectStatus: project.status as "ACTIVE" | "WATCHING",
+    publicUrl: project.links.find((link) => link.visibility === "PUBLIC")?.url ?? null,
   })));
+}
+
+export function watchingPublicRmtNftCollections(
+  projects?: readonly RmtCuratedNftProject[],
+): RmtNftTerminalCollectionCard[] {
+  return publicCollectionCards(watchingPublicRmtNftProjects(projects ?? RMT_CURATED_NFT_PROJECTS));
+}
+
+export function activePublicRmtNftCollections(
+  projects?: readonly RmtCuratedNftProject[],
+): RmtNftTerminalCollectionCard[] {
+  return publicCollectionCards(activePublicRmtNftProjects(projects));
 }
 
 type CatalogReaders = {
@@ -125,6 +148,9 @@ export async function readRmtNftTerminalCatalog(
     schemaVersion: 1,
     view,
     projects,
-    collections: view === "collections" ? activePublicRmtNftCollections() : [],
+    collections: view === "collections"
+      ? [...activePublicRmtNftCollections(), ...watchingPublicRmtNftCollections()]
+      : [],
+    watchingCollections: watchingPublicRmtNftCollections(),
   };
 }
