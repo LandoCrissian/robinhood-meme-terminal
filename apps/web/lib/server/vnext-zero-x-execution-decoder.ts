@@ -145,6 +145,8 @@ export function verifyZeroXEncodedFee(input: Parameters<typeof decodeZeroXExecut
     const nonRmtDestination = (address: Address) => ![zeroAddress, RMT_ZERO_X_FEE_TREASURY,
       input.recipient, envelope.settlerTarget, HOLDER, input.inputAsset, input.outputAsset].includes(address);
     const providerTransfer = (asset: Address) => {
+      actionIndex = index;
+      actionKind = decoded[index]?.functionName ?? null;
       if (input.providerFeeAsset !== asset || input.providerFeeAtomic === null || providerFeeSeen) fail("PROVIDER_FEE_DISCLOSURE_MISMATCH");
       const disclosed = BigInt(input.providerFeeAtomic!);
       if (disclosed <= 0n) fail("PROVIDER_FEE_DISCLOSURE_MISMATCH");
@@ -215,7 +217,7 @@ export function verifyZeroXEncodedFee(input: Parameters<typeof decodeZeroXExecut
         || expected < BigInt(input.expectedOutputAtomic) || cap !== basis) fail("POSITIVE_SLIPPAGE_MISMATCH");
     }
     if (input.providerFeeAsset === input.outputAsset) providerTransfer(input.outputAsset);
-    if (providerFeeSeen !== (input.providerFeeAsset !== null)) fail("PROVIDER_FEE_COUNT_MISMATCH");
+    if (providerFeeSeen !== (input.providerFeeAsset !== null)) { actionIndex = null; actionKind = null; fail("PROVIDER_FEE_COUNT_MISMATCH"); }
     if (index !== decoded.length) { actionIndex = index; actionKind = decoded[index]?.functionName ?? null; fail("EXTRA_ACTION"); }
     return fee;
   } catch (cause) {
