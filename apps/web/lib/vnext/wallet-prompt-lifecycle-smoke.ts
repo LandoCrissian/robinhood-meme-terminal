@@ -504,7 +504,8 @@ assert.match(walletReview, /Wallet request was rejected by the owner\. Nothing w
 assert.match(walletReview, /Review verified swap in/);
 assert.doesNotMatch(walletReview, /Refresh verified request/);
 assert.match(walletReview, /isVerifiedRequestFresh\(plan\.expiresAtMs, Date\.now\(\)\)/);
-assert.match(walletReview, /Refreshing price\.\.\./);
+assert.match(walletReview, /Refresh and review in wallet/);
+assert.doesNotMatch(walletReview, /\? "Refreshing price\.\.\."/, "expiry alone is not an active refresh");
 const explicitOpenBoundary = walletReview.slice(walletReview.indexOf("function openPreparedWalletRequest"), walletReview.indexOf("const prepareWalletReview"));
 assert.doesNotMatch(explicitOpenBoundary, /\bawait\b/);
 assert.match(explicitOpenBoundary, /dispatchVNextWalletReview/);
