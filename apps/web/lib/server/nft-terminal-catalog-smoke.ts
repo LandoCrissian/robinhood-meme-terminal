@@ -12,6 +12,8 @@ import {
   activePublicRmtNftProjects,
   readRmtNftTerminalCatalog,
   recentlyAddedPublicRmtNftProjects,
+  watchingPublicRmtNftCollections,
+  watchingPublicRmtNftProjects,
 } from "./nft-terminal-catalog";
 
 const admitted = RMT_CURATED_NFT_PROJECTS[0]!;
@@ -39,6 +41,9 @@ assert.deepEqual(activePublicRmtNftProjects(projects).map((project) => project.p
 assert.deepEqual(recentlyAddedPublicRmtNftProjects(projects).map((project) => project.projectId), ["active-b", "active-a"]);
 assert.deepEqual(activePublicRmtNftCollections(projects).map((collection) => collection.projectId), ["active-a", "active-b"]);
 assert.deepEqual(activePublicRmtNftProjects().map((project) => project.projectId), ["ccff00"]);
+assert.deepEqual(watchingPublicRmtNftProjects(projects).map((project) => project.projectId), ["watching-1"]);
+assert.deepEqual(watchingPublicRmtNftCollections(projects).map((collection) => collection.projectId), ["watching-1"]);
+assert.deepEqual(watchingPublicRmtNftProjects().map((project) => project.projectId), ["robin-rabbits", "gogh-punks"]);
 assert.equal(admitted.projectToken, null);
 
 const inventory: RmtNftProjectInventoryRead = {
@@ -93,6 +98,7 @@ const catalog = await readRmtNftTerminalCatalog("active", {
 assert.equal(catalog.projects.length, 1);
 assert.equal(catalog.projects[0]!.projectId, "ccff00");
 assert.equal(catalog.projects[0]!.projectToken, null);
+assert.deepEqual(catalog.watchingCollections.map((collection) => collection.projectId), ["robin-rabbits", "gogh-punks"]);
 assert.equal(catalog.projects[0]!.market && "project" in catalog.projects[0]!.market && catalog.projects[0]!.market.onchain.availability, "AVAILABLE");
 assert.equal(inventoryLimit, NFT_TERMINAL_CATALOG_PREVIEW_LIMIT);
 assert.equal(NFT_TERMINAL_CATALOG_PREVIEW_LIMIT, 4);
@@ -124,6 +130,9 @@ assert.match(catalogPage, /data-radar-admission=\{candidate\.rmtAdmission\}/);
 assert.match(catalogPage, /candidate\.state === "LIVE_NOW" \? <NftMintReadiness candidateId=\{candidate\.candidateId\}/);
 assert.doesNotMatch(catalogPage, />\s*(?:Mint|Buy|List|Offer|Fulfill|Sign|Submit)\s*</i);
 assert.match(catalogPage, /Active Collections/);
+assert.match(catalogPage, /On Our Radar/);
+assert.match(catalogPage, /Live mint feed unavailable/);
+assert.match(catalogPage, /data-nft-collection-status=\{collection\.projectStatus\}/);
 assert.match(catalogPage, /Suspense fallback=\{<MintRadarFallback/);
 assert.match(catalogPage, /Schedule evidence could not be established\. Active RMT collections remain available\./);
 assert.doesNotMatch(catalogPage, /No upcoming mints/i);
@@ -139,9 +148,11 @@ assert.match(chrome, /NFT Terminal<small>RMT-curated NFT projects and Project Ma
 assert.match(chrome, /<PublicLink href="\/sources">Sources/);
 assert.equal((chrome.match(/<PublicLink href="\/nft">/g) ?? []).length, 3);
 assert.doesNotMatch(catalogReader, /project-intake|RMT_NFT_PROJECT_INTAKE/);
-for (const name of ["Hopium Machines", "Robin Rabbits", "CannaCats", "Pixel Hood Minis", "World Weed Seeds", "Peeps", "Gogh Punks", "Clay StonKz"]) {
+for (const name of ["Hopium Machines", "CannaCats", "Pixel Hood Minis", "World Weed Seeds", "Peeps", "Clay StonKz"]) {
   assert.doesNotMatch(publicSources, new RegExp(name, "i"));
 }
+assert.match(catalogReader, /watchingPublicRmtNftProjects/);
+assert.match(catalogPage, /Tracked for discovery · Not yet RMT admitted/);
 assert.doesNotMatch(publicSources, /HoodStreet|discoveryProvenance/i);
 assert.doesNotMatch(catalogPage, />\s*(BUY|LIST|OFFER|FULFILL|SIGN|SUBMIT|ACCEPT|SWEEP)\s*</i);
 console.info("NFT Terminal catalog admission, degradation, preview, and navigation smoke: PASS");
