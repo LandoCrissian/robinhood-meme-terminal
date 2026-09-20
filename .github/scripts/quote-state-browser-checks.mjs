@@ -33,7 +33,9 @@ export async function exerciseRestoredQuoteState({ page, api, requests, scenario
     calls++; pending++; maximumPending = Math.max(maximumPending, pending);
     await gate;
     pending--;
-    if (scenario.endsWith('failure')) return route.fulfill({ status: 422, json: { phase: 'ZEROX_POLICY_REJECTED', retryable: false, error: 'Controlled replacement rejection' } });
+    if (scenario.endsWith('failure')) return route.fulfill({ status: 422, json: scenario.includes('expired')
+      ? { phase: 'QUOTE_EXPIRED', retryable: false, error: 'Refreshing price...' }
+      : { phase: 'ZEROX_POLICY_REJECTED', retryable: false, error: 'Controlled replacement rejection' } });
     await route.fallback();
   };
   const heldPath = scenario.endsWith('verification') ? '**/api/vnext/verify' : '**/api/vnext/quotes';
@@ -77,6 +79,7 @@ export async function exerciseRestoredQuoteState({ page, api, requests, scenario
   release();
   if (scenario.endsWith('failure')) {
     await page.getByRole('button', { name: 'Retry quote', exact: true }).waitFor();
+    await page.locator('.vnRouteCard').evaluate(details => { details.open = true; });
     const failed = await page.locator('.vnTradePanel').innerText();
     assert.doesNotMatch(failed, /Fresh swap verification passed|Verified request ready|Exact simulation passed|Refreshing price/);
     assert.equal(await page.locator('.vnReceiveField > div > strong').first().innerText(), estimate);

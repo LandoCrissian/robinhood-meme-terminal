@@ -940,10 +940,12 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
       failed: (cause) => {
         if (currentPreparationContext.current !== key) return;
         setRefreshingPrice(false);
-        const message = cause instanceof Error ? cause.message : "RMT could not prepare this trade.";
+        const phase = failureJourneyPhase(cause,
+          stage === "quote" ? "QUOTE_SERVICE_UNAVAILABLE" : stage === "verification" ? "FIRM_VERIFY_FAILED" : "AUTHORIZATION_FAILED");
+        const message = phase === "QUOTE_EXPIRED" ? "Price changed. Retry quote."
+          : cause instanceof Error ? cause.message : "RMT could not prepare this trade.";
         if (afterApproval) setPostExecutionState({ state: "blocked", message });
-        setQuoteState({ state: "error", message, phase: failureJourneyPhase(cause,
-          stage === "quote" ? "QUOTE_SERVICE_UNAVAILABLE" : stage === "verification" ? "FIRM_VERIFY_FAILED" : "AUTHORIZATION_FAILED") });
+        setQuoteState({ state: "error", message, phase });
         setVerificationState({ state: "error", message });
         setAuthorizationState({ state: "error", message });
       }

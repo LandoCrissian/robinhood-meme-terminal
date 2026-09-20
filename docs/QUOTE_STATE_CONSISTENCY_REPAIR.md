@@ -15,7 +15,7 @@ recovers the approval receipt, obtains fresh server verification, then advances
 the browser clock past expiry. The page shows an estimate and “Set when you
 trade” for the minimum alongside “Fresh swap verification passed”.
 
-Three source defects explain this state:
+The source defects are:
 
 1. `postExecutionState.swap_ready` is historical but rendered an unconditional
    current verification claim. `currentTradeEvidence` correctly rejects expired
@@ -26,6 +26,10 @@ Three source defects explain this state:
 3. Post-approval preparation duplicated the ordinary refresh pipeline outside
    its coordinator. While a replacement was pending, the primary action was
    disabled and the last displayed output could disappear.
+4. A terminal `QUOTE_EXPIRED` failure could retain “Refreshing price...” as its
+   error detail after preparation stopped. A second regression reproduces that
+   contradiction with the expanded details visible; the terminal message now
+   says “Price changed. Retry quote.”
 
 The recording alone does not establish that an upstream request hung. No new
 production quote or log-derived network latency is claimed. Local delayed
