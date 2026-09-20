@@ -28,8 +28,8 @@ export function confirmedVNextFeePresentation(input: {
   if (record.providerNativeFee) {
     const onInput = record.providerNativeFee.feeAsset.toLowerCase() === record.inputAsset.toLowerCase();
     return {
-    state: "quoted",
-    display: `${formatExactAtomic(record.providerNativeFee.feeAmountAtomic, onInput ? input.inputDecimals : input.outputDecimals)} ${onInput ? input.inputSymbol : input.outputSymbol} · 0.25% · transfer reconciliation unavailable`
+      state: "quoted",
+      display: `${formatExactAtomic(record.providerNativeFee.feeAmountAtomic, onInput ? input.inputDecimals : input.outputDecimals)} ${onInput ? input.inputSymbol : input.outputSymbol} · 0.25% · transfer reconciliation unavailable`
     };
   }
   if (record.feeV2Settlement) {

@@ -87,6 +87,26 @@ export async function runTradingProductBrowser({ browser, base, identity, extern
       coreUsableMs:Math.max(shellMs,priceMs??0,controlsMs),optionalEnrichmentCompleteMs:null};
     await writeFile(path.join(output,`navigation-${baseline?'before':'after'}-${navigation.viewport}.json`),JSON.stringify(navigation,null,2));
     if(!baseline)assert.ok(navigation.coreUsableMs<1000,'known search result must not wait for delayed external enrichment');
+    if(!baseline) {
+      // Revisit while the slow optional read may still be pending, then switch
+      // intent rapidly. The visible identity must remain the last exact token.
+      await page.locator('[data-terminal-nav="markets"]').filter({visible:true}).first().click();
+      const cachedAt=Date.now(); await search.press('Enter');
+      await page.locator('#vn-asset-heading').filter({hasText:'OBSERVED'}).waitFor();
+      navigation.cachedRevisitMs=Date.now()-cachedAt;
+      assert.ok(navigation.cachedRevisitMs<1000);
+      await page.locator('[data-terminal-nav="markets"]').filter({visible:true}).first().click();
+      await search.fill(token); await search.press('Enter');
+      await page.locator('#vn-asset-heading').filter({hasText:'PONS'}).waitFor();
+      await page.locator('[data-terminal-nav="markets"]').filter({visible:true}).first().click();
+      await search.fill(discovered); await search.press('Enter');
+      await page.locator('#vn-asset-heading').filter({hasText:'OBSERVED'}).waitFor();
+      await page.waitForTimeout(5200);
+      assert.match(await page.locator('#vn-asset-heading').innerText(),/OBSERVED/,'late prior-token reads must not replace current identity');
+      navigation.rapidSwitch='PASS';
+      await writeFile(path.join(output,`navigation-after-${navigation.viewport}.json`),JSON.stringify(navigation,null,2));
+    }
+
     assert.equal(await page.evaluate(()=>window.__productPrompts),0);
     await context.close();
   }
