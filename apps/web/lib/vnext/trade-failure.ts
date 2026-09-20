@@ -1,6 +1,8 @@
 import { tradeJourneyPhase, type TradeJourneyPhase } from "./trade-journey";
 import { identityFailureDefinitions } from "./identity-failure";
 
+import { safeEnvelopeDiagnostic, type EnvelopeDiagnostic } from "./execution-envelope-diagnostic";
+
 export type TradeFailureStage = "quote" | "verification" | "authorization";
 const definitions = {
   ...identityFailureDefinitions,
@@ -38,6 +40,15 @@ export class TradeExecutionFailure extends Error implements TradeFailure {
     super(detail);
     this.name = "TradeExecutionFailure";
     this.phase = phase; this.retryable = retryable; this.status = status; this.detail = detail;
+  }
+}
+
+// PR533's bounded failure carrier, without its public route/logging changes.
+export class ExecutionEnvelopeFailure extends TradeExecutionFailure {
+  readonly envelope: ReturnType<typeof safeEnvelopeDiagnostic>;
+  constructor(diagnostic: EnvelopeDiagnostic, stage: TradeFailureStage = "verification") {
+    super("EXECUTION_ENVELOPE_REJECTED", stage);
+    this.envelope = Object.freeze(safeEnvelopeDiagnostic(diagnostic));
   }
 }
 
