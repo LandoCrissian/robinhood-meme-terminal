@@ -50,7 +50,7 @@
     "test:trade-reliability": "tsx lib/trade-execution-reliability-smoke.ts && tsx lib/trade-diagnostic-sanitize-smoke.ts",
     "test:trade-speed": "tsx lib/trade-speed-smoke.ts && tsx lib/trade-execution-reliability-smoke.ts && tsx lib/trade-diagnostic-sanitize-smoke.ts && tsx lib/wallet-gateway-smoke.ts && tsx lib/speed-wallet-smoke.ts && tsx lib/privy-funding-smoke.ts && tsx lib/wallet-transfer-smoke.ts",
     "test:wallet-gateway": "tsx lib/wallet-gateway-smoke.ts && tsx lib/speed-wallet-smoke.ts",
-    "test:execution-hot-path": "tsx --test lib/server/vnext-execution-identity-authority.test.ts lib/server/vnext-identity-diagnostic.test.ts lib/wallet-connection-controller.test.ts && tsx lib/server/execution-project-identity-smoke.ts",
+    "test:execution-hot-path": "tsx --test lib/server/vnext-execution-identity-authority.test.ts lib/server/vnext-identity-diagnostic.test.ts lib/vnext/execution-envelope-diagnostic.test.ts lib/wallet-connection-controller.test.ts && tsx lib/server/execution-project-identity-smoke.ts",
     "test:trade-identity": "tsx lib/server/rmt-trade-identity-smoke.ts",
     "test:legacy-execution-retirement": "tsx lib/server/legacy-execution-retirement-smoke.ts",
     "test:stock-assets": "tsx lib/server/robinhood-stock-token-registry-smoke.ts && tsx lib/server/robinhood-stock-token-registry-cache-smoke.ts && tsx lib/server/vnext-stock-token-execution-admission-smoke.ts",

@@ -74,9 +74,11 @@ const requestSchema = z.object({
 });
 
 async function handleRequest(request: Request) {
+  let quoteRequestId: string | undefined;
   try {
     const parsed = requestSchema.safeParse(await request.json());
     if (!parsed.success) return Response.json({ error: "Invalid VNext verification request." }, { status: 400, headers: { "Cache-Control": "no-store" } });
+    quoteRequestId = parsed.data.quoteRequestId;
     const hasCompleteV4Binding = Boolean(parsed.data.canonicalMarket && parsed.data.v4QuoteEvidence);
     if ((parsed.data.provider === "uniswap-v4") !== hasCompleteV4Binding) {
       return Response.json({ error: "Invalid VNext V4 verification binding." }, { status: 400, headers: { "Cache-Control": "no-store" } });
@@ -153,7 +155,7 @@ async function handleRequest(request: Request) {
     }
     return Response.json(responseEvidence, { headers: { "Cache-Control": "no-store" } });
   } catch (cause) {
-    const typedFailure = executionFailureResponse(cause, "verification");
+    const typedFailure = executionFailureResponse(cause, "verification", quoteRequestId);
     if (typedFailure) return typedFailure;
     if (cause instanceof ZeroXRepriceRequiredError) {
       return Response.json({ error: "ZERO_X_REPRICE_REQUIRED", message: "Price moved. Review the refreshed quote." }, { status: 409, headers: { "Cache-Control": "no-store" } });

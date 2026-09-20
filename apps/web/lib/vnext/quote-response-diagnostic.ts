@@ -1,6 +1,7 @@
 import { TradeExecutionFailure, type ExecutionFailureCode } from "./trade-failure";
 import { tradeJourneyLabels, tradeJourneyPhase } from "./trade-journey";
 import { identityFailureDefinitions, identityOperations, type IdentityFailureCode } from "./identity-failure";
+import { safeEnvelopeDiagnostic } from "./execution-envelope-diagnostic";
 
 const codes: readonly ExecutionFailureCode[] = [
   ...Object.keys(identityFailureDefinitions) as IdentityFailureCode[],
@@ -29,6 +30,7 @@ function safeFields(payload: Record<string, unknown>) {
   const code = executionCode ?? phaseCode ?? null;
   return {
     code,
+    ...safeEnvelopeDiagnostic(payload),
     identityOperation: typeof payload.identityOperation === "string" && (identityOperations as readonly string[]).includes(payload.identityOperation) ? payload.identityOperation : null,
     identityAsset: typeof payload.identityAsset === "string" && /^0x[0-9a-f]{40}$/i.test(payload.identityAsset) ? payload.identityAsset : null,
     stage: typeof payload.stage === "string" && stages.includes(payload.stage) ? payload.stage : null,
