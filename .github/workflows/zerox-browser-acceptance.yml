@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - '.github/scripts/zerox-browser-*'
+      - '.github/scripts/quote-state-browser-checks.mjs'
       - '.github/scripts/trading-product-browser.mjs'
       - '.github/scripts/zerox-execution-fixture.cjs'
       - '.github/scripts/terminal-high-end-acceptance.mjs'
