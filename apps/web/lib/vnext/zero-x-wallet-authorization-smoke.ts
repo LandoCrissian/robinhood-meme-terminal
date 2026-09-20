@@ -9,7 +9,7 @@ import { prepareVNextWalletTransaction, vNextWalletRpcTransaction } from "./wall
 import { vnextSpotTradeInstruction } from "./execution-authority";
 import { isVNextPlanRecoveryAdmissible, recordPreparedVNextWalletRequest, recordSubmittedVNextExecution, resolveVNextExecution, normalizeVNextExecutionJournal } from "./execution-recovery";
 import { FEE_V2_SMOKE_SWAP_EVIDENCE, FEE_V2_SMOKE_SWAP_PLAN, FEE_V2_SMOKE_NOW_MS } from "./fee-v2-smoke-fixture";
-import { zeroXFirmQuoteIdentity, type VNextZeroXProviderNativeFee } from "./zero-x-settlement";
+import { toZeroXToken, zeroXFirmQuoteIdentity, type VNextZeroXProviderNativeFee } from "./zero-x-settlement";
 import { readVNextPublicExecutionReleaseScope, requireVNextPublicExecutionProvider } from "../server/vnext-public-execution-provider-scope";
 import { confirmedVNextFeePresentation } from "./confirmed-fee-receipt";
 import { assertInjectedSignerHandoff } from "./injected-signer-handoff-smoke";
@@ -60,9 +60,9 @@ export async function assertZeroXSharedWalletAuthorization(prepared: VNextPrepar
 
   const fees: [string, Partial<VNextZeroXProviderNativeFee>][] = [
     ["treasury", { treasury: zeroAddress }], ["bps", { feeBps: 26 as 25 }],
-    ["token", { feeAsset: plan.outputAsset as Hex }], ["amount", { feeAmountAtomic: "1" }],
+    ["token", { feeAsset: (plan.providerNativeFee!.feeAsset === plan.inputAsset ? plan.outputAsset : plan.inputAsset) as Hex }], ["invalid amount", { feeAmountAtomic: "-1" }],
     ["recipient binding", { requestFeeRecipient: zeroAddress }], ["bps binding", { requestFeeBps: 26 as 25 }],
-    ["fee token binding", { requestFeeToken: plan.outputAsset as Hex }],
+    ["fee token binding", { requestFeeToken: toZeroXToken(plan.providerNativeFee!.feeAsset === plan.inputAsset ? plan.outputAsset : plan.inputAsset) }],
     ["chain", { chainId: 1 as 4_663 }], ["provider", { provider: "sushi" as "zero-x-swap" }],
     ["executor claim", { feeExecutorRequired: true as false }]
   ];
@@ -72,6 +72,12 @@ export async function assertZeroXSharedWalletAuthorization(prepared: VNextPrepar
     assert.throws(() => parseVNextAuthorizationPlan({ ...plan, providerNativeFee: fee }, evidence, now), label);
     assert.throws(() => parseVNextPreSignEvidence({ ...raw, providerNativeFee: fee }, expected, now), label);
   }
+  // A changed but well-formed output amount is rejected against verified plan
+  // evidence; a standalone structural parser cannot invent cross-token pricing.
+  const changedFee = structuredClone(plan.providerNativeFee!);
+  changedFee.feeAmountAtomic = "1";
+  changedFee.firmQuote!.identity = zeroXFirmQuoteIdentity(changedFee);
+  assert.throws(() => parseVNextAuthorizationPlan({ ...plan, providerNativeFee: changedFee }, evidence, now));
   for (const mutation of [
     { providerNativeFee: undefined }, { feeExecution: { implementationId: "RMT_UNISWAP_V3_FEE_EXECUTOR" } },
     { feeV2Economics: {} }, { feeV2Authorization: {} }, { directNoRmtFee: {} },
@@ -112,6 +118,9 @@ export async function assertZeroXSharedWalletAuthorization(prepared: VNextPrepar
     const confirmed = resolveVNextExecution(record.txHash, "confirmed", storage, now + 1);
     assert.ok(confirmed);
     assert.equal(confirmedVNextFeePresentation({ record: confirmed, inputDecimals: 18, outputDecimals: 18, inputSymbol: "SELL", outputSymbol: "BUY" }).state, "quoted");
+    const disclosure = confirmedVNextFeePresentation({ record: confirmed, inputDecimals: 6, outputDecimals: 18, inputSymbol: "SELL", outputSymbol: "BUY" });
+    assert.equal(disclosure.state, "quoted");
+    assert.ok("display" in disclosure && disclosure.display.includes(record.providerNativeFee!.feeAsset === record.inputAsset ? " SELL " : " BUY "));
     assert.equal(normalizeVNextExecutionJournal([{ ...record, providerNativeFee: { ...record.providerNativeFee, treasury: zeroAddress } }], now).length, 0);
   }
   for (const provider of ["uniswap-v2", "uniswap-v3"] as const) {

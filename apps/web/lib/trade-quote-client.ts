@@ -50,6 +50,7 @@ export type TradeQuoteResponse = {
 };
 
 type QuoteEntry = {
+  pending: boolean;
   createdAt: number;
   promise: Promise<TradeQuoteResponse>;
 };
@@ -219,7 +220,7 @@ export function requestTradeQuote(
   };
   const key = `${options.identityScope ?? "anonymous"}:${quoteRequestKey(endpoint, body)}`;
   const existing = quoteRequests.get(key);
-  if (existing && now - existing.createdAt <= SHARED_QUOTE_CACHE_MS) return observe(existing.promise, true);
+  if (existing && (existing.pending || now - existing.createdAt <= SHARED_QUOTE_CACHE_MS)) return observe(existing.promise, true);
 
   const promise = requestWithRetry(endpoint, body, options, consumerGeneration).then((response) => {
     if (!response.ok) {
@@ -237,7 +238,8 @@ export function requestTradeQuote(
       1
     );
   });
-  quoteRequests.set(key, { createdAt: now, promise });
+  quoteRequests.set(key, { createdAt: now, pending: true, promise });
+  void promise.then(() => { const entry = quoteRequests.get(key); if (entry?.promise === promise) entry.pending = false; }, () => {});
   return observe(promise, false);
 }
 

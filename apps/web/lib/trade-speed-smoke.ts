@@ -46,6 +46,17 @@ async function run() {
 
   try {
     clearTradeQuoteCache();
+    const fastFetch = globalThis.fetch;
+    let releaseSlow: (value: Response) => void = () => {};
+    let slowCalls = 0;
+    globalThis.fetch = async () => { slowCalls++; return new Promise<Response>(resolve => { releaseSlow = resolve; }); };
+    const slow = requestTradeQuote("/slow", { amount: "1" }, { now: 0 });
+    const sharedSlow = requestTradeQuote("/slow", { amount: "1" }, { now: 10000 });
+    assert.equal(slowCalls, 1, "in-flight deduplication outlives resolved-cache TTL");
+    releaseSlow(Response.json({ ok: true }));
+    assert.equal(await slow, await sharedSlow);
+    globalThis.fetch = fastFetch;
+    clearTradeQuoteCache();
     const body = { amountIn: "1", side: "buy" };
     const [first, second] = await Promise.all([
       requestTradeQuote("/quote", body, { identityScope: "did:privy:test", identityToken: "identity-token", now: 1_000 }),

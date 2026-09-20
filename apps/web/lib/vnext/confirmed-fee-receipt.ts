@@ -25,10 +25,13 @@ export function confirmedVNextFeePresentation(input: {
   const { record } = input;
   if (!record || record.kind !== "swap" || record.state !== "confirmed") return { state: "not_applicable" };
   // A successful aggregate receipt alone is not transfer-level fee reconciliation.
-  if (record.providerNativeFee) return {
+  if (record.providerNativeFee) {
+    const onInput = record.providerNativeFee.feeAsset.toLowerCase() === record.inputAsset.toLowerCase();
+    return {
     state: "quoted",
-    display: `${formatExactAtomic(record.providerNativeFee.feeAmountAtomic, input.inputDecimals)} ${input.inputSymbol} · 0.25% · transfer reconciliation unavailable`
-  };
+    display: `${formatExactAtomic(record.providerNativeFee.feeAmountAtomic, onInput ? input.inputDecimals : input.outputDecimals)} ${onInput ? input.inputSymbol : input.outputSymbol} · 0.25% · transfer reconciliation unavailable`
+    };
+  }
   if (record.feeV2Settlement) {
     const actualFee = record.feeV2Settlement.actualRmtFeeAtomic;
     if (actualFee === undefined || BigInt(actualFee) <= 0n) {

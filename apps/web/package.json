@@ -71,7 +71,7 @@
     "test:vnext-ownership": "tsx lib/vnext/vnext-ownership-boundary-smoke.ts",
     "test:vnext-release-readiness": "tsx lib/vnext/uniswap-v2-v2-production-proof-evidence-smoke.ts && tsx lib/vnext/release-readiness-smoke.ts && tsx lib/vnext/public-execution-provider-scope-smoke.ts",
     "test:vnext-public-provider-scope": "tsx lib/vnext/public-execution-provider-scope-smoke.ts",
-    "test:vnext-efficiency": "tsx lib/vnext/client-efficiency-smoke.ts",
+    "test:vnext-efficiency": "tsx lib/vnext/client-efficiency-smoke.ts && tsx lib/vnext/public-workspace-read-smoke.ts",
     "test:vnext-spend-balance": "tsx lib/vnext/spend-balance-smoke.ts",
     "test:vnext-wallet-holdings": "tsx lib/vnext/wallet-holdings-smoke.ts",
     "test:vnext-intent": "tsx lib/vnext/intent-draft-smoke.ts",
