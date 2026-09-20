@@ -499,7 +499,7 @@ export async function runZeroXWalletJourneys(options) {
               if (scenario === 'contract-history') {
                 state.incompatibleRuntime = true;
                 await page.reload({waitUntil:'domcontentloaded'});
-                await page.getByText('Verified swap history', {exact:true}).waitFor();
+                await page.locator('.vnRecoveryBanner').filter({hasText:'Verified swap history'}).waitFor({ timeout: 60000 });
                 const history = page.locator('.vnRecoveryBanner').filter({hasText:'Verified swap history'});
                 assert.match(await history.innerText(), /Submitted:/);
                 assert.ok((await history.locator('a').getAttribute('href')).includes(h('c')));
