@@ -32,12 +32,21 @@ export async function exerciseRestoredQuoteState({ page, api, requests, scenario
   };
   const heldPath = scenario.endsWith('verification') ? '**/api/vnext/verify' : '**/api/vnext/quotes';
   await page.route(heldPath, hold);
+  let releasePrice;
+  if (scenario.endsWith('verification')) {
+    const priceGate = new Promise(resolve => { releasePrice = resolve; });
+    await page.route('**/api/vnext/quotes', async route => { await priceGate; await route.fallback(); });
+  }
   await page.clock.fastForward(Math.max(0, prior.plan.expiresAtMs - Date.now()) + 300);
   const panel = await page.locator('.vnTradePanel').innerText();
   assert.doesNotMatch(panel, /Fresh swap verification passed|Verified request ready|Exact simulation passed/, 'expired authority must not coexist with current verified claims');
   assert.equal(await page.locator('.vnOutputProtection strong').innerText(), 'Set when you trade');
   assert.equal(await page.locator('.vnReceiveField > div > strong').first().innerText(), estimate, 'refresh preserves the last displayed output');
   assert.match(panel, /stale/i, 'retained output is explicitly stale');
+  // Advance expiry without making newly issued server evidence artificially old.
+  // Preparation has already cleared authority; restoring real time cannot reuse it.
+  await page.clock.setSystemTime(Date.now());
+  releasePrice?.();
   await until(() => calls === 1, 'restored approval ready state must not strand automatic refresh');
   await pause(1500);
   assert.equal(calls, 1, 'slow response must not start concurrent refresh');
