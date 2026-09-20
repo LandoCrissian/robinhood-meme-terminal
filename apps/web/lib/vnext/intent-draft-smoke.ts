@@ -97,7 +97,7 @@ assert.throws(() => createExactInputIntent({
 }), /assets must differ/);
 
 const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
-assert.match(composer, /Finding best route/);
+assert.match(composer, /Review with fresh quote/);
 assert.doesNotMatch(composer, /Route temporarily unavailable/);
 assert.match(composer, /IDENTITY_UNAVAILABLE/);
 assert.match(composer, /observedZeroXPhase/);
