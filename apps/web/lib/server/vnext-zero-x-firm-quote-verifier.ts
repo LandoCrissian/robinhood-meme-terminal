@@ -1,4 +1,4 @@
-import { requireZeroXDeployment } from "./vnext-zero-x-deployment-authority";
+import { requireZeroXDeployment, type ZeroXDeploymentDiagnostic } from "./vnext-zero-x-deployment-authority";
 import { isCanonicalZeroXAllowanceHolder, RMT_ZERO_X_CANONICAL_ALLOWANCE_HOLDER } from "../vnext/zero-x-authority";
 import { TradeExecutionFailure } from "../vnext/trade-failure";
 import { decodeZeroXExecutableMinimum, verifyZeroXEncodedFee } from "./vnext-zero-x-execution-decoder";
@@ -69,6 +69,21 @@ type ParsedFirmQuote = {
   transactionValueAtomic: string;
   zid: string | null;
 };
+
+// Explicit allowlist: no raw response, calldata, quote ID, credentials or commitment.
+// Callbacks are reachable only from server code; public routes do not supply one.
+export type ZeroXFirmDiagnostic =
+  | { kind: "http"; status: number }
+  | { kind: "simulation"; state: "PASS" | "FAILED" }
+  | { kind: "quote"; allowanceTarget: Address | null; transactionTarget: Address;
+      transactionValue: string; calldataHash: Hex; decodedSettler: Address;
+      protectedExecutableMinimum: string; providerFeeAsset: Address | null; providerFeeAmount: string | null;
+      providerSimulationIncomplete: boolean; providerInsufficientBalance: boolean; providerInsufficientAllowance: boolean }
+  | { kind: "deployment"; evidence: ZeroXDeploymentDiagnostic };
+export type ZeroXFirmObserver = (event: ZeroXFirmDiagnostic) => void;
+// Private, in-memory inspection only. Never included in an HTTP response or
+// diagnostic event. Copy primitives so an observer cannot mutate the quote.
+export type ZeroXExecutableInspection = Readonly<{ target: Address; data: Hex; value: string | null; allowanceTarget: Address | null }>;
 
 export type ZeroXSwapFirmQuoteVerificationEvidence = VNextProviderVerificationEvidence & {
   provider: "zero-x-swap";
@@ -314,7 +329,7 @@ function parseFirmQuote(body: unknown, request: VNextProviderVerificationRequest
   };
 }
 
-async function fetchFirmQuote(request: VNextProviderVerificationRequest) {
+async function fetchFirmQuote(request: VNextProviderVerificationRequest, observe?: ZeroXFirmObserver) {
   const apiKey = process.env.RMT_ZEROX_API_KEY?.trim();
   if (!apiKey) throw new Error("0x server credential is not configured.");
   const url = new URL("/swap/allowance-holder/quote", ZERO_X_API_URL);
@@ -324,6 +339,7 @@ async function fetchFirmQuote(request: VNextProviderVerificationRequest) {
     swapFeeRecipient: RMT_ZERO_X_FEE_TREASURY, swapFeeBps: String(RMT_ZERO_X_FEE_BPS), swapFeeToken: toZeroXToken(request.inputAsset)
   }).toString();
   const response = await fetch(url, { headers: { Accept: "application/json", "0x-api-key": apiKey, "0x-version": "v2" }, cache: "no-store", signal: AbortSignal.timeout(ZERO_X_TIMEOUT_MS) });
+  observe?.({ kind: "http", status: response.status });
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) {
     if (response.status === 400 && isObject(body) && body.name === "NO_LIQUIDITY_AVAILABLE") return null;
@@ -332,7 +348,7 @@ async function fetchFirmQuote(request: VNextProviderVerificationRequest) {
   return body;
 }
 
-export async function verifyZeroXSwapFirmQuote(request: VNextProviderVerificationRequest): Promise<ZeroXSwapFirmQuoteVerificationEvidence> {
+export async function verifyZeroXSwapFirmQuote(request: VNextProviderVerificationRequest, observe?: ZeroXFirmObserver, inspect?: (envelope: ZeroXExecutableInspection) => void): Promise<ZeroXSwapFirmQuoteVerificationEvidence> {
   const configuration = zeroXSwapFirmQuoteVerificationConfiguration();
   if (!configuration) throw new Error("0x Swap firm-quote verification is not configured.");
   if (request.settlementMode !== VNEXT_PROVIDER_NATIVE_INPUT_FEE || !request.deadlineSeconds || !request.nowMs) throw new Error("0x provider-native verification authority is incomplete.");
@@ -343,10 +359,28 @@ export async function verifyZeroXSwapFirmQuote(request: VNextProviderVerificatio
   const chainId = await rpc("eth_chainId", []);
   if (typeof chainId !== "string" || !/^0x[0-9a-fA-F]+$/.test(chainId) || BigInt(chainId) !== 4_663n) throw new Error("Robinhood RPC chain identity changed.");
   const observedAtMs = Date.now();
-  const body = await fetchFirmQuote(request);
+  const body = await fetchFirmQuote(request, observe);
   if (body === null) throw new TradeExecutionFailure("NO_ROUTE");
+  // Private structural capture precedes parser rejection. This is NOT accepted
+  // evidence. Frozen primitives cannot mutate the response used by verification.
+  if (inspect && isObject(body) && isObject(body.transaction)) {
+    const tx = body.transaction;
+    if (typeof tx.to === "string" && isAddress(tx.to) && typeof tx.data === "string"
+      && /^0x(?:[0-9a-fA-F]{2})*$/.test(tx.data) && tx.data.length <= 524_288) {
+      inspect(Object.freeze({ target: getAddress(tx.to), data: tx.data as Hex,
+        value: typeof tx.value === "string" && /^(0|[1-9][0-9]{0,77})$/.test(tx.value) ? tx.value : null,
+        allowanceTarget: typeof body.allowanceTarget === "string" && isAddress(body.allowanceTarget) ? getAddress(body.allowanceTarget) : null }));
+    }
+  }
   const quote = parseFirmQuote(body, request, configuration);
-  const deployment = await requireZeroXDeployment(quote.settlerTarget, rpc);
+  observe?.({ kind: "quote", allowanceTarget: request.inputAsset === zeroAddress ? null : configuration.allowanceHolder,
+    transactionTarget: quote.transactionTarget, transactionValue: quote.transactionValueAtomic,
+    calldataHash: keccak256(quote.calldata), decodedSettler: quote.settlerTarget,
+    protectedExecutableMinimum: quote.protectedOutputAtomic, providerFeeAsset: quote.providerFee?.asset ?? null,
+    providerFeeAmount: quote.providerFee?.amountAtomic ?? null, providerSimulationIncomplete: quote.simulationIncomplete,
+    providerInsufficientBalance: quote.balanceActualAtomic !== null, providerInsufficientAllowance: quote.allowanceActualAtomic !== null });
+  const deployment = await requireZeroXDeployment(quote.settlerTarget, rpc, "verification",
+    observe ? evidence => observe({ kind: "deployment", evidence }) : undefined);
   verifyZeroXEncodedFee({ target: quote.transactionTarget, data: quote.calldata,
     inputAsset: request.inputAsset, outputAsset: request.outputAsset, inputAmountAtomic: request.inputAmountAtomic,
     recipient: request.recipient, valueAtomic: quote.transactionValueAtomic, runtimeHash: deployment.runtimeHash,
@@ -393,8 +427,10 @@ export async function verifyZeroXSwapFirmQuote(request: VNextProviderVerificatio
       await simulate({ account: request.recipient, target: quote.transactionTarget, calldata: quote.calldata, valueAtomic: quote.transactionValueAtomic, gasLimitUnits: quote.gasLimitUnits, gasPriceWei: quote.gasPriceWei });
       exactSimulationPassed = true;
       status = "verified";
+      observe?.({ kind: "simulation", state: "PASS" });
     } catch {
       status = "simulation_failed";
+      observe?.({ kind: "simulation", state: "FAILED" });
     }
   }
 
