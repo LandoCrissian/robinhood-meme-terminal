@@ -509,13 +509,13 @@ export function VNextWalletReview({
       className="vnReviewButton"
       aria-label={plan.kind === "erc20_approval" ? "Review exact approval in wallet" : "Review verified swap in wallet"}
       disabled={!submissionEnabled || busy}
-      onClick={() => (onTradeAction?.(), !isVerifiedRequestFresh(plan.expiresAtMs, Date.now()) || requiresRefresh
+      onClick={() => (onTradeAction?.(), (plan.provider === "zero-x-swap" && handoffState !== "ready_to_open") || !isVerifiedRequestFresh(plan.expiresAtMs, Date.now()) || requiresRefresh
         ? onRefresh?.()
         : handoffState === "ready_to_open" ? openPreparedWalletRequest() : void prepareWalletReview())}
     >{tradeActionLabel && !busy && !expired && !requiresRefresh ? tradeActionLabel : !submissionEnabled
       ? "Wallet submission disabled"
-      : expired || requiresRefresh
-        ? "Refreshing price..."
+      : (expired || requiresRefresh) && !busy
+        ? "Refresh and review in wallet"
       : handoffState !== "idle"
         ? vNextMobileHandoffLabel(handoffState, walletName)
         : plan.kind === "erc20_approval"
