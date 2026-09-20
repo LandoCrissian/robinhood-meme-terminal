@@ -475,8 +475,9 @@ export async function runZeroXWalletJourneys(options) {
               assert.equal(requests.length, 1, 'Only the exact approval may reach the wallet');
             } else if (scenario === 'approval-requote') {
               assert.equal(bundle.plan.kind, 'erc20_approval');
-              await until(() => api.filter((entry) => entry.path.endsWith('/authorize') && entry.status === 200).length >= 2, 'Fresh post-approval authorization missing', 30000);
-              const fresh = api.filter((entry) => entry.path.endsWith('/authorize') && entry.status === 200).at(-1).body;
+              const swapAuthorizations = () => api.filter((entry) => entry.path.endsWith('/authorize') && entry.status === 200 && entry.body.plan.kind === 'swap');
+              await until(() => swapAuthorizations().length > 0, 'Fresh post-approval swap authorization missing', 30000);
+              const fresh = swapAuthorizations().at(-1).body;
               assert.notEqual(fresh.plan.sourceQuoteRequestId, bundle.plan.sourceQuoteRequestId);
               assert.notEqual(fresh.plan.sourceVerificationId, bundle.plan.sourceVerificationId);
               assert.notEqual(fresh.plan.providerNativeFee.firmQuote.zid, bundle.plan.providerNativeFee.firmQuote.zid);
