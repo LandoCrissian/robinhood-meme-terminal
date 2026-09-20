@@ -14,6 +14,10 @@ export async function exerciseRestoredQuoteState({ page, api, requests, scenario
   await until(async () => (await page.evaluate(() => localStorage.getItem('rmt:vnext-execution-journal:v1:4663') ?? '')).includes('submitted'), 'approval must be journaled');
   await page.evaluate(() => sessionStorage.removeItem('rmt:pending-approval-journey:v1:4663'));
   await page.reload({ waitUntil: 'domcontentloaded' });
+  // Location restoration chooses Sell asynchronously and clears its amount.
+  // Do not type into the initial Buy render before that real UI transition.
+  if (page.viewportSize().width <= 760) await page.locator('.rmtMobileSheetLayer.isOpen').waitFor();
+  await page.getByRole('tab', { name: 'Sell', exact: true, selected: true }).waitFor();
   await page.getByLabel('Exact input amount').fill('25');
   enableReceipts();
   const authorizations = () => api.filter(x => x.path.endsWith('/authorize') && x.status === 200 && x.body.plan.kind === 'swap');
