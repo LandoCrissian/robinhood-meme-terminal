@@ -66,7 +66,8 @@ export type VNextZeroXProviderNativeFee = {
   feeAmountAtomic: string;
   treasury: Address;
   userGrossInputAtomic: string;
-  // Gross minus disclosed RMT fee; not the actual post-provider-fee pool balance.
+  // Gross less an input-denominated RMT fee; output fees do not reduce input.
+  // Not the actual post-provider-fee pool balance.
   providerInputAtomic: string;
   expectedOutputAtomic: string;
   protectedOutputAtomic: string;

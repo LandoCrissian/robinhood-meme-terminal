@@ -96,8 +96,30 @@ Optional-source completion is not a prerequisite for the shell or controls.
 Baseline visible 21-second windows each contained four price/firm/authorization
 cycles; hidden 11-second windows contained zero; offline and closed-mobile
 11-second windows each contained two cycles. These are request counts, not
-measured Vercel CPU. After-change measurements and exact-head CI are recorded
-in the PR evidence. The browser suite emits bounded per-viewport JSON artifacts.
+measured Vercel CPU. After-change local measurements:
+
+| Metric | Desktop before / after | Mobile before / after |
+| --- | --- | --- |
+| Search submission to token shell | 5454 / 134 ms | 5471 / 128 ms |
+| Search submission to identity + trade controls | 5481 / 154 ms | 5483 / 141 ms |
+| Price | Unavailable / unavailable | Unavailable / unavailable |
+| Visible price/firm/authorization cycles, 21 seconds | 4 / 2 | 4 / 2 |
+| Hidden quote requests, 11 seconds | 0 / 0 | 0 / 0 |
+| Offline cycles, 11 seconds | 2 / 0 | 2 / 0 |
+| Closed sheet cycles, 11 seconds | Not applicable | 2 / 0 |
+| Last keystroke to quote request | 120-ms configured / 415-ms observed | 120-ms configured / 414-ms observed |
+
+Steady configured cadence is approximately 6.67 firm requests/minute instead of
+approximately 12 in this baseline. The finite visible samples contain 50% fewer
+cycles; this is not a claim of 50% CPU/dollar savings. Resumption and typing cause
+bounded additional immediate work. Each automatic firm cycle currently includes
+one indicative, one firm-verification and one authorization request.
+
+Price and optional-enrichment completion are deliberately **not claimed** from
+this unavailable-provider fixture. "Core" here means known identity and usable
+trade controls, not a fabricated price or preauthorized trade. Warm production
+latency and actual phone responsiveness require post-release owner acceptance.
+The browser suite emits per-viewport JSON artifacts and CI records exact head.
 
 Local tests cover all four base/project directions, old fallback economics,
 output atomic units, malformed/wrong/duplicate encoded fees, independent provider
