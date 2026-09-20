@@ -1,5 +1,6 @@
 import { tradeJourneyPhase, type TradeJourneyPhase } from "./trade-journey";
 import { identityFailureDefinitions } from "./identity-failure";
+import { safeEnvelopeDiagnostic, type EnvelopeDiagnostic } from "./execution-envelope-diagnostic";
 
 export type TradeFailureStage = "quote" | "verification" | "authorization";
 const definitions = {
@@ -41,10 +42,21 @@ export class TradeExecutionFailure extends Error implements TradeFailure {
   }
 }
 
-export function executionFailureResponse(cause: unknown, stage: TradeFailureStage): Response | null {
+export class ExecutionEnvelopeFailure extends TradeExecutionFailure {
+  readonly envelope: ReturnType<typeof safeEnvelopeDiagnostic>;
+  constructor(diagnostic: EnvelopeDiagnostic, stage: TradeFailureStage = "verification") {
+    super("EXECUTION_ENVELOPE_REJECTED", stage);
+    this.envelope = Object.freeze(safeEnvelopeDiagnostic(diagnostic));
+  }
+}
+
+export function executionFailureResponse(cause: unknown, stage: TradeFailureStage, quoteRequestId?: string): Response | null {
   if (!(cause instanceof TradeExecutionFailure)) return null;
+  const envelope = cause instanceof ExecutionEnvelopeFailure ? safeEnvelopeDiagnostic(cause.envelope) : {};
+  const correlation = quoteRequestId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(quoteRequestId) ? { quoteRequestId } : {};
+  if (cause instanceof ExecutionEnvelopeFailure) console.info(JSON.stringify({ event: "rmt_execution_envelope_failure", code: cause.code, stage, ...envelope, ...correlation }));
   return Response.json({ error: cause.detail, detail: cause.detail, code: cause.code,
-    phase: cause.phase, retryable: cause.retryable, stage },
+    phase: cause.phase, retryable: cause.retryable, stage, ...envelope, ...correlation },
   { status: cause.status, headers: { "Cache-Control": "no-store" } });
 }
 

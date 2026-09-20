@@ -1,3 +1,4 @@
+import { runZeroXRobinhoodRouteSmoke } from "./zero-x-robinhood-route-smoke";
 import assert from "node:assert/strict";
 import { runZeroXProviderNativeFeeSmoke } from "./zero-x-provider-native-fee-smoke";
 import "./zero-x-executable-slippage-smoke";
@@ -97,3 +98,5 @@ try {
 }
 
 void run();
+
+runZeroXRobinhoodRouteSmoke();

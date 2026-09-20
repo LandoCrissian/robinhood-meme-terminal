@@ -45,10 +45,13 @@ The fee decoder admits a bounded grammar, rather than arbitrary BASIC calls:
    or buy-asset position. Its destination cannot be the RMT treasury, user,
    envelope targets or traded tokens. This classifies the observed provider
    charge; it does not attest ownership of the provider destination.
-4. Necessary canonical WETH wrap/unwrap and one non-VIP routing action returning
-   output to Settler: UNISWAPV3, or candidate-runtime PANCAKE_INFINITY with bounded
-   packed fills, reviewed manager IDs and no hooks. Routing spends Settler funds,
-   not a second user allowance withdrawal. Unknown hooks/actions fail closed.
+4. Ordered non-VIP routing and canonical WETH wrap/unwrap, returning output to
+   Settler: UNISWAPV3, bounded hook-free Orvex CL PANCAKE_INFINITY, and reviewed
+   current-runtime EKUBOV3/UNISWAPV4 packed routes. V4 manager-mediated hooks are
+   bounded by callback debit, payer and final-minimum checks. Unknown Ekubo
+   extensions and arbitrary BASIC calls remain rejected. See the explicit
+   [Robinhood route review and inventory](RMT_ZEROX_ROBINHOOD_ROUTE_COVERAGE.md).
+   Routing spends Settler funds, not a second user allowance withdrawal.
 5. Optional buy-asset POSITIVE_SLIPPAGE above the quoted expected output, then
    any buy-asset provider fee, followed by the final global recipient/buy-token
    minimum. Early CHECK_SLIPPAGE and arbitrary transfers are rejected.
