@@ -80,6 +80,7 @@ const actionsAbi = parseAbi([
   "function POSITIVE_SLIPPAGE(address recipient,address token,uint256 expectedAmount,uint256 maximumProportion)"
 ]);
 const transferAbi = parseAbi(["function transfer(address recipient,uint256 amount) returns(bool)"]);
+const transferFromAbi = parseAbi(["function transferFrom(address owner,address recipient,uint256 amount) returns(bool)"]);
 // Exact non-proxy LFJ v2.0.0 deployment, reproduced from official source.
 // See docs/ZEROX_LIQUIDITY_BOOK_ROUTE_REVIEW.md. This is a Settler routing
 // target, never a public executor or wallet approval spender.
@@ -153,17 +154,19 @@ export function verifyZeroXEncodedFee(input: ZeroXEnvelopeInput) {
       const data = envelope.actions[i];
       const selector = data.slice(0, 10).toLowerCase() as Hex;
       actionKind = actionNames.get(selector) ?? selector;
-      if (actionKind === "TRANSFER_FROM" || actionKind === "NATIVE_CHECK") fail("EXTRA_INPUT_AUTHORITY");
+      if (actionKind === "TRANSFER_FROM") fail("EXTRA_INPUT_AUTHORITY");
       if (actionKind !== "BASIC") continue;
       const action = decodeFunctionData({ abi: actionsAbi, data });
       if (action.functionName !== "BASIC") return fail("MALFORMED_ACTION");
       const [token, , pool, , nested] = action.args;
       // Authority targets, not a list of allowed DEX/router addresses.
       if ([HOLDER, getAddress("0x000000000022D473030F116dDEE9F6B43aC78BA3"), envelope.settlerTarget].includes(getAddress(pool))) fail("EXTRA_INPUT_AUTHORITY");
-      if (nested.slice(0, 10).toLowerCase() === toFunctionSelector("transferFrom(address,address,uint256)")) fail("EXTRA_INPUT_AUTHORITY");
+      if (nested.slice(0, 10).toLowerCase() === toFunctionSelector(transferFromAbi[0])
+        && getAddress(decodeFunctionData({ abi: transferFromAbi, data: nested }).args[0]) === getAddress(input.recipient)) fail("EXTRA_INPUT_AUTHORITY");
       let destination: Address | null = null;
-      const asset = fromZeroXToken(token);
-      if (asset === zeroAddress && nested === "0x") destination = getAddress(pool);
+      // BASIC token=0 means no input transfer, not native ETH. It is a valid
+      // provider-internal call mode and must not use response-token normalization.
+      if (getAddress(token) === ZERO_X_NATIVE_TOKEN && nested === "0x") destination = getAddress(pool);
       else if (getAddress(pool) === getAddress(token) && nested.slice(0, 10).toLowerCase() === toFunctionSelector(transferAbi[0])) {
         destination = getAddress(decodeFunctionData({ abi: transferAbi, data: nested }).args[0]);
       }

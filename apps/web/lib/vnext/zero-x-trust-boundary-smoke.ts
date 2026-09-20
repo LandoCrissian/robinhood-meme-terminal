@@ -16,6 +16,7 @@ const settler = getAddress(fixture.settler);
 const inner = parseAbi(["function execute((address recipient,address buyToken,uint256 minAmountOut) slippage,bytes[] actions,bytes32 tag) payable returns(bool)"]);
 const basic = parseAbi(["function BASIC(address sellToken,uint256 proportion,address pool,uint256 offset,bytes data)"]);
 const pancake = parseAbi(["function PANCAKE_INFINITY(address recipient,address sellToken,uint256 proportion,bool feeOnTransfer,uint256 hashMul,uint256 hashMod,bytes fills,uint256 amountOutMin)"]);
+const transferFrom = parseAbi(["function transferFrom(address owner,address recipient,uint256 amount) returns(bool)"]);
 const v2 = parseAbi(["function UNISWAPV2(address recipient,address sellToken,uint256 proportion,address pool,uint24 swapInfo,uint256 amountOutMin)"]);
 
 export type InternalRouteKind = "PANCAKE_HOOK" | "UNKNOWN_TO_RMT_V2" | "OPAQUE_BASIC";
@@ -75,13 +76,21 @@ export function runZeroXTrustBoundarySmoke() {
       // Unknown routing cannot hide another input action or consume/zero the
       // outer final check. These stay mandatory regardless of introspection.
       for (const change of [
-        (a: Hex[]) => { a.push(a[0]); },
+        (a: Hex[]) => { a.push(encodeFunctionData({ abi: basic, functionName: "BASIC", args: [zeroAddress, 0n, usdg, 0n,
+          encodeFunctionData({ abi: transferFrom, functionName: "transferFrom", args: [user, other, 1n] })] })); },
         (a: Hex[]) => { a.push(encodeFunctionData({ abi: parseAbi(["function CHECK_SLIPPAGE(bool exact)"]), functionName: "CHECK_SLIPPAGE", args: [false] })); },
         (a: Hex[]) => { const check = encodeFunctionData({ abi: parseAbi(["function CHECK_SLIPPAGE(bool exact)"]), functionName: "CHECK_SLIPPAGE", args: [true] }); a.push(("0x" + check.slice(2).toUpperCase()) as Hex); },
         (a: Hex[]) => { a.push(encodeFunctionData({ abi: basic, functionName: "BASIC", args: [body.sellToken, 1_000_000n, holder, 4n, "0x12345678"] })); }
       ]) {
         assert.throws(() => verifyZeroXEncodedFee({ ...input, data: mutateZeroXActions(data, change) }), ExecutionEnvelopeFailure); negatives++;
       }
+      // Internal transfers from Settler are not extra user withdrawal authority;
+      // a repeated native value/deadline check is not a withdrawal either.
+      const internalTransfer = mutateZeroXActions(data, a => { a.push(encodeFunctionData({ abi: basic, functionName: "BASIC", args: [zeroAddress, 0n, usdg, 0n,
+        encodeFunctionData({ abi: transferFrom, functionName: "transferFrom", args: [settler, other, 1n] })] })); });
+      assert.equal(verifyZeroXEncodedFee({ ...input, data: internalTransfer }).count, 1);
+      if (sell === zeroAddress) assert.equal(verifyZeroXEncodedFee({ ...input, data: mutateZeroXActions(data, a => { a.push(a[0]); }) }).count, 1);
+      else assert.throws(() => verifyZeroXEncodedFee({ ...input, data: mutateZeroXActions(data, a => { a.push(a[0]); }) }), ExecutionEnvelopeFailure);
       // Assert that the final tuple, not a quote-JSON number or route-local
       // minimum, remains authority even for a parser-unknown route.
       mutateZeroXActions(data, a => { assert.equal(a.length, 3); });
