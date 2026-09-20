@@ -34,34 +34,42 @@ The retained runtime fixture is checked with Ethereum keccak256. Registry
 current/previous eligibility and pause behavior remain necessary at verification
 and authorization; registry membership alone never admits a runtime.
 
-The fee decoder admits a bounded grammar, rather than arbitrary BASIC calls:
+### Current owner trust boundary
 
-1. Native `NATIVE_CHECK` bound to gross value, or ERC20 `TRANSFER_FROM` of exact
-   gross input to Settler through the canonical AllowanceHolder.
-2. Exactly one BASIC fee at index 1: sell asset, canonical treasury, 25 bps
-   (25/10,000 or 2,500/1,000,000), current balance, floor arithmetic. ERC20 uses
-   canonical `transfer` with the reviewed amount patch; native uses an empty call.
-3. A separately disclosed optional 15-bps provider fee in its reviewed sell-asset
-   or buy-asset position. Its destination cannot be the RMT treasury, user,
-   envelope targets or traded tokens. This classifies the observed provider
-   charge; it does not attest ownership of the provider destination.
-4. Ordered non-VIP routing and canonical WETH wrap/unwrap, returning output to
-   Settler: UNISWAPV3, bounded hook-free Orvex CL PANCAKE_INFINITY, and reviewed
-   current-runtime EKUBOV3/UNISWAPV4 packed routes. V4 manager-mediated hooks are
-   bounded by callback debit, payer and final-minimum checks. Unknown Ekubo
-   extensions and arbitrary BASIC calls remain rejected. See the explicit
-   [Robinhood route review and inventory](RMT_ZEROX_ROBINHOOD_ROUTE_COVERAGE.md).
-   Routing spends Settler funds, not a second user allowance withdrawal.
-5. Optional buy-asset POSITIVE_SLIPPAGE above the quoted expected output, then
-   any buy-asset provider fee, followed by the final global recipient/buy-token
-   minimum. Early CHECK_SLIPPAGE and arbitrary transfers are rejected.
+Authority: `RMT_TRADING_TERMINAL_COMPLETION_AUTHORITY_V1`, implementation base
+`d2d1b8e9cb2bf7b81c53f446f8a9854801a3cf79`. This supersedes route-subset admission
+in earlier reviews. 0x owns internal routing, DEX/pool selection, intermediate
+assets, splits and hooks. RMT owns hard external transaction invariants.
 
-Relevant pinned source: [BASIC](https://github.com/0xProject/0x-settler/blob/1df908742d38cf407f667df6518dae6e04a01ac3/src/core/Basic.sol),
-[Settler](https://github.com/0xProject/0x-settler/blob/1df908742d38cf407f667df6518dae6e04a01ac3/src/Settler.sol),
-[action definitions](https://github.com/0xProject/0x-settler/blob/1df908742d38cf407f667df6518dae6e04a01ac3/src/ISettlerActions.sol).
-The final minimum is post-action and post-fee. Canonical envelope/action encoding,
-exact gross approval/value, runtime, simulation and commitment checks remain in
-force. A quote using an unsupported route shape is rejected, not silently widened.
+Mandatory checks remain:
+
+1. The firm response comes from the fixed server-side Swap API v2 AllowanceHolder
+   path with chain 4663, exact assets/gross amount/user recipient and the canonical
+   25-bps sell-token treasury request. No browser-supplied transaction is trusted.
+2. Registry eligibility, explicit reviewed runtime, canonical AllowanceHolder and
+   its runtime remain checked. An API-returned address is not sufficient authority.
+3. The outer canonical `exec`/`execute` envelope binds exact value or gross token
+   allowance/operator, selected buy asset, user recipient and positive minimum.
+   The first action binds native value or the exact ERC20 gross transfer to Settler.
+4. BASIC fee prefix at index 1 binds sell asset, treasury, 25 bps and the reviewed
+   transfer/amount-patch semantics. Recognizable duplicate treasury transfers reject; another destination is not
+   classified as a competing RMT fee from its proportion alone. Provider fee disclosure remains separate;
+   internal transfers are not automatically fees or settled revenue.
+5. Early `CHECK_SLIPPAGE` remains rejected because it zeroizes the outer tuple.
+   Additional input actions and BASIC calls into input-authority contracts reject.
+6. Exact RPC simulation, quote freshness, HMAC transaction commitment, exact
+   connector-qualified signer, post-approval verification and recovery remain hard.
+
+`inspectZeroXRoute` retains V3, Ekubo, V4, Pancake and LFJ/wrap/unwrap parsers as
+non-authoritative diagnostics. Unsupported actions/routes/hooks, intermediate
+asset paths and parser limits yield `ROUTE_INTROSPECTION_PARTIAL`, not a fee or
+execution failure. The hard verifier does not catch and ignore these failures;
+it no longer depends on the internal-route parser. The partial status does not
+prove an action is supported by the runtime: an actual unsupported opcode/action
+still reverts during required exact simulation. New runtimes still need review.
+
+The final minimum is obtained from the outer reviewed entrypoint, independently
+of internal routing. See [trust-boundary source proof and tests](ZEROX_VERIFIER_TRUST_BOUNDARY.md).
 
 ### Residual balance and settlement limits
 
@@ -83,7 +91,8 @@ encoded percentage nor receipt success constitutes verified settlement.
 runtime profiles, three directions, rounding/donation acceptance and adversarial
 fee/envelope mutations. These are local/mocked evidence. Retained live structural
 records do not contain full routing payloads, so they do not establish that every
-current provider route satisfies this deliberately narrow grammar. Controlled
+current provider route will simulate successfully. Internal grammar completeness
+is no longer an execution gate. Controlled
 acceptance after independent review must exercise the exact deployed path.
 
 ## Owner Option B clarification

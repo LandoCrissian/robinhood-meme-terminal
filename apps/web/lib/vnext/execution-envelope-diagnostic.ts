@@ -15,10 +15,10 @@ export const envelopeReasons = [
   "UNSUPPORTED_POOL_MANAGER", "UNSUPPORTED_ROUTE", "NATIVE_UNWRAP_MISMATCH",
   "POSITIVE_SLIPPAGE_MISMATCH", "PROVIDER_FEE_COUNT_MISMATCH", "EXTRA_ACTION",
   "ROUTE_HASH_INVALID", "UNSUPPORTED_EKUBO_EXTENSION", "ROUTE_POOL_INVALID", "ROUTE_HOOK_DATA_LIMIT",
-  "MALFORMED_ENVELOPE"
+  "EXTRA_INPUT_AUTHORITY", "DUPLICATE_RMT_FEE", "MALFORMED_ENVELOPE"
 ] as const;
 export type EnvelopeReason = typeof envelopeReasons[number];
-const functions = ["decodeZeroXExecutableMinimum", "verifyZeroXEncodedFee"] as const;
+const functions = ["decodeZeroXExecutableMinimum", "verifyZeroXEncodedFee", "inspectZeroXRoute"] as const;
 export type EnvelopeFunction = typeof functions[number];
 const kinds = ["NATIVE_CHECK", "TRANSFER_FROM", "BASIC", "UNISWAPV3", "EKUBOV3", "UNISWAPV4", "PANCAKE_INFINITY", "POSITIVE_SLIPPAGE", "CHECK_SLIPPAGE"];
 export type EnvelopeDiagnostic = { envelopeReason: EnvelopeReason; envelopeFunction: EnvelopeFunction; actionIndex: number | null; actionKind: string | null };

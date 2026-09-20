@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { decodeFunctionData, encodeFunctionData, getAddress, parseAbi, zeroAddress, type Hex } from "viem";
-import { decodeZeroXExecutableMinimum, verifyZeroXEncodedFee, ZERO_X_PPM_SETTLER_RUNTIME_HASH } from "../server/vnext-zero-x-execution-decoder";
+import { decodeZeroXExecutableMinimum, verifyZeroXEncodedFee, inspectZeroXRoute, ZERO_X_PPM_SETTLER_RUNTIME_HASH } from "../server/vnext-zero-x-execution-decoder";
 import { cannacatRouteActions, routeTokens } from "./zero-x-robinhood-route-smoke";
 import { feeMutations, mutateZeroXActions } from "./zero-x-provider-native-fee-smoke";
 import { ExecutionEnvelopeFailure } from "./trade-failure";
@@ -46,9 +46,9 @@ export function runZeroXLiquidityBookSmoke() {
     const args = [...decodeFunctionData({ abi: routerAbi, data: a[4] }).args]; change(args); a[4] = nested(args);
   });
   const reject = (changed: Hex, label: string) => {
-    assert.throws(() => verifyZeroXEncodedFee({ ...input, data: changed }), error => error instanceof ExecutionEnvelopeFailure, label); negatives++;
+    assert.equal(inspectZeroXRoute({ ...input, data: changed }).status, "ROUTE_INTROSPECTION_PARTIAL", label); negatives++;
   };
-  for (const [label, mutation] of feeMutations) reject(mutateZeroXActions(data, mutation), label);
+  for (const [label, mutation] of feeMutations) assert.throws(() => verifyZeroXEncodedFee({ ...input, data: mutateZeroXActions(data, mutation) }), ExecutionEnvelopeFailure, label);
   for (const [arg, value] of [[0, other], [0, ZERO_X_NATIVE_TOKEN], [0, zeroAddress], [1, 0n], [1, 1_000_001n],
     [2, other], [2, routeTokens.weth], [3, 0n], [3, 36n], [3, 4n + 32n * 4n]] as const) {
     reject(mutate(a => { a[arg] = value; }), `BASIC binding ${arg}/${value}`);
@@ -82,5 +82,5 @@ export function runZeroXLiquidityBookSmoke() {
   assert.equal(verifyZeroXEncodedFee({ ...input, data: changeNested(a => {
     a[2] = [20n, 25n]; a[3] = [routeTokens.usdg, other, routeTokens.weth];
   }) }).count, 1); positives++;
-  console.log(`Liquidity Book BASIC: ${positives} positives / ${negatives} negatives; synthetic observed 7-action envelope PASS.`);
+  console.log(`Liquidity Book BASIC: ${positives} positives / ${negatives} partial-introspection signals; synthetic observed 7-action envelope PASS.`);
 }

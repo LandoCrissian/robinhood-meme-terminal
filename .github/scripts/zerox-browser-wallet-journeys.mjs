@@ -9,6 +9,7 @@ const { decodeFunctionData, encodeFunctionData, encodeEventTopics, erc20Abi, kec
 requireWeb('tsx/cjs');
 const { authorizationPayloadHash } = requireWeb('./lib/vnext/authorization-plan.ts');
 const { mutateZeroXActions, feeMutations } = requireWeb('./lib/vnext/zero-x-provider-native-fee-smoke.ts');
+const { internalRouteActions } = requireWeb('./lib/vnext/zero-x-trust-boundary-smoke.ts');
 const executableFixture = createRequire(import.meta.url)('./zerox-execution-fixture.cjs');
 const hex = (value) => `0x${BigInt(value).toString(16)}`;
 const h = (letter) => `0x${letter.repeat(64)}`;
@@ -65,11 +66,12 @@ export async function runZeroXWalletJourneys(options) {
     'duplicate-integrator-fee': (quote) => { quote.fees.integratorFees = [quote.fees.integratorFee, quote.fees.integratorFee]; }
   };
   for (const viewportName of ['desktop', 'mobile']) {
-    const scenarios = ['identity-not-requested', 'sell-approval-identity-retry', 'sell-approval-expired', 'sell-approval-provider-retry', 'sell-approval-return', 'sell-approval-uuid-return', 'sell-approval-account-change', 'sell-approval-chain-change', 'sell-approval-rejected', 'direct-confirmation', 'returning-signer', 'mobile-walletconnect', 'mobile-walletconnect-sell', 'native-sell', 'approval-only', 'confirmed-without-output', 'reverted', 'multi-account-owner-second', 'signer-two-providers', 'signer-disappeared', 'signer-account-change', 'signer-provider-conflict', 'approval-requote', 'native', 'rejection', 'pending', 'expired-quote', 'expired-quote-sell', 'refresh-click-buy', 'refresh-click-buy-again', 'refresh-click-sell', 'refresh-provider-recovery', 'refresh-provider-failure', 'quote-only', 'provider-native-rounding', ...Object.keys(faults), 'simulation-failure', ...Object.keys(wireFaults)];
+    const scenarios = ['identity-not-requested', 'sell-approval-identity-retry', 'sell-approval-expired', 'sell-approval-provider-retry', 'sell-approval-return', 'sell-approval-uuid-return', 'sell-approval-account-change', 'sell-approval-chain-change', 'sell-approval-rejected', 'direct-confirmation', 'returning-signer', 'mobile-walletconnect', 'mobile-walletconnect-sell', 'native-sell', 'approval-only', 'confirmed-without-output', 'reverted', 'multi-account-owner-second', 'signer-two-providers', 'signer-disappeared', 'signer-account-change', 'signer-provider-conflict', 'approval-requote', 'native', 'rejection', 'pending', 'expired-quote', 'expired-quote-sell', 'refresh-click-buy', 'refresh-click-buy-again', 'refresh-click-sell', 'refresh-provider-recovery', 'refresh-provider-failure', 'quote-only', 'provider-native-rounding', 'internal-pancake-hook', 'internal-unknown-v2', 'internal-opaque-basic', ...Object.keys(faults), 'simulation-failure', ...Object.keys(wireFaults)];
     scenarios.splice(2, 0, 'sell-approval-healthy', 'sell-approval-identity-multiple-retry',
       'sell-approval-identity-persistent', 'sell-approval-identity-account-change',
       'sell-approval-identity-chain-change', 'sell-approval-identity-uuid-return');
     for (const scenario of (options.scenarios ?? [...scenarios, 'contract-paused', 'contract-unregistered', 'contract-incompatible', 'contract-previous', 'contract-history'])) {
+      state.providerInternalRoute = scenario.startsWith('internal-');
       state.registryPaused = scenario === 'contract-paused';
       state.registryUnregistered = scenario === 'contract-unregistered';
       state.incompatibleRuntime = scenario === 'contract-incompatible';
@@ -81,6 +83,9 @@ export async function runZeroXWalletJourneys(options) {
       state.modifyFirm = scenario === 'provider-native-rounding'
         ? (quote) => { quote.fees.integratorFee.amount = (BigInt(quote.fees.integratorFee.amount) + 1n).toString(); }
         : faults[scenario];
+      if (state.providerInternalRoute) state.modifyFirm = quote => {
+        quote.actionsForTest = internalRouteActions(quote, wallet, scenario === 'internal-pancake-hook' ? 'PANCAKE_HOOK' : scenario === 'internal-unknown-v2' ? 'UNKNOWN_TO_RMT_V2' : 'OPAQUE_BASIC');
+      };
       state.simulations = [];
       const transactions = new Map();
       const requests = [];
@@ -147,6 +152,10 @@ export async function runZeroXWalletJourneys(options) {
         const bundle = api.filter((entry) => entry.path === '/api/vnext/authorize' && entry.status === 200).at(-1)?.body;
         assert.ok(bundle, 'Wallet requests require a real server authorization');
         const plan = bundle.plan;
+        if (state.providerInternalRoute) {
+          assert.equal(bundle.evidence.routeIntrospection?.status, 'ROUTE_INTROSPECTION_PARTIAL');
+          assert.equal(bundle.evidence.status, 'verified');
+        }
         if (scenario === 'approval-requote' && plan.kind === 'swap') {
           const remembered = page.getByRole('region', { name: 'Injected signer selection' });
           assert.equal(await remembered.getByText('Selected signer: Explicit test signer', { exact: true }).count(), 1);
@@ -520,6 +529,7 @@ export async function runZeroXWalletJourneys(options) {
         await writeFile(path.join(output, `${prefix}.json`), JSON.stringify({ api, requests, text: await page.locator('body').innerText(), journal: await page.evaluate(() => Object.fromEntries(Object.entries(localStorage).filter(([key]) => /execution|wallet.request/i.test(key)))) }, null, 2));
         await context.close();
         state.rpcOverride = undefined;
+        state.providerInternalRoute = false;
         state.registryPaused = state.registryUnregistered = state.incompatibleRuntime = state.registryPrevious = false;
       }
     }

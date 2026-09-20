@@ -88,11 +88,120 @@ const liquidityBookAbi = parseAbi(["function swapExactTokensForTokens(uint256 am
 const liquidityBookSelector = toFunctionSelector(liquidityBookAbi[0]);
 const actionNames = new Map(actionsAbi.map(action => [toFunctionSelector(action), action.name]));
 
-/** Reviewed provider-native intent, NOT an atomic fee or settlement proof.
- * Unknown actions/calls/transfer destinations fail closed. Routing is non-VIP,
- * paid by Settler, with all routing proceeds returned to Settler for the final check.
+/** Hard input/fee authority for a server-obtained quote from an authenticated
+ * reviewed Settler. This function alone is NOT execution admission: deployment,
+ * quote/asset binding, exact RPC simulation and committed wallet authority remain
+ * mandatory in the firm verifier/authorization path. Internal routing is 0x's
+ * responsibility; the reviewed execute entrypoint enforces the final minimum.
  */
-export function verifyZeroXEncodedFee(input: Parameters<typeof decodeZeroXExecutableMinimum>[0] & {
+export function verifyZeroXEncodedFee(input: ZeroXEnvelopeInput) {
+  const basis = zeroXReviewedActionBasis(input.runtimeHash);
+  let actionIndex: number | null = null;
+  let actionKind: string | null = null;
+  const fail = (envelopeReason: EnvelopeReason): never => {
+    throw new ExecutionEnvelopeFailure({ envelopeReason, envelopeFunction: "verifyZeroXEncodedFee", actionIndex, actionKind });
+  };
+  try {
+    const envelope = decodeZeroXExecutableMinimum(input);
+    const decoded = envelope.actions.slice(0, 2).map((data, index) => {
+      actionIndex = index;
+      const selector = data.slice(0, 10).toLowerCase() as Hex;
+      actionKind = actionNames.get(selector) ?? selector;
+      if (!actionNames.has(selector)) fail("UNSUPPORTED_ACTION");
+      const action = decodeFunctionData({ abi: actionsAbi, data });
+      // The official decoder accepts noncanonical offsets. Our supported subset
+      // requires a canonical ABI action to avoid two interpretations of the bytes.
+      if (encodeFunctionData({ abi: actionsAbi, ...action } as Parameters<typeof encodeFunctionData>[0]).toLowerCase() !== data.toLowerCase()) fail("NONCANONICAL_ACTION");
+      return action;
+    });
+    let index = 0;
+    const next = () => { actionIndex = index; const action = decoded[index++]; actionKind = action?.functionName ?? null; if (!action) return fail("MISSING_ACTION"); return action; };
+    const native = input.inputAsset === zeroAddress;
+    const first = next();
+    if (native) {
+      if (first.functionName !== "NATIVE_CHECK" || first.args[1] !== BigInt(input.inputAmountAtomic) || first.args[0] === 0n) fail("INPUT_ACTION_MISMATCH");
+    } else {
+      if (first.functionName !== "TRANSFER_FROM") return fail("INPUT_ACTION_MISMATCH");
+      const [recipient, permit, signature] = first.args;
+      if (getAddress(recipient) !== envelope.settlerTarget || getAddress(permit.permitted.token) !== input.inputAsset
+        || permit.permitted.amount !== BigInt(input.inputAmountAtomic) || permit.nonce !== 0n || permit.deadline === 0n || signature !== "0x") fail("INPUT_TRANSFER_BINDING_MISMATCH");
+    }
+    function transfer(action: ReturnType<typeof next>, asset: Address, proportion: bigint, destination: (address: Address) => boolean) {
+      if (action.functionName !== "BASIC") return fail("FEE_ACTION_MISMATCH");
+      const [token, rate, pool, offset, data] = action.args;
+      if (fromZeroXToken(token) !== asset) fail("FEE_TOKEN_MISMATCH");
+      if (rate !== proportion) fail("FEE_RATE_MISMATCH");
+      if (asset === zeroAddress) {
+        if (offset !== 0n || data !== "0x") fail("FEE_TRANSFER_ENCODING_MISMATCH");
+        if (!destination(getAddress(pool))) fail("FEE_RECIPIENT_MISMATCH");
+      } else {
+        if (getAddress(pool) !== asset || offset !== 36n) fail("FEE_TRANSFER_ENCODING_MISMATCH");
+        const nested = decodeFunctionData({ abi: transferAbi, data });
+        if (encodeFunctionData({ abi: transferAbi, ...nested }).toLowerCase() !== data.toLowerCase()
+          || nested.args[1] !== 0n) fail("FEE_TRANSFER_ENCODING_MISMATCH");
+        if (!destination(getAddress(nested.args[0]))) fail("FEE_RECIPIENT_MISMATCH");
+      }
+    }
+    transfer(next(), input.inputAsset, basis / 400n, address => address === RMT_ZERO_X_FEE_TREASURY);
+    const fee = { token: input.inputAsset, recipient: RMT_ZERO_X_FEE_TREASURY, rateBps: 25 as const,
+      position: 1, count: 1 as const, numerator: (basis / 400n).toString(), denominator: basis.toString(),
+      amountMode: "PROPORTIONAL_TO_CURRENT_BALANCE" as const, rounding: "FLOOR" as const };
+    // Only authority-affecting suffix structures belong in this gate. Do not
+    // decode internal DEX paths, recipients, pool keys, hooks or intermediate assets.
+    for (let i = 2; i < envelope.actions.length; i++) {
+      actionIndex = i;
+      const data = envelope.actions[i];
+      const selector = data.slice(0, 10).toLowerCase() as Hex;
+      actionKind = actionNames.get(selector) ?? selector;
+      if (actionKind === "TRANSFER_FROM" || actionKind === "NATIVE_CHECK") fail("EXTRA_INPUT_AUTHORITY");
+      if (actionKind !== "BASIC") continue;
+      const action = decodeFunctionData({ abi: actionsAbi, data });
+      if (action.functionName !== "BASIC") return fail("MALFORMED_ACTION");
+      const [token, , pool, , nested] = action.args;
+      // Authority targets, not a list of allowed DEX/router addresses.
+      if ([HOLDER, getAddress("0x000000000022D473030F116dDEE9F6B43aC78BA3"), envelope.settlerTarget].includes(getAddress(pool))) fail("EXTRA_INPUT_AUTHORITY");
+      if (nested.slice(0, 10).toLowerCase() === toFunctionSelector("transferFrom(address,address,uint256)")) fail("EXTRA_INPUT_AUTHORITY");
+      let destination: Address | null = null;
+      const asset = fromZeroXToken(token);
+      if (asset === zeroAddress && nested === "0x") destination = getAddress(pool);
+      else if (getAddress(pool) === getAddress(token) && nested.slice(0, 10).toLowerCase() === toFunctionSelector(transferAbi[0])) {
+        destination = getAddress(decodeFunctionData({ abi: transferAbi, data: nested }).args[0]);
+      }
+      if (destination === null) continue; // Opaque internal BASIC, not an inferred fee.
+      if (destination === RMT_ZERO_X_FEE_TREASURY) fail("DUPLICATE_RMT_FEE");
+      // Other transfers may be provider fees or internal pool funding. Provider
+      // fee disclosure remains separate; do not infer a fee from a route split.
+    }
+    return fee;
+  } catch (cause) {
+    if (cause instanceof ExecutionEnvelopeFailure) throw cause;
+    return fail("MALFORMED_ACTION");
+  }
+}
+
+export type ZeroXEnvelopeInput = Parameters<typeof decodeZeroXExecutableMinimum>[0] & {
+  runtimeHash: string; expectedOutputAtomic: string;
+  providerFeeAsset: Address | null; providerFeeAtomic: string | null;
+};
+
+/** Non-authoritative diagnostics. Hard checks are evaluated separately and are
+ * never caught here. A partial parse is not evidence that simulation passed.
+ * Unexpected programming errors are not disguised as unsupported routes.
+ */
+export function inspectZeroXRoute(input: ZeroXEnvelopeInput) {
+  try {
+    inspectKnownRouteGrammar(input);
+    return { status: "ROUTE_INTROSPECTION_COMPLETE" as const, diagnostic: null };
+  } catch (cause) {
+    if (!(cause instanceof ExecutionEnvelopeFailure)) throw cause;
+    return { status: "ROUTE_INTROSPECTION_PARTIAL" as const, diagnostic: cause.envelope };
+  }
+}
+
+/** Reviewed provider-native intent, NOT an atomic fee or settlement proof.
+ * Diagnostic subset only. Never use this parser as execution admission.
+ */
+function inspectKnownRouteGrammar(input: Parameters<typeof decodeZeroXExecutableMinimum>[0] & {
   runtimeHash: string; expectedOutputAtomic: string;
   providerFeeAsset: Address | null; providerFeeAtomic: string | null;
 }) {
@@ -100,7 +209,7 @@ export function verifyZeroXEncodedFee(input: Parameters<typeof decodeZeroXExecut
   let actionIndex: number | null = null;
   let actionKind: string | null = null;
   const fail = (envelopeReason: EnvelopeReason): never => {
-    throw new ExecutionEnvelopeFailure({ envelopeReason, envelopeFunction: "verifyZeroXEncodedFee", actionIndex, actionKind });
+    throw new ExecutionEnvelopeFailure({ envelopeReason, envelopeFunction: "inspectZeroXRoute", actionIndex, actionKind });
   };
   try {
     const envelope = decodeZeroXExecutableMinimum(input);

@@ -1,3 +1,4 @@
+import { internalRouteActions } from "./zero-x-trust-boundary-smoke";
 import { cannacatRouteActions } from "./zero-x-robinhood-route-smoke";
 import { liquidityBookRouteActions } from "./zero-x-liquidity-book-smoke";
 import { ExecutionEnvelopeFailure, TradeExecutionFailure } from "./trade-failure";
@@ -183,14 +184,22 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     const exactPairRequest = { ...baseRequest, outputAsset: output };
     assert.equal((await verifyZeroXSwapFirmQuote(exactPairRequest)).status, "verified");
     quoteMutation = body => { body.transaction.data = mutateZeroXActions(executableFixture.encodeQuote(body, recipient), a => { a[3] = "0xdeadbeef"; }); };
-    await assert.rejects(() => verifyZeroXSwapFirmQuote(exactPairRequest), error => {
-      assert.ok(error instanceof ExecutionEnvelopeFailure);
-      assert.equal(error.envelope.envelopeReason, "UNSUPPORTED_ACTION");
-      assert.equal(error.envelope.envelopeFunction, "verifyZeroXEncodedFee");
-      assert.equal(error.envelope.actionIndex, 3);
-      assert.equal(error.envelope.actionKind, "0xdeadbeef");
-      return true;
-    });
+    const unknownEvidence = await verifyZeroXSwapFirmQuote(exactPairRequest);
+    assert.equal(unknownEvidence.status, "verified", "unknown-to-RMT routing does not veto authenticated/simulated execution");
+    assert.equal(unknownEvidence.routeIntrospection.status, "ROUTE_INTROSPECTION_PARTIAL");
+    assert.equal(unknownEvidence.routeIntrospection.diagnostic?.envelopeReason, "UNSUPPORTED_ACTION");
+    assert.equal(unknownEvidence.routeIntrospection.diagnostic?.actionIndex, 3);
+    assert.equal(unknownEvidence.routeIntrospection.diagnostic?.actionKind, "0xdeadbeef");
+    // This stub does not assert that deadbeef exists in the reviewed runtime.
+    // Real unknown-to-runtime actions revert; exact RPC simulation remains hard.
+    callFailure = true;
+    const failedUnknown = await verifyZeroXSwapFirmQuote(exactPairRequest);
+    assert.equal(failedUnknown.status, "simulation_failed");
+    assert.throws(() => createZeroXFirmQuoteCommitment(failedUnknown, context, Date.now()));
+    callFailure = false;
+    const unknownCommitted = await committedRequest(exactPairRequest, unknownEvidence);
+    assert.equal((await prepareZeroXSwapAuthorization(unknownCommitted)).transaction.data, unknownEvidence.transactionData);
+    await assertZeroXCommitmentAdversarialMatrix(unknownCommitted);
     quoteMutation = body => {
       body.buyAmount = (31009640941863753285133n * 1_000_000n / 990100n).toString();
       body.minBuyAmount = "31009640941863753285133";
@@ -210,6 +219,33 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     const basicCommitted = await committedRequest(exactPairRequest, basicEvidence);
     assert.equal((await prepareZeroXSwapAuthorization(basicCommitted)).transaction.data, basicEvidence.transactionData);
     await assertZeroXCommitmentAdversarialMatrix(basicCommitted);
+    // P0 production shape: hook-bearing Pancake at action 3 after input +
+    // integrator/provider fee. Also exercise official actions unknown to the
+    // local parser and opaque BASIC through verification AND commitment.
+    for (const [sell, buy] of [[zeroAddress, inputAsset], [inputAsset, zeroAddress], [inputAsset, output]] as const) {
+      input = sell; output = buy; nativeValue = sell === zeroAddress ? "1000000" : "0";
+      for (const kind of ["PANCAKE_HOOK", "UNKNOWN_TO_RMT_V2", "OPAQUE_BASIC"] as const) {
+        quoteMutation = body => { body.actionsForTest = internalRouteActions(body, recipient, kind); };
+        const request = { ...baseRequest, inputAsset: sell, outputAsset: buy };
+        const firm = await verifyZeroXSwapFirmQuote(request);
+        assert.equal(firm.status, "verified", kind);
+        assert.equal(firm.exactSimulationPassed, true);
+        assert.equal(firm.routeIntrospection.status, "ROUTE_INTROSPECTION_PARTIAL");
+        assert.equal(firm.routeIntrospection.diagnostic?.actionIndex, 3);
+        const committed = await committedRequest(request, firm);
+        const authorized = await prepareZeroXSwapAuthorization(committed);
+        assert.equal(authorized.transaction.data, firm.transactionData);
+        assert.equal(authorized.transaction.value, nativeValue);
+        await assertZeroXCommitmentAdversarialMatrix(committed);
+        callFailure = true;
+        const failed = await verifyZeroXSwapFirmQuote(request);
+        assert.equal(failed.status, "simulation_failed");
+        assert.equal(failed.authorizationReady, false);
+        assert.throws(() => createZeroXFirmQuoteCommitment(failed, context, Date.now()));
+        callFailure = false;
+      }
+    }
+    input = inputAsset; nativeValue = "0";
     output = outputAsset; quoteMutation = () => {};
     for (const [code, basis] of [[executableFixture.runtime, 10_000n], [ppmRuntime, 1_000_000n]] as const) {
       settlerCode = code; actionBasis = basis;

@@ -1,7 +1,7 @@
 import { requireZeroXDeployment } from "./vnext-zero-x-deployment-authority";
 import { isCanonicalZeroXAllowanceHolder, RMT_ZERO_X_CANONICAL_ALLOWANCE_HOLDER } from "../vnext/zero-x-authority";
 import { TradeExecutionFailure } from "../vnext/trade-failure";
-import { decodeZeroXExecutableMinimum, verifyZeroXEncodedFee } from "./vnext-zero-x-execution-decoder";
+import { decodeZeroXExecutableMinimum, verifyZeroXEncodedFee, inspectZeroXRoute } from "./vnext-zero-x-execution-decoder";
 import { RMT_ZERO_X_MAX_SLIPPAGE_PPM, RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM, zeroXMinimumRespectsSlippage } from "../vnext/zero-x-settlement";
 import { committedZeroXAuthorizationEvidence } from "./vnext-zero-x-firm-quote-commitment";
 
@@ -89,6 +89,7 @@ export type ZeroXSwapFirmQuoteVerificationEvidence = VNextProviderVerificationEv
   strictVerificationAvailable: true;
   walletAuthorizationAvailable: true;
   admissionReady: boolean;
+  routeIntrospection: ReturnType<typeof inspectZeroXRoute>;
 };
 
 class ZeroXInvalidResponseError extends TradeExecutionFailure {
@@ -347,11 +348,13 @@ export async function verifyZeroXSwapFirmQuote(request: VNextProviderVerificatio
   if (body === null) throw new TradeExecutionFailure("NO_ROUTE");
   const quote = parseFirmQuote(body, request, configuration);
   const deployment = await requireZeroXDeployment(quote.settlerTarget, rpc);
-  verifyZeroXEncodedFee({ target: quote.transactionTarget, data: quote.calldata,
+  const envelopeInput = { target: quote.transactionTarget, data: quote.calldata,
     inputAsset: request.inputAsset, outputAsset: request.outputAsset, inputAmountAtomic: request.inputAmountAtomic,
     recipient: request.recipient, valueAtomic: quote.transactionValueAtomic, runtimeHash: deployment.runtimeHash,
     expectedOutputAtomic: quote.expectedOutputAtomic, providerFeeAsset: quote.providerFee?.asset ?? null,
-    providerFeeAtomic: quote.providerFee?.amountAtomic ?? null });
+    providerFeeAtomic: quote.providerFee?.amountAtomic ?? null };
+  verifyZeroXEncodedFee(envelopeInput);
+  const routeIntrospection = inspectZeroXRoute(envelopeInput);
   const nativeInput = request.inputAsset === zeroAddress;
   const [balance, targetCode, holderHash, tokenBalance, tokenAllowance] = await Promise.all([
     nativeBalance(request.recipient),
@@ -448,7 +451,7 @@ export async function verifyZeroXSwapFirmQuote(request: VNextProviderVerificatio
     transactionData: quote.calldata, swapTransactionValueAtomic: quote.transactionValueAtomic,
     providerFeeAsset: quote.providerFee?.asset ?? null, providerFeeAtomic: quote.providerFee?.amountAtomic ?? null,
     providerQuoteId: quote.zid, blockNumber: quote.blockNumber, providerSimulationIncomplete: quote.simulationIncomplete,
-    strictVerificationAvailable: true, walletAuthorizationAvailable: true, admissionReady: status === "verified",
+    routeIntrospection, strictVerificationAvailable: true, walletAuthorizationAvailable: true, admissionReady: status === "verified",
     verifiedAtMs, expiresAtMs: observedAtMs + EVIDENCE_TTL_MS, authorizationReady: status === "verified"
   };
 }
