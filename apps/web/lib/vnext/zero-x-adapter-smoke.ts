@@ -1,4 +1,5 @@
 import { runZeroXRobinhoodRouteSmoke } from "./zero-x-robinhood-route-smoke";
+import { runZeroXLiquidityBookSmoke } from "./zero-x-liquidity-book-smoke";
 import assert from "node:assert/strict";
 import { runZeroXProviderNativeFeeSmoke } from "./zero-x-provider-native-fee-smoke";
 import "./zero-x-executable-slippage-smoke";
@@ -40,6 +41,7 @@ function response(inputAsset: string, outputAsset: string) {
 }
 
 async function run() {
+runZeroXLiquidityBookSmoke();
 try {
   process.env.RMT_ZEROX_API_KEY = "server-only-test-key";
   assert.equal(toZeroXToken(zeroAddress), ZERO_X_NATIVE_TOKEN);

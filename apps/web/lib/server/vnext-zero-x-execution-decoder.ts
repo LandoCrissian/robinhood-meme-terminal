@@ -80,6 +80,12 @@ const actionsAbi = parseAbi([
   "function POSITIVE_SLIPPAGE(address recipient,address token,uint256 expectedAmount,uint256 maximumProportion)"
 ]);
 const transferAbi = parseAbi(["function transfer(address recipient,uint256 amount) returns(bool)"]);
+// Exact non-proxy LFJ v2.0.0 deployment, reproduced from official source.
+// See docs/ZEROX_LIQUIDITY_BOOK_ROUTE_REVIEW.md. This is a Settler routing
+// target, never a public executor or wallet approval spender.
+const liquidityBookRouter = getAddress("0x4463c6f5BaDE414eC5E34D94245ec0F55C4d8B51");
+const liquidityBookAbi = parseAbi(["function swapExactTokensForTokens(uint256 amountIn,uint256 amountOutMin,uint256[] pairBinSteps,address[] tokenPath,address to,uint256 deadline) returns(uint256)"]);
+const liquidityBookSelector = toFunctionSelector(liquidityBookAbi[0]);
 const actionNames = new Map(actionsAbi.map(action => [toFunctionSelector(action), action.name]));
 
 /** Reviewed provider-native intent, NOT an atomic fee or settlement proof.
@@ -158,7 +164,7 @@ export function verifyZeroXEncodedFee(input: Parameters<typeof decodeZeroXExecut
     };
     // The retained quotes place a sell-token provider fee after the RMT fee.
     if (input.providerFeeAsset === input.inputAsset) providerTransfer(input.inputAsset);
-    // Ordered non-VIP routing. BASIC is only canonical wrap/unwrap here.
+    // Ordered non-VIP routing. BASIC admits only individually reviewed calls.
     const available = new Set<Address>([input.inputAsset]);
     let routeOutput = input.inputAsset, routeCount = 0;
     while (index < decoded.length) {
@@ -170,6 +176,31 @@ export function verifyZeroXEncodedFee(input: Parameters<typeof decodeZeroXExecut
       if (++routeCount > 32) fail("ROUTE_FILL_LIMIT");
       if (route.functionName === "BASIC") {
         const [token, proportion, target, offset, data] = route.args;
+        if (data.slice(0, 10).toLowerCase() === liquidityBookSelector) {
+          if (input.runtimeHash !== ZERO_X_PPM_SETTLER_RUNTIME_HASH) fail("ROUTE_RUNTIME_UNSUPPORTED");
+          if (getAddress(target) !== liquidityBookRouter) fail("UNSUPPORTED_ROUTE");
+          if (offset !== 4n) fail("ROUTE_PATH_INVALID");
+          if (proportion <= 0n || proportion > basis) fail("ROUTE_RATE_MISMATCH");
+          // Bound dynamic decoding (at most 16 hops) and reject aliases/trailing
+          // bytes. Only amountIn is replaced by BASIC, using Settler balance.
+          if (data.length > 2 + (292 + 64 * 16) * 2) fail("ROUTE_FILL_LIMIT");
+          const nested = decodeFunctionData({ abi: liquidityBookAbi, data });
+          if (encodeFunctionData({ abi: liquidityBookAbi, ...nested }).toLowerCase() !== data.toLowerCase()) fail("NONCANONICAL_ACTION");
+          const [, , steps, path, recipient, deadline] = nested.args;
+          if (getAddress(recipient) !== envelope.settlerTarget) fail("ROUTE_RECIPIENT_MISMATCH");
+          if (deadline === 0n || steps.length === 0 || steps.length > 16 || path.length !== steps.length + 1) fail("ROUTE_PATH_INVALID");
+          const tokens = path.map(address => getAddress(address));
+          if (tokens.some(address => address === zeroAddress || address === ZERO_X_NATIVE_TOKEN)) fail("ROUTE_PATH_INVALID");
+          if (tokens[0] !== getAddress(token) || !available.has(tokens[0])) fail("ROUTE_INPUT_MISMATCH");
+          if (tokens.some((address, i) => i > 0 && address === tokens[i - 1])) fail("ROUTE_SELF_SWAP");
+          // Nonzero bin steps identify factory-resolved LB pairs; zero selects
+          // the router's immutable legacy factory. No encoded arbitrary pair,
+          // callback, payer, or hook is accepted by this function.
+          if (steps.some(step => step > 65_535n)) fail("ROUTE_PATH_INVALID");
+          routeOutput = tokens[tokens.length - 1];
+          available.add(routeOutput);
+          continue;
+        }
         if (![toFunctionSelector("deposit()"), toFunctionSelector("withdraw(uint256)")].includes(data.slice(0, 10) as Hex)) fail("UNSUPPORTED_ROUTE");
         const asset = fromZeroXToken(token);
         if (!available.has(asset)) fail("ROUTE_INPUT_MISMATCH");

@@ -1,4 +1,5 @@
 import { cannacatRouteActions } from "./zero-x-robinhood-route-smoke";
+import { liquidityBookRouteActions } from "./zero-x-liquidity-book-smoke";
 import { ExecutionEnvelopeFailure, TradeExecutionFailure } from "./trade-failure";
 import { feeMutations, mutateZeroXActions, ppmRuntime } from "./zero-x-provider-native-fee-smoke";
 import { createRequire } from "node:module";
@@ -198,6 +199,17 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     const routeEvidence = await verifyZeroXSwapFirmQuote(exactPairRequest);
     assert.equal(routeEvidence.status, "verified", "actual verifier accepts the synthetic observed eight-action shape");
     assert.equal(routeEvidence.protectedOutputAtomic, "31009640941863753285133");
+    quoteMutation = body => {
+      body.buyAmount = (30971939696219283184792n * 1_000_000n / 990100n).toString();
+      body.minBuyAmount = "30971939696219283184792";
+      body.actionsForTest = liquidityBookRouteActions(body, recipient);
+    };
+    const basicEvidence = await verifyZeroXSwapFirmQuote(exactPairRequest);
+    assert.equal(basicEvidence.status, "verified", "actual verifier accepts the source-derived seven-action LBRouter route");
+    assert.equal(basicEvidence.protectedOutputAtomic, "30971939696219283184792");
+    const basicCommitted = await committedRequest(exactPairRequest, basicEvidence);
+    assert.equal((await prepareZeroXSwapAuthorization(basicCommitted)).transaction.data, basicEvidence.transactionData);
+    await assertZeroXCommitmentAdversarialMatrix(basicCommitted);
     output = outputAsset; quoteMutation = () => {};
     for (const [code, basis] of [[executableFixture.runtime, 10_000n], [ppmRuntime, 1_000_000n]] as const) {
       settlerCode = code; actionBasis = basis;
