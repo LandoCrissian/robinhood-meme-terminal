@@ -78,7 +78,7 @@ assert.match(composer, /repeatsConfirmedVNextApproval/);
 assert.match(composer, /preparedApprovalAuthority\.current = undefined/);
 assert.match(composer, /requestAuthorizationPlan\(freshEvidence\)/);
 assert.match(composer, /lastReadyQuote\.current = \{ requestKey: preparationContext, response: freshQuote \}/);
-assert.match(composer, /lastReadyVerification\.current = freshEvidence/);
+assert.match(composer, /lastReadyVerification\.current = authorization\.evidence/);
 assert.match(composer, /const visibleQuote =/);
 assert.match(composer, /const visibleVerification =/);
 assert.match(composer, /postExecutionState\.state === "swap_confirmed"/);
