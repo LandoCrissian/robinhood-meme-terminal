@@ -10,6 +10,7 @@ import {
 import {
   readRmtNftTerminalCatalog,
   type RmtNftTerminalCatalogView,
+  type RmtNftTerminalCollectionCard,
   type RmtNftTerminalProjectCard,
 } from "../../lib/server/nft-terminal-catalog";
 import { NftItemMedia } from "./_components/nft-item-media";
@@ -114,9 +115,16 @@ async function MintRadarSurface() {
       <div><span>DISCOVERY · NOT ADMISSION</span><h2>Mint Radar</h2></div>
       <p>{feedMessage(radar.status, radar.asOf)}</p>
     </section>
-    <RadarGroup title="Live Now" candidates={radar.live} className={styles.liveRadar} />
-    <RadarGroup title="Upcoming" candidates={radar.upcoming} className={styles.upcomingRadar} />
-    <RadarGroup title="Recently Minted" candidates={radar.recent} className={styles.recentRadar} />
+    {radar.status === "READY" || radar.status === "STALE" ? <>
+      <RadarGroup title="Live Now" candidates={radar.live} className={styles.liveRadar} />
+      <RadarGroup title="Upcoming" candidates={radar.upcoming} className={styles.upcomingRadar} />
+      <RadarGroup title="Recently Minted" candidates={radar.recent} className={styles.recentRadar} />
+    </> : <section className={styles.radarUnavailable} data-radar-degraded>
+      <strong>{radar.status === "EMPTY" ? "No qualifying drops right now" : "Live mint feed unavailable"}</strong>
+      <span>{radar.status === "EMPTY"
+        ? "RMT will surface verified Robinhood Chain mint candidates here as the provider feed changes."
+        : "Collection browsing stays available while RMT waits for fresh schedule evidence."}</span>
+    </section>}
   </>;
 }
 
@@ -169,6 +177,23 @@ function ProjectCard({ project }: { project: RmtNftTerminalProjectCard }) {
   </article>;
 }
 
+function CollectionCard({ collection }: { collection: RmtNftTerminalCollectionCard }) {
+  const active = collection.projectStatus === "ACTIVE";
+  return <article data-nft-collection-status={collection.projectStatus}>
+    <div>
+      <span>{active ? "RMT ACTIVE" : "RMT WATCHING"}</span>
+      <h2>{active
+        ? <Link href={`/nft/${collection.projectId}`}>{collection.displayName}</Link>
+        : collection.displayName}</h2>
+    </div>
+    <p>{collection.standard ?? "Standard unavailable"} · Robinhood Chain · 4663</p>
+    <code title={collection.contractAddress}>{collection.contractAddress}</code>
+    <small>Contract · {collection.verificationStatus === "VERIFIED" ? "ONCHAIN VERIFIED" : collection.verificationStatus}</small>
+    {collection.publicUrl ? <a href={collection.publicUrl} target="_blank" rel="noreferrer">Open collection ↗</a> : null}
+    {!active ? <small>Tracked for discovery · Not yet RMT admitted</small> : null}
+  </article>;
+}
+
 export default async function NftTerminalCatalogPage({ searchParams }: {
   searchParams: Promise<{ view?: string | string[] }>;
 }) {
@@ -179,7 +204,7 @@ export default async function NftTerminalCatalogPage({ searchParams }: {
   return <main className={styles.page}>
     <header className={styles.terminalHeading}>
       <div><h1>NFTs</h1><p>Robinhood Chain</p></div>
-      <span><i aria-hidden="true" /> {catalog.projects.length} ACTIVE</span>
+      <span><i aria-hidden="true" /> {catalog.projects.length} ACTIVE · {catalog.watchingCollections.length} WATCHING</span>
     </header>
 
     <nav className={styles.views} aria-label="NFT catalog views">
@@ -194,17 +219,16 @@ export default async function NftTerminalCatalogPage({ searchParams }: {
       <div className={styles.catalogFlow}>
         <Suspense fallback={<MintRadarFallback />}><MintRadarSurface /></Suspense>
         <section className={styles.activeCollections} aria-label="Active RMT NFT projects">
-          <header className={styles.activeHeading}><div><span>RMT DIRECTORY</span><h2>Active Collections</h2></div><p>Admission is independent from Mint Radar discovery.</p></header>
+          <header className={styles.activeHeading}><div><span>RMT DIRECTORY</span><h2>Active Collections</h2></div><p>Admitted project markets with verified collection identity.</p></header>
           <div className={styles.projectGrid}>{catalog.projects.map((project) => <ProjectCard project={project} key={project.projectId} />)}</div>
         </section>
+        {catalog.watchingCollections.length > 0 ? <section className={styles.watchingCollections} aria-label="Verified NFT collections RMT is watching">
+          <header className={styles.activeHeading}><div><span>DISCOVERY PIPELINE</span><h2>On Our Radar</h2></div><p>Verified Robinhood Chain contracts · not yet RMT admitted.</p></header>
+          <div className={styles.collectionList}>{catalog.watchingCollections.map((collection) => <CollectionCard collection={collection} key={`${collection.projectId}:${collection.contractAddress}`} />)}</div>
+        </section> : null}
       </div>
     </> : view === "collections" ? <section className={styles.collectionList} aria-label="Active RMT NFT collections">
-      {catalog.collections.map((collection) => <article key={`${collection.projectId}:${collection.contractAddress}`}>
-        <div><span>RMT CURATED COLLECTION</span><h2><Link href={`/nft/${collection.projectId}`}>{collection.displayName}</Link></h2></div>
-        <p>{collection.standard ?? "Standard unavailable"} · Robinhood Chain</p>
-        <code>{collection.contractAddress}</code>
-        <small>Registry verification: {collection.verificationStatus}</small>
-      </article>)}
+      {catalog.collections.map((collection) => <CollectionCard collection={collection} key={`${collection.projectId}:${collection.contractAddress}`} />)}
     </section> : <section className={styles.projectGrid} aria-label="Recently added RMT NFT projects">
       {catalog.projects.map((project) => <ProjectCard project={project} key={project.projectId} />)}
     </section>}
