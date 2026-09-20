@@ -1,0 +1,22 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "RAILPACK",
+    "buildCommand": "pnpm install --frozen-lockfile && pnpm --filter nft-marketplace-indexer build",
+    "watchPatterns": [
+      "apps/nft-marketplace-indexer/**",
+      "packages/shared/**",
+      "package.json",
+      "pnpm-lock.yaml",
+      "pnpm-workspace.yaml"
+    ]
+  },
+  "deploy": {
+    "startCommand": "pnpm --filter nft-marketplace-indexer start",
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 300,
+    "restartPolicyType": "ALWAYS",
+    "restartPolicyMaxRetries": 10,
+    "drainingSeconds": 15
+  }
+}
