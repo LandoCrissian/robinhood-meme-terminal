@@ -379,6 +379,9 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
       inputAmountAtomic: draft.intent?.amountAtomic
     });
     if (!executionRecord || !outcome) return;
+    refreshCoordinator.current.invalidate();
+    authorizationAttemptEpoch.current += 1;
+    backgroundQuoteEpoch.current += 1;
     if (outcome.state !== "confirmed_unsettled") handledExecution.current = executionRecord.txHash;
     setQuoteState({ state: "idle" });
     setVerificationState({ state: "idle" });
@@ -430,6 +433,15 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
     { published: publishedPreparation.current, current: preparationContext, wallet: address,
       input: inputAddress, output: outputAddress, amount: draft.intent?.amountAtomic, now: Date.now() });
   useEffect(() => {
+    if (verificationState.state !== "ready" || authorizationState.state !== "ready") return;
+    // The parent owns every current-authority claim, not only the wallet countdown.
+    const expiry = Math.min(verificationState.evidence.expiresAtMs, authorizationState.plan.expiresAtMs);
+    const update = () => setCostValuationClockMs(Date.now());
+    const timer = window.setTimeout(update, Math.max(0, expiry - Date.now() + 1));
+    document.addEventListener("visibilitychange", update);
+    return () => { window.clearTimeout(timer); document.removeEventListener("visibilitychange", update); };
+  }, [verificationState, authorizationState]);
+  useEffect(() => {
     const expiry = visibleVerification?.networkCostValuationExpiresAtMs;
     if (!expiry) return;
     const timeout = window.setTimeout(
@@ -460,11 +472,16 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
   const visibleRoutePresentation = visibleVerification
     ? vNextProviderRoutePresentation({ provider: visibleVerification.provider, route: visibleVerification.route })
     : null;
+  const retainedVerification = publishedPreparation.current === preparationContext ? lastReadyVerification.current : undefined;
   const expectedOutput = visibleVerification && pair?.outputAsset.decimals != null
     ? formatAtomicDisplay(visibleVerification.expectedOutputAtomic, pair.outputAsset.decimals)
-    : quoteState.state === "ready" && verificationQuote?.expectedOutputAtomic && verificationQuote.outputDecimals !== null
+    : retainedVerification && pair?.outputAsset.decimals != null
+    ? formatAtomicDisplay(retainedVerification.expectedOutputAtomic, pair.outputAsset.decimals)
+    : verificationQuote?.expectedOutputAtomic && verificationQuote.outputDecimals !== null
     ? formatAtomicDisplay(verificationQuote.expectedOutputAtomic, verificationQuote.outputDecimals)
     : null;
+  const retainedEstimate = !visibleVerification && Boolean(expectedOutput)
+    && (Boolean(retainedVerification) || quoteState.state !== "ready" || !indicativeQuoteFresh);
   const protectedOutput = visibleVerification && pair?.outputAsset.decimals != null
     ? formatAtomicDisplay(visibleVerification.protectedOutputAtomic, pair.outputAsset.decimals)
     : null;
@@ -829,7 +846,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
       inputAsset: plan.inputAsset, outputAsset: plan.outputAsset, inputAmountAtomic: plan.inputAmountAtomic,
       approvalPlanId: plan.planId, approvalPayloadHash: plan.payloadHash, createdAtMs: now, expiresAtMs: now + 10 * 60_000 });
   }
-  const startTrade = async (openWallet = false) => {
+  const startTrade = async (openWallet = false, afterApproval?: { confirmed: VNextApprovalAuthority | undefined }) => {
     if (!authorizationEnabled || stockTokenViewOnly || !draft.intent || amountExceedsBalance || !onRobinhood) return;
     const key = preparationContext;
     automaticPreparationKey.current = key;
@@ -843,14 +860,23 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
         const authorizationAttempt = ++authorizationAttemptEpoch.current;
         const bound = () => current() && currentPreparationContext.current === key
           && isCurrentTradeAuthorizationAttempt(authorizationAttempt, authorizationAttemptEpoch.current);
-        setRefreshingPrice(Boolean(lastReadyVerification.current));
-        setPostExecutionState({ state: "idle" });
+        setRefreshingPrice(Boolean(lastReadyVerification.current) || Boolean(afterApproval));
+        setPostExecutionState(afterApproval
+          ? { state: "refreshing", message: "Approval confirmed. RMT discarded the prior payload and is refreshing the exact next action…" }
+          : { state: "idle" });
         setVerificationState({ state: "loading" });
         setAuthorizationState({ state: "loading" });
         return revalidateAfterApproval({
           current: bound,
           wait: (ms) => waitForVerifiedRequestRetry(ms, signal),
-          onRetry: () => { if (bound()) setRefreshingPrice(true); },
+          onRetry: (phase, retry) => {
+            if (!bound()) return;
+            setRefreshingPrice(true);
+            if (afterApproval) {
+              emitTradeJourney({ phase, retry, approvalHashAvailable: Boolean(executionRecord?.txHash) });
+              setPostExecutionState({ state: "refreshing", message: `Approval confirmed. ${tradeJourneyLabels[phase]}. Retrying fresh verification...` });
+            }
+          },
           attempt: async () => {
             stage = "quote";
             clearTradeQuoteCache();
@@ -862,6 +888,9 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
             stage = "verification";
             const freshEvidence = await requestStrictVerification(freshQuote);
             if (!bound()) throw new TradeJourneyError("UNRESOLVED", "Trade intent changed.");
+            if (afterApproval && repeatsConfirmedVNextApproval(afterApproval.confirmed, freshEvidence)) {
+              throw new Error("The confirmed approval did not update the expected allowance. RMT stopped before repeating the same wallet request.");
+            }
             if (!["verified", "approval_required"].includes(freshEvidence.status)) {
               throw new TradeJourneyError("SIMULATION_FAILED", freshEvidence.status === "insufficient_balance"
                 ? "Your confirmed balance is insufficient for this trade."
@@ -871,6 +900,14 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
             stage = "authorization";
             const authorization = await requestAuthorizationPlan(freshEvidence);
             if (!bound()) throw new TradeJourneyError("UNRESOLVED", "Trade intent changed.");
+            if (afterApproval) {
+              const outcome = postApprovalVerificationOutcome(freshEvidence);
+              if (outcome.state === "blocked"
+                || (outcome.state === "next_approval_ready" && authorization.plan.kind !== "erc20_approval")
+                || (outcome.state === "swap_ready" && authorization.plan.kind !== "swap")) {
+                throw new Error("Fresh verification and wallet authorization disagreed about the next action.");
+              }
+            }
             if (!isVerifiedRequestFresh(authorization.plan.expiresAtMs, Date.now())) throw new TradeJourneyError("QUOTE_EXPIRED", "Refreshing price...");
             return authorization;
           }
@@ -880,9 +917,14 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
         if (currentPreparationContext.current !== key) return;
         setRefreshingPrice(false);
         publishedPreparation.current = preparationContext;
-      lastReadyVerification.current = authorization.evidence;
+        lastReadyVerification.current = authorization.evidence;
         setVerificationState({ state: "ready", evidence: authorization.evidence });
         setAuthorizationState({ state: "ready", plan: authorization.plan });
+        if (afterApproval) {
+          const outcome = postApprovalVerificationOutcome(authorization.evidence);
+          setPostExecutionState(outcome);
+          emitTradeJourney({ phase: outcome.state === "swap_ready" ? "SWAP_READY" : "APPROVAL_REQUIRED", quoteRefreshedAfterApproval: true, approvalHashAvailable: true });
+        }
         // A fresh quote cannot create wallet intent. Only a retained explicit click may hand off.
         if (handoff && intentionalTradeContext.current === key && authorization.plan.provider === "zero-x-swap") {
           if (authorization.plan.kind === "swap") ownedSwapPlans.current.add(authorization.plan.planId);
@@ -899,6 +941,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
         if (currentPreparationContext.current !== key) return;
         setRefreshingPrice(false);
         const message = cause instanceof Error ? cause.message : "RMT could not prepare this trade.";
+        if (afterApproval) setPostExecutionState({ state: "blocked", message });
         setQuoteState({ state: "error", message, phase: failureJourneyPhase(cause,
           stage === "quote" ? "QUOTE_SERVICE_UNAVAILABLE" : stage === "verification" ? "FIRM_VERIFY_FAILED" : "AUTHORIZATION_FAILED") });
         setVerificationState({ state: "error", message });
@@ -914,7 +957,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
       || !draft.intent || amountExceedsBalance || !identity.authenticated || !identity.identityToken
       || !identity.userId || !address || identity.activeWalletKind !== "external" || !identity.activeWalletKey
       || walletReadStatus !== "ready" || walletBusy || executionRecord?.state === "submitted"
-      || postExecutionState.state !== "idle") return;
+      || !["idle", "swap_ready", "next_approval_ready"].includes(postExecutionState.state)) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const schedule = (resume = false) => {
       clearTimeout(timer);
@@ -961,80 +1004,14 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
       intentionalTradeContext.current = `${identity.userId}:${identity.activeWalletKey}:${requestKey}`;
       savePendingApprovalJourney({ ...pending, approvalTxHash: executionRecord.txHash });
     }
-    const approvalContext = preparationContext;
-    const approvalCurrent = (attempt: number) => currentPreparationContext.current === approvalContext && isCurrentTradeAuthorizationAttempt(attempt, authorizationAttemptEpoch.current);
     const confirmedApprovalAuthority = preparedApprovalAuthority.current ?? (resume && pending ? {
       approvalKind: "erc20_to_allowance_holder" as const, target: pending.inputAsset,
       spender: "0x0000000000001fF3684f28c67538d4D072C22734", amountAtomic: pending.inputAmountAtomic
     } : undefined);
     preparedApprovalAuthority.current = undefined;
-    backgroundQuoteEpoch.current += 1;
-    const authorizationAttempt = ++authorizationAttemptEpoch.current;
-    setPostExecutionState({ state: "refreshing", message: "Approval confirmed. RMT discarded the prior payload and is refreshing the exact next action…" });
-    setQuoteState({ state: "loading" });
-    setVerificationState({ state: "loading" });
-    setAuthorizationState({ state: "loading" });
-    lastReadyQuote.current = undefined;
-    lastReadyVerification.current = undefined;
-    clearTradeQuoteCache();
-    try {
-      const refreshed = await revalidateAfterApproval({
-        current: () => approvalCurrent(authorizationAttempt),
-        onRetry: (phase, retry) => {
-          emitTradeJourney({ phase, retry, approvalHashAvailable: Boolean(executionRecord?.txHash) });
-          setPostExecutionState({ state: "refreshing", message: `Approval confirmed. ${tradeJourneyLabels[phase]}. Retrying fresh verification...` });
-        },
-        attempt: async () => {
-      clearTradeQuoteCache();
-      const freshQuote = await requestLiveRoutes();
-      if (!approvalCurrent(authorizationAttempt)) return;
-      lastReadyQuote.current = { requestKey: preparationContext, response: freshQuote };
-      setQuoteState({ state: "ready", response: freshQuote });
-      const freshEvidence = await requestStrictVerification(freshQuote);
-      if (!approvalCurrent(authorizationAttempt)) return;
-      lastReadyVerification.current = freshEvidence;
-      setVerificationState({ state: "ready", evidence: freshEvidence });
-      if (repeatsConfirmedVNextApproval(confirmedApprovalAuthority, freshEvidence)) {
-        throw new Error("The confirmed approval did not update the expected allowance. RMT stopped before repeating the same wallet request.");
-      }
-      const outcome = postApprovalVerificationOutcome(freshEvidence);
-      if (outcome.state === "blocked") throw new Error(outcome.message);
-      const authorization = await requestAuthorizationPlan(freshEvidence);
-      if (!approvalCurrent(authorizationAttempt)) return;
-      if (
-        (outcome.state === "next_approval_ready" && authorization.plan.kind !== "erc20_approval")
-        || (outcome.state === "swap_ready" && authorization.plan.kind !== "swap")
-      ) throw new Error("Fresh verification and wallet authorization disagreed about the next action.");
-      return { authorization, outcome };
-        }
-      });
-      if (!refreshed || !approvalCurrent(authorizationAttempt)) return;
-      const { authorization, outcome } = refreshed;
-      publishedPreparation.current = preparationContext;
-      lastReadyVerification.current = authorization.evidence;
-      setVerificationState({ state: "ready", evidence: authorization.evidence });
-      setAuthorizationState({ state: "ready", plan: authorization.plan });
-      preparedApprovalAuthority.current = authorization.plan.kind === "erc20_approval"
-        ? {
-            approvalKind: authorization.evidence.approvalKind!,
-            target: authorization.evidence.nextActionTarget!,
-            spender: authorization.evidence.approvalSpender!,
-            amountAtomic: authorization.evidence.inputAmountAtomic
-          }
-        : undefined;
-      setPostExecutionState(outcome);
-      emitTradeJourney({ phase: outcome.state === "swap_ready" ? "SWAP_READY" : "APPROVAL_REQUIRED", quoteRefreshedAfterApproval: true, approvalHashAvailable: true });
-      if (authorization.plan.provider === "zero-x-swap" && intentionalTradeContext.current === `${identity.userId}:${identity.activeWalletKey}:${requestKey}`) {
-        if (authorization.plan.kind === "swap") ownedSwapPlans.current.add(authorization.plan.planId);
-        setWalletActionId(++walletActionCounter.current);
-      }
-    } catch (cause) {
-      if (!approvalCurrent(authorizationAttempt)) return;
-      const message = cause instanceof Error ? cause.message : "Fresh post-approval verification failed.";
-      setVerificationState({ state: "error", message });
-      setAuthorizationState({ state: "error", message });
-      setPostExecutionState({ state: "blocked", message });
-    }
+    // Receipt recovery and explicit Trade share one generation/cancellation owner.
+    // A restored receipt alone does not manufacture wallet intent.
+    await startTrade(intentionalTradeContext.current === preparationContext, { confirmed: confirmedApprovalAuthority });
   };
 
   useEffect(() => {
@@ -1091,7 +1068,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
   const quoteStatusText = quotePhase === "QUOTE_EXPIRED" && !refreshingPrice
     ? "Price changed. Retry quote."
     : tradeJourneyLabels[quotePhase];
-  const expectedOutputLabel = quoteState.state === "error" ? quoteStatusText : expectedOutput
+  const expectedOutputLabel = expectedOutput
     ? `${expectedOutput} ${outputSymbol}`
     : !draft.intent
       ? "Enter trade amount"
@@ -1218,7 +1195,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
       ) : <p className="vnIntentHint">Enter the exact {inputSymbol === "—" ? "input asset" : inputSymbol} amount. RMT does not estimate or inflate wallet balances.</p>}
 <div className="vnSwapDivider"><span aria-hidden="true">↓</span></div>
 <div className="vnReceiveField">
-        <span>{visibleVerification ? "Expected receive" : "Estimated receive (not verified)"}</span>
+        <span>{visibleVerification ? "Expected receive" : retainedEstimate ? "Last estimate · stale, not executable" : "Estimated receive (not verified)"}</span>
         <div><strong>{expectedOutputLabel}</strong>
           {side === "sell" ? <select
             aria-label="Receive asset"
@@ -1246,9 +1223,9 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
           : postExecutionState.state === "refreshing"
             ? "Revalidating after approval"
             : postExecutionState.state === "swap_ready"
-              ? "Fresh swap verification passed"
+              ? visibleVerification ? "Fresh swap verification passed" : "Approval confirmed · fresh execution required"
               : postExecutionState.state === "next_approval_ready"
-                ? "Next exact approval ready"
+                ? visibleVerification ? "Next exact approval ready" : "Approval confirmed · fresh execution required"
               : postExecutionState.state === "swap_confirmed"
                 ? "Settlement confirmed"
                 : postExecutionState.state === "confirmed_unsettled"
@@ -1256,7 +1233,8 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
                 : postExecutionState.state === "reverted"
                   ? "Transaction reverted"
                   : "Fresh verification blocked"}</strong>
-        <small>{postExecutionState.message}</small>
+        <small>{!visibleVerification && ["swap_ready", "next_approval_ready"].includes(postExecutionState.state)
+          ? "The previous verification expired. Trade obtains a fresh verified request before wallet review." : postExecutionState.message}</small>
       </div> : null}
 <dl className="vnTradePriceSummary" aria-label="Trade costs">
   <div><dt>Provider</dt><dd>{visibleVerification ? vNextProviderLabel(visibleVerification.provider) : verificationQuote && quoteState.state === "ready" ? `${verificationQuote.providerLabel} (estimate)` : "Not verified"}</dd></div>
@@ -1421,10 +1399,10 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
   </details>
 )}
 <footer className="vnTradeActionDock" data-indicative-fresh={indicativeQuoteFresh}>
-{authorizationState.state === "ready" && visibleVerification ? <VNextWalletReview
+{authorizationState.state === "ready" && (visibleVerification || (walletBusy && retainedVerification)) ? <VNextWalletReview
           key={authorizationState.plan.planId}
           plan={authorizationState.plan}
-          evidence={visibleVerification}
+          evidence={(visibleVerification ?? retainedVerification)!}
           onRefresh={() => { walletBusyRef.current = false; setWalletBusy(false); void startTrade(true); }}
           detailsTarget={walletDetailsTarget}
           onActivityChange={(active) => { walletBusyRef.current = active; setWalletBusy(active); }}
@@ -1445,7 +1423,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
         /> : <button
           className="vnReviewButton"
           type="button"
-          disabled={!authorizationEnabled || stockTokenViewOnly || flowBusy || transactionPending || amountExceedsBalance || !identity.enabled || !identity.ready || Boolean(visibleQuote && bestQuote && !verificationQuote) || Boolean(identity.authenticated && address && identity.activeWalletKind === "external" && !draft.intent)}
+          disabled={!authorizationEnabled || stockTokenViewOnly || walletBusy || transactionPending || amountExceedsBalance || !identity.enabled || !identity.ready || Boolean(visibleQuote && bestQuote && !verificationQuote) || Boolean(identity.authenticated && address && identity.activeWalletKind === "external" && !draft.intent)}
           aria-describedby={stockTokenViewOnly ? "vn-stock-token-execution-policy" : previewOnly ? "vn-preview-execution-policy" : undefined}
           onClick={triggerPrimaryAction}
         >{stockTokenViewOnly

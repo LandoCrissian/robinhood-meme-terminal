@@ -1,3 +1,4 @@
+import { exerciseRestoredQuoteState } from './quote-state-browser-checks.mjs';
 import { exerciseTradeRefresh } from './trade-refresh-browser-checks.mjs';
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
@@ -66,7 +67,7 @@ export async function runZeroXWalletJourneys(options) {
     'duplicate-integrator-fee': (quote) => { quote.fees.integratorFees = [quote.fees.integratorFee, quote.fees.integratorFee]; }
   };
   for (const viewportName of ['desktop', 'mobile']) {
-    const scenarios = ['identity-not-requested', 'sell-approval-identity-retry', 'sell-approval-expired', 'sell-approval-provider-retry', 'sell-approval-return', 'sell-approval-uuid-return', 'sell-approval-account-change', 'sell-approval-chain-change', 'sell-approval-rejected', 'direct-confirmation', 'returning-signer', 'mobile-walletconnect', 'mobile-walletconnect-sell', 'native-sell', 'approval-only', 'confirmed-without-output', 'reverted', 'multi-account-owner-second', 'signer-two-providers', 'signer-disappeared', 'signer-account-change', 'signer-provider-conflict', 'approval-requote', 'native', 'rejection', 'pending', 'expired-quote', 'expired-quote-sell', 'refresh-click-buy', 'refresh-click-buy-again', 'refresh-click-sell', 'refresh-provider-recovery', 'refresh-provider-failure', 'quote-only', 'provider-native-rounding', 'internal-pancake-hook', 'internal-unknown-v2', 'internal-opaque-basic', ...Object.keys(faults), 'simulation-failure', ...Object.keys(wireFaults)];
+    const scenarios = ['sell-approval-idle-verification','sell-approval-idle-success', 'sell-approval-idle-failure', 'sell-approval-idle-click', 'identity-not-requested', 'sell-approval-identity-retry', 'sell-approval-expired', 'sell-approval-provider-retry', 'sell-approval-return', 'sell-approval-uuid-return', 'sell-approval-account-change', 'sell-approval-chain-change', 'sell-approval-rejected', 'direct-confirmation', 'returning-signer', 'mobile-walletconnect', 'mobile-walletconnect-sell', 'native-sell', 'approval-only', 'confirmed-without-output', 'reverted', 'multi-account-owner-second', 'signer-two-providers', 'signer-disappeared', 'signer-account-change', 'signer-provider-conflict', 'approval-requote', 'native', 'rejection', 'pending', 'expired-quote', 'expired-quote-sell', 'refresh-click-buy', 'refresh-click-buy-again', 'refresh-click-sell', 'refresh-provider-recovery', 'refresh-provider-failure', 'quote-only', 'provider-native-rounding', 'internal-pancake-hook', 'internal-unknown-v2', 'internal-opaque-basic', ...Object.keys(faults), 'simulation-failure', ...Object.keys(wireFaults)];
     scenarios.splice(2, 0, 'sell-approval-healthy', 'sell-approval-identity-multiple-retry',
       'sell-approval-identity-persistent', 'sell-approval-identity-account-change',
       'sell-approval-identity-chain-change', 'sell-approval-identity-uuid-return');
@@ -93,7 +94,7 @@ export async function runZeroXWalletJourneys(options) {
       let corrupted = 0;
       let validatedDispatches = 0;
       let block = 50000000;
-      let receiptsEnabled = !['sell-approval-return', 'sell-approval-uuid-return', 'sell-approval-account-change', 'sell-approval-chain-change'].includes(scenario);
+      let receiptsEnabled = !scenario.startsWith('sell-approval-idle-') && !['sell-approval-return', 'sell-approval-uuid-return', 'sell-approval-account-change', 'sell-approval-chain-change'].includes(scenario);
       let transientInjected = false;
       let identityFailuresInjected = 0;
       const identityFailureLimit = scenario === 'sell-approval-identity-persistent' ? 4
@@ -414,9 +415,13 @@ export async function runZeroXWalletJourneys(options) {
               await page.clock.fastForward(45000);
               await until(async () => /pending|unknown|waiting/i.test(await page.locator('body').innerText()), 'Truthful pending state missing');
               assert.equal(requests.length, 1);
+              assert.equal(await page.locator('.vnWalletSubmission').count(), 1, 'expiry must retain the pending wallet response owner');
+              assert.doesNotMatch(await page.locator('.vnTradePanel').innerText(), /Fresh swap verification passed|Verified request ready|Exact simulation passed/);
               await page.reload({ waitUntil: 'domcontentloaded' });
               await until(async () => /pending|unknown|recovery|waiting/i.test(await page.locator('body').innerText()), 'Durable recovery state missing');
               assert.equal(requests.length, 1, 'Recovery must not resubmit');
+            } else if (scenario.startsWith('sell-approval-idle-')) {
+              await exerciseRestoredQuoteState({page,api,requests,scenario,enableReceipts:()=>{receiptsEnabled=true;}});
             } else if (scenario.startsWith('sell-approval')) {
               if (scenario.endsWith('account-change') || scenario.endsWith('chain-change')) {
                 if (identityRecovery) await until(() => identityFailuresInjected > 0, 'Identity retry must begin before the binding changes');
