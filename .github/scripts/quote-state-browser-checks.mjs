@@ -60,7 +60,7 @@ export async function exerciseRestoredQuoteState({ page, api, requests, scenario
     panel: await page.locator('.vnTradePanel').innerText()
   }, null, 2));
   if (scenario.endsWith('click')) {
-    const action = page.locator('.vnTradeActionDock .vnReviewButton');
+    const action = page.getByRole('button', { name: 'Review with fresh quote', exact: true });
     assert.equal(await action.isEnabled(), true, 'Trade can retain explicit intent during refresh');
     await action.click();
     await pause(200);

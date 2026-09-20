@@ -1432,12 +1432,10 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
             ? "Trading activation pending"
           : visibleQuote && bestQuote && !verificationQuote
             ? "Best route is quote only"
-          : postExecutionState.state === "refreshing"
-          ? "Preparing verified swap…"
           : transactionPending
             ? "Transaction confirming…"
             : flowBusy
-              ? (refreshingPrice ? "Refreshing price..." : "Finding best route...")
+              ? "Review with fresh quote"
               : !identity.enabled
                 ? "Trading identity unavailable"
               : !address || identity.activeWalletKind !== "external"
