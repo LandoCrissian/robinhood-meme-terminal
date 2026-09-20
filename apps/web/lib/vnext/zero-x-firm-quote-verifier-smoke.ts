@@ -1,4 +1,4 @@
-import { TradeExecutionFailure } from "./trade-failure";
+import { ExecutionEnvelopeFailure, TradeExecutionFailure } from "./trade-failure";
 import { feeMutations, mutateZeroXActions, ppmRuntime } from "./zero-x-provider-native-fee-smoke";
 import { createRequire } from "node:module";
 const executableFixture = createRequire(import.meta.url)("../../../../.github/scripts/zerox-execution-fixture.cjs");
@@ -174,6 +174,22 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     process.env.RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH = keccak256("0x60016001");
     await assert.rejects(() => verifyZeroXSwapFirmQuote(baseRequest), /runtime/);
     process.env.RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH = runtimeHash;
+    // Synthetic exact selected pair, NOT a reconstruction of the unavailable
+    // production calldata. Proves diagnostic propagation through the real verifier.
+    output = getAddress("0x1139d423C1706BDeaD91f03507F521635591eD92");
+    settlerCode = ppmRuntime; actionBasis = 1_000_000n;
+    const exactPairRequest = { ...baseRequest, outputAsset: output };
+    assert.equal((await verifyZeroXSwapFirmQuote(exactPairRequest)).status, "verified");
+    quoteMutation = body => { body.transaction.data = mutateZeroXActions(executableFixture.encodeQuote(body, recipient), a => { a[3] = "0xdeadbeef"; }); };
+    await assert.rejects(() => verifyZeroXSwapFirmQuote(exactPairRequest), error => {
+      assert.ok(error instanceof ExecutionEnvelopeFailure);
+      assert.equal(error.envelope.envelopeReason, "UNSUPPORTED_ACTION");
+      assert.equal(error.envelope.envelopeFunction, "verifyZeroXEncodedFee");
+      assert.equal(error.envelope.actionIndex, 3);
+      assert.equal(error.envelope.actionKind, "0xdeadbeef");
+      return true;
+    });
+    output = outputAsset; quoteMutation = () => {};
     for (const [code, basis] of [[executableFixture.runtime, 10_000n], [ppmRuntime, 1_000_000n]] as const) {
       settlerCode = code; actionBasis = basis;
       for (const pair of [[zeroAddress, inputAsset], [inputAsset, zeroAddress], [inputAsset, outputAsset]] as const) {

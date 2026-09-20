@@ -20,6 +20,7 @@ export async function runQuoteResponseDiagnosticSmoke() {
   assert.deepEqual(Object.keys(JSON.parse(serialized)).sort(), [
     "code", "stage", "phase", "retryable", "explanation", "receivedAt", "quoteRequestId", "serverRequestId",
     "originGenerationId", "consumerGenerationId", "evidence", "identityOperation", "identityAsset",
+    "envelopeReason", "envelopeFunction", "actionIndex", "actionKind",
   ].sort());
   assert.equal(JSON.parse(serialized).quoteRequestId, id);
   assert.equal(JSON.parse(serialized).serverRequestId, serverId);
