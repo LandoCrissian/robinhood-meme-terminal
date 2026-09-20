@@ -528,7 +528,7 @@ export function MobileTerminal(props: TerminalPresentationProps) {
     <div className={`rmtMobileSheetLayer${props.tradeOpen ? " isOpen" : ""}`} aria-hidden={!props.tradeOpen}>
       <button className="rmtMobileSheetBackdrop" type="button" aria-label="Close trade sheet" tabIndex={props.tradeOpen ? 0 : -1} onClick={closeSheet} />
       <div className="rmtMobileTradeSheet" ref={sheet} role="dialog" aria-modal="true" aria-label={props.selected ? `${props.executionUiState === "preview-only" ? "Preview" : "Trade"} ${props.selected.symbol}` : "Trade selected asset"} onKeyDown={preventEscapePropagation}>
-        <header><span>{props.executionUiState === "preview-only" ? "Trade preview" : "Verified trade"}</span><button type="button" aria-label="Close trade sheet" onClick={closeSheet}>×</button></header>
+        <header><span>{props.executionUiState === "preview-only" ? "Trade preview" : "Trade"}</span><button type="button" aria-label="Close trade sheet" onClick={closeSheet}>×</button></header>
         <div className="rmtMobileTradeSheetScroll"><TradeComposer {...props} quoteActive={props.tradeOpen} /></div>
       </div>
     </div>

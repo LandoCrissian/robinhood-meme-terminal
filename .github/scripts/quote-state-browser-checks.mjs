@@ -42,6 +42,9 @@ export async function exerciseRestoredQuoteState({ page, api, requests, scenario
   await page.clock.fastForward(Math.max(0, prior.plan.expiresAtMs - Date.now()) + 300);
   const panel = await page.locator('.vnTradePanel').innerText();
   assert.doesNotMatch(panel, /Fresh swap verification passed|Verified request ready|Exact simulation passed/, 'expired authority must not coexist with current verified claims');
+  for (const heading of await page.locator('.rmtMobileTradeSheet > header').allTextContents()) {
+    assert.doesNotMatch(heading, /Verified trade/, 'sheet title must not claim quote authority');
+  }
   assert.equal(await page.locator('.vnOutputProtection strong').innerText(), 'Set when you trade');
   assert.equal(await page.locator('.vnReceiveField > div > strong').first().innerText(), estimate, 'refresh preserves the last displayed output');
   assert.match(panel, /stale/i, 'retained output is explicitly stale');
