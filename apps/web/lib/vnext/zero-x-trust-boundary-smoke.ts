@@ -77,17 +77,17 @@ export function runZeroXTrustBoundarySmoke() {
       for (const change of [
         (a: Hex[]) => { a.push(a[0]); },
         (a: Hex[]) => { a.push(encodeFunctionData({ abi: parseAbi(["function CHECK_SLIPPAGE(bool exact)"]), functionName: "CHECK_SLIPPAGE", args: [false] })); },
+        (a: Hex[]) => { const check = encodeFunctionData({ abi: parseAbi(["function CHECK_SLIPPAGE(bool exact)"]), functionName: "CHECK_SLIPPAGE", args: [true] }); a.push(("0x" + check.slice(2).toUpperCase()) as Hex); },
         (a: Hex[]) => { a.push(encodeFunctionData({ abi: basic, functionName: "BASIC", args: [body.sellToken, 1_000_000n, holder, 4n, "0x12345678"] })); }
       ]) {
         assert.throws(() => verifyZeroXEncodedFee({ ...input, data: mutateZeroXActions(data, change) }), ExecutionEnvelopeFailure); negatives++;
       }
       // Assert that the final tuple, not a quote-JSON number or route-local
       // minimum, remains authority even for a parser-unknown route.
-      let tupleMinimum = 0n;
       mutateZeroXActions(data, a => { assert.equal(a.length, 3); });
       const outer = parseAbi(["function exec(address operator,address token,uint256 amount,address target,bytes data) payable returns(bytes)"]);
       const envelope = decodeFunctionData({ abi: outer, data });
-      tupleMinimum = decodeFunctionData({ abi: inner, data: envelope.args[4] }).args[0].minAmountOut;
+      const tupleMinimum = decodeFunctionData({ abi: inner, data: envelope.args[4] }).args[0].minAmountOut;
       assert.equal(tupleMinimum, 990100n);
     }
   }
