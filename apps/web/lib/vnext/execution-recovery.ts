@@ -436,12 +436,13 @@ function normalizeRecord(value: unknown): VNextExecutionRecord | null {
     && getAddress(providerNativeCandidate.treasury) === RMT_ZERO_X_FEE_TREASURY
     && isAddress(providerNativeCandidate.feeAsset, { strict: false })
     && isAddress(candidate.inputAsset ?? "", { strict: false })
-    && getAddress(providerNativeCandidate.feeAsset) === getAddress(candidate.inputAsset!)
+    && (getAddress(providerNativeCandidate.feeAsset) === getAddress(candidate.inputAsset!)
+      || (isAddress(candidate.outputAsset ?? "", { strict: false }) && getAddress(providerNativeCandidate.feeAsset) === getAddress(candidate.outputAsset!)))
     && providerNativeCandidate.feeBps === 25
     // This journal retains quote disclosure, not an atomic fee execution gate.
     && /^(0|[1-9][0-9]*)$/.test(providerNativeCandidate.feeAmountAtomic)
     && /^[1-9][0-9]*$/.test(candidate.inputAmountAtomic ?? "")
-    && BigInt(providerNativeCandidate.feeAmountAtomic) < BigInt(candidate.inputAmountAtomic!)
+    && (getAddress(providerNativeCandidate.feeAsset) !== getAddress(candidate.inputAsset!) || BigInt(providerNativeCandidate.feeAmountAtomic) < BigInt(candidate.inputAmountAtomic!))
     && /^[1-9][0-9]*$/.test(providerNativeCandidate.expectedOutputAtomic)
     && /^[1-9][0-9]*$/.test(providerNativeCandidate.protectedOutputAtomic)
     && BigInt(providerNativeCandidate.protectedOutputAtomic) <= BigInt(providerNativeCandidate.expectedOutputAtomic)

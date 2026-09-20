@@ -1,3 +1,4 @@
+import { zeroXFeeAsset } from "../vnext/zero-x-settlement";
 import { requireZeroXDeployment } from "./vnext-zero-x-deployment-authority";
 import { isCanonicalZeroXAllowanceHolder, RMT_ZERO_X_CANONICAL_ALLOWANCE_HOLDER } from "../vnext/zero-x-authority";
 import { TradeExecutionFailure } from "../vnext/trade-failure";
@@ -129,8 +130,8 @@ function parseIntegratorFee(fees: JsonObject, request: VNextProviderVerification
     if (value.type !== undefined && value.type !== "volume") throw new ZeroXInvalidResponseError("0x returned an invalid integrator fee type.");
     const token = fromZeroXToken(value.token);
     const amount = value.amount as string;
-    if (token !== request.inputAsset) throw new ZeroXInvalidResponseError("0x returned the integrator fee in the wrong token.");
-    if (BigInt(amount) >= request.amountIn) throw new ZeroXInvalidResponseError("0x returned an invalid fee disclosure.");
+    if (token !== zeroXFeeAsset(request.inputAsset, request.outputAsset)) throw new ZeroXInvalidResponseError("0x returned the integrator fee in the wrong token.");
+    if (token === request.inputAsset && BigInt(amount) >= request.amountIn) throw new ZeroXInvalidResponseError("0x returned an invalid fee disclosure.");
     return `${token}:${amount}:${String(value.type ?? "")}`;
   };
   const singularKey = singular.map(parse)[0] ?? null;
@@ -322,7 +323,7 @@ async function fetchFirmQuote(request: VNextProviderVerificationRequest) {
   url.search = new URLSearchParams({
     chainId: String(request.chainId), sellToken: toZeroXToken(request.inputAsset), buyToken: toZeroXToken(request.outputAsset),
     sellAmount: request.inputAmountAtomic, taker: request.recipient, recipient: request.recipient, slippagePpm: String(RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM),
-    swapFeeRecipient: RMT_ZERO_X_FEE_TREASURY, swapFeeBps: String(RMT_ZERO_X_FEE_BPS), swapFeeToken: toZeroXToken(request.inputAsset)
+    swapFeeRecipient: RMT_ZERO_X_FEE_TREASURY, swapFeeBps: String(RMT_ZERO_X_FEE_BPS), swapFeeToken: toZeroXToken(zeroXFeeAsset(request.inputAsset, request.outputAsset))
   }).toString();
   const response = await fetch(url, { headers: { Accept: "application/json", "0x-api-key": apiKey, "0x-version": "v2" }, cache: "no-store", signal: AbortSignal.timeout(ZERO_X_TIMEOUT_MS) });
   const body: unknown = await response.json().catch(() => null);

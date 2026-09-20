@@ -1,5 +1,6 @@
 "use client";
 
+import { readPublicWorkspace } from "../../lib/vnext/public-workspace-read";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getAddress, isAddress } from "viem";
 import type { AssetMetadata } from "../../lib/vnext/execution-domain";
@@ -212,7 +213,7 @@ export function useVNextMarketDirectory() {
     const exact = exactDirectory && exactSearch
       ? mergeVNextDirectoryAndSearchMarkets([exactDirectory], [exactSearch])[0]
       : exactDirectory ?? exactSearch;
-    if (exact?.canonicalMarkets?.length && isVNextDirectoryMarketSelectable(exact)) {
+    if (exact && !positiveQuarantines.current.has(rawAddress.toLowerCase()) && isVNextDirectoryMarketSelectable(exact)) {
       selectionSequence.current += 1;
       exactLookupMarket.current = mergeVNextExplicitSelectionMarket({
         existing: exactLookupMarket.current,
@@ -256,7 +257,7 @@ export function useVNextMarketDirectory() {
         };
         const [canonicalResult, marketResult, identityResult] = await Promise.allSettled([
           canonicalAlreadyRead ? Promise.resolve(null) : readCanonicalJson(),
-          readExternalJson(`/api/markets/external?${marketQuery}`),
+          readPublicWorkspace<ExternalMarketResponse>(`/api/markets/external?${marketQuery}`),
           readExternalJson(`/api/vnext/asset-identity?${identityQuery}`)
         ]);
         if (requestSequence === selectionSequence.current) completedExplicitSelections.current.add(selectionKey);

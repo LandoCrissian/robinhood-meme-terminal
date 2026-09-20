@@ -25,11 +25,19 @@ export async function GET(request: Request) {
   const displayedPools = rawPair && isAddress(rawPair, { strict: false }) && rawPair.toLowerCase() !== zeroAddress
     ? [getAddress(rawPair)]
     : [];
+  const view = searchParams.get("view");
+  if (view === "enrichment") {
+    const ecosystem = await readVNextEcosystemIntelligence(address, undefined, undefined, displayedPools)
+      .catch(() => unavailableVNextEcosystemIntelligence(address));
+    return NextResponse.json({ ecosystem, updatedAt: new Date().toISOString() }, {
+      headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120" }
+    });
+  }
   const stockRegistry = await fetchRobinhoodStockRegistry();
   const stockAssetRelationships = stockAssetRelationshipsForToken(address, stockRegistry.assetsByAddress);
   const [resolution, ecosystem] = await Promise.all([
     resolveUniversalMarketAddress(address, stockRegistry),
-    readVNextEcosystemIntelligence(address, undefined, undefined, displayedPools)
+    view === "core" ? Promise.resolve(undefined) : readVNextEcosystemIntelligence(address, undefined, undefined, displayedPools)
       .catch(() => unavailableVNextEcosystemIntelligence(address))
   ]);
   if ((!resolution || resolution.token.address.toLowerCase() !== address.toLowerCase()) && !stockAssetRelationships.length) {

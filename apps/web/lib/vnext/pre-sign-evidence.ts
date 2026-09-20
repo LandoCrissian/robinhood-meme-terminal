@@ -1,3 +1,4 @@
+import { fromZeroXToken } from "./zero-x-settlement";
 import { RMT_ZERO_X_MAX_SLIPPAGE_PPM, RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM, zeroXMinimumRespectsSlippage } from "./zero-x-settlement";
 import { getAddress, isAddress, keccak256 } from "viem";
 import { z } from "zod";
@@ -273,7 +274,7 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
     const firmQuote = providerNativeFee.firmQuote;
     if (!firmQuote || evidence.factoryRuntimeHash !== null || evidence.quoterRuntimeHash !== null
       || providerNativeFee.chainId !== evidence.chainId
-      || getAddress(providerNativeFee.feeAsset) !== getAddress(evidence.inputAsset)
+      || fromZeroXToken(providerNativeFee.requestSellToken) !== getAddress(evidence.inputAsset)
       || getAddress(providerNativeFee.outputAsset) !== getAddress(evidence.outputAsset)
       || evidence.routerRuntimeHash !== firmQuote.targetRuntimeHash
       || evidence.gasLimitUnits !== firmQuote.nextActionGasLimitUnits

@@ -17,7 +17,7 @@ import {
   zeroXSwapFirmQuoteVerificationConfiguration
 } from "../server/vnext-zero-x-firm-quote-verifier";
 import { VNEXT_PROVIDER_NATIVE_INPUT_FEE } from "./execution-settlement";
-import { RMT_ZERO_X_FEE_TREASURY, ZERO_X_NATIVE_TOKEN } from "./zero-x-settlement";
+import { zeroXFeeAsset, toZeroXToken, RMT_ZERO_X_FEE_TREASURY, ZERO_X_NATIVE_TOKEN } from "./zero-x-settlement";
 import { assertZeroXSharedWalletAuthorization } from "./zero-x-wallet-authorization-smoke";
 import { prepareVNextProviderAuthorization } from "../server/vnext-provider-adapter";
 import { vNextZeroXSwapAdapter, vNextZeroXGaslessAdapter } from "../server/vnext-zero-x-adapter";
@@ -90,7 +90,7 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     buyAmount: "520000000000000",
     buyToken: output === zeroAddress ? ZERO_X_NATIVE_TOKEN : output,
     fees: {
-      integratorFee: { amount: "2500", token: input === zeroAddress ? ZERO_X_NATIVE_TOKEN : input, type: "volume" },
+      integratorFee: { amount: "2500", token: toZeroXToken(zeroXFeeAsset(input, output)), type: "volume" },
       integratorFees: [],
       zeroExFee: { amount: "1500", token: input === zeroAddress ? ZERO_X_NATIVE_TOKEN : input, type: "volume" },
       gasFee: null
@@ -133,7 +133,7 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
         assert.equal(url.searchParams.get("buyToken"), output === zeroAddress ? ZERO_X_NATIVE_TOKEN : output);
         assert.equal(url.searchParams.get("swapFeeRecipient"), RMT_ZERO_X_FEE_TREASURY);
         assert.equal(url.searchParams.get("swapFeeBps"), "25");
-        assert.equal(url.searchParams.get("swapFeeToken"), input === zeroAddress ? ZERO_X_NATIVE_TOKEN : input);
+        assert.equal(url.searchParams.get("swapFeeToken"), toZeroXToken(zeroXFeeAsset(input, output)));
         assert.equal(url.searchParams.has("tradeSurplusRecipient"), false);
         const body = { ...quote(), actionBasisForTest: actionBasis };
         quoteMutation(body);
@@ -269,6 +269,21 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
             error => error instanceof TradeExecutionFailure && error.code === "EXECUTION_ENVELOPE_REJECTED", label);
         }
       }
+    }
+    // Base-output fees use output units while gross input/approval remain unchanged.
+    settlerCode = ppmRuntime; actionBasis = 1_000_000n;
+    for (const [sell, buy] of [[outputAsset, inputAsset], [outputAsset, zeroAddress]] as const) {
+      input = sell; output = buy; nativeValue = "0";
+      quoteMutation = body => { body.fees.integratorFee.amount = "1300000000000"; };
+      const request = { ...baseRequest, inputAsset: input, outputAsset: output };
+      const evidence = await verifyZeroXSwapFirmQuote(request);
+      assert.equal(evidence.status, "verified");
+      assert.equal(evidence.providerNativeFee?.feeAsset, buy);
+      assert.equal(evidence.providerNativeFee?.providerInputAtomic, "1000000");
+      assert.equal(evidence.providerNativeFee?.feeAmountAtomic, "1300000000000");
+      await assertZeroXSharedWalletAuthorization(await prepareZeroXSwapAuthorization(await committedRequest(request, evidence)));
+      quoteMutation = body => { body.fees.integratorFee.token = toZeroXToken(sell); };
+      await assert.rejects(() => verifyZeroXSwapFirmQuote(request), "retired sell-token fee must not replace the requested base output fee");
     }
     settlerCode = executableFixture.runtime; actionBasis = 10_000n;
     input = inputAsset; output = outputAsset; nativeValue = "0"; quoteMutation = () => {};

@@ -1,3 +1,4 @@
+import { zeroXFeeAsset } from "../vnext/zero-x-settlement";
 import { RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM } from "../vnext/zero-x-settlement";
 import { getAddress, isAddress, type Address } from "viem";
 import { disabledVNextFeeEconomics, unavailableVNextQuoteAttempt, type VNextProviderQuoteRequest, type VNextQuoteProviderAdapter } from "./vnext-provider-adapter";
@@ -54,7 +55,7 @@ function parseFee(value: unknown, requestedInput: Address, requestedOutput: Addr
   return { asset, amountAtomic: value.amount as string };
 }
 
-export function parseZeroXIntegratorFee(fees: JsonObject, request: Pick<VNextProviderQuoteRequest, "inputAsset" | "inputAmountAtomic">) {
+export function parseZeroXIntegratorFee(fees: JsonObject, request: Pick<VNextProviderQuoteRequest, "inputAsset" | "outputAsset" | "inputAmountAtomic">) {
   const singularEntries = fees.integratorFee == null ? [] : [fees.integratorFee];
   const pluralEntries = fees.integratorFees == null ? [] : Array.isArray(fees.integratorFees) ? fees.integratorFees : [fees.integratorFees];
   if (pluralEntries.length > 1) throw new ZeroXInvalidResponseError("0x returned duplicate integrator fees.", "DUPLICATE_INTEGRATOR_FEE");
@@ -65,8 +66,8 @@ export function parseZeroXIntegratorFee(fees: JsonObject, request: Pick<VNextPro
     }
     if (value.type !== undefined && value.type !== "volume") throw new ZeroXInvalidResponseError("0x returned an invalid integrator fee type.", "INVALID_INTEGRATOR_FEE_TYPE");
     const token = responseToken(value.token);
-    if (token !== request.inputAsset) throw new ZeroXInvalidResponseError("0x returned the integrator fee in the wrong token.", "WRONG_INTEGRATOR_FEE_TOKEN");
-    if (BigInt(value.amount) >= BigInt(request.inputAmountAtomic)) throw new ZeroXInvalidResponseError("0x returned an invalid fee disclosure.", "WRONG_INTEGRATOR_FEE_AMOUNT");
+    if (token !== zeroXFeeAsset(request.inputAsset, request.outputAsset)) throw new ZeroXInvalidResponseError("0x returned the integrator fee in the wrong token.", "WRONG_INTEGRATOR_FEE_TOKEN");
+    if (token === request.inputAsset && BigInt(value.amount) >= BigInt(request.inputAmountAtomic)) throw new ZeroXInvalidResponseError("0x returned an invalid fee disclosure.", "WRONG_INTEGRATOR_FEE_AMOUNT");
     return { token, amountAtomic: value.amount as string, type: value.type ?? null };
   };
   const singularFee = singularEntries.map(parse)[0] ?? null;
@@ -118,7 +119,7 @@ async function quoteZeroX(request: VNextProviderQuoteRequest, mode: ZeroXMode, o
     recipient: request.recipient,
     swapFeeRecipient: RMT_ZERO_X_FEE_TREASURY,
     swapFeeBps: String(RMT_ZERO_X_FEE_BPS),
-    swapFeeToken: toZeroXToken(request.inputAsset),
+    swapFeeToken: toZeroXToken(zeroXFeeAsset(request.inputAsset, request.outputAsset)),
     slippagePpm: String(RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM)
   });
   url.search = new URLSearchParams(params).toString();
@@ -185,7 +186,7 @@ function createZeroXAdapter(mode: ZeroXMode, observe?: (value: ZeroXPriceDiagnos
           networkFeeNativeAtomic: price.networkFeeNativeAtomic, networkFeeNativeSymbol: gasless ? null : "ETH",
           protectedNetOutputAtomic: gasless ? price.protectedOutputAtomic : null, costState: gasless ? null : "network_fee_pending",
           authorizationReady: false,
-          detail: gasless ? "Live indicative 0x Gasless price with provider and gas-sponsorship fees reflected in protected output." : "Live 0x price across the best available Robinhood liquidity, including the exact 0.25% sell-token RMT fee."
+          detail: gasless ? "Live indicative 0x Gasless price with provider and gas-sponsorship fees reflected in protected output." : "Live 0x price across the best available Robinhood liquidity, including the provider-native 0.25% RMT base-currency fee."
         };
       } catch (cause) {
         const invalidResponse = cause instanceof ZeroXInvalidResponseError;

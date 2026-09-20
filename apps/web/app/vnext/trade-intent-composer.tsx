@@ -3,7 +3,7 @@ import { appendResponseDiagnostic, serializeResponseDiagnostic } from "../../lib
 
 import { currentTradeEvidence } from "../../lib/vnext/current-trade-evidence";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { VerifiedRequestRefresh, verifiedRequestRefreshDelay, isVerifiedRequestFresh, waitForVerifiedRequestRetry } from "../../lib/vnext/verified-request-refresh";
+import { VerifiedRequestRefresh, isVerifiedRequestFresh, waitForVerifiedRequestRetry } from "../../lib/vnext/verified-request-refresh";
 import { formatUnits, getAddress, parseUnits, type Address } from "viem";
 import { useAccount } from "wagmi";
 import type { AssetMetadata } from "../../lib/vnext/execution-domain";
@@ -91,7 +91,8 @@ function uniqueAssets(assets: AssetMetadata[]) {
 const DEFAULT_BUY_AMOUNT = "25";
 const DEFAULT_NATIVE_BUY_AMOUNT = "0.0005";
 
-export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, marketAsset, walletAssets, nativeBalance, walletReadStatus, executionRecord, dismissedExecutionHash, onContinueTrading, sideRequest, executionState, executionUiState, canonicalMarket }: {
+export function TradeIntentComposer({ quoteActive = true, marketName, marketSymbol, marketAddress, marketAsset, walletAssets, nativeBalance, walletReadStatus, executionRecord, dismissedExecutionHash, onContinueTrading, sideRequest, executionState, executionUiState, canonicalMarket }: {
+  quoteActive?: boolean;
   marketName: string;
   marketSymbol: string;
   marketAddress?: string;
@@ -179,6 +180,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
   const preparedApprovalAuthority = useRef<VNextApprovalAuthority | undefined>(undefined);
   const autoFitBuyAmount = useRef(true);
   const backgroundQuoteEpoch = useRef(0);
+  const preparationStartedAt = useRef({ key: "", at: 0 });
   const [responseDiagnostics, setResponseDiagnostics] = useState<ReturnType<typeof appendResponseDiagnostic>>([]);
   const authorizationAttemptEpoch = useRef(0);
   const backgroundQuoteImmediate = useRef(false);
@@ -391,7 +393,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
     const expiries = quoteState.response.attempts.flatMap((attempt) => attempt.expiresAtMs === null ? [] : [attempt.expiresAtMs]);
     if (expiries.length === 0) return;
     const delay = Math.max(0, Math.min(...expiries) - Date.now());
-    const timeout = window.setTimeout(() => setQuoteState({ state: "error", message: "Refreshing price...", phase: "QUOTE_EXPIRED" }), delay);
+    const timeout = window.setTimeout(() => setCostValuationClockMs(Date.now()), delay);
     return () => window.clearTimeout(timeout);
   }, [quoteState]);
   useEffect(() => {
@@ -504,20 +506,16 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
         expectedFeeAtomic: visibleVerification.providerNativeFee.feeAmountAtomic,
         maximumFeeAtomic: visibleVerification.providerNativeFee.feeAmountAtomic,
         feeBps: visibleVerification.providerNativeFee.feeBps,
-        feeSide: "input" as const
+        feeSide: visibleVerification.providerNativeFee.feeAsset.toLowerCase() === visibleVerification.inputAsset.toLowerCase() ? "input" as const : "output" as const
       }
     : visibleVerification?.feeV2Economics
     ?? (visibleVerification?.netEconomics?.rmtFee.state === "planned"
       ? visibleVerification.netEconomics.rmtFee
       : null);
   const verifiedRmtFeeLabel = verifiedRmtFee && pair
-    ? `${formatAtomicDisplay(
-        verifiedRmtFee.expectedFeeAtomic,
+    ? `0.25% · ${formatVNextFeeAtomic(verifiedRmtFee.expectedFeeAtomic,
         verifiedRmtFee.feeSide === "input" ? pair.inputAsset.decimals ?? 18 : pair.outputAsset.decimals ?? 18
-      )} ${verifiedRmtFee.feeSide === "input" ? inputSymbol : outputSymbol} · maximum ${formatAtomicDisplay(
-        verifiedRmtFee.maximumFeeAtomic,
-        verifiedRmtFee.feeSide === "input" ? pair.inputAsset.decimals ?? 18 : pair.outputAsset.decimals ?? 18
-      )} · ${verifiedRmtFee.feeBps / 100}%`
+      )} ${verifiedRmtFee.feeSide === "input" ? inputSymbol : outputSymbol}`
     : "Not enabled";
   const availableDisplay = spendableInputAtomic !== undefined && pairInputDecimals !== null
     ? formatAtomicDisplay(spendableInputAtomic, pairInputDecimals)
@@ -598,7 +596,8 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
 
   useEffect(() => {
     const canRefresh = Boolean(
-      identity.enabled
+      quoteActive
+      && identity.enabled
       && identity.authenticated
       && identity.activeWalletKind === "external"
       && identity.identityToken
@@ -620,11 +619,11 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
     const schedule = (delayMs: number) => {
       if (timeout !== undefined) window.clearTimeout(timeout);
       timeout = undefined;
-      if (cancelled || document.visibilityState === "hidden") return;
+      if (cancelled || document.visibilityState === "hidden" || !navigator.onLine) return;
       timeout = window.setTimeout(() => void refresh(), delayMs);
     };
     const refresh = async () => {
-      if (cancelled || backgroundQuoteEpoch.current !== epoch || document.visibilityState === "hidden") return;
+      if (cancelled || backgroundQuoteEpoch.current !== epoch || document.visibilityState === "hidden" || !navigator.onLine) return;
       const hadVisibleQuote = Boolean(cachedVNextQuoteForRequest(lastReadyQuote.current, preparationContext));
       if (!hadVisibleQuote && !backgroundQuoteAttempted.current) setQuoteState({ state: "loading" });
       backgroundQuoteAttempted.current = true;
@@ -646,26 +645,31 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
       if (!cancelled && backgroundQuoteEpoch.current === epoch) schedule(VNEXT_BACKGROUND_QUOTE_REFRESH_MS);
     };
     const onVisibilityChange = () => {
-      if (document.visibilityState === "hidden") {
+      if (document.visibilityState === "hidden" || !navigator.onLine) {
         if (timeout !== undefined) window.clearTimeout(timeout);
         timeout = undefined;
         return;
       }
-      schedule(VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS);
+      schedule(0);
     };
     const initialDelay = backgroundQuoteImmediate.current || !cachedVNextQuoteForRequest(lastReadyQuote.current, preparationContext)
       ? VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS
       : VNEXT_BACKGROUND_QUOTE_REFRESH_MS;
     backgroundQuoteImmediate.current = false;
     document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("online", onVisibilityChange);
+    window.addEventListener("offline", onVisibilityChange);
     schedule(initialDelay);
     return () => {
       cancelled = true;
       backgroundQuoteEpoch.current += 1;
       if (timeout !== undefined) window.clearTimeout(timeout);
       document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("online", onVisibilityChange);
+      window.removeEventListener("offline", onVisibilityChange);
     };
   }, [
+    quoteActive,
     address,
     authorizationState.state,
     canonicalMarket?.sourceId,
@@ -834,6 +838,7 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
     return refreshCoordinator.current.run({
       key, handoff: openWallet,
       prepare: async ({ current, signal }) => {
+        preparationStartedAt.current = { key, at: Date.now() };
         backgroundQuoteEpoch.current += 1;
         const authorizationAttempt = ++authorizationAttemptEpoch.current;
         const bound = () => current() && currentPreparationContext.current === key
@@ -905,25 +910,29 @@ export function TradeIntentComposer({ marketName, marketSymbol, marketAddress, m
   const preparedExpiresAtMs = authorizationState.state === "ready" ? authorizationState.plan.expiresAtMs : undefined;
   useEffect(() => {
     // One owned timeout, paused during hidden-page and wallet interaction lifecycles.
-    if (pendingTradeAfterLogin.current || !authorizationEnabled || stockTokenViewOnly || !onRobinhood
+    if (!quoteActive || pendingTradeAfterLogin.current || !authorizationEnabled || stockTokenViewOnly || !onRobinhood
       || !draft.intent || amountExceedsBalance || !identity.authenticated || !identity.identityToken
       || !identity.userId || !address || identity.activeWalletKind !== "external" || !identity.activeWalletKey
       || walletReadStatus !== "ready" || walletBusy || executionRecord?.state === "submitted"
       || postExecutionState.state !== "idle") return;
     let timer: ReturnType<typeof setTimeout> | undefined;
-    const schedule = () => {
+    const schedule = (resume = false) => {
       clearTimeout(timer);
-      if (document.visibilityState === "hidden" || walletBusyRef.current || refreshCoordinator.current.running) return;
+      if (document.visibilityState === "hidden" || !navigator.onLine || walletBusyRef.current || refreshCoordinator.current.running) return;
       if (preparedExpiresAtMs === undefined && (automaticPreparationKey.current === preparationContext
         || verificationQuote?.provider !== "zero-x-swap" || quoteState.state !== "ready")) return;
       timer = setTimeout(() => {
         if (!walletBusyRef.current && currentPreparationContext.current === preparationContext) void startTrade();
-      }, preparedExpiresAtMs === undefined ? VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS : verifiedRequestRefreshDelay(preparedExpiresAtMs, Date.now()));
+      }, resume ? 0 : preparationStartedAt.current.key !== preparationContext ? VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS
+        : Math.max(0, preparationStartedAt.current.at + VNEXT_BACKGROUND_QUOTE_REFRESH_MS - Date.now()));
     };
-    document.addEventListener("visibilitychange", schedule);
+    const resume = () => schedule(true);
+    document.addEventListener("visibilitychange", resume);
+    window.addEventListener("online", resume);
+    window.addEventListener("offline", resume);
     schedule();
-    return () => { clearTimeout(timer); document.removeEventListener("visibilitychange", schedule); };
-  }, [preparationContext, preparedExpiresAtMs, identity.activeWalletKind, identity.authenticated, identity.identityToken,
+    return () => { clearTimeout(timer); document.removeEventListener("visibilitychange", resume); window.removeEventListener("online", resume); window.removeEventListener("offline", resume); };
+  }, [quoteActive, preparationContext, preparedExpiresAtMs, identity.activeWalletKind, identity.authenticated, identity.identityToken,
     identity.userId, identity.activeWalletKey, address, authorizationEnabled, stockTokenViewOnly, onRobinhood,
     draft.intent?.amountAtomic, amountExceedsBalance, walletReadStatus, walletBusy, verificationQuote?.provider,
     quoteState.state, executionRecord?.state, postExecutionState.state]);

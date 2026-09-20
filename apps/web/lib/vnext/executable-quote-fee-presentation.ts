@@ -26,7 +26,7 @@ function feePresentationForQuote(attempt: VNextQuoteAttempt | undefined): VNextI
     return {
       state: "planned",
       feeBps: attempt.providerNativeFee.feeBps,
-      feeSide: "input",
+      feeSide: attempt.providerNativeFee.feeAsset.toLowerCase() === attempt.inputAsset.toLowerCase() ? "input" : "output",
       feeAsset: attempt.providerNativeFee.feeAsset,
       expectedFeeAtomic: attempt.providerNativeFee.feeAmountAtomic,
       providerInputAtomic: attempt.providerNativeFee.providerInputAtomic

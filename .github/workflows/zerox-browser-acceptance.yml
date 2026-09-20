@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - '.github/scripts/zerox-browser-*'
+      - '.github/scripts/trading-product-browser.mjs'
+      - '.github/scripts/zerox-execution-fixture.cjs'
       - '.github/scripts/terminal-high-end-acceptance.mjs'
       - '.github/workflows/zerox-browser-acceptance.yml'
       - 'apps/web/app/vnext/**'

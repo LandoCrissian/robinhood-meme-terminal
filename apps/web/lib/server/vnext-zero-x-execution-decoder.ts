@@ -2,7 +2,7 @@ import { decodeZeroXPackedRoute } from "./vnext-zero-x-packed-route";
 import { ExecutionEnvelopeFailure, TradeExecutionFailure } from "../vnext/trade-failure";
 import type { EnvelopeReason } from "../vnext/execution-envelope-diagnostic";
 import { decodeFunctionData, encodeFunctionData, getAddress, parseAbi, toFunctionSelector, zeroAddress, type Address, type Hex } from "viem";
-import { fromZeroXToken, RMT_ZERO_X_FEE_TREASURY, ZERO_X_NATIVE_TOKEN } from "../vnext/zero-x-settlement";
+import { zeroXFeeAsset, fromZeroXToken, RMT_ZERO_X_FEE_TREASURY, ZERO_X_NATIVE_TOKEN } from "../vnext/zero-x-settlement";
 
 // RobinHoodSettler, official 0x commit 95184a23336b52d99aaa528c5b1259e3bb04eafe.
 // Sourcify's recompiled runtime exactly matched eth_getCode on chain 4663.
@@ -104,7 +104,7 @@ export function verifyZeroXEncodedFee(input: ZeroXEnvelopeInput) {
   };
   try {
     const envelope = decodeZeroXExecutableMinimum(input);
-    const decoded = envelope.actions.slice(0, 2).map((data, index) => {
+    const decoded = envelope.actions.slice(0, 1).map((data, index) => {
       actionIndex = index;
       const selector = data.slice(0, 10).toLowerCase() as Hex;
       actionKind = actionNames.get(selector) ?? selector;
@@ -143,18 +143,17 @@ export function verifyZeroXEncodedFee(input: ZeroXEnvelopeInput) {
         if (!destination(getAddress(nested.args[0]))) fail("FEE_RECIPIENT_MISMATCH");
       }
     }
-    transfer(next(), input.inputAsset, basis / 400n, address => address === RMT_ZERO_X_FEE_TREASURY);
-    const fee = { token: input.inputAsset, recipient: RMT_ZERO_X_FEE_TREASURY, rateBps: 25 as const,
-      position: 1, count: 1 as const, numerator: (basis / 400n).toString(), denominator: basis.toString(),
-      amountMode: "PROPORTIONAL_TO_CURRENT_BALANCE" as const, rounding: "FLOOR" as const };
+    const feeAsset = zeroXFeeAsset(input.inputAsset, input.outputAsset);
+    let feePosition: number | null = null;
     // Only authority-affecting suffix structures belong in this gate. Do not
     // decode internal DEX paths, recipients, pool keys, hooks or intermediate assets.
-    for (let i = 2; i < envelope.actions.length; i++) {
+    for (let i = 1; i < envelope.actions.length; i++) {
       actionIndex = i;
       const data = envelope.actions[i];
       const selector = data.slice(0, 10).toLowerCase() as Hex;
       actionKind = actionNames.get(selector) ?? selector;
       if (actionKind === "TRANSFER_FROM") fail("EXTRA_INPUT_AUTHORITY");
+      if (feeAsset === input.inputAsset && i === 1 && actionKind !== "BASIC") fail("FEE_ACTION_MISMATCH");
       if (actionKind !== "BASIC") continue;
       const action = decodeFunctionData({ abi: actionsAbi, data });
       if (action.functionName !== "BASIC") return fail("MALFORMED_ACTION");
@@ -170,12 +169,19 @@ export function verifyZeroXEncodedFee(input: ZeroXEnvelopeInput) {
       else if (getAddress(pool) === getAddress(token) && nested.slice(0, 10).toLowerCase() === toFunctionSelector(transferAbi[0])) {
         destination = getAddress(decodeFunctionData({ abi: transferAbi, data: nested }).args[0]);
       }
-      if (destination === null) continue; // Opaque internal BASIC, not an inferred fee.
-      if (destination === RMT_ZERO_X_FEE_TREASURY) fail("DUPLICATE_RMT_FEE");
+      if (destination === RMT_ZERO_X_FEE_TREASURY || (feeAsset === input.inputAsset && i === 1)) {
+        if (feePosition !== null) fail("DUPLICATE_RMT_FEE");
+        if (encodeFunctionData({ abi: actionsAbi, ...action }).toLowerCase() !== data.toLowerCase()) fail("NONCANONICAL_ACTION");
+        transfer(action, feeAsset, basis / 400n, address => address === RMT_ZERO_X_FEE_TREASURY);
+        feePosition = i;
+      }
       // Other transfers may be provider fees or internal pool funding. Provider
       // fee disclosure remains separate; do not infer a fee from a route split.
     }
-    return fee;
+    if (feePosition === null) return fail("FEE_ACTION_MISMATCH");
+    return { token: feeAsset, recipient: RMT_ZERO_X_FEE_TREASURY, rateBps: 25 as const,
+      position: feePosition, count: 1 as const, numerator: (basis / 400n).toString(), denominator: basis.toString(),
+      amountMode: "PROPORTIONAL_TO_CURRENT_BALANCE" as const, rounding: "FLOOR" as const };
   } catch (cause) {
     if (cause instanceof ExecutionEnvelopeFailure) throw cause;
     return fail("MALFORMED_ACTION");

@@ -18,6 +18,17 @@ export function zeroXMinimumRespectsSlippage(expected: string, minimum: string) 
   return BigInt(minimum) <= BigInt(expected)
     && BigInt(minimum) * PPM_DENOMINATOR >= BigInt(expected) * (PPM_DENOMINATOR - MAX_EFFECTIVE_SLIPPAGE_PPM);
 }
+// Base/base and project/project retain the previous sell-token policy.
+// WETH is an ERC20, never silently substituted for native ETH.
+export const RMT_ZERO_X_USDG = getAddress("0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168");
+export function zeroXFeeAsset(inputAsset: string, outputAsset: string): Address {
+  const sell = getAddress(inputAsset), buy = getAddress(outputAsset);
+  const base = (asset: Address) => asset === RMT_ZERO_X_USDG || asset === zeroAddress;
+  if (base(sell) && base(buy)) return sell;
+  if (sell === RMT_ZERO_X_USDG || buy === RMT_ZERO_X_USDG) return RMT_ZERO_X_USDG;
+  if (sell === zeroAddress || buy === zeroAddress) return zeroAddress;
+  return sell;
+}
 export const RMT_ZERO_X_FEE_DENOMINATOR = 10_000n;
 
 const POSITIVE_ATOMIC = /^[1-9][0-9]*$/;
@@ -109,8 +120,12 @@ export function createVNextZeroXProviderNativeFee(input: {
   authorizationState: VNextZeroXProviderNativeFee["authorizationState"];
   firmQuote?: Omit<NonNullable<VNextZeroXProviderNativeFee["firmQuote"]>, "identity">;
 }): VNextZeroXProviderNativeFee {
+  const feeAsset = zeroXFeeAsset(input.inputAsset, input.outputAsset);
+  // Output fees are provider-returned economics, never derived from input units.
+  if (feeAsset !== input.inputAsset && input.quotedFeeAmountAtomic === undefined) throw new Error("Missing provider output-fee disclosure.");
   const feeAmountAtomic = input.quotedFeeAmountAtomic ?? zeroXIntegratorFeeEstimateAtomic(input.userGrossInputAtomic);
-  const providerInputAtomic = (BigInt(input.userGrossInputAtomic) - BigInt(feeAmountAtomic)).toString();
+  const providerInputAtomic = feeAsset === input.inputAsset
+    ? (BigInt(input.userGrossInputAtomic) - BigInt(feeAmountAtomic)).toString() : input.userGrossInputAtomic;
   const result: VNextZeroXProviderNativeFee = {
     provider: "zero-x-swap",
     chainId: 4_663,
@@ -118,7 +133,7 @@ export function createVNextZeroXProviderNativeFee(input: {
     settlement: "provider-native",
     feeExecutorRequired: false,
     feeBps: RMT_ZERO_X_FEE_BPS,
-    feeAsset: getAddress(input.inputAsset),
+    feeAsset,
     feeAmountAtomic,
     treasury: RMT_ZERO_X_FEE_TREASURY,
     userGrossInputAtomic: input.userGrossInputAtomic,
@@ -129,7 +144,7 @@ export function createVNextZeroXProviderNativeFee(input: {
     requestSellToken: toZeroXToken(input.inputAsset),
     requestFeeRecipient: RMT_ZERO_X_FEE_TREASURY,
     requestFeeBps: RMT_ZERO_X_FEE_BPS,
-    requestFeeToken: toZeroXToken(input.inputAsset),
+    requestFeeToken: toZeroXToken(feeAsset),
     transactionTarget: input.transactionTarget ?? null,
     transactionCalldataHash: input.transactionCalldataHash ?? null,
     transactionValueAtomic: input.transactionValueAtomic ?? null,
@@ -147,7 +162,7 @@ export function assertVNextZeroXProviderNativeFee(value: VNextZeroXProviderNativ
   if (!value) throw new Error("RMT rejected missing 0x provider-native fee evidence.");
   const quotedFeeValid = POSITIVE_ATOMIC.test(value.userGrossInputAtomic)
     && NON_NEGATIVE_ATOMIC.test(value.feeAmountAtomic)
-    && BigInt(value.feeAmountAtomic) < BigInt(value.userGrossInputAtomic);
+    && (getAddress(value.feeAsset) !== fromZeroXToken(value.requestSellToken) || BigInt(value.feeAmountAtomic) < BigInt(value.userGrossInputAtomic));
   const indicative = value.authorizationState === "indicative";
   if (
     value.provider !== "zero-x-swap"
@@ -155,13 +170,12 @@ export function assertVNextZeroXProviderNativeFee(value: VNextZeroXProviderNativ
     || !["indicative", "approval_required", "verified", "blocked"].includes(value.authorizationState)
     || !isAddress(value.outputAsset, { strict: false })
     || getAddress(value.outputAsset) === ZERO_X_NATIVE_TOKEN
-    || getAddress(value.outputAsset) === getAddress(value.feeAsset)
     || value.settlement !== "provider-native"
     || value.feeExecutorRequired !== false
     || value.feeBps !== RMT_ZERO_X_FEE_BPS
-    || getAddress(value.feeAsset) !== fromZeroXToken(value.requestSellToken)
+    || getAddress(value.feeAsset) !== zeroXFeeAsset(fromZeroXToken(value.requestSellToken), value.outputAsset)
     || !quotedFeeValid
-    || value.providerInputAtomic !== (BigInt(value.userGrossInputAtomic) - BigInt(value.feeAmountAtomic)).toString()
+    || value.providerInputAtomic !== (getAddress(value.feeAsset) === fromZeroXToken(value.requestSellToken) ? (BigInt(value.userGrossInputAtomic) - BigInt(value.feeAmountAtomic)).toString() : value.userGrossInputAtomic)
     || !POSITIVE_ATOMIC.test(value.expectedOutputAtomic)
     || !POSITIVE_ATOMIC.test(value.protectedOutputAtomic)
     || BigInt(value.protectedOutputAtomic) > BigInt(value.expectedOutputAtomic)
@@ -169,7 +183,6 @@ export function assertVNextZeroXProviderNativeFee(value: VNextZeroXProviderNativ
     || getAddress(value.requestFeeRecipient) !== RMT_ZERO_X_FEE_TREASURY
     || value.requestFeeBps !== RMT_ZERO_X_FEE_BPS
     || getAddress(value.requestFeeToken) !== toZeroXToken(value.feeAsset)
-    || getAddress(value.requestFeeToken) !== getAddress(value.requestSellToken)
     || !isAddress(value.recipient, { strict: false })
     || getAddress(value.recipient) === zeroAddress
     || indicative !== (value.firmQuote === null)
@@ -185,7 +198,7 @@ export function assertVNextZeroXProviderNativeFee(value: VNextZeroXProviderNativ
   ) throw new Error("RMT rejected inconsistent 0x provider-native fee evidence.");
   if (value.firmQuote) {
     const quote = value.firmQuote;
-    const native = getAddress(value.feeAsset) === zeroAddress;
+    const native = fromZeroXToken(value.requestSellToken) === zeroAddress;
     if (
       quote.identity !== zeroXFirmQuoteIdentity(value)
       || (quote.zid !== null && !/^(?:0x[0-9a-fA-F]{1,128}|[A-Za-z0-9_-]{8,128})$/.test(quote.zid))
@@ -215,7 +228,7 @@ export function assertVNextZeroXPlanBinding(plan: VNextAuthorizationPlan) {
     || plan.settlementMode !== "PROVIDER_NATIVE_INPUT_FEE"
     || plan.feeExecution != null || plan.feeV2Authorization !== undefined || plan.feeV2Economics !== undefined
     || plan.netEconomics !== undefined || plan.directNoRmtFee !== undefined || plan.directAuthorization !== undefined || plan.v4Execution !== undefined
-    || getAddress(plan.inputAsset) !== getAddress(fee.feeAsset) || getAddress(plan.outputAsset) !== getAddress(fee.outputAsset)
+    || getAddress(plan.inputAsset) !== fromZeroXToken(fee.requestSellToken) || getAddress(plan.outputAsset) !== getAddress(fee.outputAsset)
     || plan.inputAmountAtomic !== fee.userGrossInputAtomic || plan.protectedOutputAtomic !== fee.protectedOutputAtomic
     || getAddress(plan.recipient) !== getAddress(fee.recipient) || getAddress(plan.router) !== getAddress(fee.transactionTarget!)
     || plan.gasLimit !== fee.firmQuote.nextActionGasLimitUnits || (plan.gasPrice ?? null) !== fee.firmQuote.gasPriceWei

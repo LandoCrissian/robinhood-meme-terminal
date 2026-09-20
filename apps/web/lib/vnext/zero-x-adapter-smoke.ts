@@ -1,3 +1,4 @@
+import "./zero-x-base-fee-smoke";
 import { runZeroXTrustBoundarySmoke } from "./zero-x-trust-boundary-smoke";
 import { runZeroXRobinhoodRouteSmoke } from "./zero-x-robinhood-route-smoke";
 import { runZeroXLiquidityBookSmoke } from "./zero-x-liquidity-book-smoke";

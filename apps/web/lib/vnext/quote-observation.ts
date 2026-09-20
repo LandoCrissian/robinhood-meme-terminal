@@ -1,3 +1,4 @@
+import { fromZeroXToken } from "./zero-x-settlement";
 import { getAddress, isAddress } from "viem";
 import { z } from "zod";
 import {
@@ -268,7 +269,7 @@ export function assertVNextQuoteAttempt(
         || attempt.feeV2Economics !== undefined
         || attempt.providerNativeFee.authorizationState !== "indicative"
         || attempt.providerNativeFee.userGrossInputAtomic !== attempt.inputAmountAtomic
-        || getAddress(attempt.providerNativeFee.feeAsset) !== getAddress(attempt.inputAsset)
+        || fromZeroXToken(attempt.providerNativeFee.requestSellToken) !== getAddress(attempt.inputAsset)
         || getAddress(attempt.providerNativeFee.outputAsset) !== getAddress(attempt.outputAsset)
         || attempt.providerNativeFee.expectedOutputAtomic !== attempt.expectedOutputAtomic
         || attempt.providerNativeFee.protectedOutputAtomic !== attempt.protectedOutputAtomic

@@ -76,12 +76,15 @@ export function VNextWalletFeeDisclosure({
   outputDecimals: number;
 }) {
   const providerNativeFee = evidence.providerNativeFee;
+  const nativeFeeOnInput = providerNativeFee?.feeAsset.toLowerCase() === evidence.inputAsset.toLowerCase();
+  const nativeFeeDecimals = nativeFeeOnInput ? inputDecimals : outputDecimals;
+  const nativeFeeSymbol = nativeFeeOnInput ? inputSymbol : outputSymbol;
   if (providerNativeFee) return <div className="vnWalletFeeDisclosure" role="note">
-    <strong>{planKind === "erc20_approval" ? "RMT execution fee on this approval: 0" : `RMT execution fee: ${formatUnits(BigInt(providerNativeFee.feeAmountAtomic), inputDecimals)} ${inputSymbol} (${providerNativeFee.feeBps / 100}%)`}</strong>
-    {planKind === "erc20_approval" ? <small>Planned swap fee: 0.25% of the gross sell amount. It is not collected by the approval transaction, and the swap quote will be fetched again after confirmation.</small> : null}
+    <strong>{planKind === "erc20_approval" ? "RMT execution fee on this approval: 0" : `RMT execution fee: ${formatUnits(BigInt(providerNativeFee.feeAmountAtomic), nativeFeeDecimals)} ${nativeFeeSymbol} (${providerNativeFee.feeBps / 100}%)`}</strong>
+    {planKind === "erc20_approval" ? <small>Planned swap fee: provider-native 0.25% in {nativeFeeSymbol}. It is not collected by the approval transaction, and the swap quote will be fetched again after confirmation.</small> : null}
     <dl>
       <div><dt>Gross sell</dt><dd>{formatUnits(BigInt(providerNativeFee.userGrossInputAtomic), inputDecimals)} {inputSymbol}</dd></div>
-      <div><dt>RMT fee asset / amount</dt><dd>{formatUnits(BigInt(providerNativeFee.feeAmountAtomic), inputDecimals)} {inputSymbol}</dd></div>
+      <div><dt>RMT fee asset / amount</dt><dd>{formatUnits(BigInt(providerNativeFee.feeAmountAtomic), nativeFeeDecimals)} {nativeFeeSymbol}</dd></div>
       <div><dt>Expected receive</dt><dd>{formatUnits(BigInt(providerNativeFee.expectedOutputAtomic), outputDecimals)} {outputSymbol}</dd></div>
       <div><dt>Minimum receive</dt><dd>{formatUnits(BigInt(providerNativeFee.protectedOutputAtomic), outputDecimals)} {outputSymbol}</dd></div>
       <div><dt>0x/provider fee</dt><dd>{providerNativeFee.providerFeeAtomic && providerNativeFee.providerFeeAsset ? `${providerNativeFee.providerFeeAtomic} atomic · ${providerNativeFee.providerFeeAsset.slice(0, 6)}…${providerNativeFee.providerFeeAsset.slice(-4)}` : "None reported"}</dd></div>

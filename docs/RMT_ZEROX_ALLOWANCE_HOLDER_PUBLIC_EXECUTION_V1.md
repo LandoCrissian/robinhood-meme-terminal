@@ -8,13 +8,23 @@ Authority: `RMT_PROVIDER_NATIVE_REACHABLE_BALANCE_DECISION_V1`, following
 half-up atomic equality and zero-residual requirements for public 0x execution.
 It does not authorize deployment, a wallet action, or settlement acceptance.
 
-The immutable request is `swapFeeBps=25`, `swapFeeToken=exact sell token`, and
+Current fee-asset authority: `RMT_FINAL_TRADING_ECONOMICS_QUOTE_AND_SPEED_PASS_V1`.
+The request is `swapFeeBps=25`, `swapFeeToken=zeroXFeeAsset(sell,buy)`, and
 `swapFeeRecipient=0x61700479A4A1F62584Fd3ABA2c2b290EA727d2eC` through Swap API v2
 AllowanceHolder on chain 4663. [Official fee documentation](https://docs.0x.org/evm/0x-swap-api/guides/monetize-your-app-using-swap)
 defines the percentage request and separately returned fee disclosure. The
 reviewed contract's percentage arithmetic governs executable fees. Quoted atomic
 amounts and the zero-residual floor estimate are not an execution equality gate.
 Historical reports retain their historical half-up policy, not current authority.
+
+For ordinary project trades, USDG on either side pays the fee in USDG; otherwise
+native ETH on either side pays it in native ETH. Base/base and project/project
+retain the existing sell-token fallback. WETH is not native ETH. One deterministic
+helper owns selection. Output fee amounts are provider-returned output units,
+never gross-input arithmetic. Gross input, exact approval and native value remain
+bound to the sell asset independently of fee denomination. The legacy serialized
+`PROVIDER_NATIVE_INPUT_FEE` discriminator is retained for compatibility; it does
+not imply that feeAsset equals inputAsset. See [implementation and measurements](TRADING_ECONOMICS_QUOTE_SPEED.md).
 
 ### Explicit runtime and action review
 
@@ -45,14 +55,15 @@ Mandatory checks remain:
 
 1. The firm response comes from the fixed server-side Swap API v2 AllowanceHolder
    path with chain 4663, exact assets/gross amount/user recipient and the canonical
-   25-bps sell-token treasury request. No browser-supplied transaction is trusted.
+   25-bps direction-aware base-currency treasury request. No browser-supplied transaction is trusted.
 2. Registry eligibility, explicit reviewed runtime, canonical AllowanceHolder and
    its runtime remain checked. An API-returned address is not sufficient authority.
 3. The outer canonical `exec`/`execute` envelope binds exact value or gross token
    allowance/operator, selected buy asset, user recipient and positive minimum.
    The first action binds native value or the exact ERC20 gross transfer to Settler.
-4. BASIC fee prefix at index 1 binds sell asset, treasury, 25 bps and the reviewed
-   transfer/amount-patch semantics. Recognizable duplicate treasury transfers reject; another destination is not
+4. The single canonical BASIC fee binds the selected fee asset, treasury, 25 bps
+   and reviewed transfer/amount-patch semantics. Input fees retain index 1; output
+   fees occur in the action sequence before the outer final minimum/transfer. Recognizable duplicate treasury transfers reject; another destination is not
    classified as a competing RMT fee from its proportion alone. Provider fee disclosure remains separate;
    internal transfers are not automatically fees or settled revenue.
 5. Early `CHECK_SLIPPAGE` remains rejected because it zeroizes the outer tuple.

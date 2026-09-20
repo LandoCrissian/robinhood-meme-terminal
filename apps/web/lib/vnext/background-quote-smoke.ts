@@ -22,7 +22,7 @@ const response = {
   }]
 } as VNextQuoteResponse;
 
-assert.equal(VNEXT_BACKGROUND_QUOTE_REFRESH_MS, 4_000);
+assert.equal(VNEXT_BACKGROUND_QUOTE_REFRESH_MS, 9_000);
 assert.equal(cachedVNextQuoteForRequest({ requestKey: "wallet:buy:1:usdg:token", response }, "wallet:buy:1:usdg:token"), response);
 assert.equal(cachedVNextQuoteForRequest({ requestKey: "wallet:buy:1:usdg:token", response }, "wallet:buy:2:usdg:token"), undefined);
 assert.equal(isVNextQuoteReusableForTrade(response, now), true, "publicly admitted execution providers can reuse a fresh quote before exact verification");

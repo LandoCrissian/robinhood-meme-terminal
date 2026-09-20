@@ -9,6 +9,7 @@ import type {
 } from "../../lib/external-market";
 import type { VNextEcosystemIntelligence } from "../../lib/vnext/ecosystem-intelligence";
 import { VNEXT_CLIENT_REFRESH_POLICY } from "../../lib/vnext/client-refresh-policy";
+import { cachedPublicWorkspaceRead, readPublicWorkspace } from "../../lib/vnext/public-workspace-read";
 import { useVisibilityRefresh } from "./use-visibility-refresh";
 
 export type VNextAssetWorkspaceStatus = "idle" | "loading" | "ready" | "partial" | "stale" | "unavailable";
@@ -114,68 +115,57 @@ export function useVNextAssetWorkspace(address?: string, pairAddress?: string, e
     const lookup = new URLSearchParams({ contract: address });
     const workspace = new URLSearchParams({ address });
     if (pairAddress) workspace.set("pair", pairAddress);
-    try {
-      const [marketResult, resolutionResult] = await Promise.allSettled([
-        externalMarketLookup
-          ? fetch(`/api/markets/external?${lookup}`).then(async (response) => ({
-              ok: response.ok,
-              payload: await response.json() as ExternalMarketResponse
-            }))
-          : Promise.resolve({ ok: false, payload: {} as ExternalMarketResponse }),
-        fetch(`/api/vnext/asset-workspace?${workspace}`).then(async (response) => ({
-          ok: response.ok,
-          payload: await response.json() as WorkspaceResolutionResponse
-        }))
-      ]);
-      if (id !== requestId.current) return;
-      const nextMarket = marketResult.status === "fulfilled" && marketResult.value.ok
-        ? exactWorkspaceMarket(marketResult.value.payload, address, pairAddress)
-        : undefined;
-      const nextResolution = resolutionResult.status === "fulfilled" && resolutionResult.value.ok
-        ? validResolution(resolutionResult.value.payload, address)
-        : undefined;
-      const nextStockAssetRelationships = resolutionResult.status === "fulfilled" && resolutionResult.value.ok
-        ? mergeWorkspaceStockAssetRelationships(
-            address,
-            resolutionResult.value.payload.stockAssetRelationships,
-            nextMarket
-          )
-        : [];
-      if (!nextMarket && !nextResolution && !nextStockAssetRelationships.length) throw new Error("Asset workspace unavailable.");
-      currentAddress.current = address;
-      hasSnapshot.current = true;
-      if (nextMarket) setMarket(nextMarket);
-      else if (!sameAsset) setMarket(undefined);
-      if (nextResolution) setResolution(nextResolution);
-      else if (!sameAsset) setResolution(nextMarket?.resolution);
-      if (resolutionResult.status === "fulfilled" && resolutionResult.value.ok) {
-        setEcosystem(resolutionResult.value.payload.ecosystem);
-      } else if (!sameAsset) {
-        setEcosystem(undefined);
-      }
-      if (resolutionResult.status === "fulfilled" && resolutionResult.value.ok) {
-        setStockAssetCoverage(resolutionResult.value.payload.stockAssetCoverage);
-        setStockAssetRelationships(nextStockAssetRelationships);
-      } else if (!sameAsset) {
-        setStockAssetCoverage(undefined);
-        setStockAssetRelationships([]);
-      }
-      setObservedAt(
-        marketResult.status === "fulfilled" ? marketResult.value.payload.updatedAt
-          : resolutionResult.status === "fulfilled" ? resolutionResult.value.payload.updatedAt
-            : new Date().toISOString()
-      );
-      setStatus(
-        marketResult.status === "fulfilled" && marketResult.value.payload.stale
-          ? "stale"
-          : nextMarket && (nextResolution || nextMarket.resolution)
-            ? "ready"
-            : "partial"
-      );
-    } catch {
-      if (id !== requestId.current) return;
-      setStatus(sameAsset && hasSnapshot.current ? "stale" : "unavailable");
+    currentAddress.current = address;
+    const coreUrl = `/api/vnext/asset-workspace?${workspace}&view=core`;
+    const enrichmentUrl = `/api/vnext/asset-workspace?${workspace}&view=enrichment`;
+    const marketUrl = `/api/markets/external?${lookup}`;
+    const current = () => id === requestId.current;
+    let success = sameAsset && hasSnapshot.current;
+    let coreSnapshot: WorkspaceResolutionResponse | undefined;
+    let marketSnapshot: ExternalMarket | undefined;
+    let marketStale = false;
+    const publishCore = (payload: WorkspaceResolutionResponse) => {
+      if (!current()) return;
+      const resolution = validResolution(payload, address);
+      if (!resolution && !payload.stockAssetRelationships?.length) return;
+      coreSnapshot = payload;
+      success = true; hasSnapshot.current = true;
+      setResolution(resolution);
+      setStockAssetCoverage(payload.stockAssetCoverage);
+      setStockAssetRelationships(mergeWorkspaceStockAssetRelationships(address, payload.stockAssetRelationships, marketSnapshot));
+      setObservedAt(payload.updatedAt); setStatus("partial");
+    };
+    const publishMarket = (payload: ExternalMarketResponse) => {
+      if (!current()) return;
+      const market = exactWorkspaceMarket(payload, address, pairAddress);
+      if (!market) return;
+      marketSnapshot = market; marketStale = Boolean(payload.stale);
+      success = true; hasSnapshot.current = true; setMarket(market);
+      setStockAssetRelationships(mergeWorkspaceStockAssetRelationships(address, coreSnapshot?.stockAssetRelationships, market));
+      setObservedAt(payload.updatedAt); setStatus(payload.stale ? "stale" : "partial");
+    };
+    if (!sameAsset) {
+      setMarket(undefined); setResolution(undefined); setEcosystem(undefined); setObservedAt(undefined);
+      setStockAssetCoverage(undefined); setStockAssetRelationships([]); hasSnapshot.current = false;
+      const cachedCore = cachedPublicWorkspaceRead<WorkspaceResolutionResponse>(coreUrl);
+      const cachedMarket = externalMarketLookup ? cachedPublicWorkspaceRead<ExternalMarketResponse>(marketUrl) : undefined;
+      if (cachedCore) publishCore(cachedCore);
+      if (cachedMarket) publishMarket(cachedMarket);
+      if (success) setStatus("stale");
     }
+    // Each section publishes as soon as it resolves. Optional intelligence and
+    // external activity never hold core identity/controls behind Promise.all.
+    const core = readPublicWorkspace<WorkspaceResolutionResponse>(coreUrl).then(publishCore);
+    const marketRead = externalMarketLookup ? readPublicWorkspace<ExternalMarketResponse>(marketUrl).then(publishMarket) : Promise.resolve();
+    const enrichment = readPublicWorkspace<WorkspaceResolutionResponse>(enrichmentUrl).then(payload => {
+      if (current()) setEcosystem(payload.ecosystem);
+    });
+    const results = await Promise.allSettled([core, marketRead, enrichment]);
+    if (!current()) return;
+    if (!success) setStatus("unavailable");
+    else if (marketStale || results.some(result => result.status === "rejected")) setStatus(sameAsset ? "stale" : "partial");
+    else setStatus(coreSnapshot && (!externalMarketLookup || marketSnapshot) ? "ready" : "partial");
+
   }, [address, externalMarketLookup, pairAddress]);
 
   useVisibilityRefresh(() => refresh(true), VNEXT_CLIENT_REFRESH_POLICY.assetWorkspaceMs, {

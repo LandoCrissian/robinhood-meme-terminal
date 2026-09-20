@@ -25,7 +25,9 @@ function encodeQuote(body, recipient, marker = '0x12345678') {
   const actions = [nativeSell
     ? action('NATIVE_CHECK',[BigInt(Math.floor(Date.now()/1000)+600),BigInt(body.sellAmount)])
     : action('TRANSFER_FROM',[settler,{permitted:{token:body.sellToken,amount:BigInt(body.sellAmount)},nonce:0n,deadline:2n**64n-1n},'0x'])];
-  actions.push(transfer(body.sellToken,basis/400n,treasury));
+  const rmtFeeToken = body.fees?.integratorFee?.token ?? body.sellToken;
+  const outputFee = rmtFeeToken.toLowerCase() !== body.sellToken.toLowerCase();
+  if (!outputFee) actions.push(transfer(rmtFeeToken,basis/400n,treasury));
   const fee = body.fees?.zeroExFee;
   if(fee?.token.toLowerCase()===body.sellToken.toLowerCase()) actions.push(transfer(body.sellToken,basis*15n/10000n,provider));
   if(nativeSell) actions.push(basic(native,basis,weth,4n,'0xd0e30db0'+'0'.repeat(64)));
@@ -33,6 +35,7 @@ function encodeQuote(body, recipient, marker = '0x12345678') {
   actions.push(action('UNISWAPV3',[settler,basis,path,0n]));
   if(body.buyToken.toLowerCase()===native) actions.push(basic(weth,basis,weth,4n,'0x2e1a7d4d'+'0'.repeat(64)));
   if(fee?.token.toLowerCase()===body.buyToken.toLowerCase()) actions.push(transfer(body.buyToken,basis*15n/10000n,provider));
+  if (outputFee) actions.push(transfer(rmtFeeToken,basis/400n,treasury));
   const data = encodeFunctionData({ abi: settlerAbi, functionName: 'execute', args: [{ recipient,
     buyToken: body.buyToken, minAmountOut: BigInt(body.executableMinimumForTest ?? body.minBuyAmount) }, body.actionsForTest ?? actions, keccak256(marker)] });
   return body.transaction.to.toLowerCase() === holder ? encodeFunctionData({ abi: holderAbi, functionName: 'exec', args: [settler, nativeSell ? zero : body.sellToken, BigInt(body.sellAmount), settler, data] }) : data;

@@ -1,3 +1,4 @@
+import { runTradingProductBrowser } from './trading-product-browser.mjs';
 import { runZeroXFirmCommitmentJourneys } from "./zerox-browser-firm-commitment.mjs";
 import { hotPathInventory, runHotPathBrowserAcceptance } from './execution-hot-path-browser.mjs';
 import assert from 'node:assert/strict';
@@ -15,7 +16,7 @@ const root = fileURLToPath(new URL('../../', import.meta.url));
 const requireWeb = createRequire(path.join(root, 'apps/web/package.json'));
 const { encodeAbiParameters, decodeFunctionData, encodeFunctionResult, parseAbi, keccak256, toFunctionSelector, multicall3Abi } = requireWeb('viem');
 requireWeb('tsx/cjs');
-const { zeroXIntegratorFeeEstimateAtomic } = requireWeb('./lib/vnext/zero-x-settlement.ts');
+const { zeroXIntegratorFeeEstimateAtomic, zeroXFeeAsset, fromZeroXToken, toZeroXToken } = requireWeb('./lib/vnext/zero-x-settlement.ts');
 const { RMT_CURATED_MARKET_REGISTRY: seeds } = requireWeb('./lib/vnext/curated-market-registry.ts');
 const requireRoot = createRequire(path.join(root, 'package.json'));
 const { chromium } = requireRoot('playwright');
@@ -184,7 +185,7 @@ function external(input) {
     assert.equal(q.slippageBps, undefined);
     assert.equal(q.swapFeeRecipient.toLowerCase(), treasury);
     assert.equal(q.swapFeeBps, '25');
-    assert.equal(q.swapFeeToken, q.sellToken);
+    assert.equal(q.swapFeeToken.toLowerCase(), (process.env.RMT_PRODUCT_BASELINE === 'true' ? q.sellToken : toZeroXToken(zeroXFeeAsset(fromZeroXToken(q.sellToken), fromZeroXToken(q.buyToken)))).toLowerCase());
     assert.notEqual(q.sellToken, `0x${'0'.repeat(40)}`);
     assert.equal(q.taker.toLowerCase(), wallet);
     assert.equal(q.recipient.toLowerCase(), wallet);
@@ -197,7 +198,7 @@ function external(input) {
       liquidityAvailable: true, chainId: 4663, sellToken: q.sellToken, buyToken: q.buyToken,
       sellAmount: q.sellAmount, buyAmount: '1000000000000000000000', minBuyAmount: '990000000000000000000',
       totalNetworkFee: '9000000000000',
-      fees: { integratorFee: { token: q.sellToken, amount: zeroXIntegratorFeeEstimateAtomic(q.sellAmount), type: 'volume' }, zeroExFee: { token: q.buyToken, amount: '1000000000000000000', type: 'volume' }, gasFee: null },
+      fees: { integratorFee: { token: q.swapFeeToken, amount: zeroXIntegratorFeeEstimateAtomic(q.swapFeeToken.toLowerCase() === q.sellToken.toLowerCase() ? q.sellAmount : '1000000000000000000000'), type: 'volume' }, zeroExFee: { token: q.buyToken, amount: '1000000000000000000', type: 'volume' }, gasFee: null },
       issues: { allowance: nativeSell || state.approved ? null : { actual: '0', spender: holder }, balance: null, simulationIncomplete: false, invalidSourcesPassed: [] },
       allowanceTarget: nativeSell ? null : holder, blockNumber: '50000000', zid: state.approved ? '0x222222222222222222222222' : '0x111111111111111111111111',
       transaction: { to: nativeSell ? '0x0000000000000000000000000000000000012345' : holder, data: state.approved ? '0x1234567822222222' : '0x1234567811111111', value: nativeSell ? q.sellAmount : '0', gas: '180000', gasPrice: '50000000' }
@@ -266,11 +267,13 @@ export async function runZeroXBrowserAcceptance() {
   try {
     for (let attempt = 0; ; attempt++) {
       if (child.exitCode !== null) throw new Error(`Local server exited: ${serverLog}`);
-      if (await fetch(base).then((r) => r.ok).catch(() => false)) break;
-      if (attempt >= 30) throw new Error('Local acceptance server did not become ready');
+      if (await fetch(base).then(async r => { if (!r.ok && attempt === 30) serverLog += ` HTTP ${r.status}: ${(await r.text()).slice(0,300)}`; return r.ok; }).catch(e => { if(attempt === 30) serverLog += String(e); return false; })) break;
+      if (attempt >= 30) throw new Error(`Local acceptance server did not become ready: ${serverLog}`);
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
     browser = await chromium.launch({ headless: true });
+    if (process.env.RMT_PRODUCT_METRICS_ONLY === 'true') { results.push(...await runTradingProductBrowser({ browser, base, identity, external, state, wallet, token, output })); return; }
+    results.push(...await runTradingProductBrowser({ browser, base, identity, external, state, wallet, token, output }));
     results.push(...await runHotPathBrowserAcceptance({ browser, base, identity, state, wallet, usdg, stock: routeFixtures.assets.stock }));
     for (const [name, viewport] of (process.env.RMT_ACCEPTANCE_ROUTE_ON_DEMAND_ONLY === 'true' ? [] : [['desktop', { width: 1440, height: 900 }], ['mobile', { width: 390, height: 844 }]])) {
       const context = await browser.newContext({ viewport, ...(name === 'mobile' ? { isMobile: true, hasTouch: true } : {}) });
@@ -280,7 +283,7 @@ export async function runZeroXBrowserAcceptance() {
         const cancel = window.clearTimeout.bind(window);
         window.__QUOTE_SCHEDULER__ = { scheduled: 0, canceled: 0, fired: 0 };
         window.setTimeout = (callback, delay, ...args) => {
-          if (delay !== 120 || typeof callback !== 'function') return schedule(callback, delay, ...args);
+          if (delay !== 400 || typeof callback !== 'function') return schedule(callback, delay, ...args);
           window.__QUOTE_SCHEDULER__.scheduled++;
           const id = schedule(() => { timers.delete(id); window.__QUOTE_SCHEDULER__.fired++; callback(...args); }, delay);
           timers.add(id);

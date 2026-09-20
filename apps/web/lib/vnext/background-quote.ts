@@ -5,8 +5,8 @@ export interface VNextCachedQuote {
   response: VNextQuoteResponse;
 }
 
-export const VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS = 120;
-export const VNEXT_BACKGROUND_QUOTE_REFRESH_MS = 4_000;
+export const VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS = 400;
+export const VNEXT_BACKGROUND_QUOTE_REFRESH_MS = 9_000;
 export const VNEXT_TRADE_QUOTE_MAX_AGE_MS = 6_000;
 const MIN_EXECUTION_LIFETIME_MS = 5_000;
 
