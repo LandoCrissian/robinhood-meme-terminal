@@ -85,8 +85,15 @@ export function runZeroXRobinhoodRouteSmoke() {
   const tickOffset = 2 + (3 + 20 + 1 + 20 + 3) * 2;
   rejects(mutate(6, a => { a[6] = fill.slice(0, tickOffset) + "000000" + fill.slice(tickOffset + 6); }), "invalid tick spacing");
   rejects(mutate(6, a => { a[6] = v4Fill(routeTokens.canna, zeroAddress, ("0x" + "00".repeat(8193)) as Hex); }), "hook data limit");
-  for (const index of [4, 5]) for (const [arg, value] of [[0, other], [1, 1n], [2, other], [3, 36n], [4, "0xdeadbeef"], [4, "0x2e1a7d4d" + hex(1, 32)]] as const) {
+  for (const index of [4, 5]) for (const [arg, value] of [[0, other], [1, 0n], [1, 1_000_001n], [2, other], [3, 36n], [4, "0xdeadbeef"], [4, "0x2e1a7d4d" + hex(1, 33)]] as const) {
     rejects(mutate(index, a => { a[arg] = value; }), "wrap/unwrap binding");
+  }
+  rejects(mutate(4, a => { a[4] = "0x2e1a7d4d" + hex(0, 32); }), "native cannot withdraw WETH");
+  rejects(mutate(5, a => { a[4] = "0xd0e30db0" + hex(0, 32); }), "WETH cannot deposit native");
+  for (const index of [4, 5]) {
+    assert.equal(verifyZeroXEncodedFee({ ...input, data: mutate(index, a => {
+      a[1] = 500_000n; a[4] = a[4].slice(0, 10) + hex(123456789n, 32);
+    }) }).count, 1, "overwritten wrap/unwrap literal is not executable authority"); positives++;
   }
   rejects(mutateZeroXActions(data, a => { a.splice(4, 0, a[0]); }), "second withdrawal");
   for (const [label, change] of [["swapped routing", (a: Hex[]) => { [a[3], a[6]] = [a[6], a[3]]; }],

@@ -101,7 +101,9 @@ encoding; onchain NotesLib additionally rejects hash collisions.
 
 Routes may compose and split through known acquired/produced currencies; they
 need not fit one routing action. Canonical BASIC deposit/withdraw has fixed WETH,
-selector, amount-patch offset 4, zero placeholder and full balance proportion.
+selector, amount-patch offset 4, one overwritten uint256 word and a nonzero
+proportion no greater than the runtime basis. The original word is not authority:
+BASIC overwrites it before calling WETH, so a nonzero placeholder is not rejected.
 It only changes native/WETH representation inside Settler, never a recipient or
 user withdrawal. Arbitrary BASIC transfers/calls remain rejected in routing.
 
@@ -110,6 +112,14 @@ user withdrawal. Arbitrary BASIC transfers/calls remain rejected in routing.
 "Supported" below means RMT's explicit bounded form, not all possible arguments.
 Contract reachability is not proof the public API emits every listed action.
 No additional live quote was requested for this inventory.
+
+The [official July 31 API changelog](https://docs.0x.org/changelog/2026/7/31)
+documents Robinhood sources including Ekubo V3/ve(3,3), Uniswap V2/V3/V4, Hanji,
+Pancake V2/V3 and numerous additional sources. Those source names confirm this
+is broader than the old RMT grammar, but do not specify the emitted opcode for
+every route. In particular, V2 and Hanji are priority coverage gaps, not claims
+that the provider cannot route them. Generic BASIC integrations remain an
+explicit unreviewed surface rather than being silently admitted.
 
 | Action / entrypoint | RMT classification | Current public-path evidence / remaining boundary |
 | --- | --- | --- |

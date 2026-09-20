@@ -173,10 +173,13 @@ export function verifyZeroXEncodedFee(input: Parameters<typeof decodeZeroXExecut
         if (![toFunctionSelector("deposit()"), toFunctionSelector("withdraw(uint256)")].includes(data.slice(0, 10) as Hex)) fail("UNSUPPORTED_ROUTE");
         const asset = fromZeroXToken(token);
         if (!available.has(asset)) fail("ROUTE_INPUT_MISMATCH");
-        if (proportion !== basis || getAddress(target) !== WETH || offset !== 4n) fail("NATIVE_WRAP_MISMATCH");
+        if (proportion <= 0n || proportion > basis || getAddress(target) !== WETH || offset !== 4n
+          || !/^0x[0-9a-f]{72}$/i.test(data)) fail("NATIVE_WRAP_MISMATCH");
+        // BASIC overwrites this entire uint256 word with the balance-relative
+        // amount before calling WETH. Its original literal is not authority.
         if (asset === zeroAddress && getAddress(token) === ZERO_X_NATIVE_TOKEN
-          && data.toLowerCase() === toFunctionSelector("deposit()") + "0".repeat(64)) routeOutput = WETH;
-        else if (asset === WETH && data.toLowerCase() === toFunctionSelector("withdraw(uint256)") + "0".repeat(64)) routeOutput = zeroAddress;
+          && data.slice(0, 10).toLowerCase() === toFunctionSelector("deposit()")) routeOutput = WETH;
+        else if (asset === WETH && data.slice(0, 10).toLowerCase() === toFunctionSelector("withdraw(uint256)")) routeOutput = zeroAddress;
         else fail("NATIVE_UNWRAP_MISMATCH");
         available.add(routeOutput);
         continue;
