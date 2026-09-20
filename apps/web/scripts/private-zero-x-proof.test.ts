@@ -209,6 +209,14 @@ async function run() {
         assert.equal(result.envelopeDiagnostic?.envelopeReason, mode === "unsupported" ? "UNSUPPORTED_ACTION" : "EARLY_SLIPPAGE");
         assert.equal(result.envelopeDiagnostic?.actionIndex, 2);
         assert.equal(result.envelopeDiagnostic?.envelopeFunction, mode === "unsupported" ? "verifyZeroXEncodedFee" : "decodeZeroXExecutableMinimum");
+        const lines: string[] = []; const writer = new ProofJsonl(line => lines.push(line));
+        writer.emit("PROOF_START"); writer.emit("SOURCE_FINGERPRINT", { path: "fixture", sha256: "a".repeat(64) });
+        writer.beginCase("USDG_TO_CANNACAT"); emitObservedCase(writer, result); writer.finish("COMPLETE");
+        assert.ok(validateProofJsonl(lines.join("")));
+        const emitted = lines.map(line => JSON.parse(line));
+        assert.equal(emitted.filter(r => r.type === "QUOTE").length, 1, "rejection evidence must fit one record");
+        assert.equal(emitted.at(-1).truncated, false, "diagnostic fields must not truncate the decisive quote record");
+        assert.equal(emitted.find(r => r.type === "QUOTE").envelopeReason, result.envelopeDiagnostic?.envelopeReason);
       }
       assert.ok(quoteCalls - callsBefore <= 1, "no firm retry");
       if (mode !== "exact_simulation") assert.equal(simulations, before, `no simulation past ${mode} boundary`);
