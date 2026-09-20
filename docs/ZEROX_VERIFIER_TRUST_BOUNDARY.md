@@ -36,8 +36,8 @@ continues to bind the complete exact transaction bytes.
 
 The firm verifier does not catch an envelope failure and continue. Hard checks
 run separately; failures propagate. Only the independent diagnostic parser maps
-its own typed subset failure to `ROUTE_INTROSPECTION_PARTIAL`. Unexpected errors
-are not silently converted into successful verification.
+its own typed subset failure to `ROUTE_INTROSPECTION_PARTIAL`. Parser/ABI errors
+are sanitized inside the inspector; this does not bypass the separate hard checks.
 
 ## Source basis for route-independent protections
 

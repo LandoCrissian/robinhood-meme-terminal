@@ -58,7 +58,7 @@ export function decodeZeroXExecutableMinimum(input: {
     // Reject early transfers: only the final, post-fee global check is admitted.
     actions.forEach((action, index) => {
       if (action.length < 10) fail("MALFORMED_ACTION", index);
-      if (action.slice(0, 10) === earlySlippage) fail("EARLY_SLIPPAGE", index, "CHECK_SLIPPAGE");
+      if (action.slice(0, 10).toLowerCase() === earlySlippage) fail("EARLY_SLIPPAGE", index, "CHECK_SLIPPAGE");
     });
     return { minimumAtomic: slippage.minAmountOut.toString(), settlerTarget: target, actions };
   } catch (cause) {
@@ -186,7 +186,7 @@ export type ZeroXEnvelopeInput = Parameters<typeof decodeZeroXExecutableMinimum>
 
 /** Non-authoritative diagnostics. Hard checks are evaluated separately and are
  * never caught here. A partial parse is not evidence that simulation passed.
- * Unexpected programming errors are not disguised as unsupported routes.
+ * Parser exceptions are normalized to bounded diagnostics inside the inspector.
  */
 export function inspectZeroXRoute(input: ZeroXEnvelopeInput) {
   try {
