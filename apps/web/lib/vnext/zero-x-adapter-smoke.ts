@@ -1,3 +1,4 @@
+import { runZeroXTrustBoundarySmoke } from "./zero-x-trust-boundary-smoke";
 import { runZeroXRobinhoodRouteSmoke } from "./zero-x-robinhood-route-smoke";
 import { runZeroXLiquidityBookSmoke } from "./zero-x-liquidity-book-smoke";
 import assert from "node:assert/strict";
@@ -41,6 +42,7 @@ function response(inputAsset: string, outputAsset: string) {
 }
 
 async function run() {
+runZeroXTrustBoundarySmoke();
 runZeroXLiquidityBookSmoke();
 try {
   process.env.RMT_ZEROX_API_KEY = "server-only-test-key";

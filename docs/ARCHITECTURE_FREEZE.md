@@ -8,6 +8,14 @@
 
 This document records the durable product and system boundaries. It supersedes historical launchpad, V7 creator, profile, community and older terminal-roadmap language. It does not authorize deployment, production configuration changes, provider activation, fees, autonomous execution or destructive migration.
 
+
+**Current 0x trust boundary:** owner directive
+`RMT_TRADING_TERMINAL_COMPLETION_AUTHORITY_V1` delegates internal DEX routing,
+intermediate assets and hooks to authenticated 0x execution. RMT independently
+verifies hard user input/output/fee-request, deployment, wallet, commitment,
+simulation and recovery invariants. Route introspection is nonblocking defense
+in depth. See [the current boundary](ZEROX_VERIFIER_TRUST_BOUNDARY.md).
+
 ## Product
 
 RMT is becoming the owner-curated market operating layer for Robinhood Chain:

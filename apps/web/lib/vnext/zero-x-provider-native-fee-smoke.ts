@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { decodeFunctionData, encodeFunctionData, getAddress, keccak256, parseAbi, zeroAddress, type Hex } from "viem";
-import { verifyZeroXEncodedFee, ZERO_X_PPM_SETTLER_RUNTIME_HASH } from "../server/vnext-zero-x-execution-decoder";
+import { verifyZeroXEncodedFee, inspectZeroXRoute, ZERO_X_PPM_SETTLER_RUNTIME_HASH } from "../server/vnext-zero-x-execution-decoder";
 import { requireZeroXDeployment } from "../server/vnext-zero-x-deployment-authority";
 import { TradeExecutionFailure } from "./trade-failure";
 import { RMT_ZERO_X_FEE_TREASURY, ZERO_X_NATIVE_TOKEN } from "./zero-x-settlement";
@@ -48,9 +48,7 @@ export const feeMutations: [string, (actions: Hex[]) => void][] = [
   ["split fee", a => { changeFee(a, x => { x[1] /= 2n; }); a.splice(2, 0, a[1]); }],
   ["noncanonical fee bytes", a => { a[1] = `${a[1]}00`; }],
   ["extra treasury transfer", a => { a.push(a[1]); }],
-  ["competing integrator", a => { const copy = [...a]; changeFee(copy, x => changeRecipient(x, other)); a.splice(2, 0, copy[1]); }],
   ["unsafe ordering", a => { [a[0], a[1]] = [a[1], a[0]]; }],
-  ["unknown action", a => { a.push("0xdeadbeef"); }],
   ["early slippage", a => { a.splice(2, 0, encodeFunctionData({ abi: parseAbi(["function CHECK_SLIPPAGE(bool exact)"]), functionName: "CHECK_SLIPPAGE", args: [false] })); }],
   ["wrong amount patch", a => changeFee(a, x => { x[3] = 4n; })]
 ];
@@ -84,7 +82,7 @@ export async function runZeroXProviderNativeFeeSmoke() {
           args: [other, body.buyToken, 1_000_000n, basis] });
         const withSurplus = mutateZeroXActions(withProvider.data, a => { a.splice(a.length - (feeAsset === buy ? 1 : 0), 0, surplusData); });
         assert.equal(verifyZeroXEncodedFee({ ...withProvider, data: withSurplus }).count, 1); positives++;
-        assert.throws(() => verifyZeroXEncodedFee({ ...withProvider, providerFeeAsset: null, providerFeeAtomic: null })); negatives++;
+        assert.equal(inspectZeroXRoute({ ...withProvider, providerFeeAsset: null, providerFeeAtomic: null }).status, "ROUTE_INTROSPECTION_PARTIAL");
         assert.throws(() => verifyZeroXEncodedFee({ ...withProvider, data: mutateZeroXActions(withProvider.data, a => {
           const providerIndex = feeAsset === sell ? 2 : a.length - 1;
           const x = [...decodeFunctionData({ abi: basic, data: a[providerIndex] }).args];
@@ -100,8 +98,17 @@ export async function runZeroXProviderNativeFeeSmoke() {
             hooks ? (fills.slice(0, 90) + other.slice(2) + fills.slice(130)) as Hex : fills, 0n] });
         const pancakeData = mutateZeroXActions(input.data, a => { a[2] = pancake(false); });
         assert.equal(verifyZeroXEncodedFee({ ...input, data: pancakeData }).count, 1); positives++;
-        assert.throws(() => verifyZeroXEncodedFee({ ...input, data: mutateZeroXActions(input.data, a => { a[2] = pancake(true); }) })); negatives++;
+        const hookInput = { ...input, data: mutateZeroXActions(input.data, a => { a[2] = pancake(true); }) };
+        assert.equal(verifyZeroXEncodedFee(hookInput).count, 1); positives++;
+        assert.equal(inspectZeroXRoute(hookInput).status, "ROUTE_INTROSPECTION_PARTIAL");
       }
+      // A sell-token transfer to another recipient can fund an internal route.
+      // Matching the fee's proportion alone is not proof of another RMT fee.
+      const additionalTransfer = mutateZeroXActions(input.data, a => {
+        const copy = [...a]; changeFee(copy, x => changeRecipient(x, other)); a.splice(2, 0, copy[1]);
+      });
+      assert.equal(verifyZeroXEncodedFee({ ...input, data: additionalTransfer }).count, 1);
+      assert.equal(inspectZeroXRoute({ ...input, data: additionalTransfer }).status, "ROUTE_INTROSPECTION_PARTIAL"); positives++;
       for (const [label, mutate] of feeMutations) {
         assert.throws(() => verifyZeroXEncodedFee({ ...input, data: mutateZeroXActions(input.data, mutate) }),
           error => error instanceof TradeExecutionFailure && error.code === "EXECUTION_ENVELOPE_REJECTED", label); negatives++;

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createRequire } from "node:module";
 import { getAddress, type Hex } from "viem";
-import { decodeZeroXExecutableMinimum, verifyZeroXEncodedFee, ZERO_X_PPM_SETTLER_RUNTIME_HASH } from "../server/vnext-zero-x-execution-decoder";
+import { decodeZeroXExecutableMinimum, verifyZeroXEncodedFee, inspectZeroXRoute, ZERO_X_PPM_SETTLER_RUNTIME_HASH } from "../server/vnext-zero-x-execution-decoder";
 import { ExecutionEnvelopeFailure, executionFailureResponse, structureTradeFailure } from "./trade-failure";
 import { captureResponseDiagnostic, consumeResponseDiagnostic, appendResponseDiagnostic, serializeResponseDiagnostic } from "./quote-response-diagnostic";
 import { feeMutations, mutateZeroXActions } from "./zero-x-provider-native-fee-smoke";
@@ -26,16 +26,14 @@ test("recipient rejection retains exact decoder invariant without calldata", () 
     return true;
   });
 });
-test("supported synthetic exact-pair grammar remains accepted; unknown action remains rejected", () => {
+test("unknown internal route becomes bounded nonblocking introspection", () => {
   assert.equal(verifyZeroXEncodedFee(input).rateBps, 25);
   const data = mutateZeroXActions(input.data, actions => { actions[2] = "0xdeadbeef"; });
-  assert.throws(() => verifyZeroXEncodedFee({...input,data}), (error: unknown) => {
-    assert.ok(error instanceof ExecutionEnvelopeFailure);
-    assert.equal(error.envelope.envelopeReason, "UNSUPPORTED_ACTION");
-    assert.equal(error.envelope.actionIndex, 2);
-    assert.equal(error.envelope.actionKind, "0xdeadbeef");
-    return true;
-  });
+  assert.equal(verifyZeroXEncodedFee({...input,data}).rateBps, 25);
+  const result = inspectZeroXRoute({...input,data});
+  assert.equal(result.status, "ROUTE_INTROSPECTION_PARTIAL");
+  assert.deepEqual(result.diagnostic, { envelopeReason: "UNSUPPORTED_ACTION", envelopeFunction: "inspectZeroXRoute", actionIndex: 2, actionKind: "0xdeadbeef" });
+  assert.equal(JSON.stringify(result).includes(data), false);
 });
 test("HTTP, server event and copied diagnostic retain only bounded envelope fields", async () => {
   const id="aa149dd2-acc6-4a4b-8a23-2b05ae1fcaf8";
@@ -60,9 +58,9 @@ test("fee and ordering rejections preserve their first invariant and action posi
     ["wrong treasury", "FEE_RECIPIENT_MISMATCH", 1],
     ["wrong token/native-WETH confusion", "FEE_TOKEN_MISMATCH", 1],
     ["zero rate", "FEE_RATE_MISMATCH", 1],
-    ["duplicate fee", "UNSUPPORTED_ROUTE", 2],
+    ["duplicate fee", "DUPLICATE_RMT_FEE", 2],
     ["unsafe ordering", "INPUT_ACTION_MISMATCH", 0],
-    ["extra treasury transfer", "UNSUPPORTED_ROUTE", 3],
+    ["extra treasury transfer", "DUPLICATE_RMT_FEE", 3],
     ["noncanonical fee bytes", "NONCANONICAL_ACTION", 1],
     ["early slippage", "EARLY_SLIPPAGE", 2],
   ] as const;

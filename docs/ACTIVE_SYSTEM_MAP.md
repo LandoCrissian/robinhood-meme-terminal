@@ -5,6 +5,14 @@
 
 **Current execution decision:** `RMT_EXECUTION_AUTHORITY_RECONCILIATION_AND_PRECEDENCE_V1` at base `6a693668ac72bb967217c1f48741aeaf038ff0dd`. Current provider-specific authority: [0x AllowanceHolder](RMT_ZEROX_ALLOWANCE_HOLDER_PUBLIC_EXECUTION_V1.md); hot-path scope: [execution authorities](execution-hot-path-authorities.md). These references govern only their stated domains. Apply [authority resolution](RMT_AGENT_CONTROL_PLANE.md#authority-resolution): durable safety invariants remain binding, newer explicit owner-approved domain facts supersede older general current-state prose, and unresolved genuine conflicts stop for owner review.
 
+
+**Current 0x trust boundary:** owner directive
+`RMT_TRADING_TERMINAL_COMPLETION_AUTHORITY_V1` delegates internal DEX routing,
+intermediate assets and hooks to authenticated 0x execution. RMT independently
+verifies hard user input/output/fee-request, deployment, wallet, commitment,
+simulation and recovery invariants. Route introspection is nonblocking defense
+in depth. See [the current boundary](ZEROX_VERIFIER_TRUST_BOUNDARY.md).
+
 ## Runtime and service ownership
 
 | Domain | Authority | Status | Notes |

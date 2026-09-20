@@ -28,6 +28,7 @@ const native = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee';
 const treasury = '0x61700479a4a1f62584fd3aba2c2b290ea727d2ec';
 const runtime = '0x60006000';
 const executableFixture = requireRoot('./.github/scripts/zerox-execution-fixture.cjs');
+const { runtime: ppmRuntime } = requireRoot('./.github/scripts/fixtures/zerox-ppm-settler-runtime.json');
 const aggregateAbi = parseAbi(['function aggregate3((address target,bool allowFailure,bytes callData)[] calls) payable returns ((bool success,bytes returnData)[] returnData)']);
 const word = (n) => `0x${BigInt(n).toString(16).padStart(64, '0')}`;
 const hex = (n) => `0x${BigInt(n).toString(16)}`;
@@ -128,7 +129,7 @@ function rpc(request) {
       case 'eth_getTransactionCount': result = '0x1'; break;
       case 'eth_getLogs': result = []; break;
       case 'eth_getTransactionReceipt': case 'eth_getTransactionByHash': result = null; break;
-      case 'eth_getCode': if (state.incompatibleRuntime && String(request.params[0]).toLowerCase() === executableFixture.settler) return {jsonrpc:'2.0',id:request.id,result:runtime}; result = String(request.params[0]).toLowerCase() === executableFixture.settler ? executableFixture.runtime : [token, usdg, weth, holder, '0x0000000000000000000000000000000000012345', ...routeFixtures.contracts, ...seeds.flatMap((entry) => [entry.token.toLowerCase(), entry.market.poolAddress])].includes(String(request.params[0]).toLowerCase()) ? runtime : '0x'; break;
+      case 'eth_getCode': if (state.incompatibleRuntime && String(request.params[0]).toLowerCase() === executableFixture.settler) return {jsonrpc:'2.0',id:request.id,result:runtime}; result = String(request.params[0]).toLowerCase() === executableFixture.settler ? (state.providerInternalRoute ? ppmRuntime : executableFixture.runtime) : [token, usdg, weth, holder, '0x0000000000000000000000000000000000012345', ...routeFixtures.contracts, ...seeds.flatMap((entry) => [entry.token.toLowerCase(), entry.market.poolAddress])].includes(String(request.params[0]).toLowerCase()) ? runtime : '0x'; break;
       case 'eth_call': {
         const transaction = request.params[0];
         // Network-boundary fixture for the real wallet-assets deployless multicall.
@@ -201,9 +202,12 @@ function external(input) {
       allowanceTarget: nativeSell ? null : holder, blockNumber: '50000000', zid: state.approved ? '0x222222222222222222222222' : '0x111111111111111111111111',
       transaction: { to: nativeSell ? '0x0000000000000000000000000000000000012345' : holder, data: state.approved ? '0x1234567822222222' : '0x1234567811111111', value: nativeSell ? q.sellAmount : '0', gas: '180000', gasPrice: '50000000' }
     } };
+    if (state.providerInternalRoute) response.body.actionBasisForTest = 1_000_000n;
     if (firm) state.modifyFirm?.(response.body);
     else state.modifyPrice?.(response.body);
     if (firm && ['0x1234567822222222', '0x1234567811111111'].includes(response.body.transaction.data)) response.body.transaction.data = executableFixture.encodeQuote(response.body, wallet, response.body.transaction.data);
+    delete response.body.actionBasisForTest;
+    delete response.body.actionsForTest;
     return response;
   }
   if ((url.origin === 'https://api.0x.org' && url.pathname === '/gasless/price')

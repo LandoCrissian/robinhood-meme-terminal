@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { decodeFunctionData, encodeFunctionData, getAddress, parseAbi, zeroAddress, type Hex } from "viem";
-import { decodeZeroXExecutableMinimum, verifyZeroXEncodedFee, ZERO_X_PPM_SETTLER_RUNTIME_HASH } from "../server/vnext-zero-x-execution-decoder";
+import { decodeZeroXExecutableMinimum, verifyZeroXEncodedFee, inspectZeroXRoute, ZERO_X_PPM_SETTLER_RUNTIME_HASH } from "../server/vnext-zero-x-execution-decoder";
 import { decodeZeroXPackedRoute } from "../server/vnext-zero-x-packed-route";
 import { ZERO_X_NATIVE_TOKEN } from "./zero-x-settlement";
 import { mutateZeroXActions, feeMutations } from "./zero-x-provider-native-fee-smoke";
@@ -59,9 +59,9 @@ export function runZeroXRobinhoodRouteSmoke() {
     const args = [...decoded.args]; change(args); actions[index] = action(decoded.functionName, args);
   });
   const rejects = (changed: Hex, label: string) => {
-    assert.throws(() => verifyZeroXEncodedFee({ ...input, data: changed }), e => e instanceof ExecutionEnvelopeFailure, label); negatives++;
+    assert.equal(inspectZeroXRoute({ ...input, data: changed }).status, "ROUTE_INTROSPECTION_PARTIAL", label); negatives++;
   };
-  for (const [label, change] of feeMutations) rejects(mutateZeroXActions(data, change), label);
+  for (const [label, change] of feeMutations) assert.throws(() => verifyZeroXEncodedFee({ ...input, data: mutateZeroXActions(data, change) }), ExecutionEnvelopeFailure, label);
   for (const index of [3, 6]) {
     for (const [arg, value] of [[0, other], [1, other], [2, 0n], [2, 1_000_001n], [4, 2n ** 128n], [5, 0n], [7, 2n ** 128n]] as const) {
       rejects(mutate(index, args => { args[arg] = value; }), `route ${index} binding ${arg}`);
@@ -126,5 +126,5 @@ export function runZeroXRobinhoodRouteSmoke() {
       assert.equal(verifyZeroXEncodedFee(sample).count, 1); positives++;
     }
   }
-  console.log(`Robinhood route grammar: ${positives} positives / ${negatives} negatives; synthetic CANNACAT 8-action envelope PASS.`);
+  console.log(`Robinhood route grammar: ${positives} positives / ${negatives} partial-introspection signals; synthetic CANNACAT 8-action envelope PASS.`);
 }
