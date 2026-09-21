@@ -85,7 +85,7 @@ const fixtureServer = createServer(async (request, response) => {
         return rpcResult(response, payload.id, `0x${word(32)}${word(1)}${addressWord(CCFF00_COLLECTION)}`);
       }
       if (target === RADAR_SEADROP.toLowerCase() && data.startsWith("0x0b0e8a6e")) {
-        return rpcResult(response, payload.id, `0x${word(12_500_000_000_000_000n)}${word(2)}${word(1_789_488_000)}${word(1_789_495_200)}${word(7)}${word(500)}${word(0)}${word(0)}`);
+        return rpcResult(response, payload.id, `0x${word(12_500_000_000_000_000n)}${word(2)}${word(1_790_369_280)}${word(1_790_376_480)}${word(7)}${word(500)}${word(0)}${word(0)}`);
       }
       return rpcResult(response, payload.id, "0x");
     }
