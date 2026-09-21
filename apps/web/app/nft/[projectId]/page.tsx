@@ -43,6 +43,7 @@ export default async function NftProjectMarketPage({ params, searchParams }: {
   const marketplace = "provider" in model.marketplace ? model.marketplace : null;
   const listing = marketplace?.lowestNormalizedListing ?? null;
   const openSea = model.project.links.find((link) => link.label === "OpenSea collection");
+  const featured = inventory && "items" in inventory && inventory.availability === "AVAILABLE" ? inventory.items.slice(0, 3) : [];
 
   return <main className={styles.page}>
     <nav className={inventoryStyles.breadcrumb} aria-label="NFT Terminal breadcrumb"><Link href="/nft">← NFTs</Link></nav>
@@ -51,6 +52,20 @@ export default async function NftProjectMarketPage({ params, searchParams }: {
       <div className={styles.projectAuthority}><span className={styles.curated}>RMT CURATED</span>{openSea ? <a href={openSea.url} target="_blank" rel="noreferrer">OpenSea ↗</a> : null}</div>
       <a className={styles.contract} href={`${robinhoodChain.blockExplorers.default.url}/address/${collection.contractAddress}`} target="_blank" rel="noreferrer">{collection.contractAddress}</a>
     </header>
+
+    <section className={styles.collectionHero} aria-label={`${model.project.displayName} collection spotlight`}>
+      <div className={styles.collectionHeroCopy}>
+        <span>COLLECTION SPOTLIGHT</span>
+        <h2>Ownership is the signal.<br/><em>The art is the interface.</em></h2>
+        <p>Canonical Robinhood Chain inventory backed by current ownership, onchain tokenURI metadata and independent marketplace evidence.</p>
+      </div>
+      <div className={styles.heroArt}>
+        {featured.length ? featured.map((item, index) => <Link href={`/nft/${model.project.projectId}/${item.tokenId}`} key={item.tokenId} className={styles[`heroArt${index + 1}`]}>
+          <NftItemMedia metadata={item.metadata} alt={`${model.project.displayName} token ${item.tokenId}`} className={styles.heroArtMedia} />
+          <span>#{item.tokenId}</span>
+        </Link>) : <div className={styles.heroArtUnavailable}>CANONICAL ART<br/>AWAITING INDEXER</div>}
+      </div>
+    </section>
 
     <section className={styles.metrics} data-nft-market-tape aria-label={`${model.project.displayName} project market metrics`}>
       <article><span>HOLDERS</span><strong>{onchain?.holderCount ?? "Data unavailable"}</strong><small>{onchain?.completeness === "COMPLETE" ? "Canonical current ownership" : "Awaiting complete canonical history"}</small></article>
