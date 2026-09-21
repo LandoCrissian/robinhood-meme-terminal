@@ -16,6 +16,8 @@ const base = option("--base-url") ?? process.env.RMT_VISUAL_BASE_URL ?? "http://
 const output = path.resolve(option("--output") ?? process.env.RMT_VISUAL_OUTPUT ?? ".artifacts/legion-visual-qa/latest/actual");
 const acceptanceOutput = path.join(output, "release-polish-acceptance");
 const fixturePort = Number(process.env.RMT_VISUAL_FIXTURE_PORT ?? 43111);
+const visualFixtureNow = process.env.RMT_VISUAL_FIXTURE_NOW ?? FIXTURE_NOW;
+const visualFixtureEpochMs = Date.parse(visualFixtureNow);
 const token = TOKEN_MARKETS[1].address;
 const pair = TOKEN_MARKETS[1].pairAddress;
 const failures = [];
@@ -198,7 +200,7 @@ async function createContext(browser, viewport) {
     Date.now = () => fixedNow;
     localStorage.setItem("rmt:trading-terms", JSON.stringify({ version: "2026-07-28", acceptedAt: new Date(fixedNow).toISOString() }));
     localStorage.setItem("rmt:experience-preferences", JSON.stringify({ schemaVersion: 1, onboardingVersion: 1, diagnosticsEnabled: false, updatedAt: fixedNow }));
-  }, { fixedNow: FIXTURE_EPOCH_MS });
+  }, { fixedNow: visualFixtureEpochMs });
   return context;
 }
 
