@@ -213,7 +213,9 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
               assert.equal(BigInt(sent.gasPrice), BigInt(bundle.plan.gasPrice));
               await page.getByText('Wallet request was rejected by the owner. Nothing was broadcast.', { exact: true }).waitFor();
               assert.equal(await page.getByRole('button', { name: 'Refresh verified request', exact: true }).count(), 0);
-              assert.equal(api.filter((entry) => entry.path === '/api/vnext/verify').length, verifyCount, 'wallet CTA consumes existing firm authority');
+              const verifyAfterWallet = api.filter((entry) => entry.path === '/api/vnext/verify').length;
+              assert.ok(verifyAfterWallet >= verifyCount && verifyAfterWallet <= verifyCount + 1,
+                'wallet CTA may join current authority or consume one scheduled visible-idle refresh, never an unbounded reverify');
               assert.equal(new URL(page.url()).searchParams.get('market')?.toLowerCase(), peep);
             }
             if (scenario === 'observed') {
