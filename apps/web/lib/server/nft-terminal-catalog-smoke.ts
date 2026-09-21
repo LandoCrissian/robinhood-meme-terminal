@@ -152,7 +152,7 @@ for (const name of ["Hopium Machines", "CannaCats", "Pixel Hood Minis", "World W
   assert.doesNotMatch(publicSources, new RegExp(name, "i"));
 }
 assert.match(catalogReader, /watchingPublicRmtNftProjects/);
-assert.match(catalogPage, /Tracked for discovery · Not yet RMT admitted/);
+assert.match(catalogPage, /Discovery only · admission pending/);
 assert.doesNotMatch(publicSources, /HoodStreet|discoveryProvenance/i);
 assert.doesNotMatch(catalogPage, />\s*(BUY|LIST|OFFER|FULFILL|SIGN|SUBMIT|ACCEPT|SWEEP)\s*</i);
 console.info("NFT Terminal catalog admission, degradation, preview, and navigation smoke: PASS");
