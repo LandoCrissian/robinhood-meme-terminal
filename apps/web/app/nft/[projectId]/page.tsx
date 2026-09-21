@@ -94,8 +94,14 @@ export default async function NftProjectMarketPage({ params, searchParams }: {
         : null}
     </section>
 
+    <section className={styles.activityPulse} aria-label="Collection intelligence">
+      <div><span>COLLECTION INTELLIGENCE</span><strong>{onchain?.recentActivity.length ?? 0}</strong><small>RECENT ONCHAIN EVENTS</small></div>
+      <div><span>MARKETPLACE SIGNAL</span><strong>{marketplace?.recentProviderSales.length ?? 0}</strong><small>RECENT OPENSEA REPORTS</small></div>
+      <p>Chain activity and marketplace reports are intentionally kept as separate authorities. RMT shows both without turning provider claims into onchain facts.</p>
+    </section>
+
     <section className={styles.ledger} data-nft-evidence-ledger aria-labelledby="evidence-ledger-heading">
-      <header className={styles.ledgerHead}><p>EVIDENCE LEDGER</p><h2 id="evidence-ledger-heading">Project activity</h2><span>Independent authorities · deterministic ordering</span></header>
+      <header className={styles.ledgerHead}><p>LIVE EVIDENCE LEDGER</p><h2 id="evidence-ledger-heading">What&apos;s happening now</h2><span>Onchain movement × marketplace signal</span></header>
       <div className={styles.columns}>
         <section className={styles.panel}><div className={styles.panelHead}><div><p>CANONICAL CHAIN EVIDENCE</p><h3>Recent project activity</h3></div><span>{onchain?.availability ?? "UNAVAILABLE"}</span></div>
           {onchain?.recentActivity.length ? <ol className={styles.feed}>{onchain.recentActivity.map((event) => <li key={`${event.transactionHash}:${event.logIndex}:${event.movementIndex}`}><div><b className={styles[event.kind.toLowerCase()]}>{event.kind}</b><span>Token #{event.tokenId} · amount {event.amount}</span></div><p>{short(event.from)} → {short(event.to)}</p><small>Block {event.blockNumber} · {short(event.transactionHash)} · market meaning not established</small></li>)}</ol> : <p className={styles.empty}>Canonical recent activity is currently unavailable.</p>}
