@@ -211,7 +211,18 @@ export default async function NftTerminalCatalogPage({ searchParams }: {
       {views.map((item) => <Link href={item.href} key={item.value} aria-current={view === item.value ? "page" : undefined}>{item.label}</Link>)}
     </nav>
 
-    <p className={styles.scopeNote}>Discover Robinhood Chain mints, then enter RMT-curated Project Markets with canonical ownership and marketplace evidence.</p>
+    <section className={styles.discoveryHero} aria-label="RMT NFT discovery">
+      <div>
+        <span className={styles.discoveryKicker}>LIVE NFT INTELLIGENCE · ROBINHOOD CHAIN</span>
+        <h2>See the collection.<br/><em>See what&apos;s actually happening.</em></h2>
+        <p>Live mint discovery, canonical ownership, marketplace evidence and token-bound identity—without pretending discovery is admission.</p>
+      </div>
+      <div className={styles.discoveryStats}>
+        <article><strong>{catalog.projects.length}</strong><span>RMT ACTIVE</span></article>
+        <article><strong>{catalog.watchingCollections.length}</strong><span>ON OUR RADAR</span></article>
+        <article><strong>4663</strong><span>ROBINHOOD CHAIN</span></article>
+      </div>
+    </section>
 
     <NftMintExecutionRecovery />
 
