@@ -1,4 +1,4 @@
-export const FIXTURE_NOW = "2026-08-28T12:00:00.000Z";
+export const FIXTURE_NOW = "2026-09-20T21:00:00.000Z";
 export const FIXTURE_EPOCH_MS = Date.parse(FIXTURE_NOW);
 export const CCFF00_COLLECTION = "0x505A22Ffed8d37ebE580FfD98d2Cdb0021189146";
 export const FIXTURE_OWNER = "0x1111111111111111111111111111111111111111";
@@ -46,7 +46,7 @@ export const NFT_MINT_RADAR_PAGES = {
     active_stage: radarStage("live", "2026-08-01T00:00:00.000Z", "2036-09-01T00:00:00.000Z"),
   })], next: null },
   upcoming: { drops: [
-    radarDrop("legion-upcoming-one", "Robinhood Relics", { contract_address: RADAR_DROP_COLLECTION, next_stage: radarStage("upcoming-one", "2026-09-15T16:00:00.000Z", "2026-09-15T18:00:00.000Z", "CCFF00 Gate") }),
+    radarDrop("legion-upcoming-one", "Robinhood Relics", { contract_address: RADAR_DROP_COLLECTION, next_stage: radarStage("upcoming-one", "2026-09-20T20:48:00.000Z", "2026-09-20T22:48:00.000Z", "CCFF00 Gate") }),
     radarDrop("legion-upcoming-two", "Terminal Studies", { next_stage: radarStage("upcoming-two", "2026-09-20T20:00:00.000Z", "2026-09-20T23:00:00.000Z") }),
   ], next: null },
   recently_minted: { drops: [radarDrop("legion-recent", "Chain Impressions", {
