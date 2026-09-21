@@ -23,6 +23,7 @@ export function NftTerminalChrome() {
         <Link href="/?view=rwa">RWA</Link>
       </nav>
 
+      <span className={styles.mode}>NFT INTELLIGENCE</span>
       <span className={styles.chain} aria-label="Robinhood Chain 4663"><i aria-hidden="true" /> <b>Robinhood</b> · 4663</span>
       <NftRouteWalletConnection />
     </header>
