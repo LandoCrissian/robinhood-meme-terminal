@@ -21,7 +21,7 @@ const pair = TOKEN_MARKETS[1].pairAddress;
 const failures = [];
 const stateResults = [];
 let horizontalOverflowPixels = 0;
-let watchingPublicLeaks = 0;
+let watchingPublicClassificationViolations = 0;
 let nftExecutionControls = 0;
 let controlsAudited = 0;
 let controlHeightViolations = 0;
@@ -703,9 +703,17 @@ async function nftPage(browser, viewport, platform, route, state) {
   const text = await page.locator("body").innerText();
   check(page.url().endsWith(route), state, "NFT route did not resolve exactly.", { actual: page.url(), expected: route });
   check(text.includes("CCFF00"), state, "CCFF00 is absent from its public lane.");
-  const leakedWatching = Number(text.includes("Robin Rabbits")) + Number(text.includes("Gogh Punks"));
-  watchingPublicLeaks += leakedWatching;
-  check(leakedWatching === 0, state, "WATCHING project leaked publicly.");
+  const watchingCards = page.locator('[data-nft-collection-status="WATCHING"]');
+  if (route === "/nft") {
+    const watchingNamesVisible = text.includes("Robin Rabbits") && text.includes("Gogh Punks");
+    const watchingCount = await watchingCards.count();
+    const watchingAdmitted = await watchingCards.locator('a[href^="/nft/"]').count();
+    const watchingClassified = watchingNamesVisible && watchingCount === 2 && watchingAdmitted === 0;
+    watchingPublicClassificationViolations += Number(!watchingClassified);
+    check(watchingClassified, state, "Public WATCHING collections are not correctly separated from RMT admission.", {
+      watchingNamesVisible, watchingCount, watchingAdmitted
+    });
+  }
   check(!/\bRarity\b/i.test(text), state, "Rarity was invented for CCFF00.");
   const forbidden = page.locator("a,button").filter({ hasText: /^(Buy|List|Offer|Fulfill|Sign|Submit)$/i });
   const forbiddenCount = await forbidden.count();
@@ -780,7 +788,7 @@ const summary = {
     tokenVisibleMarketCount: VISIBLE_TOKEN_MARKETS.length,
     broadExecutionFixtures: Object.fromEntries(BROAD_TOKEN_MARKETS.map((market) => [market.symbol, market.executionFixture])),
     nftPublicActiveProjectCount: 1,
-    watchingPublicLeaks,
+    watchingPublicClassificationViolations,
     nftExecutionControls,
     horizontalOverflowPixels,
     legacyVisualUxGuards: {
