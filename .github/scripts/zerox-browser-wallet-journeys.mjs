@@ -497,10 +497,13 @@ export async function runZeroXWalletJourneys(options) {
               await until(() => settledOutputBalanceReads > 0, 'Verified settlement must refresh the exact output wallet balance');
               assert.equal(requests.length, 1);
               if (scenario === 'contract-history') {
-                state.incompatibleRuntime = true;
+                // First prove the persisted confirmed settlement survives a reload. Runtime
+                // incompatibility belongs to the subsequent fresh attempt and must not
+                // race recovery of the already-confirmed historical record.
                 await page.reload({waitUntil:'domcontentloaded'});
-                await page.locator('.vnRecoveryBanner').filter({hasText:'Verified swap history'}).waitFor({ timeout: 60000 });
                 const history = page.locator('.vnRecoveryBanner').filter({hasText:'Verified swap history'});
+                await history.waitFor({ timeout: 30000 });
+                state.incompatibleRuntime = true;
                 assert.match(await history.innerText(), /Submitted:/);
                 assert.ok((await history.locator('a').getAttribute('href')).includes(h('c')));
                 await page.getByLabel('Exact input amount').fill('26');
