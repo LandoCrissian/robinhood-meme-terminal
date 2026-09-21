@@ -79,11 +79,15 @@ export default async function NftProjectMarketPage({ params, searchParams }: {
         {afterTokenId ? <Link href={`/nft/${model.project.projectId}`}>Back to start</Link> : null}
       </div>
       {inventory && "items" in inventory && inventory.availability === "AVAILABLE" && inventory.items.length > 0
-        ? <div className={inventoryStyles.itemGrid}>{inventory.items.map((item) => <Link className={inventoryStyles.itemCard} href={`/nft/${model.project.projectId}/${item.tokenId}`} key={item.tokenId}>
-            <NftItemMedia metadata={item.metadata} alt={`${model.project.displayName} token ${item.tokenId}`} className={inventoryStyles.cardMedia} />
-            <div><strong>#{item.tokenId}</strong><span>{short(item.owner)}</span></div>
-            <small>{item.metadata.status === "READY" ? "ONCHAIN" : "METADATA UNAVAILABLE"}</small>
-          </Link>)}</div>
+        ? <div className={inventoryStyles.itemGrid}>{inventory.items.map((item) => {
+            const color = item.metadata.attributes.find((candidate) => candidate.traitType === "Color");
+            return <Link className={inventoryStyles.itemCard} href={`/nft/${model.project.projectId}/${item.tokenId}`} key={item.tokenId}>
+              <NftItemMedia metadata={item.metadata} alt={`${model.project.displayName} token ${item.tokenId}`} className={inventoryStyles.cardMedia} />
+              <div className={inventoryStyles.cardIdentity}><strong>#{item.tokenId}</strong><span>{color?.value ?? "CCFF00"}</span></div>
+              <div className={inventoryStyles.cardOwner}><span>OWNER</span><code>{short(item.owner)}</code></div>
+              <small>{item.metadata.status === "READY" ? "● ONCHAIN" : "METADATA UNAVAILABLE"}</small>
+            </Link>;
+          })}</div>
         : <p className={inventoryStyles.collectionUnavailable}>Canonical collection inventory is currently unavailable.</p>}
       {inventory && "items" in inventory && inventory.nextCursor
         ? <nav className={inventoryStyles.pagination} aria-label="Collection pages"><Link href={`/nft/${model.project.projectId}?afterTokenId=${inventory.nextCursor}`}>Next 24 →</Link></nav>
