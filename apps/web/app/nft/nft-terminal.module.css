@@ -91,6 +91,91 @@
   transform: scaleX(1);
 }
 
+
+.discoveryHero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, .65fr);
+  gap: 36px;
+  align-items: end;
+  margin: 18px 0 24px;
+  padding: clamp(28px, 5vw, 58px) clamp(22px, 4vw, 48px);
+  overflow: hidden;
+  border: 1px solid #28342c;
+  background:
+    radial-gradient(circle at 78% 20%, rgba(147, 232, 142, .13), transparent 28%),
+    linear-gradient(120deg, rgba(12, 20, 15, .98), rgba(6, 10, 7, .78));
+}
+.discoveryHero::before {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background-image: linear-gradient(rgba(147,232,142,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(147,232,142,.035) 1px, transparent 1px);
+  background-size: 34px 34px;
+  mask-image: linear-gradient(90deg, #000, transparent 82%);
+}
+.discoveryHero::after {
+  position: absolute;
+  top: -1px;
+  left: 0;
+  width: 34%;
+  height: 2px;
+  content: "";
+  background: #93e88e;
+}
+.discoveryHero > * { position: relative; z-index: 1; }
+.discoveryKicker {
+  color: #93e88e;
+  font: 800 9px/1 ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: .14em;
+}
+.discoveryHero h2 {
+  max-width: 780px;
+  margin: 14px 0 16px;
+  font-size: clamp(38px, 5.7vw, 78px);
+  line-height: .91;
+  letter-spacing: -.062em;
+}
+.discoveryHero h2 em {
+  color: #93e88e;
+  font-style: normal;
+}
+.discoveryHero p {
+  max-width: 690px;
+  margin: 0;
+  color: #a5b0a8;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.discoveryStats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-self: stretch;
+  border: 1px solid #314038;
+  background: rgba(3, 7, 4, .56);
+}
+.discoveryStats article {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 16px 13px;
+  border-left: 1px solid #28342c;
+}
+.discoveryStats article:first-child { border-left: 0; }
+.discoveryStats strong {
+  color: #f0f5f1;
+  font-size: clamp(22px, 3vw, 34px);
+  line-height: 1;
+}
+.discoveryStats span {
+  margin-top: 9px;
+  color: #6f7b73;
+  font: 750 7px/1.25 ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: .08em;
+}
+
 .scopeNote {
   margin: 14px 0 22px;
   color: #6f7b73;
@@ -770,6 +855,11 @@
 }
 
 @media (max-width: 760px) {
+  .discoveryHero { grid-template-columns: 1fr; gap: 24px; margin: 12px 0 18px; padding: 28px 18px 18px; }
+  .discoveryHero h2 { font-size: clamp(40px, 13vw, 58px); }
+  .discoveryStats { min-height: 96px; }
+  .discoveryStats article { padding: 12px 9px; }
+
   .page {
     padding: 10px 12px 48px;
   }
