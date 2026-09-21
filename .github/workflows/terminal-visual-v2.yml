@@ -36,6 +36,7 @@ jobs:
       NFT_MINT_RADAR_REVIEWED_SEADROP_DEPLOYMENTS: 0x5555555555555555555555555555555555555555@0xcf61a6eb3b9b89e75f1dadf3dcd16509616896cb50eac765a68fa27bbbc6de82
       RMT_VISUAL_BASE_URL: http://127.0.0.1:3000
       RMT_VISUAL_OUTPUT: terminal-visual-v2
+      RMT_VISUAL_FIXTURE_NOW: "2026-09-21T20:30:00.000Z"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
