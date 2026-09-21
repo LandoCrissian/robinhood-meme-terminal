@@ -79,3 +79,5 @@ required CI results are the authority for the complete final validation run.
 These are LOCAL / MOCKED acceptance results, not real-wallet or production
 acceptance. Merge and deployment require separate owner authorization; the next
 production acceptance is the owner's ordinary phone journey.
+
+Validation checkpoint: persisted history recovery runs once per full acceptance suite after confirmed settlement reload.
