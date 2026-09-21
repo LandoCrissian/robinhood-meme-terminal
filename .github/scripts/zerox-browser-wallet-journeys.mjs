@@ -71,7 +71,8 @@ export async function runZeroXWalletJourneys(options) {
     scenarios.splice(2, 0, 'sell-approval-healthy', 'sell-approval-identity-multiple-retry',
       'sell-approval-identity-persistent', 'sell-approval-identity-account-change',
       'sell-approval-identity-chain-change', 'sell-approval-identity-uuid-return');
-    for (const scenario of (options.scenarios ?? [...scenarios, 'contract-paused', 'contract-unregistered', 'contract-incompatible', 'contract-previous', 'contract-history'])) {
+    const defaultScenarios = [...scenarios, 'contract-paused', 'contract-unregistered', 'contract-incompatible', 'contract-previous', ...(viewportName === 'desktop' ? ['contract-history'] : [])];
+    for (const scenario of (options.scenarios ?? defaultScenarios)) {
       state.providerInternalRoute = scenario.startsWith('internal-');
       state.registryPaused = scenario === 'contract-paused';
       state.registryUnregistered = scenario === 'contract-unregistered';
