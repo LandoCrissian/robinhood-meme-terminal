@@ -77,7 +77,7 @@ function RadarCard({ candidate }: { candidate: RmtMintRadarCandidate }) {
           : null;
   return <article className={styles.radarCard} data-radar-candidate data-radar-state={candidate.state} data-radar-admission={candidate.rmtAdmission} data-radar-chain={candidate.chainId} data-ccff00-access={access.status}>
     <div className={styles.radarIdentity}>
-      <span>{candidate.state === "LIVE_NOW" ? "LIVE NOW" : candidate.state === "UPCOMING" ? "UPCOMING" : "RECENTLY MINTED"}</span>
+      <div className={styles.radarStateLine}><span>{candidate.state === "LIVE_NOW" ? "LIVE NOW" : candidate.state === "UPCOMING" ? "UPCOMING" : "RECENTLY MINTED"}</span><i aria-hidden="true" /></div>
       <h3>{candidate.collectionName}</h3>
       <p>{candidate.stage?.label ?? "Stage not reported"} · {candidate.contractEvidence.standard}</p>
     </div>
@@ -85,6 +85,7 @@ function RadarCard({ candidate }: { candidate: RmtMintRadarCandidate }) {
       <div><dt>{candidate.state === "RECENTLY_MINTED" ? "Observed stage" : "Starts"}</dt><dd>{candidate.stage ? utcTime(candidate.stage.startTime) : "Not reported"}</dd></div>
       <div><dt>Mint price</dt><dd>{nativePrice(candidate.stage?.nativePriceWei ?? null)}</dd></div>
     </dl>
+    <div className={styles.radarPulse} aria-label="Mint opportunity summary"><strong>{candidate.stage?.nativePriceWei ? nativePrice(candidate.stage.nativePriceWei) : "PRICE N/A"}</strong><span>{candidate.stage?.maxPerWallet ? `MAX ${candidate.stage.maxPerWallet} / WALLET` : "WALLET LIMIT N/A"}</span></div>
     <div className={styles.radarEvidence} aria-label="Mint Radar evidence">
       <span>Schedule · OpenSea</span>
       {onchain ? <span>Contract · Onchain</span> : null}
@@ -96,7 +97,7 @@ function RadarCard({ candidate }: { candidate: RmtMintRadarCandidate }) {
       <a href={candidate.sourceUrl} target="_blank" rel="noreferrer">OpenSea evidence</a>
     </div>
     {candidate.state === "LIVE_NOW" ? <NftMintReadiness candidateId={candidate.candidateId} /> : null}
-    <small className={styles.discoveryOnly}>Detected · Not RMT admitted</small>
+    <small className={styles.discoveryOnly}>RMT RADAR · DISCOVERY ONLY · NOT ADMITTED</small>
   </article>;
 }
 
