@@ -1,5 +1,4 @@
 import { chromium } from "playwright";
-import { toFunctionSelector } from "viem";
 import { createServer } from "node:http";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -19,8 +18,8 @@ const acceptanceOutput = path.join(output, "release-polish-acceptance");
 const fixturePort = Number(process.env.RMT_VISUAL_FIXTURE_PORT ?? 43111);
 const visualFixtureNow = process.env.RMT_VISUAL_FIXTURE_NOW ?? FIXTURE_NOW;
 const visualFixtureEpochMs = Date.parse(visualFixtureNow);
-const tokenGatedAllowedTokensSelector = toFunctionSelector("getTokenGatedAllowedTokens(address)");
-const tokenGatedDropSelector = toFunctionSelector("getTokenGatedDrop(address,address)");
+const tokenGatedAllowedTokensSelector = "0x2db526eb";
+const tokenGatedDropSelector = "0x0b0e8a6e";
 const token = TOKEN_MARKETS[1].address;
 const pair = TOKEN_MARKETS[1].pairAddress;
 const failures = [];
