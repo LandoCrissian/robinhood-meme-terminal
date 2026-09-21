@@ -45,7 +45,7 @@ assert.match(catalog, /data-nft-market-tape/);
 assert.match(catalog, /data-rmt-registration-frame/);
 assert.match(catalog, /data-nft-mint-radar/);
 assert.match(catalog, /Live Now[\s\S]*Upcoming[\s\S]*Recently Minted/);
-assert.match(catalog, /Detected · Not RMT admitted/);
+assert.match(catalog, /RMT RADAR · DISCOVERY ONLY · NOT ADMITTED/);
 assert.match(catalogStyles, /\.catalogFlow\s*\{[\s\S]*grid-template-columns:\s*repeat\(3/);
 assert.match(catalogStyles, /@media\s*\(max-width:\s*760px\)[\s\S]*\.activeCollections\s*\{\s*order:\s*3/);
 assert.match(catalogStyles, /\.metrics\s*\{[\s\S]*grid-template-columns:\s*repeat\(4/);
