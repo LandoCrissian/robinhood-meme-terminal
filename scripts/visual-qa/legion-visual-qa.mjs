@@ -1,4 +1,5 @@
 import { chromium } from "playwright";
+import { toFunctionSelector } from "viem";
 import { createServer } from "node:http";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -18,6 +19,8 @@ const acceptanceOutput = path.join(output, "release-polish-acceptance");
 const fixturePort = Number(process.env.RMT_VISUAL_FIXTURE_PORT ?? 43111);
 const visualFixtureNow = process.env.RMT_VISUAL_FIXTURE_NOW ?? FIXTURE_NOW;
 const visualFixtureEpochMs = Date.parse(visualFixtureNow);
+const tokenGatedAllowedTokensSelector = toFunctionSelector("getTokenGatedAllowedTokens(address)");
+const tokenGatedDropSelector = toFunctionSelector("getTokenGatedDrop(address,address)");
 const token = TOKEN_MARKETS[1].address;
 const pair = TOKEN_MARKETS[1].pairAddress;
 const failures = [];
@@ -81,10 +84,10 @@ const fixtureServer = createServer(async (request, response) => {
       const target = String(call.to ?? "").toLowerCase();
       const data = String(call.data ?? "").toLowerCase();
       if (target === RADAR_DROP_COLLECTION.toLowerCase() && data.startsWith("0x01ffc9a7")) return rpcResult(response, payload.id, `0x${word(0)}`);
-      if (target === RADAR_SEADROP.toLowerCase() && data.startsWith("0x2db526eb")) {
+      if (target === RADAR_SEADROP.toLowerCase() && data.startsWith(tokenGatedAllowedTokensSelector)) {
         return rpcResult(response, payload.id, `0x${word(32)}${word(1)}${addressWord(CCFF00_COLLECTION)}`);
       }
-      if (target === RADAR_SEADROP.toLowerCase() && data.startsWith("0x0b0e8a6e")) {
+      if (target === RADAR_SEADROP.toLowerCase() && data.startsWith(tokenGatedDropSelector)) {
         return rpcResult(response, payload.id, `0x${word(12_500_000_000_000_000n)}${word(2)}${word(1_790_369_280)}${word(1_790_376_480)}${word(7)}${word(500)}${word(0)}${word(0)}`);
       }
       return rpcResult(response, payload.id, "0x");
