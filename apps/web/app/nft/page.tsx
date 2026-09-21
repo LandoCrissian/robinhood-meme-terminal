@@ -181,17 +181,22 @@ function ProjectCard({ project }: { project: RmtNftTerminalProjectCard }) {
 function CollectionCard({ collection }: { collection: RmtNftTerminalCollectionCard }) {
   const active = collection.projectStatus === "ACTIVE";
   return <article data-nft-collection-status={collection.projectStatus}>
-    <div>
+    <div className={styles.collectionIdentity}>
       <span>{active ? "RMT ACTIVE" : "RMT WATCHING"}</span>
       <h2>{active
         ? <Link href={`/nft/${collection.projectId}`}>{collection.displayName}</Link>
         : collection.displayName}</h2>
+      <p>{collection.standard ?? "Standard unavailable"} · Robinhood Chain · 4663</p>
     </div>
-    <p>{collection.standard ?? "Standard unavailable"} · Robinhood Chain · 4663</p>
-    <code title={collection.contractAddress}>{collection.contractAddress}</code>
-    <small>Contract · {collection.verificationStatus === "VERIFIED" ? "ONCHAIN VERIFIED" : collection.verificationStatus}</small>
-    {collection.publicUrl ? <a href={collection.publicUrl} target="_blank" rel="noreferrer">Open collection ↗</a> : null}
-    {!active ? <small>Tracked for discovery · Not yet RMT admitted</small> : null}
+    <div className={styles.collectionProof}>
+      <span>CONTRACT</span>
+      <code title={collection.contractAddress}>{short(collection.contractAddress)}</code>
+      <small>{collection.verificationStatus === "VERIFIED" ? "✓ ONCHAIN VERIFIED" : collection.verificationStatus}</small>
+    </div>
+    <div className={styles.collectionActions}>
+      {collection.publicUrl ? <a href={collection.publicUrl} target="_blank" rel="noreferrer">View source ↗</a> : null}
+      {active ? <Link href={`/nft/${collection.projectId}`}>Open RMT market →</Link> : <small>Discovery only · admission pending</small>}
+    </div>
   </article>;
 }
 
