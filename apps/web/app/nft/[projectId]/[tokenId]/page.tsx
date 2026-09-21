@@ -50,6 +50,7 @@ export default async function NftItemPage({ params }: { params: Promise<{ projec
           <div><dt>Metadata provenance</dt><dd>ONCHAIN TOKENURI</dd></div>
         </dl>
         <div className={itemStyles.itemActions}>{openSeaItem ? <a href={openSeaItem} target="_blank" rel="noreferrer">View on OpenSea ↗</a> : null}<a href={`${explorer}/token/${item.collectionAddress}/instance/${item.tokenId}`} target="_blank" rel="noreferrer">View on Blockscout ↗</a></div>
+        <Link className={itemStyles.returnMarket} href={`/nft/${model.project.projectId}`}>← Back to {model.project.displayName} collection</Link>
       </div>
     </section>
   </main>;
