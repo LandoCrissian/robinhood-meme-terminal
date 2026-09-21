@@ -134,25 +134,42 @@
   object-fit: cover;
 }
 
-.itemCard > div:nth-child(2) {
+.cardIdentity {
   display: flex;
   justify-content: space-between;
   gap: 7px;
-  padding: 9px 2px 4px;
+  padding: 9px 2px 5px;
   border-bottom: 1px solid rgba(40, 52, 44, .74);
 }
-
-.itemCard > div span {
+.cardIdentity strong { font-size: 13px; }
+.cardIdentity span {
   min-width: 0;
-  color: #6f7b73;
-  font: 500 9px ui-monospace, SFMono-Regular, Consolas, monospace;
+  color: #a5b0a8;
+  font: 700 8px ui-monospace, SFMono-Regular, Consolas, monospace;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+.cardOwner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 5px 2px 0;
+}
+.cardOwner span {
+  color: #526058;
+  font: 750 7px ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: .08em;
+}
+.cardOwner code {
+  color: #6f7b73;
+  font: 8px ui-monospace, SFMono-Regular, Consolas, monospace;
 }
 
-.itemCard small {
+ .itemCard small {
   display: block;
-  padding: 5px 2px 0;
+  padding: 6px 2px 0;
   color: #93e88e;
   font: 750 8px ui-monospace, SFMono-Regular, Consolas, monospace;
   letter-spacing: .1em;
@@ -398,8 +415,11 @@
 
   .itemGrid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 15px 9px;
+    gap: 18px 10px;
   }
+  .itemCard { scroll-snap-align: start; }
+  .cardIdentity strong { font-size: 14px; }
+  .cardOwner code { font-size: 7px; }
 
   .itemWorkspace {
     grid-template-columns: 1fr;
