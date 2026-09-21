@@ -205,6 +205,42 @@
   line-height: 1.45;
 }
 
+
+.activityPulse {
+  display: grid;
+  grid-template-columns: 190px 190px minmax(0, 1fr);
+  align-items: stretch;
+  margin: 30px 0 8px;
+  border: 1px solid #28342c;
+  background: linear-gradient(90deg, rgba(12,18,14,.82), rgba(6,10,7,.42));
+}
+.activityPulse > div {
+  display: grid;
+  gap: 6px;
+  padding: 15px 17px;
+  border-right: 1px solid #28342c;
+}
+.activityPulse span,
+.activityPulse small {
+  color: #6f7b73;
+  font: 750 7px/1.2 ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: .07em;
+}
+.activityPulse strong {
+  color: #93e88e;
+  font-size: 27px;
+  line-height: 1;
+}
+.activityPulse p {
+  align-self: center;
+  max-width: 66ch;
+  margin: 0;
+  padding: 15px 18px;
+  color: #a5b0a8;
+  font-size: 9px;
+  line-height: 1.55;
+}
+
 .ledger {
   position: relative;
   margin-top: 32px;
@@ -402,6 +438,8 @@
   .columns {
     grid-template-columns: 1fr;
   }
+  .activityPulse { grid-template-columns: repeat(2, 1fr); }
+  .activityPulse p { grid-column: 1 / -1; border-top: 1px solid #28342c; }
 
   .panel + .panel {
     border-top: 1px solid #28342c;
@@ -444,6 +482,10 @@
   .metrics strong {
     font-size: 16px;
   }
+
+  .activityPulse { margin-top: 22px; }
+  .activityPulse > div { padding: 12px 10px; }
+  .activityPulse p { padding: 12px 10px; }
 
   .ledger {
     margin-top: 25px;
