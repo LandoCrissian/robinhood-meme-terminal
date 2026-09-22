@@ -837,7 +837,8 @@ function unavailableResponse(status: "STALE" | "UNAVAILABLE", prior: RmtMintRada
 }
 
 export async function readRmtNftMintRadar(options: RmtMintRadarReaderOptions = {}): Promise<RmtMintRadarResponse> {
-  const now = options.now ?? (() => new Date());
+  const fixtureNow = (options.env ?? process.env).RMT_NFT_MINT_RADAR_FIXTURE_NOW?.trim();
+  const now = options.now ?? (fixtureNow ? (() => new Date(fixtureNow)) : (() => new Date()));
   const nowMs = now().getTime();
   const cache = options.cache ?? sharedCache;
   if (cache.current && nowMs - cache.current.fetchedAtMs <= RMT_MINT_RADAR_FRESH_MS) return cache.current.response;
