@@ -855,6 +855,7 @@ export async function readRmtNftMintRadar(options: RmtMintRadarReaderOptions = {
     let detailReads = 0;
     const response = await buildRmtMintRadar({ featured, upcoming, recentlyMinted }, {
       ...options,
+      now,
       readDetailedDrop: options.readDetailedDrop ?? (async (candidate) => {
         if (detailReads >= MAX_DETAILED_DROPS) throw new Error("Detailed drop read bound exceeded.");
         detailReads += 1;
