@@ -1252,8 +1252,8 @@ async function inspectDiscoveryAcceptance(browser, options, label, mobile) {
 
   const navigation = page.locator(`${terminalSelector} .rmtMarketViews button`);
   const labels = await navigation.locator("span").allTextContents();
-  if (labels[0] !== "Active" || labels[1] !== "Trending") {
-    throw new Error(`${label}: Active is not before Trending ${JSON.stringify(labels)}`);
+  if (JSON.stringify(labels.slice(0, 4)) !== JSON.stringify(["Active", "Movers", "New", "Trending"])) {
+    throw new Error(`${label}: Active, Movers, New, and Trending are not in the owner-authorized order ${JSON.stringify(labels)}`);
   }
   const activeButton = page.locator(terminalSelector).getByRole("button", { name: new RegExp(`^Active\\s+${productAcceptanceEvidence.activeCountAfter}$`) });
   const trendingButton = page.locator(terminalSelector).getByRole("button", { name: new RegExp(`^Trending\\s+${productAcceptanceEvidence.trendingCountAfter}$`) });
