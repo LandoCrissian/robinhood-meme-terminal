@@ -2943,16 +2943,18 @@ async function inspectWalletPromptReloadAndCrossTab(browser, fixture) {
     for (const expected of [
       "Verified request ready",
       "Nothing opens automatically",
-      "External signer",
+      "Selected signer",
       "Deterministic browser wallet",
       "0x3333…3333",
       "Robinhood Chain · 4663",
+      "Connector",
+      "Injected · injected",
       "Protected minimum",
       "RMT execution fee",
       "0.25%",
       "Wallet review window"
     ]) {
-      if (!text.includes(expected)) throw new Error(`${label}: advanced wallet evidence omitted ${expected}: ${text}`);
+      if (!text.includes(expected)) throw new Error(`${label}: exact wallet evidence omitted ${expected}: ${text}`);
     }
     if (/Complete review in wallet/i.test(text)) throw new Error(`${label}: authorization preparation impersonated a wallet handoff`);
     await page.locator(".vnRouteTop").click();
