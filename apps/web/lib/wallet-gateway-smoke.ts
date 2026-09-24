@@ -7,6 +7,7 @@ import {
   isConnectorSelectionConfirmed,
   requiresExplicitWalletSelection,
   resolveActiveExternalWallet,
+  tradingEthereumWallets,
   walletGatewayKey
 } from "./wallet-gateway";
 
@@ -61,6 +62,8 @@ const unknownChainType = { ...wallet(), type: undefined };
 
 const exactWallets = externalEthereumWallets([metamask, rabby, embeddedV1, embeddedV2, solana, unknownChainType]);
 assert.equal(exactWallets.length, 2, "Embedded and non-Ethereum wallets must not enter the trading gateway.");
+assert.equal(tradingEthereumWallets([metamask, rabby, embeddedV1, embeddedV2, solana, unknownChainType]).length, 4,
+  "Embedded and external EVM wallets must both be eligible for exact signer selection.");
 assert.notEqual(
   walletGatewayKey(metamask),
   walletGatewayKey(rabby),
@@ -106,6 +109,13 @@ assert.equal(requiresExplicitWalletSelection({
   hasActiveAddress: true,
   matchingExternalWalletCount: 2
 }), true, "Same-address ambiguity must require an explicit owner choice.");
+assert.equal(requiresExplicitWalletSelection({
+  activeEmbeddedWallet: true,
+  activeExternalWalletConfirmed: false,
+  externalWalletCount: 2,
+  hasActiveAddress: true,
+  matchingExternalWalletCount: 2
+}), false, "Linked external wallets must not displace the active embedded consumer wallet.");
 assert.equal(
   resolveActiveExternalWallet([metamask, rabby], address, walletGatewayKey(wallet({ address: otherAddress }))),
   undefined,
@@ -122,4 +132,4 @@ assert.notEqual(
   "EIP-6963 identity mutation must change the exact wallet key."
 );
 
-console.log("Unified wallet gateway preserves exact external connector identity and fails closed on ambiguity.");
+console.log("Unified wallet gateway defaults to embedded signing, preserves exact external connector identity, and fails closed on ambiguity.");

@@ -35,7 +35,7 @@ assert.equal(RMT_CURATED_MARKET_REGISTRY.length, 8);
 const views = Object.values(directory).find((value) => Array.isArray(value)
   && value.some((entry: unknown) => entry && typeof entry === "object" && "label" in entry && entry.label === "Active"));
 assert.ok(Array.isArray(views), "Directory must expose its existing category order");
-assert.deepEqual(views.map((view: { label: string }) => view.label), ["Active", "Trending", "New", "RWA", "Held", "All"]);
+assert.deepEqual(views.map((view: { label: string }) => view.label), ["Active", "Movers", "New", "Trending", "RWA", "Held", "All"]);
 // Guard production integration, not merely isolated helper behavior.
 const route = readFileSync(new URL("../../app/api/markets/external/route.ts", import.meta.url), "utf8");
 const coverageIndex = route.indexOf("const observationCoverage = boundedDiscoveryCoverage(directoryAdmission.admitted.length");

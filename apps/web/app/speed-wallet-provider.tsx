@@ -27,9 +27,9 @@ export function SpeedWalletProvider({ children, queryClient }: { children: React
           theme: "dark",
           accentColor: "#35ef73",
           logo: `${appUrl}/brand/rmt-master-logo.png`,
-          landingHeader: "Connect your RMT trading wallet",
-          loginMessage: "Use an external Ethereum wallet you control. RMT never receives its private key.",
-          showWalletLoginFirst: true,
+          landingHeader: "Sign in to RMT",
+          loginMessage: "Your self-custodial RMT wallet is ready after sign-in. You can connect an existing wallet any time.",
+          showWalletLoginFirst: false,
           walletChainType: "ethereum-only",
           walletList: rmtExternalWalletOptions()
         },

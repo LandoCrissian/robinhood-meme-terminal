@@ -182,23 +182,32 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
             await review.click();
             await until(() => prompts.length === 1, 'Explicit wallet action must open the exact request');
             const transaction = prompts[0];
-            assert.equal(transaction.to.toLowerCase(), plan.target.toLowerCase());
-            assert.equal(transaction.data, plan.data);
-            assert.equal(BigInt(transaction.value), BigInt(plan.value));
-            assert.equal(BigInt(transaction.gas), BigInt(plan.gasLimit));
-            if (plan.gasPrice) assert.equal(BigInt(transaction.gasPrice), BigInt(plan.gasPrice));
+            // A long disclosure review can cross the visible-idle refresh boundary. The
+            // wallet must receive the most recently authorized plan, never the plan that
+            // happened to be current when this assertion sequence began.
+            const presentedAuthorized = currentApi().filter((entry) => entry.path.endsWith('/authorize') && entry.status === 200).at(-1);
+            const presentedVerification = currentApi().filter((entry) => entry.path.endsWith('/verify') && entry.status === 200).at(-1)?.body;
+            assert.ok(presentedAuthorized, 'A successful authorization must precede wallet presentation');
+            assert.ok(presentedVerification, 'A successful verification must precede wallet presentation');
+            const { plan: presentedPlan, evidence: presentedEvidence } = presentedAuthorized.body;
+            assert.equal(presentedEvidence.zeroXFirmQuoteCommitment, presentedVerification.zeroXFirmQuoteCommitment);
+            assert.equal(transaction.to.toLowerCase(), presentedPlan.target.toLowerCase());
+            assert.equal(transaction.data, presentedPlan.data);
+            assert.equal(BigInt(transaction.value), BigInt(presentedPlan.value));
+            assert.equal(BigInt(transaction.gas), BigInt(presentedPlan.gasLimit));
+            if (presentedPlan.gasPrice) assert.equal(BigInt(transaction.gasPrice), BigInt(presentedPlan.gasPrice));
             if (native) {
-              assert.equal(plan.kind, 'swap');
-              assert.equal(plan.value, '1000000000000000');
-              assert.equal(keccak256(transaction.data), verification.calldataHash);
+              assert.equal(presentedPlan.kind, 'swap');
+              assert.equal(presentedPlan.value, '1000000000000000');
+              assert.equal(keccak256(transaction.data), presentedVerification.calldataHash);
             } else {
-              assert.equal(plan.kind, 'erc20_approval');
+              assert.equal(presentedPlan.kind, 'erc20_approval');
               const decoded = decodeFunctionData({ abi: erc20Abi, data: transaction.data });
               assert.equal(decoded.functionName, 'approve');
               assert.equal(transaction.to.toLowerCase(), usdg.toLowerCase());
               assert.equal(decoded.args[0].toLowerCase(), holder.toLowerCase());
               assert.equal(decoded.args[1], 1000000n);
-              assert.equal(plan.value, '0');
+              assert.equal(presentedPlan.value, '0');
             }
             await until(async () => /rejected by the owner|Nothing was broadcast/i.test(await page.locator('body').innerText()), 'Rejection recovery missing');
             await pause(300);

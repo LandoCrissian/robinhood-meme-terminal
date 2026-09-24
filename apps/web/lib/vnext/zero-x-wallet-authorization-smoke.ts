@@ -92,7 +92,14 @@ export async function assertZeroXSharedWalletAuthorization(prepared: VNextPrepar
   }
   assert.throws(() => parseVNextAuthorizationPlan(plan, evidence, evidence.expiresAtMs));
   if (plan.kind === "swap") {
-    assert.throws(() => parseVNextAuthorizationPlan(plan, { ...evidence, exactSimulationPassed: false }, now));
+    assert.throws(() => parseVNextAuthorizationPlan(plan, {
+      ...evidence,
+      exactSimulationPassed: !evidence.exactSimulationPassed
+    }, now), "simulation boolean and classified state must remain consistent");
+    assert.throws(() => parseVNextAuthorizationPlan(plan, {
+      ...evidence,
+      exactSimulationState: "deterministic_revert"
+    }, now), "a deterministic revert can never authorize a swap");
     assert.throws(() => parseVNextAuthorizationPlan(plan, { ...evidence, nextAction: "approval" }, now));
     assert.throws(() => parseVNextAuthorizationPlan(plan, { ...evidence, authorizationReady: false }, now));
   } else {

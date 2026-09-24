@@ -201,16 +201,42 @@ async function tokenUint(token: Address, data: Hex) {
   return BigInt(result);
 }
 
-async function simulate(input: { account: Address; target: Address; calldata: Hex; valueAtomic: string; gasLimitUnits: string; gasPriceWei: string | null }) {
-  const result = await rpc("eth_call", [{
-    from: input.account,
-    to: input.target,
-    data: input.calldata,
-    value: `0x${BigInt(input.valueAtomic).toString(16)}`,
-    gas: `0x${BigInt(input.gasLimitUnits).toString(16)}`,
-    ...(input.gasPriceWei !== null ? { gasPrice: `0x${BigInt(input.gasPriceWei).toString(16)}` } : {})
-  }, "latest"]);
-  if (typeof result !== "string" || !/^0x(?:[0-9a-fA-F]{2})*$/.test(result)) throw new Error("Robinhood RPC returned an invalid simulation result.");
+type ZeroXSimulationState = "passed" | "deterministic_revert" | "inconclusive" | "not_run";
+
+function deterministicSimulationRevert(error: unknown) {
+  if (!isObject(error)) return false;
+  const message = typeof error.message === "string" ? error.message : "";
+  const data = typeof error.data === "string" ? error.data : "";
+  return /execution reverted|revert(?:ed)?\b|invalid opcode|panic code/i.test(`${message} ${data}`);
+}
+
+async function simulate(input: { account: Address; target: Address; calldata: Hex; valueAtomic: string; gasLimitUnits: string; gasPriceWei: string | null }): Promise<ZeroXSimulationState> {
+  try {
+    const response = await fetch(rpcUrl(), {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_call", params: [{
+        from: input.account,
+        to: input.target,
+        data: input.calldata,
+        value: `0x${BigInt(input.valueAtomic).toString(16)}`,
+        gas: `0x${BigInt(input.gasLimitUnits).toString(16)}`,
+        ...(input.gasPriceWei !== null ? { gasPrice: `0x${BigInt(input.gasPriceWei).toString(16)}` } : {})
+      }, "latest"] }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(ZERO_X_RPC_TIMEOUT_MS)
+    });
+    const body: unknown = await response.json().catch(() => null);
+    if (!response.ok || !isObject(body)) return "inconclusive";
+    if (body.error !== undefined) return deterministicSimulationRevert(body.error)
+      ? "deterministic_revert"
+      : "inconclusive";
+    return typeof body.result === "string" && /^0x(?:[0-9a-fA-F]{2})*$/.test(body.result)
+      ? "passed"
+      : "inconclusive";
+  } catch {
+    return "inconclusive";
+  }
 }
 
 function parseFirmQuote(body: unknown, request: VNextProviderVerificationRequest, configuration: ZeroXSwapFirmQuoteVerificationConfiguration): ParsedFirmQuote {
@@ -388,18 +414,14 @@ export async function verifyZeroXSwapFirmQuote(request: VNextProviderVerificatio
 
   let status: ZeroXSwapFirmQuoteVerificationEvidence["status"];
   let exactSimulationPassed = false;
+  let exactSimulationState: ZeroXSimulationState = "not_run";
   if (!sufficientSellBalance) status = "insufficient_balance";
   else if (!enoughNative) status = "insufficient_gas";
   else if (approvalData) status = "approval_required";
-  else if (quote.simulationIncomplete) status = "simulation_failed";
   else {
-    try {
-      await simulate({ account: request.recipient, target: quote.transactionTarget, calldata: quote.calldata, valueAtomic: quote.transactionValueAtomic, gasLimitUnits: quote.gasLimitUnits, gasPriceWei: quote.gasPriceWei });
-      exactSimulationPassed = true;
-      status = "verified";
-    } catch {
-      status = "simulation_failed";
-    }
+    exactSimulationState = await simulate({ account: request.recipient, target: quote.transactionTarget, calldata: quote.calldata, valueAtomic: quote.transactionValueAtomic, gasLimitUnits: quote.gasLimitUnits, gasPriceWei: quote.gasPriceWei });
+    exactSimulationPassed = exactSimulationState === "passed";
+    status = exactSimulationState === "deterministic_revert" ? "simulation_failed" : "verified";
   }
 
   if (BigInt(quote.expectedOutputAtomic) < request.indicativeProtectedOutputFloorAtomic) throw new ZeroXRepriceRequiredError();
@@ -417,7 +439,7 @@ export async function verifyZeroXSwapFirmQuote(request: VNextProviderVerificatio
       zid: quote.zid, observedAtMs, expiresAtMs: observedAtMs + EVIDENCE_TTL_MS,
       swapGasLimitUnits: quote.gasLimitUnits, nextActionGasLimitUnits: gasLimit.toString(), gasPriceWei: quote.gasPriceWei,
       targetRuntimeHash, allowanceTarget: nativeInput ? null : configuration.allowanceHolder,
-      allowanceHolderRuntimeHash: holderHash, providerSimulationIncomplete: quote.simulationIncomplete, exactSimulationPassed
+      allowanceHolderRuntimeHash: holderHash, providerSimulationIncomplete: quote.simulationIncomplete, exactSimulationPassed, exactSimulationState
     }
   });
   const verifiedAtMs = Date.now();
@@ -441,7 +463,7 @@ export async function verifyZeroXSwapFirmQuote(request: VNextProviderVerificatio
     estimatedGasUnits: estimatedGas.toString(), gasLimitUnits: gasLimit.toString(), estimatedNetworkCostWei: estimatedNetworkCost.toString(),
     estimatedNetworkCostUsdgAtomic: null, networkCostValuationSource: null, networkCostValuedAtMs: null, networkCostValuationExpiresAtMs: null,
     gasState: enoughNative ? "sufficient" : "insufficient", routerRuntimeHash: targetRuntimeHash, factoryRuntimeHash: null,
-    quoterRuntimeHash: null, exactSimulationPassed, userPaysGas: true, rmtFeeEnabled: true,
+    quoterRuntimeHash: null, exactSimulationPassed, exactSimulationState, userPaysGas: true, rmtFeeEnabled: true,
     settlementMode: VNEXT_PROVIDER_NATIVE_INPUT_FEE, providerNativeFee,
     approvalKind: approvalData ? "erc20_to_allowance_holder" : null,
     providerRequestedSlippagePpm: RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM,

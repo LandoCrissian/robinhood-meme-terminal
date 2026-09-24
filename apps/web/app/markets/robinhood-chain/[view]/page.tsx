@@ -20,6 +20,10 @@ const metadataByView: Record<Exclude<PublicVNextMarketInventoryView, "all">, { t
   active: {
     title: "Active Robinhood Chain Markets by 24h Volume | RMT",
     description: "Browse active Robinhood Chain markets with non-zero 24-hour volume from RMT's canonical VNext market directory."
+  },
+  movers: {
+    title: "Robinhood Chain Market Movers | RMT",
+    description: "Browse Robinhood Chain markets with observed price movement, ordered by the strongest available interval."
   }
 };
 

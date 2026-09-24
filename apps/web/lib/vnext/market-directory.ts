@@ -116,7 +116,7 @@ export function vNextExecutionUiState(
   return authorizationEnabled ? "live-execution" : "preview-only";
 }
 
-export type VNextMarketDirectoryView = "trending" | "new" | "active" | "rwa" | "held" | "all";
+export type VNextMarketDirectoryView = "trending" | "new" | "active" | "movers" | "rwa" | "held" | "all";
 
 export const VNEXT_MARKET_DIRECTORY_MAX_MARKETS = 144;
 export const VNEXT_MARKET_DIRECTORY_PAGE_SIZE = 24;
@@ -124,8 +124,9 @@ export const VNEXT_CANONICAL_DIRECTORY_PAGE_LIMIT = 100;
 
 export const VNEXT_MARKET_DIRECTORY_VIEWS: ReadonlyArray<{ id: VNextMarketDirectoryView; label: string }> = [
   { id: "active", label: "Active" },
-  { id: "trending", label: "Trending" },
+  { id: "movers", label: "Movers" },
   { id: "new", label: "New" },
+  { id: "trending", label: "Trending" },
   { id: "rwa", label: "RWA" },
   { id: "held", label: "Held" },
   { id: "all", label: "All" }
@@ -514,6 +515,19 @@ function compareTrendingMomentum(left: VNextDirectoryMarket, right: VNextDirecto
     || deterministicMarketIdentity(left).localeCompare(deterministicMarketIdentity(right));
 }
 
+function strongestObservedMove(market: VNextDirectoryMarket) {
+  return Math.max(
+    Math.abs(market.priceChange5m ?? 0),
+    Math.abs(market.priceChange1h ?? 0),
+    Math.abs(market.priceChange24h ?? 0)
+  );
+}
+
+function compareObservedMove(left: VNextDirectoryMarket, right: VNextDirectoryMarket) {
+  return strongestObservedMove(right) - strongestObservedMove(left)
+    || compareActiveActivity(left, right);
+}
+
 function compareLiquidity(left: VNextDirectoryMarket, right: VNextDirectoryMarket) {
   return (right.liquidityUsd ?? -1) - (left.liquidityUsd ?? -1) || (right.volume24h ?? -1) - (left.volume24h ?? -1);
 }
@@ -543,6 +557,9 @@ export function selectVNextMarketDirectoryView(
       .filter((market) => market.ageMinutes !== null && market.ageMinutes <= 24 * 60)
       .sort((left, right) => (left.ageMinutes ?? Number.MAX_SAFE_INTEGER) - (right.ageMinutes ?? Number.MAX_SAFE_INTEGER) || compareVolume(left, right));
   }
+  if (view === "movers") {
+    return markets.filter((market) => strongestObservedMove(market) > 0).sort(compareObservedMove);
+  }
   if (view === "active") {
     return markets.filter(hasVNextObservedRecentActivity).sort(compareActiveActivity);
   }
@@ -561,6 +578,7 @@ export function vNextMarketDirectoryViewCounts(
 ): Record<VNextMarketDirectoryView, number> {
   return {
     trending: selectVNextMarketDirectoryView(markets, "trending", heldAddresses).length,
+    movers: selectVNextMarketDirectoryView(markets, "movers", heldAddresses).length,
     new: selectVNextMarketDirectoryView(markets, "new", heldAddresses).length,
     active: selectVNextMarketDirectoryView(markets, "active", heldAddresses).length,
     rwa: selectVNextMarketDirectoryView(markets, "rwa", heldAddresses).length,

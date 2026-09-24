@@ -1,7 +1,7 @@
 import type { WalletListEntry } from "@privy-io/react-auth";
 
 /**
- * One canonical external-wallet admission list for the RMT terminal.
+ * One canonical external-wallet option list for the RMT terminal.
  *
  * Privy resolves `detected_ethereum_wallets` through EIP-6963 (and the
  * compatible injected-provider fallback). This is how wallets such as Rabby
@@ -47,6 +47,10 @@ export function isEmbeddedWalletClientType(walletClientType?: string | null) {
 
 export function isExternalEthereumWallet<T extends WalletGatewayCandidate>(wallet: T): boolean {
   return wallet.type === "ethereum" && !isEmbeddedWalletClientType(wallet.walletClientType);
+}
+
+export function isTradingEthereumWallet<T extends WalletGatewayCandidate>(wallet: T): boolean {
+  return wallet.type === "ethereum";
 }
 
 export function walletGatewayKey(wallet: WalletGatewayCandidate) {
@@ -97,6 +101,24 @@ export function externalEthereumWallets<T extends WalletGatewayCandidate>(wallet
   });
 }
 
+/** Embedded and external EVM wallets that can be selected as an exact signer. */
+export function tradingEthereumWallets<T extends WalletGatewayCandidate>(wallets: readonly T[]) {
+  const seen = new Set<string>();
+  return wallets.filter((wallet) => {
+    if (!isTradingEthereumWallet(wallet)) return false;
+    const key = walletGatewayKey(wallet);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+export function matchingTradingWallets<T extends WalletGatewayCandidate>(wallets: readonly T[], address?: string) {
+  if (!address) return [];
+  const normalizedAddress = address.toLowerCase();
+  return tradingEthereumWallets(wallets).filter((wallet) => wallet.address.toLowerCase() === normalizedAddress);
+}
+
 export function matchingExternalWallets<T extends WalletGatewayCandidate>(wallets: readonly T[], address?: string) {
   if (!address) return [];
   const normalizedAddress = address.toLowerCase();
@@ -144,11 +166,15 @@ export function requiresExplicitWalletSelection(params: {
   matchingExternalWalletCount: number;
 }) {
   if (!params.hasActiveAddress) return false;
+  // An active embedded wallet is the consumer default. Merely linking an
+  // external wallet must not silently replace it or force a selection prompt.
+  if (params.activeEmbeddedWallet) return false;
   if (params.matchingExternalWalletCount > 0 && !params.activeExternalWalletConfirmed) return true;
-  return params.activeEmbeddedWallet && params.externalWalletCount > 0;
+  return false;
 }
 
 export function walletGatewayDisplayName(wallet: WalletGatewayCandidate) {
+  if (isEmbeddedWalletClientType(wallet.walletClientType)) return "RMT wallet";
   const reportedName = wallet.meta?.name?.trim();
   if (reportedName) return reportedName;
   if (wallet.walletClientType === "wallet_connect") return "Mobile wallet";

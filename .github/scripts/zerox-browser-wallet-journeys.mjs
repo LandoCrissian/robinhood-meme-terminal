@@ -336,7 +336,7 @@ export async function runZeroXWalletJourneys(options) {
           await page.locator('.vnRouteTop').click();
           await until(async () => /reject|changed|inconsistent|invalid|authority|mismatch/i.test(await page.locator('.vnTradePanel').innerText()), 'Corrupted authority must produce a rejection state');
           assert.equal(requests.length, 0, 'Corrupted authority cannot prompt the wallet');
-        } else if (faults[scenario] || scenario === 'simulation-failure' || contractRejected) {
+        } else if ((faults[scenario] && scenario !== 'simulation-incomplete') || scenario === 'simulation-failure' || contractRejected) {
           await until(() => api.some((entry) => entry.path.endsWith('/verify')), `Verification missing for ${scenario}`);
           await pause(200);
           assert.equal(api.filter((entry) => entry.path.endsWith('/authorize')).length, 0, 'Invalid firm evidence cannot authorize');
@@ -355,6 +355,10 @@ export async function runZeroXWalletJourneys(options) {
           await page.locator('.vnWalletFeeDisclosure').waitFor({ state: 'attached' });
           const bundle = api.filter((entry) => entry.path.endsWith('/authorize')).at(-1).body;
           assert.equal(bundle.plan.provider, 'zero-x-swap');
+          if (scenario === 'simulation-incomplete') {
+            assert.equal(bundle.evidence.providerSimulationIncomplete, true, 'Provider simulation limitation remains disclosed');
+            assert.equal(bundle.evidence.exactSimulationState, 'passed', 'Successful exact local simulation remains authoritative');
+          }
           const economics = async () => {
             const minimum = await page.locator('.vnOutputProtection strong').innerText();
             const output = await page.locator('.vnReceiveField > div > strong').first().innerText();

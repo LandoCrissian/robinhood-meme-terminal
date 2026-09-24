@@ -11,7 +11,7 @@ export const PUBLIC_VNEXT_MARKET_MINIMUM_LIQUIDITY_USD = 5_000;
 export const PUBLIC_VNEXT_MARKET_MINIMUM_VOLUME_24H_USD = 100;
 export const PUBLIC_VNEXT_MARKET_DIRECTORY_REVALIDATE_SECONDS = 300;
 
-export type PublicVNextMarketInventoryView = "all" | "trending" | "new" | "active";
+export type PublicVNextMarketInventoryView = "all" | "active" | "movers" | "new" | "trending";
 
 export type PublicVNextInventoryMarket = VNextDirectoryMarket & {
   pairAddress: string;
@@ -31,16 +31,16 @@ export const PUBLIC_VNEXT_MARKET_INVENTORY_VIEWS: ReadonlyArray<{
   summary: string;
 }> = [
   {
-    id: "all",
-    label: "All markets",
-    path: "/markets/robinhood-chain",
-    summary: "Qualified Robinhood Chain markets ordered by liquidity and activity."
+    id: "active",
+    label: "Active",
+    path: "/markets/robinhood-chain/active",
+    summary: "Markets with active directory signals and non-zero 24-hour volume."
   },
   {
-    id: "trending",
-    label: "Trending",
-    path: "/markets/robinhood-chain/trending",
-    summary: "Markets currently classified as moving or early by the canonical RMT directory."
+    id: "movers",
+    label: "Movers",
+    path: "/markets/robinhood-chain/movers",
+    summary: "Markets with an observed price move, ordered by the strongest available interval."
   },
   {
     id: "new",
@@ -49,10 +49,16 @@ export const PUBLIC_VNEXT_MARKET_INVENTORY_VIEWS: ReadonlyArray<{
     summary: "Markets created within the last 24 hours, ordered from newest first."
   },
   {
-    id: "active",
-    label: "Active",
-    path: "/markets/robinhood-chain/active",
-    summary: "Markets with active directory signals and non-zero 24-hour volume."
+    id: "trending",
+    label: "Trending",
+    path: "/markets/robinhood-chain/trending",
+    summary: "Markets currently classified as moving or early by the canonical RMT directory."
+  },
+  {
+    id: "all",
+    label: "All markets",
+    path: "/markets/robinhood-chain",
+    summary: "Qualified Robinhood Chain markets ordered by liquidity and activity."
   }
 ] as const;
 

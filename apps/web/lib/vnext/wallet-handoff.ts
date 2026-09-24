@@ -1,5 +1,5 @@
 import { getAddress } from "viem";
-import { parseWalletGatewayKey } from "../wallet-gateway";
+import { isEmbeddedWalletClientType, parseWalletGatewayKey } from "../wallet-gateway";
 import { ROBINHOOD_MAINNET_CHAIN_ID } from "./robinhood-assets";
 
 export type VNextWalletHandoffBinding = {
@@ -35,39 +35,48 @@ function sameAddress(left?: string, right?: string) {
 }
 
 /**
- * Proves that the Privy-selected external wallet is the exact Wagmi/Viem
+ * Proves that the Privy-selected embedded or external wallet is the exact Wagmi/Viem
  * connector client that will receive the transaction request. This is a
  * fail-closed binding check; it never guesses by wallet label or address alone.
  */
-export function bindVNextExternalWallet(input: VNextWalletHandoffBindingInput): VNextWalletHandoffBinding {
+export function bindVNextTradingWallet(input: VNextWalletHandoffBindingInput): VNextWalletHandoffBinding {
   const selected = parseWalletGatewayKey(input.selectedWalletKey);
-  if (input.selectedWalletKind !== "external" || !selected) {
-    throw new Error("Select the exact external trading wallet again before opening it.");
+  if ((input.selectedWalletKind !== "external" && input.selectedWalletKind !== "embedded") || !selected) {
+    throw new Error("Select the exact trading wallet again before opening it.");
+  }
+  if (isEmbeddedWalletClientType(selected.walletClientType) !== (input.selectedWalletKind === "embedded")) {
+    throw new Error("The selected wallet kind no longer matches the active wallet client.");
   }
   if (!input.connectorId || selected.reportedId !== input.connectorId.trim().toLowerCase()) {
-    throw new Error("The selected external wallet connector no longer matches the active wallet client.");
+    throw new Error("The selected trading wallet connector no longer matches the active wallet client.");
   }
   if (!input.connectorType) {
-    throw new Error("The selected external wallet connector type is unavailable.");
+    throw new Error("The selected trading wallet connector type is unavailable.");
+  }
+  if (selected.connectorType !== input.connectorType.trim().toLowerCase()) {
+    throw new Error("The selected trading wallet connector type no longer matches the active wallet client.");
   }
   if (!sameAddress(selected.address, input.connectedAddress)
     || !sameAddress(selected.address, input.walletClientAddress)
     || !sameAddress(selected.address, input.recipient)) {
-    throw new Error("The selected external wallet, active account, wallet client, and recipient do not match.");
+    throw new Error("The selected trading wallet, active account, wallet client, and recipient do not match.");
   }
   if (input.connectedChainId !== ROBINHOOD_MAINNET_CHAIN_ID || input.walletClientChainId !== ROBINHOOD_MAINNET_CHAIN_ID) {
-    throw new Error("The selected external wallet client is not on Robinhood Chain 4663.");
+    throw new Error("The selected trading wallet client is not on Robinhood Chain 4663.");
   }
   return {
     connectorId: input.connectorId,
     connectorType: input.connectorType,
     selectedConnectorType: selected.connectorType,
     walletClientType: selected.walletClientType,
-    walletName: input.selectedWalletName?.trim() || "Selected external wallet",
+    walletName: input.selectedWalletName?.trim() || (input.selectedWalletKind === "embedded" ? "RMT wallet" : "Selected external wallet"),
     wallet: getAddress(selected.address),
     chainId: ROBINHOOD_MAINNET_CHAIN_ID
   };
 }
+
+/** @deprecated Use the wallet-kind-aware binding. Kept for durable imports. */
+export const bindVNextExternalWallet = bindVNextTradingWallet;
 
 export type VNextMobileHandoffState =
   | "idle"

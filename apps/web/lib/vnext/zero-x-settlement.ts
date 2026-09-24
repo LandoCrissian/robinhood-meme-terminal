@@ -95,6 +95,7 @@ export type VNextZeroXProviderNativeFee = {
     allowanceHolderRuntimeHash: Hex | null;
     providerSimulationIncomplete: boolean;
     exactSimulationPassed: boolean;
+    exactSimulationState: "passed" | "deterministic_revert" | "inconclusive" | "not_run";
   };
 };
 
@@ -210,8 +211,10 @@ export function assertVNextZeroXProviderNativeFee(value: VNextZeroXProviderNativ
       || (quote.gasPriceWei !== null && !POSITIVE_ATOMIC.test(quote.gasPriceWei))
       || !/^0x[0-9a-fA-F]{64}$/.test(quote.targetRuntimeHash)
       || typeof quote.providerSimulationIncomplete !== "boolean" || typeof quote.exactSimulationPassed !== "boolean"
-      || (value.authorizationState === "verified") !== quote.exactSimulationPassed
-      || (quote.exactSimulationPassed && (quote.providerSimulationIncomplete || quote.swapGasLimitUnits !== quote.nextActionGasLimitUnits))
+      || !["passed", "deterministic_revert", "inconclusive", "not_run"].includes(quote.exactSimulationState)
+      || quote.exactSimulationPassed !== (quote.exactSimulationState === "passed")
+      || (value.authorizationState === "verified") !== (["passed", "inconclusive"] as string[]).includes(quote.exactSimulationState)
+      || (["passed", "inconclusive"].includes(quote.exactSimulationState) && quote.swapGasLimitUnits !== quote.nextActionGasLimitUnits)
       || (native && (quote.allowanceTarget !== null || quote.allowanceHolderRuntimeHash !== null || value.authorizationState === "approval_required" || value.transactionValueAtomic === "0"))
       || (!native && (!quote.allowanceTarget || !isAddress(quote.allowanceTarget, { strict: false })
         || !isCanonicalZeroXAllowanceHolder(quote.allowanceTarget) || getAddress(quote.allowanceTarget) !== getAddress(value.transactionTarget!)
@@ -237,10 +240,10 @@ export function assertVNextZeroXPlanBinding(plan: VNextAuthorizationPlan) {
     || !plan.userAuthorizationRequired || plan.serverSubmissionEnabled
   ) throw new Error("RMT rejected changed 0x wallet fee or transaction authority.");
   if (plan.kind === "swap") {
-    if (fee.authorizationState !== "verified" || !fee.firmQuote.exactSimulationPassed || fee.firmQuote.providerSimulationIncomplete
+    if (fee.authorizationState !== "verified" || !["passed", "inconclusive"].includes(fee.firmQuote.exactSimulationState)
       || getAddress(plan.target) !== getAddress(fee.transactionTarget!) || keccak256(plan.data) !== fee.transactionCalldataHash
       || plan.value !== fee.transactionValueAtomic
-    ) throw new Error("RMT rejected a 0x swap that differs from exact simulation.");
+    ) throw new Error("RMT rejected a 0x swap that differs from the committed transaction authority.");
   } else {
     if (fee.authorizationState !== "approval_required" || !fee.firmQuote.allowanceTarget || !isCanonicalZeroXAllowanceHolder(fee.firmQuote.allowanceTarget) || getAddress(plan.inputAsset) === zeroAddress
       || getAddress(plan.target) !== getAddress(plan.inputAsset) || plan.value !== "0"

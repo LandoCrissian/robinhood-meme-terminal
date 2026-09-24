@@ -187,8 +187,8 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
             }
           } else {
             const expectedValue = sellingToken || peepEntry ? '0' : '1000000000000000';
-            const currentAuthorization = () => api.find((entry) => entry.path === '/api/vnext/authorize'
-              && entry.status === 200 && entry.body?.plan?.value === expectedValue);
+            const currentAuthorization = () => api.filter((entry) => entry.path === '/api/vnext/authorize'
+              && entry.status === 200 && entry.body?.plan?.value === expectedValue).at(-1);
             await until(() => currentAuthorization(), 'The selected input must reach real authorization, not an earlier default amount');
             assert.ok(api.some((entry) => entry.path === '/api/vnext/verify' && entry.status === 200));
             await page.locator('.vnRouteTop').click();
@@ -205,12 +205,16 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
               await page.getByRole('button', { name: 'Review verified swap in wallet', exact: true }).click();
               await until(async () => await page.evaluate(() => window.__ROUTE_ON_DEMAND_PROMPTS__) === 1, 'The one RMT CTA must reach the exact mock wallet');
               const sent = await page.evaluate(() => window.__PEEP_EXACT_REQUEST__);
+              const presentedBundle = currentAuthorization().body;
+              const presentedVerification = api.filter((entry) => entry.path === '/api/vnext/verify' && entry.status === 200).at(-1)?.body;
+              assert.ok(presentedVerification, 'A successful verification must precede route-on-demand wallet presentation');
+              assert.equal(presentedBundle.evidence.zeroXFirmQuoteCommitment, presentedVerification.zeroXFirmQuoteCommitment);
               assert.equal(sent.from.toLowerCase(), wallet.toLowerCase());
-              assert.equal(sent.to.toLowerCase(), bundle.plan.target.toLowerCase());
-              assert.equal(sent.data, bundle.plan.data);
-              assert.equal(BigInt(sent.value), BigInt(bundle.plan.value));
-              assert.equal(BigInt(sent.gas), BigInt(bundle.plan.gasLimit));
-              assert.equal(BigInt(sent.gasPrice), BigInt(bundle.plan.gasPrice));
+              assert.equal(sent.to.toLowerCase(), presentedBundle.plan.target.toLowerCase());
+              assert.equal(sent.data, presentedBundle.plan.data);
+              assert.equal(BigInt(sent.value), BigInt(presentedBundle.plan.value));
+              assert.equal(BigInt(sent.gas), BigInt(presentedBundle.plan.gasLimit));
+              assert.equal(BigInt(sent.gasPrice), BigInt(presentedBundle.plan.gasPrice));
               await page.getByText('Wallet request was rejected by the owner. Nothing was broadcast.', { exact: true }).waitFor();
               assert.equal(await page.getByRole('button', { name: 'Refresh verified request', exact: true }).count(), 0);
               const verifyAfterWallet = api.filter((entry) => entry.path === '/api/vnext/verify').length;

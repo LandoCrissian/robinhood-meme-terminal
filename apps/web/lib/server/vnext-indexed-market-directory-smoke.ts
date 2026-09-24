@@ -78,10 +78,21 @@ export async function verifyIndexedDirectory() {
   assert.equal(selectVNextMarketDirectoryView(parsed.markets!, "active").length, 0);
   assert.equal(selectVNextMarketDirectoryView(parsed.markets!, "trending").length, 0);
   const counts = vNextMarketDirectoryViewCounts(parsed.markets!);
-  for (const view of ["active", "trending", "new", "held", "rwa", "all"] as const) assert.equal(counts[view], selectVNextMarketDirectoryView(parsed.markets!, view).length);
+  for (const view of ["active", "movers", "trending", "new", "held", "rwa", "all"] as const) assert.equal(counts[view], selectVNextMarketDirectoryView(parsed.markets!, view).length);
   assert.ok(parsed.markets!.every((market) => market.priceUsd === null && market.volume24h === null && market.verifiedIdentity));
   const unavailable = await readVNextIndexedMarketDirectoryPage("https://fixture.invalid", { ...dependencies, readStocks: async () => ({ coverage: "unavailable", assetsByAddress: new Map() }) });
-  assert.equal(unavailable.status, 503);
+  assert.equal(unavailable.status, 200, "Optional Stock Token classification must not erase otherwise identified assets");
+  assert.ok("markets" in unavailable.body && unavailable.body.markets?.length);
+  assert.ok("failureReasons" in unavailable.body && unavailable.body.failureReasons?.includes("STOCK_CLASSIFICATION_UNAVAILABLE"));
+  const identityAuthorityUnavailable = await readVNextIndexedMarketDirectoryPage("https://fixture.invalid", {
+    ...dependencies,
+    admit: async () => { throw new Error("offline"); }
+  });
+  assert.equal(identityAuthorityUnavailable.status, 200, "Optional project identity enrichment must degrade to partial discovery");
+  assert.ok("failureReasons" in identityAuthorityUnavailable.body
+    && identityAuthorityUnavailable.body.failureReasons?.includes("PROJECT_IDENTITY_AUTHORITY_UNAVAILABLE"));
+  assert.equal("markets" in identityAuthorityUnavailable.body ? identityAuthorityUnavailable.body.markets?.length : 0, 48,
+    "An optional identity-authority outage must not hide assets when no positive conflict evidence is available");
   const malformed = structuredClone(result.body) as typeof parsed & { markets: NonNullable<typeof parsed>["markets"] };
   malformed!.markets![0].verifiedIdentity!.address = address(9999);
   assert.equal(parseVNextCanonicalDirectoryResponse(malformed), null);

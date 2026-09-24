@@ -170,7 +170,7 @@ function MarketCategoryNav({ view, counts, searchActive, activityCoveragePending
       key={candidate.id}
       aria-pressed={!searchActive && candidate.id === view}
       onClick={() => onChange(candidate.id)}
-    ><span>{candidate.label}</span><small>{!countsObserved ? "—" : activityCoveragePending && (candidate.id === "active" || candidate.id === "trending" || candidate.id === "new") ? "…" : candidate.id === "held" ? heldCountLabel(walletReadStatus, counts.held) : counts[candidate.id]}</small></button>)}
+    ><span>{candidate.label}</span><small>{!countsObserved ? "—" : activityCoveragePending && (candidate.id === "active" || candidate.id === "movers" || candidate.id === "trending" || candidate.id === "new") ? "…" : candidate.id === "held" ? heldCountLabel(walletReadStatus, counts.held) : counts[candidate.id]}</small></button>)}
   </nav>;
 }
 

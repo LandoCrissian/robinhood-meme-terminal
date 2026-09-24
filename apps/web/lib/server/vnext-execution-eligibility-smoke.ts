@@ -19,17 +19,17 @@ const secondObserved = getAddress("0x2222222222222222222222222222222222222222");
 
 const curatedEligibility = resolveVNextExecutionEligibility(curated, ROBINHOOD_NATIVE_ASSET_ADDRESS, providers);
 assert.equal(curatedEligibility.curated, true);
-assert.deepEqual(curatedEligibility.providers, providers, "Curated markets retain their existing provider capability surface");
+assert.deepEqual(curatedEligibility.providers, ["zero-x-swap", "zero-x-gasless"], "Curation must not reactivate retired direct executors");
 
 const observedEligibility = resolveVNextExecutionEligibility(observed, ROBINHOOD_USDG_ADDRESS, providers);
 assert.equal(observedEligibility.curated, false);
-assert.deepEqual(observedEligibility.providers, ["uniswap-v2", "uniswap-v3", "zero-x-swap"]);
+assert.deepEqual(observedEligibility.providers, ["zero-x-swap", "zero-x-gasless"]);
 for (const [input, output] of [[observed, ROBINHOOD_USDG_ADDRESS], [ROBINHOOD_NATIVE_ASSET_ADDRESS, observed], [ROBINHOOD_USDG_ADDRESS, observed]] as const) {
-  assert.deepEqual(resolveVNextExecutionEligibility(input, output, providers).providers, ["uniswap-v2", "uniswap-v3", "zero-x-swap"]);
+  assert.deepEqual(resolveVNextExecutionEligibility(input, output, providers).providers, ["zero-x-swap", "zero-x-gasless"]);
   assert.doesNotThrow(() => requireVNextExecutionProvider(input, output, "zero-x-swap", providers));
 }
-assert.doesNotThrow(() => requireVNextExecutionProvider(observed, ROBINHOOD_USDG_ADDRESS, "uniswap-v2", providers));
-assert.doesNotThrow(() => requireVNextExecutionProvider(observed, ROBINHOOD_USDG_ADDRESS, "uniswap-v3", providers));
+assert.throws(() => requireVNextExecutionProvider(observed, ROBINHOOD_USDG_ADDRESS, "uniswap-v2", providers), VNextExecutionEligibilityError);
+assert.throws(() => requireVNextExecutionProvider(observed, ROBINHOOD_USDG_ADDRESS, "uniswap-v3", providers), VNextExecutionEligibilityError);
 assert.throws(
   () => requireVNextExecutionProvider(observed, ROBINHOOD_USDG_ADDRESS, "uniswap-v4", providers),
   VNextExecutionEligibilityError,
@@ -40,10 +40,9 @@ assert.throws(
   VNextExecutionEligibilityError,
   "A provider observation cannot authorize an unsupported execution family"
 );
-assert.throws(
-  () => resolveVNextExecutionEligibility(observed, secondObserved, providers),
-  /one exact Token Market asset and one supported settlement asset/
-);
+assert.deepEqual(resolveVNextExecutionEligibility(observed, secondObserved, providers).providers, ["zero-x-swap", "zero-x-gasless"],
+  "Two non-curated ERC20 assets remain tradable when canonical 0x can route them");
+assert.doesNotThrow(() => requireVNextExecutionProvider(observed, secondObserved, "zero-x-swap", providers));
 for (const [input, output] of [
   [ROBINHOOD_NATIVE_ASSET_ADDRESS, ROBINHOOD_USDG_ADDRESS],
   [ROBINHOOD_USDG_ADDRESS, ROBINHOOD_NATIVE_ASSET_ADDRESS],
@@ -59,4 +58,4 @@ for (const [input, output] of [
 }
 assert.throws(() => requireVNextExecutionProvider(observed, ROBINHOOD_USDG_ADDRESS, "zero-x-gasless", providers), VNextExecutionEligibilityError);
 
-console.info("VNext dynamic execution eligibility smoke passed");
+console.info("VNext curation-independent 0x execution eligibility smoke passed");
