@@ -14,7 +14,10 @@ import { prepareRobinhoodVNextUniswapXIntent, withVNextStockTokenExecutionAdmiss
 import type { VNextProviderQuoteRequest } from "./vnext-provider-adapter";
 
 const nativeAsset = "0x0000000000000000000000000000000000000000";
-const stockAsset = "0x1111111111111111111111111111111111111111";
+// SPCX is present in the reviewed address-only Robinhood registry snapshot.
+// Using it here proves the cold-start path exercises durable authority rather
+// than a fixture-only injected classifier.
+const stockAsset = "0x4a0e65a3eccec6dbe60ae065f2e7bb85fae35eea";
 const ordinaryAsset = "0x2222222222222222222222222222222222222222";
 const ordinaryOutputAsset = "0x3333333333333333333333333333333333333333";
 
@@ -78,6 +81,16 @@ async function main() {
   const unavailableStock = await invoke(stockAsset, ordinaryAsset, unavailableWithKnownStock);
   assert.equal(unavailableStock.status, 451);
   assert.equal(unavailableStock.providerCalls, 0);
+
+  // Cold start: no successful live registry read and no process-local positive
+  // cache. The checked-in official address snapshot must deny this known Stock
+  // Token before provider preparation.
+  const coldStartStockInput = await invoke(stockAsset, ordinaryAsset, unavailableSnapshot);
+  const coldStartStockOutput = await invoke(ordinaryAsset, stockAsset, unavailableSnapshot);
+  assert.equal(coldStartStockInput.status, 451);
+  assert.equal(coldStartStockOutput.status, 451);
+  assert.equal(coldStartStockInput.providerCalls, 0);
+  assert.equal(coldStartStockOutput.providerCalls, 0);
 
   const unavailableVerify = await invoke(ordinaryAsset, nativeAsset, unavailableSnapshot);
   const unavailableAuthorize = await invoke(nativeAsset, ordinaryAsset, unavailableSnapshot);
@@ -160,7 +173,7 @@ async function main() {
   assert.match(engine, /quoteRobinhoodVNextExecution[\s\S]*quoteVNextExecutionProviders/);
   assert.match(engine, /prepareRobinhoodVNextUniswapXIntent[\s\S]*prepareVNextUniswapXIntent\(input, protectedOutputFloorAtomic, requireAdmission\)/);
 
-  console.log("VNext stock-token admission rejects known stock assets during registry outages while ordinary and merely RWA-paired assets reach canonical provider preparation.");
+  console.log("VNext stock-token admission rejects durable known stock assets on cold and warm registry outages before provider preparation, while ordinary and merely RWA-paired assets reach canonical provider preparation.");
 }
 
 void main().catch((cause) => {

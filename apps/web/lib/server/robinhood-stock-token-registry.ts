@@ -1,6 +1,7 @@
 import { getAddress, isAddress, zeroAddress } from "viem";
 import { z } from "zod";
 import type { RobinhoodStockAssetRelationship } from "../external-market";
+import { isDurablyKnownRobinhoodStockToken } from "./robinhood-stock-token-positive-deny";
 
 export const ROBINHOOD_STOCK_ASSET_REGISTRY = "https://api.robinhood.com/rhj/assets";
 const ROBINHOOD_CHAIN_ID = 4663;
@@ -46,6 +47,7 @@ export type VNextStockTokenExecutionAssets = {
 };
 
 export type RobinhoodStockRegistryReader = () => Promise<RobinhoodStockRegistrySnapshot>;
+export type RobinhoodStockPositiveDenyReader = (address: string) => boolean;
 
 type CompleteRobinhoodStockRegistrySnapshot = RobinhoodStockRegistrySnapshot & { coverage: "complete" };
 
@@ -57,7 +59,7 @@ export type RobinhoodStockRegistryCacheDependencies = {
 
 export type StockTokenExecutionPolicy =
   | { status: "eligible" }
-  | { status: "view-only"; asset: RobinhoodStockAsset }
+  | { status: "view-only"; asset?: RobinhoodStockAsset }
   | { status: "verification-unavailable" };
 
 export class StockTokenExecutionPolicyError extends Error {
@@ -176,24 +178,29 @@ export function fetchRobinhoodStockRegistryForExecution() {
 
 export function stockTokenExecutionPolicyFromSnapshot(
   token: string,
-  snapshot: RobinhoodStockRegistrySnapshot
+  snapshot: RobinhoodStockRegistrySnapshot,
+  isDurablyKnownStock: RobinhoodStockPositiveDenyReader = isDurablyKnownRobinhoodStockToken
 ): StockTokenExecutionPolicy {
   const asset = snapshot.assetsByAddress.get(token.toLowerCase());
-  return asset ? { status: "view-only", asset } : { status: "eligible" };
+  return asset ? { status: "view-only", asset }
+    : isDurablyKnownStock(token) ? { status: "view-only" }
+      : { status: "eligible" };
 }
 
 export async function stockTokenExecutionPolicy(
   token: string,
-  readSnapshot: RobinhoodStockRegistryReader = fetchRobinhoodStockRegistryForExecution
+  readSnapshot: RobinhoodStockRegistryReader = fetchRobinhoodStockRegistryForExecution,
+  isDurablyKnownStock: RobinhoodStockPositiveDenyReader = isDurablyKnownRobinhoodStockToken
 ): Promise<StockTokenExecutionPolicy> {
-  return stockTokenExecutionPolicyFromSnapshot(token, await readSnapshot());
+  return stockTokenExecutionPolicyFromSnapshot(token, await readSnapshot(), isDurablyKnownStock);
 }
 
 export async function requireStockTokenExecutionEligible(
   token: string,
-  readSnapshot: RobinhoodStockRegistryReader = fetchRobinhoodStockRegistryForExecution
+  readSnapshot: RobinhoodStockRegistryReader = fetchRobinhoodStockRegistryForExecution,
+  isDurablyKnownStock: RobinhoodStockPositiveDenyReader = isDurablyKnownRobinhoodStockToken
 ) {
-  const policy = await stockTokenExecutionPolicy(token, readSnapshot);
+  const policy = await stockTokenExecutionPolicy(token, readSnapshot, isDurablyKnownStock);
   if (policy.status === "verification-unavailable") {
     throw new StockTokenExecutionPolicyError(
       "Robinhood Stock Token identity verification is temporarily unavailable.",
@@ -211,7 +218,8 @@ export async function requireStockTokenExecutionEligible(
 
 export async function requireVNextStockTokenExecutionEligible(
   assets: VNextStockTokenExecutionAssets,
-  readSnapshot: RobinhoodStockRegistryReader = fetchRobinhoodStockRegistryForExecution
+  readSnapshot: RobinhoodStockRegistryReader = fetchRobinhoodStockRegistryForExecution,
+  isDurablyKnownStock: RobinhoodStockPositiveDenyReader = isDurablyKnownRobinhoodStockToken
 ) {
   const snapshot = await readSnapshot();
   const exactTradeAssets = [...new Set([
@@ -219,7 +227,7 @@ export async function requireVNextStockTokenExecutionEligible(
     getAddress(assets.outputAsset)
   ].filter((asset) => asset !== zeroAddress))];
   for (const asset of exactTradeAssets) {
-    const policy = stockTokenExecutionPolicyFromSnapshot(asset, snapshot);
+    const policy = stockTokenExecutionPolicyFromSnapshot(asset, snapshot, isDurablyKnownStock);
     if (policy.status === "view-only") {
       throw new StockTokenExecutionPolicyError(
         "Official Robinhood Stock Tokens are view-only in RMT until jurisdiction controls are available.",

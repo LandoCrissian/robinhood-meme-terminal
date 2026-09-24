@@ -1,4 +1,9 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import {
+  ROBINHOOD_STOCK_TOKEN_POSITIVE_DENY_ADDRESSES,
+  ROBINHOOD_STOCK_TOKEN_POSITIVE_DENY_SNAPSHOT
+} from "./robinhood-stock-token-positive-deny";
 import {
   parseRobinhoodStockAssets,
   requireVNextStockTokenExecutionEligible,
@@ -11,6 +16,18 @@ import {
 const stockToken = "0x1111111111111111111111111111111111111111";
 const launchToken = "0x2222222222222222222222222222222222222222";
 const anotherStockToken = "0x3333333333333333333333333333333333333333";
+const durableStockAddress = "0x4a0e65a3eccec6dbe60ae065f2e7bb85fae35eea";
+
+const durableAddresses = [...ROBINHOOD_STOCK_TOKEN_POSITIVE_DENY_ADDRESSES];
+assert.equal(durableAddresses.length, ROBINHOOD_STOCK_TOKEN_POSITIVE_DENY_SNAPSHOT.addressCount);
+assert.equal(new Set(durableAddresses).size, durableAddresses.length);
+assert.deepEqual(durableAddresses, [...durableAddresses].sort());
+assert.ok(durableAddresses.every((address) => /^0x[0-9a-f]{40}$/.test(address)));
+assert.ok(durableAddresses.includes(durableStockAddress));
+assert.equal(
+  createHash("sha256").update(durableAddresses.join("\n")).digest("hex"),
+  ROBINHOOD_STOCK_TOKEN_POSITIVE_DENY_SNAPSHOT.canonicalAddressSetSha256
+);
 
 const registry = parseRobinhoodStockAssets({
   assets: [
@@ -80,6 +97,10 @@ assert.equal(stockTokenExecutionPolicyFromSnapshot(launchToken, {
 assert.equal(stockTokenExecutionPolicyFromSnapshot(stockToken, {
   coverage: "stale",
   assetsByAddress: registry
+}).status, "view-only");
+assert.equal(stockTokenExecutionPolicyFromSnapshot(durableStockAddress, {
+  coverage: "unavailable",
+  assetsByAddress: new Map()
 }).status, "view-only");
 
 async function executionStatus(
