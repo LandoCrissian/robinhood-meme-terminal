@@ -397,7 +397,12 @@ async function tokenLane(browser, viewport, platform) {
   await terminalNavigation(page, `token-scanner-${platform}`, "Markets");
   const categoryButtons = page.locator(".rmtMarketViews button");
   const labels = await categoryButtons.locator("span").allTextContents();
-  check(labels[0] === "Active" && labels[1] === "Trending", `token-scanner-${platform}`, "ACTIVE must precede TRENDING.", { labels });
+  check(
+    JSON.stringify(labels.slice(0, 4)) === JSON.stringify(["Active", "Movers", "New", "Trending"]),
+    `token-scanner-${platform}`,
+    "ACTIVE, MOVERS, NEW, and TRENDING must remain in the owner-authorized order.",
+    { labels },
+  );
   await categoryButtons.filter({ hasText: "Trending" }).click();
   const marketRowSelector = platform === "mobile" ? ".rmtMobileMarketRow" : ".rmtMarketTableRow";
   const trendingRows = page.locator(marketRowSelector);
