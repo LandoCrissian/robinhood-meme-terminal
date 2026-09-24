@@ -8,7 +8,7 @@ import { readRobinhoodTokenIdentityEvidence } from "./universal-market-resolver"
 import { structureTradeFailure } from "../vnext/trade-failure";
 import { TradeIdentityError, tradeIdentityErrorResponse } from "./rmt-trade-identity";
 import { requireProjectIdentityExecutionAdmitted, projectIdentityAdmissionErrorResponse } from "./project-identity-admission";
-import { requireVNextStockTokenExecutionEligible, stockTokenExecutionPolicyErrorResponse } from "./robinhood-stock-token-registry";
+import { requireVNextStockTokenExecutionEligible } from "./robinhood-stock-token-registry";
 
 const usdg = getAddress("0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168");
 const cannacat = getAddress("0x1139d423C1706BDeaD91f03507F521635591eD92");
@@ -152,11 +152,9 @@ test("authentication and positive project conflict remain blocking, with stable 
   assert.equal((await (await structureTradeFailure(response, "quote")).json()).code, "PROJECT_IDENTITY_CONFLICT");
 });
 
-test("Stock Token policy unavailable remains blocking and distinguishable from RPC identity failure", async () => {
-  let failure: unknown;
-  await assert.rejects(requireVNextStockTokenExecutionEligible({ inputAsset: usdg, outputAsset: cannacat }, async () => ({ coverage: "unavailable", assetsByAddress: new Map() })),
-    (error: unknown) => { failure = error; return true; });
-  const response = stockTokenExecutionPolicyErrorResponse(failure);
-  assert.ok(response);
-  assert.equal((await (await structureTradeFailure(response, "quote")).json()).code, "STOCK_TOKEN_POLICY_UNAVAILABLE");
+test("Stock Token policy outage does not erase ordinary execution eligibility", async () => {
+  assert.equal((await requireVNextStockTokenExecutionEligible(
+    { inputAsset: usdg, outputAsset: cannacat },
+    async () => ({ coverage: "unavailable", assetsByAddress: new Map() })
+  )).status, "eligible");
 });

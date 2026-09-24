@@ -7,8 +7,6 @@ import {
 } from "../vnext/market-directory";
 import { RMT_SITE_URL } from "../site-identity";
 
-export const PUBLIC_VNEXT_MARKET_MINIMUM_LIQUIDITY_USD = 5_000;
-export const PUBLIC_VNEXT_MARKET_MINIMUM_VOLUME_24H_USD = 100;
 export const PUBLIC_VNEXT_MARKET_DIRECTORY_REVALIDATE_SECONDS = 300;
 
 export type PublicVNextMarketInventoryView = "all" | "active" | "movers" | "new" | "trending";
@@ -58,7 +56,7 @@ export const PUBLIC_VNEXT_MARKET_INVENTORY_VIEWS: ReadonlyArray<{
     id: "all",
     label: "All markets",
     path: "/markets/robinhood-chain",
-    summary: "Qualified Robinhood Chain markets ordered by liquidity and activity."
+    summary: "Identified Robinhood Chain markets ordered by available liquidity and activity evidence."
   }
 ] as const;
 
@@ -79,10 +77,6 @@ export function isPublicVNextInventoryMarket(
     && isAddress(market.pairAddress, { strict: false })
     && hasText(market.name)
     && hasText(market.symbol)
-    && market.liquidityUsd !== null
-    && market.liquidityUsd >= PUBLIC_VNEXT_MARKET_MINIMUM_LIQUIDITY_USD
-    && market.volume24h !== null
-    && market.volume24h >= PUBLIC_VNEXT_MARKET_MINIMUM_VOLUME_24H_USD
   );
 }
 

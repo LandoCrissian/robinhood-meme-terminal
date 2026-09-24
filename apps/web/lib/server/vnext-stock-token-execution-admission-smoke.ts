@@ -31,6 +31,7 @@ const assetsByAddress = parseRobinhoodStockAssets({
 
 const readySnapshot: RobinhoodStockRegistrySnapshot & { coverage: "complete" } = { coverage: "complete", assetsByAddress };
 const unavailableSnapshot: RobinhoodStockRegistrySnapshot = { coverage: "unavailable", assetsByAddress: new Map() };
+const unavailableWithKnownStock: RobinhoodStockRegistrySnapshot = { coverage: "unavailable", assetsByAddress };
 
 async function invoke(
   inputAsset: string,
@@ -43,7 +44,7 @@ async function invoke(
       { inputAsset, outputAsset },
       async () => {
         providerCalls += 1;
-        return { walletPlan: "prepared", transactionTarget: ordinaryAsset } as const;
+        return { provider: "zero-x-swap", walletPlan: "prepared", transactionTarget: ordinaryAsset } as const;
       },
       (assets) => requireVNextStockTokenExecutionEligible(
         assets,
@@ -74,12 +75,17 @@ async function main() {
     assert.equal(authorize.result, undefined);
   }
 
+  const unavailableStock = await invoke(stockAsset, ordinaryAsset, unavailableWithKnownStock);
+  assert.equal(unavailableStock.status, 451);
+  assert.equal(unavailableStock.providerCalls, 0);
+
   const unavailableVerify = await invoke(ordinaryAsset, nativeAsset, unavailableSnapshot);
   const unavailableAuthorize = await invoke(nativeAsset, ordinaryAsset, unavailableSnapshot);
-  assert.equal(unavailableVerify.status, 503);
-  assert.equal(unavailableAuthorize.status, 503);
-  assert.equal(unavailableVerify.providerCalls, 0);
-  assert.equal(unavailableAuthorize.providerCalls, 0);
+  assert.equal(unavailableVerify.status, 200);
+  assert.equal(unavailableAuthorize.status, 200);
+  assert.equal(unavailableVerify.providerCalls, 1);
+  assert.equal(unavailableAuthorize.providerCalls, 1);
+  assert.equal(unavailableAuthorize.result?.provider, "zero-x-swap");
 
   let now = 1_000;
   let refreshFails = false;
@@ -96,15 +102,19 @@ async function main() {
   refreshFails = true;
   const expiredVerify = await invoke(ordinaryAsset, nativeAsset, expiringCache.readForExecution);
   const expiredAuthorize = await invoke(nativeAsset, ordinaryAsset, expiringCache.readForExecution);
-  assert.equal(expiredVerify.status, 503);
-  assert.equal(expiredAuthorize.status, 503);
-  assert.equal(expiredVerify.providerCalls, 0);
-  assert.equal(expiredAuthorize.providerCalls, 0);
-  assert.equal(expiredAuthorize.result, undefined);
+  const expiredStock = await invoke(stockAsset, ordinaryAsset, expiringCache.readForExecution);
+  assert.equal(expiredVerify.status, 200);
+  assert.equal(expiredAuthorize.status, 200);
+  assert.equal(expiredVerify.providerCalls, 1);
+  assert.equal(expiredAuthorize.providerCalls, 1);
+  assert.equal(expiredAuthorize.result?.walletPlan, "prepared");
+  assert.equal(expiredStock.status, 451);
+  assert.equal(expiredStock.providerCalls, 0);
 
   const ordinary = await invoke(ordinaryAsset, nativeAsset, readySnapshot);
   assert.equal(ordinary.status, 200);
   assert.equal(ordinary.providerCalls, 1);
+  assert.equal(ordinary.result?.provider, "zero-x-swap");
   assert.equal(ordinary.result?.walletPlan, "prepared");
 
   // A pool may carry pair-level evidence for stockAsset, but only these exact ordinary assets reach admission.
@@ -150,7 +160,7 @@ async function main() {
   assert.match(engine, /quoteRobinhoodVNextExecution[\s\S]*quoteVNextExecutionProviders/);
   assert.match(engine, /prepareRobinhoodVNextUniswapXIntent[\s\S]*prepareVNextUniswapXIntent\(input, protectedOutputFloorAtomic, requireAdmission\)/);
 
-  console.log("VNext stock-token admission rejects exact stock assets before provider verification or authorization while ordinary and merely RWA-paired assets remain eligible.");
+  console.log("VNext stock-token admission rejects known stock assets during registry outages while ordinary and merely RWA-paired assets reach canonical provider preparation.");
 }
 
 void main().catch((cause) => {

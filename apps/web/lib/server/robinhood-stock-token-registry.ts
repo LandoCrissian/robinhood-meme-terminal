@@ -101,8 +101,10 @@ export function parseRobinhoodStockAssets(payload: unknown) {
   return assets;
 }
 
-function unavailableRobinhoodStockRegistry(): RobinhoodStockRegistrySnapshot {
-  return { coverage: "unavailable", assetsByAddress: new Map() };
+function unavailableRobinhoodStockRegistry(
+  knownAssetsByAddress: ReadonlyMap<string, RobinhoodStockAsset> = new Map()
+): RobinhoodStockRegistrySnapshot {
+  return { coverage: "unavailable", assetsByAddress: new Map(knownAssetsByAddress) };
 }
 
 async function readLiveRobinhoodStockRegistry(): Promise<CompleteRobinhoodStockRegistrySnapshot> {
@@ -139,9 +141,10 @@ export function createRobinhoodStockRegistryCache({
       cached = { expiresAt: now + ttlMs, snapshot };
       return snapshot;
     } catch {
-      // A failed refresh never extends the expired entry and never returns it
-      // as current execution authority. A later request retries the live read.
-      return unavailableRobinhoodStockRegistry();
+      // A failed refresh never extends the expired entry. Previously observed
+      // positive Stock Token identity remains deny-only execution evidence;
+      // absence from this incomplete set is not a fresh classification claim.
+      return unavailableRobinhoodStockRegistry(cached?.snapshot.assetsByAddress);
     }
   };
 
@@ -175,7 +178,6 @@ export function stockTokenExecutionPolicyFromSnapshot(
   token: string,
   snapshot: RobinhoodStockRegistrySnapshot
 ): StockTokenExecutionPolicy {
-  if (snapshot.coverage !== "complete") return { status: "verification-unavailable" };
   const asset = snapshot.assetsByAddress.get(token.toLowerCase());
   return asset ? { status: "view-only", asset } : { status: "eligible" };
 }
@@ -212,12 +214,6 @@ export async function requireVNextStockTokenExecutionEligible(
   readSnapshot: RobinhoodStockRegistryReader = fetchRobinhoodStockRegistryForExecution
 ) {
   const snapshot = await readSnapshot();
-  if (snapshot.coverage !== "complete") {
-    throw new StockTokenExecutionPolicyError(
-      "Robinhood Stock Token identity verification is temporarily unavailable.",
-      503
-    );
-  }
   const exactTradeAssets = [...new Set([
     getAddress(assets.inputAsset),
     getAddress(assets.outputAsset)
