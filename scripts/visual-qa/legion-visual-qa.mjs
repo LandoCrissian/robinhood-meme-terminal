@@ -18,8 +18,9 @@ const acceptanceOutput = path.join(output, "release-polish-acceptance");
 const fixturePort = Number(process.env.RMT_VISUAL_FIXTURE_PORT ?? 43111);
 const visualFixtureNow = process.env.RMT_VISUAL_FIXTURE_NOW ?? FIXTURE_NOW;
 const visualFixtureEpochMs = Date.parse(visualFixtureNow);
-const tokenGatedAllowedTokensSelector = "0x2db526eb";
-const tokenGatedDropSelector = "0x0b0e8a6e";
+const calldataAddressWord = (value) => value.slice(2).toLowerCase().padStart(64, "0");
+const tokenGatedAllowedTokensArgs = calldataAddressWord(RADAR_DROP_COLLECTION);
+const tokenGatedDropArgs = `${tokenGatedAllowedTokensArgs}${calldataAddressWord(CCFF00_COLLECTION)}`;
 const token = TOKEN_MARKETS[1].address;
 const pair = TOKEN_MARKETS[1].pairAddress;
 const failures = [];
@@ -83,10 +84,10 @@ const fixtureServer = createServer(async (request, response) => {
       const target = String(call.to ?? "").toLowerCase();
       const data = String(call.data ?? "").toLowerCase();
       if (target === RADAR_DROP_COLLECTION.toLowerCase() && data.startsWith("0x01ffc9a7")) return rpcResult(response, payload.id, `0x${word(0)}`);
-      if (target === RADAR_SEADROP.toLowerCase() && data.startsWith(tokenGatedAllowedTokensSelector)) {
+      if (target === RADAR_SEADROP.toLowerCase() && data.length === 74 && data.slice(10) === tokenGatedAllowedTokensArgs) {
         return rpcResult(response, payload.id, `0x${word(32)}${word(1)}${addressWord(CCFF00_COLLECTION)}`);
       }
-      if (target === RADAR_SEADROP.toLowerCase() && data.startsWith(tokenGatedDropSelector)) {
+      if (target === RADAR_SEADROP.toLowerCase() && data.length === 138 && data.slice(10) === tokenGatedDropArgs) {
         return rpcResult(response, payload.id, `0x${word(12_500_000_000_000_000n)}${word(2)}${word(1_790_369_280)}${word(1_790_376_480)}${word(7)}${word(500)}${word(0)}${word(0)}`);
       }
       return rpcResult(response, payload.id, "0x");
