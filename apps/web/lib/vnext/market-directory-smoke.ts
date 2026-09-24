@@ -158,12 +158,14 @@ const categorized = normalizeDirectoryMarkets({
 const held = new Set([otherAddress.toLowerCase()]);
 const counts = vNextMarketDirectoryViewCounts(categorized, held);
 assert.equal(counts.trending, 1);
+assert.equal(counts.movers, 1);
 assert.equal(counts.new, 1);
 assert.equal(counts.active, 2);
 assert.equal(counts.rwa, 2);
 assert.equal(counts.held, 1);
 assert.equal(counts.all, 4);
 assert.equal(selectVNextMarketDirectoryView(categorized, "trending", held)[0].symbol, "WETH");
+assert.equal(selectVNextMarketDirectoryView(categorized, "movers", held)[0].symbol, "WETH");
 assert.equal(selectVNextMarketDirectoryView(categorized, "held", held)[0].symbol, "OTH");
 const rwaMarkets = selectVNextMarketDirectoryView(categorized, "rwa", held);
 assert.deepEqual(rwaMarkets.map((market) => market.rwaRelationship), ["canonical-stock-token", "paired-market-asset"]);
@@ -752,7 +754,7 @@ assert.match(legacyDirectoryServer, /DIRECTORY_TOKENS/);
 assert.match(legacyDirectoryServer, /dexscreener/);
 assert.doesNotMatch(canonicalDirectoryServer, /slice\(0, VNEXT_MARKET_DIRECTORY_MAX_MARKETS\)/);
 assert.doesNotMatch(canonicalDirectoryServer, /resolveRmtOrigins|external-availability|external-sushi-quote|external-uniswap|router|reactor/);
-assert.deepEqual(VNEXT_MARKET_DIRECTORY_VIEWS.slice(0, 2).map((view) => view.id), ["active", "trending"]);
+assert.deepEqual(VNEXT_MARKET_DIRECTORY_VIEWS.slice(0, 4).map((view) => view.id), ["active", "movers", "new", "trending"]);
 
 const canonicalSources = [
   "sushiswap-v2",

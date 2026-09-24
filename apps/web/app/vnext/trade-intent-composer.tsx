@@ -274,7 +274,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
 
   const draft = useMemo(() => {
     if (!marketAsset) return { intent: null, message: "This preview asset has no verified chain-qualified contract identity." };
-    if (!address || !isConnected || identity.activeWalletKind !== "external") return { intent: null, message: "Connect an external trading wallet to bind the source account and recipient." };
+    if (!address || !isConnected || identity.activeWalletKind === null) return { intent: null, message: "Connect your selected trading wallet to bind the source account and recipient." };
     if (!onRobinhood) return { intent: null, message: "Switch to Robinhood Chain before creating an intent." };
     if (!pair) return { intent: null, message: side === "buy" ? "No different trusted payment asset is available in this wallet." : "No supported settlement asset is available." };
     try {
@@ -616,7 +616,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
       quoteActive
       && identity.enabled
       && identity.authenticated
-      && identity.activeWalletKind === "external"
+      && identity.activeWalletKind !== null
       && identity.identityToken
       && identity.userId
       && draft.intent
@@ -957,7 +957,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
     // One owned timeout, paused during hidden-page and wallet interaction lifecycles.
     if (!quoteActive || pendingTradeAfterLogin.current || !authorizationEnabled || stockTokenViewOnly || !onRobinhood
       || !draft.intent || amountExceedsBalance || !identity.authenticated || !identity.identityToken
-      || !identity.userId || !address || identity.activeWalletKind !== "external" || !identity.activeWalletKey
+      || !identity.userId || !address || identity.activeWalletKind === null || !identity.activeWalletKey
       || walletReadStatus !== "ready" || walletBusy || executionRecord?.state === "submitted"
       || !["idle", "swap_ready", "next_approval_ready"].includes(postExecutionState.state)) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -1023,7 +1023,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
       pendingTradeAfterLogin.current = undefined;
       return;
     }
-    if (!authorizationEnabled || stockTokenViewOnly || !identity.authenticated || !identity.identityToken || !identity.userId || !address || identity.activeWalletKind !== "external" || !draft.intent || amountExceedsBalance || walletReadStatus !== "ready") return;
+    if (!authorizationEnabled || stockTokenViewOnly || !identity.authenticated || !identity.identityToken || !identity.userId || !address || identity.activeWalletKind === null || !draft.intent || amountExceedsBalance || walletReadStatus !== "ready") return;
     pendingTradeAfterLogin.current = undefined;
     void startTrade();
   }, [address, authorizationEnabled, draft.intent, identity.activeWalletKind, identity.authenticated, identity.identityToken, identity.userId, stockTokenViewOnly, selectedMarketAddress, side, amountExceedsBalance, walletReadStatus]);
@@ -1094,9 +1094,9 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
   const triggerPrimaryAction = () => {
     if (!authorizationEnabled || stockTokenViewOnly) return;
     if (!identity.enabled) return;
-    if (!identity.authenticated || !address || identity.activeWalletKind !== "external") {
+    if (!identity.authenticated || !address || identity.activeWalletKind === null) {
       pendingTradeAfterLogin.current = { marketAddress: selectedMarketAddress, side, wallet: address };
-      identity.connectTradingWallet();
+      identity.login();
       return;
     }
     void startTrade(true);
@@ -1247,7 +1247,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
         <summary className="vnRouteTop"><span><i aria-hidden="true" /> Advanced details</span><strong>{routeStatusLabel}</strong></summary>
         <div className="vnRouteDetails">
 {authorizationState.state === "ready" && visibleVerification ? <section className="vnWalletPrimaryReview">
-<span><strong>Verified request ready</strong><small>Nothing opens automatically. Use the explicit action below when the selected external wallet is unlocked.</small></span>
+<span><strong>Verified request ready</strong><small>Nothing opens automatically. Use the explicit action below when your selected wallet is ready.</small></span>
 
 <dl>
           <div><dt>Exact input</dt><dd>{formatAtomicDisplay(authorizationState.plan.inputAmountAtomic, pair?.inputAsset.decimals ?? 18)} {inputSymbol}</dd></div>
@@ -1271,7 +1271,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
          : visibleQuote && bestQuote && !verificationQuote
            ? "The best observed route is not admitted to public wallet execution. Its quote remains visible and unchanged."
          : walletPlanActive
-          ? "The verified request is ready. Only your explicit wallet-review action can send it to the selected external wallet."
+          ? "The verified request is ready. Only your explicit wallet-review action can send it to the selected wallet."
         : identity.enabled
           ? "RMT prepares the verified 0x request. One explicit review action opens your wallet; nothing signs automatically."
         : "Trading identity is not configured in this environment. RMT will not request a quote or prepare a wallet transaction."}</p>
@@ -1339,7 +1339,11 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
               <div><dt>Route</dt><dd>{visibleRoutePresentation?.routeLabel}</dd></div>
               <div><dt>Protected</dt><dd>{formatAtomicDisplay(visibleVerification.protectedOutputAtomic, verificationQuote?.outputDecimals ?? 18)} {outputSymbol}</dd></div>
               <div><dt>{visibleVerification.provider === "zero-x-swap" ? "Fresh firm quote" : "Quote continuity"}</dt><dd>{visibleVerification.provider === "zero-x-swap" ? "Updated executable minimum" : describeProtectedOutputContinuity(visibleVerification.protectedOutputAtomic, visibleVerification.indicativeProtectedOutputFloorAtomic)}</dd></div>
-              <div><dt>Simulation</dt><dd>{visibleVerification.exactSimulationPassed ? "Passed" : "Not passed"}</dd></div>
+              <div><dt>Simulation</dt><dd>{visibleVerification.exactSimulationPassed
+                ? "Passed"
+                : visibleVerification.exactSimulationState === "inconclusive"
+                  ? "Unavailable · trade commitment passed"
+                  : "Blocked"}</dd></div>
               <div><dt>Next action</dt><dd>{visibleVerification.nextAction === "approval" ? "Exact approval" : visibleVerification.nextAction === "swap" ? "Verified swap" : "Blocked"}</dd></div>
               <div><dt>Gas</dt><dd>{visibleVerification.gasState}</dd></div>
               <div><dt>Gas reserve</dt><dd>{visibleVerification.estimatedNetworkCostWei ? `${formatAtomicDisplay(visibleVerification.estimatedNetworkCostWei, 18)} ETH` : "Unavailable"}</dd></div>
@@ -1425,7 +1429,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
         /> : <button
           className="vnReviewButton"
           type="button"
-          disabled={!authorizationEnabled || stockTokenViewOnly || walletBusy || transactionPending || amountExceedsBalance || !identity.enabled || !identity.ready || Boolean(visibleQuote && bestQuote && !verificationQuote) || Boolean(identity.authenticated && address && identity.activeWalletKind === "external" && !draft.intent)}
+          disabled={!authorizationEnabled || stockTokenViewOnly || walletBusy || transactionPending || amountExceedsBalance || !identity.enabled || !identity.ready || Boolean(visibleQuote && bestQuote && !verificationQuote) || Boolean(identity.authenticated && address && identity.activeWalletKind !== null && !draft.intent)}
           aria-describedby={stockTokenViewOnly ? "vn-stock-token-execution-policy" : previewOnly ? "vn-preview-execution-policy" : undefined}
           onClick={triggerPrimaryAction}
         >{stockTokenViewOnly
@@ -1440,7 +1444,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
               ? "Review with fresh quote"
               : !identity.enabled
                 ? "Trading identity unavailable"
-              : !address || identity.activeWalletKind !== "external"
+              : !address || identity.activeWalletKind === null
                 ? `${side === "buy" ? "Connect & buy" : "Connect & sell"} ${marketSymbol}`
               : !identity.authenticated
                 ? `${side === "buy" ? "Connect & buy" : "Connect & sell"} ${marketSymbol}`

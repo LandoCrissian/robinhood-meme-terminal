@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { walletGatewayKey } from "../wallet-gateway";
 import {
   bindVNextExternalWallet,
+  bindVNextTradingWallet,
   inspectVNextWalletTransport,
   isVNextMobileBrowser,
   invokeVNextExternalWalletRequest,
@@ -63,6 +64,26 @@ for (const scenario of [
   assert.equal(binding.walletName, scenario.wallet.meta.name);
   assert.equal(binding.chainId, 4_663);
 }
+
+const embedded = {
+  ...metaMask,
+  connectorType: "embedded",
+  walletClientType: "privy-v2",
+  meta: { id: "privy", name: "RMT wallet" }
+};
+const embeddedBinding = bindVNextTradingWallet({
+  selectedWalletKey: walletGatewayKey(embedded), selectedWalletKind: "embedded", selectedWalletName: "RMT wallet",
+  connectedAddress: embedded.address, connectedChainId: 4_663, connectorId: embedded.meta.id,
+  connectorType: embedded.connectorType, walletClientAddress: embedded.address, walletClientChainId: 4_663,
+  recipient: embedded.address
+});
+assert.equal(embeddedBinding.wallet, DIRECT_SMOKE_RECIPIENT);
+assert.equal(embeddedBinding.walletClientType, "privy-v2");
+assert.throws(() => bindVNextTradingWallet({
+  selectedWalletKey: walletGatewayKey(embedded), selectedWalletKind: "external", connectedAddress: embedded.address,
+  connectedChainId: 4_663, connectorId: embedded.meta.id, connectorType: embedded.connectorType,
+  walletClientAddress: embedded.address, walletClientChainId: 4_663, recipient: embedded.address
+}), /wallet kind/, "RMT must not silently reinterpret an embedded signer as external");
 
 assert.throws(() => bindVNextExternalWallet({
   selectedWalletKey: walletGatewayKey(rabby),
@@ -186,7 +207,7 @@ assert.match(css, /\.vnTradeScroll\s*\{[^}]*overflow-y: auto/);
 assert.doesNotMatch(composer, /vnRouteCard" open=/, "authorization must not open a nested mobile detail surface");
 assert.match(composer, /Nothing opens automatically/);
 assert.match(review, /useWalletClient\(\{ connector \}\)/, "the transaction client must be bound to the exact active connector");
-assert.match(review, /bindVNextExternalWallet/);
+assert.match(review, /bindVNextTradingWallet/);
 assert.match(review, /dispatchVNextWalletReview/);
 const openBoundary = review.slice(review.indexOf("function openPreparedWalletRequest"), review.indexOf("const prepareWalletReview"));
 const prepareBoundary = review.slice(review.indexOf("const prepareWalletReview"), review.indexOf("const reopenSelectedWallet"));
@@ -211,7 +232,7 @@ assert.match(css, /@media \(max-width: 639px\)[\s\S]*\.vnWalletPrimaryReview > d
 assert.match(css, /\.vnWalletSubmission\s*\{[\s\S]*display: grid/,
   "the same bounded wallet lifecycle surface remains usable at 1440x900");
 
-console.log("RMT iOS external-wallet handoff uses the exact selected connector, exposes the real explicit action, and preserves provider-pending recovery.");
+console.log("RMT embedded and external wallet handoff uses the exact selected connector, exposes the real explicit action, and preserves provider-pending recovery.");
 }
 
 main().catch((error) => {

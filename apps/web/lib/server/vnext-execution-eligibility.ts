@@ -15,12 +15,12 @@ const SETTLEMENT_ASSETS = new Set([
 const CURATED_MARKET_ASSETS = new Set(
   RMT_CURATED_MARKET_REGISTRY.map((entry) => entry.token.toLowerCase())
 );
-const DYNAMIC_EXECUTION_PROVIDERS = new Set<VNextQuoteProvider>([
-  "uniswap-v2",
-  "uniswap-v3"
-]);
 const ROUTE_ON_DEMAND_EXECUTION_PROVIDERS = new Set<VNextQuoteProvider>([
   "zero-x-swap"
+]);
+const CANONICAL_ZERO_X_OBSERVATION_PROVIDERS = new Set<VNextQuoteProvider>([
+  "zero-x-swap",
+  "zero-x-gasless"
 ]);
 
 export type VNextExecutionEligibility = {
@@ -51,18 +51,14 @@ export function resolveVNextExecutionEligibility(
       providers: availableProviders.filter((provider) => ROUTE_ON_DEMAND_EXECUTION_PROVIDERS.has(provider))
     };
   }
-  const curated = marketAssets.every((address) => CURATED_MARKET_ASSETS.has(address.toLowerCase()));
-  if (!curated && marketAssets.length !== 1) {
-    throw new VNextExecutionEligibilityError("Non-curated execution requires one exact Token Market asset and one supported settlement asset.");
-  }
+  const curated = marketAssets.length > 0
+    && marketAssets.every((address) => CURATED_MARKET_ASSETS.has(address.toLowerCase()));
   return {
     marketAssets,
     curated,
-    providers: curated
-      ? [...availableProviders]
-      : availableProviders.filter((provider) => (
-        DYNAMIC_EXECUTION_PROVIDERS.has(provider) || ROUTE_ON_DEMAND_EXECUTION_PROVIDERS.has(provider)
-      ))
+    // Curation is presentation metadata. Keep 0x's quote-only candidate
+    // observable, while the execution check below admits only AllowanceHolder.
+    providers: availableProviders.filter((provider) => CANONICAL_ZERO_X_OBSERVATION_PROVIDERS.has(provider))
   };
 }
 
@@ -73,9 +69,9 @@ export function requireVNextExecutionProvider(
   availableProviders: readonly VNextQuoteProvider[]
 ) {
   const eligibility = resolveVNextExecutionEligibility(inputAsset, outputAsset, availableProviders);
-  if (!eligibility.providers.includes(provider)) {
+  if (!eligibility.providers.includes(provider) || !ROUTE_ON_DEMAND_EXECUTION_PROVIDERS.has(provider)) {
     throw new VNextExecutionEligibilityError(
-      "Trading is unavailable because RMT has no independently verified execution route for this market."
+      "Trading is unavailable because the canonical 0x execution provider is not available for this market."
     );
   }
   return eligibility;

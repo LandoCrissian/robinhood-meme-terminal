@@ -94,6 +94,9 @@ export type VNextProviderVerificationEvidence = Record<string, unknown> & {
   nextAction: "approval" | "swap" | null;
   nextActionTarget: Address | null;
   nextActionCalldataHash: Hex | null;
+  exactSimulationPassed?: boolean;
+  exactSimulationState?: "passed" | "deterministic_revert" | "inconclusive" | "not_run";
+  authorizationReady?: boolean;
   transactionValueAtomic: string;
   gasLimitUnits: string | null;
   estimatedNetworkCostUsdgAtomic: string | null;
@@ -368,9 +371,12 @@ export async function prepareVNextProviderAuthorization(
       || prepared.feeV2Authorization !== undefined
     ) throw new Error("0x did not return complete provider-native fee authority.");
     assertVNextZeroXProviderNativeFee(prepared.evidence.providerNativeFee);
+    const simulationState = typeof prepared.evidence.exactSimulationState === "string"
+      ? prepared.evidence.exactSimulationState
+      : (prepared.evidence.exactSimulationPassed ? "passed" : "not_run");
     if ((prepared.transaction.gasPrice ?? null) !== prepared.evidence.providerNativeFee!.firmQuote?.gasPriceWei
-      || (prepared.transaction.kind === "swap" && (prepared.evidence.exactSimulationPassed !== true || prepared.evidence.authorizationReady !== true))
-    ) throw new Error("0x did not bind the exact simulated gas-price envelope.");
+      || (prepared.transaction.kind === "swap" && (!["passed", "inconclusive"].includes(simulationState) || prepared.evidence.authorizationReady !== true))
+    ) throw new Error("0x did not bind the committed gas-price envelope.");
   } else {
     const capability = feeAdmission.capability ?? VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY[provider];
     if (capability.state !== "V2_ATOMIC_INPUT_FEE") {

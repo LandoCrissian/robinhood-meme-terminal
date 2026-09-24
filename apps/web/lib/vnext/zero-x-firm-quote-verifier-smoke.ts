@@ -58,6 +58,7 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
   let balanceIssue = false;
   let simulationIncomplete = false;
   let callFailure = false;
+  let callUnavailable = false;
   let noTargetCode = false;
   let settlerCode = executableFixture.runtime;
   let actionBasis = 10_000n;
@@ -156,6 +157,8 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
         simulatedEnvelope = (payload.params[0] ?? null) as Record<string, string> | null;
         return callFailure
           ? Response.json({ jsonrpc: "2.0", id: 1, error: { code: 3, message: "reverted" } })
+          : callUnavailable
+            ? Response.json({ jsonrpc: "2.0", id: 1, error: { code: -32005, message: "temporarily unavailable" } })
           : Response.json({ jsonrpc: "2.0", id: 1, result: "0x" });
       }
       throw new Error(`Unexpected RPC method ${payload.method}`);
@@ -191,7 +194,7 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     assert.equal(unknownEvidence.routeIntrospection.diagnostic?.actionIndex, 3);
     assert.equal(unknownEvidence.routeIntrospection.diagnostic?.actionKind, "0xdeadbeef");
     // This stub does not assert that deadbeef exists in the reviewed runtime.
-    // Real unknown-to-runtime actions revert; exact RPC simulation remains hard.
+    // A deterministic execution revert remains hard.
     callFailure = true;
     const failedUnknown = await verifyZeroXSwapFirmQuote(exactPairRequest);
     assert.equal(failedUnknown.status, "simulation_failed");
@@ -438,11 +441,22 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     assert.equal((await verifyZeroXSwapFirmQuote(baseRequest)).status, "insufficient_balance");
     balanceIssue = false;
     simulationIncomplete = true;
-    assert.equal((await verifyZeroXSwapFirmQuote(baseRequest)).status, "simulation_failed");
+    const providerIncompleteLocalPass = await verifyZeroXSwapFirmQuote(baseRequest);
+    assert.equal(providerIncompleteLocalPass.status, "verified", "provider simulation metadata does not override a successful exact local eth_call");
+    assert.equal(providerIncompleteLocalPass.exactSimulationState, "passed");
     simulationIncomplete = false;
     callFailure = true;
-    assert.equal((await verifyZeroXSwapFirmQuote(baseRequest)).status, "simulation_failed");
+    const deterministicRevert = await verifyZeroXSwapFirmQuote(baseRequest);
+    assert.equal(deterministicRevert.status, "simulation_failed");
+    assert.equal(deterministicRevert.exactSimulationState, "deterministic_revert");
     callFailure = false;
+    callUnavailable = true;
+    const inconclusive = await verifyZeroXSwapFirmQuote(baseRequest);
+    assert.equal(inconclusive.status, "verified", "inconclusive transport evidence cannot veto a complete trade commitment");
+    assert.equal(inconclusive.exactSimulationPassed, false);
+    assert.equal(inconclusive.exactSimulationState, "inconclusive");
+    await assertZeroXSharedWalletAuthorization(await prepareZeroXSwapAuthorization(await committedRequest(baseRequest, inconclusive)));
+    callUnavailable = false;
 
     input = zeroAddress;
     output = outputAsset;

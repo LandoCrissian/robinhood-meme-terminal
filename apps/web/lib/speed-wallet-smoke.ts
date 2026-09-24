@@ -49,13 +49,12 @@ assert.match(providers, /connectors:\s*createLegacyWalletConnectors\(\)/, "The l
 assert.doesNotMatch(speedProvider, /createLegacyWalletConnectors/, "Privy must not initialize RMT's legacy WalletConnect connector a second time.");
 assert.match(speedProvider, /@privy-io\/wagmi/, "Embedded wallets must use Privy's official Wagmi adapter.");
 assert.match(speedProvider, /createOnLogin:\s*"users-without-wallets"/, "Privy must not create a second wallet for a trader who already has an external wallet.");
-assert.match(speedProvider, /showWalletLoginFirst:\s*true/, "Privy must prioritize the wallet already available to a trader.");
-assert.match(speedProvider, /Use an external Ethereum wallet you control/, "Privy trading-wallet copy must describe the external-wallet boundary.");
-assert.doesNotMatch(speedProvider, /create a user-owned Robinhood Chain wallet/, "Trading-wallet copy must not advertise embedded-wallet creation.");
+assert.match(speedProvider, /showWalletLoginFirst:\s*false/, "Privy sign-in must create or restore the embedded consumer wallet before offering optional connectors.");
+assert.match(speedProvider, /self-custodial RMT wallet/, "Privy copy must describe the embedded self-custodial default.");
 assert.match(walletButton, /if \(speedWalletEnabled\) return <PrivyWalletButton/, "Privy must own the wallet entry point whenever validly configured.");
-assert.match(privyWalletButton, /"Connect trading wallet"/, "VNext must lead with a trading-wallet connection rather than a profile login.");
-assert.match(privyWalletButton, /pathname === "\/" \|\| pathname === "\/vnext"/, "The production root must retain VNext's external-wallet-only boundary.");
-assert.match(privyWalletButton, /identity\.connectTradingWallet\(\)/, "VNext must use the external-wallet-only Privy flow.");
+assert.match(privyWalletButton, /"Sign in or create wallet"/, "VNext must lead with the embedded consumer wallet flow.");
+assert.match(privyWalletButton, /pathname === "\/" \|\| pathname === "\/vnext"/, "The production root must retain the exact-wallet terminal boundary.");
+assert.match(privyWalletButton, />Connect existing wallet</, "External wallets must remain available as an optional wallet-management action.");
 assert.doesNotMatch(privyWalletButton, /useConnectOrCreateWallet|connectOrCreateWallet\(/, "RMT must not open a connection-only flow before wallet authentication.");
 assert.match(privyWalletButton, /mobileMetaMaskUrl/, "Mobile traders must have a direct MetaMask app handoff outside blocked embedded-browser connection modals.");
 assert.match(privyWalletButton, /mobileRabbyUrl/, "Mobile traders must have a direct Rabby app handoff from a normal browser.");
@@ -79,11 +78,8 @@ assert.match(
 );
 assert.match(rmtIdentity, /needsLogin: \(\) => !currentIdentity\.current\.authenticated \|\| !wallet\.linked/, "The selected external wallet must authenticate or link when needed.");
 assert.match(walletConnectionController, /scope\.step\(\(\) => wallet\.loginOrLink\(\)\)/, "Wallet SIWE must run through the bounded selection scope.");
-assert.doesNotMatch(
-  rmtIdentity.match(/connectTradingWallet:\s*\(\) => \{[\s\S]*?\n\s*\},\n\s*enabled:/)?.[0] ?? "",
-  /openPrivyLogin/,
-  "Terminal wallet connection must not enter Privy's social, passkey, or embedded-wallet login chooser."
-);
+assert.match(rmtIdentity, /embeddedSignerWallet \? walletGatewayKey\(embeddedSignerWallet\)/,
+  "The embedded wallet must carry the same connector-qualified signer key as external wallets.");
 assert.match(rmtIdentity, /await switchAccountAsync\(\{ connector: selected \}\)/, "Switching must await the exact connector mutation.");
 assert.match(rmtIdentity, /await connectAsync\(\{ connector: selected \}\)/, "Connecting must await the exact connector mutation.");
 assert.match(rmtIdentity, /connectorProvider !== provider/, "The connector must match the independently selected provider instance.");
@@ -120,4 +116,4 @@ assert.match(walletTransferDialog, /<OverlayPortal>/, "Transfer controls must st
 assert.match(walletReceiveDialog, /<OverlayPortal>/, "Receive controls must stay inside the visual viewport.");
 assert.match(overlayPortal, /createPortal\(children, document\.body\)/, "Wallet sheets must render above transformed navigation and community layers.");
 
-console.log("VNext wallet entry remains external-first, exact-wallet bound, and signer-disabled by default.");
+console.log("VNext wallet entry is embedded-first, retains optional external wallets, and binds the exact selected signer.");

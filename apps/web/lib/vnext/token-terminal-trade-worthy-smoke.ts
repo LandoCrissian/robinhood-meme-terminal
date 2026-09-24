@@ -21,7 +21,7 @@ import {
 import { ROBINHOOD_NATIVE_ASSET_ADDRESS } from "./robinhood-assets";
 import { requireVNextExecutionProvider } from "../server/vnext-execution-eligibility";
 
-const providers = ["sushi", "uniswap-v2", "uniswap-v3", "uniswap-v4", "up-v2", "up-cl"] as const;
+const providers = ["sushi", "uniswap-v2", "uniswap-v3", "uniswap-v4", "up-v2", "up-cl", "zero-x-swap"] as const;
 type FixtureMarket = VNextDirectoryMarket & {
   executionFixture?: "EXECUTION_ELIGIBLE_V2" | "EXECUTION_ELIGIBLE_V3";
   heldFixture?: boolean;
@@ -47,6 +47,8 @@ assert.ok(active.every(hasVNextObservedRecentActivity), "ACTIVE may contain only
 const trending = selectVNextMarketDirectoryView(visible, "trending");
 assert.ok(trending.length > 0);
 assert.ok(trending.every((market) => market.signal === "moving" || market.signal === "early"));
+const movers = selectVNextMarketDirectoryView(visible, "movers");
+assert.ok(movers.every((market) => Math.max(Math.abs(market.priceChange5m ?? 0), Math.abs(market.priceChange1h ?? 0), Math.abs(market.priceChange24h ?? 0)) > 0));
 const newest = selectVNextMarketDirectoryView(visible, "new");
 assert.ok(newest.length > 0);
 assert.ok(newest.every((market) => market.ageMinutes !== null && market.ageMinutes <= 24 * 60));
@@ -55,8 +57,10 @@ const nonCuratedV2 = broad.find((market) => market.executionFixture === "EXECUTI
 const nonCuratedV3 = broad.find((market) => market.executionFixture === "EXECUTION_ELIGIBLE_V3")!;
 const nonCuratedV4 = broad.find((market) => market.dexId === "uniswap-v4")!;
 const unsupported = broad.find((market) => market.dexId === "observed-dex")!;
-assert.doesNotThrow(() => requireVNextExecutionProvider(ROBINHOOD_NATIVE_ASSET_ADDRESS, getAddress(nonCuratedV2.address), "uniswap-v2", providers));
-assert.doesNotThrow(() => requireVNextExecutionProvider(ROBINHOOD_NATIVE_ASSET_ADDRESS, getAddress(nonCuratedV3.address), "uniswap-v3", providers));
+assert.doesNotThrow(() => requireVNextExecutionProvider(ROBINHOOD_NATIVE_ASSET_ADDRESS, getAddress(nonCuratedV2.address), "zero-x-swap", providers));
+assert.doesNotThrow(() => requireVNextExecutionProvider(ROBINHOOD_NATIVE_ASSET_ADDRESS, getAddress(nonCuratedV3.address), "zero-x-swap", providers));
+assert.throws(() => requireVNextExecutionProvider(ROBINHOOD_NATIVE_ASSET_ADDRESS, getAddress(nonCuratedV2.address), "uniswap-v2", providers));
+assert.throws(() => requireVNextExecutionProvider(ROBINHOOD_NATIVE_ASSET_ADDRESS, getAddress(nonCuratedV3.address), "uniswap-v3", providers));
 assert.throws(() => requireVNextExecutionProvider(ROBINHOOD_NATIVE_ASSET_ADDRESS, getAddress(nonCuratedV4.address), "uniswap-v4", providers));
 assert.throws(() => requireVNextExecutionProvider(ROBINHOOD_NATIVE_ASSET_ADDRESS, getAddress(unsupported.address), "sushi", providers));
 assert.ok(visible.some((market) => market.address === unsupported.address), "Unsupported DEX markets remain visible");

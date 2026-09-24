@@ -31,7 +31,7 @@ import {
   type VNextWalletTransaction
 } from "../../lib/vnext/wallet-submission";
 import {
-  bindVNextExternalWallet,
+  bindVNextTradingWallet,
   emitVNextWalletHandoffDiagnostic,
   inspectVNextWalletTransport,
   isVNextMobileBrowser,
@@ -94,7 +94,9 @@ export function VNextWalletFeeDisclosure({
       <div><dt>Fee commitment</dt><dd>Included in the verified 0x execution plan; treasury delivery is not independently reconciled</dd></div>
       <div><dt>Treasury</dt><dd><ExplorerLink kind="address" value={providerNativeFee.treasury} accessibleName="Open RMT fee treasury in Robinhood Chain explorer">{providerNativeFee.treasury.slice(0, 6)}…{providerNativeFee.treasury.slice(-4)} ↗</ExplorerLink></dd></div>
     </dl>
-    <small>Your wallet receives only the exact target, calldata, value, and gas envelope that passed local simulation.</small>
+    <small>{evidence.exactSimulationPassed
+      ? "Your wallet receives only the exact target, calldata, value, and gas envelope that passed local simulation."
+      : "Simulation was unavailable. The exact target, calldata, value, assets, recipient, fee, and minimum remain committed; deterministic reverts are still blocked."}</small>
   </div>;
 
   const feeV2 = evidence.feeV2Economics;
@@ -272,7 +274,7 @@ export function VNextWalletReview({
     }
     try {
       const now = Date.now();
-      const binding = bindVNextExternalWallet({
+      const binding = bindVNextTradingWallet({
         selectedWalletKey,
         selectedWalletKind,
         selectedWalletName,
@@ -358,7 +360,7 @@ export function VNextWalletReview({
     if (!submissionEnabled) return;
     if (!isVerifiedRequestFresh(plan.expiresAtMs, Date.now())) { onRefresh?.(); return; }
     if (!isConnected || !address || chainId !== ROBINHOOD_MAINNET_CHAIN_ID) {
-      setLocalError("Connect your external trading wallet on Robinhood Chain before continuing.");
+      setLocalError("Connect your selected trading wallet on Robinhood Chain before continuing.");
       return;
     }
     if (!publicClient) {
@@ -366,7 +368,7 @@ export function VNextWalletReview({
       return;
     }
     if (!walletClient || !connector) {
-      setLocalError("Wallet handoff did not start. No transaction request was sent. Select the external wallet again.");
+      setLocalError("Wallet handoff did not start. No transaction request was sent. Select the trading wallet again.");
       return;
     }
     setPreflightPending(true);
@@ -382,7 +384,7 @@ export function VNextWalletReview({
         return;
       }
       lease = locked.lease;
-        const binding = bindVNextExternalWallet({
+        const binding = bindVNextTradingWallet({
           selectedWalletKey,
           selectedWalletKind,
           selectedWalletName,
@@ -503,7 +505,7 @@ export function VNextWalletReview({
   };
 
   return <div className="vnWalletSubmission">
-{plan.provider === "zero-x-swap" ? <InjectedSignerSelection detailsTarget={detailsTarget} /> : null}
+{plan.provider === "zero-x-swap" && selectedWalletKind === "external" ? <InjectedSignerSelection detailsTarget={detailsTarget} /> : null}
 <button
       type="button"
       className="vnReviewButton"
@@ -528,8 +530,8 @@ export function VNextWalletReview({
 {localStatus ? <p className="vnAuthorizationStatus" role="status">{localStatus}</p> : null}
 {localError ? <p className="vnAuthorizationError" role="status">{localError}</p> : null}
 {gasShortfall ? <FundWalletButton directReceive variant="inline" label="Add Robinhood ETH" /> : null}
-{detailsTarget ? createPortal(<><div className="vnWalletHandoffIdentity" aria-label="Selected external wallet handoff">
-      <span><small>External signer</small><strong>{walletName}</strong></span>
+{detailsTarget ? createPortal(<><div className="vnWalletHandoffIdentity" aria-label="Selected wallet handoff">
+      <span><small>Selected signer</small><strong>{walletName}</strong></span>
       <span><small>Wallet</small><strong>{address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "Unavailable"}</strong></span>
       <span><small>Network</small><strong>Robinhood Chain · 4663</strong></span>
       <span><small>Connector</small><strong>{connector ? `${connector.name} · ${connector.id}` : "Unavailable"}</strong></span>
@@ -545,7 +547,7 @@ export function VNextWalletReview({
       inputDecimals={inputDecimals}
       outputDecimals={outputDecimals}
     />
-{plan.kind === "erc20_approval" ? <small>Standard ERC-20 approvals have no onchain expiry. This request is limited to the exact input amount, and RMT requires fresh verification before the swap.</small> : plan.provider === "zero-x-swap" ? <small>RMT presents the exact simulated 0x transaction. Quote expiry limits when RMT opens wallet review; it is not a guaranteed onchain expiry.</small> : <small>The verified swap calldata enforces its onchain deadline and protected output.</small>}
+{plan.kind === "erc20_approval" ? <small>Standard ERC-20 approvals have no onchain expiry. This request is limited to the exact input amount, and RMT requires fresh verification before the swap.</small> : plan.provider === "zero-x-swap" ? <small>RMT presents the exact committed 0x transaction. Simulation reverts block; an unavailable simulation is disclosed without changing the verified trade commitment. Quote expiry limits when RMT opens wallet review.</small> : <small>The verified swap calldata enforces its onchain deadline and protected output.</small>}
 <small>{expired ? "Verified request expired. Prepare a fresh server-verified request." : `Wallet review window · ${Math.max(0, Math.ceil((plan.expiresAtMs - nowMs) / 1_000))}s remaining`}</small>
 {transactionHash ? <ExplorerLink kind="transaction" value={transactionHash} accessibleName="Open submitted transaction in Robinhood Chain explorer">View transaction ↗</ExplorerLink> : null}</>, detailsTarget) : null}
 </div>;

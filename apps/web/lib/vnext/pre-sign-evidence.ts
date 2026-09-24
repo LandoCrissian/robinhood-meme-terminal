@@ -84,6 +84,7 @@ export type VNextPreSignEvidence = {
   factoryRuntimeHash: string | null;
   quoterRuntimeHash: string | null;
   exactSimulationPassed: boolean;
+  exactSimulationState?: "passed" | "deterministic_revert" | "inconclusive" | "not_run";
   userPaysGas: true;
   rmtFeeEnabled: boolean;
   settlementMode: VNextExecutionSettlementMode;
@@ -161,6 +162,7 @@ const evidenceSchema = z.object({
   factoryRuntimeHash: hash.nullable(),
   quoterRuntimeHash: hash.nullable(),
   exactSimulationPassed: z.boolean(),
+  exactSimulationState: z.enum(["passed", "deterministic_revert", "inconclusive", "not_run"]).optional(),
   userPaysGas: z.literal(true),
   rmtFeeEnabled: z.boolean(),
   settlementMode: z.enum([VNEXT_DIRECT_NO_RMT_FEE, VNEXT_PROVIDER_NATIVE_INPUT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE, VNEXT_LEGACY_V1_FEE]),
@@ -280,6 +282,7 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
       || evidence.gasLimitUnits !== firmQuote.nextActionGasLimitUnits
       || (firmQuote.gasPriceWei !== null && evidence.gasPriceWei !== firmQuote.gasPriceWei)
       || evidence.exactSimulationPassed !== firmQuote.exactSimulationPassed
+      || evidence.exactSimulationState !== firmQuote.exactSimulationState
       || evidence.verifiedAtMs < firmQuote.observedAtMs || evidence.expiresAtMs !== firmQuote.expiresAtMs
       || evidence.approvalRequired !== (!isRobinhoodNativeAsset(evidence.inputAsset) && BigInt(evidence.allowanceAtomic) < BigInt(evidence.inputAmountAtomic))
       || evidence.approvalKind !== (evidence.approvalRequired ? "erc20_to_allowance_holder" : null)
@@ -483,7 +486,16 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
     || evidence.networkCostValuationExpiresAtMs! <= nowMs
     || evidence.networkCostValuationExpiresAtMs! - evidence.networkCostValuedAtMs! > 30_000
   )) throw new Error("RMT rejected stale or inconsistent network-cost valuation evidence.");
-  if (evidence.status === "verified" && (!evidence.exactSimulationPassed || evidence.approvalRequired || !evidence.sufficientBalance)) {
+  const zeroXSimulationAdmissible = evidence.provider === "zero-x-swap"
+    && (evidence.exactSimulationState === "passed" || evidence.exactSimulationState === "inconclusive");
+  if (evidence.provider === "zero-x-swap" && (
+    evidence.exactSimulationState === undefined
+    || evidence.exactSimulationPassed !== (evidence.exactSimulationState === "passed")
+    || (evidence.status === "verified" && !zeroXSimulationAdmissible)
+    || (evidence.status === "simulation_failed" && evidence.exactSimulationState !== "deterministic_revert")
+    || (!["verified", "simulation_failed"].includes(evidence.status) && evidence.exactSimulationState !== "not_run")
+  )) throw new Error("RMT rejected inconsistent 0x simulation classification.");
+  if (evidence.status === "verified" && ((!evidence.exactSimulationPassed && !zeroXSimulationAdmissible) || evidence.approvalRequired || !evidence.sufficientBalance)) {
     throw new Error("RMT rejected a false verified status.");
   }
   if (evidence.status === "approval_required" && (!evidence.approvalRequired || !evidence.sufficientBalance || evidence.exactSimulationPassed)) {

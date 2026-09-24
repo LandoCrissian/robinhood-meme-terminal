@@ -14,12 +14,13 @@ export async function assertZeroXCommitmentAdversarialMatrix(request: VNextProvi
     "expectedOutputAtomic", "protectedOutputAtomic", "indicativeProtectedOutputFloorAtomic",
     "router", "calldataHash", "transactionData", "transactionValueAtomic", "swapTransactionValueAtomic",
     "gasLimitUnits", "gasPriceWei", "approvalSpender", "approvalRequired", "allowanceAtomic",
-    "deadline", "expiresAtMs", "verifiedAtMs", "status", "nextAction", "exactSimulationPassed",
+    "deadline", "expiresAtMs", "verifiedAtMs", "status", "nextAction", "exactSimulationPassed", "exactSimulationState",
     "providerNativeFee.feeAsset", "providerNativeFee.feeAmountAtomic", "providerNativeFee.feeBps",
     "providerNativeFee.treasury", "providerNativeFee.providerFeeAsset", "providerNativeFee.providerFeeAtomic",
     "providerNativeFee.firmQuote.identity", "providerNativeFee.firmQuote.allowanceHolderRuntimeHash",
     "providerNativeFee.firmQuote.targetRuntimeHash", "providerNativeFee.firmQuote.expiresAtMs",
-    "providerNativeFee.firmQuote.allowanceTarget", "providerNativeFee.firmQuote.swapGasLimitUnits"
+    "providerNativeFee.firmQuote.allowanceTarget", "providerNativeFee.firmQuote.swapGasLimitUnits",
+    "providerNativeFee.firmQuote.exactSimulationState"
   ];
   for (const field of fields) {
     const claims = structuredClone(original);

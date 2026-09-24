@@ -12,6 +12,7 @@ import {
   isEmbeddedWalletClientType,
   isConnectorSelectionConfirmed,
   matchingExternalWallets,
+  matchingTradingWallets,
   resolveActiveExternalWallet,
   rmtExternalWalletOptions,
   rmtInjectedWalletOptions,
@@ -201,14 +202,20 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
 
   const externalWallets = useMemo(() => externalEthereumWallets(wallets), [wallets]);
   const addressMatches = useMemo(() => matchingExternalWallets(wallets, address), [address, wallets]);
+  const tradingAddressMatches = useMemo(() => matchingTradingWallets(wallets, address), [address, wallets]);
   const activeExternalWallet = useMemo(
     () => resolveActiveExternalWallet(wallets, address, preferredWalletKey),
     [address, preferredWalletKey, wallets]
   );
-  const embeddedAddressMatch = wallets.find((wallet) => (
+  const embeddedAddressMatch = tradingAddressMatches.find((wallet) => (
     wallet.address.toLowerCase() === address?.toLowerCase()
     && isEmbeddedWalletClientType(wallet.walletClientType)
   ));
+  const embeddedSignerWallet = authenticated && embeddedAddressMatch && connector ? {
+    ...embeddedAddressMatch,
+    connectorType: connector.type,
+    meta: { ...embeddedAddressMatch.meta, id: connector.id }
+  } : undefined;
   const activeConnectorConfirmed = walletConnection.state === "CONNECTED"
     && walletConnection.connectorUid === connector?.uid
     && walletConnection.walletKey === appliedWalletKey
@@ -219,19 +226,21 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     matchingWalletCount: addressMatches.length,
     wallet: activeExternalWallet
   });
-  const activeWalletKind = activeConnectorConfirmed
+  const activeWalletKind: RmtIdentityContextValue["activeWalletKind"] = activeConnectorConfirmed
     ? "external"
-    : addressMatches.length > 0
-      ? null
-      : embeddedAddressMatch
-        ? "embedded"
+    : embeddedSignerWallet
+      ? "embedded"
+      : addressMatches.length > 0
+        ? null
         : null;
   const linkedSignerAddress = authenticated && activeExternalWallet?.linked
     && user?.linkedAccounts.some((account) => account.type === "wallet"
       && !isEmbeddedWalletClientType(account.walletClientType)
       && account.address.toLowerCase() === activeExternalWallet.address.toLowerCase())
     ? activeExternalWallet.address : undefined;
-  const signerWalletKey = activeConnectorConfirmed && activeExternalWallet ? walletGatewayKey(activeExternalWallet) : null;
+  const signerWalletKey = activeConnectorConfirmed && activeExternalWallet
+    ? walletGatewayKey(activeExternalWallet)
+    : embeddedSignerWallet ? walletGatewayKey(embeddedSignerWallet) : null;
   useLayoutEffect(() => {
     injectedSignerSelection.setIdentity({ authenticated, userId: user?.id ?? "", linkedAddress: linkedSignerAddress,
       activeWalletKey: signerWalletKey, address, chainId });
@@ -347,9 +356,12 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
   }), [user?.linkedAccounts]);
   const value = useMemo<RmtIdentityContextValue>(() => ({
     authenticated,
-    activeWalletKey: activeConnectorConfirmed && activeExternalWallet ? walletGatewayKey(activeExternalWallet) : null,
+    activeWalletKey: signerWalletKey,
     activeWalletKind,
-    activeWalletName: activeExternalWallet ? walletGatewayDisplayName(activeExternalWallet) : null,
+    signerWalletKey,
+    activeWalletName: activeExternalWallet
+      ? walletGatewayDisplayName(activeExternalWallet)
+      : embeddedSignerWallet ? walletGatewayDisplayName(embeddedSignerWallet) : null,
     clearTradingWalletPreference,
     clearWalletConnectionError: () => setWalletConnectionError(""),
     connectTradingWallet,
@@ -384,7 +396,7 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
       else connectTradingWallet();
     },
     walletConnectionError: walletConnection.error || walletConnectionError,
-    walletSelectionRequired: walletConnection.state !== "CONNECTED" && externalWallets.length > 0 || requiresExplicitWalletSelection({
+    walletSelectionRequired: requiresExplicitWalletSelection({
       activeEmbeddedWallet: activeWalletKind === "embedded",
       activeExternalWalletConfirmed: activeConnectorConfirmed,
       externalWalletCount: externalWallets.length,
@@ -402,6 +414,7 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     clearTradingWalletPreference,
     environment,
     externalWallets.length,
+    embeddedSignerWallet,
     identityToken,
     linkEmail,
     linkGoogle,

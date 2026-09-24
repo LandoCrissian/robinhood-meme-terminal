@@ -455,17 +455,17 @@ async function curatedRegistryChecks() {
     admitProjectIdentities: async () => ({ quarantined: [{}] })
   });
   assert.equal(positiveConflict.status, "not_admitted");
-  const providers = ["sushi", "uniswap-v2", "uniswap-v3", "uniswap-v4", "up-v2", "up-cl"] as const;
+  const providers = ["sushi", "uniswap-v2", "uniswap-v3", "uniswap-v4", "up-v2", "up-cl", "zero-x-swap"] as const;
   assert.doesNotThrow(() => requireVNextExecutionProvider(
     ROBINHOOD_NATIVE_ASSET_ADDRESS,
     RMT_CURATED_MARKET_REGISTRY[0].token,
-    "uniswap-v4",
+    "zero-x-swap",
     providers
   ));
   assert.doesNotThrow(() => requireVNextExecutionProvider(
     ROBINHOOD_NATIVE_ASSET_ADDRESS,
     getAddress(TOKEN_TWO),
-    "uniswap-v2",
+    "zero-x-swap",
     providers
   ));
   assert.throws(() => requireVNextExecutionProvider(
@@ -473,7 +473,7 @@ async function curatedRegistryChecks() {
     getAddress(TOKEN_TWO),
     "uniswap-v4",
     providers
-  ), /no independently verified execution route/);
+  ), /canonical 0x execution provider/);
   for (const routePath of [
     "../../app/api/vnext/quotes/route.ts",
     "../../app/api/vnext/verify/route.ts",

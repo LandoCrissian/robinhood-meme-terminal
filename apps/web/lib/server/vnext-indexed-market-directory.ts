@@ -15,7 +15,8 @@ type Dependencies = {
 };
 
 // Durable metadata is browse evidence, never a substitute for quote/trade
-// identity verification. Admission and Stock Token classification remain.
+// identity verification. Optional classification/enrichment can make this
+// response partial, but may not erase an otherwise identified chain asset.
 export async function readVNextIndexedMarketDirectoryPage(
   requestUrl: string,
   dependencies: Dependencies = {},
@@ -50,12 +51,13 @@ export async function readVNextIndexedMarketDirectoryPage(
       .catch((error: unknown) => { reasons.add(identityReadFailureReason(error)); return new Map<string, BrowseIdentity>(); }) : Promise.resolve(new Map<string, BrowseIdentity>()),
     (dependencies.readStocks ?? fetchRobinhoodStockRegistry)().catch(() => null)
   ]);
-  if (!stocks || stocks.coverage === "unavailable") return fail("STOCK_CLASSIFICATION_UNAVAILABLE", "Stock Token classification is temporarily unavailable.");
+  const stockClassificationAvailable = Boolean(stocks && stocks.coverage !== "unavailable");
+  if (!stockClassificationAvailable) reasons.add("STOCK_CLASSIFICATION_UNAVAILABLE");
   const identified = candidates.flatMap((market) => {
     const identity = durable.get(market.address.toLowerCase()) ?? live.get(market.address.toLowerCase());
     if (!identity || identity.address.toLowerCase() !== market.address.toLowerCase()) return [];
-    const stock = stocks.assetsByAddress.has(market.address.toLowerCase());
-    const paired = market.canonicalMarkets?.some((pool) => stocks.assetsByAddress.has(pool.token0) || stocks.assetsByAddress.has(pool.token1));
+    const stock = stockClassificationAvailable && stocks!.assetsByAddress.has(market.address.toLowerCase());
+    const paired = stockClassificationAvailable && market.canonicalMarkets?.some((pool) => stocks!.assetsByAddress.has(pool.token0) || stocks!.assetsByAddress.has(pool.token1));
     return [{ ...market, name: identity.name, symbol: identity.symbol,
       verifiedIdentity: { address: identity.address, name: identity.name, symbol: identity.symbol, decimals: identity.decimals },
       ...(stock ? { rwaRelationship: "canonical-stock-token" as const } : paired ? { rwaRelationship: "paired-market-asset" as const } : {}) }];
@@ -69,9 +71,14 @@ export async function readVNextIndexedMarketDirectoryPage(
     .filter((address) => durable.has(address)));
   const admissionCandidates = identified.filter((market) => !retainedQuarantines.has(market.address.toLowerCase()));
   try { admission = await (dependencies.admit ?? applyProjectIdentityDirectoryAdmission)(admissionCandidates); }
-  catch { return fail("PROJECT_IDENTITY_AUTHORITY_UNAVAILABLE", "Project identity authority is temporarily unavailable."); }
+  catch {
+    reasons.add("PROJECT_IDENTITY_AUTHORITY_UNAVAILABLE");
+    admission = { admitted: admissionCandidates, quarantined: [], authorityStatus: "unavailable" as const };
+  }
   if (admission.authorityStatus !== "ready") reasons.add("PROJECT_IDENTITY_AUTHORITY_UNAVAILABLE");
-  const complete = identified.length === candidates.length && admission.authorityStatus === "ready";
+  const complete = identified.length === candidates.length
+    && admission.authorityStatus === "ready"
+    && stockClassificationAvailable;
   const candidateAddresses = new Set(candidates.map((market) => market.address.toLowerCase()));
   const quarantinedAddresses = [...new Set([...retainedQuarantines, ...knownPositiveProjectIdentityQuarantineAddresses()])]
     .filter((address) => candidateAddresses.has(address));
@@ -81,7 +88,7 @@ export async function readVNextIndexedMarketDirectoryPage(
     nextCursor: inventory.nextCursor, updatedAt: new Date().toISOString(),
     identityEvidence: durable.size ? (live.size ? "mixed" : "last-known") : "live",
     failureReasons: boundedDirectoryFailureReasons([...reasons]),
-    ...(stocks.coverage === "stale" || durable.size > 0 || !complete ? { stale: true } : {}),
+    ...(stocks?.coverage === "stale" || durable.size > 0 || !complete ? { stale: true } : {}),
     quarantinedAddresses,
     markets: excludeKnownPositiveProjectIdentityQuarantines(admission.admitted)
   } };

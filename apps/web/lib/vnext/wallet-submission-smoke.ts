@@ -58,7 +58,7 @@ const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx
 const indicativeFeePresentation = readFileSync(new URL("./executable-quote-fee-presentation.ts", import.meta.url), "utf8");
 const helper = readFileSync(new URL("./wallet-submission.ts", import.meta.url), "utf8");
 assert.match(component, /useWalletClient/);
-assert.match(component, /bindVNextExternalWallet/);
+assert.match(component, /bindVNextTradingWallet/);
 assert.match(component, /prepareVNextWalletTransaction/);
 assert.match(component, /feeV2Economics/);
 assert.match(component, /feeV2Settlement/);

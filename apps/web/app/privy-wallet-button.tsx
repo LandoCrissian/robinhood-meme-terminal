@@ -10,6 +10,7 @@ import { recordExperienceStage } from "../lib/experience-funnel";
 import { metaMaskDappLink, rabbyDappLink, walletBrowserEnvironment } from "../lib/mobile-wallet-link";
 import {
   externalEthereumWallets,
+  tradingEthereumWallets,
   walletGatewayDisplayName,
   walletGatewayKey
 } from "../lib/wallet-gateway";
@@ -66,18 +67,20 @@ export function PrivyWalletButton({
     ? rabbyDappLink(window.location.href)
     : "";
   const externalWallets = useMemo(() => externalEthereumWallets(wallets), [wallets]);
-  const activeExternalWallet = identity.activeWalletKey
-    ? externalWallets.find((wallet) => walletGatewayKey(wallet) === identity.activeWalletKey)
+  const tradingWallets = useMemo(() => tradingEthereumWallets(wallets), [wallets]);
+  const activeTradingWallet = identity.activeWalletKey
+    ? tradingWallets.find((wallet) => walletGatewayKey(wallet) === identity.activeWalletKey
+      || (identity.activeWalletKind === "embedded" && wallet.address.toLowerCase() === address?.toLowerCase()))
     : undefined;
   const activeWallet = walletFirstTerminal
-    ? activeExternalWallet
+    ? activeTradingWallet
     : wallets.find((wallet) => wallet.address.toLowerCase() === address?.toLowerCase());
-  const displayedWallets = walletFirstTerminal ? externalWallets : wallets;
+  const displayedWallets = walletFirstTerminal ? tradingWallets : wallets;
   const connectedTradingWallet = Boolean(
     authenticated
     && isConnected
     && address
-    && (!walletFirstTerminal || identity.activeWalletKind === "external")
+    && (!walletFirstTerminal || identity.activeWalletKind !== null)
   );
   const close = useCallback(() => setOpen(false), []);
 
@@ -167,7 +170,7 @@ export function PrivyWalletButton({
               setMessage("");
               identity.clearWalletConnectionError();
               recordExperienceStage("wallet_connect_started");
-              walletFirstTerminal ? identity.connectTradingWallet() : identity.login();
+              identity.login();
             }}
           >
             {compact ? "Connect" : "Connect this wallet"}
@@ -226,7 +229,7 @@ export function PrivyWalletButton({
                     setMessage("");
                     identity.clearWalletConnectionError();
                     recordExperienceStage("wallet_connect_started");
-                    walletFirstTerminal ? identity.connectTradingWallet() : identity.login();
+                    identity.login();
                   }}
                 >
                   <span>Other wallets</span>
@@ -248,10 +251,10 @@ export function PrivyWalletButton({
             setMessage("");
             identity.clearWalletConnectionError();
             recordExperienceStage("wallet_connect_started");
-            walletFirstTerminal ? identity.connectTradingWallet() : identity.login();
+            identity.login();
           }}
         >
-          {compact ? "Connect" : walletFirstTerminal ? "Connect trading wallet" : "Sign in or create wallet"}
+          {compact ? "Sign in" : "Sign in or create wallet"}
         </button>
         {(message || identity.walletConnectionError) && <span className="networkSwitchError" role="alert">{message || identity.walletConnectionError}</span>}
       </div>
@@ -305,7 +308,7 @@ export function PrivyWalletButton({
                 <button type="button" aria-label="Close wallet menu" onClick={close}>×</button>
               </div>
               <div className="privyActiveWalletSummary">
-                <span><small>ACTIVE WALLET</small><strong>{activeWallet ? walletGatewayDisplayName(activeWallet) : "External wallet"} · {targetChain.name}</strong></span>
+                <span><small>ACTIVE WALLET</small><strong>{activeWallet ? walletGatewayDisplayName(activeWallet) : "Trading wallet"} · {targetChain.name}</strong></span>
                 <code title={address}>{address}</code>
               </div>
               <div className="privyAssetActions" aria-label="Wallet actions">
@@ -319,6 +322,7 @@ export function PrivyWalletButton({
                   const walletKey = walletGatewayKey(wallet);
                   const active = walletFirstTerminal
                     ? walletKey === identity.activeWalletKey
+                      || (identity.activeWalletKind === "embedded" && wallet.address.toLowerCase() === address.toLowerCase())
                     : wallet.address.toLowerCase() === address.toLowerCase();
                   return <button
                     type="button"
@@ -333,12 +337,12 @@ export function PrivyWalletButton({
                   </button>;
                 })}
               </div>
-              {walletFirstTerminal ? <InjectedSignerSelection /> : null}
+              {walletFirstTerminal && identity.activeWalletKind === "external" ? <InjectedSignerSelection /> : null}
               <div className="privyWalletActions">
                 <button type="button" onClick={() => {
                   identity.clearWalletConnectionError();
                   identity.connectTradingWallet();
-                }}>Add another wallet</button>
+                }}>Connect existing wallet</button>
                 <button type="button" onClick={() => void signOut()}>Disconnect from RMT</button>
               </div>
               {!walletFirstTerminal && <p className="privyProfileBoundary">
