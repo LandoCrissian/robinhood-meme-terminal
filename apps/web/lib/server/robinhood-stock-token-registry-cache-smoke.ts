@@ -63,7 +63,7 @@ async function main() {
     }
   });
 
-  assert.equal(await status(() => requireStockTokenExecutionEligible(ordinaryAsset, cache.readForExecution)), 503);
+  assert.equal(await status(() => requireStockTokenExecutionEligible(ordinaryAsset, cache.readForExecution)), 200);
   assert.equal(networkCalls, 1);
 
   mode = "success";
@@ -78,38 +78,39 @@ async function main() {
 
   now += 2;
   mode = "failure";
-  // NEW_STOCK is absent from the expired snapshot. A failed refresh must not
-  // classify that unseen address as an ordinary executable asset.
-  assert.equal(await status(() => requireStockTokenExecutionEligible(newStock, cache.readForExecution)), 503);
-  assert.equal(networkCalls, 3);
+  // Positive identity is retained as deny-only evidence. Absence from an
+  // incomplete snapshot does not make optional classification an execution veto.
+  assert.equal(await status(() => requireStockTokenExecutionEligible(newStock, cache.readForExecution)), 200);
+  assert.equal(await status(() => requireStockTokenExecutionEligible(knownStock, cache.readForExecution)), 451);
+  assert.equal(networkCalls, 4);
 
   mode = "success";
   liveSnapshot = complete([knownStock, newStock]);
   assert.equal(await status(() => requireStockTokenExecutionEligible(ordinaryAsset, cache.readForExecution)), 200);
   assert.equal(await status(() => requireVNextStockTokenExecutionEligible({ inputAsset: ordinaryAsset, outputAsset: newStock }, cache.readForExecution)), 451);
-  assert.equal(networkCalls, 4);
+  assert.equal(networkCalls, 5);
 
   now += ttlMs + 1;
   mode = "failure";
-  assert.equal(await status(() => requireStockTokenExecutionEligible(ordinaryAsset, cache.readForExecution)), 503);
-  assert.equal(await status(() => requireStockTokenExecutionEligible(knownStock, cache.readForExecution)), 503);
-  assert.equal(await status(() => requireVNextStockTokenExecutionEligible({ inputAsset: ordinaryAsset, outputAsset: newStock }, cache.readForExecution)), 503);
+  assert.equal(await status(() => requireStockTokenExecutionEligible(ordinaryAsset, cache.readForExecution)), 200);
+  assert.equal(await status(() => requireStockTokenExecutionEligible(knownStock, cache.readForExecution)), 451);
+  assert.equal(await status(() => requireVNextStockTokenExecutionEligible({ inputAsset: ordinaryAsset, outputAsset: newStock }, cache.readForExecution)), 451);
   const callsAfterThreeFailedRefreshes = networkCalls;
-  assert.equal(callsAfterThreeFailedRefreshes, 7);
+  assert.equal(callsAfterThreeFailedRefreshes, 8);
 
   const stalePresentation = await cache.readForPresentation();
   assert.equal(stalePresentation.coverage, "stale");
   assert.ok(stalePresentation.assetsByAddress.has(newStock.toLowerCase()));
-  assert.equal(networkCalls, 8);
+  assert.equal(networkCalls, 9);
 
   // A failed refresh did not extend the TTL: the very next execution read retries.
-  assert.equal(await status(() => requireStockTokenExecutionEligible(ordinaryAsset, cache.readForExecution)), 503);
-  assert.equal(networkCalls, 9);
+  assert.equal(await status(() => requireStockTokenExecutionEligible(ordinaryAsset, cache.readForExecution)), 200);
+  assert.equal(networkCalls, 10);
 
   mode = "success";
   liveSnapshot = complete([knownStock, newStock]);
   assert.equal(await status(() => requireStockTokenExecutionEligible(newStock, cache.readForExecution)), 451);
-  assert.equal(networkCalls, 10);
+  assert.equal(networkCalls, 11);
 
   const oneReadSnapshots: RobinhoodStockRegistrySnapshot[] = [];
   const oneRead: RobinhoodStockRegistryReader = async () => {
@@ -119,7 +120,7 @@ async function main() {
   assert.equal(await status(() => requireVNextStockTokenExecutionEligible({ inputAsset: ordinaryAsset, outputAsset: ordinaryAsset }, oneRead)), 200);
   assert.equal(oneReadSnapshots.length, 1);
 
-  console.log("Robinhood Stock Token execution cache rejects expired authority, preserves explicitly stale presentation evidence, and recovers after a later successful refresh.");
+  console.log("Robinhood Stock Token execution cache retains positive deny-only identity during outages, keeps ordinary assets eligible, and recovers after refresh.");
 }
 
 void main().catch((cause) => {

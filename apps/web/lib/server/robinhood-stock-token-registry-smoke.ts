@@ -76,19 +76,24 @@ assert.equal(stockTokenExecutionPolicyFromSnapshot(launchToken, {
 assert.equal(stockTokenExecutionPolicyFromSnapshot(launchToken, {
   coverage: "unavailable",
   assetsByAddress: new Map()
-}).status, "verification-unavailable");
+}).status, "eligible");
 assert.equal(stockTokenExecutionPolicyFromSnapshot(stockToken, {
   coverage: "stale",
   assetsByAddress: registry
-}).status, "verification-unavailable");
+}).status, "view-only");
 
-async function rejectionStatus(inputAsset: string, outputAsset: string, coverage: "complete" | "unavailable") {
+async function executionStatus(
+  inputAsset: string,
+  outputAsset: string,
+  coverage: "complete" | "unavailable",
+  knownAssets = registry
+) {
   try {
     await requireVNextStockTokenExecutionEligible({ inputAsset, outputAsset }, async () => ({
       coverage,
-      assetsByAddress: coverage === "complete" ? registry : new Map()
+      assetsByAddress: knownAssets
     }));
-    assert.fail("Expected stock-token execution admission to fail closed.");
+    return 200;
   } catch (cause) {
     const response = stockTokenExecutionPolicyErrorResponse(cause);
     assert.ok(response);
@@ -98,11 +103,12 @@ async function rejectionStatus(inputAsset: string, outputAsset: string, coverage
 
 async function main() {
   let reads = 0;
-  assert.equal(await rejectionStatus(stockToken, launchToken, "complete"), 451);
-  assert.equal(await rejectionStatus(launchToken, stockToken, "complete"), 451);
-  assert.equal(await rejectionStatus("0x0000000000000000000000000000000000000000", stockToken, "complete"), 451);
-  assert.equal(await rejectionStatus(stockToken, "0x0000000000000000000000000000000000000000", "complete"), 451);
-  assert.equal(await rejectionStatus(launchToken, anotherStockToken, "unavailable"), 503);
+  assert.equal(await executionStatus(stockToken, launchToken, "complete"), 451);
+  assert.equal(await executionStatus(launchToken, stockToken, "complete"), 451);
+  assert.equal(await executionStatus("0x0000000000000000000000000000000000000000", stockToken, "complete"), 451);
+  assert.equal(await executionStatus(stockToken, "0x0000000000000000000000000000000000000000", "complete"), 451);
+  assert.equal(await executionStatus(launchToken, anotherStockToken, "unavailable"), 451);
+  assert.equal(await executionStatus(launchToken, "0x4444444444444444444444444444444444444444", "unavailable", new Map()), 200);
   assert.equal((await requireVNextStockTokenExecutionEligible({
     inputAsset: launchToken,
     outputAsset: "0x4444444444444444444444444444444444444444"
@@ -112,7 +118,7 @@ async function main() {
   })).status, "eligible");
   assert.equal(reads, 1);
 
-  console.log("Robinhood Stock Token relationships and exact two-asset VNext execution admission remain canonical and fail closed.");
+  console.log("Robinhood Stock Token relationships and exact two-asset VNext execution admission preserve known-stock exclusion without making outages a general veto.");
 }
 
 void main().catch((cause) => {
