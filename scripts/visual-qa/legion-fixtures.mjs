@@ -10,6 +10,8 @@ export const RADAR_DROP_COLLECTION = "0x4444444444444444444444444444444444444444
 export const RADAR_SEADROP = "0x5555555555555555555555555555555555555555";
 export const RADAR_SEADROP_CODE = "0x00";
 export const RADAR_SEADROP_RUNTIME_HASH = "0xbc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a";
+export const RADAR_CCFF00_GATE_START = "2026-09-21T20:48:00.000Z";
+export const RADAR_CCFF00_GATE_END = "2026-09-21T22:48:00.000Z";
 
 const WETH = "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73";
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -46,7 +48,7 @@ export const NFT_MINT_RADAR_PAGES = {
     active_stage: radarStage("live", "2026-08-01T00:00:00.000Z", "2036-09-01T00:00:00.000Z"),
   })], next: null },
   upcoming: { drops: [
-    radarDrop("legion-upcoming-one", "Robinhood Relics", { contract_address: RADAR_DROP_COLLECTION, next_stage: radarStage("upcoming-one", "2026-09-21T20:48:00.000Z", "2026-09-21T22:48:00.000Z", "CCFF00 Gate") }),
+    radarDrop("legion-upcoming-one", "Robinhood Relics", { contract_address: RADAR_DROP_COLLECTION, next_stage: radarStage("upcoming-one", RADAR_CCFF00_GATE_START, RADAR_CCFF00_GATE_END, "CCFF00 Gate") }),
     radarDrop("legion-upcoming-two", "Terminal Studies", { next_stage: radarStage("upcoming-two", "2026-09-21T22:00:00.000Z", "2026-09-21T23:00:00.000Z") }),
   ], next: null },
   recently_minted: { drops: [radarDrop("legion-recent", "Chain Impressions", {

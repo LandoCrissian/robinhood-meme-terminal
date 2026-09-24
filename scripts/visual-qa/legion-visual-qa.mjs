@@ -5,7 +5,7 @@ import path from "node:path";
 import {
   FIXTURE_EPOCH_MS, FIXTURE_NOW, BROAD_TOKEN_MARKETS, TOKEN_MARKETS, VISIBLE_TOKEN_MARKETS, canonicalDirectoryMarkets,
   CCFF00_COLLECTION, NFT_ITEM, NFT_MARKETPLACE, NFT_MINT_RADAR_DETAILS, NFT_MINT_RADAR_PAGES, NFT_ONCHAIN,
-  RADAR_DROP_COLLECTION, RADAR_SEADROP, RADAR_SEADROP_CODE, nftInventory,
+  RADAR_CCFF00_GATE_END, RADAR_CCFF00_GATE_START, RADAR_DROP_COLLECTION, RADAR_SEADROP, RADAR_SEADROP_CODE, nftInventory,
 } from "./legion-fixtures.mjs";
 
 const argv = process.argv.slice(2);
@@ -21,6 +21,8 @@ const visualFixtureEpochMs = Date.parse(visualFixtureNow);
 const calldataAddressWord = (value) => value.slice(2).toLowerCase().padStart(64, "0");
 const tokenGatedAllowedTokensArgs = calldataAddressWord(RADAR_DROP_COLLECTION);
 const tokenGatedDropArgs = `${tokenGatedAllowedTokensArgs}${calldataAddressWord(CCFF00_COLLECTION)}`;
+const radarCcff00GateStartSeconds = Math.floor(Date.parse(RADAR_CCFF00_GATE_START) / 1_000);
+const radarCcff00GateEndSeconds = Math.floor(Date.parse(RADAR_CCFF00_GATE_END) / 1_000);
 const token = TOKEN_MARKETS[1].address;
 const pair = TOKEN_MARKETS[1].pairAddress;
 const failures = [];
@@ -88,7 +90,7 @@ const fixtureServer = createServer(async (request, response) => {
         return rpcResult(response, payload.id, `0x${word(32)}${word(1)}${addressWord(CCFF00_COLLECTION)}`);
       }
       if (target === RADAR_SEADROP.toLowerCase() && data.length === 138 && data.slice(10) === tokenGatedDropArgs) {
-        return rpcResult(response, payload.id, `0x${word(12_500_000_000_000_000n)}${word(2)}${word(1_790_369_280)}${word(1_790_376_480)}${word(7)}${word(500)}${word(0)}${word(0)}`);
+        return rpcResult(response, payload.id, `0x${word(12_500_000_000_000_000n)}${word(2)}${word(radarCcff00GateStartSeconds)}${word(radarCcff00GateEndSeconds)}${word(7)}${word(500)}${word(0)}${word(0)}`);
       }
       return rpcResult(response, payload.id, "0x");
     }
