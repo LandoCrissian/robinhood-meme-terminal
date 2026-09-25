@@ -963,11 +963,16 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
     let timer: ReturnType<typeof setTimeout> | undefined;
     const schedule = (resume = false) => {
       clearTimeout(timer);
-      if (document.visibilityState === "hidden" || !navigator.onLine || walletBusyRef.current || refreshCoordinator.current.running) return;
+      if (document.visibilityState === "hidden" || !navigator.onLine || walletBusyRef.current
+        || intentionalTradeContext.current === preparationContext || refreshCoordinator.current.running) return;
       if (preparedExpiresAtMs === undefined && (automaticPreparationKey.current === preparationContext
         || verificationQuote?.provider !== "zero-x-swap" || quoteState.state !== "ready")) return;
       timer = setTimeout(() => {
-        if (!walletBusyRef.current && currentPreparationContext.current === preparationContext) void startTrade();
+        // A retained explicit Trade click owns preparation through wallet
+        // handoff. A cadence timer armed before a slow bounded retry must not
+        // replace the freshly verified plan in the response-to-handoff gap.
+        if (!walletBusyRef.current && intentionalTradeContext.current !== preparationContext
+          && currentPreparationContext.current === preparationContext) void startTrade();
       }, resume ? 0 : preparationStartedAt.current.key !== preparationContext ? VNEXT_BACKGROUND_QUOTE_DEBOUNCE_MS
         : Math.max(0, preparationStartedAt.current.at + VNEXT_BACKGROUND_QUOTE_REFRESH_MS - Date.now()));
     };
