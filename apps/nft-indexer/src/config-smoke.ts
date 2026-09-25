@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { loadNftIndexerConfig } from './config.js';
 import { isNftIndexerReadAuthorized } from './server.js';
 
@@ -8,6 +9,13 @@ const valid = {
   NFT_INDEXER_FINALITY_DEPTH: '64',
   NFT_INDEXER_READ_TOKEN: 'a'.repeat(64)
 } as NodeJS.ProcessEnv;
+
+const packageJson = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+  scripts?: { start?: string };
+  dependencies?: Record<string, string>;
+};
+assert.equal(packageJson.scripts?.start, 'tsx src/index.ts');
+assert.equal(packageJson.dependencies?.tsx, '4.23.0');
 
 assert.throws(() => loadNftIndexerConfig({ NFT_INDEXER_RPC_URL: valid.NFT_INDEXER_RPC_URL }), /DATABASE_URL is required/);
 assert.throws(() => loadNftIndexerConfig({ ...valid, NFT_INDEXER_DATABASE_URL: 'not-a-url' }), /valid PostgreSQL URL/);

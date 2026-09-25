@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { loadNftMarketplaceConfig } from "./config.js";
 import { isMarketplaceReadAuthorized } from "./server.js";
 const valid = {
@@ -8,6 +9,11 @@ const valid = {
   NFT_MARKETPLACE_RPC_URL: "https://rpc.example.test",
   NFT_MARKETPLACE_READ_TOKEN: "b".repeat(64),
 } as NodeJS.ProcessEnv;
+const packageJson = JSON.parse(
+  readFileSync(new URL("../package.json", import.meta.url), "utf8"),
+) as { scripts?: { start?: string }; dependencies?: Record<string, string> };
+assert.equal(packageJson.scripts?.start, "tsx src/index.ts");
+assert.equal(packageJson.dependencies?.tsx, "4.19.2");
 assert.throws(
   () =>
     loadNftMarketplaceConfig({
