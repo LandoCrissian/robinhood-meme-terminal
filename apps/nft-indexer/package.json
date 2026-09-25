@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "start": "node dist/index.js",
+    "start": "tsx src/index.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "verify:technical": "tsx src/technical-verification-live.ts",
     "test": "tsx src/config-smoke.ts && tsx src/server-smoke.ts && tsx src/technical-verification-smoke.ts && tsx src/source-verification-smoke.ts && tsx src/activity-smoke.ts && tsx src/metadata-smoke.ts && tsx src/storage-smoke.ts && tsx src/worker-smoke.ts && tsx src/worker-range-consistency-smoke.ts && tsx src/worker-reorg-smoke.ts"
@@ -14,12 +14,12 @@
   "dependencies": {
     "@rmt/shared": "workspace:*",
     "pg": "8.22.0",
+    "tsx": "4.23.0",
     "viem": "2.55.5"
   },
   "devDependencies": {
     "@types/node": "22.20.1",
     "@types/pg": "8.20.0",
-    "tsx": "4.23.0",
     "typescript": "5.9.3"
   }
 }
