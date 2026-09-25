@@ -353,35 +353,28 @@ export async function readRmtNftProjectMarket(
   projectId: string,
   options: ReaderOptions = {},
 ): Promise<RmtNftProjectMarketReadModel | null> {
+  const projectIdentity = readRmtNftProjectIdentity(projectId);
+  if (!projectIdentity) return null;
+  const [onchain, marketplace] = await Promise.all([
+    readRmtNftProjectOnchain(projectId, options),
+    readRmtNftProjectMarketplace(projectId, options),
+  ]);
+
+  return {
+    schemaVersion: 1,
+    project: projectIdentity.project,
+    onchain: onchain ?? { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" },
+    marketplace: marketplace ?? { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" },
+    projectToken: projectIdentity.projectToken,
+  };
+}
+
+export function readRmtNftProjectIdentity(projectId: string): Pick<RmtNftProjectMarketReadModel, "project" | "projectToken"> | null {
   const project = rmtCuratedNftProject(projectId);
   if (!project || project.status !== "ACTIVE") return null;
   const source = RMT_NFT_ACTIVITY_SOURCES.find((item) => item.projectId === project.projectId);
   if (!source) return null;
-  const env = options.env ?? process.env;
-  const fetchImpl = options.fetchImpl ?? fetch;
-  const timeoutMs = options.timeoutMs ?? 5_000;
-  const onchainConfig = configuration(env, "NFT_INDEXER");
-  const marketplaceConfig = configuration(env, "NFT_MARKETPLACE_INDEXER");
-
-  const [onchainResult, marketplaceResult] = await Promise.allSettled([
-    onchainConfig
-      ? readService<unknown>(fetchImpl, `${onchainConfig.url}/internal/v1/projects/${project.projectId}/onchain`, onchainConfig.token, timeoutMs)
-      : Promise.reject(new Error("NFT indexer read configuration is missing.")),
-    marketplaceConfig
-      ? readService<unknown>(fetchImpl, `${marketplaceConfig.url}/internal/v1/projects/${project.projectId}/marketplace`, marketplaceConfig.token, timeoutMs)
-      : Promise.reject(new Error("NFT marketplace indexer read configuration is missing.")),
-  ]);
-  let onchain: RmtNftProjectMarketReadModel["onchain"] = { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" };
-  let marketplace: RmtNftProjectMarketReadModel["marketplace"] = { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" };
-  try {
-    if (onchainResult.status === "fulfilled") onchain = validateOnchain(onchainResult.value, project.projectId, source.collectionAddress, source.standard);
-  } catch {}
-  try {
-    if (marketplaceResult.status === "fulfilled") marketplace = validateMarketplace(marketplaceResult.value, project.projectId, source.collectionAddress);
-  } catch {}
-
   return {
-    schemaVersion: 1,
     project: {
       projectId: project.projectId,
       displayName: project.displayName,
@@ -391,8 +384,46 @@ export async function readRmtNftProjectMarket(
       collections: [{ contractAddress: source.collectionAddress, standard: source.standard }],
       links: project.links.filter((link) => link.visibility === "PUBLIC").map(({ label, url }) => ({ label, url })),
     },
-    onchain,
-    marketplace,
     projectToken: project.projectToken,
   };
+}
+
+export async function readRmtNftProjectOnchain(
+  projectId: string,
+  options: ReaderOptions = {},
+): Promise<RmtNftProjectMarketReadModel["onchain"] | null> {
+  const projectIdentity = readRmtNftProjectIdentity(projectId);
+  if (!projectIdentity) return null;
+  const source = RMT_NFT_ACTIVITY_SOURCES.find((item) => item.projectId === projectIdentity.project.projectId)!;
+  const env = options.env ?? process.env;
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const timeoutMs = options.timeoutMs ?? 5_000;
+  const onchainConfig = configuration(env, "NFT_INDEXER");
+  if (!onchainConfig) return { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" };
+  try {
+    const value = await readService<unknown>(fetchImpl, `${onchainConfig.url}/internal/v1/projects/${projectIdentity.project.projectId}/onchain`, onchainConfig.token, timeoutMs);
+    return validateOnchain(value, projectIdentity.project.projectId, source.collectionAddress, source.standard);
+  } catch {
+    return { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" };
+  }
+}
+
+export async function readRmtNftProjectMarketplace(
+  projectId: string,
+  options: ReaderOptions = {},
+): Promise<RmtNftProjectMarketReadModel["marketplace"] | null> {
+  const projectIdentity = readRmtNftProjectIdentity(projectId);
+  if (!projectIdentity) return null;
+  const source = RMT_NFT_ACTIVITY_SOURCES.find((item) => item.projectId === projectIdentity.project.projectId)!;
+  const env = options.env ?? process.env;
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const timeoutMs = options.timeoutMs ?? 5_000;
+  const marketplaceConfig = configuration(env, "NFT_MARKETPLACE_INDEXER");
+  if (!marketplaceConfig) return { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" };
+  try {
+    const value = await readService<unknown>(fetchImpl, `${marketplaceConfig.url}/internal/v1/projects/${projectIdentity.project.projectId}/marketplace`, marketplaceConfig.token, timeoutMs);
+    return validateMarketplace(value, projectIdentity.project.projectId, source.collectionAddress);
+  } catch {
+    return { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" };
+  }
 }

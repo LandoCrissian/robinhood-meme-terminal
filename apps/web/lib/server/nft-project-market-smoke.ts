@@ -3,7 +3,11 @@ import { readFileSync } from "node:fs";
 import { getAddress } from "viem";
 import { RMT_SEAPORT_1_6_ADDRESS } from "@rmt/shared/nft/marketplace-evidence";
 import type { RmtNftProjectMarketplaceRead, RmtNftProjectOnchainRead } from "@rmt/shared/nft/project-market";
-import { readRmtNftProjectMarket } from "./nft-project-market";
+import {
+  readRmtNftProjectMarket,
+  readRmtNftProjectMarketplace,
+  readRmtNftProjectOnchain,
+} from "./nft-project-market";
 
 const collection = getAddress("0x505A22Ffed8d37ebE580FfD98d2Cdb0021189146");
 const hash = `0x${"1".repeat(64)}` as `0x${string}`;
@@ -107,13 +111,45 @@ async function main() {
   assert.ok(exactOrderStale);
   assert.equal("provider" in exactOrderStale.marketplace && exactOrderStale.marketplace.availabilityReason, "STALE");
   assert.equal("provider" in exactOrderStale.marketplace && exactOrderStale.marketplace.recentProviderSales.length, 1);
+  const partialMarketplace = await readRmtNftProjectMarketplace("ccff00", {
+    env,
+    fetchImpl: fetchFor(onchain, { ...marketplace, sourceStatus: "BACKFILLING", availability: "PARTIAL" }),
+  });
+  assert.equal(partialMarketplace && "provider" in partialMarketplace && partialMarketplace.availability, "PARTIAL");
+
+  const httpUnavailable = await readRmtNftProjectMarketplace("ccff00", {
+    env,
+    fetchImpl: async () => new Response(JSON.stringify({ error: "unavailable" }), { status: 503 }),
+  });
+  assert.deepEqual(httpUnavailable, { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" }, "HTTP 503 remains unavailable, never zero");
+  const unavailable200 = await readRmtNftProjectMarketplace("ccff00", {
+    env,
+    fetchImpl: fetchFor(onchain, { ...marketplace, sourceStatus: "ERROR", availability: "UNAVAILABLE", availabilityReason: "SOURCE_ERROR",
+      asOf: null, lowestNormalizedListing: null, recentProviderSales: [], volume24hByPaymentAsset: [] }),
+  });
+  assert.equal(unavailable200 && "provider" in unavailable200 && unavailable200.availability, "UNAVAILABLE", "HTTP 200 unavailable is retained as unavailable evidence");
+
+  let releaseMarketplace!: () => void;
+  const marketplaceGate = new Promise<void>((resolve) => { releaseMarketplace = resolve; });
+  const delayedFetch: typeof fetch = async (input) => {
+    if (String(input).includes("marketplace")) {
+      await marketplaceGate;
+      return new Response(JSON.stringify(marketplace), { status: 200 });
+    }
+    return new Response(JSON.stringify(onchain), { status: 200 });
+  };
+  const independentOnchain = readRmtNftProjectOnchain("ccff00", { env, fetchImpl: delayedFetch });
+  const independentMarketplace = readRmtNftProjectMarketplace("ccff00", { env, fetchImpl: delayedFetch });
+  assert.equal("sourceStatus" in (await independentOnchain)!, true, "ready ownership resolves without waiting for delayed marketplace");
+  releaseMarketplace();
+  assert.equal("provider" in (await independentMarketplace)!, true);
 
   const page = readFileSync(new URL("../../app/nft/[projectId]/page.tsx", import.meta.url), "utf8");
   assert.match(page, /RMT CURATED/);
   assert.match(page, /OPENSEA REPORTED SALE/);
   assert.match(page, /market meaning not established/);
   assert.match(page, /notFound\(\)/);
-  assert.match(page, /model\.project\.displayName.*project market metrics/);
+  assert.match(page, /identity\.project\.displayName.*project market metrics/);
   assert.doesNotMatch(page, /HoodStreet|discoveryProvenance/);
   assert.doesNotMatch(page, />\s*(BUY|LIST|OFFER|ACCEPT|SWEEP)\s*</i);
 

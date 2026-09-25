@@ -45,6 +45,9 @@ let startupMetrics = null;
 let nftOwnershipMode = "available";
 let nftMarketplaceMode = "available";
 let nftRadarMode = "ready";
+let nftReaderDelays = { inventory: 0, onchain: 0, marketplace: 0 };
+const progressiveNftTimings = [];
+const delay = (milliseconds) => milliseconds > 0 ? new Promise((resolve) => setTimeout(resolve, milliseconds)) : Promise.resolve();
 
 const verifiedLiveRadarDrop = {
   ...NFT_MINT_RADAR_PAGES.upcoming.drops[0],
@@ -129,16 +132,28 @@ const fixtureServer = createServer(async (request, response) => {
     return json(response, { jsonrpc: "2.0", id: payload.id, error: { code: -32601, message: "method_not_found" } }, 400);
   }
   if (request.headers.authorization !== `Bearer ${"a".repeat(64)}`) return json(response, { error: "unauthorized" }, 401);
-  if (/^\/internal\/v1\/projects\/ccff00\/inventory$/.test(url.pathname)) return json(response,
+  if (/^\/internal\/v1\/projects\/ccff00\/inventory$/.test(url.pathname)) {
+    await delay(nftReaderDelays.inventory);
+    return json(response,
     nftOwnershipMode === "available"
       ? nftInventory(Number(url.searchParams.get("limit") ?? 24))
       : { ...nftInventory(0), availability: "UNAVAILABLE", availabilityReason: "SOURCE_ERROR", asOf: null, items: [], nextCursor: null });
+  }
   if (url.pathname === "/internal/v1/projects/ccff00/items/1") return json(response, NFT_ITEM);
-  if (url.pathname === "/internal/v1/projects/ccff00/onchain") return json(response,
+  if (url.pathname === "/internal/v1/projects/ccff00/items/5") return json(response, {
+    ...NFT_ITEM, tokenId: "5", tokenBoundAccount: { ...NFT_ITEM.tokenBoundAccount, tokenId: "5" },
+  });
+  if (url.pathname === "/internal/v1/projects/ccff00/onchain") {
+    await delay(nftReaderDelays.onchain);
+    return json(response,
     nftOwnershipMode === "available" ? NFT_ONCHAIN : { ...NFT_ONCHAIN, sourceStatus: "ERROR", availability: "UNAVAILABLE", completeness: "UNAVAILABLE", holderCount: null, circulatingTokenCount: null, recentActivity: [], asOf: null });
-  if (url.pathname === "/internal/v1/projects/ccff00/marketplace") return nftMarketplaceMode === "available"
+  }
+  if (url.pathname === "/internal/v1/projects/ccff00/marketplace") {
+    await delay(nftReaderDelays.marketplace);
+    return nftMarketplaceMode === "available"
     ? json(response, NFT_MARKETPLACE)
     : json(response, { error: "marketplace_unavailable" }, 503);
+  }
   return json(response, { error: "not_found" }, 404);
 });
 await new Promise((resolve, reject) => fixtureServer.listen(fixturePort, "127.0.0.1", resolve).once("error", reject));
@@ -739,6 +754,7 @@ async function nftPage(browser, viewport, platform, testCase) {
   nftOwnershipMode = ownership;
   nftMarketplaceMode = marketplace;
   nftRadarMode = radar;
+  nftReaderDelays = { inventory: 0, onchain: 0, marketplace: 0 };
   const context = await createContext(browser, viewport);
   const page = await context.newPage();
   page.setDefaultTimeout(30_000);
@@ -766,7 +782,7 @@ async function nftPage(browser, viewport, platform, testCase) {
   nftExecutionControls += forbiddenCount;
   check(forbiddenCount === 0, state, "NFT execution controls are present.", { count: forbiddenCount });
 
-  if (["active", "active-unavailable", "marketplace-unavailable", "search", "watching", "minting", "minting-empty", "empty"].includes(kind)) {
+  if (["active", "active-unavailable", "marketplace-unavailable", "new", "search", "search-item", "watching", "minting", "minting-empty", "empty"].includes(kind)) {
     check(await page.getByRole("heading", { name: "NFTs", exact: true }).count() === 1, state, "Compact NFT market header is absent.");
     check(/ROBINHOOD CHAIN NFT MARKETS/i.test(text), state, "NFT market subtitle is absent.");
     const labels = await page.locator('nav[aria-label="NFT market views"] strong').allTextContents();
@@ -778,7 +794,7 @@ async function nftPage(browser, viewport, platform, testCase) {
         const heading = document.querySelector("h1")?.getBoundingClientRect();
         const tabs = document.querySelector('nav[aria-label="NFT market views"]')?.getBoundingClientRect();
         const search = document.querySelector('form[role="search"]')?.getBoundingClientRect();
-        const row = document.querySelector("[data-nft-collection-row], [data-radar-candidate], [data-nft-empty-state]")?.getBoundingClientRect();
+        const row = document.querySelector("[data-nft-collection-row], [data-radar-candidate], [data-nft-search-item], [data-nft-empty-state]")?.getBoundingClientRect();
         return { heading: heading?.top, tabs: tabs?.top, searchBottom: search?.bottom, rowTop: row?.top };
       });
       check((positions.heading ?? 9999) < viewport.height && (positions.tabs ?? 9999) < viewport.height && (positions.searchBottom ?? 9999) < viewport.height && (positions.rowTop ?? 9999) < viewport.height,
@@ -791,7 +807,7 @@ async function nftPage(browser, viewport, platform, testCase) {
     check(await page.locator('[data-nft-collection-status="ACTIVE"]').count() === 1, state, "Public ACTIVE NFT collection count is not one.");
     check(text.includes("CCFF00"), state, "CCFF00 is absent from Active NFT markets.");
     const row = page.locator('[data-nft-collection-status="ACTIVE"]').first();
-    check(await row.getAttribute("data-ownership-state") === (ownership === "available" ? "AVAILABLE" : "UNAVAILABLE"), state, "Ownership progressive state is incorrect.");
+    check(await row.locator("[data-ownership-state]").first().getAttribute("data-ownership-state") === (ownership === "available" ? "AVAILABLE" : "UNAVAILABLE"), state, "Ownership progressive state is incorrect.");
     if (marketplace === "unavailable") {
       const metrics = await row.locator("dd").allTextContents();
       check(metrics.length === 2 && metrics.every((value) => value.trim() === "—"), state, "Unavailable marketplace evidence did not preserve the collection row with explicit gaps.", { metrics });
@@ -803,6 +819,10 @@ async function nftPage(browser, viewport, platform, testCase) {
     const watchingClassified = text.includes("Robin Rabbits") && text.includes("Gogh Punks") && watchingCount === 2 && watchingAdmitted === 0;
     watchingPublicClassificationViolations += Number(!watchingClassified);
     check(watchingClassified, state, "WATCHING collections are not correctly separated from RMT admission.", { watchingCount, watchingAdmitted });
+  } else if (kind === "new") {
+    check(await page.locator('[data-new-evidence="TECHNICAL_VERIFICATION_OBSERVED"]').count() === 3, state, "New view is not sourced from technical-verification observation evidence.");
+    check(await page.locator('[data-nft-collection-status="WATCHING"]').count() === 2, state, "Verified non-ACTIVE discoveries are missing from New.");
+    check(await page.locator('[data-nft-collection-status="WATCHING"] a[href^="/nft/"]').count() === 0, state, "New view promoted WATCHING discovery into an active Project Market.");
   } else if (kind === "minting") {
     const radarSurface = page.locator("[data-nft-mint-radar]");
     check(await radarSurface.getAttribute("data-radar-state") === "READY", state, "Minting fixture is not READY.");
@@ -823,9 +843,12 @@ async function nftPage(browser, viewport, platform, testCase) {
   } else if (kind === "search") {
     check(await page.locator("[data-nft-search-results]").count() === 1, state, "NFT search result surface is absent.");
     check(await page.locator('[data-nft-collection-status="ACTIVE"]').count() === 1 && text.includes("CCFF00"), state, "Authoritative collection search did not resolve CCFF00.");
+  } else if (kind === "search-item") {
+    check(await page.locator('[data-nft-item-lookup="CONFIRMED"] [data-nft-search-item]').count() === 1, state, "Exact NFT search outside the four-item preview did not resolve.");
+    check(text.includes("CCFF00 #5") && text.includes("Exact indexed NFT"), state, "Exact NFT search result lacks canonical item identity.");
   } else if (kind === "empty") {
     check(await page.locator("[data-nft-empty-state]").count() === 1, state, "Empty market tab lacks a compact explicit state.");
-    check(text.includes("No collections have authoritative trending evidence"), state, "Trending empty state changed.");
+    check(text.includes("No collections have current authoritative trending evidence"), state, "Trending empty state changed.");
   } else if (kind === "project") {
     check(await page.locator("[data-nft-gallery]").isVisible(), state, "CCFF00 Project Market gallery is absent.");
     check(text.includes("CANONICAL ONCHAIN INVENTORY") && text.includes("PROVIDER MARKETPLACE EVIDENCE"), state, "Chain and marketplace evidence are not visibly separated.");
@@ -849,6 +872,66 @@ async function nftPage(browser, viewport, platform, testCase) {
   await capture(page, `${state}-${viewport.width}x${viewport.height}`);
   await context.close();
 }
+
+async function nftProgressiveLane(browser, viewport, platform, scenario) {
+  nftOwnershipMode = "available";
+  nftMarketplaceMode = "available";
+  nftRadarMode = "ready";
+  nftReaderDelays = scenario.delays;
+  const context = await createContext(browser, viewport);
+  const page = await context.newPage();
+  page.setDefaultTimeout(10_000);
+  const started = performance.now();
+  await page.goto(`${base}/nft`, { waitUntil: "commit", timeout: 60_000 });
+  await page.locator("[data-nft-known-identity]").waitFor();
+  const identityMs = Math.round(performance.now() - started);
+  const readySelector = scenario.readySelector;
+  await page.locator(readySelector).waitFor();
+  const independentEvidenceMs = Math.round(performance.now() - started);
+  const slowSelector = scenario.slowSelector;
+  const slowVisibleEarly = await page.locator(slowSelector).isVisible().catch(() => false);
+  check(identityMs < scenario.delays[scenario.slowReader], `${scenario.name}-${platform}`, "Known NFT identity waited for unrelated enrichment.", { identityMs, delays: scenario.delays });
+  check(independentEvidenceMs < scenario.delays[scenario.slowReader], `${scenario.name}-${platform}`, "Ready evidence waited for an unrelated slow provider.", { independentEvidenceMs, delays: scenario.delays, readySelector });
+  check(!slowVisibleEarly, `${scenario.name}-${platform}`, "Slow-provider evidence appeared before its deterministic delay.", { slowSelector });
+  await page.locator(slowSelector).waitFor();
+  const slowEvidenceMs = Math.round(performance.now() - started);
+  progressiveNftTimings.push({ scenario: scenario.name, platform, identityMs, independentEvidenceMs, slowEvidenceMs, configuredDelayMs: scenario.delays[scenario.slowReader] });
+  await overflow(page, `${scenario.name}-${platform}`);
+  await context.close();
+  nftReaderDelays = { inventory: 0, onchain: 0, marketplace: 0 };
+}
+
+async function nftJourneyLane(browser, viewport, platform) {
+  nftOwnershipMode = "available";
+  nftMarketplaceMode = "available";
+  nftReaderDelays = { inventory: 0, onchain: 0, marketplace: 0 };
+  const state = `nft-functional-journey-${platform}`;
+  const context = await createContext(browser, viewport);
+  const page = await context.newPage();
+  page.setDefaultTimeout(30_000);
+  await page.goto(`${base}/nft`, { waitUntil: "networkidle", timeout: 60_000 });
+  await page.getByPlaceholder("Search collection, contract or NFT").fill("ccff00 #5");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await page.locator('[data-nft-item-lookup="CONFIRMED"] [data-nft-search-item]').waitFor();
+  check(new URL(page.url()).searchParams.get("q") === "ccff00 #5", state, "Search interaction did not preserve the bounded exact-item query.");
+  await page.locator('[data-nft-search-item]').click();
+  await page.waitForURL(/\/nft\/ccff00\/5$/);
+  await page.getByRole("link", { name: /Back to CCFF00 collection/ }).click();
+  await page.waitForURL(/\/nft\/ccff00$/);
+  await page.getByRole("link", { name: "← NFTs", exact: true }).click();
+  await page.waitForURL(/\/nft$/);
+  await page.locator('[data-nft-collection-status="ACTIVE"]').click();
+  await page.waitForURL(/\/nft\/ccff00$/);
+  await page.locator("[data-nft-gallery] a").first().click();
+  await page.waitForURL(/\/nft\/ccff00\/1$/);
+  await page.getByRole("link", { name: /Back to CCFF00 collection/ }).click();
+  await page.waitForURL(/\/nft\/ccff00$/);
+  const forbiddenCount = await page.locator("a,button").filter({ hasText: /^(Buy|List|Offer|Fulfill|Sign|Submit)$/i }).count();
+  check(forbiddenCount === 0, state, "Functional NFT journey exposed execution controls.", { forbiddenCount });
+  await overflow(page, state);
+  await capture(page, `${state}-${viewport.width}x${viewport.height}`);
+  await context.close();
+}
 let browser;
 try {
   browser = await chromium.launch({ headless: true, args: ["--disable-gpu", "--force-device-scale-factor=1"] });
@@ -859,10 +942,12 @@ try {
     { route: "/nft", state: "nft-active-available", kind: "active" },
     { route: "/nft", state: "nft-active-ownership-unavailable", kind: "active-unavailable", ownership: "unavailable" },
     { route: "/nft?view=watching", state: "nft-watching", kind: "watching" },
+    { route: "/nft?view=new", state: "nft-new-provenance", kind: "new" },
     { route: "/nft?view=minting", state: "nft-minting-verified-live", kind: "minting" },
     { route: "/nft?view=minting&q=NoSuchMint", state: "nft-minting-empty", kind: "minting-empty" },
     { route: "/nft", state: "nft-marketplace-unavailable", kind: "marketplace-unavailable", marketplace: "unavailable" },
     { route: "/nft?q=CCFF00", state: "nft-search", kind: "search" },
+    { route: "/nft?q=ccff00%20%235", state: "nft-search-item-beyond-preview", kind: "search-item" },
     { route: "/nft?view=trending", state: "nft-empty-trending", kind: "empty", ownership: "unavailable", marketplace: "unavailable" },
     { route: "/nft/ccff00", state: "nft-project", kind: "project" },
     { route: "/nft/ccff00/1", state: "nft-item", kind: "item" },
@@ -871,6 +956,17 @@ try {
     await nftPage(browser, { width: 1440, height: 900 }, "desktop", { ...testCase, state: `${testCase.state}-desktop` });
     await nftPage(browser, { width: 390, height: 844 }, "mobile", { ...testCase, state: `${testCase.state}-mobile` });
   }
+  const progressiveScenarios = [
+    { name: "nft-progressive-marketplace-delay", slowReader: "marketplace", delays: { inventory: 0, onchain: 0, marketplace: 1_600 }, readySelector: '[data-ownership-state="AVAILABLE"]', slowSelector: '[data-nft-marketplace-evidence="AVAILABLE"]' },
+    { name: "nft-progressive-ownership-delay", slowReader: "onchain", delays: { inventory: 0, onchain: 1_600, marketplace: 0 }, readySelector: '[data-nft-marketplace-evidence="AVAILABLE"]', slowSelector: '[data-ownership-state="AVAILABLE"]' },
+    { name: "nft-progressive-inventory-delay", slowReader: "inventory", delays: { inventory: 1_600, onchain: 0, marketplace: 0 }, readySelector: '[data-ownership-state="AVAILABLE"]', slowSelector: '[data-nft-collection-status="ACTIVE"] img' },
+  ];
+  for (const scenario of progressiveScenarios) {
+    await nftProgressiveLane(browser, { width: 1440, height: 900 }, "desktop", scenario);
+    await nftProgressiveLane(browser, { width: 390, height: 844 }, "mobile", scenario);
+  }
+  await nftJourneyLane(browser, { width: 1440, height: 900 }, "desktop");
+  await nftJourneyLane(browser, { width: 390, height: 844 }, "mobile");
 } catch (error) {
   failures.push({ state: "harness", message: error instanceof Error ? error.stack ?? error.message : String(error) });
 } finally {
@@ -909,6 +1005,7 @@ const summary = {
     },
     publicWalletSubmissionEnabled: (process.env.NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED ?? "false").toLowerCase() !== "false",
     startup: startupMetrics,
+    nftProgressiveRendering: progressiveNftTimings,
   },
   states: stateResults,
   semantic: { status: failures.length === 0 ? "PASS" : "FAIL", failures },

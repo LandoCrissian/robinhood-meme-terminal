@@ -113,7 +113,7 @@ const projectPage = readFileSync(new URL("../../app/nft/[projectId]/page.tsx", i
 const itemPage = readFileSync(new URL("../../app/nft/[projectId]/[tokenId]/page.tsx", import.meta.url), "utf8");
 const reader = readFileSync(new URL("./nft-project-market.ts", import.meta.url), "utf8");
 assert.match(projectPage, /CANONICAL ONCHAIN INVENTORY/);
-assert.match(projectPage, /\/nft\/\$\{model\.project\.projectId\}\/\$\{item\.tokenId\}/);
+assert.match(projectPage, /\/nft\/\$\{projectId\}\/\$\{item\.tokenId\}/);
 assert.match(itemPage, /ONCHAIN TOKENURI/);
 assert.match(itemPage, /ERC-6551 account/);
 assert.match(itemPage, /notFound\(\)/);
