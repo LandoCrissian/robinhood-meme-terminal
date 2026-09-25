@@ -53,11 +53,26 @@ export default async function NftProjectMarketPage({ params, searchParams }: {
       <a className={styles.contract} href={`${robinhoodChain.blockExplorers.default.url}/address/${collection.contractAddress}`} target="_blank" rel="noreferrer">{collection.contractAddress}</a>
     </header>
 
-    <section className={styles.collectionHero} aria-label={`${model.project.displayName} collection spotlight`}>
+    <nav className={styles.marketViews} aria-label="Collection market views">
+      <a href="#items">Items</a>
+      <a href="#activity">Activity</a>
+      <a href="#holders">Holders</a>
+      <a href="#intelligence">Intelligence</a>
+    </nav>
+
+    <section className={styles.metrics} id="holders" data-nft-market-tape aria-label={`${model.project.displayName} project market metrics`}>
+      <article><span>FLOOR</span><strong>{listing ? `${amount(listing.grossAmount, listing.paymentAsset.decimals)} ${listing.paymentAsset.symbol}` : "—"}</strong><small>{listing ? "OpenSea provider evidence · not execution verified" : "Marketplace evidence unavailable"}</small></article>
+      <article><span>24H VOLUME</span><strong>{marketplace?.volume24hByPaymentAsset.length ? marketplace.volume24hByPaymentAsset.map((entry) => `${amount(entry.grossAmount, entry.paymentAsset.decimals)} ${entry.paymentAsset.symbol}`).join(" · ") : "—"}</strong><small>Provider-reported · grouped by exact payment asset</small></article>
+      <article><span>24H SALES</span><strong>{marketplace ? marketplace.recentProviderSales.length : "—"}</strong><small>{marketplace ? "Recent provider reports" : "Marketplace evidence unavailable"}</small></article>
+      <article><span>HOLDERS</span><strong>{onchain?.holderCount ?? "—"}</strong><small>{onchain?.completeness === "COMPLETE" ? "Canonical current ownership" : onchain?.sourceStatus === "BACKFILLING" ? "Ownership backfilling" : "Ownership unavailable"}</small></article>
+      <article><span>SUPPLY</span><strong>{onchain?.circulatingTokenCount ?? "—"}</strong><small>Current canonical ownership rows</small></article>
+    </section>
+
+    <section className={styles.collectionSpotlight} aria-label={`${model.project.displayName} collection spotlight`}>
       <div className={styles.collectionHeroCopy}>
         <span>COLLECTION SPOTLIGHT</span>
-        <h2>Ownership is the signal.<br/><em>The art is the interface.</em></h2>
-        <p>Canonical Robinhood Chain inventory backed by current ownership, onchain tokenURI metadata and independent marketplace evidence.</p>
+        <h2>Canonical art. Current ownership.</h2>
+        <p>Onchain tokenURI inventory and ownership remain canonical. Marketplace evidence is shown separately.</p>
       </div>
       <div className={styles.heroArt}>
         {featured.length ? featured.map((item, index) => <Link href={`/nft/${model.project.projectId}/${item.tokenId}`} key={item.tokenId} className={styles[`heroArt${index + 1}`]}>
@@ -67,14 +82,7 @@ export default async function NftProjectMarketPage({ params, searchParams }: {
       </div>
     </section>
 
-    <section className={styles.metrics} data-nft-market-tape aria-label={`${model.project.displayName} project market metrics`}>
-      <article><span>HOLDERS</span><strong>{onchain?.holderCount ?? "Data unavailable"}</strong><small>{onchain?.completeness === "COMPLETE" ? "Canonical current ownership" : "Awaiting complete canonical history"}</small></article>
-      <article><span>NFTS IN CIRCULATION</span><strong>{onchain?.circulatingTokenCount ?? "Data unavailable"}</strong><small>Current ERC721 ownership rows, not totalSupply</small></article>
-      <article><span>LOWEST OPENSEA LISTING</span><strong>{listing ? `${amount(listing.grossAmount, listing.paymentAsset.decimals)} ${listing.paymentAsset.symbol}` : "Data unavailable"}</strong><small>{listing ? "Fresh normalized OpenSea evidence · not execution verified" : marketplace?.availabilityReason === "STALE" ? "Fresh exact-order evidence unavailable" : "No current qualifying evidence"}</small></article>
-      <article><span>OPENSEA REPORTED 24H VOLUME</span><strong>{marketplace?.volume24hByPaymentAsset.length ? marketplace.volume24hByPaymentAsset.map((entry) => `${amount(entry.grossAmount, entry.paymentAsset.decimals)} ${entry.paymentAsset.symbol}`).join(" · ") : "Data unavailable"}</strong><small>Grouped by exact payment asset · settlement not verified</small></article>
-    </section>
-
-    <section className={inventoryStyles.collection} data-nft-gallery aria-labelledby="collection-heading">
+    <section className={inventoryStyles.collection} id="items" data-nft-gallery aria-labelledby="collection-heading">
       <div className={inventoryStyles.collectionHead}><div><p>CANONICAL ONCHAIN INVENTORY</p><h2 id="collection-heading">Collection</h2><span>Current ERC721 ownership · metadata from onchain tokenURI</span></div>
         {afterTokenId ? <Link href={`/nft/${model.project.projectId}`}>Back to start</Link> : null}
       </div>
@@ -94,13 +102,13 @@ export default async function NftProjectMarketPage({ params, searchParams }: {
         : null}
     </section>
 
-    <section className={styles.activityPulse} aria-label="Collection intelligence">
+    <section className={styles.activityPulse} id="intelligence" aria-label="Collection intelligence">
       <div><span>COLLECTION INTELLIGENCE</span><strong>{onchain?.recentActivity.length ?? 0}</strong><small>RECENT ONCHAIN EVENTS</small></div>
       <div><span>MARKETPLACE SIGNAL</span><strong>{marketplace?.recentProviderSales.length ?? 0}</strong><small>RECENT OPENSEA REPORTS</small></div>
       <p>Chain activity and marketplace reports are intentionally kept as separate authorities. RMT shows both without turning provider claims into onchain facts.</p>
     </section>
 
-    <section className={styles.ledger} data-nft-evidence-ledger aria-labelledby="evidence-ledger-heading">
+    <section className={styles.ledger} id="activity" data-nft-evidence-ledger aria-labelledby="evidence-ledger-heading">
       <header className={styles.ledgerHead}><p>LIVE EVIDENCE LEDGER</p><h2 id="evidence-ledger-heading">What&apos;s happening now</h2><span>Onchain movement × marketplace signal</span></header>
       <div className={styles.columns}>
         <section className={styles.panel}><div className={styles.panelHead}><div><p>CANONICAL CHAIN EVIDENCE</p><h3>Recent project activity</h3></div><span>{onchain?.availability ?? "UNAVAILABLE"}</span></div>

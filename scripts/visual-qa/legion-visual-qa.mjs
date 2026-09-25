@@ -23,6 +23,8 @@ const tokenGatedAllowedTokensArgs = calldataAddressWord(RADAR_DROP_COLLECTION);
 const tokenGatedDropArgs = `${tokenGatedAllowedTokensArgs}${calldataAddressWord(CCFF00_COLLECTION)}`;
 const radarCcff00GateStartSeconds = Math.floor(Date.parse(RADAR_CCFF00_GATE_START) / 1_000);
 const radarCcff00GateEndSeconds = Math.floor(Date.parse(RADAR_CCFF00_GATE_END) / 1_000);
+const visualLiveGateStart = "2026-09-21T19:48:00.000Z";
+const visualLiveGateStartSeconds = Math.floor(Date.parse(visualLiveGateStart) / 1_000);
 const token = TOKEN_MARKETS[1].address;
 const pair = TOKEN_MARKETS[1].pairAddress;
 const failures = [];
@@ -40,6 +42,35 @@ let crossSurfaceNavigationViolations = 0;
 let portfolioReturnPathViolations = 0;
 let valuationTruthViolations = 0;
 let startupMetrics = null;
+let nftOwnershipMode = "available";
+let nftMarketplaceMode = "available";
+let nftRadarMode = "ready";
+
+const verifiedLiveRadarDrop = {
+  ...NFT_MINT_RADAR_PAGES.upcoming.drops[0],
+  is_minting: true,
+  active_stage: {
+    ...NFT_MINT_RADAR_PAGES.upcoming.drops[0].next_stage,
+    start_time: visualLiveGateStart,
+  },
+  next_stage: null,
+};
+
+function visualRadarPage(type) {
+  if (nftRadarMode === "empty") return { drops: [], next: null };
+  return type === "featured" ? { drops: [verifiedLiveRadarDrop], next: null } : { drops: [], next: null };
+}
+
+function visualRadarDetail(slug) {
+  if (slug !== verifiedLiveRadarDrop.collection_slug) return null;
+  return {
+    ...NFT_MINT_RADAR_DETAILS[slug],
+    is_minting: true,
+    active_stage: verifiedLiveRadarDrop.active_stage,
+    next_stage: null,
+    stages: [verifiedLiveRadarDrop.active_stage],
+  };
+}
 
 await mkdir(output, { recursive: true });
 await mkdir(acceptanceOutput, { recursive: true });
@@ -65,12 +96,13 @@ const fixtureServer = createServer(async (request, response) => {
     const type = url.searchParams.get("type");
     const chain = url.searchParams.get("chains");
     if (chain !== "robinhood" || !type || !(type in NFT_MINT_RADAR_PAGES)) return json(response, { error: "invalid_radar_request" }, 400);
-    return json(response, NFT_MINT_RADAR_PAGES[type]);
+    return json(response, visualRadarPage(type));
   }
   if (url.pathname.startsWith("/api/v2/drops/")) {
     if (request.headers["x-api-key"] !== "legion-radar-fixture") return json(response, { error: "unauthorized" }, 401);
     const slug = decodeURIComponent(url.pathname.slice("/api/v2/drops/".length));
-    return slug in NFT_MINT_RADAR_DETAILS ? json(response, NFT_MINT_RADAR_DETAILS[slug]) : json(response, { error: "not_found" }, 404);
+    const detail = visualRadarDetail(slug);
+    return detail ? json(response, detail) : json(response, { error: "not_found" }, 404);
   }
   if (url.pathname === "/rpc" && request.method === "POST") {
     const chunks = [];
@@ -90,17 +122,23 @@ const fixtureServer = createServer(async (request, response) => {
         return rpcResult(response, payload.id, `0x${word(32)}${word(1)}${addressWord(CCFF00_COLLECTION)}`);
       }
       if (target === RADAR_SEADROP.toLowerCase() && data.length === 138 && data.slice(10) === tokenGatedDropArgs) {
-        return rpcResult(response, payload.id, `0x${word(12_500_000_000_000_000n)}${word(2)}${word(radarCcff00GateStartSeconds)}${word(radarCcff00GateEndSeconds)}${word(7)}${word(500)}${word(0)}${word(0)}`);
+        return rpcResult(response, payload.id, `0x${word(12_500_000_000_000_000n)}${word(2)}${word(nftRadarMode === "ready" ? visualLiveGateStartSeconds : radarCcff00GateStartSeconds)}${word(radarCcff00GateEndSeconds)}${word(7)}${word(500)}${word(0)}${word(0)}`);
       }
       return rpcResult(response, payload.id, "0x");
     }
     return json(response, { jsonrpc: "2.0", id: payload.id, error: { code: -32601, message: "method_not_found" } }, 400);
   }
   if (request.headers.authorization !== `Bearer ${"a".repeat(64)}`) return json(response, { error: "unauthorized" }, 401);
-  if (/^\/internal\/v1\/projects\/ccff00\/inventory$/.test(url.pathname)) return json(response, nftInventory(Number(url.searchParams.get("limit") ?? 24)));
+  if (/^\/internal\/v1\/projects\/ccff00\/inventory$/.test(url.pathname)) return json(response,
+    nftOwnershipMode === "available"
+      ? nftInventory(Number(url.searchParams.get("limit") ?? 24))
+      : { ...nftInventory(0), availability: "UNAVAILABLE", availabilityReason: "SOURCE_ERROR", asOf: null, items: [], nextCursor: null });
   if (url.pathname === "/internal/v1/projects/ccff00/items/1") return json(response, NFT_ITEM);
-  if (url.pathname === "/internal/v1/projects/ccff00/onchain") return json(response, NFT_ONCHAIN);
-  if (url.pathname === "/internal/v1/projects/ccff00/marketplace") return json(response, NFT_MARKETPLACE);
+  if (url.pathname === "/internal/v1/projects/ccff00/onchain") return json(response,
+    nftOwnershipMode === "available" ? NFT_ONCHAIN : { ...NFT_ONCHAIN, sourceStatus: "ERROR", availability: "UNAVAILABLE", completeness: "UNAVAILABLE", holderCount: null, circulatingTokenCount: null, recentActivity: [], asOf: null });
+  if (url.pathname === "/internal/v1/projects/ccff00/marketplace") return nftMarketplaceMode === "available"
+    ? json(response, NFT_MARKETPLACE)
+    : json(response, { error: "marketplace_unavailable" }, 503);
   return json(response, { error: "not_found" }, 404);
 });
 await new Promise((resolve, reject) => fixtureServer.listen(fixturePort, "127.0.0.1", resolve).once("error", reject));
@@ -696,67 +734,107 @@ async function registrationCorners(page, state, selector) {
   check(lowerRightTechnical, state, "Lower-right registration corner does not use the neutral technical role.", { expected: technicalNeutral, actual: corners.after });
 }
 
-async function nftPage(browser, viewport, platform, route, state) {
+async function nftPage(browser, viewport, platform, testCase) {
+  const { route, state, kind, ownership = "available", marketplace = "available", radar = "ready" } = testCase;
+  nftOwnershipMode = ownership;
+  nftMarketplaceMode = marketplace;
+  nftRadarMode = radar;
   const context = await createContext(browser, viewport);
   const page = await context.newPage();
   page.setDefaultTimeout(30_000);
   await page.goto(`${base}${route}`, { waitUntil: "networkidle", timeout: 60_000 });
   await page.locator('[data-nft-terminal-shell="v1"]').waitFor();
   await stabilize(page);
+
+  const expectedUrl = new URL(route, base);
   const nftNav = page.locator('nav[aria-label="RMT Terminal navigation"]:visible');
   const nftPrimary = (await nftNav.locator("a").allTextContents()).map((label) => label.trim()).slice(0, 4);
   const nftNavAligned = JSON.stringify(nftPrimary) === JSON.stringify(["Markets", "NFTs", "Portfolio", "Distribution"]);
   const nftActive = await nftNav.locator('[aria-current="page"]').allTextContents();
   const walletReturnTo = await page.locator("[data-nft-wallet-return-to]").getAttribute("data-nft-wallet-return-to");
-  crossSurfaceNavigationViolations += Number(!nftNavAligned) + Number(!nftActive.includes("NFTs")) + Number(walletReturnTo !== route);
+  crossSurfaceNavigationViolations += Number(!nftNavAligned) + Number(!nftActive.includes("NFTs")) + Number(walletReturnTo !== expectedUrl.pathname);
   check(nftNavAligned, state, "NFT global market navigation is not aligned with the Token surface.", { primary: nftPrimary });
   check(nftActive.includes("NFTs"), state, "NFTs is not the unmistakable active product section.", { active: nftActive });
-  check(walletReturnTo === route, state, "NFT wallet flow does not preserve the current market/item deep link.", { expected: route, actual: walletReturnTo });
+  check(walletReturnTo === expectedUrl.pathname, state, "NFT wallet flow does not preserve the current market/item path.", { expected: expectedUrl.pathname, actual: walletReturnTo });
+  const currentUrl = new URL(page.url());
+  check(`${currentUrl.pathname}${currentUrl.search}` === route, state, "NFT route did not resolve exactly.", { actual: `${currentUrl.pathname}${currentUrl.search}`, expected: route });
+
   const text = await page.locator("body").innerText();
-  check(page.url().endsWith(route), state, "NFT route did not resolve exactly.", { actual: page.url(), expected: route });
-  check(text.includes("CCFF00"), state, "CCFF00 is absent from its public lane.");
-  const watchingCards = page.locator('[data-nft-collection-status="WATCHING"]');
-  if (route === "/nft") {
-    const watchingNamesVisible = text.includes("Robin Rabbits") && text.includes("Gogh Punks");
-    const watchingCount = await watchingCards.count();
-    const watchingAdmitted = await watchingCards.locator('a[href^="/nft/"]').count();
-    const watchingClassified = watchingNamesVisible && watchingCount === 2 && watchingAdmitted === 0;
-    watchingPublicClassificationViolations += Number(!watchingClassified);
-    check(watchingClassified, state, "Public WATCHING collections are not correctly separated from RMT admission.", {
-      watchingNamesVisible, watchingCount, watchingAdmitted
-    });
-  }
   check(!/\bRarity\b/i.test(text), state, "Rarity was invented for CCFF00.");
   const forbidden = page.locator("a,button").filter({ hasText: /^(Buy|List|Offer|Fulfill|Sign|Submit)$/i });
   const forbiddenCount = await forbidden.count();
   nftExecutionControls += forbiddenCount;
   check(forbiddenCount === 0, state, "NFT execution controls are present.", { count: forbiddenCount });
-  if (route === "/nft") {
-    check(await page.locator("[data-nft-project-stage]").count() === 1, state, "Public ACTIVE NFT project count is not one.");
-    const radar = page.locator("[data-nft-mint-radar]");
-    check(await radar.getAttribute("data-radar-state") === "READY", state, "Mint Radar fixture is not READY.");
-    check(await page.getByRole("heading", { name: "Live Now", exact: true }).count() === 1, state, "Mint Radar Live Now state is absent.");
-    check(await page.getByRole("heading", { name: "Upcoming", exact: true }).count() === 1, state, "Mint Radar Upcoming state is absent.");
-    check(await page.getByRole("heading", { name: "Recently Minted", exact: true }).count() === 1, state, "Mint Radar Recently Minted state is absent.");
-    const radarCandidates = page.locator("[data-radar-candidate]");
-    check(await radarCandidates.count() === 4, state, "Deterministic Mint Radar candidate count changed.", { count: await radarCandidates.count() });
-    const liveReadinessActions = page.locator('[data-radar-candidate][data-radar-state="LIVE_NOW"] [data-nft-readiness-action]');
-    check(await liveReadinessActions.count() === 1, state, "Live Mint Radar candidate is missing its non-executing readiness action.");
-    check((await liveReadinessActions.first().textContent())?.trim() === "CHECK READINESS", state, "Mint readiness action changed into an execution-like control.");
-    check(await page.locator("[data-nft-mint-readiness] form").count() === 0, state, "Mint readiness introduced a transaction submission form.");
-    check(await page.locator('[data-radar-candidate]:not([data-radar-admission="NOT_EVALUATED"])').count() === 0, state, "Radar candidate crossed into RMT admission authority.");
-    check(await page.locator('[data-radar-candidate]:not([data-radar-chain="4663"])').count() === 0, state, "Mint Radar exposed a non-Robinhood Chain candidate.");
-    check(await page.locator('[data-ccff00-access="VERIFIED_COMMUNITY_GATE"]').count() === 1, state, "Exact CCFF00 token-gate fixture is not independently classified as verified.");
+
+  if (["active", "active-unavailable", "marketplace-unavailable", "search", "watching", "minting", "minting-empty", "empty"].includes(kind)) {
+    check(await page.getByRole("heading", { name: "NFTs", exact: true }).count() === 1, state, "Compact NFT market header is absent.");
+    check(/ROBINHOOD CHAIN NFT MARKETS/i.test(text), state, "NFT market subtitle is absent.");
+    const labels = await page.locator('nav[aria-label="NFT market views"] strong').allTextContents();
+    check(JSON.stringify(labels) === JSON.stringify(["Active", "New", "Minting", "Trending", "Watching"]), state, "NFT market view order changed.", { labels });
+    check(await page.getByPlaceholder("Search collection, contract or NFT").count() === 1, state, "Compact NFT search control is absent.");
+    check(!text.includes("See the collection.\nSee what’s actually happening."), state, "Editorial NFT discovery hero is still present.");
+    if (platform === "mobile") {
+      const positions = await page.evaluate(() => {
+        const heading = document.querySelector("h1")?.getBoundingClientRect();
+        const tabs = document.querySelector('nav[aria-label="NFT market views"]')?.getBoundingClientRect();
+        const search = document.querySelector('form[role="search"]')?.getBoundingClientRect();
+        const row = document.querySelector("[data-nft-collection-row], [data-radar-candidate], [data-nft-empty-state]")?.getBoundingClientRect();
+        return { heading: heading?.top, tabs: tabs?.top, searchBottom: search?.bottom, rowTop: row?.top };
+      });
+      check((positions.heading ?? 9999) < viewport.height && (positions.tabs ?? 9999) < viewport.height && (positions.searchBottom ?? 9999) < viewport.height && (positions.rowTop ?? 9999) < viewport.height,
+        state, "NFT title, tabs, search, and first collection state do not fit in the first useful mobile viewport.", positions);
+    }
+    if (await page.locator("[data-rmt-registration-frame]").count()) await registrationCorners(page, state, "[data-rmt-registration-frame]");
+  }
+
+  if (kind === "active" || kind === "active-unavailable" || kind === "marketplace-unavailable") {
+    check(await page.locator('[data-nft-collection-status="ACTIVE"]').count() === 1, state, "Public ACTIVE NFT collection count is not one.");
+    check(text.includes("CCFF00"), state, "CCFF00 is absent from Active NFT markets.");
+    const row = page.locator('[data-nft-collection-status="ACTIVE"]').first();
+    check(await row.getAttribute("data-ownership-state") === (ownership === "available" ? "AVAILABLE" : "UNAVAILABLE"), state, "Ownership progressive state is incorrect.");
+    if (marketplace === "unavailable") {
+      const metrics = await row.locator("dd").allTextContents();
+      check(metrics.length === 2 && metrics.every((value) => value.trim() === "—"), state, "Unavailable marketplace evidence did not preserve the collection row with explicit gaps.", { metrics });
+    }
+  } else if (kind === "watching") {
+    const watchingCards = page.locator('[data-nft-collection-status="WATCHING"]');
+    const watchingCount = await watchingCards.count();
+    const watchingAdmitted = await watchingCards.locator('a[href^="/nft/"]').count();
+    const watchingClassified = text.includes("Robin Rabbits") && text.includes("Gogh Punks") && watchingCount === 2 && watchingAdmitted === 0;
+    watchingPublicClassificationViolations += Number(!watchingClassified);
+    check(watchingClassified, state, "WATCHING collections are not correctly separated from RMT admission.", { watchingCount, watchingAdmitted });
+  } else if (kind === "minting") {
+    const radarSurface = page.locator("[data-nft-mint-radar]");
+    check(await radarSurface.getAttribute("data-radar-state") === "READY", state, "Minting fixture is not READY.");
+    const candidates = page.locator("[data-radar-candidate]");
+    check(await candidates.count() === 1, state, "Verified live Minting row count changed.", { count: await candidates.count() });
+    check(await page.locator('[data-radar-candidate][data-radar-state="LIVE_NOW"]').count() === 1, state, "Verified live mint is not classified LIVE_NOW.");
+    check(await page.locator('[data-radar-candidate]:not([data-radar-admission="NOT_EVALUATED"])').count() === 0, state, "Minting row crossed into RMT admission authority.");
+    check(await page.locator('[data-radar-candidate]:not([data-radar-chain="4663"])').count() === 0, state, "Minting row exposed a non-Robinhood Chain candidate.");
+    check(await page.locator('[data-ccff00-access="VERIFIED_COMMUNITY_GATE"]').count() === 1, state, "Verified CCFF00 SeaDrop authority is absent.");
     check(await page.getByText("#CCFF00 ACCESS · VERIFIED", { exact: true }).count() === 1, state, "Verified CCFF00 access badge is absent.");
-    check(await page.locator('[data-ccff00-access="UNKNOWN"]').count() >= 1, state, "Mint Radar fixture no longer preserves unknown access evidence.");
-    check(await page.getByText(/Access · Unknown/i).count() === 0, state, "Unknown access was promoted into a noisy card-level warning.");
-    check(!/Token relationship/i.test(text), state, "Mint Radar inferred a Token relationship.");
-    await registrationCorners(page, state, "[data-rmt-registration-frame]");
-  } else if (route === "/nft/ccff00") {
+    const readiness = page.locator("[data-nft-readiness-action]");
+    check(await readiness.count() === 1 && (await readiness.first().textContent())?.trim() === "CHECK READINESS", state, "Mint readiness action changed or disappeared.");
+    check(await page.locator("[data-nft-mint-readiness] form").count() === 0, state, "Mint readiness introduced an execution form.");
+  } else if (kind === "minting-empty") {
+    check(await page.locator("[data-radar-candidate]").count() === 0, state, "Empty Minting state contains candidates.");
+    check(await page.getByText("No verified live mints", { exact: true }).count() === 1, state, "Compact empty Minting state is absent.");
+    check(!text.includes("LIVE MINT FEED UNAVAILABLE"), state, "Large unavailable Mint Radar panel returned.");
+  } else if (kind === "search") {
+    check(await page.locator("[data-nft-search-results]").count() === 1, state, "NFT search result surface is absent.");
+    check(await page.locator('[data-nft-collection-status="ACTIVE"]').count() === 1 && text.includes("CCFF00"), state, "Authoritative collection search did not resolve CCFF00.");
+  } else if (kind === "empty") {
+    check(await page.locator("[data-nft-empty-state]").count() === 1, state, "Empty market tab lacks a compact explicit state.");
+    check(text.includes("No collections have authoritative trending evidence"), state, "Trending empty state changed.");
+  } else if (kind === "project") {
     check(await page.locator("[data-nft-gallery]").isVisible(), state, "CCFF00 Project Market gallery is absent.");
     check(text.includes("CANONICAL ONCHAIN INVENTORY") && text.includes("PROVIDER MARKETPLACE EVIDENCE"), state, "Chain and marketplace evidence are not visibly separated.");
+    check(await page.locator('[data-nft-market-tape] article').count() === 5, state, "Collection metric strip does not expose five evidence-bound metrics.");
+    const collectionViews = await page.locator('nav[aria-label="Collection market views"] a').allTextContents();
+    check(JSON.stringify(collectionViews) === JSON.stringify(["Items", "Activity", "Holders", "Intelligence"]), state, "Collection market navigation is incomplete.", { collectionViews });
+    check(text.includes("COLLECTION SPOTLIGHT") && text.includes("LIVE EVIDENCE LEDGER"), state, "Deep collection intelligence was not preserved below the market header.");
     await registrationCorners(page, state, "[data-nft-gallery] a > div");
-  } else {
+  } else if (kind === "item") {
     check(await page.locator("[data-nft-item-workspace]").isVisible(), state, "Representative CCFF00 item workspace is absent.");
     check(/TOKEN-BOUND ACCOUNT\s*·?\s*ERC-6551 ACCOUNT/i.test(text), state, "CCFF00 token-bound account capability is absent.");
     check(text.includes("ONCHAIN TOKENURI"), state, "Fully onchain metadata authority is absent.");
@@ -766,20 +844,32 @@ async function nftPage(browser, viewport, platform, route, state) {
     check(contextualBreadcrumb, state, "NFT item breadcrumb does not preserve collection/project context.", { breadcrumbLinks });
     await registrationCorners(page, state, "[data-nft-item-workspace] > div:first-child");
   }
+
   await overflow(page, state);
   await capture(page, `${state}-${viewport.width}x${viewport.height}`);
   await context.close();
 }
-
 let browser;
 try {
   browser = await chromium.launch({ headless: true, args: ["--disable-gpu", "--force-device-scale-factor=1"] });
   await startupLane(browser);
   await tokenLane(browser, { width: 1440, height: 900 }, "desktop");
   await tokenLane(browser, { width: 390, height: 844 }, "mobile");
-  for (const [route, suffix] of [["/nft", "nft-catalog"], ["/nft/ccff00", "nft-project"], ["/nft/ccff00/1", "nft-item"]]) {
-    await nftPage(browser, { width: 1440, height: 900 }, "desktop", route, `${suffix}-desktop`);
-    await nftPage(browser, { width: 390, height: 844 }, "mobile", route, `${suffix}-mobile`);
+  const nftStates = [
+    { route: "/nft", state: "nft-active-available", kind: "active" },
+    { route: "/nft", state: "nft-active-ownership-unavailable", kind: "active-unavailable", ownership: "unavailable" },
+    { route: "/nft?view=watching", state: "nft-watching", kind: "watching" },
+    { route: "/nft?view=minting", state: "nft-minting-verified-live", kind: "minting" },
+    { route: "/nft?view=minting&q=NoSuchMint", state: "nft-minting-empty", kind: "minting-empty" },
+    { route: "/nft", state: "nft-marketplace-unavailable", kind: "marketplace-unavailable", marketplace: "unavailable" },
+    { route: "/nft?q=CCFF00", state: "nft-search", kind: "search" },
+    { route: "/nft?view=trending", state: "nft-empty-trending", kind: "empty", ownership: "unavailable", marketplace: "unavailable" },
+    { route: "/nft/ccff00", state: "nft-project", kind: "project" },
+    { route: "/nft/ccff00/1", state: "nft-item", kind: "item" },
+  ];
+  for (const testCase of nftStates) {
+    await nftPage(browser, { width: 1440, height: 900 }, "desktop", { ...testCase, state: `${testCase.state}-desktop` });
+    await nftPage(browser, { width: 390, height: 844 }, "mobile", { ...testCase, state: `${testCase.state}-mobile` });
   }
 } catch (error) {
   failures.push({ state: "harness", message: error instanceof Error ? error.stack ?? error.message : String(error) });
