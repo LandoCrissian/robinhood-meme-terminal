@@ -3,13 +3,9 @@ import {
   activeRmtCuratedNftProjects,
   type RmtCuratedNftProject,
 } from "@rmt/shared/nft/project-registry";
-import {
-  readRmtNftProjectInventory,
-  readRmtNftProjectMarket,
-  type RmtNftInventoryReaderResult,
-} from "./nft-project-market";
-
-export const NFT_TERMINAL_CATALOG_PREVIEW_LIMIT = 4 as const;
+import { rmtNftCollectionTechnicalVerification } from "@rmt/shared/nft/technical-verification";
+import type { RmtNftProjectMarketplaceRead } from "@rmt/shared/nft/project-market";
+import { readRmtNftItem, type RmtNftItemReaderResult } from "./nft-project-market";
 
 export type RmtNftTerminalCatalogView = "active" | "new" | "minting" | "trending" | "watching";
 
@@ -18,7 +14,6 @@ export type RmtNftTerminalProjectCard = {
   displayName: string;
   status: "ACTIVE";
   rmtCurated: true;
-  approvedAt: string;
   chainId: 4663;
   collections: readonly {
     contractAddress: `0x${string}`;
@@ -26,8 +21,6 @@ export type RmtNftTerminalProjectCard = {
     verificationStatus: "PENDING" | "VERIFIED" | "REJECTED";
   }[];
   projectToken: RmtCuratedNftProject["projectToken"];
-  market: Awaited<ReturnType<typeof readRmtNftProjectMarket>>;
-  inventoryPreview: RmtNftInventoryReaderResult | null;
 };
 
 export type RmtNftTerminalCollectionCard = {
@@ -38,7 +31,12 @@ export type RmtNftTerminalCollectionCard = {
   standard: "ERC721" | "ERC1155" | null;
   verificationStatus: "PENDING" | "VERIFIED" | "REJECTED";
   projectStatus: "ACTIVE" | "WATCHING";
-  verifiedAt: string;
+  newEvidence: {
+    authority: "TECHNICAL_VERIFICATION_OBSERVED";
+    observedAt: string;
+    startBlock: string;
+    deploymentTransaction: `0x${string}`;
+  } | null;
   publicUrl: string | null;
 };
 
@@ -51,18 +49,40 @@ export type RmtNftTerminalCatalog = {
   watchingCollections: readonly RmtNftTerminalCollectionCard[];
 };
 
-export function activePublicRmtNftProjects(
-  projects?: readonly RmtCuratedNftProject[],
-) {
-  const registryProjects = projects ?? activeRmtCuratedNftProjects();
-  return registryProjects.filter((project): project is RmtCuratedNftProject & { status: "ACTIVE" } => project.status === "ACTIVE");
+const TRENDING_OBSERVATION_MAX_AGE_MS = 15 * 60 * 1_000;
+
+export function hasCurrentNftTrendingEvidence(marketplace: RmtNftProjectMarketplaceRead, now = new Date()): boolean {
+  if (!["AVAILABLE", "PARTIAL"].includes(marketplace.availability) || marketplace.asOf === null) return false;
+  const observedAt = Date.parse(marketplace.asOf);
+  if (!Number.isFinite(observedAt) || observedAt > now.getTime() || now.getTime() - observedAt > TRENDING_OBSERVATION_MAX_AGE_MS) return false;
+  return marketplace.volume24hByPaymentAsset.some((entry) => BigInt(entry.grossAmount) > 0n || entry.saleCount > 0);
 }
 
-export function recentlyAddedPublicRmtNftProjects(
-  projects?: readonly RmtCuratedNftProject[],
-) {
-  return activePublicRmtNftProjects(projects).toSorted((left, right) =>
-    right.approvedAt.localeCompare(left.approvedAt) || left.projectId.localeCompare(right.projectId));
+export type RmtNftExactItemSearchResult =
+  | { status: "NOT_APPLICABLE" }
+  | { status: "CONFIRMED"; matches: readonly { project: RmtNftTerminalProjectCard; item: Exclude<RmtNftItemReaderResult, { availability: "UNAVAILABLE" }> }[] }
+  | { status: "NOT_FOUND" }
+  | { status: "UNAVAILABLE" };
+
+export async function resolveExactRmtNftItemSearch(
+  query: string,
+  projects: readonly RmtNftTerminalProjectCard[],
+  reader: (projectId: string, tokenId: string) => Promise<RmtNftItemReaderResult | null> = readRmtNftItem,
+): Promise<RmtNftExactItemSearchResult> {
+  const match = query.match(/^(?:(?<project>[a-z0-9-]+)\s*)?#?(?<token>0|[1-9]\d*)$/i);
+  if (!match?.groups?.token) return { status: "NOT_APPLICABLE" };
+  const projectQuery = match.groups.project?.toLowerCase();
+  const candidates = projects.filter((entry) => !projectQuery || entry.projectId === projectQuery || entry.displayName.toLowerCase() === projectQuery);
+  const results = await Promise.all(candidates.map(async (project) => ({ project, result: await reader(project.projectId, match.groups!.token!) })));
+  const matches = results.flatMap(({ project, result }) => result && "tokenId" in result ? [{ project, item: result }] : []);
+  if (matches.length) return { status: "CONFIRMED", matches };
+  if (results.some(({ result }) => result && "availability" in result && result.availability === "UNAVAILABLE")) return { status: "UNAVAILABLE" };
+  return { status: "NOT_FOUND" };
+}
+
+export function activePublicRmtNftProjects(projects?: readonly RmtCuratedNftProject[]) {
+  const registryProjects = projects ?? activeRmtCuratedNftProjects();
+  return registryProjects.filter((project): project is RmtCuratedNftProject & { status: "ACTIVE" } => project.status === "ACTIVE");
 }
 
 export function watchingPublicRmtNftProjects(
@@ -73,17 +93,25 @@ export function watchingPublicRmtNftProjects(
 }
 
 function publicCollectionCards(projects: readonly RmtCuratedNftProject[]): RmtNftTerminalCollectionCard[] {
-  return projects.flatMap((project) => project.collections.map((collection) => ({
-    projectId: project.projectId,
-    displayName: project.displayName,
-    chainId: collection.chainId,
-    contractAddress: collection.contractAddress,
-    standard: collection.declaredStandard,
-    verificationStatus: collection.verificationStatus,
-    projectStatus: project.status as "ACTIVE" | "WATCHING",
-    verifiedAt: project.approvedAt,
-    publicUrl: project.links.find((link) => link.visibility === "PUBLIC")?.url ?? null,
-  })));
+  return projects.flatMap((project) => project.collections.map((collection) => {
+    const verification = rmtNftCollectionTechnicalVerification(project.projectId, collection.contractAddress);
+    return {
+      projectId: project.projectId,
+      displayName: project.displayName,
+      chainId: collection.chainId,
+      contractAddress: collection.contractAddress,
+      standard: collection.declaredStandard,
+      verificationStatus: collection.verificationStatus,
+      projectStatus: project.status as "ACTIVE" | "WATCHING",
+      newEvidence: verification ? {
+        authority: "TECHNICAL_VERIFICATION_OBSERVED" as const,
+        observedAt: verification.verifiedAt,
+        startBlock: verification.startBlock.toString(),
+        deploymentTransaction: verification.deploymentTransaction,
+      } : null,
+      publicUrl: project.links.find((link) => link.visibility === "PUBLIC")?.url ?? null,
+    };
+  }));
 }
 
 export function recentlyVerifiedPublicRmtNftCollections(
@@ -92,70 +120,35 @@ export function recentlyVerifiedPublicRmtNftCollections(
   return publicCollectionCards([
     ...activePublicRmtNftProjects(projects),
     ...watchingPublicRmtNftProjects(projects),
-  ]).toSorted((left, right) => right.verifiedAt.localeCompare(left.verifiedAt)
-    || left.projectId.localeCompare(right.projectId)
-    || left.contractAddress.localeCompare(right.contractAddress));
+  ]).filter((collection) => collection.newEvidence !== null).toSorted((left, right) =>
+    right.newEvidence!.observedAt.localeCompare(left.newEvidence!.observedAt)
+      || left.projectId.localeCompare(right.projectId)
+      || left.contractAddress.localeCompare(right.contractAddress));
 }
 
-export function watchingPublicRmtNftCollections(
-  projects?: readonly RmtCuratedNftProject[],
-): RmtNftTerminalCollectionCard[] {
+export function watchingPublicRmtNftCollections(projects?: readonly RmtCuratedNftProject[]) {
   return publicCollectionCards(watchingPublicRmtNftProjects(projects ?? RMT_CURATED_NFT_PROJECTS));
 }
 
-export function activePublicRmtNftCollections(
-  projects?: readonly RmtCuratedNftProject[],
-): RmtNftTerminalCollectionCard[] {
+export function activePublicRmtNftCollections(projects?: readonly RmtCuratedNftProject[]) {
   return publicCollectionCards(activePublicRmtNftProjects(projects));
 }
 
-type CatalogReaders = {
-  readMarket: typeof readRmtNftProjectMarket;
-  readInventory: typeof readRmtNftProjectInventory;
-};
-
-async function mapBounded<T, U>(values: readonly T[], concurrency: number, worker: (value: T) => Promise<U>) {
-  const results = new Array<U>(values.length);
-  let cursor = 0;
-  await Promise.all(Array.from({ length: Math.min(concurrency, values.length) }, async () => {
-    while (cursor < values.length) {
-      const index = cursor++;
-      results[index] = await worker(values[index]!);
-    }
-  }));
-  return results;
-}
-
-export async function readRmtNftTerminalCatalog(
-  view: RmtNftTerminalCatalogView,
-  readers: CatalogReaders = {
-    readMarket: readRmtNftProjectMarket,
-    readInventory: readRmtNftProjectInventory,
-  },
-): Promise<RmtNftTerminalCatalog> {
+export function readRmtNftTerminalCatalog(view: RmtNftTerminalCatalogView): RmtNftTerminalCatalog {
   const admitted = activePublicRmtNftProjects();
-  const projects = await mapBounded(admitted, 4, async (project): Promise<RmtNftTerminalProjectCard> => {
-    const [market, inventoryPreview] = await Promise.all([
-      readers.readMarket(project.projectId),
-      readers.readInventory(project.projectId, { limit: NFT_TERMINAL_CATALOG_PREVIEW_LIMIT }),
-    ]);
-    return {
-      projectId: project.projectId,
-      displayName: project.displayName,
-      status: "ACTIVE",
-      rmtCurated: true,
-      approvedAt: project.approvedAt,
-      chainId: 4663,
-      collections: project.collections.map((collection) => ({
-        contractAddress: collection.contractAddress,
-        standard: collection.declaredStandard,
-        verificationStatus: collection.verificationStatus,
-      })),
-      projectToken: project.projectToken,
-      market,
-      inventoryPreview,
-    };
-  });
+  const projects = admitted.map((project): RmtNftTerminalProjectCard => ({
+    projectId: project.projectId,
+    displayName: project.displayName,
+    status: "ACTIVE",
+    rmtCurated: true,
+    chainId: 4663,
+    collections: project.collections.map((collection) => ({
+      contractAddress: collection.contractAddress,
+      standard: collection.declaredStandard,
+      verificationStatus: collection.verificationStatus,
+    })),
+    projectToken: project.projectToken,
+  }));
   return {
     schemaVersion: 1,
     view,

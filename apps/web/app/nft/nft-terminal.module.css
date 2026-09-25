@@ -300,6 +300,14 @@
   text-transform: uppercase;
 }
 
+.radarProvenance {
+  margin: 8px 0 0;
+  color: #69756d;
+  font: 8px/1.4 ui-monospace, SFMono-Regular, Consolas, monospace;
+  text-align: right;
+  text-transform: uppercase;
+}
+
 .readiness {
   display: grid;
   gap: 5px;

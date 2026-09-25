@@ -314,6 +314,23 @@ try {
   assert.equal(freshRead.volume24hByPaymentAsset.length, 2);
   assert.deepEqual(new Set(freshRead.volume24hByPaymentAsset.map((volume) => volume.paymentAsset.kind)), new Set(["NATIVE", "ERC20"]));
 
+  for (let index = 0; index < 23; index += 1) {
+    await pool.query(`INSERT INTO nft_marketplace_sales(provider,chain_id,evidence_digest,project_id,collection_address,token_id,quantity,seller,buyer,payment_kind,payment_address,payment_symbol,payment_decimals,gross_amount,transaction_hash,order_hash,protocol_address,event_timestamp,authority,settlement_status,retrieved_at)
+      SELECT provider,chain_id,$1,project_id,collection_address,(100 + $2)::text,quantity,seller,buyer,'NATIVE',NULL,'ETH',18,1,NULL,NULL,protocol_address,$3,authority,settlement_status,retrieved_at
+      FROM nft_marketplace_sales WHERE payment_kind='NATIVE' LIMIT 1`,
+    [`0x${(index + 100).toString(16).padStart(64, "0")}`, index, new Date(inWindowSaleTime.getTime() + index * 1_000)]);
+  }
+  await pool.query(`INSERT INTO nft_marketplace_sales(provider,chain_id,evidence_digest,project_id,collection_address,token_id,quantity,seller,buyer,payment_kind,payment_address,payment_symbol,payment_decimals,gross_amount,transaction_hash,order_hash,protocol_address,event_timestamp,authority,settlement_status,retrieved_at)
+    SELECT provider,chain_id,$1,project_id,collection_address,'999',quantity,seller,buyer,'NATIVE',NULL,'ETH',18,999,NULL,NULL,protocol_address,$2,authority,settlement_status,retrieved_at
+    FROM nft_marketplace_sales WHERE payment_kind='NATIVE' LIMIT 1`,
+  [`0x${"f".repeat(64)}`, new Date(persistedPoll.getTime() - 25 * 60 * 60_000)]);
+  const cappedHistoryRead = await readNftProjectMarketplace(pool, "ccff00", 60_000, readNow);
+  assert.equal(cappedHistoryRead.recentProviderSales.length, 20, "provider report history remains explicitly capped");
+  assert.equal(cappedHistoryRead.volume24hByPaymentAsset.reduce((total, entry) => total + entry.saleCount, 0), 25,
+    "the scoped 24-hour aggregate includes all 25 in-window sales rather than the 20-record history cap");
+  assert.equal(cappedHistoryRead.volume24hByPaymentAsset.reduce((total, entry) => total + BigInt(entry.grossAmount), 0n), 423n,
+    "historical out-of-window sale is excluded from the observation-bound 24-hour aggregate");
+
   await pool.query("UPDATE nft_marketplace_sales SET event_timestamp=$1", [new Date(persistedPoll.getTime() - 25 * 60 * 60_000)]);
   const insertBoundarySale = async (digest: string, grossAmount: string, eventTimestamp: Date) => {
     await pool.query(`INSERT INTO nft_marketplace_sales(provider,chain_id,evidence_digest,project_id,collection_address,token_id,quantity,seller,buyer,payment_kind,payment_address,payment_symbol,payment_decimals,gross_amount,transaction_hash,order_hash,protocol_address,event_timestamp,authority,settlement_status,retrieved_at)
