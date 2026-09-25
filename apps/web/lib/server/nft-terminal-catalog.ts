@@ -11,7 +11,7 @@ import {
 
 export const NFT_TERMINAL_CATALOG_PREVIEW_LIMIT = 4 as const;
 
-export type RmtNftTerminalCatalogView = "active" | "recent" | "collections";
+export type RmtNftTerminalCatalogView = "active" | "new" | "minting" | "trending" | "watching";
 
 export type RmtNftTerminalProjectCard = {
   projectId: string;
@@ -38,6 +38,7 @@ export type RmtNftTerminalCollectionCard = {
   standard: "ERC721" | "ERC1155" | null;
   verificationStatus: "PENDING" | "VERIFIED" | "REJECTED";
   projectStatus: "ACTIVE" | "WATCHING";
+  verifiedAt: string;
   publicUrl: string | null;
 };
 
@@ -46,6 +47,7 @@ export type RmtNftTerminalCatalog = {
   view: RmtNftTerminalCatalogView;
   projects: readonly RmtNftTerminalProjectCard[];
   collections: readonly RmtNftTerminalCollectionCard[];
+  newCollections: readonly RmtNftTerminalCollectionCard[];
   watchingCollections: readonly RmtNftTerminalCollectionCard[];
 };
 
@@ -79,8 +81,20 @@ function publicCollectionCards(projects: readonly RmtCuratedNftProject[]): RmtNf
     standard: collection.declaredStandard,
     verificationStatus: collection.verificationStatus,
     projectStatus: project.status as "ACTIVE" | "WATCHING",
+    verifiedAt: project.approvedAt,
     publicUrl: project.links.find((link) => link.visibility === "PUBLIC")?.url ?? null,
   })));
+}
+
+export function recentlyVerifiedPublicRmtNftCollections(
+  projects: readonly RmtCuratedNftProject[] = RMT_CURATED_NFT_PROJECTS,
+): RmtNftTerminalCollectionCard[] {
+  return publicCollectionCards([
+    ...activePublicRmtNftProjects(projects),
+    ...watchingPublicRmtNftProjects(projects),
+  ]).toSorted((left, right) => right.verifiedAt.localeCompare(left.verifiedAt)
+    || left.projectId.localeCompare(right.projectId)
+    || left.contractAddress.localeCompare(right.contractAddress));
 }
 
 export function watchingPublicRmtNftCollections(
@@ -119,9 +133,7 @@ export async function readRmtNftTerminalCatalog(
     readInventory: readRmtNftProjectInventory,
   },
 ): Promise<RmtNftTerminalCatalog> {
-  const admitted = view === "recent"
-    ? recentlyAddedPublicRmtNftProjects()
-    : activePublicRmtNftProjects();
+  const admitted = activePublicRmtNftProjects();
   const projects = await mapBounded(admitted, 4, async (project): Promise<RmtNftTerminalProjectCard> => {
     const [market, inventoryPreview] = await Promise.all([
       readers.readMarket(project.projectId),
@@ -148,9 +160,14 @@ export async function readRmtNftTerminalCatalog(
     schemaVersion: 1,
     view,
     projects,
-    collections: view === "collections"
-      ? [...activePublicRmtNftCollections(), ...watchingPublicRmtNftCollections()]
-      : [],
+    collections: view === "new"
+      ? recentlyVerifiedPublicRmtNftCollections()
+      : view === "watching"
+        ? watchingPublicRmtNftCollections()
+        : view === "minting"
+          ? []
+          : activePublicRmtNftCollections(),
+    newCollections: recentlyVerifiedPublicRmtNftCollections(),
     watchingCollections: watchingPublicRmtNftCollections(),
   };
 }

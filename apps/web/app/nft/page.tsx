@@ -1,14 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Suspense } from "react";
+import { cache, Suspense } from "react";
 import { formatEther, formatUnits } from "viem";
 import {
   readRmtNftMintRadar,
   type RmtMintRadarCandidate,
-  type RmtMintRadarFeedStatus,
+  type RmtMintRadarResponse,
 } from "../../lib/server/nft-mint-radar";
 import {
   readRmtNftTerminalCatalog,
+  type RmtNftTerminalCatalog,
   type RmtNftTerminalCatalogView,
   type RmtNftTerminalCollectionCard,
   type RmtNftTerminalProjectCard,
@@ -21,19 +22,29 @@ import styles from "./nft-terminal.module.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "RMT NFT Terminal | Robinhood Chain",
-  description: "RMT-curated NFT Project Markets on Robinhood Chain, with canonical ownership, collection activity, and marketplace evidence.",
+  title: "RMT NFT Markets | Robinhood Chain",
+  description: "Compact Robinhood Chain NFT markets with canonical ownership, mint schedules, and separately attributed marketplace evidence.",
   alternates: { canonical: "/nft" },
 };
 
-const views: readonly { value: RmtNftTerminalCatalogView; label: string; href: string }[] = [
-  { value: "active", label: "Active", href: "/nft" },
-  { value: "recent", label: "Recently Added", href: "/nft?view=recent" },
-  { value: "collections", label: "Collections", href: "/nft?view=collections" },
+const readMintRadarForRequest = cache(readRmtNftMintRadar);
+
+const views: readonly { value: RmtNftTerminalCatalogView; label: string }[] = [
+  { value: "active", label: "Active" },
+  { value: "new", label: "New" },
+  { value: "minting", label: "Minting" },
+  { value: "trending", label: "Trending" },
+  { value: "watching", label: "Watching" },
 ];
 
 function selectedView(value: string | string[] | undefined): RmtNftTerminalCatalogView {
-  return value === "recent" || value === "collections" ? value : "active";
+  return typeof value === "string" && views.some((view) => view.value === value)
+    ? value as RmtNftTerminalCatalogView
+    : "active";
+}
+
+function boundedSearch(value: string | string[] | undefined) {
+  return typeof value === "string" ? value.trim().replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 120) : "";
 }
 
 function short(value: string) {
@@ -46,208 +57,228 @@ function amount(value: string, decimals: number) {
   return fraction ? `${whole}.${fraction.slice(0, 4).replace(/0+$/, "")}`.replace(/\.$/, "") : whole;
 }
 
+function nativePrice(value: string | null) {
+  if (value === null) return "—";
+  const [whole, fraction = ""] = formatEther(BigInt(value)).split(".");
+  const boundedFraction = fraction.slice(0, 5).replace(/0+$/, "");
+  return `${boundedFraction ? `${whole}.${boundedFraction}` : whole} ETH`;
+}
+
+function verifiedDate(value: string) {
+  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }).format(new Date(value));
+}
+
 function utcTime(value: string) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone: "UTC", timeZoneName: "short",
   }).format(new Date(value));
 }
 
-function nativePrice(value: string | null) {
-  if (value === null) return "Price not reported";
-  const [whole, fraction = ""] = formatEther(BigInt(value)).split(".");
-  const boundedFraction = fraction.slice(0, 5).replace(/0+$/, "");
-  return `${boundedFraction ? `${whole}.${boundedFraction}` : whole} ETH`;
+function projectReadModel(project: RmtNftTerminalProjectCard | undefined) {
+  return project?.market && "project" in project.market ? project.market : null;
 }
 
-function feedMessage(status: RmtMintRadarFeedStatus, asOf: string | null) {
-  if (status === "UNAVAILABLE") return "Schedule evidence could not be established. Active RMT collections remain available.";
-  if (status === "STALE") return `Last known schedule evidence · ${asOf ? utcTime(asOf) : "time unavailable"}`;
-  if (status === "EMPTY") return "OpenSea returned no qualifying Robinhood Chain drops.";
-  return "Robinhood Chain · OpenSea schedule evidence · Fresh ≤ 90 sec";
+function isTrendingProject(project: RmtNftTerminalProjectCard) {
+  const model = projectReadModel(project);
+  const onchain = model && "sourceStatus" in model.onchain ? model.onchain : null;
+  const marketplace = model && "provider" in model.marketplace ? model.marketplace : null;
+  return Boolean(onchain?.recentActivity.length
+    || marketplace?.recentProviderSales.length
+    || marketplace?.volume24hByPaymentAsset.some((entry) => BigInt(entry.grossAmount) > 0n));
 }
 
-function RadarCard({ candidate }: { candidate: RmtMintRadarCandidate }) {
-  const onchain = candidate.contractEvidence.status === "ONCHAIN_VERIFIED_CONTRACT";
-  const activity = candidate.mintActivity.status === "ONCHAIN_MINT_ACTIVITY";
+function viewHref(view: RmtNftTerminalCatalogView) {
+  return view === "active" ? "/nft" : `/nft?view=${view}`;
+}
+
+async function MintingTabCount() {
+  const radar = await readMintRadarForRequest();
+  if (radar.status !== "READY" && radar.status !== "STALE") return null;
+  return <span>{radar.live.length}</span>;
+}
+
+function CatalogTabs({ catalog, view }: { catalog: RmtNftTerminalCatalog; view: RmtNftTerminalCatalogView }) {
+  const counts: Partial<Record<RmtNftTerminalCatalogView, number>> = {
+    active: catalog.projects.length,
+    new: catalog.newCollections.length,
+    trending: catalog.projects.filter(isTrendingProject).length,
+    watching: catalog.watchingCollections.length,
+  };
+  return <nav className={styles.views} aria-label="NFT market views">
+    {views.map((item) => <Link href={viewHref(item.value)} key={item.value} aria-current={view === item.value ? "page" : undefined}>
+      <strong>{item.label}</strong>
+      {item.value === "minting" && view === "minting"
+        ? <Suspense fallback={null}><MintingTabCount /></Suspense>
+        : item.value !== "minting" ? <span>{counts[item.value]}</span> : null}
+    </Link>)}
+  </nav>;
+}
+
+function collectionMatches(collection: RmtNftTerminalCollectionCard, query: string) {
+  const normalized = query.toLowerCase();
+  return collection.displayName.toLowerCase().includes(normalized)
+    || collection.projectId.includes(normalized)
+    || collection.contractAddress.toLowerCase().includes(normalized);
+}
+
+function CollectionRow({ collection, project }: {
+  collection: RmtNftTerminalCollectionCard;
+  project?: RmtNftTerminalProjectCard;
+}) {
+  const model = projectReadModel(project);
+  const onchain = model && "sourceStatus" in model.onchain ? model.onchain : null;
+  const marketplace = model && "provider" in model.marketplace ? model.marketplace : null;
+  const listing = marketplace?.lowestNormalizedListing ?? null;
+  const inventory = project?.inventoryPreview && "items" in project.inventoryPreview ? project.inventoryPreview : null;
+  const artwork = inventory?.availability === "AVAILABLE" ? inventory.items[0] : null;
+  const ownershipState = onchain?.sourceStatus === "SYNCED" ? "AVAILABLE"
+    : onchain?.sourceStatus === "BACKFILLING" || inventory?.availability === "PARTIAL" ? "BACKFILLING" : "UNAVAILABLE";
+  const status = collection.projectStatus === "ACTIVE" ? "RMT Active" : "Watching";
+  const volume = marketplace?.volume24hByPaymentAsset.length
+    ? marketplace.volume24hByPaymentAsset.map((entry) => `${amount(entry.grossAmount, entry.paymentAsset.decimals)} ${entry.paymentAsset.symbol}`).join(" · ")
+    : "—";
+  const row = <article className={styles.collectionRow} data-nft-collection-row data-nft-collection-status={collection.projectStatus} data-ownership-state={ownershipState}>
+    <div className={styles.collectionAvatar} data-rmt-registration-frame>
+      {artwork ? <NftItemMedia metadata={artwork.metadata} alt={`${collection.displayName} canonical collection artwork`} className={styles.collectionAvatarMedia} />
+        : <span aria-label="Canonical artwork unavailable">◇</span>}
+    </div>
+    <div className={styles.collectionMain}>
+      <div className={styles.collectionName}><h2>{collection.displayName}</h2><span className={collection.projectStatus === "ACTIVE" ? styles.activeChip : styles.watchingChip}>{status}</span></div>
+      <p>{collection.standard ?? "Standard unavailable"} · {collection.projectStatus === "ACTIVE" ? "Robinhood Chain" : "Discovery only"}</p>
+      <div className={styles.collectionEvidence}>
+        {onchain?.holderCount !== null && onchain?.holderCount !== undefined ? <span>{onchain.holderCount} holders</span> : null}
+        {onchain?.circulatingTokenCount !== null && onchain?.circulatingTokenCount !== undefined ? <span>{onchain.circulatingTokenCount} NFTs</span> : null}
+        {ownershipState === "BACKFILLING" ? <span>Ownership backfilling</span> : null}
+        {ownershipState === "UNAVAILABLE" ? <span>Ownership unavailable</span> : null}
+        <span>Verified {verifiedDate(collection.verifiedAt)}</span>
+      </div>
+      <code title={collection.contractAddress}>{short(collection.contractAddress)}</code>
+    </div>
+    <dl className={styles.collectionMetrics}>
+      <div><dt>Floor</dt><dd>{listing ? `${amount(listing.grossAmount, listing.paymentAsset.decimals)} ${listing.paymentAsset.symbol}` : "—"}</dd></div>
+      <div><dt>24h volume</dt><dd>{volume}</dd></div>
+    </dl>
+    <span className={styles.rowAction}>{collection.projectStatus === "ACTIVE" ? "Open market →" : "Watching"}</span>
+  </article>;
+  return collection.projectStatus === "ACTIVE"
+    ? <Link className={styles.collectionRowLink} href={`/nft/${collection.projectId}`}>{row}</Link>
+    : <div className={styles.collectionRowLink}>{row}</div>;
+}
+
+function CompactEmpty({ title, detail }: { title: string; detail?: string }) {
+  return <section className={styles.compactEmpty} data-nft-empty-state><strong>{title}</strong>{detail ? <span>{detail}</span> : null}</section>;
+}
+
+function CollectionRows({ collections, catalog, empty }: {
+  collections: readonly RmtNftTerminalCollectionCard[];
+  catalog: RmtNftTerminalCatalog;
+  empty: string;
+}) {
+  return collections.length > 0 ? <div className={styles.collectionRows}>
+    {collections.map((collection) => <CollectionRow
+      collection={collection}
+      project={catalog.projects.find((project) => project.projectId === collection.projectId)}
+      key={`${collection.projectId}:${collection.contractAddress}`}
+    />)}
+  </div> : <CompactEmpty title={empty} />;
+}
+
+function RadarRow({ candidate }: { candidate: RmtMintRadarCandidate }) {
   const access = candidate.ccff00Access;
   const accessLabel = access.status === "VERIFIED_COMMUNITY_GATE" ? "#CCFF00 ACCESS · VERIFIED"
     : access.status === "HOLDER_MATCHES_DETECTED" ? `CCFF00 HOLDERS DETECTED · ${access.holderMatches.matchingHolderCount ?? 0}`
       : access.status === "PROVIDER_REPORTED" ? "CCFF00 ACCESS · REPORTED"
         : access.status === "CONNECTED_WALLET_ELIGIBLE" ? "CCFF00 ACCESS · ELIGIBLE"
           : null;
-  return <article className={styles.radarCard} data-radar-candidate data-radar-state={candidate.state} data-radar-admission={candidate.rmtAdmission} data-radar-chain={candidate.chainId} data-ccff00-access={access.status}>
-    <div className={styles.radarIdentity}>
-      <div className={styles.radarStateLine}><span>{candidate.state === "LIVE_NOW" ? "LIVE NOW" : candidate.state === "UPCOMING" ? "UPCOMING" : "RECENTLY MINTED"}</span><i aria-hidden="true" /></div>
-      <h3>{candidate.collectionName}</h3>
-      <p>{candidate.stage?.label ?? "Stage not reported"} · {candidate.contractEvidence.standard}</p>
-    </div>
-    <dl className={styles.radarFacts}>
-      <div><dt>{candidate.state === "RECENTLY_MINTED" ? "Observed stage" : "Starts"}</dt><dd>{candidate.stage ? utcTime(candidate.stage.startTime) : "Not reported"}</dd></div>
-      <div><dt>Mint price</dt><dd>{nativePrice(candidate.stage?.nativePriceWei ?? null)}</dd></div>
-    </dl>
-    <div className={styles.radarPulse} aria-label="Mint opportunity summary"><strong>{candidate.stage?.nativePriceWei ? nativePrice(candidate.stage.nativePriceWei) : "PRICE N/A"}</strong><span>{candidate.stage?.maxPerWallet ? `MAX ${candidate.stage.maxPerWallet} / WALLET` : "WALLET LIMIT N/A"}</span></div>
-    <div className={styles.radarEvidence} aria-label="Mint Radar evidence">
-      <span>Schedule · OpenSea</span>
-      {onchain ? <span>Contract · Onchain</span> : null}
-      {activity ? <span>Mint Activity · Onchain</span> : null}
-      {accessLabel ? <span className={styles.ccff00Access}>{accessLabel}</span> : null}
-    </div>
-    <div className={styles.radarFoot}>
-      <code title={candidate.collectionAddress ?? undefined}>{candidate.collectionAddress ? short(candidate.collectionAddress) : "Contract not established"}</code>
-      <a href={candidate.sourceUrl} target="_blank" rel="noreferrer">OpenSea evidence</a>
-    </div>
-    {candidate.state === "LIVE_NOW" ? <NftMintReadiness candidateId={candidate.candidateId} /> : null}
-    <small className={styles.discoveryOnly}>RMT RADAR · DISCOVERY ONLY · NOT ADMITTED</small>
-  </article>;
-}
-
-function RadarGroup({ title, candidates, className }: { title: string; candidates: readonly RmtMintRadarCandidate[]; className: string }) {
-  return <section className={`${styles.radarGroup} ${className}`} aria-label={`${title} Robinhood Chain NFT mints`}>
-    <header><h2>{title}</h2><span>{candidates.length}</span></header>
-    {candidates.length > 0 ? <div className={styles.radarRail}>{candidates.map((candidate) => <RadarCard candidate={candidate} key={candidate.candidateId} />)}</div>
-      : <p className={styles.radarEmpty}>No qualifying candidates in the latest established feed.</p>}
-  </section>;
-}
-
-async function MintRadarSurface() {
-  const radar = await readRmtNftMintRadar();
-  return <>
-    <section className={styles.radarHeading} data-nft-mint-radar data-radar-state={radar.status}>
-      <div><span>DISCOVERY · NOT ADMISSION</span><h2>Mint Radar</h2></div>
-      <p>{feedMessage(radar.status, radar.asOf)}</p>
-    </section>
-    {radar.status === "READY" || radar.status === "STALE" ? <>
-      <RadarGroup title="Live Now" candidates={radar.live} className={styles.liveRadar} />
-      <RadarGroup title="Upcoming" candidates={radar.upcoming} className={styles.upcomingRadar} />
-      <RadarGroup title="Recently Minted" candidates={radar.recent} className={styles.recentRadar} />
-    </> : <section className={styles.radarUnavailable} data-radar-degraded>
-      <strong>{radar.status === "EMPTY" ? "No qualifying drops right now" : "Live mint feed unavailable"}</strong>
-      <span>{radar.status === "EMPTY"
-        ? "RMT will surface verified Robinhood Chain mint candidates here as the provider feed changes."
-        : "Collection browsing stays available while RMT waits for fresh schedule evidence."}</span>
-    </section>}
-  </>;
-}
-
-function MintRadarFallback() {
-  return <section className={styles.radarHeading} data-nft-mint-radar-loading>
-    <div><span>DISCOVERY · NOT ADMISSION</span><h2>Mint Radar</h2></div>
-    <p>Establishing bounded schedule evidence. Active RMT collections remain available.</p>
-  </section>;
-}
-
-function ProjectCard({ project }: { project: RmtNftTerminalProjectCard }) {
-  const readModel = project.market && "project" in project.market ? project.market : null;
-  const onchain = readModel && "sourceStatus" in readModel.onchain ? readModel.onchain : null;
-  const marketplace = readModel && "provider" in readModel.marketplace ? readModel.marketplace : null;
-  const listing = marketplace?.lowestNormalizedListing ?? null;
-  const inventory = project.inventoryPreview && "items" in project.inventoryPreview
-    && project.inventoryPreview.availability === "AVAILABLE" ? project.inventoryPreview.items : [];
-  const collection = project.collections[0]!;
-
-  return <article className={styles.projectCard} data-nft-project-stage aria-label={`${project.displayName} RMT-curated NFT project`}>
-    <div className={styles.cardIdentity}>
-      <div className={styles.projectStatus}><span className={styles.curated}>RMT CURATED</span><i aria-hidden="true" /> ACTIVE</div>
-      <h2><Link href={`/nft/${project.projectId}`}>{project.displayName}</Link></h2>
-      <p>{collection.standard ?? "Standard unavailable"} · Robinhood Chain · 4663</p>
-      <code title={collection.contractAddress}>{short(collection.contractAddress)}</code>
-    </div>
-
-    <div className={styles.artField}>
-      <div className={styles.artFieldLabel}><span>CANONICAL ART</span><small>ONCHAIN INVENTORY</small></div>
-      <div className={styles.preview} aria-label={`${project.displayName} canonical inventory preview`}>
-        {inventory.length > 0 ? inventory.map((item) => <Link href={`/nft/${project.projectId}/${item.tokenId}`} key={item.tokenId} aria-label={`View ${project.displayName} token ${item.tokenId}`} data-rmt-registration-frame>
-          <NftItemMedia metadata={item.metadata} alt={`${project.displayName} token ${item.tokenId}`} className={styles.previewImage} />
-          <span>#{item.tokenId}</span>
-        </Link>) : <div className={styles.previewUnavailable}><span>MEDIA</span><strong>UNAVAILABLE</strong><small>CANONICAL IDENTITY PRESERVED</small></div>}
+  return <article className={styles.mintRow} data-radar-candidate data-radar-state={candidate.state} data-radar-admission={candidate.rmtAdmission} data-radar-chain={candidate.chainId} data-ccff00-access={access.status}>
+    <div className={styles.mintAvatar} aria-hidden="true">◇</div>
+    <div className={styles.collectionMain}>
+      <div className={styles.collectionName}><h2>{candidate.collectionName}</h2><span className={styles.mintingChip}>Minting</span></div>
+      <p>{candidate.stage?.label ?? "Verified stage"} · {candidate.contractEvidence.standard}</p>
+      <div className={styles.collectionEvidence}>
+        <span>{candidate.stage ? `Ends ${utcTime(candidate.stage.endTime)}` : "Schedule verified"}</span>
+        {accessLabel ? <span className={styles.ccff00Access}>{accessLabel}</span> : null}
       </div>
+      <code title={candidate.collectionAddress ?? undefined}>{candidate.collectionAddress ? short(candidate.collectionAddress) : "Contract not established"}</code>
     </div>
-
-    <div className={styles.marketSignal} data-nft-market-tape>
-      <span>MARKET SIGNAL</span>
-      <dl className={styles.metrics}>
-        <div><dt>Holders</dt><dd>{onchain?.holderCount ?? "Data unavailable"}</dd></div>
-        <div><dt>NFTs in circulation</dt><dd>{onchain?.circulatingTokenCount ?? "Data unavailable"}</dd></div>
-        <div><dt>Lowest OpenSea listing</dt><dd>{listing ? `${amount(listing.grossAmount, listing.paymentAsset.decimals)} ${listing.paymentAsset.symbol}` : "Data unavailable"}</dd></div>
-        <div><dt>OpenSea reported 24h volume</dt><dd>{marketplace?.volume24hByPaymentAsset.length
-          ? marketplace.volume24hByPaymentAsset.map((entry) => `${amount(entry.grossAmount, entry.paymentAsset.decimals)} ${entry.paymentAsset.symbol}`).join(" · ")
-          : "Data unavailable"}</dd></div>
-      </dl>
-    </div>
-    <Link className={styles.openProject} href={`/nft/${project.projectId}`}>Open Project Market <span aria-hidden="true">→</span></Link>
+    <dl className={styles.collectionMetrics}><div><dt>Mint price</dt><dd>{nativePrice(candidate.stage?.nativePriceWei ?? null)}</dd></div><div><dt>Wallet max</dt><dd>{candidate.stage?.maxPerWallet ?? "—"}</dd></div></dl>
+    <div className={styles.mintAction}>{candidate.state === "LIVE_NOW" ? <NftMintReadiness candidateId={candidate.candidateId} /> : null}<small>Discovery only · not RMT admission</small></div>
   </article>;
 }
 
-function CollectionCard({ collection }: { collection: RmtNftTerminalCollectionCard }) {
-  const active = collection.projectStatus === "ACTIVE";
-  return <article data-nft-collection-status={collection.projectStatus}>
-    <div className={styles.collectionIdentity}>
-      <span>{active ? "RMT ACTIVE" : "RMT WATCHING"}</span>
-      <h2>{active
-        ? <Link href={`/nft/${collection.projectId}`}>{collection.displayName}</Link>
-        : collection.displayName}</h2>
-      <p>{collection.standard ?? "Standard unavailable"} · Robinhood Chain · 4663</p>
-    </div>
-    <div className={styles.collectionProof}>
-      <span>CONTRACT</span>
-      <code title={collection.contractAddress}>{short(collection.contractAddress)}</code>
-      <small>{collection.verificationStatus === "VERIFIED" ? "✓ ONCHAIN VERIFIED" : collection.verificationStatus}</small>
-    </div>
-    <div className={styles.collectionActions}>
-      {collection.publicUrl ? <a href={collection.publicUrl} target="_blank" rel="noreferrer">View source ↗</a> : null}
-      {active ? <Link href={`/nft/${collection.projectId}`}>Open RMT market →</Link> : <small>Discovery only · admission pending</small>}
-    </div>
-  </article>;
+async function MintingSurface({ query }: { query: string }) {
+  const radar: RmtMintRadarResponse = await readMintRadarForRequest();
+  const liveCandidates = radar.status === "READY" || radar.status === "STALE" ? radar.live : [];
+  const normalized = query.toLowerCase();
+  const live = normalized ? liveCandidates.filter((candidate) => candidate.collectionName.toLowerCase().includes(normalized)
+    || candidate.collectionAddress?.toLowerCase().includes(normalized)) : liveCandidates;
+  return <section data-nft-mint-radar data-radar-state={radar.status} aria-label="Verified live NFT mints">
+    {live.length > 0 ? <div className={styles.collectionRows}>{live.map((candidate) => <RadarRow candidate={candidate} key={candidate.candidateId} />)}</div>
+      : <CompactEmpty title="No verified live mints" detail={radar.status === "UNAVAILABLE"
+        ? "Mint schedule evidence is unavailable. Active collections remain available."
+        : normalized ? "No verified live mint matches this search."
+          : "RMT will show live Robinhood Chain mint schedules here when their evidence is established."} />}
+  </section>;
+}
+
+function MintingFallback() {
+  return <section className={styles.compactEmpty} data-nft-mint-radar-loading><strong>Checking verified mint schedules</strong></section>;
+}
+
+function SearchResults({ query, catalog }: { query: string; catalog: RmtNftTerminalCatalog }) {
+  const collections = catalog.newCollections.filter((collection) => collectionMatches(collection, query));
+  const normalizedTokenId = query.replace(/^#/, "");
+  const items = /^\d+$/.test(normalizedTokenId) ? catalog.projects.flatMap((project) => {
+    const inventory = project.inventoryPreview && "items" in project.inventoryPreview
+      && project.inventoryPreview.availability === "AVAILABLE" ? project.inventoryPreview.items : [];
+    return inventory.filter((item) => item.tokenId === normalizedTokenId).map((item) => ({ project, item }));
+  }) : [];
+  return <section data-nft-search-results aria-label={`NFT search results for ${query}`}>
+    <div className={styles.resultSummary}><strong>Search results</strong><span>{collections.length + items.length} found</span></div>
+    {collections.length > 0 ? <CollectionRows collections={collections} catalog={catalog} empty="No authoritative collection result found" /> : null}
+    {collections.length === 0 && items.length === 0 ? <CompactEmpty title="No authoritative NFT result found" /> : null}
+    {items.length > 0 ? <div className={styles.itemResults}>{items.map(({ project, item }) => <Link href={`/nft/${project.projectId}/${item.tokenId}`} key={`${project.projectId}:${item.tokenId}`} data-nft-search-item>
+      <NftItemMedia metadata={item.metadata} alt={`${project.displayName} token ${item.tokenId}`} className={styles.searchItemMedia} />
+      <span><strong>{project.displayName} #{item.tokenId}</strong><small>Indexed NFT · canonical owner available</small></span><em>Open item →</em>
+    </Link>)}</div> : null}
+  </section>;
 }
 
 export default async function NftTerminalCatalogPage({ searchParams }: {
-  searchParams: Promise<{ view?: string | string[] }>;
+  searchParams: Promise<{ view?: string | string[]; q?: string | string[] }>;
 }) {
   const query = await searchParams;
   const view = selectedView(query.view);
+  const search = boundedSearch(query.q);
   const catalog = await readRmtNftTerminalCatalog(view);
+  const trendingProjects = catalog.projects.filter(isTrendingProject);
+  const trendingCollections = catalog.collections.filter((collection) => trendingProjects.some((project) => project.projectId === collection.projectId));
 
   return <main className={styles.page}>
     <header className={styles.terminalHeading}>
-      <div><h1>NFTs</h1><p>Robinhood Chain</p></div>
+      <div><h1>NFTs</h1><p>Robinhood Chain NFT Markets</p></div>
       <span><i aria-hidden="true" /> {catalog.projects.length} ACTIVE · {catalog.watchingCollections.length} WATCHING</span>
     </header>
 
-    <nav className={styles.views} aria-label="NFT catalog views">
-      {views.map((item) => <Link href={item.href} key={item.value} aria-current={view === item.value ? "page" : undefined}>{item.label}</Link>)}
-    </nav>
+    <CatalogTabs catalog={catalog} view={view} />
 
-    <section className={styles.discoveryHero} aria-label="RMT NFT discovery">
-      <div>
-        <span className={styles.discoveryKicker}>LIVE NFT INTELLIGENCE · ROBINHOOD CHAIN</span>
-        <h2>See the collection.<br/><em>See what&apos;s actually happening.</em></h2>
-        <p>Live mint discovery, canonical ownership, marketplace evidence and token-bound identity—without pretending discovery is admission.</p>
-      </div>
-      <div className={styles.discoveryStats}>
-        <article><strong>{catalog.projects.length}</strong><span>RMT ACTIVE</span></article>
-        <article><strong>{catalog.watchingCollections.length}</strong><span>ON OUR RADAR</span></article>
-        <article><strong>4663</strong><span>ROBINHOOD CHAIN</span></article>
-      </div>
-    </section>
+    <form className={styles.search} action="/nft" role="search">
+      {view !== "active" ? <input type="hidden" name="view" value={view} /> : null}
+      <label htmlFor="nft-market-search">Search collection, contract or NFT</label>
+      <div><span aria-hidden="true">⌕</span><input id="nft-market-search" name="q" defaultValue={search} maxLength={120} autoComplete="off" placeholder="Search collection, contract or NFT"/><button type="submit">Search</button></div>
+    </form>
 
     <NftMintExecutionRecovery />
 
-    {view === "active" ? <>
-      <div className={styles.catalogFlow}>
-        <Suspense fallback={<MintRadarFallback />}><MintRadarSurface /></Suspense>
-        <section className={styles.activeCollections} aria-label="Active RMT NFT projects">
-          <header className={styles.activeHeading}><div><span>RMT DIRECTORY</span><h2>Active Collections</h2></div><p>Admitted project markets with verified collection identity.</p></header>
-          <div className={styles.projectGrid}>{catalog.projects.map((project) => <ProjectCard project={project} key={project.projectId} />)}</div>
-        </section>
-        {catalog.watchingCollections.length > 0 ? <section className={styles.watchingCollections} aria-label="Verified NFT collections RMT is watching">
-          <header className={styles.activeHeading}><div><span>DISCOVERY PIPELINE</span><h2>On Our Radar</h2></div><p>Verified Robinhood Chain contracts · not yet RMT admitted.</p></header>
-          <div className={styles.collectionList}>{catalog.watchingCollections.map((collection) => <CollectionCard collection={collection} key={`${collection.projectId}:${collection.contractAddress}`} />)}</div>
-        </section> : null}
-      </div>
-    </> : view === "collections" ? <section className={styles.collectionList} aria-label="Active RMT NFT collections">
-      {catalog.collections.map((collection) => <CollectionCard collection={collection} key={`${collection.projectId}:${collection.contractAddress}`} />)}
-    </section> : <section className={styles.projectGrid} aria-label="Recently added RMT NFT projects">
-      {catalog.projects.map((project) => <ProjectCard project={project} key={project.projectId} />)}
-    </section>}
+    <div className={styles.catalogMeta}><strong>{search ? `Results for “${search}”` : views.find((item) => item.value === view)?.label}</strong><span>Robinhood Chain · 4663 · read-only NFT markets</span></div>
+
+    {view === "minting" ? <Suspense fallback={<MintingFallback />}><MintingSurface query={search} /></Suspense>
+      : search ? <SearchResults query={search} catalog={catalog} />
+        : view === "watching" ? <CollectionRows collections={catalog.watchingCollections} catalog={catalog} empty="No verified collections are currently being watched" />
+          : view === "new" ? <CollectionRows collections={catalog.newCollections} catalog={catalog} empty="No recently verified collections" />
+            : view === "trending" ? <CollectionRows collections={trendingCollections} catalog={catalog} empty="No collections have authoritative trending evidence" />
+              : <CollectionRows collections={catalog.collections} catalog={catalog} empty="No active RMT NFT markets" />}
+
+    <footer className={styles.authorityNote}>Ownership and marketplace evidence remain separate. Watching is discovery-only. NFT execution is disabled.</footer>
   </main>;
 }
