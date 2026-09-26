@@ -3,7 +3,7 @@ import { injectedSignerSelection, type InjectedSignerTicket } from "../injected-
 import type { VNextAuthorizationPlan } from "./authorization-plan";
 import type { VNextPreSignEvidence } from "./pre-sign-evidence";
 import { prepareVNextWalletTransaction, vNextWalletRpcTransaction, type VNextWalletRpcTransaction } from "./wallet-submission";
-import { emitVNextWalletHandoffDiagnostic, invokeVNextExternalWalletRequest, type VNextWalletHandoffBinding } from "./wallet-handoff";
+import { emitVNextWalletHandoffDiagnostic, invokeVNextExternalWalletRequest, requiresVNextInjectedSignerSelection, type VNextWalletHandoffBinding } from "./wallet-handoff";
 import { isVNextUserRejectedRequest } from "./wallet-request-error";
 import { clearVNextWalletProviderRequestActive, findBlockingVNextWalletRequest, findUnresolvedVNextExecution,
   markVNextWalletProviderRequestActive, promoteVNextWalletRequestToSubmitted, readVNextWalletRequestJournal,
@@ -44,7 +44,7 @@ return function dispatchVNextWalletReview(input: {
     || (blocking && blocking.requestId !== requestId) || findUnresolvedVNextExecution(binding.wallet, storage, now)) {
     throw new Error("The exact durable prepared wallet request is unavailable or blocked.");
   }
-  const useInjected = plan.provider === "zero-x-swap" && binding.selectedConnectorType === "injected";
+  const useInjected = requiresVNextInjectedSignerSelection(plan.provider, binding);
   if (useInjected) {
     if (!input.injected) throw new Error("Explicit injected signer selection is required.");
     (input.selection ?? injectedSignerSelection).assertCurrent(input.injected, input.selectedWalletKey, plan.recipient);

@@ -1,12 +1,18 @@
 import { getAddress } from "viem";
-import { isEmbeddedWalletClientType, parseWalletGatewayKey } from "../wallet-gateway";
+import { bindRmtActiveSigner, type RmtActiveSignerAuthority } from "../wallet-gateway";
 import { ROBINHOOD_MAINNET_CHAIN_ID } from "./robinhood-assets";
 
+export type { RmtActiveSignerAuthority } from "../wallet-gateway";
+
 export type VNextWalletHandoffBinding = {
+  adapter: RmtActiveSignerAuthority["adapter"];
   connectorId: string;
   connectorType: string;
+  connectorUid: string;
+  originConnectorType: string;
   selectedConnectorType: string;
   walletClientType: string;
+  walletKind: "embedded" | "external";
   walletName: string;
   wallet: `0x${string}`;
   chainId: 4_663;
@@ -16,10 +22,12 @@ export type VNextWalletHandoffBindingInput = {
   selectedWalletKey?: string | null;
   selectedWalletKind?: "embedded" | "external" | null;
   selectedWalletName?: string | null;
+  selectedSignerAuthority?: RmtActiveSignerAuthority | null;
   connectedAddress?: string;
   connectedChainId?: number;
   connectorId?: string;
   connectorType?: string;
+  connectorUid?: string;
   walletClientAddress?: string;
   walletClientChainId?: number;
   recipient?: string;
@@ -40,43 +48,47 @@ function sameAddress(left?: string, right?: string) {
  * fail-closed binding check; it never guesses by wallet label or address alone.
  */
 export function bindVNextTradingWallet(input: VNextWalletHandoffBindingInput): VNextWalletHandoffBinding {
-  const selected = parseWalletGatewayKey(input.selectedWalletKey);
-  if ((input.selectedWalletKind !== "external" && input.selectedWalletKind !== "embedded") || !selected) {
-    throw new Error("Select the exact trading wallet again before opening it.");
-  }
-  if (isEmbeddedWalletClientType(selected.walletClientType) !== (input.selectedWalletKind === "embedded")) {
-    throw new Error("The selected wallet kind no longer matches the active wallet client.");
-  }
-  if (!input.connectorId || selected.reportedId !== input.connectorId.trim().toLowerCase()) {
-    throw new Error("The selected trading wallet connector no longer matches the active wallet client.");
-  }
-  if (!input.connectorType) {
-    throw new Error("The selected trading wallet connector type is unavailable.");
-  }
-  if (selected.connectorType !== input.connectorType.trim().toLowerCase()) {
-    throw new Error("The selected trading wallet connector type no longer matches the active wallet client.");
-  }
-  if (!sameAddress(selected.address, input.connectedAddress)
-    || !sameAddress(selected.address, input.walletClientAddress)
-    || !sameAddress(selected.address, input.recipient)) {
+  const { address: selectedAddress, authority, selected } = bindRmtActiveSigner(input);
+  if (!sameAddress(selectedAddress, input.walletClientAddress)
+    || !sameAddress(selectedAddress, input.recipient)) {
     throw new Error("The selected trading wallet, active account, wallet client, and recipient do not match.");
   }
   if (input.connectedChainId !== ROBINHOOD_MAINNET_CHAIN_ID || input.walletClientChainId !== ROBINHOOD_MAINNET_CHAIN_ID) {
     throw new Error("The selected trading wallet client is not on Robinhood Chain 4663.");
   }
   return {
-    connectorId: input.connectorId,
-    connectorType: input.connectorType,
+    adapter: authority.adapter,
+    connectorId: authority.connectorId,
+    connectorType: authority.connectorType,
+    connectorUid: authority.connectorUid,
+    originConnectorType: authority.originConnectorType,
     selectedConnectorType: selected.connectorType,
     walletClientType: selected.walletClientType,
+    walletKind: authority.walletKind,
     walletName: input.selectedWalletName?.trim() || (input.selectedWalletKind === "embedded" ? "RMT wallet" : "Selected external wallet"),
-    wallet: getAddress(selected.address),
+    wallet: selectedAddress,
     chainId: ROBINHOOD_MAINNET_CHAIN_ID
   };
 }
 
 /** @deprecated Use the wallet-kind-aware binding. Kept for durable imports. */
 export const bindVNextExternalWallet = bindVNextTradingWallet;
+
+/**
+ * Privy's embedded EVM wallet is implemented as a Wagmi `injected` connector,
+ * but it is already exact and connector-qualified through Privy. EIP-6963
+ * provider selection is required only for a user-selected external injected
+ * wallet, never merely because the connector's transport type is `injected`.
+ */
+export function requiresVNextInjectedSignerSelection(
+  provider: string,
+  binding: Pick<VNextWalletHandoffBinding, "adapter" | "originConnectorType" | "walletKind">
+) {
+  return provider === "zero-x-swap"
+    && binding.adapter === "direct"
+    && binding.walletKind === "external"
+    && binding.originConnectorType.trim().toLowerCase() === "injected";
+}
 
 export type VNextMobileHandoffState =
   | "idle"

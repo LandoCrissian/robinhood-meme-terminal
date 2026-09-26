@@ -332,8 +332,12 @@ export async function runZeroXBrowserAcceptance() {
         await page.goto(`${base}/?market=${token}&side=buy`, { waitUntil: 'domcontentloaded' });
         const terms = page.getByRole('button', { name: 'I understand', exact: false });
         await terms.click({ timeout: 15000 });
-        await page.getByRole('button', { name: 'Start with live markets', exact: true }).click({ timeout: 15000 });
         await page.locator('.vnTradePanel').waitFor({ timeout: 30000 });
+        assert.equal(
+          await page.getByRole('button', { name: 'Start with live markets', exact: true }).count(),
+          0,
+          'The default terminal flow must not open the optional first-visit guide.'
+        );
         await page.getByLabel('Exact input amount').fill('25');
         // Read-only 0x preparation follows amount readiness; the wallet still needs its explicit CTA.
         await page.waitForResponse((r) => r.url().endsWith('/api/vnext/authorize') && r.status() === 200, { timeout: 20000 });

@@ -1,7 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useAccount } from "wagmi";
 import type { VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
+import { ROBINHOOD_MAINNET_CHAIN_ID } from "../../lib/vnext/robinhood-assets";
+import { selectedVNextWalletReadAddress } from "../../lib/vnext/selected-wallet-read-authority";
+import type { VNextWalletReadSnapshot } from "../../lib/vnext/terminal-presentation-state";
 import { parseVNextTerminalLocation } from "../../lib/vnext/terminal-location";
 import {
   VNEXT_MARKET_DIRECTORY_PAGE_SIZE,
@@ -20,16 +24,22 @@ import { DesktopTerminal, MobileTerminal, type TerminalContext, type TerminalPre
 import { useDesktopTerminalPresentation } from "./use-terminal-presentation";
 import { useVNextExecutionRecovery } from "./use-vnext-execution-recovery";
 import { useVNextMarketDirectory } from "./use-vnext-market-directory";
+import { useRmtIdentity } from "../rmt-identity";
 
 export function VNextTerminalShell() {
   const desktop = useDesktopTerminalPresentation();
+  const identity = useRmtIdentity();
+  const account = useAccount();
   const [context, setContext] = useState<TerminalContext>("markets");
   const [tradeOpen, setTradeOpen] = useState(false);
   const [dismissedExecutionHash, setDismissedExecutionHash] = useState<string>();
   const [query, setQuery] = useState("");
-  const [walletAssets, setWalletAssets] = useState<VNextDetectedWalletAsset[]>([]);
-  const [nativeBalance, setNativeBalance] = useState<bigint>();
-  const [walletReadStatus, setWalletReadStatus] = useState<"idle" | "loading" | "ready" | "stale" | "error">("idle");
+  const [walletReadSnapshot, setWalletReadSnapshot] = useState<VNextWalletReadSnapshot>({
+    assets: [],
+    status: "idle",
+    walletAddress: null,
+    walletKey: null
+  });
   const [portfolioRevealRequest, setPortfolioRevealRequest] = useState(0);
   const [tradeSideRequest, setTradeSideRequest] = useState<TradeSideRequest>();
   const [directoryView, setDirectoryView] = useState<VNextMarketDirectoryView>("active");
@@ -55,6 +65,28 @@ export function VNextTerminalShell() {
     submitUniversalSearch,
     clearUniversalSearch
   } = useVNextMarketDirectory();
+  const walletReadAuthorityAddress = selectedVNextWalletReadAddress({
+    selectedWalletKey: identity.activeWalletKey,
+    selectedWalletKind: identity.activeWalletKind,
+    selectedSignerAuthority: identity.activeSignerAuthority,
+    connectedAddress: account.address,
+    connectedChainId: account.chainId,
+    connectorId: account.connector?.id,
+    connectorType: account.connector?.type,
+    connectorUid: account.connector?.uid,
+    requiredChainId: ROBINHOOD_MAINNET_CHAIN_ID
+  });
+  const walletReadSnapshotCurrent = Boolean(
+    walletReadAuthorityAddress
+    && identity.activeWalletKey
+    && walletReadSnapshot.walletKey === identity.activeWalletKey
+    && walletReadSnapshot.walletAddress?.toLowerCase() === walletReadAuthorityAddress.toLowerCase()
+  );
+  const walletAssets: VNextDetectedWalletAsset[] = walletReadSnapshotCurrent ? walletReadSnapshot.assets : [];
+  const nativeBalance = walletReadSnapshotCurrent ? walletReadSnapshot.nativeBalance : undefined;
+  const walletReadStatus = walletReadSnapshotCurrent
+    ? walletReadSnapshot.status
+    : walletReadAuthorityAddress ? "loading" as const : "idle" as const;
   const selectedExecutionState = vNextSelectedMarketExecutionState(selected);
   const executionUiState = vNextExecutionUiState(
     selectedExecutionState,
@@ -288,9 +320,7 @@ export function VNextTerminalShell() {
     walletRequestRecheckPending: executionRecovery.walletRequestRecheckPending,
     portfolioRevealRequest,
     tradeSideRequest,
-    onAssetsChange: setWalletAssets,
-    onNativeBalanceChange: setNativeBalance,
-    onWalletReadStatusChange: setWalletReadStatus,
+    onWalletSnapshotChange: setWalletReadSnapshot,
     onSelectMarket: selectMarket,
     onSearchSubmit: submitSearch,
     onRefresh: () => void refresh(),

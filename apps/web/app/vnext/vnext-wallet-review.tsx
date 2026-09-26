@@ -22,7 +22,7 @@ import {
 } from "../../lib/vnext/execution-recovery";
 import { vNextProviderLabel } from "../../lib/vnext/provider-presentation";
 import type { VNextPreSignEvidence } from "../../lib/vnext/pre-sign-evidence";
-import { ROBINHOOD_MAINNET_CHAIN_ID } from "../../lib/vnext/robinhood-assets";
+import { ROBINHOOD_MAINNET_CHAIN_ID, ROBINHOOD_NATIVE_ASSET_ADDRESS } from "../../lib/vnext/robinhood-assets";
 import {
   assessVNextWalletGasReadiness,
   prepareVNextWalletTransaction,
@@ -36,7 +36,9 @@ import {
   inspectVNextWalletTransport,
   isVNextMobileBrowser,
   openVNextSelectedWallet,
+  requiresVNextInjectedSignerSelection,
   vNextMobileHandoffLabel,
+  type RmtActiveSignerAuthority,
   type VNextMobileHandoffState,
   type VNextWalletHandoffBinding,
   type VNextWalletTransport
@@ -151,6 +153,7 @@ export function VNextWalletReview({
   outputDecimals = 18,
   selectedWalletKey,
   selectedWalletKind,
+  selectedSignerAuthority,
   selectedWalletName
 , tradeActionLabel, actionId = 0, onTradeAction, onDispatched }: {
   plan: VNextAuthorizationPlan;
@@ -164,6 +167,7 @@ export function VNextWalletReview({
   outputDecimals?: number;
   selectedWalletKey?: string | null;
   selectedWalletKind?: "embedded" | "external" | null;
+  selectedSignerAuthority?: RmtActiveSignerAuthority | null;
   selectedWalletName?: string | null;
 
  tradeActionLabel?: string; actionId?: number; onTradeAction?: () => void; onDispatched?: (plan: VNextAuthorizationPlan) => void;
@@ -183,7 +187,7 @@ export function VNextWalletReview({
   const [requiresRefresh, setRequiresRefresh] = useState(false);
   const preparedRef = useRef<PreparedVNextWalletHandoff | null>(null);
   const mounted = useRef(true);
-  const contextKey = `${plan.planId}:${plan.payloadHash}:${selectedWalletKey}:${address}:${chainId}`;
+  const contextKey = `${plan.planId}:${plan.payloadHash}:${selectedWalletKey}:${selectedSignerAuthority?.connectorUid ?? ""}:${address}:${chainId}`;
   const currentContext = useRef(contextKey);
   currentContext.current = contextKey;
   const submissionEnabled = process.env.NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED === "true";
@@ -277,16 +281,20 @@ export function VNextWalletReview({
       const binding = bindVNextTradingWallet({
         selectedWalletKey,
         selectedWalletKind,
+        selectedSignerAuthority,
         selectedWalletName,
         connectedAddress: address,
         connectedChainId: chainId,
         connectorId: connector.id,
         connectorType: connector.type,
+        connectorUid: connector.uid,
         walletClientAddress: walletClient.account?.address,
         walletClientChainId: walletClient.chain?.id,
         recipient: plan.recipient
       });
-      if (binding.connectorId !== prepared.binding.connectorId || binding.wallet !== prepared.binding.wallet) {
+      if (binding.connectorId !== prepared.binding.connectorId || binding.connectorType !== prepared.binding.connectorType
+        || binding.connectorUid !== prepared.binding.connectorUid || binding.wallet !== prepared.binding.wallet
+        || binding.originConnectorType !== prepared.binding.originConnectorType) {
         throw new Error("The selected wallet changed after preparation. RMT did not send the request.");
       }
       if (findUnresolvedVNextExecution(address)) throw new Error("An RMT transaction is still unresolved. Do not resubmit.");
@@ -387,16 +395,18 @@ export function VNextWalletReview({
         const binding = bindVNextTradingWallet({
           selectedWalletKey,
           selectedWalletKind,
+          selectedSignerAuthority,
           selectedWalletName,
           connectedAddress: address,
           connectedChainId: chainId,
           connectorId: connector.id,
           connectorType: connector.type,
+          connectorUid: connector.uid,
           walletClientAddress: walletClient.account?.address,
           walletClientChainId: walletClient.chain?.id,
           recipient: plan.recipient
         });
-        const injected = plan.provider === "zero-x-swap" && binding.selectedConnectorType === "injected"
+        const injected = requiresVNextInjectedSignerSelection(plan.provider, binding)
           ? await injectedSignerSelection.prepare(selectedWalletKey!, plan.recipient) : undefined;
         const unresolved = findUnresolvedVNextExecution(address);
         if (unresolved) throw new Error(`An RMT transaction is still unresolved (${unresolved.txHash.slice(0, 10)}…). Do not resubmit.`);
@@ -505,7 +515,10 @@ export function VNextWalletReview({
   };
 
   return <div className="vnWalletSubmission">
-{plan.provider === "zero-x-swap" && selectedWalletKind === "external" ? <InjectedSignerSelection detailsTarget={detailsTarget} /> : null}
+{plan.provider === "zero-x-swap" && selectedWalletKind === "external"
+  && selectedSignerAuthority?.adapter === "direct"
+  && selectedSignerAuthority?.originConnectorType.toLowerCase() === "injected"
+  ? <InjectedSignerSelection detailsTarget={detailsTarget} /> : null}
 <button
       type="button"
       className="vnReviewButton"
@@ -529,7 +542,12 @@ export function VNextWalletReview({
 {handoffState === "provider_pending" && expired ? <p role="status">This wallet request is stale. Cancel it in the selected wallet, then obtain a fresh quote. RMT is still waiting for the original response and will not open another request.</p> : null}
 {localStatus ? <p className="vnAuthorizationStatus" role="status">{localStatus}</p> : null}
 {localError ? <p className="vnAuthorizationError" role="status">{localError}</p> : null}
-{gasShortfall ? <FundWalletButton directReceive variant="inline" label="Add Robinhood ETH" /> : null}
+{gasShortfall ? <FundWalletButton
+  directReceive
+  variant="inline"
+  label="Add Robinhood ETH"
+  requestedAsset={{ address: ROBINHOOD_NATIVE_ASSET_ADDRESS, symbol: "ETH" }}
+/> : null}
 {detailsTarget ? createPortal(<><div className="vnWalletHandoffIdentity" aria-label="Selected wallet handoff">
       <span><small>Selected signer</small><strong>{walletName}</strong></span>
       <span><small>Wallet</small><strong>{address ? `${address.slice(0, 6)}…${address.slice(-4)}` : "Unavailable"}</strong></span>

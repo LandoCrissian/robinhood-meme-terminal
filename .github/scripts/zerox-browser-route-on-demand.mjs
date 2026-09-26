@@ -129,9 +129,12 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
       try {
         await page.goto(`${base}/?market=${token}${peepEntry ? '' : `&side=${sellingToken ? 'sell' : 'buy'}`}`, { waitUntil: 'domcontentloaded' });
         await page.getByRole('button', { name: 'I understand', exact: false }).click();
-        const welcome = page.getByRole('button', { name: 'Start with live markets', exact: true });
-        try { await welcome.click({ timeout: 1500 }); }
-        catch (error) { if (await welcome.isVisible()) throw error; }
+        await page.locator('#vn-asset-heading').waitFor({ timeout: 30000 });
+        assert.equal(
+          await page.getByRole('button', { name: 'Start with live markets', exact: true }).count(),
+          0,
+          'The default terminal flow must not open the optional first-visit guide.'
+        );
         if (peepEntry) {
           if (viewport === 'mobile') await page.locator('button.isBuy').click();
           else await page.getByRole('tab', { name: 'Buy', exact: true }).click();

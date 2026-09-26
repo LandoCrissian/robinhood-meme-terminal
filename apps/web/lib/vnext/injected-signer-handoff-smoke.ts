@@ -5,8 +5,8 @@ import path from "node:path";
 import { mock } from "node:test";
 import { createWalletClient, custom, getAddress } from "viem";
 import { createInjectedSignerSelection, type InjectedSignerProvider } from "../injected-wallet-signer";
-import { walletGatewayKey } from "../wallet-gateway";
-import { bindVNextExternalWallet } from "./wallet-handoff";
+import { privyWagmiConnectorId, privyWalletSignerAuthority, walletGatewayKey, type RmtActiveSignerAuthority } from "../wallet-gateway";
+import { bindVNextExternalWallet, bindVNextTradingWallet } from "./wallet-handoff";
 import { createVNextWalletReviewDispatcher } from "./wallet-review-dispatch";
 import { findBlockingVNextWalletRequest, isVNextWalletProviderRequestActive, readVNextWalletRequestJournal, recordPreparedVNextWalletRequest } from "./execution-recovery";
 import { prepareVNextWalletTransaction, vNextWalletRpcTransaction } from "./wallet-submission";
@@ -28,15 +28,20 @@ export async function assertInjectedSignerHandoff(plan: VNextAuthorizationPlan, 
     ? "0x2222222222222222222222222222222222222222" : "0x1111111111111111111111111111111111111111";
   const candidate = { address: wallet, connectorType: "injected", walletClientType: "metamask", meta: { id: "io.metamask" }, type: "ethereum" as const };
   const walletKey = walletGatewayKey(candidate);
+  const signerAuthority: RmtActiveSignerAuthority = {
+    adapter: "direct", connectorId: "io.metamask", connectorType: "injected", connectorUid: "injected-fixture-uid",
+    originConnectorType: "injected", walletClientType: "metamask", walletKey, walletKind: "external"
+  };
   const identity = { authenticated: true, userId: "authenticated-fixture-user", linkedAddress: wallet, activeWalletKey: walletKey, address: wallet, chainId: 4663 };
-  const binding = bindVNextExternalWallet({ selectedWalletKey: walletKey, selectedWalletKind: "external", selectedWalletName: "MetaMask",
+  const binding = bindVNextExternalWallet({ selectedWalletKey: walletKey, selectedWalletKind: "external", selectedSignerAuthority: signerAuthority, selectedWalletName: "MetaMask",
     connectedAddress: wallet, connectedChainId: 4663, connectorId: "io.metamask", connectorType: "injected",
+    connectorUid: "injected-fixture-uid",
     walletClientAddress: wallet, walletClientChainId: 4663, recipient: wallet });
   const requireWeb = createRequire(import.meta.url);
   // TEST ONLY: exercise the exact installed SDK class, without altering or using internal fields in production.
   const sdkDir = path.dirname(requireWeb.resolve("@privy-io/react-auth"));
   const { PrivyProxyProvider } = requireWeb(path.join(sdkDir, "index-BKa2zZmu.js"));
-  const scenarios = ["immediate-4001", "multi-owner-first", "multi-owner-second", "late-4001", "late-hash", "context-change", "unknown", "lost-response", "pre-storage-failure", "post-storage-failure", "expired-before-dispatch", "wrong-envelope", "walletconnect"];
+  const scenarios = ["immediate-4001", "multi-owner-first", "multi-owner-second", "late-4001", "late-hash", "context-change", "unknown", "lost-response", "pre-storage-failure", "post-storage-failure", "expired-before-dispatch", "wrong-envelope"];
   for (const scenario of scenarios) {
     let now = plan.preparedAtMs;
     let raw = "";
@@ -112,18 +117,11 @@ export async function assertInjectedSignerHandoff(plan: VNextAuthorizationPlan, 
     try {
       assert.equal(readVNextWalletRequestJournal(storage, now)[0]?.state, "PREPARED", scenario);
       assert.equal(findBlockingVNextWalletRequest(wallet, storage, now), null, "PREPARED is serialized by its held Web Lock before dispatch");
-      const result = dispatch(scenario === "walletconnect" ? { ...input, binding: { ...binding, selectedConnectorType: "wallet_connect" } } : input, storage, () => now);
-      assert.equal(sends, scenario === "walletconnect" ? 0 : 1);
-      assert.equal(proxySends, scenario === "walletconnect" ? 1 : 0);
+      const result = dispatch(input, storage, () => now);
+      assert.equal(sends, 1);
+      assert.equal(proxySends, 0);
       assert.throws(() => dispatch(input, storage, () => now), /already active/);
       if (scenario !== "immediate-4001") { now += 120_001; mock.timers.tick(120_001); await flush(); }
-      if (scenario === "walletconnect") {
-        assert.equal((await result).state, "UNRESOLVED", "non-targeted proxy timeout is not relabeled rejection");
-        assert.equal(readVNextWalletRequestJournal(storage, now)[0].errorDiagnostic?.errorCode, -1);
-        reject({ code: 4001 }); await flush();
-        assert.equal(findBlockingVNextWalletRequest(wallet, storage, now)?.state, "UNRESOLVED");
-        continue;
-      }
       assert.equal(readVNextWalletRequestJournal(storage, now)[0].state, "PROVIDER_PENDING", "local expiry/120 seconds never cancels a sent request");
       assert.equal(isVNextWalletProviderRequestActive(requestId), true);
       assert.equal(released, 0, "pending request owns the lease, not a React component");
@@ -159,6 +157,140 @@ export async function assertInjectedSignerHandoff(plan: VNextAuthorizationPlan, 
       assert.equal(sends, 1);
     } finally { mock.timers.reset(); }
   }
+
+  // The installed Privy/Wagmi adapter exposes an embedded wallet through an
+  // `injected` connector. It must use the exact Wagmi wallet client once, not
+  // enter the external EIP-6963 provider-selection path.
+  const embeddedCandidate = {
+    address: wallet,
+    connectorType: "embedded",
+    walletClientType: "privy",
+    meta: { id: "privy", name: "RMT wallet" },
+    type: "ethereum" as const
+  };
+  const embeddedKey = walletGatewayKey(embeddedCandidate);
+  const embeddedConnectorId = privyWagmiConnectorId(embeddedCandidate)!;
+  const embeddedAuthority = privyWalletSignerAuthority(embeddedCandidate, {
+    id: embeddedConnectorId, type: "injected", uid: "embedded-fixture-uid"
+  })!;
+  const embeddedBinding = bindVNextTradingWallet({
+    selectedWalletKey: embeddedKey,
+    selectedWalletKind: "embedded",
+    selectedSignerAuthority: embeddedAuthority,
+    selectedWalletName: "RMT wallet",
+    connectedAddress: wallet,
+    connectedChainId: 4_663,
+    connectorId: embeddedConnectorId,
+    connectorType: "injected",
+    connectorUid: "embedded-fixture-uid",
+    walletClientAddress: wallet,
+    walletClientChainId: 4_663,
+    recipient: wallet
+  });
+  let embeddedRaw = "";
+  const embeddedStorage = {
+    getItem: () => embeddedRaw,
+    setItem: (_key: string, value: string) => { embeddedRaw = value; }
+  };
+  const embeddedRequestId = randomUUID();
+  const embeddedRpc = vNextWalletRpcTransaction(prepareVNextWalletTransaction({
+    plan,
+    evidence,
+    connectedAddress: wallet,
+    connectedChainId: 4_663,
+    nowMs: plan.preparedAtMs
+  }));
+  assert.ok(recordPreparedVNextWalletRequest({
+    requestId: embeddedRequestId,
+    wallet,
+    plan,
+    walletNonceBeforeRequest: 226n,
+    requestBlockNumber: 100n,
+    connectorId: embeddedConnectorId,
+    connectorType: "injected",
+    walletClientType: "privy"
+  }, embeddedStorage, plan.preparedAtMs));
+  let embeddedRequests = 0;
+  let embeddedLeaseReleases = 0;
+  const embeddedOutcome = await createVNextWalletReviewDispatcher()({
+    requestId: embeddedRequestId,
+    plan,
+    evidence,
+    binding: embeddedBinding,
+    selectedWalletKey: embeddedKey,
+    rpcTransaction: embeddedRpc,
+    lease: { release: () => { embeddedLeaseReleases++; }, released: Promise.resolve() },
+    walletClientRequest: async (args) => {
+      embeddedRequests++;
+      assert.deepEqual(args.params, [embeddedRpc]);
+      return hash;
+    }
+  }, embeddedStorage, () => plan.preparedAtMs);
+  assert.equal(embeddedOutcome.state, "HASH_RECEIVED");
+  assert.equal(embeddedRequests, 1, "The exact embedded Wagmi wallet client receives one request.");
+  assert.equal(embeddedLeaseReleases, 1);
+
+  // The installed adapter also wraps a Privy-managed WalletConnect source in
+  // an exact `injected` Wagmi connector. Source provenance remains
+  // wallet_connect, but dispatch stays on the provider-equality-checked client
+  // and never redirects through an unrelated EIP-6963 announcement.
+  const walletConnectCandidate = {
+    address: wallet,
+    connectorType: "wallet_connect",
+    walletClientType: "metamask",
+    meta: { id: "io.metamask", name: "MetaMask" },
+    type: "ethereum" as const
+  };
+  const walletConnectKey = walletGatewayKey(walletConnectCandidate);
+  const walletConnectAuthority = privyWalletSignerAuthority(walletConnectCandidate, {
+    id: "io.metamask", type: "injected", uid: "walletconnect-fixture-uid"
+  })!;
+  const walletConnectBinding = bindVNextTradingWallet({
+    selectedWalletKey: walletConnectKey,
+    selectedWalletKind: "external",
+    selectedSignerAuthority: walletConnectAuthority,
+    selectedWalletName: "MetaMask",
+    connectedAddress: wallet,
+    connectedChainId: 4_663,
+    connectorId: "io.metamask",
+    connectorType: "injected",
+    connectorUid: "walletconnect-fixture-uid",
+    walletClientAddress: wallet,
+    walletClientChainId: 4_663,
+    recipient: wallet
+  });
+  let walletConnectRaw = "";
+  const walletConnectStorage = {
+    getItem: () => walletConnectRaw,
+    setItem: (_key: string, value: string) => { walletConnectRaw = value; }
+  };
+  const walletConnectRequestId = randomUUID();
+  assert.ok(recordPreparedVNextWalletRequest({
+    requestId: walletConnectRequestId,
+    wallet,
+    plan,
+    walletNonceBeforeRequest: 227n,
+    requestBlockNumber: 101n,
+    connectorId: "io.metamask",
+    connectorType: "injected",
+    walletClientType: "metamask"
+  }, walletConnectStorage, plan.preparedAtMs));
+  let walletConnectRequests = 0;
+  const walletConnectOutcome = await createVNextWalletReviewDispatcher()({
+    requestId: walletConnectRequestId,
+    plan,
+    evidence,
+    binding: walletConnectBinding,
+    selectedWalletKey: walletConnectKey,
+    rpcTransaction: embeddedRpc,
+    lease: { release: () => undefined, released: Promise.resolve() },
+    walletClientRequest: async () => {
+      walletConnectRequests++;
+      return hash;
+    }
+  }, walletConnectStorage, () => plan.preparedAtMs);
+  assert.equal(walletConnectOutcome.state, "HASH_RECEIVED");
+  assert.equal(walletConnectRequests, 1, "Privy-managed WalletConnect dispatches once through its exact Wagmi wallet client.");
 
   // Selection adversaries use the same production registry and identity inputs.
   for (const scenario of ["wrong-account", "empty", "not-array", "invalid-address", "mixed-invalid", "wrong-chain", "two-wallets", "conflict", "events", "chain-event", "disconnect-event", "generation", "logout", "replacement", "unlinked"]) {

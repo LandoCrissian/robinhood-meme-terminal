@@ -44,6 +44,13 @@ assert.equal(normalizeExperiencePreferences({ diagnosticsEnabled: "true" }).diag
 const guideSource = readFileSync(new URL("../app/first-visit-guide.tsx", import.meta.url), "utf8");
 assert.match(guideSource, /terms\.accepted/);
 assert.match(guideSource, /Find the market\. Verify the evidence\. Keep control\./);
+assert.match(guideSource, /get\("guide"\) === "1"/, "The orientation must open only when explicitly requested.");
+assert.match(
+  guideSource,
+  /setOpen\(terms\.ready && terms\.accepted && isGuidedSurface\(pathname\) && guideRequested\(\)\)/,
+  "First-time public browsing must not be interrupted by the optional guide."
+);
+assert.match(guideSource, /url\.searchParams\.delete\("guide"\)/, "Completing the guide must return to the clean terminal route.");
 assert.match(guideSource, /useState\(false\)/, "Diagnostics consent must not be preselected");
 assert.match(guideSource, /No wallet address, token, amount, search, email, profile, cookie, or cross-session ID/);
 
@@ -61,7 +68,9 @@ assert.doesNotMatch(routeSource, /mediaClientAddress|communityAuthorKey|wallet|t
 const settingsSource = readFileSync(new URL("../app/experience/experience-settings.tsx", import.meta.url), "utf8");
 assert.match(settingsSource, /role="switch"/);
 assert.match(settingsSource, /Anonymous journey milestones/);
-assert.match(settingsSource, /Replay guide/);
+assert.match(settingsSource, /window\.location\.assign\("\/\?guide=1"\)/, "Experience settings must be the explicit guide entry point.");
+assert.match(settingsSource, /RMT does not interrupt first-time browsing with this guide/, "Settings must describe the optional orientation accurately.");
+assert.match(settingsSource, /Replay guide|Open guide/);
 
 const privacySource = readFileSync(new URL("../app/privacy/page.tsx", import.meta.url), "utf8");
 assert.match(privacySource, /Optional anonymous experience measurements/);

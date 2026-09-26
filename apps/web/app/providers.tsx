@@ -9,8 +9,9 @@ import { ProfileProvider } from "./profile-provider";
 import { ExperienceTelemetry } from "./experience-telemetry";
 import { createLegacyWalletConnectors, walletChains, walletTransports } from "./wallet-config";
 import { speedWalletEnabled } from "../lib/privy-config";
+import { accountFirstBrowserAcceptanceBuild } from "../lib/account-first-browser-acceptance";
 import { RecoveryBoundary } from "./recovery-boundary";
-import { BrowserAcceptanceIdentityBridge } from "./rmt-identity";
+import { AccountFirstAcceptanceIdentityBridge, BrowserAcceptanceIdentityBridge } from "./rmt-identity";
 
 let legacyWalletConfig: ReturnType<typeof createConfig> | undefined;
 
@@ -53,6 +54,10 @@ export function Providers({ children }: { children: ReactNode }) {
     : terminal;
 
   const legacyApplication = <LegacyWalletProvider queryClient={queryClient}>{application}</LegacyWalletProvider>;
+
+  if (accountFirstBrowserAcceptanceBuild) {
+    return <LegacyWalletProvider queryClient={queryClient}><AccountFirstAcceptanceIdentityBridge>{application}</AccountFirstAcceptanceIdentityBridge></LegacyWalletProvider>;
+  }
 
   if (process.env.NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE === "true") {
     return <LegacyWalletProvider queryClient={queryClient}><BrowserAcceptanceIdentityBridge>{application}</BrowserAcceptanceIdentityBridge></LegacyWalletProvider>;

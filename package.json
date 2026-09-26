@@ -23,6 +23,7 @@
     "test:paused-integrity": "pnpm --filter web test:paused-integrity && pnpm test:community-readiness && pnpm check:community-readiness -- --repository-only",
     "test:production-health": "node scripts/production-health-smoke.mjs",
     "test:terminal-high-end": "node .github/scripts/terminal-high-end-acceptance.mjs && node .github/scripts/partial-directory-browser-acceptance.mjs && pnpm --filter web exec tsx lib/wallet-connection-browser-smoke.ts",
+    "test:account-first-browser": "node .github/scripts/account-first-browser-acceptance.mjs",
     "typecheck": "pnpm --filter web typecheck"
   },
   "devDependencies": {

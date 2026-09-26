@@ -1,17 +1,30 @@
 /* Final interaction layer: overlays escape transformed headers and every mobile
    sheet stays inside the visual viewport with a persistent close control. */
-.fundWalletBackdrop,
-.walletBackdrop,
+.fundWalletBackdrop {
+  z-index: 169;
+  touch-action: none;
+}
+
+.walletBackdrop {
+  z-index: 169;
+  touch-action: none;
+}
+
 .walletTransferBackdrop {
-  z-index: 98;
+  z-index: 179;
   touch-action: none;
 }
 
 .fundWalletDialog,
-.walletTransferDialog,
-.walletReceiveDialog,
 .walletOverlayPopover {
-  z-index: 99;
+  z-index: 170;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.walletTransferDialog,
+.walletReceiveDialog {
+  z-index: 180;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
 }

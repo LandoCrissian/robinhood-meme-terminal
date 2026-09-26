@@ -2,7 +2,7 @@
 import { boundVNextNativeSettlementEnvelope, hasVerifiedVNextSwapSettlement, verifyVNextErc20OutputSettlement, verifyVNextNativeOutputSettlement, type VNextOutputSettlement } from "../../lib/vnext/output-settlement";
 
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useAccount, usePublicClient } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -12,6 +12,7 @@ import {
   isVNextWalletProviderRequestActive,
   promoteDiscoveredVNextWalletRequestToSubmitted,
   readVNextExecutionJournal,
+  recoveryValueForWallet,
   reconcileExpiredVNextWalletRequest,
   resolveVNextExecution,
   settledVNextFeeExecution,
@@ -26,41 +27,72 @@ import {
 } from "../../lib/vnext/execution-recovery";
 import { ROBINHOOD_MAINNET_CHAIN_ID } from "../../lib/vnext/robinhood-assets";
 import { useRmtIdentity } from "../rmt-identity";
+import { selectedVNextWalletReadAddress } from "../../lib/vnext/selected-wallet-read-authority";
 
 const WALLET_REQUEST_RECOVERY_DELAYS_MS = [0, 10_000, 30_000, 60_000] as const;
 const EXPLICIT_RECHECK_COOLDOWN_MS = 5_000;
 
 export function useVNextExecutionRecovery() {
-  const { address } = useAccount();
+  const account = useAccount();
   const identity = useRmtIdentity();
   const publicClient = usePublicClient({ chainId: ROBINHOOD_MAINNET_CHAIN_ID });
   const [record, setRecord] = useState<VNextExecutionRecord | null>(null);
   const [walletRequest, setWalletRequest] = useState<VNextWalletRequestRecord | null>(null);
-  const [reconciliationFailed, setReconciliationFailed] = useState(false);
-  const [walletRequestRecheckPending, setWalletRequestRecheckPending] = useState(false);
+  const [reconciliationFailureTxHash, setReconciliationFailureTxHash] = useState<string | null>(null);
+  const [walletRequestRecheck, setWalletRequestRecheck] = useState<{ requestId: string; scope: string } | null>(null);
   const lastExplicitRecheckAt = useRef(0);
-  const receiptRequired = record?.state === "submitted"
-    || (record?.state === "confirmed" && record.kind === "swap" && !hasVerifiedVNextSwapSettlement(record));
-  const confirmations = record?.feeSettlement || record?.feeV2Settlement ? 2 : 1;
+  const recoveryWallet = selectedVNextWalletReadAddress({
+    selectedWalletKey: identity.activeWalletKey,
+    selectedWalletKind: identity.activeWalletKind,
+    selectedSignerAuthority: identity.activeSignerAuthority,
+    connectedAddress: account.address,
+    connectedChainId: account.chainId,
+    connectorId: account.connector?.id,
+    connectorType: account.connector?.type,
+    connectorUid: account.connector?.uid,
+    requiredChainId: ROBINHOOD_MAINNET_CHAIN_ID
+  });
+  const recoveryScope = recoveryWallet && identity.activeWalletKey
+    ? `${identity.userId}:${identity.activeWalletKey}:${recoveryWallet.toLowerCase()}`
+    : null;
+  const recoveryContext = useRef({ generation: 0, scope: null as string | null, wallet: null as string | null });
+  useLayoutEffect(() => {
+    if (recoveryContext.current.scope === recoveryScope) return;
+    recoveryContext.current = {
+      generation: recoveryContext.current.generation + 1,
+      scope: recoveryScope,
+      wallet: recoveryWallet?.toLowerCase() ?? null
+    };
+    lastExplicitRecheckAt.current = 0;
+  }, [recoveryScope, recoveryWallet]);
+  const visibleRecord = recoveryValueForWallet(record, recoveryWallet);
+  const visibleWalletRequest = recoveryValueForWallet(walletRequest, recoveryWallet);
+  const walletRequestRecheckPending = Boolean(walletRequestRecheck
+    && recoveryScope
+    && walletRequestRecheck.scope === recoveryScope
+    && visibleWalletRequest?.requestId === walletRequestRecheck.requestId);
+  const receiptRequired = visibleRecord?.state === "submitted"
+    || (visibleRecord?.state === "confirmed" && visibleRecord.kind === "swap" && !hasVerifiedVNextSwapSettlement(visibleRecord));
+  const confirmations = visibleRecord?.feeSettlement || visibleRecord?.feeV2Settlement ? 2 : 1;
   // Wagmi's wrapper throws after a reverted receipt and discards its status.
   // Recovery must retain the canonical receipt, including a mined failure.
   const receipt = useQuery({
-    queryKey: ["vnext-exact-execution-receipt", ROBINHOOD_MAINNET_CHAIN_ID, record?.txHash, confirmations],
-    enabled: Boolean(receiptRequired && record?.txHash && publicClient),
+    queryKey: ["vnext-exact-execution-receipt", ROBINHOOD_MAINNET_CHAIN_ID, visibleRecord?.txHash, confirmations],
+    enabled: Boolean(receiptRequired && visibleRecord?.txHash && publicClient),
     queryFn: () => {
-      if (!publicClient || !record?.txHash) throw new Error("Receipt client unavailable");
-      return publicClient.waitForTransactionReceipt({ hash: record.txHash, confirmations, timeout: 60_000 });
+      if (!publicClient || !visibleRecord?.txHash) throw new Error("Receipt client unavailable");
+      return publicClient.waitForTransactionReceipt({ hash: visibleRecord.txHash, confirmations, timeout: 60_000 });
     },
     retry: 2
   });
 
   useEffect(() => {
     // A reload after an approval receipt must also recover the latest confirmed approval.
-    setRecord(address ? findUnresolvedVNextExecution(address)
-      ?? readVNextExecutionJournal().find((candidate) => candidate.wallet.toLowerCase() === address.toLowerCase()) ?? null : null);
-    setWalletRequest(address ? findBlockingVNextWalletRequest(address) : null);
-    if (!address) return;
-    const wallet = address.toLowerCase();
+    setRecord(recoveryWallet ? findUnresolvedVNextExecution(recoveryWallet)
+      ?? readVNextExecutionJournal().find((candidate) => candidate.wallet.toLowerCase() === recoveryWallet.toLowerCase()) ?? null : null);
+    setWalletRequest(recoveryWallet ? findBlockingVNextWalletRequest(recoveryWallet) : null);
+    if (!recoveryWallet) return;
+    const wallet = recoveryWallet.toLowerCase();
     const updateFromRecords = (records: VNextExecutionRecord[]) => {
       const walletRecords = records.filter((candidate) => candidate.wallet.toLowerCase() === wallet);
       const latest = walletRecords.find((candidate) => candidate.state === "submitted") ?? walletRecords[0];
@@ -73,11 +105,11 @@ export function useVNextExecutionRecovery() {
     const onStorage = (event: StorageEvent) => {
       if (event.key === VNEXT_EXECUTION_STORAGE_KEY) {
         updateFromRecords(readVNextExecutionJournal());
-        setWalletRequest(findBlockingVNextWalletRequest(address));
+        setWalletRequest(findBlockingVNextWalletRequest(recoveryWallet));
       }
     };
     const onWalletRequestChange = () => {
-      setWalletRequest(findBlockingVNextWalletRequest(address));
+      setWalletRequest(findBlockingVNextWalletRequest(recoveryWallet));
     };
     window.addEventListener(VNEXT_EXECUTION_EVENT, onJournalChange);
     window.addEventListener(VNEXT_WALLET_REQUEST_EVENT, onWalletRequestChange);
@@ -87,13 +119,21 @@ export function useVNextExecutionRecovery() {
       window.removeEventListener(VNEXT_WALLET_REQUEST_EVENT, onWalletRequestChange);
       window.removeEventListener("storage", onStorage);
     };
-  }, [address]);
+  }, [recoveryWallet]);
 
   const reconcileWalletRequest = useCallback(async (request: VNextWalletRequestRecord) => {
     if (!publicClient || isVNextWalletProviderRequestActive(request.requestId)) return;
+    const attempt = { ...recoveryContext.current };
+    const isCurrentRecovery = () => Boolean(
+      attempt.scope
+      && attempt.scope === recoveryContext.current.scope
+      && attempt.generation === recoveryContext.current.generation
+      && attempt.wallet === request.wallet.toLowerCase()
+    );
+    if (!isCurrentRecovery()) return;
     const activeRequest = findBlockingVNextWalletRequest(request.wallet);
     if (!activeRequest || activeRequest.requestId !== request.requestId) {
-      setWalletRequest(activeRequest);
+      if (isCurrentRecovery()) setWalletRequest(activeRequest);
       return;
     }
     if (!["PROMPT_REQUESTED", "PROVIDER_PENDING", "UNRESOLVED"].includes(activeRequest.state)) return;
@@ -121,8 +161,10 @@ export function useVNextExecutionRecovery() {
         if (result?.status === "found" && typeof result.txHash === "string") {
           const promoted = promoteDiscoveredVNextWalletRequestToSubmitted({ requestId: activeRequest.requestId, txHash: result.txHash });
           if (promoted) {
-            setRecord(promoted);
-            setWalletRequest(findBlockingVNextWalletRequest(activeRequest.wallet));
+            if (isCurrentRecovery()) {
+              setRecord(promoted);
+              setWalletRequest(findBlockingVNextWalletRequest(activeRequest.wallet));
+            }
             return;
           }
         }
@@ -134,7 +176,7 @@ export function useVNextExecutionRecovery() {
       ? activeRequest
       : transitionVNextWalletRequest(activeRequest.requestId, "UNRESOLVED") ?? activeRequest;
     if (unresolved.planKind !== "swap" || Date.now() < Number(BigInt(unresolved.finalOnchainDeadline) * 1_000n)) {
-      setWalletRequest(findBlockingVNextWalletRequest(unresolved.wallet) ?? unresolved);
+      if (isCurrentRecovery()) setWalletRequest(findBlockingVNextWalletRequest(unresolved.wallet) ?? unresolved);
       return;
     }
     try {
@@ -146,82 +188,86 @@ export function useVNextExecutionRecovery() {
     } catch {
       reconcileExpiredVNextWalletRequest({ request: unresolved, latestNonce: null, pendingNonce: null, nowMs: Date.now() });
     }
-    setWalletRequest(findBlockingVNextWalletRequest(unresolved.wallet));
+    if (isCurrentRecovery()) setWalletRequest(findBlockingVNextWalletRequest(unresolved.wallet));
   }, [identity.identityToken, publicClient]);
 
   useEffect(() => {
-    if (!walletRequest || !["PROMPT_REQUESTED", "PROVIDER_PENDING", "UNRESOLVED"].includes(walletRequest.state)) return;
+    if (!visibleWalletRequest || !["PROMPT_REQUESTED", "PROVIDER_PENDING", "UNRESOLVED"].includes(visibleWalletRequest.state)) return;
     let cancelled = false;
     const timers = WALLET_REQUEST_RECOVERY_DELAYS_MS.map((delay) => window.setTimeout(() => {
-      if (!cancelled) void reconcileWalletRequest(walletRequest);
+      if (!cancelled) void reconcileWalletRequest(visibleWalletRequest);
     }, delay));
     return () => {
       cancelled = true;
       timers.forEach((timer) => window.clearTimeout(timer));
     };
-  }, [reconcileWalletRequest, walletRequest?.requestId, walletRequest?.state]);
+  }, [reconcileWalletRequest, visibleWalletRequest?.requestId, visibleWalletRequest?.state]);
 
   const recheckWalletRequest = useCallback(async () => {
-    if (!walletRequest || walletRequestRecheckPending || Date.now() - lastExplicitRecheckAt.current < EXPLICIT_RECHECK_COOLDOWN_MS) return;
+    if (!visibleWalletRequest || !recoveryScope || walletRequestRecheckPending
+      || Date.now() - lastExplicitRecheckAt.current < EXPLICIT_RECHECK_COOLDOWN_MS) return;
+    const attempt = { ...recoveryContext.current };
     lastExplicitRecheckAt.current = Date.now();
-    setWalletRequestRecheckPending(true);
+    setWalletRequestRecheck({ requestId: visibleWalletRequest.requestId, scope: recoveryScope });
     try {
-      await reconcileWalletRequest(walletRequest);
+      await reconcileWalletRequest(visibleWalletRequest);
     } finally {
-      setWalletRequestRecheckPending(false);
+      if (attempt.scope === recoveryContext.current.scope && attempt.generation === recoveryContext.current.generation) {
+        setWalletRequestRecheck((current) => current?.requestId === visibleWalletRequest.requestId ? null : current);
+      }
     }
-  }, [reconcileWalletRequest, walletRequest, walletRequestRecheckPending]);
-
-  useEffect(() => {
-    setReconciliationFailed(false);
-  }, [record?.txHash]);
+  }, [reconcileWalletRequest, recoveryScope, visibleWalletRequest, walletRequestRecheckPending]);
 
   useEffect(() => {
     if (
-      !record || !receiptRequired || !receipt.isSuccess || !receipt.data
-      || receipt.data.transactionHash.toLowerCase() !== record.txHash.toLowerCase()
+      !visibleRecord || !receiptRequired || !receipt.isSuccess || !receipt.data
+      || receipt.data.transactionHash.toLowerCase() !== visibleRecord.txHash.toLowerCase()
     ) return;
+    const activeRecord = visibleRecord;
+    const attempt = { ...recoveryContext.current };
+    const isCurrentRecovery = () => attempt.scope === recoveryContext.current.scope
+      && attempt.generation === recoveryContext.current.generation;
     let cancelled = false;
     void (async () => {
       const state = receipt.data.status === "success" ? "confirmed" : "reverted";
-      const feeV2Settlement = state === "confirmed" && record.kind === "swap" && record.feeV2Settlement
-        ? settledVNextFeeExecutionV2(record, receipt.data.logs)
+      const feeV2Settlement = state === "confirmed" && activeRecord.kind === "swap" && activeRecord.feeV2Settlement
+        ? settledVNextFeeExecutionV2(activeRecord, receipt.data.logs)
         : null;
-      const feeSettlement = state === "confirmed" && record.kind === "swap" && record.feeSettlement
-        ? settledVNextFeeExecution(record, receipt.data.logs)
+      const feeSettlement = state === "confirmed" && activeRecord.kind === "swap" && activeRecord.feeSettlement
+        ? settledVNextFeeExecution(activeRecord, receipt.data.logs)
         : null;
       let outputSettlement: VNextOutputSettlement | null = null;
-      if (record.provider === "zero-x-swap" && state === "confirmed" && publicClient) {
+      if (activeRecord.provider === "zero-x-swap" && state === "confirmed" && publicClient) {
         try {
-          const transaction = await publicClient.getTransaction({ hash: record.txHash });
-          outputSettlement = verifyVNextErc20OutputSettlement(record, receipt.data, transaction);
-          if (identity.identityToken && boundVNextNativeSettlementEnvelope(record, receipt.data, transaction)) {
+          const transaction = await publicClient.getTransaction({ hash: activeRecord.txHash });
+          outputSettlement = verifyVNextErc20OutputSettlement(activeRecord, receipt.data, transaction);
+          if (identity.identityToken && boundVNextNativeSettlementEnvelope(activeRecord, receipt.data, transaction)) {
             const response = await fetch("/api/vnext/native-settlement-trace", { method: "POST", cache: "no-store", credentials: "same-origin",
               headers: { "Content-Type": "application/json", "privy-id-token": identity.identityToken },
-              body: JSON.stringify({ txHash: record.txHash, wallet: record.wallet }), signal: AbortSignal.timeout(25000) });
+              body: JSON.stringify({ txHash: activeRecord.txHash, wallet: activeRecord.wallet }), signal: AbortSignal.timeout(25000) });
             const result = response.ok ? await response.json() : null;
-            if (result?.status === "available" && result.txHash?.toLowerCase() === record.txHash.toLowerCase()
+            if (result?.status === "available" && result.txHash?.toLowerCase() === activeRecord.txHash.toLowerCase()
               && result.blockHash?.toLowerCase() === receipt.data.blockHash.toLowerCase()) {
-              outputSettlement = verifyVNextNativeOutputSettlement(record, receipt.data, transaction, result.trace);
+              outputSettlement = verifyVNextNativeOutputSettlement(activeRecord, receipt.data, transaction, result.trace);
             }
           }
         } catch { /* Receipt confirmation does not prove output delivery. */ }
       }
-      const outputAmountAtomic = record.provider === "zero-x-swap" ? outputSettlement?.amountAtomic ?? null : (state === "confirmed"
+      const outputAmountAtomic = activeRecord.provider === "zero-x-swap" ? outputSettlement?.amountAtomic ?? null : (state === "confirmed"
         ? feeV2Settlement?.outputAmountAtomic
           ?? feeSettlement?.outputAmountAtomic
-          ?? (record.kind === "swap" && (record.feeSettlement || record.feeV2Settlement)
+          ?? (activeRecord.kind === "swap" && (activeRecord.feeSettlement || activeRecord.feeV2Settlement)
             ? null
-            : settledVNextOutputAtomic(record, receipt.data.logs))
+            : settledVNextOutputAtomic(activeRecord, receipt.data.logs))
         : null);
-      if (state === "confirmed" && record.kind === "swap" && (
-        record.feeV2Settlement && !feeV2Settlement
-        || record.feeSettlement && !feeSettlement
+      if (state === "confirmed" && activeRecord.kind === "swap" && (
+        activeRecord.feeV2Settlement && !feeV2Settlement
+        || activeRecord.feeSettlement && !feeSettlement
       )) {
-        if (!cancelled) setReconciliationFailed(true);
+        if (!cancelled && isCurrentRecovery()) setReconciliationFailureTxHash(activeRecord.txHash);
         return;
       }
-      if (record.state === "confirmed" && !outputAmountAtomic) return;
+      if (activeRecord.state === "confirmed" && !outputAmountAtomic) return;
       let failure: { classification?: "EXPIRED_ONCHAIN_DEADLINE"; networkGasSpentWei?: string } | undefined;
       if (state === "reverted") {
         let receiptBlockTimestamp: bigint | null = null;
@@ -233,7 +279,7 @@ export function useVNextExecutionRecovery() {
           receiptBlockTimestamp = null;
         }
         const classification = classifyVNextRevertedExecution({
-          transactionDeadline: record.deadline,
+          transactionDeadline: activeRecord.deadline,
           receiptBlockTimestamp
         });
         failure = {
@@ -242,7 +288,7 @@ export function useVNextExecutionRecovery() {
         };
       }
       const resolved = resolveVNextExecution(
-        record.txHash,
+        activeRecord.txHash,
         state,
         undefined,
         Date.now(),
@@ -261,31 +307,35 @@ export function useVNextExecutionRecovery() {
         } : undefined,
         failure
       );
-      if (!resolved && state === "confirmed" && record.kind === "swap" && (record.feeSettlement || record.feeV2Settlement)) {
-        if (!cancelled) setReconciliationFailed(true);
+      if (!resolved && state === "confirmed" && activeRecord.kind === "swap" && (activeRecord.feeSettlement || activeRecord.feeV2Settlement)) {
+        if (!cancelled && isCurrentRecovery()) setReconciliationFailureTxHash(activeRecord.txHash);
         return;
       }
-      const visibleRecord = resolved ?? {
-        ...record,
+      const reconciledRecord = resolved ?? {
+        ...activeRecord,
         state,
         ...(outputAmountAtomic ? { outputAmountAtomic } : {}),
         ...(failure?.classification ? { failureClassification: failure.classification } : {}),
         ...(failure?.networkGasSpentWei ? { networkGasSpentWei: failure.networkGasSpentWei } : {}),
         updatedAtMs: Date.now()
       };
-      if (!cancelled) setRecord(address ? findUnresolvedVNextExecution(address) ?? visibleRecord : visibleRecord);
+      if (!cancelled && isCurrentRecovery()) {
+        setReconciliationFailureTxHash((current) => current === activeRecord.txHash ? null : current);
+        setRecord(recoveryWallet ? findUnresolvedVNextExecution(recoveryWallet) ?? reconciledRecord : reconciledRecord);
+      }
     })();
     return () => { cancelled = true; };
-  }, [address, identity.identityToken, publicClient, receipt.data, receipt.isSuccess, receiptRequired, record]);
+  }, [identity.identityToken, publicClient, receipt.data, receipt.isSuccess, receiptRequired, recoveryWallet, visibleRecord]);
 
-  const status = record?.state === "submitted"
+  const reconciliationFailed = Boolean(visibleRecord && reconciliationFailureTxHash === visibleRecord.txHash);
+  const status = visibleRecord?.state === "submitted"
     ? reconciliationFailed ? "reconciliation_failed" : receipt.isError ? "confirmation_unavailable" : "confirming"
-    : record?.state ?? "idle";
+    : visibleRecord?.state ?? "idle";
   useEffect(() => {
-    if (!record || record.state !== "confirmed" || record.kind !== "swap" || hasVerifiedVNextSwapSettlement(record)) return;
+    if (!visibleRecord || visibleRecord.state !== "confirmed" || visibleRecord.kind !== "swap" || hasVerifiedVNextSwapSettlement(visibleRecord)) return;
     const timers = [3000, 10000, 30000].map((delay) => window.setTimeout(() => void receipt.refetch(), delay));
     return () => timers.forEach(window.clearTimeout);
-  }, [record?.txHash, record?.state]);
+  }, [visibleRecord?.txHash, visibleRecord?.state]);
 
-  return { record, walletRequest, status, recheckWalletRequest, walletRequestRecheckPending } as const;
+  return { record: visibleRecord, walletRequest: visibleWalletRequest, status, recheckWalletRequest, walletRequestRecheckPending } as const;
 }
