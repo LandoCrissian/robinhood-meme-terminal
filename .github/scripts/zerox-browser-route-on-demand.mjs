@@ -72,8 +72,8 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
         let permitted = !peepEntry;
         let connectionRequestedByUser = !peepEntry;
         document.addEventListener('click', (event) => {
-          if (event.target instanceof Element
-            && event.target.closest('button')?.textContent?.trim() === 'Connect & buy PEEP') connectionRequestedByUser = true;
+          const button = event.target instanceof Element ? event.target.closest('button') : null;
+          if (button?.closest('.vnTradeActionDock') && button.textContent?.trim() === 'Sign in') connectionRequestedByUser = true;
         }, true);
         window.__ROUTE_ON_DEMAND_PROMPTS__ = 0;
         window.ethereum = {
@@ -142,8 +142,8 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
           // Keep each mock provider outcome independent of the real quote cache.
           const peepInput = String(26 + (viewport === 'mobile' ? 2 : 0) + (scenario === 'peepNoRoute' ? 1 : 0));
           await page.getByLabel('Exact input amount').fill(peepInput);
-          await page.getByRole('button', { name: 'Connect & buy PEEP', exact: true }).click();
-          await until(() => api.some((entry) => entry.path === '/api/vnext/quotes' && entry.status === 200), 'PEEP Connect & buy must resume without a second Buy click');
+          await page.locator('.vnTradeActionDock').getByRole('button', { name: 'Sign in', exact: true }).click();
+          await until(() => api.some((entry) => entry.path === '/api/vnext/quotes' && entry.status === 200), 'PEEP Sign in must resume without a second Buy click');
           assert.equal(new URL(page.url()).searchParams.get('market')?.toLowerCase(), peep);
         }
         if (scenario === 'stock' || scenario === 'unverified') {
@@ -226,7 +226,14 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
               assert.equal(new URL(page.url()).searchParams.get('market')?.toLowerCase(), peep);
             }
             if (scenario === 'observed') {
-              assert.match(await page.locator('body').innerText(), /provider observed/i);
+              if (viewport === 'mobile') {
+                const sheetLayer = page.locator('.rmtMobileSheetLayer.isOpen');
+                await sheetLayer.locator('.rmtMobileTradeSheet > header').getByRole('button', { name: 'Close trade sheet', exact: true }).click();
+                await page.locator('.rmtMobileSheetLayer').waitFor({ state: 'hidden' });
+              }
+              const technicalDetails = page.locator('.vnAssetTechnicalDetails:visible').first();
+              await technicalDetails.locator(':scope > summary').click();
+              assert.match(await technicalDetails.locator('[aria-label="Selected market identity"]').innerText(), /provider observed/i);
               assert.match(await page.getByLabel('Market activity by time window').innerText(), /Unknown buys.*Unknown sells/);
             }
           }
