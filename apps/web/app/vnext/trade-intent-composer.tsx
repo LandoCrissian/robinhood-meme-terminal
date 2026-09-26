@@ -2,7 +2,7 @@
 import { appendResponseDiagnostic, serializeResponseDiagnostic } from "../../lib/vnext/quote-response-diagnostic";
 
 import { currentTradeEvidence } from "../../lib/vnext/current-trade-evidence";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { VerifiedRequestRefresh, isVerifiedRequestFresh, waitForVerifiedRequestRetry } from "../../lib/vnext/verified-request-refresh";
 import { formatUnits, getAddress, parseUnits, type Address } from "viem";
 import { useAccount } from "wagmi";
@@ -57,6 +57,8 @@ import {
   revalidateAfterApproval, savePendingApprovalJourney, TradeJourneyError, tradeJourneyLabels,
   tradeJourneyPhase, type TradeJourneyPhase
 } from "../../lib/vnext/trade-journey";
+import { consumeRmtTradeDraftRecovery, persistRmtTradeDraftRecovery } from "../../lib/vnext/trade-draft-recovery";
+import { rmtTradeFundingReason, rmtTradePrimaryActionDisabled } from "../../lib/vnext/trade-primary-action";
 
 function shortAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
@@ -168,14 +170,35 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
   const restoredApprovalIntent = useRef(false);
   const handledExecution = useRef<string | undefined>(dismissedExecutionHash);
   const pendingTradeAfterLogin = useRef<PendingTradeEntry | undefined>(undefined);
+  const recoveredTradeDraft = useRef(false);
+  const recoveredSideRequestNonce = useRef<number | null>(null);
+  const skipNextTradeDraftPersistence = useRef(false);
   const refreshCoordinator = useRef(new VerifiedRequestRefresh<{ evidence: VNextPreSignEvidence; plan: VNextAuthorizationPlan }>());
   const [walletBusy, setWalletBusy] = useState(false);
+  const [draftRecoveryError, setDraftRecoveryError] = useState("");
+  const [walletChoiceOpen, setWalletChoiceOpen] = useState(false);
+  const [walletChoiceError, setWalletChoiceError] = useState("");
   const walletBusyRef = useRef(false);
   const [refreshingPrice, setRefreshingPrice] = useState(false);
   const [walletDetailsTarget, setWalletDetailsTarget] = useState<HTMLDivElement | null>(null);
   const tradePanelRef = useRef<HTMLElement | null>(null);
   const automaticPreparationKey = useRef("");
   const selectedMarketAddress = marketAddress ?? (marketAsset?.id.locator.kind === "contract" ? marketAsset.id.locator.address : "");
+  const preserveTradeDraft = useCallback(() => {
+    if (!selectedMarketAddress) return false;
+    try {
+      return persistRmtTradeDraftRecovery(window.sessionStorage, {
+        amount,
+        buyInputKey,
+        marketAddress: selectedMarketAddress,
+        savedAtMs: Date.now(),
+        sellOutputKey,
+        side
+      });
+    } catch {
+      return false;
+    }
+  }, [amount, buyInputKey, selectedMarketAddress, sellOutputKey, side]);
   const continuedApproval = useRef<string | undefined>(undefined);
   const preparedApprovalAuthority = useRef<VNextApprovalAuthority | undefined>(undefined);
   const autoFitBuyAmount = useRef(true);
@@ -189,6 +212,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
   const lastReadyVerification = useRef<VNextPreSignEvidence | undefined>(undefined);
   const receiptAction = useRef<HTMLButtonElement>(null);
   const receiptDialog = useRef<HTMLElement>(null);
+  const receiptReturnFocus = useRef<HTMLElement | null>(null);
   const { address, chainId, isConnected } = useAccount();
   const identity = useRmtIdentity();
   const onRobinhood = chainId === ROBINHOOD_MAINNET_CHAIN_ID;
@@ -222,11 +246,11 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
     const eligibleContracts = marketAsset
       ? trustedPaymentAssets.filter((asset) => assetKey(asset.id) !== assetKey(marketAsset.id))
       : trustedPaymentAssets;
-    const usdg = eligibleContracts.filter((asset) => assetKey(asset.id) === assetKey(ROBINHOOD_USDG.id));
-    const others = eligibleContracts.filter((asset) => assetKey(asset.id) !== assetKey(ROBINHOOD_USDG.id));
-    const native = nativeBalance && nativeBalance > NATIVE_GAS_RESERVE_ATOMIC ? [ROBINHOOD_ETH] : [];
-    return uniqueAssets([...usdg, ...native, ...others]);
-  }, [marketAsset, nativeBalance, trustedPaymentAssets]);
+    const canonicalInputs = [ROBINHOOD_USDG, ROBINHOOD_ETH].filter((asset) => (
+      !marketAsset || assetKey(asset.id) !== assetKey(marketAsset.id)
+    ));
+    return uniqueAssets([...canonicalInputs, ...eligibleContracts]);
+  }, [marketAsset, trustedPaymentAssets]);
   const defaultBuyInput = buyInputs.find((asset) => assetKey(asset.id) === assetKey(ROBINHOOD_USDG.id))
     ?? buyInputs.find((asset) => assetKey(asset.id) === assetKey(ROBINHOOD_ETH.id))
     ?? buyInputs[0];
@@ -249,13 +273,19 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
     if (pair?.inputAsset.id.locator.kind === "native") return nativeBalance?.toString();
     const contractAddress = pair?.inputAsset.id.locator.kind === "contract" ? pair.inputAsset.id.locator.address.toLowerCase() : null;
     if (!contractAddress || pairInputDecimals === null) return undefined;
-    return walletAssets.find((asset) => (
+    const observed = walletAssets.find((asset) => (
       asset.address.toLowerCase() === contractAddress
       && asset.identityState === "verified"
       && asset.decimals === pairInputDecimals
       && /^(0|[1-9][0-9]*)$/.test(asset.balanceAtomic)
     ))?.balanceAtomic;
-  }, [nativeBalance, pair, pairInputDecimals, walletAssets]);
+    if (observed !== undefined) return observed;
+    // The wallet reader always probes canonical USDG and only publishes READY
+    // after that exact balance call succeeds. Its positive-holdings list omits a
+    // zero balance, so absence in this one bounded case is authoritative zero.
+    if (walletReadStatus === "ready" && contractAddress === ROBINHOOD_USDG_ADDRESS.toLowerCase()) return "0";
+    return undefined;
+  }, [nativeBalance, pair, pairInputDecimals, walletAssets, walletReadStatus]);
   const spendableInputAtomic = inputBalanceAtomic === undefined
     ? undefined
     : pair?.inputAsset.id.locator.kind === "native"
@@ -271,6 +301,40 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
     if (!autoFitBuyAmount.current || !selectedDefaultBuyAmount) return;
     setAmount((current) => current === selectedDefaultBuyAmount ? current : selectedDefaultBuyAmount);
   }, [selectedDefaultBuyAmount]);
+
+  useEffect(() => {
+    if (recoveredTradeDraft.current || !selectedMarketAddress) return;
+    recoveredTradeDraft.current = true;
+    let recovered: ReturnType<typeof consumeRmtTradeDraftRecovery>;
+    try {
+      recovered = consumeRmtTradeDraftRecovery(window.sessionStorage, selectedMarketAddress);
+    } catch {
+      return;
+    }
+    if (!recovered) return;
+    skipNextTradeDraftPersistence.current = true;
+    // The route can carry the same initial side request that opened this ticket.
+    // Recovery owns this first committed render, so that mount-time request must
+    // not clear the amount restored immediately above it. A later request has a
+    // new nonce and remains an explicit side change.
+    recoveredSideRequestNonce.current = sideRequest?.nonce ?? null;
+    autoFitBuyAmount.current = false;
+    setSide(recovered.side);
+    setAmount(recovered.amount);
+    if (recovered.buyInputKey) setBuyInputKey(recovered.buyInputKey);
+    if (recovered.sellOutputKey) setSellOutputKey(recovered.sellOutputKey);
+  }, [selectedMarketAddress]);
+
+  useEffect(() => {
+    if (!recoveredTradeDraft.current || !selectedMarketAddress) return;
+    if (skipNextTradeDraftPersistence.current) {
+      skipNextTradeDraftPersistence.current = false;
+      return;
+    }
+    // This is a bounded preference snapshot only. It never carries verified quote,
+    // authorization, signer, or submission authority across an auth/funding remount.
+    preserveTradeDraft();
+  }, [preserveTradeDraft, selectedMarketAddress]);
 
   const draft = useMemo(() => {
     if (!marketAsset) return { intent: null, message: "This preview asset has no verified chain-qualified contract identity." };
@@ -303,6 +367,9 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
   };
   useEffect(() => {
     if (!sideRequest) return;
+    if (recoveredSideRequestNonce.current === sideRequest.nonce) {
+      return;
+    }
     chooseSide(sideRequest.side);
   }, [sideRequest?.nonce]);
   const inputSymbol = pair?.inputAsset.symbol ?? (side === "buy" ? "—" : marketSymbol);
@@ -401,6 +468,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
   }, [quoteState]);
   useEffect(() => {
     if (postExecutionState.state !== "swap_confirmed") return;
+    receiptReturnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const previousOverflow = document.body.style.overflow;
     const handleReceiptKeyboard = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -423,6 +491,11 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
     return () => {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleReceiptKeyboard, true);
+      const requested = receiptReturnFocus.current;
+      window.requestAnimationFrame(() => {
+        const fallback = document.querySelector<HTMLElement>(".rmtMobileTradeSheet button:not([disabled]), .vnReviewButton:not([disabled])");
+        (requested?.isConnected ? requested : fallback)?.focus({ preventScroll: true });
+      });
     };
   }, [postExecutionState.state]);
   const visibleQuote = cachedQuote;
@@ -1096,12 +1169,77 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
     || postExecutionState.state === "refreshing";
   const walletPlanActive = authorizationState.state === "ready" && Boolean(visibleVerification);
   const transactionPending = executionRecord?.state === "submitted";
+  const fundingReason = rmtTradeFundingReason({
+    amountExceedsBalance,
+    authenticated: identity.authenticated,
+    authorizationEnabled,
+    exactWalletSelected: Boolean(address && identity.activeWalletKind !== null),
+    inputBalanceKnown: spendableInputAtomic !== undefined,
+    inputIsNative: pair?.inputAsset.id.locator.kind === "native",
+    nativeGasBalanceKnown: nativeBalance !== undefined,
+    nativeGasMissing: nativeBalance === 0n,
+    stockTokenViewOnly,
+    transactionPending,
+    walletBusy,
+    walletReadReady: walletReadStatus === "ready"
+  });
+  const requestedFundingAsset = !fundingReason || !pair
+    ? undefined
+    : fundingReason === "native-gas" || pair.inputAsset.id.locator.kind === "native"
+      ? { address: getAddress(ROBINHOOD_NATIVE_ASSET_ADDRESS), symbol: "ETH" }
+      : pair.inputAsset.id.locator.kind === "contract"
+        ? { address: getAddress(pair.inputAsset.id.locator.address), symbol: inputSymbol }
+        : undefined;
+  const embeddedWalletRetryRequired = authorizationEnabled
+    && !stockTokenViewOnly
+    && identity.authenticated
+    && identity.activeWalletKind === null
+    && identity.embeddedWalletProvisioning === "failed";
+  useEffect(() => {
+    if (!embeddedWalletRetryRequired) setDraftRecoveryError("");
+  }, [embeddedWalletRetryRequired]);
+  useEffect(() => {
+    if (identity.activeWalletKind !== null) {
+      setWalletChoiceOpen(false);
+      setWalletChoiceError("");
+    }
+  }, [identity.activeWalletKind]);
+  const chooseTradingWallet = async (walletKey: string) => {
+    setWalletChoiceError("");
+    try {
+      await identity.selectTradingWallet(walletKey);
+      setWalletChoiceOpen(false);
+    } catch (error) {
+      setWalletChoiceError(error instanceof Error ? error.message : "RMT could not activate that exact wallet.");
+    }
+  };
   const triggerPrimaryAction = () => {
-    if (!authorizationEnabled || stockTokenViewOnly) return;
     if (!identity.enabled) return;
-    if (!identity.authenticated || !address || identity.activeWalletKind === null) {
+    if (embeddedWalletRetryRequired) {
+      setDraftRecoveryError("");
+      let draftPreserved = identity.embeddedWalletRecovery !== "reload-session";
+      if (!draftPreserved) draftPreserved = preserveTradeDraft();
+      if (!draftPreserved) {
+        setDraftRecoveryError("RMT could not preserve this trade draft for a wallet-session reload. Keep this sheet open and try again.");
+        return;
+      }
+      identity.retryEmbeddedWalletProvisioning();
+      return;
+    }
+    if (!authorizationEnabled || stockTokenViewOnly) return;
+    if (!identity.authenticated) {
+      setDraftRecoveryError("");
+      if (!preserveTradeDraft()) {
+        setDraftRecoveryError("RMT could not preserve this trade draft before sign-in. Keep this sheet open and try again.");
+        return;
+      }
       pendingTradeAfterLogin.current = { marketAddress: selectedMarketAddress, side, wallet: address };
       identity.login();
+      return;
+    }
+    if (!address || identity.activeWalletKind === null) {
+      setWalletChoiceError("");
+      setWalletChoiceOpen(true);
       return;
     }
     void startTrade(true);
@@ -1287,7 +1425,11 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
           <div><dt>Trade type</dt><dd>Exact input</dd></div>
         </dl>
         <p className="vnIntentStatus">{quoteState.state === "error" ? quoteState.message : draft.message}</p>
-        {address && pair ? <p className={`vnBalanceEvidence${amountExceedsBalance ? " isBlocking" : ""}`}>{amountExceedsBalance
+        {address && pair ? <p className={`vnBalanceEvidence${amountExceedsBalance || fundingReason ? " isBlocking" : ""}`}>{fundingReason === "input-balance"
+          ? `Deposit ${inputSymbol} to cover this amount. Your token, side, and amount stay in this ticket.`
+          : fundingReason === "native-gas"
+            ? `Deposit native ETH for Robinhood Chain gas. Your ${inputSymbol} trade draft stays unchanged.`
+          : amountExceedsBalance
           ? `Amount exceeds the confirmed ${inputSymbol} balance. Authorization must remain blocked.`
           : spendableInputAtomic !== undefined
             ? `Confirmed ${inputSymbol} balance is the source for percentage and Max controls.`
@@ -1369,7 +1511,12 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
             </dl>
             {visibleVerification.status === "insufficient_gas" ? <div className="vnGasRecovery" role="status">
               <span><strong>Robinhood ETH is required only for network gas</strong><small>Add it to the exact active wallet, then press Buy or Sell once. RMT will quietly recheck the route, balance, and gas reserve.</small></span>
-              <FundWalletButton directReceive variant="inline" label="Add Robinhood ETH" />
+              <FundWalletButton
+                directReceive
+                variant="inline"
+                label="Add Robinhood ETH"
+                requestedAsset={{ address: ROBINHOOD_NATIVE_ASSET_ADDRESS, symbol: "ETH" }}
+              />
             </div> : null}
             {authorizationState.state === "error" ? <p className="vnAuthorizationError" role="status">{authorizationState.message}</p> : null}
             {authorizationState.state === "ready" ? <div className="vnAuthorizationPlan" role="status">
@@ -1409,6 +1556,17 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
     ))}
   </details>
 )}
+{draftRecoveryError || embeddedWalletRetryRequired ? <p className="vnWalletRecoveryStatus" role="status">
+  {draftRecoveryError || identity.embeddedWalletProvisioningError || "RMT wallet setup paused. Retry without leaving this trade."}
+</p> : null}
+{walletChoiceOpen && identity.authenticated && identity.activeWalletKind === null ? <section className="vnTradeWalletChoice" aria-label="Choose the trading wallet">
+  <div><strong>Choose your trading wallet</strong><span>RMT will quote and submit only from the exact account you choose.</span></div>
+  {identity.tradingWallets.map((wallet) => <button key={wallet.key} type="button" onClick={() => void chooseTradingWallet(wallet.key)}>
+    <span>{wallet.kind === "embedded" ? "RMT wallet" : wallet.name}</span><small>{wallet.address}</small>
+  </button>)}
+  <button type="button" onClick={identity.connectTradingWallet}>Connect existing wallet</button>
+  {walletChoiceError || identity.walletConnectionError ? <p role="status">{walletChoiceError || identity.walletConnectionError}</p> : null}
+</section> : null}
 <footer className="vnTradeActionDock" data-indicative-fresh={indicativeQuoteFresh}>
 {authorizationState.state === "ready" && (visibleVerification || (walletBusy && retainedVerification)) ? <VNextWalletReview
           key={authorizationState.plan.planId}
@@ -1430,14 +1588,32 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
           outputDecimals={pair?.outputAsset.decimals ?? 18}
           selectedWalletKey={identity.activeWalletKey}
           selectedWalletKind={identity.activeWalletKind}
+          selectedSignerAuthority={identity.activeSignerAuthority}
           selectedWalletName={identity.activeWalletName}
+        /> : fundingReason && requestedFundingAsset ? <FundWalletButton
+          variant="trade"
+          label={fundingReason === "native-gas" ? "Deposit ETH for gas" : `Deposit ${inputSymbol}`}
+          requestedAsset={requestedFundingAsset}
         /> : <button
           className="vnReviewButton"
           type="button"
-          disabled={!authorizationEnabled || stockTokenViewOnly || walletBusy || transactionPending || amountExceedsBalance || !identity.enabled || !identity.ready || Boolean(visibleQuote && bestQuote && !verificationQuote) || Boolean(identity.authenticated && address && identity.activeWalletKind !== null && !draft.intent)}
+          disabled={rmtTradePrimaryActionDisabled({
+            amountExceedsBalance,
+            authorizationEnabled,
+            connectedIntentMissing: Boolean(identity.authenticated && address && identity.activeWalletKind !== null && !draft.intent),
+            embeddedWalletRetryRequired,
+            identityEnabled: identity.enabled,
+            identityReady: identity.ready,
+            quoteRequiresVerification: Boolean(visibleQuote && bestQuote && !verificationQuote),
+            stockTokenViewOnly,
+            transactionPending,
+            walletBusy
+          })}
           aria-describedby={stockTokenViewOnly ? "vn-stock-token-execution-policy" : previewOnly ? "vn-preview-execution-policy" : undefined}
           onClick={triggerPrimaryAction}
-        >{stockTokenViewOnly
+        >{embeddedWalletRetryRequired
+          ? "Retry RMT wallet"
+          : stockTokenViewOnly
           ? "View only"
           : previewOnly
             ? "Trading activation pending"
@@ -1445,14 +1621,14 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
             ? "Best route is quote only"
           : transactionPending
             ? "Transaction confirming…"
-            : flowBusy
+           : flowBusy
               ? "Review with fresh quote"
               : !identity.enabled
                 ? "Trading identity unavailable"
-              : !address || identity.activeWalletKind === null
-                ? `${side === "buy" ? "Connect & buy" : "Connect & sell"} ${marketSymbol}`
               : !identity.authenticated
-                ? `${side === "buy" ? "Connect & buy" : "Connect & sell"} ${marketSymbol}`
+                ? "Sign in"
+              : !address || identity.activeWalletKind === null
+                ? identity.tradingWallets.length > 0 ? "Choose trading wallet" : "Wallet options"
                 : quotePhase === "IDENTITY_PENDING" ? "Verifying token..."
                 : quotePhase === "IDENTITY_UNAVAILABLE" ? "Retry token verification"
                 : quoteState.state === "loading" ? "Finding route..."

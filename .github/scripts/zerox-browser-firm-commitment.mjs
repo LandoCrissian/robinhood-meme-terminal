@@ -114,8 +114,12 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
       try {
         await page.goto(`${base}/?market=${usdg}&side=${native ? 'buy' : 'sell'}`, { waitUntil: 'domcontentloaded' });
         await page.getByRole('button', { name: 'I understand', exact: false }).click();
-        await page.getByRole('button', { name: 'Start with live markets', exact: true }).click();
         await page.getByLabel('Exact input amount').waitFor({ timeout: 30000 });
+        assert.equal(
+          await page.getByRole('button', { name: 'Start with live markets', exact: true }).count(),
+          0,
+          'The default terminal flow must not open the optional first-visit guide.'
+        );
         const select = page.getByLabel(native ? 'Pay with asset' : 'Receive asset');
         if (await select.inputValue() !== 'eip155:4663/native') await select.selectOption('eip155:4663/native');
         if (native) {

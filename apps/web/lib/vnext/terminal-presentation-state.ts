@@ -1,4 +1,14 @@
+import type { VNextDetectedWalletAsset } from "./wallet-assets";
+
 export type VNextWalletReadStatus = "idle" | "loading" | "ready" | "stale" | "error";
+
+export type VNextWalletReadSnapshot = {
+  walletAddress: string | null;
+  walletKey: string | null;
+  assets: VNextDetectedWalletAsset[];
+  nativeBalance?: bigint;
+  status: VNextWalletReadStatus;
+};
 
 export function heldCountIsIndeterminate(status: VNextWalletReadStatus) {
   return status === "idle" || status === "loading" || status === "error";

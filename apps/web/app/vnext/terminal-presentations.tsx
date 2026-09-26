@@ -17,7 +17,7 @@ import {
   type VNextSelectedMarketExecutionState
 } from "../../lib/vnext/market-directory";
 import type { VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
-import { heldCountLabel, type VNextWalletReadStatus } from "../../lib/vnext/terminal-presentation-state";
+import { heldCountLabel, type VNextWalletReadSnapshot, type VNextWalletReadStatus } from "../../lib/vnext/terminal-presentation-state";
 import type { VNextUniversalMarketSearchStatus } from "../../lib/vnext/universal-market-search-contract";
 import { SpendBalance } from "./spend-balance";
 import { formatTerminalAge, formatTerminalCompactUsd, formatTerminalPercent, formatTerminalPrice, terminalValuation } from "./terminal-format";
@@ -69,9 +69,7 @@ export type TerminalPresentationProps = {
   walletRequestRecheckPending: boolean;
   portfolioRevealRequest: number;
   tradeSideRequest?: TradeSideRequest;
-  onAssetsChange: (assets: VNextDetectedWalletAsset[]) => void;
-  onNativeBalanceChange: (balance: bigint | undefined) => void;
-  onWalletReadStatusChange: (status: VNextWalletReadStatus) => void;
+  onWalletSnapshotChange: (snapshot: VNextWalletReadSnapshot) => void;
   onSelectMarket: (address: string) => void;
   onSearchSubmit: () => void;
   onRefresh: () => void;
@@ -287,9 +285,7 @@ function PortfolioController({ visible, ...props }: TerminalPresentationProps & 
     <SpendBalance
       visible={visible}
       markets={props.markets}
-      onAssetsChange={props.onAssetsChange}
-      onNativeBalanceChange={props.onNativeBalanceChange}
-      onWalletReadStatusChange={props.onWalletReadStatusChange}
+      onWalletSnapshotChange={props.onWalletSnapshotChange}
       onSelectAsset={props.onSelectMarket}
       executionRecord={props.executionRecord}
       portfolioRevealRequest={props.portfolioRevealRequest}
@@ -472,6 +468,7 @@ export function MobileTerminal(props: TerminalPresentationProps) {
     const frame = window.requestAnimationFrame(() => focusableElements(sheet.current ?? document.body)[0]?.focus());
     const handleKey = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") {
+        if (document.querySelector("[data-rmt-overlay-dialog]")) return;
         event.preventDefault();
         closeSheet();
         return;

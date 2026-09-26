@@ -66,6 +66,10 @@ const MAX_RECORDS = 20;
 const RECOVERABLE_AGE_MS = 24 * 60 * 60 * 1_000;
 const HISTORY_AGE_MS = 7 * 24 * 60 * 60 * 1_000;
 const ACTIVE_PROVIDER_REQUESTS = new Set<string>();
+
+export function recoveryValueForWallet<T extends { wallet: string }>(value: T | null, wallet?: string | null) {
+  return value && wallet && value.wallet.toLowerCase() === wallet.toLowerCase() ? value : null;
+}
 const NATIVE_OUTPUT_ROUTERS = new Set([
   getAddress(ROBINHOOD_SWAP_ROUTER_02),
   getAddress(UP_V2_EXECUTION_ROUTER),

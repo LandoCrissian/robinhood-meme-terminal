@@ -576,23 +576,26 @@ export function VNextAssetWorkspace({
     <div className="vnAssetPrice"><strong>{formatUsd(directoryMarket.priceUsd)}</strong><span className={directoryMarket.priceChange24h !== null && directoryMarket.priceChange24h > 0 ? "vnPositive" : directoryMarket.priceChange24h !== null && directoryMarket.priceChange24h < 0 ? "vnNegative" : ""}>{directoryMarket.priceChange24h === null ? "Unavailable" : `${directoryMarket.priceChange24h > 0 ? "+" : ""}${directoryMarket.priceChange24h.toFixed(1)}%`} <small>24h</small></span></div>
     <dl className="vnAssetStats"><div><dt>{valuation.label}</dt><dd>{compactUsd(valuation.value)}</dd></div><div><dt>Liquidity</dt><dd>{compactUsd(directoryMarket.liquidityUsd)}</dd></div><div><dt>24h volume</dt><dd>{compactUsd(directoryMarket.volume24h)}</dd></div><div><dt>Market age</dt><dd>{formatAge(directoryMarket.ageMinutes)}</dd></div></dl>
 
-    <dl className="vnAssetIdentityFacts" aria-label="Selected market identity">
-      <div><dt>Chain</dt><dd>Robinhood Chain · 4663</dd></div>
-      <div><dt>Market evidence</dt><dd>{selectedCanonicalMarket ? `${canonicalVenueLabel(selectedCanonicalMarket)} · canonical` : market?.dexId ? `${market.dexId} · provider observed` : "Unavailable"}</dd></div>
-      <div><dt>Project origin</dt><dd>{originState}</dd></div>
-      <div><dt>RWA relationship</dt><dd>{canonicalStockRelationship ? "Canonical stock token" : workspace.stockAssetRelationships.some((relationship) => relationship.relationship === "paired-market-asset") || directoryMarket.rwaRelationship === "paired-market-asset" ? "RWA-paired market" : "Not reported"}</dd></div>
-    </dl>
-    <WorkspaceQuickLinks
-      directoryMarket={directoryMarket}
-      market={market}
-      canonicalPool={selectedCanonicalMarket?.poolAddress ?? undefined}
-      observedPool={observedChartPool}
-      canonicalMarket={selectedCanonicalMarket}
-    />
-
     {selectedChartIdentity
       ? <VNextMarketChart token={directoryMarket.address} pair={selectedChartIdentity} symbol={directoryMarket.symbol} referencePriceUsd={directoryMarket.priceUsd} />
       : <div className="vnChart vnChartEmpty"><strong>Chart coverage unavailable</strong><span>No supported canonical-market OHLCV source is attached. RMT will not render invented price history.</span></div>}
+
+    <details className="vnAssetTechnicalDetails">
+      <summary>Market details <span>Contract, chain and evidence</span></summary>
+      <dl className="vnAssetIdentityFacts" aria-label="Selected market identity">
+        <div><dt>Chain</dt><dd>Robinhood Chain · 4663</dd></div>
+        <div><dt>Market evidence</dt><dd>{selectedCanonicalMarket ? `${canonicalVenueLabel(selectedCanonicalMarket)} · canonical` : market?.dexId ? `${market.dexId} · provider observed` : "Unavailable"}</dd></div>
+        <div><dt>Project origin</dt><dd>{originState}</dd></div>
+        <div><dt>RWA relationship</dt><dd>{canonicalStockRelationship ? "Canonical stock token" : workspace.stockAssetRelationships.some((relationship) => relationship.relationship === "paired-market-asset") || directoryMarket.rwaRelationship === "paired-market-asset" ? "RWA-paired market" : "Not reported"}</dd></div>
+      </dl>
+      <WorkspaceQuickLinks
+        directoryMarket={directoryMarket}
+        market={market}
+        canonicalPool={selectedCanonicalMarket?.poolAddress ?? undefined}
+        observedPool={observedChartPool}
+        canonicalMarket={selectedCanonicalMarket}
+      />
+    </details>
 
     <div className="rmtWorkspaceTabs" role="tablist" aria-label="Asset intelligence">
       {sections.map((item) => <button key={item.id} type="button" role="tab" aria-selected={activeSection === item.id} className={activeSection === item.id ? "isActive" : ""} onClick={() => setSection(item.id)}>{item.label}</button>)}

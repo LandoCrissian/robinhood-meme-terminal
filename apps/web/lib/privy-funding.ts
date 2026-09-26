@@ -11,6 +11,11 @@ export type PrivyFundingConfig = {
   environment: PrivyFundingEnvironment;
 };
 
+export type RmtRequestedFundingAsset = {
+  address: `0x${string}`;
+  symbol: string;
+};
+
 export type PrivyFundingPublicEnv = {
   appId?: string;
   enabled?: string;
@@ -24,10 +29,17 @@ export type PrivyFundingPublicEnv = {
 const TOKEN_ADDRESS = /^0x[0-9a-f]{40}$/i;
 const NATIVE_ASSET = "0x0000000000000000000000000000000000000000";
 
+export function privyFundingMatchesRequestedAsset(
+  config: Pick<PrivyFundingConfig, "asset">,
+  requested?: RmtRequestedFundingAsset
+) {
+  return !requested || config.asset.toLowerCase() === requested.address.toLowerCase();
+}
+
 export function parsePrivyFundingConfig(env: PrivyFundingPublicEnv): PrivyFundingConfig {
   const chainId = Number(env.chainId ?? "4663");
-  if (!Number.isSafeInteger(chainId) || chainId <= 0) {
-    throw new Error("Privy funding requires a positive EVM chain ID.");
+  if (chainId !== 4_663) {
+    throw new Error("Privy funding is available only for Robinhood Chain 4663.");
   }
 
   const asset = (env.asset ?? NATIVE_ASSET).trim();

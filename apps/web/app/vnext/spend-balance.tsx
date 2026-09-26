@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { erc20Abi, formatUnits, getAddress, isAddress, zeroAddress, type Address } from "viem";
 import { useAccount, usePublicClient } from "wagmi";
 import type { ExternalMarketResponse } from "../../lib/external-market";
@@ -28,6 +28,9 @@ import { WalletTransferDialog } from "../wallet-transfer-dialog";
 import { TokenArtwork } from "./token-artwork";
 import { VNEXT_CLIENT_REFRESH_POLICY } from "../../lib/vnext/client-refresh-policy";
 import { useVisibilityRefresh } from "./use-visibility-refresh";
+import { useRmtIdentity } from "../rmt-identity";
+import { selectedVNextWalletReadAddress } from "../../lib/vnext/selected-wallet-read-authority";
+import type { VNextWalletReadSnapshot } from "../../lib/vnext/terminal-presentation-state";
 
 const SETTLEMENT_BALANCE_REFRESH_DELAYS_MS = [0, 900, 2_500] as const;
 
@@ -60,17 +63,16 @@ function stateLabel(asset: VNextDetectedWalletAsset, marketFound: boolean) {
   return asset.identityState === "verified" ? "Detected · route not checked" : "Detected · identity reported";
 }
 
-export function SpendBalance({ visible = true, markets, onAssetsChange, onNativeBalanceChange, onWalletReadStatusChange, onSelectAsset, executionRecord, portfolioRevealRequest = 0 }: {
+export function SpendBalance({ visible = true, markets, onWalletSnapshotChange, onSelectAsset, executionRecord, portfolioRevealRequest = 0 }: {
   visible?: boolean;
   markets: VNextDirectoryMarket[];
-  onAssetsChange?: (assets: VNextDetectedWalletAsset[]) => void;
-  onNativeBalanceChange?: (balance: bigint | undefined) => void;
-  onWalletReadStatusChange?: (status: "idle" | "loading" | "ready" | "stale" | "error") => void;
+  onWalletSnapshotChange?: (snapshot: VNextWalletReadSnapshot) => void;
   onSelectAsset?: (address: string) => void;
   executionRecord?: VNextExecutionRecord | null;
   portfolioRevealRequest?: number;
 }) {
-  const { address, chainId, isConnected } = useAccount();
+  const identity = useRmtIdentity();
+  const { address, chainId, connector, isConnected } = useAccount();
   const publicClient = usePublicClient({ chainId: ROBINHOOD_MAINNET_CHAIN_ID });
   const [importAddress, setImportAddress] = useState("");
   const [imported, setImported] = useState<VNextWalletAssetCandidate[]>([]);
@@ -80,9 +82,19 @@ export function SpendBalance({ visible = true, markets, onAssetsChange, onNative
   const [showAllAssets, setShowAllAssets] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [ethUsd, setEthUsd] = useState<number>();
-  const wallet = address;
   const onRobinhood = chainId === ROBINHOOD_MAINNET_CHAIN_ID;
-  const { assets, nativeBalance, status, discoveryStatus, observedAtMs, enabled, refresh } = useVNextWalletAssets(markets, imported);
+  const wallet = selectedVNextWalletReadAddress({
+    selectedWalletKey: identity.activeWalletKey,
+    selectedWalletKind: identity.activeWalletKind,
+    selectedSignerAuthority: identity.activeSignerAuthority,
+    connectedAddress: address,
+    connectedChainId: chainId,
+    connectorId: connector?.id,
+    connectorType: connector?.type,
+    connectorUid: connector?.uid,
+    requiredChainId: ROBINHOOD_MAINNET_CHAIN_ID
+  });
+  const { assets, nativeBalance, status, discoveryStatus, observedAtMs, enabled, refresh } = useVNextWalletAssets(markets, imported, wallet);
   const usdg = assets.find((asset) => asset.address.toLowerCase() === ROBINHOOD_USDG_ADDRESS.toLowerCase());
   const confirmedUsdg = usdg ? BigInt(usdg.balanceAtomic) : status === "ready" ? 0n : undefined;
   const assetCountReady = status === "ready" || status === "stale";
@@ -109,10 +121,16 @@ export function SpendBalance({ visible = true, markets, onAssetsChange, onNative
       + (ethUsd ? Number(formatUnits(nativeSpendable, ROBINHOOD_ETH.decimals ?? 18)) * ethUsd : 0);
   const tradeBalanceFullyPriced = nativeSpendable === 0n || ethUsd !== undefined;
   const visibleAssets = showAllAssets ? assets : assets.slice(0, 12);
+  const transferAuthorityReady = Boolean(wallet);
+  const closeTransfer = useCallback(() => setTransferOpen(false), []);
 
-  useEffect(() => onAssetsChange?.(assets), [assets, onAssetsChange]);
-  useEffect(() => onNativeBalanceChange?.(nativeBalance), [nativeBalance, onNativeBalanceChange]);
-  useEffect(() => onWalletReadStatusChange?.(status), [onWalletReadStatusChange, status]);
+  useEffect(() => onWalletSnapshotChange?.({
+    assets,
+    nativeBalance,
+    status,
+    walletAddress: wallet ?? null,
+    walletKey: wallet ? identity.activeWalletKey : null
+  }), [assets, identity.activeWalletKey, nativeBalance, onWalletSnapshotChange, status, wallet]);
   useEffect(() => {
     if (portfolioRevealRequest > 0) setHoldingsExpanded(true);
   }, [portfolioRevealRequest]);
@@ -202,7 +220,7 @@ export function SpendBalance({ visible = true, markets, onAssetsChange, onNative
       <div className="vnBalancePrimary">
         <span id="vn-balance-heading">Portfolio</span>
         <strong>{enabled && assetCountReady && portfolio.hasKnownValue ? portfolioDollars(portfolio.knownPortfolioUsd) : "—"}</strong>
-        <small><i aria-hidden="true" />{!isConnected ? "Connect a wallet" : !onRobinhood ? "Switch to Robinhood Chain" : delayed && assetCountReady ? "Indexer delayed · onchain balances confirmed" : delayed ? "Wallet read delayed" : status === "loading" ? "Reading wallet" : `${shortAddress(wallet!)} · Robinhood Chain`}</small>
+        <small><i aria-hidden="true" />{!isConnected ? "Connect a wallet" : !onRobinhood ? "Switch to Robinhood Chain" : !wallet ? "Select or reconnect the exact trading wallet" : delayed && assetCountReady ? "Indexer delayed · onchain balances confirmed" : delayed ? "Wallet read delayed" : status === "loading" ? "Reading wallet" : `${shortAddress(wallet)} · Robinhood Chain`}</small>
       </div>
       <div className="vnBalanceMetric">
         <span>Trade balance</span>
@@ -217,7 +235,14 @@ export function SpendBalance({ visible = true, markets, onAssetsChange, onNative
       <div className="vnBalanceActions">
         <FundWalletButton variant="inline" label="Add funds" target="mainnet" />
         {wallet ? <FundWalletButton variant="inline" label="Receive" target="mainnet" directReceive /> : null}
-        {wallet ? <button className="vnBalanceSend" type="button" onClick={() => setTransferOpen(true)} disabled={!onRobinhood || nativeBalance === undefined || nativeBalance <= 0n}>Send ETH</button> : null}
+        {wallet ? <button
+          className="vnBalanceSend"
+          type="button"
+          aria-describedby={!transferAuthorityReady ? "vn-send-wallet-blocker" : undefined}
+          onClick={() => setTransferOpen(true)}
+          disabled={!transferAuthorityReady || !onRobinhood || nativeBalance === undefined || nativeBalance <= 0n}
+        >Send ETH</button> : null}
+        {wallet && !transferAuthorityReady ? <small id="vn-send-wallet-blocker">Reconnect the selected signer to send.</small> : null}
       </div>
 
       {enabled && <div className={`vnDetectedAssets isExpanded${holdingsExpanded ? " hasDetails" : ""}`} aria-live="polite">
@@ -290,7 +315,17 @@ export function SpendBalance({ visible = true, markets, onAssetsChange, onNative
           {assets.length > 12 ? <button className="vnDetectedAssetsMore" type="button" onClick={() => setShowAllAssets((shown) => !shown)}>{showAllAssets ? "Show fewer assets" : `Show all ${assets.length} assets`}</button> : null}
         </div>
       </div>}
-      {wallet ? <WalletTransferDialog address={wallet as Address} open={transferOpen} target="mainnet" onClose={() => setTransferOpen(false)} /> : null}
+      {wallet && identity.activeWalletKey && identity.activeWalletKind && identity.activeSignerAuthority
+        ? <WalletTransferDialog
+            address={wallet as Address}
+            open={transferOpen}
+            target="mainnet"
+            selectedWalletKey={identity.activeWalletKey}
+            selectedWalletKind={identity.activeWalletKind}
+            selectedSignerAuthority={identity.activeSignerAuthority}
+            onClose={closeTransfer}
+          />
+        : null}
     </section>
   );
 }

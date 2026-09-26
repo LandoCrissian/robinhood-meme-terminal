@@ -3958,6 +3958,111 @@ body .rmtTerminal button {
   min-height: 300px;
 }
 
+.vnWalletRecoveryStatus {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 10px 24px 0;
+  background: #0d1712;
+  color: #f0b8b3;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.vnTradeWalletChoice {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 8px;
+  margin: 0 18px 10px;
+  padding: 12px;
+  border: 1px solid #31513a;
+  border-radius: 10px;
+  background: #0d1712;
+}
+
+.vnTradeWalletChoice > div,
+.vnTradeWalletChoice > button {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+}
+
+.vnTradeWalletChoice > div span,
+.vnTradeWalletChoice > button small,
+.vnTradeWalletChoice > p {
+  overflow-wrap: anywhere;
+  color: var(--rmt-text-muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.vnTradeWalletChoice > button {
+  width: 100%;
+  min-height: 44px;
+  justify-content: center;
+  padding: 8px 10px;
+  border: 1px solid var(--rmt-border);
+  border-radius: 8px;
+  background: #101b14;
+  color: var(--rmt-text);
+  cursor: pointer;
+}
+
+.vnTradeWalletChoice > button:focus-visible,
+.vnTradeWalletChoice > button:hover {
+  border-color: var(--rmt-accent);
+}
+
+.vnTradeWalletChoice > p {
+  margin: 0;
+  color: #f0b8b3;
+}
+
+.vnAssetTechnicalDetails {
+  margin-top: 10px;
+  border: 1px solid var(--rmt-border);
+  border-radius: 6px;
+  background: var(--rmt-surface);
+}
+
+.vnAssetTechnicalDetails > summary {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px;
+  color: var(--rmt-text-soft);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  list-style: none;
+}
+
+.vnAssetTechnicalDetails > summary span {
+  color: var(--rmt-text-muted);
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.vnAssetTechnicalDetails > summary::after {
+  content: "+";
+}
+
+.vnAssetTechnicalDetails[open] > summary::after {
+  content: "−";
+}
+
+.vnAssetTechnicalDetails[open] > summary {
+  border-bottom: 1px solid var(--rmt-border);
+}
+
+.vnAssetTechnicalDetails .vnAssetIdentityFacts,
+.vnAssetTechnicalDetails .vnAssetQuickLinks {
+  margin: 10px;
+}
+
 .rmtWorkspaceTabs {
   display: flex;
   min-width: 0;
@@ -4097,7 +4202,7 @@ body .rmtTerminal button {
 .rmtMobileHeader .wallet,
 .rmtMobileHeader .connectTrigger,
 .rmtMobileHeader .network {
-  min-height: 38px;
+  min-height: 44px;
   border-radius: 6px;
 }
 
@@ -6016,6 +6121,18 @@ body .rmtTerminal button {
 .vnTradeActionDock .vnWalletSubmission { margin: 0; padding: 0; border: 0; }
 .vnTradeActionDock [aria-label="Injected signer selection"] { max-height: 128px; overflow-y: auto; margin-bottom: 10px; font-size: 12px; }
 .vnTradeActionDock .vnReviewButton { width: 100%; margin: 0; min-height: 48px; }
+.vnTradeActionDock > .fundWalletMenu.trade,
+.vnTradeActionDock > .fundWalletMenu.trade .fundWalletTrigger { width: 100%; }
+.vnTradeActionDock > .fundWalletMenu.trade .fundWalletTrigger {
+  min-height: 48px;
+  margin: 0;
+  border: 1px solid rgba(130, 242, 143, 0.24);
+  border-radius: 6px;
+  background: linear-gradient(135deg, #a8ff9d, #70de7d);
+  color: #071008;
+  font-size: 13px;
+  font-weight: 900;
+}
 .vnTradeActionDock .vnWalletSubmission > p { max-height: 64px; overflow-y: auto; margin-bottom: 0; }
 .vnTradePriceSummary { display: grid; gap: 8px; font-size: 12px; }
 .vnTradePriceSummary > div { display: flex; justify-content: space-between; gap: 12px; }
@@ -6029,5 +6146,6 @@ body .rmtTerminal button {
  .rmtMobileTradeSheetScroll { display: flex; overflow: hidden; padding-bottom: 0; }
  .rmtMobileTradeSheet .vnTradePanel { flex: 1; position: static; min-height: 0; max-height: none; padding: 0; }
  .rmtMobileTradeSheet .vnTradeScroll { flex: 1 1 auto; padding: 14px; }
+ .rmtMobileTradeSheet .vnWalletRecoveryStatus { padding: 9px 14px 0; }
  .rmtMobileTradeSheet .vnTradeActionDock { padding: 10px 14px max(12px, env(safe-area-inset-bottom)); }
 }

@@ -14,6 +14,11 @@ function isGuidedSurface(pathname: string) {
   return pathname === "/" || pathname.startsWith("/market/");
 }
 
+function guideRequested() {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("guide") === "1";
+}
+
 export function FirstVisitGuide() {
   const pathname = usePathname();
   const terms = useTradingTermsAcceptance();
@@ -28,12 +33,9 @@ export function FirstVisitGuide() {
     const preferences = readExperiencePreferences();
     diagnostics.current = preferences.diagnosticsEnabled;
     setDiagnosticsEnabled(preferences.diagnosticsEnabled);
-    setOpen(
-      terms.ready
-      && terms.accepted
-      && isGuidedSurface(pathname)
-      && preferences.onboardingVersion < EXPERIENCE_ONBOARDING_VERSION
-    );
+    // The orientation remains available from Experience & Privacy, but it no
+    // longer interrupts a user's first trip to the public terminal.
+    setOpen(terms.ready && terms.accepted && isGuidedSurface(pathname) && guideRequested());
     setReady(true);
   }, [pathname, terms.accepted, terms.ready]);
 
@@ -81,6 +83,9 @@ export function FirstVisitGuide() {
       diagnosticsEnabled: diagnostics.current
     });
     setOpen(false);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("guide");
+    window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
     if (pathname === "/") {
       window.requestAnimationFrame(() => document.querySelector("#vn-markets-heading")?.scrollIntoView({
         behavior: "smooth",

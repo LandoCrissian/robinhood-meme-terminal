@@ -10,7 +10,7 @@ export function WalletConnectionPanel({ connection, wallets, retry, chooseAnothe
   cancel: () => void;
   select: (key: string) => void;
 }) {
-  return <section className="walletMenu" aria-label="Wallet connection">
+  return <section className="walletConnectionPanel" aria-label="Wallet connection">
     <p role="status" aria-live="polite">{connection.state === "CONNECTING"
       ? "Connect in your wallet, then choose the exact wallet below."
       : connection.state === "SLOW"
