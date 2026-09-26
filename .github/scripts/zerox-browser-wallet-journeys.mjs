@@ -309,8 +309,12 @@ export async function runZeroXWalletJourneys(options) {
         const sell = scenario.startsWith('sell-approval') || ['native-sell', 'mobile-walletconnect-sell', 'expired-quote-sell', 'refresh-click-sell'].includes(scenario);
         await page.goto(`${base}/?market=${token}&side=${sell ? 'sell' : 'buy'}`, { waitUntil: 'domcontentloaded' });
         await page.getByRole('button', { name: 'I understand', exact: false }).click();
-        await page.getByRole('button', { name: 'Start with live markets', exact: true }).click();
         await page.getByLabel('Exact input amount').waitFor();
+        assert.equal(
+          await page.getByRole('button', { name: 'Start with live markets', exact: true }).count(),
+          0,
+          'The default terminal flow must not open the optional first-visit guide.'
+        );
         if (scenario === 'native') await page.getByLabel('Pay with asset').selectOption('eip155:4663/native');
         if (sell && !scenario.startsWith('sell-approval')) await page.locator('.vnTradePanel select').first().selectOption('eip155:4663/native');
         await page.getByLabel('Exact input amount').fill(scenario === 'native' ? '0.0005' : '25');

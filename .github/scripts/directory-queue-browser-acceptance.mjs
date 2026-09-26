@@ -31,10 +31,13 @@ export async function runDirectoryQueueBrowserAcceptance(browser, base, complete
       const enter = page.getByRole("button", { name: /I understand/ });
       await enter.waitFor({ state: "visible", timeout: 20000 });
       await enter.click();
-      const start = page.getByRole("button", { name: "Start with live markets", exact: true });
-      await start.waitFor({ state: "visible", timeout: 20000 });
-      await start.click();
       const all = page.getByRole("button", { name: /^All/ }).first();
+      await all.waitFor({ state: "visible", timeout: 20000 });
+      assert.equal(
+        await page.getByRole("button", { name: "Start with live markets", exact: true }).count(),
+        0,
+        "The default terminal flow must not open the optional first-visit guide."
+      );
       const until = async (condition, message) => {
         for (let i = 0; i < 100; i++) { if (await condition()) return; await delay(100); }
         assert.fail(message);

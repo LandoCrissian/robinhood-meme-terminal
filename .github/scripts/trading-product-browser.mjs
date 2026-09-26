@@ -34,8 +34,12 @@ export async function runTradingProductBrowser({ browser, base, identity, extern
     });
     await page.goto(`${base}/?market=${token}&side=buy`, {waitUntil:'domcontentloaded'});
     await page.getByRole('button',{name:'I understand',exact:false}).click();
-    await page.getByRole('button',{name:'Start with live markets',exact:true}).click();
     await page.getByLabel('Exact input amount').waitFor({timeout:30000});
+    assert.equal(
+      await page.getByRole('button',{name:'Start with live markets',exact:true}).count(),
+      0,
+      'The default terminal flow must not open the optional first-visit guide.'
+    );
     if(process.env.RMT_PRODUCT_NAV_ONLY !== 'true') {
     await page.waitForResponse(r=>r.url().endsWith('/api/vnext/authorize')&&r.status()===200,{timeout:30000});
     const amountInput=page.getByLabel('Exact input amount');

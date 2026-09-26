@@ -381,7 +381,7 @@ const receipt = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx"
 const feeReceipt = readFileSync(new URL("./confirmed-fee-receipt.ts", import.meta.url), "utf8");
 const walletReview = readFileSync(new URL("../../app/vnext/vnext-wallet-review.tsx", import.meta.url), "utf8");
 assert.match(hook, /settledVNextFeeExecutionV2/);
-assert.match(hook, /record\.feeV2Settlement && !feeV2Settlement/);
+assert.match(hook, /activeRecord\.feeV2Settlement && !feeV2Settlement/);
 assert.match(receipt, /confirmedVNextFeePresentation/);
 assert.match(feeReceipt, /feeV2Settlement\.actualRmtFeeAtomic/);
 assert.match(receipt, /vNextProviderLabel/);

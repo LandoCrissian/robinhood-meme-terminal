@@ -6,6 +6,7 @@ import {
   normalizeVNextExecutionJournal,
   readVNextExecutionJournal,
   readVNextWalletRequestJournal,
+  recoveryValueForWallet,
   recordPreparedVNextWalletRequest,
   recordSubmittedVNextExecution,
   resolveVNextExecution,
@@ -27,6 +28,11 @@ const wallet = "0x1111111111111111111111111111111111111111";
 const inputAsset = "0x2222222222222222222222222222222222222222";
 const outputAsset = "0x3333333333333333333333333333333333333333";
 const now = 1_786_000_000_000;
+assert.equal(recoveryValueForWallet({ wallet, value: "A" }, wallet)?.value, "A");
+assert.equal(recoveryValueForWallet({ wallet, value: "A" }, "0x9999999999999999999999999999999999999999"), null,
+  "A prior account's recovery state must disappear synchronously on account switch.");
+assert.equal(recoveryValueForWallet({ wallet, value: "A" }, null), null,
+  "No exact active account means no visible recovery evidence.");
 const plan = {
   planId: "11111111-1111-4111-8111-111111111111",
   kind: "swap", recipient: wallet, inputAsset, outputAsset, inputAmountAtomic: "1000000",
@@ -305,15 +311,23 @@ const hook = readFileSync(new URL("../../app/vnext/use-vnext-execution-recovery.
 const banner = readFileSync(new URL("../../app/vnext/vnext-execution-recovery-banner.tsx", import.meta.url), "utf8");
 const walletReview = readFileSync(new URL("../../app/vnext/vnext-wallet-review.tsx", import.meta.url), "utf8");
 const spendBalance = readFileSync(new URL("../../app/vnext/spend-balance.tsx", import.meta.url), "utf8");
-assert.match(hook, /publicClient\.waitForTransactionReceipt\(\{ hash: record\.txHash, confirmations, timeout: 60_000 \}\)/,
+assert.match(hook, /publicClient\.waitForTransactionReceipt\(\{ hash: visibleRecord\.txHash, confirmations, timeout: 60_000 \}\)/,
   "use the canonical Viem receipt without Wagmi converting a mined revert into an unknown error");
 assert.match(hook, /receipt\.data\.status === "success" \? "confirmed" : "reverted"/);
-assert.match(hook, /!hasVerifiedVNextSwapSettlement\(record\)/, "unsettled confirmed output remains eligible for reconciliation");
+assert.match(hook, /!hasVerifiedVNextSwapSettlement\(visibleRecord\)/, "unsettled confirmed output remains eligible for reconciliation");
 assert.match(hook, /resolveVNextExecution/);
 assert.match(hook, /settledVNextOutputAtomic/);
-assert.match(hook, /record\.kind === "swap" && record\.feeSettlement/);
-assert.match(hook, /receipt\.data\.transactionHash\.toLowerCase\(\) !== record\.txHash\.toLowerCase\(\)/);
+assert.match(hook, /activeRecord\.kind === "swap" && activeRecord\.feeSettlement/);
+assert.match(hook, /receipt\.data\.transactionHash\.toLowerCase\(\) !== visibleRecord\.txHash\.toLowerCase\(\)/);
 assert.match(hook, /VNEXT_EXECUTION_STORAGE_KEY/);
+assert.match(hook, /const visibleRecord = recoveryValueForWallet\(record, recoveryWallet\)/);
+assert.match(hook, /const visibleWalletRequest = recoveryValueForWallet\(walletRequest, recoveryWallet\)/);
+assert.match(hook, /attempt\.generation === recoveryContext\.current\.generation/,
+  "Async wallet-request and settlement work must not publish after an A-to-B-to-A recovery generation change.");
+assert.match(hook, /return \{ record: visibleRecord, walletRequest: visibleWalletRequest/,
+  "The hook may return only recovery state scoped to the exact current signer account.");
+assert.doesNotMatch(hook, /return \{ record, walletRequest, status/,
+  "Raw unkeyed recovery state must never escape to account UI.");
 assert.match(banner, /Do not resubmit/);
 assert.match(walletReview, /findUnresolvedVNextExecution/);
 assert.match(walletReview, /recordPreparedVNextWalletRequest/);

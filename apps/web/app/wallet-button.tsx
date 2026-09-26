@@ -9,6 +9,7 @@ import { FundWalletButton } from "./fund-wallet-button";
 import { recordExperienceStage } from "../lib/experience-funnel";
 import { metaMaskDappLink } from "../lib/mobile-wallet-link";
 import { speedWalletEnabled } from "../lib/privy-config";
+import { accountFirstBrowserAcceptanceBuild } from "../lib/account-first-browser-acceptance";
 import { OverlayPortal } from "./overlay-portal";
 
 const PrivyWalletButton = dynamic(
@@ -161,6 +162,6 @@ export function WalletButton(props: {
   showFunding?: boolean;
   compact?: boolean;
 }) {
-  if (speedWalletEnabled) return <PrivyWalletButton {...props} />;
+  if (speedWalletEnabled || accountFirstBrowserAcceptanceBuild) return <PrivyWalletButton {...props} />;
   return <LegacyWalletButton {...props} />;
 }

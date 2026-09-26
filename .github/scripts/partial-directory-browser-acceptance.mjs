@@ -62,9 +62,13 @@ try {
     await page.goto(`http://127.0.0.1:${port}`, { waitUntil: "domcontentloaded" });
     const enter = page.getByRole("button", { name: /I understand/ });
     if (await enter.isVisible()) await enter.click();
-    const start = page.getByRole("button", { name: "Start with live markets", exact: true });
-    if (await start.isVisible()) await start.click();
     const all = page.getByRole("button", { name: /^All/ }).first();
+    await all.waitFor({ state: "visible", timeout: 20000 });
+    assert.equal(
+      await page.getByRole("button", { name: "Start with live markets", exact: true }).count(),
+      0,
+      "The default terminal flow must not open the optional first-visit guide."
+    );
     const count = async expected => {
       for (let i = 0; i < 100; i++) {
         if ((await all.innerText().catch(() => "")).replace(/\s/g, "") === `All${expected}`) return;

@@ -920,8 +920,23 @@ function visibleAudit() {
   };
 }
 
+async function openAssetTechnicalDetails(page, label, { requireInitiallyCollapsed = false } = {}) {
+  const technicalDetails = page.locator(".vnAssetTechnicalDetails:visible").first();
+  await technicalDetails.waitFor({ state: "visible" });
+  const initiallyOpen = await technicalDetails.getAttribute("open") !== null;
+  if (requireInitiallyCollapsed && initiallyOpen) {
+    throw new Error(`${label}: market technical details did not start collapsed`);
+  }
+  if (!initiallyOpen) await technicalDetails.locator(":scope > summary").click();
+  if (await technicalDetails.getAttribute("open") === null) {
+    throw new Error(`${label}: market technical details did not expose its expanded state`);
+  }
+  return technicalDetails;
+}
+
 async function inspectAssetQuickLinks(page, label) {
-  const links = page.locator(".vnAssetQuickLinks");
+  const technicalDetails = await openAssetTechnicalDetails(page, label, { requireInitiallyCollapsed: true });
+  const links = technicalDetails.locator(".vnAssetQuickLinks");
   await links.waitFor({ state: "visible" });
   const disclosure = links.locator(".vnMoreLinksButton");
   await disclosure.waitFor({ state: "visible", timeout: 5_000 });
@@ -1678,14 +1693,16 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
     await search.fill("PEEP");
     await search.press("Enter");
     await page.waitForFunction((tokenAddress) => new URL(location.href).searchParams.get("market")?.toLowerCase() === tokenAddress, peepToken);
-    await page.getByText("Uniswap V2", { exact: false }).first().waitFor({ state: "visible" });
+    const peepDetailsByName = await openAssetTechnicalDetails(page, `${label}-peep-name`);
+    await peepDetailsByName.getByText("Uniswap V2", { exact: false }).first().waitFor({ state: "visible" });
     const peepVisibleBeforeEnrichment = !enrichmentResolved;
     await page.getByRole("button", { name: "Markets", exact: true }).click();
     await page.waitForFunction(() => !new URL(location.href).searchParams.has("market"));
     await search.fill(peepToken);
     await search.press("Enter");
     await page.waitForFunction((tokenAddress) => new URL(location.href).searchParams.get("market")?.toLowerCase() === tokenAddress, peepToken);
-    await page.getByText("Uniswap V2", { exact: false }).first().waitFor({ state: "visible" });
+    const peepDetailsByContract = await openAssetTechnicalDetails(page, `${label}-peep-contract`);
+    await peepDetailsByContract.getByText("Uniswap V2", { exact: false }).first().waitFor({ state: "visible" });
     peepEvidence = {
       textSearch: true,
       exactSearch: true,
@@ -1699,7 +1716,8 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
     await search.fill("HOPIUM");
     await search.press("Enter");
     await page.waitForFunction((tokenAddress) => new URL(location.href).searchParams.get("market")?.toLowerCase() === tokenAddress, hopiumToken);
-    await page.getByText("Uniswap V4", { exact: false }).first().waitFor({ state: "visible" });
+    const hopiumDetails = await openAssetTechnicalDetails(page, `${label}-hopium-name`);
+    await hopiumDetails.getByText("Uniswap V4", { exact: false }).first().waitFor({ state: "visible" });
     hopiumEvidence = {
       textSearch: true,
       selectable: new URL(page.url()).searchParams.get("market")?.toLowerCase() === hopiumToken,

@@ -150,14 +150,17 @@ assert.match(component, /void refreshBalances\.current\(false\)/);
 assert.match(component, /Indexer finds assets; onchain reads confirm balances/);
 assert.match(component, /route not checked/);
 assert.match(component, /useVNextWalletAssets/);
-assert.match(component, /onNativeBalanceChange\?\.\(nativeBalance\)/);
-assert.match(component, /onWalletReadStatusChange\?\.\(status\)/);
+assert.match(component, /onWalletSnapshotChange\?\.\(\{[\s\S]*assets,[\s\S]*nativeBalance,[\s\S]*status,[\s\S]*walletAddress: wallet \?\? null,[\s\S]*walletKey: wallet \? identity\.activeWalletKey : null/,
+  "Wallet evidence must publish as one connector-qualified account snapshot.");
 assert.match(component, /\/api\/vnext\/asset-identity/);
 assert.match(component, /functionName: "balanceOf"/);
 assert.match(component, /balance <= 0n/);
 assert.match(component, /Its execution route has not been checked/);
 assert.match(hook, /publicClient\.multicall/);
 assert.match(hook, /balanceRequestId/);
+assert.match(hook, /statusWallet\.current = walletKey/);
+assert.match(hook, /statusIsCurrent \? status : enabled \? "loading"/,
+  "A new account cannot inherit another account's READY balance status while its own read is pending.");
 assert.match(hook, /discoveryRequestId/);
 assert.doesNotMatch(hook, /const requestId = useRef/);
 assert.match(hook, /functionName: "balanceOf"/);
@@ -168,6 +171,10 @@ assert.match(hook, /walletDiscoveryCandidate/);
 assert.match(hook, /positive\.filter/);
 assert.match(hook, /const EMPTY_WALLET_ASSETS: VNextDetectedWalletAsset\[\] = \[\]/);
 assert.match(hook, /assets: acceptanceSnapshot\?\.assets \?\? \(snapshotIsCurrent \? assets : EMPTY_WALLET_ASSETS\)/);
+assert.match(hook, /const acceptanceSnapshot = useMemo\([\s\S]*browserAcceptanceWalletSnapshot\(\)[\s\S]*\[address\]/,
+  "Deterministic acceptance balances must retain stable object identity instead of republishing on every render.");
+assert.match(hook, /observedAtMs: acceptanceSnapshot\?\.observedAtMs/,
+  "The deterministic acceptance observation timestamp must remain part of the stable snapshot.");
 assert.doesNotMatch(hook, /assets: snapshotIsCurrent \? assets : \[\]/);
 assert.match(hook, /NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE/);
 assert.match(hook, /\["localhost", "127\.0\.0\.1"\]\.includes\(window\.location\.hostname\)/);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { walletGatewayKey } from "../wallet-gateway";
+import { privyWagmiConnectorId, privyWalletSignerAuthority, walletGatewayKey, type RmtActiveSignerAuthority } from "../wallet-gateway";
 import {
   bindVNextExternalWallet,
   bindVNextTradingWallet,
@@ -8,6 +8,7 @@ import {
   isVNextMobileBrowser,
   invokeVNextExternalWalletRequest,
   openVNextSelectedWallet,
+  requiresVNextInjectedSignerSelection,
   vNextMobileHandoffLabel
 } from "./wallet-handoff";
 import {
@@ -41,75 +42,118 @@ const rabby = {
   meta: { id: "io.rabby", name: "Rabby Wallet" }
 };
 
+function installedAdapterAuthority(wallet: typeof metaMask, uid: string) {
+  const connectorId = privyWagmiConnectorId(wallet)!;
+  const authority = privyWalletSignerAuthority(wallet, { id: connectorId, type: "injected", uid });
+  assert.ok(authority);
+  return authority!;
+}
+
+function bindInstalledAdapterWallet(wallet: typeof metaMask, kind: "embedded" | "external", uid: string) {
+  const authority = installedAdapterAuthority(wallet, uid);
+  return bindVNextTradingWallet({
+    selectedWalletKey: walletGatewayKey(wallet),
+    selectedWalletKind: kind,
+    selectedSignerAuthority: authority,
+    selectedWalletName: wallet.meta.name,
+    connectedAddress: wallet.address,
+    connectedChainId: 4_663,
+    connectorId: authority.connectorId,
+    connectorType: authority.connectorType,
+    connectorUid: authority.connectorUid,
+    walletClientAddress: wallet.address,
+    walletClientChainId: 4_663,
+    recipient: wallet.address
+  });
+}
+
 for (const scenario of [
   { name: "MetaMask Mobile Safari", wallet: metaMask },
   { name: "Rabby Mobile Safari", wallet: rabby },
   { name: "MetaMask in-app browser", wallet: { ...metaMask, connectorType: "injected" } },
   { name: "Rabby in-app browser", wallet: { ...rabby, connectorType: "injected" } }
 ]) {
-  const binding = bindVNextExternalWallet({
-    selectedWalletKey: walletGatewayKey(scenario.wallet),
-    selectedWalletKind: "external",
-    selectedWalletName: scenario.wallet.meta.name,
-    connectedAddress: scenario.wallet.address,
-    connectedChainId: 4_663,
-    connectorId: scenario.wallet.meta.id,
-    connectorType: scenario.wallet.connectorType,
-    walletClientAddress: scenario.wallet.address,
-    walletClientChainId: 4_663,
-    recipient: scenario.wallet.address
-  });
+  const binding = bindInstalledAdapterWallet(scenario.wallet, "external", `${scenario.wallet.meta.id}-uid`);
   assert.equal(binding.connectorId, scenario.wallet.meta.id, `${scenario.name} must reach its exact selected connector`);
   assert.equal(binding.selectedConnectorType, scenario.wallet.connectorType);
+  assert.equal(binding.connectorType, "injected", "The installed Privy adapter's exact Wagmi signer is injected-backed.");
+  assert.equal(binding.originConnectorType, scenario.wallet.connectorType);
   assert.equal(binding.walletName, scenario.wallet.meta.name);
   assert.equal(binding.chainId, 4_663);
+  assert.equal(requiresVNextInjectedSignerSelection("zero-x-swap", binding), false,
+    "Every Privy-managed wallet uses its provider-equality-checked exact connector client, including WalletConnect and source-injected wallets.");
 }
 
-const embedded = {
-  ...metaMask,
-  connectorType: "embedded",
-  walletClientType: "privy-v2",
-  meta: { id: "privy", name: "RMT wallet" }
-};
-const embeddedBinding = bindVNextTradingWallet({
-  selectedWalletKey: walletGatewayKey(embedded), selectedWalletKind: "embedded", selectedWalletName: "RMT wallet",
-  connectedAddress: embedded.address, connectedChainId: 4_663, connectorId: embedded.meta.id,
-  connectorType: embedded.connectorType, walletClientAddress: embedded.address, walletClientChainId: 4_663,
-  recipient: embedded.address
-});
-assert.equal(embeddedBinding.wallet, DIRECT_SMOKE_RECIPIENT);
-assert.equal(embeddedBinding.walletClientType, "privy-v2");
-assert.throws(() => bindVNextTradingWallet({
-  selectedWalletKey: walletGatewayKey(embedded), selectedWalletKind: "external", connectedAddress: embedded.address,
-  connectedChainId: 4_663, connectorId: embedded.meta.id, connectorType: embedded.connectorType,
-  walletClientAddress: embedded.address, walletClientChainId: 4_663, recipient: embedded.address
-}), /wallet kind/, "RMT must not silently reinterpret an embedded signer as external");
+for (const embedded of [
+  { ...metaMask, connectorType: "embedded", walletClientType: "privy", meta: { id: "privy", name: "RMT wallet" } },
+  { ...metaMask, connectorType: "injected", walletClientType: "privy-v2", meta: { id: "privy-v2", name: "RMT wallet" } }
+]) {
+  const embeddedBinding = bindInstalledAdapterWallet(embedded, "embedded", `${embedded.walletClientType}-uid`);
+  assert.equal(embeddedBinding.wallet, DIRECT_SMOKE_RECIPIENT);
+  assert.equal(embeddedBinding.walletClientType, embedded.walletClientType);
+  assert.equal(requiresVNextInjectedSignerSelection("zero-x-swap", embeddedBinding), false,
+    "A connector-qualified Privy embedded wallet uses its exact Wagmi client without external EIP-6963 selection.");
+  assert.throws(() => bindVNextTradingWallet({
+    selectedWalletKey: walletGatewayKey(embedded), selectedWalletKind: "external",
+    selectedSignerAuthority: installedAdapterAuthority(embedded, `${embedded.walletClientType}-uid`), connectedAddress: embedded.address,
+    connectedChainId: 4_663, connectorId: privyWagmiConnectorId(embedded)!, connectorType: "injected",
+    connectorUid: `${embedded.walletClientType}-uid`,
+    walletClientAddress: embedded.address, walletClientChainId: 4_663, recipient: embedded.address
+  }), /wallet kind/, "RMT must not silently reinterpret an embedded signer as external");
+}
+assert.equal(requiresVNextInjectedSignerSelection("zero-x-swap",
+  bindInstalledAdapterWallet({ ...metaMask, connectorType: "injected" }, "external", "injected-uid")), false,
+"A Privy-managed source-injected wallet stays on its exact adapter-bound wallet client.");
 
 assert.throws(() => bindVNextExternalWallet({
   selectedWalletKey: walletGatewayKey(rabby),
   selectedWalletKind: "external",
+  selectedSignerAuthority: installedAdapterAuthority(rabby, "rabby-uid"),
   selectedWalletName: "Rabby Wallet",
   connectedAddress: rabby.address,
   connectedChainId: 4_663,
   connectorId: "io.metamask",
-  connectorType: "wallet_connect",
+  connectorType: "injected",
+  connectorUid: "rabby-uid",
   walletClientAddress: rabby.address,
   walletClientChainId: 4_663,
   recipient: rabby.address
-}), /connector no longer matches/, "RMT must never send a Rabby-selected request through MetaMask");
+}), /signer connector changed|Privy wallet no longer matches/, "RMT must never send a Rabby-selected request through MetaMask");
 
 assert.throws(() => bindVNextExternalWallet({
   selectedWalletKey: walletGatewayKey(metaMask),
   selectedWalletKind: "external",
+  selectedSignerAuthority: installedAdapterAuthority(metaMask, "metamask-uid"),
   selectedWalletName: "MetaMask",
   connectedAddress: metaMask.address,
   connectedChainId: 4_663,
   connectorId: metaMask.meta.id,
-  connectorType: "wallet_connect",
+  connectorType: "injected",
+  connectorUid: "metamask-uid",
   walletClientAddress: metaMask.address,
   walletClientChainId: 1,
   recipient: metaMask.address
 }), /not on Robinhood Chain 4663/, "a chain change during handoff must fail closed");
+
+const directInjectedAuthority: RmtActiveSignerAuthority = {
+  adapter: "direct", connectorId: metaMask.meta.id, connectorType: "injected", connectorUid: "direct-a",
+  originConnectorType: "injected", walletClientType: metaMask.walletClientType,
+  walletKey: walletGatewayKey({ ...metaMask, connectorType: "injected" }), walletKind: "external"
+};
+const directInjectedBinding = bindVNextTradingWallet({
+  selectedWalletKey: directInjectedAuthority.walletKey, selectedWalletKind: "external",
+  selectedSignerAuthority: directInjectedAuthority, connectedAddress: metaMask.address, connectedChainId: 4_663,
+  connectorId: metaMask.meta.id, connectorType: "injected", connectorUid: "direct-a",
+  walletClientAddress: metaMask.address, walletClientChainId: 4_663, recipient: metaMask.address
+});
+assert.equal(requiresVNextInjectedSignerSelection("zero-x-swap", directInjectedBinding), true,
+  "An unmanaged direct injected connector still requires exact EIP-6963 selection.");
+assert.throws(() => bindVNextTradingWallet({
+  selectedWalletKey: directInjectedAuthority.walletKey, selectedWalletKind: "external",
+  selectedSignerAuthority: directInjectedAuthority, connectedAddress: metaMask.address, connectedChainId: 4_663,
+  connectorId: metaMask.meta.id, connectorType: "injected", connectorUid: "direct-b",
+  walletClientAddress: metaMask.address, walletClientChainId: 4_663, recipient: metaMask.address
+}), /exact active signer connector changed/, "A same-id connector UID replacement cannot inherit prepared signer authority.");
 
 let providerInvocations = 0;
 const expectedHash = `0x${"a".repeat(64)}` as const;

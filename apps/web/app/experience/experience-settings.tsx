@@ -34,7 +34,7 @@ export function ExperienceSettings() {
       diagnosticsEnabled
     });
     setTourComplete(false);
-    window.location.assign("/");
+    window.location.assign("/?guide=1");
   };
 
   return (
@@ -63,8 +63,8 @@ export function ExperienceSettings() {
       </div>
       <div className="experienceSettingRow">
         <div>
-          <strong>First-visit guide</strong>
-          <p>Replay the short Discover → Review → Prepare orientation. This does not reset trading terms, wallet permissions, profile data, or watchlists.</p>
+          <strong>Optional terminal guide</strong>
+          <p>Open the short Discover → Review → Prepare orientation. RMT does not interrupt first-time browsing with this guide.</p>
         </div>
         <button className="replay" type="button" disabled={!ready} onClick={replay}>
           {tourComplete ? "Replay guide" : "Open guide"}
