@@ -1,4 +1,5 @@
 import type { VNextDetectedWalletAsset } from "./wallet-assets";
+import type { VNextAssetBalanceEvidence, VNextBalanceEvidence } from "./wallet-balance-evidence";
 
 export type VNextWalletReadStatus = "idle" | "loading" | "ready" | "stale" | "error";
 
@@ -6,7 +7,9 @@ export type VNextWalletReadSnapshot = {
   walletAddress: string | null;
   walletKey: string | null;
   assets: VNextDetectedWalletAsset[];
+  assetBalanceEvidence: VNextAssetBalanceEvidence;
   nativeBalance?: bigint;
+  nativeBalanceEvidence: VNextBalanceEvidence;
   status: VNextWalletReadStatus;
 };
 

@@ -36,6 +36,8 @@ export function VNextTerminalShell() {
   const [query, setQuery] = useState("");
   const [walletReadSnapshot, setWalletReadSnapshot] = useState<VNextWalletReadSnapshot>({
     assets: [],
+    assetBalanceEvidence: {},
+    nativeBalanceEvidence: { state: "unavailable" },
     status: "idle",
     walletAddress: null,
     walletKey: null
@@ -83,7 +85,11 @@ export function VNextTerminalShell() {
     && walletReadSnapshot.walletAddress?.toLowerCase() === walletReadAuthorityAddress.toLowerCase()
   );
   const walletAssets: VNextDetectedWalletAsset[] = walletReadSnapshotCurrent ? walletReadSnapshot.assets : [];
+  const assetBalanceEvidence = walletReadSnapshotCurrent ? walletReadSnapshot.assetBalanceEvidence : {};
   const nativeBalance = walletReadSnapshotCurrent ? walletReadSnapshot.nativeBalance : undefined;
+  const nativeBalanceEvidence = walletReadSnapshotCurrent
+    ? walletReadSnapshot.nativeBalanceEvidence
+    : { state: "unavailable" as const };
   const walletReadStatus = walletReadSnapshotCurrent
     ? walletReadSnapshot.status
     : walletReadAuthorityAddress ? "loading" as const : "idle" as const;
@@ -310,7 +316,9 @@ export function VNextTerminalShell() {
     selectedAsset,
     identityStatus,
     walletAssets,
+    assetBalanceEvidence,
     nativeBalance,
+    nativeBalanceEvidence,
     walletReadStatus,
     executionRecord: executionRecovery.record,
     dismissedExecutionHash,

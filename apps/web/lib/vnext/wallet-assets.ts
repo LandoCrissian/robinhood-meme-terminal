@@ -29,6 +29,29 @@ export type VNextDetectedWalletAsset = VNextWalletAssetCandidate & {
   routeState: AssetRouteState;
 };
 
+export function selectedWalletCandidate(asset: AssetMetadata | undefined): VNextWalletAssetCandidate | null {
+  if (
+    !asset
+    || asset.id.chain.family !== "evm"
+    || asset.id.chain.reference !== String(ROBINHOOD_MAINNET_CHAIN_ID)
+    || asset.id.locator.kind !== "contract"
+    || !isAddress(asset.id.locator.address, { strict: false })
+    || asset.metadataState === "conflicting"
+  ) return null;
+  const address = getAddress(asset.id.locator.address);
+  const symbol = cleanText(asset.symbol ?? "", 16) || `${address.slice(0, 6)}…${address.slice(-4)}`;
+  return {
+    address,
+    symbol,
+    name: cleanText(asset.name ?? "", 80) || symbol,
+    decimals: asset.decimals,
+    identityState: asset.metadataState === "verified" ? "verified" : "reported",
+    source: "live_directory",
+    reputation: "unknown",
+    imageUrl: null
+  };
+}
+
 export function trustedPaymentMetadataFromDetectedWalletAsset(asset: VNextDetectedWalletAsset): AssetMetadata | null {
   const trusted = trustedPaymentAsset(ROBINHOOD_MAINNET_CHAIN_ID, asset.address);
   if (

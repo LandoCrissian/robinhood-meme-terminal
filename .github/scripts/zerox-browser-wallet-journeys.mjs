@@ -355,7 +355,17 @@ export async function runZeroXWalletJourneys(options) {
             assert.equal(await page.locator('.vnTradeReceipt').count(), 0);
           }
         } else {
-          await until(() => api.some((entry) => entry.path.endsWith('/authorize') && entry.status === 200), `${scenario} did not authorize`);
+          try {
+            await until(() => api.some((entry) => entry.path.endsWith('/authorize') && entry.status === 200), `${scenario} did not authorize`);
+          } catch (error) {
+            const diagnostic = await page.evaluate(() => ({
+              body: document.querySelector('.vnTradePanel')?.textContent?.slice(-4_000),
+              balance: window.__RMT_PRIVY_BRIDGE_BALANCE_SNAPSHOT__ ?? null
+            }));
+            const balanceRpc = state.rpc.filter((entry) => entry.method === 'eth_getBalance'
+              || String(entry.params?.[0]?.data ?? '').includes('70a08231'));
+            throw new Error(`${scenario} did not authorize: ${JSON.stringify({ api, diagnostic, balanceRpc, rpc: state.rpc.slice(-30) })}`, { cause: error });
+          }
           await page.locator('.vnWalletFeeDisclosure').waitFor({ state: 'attached' });
           const bundle = api.filter((entry) => entry.path.endsWith('/authorize')).at(-1).body;
           assert.equal(bundle.plan.provider, 'zero-x-swap');

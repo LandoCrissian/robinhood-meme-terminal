@@ -31,6 +31,16 @@ const nextConfig = {
       "@react-native-async-storage/async-storage": false,
       "@farcaster/mini-app-solana": false
     };
+    if (process.env.NEXT_PUBLIC_RMT_PRIVY_BRIDGE_ACCEPTANCE_PROFILE === "true") {
+      config.resolve.alias["@privy-io/react-auth"] = path.resolve(
+        appDirectory,
+        "lib/testing/privy-react-auth-acceptance.tsx"
+      );
+      config.resolve.alias["@privy-io/wagmi"] = path.resolve(
+        appDirectory,
+        "lib/testing/privy-wagmi-acceptance.tsx"
+      );
+    }
     // @rmt/shared publishes raw TypeScript with Node ESM `.js` sibling
     // specifiers. Limit the TypeScript fallback to that package's source;
     // application and dependency resolution retain Webpack's defaults.

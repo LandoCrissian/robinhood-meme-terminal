@@ -167,7 +167,8 @@ assert.match(shellController, /window\.addEventListener\("popstate", synchronize
 assert.match(shell, /<TradeIntentComposer/);
 assert.match(shell, /useVNextMarketDirectory/);
 assert.match(presentations, /marketAsset=\{props\.selectedAsset\}/);
-assert.match(presentations, /nativeBalance=\{props\.nativeBalance\}/);
+assert.match(presentations, /assetBalanceEvidence=\{props\.assetBalanceEvidence\}/);
+assert.match(presentations, /nativeBalanceEvidence=\{props\.nativeBalanceEvidence\}/);
 assert.match(presentations, /executionRecord=\{props\.executionRecord\}/);
 assert.match(presentations, /onContinueTrading=\{props\.onContinueTrading\}/);
 assert.match(shell, /marketSearch\.current\?\.focus/);

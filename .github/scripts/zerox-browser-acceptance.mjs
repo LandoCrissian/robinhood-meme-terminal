@@ -272,6 +272,14 @@ export async function runZeroXBrowserAcceptance() {
       await new Promise((resolve) => setTimeout(resolve, 500));
     }
     browser = await chromium.launch({ headless: true });
+    const selectedScenarios = process.env.RMT_ZEROX_ACCEPTANCE_SCENARIOS
+      ?.split(',')
+      .map((scenario) => scenario.trim())
+      .filter(Boolean);
+    if (selectedScenarios?.length) {
+      results.push(...await runZeroXWalletJourneys({browser,base,identity,external,state,wallet,token,usdg,holder,output,scenarios:selectedScenarios}));
+      return;
+    }
     if (process.env.RMT_QUOTE_STATE_ONLY === 'true') { results.push(...await runZeroXWalletJourneys({browser,base,identity,external,state,wallet,token,usdg,holder,output,scenarios:['sell-approval-idle-verification','sell-approval-idle-success','sell-approval-idle-expired-failure','sell-approval-idle-failure','sell-approval-idle-click']})); return; }
     if (process.env.RMT_PRODUCT_METRICS_ONLY === 'true') { results.push(...await runTradingProductBrowser({ browser, base, identity, external, state, wallet, token, output })); return; }
     results.push(...await runTradingProductBrowser({ browser, base, identity, external, state, wallet, token, output }));

@@ -59,6 +59,11 @@ import {
 } from "../../lib/vnext/trade-journey";
 import { consumeRmtTradeDraftRecovery, persistRmtTradeDraftRecovery } from "../../lib/vnext/trade-draft-recovery";
 import { rmtTradeFundingReason, rmtTradePrimaryActionDisabled } from "../../lib/vnext/trade-primary-action";
+import {
+  confirmedBalanceAtomic,
+  type VNextAssetBalanceEvidence,
+  type VNextBalanceEvidence
+} from "../../lib/vnext/wallet-balance-evidence";
 
 function shortAddress(address: string) {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
@@ -93,14 +98,15 @@ function uniqueAssets(assets: AssetMetadata[]) {
 const DEFAULT_BUY_AMOUNT = "25";
 const DEFAULT_NATIVE_BUY_AMOUNT = "0.0005";
 
-export function TradeIntentComposer({ quoteActive = true, marketName, marketSymbol, marketAddress, marketAsset, walletAssets, nativeBalance, walletReadStatus, executionRecord, dismissedExecutionHash, onContinueTrading, sideRequest, executionState, executionUiState, canonicalMarket }: {
+export function TradeIntentComposer({ quoteActive = true, marketName, marketSymbol, marketAddress, marketAsset, walletAssets, assetBalanceEvidence, nativeBalanceEvidence, walletReadStatus, executionRecord, dismissedExecutionHash, onContinueTrading, sideRequest, executionState, executionUiState, canonicalMarket }: {
   quoteActive?: boolean;
   marketName: string;
   marketSymbol: string;
   marketAddress?: string;
   marketAsset?: AssetMetadata;
   walletAssets: VNextDetectedWalletAsset[];
-  nativeBalance?: bigint;
+  assetBalanceEvidence: VNextAssetBalanceEvidence;
+  nativeBalanceEvidence: VNextBalanceEvidence;
   walletReadStatus: "idle" | "loading" | "ready" | "stale" | "error";
   executionRecord?: VNextExecutionRecord | null;
   dismissedExecutionHash?: string;
@@ -219,18 +225,16 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
   const authorizationEnabled = executionUiState === "live-execution";
   const previewOnly = executionUiState === "preview-only";
   const stockTokenViewOnly = executionState === "stock-token-view-only";
-  const confirmedUsdgBalance = walletAssets.find((asset) => (
-    asset.address.toLowerCase() === ROBINHOOD_USDG_ADDRESS.toLowerCase()
-    && asset.identityState === "verified"
-    && asset.decimals === ROBINHOOD_USDG.decimals
-    && /^(?:0|[1-9][0-9]*)$/.test(asset.balanceAtomic)
-  ));
-  const defaultBuyAmount = confirmedUsdgBalance && ROBINHOOD_USDG.decimals !== null
-    ? affordableDefaultAmount(confirmedUsdgBalance.balanceAtomic, ROBINHOOD_USDG.decimals, DEFAULT_BUY_AMOUNT)
+  const confirmedUsdgAtomic = confirmedBalanceAtomic(assetBalanceEvidence[ROBINHOOD_USDG_ADDRESS.toLowerCase()]);
+  const defaultBuyAmount = confirmedUsdgAtomic !== undefined && ROBINHOOD_USDG.decimals !== null
+    ? affordableDefaultAmount(confirmedUsdgAtomic, ROBINHOOD_USDG.decimals, DEFAULT_BUY_AMOUNT)
     : DEFAULT_BUY_AMOUNT;
-  const defaultNativeBuyAmount = nativeBalance && nativeBalance > NATIVE_GAS_RESERVE_ATOMIC && ROBINHOOD_ETH.decimals !== null
+  const confirmedNativeAtomic = confirmedBalanceAtomic(nativeBalanceEvidence);
+  const defaultNativeBuyAmount = confirmedNativeAtomic !== undefined
+    && BigInt(confirmedNativeAtomic) > NATIVE_GAS_RESERVE_ATOMIC
+    && ROBINHOOD_ETH.decimals !== null
     ? affordableDefaultAmount(
-        (nativeBalance - NATIVE_GAS_RESERVE_ATOMIC).toString(),
+        (BigInt(confirmedNativeAtomic) - NATIVE_GAS_RESERVE_ATOMIC).toString(),
         ROBINHOOD_ETH.decimals,
         DEFAULT_NATIVE_BUY_AMOUNT
       )
@@ -269,28 +273,26 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
     return selectedSellOutput ? { inputAsset: marketAsset, outputAsset: selectedSellOutput } : null;
   }, [marketAsset, selectedBuyInput, selectedSellOutput, side]);
   const pairInputDecimals = pair?.inputAsset.decimals ?? null;
+  const inputBalanceEvidence = useMemo(() => {
+    if (pair?.inputAsset.id.locator.kind === "native") return nativeBalanceEvidence;
+    const contractAddress = pair?.inputAsset.id.locator.kind === "contract"
+      ? pair.inputAsset.id.locator.address.toLowerCase()
+      : null;
+    return contractAddress ? assetBalanceEvidence[contractAddress] : undefined;
+  }, [assetBalanceEvidence, nativeBalanceEvidence, pair]);
   const inputBalanceAtomic = useMemo(() => {
-    if (pair?.inputAsset.id.locator.kind === "native") return nativeBalance?.toString();
-    const contractAddress = pair?.inputAsset.id.locator.kind === "contract" ? pair.inputAsset.id.locator.address.toLowerCase() : null;
-    if (!contractAddress || pairInputDecimals === null) return undefined;
-    const observed = walletAssets.find((asset) => (
-      asset.address.toLowerCase() === contractAddress
-      && asset.identityState === "verified"
-      && asset.decimals === pairInputDecimals
-      && /^(0|[1-9][0-9]*)$/.test(asset.balanceAtomic)
-    ))?.balanceAtomic;
-    if (observed !== undefined) return observed;
-    // The wallet reader always probes canonical USDG and only publishes READY
-    // after that exact balance call succeeds. Its positive-holdings list omits a
-    // zero balance, so absence in this one bounded case is authoritative zero.
-    if (walletReadStatus === "ready" && contractAddress === ROBINHOOD_USDG_ADDRESS.toLowerCase()) return "0";
-    return undefined;
-  }, [nativeBalance, pair, pairInputDecimals, walletAssets, walletReadStatus]);
+    if (pairInputDecimals === null) return undefined;
+    return confirmedBalanceAtomic(inputBalanceEvidence);
+  }, [inputBalanceEvidence, pairInputDecimals]);
   const spendableInputAtomic = inputBalanceAtomic === undefined
     ? undefined
     : pair?.inputAsset.id.locator.kind === "native"
       ? spendableNativeAtomic(BigInt(inputBalanceAtomic))?.toString()
       : inputBalanceAtomic;
+  const tradeBalanceResolved = inputBalanceEvidence?.state === "confirmed"
+    && (pair?.inputAsset.id.locator.kind === "native" || nativeBalanceEvidence.state === "confirmed");
+  const nativeGasEvidenceUnavailable = pair?.inputAsset.id.locator.kind === "contract"
+    && nativeBalanceEvidence.state !== "confirmed";
   const buyUsesUsdg = side === "buy"
     && pair?.inputAsset.id.locator.kind === "contract"
     && pair.inputAsset.id.locator.address.toLowerCase() === ROBINHOOD_USDG_ADDRESS.toLowerCase();
@@ -610,6 +612,11 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
   const availableDisplay = spendableInputAtomic !== undefined && pairInputDecimals !== null
     ? formatAtomicDisplay(spendableInputAtomic, pairInputDecimals)
     : null;
+  const staleInputDisplay = inputBalanceEvidence?.state === "stale"
+    && inputBalanceEvidence.balanceAtomic !== undefined
+    && pairInputDecimals !== null
+      ? formatAtomicDisplay(inputBalanceEvidence.balanceAtomic, pairInputDecimals)
+      : null;
   const amountExceedsBalance = Boolean(
     draft.intent
     && spendableInputAtomic !== undefined
@@ -920,7 +927,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
       approvalPlanId: plan.planId, approvalPayloadHash: plan.payloadHash, createdAtMs: now, expiresAtMs: now + 10 * 60_000 });
   }
   const startTrade = async (openWallet = false, afterApproval?: { confirmed: VNextApprovalAuthority | undefined }) => {
-    if (!authorizationEnabled || stockTokenViewOnly || !draft.intent || amountExceedsBalance || !onRobinhood) return;
+    if (!authorizationEnabled || stockTokenViewOnly || !draft.intent || amountExceedsBalance || !tradeBalanceResolved || !onRobinhood) return;
     const key = preparationContext;
     automaticPreparationKey.current = key;
     if (openWallet) intentionalTradeContext.current = key;
@@ -1031,7 +1038,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
     if (!quoteActive || pendingTradeAfterLogin.current || !authorizationEnabled || stockTokenViewOnly || !onRobinhood
       || !draft.intent || amountExceedsBalance || !identity.authenticated || !identity.identityToken
       || !identity.userId || !address || identity.activeWalletKind === null || !identity.activeWalletKey
-      || walletReadStatus !== "ready" || walletBusy || executionRecord?.state === "submitted"
+      || !tradeBalanceResolved || walletBusy || executionRecord?.state === "submitted"
       || !["idle", "swap_ready", "next_approval_ready"].includes(postExecutionState.state)) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const schedule = (resume = false) => {
@@ -1057,7 +1064,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
     return () => { clearTimeout(timer); document.removeEventListener("visibilitychange", resume); window.removeEventListener("online", resume); window.removeEventListener("offline", resume); };
   }, [quoteActive, preparationContext, preparedExpiresAtMs, identity.activeWalletKind, identity.authenticated, identity.identityToken,
     identity.userId, identity.activeWalletKey, address, authorizationEnabled, stockTokenViewOnly, onRobinhood,
-    draft.intent?.amountAtomic, amountExceedsBalance, walletReadStatus, walletBusy, verificationQuote?.provider,
+    draft.intent?.amountAtomic, amountExceedsBalance, tradeBalanceResolved, walletBusy, verificationQuote?.provider,
     quoteState.state, executionRecord?.state, postExecutionState.state]);
 
   useEffect(() => {
@@ -1101,10 +1108,10 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
       pendingTradeAfterLogin.current = undefined;
       return;
     }
-    if (!authorizationEnabled || stockTokenViewOnly || !identity.authenticated || !identity.identityToken || !identity.userId || !address || identity.activeWalletKind === null || !draft.intent || amountExceedsBalance || walletReadStatus !== "ready") return;
+    if (!authorizationEnabled || stockTokenViewOnly || !identity.authenticated || !identity.identityToken || !identity.userId || !address || identity.activeWalletKind === null || !draft.intent || amountExceedsBalance || !tradeBalanceResolved) return;
     pendingTradeAfterLogin.current = undefined;
     void startTrade();
-  }, [address, authorizationEnabled, draft.intent, identity.activeWalletKind, identity.authenticated, identity.identityToken, identity.userId, stockTokenViewOnly, selectedMarketAddress, side, amountExceedsBalance, walletReadStatus]);
+  }, [address, authorizationEnabled, draft.intent, identity.activeWalletKind, identity.authenticated, identity.identityToken, identity.userId, stockTokenViewOnly, selectedMarketAddress, side, amountExceedsBalance, tradeBalanceResolved]);
 
   useEffect(() => {
     if (
@@ -1176,12 +1183,12 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
     exactWalletSelected: Boolean(address && identity.activeWalletKind !== null),
     inputBalanceKnown: spendableInputAtomic !== undefined,
     inputIsNative: pair?.inputAsset.id.locator.kind === "native",
-    nativeGasBalanceKnown: nativeBalance !== undefined,
-    nativeGasMissing: nativeBalance === 0n,
+    nativeGasBalanceKnown: nativeBalanceEvidence.state === "confirmed",
+    nativeGasMissing: confirmedNativeAtomic === "0",
     stockTokenViewOnly,
     transactionPending,
     walletBusy,
-    walletReadReady: walletReadStatus === "ready"
+    walletReadReady: tradeBalanceResolved
   });
   const requestedFundingAsset = !fundingReason || !pair
     ? undefined
@@ -1306,7 +1313,15 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
         </div>
       </label>
 <div className="vnConfirmedBalance">
-        <span><small>Available</small><strong>{!isConnected ? "Wallet required" : walletReadStatus === "idle" || walletReadStatus === "loading" ? "Reading wallet…" : walletReadStatus === "error" ? "Balance read delayed" : spendableInputAtomic === "0" ? `No ${inputSymbol} balance found` : availableDisplay ? `${availableDisplay} ${inputSymbol}` : `${inputSymbol} balance unavailable`}</strong></span>
+        <span><small>Available</small><strong>{!isConnected
+          ? "Wallet required"
+          : inputBalanceEvidence?.state === "confirmed"
+            ? spendableInputAtomic === "0" ? `No ${inputSymbol} balance found` : availableDisplay ? `${availableDisplay} ${inputSymbol}` : `${inputSymbol} balance unavailable`
+            : inputBalanceEvidence?.state === "stale" && staleInputDisplay
+              ? `${staleInputDisplay} ${inputSymbol} · last confirmed`
+              : walletReadStatus === "idle" || walletReadStatus === "loading"
+                ? "Reading wallet…"
+                : `${inputSymbol} balance unavailable`}</strong></span>
         <div aria-label="Confirmed balance percentages">
           {[2_500, 5_000, 7_500, 10_000].map((basisPoints) => <button
             type="button"
@@ -1425,12 +1440,16 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
           <div><dt>Trade type</dt><dd>Exact input</dd></div>
         </dl>
         <p className="vnIntentStatus">{quoteState.state === "error" ? quoteState.message : draft.message}</p>
-        {address && pair ? <p className={`vnBalanceEvidence${amountExceedsBalance || fundingReason ? " isBlocking" : ""}`}>{fundingReason === "input-balance"
+        {address && pair ? <p className={`vnBalanceEvidence${amountExceedsBalance || fundingReason || !tradeBalanceResolved ? " isBlocking" : ""}`}>{fundingReason === "input-balance"
           ? `Deposit ${inputSymbol} to cover this amount. Your token, side, and amount stay in this ticket.`
           : fundingReason === "native-gas"
             ? `Deposit native ETH for Robinhood Chain gas. Your ${inputSymbol} trade draft stays unchanged.`
           : amountExceedsBalance
           ? `Amount exceeds the confirmed ${inputSymbol} balance. Authorization must remain blocked.`
+          : nativeGasEvidenceUnavailable
+            ? "The native ETH gas balance is unavailable. RMT will not quote or submit until gas authority is confirmed."
+          : inputBalanceEvidence?.state === "stale"
+            ? `The last ${inputSymbol} balance is stale. RMT will not quote or submit until this asset is confirmed again.`
           : spendableInputAtomic !== undefined
             ? `Confirmed ${inputSymbol} balance is the source for percentage and Max controls.`
             : `Confirmed ${inputSymbol} balance is delayed. Percentage controls remain disabled.`}</p> : null}
@@ -1600,6 +1619,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
           disabled={rmtTradePrimaryActionDisabled({
             amountExceedsBalance,
             authorizationEnabled,
+            balanceAuthorityReady: !identity.authenticated || !address || identity.activeWalletKind === null || tradeBalanceResolved,
             connectedIntentMissing: Boolean(identity.authenticated && address && identity.activeWalletKind !== null && !draft.intent),
             embeddedWalletRetryRequired,
             identityEnabled: identity.enabled,

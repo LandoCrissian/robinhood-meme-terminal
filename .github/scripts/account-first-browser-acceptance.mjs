@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { createRequire } from "node:module";
 import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -1423,6 +1423,9 @@ async function main() {
       fixtureLabel: "ACCOUNT_FIRST_LOOPBACK_ONLY_NO_REAL_FINANCIAL_ACTION",
       buildEvidence,
       generatedAt: new Date().toISOString(),
+      sourceHead: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
+      sourceTree: execFileSync("git", ["rev-parse", "HEAD^{tree}"], { cwd: root, encoding: "utf8" }).trim(),
+      profile: "NEXT_PUBLIC_RMT_ACCOUNT_ACCEPTANCE_PROFILE",
       wallet,
       results: evidence,
       fundingPrimaryActions,

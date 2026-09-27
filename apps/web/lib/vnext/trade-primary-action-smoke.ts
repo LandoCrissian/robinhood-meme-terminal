@@ -4,6 +4,7 @@ import { rmtTradeFundingReason, rmtTradePrimaryActionDisabled } from "./trade-pr
 const blockedTradeState = {
   amountExceedsBalance: true,
   authorizationEnabled: true,
+  balanceAuthorityReady: false,
   connectedIntentMissing: true,
   identityEnabled: true,
   identityReady: true,
@@ -26,6 +27,16 @@ assert.equal(rmtTradePrimaryActionDisabled({
   ...blockedTradeState,
   embeddedWalletRetryRequired: false
 }), true, "Normal trade blockers remain fail-closed outside the wallet-recovery action.");
+assert.equal(rmtTradePrimaryActionDisabled({
+  ...blockedTradeState,
+  amountExceedsBalance: false,
+  balanceAuthorityReady: false,
+  connectedIntentMissing: false,
+  embeddedWalletRetryRequired: false,
+  quoteRequiresVerification: false,
+  transactionPending: false,
+  walletBusy: false
+}), true, "Unknown selected-input or gas evidence cannot reach quote or wallet authority.");
 
 const fundedAccount = {
   amountExceedsBalance: false,

@@ -20,11 +20,20 @@ import { VNEXT_CLIENT_REFRESH_POLICY } from "../../lib/vnext/client-refresh-poli
 import { useVisibilityRefresh } from "./use-visibility-refresh";
 import { readVNextExecutionJournal, VNEXT_EXECUTION_EVENT } from "../../lib/vnext/execution-recovery";
 import { hasVerifiedVNextSwapSettlement } from "../../lib/vnext/output-settlement";
+import {
+  reconcileAssetBalanceEvidence,
+  reconcileBalanceEvidence,
+  walletBalanceReadStatus,
+  type VNextAssetBalanceEvidence,
+  type VNextBalanceEvidence
+} from "../../lib/vnext/wallet-balance-evidence";
 
 export type VNextWalletAssetStatus = "idle" | "loading" | "ready" | "stale" | "error";
 export type VNextWalletDiscoveryStatus = "idle" | "loading" | "ready" | "partial" | "stale" | "unavailable";
 
 const EMPTY_WALLET_ASSETS: VNextDetectedWalletAsset[] = [];
+const EMPTY_ASSET_BALANCE_EVIDENCE: VNextAssetBalanceEvidence = {};
+const UNAVAILABLE_BALANCE_EVIDENCE: VNextBalanceEvidence = { state: "unavailable" };
 
 function browserAcceptanceWalletSnapshot() {
   if (
@@ -38,6 +47,8 @@ function browserAcceptanceWalletSnapshot() {
     ? window.__RMT_ACCOUNT_ACCEPTANCE_CONFIG__?.walletBalanceScenario ?? "positive"
     : "positive";
   const usdgBalanceAtomic = accountScenario === "zero-input" ? "0" : "100000000";
+  const observedAtMs = Date.now();
+  const nativeBalance = accountScenario === "erc20-no-gas" ? 0n : 10_000_000_000_000_000_000n;
   return {
     assets: [{
       address: ROBINHOOD_USDG_ADDRESS,
@@ -51,8 +62,20 @@ function browserAcceptanceWalletSnapshot() {
       imageUrl: null,
       routeState: "detected" as const
     }],
-    nativeBalance: accountScenario === "erc20-no-gas" ? 0n : 10_000_000_000_000_000_000n,
-    observedAtMs: Date.now()
+    assetBalanceEvidence: {
+      [ROBINHOOD_USDG_ADDRESS.toLowerCase()]: {
+        balanceAtomic: usdgBalanceAtomic,
+        observedAtMs,
+        state: "confirmed" as const
+      }
+    },
+    nativeBalance,
+    nativeBalanceEvidence: {
+      balanceAtomic: nativeBalance.toString(),
+      observedAtMs,
+      state: "confirmed" as const
+    },
+    observedAtMs
   };
 }
 
@@ -69,7 +92,9 @@ export function useVNextWalletAssets(
 ) {
   const publicClient = usePublicClient({ chainId: ROBINHOOD_MAINNET_CHAIN_ID });
   const [assets, setAssets] = useState<VNextDetectedWalletAsset[]>([]);
+  const [assetBalanceEvidence, setAssetBalanceEvidence] = useState<VNextAssetBalanceEvidence>({});
   const [nativeBalance, setNativeBalance] = useState<bigint>();
+  const [nativeBalanceEvidence, setNativeBalanceEvidence] = useState<VNextBalanceEvidence>(UNAVAILABLE_BALANCE_EVIDENCE);
   const [status, setStatus] = useState<VNextWalletAssetStatus>("idle");
   const [discoveryStatus, setDiscoveryStatus] = useState<VNextWalletDiscoveryStatus>("idle");
   const [observedAtMs, setObservedAtMs] = useState<number>();
@@ -80,7 +105,15 @@ export function useVNextWalletAssets(
   const discoveryWallet = useRef<string | null>(null);
   const discoveredAssets = useRef<VNextWalletDiscoveryAsset[]>([]);
   const lastDiscoveryAt = useRef<number | null>(null);
+  const assetsRef = useRef<VNextDetectedWalletAsset[]>([]);
+  const assetBalanceEvidenceRef = useRef<VNextAssetBalanceEvidence>({});
+  const nativeBalanceRef = useRef<bigint | undefined>(undefined);
+  const nativeBalanceEvidenceRef = useRef<VNextBalanceEvidence>(UNAVAILABLE_BALANCE_EVIDENCE);
   const address = selectedWalletAddress;
+  const explicitCandidateKey = useMemo(
+    () => imported.map((candidate) => candidate.address.toLowerCase()).sort().join(","),
+    [imported]
+  );
   // Acceptance data is a deterministic wallet read, so keep the object identity
   // stable just like a real completed RPC snapshot. Recreating the array on each
   // render would cause SpendBalance to continuously republish the same state.
@@ -95,7 +128,9 @@ export function useVNextWalletAssets(
     if (!address || !publicClient) {
       discoveryRequestId.current += 1;
       setAssets([]);
+      setAssetBalanceEvidence({});
       setNativeBalance(undefined);
+      setNativeBalanceEvidence(UNAVAILABLE_BALANCE_EVIDENCE);
       setObservedAtMs(undefined);
       setStatus("idle");
       setDiscoveryStatus("idle");
@@ -104,6 +139,10 @@ export function useVNextWalletAssets(
       discoveryWallet.current = null;
       discoveredAssets.current = [];
       lastDiscoveryAt.current = null;
+      assetsRef.current = [];
+      assetBalanceEvidenceRef.current = {};
+      nativeBalanceRef.current = undefined;
+      nativeBalanceEvidenceRef.current = UNAVAILABLE_BALANCE_EVIDENCE;
       return;
     }
 
@@ -111,7 +150,13 @@ export function useVNextWalletAssets(
     statusWallet.current = walletKey;
     if (snapshotWallet.current !== walletKey) {
       setAssets([]);
+      setAssetBalanceEvidence({});
       setNativeBalance(undefined);
+      setNativeBalanceEvidence(UNAVAILABLE_BALANCE_EVIDENCE);
+      assetsRef.current = [];
+      assetBalanceEvidenceRef.current = {};
+      nativeBalanceRef.current = undefined;
+      nativeBalanceEvidenceRef.current = UNAVAILABLE_BALANCE_EVIDENCE;
     }
     if (discoveryWallet.current !== walletKey) {
       discoveryWallet.current = walletKey;
@@ -126,6 +171,7 @@ export function useVNextWalletAssets(
       : "loading");
 
     const readCandidates = async (candidates: VNextWalletAssetCandidate[]) => {
+      const observedAt = Date.now();
       const balances = await publicClient.multicall({
         contracts: candidates.map((candidate) => ({
           address: candidate.address,
@@ -136,16 +182,13 @@ export function useVNextWalletAssets(
         allowFailure: true,
         batchSize: 0,
         deployless: true
-      });
-      const canonicalUsdgIndex = candidates.findIndex((candidate) => (
-        candidate.address.toLowerCase() === ROBINHOOD_USDG_ADDRESS.toLowerCase()
-        && candidate.source === "canonical"
-        && candidate.identityState === "verified"
-      ));
-      const canonicalUsdgBalance = canonicalUsdgIndex >= 0 ? balances[canonicalUsdgIndex] : undefined;
-      if (canonicalUsdgBalance?.status !== "success" || typeof canonicalUsdgBalance.result !== "bigint") {
-        throw new Error("The canonical USDG balance could not be established.");
-      }
+      }).catch(() => candidates.map(() => ({ status: "failure" as const, result: undefined })));
+      const evidence = reconcileAssetBalanceEvidence(
+        candidates,
+        balances,
+        assetBalanceEvidenceRef.current,
+        observedAt
+      );
       const positive = candidates.flatMap((candidate, index) => {
         const result = balances[index];
         return result?.status === "success" && typeof result.result === "bigint" && result.result > 0n
@@ -162,7 +205,7 @@ export function useVNextWalletAssets(
         allowFailure: true,
         batchSize: 0,
         deployless: true
-      }) : [];
+      }).catch(() => []) : [];
       const metadataByAddress = new Map<string, { decimals: number | null; symbol: string | null; name: string | null }>();
       unresolved.forEach(({ candidate }, index) => {
         const offset = index * 3;
@@ -175,11 +218,17 @@ export function useVNextWalletAssets(
           name: name?.status === "success" && typeof name.result === "string" ? name.result : null
         });
       });
-      return detectedWalletAssets(positive.map(({ candidate, balance }) => ({
+      const detected = detectedWalletAssets(positive.map(({ candidate, balance }) => ({
         candidate,
         balance,
         ...metadataByAddress.get(candidate.address.toLowerCase())
       })));
+      const detectedAddresses = new Set(detected.map((asset) => asset.address.toLowerCase()));
+      const stale = assetsRef.current.filter((asset) => (
+        !detectedAddresses.has(asset.address.toLowerCase())
+        && evidence[asset.address.toLowerCase()]?.state === "stale"
+      ));
+      return { assets: [...detected, ...stale], evidence, observedAt };
     };
 
     const recentSettledCandidates: VNextWalletAssetCandidate[] = [...new Set(readVNextExecutionJournal()
@@ -205,27 +254,46 @@ export function useVNextWalletAssets(
         .catch(() => ({ ok: false, payload: null }))
       : null;
 
-    try {
-      const [native, detected] = await Promise.all([
-        publicClient.getBalance({ address }),
-        readCandidates(initialCandidates)
-      ]);
-      if (currentBalanceRequest === balanceRequestId.current && discoveryWallet.current === walletKey) {
-        snapshotWallet.current = walletKey;
-        setAssets(detected);
-        setNativeBalance(native);
-        setObservedAtMs(Date.now());
-        setStatus("ready");
-      }
-    } catch {
-      if (currentBalanceRequest === balanceRequestId.current && discoveryWallet.current === walletKey) {
-        const currentWallet = snapshotWallet.current === walletKey;
-        if (!currentWallet) {
-          setAssets([]);
-          setNativeBalance(undefined);
-        }
-        setStatus(currentWallet ? "stale" : "error");
-      }
+    const [nativeRead, candidateRead] = await Promise.allSettled([
+      publicClient.getBalance({ address }),
+      readCandidates(initialCandidates)
+    ]);
+    if (currentBalanceRequest === balanceRequestId.current && discoveryWallet.current === walletKey) {
+      const observedAt = Date.now();
+      const nextNativeEvidence = reconcileBalanceEvidence(
+        nativeRead.status === "fulfilled"
+          ? { result: nativeRead.value, status: "success" }
+          : { status: "failure" },
+        nativeBalanceEvidenceRef.current,
+        observedAt
+      );
+      const tokenRead = candidateRead.status === "fulfilled"
+        ? candidateRead.value
+        : {
+            assets: assetsRef.current,
+            evidence: reconcileAssetBalanceEvidence(
+              initialCandidates,
+              initialCandidates.map(() => ({ status: "failure" as const })),
+              assetBalanceEvidenceRef.current,
+              observedAt
+            ),
+            observedAt
+          };
+      if (nativeRead.status === "fulfilled") nativeBalanceRef.current = nativeRead.value;
+      else if (nextNativeEvidence.state === "unavailable") nativeBalanceRef.current = undefined;
+      nativeBalanceEvidenceRef.current = nextNativeEvidence;
+      assetsRef.current = tokenRead.assets;
+      assetBalanceEvidenceRef.current = tokenRead.evidence;
+      snapshotWallet.current = walletKey;
+      setAssets(tokenRead.assets);
+      setAssetBalanceEvidence(tokenRead.evidence);
+      setNativeBalance(nativeBalanceRef.current);
+      setNativeBalanceEvidence(nextNativeEvidence);
+      setObservedAtMs(Math.max(
+        nextNativeEvidence.observedAtMs ?? 0,
+        ...Object.values(tokenRead.evidence).map((item) => item.observedAtMs ?? 0)
+      ) || undefined);
+      setStatus(walletBalanceReadStatus(nextNativeEvidence, tokenRead.evidence));
     }
 
     if (!discoveryRequest || currentDiscoveryRequest === null) return;
@@ -244,16 +312,18 @@ export function useVNextWalletAssets(
     ]);
     if (sameCandidateAddresses(initialCandidates, finalCandidates)) return;
     const finalBalanceRequest = ++balanceRequestId.current;
-    try {
-      const completeDetected = await readCandidates(finalCandidates);
-      if (finalBalanceRequest !== balanceRequestId.current || discoveryWallet.current !== walletKey) return;
-      snapshotWallet.current = walletKey;
-      setAssets(completeDetected);
-      setObservedAtMs(Date.now());
-      setStatus("ready");
-    } catch {
-      if (finalBalanceRequest === balanceRequestId.current && snapshotWallet.current === walletKey) setStatus("stale");
-    }
+    const completeRead = await readCandidates(finalCandidates);
+    if (finalBalanceRequest !== balanceRequestId.current || discoveryWallet.current !== walletKey) return;
+    snapshotWallet.current = walletKey;
+    assetsRef.current = completeRead.assets;
+    assetBalanceEvidenceRef.current = completeRead.evidence;
+    setAssets(completeRead.assets);
+    setAssetBalanceEvidence(completeRead.evidence);
+    setObservedAtMs(Math.max(
+      nativeBalanceEvidenceRef.current.observedAtMs ?? 0,
+      ...Object.values(completeRead.evidence).map((item) => item.observedAtMs ?? 0)
+    ) || undefined);
+    setStatus(walletBalanceReadStatus(nativeBalanceEvidenceRef.current, completeRead.evidence));
   }, [address, imported, markets, publicClient]);
 
   useEffect(() => {
@@ -261,7 +331,9 @@ export function useVNextWalletAssets(
       balanceRequestId.current += 1;
       discoveryRequestId.current += 1;
       setAssets([]);
+      setAssetBalanceEvidence({});
       setNativeBalance(undefined);
+      setNativeBalanceEvidence(UNAVAILABLE_BALANCE_EVIDENCE);
       setObservedAtMs(undefined);
       setStatus("idle");
       setDiscoveryStatus("idle");
@@ -270,13 +342,17 @@ export function useVNextWalletAssets(
       discoveryWallet.current = null;
       discoveredAssets.current = [];
       lastDiscoveryAt.current = null;
+      assetsRef.current = [];
+      assetBalanceEvidenceRef.current = {};
+      nativeBalanceRef.current = undefined;
+      nativeBalanceEvidenceRef.current = UNAVAILABLE_BALANCE_EVIDENCE;
       return;
     }
   }, [enabled]);
 
   useVisibilityRefresh(() => refresh(false), VNEXT_CLIENT_REFRESH_POLICY.walletBalanceMs, {
     enabled,
-    refreshKey: address?.toLowerCase() ?? "disconnected"
+    refreshKey: `${address?.toLowerCase() ?? "disconnected"}:${explicitCandidateKey}`
   });
 
   useEffect(() => {
@@ -298,7 +374,11 @@ export function useVNextWalletAssets(
   const discoveryStatusIsCurrent = Boolean(address && discoveryWallet.current === address.toLowerCase());
   return {
     assets: acceptanceSnapshot?.assets ?? (snapshotIsCurrent ? assets : EMPTY_WALLET_ASSETS),
+    assetBalanceEvidence: acceptanceSnapshot?.assetBalanceEvidence
+      ?? (snapshotIsCurrent ? assetBalanceEvidence : EMPTY_ASSET_BALANCE_EVIDENCE),
     nativeBalance: acceptanceSnapshot?.nativeBalance ?? (snapshotIsCurrent ? nativeBalance : undefined),
+    nativeBalanceEvidence: acceptanceSnapshot?.nativeBalanceEvidence
+      ?? (snapshotIsCurrent ? nativeBalanceEvidence : UNAVAILABLE_BALANCE_EVIDENCE),
     status: acceptanceSnapshot ? "ready" as const : statusIsCurrent ? status : enabled ? "loading" as const : "idle" as const,
     discoveryStatus: acceptanceSnapshot ? "ready" as const : discoveryStatusIsCurrent ? discoveryStatus : enabled ? "loading" as const : "idle" as const,
     observedAtMs: acceptanceSnapshot?.observedAtMs ?? (snapshotIsCurrent ? observedAtMs : undefined),

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } fro
 import { erc20Abi, formatUnits, getAddress, isAddress, zeroAddress, type Address } from "viem";
 import { useAccount, usePublicClient } from "wagmi";
 import type { ExternalMarketResponse } from "../../lib/external-market";
-import { spendableAtomic } from "../../lib/vnext/execution-domain";
+import { spendableAtomic, type AssetMetadata } from "../../lib/vnext/execution-domain";
 import { NATIVE_GAS_RESERVE_ATOMIC, spendableNativeAtomic } from "../../lib/vnext/intent-draft";
 import type { VNextExecutionRecord } from "../../lib/vnext/execution-recovery";
 import type { VNextDirectoryMarket } from "../../lib/vnext/market-directory";
@@ -18,6 +18,8 @@ import {
 } from "../../lib/vnext/robinhood-assets";
 import {
   importedWalletCandidate,
+  selectedWalletCandidate,
+  walletAssetCandidates,
   type VNextDetectedWalletAsset,
   type VNextWalletAssetCandidate
 } from "../../lib/vnext/wallet-assets";
@@ -31,8 +33,16 @@ import { useVisibilityRefresh } from "./use-visibility-refresh";
 import { useRmtIdentity } from "../rmt-identity";
 import { selectedVNextWalletReadAddress } from "../../lib/vnext/selected-wallet-read-authority";
 import type { VNextWalletReadSnapshot } from "../../lib/vnext/terminal-presentation-state";
+import { confirmedBalanceAtomic } from "../../lib/vnext/wallet-balance-evidence";
 
 const SETTLEMENT_BALANCE_REFRESH_DELAYS_MS = [0, 900, 2_500] as const;
+
+declare global {
+  interface Window {
+    __RMT_PRIVY_BRIDGE_BALANCE_SNAPSHOT__?: VNextWalletReadSnapshot & { enabled: boolean };
+    __RMT_PRIVY_BRIDGE_REFRESH_BALANCES__?: () => Promise<void>;
+  }
+}
 
 function amount(value: bigint | undefined, decimals: number | null, maximumFractionDigits: number) {
   if (value === undefined || decimals === null) return "—";
@@ -63,9 +73,11 @@ function stateLabel(asset: VNextDetectedWalletAsset, marketFound: boolean) {
   return asset.identityState === "verified" ? "Detected · route not checked" : "Detected · identity reported";
 }
 
-export function SpendBalance({ visible = true, markets, onWalletSnapshotChange, onSelectAsset, executionRecord, portfolioRevealRequest = 0 }: {
+export function SpendBalance({ visible = true, markets, selectedMarket, selectedAsset, onWalletSnapshotChange, onSelectAsset, executionRecord, portfolioRevealRequest = 0 }: {
   visible?: boolean;
   markets: VNextDirectoryMarket[];
+  selectedMarket?: VNextDirectoryMarket;
+  selectedAsset?: AssetMetadata;
   onWalletSnapshotChange?: (snapshot: VNextWalletReadSnapshot) => void;
   onSelectAsset?: (address: string) => void;
   executionRecord?: VNextExecutionRecord | null;
@@ -82,6 +94,13 @@ export function SpendBalance({ visible = true, markets, onWalletSnapshotChange, 
   const [showAllAssets, setShowAllAssets] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [ethUsd, setEthUsd] = useState<number>();
+  const balanceCandidates = useMemo(() => {
+    const selected = selectedWalletCandidate(selectedAsset)
+      ?? (selectedMarket
+        ? walletAssetCandidates([selectedMarket]).find((candidate) => candidate.address.toLowerCase() === selectedMarket.address.toLowerCase()) ?? null
+        : null);
+    return selected ? [selected, ...imported] : imported;
+  }, [imported, selectedAsset, selectedMarket]);
   const onRobinhood = chainId === ROBINHOOD_MAINNET_CHAIN_ID;
   const wallet = selectedVNextWalletReadAddress({
     selectedWalletKey: identity.activeWalletKey,
@@ -94,9 +113,19 @@ export function SpendBalance({ visible = true, markets, onWalletSnapshotChange, 
     connectorUid: connector?.uid,
     requiredChainId: ROBINHOOD_MAINNET_CHAIN_ID
   });
-  const { assets, nativeBalance, status, discoveryStatus, observedAtMs, enabled, refresh } = useVNextWalletAssets(markets, imported, wallet);
-  const usdg = assets.find((asset) => asset.address.toLowerCase() === ROBINHOOD_USDG_ADDRESS.toLowerCase());
-  const confirmedUsdg = usdg ? BigInt(usdg.balanceAtomic) : status === "ready" ? 0n : undefined;
+  const {
+    assets,
+    assetBalanceEvidence,
+    nativeBalance,
+    nativeBalanceEvidence,
+    status,
+    discoveryStatus,
+    observedAtMs,
+    enabled,
+    refresh
+  } = useVNextWalletAssets(markets, balanceCandidates, wallet);
+  const confirmedUsdgAtomic = confirmedBalanceAtomic(assetBalanceEvidence[ROBINHOOD_USDG_ADDRESS.toLowerCase()]);
+  const confirmedUsdg = confirmedUsdgAtomic === undefined ? undefined : BigInt(confirmedUsdgAtomic);
   const assetCountReady = status === "ready" || status === "stale";
   const usdgSpendable = wallet && confirmedUsdg !== undefined
     ? BigInt(spendableAtomic(confirmedBalanceSnapshot({
@@ -126,11 +155,31 @@ export function SpendBalance({ visible = true, markets, onWalletSnapshotChange, 
 
   useEffect(() => onWalletSnapshotChange?.({
     assets,
+    assetBalanceEvidence,
     nativeBalance,
+    nativeBalanceEvidence,
     status,
     walletAddress: wallet ?? null,
     walletKey: wallet ? identity.activeWalletKey : null
-  }), [assets, identity.activeWalletKey, nativeBalance, onWalletSnapshotChange, status, wallet]);
+  }), [assetBalanceEvidence, assets, identity.activeWalletKey, nativeBalance, nativeBalanceEvidence, onWalletSnapshotChange, status, wallet]);
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_RMT_PRIVY_BRIDGE_ACCEPTANCE_PROFILE !== "true") return;
+    window.__RMT_PRIVY_BRIDGE_BALANCE_SNAPSHOT__ = {
+      assets,
+      assetBalanceEvidence,
+      enabled,
+      nativeBalance,
+      nativeBalanceEvidence,
+      status,
+      walletAddress: wallet ?? null,
+      walletKey: wallet ? identity.activeWalletKey : null
+    };
+  }, [assetBalanceEvidence, assets, enabled, identity.activeWalletKey, nativeBalance, nativeBalanceEvidence, status, wallet]);
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_RMT_PRIVY_BRIDGE_ACCEPTANCE_PROFILE !== "true") return;
+    window.__RMT_PRIVY_BRIDGE_REFRESH_BALANCES__ = () => refresh(false);
+    return () => { delete window.__RMT_PRIVY_BRIDGE_REFRESH_BALANCES__; };
+  }, [refresh]);
   useEffect(() => {
     if (portfolioRevealRequest > 0) setHoldingsExpanded(true);
   }, [portfolioRevealRequest]);
