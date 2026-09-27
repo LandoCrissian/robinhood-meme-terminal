@@ -13,6 +13,7 @@
     "apps/web": {
       "entry": [
         "app/**/*.{ts,tsx}",
+        "lib/testing/**/*.{ts,tsx}",
         "lib/**/*-smoke.ts",
         "lib/**/*.test.ts"
       ]
