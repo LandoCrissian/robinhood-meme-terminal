@@ -315,9 +315,13 @@ export async function runZeroXWalletJourneys(options) {
           0,
           'The default terminal flow must not open the optional first-visit guide.'
         );
-        if (scenario === 'native') await page.getByLabel('Pay with asset').selectOption('eip155:4663/native');
+        const amountInput = page.getByLabel('Exact input amount');
+        if (scenario === 'native') {
+          await page.getByLabel('Pay with asset').selectOption('eip155:4663/native');
+          await until(async () => await amountInput.inputValue() === '0.0005', 'Native selection must publish its bounded default amount');
+        }
         if (sell && !scenario.startsWith('sell-approval')) await page.locator('.vnTradePanel select').first().selectOption('eip155:4663/native');
-        await page.getByLabel('Exact input amount').fill(scenario === 'native' ? '0.0005' : '25');
+        if (scenario !== 'native') await amountInput.fill('25');
         // Connected 0x amount readiness prepares authority without another RMT confirmation.
         if (scenario === 'identity-not-requested') {
           await page.getByText('Token verification temporarily unavailable', { exact: true }).first().waitFor();
