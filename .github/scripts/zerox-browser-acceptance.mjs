@@ -280,6 +280,14 @@ export async function runZeroXBrowserAcceptance() {
       results.push(...await runZeroXWalletJourneys({browser,base,identity,external,state,wallet,token,usdg,holder,output,scenarios:selectedScenarios}));
       return;
     }
+    const selectedRouteScenarios = process.env.RMT_ZEROX_ROUTE_SCENARIOS
+      ?.split(',')
+      .map((scenario) => scenario.trim())
+      .filter(Boolean);
+    if (selectedRouteScenarios?.length) {
+      results.push(...await runRouteOnDemandJourneys({ browser, base, identity, external, state, wallet, usdg, output, fixtures: routeFixtures, scenarios: selectedRouteScenarios }));
+      return;
+    }
     if (process.env.RMT_QUOTE_STATE_ONLY === 'true') { results.push(...await runZeroXWalletJourneys({browser,base,identity,external,state,wallet,token,usdg,holder,output,scenarios:['sell-approval-idle-verification','sell-approval-idle-success','sell-approval-idle-expired-failure','sell-approval-idle-failure','sell-approval-idle-click']})); return; }
     if (process.env.RMT_PRODUCT_METRICS_ONLY === 'true') { results.push(...await runTradingProductBrowser({ browser, base, identity, external, state, wallet, token, output })); return; }
     results.push(...await runTradingProductBrowser({ browser, base, identity, external, state, wallet, token, output }));
