@@ -457,8 +457,12 @@ export async function runZeroXWalletJourneys(options) {
                 assert.equal(await page.locator('.vnTradeReceipt').count(), 0, 'Approval is not settlement');
               } else {
                 if (scenario.endsWith('return')) {
-                  await page.reload({ waitUntil: 'domcontentloaded' });
+                  // A mined approval receipt and its allowance state are atomic
+                  // onchain. Make both observable before reload so the restored
+                  // page cannot request a quote in an impossible intermediate
+                  // state where the receipt exists but allowance is unchanged.
                   receiptsEnabled = true;
+                  await page.reload({ waitUntil: 'domcontentloaded' });
                 }
                 // Restored approvals may consume the full bounded identity retry
                 // backoff before the fresh swap authorization is published. A

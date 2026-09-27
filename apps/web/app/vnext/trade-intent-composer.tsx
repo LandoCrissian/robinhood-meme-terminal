@@ -1122,6 +1122,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
       || !executionRecord
       || executionRecord.kind !== "erc20_approval"
       || !draft.intent || !identity.authenticated || !identity.identityToken || !identity.activeWalletKey || !onRobinhood
+      || !tradeBalanceResolved
       || executionRecord.inputAmountAtomic !== draft.intent.amountAtomic
       || executionRecord.inputAsset.toLowerCase() !== inputAddress?.toLowerCase()
       || executionRecord.outputAsset.toLowerCase() !== outputAddress?.toLowerCase()
@@ -1130,7 +1131,8 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
     continuedApproval.current = executionRecord.txHash;
     void continueAfterApproval();
   }, [authorizationEnabled, executionRecord, postExecutionState.state, stockTokenViewOnly, draft.intent,
-    identity.authenticated, identity.identityToken, identity.activeWalletKey, onRobinhood, inputAddress, outputAddress]);
+    identity.authenticated, identity.identityToken, identity.activeWalletKey, onRobinhood, inputAddress, outputAddress,
+    tradeBalanceResolved]);
 
   const verificationLabel = visibleVerification
     ? visibleVerification.status === "verified"
