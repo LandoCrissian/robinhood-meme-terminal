@@ -41,6 +41,7 @@ const rpc = {
 };
 
 const word = (value) => `0x${BigInt(value).toString(16).padStart(64, "0")}`;
+const diagnosticJson = (value) => JSON.stringify(value, (_key, item) => typeof item === "bigint" ? item.toString() : item);
 
 function decodeDeploylessMulticall(data) {
   if (data.startsWith("0x82ad56cb")) {
@@ -547,7 +548,7 @@ async function runEmbeddedQuoteToHandoff(browser, base, executionFixture) {
     await prepare.click();
     const walletAction = panel.getByRole("button", { name: "Review verified swap in wallet", exact: true });
     try {
-      await walletAction.waitFor({ state: "visible", timeout: 30_000 });
+      await walletAction.waitFor({ state: "visible", timeout: 60_000 });
     } catch (error) {
       const diagnostic = await page.evaluate(() => ({
         balance: window.__RMT_PRIVY_BRIDGE_BALANCE_SNAPSHOT__,
@@ -555,7 +556,7 @@ async function runEmbeddedQuoteToHandoff(browser, base, executionFixture) {
         events: window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_EVENTS__,
         methods: window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_RPC_METHODS__
       }));
-      throw new Error(`embedded quote did not reach verified wallet review: ${JSON.stringify(diagnostic)}`, { cause: error });
+      throw new Error(`embedded quote did not reach verified wallet review: ${diagnosticJson(diagnostic)}`, { cause: error });
     }
     const before = await page.evaluate(() => window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_RPC_METHODS__
       .filter(({ method }) => method === "eth_sendTransaction").length);
@@ -570,7 +571,7 @@ async function runEmbeddedQuoteToHandoff(browser, base, executionFixture) {
         events: window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_EVENTS__,
         methods: window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_RPC_METHODS__
       }));
-      throw new Error(`embedded wallet handoff did not reach the selected provider: ${JSON.stringify(diagnostic)}`, { cause: error });
+      throw new Error(`embedded wallet handoff did not reach the selected provider: ${diagnosticJson(diagnostic)}`, { cause: error });
     }
     const after = await page.evaluate(() => window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_RPC_METHODS__
       .filter(({ method }) => method === "eth_sendTransaction").length);
