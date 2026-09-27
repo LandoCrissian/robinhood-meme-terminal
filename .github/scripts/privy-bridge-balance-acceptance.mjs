@@ -600,12 +600,6 @@ async function main() {
   await rm(artifactRoot, { recursive: true, force: true });
   await mkdir(artifactRoot, { recursive: true });
   const fixturePath = path.join(artifactRoot, "v2-fixture.json");
-  execFileSync(process.execPath, [requireWeb.resolve("tsx/cli"), "lib/vnext/browser-acceptance-v2-fixture.ts", fixturePath], {
-    cwd: webRoot,
-    env: process.env,
-    stdio: "inherit"
-  });
-  const executionFixture = JSON.parse(await readFile(fixturePath, "utf8"));
   const rpcServer = createServer(async (request, response) => {
     if (request.method === "OPTIONS") {
       response.writeHead(204, {
@@ -656,6 +650,15 @@ async function main() {
       const code = await new Promise((resolve, reject) => { build.once("error", reject); build.once("exit", resolve); });
       if (code !== 0) throw new Error(`Privy bridge acceptance build failed (${code}).`);
     }
+    // Generate executable evidence after the potentially long production build.
+    // The fixture carries real quote/plan deadlines, so creating it before the
+    // build can make an otherwise valid authorization expire on a busy runner.
+    execFileSync(process.execPath, [requireWeb.resolve("tsx/cli"), "lib/vnext/browser-acceptance-v2-fixture.ts", fixturePath], {
+      cwd: webRoot,
+      env: process.env,
+      stdio: "inherit"
+    });
+    const executionFixture = JSON.parse(await readFile(fixturePath, "utf8"));
     child = spawn(process.execPath, [nextBin, "start", "-p", String(appPort)], { cwd: webRoot, env, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
     const logs = { value: "" };
     child.stdout.on("data", (chunk) => { logs.value += chunk; });
