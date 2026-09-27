@@ -460,7 +460,12 @@ export async function runZeroXWalletJourneys(options) {
                   await page.reload({ waitUntil: 'domcontentloaded' });
                   receiptsEnabled = true;
                 }
-                await until(() => requests.length === 2, `${scenario} must continue after one Sell initiation`, 30000);
+                // Restored approvals may consume the full bounded identity retry
+                // backoff before the fresh swap authorization is published. A
+                // shared CI runner has produced that valid authorization at
+                // ~29.7s; keep waiting for the exact immutable handoff rather
+                // than mistaking scheduler latency for a product failure.
+                await until(() => requests.length === 2, `${scenario} must continue after one Sell initiation`, 60000);
                 const plans = api.filter((entry) => entry.path.endsWith('/authorize') && entry.status === 200).map((entry) => entry.body.plan);
                 assert.equal(plans[0].kind, 'erc20_approval');
                 assert.equal(plans.at(-1).kind, 'swap');
