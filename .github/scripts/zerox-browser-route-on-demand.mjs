@@ -50,7 +50,7 @@ export function createRouteOnDemandFixtures({ word, string, weth }) {
 
 // Real terminal and API routes. Only provider HTTP, RPC and wallet transports
 // are fixtures; no directory, verification or authorization response is replaced.
-export async function runRouteOnDemandJourneys({ browser, base, identity, external, state, wallet, usdg, output, fixtures }) {
+export async function runRouteOnDemandJourneys({ browser, base, identity, external, state, wallet, usdg, output, fixtures, scenarios }) {
   const results = [];
   state.approved = true;
   state.priceDisabled = false;
@@ -60,6 +60,7 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
   const peep = '0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f';
   for (const viewport of ['desktop', 'mobile']) {
     for (const [scenario, token] of Object.entries({ ...fixtures.assets, nativeToUsdg: usdg, usdgToNative: usdg, peep, peepNoRoute: peep, peepDisconnectedReview: peep, peepConnectedReview: peep })) {
+      if (scenarios?.length && !scenarios.includes(scenario)) continue;
       const peepEntry = ['peep', 'peepNoRoute', 'peepDisconnectedReview'].includes(scenario);
       const walletReviewScenario = scenario === 'peepDisconnectedReview' || scenario === 'peepConnectedReview';
       state.priceDisabled = scenario === 'peepNoRoute';
@@ -71,6 +72,7 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
         const listeners = new Map();
         let permitted = !peepEntry;
         let connectionRequestedByUser = !peepEntry;
+        window.__RMT_ACCEPTANCE_READ_WALLET_ASSETS__ = true;
         document.addEventListener('click', (event) => {
           const button = event.target instanceof Element ? event.target.closest('button') : null;
           if (button?.closest('.vnTradeActionDock') && button.textContent?.trim() === 'Sign in') connectionRequestedByUser = true;
@@ -192,7 +194,25 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
             const expectedValue = sellingToken || peepEntry ? '0' : '1000000000000000';
             const currentAuthorization = () => api.filter((entry) => entry.path === '/api/vnext/authorize'
               && entry.status === 200 && entry.body?.plan?.value === expectedValue).at(-1);
-            await until(() => currentAuthorization(), 'The selected input must reach real authorization, not an earlier default amount');
+            try {
+              await until(() => currentAuthorization(), 'The selected input must reach real authorization, not an earlier default amount');
+            } catch (error) {
+              const balanceReads = state.rpc.slice(-80).flatMap((entry) => {
+                if (entry.method === 'eth_getBalance') return [{ method: entry.method, account: entry.params?.[0] }];
+                if (entry.method !== 'eth_call') return [];
+                const transaction = entry.params?.[0] ?? {};
+                const selector = typeof transaction.data === 'string' && transaction.data.length >= 10
+                  ? transaction.data.slice(0, 10)
+                  : null;
+                if (transaction.to && selector !== '0x70a08231') return [];
+                return [{
+                  method: entry.method,
+                  target: transaction.to ?? 'deployless',
+                  selector
+                }];
+              });
+              throw new Error(`${error.message}: ${JSON.stringify({ balanceReads })}`, { cause: error });
+            }
             assert.ok(api.some((entry) => entry.path === '/api/vnext/verify' && entry.status === 200));
             await page.locator('.vnRouteTop').click();
             await page.locator('.vnWalletFeeDisclosure').waitFor();
