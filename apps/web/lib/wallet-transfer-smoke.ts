@@ -183,8 +183,14 @@ assert.match(dialog, /nextStorageKey = nativeTransferStorageKey\(next\.sender, n
   "A delayed result persists under the session sender rather than the currently rendered account.");
 assert.match(dialog, /nextStorageKey === activeStorageKey\.current\) setSession\(next\)/,
   "A delayed result from another account cannot overwrite the current account's visible recovery state.");
-assert.match(dialog, /const isCurrentRequest = \(\) => activeStorageKey\.current === requestStorageKey/,
-  "Every asynchronous wallet-result publication remains scoped to the account that opened the request.");
+assert.match(dialog, /const requestGeneration = liveDispatchAuthority\.current\.generation[\s\S]*live\.generation !== requestGeneration[\s\S]*live\.fingerprint !== reviewAuthority/,
+  "Dispatch authority must bind the reviewed request to the live signer lifecycle rather than a captured snapshot.");
+assert.match(dialog, /useLayoutEffect\(\(\) => \{[\s\S]*invalidatedGeneration[\s\S]*open: false[\s\S]*walletClient: undefined/,
+  "Account, connector, provider, chain, close, and unmount changes must synchronously invalidate pre-dispatch authority.");
+assert.match(dialog, /const invocationAuthority = requestAuthority\(\)[\s\S]*invocationAuthority\.walletClient\.sendTransaction/,
+  "The final provider invocation must use authority re-read immediately before dispatch.");
+assert.match(dialog, /saveSession\(submitted, isCurrentRequest\(\)\)/,
+  "Post-invocation recovery must persist under the originating sender without publishing into an obsolete UI generation.");
 assert.match(dialog, /nativeTransferStorageKey\(session\.sender, session\.chainId\) !== storageKey/,
   "Receipt reconciliation is scoped to the current account journal.");
 assert.match(dialog, /stepPanel\.current\?\.focus/,
@@ -201,6 +207,8 @@ assert.match(dialog, /could not independently verify its Robinhood Chain context
   "Unavailable reverted-receipt authority must remain unresolved and duplicate-blocking.");
 assert.match(dialog, /transaction hash or network did not match the tracked transfer[\s\S]*duplicate protection active[\s\S]*do not resubmit/,
   "Mismatched reverted-receipt authority must retain the tracked hash and duplicate protection.");
+assert.match(dialog, /settlementRetryRevision[\s\S]*previousAttempt\.inFlight[\s\S]*Recheck transaction evidence/,
+  "A transient receipt-context failure must expose an in-place, read-only retry while deduplicating concurrent verification.");
 assert.match(dialog, /session\.state === "REVERTED"[\s\S]*The onchain transaction reverted\. No transfer was completed\./,
   "A reverted receipt must never be presented as transfer success.");
 assert.match(dialog, /returnFocus\.current\?\.focus/);

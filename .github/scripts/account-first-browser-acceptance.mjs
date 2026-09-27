@@ -35,6 +35,7 @@ const connectedExternalWalletKey = JSON.stringify([
   wallet
 ]);
 const confirmedTransactions = new Set();
+const transientTransactionReadFailures = new Map();
 const rpcRequests = [];
 const receiptRequests = [];
 let latestBlock = 0x2faf080n;
@@ -79,6 +80,11 @@ function jsonRpc(request) {
     }
     case "eth_getTransactionByHash": {
       const hash = String(request.params?.[0] ?? "").toLowerCase();
+      const remainingFailures = transientTransactionReadFailures.get(hash) ?? 0;
+      if (remainingFailures > 0) {
+        transientTransactionReadFailures.set(hash, remainingFailures - 1);
+        return { jsonrpc: "2.0", id: request.id, error: { code: -32000, message: "Deterministic transient transaction read failure" } };
+      }
       result = confirmedTransactions.has(hash) ? {
         accessList: [],
         blockHash: `0x${"66".repeat(32)}`,
@@ -228,7 +234,50 @@ async function installPageFixtures(page, quoteRequests, options = {}) {
       return nativeSetItem.call(this, key, value);
     };
     const listeners = new Map();
+    let activeAccounts = [walletAddress];
+    let activeChainId = "0x1237";
+    let transferLockGate;
+    let releaseTransferLock;
+    let transferSendGate;
+    let releaseTransferSend;
     const emit = (event, value) => (listeners.get(event) ?? []).forEach((listener) => listener(value));
+    window.__RMT_ACCOUNT_ACCEPTANCE_SET_ACCOUNTS__ = (accounts) => {
+      activeAccounts = accounts;
+      emit("accountsChanged", accounts);
+    };
+    window.__RMT_ACCOUNT_ACCEPTANCE_SET_CHAIN__ = (chainId) => {
+      activeChainId = chainId;
+      emit("chainChanged", chainId);
+    };
+    window.__RMT_ACCOUNT_ACCEPTANCE_HOLD_TRANSFER_LOCK__ = () => {
+      if (transferLockGate) return;
+      transferLockGate = new Promise((resolve) => { releaseTransferLock = resolve; });
+    };
+    window.__RMT_ACCOUNT_ACCEPTANCE_RELEASE_TRANSFER_LOCK__ = () => {
+      releaseTransferLock?.();
+      transferLockGate = undefined;
+      releaseTransferLock = undefined;
+    };
+    window.__RMT_ACCOUNT_ACCEPTANCE_HOLD_TRANSFER_SEND__ = () => {
+      if (transferSendGate) return;
+      transferSendGate = new Promise((resolve) => { releaseTransferSend = resolve; });
+    };
+    window.__RMT_ACCOUNT_ACCEPTANCE_RELEASE_TRANSFER_SEND__ = () => {
+      releaseTransferSend?.();
+      transferSendGate = undefined;
+      releaseTransferSend = undefined;
+    };
+    window.__RMT_ACCOUNT_ACCEPTANCE_TRANSFER_LOCK_ENTRIES__ = 0;
+    const nativeLockRequest = navigator.locks?.request.bind(navigator.locks);
+    if (nativeLockRequest) {
+      navigator.locks.request = (name, options, callback) => nativeLockRequest(name, options, async (lock) => {
+        if (String(name).startsWith("rmt-native-transfer:") && transferLockGate) {
+          window.__RMT_ACCOUNT_ACCEPTANCE_TRANSFER_LOCK_ENTRIES__ += 1;
+          await transferLockGate;
+        }
+        return callback(lock);
+      });
+    }
     window.__RMT_ACCEPTANCE_WALLETCONNECT_PROVIDER__ = {
       on(event, listener) {
         const current = listeners.get(event) ?? [];
@@ -239,8 +288,8 @@ async function installPageFixtures(page, quoteRequests, options = {}) {
       },
       async request({ method }) {
         window.__RMT_ACCEPTANCE_WALLET_METHODS__.push(method);
-        if (method === "eth_chainId") return "0x1237";
-        if (method === "eth_accounts" || method === "eth_requestAccounts") return [walletAddress];
+        if (method === "eth_chainId") return activeChainId;
+        if (method === "eth_accounts" || method === "eth_requestAccounts") return activeAccounts;
         if (method === "wallet_switchEthereumChain") { emit("chainChanged", "0x1237"); return null; }
         if (method === "eth_getBalance") return "0x8ac7230489e80000";
         if (method === "eth_blockNumber") return "0x2faf080";
@@ -250,7 +299,10 @@ async function installPageFixtures(page, quoteRequests, options = {}) {
         if (method === "eth_gasPrice") return "0x2faf080";
         if (method === "eth_getTransactionCount") return "0x1";
         if (method === "eth_getLogs") return [];
-        if (method === "eth_sendTransaction") return transactionHash;
+        if (method === "eth_sendTransaction") {
+          if (transferSendGate) await transferSendGate;
+          return transactionHash;
+        }
         throw new Error(`Unimplemented account fixture wallet method ${method}`);
       }
     };
@@ -436,6 +488,188 @@ async function runTransferBoundary(browser, base, serverLog) {
       unknownRetryBlocked: true
     };
   } finally {
+    await context.close();
+  }
+}
+
+async function openReviewedTransfer(page, label) {
+  await acceptTerms(page, { terms: 0 });
+  await activateTransferFixtureWallet(page, label);
+  await page.waitForFunction(() => typeof window.__RMT_ACCOUNT_ACCEPTANCE_SET_SIGNER_UID__ === "function");
+  const transfer = await openTransferDialog(page);
+  await transfer.getByLabel("Destination address").fill(transferRecipient);
+  await transfer.getByLabel("Amount").fill("0.01");
+  await transfer.getByRole("button", { name: "Review transfer" }).click();
+  await transfer.getByRole("button", { name: "Confirm in wallet" }).waitFor();
+  return transfer;
+}
+
+async function runTransferPreDispatchAuthorityBoundary(browser, base, serverLog) {
+  console.log("[account-first:transfer-authority] exercising live pre-dispatch invalidation");
+  const replacementWallet = "0x7777777777777777777777777777777777777777";
+  const scenarios = [
+    {
+      name: "account-change",
+      mutate: async (page) => page.evaluate((next) => window.__RMT_ACCOUNT_ACCEPTANCE_SET_ACCOUNTS__?.([next]), replacementWallet)
+    },
+    {
+      name: "same-address-provider-replacement",
+      mutate: async (page) => page.evaluate(() => window.__RMT_ACCOUNT_ACCEPTANCE_SET_SIGNER_UID__?.("replacement-provider-uid"))
+    },
+    {
+      name: "chain-change",
+      mutate: async (page) => page.evaluate(() => window.__RMT_ACCOUNT_ACCEPTANCE_SET_CHAIN__?.("0x1"))
+    },
+    {
+      name: "logout",
+      mutate: async (page) => page.evaluate(async () => window.__RMT_ACCOUNT_ACCEPTANCE_LOGOUT__?.())
+    },
+    {
+      name: "dialog-close",
+      mutate: async (_page, transfer) => transfer.locator('button[aria-label="Close transfer"]').click()
+    },
+    {
+      name: "unmount",
+      mutate: async (page) => {
+        await page.evaluate(() => {
+          const link = document.querySelector('a[href="/nft"]');
+          if (!(link instanceof HTMLAnchorElement)) throw new Error("NFT navigation link is unavailable.");
+          link.click();
+        });
+        await page.waitForURL(/\/nft(?:\?|$)/, { timeout: 20_000 });
+      }
+    },
+    {
+      name: "account-a-b-a",
+      mutate: async (page) => {
+        await page.evaluate((next) => window.__RMT_ACCOUNT_ACCEPTANCE_SET_ACCOUNTS__?.([next]), replacementWallet);
+        await page.waitForTimeout(100);
+        await page.evaluate((original) => window.__RMT_ACCOUNT_ACCEPTANCE_SET_ACCOUNTS__?.([original]), wallet);
+      }
+    }
+  ];
+  const results = {};
+  for (const scenario of scenarios) {
+    const context = await browser.newContext({ viewport: { width: 1_280, height: 820 } });
+    const page = await context.newPage();
+    try {
+      await installPageFixtures(page, []);
+      await page.goto(base, { waitUntil: "domcontentloaded", timeout: 180_000 }).catch((error) => {
+        throw new Error(`${scenario.name} navigation failed. ${String(error)}\n${serverLog.value.slice(-8_000)}`);
+      });
+      const transfer = await openReviewedTransfer(page, `Transfer ${scenario.name}`);
+      await page.evaluate(() => window.__RMT_ACCOUNT_ACCEPTANCE_HOLD_TRANSFER_LOCK__?.());
+      await transfer.getByRole("button", { name: "Confirm in wallet" }).click();
+      await page.waitForFunction(() => window.__RMT_ACCOUNT_ACCEPTANCE_TRANSFER_LOCK_ENTRIES__ === 1);
+      await scenario.mutate(page, transfer);
+      await page.waitForTimeout(150);
+      await page.evaluate(() => window.__RMT_ACCOUNT_ACCEPTANCE_RELEASE_TRANSFER_LOCK__?.());
+      await page.waitForTimeout(250);
+      const providerCalls = await page.evaluate(() =>
+        (window.__RMT_ACCEPTANCE_WALLET_METHODS__ ?? []).filter((method) => method === "eth_sendTransaction").length);
+      const journal = await page.evaluate((key) => window.localStorage.getItem(key), `rmt:native-transfer:v1:4663:${wallet}`);
+      assert.equal(providerCalls, 0, `${scenario.name}: obsolete reviewed authority must make zero provider calls`);
+      assert.equal(journal, null, `${scenario.name}: pre-dispatch cancellation must not create an unresolved-payment journal`);
+      results[scenario.name] = { providerCalls, unresolvedJournal: false };
+    } finally {
+      await context.close();
+    }
+  }
+
+  const unchangedContext = await browser.newContext({ viewport: { width: 1_280, height: 820 } });
+  const unchangedPage = await unchangedContext.newPage();
+  try {
+    await installPageFixtures(unchangedPage, []);
+    await unchangedPage.goto(base, { waitUntil: "domcontentloaded", timeout: 180_000 });
+    const transfer = await openReviewedTransfer(unchangedPage, "Transfer unchanged authority");
+    await unchangedPage.evaluate(() => window.__RMT_ACCOUNT_ACCEPTANCE_HOLD_TRANSFER_LOCK__?.());
+    await transfer.getByRole("button", { name: "Confirm in wallet" }).click();
+    await unchangedPage.waitForFunction(() => window.__RMT_ACCOUNT_ACCEPTANCE_TRANSFER_LOCK_ENTRIES__ === 1);
+    await unchangedPage.evaluate(() => window.__RMT_ACCOUNT_ACCEPTANCE_RELEASE_TRANSFER_LOCK__?.());
+    await transfer.getByText("Transaction submitted. Waiting for an onchain receipt…").waitFor({ timeout: 20_000 });
+    const providerCalls = await unchangedPage.evaluate(() =>
+      (window.__RMT_ACCEPTANCE_WALLET_METHODS__ ?? []).filter((method) => method === "eth_sendTransaction").length);
+    assert.equal(providerCalls, 1, "unchanged live authority invokes exactly one reviewed wallet request");
+    results.unchanged = { providerCalls };
+  } finally {
+    await unchangedContext.close();
+  }
+
+  const invokedContext = await browser.newContext({ viewport: { width: 1_280, height: 820 } });
+  const invokedPage = await invokedContext.newPage();
+  try {
+    await installPageFixtures(invokedPage, []);
+    await invokedPage.goto(base, { waitUntil: "domcontentloaded", timeout: 180_000 });
+    const transfer = await openReviewedTransfer(invokedPage, "Transfer post-invocation recovery");
+    await invokedPage.evaluate(() => window.__RMT_ACCOUNT_ACCEPTANCE_HOLD_TRANSFER_SEND__?.());
+    await transfer.getByRole("button", { name: "Confirm in wallet" }).click();
+    await invokedPage.waitForFunction(() =>
+      (window.__RMT_ACCEPTANCE_WALLET_METHODS__ ?? []).filter((method) => method === "eth_sendTransaction").length === 1);
+    await invokedPage.evaluate((next) => window.__RMT_ACCOUNT_ACCEPTANCE_SET_ACCOUNTS__?.([next]), replacementWallet);
+    await invokedPage.waitForTimeout(150);
+    await invokedPage.evaluate(() => window.__RMT_ACCOUNT_ACCEPTANCE_RELEASE_TRANSFER_SEND__?.());
+    await invokedPage.waitForFunction((key) => JSON.parse(window.localStorage.getItem(key) ?? "null")?.state === "SUBMITTED",
+      `rmt:native-transfer:v1:4663:${wallet}`);
+    const journals = await invokedPage.evaluate(({ originKey, replacementKey }) => ({
+      origin: JSON.parse(window.localStorage.getItem(originKey) ?? "null"),
+      replacement: window.localStorage.getItem(replacementKey)
+    }), {
+      originKey: `rmt:native-transfer:v1:4663:${wallet}`,
+      replacementKey: `rmt:native-transfer:v1:4663:${replacementWallet}`
+    });
+    assert.equal(journals.origin?.state, "SUBMITTED", "an invoked request remains durable under its originating sender");
+    assert.equal(journals.origin?.txHash, transferHash, "post-invocation recovery retains the exact returned hash");
+    assert.equal(journals.replacement, null, "an invoked request never publishes a recovery journal under the replacement account");
+    results.postInvocationAccountChange = { originState: journals.origin.state, replacementJournal: false, providerCalls: 1 };
+  } finally {
+    await invokedContext.close();
+  }
+
+  console.log("[account-first:transfer-authority] all obsolete pre-dispatch contexts cancelled; invoked recovery preserved");
+  return { evidenceType: "MOCKED_LOCAL_BROWSER", ...results };
+}
+
+async function runTransferSameReceiptRetryBoundary(browser, base, serverLog) {
+  console.log("[account-first:transfer-recheck] exercising same-receipt reconciliation retry");
+  rpcRequests.length = 0;
+  receiptRequests.length = 0;
+  const context = await browser.newContext({ viewport: { width: 1_280, height: 820 } });
+  const page = await context.newPage();
+  const normalizedHash = transferHash.toLowerCase();
+  try {
+    await installPageFixtures(page, []);
+    await page.goto(base, { waitUntil: "domcontentloaded", timeout: 180_000 }).catch((error) => {
+      throw new Error(`Same-receipt retry navigation failed. ${String(error)}\n${serverLog.value.slice(-8_000)}`);
+    });
+    const transfer = await openReviewedTransfer(page, "Transfer same-receipt retry");
+    confirmedTransactions.add(normalizedHash);
+    transientTransactionReadFailures.set(normalizedHash, 1);
+    await transfer.getByRole("button", { name: "Confirm in wallet" }).click();
+    const recheck = transfer.getByRole("button", { name: "Recheck transaction evidence" });
+    await recheck.waitFor({ timeout: 25_000 });
+    const sendsBeforeRecheck = await page.evaluate(() =>
+      (window.__RMT_ACCEPTANCE_WALLET_METHODS__ ?? []).filter((method) => method === "eth_sendTransaction").length);
+    assert.equal(sendsBeforeRecheck, 1, "the transient verification failure retains exactly one provider invocation");
+    await recheck.click();
+    await transfer.getByText("TRANSFER CONFIRMED").waitFor({ timeout: 25_000 });
+    const sendsAfterRecheck = await page.evaluate(() =>
+      (window.__RMT_ACCEPTANCE_WALLET_METHODS__ ?? []).filter((method) => method === "eth_sendTransaction").length);
+    const transactionReads = rpcRequests.filter(({ method, params }) => method === "eth_getTransactionByHash"
+      && String(params?.[0] ?? "").toLowerCase() === normalizedHash).length;
+    assert.equal(sendsAfterRecheck, 1, "read-only reconciliation never resubmits the transfer");
+    assert.equal(transactionReads, 2, "the exact same transaction/receipt pair is read once initially and once on explicit recheck");
+    const stored = await page.evaluate((key) => JSON.parse(window.localStorage.getItem(key) ?? "null"),
+      `rmt:native-transfer:v1:4663:${wallet}`);
+    assert.equal(stored?.state, "CONFIRMED", "the same receipt reconciles in place after transient reader recovery");
+    return {
+      evidenceType: "MOCKED_LOCAL_BROWSER",
+      providerSendRequests: sendsAfterRecheck,
+      sameReceiptTransactionReads: transactionReads,
+      finalState: stored.state
+    };
+  } finally {
+    confirmedTransactions.delete(normalizedHash);
+    transientTransactionReadFailures.delete(normalizedHash);
     await context.close();
   }
 }
@@ -1181,6 +1415,8 @@ async function main() {
     const coldLinkedExternal = await runColdLinkedExternalBoundary(browser, base);
     const preferenceHydration = await runPreferenceHydrationBoundary(browser, base);
     const transferBoundary = await runTransferBoundary(browser, base, serverLog);
+    const transferPreDispatchAuthority = await runTransferPreDispatchAuthorityBoundary(browser, base, serverLog);
+    const transferSameReceiptRetry = await runTransferSameReceiptRetryBoundary(browser, base, serverLog);
     const transferPersistenceFailure = await runTransferPersistenceFailureBoundary(browser, base, serverLog);
     const report = {
       evidenceType: "MOCKED_LOCAL_BROWSER",
@@ -1194,6 +1430,8 @@ async function main() {
       coldLinkedExternal,
       preferenceHydration,
       transferBoundary,
+      transferPreDispatchAuthority,
+      transferSameReceiptRetry,
       transferPersistenceFailure
     };
     await writeFile(path.join(artifactRoot, "account-first-browser-evidence.json"), `${JSON.stringify(report, null, 2)}\n`);

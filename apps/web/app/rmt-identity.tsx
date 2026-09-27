@@ -256,6 +256,7 @@ declare global {
       preferredWalletKey: string | null;
     }>;
     __RMT_ACCOUNT_ACCEPTANCE_SET_SIGNER_UID__?: (connectorUid: string | null) => void;
+    __RMT_ACCOUNT_ACCEPTANCE_LOGOUT__?: () => Promise<void>;
   }
 }
 
@@ -459,6 +460,14 @@ export function AccountFirstAcceptanceIdentityBridge({ children }: { children: R
     setExternalReady(false);
     recordAccountAcceptanceEvent({ at: Date.now(), type: "LOGGED_OUT" });
   }, [acceptanceEnabled, disconnectAsync, isConnected]);
+
+  useEffect(() => {
+    if (!acceptanceEnabled) return;
+    window.__RMT_ACCOUNT_ACCEPTANCE_LOGOUT__ = logout;
+    return () => {
+      delete window.__RMT_ACCOUNT_ACCEPTANCE_LOGOUT__;
+    };
+  }, [acceptanceEnabled, logout]);
 
   const tradingWallets = useMemo<readonly RmtTradingWalletSummary[]>(() => embeddedCandidate && embeddedKey ? [{
     address: embeddedCandidate.address,

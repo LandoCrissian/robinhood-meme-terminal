@@ -1,7 +1,7 @@
 "use client";
 
 import { robinhoodChain, robinhoodChainTestnet } from "@rmt/shared/chains";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { formatEther, type Address } from "viem";
 import { useAccount, useBalance, usePublicClient, useWaitForTransactionReceipt, useWalletClient } from "wagmi";
 import {
@@ -55,6 +55,7 @@ export function WalletTransferDialog({
   const [reviewAuthority, setReviewAuthority] = useState("");
   const [session, setSession] = useState<NativeTransferSession>();
   const [requestPending, setRequestPending] = useState(false);
+  const [walletInvocationStarted, setWalletInvocationStarted] = useState(false);
   const [transactionHash, setTransactionHash] = useState<`0x${string}`>();
   const closeButton = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
@@ -63,7 +64,12 @@ export function WalletTransferDialog({
   const returnFocus = useRef<HTMLElement | null>(null);
   const onCloseRef = useRef(onClose);
   const requestPendingRef = useRef(false);
-  const settlementAttempt = useRef("");
+  const walletInvocationStartedRef = useRef(false);
+  const dispatchGeneration = useRef(0);
+  const settlementAttempt = useRef({ inFlight: false, key: "", revision: -1 });
+  const [settlementRetryRevision, setSettlementRetryRevision] = useState(0);
+  const [settlementChecking, setSettlementChecking] = useState(false);
+  const [settlementCanRecheck, setSettlementCanRecheck] = useState(false);
   requestPendingRef.current = requestPending;
   const targetChain = target === "mainnet" ? robinhoodChain : robinhoodChainTestnet;
   const explorer = targetChain.blockExplorers.default.url;
@@ -120,11 +126,72 @@ export function WalletTransferDialog({
     }
   }, [account.address, account.chainId, account.connector, selectedSignerAuthority, selectedWalletKey, selectedWalletKind, targetChain.id, walletClient]);
 
-  const saveSession = useCallback((next: NativeTransferSession) => {
+  const liveDispatchAuthority = useRef<{
+    accountAddress: typeof account.address;
+    accountChainId: typeof account.chainId;
+    connector: typeof account.connector;
+    fingerprint?: string;
+    generation: number;
+    open: boolean;
+    selectedSignerAuthority: RmtActiveSignerAuthority;
+    selectedWalletKey: string;
+    selectedWalletKind: "embedded" | "external";
+    storageKey: string;
+    walletClient: typeof walletClient;
+  }>({
+    accountAddress: account.address,
+    accountChainId: account.chainId,
+    connector: account.connector,
+    fingerprint: currentAuthority?.fingerprint,
+    generation: 0,
+    open,
+    selectedSignerAuthority,
+    selectedWalletKey,
+    selectedWalletKind,
+    storageKey,
+    walletClient
+  });
+  type ConnectedTransferAuthority = typeof liveDispatchAuthority.current & {
+    connector: NonNullable<typeof account.connector>;
+    fingerprint: string;
+    walletClient: NonNullable<typeof walletClient>;
+  };
+
+  useLayoutEffect(() => {
+    const generation = dispatchGeneration.current + 1;
+    dispatchGeneration.current = generation;
+    liveDispatchAuthority.current = {
+      accountAddress: account.address,
+      accountChainId: account.chainId,
+      connector: account.connector,
+      fingerprint: currentAuthority?.fingerprint,
+      generation,
+      open,
+      selectedSignerAuthority,
+      selectedWalletKey,
+      selectedWalletKind,
+      storageKey,
+      walletClient
+    };
+    return () => {
+      if (liveDispatchAuthority.current.generation !== generation) return;
+      const invalidatedGeneration = dispatchGeneration.current + 1;
+      dispatchGeneration.current = invalidatedGeneration;
+      liveDispatchAuthority.current = {
+        ...liveDispatchAuthority.current,
+        fingerprint: undefined,
+        generation: invalidatedGeneration,
+        open: false,
+        walletClient: undefined
+      };
+    };
+  }, [account.address, account.chainId, account.connector, currentAuthority?.fingerprint, open, selectedSignerAuthority, selectedWalletKey, selectedWalletKind, storageKey, walletClient]);
+
+  const saveSession = useCallback((next: NativeTransferSession, publish = true) => {
     const nextStorageKey = nativeTransferStorageKey(next.sender, next.chainId);
     try {
       window.localStorage.setItem(nextStorageKey, JSON.stringify(next));
-      if (nextStorageKey === activeStorageKey.current) setSession(next);
+      if (publish && nextStorageKey === activeStorageKey.current) setSession(next);
       return true;
     } catch {
       return false;
@@ -136,7 +203,7 @@ export function WalletTransferDialog({
     returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const previousOverflow = document.body.style.overflow;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !requestPendingRef.current) {
+      if (event.key === "Escape" && (!requestPendingRef.current || !walletInvocationStartedRef.current)) {
         event.preventDefault();
         onCloseRef.current();
         return;
@@ -186,7 +253,12 @@ export function WalletTransferDialog({
     setReviewed(undefined);
     setReviewAuthority("");
     setMessage("");
-    settlementAttempt.current = "";
+    settlementAttempt.current = { inFlight: false, key: "", revision: -1 };
+    setSettlementRetryRevision(0);
+    setSettlementChecking(false);
+    setSettlementCanRecheck(false);
+    walletInvocationStartedRef.current = false;
+    setWalletInvocationStarted(false);
     let restored: NativeTransferSession | undefined;
     try {
       restored = parseNativeTransferSession(window.localStorage.getItem(storageKey), address, targetChain.id);
@@ -211,12 +283,21 @@ export function WalletTransferDialog({
     if (!session || nativeTransferStorageKey(session.sender, session.chainId) !== storageKey
       || !session.txHash || !["SUBMITTED", "UNKNOWN"].includes(session.state) || !receipt.data) return;
     const attemptKey = `${storageKey}:${session.txHash.toLowerCase()}:${receipt.data.blockHash.toLowerCase()}`;
-    if (settlementAttempt.current === attemptKey) return;
-    settlementAttempt.current = attemptKey;
-    const isCurrentSettlement = () => activeStorageKey.current === storageKey;
+    const previousAttempt = settlementAttempt.current;
+    if (previousAttempt.key === attemptKey
+      && (previousAttempt.inFlight || previousAttempt.revision >= settlementRetryRevision)) return;
+    settlementAttempt.current = { inFlight: true, key: attemptKey, revision: settlementRetryRevision };
+    const settlementGeneration = liveDispatchAuthority.current.generation;
+    const isCurrentSettlement = () => activeStorageKey.current === storageKey
+      && liveDispatchAuthority.current.generation === settlementGeneration;
+    if (isCurrentSettlement()) {
+      setSettlementChecking(true);
+      setSettlementCanRecheck(false);
+    }
 
-    if (receipt.data.status === "reverted") {
-      void (async () => {
+    void (async () => {
+      try {
+        if (receipt.data.status === "reverted") {
         let resolution;
         try {
           if (!publicClient) throw new Error("The Robinhood Chain reader is unavailable.");
@@ -228,66 +309,77 @@ export function WalletTransferDialog({
           resolution = resolveNativeTransferRevertedReceipt(session);
         }
 
-        const persisted = saveSession(resolution.session);
+        const persisted = saveSession(resolution.session, isCurrentSettlement());
         if (!isCurrentSettlement()) return;
         if (!persisted) setSession(resolution.session);
         if (resolution.outcome === "EXACT_MATCH") {
+          setSettlementCanRecheck(false);
           setMessage(persisted
             ? ""
             : "The transaction reverted onchain, but RMT could not persist that final state. Keep the transaction hash.");
         } else if (resolution.outcome === "EVIDENCE_UNAVAILABLE") {
+          setSettlementCanRecheck(true);
           setMessage("The receipt reported a revert, but RMT could not independently verify its Robinhood Chain context. The outcome remains unresolved; keep the transaction hash and do not resubmit.");
         } else {
+          setSettlementCanRecheck(true);
           setMessage("The receipt reported a revert, but its transaction hash or network did not match the tracked transfer. RMT kept duplicate protection active; keep the transaction hash and do not resubmit.");
         }
-      })();
-      return;
-    }
+          return;
+        }
 
-    void (async () => {
-      let resolution;
-      try {
-        if (!publicClient) throw new Error("The Robinhood Chain reader is unavailable.");
-        const [contextChainId, transaction] = await Promise.all([
-          publicClient.getChainId(),
-          publicClient.getTransaction({ hash: session.txHash! })
-        ]);
-        resolution = resolveNativeTransferSettlement(session, {
-          contextChainId,
-          receipt: {
-            blockHash: receipt.data.blockHash,
-            blockNumber: receipt.data.blockNumber,
-            transactionHash: receipt.data.transactionHash
-          },
-          transaction: {
-            blockHash: transaction.blockHash,
-            blockNumber: transaction.blockNumber,
-            chainId: transaction.chainId,
-            from: transaction.from,
-            hash: transaction.hash,
-            input: transaction.input,
-            to: transaction.to,
-            value: transaction.value
-          }
-        });
-      } catch {
-        resolution = resolveNativeTransferSettlement(session);
-      }
+        let resolution;
+        try {
+          if (!publicClient) throw new Error("The Robinhood Chain reader is unavailable.");
+          const [contextChainId, transaction] = await Promise.all([
+            publicClient.getChainId(),
+            publicClient.getTransaction({ hash: session.txHash! })
+          ]);
+          resolution = resolveNativeTransferSettlement(session, {
+            contextChainId,
+            receipt: {
+              blockHash: receipt.data.blockHash,
+              blockNumber: receipt.data.blockNumber,
+              transactionHash: receipt.data.transactionHash
+            },
+            transaction: {
+              blockHash: transaction.blockHash,
+              blockNumber: transaction.blockNumber,
+              chainId: transaction.chainId,
+              from: transaction.from,
+              hash: transaction.hash,
+              input: transaction.input,
+              to: transaction.to,
+              value: transaction.value
+            }
+          });
+        } catch {
+          resolution = resolveNativeTransferSettlement(session);
+        }
 
-      const persisted = saveSession(resolution.session);
-      if (!isCurrentSettlement()) return;
-      if (!persisted) setSession(resolution.session);
-      if (resolution.outcome === "EXACT_MATCH") {
-        setMessage(persisted
-          ? ""
-          : "The receipt arrived, but RMT could not persist the final transfer state. Keep the transaction hash.");
-      } else if (resolution.outcome === "EVIDENCE_UNAVAILABLE") {
-        setMessage("The receipt succeeded, but RMT could not independently load the mined transaction details. The transfer remains unresolved here; keep the transaction hash and do not resubmit.");
-      } else {
-        setMessage("The receipt succeeded, but the mined transaction did not match the reviewed network, sender, recipient, amount, or empty calldata. RMT did not mark the transfer confirmed; keep the transaction hash and do not resubmit.");
+        const persisted = saveSession(resolution.session, isCurrentSettlement());
+        if (!isCurrentSettlement()) return;
+        if (!persisted) setSession(resolution.session);
+        if (resolution.outcome === "EXACT_MATCH") {
+          setSettlementCanRecheck(false);
+          setMessage(persisted
+            ? ""
+            : "The receipt arrived, but RMT could not persist the final transfer state. Keep the transaction hash.");
+        } else if (resolution.outcome === "EVIDENCE_UNAVAILABLE") {
+          setSettlementCanRecheck(true);
+          setMessage("The receipt succeeded, but RMT could not independently load the mined transaction details. The transfer remains unresolved here; keep the transaction hash and do not resubmit.");
+        } else {
+          setSettlementCanRecheck(true);
+          setMessage("The receipt succeeded, but the mined transaction did not match the reviewed network, sender, recipient, amount, or empty calldata. RMT did not mark the transfer confirmed; keep the transaction hash and do not resubmit.");
+        }
+      } finally {
+        if (settlementAttempt.current.key === attemptKey
+          && settlementAttempt.current.revision === settlementRetryRevision) {
+          settlementAttempt.current = { ...settlementAttempt.current, inFlight: false };
+        }
+        if (isCurrentSettlement()) setSettlementChecking(false);
       }
     })();
-  }, [publicClient, receipt.data, saveSession, session, storageKey]);
+  }, [publicClient, receipt.data, saveSession, session, settlementRetryRevision, storageKey]);
 
   if (!open) return null;
 
@@ -315,19 +407,30 @@ export function WalletTransferDialog({
       return;
     }
     const requestStorageKey = storageKey;
-    const isCurrentRequest = () => activeStorageKey.current === requestStorageKey;
+    const requestGeneration = liveDispatchAuthority.current.generation;
+    const requestAuthority = (): ConnectedTransferAuthority | undefined => {
+      const live = liveDispatchAuthority.current;
+      if (!live.open || live.generation !== requestGeneration || live.storageKey !== requestStorageKey
+        || live.fingerprint !== reviewAuthority || !live.connector || !live.walletClient) return undefined;
+      return live as ConnectedTransferAuthority;
+    };
+    const isCurrentRequest = () => Boolean(requestAuthority());
     if (!navigator.locks) {
       setMessage("This browser cannot establish duplicate-transfer protection. RMT did not open the wallet.");
       return;
     }
     setRequestPending(true);
+    walletInvocationStartedRef.current = false;
+    setWalletInvocationStarted(false);
     try {
       await navigator.locks.request(`rmt-native-transfer:${storageKey}`, { mode: "exclusive", ifAvailable: true }, async (lock) => {
         if (!lock) {
-          setMessage("Another tab is already reviewing a transfer from this wallet.");
+          if (isCurrentRequest()) setMessage("Another tab is already reviewing a transfer from this wallet.");
           return;
         }
-        const persisted = parseNativeTransferSession(window.localStorage.getItem(storageKey), address, targetChain.id);
+        const live = requestAuthority();
+        if (!live) return;
+        const persisted = parseNativeTransferSession(window.localStorage.getItem(requestStorageKey), address, targetChain.id);
         if (nativeTransferBlocksAnother(persisted)) {
           if (isCurrentRequest()) {
             setSession(persisted);
@@ -338,16 +441,16 @@ export function WalletTransferDialog({
           return;
         }
         const rebound = bindNativeTransferSigner({
-          selectedWalletKey,
-          selectedWalletKind,
-          selectedSignerAuthority,
-          connectedAddress: account.address,
-          connectedChainId: account.chainId,
-          connectorId: account.connector?.id,
-          connectorType: account.connector?.type,
-          connectorUid: account.connector?.uid,
-          walletClientAddress: walletClient.account?.address,
-          walletClientChainId: walletClient.chain?.id,
+          selectedWalletKey: live.selectedWalletKey,
+          selectedWalletKind: live.selectedWalletKind,
+          selectedSignerAuthority: live.selectedSignerAuthority,
+          connectedAddress: live.accountAddress,
+          connectedChainId: live.accountChainId,
+          connectorId: live.connector.id,
+          connectorType: live.connector.type,
+          connectorUid: live.connector.uid,
+          walletClientAddress: live.walletClient.account?.address,
+          walletClientChainId: live.walletClient.chain?.id,
           requiredChainId: targetChain.id
         });
         if (exactBalance === undefined) throw new Error("The exact Robinhood Chain balance is unavailable. RMT did not open the wallet.");
@@ -355,22 +458,37 @@ export function WalletTransferDialog({
         if (rebound.fingerprint !== reviewAuthority || exact.recipient !== reviewed.recipient || exact.value !== reviewed.value) {
           throw new Error("The exact signer or transfer changed after review.");
         }
+        if (!requestAuthority()) return;
         const prompt = createNativeTransferPrompt({
           requestId: crypto.randomUUID(),
           sender: address,
           recipient: reviewed.recipient,
           value: reviewed.value,
           chainId: targetChain.id,
-          walletKey: selectedWalletKey,
+          walletKey: live.selectedWalletKey,
           connectorUid: rebound.connectorUid
         });
-        if (!saveSession(prompt)) {
+        if (!saveSession(prompt, isCurrentRequest())) {
           if (isCurrentRequest()) setMessage("RMT could not persist duplicate-transfer protection, so the wallet was not opened.");
           return;
         }
-        if (isCurrentRequest()) setStep("submitted");
+        const invocationAuthority = requestAuthority();
+        if (!invocationAuthority) {
+          try {
+            const stored = parseNativeTransferSession(window.localStorage.getItem(requestStorageKey), address, targetChain.id);
+            if (stored?.requestId === prompt.requestId && stored.state === "PROMPT_REQUESTED" && !stored.txHash) {
+              window.localStorage.removeItem(requestStorageKey);
+            }
+          } catch {
+            // A failed cleanup stays conservatively duplicate-blocking rather than risking a second payment.
+          }
+          return;
+        }
+        setStep("submitted");
         try {
-          const hash = await walletClient.sendTransaction({
+          walletInvocationStartedRef.current = true;
+          setWalletInvocationStarted(true);
+          const hash = await invocationAuthority.walletClient.sendTransaction({
             account: address,
             chain: targetChain,
             to: reviewed.recipient,
@@ -378,7 +496,7 @@ export function WalletTransferDialog({
           });
           const submitted = transitionNativeTransfer(prompt, "SUBMITTED", { txHash: hash });
           if (isCurrentRequest()) setTransactionHash(hash);
-          if (!saveSession(submitted)) {
+          if (!saveSession(submitted, isCurrentRequest())) {
             if (isCurrentRequest()) {
               setSession(transitionNativeTransfer(prompt, "UNKNOWN", { txHash: hash }));
               setMessage(`Transaction hash received (${hash.slice(0, 10)}…), but recovery persistence failed. Keep this dialog open while RMT checks the receipt, and do not resubmit.`);
@@ -386,7 +504,7 @@ export function WalletTransferDialog({
           }
         } catch (error) {
           const next = transitionNativeTransfer(prompt, isNativeTransferUserRejection(error) ? "REJECTED" : "UNKNOWN");
-          const persistedNext = saveSession(next);
+          const persistedNext = saveSession(next, isCurrentRequest());
           if (isCurrentRequest()) {
             if (!persistedNext) setSession(next);
             if (next.state === "REJECTED") setStep("details");
@@ -399,6 +517,8 @@ export function WalletTransferDialog({
     } catch (error) {
       if (isCurrentRequest()) setMessage(error instanceof Error ? error.message : "The transfer request did not complete. Check wallet activity before retrying.");
     } finally {
+      walletInvocationStartedRef.current = false;
+      setWalletInvocationStarted(false);
       setRequestPending(false);
     }
   };
@@ -407,11 +527,11 @@ export function WalletTransferDialog({
   const terminal = session?.state === "CONFIRMED" || session?.state === "REVERTED";
 
   return <OverlayPortal>
-    <button className="walletTransferBackdrop" type="button" aria-label="Close transfer" disabled={requestPending} onClick={onClose} />
+    <button className="walletTransferBackdrop" type="button" aria-label="Close transfer" disabled={requestPending && walletInvocationStarted} onClick={onClose} />
     <div ref={dialog} className="walletTransferDialog" role="dialog" aria-modal="true" aria-labelledby="wallet-transfer-title" data-rmt-overlay-dialog="transfer">
       <header>
         <div><span>SELF-CUSTODIAL TRANSFER</span><h2 id="wallet-transfer-title">Send ETH on {targetChain.name}</h2></div>
-        <button ref={closeButton} type="button" aria-label="Close transfer" disabled={requestPending} onClick={onClose}>×</button>
+        <button ref={closeButton} type="button" aria-label="Close transfer" disabled={requestPending && walletInvocationStarted} onClick={onClose}>×</button>
       </header>
 
       <div ref={stepPanel} className="walletTransferStep" tabIndex={-1}>
@@ -451,6 +571,13 @@ export function WalletTransferDialog({
               ? "Transaction reconciliation is unresolved. Keep the transaction hash and do not resubmit."
               : session.txHash ? "Transaction submitted. Waiting for an onchain receipt…" : "Wallet request unresolved. Check wallet activity and do not retry."}</strong>
         {session.txHash ? <a href={`${explorer}/tx/${session.txHash}`} target="_blank" rel="noreferrer">View transaction on Blockscout ↗</a> : <a href={`${explorer}/address/${address}`} target="_blank" rel="noreferrer">Check wallet activity on Blockscout ↗</a>}
+        {settlementChecking && settlementRetryRevision > 0 && session.txHash
+          ? <button className="walletTransferPrimary" type="button" disabled>Checking transaction evidence…</button>
+          : settlementCanRecheck && session.txHash ? <button className="walletTransferPrimary" type="button" onClick={() => {
+          setMessage("");
+          setSettlementCanRecheck(false);
+          setSettlementRetryRevision((revision) => revision + 1);
+        }}>Recheck transaction evidence</button> : null}
         {terminal ? <button className="walletTransferPrimary" type="button" onClick={onClose}>Done</button> : null}
       </div> : null}
       </div>
