@@ -16,6 +16,7 @@ const fundingButton = readFileSync(new URL("../app/fund-wallet-button.tsx", impo
 const walletCss = readFileSync(new URL("../app/wallet.css", import.meta.url), "utf8");
 const interfacePolishCss = readFileSync(new URL("../app/interface-polish.css", import.meta.url), "utf8");
 const browserAcceptance = readFileSync(new URL("../../../.github/scripts/account-first-browser-acceptance.mjs", import.meta.url), "utf8");
+const productionBridgeAcceptance = readFileSync(new URL("../../../.github/scripts/privy-bridge-balance-acceptance.mjs", import.meta.url), "utf8");
 
 assert.equal(isLoopbackAcceptanceHostname("localhost"), true);
 assert.equal(isLoopbackAcceptanceHostname("127.0.0.1"), true);
@@ -146,8 +147,10 @@ assert.match(walletAssets, /NEXT_PUBLIC_RMT_ACCOUNT_ACCEPTANCE_PROFILE[\s\S]*wal
   "Balance variants must remain confined to the account-first compile profile and default to the existing positive fixture.");
 assert.match(walletAssets, /accountScenario === "zero-input" \? "0" : "100000000"[\s\S]*accountScenario === "erc20-no-gas" \? 0n/,
   "The fixture must model zero input and missing native gas independently.");
-assert.match(walletAssets, /canonicalUsdgBalance\?\.status !== "success"[\s\S]*canonical USDG balance could not be established/,
-  "READY wallet evidence must not infer a zero USDG balance when the exact canonical balance call failed.");
+assert.match(walletAssets, /reconcileAssetBalanceEvidence\([\s\S]*balances,[\s\S]*assetBalanceEvidenceRef\.current,[\s\S]*observedAt/,
+  "Each ERC-20 read must publish independent confirmed, stale, or unavailable evidence.");
+assert.doesNotMatch(walletAssets, /canonical USDG balance could not be established/,
+  "A USDG read failure must not discard successful native ETH or independently selected ERC-20 evidence.");
 assert.doesNotMatch(walletAssets, /useAccount\(/,
   "The balance reader must consume the exact selected wallet address instead of independently trusting Wagmi transport state.");
 assert.match(walletAssets, /selectedWalletAddress\?: Address[\s\S]*const address = selectedWalletAddress/,
@@ -157,8 +160,12 @@ assert.match(spendBalance, /selectedVNextWalletReadAddress\(\{[\s\S]*selectedWal
   "Portfolio, deposit destination, quote taker, and signer must share one exact connector-qualified wallet authority.");
 assert.match(tradeComposer, /const canonicalInputs = \[ROBINHOOD_USDG, ROBINHOOD_ETH\][\s\S]*return uniqueAssets\(\[\.\.\.canonicalInputs, \.\.\.eligibleContracts\]\)/,
   "An empty account keeps both canonical funding choices visible instead of losing its Deposit path with the positive-holdings list.");
-assert.match(tradeComposer, /walletReadStatus === "ready" && contractAddress === ROBINHOOD_USDG_ADDRESS\.toLowerCase\(\)\) return "0"/,
-  "A successful canonical USDG probe may establish authoritative zero even though holdings intentionally omit zero balances.");
+assert.match(tradeComposer, /const tradeBalanceResolved = inputBalanceEvidence\?\.state === "confirmed"[\s\S]*nativeBalanceEvidence\.state === "confirmed"/,
+  "Trade readiness must derive from the selected input and required native gas evidence, never universal USDG availability.");
+assert.match(productionBridgeAcceptance, /runEmbeddedQuoteToHandoff[\s\S]*preActionWalletRequests[\s\S]*explicitWalletReviewRequests/,
+  "The real PrivyIdentityBridge profile must cover a fresh verified quote through one explicit mocked embedded-wallet handoff.");
+assert.match(productionBridgeAcceptance, /runBalanceIsolation[\s\S]*runUnavailableBoundaries[\s\S]*runLateResponseIsolation/,
+  "The real hook profile must prove independent failures, hard readiness boundaries, recovery, and obsolete-response isolation.");
 assert.match(browserAcceptance, /waitForPersistedTradeDraft[\s\S]*accountReturn=1[\s\S]*"Sign in"/,
   "The real ticket must prove preference-only side, amount, market, and asset recovery across a same-tab remount.");
 assert.match(browserAcceptance, /fundingReturn=1[\s\S]*funding return issues a fresh quote request[\s\S]*fundingReturn = "SAME_TAB_REMOUNT_EXACT_DRAFT_FRESH_QUOTE_REQUEST_ZERO_WALLET_ACTION"/,

@@ -18,6 +18,12 @@ import {
   trustedPaymentMetadataFromDetectedWalletAsset,
   walletAssetCandidates
 } from "./wallet-assets";
+import {
+  confirmedBalanceAtomic,
+  reconcileAssetBalanceEvidence,
+  reconcileBalanceEvidence,
+  walletBalanceReadStatus
+} from "./wallet-balance-evidence";
 
 const component = readFileSync(new URL("../../app/vnext/spend-balance.tsx", import.meta.url), "utf8");
 const hook = readFileSync(new URL("../../app/vnext/use-vnext-wallet-assets.ts", import.meta.url), "utf8");
@@ -114,6 +120,36 @@ assert.equal(trustedPaymentMetadataFromDetectedWalletAsset({
   balanceAtomic: "1000000",
   routeState: "detected"
 }), null);
+const partialEvidence = reconcileAssetBalanceEvidence(candidates, [
+  { status: "failure" },
+  { status: "success", result: 0n },
+  { status: "success", result: 42n }
+], {}, 1_700_000_000_001);
+assert.equal(partialEvidence[ROBINHOOD_USDG_ADDRESS.toLowerCase()]?.state, "unavailable",
+  "A failed USDG read remains unavailable rather than becoming zero.");
+assert.equal(confirmedBalanceAtomic(partialEvidence[ROBINHOOD_USDG_ADDRESS.toLowerCase()]), undefined);
+assert.equal(partialEvidence[ROBINHOOD_WETH_ADDRESS.toLowerCase()]?.balanceAtomic, "0",
+  "A successful zero read remains distinguishable from an unavailable read.");
+assert.equal(partialEvidence[candidates[2]!.address.toLowerCase()]?.balanceAtomic, "42",
+  "An independently successful ERC20 read survives a USDG failure.");
+const confirmedNative = reconcileBalanceEvidence({ status: "success", result: 9n }, undefined, 1_700_000_000_001);
+assert.equal(walletBalanceReadStatus(confirmedNative, partialEvidence), "stale",
+  "Partial evidence is published without discarding confirmed native and token balances.");
+const recoveredEvidence = reconcileAssetBalanceEvidence(candidates, [
+  { status: "success", result: 0n },
+  { status: "success", result: 0n },
+  { status: "success", result: 43n }
+], partialEvidence, 1_700_000_000_002);
+assert.equal(recoveredEvidence[ROBINHOOD_USDG_ADDRESS.toLowerCase()]?.state, "confirmed");
+assert.equal(recoveredEvidence[ROBINHOOD_USDG_ADDRESS.toLowerCase()]?.balanceAtomic, "0");
+const staleEvidence = reconcileAssetBalanceEvidence(candidates, [
+  { status: "failure" },
+  { status: "failure" },
+  { status: "failure" }
+], recoveredEvidence, 1_700_000_000_003);
+assert.equal(staleEvidence[ROBINHOOD_USDG_ADDRESS.toLowerCase()]?.state, "stale");
+assert.equal(staleEvidence[ROBINHOOD_USDG_ADDRESS.toLowerCase()]?.balanceAtomic, "0",
+  "A later failure retains prior evidence as explicitly stale rather than current authority.");
 assert.equal(trustedPaymentMetadataFromDetectedWalletAsset({
   ...candidates[2],
   decimals: 18,
@@ -169,6 +205,12 @@ assert.match(hook, /\/api\/vnext\/wallet-assets/);
 assert.match(hook, /normalizeWalletDiscoveryResponse/);
 assert.match(hook, /walletDiscoveryCandidate/);
 assert.match(hook, /positive\.filter/);
+assert.match(hook, /Promise\.allSettled/,
+  "Native and ERC20 read failures must publish independently.");
+assert.match(hook, /reconcileAssetBalanceEvidence/,
+  "Every candidate read must retain its own confirmed, stale, or unavailable authority.");
+assert.doesNotMatch(hook, /canonical USDG balance could not be established/,
+  "A USDG subcall failure must not discard independently successful asset evidence.");
 assert.match(hook, /const EMPTY_WALLET_ASSETS: VNextDetectedWalletAsset\[\] = \[\]/);
 assert.match(hook, /assets: acceptanceSnapshot\?\.assets \?\? \(snapshotIsCurrent \? assets : EMPTY_WALLET_ASSETS\)/);
 assert.match(hook, /const acceptanceSnapshot = useMemo\([\s\S]*browserAcceptanceWalletSnapshot\(\)[\s\S]*\[address\]/,

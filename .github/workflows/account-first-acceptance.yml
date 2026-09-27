@@ -1,0 +1,76 @@
+name: Account-first acceptance
+
+on:
+  pull_request:
+    paths:
+      - ".github/scripts/account-first-browser-acceptance.mjs"
+      - ".github/scripts/privy-bridge-balance-acceptance.mjs"
+      - ".github/workflows/account-first-acceptance.yml"
+      - "apps/web/app/providers.tsx"
+      - "apps/web/app/rmt-identity.tsx"
+      - "apps/web/app/speed-wallet-provider.tsx"
+      - "apps/web/app/vnext/**"
+      - "apps/web/lib/testing/**"
+      - "apps/web/lib/vnext/**"
+      - "apps/web/next.config.mjs"
+      - "apps/web/package.json"
+      - "package.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: account-first-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  account-first-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      RMT_ACCOUNT_ACCEPTANCE_OUTPUT: "${{ github.workspace }}/account-first-browser-evidence"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Run account-first desktop/mobile journey
+        run: pnpm test:account-first-browser
+      - name: Upload exact-head screenshots and screencasts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: account-first-browser-${{ github.sha }}
+          path: account-first-browser-evidence
+          retention-days: 14
+
+  production-privy-bridge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      RMT_PRIVY_BRIDGE_ACCEPTANCE_OUTPUT: "${{ github.workspace }}/privy-bridge-balance-evidence"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Run real PrivyIdentityBridge and wallet-read acceptance
+        run: pnpm test:privy-bridge-browser
+      - name: Upload exact-head identity and per-asset evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: privy-bridge-balance-${{ github.sha }}
+          path: privy-bridge-balance-evidence
+          retention-days: 14

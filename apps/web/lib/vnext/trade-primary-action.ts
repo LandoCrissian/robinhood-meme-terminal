@@ -24,6 +24,7 @@ export function rmtTradeFundingReason(input: {
 export function rmtTradePrimaryActionDisabled(input: {
   amountExceedsBalance: boolean;
   authorizationEnabled: boolean;
+  balanceAuthorityReady: boolean;
   connectedIntentMissing: boolean;
   embeddedWalletRetryRequired: boolean;
   identityEnabled: boolean;
@@ -35,6 +36,7 @@ export function rmtTradePrimaryActionDisabled(input: {
 }) {
   if (input.embeddedWalletRetryRequired) return !input.identityEnabled || !input.identityReady;
   return !input.authorizationEnabled
+    || !input.balanceAuthorityReady
     || input.stockTokenViewOnly
     || input.walletBusy
     || input.transactionPending

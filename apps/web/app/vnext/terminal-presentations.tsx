@@ -18,6 +18,7 @@ import {
 } from "../../lib/vnext/market-directory";
 import type { VNextDetectedWalletAsset } from "../../lib/vnext/wallet-assets";
 import { heldCountLabel, type VNextWalletReadSnapshot, type VNextWalletReadStatus } from "../../lib/vnext/terminal-presentation-state";
+import type { VNextAssetBalanceEvidence, VNextBalanceEvidence } from "../../lib/vnext/wallet-balance-evidence";
 import type { VNextUniversalMarketSearchStatus } from "../../lib/vnext/universal-market-search-contract";
 import { SpendBalance } from "./spend-balance";
 import { formatTerminalAge, formatTerminalCompactUsd, formatTerminalPercent, formatTerminalPrice, terminalValuation } from "./terminal-format";
@@ -59,7 +60,9 @@ export type TerminalPresentationProps = {
   selectedAsset?: AssetMetadata;
   identityStatus: IdentityStatus;
   walletAssets: VNextDetectedWalletAsset[];
+  assetBalanceEvidence: VNextAssetBalanceEvidence;
   nativeBalance?: bigint;
+  nativeBalanceEvidence: VNextBalanceEvidence;
   walletReadStatus: VNextWalletReadStatus;
   executionRecord: VNextExecutionRecord | null;
   dismissedExecutionHash?: string;
@@ -268,7 +271,8 @@ function TradeComposer(props: TerminalPresentationProps & { quoteActive: boolean
     marketAddress={props.selected?.address}
     marketAsset={props.selectedAsset}
     walletAssets={props.walletAssets}
-    nativeBalance={props.nativeBalance}
+    assetBalanceEvidence={props.assetBalanceEvidence}
+    nativeBalanceEvidence={props.nativeBalanceEvidence}
     walletReadStatus={props.walletReadStatus}
     executionRecord={props.executionRecord}
     dismissedExecutionHash={props.dismissedExecutionHash}
@@ -281,10 +285,15 @@ function TradeComposer(props: TerminalPresentationProps & { quoteActive: boolean
 }
 
 function PortfolioController({ visible, ...props }: TerminalPresentationProps & { visible: boolean }) {
+  const walletReadMarkets = props.selected && !props.markets.some((market) => market.address.toLowerCase() === props.selected?.address.toLowerCase())
+    ? [props.selected, ...props.markets]
+    : props.markets;
   return <>
     <SpendBalance
       visible={visible}
-      markets={props.markets}
+      markets={walletReadMarkets}
+      selectedMarket={props.selected}
+      selectedAsset={props.selectedAsset}
       onWalletSnapshotChange={props.onWalletSnapshotChange}
       onSelectAsset={props.onSelectMarket}
       executionRecord={props.executionRecord}

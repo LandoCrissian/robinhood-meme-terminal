@@ -24,6 +24,7 @@
     "test:production-health": "node scripts/production-health-smoke.mjs",
     "test:terminal-high-end": "node .github/scripts/terminal-high-end-acceptance.mjs && node .github/scripts/partial-directory-browser-acceptance.mjs && pnpm --filter web exec tsx lib/wallet-connection-browser-smoke.ts",
     "test:account-first-browser": "node .github/scripts/account-first-browser-acceptance.mjs",
+    "test:privy-bridge-browser": "node .github/scripts/privy-bridge-balance-acceptance.mjs",
     "typecheck": "pnpm --filter web typecheck"
   },
   "devDependencies": {
