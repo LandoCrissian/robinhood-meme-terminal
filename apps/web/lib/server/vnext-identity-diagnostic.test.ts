@@ -12,6 +12,7 @@ import { requireVNextStockTokenExecutionEligible } from "./robinhood-stock-token
 
 const usdg = getAddress("0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168");
 const cannacat = getAddress("0x1139d423C1706BDeaD91f03507F521635591eD92");
+const shcat = getAddress("0x14C51bB55592372eAC7141A1D0527D1dD7Fbd42F");
 
 test("exact CANNACAT RPC failure survives authority, API and copied diagnostic", async () => {
   const authority = createVNextExecutionIdentityAuthority({
@@ -87,6 +88,7 @@ test("transport cause classification and client diagnostic discard provider secr
     [{ name: "HttpRequestError", cause: { name: "TimeoutError" }, message: secret }, "IDENTITY_TIMEOUT"],
     [{ name: "HttpRequestError", status: 503, message: secret }, "IDENTITY_RPC_UNAVAILABLE"],
     [{ name: "ContractFunctionRevertedError", message: secret }, "IDENTITY_CALL_FAILED"],
+    [{ name: "UnknownRpcError", cause: { name: "TypeError" }, message: secret }, "IDENTITY_RPC_UNAVAILABLE"],
     [{ code: "ERR_INVALID_URL", message: secret }, "SERVER_CONFIGURATION_ERROR"],
     [{ name: "TypeError", message: secret }, "IDENTITY_READER_FAILED"]
   ] as const) {
@@ -135,6 +137,57 @@ test("actual onchain reader reports eth_getCode / decimals failures without expo
     assert.deepEqual(await readRobinhoodTokenIdentityEvidence(cannacat), { status: "identity_read_unavailable", failure: { code: "IDENTITY_RATE_LIMITED", operation: "eth_getCode" } });
     mode = "rpc-error";
     assert.deepEqual(await readRobinhoodTokenIdentityEvidence(cannacat), { status: "identity_read_unavailable", failure: { code: "IDENTITY_RPC_UNAVAILABLE", operation: "name" } });
+  } finally { globalThis.fetch = original; }
+});
+
+test("execution identity reads use individual JSON-RPC framing and recover after transient transport failure", async () => {
+  const original = globalThis.fetch;
+  let batchRequests = 0;
+  let individualRequests = 0;
+  let failuresRemaining = 0;
+  globalThis.fetch = (async (_input, init) => {
+    const request = JSON.parse(String(init?.body));
+    if (Array.isArray(request)) {
+      batchRequests++;
+      // This HTTP-200 shape reproduces an intermediary that accepts JSON-RPC
+      // but does not implement batch response framing. The base reader fails.
+      return Response.json({ jsonrpc: "2.0", id: request[0]?.id ?? 1,
+        error: { code: -32600, message: "sanitized invalid batch" } });
+    }
+    individualRequests++;
+    if (failuresRemaining > 0) {
+      failuresRemaining--;
+      return new Response("sanitized unavailable", { status: 503 });
+    }
+    const target = getAddress(request.params?.[0]?.to ?? request.params?.[0] ?? shcat);
+    const selector = request.params?.[0]?.data;
+    const symbol = target === usdg ? "USDG" : target === cannacat ? "CANNACAT" : "SHCAT";
+    const name = target === usdg ? "Global Dollar" : target === cannacat ? "CannaCat" : "Shareholder Cat";
+    const result = request.method === "eth_getCode" ? "0x6000"
+      : selector === "0x06fdde03" ? encodeAbiParameters([{ type: "string" }], [name])
+      : selector === "0x95d89b41" ? encodeAbiParameters([{ type: "string" }], [symbol])
+      : selector === "0x313ce567" ? encodeAbiParameters([{ type: "uint8" }], [target === usdg ? 6 : 18])
+      : encodeAbiParameters([{ type: "uint256" }], [1_000_000n]);
+    return Response.json({ jsonrpc: "2.0", id: request.id, result });
+  }) as typeof fetch;
+  try {
+    for (const [address, symbol, decimals] of [[shcat, "SHCAT", 18], [cannacat, "CANNACAT", 18], [usdg, "USDG", 6]] as const) {
+      const evidence = await readRobinhoodTokenIdentityEvidence(address);
+      assert.equal(evidence.status, "verified_token");
+      if (evidence.status === "verified_token") {
+        assert.equal(evidence.token.symbol, symbol);
+        assert.equal(evidence.token.decimals, decimals);
+      }
+    }
+    assert.equal(batchRequests, 0, "execution identity must not depend on JSON-RPC batch framing");
+    assert.equal(individualRequests, 15);
+
+    failuresRemaining = 3; // Viem retryCount=2 exhausts one bounded read.
+    assert.deepEqual(await readRobinhoodTokenIdentityEvidence(shcat), {
+      status: "identity_read_unavailable",
+      failure: { code: "IDENTITY_RPC_UNAVAILABLE", operation: "eth_getCode" }
+    });
+    assert.equal((await readRobinhoodTokenIdentityEvidence(shcat)).status, "verified_token");
   } finally { globalThis.fetch = original; }
 });
 

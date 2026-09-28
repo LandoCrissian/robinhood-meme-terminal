@@ -60,15 +60,25 @@ type ResolverDependencies = {
   now?: () => Date;
 };
 
+function robinhoodRpcUrl() {
+  return process.env.RMT_MAINNET_RPC_URL
+    ?? process.env.ROBINHOOD_MAINNET_RPC_URL
+    ?? process.env.NEXT_PUBLIC_RMT_RPC_URL
+    ?? robinhoodChain.rpcUrls.default.http[0];
+}
+
 const client = createPublicClient({
   chain: robinhoodChain,
-  transport: http(
-    process.env.RMT_MAINNET_RPC_URL
-      ?? process.env.ROBINHOOD_MAINNET_RPC_URL
-      ?? process.env.NEXT_PUBLIC_RMT_RPC_URL
-      ?? robinhoodChain.rpcUrls.default.http[0],
-    { retryCount: 2, timeout: 8_000, batch: { batchSize: 100, wait: 0 } }
-  )
+  transport: http(robinhoodRpcUrl(), { retryCount: 2, timeout: 8_000, batch: { batchSize: 100, wait: 0 } })
+});
+
+// Execution identity is five bounded reads for one token. Keep these requests
+// individually framed so an intermediary with incomplete JSON-RPC batch
+// support cannot turn valid contract evidence into an unavailable trade.
+// Bulk discovery retains the batched client above.
+const executionIdentityClient = createPublicClient({
+  chain: robinhoodChain,
+  transport: http(robinhoodRpcUrl(), { retryCount: 2, timeout: 8_000 })
 });
 
 function safeText(value: string, fallback: string, maximum: number) {
@@ -150,23 +160,30 @@ export type RobinhoodTokenIdentityEvidence =
   | { status: "identity_read_unavailable"; failure?: IdentityReadFailure };
 
 // Search needs positive negatives, not a null that also conceals RPC failures.
-// Keep the legacy reader below unchanged for its existing callers.
+// Both single-token readers share the individually framed execution client;
+// bulk discovery continues to use the batched client above.
 export async function readRobinhoodTokenIdentityEvidence(address: Address): Promise<RobinhoodTokenIdentityEvidence> {
-  // Preserve the first failed operation even when parallel contract calls fail.
-  let failure: IdentityReadFailure | undefined;
-  const observe = async <T>(operation: IdentityOperation, read: () => Promise<T>) => {
-    try { return await read(); }
-    catch (cause) { failure ??= classifyIdentityReadFailure(cause, operation); throw cause; }
-  };
   try {
-    const code = await observe("eth_getCode", () => client.getBytecode({ address }));
+    const code = await executionIdentityClient.getBytecode({ address });
     if (!code || code === "0x") return { status: "not_erc20", reason: "no_contract" };
-    const [name, symbol, decimals, totalSupply] = await Promise.all([
-      observe("name", () => client.readContract({ address, abi: erc20Abi, functionName: "name" })),
-      observe("symbol", () => client.readContract({ address, abi: erc20Abi, functionName: "symbol" })),
-      observe("decimals", () => client.readContract({ address, abi: erc20Abi, functionName: "decimals" })),
-      observe("totalSupply", () => client.readContract({ address, abi: erc20Abi, functionName: "totalSupply" }))
+    const operations = ["name", "symbol", "decimals", "totalSupply"] as const satisfies readonly IdentityOperation[];
+    const reads = await Promise.allSettled([
+      executionIdentityClient.readContract({ address, abi: erc20Abi, functionName: "name" }),
+      executionIdentityClient.readContract({ address, abi: erc20Abi, functionName: "symbol" }),
+      executionIdentityClient.readContract({ address, abi: erc20Abi, functionName: "decimals" }),
+      executionIdentityClient.readContract({ address, abi: erc20Abi, functionName: "totalSupply" })
     ]);
+    const failed = reads.findIndex((result) => result.status === "rejected");
+    if (failed >= 0) {
+      const result = reads[failed];
+      return { status: "identity_read_unavailable", failure: classifyIdentityReadFailure(
+        result.status === "rejected" ? result.reason : undefined,
+        operations[failed]
+      ) };
+    }
+    const [name, symbol, decimals, totalSupply] = reads.map((result) => (
+      result.status === "fulfilled" ? result.value : undefined
+    )) as [string, string, number, bigint];
     if (!name.trim() || name.length > 80 || !symbol.trim() || symbol.length > 20
       || /[\u0000-\u001f\u007f]/.test(name + symbol)
       || decimals > 36 || totalSupply <= 0n) {
@@ -177,18 +194,18 @@ export async function readRobinhoodTokenIdentityEvidence(address: Address): Prom
       token: { address: getAddress(address), name: name.trim(), symbol: symbol.trim(), decimals, totalSupply: totalSupply.toString() }
     };
   } catch (cause) {
-    return { status: "identity_read_unavailable", failure: failure ?? classifyIdentityReadFailure(cause, "metadata") };
+    return { status: "identity_read_unavailable", failure: classifyIdentityReadFailure(cause, "eth_getCode") };
   }
 }
 
 export async function readRobinhoodTokenIdentity(address: Address): Promise<TokenIdentity | null> {
   try {
     const [code, name, symbol, decimals, totalSupply] = await Promise.all([
-      client.getBytecode({ address }),
-      client.readContract({ address, abi: erc20Abi, functionName: "name" }),
-      client.readContract({ address, abi: erc20Abi, functionName: "symbol" }),
-      client.readContract({ address, abi: erc20Abi, functionName: "decimals" }),
-      client.readContract({ address, abi: erc20Abi, functionName: "totalSupply" })
+      executionIdentityClient.getBytecode({ address }),
+      executionIdentityClient.readContract({ address, abi: erc20Abi, functionName: "name" }),
+      executionIdentityClient.readContract({ address, abi: erc20Abi, functionName: "symbol" }),
+      executionIdentityClient.readContract({ address, abi: erc20Abi, functionName: "decimals" }),
+      executionIdentityClient.readContract({ address, abi: erc20Abi, functionName: "totalSupply" })
     ]);
     if (!code || code === "0x" || decimals > 36 || totalSupply <= 0n) return null;
     return {

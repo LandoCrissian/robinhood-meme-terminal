@@ -23,6 +23,11 @@ const requireRoot = createRequire(path.join(root, 'package.json'));
 const { chromium } = requireRoot('playwright');
 const wallet = '0x3333333333333333333333333333333333333333';
 const token = '0x39dbed3a2bd333467115de45665cc57f813c4571';
+const shcat = '0x14c51bb55592372eac7141a1d0527d1dd7fbd42f';
+const identityRetryTokens = {
+  desktop: '0x0000000000000000000000000000000000001001',
+  mobile: '0x0000000000000000000000000000000000001002'
+};
 const usdg = '0x5fc5360d0400a0fd4f2af552add042d716f1d168';
 const weth = '0x0bd7d308f8e1639fab988df18a8011f41eacad73';
 const holder = '0x0000000000001ff3684f28c67538d4d072c22734';
@@ -85,9 +90,9 @@ function call(transaction) {
     const market = seeds.find((entry) => entry.market.poolAddress && data.toLowerCase().includes(entry.market.token0.slice(2)) && data.toLowerCase().includes(entry.market.token1.slice(2)))?.market;
     return word(market?.poolAddress ?? 0);
   }
-  if ([token, usdg, weth].includes(to)) {
-    if (data.startsWith('0x06fdde03')) return string(to === usdg ? 'Global Dollar' : to === weth ? 'Wrapped Ether' : 'Pons');
-    if (data.startsWith('0x95d89b41')) return string(to === usdg ? 'USDG' : to === weth ? 'WETH' : 'PONS');
+  if ([token, usdg, weth, shcat, ...Object.values(identityRetryTokens)].includes(to)) {
+    if (data.startsWith('0x06fdde03')) return string(to === usdg ? 'Global Dollar' : to === weth ? 'Wrapped Ether' : to === shcat ? 'Shareholder Cat' : 'Pons');
+    if (data.startsWith('0x95d89b41')) return string(to === usdg ? 'USDG' : to === weth ? 'WETH' : to === shcat ? 'SHCAT' : 'PONS');
     if (data.startsWith('0x313ce567')) return word(to === usdg ? 6 : 18);
     if (data.startsWith('0x70a08231') || data.startsWith('0x18160ddd')) return word(10n ** 27n);
     if (data.startsWith('0xdd62ed3e')) return word(state.approved ? 10n ** 27n : 0n);
@@ -131,7 +136,7 @@ function rpc(request) {
       case 'eth_getTransactionCount': result = '0x1'; break;
       case 'eth_getLogs': result = []; break;
       case 'eth_getTransactionReceipt': case 'eth_getTransactionByHash': result = null; break;
-      case 'eth_getCode': if (state.incompatibleRuntime && String(request.params[0]).toLowerCase() === executableFixture.settler) return {jsonrpc:'2.0',id:request.id,result:runtime}; result = String(request.params[0]).toLowerCase() === executableFixture.settler ? (state.providerInternalRoute ? ppmRuntime : executableFixture.runtime) : [token, usdg, weth, holder, '0x0000000000000000000000000000000000012345', ...routeFixtures.contracts, ...seeds.flatMap((entry) => [entry.token.toLowerCase(), entry.market.poolAddress])].includes(String(request.params[0]).toLowerCase()) ? runtime : '0x'; break;
+      case 'eth_getCode': if (state.incompatibleRuntime && String(request.params[0]).toLowerCase() === executableFixture.settler) return {jsonrpc:'2.0',id:request.id,result:runtime}; result = String(request.params[0]).toLowerCase() === executableFixture.settler ? (state.providerInternalRoute ? ppmRuntime : executableFixture.runtime) : [token, usdg, weth, shcat, ...Object.values(identityRetryTokens), holder, '0x0000000000000000000000000000000000012345', ...routeFixtures.contracts, ...seeds.flatMap((entry) => [entry.token.toLowerCase(), entry.market.poolAddress])].includes(String(request.params[0]).toLowerCase()) ? runtime : '0x'; break;
       case 'eth_call': {
         const transaction = request.params[0];
         // Network-boundary fixture for the real wallet-assets deployless multicall.
@@ -296,15 +301,15 @@ export async function runZeroXBrowserAcceptance() {
     }
     if (process.env.RMT_LIVE_ETH_QUOTE_INCIDENT_ONLY === 'true') {
       results.push(...await runLiveEthQuoteIncidentJourneys({ browser, base, external, identity, expiredIdentity, unlinkedIdentity,
-        output, state, token, noRouteToken: routeFixtures.assets.noRoute, wallet }));
+        output, state, token, identityRetryTokens, noRouteToken: routeFixtures.assets.noRoute, wallet }));
       return;
     }
     if (process.env.RMT_QUOTE_STATE_ONLY === 'true') { results.push(...await runZeroXWalletJourneys({browser,base,identity,external,state,wallet,token,usdg,holder,output,scenarios:['sell-approval-idle-verification','sell-approval-idle-success','sell-approval-idle-expired-failure','sell-approval-idle-failure','sell-approval-idle-click']})); return; }
     if (process.env.RMT_PRODUCT_METRICS_ONLY === 'true') { results.push(...await runTradingProductBrowser({ browser, base, identity, external, state, wallet, token, output })); return; }
     results.push(...await runTradingProductBrowser({ browser, base, identity, external, state, wallet, token, output }));
-    results.push(...await runHotPathBrowserAcceptance({ browser, base, identity, state, wallet, usdg, stock: routeFixtures.assets.stock }));
+    results.push(...await runHotPathBrowserAcceptance({ browser, base, identity, state, wallet, usdg, shcat, stock: routeFixtures.assets.stock }));
     results.push(...await runLiveEthQuoteIncidentJourneys({ browser, base, external, identity, expiredIdentity, unlinkedIdentity,
-      output, state, token, noRouteToken: routeFixtures.assets.noRoute, wallet }));
+      output, state, token, identityRetryTokens, noRouteToken: routeFixtures.assets.noRoute, wallet }));
     for (const [name, viewport] of (process.env.RMT_ACCEPTANCE_ROUTE_ON_DEMAND_ONLY === 'true' ? [] : [['desktop', { width: 1440, height: 900 }], ['mobile', { width: 390, height: 844 }]])) {
       const context = await browser.newContext({ viewport, ...(name === 'mobile' ? { isMobile: true, hasTouch: true } : {}) });
       await context.addInitScript(({ wallet }) => {
