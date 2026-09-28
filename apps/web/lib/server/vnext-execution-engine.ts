@@ -24,15 +24,22 @@ export const robinhoodVNextQuoteAdapters: readonly VNextQuoteProviderAdapter[] =
   ...configuredVNextUpAdapters()
 ];
 
-export function quoteRobinhoodVNextExecution(input: Parameters<typeof quoteVNextExecutionProviders>[0]) {
+export function selectRobinhoodVNextPublicQuoteAdapters(
+  input: Pick<Parameters<typeof quoteVNextExecutionProviders>[0], "inputAsset" | "outputAsset">,
+  adapters: readonly VNextQuoteProviderAdapter[] = robinhoodVNextQuoteAdapters
+) {
   const eligibility = resolveVNextExecutionEligibility(
     input.inputAsset,
     input.outputAsset,
-    robinhoodVNextQuoteAdapters.map((adapter) => adapter.provider)
+    adapters.map((adapter) => adapter.provider)
   );
+  return adapters.filter((adapter) => eligibility.providers.includes(adapter.provider));
+}
+
+export function quoteRobinhoodVNextExecution(input: Parameters<typeof quoteVNextExecutionProviders>[0]) {
   return quoteVNextExecutionProviders(
     input,
-    robinhoodVNextQuoteAdapters.filter((adapter) => eligibility.providers.includes(adapter.provider))
+    selectRobinhoodVNextPublicQuoteAdapters(input)
   );
 }
 

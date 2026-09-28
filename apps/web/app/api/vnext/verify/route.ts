@@ -75,6 +75,9 @@ const requestSchema = z.object({
 
 async function handleRequest(request: Request) {
   let quoteRequestId: string | undefined;
+  let verificationOperation = "request_validation" as
+    | "request_validation" | "authentication" | "asset_identity"
+    | "project_identity" | "authorization_clock" | "firm_quote" | "commitment";
   try {
     const parsed = requestSchema.safeParse(await request.json());
     if (!parsed.success) return Response.json({ error: "Invalid VNext verification request." }, { status: 400, headers: { "Cache-Control": "no-store" } });
@@ -87,7 +90,9 @@ async function handleRequest(request: Request) {
     const recipient = getAddress(parsed.data.recipient);
     const inputAsset = getAddress(parsed.data.inputAsset);
     const outputAsset = getAddress(parsed.data.outputAsset);
+    verificationOperation = "authentication";
     const tradeAuthorization = await requireAuthenticatedTradeWallet(request, recipient);
+    verificationOperation = "asset_identity";
     const [inputIdentity, outputIdentity] = await Promise.all([
       readVNextVerifiedAssetIdentity(inputAsset, { scheduleRevalidation: after, required: true }),
       readVNextVerifiedAssetIdentity(outputAsset, { scheduleRevalidation: after, required: true })
@@ -96,6 +101,7 @@ async function handleRequest(request: Request) {
       emitTradeJourney({ phase: "IDENTITY_UNAVAILABLE", providerRequestAttempted: false });
       return Response.json({ error: "Both assets require verified Robinhood Chain identity before route verification.", phase: "IDENTITY_UNAVAILABLE" }, { status: 422, headers: { "Cache-Control": "no-store" } });
     }
+    verificationOperation = "project_identity";
     await requireProjectIdentityExecutionAdmitted([inputIdentity, outputIdentity].filter(identity => !identity.native).map(identity => ({ address: identity.address, verifiedIdentity: identity })), after);
     const executionId = `0x${randomBytes(32).toString("hex")}` as const;
     const settlementMode = parsed.data.provider === "uniswap-v3"
@@ -108,9 +114,11 @@ async function handleRequest(request: Request) {
     requireVNextPublicExecutionSettlement(parsed.data.provider, settlementMode);
     const verificationId = randomUUID();
     const verificationWallClockMs = Date.now();
+    verificationOperation = "authorization_clock";
     const finalDeadlineSeconds = settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE || settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE
       ? await readVNextAuthorizationChainTimestamp().then((timestamp) => timestamp + VNEXT_AUTHORIZATION_WINDOW_SECONDS)
       : undefined;
+    verificationOperation = "firm_quote";
     const evidence = await verifyRobinhoodVNextExecution(parsed.data.provider, {
       chainId: 4_663,
       inputAsset,
@@ -125,6 +133,7 @@ async function handleRequest(request: Request) {
       ...(parsed.data.canonicalMarket ? { canonicalMarket: parsed.data.canonicalMarket as { sourceId: "uniswap-v4"; poolId: `0x${string}` } } : {}),
       ...(parsed.data.v4QuoteEvidence ? { v4QuoteEvidence: parsed.data.v4QuoteEvidence as typeof parsed.data.v4QuoteEvidence & { poolId: `0x${string}`; observedBlockHash: `0x${string}` } } : {})
     });
+    verificationOperation = "commitment";
     const responseEvidence = {
       verificationId,
       sourceQuoteRequestId: parsed.data.quoteRequestId,
@@ -178,7 +187,12 @@ async function handleRequest(request: Request) {
     const message = cause instanceof Error && /No canonical Uniswap|No up-|No complete 0x|0x |runtime bytecode is not approved|transaction target has no contract code|dependencies changed|strict verification is not available|V2 wallet authorization is disabled|V2 authorization is enabled without a complete executor policy|RMT_EXECUTION_V2 policy is not effective until block|moved below the indicative protected-output floor|quote block was reorganized|rejected Uniswap V4 execution/.test(cause.message)
       ? cause.message
       : "Unable to produce strict pre-sign evidence.";
-    return Response.json({ error: message }, { status: 422, headers: { "Cache-Control": "no-store" } });
+    console.info(JSON.stringify({
+      event: "rmt_pre_sign_failure",
+      verificationOperation,
+      ...(quoteRequestId ? { quoteRequestId } : {})
+    }));
+    return Response.json({ error: message, verificationOperation }, { status: 422, headers: { "Cache-Control": "no-store" } });
   }
 }
 

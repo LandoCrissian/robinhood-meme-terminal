@@ -4,7 +4,10 @@ import {
   ROBINHOOD_MAINNET_CHAIN_ID,
   ROBINHOOD_NATIVE_ASSET_ADDRESS
 } from "../vnext/robinhood-assets";
-import { readVNextCanonicalMarketInventory } from "./vnext-market-indexer";
+import {
+  readVNextCanonicalMarketInventory,
+  searchVNextCanonicalTokenIdentities
+} from "./vnext-market-indexer";
 import type { RobinhoodTokenIdentityEvidence } from "./universal-market-resolver";
 import { classifyIdentityReadFailure, identityFailureDefinitions, type IdentityReadFailure } from "../vnext/identity-failure";
 import type { TradeFailureStage } from "../vnext/trade-failure";
@@ -71,6 +74,7 @@ export type VNextExecutionIdentityReadOptions = {
 };
 export type VNextExecutionIdentityDependencies = {
   readInventory?: typeof readVNextCanonicalMarketInventory;
+  readIndex?: typeof searchVNextCanonicalTokenIdentities;
   readLive: (address: Address) => Promise<RobinhoodTokenIdentityEvidence>;
   now?: () => number;
   revalidateAfterMs?: number;
@@ -101,6 +105,7 @@ function bound(value: number | undefined, fallback: number, maximum: number) {
 /** RMT_EXECUTION_HOT_PATH_DECOUPLING_V1. Identity does not grant project/route admission. */
 export function createVNextExecutionIdentityAuthority(dependencies: VNextExecutionIdentityDependencies) {
   const inventory = dependencies.readInventory ?? readVNextCanonicalMarketInventory;
+  const index = dependencies.readIndex ?? searchVNextCanonicalTokenIdentities;
   const now = dependencies.now ?? Date.now;
   const interval = bound(dependencies.revalidateAfterMs, 60_000, 300_000);
   const deadline = bound(dependencies.deadlineMs, 2_000, 10_000);
@@ -200,29 +205,71 @@ export function createVNextExecutionIdentityAuthority(dependencies: VNextExecuti
     const generation = entry.generation;
     if (durablePending < maximumPending) {
       durablePending++;
-      // Bound the entire response, including body parsing. Underlying operations
-      // retain their physical slots after timeout, so slow I/O cannot fan out.
-      const operation = Promise.resolve().then(() => inventory(
-        { token: address, limit: INVENTORY_LIMIT }, { includeBrowseIdentities: true }
-      )).finally(() => { durablePending--; });
-      const result = await bounded(operation, inventoryDeadline);
-      if (!current(key, entry, generation)) return;
-      const exact = address.toLowerCase();
-      if (result?.status === "verified_shadow" && result.chainId === ROBINHOOD_MAINNET_CHAIN_ID
-        && result.browseIdentities?.source === "verified-token-identity-index"
-        && result.browseIdentities.freshness === "last-known"
-        && result.pools.length > 0 && result.pools.length <= INVENTORY_LIMIT
-        && result.pools.every((pool) => pool.token0 === exact || pool.token1 === exact)) {
-        // The real inventory reader authenticates and strictly validates the
-        // response, including every identity's page binding and uniqueness.
-        const identities = result.browseIdentities.identities.filter((item) => item.address === exact);
+      let durableReleased = false;
+      const releaseDurable = () => {
+        if (durableReleased) return;
+        durableReleased = true;
+        durablePending--;
+      };
+      // The authenticated token-identity index is independent of market/pool
+      // admission. Exact indexed address + decimals evidence remains usable
+      // when an asset has no indexed pool or live display metadata is transiently
+      // unavailable.
+      const indexedOperation = Promise.resolve().then(() => index(address));
+      let indexedSettled = false;
+      void indexedOperation.then(
+        () => { indexedSettled = true; },
+        () => { indexedSettled = true; }
+      );
+      const indexed = await bounded(indexedOperation, inventoryDeadline);
+      if (!current(key, entry, generation)) {
+        if (indexedSettled) releaseDurable();
+        else void indexedOperation.then(releaseDurable, releaseDurable);
+        return;
+      }
+      if (indexed?.status === "ready") {
+        const exact = address.toLowerCase();
+        const identities = indexed.entries.filter((item) => item.address === exact);
         if (identities.length === 1) {
+          const identity = identities[0];
           entry.identity = Object.freeze({
-            ...identities[0], address, chainId: ROBINHOOD_MAINNET_CHAIN_ID, native: false,
-            provenance: "verified-token-identity-index", sourceManifestHash: result.sourceManifestHash,
-            freshness: "last-known"
+            address, chainId: ROBINHOOD_MAINNET_CHAIN_ID,
+            name: identity.name, symbol: identity.symbol, decimals: identity.decimals,
+            native: false, provenance: "verified-token-identity-index",
+            sourceManifestHash: indexed.sourceManifestHash, freshness: "last-known"
           });
+          releaseDurable();
           return;
+        }
+      }
+      if (indexed === undefined) {
+        if (indexedSettled) releaseDurable();
+        else void indexedOperation.then(releaseDurable, releaseDurable);
+      } else {
+        // Bound the entire response, including body parsing. Underlying operations
+        // retain their physical slots after timeout, so slow I/O cannot fan out.
+        const operation = Promise.resolve().then(() => inventory(
+          { token: address, limit: INVENTORY_LIMIT }, { includeBrowseIdentities: true }
+        )).finally(releaseDurable);
+        const result = await bounded(operation, inventoryDeadline);
+        if (!current(key, entry, generation)) return;
+        const exact = address.toLowerCase();
+        if (result?.status === "verified_shadow" && result.chainId === ROBINHOOD_MAINNET_CHAIN_ID
+          && result.browseIdentities?.source === "verified-token-identity-index"
+          && result.browseIdentities.freshness === "last-known"
+          && result.pools.length > 0 && result.pools.length <= INVENTORY_LIMIT
+          && result.pools.every((pool) => pool.token0 === exact || pool.token1 === exact)) {
+          // The real inventory reader authenticates and strictly validates the
+          // response, including every identity's page binding and uniqueness.
+          const identities = result.browseIdentities.identities.filter((item) => item.address === exact);
+          if (identities.length === 1) {
+            entry.identity = Object.freeze({
+              ...identities[0], address, chainId: ROBINHOOD_MAINNET_CHAIN_ID, native: false,
+              provenance: "verified-token-identity-index", sourceManifestHash: result.sourceManifestHash,
+              freshness: "last-known"
+            });
+            return;
+          }
         }
       }
     }

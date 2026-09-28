@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { getAddress, zeroAddress, type Address } from "viem";
 import { createVNextExecutionIdentityAuthority, VNextExecutionIdentityConflictError, vNextExecutionIdentityErrorResponse } from "./vnext-execution-identity-authority";
-import { readVNextCanonicalMarketInventory } from "./vnext-market-indexer";
+import { readVNextCanonicalMarketInventory, type VNextCanonicalTokenIdentitySearchResult } from "./vnext-market-indexer";
 import type { RobinhoodTokenIdentityEvidence } from "./universal-market-resolver";
 import { ROBINHOOD_USDG_ADDRESS } from "../vnext/robinhood-assets";
 
@@ -38,6 +38,7 @@ function page() {
 
 function harness(options: {
   body?: () => unknown;
+  indexed?: (address: Address) => Promise<VNextCanonicalTokenIdentitySearchResult>;
   live?: (address: Address) => Promise<RobinhoodTokenIdentityEvidence>;
   waitInventory?: () => Promise<void>;
   deadlineMs?: number;
@@ -48,6 +49,7 @@ function harness(options: {
   maximumEntries?: number;
 } = {}) {
   let inventoryReads = 0;
+  let indexedReads = 0;
   let liveReads = 0;
   let clock = 100;
   const tasks: Array<() => Promise<void>> = [];
@@ -56,6 +58,10 @@ function harness(options: {
     maximumPending: options.maximumPending, maximumEntries: options.maximumEntries,
     inventoryDeadlineMs: options.inventoryDeadlineMs, freshReadDeadlineMs: options.freshReadDeadlineMs,
     maximumConflicts: options.maximumConflicts,
+    readIndex: async (address) => {
+      indexedReads++;
+      return options.indexed ? options.indexed(getAddress(address)) : { status: "unavailable", entries: [] };
+    },
     readInventory: (query, dependencies) => readVNextCanonicalMarketInventory(query, {
       ...dependencies,
       env: { RMT_MARKET_INDEXER_URL: "https://identity.test", RMT_MARKET_INDEXER_READ_TOKEN: credential },
@@ -77,7 +83,7 @@ function harness(options: {
   });
   return { ...authority, tasks,
     readOptions: { scheduleRevalidation: (task: () => Promise<void>) => { tasks.push(task); } },
-    counts: () => ({ inventoryReads, liveReads }), advance: () => { clock += 10; } };
+    counts: () => ({ indexedReads, inventoryReads, liveReads }), advance: () => { clock += 10; } };
 }
 
 function deferred<T>() {
@@ -108,7 +114,7 @@ test("cold restart: ETH->PEEP, PEEP->ETH and USDG pairs survive live unavailabil
 test("native and wrong chain never trigger ERC20 RPC; unknown falls back", async () => {
   const h = harness();
   assert.equal((await h.read(zeroAddress, h.readOptions))?.symbol, "ETH");
-  assert.deepEqual(h.counts(), { inventoryReads: 0, liveReads: 0 });
+  assert.deepEqual(h.counts(), { indexedReads: 0, inventoryReads: 0, liveReads: 0 });
   assert.equal(await h.read(peep, { ...h.readOptions, chainId: 1 }), null);
   assert.equal(await h.read(zeroAddress, { chainId: 1 }), null);
   assert.equal(await h.read("invalid" as Address), null);
@@ -135,6 +141,40 @@ test("real inventory reader rejects malformed, untrusted and unbound persisted i
     assert.equal(await h.read(peep, h.readOptions), null);
     assert.equal(h.counts().liveReads, 1);
   }
+});
+
+test("exact verified identity index survives no indexed pool and live RPC outage", async () => {
+  const h = harness({
+    indexed: async (address) => ({
+      status: "ready",
+      sourceManifestHash: manifest,
+      coverageComplete: false,
+      capacity: {
+        totalCanonicalMarkets: 1,
+        totalUniqueCanonicalTokens: 1,
+        totalVerifiedErc20Identities: 1,
+        indexedSearchTokenIdentities: 1,
+        unresolvedTokenIdentities: 0,
+        complete: false
+      },
+      entries: [{ address: address.toLowerCase(), name: "Shareholder Cat", symbol: "SHCAT", decimals: 18, markets: [] }]
+    }),
+    body: () => ({ ...page(), pools: [], browseIdentities: undefined }),
+    live: async () => ({ status: "identity_read_unavailable", failure: { code: "IDENTITY_RPC_UNAVAILABLE", operation: "eth_getCode" } })
+  });
+  const identity = await h.read(unknown, h.readOptions);
+  assert.deepEqual(identity, {
+    address: unknown,
+    chainId: 4663,
+    name: "Shareholder Cat",
+    symbol: "SHCAT",
+    decimals: 18,
+    native: false,
+    provenance: "verified-token-identity-index",
+    sourceManifestHash: manifest,
+    freshness: "last-known"
+  });
+  assert.deepEqual(h.counts(), { indexedReads: 1, inventoryReads: 0, liveReads: 0 });
 });
 
 test("concurrent cold reads coalesce inventory and lazy validation; warm reads do not wait for RPC", async () => {
@@ -258,7 +298,7 @@ test("unknown healthy strict live identity is cached with truthful provenance", 
   assert.equal(identity.freshness, "current");
   assert.equal(identity.sourceManifestHash, null);
   assert.ok(Object.isFrozen(identity));
-  assert.deepEqual(h.counts(), { inventoryReads: 1, liveReads: 1 });
+  assert.deepEqual(h.counts(), { indexedReads: 1, inventoryReads: 1, liveReads: 1 });
   assert.equal(h.tasks.length, 0);
   assert.deepEqual(await h.read(unknown), identity);
 });
@@ -269,7 +309,7 @@ test("unknown unavailable backs off; retry can establish live identity", async (
     ? { status: "verified_token", token: token(address) } : { status: "identity_read_unavailable" } });
   assert.equal(await h.read(unknown), null);
   assert.equal(await h.read(unknown), null);
-  assert.deepEqual(h.counts(), { inventoryReads: 1, liveReads: 1 });
+  assert.deepEqual(h.counts(), { indexedReads: 1, inventoryReads: 1, liveReads: 1 });
   available = true;
   for (let i = 0; i < 501; i++) h.advance();
   assert.equal((await h.read(unknown))?.provenance, "verified-onchain-token-identity");

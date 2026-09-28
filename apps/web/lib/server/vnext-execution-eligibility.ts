@@ -19,8 +19,7 @@ const ROUTE_ON_DEMAND_EXECUTION_PROVIDERS = new Set<VNextQuoteProvider>([
   "zero-x-swap"
 ]);
 const CANONICAL_ZERO_X_OBSERVATION_PROVIDERS = new Set<VNextQuoteProvider>([
-  "zero-x-swap",
-  "zero-x-gasless"
+  "zero-x-swap"
 ]);
 
 export type VNextExecutionEligibility = {
@@ -56,8 +55,9 @@ export function resolveVNextExecutionEligibility(
   return {
     marketAssets,
     curated,
-    // Curation is presentation metadata. Keep 0x's quote-only candidate
-    // observable, while the execution check below admits only AllowanceHolder.
+    // Curation is presentation metadata. The public trading request path uses
+    // only the executable AllowanceHolder adapter; quote-only providers remain
+    // dormant and cannot delay or influence route selection.
     providers: availableProviders.filter((provider) => CANONICAL_ZERO_X_OBSERVATION_PROVIDERS.has(provider))
   };
 }

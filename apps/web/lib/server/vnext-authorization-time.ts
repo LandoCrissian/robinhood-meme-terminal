@@ -1,5 +1,6 @@
 import { createPublicClient, http } from "viem";
 import { robinhoodChain } from "@rmt/shared/chains";
+import { TradeExecutionFailure } from "../vnext/trade-failure";
 
 export const VNEXT_AUTHORIZATION_WINDOW_SECONDS = 240n;
 export const VNEXT_MAX_AUTHORIZATION_WINDOW_SECONDS = 300n;
@@ -85,7 +86,9 @@ export function deriveVNextCommittedAuthorizationTiming(
 }
 
 export async function readVNextAuthorizationChainTimestamp() {
-  const block = await client.getBlock({ blockTag: "latest" });
-  if (!block.hash || block.timestamp <= 0n) throw new Error("Authoritative Robinhood Chain time is unavailable.");
+  const block = await client.getBlock({ blockTag: "latest" }).catch(() => {
+    throw new TradeExecutionFailure("RPC_UNAVAILABLE", "verification");
+  });
+  if (!block.hash || block.timestamp <= 0n) throw new TradeExecutionFailure("RPC_UNAVAILABLE", "verification");
   return block.timestamp;
 }

@@ -331,13 +331,14 @@ export async function runZeroXWalletJourneys(options) {
           assert.equal(api.filter((entry) => entry.path.endsWith('/verify')).length, 0);
           assert.equal(requests.length, 0);
         } else if (scenario === 'quote-only') {
-          await until(() => api.some((entry) => entry.path.endsWith('/quotes')), 'Quote-only observation missing');
-          const gasless = api.find((entry) => entry.path.endsWith('/quotes')).body.attempts.find((attempt) => attempt.provider === 'zero-x-gasless');
-          assert.equal(gasless.status, 'indicative', 'A genuine quote-only candidate must be observed');
-          assert.equal(gasless.strictVerificationAvailable, false);
-          assert.equal(gasless.publicWalletExecutionEligible, false);
+          await until(() => api.some((entry) => entry.path.endsWith('/quotes')), 'Public quote failure observation missing');
+          const quote = api.find((entry) => entry.path.endsWith('/quotes'));
+          assert.deepEqual(quote.body.attempts.map((attempt) => attempt.provider), ['zero-x-swap'],
+            'The public trading request must dispatch only the executable AllowanceHolder adapter');
+          assert.equal(state.outbound.some((entry) => entry.endsWith('/gasless/price')), false,
+            'The dormant Gasless adapter must not receive a public quote request');
           await pause(500);
-          assert.equal(api.filter((entry) => entry.path.endsWith('/verify')).length, 0, 'Non-public providers never reach verification');
+          assert.equal(api.filter((entry) => entry.path.endsWith('/verify')).length, 0, 'An unavailable public quote cannot reach verification');
           assert.equal(requests.length, 0);
         } else if (wireFaults[scenario] && scenario !== 'stale-post-approval') {
           await until(() => corrupted === 1, `Missing corruption probe ${scenario}`);
@@ -556,6 +557,8 @@ export async function runZeroXWalletJourneys(options) {
             }
           }
         }
+        assert.equal(state.outbound.some((entry) => entry.endsWith('/gasless/price')), false,
+          'Normal public swap journeys must never dispatch the dormant Gasless adapter');
         assert.deepEqual(state.unexpected, []);
         results.push({ viewport: viewportName, scenario, status: 'PASS', walletPrompts: requests.length,
           ...(approvalJourney ? { approvalWalletRequests: requests.filter((request) => request.data.startsWith('0x095ea7b3')).length,
