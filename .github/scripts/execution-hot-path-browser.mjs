@@ -29,7 +29,7 @@ export function hotPathInventory(url, state, usdg) {
   } };
 }
 
-export async function runHotPathBrowserAcceptance({ browser, base, identity, state, wallet, usdg, stock }) {
+export async function runHotPathBrowserAcceptance({ browser, base, identity, state, wallet, usdg, shcat, stock }) {
   const results = [];
   state.hotPathDurable = true;
   state.metadataUnavailable = true;
@@ -57,6 +57,20 @@ export async function runHotPathBrowserAcceptance({ browser, base, identity, sta
           assert.ok(result.body.attempts.some(attempt => attempt.provider === 'zero-x-swap'));
           results.push({ device, direction, liveIdentity: 'unavailable', providerRequested: true, ms: result.ms });
         }
+        // SHCAT is intentionally absent from the durable identity fixture. The
+        // actual quote handler must use the repaired live reader, then reach 0x.
+        state.hotPathDurable = false;
+        state.metadataUnavailable = false;
+        const shcatBefore = state.prices.length;
+        const shcatResult = await request({ chainId: 4663, inputAsset: zero, outputAsset: shcat,
+          inputAmountAtomic: '100000000000000', recipient: wallet });
+        assert.equal(shcatResult.status, 200, JSON.stringify(shcatResult));
+        assert.ok(state.prices.length > shcatBefore, `${device} ETH->SHCAT must reach 0x after live identity`);
+        assert.ok(shcatResult.body.attempts.some(attempt => attempt.provider === 'zero-x-swap'));
+        results.push({ device, direction: 'ETH->SHCAT',
+          liveIdentity: device === 'desktop' ? 'current-cold' : 'current-warm', providerRequested: true, ms: shcatResult.ms });
+        state.hotPathDurable = true;
+        state.metadataUnavailable = true;
         const before = state.prices.length;
         const unknown = await request({ chainId: 4663, inputAsset: zero, outputAsset: `0x${'9'.repeat(40)}`, inputAmountAtomic: '1000', recipient: wallet });
         assert.equal(unknown.status, 503);

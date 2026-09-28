@@ -30,7 +30,7 @@ export function classifyIdentityReadFailure(error: unknown, operation: IdentityO
     ? "IDENTITY_RATE_LIMITED"
     : chain.some(x => x.name === "TimeoutError" || x.name === "AbortError") ? "IDENTITY_TIMEOUT"
     : chain.some(x => x.code === "ERR_INVALID_URL" || x.name === "UrlRequiredError") ? "SERVER_CONFIGURATION_ERROR"
-    : chain.some(x => ["HttpRequestError", "RpcRequestError", "WebSocketRequestError"].includes(String(x.name))) ? "IDENTITY_RPC_UNAVAILABLE"
+    : chain.some(x => ["HttpRequestError", "RpcRequestError", "UnknownRpcError", "InvalidInputRpcError", "WebSocketRequestError"].includes(String(x.name))) ? "IDENTITY_RPC_UNAVAILABLE"
     : chain.some(x => ["ContractFunctionRevertedError", "ContractFunctionZeroDataError", "AbiDecodingZeroDataError"].includes(String(x.name))) ? "IDENTITY_CALL_FAILED"
     : "IDENTITY_READER_FAILED";
   return { code, operation };
