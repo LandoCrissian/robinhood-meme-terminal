@@ -169,7 +169,7 @@ async function installFixtures(page, quoteRequests, options = {}) {
     type: "wallet", chainType: "ethereum", address: record.address,
     connectorType: record.connectorType, walletClientType: record.walletClientType
   }));
-  await page.addInitScript(({ chainId, initialWallet, walletRecords, finalLinkedAccounts, delayedWalletMs, initiallyMissingWallet, newUser, storedPreference, walletA }) => {
+  await page.addInitScript(({ chainId, initialWallet, walletRecords, finalLinkedAccounts, delayedWalletMs, initiallyMissingWallet, missingIdentityToken, identityTokenAfterRefresh, newUser, storedPreference, walletA }) => {
     const listeners = new Map();
     const makeProvider = (initialAddress, providerId) => {
       let accounts = [initialAddress];
@@ -216,7 +216,8 @@ async function installFixtures(page, quoteRequests, options = {}) {
     };
     window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_STATE__ = {
       authenticated: true,
-      identityToken: "privy-production-bridge-acceptance-token",
+      identityToken: missingIdentityToken ? undefined : "privy-production-bridge-acceptance-token",
+      identityTokenAfterRefresh,
       ready: true,
       user: { id: "privy-production-bridge-user", linkedAccounts: newUser ? [] : finalLinkedAccounts },
       wallets: delayedWalletMs || initiallyMissingWallet ? [] : walletRecords,
@@ -227,17 +228,27 @@ async function installFixtures(page, quoteRequests, options = {}) {
     }
     window.__RMT_PRIVY_ACCEPTANCE_PROVIDER__ = provider;
     window.__RMT_ACCEPTANCE_READ_WALLET_ASSETS__ = true;
-    if (delayedWalletMs) window.setTimeout(() => window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_SET_STATE__?.({
-      user: { id: "privy-production-bridge-user", linkedAccounts: finalLinkedAccounts },
-      wallets: walletRecords, walletsReady: true
-    }), delayedWalletMs);
+    if (delayedWalletMs) window.setTimeout(() => {
+      const patch = {
+        user: { id: "privy-production-bridge-user", linkedAccounts: finalLinkedAccounts },
+        wallets: walletRecords,
+        walletsReady: true
+      };
+      window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_STATE__ = {
+        ...window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_STATE__,
+        ...patch
+      };
+      window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_LISTENERS__?.forEach((listener) => listener());
+    }, delayedWalletMs);
   }, {
     chainId,
     initialWallet,
     walletRecords,
     finalLinkedAccounts,
     delayedWalletMs: options.delayedWalletMs ?? 0,
+    identityTokenAfterRefresh: options.identityTokenAfterRefresh,
     initiallyMissingWallet: options.initiallyMissingWallet === true,
+    missingIdentityToken: options.missingIdentityToken === true,
     newUser: options.newUser === true,
     storedPreference: options.storedPreference ?? null,
     walletA
@@ -325,10 +336,19 @@ async function acceptTerms(page) {
 
 async function openActiveWallet(page, base, options) {
   const quotes = [];
+  const clientErrors = [];
+  page.on("pageerror", (error) => clientErrors.push(error.message));
+  page.on("console", (message) => { if (message.type() === "error") clientErrors.push(message.text()); });
   await installFixtures(page, quotes, options);
   await page.goto(`${base}/?market=${market}&side=buy`, { waitUntil: "domcontentloaded", timeout: 180_000 });
   await acceptTerms(page);
-  await page.getByRole("button", { name: /0x3333…3333/ }).first().waitFor({ timeout: 20_000 });
+  await page.getByRole("button", { name: /0x3333…3333/ }).first().waitFor({ timeout: 20_000 }).catch(async (cause) => {
+    const diagnostic = await page.evaluate(() => ({
+      setter: typeof window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_SET_STATE__,
+      state: window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_STATE__
+    }));
+    throw new Error(`Privy bridge did not publish the fixture wallet: ${clientErrors.join(" | ")} :: diagnostic=${JSON.stringify(diagnostic)} :: ${(await page.locator("body").innerText()).slice(0, 1_500)}`, { cause });
+  });
   await page.getByLabel("Exact input amount").waitFor({ timeout: 30_000 });
   await page.waitForFunction((expected) => window.__RMT_PRIVY_BRIDGE_BALANCE_SNAPSHOT__?.walletAddress?.toLowerCase() === expected,
     walletA.toLowerCase(), { timeout: 20_000 });
@@ -366,6 +386,31 @@ async function runBalanceIsolation(browser, base) {
     const recoveredBalance = (await page.locator(".vnConfirmedBalance strong").textContent())?.trim();
     assert.equal(recoveredBalance, "No USDG balance found", `subsequent successful zero read recovers as confirmed zero (observed ${recoveredBalance})`);
     return { ethWhileUsdgUnavailable: "PASS", selectedErc20AndGas: "PASS", zeroVsUnavailable: "PASS", recovery: "PASS" };
+  } finally {
+    await context.close();
+  }
+}
+
+async function runIdentityTokenRecovery(browser, base) {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  try {
+    const page = await context.newPage();
+    const quotes = await openActiveWallet(page, base, {
+      identityTokenAfterRefresh: "privy-production-bridge-refreshed-token",
+      missingIdentityToken: true
+    });
+    await page.getByLabel("Pay with asset").selectOption("eip155:4663/native");
+    await page.getByLabel("Exact input amount").fill("0.001");
+    await page.waitForFunction(() => window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_EVENTS__?.includes("REFRESH_USER"), null, { timeout: 20_000 });
+    await page.waitForFunction(() => document.querySelector(".vnTradeActionStatus")?.textContent?.includes("Read-only acceptance"), null, { timeout: 20_000 });
+    await page.waitForTimeout(9_500);
+    assert.equal(quotes.length, 1, `production Privy bridge recovery resumes exactly one read-only quote request (${JSON.stringify(quotes)})`);
+    const evidence = await page.evaluate(() => ({
+      events: window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_EVENTS__,
+      financialRequests: window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_RPC_METHODS__.filter((entry) => /send|sign/i.test(entry.method)).length
+    }));
+    assert.equal(evidence.financialRequests, 0, "identity recovery cannot create a wallet request");
+    return { identityRefreshes: evidence.events.filter((event) => event === "REFRESH_USER").length, quoteRequests: quotes.length, walletRequests: 0 };
   } finally {
     await context.close();
   }
@@ -646,6 +691,10 @@ async function main() {
   let browser;
   try {
     if (process.env.RMT_PRIVY_BRIDGE_ACCEPTANCE_SKIP_BUILD !== "true") {
+      // This profile replaces the Privy SDK at the webpack boundary. Reusing a
+      // `.next` cache produced by another acceptance profile can retain that
+      // profile's resolved module graph and stop testing the intended bridge.
+      await rm(path.join(webRoot, ".next"), { recursive: true, force: true });
       const build = spawn(process.execPath, [nextBin, "build"], { cwd: webRoot, env, stdio: "inherit", windowsHide: true });
       const code = await new Promise((resolve, reject) => { build.once("error", reject); build.once("exit", resolve); });
       if (code !== 0) throw new Error(`Privy bridge acceptance build failed (${code}).`);
@@ -675,6 +724,7 @@ async function main() {
       unavailableBoundaries: await runUnavailableBoundaries(browser, base),
       lateResponseIsolation: await runLateResponseIsolation(browser, base),
       identityTransitions: await runIdentityTransitions(browser, base),
+      identityTokenRecovery: await runIdentityTokenRecovery(browser, base),
       provisioningRecovery: await runProvisioningRecovery(browser, base),
       externalPreferenceRace: await runExternalPreferenceRace(browser, base),
       embeddedQuoteToHandoff: await runEmbeddedQuoteToHandoff(browser, base, executionFixture),

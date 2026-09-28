@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { runZeroXWalletJourneys } from './zerox-browser-wallet-journeys.mjs';
 import { createRouteOnDemandFixtures, runRouteOnDemandJourneys } from './zerox-browser-route-on-demand.mjs';
+import { runLiveEthQuoteIncidentJourneys } from './live-eth-quote-incident-browser.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const requireWeb = createRequire(path.join(root, 'apps/web/package.json'));
@@ -231,9 +232,14 @@ export async function runZeroXBrowserAcceptance() {
   await mkdir(output, { recursive: true });
   const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
   const now = Math.floor(Date.now() / 1000);
+  const signIdentity = (claims) => {
+    const unsigned = `${Buffer.from(JSON.stringify({ alg: 'ES256', typ: 'JWT' })).toString('base64url')}.${Buffer.from(JSON.stringify(claims)).toString('base64url')}`;
+    return `${unsigned}.${sign('sha256', Buffer.from(unsigned), { key: privateKey, dsaEncoding: 'ieee-p1363' }).toString('base64url')}`;
+  };
   const claims = { iss: 'privy.io', aud: 'rmt-local-browser-acceptance', sub: 'did:privy:rmt-local-acceptance', iat: now, exp: now + 3600, cr: String(now), linked_accounts: JSON.stringify([{ type: 'wallet', address: wallet, chain_type: 'ethereum', lv: now }]) };
-  const unsigned = `${Buffer.from(JSON.stringify({ alg: 'ES256', typ: 'JWT' })).toString('base64url')}.${Buffer.from(JSON.stringify(claims)).toString('base64url')}`;
-  const identity = `${unsigned}.${sign('sha256', Buffer.from(unsigned), { key: privateKey, dsaEncoding: 'ieee-p1363' }).toString('base64url')}`;
+  const identity = signIdentity(claims);
+  const expiredIdentity = signIdentity({ ...claims, iat: now - 7_200, exp: now - 3_600, cr: String(now - 7_200) });
+  const unlinkedIdentity = signIdentity({ ...claims, sub: 'did:privy:rmt-unlinked-acceptance', linked_accounts: JSON.stringify([{ type: 'wallet', address: '0x4444444444444444444444444444444444444444', chain_type: 'ethereum', lv: now }]) });
   const boundary = createServer(async (req, res) => {
     try {
       const chunks = [];
@@ -288,10 +294,17 @@ export async function runZeroXBrowserAcceptance() {
       results.push(...await runRouteOnDemandJourneys({ browser, base, identity, external, state, wallet, usdg, output, fixtures: routeFixtures, scenarios: selectedRouteScenarios }));
       return;
     }
+    if (process.env.RMT_LIVE_ETH_QUOTE_INCIDENT_ONLY === 'true') {
+      results.push(...await runLiveEthQuoteIncidentJourneys({ browser, base, external, identity, expiredIdentity, unlinkedIdentity,
+        output, state, token, noRouteToken: routeFixtures.assets.noRoute, wallet }));
+      return;
+    }
     if (process.env.RMT_QUOTE_STATE_ONLY === 'true') { results.push(...await runZeroXWalletJourneys({browser,base,identity,external,state,wallet,token,usdg,holder,output,scenarios:['sell-approval-idle-verification','sell-approval-idle-success','sell-approval-idle-expired-failure','sell-approval-idle-failure','sell-approval-idle-click']})); return; }
     if (process.env.RMT_PRODUCT_METRICS_ONLY === 'true') { results.push(...await runTradingProductBrowser({ browser, base, identity, external, state, wallet, token, output })); return; }
     results.push(...await runTradingProductBrowser({ browser, base, identity, external, state, wallet, token, output }));
     results.push(...await runHotPathBrowserAcceptance({ browser, base, identity, state, wallet, usdg, stock: routeFixtures.assets.stock }));
+    results.push(...await runLiveEthQuoteIncidentJourneys({ browser, base, external, identity, expiredIdentity, unlinkedIdentity,
+      output, state, token, noRouteToken: routeFixtures.assets.noRoute, wallet }));
     for (const [name, viewport] of (process.env.RMT_ACCEPTANCE_ROUTE_ON_DEMAND_ONLY === 'true' ? [] : [['desktop', { width: 1440, height: 900 }], ['mobile', { width: 390, height: 844 }]])) {
       const context = await browser.newContext({ viewport, ...(name === 'mobile' ? { isMobile: true, hasTouch: true } : {}) });
       await context.addInitScript(({ wallet }) => {

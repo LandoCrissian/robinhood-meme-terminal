@@ -14,6 +14,7 @@ type AcceptanceWallet = {
 type AcceptanceState = {
   authenticated: boolean;
   identityToken?: string;
+  identityTokenAfterRefresh?: string;
   ready: boolean;
   user?: { id: string; linkedAccounts: Array<Record<string, unknown>> };
   wallets: AcceptanceWallet[];
@@ -109,6 +110,23 @@ export function useWallets() {
 
 export function useIdentityToken() {
   return { identityToken: useAcceptanceState().identityToken ?? null };
+}
+
+export async function getIdentityToken() {
+  return currentState().identityToken ?? null;
+}
+
+export function useUser() {
+  const state = useAcceptanceState();
+  return {
+    user: state.user,
+    refreshUser: async () => {
+      event("REFRESH_USER");
+      const current = currentState();
+      if (current.identityTokenAfterRefresh) patchState({ identityToken: current.identityTokenAfterRefresh });
+      return current.user;
+    }
+  };
 }
 
 export function useConnectWallet() {
