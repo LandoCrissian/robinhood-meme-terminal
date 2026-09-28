@@ -28,6 +28,7 @@ export function rmtTradePrimaryActionDisabled(input: {
   connectedIntentMissing: boolean;
   embeddedWalletRetryRequired: boolean;
   identityEnabled: boolean;
+  identityRecoveryPending: boolean;
   identityReady: boolean;
   quoteRequiresVerification: boolean;
   stockTokenViewOnly: boolean;
@@ -39,6 +40,7 @@ export function rmtTradePrimaryActionDisabled(input: {
     || !input.balanceAuthorityReady
     || input.stockTokenViewOnly
     || input.walletBusy
+    || input.identityRecoveryPending
     || input.transactionPending
     || input.amountExceedsBalance
     || !input.identityEnabled

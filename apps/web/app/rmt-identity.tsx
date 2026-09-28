@@ -1,6 +1,6 @@
 "use client";
 
-import { useConnectWallet, useIdentityToken, usePrivy, useWallets } from "@privy-io/react-auth";
+import { getIdentityToken, useConnectWallet, useIdentityToken, usePrivy, useUser, useWallets } from "@privy-io/react-auth";
 import { activateSelectedWallet, idleWalletConnection, WalletConnectionController, type WalletConnectionSnapshot } from "../lib/wallet-connection-controller";
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { injectedSignerSelection, startInjectedSignerDiscovery } from "../lib/injected-wallet-signer";
@@ -67,6 +67,7 @@ type RmtIdentityContextValue = {
   logout: () => Promise<void>;
   phoneLast4: string;
   ready: boolean;
+  refreshTradeIdentity: () => Promise<string | null>;
   selectTradingWallet: (walletKey: string) => Promise<void>;
   supportsOAuth: boolean;
   tradingWallets: readonly RmtTradingWalletSummary[];
@@ -105,6 +106,7 @@ const unavailableIdentity: RmtIdentityContextValue = {
   logout: async () => undefined,
   phoneLast4: "",
   ready: true,
+  refreshTradeIdentity: async () => null,
   selectTradingWallet: async () => undefined,
   supportsOAuth: true,
   tradingWallets: [],
@@ -128,6 +130,11 @@ export function BrowserAcceptanceIdentityBridge({ children }: { children: ReactN
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
   const acceptanceEnabled = process.env.NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE === "true" && isLoopbackAcceptanceHost();
+  const [identityTokenReady, setIdentityTokenReady] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const mode = window.__RMT_QUOTE_IDENTITY_ACCEPTANCE__?.tokenMode;
+    return mode === undefined || mode === "ready";
+  });
   const connector = connectors.find((candidate) => candidate.id === "rmt-walletconnect-fixture")
     ?? connectors.find((candidate) => candidate.id === "injected" || candidate.type === "injected");
   const connectTradingWallet = useCallback(() => {
@@ -137,6 +144,18 @@ export function BrowserAcceptanceIdentityBridge({ children }: { children: ReactN
   useEffect(() => {
     if (acceptanceEnabled && !isConnected && connector) connect({ connector, chainId: 4_663 });
   }, [acceptanceEnabled, connect, connector, isConnected]);
+
+  useEffect(() => {
+    if (!acceptanceEnabled || !isConnected) return;
+    const config = window.__RMT_QUOTE_IDENTITY_ACCEPTANCE__;
+    if (config?.tokenMode !== "delayed") return;
+    setIdentityTokenReady(false);
+    const timeout = window.setTimeout(
+      () => setIdentityTokenReady(true),
+      Math.max(0, Math.min(config.tokenDelayMs ?? 750, 5_000))
+    );
+    return () => window.clearTimeout(timeout);
+  }, [acceptanceEnabled, isConnected]);
 
   const value = useMemo<RmtIdentityContextValue>(() => acceptanceEnabled ? {
     authenticated: isConnected,
@@ -174,7 +193,7 @@ export function BrowserAcceptanceIdentityBridge({ children }: { children: ReactN
     embeddedWalletProvisioning: isConnected ? "not-required" : "signed-out",
     embeddedWalletProvisioningError: "",
     embeddedWalletRecovery: "retry",
-    identityToken: isConnected ? "deterministic-browser-acceptance-token" : null,
+    identityToken: isConnected && identityTokenReady ? "deterministic-browser-acceptance-token" : null,
     linkEmail: () => undefined,
     linkGoogle: () => undefined,
     linkPasskey: () => undefined,
@@ -185,6 +204,11 @@ export function BrowserAcceptanceIdentityBridge({ children }: { children: ReactN
     logout: async () => undefined,
     phoneLast4: "",
     ready: true,
+    refreshTradeIdentity: async () => {
+      if (!isConnected || window.__RMT_QUOTE_IDENTITY_ACCEPTANCE__?.refreshSucceeds === false) return null;
+      setIdentityTokenReady(true);
+      return "deterministic-browser-acceptance-token";
+    },
     selectTradingWallet: async () => connectTradingWallet(),
     supportsOAuth: false,
     tradingWallets: isConnected && address && connector ? [{
@@ -206,7 +230,7 @@ export function BrowserAcceptanceIdentityBridge({ children }: { children: ReactN
     restartEmbeddedWalletSession: () => undefined,
     walletConnectionError: "",
     walletSelectionRequired: false
-  } : unavailableIdentity, [acceptanceEnabled, address, connectTradingWallet, connector, isConnected]);
+  } : unavailableIdentity, [acceptanceEnabled, address, connectTradingWallet, connector, identityTokenReady, isConnected]);
 
   useLayoutEffect(() => {
     if (!acceptanceEnabled) return;
@@ -238,12 +262,20 @@ export type AccountAcceptanceBalanceScenario = "positive" | "zero-input" | "erc2
 
 declare global {
   interface Window {
+    __RMT_QUOTE_IDENTITY_ACCEPTANCE__?: {
+      refreshSucceeds?: boolean;
+      tokenDelayMs?: number;
+      tokenMode?: "ready" | "missing" | "delayed";
+    };
     __RMT_ACCOUNT_ACCEPTANCE_CONFIG__?: {
       failFirstProvisioning?: boolean;
       mode?: AccountAcceptanceMode;
       preferenceHydrationDelayMs?: number;
       provisioningDelayMs?: number;
       returningUser?: boolean;
+      identityTokenMode?: "ready" | "missing" | "delayed";
+      identityTokenDelayMs?: number;
+      identityTokenRefreshSucceeds?: boolean;
       storedExternalWalletKey?: string;
       walletBalanceScenario?: AccountAcceptanceBalanceScenario;
     };
@@ -277,6 +309,7 @@ export function AccountFirstAcceptanceIdentityBridge({ children }: { children: R
   const [mode, setMode] = useState<AccountAcceptanceMode>("embedded-onboarding");
   const [returningUser, setReturningUser] = useState(false);
   const [authenticated, setAuthenticated] = useState(false);
+  const [identityTokenReady, setIdentityTokenReady] = useState(false);
   const [provisioning, setProvisioning] = useState<"signed-out" | "creating" | "connecting" | "failed" | "ready">("signed-out");
   const [acceptanceSignerUid, setAcceptanceSignerUid] = useState<string | null>(null);
   const [externalReconnectRequested, setExternalReconnectRequested] = useState(false);
@@ -327,6 +360,26 @@ export function AccountFirstAcceptanceIdentityBridge({ children }: { children: R
     }, delay);
     return () => window.clearTimeout(timeout);
   }, [acceptanceEnabled]);
+
+  useEffect(() => {
+    if (!acceptanceEnabled || !authenticated) {
+      setIdentityTokenReady(false);
+      return;
+    }
+    const config = window.__RMT_ACCOUNT_ACCEPTANCE_CONFIG__;
+    const tokenMode = config?.identityTokenMode ?? "ready";
+    if (tokenMode === "ready") {
+      setIdentityTokenReady(true);
+      return;
+    }
+    setIdentityTokenReady(false);
+    if (tokenMode !== "delayed") return;
+    const timeout = window.setTimeout(
+      () => setIdentityTokenReady(true),
+      Math.max(0, Math.min(config?.identityTokenDelayMs ?? 750, 5_000))
+    );
+    return () => window.clearTimeout(timeout);
+  }, [acceptanceEnabled, authenticated]);
 
   useEffect(() => {
     if (!acceptanceEnabled || mode !== "external-preference-hydration" || !preferenceLoaded) return;
@@ -523,7 +576,7 @@ export function AccountFirstAcceptanceIdentityBridge({ children }: { children: R
       ? "RMT could not finish creating this wallet. Retry here; you do not need to sign in again."
       : "",
     embeddedWalletRecovery: "retry",
-    identityToken: authenticated ? "deterministic-browser-acceptance-token" : null,
+    identityToken: authenticated && identityTokenReady ? "deterministic-browser-acceptance-token" : null,
     linkEmail: () => undefined,
     linkGoogle: () => undefined,
     linkPasskey: () => undefined,
@@ -534,6 +587,11 @@ export function AccountFirstAcceptanceIdentityBridge({ children }: { children: R
     logout,
     phoneLast4: "",
     ready: true,
+    refreshTradeIdentity: async () => {
+      if (!authenticated || window.__RMT_ACCOUNT_ACCEPTANCE_CONFIG__?.identityTokenRefreshSucceeds === false) return null;
+      setIdentityTokenReady(true);
+      return "deterministic-browser-acceptance-token";
+    },
     selectTradingWallet: async () => connectTradingWallet(),
     supportsOAuth: true,
     tradingWallets,
@@ -544,7 +602,7 @@ export function AccountFirstAcceptanceIdentityBridge({ children }: { children: R
     restartEmbeddedWalletSession: () => undefined,
     walletConnectionError: "",
     walletSelectionRequired: mode !== "embedded-onboarding" && !externalReady
-  } : unavailableIdentity, [acceptanceEnabled, acceptanceSignerUid, activeWalletKey, activeWalletKind, authenticated, connectTradingWallet, exactConnection, externalReady, login, logout, mode, provisioning, startProvisioning, tradingWallets]);
+  } : unavailableIdentity, [acceptanceEnabled, acceptanceSignerUid, activeWalletKey, activeWalletKind, authenticated, connectTradingWallet, exactConnection, externalReady, identityTokenReady, login, logout, mode, provisioning, startProvisioning, tradingWallets]);
 
   useLayoutEffect(() => {
     if (!acceptanceEnabled) return;
@@ -589,6 +647,7 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     user
   } = usePrivy();
   const { wallets, ready: walletsReady } = useWallets();
+  const { refreshUser } = useUser();
   const config = useConfig();
   const { connectAsync } = useConnect();
   const { switchAccountAsync } = useSwitchAccount();
@@ -641,6 +700,11 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     return walletBrowserEnvironment(window.navigator.userAgent, Boolean((window as Window & { ethereum?: unknown }).ethereum));
   });
   const supportsOAuth = environment !== "mobile-wallet-browser";
+  const refreshTradeIdentity = useCallback(async () => {
+    if (!authenticated) return null;
+    await refreshUser();
+    return getIdentityToken();
+  }, [authenticated, refreshUser]);
 
   useEffect(() => {
     setWalletPreferenceLoadedForUser(null);
@@ -1194,6 +1258,7 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     logout: logoutFromRmt,
     phoneLast4: user?.linkedAccounts.find((account) => account.type === "phone")?.number.slice(-4) ?? "",
     ready,
+    refreshTradeIdentity,
     selectTradingWallet,
     supportsOAuth,
     tradingWallets,
@@ -1264,6 +1329,7 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     walletConnection,
     logoutFromRmt,
     ready,
+    refreshTradeIdentity,
     restartEmbeddedWalletSession,
     supportsOAuth,
     tradingWallets,

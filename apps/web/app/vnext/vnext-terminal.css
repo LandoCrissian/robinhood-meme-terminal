@@ -6118,6 +6118,13 @@ body .rmtTerminal button {
 .vnTradePanel { display: flex; flex-direction: column; overflow: hidden; padding: 0; }
 .vnTradeScroll { min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 24px; }
 .vnTradeActionDock { flex: 0 0 auto; padding: 14px 24px; border-top: 1px solid var(--vn-line, #26332d); background: #0d1712; }
+.vnTradeActionStatus {
+  margin: 0 0 9px;
+  color: var(--vn-text-secondary);
+  font-size: 11px;
+  line-height: 1.45;
+}
+.vnTradeActionStatus.isBlocking { color: #e9aaa5; }
 .vnTradeActionDock .vnWalletSubmission { margin: 0; padding: 0; border: 0; }
 .vnTradeActionDock [aria-label="Injected signer selection"] { max-height: 128px; overflow-y: auto; margin-bottom: 10px; font-size: 12px; }
 .vnTradeActionDock .vnReviewButton { width: 100%; margin: 0; min-height: 48px; }

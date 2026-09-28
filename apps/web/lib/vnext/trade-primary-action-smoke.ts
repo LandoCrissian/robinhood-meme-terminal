@@ -7,6 +7,7 @@ const blockedTradeState = {
   balanceAuthorityReady: false,
   connectedIntentMissing: true,
   identityEnabled: true,
+  identityRecoveryPending: false,
   identityReady: true,
   quoteRequiresVerification: true,
   stockTokenViewOnly: false,

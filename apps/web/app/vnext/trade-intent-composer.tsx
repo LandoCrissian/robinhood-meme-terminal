@@ -182,6 +182,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
   const refreshCoordinator = useRef(new VerifiedRequestRefresh<{ evidence: VNextPreSignEvidence; plan: VNextAuthorizationPlan }>());
   const [walletBusy, setWalletBusy] = useState(false);
   const [draftRecoveryError, setDraftRecoveryError] = useState("");
+  const [tradeIdentityRecovery, setTradeIdentityRecovery] = useState<"idle" | "recovering" | "failed">("idle");
   const [walletChoiceOpen, setWalletChoiceOpen] = useState(false);
   const [walletChoiceError, setWalletChoiceError] = useState("");
   const walletBusyRef = useRef(false);
@@ -214,6 +215,9 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
   const authorizationAttemptEpoch = useRef(0);
   const backgroundQuoteImmediate = useRef(false);
   const backgroundQuoteAttempted = useRef(false);
+  const identityRecoveryAttempted = useRef("");
+  const identityRecoveryGeneration = useRef(0);
+  const identityRecoveryPromise = useRef<Promise<string | null> | null>(null);
   const lastReadyQuote = useRef<VNextCachedQuote | undefined>(undefined);
   const lastReadyVerification = useRef<VNextPreSignEvidence | undefined>(undefined);
   const receiptAction = useRef<HTMLButtonElement>(null);
@@ -388,8 +392,45 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
       : null;
   const requestKey = `${chainId ?? ""}:${selectedMarketAddress}:${address ?? ""}:${side}:${amount}:${inputAddress ?? ""}:${outputAddress ?? ""}:${canonicalMarket?.poolKey ?? "auto"}`;
   const preparationContext = `${identity.userId}:${identity.activeWalletKey}:${requestKey}`;
+  const identityRecoveryScope = `${identity.userId}:${identity.activeWalletKey}:${address ?? ""}:${chainId ?? ""}`;
   const currentPreparationContext = useRef(preparationContext);
   currentPreparationContext.current = preparationContext;
+  const recoverTradeIdentity = useCallback((force = false) => {
+    if (!identity.authenticated || !identity.userId || !identity.activeWalletKey) return Promise.resolve(null);
+    if (identityRecoveryPromise.current) return identityRecoveryPromise.current;
+    if (!force && identityRecoveryAttempted.current === identityRecoveryScope) return Promise.resolve(identity.identityToken);
+    identityRecoveryAttempted.current = identityRecoveryScope;
+    const generation = ++identityRecoveryGeneration.current;
+    setTradeIdentityRecovery("recovering");
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const pending = Promise.race([
+      identity.refreshTradeIdentity(),
+      new Promise<null>((resolve) => { timeout = setTimeout(() => resolve(null), 6_000); })
+    ]).then((token) => {
+      if (generation === identityRecoveryGeneration.current) setTradeIdentityRecovery(token ? "idle" : "failed");
+      return token;
+    }).catch(() => {
+      if (generation === identityRecoveryGeneration.current) setTradeIdentityRecovery("failed");
+      return null;
+    }).finally(() => {
+      if (timeout) clearTimeout(timeout);
+      if (identityRecoveryPromise.current === pending) identityRecoveryPromise.current = null;
+    });
+    identityRecoveryPromise.current = pending;
+    return pending;
+  }, [identity.activeWalletKey, identity.authenticated, identity.identityToken, identity.refreshTradeIdentity, identity.userId, identityRecoveryScope]);
+
+  useEffect(() => {
+    if (identity.identityToken) {
+      setTradeIdentityRecovery("idle");
+      return;
+    }
+    if (!quoteActive || !identity.enabled || !identity.authenticated || !identity.userId
+      || !identity.activeWalletKey || identity.activeWalletKind === null || !address || !draft.intent
+      || !inputAddress || !outputAddress) return;
+    void recoverTradeIdentity();
+  }, [address, draft.intent, identity.activeWalletKey, identity.activeWalletKind, identity.authenticated,
+    identity.enabled, identity.identityToken, identity.userId, inputAddress, outputAddress, quoteActive, recoverTradeIdentity]);
   const recordResponseDiagnostic = (
     consumption: Parameters<typeof appendResponseDiagnostic>[1],
     context: string,
@@ -400,6 +441,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
   };
 
   useEffect(() => () => { authorizationAttemptEpoch.current += 1;
+    identityRecoveryGeneration.current += 1;
     refreshCoordinator.current.invalidate(); }, []);
   useEffect(() => {
     const pending = readPendingApprovalJourney();
@@ -666,7 +708,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
     if (!draft.intent || !address || !inputAddress || !outputAddress || !identity.identityToken || !identity.userId) throw new Error("Trade intent is not ready for route comparison.");
     const expected = { inputAsset: inputAddress, outputAsset: outputAddress, inputAmountAtomic: draft.intent.amountAtomic };
     emitTradeJourney({ phase: "QUOTE_REQUESTING", quoteRequestAttempted: true });
-    const response = await requestTradeQuote("/api/vnext/quotes", {
+    const body = {
       chainId: ROBINHOOD_MAINNET_CHAIN_ID,
       inputAsset: inputAddress,
       outputAsset: outputAddress,
@@ -678,14 +720,23 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
           || (canonicalMarket.token0 === outputAddress.toLowerCase() && canonicalMarket.token1 === inputAddress.toLowerCase()))
         ? { canonicalMarket: { sourceId: "uniswap-v4", poolId: canonicalMarket.poolKey } }
         : {})
-    }, {
-      identityScope: identity.userId,
-      identityToken: identity.identityToken,
-      timeoutMs: 12_000,
-      diagnosticGeneration,
-      onDiagnostic: (consumption) => recordResponseDiagnostic(consumption, diagnosticContext),
-      maxAttempts: 1
-    });
+    };
+    const request = (identityToken: string) => requestTradeQuote("/api/vnext/quotes", body, {
+        identityScope: identity.userId,
+        identityToken,
+        timeoutMs: 12_000,
+        diagnosticGeneration,
+        onDiagnostic: (consumption) => recordResponseDiagnostic(consumption, diagnosticContext),
+        maxAttempts: 1
+      });
+    let response = await request(identity.identityToken);
+    if (response.status === 401) {
+      const refreshedIdentityToken = await recoverTradeIdentity(true);
+      if (currentPreparationContext.current !== diagnosticContext) {
+        throw new TradeJourneyError("UNRESOLVED", "Trade intent changed while the secure session was refreshed.");
+      }
+      if (refreshedIdentityToken) response = await request(refreshedIdentityToken);
+    }
     const failure = tradeQuoteFailureFromResponse(response);
     if (failure) throw failure;
     return parseVNextQuoteResponse(response.payload, expected, Date.now());
@@ -724,6 +775,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
       const hadVisibleQuote = Boolean(cachedVNextQuoteForRequest(lastReadyQuote.current, preparationContext));
       if (!hadVisibleQuote && !backgroundQuoteAttempted.current) setQuoteState({ state: "loading" });
       backgroundQuoteAttempted.current = true;
+      let scheduleNext = true;
       try {
         const freshQuote = await requestLiveRoutes();
         if (cancelled || backgroundQuoteEpoch.current !== epoch) return;
@@ -731,6 +783,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
         setQuoteState({ state: "ready", response: freshQuote });
       } catch (cause) {
         if (cancelled || backgroundQuoteEpoch.current !== epoch) return;
+        scheduleNext = !(cause && typeof cause === "object" && "retryable" in cause && cause.retryable === false);
         if (!cachedVNextQuoteForRequest(lastReadyQuote.current, preparationContext)) {
           setQuoteState({
             state: "error",
@@ -739,7 +792,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
           });
         }
       }
-      if (!cancelled && backgroundQuoteEpoch.current === epoch) schedule(VNEXT_BACKGROUND_QUOTE_REFRESH_MS);
+      if (scheduleNext && !cancelled && backgroundQuoteEpoch.current === epoch) schedule(VNEXT_BACKGROUND_QUOTE_REFRESH_MS);
     };
     const onVisibilityChange = () => {
       if (document.visibilityState === "hidden" || !navigator.onLine) {
@@ -1204,6 +1257,24 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
     && identity.authenticated
     && identity.activeWalletKind === null
     && identity.embeddedWalletProvisioning === "failed";
+  const tradeIdentityBlocked = Boolean(
+    identity.authenticated
+    && identity.activeWalletKind !== null
+    && address
+    && draft.intent
+    && !identity.identityToken
+  );
+  const tradeActionStatus = tradeIdentityBlocked
+    ? tradeIdentityRecovery === "recovering"
+      ? "Securing your trading session before requesting the current quote…"
+      : "RMT could not establish the secure trade session. Retry here; if it persists, sign out and sign in again."
+    : quoteState.state === "error"
+      ? quoteState.message
+      : zeroXNoRoute
+        ? "0x has no current route for this exact asset pair and amount. You can change the amount or try again later."
+        : quoteState.state === "loading" && draft.intent
+          ? `Finding the current ${inputSymbol} → ${outputSymbol} route…`
+          : null;
   useEffect(() => {
     if (!embeddedWalletRetryRequired) setDraftRecoveryError("");
   }, [embeddedWalletRetryRequired]);
@@ -1249,6 +1320,10 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
     if (!address || identity.activeWalletKind === null) {
       setWalletChoiceError("");
       setWalletChoiceOpen(true);
+      return;
+    }
+    if (!identity.identityToken) {
+      void recoverTradeIdentity(true);
       return;
     }
     void startTrade(true);
@@ -1589,6 +1664,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
   {walletChoiceError || identity.walletConnectionError ? <p role="status">{walletChoiceError || identity.walletConnectionError}</p> : null}
 </section> : null}
 <footer className="vnTradeActionDock" data-indicative-fresh={indicativeQuoteFresh}>
+{tradeActionStatus ? <p className={`vnTradeActionStatus${tradeIdentityRecovery === "failed" || quoteState.state === "error" || zeroXNoRoute ? " isBlocking" : ""}`} role="status">{tradeActionStatus}</p> : null}
 {authorizationState.state === "ready" && (visibleVerification || (walletBusy && retainedVerification)) ? <VNextWalletReview
           key={authorizationState.plan.planId}
           plan={authorizationState.plan}
@@ -1625,6 +1701,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
             connectedIntentMissing: Boolean(identity.authenticated && address && identity.activeWalletKind !== null && !draft.intent),
             embeddedWalletRetryRequired,
             identityEnabled: identity.enabled,
+            identityRecoveryPending: tradeIdentityRecovery === "recovering",
             identityReady: identity.ready,
             quoteRequiresVerification: Boolean(visibleQuote && bestQuote && !verificationQuote),
             stockTokenViewOnly,
@@ -1651,6 +1728,8 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
                 ? "Sign in"
               : !address || identity.activeWalletKind === null
                 ? identity.tradingWallets.length > 0 ? "Choose trading wallet" : "Wallet options"
+                : !identity.identityToken
+                  ? tradeIdentityRecovery === "recovering" ? "Securing trading session…" : "Retry secure session"
                 : quotePhase === "IDENTITY_PENDING" ? "Verifying token..."
                 : quotePhase === "IDENTITY_UNAVAILABLE" ? "Retry token verification"
                 : quoteState.state === "loading" ? "Finding route..."
