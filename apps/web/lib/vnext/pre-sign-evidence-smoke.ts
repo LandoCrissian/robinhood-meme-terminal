@@ -131,6 +131,9 @@ assert.match(route, /requireAuthenticatedTradeWallet/);
 assert.match(route, /readVNextVerifiedAssetIdentity/);
 assert.match(route, /verifyRobinhoodVNextExecution/);
 assert.match(route, /protectedOutputFloorAtomic/);
+assert.match(route, /verificationOperation/);
+assert.match(route, /rmt_pre_sign_failure/,
+  "generic pre-sign failures must retain their bounded failing operation for incident correlation");
 assert.match(verifier, /moved below the indicative protected-output floor/);
 assert.match(verifier, /ROUTER_RUNTIME_HASH/);
 assert.match(verifier, /FACTORY_RUNTIME_HASH/);

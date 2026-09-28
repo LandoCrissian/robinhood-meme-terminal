@@ -55,6 +55,8 @@ assert.match(route, /deadlineSeconds: finalDeadlineSeconds/);
 assert.match(route, /nowMs: authorizationWallClockMs/);
 assert.doesNotMatch(route, /nowMs: Number\(chainTimestampSeconds \* 1_000n\)/);
 assert.ok(timeAuthority.lastIndexOf("env.RMT_RPC_URL") < timeAuthority.lastIndexOf("env.RMT_MAINNET_RPC_URL"));
+assert.match(timeAuthority, /TradeExecutionFailure\("RPC_UNAVAILABLE", "verification"\)/,
+  "authorization-clock transport failures must retain a retryable typed verification boundary");
 assert.doesNotMatch(composer, /deadline:\s*evidence\.deadline/);
 
 console.log("RMT server-owned authorization deadline and wallet-review runway smoke checks passed.");
