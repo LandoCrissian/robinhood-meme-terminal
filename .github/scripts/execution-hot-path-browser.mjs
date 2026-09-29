@@ -33,6 +33,7 @@ export async function runHotPathBrowserAcceptance({ browser, base, identity, sta
   const results = [];
   state.hotPathDurable = true;
   state.metadataUnavailable = true;
+  const durableReadsBeforeQuotes = state.durableReads ?? 0;
   try {
     for (const [device, viewport] of [['desktop', { width: 1440, height: 900 }], ['mobile', { width: 390, height: 844 }]]) {
       const context = await browser.newContext({ viewport, isMobile: device === 'mobile' });
@@ -57,43 +58,37 @@ export async function runHotPathBrowserAcceptance({ browser, base, identity, sta
           assert.ok(result.body.attempts.some(attempt => attempt.provider === 'zero-x-swap'));
           results.push({ device, direction, liveIdentity: 'unavailable', providerRequested: true, ms: result.ms });
         }
-        // SHCAT is intentionally absent from the durable identity fixture. The
-        // actual quote handler must use the repaired live reader, then reach 0x.
+        // SHCAT is intentionally absent from the durable identity fixture and
+        // metadata RPC remains unavailable. Provider-native quoting must still
+        // reach 0x because the exact chain/address pair is already the request.
         state.hotPathDurable = false;
-        state.metadataUnavailable = false;
         const shcatBefore = state.prices.length;
         const shcatResult = await request({ chainId: 4663, inputAsset: zero, outputAsset: shcat,
           inputAmountAtomic: '100000000000000', recipient: wallet });
         assert.equal(shcatResult.status, 200, JSON.stringify(shcatResult));
-        assert.ok(state.prices.length > shcatBefore, `${device} ETH->SHCAT must reach 0x after live identity`);
+        assert.ok(state.prices.length > shcatBefore, `${device} ETH->SHCAT must reach 0x without identity enrichment`);
         assert.ok(shcatResult.body.attempts.some(attempt => attempt.provider === 'zero-x-swap'));
         results.push({ device, direction: 'ETH->SHCAT',
-          liveIdentity: device === 'desktop' ? 'current-cold' : 'current-warm', providerRequested: true, ms: shcatResult.ms });
+          identityEnrichment: 'unavailable', providerRequested: true, ms: shcatResult.ms });
         state.hotPathDurable = true;
-        state.metadataUnavailable = true;
         const before = state.prices.length;
         const unknown = await request({ chainId: 4663, inputAsset: zero, outputAsset: `0x${'9'.repeat(40)}`, inputAmountAtomic: '1000', recipient: wallet });
-        assert.equal(unknown.status, 503);
-        assert.equal(unknown.body.phase, 'IDENTITY_UNAVAILABLE');
-        assert.equal(unknown.body.code, 'IDENTITY_RPC_UNAVAILABLE');
-        assert.equal(unknown.body.stage, 'quote');
-        assert.equal(unknown.body.retryable, true);
-        assert.equal(unknown.body.identityOperation, 'name');
-        assert.equal(unknown.body.identityAsset, `0x${'9'.repeat(40)}`);
-        assert.equal(state.prices.length, before);
+        assert.equal(unknown.status, 200, JSON.stringify(unknown));
+        assert.ok(state.prices.length > before, `${device} exact-address quote must reach 0x without metadata`);
+        assert.ok(unknown.body.attempts.some(attempt => attempt.provider === 'zero-x-swap'));
+        results.push({ device, direction: 'ETH->EXACT_ADDRESS', identityEnrichment: 'unavailable', providerRequested: true, ms: unknown.ms });
         const wrongChain = await request({ chainId: 1, inputAsset: zero, outputAsset: peep, inputAmountAtomic: '1000', recipient: wallet });
         assert.equal(wrongChain.status, 400);
         const malformed = await request({ chainId: 4663, inputAsset: zero, outputAsset: '0x123', inputAmountAtomic: '1000', recipient: wallet });
         assert.equal(malformed.status, 400);
         // Healthy identity must not authorize a Stock Token.
-        state.metadataUnavailable = false;
         const stockResult = await request({ chainId: 4663, inputAsset: zero, outputAsset: stock, inputAmountAtomic: '1000', recipient: wallet });
         assert.equal(stockResult.status, 451);
-        assert.equal(state.prices.length, before);
-        state.metadataUnavailable = true;
+        assert.equal(state.prices.length, before + 1);
       } finally { await context.close(); }
     }
-    assert.ok(state.durableReads > 0, 'real strict indexer reader must consume durable evidence');
+    assert.equal(state.durableReads ?? 0, durableReadsBeforeQuotes,
+      'public quotes must not depend on the durable identity inventory');
     return results;
   } finally {
     state.metadataUnavailable = false;
