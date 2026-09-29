@@ -148,16 +148,12 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
           await until(() => api.some((entry) => entry.path === '/api/vnext/quotes' && entry.status === 200), 'PEEP Sign in must resume without a second Buy click');
           assert.equal(new URL(page.url()).searchParams.get('market')?.toLowerCase(), peep);
         }
-        if (scenario === 'stock' || scenario === 'unverified') {
+        if (scenario === 'stock') {
           await until(() => api.some((entry) => entry.path === '/api/markets/external' && entry.query.toLowerCase().includes(token)), 'Selected asset evidence was not evaluated');
           await pause(1500);
           const text = await page.locator('body').innerText();
-          if (scenario === 'stock') {
-            assert.match(text, /view.only/i);
-            assert.equal(await page.locator('.vnReviewButton:enabled').count(), 0, 'Stock-token execution controls must remain disabled');
-          } else {
-            assert.equal(await page.locator('.vnReviewButton:enabled').count(), 0, 'Unverified identity cannot produce an executable intent');
-          }
+          assert.match(text, /view.only/i);
+          assert.equal(await page.locator('.vnReviewButton:enabled').count(), 0, 'Stock-token execution controls must remain disabled');
         } else {
           await page.getByLabel('Exact input amount').waitFor({ timeout: 30000 });
           assert.doesNotMatch(await page.locator('.vnTradePanel').innerText(), /Asset only|Market evidence unavailable/);
@@ -171,10 +167,16 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
             await page.getByLabel('Exact input amount').fill(sellingToken ? '1' : '0.001');
             // Amount readiness starts read-only 0x preparation; no extra RMT confirmation.
           }
-          await until(() => api.some((entry) => entry.path === '/api/vnext/quotes' && entry.status === 200), 'Identity-only asset must reach real quote API');
+          await until(() => api.some((entry) => entry.path === '/api/vnext/quotes' && entry.status === 200), 'Selected exact asset must reach the real quote API');
           assert.ok(state.prices.slice(priceStart).some((quote) => sellingToken ? quote.sellToken.toLowerCase() === token : quote.buyToken.toLowerCase() === token), 'Actual 0x price boundary must be reached');
+          if (scenario === 'unverified') {
+            assert.ok(api.some((entry) => entry.path === '/api/vnext/asset-identity' && entry.status !== 200), 'The cold output identity read must remain unavailable');
+            await until(async () => /base units/i.test(await page.locator('.vnTradePanel').innerText()), 'Unknown output decimals must remain explicit base units');
+          }
           if (['nativeToUsdg', 'usdgToNative'].includes(scenario)) {
             for (const entry of api.filter((item) => item.path === '/api/vnext/quotes' && item.status === 200)) assert.deepEqual(entry.body.attempts.map((attempt) => attempt.provider), ['zero-x-swap'], 'Settlement-only pairs must never attempt direct V2/V3 or gasless');
+          } else if (scenario === 'unverified') {
+            assert.ok(api.some((entry) => entry.path === '/api/markets/external' && entry.query.toLowerCase().includes(token)), 'Exact observed-address evidence must establish the cold selected asset');
           } else {
             const selected = api.find((entry) => entry.path === '/api/vnext/market-search' && entry.body?.results?.some((item) => item.address.toLowerCase() === token));
             assert.ok(selected, 'Real exact search must establish the selected asset');
@@ -258,7 +260,7 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
             }
           }
         }
-        if (['noRoute', 'peepNoRoute', 'stock', 'unverified'].includes(scenario)) {
+        if (['noRoute', 'peepNoRoute', 'stock'].includes(scenario)) {
           assert.equal(api.filter((entry) => entry.path === '/api/vnext/verify' || entry.path === '/api/vnext/authorize').length, 0);
         }
         assert.equal(await page.evaluate(() => window.__ROUTE_ON_DEMAND_PROMPTS__), walletReviewScenario ? 1 : 0, 'only the explicit mock wallet-review cases may dispatch once');

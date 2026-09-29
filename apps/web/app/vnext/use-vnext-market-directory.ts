@@ -17,6 +17,8 @@ import {
   normalizeDirectoryMarkets,
   parseVNextCanonicalDirectoryResponse,
   resolutionFromLookup,
+  selectedAssetForCurrentMarket,
+  selectedDirectoryAsset,
   verifiedDirectoryAsset,
   type VNextDirectoryMarket,
   type VNextDirectoryResponse
@@ -644,12 +646,18 @@ export function useVNextMarketDirectory() {
     [markets, selectedAddress]
   );
 
+  const currentSelectedAsset = useMemo(() => {
+    if (!selected) return undefined;
+    return selectedAssetForCurrentMarket(selected, selectedAsset);
+  }, [selected, selectedAsset]);
+
   useEffect(() => {
     if (!selected) {
       setSelectedAsset(undefined);
       setIdentityStatus("idle");
       return;
     }
+    const exactSelection = selectedDirectoryAsset(selected);
     const known = verifiedDirectoryAsset(selected);
     if (known) {
       const key = selected.address.toLowerCase();
@@ -663,17 +671,18 @@ export function useVNextMarketDirectory() {
     const key = selected.address.toLowerCase();
     if (identityCache.current.has(key)) {
       const cached = identityCache.current.get(key) ?? undefined;
-      setSelectedAsset(cached);
+      setSelectedAsset(cached ?? exactSelection);
       setIdentityStatus(cached ? "verified" : "unverified");
       return;
     }
     const controller = new AbortController();
     let active = true;
-    setSelectedAsset(undefined);
+    setSelectedAsset(exactSelection);
     setIdentityStatus("checking");
     const timeout = window.setTimeout(() => {
       if (!active) return;
       controller.abort();
+      setSelectedAsset(exactSelection);
       setIdentityStatus("unverified");
     }, IDENTITY_LOOKUP_TIMEOUT_MS);
     const query = new URLSearchParams({ address: selected.address });
@@ -685,12 +694,13 @@ export function useVNextMarketDirectory() {
         if (!active || controller.signal.aborted) return;
         window.clearTimeout(timeout);
         identityCache.current.set(key, asset ?? null);
-        setSelectedAsset(asset ?? undefined);
+        setSelectedAsset(asset ?? exactSelection);
         setIdentityStatus(asset ? "verified" : "unverified");
       })
       .catch(() => {
         if (active) {
           window.clearTimeout(timeout);
+          setSelectedAsset(exactSelection);
           setIdentityStatus("unverified");
         }
       });
@@ -707,7 +717,7 @@ export function useVNextMarketDirectory() {
     enrichmentStatus,
     activitySnapshotPublished,
     selected,
-    selectedAsset,
+    selectedAsset: currentSelectedAsset,
     identityStatus,
     selectedAddress,
     setSelectedAddress,

@@ -20,7 +20,7 @@ const scenarios = [
   { name: "unlinked-wallet", tokenMode: "ready", header: "unlinked", outcome: "403", desktopOnly: true },
   { name: "server-configuration", tokenMode: "ready", responseStatus: 503, outcome: "503", desktopOnly: true },
   { name: "timeout", tokenMode: "ready", timeout: true, outcome: "timeout", desktopOnly: true },
-  { name: "identity-enrichment-unavailable", tokenMode: "ready", metadataUnavailable: true, outcome: "metadata-unavailable-success" },
+  { name: "identity-enrichment-unavailable", tokenMode: "ready", coldMetadataUnavailable: true, outcome: "metadata-unavailable-success" },
   { name: "valid-route", tokenMode: "ready", outcome: "success" },
   { name: "no-route", tokenMode: "ready", outcome: "no-route", noRoute: true }
 ];
@@ -68,14 +68,18 @@ export async function runLiveEthQuoteIncidentJourneys({
       }, { scenario, wallet });
       const page = await context.newPage();
       const api = [];
+      const apiRequests = [];
       const errors = [];
       let quoteRequests = 0;
       page.on("pageerror", (error) => errors.push(error.message));
       page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
       page.on("request", (request) => {
         if (new URL(request.url()).origin === base && new URL(request.url()).pathname === "/api/vnext/quotes") {
-          if (scenario.metadataUnavailable && quoteRequests === 0) state.metadataUnavailable = true;
           quoteRequests += 1;
+        }
+        const requestUrl = new URL(request.url());
+        if (requestUrl.origin === base && requestUrl.pathname.startsWith("/api/vnext/")) {
+          apiRequests.push({ path: requestUrl.pathname, body: request.postDataJSON?.() ?? null });
         }
       });
       page.on("response", async (response) => {
@@ -122,16 +126,20 @@ export async function runLiveEthQuoteIncidentJourneys({
       });
       const name = `${viewport[0]}-live-eth-${scenario.name}`;
       const selectedToken = scenario.noRoute ? noRouteToken
-        : scenario.metadataUnavailable ? identityRetryTokens[viewport[0]] : token;
+        : scenario.coldMetadataUnavailable ? identityRetryTokens[viewport[0]] : token;
       const previousPriceDisabled = state.priceDisabled;
       state.priceDisabled = Boolean(scenario.noRoute);
+      if (scenario.coldMetadataUnavailable) {
+        state.metadataUnavailable = true;
+        state.coldUnknownMetadataToken = selectedToken;
+      }
       try {
         await page.goto(`${base}/?market=${selectedToken}&side=buy`, { waitUntil: "domcontentloaded" });
         await page.getByRole("button", { name: "I understand", exact: false }).click({ timeout: 15_000 });
         await page.getByLabel("Exact input amount").waitFor({ timeout: 30_000 });
         const inputAsset = page.getByLabel("Pay with asset");
         if (await inputAsset.inputValue() !== "eip155:4663/native") await inputAsset.selectOption("eip155:4663/native");
-        await page.getByLabel("Exact input amount").fill("0.001");
+        await page.getByLabel("Exact input amount").fill(scenario.coldMetadataUnavailable ? "0.0005" : "0.001");
 
         if (scenario.outcome === "missing") {
           await until(async () => /could not establish the secure trade session/i.test(await page.locator(".vnTradeActionStatus").innerText()), "Missing identity token must become a visible bounded failure");
@@ -155,13 +163,29 @@ export async function runLiveEthQuoteIncidentJourneys({
         } else if (scenario.outcome === "timeout") {
           await until(async () => /did not answer before the protected quote timeout/i.test(await page.locator(".vnTradeActionStatus").innerText()), "Timeout must be visible beside the action", 20_000);
         } else if (scenario.outcome === "metadata-unavailable-success") {
+          await until(() => api.some((entry) => entry.path === "/api/vnext/asset-identity" && entry.status !== 200),
+            "Cold metadata scenario must observe unavailable identity enrichment before quoting");
           await until(() => api.some((entry) => entry.path === "/api/vnext/quotes" && entry.status === 200),
             "Metadata unavailability must not stop the real quote handler from reaching 0x");
+          await until(() => api.some((entry) => entry.path === "/api/vnext/verify" && entry.status === 200),
+            "Cold metadata scenario must reach firm 0x verification through the mounted composer");
+          await until(() => api.some((entry) => entry.path === "/api/vnext/authorize" && entry.status === 200),
+            "Cold metadata scenario must prepare authorization without opening the wallet");
           const successfulQuote = api.find((entry) => entry.path === "/api/vnext/quotes" && entry.status === 200);
           assert.ok(successfulQuote?.body?.attempts?.some((attempt) => attempt.provider === "zero-x-swap"),
             "Provider-native quote must include the 0x attempt");
           assert.ok(!api.some((entry) => entry.body?.phase === "IDENTITY_UNAVAILABLE"),
             "Optional identity enrichment must not become a public quote veto");
+          for (const path of ["/api/vnext/quotes", "/api/vnext/verify", "/api/vnext/authorize"]) {
+            const request = apiRequests.find((entry) => entry.path === path);
+            assert.equal(request?.body?.chainId, 4663, `${path} keeps the selected chain`);
+            assert.equal(request?.body?.inputAsset?.toLowerCase(), `0x${'0'.repeat(40)}`, `${path} keeps native ETH input`);
+            assert.equal(request?.body?.outputAsset?.toLowerCase(), selectedToken, `${path} keeps the exact selected output`);
+            assert.equal(request?.body?.inputAmountAtomic, "500000000000000", `${path} keeps the exact atomic input`);
+            assert.equal(request?.body?.recipient?.toLowerCase(), wallet, `${path} keeps the selected wallet recipient`);
+          }
+          await until(async () => /1000000000000000000000 base units/i.test(await page.locator("body").innerText()),
+            "Unknown output decimals must render the provider amount as exact base units");
         } else {
           await until(() => api.some((entry) => entry.path === "/api/vnext/quotes" && entry.status === 200), "No-route case must reach the real quote handler");
           await until(async () => /no current route/i.test(await page.locator(".vnTradeActionStatus").innerText()), "Genuine no-route must be visible beside the action");
@@ -173,8 +197,9 @@ export async function runLiveEthQuoteIncidentJourneys({
       } finally {
         state.priceDisabled = previousPriceDisabled;
         state.metadataUnavailable = false;
+        state.coldUnknownMetadataToken = undefined;
         await page.screenshot({ path: path.join(output, `${name}.png`), fullPage: true });
-        await writeFile(path.join(output, `${name}.json`), JSON.stringify({ api, errors, quoteRequests, text: await page.locator("body").innerText() }, null, 2));
+        await writeFile(path.join(output, `${name}.json`), JSON.stringify({ api, apiRequests, errors, quoteRequests, text: await page.locator("body").innerText() }, null, 2));
         await context.close();
       }
     }

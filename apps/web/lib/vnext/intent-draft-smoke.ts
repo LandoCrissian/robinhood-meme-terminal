@@ -60,16 +60,53 @@ assert.equal(intent.amountAtomic, "25500000");
 assert.equal(intent.tradeType, "exact_input");
 assert.equal(intent.recipient.address, wallet.address);
 
-const reportedAsset: AssetMetadata = { ...currentMarketControl, metadataState: "reported" };
-assert.throws(() => createExactInputIntent({
+const reportedOutputAsset: AssetMetadata = {
+  ...currentMarketControl,
+  symbol: null,
+  name: null,
+  decimals: null,
+  metadataState: "unknown"
+};
+const unknownOutputIntent = createExactInputIntent({
   intentId: "smoke:reported",
   sourceAccount: wallet,
   recipient: wallet,
   inputAsset: ROBINHOOD_USDG,
-  outputAsset: reportedAsset,
+  outputAsset: reportedOutputAsset,
   amount: "1",
   requestedAtMs: 1
-}), /verified identity/);
+});
+assert.equal(unknownOutputIntent.amountAtomic, "1000000");
+assert.equal(assetKey(unknownOutputIntent.outputAsset), assetKey(reportedOutputAsset.id));
+const enrichedOutputIntent = createExactInputIntent({
+  intentId: "smoke:enriched-later",
+  sourceAccount: wallet,
+  recipient: wallet,
+  inputAsset: ROBINHOOD_USDG,
+  outputAsset: currentMarketControl,
+  amount: "1",
+  requestedAtMs: 2
+});
+assert.equal(enrichedOutputIntent.amountAtomic, unknownOutputIntent.amountAtomic,
+  "late output metadata cannot change exact-input atomic terms");
+assert.equal(assetKey(enrichedOutputIntent.outputAsset), assetKey(unknownOutputIntent.outputAsset));
+
+const unknownInputAsset: AssetMetadata = {
+  ...currentMarketControl,
+  symbol: null,
+  name: null,
+  decimals: null,
+  metadataState: "unknown"
+};
+assert.throws(() => createExactInputIntent({
+  intentId: "smoke:unknown-input",
+  sourceAccount: wallet,
+  recipient: wallet,
+  inputAsset: unknownInputAsset,
+  outputAsset: ROBINHOOD_USDG,
+  amount: "1",
+  requestedAtMs: 1
+}), /Input asset requires verified identity and decimals/);
 
 const ethereumWallet: WalletAccount = { ...wallet, accountId: "eip155:1:test", chain: evmChain(1) };
 assert.throws(() => createExactInputIntent({
@@ -81,6 +118,20 @@ assert.throws(() => createExactInputIntent({
   amount: "1",
   requestedAtMs: 1
 }), /different chains/);
+
+const wrongChainOutput: AssetMetadata = {
+  ...reportedOutputAsset,
+  id: evmAsset(1, "0x2222222222222222222222222222222222222222")
+};
+assert.throws(() => createExactInputIntent({
+  intentId: "smoke:wrong-output-chain",
+  sourceAccount: wallet,
+  recipient: wallet,
+  inputAsset: ROBINHOOD_USDG,
+  outputAsset: wrongChainOutput,
+  amount: "1",
+  requestedAtMs: 1
+}), /Recipient and output asset are on different chains/);
 
 const sameAsset: AssetMetadata = {
   ...ROBINHOOD_USDG,
@@ -127,7 +178,7 @@ assert.match(composer, /Confirmed balance percentages/);
 assert.match(composer, /Amount exceeds the confirmed/);
 assert.match(composer, /Authorization must remain blocked/);
 assert.match(composer, /BigInt\(draft\.intent\.amountAtomic\) > BigInt\(spendableInputAtomic\)/);
-assert.match(composer, /This preview asset has no verified chain-qualified contract identity/);
+assert.match(composer, /This preview asset has no exact chain-qualified contract identity/);
 assert.match(composer, /!identity\.enabled/);
 assert.match(composer, /Trading identity unavailable/);
 assert.match(composer, /RMT will not request a quote or prepare a wallet transaction/);

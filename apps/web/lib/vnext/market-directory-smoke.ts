@@ -43,6 +43,8 @@ import {
   resolutionFromLookup,
   selectVNextChartPool,
   selectVNextObservedChartPool,
+  selectedAssetForCurrentMarket,
+  selectedDirectoryAsset,
   vNextExecutionUiState,
   vNextSelectedMarketExecutionState,
   selectVNextMarketDirectoryView,
@@ -97,6 +99,13 @@ assert.equal(markets[0].fdvUsd, 1_500_000);
 assert.equal(markets[1].fdvUsd, null);
 assert.equal(assetKey(verifiedDirectoryAsset(markets[0])!.id), assetKey(ROBINHOOD_WETH.id));
 assert.equal(verifiedDirectoryAsset(markets[1]), null);
+const exactReportedAsset = selectedDirectoryAsset(markets[1]);
+assert.equal(exactReportedAsset.metadataState, "reported");
+assert.equal(exactReportedAsset.decimals, null);
+assert.equal(assetKey(exactReportedAsset.id), `eip155:4663/contract:${otherAddress}`);
+assert.deepEqual(selectedAssetForCurrentMarket(markets[1], verifiedDirectoryAsset(markets[0])), exactReportedAsset,
+  "a new exact selection cannot reuse the previous token identity");
+assert.equal(selectedAssetForCurrentMarket(markets[0], verifiedDirectoryAsset(markets[0]))?.metadataState, "verified");
 
 const categorized = normalizeDirectoryMarkets({
   markets: [

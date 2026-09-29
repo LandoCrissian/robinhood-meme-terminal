@@ -12,7 +12,7 @@ import type {
   ExternalMarketSignal
 } from "../external-market-ranking";
 import type { AssetMetadata } from "./execution-domain";
-import { evmAsset } from "./execution-domain";
+import { assetKey, evmAsset } from "./execution-domain";
 import {
   ROBINHOOD_MAINNET_CHAIN_ID,
   ROBINHOOD_WETH,
@@ -103,7 +103,8 @@ export function vNextSelectedMarketExecutionState(
 ): VNextSelectedMarketExecutionState {
   if (market?.rwaRelationship === "canonical-stock-token") return "stock-token-view-only";
   // Directory market evidence is not route authority. Verified asset identity
-  // remains required by the trade intent; the admitted provider discovers routes.
+  // is optional enrichment; the exact chain-qualified asset remains the intent
+  // authority and the admitted provider discovers routes.
   return "normal";
 }
 
@@ -629,6 +630,35 @@ export function verifiedDirectoryAsset(market: VNextDirectoryMarket, resolution 
     decimals: token.decimals,
     metadataState: "verified"
   };
+}
+
+/**
+ * Keeps the exact chain-qualified contract selected by the user available to
+ * the trade composer while optional token metadata is still loading or is
+ * unavailable. This is deliberately not verified metadata: only a successful
+ * identity read may supply trusted decimals.
+ */
+export function selectedDirectoryAsset(market: VNextDirectoryMarket): AssetMetadata {
+  const verified = verifiedDirectoryAsset(market);
+  if (verified) return verified;
+  const address = getAddress(market.address);
+  return {
+    id: evmAsset(ROBINHOOD_MAINNET_CHAIN_ID, address),
+    symbol: text(market.symbol, 16) || null,
+    name: text(market.name, 80) || null,
+    decimals: null,
+    metadataState: "reported"
+  };
+}
+
+export function selectedAssetForCurrentMarket(
+  market: VNextDirectoryMarket,
+  current: AssetMetadata | null | undefined
+) {
+  const exactSelection = selectedDirectoryAsset(market);
+  return current && assetKey(current.id) === assetKey(exactSelection.id)
+    ? current
+    : exactSelection;
 }
 
 export function deriveVNextMarketState(market: VNextDirectoryMarket): VNextMarketState {
