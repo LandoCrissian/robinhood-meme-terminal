@@ -66,6 +66,9 @@ export async function runZeroXWalletJourneys(options) {
     'wrong-allowance-holder': (quote) => { quote.allowanceTarget = token; },
     'duplicate-integrator-fee': (quote) => { quote.fees.integratorFees = [quote.fees.integratorFee, quote.fees.integratorFee]; }
   };
+  const providerNativeOpaqueResponses = new Set([
+    'wrong-encoded-fee-treasury', 'wrong-encoded-fee-rate', 'duplicate-encoded-fee', 'changed-target'
+  ]);
   for (const viewportName of ['desktop', 'mobile']) {
     const scenarios = ['sell-approval-idle-verification','sell-approval-idle-success','sell-approval-idle-expired-failure', 'sell-approval-idle-failure', 'sell-approval-idle-click', 'identity-not-requested', 'sell-approval-identity-retry', 'sell-approval-expired', 'sell-approval-provider-retry', 'sell-approval-return', 'sell-approval-uuid-return', 'sell-approval-account-change', 'sell-approval-chain-change', 'sell-approval-rejected', 'direct-confirmation', 'returning-signer', 'mobile-walletconnect', 'mobile-walletconnect-sell', 'native-sell', 'approval-only', 'confirmed-without-output', 'reverted', 'multi-account-owner-second', 'signer-two-providers', 'signer-disappeared', 'signer-account-change', 'signer-provider-conflict', 'approval-requote', 'native', 'rejection', 'pending', 'expired-quote', 'expired-quote-sell', 'refresh-click-buy', 'refresh-click-buy-again', 'refresh-click-sell', 'refresh-provider-recovery', 'refresh-provider-failure', 'quote-only', 'provider-native-rounding', 'internal-pancake-hook', 'internal-unknown-v2', 'internal-opaque-basic', ...Object.keys(faults), 'simulation-failure', ...Object.keys(wireFaults)];
     scenarios.splice(2, 0, 'sell-approval-healthy', 'sell-approval-identity-multiple-retry',
@@ -78,7 +81,8 @@ export async function runZeroXWalletJourneys(options) {
       state.registryUnregistered = scenario === 'contract-unregistered';
       state.incompatibleRuntime = scenario === 'contract-incompatible';
       state.registryPrevious = scenario === 'contract-previous';
-      const contractRejected = ['contract-paused','contract-unregistered','contract-incompatible'].includes(scenario);
+      const removedLocalReproof = scenario === 'simulation-failure' || scenario.startsWith('contract-')
+        || providerNativeOpaqueResponses.has(scenario);
       state.approved = !scenario.startsWith('sell-approval') && !['approval-only', 'approval-requote', 'approval-over-sell', 'approval-unlimited', 'stale-post-approval'].includes(scenario);
       state.priceDisabled = scenario === 'quote-only';
       state.simulationFails = scenario === 'simulation-failure';
@@ -154,10 +158,6 @@ export async function runZeroXWalletJourneys(options) {
         const bundle = api.filter((entry) => entry.path === '/api/vnext/authorize' && entry.status === 200).at(-1)?.body;
         assert.ok(bundle, 'Wallet requests require a real server authorization');
         const plan = bundle.plan;
-        if (state.providerInternalRoute) {
-          assert.equal(bundle.evidence.routeIntrospection?.status, 'ROUTE_INTROSPECTION_PARTIAL');
-          assert.equal(bundle.evidence.status, 'verified');
-        }
         if (scenario === 'approval-requote' && plan.kind === 'swap') {
           const remembered = page.getByRole('region', { name: 'Injected signer selection' });
           assert.equal(await remembered.getByText('Selected signer: Explicit test signer', { exact: true }).count(), 1);
@@ -173,9 +173,8 @@ export async function runZeroXWalletJourneys(options) {
         assert.equal(BigInt(transaction.gasPrice), BigInt(plan.gasPrice));
         assert.equal(keccak256(transaction.data), plan.kind === 'swap' ? plan.providerNativeFee.transactionCalldataHash : bundle.evidence.nextActionCalldataHash);
         if (plan.kind === 'swap') {
-          assert.ok(state.simulations.some((call) => lower(call.from) === wallet && lower(call.to) === lower(transaction.to)
-            && call.data === transaction.data && BigInt(call.value) === BigInt(transaction.value)
-            && BigInt(call.gas) === BigInt(transaction.gas) && BigInt(call.gasPrice) === BigInt(transaction.gasPrice)), 'Wallet envelope must equal the exact simulated envelope');
+          assert.equal(state.simulations.length, 0,
+            'Provider-native swap handoff must not depend on a redundant local simulation');
         } else {
           const decoded = decodeFunctionData({ abi: erc20Abi, data: transaction.data });
           assert.equal(decoded.functionName, 'approve');
@@ -345,20 +344,12 @@ export async function runZeroXWalletJourneys(options) {
           await page.locator('.vnRouteTop').click();
           await until(async () => /reject|changed|inconsistent|invalid|authority|mismatch/i.test(await page.locator('.vnTradePanel').innerText()), 'Corrupted authority must produce a rejection state');
           assert.equal(requests.length, 0, 'Corrupted authority cannot prompt the wallet');
-        } else if ((faults[scenario] && scenario !== 'simulation-incomplete') || scenario === 'simulation-failure' || contractRejected) {
+        } else if (faults[scenario] && scenario !== 'simulation-incomplete' && !providerNativeOpaqueResponses.has(scenario)) {
           await until(() => api.some((entry) => entry.path.endsWith('/verify')), `Verification missing for ${scenario}`);
           await pause(200);
           assert.equal(api.filter((entry) => entry.path.endsWith('/authorize')).length, 0, 'Invalid firm evidence cannot authorize');
           assert.equal(requests.length, 0, 'Invalid firm evidence cannot prompt wallet');
           assert.match(await page.locator('.vnOutputProtection').innerText(), /Set when you trade/);
-          if (contractRejected) {
-            const failed = api.find(entry => entry.path.endsWith('/verify') && entry.status === 422);
-            assert.equal(failed.body.phase, 'FIRM_VERIFY_FAILED');
-            assert.equal(failed.body.retryable, false);
-            await pause(1800);
-            assert.equal(api.filter(entry => entry.path.endsWith('/verify')).length, 1, 'No automatic recovery for unchanged incompatible authority');
-            assert.equal(await page.locator('.vnTradeReceipt').count(), 0);
-          }
         } else {
           try {
             await until(() => api.some((entry) => entry.path.endsWith('/authorize') && entry.status === 200), `${scenario} did not authorize`);
@@ -376,16 +367,33 @@ export async function runZeroXWalletJourneys(options) {
           assert.equal(bundle.plan.provider, 'zero-x-swap');
           if (scenario === 'simulation-incomplete') {
             assert.equal(bundle.evidence.providerSimulationIncomplete, true, 'Provider simulation limitation remains disclosed');
-            assert.equal(bundle.evidence.exactSimulationState, 'passed', 'Successful exact local simulation remains authoritative');
+            assert.equal(bundle.evidence.exactSimulationState, 'not_run', 'Provider simulation limitation does not add a local simulation veto');
+            assert.equal(bundle.evidence.exactSimulationPassed, false);
+          }
+          if (removedLocalReproof) {
+            assert.equal(state.simulations.length, 0, `${scenario} must not invoke a local swap simulation`);
+          }
+          if (scenario.startsWith('contract-')) {
+            assert.equal(state.rpc.some((entry) => entry.method === 'eth_call'
+              && lower(entry.params?.[0]?.to) === '0x00000000000004533fe15556b1e086bb1a72ceae'), false,
+            `${scenario} must not query the local Settler registry`);
+            assert.equal(state.rpc.some((entry) => entry.method === 'eth_getCode'
+              && lower(entry.params?.[0]) === lower(executableFixture.settler)), false,
+            `${scenario} must not require a per-trade Settler bytecode proof`);
           }
           const economics = async () => {
             const minimum = await page.locator('.vnOutputProtection strong').innerText();
             const output = await page.locator('.vnReceiveField > div > strong').first().innerText();
             const quote = api.filter(entry => entry.path.endsWith('/quotes') && entry.status === 200).at(-1).body;
             const decimals = quote.attempts.find(attempt => attempt.provider === bundle.plan.provider).outputDecimals;
-            const atomic = text => parseUnits(text.split(' ')[0].replaceAll(',', ''), decimals).toString();
-            assert.equal(atomic(minimum), bundle.plan.protectedOutputAtomic);
-            assert.equal(atomic(output), bundle.evidence.expectedOutputAtomic);
+            if (decimals === null) {
+              assert.ok(minimum.startsWith(`${bundle.plan.protectedOutputAtomic} base units`));
+              assert.equal(output, `${bundle.evidence.expectedOutputAtomic} base units`);
+            } else {
+              const atomic = text => parseUnits(text.split(' ')[0].replaceAll(',', ''), decimals).toString();
+              assert.equal(atomic(minimum), bundle.plan.protectedOutputAtomic);
+              assert.equal(atomic(output), bundle.evidence.expectedOutputAtomic);
+            }
             assert.equal(bundle.evidence.sourceQuoteRequestId, bundle.plan.sourceQuoteRequestId);
             assert.equal(bundle.evidence.verificationId, bundle.plan.sourceVerificationId);
           };
