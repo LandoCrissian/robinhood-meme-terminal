@@ -174,7 +174,7 @@ function createZeroXAdapter(mode: ZeroXMode, observe?: (value: ZeroXPriceDiagnos
           provider: adapter.provider, providerLabel: adapter.providerLabel, providerFamily: adapter.providerFamily, adapterVersion: 1,
           status: "indicative", chainId: request.chainId, inputAsset: request.inputAsset, outputAsset: request.outputAsset,
           inputAmountAtomic: request.inputAmountAtomic, expectedOutputAtomic: price.expectedOutputAtomic,
-          protectedOutputAtomic: price.protectedOutputAtomic, outputDecimals: request.outputIdentity.decimals,
+          protectedOutputAtomic: price.protectedOutputAtomic, outputDecimals: request.outputIdentity?.decimals ?? null,
           priceImpact: null, liquidityFeeEvidence: [], quotedAtMs, expiresAtMs: quotedAtMs + ZERO_X_QUOTE_TTL_MS,
           latencyMs: quotedAtMs - startedAtMs, executionKind: adapter.executionKind,
           strictVerificationAvailable: !gasless, userPaysGas: !gasless,

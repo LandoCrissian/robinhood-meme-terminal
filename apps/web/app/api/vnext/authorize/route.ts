@@ -1,18 +1,12 @@
 import { executionFailureResponse, structureTradeFailure } from "../../../../lib/vnext/trade-failure";
-import { after } from "next/server";
 import { verifyZeroXFirmQuoteCommitment, ZeroXFirmQuoteCommitmentError } from "../../../../lib/server/vnext-zero-x-firm-quote-commitment";
 import { emitTradeJourney } from "../../../../lib/vnext/trade-journey";
 import { randomUUID } from "node:crypto";
 import { getAddress, type Hex } from "viem";
 import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
 import { stockTokenExecutionPolicyErrorResponse } from "../../../../lib/server/robinhood-stock-token-registry";
-import { readVNextVerifiedAssetIdentity, vNextExecutionIdentityErrorResponse } from "../../../../lib/server/vnext-asset-identity";
 import { prepareRobinhoodVNextAuthorization } from "../../../../lib/server/vnext-execution-engine";
 import { authorizationPayloadHash, type VNextAuthorizationPlan } from "../../../../lib/vnext/authorization-plan";
-import {
-  projectIdentityAdmissionErrorResponse,
-  requireProjectIdentityExecutionAdmitted
-} from "../../../../lib/server/project-identity-admission";
 import {
   directExecutionBinding,
   VNEXT_DIRECT_NO_RMT_FEE,
@@ -82,16 +76,6 @@ async function handleRequest(request: Request) {
     const inputAsset = getAddress(parsed.data.inputAsset);
     const outputAsset = getAddress(parsed.data.outputAsset);
     const tradeAuthorization = await requireAuthenticatedTradeWallet(request, recipient);
-    const [inputIdentity, outputIdentity] = await Promise.all([
-      readVNextVerifiedAssetIdentity(inputAsset, { scheduleRevalidation: after, required: true }),
-      readVNextVerifiedAssetIdentity(outputAsset, { scheduleRevalidation: after, required: true })
-    ]);
-    if (!inputIdentity || !outputIdentity) {
-      emitTradeJourney({ phase: "IDENTITY_UNAVAILABLE", providerRequestAttempted: false });
-      return Response.json({ error: "Both assets require verified Robinhood Chain identity before wallet review.", phase: "IDENTITY_UNAVAILABLE" }, { status: 422, headers: noStore });
-    }
-    await requireProjectIdentityExecutionAdmitted([inputIdentity, outputIdentity].filter(identity => !identity.native).map(identity => ({ address: identity.address, verifiedIdentity: identity })), after);
-
     const settlementMode = parsed.data.provider === "uniswap-v3"
       ? selectVNextUniswapV3SettlementMode({ inputAsset, outputAsset, recipient })
       : parsed.data.provider === "uniswap-v2"
@@ -152,10 +136,10 @@ async function handleRequest(request: Request) {
         })
       : null;
     if (v2Claims) assertVNextV2AuthorizationRequestContinuity({ claims: v2Claims, request: parsed.data });
-    const chainTimestampSeconds = await readVNextAuthorizationChainTimestamp();
+    const chainTimestampSeconds = zeroXEvidence ? null : await readVNextAuthorizationChainTimestamp();
     const finalDeadlineSeconds = v2Claims
       ? BigInt(v2Claims.deadline)
-      : zeroXEvidence ? BigInt(zeroXEvidence.deadline) : chainTimestampSeconds + VNEXT_AUTHORIZATION_WINDOW_SECONDS;
+      : zeroXEvidence ? BigInt(zeroXEvidence.deadline) : chainTimestampSeconds! + VNEXT_AUTHORIZATION_WINDOW_SECONDS;
     const prepared = await prepareRobinhoodVNextAuthorization(parsed.data.provider, {
       chainId: 4_663,
       inputAsset,
@@ -220,10 +204,14 @@ async function handleRequest(request: Request) {
       });
     }
     const timing = v2Claims
-      ? deriveVNextCommittedAuthorizationTiming(chainTimestampSeconds, authorizationWallClockMs, BigInt(v2Claims.deadline))
+      ? deriveVNextCommittedAuthorizationTiming(chainTimestampSeconds!, authorizationWallClockMs, BigInt(v2Claims.deadline))
       : zeroXEvidence
-        ? deriveVNextCommittedAuthorizationTiming(chainTimestampSeconds, authorizationWallClockMs, BigInt(zeroXEvidence.deadline))
-        : deriveVNextAuthorizationTiming(chainTimestampSeconds, authorizationWallClockMs);
+        ? {
+            deadlineSeconds: BigInt(zeroXEvidence.deadline),
+            preparedAtMs: Math.max(authorizationWallClockMs, zeroXEvidence.providerNativeFee!.firmQuote!.observedAtMs),
+            expiresAtMs: zeroXEvidence.providerNativeFee!.firmQuote!.expiresAtMs
+          }
+        : deriveVNextAuthorizationTiming(chainTimestampSeconds!, authorizationWallClockMs);
     if (BigInt(prepared.evidence.deadline) !== timing.deadlineSeconds) {
       return v2Claims
         ? verifyAgain("DEADLINE_CHANGED_OR_EXPIRED", "The final server deadline changed during V2 authorization. Verify again.")
@@ -304,14 +292,10 @@ async function handleRequest(request: Request) {
     }
     const publicProviderResponse = vNextPublicExecutionProviderScopeErrorResponse(cause);
     if (publicProviderResponse) return publicProviderResponse;
-    const assetIdentityResponse = vNextExecutionIdentityErrorResponse(cause, "authorization");
-    if (assetIdentityResponse) return assetIdentityResponse;
     const identityResponse = tradeIdentityErrorResponse(cause);
     if (identityResponse) return identityResponse;
     const eligibilityResponse = vNextExecutionEligibilityErrorResponse(cause);
     if (eligibilityResponse) return eligibilityResponse;
-    const projectIdentityResponse = projectIdentityAdmissionErrorResponse(cause);
-    if (projectIdentityResponse) return projectIdentityResponse;
     const stockTokenResponse = stockTokenExecutionPolicyErrorResponse(cause);
     if (stockTokenResponse) return stockTokenResponse;
     if (cause instanceof VNextV2VerificationCommitmentConfigurationError) {

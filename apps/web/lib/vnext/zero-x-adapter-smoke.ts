@@ -82,6 +82,17 @@ try {
     assert.equal(quoted.providerNativeFee?.feeAsset, pair[0]);
     assert.equal(quoted.providerFeeAtomic, "1500");
   }
+  const metadataIndependent = await vNextZeroXSwapAdapter.quote({
+    chainId: 4_663,
+    inputAsset: zeroAddress,
+    outputAsset: erc20B,
+    inputAmountAtomic: "1000000",
+    amountIn: 1_000_000n,
+    recipient
+  });
+  assert.equal(metadataIndependent.status, "indicative");
+  assert.equal(metadataIndependent.outputDecimals, null,
+    "An exact output address can reach 0x while optional display metadata remains unavailable");
 
   const base = response(erc20A, erc20B);
   assert.throws(() => parseZeroXPrice({ ...base, fees: { ...base.fees, integratorFee: null } }, request(), "swap"), /omitted/);

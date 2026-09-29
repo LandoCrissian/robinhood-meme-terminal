@@ -102,8 +102,10 @@ assert.doesNotMatch(hook, /canonicalPayload\?\.status === "not_listed"[\s\S]{0,2
 for (const source of [quoteRoute, verifyRoute, authorizeRoute]) {
   assert.doesNotMatch(source, /requireRmtCuratedExecutionAssets/);
   assert.doesNotMatch(source, /target:\s*z\.|calldata:\s*z\.|value:\s*z\./, "Browser-controlled transaction fields must not enter quote/verify/authorize intent schemas");
-  assert.match(source, /requireProjectIdentityExecutionAdmitted/);
-  assert.match(source, /verifiedIdentity: identity/, "Execution admission retains the trusted server-read identity");
+  assert.doesNotMatch(source, /requireProjectIdentityExecutionAdmitted|readVNextVerifiedAssetIdentity|verifiedIdentity:\s*identity/,
+    "Ordinary 0x execution must not inherit project, inventory or metadata admission");
+  assert.match(source, /stockTokenExecutionPolicyErrorResponse/,
+    "The explicit Stock Token view-only boundary remains present after project-admission removal");
 }
 assert.match(tradeComposer, /tradeJourneyLabels/);
 assert.match(tradeComposer, /IDENTITY_UNAVAILABLE/);

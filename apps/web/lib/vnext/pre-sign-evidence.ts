@@ -54,8 +54,8 @@ export type VNextPreSignEvidence = {
   approvalSpender: string;
   approvalRequired: boolean;
   sufficientBalance: boolean;
-  allowanceAtomic: string;
-  balanceAtomic: string;
+  allowanceAtomic: string | null;
+  balanceAtomic: string | null;
   route: "direct" | "weth_hop" | "v4_pool" | "aggregated";
   fees: number[];
   pools: string[];
@@ -69,8 +69,8 @@ export type VNextPreSignEvidence = {
   nextActionTarget: string | null;
   nextActionCalldataHash: string | null;
   transactionValueAtomic: string;
-  nativeBalanceWei: string;
-  gasPriceWei: string;
+  nativeBalanceWei: string | null;
+  gasPriceWei: string | null;
   feeCeilingWei: string;
   estimatedGasUnits: string | null;
   gasLimitUnits: string | null;
@@ -80,7 +80,7 @@ export type VNextPreSignEvidence = {
   networkCostValuedAtMs: number | null;
   networkCostValuationExpiresAtMs: number | null;
   gasState: "sufficient" | "insufficient" | "unavailable" | "not_checked";
-  routerRuntimeHash: string;
+  routerRuntimeHash: string | null;
   factoryRuntimeHash: string | null;
   quoterRuntimeHash: string | null;
   exactSimulationPassed: boolean;
@@ -101,6 +101,7 @@ export type VNextPreSignEvidence = {
   providerRequestedSlippagePpm?: typeof RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM;
   maximumUserSlippagePpm?: typeof RMT_ZERO_X_MAX_SLIPPAGE_PPM;
   providerReportedMinBuyAmount?: string;
+  providerSimulationIncomplete?: boolean;
   encodedExecutableMinBuyAmount?: string;
   executableSettlerTarget?: string;
   executableSettlerRuntimeHash?: string;
@@ -132,8 +133,8 @@ const evidenceSchema = z.object({
   approvalSpender: z.string(),
   approvalRequired: z.boolean(),
   sufficientBalance: z.boolean(),
-  allowanceAtomic: atomic,
-  balanceAtomic: atomic,
+  allowanceAtomic: atomic.nullable(),
+  balanceAtomic: atomic.nullable(),
   route: z.enum(["direct", "weth_hop", "v4_pool", "aggregated"]),
   fees: z.array(z.number().int().nonnegative()).max(2),
   pools: z.array(z.string()).max(2),
@@ -147,8 +148,8 @@ const evidenceSchema = z.object({
   nextActionTarget: z.string().nullable(),
   nextActionCalldataHash: hash.nullable(),
   transactionValueAtomic: atomic,
-  nativeBalanceWei: atomic,
-  gasPriceWei: atomic,
+  nativeBalanceWei: atomic.nullable(),
+  gasPriceWei: atomic.nullable(),
   feeCeilingWei: atomic,
   estimatedGasUnits: atomic.nullable(),
   gasLimitUnits: atomic.nullable(),
@@ -158,7 +159,7 @@ const evidenceSchema = z.object({
   networkCostValuedAtMs: z.number().int().positive().nullable(),
   networkCostValuationExpiresAtMs: z.number().int().positive().nullable(),
   gasState: z.enum(["sufficient", "insufficient", "unavailable", "not_checked"]),
-  routerRuntimeHash: hash,
+  routerRuntimeHash: hash.nullable(),
   factoryRuntimeHash: hash.nullable(),
   quoterRuntimeHash: hash.nullable(),
   exactSimulationPassed: z.boolean(),
@@ -179,6 +180,7 @@ const evidenceSchema = z.object({
   providerRequestedSlippagePpm: z.literal(RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM).optional(),
   maximumUserSlippagePpm: z.literal(RMT_ZERO_X_MAX_SLIPPAGE_PPM).optional(),
   providerReportedMinBuyAmount: atomic.optional(),
+  providerSimulationIncomplete: z.boolean().optional(),
   encodedExecutableMinBuyAmount: atomic.optional(),
   executableSettlerTarget: z.string().regex(/^0x[0-9a-fA-F]{40}$/).optional(),
   executableSettlerRuntimeHash: hash.optional(),
@@ -278,16 +280,15 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
       || providerNativeFee.chainId !== evidence.chainId
       || fromZeroXToken(providerNativeFee.requestSellToken) !== getAddress(evidence.inputAsset)
       || getAddress(providerNativeFee.outputAsset) !== getAddress(evidence.outputAsset)
-      || evidence.routerRuntimeHash !== firmQuote.targetRuntimeHash
       || evidence.gasLimitUnits !== firmQuote.nextActionGasLimitUnits
-      || (firmQuote.gasPriceWei !== null && evidence.gasPriceWei !== firmQuote.gasPriceWei)
+      || evidence.gasPriceWei !== firmQuote.gasPriceWei
       || evidence.exactSimulationPassed !== firmQuote.exactSimulationPassed
       || evidence.exactSimulationState !== firmQuote.exactSimulationState
       || evidence.verifiedAtMs < firmQuote.observedAtMs || evidence.expiresAtMs !== firmQuote.expiresAtMs
-      || evidence.approvalRequired !== (!isRobinhoodNativeAsset(evidence.inputAsset) && BigInt(evidence.allowanceAtomic) < BigInt(evidence.inputAmountAtomic))
+      || evidence.approvalRequired !== (!isRobinhoodNativeAsset(evidence.inputAsset) && firmQuote.allowanceTarget !== null)
       || evidence.approvalKind !== (evidence.approvalRequired ? "erc20_to_allowance_holder" : null)
       || (firmQuote.allowanceTarget !== null && getAddress(evidence.approvalSpender) !== getAddress(firmQuote.allowanceTarget))
-      || evidence.sufficientBalance !== (BigInt(evidence.balanceAtomic) >= BigInt(isRobinhoodNativeAsset(evidence.inputAsset) ? providerNativeFee.transactionValueAtomic! : evidence.inputAmountAtomic))
+      || evidence.sufficientBalance !== (evidence.balanceAtomic === null)
       || (!["verified", "approval_required"].includes(evidence.status) && (evidence.nextAction !== null || evidence.nextActionTarget !== null || evidence.nextActionCalldataHash !== null))
     ) throw new Error("RMT rejected incomplete 0x firm quote, balance, allowance or simulation binding.");
     if (
@@ -308,8 +309,7 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
     || evidence.maximumUserSlippagePpm !== RMT_ZERO_X_MAX_SLIPPAGE_PPM
     || !evidence.providerReportedMinBuyAmount || BigInt(evidence.providerReportedMinBuyAmount) <= 0n
     || BigInt(evidence.providerReportedMinBuyAmount) > BigInt(evidence.expectedOutputAtomic)
-    || evidence.encodedExecutableMinBuyAmount !== evidence.protectedOutputAtomic
-    || !evidence.executableSettlerTarget || !evidence.executableSettlerRuntimeHash
+    || evidence.providerReportedMinBuyAmount !== evidence.protectedOutputAtomic
     || !zeroXMinimumRespectsSlippage(evidence.expectedOutputAtomic, evidence.protectedOutputAtomic))) {
     throw new Error("RMT rejected 0x firm minimum outside the requested slippage policy.");
   }
@@ -390,7 +390,7 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
   } else if (
     evidence.feeExecution != null
     || (evidence.netEconomics && evidence.netEconomics.rmtFee.state !== "disabled")
-    || (evidence.provider !== "uniswap-v4" && getAddress(evidence.approvalSpender) !== getAddress(
+    || (evidence.provider !== "zero-x-swap" && evidence.provider !== "uniswap-v4" && getAddress(evidence.approvalSpender) !== getAddress(
       evidence.feeV2Settlement?.executionTarget ?? evidence.router
     ))
   ) {
@@ -456,17 +456,19 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
     || (evidence.settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE && nativeInput && evidence.providerNativeFee?.transactionValueAtomic === "0")
     || (nativeInput && evidence.approvalRequired)
   ) throw new Error("RMT rejected inconsistent native transaction value.");
-  const completeGasEstimate = evidence.estimatedGasUnits !== null && evidence.gasLimitUnits !== null && evidence.estimatedNetworkCostWei !== null;
+  const providerNativeZeroX = evidence.provider === "zero-x-swap" && evidence.settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE;
+  const completeGasEstimate = evidence.estimatedGasUnits !== null && evidence.gasLimitUnits !== null && evidence.estimatedNetworkCostWei !== null
+    && evidence.gasPriceWei !== null && evidence.nativeBalanceWei !== null;
   if ((evidence.gasState === "sufficient" || evidence.gasState === "insufficient") !== completeGasEstimate) {
     throw new Error("RMT rejected incomplete gas evidence.");
   }
   if (completeGasEstimate && (
     BigInt(evidence.estimatedGasUnits!) <= 0n
     || BigInt(evidence.gasLimitUnits!) < BigInt(evidence.estimatedGasUnits!)
-    || BigInt(evidence.feeCeilingWei) < BigInt(evidence.gasPriceWei)
+    || BigInt(evidence.feeCeilingWei) < BigInt(evidence.gasPriceWei!)
     || BigInt(evidence.estimatedNetworkCostWei!) !== BigInt(evidence.gasLimitUnits!) * BigInt(evidence.feeCeilingWei)
     || (evidence.gasState === "sufficient") !== (
-      BigInt(evidence.nativeBalanceWei) >= BigInt(evidence.transactionValueAtomic) + BigInt(evidence.estimatedNetworkCostWei!)
+      BigInt(evidence.nativeBalanceWei!) >= BigInt(evidence.transactionValueAtomic) + BigInt(evidence.estimatedNetworkCostWei!)
     )
   )) throw new Error("RMT rejected inconsistent gas economics.");
   const valuationParts = [
@@ -486,16 +488,13 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
     || evidence.networkCostValuationExpiresAtMs! <= nowMs
     || evidence.networkCostValuationExpiresAtMs! - evidence.networkCostValuedAtMs! > 30_000
   )) throw new Error("RMT rejected stale or inconsistent network-cost valuation evidence.");
-  const zeroXSimulationAdmissible = evidence.provider === "zero-x-swap"
-    && (evidence.exactSimulationState === "passed" || evidence.exactSimulationState === "inconclusive");
   if (evidence.provider === "zero-x-swap" && (
     evidence.exactSimulationState === undefined
     || evidence.exactSimulationPassed !== (evidence.exactSimulationState === "passed")
-    || (evidence.status === "verified" && !zeroXSimulationAdmissible)
     || (evidence.status === "simulation_failed" && evidence.exactSimulationState !== "deterministic_revert")
-    || (!["verified", "simulation_failed"].includes(evidence.status) && evidence.exactSimulationState !== "not_run")
+    || (providerNativeZeroX && evidence.exactSimulationState !== "not_run")
   )) throw new Error("RMT rejected inconsistent 0x simulation classification.");
-  if (evidence.status === "verified" && ((!evidence.exactSimulationPassed && !zeroXSimulationAdmissible) || evidence.approvalRequired || !evidence.sufficientBalance)) {
+  if (evidence.status === "verified" && ((!providerNativeZeroX && !evidence.exactSimulationPassed) || evidence.approvalRequired || !evidence.sufficientBalance)) {
     throw new Error("RMT rejected a false verified status.");
   }
   if (evidence.status === "approval_required" && (!evidence.approvalRequired || !evidence.sufficientBalance || evidence.exactSimulationPassed)) {
@@ -516,10 +515,10 @@ export function parseVNextPreSignEvidence(value: unknown, expected: {
   if (evidence.status === "gas_unavailable" && (evidence.gasState !== "unavailable" || !evidence.sufficientBalance)) {
     throw new Error("RMT rejected inconsistent unavailable-gas evidence.");
   }
-  if (evidence.status === "verified" && (evidence.gasState !== "sufficient" || evidence.nextAction !== "swap")) {
+  if (evidence.status === "verified" && ((!providerNativeZeroX && evidence.gasState !== "sufficient") || evidence.nextAction !== "swap")) {
     throw new Error("RMT rejected verified evidence without swap gas readiness.");
   }
-  if (evidence.status === "approval_required" && (evidence.gasState !== "sufficient" || evidence.nextAction !== "approval")) {
+  if (evidence.status === "approval_required" && ((!providerNativeZeroX && evidence.gasState !== "sufficient") || evidence.nextAction !== "approval")) {
     throw new Error("RMT rejected approval evidence without approval gas readiness.");
   }
   return evidence;

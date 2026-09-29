@@ -1,21 +1,8 @@
-import { zeroXFeeAsset } from "../vnext/zero-x-settlement";
-import { requireZeroXDeployment } from "./vnext-zero-x-deployment-authority";
-import { isCanonicalZeroXAllowanceHolder, RMT_ZERO_X_CANONICAL_ALLOWANCE_HOLDER } from "../vnext/zero-x-authority";
-import { TradeExecutionFailure } from "../vnext/trade-failure";
-import { decodeZeroXExecutableMinimum, verifyZeroXEncodedFee, inspectZeroXRoute } from "./vnext-zero-x-execution-decoder";
-import { RMT_ZERO_X_MAX_SLIPPAGE_PPM, RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM, zeroXMinimumRespectsSlippage } from "../vnext/zero-x-settlement";
-import { committedZeroXAuthorizationEvidence } from "./vnext-zero-x-firm-quote-commitment";
-
-export class ZeroXRepriceRequiredError extends Error {
-  constructor() { super("Price moved. Review the refreshed quote."); }
-}
-
 import {
   encodeFunctionData,
   erc20Abi,
   getAddress,
   isAddress,
-  isHex,
   keccak256,
   zeroAddress,
   type Address,
@@ -33,22 +20,29 @@ import {
   fromZeroXToken,
   RMT_ZERO_X_FEE_BPS,
   RMT_ZERO_X_FEE_TREASURY,
-  toZeroXToken
+  RMT_ZERO_X_MAX_SLIPPAGE_PPM,
+  RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM,
+  toZeroXToken,
+  zeroXFeeAsset,
+  zeroXMinimumRespectsSlippage
 } from "../vnext/zero-x-settlement";
+import { isCanonicalZeroXAllowanceHolder, RMT_ZERO_X_CANONICAL_ALLOWANCE_HOLDER } from "../vnext/zero-x-authority";
+import { TradeExecutionFailure } from "../vnext/trade-failure";
+import { committedZeroXAuthorizationEvidence } from "./vnext-zero-x-firm-quote-commitment";
+
+export class ZeroXRepriceRequiredError extends Error {
+  constructor() { super("Price moved. Review the refreshed quote."); }
+}
 
 const ZERO_X_API_URL = "https://api.0x.org";
 const ZERO_X_TIMEOUT_MS = 4_000;
-const ZERO_X_RPC_TIMEOUT_MS = 8_000;
+const APPROVAL_GAS_TIMEOUT_MS = 8_000;
 const EVIDENCE_TTL_MS = 10_000;
 const DEFAULT_ROBINHOOD_RPC_URL = "https://rpc.mainnet.chain.robinhood.com/";
 
 type JsonObject = Record<string, unknown>;
 type ZeroXFee = { asset: Address; amountAtomic: string };
-
-type ZeroXSwapFirmQuoteVerificationConfiguration = {
-  allowanceHolder: Address;
-  runtimeHash: Hex;
-};
+type ZeroXSwapFirmQuoteVerificationConfiguration = { allowanceHolder: Address };
 
 type ParsedFirmQuote = {
   quotedIntegratorFeeAtomic: string;
@@ -57,7 +51,6 @@ type ParsedFirmQuote = {
   balanceActualAtomic: string | null;
   blockNumber: string | null;
   providerReportedMinBuyAmount: string;
-  settlerTarget: Address;
   calldata: Hex;
   expectedOutputAtomic: string;
   gasLimitUnits: string;
@@ -77,9 +70,6 @@ export type ZeroXSwapFirmQuoteVerificationEvidence = VNextProviderVerificationEv
   providerRequestedSlippagePpm: typeof RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM;
   maximumUserSlippagePpm: typeof RMT_ZERO_X_MAX_SLIPPAGE_PPM;
   providerReportedMinBuyAmount: string;
-  encodedExecutableMinBuyAmount: string;
-  executableSettlerTarget: Address;
-  executableSettlerRuntimeHash: Hex;
   transactionData: Hex;
   swapTransactionValueAtomic: string;
   providerFeeAsset: Address | null;
@@ -90,7 +80,6 @@ export type ZeroXSwapFirmQuoteVerificationEvidence = VNextProviderVerificationEv
   strictVerificationAvailable: true;
   walletAuthorizationAvailable: true;
   admissionReady: boolean;
-  routeIntrospection: ReturnType<typeof inspectZeroXRoute>;
 };
 
 class ZeroXInvalidResponseError extends TradeExecutionFailure {
@@ -137,11 +126,18 @@ function parseIntegratorFee(fees: JsonObject, request: VNextProviderVerification
   const singularKey = singular.map(parse)[0] ?? null;
   const pluralKey = plural.map(parse)[0] ?? null;
   if (!singularKey && !pluralKey) throw new ZeroXInvalidResponseError("0x omitted the RMT integrator fee.");
-  if (singularKey && pluralKey && singularKey !== pluralKey) throw new ZeroXInvalidResponseError("0x returned duplicate integrator fees.");
+  if (singularKey && pluralKey && singularKey !== pluralKey) throw new ZeroXInvalidResponseError("0x returned contradictory integrator fees.");
   return (singularKey ?? pluralKey)!.split(":")[1];
 }
 
-function rpcUrl() {
+export function zeroXSwapFirmQuoteVerificationConfiguration(): ZeroXSwapFirmQuoteVerificationConfiguration | null {
+  if (process.env.RMT_VNEXT_ZEROX_FIRM_QUOTE_VERIFICATION_ENABLED !== "true") return null;
+  const configuredAddress = process.env.RMT_ZEROX_ALLOWANCE_HOLDER?.trim();
+  if (!isCanonicalZeroXAllowanceHolder(configuredAddress)) return null;
+  return { allowanceHolder: RMT_ZERO_X_CANONICAL_ALLOWANCE_HOLDER };
+}
+
+function approvalRpcUrl() {
   return process.env.RMT_RPC_URL?.trim()
     || process.env.RMT_MAINNET_RPC_URL?.trim()
     || process.env.ROBINHOOD_MAINNET_RPC_URL?.trim()
@@ -149,94 +145,20 @@ function rpcUrl() {
     || DEFAULT_ROBINHOOD_RPC_URL;
 }
 
-async function rpc(method: string, params: unknown[]) {
-  const response = await fetch(rpcUrl(), {
+async function estimateApprovalGas(account: Address, token: Address, data: Hex) {
+  const response = await fetch(approvalRpcUrl(), {
     method: "POST",
     headers: { Accept: "application/json", "Content-Type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_estimateGas", params: [{ from: account, to: token, data, value: "0x0" }] }),
     cache: "no-store",
-    signal: AbortSignal.timeout(ZERO_X_RPC_TIMEOUT_MS)
+    signal: AbortSignal.timeout(APPROVAL_GAS_TIMEOUT_MS)
   });
   const body: unknown = await response.json().catch(() => null);
-  if (!response.ok || !isObject(body) || body.error !== undefined || body.result === undefined) throw new TradeExecutionFailure("RPC_UNAVAILABLE");
-  return body.result;
-}
-
-export function zeroXSwapFirmQuoteVerificationConfiguration(): ZeroXSwapFirmQuoteVerificationConfiguration | null {
-  if (process.env.RMT_VNEXT_ZEROX_FIRM_QUOTE_VERIFICATION_ENABLED !== "true") return null;
-  const configuredAddress = process.env.RMT_ZEROX_ALLOWANCE_HOLDER?.trim();
-  const configuredHash = process.env.RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH?.trim();
-  if (!isCanonicalZeroXAllowanceHolder(configuredAddress) || !configuredHash || !/^0x[0-9a-fA-F]{64}$/.test(configuredHash)) return null;
-  return { allowanceHolder: RMT_ZERO_X_CANONICAL_ALLOWANCE_HOLDER, runtimeHash: configuredHash.toLowerCase() as Hex };
-}
-
-async function runtimeCode(address: Address, block = "latest") {
-  const result = await rpc("eth_getCode", [address, block]);
-  if (typeof result !== "string" || !isHex(result) || !/^0x(?:[0-9a-fA-F]{2})+$/.test(result)) throw new Error("0x transaction target has no contract code.");
-  return result as Hex;
-}
-
-async function requireAllowanceHolderRuntime(configuration: ZeroXSwapFirmQuoteVerificationConfiguration) {
-  const code = await runtimeCode(configuration.allowanceHolder);
-  if (keccak256(code).toLowerCase() !== configuration.runtimeHash.toLowerCase()) throw new Error("0x AllowanceHolder runtime bytecode is not approved.");
-  return configuration.runtimeHash;
-}
-
-async function nativeBalance(address: Address) {
-  const result = await rpc("eth_getBalance", [address, "latest"]);
-  if (typeof result !== "string" || !/^0x[0-9a-fA-F]+$/.test(result)) throw new Error("Robinhood RPC returned an invalid native balance.");
-  return BigInt(result);
-}
-
-async function estimateApprovalGas(account: Address, token: Address, data: Hex) {
-  const result = await rpc("eth_estimateGas", [{ from: account, to: token, data, value: "0x0" }]);
-  if (typeof result !== "string" || !/^0x[0-9a-fA-F]+$/.test(result) || BigInt(result) <= 0n) throw new Error("0x approval gas estimate is unavailable.");
-  const estimate = BigInt(result);
-  return { estimated: estimate, limit: (estimate * 120n + 99n) / 100n };
-}
-
-async function tokenUint(token: Address, data: Hex) {
-  const result = await rpc("eth_call", [{ to: token, data }, "latest"]);
-  if (typeof result !== "string" || !/^0x[0-9a-fA-F]{64}$/.test(result)) throw new Error("Robinhood RPC returned invalid ERC20 balance or allowance evidence.");
-  return BigInt(result);
-}
-
-type ZeroXSimulationState = "passed" | "deterministic_revert" | "inconclusive" | "not_run";
-
-function deterministicSimulationRevert(error: unknown) {
-  if (!isObject(error)) return false;
-  const message = typeof error.message === "string" ? error.message : "";
-  const data = typeof error.data === "string" ? error.data : "";
-  return /execution reverted|revert(?:ed)?\b|invalid opcode|panic code/i.test(`${message} ${data}`);
-}
-
-async function simulate(input: { account: Address; target: Address; calldata: Hex; valueAtomic: string; gasLimitUnits: string; gasPriceWei: string | null }): Promise<ZeroXSimulationState> {
-  try {
-    const response = await fetch(rpcUrl(), {
-      method: "POST",
-      headers: { Accept: "application/json", "Content-Type": "application/json" },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_call", params: [{
-        from: input.account,
-        to: input.target,
-        data: input.calldata,
-        value: `0x${BigInt(input.valueAtomic).toString(16)}`,
-        gas: `0x${BigInt(input.gasLimitUnits).toString(16)}`,
-        ...(input.gasPriceWei !== null ? { gasPrice: `0x${BigInt(input.gasPriceWei).toString(16)}` } : {})
-      }, "latest"] }),
-      cache: "no-store",
-      signal: AbortSignal.timeout(ZERO_X_RPC_TIMEOUT_MS)
-    });
-    const body: unknown = await response.json().catch(() => null);
-    if (!response.ok || !isObject(body)) return "inconclusive";
-    if (body.error !== undefined) return deterministicSimulationRevert(body.error)
-      ? "deterministic_revert"
-      : "inconclusive";
-    return typeof body.result === "string" && /^0x(?:[0-9a-fA-F]{2})*$/.test(body.result)
-      ? "passed"
-      : "inconclusive";
-  } catch {
-    return "inconclusive";
+  if (!response.ok || !isObject(body) || body.error !== undefined || typeof body.result !== "string" || !/^0x[0-9a-fA-F]+$/.test(body.result) || BigInt(body.result) <= 0n) {
+    throw new TradeExecutionFailure("RPC_UNAVAILABLE");
   }
+  const estimate = BigInt(body.result);
+  return { estimated: estimate, limit: (estimate * 120n + 99n) / 100n };
 }
 
 function parseFirmQuote(body: unknown, request: VNextProviderVerificationRequest, configuration: ZeroXSwapFirmQuoteVerificationConfiguration): ParsedFirmQuote {
@@ -245,31 +167,53 @@ function parseFirmQuote(body: unknown, request: VNextProviderVerificationRequest
     || (body.taker !== undefined && (typeof body.taker !== "string" || getAddress(body.taker) !== request.recipient))
     || (body.recipient !== undefined && (typeof body.recipient !== "string" || getAddress(body.recipient) !== request.recipient))
   ) throw new ZeroXInvalidResponseError("0x changed the chain, taker or recipient binding.");
+
   const expectedOutputAtomic = positiveAtomic(body.buyAmount);
   const providerReportedMinBuyAmount = positiveAtomic(body.minBuyAmount);
   const networkFeeNativeAtomic = nonNegativeAtomic(body.totalNetworkFee);
   const nativeInput = request.inputAsset === zeroAddress;
-  if (
-    typeof body.sellToken !== "string" || fromZeroXToken(body.sellToken) !== request.inputAsset
+  if (typeof body.sellToken !== "string" || fromZeroXToken(body.sellToken) !== request.inputAsset
     || typeof body.buyToken !== "string" || fromZeroXToken(body.buyToken) !== request.outputAsset
     || body.sellAmount !== request.inputAmountAtomic
     || (body.mode !== undefined && body.mode !== "exact-in")
     || !expectedOutputAtomic || !providerReportedMinBuyAmount || networkFeeNativeAtomic === null
-    || BigInt(providerReportedMinBuyAmount) > BigInt(expectedOutputAtomic)
+    || !zeroXMinimumRespectsSlippage(expectedOutputAtomic, providerReportedMinBuyAmount)
   ) throw new ZeroXInvalidResponseError("0x changed the requested firm-quote economics.");
 
-
   const issues = isObject(body.issues) ? body.issues : null;
-  if (!issues || !Object.hasOwn(issues, "allowance") || !Object.hasOwn(issues, "balance")
-    || typeof issues.simulationIncomplete !== "boolean" || !Array.isArray(issues.invalidSourcesPassed) || issues.invalidSourcesPassed.length !== 0
-  ) throw new ZeroXInvalidResponseError("0x returned incomplete firm-quote validation evidence.");
-  const issueSpender = isObject(issues.allowance) ? issues.allowance.spender : null;
-  const allowanceTarget = body.allowanceTarget ?? issueSpender;
-  if (!nativeInput && (typeof allowanceTarget !== "string" || !isAddress(allowanceTarget, { strict: false }) || getAddress(allowanceTarget) !== configuration.allowanceHolder)) {
+  if (!issues || (issues.simulationIncomplete !== undefined && typeof issues.simulationIncomplete !== "boolean")) {
+    throw new ZeroXInvalidResponseError("0x returned invalid quote issues.");
+  }
+  const simulationIncomplete = issues.simulationIncomplete === true;
+  const bodyAllowanceTarget = body.allowanceTarget;
+  if (bodyAllowanceTarget != null && (typeof bodyAllowanceTarget !== "string" || !isAddress(bodyAllowanceTarget, { strict: false }) || !isCanonicalZeroXAllowanceHolder(bodyAllowanceTarget))) {
     throw new ZeroXInvalidResponseError("0x returned an unapproved AllowanceHolder.");
   }
-  if (nativeInput && allowanceTarget != null && (typeof allowanceTarget !== "string" || !isAddress(allowanceTarget, { strict: false }) || getAddress(allowanceTarget) !== configuration.allowanceHolder)) {
-    throw new ZeroXInvalidResponseError("0x returned an invalid native allowance target.");
+
+  const allowance = issues.allowance;
+  let allowanceActualAtomic: string | null = null;
+  let allowanceSpender: Address | null = null;
+  if (nativeInput && allowance != null) throw new ZeroXInvalidResponseError("0x returned an allowance issue for native ETH.");
+  if (!nativeInput && allowance != null) {
+    if (!isObject(allowance) || nonNegativeAtomic(allowance.actual) === null || typeof allowance.spender !== "string" || !isCanonicalZeroXAllowanceHolder(allowance.spender)) {
+      throw new ZeroXInvalidResponseError("0x returned an invalid AllowanceHolder issue.");
+    }
+    allowanceSpender = getAddress(allowance.spender);
+    allowanceActualAtomic = allowance.actual as string;
+    if (BigInt(allowanceActualAtomic) >= request.amountIn) throw new ZeroXInvalidResponseError("0x returned a contradictory allowance issue.");
+    if (bodyAllowanceTarget != null && getAddress(bodyAllowanceTarget as string) !== allowanceSpender) {
+      throw new ZeroXInvalidResponseError("0x allowance target and issue spender disagree.");
+    }
+  }
+
+  const balanceIssue = issues.balance;
+  let balanceActualAtomic: string | null = null;
+  if (balanceIssue != null) {
+    if (!isObject(balanceIssue) || typeof balanceIssue.token !== "string" || fromZeroXToken(balanceIssue.token) !== request.inputAsset
+      || nonNegativeAtomic(balanceIssue.actual) === null || balanceIssue.expected !== request.inputAmountAtomic) {
+      throw new ZeroXInvalidResponseError("0x returned an invalid balance issue.");
+    }
+    balanceActualAtomic = balanceIssue.actual as string;
   }
 
   const fees = isObject(body.fees) ? body.fees : null;
@@ -278,54 +222,17 @@ function parseFirmQuote(body: unknown, request: VNextProviderVerificationRequest
   if (fees.gasFee != null) throw new ZeroXInvalidResponseError("0x returned a gas-sponsorship fee for a wallet-paid swap.");
   const providerFee = parseProviderFee(fees.zeroExFee, request);
 
-  const allowance = issues.allowance;
-  let allowanceActualAtomic: string | null = null;
-  let allowanceSpender: Address | null = null;
-  if (nativeInput && allowance != null) throw new ZeroXInvalidResponseError("0x returned an allowance issue for native ETH.");
-  if (!nativeInput && allowance != null) {
-    if (!isObject(allowance) || !nonNegativeAtomic(allowance.actual) || typeof allowance.spender !== "string" || !isAddress(allowance.spender, { strict: false })) {
-      throw new ZeroXInvalidResponseError("0x returned an invalid allowance issue.");
-    }
-    allowanceSpender = getAddress(allowance.spender);
-    allowanceActualAtomic = allowance.actual as string;
-    if (allowanceSpender !== configuration.allowanceHolder || allowanceActualAtomic === request.inputAmountAtomic || BigInt(allowanceActualAtomic) >= request.amountIn) {
-      throw new ZeroXInvalidResponseError("0x returned an inconsistent AllowanceHolder issue.");
-    }
-  }
-  if (!nativeInput && allowanceSpender && typeof allowanceTarget === "string" && getAddress(allowanceTarget) !== allowanceSpender) {
-    throw new ZeroXInvalidResponseError("0x allowance target and issue spender disagree.");
-  }
-
-  const balanceIssue = issues.balance;
-  let balanceActualAtomic: string | null = null;
-  if (balanceIssue != null) {
-    if (!isObject(balanceIssue) || typeof balanceIssue.token !== "string" || fromZeroXToken(balanceIssue.token) !== request.inputAsset || !nonNegativeAtomic(balanceIssue.actual) || balanceIssue.expected !== request.inputAmountAtomic) {
-      throw new ZeroXInvalidResponseError("0x returned an invalid balance issue.");
-    }
-    balanceActualAtomic = balanceIssue.actual as string;
-  }
-
   const transaction = isObject(body.transaction) ? body.transaction : null;
   const gasLimitUnits = transaction ? positiveAtomic(transaction.gas) : null;
-  const gasPriceWei = transaction ? positiveAtomic(transaction.gasPrice) : null;
+  const gasPriceWei = transaction?.gasPrice === undefined || transaction.gasPrice === null ? null : positiveAtomic(transaction.gasPrice);
   const transactionValueAtomic = transaction ? nonNegativeAtomic(transaction.value) : null;
-  if (!transaction || typeof transaction.to !== "string" || !isAddress(transaction.to, { strict: false }) || getAddress(transaction.to) === zeroAddress || typeof transaction.data !== "string" || !/^0x(?:[0-9a-fA-F]{2}){4,}$/.test(transaction.data) || !gasLimitUnits || (transaction.gasPrice !== undefined && !gasPriceWei) || transactionValueAtomic === null
+  if (!transaction || typeof transaction.to !== "string" || !isAddress(transaction.to, { strict: false }) || getAddress(transaction.to) === zeroAddress
+    || typeof transaction.data !== "string" || !/^0x(?:[0-9a-fA-F]{2}){4,}$/.test(transaction.data)
+    || !gasLimitUnits || (transaction.gasPrice !== undefined && transaction.gasPrice !== null && !gasPriceWei) || transactionValueAtomic === null
     || (transaction.chainId !== undefined && transaction.chainId !== 4_663 && transaction.chainId !== "4663")
-    || (transaction.from !== undefined && (typeof transaction.from !== "string" || getAddress(transaction.from) !== request.recipient))) {
+    || (transaction.from !== undefined && (typeof transaction.from !== "string" || getAddress(transaction.from) !== request.recipient))
+    || (nativeInput ? transactionValueAtomic !== request.inputAmountAtomic : transactionValueAtomic !== "0")) {
     throw new ZeroXInvalidResponseError("0x returned an invalid transaction envelope.");
-  }
-  const transactionTarget = getAddress(transaction.to);
-  if (!nativeInput && (transactionTarget !== configuration.allowanceHolder || transactionValueAtomic !== "0")) {
-    throw new ZeroXInvalidResponseError("0x returned an invalid AllowanceHolder transaction envelope.");
-  }
-  if (nativeInput && transactionValueAtomic === "0") throw new ZeroXInvalidResponseError("0x returned zero transaction value for native ETH.");
-
-  const executable = decodeZeroXExecutableMinimum({ target: transactionTarget, data: transaction.data as Hex,
-    inputAsset: request.inputAsset, outputAsset: request.outputAsset, inputAmountAtomic: request.inputAmountAtomic,
-    recipient: request.recipient, valueAtomic: transactionValueAtomic });
-  const protectedOutputAtomic = executable.minimumAtomic;
-  if (!zeroXMinimumRespectsSlippage(expectedOutputAtomic, protectedOutputAtomic)) {
-    throw new ZeroXInvalidResponseError("0x firm minimum violates the requested slippage envelope.");
   }
 
   const blockNumber = body.blockNumber == null ? null : positiveAtomic(typeof body.blockNumber === "number" && Number.isSafeInteger(body.blockNumber) ? String(body.blockNumber) : body.blockNumber);
@@ -333,12 +240,10 @@ function parseFirmQuote(body: unknown, request: VNextProviderVerificationRequest
   const zid = body.zid == null ? null : typeof body.zid === "string" && /^(?:0x[0-9a-fA-F]{1,128}|[A-Za-z0-9_-]{8,128})$/.test(body.zid) ? body.zid : null;
   if (body.zid != null && !zid) throw new ZeroXInvalidResponseError("0x returned an invalid quote identity.");
   return {
-    quotedIntegratorFeeAtomic,
-    allowanceActualAtomic, allowanceSpender, balanceActualAtomic, blockNumber,
-    providerReportedMinBuyAmount, settlerTarget: executable.settlerTarget,
-    calldata: transaction.data as Hex, expectedOutputAtomic, gasLimitUnits, gasPriceWei,
-    networkFeeNativeAtomic, protectedOutputAtomic, providerFee,
-    simulationIncomplete: issues.simulationIncomplete, transactionTarget, transactionValueAtomic, zid
+    quotedIntegratorFeeAtomic, allowanceActualAtomic, allowanceSpender, balanceActualAtomic, blockNumber,
+    providerReportedMinBuyAmount, calldata: transaction.data as Hex, expectedOutputAtomic, gasLimitUnits,
+    gasPriceWei, networkFeeNativeAtomic, protectedOutputAtomic: providerReportedMinBuyAmount, providerFee,
+    simulationIncomplete, transactionTarget: getAddress(transaction.to), transactionValueAtomic, zid
   };
 }
 
@@ -347,156 +252,189 @@ async function fetchFirmQuote(request: VNextProviderVerificationRequest) {
   if (!apiKey) throw new Error("0x server credential is not configured.");
   const url = new URL("/swap/allowance-holder/quote", ZERO_X_API_URL);
   url.search = new URLSearchParams({
-    chainId: String(request.chainId), sellToken: toZeroXToken(request.inputAsset), buyToken: toZeroXToken(request.outputAsset),
-    sellAmount: request.inputAmountAtomic, taker: request.recipient, recipient: request.recipient, slippagePpm: String(RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM),
-    swapFeeRecipient: RMT_ZERO_X_FEE_TREASURY, swapFeeBps: String(RMT_ZERO_X_FEE_BPS), swapFeeToken: toZeroXToken(zeroXFeeAsset(request.inputAsset, request.outputAsset))
+    chainId: String(request.chainId),
+    sellToken: toZeroXToken(request.inputAsset),
+    buyToken: toZeroXToken(request.outputAsset),
+    sellAmount: request.inputAmountAtomic,
+    taker: request.recipient,
+    recipient: request.recipient,
+    slippagePpm: String(RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM),
+    swapFeeRecipient: RMT_ZERO_X_FEE_TREASURY,
+    swapFeeBps: String(RMT_ZERO_X_FEE_BPS),
+    swapFeeToken: toZeroXToken(zeroXFeeAsset(request.inputAsset, request.outputAsset))
   }).toString();
-  const response = await fetch(url, { headers: { Accept: "application/json", "0x-api-key": apiKey, "0x-version": "v2" }, cache: "no-store", signal: AbortSignal.timeout(ZERO_X_TIMEOUT_MS) });
+  const response = await fetch(url, {
+    headers: { Accept: "application/json", "0x-api-key": apiKey, "0x-version": "v2" },
+    cache: "no-store",
+    signal: AbortSignal.timeout(ZERO_X_TIMEOUT_MS)
+  });
   const body: unknown = await response.json().catch(() => null);
   if (!response.ok) {
     if (response.status === 400 && isObject(body) && body.name === "NO_LIQUIDITY_AVAILABLE") return null;
     throw new TradeExecutionFailure(response.status === 429 ? "RATE_LIMITED" : response.status >= 500 ? "PROVIDER_UNAVAILABLE" : "PROVIDER_POLICY_REJECTED");
   }
+  if (isObject(body) && body.liquidityAvailable === false) return null;
   return body;
 }
 
 export async function verifyZeroXSwapFirmQuote(request: VNextProviderVerificationRequest): Promise<ZeroXSwapFirmQuoteVerificationEvidence> {
   const configuration = zeroXSwapFirmQuoteVerificationConfiguration();
-  if (!configuration) throw new Error("0x Swap firm-quote verification is not configured.");
-  if (request.settlementMode !== VNEXT_PROVIDER_NATIVE_INPUT_FEE || !request.deadlineSeconds || !request.nowMs) throw new Error("0x provider-native verification authority is incomplete.");
+  if (!configuration) throw new Error("0x Swap firm-quote response validation is not configured.");
+  if (request.settlementMode !== VNEXT_PROVIDER_NATIVE_INPUT_FEE || !request.nowMs) throw new Error("0x provider-native verification authority is incomplete.");
   if (request.chainId !== 4_663 || request.amountIn <= 0n || request.inputAmountAtomic !== request.amountIn.toString()
     || request.indicativeProtectedOutputFloorAtomic <= 0n || request.inputAsset === request.outputAsset
     || getAddress(request.recipient) === zeroAddress || request.executionId !== undefined
   ) throw new Error("RMT rejected an inconsistent 0x request binding.");
-  const chainId = await rpc("eth_chainId", []);
-  if (typeof chainId !== "string" || !/^0x[0-9a-fA-F]+$/.test(chainId) || BigInt(chainId) !== 4_663n) throw new Error("Robinhood RPC chain identity changed.");
+
   const observedAtMs = Date.now();
   const body = await fetchFirmQuote(request);
   if (body === null) throw new TradeExecutionFailure("NO_ROUTE");
   const quote = parseFirmQuote(body, request, configuration);
-  const deployment = await requireZeroXDeployment(quote.settlerTarget, rpc);
-  const envelopeInput = { target: quote.transactionTarget, data: quote.calldata,
-    inputAsset: request.inputAsset, outputAsset: request.outputAsset, inputAmountAtomic: request.inputAmountAtomic,
-    recipient: request.recipient, valueAtomic: quote.transactionValueAtomic, runtimeHash: deployment.runtimeHash,
-    expectedOutputAtomic: quote.expectedOutputAtomic, providerFeeAsset: quote.providerFee?.asset ?? null,
-    providerFeeAtomic: quote.providerFee?.amountAtomic ?? null };
-  verifyZeroXEncodedFee(envelopeInput);
-  const routeIntrospection = inspectZeroXRoute(envelopeInput);
-  const nativeInput = request.inputAsset === zeroAddress;
-  const [balance, targetCode, holderHash, tokenBalance, tokenAllowance] = await Promise.all([
-    nativeBalance(request.recipient),
-    runtimeCode(quote.transactionTarget, deployment.block),
-    nativeInput ? Promise.resolve(null) : requireAllowanceHolderRuntime(configuration),
-    nativeInput ? Promise.resolve(null) : tokenUint(request.inputAsset, encodeFunctionData({ abi: erc20Abi, functionName: "balanceOf", args: [request.recipient] })),
-    nativeInput ? Promise.resolve(null) : tokenUint(request.inputAsset, encodeFunctionData({ abi: erc20Abi, functionName: "allowance", args: [request.recipient, configuration.allowanceHolder] }))
-  ]);
-  const targetRuntimeHash = keccak256(targetCode);
-  const executableSettlerRuntimeHash = deployment.runtimeHash;
-  if (quote.transactionTarget === configuration.allowanceHolder && targetRuntimeHash !== configuration.runtimeHash) throw new Error("0x AllowanceHolder execution target changed.");
-  if (!nativeInput && holderHash !== targetRuntimeHash) throw new Error("0x AllowanceHolder execution target changed.");
-
-  const needsApproval = !nativeInput && (tokenAllowance! < request.amountIn || quote.allowanceActualAtomic !== null);
-  const approvalData = needsApproval ? encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [configuration.allowanceHolder, request.amountIn] }) : null;
-  const approvalGas = approvalData ? await estimateApprovalGas(request.recipient, request.inputAsset, approvalData) : null;
-  const estimatedGas = approvalGas?.estimated ?? BigInt(quote.gasLimitUnits);
-  const gasLimit = approvalGas?.limit ?? BigInt(quote.gasLimitUnits);
-  const networkFeeCeiling = BigInt(quote.networkFeeNativeAtomic);
-  const rpcGasPrice = quote.gasPriceWei === null ? await rpc("eth_gasPrice", []) : null;
-  if (quote.gasPriceWei === null && (typeof rpcGasPrice !== "string" || !/^0x[0-9a-fA-F]+$/.test(rpcGasPrice) || BigInt(rpcGasPrice) <= 0n)) throw new Error("Robinhood RPC gas price is unavailable.");
-  const quotedGasPrice = quote.gasPriceWei === null ? BigInt(rpcGasPrice as string) : BigInt(quote.gasPriceWei);
-  const feeCeiling = networkFeeCeiling > gasLimit * quotedGasPrice
-    ? (networkFeeCeiling + gasLimit - 1n) / gasLimit
-    : quotedGasPrice;
-  const estimatedNetworkCost = gasLimit * feeCeiling;
-  const nextValue = approvalData ? 0n : BigInt(quote.transactionValueAtomic);
-  const enoughNative = balance >= nextValue + estimatedNetworkCost;
-  const sufficientSellBalance = quote.balanceActualAtomic === null && (nativeInput ? balance >= BigInt(quote.transactionValueAtomic) : tokenBalance! >= request.amountIn);
-
-  let status: ZeroXSwapFirmQuoteVerificationEvidence["status"];
-  let exactSimulationPassed = false;
-  let exactSimulationState: ZeroXSimulationState = "not_run";
-  if (!sufficientSellBalance) status = "insufficient_balance";
-  else if (!enoughNative) status = "insufficient_gas";
-  else if (approvalData) status = "approval_required";
-  else {
-    exactSimulationState = await simulate({ account: request.recipient, target: quote.transactionTarget, calldata: quote.calldata, valueAtomic: quote.transactionValueAtomic, gasLimitUnits: quote.gasLimitUnits, gasPriceWei: quote.gasPriceWei });
-    exactSimulationPassed = exactSimulationState === "passed";
-    status = exactSimulationState === "deterministic_revert" ? "simulation_failed" : "verified";
-  }
-
   if (BigInt(quote.expectedOutputAtomic) < request.indicativeProtectedOutputFloorAtomic) throw new ZeroXRepriceRequiredError();
 
+  const nativeInput = request.inputAsset === zeroAddress;
+  const approvalData = quote.allowanceSpender
+    ? encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [quote.allowanceSpender, request.amountIn] })
+    : null;
+  const approvalGas = approvalData ? await estimateApprovalGas(request.recipient, request.inputAsset, approvalData) : null;
+  const nextGasLimit = approvalGas?.limit.toString() ?? quote.gasLimitUnits;
+  const nextEstimatedGas = approvalGas?.estimated.toString() ?? quote.gasLimitUnits;
+  const blockedByBalance = quote.balanceActualAtomic !== null;
+  const status: ZeroXSwapFirmQuoteVerificationEvidence["status"] = blockedByBalance
+    ? "insufficient_balance"
+    : approvalData ? "approval_required" : "verified";
   const authorizationState = status === "approval_required" ? "approval_required" : status === "verified" ? "verified" : "blocked";
+  const expiresAtMs = observedAtMs + EVIDENCE_TTL_MS;
+  const deadline = BigInt(Math.ceil(expiresAtMs / 1_000)).toString();
   const providerNativeFee = createVNextZeroXProviderNativeFee({
     quotedFeeAmountAtomic: quote.quotedIntegratorFeeAtomic,
-    inputAsset: request.inputAsset, outputAsset: request.outputAsset, userGrossInputAtomic: request.inputAmountAtomic,
-    expectedOutputAtomic: quote.expectedOutputAtomic, protectedOutputAtomic: quote.protectedOutputAtomic,
-    recipient: request.recipient, providerFeeAsset: quote.providerFee?.asset ?? null,
-    providerFeeAtomic: quote.providerFee?.amountAtomic ?? null, transactionTarget: quote.transactionTarget,
-    transactionCalldataHash: keccak256(quote.calldata), transactionValueAtomic: quote.transactionValueAtomic,
+    inputAsset: request.inputAsset,
+    outputAsset: request.outputAsset,
+    userGrossInputAtomic: request.inputAmountAtomic,
+    expectedOutputAtomic: quote.expectedOutputAtomic,
+    protectedOutputAtomic: quote.protectedOutputAtomic,
+    recipient: request.recipient,
+    providerFeeAsset: quote.providerFee?.asset ?? null,
+    providerFeeAtomic: quote.providerFee?.amountAtomic ?? null,
+    transactionTarget: quote.transactionTarget,
+    transactionCalldataHash: keccak256(quote.calldata),
+    transactionValueAtomic: quote.transactionValueAtomic,
     authorizationState,
     firmQuote: {
-      zid: quote.zid, observedAtMs, expiresAtMs: observedAtMs + EVIDENCE_TTL_MS,
-      swapGasLimitUnits: quote.gasLimitUnits, nextActionGasLimitUnits: gasLimit.toString(), gasPriceWei: quote.gasPriceWei,
-      targetRuntimeHash, allowanceTarget: nativeInput ? null : configuration.allowanceHolder,
-      allowanceHolderRuntimeHash: holderHash, providerSimulationIncomplete: quote.simulationIncomplete, exactSimulationPassed, exactSimulationState
+      zid: quote.zid,
+      observedAtMs,
+      expiresAtMs,
+      swapGasLimitUnits: quote.gasLimitUnits,
+      nextActionGasLimitUnits: nextGasLimit,
+      gasPriceWei: quote.gasPriceWei,
+      allowanceTarget: quote.allowanceSpender,
+      providerSimulationIncomplete: quote.simulationIncomplete,
+      exactSimulationPassed: false,
+      exactSimulationState: "not_run"
     }
   });
   const verifiedAtMs = Date.now();
-  if (verifiedAtMs >= observedAtMs + EVIDENCE_TTL_MS) throw new Error("0x firm quote expired during validation; requote and retry.");
+  if (verifiedAtMs >= expiresAtMs) throw new Error("0x firm quote expired during validation; requote and retry.");
   const nextData = approvalData ?? quote.calldata;
   const nextTarget = approvalData ? request.inputAsset : quote.transactionTarget;
+  const impliedFeeCeiling = ((BigInt(quote.networkFeeNativeAtomic) + BigInt(quote.gasLimitUnits) - 1n) / BigInt(quote.gasLimitUnits)).toString();
   return {
-    provider: "zero-x-swap", status, chainId: 4_663, inputAsset: request.inputAsset, outputAsset: request.outputAsset,
-    inputAmountAtomic: request.inputAmountAtomic, indicativeProtectedOutputFloorAtomic: request.indicativeProtectedOutputFloorAtomic.toString(),
-    expectedOutputAtomic: quote.expectedOutputAtomic, protectedOutputAtomic: quote.protectedOutputAtomic,
-    recipient: request.recipient, router: quote.transactionTarget, approvalSpender: nativeInput ? quote.transactionTarget : configuration.allowanceHolder,
-    approvalRequired: approvalData !== null, sufficientBalance: sufficientSellBalance,
-    allowanceAtomic: nativeInput ? "0" : (quote.allowanceActualAtomic !== null && BigInt(quote.allowanceActualAtomic) < tokenAllowance! ? quote.allowanceActualAtomic : tokenAllowance!.toString()),
-    balanceAtomic: quote.balanceActualAtomic ?? (nativeInput ? balance.toString() : tokenBalance!.toString()),
-    route: "aggregated", fees: [], pools: [], deadline: request.deadlineSeconds.toString(),
-    calldataHash: keccak256(quote.calldata), nextAction: status === "verified" ? "swap" : status === "approval_required" ? "approval" : null,
+    provider: "zero-x-swap",
+    status,
+    chainId: 4_663,
+    inputAsset: request.inputAsset,
+    outputAsset: request.outputAsset,
+    inputAmountAtomic: request.inputAmountAtomic,
+    indicativeProtectedOutputFloorAtomic: request.indicativeProtectedOutputFloorAtomic.toString(),
+    expectedOutputAtomic: quote.expectedOutputAtomic,
+    protectedOutputAtomic: quote.protectedOutputAtomic,
+    recipient: request.recipient,
+    router: quote.transactionTarget,
+    approvalSpender: quote.allowanceSpender ?? configuration.allowanceHolder,
+    approvalRequired: approvalData !== null,
+    sufficientBalance: !blockedByBalance,
+    allowanceAtomic: nativeInput ? "0" : quote.allowanceActualAtomic,
+    balanceAtomic: quote.balanceActualAtomic,
+    route: "aggregated",
+    fees: [],
+    pools: [],
+    deadline,
+    calldataHash: keccak256(quote.calldata),
+    nextAction: status === "verified" ? "swap" : status === "approval_required" ? "approval" : null,
     nextActionTarget: status === "verified" || status === "approval_required" ? nextTarget : null,
     nextActionCalldataHash: status === "verified" || status === "approval_required" ? keccak256(nextData) : null,
-    transactionValueAtomic: (approvalData ? 0n : BigInt(quote.transactionValueAtomic)).toString(),
-    nativeBalanceWei: balance.toString(), gasPriceWei: quotedGasPrice.toString(), feeCeilingWei: feeCeiling.toString(),
-    estimatedGasUnits: estimatedGas.toString(), gasLimitUnits: gasLimit.toString(), estimatedNetworkCostWei: estimatedNetworkCost.toString(),
-    estimatedNetworkCostUsdgAtomic: null, networkCostValuationSource: null, networkCostValuedAtMs: null, networkCostValuationExpiresAtMs: null,
-    gasState: enoughNative ? "sufficient" : "insufficient", routerRuntimeHash: targetRuntimeHash, factoryRuntimeHash: null,
-    quoterRuntimeHash: null, exactSimulationPassed, exactSimulationState, userPaysGas: true, rmtFeeEnabled: true,
-    settlementMode: VNEXT_PROVIDER_NATIVE_INPUT_FEE, providerNativeFee,
+    transactionValueAtomic: approvalData ? "0" : quote.transactionValueAtomic,
+    nativeBalanceWei: null,
+    gasPriceWei: quote.gasPriceWei,
+    feeCeilingWei: quote.gasPriceWei ?? impliedFeeCeiling,
+    estimatedGasUnits: nextEstimatedGas,
+    gasLimitUnits: nextGasLimit,
+    estimatedNetworkCostWei: approvalData ? null : quote.networkFeeNativeAtomic,
+    estimatedNetworkCostUsdgAtomic: null,
+    networkCostValuationSource: null,
+    networkCostValuedAtMs: null,
+    networkCostValuationExpiresAtMs: null,
+    gasState: "not_checked",
+    routerRuntimeHash: null,
+    factoryRuntimeHash: null,
+    quoterRuntimeHash: null,
+    exactSimulationPassed: false,
+    exactSimulationState: "not_run",
+    userPaysGas: true,
+    rmtFeeEnabled: true,
+    settlementMode: VNEXT_PROVIDER_NATIVE_INPUT_FEE,
+    providerNativeFee,
     approvalKind: approvalData ? "erc20_to_allowance_holder" : null,
     providerRequestedSlippagePpm: RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM,
     maximumUserSlippagePpm: RMT_ZERO_X_MAX_SLIPPAGE_PPM,
     providerReportedMinBuyAmount: quote.providerReportedMinBuyAmount,
-    encodedExecutableMinBuyAmount: quote.protectedOutputAtomic,
-    executableSettlerTarget: quote.settlerTarget, executableSettlerRuntimeHash,
-    transactionData: quote.calldata, swapTransactionValueAtomic: quote.transactionValueAtomic,
-    providerFeeAsset: quote.providerFee?.asset ?? null, providerFeeAtomic: quote.providerFee?.amountAtomic ?? null,
-    providerQuoteId: quote.zid, blockNumber: quote.blockNumber, providerSimulationIncomplete: quote.simulationIncomplete,
-    routeIntrospection, strictVerificationAvailable: true, walletAuthorizationAvailable: true, admissionReady: status === "verified",
-    verifiedAtMs, expiresAtMs: observedAtMs + EVIDENCE_TTL_MS, authorizationReady: status === "verified"
+    transactionData: quote.calldata,
+    swapTransactionValueAtomic: quote.transactionValueAtomic,
+    providerFeeAsset: quote.providerFee?.asset ?? null,
+    providerFeeAtomic: quote.providerFee?.amountAtomic ?? null,
+    providerQuoteId: quote.zid,
+    blockNumber: quote.blockNumber,
+    providerSimulationIncomplete: quote.simulationIncomplete,
+    strictVerificationAvailable: true,
+    walletAuthorizationAvailable: true,
+    admissionReady: status === "verified",
+    verifiedAtMs,
+    expiresAtMs,
+    authorizationReady: status === "verified"
   };
 }
 
 export async function prepareZeroXSwapAuthorization(request: VNextProviderAuthorizationRequest): Promise<VNextPreparedProviderAuthorization> {
   const evidence = committedZeroXAuthorizationEvidence(request);
-  const configuration = zeroXSwapFirmQuoteVerificationConfiguration();
-  const firm = evidence.providerNativeFee!.firmQuote!;
-  const deployment = await requireZeroXDeployment(evidence.executableSettlerTarget, rpc, "authorization");
-  const outerHash = keccak256(await runtimeCode(evidence.router, deployment.block));
-  if (deployment.runtimeHash !== evidence.executableSettlerRuntimeHash || outerHash !== firm.targetRuntimeHash) {
-    throw new TradeExecutionFailure("EXECUTION_ENVELOPE_REJECTED", "authorization");
-  }
-  if (!configuration || (firm.allowanceTarget !== null && (
-    getAddress(firm.allowanceTarget) !== getAddress(configuration.allowanceHolder!)
-    || firm.allowanceHolderRuntimeHash?.toLowerCase() !== configuration.runtimeHash.toLowerCase()
-  ))) throw new Error("0x committed AllowanceHolder authority is unavailable or changed.");
   if (BigInt(evidence.protectedOutputAtomic) < request.protectedOutputFloorAtomic) throw new Error("0x firm quote weakened the accepted protected output; requote and retry.");
   if (evidence.status !== "verified" && evidence.status !== "approval_required") throw new Error("0x exact next action is not ready; requote and retry.");
   if (evidence.status === "approval_required") {
-    const data = encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [evidence.approvalSpender, request.amountIn] });
-    return { evidence, transaction: { kind: "erc20_approval", target: request.inputAsset, data, value: "0", gasLimit: evidence.gasLimitUnits!, ...(evidence.providerNativeFee!.firmQuote!.gasPriceWei !== null ? { gasPrice: evidence.providerNativeFee!.firmQuote!.gasPriceWei } : {}) } };
+    const allowanceTarget = evidence.providerNativeFee?.firmQuote?.allowanceTarget;
+    if (!allowanceTarget || !isCanonicalZeroXAllowanceHolder(allowanceTarget) || evidence.inputAsset === zeroAddress) {
+      throw new Error("0x committed AllowanceHolder authority is unavailable or changed.");
+    }
+    const data = encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [allowanceTarget, request.amountIn] });
+    return {
+      evidence,
+      transaction: {
+        kind: "erc20_approval",
+        target: request.inputAsset,
+        data,
+        value: "0",
+        gasLimit: evidence.gasLimitUnits!,
+        ...(evidence.providerNativeFee!.firmQuote!.gasPriceWei !== null ? { gasPrice: evidence.providerNativeFee!.firmQuote!.gasPriceWei } : {})
+      }
+    };
   }
-  return { evidence, transaction: { kind: "swap", target: evidence.router, data: evidence.transactionData, value: evidence.swapTransactionValueAtomic, gasLimit: evidence.gasLimitUnits!, ...(evidence.providerNativeFee!.firmQuote!.gasPriceWei !== null ? { gasPrice: evidence.providerNativeFee!.firmQuote!.gasPriceWei } : {}) } };
+  return {
+    evidence,
+    transaction: {
+      kind: "swap",
+      target: evidence.router,
+      data: evidence.transactionData,
+      value: evidence.swapTransactionValueAtomic,
+      gasLimit: evidence.gasLimitUnits!,
+      ...(evidence.providerNativeFee!.firmQuote!.gasPriceWei !== null ? { gasPrice: evidence.providerNativeFee!.firmQuote!.gasPriceWei } : {})
+    }
+  };
 }

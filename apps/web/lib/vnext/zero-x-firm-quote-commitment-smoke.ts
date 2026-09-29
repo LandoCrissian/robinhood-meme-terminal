@@ -10,17 +10,21 @@ export async function assertZeroXCommitmentAdversarialMatrix(request: VNextProvi
   const [prefix, payload, signature] = token.split(".");
   const original = JSON.parse(Buffer.from(payload, "base64url").toString());
   const fields = [
-    "providerRequestedSlippagePpm", "maximumUserSlippagePpm", "providerReportedMinBuyAmount", "encodedExecutableMinBuyAmount", "executableSettlerTarget", "executableSettlerRuntimeHash", "provider", "chainId", "inputAsset", "outputAsset", "inputAmountAtomic", "recipient",
+    "providerRequestedSlippagePpm", "maximumUserSlippagePpm", "providerReportedMinBuyAmount", "provider", "chainId", "inputAsset", "outputAsset", "inputAmountAtomic", "recipient",
     "expectedOutputAtomic", "protectedOutputAtomic", "indicativeProtectedOutputFloorAtomic",
     "router", "calldataHash", "transactionData", "transactionValueAtomic", "swapTransactionValueAtomic",
-    "gasLimitUnits", "gasPriceWei", "approvalSpender", "approvalRequired", "allowanceAtomic",
+    "gasLimitUnits", "gasPriceWei", "feeCeilingWei", "approvalSpender", "approvalRequired", "allowanceAtomic",
     "deadline", "expiresAtMs", "verifiedAtMs", "status", "nextAction", "exactSimulationPassed", "exactSimulationState",
+    "providerSimulationIncomplete",
     "providerNativeFee.feeAsset", "providerNativeFee.feeAmountAtomic", "providerNativeFee.feeBps",
     "providerNativeFee.treasury", "providerNativeFee.providerFeeAsset", "providerNativeFee.providerFeeAtomic",
-    "providerNativeFee.firmQuote.identity", "providerNativeFee.firmQuote.allowanceHolderRuntimeHash",
-    "providerNativeFee.firmQuote.targetRuntimeHash", "providerNativeFee.firmQuote.expiresAtMs",
+    "providerNativeFee.userGrossInputAtomic", "providerNativeFee.expectedOutputAtomic", "providerNativeFee.protectedOutputAtomic",
+    "providerNativeFee.recipient", "providerNativeFee.transactionTarget", "providerNativeFee.transactionCalldataHash",
+    "providerNativeFee.transactionValueAtomic", "providerNativeFee.authorizationState",
+    "providerNativeFee.firmQuote.zid", "providerNativeFee.firmQuote.observedAtMs", "providerNativeFee.firmQuote.expiresAtMs",
     "providerNativeFee.firmQuote.allowanceTarget", "providerNativeFee.firmQuote.swapGasLimitUnits",
-    "providerNativeFee.firmQuote.exactSimulationState"
+    "providerNativeFee.firmQuote.nextActionGasLimitUnits", "providerNativeFee.firmQuote.gasPriceWei",
+    "providerNativeFee.firmQuote.providerSimulationIncomplete", "providerNativeFee.firmQuote.exactSimulationState"
   ];
   for (const field of fields) {
     const claims = structuredClone(original);

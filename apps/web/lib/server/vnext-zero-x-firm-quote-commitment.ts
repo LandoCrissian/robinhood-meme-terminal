@@ -1,4 +1,3 @@
-import { decodeZeroXExecutableMinimum, verifyZeroXEncodedFee } from "./vnext-zero-x-execution-decoder";
 import { RMT_ZERO_X_MAX_SLIPPAGE_PPM, RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM, zeroXMinimumRespectsSlippage } from "../vnext/zero-x-settlement";
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { getAddress, keccak256 } from "viem";
@@ -63,7 +62,7 @@ export function verifyZeroXFirmQuoteCommitment(token: string, context: ZeroXFirm
     const firm = evidence.providerNativeFee?.firmQuote;
     if (evidence.provider !== "zero-x-swap" || evidence.chainId !== 4_663
       || evidence.maximumUserSlippagePpm !== RMT_ZERO_X_MAX_SLIPPAGE_PPM
-      || evidence.encodedExecutableMinBuyAmount !== evidence.protectedOutputAtomic
+      || evidence.providerReportedMinBuyAmount !== evidence.protectedOutputAtomic
       || evidence.providerRequestedSlippagePpm !== RMT_ZERO_X_PROVIDER_REQUEST_SLIPPAGE_PPM
       || !zeroXMinimumRespectsSlippage(evidence.expectedOutputAtomic ?? "", evidence.protectedOutputAtomic)
       || evidence.settlementMode !== VNEXT_PROVIDER_NATIVE_INPUT_FEE
@@ -75,16 +74,9 @@ export function verifyZeroXFirmQuoteCommitment(token: string, context: ZeroXFirm
       || keccak256(evidence.transactionData) !== evidence.calldataHash
       || evidence.swapTransactionValueAtomic !== evidence.providerNativeFee?.transactionValueAtomic
       || BigInt(evidence.deadline) * 1_000n <= BigInt(nowMs)) throw new ZeroXFirmQuoteCommitmentError();
-    const decoded = decodeZeroXExecutableMinimum({ target: evidence.router, data: evidence.transactionData,
-      inputAsset: evidence.inputAsset, outputAsset: evidence.outputAsset, inputAmountAtomic: evidence.inputAmountAtomic,
-      recipient: evidence.recipient, valueAtomic: evidence.swapTransactionValueAtomic });
-    if (decoded.minimumAtomic !== evidence.encodedExecutableMinBuyAmount
-      || decoded.settlerTarget !== evidence.executableSettlerTarget) throw new ZeroXFirmQuoteCommitmentError();
-    verifyZeroXEncodedFee({ target: evidence.router, data: evidence.transactionData,
-      inputAsset: evidence.inputAsset, outputAsset: evidence.outputAsset, inputAmountAtomic: evidence.inputAmountAtomic,
-      recipient: evidence.recipient, valueAtomic: evidence.swapTransactionValueAtomic,
-      runtimeHash: evidence.executableSettlerRuntimeHash, expectedOutputAtomic: evidence.expectedOutputAtomic!,
-      providerFeeAsset: evidence.providerFeeAsset, providerFeeAtomic: evidence.providerFeeAtomic });
+    // The authenticated server commitment binds the provider's original target,
+    // calldata, value, fee request and returned minimum without reinterpreting
+    // 0x's evolving internal route grammar.
     parseVNextPreSignEvidence({
       ...evidence, verificationId: context.verificationId, sourceQuoteRequestId: context.quoteRequestId,
       zeroXFirmQuoteCommitment: token

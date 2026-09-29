@@ -1,16 +1,10 @@
-import { after } from "next/server";
 import { requireVNextStockTokenExecutionEligible, stockTokenExecutionPolicyErrorResponse } from "../../../../lib/server/robinhood-stock-token-registry";
 import { randomUUID } from "node:crypto";
 import { getAddress, isAddress } from "viem";
 import { z } from "zod";
 import { quoteRobinhoodVNextExecution } from "../../../../lib/server/vnext-execution-engine";
 import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
-import { readVNextVerifiedAssetIdentity, vNextExecutionIdentityErrorResponse } from "../../../../lib/server/vnext-asset-identity";
 import type { VNextQuoteResponse } from "../../../../lib/vnext/quote-observation";
-import {
-  projectIdentityAdmissionErrorResponse,
-  requireProjectIdentityExecutionAdmitted
-} from "../../../../lib/server/project-identity-admission";
 import { vNextExecutionEligibilityErrorResponse } from "../../../../lib/server/vnext-execution-eligibility";
 import { isVNextWalletExecutionAdmitted } from "../../../../lib/vnext/provider-execution-capability";
 import { readVNextPublicExecutionProviderScope } from "../../../../lib/server/vnext-public-execution-provider-scope";
@@ -47,16 +41,6 @@ async function handleRequest(request: Request) {
       return Response.json({ error: "Input and output assets must differ." }, { status: 400, headers: { "Cache-Control": "no-store" } });
     }
     await requireAuthenticatedTradeWallet(request, recipient);
-    const [inputIdentity, outputIdentity] = await Promise.all([
-      readVNextVerifiedAssetIdentity(inputAsset, { scheduleRevalidation: after, required: true }),
-      readVNextVerifiedAssetIdentity(outputAsset, { scheduleRevalidation: after, required: true })
-    ]);
-    if (!inputIdentity || !outputIdentity) {
-      emitTradeJourney({ phase: "IDENTITY_UNAVAILABLE", quoteRequestAttempted: true, providerRequestAttempted: false });
-      return Response.json({ error: "Both quote assets require verified Robinhood Chain identity and decimals.", phase: "IDENTITY_UNAVAILABLE", providerRequestAttempted: false }, { status: 422, headers: { "Cache-Control": "no-store" } });
-    }
-    await requireProjectIdentityExecutionAdmitted([inputIdentity, outputIdentity].filter(identity => !identity.native).map(identity => ({ address: identity.address, verifiedIdentity: identity })), after);
-
     await requireVNextStockTokenExecutionEligible({ inputAsset, outputAsset });
     const requestedAtMs = Date.now();
     providerRequestAttempted = process.env.RMT_VNEXT_ZEROX_OBSERVATION_ENABLED === "true" && Boolean(process.env.RMT_ZEROX_API_KEY?.trim());
@@ -67,8 +51,6 @@ async function handleRequest(request: Request) {
       inputAmountAtomic: parsed.data.inputAmountAtomic,
       amountIn: BigInt(parsed.data.inputAmountAtomic),
       recipient,
-      inputIdentity,
-      outputIdentity,
       ...(parsed.data.canonicalMarket ? {
         canonicalMarket: {
           sourceId: parsed.data.canonicalMarket.sourceId,
@@ -102,14 +84,10 @@ async function handleRequest(request: Request) {
   } catch (cause) {
     const stockTokenResponse = stockTokenExecutionPolicyErrorResponse(cause);
     if (stockTokenResponse) return stockTokenResponse;
-    const assetIdentityResponse = vNextExecutionIdentityErrorResponse(cause, "quote");
-    if (assetIdentityResponse) return assetIdentityResponse;
     const identityResponse = tradeIdentityErrorResponse(cause);
     if (identityResponse) return identityResponse;
     const eligibilityResponse = vNextExecutionEligibilityErrorResponse(cause);
     if (eligibilityResponse) return eligibilityResponse;
-    const projectIdentityResponse = projectIdentityAdmissionErrorResponse(cause);
-    if (projectIdentityResponse) return projectIdentityResponse;
     emitTradeJourney({ phase: "QUOTE_SERVICE_UNAVAILABLE", quoteRequestAttempted: true, providerRequestAttempted });
     return Response.json({ error: "Unable to compare live VNext routes.", phase: "QUOTE_SERVICE_UNAVAILABLE", providerRequestAttempted }, { status: 422, headers: { "Cache-Control": "no-store" } });
   }

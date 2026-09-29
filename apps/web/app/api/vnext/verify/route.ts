@@ -1,19 +1,12 @@
 import { executionFailureResponse, structureTradeFailure } from "../../../../lib/vnext/trade-failure";
-import { after } from "next/server";
 import { createZeroXFirmQuoteCommitment } from "../../../../lib/server/vnext-zero-x-firm-quote-commitment";
-import { emitTradeJourney } from "../../../../lib/vnext/trade-journey";
 import { ZeroXRepriceRequiredError } from "../../../../lib/server/vnext-zero-x-firm-quote-verifier";
 import { randomBytes, randomUUID } from "node:crypto";
 import { getAddress, isAddress } from "viem";
 import { z } from "zod";
 import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
 import { stockTokenExecutionPolicyErrorResponse } from "../../../../lib/server/robinhood-stock-token-registry";
-import { readVNextVerifiedAssetIdentity, vNextExecutionIdentityErrorResponse } from "../../../../lib/server/vnext-asset-identity";
 import { verifyRobinhoodVNextExecution } from "../../../../lib/server/vnext-execution-engine";
-import {
-  projectIdentityAdmissionErrorResponse,
-  requireProjectIdentityExecutionAdmitted
-} from "../../../../lib/server/project-identity-admission";
 import { VNEXT_DIRECT_NO_RMT_FEE, VNEXT_PROVIDER_NATIVE_INPUT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE } from "../../../../lib/vnext/execution-settlement";
 import { vNextExecutionEligibilityErrorResponse } from "../../../../lib/server/vnext-execution-eligibility";
 import { selectVNextUniswapV3SettlementMode } from "../../../../lib/server/vnext-uniswap-quote";
@@ -76,8 +69,7 @@ const requestSchema = z.object({
 async function handleRequest(request: Request) {
   let quoteRequestId: string | undefined;
   let verificationOperation = "request_validation" as
-    | "request_validation" | "authentication" | "asset_identity"
-    | "project_identity" | "authorization_clock" | "firm_quote" | "commitment";
+    | "request_validation" | "authentication" | "authorization_clock" | "firm_quote" | "commitment";
   try {
     const parsed = requestSchema.safeParse(await request.json());
     if (!parsed.success) return Response.json({ error: "Invalid VNext verification request." }, { status: 400, headers: { "Cache-Control": "no-store" } });
@@ -92,17 +84,6 @@ async function handleRequest(request: Request) {
     const outputAsset = getAddress(parsed.data.outputAsset);
     verificationOperation = "authentication";
     const tradeAuthorization = await requireAuthenticatedTradeWallet(request, recipient);
-    verificationOperation = "asset_identity";
-    const [inputIdentity, outputIdentity] = await Promise.all([
-      readVNextVerifiedAssetIdentity(inputAsset, { scheduleRevalidation: after, required: true }),
-      readVNextVerifiedAssetIdentity(outputAsset, { scheduleRevalidation: after, required: true })
-    ]);
-    if (!inputIdentity || !outputIdentity) {
-      emitTradeJourney({ phase: "IDENTITY_UNAVAILABLE", providerRequestAttempted: false });
-      return Response.json({ error: "Both assets require verified Robinhood Chain identity before route verification.", phase: "IDENTITY_UNAVAILABLE" }, { status: 422, headers: { "Cache-Control": "no-store" } });
-    }
-    verificationOperation = "project_identity";
-    await requireProjectIdentityExecutionAdmitted([inputIdentity, outputIdentity].filter(identity => !identity.native).map(identity => ({ address: identity.address, verifiedIdentity: identity })), after);
     const executionId = `0x${randomBytes(32).toString("hex")}` as const;
     const settlementMode = parsed.data.provider === "uniswap-v3"
       ? selectVNextUniswapV3SettlementMode({ inputAsset, outputAsset, recipient })
@@ -115,7 +96,7 @@ async function handleRequest(request: Request) {
     const verificationId = randomUUID();
     const verificationWallClockMs = Date.now();
     verificationOperation = "authorization_clock";
-    const finalDeadlineSeconds = settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE || settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE
+    const finalDeadlineSeconds = settlementMode === VNEXT_V2_ATOMIC_INPUT_FEE
       ? await readVNextAuthorizationChainTimestamp().then((timestamp) => timestamp + VNEXT_AUTHORIZATION_WINDOW_SECONDS)
       : undefined;
     verificationOperation = "firm_quote";
@@ -129,7 +110,8 @@ async function handleRequest(request: Request) {
       indicativeProtectedOutputFloorAtomic: BigInt(parsed.data.protectedOutputFloorAtomic),
       settlementMode,
       ...(settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE ? {} : { executionId }),
-      ...(finalDeadlineSeconds ? { deadlineSeconds: finalDeadlineSeconds, nowMs: verificationWallClockMs } : {}),
+      ...(finalDeadlineSeconds ? { deadlineSeconds: finalDeadlineSeconds } : {}),
+      nowMs: verificationWallClockMs,
       ...(parsed.data.canonicalMarket ? { canonicalMarket: parsed.data.canonicalMarket as { sourceId: "uniswap-v4"; poolId: `0x${string}` } } : {}),
       ...(parsed.data.v4QuoteEvidence ? { v4QuoteEvidence: parsed.data.v4QuoteEvidence as typeof parsed.data.v4QuoteEvidence & { poolId: `0x${string}`; observedBlockHash: `0x${string}` } } : {})
     });
@@ -171,14 +153,10 @@ async function handleRequest(request: Request) {
     }
     const publicProviderResponse = vNextPublicExecutionProviderScopeErrorResponse(cause);
     if (publicProviderResponse) return publicProviderResponse;
-    const assetIdentityResponse = vNextExecutionIdentityErrorResponse(cause, "verification");
-    if (assetIdentityResponse) return assetIdentityResponse;
     const identityResponse = tradeIdentityErrorResponse(cause);
     if (identityResponse) return identityResponse;
     const eligibilityResponse = vNextExecutionEligibilityErrorResponse(cause);
     if (eligibilityResponse) return eligibilityResponse;
-    const projectIdentityResponse = projectIdentityAdmissionErrorResponse(cause);
-    if (projectIdentityResponse) return projectIdentityResponse;
     const stockTokenResponse = stockTokenExecutionPolicyErrorResponse(cause);
     if (stockTokenResponse) return stockTokenResponse;
     if (cause instanceof VNextV2VerificationCommitmentConfigurationError) {
@@ -186,7 +164,7 @@ async function handleRequest(request: Request) {
     }
     const message = cause instanceof Error && /No canonical Uniswap|No up-|No complete 0x|0x |runtime bytecode is not approved|transaction target has no contract code|dependencies changed|strict verification is not available|V2 wallet authorization is disabled|V2 authorization is enabled without a complete executor policy|RMT_EXECUTION_V2 policy is not effective until block|moved below the indicative protected-output floor|quote block was reorganized|rejected Uniswap V4 execution/.test(cause.message)
       ? cause.message
-      : "Unable to produce strict pre-sign evidence.";
+      : "Unable to validate the provider transaction for wallet review.";
     console.info(JSON.stringify({
       event: "rmt_pre_sign_failure",
       verificationOperation,

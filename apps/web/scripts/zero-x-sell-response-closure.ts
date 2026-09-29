@@ -92,12 +92,12 @@ async function runCase(template: Row, identity: VNextUniversalMarketSearchResult
     const firm = await verifyZeroXSwapFirmQuote({ ...request, indicativeProtectedOutputFloorAtomic: BigInt(attempt.protectedOutputAtomic!),
       settlementMode: VNEXT_PROVIDER_NATIVE_INPUT_FEE, nowMs, deadlineSeconds: BigInt(Math.floor(nowMs / 1000) + 120) });
     Object.assign(row, { zeroXQuoteStatus: "FIRM_RETURNED", expectedOutput: firm.expectedOutputAtomic,
-      providerReportedMinimum: firm.providerReportedMinBuyAmount, protectedOutput: firm.encodedExecutableMinBuyAmount,
-      executableBound: BigInt(firm.encodedExecutableMinBuyAmount) * 1000000n >= BigInt(firm.expectedOutputAtomic!) * 990000n,
+      providerReportedMinimum: firm.providerReportedMinBuyAmount, protectedOutput: firm.providerReportedMinBuyAmount,
+      executableBound: BigInt(firm.providerReportedMinBuyAmount) * 1000000n >= BigInt(firm.expectedOutputAtomic!) * 990000n,
       allowanceTarget: firm.providerNativeFee?.firmQuote?.allowanceTarget ?? null, transactionTarget: firm.router,
       transactionValue: firm.swapTransactionValueAtomic, calldataHash: firm.calldataHash,
-      settlerTarget: firm.executableSettlerTarget, settlerRuntimeHash: firm.executableSettlerRuntimeHash,
-      targetRuntimeHash: firm.routerRuntimeHash, firmStatus: firm.status,
+      settlerTarget: null, settlerRuntimeHash: null,
+      targetRuntimeHash: null, firmStatus: firm.status,
       readOnlySimulationStatus: firm.exactSimulationPassed ? "PASS" : `NOT_RUN_${firm.status.toUpperCase()}`,
       fundedSimulation: await simulateFundedZeroXEnvelope(firm) });
   } catch { row.zeroXQuoteStatus = "FIRM_REJECTED"; row.firmErrorClassification = "FIRM_VERIFICATION_REJECTED"; }

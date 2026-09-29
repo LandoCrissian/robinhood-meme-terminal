@@ -203,7 +203,11 @@ export function assertVNextQuoteAttempt(
     const expectedOutput = attempt.expectedOutputAtomic ? atomic(attempt.expectedOutputAtomic) : null;
     const protectedOutput = attempt.protectedOutputAtomic ? atomic(attempt.protectedOutputAtomic) : null;
     if (!expectedOutput || !protectedOutput || expectedOutput <= 0n || protectedOutput <= 0n || protectedOutput > expectedOutput) throw new Error("Quote attempt output is invalid.");
-    if (!Number.isSafeInteger(attempt.outputDecimals) || attempt.outputDecimals! < 0 || attempt.outputDecimals! > 255) throw new Error("Quote attempt output decimals are invalid.");
+    if (attempt.outputDecimals === null) {
+      if (attempt.provider !== "zero-x-swap") throw new Error("Quote attempt output decimals are unavailable.");
+    } else if (!Number.isSafeInteger(attempt.outputDecimals) || attempt.outputDecimals < 0 || attempt.outputDecimals > 255) {
+      throw new Error("Quote attempt output decimals are invalid.");
+    }
     if (!Number.isSafeInteger(attempt.quotedAtMs) || !Number.isSafeInteger(attempt.expiresAtMs) || attempt.quotedAtMs! > nowMs + MAX_CLOCK_SKEW_MS || attempt.expiresAtMs! <= nowMs) throw new Error("Quote attempt is stale or from the future.");
     if (attempt.priceImpact !== null && (!Number.isFinite(attempt.priceImpact) || attempt.priceImpact < 0 || attempt.priceImpact > 1)) throw new Error("Quote attempt price impact is invalid.");
     for (const evidence of attempt.liquidityFeeEvidence) {

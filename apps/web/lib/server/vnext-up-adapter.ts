@@ -62,7 +62,7 @@ export function createVNextUpAdapters(dependencies: UpQuoteDependencies = liveDe
             inputAmountAtomic: request.inputAmountAtomic,
             expectedOutputAtomic: result.amountOut.toString(),
             protectedOutputAtomic: result.protectedAmountOut.toString(),
-            outputDecimals: request.outputIdentity.decimals,
+            outputDecimals: request.outputIdentity!.decimals,
             priceImpact: null,
             liquidityFeeEvidence: feeEvidence(provider, result),
             quotedAtMs,

@@ -19,7 +19,8 @@ export const vNextSushiAdapter: VNextQuoteProviderAdapter = {
         amountIn: request.amountIn
       }, { chainId: request.chainId, requireTokenMetadata: true });
       if (
-        quote.inputToken?.decimals !== request.inputIdentity.decimals
+        !request.inputIdentity || !request.outputIdentity
+        || quote.inputToken?.decimals !== request.inputIdentity.decimals
         || quote.outputToken?.decimals !== request.outputIdentity.decimals
         || quote.inputToken.symbol !== request.inputIdentity.symbol
         || quote.outputToken.symbol !== request.outputIdentity.symbol
@@ -37,7 +38,7 @@ export const vNextSushiAdapter: VNextQuoteProviderAdapter = {
         inputAmountAtomic: quote.amountIn,
         expectedOutputAtomic: quote.quoteOut,
         protectedOutputAtomic: quote.minimumOut,
-        outputDecimals: request.outputIdentity.decimals,
+        outputDecimals: request.outputIdentity!.decimals,
         priceImpact: quote.priceImpact,
         liquidityFeeEvidence: [],
         quotedAtMs,

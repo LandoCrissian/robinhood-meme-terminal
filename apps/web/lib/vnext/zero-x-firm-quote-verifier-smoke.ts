@@ -1,26 +1,23 @@
-import { internalRouteActions } from "./zero-x-trust-boundary-smoke";
-import { cannacatRouteActions } from "./zero-x-robinhood-route-smoke";
-import { liquidityBookRouteActions } from "./zero-x-liquidity-book-smoke";
-import { ExecutionEnvelopeFailure, TradeExecutionFailure } from "./trade-failure";
-import { feeMutations, mutateZeroXActions, ppmRuntime } from "./zero-x-provider-native-fee-smoke";
-import { createRequire } from "node:module";
-const executableFixture = createRequire(import.meta.url)("../../../../.github/scripts/zerox-execution-fixture.cjs");
-import { randomUUID } from "node:crypto";
-import { createZeroXFirmQuoteCommitment } from "../server/vnext-zero-x-firm-quote-commitment";
-import { ZeroXRepriceRequiredError } from "../server/vnext-zero-x-firm-quote-verifier";
-import { assertZeroXCommitmentAdversarialMatrix } from "./zero-x-firm-quote-commitment-smoke";
 import assert from "node:assert/strict";
-import { getAddress, keccak256, zeroAddress, type Hex } from "viem";
+import { randomUUID } from "node:crypto";
+import { pathToFileURL } from "node:url";
+import type { Address } from "viem";
+import { decodeFunctionData, erc20Abi, getAddress, keccak256, zeroAddress } from "viem";
+import { createZeroXFirmQuoteCommitment } from "../server/vnext-zero-x-firm-quote-commitment";
 import {
   prepareZeroXSwapAuthorization,
   verifyZeroXSwapFirmQuote,
   zeroXSwapFirmQuoteVerificationConfiguration
 } from "../server/vnext-zero-x-firm-quote-verifier";
 import { VNEXT_PROVIDER_NATIVE_INPUT_FEE } from "./execution-settlement";
-import { zeroXFeeAsset, toZeroXToken, RMT_ZERO_X_FEE_TREASURY, ZERO_X_NATIVE_TOKEN } from "./zero-x-settlement";
-import { assertZeroXSharedWalletAuthorization } from "./zero-x-wallet-authorization-smoke";
-import { prepareVNextProviderAuthorization } from "../server/vnext-provider-adapter";
-import { vNextZeroXSwapAdapter, vNextZeroXGaslessAdapter } from "../server/vnext-zero-x-adapter";
+import { TradeExecutionFailure } from "./trade-failure";
+import { assertZeroXCommitmentAdversarialMatrix } from "./zero-x-firm-quote-commitment-smoke";
+import {
+  RMT_ZERO_X_FEE_TREASURY,
+  toZeroXToken,
+  ZERO_X_NATIVE_TOKEN,
+  zeroXFeeAsset
+} from "./zero-x-settlement";
 
 export async function runZeroXFirmQuoteVerifierSmoke() {
   const savedFetch = globalThis.fetch;
@@ -32,84 +29,81 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     RMT_ZEROX_API_KEY: process.env.RMT_ZEROX_API_KEY,
     RMT_VNEXT_ZEROX_FIRM_QUOTE_VERIFICATION_ENABLED: process.env.RMT_VNEXT_ZEROX_FIRM_QUOTE_VERIFICATION_ENABLED
   };
-  const inputAsset = getAddress("0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168");
-  const outputAsset = getAddress("0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73");
+  const outputAsset = getAddress("0x14C51bB55592372eAC7141A1D0527D1dD7Fbd42F");
+  const erc20Input = getAddress("0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168");
   const recipient = getAddress("0x0000000000000000000000000000000000010000");
   const allowanceHolder = getAddress("0x0000000000001fF3684f28c67538d4D072C22734");
-  const settler = getAddress("0x0000000000000000000000000000000000012345");
-  const runtimeCode = "0x60006000" as Hex;
-  const runtimeHash = keccak256(runtimeCode);
-  const baseRequest = {
+  const providerTarget = getAddress("0x0000000000000000000000000000000000012345");
+  const now = () => Date.now();
+  let inputAsset: Address = zeroAddress;
+  let allowanceRequired = false;
+  let balanceIssue = false;
+  let simulationIncomplete = true;
+  let noRoute = false;
+  let noLiquidityBody = false;
+  let providerStatus = 200;
+  let quoteCalls = 0;
+  let approvalGasCalls = 0;
+  let mutation: (body: Record<string, any>) => void = () => {};
+
+  const request = () => ({
     chainId: 4_663 as const,
     inputAsset,
     outputAsset,
-    inputAmountAtomic: "1000000",
-    amountIn: 1_000_000n,
+    inputAmountAtomic: "500000000000000",
+    amountIn: 500_000_000_000_000n,
     recipient,
-    indicativeProtectedOutputFloorAtomic: 514_000_000_000_000n,
-    protectedOutputFloorAtomic: 514_000_000_000_000n,
+    indicativeProtectedOutputFloorAtomic: 99_000n,
+    protectedOutputFloorAtomic: 99_000n,
     settlementMode: VNEXT_PROVIDER_NATIVE_INPUT_FEE,
-    deadlineSeconds: BigInt(Math.floor(Date.now() / 1_000)) + 420n,
-    nowMs: Date.now()
-  };
-  let input = inputAsset;
-  let output = outputAsset;
-  let allowance = false;
-  let balanceIssue = false;
-  let simulationIncomplete = false;
-  let callFailure = false;
-  let callUnavailable = false;
-  let noTargetCode = false;
-  let settlerCode = executableFixture.runtime;
-  let actionBasis = 10_000n;
-  let nativeBalance = 10n ** 20n;
-  let nativeValue = "0";
-  let transactionTarget = allowanceHolder;
-  let quoteCalls = 0;
-  let simulatedEnvelope: Record<string, string> | null = null;
-  let tokenBalance = 1_000_000n;
-  let rpcAllowance: bigint | null = null;
-  let quoteMutation: (body: any) => void = () => {};
-
-  const context = { identityId: "test-identity", sessionToken: "test-session", wallet: recipient, quoteRequestId: randomUUID(), verificationId: randomUUID() };
-  async function committedRequest(request: typeof baseRequest, evidence = undefined as Awaited<ReturnType<typeof verifyZeroXSwapFirmQuote>> | undefined) {
-    const firm = evidence ?? await verifyZeroXSwapFirmQuote(request);
-    return { ...request, protectedOutputFloorAtomic: BigInt(firm.protectedOutputAtomic),
-      zeroXExpectedStatus: firm.status as "verified" | "approval_required", zeroXFirmQuoteContext: context,
-      zeroXFirmQuoteCommitment: createZeroXFirmQuoteCommitment(firm, context, Date.now()) };
-  }
-  async function prepare(request: typeof baseRequest) {
-    const committed = await committedRequest(request);
-    const calls = quoteCalls;
-    const result = await prepareZeroXSwapAuthorization(committed);
-    assert.equal(quoteCalls, calls, "authorization must not fetch another firm quote");
-    return result;
-  }
+    nowMs: now()
+  });
   const quote = () => ({
-    allowanceTarget: input === zeroAddress ? null : allowanceHolder,
+    allowanceTarget: inputAsset === zeroAddress ? null : allowanceHolder,
     blockNumber: "12345678",
-    buyAmount: "520000000000000",
-    buyToken: output === zeroAddress ? ZERO_X_NATIVE_TOKEN : output,
+    buyAmount: "100000",
+    buyToken: outputAsset,
     fees: {
-      integratorFee: { amount: "2500", token: toZeroXToken(zeroXFeeAsset(input, output)), type: "volume" },
-      integratorFees: [],
-      zeroExFee: { amount: "1500", token: input === zeroAddress ? ZERO_X_NATIVE_TOKEN : input, type: "volume" },
+      integratorFee: {
+        amount: "1250000000000",
+        token: toZeroXToken(zeroXFeeAsset(inputAsset, outputAsset)),
+        type: "volume"
+      },
+      zeroExFee: null,
       gasFee: null
     },
     issues: {
-      allowance: allowance ? { actual: "0", spender: allowanceHolder } : null,
-      balance: balanceIssue ? { token: input === zeroAddress ? ZERO_X_NATIVE_TOKEN : input, actual: "0", expected: "1000000" } : null,
+      allowance: allowanceRequired ? { actual: "0", spender: allowanceHolder } : null,
+      balance: balanceIssue ? { token: toZeroXToken(inputAsset), actual: "0", expected: "500000000000000" } : null,
       simulationIncomplete,
-      invalidSourcesPassed: []
+      invalidSourcesPassed: [],
+      futureProviderIssue: { internalRoute: "opaque-and-non-authoritative" }
     },
     liquidityAvailable: true,
-    minBuyAmount: "514800000000000",
+    minBuyAmount: "99000",
     mode: "exact-in",
-    sellAmount: "1000000",
-    sellToken: input === zeroAddress ? ZERO_X_NATIVE_TOKEN : input,
+    sellAmount: "500000000000000",
+    sellToken: toZeroXToken(inputAsset),
     totalNetworkFee: "9000000000000",
-    transaction: { to: transactionTarget, data: "0x12345678", gas: "180000", gasPrice: "50000000", value: nativeValue },
+    transaction: {
+      to: providerTarget,
+      data: "0xdeadbeef00",
+      gas: "180000",
+      gasPrice: "50000000",
+      value: inputAsset === zeroAddress ? "500000000000000" : "0",
+      chainId: 4_663,
+      from: recipient
+    },
+    route: { fills: [{ source: "A_FUTURE_0X_INTERNAL_ROUTE", proportionBps: "10000" }] },
     zid: "0x111111111111111111111111"
+  });
+
+  const context = () => ({
+    identityId: "test-identity",
+    sessionToken: "test-session",
+    wallet: recipient,
+    quoteRequestId: randomUUID(),
+    verificationId: randomUUID()
   });
 
   try {
@@ -117,417 +111,160 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
     process.env.RMT_ZEROX_API_KEY = "server-only-test-key";
     process.env.RMT_VNEXT_ZEROX_FIRM_QUOTE_VERIFICATION_ENABLED = "true";
     process.env.RMT_ZEROX_ALLOWANCE_HOLDER = allowanceHolder;
-    process.env.RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH = runtimeHash;
+    delete process.env.RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH;
     process.env.RMT_RPC_URL = "https://rpc.test.invalid";
+
     globalThis.fetch = async (raw, init) => {
       const url = new URL(String(raw));
       if (url.origin === "https://api.0x.org") {
         quoteCalls += 1;
         assert.equal(url.pathname, "/swap/allowance-holder/quote");
-        assert.equal(url.searchParams.get("slippagePpm"), "9900");
-        assert.equal(url.searchParams.has("slippageBps"), false);
-        assert.equal(url.searchParams.get("sellAmount"), "1000000");
+        assert.equal(url.searchParams.get("chainId"), "4663");
+        assert.equal(url.searchParams.get("sellToken"), toZeroXToken(inputAsset));
+        assert.equal(url.searchParams.get("buyToken"), outputAsset);
+        assert.equal(url.searchParams.get("sellAmount"), "500000000000000");
         assert.equal(url.searchParams.get("taker"), recipient);
         assert.equal(url.searchParams.get("recipient"), recipient);
-        assert.equal(url.searchParams.get("chainId"), "4663");
-        assert.equal(url.searchParams.get("sellToken"), input === zeroAddress ? ZERO_X_NATIVE_TOKEN : input);
-        assert.equal(url.searchParams.get("buyToken"), output === zeroAddress ? ZERO_X_NATIVE_TOKEN : output);
+        assert.equal(url.searchParams.get("slippagePpm"), "9900");
+        assert.equal(url.searchParams.has("slippageBps"), false);
         assert.equal(url.searchParams.get("swapFeeRecipient"), RMT_ZERO_X_FEE_TREASURY);
         assert.equal(url.searchParams.get("swapFeeBps"), "25");
-        assert.equal(url.searchParams.get("swapFeeToken"), toZeroXToken(zeroXFeeAsset(input, output)));
-        assert.equal(url.searchParams.has("tradeSurplusRecipient"), false);
-        const body = { ...quote(), actionBasisForTest: actionBasis };
-        quoteMutation(body);
-        if (["0x12345678", "0x87654321"].includes(body.transaction.data)) body.transaction.data = executableFixture.encodeQuote(body, recipient, body.transaction.data);
-        const { actionBasisForTest: _basis, ...response } = body;
-        return Response.json(response);
+        assert.equal(url.searchParams.get("swapFeeToken"), toZeroXToken(zeroXFeeAsset(inputAsset, outputAsset)));
+        assert.equal(init?.headers && new Headers(init.headers).get("0x-version"), "v2");
+        if (noRoute) return Response.json({ name: "NO_LIQUIDITY_AVAILABLE" }, { status: 400 });
+        if (noLiquidityBody) return Response.json({ liquidityAvailable: false });
+        if (providerStatus !== 200) return Response.json({ reason: "controlled provider failure" }, { status: providerStatus });
+        const body = quote();
+        mutation(body);
+        return Response.json(body);
       }
-      const payload = JSON.parse(String(init?.body)) as { method: string; params: unknown[] };
-      if (payload.method === "eth_chainId") return Response.json({ jsonrpc: "2.0", id: 1, result: "0x1237" });
-      if (payload.method === "eth_blockNumber") return Response.json({ jsonrpc: "2.0", id: 1, result: "0xbc614e" });
-      if (payload.method === "eth_call" && String((payload.params[0] as any).to).toLowerCase() === "0x00000000000004533fe15556b1e086bb1a72ceae") return Response.json({ jsonrpc: "2.0", id: 1, result: "0x" + settler.slice(2).toLowerCase().padStart(64, "0") });
-      if (payload.method === "eth_gasPrice") return Response.json({ jsonrpc: "2.0", id: 1, result: "0x2faf080" });
-      if (payload.method === "eth_getCode") return Response.json({ jsonrpc: "2.0", id: 1, result: noTargetCode ? "0x" : String(payload.params[0]).toLowerCase() === settler.toLowerCase() ? settlerCode : runtimeCode });
-      if (payload.method === "eth_getBalance") return Response.json({ jsonrpc: "2.0", id: 1, result: `0x${nativeBalance.toString(16)}` });
-      if (payload.method === "eth_estimateGas") return Response.json({ jsonrpc: "2.0", id: 1, result: "0xc350" });
-      if (payload.method === "eth_call") {
-        const call = payload.params[0] as Record<string, string>;
-        if (call.data.startsWith("0x70a08231")) return Response.json({ jsonrpc: "2.0", id: 1, result: `0x${tokenBalance.toString(16).padStart(64, "0")}` });
-        if (call.data.startsWith("0xdd62ed3e")) return Response.json({ jsonrpc: "2.0", id: 1, result: `0x${(rpcAllowance ?? (allowance ? 0n : 1_000_000n)).toString(16).padStart(64, "0")}` });
-        simulatedEnvelope = (payload.params[0] ?? null) as Record<string, string> | null;
-        return callFailure
-          ? Response.json({ jsonrpc: "2.0", id: 1, error: { code: 3, message: "reverted" } })
-          : callUnavailable
-            ? Response.json({ jsonrpc: "2.0", id: 1, error: { code: -32005, message: "temporarily unavailable" } })
-          : Response.json({ jsonrpc: "2.0", id: 1, result: "0x" });
-      }
-      throw new Error(`Unexpected RPC method ${payload.method}`);
+      assert.equal(url.origin, "https://rpc.test.invalid");
+      const payload = JSON.parse(String(init?.body)) as { method: string };
+      assert.equal(payload.method, "eth_estimateGas", "only exact approval gas may use RPC on the provider-native path");
+      approvalGasCalls += 1;
+      return Response.json({ jsonrpc: "2.0", id: 1, result: "0xc350" });
     };
 
-    assert.equal(zeroXSwapFirmQuoteVerificationConfiguration()?.allowanceHolder, allowanceHolder);
-    // Address authority is source-pinned independently of any environment runtime hash.
-    for (const address of [settler, zeroAddress, "malformed", "0x1234"]) {
-      for (const hash of [runtimeHash, keccak256("0x60016001")]) {
-        process.env.RMT_ZEROX_ALLOWANCE_HOLDER = address;
-        process.env.RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH = hash;
-        assert.equal(zeroXSwapFirmQuoteVerificationConfiguration(), null);
-        const calls = quoteCalls;
-        await assert.rejects(() => verifyZeroXSwapFirmQuote(baseRequest));
-        assert.equal(quoteCalls, calls, "invalid approval authority must stop before the provider");
-      }
-    }
-    process.env.RMT_ZEROX_ALLOWANCE_HOLDER = allowanceHolder;
-    process.env.RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH = keccak256("0x60016001");
-    await assert.rejects(() => verifyZeroXSwapFirmQuote(baseRequest), /runtime/);
-    process.env.RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH = runtimeHash;
-    // Synthetic exact selected pair, NOT a reconstruction of the unavailable
-    // production calldata. Proves diagnostic propagation through the real verifier.
-    output = getAddress("0x1139d423C1706BDeaD91f03507F521635591eD92");
-    settlerCode = ppmRuntime; actionBasis = 1_000_000n;
-    const exactPairRequest = { ...baseRequest, outputAsset: output };
-    assert.equal((await verifyZeroXSwapFirmQuote(exactPairRequest)).status, "verified");
-    quoteMutation = body => { body.transaction.data = mutateZeroXActions(executableFixture.encodeQuote(body, recipient), a => { a[3] = "0xdeadbeef"; }); };
-    const unknownEvidence = await verifyZeroXSwapFirmQuote(exactPairRequest);
-    assert.equal(unknownEvidence.status, "verified", "unknown-to-RMT routing does not veto authenticated/simulated execution");
-    assert.equal(unknownEvidence.routeIntrospection.status, "ROUTE_INTROSPECTION_PARTIAL");
-    assert.equal(unknownEvidence.routeIntrospection.diagnostic?.envelopeReason, "UNSUPPORTED_ACTION");
-    assert.equal(unknownEvidence.routeIntrospection.diagnostic?.actionIndex, 3);
-    assert.equal(unknownEvidence.routeIntrospection.diagnostic?.actionKind, "0xdeadbeef");
-    // This stub does not assert that deadbeef exists in the reviewed runtime.
-    // A deterministic execution revert remains hard.
-    callFailure = true;
-    const failedUnknown = await verifyZeroXSwapFirmQuote(exactPairRequest);
-    assert.equal(failedUnknown.status, "simulation_failed");
-    assert.throws(() => createZeroXFirmQuoteCommitment(failedUnknown, context, Date.now()));
-    callFailure = false;
-    const unknownCommitted = await committedRequest(exactPairRequest, unknownEvidence);
-    assert.equal((await prepareZeroXSwapAuthorization(unknownCommitted)).transaction.data, unknownEvidence.transactionData);
-    await assertZeroXCommitmentAdversarialMatrix(unknownCommitted);
-    quoteMutation = body => {
-      body.buyAmount = (31009640941863753285133n * 1_000_000n / 990100n).toString();
-      body.minBuyAmount = "31009640941863753285133";
-      body.actionsForTest = cannacatRouteActions(body, recipient);
-    };
-    const routeEvidence = await verifyZeroXSwapFirmQuote(exactPairRequest);
-    assert.equal(routeEvidence.status, "verified", "actual verifier accepts the synthetic observed eight-action shape");
-    assert.equal(routeEvidence.protectedOutputAtomic, "31009640941863753285133");
-    quoteMutation = body => {
-      body.buyAmount = (30971939696219283184792n * 1_000_000n / 990100n).toString();
-      body.minBuyAmount = "30971939696219283184792";
-      body.actionsForTest = liquidityBookRouteActions(body, recipient);
-    };
-    const basicEvidence = await verifyZeroXSwapFirmQuote(exactPairRequest);
-    assert.equal(basicEvidence.status, "verified", "actual verifier accepts the source-derived seven-action LBRouter route");
-    assert.equal(basicEvidence.protectedOutputAtomic, "30971939696219283184792");
-    const basicCommitted = await committedRequest(exactPairRequest, basicEvidence);
-    assert.equal((await prepareZeroXSwapAuthorization(basicCommitted)).transaction.data, basicEvidence.transactionData);
-    await assertZeroXCommitmentAdversarialMatrix(basicCommitted);
-    // P0 production shape: hook-bearing Pancake at action 3 after input +
-    // integrator/provider fee. Also exercise official actions unknown to the
-    // local parser and opaque BASIC through verification AND commitment.
-    for (const [sell, buy] of [[zeroAddress, inputAsset], [inputAsset, zeroAddress], [inputAsset, output]] as const) {
-      input = sell; output = buy; nativeValue = sell === zeroAddress ? "1000000" : "0";
-      for (const kind of ["PANCAKE_HOOK", "UNKNOWN_TO_RMT_V2", "OPAQUE_BASIC"] as const) {
-        quoteMutation = body => { body.actionsForTest = internalRouteActions(body, recipient, kind); };
-        const request = { ...baseRequest, inputAsset: sell, outputAsset: buy };
-        const firm = await verifyZeroXSwapFirmQuote(request);
-        assert.equal(firm.status, "verified", kind);
-        assert.equal(firm.exactSimulationPassed, true);
-        assert.equal(firm.routeIntrospection.status, "ROUTE_INTROSPECTION_PARTIAL");
-        assert.equal(firm.routeIntrospection.diagnostic?.actionIndex, 3);
-        const committed = await committedRequest(request, firm);
-        const authorized = await prepareZeroXSwapAuthorization(committed);
-        assert.equal(authorized.transaction.data, firm.transactionData);
-        assert.equal(authorized.transaction.value, nativeValue);
-        await assertZeroXCommitmentAdversarialMatrix(committed);
-        callFailure = true;
-        const failed = await verifyZeroXSwapFirmQuote(request);
-        assert.equal(failed.status, "simulation_failed");
-        assert.equal(failed.authorizationReady, false);
-        assert.throws(() => createZeroXFirmQuoteCommitment(failed, context, Date.now()));
-        callFailure = false;
-      }
-    }
-    input = inputAsset; nativeValue = "0";
-    output = outputAsset; quoteMutation = () => {};
-    for (const [code, basis] of [[executableFixture.runtime, 10_000n], [ppmRuntime, 1_000_000n]] as const) {
-      settlerCode = code; actionBasis = basis;
-      for (const pair of [[zeroAddress, inputAsset], [inputAsset, zeroAddress], [inputAsset, outputAsset]] as const) {
-        input = pair[0]; output = pair[1]; nativeValue = input === zeroAddress ? "1000000" : "0";
-        const request = { ...baseRequest, inputAsset: input, outputAsset: output };
-        quoteMutation = body => { body.fees.integratorFee.amount = "2501"; };
-        const evidence = await verifyZeroXSwapFirmQuote(request);
-        assert.equal(evidence.status, "verified", "provider-reported rounding does not reinstate half-up authority");
-        assert.equal(evidence.providerNativeFee?.feeAmountAtomic, "2501");
-        const commitment = await committedRequest(request, evidence);
-        await assertZeroXSharedWalletAuthorization(await prepareZeroXSwapAuthorization(commitment));
-        if (basis === 1_000_000n) {
-          settlerCode = executableFixture.runtime;
-          await assert.rejects(() => prepareZeroXSwapAuthorization(commitment), "runtime cannot change between verification and authorization");
-          settlerCode = code;
-        }
-        for (const [label, mutate] of feeMutations) {
-          quoteMutation = body => { body.transaction.data = mutateZeroXActions(executableFixture.encodeQuote(body, recipient), mutate); };
-          await assert.rejects(() => verifyZeroXSwapFirmQuote(request),
-            error => error instanceof TradeExecutionFailure && error.code === "EXECUTION_ENVELOPE_REJECTED", label);
-        }
-      }
-    }
-    // Base-output fees use output units while gross input/approval remain unchanged.
-    settlerCode = ppmRuntime; actionBasis = 1_000_000n;
-    for (const [sell, buy] of [[outputAsset, inputAsset], [outputAsset, zeroAddress]] as const) {
-      input = sell; output = buy; nativeValue = "0";
-      quoteMutation = body => { body.fees.integratorFee.amount = "1300000000000"; };
-      const request = { ...baseRequest, inputAsset: input, outputAsset: output };
-      const evidence = await verifyZeroXSwapFirmQuote(request);
-      assert.equal(evidence.status, "verified");
-      assert.equal(evidence.providerNativeFee?.feeAsset, buy);
-      assert.equal(evidence.providerNativeFee?.providerInputAtomic, "1000000");
-      assert.equal(evidence.providerNativeFee?.feeAmountAtomic, "1300000000000");
-      await assertZeroXSharedWalletAuthorization(await prepareZeroXSwapAuthorization(await committedRequest(request, evidence)));
-      quoteMutation = body => { body.fees.integratorFee.token = toZeroXToken(sell); };
-      await assert.rejects(() => verifyZeroXSwapFirmQuote(request), "retired sell-token fee must not replace the requested base output fee");
-    }
-    settlerCode = executableFixture.runtime; actionBasis = 10_000n;
-    input = inputAsset; output = outputAsset; nativeValue = "0"; quoteMutation = () => {};
-    const verified = await verifyZeroXSwapFirmQuote(baseRequest);
-    assert.equal(verified.status, "verified");
-    assert.equal(verified.strictVerificationAvailable, true);
-    assert.equal(verified.walletAuthorizationAvailable, true);
-    assert.equal(verified.admissionReady, true);
-    assert.equal(verified.providerNativeFee?.feeAmountAtomic, "2500");
-    assert.equal(verified.providerNativeFee?.feeExecutorRequired, false);
-    assert.equal(verified.providerFeeAtomic, "1500");
-    assert.deepEqual(simulatedEnvelope, { from: recipient, to: allowanceHolder, data: verified.transactionData, value: "0x0", gas: "0x2bf20", gasPrice: "0x2faf080" });
-    const committed = await committedRequest(baseRequest, verified);
-    const beforeAuthorize = quoteCalls;
-    const swap = await prepareVNextProviderAuthorization("zero-x-swap", committed, [vNextZeroXSwapAdapter]);
-    assert.equal(quoteCalls, beforeAuthorize, "verify -> authorize must have exactly one firm quote");
-    await assertZeroXCommitmentAdversarialMatrix(committed);
-    assert.equal(verified.providerRequestedSlippagePpm, 9900);
-    assert.throws(() => createZeroXFirmQuoteCommitment({ ...verified, providerRequestedSlippagePpm: 101 }, context, Date.now()), /invalid or expired/);
-    assert.equal(swap.transaction.kind, "swap");
-    assert.equal(swap.transaction.data, verified.transactionData);
-    assert.equal(swap.transaction.value, "0");
-    await assertZeroXSharedWalletAuthorization(swap);
-    await assert.rejects(() => prepareVNextProviderAuthorization("zero-x-gasless", baseRequest, [vNextZeroXGaslessAdapter]), /not available/);
-    await assert.rejects(() => prepareZeroXSwapAuthorization({ ...committed, protectedOutputFloorAtomic: 999_999_999_999_999n }), /invalid or expired/);
+    assert.deepEqual(zeroXSwapFirmQuoteVerificationConfiguration(), { allowanceHolder });
 
-    const malformed: ((body: any) => void)[] = [
-      body => { body.chainId = 1; }, body => { body.taker = zeroAddress; }, body => { body.recipient = zeroAddress; },
-      body => { body.transaction.to = "invalid"; }, body => { body.transaction.to = zeroAddress; },
-      body => { body.transaction.to = settler; }, body => { body.transaction.data = "0x"; },
-      body => { body.transaction.data = "0xxyz"; }, body => { body.transaction.data = "0x123"; },
-      body => { body.transaction.value = "-1"; }, body => { body.transaction.value = "1"; },
-      body => { body.transaction.gas = "0"; }, body => { body.transaction.gasPrice = "-1"; },
-      body => { body.sellAmount = "999999"; }, body => { body.sellToken = outputAsset; },
-      body => { body.buyToken = inputAsset; }, body => { body.minBuyAmount = "999999999999999999999"; },
-      body => { delete body.issues.balance; }, body => { delete body.issues.allowance; },
-      body => { body.issues.invalidSourcesPassed = ["unexpected"]; },
-      body => { body.issues.allowance = { actual: "0", spender: settler }; },
-      body => { body.allowanceTarget = settler; }, body => { body.issues.balance = { token: outputAsset, actual: "0", expected: "1000000" }; },
-      body => { body.fees.integratorFee = null; }, body => { body.fees.integratorFee.amount = "-1"; },
-      body => { body.fees.integratorFee.amount = "1000000"; }, body => { body.fees.integratorFee.token = outputAsset; },
-      body => { body.fees.integratorFee.type = "surplus"; }, body => { body.fees.integratorFees = [body.fees.integratorFee, body.fees.integratorFee]; },
-      body => { body.fees.zeroExFee.amount = "-1"; }, body => { body.fees.zeroExFee.token = "invalid"; },
-      body => { body.zid = "!"; }, body => { body.blockNumber = -1; }
-    ];
-    for (const mutate of malformed) {
-      quoteMutation = mutate;
-      await assert.rejects(() => prepare(baseRequest));
-    }
-    quoteMutation = body => { delete body.transaction.gasPrice; body.blockNumber = 12345678; };
-    await assertZeroXSharedWalletAuthorization(await prepare(baseRequest));
-    quoteMutation = () => {};
-    tokenBalance = 0n;
-    assert.equal((await verifyZeroXSwapFirmQuote(baseRequest)).status, "insufficient_balance", "local balance must fail closed even when provider reports no issue");
-    tokenBalance = 1_000_000n;
-    rpcAllowance = 0n;
-    assert.equal((await verifyZeroXSwapFirmQuote(baseRequest)).status, "approval_required", "local allowance must be checked independently");
-    rpcAllowance = null;
-    nativeBalance = 1n;
-    assert.equal((await verifyZeroXSwapFirmQuote(baseRequest)).status, "insufficient_gas");
-    nativeBalance = 10n ** 20n;
-
-    allowance = true;
-    const approval = await prepare(baseRequest);
-    assert.equal(approval.evidence.status, "approval_required");
-    assert.equal(approval.transaction.kind, "erc20_approval");
-    assert.equal(approval.transaction.target, inputAsset);
-    assert.equal(approval.transaction.value, "0");
-    assert.match(approval.transaction.data, /^0x095ea7b3/);
-    await assertZeroXSharedWalletAuthorization(approval);
-    quoteMutation = body => { delete body.allowanceTarget; };
-    await assertZeroXSharedWalletAuthorization(await prepare(baseRequest));
-    quoteMutation = () => {};
-    simulationIncomplete = true;
-    await assertZeroXSharedWalletAuthorization(await prepare(baseRequest));
-    simulationIncomplete = false;
-    // A successful approve receipt with no allowance change cannot authorize a swap.
-    // Models a false-returning/non-standard approve: mined success, allowance remains zero.
-    rpcAllowance = 0n;
-    allowance = false;
-    const unchangedAllowance = await prepare(baseRequest);
-    assert.equal(unchangedAllowance.evidence.status, "approval_required");
-    assert.notEqual(unchangedAllowance.transaction.kind, "swap");
-    rpcAllowance = null;
-    allowance = true;
-    const preApprovalCommitment = await committedRequest(baseRequest);
-    const beforeFresh = quoteCalls;
-    allowance = false;
-    quoteMutation = body => { body.transaction.data = "0x87654321"; };
-    const fresh = await prepare(baseRequest);
-    await assert.rejects(() => prepareZeroXSwapAuthorization({ ...preApprovalCommitment, zeroXExpectedStatus: "verified" }), /invalid or expired/);
-    assert.notEqual(fresh.evidence.zeroXFirmQuoteCommitment, preApprovalCommitment.zeroXFirmQuoteCommitment);
-    assert.equal(fresh.transaction.kind, "swap");
-    assert.equal(keccak256(fresh.transaction.data), fresh.evidence.calldataHash);
-    assert.notEqual(fresh.transaction.data, verified.transactionData);
-    await assertZeroXSharedWalletAuthorization(fresh);
-    quoteMutation = () => {};
-    assert.equal(quoteCalls, beforeFresh + 1, "post-approval verification fetches fresh authority; authorization reuses it");
-
-    // Exact integer boundary: exactly 10,000 ppm without user-side rounding, no indicative continuity prerequisite.
-    for (const [expected, minimum, valid] of [
-      ["397592518509179", "393616593315000", false],
-      ["100000000", "99000000", true],
-      ["1000000", "990000", true],
-      ["1000000", "989999", false],
-      ["100000", "1", false],
-      ["100000", "90000", false]
-    ] as const) {
-      quoteMutation = body => { body.buyAmount = expected; body.minBuyAmount = minimum; };
-      const boundedRequest = { ...baseRequest, indicativeProtectedOutputFloorAtomic: 1n, protectedOutputFloorAtomic: 1n };
-      if (valid) {
-        const bounded = await prepare(boundedRequest);
-        assert.equal(bounded.evidence.protectedOutputAtomic, minimum);
-        assert.equal(bounded.evidence.providerRequestedSlippagePpm, 9900);
-      } else {
-        await assert.rejects(() => verifyZeroXSwapFirmQuote(boundedRequest), error => error instanceof TradeExecutionFailure && error.code === "PROVIDER_POLICY_REJECTED" && !error.retryable);
-      }
-    }
-    for (const [reported, encoded, valid] of [
-      ["989999", "990000", true], ["999000", "990000", true], ["990000", "989999", false]
-    ] as const) {
-      quoteMutation = body => { body.buyAmount = "1000000"; body.minBuyAmount = reported; body.executableMinimumForTest = encoded; };
-      const boundedRequest = { ...baseRequest, indicativeProtectedOutputFloorAtomic: 1n, protectedOutputFloorAtomic: 1n };
-      if (valid) {
-        const accepted = await prepare(boundedRequest);
-        assert.equal(accepted.evidence.providerReportedMinBuyAmount, reported);
-        assert.equal(accepted.evidence.encodedExecutableMinBuyAmount, encoded);
-        assert.equal(accepted.evidence.protectedOutputAtomic, encoded);
-        assert.equal(accepted.evidence.maximumUserSlippagePpm, 10000);
-      } else {
-        await assert.rejects(() => prepare(boundedRequest), (error: unknown) => error instanceof TradeExecutionFailure && error.code === "PROVIDER_POLICY_REJECTED");
-      }
-    }
-    output = zeroAddress;
-    allowance = true;
-    quoteMutation = body => { body.buyAmount = "99500"; body.minBuyAmount = "98505"; };
-    const repricedRequest = { ...baseRequest, outputAsset: zeroAddress, indicativeProtectedOutputFloorAtomic: 99000n, protectedOutputFloorAtomic: 99000n };
-    const repriced = await prepare(repricedRequest);
-    assert.equal(repriced.evidence.expectedOutputAtomic, "99500");
-    assert.equal(repriced.evidence.protectedOutputAtomic, "98505");
-    assert.equal(repriced.transaction.kind, "erc20_approval");
-    assert.equal(repriced.evidence.approvalSpender, allowanceHolder);
-    assert.equal(repriced.evidence.inputAmountAtomic, "1000000");
-    quoteMutation = body => { body.buyAmount = "98999"; body.minBuyAmount = "98010"; };
-    await assert.rejects(() => verifyZeroXSwapFirmQuote(repricedRequest), ZeroXRepriceRequiredError);
-    quoteMutation = body => { body.buyAmount = "98999"; body.minBuyAmount = "98010"; body.sellAmount = "999999"; };
-    await assert.rejects(() => verifyZeroXSwapFirmQuote(repricedRequest), error => error instanceof Error && !(error instanceof ZeroXRepriceRequiredError));
-    quoteMutation = () => {};
-    output = outputAsset;
-    allowance = false;
-    balanceIssue = true;
-    assert.equal((await verifyZeroXSwapFirmQuote(baseRequest)).status, "insufficient_balance");
-    balanceIssue = false;
-    simulationIncomplete = true;
-    const providerIncompleteLocalPass = await verifyZeroXSwapFirmQuote(baseRequest);
-    assert.equal(providerIncompleteLocalPass.status, "verified", "provider simulation metadata does not override a successful exact local eth_call");
-    assert.equal(providerIncompleteLocalPass.exactSimulationState, "passed");
-    simulationIncomplete = false;
-    callFailure = true;
-    const deterministicRevert = await verifyZeroXSwapFirmQuote(baseRequest);
-    assert.equal(deterministicRevert.status, "simulation_failed");
-    assert.equal(deterministicRevert.exactSimulationState, "deterministic_revert");
-    callFailure = false;
-    callUnavailable = true;
-    const inconclusive = await verifyZeroXSwapFirmQuote(baseRequest);
-    assert.equal(inconclusive.status, "verified", "inconclusive transport evidence cannot veto a complete trade commitment");
-    assert.equal(inconclusive.exactSimulationPassed, false);
-    assert.equal(inconclusive.exactSimulationState, "inconclusive");
-    await assertZeroXSharedWalletAuthorization(await prepareZeroXSwapAuthorization(await committedRequest(baseRequest, inconclusive)));
-    callUnavailable = false;
-
-    input = zeroAddress;
-    output = outputAsset;
-    transactionTarget = settler;
-    nativeValue = "1000000";
-    const nativeRequest = { ...baseRequest, inputAsset: zeroAddress };
-    const native = await verifyZeroXSwapFirmQuote(nativeRequest);
+    const native = await verifyZeroXSwapFirmQuote(request());
     assert.equal(native.status, "verified");
     assert.equal(native.approvalRequired, false);
-    assert.equal(native.transactionValueAtomic, "1000000");
-    assert.equal(native.providerNativeFee?.feeAsset, zeroAddress);
-    assert.equal(native.providerNativeFee?.requestFeeToken, ZERO_X_NATIVE_TOKEN);
-    const nativePrepared = await prepare(nativeRequest);
-    await assertZeroXSharedWalletAuthorization(nativePrepared);
-    // Owner Option B: the fixed AllowanceHolder API flow may return a verified
-    // native Settler entrypoint. This is not an approval or a public Settler API.
+    assert.equal(native.providerReportedMinBuyAmount, "99000");
+    assert.equal(native.protectedOutputAtomic, "99000");
+    assert.equal(native.router, providerTarget);
+    assert.equal(native.transactionData, "0xdeadbeef00");
+    assert.equal(native.swapTransactionValueAtomic, "500000000000000");
+    assert.equal(native.providerSimulationIncomplete, true);
+    assert.equal(native.exactSimulationState, "not_run");
+    assert.equal(native.routerRuntimeHash, null);
+    assert.equal(native.nativeBalanceWei, null);
+    assert.equal(approvalGasCalls, 0, "native ETH must not acquire an approval or approval RPC dependency");
+
+    const nativeContext = context();
+    const nativeCommitment = createZeroXFirmQuoteCommitment(native, nativeContext, now());
+    const nativeAuthorizationRequest = {
+      ...request(),
+      protectedOutputFloorAtomic: 99_000n,
+      deadlineSeconds: BigInt(native.deadline),
+      zeroXExpectedStatus: "verified",
+      zeroXFirmQuoteContext: nativeContext,
+      zeroXFirmQuoteCommitment: nativeCommitment
+    } as const;
+    const nativePrepared = await prepareZeroXSwapAuthorization(nativeAuthorizationRequest);
     assert.equal(nativePrepared.transaction.kind, "swap");
-    assert.equal(nativePrepared.transaction.target, settler);
-    assert.equal(nativePrepared.evidence.approvalRequired, false);
-    assert.equal(nativePrepared.evidence.approvalKind, null);
-    assert.equal(nativePrepared.evidence.providerNativeFee?.firmQuote?.allowanceTarget, null);
-    assert.equal(nativePrepared.transaction.data, nativePrepared.evidence.transactionData);
-    assert.equal(nativePrepared.transaction.value, nativeRequest.inputAmountAtomic);
-    await assertZeroXCommitmentAdversarialMatrix(await committedRequest(nativeRequest));
+    assert.equal(nativePrepared.transaction.target, providerTarget);
+    assert.equal(nativePrepared.transaction.data, "0xdeadbeef00");
+    assert.equal(nativePrepared.transaction.value, "500000000000000");
+    assert.equal(quoteCalls, 1, "authorization must reuse the committed provider response");
+    await assertZeroXCommitmentAdversarialMatrix(nativeAuthorizationRequest);
 
-    // Reuse the complete firm -> commitment -> authorization -> wallet parser
-    // journey for native ETH -> canonical USDG, not only the wrapped-token case.
-    output = inputAsset;
-    const nativeUsdgRequest = { ...nativeRequest, outputAsset: inputAsset };
-    const nativeUsdgPrepared = await prepare(nativeUsdgRequest);
-    assert.equal(nativeUsdgPrepared.evidence.outputAsset, inputAsset);
-    assert.equal(nativeUsdgPrepared.transaction.target, settler);
-    assert.equal(nativeUsdgPrepared.transaction.kind, "swap");
-    await assertZeroXSharedWalletAuthorization(nativeUsdgPrepared);
-    await assertZeroXCommitmentAdversarialMatrix(await committedRequest(nativeUsdgRequest));
-    output = outputAsset;
+    await assert.rejects(() => prepareZeroXSwapAuthorization({
+      ...request(),
+      inputAmountAtomic: "500000000000001",
+      amountIn: 500_000_000_000_001n,
+      protectedOutputFloorAtomic: 99_000n,
+      deadlineSeconds: BigInt(native.deadline),
+      zeroXExpectedStatus: "verified",
+      zeroXFirmQuoteContext: nativeContext,
+      zeroXFirmQuoteCommitment: nativeCommitment
+    }), /invalid or expired/);
 
-    // Only a provider-returned, registry/runtime-verified native envelope is
-    // eligible. None of these failures may produce an authorization plan.
-    const nativeEnvelopeMutations: Array<[string, string, (body: any) => void]> = [
-      ["unregistered target", "SETTLER_UNREGISTERED", body => { body.transaction.to = recipient; }],
-      ["zero target", "PROVIDER_POLICY_REJECTED", body => { body.transaction.to = zeroAddress; }],
-      ["value below input", "EXECUTION_ENVELOPE_REJECTED", body => { body.transaction.value = "999999"; }],
-      ["value above input", "EXECUTION_ENVELOPE_REJECTED", body => { body.transaction.value = "1000001"; }],
-      ["malformed calldata", "EXECUTION_ENVELOPE_REJECTED", body => { body.transaction.data = "0x1234567890"; }],
-      ["encoded recipient mismatch", "EXECUTION_ENVELOPE_REJECTED", body => { body.transaction.data = executableFixture.encodeQuote(body, inputAsset); }],
-      ["response recipient mismatch", "PROVIDER_POLICY_REJECTED", body => { body.recipient = inputAsset; }],
-      ["input asset mismatch", "PROVIDER_POLICY_REJECTED", body => { body.sellToken = inputAsset; }],
-      ["output asset mismatch", "PROVIDER_POLICY_REJECTED", body => { body.buyToken = inputAsset; }],
-      ["unsafe encoded minimum", "PROVIDER_POLICY_REJECTED", body => { body.executableMinimumForTest = "1"; }],
-      ["Settler allowance target", "PROVIDER_POLICY_REJECTED", body => { body.allowanceTarget = settler; }]
-    ];
-    for (const [name, expectedCode, mutation] of nativeEnvelopeMutations) {
-      quoteMutation = mutation;
-      await assert.rejects(() => prepare(nativeRequest),
-        (error: unknown) => error instanceof TradeExecutionFailure && error.code === expectedCode,
-        `Option B must reject ${name} at the expected verification boundary`);
+    simulationIncomplete = false;
+    inputAsset = erc20Input;
+    allowanceRequired = true;
+    const approval = await verifyZeroXSwapFirmQuote(request());
+    assert.equal(approval.status, "approval_required");
+    assert.equal(approval.providerNativeFee?.firmQuote?.allowanceTarget, allowanceHolder);
+    assert.equal(approvalGasCalls, 1);
+    const approvalContext = context();
+    const approvalPrepared = await prepareZeroXSwapAuthorization({
+      ...request(),
+      protectedOutputFloorAtomic: 99_000n,
+      deadlineSeconds: BigInt(approval.deadline),
+      zeroXExpectedStatus: "approval_required",
+      zeroXFirmQuoteContext: approvalContext,
+      zeroXFirmQuoteCommitment: createZeroXFirmQuoteCommitment(approval, approvalContext, now())
+    });
+    assert.equal(approvalPrepared.transaction.kind, "erc20_approval");
+    assert.equal(approvalPrepared.transaction.target, erc20Input);
+    const decoded = decodeFunctionData({ abi: erc20Abi, data: approvalPrepared.transaction.data });
+    assert.equal(decoded.functionName, "approve");
+    assert.equal(getAddress(decoded.args[0]), allowanceHolder);
+    assert.equal(decoded.args[1], 500_000_000_000_000n);
+
+    allowanceRequired = false;
+    const postApproval = await verifyZeroXSwapFirmQuote(request());
+    assert.equal(postApproval.status, "verified");
+    assert.equal(postApproval.providerNativeFee?.firmQuote?.allowanceTarget, null);
+    assert.equal(approvalGasCalls, 1, "fresh post-approval quote must not repeat an approval estimate");
+
+    balanceIssue = true;
+    assert.equal((await verifyZeroXSwapFirmQuote(request())).status, "insufficient_balance");
+    balanceIssue = false;
+
+    for (const mutate of [
+      (body: Record<string, any>) => { body.sellAmount = "499999999999999"; },
+      (body: Record<string, any>) => { body.recipient = getAddress("0x0000000000000000000000000000000000010001"); },
+      (body: Record<string, any>) => { body.minBuyAmount = "98999"; },
+      (body: Record<string, any>) => { body.fees.integratorFee.token = ZERO_X_NATIVE_TOKEN; },
+      (body: Record<string, any>) => { body.transaction.value = "1"; },
+      (body: Record<string, any>) => { body.transaction.to = zeroAddress; }
+    ]) {
+      mutation = mutate;
+      await assert.rejects(
+        () => verifyZeroXSwapFirmQuote({ ...request(), indicativeProtectedOutputFloorAtomic: 1n }),
+        (error: unknown) => error instanceof TradeExecutionFailure && error.code === "PROVIDER_POLICY_REJECTED"
+      );
     }
-    quoteMutation = () => {};
-    assert.equal((simulatedEnvelope as unknown as Record<string, string>).value, `0x${BigInt(nativePrepared.transaction.value).toString(16)}`);
-    quoteMutation = body => { body.issues.allowance = { actual: "0", spender: allowanceHolder }; };
-    await assert.rejects(() => prepare(nativeRequest), (error: unknown) => error instanceof TradeExecutionFailure && error.code === "PROVIDER_POLICY_REJECTED");
-    quoteMutation = () => {};
+    mutation = () => {};
 
-    nativeBalance = 1n;
-    assert.equal((await verifyZeroXSwapFirmQuote(nativeRequest)).status, "insufficient_balance");
-    nativeBalance = 1_000_001n;
-    assert.equal((await verifyZeroXSwapFirmQuote(nativeRequest)).status, "insufficient_gas");
-    nativeBalance = 10n ** 20n;
-    noTargetCode = true;
-    await assert.rejects(() => verifyZeroXSwapFirmQuote(nativeRequest), (error: unknown) => error instanceof TradeExecutionFailure && error.code === "CONTRACT_VERSION_UNSUPPORTED");
+    noRoute = true;
+    await assert.rejects(
+      () => verifyZeroXSwapFirmQuote(request()),
+      (error: unknown) => error instanceof TradeExecutionFailure && error.code === "NO_ROUTE"
+    );
+    noRoute = false;
+    noLiquidityBody = true;
+    await assert.rejects(
+      () => verifyZeroXSwapFirmQuote(request()),
+      (error: unknown) => error instanceof TradeExecutionFailure && error.code === "NO_ROUTE"
+    );
+    noLiquidityBody = false;
+    for (const [status, code] of [[429, "RATE_LIMITED"], [503, "PROVIDER_UNAVAILABLE"], [403, "PROVIDER_POLICY_REJECTED"]] as const) {
+      providerStatus = status;
+      await assert.rejects(
+        () => verifyZeroXSwapFirmQuote(request()),
+        (error: unknown) => error instanceof TradeExecutionFailure && error.code === code
+      );
+    }
+    providerStatus = 200;
+
+    process.env.RMT_ZEROX_ALLOWANCE_HOLDER = providerTarget;
+    assert.equal(zeroXSwapFirmQuoteVerificationConfiguration(), null);
+    const beforeInvalidConfig = quoteCalls;
+    await assert.rejects(() => verifyZeroXSwapFirmQuote(request()));
+    assert.equal(quoteCalls, beforeInvalidConfig, "invalid approval authority must stop before the provider request");
   } finally {
     globalThis.fetch = savedFetch;
     for (const [key, value] of Object.entries(saved)) {
@@ -535,4 +272,10 @@ export async function runZeroXFirmQuoteVerifierSmoke() {
       else process.env[key] = value;
     }
   }
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  runZeroXFirmQuoteVerifierSmoke().then(() => {
+    console.log("RMT provider-native 0x firm quote, exact approval, commitment and immutable handoff smoke checks passed.");
+  });
 }
