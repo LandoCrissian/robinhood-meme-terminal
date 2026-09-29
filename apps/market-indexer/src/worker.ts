@@ -39,8 +39,10 @@ import {
 } from "./telemetry.js";
 import { isUpSource, readUpPoolEvidence } from "./up-enrichment.js";
 import {
+  ensureCanonicalTokenIdentity,
   enqueueCanonicalTokenIdentityCandidates,
-  refreshCanonicalTokenIdentityIndex
+  refreshCanonicalTokenIdentityIndex,
+  searchCanonicalTokenIdentityIndex
 } from "./token-identity-index.js";
 
 export type WorkerStatus = {
@@ -624,6 +626,20 @@ export class MarketIndexerWorker {
           })) ?? [],
         error: this.status.lastError
       })
+    );
+  }
+
+  async ensureTokenIdentity(address: string) {
+    const existing = await searchCanonicalTokenIdentityIndex(this.pool, address, 1);
+    if (existing[0]?.address.toLowerCase() === address.toLowerCase()) return existing[0];
+    const head = await this.rpc.getBlockNumber();
+    const confirmations = BigInt(this.config.confirmations);
+    if (head <= confirmations) throw new Error("chain head is below confirmation depth");
+    return ensureCanonicalTokenIdentity(
+      this.pool,
+      this.rpc,
+      address,
+      head - confirmations
     );
   }
 
