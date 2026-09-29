@@ -549,19 +549,29 @@ export async function runZeroXWalletJourneys(options) {
               await until(() => settledOutputBalanceReads > 0, 'Verified settlement must refresh the exact output wallet balance');
               assert.equal(requests.length, 1);
               if (scenario === 'contract-history') {
-                // First prove the persisted confirmed settlement survives a reload. Runtime
-                // incompatibility belongs to the subsequent fresh attempt and must not
-                // race recovery of the already-confirmed historical record.
+                // First prove the persisted confirmed settlement survives a reload. A
+                // subsequent provider-native attempt must not race that recovery or revive
+                // the retired per-trade Settler registry/runtime proof.
                 await page.reload({waitUntil:'domcontentloaded'});
                 const history = page.locator('.vnRecoveryBanner').filter({hasText:'Verified swap history'});
                 await history.waitFor({ timeout: 30000 });
                 state.incompatibleRuntime = true;
                 assert.match(await history.innerText(), /Submitted:/);
                 assert.ok((await history.locator('a').getAttribute('href')).includes(h('c')));
+                const priorAuthorizations = api.filter(entry => entry.path.endsWith('/authorize') && entry.status === 200).length;
+                const priorRuntimeProofCalls = state.rpc.filter(entry => entry.method === 'eth_getCode'
+                  && lower(entry.params?.[0]) === lower(executableFixture.settler)
+                  || entry.method === 'eth_call' && lower(entry.params?.[0]?.to) === '0x00000000000004533fe15556b1e086bb1a72ceae').length;
                 await page.getByLabel('Exact input amount').fill('26');
-                await until(() => api.some(entry => entry.path.endsWith('/verify') && entry.body?.code === 'CONTRACT_VERSION_UNSUPPORTED'), 'New attempt must reject runtime');
+                await until(() => api.filter(entry => entry.path.endsWith('/authorize') && entry.status === 200).length > priorAuthorizations,
+                  'New provider-native attempt must prepare without a local runtime proof');
+                assert.equal(api.some(entry => entry.path.endsWith('/verify') && entry.body?.code === 'CONTRACT_VERSION_UNSUPPORTED'), false);
+                assert.equal(state.rpc.filter(entry => entry.method === 'eth_getCode'
+                  && lower(entry.params?.[0]) === lower(executableFixture.settler)
+                  || entry.method === 'eth_call' && lower(entry.params?.[0]?.to) === '0x00000000000004533fe15556b1e086bb1a72ceae').length,
+                priorRuntimeProofCalls, 'New provider-native attempt cannot add registry or bytecode proof calls');
                 assert.equal(await page.locator('.vnTradeReceipt').count(), 0, 'History must not become a new success dialog');
-                assert.equal(requests.length, 1, 'New failed attempt cannot hand off');
+                assert.equal(requests.length, 1, 'Read-only preparation cannot hand off without another explicit action');
               }
             }
           }
