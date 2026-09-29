@@ -49,6 +49,10 @@ import {
 } from "../../lib/vnext/wallet-request-lock";
 import { ExplorerLink } from "./terminal-links";
 
+function formatReviewAtomic(value: string, decimals: number | null) {
+  return decimals === null ? `${value} base units` : formatUnits(BigInt(value), decimals);
+}
+
 type PreparedVNextWalletHandoff = {
   plan: VNextAuthorizationPlan;
   injected?: InjectedSignerTicket;
@@ -74,21 +78,21 @@ export function VNextWalletFeeDisclosure({
   evidence: VNextPreSignEvidence;
   inputSymbol: string;
   outputSymbol: string;
-  inputDecimals: number;
-  outputDecimals: number;
+  inputDecimals: number | null;
+  outputDecimals: number | null;
 }) {
   const providerNativeFee = evidence.providerNativeFee;
   const nativeFeeOnInput = providerNativeFee?.feeAsset.toLowerCase() === evidence.inputAsset.toLowerCase();
   const nativeFeeDecimals = nativeFeeOnInput ? inputDecimals : outputDecimals;
   const nativeFeeSymbol = nativeFeeOnInput ? inputSymbol : outputSymbol;
   if (providerNativeFee) return <div className="vnWalletFeeDisclosure" role="note">
-    <strong>{planKind === "erc20_approval" ? "RMT execution fee on this approval: 0" : `RMT execution fee: ${formatUnits(BigInt(providerNativeFee.feeAmountAtomic), nativeFeeDecimals)} ${nativeFeeSymbol} (${providerNativeFee.feeBps / 100}%)`}</strong>
+    <strong>{planKind === "erc20_approval" ? "RMT execution fee on this approval: 0" : `RMT execution fee: ${formatReviewAtomic(providerNativeFee.feeAmountAtomic, nativeFeeDecimals)} ${nativeFeeSymbol} (${providerNativeFee.feeBps / 100}%)`}</strong>
     {planKind === "erc20_approval" ? <small>Planned swap fee: provider-native 0.25% in {nativeFeeSymbol}. It is not collected by the approval transaction, and the swap quote will be fetched again after confirmation.</small> : null}
     <dl>
-      <div><dt>Gross sell</dt><dd>{formatUnits(BigInt(providerNativeFee.userGrossInputAtomic), inputDecimals)} {inputSymbol}</dd></div>
-      <div><dt>RMT fee asset / amount</dt><dd>{formatUnits(BigInt(providerNativeFee.feeAmountAtomic), nativeFeeDecimals)} {nativeFeeSymbol}</dd></div>
-      <div><dt>Expected receive</dt><dd>{formatUnits(BigInt(providerNativeFee.expectedOutputAtomic), outputDecimals)} {outputSymbol}</dd></div>
-      <div><dt>Minimum receive</dt><dd>{formatUnits(BigInt(providerNativeFee.protectedOutputAtomic), outputDecimals)} {outputSymbol}</dd></div>
+      <div><dt>Gross sell</dt><dd>{formatReviewAtomic(providerNativeFee.userGrossInputAtomic, inputDecimals)} {inputSymbol}</dd></div>
+      <div><dt>RMT fee asset / amount</dt><dd>{formatReviewAtomic(providerNativeFee.feeAmountAtomic, nativeFeeDecimals)} {nativeFeeSymbol}</dd></div>
+      <div><dt>Expected receive</dt><dd>{formatReviewAtomic(providerNativeFee.expectedOutputAtomic, outputDecimals)} {outputSymbol}</dd></div>
+      <div><dt>Minimum receive</dt><dd>{formatReviewAtomic(providerNativeFee.protectedOutputAtomic, outputDecimals)} {outputSymbol}</dd></div>
       <div><dt>0x/provider fee</dt><dd>{providerNativeFee.providerFeeAtomic && providerNativeFee.providerFeeAsset ? `${providerNativeFee.providerFeeAtomic} atomic · ${providerNativeFee.providerFeeAsset.slice(0, 6)}…${providerNativeFee.providerFeeAsset.slice(-4)}` : "None reported"}</dd></div>
       <div><dt>Network fee estimate</dt><dd>{evidence.estimatedNetworkCostWei ? `${formatUnits(BigInt(evidence.estimatedNetworkCostWei), 18)} ETH` : "Unavailable"}</dd></div>
       <div><dt>Provider</dt><dd>0x</dd></div>
@@ -96,21 +100,25 @@ export function VNextWalletFeeDisclosure({
       <div><dt>Fee commitment</dt><dd>Included in the verified 0x execution plan; treasury delivery is not independently reconciled</dd></div>
       <div><dt>Treasury</dt><dd><ExplorerLink kind="address" value={providerNativeFee.treasury} accessibleName="Open RMT fee treasury in Robinhood Chain explorer">{providerNativeFee.treasury.slice(0, 6)}…{providerNativeFee.treasury.slice(-4)} ↗</ExplorerLink></dd></div>
     </dl>
-    <small>{evidence.exactSimulationPassed
-      ? "Your wallet receives only the exact target, calldata, value, and gas envelope that passed local simulation."
-      : "Simulation was unavailable. The exact target, calldata, value, assets, recipient, fee, and minimum remain committed; deterministic reverts are still blocked."}</small>
+    <small>{evidence.provider === "zero-x-swap"
+      ? evidence.providerSimulationIncomplete
+        ? "0x reported incomplete simulation. Your wallet still receives the exact provider target, calldata, value, gas estimate, assets, recipient, fee, and minimum committed for review."
+        : "Your wallet receives the exact 0x target, calldata, value, gas estimate, assets, recipient, fee, and minimum committed for review."
+      : evidence.exactSimulationPassed
+        ? "Your wallet receives only the exact target, calldata, value, and gas envelope that passed local simulation."
+        : "Simulation was unavailable. The exact target, calldata, value, assets, recipient, fee, and minimum remain committed; deterministic reverts are still blocked."}</small>
   </div>;
 
   const feeV2 = evidence.feeV2Economics;
   if (feeV2 && evidence.feeV2Settlement) return <div className="vnWalletFeeDisclosure" role="note">
-    <strong>{planKind === "erc20_approval" ? "RMT execution fee on this approval: 0" : `RMT execution fee: ${formatUnits(BigInt(feeV2.expectedFeeAtomic), inputDecimals)} ${inputSymbol} (${feeV2.feeBps / 100}%)`}</strong>
-    {planKind === "erc20_approval" ? <small>Planned trade fee: {feeV2.feeBps / 100}% of gross trade input · {formatUnits(BigInt(feeV2.expectedFeeAtomic), inputDecimals)} {inputSymbol}. It is not collected during approval.</small> : null}
+    <strong>{planKind === "erc20_approval" ? "RMT execution fee on this approval: 0" : `RMT execution fee: ${formatReviewAtomic(feeV2.expectedFeeAtomic, inputDecimals)} ${inputSymbol} (${feeV2.feeBps / 100}%)`}</strong>
+    {planKind === "erc20_approval" ? <small>Planned trade fee: {feeV2.feeBps / 100}% of gross trade input · {formatReviewAtomic(feeV2.expectedFeeAtomic, inputDecimals)} {inputSymbol}. It is not collected during approval.</small> : null}
     <dl>
-      <div><dt>Gross input</dt><dd>{formatUnits(BigInt(feeV2.userGrossInputAtomic), inputDecimals)} {inputSymbol}</dd></div>
-      <div><dt>Exact fee / asset</dt><dd>{formatUnits(BigInt(feeV2.expectedFeeAtomic), inputDecimals)} {inputSymbol} · paid in the sold/input asset</dd></div>
-      <div><dt>Provider input</dt><dd>{formatUnits(BigInt(feeV2.providerInputAtomic), inputDecimals)} {inputSymbol}</dd></div>
-      <div><dt>Expected receive</dt><dd>{formatUnits(BigInt(feeV2.expectedUserNetOutputAtomic), outputDecimals)} {outputSymbol}</dd></div>
-      <div><dt>Protected minimum</dt><dd>{formatUnits(BigInt(feeV2.protectedUserNetOutputAtomic), outputDecimals)} {outputSymbol}</dd></div>
+      <div><dt>Gross input</dt><dd>{formatReviewAtomic(feeV2.userGrossInputAtomic, inputDecimals)} {inputSymbol}</dd></div>
+      <div><dt>Exact fee / asset</dt><dd>{formatReviewAtomic(feeV2.expectedFeeAtomic, inputDecimals)} {inputSymbol} · paid in the sold/input asset</dd></div>
+      <div><dt>Provider input</dt><dd>{formatReviewAtomic(feeV2.providerInputAtomic, inputDecimals)} {inputSymbol}</dd></div>
+      <div><dt>Expected receive</dt><dd>{formatReviewAtomic(feeV2.expectedUserNetOutputAtomic, outputDecimals)} {outputSymbol}</dd></div>
+      <div><dt>Protected minimum</dt><dd>{formatReviewAtomic(feeV2.protectedUserNetOutputAtomic, outputDecimals)} {outputSymbol}</dd></div>
       <div><dt>Provider</dt><dd>{vNextProviderLabel(evidence.provider)}</dd></div>
       <div><dt>Settlement</dt><dd>RMT atomic fee settlement · policy v2</dd></div>
       <div><dt>Treasury</dt><dd><ExplorerLink kind="address" value={feeV2.treasury} accessibleName="Open RMT V2 fee treasury in Robinhood Chain explorer">{feeV2.treasury.slice(0, 6)}…{feeV2.treasury.slice(-4)} ↗</ExplorerLink></dd></div>
@@ -122,9 +130,9 @@ export function VNextWalletFeeDisclosure({
   if (evidence.settlementMode === "DIRECT_NO_RMT_FEE" && evidence.directNoRmtFee) return <div className="vnWalletFeeDisclosure" role="note">
     <strong>RMT platform fee: 0</strong>
     <dl>
-      <div><dt>Gross input</dt><dd>{formatUnits(BigInt(evidence.directNoRmtFee.userGrossInputAtomic), inputDecimals)} {inputSymbol}</dd></div>
-      <div><dt>Provider input</dt><dd>{formatUnits(BigInt(evidence.directNoRmtFee.providerInputAtomic), inputDecimals)} {inputSymbol}</dd></div>
-      <div><dt>Protected minimum</dt><dd>{formatUnits(BigInt(evidence.protectedOutputAtomic), outputDecimals)} {outputSymbol}</dd></div>
+      <div><dt>Gross input</dt><dd>{formatReviewAtomic(evidence.directNoRmtFee.userGrossInputAtomic, inputDecimals)} {inputSymbol}</dd></div>
+      <div><dt>Provider input</dt><dd>{formatReviewAtomic(evidence.directNoRmtFee.providerInputAtomic, inputDecimals)} {inputSymbol}</dd></div>
+      <div><dt>Protected minimum</dt><dd>{formatReviewAtomic(evidence.protectedOutputAtomic, outputDecimals)} {outputSymbol}</dd></div>
       <div><dt>Settlement</dt><dd>Direct · no RMT platform fee</dd></div>
     </dl>
     <small>Gas and DEX/provider fees remain separate. RMT receives no treasury transfer from this trade.</small>
@@ -135,8 +143,8 @@ export function VNextWalletFeeDisclosure({
   const feeSymbol = legacyFee.feeSide === "input" ? inputSymbol : outputSymbol;
   const feeDecimals = legacyFee.feeSide === "input" ? inputDecimals : outputDecimals;
   return <div className="vnWalletFeeDisclosure" role="note">
-    <strong>RMT execution fee: {formatUnits(BigInt(legacyFee.expectedFeeAtomic), feeDecimals)} {feeSymbol} ({legacyFee.feeBps / 100}%)</strong>
-    <small>Maximum: {formatUnits(BigInt(legacyFee.maximumFeeAtomic), feeDecimals)} {feeSymbol}. It settles atomically to {evidence.feeExecution.treasury.slice(0, 6)}…{evidence.feeExecution.treasury.slice(-4)} only if the swap succeeds.</small>
+    <strong>RMT execution fee: {formatReviewAtomic(legacyFee.expectedFeeAtomic, feeDecimals)} {feeSymbol} ({legacyFee.feeBps / 100}%)</strong>
+    <small>Maximum: {formatReviewAtomic(legacyFee.maximumFeeAtomic, feeDecimals)} {feeSymbol}. It settles atomically to {evidence.feeExecution.treasury.slice(0, 6)}…{evidence.feeExecution.treasury.slice(-4)} only if the swap succeeds.</small>
     <small>Positive slippage cannot raise the fee above this maximum. Your protected amount is net of the fee.</small>
   </div>;
 }
@@ -149,8 +157,8 @@ export function VNextWalletReview({
   onActivityChange,
   inputSymbol = "input asset",
   outputSymbol = "output asset",
-  inputDecimals = 18,
-  outputDecimals = 18,
+  inputDecimals = null,
+  outputDecimals = null,
   selectedWalletKey,
   selectedWalletKind,
   selectedSignerAuthority,
@@ -163,8 +171,8 @@ export function VNextWalletReview({
   onActivityChange?: (active: boolean) => void;
   inputSymbol?: string;
   outputSymbol?: string;
-  inputDecimals?: number;
-  outputDecimals?: number;
+  inputDecimals?: number | null;
+  outputDecimals?: number | null;
   selectedWalletKey?: string | null;
   selectedWalletKind?: "embedded" | "external" | null;
   selectedSignerAuthority?: RmtActiveSignerAuthority | null;
@@ -565,7 +573,7 @@ export function VNextWalletReview({
       inputDecimals={inputDecimals}
       outputDecimals={outputDecimals}
     />
-{plan.kind === "erc20_approval" ? <small>Standard ERC-20 approvals have no onchain expiry. This request is limited to the exact input amount, and RMT requires fresh verification before the swap.</small> : plan.provider === "zero-x-swap" ? <small>RMT presents the exact committed 0x transaction. Simulation reverts block; an unavailable simulation is disclosed without changing the verified trade commitment. Quote expiry limits when RMT opens wallet review.</small> : <small>The verified swap calldata enforces its onchain deadline and protected output.</small>}
+{plan.kind === "erc20_approval" ? <small>Standard ERC-20 approvals have no onchain expiry. This request is limited to the exact input amount, and RMT requires fresh verification before the swap.</small> : plan.provider === "zero-x-swap" ? <small>RMT presents the exact committed 0x transaction and provider-returned minimum. Incomplete provider simulation is disclosed without changing the committed request. Quote expiry limits when RMT opens wallet review.</small> : <small>The verified swap calldata enforces its onchain deadline and protected output.</small>}
 <small>{expired ? "Verified request expired. Prepare a fresh server-verified request." : `Wallet review window · ${Math.max(0, Math.ceil((plan.expiresAtMs - nowMs) / 1_000))}s remaining`}</small>
 {transactionHash ? <ExplorerLink kind="transaction" value={transactionHash} accessibleName="Open submitted transaction in Robinhood Chain explorer">View transaction ↗</ExplorerLink> : null}</>, detailsTarget) : null}
 </div>;

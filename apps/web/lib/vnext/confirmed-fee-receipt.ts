@@ -7,7 +7,8 @@ export type VNextConfirmedFeePresentation =
   | { state: "quoted"; display: string }
   | { state: "settled"; display: string };
 
-function formatExactAtomic(value: string, decimals: number) {
+function formatExactAtomic(value: string, decimals: number | null) {
+  if (decimals === null) return `${value} base units`;
   const formatted = formatUnits(BigInt(value), decimals);
   const [whole, fraction = ""] = formatted.split(".");
   const grouped = BigInt(whole).toLocaleString();
@@ -17,8 +18,8 @@ function formatExactAtomic(value: string, decimals: number) {
 
 export function confirmedVNextFeePresentation(input: {
   record: VNextExecutionRecord | null | undefined;
-  inputDecimals: number;
-  outputDecimals: number;
+  inputDecimals: number | null;
+  outputDecimals: number | null;
   inputSymbol: string;
   outputSymbol: string;
 }): VNextConfirmedFeePresentation {

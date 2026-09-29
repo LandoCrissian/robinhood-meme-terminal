@@ -72,7 +72,8 @@ export function prepareVNextWalletTransaction(input: {
     throw new Error("RMT rejected a wallet that does not match the verified recipient.");
   }
   const exact = parseVNextAuthorizationPlan(input.plan, input.evidence, input.nowMs);
-  if (Number(BigInt(exact.deadline) * 1_000n) - input.nowMs < VNEXT_MINIMUM_WALLET_REVIEW_RUNWAY_MS) {
+  if (exact.provider !== "zero-x-swap"
+    && Number(BigInt(exact.deadline) * 1_000n) - input.nowMs < VNEXT_MINIMUM_WALLET_REVIEW_RUNWAY_MS) {
     throw new Error("The verified wallet-review runway expired. Refresh the verified request before opening the wallet.");
   }
   return {

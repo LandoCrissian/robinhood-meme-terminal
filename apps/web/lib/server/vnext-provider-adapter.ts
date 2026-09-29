@@ -38,8 +38,10 @@ export type VNextProviderQuoteRequest = {
   inputAmountAtomic: string;
   amountIn: bigint;
   recipient: Address;
-  inputIdentity: VNextVerifiedTokenIdentity;
-  outputIdentity: VNextVerifiedTokenIdentity;
+  // Provider-native 0x quotation needs exact chain-qualified addresses and
+  // atomic input only. Direct adapters may still require these identities.
+  inputIdentity?: VNextVerifiedTokenIdentity;
+  outputIdentity?: VNextVerifiedTokenIdentity;
   canonicalMarket?: { sourceId: "uniswap-v4"; poolId: Hex };
 };
 
@@ -371,11 +373,8 @@ export async function prepareVNextProviderAuthorization(
       || prepared.feeV2Authorization !== undefined
     ) throw new Error("0x did not return complete provider-native fee authority.");
     assertVNextZeroXProviderNativeFee(prepared.evidence.providerNativeFee);
-    const simulationState = typeof prepared.evidence.exactSimulationState === "string"
-      ? prepared.evidence.exactSimulationState
-      : (prepared.evidence.exactSimulationPassed ? "passed" : "not_run");
     if ((prepared.transaction.gasPrice ?? null) !== prepared.evidence.providerNativeFee!.firmQuote?.gasPriceWei
-      || (prepared.transaction.kind === "swap" && (!["passed", "inconclusive"].includes(simulationState) || prepared.evidence.authorizationReady !== true))
+      || (prepared.transaction.kind === "swap" && prepared.evidence.authorizationReady !== true)
     ) throw new Error("0x did not bind the committed gas-price envelope.");
   } else {
     const capability = feeAdmission.capability ?? VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY[provider];

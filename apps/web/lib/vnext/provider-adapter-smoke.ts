@@ -109,7 +109,8 @@ const route = readFileSync(new URL("../../app/api/vnext/quotes/route.ts", import
 const registry = readFileSync(new URL("../server/vnext-execution-engine.ts", import.meta.url), "utf8");
 const boundary = readFileSync(new URL("../server/vnext-provider-adapter.ts", import.meta.url), "utf8");
 assert.match(route, /requireAuthenticatedTradeWallet/);
-assert.match(route, /readVNextVerifiedAssetIdentity/);
+assert.doesNotMatch(route, /readVNextVerifiedAssetIdentity|requireProjectIdentityExecutionAdmitted/);
+assert.match(route, /requireVNextStockTokenExecutionEligible/);
 assert.match(route, /quoteRobinhoodVNextExecution/);
 assert.match(registry, /vNextSushiAdapter/);
 assert.match(registry, /vNextUniswapV2Adapter/);

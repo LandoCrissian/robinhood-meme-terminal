@@ -232,7 +232,7 @@ export const vNextUniswapXAdapter: VNextQuoteProviderAdapter = {
         inputAmountAtomic: request.inputAmountAtomic,
         expectedOutputAtomic: quote.expectedOutputAtomic,
         protectedOutputAtomic: quote.protectedOutputAtomic,
-        outputDecimals: request.outputIdentity.decimals,
+        outputDecimals: request.outputIdentity!.decimals,
         priceImpact: null,
         liquidityFeeEvidence: [],
         quotedAtMs,

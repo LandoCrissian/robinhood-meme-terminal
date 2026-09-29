@@ -234,14 +234,13 @@ async function main() {
   assert.match(directoryHook, /marketPayload\?\.directoryAdmission === "not_admitted"/);
   assert.match(presentation, /Not admitted to the RMT directory/);
   for (const route of [quoteRoute, verifyRoute, authorizeRoute]) {
-    assert.match(route, /requireProjectIdentityExecutionAdmitted/);
-    assert.match(route, /projectIdentityAdmissionErrorResponse/);
+    assert.doesNotMatch(route, /requireProjectIdentityExecutionAdmitted|projectIdentityAdmissionErrorResponse/,
+      "Project curation and directory quarantine must not become ordinary-token 0x execution permission");
+    assert.match(route, /stockTokenExecutionPolicyErrorResponse/,
+      "The separate explicit Stock Token view-only boundary remains enforced");
   }
-  assert.ok(quoteRoute.indexOf("requireProjectIdentityExecutionAdmitted") < quoteRoute.indexOf("quoteRobinhoodVNextExecution({"));
-  assert.ok(verifyRoute.indexOf("requireProjectIdentityExecutionAdmitted") < verifyRoute.indexOf("verifyRobinhoodVNextExecution(parsed.data.provider"));
-  assert.ok(authorizeRoute.indexOf("requireProjectIdentityExecutionAdmitted") < authorizeRoute.indexOf("prepareRobinhoodVNextAuthorization(parsed.data.provider"));
 
-  console.log("Project identity authority, positive-conflict quarantine, uncertainty admission, and no-blacklist controls passed.");
+  console.log("Project identity authority, positive-conflict directory quarantine, execution separation, and no-blacklist controls passed.");
 }
 
 void main();

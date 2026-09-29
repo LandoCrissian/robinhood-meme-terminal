@@ -79,6 +79,10 @@ function formatAtomicDisplay(value: string, decimals: number) {
   return visibleFraction ? `${grouped}.${visibleFraction}` : grouped;
 }
 
+function formatAtomicOrBaseUnits(value: string, decimals: number | null | undefined) {
+  return decimals == null ? `${value} base units` : formatAtomicDisplay(value, decimals);
+}
+
 function describeProtectedOutputContinuity(verifiedAtomic: string, indicativeFloorAtomic: string) {
   const verified = BigInt(verifiedAtomic);
   const floor = BigInt(indicativeFloorAtomic);
@@ -590,17 +594,17 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
     ? vNextProviderRoutePresentation({ provider: visibleVerification.provider, route: visibleVerification.route })
     : null;
   const retainedVerification = publishedPreparation.current === preparationContext ? lastReadyVerification.current : undefined;
-  const expectedOutput = visibleVerification && pair?.outputAsset.decimals != null
-    ? formatAtomicDisplay(visibleVerification.expectedOutputAtomic, pair.outputAsset.decimals)
-    : retainedVerification && pair?.outputAsset.decimals != null
-    ? formatAtomicDisplay(retainedVerification.expectedOutputAtomic, pair.outputAsset.decimals)
-    : verificationQuote?.expectedOutputAtomic && verificationQuote.outputDecimals !== null
-    ? formatAtomicDisplay(verificationQuote.expectedOutputAtomic, verificationQuote.outputDecimals)
+  const expectedOutput = visibleVerification
+    ? formatAtomicOrBaseUnits(visibleVerification.expectedOutputAtomic, pair?.outputAsset.decimals)
+    : retainedVerification
+    ? formatAtomicOrBaseUnits(retainedVerification.expectedOutputAtomic, pair?.outputAsset.decimals)
+    : verificationQuote?.expectedOutputAtomic
+    ? formatAtomicOrBaseUnits(verificationQuote.expectedOutputAtomic, pair?.outputAsset.decimals ?? verificationQuote.outputDecimals)
     : null;
   const retainedEstimate = !visibleVerification && Boolean(expectedOutput)
     && (Boolean(retainedVerification) || quoteState.state !== "ready" || !indicativeQuoteFresh);
-  const protectedOutput = visibleVerification && pair?.outputAsset.decimals != null
-    ? formatAtomicDisplay(visibleVerification.protectedOutputAtomic, pair.outputAsset.decimals)
+  const protectedOutput = visibleVerification
+    ? formatAtomicOrBaseUnits(visibleVerification.protectedOutputAtomic, pair?.outputAsset.decimals)
     : null;
   const indicativeFeePresentation = vNextQuoteFeePresentation({
     bestObserved: bestQuote,
@@ -618,10 +622,8 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
         : "No RMT fee";
     }
     if (!pair) return "Fee economics unavailable · asset metadata required";
-    return `${formatVNextFeeAtomic(
-      fee.expectedFeeAtomic,
-      fee.feeSide === "input" ? pair.inputAsset.decimals ?? 18 : pair.outputAsset.decimals ?? 18
-    )} ${fee.feeSide === "input" ? inputSymbol : outputSymbol} · ${fee.feeBps / 100}%`;
+    const feeDecimals = fee.feeSide === "input" ? pair.inputAsset.decimals : pair.outputAsset.decimals;
+    return `${feeDecimals == null ? `${fee.expectedFeeAtomic} base units` : formatVNextFeeAtomic(fee.expectedFeeAtomic, feeDecimals)} ${fee.feeSide === "input" ? inputSymbol : outputSymbol} · ${fee.feeBps / 100}%`;
   };
   const observedRmtFeeLabel = indicativeFeeLabel(indicativeFeePresentation.bestObserved, "observed");
   const executableRmtFeeLabel = indicativeFeeLabel(indicativeFeePresentation.bestExecutable, "executable");
@@ -646,10 +648,11 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
     ?? (visibleVerification?.netEconomics?.rmtFee.state === "planned"
       ? visibleVerification.netEconomics.rmtFee
       : null);
+  const verifiedFeeDecimals = verifiedRmtFee && pair
+    ? verifiedRmtFee.feeSide === "input" ? pair.inputAsset.decimals : pair.outputAsset.decimals
+    : null;
   const verifiedRmtFeeLabel = verifiedRmtFee && pair
-    ? `0.25% · ${formatVNextFeeAtomic(verifiedRmtFee.expectedFeeAtomic,
-        verifiedRmtFee.feeSide === "input" ? pair.inputAsset.decimals ?? 18 : pair.outputAsset.decimals ?? 18
-      )} ${verifiedRmtFee.feeSide === "input" ? inputSymbol : outputSymbol}`
+    ? `0.25% · ${verifiedFeeDecimals == null ? `${verifiedRmtFee.expectedFeeAtomic} base units` : formatVNextFeeAtomic(verifiedRmtFee.expectedFeeAtomic, verifiedFeeDecimals)} ${verifiedRmtFee.feeSide === "input" ? inputSymbol : outputSymbol}`
     : "Not enabled";
   const availableDisplay = spendableInputAtomic !== undefined && pairInputDecimals !== null
     ? formatAtomicDisplay(spendableInputAtomic, pairInputDecimals)
@@ -680,8 +683,8 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
       : null;
   const confirmedFee = confirmedVNextFeePresentation({
     record: executionRecord,
-    inputDecimals: pair?.inputAsset.decimals ?? 18,
-    outputDecimals: pair?.outputAsset.decimals ?? 18,
+    inputDecimals: pair?.inputAsset.decimals ?? null,
+    outputDecimals: pair?.outputAsset.decimals ?? null,
     inputSymbol,
     outputSymbol
   });
@@ -1189,7 +1192,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
 
   const verificationLabel = visibleVerification
     ? visibleVerification.status === "verified"
-      ? "Exact simulation passed"
+      ? visibleVerification.provider === "zero-x-swap" ? "Fresh 0x transaction prepared" : "Exact simulation passed"
       : visibleVerification.status === "approval_required"
         ? "Approval required"
         : visibleVerification.status === "approval_simulation_failed"
@@ -1204,7 +1207,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
     : null;
   const noObservedRoute = Boolean(visibleQuote && !bestQuote);
   const quotePhase: TradeJourneyPhase = quoteState.state === "error" ? quoteState.phase ?? "QUOTE_SERVICE_UNAVAILABLE"
-    : !marketAsset || !pair || pair.inputAsset.decimals === null || pair.outputAsset.decimals === null ? "IDENTITY_PENDING"
+    : !marketAsset || !pair || pair.inputAsset.decimals === null ? "IDENTITY_PENDING"
     : visibleQuote ? observedZeroXPhase(visibleQuote.attempts)
     : quoteState.state === "loading" ? "QUOTE_REQUESTING" : "QUOTE_NOT_REQUESTED";
   const quoteStatusText = quotePhase === "QUOTE_EXPIRED" && !refreshingPrice
@@ -1448,7 +1451,11 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
       </div>
 {showExecutableFeeSummary && pair ? <div className="vnFeeV2Summary" role="note" aria-label="RMT execution fee summary">
         <span><small>{indicativeFeePresentation.separateContexts ? "Estimated candidate RMT fee" : "Estimated RMT fee"}</small><strong>{executableRmtFee
-          ? `${executableRmtFee.feeBps / 100}% · ${formatVNextFeeAtomic(executableRmtFee.expectedFeeAtomic, executableRmtFee.feeSide === "input" ? pair.inputAsset.decimals ?? 18 : pair.outputAsset.decimals ?? 18)} ${executableRmtFee.feeSide === "input" ? inputSymbol : outputSymbol}`
+          ? `${executableRmtFee.feeBps / 100}% · ${executableRmtFee.feeSide === "input" && pair.inputAsset.decimals != null
+            ? formatVNextFeeAtomic(executableRmtFee.expectedFeeAtomic, pair.inputAsset.decimals)
+            : executableRmtFee.feeSide === "output" && pair.outputAsset.decimals != null
+              ? formatVNextFeeAtomic(executableRmtFee.expectedFeeAtomic, pair.outputAsset.decimals)
+              : `${executableRmtFee.expectedFeeAtomic} base units`} ${executableRmtFee.feeSide === "input" ? inputSymbol : outputSymbol}`
           : executableRmtFeeLabel}</strong></span>
         <span><small>Estimated candidate input</small><strong>{executableRmtFee
           ? `${formatVNextFeeAtomic(executableRmtFee.providerInputAtomic, pair.inputAsset.decimals ?? 18)} ${inputSymbol}`
@@ -1485,9 +1492,9 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
 <span><strong>Verified request ready</strong><small>Nothing opens automatically. Use the explicit action below when your selected wallet is ready.</small></span>
 
 <dl>
-          <div><dt>Exact input</dt><dd>{formatAtomicDisplay(authorizationState.plan.inputAmountAtomic, pair?.inputAsset.decimals ?? 18)} {inputSymbol}</dd></div>
-          <div><dt>Expected output</dt><dd>{formatAtomicDisplay(visibleVerification.expectedOutputAtomic, pair?.outputAsset.decimals ?? 18)} {outputSymbol}</dd></div>
-          <div><dt>Protected minimum</dt><dd>{formatAtomicDisplay(authorizationState.plan.protectedOutputAtomic, pair?.outputAsset.decimals ?? 18)} {outputSymbol}</dd></div>
+          <div><dt>Exact input</dt><dd>{formatAtomicOrBaseUnits(authorizationState.plan.inputAmountAtomic, pair?.inputAsset.decimals)} {inputSymbol}</dd></div>
+          <div><dt>Expected output</dt><dd>{formatAtomicOrBaseUnits(visibleVerification.expectedOutputAtomic, pair?.outputAsset.decimals)} {outputSymbol}</dd></div>
+          <div><dt>Protected minimum</dt><dd>{formatAtomicOrBaseUnits(authorizationState.plan.protectedOutputAtomic, pair?.outputAsset.decimals)} {outputSymbol}</dd></div>
           <div><dt>Route</dt><dd>{visibleRoutePresentation?.routeLabel}</dd></div>
           <div><dt>Target</dt><dd style={{ overflowWrap: "anywhere" }}>{authorizationState.plan.target}</dd></div>
                 <div><dt>Native value (wei)</dt><dd>{authorizationState.plan.value}</dd></div>
@@ -1534,7 +1541,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
           {visibleQuote.attempts.map((attempt) => (
             <div className={attempt.status === "indicative" ? "isReady" : ""} key={attempt.provider}>
               <span><strong>{attempt.providerLabel}</strong><small>{attempt.executionKind === "rfq_intent" ? "Intent" : attempt.executionKind === "gasless" ? "Gasless" : attempt.executionKind === "aggregator" ? "Aggregator" : "Direct AMM"} · {attempt.userPaysGas === null ? "gas unknown" : attempt.userPaysGas ? "wallet gas" : "filler pays gas"} · {attempt.latencyMs}ms</small></span>
-              <span><strong>{attempt.status === "indicative" && attempt.outputDecimals !== null ? `${formatAtomicDisplay(attempt.protectedOutputAtomic!, attempt.outputDecimals)} ${outputSymbol}` : attempt.status === "no_route" ? "No route" : attempt.status === "invalid_response" ? "Rejected" : "Unavailable"}</strong><small>{attempt.status === "indicative"
+              <span><strong>{attempt.status === "indicative" ? `${formatAtomicOrBaseUnits(attempt.protectedOutputAtomic!, pair?.outputAsset.decimals ?? attempt.outputDecimals)} ${outputSymbol}` : attempt.status === "no_route" ? "No route" : attempt.status === "invalid_response" ? "Rejected" : "Unavailable"}</strong><small>{attempt.status === "indicative"
                 ? attempt.provider === bestQuote?.provider
                   ? attempt.publicWalletExecutionEligible
                     ? "Highest estimated user output before network fee · indicative floor"
@@ -1564,10 +1571,10 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
         </dl> : null}
         {visibleQuote ? <div className="vnVerificationGate">
           <div>
-            <span><strong>Strict pre-sign evidence</strong><small>{verificationQuote
+            <span><strong>Provider transaction review</strong><small>{verificationQuote
               ? routeSelection.usesVerifiedBackup
                 ? `${bestQuote?.providerLabel} leads indicatively but is quote-only; ${verificationQuote.providerLabel} is the verification candidate, not executable evidence`
-                : "Fresh provider-specific contracts + exact wallet state"
+                : "Fresh 0x terms bound to your selected wallet and trade intent"
               : stockTokenViewOnly
                 ? "Indicative routes are informational; stock-token execution verification is not admitted."
                 : "No observed route is currently admitted to public wallet execution"}</small></span>
@@ -1580,22 +1587,20 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
             <dl>
               <div><dt>Provider</dt><dd>{visibleRoutePresentation?.providerLabel}</dd></div>
               <div><dt>Route</dt><dd>{visibleRoutePresentation?.routeLabel}</dd></div>
-              <div><dt>Protected</dt><dd>{formatAtomicDisplay(visibleVerification.protectedOutputAtomic, verificationQuote?.outputDecimals ?? 18)} {outputSymbol}</dd></div>
+              <div><dt>Protected</dt><dd>{formatAtomicOrBaseUnits(visibleVerification.protectedOutputAtomic, pair?.outputAsset.decimals ?? verificationQuote?.outputDecimals)} {outputSymbol}</dd></div>
               <div><dt>{visibleVerification.provider === "zero-x-swap" ? "Fresh firm quote" : "Quote continuity"}</dt><dd>{visibleVerification.provider === "zero-x-swap" ? "Updated executable minimum" : describeProtectedOutputContinuity(visibleVerification.protectedOutputAtomic, visibleVerification.indicativeProtectedOutputFloorAtomic)}</dd></div>
-              <div><dt>Simulation</dt><dd>{visibleVerification.exactSimulationPassed
-                ? "Passed"
-                : visibleVerification.exactSimulationState === "inconclusive"
-                  ? "Unavailable · trade commitment passed"
-                  : "Blocked"}</dd></div>
-              <div><dt>Next action</dt><dd>{visibleVerification.nextAction === "approval" ? "Exact approval" : visibleVerification.nextAction === "swap" ? "Verified swap" : "Blocked"}</dd></div>
-              <div><dt>Gas</dt><dd>{visibleVerification.gasState}</dd></div>
+              <div><dt>Provider simulation</dt><dd>{visibleVerification.providerSimulationIncomplete
+                ? "Incomplete · wallet review still available"
+                : "No incomplete-simulation issue reported"}</dd></div>
+              <div><dt>Next action</dt><dd>{visibleVerification.nextAction === "approval" ? "Exact AllowanceHolder approval" : visibleVerification.nextAction === "swap" ? "Review swap in wallet" : "Blocked"}</dd></div>
+              <div><dt>Gas</dt><dd>{visibleVerification.provider === "zero-x-swap" ? "0x estimate · wallet balance checked before handoff" : visibleVerification.gasState}</dd></div>
               <div><dt>Gas reserve</dt><dd>{visibleVerification.estimatedNetworkCostWei ? `${formatAtomicDisplay(visibleVerification.estimatedNetworkCostWei, 18)} ETH` : "Unavailable"}</dd></div>
               <div><dt>Gas reserve value</dt><dd>{freshVerifiedNetworkCostUsdgAtomic ? `${formatAtomicDisplay(freshVerifiedNetworkCostUsdgAtomic, 6)} USDG equivalent` : "Unavailable"}</dd></div>
               {verifiedUsdgOutcome?.kind === "buy_cost_ceiling" ? <div><dt>Trade + gas ceiling</dt><dd>{formatAtomicDisplay(verifiedUsdgOutcome.totalCostUsdgAtomic, 6)} USDG equivalent</dd></div> : null}
               {verifiedUsdgOutcome?.kind === "sell_proceeds_after_gas" ? <div><dt>Protected after gas</dt><dd>{verifiedUsdgOutcome.gasExceedsProtectedProceeds ? "Gas exceeds protected proceeds" : `${formatAtomicDisplay(verifiedUsdgOutcome.proceedsAfterGasUsdgAtomic, 6)} USDG equivalent`}</dd></div> : null}
               <div><dt>RMT fee</dt><dd>{verifiedRmtFeeLabel}</dd></div>
               {visibleVerification.providerNativeFee ? <div><dt>RMT fee settlement</dt><dd>0.25% · provider-native · {verifiedRmtFee?.feeSide === "input" ? inputSymbol : outputSymbol}</dd></div> : null}
-              {visibleVerification.providerNativeFee?.providerFeeAtomic && visibleVerification.providerNativeFee.providerFeeAsset ? <div><dt>0x/provider fee</dt><dd>{formatAtomicDisplay(visibleVerification.providerNativeFee.providerFeeAtomic, getAddress(visibleVerification.providerNativeFee.providerFeeAsset) === getAddress(visibleVerification.inputAsset) ? pair?.inputAsset.decimals ?? 18 : pair?.outputAsset.decimals ?? 18)} · separate from RMT fee and network gas</dd></div> : null}
+              {visibleVerification.providerNativeFee?.providerFeeAtomic && visibleVerification.providerNativeFee.providerFeeAsset ? <div><dt>0x/provider fee</dt><dd>{formatAtomicOrBaseUnits(visibleVerification.providerNativeFee.providerFeeAtomic, getAddress(visibleVerification.providerNativeFee.providerFeeAsset) === getAddress(visibleVerification.inputAsset) ? pair?.inputAsset.decimals : pair?.outputAsset.decimals)} · separate from RMT fee and network gas</dd></div> : null}
               {visibleVerification.feeExecution ? <div><dt>Fee treasury</dt><dd>{shortAddress(visibleVerification.feeExecution.treasury)}</dd></div> : null}
               {visibleVerification.feeExecution ? <div><dt>Settlement</dt><dd>Atomic with swap · policy v{visibleVerification.feeExecution.policyVersion}</dd></div> : null}
               {visibleVerification.feeV2Economics ? <div><dt>Gross input</dt><dd>{formatAtomicDisplay(visibleVerification.feeV2Economics.userGrossInputAtomic, pair?.inputAsset.decimals ?? 18)} {inputSymbol}</dd></div> : null}
@@ -1618,9 +1623,9 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
             {authorizationState.state === "ready" ? <div className="vnAuthorizationPlan" role="status">
               <span><strong>{authorizationState.plan.kind === "erc20_approval" ? "Exact token approval prepared" : "Verified swap prepared"}</strong><small>Review the verified request, then explicitly choose when to open your wallet.</small></span>
               <dl>
-                <div><dt>{authorizationState.plan.kind === "erc20_approval" ? "Approval amount" : "Exact input"}</dt><dd>{formatAtomicDisplay(authorizationState.plan.inputAmountAtomic, pair?.inputAsset.decimals ?? 18)} {inputSymbol}</dd></div>
-                <div><dt>Expected output</dt><dd>{formatAtomicDisplay(visibleVerification.expectedOutputAtomic, pair?.outputAsset.decimals ?? 18)} {outputSymbol}</dd></div>
-                <div><dt>Protected minimum</dt><dd>{formatAtomicDisplay(authorizationState.plan.protectedOutputAtomic, pair?.outputAsset.decimals ?? 18)} {outputSymbol}</dd></div>
+                <div><dt>{authorizationState.plan.kind === "erc20_approval" ? "Approval amount" : "Exact input"}</dt><dd>{formatAtomicOrBaseUnits(authorizationState.plan.inputAmountAtomic, pair?.inputAsset.decimals)} {inputSymbol}</dd></div>
+                <div><dt>Expected output</dt><dd>{formatAtomicOrBaseUnits(visibleVerification.expectedOutputAtomic, pair?.outputAsset.decimals)} {outputSymbol}</dd></div>
+                <div><dt>Protected minimum</dt><dd>{formatAtomicOrBaseUnits(authorizationState.plan.protectedOutputAtomic, pair?.outputAsset.decimals)} {outputSymbol}</dd></div>
                 <div><dt>Route</dt><dd>{visibleRoutePresentation?.routeLabel}</dd></div>
                 <div><dt>Network</dt><dd>Robinhood Chain · 4663</dd></div>
                 <div><dt>Target</dt><dd>{shortAddress(authorizationState.plan.target)}</dd></div>
@@ -1681,8 +1686,8 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
           onDispatched={(dispatched) => { setWalletActionId(0); if (dispatched.kind === "swap") { intentionalTradeContext.current = null; clearPendingApprovalJourney(); } }}
           inputSymbol={inputSymbol}
           outputSymbol={outputSymbol}
-          inputDecimals={pair?.inputAsset.decimals ?? 18}
-          outputDecimals={pair?.outputAsset.decimals ?? 18}
+          inputDecimals={pair?.inputAsset.decimals ?? null}
+          outputDecimals={pair?.outputAsset.decimals ?? null}
           selectedWalletKey={identity.activeWalletKey}
           selectedWalletKind={identity.activeWalletKind}
           selectedSignerAuthority={identity.activeSignerAuthority}
@@ -1759,8 +1764,8 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
               {confirmedFee.state !== "not_applicable" ? <div><dt>{confirmedFee.state === "quoted" ? "RMT fee quoted" : "RMT fee settled"}</dt><dd>{confirmedFee.display}</dd></div> : null}
               {executionRecord.providerNativeFee ? <>
                 <div><dt>0x/provider fee quoted</dt><dd>{executionRecord.providerNativeFee.providerFeeAtomic ? `${executionRecord.providerNativeFee.providerFeeAtomic} atomic · ${executionRecord.providerNativeFee.providerFeeAsset}` : "None reported"}</dd></div>
-                <div><dt>Expected receive quoted</dt><dd>{formatAtomicDisplay(executionRecord.providerNativeFee.expectedOutputAtomic, pair?.outputAsset.decimals ?? 18)} {outputSymbol}</dd></div>
-                <div><dt>Minimum receive quoted</dt><dd>{formatAtomicDisplay(executionRecord.providerNativeFee.protectedOutputAtomic, pair?.outputAsset.decimals ?? 18)} {outputSymbol}</dd></div>
+                <div><dt>Expected receive quoted</dt><dd>{formatAtomicOrBaseUnits(executionRecord.providerNativeFee.expectedOutputAtomic, pair?.outputAsset.decimals)} {outputSymbol}</dd></div>
+                <div><dt>Minimum receive quoted</dt><dd>{formatAtomicOrBaseUnits(executionRecord.providerNativeFee.protectedOutputAtomic, pair?.outputAsset.decimals)} {outputSymbol}</dd></div>
                 <div><dt>Transaction target</dt><dd>{shortAddress(executionRecord.providerNativeFee.transactionTarget)}</dd></div>
               </> : null}
               {confirmedProvider ? <div><dt>Provider</dt><dd>{confirmedProvider}{executionRecord.feeV2Settlement ? " · RMT atomic fee settlement · policy v2" : executionRecord.feeSettlement ? " · RMT atomic settlement" : ""}</dd></div> : null}

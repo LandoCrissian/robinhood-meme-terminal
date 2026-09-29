@@ -170,7 +170,7 @@ export function createVNextUniswapV4Adapter(
           inputAmountAtomic: request.inputAmountAtomic,
           expectedOutputAtomic: amountOut.toString(),
           protectedOutputAtomic: protectedOutput.toString(),
-          outputDecimals: request.outputIdentity.decimals,
+          outputDecimals: request.outputIdentity!.decimals,
           priceImpact: null,
           liquidityFeeEvidence: [],
           quotedAtMs,

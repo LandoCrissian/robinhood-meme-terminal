@@ -141,7 +141,8 @@ export function parseVNextAuthorizationPlan(value: unknown, evidence: VNextPreSi
     || plan.preparedAtMs > nowMs + MAX_CLOCK_SKEW_MS || plan.expiresAtMs <= nowMs
     || plan.expiresAtMs <= plan.preparedAtMs
     || plan.expiresAtMs - plan.preparedAtMs > VNEXT_PLAN_MAX_AGE_MS
-    || plan.expiresAtMs > Number(BigInt(plan.deadline) * 1_000n) - VNEXT_MINIMUM_WALLET_REVIEW_RUNWAY_MS
+    || (plan.provider !== "zero-x-swap"
+      && plan.expiresAtMs > Number(BigInt(plan.deadline) * 1_000n) - VNEXT_MINIMUM_WALLET_REVIEW_RUNWAY_MS)
   ) throw new Error("RMT rejected an inconsistent authorization plan.");
   if (plan.provider === "zero-x-swap" || plan.settlementMode === VNEXT_PROVIDER_NATIVE_INPUT_FEE) {
     parseVNextPreSignEvidence(evidence, {

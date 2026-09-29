@@ -128,8 +128,9 @@ const route = readFileSync(new URL("../../app/api/vnext/verify/route.ts", import
 const verifier = readFileSync(new URL("../server/vnext-uniswap-quote.ts", import.meta.url), "utf8");
 const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
 assert.match(route, /requireAuthenticatedTradeWallet/);
-assert.match(route, /readVNextVerifiedAssetIdentity/);
+assert.doesNotMatch(route, /readVNextVerifiedAssetIdentity|requireProjectIdentityExecutionAdmitted/);
 assert.match(route, /verifyRobinhoodVNextExecution/);
+assert.match(route, /stockTokenExecutionPolicyErrorResponse/);
 assert.match(route, /protectedOutputFloorAtomic/);
 assert.match(route, /verificationOperation/);
 assert.match(route, /rmt_pre_sign_failure/,
@@ -154,8 +155,9 @@ assert.doesNotMatch(route, /writeContract|sendTransaction|signTypedData|database
 assert.doesNotMatch(verifier, /writeContract|sendTransaction|signTypedData/);
 assert.match(composer, /parseVNextPreSignEvidence/);
 assert.match(composer, /\/api\/vnext\/verify/);
-assert.match(composer, /Strict pre-sign evidence/);
-assert.match(composer, /Authorization remains disabled/);
+assert.match(composer, /Fresh 0x transaction prepared/);
+assert.match(composer, /Fresh 0x terms bound to your selected wallet and trade intent/);
+assert.match(composer, /Authorization remains disabled in this preview/);
 assert.match(composer, /Insufficient ETH for gas/);
 assert.match(composer, /Robinhood ETH is required only for network gas/);
 assert.match(composer, /<FundWalletButton[\s\S]*directReceive[\s\S]*label="Add Robinhood ETH"[\s\S]*requestedAsset=\{\{ address: ROBINHOOD_NATIVE_ASSET_ADDRESS, symbol: "ETH" \}\}/);
