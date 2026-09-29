@@ -20,7 +20,7 @@ const scenarios = [
   { name: "unlinked-wallet", tokenMode: "ready", header: "unlinked", outcome: "403", desktopOnly: true },
   { name: "server-configuration", tokenMode: "ready", responseStatus: 503, outcome: "503", desktopOnly: true },
   { name: "timeout", tokenMode: "ready", timeout: true, outcome: "timeout", desktopOnly: true },
-  { name: "identity-reader-retry", tokenMode: "ready", identityFailure: true, outcome: "identity-retry" },
+  { name: "identity-enrichment-unavailable", tokenMode: "ready", metadataUnavailable: true, outcome: "metadata-unavailable-success" },
   { name: "valid-route", tokenMode: "ready", outcome: "success" },
   { name: "no-route", tokenMode: "ready", outcome: "no-route", noRoute: true }
 ];
@@ -74,7 +74,7 @@ export async function runLiveEthQuoteIncidentJourneys({
       page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
       page.on("request", (request) => {
         if (new URL(request.url()).origin === base && new URL(request.url()).pathname === "/api/vnext/quotes") {
-          if (scenario.identityFailure && quoteRequests === 0) state.metadataUnavailable = true;
+          if (scenario.metadataUnavailable && quoteRequests === 0) state.metadataUnavailable = true;
           quoteRequests += 1;
         }
       });
@@ -83,9 +83,6 @@ export async function runLiveEthQuoteIncidentJourneys({
         if (url.origin === base && url.pathname.startsWith("/api/vnext/")) {
           const body = await response.json().catch(() => null);
           api.push({ path: url.pathname, status: response.status(), body });
-          if (scenario.identityFailure && url.pathname === "/api/vnext/quotes" && response.status() === 503) {
-            state.metadataUnavailable = false;
-          }
         }
       });
       await page.route("**/*", async (route) => {
@@ -125,7 +122,7 @@ export async function runLiveEthQuoteIncidentJourneys({
       });
       const name = `${viewport[0]}-live-eth-${scenario.name}`;
       const selectedToken = scenario.noRoute ? noRouteToken
-        : scenario.identityFailure ? identityRetryTokens[viewport[0]] : token;
+        : scenario.metadataUnavailable ? identityRetryTokens[viewport[0]] : token;
       const previousPriceDisabled = state.priceDisabled;
       state.priceDisabled = Boolean(scenario.noRoute);
       try {
@@ -157,15 +154,14 @@ export async function runLiveEthQuoteIncidentJourneys({
           await until(async () => /authentication is not configured/i.test(await page.locator(".vnTradeActionStatus").innerText()), "503 configuration failure must be visible beside the action");
         } else if (scenario.outcome === "timeout") {
           await until(async () => /did not answer before the protected quote timeout/i.test(await page.locator(".vnTradeActionStatus").innerText()), "Timeout must be visible beside the action", 20_000);
-        } else if (scenario.outcome === "identity-retry") {
-          await until(() => api.some((entry) => entry.path === "/api/vnext/quotes" && entry.status === 503
-            && entry.body?.code === "IDENTITY_RPC_UNAVAILABLE" && entry.body?.phase === "IDENTITY_UNAVAILABLE"),
-          "The real quote handler must expose the transient identity-reader failure");
-          await until(async () => /token identity rpc is temporarily unavailable/i.test(await page.locator(".vnTradeActionStatus").innerText()),
-            "Identity failure must be visible beside the trade action");
-          await page.getByRole("button", { name: "Retry token verification", exact: true }).click();
+        } else if (scenario.outcome === "metadata-unavailable-success") {
           await until(() => api.some((entry) => entry.path === "/api/vnext/quotes" && entry.status === 200),
-            "Explicit retry must recover through the real quote handler");
+            "Metadata unavailability must not stop the real quote handler from reaching 0x");
+          const successfulQuote = api.find((entry) => entry.path === "/api/vnext/quotes" && entry.status === 200);
+          assert.ok(successfulQuote?.body?.attempts?.some((attempt) => attempt.provider === "zero-x-swap"),
+            "Provider-native quote must include the 0x attempt");
+          assert.ok(!api.some((entry) => entry.body?.phase === "IDENTITY_UNAVAILABLE"),
+            "Optional identity enrichment must not become a public quote veto");
         } else {
           await until(() => api.some((entry) => entry.path === "/api/vnext/quotes" && entry.status === 200), "No-route case must reach the real quote handler");
           await until(async () => /no current route/i.test(await page.locator(".vnTradeActionStatus").innerText()), "Genuine no-route must be visible beside the action");
