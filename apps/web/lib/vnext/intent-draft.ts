@@ -75,7 +75,6 @@ export function createExactInputIntent(input: {
   requestedAtMs: number;
 }): TradeIntent {
   const inputDecimals = requireVerifiedAsset(input.inputAsset, "Input asset");
-  requireVerifiedAsset(input.outputAsset, "Output asset");
   if (chainKey(input.sourceAccount.chain) !== chainKey(input.inputAsset.id.chain)) {
     throw new Error("Source wallet and input asset are on different chains.");
   }

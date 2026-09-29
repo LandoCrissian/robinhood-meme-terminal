@@ -351,7 +351,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
   }, [preserveTradeDraft, selectedMarketAddress]);
 
   const draft = useMemo(() => {
-    if (!marketAsset) return { intent: null, message: "This preview asset has no verified chain-qualified contract identity." };
+    if (!marketAsset) return { intent: null, message: "This preview asset has no exact chain-qualified contract identity." };
     if (!address || !isConnected || identity.activeWalletKind === null) return { intent: null, message: "Connect your selected trading wallet to bind the source account and recipient." };
     if (!onRobinhood) return { intent: null, message: "Switch to Robinhood Chain before creating an intent." };
     if (!pair) return { intent: null, message: side === "buy" ? "No different trusted payment asset is available in this wallet." : "No supported settlement asset is available." };

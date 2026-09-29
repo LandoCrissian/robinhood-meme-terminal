@@ -174,6 +174,22 @@ function external(input) {
   }
   if (['cca-lite.coinbase.com', 'cca.coinbase.com', 'pulse.walletconnect.org'].includes(url.hostname)) return { status: 200, body: {} };
   if (url.origin === 'https://api.robinhood.com' && url.pathname === '/rhj/assets') return { status: 200, body: { assets: [] } };
+  if (state.coldUnknownMetadataToken && url.origin === 'https://api.dexscreener.com') {
+    const exactToken = state.coldUnknownMetadataToken.toLowerCase();
+    const exactPair = '0x4444444444444444444444444444444444444444';
+    if (url.pathname === `/latest/dex/pairs/robinhood/${exactToken}`) return { status: 200, body: { pairs: [] } };
+    if (url.pathname === `/token-pairs/v1/robinhood/${exactToken}`) return { status: 200, body: [{
+      chainId: 'robinhood', dexId: 'uniswap-v3', pairAddress: exactPair,
+      url: `https://dexscreener.com/robinhood/${exactPair}`,
+      baseToken: { address: exactToken, name: 'Observed exact-address token', symbol: 'OBS' },
+      quoteToken: { address: weth, name: 'Wrapped Ether', symbol: 'WETH' },
+      priceNative: '0.000001', priceUsd: '0.001', liquidity: { usd: 1000 },
+      fdv: 1000000, marketCap: 900000, pairCreatedAt: Date.now() - 60_000,
+      volume: { m5: 1, h1: 5, h6: 30, h24: 100 },
+      priceChange: { m5: 0, h1: 0, h6: 0, h24: 0 },
+      txns: { m5: { buys: 1, sells: 0 }, h1: { buys: 1, sells: 1 }, h6: { buys: 2, sells: 2 }, h24: { buys: 5, sells: 5 } }
+    }] };
+  }
   if (url.origin === 'https://robinhoodchain.blockscout.com'
     && [wallet, '0x1111111111111111111111111111111111111111'].some((account) => url.pathname === `/api/v2/addresses/${account}/token-balances`)) return { status: 200, body: [] };
   if (state.priceDisabled && url.origin === 'https://api.0x.org' && url.pathname === '/gasless/price') {
