@@ -317,7 +317,11 @@ export async function runZeroXWalletJourneys(options) {
         const amountInput = page.getByLabel('Exact input amount');
         if (scenario === 'native') {
           await page.getByLabel('Pay with asset').selectOption('eip155:4663/native');
-          await until(async () => await amountInput.inputValue() === '0.0005', 'Native selection must publish its bounded default amount');
+          await until(async () => /^[\d~,\.\s]+ ETH$/.test(await page.locator('.vnConfirmedBalance strong').innerText()),
+            'Native input must have confirmed spendable balance before entering the intended amount');
+          // Balance arrival is not permission to overwrite a chosen amount.
+          // Enter the fixture intent explicitly, as the owner does in the UI.
+          await amountInput.fill('0.0005');
         }
         if (sell && !scenario.startsWith('sell-approval')) await page.locator('.vnTradePanel select').first().selectOption('eip155:4663/native');
         if (scenario !== 'native') await amountInput.fill('25');
