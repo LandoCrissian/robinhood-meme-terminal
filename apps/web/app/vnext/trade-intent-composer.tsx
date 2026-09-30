@@ -647,6 +647,8 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
     ? formatAtomicOrBaseUnits(retainedVerification.expectedOutputAtomic, pair?.outputAsset.decimals)
     : verificationQuote?.expectedOutputAtomic
     ? formatAtomicOrBaseUnits(verificationQuote.expectedOutputAtomic, pair?.outputAsset.decimals ?? verificationQuote.outputDecimals)
+    : bestQuote?.expectedOutputAtomic
+    ? formatAtomicOrBaseUnits(bestQuote.expectedOutputAtomic, pair?.outputAsset.decimals ?? bestQuote.outputDecimals)
     : null;
   const retainedEstimate = !visibleVerification && Boolean(expectedOutput)
     && (Boolean(retainedVerification) || quoteState.state !== "ready" || !indicativeQuoteFresh);
@@ -1263,11 +1265,13 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
     : tradeJourneyLabels[quotePhase];
   const expectedOutputLabel = expectedOutput
     ? `${expectedOutput} ${outputSymbol}`
+    : quoteState.state === "error"
+      ? quoteStatusText
     : !draft.intent
       ? "Enter trade amount"
       : noObservedRoute
         ? tradeJourneyLabels[quotePhase]
-        : "Finding best route…";
+        : quoteState.state === "loading" ? "Updating estimate…" : "Estimate not available";
   const routeStatusLabel = quoteState.state === "error" ? quoteStatusText : visibleVerification
     ? verificationLabel
     : noObservedRoute
@@ -1325,9 +1329,9 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
         ? "0x has no current route for this exact asset pair and amount. You can change the amount or try again later."
         : verificationState.state === "error" ? verificationState.message
         : authorizationState.state === "error" ? authorizationState.message
-        : amountExceedsBalance ? `The amount exceeds your confirmed spendable ${inputSymbol} balance.`
         : fundingReason === "native-gas" ? "Deposit native ETH for Robinhood Chain gas. Your draft stays unchanged."
-        : fundingReason === "input-balance" ? `Deposit ${inputSymbol} to this selected wallet.`
+        : fundingReason === "input-balance" ? `Deposit ${inputSymbol} to cover this amount in your selected wallet.`
+        : amountExceedsBalance ? `The amount exceeds your confirmed spendable ${inputSymbol} balance.`
         : address && pair && !tradeBalanceResolved ? "Input or native gas balance is unavailable. Retry the balance read before trading."
         : null;
   useEffect(() => {
@@ -1407,7 +1411,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
   };
 
   return (
-    <aside ref={tradePanelRef} className={`vnTradePanel is-${side}`} id="vnext-trade-ticket" aria-labelledby="vn-trade-heading">
+    <aside ref={tradePanelRef} className={`vnTradePanel is-${side}${stockTokenViewOnly ? " isViewOnly" : previewOnly ? " isPreview" : ""}`} id="vnext-trade-ticket" aria-labelledby="vn-trade-heading">
 <div className="vnTradeScroll" ref={tradeScrollRef}>
 <div className="vnTradeHeader">
         <div><span className="vnEyebrow">{stockTokenViewOnly ? "Market context" : previewOnly ? "Route preview" : "Trade"}</span><h2 id="vn-trade-heading">{marketSymbol === "—" ? "Select an asset" : stockTokenViewOnly ? `View ${marketSymbol}` : previewOnly ? `Preview ${marketSymbol}` : `Trade ${marketSymbol}`}</h2><small>{marketName}</small></div>

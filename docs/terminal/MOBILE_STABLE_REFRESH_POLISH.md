@@ -107,6 +107,17 @@ checks out the exact PR head before building its acceptance artifact.
 
 ## Review qualifications
 
+The first PR head (`28b75f6`) did not pass CI. Its checks remain in the
+GitHub history. Review found a hidden duplicate Markets navigator, obsolete
+chart/copy assertions, a funding test that assumed USDG remained the default,
+and an identity-recovery assertion counting two different user intents as
+duplicate requests. The navigator is now rendered only in the asset context;
+funding coverage explicitly selects USDG; recovery asserts one request per
+exact intent. Preview/view-only status remains visible on mobile. A settled
+identity error also exposed an incorrect “Finding best route” estimate label;
+the ticket now shows its actual failure phase and does not imply active work.
+These corrections retain all suites and financial side-effect assertions.
+
 Local iteration caught and corrected a dormant-ticket hydration mismatch,
 a fixture selector using button instead of tab, and a side-change measurement
 sampled before its scheduled animation frame. Assertions remain behavioral;

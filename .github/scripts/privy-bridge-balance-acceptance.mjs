@@ -404,7 +404,14 @@ async function runIdentityTokenRecovery(browser, base) {
     await page.waitForFunction(() => window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_EVENTS__?.includes("REFRESH_USER"), null, { timeout: 20_000 });
     await page.waitForFunction(() => document.querySelector(".vnTradeActionStatus")?.textContent?.includes("Read-only acceptance"), null, { timeout: 20_000 });
     await page.waitForTimeout(9_500);
-    assert.equal(quotes.length, 1, `production Privy bridge recovery resumes exactly one read-only quote request (${JSON.stringify(quotes)})`);
+    const selectedIntentQuotes = quotes.filter(quote => quote.inputAsset === '0x0000000000000000000000000000000000000000'
+      && quote.inputAmountAtomic === '1000000000000000' && quote.outputAsset === market && quote.chainId === 4663);
+    assert.equal(selectedIntentQuotes.length, 1, `recovery resumes exactly one quote for the deliberately selected ETH intent (${JSON.stringify(quotes)})`);
+    // A ready default amount may recover before the subsequent deliberate asset
+    // selection. It is a different intent, not a duplicate request for ETH.
+    const initialIntentQuotes = quotes.filter(quote => !selectedIntentQuotes.includes(quote));
+    assert.ok(initialIntentQuotes.length <= 1 && initialIntentQuotes.every(quote => quote.inputAsset === usdg.toLowerCase()
+      && quote.inputAmountAtomic === '5000000' && quote.outputAsset === market && quote.chainId === 4663), 'no repeated or unrelated recovery request');
     const evidence = await page.evaluate(() => ({
       events: window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_EVENTS__,
       financialRequests: window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_RPC_METHODS__.filter((entry) => /send|sign/i.test(entry.method)).length

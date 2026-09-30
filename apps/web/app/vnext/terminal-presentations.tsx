@@ -486,7 +486,7 @@ export function ResponsiveTerminal({ desktop, ...props }: TerminalPresentationPr
     <section hidden={props.context !== "asset"} className={desktop ? "rmtDesktopAssetView rmtResponsiveAssetLayout" : "rmtMobileAssetView rmtResponsiveAssetLayout"} id={desktop ? "rmt-asset-workspace" : "rmt-mobile-asset"}>
       <div className={desktop ? "rmtAssetContextBar" : "rmtMobileAssetBack"}><button type="button" onClick={props.onShowMarkets}>← Markets</button><span>{props.selected ? `Token Market · ${props.selected.symbol}` : "Select a market"}</span></div>
       <div className={desktop ? "rmtDesktopWorkstation" : "rmtMobileWorkstation"}>
-        <div className="rmtResponsiveNavigator" hidden={!desktop}><CompactMarketNavigator {...props} /></div>
+        <div className="rmtResponsiveNavigator" hidden={!desktop}>{desktop && props.context === "asset" ? <CompactMarketNavigator {...props} /> : null}</div>
         <section className={desktop ? "rmtDesktopAsset" : "rmtMobileAsset"}>
           {props.context === "asset" && props.selected ? <VNextAssetWorkspace presentation={desktop ? "desktop" : "mobile"} directoryMarket={props.selected} identityStatus={props.identityStatus} walletAssets={props.walletAssets} executionState={props.selectedExecutionState} executionUiState={props.executionUiState} onTradeSide={openTrade} /> : null}
         </section>

@@ -972,6 +972,9 @@ async function runFundingPrimaryBoundaries(browser, base) {
       await tradeSheet.waitFor({ timeout: 10_000 });
       const amount = tradeSheet.getByLabel("Exact input amount");
       await amount.waitFor({ timeout: 30_000 });
+      // Exercise the chosen USDG funding boundary, independently of the
+      // consumer default selecting spendable native ETH when USDG is zero.
+      await tradeSheet.getByLabel("Pay with asset").selectOption(`eip155:4663/contract:${usdgAddress.toLowerCase()}`);
       await amount.fill("1");
       const balanceEvidence = tradeSheet.getByText(scenario.evidence);
       await balanceEvidence.waitFor({ state: "attached", timeout: 10_000 });
