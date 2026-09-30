@@ -62,7 +62,7 @@ assert.deepEqual(retainPresentationEvidence(prior, { ...prior, data: null, state
 assert.equal(parsePresentationEvidence({ ...prior, chainId: 4663, contract: other }, token, visualSchema, prior.provenance), null);
 assert.equal(parsePresentationEvidence({ ...prior, chainId: 1, contract: token }, token, visualSchema, prior.provenance), null);
 
-for (const address of ["127.0.0.1", "10.1.2.3", "169.254.169.254", "192.168.1.1", "::1", "::ffff:127.0.0.1", "2001:db8::1", "2002:7f00:1::1"]) assert.equal(publicArtworkIp(address), false, address);
+for (const address of ["127.0.0.1", "10.1.2.3", "169.254.169.254", "192.168.1.1", "::1", "::ffff:127.0.0.1", "2001:db8::1", "2001:0db8::1", "2001::1", "2001:0000::1", "2002:7f00:1::1"]) assert.equal(publicArtworkIp(address), false, address);
 assert.equal(publicArtworkIp("8.8.8.8"), true); assert.equal(publicArtworkIp("2606:4700:4700::1111"), true);
 assert.throws(() => artworkUrl("http://assets.geckoterminal.com/art")); assert.throws(() => artworkUrl("https://user:password@assets.geckoterminal.com/art"));
 const png = Buffer.from([137,80,78,71,13,10,26,10]);

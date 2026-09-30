@@ -13,7 +13,10 @@ export function publicArtworkIp(address: string) {
   }
   // Only global-unicast IPv6; exclude documentation, Teredo and 6to4 addresses
   // that could encode or tunnel a private IPv4 destination.
-  return isIP(address) === 6 && /^[23]/i.test(address) && !/^2001:(?:0:|db8:)/i.test(address) && !/^2002:/i.test(address);
+  if (isIP(address) !== 6) return false;
+  const parts = address.split(":");
+  const first = parseInt(parts[0], 16), second = parts[1] ? parseInt(parts[1], 16) : 0;
+  return first >= 0x2000 && first <= 0x3fff && first !== 0x2002 && !(first === 0x2001 && [0, 0xdb8].includes(second));
 }
 export function artworkMediaType(bytes: Buffer, contentType: string) {
   const type = contentType.split(";")[0].trim().toLowerCase();
