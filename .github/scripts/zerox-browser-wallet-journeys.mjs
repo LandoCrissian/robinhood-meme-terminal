@@ -109,7 +109,7 @@ export async function runZeroXWalletJourneys(options) {
       let settledOutputAsset = null;
       let settledOutputBalanceReads = 0;
       const isMobile = viewportName === 'mobile';
-      const context = await browser.newContext({ viewport: isMobile ? { width: 390, height: 844 } : { width: 1440, height: 900 }, ...(isMobile ? { isMobile: true, hasTouch: true, userAgent: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/128.0.0.0 Mobile Safari/537.36' } : {}) });
+      const context = await browser.newContext({ viewport: isMobile ? { width: 390, height: 844 } : { width: 1440, height: 900 }, ...(['native', 'native-sell', 'sell-approval-healthy'].includes(scenario) ? { recordVideo: { dir: path.join(output, 'journey-videos') } } : {}), ...(isMobile ? { isMobile: true, hasTouch: true, userAgent: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/128.0.0.0 Mobile Safari/537.36' } : {}) });
       const page = await context.newPage();
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.clock.install();

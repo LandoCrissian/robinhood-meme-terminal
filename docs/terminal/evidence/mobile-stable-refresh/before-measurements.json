@@ -1,0 +1,40 @@
+{
+  "evidence": "MOCKED_LOCAL_BROWSER",
+  "head": "fe0f81510b9879cb7d8481948cc7a21d6ca98913",
+  "tree": "98da5f05efd48f2fd81bb6ea67b2eb63e4146341",
+  "authorizedMainSameTree": "e7727dce645d6283f3995e9ae53de898d5f3d4f2",
+  "profiles": [
+    {
+      "viewport": "390x844",
+      "wallObservationMs": 90024,
+      "delayedVerificationMs": 14000,
+      "actionMovementPx": 0,
+      "scrollMovementPx": 0,
+      "inputInstabilitySamples": 0,
+      "expiredMinimum": "Set when you trade",
+      "newSellScrollPx": 90,
+      "newSellReceiveAsset": "eip155:4663/contract:0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+      "passive42SecondRequestCounts": {
+        "quotes": 4,
+        "verify": 4,
+        "authorize": 4
+      }
+    },
+    {
+      "viewport": "1440x900",
+      "wallObservationMs": 90320,
+      "delayedVerificationMs": 14000,
+      "actionMovementPx": 0,
+      "scrollMovementPx": 0,
+      "inputInstabilitySamples": 0,
+      "expiredMinimum": "Set when you trade",
+      "newSellScrollPx": 90,
+      "newSellReceiveAsset": "eip155:4663/contract:0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+      "passive42SecondRequestCounts": {
+        "quotes": 4,
+        "verify": 4,
+        "authorize": 4
+      }
+    }
+  ]
+}

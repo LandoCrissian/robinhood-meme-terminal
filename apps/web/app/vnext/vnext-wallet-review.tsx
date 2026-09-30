@@ -219,6 +219,13 @@ export function VNextWalletReview({
   }, []);
 
   useEffect(() => {
+    // Renewed terms update this mounted control. An owned/pending wallet request
+    // keeps its status and payload; only idle presentation messages are cleared.
+    if (preparedRef.current || busy) return;
+    setLocalError(""); setLocalStatus(""); setRequiresRefresh(false);
+  }, [plan.planId]);
+
+  useEffect(() => {
     const prepared = preparedRef.current;
     if (!expired || handoffState !== "ready_to_open" || !prepared) return;
     transitionVNextWalletRequest(prepared.requestId, "EXPIRED_UNSUBMITTED");
@@ -535,7 +542,7 @@ export function VNextWalletReview({
       onClick={() => (onTradeAction?.(), (plan.provider === "zero-x-swap" && handoffState !== "ready_to_open") || !isVerifiedRequestFresh(plan.expiresAtMs, Date.now()) || requiresRefresh
         ? onRefresh?.()
         : handoffState === "ready_to_open" ? openPreparedWalletRequest() : void prepareWalletReview())}
-    >{tradeActionLabel && !busy && !expired && !requiresRefresh ? tradeActionLabel : !submissionEnabled
+    >{tradeActionLabel && !busy ? tradeActionLabel : !submissionEnabled
       ? "Wallet submission disabled"
       : (expired || requiresRefresh) && !busy
         ? "Refresh and review in wallet"

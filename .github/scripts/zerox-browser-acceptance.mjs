@@ -1,7 +1,10 @@
+import { runStableRefreshBrowser } from './stable-refresh-browser.mjs';
+import { runMarketAnchorBrowser } from './market-anchor-browser.mjs';
 import { runTradingProductBrowser } from './trading-product-browser.mjs';
 import { runZeroXFirmCommitmentJourneys } from "./zerox-browser-firm-commitment.mjs";
 import { hotPathInventory, runHotPathBrowserAcceptance } from './execution-hot-path-browser.mjs';
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import { createRequire } from 'node:module';
 import { generateKeyPairSync, sign } from 'node:crypto';
@@ -13,7 +16,8 @@ import { runZeroXWalletJourneys } from './zerox-browser-wallet-journeys.mjs';
 import { createRouteOnDemandFixtures, runRouteOnDemandJourneys } from './zerox-browser-route-on-demand.mjs';
 import { runLiveEthQuoteIncidentJourneys } from './live-eth-quote-incident-browser.mjs';
 
-const root = fileURLToPath(new URL('../../', import.meta.url));
+const root = process.env.RMT_STABILITY_BASELINE === 'true' && process.env.RMT_STABILITY_BASELINE_ROOT
+  ? process.env.RMT_STABILITY_BASELINE_ROOT : fileURLToPath(new URL('../../', import.meta.url));
 const requireWeb = createRequire(path.join(root, 'apps/web/package.json'));
 const { encodeAbiParameters, decodeFunctionData, encodeFunctionResult, parseAbi, keccak256, toFunctionSelector, multicall3Abi } = requireWeb('viem');
 requireWeb('tsx/cjs');
@@ -251,6 +255,8 @@ function external(input) {
 
 export async function runZeroXBrowserAcceptance() {
   await mkdir(output, { recursive: true });
+  const git = args => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+  await writeFile(path.join(output, 'source-profile.json'), JSON.stringify({ evidence: 'MOCKED_LOCAL_BROWSER', head: git(['rev-parse', 'HEAD']), tree: git(['rev-parse', 'HEAD^{tree}']), dirty: Boolean(git(['status', '--porcelain', '--untracked-files=no'])), profile: 'NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE=true', baseline: process.env.RMT_STABILITY_BASELINE === 'true', realFinancialActions: 0 }, null, 2));
   const { privateKey, publicKey } = generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
   const now = Math.floor(Date.now() / 1000);
   const signIdentity = (claims) => {
@@ -283,7 +289,7 @@ export async function runZeroXBrowserAcceptance() {
     RMT_VNEXT_VERIFICATION_COMMITMENT_SECRET: "deterministic-browser-commitment-secret-local-only", RMT_ZEROX_ALLOWANCE_HOLDER: holder, RMT_ZEROX_ALLOWANCE_HOLDER_CODE_HASH: keccak256(runtime),
     NEXT_PUBLIC_PRIVY_APP_ID: claims.aud, PRIVY_VERIFICATION_KEY: publicKey.export({ format: 'pem', type: 'spki' })
   };
-  const port = 3100;
+  const port = Number(process.env.RMT_ACCEPTANCE_PORT ?? 3100);
   const base = `http://127.0.0.1:${port}`;
   const child = spawn(process.execPath, ['--require', path.join(root, '.github/scripts/zerox-browser-boundary.cjs'), requireWeb.resolve('next/dist/bin/next'), 'start', '-p', String(port)], { cwd: path.join(root, 'apps/web'), env, stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
   let serverLog = '';
@@ -321,7 +327,10 @@ export async function runZeroXBrowserAcceptance() {
       return;
     }
     if (process.env.RMT_QUOTE_STATE_ONLY === 'true') { results.push(...await runZeroXWalletJourneys({browser,base,identity,external,state,wallet,token,usdg,holder,output,scenarios:['sell-approval-idle-verification','sell-approval-idle-success','sell-approval-idle-expired-failure','sell-approval-idle-failure','sell-approval-idle-click']})); return; }
+    if (process.env.RMT_MARKET_ANCHOR_ONLY === 'true') { results.push(...await runMarketAnchorBrowser({ browser, base, external, output })); return; }
+    if (process.env.RMT_STABLE_REFRESH_ONLY === 'true') { results.push(...await runStableRefreshBrowser({ browser, base, identity, external, state, wallet, token, output })); return; }
     if (process.env.RMT_PRODUCT_METRICS_ONLY === 'true') { results.push(...await runTradingProductBrowser({ browser, base, identity, external, state, wallet, token, output })); return; }
+    results.push(...await runStableRefreshBrowser({ browser, base, identity, external, state, wallet, token, output }));
     results.push(...await runTradingProductBrowser({ browser, base, identity, external, state, wallet, token, output }));
     results.push(...await runHotPathBrowserAcceptance({ browser, base, identity, state, wallet, usdg, shcat, stock: routeFixtures.assets.stock }));
     results.push(...await runLiveEthQuoteIncidentJourneys({ browser, base, external, identity, expiredIdentity, unlinkedIdentity,

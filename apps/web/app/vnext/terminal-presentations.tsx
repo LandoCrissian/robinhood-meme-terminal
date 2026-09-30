@@ -3,7 +3,7 @@
 import { directoryCountsObserved } from "../../lib/vnext/directory-availability";
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent, type RefObject } from "react";
 import type { AssetMetadata } from "../../lib/vnext/execution-domain";
 import type { VNextExecutionRecord, VNextWalletRequestRecord } from "../../lib/vnext/execution-recovery";
 import {
@@ -349,23 +349,6 @@ function DesktopMarkets(props: TerminalPresentationProps) {
   </section>;
 }
 
-function DesktopAsset(props: TerminalPresentationProps) {
-  const requestTrade = (side: "buy" | "sell") => {
-    props.onRequestTradeSide(side);
-    window.requestAnimationFrame(() => document.getElementById("vnext-trade-ticket")?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
-  };
-  return <section className="rmtDesktopAssetView" id="rmt-asset-workspace">
-    <div className="rmtAssetContextBar"><button type="button" onClick={props.onShowMarkets}>← Markets</button><span>{props.selected ? `Token Market · ${props.selected.symbol}` : "Select a market"}</span></div>
-    <div className="rmtDesktopWorkstation">
-      <CompactMarketNavigator {...props} />
-      <section className="rmtDesktopAsset">
-        {props.selected ? <VNextAssetWorkspace presentation="desktop" directoryMarket={props.selected} identityStatus={props.identityStatus} walletAssets={props.walletAssets} executionState={props.selectedExecutionState} executionUiState={props.executionUiState} onTradeSide={requestTrade} /> : <div className="rmtEmptyWorkspace"><strong>Select a market</strong><span>RMT does not invent asset or route data.</span></div>}
-      </section>
-      <aside className="rmtDesktopExecution" aria-label="Persistent verified execution"><TradeComposer {...props} quoteActive={props.context === "asset"} /></aside>
-    </div>
-  </section>;
-}
-
 function DesktopPortfolio(props: TerminalPresentationProps) {
   return <section className="rmtPortfolioSurface" aria-labelledby="rmt-portfolio-heading">
     <header className="rmtMarketsHeading"><div><h1 id="rmt-portfolio-heading">Portfolio</h1><p>Confirmed Robinhood Chain balances and wallet-held assets</p></div></header>
@@ -380,24 +363,6 @@ function DesktopDistribution(props: TerminalPresentationProps) {
     </header>
     <VNextDistributionPlanner presentation="desktop" />
   </section>;
-}
-
-export function DesktopTerminal(props: TerminalPresentationProps) {
-  return <main className="rmtVnext rmtTerminal rmtDesktopTerminal" data-terminal-context={props.context}>
-    <a className="vnSkipLink" href={
-      props.context === "markets" ? "#rmt-markets"
-      : props.context === "portfolio" ? "#vnext-portfolio"
-      : props.context === "distribution" ? "#rmt-distribution"
-      : "#rmt-asset-workspace"
-    }>Skip to terminal content</a>
-    <DesktopHeader {...props} />
-    <RecoveryStatus {...props} />
-    {props.context !== "portfolio" ? <PortfolioController {...props} visible={false} /> : null}
-    {props.context === "markets" ? <DesktopMarkets {...props} />
-      : props.context === "portfolio" ? <DesktopPortfolio {...props} />
-      : props.context === "distribution" ? <DesktopDistribution {...props} />
-      : <DesktopAsset {...props} />}
-  </main>;
 }
 
 function focusableElements(container: HTMLElement) {
@@ -428,13 +393,6 @@ function MobileMarkets(props: TerminalPresentationProps) {
   </section>;
 }
 
-function MobileAsset(props: TerminalPresentationProps) {
-  return <section className="rmtMobileAssetView" id="rmt-mobile-asset">
-    <div className="rmtMobileAssetBack"><button type="button" onClick={props.onShowMarkets}>← Markets</button><span>{props.selected ? `Token Market · ${props.selected.symbol}` : "Select a market"}</span></div>
-    {props.selected ? <VNextAssetWorkspace presentation="mobile" directoryMarket={props.selected} identityStatus={props.identityStatus} walletAssets={props.walletAssets} executionState={props.selectedExecutionState} executionUiState={props.executionUiState} onTradeSide={props.onRequestTradeSide} /> : <div className="rmtEmptyWorkspace"><strong>Select a market</strong><span>Live market intelligence will appear here.</span></div>}
-  </section>;
-}
-
 function MobilePortfolio(props: TerminalPresentationProps) {
   return <section className="rmtPortfolioSurface isMobile" aria-labelledby="rmt-mobile-portfolio-heading">
     <header className="rmtMobileContextHeading"><div><h1 id="rmt-mobile-portfolio-heading">Portfolio</h1><p>Confirmed wallet state</p></div></header>
@@ -449,8 +407,10 @@ function MobileDistribution(props: TerminalPresentationProps) {
   </section>;
 }
 
-export function MobileTerminal(props: TerminalPresentationProps) {
+export function ResponsiveTerminal({ desktop, ...props }: TerminalPresentationProps & { desktop: boolean }) {
   const sheet = useRef<HTMLDivElement>(null);
+  const [hasOpenedAsset, setHasOpenedAsset] = useState(false);
+  useEffect(() => { if (props.context === "asset") setHasOpenedAsset(true); }, [props.context]);
   const returnFocus = useRef<HTMLElement | null>(null);
   const selectedHolding = props.selected && props.walletAssets.find((asset) => asset.address.toLowerCase() === props.selected?.address.toLowerCase());
   const canSell = Boolean(selectedHolding && BigInt(selectedHolding.balanceAtomic) > 0n);
@@ -460,21 +420,27 @@ export function MobileTerminal(props: TerminalPresentationProps) {
     (returnFocus.current ?? fallback)?.focus({ preventScroll: true });
   }, []);
 
-  const closeSheet = useCallback(() => {
-    props.onCloseTrade();
-  }, [props.onCloseTrade]);
+  const closeTrade = useRef(props.onCloseTrade);
+  closeTrade.current = props.onCloseTrade;
+  const closeSheet = useCallback(() => closeTrade.current(), []);
   const openTrade = useCallback((side: "buy" | "sell") => {
     returnFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     props.onRequestTradeSide(side);
   }, [props.onRequestTradeSide]);
 
   useEffect(() => {
-    if (!props.tradeOpen) return;
+    if (!props.tradeOpen || desktop) return;
     const bodyOverflow = document.body.style.overflow;
     const rootOverflow = document.documentElement.style.overflow;
     document.body.style.overflow = "hidden";
     document.documentElement.style.overflow = "hidden";
-    const frame = window.requestAnimationFrame(() => focusableElements(sheet.current ?? document.body)[0]?.focus());
+    const frame = window.requestAnimationFrame(() => {
+      const scroll = sheet.current?.querySelector<HTMLElement>(".vnTradeScroll");
+      if (scroll) scroll.scrollTop = 0;
+      const details = sheet.current?.querySelector<HTMLDetailsElement>(".vnRouteCard");
+      if (details) details.open = false;
+      focusableElements(sheet.current ?? document.body)[0]?.focus({ preventScroll: true });
+    });
     const handleKey = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") {
         if (document.querySelector("[data-rmt-overlay-dialog]")) return;
@@ -498,27 +464,33 @@ export function MobileTerminal(props: TerminalPresentationProps) {
       document.documentElement.style.overflow = rootOverflow;
       window.requestAnimationFrame(restoreTradeFocus);
     };
-  }, [closeSheet, props.tradeOpen, restoreTradeFocus]);
+  }, [closeSheet, props.tradeOpen, restoreTradeFocus, desktop]);
 
   const preventEscapePropagation = (event: ReactKeyboardEvent) => {
     if (event.key === "Escape") event.stopPropagation();
   };
 
-  return <main className="rmtVnext rmtTerminal rmtMobileTerminal" data-terminal-context={props.context}>
+  return <main className={`rmtVnext rmtTerminal ${desktop ? "rmtDesktopTerminal" : "rmtMobileTerminal"}`} data-terminal-context={props.context}>
     <a className="vnSkipLink" href={
-      props.context === "markets" ? "#rmt-mobile-markets"
+      props.context === "markets" ? desktop ? "#rmt-markets" : "#rmt-mobile-markets"
       : props.context === "portfolio" ? "#vnext-portfolio"
-      : props.context === "distribution" ? "#rmt-mobile-distribution"
-      : "#rmt-mobile-asset"
+      : props.context === "distribution" ? desktop ? "#rmt-distribution" : "#rmt-mobile-distribution"
+      : desktop ? "#rmt-asset-workspace" : "#rmt-mobile-asset"
     }>Skip to terminal content</a>
-    <MobileHeader {...props} />
+    {desktop ? <DesktopHeader {...props} /> : <MobileHeader {...props} />}
     <RecoveryStatus {...props} />
     {props.context !== "portfolio" ? <PortfolioController {...props} visible={false} /> : null}
-    {props.context === "markets" ? <MobileMarkets {...props} />
-      : props.context === "portfolio" ? <MobilePortfolio {...props} />
-      : props.context === "distribution" ? <MobileDistribution {...props} />
-      : <MobileAsset {...props} />}
-    {props.context === "asset" && props.selected ? <nav className={`rmtMobileTradeDock${props.executionUiState === "stock-token-view-only" || props.executionUiState === "asset-only" ? " isViewOnly" : ""}`} aria-label={props.executionUiState === "stock-token-view-only" ? `${props.selected.symbol} execution policy` : props.executionUiState === "asset-only" ? `${props.selected.symbol} market evidence` : props.executionUiState === "preview-only" ? `Preview ${props.selected.symbol} routes` : `Trade ${props.selected.symbol}`}>
+    {props.context === "markets" ? desktop ? <DesktopMarkets {...props} /> : <MobileMarkets {...props} />
+      : props.context === "portfolio" ? desktop ? <DesktopPortfolio {...props} /> : <MobilePortfolio {...props} />
+      : props.context === "distribution" ? desktop ? <DesktopDistribution {...props} /> : <MobileDistribution {...props} /> : null}
+    <section hidden={props.context !== "asset"} className={desktop ? "rmtDesktopAssetView rmtResponsiveAssetLayout" : "rmtMobileAssetView rmtResponsiveAssetLayout"} id={desktop ? "rmt-asset-workspace" : "rmt-mobile-asset"}>
+      <div className={desktop ? "rmtAssetContextBar" : "rmtMobileAssetBack"}><button type="button" onClick={props.onShowMarkets}>← Markets</button><span>{props.selected ? `Token Market · ${props.selected.symbol}` : "Select a market"}</span></div>
+      <div className={desktop ? "rmtDesktopWorkstation" : "rmtMobileWorkstation"}>
+        <div className="rmtResponsiveNavigator" hidden={!desktop}><CompactMarketNavigator {...props} /></div>
+        <section className={desktop ? "rmtDesktopAsset" : "rmtMobileAsset"}>
+          {props.context === "asset" && props.selected ? <VNextAssetWorkspace presentation={desktop ? "desktop" : "mobile"} directoryMarket={props.selected} identityStatus={props.identityStatus} walletAssets={props.walletAssets} executionState={props.selectedExecutionState} executionUiState={props.executionUiState} onTradeSide={openTrade} /> : null}
+        </section>
+    {!desktop && props.context === "asset" && props.selected ? <nav className={`rmtMobileTradeDock${props.executionUiState === "stock-token-view-only" || props.executionUiState === "asset-only" ? " isViewOnly" : ""}`} aria-label={props.executionUiState === "stock-token-view-only" ? `${props.selected.symbol} execution policy` : props.executionUiState === "asset-only" ? `${props.selected.symbol} market evidence` : props.executionUiState === "preview-only" ? `Preview ${props.selected.symbol} routes` : `Trade ${props.selected.symbol}`}>
       {props.executionUiState === "stock-token-view-only" ? <>
         <button type="button" className="isViewOnly" disabled aria-describedby="rmt-stock-token-view-only">View only</button>
         <span className="vnSrOnly" id="rmt-stock-token-view-only">Official Robinhood Stock Tokens are view-only in RMT until jurisdiction controls are available.</span>
@@ -531,12 +503,14 @@ export function MobileTerminal(props: TerminalPresentationProps) {
         {!canSell ? <span className="vnSrOnly" id="rmt-sell-unavailable">No confirmed balance available to sell.</span> : null}
       </>}
     </nav> : null}
-    <div className={`rmtMobileSheetLayer${props.tradeOpen ? " isOpen" : ""}`} aria-hidden={!props.tradeOpen}>
+    <div className={`rmtMobileSheetLayer${props.tradeOpen ? " isOpen" : ""}${desktop ? " rmtDesktopExecution rmtResponsiveExecution" : ""}`} aria-hidden={!desktop && !props.tradeOpen}>
       <button className="rmtMobileSheetBackdrop" type="button" aria-label="Close trade sheet" tabIndex={props.tradeOpen ? 0 : -1} onClick={closeSheet} />
-      <div className="rmtMobileTradeSheet" ref={sheet} role="dialog" aria-modal="true" aria-label={props.selected ? `${props.executionUiState === "preview-only" ? "Preview" : "Trade"} ${props.selected.symbol}` : "Trade selected asset"} onKeyDown={preventEscapePropagation}>
-        <header><span>{props.executionUiState === "preview-only" ? "Trade preview" : "Trade"}</span><button type="button" aria-label="Close trade sheet" onClick={closeSheet}>×</button></header>
-        <div className="rmtMobileTradeSheetScroll"><TradeComposer {...props} quoteActive={props.tradeOpen} /></div>
+      <div className="rmtMobileTradeSheet" ref={sheet} role={desktop ? undefined : "dialog"} aria-modal={desktop ? undefined : true} aria-label={props.selected ? `${props.executionUiState === "preview-only" ? "Preview" : "Trade"} ${props.selected.symbol}` : "Trade selected asset"} onKeyDown={preventEscapePropagation}>
+        <header><span>{props.selected?.symbol ?? "Trade"}</span><button type="button" aria-label="Close trade sheet" onClick={closeSheet}>×</button></header>
+        <div className="rmtMobileTradeSheetScroll">{hasOpenedAsset || props.context === "asset" ? <TradeComposer {...props} quoteActive={props.context === "asset" && (desktop || props.tradeOpen)} /> : null}</div>
       </div>
     </div>
+      </div>
+    </section>
   </main>;
 }

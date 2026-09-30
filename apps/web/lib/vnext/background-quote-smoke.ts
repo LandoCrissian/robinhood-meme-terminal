@@ -64,7 +64,7 @@ assert.match(composer, /const visibleQuote = cachedQuote/);
 assert.doesNotMatch(composer, /Route temporarily unavailable/);
 assert.match(composer, /tradeJourneyLabels/);
 assert.match(composer, /observedZeroXPhase/);
-assert.match(composer, /Finding route/);
+assert.match(composer, /Updating/);
 assert.doesNotMatch(composer, /Fresh quote required|Checking live routes/);
 assert.match(composer, /isVNextQuoteReusableForTrade/);
 const continuation = composer.slice(composer.indexOf("const continueTrading"), composer.indexOf("return (", composer.indexOf("const continueTrading")));

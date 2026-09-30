@@ -6156,3 +6156,58 @@ body .rmtTerminal button {
  .rmtMobileTradeSheet .vnWalletRecoveryStatus { padding: 9px 14px 0; }
  .rmtMobileTradeSheet .vnTradeActionDock { padding: 10px 14px max(12px, env(safe-area-inset-bottom)); }
 }
+
+/* One responsive workspace/composer: media changes never remount trade authority. */
+.rmtResponsiveAssetLayout[hidden], .rmtResponsiveNavigator[hidden] { display: none; }
+.rmtResponsiveNavigator { min-width: 0; }
+.rmtResponsiveExecution { position: sticky; inset: auto; top: 84px; z-index: 20; visibility: visible; pointer-events: auto; }
+.rmtResponsiveExecution .rmtMobileSheetBackdrop, .rmtResponsiveExecution .rmtMobileTradeSheet > header { display: none; }
+.rmtResponsiveExecution .rmtMobileTradeSheet { position: static; display: flex; height: calc(100dvh - 100px); max-height: 920px; border-radius: 8px; transform: none; transition: none; }
+.rmtResponsiveExecution .rmtMobileTradeSheetScroll { display: flex; padding: 0; overflow: hidden; }
+.rmtResponsiveExecution .vnTradePanel { flex: 1; position: static; min-height: 0; max-height: none; }
+.rmtResponsiveExecution .vnTradeScroll { flex: 1; }
+.vnTradeScroll { overflow-anchor: none; }
+.vnTradePriceSummary { min-height: 58px; margin: 12px 0; font-variant-numeric: tabular-nums; }
+.vnReceiveField { min-height: 124px; font-variant-numeric: tabular-nums; }
+.vnReceiveField strong, .vnTradePriceSummary dd, .vnTradeReceipt dd { overflow-wrap: anywhere; min-width: 0; }
+.vnTradeActionStatus { min-height: 36px; margin: 0 0 8px; font-size: 13px; line-height: 18px; }
+.vnTradeActionDock .vnReviewButton { height: 48px; font-size: 15px; }
+.vnTradeEvidenceSummary > div { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; }
+.vnReceiptDetails { margin: 12px 0; text-align: left; }
+.vnReceiptDetails summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }
+.vnChartEmpty { min-height: 100%; }
+.rmtDesktopAsset .vnChartFrame { height: 300px; }
+.rmtDesktopAsset .vnChartFrame svg { height: 100%; min-height: 0; }
+@media (min-width: 1024px) and (max-width: 1399px) {
+  .rmtDesktopAsset .vnChartFrame { height: 235px; }
+}
+@media (min-width: 1600px) {
+  .rmtDesktopAsset .vnChartFrame { height: 340px; }
+}
+@media (max-width: 1023px) {
+  .rmtMobileTradeSheet .vnTradeScroll { padding: 12px 14px; }
+  .rmtMobileTradeSheet .vnTradeHeader { display: none; }
+  .rmtMobileTradeSheet .vnTradeHeader h2 { font-size: 20px; line-height: 1.3; }
+  .rmtMobileTradeSheet .vnTradeHeader .vnEyebrow, .rmtMobileTradeSheet .vnTradeHeader small, .rmtMobileTradeSheet .vnFixtureBadge { display: none; }
+  .rmtMobileTradeSheet .vnAvailableLine { margin: 10px 0 6px; font-size: 13px; }
+  .rmtMobileTradeSheet .vnSideTabs button, .rmtMobileTradeSheet .vnConfirmedBalance button { min-height: 44px; }
+  .rmtMobileTradeSheet .vnAmountField input { font-size: 26px; min-height: 48px; }
+  .rmtMobileTradeSheet .vnConfirmedBalance { margin: 8px 0; }
+  .rmtMobileTradeSheet .vnQuickAmounts { display: none; } /* One percentage row for the real spendable balance. */
+  .rmtMobileTradeSheet .vnSwapDivider { margin: 6px 0; height: 16px; }
+  .rmtMobileTradeSheet .vnReceiveField { min-height: 112px; padding: 12px; }
+  .rmtMobileTradeSheet .vnReceiveField > small { min-height: 18px; font-size: 12px; line-height: 18px; }
+  .rmtMobileTradeSheet .vnReceiveField > div > strong { font-size: 19px; }
+  .rmtMobileTradeSheet .vnTradePriceSummary { margin: 10px 0; font-size: 13px; }
+  .rmtMobileTradeSheet .vnRouteCard { margin: 8px 0 0; }
+  .rmtMobileTradeSheet .vnRouteTop { min-height: 44px; font-size: 13px; }
+  .rmtMobileTradeSheet .vnTradeActionStatus { min-height: 36px; }
+  .rmtMobileAssetView .vnChart { height: 360px; min-height: 360px; }
+  .rmtMobileAssetView .vnChartFrame { height: 210px; min-height: 210px; }
+  .rmtMobileAssetView .vnAssetWorkspaceHeader small { font-size: 11px; }
+  .rmtMobileAssetView .vnWorkspaceStatusGroup { display: none; }
+  .vnTradeReceipt { width: min(420px, calc(100vw - 24px)); max-height: 90dvh; overflow-y: auto; padding: 22px; }
+  .vnTradeReceipt h3 { font-size: 24px; }
+  .vnTradeReceipt > dl { margin: 16px 0; font-size: 14px; }
+  .vnTradeReceipt .vnReceiptDetails dl { font-size: 12px; }
+}

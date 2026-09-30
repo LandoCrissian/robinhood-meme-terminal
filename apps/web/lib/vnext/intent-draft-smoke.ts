@@ -148,12 +148,12 @@ assert.throws(() => createExactInputIntent({
 }), /assets must differ/);
 
 const composer = readFileSync(new URL("../../app/vnext/trade-intent-composer.tsx", import.meta.url), "utf8");
-assert.match(composer, /Review with fresh quote/);
+assert.match(composer, /Preparing fresh terms/);
 assert.doesNotMatch(composer, /Route temporarily unavailable/);
 assert.match(composer, /IDENTITY_UNAVAILABLE/);
 assert.match(composer, /observedZeroXPhase/);
-assert.match(composer, /Minimum and fees belong to the selected verified transaction/);
-assert.match(composer, /No protected minimum is established before verification/);
+assert.match(composer, /Slippage protection included/);
+assert.match(composer, /these terms cannot execute/);
 assert.match(composer, /One explicit review action opens your wallet; nothing signs automatically/);
 assert.doesNotMatch(composer, /Check live routes|Verify best route|Prepare wallet review/);
 assert.match(composer, /Pay with asset/);
