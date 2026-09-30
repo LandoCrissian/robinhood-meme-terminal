@@ -2,6 +2,29 @@
   "base": "41cbc27029dfffad07ee71e97c3052d9d5d0cabb",
   "evidence": "STATIC_CALL_SITES_USE_AUDIT_TABLE_FOR_ACTIVE_VS_DORMANT_CLASSIFICATION",
   "note": "Injected clients are traced separately in the report. Generic .call/.request sites require semantic interpretation; this inventory is not request telemetry.",
+  "rawJsonRpcBoundaries": [
+    {
+      "file": "apps/web/lib/server/vnext-zero-x-firm-quote-verifier.ts",
+      "line": 152,
+      "method": "eth_estimateGas",
+      "classification": "ACTIVE_EXACT_ERC20_APPROVAL_GAS_ONLY",
+      "note": "Individual HTTP request only when provider allowance evidence requires approval; no native-input approval and no swap simulation. Not called by this audit."
+    },
+    {
+      "file": "apps/web/lib/server/vnext-settlement-trace-client.ts",
+      "line": 70,
+      "methods": ["eth_chainId", "eth_getTransactionReceipt", "debug_traceTransaction"],
+      "classification": "ACTIVE_AUTHENTICATED_SETTLEMENT_RECONCILIATION",
+      "note": "Existing dedicated trace endpoint, not quote/prepare route certification. Configured endpoint credentials inaccessible; public trace control returned method unavailable."
+    },
+    {
+      "file": "apps/nft-indexer/src/worker.ts",
+      "line": 76,
+      "method": "eth_getLogs",
+      "classification": "ACTIVE_DURABLE_NFT_RANGE_INGESTION",
+      "note": "Injected worker request adapter; persistent checkpoints and completeness remain ownership authority."
+    }
+  ],
   "files": [
     {
       "file": "apps/indexer/src/index.ts",
