@@ -2608,7 +2608,7 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
     await panel.locator(".vnRouteCard > summary").click();
     const panelText = await panel.innerText();
     if (!panelText.includes("non-executable") || !panelText.includes("Uniswap V4")
-      || !panelText.includes("No protected minimum is established before verification")
+      || !panelText.includes("Estimate only · fresh terms required before confirmation.")
       || !await panel.locator(".vnOutputProtection").innerText().then(text => text.includes("Set when you trade"))) {
       throw new Error(`The V4 quote-only winner was not labeled truthfully: ${panelText}`);
     }

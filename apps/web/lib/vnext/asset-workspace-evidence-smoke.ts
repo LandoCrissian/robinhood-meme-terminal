@@ -86,8 +86,8 @@ assert.match(workspaceSource, /canonicalChartIdentity = selectedCanonicalMarket[
   "Canonical V2/V3 pool addresses and V4 PoolIds must define canonical chart identity");
 assert.match(workspaceSource, /selectedChartIdentity = canonicalChartIdentity \?\? observedChartPool/,
   "Canonical chart authority must precede provider-observed chart evidence");
-assert.match(workspaceSource, /pair=\{selectedChartIdentity\}/,
-  "The chart request must use the authority-separated selected chart identity");
+assert.match(workspaceSource, /pair=\{selectedChartIdentity \?\? null\}/,
+  "The mounted chart uses the authority-separated identity, or a no-request null scaffold");
 assert.doesNotMatch(workspaceSource, /PoolManager.*VNextMarketChart/,
   "V4 chart coverage must not fabricate an address-style pool");
 assert.match(workspaceSource, /canonicalPool=\{selectedCanonicalMarket\?\.poolAddress \?\? undefined\}/,
@@ -100,8 +100,8 @@ assert.match(workspaceSource, /referencePriceUsd=\{directoryMarket\.priceUsd\}/,
   "The resting chart headline must use the selected Token Market price authority");
 assert.match(chartSource, /hovered\?\.close \?\? referencePriceUsd \?\? latest/,
   "Hover must retain exact historical candle close while rest uses the selected market price");
-assert.match(chartSource, /Math\.abs\(change\)\.toFixed\(2\)\}% · \{range\}/,
-  "Chart movement must be explicitly scoped to its selected range");
+assert.match(chartSource, /candles\.length \?[^\n]*Math\.abs\(change\)\.toFixed\(2\)[^\n]*"—"\} · \{range\}/,
+  "Observed movement stays scoped to its selected range; missing candles show unavailable, not zero");
 assert.doesNotMatch(chartSource, /"LIVE"/, "The chart must not expose a false LIVE range");
 assert.match(workspaceSource, /vnMarketEvidenceStack[\s\S]*<VerifiedMarkets[\s\S]*<WorkspaceEcosystemIntelligence/,
   "up. venue evidence must remain nested under Markets");
