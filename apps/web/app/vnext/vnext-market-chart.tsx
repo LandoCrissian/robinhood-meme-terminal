@@ -12,7 +12,7 @@ import {
 import { useVisibilityRefresh } from "./use-visibility-refresh";
 
 type ChartMode = "candles" | "line";
-type ChartStatus = "loading" | "ready" | "stale" | "unavailable";
+type ChartStatus = "loading" | "ready" | "stale" | "unavailable" | "empty";
 
 function formatPrice(value: number) {
   if (!Number.isFinite(value) || value <= 0) return "—";
@@ -37,16 +37,16 @@ function timeLabel(timestamp: number, range: ExternalChartRange) {
     : date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
-function acceptPayload(value: unknown, token: string, pair: string, range: ExternalChartRange, referencePriceUsd: number | null) {
+function acceptPayload(value: unknown, token: string, range: ExternalChartRange, referencePriceUsd: number | null) {
   if (!value || typeof value !== "object") return null;
   const payload = value as Partial<ExternalOhlcvPayload>;
   if (
     payload.token?.toLowerCase() !== token.toLowerCase()
-    || payload.pair?.toLowerCase() !== pair.toLowerCase()
+    || typeof payload.pair !== "string"
     || payload.range !== range
     || payload.source !== "GeckoTerminal"
     || !Array.isArray(payload.candles)
-    || payload.candles.length < 1
+    || (payload.candles.length < 1 && payload.coverage !== "NO_HISTORY")
   ) return null;
   if (hasCatastrophicOhlcvPriceMismatch(payload.candles as ExternalOhlcvCandle[], referencePriceUsd)) return null;
   return payload as ExternalOhlcvPayload;
@@ -83,7 +83,7 @@ export function VNextMarketChart({ token, pair, symbol, referencePriceUsd }: {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const signature = useRef("");
   const requestId = useRef(0);
-  const chartKey = `${token.toLowerCase()}:${pair?.toLowerCase() ?? "pending"}:${range}`;
+  const chartKey = `${token.toLowerCase()}:${range}`;
   const activeKey = useRef("");
 
   useEffect(() => {
@@ -104,16 +104,16 @@ export function VNextMarketChart({ token, pair, symbol, referencePriceUsd }: {
       setStatus("loading");
       setHoveredIndex(null);
     }
-    if (!pair) { setStatus("unavailable"); return; }
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 5_500);
     try {
-      const query = new URLSearchParams({ token, pair, range });
+      const query = new URLSearchParams({ token, range });
+      if (pair) query.set("pair", pair);
       if (referencePriceUsd !== null && Number.isFinite(referencePriceUsd) && referencePriceUsd > 0) {
         query.set("referencePrice", String(referencePriceUsd));
       }
       const response = await fetch(`/api/markets/ohlcv?${query}`, { signal: controller.signal });
-      const next = acceptPayload(await response.json(), token, pair, range, referencePriceUsd);
+      const next = acceptPayload(await response.json(), token, range, referencePriceUsd);
       if (!response.ok || !next) throw new Error("Chart response unavailable.");
       if (id !== requestId.current) return;
       const nextSignature = payloadSignature(next);
@@ -121,7 +121,7 @@ export function VNextMarketChart({ token, pair, symbol, referencePriceUsd }: {
         signature.current = nextSignature;
         setPayload(next);
       }
-      setStatus(next.stale ? "stale" : "ready");
+      setStatus(next.stale ? "stale" : next.coverage === "NO_HISTORY" ? "empty" : "ready");
     } catch {
       if (id !== requestId.current) return;
       setStatus(signature.current ? "stale" : "unavailable");
@@ -137,7 +137,7 @@ export function VNextMarketChart({ token, pair, symbol, referencePriceUsd }: {
   }, [chartKey]);
 
   const candles = payload?.token.toLowerCase() === token.toLowerCase()
-    && payload.pair.toLowerCase() === pair?.toLowerCase() && payload.range === range
+    && payload.range === range
     ? payload.candles : [];
   const sparse = candles.length > 0 && candles.length < 3;
   const geometry = useMemo(() => {
@@ -241,7 +241,7 @@ export function VNextMarketChart({ token, pair, symbol, referencePriceUsd }: {
           })}
           {hoveredPoint && <g className="vnChartCrosshair"><line x1={hoveredPoint.x} x2={hoveredPoint.x} y1={geometry.top} y2={geometry.volumeBottom} /><line x1={geometry.left} x2={geometry.width - geometry.right + 8} y1={hoveredPoint.y} y2={hoveredPoint.y} /><circle cx={hoveredPoint.x} cy={hoveredPoint.y} r="4" /></g>}
           {latestPoint && <g className="vnChartLatest"><line x1={latestPoint.x} x2={geometry.width - geometry.right + 8} y1={latestPoint.y} y2={latestPoint.y} /><circle cx={latestPoint.x} cy={latestPoint.y} r="4" /></g>}
-        </svg> : <div className="vnChartEmpty" role="status"><strong>{status === "loading" ? "Loading market data" : "Price history unavailable"}</strong><span>{status === "loading" ? "The rest of the terminal remains usable while OHLCV loads." : "RMT will retry quietly. No price history is being invented."}</span></div>}
+        </svg> : <div className="vnChartEmpty" role="status"><strong>{status === "loading" ? "Loading market data" : status === "empty" ? "No recorded price history" : "Price history unavailable"}</strong><span>{status === "loading" ? "The rest of the terminal remains usable while OHLCV loads." : status === "empty" ? "No candles are reported for this token and range." : "RMT will retry quietly. No price history is being invented."}</span></div>}
       </div>
       <footer className="vnChartFooter"><span>{candles[0] ? timeLabel(candles[0].timestamp, range) : "—"}</span><span>{range} volume {candles.length ? formatVolume(totalVolume) : "—"}</span><span>{candles.at(-1) ? timeLabel(candles.at(-1)!.timestamp, range) : "—"}</span></footer>
     </section>

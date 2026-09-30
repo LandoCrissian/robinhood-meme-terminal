@@ -1,0 +1,98 @@
+import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
+import { createGeckoPresentationReader, geckoTokenUrl, parseTokenPools, parseTokenVisual } from "./gecko-presentation-reader";
+import { createTokenChartReader } from "./token-chart-market";
+import { artworkMediaType, artworkUrl, publicArtworkIp, fetchPublicArtwork, createArtworkCache } from "./token-artwork-reader";
+import { retainPresentationEvidence, parsePresentationEvidence, visualSchema } from "../vnext/token-presentation";
+import { defineRmtProjectIdentity, projectsForContract, RMT_PROJECT_IDENTITIES } from "@rmt/shared/project-identity";
+
+async function main() {
+const token = "0x14c51bb55592372eac7141a1d0527d1dd7fbd42f";
+const other = "0x1111111111111111111111111111111111111111";
+const pool = `0x${"ab".repeat(32)}`;
+const poolRecord = (liquidity = "10", address = pool, exact = token) => ({ id: `robinhood_${address}`, attributes: { address, reserve_in_usd: liquidity, base_token_price_usd: "0.001", volume_usd: { h24: null } }, relationships: { base_token: { data: { id: `robinhood_${exact}` } }, quote_token: { data: { id: `robinhood_${other}` } }, dex: { data: { id: "unfamiliar-dex" } } } });
+const visualPayload = { data: { id: `robinhood_${token}`, attributes: { address: token, name: "Shareholder Cat", symbol: "SHCAT", image_url: "https://assets.geckoterminal.com/public-art", description: "Provider description", websites: [] } } };
+const history = { data: { attributes: { ohlcv_list: [[100, 0.001, 0.002, 0.001, 0.002, 2], [200, 0.002, 0.003, 0.002, 0.003, 1]] } }, meta: { base: { address: token }, quote: { address: other } } };
+let clock = 1_800_000_000_000, calls = 0, fail = false;
+const fetcher = (async (url: string | URL | Request) => {
+  calls++; if (fail) return Response.json({}, { status: 503 });
+  return Response.json(String(url).includes("/ohlcv/") ? history : { data: [poolRecord()] });
+}) as typeof fetch;
+const provider = createGeckoPresentationReader(fetcher, () => clock);
+const chart = createTokenChartReader(provider, () => null);
+const [first, second] = await Promise.all([chart.chart(token, null, "1H", null), chart.chart(token, null, "1H", null)]);
+assert.equal(calls, 2, "Cold poolless concurrent charts use one discovery and one OHLCV request");
+assert.equal(first.pair, pool); assert.deepEqual(first, second); assert.equal(first.candles.length, 2);
+await chart.chart(token, null, "1H", null); assert.equal(calls, 2, "Warm resolution and OHLCV reuse");
+clock += 31_000; fail = true;
+assert.equal((await chart.chart(token, null, "1H", null)).stale, true, "Transient provider failure retains genuine last-good candles");
+clock += 16 * 60_000; await assert.rejects(chart.chart(token, null, "1H", null));
+assert.equal(parseTokenPools({ data: [poolRecord("10"), poolRecord("100", `0x${"cd".repeat(32)}`)] }, token)[0].liquidityUsd, 100);
+const quoteLeg = poolRecord("10", pool, other); quoteLeg.relationships.quote_token.data.id = `robinhood_${token}`;
+assert.equal(parseTokenPools({ data: [quoteLeg] }, token)[0]?.token, token, "Exact token as quote leg remains usable");
+const activity = { ...poolRecord(), attributes: { ...poolRecord().attributes, price_change_percentage: { h24: "-2.3" }, transactions: { h24: { buys: 4, sells: 1.5 } } } };
+assert.equal(parseTokenPools({ data: [activity] }, token)[0].priceChange24h, -2.3);
+assert.equal(parseTokenPools({ data: [activity] }, token)[0].buys24h, 4);
+assert.equal(parseTokenPools({ data: [activity] }, token)[0].sells24h, null, "Malformed optional activity never fabricates a count or erases market evidence");
+assert.equal(parseTokenPools({ data: [{ ...activity, relationships: quoteLeg.relationships }] }, token)[0].priceChange24h, null, "Quote-leg movement is not fabricated from base movement");
+assert.equal(parseTokenPools({ data: [{ ...poolRecord(), id: `ethereum_${pool}` }] }, token).length, 0);
+assert.throws(() => parseTokenPools({ data: Array(21).fill(poolRecord()) }, token));
+assert.equal(parseTokenVisual(visualPayload, token).image, "https://assets.geckoterminal.com/public-art");
+assert.throws(() => parseTokenVisual(visualPayload, other), "Wrong address metadata rejected");
+const independent = createGeckoPresentationReader((async url => Response.json(String(url).includes('/info') ? {} : { data: [poolRecord()] }, { status: String(url).includes('/info') ? 503 : 200 })) as typeof fetch);
+const categories = await Promise.allSettled([independent.read(geckoTokenUrl(token, "info"), value => parseTokenVisual(value, token), 1000), independent.read(geckoTokenUrl(token, "pools"), value => parseTokenPools(value, token), 1000)]);
+assert.equal(categories[0].status, "rejected"); assert.equal(categories[1].status, "fulfilled", "Visual failure does not erase independently ready markets");
+const empty = createTokenChartReader(createGeckoPresentationReader((async (url) => Response.json(String(url).includes("/ohlcv/") ? { ...history, data: { attributes: { ohlcv_list: [] } } } : { data: [poolRecord()] })) as typeof fetch), () => null);
+assert.equal((await empty.chart(token, null, "1H", null)).coverage, "NO_HISTORY");
+const invalid = createTokenChartReader(createGeckoPresentationReader((async (url) => Response.json(String(url).includes("/ohlcv/") ? { ...history, meta: { base: { address: other } } } : { data: [poolRecord()] })) as typeof fetch), () => null);
+await assert.rejects(invalid.chart(token, null, "1H", null), "Wrong-token OHLCV cannot fabricate chart coverage");
+let limitedCalls = 0;
+const limited = createGeckoPresentationReader((async () => { limitedCalls++; return Response.json({}, { status: 429, headers: { "Retry-After": "60" } }); }) as typeof fetch, () => clock);
+await assert.rejects(limited.read(geckoTokenUrl(token, "info"), value => value, 100));
+await assert.rejects(limited.read(geckoTokenUrl(other, "info"), value => value, 100)); assert.equal(limitedCalls, 1, "Rate-limit cooldown covers different tokens");
+await assert.rejects(provider.read("https://evil.invalid/api/v2/networks/robinhood/tokens/anything", value => value, 1));
+const prior = { state: "READY" as const, data: parseTokenVisual(visualPayload, token), observedAt: new Date(clock).toISOString(), provenance: "GECKOTERMINAL_TOKEN_INFO" };
+assert.deepEqual(retainPresentationEvidence(prior, { ...prior, data: null, state: "UNAVAILABLE" }), { ...prior, state: "STALE" });
+assert.equal(parsePresentationEvidence({ ...prior, chainId: 4663, contract: other }, token, visualSchema, prior.provenance), null);
+assert.equal(parsePresentationEvidence({ ...prior, chainId: 1, contract: token }, token, visualSchema, prior.provenance), null);
+
+for (const address of ["127.0.0.1", "10.1.2.3", "169.254.169.254", "192.168.1.1", "::1", "::ffff:127.0.0.1", "2001:db8::1", "2002:7f00:1::1"]) assert.equal(publicArtworkIp(address), false, address);
+assert.equal(publicArtworkIp("8.8.8.8"), true); assert.equal(publicArtworkIp("2606:4700:4700::1111"), true);
+assert.throws(() => artworkUrl("http://assets.geckoterminal.com/art")); assert.throws(() => artworkUrl("https://user:password@assets.geckoterminal.com/art"));
+const png = Buffer.from([137,80,78,71,13,10,26,10]);
+assert.equal(artworkMediaType(png, "image/png"), "image/png"); assert.equal(artworkMediaType(Buffer.from("<svg/>"), "image/svg+xml"), null);
+let transportCalls = 0;
+const fakeResolve = (async () => [{ address: "8.8.8.8", family: 4 }]) as unknown as typeof import("node:dns/promises").lookup;
+const fakeTransport = ((url: URL, _options: unknown, callback: (response: EventEmitter & { statusCode: number; headers: Record<string,string>; destroy(): void }) => void) => {
+  transportCalls++; const req = new EventEmitter() as EventEmitter & { end(): void; destroy(): void };
+  req.end = () => { const res = Object.assign(new EventEmitter(), { statusCode: 302, headers: { location: "https://127.0.0.1/private" }, destroy() {} }); callback(res); req.emit("close"); };
+  req.destroy = () => req.emit("close"); return req;
+}) as unknown as typeof import("node:https").request;
+await assert.rejects(fetchPublicArtwork("https://art.example/image", (async (host: string) => [{ address: host === "127.0.0.1" ? host : "8.8.8.8", family: 4 }]) as unknown as typeof fakeResolve, fakeTransport));
+assert.equal(transportCalls, 1, "Redirect to private address rejected before second network call");
+const mediaTransport = (headers: Record<string, string>, body: Buffer, redirect = false) => ((_: URL, _options: unknown, callback: (response: EventEmitter & { statusCode: number; headers: Record<string,string>; destroy(): void }) => void) => {
+  const req = Object.assign(new EventEmitter(), { end() {}, destroy() {} });
+  req.end = () => { const res = Object.assign(new EventEmitter(), { statusCode: redirect ? 302 : 200, headers, destroy() {} }); callback(res); res.emit("data", body); res.emit("end"); req.emit("close"); };
+  req.destroy = () => req.emit("close"); return req;
+}) as unknown as typeof import("node:https").request;
+assert.equal((await fetchPublicArtwork("https://art.example/image", fakeResolve, mediaTransport({ "content-type": "image/png" }, png))).type, "image/png");
+await assert.rejects(fetchPublicArtwork("https://art.example/image", fakeResolve, mediaTransport({ "content-type": "image/png", "content-length": "1048577" }, png)), "Declared oversized media rejected");
+await assert.rejects(fetchPublicArtwork("https://art.example/image", fakeResolve, mediaTransport({ "content-type": "image/png" }, Buffer.alloc(1048577))), "Streamed oversized media rejected");
+await assert.rejects(fetchPublicArtwork("https://art.example/image", fakeResolve, mediaTransport({ "content-type": "text/html" }, png)), "Content-type mismatch rejected");
+await assert.rejects(fetchPublicArtwork("https://art.example/image", fakeResolve, mediaTransport({ location: "/again" }, png, true)), "Redirect count remains bounded");
+let artworkCalls = 0, artworkFails = false;
+const art = createArtworkCache(async () => { artworkCalls++; if (artworkFails) throw new Error("outage"); return { bytes: png, type: "image/png" }; }, () => clock);
+await Promise.all([art("https://art.example/a"), art("https://art.example/a")]); assert.equal(artworkCalls, 1);
+clock += 3_600_001; artworkFails = true; assert.equal((await art("https://art.example/a"))?.type, "image/png");
+
+const project = defineRmtProjectIdentity({ projectId: "controlled-project", displayName: "Controlled project", officialEvidence: [{ kind: "OWNER_SUPPLIED_REFERENCE", url: "https://project.example/evidence" }], links: [], artwork: null,
+  assets: [token, other].map(contract => ({ chainId: 4663, contract: contract as `0x${string}`, kind: "ERC20", relationship: "OWNER_CONFIRMED_PROJECT_TOKEN", observedAt: new Date(clock).toISOString(), verification: "VERIFIED" })) });
+assert.equal(project.assets.length, 2);
+assert.equal(defineRmtProjectIdentity({ ...project, assets: [...project.assets, { ...project.assets[0], contract: "0x2222222222222222222222222222222222222222", kind: "ERC721", relationship: "OWNER_APPROVED_COLLECTION" }, { ...project.assets[0], contract: "0x3333333333333333333333333333333333333333", kind: "ERC1155", relationship: "OWNER_APPROVED_COLLECTION" }] }).assets.length, 4, "One project supports several fungible and NFT assets");
+assert.throws(() => defineRmtProjectIdentity({ ...project, assets: [{ ...project.assets[0], chainId: 1 as 4663 }] }));
+assert.throws(() => defineRmtProjectIdentity({ ...project, assets: [{ ...project.assets[0], relationship: "INFERRED_NAME" as never }] }));
+assert.equal(projectsForContract(token).length, 0, "No guessed SHCAT relationship");
+assert.equal(RMT_PROJECT_IDENTITIES.flatMap(item => item.assets).filter(asset => asset.kind === "ERC20").length, 0, "Future project pairs are not canonically installed");
+console.log("Token presentation: poolless chart, exact binding, coalescing, stale history, no history, rate limits, independent evidence, bounded artwork and explicit project graph passed.");
+}
+main().catch(error => { console.error(error); process.exitCode = 1; });

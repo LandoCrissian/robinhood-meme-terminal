@@ -6215,3 +6215,8 @@ body .rmtTerminal button {
   .vnTradeReceipt > dl { margin: 16px 0; font-size: 14px; }
   .vnTradeReceipt .vnReceiptDetails dl { font-size: 12px; }
 }
+.vnTokenInformation { overflow-wrap: anywhere; max-width: 100%; font-size: 14px; line-height: 1.5; }
+.vnTokenInformation h3 { font-size: 15px; margin: 16px 0 8px; }
+.vnTokenInformation small { color: var(--rmt-muted, #a0aaa6); }
+.vnTokenInformationLinks { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0; }
+.vnMarketSnapshotLabel { display: block; min-height: 20px; font-size: 12px; color: #a0aaa6; }

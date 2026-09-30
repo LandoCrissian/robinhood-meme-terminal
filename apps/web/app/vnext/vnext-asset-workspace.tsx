@@ -36,6 +36,7 @@ import { terminalValuation } from "./terminal-format";
 import { TokenArtwork } from "./token-artwork";
 import { useVNextAssetWorkspace, workspaceTokenPresentation } from "./use-vnext-asset-workspace";
 import { VNextMarketChart } from "./vnext-market-chart";
+import { TokenInformation } from "./token-information";
 
 function shortAddress(value: string) {
   return `${value.slice(0, 6)}…${value.slice(-4)}`;
@@ -513,12 +514,17 @@ export function VNextAssetWorkspace({
     address: directoryMarket.address,
     resolution,
     canonicalIdentity: directoryMarket.verifiedIdentity,
-    provider: market,
+    provider: market ?? (workspace.presentation?.visual.data?.name && workspace.presentation.visual.data.symbol ? { name: workspace.presentation.visual.data.name, symbol: workspace.presentation.visual.data.symbol } : undefined),
     fallback: directoryMarket
   });
   const displayName = presentationIdentity.name;
   const displaySymbol = presentationIdentity.symbol;
   const tokenIdentityVerified = presentationIdentity.verified || identityStatus === "verified";
+  const enrichedMarket = workspace.presentation?.market.data;
+  const priceUsd = enrichedMarket?.priceUsd ?? market?.priceUsd ?? directoryMarket.priceUsd;
+  const liquidityUsd = enrichedMarket?.liquidityUsd ?? market?.liquidityUsd ?? directoryMarket.liquidityUsd;
+  const volume24h = enrichedMarket?.volume24hUsd ?? market?.volume24h ?? directoryMarket.volume24h;
+  const priceChange24h = enrichedMarket?.priceChange24h ?? market?.priceChange24h ?? directoryMarket.priceChange24h;
   const canonicalStockRelationship = workspace.stockAssetRelationships.find((relationship) => (
     relationship.relationship === "canonical-stock-token"
     && relationship.contractAddress.toLowerCase() === directoryMarket.address.toLowerCase()
@@ -570,13 +576,14 @@ export function VNextAssetWorkspace({
 
   return <section className={`vnAssetPanel vnAssetWorkspace is${presentation}`} aria-labelledby="vn-asset-heading">
     <header className="vnAssetWorkspaceHeader">
-      <div className="vnAssetWorkspaceIdentity"><TokenArtwork className="vnAssetWorkspaceMark" symbol={displaySymbol} imageUrl={directoryMarket.imageUri ?? canonicalStockRelationship?.logoUrl ?? undefined} /><span><span className="vnEyebrow">Token Market</span><h2 id="vn-asset-heading">{displayName} <b>{displaySymbol}</b></h2><small>Robinhood Chain · {tokenIdentityVerified ? "onchain token identity proven" : identityStatus === "checking" ? "identity checking" : "identity evidence unavailable"}</small></span></div>
+      <div className="vnAssetWorkspaceIdentity"><TokenArtwork className="vnAssetWorkspaceMark" symbol={displaySymbol} contract={directoryMarket.address} imageUrl={directoryMarket.imageUri ?? canonicalStockRelationship?.logoUrl ?? workspace.presentation?.visual.data?.image ?? undefined} /><span><span className="vnEyebrow">Token Market</span><h2 id="vn-asset-heading">{displayName} <b>{displaySymbol}</b></h2><small>Robinhood Chain · {tokenIdentityVerified ? "onchain token identity proven" : identityStatus === "checking" ? "identity checking" : "identity evidence unavailable"}</small></span></div>
       <div className="vnWorkspaceStatusGroup">{executionState === "stock-token-view-only" ? <strong className="vnStockTokenViewOnlyBadge">View only</strong> : null}<span className={`vnWorkspaceStatus is${workspace.status}`}><i aria-hidden="true" />{workspace.status === "ready" ? "Live evidence" : workspace.status === "partial" ? "Partial evidence" : workspace.status === "stale" ? "Last loaded" : workspace.status === "loading" ? "Loading evidence" : "Evidence unavailable"}</span></div>
     </header>
-    <div className="vnAssetPrice"><strong>{formatUsd(directoryMarket.priceUsd)}</strong><span className={directoryMarket.priceChange24h !== null && directoryMarket.priceChange24h > 0 ? "vnPositive" : directoryMarket.priceChange24h !== null && directoryMarket.priceChange24h < 0 ? "vnNegative" : ""}>{directoryMarket.priceChange24h === null ? "Unavailable" : `${directoryMarket.priceChange24h > 0 ? "+" : ""}${directoryMarket.priceChange24h.toFixed(1)}%`} <small>24h</small></span></div>
-    <dl className="vnAssetStats"><div><dt>{valuation.label}</dt><dd>{compactUsd(valuation.value)}</dd></div><div><dt>Liquidity</dt><dd>{compactUsd(directoryMarket.liquidityUsd)}</dd></div><div><dt>24h volume</dt><dd>{compactUsd(directoryMarket.volume24h)}</dd></div><div><dt>Market age</dt><dd>{formatAge(directoryMarket.ageMinutes)}</dd></div></dl>
+    <div className="vnAssetPrice"><strong>{formatUsd(priceUsd)}</strong><span className={priceChange24h !== null && priceChange24h > 0 ? "vnPositive" : priceChange24h !== null && priceChange24h < 0 ? "vnNegative" : ""}>{priceChange24h === null ? "Unavailable" : `${priceChange24h > 0 ? "+" : ""}${priceChange24h.toFixed(1)}%`} <small>24h</small></span></div>
+    <small className="vnMarketSnapshotLabel">{workspace.presentation?.market.data ? workspace.presentation.market.state === "STALE" ? "GeckoTerminal · last observed" : "GeckoTerminal market snapshot" : "Available market evidence"}</small>
+    <dl className="vnAssetStats"><div><dt>{valuation.label}</dt><dd>{compactUsd(valuation.value)}</dd></div><div><dt>Liquidity</dt><dd>{compactUsd(liquidityUsd)}</dd></div><div><dt>24h volume</dt><dd>{compactUsd(volume24h)}</dd></div><div><dt>Market age</dt><dd>{formatAge(directoryMarket.ageMinutes)}</dd></div></dl>
 
-    <VNextMarketChart token={directoryMarket.address} pair={selectedChartIdentity ?? null} symbol={directoryMarket.symbol} referencePriceUsd={directoryMarket.priceUsd} />
+    <VNextMarketChart token={directoryMarket.address} pair={selectedChartIdentity ?? null} symbol={displaySymbol} referencePriceUsd={priceUsd} />
 
     <details className="vnAssetTechnicalDetails">
       <summary>Market details <span>Contract, chain and evidence</span></summary>
@@ -593,6 +600,7 @@ export function VNextAssetWorkspace({
         observedPool={observedChartPool}
         canonicalMarket={selectedCanonicalMarket}
       />
+      <TokenInformation presentation={workspace.presentation} />
     </details>
 
     <div className="rmtWorkspaceTabs" role="tablist" aria-label="Asset intelligence">

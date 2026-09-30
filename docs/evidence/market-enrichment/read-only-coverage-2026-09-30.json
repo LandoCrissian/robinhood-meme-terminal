@@ -1,0 +1,504 @@
+{
+  "evidence": "LIVE_READ_ONLY_PUBLIC_PROVIDER_AND_SIGNED_OUT_RMT_READS",
+  "sampledAt": "2026-09-30T15:17:48.887Z",
+  "head": "8d453dc0d0467409f8830013fe3e9ba991afed26",
+  "sourceDirty": true,
+  "productionMutations": 0,
+  "financialActions": 0,
+  "results": [
+    {
+      "label": "STONKBROKER",
+      "contract": "0xe934e36a439c94017b64a3fece66af12099abf50",
+      "category": "known market",
+      "identity": {
+        "http": 200,
+        "exact": true,
+        "decimals": 18,
+        "provenance": "robinhood-chain-contract-reads"
+      },
+      "visual": {
+        "state": "READY",
+        "data": {
+          "name": "StonkBroker",
+          "symbol": "STONKBROKER",
+          "image": "https://coin-images.coingecko.com/coins/images/102174654/large/9gwu14e3hpizobkefg65k66l70wu.?1784445702",
+          "description": null,
+          "websites": [
+            "https://www.stonkbrokers.cash/marketplace"
+          ],
+          "twitter": "ClutchMarkets",
+          "telegram": null,
+          "provenance": "GECKOTERMINAL_TOKEN_INFO"
+        }
+      },
+      "market": {
+        "state": "READY",
+        "data": {
+          "token": "0xe934e36a439c94017b64a3fece66af12099abf50",
+          "pool": "0xd33c8fd38b06e989cdbd4dffdefab71c4bdd415b24964c8d69e38ff35b068f92",
+          "priceUsd": 0.008480629505,
+          "liquidityUsd": 2395875.828,
+          "volume24hUsd": 389206.86083135,
+          "createdAt": "2026-07-18T03:50:03Z",
+          "dex": "uniswap-v4-robinhood"
+        }
+      },
+      "chart": {
+        "coverage": "AVAILABLE",
+        "pool": "0xd33c8fd38b06e989cdbd4dffdefab71c4bdd415b24964c8d69e38ff35b068f92",
+        "candles": 60,
+        "stale": false,
+        "observedAt": "2026-09-30T15:14:51.143Z"
+      },
+      "artwork": {
+        "coverage": "AVAILABLE",
+        "contentType": "image/jpeg",
+        "bytes": 2382
+      },
+      "search": {
+        "http": 200,
+        "exactMatches": 1,
+        "returnedMarketCount": 1
+      },
+      "projectEdges": 0,
+      "latencyMs": 2337
+    },
+    {
+      "label": "SHCAT",
+      "contract": "0x14c51bb55592372eac7141a1d0527d1dd7fbd42f",
+      "category": "no reviewed RMT canonical market; actual index membership not inferred",
+      "identity": {
+        "http": 200,
+        "exact": true,
+        "decimals": 18,
+        "provenance": "robinhood-chain-contract-reads"
+      },
+      "visual": {
+        "state": "READY",
+        "data": {
+          "name": "Shareholder Cat",
+          "symbol": "SHCAT",
+          "image": null,
+          "description": null,
+          "websites": [],
+          "twitter": null,
+          "telegram": null,
+          "provenance": "GECKOTERMINAL_TOKEN_INFO"
+        }
+      },
+      "market": {
+        "state": "READY",
+        "data": {
+          "token": "0x14c51bb55592372eac7141a1d0527d1dd7fbd42f",
+          "pool": "0x2adc17c9e5c50f44fef7e209b8710e1ecd5624831beb52a528ffc9e51722bf02",
+          "priceUsd": 0.000006554448328,
+          "liquidityUsd": 87757.6735,
+          "volume24hUsd": 0,
+          "createdAt": "2026-09-28T07:50:19Z",
+          "dex": "uniswap-v4-robinhood"
+        }
+      },
+      "chart": {
+        "coverage": "UNAVAILABLE",
+        "cause": "RATE_LIMITED",
+        "httpStatus": 429
+      },
+      "artwork": {
+        "coverage": "MONOGRAM_FALLBACK"
+      },
+      "search": {
+        "http": 200,
+        "exactMatches": 1,
+        "returnedMarketCount": 0
+      },
+      "projectEdges": 0,
+      "latencyMs": 1089
+    },
+    {
+      "label": "CANNACAT",
+      "contract": "0x1139d423c1706bdead91f03507f521635591ed92",
+      "category": "future project candidate; NFT relationship unverified",
+      "identity": {
+        "http": 200,
+        "exact": true,
+        "decimals": 18,
+        "provenance": "robinhood-chain-contract-reads"
+      },
+      "visual": {
+        "state": "READY",
+        "data": {
+          "name": "CannaCat",
+          "symbol": "CANNACAT",
+          "image": null,
+          "description": "$CANNACAT is the token powering the CannaCat ecosystem connecting meme culture, the 420 CannaCats NFT collection, community rewards, staking, and The Vault.\n\nBuilt on Robinhood Chain, $CANNACAT is designed around a simple idea: build together, reward participation, and grow the Collective.\n\n🐈‍⬛ One Cat. One Collective. One Flywheel.\n\n\nCannaCoin TM. since 2014",
+          "websites": [
+            "https://cannacat.fun"
+          ],
+          "twitter": "CannaCatMeme",
+          "telegram": "cannacatmeme",
+          "provenance": "GECKOTERMINAL_TOKEN_INFO"
+        }
+      },
+      "market": {
+        "state": "READY",
+        "data": {
+          "token": "0x1139d423c1706bdead91f03507f521635591ed92",
+          "pool": "0x5f5ec0e1016bae2f04c122bbcd2c141a4177cc681d7c2e4463a1d172ed8430b3",
+          "priceUsd": 0.0000358540774,
+          "liquidityUsd": 18099.8057,
+          "volume24hUsd": 207.3689574294,
+          "createdAt": "2026-08-24T03:31:03Z",
+          "dex": "pons-v2-dex"
+        }
+      },
+      "chart": {
+        "coverage": "UNAVAILABLE",
+        "cause": "RATE_LIMITED",
+        "httpStatus": 429
+      },
+      "artwork": {
+        "coverage": "MONOGRAM_FALLBACK"
+      },
+      "search": {
+        "http": 200,
+        "exactMatches": 1,
+        "returnedMarketCount": 1
+      },
+      "projectEdges": 0,
+      "latencyMs": 1148
+    },
+    {
+      "label": "HOPIUM",
+      "contract": "0xb6ce51925c2e397ebf1a443b343d19267b3d4225",
+      "category": "future project candidate; NFT relationship unverified",
+      "identity": {
+        "http": 200,
+        "exact": true,
+        "decimals": 18,
+        "provenance": "robinhood-chain-contract-reads"
+      },
+      "visual": {
+        "state": "READY",
+        "data": {
+          "name": "Hopium Machines",
+          "symbol": "HOPIUM",
+          "image": "https://coin-images.coingecko.com/coins/images/102176489/large/hopium-logo-200.png?1787895616",
+          "description": "Hopium Machines is a satirical NFT and token project on Robinhood Chain, an Ethereum Layer 2. The collection consists of 6,969 pixel-art machines that \"print pure hope\"; the associated ERC-20 token, HOPIUM, was fair-launched by the project team on pons.family with no reserved allocation and later graduated to Uniswap V4. The project parodies speculative crypto culture while operating fully functional on-chain mechanics: NFT staking (\"shifts\"), token burns through an on-site arcade, and a wallet dust sweeper. Every statistic displayed on the project's website is real, verifiable on-chain data, and the project openly states that the token promises no returns.",
+          "websites": [
+            "https://hopiummachines.xyz",
+            "https://detector.hopiummachines.xyz",
+            "https://opensea.io/collection/hopium-machines"
+          ],
+          "twitter": "HopiumMachines",
+          "telegram": null,
+          "provenance": "GECKOTERMINAL_TOKEN_INFO"
+        }
+      },
+      "market": {
+        "state": "READY",
+        "data": {
+          "token": "0xb6ce51925c2e397ebf1a443b343d19267b3d4225",
+          "pool": "0xc1dbd75280b6d117b4ac1e27fcd00c6dccb1a2b2fbfa9923a2c492711299d337",
+          "priceUsd": 0.00001667930974,
+          "liquidityUsd": 12557.498,
+          "volume24hUsd": 507.8227777119,
+          "createdAt": "2026-08-26T04:16:19Z",
+          "dex": "pons-v2-dex"
+        }
+      },
+      "chart": {
+        "coverage": "UNAVAILABLE",
+        "cause": "RATE_LIMITED",
+        "httpStatus": 429
+      },
+      "artwork": {
+        "coverage": "AVAILABLE",
+        "contentType": "image/png",
+        "bytes": 38878
+      },
+      "search": {
+        "http": 200,
+        "exactMatches": 1,
+        "returnedMarketCount": 1
+      },
+      "projectEdges": 0,
+      "latencyMs": 1151
+    },
+    {
+      "label": "PEEP",
+      "contract": "0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f",
+      "category": "reviewed PEEP contract; not assumed to establish PEEPS/Founding Feathers",
+      "identity": {
+        "http": 200,
+        "exact": true,
+        "decimals": 18,
+        "provenance": "robinhood-chain-contract-reads"
+      },
+      "visual": {
+        "state": "READY",
+        "data": {
+          "name": "PEEP",
+          "symbol": "PEEP",
+          "image": null,
+          "description": null,
+          "websites": [],
+          "twitter": null,
+          "telegram": null,
+          "provenance": "GECKOTERMINAL_TOKEN_INFO"
+        }
+      },
+      "market": {
+        "state": "READY",
+        "data": {
+          "token": "0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f",
+          "pool": "0xe70dd15481ba143f145fbe23e8916236d554d3c7",
+          "priceUsd": 0.00001595149436,
+          "liquidityUsd": 16384.895139667,
+          "volume24hUsd": 0,
+          "createdAt": "2026-07-14T17:31:34Z",
+          "dex": "uniswap-v2-robinhood"
+        }
+      },
+      "chart": {
+        "coverage": "UNAVAILABLE",
+        "cause": "RATE_LIMITED",
+        "httpStatus": 429
+      },
+      "artwork": {
+        "coverage": "MONOGRAM_FALLBACK"
+      },
+      "search": {
+        "http": 200,
+        "exactMatches": 1,
+        "returnedMarketCount": 1
+      },
+      "projectEdges": 0,
+      "latencyMs": 889
+    },
+    {
+      "label": "USDG",
+      "contract": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+      "category": "stablecoin",
+      "identity": {
+        "http": 200,
+        "exact": true,
+        "decimals": 6,
+        "provenance": "robinhood-chain-contract-reads"
+      },
+      "visual": {
+        "state": "READY",
+        "data": {
+          "name": "Global Dollar",
+          "symbol": "USDG",
+          "image": "https://coin-images.coingecko.com/coins/images/51281/large/GDN_USDG_Token_200x200.png?1730484111",
+          "description": "Global Dollar (USDG) is a single-currency stablecoin pegged to the US dollar. USDG is fully redeemable from Paxos on a one-to-one basis for US dollars. \n\nGlobal Dollar (USDG) is issued by Paxos Digital Singapore (PDS), which is a Major Payments Institution supervised by the Monetary Authority of Singapore. USDG is issued in the EU by Paxos Issuance Europe Oy (PIE), an Electronic Money Institution regulated by the Finnish Financial Supervisory Authority (FIN-FSA). USDG is fully compliant with the EU’s Markets in Crypto Assets Regulation (MiCA).\n\nUSDG combines the stability and reach of US dollars with the added security and efficiency of blockchain technology. USDG is always available and accessible, offering high transfer speeds and programmability. USDG is always available for 1:1 redemption for US dollars, 24/7.\n\nUSDG's issuance will adhere to strict regulatory standards, including requirements for value stability, capital adequacy, redemption and par and comprehensive disclosure. Specific regulatory obligations include substantial capital reserve requirements, frequent regulatory examinations, monthly independent attestations of reserve assets, monitoring of operating procedures and annual audits of reserve assets. It also provides protection from bankruptcy by holding stablecoin reserve assets in segregated accounts held on trust by PDS for the benefit of USDG holders.  \n\nUSDG represents the pinnacle of regulated stablecoins, offering unparalleled stability, security and compliance in the rapidly evolving world of digital finance.",
+          "websites": [
+            "https://globaldollar.com"
+          ],
+          "twitter": "global_dollar",
+          "telegram": null,
+          "provenance": "GECKOTERMINAL_TOKEN_INFO"
+        }
+      },
+      "market": {
+        "state": "READY",
+        "data": {
+          "token": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+          "pool": "0xbac3aa3b91584a53a579b3c999a56756e954e59247e497bad1d25a4334bde551",
+          "priceUsd": 1.00107879515564,
+          "liquidityUsd": 27945940.2263,
+          "volume24hUsd": 80144476.3283202,
+          "createdAt": "2026-08-20T07:58:27Z",
+          "dex": "uniswap-v4-robinhood"
+        }
+      },
+      "chart": {
+        "coverage": "UNAVAILABLE",
+        "cause": "RATE_LIMITED",
+        "httpStatus": 429
+      },
+      "artwork": {
+        "coverage": "AVAILABLE",
+        "contentType": "image/png",
+        "bytes": 21396
+      },
+      "search": {
+        "http": 200,
+        "exactMatches": 1,
+        "returnedMarketCount": 100
+      },
+      "projectEdges": 0,
+      "latencyMs": 1136
+    },
+    {
+      "label": "SPCX",
+      "contract": "0x4a0e65a3eccec6dbe60ae065f2e7bb85fae35eea",
+      "category": "Stock Token view-only control",
+      "identity": {
+        "http": 200,
+        "exact": true,
+        "decimals": 18,
+        "provenance": "robinhood-chain-contract-reads"
+      },
+      "visual": {
+        "state": "READY",
+        "data": {
+          "name": "Space Exploration Technologies Corp. Class A Common Stock • Robinhood Token",
+          "symbol": "SPCX",
+          "image": "https://coin-images.coingecko.com/coins/images/102174129/large/0x4a0e65a3eccec6dbe60ae065f2e7bb85fae35eea.png?1782444614",
+          "description": null,
+          "websites": [
+            "https://robinhood.com/us/en"
+          ],
+          "twitter": "RobinhoodApp",
+          "telegram": null,
+          "provenance": "GECKOTERMINAL_TOKEN_INFO"
+        }
+      },
+      "market": {
+        "state": "READY",
+        "data": {
+          "token": "0x4a0e65a3eccec6dbe60ae065f2e7bb85fae35eea",
+          "pool": "0xc61284332117c3fb23a2a56cceffd07f7af60029",
+          "priceUsd": 149.9549265836,
+          "liquidityUsd": 2194149.2354,
+          "volume24hUsd": 11579095.022048,
+          "createdAt": "2026-07-23T11:56:34Z",
+          "dex": "uniswap-v3-robinhood"
+        }
+      },
+      "chart": {
+        "coverage": "UNAVAILABLE",
+        "cause": "RATE_LIMITED",
+        "httpStatus": 429
+      },
+      "artwork": {
+        "coverage": "AVAILABLE",
+        "contentType": "image/png",
+        "bytes": 14285
+      },
+      "search": {
+        "http": 200,
+        "exactMatches": 1,
+        "returnedMarketCount": 100
+      },
+      "projectEdges": 0,
+      "latencyMs": 1254
+    },
+    {
+      "label": "CASHCAT",
+      "contract": "0x020bfc650a365f8bb26819deaabf3e21291018b4",
+      "category": "known market control",
+      "identity": {
+        "http": 200,
+        "exact": true,
+        "decimals": 18,
+        "provenance": "robinhood-chain-contract-reads"
+      },
+      "visual": {
+        "state": "READY",
+        "data": {
+          "name": "Cash Cat",
+          "symbol": "CASHCAT",
+          "image": "https://coin-images.coingecko.com/coins/images/102174280/large/cashcat-logo.jpg?1782922765",
+          "description": null,
+          "websites": [
+            "https://cashcattoken.xyz"
+          ],
+          "twitter": "cashcat_token",
+          "telegram": "cashcat_robinhood",
+          "provenance": "GECKOTERMINAL_TOKEN_INFO"
+        }
+      },
+      "market": {
+        "state": "READY",
+        "data": {
+          "token": "0x020bfc650a365f8bb26819deaabf3e21291018b4",
+          "pool": "0xa70fc67c9f69da90b63a0e4c05d229954574e313",
+          "priceUsd": 0.1658916482,
+          "liquidityUsd": 4562038.8647,
+          "volume24hUsd": 1119501.16923744,
+          "createdAt": "2026-06-29T07:00:49Z",
+          "dex": "uniswap-v3-robinhood"
+        }
+      },
+      "chart": {
+        "coverage": "UNAVAILABLE",
+        "cause": "RATE_LIMITED",
+        "httpStatus": 429
+      },
+      "artwork": {
+        "coverage": "AVAILABLE",
+        "contentType": "image/jpeg",
+        "bytes": 6524
+      },
+      "search": {
+        "http": 200,
+        "exactMatches": 1,
+        "returnedMarketCount": 1
+      },
+      "projectEdges": 0,
+      "latencyMs": 788
+    },
+    {
+      "label": "NEW_THIN_CONTROL",
+      "contract": "0xe4a7e6fb649756ee70994fa53d575acbcc5a7adc",
+      "category": "Exact provider new-pool discovery at 2026-09-30T14:58:40Z; observed pool liquidity 0.5361 USD. Pool age is not token creation authority.",
+      "identity": {
+        "http": 200,
+        "exact": true,
+        "decimals": 18,
+        "provenance": "robinhood-chain-contract-reads"
+      },
+      "visual": {
+        "state": "READY",
+        "data": {
+          "name": "Unemployed Life",
+          "symbol": "UNEMPLOYED",
+          "image": "https://assets.geckoterminal.com/41ke5mrd4a0qdwpzczxbxfglfw2s",
+          "description": null,
+          "websites": [],
+          "twitter": "chillmigratoor/status/2105309145364607268",
+          "telegram": null,
+          "provenance": "GECKOTERMINAL_TOKEN_INFO"
+        }
+      },
+      "market": {
+        "state": "READY",
+        "data": {
+          "token": "0xe4a7e6fb649756ee70994fa53d575acbcc5a7adc",
+          "pool": "0x89edc61d35f8c741ef94afc92e8a765f78c3b880",
+          "priceUsd": 0.000004377611086,
+          "liquidityUsd": 4382.6793,
+          "volume24hUsd": 44811.0123146049,
+          "createdAt": "2026-09-30T14:57:26Z",
+          "dex": "pons-v2"
+        }
+      },
+      "chart": {
+        "coverage": "UNAVAILABLE",
+        "cause": "RATE_LIMITED",
+        "httpStatus": 429
+      },
+      "artwork": {
+        "coverage": "AVAILABLE",
+        "contentType": "image/webp",
+        "bytes": 30020
+      },
+      "search": {
+        "http": 200,
+        "exactMatches": 1,
+        "returnedMarketCount": 0
+      },
+      "projectEdges": 0,
+      "latencyMs": 991
+    }
+  ],
+  "limitations": [
+    "Provider observations are not onchain execution identity",
+    "No owner-authenticated swap acceptance",
+    "No inferred Token/NFT pairs",
+    "Indexed-pool absence is not established by reviewed-catalog absence",
+    "Mobile/desktop rendering is recorded separately in controlled browser evidence"
+  ]
+}

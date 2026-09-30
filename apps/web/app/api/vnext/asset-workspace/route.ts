@@ -7,6 +7,7 @@ import {
 import { readVNextEcosystemIntelligence } from "../../../../lib/server/vnext-ecosystem-intelligence";
 import { resolveUniversalMarketAddress } from "../../../../lib/server/universal-market-resolver";
 import { unavailableVNextEcosystemIntelligence } from "../../../../lib/vnext/ecosystem-intelligence";
+import { readTokenPresentationCategory } from "../../../../lib/server/token-presentation-reader";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,10 @@ export async function GET(request: Request) {
     ? [getAddress(rawPair)]
     : [];
   const view = searchParams.get("view");
+  if (view === "visual" || view === "market") {
+    const evidence = await readTokenPresentationCategory(address, view);
+    return NextResponse.json(evidence, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120" } });
+  }
   if (view === "enrichment") {
     const ecosystem = await readVNextEcosystemIntelligence(address, undefined, undefined, displayedPools)
       .catch(() => unavailableVNextEcosystemIntelligence(address));
