@@ -277,17 +277,17 @@ Account-specific current invoices, negotiated quotas and billable resource avera
 | Vercel | [Pro plan](https://vercel.com/docs/plans/pro-plan); [included usage is credit-based](https://vercel.com/changelog/included-pro-usage-is-now-credit-based) | Existing project plan/budget preserved. Actual region/CPU/memory/request/egress charges and invoices not read; no invented monthly user price. CDN/Data Cache hits reduce function/upstream work. |
 | Railway | [RAM$10/GB-month,CPU$20/vCPU-month,egress$0.05/GB,storage$0.15/GB-month](https://docs.railway.com/pricing); compute metered by minute | Actual project plan/averages/storage/egress unknown. Worker cost depends on chain backlog/observations and API demand, not one worker per user. Safe watch scope reduces needless restart/build work. |
 
-Quantitative assumptions:100/1,000/10,000 daily users, one10-minute session/user/day, ten native+ERC20 balance refreshes, illustrative3RPC requests/refresh (one native + bounded balance/metadata aggregate),25% of session with active quote ticket,9s cadence≈17 prices and one firm quote (+one more for approval path), one20-read1H chart. Not all users trade; quotes are read-only. Public-account/firm responses cannot be shared across takers.
+Quantitative assumptions:100/1,000/10,000 daily users, one10-minute session/user/day, ten native+ERC20 balance refreshes, illustrative3RPC requests/refresh (one native + bounded balance/metadata aggregate),25% of session with active ready ticket,9s cadence≈17 preparation cycles, one20-read1H chart. Source `trade-intent-composer.tsx` automatically renews read-only preparation through `startTrade()`, which obtains a fresh price **and firm quote** before authorization preparation;17 ready cycles therefore model34 provider calls, not just17 prices plus one user-click quote. Price-only/not-ready states differ; explicit clicks, approvals and retries add calls. Not all users trade; quotes are read-only. Public-account/firm responses cannot be shared across takers.
 
-| Users/day | Balance RPC/day /30d CU at26 average | Illustrative PAYG CU price, excludes workers/egress |0x requests/day (17+1/user) | Gecko unshared/day |
+| Users/day | Balance RPC/day /30d CU at26 average | Illustrative PAYG CU price, excludes workers/egress |0x requests/day (17 paired cycles/user) | Gecko unshared/day |
 | --- | --- | --- | --- | --- |
-|100 |3,000 /2.34M |$1.23 |1,800 |2,300 |
-|1,000 |30,000 /23.4M |$12.29 |18,000 |23,000 |
-|10,000 |300,000 /234M |$122.85 |180,000 |230,000 |
+|100 |3,000 /2.34M |$1.23 |3,400 |2,300 |
+|1,000 |30,000 /23.4M |$12.29 |34,000 |23,000 |
+|10,000 |300,000 /234M |$122.85 |340,000 |230,000 |
 
 The26CU average is a model, not a claim every RPC is eth_call. Shared worker loads are additional and may dominate: the example market enrichment4.717M calls/day at26CU average≈3.68B CU/30days (~$1,932 list PAYG), versus idle market155,520/day at20CU≈93.3M (~$49). This wide range is why actual selected-pool/token counts, fallback counts and provider billing telemetry are needed before a plan decision. Retries/batch CU rules and peak throughput can change cost materially.
 
-For simultaneous users with10% active quote tickets:100→~1.11RPS,1,000→~11.11RPS,10,000→~111.11RPS, plus edits/firm quotes/retries. A Free5RPS assumption is unsuitable at higher concurrent activity even when daily averages look low. Do not increase cadence or share wallet-specific commitments to solve quotas.
+For simultaneous users with10% active ready tickets and two provider calls per9s renewal:100→~2.22RPS,1,000→~22.22RPS,10,000→~222.22RPS, plus edits/clicks/approval retries. A Free5RPS assumption is unsuitable at higher concurrent activity even when daily averages look low. Do not increase cadence or share wallet-specific commitments to solve quotas. This source-derived offered-load estimate does not claim those request counts were measured in production.
 
 Railway illustrative resource formula per service: average memoryGB×$10 + averageCPU×$20 + egressGB×$0.05 + volumeGB×$0.15/month, before plan minimum/credits/taxes. Actual metrics were not read; no promised cost savings. Vercel bill requires observed cache misses, duration/CPU, response/image bytes and regions; user counts alone cannot give an honest dollar figure. OpenSea/API permanent quotas remain unknown.
 
@@ -302,4 +302,10 @@ Shared chain heads/checkpoints, project-scoped indexed events, chart/pool/info k
 3. After Portfolio scope is approved, pilot Transfers/Address Activity and0x Trade Analytics as observation/reporting inputs; retain RMT settlement/ownership/economic evidence. No Proof of Holding/Distribution shortcuts.
 4. Adopt reviewed NFT watch scopes through a later authorized configuration action; keep PR553 and all infrastructure activation separate. Do not redeploy unchanged source to prove this audit.
 
-For this PR: all path-triggered checks must complete on the exact head. Only Railway JSON, this documentation/evidence, the source-scope test and its CI invocation change. Runtime packages/handlers remain byte-identical to base. Browser/visual/0x/terminal workflows whose path filters do not match this diff are **NOT_TRIGGERED**, not claimed as passing. No acceptance suite is removed or waived. See the PR's exact-head checks for actual results rather than predicting a17-check count.
+For this PR: all path-triggered checks must complete on the exact head. Railway JSON, this documentation/evidence, the source-scope test, its CI invocation and an exact public-address/file scan exception change. Runtime packages/handlers remain byte-identical to base. Browser/visual/0x/terminal workflows whose path filters do not match this diff are **NOT_TRIGGERED**, not claimed as passing. No acceptance suite is removed or waived. See the PR's exact-head checks for actual results rather than predicting a17-check count.
+
+### Exact-base security blocker observed during CI
+
+At the initial PR head, web stopped at unchanged `pnpm audit:production`: [GHSA-m9gg-hp2v-232j](https://github.com/advisories/GHSA-m9gg-hp2v-232j), published to GitHub's advisory database on2026-09-30, reports two high-severity vulnerable `@grpc/grpc-js` dependency branches through Firebase. A bounded local audit reproduced the failure. Root package and lockfile blob IDs are identical to authorized base (`131d0bdf4e4f0af28daaf14dc0d429734cbafd7a`, `45347b2fc599250dc921eebe7f5e1f1c1389baa8`), so this is not a watch-scope/runtime regression. The audit check stays enabled; no waiver/retry can repair vulnerable versions.
+
+Smallest proposed source delta, **not applied without owner authorization beyond the watch-scope implementation boundary**: root overrides `@grpc/grpc-js@<1.13.6 → 1.13.6` and `@grpc/grpc-js@>=1.14.0 <1.14.5 → 1.14.5`, plus corresponding lockfile resolution. No Firebase/Privy SDK upgrade or production configuration change is proposed. This would broaden dependency-triggered CI and worker watch implications; run the full affected checks if approved. Until then exact-head CI cannot honestly be reported all green.
