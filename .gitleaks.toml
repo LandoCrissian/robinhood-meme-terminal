@@ -2,6 +2,16 @@
 useDefault = true
 
 [[allowlists]]
+description = "Exact public Robinhood ERC20 contracts in the read-only enrichment sample and reader regression; no credential formats exempted"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''^0x(?:14c51bb55592372eac7141a1d0527d1dd7fbd42f|e934e36a439c94017b64a3fece66af12099abf50|1139d423c1706bdead91f03507f521635591ed92|b6ce51925c2e397ebf1a443b343d19267b3d4225|f0821f2bf570ca4e7499a9ed9db7c788fed9946f|5fc5360d0400a0fd4f2af552add042d716f1d168|4a0e65a3eccec6dbe60ae065f2e7bb85fae35eea|020bfc650a365f8bb26819deaabf3e21291018b4|e4a7e6fb649756ee70994fa53d575acbcc5a7adc)$''']
+paths = [
+  '''^docs/evidence/market-enrichment/read-only-coverage-2026-09-30\.json$''',
+  '''^apps/web/lib/server/token-presentation-smoke\.ts$''',
+]
+
+[[allowlists]]
 description = "Exact public EVM token address reused by the market-stream lifecycle fixture"
 condition = "AND"
 targetRules = ["generic-api-key"]

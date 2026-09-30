@@ -91,6 +91,7 @@ export function useVNextAssetWorkspace(address?: string, pairAddress?: string, e
   const [visual, setVisual] = useState<PresentationEvidence<TokenVisualPresentation>>();
   const [chartMarket, setChartMarket] = useState<PresentationEvidence<TokenMarketPresentation>>();
   const [resolution, setResolution] = useState<UniversalMarketResolution>();
+  const [identityStale, setIdentityStale] = useState(false);
   const [ecosystem, setEcosystem] = useState<VNextEcosystemIntelligence>();
   const [stockAssetRelationships, setStockAssetRelationships] = useState<RobinhoodStockAssetRelationship[]>([]);
   const [stockAssetCoverage, setStockAssetCoverage] = useState<"complete" | "stale" | "unavailable">();
@@ -105,6 +106,7 @@ export function useVNextAssetWorkspace(address?: string, pairAddress?: string, e
       setMarket(undefined);
       setVisual(undefined); setChartMarket(undefined);
       setResolution(undefined);
+      setIdentityStale(false);
       setEcosystem(undefined);
       setObservedAt(undefined);
       setStockAssetCoverage(undefined);
@@ -134,6 +136,7 @@ export function useVNextAssetWorkspace(address?: string, pairAddress?: string, e
     const publishCore = (payload: WorkspaceResolutionResponse) => {
       if (!current()) return;
       const resolution = validResolution(payload, address);
+      setIdentityStale(!resolution);
       if (!resolution && !payload.stockAssetRelationships?.length) return;
       coreSnapshot = payload;
       success = true; hasSnapshot.current = true;
@@ -154,6 +157,7 @@ export function useVNextAssetWorkspace(address?: string, pairAddress?: string, e
     if (!sameAsset) {
       setVisual(undefined); setChartMarket(undefined);
       setMarket(undefined); setResolution(undefined); setEcosystem(undefined); setObservedAt(undefined);
+      setIdentityStale(false);
       setStockAssetCoverage(undefined); setStockAssetRelationships([]); hasSnapshot.current = false;
       const cachedCore = cachedPublicWorkspaceRead<WorkspaceResolutionResponse>(coreUrl);
       const cachedMarket = externalMarketLookup ? cachedPublicWorkspaceRead<ExternalMarketResponse>(marketUrl) : undefined;
@@ -163,17 +167,22 @@ export function useVNextAssetWorkspace(address?: string, pairAddress?: string, e
     }
     // Each section publishes as soon as it resolves. Optional intelligence and
     // external activity never hold core identity/controls behind Promise.all.
-    const core = readPublicWorkspace<WorkspaceResolutionResponse>(coreUrl).then(publishCore);
+    const core = readPublicWorkspace<WorkspaceResolutionResponse>(coreUrl).then(publishCore).catch(error => {
+      if (current()) setIdentityStale(true);
+      throw error;
+    });
     const marketRead = externalMarketLookup ? readPublicWorkspace<ExternalMarketResponse>(marketUrl).then(publishMarket) : Promise.resolve();
     const enrichment = readPublicWorkspace<WorkspaceResolutionResponse>(enrichmentUrl).then(payload => {
       if (current() && payload.ecosystem) setEcosystem(payload.ecosystem);
     });
     const visualRead = readPublicWorkspace<unknown>(visualUrl).then(value => {
       const next = parsePresentationEvidence(value, address, visualSchema, "GECKOTERMINAL_TOKEN_INFO");
+      if (!next) throw new Error("Visual presentation response unavailable.");
       if (current() && next) setVisual(previous => retainPresentationEvidence(sameAsset ? previous : undefined, next));
     }).catch(() => { if (current()) setVisual(previous => previous ? { ...previous, state: "STALE" } : undefined); });
     const chartMarketRead = readPublicWorkspace<unknown>(chartMarketUrl).then(value => {
       const next = parsePresentationEvidence(value, address, chartMarketSchema, "GECKOTERMINAL_TOKEN_POOLS");
+      if (!next || (next.data && next.data.token.toLowerCase() !== address.toLowerCase())) throw new Error("Market presentation response unavailable.");
       if (current() && next && (!next.data || next.data.token.toLowerCase() === address.toLowerCase())) setChartMarket(previous => retainPresentationEvidence(sameAsset ? previous : undefined, next));
     }).catch(() => { if (current()) setChartMarket(previous => previous ? { ...previous, state: "STALE" } : undefined); });
     const results = await Promise.allSettled([core, marketRead, enrichment, visualRead, chartMarketRead]);
@@ -197,7 +206,7 @@ export function useVNextAssetWorkspace(address?: string, pairAddress?: string, e
   const identity = snapshotIsCurrent ? resolution?.token : undefined;
   const presentation: TokenPresentation | undefined = address ? {
     chainId: 4663, contract: address,
-    identity: { state: identity ? "READY" : "UNAVAILABLE", data: identity ? { name: identity.name, symbol: identity.symbol, decimals: identity.decimals, contract: address } : null, observedAt: identity ? resolution!.resolvedAt : null, provenance: "RMT_ONCHAIN_IDENTITY" },
+    identity: { state: identity ? identityStale ? "STALE" : "READY" : "UNAVAILABLE", data: identity ? { name: identity.name, symbol: identity.symbol, decimals: identity.decimals, contract: address } : null, observedAt: identity ? resolution!.resolvedAt : null, provenance: "RMT_ONCHAIN_IDENTITY" },
     visual: snapshotIsCurrent && visual ? visual : { state: "UNAVAILABLE", data: null, observedAt: null, provenance: "GECKOTERMINAL_TOKEN_INFO" },
     market: snapshotIsCurrent && chartMarket ? chartMarket : { state: "UNAVAILABLE", data: null, observedAt: null, provenance: "GECKOTERMINAL_TOKEN_POOLS" },
     project: { state: "READY", data: projectsForContract(address), observedAt: null, provenance: "OWNER_CONFIRMED_PROJECT_TOKEN" }

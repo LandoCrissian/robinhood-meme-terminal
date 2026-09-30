@@ -1,0 +1,28 @@
+{
+  "evidence": "LIVE_READ_ONLY_OFFICIAL_GECKO_THROUGH_CHANGED_READER",
+  "observedAt": "2026-09-30T15:55:52.387Z",
+  "source": "PR556 working tree before evidence/scanner correction commit",
+  "financialActions": 0,
+  "results": [
+    {
+      "label": "SHCAT",
+      "contract": "0x14c51bb55592372eac7141a1d0527d1dd7fbd42f",
+      "result": {
+        "coverage": "UNAVAILABLE",
+        "cause": "RATE_LIMITED",
+        "httpStatus": 429
+      },
+      "latencyMs": 284
+    },
+    {
+      "label": "USDG",
+      "contract": "0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+      "result": {
+        "coverage": "UNAVAILABLE",
+        "cause": "RATE_LIMITED",
+        "httpStatus": 429
+      },
+      "latencyMs": 0
+    }
+  ]
+}
