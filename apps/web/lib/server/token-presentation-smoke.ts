@@ -35,6 +35,8 @@ assert.equal(parseTokenPools({ data: [activity] }, token)[0].priceChange24h, -2.
 assert.equal(parseTokenPools({ data: [activity] }, token)[0].buys24h, 4);
 assert.equal(parseTokenPools({ data: [activity] }, token)[0].sells24h, null, "Malformed optional activity never fabricates a count or erases market evidence");
 assert.equal(parseTokenPools({ data: [{ ...activity, relationships: quoteLeg.relationships }] }, token)[0].priceChange24h, null, "Quote-leg movement is not fabricated from base movement");
+const malformedMetrics = parseTokenPools({ data: [{ ...activity, attributes: { ...activity.attributes, base_token_price_usd: true, reserve_in_usd: "  ", volume_usd: { h24: [12] }, price_change_percentage: { h24: false } } }] }, token)[0];
+assert.equal(malformedMetrics.priceUsd, null); assert.equal(malformedMetrics.liquidityUsd, null); assert.equal(malformedMetrics.volume24hUsd, null); assert.equal(malformedMetrics.priceChange24h, null, "Booleans/arrays/blank provider values are unavailable, not invented numbers");
 assert.equal(parseTokenPools({ data: [{ ...poolRecord(), id: `ethereum_${pool}` }] }, token).length, 0);
 assert.throws(() => parseTokenPools({ data: Array(21).fill(poolRecord()) }, token));
 assert.equal(parseTokenVisual(visualPayload, token).image, "https://assets.geckoterminal.com/public-art");
