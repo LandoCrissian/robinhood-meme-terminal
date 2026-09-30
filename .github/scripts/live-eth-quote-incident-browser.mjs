@@ -186,6 +186,15 @@ export async function runLiveEthQuoteIncidentJourneys({
           }
           await until(async () => /1000000000000000000000 base units/i.test(await page.locator("body").innerText()),
             "Unknown output decimals must render the provider amount as exact base units");
+          const minimumLayout = await page.locator(".vnOutputProtection strong").evaluate(element => ({
+            whiteSpace: getComputedStyle(element).whiteSpace,
+            textOverflow: getComputedStyle(element).textOverflow,
+            clientWidth: element.clientWidth,
+            scrollWidth: element.scrollWidth
+          }));
+          assert.equal(minimumLayout.whiteSpace, "normal", "Exact unknown-unit minimum wraps instead of truncating");
+          assert.notEqual(minimumLayout.textOverflow, "ellipsis", "Exact units must not be replaced with an ellipsis");
+          assert.ok(minimumLayout.scrollWidth <= minimumLayout.clientWidth + 1, "Exact minimum remains within the ticket");
         } else {
           await until(() => api.some((entry) => entry.path === "/api/vnext/quotes" && entry.status === 200), "No-route case must reach the real quote handler");
           await until(async () => /no current route/i.test(await page.locator(".vnTradeActionStatus").innerText()), "Genuine no-route must be visible beside the action");

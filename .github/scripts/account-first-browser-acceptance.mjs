@@ -976,10 +976,10 @@ async function runFundingPrimaryBoundaries(browser, base) {
       // consumer default selecting spendable native ETH when USDG is zero.
       await tradeSheet.getByLabel("Pay with asset").selectOption(`eip155:4663/contract:${usdgAddress.toLowerCase()}`);
       await amount.fill("1");
-      const balanceEvidence = tradeSheet.getByText(scenario.evidence);
-      await balanceEvidence.waitFor({ state: "attached", timeout: 10_000 });
+      const balanceEvidence = tradeSheet.locator(".vnTradeActionStatus").filter({ hasText: scenario.evidence });
+      await balanceEvidence.waitFor({ state: "visible", timeout: 10_000 });
       assert.match(await balanceEvidence.textContent(), scenario.evidence,
-        `${scenario.name}: the exact funding blocker remains in the ticket even when the compact scroll region clips it`);
+        `${scenario.name}: the exact funding blocker is visible beside the primary action`);
       const action = tradeSheet.getByRole("button", { name: scenario.label, exact: true });
       await action.waitFor({ timeout: 10_000 });
       assert.equal(await action.isEnabled(), true, `${scenario.name}: the funding recovery action is enabled`);

@@ -2330,7 +2330,8 @@ async function inspectV4PreviewUserJourney(browser, fixture) {
   await panel.locator(".vnRouteCard > summary").click();
   const quoteText = await panel.innerText();
   if (!quoteText.includes("Uniswap V4") || !quoteText.includes("non-executable")
-    || !quoteText.includes("No protected minimum is established before verification")) {
+    || !/Estimate only · fresh terms required before confirmation\.|Updating before confirmation · these terms cannot execute\./.test(quoteText)
+    || !await panel.locator(".vnOutputProtection").innerText().then(text => text.includes("Set when you trade"))) {
     throw new Error(`V4 observed provider was not visible in the Terminal: ${quoteText}`);
   }
   const quoteRequest = state.quoteRequests.find((request) =>
@@ -2608,7 +2609,7 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
     await panel.locator(".vnRouteCard > summary").click();
     const panelText = await panel.innerText();
     if (!panelText.includes("non-executable") || !panelText.includes("Uniswap V4")
-      || !panelText.includes("Estimate only · fresh terms required before confirmation.")
+      || !/Estimate only · fresh terms required before confirmation\.|Updating before confirmation · these terms cannot execute\./.test(panelText)
       || !await panel.locator(".vnOutputProtection").innerText().then(text => text.includes("Set when you trade"))) {
       throw new Error(`The V4 quote-only winner was not labeled truthfully: ${panelText}`);
     }
