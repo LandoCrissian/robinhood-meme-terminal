@@ -36,6 +36,8 @@ In the same nine-contract sample: exact public identity 9/9, exact search 9/9, G
 
 OHLCV was available for STONKBROKER (60 candles); eight rows reported genuine HTTP 429. Separate bounded changed-reader probes returned SHCAT (59 candles) and USDG (60 candles), but those are not successes in the same sample window. This does not establish universal chart coverage. SHCAT and the new/thin control returned exact search results with no attached market rows; that is not a direct database-membership assertion. The new/thin control was independently found in the provider's new-pool feed (observed liquidity $0.5361); pool age is not token creation evidence.
 
+The later saved `incident-chart-probe.json` reports a genuine 429 for SHCAT and cooldown rejection for USDG, retaining that failure instead of replacing it with the earlier successes. `public-layout-matrix.json` records actual signed-out desktop/mobile baseline rendering for all nine contracts: 18 useful token headings, zero horizontal overflow, and SPCX view-only on both viewports. Its navigation-to-heading timings include network/navigation cost and are not an after-release performance claim.
+
 The public before capture is signed-out production, while after screenshots/video are controlled local browser acceptance. These are different evidence profiles and different exact tokens, not a quantified production performance comparison. No production deployment, configuration or data was changed.
 
 ## Reproducible controlled acceptance
@@ -47,6 +49,8 @@ The public before capture is signed-out production, while after screenshots/vide
 Each 1440×900 and 390×844 journey keeps the ticket open for 65 seconds through real chart/workspace timer cycles, including provider outage. It records amount, nonterminal caret, focus, scroll, chart node/range and bounds, request paths and errors. The earlier local run measured zero chart movement, stable amount/caret/focus/range/scroll, no horizontal overflow and zero financial requests. Exact-head CI emits the final measured values in `token-enrichment-browser.json`, with head/tree/profile labels, PNGs and WebM recordings in the existing `zerox-browser-acceptance-evidence` artifact.
 
 Existing Stock view-only, native Buy, ERC20 Sell/approval, post-approval freshness, mutation/account isolation, expiry, duplicate and recovery suites remain required. No assertion of provider-native execution authority was weakened. Historical local browser startup attempts without matching public runtime auth flags failed with 404; the corrected local profile passed. Exact-head CI remains the release-review authority.
+
+The first CI secret scan classified nine public contract literals as generic API keys. The correction exempts only those exact public addresses in the two specific evidence/test paths; no credential format or entire file is exempted. The complete reachable-history scan passes locally with the pinned scanner. A subsequent exact-head run is required, without waiving the first failure.
 
 ## Remaining acceptance
 
