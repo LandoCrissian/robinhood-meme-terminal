@@ -42,6 +42,12 @@ assert.throws(() => parseTokenVisual(visualPayload, other), "Wrong address metad
 const independent = createGeckoPresentationReader((async url => Response.json(String(url).includes('/info') ? {} : { data: [poolRecord()] }, { status: String(url).includes('/info') ? 503 : 200 })) as typeof fetch);
 const categories = await Promise.allSettled([independent.read(geckoTokenUrl(token, "info"), value => parseTokenVisual(value, token), 1000), independent.read(geckoTokenUrl(token, "pools"), value => parseTokenPools(value, token), 1000)]);
 assert.equal(categories[0].status, "rejected"); assert.equal(categories[1].status, "fulfilled", "Visual failure does not erase independently ready markets");
+const cachedHttp = createGeckoPresentationReader((async () => Response.json(visualPayload, { headers: { Date: new Date(clock - 120_000).toUTCString() } })) as typeof fetch, () => clock);
+const oldHttp = await cachedHttp.read(geckoTokenUrl(token, "info"), value => parseTokenVisual(value, token), 1000);
+assert.equal(oldHttp.stale, true, "A cached upstream response does not become fresh on a cold-process read");
+assert.equal(Date.parse(oldHttp.observedAt), clock - 120_000);
+const expiredHttp = createGeckoPresentationReader((async () => Response.json(visualPayload, { headers: { Date: new Date(clock - 1_000_000).toUTCString() } })) as typeof fetch, () => clock);
+await assert.rejects(expiredHttp.read(geckoTokenUrl(token, "info"), value => parseTokenVisual(value, token), 1000), "HTTP cache age cannot extend the last-good bound");
 const empty = createTokenChartReader(createGeckoPresentationReader((async (url) => Response.json(String(url).includes("/ohlcv/") ? { ...history, data: { attributes: { ohlcv_list: [] } } } : { data: [poolRecord()] })) as typeof fetch), () => null);
 assert.equal((await empty.chart(token, null, "1H", null)).coverage, "NO_HISTORY");
 const invalid = createTokenChartReader(createGeckoPresentationReader((async (url) => Response.json(String(url).includes("/ohlcv/") ? { ...history, meta: { base: { address: other } } } : { data: [poolRecord()] })) as typeof fetch), () => null);

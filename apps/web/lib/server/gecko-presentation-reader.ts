@@ -62,7 +62,13 @@ export function createGeckoPresentationReader(fetcher: typeof fetch = (...args) 
         const bytes = new Uint8Array(size); let offset = 0;
         for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
         const data = parse(JSON.parse(new TextDecoder().decode(bytes)));
-        const value = { data, observedAt: new Date(now()).toISOString(), stale: false };
+        // Next's fetch cache can return an earlier HTTP response while it
+        // revalidates. Preserve that response's date rather than renewing its
+        // observation time on every cold process or cache hit.
+        const responseDate = Date.parse(response.headers.get("date") ?? "");
+        const observed = Number.isFinite(responseDate) ? responseDate : now();
+        if (observed > now() + 60_000 || now() - observed > staleAge) throw new PresentationProviderError("UNAVAILABLE");
+        const value = { data, observedAt: new Date(observed).toISOString(), stale: now() - observed > ttl };
         cache.delete(url); cache.set(url, { value, expires: now() + ttl });
         if (cache.size > 96) cache.delete(cache.keys().next().value!);
         failures.delete(url);
