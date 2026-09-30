@@ -1,0 +1,30 @@
+[
+  {
+    "name": "desktop",
+    "viewport": {
+      "width": 1440,
+      "height": 900
+    },
+    "evidence": "READ_ONLY_PUBLIC_PRODUCTION_SIGNED_OUT",
+    "observedAt": "2026-09-30T15:41:01.346Z",
+    "heading": "Shareholder Cat SHCAT",
+    "chart": "PRICE CHART\n$0.0000001019\n— · 1H\nSHCAT · 1H · GeckoTerminal OHLCV\nCandles\nLine\nUNAVAILABLE\n5M\n15M\n1H\n6H\n24H\n7D\nPrice history unavailable\nRMT will retry quietly. No price history is being invented.\n—\n1H VOLUME —\n—",
+    "chartRequests": [],
+    "overflow": 0,
+    "financialRequests": 0
+  },
+  {
+    "name": "mobile",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "evidence": "READ_ONLY_PUBLIC_PRODUCTION_SIGNED_OUT",
+    "observedAt": "2026-09-30T15:41:07.561Z",
+    "heading": "Shareholder Cat SHCAT",
+    "chart": "PRICE CHART\n$0.0000001019\n— · 1H\nSHCAT · 1H · GeckoTerminal OHLCV\nCandles\nLine\nUNAVAILABLE\n5M\n15M\n1H\n6H\n24H\n7D\nPrice history unavailable\nRMT will retry quietly. No price history is being invented.\n—\n—",
+    "chartRequests": [],
+    "overflow": 0,
+    "financialRequests": 0
+  }
+]

@@ -207,7 +207,7 @@ function DesktopMarketTable(props: TerminalPresentationProps) {
     </div>
     <div className="rmtMarketTableBody" role="rowgroup">
       {props.visibleMarkets.map((market) => <button className="rmtMarketTableRow" type="button" role="row" key={market.address} onClick={() => props.onSelectMarket(market.address)}>
-        <span className="rmtMarketTokenCell" role="cell"><TokenArtwork className="rmtMarketArtwork" symbol={market.symbol} imageUrl={market.imageUri} /><span><strong>{market.symbol}</strong><small>{market.name}</small>{props.searchActive ? <code className="rmtSearchContract">{market.address}</code> : null}</span></span>
+        <span className="rmtMarketTokenCell" role="cell"><TokenArtwork className="rmtMarketArtwork" symbol={market.symbol} contract={market.imageUri ? market.address : undefined} imageUrl={market.imageUri} /><span><strong>{market.symbol}</strong><small>{market.name}</small>{props.searchActive ? <code className="rmtSearchContract">{market.address}</code> : null}</span></span>
         <strong role="cell">{metricsIncomplete && market.priceUsd === null ? <span className="rmtMetricPending">—<small>{props.activityCoverageDelayed ? "Market data delayed" : "Loading market data"}</small></span> : formatUsd(market.priceUsd)}</strong>
         <strong className={changeClass(market.priceChange24h)} role="cell">{metricsIncomplete && market.priceChange24h === null ? "—" : formatChange(market.priceChange24h)}</strong>
         <span role="cell">{metricsIncomplete && market.marketCapUsd === null && market.fdvUsd === null ? "—" : compactValuation(market)}</span>
@@ -229,7 +229,7 @@ function CompactMarketNavigator(props: TerminalPresentationProps) {
     <MarketCategoryNav view={props.directoryView} counts={props.directoryViewCounts} searchActive={props.searchActive} activityCoveragePending={props.activitySnapshotPublished === false} countsObserved={directoryCountsObserved(props.directoryStatus, props.markets.length)} walletReadStatus={props.walletReadStatus} onChange={props.onDirectoryViewChange} />
     <div className="rmtCompactMarketList">
       {props.visibleMarkets.map((market) => <button className={props.selected?.address === market.address ? "isSelected" : ""} type="button" key={market.address} aria-pressed={props.selected?.address === market.address} onClick={() => props.onSelectMarket(market.address)}>
-        <TokenArtwork className="rmtMarketArtwork" symbol={market.symbol} imageUrl={market.imageUri} />
+        <TokenArtwork className="rmtMarketArtwork" symbol={market.symbol} contract={market.imageUri ? market.address : undefined} imageUrl={market.imageUri} />
         <span><strong>{market.symbol}</strong><small>{formatUsd(market.priceUsd)}</small></span>
         <b className={changeClass(market.priceChange24h)}>{formatChange(market.priceChange24h)}</b>
       </button>)}
@@ -243,7 +243,7 @@ function MobileMarketList(props: TerminalPresentationProps) {
   const metricsIncomplete = props.activityCoveragePending || props.activityCoverageDelayed;
   return <div className="rmtMobileMarketList">
     {props.visibleMarkets.map((market) => <button className="rmtMobileMarketRow" type="button" key={market.address} onClick={() => props.onSelectMarket(market.address)}>
-      <TokenArtwork className="rmtMarketArtwork" symbol={market.symbol} imageUrl={market.imageUri} />
+      <TokenArtwork className="rmtMarketArtwork" symbol={market.symbol} contract={market.imageUri ? market.address : undefined} imageUrl={market.imageUri} />
       <span className="rmtMobileMarketIdentity"><span><strong>{market.symbol}</strong><RwaLabel market={market} /></span><small>{market.name}</small>{props.searchActive ? <code className="rmtSearchContract">{market.address}</code> : null}</span>
       <span className="rmtMobileMarketPrice"><strong>{metricsIncomplete && market.priceUsd === null ? "—" : formatUsd(market.priceUsd)}</strong><small className={changeClass(market.priceChange24h)}>{metricsIncomplete && market.priceChange24h === null ? props.activityCoverageDelayed ? "Market data delayed" : "Loading market data" : formatChange(market.priceChange24h)}</small></span>
       <span className="rmtMobileMarketMeta">{metricsIncomplete && market.marketCapUsd === null && market.fdvUsd === null ? props.activityCoverageDelayed ? "Market data delayed" : "Market data pending" : `${compactValuation(market)} · V ${compactUsd(market.volume24h)}`} · {formatAge(market.ageMinutes)}</span>

@@ -7,6 +7,7 @@ on:
       - '.github/scripts/quote-state-browser-checks.mjs'
       - '.github/scripts/trading-product-browser.mjs'
       - '.github/scripts/stable-refresh-browser.mjs'
+      - '.github/scripts/token-enrichment-browser.mjs'
       - '.github/scripts/market-anchor-browser.mjs'
       - '.github/scripts/zerox-execution-fixture.cjs'
       - '.github/scripts/terminal-high-end-acceptance.mjs'

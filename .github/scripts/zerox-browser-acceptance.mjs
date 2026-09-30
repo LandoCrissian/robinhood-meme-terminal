@@ -1,4 +1,5 @@
 import { runStableRefreshBrowser } from './stable-refresh-browser.mjs';
+import { runTokenEnrichmentBrowser, tokenEnrichmentExternal } from './token-enrichment-browser.mjs';
 import { runMarketAnchorBrowser } from './market-anchor-browser.mjs';
 import { runTradingProductBrowser } from './trading-product-browser.mjs';
 import { runZeroXFirmCommitmentJourneys } from "./zerox-browser-firm-commitment.mjs";
@@ -167,6 +168,8 @@ function rpc(request) {
 function external(input) {
   const url = new URL(input.url);
   state.outbound.push(`${input.method} ${url.origin}${url.pathname}`);
+  const enrichment = tokenEnrichmentExternal(url, state);
+  if (enrichment) return enrichment;
   const inventory = hotPathInventory(url, state, usdg);
   if (inventory) return inventory;
   const routeResponse = routeFixtures.external(input);
@@ -328,8 +331,10 @@ export async function runZeroXBrowserAcceptance() {
     }
     if (process.env.RMT_QUOTE_STATE_ONLY === 'true') { results.push(...await runZeroXWalletJourneys({browser,base,identity,external,state,wallet,token,usdg,holder,output,scenarios:['sell-approval-idle-verification','sell-approval-idle-success','sell-approval-idle-expired-failure','sell-approval-idle-failure','sell-approval-idle-click']})); return; }
     if (process.env.RMT_MARKET_ANCHOR_ONLY === 'true') { results.push(...await runMarketAnchorBrowser({ browser, base, external, output })); return; }
+    if (process.env.RMT_TOKEN_ENRICHMENT_ONLY === 'true') { results.push(...await runTokenEnrichmentBrowser({ browser, base, identity, external, state, wallet, token: routeFixtures.assets.identityOnly, output })); return; }
     if (process.env.RMT_STABLE_REFRESH_ONLY === 'true') { results.push(...await runStableRefreshBrowser({ browser, base, identity, external, state, wallet, token, output })); return; }
     if (process.env.RMT_PRODUCT_METRICS_ONLY === 'true') { results.push(...await runTradingProductBrowser({ browser, base, identity, external, state, wallet, token, output })); return; }
+    results.push(...await runTokenEnrichmentBrowser({ browser, base, identity, external, state, wallet, token: routeFixtures.assets.identityOnly, output }));
     results.push(...await runStableRefreshBrowser({ browser, base, identity, external, state, wallet, token, output }));
     results.push(...await runTradingProductBrowser({ browser, base, identity, external, state, wallet, token, output }));
     results.push(...await runHotPathBrowserAcceptance({ browser, base, identity, state, wallet, usdg, shcat, stock: routeFixtures.assets.stock }));

@@ -96,7 +96,7 @@ assert.match(workspaceSource, /!canonicalMarket && observedPool[\s\S]*Observed p
   "Provider-only chart pools must be labeled observed rather than canonical");
 assert.doesNotMatch(workspaceSource, /primaryPool=\{selected/,
   "One ambiguous selected pool must not drive both canonical and observed labels");
-assert.match(workspaceSource, /referencePriceUsd=\{directoryMarket\.priceUsd\}/,
+assert.match(workspaceSource, /referencePriceUsd=\{priceUsd\}/,
   "The resting chart headline must use the selected Token Market price authority");
 assert.match(chartSource, /hovered\?\.close \?\? referencePriceUsd \?\? latest/,
   "Hover must retain exact historical candle close while rest uses the selected market price");

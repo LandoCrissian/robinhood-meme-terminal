@@ -24,6 +24,7 @@ export type ExternalOhlcvPayload = {
   lastTradeAt: string | null;
   refreshMs: number;
   stale?: boolean;
+  coverage?: "AVAILABLE" | "NO_HISTORY";
 };
 
 const RANGE_CONFIG: Record<ExternalChartRange, {
