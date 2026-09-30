@@ -34,6 +34,8 @@
   },
   "pnpm": {
     "overrides": {
+      "@firebase/firestore>@grpc/grpc-js@<1.13.6": "1.13.6",
+      "google-gax>@grpc/grpc-js@>=1.14.0 <1.14.5": "1.14.5",
       "@hono/node-server@<2.0.10": "2.0.10",
       "@opentelemetry/core@<2.8.0": "2.8.0",
       "axios@>=1.0.0 <1.20.0": "1.20.0",
