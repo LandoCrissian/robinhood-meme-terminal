@@ -21,6 +21,8 @@ async function snapshot(page) {
       focused: document.activeElement === input, sameInput: input === window.__stableInput, sameAction: document.querySelector('.vnTradeActionDock .vnReviewButton') === window.__stableAction,
       scroll: document.querySelector('.vnTradeScroll')?.scrollTop,
       details: document.querySelector('.vnRouteCard')?.open,
+      displayedTermsId: document.querySelector('.vnTradePriceSummary')?.dataset.displayVerification,
+      displayedProviderId: document.querySelector('.vnTradeEvidenceSummary')?.dataset.displayVerification,
       payment: document.querySelector('[aria-label="Pay with asset"]')?.value,
       range: document.querySelector('.vnChartRanges [aria-selected="true"]')?.textContent,
       receive: document.querySelector('.vnReceiveField > div > strong')?.textContent,
@@ -165,6 +167,7 @@ export async function runStableRefreshBrowser({ browser, base, identity, externa
         assert.ok(scrollMovement <= 1, `passive scroll movement ${scrollMovement}px`);
         assert.ok(chartMovement <= 1, `passive chart movement ${chartMovement}px`);
         assert.ok(preOutage.every(s => s.sameAction), 'renewal does not replace the primary control');
+        assert.ok(preOutage.every(s => s.displayedTermsId === s.displayedProviderId), 'fees and provider use the same retained or fresh response');
         assert.equal(lostInput.length, 0, 'passive renewal keeps input element, focus, caret and amount');
         assert.ok(preOutage.every(s => s.range === '15M'), 'chart range remains selected');
         assert.ok(preOutage.every(s => s.details && s.walletRequests === 0 && s.payment === 'eip155:4663/native'));

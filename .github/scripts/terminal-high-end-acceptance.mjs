@@ -3227,11 +3227,14 @@ async function inspectV2WalletBrowserJourney(browser, fixture, options, label, m
     const body = await page.locator("body").innerText();
     throw new Error(`${label}: V2 receipt did not render ${JSON.stringify({ body: body.slice(-2800), state })}`, { cause: error });
   }
-  const receiptText = await page.getByRole("dialog", { name: "Buy confirmed" }).innerText();
-  for (const required of ["Gross input", "Asset received", "RMT fee", "0.25%", "Uniswap V3", "View confirmed transaction"]) {
+  const receipt = page.getByRole("dialog", { name: "Buy confirmed" });
+  const receiptText = await receipt.innerText();
+  for (const required of ["Paid", "25 USDG", "Asset received", "995 R01", "RMT fee", "0.25%", "View confirmed transaction"]) {
     if (!receiptText.toLowerCase().includes(required.toLowerCase())) throw new Error(`${label}: receipt omitted ${required}: ${JSON.stringify(receiptText)}`);
   }
   await page.screenshot({ path: `${output}/v2-confirmed-receipt-${label}.png`, fullPage: false, animations: "disabled" });
+  await receipt.locator(".vnReceiptDetails > summary").click();
+  if (!(await receipt.innerText()).includes("Uniswap V3")) throw new Error(`${label}: receipt Details lost provider attribution`);
   await context.close();
   return { approval: true, swap: true, receipt: true };
 }
