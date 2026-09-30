@@ -1546,10 +1546,10 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
         <small>{!visibleVerification && ["swap_ready", "next_approval_ready"].includes(postExecutionState.state)
           ? "The previous verification expired. Trade obtains a fresh verified request before wallet review." : postExecutionState.message}</small>
       </div> : null}
-<dl className="vnTradeEvidenceSummary" aria-label="Provider evidence">
-  <div><dt>Provider</dt><dd>{visibleVerification ? vNextProviderLabel(visibleVerification.provider) : verificationQuote && quoteState.state === "ready" ? `${verificationQuote.providerLabel} (estimate)` : "Not verified"}</dd></div>
-  <div><dt>Network fee estimate</dt><dd>{visibleVerification?.estimatedNetworkCostWei
-    ? formatUnits(BigInt(visibleVerification.estimatedNetworkCostWei), 18) + " ETH" : "Not available yet"}</dd></div>
+<dl className="vnTradeEvidenceSummary" aria-label="Provider evidence" data-display-verification={displayVerification?.verificationId ?? ""}>
+  <div><dt>Provider</dt><dd>{displayVerification ? `${vNextProviderLabel(displayVerification.provider)}${retainedEstimate ? " · last quoted" : ""}` : verificationQuote && quoteState.state === "ready" ? `${verificationQuote.providerLabel} (estimate)` : "Not verified"}</dd></div>
+  <div><dt>Network fee estimate</dt><dd>{displayVerification?.estimatedNetworkCostWei
+    ? `${formatAtomicDisplay(displayVerification.estimatedNetworkCostWei, 18)} ETH${retainedEstimate ? " · last quoted" : ""}` : "Not available yet"}</dd></div>
 </dl>
 {authorizationState.state === "ready" && visibleVerification ? <section className="vnWalletPrimaryReview">
 <span><strong>Verified request ready</strong><small>Nothing opens automatically. Use the explicit action below when your selected wallet is ready.</small></span>
