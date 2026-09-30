@@ -68,6 +68,6 @@ Historical documents/tests describing strict route decoding, per-trade runtime p
 
 ## Changes and release boundary
 
-This PR changes repository watch patterns, a watch-scope regression test and its existing CI step, plus audit documentation/evidence. It changes no application runtime, shared runtime package, trading handler, database, environment variable, service identity, region, replica or resource limit. No deployment, merge, RPC switch, marketplace activation or financial action is authorized by this implementation.
+This PR changes repository watch patterns, a watch-scope regression test and its existing CI step, audit documentation/evidence, and an exact public-address/file secret-scan exception. It changes no application runtime, shared runtime package, trading handler, database, environment variable, service identity, region, replica or resource limit. No deployment, merge, RPC switch, marketplace activation or financial action is authorized by this implementation.
 
 The two NFT services currently use dashboard-inline scopes; repository changes do **not** prove those live scopes changed. Adopting the reviewed repository scopes there requires a later authorized configuration action. The main and market services already reference their repository `railway.json` files.

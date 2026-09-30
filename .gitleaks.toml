@@ -2,6 +2,13 @@
 useDefault = true
 
 [[allowlists]]
+description = "Exact public SHCAT contract in the read-only Robinhood RPC preflight; no credential formats exempted"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''^0x14c51bb55592372eac7141a1d0527d1dd7fbd42f$''']
+paths = ['''^docs/architecture/evidence/2026-09-30/public-rpc-probe\.json$''']
+
+[[allowlists]]
 description = "Exact public Robinhood ERC20 contracts in the read-only enrichment sample and reader regression; no credential formats exempted"
 condition = "AND"
 targetRules = ["generic-api-key"]
