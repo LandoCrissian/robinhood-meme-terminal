@@ -14,6 +14,20 @@ export type RmtTradeDraftRecovery = {
 
 type DraftStorage = Pick<Storage, "getItem" | "removeItem" | "setItem">;
 
+// Preferences carry no quote, signer or transaction authority. Scope them to
+// the deliberately selected wallet on Robinhood Chain, not a directory order.
+export function readRmtPaymentPreference(storage: DraftStorage, walletKey: string) {
+  try {
+    const value = JSON.parse(storage.getItem(`rmt:payment:4663:${walletKey}`) ?? "null");
+    return boundedKey(value) ?? undefined;
+  } catch { return undefined; }
+}
+
+export function saveRmtPaymentPreference(storage: DraftStorage, walletKey: string, paymentKey: string) {
+  if (!boundedKey(walletKey) || !boundedKey(paymentKey)) return;
+  try { storage.setItem(`rmt:payment:4663:${walletKey}`, JSON.stringify(paymentKey)); } catch { /* Optional preference only. */ }
+}
+
 function boundedKey(value: unknown) {
   return typeof value === "string" && value.length > 0 && value.length <= 256 ? value : undefined;
 }

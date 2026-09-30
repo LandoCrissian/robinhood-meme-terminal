@@ -71,7 +71,7 @@ function sparseHistoryLabel(range: ExternalChartRange) {
 
 export function VNextMarketChart({ token, pair, symbol, referencePriceUsd }: {
   token: string;
-  pair: string;
+  pair: string | null;
   symbol: string;
   referencePriceUsd: number | null;
 }) {
@@ -83,7 +83,7 @@ export function VNextMarketChart({ token, pair, symbol, referencePriceUsd }: {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const signature = useRef("");
   const requestId = useRef(0);
-  const chartKey = `${token.toLowerCase()}:${pair.toLowerCase()}:${range}`;
+  const chartKey = `${token.toLowerCase()}:${pair?.toLowerCase() ?? "pending"}:${range}`;
   const activeKey = useRef("");
 
   useEffect(() => {
@@ -104,6 +104,7 @@ export function VNextMarketChart({ token, pair, symbol, referencePriceUsd }: {
       setStatus("loading");
       setHoveredIndex(null);
     }
+    if (!pair) { setStatus("unavailable"); return; }
     const controller = new AbortController();
     const timeout = window.setTimeout(() => controller.abort(), 5_500);
     try {
@@ -135,7 +136,9 @@ export function VNextMarketChart({ token, pair, symbol, referencePriceUsd }: {
     requestId.current += 1;
   }, [chartKey]);
 
-  const candles = payload?.candles ?? [];
+  const candles = payload?.token.toLowerCase() === token.toLowerCase()
+    && payload.pair.toLowerCase() === pair?.toLowerCase() && payload.range === range
+    ? payload.candles : [];
   const sparse = candles.length > 0 && candles.length < 3;
   const geometry = useMemo(() => {
     const width = 920;
@@ -189,7 +192,7 @@ export function VNextMarketChart({ token, pair, symbol, referencePriceUsd }: {
       <header className="vnChartHeader">
         <div className="vnChartHeadline">
           <span className="vnEyebrow">Price Chart</span>
-          <div><strong id="vn-chart-title">{formatPrice(hovered?.close ?? referencePriceUsd ?? latest)}</strong><span className={positive ? "vnPositive" : "vnNegative"}>{positive ? "+" : "−"}{Math.abs(change).toFixed(2)}% · {range}</span></div>
+          <div><strong id="vn-chart-title">{formatPrice(hovered?.close ?? referencePriceUsd ?? latest)}</strong><span className={positive ? "vnPositive" : "vnNegative"}>{candles.length ? `${positive ? "+" : "−"}${Math.abs(change).toFixed(2)}%` : "—"} · {range}</span></div>
           <small>{hovered ? timeLabel(hovered.timestamp, range) : `${symbol} · ${range}`} · {sparse ? sparseHistoryLabel(range) : status === "stale" ? "Last loaded snapshot" : "GeckoTerminal OHLCV"}</small>
         </div>
         <div className="vnChartControls">
@@ -240,7 +243,7 @@ export function VNextMarketChart({ token, pair, symbol, referencePriceUsd }: {
           {latestPoint && <g className="vnChartLatest"><line x1={latestPoint.x} x2={geometry.width - geometry.right + 8} y1={latestPoint.y} y2={latestPoint.y} /><circle cx={latestPoint.x} cy={latestPoint.y} r="4" /></g>}
         </svg> : <div className="vnChartEmpty" role="status"><strong>{status === "loading" ? "Loading market data" : "Price history unavailable"}</strong><span>{status === "loading" ? "The rest of the terminal remains usable while OHLCV loads." : "RMT will retry quietly. No price history is being invented."}</span></div>}
       </div>
-      <footer className="vnChartFooter"><span>{candles[0] ? timeLabel(candles[0].timestamp, range) : "—"}</span><span>{range} volume {formatVolume(totalVolume)}</span><span>{candles.at(-1) ? timeLabel(candles.at(-1)!.timestamp, range) : "—"}</span></footer>
+      <footer className="vnChartFooter"><span>{candles[0] ? timeLabel(candles[0].timestamp, range) : "—"}</span><span>{range} volume {candles.length ? formatVolume(totalVolume) : "—"}</span><span>{candles.at(-1) ? timeLabel(candles.at(-1)!.timestamp, range) : "—"}</span></footer>
     </section>
   );
 }

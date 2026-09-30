@@ -51,7 +51,8 @@ export async function exerciseRestoredQuoteState({ page, api, requests, scenario
   for (const heading of await page.locator('.rmtMobileTradeSheet > header').allTextContents()) {
     assert.doesNotMatch(heading, /Verified trade/, 'sheet title must not claim quote authority');
   }
-  assert.equal(await page.locator('.vnOutputProtection strong').innerText(), 'Set when you trade');
+  assert.match(await page.locator('.vnOutputProtection').innerText(), /Last quoted minimum/i, 'retained minimum is explicitly historical, never current authority');
+  assert.notEqual(await page.locator('.vnOutputProtection strong').innerText(), 'Set when you trade');
   assert.equal(await page.locator('.vnReceiveField > div > strong').first().innerText(), estimate, 'refresh preserves the last displayed output');
   assert.match(panel, /stale/i, 'retained output is explicitly stale');
   // Advance expiry without making newly issued server evidence artificially old.
@@ -69,7 +70,7 @@ export async function exerciseRestoredQuoteState({ page, api, requests, scenario
     panel: await page.locator('.vnTradePanel').innerText()
   }, null, 2));
   if (scenario.endsWith('click')) {
-    const action = page.getByRole('button', { name: 'Review with fresh quote', exact: true });
+    const action = page.locator('.vnTradeActionDock .vnReviewButton');
     assert.equal(await action.isEnabled(), true, 'Trade can retain explicit intent during refresh');
     await action.click();
     await pause(200);

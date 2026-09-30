@@ -1,0 +1,127 @@
+{
+  "evidence": "MOCKED_LOCAL_BROWSER",
+  "profile": "NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE=true",
+  "localWorkingTree": true,
+  "profiles": [
+    {
+      "viewport": "390x844",
+      "wallObservationMs": 90290,
+      "delayedVerificationMs": 14000,
+      "actionMovementPx": 0,
+      "scrollMovementPx": 0,
+      "chartMovementPx": 0,
+      "inputInstabilitySamples": 0,
+      "primaryControlRetained": true,
+      "expiredMinimum": "990 PONS",
+      "expiredLabel": "Last quoted \u00b7 stale",
+      "newSellScrollPx": 0,
+      "newSellReceiveAsset": "eip155:4663/native",
+      "reloadPayment": "eip155:4663/native",
+      "passive42SecondRequestCounts": {
+        "quotes": 4,
+        "verify": 4,
+        "authorize": 4
+      },
+      "passiveWalletRequests": 0,
+      "keyboardEmulation": {
+        "amount": "0.0006",
+        "caret": [
+          3,
+          3
+        ],
+        "focused": true,
+        "sameInput": true,
+        "sameAction": false,
+        "scroll": 0,
+        "details": false,
+        "payment": "eip155:4663/native",
+        "range": "15M",
+        "receive": "1,000 PONS",
+        "minimum": "990 PONS",
+        "receiveLabel": "Expected receive",
+        "action": "Buy PONS",
+        "status": "\u00a0",
+        "actionBox": {
+          "x": 15,
+          "y": 380,
+          "width": 360,
+          "height": 48
+        },
+        "amountBox": {
+          "x": 32,
+          "y": 249.6875,
+          "width": 194,
+          "height": 48
+        },
+        "chartBox": {
+          "x": 12,
+          "y": 404.359375,
+          "width": 366,
+          "height": 360
+        },
+        "overflow": 0,
+        "walletRequests": 1
+      }
+    },
+    {
+      "viewport": "1440x900",
+      "wallObservationMs": 90303,
+      "delayedVerificationMs": 14000,
+      "actionMovementPx": 0,
+      "scrollMovementPx": 0,
+      "chartMovementPx": 0,
+      "inputInstabilitySamples": 0,
+      "primaryControlRetained": true,
+      "expiredMinimum": "990 PONS",
+      "expiredLabel": "Last quoted \u00b7 stale",
+      "newSellScrollPx": 0,
+      "newSellReceiveAsset": "eip155:4663/native",
+      "reloadPayment": "eip155:4663/native",
+      "passive42SecondRequestCounts": {
+        "quotes": 4,
+        "verify": 4,
+        "authorize": 4
+      },
+      "passiveWalletRequests": 0,
+      "keyboardEmulation": {
+        "amount": "0.0006",
+        "caret": [
+          3,
+          3
+        ],
+        "focused": true,
+        "sameInput": true,
+        "sameAction": false,
+        "scroll": 0,
+        "details": false,
+        "payment": "eip155:4663/native",
+        "range": "15M",
+        "receive": "1,000 PONS",
+        "minimum": "Set when you trade",
+        "receiveLabel": "Estimated receive",
+        "action": "Buy PONS",
+        "status": "\u00a0",
+        "actionBox": {
+          "x": 15,
+          "y": 380,
+          "width": 345,
+          "height": 48
+        },
+        "amountBox": {
+          "x": 32,
+          "y": 249.6875,
+          "width": 179,
+          "height": 48
+        },
+        "chartBox": {
+          "x": 12,
+          "y": 404.359375,
+          "width": 366,
+          "height": 360
+        },
+        "overflow": 0,
+        "walletRequests": 1
+      }
+    }
+  ]
+}

@@ -576,9 +576,7 @@ export function VNextAssetWorkspace({
     <div className="vnAssetPrice"><strong>{formatUsd(directoryMarket.priceUsd)}</strong><span className={directoryMarket.priceChange24h !== null && directoryMarket.priceChange24h > 0 ? "vnPositive" : directoryMarket.priceChange24h !== null && directoryMarket.priceChange24h < 0 ? "vnNegative" : ""}>{directoryMarket.priceChange24h === null ? "Unavailable" : `${directoryMarket.priceChange24h > 0 ? "+" : ""}${directoryMarket.priceChange24h.toFixed(1)}%`} <small>24h</small></span></div>
     <dl className="vnAssetStats"><div><dt>{valuation.label}</dt><dd>{compactUsd(valuation.value)}</dd></div><div><dt>Liquidity</dt><dd>{compactUsd(directoryMarket.liquidityUsd)}</dd></div><div><dt>24h volume</dt><dd>{compactUsd(directoryMarket.volume24h)}</dd></div><div><dt>Market age</dt><dd>{formatAge(directoryMarket.ageMinutes)}</dd></div></dl>
 
-    {selectedChartIdentity
-      ? <VNextMarketChart token={directoryMarket.address} pair={selectedChartIdentity} symbol={directoryMarket.symbol} referencePriceUsd={directoryMarket.priceUsd} />
-      : <div className="vnChart vnChartEmpty"><strong>Chart coverage unavailable</strong><span>No supported canonical-market OHLCV source is attached. RMT will not render invented price history.</span></div>}
+    <VNextMarketChart token={directoryMarket.address} pair={selectedChartIdentity ?? null} symbol={directoryMarket.symbol} referencePriceUsd={directoryMarket.priceUsd} />
 
     <details className="vnAssetTechnicalDetails">
       <summary>Market details <span>Contract, chain and evidence</span></summary>

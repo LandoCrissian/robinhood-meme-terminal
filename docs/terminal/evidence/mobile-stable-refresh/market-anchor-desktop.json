@@ -1,0 +1,81 @@
+{
+  "evidence": "MOCKED_LOCAL_BROWSER",
+  "clock": "freshness clock advanced; existing visibility resume schedules refresh",
+  "viewport": "desktop",
+  "before": [
+    "CASHCAT",
+    "CANNACAT",
+    "PONS",
+    "PIPEDOG",
+    "HOPIUM",
+    "STONKBROKER",
+    "PEEP",
+    "LEMON.FUN"
+  ],
+  "during": [
+    "CASHCAT",
+    "CANNACAT",
+    "PONS",
+    "PIPEDOG",
+    "HOPIUM",
+    "STONKBROKER",
+    "PEEP",
+    "LEMON.FUN"
+  ],
+  "after": [
+    "LEMON.FUN",
+    "PEEP",
+    "STONKBROKER",
+    "HOPIUM",
+    "PIPEDOG",
+    "PONS",
+    "CANNACAT",
+    "CASHCAT"
+  ],
+  "beforeBox": {
+    "x": 25,
+    "y": 223,
+    "width": 1390,
+    "height": 54
+  },
+  "duringBox": {
+    "x": 25,
+    "y": 223,
+    "width": 1390,
+    "height": 54
+  },
+  "anchorMovementPx": 0,
+  "updates": 1,
+  "chart": {
+    "evidence": "MOCKED_LOCAL_BROWSER",
+    "boundary": "controlled optional OHLCV API response",
+    "shellBox": {
+      "x": 270,
+      "y": 376.46875,
+      "width": 780,
+      "height": 489.59375
+    },
+    "loadedBox": {
+      "x": 270,
+      "y": 376.46875,
+      "width": 780,
+      "height": 489.59375
+    },
+    "staleBox": {
+      "x": 270,
+      "y": 376.46875,
+      "width": 780,
+      "height": 489.59375
+    },
+    "recoveredBox": {
+      "x": 270,
+      "y": 376.46875,
+      "width": 780,
+      "height": 489.59375
+    },
+    "chartMovementPx": 0,
+    "chartRequests": 4,
+    "selectedRange": "15M",
+    "retainedSvg": true
+  }
+}

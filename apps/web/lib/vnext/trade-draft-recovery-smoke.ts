@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {
+  readRmtPaymentPreference, saveRmtPaymentPreference,
   consumeRmtTradeDraftRecovery,
   persistRmtTradeDraftRecovery,
   RMT_TRADE_DRAFT_RECOVERY_KEY,
@@ -68,3 +69,9 @@ assert.doesNotMatch(composer, /recoveredSideRequestNonce\.current = null;[\s\S]{
   "A replay of the same mount nonce must not regain authority to clear the recovered draft.");
 
 console.log("Controlled wallet-session reload preserves only a bounded, one-shot trade draft preference.");
+
+const preferenceStorage = memoryStorage();
+saveRmtPaymentPreference(preferenceStorage, "wallet-a", "eip155:4663/native");
+assert.equal(readRmtPaymentPreference(preferenceStorage, "wallet-a"), "eip155:4663/native");
+assert.equal(readRmtPaymentPreference(preferenceStorage, "wallet-b"), undefined);
+assert.equal(consumeRmtTradeDraftRecovery(preferenceStorage, market), undefined, "Payment preferences never restore executable authority");

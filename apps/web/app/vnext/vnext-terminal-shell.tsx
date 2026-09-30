@@ -20,11 +20,12 @@ import {
   vNextMarketDirectoryViewCounts,
   type VNextMarketDirectoryView
 } from "../../lib/vnext/market-directory";
-import { DesktopTerminal, MobileTerminal, type TerminalContext, type TerminalPresentationProps, type TradeSideRequest } from "./terminal-presentations";
+import { ResponsiveTerminal, type TerminalContext, type TerminalPresentationProps, type TradeSideRequest } from "./terminal-presentations";
 import { useDesktopTerminalPresentation } from "./use-terminal-presentation";
 import { useVNextExecutionRecovery } from "./use-vnext-execution-recovery";
 import { useVNextMarketDirectory } from "./use-vnext-market-directory";
 import { useRmtIdentity } from "../rmt-identity";
+import { useAnchoredMarketRows } from "./use-anchored-market-rows";
 
 export function VNextTerminalShell() {
   const desktop = useDesktopTerminalPresentation();
@@ -114,10 +115,11 @@ export function VNextTerminalShell() {
       submittedQueryIsCurrent ? searchMarkets : []
     );
   }, [localFilteredMarkets, query, searchMarkets, submittedSearchQuery]);
-  const visibleMarkets = useMemo(
+  const rankedVisibleMarkets = useMemo(
     () => visibleVNextMarketDirectoryMarkets(filteredMarkets, visibleMarketLimit),
     [filteredMarkets, visibleMarketLimit]
   );
+  const visibleMarkets = useAnchoredMarketRows(rankedVisibleMarkets, `${directoryView}:${query}:${visibleMarketLimit}`);
 
   useEffect(() => {
     selectAddressRef.current = selectAddress;
@@ -343,5 +345,5 @@ export function VNextTerminalShell() {
     onContinueTrading: continueTrading
   };
 
-  return desktop ? <DesktopTerminal {...props} /> : <MobileTerminal {...props} />;
+  return <ResponsiveTerminal {...props} desktop={desktop} />;
 }

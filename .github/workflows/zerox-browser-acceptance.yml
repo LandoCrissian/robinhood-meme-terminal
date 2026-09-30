@@ -6,6 +6,8 @@ on:
       - '.github/scripts/zerox-browser-*'
       - '.github/scripts/quote-state-browser-checks.mjs'
       - '.github/scripts/trading-product-browser.mjs'
+      - '.github/scripts/stable-refresh-browser.mjs'
+      - '.github/scripts/market-anchor-browser.mjs'
       - '.github/scripts/zerox-execution-fixture.cjs'
       - '.github/scripts/terminal-high-end-acceptance.mjs'
       - '.github/workflows/zerox-browser-acceptance.yml'
@@ -47,6 +49,8 @@ jobs:
       RMT_ACCEPTANCE_OUTPUT: '${{ github.workspace }}/terminal-zerox-evidence'
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
         with:
           version: 10.12.1
