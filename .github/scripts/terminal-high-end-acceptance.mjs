@@ -3270,13 +3270,10 @@ async function inspectExecutableQuoteFeeDisclosure(browser, fixture) {
   const passiveText = await panel.innerText();
   const passiveTextNormalized = passiveText.toLowerCase();
   for (const expected of [
-    "Estimated receive (not verified)",
-    "Uniswap V3 (estimate)",
-    "Estimated candidate RMT fee",
+    "Estimated receive",
+    "Estimate only · fresh terms required before confirmation.",
     "0.25%",
-    "0.00000125 ETH",
-    "Estimated candidate input",
-    "0.00049875 ETH"
+    "0.00000125 ETH"
   ]) {
     if (!passiveTextNormalized.includes(expected.toLowerCase())) throw new Error(`Executable-fee disclosure omitted ${expected}: ${passiveText}`);
   }
@@ -3295,6 +3292,10 @@ async function inspectExecutableQuoteFeeDisclosure(browser, fixture) {
     "Best observed RMT fee",
     "No RMT fee · quote-only",
     "Estimated candidate RMT fee",
+    "Uniswap V3 (estimate)",
+    "0.00000125 ETH",
+    "Estimated candidate input",
+    "0.00049875 ETH",
     "0.25%"
   ]) {
     if (!advancedTextNormalized.includes(expected.toLowerCase())) throw new Error(`Executable-fee advanced details omitted ${expected}: ${advancedText}`);
