@@ -1,0 +1,323 @@
+{
+  "observedAt": "2026-09-30T20:14:27.810Z",
+  "evidence": "PUBLISHED_CHAIN_SPECIFIC_SUPPORT_NOT_LIVE_EQUIVALENCE",
+  "source": "https://www.alchemy.com/docs/reference/feature-support-by-chain",
+  "network": {
+    "id": "ROBINHOOD_MAINNET",
+    "label": "Robinhood Chain Mainnet",
+    "kebab": "robinhood-mainnet",
+    "chain": 54,
+    "mainnet": true
+  },
+  "products": [
+    {
+      "tag": "aptos",
+      "label": "Aptos: Standard REST API Methods",
+      "supported": false
+    },
+    {
+      "tag": "aptos-grpc",
+      "label": "aptos-grpc API",
+      "supported": false
+    },
+    {
+      "tag": "arbtrace",
+      "label": "Arbitrum Trace API",
+      "supported": false
+    },
+    {
+      "tag": "arc",
+      "label": "Arc: Specific Methods",
+      "supported": false
+    },
+    {
+      "tag": "astar",
+      "label": "Astar: Specific Methods",
+      "supported": false
+    },
+    {
+      "tag": "bitcoin",
+      "label": "Bitcoin: Standard JSON-RPC Methods",
+      "supported": false
+    },
+    {
+      "tag": "bitcoin-indexer",
+      "label": "Bitcoin: Indexer REST API Methods",
+      "supported": false
+    },
+    {
+      "tag": "celestia",
+      "label": "Celestia Bridge: Standard RPC Methods",
+      "supported": false
+    },
+    {
+      "tag": "citrea",
+      "label": "Citrea: Specific Methods",
+      "supported": false
+    },
+    {
+      "tag": "debug",
+      "label": "Debug API",
+      "supported": true
+    },
+    {
+      "tag": "eth-beacon",
+      "label": "Ethereum Beacon: Standard HTTP API Methods",
+      "supported": false
+    },
+    {
+      "tag": "evm",
+      "label": "EVM: Standard JSON-RPC Methods",
+      "supported": true
+    },
+    {
+      "tag": "gas-manager-bundler",
+      "label": "Gas Manager & Bundler APIs",
+      "supported": true
+    },
+    {
+      "tag": "hyperevm",
+      "label": "HyperEVM: Specific Methods",
+      "supported": false
+    },
+    {
+      "tag": "linea",
+      "label": "Linea: Specific Methods",
+      "supported": false
+    },
+    {
+      "tag": "megaeth",
+      "label": "MegaETH: Specific Methods",
+      "supported": false
+    },
+    {
+      "tag": "nft",
+      "label": "NFT API",
+      "supported": true
+    },
+    {
+      "tag": "optimism",
+      "label": "Optimism: Specific Methods",
+      "supported": false
+    },
+    {
+      "tag": "pchain",
+      "label": "Avalanche P-Chain: Standard Methods",
+      "supported": false
+    },
+    {
+      "tag": "polygon-pos",
+      "label": "Polygon PoS: Specific Methods",
+      "supported": false
+    },
+    {
+      "tag": "portfolio",
+      "label": "Portfolio API",
+      "supported": true
+    },
+    {
+      "tag": "prices",
+      "label": "Prices API",
+      "supported": true
+    },
+    {
+      "tag": "solana",
+      "label": "Solana: Standard JSON-RPC Methods",
+      "supported": false
+    },
+    {
+      "tag": "solana-das",
+      "label": "Solana: DAS APIs (NFT/Token)",
+      "supported": false
+    },
+    {
+      "tag": "solana-photon",
+      "label": "Solana: Photon APIs (ZK Compression)",
+      "supported": false
+    },
+    {
+      "tag": "starknet",
+      "label": "Starknet: Standard JSON-RPC Methods",
+      "supported": false
+    },
+    {
+      "tag": "stellar",
+      "label": "Stellar: Standard Methods",
+      "supported": false
+    },
+    {
+      "tag": "sui",
+      "label": "Sui: Standard Methods",
+      "supported": false
+    },
+    {
+      "tag": "sui-grpc",
+      "label": "Sui: gRPC Methods",
+      "supported": false
+    },
+    {
+      "tag": "token",
+      "label": "Token API",
+      "supported": true
+    },
+    {
+      "tag": "trace",
+      "label": "Trace API",
+      "supported": false
+    },
+    {
+      "tag": "transfers",
+      "label": "Transfers API",
+      "supported": true
+    },
+    {
+      "tag": "tron",
+      "label": "Tron: Standard HTTP Methods",
+      "supported": false
+    },
+    {
+      "tag": "tron-grpc",
+      "label": "tron-grpc API",
+      "supported": false
+    },
+    {
+      "tag": "tron-solidity",
+      "label": "Tron: Solidity HTTP Methods",
+      "supported": false
+    },
+    {
+      "tag": "utility",
+      "label": "Utility API",
+      "supported": true
+    },
+    {
+      "tag": "utxo",
+      "label": "UTXO REST API Methods",
+      "supported": false
+    },
+    {
+      "tag": "wallet",
+      "label": "Wallet APIs",
+      "supported": true
+    },
+    {
+      "tag": "webhooks",
+      "label": "Webhooks",
+      "supported": true
+    },
+    {
+      "tag": "yellowstone-grpc",
+      "label": "Solana: Yellowstone gRPC Unary Methods",
+      "supported": false
+    },
+    {
+      "tag": "zksync",
+      "label": "zkSync Era: Specific Methods",
+      "supported": false
+    }
+  ],
+  "methods": [
+    {
+      "name": "Address Activity Webhook",
+      "supported": true
+    },
+    {
+      "name": "alchemy_getAssetTransfers",
+      "supported": true
+    },
+    {
+      "name": "alchemy_getTokenBalances",
+      "supported": true
+    },
+    {
+      "name": "alchemy_getTokenMetadata",
+      "supported": true
+    },
+    {
+      "name": "Custom Webhook",
+      "supported": true
+    },
+    {
+      "name": "debug_traceTransaction",
+      "supported": true
+    },
+    {
+      "name": "eth_blockNumber",
+      "supported": true
+    },
+    {
+      "name": "eth_call",
+      "supported": true
+    },
+    {
+      "name": "eth_chainId",
+      "supported": true
+    },
+    {
+      "name": "eth_estimateGas",
+      "supported": true
+    },
+    {
+      "name": "eth_feeHistory",
+      "supported": true
+    },
+    {
+      "name": "eth_gasPrice",
+      "supported": true
+    },
+    {
+      "name": "eth_getBalance",
+      "supported": true
+    },
+    {
+      "name": "eth_getBlockByHash",
+      "supported": true
+    },
+    {
+      "name": "eth_getBlockByNumber",
+      "supported": true
+    },
+    {
+      "name": "eth_getCode",
+      "supported": true
+    },
+    {
+      "name": "eth_getLogs",
+      "supported": true
+    },
+    {
+      "name": "eth_getTransactionByHash",
+      "supported": true
+    },
+    {
+      "name": "eth_getTransactionCount",
+      "supported": true
+    },
+    {
+      "name": "eth_getTransactionReceipt",
+      "supported": true
+    },
+    {
+      "name": "eth_maxPriorityFeePerGas",
+      "supported": true
+    },
+    {
+      "name": "eth_subscribe",
+      "supported": true
+    },
+    {
+      "name": "eth_unsubscribe",
+      "supported": true
+    },
+    {
+      "name": "getNFTsForOwner",
+      "supported": true
+    },
+    {
+      "name": "getOwnersForContract",
+      "supported": true
+    }
+  ],
+  "liveCredential": "NOT_ACCESSIBLE",
+  "liveComparison": "NOT_TESTED"
+}

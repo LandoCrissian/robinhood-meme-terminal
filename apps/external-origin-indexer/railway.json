@@ -4,7 +4,10 @@
     "builder": "RAILPACK",
     "buildCommand": "pnpm install --frozen-lockfile && pnpm --filter external-origin-indexer build",
     "watchPatterns": [
-      "apps/external-origin-indexer/**",
+      "apps/external-origin-indexer/src/**",
+      "apps/external-origin-indexer/package.json",
+      "apps/external-origin-indexer/tsconfig.json",
+      "apps/external-origin-indexer/railway.json",
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml"

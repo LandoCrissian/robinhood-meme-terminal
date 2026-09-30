@@ -1,0 +1,131 @@
+{
+  "observedAt": "2026-09-30T20:12:10.922Z",
+  "evidence": "READ_ONLY_CONFIGURATION_METADATA_NO_VALUES",
+  "projectId": "19587a6e-6f02-4cfa-b7db-f308934f697b",
+  "environmentId": "539a42da-fb60-420f-b9fa-8c29af25ebbe",
+  "applications": [
+    {
+      "id": "27b1aa2c-77e5-4ed4-91a1-1951d68c488e",
+      "name": "robinhood-meme-terminal",
+      "source": {
+        "repo": "LandoCrissian/robinhood-meme-terminal",
+        "branch": "main",
+        "checkSuites": false
+      },
+      "configFile": "/apps/indexer/railway.json",
+      "watchPatterns": "REPOSITORY_CONFIG_FILE",
+      "variableNames": [
+        "DATABASE_URL",
+        "RMT_ARCHIVE_RPC_URL",
+        "RMT_FACTORY_ADDRESS",
+        "RMT_FACTORY_START_BLOCK",
+        "RMT_INDEXER_CHUNK_SIZE",
+        "RMT_INDEXER_READ_TOKEN",
+        "RMT_RPC_URL"
+      ]
+    },
+    {
+      "id": "9ea9a7d3-34d8-4229-a7ff-e3326c67ceef",
+      "name": "rmt-market-indexer-shadow",
+      "source": {
+        "repo": "LandoCrissian/robinhood-meme-terminal",
+        "branch": "main",
+        "checkSuites": false
+      },
+      "configFile": "/apps/market-indexer/railway.json",
+      "watchPatterns": "REPOSITORY_CONFIG_FILE",
+      "variableNames": [
+        "MARKET_INDEXER_BATCH_SIZE",
+        "MARKET_INDEXER_CONFIRMATIONS",
+        "MARKET_INDEXER_DATABASE_URL",
+        "MARKET_INDEXER_DB_POOL_SIZE",
+        "MARKET_INDEXER_MAX_DATABASE_MB",
+        "MARKET_INDEXER_POLL_INTERVAL_MS",
+        "MARKET_INDEXER_READ_TOKEN",
+        "MARKET_INDEXER_RPC_URL",
+        "MARKET_INDEXER_STORAGE_MODE",
+        "PGSSLMODE",
+        "PORT"
+      ]
+    },
+    {
+      "id": "a883fe02-583b-493e-b2ef-6acd87d775b9",
+      "name": "rmt-nft-indexer",
+      "source": {
+        "repo": "LandoCrissian/robinhood-meme-terminal"
+      },
+      "configFile": null,
+      "watchPatterns": [
+        "apps/nft-indexer/**",
+        "packages/shared/**",
+        "package.json",
+        "pnpm-lock.yaml",
+        "pnpm-workspace.yaml"
+      ],
+      "variableNames": [
+        "NFT_INDEXER_DATABASE_URL",
+        "NFT_INDEXER_FINALITY_DEPTH",
+        "NFT_INDEXER_MAX_BATCHES_PER_CYCLE",
+        "NFT_INDEXER_POLL_INTERVAL_MS",
+        "NFT_INDEXER_PORT",
+        "NFT_INDEXER_READ_TOKEN",
+        "NFT_INDEXER_RPC_URL",
+        "PORT"
+      ]
+    },
+    {
+      "id": "8e9c1c15-74b5-4262-8851-72603a3dfc98",
+      "name": "rmt-nft-marketplace-indexer",
+      "source": {
+        "repo": "LandoCrissian/robinhood-meme-terminal"
+      },
+      "configFile": null,
+      "watchPatterns": [
+        "apps/nft-marketplace-indexer/**",
+        "packages/shared/**",
+        "package.json",
+        "pnpm-lock.yaml",
+        "pnpm-workspace.yaml"
+      ],
+      "variableNames": [
+        "NFT_MARKETPLACE_DATABASE_URL",
+        "NFT_MARKETPLACE_PORT",
+        "NFT_MARKETPLACE_READ_TOKEN",
+        "NFT_MARKETPLACE_RPC_URL",
+        "PORT"
+      ]
+    }
+  ],
+  "databases": [
+    {
+      "id": "d7c33990-12e7-4762-85a5-f43e748bc48d",
+      "name": "rmt-nft-indexer-db",
+      "image": "ghcr.io/railwayapp-templates/postgres-ssl:18",
+      "watchPatterns": "NOT_APPLICABLE_IMAGE_SERVICE"
+    },
+    {
+      "id": "46619727-f4fb-4e44-a4d3-9c2a0d56b873",
+      "name": "rmt-nft-marketplace-indexer-db",
+      "image": "ghcr.io/railwayapp-templates/postgres-ssl:18",
+      "watchPatterns": "NOT_APPLICABLE_IMAGE_SERVICE"
+    },
+    {
+      "id": "96ace991-4c71-404f-af95-323415b0a45d",
+      "name": "rmt-market-indexer-shadow-db",
+      "image": "ghcr.io/railwayapp-templates/postgres-ssl:18",
+      "watchPatterns": "NOT_APPLICABLE_IMAGE_SERVICE"
+    },
+    {
+      "id": "a1ef7853-e21a-401e-87c9-c99002228507",
+      "name": "Postgres",
+      "image": "ghcr.io/railwayapp-templates/postgres-ssl:18",
+      "watchPatterns": "NOT_APPLICABLE_IMAGE_SERVICE"
+    },
+    {
+      "id": "d51260ff-3651-41f9-b888-d62d49e25fd2",
+      "name": "Postgres-EHZZ",
+      "image": "ghcr.io/railwayapp-templates/postgres-ssl:18",
+      "watchPatterns": "NOT_APPLICABLE_IMAGE_SERVICE"
+    }
+  ]
+}

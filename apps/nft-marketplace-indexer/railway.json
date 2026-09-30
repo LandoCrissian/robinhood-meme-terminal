@@ -4,8 +4,12 @@
     "builder": "RAILPACK",
     "buildCommand": "pnpm install --frozen-lockfile && pnpm --filter nft-marketplace-indexer build",
     "watchPatterns": [
-      "apps/nft-marketplace-indexer/**",
-      "packages/shared/**",
+      "apps/nft-marketplace-indexer/src/**",
+      "apps/nft-marketplace-indexer/package.json",
+      "apps/nft-marketplace-indexer/tsconfig.json",
+      "apps/nft-marketplace-indexer/railway.json",
+      "packages/shared/src/**",
+      "packages/shared/package.json",
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml"
