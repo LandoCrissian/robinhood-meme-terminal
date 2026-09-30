@@ -53,6 +53,8 @@ Existing Stock view-only, native Buy, ERC20 Sell/approval, post-approval freshne
 
 The first CI secret scan classified nine public contract literals as generic API keys. The correction exempts only those exact public addresses in the two specific evidence/test paths; no credential format or entire file is exempted. The complete reachable-history scan passes locally with the pinned scanner. A subsequent exact-head run is required, without waiving the first failure.
 
+During validation the production dependency audit began failing on five high-severity Axios advisories in the unchanged base lockfile. The existing transitive Axios override is moved from 1.18.0 to 1.20.0, the patched version reported by the audit and [official release](https://github.com/axios/axios/releases/tag/v1.20.0). No Privy/Wagmi SDK, execution policy or audit threshold is changed. The lockfile correction is included because both web and terminal required checks run the production audit. Moderate findings remain reported by the existing high-severity gate; they are not waived or relabeled.
+
 ## Remaining acceptance
 
 Actual iPhone hardware, authenticated production 0x quotes and owner-authorized settlement were not exercised. Real provider rate limits and missing artwork/description remain legitimate degraded states. Process-local artwork caches and single-flight do not imply durable cross-region caching. Chart resolution has bounded sequential reads, so a slow cold discovery plus OHLCV may reach the existing client deadline; subsequent reads reuse resolution without increasing quote or chart cadence. No merge or deployment is authorized by this task.
