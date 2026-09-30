@@ -1,0 +1,227 @@
+{
+  "observedAt": "2026-09-30T19:49:36.109Z",
+  "evidence": "READ_ONLY_PUBLIC_RPC_NOT_ALCHEMY_COMPARISON",
+  "endpointHost": "rpc.mainnet.chain.robinhood.com",
+  "endpointFingerprint": "b9f739267b64",
+  "selectedSource": "chain default; Vercel metadata lists no identity/browser RPC override",
+  "alchemy": "NOT_TESTED_NO_ACCESSIBLE_OWNER_CREDENTIAL",
+  "pinnedBlock": "0x4938e67",
+  "collection": "0x505a22ffed8d37ebe580ffd98d2cdb0021189146",
+  "token": "0x14c51bb55592372eac7141a1d0527d1dd7fbd42f",
+  "creationBlock": 10929152,
+  "transaction": "0x46b097f55f69ee1005f0e04bc6501e632ba4145355361498a156f8f401a5c96b",
+  "rows": [
+    {
+      "label": "eth_chainId",
+      "method": "eth_chainId",
+      "httpStatus": 200,
+      "jsonRpcError": null,
+      "latencyMs": 175,
+      "result": "0x1237"
+    },
+    {
+      "label": "eth_blockNumber",
+      "method": "eth_blockNumber",
+      "httpStatus": 200,
+      "jsonRpcError": null,
+      "latencyMs": 83,
+      "result": "0x4938e7b"
+    },
+    {
+      "label": "eth_getBlockByNumber",
+      "method": "eth_getBlockByNumber",
+      "httpStatus": 200,
+      "jsonRpcError": null,
+      "latencyMs": 79,
+      "result": {
+        "number": "0x4938e67",
+        "hash": "0xcbded0f486bbd0fc76bebb3d295f128af8de810309c27f40575f5d0fb10e5bc7",
+        "transactions": 14
+      }
+    },
+    {
+      "label": "eth_getBlockByHash",
+      "method": "eth_getBlockByHash",
+      "httpStatus": 200,
+      "jsonRpcError": null,
+      "latencyMs": 78,
+      "result": {
+        "number": "0x4938e67",
+        "hash": "0xcbded0f486bbd0fc76bebb3d295f128af8de810309c27f40575f5d0fb10e5bc7",
+        "transactions": 14
+      }
+    },
+    {
+      "label": "eth_getCode",
+      "method": "eth_getCode",
+      "httpStatus": 200,
+      "jsonRpcError": null,
+      "latencyMs": 71,
+      "result": {
+        "bytes": 1764
+      }
+    },
+    {
+      "label": "SHCAT decimals at pinned block",
+      "method": "eth_call",
+      "httpStatus": 200,
+      "jsonRpcError": null,
+      "latencyMs": 77,
+      "result": {
+        "bytes": 32,
+        "sha256": "5aae0566f3b11c81"
+      }
+    },
+    {
+      "label": "CCFF00 six-block deployment log range",
+      "method": "eth_getLogs",
+      "httpStatus": 200,
+      "jsonRpcError": null,
+      "latencyMs": 77,
+      "result": {
+        "logs": 5
+      }
+    },
+    {
+      "label": "eth_getTransactionByHash",
+      "method": "eth_getTransactionByHash",
+      "httpStatus": 200,
+      "jsonRpcError": null,
+      "latencyMs": 75,
+      "result": {
+        "hash": "0x46b097f55f69ee1005f0e04bc6501e632ba4145355361498a156f8f401a5c96b",
+        "blockNumber": "0xa6c400",
+        "blockHash": "0x870ff9abb8d408ad6849c801d1d11ec4fe7c367959497699a754b58705b1ece1"
+      }
+    },
+    {
+      "label": "eth_getTransactionReceipt",
+      "method": "eth_getTransactionReceipt",
+      "httpStatus": 200,
+      "jsonRpcError": null,
+      "latencyMs": 81,
+      "result": {
+        "hash": "0x46b097f55f69ee1005f0e04bc6501e632ba4145355361498a156f8f401a5c96b",
+        "blockNumber": "0xa6c400",
+        "blockHash": "0x870ff9abb8d408ad6849c801d1d11ec4fe7c367959497699a754b58705b1ece1",
+        "status": "0x1"
+      }
+    },
+    {
+      "label": "eth_getBalance",
+      "method": "eth_getBalance",
+      "httpStatus": 200,
+      "jsonRpcError": null,
+      "latencyMs": 104,
+      "result": "string"
+    },
+    {
+      "label": "archive code before deployment",
+      "method": "eth_getCode",
+      "httpStatus": 200,
+      "jsonRpcError": -32000,
+      "latencyMs": 77,
+      "result": {
+        "bytes": null
+      }
+    },
+    {
+      "label": "archive code at deployment",
+      "method": "eth_getCode",
+      "httpStatus": 200,
+      "jsonRpcError": -32000,
+      "latencyMs": 78,
+      "result": {
+        "bytes": null
+      }
+    },
+    {
+      "label": "archive ERC721 interface at deployment",
+      "method": "eth_call",
+      "httpStatus": 200,
+      "jsonRpcError": -32000,
+      "latencyMs": 77,
+      "result": {
+        "bytes": null,
+        "sha256": null
+      }
+    },
+    {
+      "label": "archive contract balance",
+      "method": "eth_getBalance",
+      "httpStatus": 200,
+      "jsonRpcError": -32000,
+      "latencyMs": 74,
+      "result": "undefined"
+    },
+    {
+      "label": "eth_getTransactionCount",
+      "method": "eth_getTransactionCount",
+      "httpStatus": 200,
+      "jsonRpcError": null,
+      "latencyMs": 79,
+      "result": "string"
+    },
+    {
+      "label": "eth_gasPrice",
+      "method": "eth_gasPrice",
+      "httpStatus": 200,
+      "jsonRpcError": null,
+      "latencyMs": 77,
+      "result": "string"
+    },
+    {
+      "label": "eth_feeHistory",
+      "method": "eth_feeHistory",
+      "httpStatus": 200,
+      "jsonRpcError": null,
+      "latencyMs": 67,
+      "result": "object"
+    },
+    {
+      "label": "eth_estimateGas",
+      "method": "eth_estimateGas",
+      "httpStatus": 200,
+      "jsonRpcError": null,
+      "latencyMs": 73,
+      "result": "string"
+    },
+    {
+      "label": "debug_traceTransaction",
+      "method": "debug_traceTransaction",
+      "httpStatus": 200,
+      "jsonRpcError": -32601,
+      "latencyMs": 74,
+      "result": "undefined"
+    },
+    {
+      "label": "two-element HTTP JSON-RPC batch",
+      "httpStatus": 200,
+      "latencyMs": 86,
+      "arrayResponse": true,
+      "entries": [
+        {
+          "id": 101,
+          "error": null,
+          "resultBytes": 2
+        },
+        {
+          "id": 102,
+          "error": null,
+          "resultBytes": 32
+        }
+      ],
+      "error": null
+    },
+    {
+      "label": "malformed block-tag error",
+      "method": "eth_getBlockByNumber",
+      "httpStatus": 200,
+      "jsonRpcError": -32602,
+      "latencyMs": 71,
+      "result": {}
+    }
+  ],
+  "httpRequests": 21,
+  "logicalJsonRpcCalls": 22
+}

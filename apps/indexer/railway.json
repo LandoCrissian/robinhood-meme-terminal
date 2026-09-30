@@ -4,8 +4,12 @@
     "builder": "RAILPACK",
     "buildCommand": "pnpm install --no-frozen-lockfile && pnpm --filter indexer build",
     "watchPatterns": [
-      "apps/indexer/**",
+      "apps/indexer/src/**",
+      "apps/indexer/package.json",
+      "apps/indexer/tsconfig.json",
+      "apps/indexer/railway.json",
       "package.json",
+      "pnpm-lock.yaml",
       "pnpm-workspace.yaml"
     ]
   },

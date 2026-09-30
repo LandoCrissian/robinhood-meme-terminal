@@ -4,7 +4,10 @@
     "builder": "RAILPACK",
     "buildCommand": "pnpm install --frozen-lockfile && pnpm --filter market-indexer build",
     "watchPatterns": [
-      "apps/market-indexer/**",
+      "apps/market-indexer/src/**",
+      "apps/market-indexer/package.json",
+      "apps/market-indexer/tsconfig.json",
+      "apps/market-indexer/railway.json",
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml"

@@ -1,0 +1,2797 @@
+{
+  "base": "41cbc27029dfffad07ee71e97c3052d9d5d0cabb",
+  "evidence": "STATIC_CALL_SITES_USE_AUDIT_TABLE_FOR_ACTIVE_VS_DORMANT_CLASSIFICATION",
+  "note": "Injected clients are traced separately in the report. Generic .call/.request sites require semantic interpretation; this inventory is not request telemetry.",
+  "files": [
+    {
+      "file": "apps/indexer/src/index.ts",
+      "calls": [
+        {
+          "line": 131,
+          "helper": "getBlockNumber"
+        },
+        {
+          "line": 280,
+          "helper": "getBlockNumber"
+        },
+        {
+          "line": 285,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 286,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 296,
+          "helper": "readContract"
+        },
+        {
+          "line": 301,
+          "helper": "readContract"
+        },
+        {
+          "line": 306,
+          "helper": "readContract"
+        },
+        {
+          "line": 322,
+          "helper": "readContract"
+        },
+        {
+          "line": 327,
+          "helper": "readContract"
+        },
+        {
+          "line": 332,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 346,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 492,
+          "helper": "getBlock"
+        },
+        {
+          "line": 525,
+          "helper": "getLogs"
+        },
+        {
+          "line": 539,
+          "helper": "getLogs"
+        },
+        {
+          "line": 554,
+          "helper": "getLogs"
+        },
+        {
+          "line": 640,
+          "helper": "getLogs"
+        },
+        {
+          "line": 714,
+          "helper": "getBlock"
+        },
+        {
+          "line": 746,
+          "helper": "getBlock"
+        },
+        {
+          "line": 879,
+          "helper": "readContract"
+        },
+        {
+          "line": 880,
+          "helper": "readContract"
+        },
+        {
+          "line": 881,
+          "helper": "readContract"
+        },
+        {
+          "line": 882,
+          "helper": "readContract"
+        },
+        {
+          "line": 883,
+          "helper": "readContract"
+        },
+        {
+          "line": 1153,
+          "helper": "getBlockNumber"
+        }
+      ]
+    },
+    {
+      "file": "apps/market-indexer/src/position-guard-heartbeat.ts",
+      "calls": [
+        {
+          "line": 45,
+          "helper": "request"
+        }
+      ]
+    },
+    {
+      "file": "apps/market-indexer/src/token-identity-index.ts",
+      "calls": [
+        {
+          "line": 87,
+          "helper": "call"
+        },
+        {
+          "line": 363,
+          "helper": "multicall"
+        }
+      ]
+    },
+    {
+      "file": "apps/market-indexer/src/up-enrichment.ts",
+      "calls": [
+        {
+          "line": 82,
+          "helper": "readContract"
+        },
+        {
+          "line": 89,
+          "helper": "readContract"
+        },
+        {
+          "line": 97,
+          "helper": "readContract"
+        },
+        {
+          "line": 104,
+          "helper": "readContract"
+        },
+        {
+          "line": 141,
+          "helper": "readContract"
+        },
+        {
+          "line": 148,
+          "helper": "readContract"
+        },
+        {
+          "line": 155,
+          "helper": "readContract"
+        },
+        {
+          "line": 162,
+          "helper": "readContract"
+        },
+        {
+          "line": 169,
+          "helper": "readContract"
+        }
+      ]
+    },
+    {
+      "file": "apps/market-indexer/src/worker.ts",
+      "calls": [
+        {
+          "line": 188,
+          "helper": "getChainId"
+        },
+        {
+          "line": 196,
+          "helper": "getTransactionReceipt"
+        },
+        {
+          "line": 199,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 222,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 226,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 251,
+          "helper": "getTransactionReceipt"
+        },
+        {
+          "line": 267,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 276,
+          "helper": "readContract"
+        },
+        {
+          "line": 281,
+          "helper": "readContract"
+        },
+        {
+          "line": 433,
+          "helper": "getBlock"
+        },
+        {
+          "line": 437,
+          "helper": "getBlock"
+        },
+        {
+          "line": 479,
+          "helper": "getLogs"
+        },
+        {
+          "line": 486,
+          "helper": "getBlock"
+        },
+        {
+          "line": 641,
+          "helper": "getBlockNumber"
+        },
+        {
+          "line": 645,
+          "helper": "getBlock"
+        }
+      ]
+    },
+    {
+      "file": "apps/nft-indexer/src/source-verification.ts",
+      "calls": [
+        {
+          "line": 43,
+          "helper": "getTransactionReceipt"
+        },
+        {
+          "line": 52,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 57,
+          "helper": "readContract"
+        },
+        {
+          "line": 61,
+          "helper": "readContract"
+        },
+        {
+          "line": 66,
+          "helper": "readContract"
+        },
+        {
+          "line": 79,
+          "helper": "getChainId"
+        }
+      ]
+    },
+    {
+      "file": "apps/nft-indexer/src/technical-verification-live.ts",
+      "calls": [
+        {
+          "line": 96,
+          "helper": "getChainId"
+        },
+        {
+          "line": 98,
+          "helper": "getTransactionReceipt"
+        },
+        {
+          "line": 107,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 108,
+          "helper": "readContract"
+        },
+        {
+          "line": 113,
+          "helper": "readContract"
+        },
+        {
+          "line": 118,
+          "helper": "getBlockNumber"
+        },
+        {
+          "line": 122,
+          "helper": "getLogs"
+        },
+        {
+          "line": 128,
+          "helper": "readContract"
+        },
+        {
+          "line": 130,
+          "helper": "readContract"
+        }
+      ]
+    },
+    {
+      "file": "apps/nft-indexer/src/technical-verification.ts",
+      "calls": [
+        {
+          "line": 138,
+          "helper": "getChainId"
+        },
+        {
+          "line": 170,
+          "helper": "getTransactionReceipt"
+        },
+        {
+          "line": 192,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 219,
+          "helper": "getBytecode"
+        }
+      ]
+    },
+    {
+      "file": "apps/nft-indexer/src/worker.ts",
+      "calls": [
+        {
+          "line": 55,
+          "helper": "getChainId"
+        },
+        {
+          "line": 57,
+          "helper": "getTransactionReceipt"
+        },
+        {
+          "line": 66,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 67,
+          "helper": "readContract"
+        },
+        {
+          "line": 68,
+          "helper": "getBlockNumber"
+        },
+        {
+          "line": 70,
+          "helper": "getBlock"
+        },
+        {
+          "line": 75,
+          "helper": "request"
+        },
+        {
+          "line": 86,
+          "helper": "readContract"
+        },
+        {
+          "line": 87,
+          "helper": "readContract"
+        },
+        {
+          "line": 124,
+          "helper": "getBlock"
+        },
+        {
+          "line": 135,
+          "helper": "getBlock"
+        },
+        {
+          "line": 181,
+          "helper": "getBlock"
+        },
+        {
+          "line": 182,
+          "helper": "getLogs"
+        },
+        {
+          "line": 188,
+          "helper": "getBlock"
+        },
+        {
+          "line": 208,
+          "helper": "getBlockNumber"
+        }
+      ]
+    },
+    {
+      "file": "apps/nft-marketplace-indexer/src/worker.ts",
+      "calls": [
+        {
+          "line": 88,
+          "helper": "getChainId"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/app/admin/creator-applications/position-guard-release-control.tsx",
+      "calls": [
+        {
+          "line": 68,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 69,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 70,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 71,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 72,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 83,
+          "helper": "readContract"
+        },
+        {
+          "line": 84,
+          "helper": "readContract"
+        },
+        {
+          "line": 85,
+          "helper": "readContract"
+        },
+        {
+          "line": 113,
+          "helper": "estimateGas"
+        },
+        {
+          "line": 125,
+          "helper": "waitForTransactionReceipt"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/app/api/vnext/native-settlement-trace/route.ts",
+      "calls": [
+        {
+          "line": 26,
+          "helper": "getChainId"
+        },
+        {
+          "line": 26,
+          "helper": "getTransaction"
+        },
+        {
+          "line": 26,
+          "helper": "getTransactionReceipt"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/app/live-position-guard-controls.tsx",
+      "calls": [
+        {
+          "line": 181,
+          "helper": "request"
+        },
+        {
+          "line": 197,
+          "helper": "waitForTransactionReceipt"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/app/market-panel.tsx",
+      "calls": [
+        {
+          "line": 292,
+          "helper": "getBlockNumber"
+        },
+        {
+          "line": 462,
+          "helper": "getGasPrice"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/app/privy-funding-actions.tsx",
+      "calls": [
+        {
+          "line": 249,
+          "helper": "request"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/app/vnext/spend-balance.tsx",
+      "calls": [
+        {
+          "line": 242,
+          "helper": "readContract"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/app/vnext/use-vnext-execution-recovery.ts",
+      "calls": [
+        {
+          "line": 84,
+          "helper": "waitForTransactionReceipt"
+        },
+        {
+          "line": 184,
+          "helper": "getTransactionCount"
+        },
+        {
+          "line": 185,
+          "helper": "getTransactionCount"
+        },
+        {
+          "line": 242,
+          "helper": "getTransaction"
+        },
+        {
+          "line": 276,
+          "helper": "getBlock"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/app/vnext/use-vnext-wallet-assets.ts",
+      "calls": [
+        {
+          "line": 175,
+          "helper": "multicall"
+        },
+        {
+          "line": 199,
+          "helper": "multicall"
+        },
+        {
+          "line": 258,
+          "helper": "getBalance"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/app/vnext/vnext-wallet-review.tsx",
+      "calls": [
+        {
+          "line": 340,
+          "helper": "request"
+        },
+        {
+          "line": 430,
+          "helper": "getBalance"
+        },
+        {
+          "line": 431,
+          "helper": "getGasPrice"
+        },
+        {
+          "line": 432,
+          "helper": "getTransactionCount"
+        },
+        {
+          "line": 433,
+          "helper": "getBlock"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/app/wallet-transfer-dialog.tsx",
+      "calls": [
+        {
+          "line": 305,
+          "helper": "getChainId"
+        },
+        {
+          "line": 334,
+          "helper": "getChainId"
+        },
+        {
+          "line": 335,
+          "helper": "getTransaction"
+        },
+        {
+          "line": 426,
+          "helper": "request"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/creator-v7-live-state-verifier.ts",
+      "calls": [
+        {
+          "line": 229,
+          "helper": "readContract"
+        },
+        {
+          "line": 305,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 477,
+          "helper": "getChainId"
+        },
+        {
+          "line": 486,
+          "helper": "getBlock"
+        },
+        {
+          "line": 502,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 503,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 504,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 651,
+          "helper": "call"
+        },
+        {
+          "line": 672,
+          "helper": "getBlock"
+        },
+        {
+          "line": 792,
+          "helper": "getChainId"
+        },
+        {
+          "line": 801,
+          "helper": "getBlock"
+        },
+        {
+          "line": 817,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 818,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 921,
+          "helper": "call"
+        },
+        {
+          "line": 937,
+          "helper": "getBlock"
+        },
+        {
+          "line": 1121,
+          "helper": "getChainId"
+        },
+        {
+          "line": 1130,
+          "helper": "getBlock"
+        },
+        {
+          "line": 1146,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 1147,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 1148,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 1289,
+          "helper": "call"
+        },
+        {
+          "line": 1309,
+          "helper": "getBlock"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/injected-wallet-signer.ts",
+      "calls": [
+        {
+          "line": 128,
+          "helper": "call"
+        },
+        {
+          "line": 129,
+          "helper": "call"
+        },
+        {
+          "line": 174,
+          "helper": "call"
+        },
+        {
+          "line": 175,
+          "helper": "call"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/nft/collection-verification.ts",
+      "calls": [
+        {
+          "line": 112,
+          "helper": "readContract"
+        },
+        {
+          "line": 125,
+          "helper": "readContract"
+        },
+        {
+          "line": 126,
+          "helper": "readContract"
+        },
+        {
+          "line": 170,
+          "helper": "getChainId"
+        },
+        {
+          "line": 184,
+          "helper": "getBytecode"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/profile-cloud.ts",
+      "calls": [
+        {
+          "line": 42,
+          "helper": "call"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/circus-curve-feed.ts",
+      "calls": [
+        {
+          "line": 243,
+          "helper": "readContract"
+        },
+        {
+          "line": 244,
+          "helper": "readContract"
+        },
+        {
+          "line": 245,
+          "helper": "readContract"
+        },
+        {
+          "line": 246,
+          "helper": "readContract"
+        },
+        {
+          "line": 247,
+          "helper": "readContract"
+        },
+        {
+          "line": 248,
+          "helper": "readContract"
+        },
+        {
+          "line": 249,
+          "helper": "readContract"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/community-rate-limit.ts",
+      "calls": [
+        {
+          "line": 21,
+          "helper": "call"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/consent-rehearsal-status.ts",
+      "calls": [
+        {
+          "line": 292,
+          "helper": "getChainId"
+        },
+        {
+          "line": 292,
+          "helper": "getBlockNumber"
+        },
+        {
+          "line": 296,
+          "helper": "getBlock"
+        },
+        {
+          "line": 367,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 369,
+          "helper": "readContract"
+        },
+        {
+          "line": 370,
+          "helper": "readContract"
+        },
+        {
+          "line": 371,
+          "helper": "readContract"
+        },
+        {
+          "line": 372,
+          "helper": "readContract"
+        },
+        {
+          "line": 373,
+          "helper": "readContract"
+        },
+        {
+          "line": 374,
+          "helper": "readContract"
+        },
+        {
+          "line": 375,
+          "helper": "readContract"
+        },
+        {
+          "line": 376,
+          "helper": "readContract"
+        },
+        {
+          "line": 377,
+          "helper": "readContract"
+        },
+        {
+          "line": 378,
+          "helper": "readContract"
+        },
+        {
+          "line": 379,
+          "helper": "readContract"
+        },
+        {
+          "line": 380,
+          "helper": "readContract"
+        },
+        {
+          "line": 381,
+          "helper": "readContract"
+        },
+        {
+          "line": 382,
+          "helper": "readContract"
+        },
+        {
+          "line": 383,
+          "helper": "readContract"
+        },
+        {
+          "line": 384,
+          "helper": "readContract"
+        },
+        {
+          "line": 385,
+          "helper": "readContract"
+        },
+        {
+          "line": 386,
+          "helper": "readContract"
+        },
+        {
+          "line": 387,
+          "helper": "readContract"
+        },
+        {
+          "line": 388,
+          "helper": "readContract"
+        },
+        {
+          "line": 389,
+          "helper": "readContract"
+        },
+        {
+          "line": 390,
+          "helper": "readContract"
+        },
+        {
+          "line": 391,
+          "helper": "readContract"
+        },
+        {
+          "line": 420,
+          "helper": "readContract"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/external-uniswap-market.ts",
+      "calls": [
+        {
+          "line": 96,
+          "helper": "readContract"
+        },
+        {
+          "line": 97,
+          "helper": "readContract"
+        },
+        {
+          "line": 98,
+          "helper": "readContract"
+        },
+        {
+          "line": 99,
+          "helper": "readContract"
+        },
+        {
+          "line": 100,
+          "helper": "readContract"
+        },
+        {
+          "line": 101,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 103,
+          "helper": "readContract"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/external-uniswap-trade.ts",
+      "calls": [
+        {
+          "line": 175,
+          "helper": "readContract"
+        },
+        {
+          "line": 176,
+          "helper": "readContract"
+        },
+        {
+          "line": 177,
+          "helper": "readContract"
+        },
+        {
+          "line": 270,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 271,
+          "helper": "getBytecode"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/external-uniswap-v4-market.ts",
+      "calls": [
+        {
+          "line": 299,
+          "helper": "getLogs"
+        },
+        {
+          "line": 343,
+          "helper": "readContract"
+        },
+        {
+          "line": 349,
+          "helper": "getBytecode"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/external-uniswap-v4-trade.ts",
+      "calls": [
+        {
+          "line": 157,
+          "helper": "readContract"
+        },
+        {
+          "line": 158,
+          "helper": "readContract"
+        },
+        {
+          "line": 159,
+          "helper": "readContract"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/indexed-launch-feed.ts",
+      "calls": [
+        {
+          "line": 185,
+          "helper": "multicall"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/launch-feed.ts",
+      "calls": [
+        {
+          "line": 73,
+          "helper": "readContract"
+        },
+        {
+          "line": 83,
+          "helper": "readContract"
+        },
+        {
+          "line": 89,
+          "helper": "readContract"
+        },
+        {
+          "line": 149,
+          "helper": "getBlockNumber"
+        },
+        {
+          "line": 158,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 159,
+          "helper": "readContract"
+        },
+        {
+          "line": 165,
+          "helper": "readContract"
+        },
+        {
+          "line": 180,
+          "helper": "readContract"
+        },
+        {
+          "line": 187,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 199,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 209,
+          "helper": "getBlockNumber"
+        },
+        {
+          "line": 263,
+          "helper": "readContract"
+        },
+        {
+          "line": 264,
+          "helper": "readContract"
+        },
+        {
+          "line": 265,
+          "helper": "readContract"
+        },
+        {
+          "line": 266,
+          "helper": "readContract"
+        },
+        {
+          "line": 267,
+          "helper": "readContract"
+        },
+        {
+          "line": 351,
+          "helper": "readContract"
+        },
+        {
+          "line": 358,
+          "helper": "getBlockNumber"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/lemon-launch-feed.ts",
+      "calls": [
+        {
+          "line": 301,
+          "helper": "readContract"
+        },
+        {
+          "line": 302,
+          "helper": "readContract"
+        },
+        {
+          "line": 303,
+          "helper": "readContract"
+        },
+        {
+          "line": 312,
+          "helper": "readContract"
+        },
+        {
+          "line": 318,
+          "helper": "readContract"
+        },
+        {
+          "line": 339,
+          "helper": "readContract"
+        },
+        {
+          "line": 340,
+          "helper": "readContract"
+        },
+        {
+          "line": 341,
+          "helper": "readContract"
+        },
+        {
+          "line": 342,
+          "helper": "readContract"
+        },
+        {
+          "line": 343,
+          "helper": "readContract"
+        },
+        {
+          "line": 344,
+          "helper": "readContract"
+        },
+        {
+          "line": 345,
+          "helper": "getCode"
+        },
+        {
+          "line": 371,
+          "helper": "readContract"
+        },
+        {
+          "line": 372,
+          "helper": "readContract"
+        },
+        {
+          "line": 373,
+          "helper": "getCode"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/nft-mint-preflight.ts",
+      "calls": [
+        {
+          "line": 570,
+          "helper": "getChainId"
+        },
+        {
+          "line": 570,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 570,
+          "helper": "getBlock"
+        },
+        {
+          "line": 602,
+          "helper": "readContract"
+        },
+        {
+          "line": 613,
+          "helper": "readContract"
+        },
+        {
+          "line": 617,
+          "helper": "readContract"
+        },
+        {
+          "line": 651,
+          "helper": "readContract"
+        },
+        {
+          "line": 668,
+          "helper": "readContract"
+        },
+        {
+          "line": 669,
+          "helper": "readContract"
+        },
+        {
+          "line": 686,
+          "helper": "readContract"
+        },
+        {
+          "line": 710,
+          "helper": "call"
+        },
+        {
+          "line": 719,
+          "helper": "estimateGas"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/nft-mint-radar.ts",
+      "calls": [
+        {
+          "line": 515,
+          "helper": "getChainId"
+        },
+        {
+          "line": 524,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 526,
+          "helper": "readContract"
+        },
+        {
+          "line": 536,
+          "helper": "readContract"
+        },
+        {
+          "line": 596,
+          "helper": "getChainId"
+        },
+        {
+          "line": 596,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 603,
+          "helper": "readContract"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/nft-mint-receipt.ts",
+      "calls": [
+        {
+          "line": 132,
+          "helper": "getChainId"
+        },
+        {
+          "line": 133,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 134,
+          "helper": "getTransaction"
+        },
+        {
+          "line": 135,
+          "helper": "getTransactionReceipt"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/noxa-project-metadata.ts",
+      "calls": [
+        {
+          "line": 67,
+          "helper": "readContract"
+        },
+        {
+          "line": 79,
+          "helper": "readContract"
+        },
+        {
+          "line": 80,
+          "helper": "readContract"
+        },
+        {
+          "line": 81,
+          "helper": "readContract"
+        },
+        {
+          "line": 82,
+          "helper": "readContract"
+        },
+        {
+          "line": 83,
+          "helper": "readContract"
+        },
+        {
+          "line": 84,
+          "helper": "readContract"
+        },
+        {
+          "line": 85,
+          "helper": "readContract"
+        },
+        {
+          "line": 86,
+          "helper": "readContract"
+        },
+        {
+          "line": 87,
+          "helper": "readContract"
+        },
+        {
+          "line": 88,
+          "helper": "readContract"
+        },
+        {
+          "line": 89,
+          "helper": "readContract"
+        },
+        {
+          "line": 149,
+          "helper": "readContract"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/pons-project-metadata.ts",
+      "calls": [
+        {
+          "line": 144,
+          "helper": "readContract"
+        },
+        {
+          "line": 156,
+          "helper": "readContract"
+        },
+        {
+          "line": 157,
+          "helper": "readContract"
+        },
+        {
+          "line": 158,
+          "helper": "readContract"
+        },
+        {
+          "line": 159,
+          "helper": "readContract"
+        },
+        {
+          "line": 160,
+          "helper": "readContract"
+        },
+        {
+          "line": 161,
+          "helper": "readContract"
+        },
+        {
+          "line": 162,
+          "helper": "readContract"
+        },
+        {
+          "line": 163,
+          "helper": "readContract"
+        },
+        {
+          "line": 164,
+          "helper": "readContract"
+        },
+        {
+          "line": 165,
+          "helper": "readContract"
+        },
+        {
+          "line": 166,
+          "helper": "readContract"
+        },
+        {
+          "line": 226,
+          "helper": "readContract"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/pons-v2-launch-feed.ts",
+      "calls": [
+        {
+          "line": 173,
+          "helper": "readContract"
+        },
+        {
+          "line": 186,
+          "helper": "readContract"
+        },
+        {
+          "line": 187,
+          "helper": "readContract"
+        },
+        {
+          "line": 188,
+          "helper": "readContract"
+        },
+        {
+          "line": 189,
+          "helper": "readContract"
+        },
+        {
+          "line": 192,
+          "helper": "readContract"
+        },
+        {
+          "line": 227,
+          "helper": "readContract"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/project-identity-admission.ts",
+      "calls": [
+        {
+          "line": 366,
+          "helper": "multicall"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/registered-liquidity-position.ts",
+      "calls": [
+        {
+          "line": 130,
+          "helper": "readContract"
+        },
+        {
+          "line": 148,
+          "helper": "readContract"
+        },
+        {
+          "line": 149,
+          "helper": "readContract"
+        },
+        {
+          "line": 150,
+          "helper": "readContract"
+        },
+        {
+          "line": 151,
+          "helper": "readContract"
+        },
+        {
+          "line": 152,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 160,
+          "helper": "readContract"
+        },
+        {
+          "line": 166,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 168,
+          "helper": "readContract"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/rmt-curated-market-registry.ts",
+      "calls": [
+        {
+          "line": 128,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 129,
+          "helper": "readContract"
+        },
+        {
+          "line": 130,
+          "helper": "readContract"
+        },
+        {
+          "line": 131,
+          "helper": "readContract"
+        },
+        {
+          "line": 133,
+          "helper": "readContract"
+        },
+        {
+          "line": 136,
+          "helper": "readContract"
+        },
+        {
+          "line": 139,
+          "helper": "readContract"
+        },
+        {
+          "line": 143,
+          "helper": "readContract"
+        },
+        {
+          "line": 160,
+          "helper": "readContract"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/rmt-trade-identity.ts",
+      "calls": [
+        {
+          "line": 91,
+          "helper": "readContract"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/rmt-v4-trade.ts",
+      "calls": [
+        {
+          "line": 139,
+          "helper": "readContract"
+        },
+        {
+          "line": 140,
+          "helper": "readContract"
+        },
+        {
+          "line": 141,
+          "helper": "readContract"
+        },
+        {
+          "line": 142,
+          "helper": "readContract"
+        },
+        {
+          "line": 143,
+          "helper": "readContract"
+        },
+        {
+          "line": 144,
+          "helper": "readContract"
+        },
+        {
+          "line": 145,
+          "helper": "readContract"
+        },
+        {
+          "line": 146,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 147,
+          "helper": "getBytecode"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/stonkbrokers-safe-launch-feed.ts",
+      "calls": [
+        {
+          "line": 186,
+          "helper": "readContract"
+        },
+        {
+          "line": 187,
+          "helper": "readContract"
+        },
+        {
+          "line": 191,
+          "helper": "readContract"
+        },
+        {
+          "line": 192,
+          "helper": "readContract"
+        },
+        {
+          "line": 200,
+          "helper": "readContract"
+        },
+        {
+          "line": 201,
+          "helper": "readContract"
+        },
+        {
+          "line": 249,
+          "helper": "readContract"
+        },
+        {
+          "line": 264,
+          "helper": "readContract"
+        },
+        {
+          "line": 401,
+          "helper": "readContract"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/sushi-trade.ts",
+      "calls": [
+        {
+          "line": 64,
+          "helper": "readContract"
+        },
+        {
+          "line": 263,
+          "helper": "getBytecode"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/system-health.ts",
+      "calls": [
+        {
+          "line": 54,
+          "helper": "getChainId"
+        },
+        {
+          "line": 55,
+          "helper": "getBlockNumber"
+        },
+        {
+          "line": 57,
+          "helper": "getBlock"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/token-risk-evidence.ts",
+      "calls": [
+        {
+          "line": 144,
+          "helper": "readContract"
+        },
+        {
+          "line": 177,
+          "helper": "call"
+        },
+        {
+          "line": 256,
+          "helper": "readContract"
+        },
+        {
+          "line": 271,
+          "helper": "getBlock"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/universal-market-resolver.ts",
+      "calls": [
+        {
+          "line": 111,
+          "helper": "multicall"
+        },
+        {
+          "line": 167,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 171,
+          "helper": "readContract"
+        },
+        {
+          "line": 172,
+          "helper": "readContract"
+        },
+        {
+          "line": 173,
+          "helper": "readContract"
+        },
+        {
+          "line": 174,
+          "helper": "readContract"
+        },
+        {
+          "line": 204,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 205,
+          "helper": "readContract"
+        },
+        {
+          "line": 206,
+          "helper": "readContract"
+        },
+        {
+          "line": 207,
+          "helper": "readContract"
+        },
+        {
+          "line": 208,
+          "helper": "readContract"
+        },
+        {
+          "line": 241,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 244,
+          "helper": "readContract"
+        },
+        {
+          "line": 245,
+          "helper": "readContract"
+        },
+        {
+          "line": 246,
+          "helper": "readContract"
+        },
+        {
+          "line": 251,
+          "helper": "readContract"
+        },
+        {
+          "line": 259,
+          "helper": "readContract"
+        },
+        {
+          "line": 265,
+          "helper": "readContract"
+        },
+        {
+          "line": 312,
+          "helper": "readContract"
+        },
+        {
+          "line": 318,
+          "helper": "readContract"
+        },
+        {
+          "line": 345,
+          "helper": "getBytecode"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/vnext-authorization-time.ts",
+      "calls": [
+        {
+          "line": 89,
+          "helper": "getBlock"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/vnext-ecosystem-intelligence.ts",
+      "calls": [
+        {
+          "line": 137,
+          "helper": "getBlock"
+        },
+        {
+          "line": 141,
+          "helper": "getBlock"
+        },
+        {
+          "line": 146,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 147,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 148,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 155,
+          "helper": "readContract"
+        },
+        {
+          "line": 157,
+          "helper": "readContract"
+        },
+        {
+          "line": 160,
+          "helper": "readContract"
+        },
+        {
+          "line": 165,
+          "helper": "readContract"
+        },
+        {
+          "line": 166,
+          "helper": "readContract"
+        },
+        {
+          "line": 170,
+          "helper": "readContract"
+        },
+        {
+          "line": 175,
+          "helper": "readContract"
+        },
+        {
+          "line": 176,
+          "helper": "readContract"
+        },
+        {
+          "line": 177,
+          "helper": "readContract"
+        },
+        {
+          "line": 178,
+          "helper": "readContract"
+        },
+        {
+          "line": 185,
+          "helper": "readContract"
+        },
+        {
+          "line": 186,
+          "helper": "readContract"
+        },
+        {
+          "line": 187,
+          "helper": "readContract"
+        },
+        {
+          "line": 188,
+          "helper": "readContract"
+        },
+        {
+          "line": 189,
+          "helper": "readContract"
+        },
+        {
+          "line": 196,
+          "helper": "readContract"
+        },
+        {
+          "line": 202,
+          "helper": "readContract"
+        },
+        {
+          "line": 203,
+          "helper": "readContract"
+        },
+        {
+          "line": 204,
+          "helper": "readContract"
+        },
+        {
+          "line": 205,
+          "helper": "readContract"
+        },
+        {
+          "line": 206,
+          "helper": "readContract"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/vnext-robinhood-weth-authority.ts",
+      "calls": [
+        {
+          "line": 73,
+          "helper": "getBlock"
+        },
+        {
+          "line": 129,
+          "helper": "getChainId"
+        },
+        {
+          "line": 130,
+          "helper": "getBlockNumber"
+        },
+        {
+          "line": 135,
+          "helper": "getBlock"
+        },
+        {
+          "line": 144,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 154,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 155,
+          "helper": "getBlock"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/vnext-uniswap-fee-executor-v2.ts",
+      "calls": [
+        {
+          "line": 227,
+          "helper": "readContract"
+        },
+        {
+          "line": 259,
+          "helper": "getBytecode"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/vnext-uniswap-fee-executor.ts",
+      "calls": [
+        {
+          "line": 176,
+          "helper": "getChainId"
+        },
+        {
+          "line": 177,
+          "helper": "getBlockNumber"
+        },
+        {
+          "line": 178,
+          "helper": "getBlock"
+        },
+        {
+          "line": 179,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 184,
+          "helper": "readContract"
+        },
+        {
+          "line": 207,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 208,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 209,
+          "helper": "readContract"
+        },
+        {
+          "line": 210,
+          "helper": "readContract"
+        },
+        {
+          "line": 229,
+          "helper": "getBytecode"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/vnext-uniswap-quote.ts",
+      "calls": [
+        {
+          "line": 147,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 169,
+          "helper": "readContract"
+        },
+        {
+          "line": 178,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 501,
+          "helper": "readContract"
+        },
+        {
+          "line": 502,
+          "helper": "readContract"
+        },
+        {
+          "line": 504,
+          "helper": "getBalance"
+        },
+        {
+          "line": 505,
+          "helper": "getGasPrice"
+        },
+        {
+          "line": 539,
+          "helper": "estimateGas"
+        },
+        {
+          "line": 546,
+          "helper": "call"
+        },
+        {
+          "line": 553,
+          "helper": "estimateGas"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/vnext-uniswap-v2-execution.ts",
+      "calls": [
+        {
+          "line": 55,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 75,
+          "helper": "readContract"
+        },
+        {
+          "line": 81,
+          "helper": "readContract"
+        },
+        {
+          "line": 82,
+          "helper": "readContract"
+        },
+        {
+          "line": 83,
+          "helper": "readContract"
+        },
+        {
+          "line": 97,
+          "helper": "getBlock"
+        },
+        {
+          "line": 102,
+          "helper": "readContract"
+        },
+        {
+          "line": 148,
+          "helper": "readContract"
+        },
+        {
+          "line": 149,
+          "helper": "readContract"
+        },
+        {
+          "line": 150,
+          "helper": "getBlock"
+        },
+        {
+          "line": 169,
+          "helper": "readContract"
+        },
+        {
+          "line": 170,
+          "helper": "readContract"
+        },
+        {
+          "line": 172,
+          "helper": "getBalance"
+        },
+        {
+          "line": 173,
+          "helper": "getGasPrice"
+        },
+        {
+          "line": 193,
+          "helper": "call"
+        },
+        {
+          "line": 194,
+          "helper": "estimateGas"
+        },
+        {
+          "line": 198,
+          "helper": "call"
+        },
+        {
+          "line": 203,
+          "helper": "estimateGas"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/vnext-uniswap-v2-fee-executor-v2.ts",
+      "calls": [
+        {
+          "line": 193,
+          "helper": "getChainId"
+        },
+        {
+          "line": 194,
+          "helper": "getBlockNumber"
+        },
+        {
+          "line": 195,
+          "helper": "getBlock"
+        },
+        {
+          "line": 196,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 198,
+          "helper": "readContract"
+        },
+        {
+          "line": 234,
+          "helper": "readContract"
+        },
+        {
+          "line": 270,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 271,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 275,
+          "helper": "getBlock"
+        },
+        {
+          "line": 330,
+          "helper": "getBytecode"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/vnext-uniswap-v2-v2-execution.ts",
+      "calls": [
+        {
+          "line": 264,
+          "helper": "readContract"
+        },
+        {
+          "line": 265,
+          "helper": "readContract"
+        },
+        {
+          "line": 267,
+          "helper": "getBalance"
+        },
+        {
+          "line": 268,
+          "helper": "getGasPrice"
+        },
+        {
+          "line": 285,
+          "helper": "call"
+        },
+        {
+          "line": 286,
+          "helper": "estimateGas"
+        },
+        {
+          "line": 295,
+          "helper": "call"
+        },
+        {
+          "line": 298,
+          "helper": "estimateGas"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/vnext-uniswap-v3-v2-execution.ts",
+      "calls": [
+        {
+          "line": 194,
+          "helper": "readContract"
+        },
+        {
+          "line": 195,
+          "helper": "readContract"
+        },
+        {
+          "line": 197,
+          "helper": "getBalance"
+        },
+        {
+          "line": 198,
+          "helper": "getGasPrice"
+        },
+        {
+          "line": 229,
+          "helper": "call"
+        },
+        {
+          "line": 231,
+          "helper": "estimateGas"
+        },
+        {
+          "line": 243,
+          "helper": "call"
+        },
+        {
+          "line": 247,
+          "helper": "estimateGas"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/vnext-uniswap-v4-adapter.ts",
+      "calls": [
+        {
+          "line": 152,
+          "helper": "getBlock"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/vnext-uniswap-v4-execution.ts",
+      "calls": [
+        {
+          "line": 248,
+          "helper": "getBlock"
+        },
+        {
+          "line": 254,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 255,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 256,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 257,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 329,
+          "helper": "getBalance"
+        },
+        {
+          "line": 332,
+          "helper": "readContract"
+        },
+        {
+          "line": 333,
+          "helper": "readContract"
+        },
+        {
+          "line": 338,
+          "helper": "readContract"
+        },
+        {
+          "line": 350,
+          "helper": "getGasPrice"
+        },
+        {
+          "line": 392,
+          "helper": "call"
+        },
+        {
+          "line": 398,
+          "helper": "estimateGas"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/vnext-up-execution.ts",
+      "calls": [
+        {
+          "line": 71,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 82,
+          "helper": "readContract"
+        },
+        {
+          "line": 83,
+          "helper": "readContract"
+        },
+        {
+          "line": 96,
+          "helper": "readContract"
+        },
+        {
+          "line": 97,
+          "helper": "readContract"
+        },
+        {
+          "line": 98,
+          "helper": "readContract"
+        },
+        {
+          "line": 104,
+          "helper": "readContract"
+        },
+        {
+          "line": 105,
+          "helper": "readContract"
+        },
+        {
+          "line": 106,
+          "helper": "readContract"
+        },
+        {
+          "line": 111,
+          "helper": "getBlock"
+        },
+        {
+          "line": 181,
+          "helper": "readContract"
+        },
+        {
+          "line": 182,
+          "helper": "readContract"
+        },
+        {
+          "line": 184,
+          "helper": "getBalance"
+        },
+        {
+          "line": 185,
+          "helper": "getGasPrice"
+        },
+        {
+          "line": 207,
+          "helper": "call"
+        },
+        {
+          "line": 210,
+          "helper": "estimateGas"
+        },
+        {
+          "line": 215,
+          "helper": "call"
+        },
+        {
+          "line": 221,
+          "helper": "estimateGas"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/vnext-up-quote.ts",
+      "calls": [
+        {
+          "line": 152,
+          "helper": "getBlock"
+        },
+        {
+          "line": 156,
+          "helper": "getBlock"
+        },
+        {
+          "line": 161,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 162,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 163,
+          "helper": "readContract"
+        },
+        {
+          "line": 164,
+          "helper": "readContract"
+        },
+        {
+          "line": 172,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 173,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 174,
+          "helper": "readContract"
+        },
+        {
+          "line": 175,
+          "helper": "readContract"
+        },
+        {
+          "line": 181,
+          "helper": "readContract"
+        },
+        {
+          "line": 182,
+          "helper": "readContract"
+        },
+        {
+          "line": 183,
+          "helper": "readContract"
+        },
+        {
+          "line": 184,
+          "helper": "readContract"
+        },
+        {
+          "line": 189,
+          "helper": "readContract"
+        },
+        {
+          "line": 191,
+          "helper": "readContract"
+        },
+        {
+          "line": 192,
+          "helper": "readContract"
+        },
+        {
+          "line": 193,
+          "helper": "readContract"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/server/vnext-wallet-request-discovery.ts",
+      "calls": [
+        {
+          "line": 155,
+          "helper": "getChainId"
+        },
+        {
+          "line": 157,
+          "helper": "getBlockNumber"
+        },
+        {
+          "line": 176,
+          "helper": "getBlock"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/use-launch-record.ts",
+      "calls": [
+        {
+          "line": 67,
+          "helper": "readContract"
+        },
+        {
+          "line": 96,
+          "helper": "readContract"
+        },
+        {
+          "line": 109,
+          "helper": "readContract"
+        },
+        {
+          "line": 119,
+          "helper": "readContract"
+        },
+        {
+          "line": 140,
+          "helper": "readContract"
+        },
+        {
+          "line": 147,
+          "helper": "readContract"
+        },
+        {
+          "line": 148,
+          "helper": "readContract"
+        },
+        {
+          "line": 149,
+          "helper": "readContract"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/use-trade-fee-estimate.ts",
+      "calls": [
+        {
+          "line": 67,
+          "helper": "estimateGas"
+        },
+        {
+          "line": 68,
+          "helper": "getGasPrice"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/vnext/distribution-ccff00.ts",
+      "calls": [
+        {
+          "line": 194,
+          "helper": "readContract"
+        },
+        {
+          "line": 210,
+          "helper": "getBlockNumber"
+        },
+        {
+          "line": 216,
+          "helper": "getBlock"
+        },
+        {
+          "line": 232,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 232,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 233,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 233,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 234,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 268,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 269,
+          "helper": "readContract"
+        },
+        {
+          "line": 270,
+          "helper": "readContract"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/vnext/distribution-runtime.ts",
+      "calls": [
+        {
+          "line": 202,
+          "helper": "getChainId"
+        },
+        {
+          "line": 204,
+          "helper": "getBlockNumber"
+        },
+        {
+          "line": 206,
+          "helper": "getBlock"
+        },
+        {
+          "line": 211,
+          "helper": "readContract"
+        },
+        {
+          "line": 221,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 222,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 223,
+          "helper": "getBytecode"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/vnext/wallet-request-lock.ts",
+      "calls": [
+        {
+          "line": 33,
+          "helper": "request"
+        },
+        {
+          "line": 60,
+          "helper": "request"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/vnext/wallet-review-dispatch.ts",
+      "calls": [
+        {
+          "line": 65,
+          "helper": "call"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/lib/wallet-connection-controller.ts",
+      "calls": [
+        {
+          "line": 114,
+          "helper": "request"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/scripts/vnext-distribution-ccff00-readiness.ts",
+      "calls": [
+        {
+          "line": 33,
+          "helper": "getBlockNumber"
+        },
+        {
+          "line": 35,
+          "helper": "getBlock"
+        },
+        {
+          "line": 39,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 42,
+          "helper": "readContract"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/scripts/vnext-uniswap-fee-deployment-readiness.ts",
+      "calls": [
+        {
+          "line": 169,
+          "helper": "getChainId"
+        },
+        {
+          "line": 185,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 186,
+          "helper": "readContract"
+        },
+        {
+          "line": 187,
+          "helper": "readContract"
+        },
+        {
+          "line": 188,
+          "helper": "readContract"
+        },
+        {
+          "line": 189,
+          "helper": "readContract"
+        },
+        {
+          "line": 191,
+          "helper": "getTransactionReceipt"
+        },
+        {
+          "line": 192,
+          "helper": "getTransaction"
+        },
+        {
+          "line": 193,
+          "helper": "getBlock"
+        },
+        {
+          "line": 213,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 214,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 255,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 256,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 257,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 258,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 259,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 261,
+          "helper": "readContract"
+        },
+        {
+          "line": 262,
+          "helper": "readContract"
+        },
+        {
+          "line": 274,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 327,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 328,
+          "helper": "request"
+        },
+        {
+          "line": 332,
+          "helper": "getGasPrice"
+        },
+        {
+          "line": 333,
+          "helper": "getBalance"
+        },
+        {
+          "line": 365,
+          "helper": "getTransactionReceipt"
+        },
+        {
+          "line": 366,
+          "helper": "getTransaction"
+        },
+        {
+          "line": 367,
+          "helper": "getBlockNumber"
+        },
+        {
+          "line": 410,
+          "helper": "call"
+        },
+        {
+          "line": 416,
+          "helper": "estimateGas"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/scripts/vnext-uniswap-fee-readiness.ts",
+      "calls": [
+        {
+          "line": 39,
+          "helper": "getTransactionReceipt"
+        },
+        {
+          "line": 40,
+          "helper": "getBlockNumber"
+        },
+        {
+          "line": 107,
+          "helper": "readContract"
+        },
+        {
+          "line": 117,
+          "helper": "readContract"
+        },
+        {
+          "line": 118,
+          "helper": "readContract"
+        },
+        {
+          "line": 136,
+          "helper": "getBalance"
+        },
+        {
+          "line": 137,
+          "helper": "getBalance"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/scripts/vnext-up-readiness.ts",
+      "calls": [
+        {
+          "line": 39,
+          "helper": "getBytecode"
+        },
+        {
+          "line": 40,
+          "helper": "readContract"
+        },
+        {
+          "line": 41,
+          "helper": "readContract"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/scripts/zero-x-native-trace-capability.ts",
+      "calls": [
+        {
+          "line": 12,
+          "helper": "getChainId"
+        },
+        {
+          "line": 13,
+          "helper": "getTransactionReceipt"
+        },
+        {
+          "line": 14,
+          "helper": "getTransaction"
+        }
+      ]
+    },
+    {
+      "file": "apps/web/scripts/zero-x-settlement-trace-proof.ts",
+      "calls": [
+        {
+          "line": 30,
+          "helper": "getChainId"
+        },
+        {
+          "line": 32,
+          "helper": "getCode"
+        },
+        {
+          "line": 43,
+          "helper": "getTransaction"
+        },
+        {
+          "line": 44,
+          "helper": "getTransactionReceipt"
+        },
+        {
+          "line": 55,
+          "helper": "getCode"
+        }
+      ]
+    }
+  ]
+}

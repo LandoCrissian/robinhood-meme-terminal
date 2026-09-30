@@ -1,0 +1,111 @@
+{
+  "base": "41cbc27029dfffad07ee71e97c3052d9d5d0cabb",
+  "services": {
+    "indexer": {
+      "$schema": "https://railway.com/railway.schema.json",
+      "build": {
+        "builder": "RAILPACK",
+        "buildCommand": "pnpm install --no-frozen-lockfile && pnpm --filter indexer build",
+        "watchPatterns": [
+          "apps/indexer/**",
+          "package.json",
+          "pnpm-workspace.yaml"
+        ]
+      },
+      "deploy": {
+        "startCommand": "pnpm --filter indexer start",
+        "healthcheckPath": "/ready",
+        "healthcheckTimeout": 300,
+        "restartPolicyType": "ALWAYS",
+        "restartPolicyMaxRetries": 10,
+        "drainingSeconds": 15
+      }
+    },
+    "market-indexer": {
+      "$schema": "https://railway.com/railway.schema.json",
+      "build": {
+        "builder": "RAILPACK",
+        "buildCommand": "pnpm install --frozen-lockfile && pnpm --filter market-indexer build",
+        "watchPatterns": [
+          "apps/market-indexer/**",
+          "package.json",
+          "pnpm-lock.yaml",
+          "pnpm-workspace.yaml"
+        ]
+      },
+      "deploy": {
+        "startCommand": "pnpm --filter market-indexer start",
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 300,
+        "restartPolicyType": "ALWAYS",
+        "restartPolicyMaxRetries": 10,
+        "drainingSeconds": 15
+      }
+    },
+    "external-origin-indexer": {
+      "$schema": "https://railway.com/railway.schema.json",
+      "build": {
+        "builder": "RAILPACK",
+        "buildCommand": "pnpm install --frozen-lockfile && pnpm --filter external-origin-indexer build",
+        "watchPatterns": [
+          "apps/external-origin-indexer/**",
+          "package.json",
+          "pnpm-lock.yaml",
+          "pnpm-workspace.yaml"
+        ]
+      },
+      "deploy": {
+        "startCommand": "pnpm --filter external-origin-indexer start",
+        "healthcheckPath": "/ready",
+        "healthcheckTimeout": 300,
+        "restartPolicyType": "ALWAYS",
+        "restartPolicyMaxRetries": 10,
+        "drainingSeconds": 15
+      }
+    },
+    "nft-indexer": {
+      "$schema": "https://railway.com/railway.schema.json",
+      "build": {
+        "builder": "RAILPACK",
+        "buildCommand": "pnpm install --frozen-lockfile && pnpm --filter nft-indexer build",
+        "watchPatterns": [
+          "apps/nft-indexer/**",
+          "packages/shared/**",
+          "package.json",
+          "pnpm-lock.yaml",
+          "pnpm-workspace.yaml"
+        ]
+      },
+      "deploy": {
+        "startCommand": "pnpm --filter nft-indexer start",
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 300,
+        "restartPolicyType": "ALWAYS",
+        "restartPolicyMaxRetries": 10,
+        "drainingSeconds": 15
+      }
+    },
+    "nft-marketplace-indexer": {
+      "$schema": "https://railway.com/railway.schema.json",
+      "build": {
+        "builder": "RAILPACK",
+        "buildCommand": "pnpm install --frozen-lockfile && pnpm --filter nft-marketplace-indexer build",
+        "watchPatterns": [
+          "apps/nft-marketplace-indexer/**",
+          "packages/shared/**",
+          "package.json",
+          "pnpm-lock.yaml",
+          "pnpm-workspace.yaml"
+        ]
+      },
+      "deploy": {
+        "startCommand": "pnpm --filter nft-marketplace-indexer start",
+        "healthcheckPath": "/health",
+        "healthcheckTimeout": 300,
+        "restartPolicyType": "ALWAYS",
+        "restartPolicyMaxRetries": 10,
+        "drainingSeconds": 15
+      }
+    }
+  }
+}
