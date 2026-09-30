@@ -93,7 +93,12 @@ function object(value: unknown): ObjectValue {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new PresentationProviderError("INVALID");
   return value as ObjectValue;
 }
-function numeric(value: unknown) { const number = value === null || value === undefined || value === "" ? NaN : Number(value); return Number.isFinite(number) && number >= 0 ? number : null; }
+function signedNumeric(value: unknown) {
+  if (typeof value !== "number" && (typeof value !== "string" || !value.trim() || value.length > 64)) return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+function numeric(value: unknown) { const number = signedNumeric(value); return number !== null && number >= 0 ? number : null; }
 function count(value: unknown) { const number = numeric(value); return number !== null && Number.isSafeInteger(number) ? number : null; }
 function text(value: unknown, max = 500) { return typeof value === "string" && value.length <= max ? value.trim() || null : null; }
 function addressFromId(value: unknown) {
@@ -115,7 +120,7 @@ export function parseTokenPools(value: unknown, token: string): ChartMarket[] {
     // Provider pool movement is expressed for its base token. Do not invert or
     // invent movement/trade-side counts when the selected token is the quote.
     const baseSide = base === exact;
-    return [{ token: exact, pool: normalizeExternalPoolIdentity(pool), priceUsd: numeric(baseSide ? attrs.base_token_price_usd : attrs.quote_token_price_usd), liquidityUsd: numeric(attrs.reserve_in_usd), volume24hUsd: numeric(attrs.volume_usd?.h24), createdAt: created && Number.isFinite(Date.parse(created)) ? created : null, dex: text(relationships.dex?.data?.id), priceChange24h: baseSide && change !== null && change !== undefined && change !== "" && Number.isFinite(Number(change)) ? Number(change) : null, buys24h: baseSide ? count(attrs.transactions?.h24?.buys) : null, sells24h: baseSide ? count(attrs.transactions?.h24?.sells) : null }];
+    return [{ token: exact, pool: normalizeExternalPoolIdentity(pool), priceUsd: numeric(baseSide ? attrs.base_token_price_usd : attrs.quote_token_price_usd), liquidityUsd: numeric(attrs.reserve_in_usd), volume24hUsd: numeric(attrs.volume_usd?.h24), createdAt: created && Number.isFinite(Date.parse(created)) ? created : null, dex: text(relationships.dex?.data?.id), priceChange24h: baseSide ? signedNumeric(change) : null, buys24h: baseSide ? count(attrs.transactions?.h24?.buys) : null, sells24h: baseSide ? count(attrs.transactions?.h24?.sells) : null }];
   }).sort((a, b) => (b.liquidityUsd ?? -1) - (a.liquidityUsd ?? -1) || (b.volume24hUsd ?? -1) - (a.volume24hUsd ?? -1) || a.pool.localeCompare(b.pool));
 }
 export type TokenVisual = { name: string | null; symbol: string | null; image: string | null; description: string | null; websites: string[]; twitter: string | null; telegram: string | null; provenance: "GECKOTERMINAL_TOKEN_INFO" };
