@@ -6169,7 +6169,7 @@ body .rmtTerminal button {
 .vnTradeScroll { overflow-anchor: none; }
 .vnTradePriceSummary { min-height: 58px; margin: 12px 0; font-variant-numeric: tabular-nums; }
 .vnReceiveField { min-height: 124px; font-variant-numeric: tabular-nums; }
-.vnReceiveField strong, .vnTradePriceSummary dd, .vnTradeReceipt dd { overflow-wrap: anywhere; min-width: 0; }
+.vnReceiveField strong, .vnTradePriceSummary dd, .vnTradeReceipt dd { overflow-wrap: anywhere; min-width: 0; white-space: normal; overflow: visible; text-overflow: clip; }
 .vnTradeActionStatus { min-height: 36px; margin: 0 0 8px; font-size: 13px; line-height: 18px; }
 .vnTradeActionDock .vnReviewButton { height: 48px; font-size: 15px; }
 .vnTradeEvidenceSummary > div { display: flex; justify-content: space-between; gap: 12px; font-size: 12px; }
