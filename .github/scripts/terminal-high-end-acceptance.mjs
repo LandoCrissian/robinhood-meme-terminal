@@ -1151,7 +1151,7 @@ async function inspectDesktop(browser, viewport, label) {
     mobile: Boolean(document.querySelector(".rmtMobileTerminal")),
     context: document.querySelector(".rmtDesktopTerminal")?.getAttribute("data-terminal-context"),
     scanner: Boolean(document.querySelector(".rmtMarketTable")),
-    workstation: Boolean(document.querySelector(".rmtDesktopWorkstation")),
+    workstation: Boolean(document.querySelector(".rmtDesktopWorkstation")?.getBoundingClientRect().height),
     portfolio: Boolean(document.querySelector(".rmtPortfolioSurface"))
   }));
   if (!marketsComposition.desktop || marketsComposition.mobile || marketsComposition.context !== "markets" || !marketsComposition.scanner || marketsComposition.workstation || marketsComposition.portfolio) {
@@ -3511,7 +3511,7 @@ async function inspectMobile(browser, viewport, label) {
   const defaultContext = await page.evaluate(() => ({
     context: document.querySelector(".rmtMobileTerminal")?.getAttribute("data-terminal-context"),
     scanner: Boolean(document.querySelector(".rmtMobileMarketsView")),
-    asset: Boolean(document.querySelector(".rmtMobileAssetView")),
+    asset: Boolean(document.querySelector(".rmtMobileAssetView")?.getBoundingClientRect().height),
     dock: Boolean(document.querySelector(".rmtMobileTradeDock")),
     desktop: Boolean(document.querySelector(".rmtDesktopTerminal"))
   }));
@@ -3545,7 +3545,7 @@ async function inspectMobile(browser, viewport, label) {
       mobileRendered: Boolean(mobile),
       mobileDockVisible: Boolean(mobileDock && mobileDock.getBoundingClientRect().height > 0),
       mobileWalletControlCount: mobileWalletControls.length,
-      assetPresent: Boolean(document.querySelector(".rmtMobileAssetView"))
+      assetPresent: Boolean(document.querySelector(".rmtMobileAssetView")?.getBoundingClientRect().height)
     };
   });
   if (marketsAudit.horizontalOverflow > 2) {
@@ -3562,7 +3562,7 @@ async function inspectMobile(browser, viewport, label) {
   const assetAudit = await page.evaluate(() => ({
     horizontalOverflow: Math.max(0, document.documentElement.scrollWidth - innerWidth),
     scannerPresent: Boolean(document.querySelector(".rmtMobileMarketsView")),
-    assetPresent: Boolean(document.querySelector(".rmtMobileAssetView")),
+    assetPresent: Boolean(document.querySelector(".rmtMobileAssetView")?.getBoundingClientRect().height),
     dockVisible: Boolean(document.querySelector(".rmtMobileTradeDock")),
     chartWidth: document.querySelector(".vnChart")?.getBoundingClientRect().width ?? 0,
     pathname: window.location.pathname,
@@ -3659,7 +3659,7 @@ async function inspectMobile(browser, viewport, label) {
     pathname: window.location.pathname,
     panel: new URLSearchParams(window.location.search).get("panel"),
     scanner: Boolean(document.querySelector(".rmtMobileMarketsView")),
-    asset: Boolean(document.querySelector(".rmtMobileAssetView")),
+    asset: Boolean(document.querySelector(".rmtMobileAssetView")?.getBoundingClientRect().height),
     dock: Boolean(document.querySelector(".rmtMobileTradeDock")),
     overflow: Math.max(0, document.documentElement.scrollWidth - innerWidth)
   }));
