@@ -3281,7 +3281,7 @@ async function inspectExecutableQuoteFeeDisclosure(browser, fixture) {
     throw new Error("Comparison-only economics established a protected minimum before verification");
   }
   const advanced = panel.locator(".vnRouteCard");
-  await advanced.locator("summary").click();
+  await advanced.locator(":scope > summary").click();
   const advancedText = await advanced.innerText();
   const advancedTextNormalized = advancedText.toLowerCase();
   for (const expected of [
