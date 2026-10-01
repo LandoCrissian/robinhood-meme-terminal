@@ -31,6 +31,7 @@ export async function runDirectoryQueueBrowserAcceptance(browser, base, complete
       const enter = page.getByRole("button", { name: /I understand/ });
       await enter.waitFor({ state: "visible", timeout: 20000 });
       await enter.click();
+      await page.locator(".rmtMarketViews .rmtExplore > summary").first().click();
       const all = page.getByRole("button", { name: /^All/ }).first();
       await all.waitFor({ state: "visible", timeout: 20000 });
       assert.equal(

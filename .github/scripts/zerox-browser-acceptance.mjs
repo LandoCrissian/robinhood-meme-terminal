@@ -335,6 +335,7 @@ export async function runZeroXBrowserAcceptance() {
     if (process.env.RMT_STABLE_REFRESH_ONLY === 'true') { results.push(...await runStableRefreshBrowser({ browser, base, identity, external, state, wallet, token, output })); return; }
     if (process.env.RMT_PRODUCT_METRICS_ONLY === 'true') { results.push(...await runTradingProductBrowser({ browser, base, identity, external, state, wallet, token, output })); return; }
     results.push(...await runTokenEnrichmentBrowser({ browser, base, identity, external, state, wallet, token: routeFixtures.assets.identityOnly, output }));
+    results.push(...await runMarketAnchorBrowser({ browser, base, external, output }));
     results.push(...await runStableRefreshBrowser({ browser, base, identity, external, state, wallet, token, output }));
     results.push(...await runTradingProductBrowser({ browser, base, identity, external, state, wallet, token, output }));
     results.push(...await runHotPathBrowserAcceptance({ browser, base, identity, state, wallet, usdg, shcat, stock: routeFixtures.assets.stock }));

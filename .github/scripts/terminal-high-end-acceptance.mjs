@@ -1760,6 +1760,7 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
   );
   const counts = vNextMarketDirectoryViewCounts(observed);
   for (const view of ["active", "trending", "new", "rwa", "all"]) {
+    if (view === "rwa" || view === "all") await revealBrowseExplore(page);
     const category = page.getByRole("button", { name: new RegExp(`^${view}\\s+${counts[view]}$`, "i") });
     await category.click();
     for (let pageIndex = 0; pageIndex < 10 && await page.locator(rowSelector).count() < counts[view]; pageIndex++) {
