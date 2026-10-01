@@ -39,7 +39,7 @@ export function ExplorerLink({ kind, value, children, className, accessibleName 
   } catch {
     return null;
   }
-  return <a href={href} className={className} target="_blank" rel="noopener noreferrer" aria-label={accessibleName}>{children}</a>;
+  return <a href={href} className={className} target="_blank" rel="noopener noreferrer" aria-label={accessibleName} title={accessibleName}>{children}</a>;
 }
 
 export function ExternalProjectLink({ href: rawHref, children, className, accessibleName, socialKind }: {
@@ -53,7 +53,7 @@ export function ExternalProjectLink({ href: rawHref, children, className, access
     ? safeExternalSocialNavigationUrl(rawHref, socialKind)
     : safeExternalNavigationUrl(rawHref);
   if (!href) return null;
-  return <a href={href} className={className} target="_blank" rel="noopener noreferrer" aria-label={accessibleName}>{children}</a>;
+  return <a href={href} className={className} target="_blank" rel="noopener noreferrer" aria-label={accessibleName} title={accessibleName}>{children}</a>;
 }
 
 export function CopyAddress({ address }: { address: string }) {

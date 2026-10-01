@@ -894,6 +894,7 @@ function visibleAudit() {
     const rect = element.getBoundingClientRect();
     return style.display !== "none"
       && style.visibility !== "hidden"
+      && style.clipPath !== "inset(50%)"
       && Number(style.opacity) > 0
       && rect.width > 0
       && rect.height > 0;
@@ -920,18 +921,11 @@ function visibleAudit() {
   };
 }
 
-async function openAssetTechnicalDetails(page, label, { requireInitiallyCollapsed = false } = {}) {
-  const technicalDetails = page.locator(".vnAssetTechnicalDetails:visible").first();
-  await technicalDetails.waitFor({ state: "visible" });
-  const initiallyOpen = await technicalDetails.getAttribute("open") !== null;
-  if (requireInitiallyCollapsed && initiallyOpen) {
-    throw new Error(`${label}: market technical details did not start collapsed`);
-  }
-  if (!initiallyOpen) await technicalDetails.locator(":scope > summary").click();
-  if (await technicalDetails.getAttribute("open") === null) {
-    throw new Error(`${label}: market technical details did not expose its expanded state`);
-  }
-  return technicalDetails;
+async function openAssetTechnicalDetails(page, label) {
+  await page.locator(".rmtWorkspaceTabs").getByRole("tab", { name: "More", exact: true }).click();
+  const details = page.locator(".vnMoreSurface");
+  await details.waitFor({ state: "visible" });
+  return details;
 }
 
 async function inspectAssetQuickLinks(page, label) {
@@ -1141,6 +1135,13 @@ async function inspectDesktop(browser, viewport, label) {
   if (audit.horizontalOverflow > 2) throw new Error(`${label}: page horizontal overflow ${audit.horizontalOverflow}px`);
   if (audit.marketRowsAboveFold < 2) {
     throw new Error(`${label}: only ${audit.marketRowsAboveFold} market rows are above the fold`);
+  }
+  const skip = page.locator(".vnSkipLink");
+  if (await skip.count()) {
+    await skip.focus();
+    const bounds = await skip.boundingBox();
+    if (!bounds || bounds.height < 44) throw new Error(`${label}: focused skip action is undersized`);
+    await skip.blur();
   }
   if (audit.controlsUnder32.length) {
     throw new Error(`${label}: undersized controls ${JSON.stringify(audit.controlsUnder32)}`);
@@ -2258,8 +2259,9 @@ async function inspectV4PreviewUserJourney(browser, fixture) {
     throw new Error(`V4 Preview journey did not preserve exact token identity: ${heading}`);
   }
   await page.locator('.vnChartState').getByText("Market data", { exact: true }).waitFor({ state: "visible" });
-  const chartText = await page.locator(".vnChart").innerText();
-  if (!chartText.includes("GeckoTerminal OHLCV")) {
+  await page.locator(".vnChartSources > summary").click();
+  const chartText = await page.locator(".vnChartSources").innerText();
+  if (!chartText.includes("GeckoTerminal · OHLCV")) {
     throw new Error(`V4 Preview journey did not render authoritative PoolId chart coverage: ${chartText}`);
   }
   if ((ohlcvRequests.get(page) ?? 0) < 1) throw new Error("V4 Preview journey did not request exact PoolId OHLCV coverage");
@@ -3830,5 +3832,5 @@ async function revealHolderSources(page) {
 }
 async function revealMarketsEvidence(page) {
   await page.locator(".rmtWorkspaceTabs").getByRole("tab", { name: "More", exact: true }).click();
-  await page.locator(".vnMoreDisclosure > summary").getByText("Markets", { exact: true }).click();
+  await page.locator(".vnMoreDisclosure > summary").filter({ hasText: /^Markets$/ }).click();
 }

@@ -108,15 +108,15 @@ try {
       await capture('partial-holders');
       if(mobile) await page.locator('.rmtMobileTradeDock .isBuy').click();
       const amount=page.getByLabel('Exact input amount',{exact:true});
-      await amount.waitFor();await amount.fill('0.0005');
-      await page.getByLabel('Pay with asset',{exact:true}).selectOption('eip155:4663/native');
+      await amount.waitFor();
+      await page.getByLabel('Pay with asset',{exact:true}).selectOption('eip155:4663/native');await amount.fill('0.0005');assert.equal(await amount.inputValue(),'0.0005');
       await capture('trade-ticket');
       if(mobile) await page.getByRole('button',{name:'Close trade sheet',exact:true}).last().click();
       // Distinct Stock Token surface, using an exact canonical positive-deny address.
       const stock='0x4a0e65a3eccec6dbe60ae065f2e7bb85fae35eea';
       const resolution={ chainId:4663,requestedAddress:stock,requestedKind:'token',status:'token-only',token:{address:stock,name:'SpaceX Stock Token',symbol:'SPCX',decimals:18,totalSupply:'1000000000000000000000000'},pools:[],marketData:'identity-only',execution:'view-only',provenance:'robinhood-chain-contract-reads',resolvedAt:new Date().toISOString() };
       const relationship={relationship:'canonical-stock-token',assetId:'stock:spcx',tokenName:'SpaceX Stock Token',tokenSymbol:'SPCX',contractAddress:stock,currentMultiplier:'1',status:'active',logoUrl:null,provenance:'robinhood-live-asset-registry'};
-      const stockMarket={...TOKEN_MARKETS[0],address:stock,assetId:`eip155:4663/contract:${stock}`,name:resolution.token.name,symbol:'SPCX',canonicalMarkets:[],stockAssetRelationships:[relationship],rwaRelationship:'canonical-stock-token',primaryMarket:{...TOKEN_MARKETS[0].primaryMarket,token:resolution.token,baseToken:resolution.token,executionEligibility:'view-only'},verifiedMarkets:[]};
+      const stockMarket={...TOKEN_MARKETS[0],address:stock,assetId:`eip155:4663/contract:${stock}`,name:resolution.token.name,symbol:'SPCX',canonicalMarkets:[],stockAssetRelationships:[relationship],rwaRelationship:'canonical-stock-token',primaryMarket:{...TOKEN_MARKETS[0].primaryMarket,assetId:`eip155:4663/contract:${stock}`,token:resolution.token,baseToken:resolution.token,executionEligibility:'view-only'},verifiedMarkets:[]};
       await page.route(/\/api\/markets\/external(?:\?.*)?$/,route=>route.fulfill({json:{markets:[stockMarket],source:'CONTROLLED_STOCK_REGISTRY_AND_MARKET',stockAssetCoverage:'complete',updatedAt:new Date().toISOString()}}));
       await page.route(/\/api\/vnext\/asset-identity(?:\?.*)?$/,route=>route.fulfill({json:{resolution}}));
       await page.route(/\/api\/vnext\/asset-workspace(?:\?.*)?$/,route=>route.fulfill({json:{resolution,stockAssetRelationships:[{relationship:'canonical-stock-token',assetId:'stock:spcx',tokenName:'SpaceX Stock Token',tokenSymbol:'SPCX',contractAddress:stock,currentMultiplier:'1',status:'active',logoUrl:null,provenance:'robinhood-live-asset-registry'}],stockAssetCoverage:'complete',updatedAt:new Date().toISOString()}}));

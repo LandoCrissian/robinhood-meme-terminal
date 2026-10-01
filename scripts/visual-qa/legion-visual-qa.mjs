@@ -270,7 +270,7 @@ async function startupLane(browser) {
   } catch (error) {
     throw new Error(`Delayed startup fixture did not render canonical rows. BODY=${(await delayedPage.locator("body").innerText()).slice(0, 2_000)}`, { cause: error });
   }
-  await delayedPage.getByText(/Canonical markets ready · market data delayed/).waitFor();
+  await delayedPage.getByText(/Market data delayed/).waitFor();
   const delayedRows = await delayedPage.locator(".rmtMobileMarketRow").allTextContents();
   check(delayedRows.every((text) => !/Unavailable/.test(text)), "token-startup-delayed", "Provider failure produced repeated false Unavailable cells.", delayedRows);
   await delayedContext.close();
