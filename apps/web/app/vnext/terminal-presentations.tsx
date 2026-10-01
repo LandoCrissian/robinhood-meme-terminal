@@ -1,6 +1,8 @@
 "use client";
 
 import { TerminalIcon } from "./terminal-icon";
+import { ProjectDiscovery } from "./project-cards";
+import { RMT_DISCOVERABLE_PROJECTS } from "@rmt/shared/project-identity";
 import { assetPresentationClasses, type RmtAssetClass, ASSET_CLASS_LABELS } from "../../lib/vnext/asset-presentation";
 import { directoryCountsObserved } from "../../lib/vnext/directory-availability";
 import Image from "next/image";
@@ -167,7 +169,7 @@ function MarketCategoryNav({ view, counts, searchActive, activityCoveragePending
   onChange: (view: VNextMarketDirectoryView) => void;
   markets?: VNextDirectoryMarket[]; exploreClass?: RmtAssetClass; onExplore?: (value?: RmtAssetClass) => void;
 }) {
-  const taxonomy = (["LAUNCH", "PROJECT", "STABLECOIN", "STOCK_TOKEN"] as const).map(kind => ({ kind, count: markets.filter(m => assetPresentationClasses(m).includes(kind)).length })).filter(item => item.count > 0);
+  const taxonomy = (["LAUNCH", "PROJECT", "STABLECOIN", "STOCK_TOKEN"] as const).map(kind => ({ kind, count: kind === "PROJECT" ? RMT_DISCOVERABLE_PROJECTS.length : markets.filter(m => assetPresentationClasses(m).includes(kind)).length })).filter(item => item.count > 0);
   const viewButton = (candidate: typeof VNEXT_MARKET_DIRECTORY_VIEWS[number]) => <button type="button" key={candidate.id} className={!searchActive && !exploreClass && candidate.id === view ? "isActive" : ""} aria-pressed={!searchActive && !exploreClass && candidate.id === view} onClick={() => { onExplore?.(undefined); onChange(candidate.id); }}><span>{candidate.label}</span><small>{!countsObserved ? "—" : activityCoveragePending && ["active", "movers", "trending", "new"].includes(candidate.id) ? "…" : candidate.id === "held" ? heldCountLabel(walletReadStatus, counts.held) : counts[candidate.id]}</small></button>;
   return <nav className="rmtMarketViews" aria-label="Market categories">
     <div className="rmtPrimaryViews">{VNEXT_MARKET_DIRECTORY_VIEWS.filter(candidate => ["active", "new", "movers", "trending"].includes(candidate.id)).map(viewButton)}</div>
@@ -361,7 +363,7 @@ function DesktopMarkets(props: MarketPresentationProps) {
   return <section className="rmtDesktopMarketsView" id="rmt-markets" aria-labelledby="rmt-market-directory-heading">
     <header className="rmtMarketsHeading"><div><h1 id="rmt-market-directory-heading">Markets</h1><p>Robinhood Chain Token Markets</p></div><span className={`rmtDirectoryFreshness is${props.directoryStatus}`}><i aria-hidden="true" />{props.directoryStatus === "fallback" ? "Limited coverage" : props.directoryStatus === "ready" ? "Live markets" : props.directoryStatus === "stale" ? "Last loaded data" : props.directoryStatus === "loading" ? "Syncing" : "Delayed"}</span></header>
     <div className="rmtScannerControls"><MarketCategoryNav view={props.directoryView} counts={props.directoryViewCounts} searchActive={props.searchActive} activityCoveragePending={props.activitySnapshotPublished === false} countsObserved={directoryCountsObserved(props.directoryStatus, props.markets.length)} walletReadStatus={props.walletReadStatus} onChange={props.onDirectoryViewChange} markets={props.markets} exploreClass={exploreClass} onExplore={setExploreClass} /><span>{!directoryCountsObserved(props.directoryStatus, props.markets.length) ? "Markets updating" : props.activityCoveragePending ? `${props.markets.length} canonical markets · activity enrichment pending` : props.activityCoverageDelayed ? `${props.filteredMarkets.length} in view · market data delayed` : `${props.filteredMarkets.length} in view · routes checked on demand`}</span></div>
-    <DirectoryRows {...browseProps} />
+    {exploreClass === "PROJECT" && !props.searchActive ? <ProjectDiscovery /> : <>{props.searchActive ? <ProjectDiscovery query={props.query} /> : null}<DirectoryRows {...browseProps} /></>}
     <VNextChainPulseCard />
     <VNextCapitalFlowCard />
   </section>;
@@ -409,7 +411,7 @@ function MobileMarkets(props: MarketPresentationProps) {
     <MarketCategoryNav view={props.directoryView} counts={props.directoryViewCounts} searchActive={props.searchActive} activityCoveragePending={props.activitySnapshotPublished === false} countsObserved={directoryCountsObserved(props.directoryStatus, props.markets.length)} walletReadStatus={props.walletReadStatus} onChange={props.onDirectoryViewChange} markets={props.markets} exploreClass={exploreClass} onExplore={setExploreClass} />
     {!directoryCountsObserved(props.directoryStatus, props.markets.length) ? <p className="rmtSearchStatus isDelayed" role="status">Markets updating</p> : props.activityCoveragePending ? <p className="rmtSearchStatus" role="status">Market activity updating</p> : props.activityCoverageDelayed ? <p className="rmtSearchStatus isDelayed" role="status">Market data delayed</p> : null}
     <MarketSearch id="rmt-mobile-market-search" query={props.query} setQuery={props.setQuery} inputRef={props.marketSearch} onSubmit={props.onSearchSubmit} searchStatus={props.searchStatus} />
-    <DirectoryRows {...browseProps} mobile />
+    {exploreClass === "PROJECT" && !props.searchActive ? <ProjectDiscovery /> : <>{props.searchActive ? <ProjectDiscovery query={props.query} /> : null}<DirectoryRows {...browseProps} mobile /></>}
     <VNextChainPulseCard />
     <VNextCapitalFlowCard />
   </section>;

@@ -1,7 +1,7 @@
 import type { TokenPresentation } from "../../lib/vnext/token-presentation";
 import { safeExternalNavigationUrl } from "../../lib/vnext/external-navigation";
 import { TerminalIcon } from "./terminal-icon";
-import { ExplorerLink } from "./terminal-links";
+import Link from "next/link";
 
 export function TokenInformation({ presentation }: { presentation?: TokenPresentation }) {
   const visual = presentation?.visual;
@@ -20,7 +20,8 @@ export function ProjectInformation({ presentation }: { presentation?: TokenPrese
     <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Ecosystem</span><h3>Project</h3></div><TerminalIcon name="project" /></header>
     {projects.length ? projects.map(project => <article className="vnProjectIdentity" key={project.projectId}>
       <h4>{project.displayName}</h4>
-      <div className="vnProjectAssets">{project.assets.map(asset => <ExplorerLink kind="token" value={asset.contract} key={asset.contract}><TerminalIcon name={asset.kind === "ERC20" ? "market" : "project"} /><span><strong>{asset.kind === "ERC20" ? "Token" : "NFT collection"}</strong><code>{asset.contract.slice(0, 6)}…{asset.contract.slice(-4)}</code></span><TerminalIcon name="external" /></ExplorerLink>)}</div>
+      <div className="vnProjectAssets">{project.assets.map(asset => <Link href={asset.kind === "ERC20" ? `/?market=${asset.contract}&project=${project.projectId}` : `/projects/${project.projectId}#${asset.contract.toLowerCase()}`} key={asset.contract}><TerminalIcon name={asset.kind === "ERC20" ? "market" : "project"} /><span><strong>{asset.kind === "ERC20" ? "Token" : "NFT collection"}</strong><span>{asset.symbol ?? asset.name ?? `${asset.contract.slice(0, 6)}…${asset.contract.slice(-4)}`}</span></span><TerminalIcon name="chevron" /></Link>)}</div>
+      <Link className="rmtProjectExplore" href={`/projects/${project.projectId}`}>Explore project <TerminalIcon name="chevron" /></Link>
       {project.links.map(link => { const href = safeExternalNavigationUrl(link.url); return href ? <a key={link.url} href={href} target="_blank" rel="noopener noreferrer">{link.label} <TerminalIcon name="external" /></a> : null; })}
       <details className="vnEvidenceDetails"><summary>Evidence &amp; Sources</summary><p>Owner-confirmed project relationships · presentation only</p>{project.assets.map(asset => <p key={asset.contract}><code>{asset.contract}</code><br />{asset.relationship} · {asset.observedAt}</p>)}{project.officialEvidence.map(item => <a href={safeExternalNavigationUrl(item.url) ?? undefined} key={item.url} target="_blank" rel="noopener noreferrer">{item.kind}</a>)}</details>
     </article>) : <p className="vnCompactEmpty">Project not linked yet</p>}

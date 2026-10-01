@@ -108,7 +108,7 @@ export default async function NftProjectMarketPage({ params, searchParams }: { p
   const collection = identity.project.collections[0]!;
   const openSea = identity.project.links.find((link) => link.label === "OpenSea collection");
   return <main className={styles.page} data-nft-project-known-identity>
-    <nav className={inventoryStyles.breadcrumb} aria-label="NFT Terminal breadcrumb"><Link href="/nft">← NFTs</Link></nav>
+    <nav className={inventoryStyles.breadcrumb} aria-label="NFT Terminal breadcrumb"><Link href="/nft">← NFTs</Link><Link href={`/projects/${projectId}`}>Project Market</Link></nav>
     <header className={styles.hero} data-nft-project-identity-rail><div><p className={styles.eyebrow}>PROJECT MARKET</p><h1>{identity.project.displayName}</h1><p className={styles.identity}>{collection.standard} · Robinhood Chain · 4663</p></div><div className={styles.projectAuthority}><span className={styles.curated}>RMT CURATED</span>{openSea ? <a href={openSea.url} target="_blank" rel="noreferrer">OpenSea ↗</a> : null}</div><a className={styles.contract} href={`${robinhoodChain.blockExplorers.default.url}/address/${collection.contractAddress}`} target="_blank" rel="noreferrer">{collection.contractAddress}</a></header>
     <nav className={styles.marketViews} aria-label="Collection market views"><a href="#items">Items</a><a href="#activity">Activity</a><a href="#holders">Holders</a><a href="#intelligence">Intelligence</a></nav>
     <section className={styles.metrics} id="holders" data-nft-market-tape aria-label={`${identity.project.displayName} project market metrics`}>

@@ -8,6 +8,7 @@ import {
   readNftProjectInventory,
   readNftProjectItem,
   readNftProjectOnchain,
+  readNftProjectWalletOwnership,
   type NftInventoryRpc,
 } from './project-read.js';
 
@@ -55,6 +56,15 @@ export function createNftIndexerServer(
     }
     const parsed = request.method === 'GET' && request.url ? new URL(request.url, 'http://nft-indexer.internal') : null;
     const inventoryMatch = parsed?.pathname.match(/^\/internal\/v1\/projects\/([a-z0-9-]+)\/inventory$/);
+    const ownershipMatch = parsed?.pathname.match(/^\/internal\/v1\/projects\/([a-z0-9-]+)\/ownership\/([^/]+)$/);
+    if (ownershipMatch && pool) {
+      if (!isNftIndexerReadAuthorized(request.headers.authorization, readToken)) {
+        response.statusCode = 401; response.end(JSON.stringify({ error: 'unauthorized' })); return;
+      }
+      try { response.end(JSON.stringify(await readNftProjectWalletOwnership(pool, ownershipMatch[1]!, ownershipMatch[2]!))); }
+      catch (error) { response.statusCode = error instanceof NftProjectReadInputError ? 400 : error instanceof NftProjectNotFoundError ? 404 : 503; response.end(JSON.stringify({ error: 'ownership unavailable' })); }
+      return;
+    }
     const itemMatch = parsed?.pathname.match(/^\/internal\/v1\/projects\/([a-z0-9-]+)\/items\/([^/]+)$/);
     if ((inventoryMatch || itemMatch) && pool && inventoryRpc) {
       if (!isNftIndexerReadAuthorized(request.headers.authorization, readToken)) {
