@@ -37,7 +37,7 @@ export function VNextTerminalShell({ initialLocation = { context: "markets" }, i
   const identity = useRmtIdentity();
   const account = useAccount();
   const [context, setContext] = useState<TerminalContext>(initialLocation.context);
-  const [tradeOpen, setTradeOpen] = useState(false);
+  const [tradeOpen, setTradeOpen] = useState(initialLocation.context === "asset" && Boolean(initialLocation.side));
   const [dismissedExecutionHash, setDismissedExecutionHash] = useState<string>();
   const [query, setQuery] = useState("");
   const [walletReadSnapshot, setWalletReadSnapshot] = useState<VNextWalletReadSnapshot>({
@@ -49,7 +49,9 @@ export function VNextTerminalShell({ initialLocation = { context: "markets" }, i
     walletKey: null
   });
   const [portfolioRevealRequest, setPortfolioRevealRequest] = useState(0);
-  const [tradeSideRequest, setTradeSideRequest] = useState<TradeSideRequest>();
+  const [tradeSideRequest, setTradeSideRequest] = useState<TradeSideRequest | undefined>(
+    initialLocation.context === "asset" && initialLocation.side ? { side: initialLocation.side, nonce: 0 } : undefined
+  );
   const [directoryView, setDirectoryView] = useState<VNextMarketDirectoryView>("active");
   const [visibleMarketLimit, setVisibleMarketLimit] = useState(VNEXT_MARKET_DIRECTORY_PAGE_SIZE);
   const marketSearch = useRef<HTMLInputElement>(null);
@@ -256,7 +258,10 @@ export function VNextTerminalShell({ initialLocation = { context: "markets" }, i
   }, [selected, selectedExecutionState, tradeOpen, writeLocation]);
 
   useEffect(() => {
+    let firstSynchronization = true;
     const synchronizeFromLocation = () => {
+      const initialSynchronization = firstSynchronization;
+      firstSynchronization = false;
       const epoch = ++locationSyncEpoch.current;
       const location = parseVNextTerminalLocation(window.location.search);
       if (location.context === "portfolio") {
@@ -280,7 +285,13 @@ export function VNextTerminalShell({ initialLocation = { context: "markets" }, i
           }
           setContext("asset");
           if (location.side && vNextSelectedMarketExecutionState(selectedMarket) === "normal") {
-            setTradeSideRequest({ side: location.side, nonce: Date.now() });
+            // The initial server destination already owns this side request.
+            // A delayed directory response cannot replay it over a typed draft
+            // or the recovery snapshot. Later back/forward requests remain explicit.
+            const initialSideAlreadyApplied = initialSynchronization && initialLocation.context === "asset"
+              && initialLocation.market.toLowerCase() === location.market.toLowerCase()
+              && initialLocation.side === location.side;
+            if (!initialSideAlreadyApplied) setTradeSideRequest({ side: location.side, nonce: Date.now() });
             setTradeOpen(true);
           } else {
             setTradeOpen(false);

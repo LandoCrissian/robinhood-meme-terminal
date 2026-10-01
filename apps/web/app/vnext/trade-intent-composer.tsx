@@ -126,8 +126,8 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
   executionUiState: VNextExecutionUiState;
   canonicalMarket?: VNextUniversalMarketSearchPool;
 }) {
-  const [side, setSide] = useState<TradeSide>("buy");
-  const [amount, setAmount] = useState(DEFAULT_BUY_AMOUNT);
+  const [side, setSide] = useState<TradeSide>(sideRequest?.side ?? "buy");
+  const [amount, setAmount] = useState(sideRequest?.side === "sell" ? "" : DEFAULT_BUY_AMOUNT);
   const [buyInputKey, setBuyInputKey] = useState<string>();
   const [sellOutputKey, setSellOutputKey] = useState(assetKey(ROBINHOOD_USDG.id));
   const [quoteState, setQuoteState] = useState<
@@ -223,7 +223,7 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
   }, [amount, buyInputKey, selectedMarketAddress, sellOutputKey, side]);
   const continuedApproval = useRef<string | undefined>(undefined);
   const preparedApprovalAuthority = useRef<VNextApprovalAuthority | undefined>(undefined);
-  const autoFitBuyAmount = useRef(true);
+  const autoFitBuyAmount = useRef(sideRequest?.side !== "sell");
   const backgroundQuoteEpoch = useRef(0);
   const preparationStartedAt = useRef({ key: "", at: 0 });
   const [responseDiagnostics, setResponseDiagnostics] = useState<ReturnType<typeof appendResponseDiagnostic>>([]);
