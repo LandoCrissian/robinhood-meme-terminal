@@ -640,9 +640,9 @@ export function TradeIntentComposer({ quoteActive = true, marketName, marketSymb
   const displayVerification = visibleVerification ?? retainedVerification;
   const displayRoutePresentation = displayVerification
     ? vNextProviderRoutePresentation({ provider: displayVerification.provider, route: displayVerification.route }) : null;
-  const displayPlan = authorizationState.state === "ready" ? authorizationState.plan
-    : (authorizationState.state !== "error" && verificationState.state !== "error"
-      && publishedPreparation.current === preparationContext ? lastReadyPlan.current : undefined);
+  const displayPlan = publishedPreparation.current !== preparationContext ? undefined
+    : authorizationState.state === "ready" ? authorizationState.plan
+    : (authorizationState.state !== "error" && verificationState.state !== "error" ? lastReadyPlan.current : undefined);
   const expectedOutput = visibleVerification
     ? formatAtomicOrBaseUnits(visibleVerification.expectedOutputAtomic, pair?.outputAsset.decimals)
     : retainedVerification
