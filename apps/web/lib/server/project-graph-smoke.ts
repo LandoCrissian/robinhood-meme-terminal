@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { getAddress, type Address } from "viem";
-import { RMT_DISCOVERABLE_PROJECTS, projectById, projectsForContract, searchProjects, projectRelationships, defineRmtProjectIdentity } from "@rmt/shared/project-identity";
+import { RMT_DISCOVERABLE_PROJECTS, projectById, projectsForContract, searchProjects, projectRelationships, projectCollectionLink, defineRmtProjectIdentity } from "@rmt/shared/project-identity";
 import { exactHolderOverlap, summarizeProjectOwnership, projectsRepresentedInWallet, parseProjectOwnershipFact, type ProjectAssetOwnership } from "@rmt/shared/project-ownership";
 import { readProjectOwnership } from "./project-ownership-reader";
 import { readRmtNftWalletOwnership } from "./nft-project-market";
@@ -21,6 +21,15 @@ assert.equal(projectRelationships(canna).filter(edge => edge.type === "PROJECT_H
 assert.ok(RMT_DISCOVERABLE_PROJECTS.every(project => projectRelationships(project).every(edge => edge.evidence.length > 0)), "Every admitted asset/link edge retains explicit evidence");
 const multi = defineRmtProjectIdentity({ ...canna, projectId: "controlled-multiple", assets: [...canna.assets, { ...canna.assets[1]!, contract: other }] });
 assert.equal(multi.assets.length, 3);
+assert.equal(projectCollectionLink(canna, canna.assets[1]!.contract)?.url, "https://opensea.io/collection/cannacats");
+assert.equal(projectCollectionLink(canna, canna.assets[0]!.contract), null, "Token cannot inherit an NFT destination");
+const secondCollectionUrl = "https://opensea.io/collection/controlled-second-collection";
+const multiDestinations = defineRmtProjectIdentity({ ...multi,
+  links: [...multi.links, { label: "OpenSea", url: secondCollectionUrl }],
+  assets: multi.assets.map(asset => asset.contract === other ? { ...asset, evidence: asset.evidence!.map(e => e.class === "PROVIDER_VERIFIED" ? { ...e, source: secondCollectionUrl } : e) } : asset)
+});
+assert.equal(projectCollectionLink(multiDestinations, other)?.url, secondCollectionUrl, "Each collection keeps its exact evidenced destination");
+assert.equal(projectCollectionLink({ ...canna, links: [] }, canna.assets[1]!.contract), null, "Missing marketplace links remain optional");
 const tokenOnly = defineRmtProjectIdentity({ ...canna, projectId: "controlled-token-only", assets: [canna.assets[0]!] });
 assert.equal(tokenOnly.assets.length, 1);
 for (const asset of canna.assets) {

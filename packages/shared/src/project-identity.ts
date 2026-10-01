@@ -103,3 +103,14 @@ export function projectsForContract(address: string) {
   if (!isAddress(address, { strict: false })) return [];
   return RMT_PROJECT_IDENTITIES.filter(project => project.assets.some(asset => asset.contract.toLowerCase() === address.toLowerCase()));
 }
+
+/** Collection destinations require evidence attached to that exact asset.
+ * A project's first marketplace link cannot stand in for all its collections. */
+export function projectCollectionLink(project: RmtProjectIdentity, contract: string) {
+  const asset = project.assets.find(item => item.kind !== "ERC20" && item.contract.toLowerCase() === contract.toLowerCase());
+  return project.links.find(link => {
+    const url = new URL(link.url);
+    return url.hostname === "opensea.io" && /^\/collection\/[^/]+\/?$/.test(url.pathname)
+      && asset?.evidence?.some(evidence => evidence.class === "PROVIDER_VERIFIED" && evidence.source === link.url);
+  }) ?? null;
+}
