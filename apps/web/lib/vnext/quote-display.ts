@@ -12,4 +12,3 @@ export function quoteDisplayPhase(input: {
 export function compactOutputTerms(atomic: string | null | undefined, decimals: number | null | undefined) {
   return atomic != null && decimals == null ? "Exact output available in base units" : null;
 }
-
