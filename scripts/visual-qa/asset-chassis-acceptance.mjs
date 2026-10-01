@@ -53,6 +53,9 @@ try {
       if(await consent.isVisible()) await consent.click();
       await page.locator(mobile?'.rmtMobileMarketRow':'.rmtMarketTableRow').first().waitFor();
       if (!baseline) {
+        await page.waitForFunction(()=>typeof window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_SET_STATE__==='function');
+        assert.equal(await page.evaluate(()=>Boolean(window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_STATE__?.authenticated)),false,'Visual SDK boundary remains signed out');
+        await page.getByRole('button',{name:'Sign in',exact:true}).first().waitFor();
         const skip=page.locator('.vnSkipLink'); await skip.focus();
         const bounds=await skip.boundingBox(); assert.ok(bounds&&bounds.height>=44,'Keyboard skip action is exposed at usable size');
         await skip.blur();
@@ -223,7 +226,8 @@ try {
         assert.equal(await page.locator('.vnChartFrame svg').count(),0,'Unavailable Stock chart is never fabricated');
       }
       assert.deepEqual(errors,[]);
-      results.push({viewport,scope:'CONTROLLED_EXTERNAL_HTTP_REAL_PUBLIC_COMPONENTS_EMULATED_VIEWPORT',presentationProfile:'PUBLIC_CAPABILITY_ENABLED_SIGNED_OUT_NO_ACCEPTANCE_IDENTITY_NO_PRIVY_APP_CONFIGURATION',states,measuredRanges,requests,errors,walletRequests:0});
+      assert.ok(await page.getByRole('button',{name:'Sign in',exact:true}).first().isVisible(),'Real identity bridge exposes the normal signed-out entry under the controlled SDK boundary');
+      results.push({viewport,scope:'CONTROLLED_EXTERNAL_HTTP_AND_PRIVY_SDK_REAL_PUBLIC_COMPONENTS_EMULATED_VIEWPORT',presentationProfile:'EXISTING_PRIVY_BRIDGE_ACCEPTANCE_PROFILE_SIGNED_OUT_NO_USER_WALLET_OR_IDENTITY_TOKEN',states,measuredRanges,requests,errors,walletRequests:0});
     } catch(error) {
       failures.push({viewport,message:error.message});
       console.error(`${viewport.width}: ${error.message}`);
@@ -239,13 +243,13 @@ assert.deepEqual(failures,[]);
 if (!baseline) {
   const primary = ['375-ordinary-full','390-ordinary-full','430-ordinary-full','1440-ordinary-full','390-markets','1440-markets','390-stock-token','1440-stock-token'];
   const secondary = ['390-activity','390-holders','390-project','390-position','390-more','390-evidence-sources','390-populated-social-links-controlled','390-social-provenance-controlled','390-stale-chart','390-chart-unavailable','390-markets-explore','390-markets-context-unavailable','1440-activity','1440-holders','1440-project','1440-more','1440-populated-social-links-controlled','1440-markets-explore'];
-  const source = { head:process.env.RMT_REVIEWED_HEAD??execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(), tree:execFileSync('git',['rev-parse','HEAD^{tree}'],{encoding:'utf8'}).trim(), scope:'CONTROLLED_EXTERNAL_DATA_REAL_PUBLIC_COMPONENTS_SIGNED_OUT_EMULATED_VIEWPORTS', configuration:'LOCAL_NONCREDENTIAL_ZEROX_READINESS_CONFIGURATION_NO_PRIVY_APP_ID_NO_ACCEPTANCE_IDENTITY', primary, secondary };
+  const source = { head:process.env.RMT_REVIEWED_HEAD??execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(), tree:execFileSync('git',['rev-parse','HEAD^{tree}'],{encoding:'utf8'}).trim(), scope:'CONTROLLED_EXTERNAL_HTTP_AND_PRIVY_SDK_REAL_PUBLIC_COMPONENTS_SIGNED_OUT_EMULATED_VIEWPORTS', configuration:'EXISTING_PRIVY_BRIDGE_ACCEPTANCE_PROFILE_SIGNED_OUT_LOCAL_NONCREDENTIAL_ZEROX_READINESS_CONFIGURATION', primary, secondary };
   const cards = await Promise.all([...primary,...secondary].map(async (name,index) => {
     const file = `${name}${index<primary.length?'-viewport':''}.png`;
     const png = (await readFile(path.join(output,file))).toString('base64');
     return `<figure><figcaption>${name}${name.includes('controlled')?' · CONTROLLED SOCIAL URLS, NOT PRODUCTION LINKS':''}</figcaption><a href="${name}.png"><img src="data:image/png;base64,${png}" alt="${name}" loading="lazy"></a></figure>`;
   }));
   await writeFile(path.join(output,'review-set.json'),JSON.stringify(source,null,2));
-  await writeFile(path.join(output,'FINAL_AFTER_REVIEW.html'),`<!doctype html><html lang="en"><meta charset="utf-8"><title>PR559 final product review</title><style>body{margin:24px;background:#0b0e0c;color:#f4f7f3;font:16px system-ui}p{line-height:1.6;overflow-wrap:anywhere}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px}figure{margin:0}figcaption{margin:12px 0;font-size:14px}img{width:100%;height:auto;border:1px solid #314337;border-radius:12px}a{color:#82f28f}</style><h1>PR559 final after review</h1><p>Head ${source.head}<br>Tree ${source.tree}</p><p>Controlled external market/holder data, real public RMT components, signed out. Local noncredential 0x readiness configuration enables the existing ticket. No Privy app ID, acceptance identity or live wallet is configured; the desktop identity-unavailable message is truthful for this fixture, not evidence of production failure. Emulated viewports, not physical iPhones. Social URLs are controlled-only. These captures prove presentation, not production activation or financial acceptance. Click a capture for the full-page image.</p><h2>Primary product surfaces</h2><main>${cards.slice(0,8).join('')}</main><h2>Secondary and degraded states</h2><main>${cards.slice(8).join('')}</main></html>`);
+  await writeFile(path.join(output,'FINAL_AFTER_REVIEW.html'),`<!doctype html><html lang="en"><meta charset="utf-8"><title>PR559 final product review</title><style>body{margin:24px;background:#0b0e0c;color:#f4f7f3;font:16px system-ui}p{line-height:1.6;overflow-wrap:anywhere}main{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:24px}figure{margin:0}figcaption{margin:12px 0;font-size:14px}img{width:100%;height:auto;border:1px solid #314337;border-radius:12px}a{color:#82f28f}</style><h1>PR559 final after review</h1><p>Head ${source.head}<br>Tree ${source.tree}</p><p>Controlled external market/holder data, real public RMT components, signed out. Local noncredential 0x readiness configuration and the existing Privy SDK boundary fixture enable the normal signed-out ticket. The real RMT PrivyIdentityBridge mounts; no authenticated user, identity token or wallet is injected. Production configuration is not used or changed. Emulated viewports, not physical iPhones. Social URLs are controlled-only. These captures prove presentation, not production activation or financial acceptance. Click a capture for the full-page image.</p><h2>Primary product surfaces</h2><main>${cards.slice(0,8).join('')}</main><h2>Secondary and degraded states</h2><main>${cards.slice(8).join('')}</main></html>`);
 }
 console.log(JSON.stringify({viewports:results.map(r=>({viewport:r.viewport,states:r.states.length,walletRequests:r.walletRequests})),failures}));
