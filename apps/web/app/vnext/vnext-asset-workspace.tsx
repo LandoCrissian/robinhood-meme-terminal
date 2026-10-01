@@ -117,16 +117,10 @@ function poolSwapFeeLabel(fee: number | null, version: number, protocol = "unisw
 
 function WorkspacePosition({
   directoryMarket,
-  walletAssets,
-  executionState,
-  executionUiState,
-  onTradeSide
+  walletAssets
 }: {
   directoryMarket: VNextDirectoryMarket;
   walletAssets: VNextDetectedWalletAsset[];
-  executionState: VNextSelectedMarketExecutionState;
-  executionUiState: VNextExecutionUiState;
-  onTradeSide: (side: "buy" | "sell") => void;
 }) {
   const { address, isConnected } = useAccount();
   const holding = walletAssets.find((asset) => asset.address.toLowerCase() === directoryMarket.address.toLowerCase());
@@ -139,18 +133,11 @@ function WorkspacePosition({
       <div><span className="vnEyebrow">Your wallet</span><h3 id="vn-position-heading">Position</h3></div>
       <span>{address ? shortAddress(address) : "Not connected"}</span>
     </header>
-    <div className="vnPositionValue">
-      <span><small>Holdings</small><strong>{!isConnected ? "Sign in to view holdings" : hasPosition ? `${units.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${directoryMarket.symbol}` : units === 0 ? "No holdings" : "Balance unavailable"}</strong></span>
+    {!isConnected ? <p className="vnPositionEmpty">Sign in to view your holdings.</p> : units === null ? <p className="vnPositionEmpty">Balance unavailable</p> : <div className="vnPositionValue">
+      <span><small>Holdings</small><strong>{hasPosition ? `${units.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${directoryMarket.symbol}` : "No holdings"}</strong></span>
       <span><small>Estimated current value</small><strong>{positionValue === null ? "—" : formatUsd(positionValue)}</strong></span>
-    </div>
-    {executionState === "stock-token-view-only" ? <>
-      <div className="vnPositionActions isViewOnly"><button type="button" disabled>View only</button></div>
-      <p className="vnStockTokenViewOnlyPolicy">Official Robinhood Stock Tokens are view-only in RMT until jurisdiction controls are available.</p>
-    </> : executionState === "asset-only" ? <>
-      <div className="vnPositionActions isViewOnly"><button type="button" disabled>Asset only</button></div>
-      <p className="vnStockTokenViewOnlyPolicy">Onchain identity is verified. No supported market evidence is attached, so execution is not evaluated.</p>
-    </> : <div className="vnPositionActions"><button className="isBuy" type="button" onClick={() => onTradeSide("buy")}>{executionUiState === "preview-only" ? "Buy quote" : "Buy"}</button><button className="isSell" type="button" disabled={!hasPosition} onClick={() => onTradeSide("sell")}>{executionUiState === "preview-only" ? "Sell quote" : "Sell"}</button></div>}
-    <footer>Wallet holdings · estimated value at the displayed market price.</footer>
+    </div>}
+    {isConnected && units !== null ? <footer>Wallet holdings · estimated value at the displayed market price.</footer> : null}
   </section>;
 }
 
@@ -494,9 +481,7 @@ export function VNextAssetWorkspace({
   directoryMarket,
   identityStatus,
   walletAssets,
-  executionState,
-  executionUiState,
-  onTradeSide
+  executionState
 }: {
   presentation: "desktop" | "mobile";
   directoryMarket: VNextDirectoryMarket;
@@ -571,7 +556,7 @@ export function VNextAssetWorkspace({
     ? market ? <WorkspaceActivity market={market} /> : <div className="vnWorkspaceCard vnCompactEmpty" role="status">Activity is not available yet</div>
     : section === "evidence" ? <WorkspaceEvidence market={market} directoryMarket={directoryMarket} tokenIdentityVerified={tokenIdentityVerified} />
     : section === "project" ? <ProjectInformation presentation={workspace.presentation} />
-    : section === "position" ? <WorkspacePosition directoryMarket={directoryMarket} walletAssets={walletAssets} executionState={executionState} executionUiState={executionUiState} onTradeSide={onTradeSide} />
+    : section === "position" ? <WorkspacePosition directoryMarket={directoryMarket} walletAssets={walletAssets} />
     : <div className="vnMoreSurface">
       <section className="vnWorkspaceCard">
         <header className="vnWorkspaceCardHead"><h3>Market details</h3><TerminalIcon name="market" /></header>

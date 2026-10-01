@@ -225,7 +225,7 @@ assert.match(workspace, /Displayed price source, project origin and selected exe
 assert.match(workspace, /hasVerifiedRwaRelationship/);
 assert.match(workspace, /Stock-token classification/);
 assert.match(workspace, /RMT does not infer RWA status from a name, symbol, or trading pair/);
-assert.match(workspace, /Sign in to view holdings/);
+assert.match(workspace, /Sign in to view your holdings/);
 assert.match(workspace, /Wallet holdings · estimated value at the displayed market price/);
 assert.match(workspace, /Creation evidence/);
 assert.match(workspace, /source-listed|sourceName/);
@@ -286,7 +286,7 @@ assert.match(primaryAction, /return !input\.authorizationEnabled[\s\S]*\|\| inpu
 assert.match(composer, /stockTokenViewOnly \|\| previewOnly \? "Buy quote" : "Buy"/);
 assert.match(composer, /stockTokenViewOnly \|\| previewOnly \? "Sell quote" : "Sell"/);
 assert.match(presentations, /props\.executionUiState === "preview-only" \? "Buy quote" : "Buy"/);
-assert.match(workspace, /executionUiState === "preview-only" \? "Buy quote" : "Buy"/);
+assert.doesNotMatch(workspace, /vnPositionActions/, "Position does not duplicate the persistent trading controls");
 assert.match(composer, /identity\.activeWalletKind === null/);
 assert.match(composer, /identity\.activeWalletKind !== null/, "Embedded and deliberately selected external wallets can both become exact trade signers");
 assert.match(composer, /identity\.login\(\)/);
