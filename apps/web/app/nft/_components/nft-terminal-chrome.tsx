@@ -5,6 +5,7 @@ import styles from "../nft-terminal-shell.module.css";
 
 const primaryLinks = [
   { href: "/", label: "Markets", active: false },
+  { href: "/projects", label: "Projects", active: false },
   { href: "/nft", label: "NFTs", active: true },
   { href: "/?panel=portfolio", label: "Portfolio", active: false },
   { href: "/?panel=distribution", label: "Distribution", active: false },
@@ -20,7 +21,6 @@ export function NftTerminalChrome() {
 
       <nav className={styles.desktopNav} aria-label="RMT Terminal navigation">
         {primaryLinks.map((link) => <Link key={link.label} href={link.href} aria-current={link.active ? "page" : undefined}>{link.label}</Link>)}
-        <Link href="/?view=rwa">RWA</Link>
       </nav>
 
       <span className={styles.mode}>NFT INTELLIGENCE</span>

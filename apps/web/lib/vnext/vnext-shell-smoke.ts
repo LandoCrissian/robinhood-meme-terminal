@@ -200,7 +200,7 @@ for (const metric of ["TVL", "DEX volume 24h", "DEX volume 7d", "DEX change 24h"
 }
 assert.match(chainPulseStyles, /\.disclosure:focus-visible/);
 assert.match(chainPulseStyles, /min-height: 60px/);
-assert.match(presentations, /data-terminal-nav="rwa"[\s\S]*onClick=\{props\.onShowRwa\}>RWA<\/button>/);
+assert.match(presentations, /data-terminal-nav="projects" href="\/projects">Projects<\/Link>/);
 assert.doesNotMatch(presentations, /<details className="rmtMobileDiscovery"/);
 assert.doesNotMatch(presentations, /href="\/rwa"/);
 assert.doesNotMatch(shell, /href: "\/portfolio"|href="\/portfolio"/);

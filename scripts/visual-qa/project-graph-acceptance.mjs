@@ -34,6 +34,27 @@ try {
   const capture=async name=>{const measurements=await page.evaluate(()=>({overflow:Math.max(0,document.documentElement.scrollWidth-innerWidth),walletRequests:window.__projectWalletRequests}));assert.equal(measurements.overflow,0,name);assert.equal(measurements.walletRequests,0);await page.screenshot({path:path.join(output,`${viewport.width}-${name}.png`),fullPage:true});return measurements;};
   await page.goto(base,{waitUntil:'domcontentloaded',timeout:180000});const consent=page.getByRole('button',{name:'I understand',exact:false});await consent.waitFor({state:'visible',timeout:5000}).catch(()=>{});if(await consent.isVisible())await consent.click();
   await page.locator(mobile?'.rmtMobileMarketRow':'.rmtMarketTableRow').first().waitFor();
+  const primaryLabels=['Markets','Projects','NFTs','Portfolio','Distribution'];
+  const terminalNav=page.locator('nav[aria-label="Terminal navigation"]:visible');
+  assert.deepEqual((await terminalNav.locator('a,button').allTextContents()).map(label=>label.trim()),primaryLabels,'Five first-class product tabs in owner-selected order');
+  await terminalNav.getByRole('link',{name:'Projects',exact:true}).click();await page.locator('.rmtProjectGrid').waitFor();
+  const projectsNav=page.locator('nav[aria-label="RMT Terminal navigation"]:visible');
+  assert.deepEqual((await projectsNav.locator('a').allTextContents()).map(label=>label.trim()),primaryLabels);
+  assert.equal(await projectsNav.locator('[aria-current="page"]').innerText(),'Projects');
+  assert.equal(await page.locator('.rmtProjectCard').count(),4);
+  for(const [project,token,collection] of [['CannaCats','CANNACAT','CannaCats'],['Hopium Machines','HOPIUM','Hopium Machines'],['PEEPS · Founding Feathers','PEEPS','PEEP Founding Feathers']]) {
+   const card=page.getByRole('link',{name:`Explore ${project} project`,exact:true});
+   assert.ok(await card.locator('.rmtProjectPair').getByText(token,{exact:true}).isVisible());
+   assert.ok(await card.locator('.rmtProjectPair').getByText(collection,{exact:true}).isVisible());
+  }
+  const ccffCard=page.getByRole('link',{name:'Explore CCFF00 project',exact:true});
+  assert.equal(await ccffCard.locator('.rmtProjectPair.isNftLed').count(),1);
+  assert.equal(await ccffCard.locator('.rmtProjectPair').getByText('Token',{exact:true}).count(),0);
+  await capture('projects-landing');
+  await page.getByRole('link',{name:'Explore CannaCats project',exact:true}).click();await page.locator('[data-project-market="cannacats"]').waitFor();
+  assert.equal(await page.locator('nav[aria-label="RMT Terminal navigation"]:visible [aria-current="page"]').innerText(),'Projects');
+  await page.locator('nav[aria-label="RMT Terminal navigation"]:visible').getByRole('link',{name:'Markets',exact:true}).click();
+  await page.locator(mobile?'.rmtMobileMarketRow':'.rmtMarketTableRow').first().waitFor();
   await page.locator('.rmtExplore>summary').first().click();await page.locator('.rmtExploreChoices button').filter({hasText:'Projects'}).click();
   assert.equal(await page.locator('.rmtProjectCard').count(),4);await capture('projects-discovery');
   for(const query of ['CannaCats','CANNACAT',canna,nft,'Founding Feathers']) {
