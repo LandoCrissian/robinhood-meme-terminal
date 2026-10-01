@@ -6299,6 +6299,7 @@ body .rmtTerminal button {
 .vnHolderOverview { display: grid; gap: 12px; }
 .vnPositionValue strong { font-size: 23px; overflow-wrap: anywhere; }
 .vnPositionCard footer { font-size: 12px; }
+.vnPositionEmpty { margin: 12px 0 0; color: var(--vn-text-secondary); font-size: 14px; }
 .vnChartStyle { display: none; }
 .vnChart { overflow: visible; }
 .vnChartFrame { padding: 0; overflow: hidden; }

@@ -19,6 +19,7 @@ The `before/` screenshots are LIVE PUBLIC SIGNED-OUT evidence from the authorize
 | POLISH | Inconsistent text arrows/social treatments and oversized contract actions | One stroke icon component; labelled, focusable 44px controls. |
 | POLISH | Missing project identity/description became explanatory regions | “Project not linked yet”; omit absent descriptions. |
 | POLISH | Unknown balances looked like no holdings; copied relationship provenance was too broad | Distinguish unknown balance from zero; show each recorded relationship authority. |
+| POLISH | Position repeated the persistent Buy/Sell controls and showed an empty valuation grid while signed out | Keep one trading surface. Signed-out/unavailable holdings use a compact message; known balances retain their valuation. |
 | POLISH | Activity counts were ellipsized and null metrics said Unknown/Unavailable | Counts wrap; absent metrics use an em dash without inventing zero. |
 | POLISH | The external-wallet selector exposed “injected signer” and protocol terminology beside Buy/Sell | “Trading wallet” labels and actionable browser guidance; exact provider selection and binding remain unchanged. |
 

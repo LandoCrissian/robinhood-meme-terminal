@@ -102,6 +102,13 @@ try {
       await pause(220);
       for(const name of baseline?['Activity','Safety','Markets','Position','Origin']:['Activity','Holders','Project','Position','More']) {
         await page.getByRole('tab',{name,exact:true}).click();
+        if(!baseline&&name==='Position') {
+          const position=page.locator('.vnPositionCard');
+          assert.equal(await position.getByRole('button').count(),0,'Position does not duplicate the persistent Buy/Sell controls');
+          assert.equal(await position.locator('.vnPositionValue').count(),0,'Signed-out Position has no empty valuation grid');
+          assert.ok(await position.getByText('Sign in to view your holdings.',{exact:true}).isVisible());
+          assert.ok((await position.boundingBox()).height<=180,'Unavailable Position is compact');
+        }
         await capture(name.toLowerCase());
       }
       if(!baseline) {
