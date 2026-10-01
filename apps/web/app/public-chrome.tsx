@@ -65,11 +65,11 @@ function VisiblePublicChrome({ pathname }: { pathname: string }) {
           </Link>
 
           <div className="publicNavLinks">
-            <PublicLink href="/">Terminal</PublicLink>
-            <PublicLink href="/markets/robinhood-chain">Markets</PublicLink>
+            <PublicLink href="/">Markets</PublicLink>
+            <PublicLink href="/projects">Projects</PublicLink>
             <PublicLink href="/nft">NFTs</PublicLink>
-            <PublicLink href="/protection">Protection</PublicLink>
-            <PublicLink href="/watchlist">Watchlist</PublicLink>
+            <PublicLink href="/?panel=portfolio">Portfolio</PublicLink>
+            <PublicLink href="/?panel=distribution">Distribution</PublicLink>
             <span className="networkPulse" aria-label={`${isMainnetRelease ? "Robinhood Chain Mainnet" : "Robinhood Chain Testnet"} live`}><i aria-hidden="true" />RHC <b>{isMainnetRelease ? "MAINNET" : "TESTNET"}</b></span>
           </div>
 
@@ -103,11 +103,11 @@ function VisiblePublicChrome({ pathname }: { pathname: string }) {
       </header>
 
       <nav className="mobileDock" aria-label="Mobile navigation">
-        <PublicLink href="/"><span aria-hidden="true">◉</span>Terminal</PublicLink>
-        <PublicLink href="/markets/robinhood-chain"><span aria-hidden="true">⌕</span>Markets</PublicLink>
+        <PublicLink href="/"><span aria-hidden="true">◉</span>Markets</PublicLink>
+        <PublicLink href="/projects"><span aria-hidden="true">◇</span>Projects</PublicLink>
         <PublicLink href="/nft"><span aria-hidden="true">▣</span>NFTs</PublicLink>
-        <PublicLink href="/watchlist"><span aria-hidden="true">☆</span>Watchlist</PublicLink>
-        <PublicLink href="/protection"><span aria-hidden="true">◇</span>Protection</PublicLink>
+        <PublicLink href="/?panel=portfolio"><span aria-hidden="true">☆</span>Portfolio</PublicLink>
+        <PublicLink href="/?panel=distribution"><span aria-hidden="true">↗</span>Distribution</PublicLink>
       </nav>
     </>
   );

@@ -340,8 +340,8 @@ async function terminalNavigation(page, state, activeLabel) {
   const nav = page.locator('nav[aria-label="Terminal navigation"]:visible');
   await nav.waitFor();
   const labels = (await nav.locator("a,button").allTextContents()).map((label) => label.trim());
-  const primary = labels.slice(0, 4);
-  const aligned = JSON.stringify(primary) === JSON.stringify(["Markets", "NFTs", "Portfolio", "Distribution"]);
+  const primary = labels.slice(0, 5);
+  const aligned = JSON.stringify(primary) === JSON.stringify(["Markets", "Projects", "NFTs", "Portfolio", "Distribution"]);
   const active = await nav.locator('[aria-current="page"]').allTextContents();
   crossSurfaceNavigationViolations += Number(!aligned) + Number(!active.includes(activeLabel));
   check(aligned, state, "Global market navigation is not aligned across RMT surfaces.", { primary });
@@ -708,8 +708,8 @@ async function nftPage(browser, viewport, platform, testCase) {
 
   const expectedUrl = new URL(route, base);
   const nftNav = page.locator('nav[aria-label="RMT Terminal navigation"]:visible');
-  const nftPrimary = (await nftNav.locator("a").allTextContents()).map((label) => label.trim()).slice(0, 4);
-  const nftNavAligned = JSON.stringify(nftPrimary) === JSON.stringify(["Markets", "NFTs", "Portfolio", "Distribution"]);
+  const nftPrimary = (await nftNav.locator("a").allTextContents()).map((label) => label.trim()).slice(0, 5);
+  const nftNavAligned = JSON.stringify(nftPrimary) === JSON.stringify(["Markets", "Projects", "NFTs", "Portfolio", "Distribution"]);
   const nftActive = await nftNav.locator('[aria-current="page"]').allTextContents();
   const walletReturnTo = await page.locator("[data-nft-wallet-return-to]").getAttribute("data-nft-wallet-return-to");
   crossSurfaceNavigationViolations += Number(!nftNavAligned) + Number(!nftActive.includes("NFTs")) + Number(walletReturnTo !== expectedUrl.pathname);

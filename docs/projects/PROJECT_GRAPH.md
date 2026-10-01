@@ -62,8 +62,16 @@ in the existing intake remains a separate worker-admission process.
 
 ## Product and API surfaces
 
-Explore → Projects and universal terminal search use only verified graph entries,
-including NFT-led projects with no directory token row. `/projects` searches
+Owner product amendment: the first-class primary navigation is **Markets |
+Projects | NFTs | Portfolio | Distribution**. Projects means verified Token↔NFT
+Project Markets, with the explicitly permitted CCFF00 NFT-led flagship; it is not
+an arbitrary project directory. The `/projects` landing cards show exact token
+and NFT collection identities together immediately, while CCFF00 has no invented
+token side. Mobile uses compact cards; desktop shows a paired-market directory.
+Deep intelligence and provenance stay inside the selected Project Market.
+
+Explore → Projects remains a secondary entry. Universal terminal search uses
+only verified graph entries, including NFT-led projects with no directory token row. `/projects` searches
 project names, token names/symbols/contracts and collection names/contracts.
 `/projects/[projectId]` is the Project Market: per-asset token market observations,
 collection identity, independent ownership summaries, links and progressive
@@ -81,6 +89,9 @@ changes token, wallet, amount, asset or chart.
 The browser regression holds a real workspace market-read response until after
 amount entry and a nonterminal caret are established, then measures the actual
 response publication. It separately covers a delayed 503 on a Project Market.
+The browser regression also enters Projects directly from the top-level tab,
+checks all five product tabs and active state, validates each paired card and the
+NFT-led exception, then returns to Markets through the ordinary navigation.
 The four viewport profiles are emulated and use controlled external responses;
 they are not a physical iPhone or a live authenticated quote acceptance.
 

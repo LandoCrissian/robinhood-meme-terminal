@@ -1174,7 +1174,6 @@ async function inspectDesktop(browser, viewport, label) {
   const headerNavigation = page.locator(".rmtDesktopHeader nav");
   const headerMarkets = headerNavigation.locator('[data-terminal-nav="markets"]');
   const headerPortfolio = headerNavigation.locator('[data-terminal-nav="portfolio"]');
-  const headerRwa = headerNavigation.locator('[data-terminal-nav="rwa"]');
   const search = page.getByRole("textbox", { name: "Search Robinhood Chain markets" });
   if (!(await headerNavigation.isVisible())) throw new Error(`${label}: desktop header navigation is unexpectedly hidden`);
   await headerMarkets.click();
@@ -1184,7 +1183,8 @@ async function inspectDesktop(browser, viewport, label) {
   await page.screenshot({ path: `${output}/portfolio-${label}.png`, fullPage: false, animations: "disabled" });
   await headerMarkets.click();
   await search.fill("R02");
-  await headerRwa.click();
+  await page.locator('.rmtExplore > summary').click();
+  await page.locator('.rmtExploreChoices button').filter({ has: page.locator('span', { hasText: /^RWA$/ }) }).click();
   await page.waitForTimeout(100);
   const rwaNavigation = await page.evaluate(() => ({
     pathname: window.location.pathname,
@@ -1194,9 +1194,9 @@ async function inspectDesktop(browser, viewport, label) {
     activeCategory: document.querySelector('.rmtMarketViews button[aria-pressed="true"] span')?.textContent ?? "",
     searchValue: document.querySelector("#rmt-desktop-market-search")?.value ?? null
   }));
-  if (rwaNavigation.pathname !== "/") throw new Error(`${label}: RWA header control navigated away from /`);
-  if (!rwaNavigation.terminalActive || rwaNavigation.publicChromePresent || rwaNavigation.notFound) throw new Error(`${label}: RWA header control escaped the canonical terminal ${JSON.stringify(rwaNavigation)}`);
-  if (rwaNavigation.activeCategory !== "RWA" || rwaNavigation.searchValue !== "") throw new Error(`${label}: RWA header control did not activate the RWA view and clear stale search ${JSON.stringify(rwaNavigation)}`);
+  if (rwaNavigation.pathname !== "/") throw new Error(`${label}: RWA Explore control navigated away from /`);
+  if (!rwaNavigation.terminalActive || rwaNavigation.publicChromePresent || rwaNavigation.notFound) throw new Error(`${label}: RWA Explore control escaped the canonical terminal ${JSON.stringify(rwaNavigation)}`);
+  if (rwaNavigation.activeCategory !== "RWA" || rwaNavigation.searchValue !== "") throw new Error(`${label}: RWA Explore control did not activate the RWA view and clear stale search ${JSON.stringify(rwaNavigation)}`);
   const rwaRows = page.locator(".rmtMarketTableRow");
   if (await rwaRows.count() !== 2) throw new Error(`${label}: RWA directory did not preserve both verified classifications`);
   if (!(await rwaRows.nth(0).textContent())?.includes("Stock Token")) throw new Error(`${label}: canonical Stock Token was not first or clearly labeled`);
