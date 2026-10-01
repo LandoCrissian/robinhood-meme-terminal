@@ -4,7 +4,7 @@ Authorized base: `2504da857f7fa237bf647ad655e5cf54c67fdb5a`. Starting head: `1a7
 
 ## Corrections
 
-- Price axes use 13px secondary-contrast, tabular labels. Narrow plots have four ticks; wider plots retain five. The observed domain, frame dimensions and chart/cache readers are unchanged. The compact mobile change/range label stays on one line; the chart caption omits the repeated token name on mobile and retains its delayed-data disclosure.
+- Price axes use 13px secondary-contrast, tabular labels. Narrow plots have four ticks; wider plots retain five. The observed domain, frame dimensions and chart/cache readers are unchanged. The compact mobile change/range label stays on one line; the chart caption omits the repeated token name on mobile and retains its delayed-data disclosure. The 44px style target is right-aligned within that same fixed header.
 - Market Details retains chain, venue, origin, contract and useful links. Pool IDs, source hosts, creator/creation evidence and link provenance move to Evidence & Sources. Link validation and accessible exact-contract actions remain.
 - Stock Tokens with no usable chart have a compact reference state, rather than an empty ordinary-token plot. Missing stock price/market evidence does not create a placeholder metric strip. Available reference charts retain the existing chart component. View-only policy is unchanged.
 - Chain Pulse and Capital Flow summaries show available observations or one concise unavailable message. Partial data does not become zero. Summaries wrap; detailed observations remain expandable. Explore still exposes only categories supported by loaded positive evidence.
