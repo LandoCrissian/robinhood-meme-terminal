@@ -183,7 +183,7 @@ export function VNextMarketChart({ token, pair, symbol, referencePriceUsd, refer
         <div className="vnChartHeadline">
           <span className="vnEyebrow">Price Chart</span>
           <div><strong id="vn-chart-title">{formatPrice(hovered?.close ?? referencePriceUsd ?? latest)}</strong><span className={positive ? "vnPositive" : "vnNegative"}>{candles.length ? `${positive ? "+" : "−"}${Math.abs(change).toFixed(2)}%` : "—"} · {range}</span></div>
-          <small>{hovered ? timeLabel(hovered.timestamp, range) : symbol} · {status === "stale" ? "Market data delayed" : sparse ? sparseHistoryLabel(range) : "Price history"}</small>
+          <small><span className="vnChartObservationLabel">{hovered ? timeLabel(hovered.timestamp, range) : symbol} · </span>{status === "stale" ? "Market data delayed" : sparse ? sparseHistoryLabel(range) : "Price history"}</small>
         </div>
         <div className="vnChartControls">
           <div className="vnChartModes" role="group" aria-label="Chart display">
