@@ -147,6 +147,10 @@ The subsequent account fixture exposed the same initial signed-out hydration
 mismatch. Quote-only preview tests also needed to deliberately open the nested
 Execution Evidence to inspect the unchanged non-executable provider disclosures;
 their zero verify/authorize/wallet-side-effect assertions remain enforced.
+The account/high-end capture workflows explicitly check out the PR head for
+artifact provenance. One account capture at an earlier revision timed out waiting
+for fonts during a screenshot after desktop onboarding passed; it is retained as
+an unsuccessful run, with no error suppression or skipped assertion.
 
 Production mutated: **NO**. Real financial actions: **0**. No merge/deployment,
 provider switch, fee/treasury change, Privy change, Project Graph population or

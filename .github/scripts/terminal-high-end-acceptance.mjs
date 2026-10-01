@@ -2978,8 +2978,8 @@ async function inspectWalletPromptReloadAndCrossTab(browser, fixture) {
     await page.locator(".vnWalletPrimaryReview").waitFor({ state: "visible" });
     const text = await page.locator(".vnRouteCard").innerText();
     for (const expected of [
-      "Verified request ready",
-      "Nothing opens automatically",
+      "Provider transaction",
+      "Only an explicit action opens your wallet",
       "Selected signer",
       "Deterministic browser wallet",
       "0x3333…3333",
