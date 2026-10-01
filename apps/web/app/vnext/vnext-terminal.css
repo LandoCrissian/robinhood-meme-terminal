@@ -6376,7 +6376,7 @@ body .rmtTerminal button {
   .rmtMobileAssetView .vnAssetStats dt { font-size: 10px; }
   .rmtMobileAssetView .vnAssetStats dd { font-size: 15px; }
   .rmtMobileAssetView .vnChart { height: 356px; min-height: 356px; border-radius: 14px; display: grid; grid-template-rows: 46px 48px 196px 44px 22px; }
-  .rmtMobileAssetView .vnChartHeader { min-height: 0; padding: 8px 12px 0; display: flex; flex-direction: row; flex-wrap: nowrap; }
+  .rmtMobileAssetView .vnChartHeader { min-height: 0; padding: 0 12px; display: flex; align-items: center; flex-direction: row; flex-wrap: nowrap; }
   .rmtMobileAssetView .vnChartHeadline { display: flex; align-items: center; gap: 10px; }
   .rmtMobileAssetView .vnChartHeadline .vnEyebrow { display: none; }
   .rmtMobileAssetView .vnChartHeadline > div { margin: 0; flex-shrink: 0; }
@@ -6384,7 +6384,7 @@ body .rmtTerminal button {
   .rmtMobileAssetView .vnChartHeadline > small { font-size: 11px; margin: 0; white-space: nowrap; }
   .rmtMobileAssetView .vnChartObservationLabel { display: none; }
   .rmtMobileAssetView .vnChartHeadline > div span { font-size: 11px; }
-  .rmtMobileAssetView .vnChartControls { overflow: visible; margin-left: auto; max-width: none; }
+  .rmtMobileAssetView .vnChartControls { width: auto; flex: 0 0 auto; overflow: visible; margin-left: auto; max-width: none; }
   .rmtMobileAssetView .vnChartModes { display: none; }
   .vnChartStyle { display: block; position: relative; }
   .vnChartStyle summary { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; }

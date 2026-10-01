@@ -81,6 +81,9 @@ try {
         const caption=await page.locator('.vnChartHeadline > small').evaluate(n=>({height:n.getBoundingClientRect().height,hiddenDuplicate:getComputedStyle(n.querySelector('.vnChartObservationLabel')).display}));
         assert.equal(caption.hiddenDuplicate,'none','Mobile chart does not duplicate token identity above its plot');
         assert.ok(caption.height<=22,'Mobile chart caption occupies one line inside the fixed header');
+        const header=await page.locator('.vnChartHeader').boundingBox();
+        const style=await page.locator('.vnChartStyle > summary').boundingBox();
+        assert.ok(style.x+style.width>=header.x+header.width-16&&style.y>=header.y&&style.y+style.height<=header.y+header.height+1,'44px mobile chart-style target stays right-aligned inside its fixed header');
       }
       await capture('ordinary-full');
       const measuredRanges=[];
