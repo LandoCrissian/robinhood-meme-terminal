@@ -52,6 +52,7 @@ export async function runMarketAnchorBrowser({ browser, base, external, output }
       };
       await page.goto(base);
       await page.getByRole('button', { name: 'I understand', exact: false }).click();
+      await page.locator('.rmtMarketViews .rmtExplore > summary').first().click();
       await page.getByRole('button', { name: /^All/ }).click();
       const rows = page.locator(mobile ? '.rmtMobileMarketRow' : '.rmtMarketTableRow');
       await rows.first().waitFor();
