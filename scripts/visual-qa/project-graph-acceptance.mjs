@@ -109,6 +109,9 @@ try {
   const aligned=await measure();assert.ok(marketWaiters.length>0,'Real workspace enrichment request is pending while the input is focused');const responsesBefore=marketResponses;holdMarket=false;marketWaiters.splice(0).forEach(resolve=>resolve());await new Promise(r=>setTimeout(r,10000));assert.ok(marketResponses>responsesBefore,'Delayed market evidence actually arrived');const after=await measure();assert.equal(after.value,before.value);assert.equal(after.payment,before.payment);assert.equal(after.section,before.section);assert.equal(after.range,'6H');assert.ok(after.dock,'Persistent action measured on both desktop and mobile');assert.equal(after.focus,true);assert.equal(after.start,3);assert.equal(after.scrollY,aligned.scrollY);assert.deepEqual(after.amount,aligned.amount);assert.deepEqual(after.dock,aligned.dock);assert.deepEqual(after.chart,aligned.chart);await capture('project-enrichment-isolation');
   // A normal deep-link navigation must render its deliberate Sell side before
   // client directory/identity work, rather than later clearing an entered amount.
+  // Start a fresh controlled ticket; wallet-return draft recovery is covered by
+  // the existing transaction journeys. Never remove an execution/recovery journal.
+  await page.evaluate(()=>sessionStorage.removeItem('rmt:trade-draft-recovery:v1'));
   holdMarket=true;
   const sellResponse=await page.goto(`${base}/?market=${canna}&project=cannacats&side=sell`,{waitUntil:'domcontentloaded'});
   const initialTicket=await page.evaluate(html=>{const document=new DOMParser().parseFromString(html,'text/html');return {
