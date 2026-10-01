@@ -6381,7 +6381,8 @@ body .rmtTerminal button {
   .rmtMobileAssetView .vnChartHeadline .vnEyebrow { display: none; }
   .rmtMobileAssetView .vnChartHeadline > div { margin: 0; flex-shrink: 0; }
   .rmtMobileAssetView .vnChartHeadline strong { display: none; }
-  .rmtMobileAssetView .vnChartHeadline > small { font-size: 11px; margin: 0; }
+  .rmtMobileAssetView .vnChartHeadline > small { font-size: 11px; margin: 0; white-space: nowrap; }
+  .rmtMobileAssetView .vnChartObservationLabel { display: none; }
   .rmtMobileAssetView .vnChartHeadline > div span { font-size: 11px; }
   .rmtMobileAssetView .vnChartControls { overflow: visible; margin-left: auto; max-width: none; }
   .rmtMobileAssetView .vnChartModes { display: none; }

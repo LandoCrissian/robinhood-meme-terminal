@@ -74,6 +74,11 @@ try {
       await page.locator(mobile?'.rmtMobileMarketRow':'.rmtMarketTableRow').filter({hasText:'STONKBROKER'}).first().click();
       await page.locator('#vn-asset-heading').waitFor();
       await page.locator('.vnChartFrame svg').waitFor();
+      if(!baseline && mobile) {
+        const caption=await page.locator('.vnChartHeadline > small').evaluate(n=>({height:n.getBoundingClientRect().height,hiddenDuplicate:getComputedStyle(n.querySelector('.vnChartObservationLabel')).display}));
+        assert.equal(caption.hiddenDuplicate,'none','Mobile chart does not duplicate token identity above its plot');
+        assert.ok(caption.height<=22,'Mobile chart caption occupies one line inside the fixed header');
+      }
       await capture('ordinary-full');
       const measuredRanges=[];
       for(const range of ['5M','15M','1H','6H','24H','7D']) {
