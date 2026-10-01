@@ -1724,11 +1724,15 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
     await page.waitForFunction((tokenAddress) => new URL(location.href).searchParams.get("market")?.toLowerCase() === tokenAddress, hopiumToken);
     const hopiumDetails = await openAssetTechnicalDetails(page, `${label}-hopium-name`);
     await hopiumDetails.getByText("Uniswap V4", { exact: false }).first().waitFor({ state: "visible" });
+    const hopiumSources = hopiumDetails.locator(".vnMoreDisclosure").filter({ has: page.locator("summary", { hasText: "Evidence & Sources" }) });
+    if (!await hopiumSources.evaluate(node => node.open)) await hopiumSources.locator(":scope > summary").click();
+    const hopiumPoolEvidence = hopiumSources.getByRole("link", { name: "Open HOPIUM Uniswap V4 initialization evidence in Robinhood Chain explorer" });
+    await hopiumPoolEvidence.waitFor({ state: "visible" });
     hopiumEvidence = {
       textSearch: true,
       selectable: new URL(page.url()).searchParams.get("market")?.toLowerCase() === hopiumToken,
       canonicalV4Evidence: true,
-      poolIdPreserved: (await page.locator("body").innerText()).includes(`${hopiumPoolId.slice(0, 6)}…${hopiumPoolId.slice(-4)}`)
+      poolIdPreserved: (await hopiumPoolEvidence.innerText()).includes(`${hopiumPoolId.slice(0, 6)}…${hopiumPoolId.slice(-4)}`)
     };
     if (!Object.values(hopiumEvidence).every(Boolean)) throw new Error(`${label}: HOPIUM acceptance failed ${JSON.stringify(hopiumEvidence)}`);
     await page.getByRole("button", { name: "Markets", exact: true }).click();
