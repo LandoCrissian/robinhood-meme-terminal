@@ -71,11 +71,12 @@ function sparseHistoryLabel(range: ExternalChartRange) {
   return `Sparse ${labels[range]} market history`;
 }
 
-export function VNextMarketChart({ token, pair, symbol, referencePriceUsd }: {
+export function VNextMarketChart({ token, pair, symbol, referencePriceUsd, referenceOnly = false }: {
   token: string;
   pair: string | null;
   symbol: string;
   referencePriceUsd: number | null;
+  referenceOnly?: boolean;
 }) {
   const frame = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 920, height: 300 });
@@ -165,6 +166,7 @@ export function VNextMarketChart({ token, pair, symbol, referencePriceUsd }: {
   const latestPoint = geometry.points.at(-1);
   const candleWidth = Math.max(2.5, Math.min(11, geometry.usableWidth / Math.max(candles.length, 1) * 0.66));
   const volumeWidth = Math.max(2, Math.min(11, geometry.usableWidth / Math.max(candles.length, 1) - 1.5));
+  const axisIntervals = geometry.width < 520 ? 3 : 4;
 
   const changeMode = (next: ChartMode) => {
     setMode(next);
@@ -176,7 +178,7 @@ export function VNextMarketChart({ token, pair, symbol, referencePriceUsd }: {
   };
 
   return (
-    <section className="vnChart" aria-label={`${symbol} price chart`}>
+    <section className={`vnChart${referenceOnly && !candles.length ? " isReferenceEmpty" : ""}`} aria-label={`${symbol} price chart`}>
       <header className="vnChartHeader">
         <div className="vnChartHeadline">
           <span className="vnEyebrow">Price Chart</span>
@@ -212,9 +214,9 @@ export function VNextMarketChart({ token, pair, symbol, referencePriceUsd }: {
           onPointerLeave={() => setHoveredIndex(null)}
         >
           <defs><linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor={positive ? "#82f28f" : "#ff8c8c"} stopOpacity=".28" /><stop offset="1" stopColor={positive ? "#82f28f" : "#ff8c8c"} stopOpacity="0" /></linearGradient></defs>
-          {[0, 1, 2, 3, 4].map((row) => {
-            const y = geometry.top + row / 4 * (geometry.priceBottom - geometry.top);
-            const value = geometry.maximum - row / 4 * (geometry.maximum - geometry.minimum);
+          {Array.from({ length: axisIntervals + 1 }, (_, row) => {
+            const y = geometry.top + row / axisIntervals * (geometry.priceBottom - geometry.top);
+            const value = geometry.maximum - row / axisIntervals * (geometry.maximum - geometry.minimum);
             return <g className="vnChartGrid" key={row}><line x1={geometry.left} x2={geometry.width - geometry.right + 8} y1={y} y2={y} /><text x={geometry.width - 6} y={y + 4} textAnchor="end">{chartAxisPrice(value)}</text></g>;
           })}
           {mode === "line" ? <><path className="vnChartArea" d={geometry.area} fill={`url(#${gradientId})`} /><path className={positive ? "vnChartLine isUp" : "vnChartLine isDown"} d={geometry.line} />{sparse && latestPoint ? <circle className="vnChartSparsePoint" cx={latestPoint.x} cy={latestPoint.y} r="4" /> : null}</> : candles.map((candle, index) => {
@@ -230,7 +232,7 @@ export function VNextMarketChart({ token, pair, symbol, referencePriceUsd }: {
           })}
           {hoveredPoint && <g className="vnChartCrosshair"><line x1={hoveredPoint.x} x2={hoveredPoint.x} y1={geometry.top} y2={geometry.volumeBottom} /><line x1={geometry.left} x2={geometry.width - geometry.right + 8} y1={hoveredPoint.y} y2={hoveredPoint.y} /><circle cx={hoveredPoint.x} cy={hoveredPoint.y} r="4" /></g>}
           {latestPoint && <g className="vnChartLatest"><line x1={latestPoint.x} x2={geometry.width - geometry.right + 8} y1={latestPoint.y} y2={latestPoint.y} /><circle cx={latestPoint.x} cy={latestPoint.y} r="4" /></g>}
-        </svg> : <div className="vnChartEmpty" role="status"><strong>{status === "loading" ? "Loading market data" : status === "empty" ? "No recorded price history" : "Price history unavailable"}</strong><span>{status === "loading" ? "Your trade ticket is ready to use." : status === "empty" ? "No candles are reported for this token and range." : "Market data will retry quietly."}</span></div>}
+        </svg> : <div className="vnChartEmpty" role="status"><strong>{referenceOnly ? status === "loading" ? "Checking reference history" : status === "empty" ? "No reference history recorded" : "Reference history unavailable" : status === "loading" ? "Loading market data" : status === "empty" ? "No recorded price history" : "Price history unavailable"}</strong><span>{referenceOnly ? "The contract and available reference information remain accessible below." : status === "loading" ? "Your trade ticket is ready to use." : status === "empty" ? "No candles are reported for this token and range." : "Market data will retry quietly."}</span></div>}
       </div>
       <details className="vnChartSources"><summary>Evidence &amp; Sources</summary><dl><div><dt>Source</dt><dd>GeckoTerminal · OHLCV</dd></div><div><dt>Observed</dt><dd>{payload?.updatedAt ?? "Unavailable"}</dd></div><div><dt>State</dt><dd>{status === "stale" ? "Retained observation · market data delayed" : status === "ready" ? "Available" : status}</dd></div><div><dt>Pool</dt><dd>{payload?.pair ?? "Unavailable"}</dd></div></dl></details>
       <footer className="vnChartFooter"><span>{candles[0] ? timeLabel(candles[0].timestamp, range) : "—"}</span><span>{range} volume {candles.length ? formatVolume(totalVolume) : "—"}</span><span>{candles.at(-1) ? timeLabel(candles.at(-1)!.timestamp, range) : "—"}</span></footer>

@@ -45,11 +45,10 @@
 }
 
 .summaryIdentity > span {
-  overflow: hidden;
   color: var(--vn-text-secondary);
   font-size: 0.76rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .disclosureMeta {
@@ -151,9 +150,8 @@
   color: var(--vn-text);
   font-size: 0.94rem;
   font-weight: 560;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 .cardFooter {

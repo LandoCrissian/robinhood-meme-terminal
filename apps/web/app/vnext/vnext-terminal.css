@@ -6304,7 +6304,7 @@ body .rmtTerminal button {
 .vnChart { overflow: visible; }
 .vnChartFrame { padding: 0; overflow: hidden; }
 .vnChartFrame svg { height: 100%; min-height: 0; width: 100%; overflow: hidden; }
-.vnChartGrid text { font-size: 12px; font-weight: 500; }
+.vnChartGrid text { fill: var(--vn-text-secondary); font-size: 13px; font-weight: 550; font-variant-numeric: tabular-nums; }
 .vnChartHeader { padding: 16px 16px 8px; }
 .vnChartRanges { width: auto; margin: 0 16px 6px; max-width: none; }
 .vnChartRanges button { flex: 1; min-width: 40px; min-height: 44px; font-size: 12px; padding: 0 6px; }
@@ -6328,6 +6328,13 @@ body .rmtTerminal button {
 .rmtStockReadOnly h3 { font-size: 24px; margin: 0; }
 .rmtStockReadOnly p { color: var(--vn-text-secondary); font-size: 14px; line-height: 1.6; }
 .rmtStockReadOnly button { min-height: 48px; border: 1px solid var(--vn-border); border-radius: 12px; background: var(--vn-accent-soft); color: var(--vn-accent); }
+.rmtMobileAssetView .vnChart.isReferenceEmpty, .rmtDesktopAsset .vnChart.isReferenceEmpty { height: auto; min-height: 0; display: block; }
+.vnChart.isReferenceEmpty .vnChartHeader, .vnChart.isReferenceEmpty .vnChartRanges, .vnChart.isReferenceEmpty .vnChartFooter { display: none; }
+.vnChart.isReferenceEmpty .vnChartFrame { height: 96px; min-height: 96px; }
+.vnChart.isReferenceEmpty .vnChartEmpty { align-items: start; text-align: left; padding: 16px; }
+.vnChart.isReferenceEmpty .vnChartEmpty span { max-width: 48ch; }
+.vnAssetSourceLinks { margin: 12px 0; }
+.vnAssetSourceLinks a { min-height: 44px; display: inline-flex; align-items: center; }
 .rmtExplore { position: relative; margin: 10px 0 14px; }
 .rmtMobileMarketsView .rmtExplore { margin: 0; }
 .rmtMobileMarketsView > .rmtSearchStatus { min-height: 20px; margin: 0 10px 4px; padding: 0; border: 0; background: transparent; text-align: left; font-size: 11px; }
@@ -6349,6 +6356,11 @@ body .rmtTerminal button {
   .rmtDesktopAsset .vnChart { border-radius: 14px; }
   .rmtDesktopAsset .vnAssetWorkspace { padding: 20px; }
 }
+@media (min-width: 1024px) {
+  .rmtDesktopExecution .vnConfirmedBalance { align-items: start; flex-wrap: wrap; }
+  .rmtDesktopExecution .vnConfirmedBalance > span { flex: 1 1 120px; }
+  .rmtDesktopExecution .vnConfirmedBalance strong { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; }
+}
 @media (max-width: 1023px) {
   .rmtMobileAssetView .vnAssetWorkspace { padding: 14px; }
   .rmtMobileAssetView .vnAssetWorkspaceHeader { min-height: 60px; }
@@ -6367,7 +6379,7 @@ body .rmtTerminal button {
   .rmtMobileAssetView .vnChartHeader { min-height: 0; padding: 8px 12px 0; display: flex; flex-direction: row; flex-wrap: nowrap; }
   .rmtMobileAssetView .vnChartHeadline { display: flex; align-items: center; gap: 10px; }
   .rmtMobileAssetView .vnChartHeadline .vnEyebrow { display: none; }
-  .rmtMobileAssetView .vnChartHeadline > div { margin: 0; }
+  .rmtMobileAssetView .vnChartHeadline > div { margin: 0; flex-shrink: 0; }
   .rmtMobileAssetView .vnChartHeadline strong { display: none; }
   .rmtMobileAssetView .vnChartHeadline > small { font-size: 11px; margin: 0; }
   .rmtMobileAssetView .vnChartHeadline > div span { font-size: 11px; }

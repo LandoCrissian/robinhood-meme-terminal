@@ -70,14 +70,17 @@ export function VNextCapitalFlowCard() {
   const status: VNextCapitalFlowCardStatus = state.status;
   const loading = status === "loading";
   const context = loading ? "Waiting for market context" : change === null ? "Flow unavailable" : change > 0 ? "Stablecoin liquidity expanding" : change < 0 ? "Stablecoin liquidity contracting" : "Stablecoin liquidity unchanged";
+  const summary = loading ? "Checking stablecoin liquidity · No values reported yet"
+    : [stablecoins === null ? null : `Stablecoins ${formatTerminalCompactUsd(stablecoins)}`, change === null ? null : `${formatTerminalPercent(change)} 7d`].filter(Boolean).join(" · ") || "Stablecoin context unavailable";
   const metricValue = (value: number | null, formatter: (amount: number) => string) => loading ? "Checking…" : value === null ? "Unavailable" : formatter(value);
   return <section className={styles.chainPulseCard} aria-label="Robinhood Chain capital flow" aria-live="polite" data-chain-pulse-expanded={expanded}>
     <button className={styles.disclosure} type="button" aria-expanded={expanded} aria-controls={detailsId} onClick={() => setExpanded((current) => !current)}>
-      <span className={styles.summaryIdentity}><strong>Capital Flow</strong><span>{loading ? "Checking stablecoin liquidity · No values reported yet" : `Stablecoins ${stablecoins === null ? "Unavailable" : formatTerminalCompactUsd(stablecoins)} · ${change === null ? "7d unavailable" : `${formatTerminalPercent(change)} 7d`} · ${context}`}</span></span>
+      <span className={styles.summaryIdentity}><strong>Capital Flow</strong><span>{summary}</span></span>
       <span className={styles.disclosureMeta}><small>{capitalFlowStatusLabel(status)}</small><span className={styles.chevron} aria-hidden="true">⌄</span></span>
     </button>
     {expanded ? <div className={styles.details} id={detailsId}>
       <header className={styles.cardHeader}><div><h2 className={styles.cardTitle}>CAPITAL FLOW</h2><p className={styles.cardSubLabel}>Market context · DeFiLlama</p></div><span className={styles.cardStatus}>{capitalFlowStatusLabel(status)}</span></header>
+      <p className={styles.cardSubLabel}>{context}</p>
       <dl className={styles.metrics}>
         <div className={styles.metric}><dt>Stablecoin liquidity</dt><dd>{metricValue(stablecoins, formatTerminalCompactUsd)}</dd></div>
         <div className={styles.metric}><dt>Stablecoin change 7d</dt><dd>{metricValue(change, formatTerminalPercent)}</dd></div>
