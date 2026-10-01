@@ -464,8 +464,18 @@ export async function runZeroXWalletJourneys(options) {
               assert.equal(requests.length, 1);
               assert.equal(await page.locator('.vnWalletSubmission').count(), 1, 'expiry must retain the pending wallet response owner');
               assert.doesNotMatch(await page.locator('.vnTradePanel').innerText(), /Fresh swap verification passed|Verified request ready|Exact simulation passed/);
+              const pendingRequest = await page.evaluate(() => JSON.parse(localStorage.getItem('rmt:vnext-execution-journal:v1:4663')).walletRequests[0]);
+              assert.equal(pendingRequest.wallet.toLowerCase(), wallet);
+              assert.equal(pendingRequest.chainId, 4663);
               await page.reload({ waitUntil: 'domcontentloaded' });
-              await until(async () => /pending|unknown|recovery|waiting/i.test(await page.locator('body').innerText()), 'Durable recovery state missing');
+              const recovery = page.locator('.vnRecoveryBanner').filter({ hasText: 'Wallet request is still unresolved' });
+              await recovery.waitFor({ state: 'visible', timeout: 30000 });
+              assert.ok(await recovery.getByRole('button', { name: 'Recheck unresolved wallet request', exact: true }).isVisible());
+              const recoveredRequest = await page.evaluate(() => JSON.parse(localStorage.getItem('rmt:vnext-execution-journal:v1:4663')).walletRequests[0]);
+              assert.equal(recoveredRequest.requestId, pendingRequest.requestId, 'Reload retains the exact originating unresolved request');
+              assert.equal(recoveredRequest.wallet.toLowerCase(), wallet);
+              assert.equal(recoveredRequest.chainId, 4663);
+              assert.equal(recoveredRequest.state, 'UNRESOLVED');
               assert.equal(requests.length, 1, 'Recovery must not resubmit');
             } else if (scenario.startsWith('sell-approval-idle-')) {
               await exerciseRestoredQuoteState({page,api,requests,scenario,output,prefix,enableReceipts:()=>{receiptsEnabled=true;}});

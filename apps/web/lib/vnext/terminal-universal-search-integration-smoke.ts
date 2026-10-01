@@ -373,8 +373,8 @@ assert.ok(workspace.indexOf("if (admitted.length)") < workspace.indexOf("No cano
 assert.match(workspace, /workspaceCanonicalMarkets\(\{ \.\.\.directoryMarket, canonicalMarkets \}\)/);
 assert.match(workspace, /admitted\.slice\(0, 3\)/);
 assert.match(workspace, /All alternate canonical markets/);
-assert.match(workspace, /executionState === "asset-only"/);
-assert.match(workspace, /No supported market evidence is attached, so execution is not evaluated/);
+assert.doesNotMatch(workspace, /vnPositionActions/);
+assert.match(presentation, /No supported market evidence is attached, so execution is not evaluated/);
 assert.match(presentation, /executionUiState === "asset-only"/);
 assert.match(presentation, /Market evidence unavailable/);
 assert.match(presentation, /<button type="button" className="isViewOnly" disabled aria-describedby="rmt-asset-only">Asset only<\/button>/);
