@@ -964,7 +964,12 @@ async function inspectAssetQuickLinks(page, label) {
   });
   if (!audit.fullContractAccessible || !audit.copyAvailable) throw new Error(`${label}: selected asset contract is not fully accessible/copyable ${JSON.stringify(audit)}`);
   if (!audit.disclosureExpanded) throw new Error(`${label}: asset-link disclosure did not remain expanded ${JSON.stringify(audit)}`);
-  if (!audit.provenance.some((entry) => entry?.startsWith("Project links ·"))) throw new Error(`${label}: project-link provenance is missing ${JSON.stringify(audit)}`);
+  if (!audit.provenance.includes("Project links")) throw new Error(`${label}: project links are missing ${JSON.stringify(audit)}`);
+  if (/Canonical pool|Observed pool|V4 PoolId|Technical evidence/.test(await links.innerText())) throw new Error(`${label}: primary links still expose technical source evidence`);
+  const sources = technicalDetails.locator(".vnMoreDisclosure").filter({ has: page.locator("summary", { hasText: "Evidence & Sources" }) });
+  await sources.locator("summary").click();
+  if (!(await sources.innerText()).includes("Project links ·")) throw new Error(`${label}: project-link provenance was lost from Evidence & Sources`);
+  await sources.locator("summary").click();
   if (audit.anchors.length < 3) throw new Error(`${label}: selected asset quick links are unexpectedly sparse ${JSON.stringify(audit)}`);
   for (const anchor of audit.anchors) {
     if (!anchor.href?.startsWith("https://") || anchor.target !== "_blank" || !anchor.rel?.includes("noopener") || !anchor.rel?.includes("noreferrer") || !anchor.name) {

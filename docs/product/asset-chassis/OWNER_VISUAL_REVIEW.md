@@ -1,4 +1,6 @@
-# PR559 owner visual review
+# PR559 historical owner visual review
+
+The later narrowly scoped craftsmanship pass and new evidence qualifications are recorded in [FINAL_CRAFT_REVIEW.md](FINAL_CRAFT_REVIEW.md). Results below describe the original `9ad542f` captures; they are not the updated after verdicts.
 
 Captured implementation head: `9ad542fb18d79349f442d30602afc41df112d113`. Captured tree: `6f86eecb55f418cbad34e65425f5da84386ec076`. Authorized base: `2504da857f7fa237bf647ad655e5cf54c67fdb5a`.
 

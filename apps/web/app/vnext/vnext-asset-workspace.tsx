@@ -146,13 +146,15 @@ function WorkspaceQuickLinks({
   market,
   canonicalPool,
   observedPool,
-  canonicalMarket
+  canonicalMarket,
+  evidenceOnly = false
 }: {
   directoryMarket: VNextDirectoryMarket;
   market?: ExternalMarket;
   canonicalPool?: string;
   observedPool?: string;
   canonicalMarket?: VNextUniversalMarketSearchPool;
+  evidenceOnly?: boolean;
 }) {
   const [linksOpen, setLinksOpen] = useState(false);
   const projectLinks = safeSocialEntries(market?.project?.socials);
@@ -175,9 +177,20 @@ function WorkspaceQuickLinks({
     }
     return "Market";
   })();
-  const moreLinkCount = projectLinks.length + observedLinks.length
-    + (safeCreator ? 1 : 0)
-    + (safeCreationTransaction ? 1 : 0);
+  const moreLinkCount = projectLinks.length + observedLinks.length;
+
+  if (evidenceOnly) return <div className="vnAssetSourceLinks">
+    <div className="vnAssetQuickLinkRows">
+      {canonicalPool ? <ExplorerLink kind="pool" value={canonicalPool} accessibleName={`Open ${directoryMarket.symbol} canonical pool in Robinhood Chain explorer`}>Canonical pool ↗</ExplorerLink> : null}
+      {!canonicalPool && canonicalMarket?.version === 4 ? <ExplorerLink kind="transaction" value={canonicalMarket.transactionHash} accessibleName={`Open ${directoryMarket.symbol} Uniswap V4 initialization evidence in Robinhood Chain explorer`}>V4 PoolId {shortAddress(canonicalMarket.poolKey)} ↗</ExplorerLink> : null}
+      {!canonicalMarket && observedPool ? <ExplorerLink kind="pool" value={observedPool} accessibleName={`Open ${directoryMarket.symbol} observed pool in Robinhood Chain explorer`}>Observed pool ↗</ExplorerLink> : null}
+      <ExternalProjectLink href={marketUrl} accessibleName={`Open ${directoryMarket.symbol} market source`}>{marketHost} ↗</ExternalProjectLink>
+      {safeCreator ? <ExplorerLink kind="address" value={safeCreator} accessibleName={`Open reported creator address for ${directoryMarket.symbol}`}>Creator ↗</ExplorerLink> : null}
+      {safeCreationTransaction ? <ExplorerLink kind="transaction" value={safeCreationTransaction} accessibleName={`Open creation evidence for ${directoryMarket.symbol}`}>Creation ↗</ExplorerLink> : null}
+    </div>
+    {projectLinks.length ? <p>Project links · {market?.project ? externalProjectProvenanceLabel(market.project) : "cross-checked"}</p> : null}
+    {observedLinks.length ? <p>Observed from market metadata</p> : null}
+  </div>;
 
   return <section className="vnAssetQuickLinks" aria-label="Selected asset identity and links">
     <div className="vnAssetContractIdentity">
@@ -185,16 +198,12 @@ function WorkspaceQuickLinks({
       <ExplorerLink kind="token" value={directoryMarket.address} accessibleName={`Open ${directoryMarket.symbol} token contract in Robinhood Chain explorer`} className="rmtIconButton" ><TerminalIcon name="external" /></ExplorerLink>
     </div>
     <div className="vnAssetQuickLinkRows">
-      {canonicalPool ? <ExplorerLink kind="pool" value={canonicalPool} accessibleName={`Open ${directoryMarket.symbol} canonical pool in Robinhood Chain explorer`}>Canonical pool ↗</ExplorerLink> : null}
-      {!canonicalPool && canonicalMarket?.version === 4 ? <ExplorerLink kind="transaction" value={canonicalMarket.transactionHash} accessibleName={`Open ${directoryMarket.symbol} Uniswap V4 initialization evidence in Robinhood Chain explorer`}>V4 PoolId {shortAddress(canonicalMarket.poolKey)} ↗</ExplorerLink> : null}
-      {!canonicalMarket && observedPool ? <ExplorerLink kind="pool" value={observedPool} accessibleName={`Open ${directoryMarket.symbol} observed pool in Robinhood Chain explorer`}>Observed pool ↗</ExplorerLink> : null}
-      <ExternalProjectLink href={marketUrl} accessibleName={`Open ${directoryMarket.symbol} market source`}>{marketHost} ↗</ExternalProjectLink>
+      <ExternalProjectLink href={marketUrl} className="rmtIconButton" accessibleName={`Open ${directoryMarket.symbol} market`}><TerminalIcon name="market" /></ExternalProjectLink>
       {moreLinkCount ? <button className="vnMoreLinksButton" type="button" aria-expanded={linksOpen} aria-controls="vn-more-market-links" onClick={() => setLinksOpen((open) => !open)}>More links {moreLinkCount}<span aria-hidden="true">⌄</span></button> : null}
     </div>
     {linksOpen && moreLinkCount ? <div className="vnProjectLinkDisclosure" id="vn-more-market-links">
-      {(safeCreator || safeCreationTransaction) ? <div className="vnProjectLinkGroup"><small>Technical evidence</small><div>{safeCreator ? <ExplorerLink kind="address" value={safeCreator} accessibleName={`Open reported creator address for ${directoryMarket.symbol}`}>Creator ↗</ExplorerLink> : null}{safeCreationTransaction ? <ExplorerLink kind="transaction" value={safeCreationTransaction} accessibleName={`Open creation evidence for ${directoryMarket.symbol}`}>Creation ↗</ExplorerLink> : null}</div></div> : null}
-      {projectLinks.length ? <div className="vnProjectLinkGroup"><small>Project links · {market?.project ? externalProjectProvenanceLabel(market.project) : "cross-checked"}</small><div>{projectLinks.map((link) => <ExternalProjectLink href={link.href} className="rmtIconButton" socialKind={link.kind === "website" ? undefined : link.kind} accessibleName={`Open ${directoryMarket.symbol} project ${link.label}`} key={`${link.kind}:${link.href}`}><TerminalIcon name={link.kind === "website" ? "website" : link.kind === "x" ? "x" : link.kind === "telegram" ? "telegram" : "external"} /></ExternalProjectLink>)}</div></div> : null}
-      {observedLinks.length ? <div className="vnProjectLinkGroup isObserved"><small>Observed from market metadata</small><div>{observedLinks.map((link) => <ExternalProjectLink href={link.href} className="rmtIconButton" socialKind={link.kind === "website" ? undefined : link.kind} accessibleName={`Open ${directoryMarket.symbol} ${link.label} from market metadata`} key={`${link.kind}:${link.href}`}><TerminalIcon name={link.kind === "website" ? "website" : link.kind === "x" ? "x" : link.kind === "telegram" ? "telegram" : "external"} /></ExternalProjectLink>)}</div></div> : null}
+      {projectLinks.length ? <div className="vnProjectLinkGroup"><small>Project links</small><div>{projectLinks.map((link) => <ExternalProjectLink href={link.href} className="rmtIconButton" socialKind={link.kind === "website" ? undefined : link.kind} accessibleName={`Open ${directoryMarket.symbol} project ${link.label}`} key={`${link.kind}:${link.href}`}><TerminalIcon name={link.kind === "website" ? "website" : link.kind === "x" ? "x" : link.kind === "telegram" ? "telegram" : "external"} /></ExternalProjectLink>)}</div></div> : null}
+      {observedLinks.length ? <div className="vnProjectLinkGroup isObserved"><small>Social links</small><div>{observedLinks.map((link) => <ExternalProjectLink href={link.href} className="rmtIconButton" socialKind={link.kind === "website" ? undefined : link.kind} accessibleName={`Open ${directoryMarket.symbol} ${link.label} from market metadata`} key={`${link.kind}:${link.href}`}><TerminalIcon name={link.kind === "website" ? "website" : link.kind === "x" ? "x" : link.kind === "telegram" ? "telegram" : "external"} /></ExternalProjectLink>)}</div></div> : null}
     </div> : null}
   </section>;
 }
@@ -544,6 +553,7 @@ export function VNextAssetWorkspace({
   const hasVerifiedRwaRelationship = workspace.stockAssetRelationships.length > 0;
   const classes = assetPresentationClasses(directoryMarket);
   const primaryClass = executionState === "stock-token-view-only" ? "STOCK_TOKEN" : classes.includes("STABLECOIN") ? "STABLECOIN" : classes.includes("LAUNCH") ? "LAUNCH" : "TOKEN";
+  const showMarketSnapshot = executionState !== "stock-token-view-only" || priceUsd !== null || liquidityUsd !== null || volume24h !== null;
   const sections: readonly { id: typeof section; label: string; icon: TerminalIconName }[] = [
     { id: "activity", label: "Activity", icon: "activity" },
     { id: "evidence", label: "Holders", icon: "holders" },
@@ -572,7 +582,7 @@ export function VNextAssetWorkspace({
       <details className="vnMoreDisclosure"><summary>Markets</summary><div className="vnMarketEvidenceStack"><VerifiedMarkets directoryMarket={directoryMarket} canonicalMarkets={directoryMarket.canonicalMarkets} resolution={resolution} selectedPool={selectedChartIdentity} /><WorkspaceEcosystemIntelligence ecosystem={workspace.ecosystem} /></div></details>
       <details className="vnMoreDisclosure"><summary>Origin &amp; launch</summary><WorkspaceOrigin market={market} token={directoryMarket.address} launchpadEvidence={launchpadEvidence} /></details>
       {hasVerifiedRwaRelationship ? <details className="vnMoreDisclosure"><summary>RWA relationship</summary><WorkspaceRwaRelationships relationships={workspace.stockAssetRelationships} coverage={workspace.stockAssetCoverage} /></details> : null}
-      <details className="vnMoreDisclosure"><summary>Evidence &amp; Sources</summary><p>{tokenIdentityVerified ? "Onchain token identity proven" : "Identity enrichment unavailable"} · {workspace.status}</p><p data-market-provenance={selectedCanonicalMarket ? "canonical" : market ? "provider-observed" : "unavailable"}>{selectedCanonicalMarket ? "Canonical onchain market inventory" : market ? `Provider-observed market · ${market.dexId}` : "No market observation"}</p><PresentationSources presentation={workspace.presentation} /><p>Project origin, market observations and execution are separate authorities. Chart and enrichment availability do not determine swap availability.</p></details>
+      <details className="vnMoreDisclosure"><summary>Evidence &amp; Sources</summary><p>{tokenIdentityVerified ? "Onchain token identity proven" : "Identity enrichment unavailable"} · {workspace.status}</p><p data-market-provenance={selectedCanonicalMarket ? "canonical" : market ? "provider-observed" : "unavailable"}>{selectedCanonicalMarket ? "Canonical onchain market inventory" : market ? `Provider-observed market · ${market.dexId}` : "No market observation"}</p><WorkspaceQuickLinks evidenceOnly directoryMarket={directoryMarket} market={market} canonicalPool={selectedCanonicalMarket?.poolAddress ?? undefined} observedPool={observedChartPool} canonicalMarket={selectedCanonicalMarket} /><PresentationSources presentation={workspace.presentation} /><p>Project origin, market observations and execution are separate authorities. Chart and enrichment availability do not determine swap availability.</p></details>
     </div>;
 
   return <section className={`vnAssetPanel vnAssetWorkspace is${presentation}`} aria-labelledby="vn-asset-heading">
@@ -580,16 +590,16 @@ export function VNextAssetWorkspace({
       <div className="vnAssetWorkspaceIdentity"><TokenArtwork className="vnAssetWorkspaceMark" symbol={displaySymbol} contract={directoryMarket.address} imageUrl={directoryMarket.imageUri ?? canonicalStockRelationship?.logoUrl ?? workspace.presentation?.visual.data?.image ?? undefined} /><span><span className="vnEyebrow vnAssetClass" data-asset-class={primaryClass}>{ASSET_CLASS_LABELS[primaryClass]}</span><h2 id="vn-asset-heading" title={displayName}>{displayName} <b>{displaySymbol}</b></h2><small>Robinhood Chain · 4663</small></span></div>
       <div className="vnWorkspaceStatusGroup">{executionState === "stock-token-view-only" ? <strong className="vnStockTokenViewOnlyBadge">View only</strong> : null}<span className={`vnWorkspaceStatus is${workspace.status}`}><i aria-hidden="true" />{workspace.status === "ready" ? "Live evidence" : workspace.status === "partial" ? "Partial evidence" : workspace.status === "stale" ? "Last loaded" : workspace.status === "loading" ? "Loading evidence" : "Evidence unavailable"}</span></div>
     </header>
-    <div className="vnAssetPrice"><strong>{formatUsd(priceUsd)}</strong><span className={priceChange24h !== null && priceChange24h > 0 ? "vnPositive" : priceChange24h !== null && priceChange24h < 0 ? "vnNegative" : ""}>{priceChange24h === null ? "—" : `${priceChange24h > 0 ? "+" : ""}${priceChange24h.toFixed(1)}%`} <small>24h</small></span></div>
+    {showMarketSnapshot ? <><div className="vnAssetPrice"><strong>{formatUsd(priceUsd)}</strong><span className={priceChange24h !== null && priceChange24h > 0 ? "vnPositive" : priceChange24h !== null && priceChange24h < 0 ? "vnNegative" : ""}>{priceChange24h === null ? "—" : `${priceChange24h > 0 ? "+" : ""}${priceChange24h.toFixed(1)}%`} <small>24h</small></span></div>
     <small className="vnMarketSnapshotLabel">{workspace.presentation?.market.data ? workspace.presentation.market.state === "STALE" ? "GeckoTerminal · last observed" : "GeckoTerminal market snapshot" : "Market snapshot"}</small>
-    <dl className="vnAssetStats"><div><dt>{valuation.label}</dt><dd>{compactUsd(valuation.value)}</dd></div><div><dt>Liquidity</dt><dd>{compactUsd(liquidityUsd)}</dd></div><div><dt>24h volume</dt><dd>{compactUsd(volume24h)}</dd></div><div><dt>Market age</dt><dd>{formatAge(directoryMarket.ageMinutes)}</dd></div></dl>
+    <dl className="vnAssetStats"><div><dt>{valuation.label}</dt><dd>{compactUsd(valuation.value)}</dd></div><div><dt>Liquidity</dt><dd>{compactUsd(liquidityUsd)}</dd></div><div><dt>24h volume</dt><dd>{compactUsd(volume24h)}</dd></div><div><dt>Market age</dt><dd>{formatAge(directoryMarket.ageMinutes)}</dd></div></dl></> : null}
 
     {executionState === "stock-token-view-only" ? <section className="vnStockIdentitySurface" aria-label="Stock Token information">
       <span className="vnStockTokenViewOnlyBadge">View only</span><p>Robinhood Stock Token · reference and onchain information</p>
       {canonicalStockRelationship ? <dl><div><dt>Registry name</dt><dd>{canonicalStockRelationship.tokenName}</dd></div><div><dt>Registry symbol</dt><dd>{canonicalStockRelationship.tokenSymbol}</dd></div></dl> : null}
       <p>Trading is not supported in RMT. Token ownership does not establish rights to the underlying security.</p>
     </section> : null}
-    <VNextMarketChart token={directoryMarket.address} pair={selectedChartIdentity ?? null} symbol={displaySymbol} referencePriceUsd={priceUsd} />
+    <VNextMarketChart token={directoryMarket.address} pair={selectedChartIdentity ?? null} symbol={displaySymbol} referencePriceUsd={priceUsd} referenceOnly={executionState === "stock-token-view-only"} />
 
     <div className="vnIdentityActionBar" aria-label="Token contract and links"><CopyAddress address={directoryMarket.address} /><ExplorerLink kind="token" value={directoryMarket.address} className="rmtIconButton" accessibleName="Open token contract in explorer"><TerminalIcon name="external" /></ExplorerLink></div>
 

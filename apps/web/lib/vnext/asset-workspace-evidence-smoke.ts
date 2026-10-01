@@ -108,7 +108,9 @@ assert.match(workspaceSource, /vnMarketEvidenceStack[\s\S]*<VerifiedMarkets[\s\S
 assert.doesNotMatch(workspaceSource, /id: "ecosystem", label: "up\."/,
   "up. must not remain a permanent top-level workspace tab");
 assert.match(workspaceSource, /marketHost[\s\S]*DexScreener[\s\S]*GeckoTerminal/,
-  "Market actions must truthfully identify recognized external hosts");
+  "Evidence source links must truthfully identify recognized external hosts");
+assert.match(workspaceSource, /if \(evidenceOnly\) return[\s\S]*Canonical pool[\s\S]*V4 PoolId/,
+  "Technical pool links belong inside Evidence & Sources");
 assert.match(workspaceSource, /aria-expanded=\{linksOpen\}/,
   "Additional safe links must use an explicit accessible disclosure control");
 assert.match(workspaceSource, /More links \{moreLinkCount\}/,

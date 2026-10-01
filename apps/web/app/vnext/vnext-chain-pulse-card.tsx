@@ -105,11 +105,12 @@ function buildMetrics(pulse: ChainPulseCardPayload | undefined): CardMetric[] {
 }
 
 function buildSummary(pulse: ChainPulseCardPayload | undefined) {
-  return [
-    `24h volume ${formatUsd(pulse?.dexVolume24hUsd ?? null)}`,
-    formatPct(pulse?.dexChange1dPct ?? null),
-    `TVL ${formatUsd(pulse?.tvlUsd ?? null)}`
-  ].join(" · ");
+  const parts = [
+    pulse?.dexVolume24hUsd != null ? `24h volume ${formatUsd(pulse.dexVolume24hUsd)}` : null,
+    pulse?.dexChange1dPct != null ? formatPct(pulse.dexChange1dPct) : null,
+    pulse?.tvlUsd != null ? `TVL ${formatUsd(pulse.tvlUsd)}` : null
+  ].filter(Boolean);
+  return parts.length ? parts.join(" · ") : "Market context unavailable";
 }
 
 export function VNextChainPulseCard() {
@@ -150,7 +151,7 @@ export function VNextChainPulseCard() {
 
   const status = state.status === "error" ? "unavailable" : state.status;
   const metrics = buildMetrics(state.pulse);
-  const summary = buildSummary(state.pulse);
+  const summary = status === "loading" ? "Checking market context" : buildSummary(state.pulse);
 
   return (
     <section className={styles.chainPulseCard} aria-label="Robinhood chain pulse" aria-live="polite" data-chain-pulse-expanded={expanded}>

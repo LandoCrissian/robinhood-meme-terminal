@@ -74,7 +74,4 @@ Initial CI exposed old selectors for the former technical disclosure, primary ch
 Available chart, retained stale chart and later outage keep one reserved geometry to avoid moving the ticket or user's scroll. Their empty messages are compact; evidence does not become a large error panel. Holders, Project, Position and Activity omit or compact unavailable sections. No chart timestamp/freshness boundary was relaxed.
 
 
-See [owner visual review](OWNER_VISUAL_REVIEW.md) for the final contact-set inventory, candid defect/marketing assessment and [media inventory](MEDIA_INVENTORY.json). Before review-only binaries were removed from the final tree; capture manifests remain.
-
-
-See [owner visual review](OWNER_VISUAL_REVIEW.md) for the final contact-set inventory, candid defect/marketing assessment and [media inventory](MEDIA_INVENTORY.json). Before review-only binaries were removed from the final tree; capture manifests remain.
+See the [final craftsmanship review](FINAL_CRAFT_REVIEW.md), [historical owner visual review](OWNER_VISUAL_REVIEW.md) and [media inventory](MEDIA_INVENTORY.json). Before review-only binaries were removed from the final tree; capture manifests remain. New contact sheets, screenshots and recordings are generated/uploaded by visual CI.
