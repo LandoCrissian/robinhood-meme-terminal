@@ -1,5 +1,5 @@
 import { responseTradeFailure, type TradeFailure, type TradeFailureStage } from "./vnext/trade-failure";
-import { captureResponseDiagnostic, consumeResponseDiagnostic } from "./vnext/quote-response-diagnostic";
+import { captureResponseDiagnostic, captureTransportDiagnostic, consumeResponseDiagnostic } from "./vnext/quote-response-diagnostic";
 import { recordExperienceStage } from "./experience-funnel";
 import { quoteRequestKey, SHARED_QUOTE_CACHE_MS } from "./trade-speed";
 import { type TradeJourneyPhase } from "./vnext/trade-journey";
@@ -13,6 +13,7 @@ export type TradeQuoteFailureCode =
   | "invalid-response";
 
 export class TradeQuoteRequestError extends Error {
+  diagnostic?: ReturnType<typeof captureResponseDiagnostic>;
   readonly code: TradeQuoteFailureCode;
   readonly attempts: number;
   readonly status?: number;
@@ -145,13 +146,16 @@ async function requestOnce(
     };
   } catch (cause) {
     const timedOut = controller.signal.aborted;
-    throw new TradeQuoteRequestError(
+    const failure = new TradeQuoteRequestError(
       timedOut ? "timeout" : "network",
       timedOut
         ? "The route service did not answer before the protected quote timeout."
         : cause instanceof Error ? cause.message : "The route service could not be reached.",
       attempt
     );
+    failure.diagnostic = captureTransportDiagnostic(timedOut ? "timeout" : "network", endpoint.endsWith("/verify") ? "verification" : "quote",
+      Date.now() - startedAt, Date.now(), originGeneration, originalQuoteRequestId);
+    throw failure;
   } finally {
     clearTimeout(timeout);
   }
@@ -215,7 +219,12 @@ export function requestTradeQuote(
       } catch {
         // Diagnostic presentation must not change request results, retries, or execution.
       }
-    }, () => { /* No HTTP response evidence exists for a transport failure. */ });
+    }, (cause) => {
+      try {
+        const consumption = consumeResponseDiagnostic(cause instanceof TradeQuoteRequestError ? cause.diagnostic : undefined, consumerGeneration, reused);
+        if (consumption) observer(consumption);
+      } catch { /* Diagnostics cannot change retry, cancellation or execution. */ }
+    });
     return shared;
   };
   const key = `${options.identityScope ?? "anonymous"}:${quoteRequestKey(endpoint, body)}`;

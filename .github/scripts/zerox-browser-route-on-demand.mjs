@@ -1,3 +1,4 @@
+import { openExecutionEvidence } from './trade-details-browser.mjs';
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -189,7 +190,7 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
             assert.ok(api.some((entry) => entry.path === '/api/vnext/quotes' && entry.body?.attempts?.some((attempt) => attempt.provider === 'zero-x-swap' && attempt.status === 'no_route')));
             if (peepEntry) {
               assert.match(await page.locator('.vnTradePanel').innerText(), /No 0x route currently available/);
-              await page.locator('.vnRouteTop').click();
+              await page.locator('.vnRouteTop').click(); await openExecutionEvidence(page);
               await until(async () => (await page.locator('.vnTradePanel').innerText()).includes('No 0x route currently available for this trade.'), 'PEEP no-route evidence remains explicit under Advanced details');
             }
           } else {
@@ -216,7 +217,7 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
               throw new Error(`${error.message}: ${JSON.stringify({ balanceReads })}`, { cause: error });
             }
             assert.ok(api.some((entry) => entry.path === '/api/vnext/verify' && entry.status === 200));
-            await page.locator('.vnRouteTop').click();
+            await page.locator('.vnRouteTop').click(); await openExecutionEvidence(page);
             await page.locator('.vnWalletFeeDisclosure').waitFor();
             const bundle = currentAuthorization().body;
             assert.equal(bundle.plan.provider, 'zero-x-swap');

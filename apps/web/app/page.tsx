@@ -2,11 +2,19 @@ import "./vnext/vnext-terminal.css";
 import { notFound } from "next/navigation";
 import { vNextProductionShellReady } from "../lib/vnext/release-readiness";
 import { VNextTerminalShell } from "./vnext/vnext-terminal-shell";
+import { parseVNextTerminalLocation } from "../lib/vnext/terminal-location";
+import { projectTokenTerminalEntry } from "../lib/vnext/terminal-entry";
 
 export const dynamic = "force-dynamic";
 export { metadata } from "./vnext/page";
 
-export default function Home() {
+export default async function Home({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   if (!vNextProductionShellReady(process.env)) notFound();
-  return <VNextTerminalShell />;
+  const parameters = await searchParams;
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(parameters)) {
+    if (typeof value === "string") query.set(key, value);
+  }
+  const initialLocation = parseVNextTerminalLocation(query.toString());
+  return <VNextTerminalShell initialLocation={initialLocation} initialMarket={projectTokenTerminalEntry(initialLocation, query.get("project") ?? undefined)} />;
 }

@@ -1,8 +1,32 @@
 "use client";
 
+import { useState } from "react";
 import type { VNextExecutionRecord, VNextWalletRequestRecord } from "../../lib/vnext/execution-recovery";
 import { hasVerifiedVNextSwapSettlement } from "../../lib/vnext/output-settlement";
 import { ExplorerLink } from "./terminal-links";
+
+const dismissedHistory = new Set<string>();
+function historyKey(record: VNextExecutionRecord) { return `rmt:trade-history-notice:${record.wallet.toLowerCase()}:${record.txHash.toLowerCase()}`; }
+function historyDismissed(key: string) {
+  try { return dismissedHistory.has(key) || sessionStorage.getItem(key) === "dismissed"; }
+  catch { return dismissedHistory.has(key); }
+}
+function VerifiedTradeHistory({ record }: { record: VNextExecutionRecord }) {
+  const key = historyKey(record);
+  const [dismissedKey, setDismissedKey] = useState<string>();
+  if (dismissedKey === key || historyDismissed(key)) return null;
+  return <section className="vnHistoryAffordance" aria-label="Completed trade history">
+    <details><summary>Last completed trade</summary>
+      <small>Previously settled · <time dateTime={new Date(record.submittedAtMs).toISOString()}>{new Date(record.submittedAtMs).toLocaleString()}</time></small>
+      <ExplorerLink kind="transaction" value={record.txHash} accessibleName="Open historical verified swap">View historical transaction</ExplorerLink>
+    </details>
+    <button type="button" aria-label="Dismiss completed trade notice" onClick={() => {
+      dismissedHistory.add(key);
+      try { sessionStorage.setItem(key, "dismissed"); } catch { /* Dismissal never changes durable execution evidence. */ }
+      setDismissedKey(key);
+    }}>Dismiss</button>
+  </section>;
+}
 
 export function VNextExecutionRecoveryBanner({ record, walletRequest, status, onRecheckWalletRequest, walletRequestRecheckPending = false }: {
   record: VNextExecutionRecord | null;
@@ -25,11 +49,7 @@ export function VNextExecutionRecoveryBanner({ record, walletRequest, status, on
     <span><strong>Transaction confirmed. Swap settlement not yet verified.</strong><small>No successful purchase or proceeds are credited without exact output evidence. Do not repeat this trade to resolve the uncertainty.</small></span>
     <ExplorerLink kind="transaction" value={record.txHash} accessibleName="Inspect transaction with unverified swap settlement">View transaction</ExplorerLink>
   </section>;
-  if (record.kind === "swap" && status === "confirmed" && hasVerifiedVNextSwapSettlement(record)) return <section className="vnRecoveryBanner isconfirmed" role="status">
-    <span><strong>Verified swap history</strong><small>Previously recorded settlement. This is not confirmation of a new trade attempt.</small>
-      <small>Submitted: <time dateTime={new Date(record.submittedAtMs).toISOString()}>{new Date(record.submittedAtMs).toLocaleString()}</time></small></span>
-    <ExplorerLink kind="transaction" value={record.txHash} accessibleName="Open historical verified swap">View historical transaction</ExplorerLink>
-  </section>;
+  if (record.kind === "swap" && status === "confirmed" && hasVerifiedVNextSwapSettlement(record)) return <VerifiedTradeHistory record={record} />;
   const title = status === "confirming"
     ? "Transaction submitted · confirmation pending"
     : status === "confirmation_unavailable"

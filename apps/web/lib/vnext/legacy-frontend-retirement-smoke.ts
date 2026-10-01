@@ -40,7 +40,7 @@ const portfolioCompatibilityRoute = readFileSync(join(appDirectory, "portfolio/p
 const publicChrome = readFileSync(join(appDirectory, "public-chrome.tsx"), "utf8");
 const sitemap = readFileSync(join(appDirectory, "sitemap.ts"), "utf8");
 
-assert.match(rootPage, /<VNextTerminalShell \/>/);
+assert.match(rootPage, /<VNextTerminalShell\s/);
 assert.doesNotMatch(rootPage, /LegacyTerminalPage|ExternalMarketFeed/);
 
 const globalCssImports = [...rootLayout.matchAll(/^import\s+["'](.+\.css)["'];$/gm)].map((match) => match[1]);

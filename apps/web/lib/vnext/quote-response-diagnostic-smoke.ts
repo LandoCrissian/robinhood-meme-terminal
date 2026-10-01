@@ -21,6 +21,7 @@ export async function runQuoteResponseDiagnosticSmoke() {
     "code", "stage", "phase", "retryable", "explanation", "receivedAt", "quoteRequestId", "serverRequestId",
     "originGenerationId", "consumerGenerationId", "evidence", "identityOperation", "identityAsset",
     "envelopeReason", "envelopeFunction", "actionIndex", "actionKind",
+    "transportFailure", "latencyMs",
   ].sort());
   assert.equal(JSON.parse(serialized).quoteRequestId, id);
   assert.equal(JSON.parse(serialized).serverRequestId, serverId);
@@ -108,8 +109,25 @@ export async function runQuoteResponseDiagnosticSmoke() {
     clearTradeQuoteCache();
     globalThis.fetch = (async () => { throw new Error("offline"); }) as typeof fetch;
     const count = observations.length;
-    await assert.rejects(requestTradeQuote("/api/vnext/verify", { quoteRequestId: id }, { maxAttempts: 1, onDiagnostic: (value) => observations.push(value) }));
-    assert.equal(observations.length, count, "Transport failure never fabricates a response diagnostic");
+    await assert.rejects(requestTradeQuote("/api/vnext/verify", { quoteRequestId: id }, { diagnosticGeneration: 25, maxAttempts: 1, onDiagnostic: (value) => observations.push(value) }));
+    assert.equal(observations.length, count + 1);
+    assert.equal(observations.at(-1)?.evidence, "CLIENT_TRANSPORT_FAILURE", "Transport evidence is never presented as an HTTP response");
+    assert.equal(observations.at(-1)?.record.transportFailure, "network");
+    assert.equal(observations.at(-1)?.record.serverRequestId, null);
+    assert.equal(observations.at(-1)?.record.quoteRequestId, id, "Original verification request remains correlated");
+    assert.equal(observations.at(-1)?.record.originGenerationId, 25);
+    assert.ok(!JSON.stringify(observations.at(-1)).includes("offline"), "Raw transport error is not copied");
+    clearTradeQuoteCache();
+    globalThis.fetch = ((_url, options) => new Promise<Response>((_resolve, reject) => {
+      options?.signal?.addEventListener("abort", () => reject(new Error(secret)), { once: true });
+    })) as typeof fetch;
+    await assert.rejects(requestTradeQuote("/api/vnext/quotes", {}, { timeoutMs: 10, diagnosticGeneration: 26, maxAttempts: 1, onDiagnostic: value => observations.push(value) }));
+    assert.equal(observations.at(-1)?.record.transportFailure, "timeout");
+    const timeoutCopy = serializeResponseDiagnostic(appendResponseDiagnostic([], observations.at(-1), context, context, 26)[0]);
+    assert.equal(JSON.parse(timeoutCopy).evidence, "CLIENT_TRANSPORT_FAILURE");
+    assert.equal(JSON.parse(timeoutCopy).serverRequestId, null);
+    assert.ok(JSON.parse(timeoutCopy).latencyMs >= 0);
+    assert.equal(timeoutCopy.includes(secret), false);
   } finally {
     globalThis.fetch = originalFetch;
     clearTradeQuoteCache();

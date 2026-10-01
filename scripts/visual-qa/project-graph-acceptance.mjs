@@ -69,7 +69,36 @@ try {
   await page.locator(mobile?'#rmt-mobile-market-search':'#rmt-desktop-market-search').fill('CannaCats');
   await page.getByRole('link',{name:'Explore CannaCats project',exact:true}).click();await page.locator('[data-project-market="cannacats"]').waitFor();
   assert.equal(await page.locator('.rmtProjectAssetCard').count(),2);await capture('token-nft-project');
+  await page.evaluate(() => {
+   window.__projectNavigation = { started: null, destinationMs: null, identityMs: null, ticketMs: null, genericFrames: 0, selectedAssetLoss: 0, frames: 0, done: false };
+   document.addEventListener('click', event => {
+    if (event.target.closest('a[href*="?market="]')) window.__projectNavigation.started = performance.now();
+   }, { once: true });
+   const frame = () => {
+    const n = window.__projectNavigation;
+    if (n.done) return;
+    if (n.started !== null) {
+     n.frames++;
+     const elapsed = performance.now() - n.started;
+     const identity = document.querySelector('#vn-asset-heading');
+     const workspace = document.querySelector('.rmtAssetSurface, .vnAssetWorkspace, #vn-asset-heading');
+     if (workspace && n.destinationMs === null) n.destinationMs = elapsed;
+     if (identity && n.identityMs === null) n.identityMs = elapsed;
+     if (!identity && n.identityMs !== null) n.selectedAssetLoss++;
+     if (!identity && document.querySelector('#rmt-mobile-markets-heading, #rmt-desktop-markets-heading')) n.genericFrames++;
+     const ticket = document.querySelector('.rmtMobileTradeDock, .vnTradePanel');
+     if (ticket && n.ticketMs === null) n.ticketMs = elapsed;
+    }
+    requestAnimationFrame(frame);
+   };
+   requestAnimationFrame(frame);
+  });
   holdMarket=true;await page.getByRole('link',{name:'Open token market',exact:false}).click();await page.locator('#vn-asset-heading').waitFor();
+  const directNavigation = await page.evaluate(() => { window.__projectNavigation.done = true; return window.__projectNavigation; });
+  assert.equal(directNavigation.genericFrames, 0, 'Verified Project → Token never exposes a generic Markets intermediate screen');
+  assert.equal(directNavigation.selectedAssetLoss, 0);
+  assert.match(await page.locator('#vn-asset-heading').innerText(), /CANNACAT/i);
+  navigationEvidence.push({ viewport, evidence: 'CONTROLLED_PUBLIC_COMPONENT_NAVIGATION', ...directNavigation });
   assert.ok(new URL(page.url()).searchParams.get('market').toLowerCase()===canna.toLowerCase());
   await page.getByRole('tab',{name:'Project',exact:true}).click();assert.ok(await page.getByRole('link',{name:'Explore project',exact:false}).isVisible());await capture('token-project-surface');
   await page.getByRole('tab',{name:'6H',exact:true}).click();
@@ -96,4 +125,4 @@ try {
  await writeFile(path.join(output,'failure.json'),JSON.stringify({head:execFileSync('git',['rev-parse','HEAD']).toString().trim(),tree:execFileSync('git',['rev-parse','HEAD^{tree}']).toString().trim(),profile:'CONTROLLED_NOT_LIVE_FINANCIAL_ACCEPTANCE',error:{name:error.name,message:error.message},completed:results,failures,navigationEvidence:navigationEvidence.slice(-50)},null,2));
  throw error;
 } finally {await browser.close();}
-await writeFile(path.join(output,'report.json'),JSON.stringify({head:execFileSync('git',['rev-parse','HEAD']).toString().trim(),tree:execFileSync('git',['rev-parse','HEAD^{tree}']).toString().trim(),profile:'CONTROLLED_NOT_LIVE_FINANCIAL_ACCEPTANCE',results},null,2));console.log(JSON.stringify(results));
+await writeFile(path.join(output,'report.json'),JSON.stringify({head:execFileSync('git',['rev-parse','HEAD']).toString().trim(),tree:execFileSync('git',['rev-parse','HEAD^{tree}']).toString().trim(),profile:'CONTROLLED_NOT_LIVE_FINANCIAL_ACCEPTANCE',results,navigationEvidence},null,2));console.log(JSON.stringify(results));

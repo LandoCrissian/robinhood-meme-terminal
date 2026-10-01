@@ -34,6 +34,7 @@ import { VNextChainPulseCard } from "./vnext-chain-pulse-card";
 import { VNextCapitalFlowCard } from "./vnext-capital-flow-card";
 import { VNextDistributionPlanner } from "./vnext-distribution-planner";
 import { VNextExecutionRecoveryBanner } from "./vnext-execution-recovery-banner";
+import { hasVerifiedVNextSwapSettlement } from "../../lib/vnext/output-settlement";
 import { VNextWalletConnection } from "./vnext-wallet-connection";
 
 export type TerminalContext = "markets" | "asset" | "portfolio" | "distribution";
@@ -318,6 +319,10 @@ function PortfolioController({ visible, ...props }: TerminalPresentationProps & 
 }
 
 function RecoveryStatus(props: TerminalPresentationProps) {
+  // Settled history belongs in the wallet/Portfolio surface. It must not replay
+  // as a new settlement notification or displace the active trading workspace.
+  if (props.executionRecord?.kind === "swap" && props.executionStatus === "confirmed"
+    && hasVerifiedVNextSwapSettlement(props.executionRecord)) return null;
   return props.context !== "portfolio" && (props.executionRecord || props.walletRequest)
     ? <VNextExecutionRecoveryBanner record={props.executionRecord} walletRequest={props.walletRequest} status={props.executionStatus} onRecheckWalletRequest={props.onRecheckWalletRequest} walletRequestRecheckPending={props.walletRequestRecheckPending} />
     : null;

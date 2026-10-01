@@ -129,7 +129,12 @@ function isLoopbackAcceptanceHost() {
 export function BrowserAcceptanceIdentityBridge({ children }: { children: ReactNode }) {
   const { address, isConnected } = useAccount();
   const { connect, connectors } = useConnect();
-  const acceptanceEnabled = process.env.NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE === "true" && isLoopbackAcceptanceHost();
+  // This loopback fixture also mounts under server-rendered destination shells.
+  // Match its unavailable server snapshot on the first hydration render, then
+  // activate the external test boundary. The production Privy bridge is unchanged.
+  const [acceptanceHydrated, setAcceptanceHydrated] = useState(false);
+  useEffect(() => { setAcceptanceHydrated(true); }, []);
+  const acceptanceEnabled = acceptanceHydrated && process.env.NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE === "true" && isLoopbackAcceptanceHost();
   const [identityTokenReady, setIdentityTokenReady] = useState(() => {
     if (typeof window === "undefined") return true;
     const mode = window.__RMT_QUOTE_IDENTITY_ACCEPTANCE__?.tokenMode;

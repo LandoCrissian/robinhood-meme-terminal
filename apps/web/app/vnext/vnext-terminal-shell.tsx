@@ -7,6 +7,8 @@ import { ROBINHOOD_MAINNET_CHAIN_ID } from "../../lib/vnext/robinhood-assets";
 import { selectedVNextWalletReadAddress } from "../../lib/vnext/selected-wallet-read-authority";
 import type { VNextWalletReadSnapshot } from "../../lib/vnext/terminal-presentation-state";
 import { parseVNextTerminalLocation } from "../../lib/vnext/terminal-location";
+import type { VNextTerminalLocation } from "../../lib/vnext/terminal-location";
+import type { VNextDirectoryMarket } from "../../lib/vnext/market-directory";
 import {
   VNEXT_MARKET_DIRECTORY_PAGE_SIZE,
   exactVNextLocalDirectoryMatches,
@@ -27,11 +29,14 @@ import { useVNextMarketDirectory } from "./use-vnext-market-directory";
 import { useRmtIdentity } from "../rmt-identity";
 import { useAnchoredMarketRows } from "./use-anchored-market-rows";
 
-export function VNextTerminalShell() {
+export function VNextTerminalShell({ initialLocation = { context: "markets" }, initialMarket }: {
+  initialLocation?: VNextTerminalLocation;
+  initialMarket?: VNextDirectoryMarket;
+}) {
   const desktop = useDesktopTerminalPresentation();
   const identity = useRmtIdentity();
   const account = useAccount();
-  const [context, setContext] = useState<TerminalContext>("markets");
+  const [context, setContext] = useState<TerminalContext>(initialLocation.context);
   const [tradeOpen, setTradeOpen] = useState(false);
   const [dismissedExecutionHash, setDismissedExecutionHash] = useState<string>();
   const [query, setQuery] = useState("");
@@ -67,7 +72,7 @@ export function VNextTerminalShell() {
     submittedSearchQuery,
     submitUniversalSearch,
     clearUniversalSearch
-  } = useVNextMarketDirectory();
+  } = useVNextMarketDirectory(initialMarket);
   const walletReadAuthorityAddress = selectedVNextWalletReadAddress({
     selectedWalletKey: identity.activeWalletKey,
     selectedWalletKind: identity.activeWalletKind,

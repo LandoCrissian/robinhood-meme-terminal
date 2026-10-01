@@ -1,3 +1,4 @@
+import { openExecutionEvidence } from './trade-details-browser.mjs';
 import assert from 'node:assert/strict';
 const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 async function until(predicate, message, timeout = 30000) {
@@ -30,9 +31,9 @@ export async function exerciseTradeRefresh({ page, api, requests, scenario, view
   if (viewportName === 'mobile') {
     for (const size of [{ width: 375, height: 667 }, { width: 375, height: 430 }, { width: 667, height: 375 }]) {
       await page.setViewportSize(size); await pause(100); await assertVisible();
-      await page.locator('.vnRouteTop').click(); await assertVisible();
+      await page.locator('.vnRouteTop').click(); await openExecutionEvidence(page); await assertVisible();
       assert.equal(await page.locator('.vnWalletFeeDisclosure').isVisible(), true, 'advanced evidence remains accessible');
-      await page.locator('.vnRouteTop').click();
+      await page.locator('.vnRouteTop').click(); await openExecutionEvidence(page);
     }
     await page.setViewportSize({ width: 390, height: 844 });
   }

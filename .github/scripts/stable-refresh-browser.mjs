@@ -23,6 +23,7 @@ async function snapshot(page) {
       details: document.querySelector('.vnRouteCard')?.open,
       displayedTermsId: document.querySelector('.vnTradePriceSummary')?.dataset.displayVerification,
       displayedProviderId: document.querySelector('.vnTradeEvidenceSummary')?.dataset.displayVerification,
+      displayPhase: document.querySelector('[data-quote-display-state]')?.dataset.quoteDisplayState,
       payment: document.querySelector('[aria-label="Pay with asset"]')?.value,
       range: document.querySelector('.vnChartRanges [aria-selected="true"]')?.textContent,
       receive: document.querySelector('.vnReceiveField > div > strong')?.textContent,
@@ -108,12 +109,37 @@ export async function runStableRefreshBrowser({ browser, base, identity, externa
       await page.locator('.vnTradeActionDock .vnReviewButton').waitFor();
       await page.screenshot({ path: path.join(output, `${name}-ticket.png`) });
       await page.locator('.vnRouteTop').click();
+      if (!baseline) {
+        assert.equal(await page.locator('.vnExecutionEvidence').getAttribute('open'), null, 'Execution Evidence starts collapsed inside trader-facing Trade Details');
+        assert.ok(!/Calldata|Payload|atomic|Spender/.test(await page.locator('.vnTraderDetails').innerText()), 'Level 1 is trader-facing');
+        await page.screenshot({ path: path.join(output, `${name}-trade-details.png`), fullPage: true });
+        await page.locator('.vnExecutionEvidence > summary').click();
+      }
       await page.getByRole('button', { name: /Explicit stability signer/ }).click();
       await page.evaluate(() => {
         const input = document.querySelector('[aria-label="Exact input amount"]');
         window.__stableInput = input; window.__stableAction = document.querySelector('.vnTradeActionDock .vnReviewButton');
         input.focus({ preventScroll: true }); input.setSelectionRange(3, 3);
         document.querySelector('.vnTradeScroll').scrollTop = 90;
+        const selectors = ['.vnTradePanel', '.vnReceiveField', '.vnTradePriceSummary', '.vnVerificationEvidence', '.vnAuthorizationPlan', '.vnWalletPrimaryReview'];
+        const previous = new Map(selectors.map(selector => [selector, document.querySelector(selector)]));
+        window.__refreshVisual = { frames: 0, componentReplacements: 0, missingCardFrames: 0, opacityFlashFrames: 0, labelChanges: 0, tracking: true };
+        let receiveLabel = document.querySelector('.vnReceiveField > span')?.textContent;
+        const frame = () => {
+          const metric = window.__refreshVisual;
+          if (!metric.tracking) return;
+          metric.frames++;
+          for (const selector of selectors) {
+            const node = document.querySelector(selector), old = previous.get(selector);
+            if (node !== old) { metric.componentReplacements++; previous.set(selector, node); }
+            if (!node) metric.missingCardFrames++;
+            else if (Number(getComputedStyle(node).opacity) < 0.99) metric.opacityFlashFrames++;
+          }
+          const label = document.querySelector('.vnReceiveField > span')?.textContent;
+          if (label !== receiveLabel) { metric.labelChanges++; receiveLabel = label; }
+          requestAnimationFrame(frame);
+        };
+        requestAnimationFrame(frame);
       });
       const initial = await snapshot(page), started = Date.now();
       phase = 'delay';
@@ -123,6 +149,7 @@ export async function runStableRefreshBrowser({ browser, base, identity, externa
         samples.push({ ms: Date.now() - started, pending, ...await snapshot(page) });
         await pause(350);
       }
+      const visual = await page.evaluate(() => { window.__refreshVisual.tracking = false; return window.__refreshVisual; });
       phase = 'outage';
       if ((await snapshot(page)).action === 'Retry quote') await page.locator('.vnTradeActionDock .vnReviewButton').click();
       await until(() => failed, 'quote reaches controlled outage', 15000);
@@ -146,7 +173,7 @@ export async function runStableRefreshBrowser({ browser, base, identity, externa
         await pause(350);
       }
       const preOutage = samples.filter(s => s.ms < 42000);
-      const stale = preOutage.find(s => /stale/i.test(s.receiveLabel ?? '') && s.pending === 1);
+      const stale = preOutage.find(s => (s.displayPhase === 'EXPIRED' || /stale/i.test(s.receiveLabel ?? '')) && s.pending === 1);
       const movement = Math.max(...preOutage.filter(s => s.actionBox).map(s => Math.abs(s.actionBox.y - initial.actionBox.y)));
       const lostInput = preOutage.filter(s => !s.sameInput || !s.focused || s.amount !== initial.amount || s.caret.join(':') !== initial.caret.join(':'));
       const scrollMovement = Math.max(...preOutage.map(s => Math.abs(s.scroll - initial.scroll)));
@@ -154,7 +181,7 @@ export async function runStableRefreshBrowser({ browser, base, identity, externa
       const passiveRequests = calls.filter(c => c.at >= started && c.at < started + 42000);
       const result = { evidence: 'MOCKED_LOCAL_BROWSER', baseline, viewport: mobile ? '390x844' : '1440x900', observationMs: Date.now() - started,
         delayMs: 14000, initial, stale, outage, recovery, maxPending, actionMovementPx: movement, scrollMovementPx: scrollMovement,
-        chartMovementPx: chartMovement, inputInstabilitySamples: lostInput.length, passiveRequests, calls, errors, samples };
+        chartMovementPx: chartMovement, inputInstabilitySamples: lostInput.length, visual, passiveRequests, calls, errors, samples };
       results.push(result);
       await writeFile(path.join(output, `${name}-stability.json`), JSON.stringify(result, null, 2));
       await page.screenshot({ path: path.join(output, `${name}-after-renewal.png`), fullPage: true });
@@ -163,6 +190,10 @@ export async function runStableRefreshBrowser({ browser, base, identity, externa
         assert.equal(stale.minimum, initial.minimum, 'minimum belongs to the same retained snapshot');
         assert.equal(stale.receive, initial.receive);
         assert.equal(maxPending, 1);
+        assert.equal(visual.componentReplacements, 0, 'passive renewal retains the actual term/evidence card nodes');
+        assert.equal(visual.missingCardFrames, 0, 'no transient disappearance of prior terms/evidence');
+        assert.equal(visual.opacityFlashFrames, 0, 'no opacity flash in retained cards');
+        assert.equal(visual.labelChanges, 0, 'ordinary renewal does not replace the primary receive heading');
         assert.ok(movement <= 1, `persistent action movement ${movement}px`);
         assert.ok(scrollMovement <= 1, `passive scroll movement ${scrollMovement}px`);
         assert.ok(chartMovement <= 1, `passive chart movement ${chartMovement}px`);

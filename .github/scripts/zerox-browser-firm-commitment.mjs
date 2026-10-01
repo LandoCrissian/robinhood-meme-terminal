@@ -1,3 +1,4 @@
+import { openExecutionEvidence } from './trade-details-browser.mjs';
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -174,10 +175,10 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
             assert.equal(plan.providerNativeFee.firmQuote.identity, verification.providerNativeFee.firmQuote.identity);
             assert.equal(plan.providerNativeFee.feeBps, 25);
             assert.equal(plan.providerNativeFee.treasury.toLowerCase(), '0x61700479a4a1f62584fd3aba2c2b290ea727d2ec');
-            await page.locator('.vnRouteTop').click();
+            await page.locator('.vnRouteTop').click(); await openExecutionEvidence(page);
             await page.locator('.vnWalletFeeDisclosure').waitFor();
             assert.match(await page.locator('.vnWalletFeeDisclosure').innerText(), /Expected receive[\s\S]*Minimum receive/);
-            assert.match(await page.locator('.vnTradePanel').innerText(), /Fresh firm quote[\s\S]*Updated executable minimum/);
+            assert.match(await page.locator('.vnTradePanel').innerText(), /Firm quote[\s\S]*Provider-returned minimum/);
             assert.doesNotMatch(await page.locator('.vnTradePanel').innerText(), /Continuity check failed/);
             assert.equal(prompts.length, 0, 'Fresh economics must not automatically open the wallet');
             const review = page.getByRole('button', { name: /Review (exact approval|verified swap) in wallet/, exact: true });

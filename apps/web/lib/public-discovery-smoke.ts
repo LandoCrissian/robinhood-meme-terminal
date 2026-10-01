@@ -47,7 +47,7 @@ assert.equal(rmtWebsiteStructuredData.url, `${appUrl}/`);
 const homeSource = read("../app/page.tsx");
 const vnextSource = read("../app/vnext/page.tsx");
 const nextConfigSource = read("../next.config.mjs");
-assert.match(homeSource, /<VNextTerminalShell \/>/, "ROOT_RENDERS_TERMINAL");
+assert.match(homeSource, /<VNextTerminalShell\s/, "ROOT_RENDERS_TERMINAL");
 assert.match(vnextSource, /<VNextTerminalShell \/>/, "VNEXT_RENDERS_TERMINAL");
 assert.match(nextConfigSource, /source: "\/vnext"[\s\S]*destination: "\/"[\s\S]*permanent: true/);
 

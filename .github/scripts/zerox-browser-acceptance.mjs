@@ -1,3 +1,4 @@
+import { openExecutionEvidence } from './trade-details-browser.mjs';
 import { runStableRefreshBrowser } from './stable-refresh-browser.mjs';
 import { runTokenEnrichmentBrowser, tokenEnrichmentExternal } from './token-enrichment-browser.mjs';
 import { runMarketAnchorBrowser } from './market-anchor-browser.mjs';
@@ -411,11 +412,11 @@ export async function runZeroXBrowserAcceptance() {
         assert.ok(api.some((r) => r.path === '/api/vnext/verify' && r.status === 200), '0x reaches real verification');
         await page.locator('.vnWalletFeeDisclosure').waitFor({ state: 'attached' });
         assert.equal(await page.locator('.vnWalletFeeDisclosure').isVisible(), false, 'technical evidence is disclosed progressively');
-        await page.locator('.vnRouteTop').click();
+        await page.locator('.vnRouteTop').click(); await openExecutionEvidence(page);
         await page.locator('.vnWalletFeeDisclosure').waitFor();
         const disclosure = await page.locator('.vnWalletFeeDisclosure').innerText();
         for (const text of ['0.25%', 'USDG', 'Expected receive', 'Minimum receive', '0x/provider fee', 'Network fee']) assert.ok(disclosure.includes(text), `Missing disclosure: ${text}`);
-        await page.locator('.vnRouteTop').click();
+        await page.locator('.vnRouteTop').click(); await openExecutionEvidence(page);
         assert.equal(await page.locator('.vnTradeActionDock .vnReviewButton').isVisible(), true, 'disclosure never owns the primary trade action');
         assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2), 'No horizontal overflow');
         assert.deepEqual(state.unexpected, [], 'Unexpected external traffic fails acceptance');

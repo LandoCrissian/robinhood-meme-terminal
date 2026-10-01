@@ -128,14 +128,14 @@ function replacePerformanceMeasure(name: string, start: string, end: string) {
   }
 }
 
-export function useVNextMarketDirectory() {
-  const [markets, setMarkets] = useState<VNextDirectoryMarket[]>([]);
+export function useVNextMarketDirectory(initialMarket?: VNextDirectoryMarket) {
+  const [markets, setMarkets] = useState<VNextDirectoryMarket[]>(() => initialMarket ? [initialMarket] : []);
   const [status, setStatus] = useState<DirectoryStatus>("loading");
   const [enrichmentStatus, setEnrichmentStatus] = useState<DirectoryEnrichmentStatus>("pending");
   const [activitySnapshotPublished, setActivitySnapshotPublished] = useState(false);
   const discoveryCoverage = useRef<BoundedDiscoveryCoverage | null>(null);
-  const [selectedAddress, setSelectedAddress] = useState<string | null>(null);
-  const [selectedAsset, setSelectedAsset] = useState<AssetMetadata>();
+  const [selectedAddress, setSelectedAddress] = useState<string | null>(initialMarket?.address ?? null);
+  const [selectedAsset, setSelectedAsset] = useState<AssetMetadata | undefined>(() => initialMarket ? selectedDirectoryAsset(initialMarket) : undefined);
   const [identityStatus, setIdentityStatus] = useState<IdentityStatus>("idle");
   const [searchMarkets, setSearchMarkets] = useState<VNextDirectoryMarket[]>([]);
   const [searchStatus, setSearchStatus] = useState<VNextUniversalMarketSearchStatus>("idle");
@@ -144,7 +144,7 @@ export function useVNextMarketDirectory() {
   const hasData = useRef(false);
   const marketSnapshot = useRef("");
   const identityCache = useRef(new Map<string, AssetMetadata | null>());
-  const exactLookupMarket = useRef<VNextDirectoryMarket | undefined>(undefined);
+  const exactLookupMarket = useRef<VNextDirectoryMarket | undefined>(initialMarket);
   const directoryServingMode = useRef<DirectoryServingMode>("unknown");
   const legacyDirectoryMarkets = useRef<VNextDirectoryMarket[]>([]);
   const canonicalDirectoryMarkets = useRef<VNextDirectoryMarket[]>([]);

@@ -6173,6 +6173,17 @@ body .rmtTerminal button {
 .rmtResponsiveExecution .vnTradeScroll { flex: 1; }
 .vnTradeScroll { overflow-anchor: none; }
 .vnTradePriceSummary { min-height: 58px; margin: 12px 0; font-variant-numeric: tabular-nums; }
+.vnTraderDetails { font-variant-numeric: tabular-nums; }
+.vnRouteCard .vnTraderDetails dt, .vnRouteCard .vnTraderDetails dd { font-size: 12px; line-height: 1.45; }
+.vnTraderDetails dd { text-align: right; overflow-wrap: anywhere; max-width: 65%; }
+.vnReceiveField.isBaseUnits > div > strong,
+.rmtMobileTradeSheet .vnReceiveField.isBaseUnits > div > strong { font-size: 14px; line-height: 1.4; }
+.vnExecutionEvidence { margin-top: 14px; border-top: 1px solid var(--vn-border); padding-top: 12px; }
+.vnExecutionEvidence > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--vn-text-muted); font-size: 12px; }
+.vnHistoryAffordance { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin: 12px 0; font-size: 13px; }
+.vnHistoryAffordance summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--vn-text-secondary); }
+.vnHistoryAffordance small { display: block; color: var(--vn-text-muted); margin-bottom: 8px; }
+.vnHistoryAffordance button { min-height: 44px; padding: 0 12px; color: var(--vn-text-muted); background: transparent; border: 0; cursor: pointer; }
 .vnReceiveField { min-height: 124px; font-variant-numeric: tabular-nums; }
 .vnReceiveField strong, .vnTradePriceSummary dd, .vnTradeReceipt dd { overflow-wrap: anywhere; min-width: 0; white-space: normal; overflow: visible; text-overflow: clip; }
 .vnTradeActionStatus { min-height: 36px; margin: 0 0 8px; font-size: 13px; line-height: 18px; }

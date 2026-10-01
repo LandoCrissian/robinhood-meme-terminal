@@ -29,9 +29,55 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  renewal-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_PUBLIC_RMT_NETWORK: mainnet
+      RMT_VNEXT_SHELL_ENABLED: 'true'
+      NEXT_PUBLIC_RMT_BROWSER_ACCEPTANCE_PROFILE: 'true'
+      NEXT_PUBLIC_RMT_RPC_URL: https://browser-acceptance.invalid
+      NEXT_PUBLIC_RMT_VNEXT_AUTHORIZATION_ENABLED: 'true'
+      NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED: 'true'
+      RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: zero-x-swap
+      RMT_VNEXT_AUTHORIZATION_ENABLED: 'true'
+      RMT_VNEXT_ZEROX_OBSERVATION_ENABLED: 'true'
+      RMT_VNEXT_ZEROX_FIRM_QUOTE_VERIFICATION_ENABLED: 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Build the exact PR base in an isolated checkout
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+        run: |
+          git fetch --depth=1 origin "$BASE_SHA"
+          git worktree add --detach "$RUNNER_TEMP/renewal-base" "$BASE_SHA"
+          pnpm --dir "$RUNNER_TEMP/renewal-base" install --frozen-lockfile
+          pnpm --dir "$RUNNER_TEMP/renewal-base" --filter web exec next build
+      - name: Observe the same 90-second mobile and desktop task before the correction
+        run: |
+          RMT_STABILITY_BASELINE=true RMT_STABILITY_BASELINE_ROOT="$RUNNER_TEMP/renewal-base" RMT_STABLE_REFRESH_ONLY=true RMT_ACCEPTANCE_OUTPUT="$GITHUB_WORKSPACE/renewal-baseline-evidence" node .github/scripts/zerox-browser-acceptance.mjs
+      - name: Upload base recordings and measured state replacements
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v6.0.0
+        with:
+          name: renewal-baseline-evidence
+          path: renewal-baseline-evidence
+          retention-days: 7
+
   zerox-desktop-mobile:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    # Includes the additional four-width UI parity and renewal-frame assertions.
+    timeout-minutes: 40
     env:
       NEXT_PUBLIC_RMT_NETWORK: mainnet
       RMT_VNEXT_SHELL_ENABLED: 'true'
