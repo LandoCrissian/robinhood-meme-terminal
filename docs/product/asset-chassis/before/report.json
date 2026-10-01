@@ -1,0 +1,317 @@
+[
+  {
+    "width": 375,
+    "height": 812,
+    "evidence": "LIVE_PUBLIC_SIGNED_OUT",
+    "errors": [],
+    "screens": [
+      "375-markets.png",
+      "375-markets-new.png",
+      "375-markets-movers.png",
+      "375-markets-trending.png",
+      "375-search.png",
+      "375-token-loading.png",
+      "375-token.png",
+      "375-activity.png",
+      "375-safety.png",
+      "375-markets.png",
+      "375-position.png",
+      "375-origin.png",
+      "375-trade.png",
+      "375-stock.png"
+    ],
+    "overflow": [
+      {
+        "name": "markets",
+        "pixels": 0
+      },
+      {
+        "name": "markets-new",
+        "pixels": 0
+      },
+      {
+        "name": "markets-movers",
+        "pixels": 0
+      },
+      {
+        "name": "markets-trending",
+        "pixels": 0
+      },
+      {
+        "name": "search",
+        "pixels": 0
+      },
+      {
+        "name": "token-loading",
+        "pixels": 0
+      },
+      {
+        "name": "token",
+        "pixels": 0
+      },
+      {
+        "name": "activity",
+        "pixels": 0
+      },
+      {
+        "name": "safety",
+        "pixels": 0
+      },
+      {
+        "name": "markets",
+        "pixels": 0
+      },
+      {
+        "name": "position",
+        "pixels": 0
+      },
+      {
+        "name": "origin",
+        "pixels": 0
+      },
+      {
+        "name": "trade",
+        "pixels": 0
+      },
+      {
+        "name": "stock",
+        "pixels": 0
+      }
+    ]
+  },
+  {
+    "width": 390,
+    "height": 844,
+    "evidence": "LIVE_PUBLIC_SIGNED_OUT",
+    "errors": [],
+    "screens": [
+      "390-markets.png",
+      "390-markets-new.png",
+      "390-markets-movers.png",
+      "390-markets-trending.png",
+      "390-search.png",
+      "390-token-loading.png",
+      "390-token.png",
+      "390-activity.png",
+      "390-safety.png",
+      "390-markets.png",
+      "390-position.png",
+      "390-origin.png",
+      "390-trade.png",
+      "390-stock.png"
+    ],
+    "overflow": [
+      {
+        "name": "markets",
+        "pixels": 0
+      },
+      {
+        "name": "markets-new",
+        "pixels": 0
+      },
+      {
+        "name": "markets-movers",
+        "pixels": 0
+      },
+      {
+        "name": "markets-trending",
+        "pixels": 0
+      },
+      {
+        "name": "search",
+        "pixels": 0
+      },
+      {
+        "name": "token-loading",
+        "pixels": 0
+      },
+      {
+        "name": "token",
+        "pixels": 0
+      },
+      {
+        "name": "activity",
+        "pixels": 0
+      },
+      {
+        "name": "safety",
+        "pixels": 0
+      },
+      {
+        "name": "markets",
+        "pixels": 0
+      },
+      {
+        "name": "position",
+        "pixels": 0
+      },
+      {
+        "name": "origin",
+        "pixels": 0
+      },
+      {
+        "name": "trade",
+        "pixels": 0
+      },
+      {
+        "name": "stock",
+        "pixels": 0
+      }
+    ]
+  },
+  {
+    "width": 430,
+    "height": 932,
+    "evidence": "LIVE_PUBLIC_SIGNED_OUT",
+    "errors": [],
+    "screens": [
+      "430-markets.png",
+      "430-markets-new.png",
+      "430-markets-movers.png",
+      "430-markets-trending.png",
+      "430-search.png",
+      "430-token-loading.png",
+      "430-token.png",
+      "430-activity.png",
+      "430-safety.png",
+      "430-markets.png",
+      "430-position.png",
+      "430-origin.png",
+      "430-trade.png",
+      "430-stock.png"
+    ],
+    "overflow": [
+      {
+        "name": "markets",
+        "pixels": 0
+      },
+      {
+        "name": "markets-new",
+        "pixels": 0
+      },
+      {
+        "name": "markets-movers",
+        "pixels": 0
+      },
+      {
+        "name": "markets-trending",
+        "pixels": 0
+      },
+      {
+        "name": "search",
+        "pixels": 0
+      },
+      {
+        "name": "token-loading",
+        "pixels": 0
+      },
+      {
+        "name": "token",
+        "pixels": 0
+      },
+      {
+        "name": "activity",
+        "pixels": 0
+      },
+      {
+        "name": "safety",
+        "pixels": 0
+      },
+      {
+        "name": "markets",
+        "pixels": 0
+      },
+      {
+        "name": "position",
+        "pixels": 0
+      },
+      {
+        "name": "origin",
+        "pixels": 0
+      },
+      {
+        "name": "trade",
+        "pixels": 0
+      },
+      {
+        "name": "stock",
+        "pixels": 0
+      }
+    ]
+  },
+  {
+    "width": 1440,
+    "height": 900,
+    "evidence": "LIVE_PUBLIC_SIGNED_OUT",
+    "errors": [],
+    "screens": [
+      "1440-markets.png",
+      "1440-markets-new.png",
+      "1440-markets-movers.png",
+      "1440-markets-trending.png",
+      "1440-search.png",
+      "1440-token-loading.png",
+      "1440-token.png",
+      "1440-activity.png",
+      "1440-safety.png",
+      "1440-markets.png",
+      "1440-position.png",
+      "1440-origin.png",
+      "1440-stock.png"
+    ],
+    "overflow": [
+      {
+        "name": "markets",
+        "pixels": 0
+      },
+      {
+        "name": "markets-new",
+        "pixels": 0
+      },
+      {
+        "name": "markets-movers",
+        "pixels": 0
+      },
+      {
+        "name": "markets-trending",
+        "pixels": 0
+      },
+      {
+        "name": "search",
+        "pixels": 0
+      },
+      {
+        "name": "token-loading",
+        "pixels": 0
+      },
+      {
+        "name": "token",
+        "pixels": 0
+      },
+      {
+        "name": "activity",
+        "pixels": 0
+      },
+      {
+        "name": "safety",
+        "pixels": 0
+      },
+      {
+        "name": "markets",
+        "pixels": 0
+      },
+      {
+        "name": "position",
+        "pixels": 0
+      },
+      {
+        "name": "origin",
+        "pixels": 0
+      },
+      {
+        "name": "stock",
+        "pixels": 0
+      }
+    ]
+  }
+]

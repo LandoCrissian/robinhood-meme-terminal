@@ -6220,3 +6220,184 @@ body .rmtTerminal button {
 .vnTokenInformation small { color: var(--rmt-muted, #a0aaa6); }
 .vnTokenInformationLinks { display: flex; flex-wrap: wrap; gap: 12px; margin: 8px 0; }
 .vnMarketSnapshotLabel { display: block; min-height: 20px; font-size: 12px; color: #a0aaa6; }
+
+/* RMT asset chassis: one controller, deliberate screen-space composition. */
+.rmtIcon { width: 20px; height: 20px; flex: 0 0 20px; display: inline-block; vertical-align: middle; }
+.rmtIconButton { width: 44px; height: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: 1px solid var(--vn-border); border-radius: 10px; color: var(--vn-text-secondary); background: transparent; text-decoration: none; cursor: pointer; }
+.rmtIconButton:hover { background: var(--vn-accent-soft); color: var(--vn-accent); }
+.vnIdentityActionBar { display: flex; align-items: center; gap: 8px; margin: 8px 0 12px; color: var(--vn-text-secondary); }
+.vnCopyAddress { display: inline-flex; align-items: center; gap: 8px; }
+.vnCopyAddress code { font-size: 13px; }
+.vnIdentityActionBar .rmtIconButton { border: 0; }
+.vnWorkspaceCard { border-radius: 14px; padding: 18px; background: rgba(255,255,255,.015); }
+.vnAssetWorkspace { gap: 0; }
+.vnSkipLink:not(:focus) { clip-path: inset(50%); width: 1px; height: 1px; overflow: hidden; padding: 0; }
+.vnAssetWorkspaceHeader { margin-bottom: 12px; }
+.vnAssetPrice { margin-bottom: 4px; }
+.vnAssetStats { margin: 8px 0 18px; }
+.vnWorkspaceStatusGroup .vnWorkspaceStatus { display: none; }
+.vnWorkspaceCardHead h3 { font-size: 17px; font-weight: 650; letter-spacing: -.02em; }
+.vnEyebrow { font-size: 11px; letter-spacing: .08em; }
+.vnAssetWorkspaceHeader h2 { line-height: 1.25; overflow-wrap: anywhere; }
+.vnAssetWorkspaceHeader h2 b { font-size: 12px; color: var(--vn-text-secondary); }
+.vnAssetWorkspaceHeader small { font-size: 12px; }
+.vnMarketSnapshotLabel { margin: 0 0 10px; font-size: 11px; }
+.vnAssetStats dt { font-size: 11px; text-transform: none; }
+.vnAssetStats dd { font-size: 16px; }
+.rmtWorkspaceTabs { display: flex; gap: 4px; margin: 8px 0 16px; border-bottom: 1px solid var(--vn-border); }
+.rmtWorkspaceTabs button { display: inline-flex; justify-content: center; align-items: center; gap: 7px; min-height: 48px; padding: 8px 12px; font-size: 13px; }
+.rmtWorkspaceTabs .rmtIcon { width: 17px; height: 17px; flex-basis: 17px; }
+.vnCompactEmpty, .vnTapeUnavailable { margin: 12px 0 0; padding: 12px 0; font-size: 13px; color: var(--vn-text-secondary); }
+.vnMoreSurface { display: grid; gap: 12px; }
+.vnMoreDisclosure, .vnEvidenceDetails, .vnHolderSources { border: 1px solid var(--vn-border); border-radius: 12px; padding: 0 14px; margin-top: 12px; overflow-wrap: anywhere; }
+.vnMoreDisclosure > summary, .vnEvidenceDetails > summary, .vnHolderSources > summary { display: flex; align-items: center; min-height: 48px; cursor: pointer; font-size: 13px; font-weight: 550; }
+.vnMoreDisclosure > summary::after, .vnEvidenceDetails > summary::after, .vnHolderSources > summary::after { content: "+"; margin-left: auto; color: var(--vn-text-muted); }
+.vnMoreDisclosure[open] > summary::after, .vnEvidenceDetails[open] > summary::after, .vnHolderSources[open] > summary::after { content: "−"; }
+.vnMoreDisclosure > summary::-webkit-details-marker, .vnEvidenceDetails > summary::-webkit-details-marker, .vnHolderSources > summary::-webkit-details-marker { display: none; }
+.vnMoreDisclosure > .vnWorkspaceCard { border: 0; padding: 10px 0 16px; background: transparent; }
+.vnMoreDisclosure p { font-size: 13px; color: var(--vn-text-secondary); line-height: 1.6; }
+.vnSourceFacts { font-size: 12px; }
+.vnSourceFacts > div { padding: 10px 0; border-top: 1px solid var(--vn-border); }
+.vnSourceFacts dt { color: var(--vn-text-muted); margin-bottom: 4px; }
+.vnSourceFacts dd { margin: 0; overflow-wrap: anywhere; }
+.vnTokenInformationLinks:empty { display: none; }
+.vnTokenInformationLinks { gap: 8px; }
+.vnProjectSurface .vnTokenInformation { margin-top: 12px; }
+.vnProjectAssets { display: grid; gap: 8px; }
+.vnProjectAssets a { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--vn-border); border-radius: 10px; color: var(--vn-text); text-decoration: none; }
+.vnProjectAssets a > span { flex: 1; min-width: 0; }
+.vnProjectAssets code { display: block; font-size: 12px; color: var(--vn-text-muted); }
+.vnProjectIdentity > a { display: inline-flex; align-items: center; min-height: 44px; margin-right: 16px; color: var(--vn-accent); }
+.vnStockIdentitySurface { padding: 16px; margin: 12px 0; border: 1px solid var(--vn-border); border-radius: 14px; background: linear-gradient(110deg, rgba(130,242,143,.06), transparent); }
+.vnStockIdentitySurface p { color: var(--vn-text-secondary); font-size: 13px; margin: 10px 0 0; }
+.vnStockIdentitySurface dl { display: flex; gap: 24px; font-size: 13px; }
+.vnStockIdentitySurface dt { color: var(--vn-text-muted); font-size: 11px; }
+.vnStockIdentitySurface dd { margin: 4px 0 0; }
+.vnMarketFlow { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 0; border-block: 1px solid var(--vn-border); padding: 16px 0; }
+.vnMarketFlow > span { border: 0; border-radius: 0; padding: 0 12px; background: transparent; min-width: 0; }
+.vnMarketFlow > span:first-child { padding-left: 0; }
+.vnMarketFlow > span + span { border-left: 1px solid var(--vn-border); }
+.vnMarketFlow b { font-size: 12px; color: var(--vn-text); }
+.vnMarketFlow small { display: block; line-height: 1.6; font-size: 11px; color: var(--vn-text-secondary); }
+.vnMarketFlow small { white-space: normal; overflow: visible; }
+.vnMoreSurface .vnAssetIdentityFacts { display: grid; grid-template-columns: 1fr; gap: 0; background: transparent; border: 0; border-radius: 0; }
+.vnMoreSurface .vnAssetIdentityFacts > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--vn-border); background: transparent; }
+.vnMoreSurface .vnAssetIdentityFacts dt { font-size: 12px; text-transform: none; }
+.vnMoreSurface .vnAssetIdentityFacts dd { margin: 0; font-size: 13px; text-align: right; }
+.vnMarketFlow strong { font-size: 18px; line-height: 1.6; }
+.vnEvidenceGrid { gap: 1px; }
+.vnEvidenceGrid > span { padding: 14px; }
+.vnEvidenceGrid small { text-transform: none; font-size: 12px; }
+.vnEvidenceGrid strong { font-size: 20px; }
+.vnEvidenceUnavailable { padding: 12px 0; }
+.vnEvidenceUnavailable strong { font-size: 14px; }
+.vnEvidenceUnavailable span { font-size: 13px; }
+.vnHolderList a { min-height: 58px; padding: 10px 0; border-radius: 0; }
+.vnHolderOverview { display: grid; gap: 12px; }
+.vnPositionValue strong { font-size: 23px; overflow-wrap: anywhere; }
+.vnPositionCard footer { font-size: 12px; }
+.vnChartStyle { display: none; }
+.vnChart { overflow: visible; }
+.vnChartFrame { padding: 0; overflow: hidden; }
+.vnChartFrame svg { height: 100%; min-height: 0; width: 100%; overflow: hidden; }
+.vnChartGrid text { font-size: 12px; font-weight: 500; }
+.vnChartHeader { padding: 16px 16px 8px; }
+.vnChartRanges { width: auto; margin: 0 16px 6px; max-width: none; }
+.vnChartRanges button { flex: 1; min-width: 40px; min-height: 44px; font-size: 12px; padding: 0 6px; }
+.vnChartSources { position: relative; margin: 0 16px; color: var(--vn-text-muted); font-size: 11px; }
+.vnChartSources > summary { min-height: 26px; cursor: pointer; }
+.vnChartSources[open] dl { position: absolute; inset: auto 0 26px; z-index: 8; padding: 14px; border: 1px solid var(--vn-border-strong); border-radius: 12px; background: var(--vn-surface); font-size: 12px; box-shadow: 0 8px 30px #0008; overflow-wrap: anywhere; }
+.vnChartSources dt { color: var(--vn-text-muted); }
+.vnChartSources dd { margin: 2px 0 10px; }
+.vnChartFooter { font-size: 11px; padding: 0 16px 12px; }
+.vnChartEmpty { padding: 16px; }
+.vnChartEmpty strong { font-size: 16px; }
+.vnChartEmpty span { font-size: 13px; max-width: 280px; line-height: 1.5; }
+.vnChartState { text-transform: none; font-size: 11px; white-space: nowrap; }
+.rmtDesktopAsset .vnChartFrame { height: 300px; min-height: 0; }
+.rmtDesktopAsset .vnChart { display: grid; grid-template-rows: 76px 48px minmax(0,1fr) 26px 26px; height: 460px; min-height: 460px; }
+.rmtDesktopAsset .vnChartFrame { height: auto; }
+.rmtDesktopAsset .vnChartFooter { min-height: 0; }
+.rmtMobileMarketRow strong { font-size: 14px; }
+.rmtMobileMarketRow small { font-size: 11px; }
+.rmtStockReadOnly { padding: 24px; display: grid; align-content: start; gap: 18px; }
+.rmtStockReadOnly h3 { font-size: 24px; margin: 0; }
+.rmtStockReadOnly p { color: var(--vn-text-secondary); font-size: 14px; line-height: 1.6; }
+.rmtStockReadOnly button { min-height: 48px; border: 1px solid var(--vn-border); border-radius: 12px; background: var(--vn-accent-soft); color: var(--vn-accent); }
+.rmtExplore { position: relative; margin: 10px 0 14px; }
+.rmtMobileMarketsView .rmtExplore { margin: 0; }
+.rmtMobileMarketsView > .rmtSearchStatus { min-height: 20px; margin: 0 10px 4px; padding: 0; border: 0; background: transparent; text-align: left; font-size: 11px; }
+.rmtExplore > summary { min-height: 44px; display: flex; gap: 8px; align-items: center; cursor: pointer; color: var(--vn-text-secondary); font-size: 13px; }
+.rmtExploreChoices { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0 10px; }
+.rmtExploreChoices button { min-height: 44px; padding: 10px 14px; border: 1px solid var(--vn-border); border-radius: 10px; background: var(--vn-surface); color: var(--vn-text-secondary); cursor: pointer; }
+.rmtExploreChoices button[aria-pressed="true"] { color: var(--vn-accent); border-color: var(--vn-accent); }
+.rmtMarketViews { display: block; overflow: visible; }
+.rmtPrimaryViews { display: flex; gap: 6px; }
+.rmtPrimaryViews > button { flex: 1; min-height: 44px; }
+.rmtExplore > small { font-size: 11px; color: var(--vn-text-muted); }
+.rmtMobileMarketsView .rmtMarketViews { overflow: visible; }
+.rmtAssetNavigator .rmtMarketViews { display: block; }
+.rmtAssetNavigator .rmtPrimaryViews { display: grid; grid-template-columns: 1fr 1fr; }
+.rmtScannerControls { align-items: start; }
+.rmtScannerControls > .rmtMarketViews { flex: 1; }
+@media (min-width: 1440px) {
+  .rmtDesktopAsset .vnChartFrame { height: auto; }
+  .rmtDesktopAsset .vnChart { border-radius: 14px; }
+  .rmtDesktopAsset .vnAssetWorkspace { padding: 20px; }
+}
+@media (max-width: 1023px) {
+  .rmtMobileAssetView .vnAssetWorkspace { padding: 14px; }
+  .rmtMobileAssetView .vnAssetWorkspaceHeader { min-height: 60px; }
+  .rmtMobileAssetView .vnAssetWorkspaceHeader { height: 80px; min-height: 80px; }
+  .rmtMobileAssetView .vnAssetWorkspaceIdentity h2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-height: 50px; white-space: normal; }
+  .rmtMobileAssetView .vnAssetWorkspaceHeader h2 { font-size: 21px; letter-spacing: -.025em; }
+  .rmtMobileAssetView .vnAssetWorkspaceHeader h2 b { display: block; margin: 4px 0 0; font-size: 12px; }
+  .rmtMobileAssetView .vnAssetWorkspaceMark { width: 48px; height: 48px; border-radius: 14px; flex-basis: 48px; }
+  .rmtMobileAssetView .vnAssetPrice { margin: 12px 0 0; min-height: 39px; }
+  .rmtMobileAssetView .vnMarketSnapshotLabel { min-height: 18px; margin: 0 0 4px; font-size: 10px; }
+  .rmtMobileAssetView .vnAssetStats { margin: 8px 0 14px; }
+  .rmtMobileAssetView .vnAssetStats > div { padding: 10px 8px; }
+  .rmtMobileAssetView .vnAssetStats dt { font-size: 10px; }
+  .rmtMobileAssetView .vnAssetStats dd { font-size: 15px; }
+  .rmtMobileAssetView .vnChart { height: 338px; min-height: 338px; border-radius: 14px; display: grid; grid-template-rows: 46px 48px 196px 26px 22px; }
+  .rmtMobileAssetView .vnChartHeader { min-height: 0; padding: 8px 12px 0; display: flex; flex-direction: row; flex-wrap: nowrap; }
+  .rmtMobileAssetView .vnChartHeadline { display: flex; align-items: center; gap: 10px; }
+  .rmtMobileAssetView .vnChartHeadline .vnEyebrow { display: none; }
+  .rmtMobileAssetView .vnChartHeadline > div { margin: 0; }
+  .rmtMobileAssetView .vnChartHeadline strong { display: none; }
+  .rmtMobileAssetView .vnChartHeadline > small { font-size: 11px; margin: 0; }
+  .rmtMobileAssetView .vnChartHeadline > div span { font-size: 11px; }
+  .rmtMobileAssetView .vnChartControls { overflow: visible; margin-left: auto; max-width: none; }
+  .rmtMobileAssetView .vnChartModes { display: none; }
+  .vnChartStyle { display: block; position: relative; }
+  .vnChartStyle summary { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .vnChartStyle summary::-webkit-details-marker { display: none; }
+  .vnChartStyle > div { position: absolute; z-index: 9; top: 44px; right: 0; padding: 6px; display: flex; background: var(--vn-surface-raised); border: 1px solid var(--vn-border); border-radius: 10px; box-shadow: 0 8px 24px #0008; }
+  .vnChartStyle button { min-height: 44px; border: 0; border-radius: 6px; padding: 0 14px; background: transparent; color: var(--vn-text-secondary); }
+  .vnChartStyle button[aria-pressed="true"] { background: var(--vn-accent-soft); color: var(--vn-accent); }
+  .rmtMobileAssetView .vnChartState { display: none; }
+  .rmtMobileAssetView .vnChart:has(.isstale) .vnChartHeadline > small { color: var(--vn-warning); }
+  .rmtMobileAssetView .vnChartRanges { width: auto; display: flex; flex-wrap: nowrap; margin: 0 8px 4px; max-width: none; border: 0; background: transparent; gap: 1px; overflow: hidden; padding: 0; }
+  .rmtMobileAssetView .vnChartRanges button { min-width: 0; font-size: 12px; padding: 0 2px; border-radius: 8px; }
+  .rmtMobileAssetView .vnChartFrame { height: 196px; min-height: 196px; }
+  .rmtMobileAssetView .vnChartFrame svg { height: 100%; min-height: 0; }
+  .rmtMobileAssetView .vnChartFooter { min-height: 0; font-size: 10px; padding: 0 12px 6px; text-transform: none; letter-spacing: 0; }
+  .rmtMobileAssetView .vnChartFooter span:nth-child(2) { display: inline; }
+  .rmtMobileAssetView .rmtWorkspaceTabs { margin: 0 0 16px; padding: 0; gap: 0; overflow: visible; }
+  .rmtMobileAssetView .rmtWorkspaceTabs button { flex: 1; min-width: 0; padding: 9px 0; min-height: 58px; flex-direction: column; gap: 5px; font-size: 11px; }
+  .rmtMobileAssetView .rmtWorkspaceTabs .rmtIcon { width: 18px; height: 18px; flex-basis: 18px; }
+  .rmtMobileAssetView .vnWorkspaceCard { padding: 16px; border-radius: 14px; }
+  .rmtMobileAssetView .vnWorkspaceCardHead .vnEyebrow { display: none; }
+  .rmtMobileAssetView .vnWorkspaceCardHead h3 { font-size: 17px; }
+  .rmtMobileAssetView .vnMarketFlow { grid-template-columns: repeat(3, minmax(0,1fr)); }
+  .rmtMobileAssetView .vnMarketFlow > span { padding: 0 8px; }
+  .rmtMobileAssetView .vnMarketFlow > span:first-child { padding-left: 0; }
+  .rmtMobileAssetView .vnMarketFlow small { font-size: 10px; }
+  .rmtMobileAssetView .vnMarketFlow strong { font-size: 16px; }
+  .rmtMobileAssetView .vnEvidenceGrid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .rmtMobileAssetView .vnEvidenceTabs button { min-height: 44px; }
+  .rmtMobileAssetView .vnAssetQuickLinks { margin-top: 10px; }
+  .rmtMobileAssetView .vnAssetQuickLinkRows a, .rmtMobileAssetView .vnProjectLinkGroup a { min-height: 44px; }
+  .rmtMobileAssetView .vnTokenInformation { font-size: 13px; }
+  .rmtMobileAssetView .vnEvidenceUnavailable { padding: 10px 0; }
+}

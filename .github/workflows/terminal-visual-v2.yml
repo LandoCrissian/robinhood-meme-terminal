@@ -41,6 +41,8 @@ jobs:
       RMT_NFT_MINT_RADAR_FIXTURE_NOW: "2026-09-21T20:30:00.000Z"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
         with:
           version: 10.12.1
@@ -50,6 +52,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Verify Token fixture authority
         run: pnpm --filter web exec tsx ../../scripts/visual-qa/legion-token-fixture-authority-smoke.ts
+      - name: Verify evidence-backed asset chassis and plot composition
+        run: pnpm --filter web exec tsx lib/vnext/asset-chassis-smoke.ts
       - run: pnpm build
       - name: Start production build
         run: |
@@ -69,6 +73,11 @@ jobs:
         run: node scripts/visual-qa/legion-visual-qa.mjs --capture-only
       - name: Verify chart failure and recovery preserve the public workspace
         run: node scripts/visual-qa/chart-refresh-stability.mjs
+      - name: Verify full asset chassis at four viewports
+        run: node scripts/visual-qa/asset-chassis-acceptance.mjs
+      - name: Include public before evidence
+        if: always()
+        run: cp -R docs/product/asset-chassis/before terminal-visual-v2/before-public
       - name: Upload visual evidence and semantic report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

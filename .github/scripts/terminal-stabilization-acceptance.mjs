@@ -68,16 +68,16 @@ export async function inspectTerminalStabilization(browser, { base, createContex
       failPage = 0;
       await page.goto(base, { waitUntil: "domcontentloaded" });
       await page.getByText("Directory temporarily unavailable", { exact: true }).waitFor();
-      const unknownCounts = await page.locator(".rmtMarketViews").first().innerText();
+      const unknownCounts = await page.locator(".rmtMarketViews").first().textContent();
       assert.doesNotMatch(unknownCounts, /(?:Active|Trending|New|RWA|All)\s+0(?:\s|$)/);
-      assert.match(unknownCounts, /All\s+—/);
+      assert.match(unknownCounts, /All\s*—/);
       generation++; await page.clock.fastForward(300001);
       await page.getByText("Directory temporarily unavailable", { exact: true }).waitFor();
-      assert.match(await page.locator(".rmtMarketViews").first().innerText(), /All\s+—/);
+      assert.match(await page.locator(".rmtMarketViews").first().textContent(), /All\s*—/);
       failPage = -1;
       await page.getByRole("button", { name: "Try again", exact: true }).click();
       await page.locator(row).first().waitFor();
-      assert.match(await page.locator(".rmtMarketViews").first().innerText(), /All\s+18/);
+      assert.match(await page.locator(".rmtMarketViews").first().textContent(), /All\s*18/);
       const start = performance.now();
       await page.goto(base, { waitUntil: "domcontentloaded" });
       await page.locator(row).first().waitFor();
@@ -85,6 +85,7 @@ export async function inspectTerminalStabilization(browser, { base, createContex
       assert.ok(directoryMs <= 2000, `${label}: directory took ${directoryMs}ms`);
       assert.ok(await page.locator(row).count() > 8);
       assert.equal(enrichmentResolved, false);
+      await revealBrowseExplore(page);
       await page.getByRole("button", { name: /^All\s+/ }).click();
       for (let n = 0; n < 8 && await page.locator(row).count() < canonical.length; n++) {
         await page.locator(".rmtMarketLoadMore").click();
@@ -119,29 +120,31 @@ export async function inspectTerminalStabilization(browser, { base, createContex
       await refreshRoot();
       assert.equal(await page.locator(row).count(), canonical.length, "repeated fallback does not corrupt the window");
       directoryMode = "indexed"; await refresh();
-      await freshness.getByText("Directory ready", { exact: true }).waitFor();
+      await freshness.getByText("Live markets", { exact: true }).waitFor();
       directoryMode = "stale"; await refresh();
       await freshness.getByText(/Last loaded/).waitFor();
       directoryMode = "partial"; await refresh();
-      await freshness.getByText("Directory ready", { exact: true }).waitFor();
+      await freshness.getByText("Live markets", { exact: true }).waitFor();
       directoryMode = "indexed"; removedAddress = canonical.at(-1).address;
       await refreshRoot();
       for (let n = 0; n < 100 && await page.locator(row).count() !== canonical.length - 1; n++) await page.waitForTimeout(25);
       assert.equal(await page.locator(row).count(), canonical.length - 1, "authoritative removal remains effective");
       directoryMode = "fallback";
       await page.reload({ waitUntil: "domcontentloaded" });
+      await revealBrowseExplore(page);
       await page.getByRole("button", { name: /^All\s+/ }).click();
       await page.locator(row).first().waitFor();
       assert.equal(await page.locator(row).count(), 8);
-      await freshness.getByText(/Limited fallback/).waitFor();
+      await freshness.getByText(/Limited coverage/).waitFor();
       directoryMode = "indexed"; removedAddress = null;
       failPage = -1;
       await page.goto(`${base}/?market=${first.address}`, { waitUntil: "domcontentloaded" });
-      await page.getByRole("heading", { name: "Observed market activity", exact: true }).waitFor();
+      await page.getByRole("heading", { name: "Activity", exact: true }).waitFor();
       assert.equal(await page.getByText("Confirmed activity", { exact: true }).count(), 0);
-      await page.getByRole("region", { name: "Exact-pool trade tape", exact: true }).waitFor();
+      await page.locator(".vnTapeUnavailable").waitFor();
+      assert.equal(await page.getByRole("region", { name: "Exact-pool trade tape", exact: true }).count(), 0, "No giant exact-pool tape when its provider is unavailable");
       assert.match(await page.getByLabel("Market activity by time window").innerText(), /buys/);
-      await page.getByRole("tab", { name: "Markets", exact: true }).click();
+      await revealMarketsEvidence(page);
       const card = page.locator(".vnMarketsCard");
       assert.equal(await card.locator(":scope > .vnVerifiedMarkets > a:visible").count(), 3);
       assert.match(await card.innerText(), /Primary canonical market/);
@@ -149,13 +152,15 @@ export async function inspectTerminalStabilization(browser, { base, createContex
       assert.match(await card.innerText(), /Dynamic fee/);
       await card.locator("summary").click();
       assert.equal(await card.locator(".vnVerifiedMarkets > a:visible").count(), 9);
-      await page.getByRole("tab", { name: "Safety", exact: true }).click();
+      await page.getByRole("tab", { name: "Holders", exact: true }).click();
+    await revealHolderSources(page);
       await page.locator('[data-evidence-domain="risk"][data-evidence-state="ready"]').waitFor();
       await page.locator('[data-evidence-domain="holders"][data-evidence-state="unavailable"]').waitFor();
       await page.locator('[data-evidence-domain="liquidity"][data-evidence-state="ready"]').waitFor();
       riskPending = true; riskStarted = false;
       await page.reload({ waitUntil: "domcontentloaded" });
-      await page.getByRole("tab", { name: "Safety", exact: true }).click();
+      await page.getByRole("tab", { name: "Holders", exact: true }).click();
+    await revealHolderSources(page);
       for (let n = 0; n < 100 && !riskStarted; n++) await page.waitForTimeout(20);
       assert.equal(riskStarted, true);
       await page.clock.fastForward(15001);
@@ -209,10 +214,10 @@ async function inspectFreshDirectoryWindow(browser, { base, createContext, insta
       });
       await page.goto(base, { waitUntil: "domcontentloaded" });
       await page.getByText("Directory temporarily unavailable", { exact: true }).waitFor();
-      assert.match(await page.locator(".rmtMarketViews").first().innerText(), /All\s+—/);
+      assert.match(await page.locator(".rmtMarketViews").first().textContent(), /All\s*—/);
       await page.getByRole("button", { name: "Try again", exact: true }).click();
       await page.getByText("Directory temporarily unavailable", { exact: true }).waitFor();
-      assert.match(await page.locator(".rmtMarketViews").first().innerText(), /All\s+—/);
+      assert.match(await page.locator(".rmtMarketViews").first().textContent(), /All\s*—/);
       mode = "GOOD";
       const start = performance.now();
       await page.getByRole("button", { name: "Try again", exact: true }).click();
@@ -220,6 +225,7 @@ async function inspectFreshDirectoryWindow(browser, { base, createContext, insta
       await page.locator(row).first().waitFor();
       const firstMs = Math.round(performance.now() - start);
       assert.ok(firstMs <= 2000, `${label}: healthy first publication ${firstMs}ms`);
+      await revealBrowseExplore(page);
       await page.getByRole("button", { name: /^All\s+/ }).click();
       for (let i = 0; i < 12 && await page.locator(row).count() < 120; i++) { await page.locator(".rmtMarketLoadMore").click(); await page.waitForTimeout(100); }
       assert.equal(await page.locator(row).count(), 120);
@@ -230,10 +236,23 @@ async function inspectFreshDirectoryWindow(browser, { base, createContext, insta
         assert.ok(reads > prior);
         await page.waitForTimeout(150);
         assert.equal(await page.locator(row).count(), 120, `${label}: ${state} must retain the loaded window`);
-        assert.match(await page.locator(".rmtMarketViews").first().innerText(), /All\s+120/);
+        assert.match(await page.locator(".rmtMarketViews").first().textContent(), /All\s*120/);
       }
       results[label] = { firstMs, canonicalPages: 3, loaded: 120, sequence: "GOOD_503_503_GOOD_PARTIAL_GOOD", falseZero: false, enrichmentDelayMs: 45000 };
     } finally { closed = true; for (const timer of timers) clearTimeout(timer); await context.close(); }
   }
   return results;
+}
+
+async function revealBrowseExplore(page) {
+  const details = page.locator(".rmtMarketViews .rmtExplore").first();
+  if (!await details.evaluate(node => node.open)) await details.locator(":scope > summary").click();
+}
+async function revealHolderSources(page) {
+  const details = page.locator(".vnHolderSources");
+  if (!await details.evaluate(node => node.open)) await details.locator(":scope > summary").click();
+}
+async function revealMarketsEvidence(page) {
+  await page.locator(".rmtWorkspaceTabs").getByRole("tab", { name: "More", exact: true }).click();
+  await page.locator(".vnMoreDisclosure > summary").getByText("Markets", { exact: true }).click();
 }

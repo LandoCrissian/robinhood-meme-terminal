@@ -76,7 +76,7 @@ assert.deepEqual(workspaceTokenPresentation({
 const workspaceSource = readFileSync(new URL("../../app/vnext/vnext-asset-workspace.tsx", import.meta.url), "utf8");
 const chartSource = readFileSync(new URL("../../app/vnext/vnext-market-chart.tsx", import.meta.url), "utf8");
 const stylesSource = readFileSync(new URL("../../app/vnext/vnext-terminal.css", import.meta.url), "utf8");
-const visualQaSource = readFileSync(new URL("../../../../scripts/visual-qa/legion-visual-qa.mjs", import.meta.url), "utf8");
+const visualQaSource = readFileSync(new URL("../../../../scripts/visual-qa/token-presentation-fixtures.mjs", import.meta.url), "utf8");
 const riskHookSource = readFileSync(new URL("../use-token-risk-evidence.ts", import.meta.url), "utf8");
 const constellationHookSource = readFileSync(new URL("../use-wallet-constellation.ts", import.meta.url), "utf8");
 assert.equal((workspaceSource.match(/currentMultiplier/g) ?? []).length, 1, "Stock multiplier must be displayed exactly once");
@@ -168,7 +168,7 @@ assert.equal(tokenRiskFreshnessLabel("stale"), "Stale");
 assert.match(workspaceSource, /<small>Coverage<\/small>/);
 assert.match(workspaceSource, /<small>Evidence freshness<\/small><strong>\{tokenRiskFreshnessLabel\(evidence\.freshness\)\}/);
 assert.doesNotMatch(workspaceSource, /<small>Evidence freshness<\/small><strong>\{[^}]*evidence\.coverage/);
-assert.match(workspaceSource, /Concentration details are temporarily unavailable/);
+assert.match(workspaceSource, /Concentration details are unavailable/);
 assert.match(workspaceSource, /LP ownership\/control · Not verified/);
 assert.match(workspaceSource, /Largest non-pool holder/,
   "An address-style market must label concentration without inferring an EOA wallet");
@@ -192,12 +192,13 @@ assert.match(workspaceSource, /Pool swap fee ·/);
 assert.doesNotMatch(workspaceSource, /% live fee/);
 assert.match(workspaceSource, /Other verified venues · \{markets\.length\}/);
 assert.match(workspaceSource, /Venue evidence does not prove project origin/);
-assert.match(workspaceSource, /hasVerifiedRwaRelationship \? \[\{ id: "rwa"/);
+assert.match(workspaceSource, /hasVerifiedRwaRelationship \? <details[\s\S]*RWA relationship/);
 assert.match(chartSource, /Sparse \$\{labels\[range\]\} market history/);
 assert.match(chartSource, /candles\.length >= 1/);
 assert.match(chartSource, /vnChartSparsePoint/);
-assert.match(chartSource, /candles\.length === 1[\s\S]*left \+ usableWidth \/ 2/,
-  "A single real observation must be centered instead of looking like a broken left-edge chart");
+const chartCompositionSource = readFileSync(new URL("./chart-composition.ts", import.meta.url), "utf8");
+assert.match(chartCompositionSource, /step \* \(index \+ \.5\)/,
+  "Observations including a single candle must be centered inside their plot cells");
 assert.match(chartSource, /const volumeWidth = Math\.max\(2, Math\.min\(11,/,
   "Sparse volume bars must remain visually bounded without inventing observations");
 assert.match(riskHookSource, /canonicalMarket && canonicalMarket\.version !== 4/,
