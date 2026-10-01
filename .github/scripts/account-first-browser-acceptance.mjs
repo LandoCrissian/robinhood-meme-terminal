@@ -742,6 +742,10 @@ async function acceptTerms(page, clicks) {
 async function openMobileTradeSheetIfClosed(page) {
   const openSheet = page.locator(".rmtMobileSheetLayer.isOpen");
   if (await openSheet.isVisible().catch(() => false)) return;
+  if (new URL(page.url()).searchParams.has('side')) {
+    await openSheet.waitFor({ state: 'visible', timeout: 30_000 });
+    return;
+  }
   const buyDock = page.locator(".rmtMobileTradeDock .isBuy");
   if (await buyDock.isVisible().catch(() => false)) await buyDock.click();
 }
@@ -1086,7 +1090,7 @@ async function runViewport(browser, base, device, viewport, serverLog) {
     const started = Date.now();
     progress("opening public market");
     try {
-      await page.goto(`${base}/?market=${market}&side=buy`, { waitUntil: "domcontentloaded", timeout: 180_000 });
+      await page.goto(base, { waitUntil: "domcontentloaded", timeout: 180_000 });
     } catch (error) {
       throw new Error(`${device}: public market navigation failed.\n${String(error)}\nServer log tail:\n${serverLog.value.slice(-8_000)}`);
     }
@@ -1097,6 +1101,11 @@ async function runViewport(browser, base, device, viewport, serverLog) {
     for (const label of ["Active", "New", "Movers", "Trending"]) {
       assert.ok(await page.getByRole("button", { name: new RegExp(label, "i") }).first().isVisible(), `${device}: ${label} market view is visible`);
     }
+
+    // Markets remains independently covered. An exact destination URL must not
+    // require the retired intermediate generic Markets render before the ticket.
+    await page.goto(`${base}/?market=${market}&side=buy`, { waitUntil: "domcontentloaded" });
+    await page.locator('#vn-asset-heading').waitFor();
 
     if (device === "mobile") {
       await openMobileTradeSheetIfClosed(page);

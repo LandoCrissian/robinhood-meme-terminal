@@ -6174,6 +6174,8 @@ body .rmtTerminal button {
 .vnTradeScroll { overflow-anchor: none; }
 .vnTradePriceSummary { min-height: 58px; margin: 12px 0; font-variant-numeric: tabular-nums; }
 .vnTraderDetails { font-variant-numeric: tabular-nums; }
+.vnRouteCard .vnTraderDetails { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.vnRouteCard .vnTraderDetails > div { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 .vnRouteCard .vnTraderDetails dt, .vnRouteCard .vnTraderDetails dd { font-size: 12px; line-height: 1.45; }
 .vnTraderDetails dd { text-align: right; overflow-wrap: anywhere; max-width: 65%; }
 .vnReceiveField.isBaseUnits > div > strong,

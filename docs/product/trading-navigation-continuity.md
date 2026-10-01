@@ -127,6 +127,15 @@ established, so this PR does not claim that production quote incident is resolve
 Physical-iPhone repaint/keyboard confirmation remains owner-controlled. Controlled
 browser parity and reduced node/label replacements are separate evidence.
 
+Initial-check qualification: the first PR revision exposed a nested-summary
+selector ambiguity in visual capture, a missing disclosure-helper copy in the
+isolated Preview/acceptance harness, and an account-first test that waited for the
+generic Markets intermediate screen. These checks are updated to exercise their
+intended public destinations/disclosures rather than requiring that obsolete
+intermediate state. Local capture also exposed the fixture hydration mismatch
+above and an extra open click racing deliberate Buy-side restoration. Assertions
+on errors, identity, input, financial boundaries and recovery remain enforced.
+
 Production mutated: **NO**. Real financial actions: **0**. No merge/deployment,
 provider switch, fee/treasury change, Privy change, Project Graph population or
 chart-cache change.

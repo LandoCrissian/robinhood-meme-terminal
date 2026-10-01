@@ -116,6 +116,12 @@ export async function runStableRefreshBrowser({ browser, base, identity, externa
         await page.locator('.vnExecutionEvidence > summary').click();
       }
       await page.getByRole('button', { name: /Explicit stability signer/ }).click();
+      if (!baseline) {
+        await page.locator('.vnExecutionEvidence').evaluate(element => { element.open = false; });
+        await page.locator('.vnTraderDetails').scrollIntoViewIfNeeded();
+        await page.screenshot({ path: path.join(output, `${name}-trade-details.png`), fullPage: true });
+        await page.locator('.vnExecutionEvidence > summary').click();
+      }
       await page.evaluate(() => {
         const input = document.querySelector('[aria-label="Exact input amount"]');
         window.__stableInput = input; window.__stableAction = document.querySelector('.vnTradeActionDock .vnReviewButton');
@@ -239,7 +245,9 @@ export async function runStableRefreshBrowser({ browser, base, identity, externa
         await page.setViewportSize({ width: 390, height: 844 });
         await page.reload();
         await page.locator('#vn-asset-heading').waitFor();
-        if (!await page.locator('.rmtMobileSheetLayer.isOpen').count()) await page.locator('.rmtMobileTradeDock .isBuy').click();
+        // The deliberately selected Buy side is already in the URL. Await its
+        // normal restoration instead of racing hydration with a second open click.
+        await page.locator('.rmtMobileSheetLayer.isOpen').waitFor();
         await page.getByLabel('Pay with asset', { exact: true }).waitFor();
         assert.equal(await page.getByLabel('Pay with asset', { exact: true }).inputValue(), 'eip155:4663/native', 'reload retains the deliberately selected wallet-scoped payment');
         await pause(1200);
