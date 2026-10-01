@@ -28,6 +28,14 @@ unchanged.
   exercises identical native-ETH input through real quote/verify/authorize routes
   at 375, 390, 430 and 1440px. This can detect viewport regressions; it cannot
   establish the original production auth/provider cause.
+- **Controlled after:** the matching 90-second desktop/mobile task passed locally.
+  The passive renewal window recorded zero card replacements, disappearance
+  frames, opacity flashes and receive-label changes. Action/chart/scroll movement
+  and input-instability samples were zero. Both before and after made four requests
+  each to quotes, verify and authorize in the matching 42-second window. A held
+  verification crossed expiry; its retained terms were labelled updating and
+  non-executable. Outage and recovery stayed distinct. These measurements are
+  controlled Chromium evidence, not physical-iPhone repaint acceptance.
 
 ## Changes and authority
 
@@ -73,7 +81,7 @@ Raw errors, headers, credentials and provider bodies are not exported. Request
 retry, cache and cancellation behavior is unchanged. This is diagnostic support,
 not a speculative quote-parity fix.
 
-The loopback-only browser identity fixture now activates after its first hydration
+The loopback-only browser and account identity fixtures activate after their first hydration
 render. Its previous direct `window` host check produced a different initial
 server/client identity snapshot when the destination ticket was server-rendered.
 The acceptance error assertion remains enforced. The production Privy bridge and
@@ -135,6 +143,10 @@ intended public destinations/disclosures rather than requiring that obsolete
 intermediate state. Local capture also exposed the fixture hydration mismatch
 above and an extra open click racing deliberate Buy-side restoration. Assertions
 on errors, identity, input, financial boundaries and recovery remain enforced.
+The subsequent account fixture exposed the same initial signed-out hydration
+mismatch. Quote-only preview tests also needed to deliberately open the nested
+Execution Evidence to inspect the unchanged non-executable provider disclosures;
+their zero verify/authorize/wallet-side-effect assertions remain enforced.
 
 Production mutated: **NO**. Real financial actions: **0**. No merge/deployment,
 provider switch, fee/treasury change, Privy change, Project Graph population or
