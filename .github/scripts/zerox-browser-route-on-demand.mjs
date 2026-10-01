@@ -254,8 +254,8 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
                 await page.locator('.rmtMobileSheetLayer').waitFor({ state: 'hidden' });
               }
               await page.locator('.rmtWorkspaceTabs').getByRole('tab',{name:'More',exact:true}).click();
-              await page.locator('.vnMoreDisclosure > summary').filter({hasText:/^Markets$/}).click();
-              assert.match(await page.locator('.vnMarketsCard').innerText(), /provider observed/i);
+              await page.locator('.vnMoreDisclosure > summary').filter({hasText:/^Evidence & Sources$/}).click();
+              assert.equal(await page.locator('[data-market-provenance]').getAttribute('data-market-provenance'), 'provider-observed');
               await page.locator('.rmtWorkspaceTabs').getByRole('tab',{name:'Activity',exact:true}).click();
               assert.match(await page.getByLabel('Market activity by time window').innerText(), /— buys.*— sells/);
             }

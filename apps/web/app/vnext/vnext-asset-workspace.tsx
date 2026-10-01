@@ -448,7 +448,7 @@ function VerifiedMarkets({ canonicalMarkets, resolution, selectedPool, directory
   return <section className="vnWorkspaceCard vnMarketsCard" aria-labelledby="vn-verified-markets-heading">
     <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Onchain resolution</span><h3 id="vn-verified-markets-heading">Canonical markets</h3></div><span>Pool evidence</span></header>
     {pools.length ? <><div className="vnVerifiedMarkets">{pools.slice(0, 3).map(renderPool)}</div>{pools.length > 3 ? <details className="vnEvidenceDetails"><summary>All alternate canonical markets ({pools.length - 3} more)</summary><div className="vnVerifiedMarkets">{pools.slice(3).map((pool, index) => renderPool(pool, index + 3))}</div></details> : null}</> : <div className="vnWorkspaceEmpty"><strong>No canonical market evidence attached</strong><span>Verified asset identity remains available. Market source evidence is unavailable. Trading remains independent.</span></div>}
-    <footer>Displayed price source, project origin and selected execution venue remain independent. The 0x execution route is verified separately from this market evidence.</footer>
+    <footer>Displayed price source, project origin and selected execution venue remain independent. 0x constructs the swap transaction independently of this market evidence.</footer>
   </section>;
 }
 
@@ -587,7 +587,7 @@ export function VNextAssetWorkspace({
       <details className="vnMoreDisclosure"><summary>Markets</summary><div className="vnMarketEvidenceStack"><VerifiedMarkets directoryMarket={directoryMarket} canonicalMarkets={directoryMarket.canonicalMarkets} resolution={resolution} selectedPool={selectedChartIdentity} /><WorkspaceEcosystemIntelligence ecosystem={workspace.ecosystem} /></div></details>
       <details className="vnMoreDisclosure"><summary>Origin &amp; launch</summary><WorkspaceOrigin market={market} token={directoryMarket.address} launchpadEvidence={launchpadEvidence} /></details>
       {hasVerifiedRwaRelationship ? <details className="vnMoreDisclosure"><summary>RWA relationship</summary><WorkspaceRwaRelationships relationships={workspace.stockAssetRelationships} coverage={workspace.stockAssetCoverage} /></details> : null}
-      <details className="vnMoreDisclosure"><summary>Evidence &amp; Sources</summary><p>{tokenIdentityVerified ? "Onchain token identity proven" : "Identity enrichment unavailable"} · {workspace.status}</p><PresentationSources presentation={workspace.presentation} /><p>Project origin, market observations and execution are separate authorities. Chart and enrichment availability do not determine swap availability.</p></details>
+      <details className="vnMoreDisclosure"><summary>Evidence &amp; Sources</summary><p>{tokenIdentityVerified ? "Onchain token identity proven" : "Identity enrichment unavailable"} · {workspace.status}</p><p data-market-provenance={selectedCanonicalMarket ? "canonical" : market ? "provider-observed" : "unavailable"}>{selectedCanonicalMarket ? "Canonical onchain market inventory" : market ? `Provider-observed market · ${market.dexId}` : "No market observation"}</p><PresentationSources presentation={workspace.presentation} /><p>Project origin, market observations and execution are separate authorities. Chart and enrichment availability do not determine swap availability.</p></details>
     </div>;
 
   return <section className={`vnAssetPanel vnAssetWorkspace is${presentation}`} aria-labelledby="vn-asset-heading">
