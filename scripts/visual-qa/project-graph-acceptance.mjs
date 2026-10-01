@@ -50,6 +50,9 @@ try {
   const ccffCard=page.getByRole('link',{name:'Explore CCFF00 project',exact:true});
   assert.equal(await ccffCard.locator('.rmtProjectPair.isNftLed').count(),1);
   assert.equal(await ccffCard.locator('.rmtProjectPair').getByText('Token',{exact:true}).count(),0);
+  await page.evaluate(()=>document.fonts.ready);
+  const tokenLines=await page.getByRole('link',{name:'Explore CannaCats project',exact:true}).locator('.rmtProjectPair').getByText('CANNACAT',{exact:true}).evaluate(node=>{const range=document.createRange();range.selectNodeContents(node);return new Set([...range.getClientRects()].map(rect=>Math.round(rect.y))).size;});
+  assert.equal(tokenLines,1,'The short exact token symbol remains legible on one line at every viewport');
   await capture('projects-landing');
   await page.getByRole('link',{name:'Explore CannaCats project',exact:true}).click();await page.locator('[data-project-market="cannacats"]').waitFor();
   assert.equal(await page.locator('nav[aria-label="RMT Terminal navigation"]:visible [aria-current="page"]').innerText(),'Projects');
