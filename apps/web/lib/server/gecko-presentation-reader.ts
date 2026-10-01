@@ -1,5 +1,6 @@
 import { getAddress, isAddress } from "viem";
 import { isExternalPoolIdentity, normalizeExternalPoolIdentity } from "../external-ohlcv";
+import { chartErrorFacts, type ChartReadDiagnostic, type ChartOperation } from "./chart-read-diagnostic";
 
 const ROOT = "https://api.geckoterminal.com/api/v2/networks/robinhood";
 const MAX_BODY = 512 * 1024;
@@ -16,30 +17,44 @@ export function createGeckoPresentationReader(fetcher: typeof fetch = (...args) 
   const failures = new Map<string, number>();
   let started: number[] = [];
   let cooldownUntil = 0;
-  async function read<T>(url: string, parse: (value: unknown) => T, ttl: number, staleAge = 15 * 60_000): Promise<ProviderRead<T>> {
+  async function read<T>(url: string, parse: (value: unknown) => T, ttl: number, staleAge = 15 * 60_000, diagnostic?: ChartReadDiagnostic): Promise<ProviderRead<T>> {
+    const readStarted = diagnostic?.now() ?? 0;
     const target = new URL(url);
     if (target.origin !== "https://api.geckoterminal.com" || target.username || target.password || !target.pathname.startsWith("/api/v2/networks/robinhood/")) throw new PresentationProviderError("INVALID");
     const cached = cache.get(url);
+    const cachedAge = cached ? now() - Date.parse(cached.value.observedAt) : undefined;
+    diagnostic?.event("STALE_EVIDENCE_READ", readStarted, "OK", { reason: !cached ? "CACHE_MISS" : cached.expires > now() ? "CACHE_FRESH" : "CACHE_EXPIRED", ageMs: cachedAge, expiresInMs: cached ? cached.expires - now() : undefined, staleAvailable: Boolean(cached && cachedAge! <= staleAge) });
     const fallback = () => {
-      if (cached && now() - Date.parse(cached.value.observedAt) <= staleAge) return { ...cached.value, stale: true } as ProviderRead<T>;
+      const available = Boolean(cached && now() - Date.parse(cached.value.observedAt) <= staleAge);
+      diagnostic?.event("STALE_EVIDENCE_READ", diagnostic.now(), available ? "OK" : "FAILED", { reason: "STALE_FALLBACK", staleAvailable: available, ageMs: cached ? now() - Date.parse(cached.value.observedAt) : undefined });
+      if (available) return { ...cached!.value, stale: true } as ProviderRead<T>;
       throw new PresentationProviderError("UNAVAILABLE");
     };
     if (cached && cached.expires > now()) return cached.value as ProviderRead<T>;
     const active = pending.get(url);
-    if (active) return active as Promise<ProviderRead<T>>;
+    if (active) { diagnostic?.event("OTHER", readStarted, "SKIPPED", { reason: "PENDING_REUSE" }); return active as Promise<ProviderRead<T>>; }
     started = started.filter(time => now() - time < 60_000);
     if (now() < cooldownUntil) {
+      diagnostic?.event("GLOBAL_COOLDOWN", readStarted, "FAILED", { reason: "COOLDOWN", remainingMs: cooldownUntil - now() });
       if (cached) return fallback();
       throw new PresentationProviderError("RATE_LIMITED", 429);
     }
-    if ((failures.get(url) ?? 0) > now() || started.length >= 24 || pending.size >= 4) return fallback();
+    const blocked = (failures.get(url) ?? 0) > now() || started.length >= 24 || pending.size >= 4;
+    diagnostic?.event("LOCAL_BUDGET", readStarted, blocked ? "FAILED" : "OK", { reason: blocked ? (failures.get(url) ?? 0) > now() ? "FAILURE_BACKOFF" : started.length >= 24 ? "START_BUDGET" : "CONCURRENCY" : undefined, starts: started.length, pending: pending.size });
+    if (blocked) return fallback();
     const work = (async () => {
       started.push(now());
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 3_500);
+      const fetchStarted = diagnostic?.now() ?? 0;
+      let operation: ChartOperation = target.pathname.includes("/ohlcv/") ? "GECKO_OHLCV_FETCH" : target.pathname.includes("/tokens/") && target.pathname.endsWith("/pools") ? "GECKO_TOKEN_DISCOVERY" : "GECKO_POOL_READ";
+      let stageStarted = fetchStarted;
+      let reason: Parameters<ChartReadDiagnostic["event"]>[3] = { reason: "FETCH_REJECTED" };
       try {
         const options: RequestInit & { next: { revalidate: number } } = { headers: { Accept: "application/json;version=20230203" }, redirect: "error", next: { revalidate: Math.max(1, Math.floor(ttl / 1000)) }, signal: controller.signal };
         const response = await fetcher(url, options);
+        diagnostic?.event(operation, stageStarted, "OK", { reason: "HTTP_RESPONSE", httpStatus: response.status, remainingMs: 3_500 - (diagnostic.now() - fetchStarted) });
+        operation = "GECKO_HTTP_STATUS"; stageStarted = diagnostic?.now() ?? 0; reason = { httpStatus: response.status };
         if (response.status === 429) {
           const retry = response.headers.get("retry-after");
           const seconds = retry && /^\d+$/.test(retry) ? Number(retry) : retry ? (Date.parse(retry) - now()) / 1000 : 60;
@@ -47,33 +62,43 @@ export function createGeckoPresentationReader(fetcher: typeof fetch = (...args) 
           throw new PresentationProviderError("RATE_LIMITED", 429);
         }
         if (!response.ok) throw new PresentationProviderError("UNAVAILABLE", response.status);
-        if (Number(response.headers.get("content-length")) > MAX_BODY) throw new PresentationProviderError("INVALID");
+        diagnostic?.event(operation, stageStarted, "OK", reason);
+        operation = "GECKO_PARSE"; stageStarted = diagnostic?.now() ?? 0; reason = { reason: "BODY" };
+        if (Number(response.headers.get("content-length")) > MAX_BODY) { reason = { reason: "BODY_TOO_LARGE" }; throw new PresentationProviderError("INVALID"); }
         const reader = response.body?.getReader();
-        if (!reader) throw new PresentationProviderError("INVALID");
+        if (!reader) { reason = { reason: "BODY_MISSING" }; throw new PresentationProviderError("INVALID"); }
         const chunks: Uint8Array[] = []; let size = 0;
         try {
           while (true) {
             const { done, value } = await reader.read(); if (done) break;
             size += value.byteLength;
-            if (size > MAX_BODY) throw new PresentationProviderError("INVALID");
+            if (size > MAX_BODY) { reason = { reason: "BODY_TOO_LARGE" }; throw new PresentationProviderError("INVALID"); }
             chunks.push(value);
           }
         } finally { await reader.cancel(); }
         const bytes = new Uint8Array(size); let offset = 0;
         for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
+        reason = { reason: "PAYLOAD" };
         const data = parse(JSON.parse(new TextDecoder().decode(bytes)));
+        diagnostic?.event(operation, stageStarted, "OK", reason);
+        operation = "STALE_EVIDENCE_READ"; stageStarted = diagnostic?.now() ?? 0;
         // Next's fetch cache can return an earlier HTTP response while it
         // revalidates. Preserve that response's date rather than renewing its
         // observation time on every cold process or cache hit.
         const responseDate = Date.parse(response.headers.get("date") ?? "");
         const observed = Number.isFinite(responseDate) ? responseDate : now();
+        reason = { reason: observed > now() + 60_000 ? "HTTP_DATE_FUTURE" : now() - observed > staleAge ? "HTTP_DATE_TOO_OLD" : "HTTP_DATE_VALID", ageMs: now() - observed, observedAt: new Date(observed).toISOString(), observationSource: Number.isFinite(responseDate) ? "HTTP_DATE" : "LOCAL_TIME_FALLBACK" };
         if (observed > now() + 60_000 || now() - observed > staleAge) throw new PresentationProviderError("UNAVAILABLE");
+        diagnostic?.event(operation, stageStarted, "OK", reason);
         const value = { data, observedAt: new Date(observed).toISOString(), stale: now() - observed > ttl };
+        operation = "STALE_EVIDENCE_WRITE"; stageStarted = diagnostic?.now() ?? 0; reason = { observedAt: value.observedAt, stale: value.stale };
         cache.delete(url); cache.set(url, { value, expires: now() + ttl });
         if (cache.size > 96) cache.delete(cache.keys().next().value!);
         failures.delete(url);
+        diagnostic?.event(operation, stageStarted, "OK", reason);
         return value;
       } catch (error) {
+        diagnostic?.event(controller.signal.aborted ? "GECKO_TIMEOUT" : operation, stageStarted, "FAILED", { ...reason, ...chartErrorFacts(error), remainingMs: 3_500 - ((diagnostic?.now() ?? fetchStarted) - fetchStarted) });
         failures.set(url, now() + 15_000);
         if (failures.size > 96) failures.delete(failures.keys().next().value!);
         if (cached && now() - Date.parse(cached.value.observedAt) <= staleAge) return fallback();
