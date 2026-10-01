@@ -61,3 +61,12 @@ The actual fee policy remains 25bps: base/base → input; otherwise USDG if eith
 CI uploads before images and after screenshots/videos/JSON in `terminal-visual-v2`, labelled with reviewed head and checkout tree. Existing account-first and 0x workflow artifacts supply authenticated controlled UI evidence. Signed-out controlled screenshots do not establish live authenticated trading.
 
 Physical iPhone keyboard behavior, owner-authenticated production acceptance and financial settlement are NOT TESTED by this implementation. Chromium mobile viewports/resize behavior are emulated. No owner action or deposit is required for review. Final screenshots must be visually inspected alongside behavioral results; a CI pass alone is not the marketing-quality decision.
+
+
+## Review qualifications
+
+Short mobile/desktop before recordings in `before/videos/` are LIVE PUBLIC SIGNED-OUT browser captures, with viewport/scope manifests. They record chart range changes, the previous Market Details and a passive interval. Named after recordings and the 135-second passive interval are controlled external-boundary CI artifacts. These are emulated viewports, not physical iPhones.
+
+Initial CI exposed old selectors for the former technical disclosure, primary chart-source copy and idle skip-link geometry. The corrected tests follow More and Sources, still assert exact contracts, safe link targets/provenance, pool identity and unchanged transaction behavior. Keyboard-focused skip-link size is checked explicitly. A visible 26px Sources control found during visual review was enlarged to 44px; desktop and mobile chart geometry remains bounded.
+
+Available chart, retained stale chart and later outage keep one reserved geometry to avoid moving the ticket or user's scroll. Their empty messages are compact; evidence does not become a large error panel. Holders, Project, Position and Activity omit or compact unavailable sections. No chart timestamp/freshness boundary was relaxed.

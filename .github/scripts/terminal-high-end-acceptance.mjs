@@ -1684,7 +1684,7 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
   if (firstRowsMs > 2_000) throw new Error(`${label}: first canonical rows exceeded the performance budget (${firstRowsMs}ms)`);
   if (await page.locator(rowSelector).count() <= 8) throw new Error(`${label}: canonical directory remained capped at the curated eight`);
   await page.getByRole("region", { name: "All admitted markets while activity is pending" }).waitFor();
-  if (!(await page.locator("body").innerText()).includes("not classified as Active")) throw new Error(`${label}: pending canonical assets were mislabeled Active`);
+  if (!(await page.getByRole("region", { name: "All admitted markets while activity is pending" }).innerText()).includes("Market activity is updating")) throw new Error(`${label}: pending activity state was not disclosed`);
   const active = page.getByRole("button", { name: /^Active\s+/ });
   if (await active.getAttribute("aria-pressed") !== "true") throw new Error(`${label}: Active is not the default view`);
   const search = page.getByRole("textbox", { name: "Search Robinhood Chain markets" });

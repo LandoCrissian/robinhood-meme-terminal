@@ -176,7 +176,7 @@ export function VNextMarketChart({ token, pair, symbol, referencePriceUsd }: {
   };
 
   return (
-    <section className="vnChart" aria-labelledby="vn-chart-title">
+    <section className="vnChart" aria-label={`${symbol} price chart`}>
       <header className="vnChartHeader">
         <div className="vnChartHeadline">
           <span className="vnEyebrow">Price Chart</span>

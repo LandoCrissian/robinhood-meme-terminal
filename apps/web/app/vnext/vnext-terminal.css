@@ -6308,8 +6308,8 @@ body .rmtTerminal button {
 .vnChartRanges { width: auto; margin: 0 16px 6px; max-width: none; }
 .vnChartRanges button { flex: 1; min-width: 40px; min-height: 44px; font-size: 12px; padding: 0 6px; }
 .vnChartSources { position: relative; margin: 0 16px; color: var(--vn-text-muted); font-size: 11px; }
-.vnChartSources > summary { min-height: 26px; cursor: pointer; }
-.vnChartSources[open] dl { position: absolute; inset: auto 0 26px; z-index: 8; padding: 14px; border: 1px solid var(--vn-border-strong); border-radius: 12px; background: var(--vn-surface); font-size: 12px; box-shadow: 0 8px 30px #0008; overflow-wrap: anywhere; }
+.vnChartSources > summary { min-height: 44px; cursor: pointer; }
+.vnChartSources[open] dl { position: absolute; inset: auto 0 44px; z-index: 8; padding: 14px; border: 1px solid var(--vn-border-strong); border-radius: 12px; background: var(--vn-surface); font-size: 12px; box-shadow: 0 8px 30px #0008; overflow-wrap: anywhere; }
 .vnChartSources dt { color: var(--vn-text-muted); }
 .vnChartSources dd { margin: 2px 0 10px; }
 .vnChartFooter { font-size: 11px; padding: 0 16px 12px; }
@@ -6318,7 +6318,7 @@ body .rmtTerminal button {
 .vnChartEmpty span { font-size: 13px; max-width: 280px; line-height: 1.5; }
 .vnChartState { text-transform: none; font-size: 11px; white-space: nowrap; }
 .rmtDesktopAsset .vnChartFrame { height: 300px; min-height: 0; }
-.rmtDesktopAsset .vnChart { display: grid; grid-template-rows: 76px 48px minmax(0,1fr) 26px 26px; height: 460px; min-height: 460px; }
+.rmtDesktopAsset .vnChart { display: grid; grid-template-rows: 76px 48px minmax(0,1fr) 44px 26px; height: 460px; min-height: 460px; }
 .rmtDesktopAsset .vnChartFrame { height: auto; }
 .rmtDesktopAsset .vnChartFooter { min-height: 0; }
 .rmtMobileMarketRow strong { font-size: 14px; }
