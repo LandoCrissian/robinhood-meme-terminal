@@ -1349,6 +1349,77 @@ async function runViewport(browser, base, device, viewport, serverLog) {
   }
 }
 
+async function runRestoredHistoryBoundary(browser, base) {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const page = await context.newPage(), quotes = [], errors = [];
+  page.on('pageerror', error => errors.push(error.message));
+  // Controlled already-reconciled journal evidence. This tests restoration and
+  // notification presentation, not a production transaction or receipt verifier.
+  const hash = character => `0x${character.repeat(64)}`, native = `0x${'0'.repeat(40)}`;
+  const record = { schemaVersion: 1, chainId: 4663, wallet, provider: 'zero-x-swap', kind: 'swap',
+    inputAsset: native, outputAsset: market, inputAmountAtomic: '500000000000000', outputAmountAtomic: '1000000000000000000000',
+    planId: '11111111-1111-4111-8111-111111111111', payloadHash: hash('a'), txHash: hash('b'), state: 'confirmed',
+    submittedAtMs: Date.now() - 3600000, updatedAtMs: Date.now() - 3599000,
+    providerNativeFee: { provider: 'zero-x-swap', treasury: '0x61700479a4a1f62584fd3aba2c2b290ea727d2ec', feeAsset: native,
+      feeBps: 25, feeAmountAtomic: '1250000000000', expectedOutputAtomic: '1000000000000000000000', protectedOutputAtomic: '990000000000000000000',
+      transactionTarget: '0x0000000000001ff3684f28c67538d4d072c22734', calldataHash: hash('a'), providerFeeAsset: null, providerFeeAtomic: null },
+    outputSettlement: { source: 'erc20_receipt_net_transfer', chainId: 4663, txHash: hash('b'), planId: '11111111-1111-4111-8111-111111111111',
+      payloadHash: hash('a'), recipient: wallet, outputAsset: market, amountAtomic: '1000000000000000000000', receiptBlockHash: hash('c') }
+  };
+  const journalKey = 'rmt:vnext-execution-journal:v1:4663';
+  requireRoot('tsx/cjs');
+  assert.equal(requireWeb('./lib/vnext/execution-recovery.ts').normalizeVNextExecutionJournal([record]).length, 1,
+    'Controlled history fixture must pass the real journal validator');
+  assert.equal(requireWeb('./lib/vnext/output-settlement.ts').hasVerifiedVNextSwapSettlement(record), true);
+  try {
+    await installPageFixtures(page, quotes, { existingEmbeddedWallet: true });
+    await page.addInitScript(({ journalKey, record }) => {
+      if (!localStorage.getItem(journalKey)) localStorage.setItem(journalKey, JSON.stringify({ schemaVersion: 2, executions: [record], walletRequests: [] }));
+    }, { journalKey, record });
+    await page.goto(`${base}/?panel=portfolio`, { waitUntil: 'domcontentloaded' });
+    await acceptTerms(page, { terms: 0 });
+    const history = page.locator('.vnHistoryAffordance');
+    await history.waitFor();
+    await history.locator('summary').click();
+    assert.match(await history.innerText(), /Previously settled/);
+    assert.ok((await history.locator('a').getAttribute('href')).includes(record.txHash));
+    const durable = await page.evaluate(key => localStorage.getItem(key), journalKey);
+    await page.locator('[data-terminal-nav="markets"]:visible').click();
+    assert.equal(await history.count(), 0);
+    await page.evaluate(record => window.dispatchEvent(new CustomEvent('rmt:vnext-execution-changed', { detail: [record] })), record);
+    await page.waitForTimeout(500);
+    assert.equal(await page.getByText('Verified swap history', { exact: true }).count(), 0);
+    await page.goto(`${base}/?market=${market}`, { waitUntil: 'domcontentloaded' });
+    await page.locator('#vn-asset-heading').waitFor();
+    assert.equal(await history.count(), 0, 'Token navigation cannot replay a historical settlement banner');
+    await page.locator('[data-terminal-nav="portfolio"]:visible').click();
+    await history.waitFor();
+    await page.evaluate(() => window.__RMT_ACCOUNT_ACCEPTANCE_SET_ACCOUNTS__?.(['0x4444444444444444444444444444444444444444']));
+    await history.waitFor({ state: 'detached' });
+    await page.evaluate(wallet => window.__RMT_ACCOUNT_ACCEPTANCE_SET_ACCOUNTS__?.([wallet]), wallet);
+    await history.waitFor();
+    await page.evaluate(async () => window.__RMT_ACCOUNT_ACCEPTANCE_LOGOUT__?.());
+    await history.waitFor({ state: 'detached' });
+    await page.getByRole('button', { name: 'Sign in', exact: true }).first().click();
+    await history.waitFor();
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await history.waitFor();
+    await history.getByRole('button', { name: 'Dismiss completed trade notice' }).click();
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await page.getByRole('button', { name: /0x3333…3333/ }).first().waitFor();
+    await page.waitForTimeout(1000);
+    assert.equal(await history.count(), 0, 'Dismissal survives session restoration');
+    assert.equal(await page.evaluate(key => localStorage.getItem(key), journalKey), durable, 'History presentation never changes durable settlement evidence');
+    assert.equal(quotes.length, 0, 'Historical restoration does not create a quote intent');
+    assert.deepEqual(financialWalletMethods(await page.evaluate(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__)), []);
+    assert.deepEqual(errors, []);
+    const result = { evidence: 'CONTROLLED_RECONCILED_JOURNAL_REAL_PUBLIC_COMPONENTS', restores: ['reload', 'logout/login', 'account A/B/A', 'token', 'journal refresh', 'dismiss/reload'],
+      quoteRequests: quotes.length, walletRequests: 0, journalUnchanged: true, errors };
+    await writeFile(path.join(artifactRoot, 'historical-settlement-restoration.json'), JSON.stringify(result, null, 2));
+    return result;
+  } finally { await context.close(); }
+}
+
 async function main() {
   await mkdir(artifactRoot, { recursive: true });
   const rpcServer = createServer(async (request, response) => {
@@ -1430,6 +1501,7 @@ async function main() {
     const transferPreDispatchAuthority = await runTransferPreDispatchAuthorityBoundary(browser, base, serverLog);
     const transferSameReceiptRetry = await runTransferSameReceiptRetryBoundary(browser, base, serverLog);
     const transferPersistenceFailure = await runTransferPersistenceFailureBoundary(browser, base, serverLog);
+    const restoredHistory = process.env.RMT_ACCOUNT_ACCEPTANCE_TRANSFER_ONLY === 'true' ? null : await runRestoredHistoryBoundary(browser, base);
     const report = {
       evidenceType: "MOCKED_LOCAL_BROWSER",
       fixtureLabel: "ACCOUNT_FIRST_LOOPBACK_ONLY_NO_REAL_FINANCIAL_ACTION",
@@ -1447,7 +1519,8 @@ async function main() {
       transferBoundary,
       transferPreDispatchAuthority,
       transferSameReceiptRetry,
-      transferPersistenceFailure
+      transferPersistenceFailure,
+      restoredHistory
     };
     await writeFile(path.join(artifactRoot, "account-first-browser-evidence.json"), `${JSON.stringify(report, null, 2)}\n`);
     const scope = process.env.RMT_ACCOUNT_ACCEPTANCE_TRANSFER_ONLY === "true"
