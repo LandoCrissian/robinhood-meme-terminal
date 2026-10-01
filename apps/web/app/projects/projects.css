@@ -22,7 +22,7 @@
 .rmtProjectCard { display:flex; align-items:center; min-height:104px; padding:18px; gap:14px; border:1px solid #213027; background:#101812; border-radius:16px; color:#eaf2eb; text-decoration:none; }
 .rmtProjectCardBody { flex:1; min-width:0; display:grid; gap:7px; }
 .rmtProjectCardBody>small { font-size:11px; }
-.rmtProjectPair { display:grid; grid-template-columns:minmax(0,1fr) 20px minmax(0,1.35fr); align-items:center; gap:12px; padding-top:8px; }
+.rmtProjectPair { display:grid; grid-template-columns:minmax(86px,1fr) 20px minmax(0,1.35fr); align-items:center; gap:12px; padding-top:8px; }
 .rmtProjectPair>div { display:grid; gap:5px; min-width:0; }
 .rmtProjectPair>div>small { font-size:11px; }
 .rmtProjectPair>div>span { font-size:13px; font-weight:600; overflow-wrap:anywhere; }
