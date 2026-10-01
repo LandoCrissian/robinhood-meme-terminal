@@ -6,7 +6,7 @@ This change keeps the existing terminal, controllers, wallet selection and provi
 
 ## Before visual defect inventory
 
-The `before/` screenshots are LIVE PUBLIC SIGNED-OUT evidence from the authorized production release. They cover 375×812, 390×844, 430×932 and 1440×900. The JSON records viewport, page errors and overflow. The original `*-markets.png` filenames contain the workspace Markets tab; `*-markets-directory.png` captures primary discovery separately. No authenticated wallet or private data was captured.
+The before screenshots archived in the [exact-head visual artifact](https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732) under `before-public/` are LIVE PUBLIC SIGNED-OUT evidence from the authorized production release. They cover 375×812, 390×844, 430×932 and 1440×900. The JSON records viewport, page errors and overflow. The original `*-markets.png` filenames contain the workspace Markets tab; `*-markets-directory.png` captures primary discovery separately. No authenticated wallet or private data was captured.
 
 | Severity | Observed defect | Correction |
 |---|---|---|
@@ -60,15 +60,21 @@ The actual fee policy remains 25bps: base/base → input; otherwise USDG if eith
 - `chart-refresh-stability.mjs`: actual application timers over 135 seconds, FRESH → RETAINED_STALE → DELAYED_REFRESH → PROVIDER_FAILURE → RECOVERY. Measures amount, payment, input identity, focus/caret, scroll, range, details, chart/action/dock boxes and financial requests.
 - Existing terminal/visual/0x/account-first/production-Privy suites remain enabled. Presentation selectors follow More/Explore/Holders; exact identity, classification, provider binding and recovery assertions remain. Unavailable exact-pool tape is asserted compactly rather than requiring an unavailable dashboard.
 
-CI uploads before images and after screenshots/videos/JSON in `terminal-visual-v2`, labelled with reviewed head and checkout tree. Existing account-first and 0x workflow artifacts supply authenticated controlled UI evidence. Signed-out controlled screenshots do not establish live authenticated trading.
+CI uploads before capture manifests and after screenshots/videos/JSON in `terminal-visual-v2`, labelled with reviewed head and checkout tree. Existing account-first and 0x workflow artifacts supply authenticated controlled UI evidence. Signed-out controlled screenshots do not establish live authenticated trading.
 
 Physical iPhone keyboard behavior, owner-authenticated production acceptance and financial settlement are NOT TESTED by this implementation. Chromium mobile viewports/resize behavior are emulated. No owner action or deposit is required for review. Final screenshots must be visually inspected alongside behavioral results; a CI pass alone is not the marketing-quality decision.
 
 
 ## Review qualifications
 
-Short mobile/desktop before recordings in `before/videos/` are LIVE PUBLIC SIGNED-OUT browser captures, with viewport/scope manifests. They record chart range changes, the previous Market Details and a passive interval. Named after recordings and the 135-second passive interval are controlled external-boundary CI artifacts. These are emulated viewports, not physical iPhones.
+Short mobile/desktop before recordings archived in the [exact-head visual artifact](https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732) under `before-public/videos/` are LIVE PUBLIC SIGNED-OUT browser captures, with viewport/scope manifests. They record chart range changes, the previous Market Details and a passive interval. Named after recordings and the 135-second passive interval are controlled external-boundary CI artifacts. These are emulated viewports, not physical iPhones.
 
 Initial CI exposed old selectors for the former technical disclosure, primary chart-source copy and idle skip-link geometry. The corrected tests follow More and Sources, still assert exact contracts, safe link targets/provenance, pool identity and unchanged transaction behavior. Keyboard-focused skip-link size is checked explicitly. A visible 26px Sources control found during visual review was enlarged to 44px; desktop and mobile chart geometry remains bounded.
 
 Available chart, retained stale chart and later outage keep one reserved geometry to avoid moving the ticket or user's scroll. Their empty messages are compact; evidence does not become a large error panel. Holders, Project, Position and Activity omit or compact unavailable sections. No chart timestamp/freshness boundary was relaxed.
+
+
+See [owner visual review](OWNER_VISUAL_REVIEW.md) for the final contact-set inventory, candid defect/marketing assessment and [media inventory](MEDIA_INVENTORY.json). Before review-only binaries were removed from the final tree; capture manifests remain.
+
+
+See [owner visual review](OWNER_VISUAL_REVIEW.md) for the final contact-set inventory, candid defect/marketing assessment and [media inventory](MEDIA_INVENTORY.json). Before review-only binaries were removed from the final tree; capture manifests remain.
