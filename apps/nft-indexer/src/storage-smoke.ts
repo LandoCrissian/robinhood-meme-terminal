@@ -165,7 +165,7 @@ try {
   const errored = await readSourceOperationalState(pool, source);
   assert.equal(errored.status, 'ERROR');
   assert.equal(errored.lastError?.length, 4_096);
-  assert.equal(errored.lastSyncAt, null);
+  assert.equal(errored.lastSyncAt, checkedAt.toISOString(), 'An error preserves the last successfully observed projection timestamp');
   assert.equal((await readCheckpoint(pool, source)).nextBlock, start + 3n);
   const syncedAt = new Date('2026-08-27T01:23:45.000Z');
   await recordSourceSuccess(pool, source, 'SYNCED', syncedAt);
