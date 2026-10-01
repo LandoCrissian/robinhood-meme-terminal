@@ -87,16 +87,16 @@ export async function chartReadDiagnosticSmoke() {
     const success = await GET(new Request(`https://rmt.invalid/api/markets/ohlcv?token=0x3333333333333333333333333333333333333333&range=1H`));
     assert.equal(success.status, 200); assert.equal((await success.json()).coverage, "AVAILABLE");
     assert.equal(success.headers.get("cache-control"), "public, s-maxage=30, stale-while-revalidate=30");
-    assert.equal(handlerCalls, 2); assert.equal(logs[0].events.at(-1)?.operation, "RESPONSE_SERIALIZATION");
+    assert.equal(handlerCalls, 2); assert.equal(logs.length, 0, "Successful chart polling emits no incident trace");
     old = true;
     const failure = await GET(new Request(`https://rmt.invalid/api/markets/ohlcv?token=0x4444444444444444444444444444444444444444&range=1H`));
     assert.equal(failure.status, 503); assert.deepEqual(await failure.json(), { error: "Price history is temporarily unavailable." });
     assert.equal(failure.headers.get("cache-control"), "public, s-maxage=15, stale-while-revalidate=60");
-    assert.equal(logs[1].events.some(event => event.reason === "HTTP_DATE_TOO_OLD" && event.outcome === "FAILED"), true);
-    assert.equal(logs[1].errorClass, "PresentationProviderError");
+    assert.equal(logs[0].events.some(event => event.reason === "HTTP_DATE_TOO_OLD" && event.outcome === "FAILED"), true);
+    assert.equal(logs[0].errorCode, "UNAVAILABLE");
     const callsBeforeInvalid = handlerCalls;
     assert.equal((await GET(new Request("https://rmt.invalid/api/markets/ohlcv?token=secret&range=1H"))).status, 400);
-    assert.equal(handlerCalls, callsBeforeInvalid); assert.equal(logs.length, 2);
+    assert.equal(handlerCalls, callsBeforeInvalid); assert.equal(logs.length, 1);
   } finally { globalThis.fetch = originalFetch; console.info = originalInfo; }
   console.log("Chart read diagnostics: cold/warm/stale/recovery, HTTP age, 429/503, parse/transport, local budget/cooldown/reference, bounds and redaction passed; NO production requests.");
 }

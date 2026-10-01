@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { chartReadDiagnosticSmoke } from "./chart-read-diagnostic-smoke";
+import { chartColdCacheSmoke } from "./chart-cold-cache-smoke";
 import { EventEmitter } from "node:events";
 import { createGeckoPresentationReader, geckoTokenUrl, parseTokenPools, parseTokenVisual } from "./gecko-presentation-reader";
 import { createTokenChartReader } from "./token-chart-market";
@@ -8,6 +9,7 @@ import { retainPresentationEvidence, parsePresentationEvidence, visualSchema } f
 import { defineRmtProjectIdentity, projectsForContract, RMT_PROJECT_IDENTITIES } from "@rmt/shared/project-identity";
 
 async function main() {
+await chartColdCacheSmoke();
 await chartReadDiagnosticSmoke();
 const token = "0x14c51bb55592372eac7141a1d0527d1dd7fbd42f";
 const other = "0x1111111111111111111111111111111111111111";

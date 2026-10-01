@@ -34,6 +34,8 @@ export async function GET(request: Request) {
   } finally {
     // Vercel associates this bounded line with the request. No incoming headers,
     // credential-bearing URLs, provider bodies, raw messages or stacks are logged.
-    try { console.info(JSON.stringify(diagnostic.summary(status, failure))); } catch { /* Diagnostics cannot change the response. */ }
+    if (status >= 500) {
+      try { console.info(JSON.stringify(diagnostic.summary(status, failure))); } catch { /* Diagnostics cannot change the response. */ }
+    }
   }
 }

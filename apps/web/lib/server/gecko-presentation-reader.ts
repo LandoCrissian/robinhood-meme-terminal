@@ -9,8 +9,14 @@ export class PresentationProviderError extends Error {
   constructor(public readonly code: "UNAVAILABLE" | "RATE_LIMITED" | "INVALID", public readonly status?: number) { super(code); }
 }
 
+// An expired platform-cache response is not evidence of a provider failure.
+class ExpiredPlatformEvidenceError extends PresentationProviderError {
+  constructor() { super("UNAVAILABLE"); }
+}
+
 /** Instance-local budget, bounded cache and single flight. A 429 pauses every new read,
- * including other tokens. No retry loop; existing public feed readers are unchanged. */
+ * including other tokens. One bounded cache-expiry bypass shares this single
+ * flight, budget and deadline; existing public feed readers are unchanged. */
 export function createGeckoPresentationReader(fetcher: typeof fetch = (...args) => fetch(...args), now = () => Date.now()) {
   const cache = new Map<string, { value: ProviderRead<unknown>; expires: number }>();
   const pending = new Map<string, Promise<ProviderRead<unknown>>>();
@@ -50,8 +56,12 @@ export function createGeckoPresentationReader(fetcher: typeof fetch = (...args) 
       let operation: ChartOperation = target.pathname.includes("/ohlcv/") ? "GECKO_OHLCV_FETCH" : target.pathname.includes("/tokens/") && target.pathname.endsWith("/pools") ? "GECKO_TOKEN_DISCOVERY" : "GECKO_POOL_READ";
       let stageStarted = fetchStarted;
       let reason: Parameters<ChartReadDiagnostic["event"]>[3] = { reason: "FETCH_REJECTED" };
-      try {
-        const options: RequestInit & { next: { revalidate: number } } = { headers: { Accept: "application/json;version=20230203" }, redirect: "error", next: { revalidate: Math.max(1, Math.floor(ttl / 1000)) }, signal: controller.signal };
+      const attempt = async (freshRead = false): Promise<ProviderRead<T>> => {
+        controller.signal.throwIfAborted();
+        const options: RequestInit & { next?: { revalidate: number } } = { headers: { Accept: "application/json;version=20230203" }, redirect: "error", signal: controller.signal,
+          ...(freshRead ? { cache: "no-store" as const } : { next: { revalidate: Math.max(1, Math.floor(ttl / 1000)) } }) };
+        operation = target.pathname.includes("/ohlcv/") ? "GECKO_OHLCV_FETCH" : target.pathname.includes("/tokens/") && target.pathname.endsWith("/pools") ? "GECKO_TOKEN_DISCOVERY" : "GECKO_POOL_READ";
+        stageStarted = diagnostic?.now() ?? 0; reason = { reason: "FETCH_REJECTED" };
         const response = await fetcher(url, options);
         diagnostic?.event(operation, stageStarted, "OK", { reason: "HTTP_RESPONSE", httpStatus: response.status, remainingMs: 3_500 - (diagnostic.now() - fetchStarted) });
         operation = "GECKO_HTTP_STATUS"; stageStarted = diagnostic?.now() ?? 0; reason = { httpStatus: response.status };
@@ -88,7 +98,25 @@ export function createGeckoPresentationReader(fetcher: typeof fetch = (...args) 
         const responseDate = Date.parse(response.headers.get("date") ?? "");
         const observed = Number.isFinite(responseDate) ? responseDate : now();
         reason = { reason: observed > now() + 60_000 ? "HTTP_DATE_FUTURE" : now() - observed > staleAge ? "HTTP_DATE_TOO_OLD" : "HTTP_DATE_VALID", ageMs: now() - observed, observedAt: new Date(observed).toISOString(), observationSource: Number.isFinite(responseDate) ? "HTTP_DATE" : "LOCAL_TIME_FALLBACK" };
-        if (observed > now() + 60_000 || now() - observed > staleAge) throw new PresentationProviderError("UNAVAILABLE");
+        if (observed > now() + 60_000) throw new PresentationProviderError("UNAVAILABLE");
+        if (now() - observed > staleAge) {
+          diagnostic?.event(operation, stageStarted, "SKIPPED", reason);
+          if (cached && now() - Date.parse(cached.value.observedAt) <= staleAge) return fallback();
+          // Next may serve expired HTTP-200 data during background revalidation.
+          // One no-store read obtains current evidence without private Next
+          // promises, cache polling, or a provider penalty for cache expiry.
+          if (freshRead) throw new ExpiredPlatformEvidenceError();
+          if (controller.signal.aborted) throw new ExpiredPlatformEvidenceError();
+          if (now() < cooldownUntil) throw new PresentationProviderError("RATE_LIMITED", 429);
+          started = started.filter(time => now() - time < 60_000);
+          if (started.length >= 24) {
+            diagnostic?.event("LOCAL_BUDGET", stageStarted, "FAILED", { reason: "START_BUDGET", starts: started.length, pending: pending.size });
+            throw new ExpiredPlatformEvidenceError();
+          }
+          started.push(now());
+          return attempt(true);
+        }
+        controller.signal.throwIfAborted();
         diagnostic?.event(operation, stageStarted, "OK", reason);
         const value = { data, observedAt: new Date(observed).toISOString(), stale: now() - observed > ttl };
         operation = "STALE_EVIDENCE_WRITE"; stageStarted = diagnostic?.now() ?? 0; reason = { observedAt: value.observedAt, stale: value.stale };
@@ -97,10 +125,14 @@ export function createGeckoPresentationReader(fetcher: typeof fetch = (...args) 
         failures.delete(url);
         diagnostic?.event(operation, stageStarted, "OK", reason);
         return value;
+      };
+      try { return await attempt();
       } catch (error) {
-        diagnostic?.event(controller.signal.aborted ? "GECKO_TIMEOUT" : operation, stageStarted, "FAILED", { ...reason, ...chartErrorFacts(error), remainingMs: 3_500 - ((diagnostic?.now() ?? fetchStarted) - fetchStarted) });
-        failures.set(url, now() + 15_000);
-        if (failures.size > 96) failures.delete(failures.keys().next().value!);
+        diagnostic?.event(controller.signal.aborted && !(error instanceof ExpiredPlatformEvidenceError) ? "GECKO_TIMEOUT" : operation, stageStarted, "FAILED", { ...reason, ...chartErrorFacts(error), remainingMs: 3_500 - ((diagnostic?.now() ?? fetchStarted) - fetchStarted) });
+        if (!(error instanceof ExpiredPlatformEvidenceError)) {
+          failures.set(url, now() + 15_000);
+          if (failures.size > 96) failures.delete(failures.keys().next().value!);
+        }
         if (cached && now() - Date.parse(cached.value.observedAt) <= staleAge) return fallback();
         throw error instanceof PresentationProviderError ? error : new PresentationProviderError("UNAVAILABLE");
       } finally { clearTimeout(timer); }
