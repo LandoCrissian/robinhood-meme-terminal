@@ -81,9 +81,9 @@ assert.match(liveGuardControls, /candidate\.address\.toLowerCase\(\) === wallet\
 assert.match(liveGuardControls, /armingEnabled && configuration\.enabled/);
 assert.match(liveGuardControls, /already-authorized transaction may still confirm/);
 
-assert.match(publicChrome, /<PublicLink href="\/protection">Protection<\/PublicLink>/);
+assert.match(publicChrome, /<div className="publicMenu">[\s\S]*<PublicLink href="\/protection">Protection Center<small>Prior permissions, recovery, and execution history<\/small><\/PublicLink>/);
 assert.match(publicChrome, /Prior permissions, recovery, and execution history/);
-assert.match(publicChrome, /<PublicLink href="\/watchlist"><span aria-hidden="true">☆<\/span>Watchlist<\/PublicLink>/);
-assert.match(publicChrome, /<PublicLink href="\/protection"><span aria-hidden="true">◇<\/span>Protection<\/PublicLink>/);
+assert.match(publicChrome, /<div className="publicMenu">[\s\S]*<PublicLink href="\/watchlist">Watchlist<small>Tokens saved on this device<\/small><\/PublicLink>/);
+assert.match(publicChrome, /<PublicLink href="\/">Markets<\/PublicLink>[\s\S]*<PublicLink href="\/projects">Projects<\/PublicLink>[\s\S]*<PublicLink href="\/nft">NFTs<\/PublicLink>[\s\S]*<PublicLink href="\/\?panel=portfolio">Portfolio<\/PublicLink>[\s\S]*<PublicLink href="\/\?panel=distribution">Distribution<\/PublicLink>/);
 
 console.log("Protection Center and cross-device recovery smoke checks passed");
