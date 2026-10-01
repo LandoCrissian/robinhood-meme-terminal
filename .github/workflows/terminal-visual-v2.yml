@@ -75,7 +75,7 @@ jobs:
         run: node scripts/visual-qa/chart-refresh-stability.mjs
       - name: Verify full asset chassis at four viewports
         run: node scripts/visual-qa/asset-chassis-acceptance.mjs
-      - name: Include public before evidence
+      - name: Include public before capture manifests
         if: always()
         run: cp -R docs/product/asset-chassis/before terminal-visual-v2/before-public
       - name: Upload visual evidence and semantic report

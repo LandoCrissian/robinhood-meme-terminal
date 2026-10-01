@@ -1,0 +1,500 @@
+{
+  "source_head": "9ad542fb18d79349f442d30602afc41df112d113",
+  "source_tree": "6f86eecb55f418cbad34e65425f5da84386ec076",
+  "binary_count": 61,
+  "png_count": 59,
+  "webm_count": 2,
+  "total_bytes": 8530755,
+  "permanent_regression_fixture_count": 0,
+  "permanent_documentation_binary_count": 0,
+  "files": [
+    {
+      "path": "docs/product/asset-chassis/before/1440-activity.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 133184,
+      "sha256": "5f6605886b3b3df8c3d84ab8a59b8ed70838786b73ab30011f2e831dbdf1e748",
+      "artifact_path": "before-public/1440-activity.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/1440-market-details.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 143872,
+      "sha256": "c4efb936c383a0efa9963198c18b58e8497a213cc6c8f24e0ee493215cfb1c3d",
+      "artifact_path": "before-public/1440-market-details.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/1440-markets-directory.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 190844,
+      "sha256": "12a5a62150b375c0f9eab557df40c08a0671d8cde8a72818c71e7c63eb30b45c",
+      "artifact_path": "before-public/1440-markets-directory.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/1440-markets-movers.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 186684,
+      "sha256": "4f79bb5db47cd9d4ac97b4853ab44cd772011ae70dfbe90ed30dc8be9ae5e5de",
+      "artifact_path": "before-public/1440-markets-movers.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/1440-markets-new.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 80548,
+      "sha256": "50981ae42686adfec0087d652c3560f69cba5807bcf7b63e3a699dfde25e8f80",
+      "artifact_path": "before-public/1440-markets-new.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/1440-markets-trending.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 85652,
+      "sha256": "a642086ffe9d50bc153c133f1a7000f223ef4a7e3bd99a5af8dd417b78217c6f",
+      "artifact_path": "before-public/1440-markets-trending.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/1440-markets.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 137709,
+      "sha256": "1ecb7d5730baae9c746a403d0b0edf8b6084c698fd9fb7887e19e76dfe29078c",
+      "artifact_path": "before-public/1440-markets.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/1440-origin.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 131468,
+      "sha256": "6b4103886c6974e8ae3b58290ae99355df663f40daf4aa7b560e977090621639",
+      "artifact_path": "before-public/1440-origin.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/1440-position.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 131024,
+      "sha256": "fda485ba5e78026d105ae9f23a1162482a08410fe0461af61447bf2f4510c036",
+      "artifact_path": "before-public/1440-position.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/1440-safety.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 132705,
+      "sha256": "e4d5d8dd0ec9b757975df0e722062ac4f8c716a4ba0faa5a80a9c354278da963",
+      "artifact_path": "before-public/1440-safety.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/1440-search.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 44956,
+      "sha256": "fa55c55c9cdf94698350826c2cc328f45044e36a549f5db69c7483b0e2edb9b8",
+      "artifact_path": "before-public/1440-search.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/1440-stock.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 134786,
+      "sha256": "291bd7c77f37cc10b57bc1c9cf8c8c263d81d588ac24ade8793a03b277e47d47",
+      "artifact_path": "before-public/1440-stock.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/1440-token-loading.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 140460,
+      "sha256": "b8822709ff2f561da1e104601f7f73f14b5d9e2c221b30f646b7938bfe7d3c8d",
+      "artifact_path": "before-public/1440-token-loading.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/1440-token.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 140459,
+      "sha256": "901c2e2ea1403bd0c5f33a195a41333317ec4e7a8731fc8941128bf8b7104e5e",
+      "artifact_path": "before-public/1440-token.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/375-activity.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 66882,
+      "sha256": "65556c9d6492887cf352e84d3e4a07926479bd83061433d04ac7b8db64bd0ff0",
+      "artifact_path": "before-public/375-activity.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/375-market-details.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 104661,
+      "sha256": "a8c4b88cf15e42733a2685ca000c52e0b350b48b24027ba37600de9587a658d4",
+      "artifact_path": "before-public/375-market-details.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/375-markets-directory.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 119662,
+      "sha256": "bf3694184f8de05094d65102f8b47bff51713cd33ac8fbb6960f523584eb63dc",
+      "artifact_path": "before-public/375-markets-directory.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/375-markets-movers.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 157284,
+      "sha256": "9f66bb15a5dbae3e65dc7fcf76f471c9ea059b8e703f2a127a3aa835edcdef54",
+      "artifact_path": "before-public/375-markets-movers.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/375-markets-new.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 55054,
+      "sha256": "e01d7de534dc591b08ee05d4fbda88b1ee680d5542cfb8d87e6a81bf7bc0aa23",
+      "artifact_path": "before-public/375-markets-new.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/375-markets-trending.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 66175,
+      "sha256": "67d94a5867fd7785377b47b61932557614877737035f8e5cc6de8fb410b8f9e6",
+      "artifact_path": "before-public/375-markets-trending.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/375-markets.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 55768,
+      "sha256": "bdf913d1c8bfe6953d146fe4f461d2206b63e1b958674eba2fd2eda2e5bdc946",
+      "artifact_path": "before-public/375-markets.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/375-origin.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 50371,
+      "sha256": "ba2c8dadeef93e88d46fbc55b861e0ed6cc9826521c739d77c4bfe9790e319b1",
+      "artifact_path": "before-public/375-origin.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/375-position.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 49813,
+      "sha256": "2ed4a7bc22ed65b005a1095678d062ee73cfca19bbae3fa82bb70e39637f83bc",
+      "artifact_path": "before-public/375-position.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/375-safety.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 58137,
+      "sha256": "46fb43ba2bc109d92f82afd8dbfdb01de9debee65dbc3a703d382624a7b7c3f0",
+      "artifact_path": "before-public/375-safety.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/375-search.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 34720,
+      "sha256": "1646d9972983a1902b99b2e1ebd212cde495e926fdfa29c7ecd27edcdf8b177c",
+      "artifact_path": "before-public/375-search.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/375-stock.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 68643,
+      "sha256": "fac26cfc0ba8e5959d1a66c7f34117414823ad48d3a47af36edbd5de453713c9",
+      "artifact_path": "before-public/375-stock.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/375-token-loading.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 64666,
+      "sha256": "d973754d8b3845d406c85a2450f0b44e91b509732ed8277a0aac3d13db1eadc7",
+      "artifact_path": "before-public/375-token-loading.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/375-token.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 66438,
+      "sha256": "825772b7c5bd8bec1d2c096a2803f9a55202bd692f1f97209b5ba1390503d7c5",
+      "artifact_path": "before-public/375-token.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/375-trade.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 65093,
+      "sha256": "932f1eb367844bc1d8b8750a047b771a83111b0ebb72989b4a5d6e5eb724fb62",
+      "artifact_path": "before-public/375-trade.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/390-activity.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 68973,
+      "sha256": "fe6c6b398aca7635a1f7fd6d6ccee5c4cfe7e7b0af988beef364476ad54d5d9c",
+      "artifact_path": "before-public/390-activity.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/390-market-details.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 104105,
+      "sha256": "7c5d426f49ba3ce086afc75e57125b3c2178b546258e80bb2ddae79a5e6862ae",
+      "artifact_path": "before-public/390-market-details.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/390-markets-directory.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 159069,
+      "sha256": "566d8e225950be3ad0ed9cfa3d3fc69b56d0a15c6d7eaa371cb326eeb38a1eab",
+      "artifact_path": "before-public/390-markets-directory.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/390-markets-movers.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 159106,
+      "sha256": "97478a01f6bff1ac1626b7267d51e916f4c29f7db2081bb23f2209585cf29cdb",
+      "artifact_path": "before-public/390-markets-movers.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/390-markets-new.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 55779,
+      "sha256": "2d96e0ba0ec8d189b4041743d7495864cf00ad0ca278e26de3a39a093c6ac95b",
+      "artifact_path": "before-public/390-markets-new.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/390-markets-trending.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 67322,
+      "sha256": "1a9cbeeb23db4997ac93c3c0d3216777c8d9f52964f1153c38f3646278859759",
+      "artifact_path": "before-public/390-markets-trending.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/390-markets.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 58058,
+      "sha256": "6074d057c3f1277d3f1ba1266af245d145e3ac322c632e053393b0ee5c67fe1a",
+      "artifact_path": "before-public/390-markets.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/390-origin.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 52179,
+      "sha256": "c4066301ad226c2eef7c42efa5a0241e8ed7ebd5ffe7d449db45a96772612767",
+      "artifact_path": "before-public/390-origin.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/390-position.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 51989,
+      "sha256": "275d773f9a379dbb57d608520b52b0c21a09a231274c39ee2e4c0a652ec04634",
+      "artifact_path": "before-public/390-position.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/390-safety.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 60675,
+      "sha256": "afed4652fd92f968c7645c9b23ceef105c58e5a2b8c0a92725016740d911a333",
+      "artifact_path": "before-public/390-safety.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/390-search.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 35727,
+      "sha256": "63602ee54fc8451d8083725d01672e063d0115660ff41e973d5c4107102ecd55",
+      "artifact_path": "before-public/390-search.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/390-stock.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 70224,
+      "sha256": "3db47cc2ae22e37f9c1b8afec91471fd0751f76fd36cba53b6cd1bd279f926a5",
+      "artifact_path": "before-public/390-stock.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/390-token-loading.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 69638,
+      "sha256": "4b4f0a070500ee9906c946aba32b10cc3ddd6ddae33a61b49596e6248f58f486",
+      "artifact_path": "before-public/390-token-loading.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/390-token.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 69638,
+      "sha256": "4b4f0a070500ee9906c946aba32b10cc3ddd6ddae33a61b49596e6248f58f486",
+      "artifact_path": "before-public/390-token.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/390-trade.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 74200,
+      "sha256": "797d0fee79699fd668cb05d42ca1ca431876e2ab1fcd03cd87d939af53fca306",
+      "artifact_path": "before-public/390-trade.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/430-activity.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 66510,
+      "sha256": "8ac7c9fb5a5efa306872d3caadf9ce9533a511420ce4fdb6a2dbe35eae68a349",
+      "artifact_path": "before-public/430-activity.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/430-market-details.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 100574,
+      "sha256": "3d6a90971f2168e7fea873fe66cfe463b467eb15e8bda9b066bf9aa928ee63e9",
+      "artifact_path": "before-public/430-market-details.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/430-markets-directory.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 159215,
+      "sha256": "db9016c9b04bff024e89d40a17c071ec303fb5649e217d7031959c33958e6825",
+      "artifact_path": "before-public/430-markets-directory.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/430-markets-movers.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 159261,
+      "sha256": "53f243d362547375c627e95b9b6350721b8c353b72476f122450d490e5bba4e7",
+      "artifact_path": "before-public/430-markets-movers.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/430-markets-new.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 65808,
+      "sha256": "50e7e87b0a4b0b663b5aec6a2dd2de6f4d40c6528cb998a7963e6871ade904a7",
+      "artifact_path": "before-public/430-markets-new.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/430-markets-trending.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 72180,
+      "sha256": "ab80dd47ecf834435c04454a089c6411c8b168b77e96df7a8e8ee22fdf4a1e5f",
+      "artifact_path": "before-public/430-markets-trending.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/430-markets.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 58878,
+      "sha256": "5639cbef61d01db6e27185db280ec8e0a7df5e89aed71e0e9e26ae6a2f30a4da",
+      "artifact_path": "before-public/430-markets.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/430-origin.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 50629,
+      "sha256": "8881ed389130d7dd1a719352d9fc5d7c30c37c0cb14c12f9e8072496c367d9de",
+      "artifact_path": "before-public/430-origin.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/430-position.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 52598,
+      "sha256": "19f623ede669d2bde616d7c6e87852d1befcb9d5f6f2b2a64ca4d61fc66d3722",
+      "artifact_path": "before-public/430-position.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/430-safety.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 74641,
+      "sha256": "969de6727bc176115be0439f0c303fe957553050baa34f6837d995d1fcdae802",
+      "artifact_path": "before-public/430-safety.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/430-search.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 36078,
+      "sha256": "e05e1363a0884f87c19f23da5ca31f0c2936446eafbbbf780e8e9d1bca981075",
+      "artifact_path": "before-public/430-search.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/430-stock.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 65356,
+      "sha256": "33fcf8c4c71e4c938f21386781b5655bf16c43dc08909ad130adb1f74066fc6e",
+      "artifact_path": "before-public/430-stock.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/430-token-loading.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 64214,
+      "sha256": "a056537d6040c7eb99313a8f667aa195ab910c4a1dea801b0bab802168fdf627",
+      "artifact_path": "before-public/430-token-loading.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/430-token.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 66421,
+      "sha256": "62c91ab3363daf3e9f669ed22993fab4cb4c505d08e999b32cf010bd07911777",
+      "artifact_path": "before-public/430-token.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/430-trade.png",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 69041,
+      "sha256": "8d5da8bb1d5b83c92c36ec9171537e16e6aff4eec93c39ccf6976873758e56ad",
+      "artifact_path": "before-public/430-trade.png",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/videos/desktop-public-before.webm",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 2131926,
+      "sha256": "6ac4f8e5dacb626ca911d0057cd529a3429f24bcee746627fa420efc10f47569",
+      "artifact_path": "before-public/videos/desktop-public-before.webm",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    },
+    {
+      "path": "docs/product/asset-chassis/before/videos/mobile-public-before.webm",
+      "classification": "REVIEW_ONLY_ARTIFACT",
+      "bytes": 1183025,
+      "sha256": "f3a4b44d90581d1f022abb3fe0b898773dca0243862aeb78f0efa245d3f319c4",
+      "artifact_path": "before-public/videos/mobile-public-before.webm",
+      "artifact_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/36823584487/artifacts/11144640732"
+    }
+  ]
+}
