@@ -61,7 +61,9 @@ try {
     });
     await page.goto(`http://127.0.0.1:${port}`, { waitUntil: "domcontentloaded" });
     const enter = page.getByRole("button", { name: /I understand/ });
-    if (await enter.isVisible()) await enter.click();
+    await enter.waitFor({ state: "visible", timeout: 20000 });
+    await enter.click();
+    await page.locator(".tradingTermsBackdrop").waitFor({ state: "hidden" });
     await page.locator(".rmtMarketViews .rmtExplore > summary").first().click();
     const all = page.getByRole("button", { name: /^All/ }).first();
     await all.waitFor({ state: "visible", timeout: 20000 });
