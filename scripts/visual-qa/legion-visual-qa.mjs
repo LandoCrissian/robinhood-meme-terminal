@@ -555,7 +555,7 @@ async function tokenLane(browser, viewport, platform) {
     await acceptanceCapture(page, "trade-buy-asset-focused-390x844");
     const advancedCard = tradeSheet.locator(".vnRouteCard");
     if (await advancedCard.count()) {
-      await advancedCard.locator("summary").click();
+      await advancedCard.locator(":scope > summary").click();
       const advanced = advancedCard.locator(".vnRouteDetails");
       const nestedScroll = await advanced.evaluate((element) => {
         const style = getComputedStyle(element);

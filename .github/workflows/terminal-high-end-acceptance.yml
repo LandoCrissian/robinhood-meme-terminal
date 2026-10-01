@@ -76,6 +76,7 @@ jobs:
         run: |
           pnpm --filter web test:vnext-browser-fixture -- "$GITHUB_WORKSPACE/terminal-preview-evidence/v2-fixture.json"
           cp .github/scripts/terminal-high-end-acceptance.mjs /tmp/rmt-preview/acceptance.mjs
+          cp .github/scripts/trade-details-browser.mjs /tmp/rmt-preview/trade-details-browser.mjs
 
           cp .github/scripts/terminal-stabilization-acceptance.mjs /tmp/rmt-preview/terminal-stabilization-acceptance.mjs
           set +e
@@ -145,6 +146,7 @@ jobs:
         run: |
           pnpm --filter web test:vnext-browser-fixture -- "$GITHUB_WORKSPACE/terminal-high-end-evidence/v2-fixture.json"
           cp .github/scripts/terminal-high-end-acceptance.mjs /tmp/rmt-high-end/acceptance.mjs
+          cp .github/scripts/trade-details-browser.mjs /tmp/rmt-high-end/trade-details-browser.mjs
 
           cp .github/scripts/terminal-stabilization-acceptance.mjs /tmp/rmt-high-end/terminal-stabilization-acceptance.mjs
           set +e
