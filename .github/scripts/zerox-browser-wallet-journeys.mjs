@@ -470,7 +470,7 @@ export async function runZeroXWalletJourneys(options) {
               await page.reload({ waitUntil: 'domcontentloaded' });
               const recovery = page.locator('.vnRecoveryBanner').filter({ hasText: 'Wallet request is still unresolved' });
               await recovery.waitFor({ state: 'visible', timeout: 30000 });
-              assert.ok(await recovery.getByRole('button', { name: 'Recheck unresolved wallet request', exact: true }).isVisible());
+              await recovery.getByRole('button', { name: 'Recheck unresolved wallet request', exact: true }).waitFor({ state: 'visible', timeout: 30000 });
               const recoveredRequest = await page.evaluate(() => JSON.parse(localStorage.getItem('rmt:vnext-execution-journal:v1:4663')).walletRequests[0]);
               assert.equal(recoveredRequest.requestId, pendingRequest.requestId, 'Reload retains the exact originating unresolved request');
               assert.equal(recoveredRequest.wallet.toLowerCase(), wallet);
