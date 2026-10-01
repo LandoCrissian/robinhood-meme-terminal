@@ -1367,7 +1367,7 @@ async function runRestoredHistoryBoundary(browser, base) {
       payloadHash: hash('a'), recipient: wallet, outputAsset: market, amountAtomic: '1000000000000000000000', receiptBlockHash: hash('c') }
   };
   const journalKey = 'rmt:vnext-execution-journal:v1:4663';
-  requireRoot('tsx/cjs');
+  requireWeb('tsx/cjs');
   assert.equal(requireWeb('./lib/vnext/execution-recovery.ts').normalizeVNextExecutionJournal([record]).length, 1,
     'Controlled history fixture must pass the real journal validator');
   assert.equal(requireWeb('./lib/vnext/output-settlement.ts').hasVerifiedVNextSwapSettlement(record), true);

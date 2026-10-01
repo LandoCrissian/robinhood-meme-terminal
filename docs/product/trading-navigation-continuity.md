@@ -151,6 +151,10 @@ The account/high-end capture workflows explicitly check out the PR head for
 artifact provenance. One account capture at an earlier revision timed out waiting
 for fonts during a screenshot after desktop onboarding passed; it is retained as
 an unsuccessful run, with no error suppression or skipped assertion.
+The new history-restoration case also initially loaded the TypeScript test loader
+from the root package, where pnpm's strict Linux resolution correctly rejected
+it. It now uses the web package that owns that dependency; the real journal and
+settlement validators remain required before the browser scenario runs.
 
 Production mutated: **NO**. Real financial actions: **0**. No merge/deployment,
 provider switch, fee/treasury change, Privy change, Project Graph population or
