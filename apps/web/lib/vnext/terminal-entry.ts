@@ -24,4 +24,3 @@ export function projectTokenTerminalEntry(location: VNextTerminalLocation, proje
     ...(trustedUnits ? { verifiedIdentity: { address: asset.contract, name, symbol, decimals: asset.decimals! } } : {})
   };
 }
-

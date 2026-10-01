@@ -16,10 +16,11 @@ try {
   page.on('response',response=>{const url=new URL(response.url());if(url.origin===new URL(base).origin&&url.pathname.startsWith('/projects'))navigationEvidence.push({viewport,path:url.pathname,status:response.status(),resourceType:response.request().resourceType()});});
   page.on('requestfailed',request=>{const url=new URL(request.url());if(url.origin===new URL(base).origin&&url.pathname.startsWith('/projects'))navigationEvidence.push({viewport,path:url.pathname,failure:request.failure()?.errorText,resourceType:request.resourceType()});});
   await page.addInitScript(()=>{window.__projectWalletRequests=0;window.ethereum={on(){},removeListener(){},async request({method}){if(/sign|sendTransaction|wallet_sendCalls/.test(method)){window.__projectWalletRequests++;throw Error('Financial action prohibited');}return method==='eth_chainId'?'0x1237':[];}};});
-  const routes=await installTokenRoutes(page);let delayed=false, unavailable=false, holdMarket=false;const marketWaiters=[];let marketResponses=0;
+  const routes=await installTokenRoutes(page);let delayed=false, unavailable=false, holdMarket=false, holdIdentity=false;const marketWaiters=[], identityWaiters=[];let marketResponses=0;
   // Controlled external identity response for the exact independently observed
   // CANNACAT address. The real directory selection and Project consumers run.
-  await page.route(/\/api\/vnext\/asset-identity(?:\?.*)?$/,route=>{
+  await page.route(/\/api\/vnext\/asset-identity(?:\?.*)?$/,async route=>{
+   if(holdIdentity) await new Promise(resolve=>identityWaiters.push(resolve));
    const address=new URL(route.request().url()).searchParams.get('address');
    return address?.toLowerCase()===canna.toLowerCase()
     ? route.fulfill({json:{resolution:{chainId:4663,requestedAddress:canna,requestedKind:'token',status:'token-only',token:{address:canna,name:'CannaCat',symbol:'CANNACAT',decimals:18,totalSupply:'1000000000000000000000000000'},pools:[],marketData:'identity-only',execution:'swap-capable',provenance:'robinhood-chain-contract-reads',resolvedAt:new Date().toISOString()}}})
@@ -107,31 +108,58 @@ try {
   const measure=()=>page.evaluate(()=>{const amount=document.querySelector('[aria-label="Exact input amount"]');const dock=document.querySelector('.rmtMobileTradeDock')??document.querySelector('.vnTradeActionDock');const chart=document.querySelector('.vnChartFrame');const box=n=>n?{x:n.getBoundingClientRect().x,y:n.getBoundingClientRect().y,width:n.getBoundingClientRect().width,height:n.getBoundingClientRect().height}:null;return {value:amount.value,start:amount.selectionStart,end:amount.selectionEnd,focus:document.activeElement===amount,scrollY,amount:box(amount),dock:box(dock),chart:box(chart),payment:document.querySelector('[aria-label="Pay with asset"]').value,section:document.querySelector('.rmtWorkspaceTabs [aria-selected="true"]')?.textContent,range:document.querySelector('.vnChart [role="tab"][aria-selected="true"]')?.textContent};});
   const before=await measure();assert.equal(before.start,3,'Nonterminal caret established before passive observation');routes.setChartMode('stale');routes.setRiskMode('unavailable');
   const aligned=await measure();assert.ok(marketWaiters.length>0,'Real workspace enrichment request is pending while the input is focused');const responsesBefore=marketResponses;holdMarket=false;marketWaiters.splice(0).forEach(resolve=>resolve());await new Promise(r=>setTimeout(r,10000));assert.ok(marketResponses>responsesBefore,'Delayed market evidence actually arrived');const after=await measure();assert.equal(after.value,before.value);assert.equal(after.payment,before.payment);assert.equal(after.section,before.section);assert.equal(after.range,'6H');assert.ok(after.dock,'Persistent action measured on both desktop and mobile');assert.equal(after.focus,true);assert.equal(after.start,3);assert.equal(after.scrollY,aligned.scrollY);assert.deepEqual(after.amount,aligned.amount);assert.deepEqual(after.dock,aligned.dock);assert.deepEqual(after.chart,aligned.chart);await capture('project-enrichment-isolation');
-  // A normal deep-link navigation must render its deliberate Sell side before
-  // client directory/identity work, rather than later clearing an entered amount.
+  // The wallet provider mounts on the client. Observe the first actual ticket,
+  // not absent form markup in the server HTML. Hold selection enrichment until
+  // after typing so delayed synchronization cannot silently clear the draft.
   // Start a fresh controlled ticket; wallet-return draft recovery is covered by
   // the existing transaction journeys. Never remove an execution/recovery journal.
   await page.evaluate(()=>sessionStorage.removeItem('rmt:trade-draft-recovery:v1'));
-  holdMarket=true;
+  await page.addInitScript(()=>{
+   if(new URLSearchParams(location.search).get('side')!=='sell') return;
+   const evidence=window.__initialSellTicket={firstDom:null,firstVisible:null,wrongSideFrames:0,frames:0,done:false};
+   const sample=()=>{
+    if(evidence.done) return;
+    const input=document.querySelector('[aria-label="Exact input amount"]');
+    const selected=document.querySelector('.vnSideTabs [aria-selected="true"]');
+    if(!input || !selected) return;
+    const snapshot={side:selected.textContent.trim(),amount:input.value};
+    evidence.firstDom??=snapshot;
+    const box=input.getBoundingClientRect();
+    if(box.width>0 && box.height>0 && getComputedStyle(input).visibility!=='hidden') {
+     evidence.firstVisible??=snapshot;
+     evidence.frames++;
+     if(snapshot.side!=='Sell') evidence.wrongSideFrames++;
+    }
+   };
+   const observer=new MutationObserver(sample);observer.observe(document,{childList:true,subtree:true,attributes:true});
+   const frame=()=>{sample();if(!evidence.done)requestAnimationFrame(frame);else observer.disconnect();};
+   requestAnimationFrame(frame);
+  });
+  holdMarket=true;holdIdentity=true;
   const sellResponse=await page.goto(`${base}/?market=${canna}&project=cannacats&side=sell`,{waitUntil:'domcontentloaded'});
-  const initialTicket=await page.evaluate(html=>{const document=new DOMParser().parseFromString(html,'text/html');return {
-   side:document.querySelector('.vnSideTabs [aria-selected="true"]')?.textContent,
-   amount:document.querySelector('[aria-label="Exact input amount"]')?.getAttribute('value')
-  };},await sellResponse.text());
-  assert.equal(initialTicket.side,'Sell','The first server-rendered ticket already has the requested side');
-  assert.equal(initialTicket.amount,'','A new Sell ticket never borrows the Buy default amount');
+  assert.equal(sellResponse.status(),200);
+  assert.match(sellResponse.headers()['content-type'],/text\/html/);
+  await page.waitForFunction(()=>window.__initialSellTicket?.firstVisible!==null && window.__initialSellTicket?.firstVisible!==undefined);
+  const initialTicket=await page.evaluate(()=>window.__initialSellTicket);
+  assert.equal(initialTicket.firstDom.side,'Sell','The first client-mounted ticket already has the requested side');
+  assert.equal(initialTicket.firstVisible.side,'Sell','The first visible ticket has the requested side');
+  assert.equal(initialTicket.firstVisible.amount,'','A new Sell ticket never borrows the Buy default amount');
+  assert.equal(initialTicket.wrongSideFrames,0);
   assert.equal(await page.getByRole('tab',{name:'Sell',exact:true}).getAttribute('aria-selected'),'true');
   await amount.fill('25');await amount.focus();await amount.evaluate(n=>n.setSelectionRange(1,1));
   await page.waitForTimeout(500);
   assert.equal(await amount.inputValue(),'25','Initial selected-side synchronization cannot clear early typing');
   assert.ok(marketWaiters.length>0,'Optional market enrichment is still delayed after typing');
-  holdMarket=false;marketWaiters.splice(0).forEach(resolve=>resolve());await page.waitForTimeout(1000);
+  assert.ok(identityWaiters.length>0,'Selection identity enrichment is held until after typing');
+  holdMarket=false;holdIdentity=false;marketWaiters.splice(0).forEach(resolve=>resolve());identityWaiters.splice(0).forEach(resolve=>resolve());await page.waitForTimeout(1000);
   assert.equal(await amount.inputValue(),'25','Enrichment cannot replay the initial side request');
   assert.equal(await amount.evaluate(n=>document.activeElement===n && n.selectionStart===1 && n.selectionEnd===1),true,
    'Initial directory completion preserves typed input focus and caret');
   assert.equal(await page.getByRole('tab',{name:'Sell',exact:true}).getAttribute('aria-selected'),'true');
+  const finalInitialTicket=await page.evaluate(()=>{window.__initialSellTicket.done=true;return window.__initialSellTicket;});
+  assert.equal(finalInitialTicket.wrongSideFrames,0,'No wrong-side ticket flashes during initialization or enrichment');
   await capture('sell-deep-link-first-render');
-  navigationEvidence.push({viewport,evidence:'CONTROLLED_INITIAL_SELL_SERVER_RENDER',initialTicket,amountAfterEnrichment:await amount.inputValue()});
+  navigationEvidence.push({viewport,evidence:'CONTROLLED_INITIAL_SELL_CLIENT_RENDER',initialTicket:finalInitialTicket,amountAfterEnrichment:await amount.inputValue()});
   await page.goto(`${base}/projects/ccff00`,{waitUntil:'domcontentloaded'});await page.locator('[data-project-market="ccff00"]').waitFor();assert.equal(await page.getByRole('link',{name:'Open token market',exact:false}).count(),0,'No invented CCFF00 token');await capture('ccff00-nft-led');
   delayed=true;unavailable=true;await page.goto(`${base}/projects/cannacats`,{waitUntil:'domcontentloaded'});await page.locator('[data-project-market="cannacats"]').waitFor();await page.evaluate(()=>document.fonts.ready);const linksBefore=await page.locator('.rmtProjectPrimary').evaluateAll(nodes=>nodes.map(n=>({y:n.getBoundingClientRect().y,height:n.getBoundingClientRect().height})));await page.getByText('Market data unavailable',{exact:true}).waitFor();const linksAfter=await page.locator('.rmtProjectPrimary').evaluateAll(nodes=>nodes.map(n=>({y:n.getBoundingClientRect().y,height:n.getBoundingClientRect().height})));assert.deepEqual(linksAfter,linksBefore);await capture('project-market-unavailable');
   assert.deepEqual(errors,[]);results.push({viewport,scope:'CONTROLLED_EXTERNAL_HTTP_REAL_PUBLIC_COMPONENTS_EMULATED_VIEWPORT',searchQueries:5,amountMovementPx:after.amount.y-aligned.amount.y,actionMovementPx:after.dock?after.dock.y-aligned.dock.y:0,chartMovementPx:after.chart?after.chart.y-aligned.chart.y:0,scrollMovementPx:after.scrollY-aligned.scrollY,focus:after.focus,caret:after.start,marketLinkMovementPx:linksAfter[0].y-linksBefore[0].y,walletRequests:await page.evaluate(()=>window.__projectWalletRequests),errors});await context.close();
