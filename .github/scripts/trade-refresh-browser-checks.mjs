@@ -39,7 +39,7 @@ export async function exerciseTradeRefresh({ page, api, requests, scenario, view
   if (scenario.includes('click')) {
     const selector = page.getByRole('region', { name: 'Injected signer selection' });
     await selector.getByRole('button', { name: /Explicit test signer/ }).click();
-    await selector.getByText('Selected signer: Explicit test signer', { exact: true }).waitFor();
+    await selector.getByText('Trading wallet: Explicit test signer', { exact: true }).waitFor();
     let release;
     const gate = new Promise(resolve => { release = resolve; });
     await page.route('**/api/vnext/quotes', async route => { await gate; await route.fallback(); });
