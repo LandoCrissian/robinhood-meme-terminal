@@ -316,6 +316,8 @@ export async function runZeroXWalletJourneys(options) {
           'The default terminal flow must not open the optional first-visit guide.'
         );
         const amountInput = page.getByLabel('Exact input amount');
+        assert.equal(await page.getByRole('tab', { name: sell ? 'Sell' : 'Buy', exact: true }).getAttribute('aria-selected'), 'true',
+          'The URL-selected side must be applied before the amount input becomes interactive');
         if (scenario === 'native') {
           await page.getByLabel('Pay with asset').selectOption('eip155:4663/native');
           await until(async () => /^[\d~,\.\s]+ ETH$/.test(await page.locator('.vnConfirmedBalance strong').innerText()),

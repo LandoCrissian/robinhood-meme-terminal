@@ -74,6 +74,18 @@ market enrichment remain progressive. Trusted input units are seeded only when
 the existing verified project evidence includes onchain verification. Wrong
 project/address and ordinary unbound URL claims cannot provide this seed.
 
+The full browser suite also exposed a route-initialization race after the
+destination became visible earlier: an amount was entered before the URL's Sell
+side completed directory synchronization, then the delayed side change cleared
+it. That controlled failure made no quote/provider request. The initial side and
+ticket-open state now accompany the server destination; the composer initializes
+that side without borrowing a Buy default, and directory completion does not
+replay the same initial side request over typing or draft recovery. Later explicit
+side changes and back/forward navigation keep their existing lifecycle. A
+four-width regression inspects the actual first server-rendered Sell ticket and
+preserves early typing through delayed enrichment. This demonstrated client race
+is separate from the still-unmatched owner desktop/mobile incident.
+
 Transport diagnostics now distinguish a client timeout/network failure with no
 HTTP response from an actual server response or shared response reuse. Timing is
 bounded, and only existing stage/request/generation identifiers are retained.
