@@ -55,7 +55,7 @@ The actual fee policy remains 25bps: base/base → input; otherwise USDG if eith
 ## Reproducible evidence
 
 - `asset-chassis-smoke.ts`: positive-evidence taxonomy; OHLC bounds for synthetic edge cases and retained real-provider candle replays; first/last candle padding; truthful timestamps; unchanged refresh cadence.
-- `asset-chassis-acceptance.mjs`: real public components at all four viewports, six ranges, Activity/Holders/Project/Position/More, sources, stale and unavailable charts, partial holders, ordinary trade sheet and Stock Token. External HTTP responses are CONTROLLED fixtures. Financial calls are prohibited. Reports include measured plot bounds, axis font sizes, overflow, request paths and videos.
+- `asset-chassis-acceptance.mjs`: real public components at all four viewports, six ranges and both chart styles, Activity/Holders/Project/Position/More, sources, stale and unavailable charts, partial holders, ordinary trade sheet and Stock Token. External HTTP responses are CONTROLLED fixtures. Financial calls are prohibited. Reports require nonempty rendered candle/volume and line bounds, readable axis font sizes, overflow, request paths and videos.
 - `chart-refresh-stability.mjs`: actual application timers over 135 seconds, FRESH → RETAINED_STALE → DELAYED_REFRESH → PROVIDER_FAILURE → RECOVERY. Measures amount, payment, input identity, focus/caret, scroll, range, details, chart/action/dock boxes and financial requests.
 - Existing terminal/visual/0x/account-first/production-Privy suites remain enabled. Presentation selectors follow More/Explore/Holders; exact identity, classification, provider binding and recovery assertions remain. Unavailable exact-pool tape is asserted compactly rather than requiring an unavailable dashboard.
 

@@ -69,17 +69,34 @@ try {
         const geometry=await page.locator('.vnChartFrame').evaluate(node=>{
           const svg=node.querySelector('svg'), b=node.getBoundingClientRect();
           return {width:b.width,height:b.height,viewBox:svg?.getAttribute('viewBox'),axis:svg?[...svg.querySelectorAll('.vnChartGrid text')].map(t=>({font:Number.parseFloat(getComputedStyle(t).fontSize),x:Number(t.getAttribute('x'))})):[],
-            bounds:svg?[...svg.querySelectorAll('.vnChartCandles line,.vnChartCandles rect,.vnChartVolume rect')].map(n=>n.getBBox()).map(b=>({x:b.x,y:b.y,width:b.width,height:b.height})):[]};
+            bounds:svg?[...svg.querySelectorAll('.vnChartCandle line,.vnChartCandle rect,rect.vnChartVolume')].map(n=>n.getBBox()).map(b=>({x:b.x,y:b.y,width:b.width,height:b.height})):[]};
         });
         if(!baseline) {
           assert.ok(geometry.viewBox,`${range}: actual chart drawn`);
           const [, , width,height]=geometry.viewBox.split(' ').map(Number);
           assert.equal(width,Math.round(geometry.width)); assert.equal(height,Math.round(geometry.height));
-          assert.ok(geometry.axis.every(t=>t.font>=12));
+          assert.ok(geometry.axis.length>=2&&geometry.axis.every(t=>t.font>=12));
+          assert.ok(geometry.bounds.length>0,`${range}: rendered candle and volume bounds measured`);
           for(const b of geometry.bounds) { assert.ok(b.x>=0&&b.y>=0);assert.ok(b.x+b.width<=width+.1&&b.y+b.height<=height+.1); }
         }
         measuredRanges.push({range,...geometry});
         await capture(`chart-${range.toLowerCase()}`);
+      }
+      if(!baseline) {
+        if(mobile) await page.locator('.vnChartStyle > summary').click();
+        const styles=page.locator(mobile?'.vnChartStyle':'.vnChartModes');
+        await styles.getByRole('button',{name:'Line',exact:true}).click();
+        const line=page.locator('.vnChartLine'); await line.waitFor();
+        const lineBounds=await line.evaluate(node=>{
+          const b=node.getBBox(),frame=node.ownerSVGElement.viewBox.baseVal;
+          return {x:b.x,y:b.y,width:b.width,height:b.height,frameWidth:frame.width,frameHeight:frame.height};
+        });
+        assert.ok(lineBounds.width>0&&lineBounds.x>=0&&lineBounds.y>=0);
+        assert.ok(lineBounds.x+lineBounds.width<=lineBounds.frameWidth+.1&&lineBounds.y+lineBounds.height<=lineBounds.frameHeight+.1);
+        measuredRanges.push({range:'7D',style:'line',bounds:lineBounds});
+        await capture('chart-line');
+        await styles.getByRole('button',{name:'Candles',exact:true}).click();
+        if(mobile) await page.locator('.vnChartStyle > summary').click();
       }
       await page.getByRole('tab',{name:'1H',exact:true}).click();
       await pause(220);
