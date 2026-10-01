@@ -253,10 +253,11 @@ export async function runRouteOnDemandJourneys({ browser, base, identity, extern
                 await sheetLayer.locator('.rmtMobileTradeSheet > header').getByRole('button', { name: 'Close trade sheet', exact: true }).click();
                 await page.locator('.rmtMobileSheetLayer').waitFor({ state: 'hidden' });
               }
-              const technicalDetails = page.locator('.vnAssetTechnicalDetails:visible').first();
-              await technicalDetails.locator(':scope > summary').click();
-              assert.match(await technicalDetails.locator('[aria-label="Selected market identity"]').innerText(), /provider observed/i);
-              assert.match(await page.getByLabel('Market activity by time window').innerText(), /Unknown buys.*Unknown sells/);
+              await page.locator('.rmtWorkspaceTabs').getByRole('tab',{name:'More',exact:true}).click();
+              await page.locator('.vnMoreDisclosure > summary').filter({hasText:/^Markets$/}).click();
+              assert.match(await page.locator('.vnMarketsCard').innerText(), /provider observed/i);
+              await page.locator('.rmtWorkspaceTabs').getByRole('tab',{name:'Activity',exact:true}).click();
+              assert.match(await page.getByLabel('Market activity by time window').innerText(), /— buys.*— sells/);
             }
           }
         }

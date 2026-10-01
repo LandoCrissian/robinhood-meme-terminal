@@ -106,6 +106,9 @@ body .rmtVnext {
 }
 
 .vnSkipLink:focus {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
   transform: translateY(0);
 }
 
@@ -6359,7 +6362,7 @@ body .rmtTerminal button {
   .rmtMobileAssetView .vnAssetStats > div { padding: 10px 8px; }
   .rmtMobileAssetView .vnAssetStats dt { font-size: 10px; }
   .rmtMobileAssetView .vnAssetStats dd { font-size: 15px; }
-  .rmtMobileAssetView .vnChart { height: 338px; min-height: 338px; border-radius: 14px; display: grid; grid-template-rows: 46px 48px 196px 26px 22px; }
+  .rmtMobileAssetView .vnChart { height: 356px; min-height: 356px; border-radius: 14px; display: grid; grid-template-rows: 46px 48px 196px 44px 22px; }
   .rmtMobileAssetView .vnChartHeader { min-height: 0; padding: 8px 12px 0; display: flex; flex-direction: row; flex-wrap: nowrap; }
   .rmtMobileAssetView .vnChartHeadline { display: flex; align-items: center; gap: 10px; }
   .rmtMobileAssetView .vnChartHeadline .vnEyebrow { display: none; }
@@ -6381,6 +6384,8 @@ body .rmtTerminal button {
   .rmtMobileAssetView .vnChartRanges button { min-width: 0; font-size: 12px; padding: 0 2px; border-radius: 8px; }
   .rmtMobileAssetView .vnChartFrame { height: 196px; min-height: 196px; }
   .rmtMobileAssetView .vnChartFrame svg { height: 100%; min-height: 0; }
+  .rmtMobileAssetView .vnChartSources > summary { min-height: 44px; }
+  .rmtMobileAssetView .vnChartSources[open] dl { bottom: 44px; }
   .rmtMobileAssetView .vnChartFooter { min-height: 0; font-size: 10px; padding: 0 12px 6px; text-transform: none; letter-spacing: 0; }
   .rmtMobileAssetView .vnChartFooter span:nth-child(2) { display: inline; }
   .rmtMobileAssetView .rmtWorkspaceTabs { margin: 0 0 16px; padding: 0; gap: 0; overflow: visible; }

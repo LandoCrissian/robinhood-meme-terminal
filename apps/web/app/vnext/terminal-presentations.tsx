@@ -351,8 +351,10 @@ function DirectoryRows({ mobile = false, ...props }: TerminalPresentationProps &
   </section>;
 }
 
-function DesktopMarkets(props: TerminalPresentationProps) {
-  const [exploreClass, setExploreClass] = useState<RmtAssetClass>();
+type MarketPresentationProps = TerminalPresentationProps & { exploreClass?: RmtAssetClass; onExplore: (value?: RmtAssetClass) => void };
+
+function DesktopMarkets(props: MarketPresentationProps) {
+  const { exploreClass, onExplore: setExploreClass } = props;
   const explored = exploreClass && !props.searchActive ? props.markets.filter(market => assetPresentationClasses(market).includes(exploreClass)) : null;
   const browseProps = explored ? { ...props, filteredMarkets: explored, visibleMarkets: explored, hasMoreDirectoryMarkets: false } : props;
 
@@ -397,8 +399,8 @@ function MobileHeader(props: TerminalPresentationProps) {
   </>;
 }
 
-function MobileMarkets(props: TerminalPresentationProps) {
-  const [exploreClass, setExploreClass] = useState<RmtAssetClass>();
+function MobileMarkets(props: MarketPresentationProps) {
+  const { exploreClass, onExplore: setExploreClass } = props;
   const explored = exploreClass && !props.searchActive ? props.markets.filter(market => assetPresentationClasses(market).includes(exploreClass)) : null;
   const browseProps = explored ? { ...props, filteredMarkets: explored, visibleMarkets: explored, hasMoreDirectoryMarkets: false } : props;
 
@@ -428,6 +430,7 @@ function MobileDistribution(props: TerminalPresentationProps) {
 }
 
 export function ResponsiveTerminal({ desktop, ...props }: TerminalPresentationProps & { desktop: boolean }) {
+  const [exploreClass, setExploreClass] = useState<RmtAssetClass>();
   const sheet = useRef<HTMLDivElement>(null);
   const [hasOpenedAsset, setHasOpenedAsset] = useState(false);
   useEffect(() => { if (props.context === "asset") setHasOpenedAsset(true); }, [props.context]);
@@ -500,7 +503,7 @@ export function ResponsiveTerminal({ desktop, ...props }: TerminalPresentationPr
     {desktop ? <DesktopHeader {...props} /> : <MobileHeader {...props} />}
     <RecoveryStatus {...props} />
     {props.context !== "portfolio" ? <PortfolioController {...props} visible={false} /> : null}
-    {props.context === "markets" ? desktop ? <DesktopMarkets {...props} /> : <MobileMarkets {...props} />
+    {props.context === "markets" ? desktop ? <DesktopMarkets {...props} exploreClass={exploreClass} onExplore={setExploreClass} /> : <MobileMarkets {...props} exploreClass={exploreClass} onExplore={setExploreClass} />
       : props.context === "portfolio" ? desktop ? <DesktopPortfolio {...props} /> : <MobilePortfolio {...props} />
       : props.context === "distribution" ? desktop ? <DesktopDistribution {...props} /> : <MobileDistribution {...props} /> : null}
     <section hidden={props.context !== "asset"} className={desktop ? "rmtDesktopAssetView rmtResponsiveAssetLayout" : "rmtMobileAssetView rmtResponsiveAssetLayout"} id={desktop ? "rmt-asset-workspace" : "rmt-mobile-asset"}>

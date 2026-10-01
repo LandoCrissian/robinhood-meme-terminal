@@ -53,9 +53,11 @@ export async function runTokenEnrichmentBrowser({ browser, base, identity, exter
         assert.ok(state.enrichmentCalls.some(call => call.endsWith('/pools')), 'Server discovers exact-token pools');
         assert.ok(state.enrichmentCalls.some(call => call.includes('/ohlcv/')), 'Discovered pool reaches real OHLCV reader');
       }
-      await page.locator('.vnAssetTechnicalDetails > summary').click();
+      await page.locator('.rmtWorkspaceTabs').getByRole('tab',{name:'More',exact:true}).click();
       await page.getByText('Controlled provider description', { exact: true }).waitFor();
-      assert.equal(await page.getByText('No owner-confirmed token/project relationship recorded.', { exact: false }).count(), 1);
+      await page.locator('.rmtWorkspaceTabs').getByRole('tab',{name:'Project',exact:true}).click();
+      assert.equal(await page.getByText('Project not linked yet', { exact: true }).count(), 1);
+      await page.locator('.rmtWorkspaceTabs').getByRole('tab',{name:'More',exact:true}).click();
       await page.getByRole('tab', { name: '15M', exact: true }).click();
       await page.locator('.vnChartFrame svg').waitFor();
       await page.screenshot({ path: path.join(output, `enrichment-${profile}-workspace.png`), fullPage: true });

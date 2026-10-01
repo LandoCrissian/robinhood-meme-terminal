@@ -9,7 +9,7 @@ import {
   type ExternalOhlcvCandle,
   type ExternalOhlcvPayload
 } from "../../lib/external-ohlcv";
-import { chartComposition } from "../../lib/vnext/chart-composition";
+import { chartComposition, chartAxisPrice } from "../../lib/vnext/chart-composition";
 import { TerminalIcon } from "./terminal-icon";
 import { useVisibilityRefresh } from "./use-visibility-refresh";
 
@@ -215,7 +215,7 @@ export function VNextMarketChart({ token, pair, symbol, referencePriceUsd }: {
           {[0, 1, 2, 3, 4].map((row) => {
             const y = geometry.top + row / 4 * (geometry.priceBottom - geometry.top);
             const value = geometry.maximum - row / 4 * (geometry.maximum - geometry.minimum);
-            return <g className="vnChartGrid" key={row}><line x1={geometry.left} x2={geometry.width - geometry.right + 8} y1={y} y2={y} /><text x={geometry.width - 6} y={y + 4} textAnchor="end">{value > 0 ? "$" + value.toLocaleString("en-US", { maximumSignificantDigits: 4 }) : "—"}</text></g>;
+            return <g className="vnChartGrid" key={row}><line x1={geometry.left} x2={geometry.width - geometry.right + 8} y1={y} y2={y} /><text x={geometry.width - 6} y={y + 4} textAnchor="end">{chartAxisPrice(value)}</text></g>;
           })}
           {mode === "line" ? <><path className="vnChartArea" d={geometry.area} fill={`url(#${gradientId})`} /><path className={positive ? "vnChartLine isUp" : "vnChartLine isDown"} d={geometry.line} />{sparse && latestPoint ? <circle className="vnChartSparsePoint" cx={latestPoint.x} cy={latestPoint.y} r="4" /> : null}</> : candles.map((candle, index) => {
             const x = geometry.x(index);
