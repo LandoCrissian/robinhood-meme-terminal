@@ -1,23 +1,39 @@
 import type { TokenPresentation } from "../../lib/vnext/token-presentation";
 import { safeExternalNavigationUrl } from "../../lib/vnext/external-navigation";
+import { TerminalIcon } from "./terminal-icon";
+import { ExplorerLink } from "./terminal-links";
 
 export function TokenInformation({ presentation }: { presentation?: TokenPresentation }) {
   const visual = presentation?.visual;
-  const projects = presentation?.project.data ?? [];
   const website = safeExternalNavigationUrl(visual?.data?.websites[0]);
   const twitter = visual?.data?.twitter && /^\w{1,80}$/.test(visual.data.twitter) ? safeExternalNavigationUrl(`https://x.com/${visual.data.twitter}`) : null;
   const telegram = visual?.data?.telegram && /^\w{1,80}$/.test(visual.data.telegram) ? safeExternalNavigationUrl(`https://t.me/${visual.data.telegram}`) : null;
   return <div className="vnTokenInformation" data-token-presentation={presentation?.contract}>
-    <p>{visual?.data?.description ?? "No provider description reported."}</p>
-    <div className="vnTokenInformationLinks">{[["Website", website], ["X", twitter], ["Telegram", telegram]].map(([label, href]) => href ? <a key={label} href={href} target="_blank" rel="noopener noreferrer">{label}</a> : null)}</div>
-    <small>Visual metadata · GeckoTerminal · {visual?.state === "STALE" ? "last observed" : visual?.state === "READY" ? "provider reported" : "unavailable"}. Market data and onchain identity have separate sources.</small>
-    <p><small>Market metrics · {presentation?.market.data ? `GeckoTerminal · ${presentation.market.state === "STALE" ? "last observed" : "provider reported"} · ${presentation.market.observedAt}` : "unavailable"}{presentation?.market.data ? ` · pool ${presentation.market.data.pool}` : ""}</small></p>
-    {presentation?.market.data && <p><small>24h pool activity · {presentation.market.data.buys24h ?? "—"} buys · {presentation.market.data.sells24h ?? "—"} sells · provider reported. Pool first seen: {presentation.market.data.createdAt ?? "unavailable"}; this is not the token creation date.</small></p>}
-    <h3>Project relationships</h3>
-    {projects.length ? projects.map(project => <div key={project.projectId}>
-      <strong>{project.displayName}</strong>
-      <ul>{project.assets.map(asset => <li key={asset.contract}>{asset.kind} · <code>{asset.contract}</code> · {asset.relationship === "OWNER_CONFIRMED_PROJECT_TOKEN" ? "Owner-confirmed project token" : "Owner-approved collection"}</li>)}</ul>
-      {project.links.map(link => <a key={link.url} href={safeExternalNavigationUrl(link.url) ?? undefined} target="_blank" rel="noopener noreferrer">{link.label}</a>)}
-    </div>) : <p>No owner-confirmed token/project relationship recorded. Matching names do not establish a relationship.</p>}
+    {visual?.data?.description ? <p>{visual.data.description}</p> : null}
+    <div className="vnTokenInformationLinks">{([{ name: "website", label: "Website", href: website }, { name: "x", label: "X", href: twitter }, { name: "telegram", label: "Telegram", href: telegram }] as const).map(link => link.href ? <a className="rmtIconButton" key={link.name} href={link.href} aria-label={link.label} title={link.label} target="_blank" rel="noopener noreferrer"><TerminalIcon name={link.name} /></a> : null)}</div>
   </div>;
+}
+
+export function ProjectInformation({ presentation }: { presentation?: TokenPresentation }) {
+  const projects = presentation?.project.data ?? [];
+  return <section className="vnWorkspaceCard vnProjectSurface" data-project-graph="presentation-only">
+    <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Ecosystem</span><h3>Project</h3></div><TerminalIcon name="project" /></header>
+    {projects.length ? projects.map(project => <article className="vnProjectIdentity" key={project.projectId}>
+      <h4>{project.displayName}</h4>
+      <div className="vnProjectAssets">{project.assets.map(asset => <ExplorerLink kind="token" value={asset.contract} key={asset.contract}><TerminalIcon name={asset.kind === "ERC20" ? "market" : "project"} /><span><strong>{asset.kind === "ERC20" ? "Token" : "NFT collection"}</strong><code>{asset.contract.slice(0, 6)}…{asset.contract.slice(-4)}</code></span><TerminalIcon name="external" /></ExplorerLink>)}</div>
+      {project.links.map(link => { const href = safeExternalNavigationUrl(link.url); return href ? <a key={link.url} href={href} target="_blank" rel="noopener noreferrer">{link.label} <TerminalIcon name="external" /></a> : null; })}
+      <details className="vnEvidenceDetails"><summary>Evidence &amp; Sources</summary><p>Owner-confirmed project relationships · presentation only</p>{project.assets.map(asset => <p key={asset.contract}><code>{asset.contract}</code><br />{asset.relationship} · {asset.observedAt}</p>)}{project.officialEvidence.map(item => <a href={safeExternalNavigationUrl(item.url) ?? undefined} key={item.url} target="_blank" rel="noopener noreferrer">{item.kind}</a>)}</details>
+    </article>) : <p className="vnCompactEmpty">Project not linked yet</p>}
+    <TokenInformation presentation={presentation} />
+  </section>;
+}
+
+export function PresentationSources({ presentation }: { presentation?: TokenPresentation }) {
+  return <dl className="vnSourceFacts">
+    <div><dt>Identity</dt><dd>{presentation?.identity.provenance ?? "Onchain / directory evidence"} · {presentation?.identity.state ?? "Unavailable"}</dd></div>
+    <div><dt>Visual metadata</dt><dd>{presentation?.visual.provenance ?? "GeckoTerminal"} · {presentation?.visual.state ?? "Unavailable"}</dd></div>
+    <div><dt>Market</dt><dd>{presentation?.market.provenance ?? "GeckoTerminal"} · {presentation?.market.state ?? "Unavailable"}<br />{presentation?.market.observedAt ?? "No observation"}</dd></div>
+    <div><dt>Pool</dt><dd>{presentation?.market.data?.pool ?? "No pool attached"}</dd></div>
+    <div><dt>Project relationship</dt><dd>{presentation?.project.data?.length ? [...new Set(presentation.project.data.flatMap(project => project.assets.map(asset => asset.relationship)))].join(" · ") : "No owner-confirmed relationship recorded. Names do not establish a relationship."}</dd></div>
+  </dl>;
 }

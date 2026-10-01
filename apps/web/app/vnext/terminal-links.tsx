@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, type ReactNode } from "react";
+import { TerminalIcon } from "./terminal-icon";
 import {
   canonicalRobinhoodAddress,
   robinhoodExplorerAddress,
@@ -94,6 +95,6 @@ export function CopyAddress({ address }: { address: string }) {
   };
   return <span className="vnCopyAddress">
     <code title={normalized} aria-label={`Token contract ${normalized}`}>{`${normalized.slice(0, 6)}…${normalized.slice(-4)}`}</code>
-    <button type="button" onClick={() => void copy()} aria-live="polite" aria-label={copied ? "Full token contract copied" : `Copy full token contract ${normalized}`}>{copied ? "Copied" : "Copy"}</button>
+    <button type="button" className="rmtIconButton" title={copied ? "Copied" : "Copy contract"} onClick={() => void copy()} aria-live="polite" aria-label={copied ? "Full token contract copied" : `Copy full token contract ${normalized}`}><TerminalIcon name={copied ? "check" : "copy"} /><span className="vnSrOnly">{copied ? "Copied" : "Copy"}</span></button>
   </span>;
 }

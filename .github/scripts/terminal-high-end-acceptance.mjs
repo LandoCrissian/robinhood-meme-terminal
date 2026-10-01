@@ -1307,7 +1307,7 @@ async function inspectDiscoveryAcceptance(browser, options, label, mobile) {
   await page.locator(`${terminalSelector}[data-terminal-context="asset"] #vn-asset-heading`).waitFor({ state: "visible" });
   if (!(await page.locator("#vn-asset-heading").textContent())?.includes("STONKBROKER")) throw new Error(`${label}: STONKBROKER search did not open Asset context`);
   if (new URL(page.url()).searchParams.get("market")?.toLowerCase() !== stonkBrokerToken) throw new Error(`${label}: STONKBROKER selection did not preserve its exact contract`);
-  await page.getByRole("tab", { name: "Markets", exact: true }).click();
+  await revealMarketsEvidence(page);
   await page.locator(".vnMarketsCard").waitFor({ state: "visible" });
   const poolEvidence = await page.evaluate(({ poolId, transactionHash }) => {
     const shortPoolId = `${poolId.slice(0, 6)}…${poolId.slice(-4)}`;
@@ -2264,7 +2264,7 @@ async function inspectV4PreviewUserJourney(browser, fixture) {
   }
   if ((ohlcvRequests.get(page) ?? 0) < 1) throw new Error("V4 Preview journey did not request exact PoolId OHLCV coverage");
 
-  await page.getByRole("tab", { name: "Markets", exact: true }).click();
+  await revealMarketsEvidence(page);
   const marketsCard = page.locator(".vnMarketsCard");
   await marketsCard.waitFor({ state: "visible" });
   const marketEvidence = await page.evaluate(({ poolId }) => ({
@@ -2280,7 +2280,8 @@ async function inspectV4PreviewUserJourney(browser, fixture) {
     throw new Error("V4 Preview journey fabricated an EVM pool address");
   }
 
-  await page.getByRole("tab", { name: "Safety", exact: true }).click();
+  await page.getByRole("tab", { name: "Holders", exact: true }).click();
+    await revealHolderSources(page);
   await page.locator("#vn-evidence-heading").waitFor({ state: "visible" });
   await page.waitForFunction(() => document.querySelector(".vnEvidenceDeck")?.textContent?.includes("1,842"));
   const riskRequest = (tokenRiskRequests.get(page) ?? []).find((request) => request.token?.toLowerCase() === stonkBrokerToken);
@@ -3348,7 +3349,7 @@ async function inspectV4PoolIdWorkspace(browser) {
   await installRoutes(page);
   await gotoReady(page, `${base}/?market=${stonkBrokerToken}`, ".rmtDesktopTerminal #vn-asset-heading");
   if (!(await page.locator("#vn-asset-heading").innerText()).includes("STONKBROKER")) throw new Error("V4 deep link did not preserve the canonical token identity");
-  await page.locator(".rmtWorkspaceTabs").getByRole("tab", { name: "Markets", exact: true }).click();
+  await revealMarketsEvidence(page);
   const evidence = await page.locator(".rmtWorkspaceIntelligence").innerText();
   const shortPoolId = `${stonkBrokerPoolId.slice(0, 6)}…${stonkBrokerPoolId.slice(-4)}`;
   if (!/Uniswap V4/i.test(evidence) || !/PoolId/i.test(evidence) || !evidence.includes(shortPoolId)) {
@@ -3445,7 +3446,8 @@ async function inspectStockWorkspace(browser, control, mobile = false) {
   await gotoReady(page, `${base}/?market=${control.address}&side=buy`, `${mobile ? ".rmtMobileTerminal" : ".rmtDesktopTerminal"} #vn-asset-heading`);
   const heading = await page.locator("#vn-asset-heading").innerText();
   if (!heading.includes(control.name) || !heading.includes(control.symbol) || heading.includes(`${control.address.slice(0, 6)}…`)) throw new Error(`${control.symbol}: verified workspace identity did not win ${heading}`);
-  await page.locator(".rmtWorkspaceTabs").getByRole("tab", { name: "RWA", exact: true }).click();
+  await page.locator(".rmtWorkspaceTabs").getByRole("tab", { name: "More", exact: true }).click();
+  await page.locator(".vnMoreDisclosure > summary").filter({ hasText: "RWA relationship" }).click();
   const rwa = await page.locator(".rmtWorkspaceIntelligence").innerText();
   for (const expected of ["Canonical stock token", control.name, control.symbol, control.multiplier, "Robinhood live asset registry", "Active"]) {
     if (!rwa.toLowerCase().includes(expected.toLowerCase())) throw new Error(`${control.symbol}: RWA workspace omitted ${expected}: ${rwa}`);
@@ -3467,12 +3469,10 @@ async function inspectStockWorkspace(browser, control, mobile = false) {
     if ((await reviewAction.innerText()) !== "View only" || !(await reviewAction.isDisabled())) throw new Error(`${control.symbol}: persistent composer is not view-only`);
     await page.locator(".rmtWorkspaceTabs").getByRole("tab", { name: "Position", exact: true }).click();
     if (await page.getByRole("button", { name: /^(Buy|Sell)$/ }).count()) throw new Error(`${control.symbol}: workspace position exposes stock execution actions`);
-    await page.locator(".rmtWorkspaceTabs").getByRole("tab", { name: "RWA", exact: true }).click();
+    await page.locator(".rmtWorkspaceTabs").getByRole("tab", { name: "More", exact: true }).click();
+  await page.locator(".vnMoreDisclosure > summary").filter({ hasText: "RWA relationship" }).click();
   }
-  if (!mobile) {
-    await page.getByRole("tab", { name: "Sell quote", exact: true }).click();
-    await page.getByRole("tab", { name: "Buy quote", exact: true }).click();
-  }
+  if (!mobile && await page.locator(".rmtStockReadOnly").count() !== 1) throw new Error(`${control.symbol}: dedicated view-only presentation is absent`);
   await page.waitForTimeout(750);
   if (state.quotes > 0 && await page.locator(".vnQuoteAttempts .isReady").count() === 0) {
     throw new Error(`${control.symbol}: an observed stock quote was not rendered informationally`);
@@ -3818,4 +3818,17 @@ try {
   }
 } finally {
   await browser.close();
+}
+
+async function revealBrowseExplore(page) {
+  const details = page.locator(".rmtMarketViews .rmtExplore").first();
+  if (!await details.evaluate(node => node.open)) await details.locator(":scope > summary").click();
+}
+async function revealHolderSources(page) {
+  const details = page.locator(".vnHolderSources");
+  if (!await details.evaluate(node => node.open)) await details.locator(":scope > summary").click();
+}
+async function revealMarketsEvidence(page) {
+  await page.locator(".rmtWorkspaceTabs").getByRole("tab", { name: "More", exact: true }).click();
+  await page.locator(".vnMoreDisclosure > summary").getByText("Markets", { exact: true }).click();
 }

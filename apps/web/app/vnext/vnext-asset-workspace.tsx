@@ -36,7 +36,9 @@ import { terminalValuation } from "./terminal-format";
 import { TokenArtwork } from "./token-artwork";
 import { useVNextAssetWorkspace, workspaceTokenPresentation } from "./use-vnext-asset-workspace";
 import { VNextMarketChart } from "./vnext-market-chart";
-import { TokenInformation } from "./token-information";
+import { TerminalIcon, type TerminalIconName } from "./terminal-icon";
+import { assetPresentationClasses, ASSET_CLASS_LABELS } from "../../lib/vnext/asset-presentation";
+import { TokenInformation, ProjectInformation, PresentationSources } from "./token-information";
 
 function shortAddress(value: string) {
   return `${value.slice(0, 6)}…${value.slice(-4)}`;
@@ -61,20 +63,20 @@ function safeSocialEntries(links?: ExternalSocialLinks) {
 }
 
 function formatUsd(value: number | null) {
-  if (value === null) return "Unavailable";
+  if (value === null) return "—";
   if (!Number.isFinite(value) || value <= 0) return "—";
   if (value >= 1) return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(value);
   return `$${value.toLocaleString("en-US", { maximumSignificantDigits: 5 })}`;
 }
 
 function compactUsd(value: number | null) {
-  if (value === null) return "Unavailable";
+  if (value === null) return "—";
   if (!Number.isFinite(value) || value <= 0) return "—";
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", notation: "compact", maximumFractionDigits: 1 }).format(value);
 }
 
 function formatAge(minutes: number | null) {
-  if (minutes === null) return "Unknown";
+  if (minutes === null) return "—";
   if (minutes < 60) return `${Math.max(1, Math.floor(minutes))}m`;
   if (minutes < 1_440) return `${Math.floor(minutes / 60)}h`;
   return `${Math.floor(minutes / 1_440)}d`;
@@ -138,8 +140,8 @@ function WorkspacePosition({
       <span>{address ? shortAddress(address) : "Not connected"}</span>
     </header>
     <div className="vnPositionValue">
-      <span><small>Holdings</small><strong>{!isConnected ? "Connect wallet" : hasPosition ? `${units.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${directoryMarket.symbol}` : "No detected balance"}</strong></span>
-      <span><small>Current value</small><strong>{positionValue === null ? "—" : formatUsd(positionValue)}</strong></span>
+      <span><small>Holdings</small><strong>{!isConnected ? "Sign in to view holdings" : hasPosition ? `${units.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${directoryMarket.symbol}` : units === 0 ? "No holdings" : "Balance unavailable"}</strong></span>
+      <span><small>Estimated current value</small><strong>{positionValue === null ? "—" : formatUsd(positionValue)}</strong></span>
     </div>
     {executionState === "stock-token-view-only" ? <>
       <div className="vnPositionActions isViewOnly"><button type="button" disabled>View only</button></div>
@@ -148,7 +150,7 @@ function WorkspacePosition({
       <div className="vnPositionActions isViewOnly"><button type="button" disabled>Asset only</button></div>
       <p className="vnStockTokenViewOnlyPolicy">Onchain identity is verified. No supported market evidence is attached, so execution is not evaluated.</p>
     </> : <div className="vnPositionActions"><button className="isBuy" type="button" onClick={() => onTradeSide("buy")}>{executionUiState === "preview-only" ? "Buy quote" : "Buy"}</button><button className="isSell" type="button" disabled={!hasPosition} onClick={() => onTradeSide("sell")}>{executionUiState === "preview-only" ? "Sell quote" : "Sell"}</button></div>}
-    <footer>Exact connected-wallet balance. Cost basis and P&amp;L remain hidden until complete wallet history can be proven.</footer>
+    <footer>Wallet holdings · estimated value at the displayed market price.</footer>
   </section>;
 }
 
@@ -193,7 +195,7 @@ function WorkspaceQuickLinks({
   return <section className="vnAssetQuickLinks" aria-label="Selected asset identity and links">
     <div className="vnAssetContractIdentity">
       <span><small>Contract</small><CopyAddress address={directoryMarket.address} /></span>
-      <ExplorerLink kind="token" value={directoryMarket.address} accessibleName={`Open ${directoryMarket.symbol} token contract in Robinhood Chain explorer`}>Explorer ↗</ExplorerLink>
+      <ExplorerLink kind="token" value={directoryMarket.address} accessibleName={`Open ${directoryMarket.symbol} token contract in Robinhood Chain explorer`} className="rmtIconButton" ><TerminalIcon name="external" /></ExplorerLink>
     </div>
     <div className="vnAssetQuickLinkRows">
       {canonicalPool ? <ExplorerLink kind="pool" value={canonicalPool} accessibleName={`Open ${directoryMarket.symbol} canonical pool in Robinhood Chain explorer`}>Canonical pool ↗</ExplorerLink> : null}
@@ -204,8 +206,8 @@ function WorkspaceQuickLinks({
     </div>
     {linksOpen && moreLinkCount ? <div className="vnProjectLinkDisclosure" id="vn-more-market-links">
       {(safeCreator || safeCreationTransaction) ? <div className="vnProjectLinkGroup"><small>Technical evidence</small><div>{safeCreator ? <ExplorerLink kind="address" value={safeCreator} accessibleName={`Open reported creator address for ${directoryMarket.symbol}`}>Creator ↗</ExplorerLink> : null}{safeCreationTransaction ? <ExplorerLink kind="transaction" value={safeCreationTransaction} accessibleName={`Open creation evidence for ${directoryMarket.symbol}`}>Creation ↗</ExplorerLink> : null}</div></div> : null}
-      {projectLinks.length ? <div className="vnProjectLinkGroup"><small>Project links · {market?.project ? externalProjectProvenanceLabel(market.project) : "cross-checked"}</small><div>{projectLinks.map((link) => <ExternalProjectLink href={link.href} socialKind={link.kind === "website" ? undefined : link.kind} accessibleName={`Open ${directoryMarket.symbol} project ${link.label}`} key={`${link.kind}:${link.href}`}>{link.label} ↗</ExternalProjectLink>)}</div></div> : null}
-      {observedLinks.length ? <div className="vnProjectLinkGroup isObserved"><small>Observed from market metadata</small><div>{observedLinks.map((link) => <ExternalProjectLink href={link.href} socialKind={link.kind === "website" ? undefined : link.kind} accessibleName={`Open ${directoryMarket.symbol} ${link.label} from market metadata`} key={`${link.kind}:${link.href}`}>{link.label} ↗</ExternalProjectLink>)}</div></div> : null}
+      {projectLinks.length ? <div className="vnProjectLinkGroup"><small>Project links · {market?.project ? externalProjectProvenanceLabel(market.project) : "cross-checked"}</small><div>{projectLinks.map((link) => <ExternalProjectLink href={link.href} className="rmtIconButton" socialKind={link.kind === "website" ? undefined : link.kind} accessibleName={`Open ${directoryMarket.symbol} project ${link.label}`} key={`${link.kind}:${link.href}`}><TerminalIcon name={link.kind === "website" ? "website" : link.kind === "x" ? "x" : link.kind === "telegram" ? "telegram" : "external"} /></ExternalProjectLink>)}</div></div> : null}
+      {observedLinks.length ? <div className="vnProjectLinkGroup isObserved"><small>Observed from market metadata</small><div>{observedLinks.map((link) => <ExternalProjectLink href={link.href} className="rmtIconButton" socialKind={link.kind === "website" ? undefined : link.kind} accessibleName={`Open ${directoryMarket.symbol} ${link.label} from market metadata`} key={`${link.kind}:${link.href}`}><TerminalIcon name={link.kind === "website" ? "website" : link.kind === "x" ? "x" : link.kind === "telegram" ? "telegram" : "external"} /></ExternalProjectLink>)}</div></div> : null}
     </div> : null}
   </section>;
 }
@@ -278,15 +280,14 @@ function WorkspaceActivity({ market }: { market: ExternalMarket }) {
   const actors = useMemo(() => summarizeExternalTradeActors(trades), [trades]);
   const pressure = useMemo(() => summarizeExternalSellPressure(trades, market.liquidityUsd), [market.liquidityUsd, trades]);
   const windows = [
-    { label: "5m", buys: market.buys5m, sells: market.sells5m, volume: market.volume5m },
-    { label: "1h", buys: market.buys1h, sells: market.sells1h, volume: market.volume1h },
-    { label: "24h", buys: market.buys24h, sells: market.sells24h, volume: market.volume24h }
+    { label: "5M", buys: market.buys5m, sells: market.sells5m, volume: market.volume5m },
+    { label: "1H", buys: market.buys1h, sells: market.sells1h, volume: market.volume1h },
+    { label: "24H", buys: market.buys24h, sells: market.sells24h, volume: market.volume24h }
   ];
   return <section className="vnWorkspaceCard vnActivityCard" aria-labelledby="vn-activity-heading">
-    <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Provider aggregate telemetry</span><h3 id="vn-activity-heading">Observed market activity</h3></div><span>{windows.some((window) => window.buys !== null && window.buys !== undefined || window.sells !== null && window.sells !== undefined || window.volume !== null && window.volume !== undefined) ? "Observed" : "Unavailable"}</span></header>
-    <div className="vnMarketFlow" aria-label="Market activity by time window">{windows.map((window) => <span key={window.label}><b>{window.label}</b><small>{window.buys?.toLocaleString() ?? "Unknown"} buys · {window.sells?.toLocaleString() ?? "Unknown"} sells</small><strong>{compactUsd(window.volume)}</strong></span>)}</div>
-    <p>Aggregate provider observations are independent of the exact-pool trade tape below.</p>
-    <section aria-label="Exact-pool trade tape">
+    <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Market activity</span><h3 id="vn-activity-heading">Activity</h3></div><span>{windows.some((window) => window.buys !== null && window.buys !== undefined || window.sells !== null && window.sells !== undefined || window.volume !== null && window.volume !== undefined) ? "Observed" : "Unavailable"}</span></header>
+    <div className="vnMarketFlow" aria-label="Market activity by time window">{windows.map((window) => <span key={window.label}><b>{window.label}</b><small>{window.buys?.toLocaleString() ?? "—"} buys · {window.sells?.toLocaleString() ?? "—"} sells</small><strong>{compactUsd(window.volume)}</strong></span>)}</div>
+    {trades.length > 0 ? <section aria-label="Exact-pool trade tape">
     <header className="vnWorkspaceCardHead"><h3>Exact-pool trade tape</h3><span className={`vnLiveState is${stream.status}`}><i aria-hidden="true" />{stream.status === "live" ? "Streaming" : stream.status === "fallback" ? "Fallback live" : stream.status === "connecting" ? "Connecting" : "Unavailable"}</span></header>
     <div className="vnActivitySummary">
       <span><small>Swaps shown</small><strong>{stream.payload ? trades.length : "Unknown"}</strong></span>
@@ -302,7 +303,8 @@ function WorkspaceActivity({ market }: { market: ExternalMarket }) {
       </ExplorerLink>)}
     </div></details> : <div className="vnWorkspaceEmpty"><strong>{stream.status === "connecting" ? "Opening exact-pool stream" : stream.status === "live" || stream.status === "fallback" ? "No recent swaps" : "Exact-pool activity unavailable"}</strong><span>{stream.status === "unsupported" ? "This market representation does not expose a conventional verified EVM pool address. The canonical market remains visible." : "New confirmed swaps appear without resetting the workspace."}</span></div>}
     <footer>Exact pool only · confirmed swaps · visible wallet flow is not identity, P&amp;L, or a copy signal.</footer>
-    </section>
+    </section> : <p className="vnCompactEmpty vnTapeUnavailable">{stream.payload ? "No recent individual swaps" : "Individual swaps unavailable"}</p>}
+    <details className="vnEvidenceDetails"><summary>Evidence &amp; Sources</summary><p>Aggregate provider observations are independent of the exact-pool trade tape. Exact pool only · confirmed swaps · visible wallet flow is not identity, P&amp;L, or a copy signal.</p><p>Stream: {stream.status}. Aggregates: {market.dexId}. Observed: {stream.payload ? "Confirmed stream observations" : "No tape observation"}.</p></details>
   </section>;
 }
 
@@ -347,7 +349,7 @@ function WorkspaceEvidence({ market, directoryMarket, tokenIdentityVerified }: {
   const holderLargestShare = graph?.holderSnapshot.largestNonPoolShareBps ?? evidenceLargestShare ?? null;
   const hasHolderConcentration = holders.length > 0 || holderTopShare !== null || holderLargestShare !== null;
   const domainStates = workspaceEvidenceStates(risk, constellation, market?.liquidityUsd);
-  const evidenceUnavailable = domainStates.holders === "unavailable";
+  const evidenceUnavailable = domainStates.holders === "unavailable" || (!evidence && !graph);
   const riskUnavailable = risk.status === "unavailable" || !evidence;
   const evidenceCoverageLabel = evidence ? tokenRiskCoverageLabel(evidence.coverage) : null;
   const hasIdentifiedLiquidityPosition = evidence?.liquidity.evidenceSource !== undefined
@@ -358,22 +360,23 @@ function WorkspaceEvidence({ market, directoryMarket, tokenIdentityVerified }: {
   };
 
   return <section className="vnWorkspaceCard vnEvidenceDeck" aria-labelledby="vn-evidence-heading">
-    <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Read-only evidence</span><h3 id="vn-evidence-heading">Holders, liquidity &amp; risk</h3></div><span>Independent evidence sources</span></header>
-    <div className="vnEvidenceTabs" role="tablist" aria-label="Market evidence">
-      {(["holders", "liquidity", "risk"] as const).map((item) => <button type="button" role="tab" aria-selected={tab === item} aria-label={item} className={tab === item ? "isActive" : ""} onClick={() => setTab(item)} key={item}>{item}<small style={{ display: "block", fontSize: "0.65rem", fontWeight: 400 }} data-evidence-domain={item} data-evidence-state={domainStates[item]}>{domainStates[item] === "checking" ? "Checking..." : domainStates[item]}</small></button>)}
-    </div>
-
-    {tab === "holders" && <div className="vnEvidencePane" role="tabpanel">
-      {evidenceUnavailable ? <div className="vnEvidenceUnavailable"><strong>Holder evidence unavailable</strong><span>Token identity remains available. Concentration is unknown until the evidence service recovers.</span></div> : <>{holderCount !== null && !hasHolderConcentration ? <div className="vnEvidenceUnavailable vnEvidenceCountOnly"><strong>{holderCount.toLocaleString()} holders</strong><span>Concentration details are temporarily unavailable. Missing holder rows remain unknown, never safe.</span></div> : <div className="vnEvidenceGrid">
+    <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Ownership distribution</span><h3 id="vn-evidence-heading">Holders</h3></div><TerminalIcon name="holders" /></header>
+    <div className={tab === "holders" ? "vnEvidencePane" : "vnHolderOverview"} data-holder-summary="true">
+      {evidenceUnavailable ? <div className="vnEvidenceUnavailable"><strong>Holder evidence unavailable</strong><span>Distribution data is temporarily unavailable.</span></div> : <>{holderCount !== null && !hasHolderConcentration ? <div className="vnEvidenceUnavailable vnEvidenceCountOnly"><strong>{holderCount.toLocaleString()} holders</strong><span>Concentration details are unavailable.</span></div> : <div className="vnEvidenceGrid">
         <span><small>Known holders</small><strong>{holderCount?.toLocaleString() ?? "—"}</strong></span>
         <span><small>{graph || evidence?.marketVerified ? "Top 10 · no pool" : "Top 10 visible"}</small><strong>{formatOwnershipBps(holderTopShare)}</strong></span>
         <span><small>{graph || evidence?.marketVerified ? "Largest non-pool holder" : "Largest visible holder"}</small><strong>{formatOwnershipBps(holderLargestShare)}</strong></span>
         <span><small>Creator reported</small><strong>{formatOwnershipBps(graph?.holderSnapshot.creatorShareBps ?? evidence?.holders.creatorShareBps ?? null)}</strong></span>
       </div>}
-      {holders.length > 0 ? <><div className="vnConcentrationTrack" aria-label={`Visible top-holder concentration ${formatOwnershipBps(holderTopShare)}`}>{holders.slice(0, 6).map((holder, index) => <i className={holder.isFlagged ? "isFlagged" : holder.isContract === true ? "isContract" : ""} style={{ width: `${Math.max(.75, (holder.supplyShareBps ?? 0) / 100)}%` }} title={`${shortAddress(holder.address)} · ${formatOwnershipBps(holder.supplyShareBps)}`} key={holder.address} data-rank={index + 1} />)}</div><div className="vnHolderList">{holders.slice(0, 8).map((holder, index) => <ExplorerLink kind="address" value={holder.address} accessibleName={`Open holder ${shortAddress(holder.address)} in Robinhood Chain explorer`} key={holder.address}><b>{index + 1}</b><span><strong>{shortAddress(holder.address)}</strong><small>{holder.role === "creator" ? "Reported creator" : holder.isFlagged ? "Explorer flagged" : holder.isContract === true ? "Contract" : holder.isContract === false ? "Wallet" : "Classification unknown"}</small></span><strong>{formatOwnershipBps(holder.supplyShareBps)}</strong><i aria-hidden="true">↗</i></ExplorerLink>)}</div></> : holderCount === null ? <p className="vnEvidenceCaution">Holder rows are unavailable. Missing concentration data remains unknown, never safe.</p> : null}
+      {holders.length > 0 ? <><div className="vnConcentrationTrack" aria-label={`Visible top-holder concentration ${formatOwnershipBps(holderTopShare)}`}>{holders.slice(0, 6).map((holder, index) => <i className={holder.isFlagged ? "isFlagged" : holder.isContract === true ? "isContract" : ""} style={{ width: `${Math.max(.75, (holder.supplyShareBps ?? 0) / 100)}%` }} title={`${shortAddress(holder.address)} · ${formatOwnershipBps(holder.supplyShareBps)}`} key={holder.address} data-rank={index + 1} />)}</div><div className="vnHolderList">{holders.slice(0, 4).map((holder, index) => <ExplorerLink kind="address" value={holder.address} accessibleName={`Open holder ${shortAddress(holder.address)} in Robinhood Chain explorer`} key={holder.address}><b>{index + 1}</b><span><strong>{shortAddress(holder.address)}</strong><small>{holder.role === "creator" ? "Reported creator" : holder.isFlagged ? "Explorer flagged" : holder.isContract === true ? "Contract" : holder.isContract === false ? "Wallet" : "Classification unknown"}</small></span><strong>{formatOwnershipBps(holder.supplyShareBps)}</strong><i aria-hidden="true">↗</i></ExplorerLink>)}</div></> : holderCount === null ? <p className="vnEvidenceCaution">Holder distribution unavailable.</p> : null}
+      {holders.length > 4 ? <details className="vnEvidenceDetails"><summary>More observed holders</summary><div className="vnHolderList">{holders.slice(4, 8).map((holder, index) => <ExplorerLink kind="address" value={holder.address} accessibleName={`Open holder ${shortAddress(holder.address)} in Robinhood Chain explorer`} key={holder.address}><b>{index + 5}</b><span><strong>{shortAddress(holder.address)}</strong><small>{holder.isContract === true ? "Contract" : holder.isContract === false ? "Wallet" : "Classification unknown"}</small></span><strong>{formatOwnershipBps(holder.supplyShareBps)}</strong><TerminalIcon name="external" /></ExplorerLink>)}</div></details> : null}
       {graph?.signals.length ? <details className="vnEvidenceDetails"><summary>Observed wallet relationships <b>{graph.signals.length}</b></summary><div>{graph.signals.slice(0, 4).map((signal) => <span className={signal.severity} key={`${signal.code}:${signal.relatedAddresses.join(":")}`}><strong>{signal.label}</strong><small>{signal.relatedAddresses.map(shortAddress).join(" ↔ ")}</small><small>{signal.description}</small></span>)}</div></details> : null}
       {graph && <p className="vnCoverageNote">{graph.coverage.description} · {graph.coverage.sampledTransfers} transfers sampled.</p>}</>}
-    </div>}
+    </div>
+    <details className="vnHolderSources"><summary>Evidence &amp; Sources</summary><div className="vnEvidenceTabs" role="tablist" aria-label="Market evidence">
+      {(["holders", "liquidity", "risk"] as const).map((item) => <button type="button" role="tab" aria-selected={tab === item} aria-label={item} className={tab === item ? "isActive" : ""} onClick={() => setTab(item)} key={item}>{item}<small style={{ display: "block", fontSize: "0.65rem", fontWeight: 400 }} data-evidence-domain={item} data-evidence-state={domainStates[item]}>{domainStates[item] === "checking" ? "Checking..." : domainStates[item]}</small></button>)}
+    </div>
+
 
     {tab === "liquidity" && <div className="vnEvidencePane" role="tabpanel">
       <div className="vnLiquidityHeadline"><span><small>Displayed pool liquidity</small><strong>{market ? compactUsd(market.liquidityUsd) : "Unavailable"}</strong></span>{canonicalAddressPool ? <ExplorerLink kind="pool" value={canonicalAddressPool}>Canonical pool {shortAddress(canonicalAddressPool)} ↗</ExplorerLink> : canonicalMarket?.version === 4 ? <span>V4 PoolId {shortAddress(canonicalMarket.poolKey)}</span> : observedAddressPool ? <ExplorerLink kind="pool" value={observedAddressPool}>Observed pool {shortAddress(observedAddressPool)} ↗</ExplorerLink> : null}</div>
@@ -385,7 +388,7 @@ function WorkspaceEvidence({ market, directoryMarket, tokenIdentityVerified }: {
         <span><small>Position ID</small><strong>{evidence?.liquidity.positionId ?? "Not available"}</strong></span>
         <span><small>Evidence source</small><strong>{evidence?.liquidity.evidenceSource.replaceAll("-", " ") ?? "None"}</strong></span>
       </div>}
-      <p className="vnEvidenceCaution">Liquidity and ownership can change. The execution engine rechecks its selected route independently before wallet review.</p>
+      <p className="vnEvidenceCaution">Liquidity and ownership can change. These observations do not determine swap availability.</p>
     </div>}
 
     {tab === "risk" && <div className="vnEvidencePane" role="tabpanel">
@@ -397,10 +400,11 @@ function WorkspaceEvidence({ market, directoryMarket, tokenIdentityVerified }: {
         {!riskUnavailable && domainAvailable("sell") ? <span><small>Sell check</small><strong>{evidence.sellSimulation.status.replaceAll("-", " ")}</strong></span> : null}
         {!riskUnavailable ? <><span><small>Coverage</small><strong>{tokenRiskCoverageLabel(evidence.coverage)}</strong></span><span><small>Evidence freshness</small><strong>{tokenRiskFreshnessLabel(evidence.freshness)}</strong></span></> : null}
       </div>
-      {riskUnavailable ? <div className="vnEvidenceUnavailable"><strong>Contract risk evidence unavailable</strong><span>Onchain token and canonical market identity remain separate known evidence. Contract controls and sell behavior are unknown.</span></div> : warnings.length ? <div className="vnRiskFindings">{warnings.slice(0, 8).map((warning) => <span key={warning}>{warning}</span>)}</div> : <p className="vnEvidenceCaution">No warning is present in available evidence. Missing coverage remains unknown, never safe.</p>}
+      {riskUnavailable ? <div className="vnEvidenceUnavailable"><strong>Contract risk evidence unavailable</strong><span>Onchain token and canonical market identity remain separate known evidence. Contract controls and sell behavior are unknown.</span></div> : warnings.length ? <div className="vnRiskFindings">{warnings.slice(0, 8).map((warning) => <span key={warning}>{warning}</span>)}</div> : <p className="vnEvidenceCaution">No findings in available evidence. Missing coverage remains unknown.</p>}
       {(evidence?.contract.controls.detected.length || evidence?.contract.controls.customWriteFunctions.length) ? <details className="vnEvidenceDetails"><summary>Detected contract controls <b>{evidence.contract.controls.detected.length + evidence.contract.controls.customWriteFunctions.length}</b></summary><div>{evidence.contract.controls.detected.map((control) => <span key={`${control.category}:${control.functionName}`}><strong>{control.category}</strong><small>{control.functionName}</small></span>)}{evidence.contract.controls.customWriteFunctions.slice(0, 6).map((name) => <span key={name}><strong>Custom write</strong><small>{name}</small></span>)}</div></details> : null}
     </div>}
-    <footer>Evidence informs the trader; route, recipient, minimum output, freshness and simulation remain independent execution requirements.</footer>
+    <p>Ownership, contract and market observations inform the trader. They do not classify a token as safe or determine swap availability.</p>
+    </details>
   </section>;
 }
 
@@ -443,7 +447,7 @@ function VerifiedMarkets({ canonicalMarkets, resolution, selectedPool, directory
   </ExplorerLink>;
   return <section className="vnWorkspaceCard vnMarketsCard" aria-labelledby="vn-verified-markets-heading">
     <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Onchain resolution</span><h3 id="vn-verified-markets-heading">Canonical markets</h3></div><span>Pool evidence</span></header>
-    {pools.length ? <><div className="vnVerifiedMarkets">{pools.slice(0, 3).map(renderPool)}</div>{pools.length > 3 ? <details className="vnEvidenceDetails"><summary>All alternate canonical markets ({pools.length - 3} more)</summary><div className="vnVerifiedMarkets">{pools.slice(3).map((pool, index) => renderPool(pool, index + 3))}</div></details> : null}</> : <div className="vnWorkspaceEmpty"><strong>No canonical market evidence attached</strong><span>Verified asset identity remains available. Metrics, chart activity, and execution are not evaluated without a supported market.</span></div>}
+    {pools.length ? <><div className="vnVerifiedMarkets">{pools.slice(0, 3).map(renderPool)}</div>{pools.length > 3 ? <details className="vnEvidenceDetails"><summary>All alternate canonical markets ({pools.length - 3} more)</summary><div className="vnVerifiedMarkets">{pools.slice(3).map((pool, index) => renderPool(pool, index + 3))}</div></details> : null}</> : <div className="vnWorkspaceEmpty"><strong>No canonical market evidence attached</strong><span>Verified asset identity remains available. Market source evidence is unavailable. Trading remains independent.</span></div>}
     <footer>Displayed price source, project origin and selected execution venue remain independent. The 0x execution route is verified separately from this market evidence.</footer>
   </section>;
 }
@@ -502,7 +506,7 @@ export function VNextAssetWorkspace({
   executionUiState: VNextExecutionUiState;
   onTradeSide: (side: "buy" | "sell") => void;
 }) {
-  const [section, setSection] = useState<"activity" | "evidence" | "markets" | "origin" | "position" | "rwa">("activity");
+  const [section, setSection] = useState<"activity" | "evidence" | "project" | "position" | "more">("activity");
   const workspace = useVNextAssetWorkspace(
     directoryMarket.address,
     directoryMarket.pairAddress,
@@ -553,59 +557,60 @@ export function VNextAssetWorkspace({
   const valuation = terminalValuation(directoryMarket.marketCapUsd, directoryMarket.fdvUsd);
 
   const hasVerifiedRwaRelationship = workspace.stockAssetRelationships.length > 0;
-  const sections = [
-    { id: "activity", label: "Activity" },
-    { id: "evidence", label: "Safety" },
-    { id: "markets", label: "Markets" },
-    { id: "position", label: "Position" },
-    { id: "origin", label: "Origin" },
-    ...(hasVerifiedRwaRelationship ? [{ id: "rwa" as const, label: "RWA" }] : [])
-  ] as const;
-  const activeSection = section === "rwa" && !hasVerifiedRwaRelationship ? "origin" : section;
-  const intelligence = activeSection === "activity"
-    ? market ? <WorkspaceActivity market={market} /> : <div className="vnWorkspaceCard vnWorkspaceEmpty"><strong>Trade activity loading</strong><span>Exact-pool activity appears when canonical market evidence and telemetry are available.</span></div>
-    : activeSection === "evidence"
-      ? <WorkspaceEvidence market={market} directoryMarket={directoryMarket} tokenIdentityVerified={tokenIdentityVerified} />
-      : activeSection === "markets"
-        ? <div className="vnMarketEvidenceStack"><VerifiedMarkets directoryMarket={directoryMarket} canonicalMarkets={directoryMarket.canonicalMarkets} resolution={resolution} selectedPool={selectedChartIdentity} /><WorkspaceEcosystemIntelligence ecosystem={workspace.ecosystem} /></div>
-        : activeSection === "position"
-          ? <WorkspacePosition directoryMarket={directoryMarket} walletAssets={walletAssets} executionState={executionState} executionUiState={executionUiState} onTradeSide={onTradeSide} />
-          : activeSection === "origin"
-            ? <WorkspaceOrigin market={market} token={directoryMarket.address} launchpadEvidence={launchpadEvidence} />
-            : <WorkspaceRwaRelationships relationships={workspace.stockAssetRelationships} coverage={workspace.stockAssetCoverage} />;
+  const classes = assetPresentationClasses(directoryMarket);
+  const primaryClass = executionState === "stock-token-view-only" ? "STOCK_TOKEN" : classes.includes("STABLECOIN") ? "STABLECOIN" : classes.includes("LAUNCH") ? "LAUNCH" : "TOKEN";
+  const sections: readonly { id: typeof section; label: string; icon: TerminalIconName }[] = [
+    { id: "activity", label: "Activity", icon: "activity" },
+    { id: "evidence", label: "Holders", icon: "holders" },
+    { id: "project", label: "Project", icon: "project" },
+    { id: "position", label: "Position", icon: "position" },
+    { id: "more", label: "More", icon: "more" },
+  ];
+  const activeSection = section;
+  const intelligence = section === "activity"
+    ? market ? <WorkspaceActivity market={market} /> : <div className="vnWorkspaceCard vnCompactEmpty" role="status">Activity is not available yet</div>
+    : section === "evidence" ? <WorkspaceEvidence market={market} directoryMarket={directoryMarket} tokenIdentityVerified={tokenIdentityVerified} />
+    : section === "project" ? <ProjectInformation presentation={workspace.presentation} />
+    : section === "position" ? <WorkspacePosition directoryMarket={directoryMarket} walletAssets={walletAssets} executionState={executionState} executionUiState={executionUiState} onTradeSide={onTradeSide} />
+    : <div className="vnMoreSurface">
+      <section className="vnWorkspaceCard">
+        <header className="vnWorkspaceCardHead"><h3>Market details</h3><TerminalIcon name="market" /></header>
+        <dl className="vnAssetIdentityFacts">
+          <div><dt>Chain</dt><dd>Robinhood Chain · 4663</dd></div>
+          <div><dt>Market / venue</dt><dd>{selectedCanonicalMarket ? canonicalVenueLabel(selectedCanonicalMarket) : market?.dexId ?? "—"}</dd></div>
+          <div><dt>Origin</dt><dd>{originState === "Unknown" ? "Not established" : originState}</dd></div>
+          {canonicalStockRelationship || directoryMarket.rwaRelationship === "paired-market-asset" ? <div><dt>Relationship</dt><dd>{canonicalStockRelationship ? "Stock Token" : "Paired with an RWA · token classification unchanged"}</dd></div> : null}
+        </dl>
+        <WorkspaceQuickLinks directoryMarket={directoryMarket} market={market} canonicalPool={selectedCanonicalMarket?.poolAddress ?? undefined} observedPool={observedChartPool} canonicalMarket={selectedCanonicalMarket} />
+        <TokenInformation presentation={workspace.presentation} />
+      </section>
+      <details className="vnMoreDisclosure"><summary>Markets</summary><div className="vnMarketEvidenceStack"><VerifiedMarkets directoryMarket={directoryMarket} canonicalMarkets={directoryMarket.canonicalMarkets} resolution={resolution} selectedPool={selectedChartIdentity} /><WorkspaceEcosystemIntelligence ecosystem={workspace.ecosystem} /></div></details>
+      <details className="vnMoreDisclosure"><summary>Origin &amp; launch</summary><WorkspaceOrigin market={market} token={directoryMarket.address} launchpadEvidence={launchpadEvidence} /></details>
+      {hasVerifiedRwaRelationship ? <details className="vnMoreDisclosure"><summary>RWA relationship</summary><WorkspaceRwaRelationships relationships={workspace.stockAssetRelationships} coverage={workspace.stockAssetCoverage} /></details> : null}
+      <details className="vnMoreDisclosure"><summary>Evidence &amp; Sources</summary><p>{tokenIdentityVerified ? "Onchain token identity proven" : "Identity enrichment unavailable"} · {workspace.status}</p><PresentationSources presentation={workspace.presentation} /><p>Project origin, market observations and execution are separate authorities. Chart and enrichment availability do not determine swap availability.</p></details>
+    </div>;
 
   return <section className={`vnAssetPanel vnAssetWorkspace is${presentation}`} aria-labelledby="vn-asset-heading">
     <header className="vnAssetWorkspaceHeader">
-      <div className="vnAssetWorkspaceIdentity"><TokenArtwork className="vnAssetWorkspaceMark" symbol={displaySymbol} contract={directoryMarket.address} imageUrl={directoryMarket.imageUri ?? canonicalStockRelationship?.logoUrl ?? workspace.presentation?.visual.data?.image ?? undefined} /><span><span className="vnEyebrow">Token Market</span><h2 id="vn-asset-heading">{displayName} <b>{displaySymbol}</b></h2><small>Robinhood Chain · {tokenIdentityVerified ? "onchain token identity proven" : identityStatus === "checking" ? "identity checking" : "identity evidence unavailable"}</small></span></div>
+      <div className="vnAssetWorkspaceIdentity"><TokenArtwork className="vnAssetWorkspaceMark" symbol={displaySymbol} contract={directoryMarket.address} imageUrl={directoryMarket.imageUri ?? canonicalStockRelationship?.logoUrl ?? workspace.presentation?.visual.data?.image ?? undefined} /><span><span className="vnEyebrow vnAssetClass" data-asset-class={primaryClass}>{ASSET_CLASS_LABELS[primaryClass]}</span><h2 id="vn-asset-heading" title={displayName}>{displayName} <b>{displaySymbol}</b></h2><small>Robinhood Chain · 4663</small></span></div>
       <div className="vnWorkspaceStatusGroup">{executionState === "stock-token-view-only" ? <strong className="vnStockTokenViewOnlyBadge">View only</strong> : null}<span className={`vnWorkspaceStatus is${workspace.status}`}><i aria-hidden="true" />{workspace.status === "ready" ? "Live evidence" : workspace.status === "partial" ? "Partial evidence" : workspace.status === "stale" ? "Last loaded" : workspace.status === "loading" ? "Loading evidence" : "Evidence unavailable"}</span></div>
     </header>
-    <div className="vnAssetPrice"><strong>{formatUsd(priceUsd)}</strong><span className={priceChange24h !== null && priceChange24h > 0 ? "vnPositive" : priceChange24h !== null && priceChange24h < 0 ? "vnNegative" : ""}>{priceChange24h === null ? "Unavailable" : `${priceChange24h > 0 ? "+" : ""}${priceChange24h.toFixed(1)}%`} <small>24h</small></span></div>
-    <small className="vnMarketSnapshotLabel">{workspace.presentation?.market.data ? workspace.presentation.market.state === "STALE" ? "GeckoTerminal · last observed" : "GeckoTerminal market snapshot" : "Available market evidence"}</small>
+    <div className="vnAssetPrice"><strong>{formatUsd(priceUsd)}</strong><span className={priceChange24h !== null && priceChange24h > 0 ? "vnPositive" : priceChange24h !== null && priceChange24h < 0 ? "vnNegative" : ""}>{priceChange24h === null ? "—" : `${priceChange24h > 0 ? "+" : ""}${priceChange24h.toFixed(1)}%`} <small>24h</small></span></div>
+    <small className="vnMarketSnapshotLabel">{workspace.presentation?.market.data ? workspace.presentation.market.state === "STALE" ? "GeckoTerminal · last observed" : "GeckoTerminal market snapshot" : "Market snapshot"}</small>
     <dl className="vnAssetStats"><div><dt>{valuation.label}</dt><dd>{compactUsd(valuation.value)}</dd></div><div><dt>Liquidity</dt><dd>{compactUsd(liquidityUsd)}</dd></div><div><dt>24h volume</dt><dd>{compactUsd(volume24h)}</dd></div><div><dt>Market age</dt><dd>{formatAge(directoryMarket.ageMinutes)}</dd></div></dl>
 
+    {executionState === "stock-token-view-only" ? <section className="vnStockIdentitySurface" aria-label="Stock Token information">
+      <span className="vnStockTokenViewOnlyBadge">View only</span><p>Robinhood Stock Token · reference and onchain information</p>
+      {canonicalStockRelationship ? <dl><div><dt>Registry name</dt><dd>{canonicalStockRelationship.tokenName}</dd></div><div><dt>Registry symbol</dt><dd>{canonicalStockRelationship.tokenSymbol}</dd></div></dl> : null}
+      <p>Trading is not supported in RMT. Token ownership does not establish rights to the underlying security.</p>
+    </section> : null}
     <VNextMarketChart token={directoryMarket.address} pair={selectedChartIdentity ?? null} symbol={displaySymbol} referencePriceUsd={priceUsd} />
 
-    <details className="vnAssetTechnicalDetails">
-      <summary>Market details <span>Contract, chain and evidence</span></summary>
-      <dl className="vnAssetIdentityFacts" aria-label="Selected market identity">
-        <div><dt>Chain</dt><dd>Robinhood Chain · 4663</dd></div>
-        <div><dt>Market evidence</dt><dd>{selectedCanonicalMarket ? `${canonicalVenueLabel(selectedCanonicalMarket)} · canonical` : market?.dexId ? `${market.dexId} · provider observed` : "Unavailable"}</dd></div>
-        <div><dt>Project origin</dt><dd>{originState}</dd></div>
-        <div><dt>RWA relationship</dt><dd>{canonicalStockRelationship ? "Canonical stock token" : workspace.stockAssetRelationships.some((relationship) => relationship.relationship === "paired-market-asset") || directoryMarket.rwaRelationship === "paired-market-asset" ? "RWA-paired market" : "Not reported"}</dd></div>
-      </dl>
-      <WorkspaceQuickLinks
-        directoryMarket={directoryMarket}
-        market={market}
-        canonicalPool={selectedCanonicalMarket?.poolAddress ?? undefined}
-        observedPool={observedChartPool}
-        canonicalMarket={selectedCanonicalMarket}
-      />
-      <TokenInformation presentation={workspace.presentation} />
-    </details>
+    <div className="vnIdentityActionBar" aria-label="Token contract and links"><CopyAddress address={directoryMarket.address} /><ExplorerLink kind="token" value={directoryMarket.address} className="rmtIconButton" accessibleName="Open token contract in explorer"><TerminalIcon name="external" /></ExplorerLink></div>
 
     <div className="rmtWorkspaceTabs" role="tablist" aria-label="Asset intelligence">
-      {sections.map((item) => <button key={item.id} type="button" role="tab" aria-selected={activeSection === item.id} className={activeSection === item.id ? "isActive" : ""} onClick={() => setSection(item.id)}>{item.label}</button>)}
+      {sections.map((item) => <button key={item.id} type="button" role="tab" aria-selected={activeSection === item.id} className={activeSection === item.id ? "isActive" : ""} onClick={() => setSection(item.id)}><TerminalIcon name={item.icon} /><span>{item.label}</span></button>)}
     </div>
-    <div className="rmtWorkspaceIntelligence" role="tabpanel">{intelligence}</div>
+    <div className="rmtWorkspaceIntelligence" role="tabpanel" aria-label={sections.find(item => item.id === section)?.label}>{intelligence}</div>
   </section>;
 }
