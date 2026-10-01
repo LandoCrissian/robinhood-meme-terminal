@@ -18,7 +18,7 @@ Primary captures: ordinary token at 375×812, 390×844, 430×932 and 1440×900; 
 
 External HTTP data is CONTROLLED. Social URLs are fixture-only examples, not admitted project relationships. Stock reference identity uses the exact existing positive-deny contract; the fixture does not borrow ordinary-token price, volume, activity or tape. These screenshots are emulated Chromium viewports, not physical iPhones or live financial acceptance.
 
-The local visual build has noncredential 0x readiness configuration, enabled public ticket flags, no Privy app ID and no acceptance identity. Its signed-out desktop "Trading identity unavailable" message is accurate for that fixture. It does not establish a production configuration defect. Production readiness messages have not been suppressed or edited for screenshots.
+The local visual build has noncredential 0x readiness configuration and uses the existing external Privy SDK boundary fixture. RMT's real PrivyIdentityBridge mounts in its default signed-out state, with no authenticated user, identity token or wallet injected. This represents the normal Sign in entry without reaching real authentication or a financial provider. Production readiness messages have not been suppressed or edited for screenshots.
 
 ## Marketing decision
 
@@ -29,13 +29,13 @@ YES below means suitable as a clearly labelled controlled product illustration, 
 | 375 ordinary token | YES | Controlled market data; emulated viewport. |
 | 390 ordinary token | YES | Controlled market data; emulated viewport. |
 | 430 ordinary token | YES | Controlled market data; emulated viewport. |
-| 1440 ordinary token | NO | The test environment's visible identity-unavailable action does not represent the normal configured production sign-in journey. |
+| 1440 ordinary token | YES | Controlled market data and signed-out SDK boundary; real public identity bridge and Sign in entry. |
 | 390 Markets | YES | Controlled rows/counts; the truthful delayed-data notice remains. |
 | 1440 Markets | YES | Controlled rows/counts; the truthful delayed-data notice remains. |
 | 390 Stock Token | YES | Controlled registry/reference state; no invented chart or market figures. |
 | 1440 Stock Token | YES | Controlled registry/reference state; no invented chart or market figures. |
 
-The all-eight marketing target is therefore not established by this signed-out set. The remaining desktop configuration-state evidence must be reviewed separately; it is not permission to alter production Privy configuration or hide readiness messaging. The historical review at `9ad542f` remains in [OWNER_VISUAL_REVIEW.md](OWNER_VISUAL_REVIEW.md).
+The initial craft capture without any configured identity showed "Trading identity unavailable" and was unsuitable as primary marketing evidence. That truthful state was not removed from the application. Final evidence instead uses the existing controlled SDK boundary to represent the normal signed-out public journey. The historical review at `9ad542f` remains in [OWNER_VISUAL_REVIEW.md](OWNER_VISUAL_REVIEW.md). These judgments require inspection of the matching final exact-head artifact and are not production activation claims.
 
 ## Behavioral acceptance
 

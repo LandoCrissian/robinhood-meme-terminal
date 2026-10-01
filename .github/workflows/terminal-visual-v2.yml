@@ -23,8 +23,10 @@ jobs:
     env:
       NEXT_PUBLIC_RMT_NETWORK: mainnet
       RMT_VNEXT_SHELL_ENABLED: "true"
-      # Match the released public ticket capability, without authenticating or sending.
-      # External data remains controlled; no acceptance identity/profile is enabled.
+      # Match the public signed-out ticket using the existing external SDK boundary.
+      # The real PrivyIdentityBridge mounts; no wallet/user/token is injected.
+      NEXT_PUBLIC_PRIVY_APP_ID: "privy-acceptance-id-00001"
+      NEXT_PUBLIC_RMT_PRIVY_BRIDGE_ACCEPTANCE_PROFILE: "true"
       NEXT_PUBLIC_RMT_VNEXT_AUTHORIZATION_ENABLED: "true"
       RMT_VNEXT_AUTHORIZATION_ENABLED: "true"
       NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED: "true"

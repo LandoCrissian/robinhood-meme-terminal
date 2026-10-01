@@ -80,6 +80,6 @@ try {
   }));
 } finally {
   await browser.close();
-  await writeFile(path.join(output, 'stability.json'), JSON.stringify({ head: process.env.RMT_REVIEWED_HEAD ?? execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), checkoutTree: execFileSync('git', ['rev-parse', 'HEAD^{tree}'], { encoding: 'utf8' }).trim(), results }, null, 2));
+  await writeFile(path.join(output, 'stability.json'), JSON.stringify({ head: process.env.RMT_REVIEWED_HEAD ?? execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), checkoutTree: execFileSync('git', ['rev-parse', 'HEAD^{tree}'], { encoding: 'utf8' }).trim(), identityProfile: process.env.NEXT_PUBLIC_RMT_PRIVY_BRIDGE_ACCEPTANCE_PROFILE === 'true' ? 'CONTROLLED_PRIVY_SDK_BOUNDARY_REAL_IDENTITY_BRIDGE_SIGNED_OUT' : 'NO_PRIVY_SDK_ACCEPTANCE_PROFILE', results }, null, 2));
 }
 console.log(JSON.stringify({ chartRefreshPresentation: results.map(({ profile, states, financialRequests, measuredControlMovementPx }) => ({ profile, states, financialRequests, measuredControlMovementPx })) }));
