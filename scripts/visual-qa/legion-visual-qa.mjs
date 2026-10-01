@@ -270,7 +270,7 @@ async function startupLane(browser) {
   } catch (error) {
     throw new Error(`Delayed startup fixture did not render canonical rows. BODY=${(await delayedPage.locator("body").innerText()).slice(0, 2_000)}`, { cause: error });
   }
-  await delayedPage.getByText(/Market data delayed/).waitFor();
+  await delayedPage.locator(".rmtSearchStatus.isDelayed").getByText("Market data delayed", {exact:true}).waitFor();
   const delayedRows = await delayedPage.locator(".rmtMobileMarketRow").allTextContents();
   check(delayedRows.every((text) => !/Unavailable/.test(text)), "token-startup-delayed", "Provider failure produced repeated false Unavailable cells.", delayedRows);
   await delayedContext.close();
@@ -294,7 +294,8 @@ async function legacyUxGuards(page, state, { focused = false, mobileScanner = fa
     const visible = (element) => {
       const style = getComputedStyle(element);
       const rect = element.getBoundingClientRect();
-      return style.display !== "none" && style.visibility !== "hidden" && Number(style.opacity) !== 0 && rect.width > 0 && rect.height > 0;
+      return style.display !== "none" && style.visibility !== "hidden"
+      && style.clipPath !== "inset(50%)" && Number(style.opacity) !== 0 && rect.width > 0 && rect.height > 0;
     };
     const exempt = (element) => Boolean(element.closest(".siteFooter,.universalHeroSocials,.externalIdentityLink"));
     const controls = Array.from(document.querySelectorAll("a,button,input,select,summary"))
@@ -419,7 +420,8 @@ async function tokenLane(browser, viewport, platform) {
     const scannerFocusSizes = await page.locator(".rmtMobileTerminal input,.rmtMobileTerminal select").evaluateAll((elements) => elements.filter((element) => {
       const style = getComputedStyle(element);
       const rect = element.getBoundingClientRect();
-      return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+      return style.display !== "none" && style.visibility !== "hidden"
+      && style.clipPath !== "inset(50%)" && rect.width > 0 && rect.height > 0;
     }).map((element) => Number.parseFloat(getComputedStyle(element).fontSize)));
     check(scannerFocusSizes.length >= 1 && scannerFocusSizes.every((fontSize) => fontSize >= 16), "token-scanner-mobile", "Mobile market controls can trigger iOS focus zoom.", scannerFocusSizes);
     const chainPulse = page.locator('section[aria-label="Robinhood chain pulse"]');
@@ -444,7 +446,7 @@ async function tokenLane(browser, viewport, platform) {
   await page.evaluate(() => scrollTo(0, 0));
   await terminalNavigation(page, `token-asset-${platform}`, "Markets");
   check(await page.locator(".vnChartFrame").isVisible(), `token-asset-${platform}`, "Price/chart region is absent.");
-  check(await page.getByText("Price Chart", { exact: true }).isVisible(), `token-asset-${platform}`, "Trader-facing Price Chart label is absent.");
+  check(platform === "mobile" ? await page.locator(".vnChartHeadline small").isVisible() : await page.getByText("Price Chart", { exact: true }).isVisible(), `token-asset-${platform}`, "Trader-facing chart identity is absent.");
   check(await page.getByText("Verified pool chart", { exact: true }).count() === 0, `token-asset-${platform}`, "Internal chart terminology dominates the trader-facing hierarchy.");
   if (platform === "desktop") check(await page.locator(".vnTradePanel").isVisible(), "token-asset-desktop", "Desktop trade rail is absent.");
   else check(await page.locator(".rmtMobileTradeDock").isVisible(), "token-asset-mobile", "Mobile sticky trade/quote control is absent.");
@@ -539,7 +541,8 @@ async function tokenLane(browser, viewport, platform) {
     const focusableSizes = await tradeSheet.locator("input,select").evaluateAll((elements) => elements.filter((element) => {
       const style = getComputedStyle(element);
       const rect = element.getBoundingClientRect();
-      return style.display !== "none" && style.visibility !== "hidden" && rect.width > 0 && rect.height > 0;
+      return style.display !== "none" && style.visibility !== "hidden"
+      && style.clipPath !== "inset(50%)" && rect.width > 0 && rect.height > 0;
     }).map((element) => ({ tag: element.tagName, fontSize: Number.parseFloat(getComputedStyle(element).fontSize) })));
     check(focusableSizes.length >= 2 && focusableSizes.every((control) => control.fontSize >= 16), "token-trade-mobile", "Focusable Token trade controls can trigger iOS focus zoom.", focusableSizes);
     const amountControl = tradeSheet.locator('input[inputmode="decimal"]').first();
@@ -577,7 +580,7 @@ async function tokenLane(browser, viewport, platform) {
     await page.getByRole("tab", { name: "Activity", exact: true }).click();
     fixture.setChartMode("unavailable");
     await page.getByRole("tab", { name: "5M", exact: true }).click();
-    await page.locator(".vnChartState").getByText("Unavailable", { exact: true }).waitFor();
+    await page.locator(".vnChartEmpty").getByText("Price history unavailable", { exact: true }).waitFor();
     await page.locator(".vnChart").scrollIntoViewIfNeeded();
     await acceptanceCapture(page, "chart-unavailable-390x844");
 

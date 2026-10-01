@@ -47,6 +47,11 @@ try {
       await consent.waitFor({state:'visible',timeout:10000}).catch(()=>{});
       if(await consent.isVisible()) await consent.click();
       await page.locator(mobile?'.rmtMobileMarketRow':'.rmtMarketTableRow').first().waitFor();
+      if (!baseline) {
+        const skip=page.locator('.vnSkipLink'); await skip.focus();
+        const bounds=await skip.boundingBox(); assert.ok(bounds&&bounds.height>=44,'Keyboard skip action is exposed at usable size');
+        await skip.blur();
+      }
       await capture('markets');
       for(const name of ['New','Movers','Trending','Active']) {
         await page.locator('.rmtMarketViews').first().getByRole('button',{name:new RegExp(`^${name}`)}).click();
