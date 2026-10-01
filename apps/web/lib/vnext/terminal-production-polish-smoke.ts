@@ -10,6 +10,8 @@ import { safeExternalNavigationUrl, safeExternalSocialNavigationUrl } from "./ex
 import { parseVNextTerminalLocation } from "./terminal-location";
 import { VNEXT_MARKET_DIRECTORY_VIEWS } from "./market-directory";
 import { externalMarketSocialsFromPairInfo } from "../external-market-socials";
+import { projectTokenTerminalEntry } from "./terminal-entry";
+import { compactOutputTerms, quoteDisplayPhase } from "./quote-display";
 
 const address = "0x39dbed3a2bd333467115de45665cc57f813c4571";
 const hash = `0x${"ab".repeat(32)}`;
@@ -57,6 +59,25 @@ assert.equal(parseVNextTerminalLocation(`?market=${address}&side=buy`).context, 
 assert.equal(parseVNextTerminalLocation(`?market=${address}&side=sell`).context, "asset", "SELL_DEEP_LINK");
 assert.deepEqual(parseVNextTerminalLocation("?market=malformed&side=sell"), { context: "markets" });
 assert.deepEqual(parseVNextTerminalLocation("?side=sell"), { context: "markets" }, "stale side cannot select an action");
+const canna = "0x1139d423C1706BDeaD91f03507F521635591eD92";
+const cannaLocation = parseVNextTerminalLocation(`?market=${canna}`);
+assert.equal(projectTokenTerminalEntry(cannaLocation, "cannacats")?.address.toLowerCase(), canna.toLowerCase());
+assert.equal(projectTokenTerminalEntry(cannaLocation, "cannacats")?.verifiedIdentity?.decimals, 18, "Units come from existing onchain-qualified graph evidence");
+assert.equal(projectTokenTerminalEntry(cannaLocation, "ccff00"), undefined, "Project context cannot substitute another contract");
+assert.equal(projectTokenTerminalEntry(parseVNextTerminalLocation("?market=invalid"), "cannacats"), undefined);
+assert.equal(projectTokenTerminalEntry(parseVNextTerminalLocation(`?market=${address}`), "cannacats"), undefined);
+assert.equal(projectTokenTerminalEntry(cannaLocation), undefined);
+const phase = { hasTerms: true, busy: false, failed: false, nowMs: 100, expiresAtMs: 200, recovered: false };
+assert.equal(quoteDisplayPhase(phase), "VERIFIED_FRESH");
+assert.equal(quoteDisplayPhase({ ...phase, busy: true }), "RENEWING_WITH_PRIOR_TERMS");
+assert.equal(quoteDisplayPhase({ ...phase, busy: true, nowMs: 200 }), "EXPIRED");
+assert.equal(quoteDisplayPhase({ ...phase, failed: true }), "PROVIDER_UNAVAILABLE");
+assert.equal(quoteDisplayPhase({ ...phase, recovered: true }), "RECOVERED");
+assert.equal(quoteDisplayPhase({ ...phase, hasTerms: false }), "NO_QUOTE");
+assert.equal(quoteDisplayPhase({ ...phase, hasTerms: false, busy: true }), "FETCHING_INITIAL");
+assert.equal(compactOutputTerms("12345678901234567890123456789", null), "Exact output available in base units");
+assert.equal(compactOutputTerms("1", 18), null);
+assert.equal(compactOutputTerms(null, null), null);
 
 const presentation = readFileSync(new URL("../../app/vnext/terminal-presentations.tsx", import.meta.url), "utf8");
 const shell = readFileSync(new URL("../../app/vnext/vnext-terminal-shell.tsx", import.meta.url), "utf8");

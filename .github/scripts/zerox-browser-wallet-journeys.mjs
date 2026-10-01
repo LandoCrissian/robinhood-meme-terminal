@@ -1,3 +1,4 @@
+import { openExecutionEvidence } from './trade-details-browser.mjs';
 import { exerciseRestoredQuoteState } from './quote-state-browser-checks.mjs';
 import { exerciseTradeRefresh } from './trade-refresh-browser-checks.mjs';
 import assert from 'node:assert/strict';
@@ -345,7 +346,7 @@ export async function runZeroXWalletJourneys(options) {
           assert.equal(requests.length, 0);
         } else if (wireFaults[scenario] && scenario !== 'stale-post-approval') {
           await until(() => corrupted === 1, `Missing corruption probe ${scenario}`);
-          await page.locator('.vnRouteTop').click();
+          await page.locator('.vnRouteTop').click(); await openExecutionEvidence(page);
           await until(async () => /reject|changed|inconsistent|invalid|authority|mismatch/i.test(await page.locator('.vnTradePanel').innerText()), 'Corrupted authority must produce a rejection state');
           assert.equal(requests.length, 0, 'Corrupted authority cannot prompt the wallet');
         } else if (faults[scenario] && scenario !== 'simulation-incomplete' && !providerNativeOpaqueResponses.has(scenario)) {
@@ -392,9 +393,15 @@ export async function runZeroXWalletJourneys(options) {
             const decimals = quote.attempts.find(attempt => attempt.provider === bundle.plan.provider).outputDecimals;
             if (decimals === null) {
               if (minimum.includes('base units') || output.includes('base units')) {
-                assert.ok(minimum.startsWith(`${bundle.plan.protectedOutputAtomic} base units`),
-                  `Unknown-unit minimum must retain exact base units: ${minimum}`);
-                assert.equal(output, `${bundle.evidence.expectedOutputAtomic} base units`);
+                assert.equal(minimum, 'Exact minimum in base units');
+                assert.equal(output, 'Exact output available in base units');
+                const detailsWereOpen = await page.locator('.vnRouteCard').evaluate(node => node.open);
+                if (!detailsWereOpen) await page.locator('.vnRouteTop').click();
+                await openExecutionEvidence(page);
+                const exact = await page.locator('.vnExecutionEvidence').innerText();
+                assert.ok(exact.includes(`${bundle.plan.protectedOutputAtomic} base units`), 'Exact minimum remains accessible in Execution Evidence');
+                assert.ok(exact.includes(`${bundle.evidence.expectedOutputAtomic} base units`), 'Exact provider output remains accessible');
+                if (!detailsWereOpen) await page.locator('.vnRouteTop').click();
               } else {
                 // The quote adapter intentionally omits optional output metadata. The
                 // acceptance market still has independently trusted units, which the UI
@@ -567,11 +574,24 @@ export async function runZeroXWalletJourneys(options) {
                 // subsequent provider-native attempt must not race that recovery or revive
                 // the retired per-trade Settler registry/runtime proof.
                 await page.reload({waitUntil:'domcontentloaded'});
-                const history = page.locator('.vnRecoveryBanner').filter({hasText:'Verified swap history'});
+                await page.getByLabel('Exact input amount').waitFor();
+                assert.equal(await page.getByText('Verified swap history', { exact: true }).count(), 0, 'Historical settlement cannot replay a premium-workspace notification');
+                await page.locator('[data-terminal-nav="portfolio"]:visible').click();
+                const history = page.locator('.vnHistoryAffordance');
                 await history.waitFor({ timeout: 30000 });
+                await history.locator('summary').click();
                 state.incompatibleRuntime = true;
-                assert.match(await history.innerText(), /Submitted:/);
+                assert.match(await history.innerText(), /Previously settled/);
                 assert.ok((await history.locator('a').getAttribute('href')).includes(h('c')));
+                const durableBeforeDismissal = await page.evaluate(() => localStorage.getItem('rmt:vnext-execution-journal:v1:4663'));
+                await history.getByRole('button', { name: 'Dismiss completed trade notice' }).click();
+                assert.equal(await history.count(), 0);
+                assert.equal(await page.evaluate(() => localStorage.getItem('rmt:vnext-execution-journal:v1:4663')), durableBeforeDismissal, 'Dismissal cannot delete or rewrite confirmed settlement');
+                await page.reload({waitUntil:'domcontentloaded'});
+                await page.locator('[data-terminal-nav="portfolio"]:visible').click();
+                assert.equal(await history.count(), 0, 'Dismissed history does not reappear after reload in the same session');
+                await page.goto(`${base}/?market=${token}&side=buy`, {waitUntil:'domcontentloaded'});
+                await page.getByLabel('Exact input amount').waitFor();
                 const priorAuthorizations = api.filter(entry => entry.path.endsWith('/authorize') && entry.status === 200).length;
                 const priorRuntimeProofCalls = state.rpc.filter(entry => entry.method === 'eth_getCode'
                   && lower(entry.params?.[0]) === lower(executableFixture.settler)

@@ -155,7 +155,7 @@ assert.doesNotMatch(route, /writeContract|sendTransaction|signTypedData|database
 assert.doesNotMatch(verifier, /writeContract|sendTransaction|signTypedData/);
 assert.match(composer, /parseVNextPreSignEvidence/);
 assert.match(composer, /\/api\/vnext\/verify/);
-assert.match(composer, /Fresh 0x transaction prepared/);
+assert.match(composer, /0x transaction terms/);
 assert.match(composer, /Fresh 0x terms bound to your selected wallet and trade intent/);
 assert.match(composer, /Authorization remains disabled in this preview/);
 assert.match(composer, /Insufficient ETH for gas/);

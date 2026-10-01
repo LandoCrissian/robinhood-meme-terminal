@@ -51,10 +51,10 @@ export async function exerciseRestoredQuoteState({ page, api, requests, scenario
   for (const heading of await page.locator('.rmtMobileTradeSheet > header').allTextContents()) {
     assert.doesNotMatch(heading, /Verified trade/, 'sheet title must not claim quote authority');
   }
-  assert.match(await page.locator('.vnOutputProtection').innerText(), /Last quoted minimum/i, 'retained minimum is explicitly historical, never current authority');
+  assert.match(await page.locator('[data-quote-display-state]').innerText(), /Last quoted/i, 'retained terms are explicitly historical, never current authority');
   assert.notEqual(await page.locator('.vnOutputProtection strong').innerText(), 'Set when you trade');
   assert.equal(await page.locator('.vnReceiveField > div > strong').first().innerText(), estimate, 'refresh preserves the last displayed output');
-  assert.match(panel, /stale/i, 'retained output is explicitly stale');
+  assert.equal(await page.locator('[data-quote-display-state]').getAttribute('data-quote-display-state'), 'EXPIRED', 'retained output is explicitly expired');
   // Advance expiry without making newly issued server evidence artificially old.
   // Preparation has already cleared authority; restoring real time cannot reuse it.
   await page.clock.setSystemTime(Date.now());

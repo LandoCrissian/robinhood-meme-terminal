@@ -54,9 +54,20 @@ export function captureResponseDiagnostic(
     ...safeFields(payload),
     receivedAt: receiptTime !== null && Number.isFinite(new Date(receiptTime).getTime()) ? new Date(receiptTime).toISOString() : null,
     originGenerationId: generationId(originGenerationId),
+    transportFailure: null as "timeout" | "network" | null,
+    latencyMs: null as number | null,
     quoteRequestId: identifier(quoteRequestId),
     serverRequestId: typeof serverRequestId === "string" && (uuid.test(serverRequestId) || vercelId.test(serverRequestId))
       ? serverRequestId : null,
+  });
+}
+
+export function captureTransportDiagnostic(code: "timeout" | "network", stage: "quote" | "verification", latencyMs: number, receiptTime: number, originGenerationId: unknown, quoteRequestId: unknown) {
+  return Object.freeze({
+    ...captureResponseDiagnostic({ stage, phase: "QUOTE_SERVICE_UNAVAILABLE", retryable: true }, receiptTime, quoteRequestId, null, originGenerationId),
+    transportFailure: code,
+    latencyMs: Number.isFinite(latencyMs) && latencyMs >= 0 ? Math.min(Math.round(latencyMs), 60_000) : null,
+    explanation: code === "timeout" ? "The client request deadline elapsed. No HTTP response was received." : "The client transport failed. No HTTP response was received."
   });
 }
 
@@ -67,7 +78,7 @@ export function consumeResponseDiagnostic(record: Diagnostic | undefined, consum
   return Object.freeze({
     record,
     consumerGenerationId: generationId(consumerGeneration),
-    evidence: reused ? "CACHED_OR_IN_FLIGHT_REUSE" as const : "NETWORK_RESPONSE" as const,
+    evidence: record.transportFailure ? "CLIENT_TRANSPORT_FAILURE" as const : reused ? "CACHED_OR_IN_FLIGHT_REUSE" as const : "NETWORK_RESPONSE" as const,
   });
 }
 
@@ -89,9 +100,12 @@ export function serializeResponseDiagnostic(entry: Entry): string {
   // Reconstruct the allowlist rather than serializing an extensible object.
   const safe = captureResponseDiagnostic(record, record.receivedAt === null ? null : Date.parse(record.receivedAt),
     record.quoteRequestId, record.serverRequestId, record.originGenerationId);
+  const transport = record.transportFailure === "timeout" || record.transportFailure === "network";
+  const allowed = transport ? captureTransportDiagnostic(record.transportFailure!, record.stage === "verification" ? "verification" : "quote",
+    record.latencyMs ?? NaN, record.receivedAt === null ? NaN : Date.parse(record.receivedAt), record.originGenerationId, record.quoteRequestId) : safe;
   return JSON.stringify({
-    ...safe,
+    ...allowed,
     consumerGenerationId: generationId(entry.consumerGenerationId),
-    evidence: entry.evidence === "NETWORK_RESPONSE" || entry.evidence === "CACHED_OR_IN_FLIGHT_REUSE" ? entry.evidence : null,
+    evidence: transport ? "CLIENT_TRANSPORT_FAILURE" : entry.evidence === "NETWORK_RESPONSE" || entry.evidence === "CACHED_OR_IN_FLIGHT_REUSE" ? entry.evidence : null,
   }, null, 2);
 }

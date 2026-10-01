@@ -35,13 +35,16 @@ export async function runLiveEthQuoteIncidentJourneys({
   const results = [];
   for (const viewport of [
     ["desktop", { width: 1440, height: 900 }],
-    ["mobile", { width: 390, height: 844 }]
+    ["mobile", { width: 390, height: 844 }],
+    ["mobile-375", { width: 375, height: 812 }],
+    ["mobile-430", { width: 430, height: 932 }]
   ]) {
     for (const scenario of scenarios) {
+      if (viewport[0].startsWith('mobile-') && scenario.name !== 'valid-route') continue;
       if (scenario.desktopOnly && viewport[0] === "mobile") continue;
       const context = await browser.newContext({
         viewport: viewport[1],
-        ...(viewport[0] === "mobile" ? { isMobile: true, hasTouch: true } : {})
+        ...(viewport[1].width < 1024 ? { isMobile: true, hasTouch: true } : {})
       });
       await context.addInitScript(({ scenario, wallet }) => {
         window.__RMT_QUOTE_IDENTITY_ACCEPTANCE__ = {
@@ -153,6 +156,21 @@ export async function runLiveEthQuoteIncidentJourneys({
           if (scenario.header === "expired") {
             assert.deepEqual(api.filter((entry) => entry.path === "/api/vnext/quotes").map((entry) => entry.status).slice(0, 2), [401, 200], "An expired token gets one supported refresh and one retry");
           }
+          if (scenario.name === 'valid-route') {
+            await until(() => api.some(entry => entry.path === '/api/vnext/authorize' && entry.status === 200), 'Equivalent native-ETH intent reaches complete preparation through the UI');
+            const binding = path => {
+              const body = apiRequests.find(entry => entry.path === path)?.body;
+              return { chainId: body?.chainId, inputAsset: body?.inputAsset?.toLowerCase(), outputAsset: body?.outputAsset?.toLowerCase(), inputAmountAtomic: body?.inputAmountAtomic, recipient: body?.recipient?.toLowerCase() };
+            };
+            const intent = binding('/api/vnext/quotes');
+            assert.deepEqual(binding('/api/vnext/verify'), intent);
+            assert.deepEqual(binding('/api/vnext/authorize'), intent);
+            results.push({ evidence: 'CONTROLLED_EQUIVALENT_INTENT_REAL_UI_AND_HANDLERS', viewport: viewport[0], intent,
+              output: await page.locator('.vnReceiveField > div > strong').first().innerText(),
+              minimum: await page.locator('.vnOutputProtection strong').innerText(),
+              costs: await page.locator('.vnTradePriceSummary').innerText(),
+              walletRequests: await page.evaluate(() => window.__LIVE_ETH_QUOTE_WALLET_REQUESTS__) });
+          }
         } else if (scenario.outcome === "403") {
           await until(() => api.some((entry) => entry.path === "/api/vnext/quotes" && entry.status === 403), "Unlinked wallet must reach the real 403 identity boundary");
           await until(async () => /sign in and select the exact verified trading wallet/i.test(await page.locator(".vnTradeActionStatus").innerText()), "403 must be visible beside the action");
@@ -184,8 +202,12 @@ export async function runLiveEthQuoteIncidentJourneys({
             assert.equal(request?.body?.inputAmountAtomic, "500000000000000", `${path} keeps the exact atomic input`);
             assert.equal(request?.body?.recipient?.toLowerCase(), wallet, `${path} keeps the selected wallet recipient`);
           }
-          await until(async () => /1000000000000000000000 base units/i.test(await page.locator("body").innerText()),
-            "Unknown output decimals must render the provider amount as exact base units");
+          await until(async () => /Exact output available in base units/i.test(await page.locator(".vnReceiveField").innerText()),
+            "Unknown output units use a compact truthful primary presentation");
+          await page.screenshot({ path: path.join(output, `${name}-compact-unknown-units.png`), fullPage: true });
+          await page.locator('.vnRouteTop').click();
+          await page.locator('.vnExecutionEvidence > summary').click();
+          assert.match(await page.locator('.vnExecutionEvidence').innerText(), /1000000000000000000000 base units/i, "Full exact output remains in Execution Evidence");
           const minimumLayout = await page.locator(".vnOutputProtection strong").evaluate(element => ({
             whiteSpace: getComputedStyle(element).whiteSpace,
             textOverflow: getComputedStyle(element).textOverflow,
@@ -212,6 +234,10 @@ export async function runLiveEthQuoteIncidentJourneys({
         await context.close();
       }
     }
+  }
+  const parity = results.filter(result => result.evidence === 'CONTROLLED_EQUIVALENT_INTENT_REAL_UI_AND_HANDLERS');
+  for (const result of parity.slice(1)) {
+    for (const key of ['intent', 'output', 'minimum', 'costs', 'walletRequests']) assert.deepEqual(result[key], parity[0][key], `Same controlled intent has viewport parity: ${key}`);
   }
   return results;
 }

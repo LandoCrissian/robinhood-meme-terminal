@@ -1,3 +1,4 @@
+import { openExecutionEvidence } from './trade-details-browser.mjs';
 import { chromium, devices } from "playwright";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
@@ -2969,7 +2970,7 @@ async function inspectWalletPromptReloadAndCrossTab(browser, fixture) {
     const action = primary.getByRole("button", { name: /Review (exact approval|verified swap) in wallet/, exact: true });
     await action.waitFor({ state: "visible" });
     if (await action.evaluate(element => Boolean(element.closest("details")))) throw new Error(`${label}: trade action is hidden inside Advanced details`);
-    await page.locator(".vnRouteTop").click();
+    await page.locator(".vnRouteTop").click(); await openExecutionEvidence(page);
     await page.locator(".vnWalletPrimaryReview").waitFor({ state: "visible" });
     const text = await page.locator(".vnRouteCard").innerText();
     for (const expected of [
@@ -2989,7 +2990,7 @@ async function inspectWalletPromptReloadAndCrossTab(browser, fixture) {
       if (!text.includes(expected)) throw new Error(`${label}: exact wallet evidence omitted ${expected}: ${text}`);
     }
     if (/Complete review in wallet/i.test(text)) throw new Error(`${label}: authorization preparation impersonated a wallet handoff`);
-    await page.locator(".vnRouteTop").click();
+    await page.locator(".vnRouteTop").click(); await openExecutionEvidence(page);
     await action.waitFor({ state: "visible" });
     const promptRequests = await page.evaluate(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter((method) => method === "eth_sendTransaction").length);
     if (promptRequests !== 0) throw new Error(`${label}: wallet provider was invoked before explicit owner action`);
@@ -3039,12 +3040,14 @@ async function inspectWalletPromptReloadAndCrossTab(browser, fixture) {
   swapState.receiptsAvailable = true;
   await recheck.click();
   try {
-    await replacementPage.getByText("Verified swap history", { exact: true }).waitFor({ state: "visible", timeout: 30_000 });
+    await replacementPage.waitForFunction(() => JSON.parse(localStorage.getItem("rmt:vnext-execution-journal:v1:4663") ?? "null")?.executions?.some(record => record.kind === "swap" && record.state === "confirmed"));
+    await replacementPage.locator('[data-terminal-nav="portfolio"]:visible').click();
+    await replacementPage.locator('.vnHistoryAffordance summary').click();
     const historicalLink = await replacementPage.getByRole("link", { name: "Open historical verified swap", exact: true }).getAttribute("href");
     if (!historicalLink?.includes(swapState.recoveryHash)) throw new Error("Restored history lost its actual transaction");
     const restored = await replacementPage.evaluate(() => ({
       journal: JSON.parse(localStorage.getItem("rmt:vnext-execution-journal:v1:4663") ?? "null"),
-      submittedTime: document.querySelector(".vnRecoveryBanner time")?.getAttribute("datetime"),
+      submittedTime: document.querySelector(".vnHistoryAffordance time")?.getAttribute("datetime"),
       submissions: window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter(method => method === "eth_sendTransaction").length
     }));
     const historicalRecord = restored.journal?.executions?.find(record => record.txHash === swapState.recoveryHash);

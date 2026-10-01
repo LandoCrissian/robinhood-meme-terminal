@@ -249,7 +249,7 @@ assert.doesNotMatch(actionDock, /<details|vnRouteCard/, "advanced evidence must 
 assert.match(css, /\.vnTradeActionDock\s*\{[^}]*flex: 0 0 auto/);
 assert.match(css, /\.vnTradeScroll\s*\{[^}]*overflow-y: auto/);
 assert.doesNotMatch(composer, /vnRouteCard" open=/, "authorization must not open a nested mobile detail surface");
-assert.match(composer, /Nothing opens automatically/);
+assert.match(composer, /Only an explicit action opens your wallet/);
 assert.match(review, /useWalletClient\(\{ connector \}\)/, "the transaction client must be bound to the exact active connector");
 assert.match(review, /bindVNextTradingWallet/);
 assert.match(review, /dispatchVNextWalletReview/);
