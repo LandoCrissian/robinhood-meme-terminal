@@ -305,7 +305,11 @@ function recordAccountAcceptanceEvent(event: AccountAcceptanceEvent) {
 
 /** Loopback-only account fixture. It exercises the public account UI without replacing any API handler. */
 export function AccountFirstAcceptanceIdentityBridge({ children }: { children: ReactNode }) {
-  const acceptanceEnabled = accountFirstBrowserAcceptanceEnabled();
+  // Match the signed-out server snapshot before activating the loopback fixture.
+  // An exact asset destination now renders its ticket on the server as well.
+  const [acceptanceHydrated, setAcceptanceHydrated] = useState(false);
+  useEffect(() => { setAcceptanceHydrated(true); }, []);
+  const acceptanceEnabled = acceptanceHydrated && accountFirstBrowserAcceptanceEnabled();
   const { address, chainId, connector, isConnected } = useAccount();
   const { connectAsync, connectors } = useConnect();
   const { disconnectAsync } = useDisconnect();

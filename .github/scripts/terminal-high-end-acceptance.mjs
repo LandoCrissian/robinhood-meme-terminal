@@ -2342,6 +2342,7 @@ async function inspectV4PreviewUserJourney(browser, fixture) {
   await panel.getByLabel("Exact input amount").fill("0.01");
   await page.waitForFunction(() => document.querySelector(".vnQuoteAttempts")?.textContent?.includes("Uniswap V4"));
   await panel.locator(".vnRouteCard > summary").click();
+  await openExecutionEvidence(page);
   const quoteText = await panel.innerText();
   if (!quoteText.includes("Uniswap V4") || !quoteText.includes("non-executable")
     || !/Estimate only · fresh terms required before confirmation\.|Updating before confirmation · these terms cannot execute\./.test(quoteText)
@@ -2621,6 +2622,7 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
       throw new Error("The public V3-only acceptance did not keep the Uniswap V4 winner quote-only.");
     }
     await panel.locator(".vnRouteCard > summary").click();
+    await openExecutionEvidence(page);
     const panelText = await panel.innerText();
     if (!panelText.includes("non-executable") || !panelText.includes("Uniswap V4")
       || !/Estimate only · fresh terms required before confirmation\.|Updating before confirmation · these terms cannot execute\./.test(panelText)
@@ -2647,6 +2649,7 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
   await panel.locator(".vnReviewButton").click();
   const advanced = panel.locator(".vnRouteCard");
   await advanced.evaluate((element) => { element.open = true; });
+  await openExecutionEvidence(page);
   await page.locator(".vnWalletFeeDisclosure").last().waitFor({ state: "visible", timeout: 30_000 });
   const reviewText = await page.locator(".vnWalletFeeDisclosure").last().innerText();
   for (const required of ["RMT platform fee: 0", "Direct · no RMT platform fee", "RMT receives no treasury transfer"]) {
@@ -2889,6 +2892,7 @@ async function inspectV4FreshWalletSellJourney(browser, fixture) {
   await panel.locator(".vnReviewButton").click();
   const advanced = panel.locator(".vnRouteCard");
   await advanced.evaluate((element) => { element.open = true; });
+  await openExecutionEvidence(page);
 
   try {
     await page.getByRole("button", { name: "Review exact approval in wallet", exact: true }).waitFor({ state: "visible", timeout: 30_000 });
@@ -3086,6 +3090,7 @@ async function inspectWalletPromptReloadAndCrossTab(browser, fixture) {
   const desktopHandoff = await auditPrimaryWalletHandoff(approvalPage, "1440x900");
   const advancedApproval = approvalPage.locator(".vnRouteCard");
   await advancedApproval.evaluate((element) => { element.open = true; });
+  await openExecutionEvidence(approvalPage);
   await approvalPage.getByRole("button", { name: "Review exact approval in wallet", exact: true }).click();
   await approvalPage.waitForFunction(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter((method) => method === "eth_sendTransaction").length === 1);
   await approvalPage.close();
@@ -3105,8 +3110,8 @@ async function inspectWalletPromptReloadAndCrossTab(browser, fixture) {
   const tabA = await raceContext.newPage();
   const tabB = await raceContext.newPage();
   await Promise.all([
-    (async () => { await tabA.emulateMedia({ reducedMotion: "reduce" }); await installV2WalletAcceptanceRoutes(tabA, fixture, raceStateA); await openFixtureTrade(tabA, true); await tabA.locator(".vnRouteCard").evaluate((element) => { element.open = true; }); })(),
-    (async () => { await tabB.emulateMedia({ reducedMotion: "reduce" }); await installV2WalletAcceptanceRoutes(tabB, fixture, raceStateB); await openFixtureTrade(tabB, true); await tabB.locator(".vnRouteCard").evaluate((element) => { element.open = true; }); })()
+    (async () => { await tabA.emulateMedia({ reducedMotion: "reduce" }); await installV2WalletAcceptanceRoutes(tabA, fixture, raceStateA); await openFixtureTrade(tabA, true); await tabA.locator(".vnRouteCard").evaluate((element) => { element.open = true; }); await openExecutionEvidence(tabA); })(),
+    (async () => { await tabB.emulateMedia({ reducedMotion: "reduce" }); await installV2WalletAcceptanceRoutes(tabB, fixture, raceStateB); await openFixtureTrade(tabB, true); await tabB.locator(".vnRouteCard").evaluate((element) => { element.open = true; }); await openExecutionEvidence(tabB); })()
   ]);
   await Promise.all([
     tabA.getByRole("button", { name: "Review verified swap in wallet", exact: true }).click(),
@@ -3152,6 +3157,7 @@ async function inspectV2WalletBrowserJourney(browser, fixture, options, label, m
   await openFixtureTrade(page, mode === "native");
   const advanced = page.locator(".vnRouteCard");
   await advanced.evaluate((element) => { element.open = true; });
+  await openExecutionEvidence(page);
   const visibleWalletFeeDisclosure = () => page.locator(".vnWalletFeeDisclosure:visible").last();
   const requestWalletReview = async (buttonName) => {
     const before = await page.evaluate(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__.filter((method) => method === "eth_sendTransaction").length);
@@ -3298,6 +3304,7 @@ async function inspectExecutableQuoteFeeDisclosure(browser, fixture) {
   }
   const advanced = panel.locator(".vnRouteCard");
   await advanced.locator(":scope > summary").click();
+  await openExecutionEvidence(page);
   const advancedText = await advanced.innerText();
   const advancedTextNormalized = advancedText.toLowerCase();
   for (const expected of [
