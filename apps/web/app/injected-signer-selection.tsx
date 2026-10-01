@@ -17,23 +17,23 @@ export function InjectedSignerSelection({ detailsTarget }: { detailsTarget?: HTM
   const explanation = <small>Your explicit preference is remembered. Account, provider and network are checked again before every request.</small>;
   const selectionExplanation = <p>Select the extension you intend to use. Its announced name is not proof of identity; RMT also checks your linked account and network.</p>;
   if (selected && !changing) return <section aria-label="Injected signer selection" style={{ display: "grid", gap: 8 }}>
-    <strong>Selected signer: {selected.name}</strong>
+    <strong>Trading wallet: {selected.name}</strong>
     {detailsTarget ? createPortal(explanation, detailsTarget) : explanation}
-    <button type="button" onClick={() => setChanging(true)}>Change signer</button>
+    <button type="button" onClick={() => setChanging(true)}>Change wallet</button>
   </section>;
   return <section aria-label="Injected signer selection">
-    <strong>Choose the injected signer for 0x</strong>
+    <strong>Choose your trading wallet</strong>
     {detailsTarget ? createPortal(selectionExplanation, detailsTarget) : selectionExplanation}
     <div className="privyWalletList">
       {state.choices.map((choice) => <button type="button" key={choice.uuid} disabled={choice.conflicted}
         aria-pressed={state.selectedUuid === choice.uuid}
-        onClick={() => { try { injectedSignerSelection.select(choice.uuid); setError(""); setChanging(false); } catch { setError("Signer selection could not be bound. Recheck the active trading wallet."); } }}>
+        onClick={() => { try { injectedSignerSelection.select(choice.uuid); setError(""); setChanging(false); } catch { setError("Wallet selection could not be confirmed. Recheck the active trading wallet."); } }}>
         <span><strong>{choice.name}</strong><small style={{ overflowWrap: "anywhere", whiteSpace: "normal" }}>{choice.rdns}{detailsTarget ? null : ` / ${choice.uuid}`}</small></span>
         <em>{choice.conflicted ? "CONFLICT" : state.selectedUuid === choice.uuid ? "SELECTED" : "SELECT"}</em>
       </button>)}
     </div>
     {detailsTarget ? createPortal(<dl>{state.choices.map(choice => <div key={choice.uuid}><dt>{choice.name} provider instance</dt><dd>{choice.rdns} / {choice.uuid}</dd></div>)}</dl>, detailsTarget) : null}
-    {!state.choices.length ? <p>No supported EIP-6963 signer has announced itself on this page.</p> : null}
+    {!state.choices.length ? <p>Your connected wallet is not available in this browser. Open its extension or reconnect the same trading wallet.</p> : null}
     {error ? <p role="alert">{error}</p> : null}
   </section>;
 }

@@ -20,6 +20,7 @@ The `before/` screenshots are LIVE PUBLIC SIGNED-OUT evidence from the authorize
 | POLISH | Missing project identity/description became explanatory regions | “Project not linked yet”; omit absent descriptions. |
 | POLISH | Unknown balances looked like no holdings; copied relationship provenance was too broad | Distinguish unknown balance from zero; show each recorded relationship authority. |
 | POLISH | Activity counts were ellipsized and null metrics said Unknown/Unavailable | Counts wrap; absent metrics use an em dash without inventing zero. |
+| POLISH | The external-wallet selector exposed “injected signer” and protocol terminology beside Buy/Sell | “Trading wallet” labels and actionable browser guidance; exact provider selection and binding remain unchanged. |
 
 No overflow or fatal page errors were observed in the initial public audit. These defects concern hierarchy, proportions and craft, not merely overflow.
 

@@ -160,9 +160,9 @@ export async function runZeroXWalletJourneys(options) {
         const plan = bundle.plan;
         if (scenario === 'approval-requote' && plan.kind === 'swap') {
           const remembered = page.getByRole('region', { name: 'Injected signer selection' });
-          assert.equal(await remembered.getByText('Selected signer: Explicit test signer', { exact: true }).count(), 1);
-          assert.equal(await remembered.getByRole('button', { name: 'Change signer', exact: true }).count(), 1);
-          assert.equal(await remembered.getByText('Choose the injected signer for 0x', { exact: true }).count(), 0,
+          assert.equal(await remembered.getByText('Trading wallet: Explicit test signer', { exact: true }).count(), 1);
+          assert.equal(await remembered.getByRole('button', { name: 'Change wallet', exact: true }).count(), 1);
+          assert.equal(await remembered.getByText('Choose your trading wallet', { exact: true }).count(), 0,
             'the exact explicit signer is reused at the fresh swap dispatch, before its result can close the panel');
         }
         assert.equal(lower(transaction.from), wallet);
@@ -426,12 +426,12 @@ export async function runZeroXWalletJourneys(options) {
             const selector = page.getByRole('region', { name: 'Injected signer selection' });
             if (scenario === 'signer-two-providers') {
               assert.equal(await selector.getByRole('button', { name: /Other explicit signer/ }).count(), 1);
-              assert.equal(await selector.getByText(/Selected signer:/).count(), 0, 'multiple new providers require explicit choice');
+              assert.equal(await selector.getByText(/Trading wallet:/).count(), 0, 'multiple new providers require explicit choice');
             }
             if (!scenario.startsWith('mobile-walletconnect')) await selector.getByRole('button', { name: /Explicit test signer/ }).click();
             if (scenario === 'returning-signer') {
               await page.reload({ waitUntil: 'domcontentloaded' });
-              await page.getByText('Selected signer: Explicit test signer', { exact: true }).waitFor();
+              await page.getByText('Trading wallet: Explicit test signer', { exact: true }).waitFor();
               await review.waitFor();
               assert.equal(await page.getByRole('button', { name: /Explicit test signer.*SELECT/ }).count(), 0);
               assert.equal(requests.length, 0, 'preference restoration cannot dispatch');
@@ -440,11 +440,11 @@ export async function runZeroXWalletJourneys(options) {
               await page.evaluate(() => window.__ZEROX_INVALIDATE_SIGNER__());
               // A disconnect may also unmount the now-ineligible wallet review.
               // Neither an absent review nor an eligible-but-unselected review may dispatch.
-              await until(async () => await page.getByText('Selected signer: Explicit test signer', { exact: true }).count() === 0, 'Changed wallet context must invalidate the remembered signer');
+              await until(async () => await page.getByText('Trading wallet: Explicit test signer', { exact: true }).count() === 0, 'Changed wallet context must invalidate the remembered signer');
               if (await review.isVisible()) await review.click();
               await pause(200);
               assert.equal(requests.length, 0);
-              assert.equal(await selector.getByText(/Selected signer:/).count(), 0);
+              assert.equal(await selector.getByText(/Trading wallet:/).count(), 0);
               results.push({ viewport: viewportName, scenario, status: 'PASS', walletPrompts: 0 });
               console.log(prefix + ': PASS');
               continue;
