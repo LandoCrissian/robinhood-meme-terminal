@@ -3523,6 +3523,7 @@ async function inspectMobile(browser, viewport, label) {
   await page.screenshot({ path: `${output}/markets-${label}.png`, fullPage: false, animations: "disabled" });
   await page.getByRole("button", { name: /^Load 24 more/ }).click();
   if (await initialMobileRows.count() !== 48) throw new Error(`${label}: mobile local pagination did not reveal the next 24 markets`);
+  await revealBrowseExplore(page);
   await page.getByRole("button", { name: /^RWA\s+2$/ }).click();
   const mobileRwaRows = page.locator(".rmtMobileTerminal .rmtMobileMarketRow");
   if (await mobileRwaRows.count() !== 2) throw new Error(`${label}: mobile RWA directory lost a verified classification`);
