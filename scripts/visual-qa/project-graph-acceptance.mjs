@@ -7,12 +7,14 @@ import { installTokenRoutes } from './token-presentation-fixtures.mjs';
 const base = process.env.RMT_VISUAL_BASE_URL ?? 'http://127.0.0.1:3171';
 assert.ok(['127.0.0.1','localhost'].includes(new URL(base).hostname));
 const output=path.resolve(process.env.RMT_VISUAL_OUTPUT ?? 'terminal-visual-v2','project-graph');await mkdir(output,{recursive:true});
-const browser=await chromium.launch({headless:true});const results=[];
+const browser=await chromium.launch({headless:true});const results=[], navigationEvidence=[];
 const canna='0x1139d423C1706BDeaD91f03507F521635591eD92', nft='0x289c8ce652f38029867842048068b39bd0464a3f';
 try {
  for(const viewport of [{width:375,height:812},{width:390,height:844},{width:430,height:932},{width:1440,height:900}]) {
   const mobile=viewport.width<1024, context=await browser.newContext({viewport,isMobile:mobile,hasTouch:mobile,recordVideo:{dir:path.join(output,'videos'),size:viewport}}), page=await context.newPage(), errors=[];
   page.on('pageerror',e=>errors.push(e.message));
+  page.on('response',response=>{const url=new URL(response.url());if(url.origin===new URL(base).origin&&url.pathname.startsWith('/projects'))navigationEvidence.push({viewport,path:url.pathname,status:response.status(),resourceType:response.request().resourceType()});});
+  page.on('requestfailed',request=>{const url=new URL(request.url());if(url.origin===new URL(base).origin&&url.pathname.startsWith('/projects'))navigationEvidence.push({viewport,path:url.pathname,failure:request.failure()?.errorText,resourceType:request.resourceType()});});
   await page.addInitScript(()=>{window.__projectWalletRequests=0;window.ethereum={on(){},removeListener(){},async request({method}){if(/sign|sendTransaction|wallet_sendCalls/.test(method)){window.__projectWalletRequests++;throw Error('Financial action prohibited');}return method==='eth_chainId'?'0x1237':[];}};});
   const routes=await installTokenRoutes(page);let delayed=false, unavailable=false, holdMarket=false;const marketWaiters=[];let marketResponses=0;
   // Controlled external identity response for the exact independently observed
@@ -80,5 +82,18 @@ try {
   delayed=true;unavailable=true;await page.goto(`${base}/projects/cannacats`,{waitUntil:'domcontentloaded'});await page.locator('[data-project-market="cannacats"]').waitFor();await page.evaluate(()=>document.fonts.ready);const linksBefore=await page.locator('.rmtProjectPrimary').evaluateAll(nodes=>nodes.map(n=>({y:n.getBoundingClientRect().y,height:n.getBoundingClientRect().height})));await page.getByText('Market data unavailable',{exact:true}).waitFor();const linksAfter=await page.locator('.rmtProjectPrimary').evaluateAll(nodes=>nodes.map(n=>({y:n.getBoundingClientRect().y,height:n.getBoundingClientRect().height})));assert.deepEqual(linksAfter,linksBefore);await capture('project-market-unavailable');
   assert.deepEqual(errors,[]);results.push({viewport,scope:'CONTROLLED_EXTERNAL_HTTP_REAL_PUBLIC_COMPONENTS_EMULATED_VIEWPORT',searchQueries:5,amountMovementPx:after.amount.y-aligned.amount.y,actionMovementPx:after.dock?after.dock.y-aligned.dock.y:0,chartMovementPx:after.chart?after.chart.y-aligned.chart.y:0,scrollMovementPx:after.scrollY-aligned.scrollY,focus:after.focus,caret:after.start,marketLinkMovementPx:linksAfter[0].y-linksBefore[0].y,walletRequests:await page.evaluate(()=>window.__projectWalletRequests),errors});await context.close();
  }
+} catch(error) {
+ const failures=[];
+ for(const context of browser.contexts()) {
+  for(const page of context.pages()) {
+   const index=failures.length;
+   await page.screenshot({path:path.join(output,`failure-${index}.png`),fullPage:true}).catch(()=>{});
+   failures.push({viewport:page.viewportSize(),path:new URL(page.url()).pathname,projectGrid:await page.locator('.rmtProjectGrid').count(),projectMarket:await page.locator('[data-project-market]').count(),navigation:await page.locator('nav[aria-label="RMT Terminal navigation"]:visible').allTextContents()});
+  }
+  // Flush the failing context's video too; browser.close alone may leave it empty.
+  await context.close();
+ }
+ await writeFile(path.join(output,'failure.json'),JSON.stringify({head:execFileSync('git',['rev-parse','HEAD']).toString().trim(),tree:execFileSync('git',['rev-parse','HEAD^{tree}']).toString().trim(),profile:'CONTROLLED_NOT_LIVE_FINANCIAL_ACCEPTANCE',error:{name:error.name,message:error.message},completed:results,failures,navigationEvidence:navigationEvidence.slice(-50)},null,2));
+ throw error;
 } finally {await browser.close();}
 await writeFile(path.join(output,'report.json'),JSON.stringify({head:execFileSync('git',['rev-parse','HEAD']).toString().trim(),tree:execFileSync('git',['rev-parse','HEAD^{tree}']).toString().trim(),profile:'CONTROLLED_NOT_LIVE_FINANCIAL_ACCEPTANCE',results},null,2));console.log(JSON.stringify(results));
