@@ -14,7 +14,12 @@ import {
   rollbackToCommonAncestor
 } from './storage.js';
 import type { VerifiedNftSource } from './source-verification.js';
-import { readNftProjectInventory, readNftProjectItem, readNftProjectOnchain } from './project-read.js';
+import { readNftProjectInventory, readNftProjectItem, readNftProjectOnchain, readNftProjectWalletOwnership } from './project-read.js';
+import { summarizeProjectOwnership } from '@rmt/shared/project-ownership';
+import { projectById } from '@rmt/shared/project-identity';
+import { createNftIndexerServer } from './server.js';
+import type { NftIndexerWorker } from './worker.js';
+import type { AddressInfo } from 'node:net';
 
 const databaseUrl = process.env.NFT_INDEXER_TEST_DATABASE_URL?.trim() ?? process.env.NFT_INDEXER_DATABASE_URL?.trim();
 if (!databaseUrl) throw new Error('NFT_INDEXER_TEST_DATABASE_URL is required for PostgreSQL storage smoke coverage');
@@ -66,6 +71,12 @@ try {
   await pool.query(`TRUNCATE ${[...NFT_INDEXER_TABLES].reverse().join(', ')} CASCADE`);
   await initializeVerifiedSources(pool, [source, erc1155Source]);
   const start = source.startBlock;
+  const checkedAt = new Date('2026-08-27T01:23:45.000Z');
+  const walletFact = async (wallet: string) => {
+    await recordSourceSuccess(pool, source, 'SYNCED', checkedAt);
+    return readNftProjectWalletOwnership(pool, 'ccff00', wallet, checkedAt);
+  };
+  assert.equal((await readNftProjectWalletOwnership(pool, 'ccff00', alice, checkedAt)).balance, null, 'Incomplete projection does not fabricate zero');
   assert.deepEqual(await readSourceOperationalState(pool, source), {
     status: 'BACKFILLING', lastSyncAt: null, lastError: null
   });
@@ -83,13 +94,20 @@ try {
   assert.equal((await pool.query(`SELECT count(*)::int AS count FROM nft_activity_events`)).rows[0]?.count, 1);
   assert.equal((await pool.query(`SELECT owner_address FROM nft_erc721_ownership`)).rows[0]?.owner_address, alice.toLowerCase());
   assert.equal((await pool.query(`SELECT token_id::text FROM nft_activity_movements`)).rows[0]?.token_id, (2n ** 255n).toString());
+  assert.equal((await walletFact(alice)).balance, '1');
+  assert.equal((await walletFact(bob)).balance, '0');
+  const walletSummary = summarizeProjectOwnership(projectById('ccff00')!, alice, [await walletFact(alice)]);
+  assert.equal(walletSummary.nftCount, '1'); assert.equal(walletSummary.holdsNft, true);
 
   const transfer = event(start + 1n, 'ERC721', [move(2n ** 255n, 1n, alice, bob, 'TRANSFER')]);
   await persistProcessedRange({ pool, source, expectedNextBlock: start + 1n, toBlock: start + 1n, toBlockHash: hash('c'), events: [transfer] });
   assert.equal((await pool.query(`SELECT owner_address FROM nft_erc721_ownership`)).rows[0]?.owner_address, bob.toLowerCase());
+  assert.equal((await walletFact(alice)).balance, '0', 'Transfer out');
+  assert.equal((await walletFact(bob)).balance, '1', 'Transfer in');
   const burn = event(start + 2n, 'ERC721', [move(2n ** 255n, 1n, bob, zeroAddress, 'BURN')]);
   await persistProcessedRange({ pool, source, expectedNextBlock: start + 2n, toBlock: start + 2n, toBlockHash: hash('d'), events: [burn] });
   assert.equal((await pool.query(`SELECT count(*)::int AS count FROM nft_erc721_ownership`)).rows[0]?.count, 0);
+  assert.equal((await walletFact(bob)).balance, '0', 'Burn removes ownership');
 
   const badSender = event(start + 3n, 'ERC721', [move(7n, 1n, carol, bob, 'TRANSFER')]);
   await assert.rejects(persistProcessedRange({ pool, source, expectedNextBlock: start + 3n, toBlock: start + 3n, toBlockHash: hash('e'), events: [badSender] }), /current owner/);
@@ -166,6 +184,9 @@ try {
   assert.equal((await pool.query(`SELECT count(*)::int AS count FROM nft_activity_events WHERE collection_address=$1 AND block_number>$2`, [source.collectionAddress.toLowerCase(), (start + 1n).toString()])).rows[0]?.count, 0);
 
   await recordSourceSuccess(pool, source, 'SYNCED', syncedAt);
+  assert.equal((await walletFact(bob)).balance, '1', 'Reorg rebuild restores canonical owner');
+  const restartedPool = new Pool({ connectionString: databaseUrl, ssl: false });
+  try { assert.equal((await readNftProjectWalletOwnership(restartedPool, 'ccff00', bob, checkedAt)).balance, '1', 'Restart reads persisted projection, not session memory'); } finally { await restartedPool.end(); }
   const completeRead = await readNftProjectOnchain(pool, 'ccff00', syncedAt);
   assert.equal(completeRead.availability, 'AVAILABLE');
   assert.equal(completeRead.holderCount, '1');
@@ -194,6 +215,8 @@ try {
   await pool.query(`INSERT INTO nft_erc721_ownership(chain_id,collection_address,token_id,owner_address) VALUES
     (4663,$1,1,$2),(4663,$1,2,$3),(4663,$1,3,$2) ON CONFLICT DO NOTHING`,
   [source.collectionAddress.toLowerCase(), alice.toLowerCase(), bob.toLowerCase()]);
+  assert.equal((await walletFact(alice)).balance, '2', 'Multiple NFT count from persisted ownership');
+  assert.equal((await readNftProjectWalletOwnership(pool, 'ccff00', alice, new Date(checkedAt.getTime() + 300_001))).state, 'UNAVAILABLE', 'Stale projection is not current ownership authority');
   await recordSourceSuccess(pool, source, 'SYNCED', syncedAt);
   const firstInventory = await readNftProjectInventory({
     pool, rpc: metadataRpc, projectId: 'ccff00', limit: 2, pollIntervalMs: 5_000, now: syncedAt
@@ -246,6 +269,37 @@ try {
     pool, rpc: metadataRpc, projectId: 'ccff00', pollIntervalMs: 5_000, now: syncedAt
   })).items, []);
 
+  // Complete Project Graph producer -> persisted projection -> authenticated
+  // read -> shared ownership summary. All events/wallets are controlled test data.
+  await pool.query(`TRUNCATE ${[...NFT_INDEXER_TABLES].reverse().join(', ')} CASCADE`);
+  await initializeVerifiedSources(pool, [source]);
+  const readToken = 'a'.repeat(64);
+  const readServer = createNftIndexerServer({ status: { lastError: null } } as unknown as NftIndexerWorker, pool, readToken);
+  await new Promise<void>(resolve => readServer.listen(0, '127.0.0.1', resolve));
+  const throughApi = async (wallet: typeof alice) => {
+    const response = await fetch(`http://127.0.0.1:${(readServer.address() as AddressInfo).port}/internal/v1/projects/ccff00/ownership/${wallet}`, { headers: { authorization: `Bearer ${readToken}` } });
+    assert.equal(response.status, 200);
+    return summarizeProjectOwnership(projectById('ccff00')!, wallet, [await response.json() as Awaited<ReturnType<typeof readNftProjectWalletOwnership>>]);
+  };
+  try {
+    assert.equal((await throughApi(alice)).nftCount, null, 'Backfill is unknown, not zero');
+    await persistProcessedRange({ pool, source, expectedNextBlock: start, toBlock: start, toBlockHash: hash('b'), events: [event(start, 'ERC721', [move(42n, 1n, zeroAddress, alice, 'MINT')]), event(start, 'ERC721', [move(43n, 1n, zeroAddress, alice, 'MINT')])] });
+    await recordSourceSuccess(pool, source, 'SYNCED', new Date());
+    assert.equal((await throughApi(alice)).nftCount, '2');
+    assert.equal((await throughApi(bob)).nftCount, '0');
+    await persistProcessedRange({ pool, source, expectedNextBlock: start + 1n, toBlock: start + 1n, toBlockHash: hash('c'), events: [event(start + 1n, 'ERC721', [move(42n, 1n, alice, bob, 'TRANSFER')])] });
+    await recordSourceSuccess(pool, source, 'SYNCED', new Date());
+    assert.equal((await throughApi(alice)).nftCount, '1');
+    assert.equal((await throughApi(bob)).nftCount, '1');
+    await rollbackToCommonAncestor(pool, source, { number: start, hash: hash('b') });
+    await persistProcessedRange({ pool, source, expectedNextBlock: start + 1n, toBlock: start + 1n, toBlockHash: hash('d'), events: [event(start + 1n, 'ERC721', [move(43n, 1n, alice, carol, 'TRANSFER')])] });
+    await recordSourceSuccess(pool, source, 'SYNCED', new Date());
+    assert.equal((await throughApi(bob)).nftCount, '0', 'Orphaned transfer cannot retain ownership');
+    assert.equal((await throughApi(carol)).nftCount, '1', 'Replacement rescan retains canonical transfer');
+    const restarted = new Pool({ connectionString: databaseUrl, ssl: false });
+    try { assert.equal((await readNftProjectWalletOwnership(restarted, 'ccff00', alice)).balance, '1'); } finally { await restarted.end(); }
+  } finally { await new Promise<void>(resolve => readServer.close(() => resolve())); }
+  console.info('CCFF00 Project ownership: actual event persistence -> authenticated HTTP -> shared facts; 0/1/2, transfer in/out, reorg/rescan and restart PASS');
   console.info('nft-indexer PostgreSQL storage smoke: PASS');
 } finally {
   await pool.end();

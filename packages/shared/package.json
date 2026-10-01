@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./project-identity": "./src/project-identity.ts",
+    "./project-ownership": "./src/project-ownership.ts",
     "./chains": "./src/chains.ts",
     "./market-origin": "./src/market-origin.ts",
     "./nft/project-registry": "./src/nft/project-registry.ts",

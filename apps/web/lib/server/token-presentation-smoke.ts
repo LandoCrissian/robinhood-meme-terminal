@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import "./project-graph-smoke";
 import { chartReadDiagnosticSmoke } from "./chart-read-diagnostic-smoke";
 import { chartColdCacheSmoke } from "./chart-cold-cache-smoke";
 import { EventEmitter } from "node:events";
@@ -104,7 +105,8 @@ assert.equal(defineRmtProjectIdentity({ ...project, assets: [...project.assets, 
 assert.throws(() => defineRmtProjectIdentity({ ...project, assets: [{ ...project.assets[0], chainId: 1 as 4663 }] }));
 assert.throws(() => defineRmtProjectIdentity({ ...project, assets: [{ ...project.assets[0], relationship: "INFERRED_NAME" as never }] }));
 assert.equal(projectsForContract(token).length, 0, "No guessed SHCAT relationship");
-assert.equal(RMT_PROJECT_IDENTITIES.flatMap(item => item.assets).filter(asset => asset.kind === "ERC20").length, 0, "Future project pairs are not canonically installed");
+assert.equal(RMT_PROJECT_IDENTITIES.flatMap(item => item.assets).filter(asset => asset.kind === "ERC20").length, 3, "Only three owner-confirmed, independently read ERC20 project edges are installed");
+assert.equal(projectsForContract("0x505A22Ffed8d37ebE580FfD98d2Cdb0021189146")[0]?.assets.filter(asset => asset.kind === "ERC20").length, 0, "CCFF00 remains NFT-led; a getter is not token relationship authority");
 console.log("Token presentation: poolless chart, exact binding, coalescing, stale history, no history, rate limits, independent evidence, bounded artwork and explicit project graph passed.");
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });

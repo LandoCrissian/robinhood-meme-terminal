@@ -1,0 +1,261 @@
+{
+  "observedAt": "2026-10-01T16:30:02.090Z",
+  "chainId": 4663,
+  "block": "77518907",
+  "source": "PUBLIC_ROBINHOOD_RPC",
+  "contracts": [
+    {
+      "address": "0x1139d423C1706BDeaD91f03507F521635591eD92",
+      "reads": {
+        "name": "CannaCat",
+        "symbol": "CANNACAT",
+        "decimals": "18",
+        "totalSupply": "1000000000000000000000000000",
+        "erc721": {
+          "error": "ContractFunctionExecutionError",
+          "shortMessage": "The contract function \"supportsInterface\" reverted."
+        },
+        "erc1155": {
+          "error": "ContractFunctionExecutionError",
+          "shortMessage": "The contract function \"supportsInterface\" reverted."
+        }
+      },
+      "codeBytes": 3248,
+      "latencyMs": 2541
+    },
+    {
+      "address": "0x289c8ce652f38029867842048068b39bd0464a3f",
+      "reads": {
+        "name": "CannaCats",
+        "symbol": "CCATS",
+        "decimals": {
+          "error": "ContractFunctionExecutionError",
+          "shortMessage": "The contract function \"decimals\" reverted."
+        },
+        "totalSupply": "420",
+        "erc721": "true",
+        "erc1155": "false"
+      },
+      "codeBytes": 45,
+      "latencyMs": 614
+    },
+    {
+      "address": "0xB6cE51925C2e397eBF1a443b343d19267B3D4225",
+      "reads": {
+        "name": "Hopium Machines",
+        "symbol": "HOPIUM",
+        "decimals": "18",
+        "totalSupply": "1000000000000000000000000000",
+        "erc721": {
+          "error": "ContractFunctionExecutionError",
+          "shortMessage": "The contract function \"supportsInterface\" reverted."
+        },
+        "erc1155": {
+          "error": "ContractFunctionExecutionError",
+          "shortMessage": "The contract function \"supportsInterface\" reverted."
+        }
+      },
+      "codeBytes": 3248,
+      "latencyMs": 603
+    },
+    {
+      "address": "0x7da15c761409cb921a81f0e003704cff418b700b",
+      "reads": {
+        "name": "Hopium Machines",
+        "symbol": "HOPIUM",
+        "decimals": {
+          "error": "ContractFunctionExecutionError",
+          "shortMessage": "The contract function \"decimals\" reverted."
+        },
+        "totalSupply": "6969",
+        "erc721": "true",
+        "erc1155": "false"
+      },
+      "codeBytes": 45,
+      "latencyMs": 608
+    },
+    {
+      "address": "0xf202de51bb42a0073948b0971707d14c54ef5f44",
+      "reads": {
+        "name": "Peeps",
+        "symbol": "PEEPS",
+        "decimals": "18",
+        "totalSupply": "1000000000000000000000000000",
+        "erc721": {
+          "error": "ContractFunctionExecutionError",
+          "shortMessage": "The contract function \"supportsInterface\" reverted."
+        },
+        "erc1155": {
+          "error": "ContractFunctionExecutionError",
+          "shortMessage": "The contract function \"supportsInterface\" reverted."
+        }
+      },
+      "codeBytes": 3201,
+      "latencyMs": 647
+    },
+    {
+      "address": "0x505A22Ffed8d37ebE580FfD98d2Cdb0021189146",
+      "reads": {
+        "name": "CCFF00",
+        "symbol": "CCFF00",
+        "decimals": {
+          "error": "ContractFunctionExecutionError",
+          "shortMessage": "The contract function \"decimals\" reverted."
+        },
+        "totalSupply": "10000",
+        "erc721": "true",
+        "erc1155": "false"
+      },
+      "codeBytes": 11810,
+      "latencyMs": 594
+    },
+    {
+      "address": "0xc1605fb719f388110b1b0f384b7ffd64ba4ba5df",
+      "codeBytes": 20870,
+      "reads": {
+        "name": "PEEP Founding Feathers",
+        "symbol": "PEEP",
+        "totalSupply": "1200",
+        "erc721": "true"
+      }
+    }
+  ],
+  "pages": [
+    {
+      "url": "https://opensea.io/collection/cannacats",
+      "status": 200,
+      "contracts": [
+        "0x289c8ce652f38029867842048068b39bd0464a3f"
+      ],
+      "projectLinks": [
+        "https://x.com/CannaCatMeme"
+      ]
+    },
+    {
+      "url": "https://opensea.io/collection/hopium-machines",
+      "status": 200,
+      "contracts": [
+        "0x7da15c761409cb921a81f0e003704cff418b700b"
+      ],
+      "projectLinks": [
+        "https://hopiummachines.xyz/"
+      ]
+    },
+    {
+      "url": "https://opensea.io/collection/peep-founding-feathers-506906521",
+      "status": 200,
+      "contracts": [
+        "0xc1605fb719f388110b1b0f384b7ffd64ba4ba5df"
+      ],
+      "projectLinks": [
+        "https://x.com/PEEPZonRH"
+      ]
+    },
+    {
+      "url": "https://opensea.io/collection/ccff00-161927574",
+      "status": 200,
+      "contracts": [
+        "0x505a22ffed8d37ebe580ffd98d2cdb0021189146"
+      ],
+      "projectLinks": [
+        "https://hoodstreet.capital/ccff00",
+        "https://hoodstreet.capital",
+        "https://x.com/CCFF00club"
+      ]
+    },
+    {
+      "url": "https://peeps.wtf/launchpad/peeps",
+      "status": 200,
+      "contracts": [],
+      "projectLinks": [
+        "https://peeps.wtf"
+      ],
+      "tokenReferenceUrls": [
+        "https://robinhoodchain.blockscout.com/address/0xf202de51bb42a0073948b0971707d14c54ef5f44"
+      ],
+      "existingRmtSource": "packages/shared/src/nft/project-intake.ts"
+    }
+  ],
+  "erc20InterfaceVerification": {
+    "observedAt": "2026-10-01T17:31:24.282Z",
+    "block": "77555550",
+    "chainId": 4663,
+    "scope": "READ_ONLY_PUBLIC_CONTRACT_ABI_NO_OWNER_WALLET",
+    "results": [
+      {
+        "address": "0x1139d423C1706BDeaD91f03507F521635591eD92",
+        "balanceOf": "0",
+        "allowance": "0",
+        "readAccount": "0x1139d423C1706BDeaD91f03507F521635591eD92",
+        "latencyMs": 177
+      },
+      {
+        "address": "0xB6cE51925C2e397eBF1a443b343d19267B3D4225",
+        "balanceOf": "0",
+        "allowance": "0",
+        "readAccount": "0xB6cE51925C2e397eBF1a443b343d19267B3D4225",
+        "latencyMs": 154
+      },
+      {
+        "address": "0xf202de51bb42a0073948b0971707d14c54ef5f44",
+        "balanceOf": "45646516130347106736537",
+        "allowance": "0",
+        "readAccount": "0xf202de51bb42a0073948b0971707d14c54ef5f44",
+        "latencyMs": 153
+      }
+    ]
+  },
+  "erc20HistoricalInterfaceAttempt": {
+    "observedAt": "2026-10-01T17:30:30.474Z",
+    "block": "77518907",
+    "chainId": 4663,
+    "scope": "READ_ONLY_PUBLIC_CONTRACT_ABI_NO_OWNER_WALLET",
+    "results": [
+      {
+        "address": "0x1139d423C1706BDeaD91f03507F521635591eD92",
+        "balanceOf": {
+          "errorClass": "ContractFunctionExecutionError",
+          "shortMessage": "Missing or invalid parameters.",
+          "causeClass": "CallExecutionError"
+        },
+        "allowance": {
+          "errorClass": "ContractFunctionExecutionError",
+          "shortMessage": "Missing or invalid parameters.",
+          "causeClass": "CallExecutionError"
+        },
+        "readAccount": "0x1139d423C1706BDeaD91f03507F521635591eD92",
+        "latencyMs": 170
+      },
+      {
+        "address": "0xB6cE51925C2e397eBF1a443b343d19267B3D4225",
+        "balanceOf": {
+          "errorClass": "ContractFunctionExecutionError",
+          "shortMessage": "Missing or invalid parameters.",
+          "causeClass": "CallExecutionError"
+        },
+        "allowance": {
+          "errorClass": "ContractFunctionExecutionError",
+          "shortMessage": "Missing or invalid parameters.",
+          "causeClass": "CallExecutionError"
+        },
+        "readAccount": "0xB6cE51925C2e397eBF1a443b343d19267B3D4225",
+        "latencyMs": 157
+      },
+      {
+        "address": "0xf202de51bb42a0073948b0971707d14c54ef5f44",
+        "balanceOf": {
+          "errorClass": "ContractFunctionExecutionError",
+          "shortMessage": "Missing or invalid parameters.",
+          "causeClass": "CallExecutionError"
+        },
+        "allowance": {
+          "errorClass": "ContractFunctionExecutionError",
+          "shortMessage": "Missing or invalid parameters.",
+          "causeClass": "CallExecutionError"
+        },
+        "readAccount": "0xf202de51bb42a0073948b0971707d14c54ef5f44",
+        "latencyMs": 171
+      }
+    ]
+  }
+}

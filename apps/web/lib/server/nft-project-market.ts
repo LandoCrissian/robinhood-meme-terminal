@@ -21,6 +21,19 @@ type ReaderOptions = {
   timeoutMs?: number;
 };
 
+export async function readRmtNftWalletOwnership(projectId: string, wallet: string, options: ReaderOptions = {}): Promise<import("@rmt/shared/project-ownership").ProjectAssetOwnership | null> {
+  const identity = readRmtNftProjectIdentity(projectId);
+  const config = configuration(options.env ?? process.env, "NFT_INDEXER");
+  if (!identity || !config || !validNonzeroAddress(wallet)) return null;
+  try {
+    const value = await readService<unknown>(options.fetchImpl ?? fetch, `${config.url}/internal/v1/projects/${projectId}/ownership/${wallet}`, config.token, options.timeoutMs ?? 5_000);
+    if (!isRecord(value) || value.chainId !== 4663 || value.authority !== "RMT_NFT_INDEXER" || !validNonzeroAddress(value.contract) || !isAddressEqual(value.contract, identity.project.collections[0]!.contractAddress) || !validNonzeroAddress(value.wallet) || !isAddressEqual(value.wallet, wallet)) return null;
+    if (value.state === "UNAVAILABLE" && value.balance === null) return { chainId: 4663, contract: value.contract, wallet: value.wallet, authority: "RMT_NFT_INDEXER", state: "UNAVAILABLE", balance: null, blockNumber: null, blockHash: null, observedAt: null };
+    if (value.state !== "READY" || !isDecimalInteger(value.balance) || !isDecimalInteger(value.blockNumber) || !isHex32(value.blockHash) || !isTimestamp(value.observedAt) || Date.now() - Date.parse(value.observedAt) > 300_000 || Date.parse(value.observedAt) > Date.now() + 5_000) return null;
+    return { chainId: 4663, contract: value.contract, wallet: value.wallet, authority: "RMT_NFT_INDEXER", state: "READY", balance: value.balance, blockNumber: value.blockNumber, blockHash: value.blockHash, observedAt: value.observedAt };
+  } catch { return null; }
+}
+
 function configuration(env: Partial<NodeJS.ProcessEnv>, prefix: "NFT_INDEXER" | "NFT_MARKETPLACE_INDEXER") {
   const url = env[`${prefix}_URL`]?.trim();
   const token = env[`${prefix}_READ_TOKEN`]?.trim();

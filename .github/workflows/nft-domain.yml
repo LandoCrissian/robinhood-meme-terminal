@@ -25,3 +25,4 @@ jobs:
       - run: pnpm --filter web exec tsx lib/nft/activity-sources-smoke.ts
       - run: pnpm --filter web exec tsx lib/nft/ownership-projection-smoke.ts
       - run: pnpm --filter web exec tsx lib/nft/activity-ingestion-smoke.ts
+      - run: pnpm --filter web exec tsx lib/server/project-graph-smoke.ts

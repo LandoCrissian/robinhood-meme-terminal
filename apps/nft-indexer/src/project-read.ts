@@ -9,12 +9,31 @@ import { rmtCuratedNftProject } from "@rmt/shared/nft/project-registry";
 import { RMT_NFT_ACTIVITY_SOURCES } from "@rmt/shared/nft/activity-sources";
 import { getAddress, isAddressEqual, zeroAddress, type Address, type Hex } from "viem";
 import { resolveOnchainTokenMetadata } from "./metadata.js";
+import type { ProjectAssetOwnership } from "@rmt/shared/project-ownership";
+import { isAddress } from "viem";
 
 const MAX_ACTIVITY = 20;
 export const DEFAULT_INVENTORY_LIMIT = 24;
 export const MAX_INVENTORY_LIMIT = 48;
 const MIN_FRESHNESS_MS = 5 * 60 * 1_000;
 const MAX_UINT256 = (1n << 256n) - 1n;
+
+/** One SQL snapshot binds the wallet count to its canonical checkpoint. Partial
+ * or stale backfill cannot publish a false zero; existing reorg transactions
+ * rebuild this same projection atomically. No new ownership store. */
+export async function readNftProjectWalletOwnership(pool: Pool, projectId: string, wallet: string, now = new Date()): Promise<ProjectAssetOwnership> {
+  if (!isAddress(wallet, { strict: false }) || wallet.toLowerCase() === zeroAddress) throw new NftProjectReadInputError("Invalid wallet address");
+  const { source } = reviewedProjectSource(projectId);
+  if (source.standard !== "ERC721") throw new NftProjectReadInputError("This ownership count requires ERC721 evidence");
+  const result = await pool.query<{ status: string; last_sync_at: Date | null; block_number: string | null; block_hash: string | null; balance: string }>(
+    `SELECT s.status,s.last_sync_at,s.last_processed_block::text AS block_number,s.last_processed_hash AS block_hash,
+      (SELECT count(*)::text FROM nft_erc721_ownership o WHERE o.chain_id=s.chain_id AND o.collection_address=s.collection_address AND o.owner_address=$3) AS balance
+     FROM nft_indexer_source_state s WHERE s.chain_id=$1 AND s.collection_address=$2 AND s.project_id=$4 AND s.standard='ERC721'`,
+    [source.chainId, source.collectionAddress.toLowerCase(), wallet.toLowerCase(), projectId]);
+  const row = result.rows[0];
+  const ready = row?.status === "SYNCED" && row.block_number !== null && row.block_hash !== null && sourceFresh({ status: "SYNCED", last_sync_at: row.last_sync_at }, now, 5_000);
+  return { chainId: 4663, contract: source.collectionAddress, wallet: getAddress(wallet), state: ready ? "READY" : "UNAVAILABLE", balance: ready ? row.balance : null, blockNumber: ready ? row.block_number : null, blockHash: ready ? row.block_hash : null, authority: "RMT_NFT_INDEXER", observedAt: ready ? row.last_sync_at!.toISOString() : null };
+}
 
 export class NftProjectNotFoundError extends Error {}
 export class NftProjectReadInputError extends Error {}

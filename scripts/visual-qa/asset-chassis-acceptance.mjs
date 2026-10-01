@@ -66,7 +66,8 @@ try {
         assert.ok(summaries.length===2&&summaries.every(s=>!s.clipped),'Markets context summaries wrap without truncation');
         assert.ok(summaries.some(s=>s.text.includes('24h volume $640M')),'Ready controlled chain context passes production payload validation');
         await page.locator('.rmtExplore > summary').first().click();
-        assert.equal(await page.locator('.rmtExploreChoices button').filter({hasText:/Launches|Projects/}).count(),0,'Empty Explore categories are not presented as populated');
+        assert.equal(await page.locator('.rmtExploreChoices button').filter({hasText:/Launches/}).count(),0,'Empty launch categories are not presented as populated');
+        assert.equal(await page.locator('.rmtExploreChoices button').filter({hasText:/Projects/}).count(),1,'Verified Project Graph activates Projects independently of loaded token rows');
         await capture('markets-explore');
         await page.locator('.rmtExplore > summary').first().click();
       }

@@ -23,6 +23,10 @@ try {
   assert.equal(inventory.status, 401);
   const item = await fetch(`http://127.0.0.1:${port}/internal/v1/projects/ccff00/items/1`);
   assert.equal(item.status, 401);
+  const ownership = await fetch(`http://127.0.0.1:${port}/internal/v1/projects/ccff00/ownership/0x1111111111111111111111111111111111111111`);
+  assert.equal(ownership.status, 401);
+  const invalidWallet = await fetch(`http://127.0.0.1:${port}/internal/v1/projects/ccff00/ownership/not-wallet`, { headers: { authorization: `Bearer ${token}` } });
+  assert.equal(invalidWallet.status, 400);
   const unknown = await fetch(`http://127.0.0.1:${port}/internal/v1/projects/unknown/inventory`, {
     headers: { authorization: `Bearer ${token}` },
   });
