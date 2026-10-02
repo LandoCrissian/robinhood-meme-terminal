@@ -122,7 +122,12 @@ export async function runZeroXFirmCommitmentJourneys({ browser, base, identity, 
           'The default terminal flow must not open the optional first-visit guide.'
         );
         const select = page.getByLabel(native ? 'Pay with asset' : 'Receive asset');
-        if (await select.inputValue() !== 'eip155:4663/native') await select.selectOption('eip155:4663/native');
+        // This exact USDG workspace excludes USDG from the opposite leg. Its
+        // canonical native selection arrives with asset initialization; selecting
+        // an already-selected sole option can race its correct disabled state.
+        // Observe the real selected value rather than forcing a disabled control.
+        await until(() => select.inputValue().then(value => value === 'eip155:4663/native'),
+          'The exact USDG workspace must select native ETH before entering its amount');
         if (native) {
           await page.getByLabel('Exact input amount').fill('0.0005');
           await until(() => api.some((entry) => entry.path.endsWith('/authorize') && entry.status === 200
