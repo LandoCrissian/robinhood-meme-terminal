@@ -154,6 +154,10 @@ jobs:
       - run: pnpm --filter market-indexer test:schema
       - name: Verify durable launch producer, authenticated reader and exact token consumer
         run: pnpm --filter web exec tsx lib/server/launch-producer-consumer-sql-smoke.ts
+        env:
+          # test:schema intentionally leaves pool tables in rebuildable mode.
+          # Launch evidence must still use logged tables in that same database.
+          MARKET_INDEXER_STORAGE_MODE: rebuildable
       - run: pnpm --filter market-indexer test:telemetry
       - run: pnpm --filter market-indexer test:server
       - run: pnpm --filter market-indexer test:up-enrichment

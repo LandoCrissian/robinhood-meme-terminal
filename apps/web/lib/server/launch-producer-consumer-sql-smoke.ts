@@ -38,6 +38,8 @@ const { Pool } = createRequire(
   resolve(process.cwd(), "../market-indexer/package.json"),
 )("pg");
 let pool = new Pool({ connectionString: databaseUrl, ssl: false });
+const storageMode = process.env.MARKET_INDEXER_STORAGE_MODE ?? "durable";
+assert.ok(storageMode === "durable" || storageMode === "rebuildable");
 const fixture = JSON.parse(
   readFileSync(
     resolve(
@@ -163,8 +165,14 @@ async function main() {
         contract,
       })),
     );
-    await migrateMarketIndexer(pool);
+    await migrateMarketIndexer(pool, storageMode);
     await migrateLaunchStore(pool);
+    const launchPersistence = await pool.query(
+      "SELECT relpersistence FROM pg_class WHERE relname = ANY($1::text[])",
+      [["rmt_launch_sources", "rmt_launch_events", "rmt_launch_checkpoints", "rmt_launch_observations", "rmt_launch_identities", "rmt_launch_refresh_attempts"]],
+    );
+    assert.equal(launchPersistence.rows.length, 6);
+    assert.ok(launchPersistence.rows.every((row: any) => row.relpersistence === "p"), "Launch authority must remain durable even with rebuildable pool storage");
     await pool.query(
       "TRUNCATE rmt_launch_sources,rmt_launch_events,rmt_launch_checkpoints,rmt_launch_observations,rmt_launch_identities,rmt_launch_refresh_attempts",
     );
@@ -303,7 +311,7 @@ async function main() {
     // removed by the independently pool-derived canonical identity catalog.
     await pool.end();
     pool = new Pool({ connectionString: databaseUrl, ssl: false });
-    await migrateMarketIndexer(pool);
+    await migrateMarketIndexer(pool, storageMode);
     await migrateLaunchStore(pool);
     assert.equal(
       (await readLaunchDirectory(pool, { limit: 50 })).entries.length,
