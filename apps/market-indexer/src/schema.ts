@@ -163,12 +163,24 @@ const EXPECTED_TABLES = [
   "market_token_identity_catalog_state"
 ] as const;
 
+// Forward-compatible rollback: retain PR564 evidence without owning its schema
+// or starting launch ingestion. Storage checks still apply only to pool tables.
+const COMPATIBLE_LAUNCH_TABLES = [
+  "rmt_launch_sources",
+  "rmt_launch_events",
+  "rmt_launch_checkpoints",
+  "rmt_launch_observations",
+  "rmt_launch_identities",
+  "rmt_launch_refresh_attempts"
+] as const;
+
 async function assertDedicatedDatabaseBeforeDdl(client: PoolClient) {
   const result = await client.query<{ tablename: string }>(
     `SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename`
   );
   const unexpected = result.rows.map((row) => row.tablename).filter(
-    (table) => !EXPECTED_TABLES.includes(table as (typeof EXPECTED_TABLES)[number])
+    (table) => !EXPECTED_TABLES.includes(table as (typeof EXPECTED_TABLES)[number]) &&
+      !COMPATIBLE_LAUNCH_TABLES.includes(table as (typeof COMPATIBLE_LAUNCH_TABLES)[number])
   );
   if (unexpected.length > 0) {
     throw new Error(
