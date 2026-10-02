@@ -37,6 +37,12 @@ assert.deepEqual(mediaRecords, JSON.parse(readFileSync(new URL("../../public/pro
 for (const record of mediaRecords.records) {
   const project = projectById(record.projectId)!;
   assert.ok(project.assets.some(asset => asset.contract.toLowerCase() === record.contract.toLowerCase()), "Artwork has an exact active asset binding");
+  if (record.kind === "NFT_COLLECTION" && record.class === "PROVIDER_VERIFIED") {
+    const collection = projectCollectionLink(project, record.contract);
+    assert.equal(record.source, collection?.url);
+    const slug = new URL(record.source).pathname.split("/").pop();
+    assert.ok(new URL(record.image).pathname.startsWith(`/collection/${slug}/image_type_logo/`), "A suggested/unrelated collection image cannot become this project's artwork");
+  }
   const bytes = readFileSync(new URL(`../../public${record.local}`, import.meta.url));
   assert.equal(createHash("sha256").update(bytes).digest("hex"), record.sha256);
   assert.ok(bytes.length <= 1_048_576);
@@ -46,6 +52,7 @@ for (const record of mediaRecords.records) {
 for (const project of RMT_DISCOVERABLE_PROJECTS) {
   assert.ok(projectArtworkCandidates(project)[0]?.startsWith("/project-art/"), "Project art is available without a provider call");
   assert.deepEqual(projectArtworkCandidates(project, other), [], "Unrelated assets cannot inherit artwork");
+  assert.deepEqual(projectArtworkCandidates({ ...project, assets: project.assets.map(asset => ({ ...asset, chainId: 1 as 4663 })) }), [], "Another chain cannot inherit the same-address artwork");
 }
 assert.equal(projectsForContract("0x14C51bB55592372eAC7141A1D0527D1dD7Fbd42F").length, 0, "No inferred SHCAT relationship");
 assert.equal(searchProjects("0x1234").length, 0);
