@@ -65,6 +65,78 @@
 .rmtProjectCollectionArt { min-height:112px; display:flex; align-items:center; gap:18px; margin-top:24px; color:#a8b8ab; font-size:13px; }
 .rmtProjectCanonicalArt { width:96px; height:96px; border-radius:16px; overflow:hidden; }
 .rmtProjectCanonicalArt img { width:100%; height:100%; object-fit:cover; }
+/* Project identity and composition are the primary surfaces. Optional reads
+   occupy one stable compact region; an outage never replaces the asset card. */
+.rmtProjectAccent { color:#ccff00; }
+.rmtProjectArt { position:relative; display:inline-grid; place-items:center; width:64px; height:64px; flex-shrink:0; overflow:hidden; border-radius:16px; background:#213022; isolation:isolate; }
+.rmtProjectArtFallback { font-size:18px; font-weight:700; color:#ccff00; }
+.rmtProjectArt img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; background:#213022; }
+.rmtProjectArt[data-artwork-state="loading"] img { visibility:hidden; }
+.rmtProjectArt.isHeroArt { width:136px; height:136px; border-radius:28px; }
+.rmtProjectArt.isAssetArt { width:76px; height:76px; border-radius:18px; }
+.rmtProjectCard { display:block; padding:22px; min-height:0; background:linear-gradient(135deg,#131e16,#0e1510); }
+.rmtProjectCardIdentity { display:flex; align-items:center; gap:14px; }
+.rmtProjectCardIdentity>div { flex:1; min-width:0; }
+.rmtProjectCardIdentity strong { display:block; margin-top:6px; font-size:22px; }
+.rmtProjectCardIdentity>.rmtIcon,.rmtProjectCardDestination>.rmtIcon { transform:rotate(-90deg); }
+.rmtProjectPair { grid-template-columns:minmax(0,1fr) 18px minmax(0,1.25fr); gap:12px; padding:18px 0; margin-top:16px; border-top:1px solid #263328; }
+.rmtProjectPair>div { display:flex; align-items:center; gap:10px; }
+.rmtProjectPair .rmtProjectArt { width:40px; height:40px; border-radius:10px; }
+.rmtProjectPair>div>span:not(.rmtProjectArt) { display:grid; gap:5px; min-width:0; }
+.rmtProjectPair small { font-size:10px; }
+.rmtProjectPair>div>span>span { font-size:13px; font-weight:600; overflow-wrap:anywhere; }
+.rmtProjectConnection { color:#ccff00; font-size:20px; }
+.rmtProjectCardDestination { display:flex; align-items:center; justify-content:space-between; color:#afbfad; font-size:12px; }
+.rmtProjectBreadcrumb { font-size:13px; }
+.rmtProjectBreadcrumb>span { color:#8a9f8e; margin-left:auto; }
+.rmtProjectHero.isProjectIdentity { display:flex; align-items:center; gap:26px; padding:36px 0; }
+.rmtProjectHero.isProjectIdentity>div { min-width:0; }
+.rmtProjectHeroComposition { color:#b6c7b7; font-size:15px; line-height:1.6; }
+.rmtProjectHeroComposition b { color:#ccff00; padding-inline:5px; }
+.rmtProjectLinks { gap:6px; margin-top:12px; }
+.rmtProjectAssetsGrid { align-items:stretch; }
+.isNftLedProject .rmtProjectAssetsGrid { max-width:720px; }
+.rmtProjectAssetCard { display:flex; flex-direction:column; padding:24px; }
+.rmtProjectAssetCard header>span:not(.rmtProjectArt) { min-width:0; }
+.rmtProjectAssetCard h2 { font-size:22px; letter-spacing:-.025em; line-height:1.2; }
+.rmtProjectAssetSymbol { font-size:12px; color:#b2c4b3; }
+.rmtProjectContract { margin:16px 0 12px; }
+.rmtProjectContract>.vnCopyAddress { flex:0 1 auto; gap:20px; }
+.rmtProjectMetricRegion { height:76px; display:flex; align-items:center; margin-bottom:8px; }
+.rmtProjectMetricRegion.isOwnership { height:54px; }
+.rmtProjectMetricRegion.isUnavailableOwnership { height:26px; }
+.rmtProjectMetricStrip { height:auto; width:100%; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px 12px; }
+.rmtProjectMetricStrip>span { font-size:11px; line-height:1.2; }
+.rmtProjectMetricStrip strong { font-size:16px; line-height:1.2; margin-top:4px; overflow-wrap:anywhere; }
+.rmtProjectMetricStrip em { display:block; margin-top:4px; font-style:normal; font-size:10px; color:#b9cbb8; }
+.isOwnership .rmtProjectMetricStrip { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.rmtProjectMetricStrip>small { grid-column:1/-1; font-size:10px; }
+.rmtProjectQuietState { color:#899e8c; font-size:12px; line-height:1.5; margin:0; }
+.rmtProjectPrimary { margin-top:auto; padding:14px 0 0; min-height:48px; font-size:14px; }
+.rmtProjectPrimary.isTradeToken { color:#ccff00; }
+.rmtProjectSecondary { display:inline-flex; align-items:center; justify-content:space-between; min-height:44px; color:#92a693!important; font-size:12px; }
+.rmtProjectSecondary .rmtIcon { width:15px; height:15px; }
+.rmtProjectWallet { min-height:0; padding:18px 20px; }
+.rmtProjectWallet h2 { font-size:15px; margin-bottom:8px; }
+.rmtProjectWallet p { margin:0; font-size:12px; line-height:1.6; }
+.rmtProjectEvidence { border-top:1px solid #213027; padding-top:6px; }
+.rmtProjectEvidence a { text-decoration:underline; }
+.rmtProjectCard:focus-visible,.rmtProjectMarket a:focus-visible,.rmtProjectMarket button:focus-visible,.rmtProjectMarket input:focus-visible,.rmtProjectEvidence summary:focus-visible { outline:2px solid #ccff00; outline-offset:4px; }
+@media(min-width:768px) { .rmtProjectGrid { gap:18px; } .rmtProjectAssetsGrid { gap:24px; } }
+@media(max-width:767px) {
+ .rmtProjectCard { padding:18px; } .rmtProjectCardIdentity strong { font-size:20px; }
+ .rmtProjectArt { width:56px; height:56px; border-radius:14px; }
+ .rmtProjectHero.isProjectIdentity { gap:16px; align-items:flex-start; padding:28px 0; }
+ .rmtProjectArt.isHeroArt { width:82px; height:82px; border-radius:20px; }
+ .rmtProjectHero.isProjectIdentity h1 { font-size:27px; margin:5px 0 8px; }
+ .rmtProjectHero.isProjectIdentity p { font-size:10px; margin:0; line-height:1.5; }
+ .rmtProjectHeroComposition { font-size:12px; }
+ .rmtProjectArt.isAssetArt { width:64px; height:64px; border-radius:16px; }
+ .rmtProjectAssetCard h2 { font-size:21px; }
+ .rmtProjectPair { gap:8px; } .rmtProjectPair>div { gap:8px; }
+ .rmtProjectPair .rmtProjectArt { width:32px; height:32px; border-radius:8px; }
+ .rmtProjectWallet { padding:16px 18px; }
+}
 @media(max-width:767px) { .rmtProjectMarket { padding:20px 16px 48px; } .rmtProjectGrid,.rmtProjectAssetsGrid { grid-template-columns:1fr; } .rmtProjectHero { padding:24px 0; } .rmtProjectCard { min-height:94px; padding:16px; } .rmtProjectAssetCard { padding:20px; } .rmtProjectDiscovery header>span { display:none; } }
 @media(max-width:900px) { .rmtProjectHeader>span { display:none; } .rmtProjectHeader>button,.rmtProjectHeader>.walletControls { margin-left:auto; } }
 @media(max-width:767px) { .rmtProjectHeader { gap:16px; padding:8px 16px; height:64px; justify-content:space-between; } .rmtProjectPrimaryNav.isDesktop { display:none; } .rmtProjectPrimaryNav.isMobile { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:0; padding:0 8px; border-bottom:1px solid #213027; } .rmtProjectPrimaryNav.isMobile a { min-width:0; padding-inline:2px; font-size:11px; } .rmtProjectCard { gap:12px; } .rmtProjectPair { gap:8px; } .rmtProjectCardBody>small { font-size:10px; } }

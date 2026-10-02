@@ -14,5 +14,10 @@ export function ProjectTokenMarket({ contract }: { contract: string }) {
     return () => controller.abort();
   }, [contract]);
   const evidence = snapshot?.contract === contract ? snapshot.evidence : null, data = evidence?.data;
-  return <div className="rmtProjectMetricStrip"><span>Price<strong>{data?.priceUsd === null || data?.priceUsd === undefined ? "—" : formatTerminalPrice(data.priceUsd)}</strong></span><span>24h volume<strong>{formatTerminalCompactUsd(data?.volume24hUsd ?? null)}</strong></span><span>Liquidity<strong>{formatTerminalCompactUsd(data?.liquidityUsd ?? null)}</strong></span><small>{!snapshot || snapshot.contract !== contract ? "Market data loading" : !data ? "Market data unavailable" : evidence?.state === "STALE" ? "Last observed market data" : "Market snapshot"}</small></div>;
+  return <div className="rmtProjectMetricRegion">{data ? <div className="rmtProjectMetricStrip">
+    {data.priceUsd !== null ? <span>Price<strong>{formatTerminalPrice(data.priceUsd)}</strong>{data.priceChange24h !== null ? <em>{data.priceChange24h > 0 ? "+" : ""}{data.priceChange24h.toFixed(2)}% · 24h</em> : null}</span> : null}
+    {data.volume24hUsd !== null ? <span>24h volume<strong>{formatTerminalCompactUsd(data.volume24hUsd)}</strong></span> : null}
+    {data.liquidityUsd !== null ? <span>Liquidity<strong>{formatTerminalCompactUsd(data.liquidityUsd)}</strong></span> : null}
+    {evidence?.state === "STALE" ? <small>Last observed market data</small> : null}
+  </div> : <p className="rmtProjectQuietState">{!snapshot || snapshot.contract !== contract ? "Loading market data" : "Market data unavailable"}</p>}</div>;
 }
