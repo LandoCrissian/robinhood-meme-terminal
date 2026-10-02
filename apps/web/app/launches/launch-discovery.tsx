@@ -1,8 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useState } from "react";
-import { formatTerminalCompactUsd } from "../vnext/terminal-format";
-import { projectsForContract } from "@rmt/shared/project-identity";
+import { formatTerminalAge, formatTerminalCompactUsd } from "../vnext/terminal-format";
 import type {
   LaunchDirectory,
   LaunchEvidence,
@@ -13,198 +12,35 @@ import {
   launchStateLabel,
 } from "../../lib/vnext/launch-presentation";
 import { TokenArtwork } from "../vnext/token-artwork";
-import { TerminalIcon } from "../vnext/terminal-icon";
-import { CopyAddress, ExplorerLink } from "../vnext/terminal-links";
-export function LaunchCard({ launch }: { launch: LaunchEvidence }) {
-  const project = projectsForContract(launch.token)[0],
-    symbol =
-      launch.identity.symbol ??
-      `${launch.token.slice(0, 6)}…${launch.token.slice(-4)}`,
-    name = launch.identity.name ?? "Token";
+/** Discovery is a scanner; complete origin evidence stays in the token workspace. */
+export function LaunchRow({ launch, observedNow }: { launch: LaunchEvidence; observedNow: number }) {
+  const symbol = launch.identity.symbol ?? `${launch.token.slice(0, 6)}…${launch.token.slice(-4)}`;
+  const age = formatTerminalAge((observedNow - Date.parse(launch.launchTime)) / 60_000);
+  const bonding = ["LAUNCHED", "BONDING", "GRADUATING"].includes(launch.state);
+  const cap = launch.marketCapUsd8 ? Number(launch.marketCapUsd8) / 1e8 : null;
+  const metric = cap !== null && Number.isFinite(cap) && cap > 0
+    ? { value: formatTerminalCompactUsd(cap), label: "Market cap" }
+    : bonding && launch.progressBps !== null
+      ? { value: `${(launch.progressBps / 100).toLocaleString("en-US", { maximumFractionDigits: 1 })}%`, label: launch.sourceVersion === "V1" ? "Principal threshold" : "Progress" }
+      : null;
   return (
-    <article
-      className="rmtLaunchCard"
-      data-launch-id={launch.launchId}
-      data-token={launch.token}
-    >
-      <Link
-        href={launchNavigationHref(launch)}
-        prefetch
-        className="rmtLaunchDestination"
-        aria-label={`Open ${symbol} token market`}
-      >
-        <div className="rmtLaunchIdentity">
-          <TokenArtwork
-            contract={launch.token}
-            imageUrl={launch.identity.artwork}
-            launch
-            className="rmtLaunchArtwork"
-            symbol={symbol}
-          />
-          <div>
-            <strong>{symbol}</strong>
-            <span>{name}</span>
-          </div>
-          <TerminalIcon name="chevron" />
-        </div>
-        <div className="rmtLaunchTags">
-          <span>
-            {launchSourceLabel(launch)} ·{" "}
-            {launch.sourceVersion.replace("_", " ")}
-          </span>
-          <b className={`is${launch.state}`}>
-            {launchStateLabel[launch.state]}
-          </b>
-        </div>
-        <div className="rmtLaunchProgress">
-          {launch.progressBps !== null &&
-          ["LAUNCHED", "BONDING", "GRADUATING"].includes(launch.state) ? (
-            <>
-              <div>
-                <span>
-                  {launch.sourceVersion === "V1"
-                    ? "Principal threshold"
-                    : "Graduation progress"}
-                </span>
-                <strong>
-                  {(launch.progressBps / 100).toLocaleString("en-US", {
-                    maximumFractionDigits: 1,
-                  })}
-                  %
-                </strong>
-              </div>
-              <span
-                role="progressbar"
-                aria-label="Observed graduation progress"
-                aria-valuenow={launch.progressBps / 100}
-                aria-valuemin={0}
-                aria-valuemax={100}
-              >
-                <i style={{ width: `${launch.progressBps / 100}%` }} />
-              </span>
-            </>
-          ) : (
-            <span>
-              {launch.state === "GRADUATED"
-                ? "Graduated market"
-                : launch.relationship === "TOKEN_ENROLLED"
-                  ? "Existing token enrolled"
-                  : "Onchain token launch"}
-            </span>
-          )}
-        </div>
-        <div className="rmtLaunchContext">
-          <span>
-            {new Date(launch.launchTime).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              timeZone: "UTC",
-            })}
-          </span>
-          <span>
-            {launch.relationship === "TOKEN_ENROLLED" ? "Existing token enrolled" : launch.creatorTaxBps !== null
-              ? `Creator tax ${launch.creatorTaxBps / 100}%`
-              : launch.quoteAsset === `0x${"0".repeat(40)}`
-                ? "Native ETH quote"
-                : "Quote asset in details"}
-          </span>
-        </div>
-        {launch.marketCapUsd8 &&
-        Number.isFinite(Number(launch.marketCapUsd8)) ? (
-          <div className="rmtLaunchMarket">
-            <span>Observed market cap</span>
-            <strong>
-              {formatTerminalCompactUsd(Number(launch.marketCapUsd8) / 1e8)}
-            </strong>
-          </div>
-        ) : null}
-        <span className="rmtLaunchAction">
-          Explore token <TerminalIcon name="chevron" />
-        </span>
-      </Link>
-      <details className="rmtLaunchEvidence">
-        <summary>Evidence &amp; Sources</summary>
-        <dl>
-          <div>
-            <dt>Token</dt>
-            <dd>
-              <code>
-                {launch.token.slice(0, 6)}…{launch.token.slice(-4)}
-              </code>
-              <CopyAddress address={launch.token} />
-              <ExplorerLink
-                kind="token"
-                value={launch.token}
-                accessibleName="Token contract explorer"
-              >
-                <TerminalIcon name="external" />
-              </ExplorerLink>
-            </dd>
-          </div>
-          <div>
-            <dt>Origin</dt>
-            <dd>
-              {launch.relationship === "TOKEN_ENROLLED"
-                ? "Pad enrollment; token creation not asserted"
-                : "Factory / pad creation event"}
-            </dd>
-          </div>
-          <div>
-            <dt>Launch</dt>
-            <dd>
-              <ExplorerLink kind="transaction" value={launch.launchTransaction}>
-                Block {launch.launchBlock} <TerminalIcon name="external" />
-              </ExplorerLink>
-            </dd>
-          </div>
-          <div>
-            <dt>Source contract</dt>
-            <dd>
-              <ExplorerLink kind="address" value={launch.sourceContract}>
-                {launch.sourceContract.slice(0, 6)}…
-                {launch.sourceContract.slice(-4)}{" "}
-                <TerminalIcon name="external" />
-              </ExplorerLink>
-            </dd>
-          </div>
-          <div>
-            <dt>Quote asset</dt>
-            <dd>
-              {launch.quoteAsset === `0x${"0".repeat(40)}` ? (
-                "Native ETH"
-              ) : launch.quoteAsset ? (
-                <ExplorerLink kind="token" value={launch.quoteAsset}>
-                  {launch.quoteAsset.slice(0, 6)}…{launch.quoteAsset.slice(-4)}
-                </ExplorerLink>
-              ) : (
-                "Not observed"
-              )}
-            </dd>
-          </div>
-          <div>
-            <dt>Observed</dt>
-            <dd>
-              <time dateTime={launch.observedAt}>
-                {new Date(launch.observedAt)
-                  .toISOString()
-                  .replace("T", " ")
-                  .slice(0, 19) + " UTC"}
-              </time>{" "}
-              · block {launch.observedBlock}
-            </dd>
-          </div>
-        </dl>
-        {project ? (
-          <Link href={`/projects/${project.projectId}`}>
-            Linked project · {project.displayName}
-          </Link>
-        ) : null}
-        <p>
-          Origin and lifecycle are intelligence. They do not establish safety,
-          project admission or execution availability.
-        </p>
-      </details>
-    </article>
+    <Link href={launchNavigationHref(launch)} prefetch className="rmtLaunchRow"
+      data-launch-id={launch.launchId} data-token={launch.token}
+      aria-label={`Open ${symbol} token market`}>
+      <span className="rmtLaunchToken">
+        <TokenArtwork contract={launch.token} imageUrl={launch.identity.artwork} launch
+          className="rmtMarketArtwork rmtLaunchArtwork" symbol={symbol} />
+        <span className="rmtLaunchIdentity"><strong>{symbol}</strong><small>{launch.identity.name ?? "Token"}</small></span>
+      </span>
+      <span className="rmtLaunchSource">
+        {launchSourceLabel(launch)} <small>{launch.sourceVersion.replace("_", " ")}</small>
+        <time className="rmtLaunchMobileAge" dateTime={launch.launchTime}> · {age}</time>
+        {launch.relationship === "TOKEN_ENROLLED" ? <small className="rmtLaunchEnrolled"> · Existing token enrolled</small> : null}
+      </span>
+      <span className={`rmtLaunchState is${launch.state}`}>{launchStateLabel[launch.state]}</span>
+      <span className="rmtLaunchMetric">{metric ? <><strong>{metric.value}</strong><small>{metric.label}</small></> : null}</span>
+      <time className="rmtLaunchAge" dateTime={launch.launchTime}>{age}</time>
+    </Link>
   );
 }
 export function LaunchDiscovery({
@@ -317,9 +153,10 @@ export function LaunchDiscovery({
         </nav>
       ) : null}
       {visible.length ? (
-        <div className="rmtLaunchGrid">
+        <div className="rmtLaunchScanner">
+          <div className="rmtLaunchScannerHead" aria-hidden="true"><span>Token</span><span>Source</span><span>State</span><span>Metric</span><span>Age</span></div>
           {visible.map((e) => (
-            <LaunchCard key={e.launchId} launch={e} />
+            <LaunchRow key={e.launchId} launch={e} observedNow={now} />
           ))}
         </div>
       ) : (

@@ -34,7 +34,7 @@ export default function LaunchesLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rmtProjectPage">
+    <div className="rmtProjectPage rmtTerminal">
       <header className="rmtProjectHeader">
         <Link href="/" aria-label="RMT Markets">
           <img src="/brand/rmt-master-logo.png" alt="" />
