@@ -68,7 +68,22 @@ for(const viewport of [{width:375,height:812},{width:390,height:844},{width:430,
   await page.getByRole('button',{name:'I understand — enter RMT',exact:true}).click();
   await page.locator('.tradingTermsBackdrop').waitFor({state:'hidden'});
   await capture("exact-token-workspace");
-  await page.getByRole("tab",{name:"More",exact:true}).click();await page.getByText("Origin & launch",{exact:true}).click();await page.getByText("Launch origin",{exact:true}).waitFor();assert.ok((await page.locator("body").innerText()).includes("pons"));await capture("token-origin");
+  await page.getByRole("tab",{name:"More",exact:true}).click();
+  const originSummary=page.locator('.vnMoreDisclosure > summary').filter({hasText:'Origin & launch'});
+  const originDisclosure=originSummary.locator('..');
+  const openedBefore=await originDisclosure.evaluate(details=>details.open);
+  if(!openedBefore)await originSummary.click();
+  const disclosureState=await originDisclosure.evaluate(details=>({open:details.open,summary:details.querySelector('summary')?.textContent,ancestry:[details,...function*(){for(let p=details.parentElement;p;p=p.parentElement)yield p;}()].map(e=>({tag:e.tagName,className:e.className,open:e.tagName==='DETAILS'?e.open:null,display:getComputedStyle(e).display,visibility:getComputedStyle(e).visibility}))}));
+  results.push({viewport,name:'origin-disclosure',openedBefore,...disclosureState});
+  try {
+    await page.getByText("Launch origin",{exact:true}).waitFor();
+  } catch(error) {
+    await capture('origin-disclosure-failure');
+    await writeFile(path.join(output,`${viewport.width}-origin-disclosure-failure.html`),await originDisclosure.evaluate(details=>details.outerHTML));
+    throw error;
+  }
+  assert.equal(await originDisclosure.evaluate(details=>details.open),true,'Origin disclosure must actually be open');
+  assert.ok((await page.locator("body").innerText()).includes("pons"));await capture("token-origin");
   const origin=page.locator('[data-launch-origin]');await origin.locator('summary').click();await capture("origin-evidence");assert.ok((await origin.innerText()).includes('Source contract'));
   await page.goto(`${base}/launches?source=STONKBROKERS`,{waitUntil:"domcontentloaded"});await page.locator(".rmtLaunchRow").first().waitFor();assert.equal(await page.locator('.rmtLaunchRow[data-launch-id^="0x7ed"]').count(),0);await capture("stonk-source");
   await page.locator("#launch-search").fill("MONVERA");await page.getByRole("button",{name:"Find",exact:true}).click();await page.waitForURL("**q=MONVERA*");await page.locator(".rmtLaunchRow").first().waitFor();assert.equal(await page.locator(".rmtLaunchRow").count(),1);assert.ok((await page.locator("body").innerText()).includes("Existing token enrolled"));await capture("enrolled-token");
