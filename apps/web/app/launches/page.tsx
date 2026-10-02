@@ -1,4 +1,5 @@
 import { readLaunchIntelligence } from "../../lib/server/launch-intelligence-reader";
+import { TerminalIcon } from "../vnext/terminal-icon";
 import { LaunchDiscovery } from "./launch-discovery";
 export const dynamic = "force-dynamic";
 export default async function LaunchesPage({
@@ -19,25 +20,15 @@ export default async function LaunchesPage({
   return (
     <main className="rmtLaunchPage">
       <header className="rmtLaunchHero">
-        <LinkToMarkets />
-        <p>Robinhood Chain · Discover</p>
-        <h1>
-          Launches<span>.</span>
-        </h1>
-        <div>New tokens. Their origins. The journey to a market.</div>
+        <div><h1>Launches</h1><p>Robinhood Chain · Onchain origins</p></div>
+        <a href="/">Markets <TerminalIcon name="chevron" /></a>
       </header>
-      <form className="rmtLaunchSearch" action="/launches">
-        <label htmlFor="launch-search">Find a launch</label>
-        <div>
-          <input
-            id="launch-search"
-            name="q"
-            defaultValue={q}
-            placeholder="Token, symbol or exact contract"
-            maxLength={160}
-          />
-          <button type="submit">Search</button>
-        </div>
+      <form className="rmtMarketSearch rmtLaunchSearch" action="/launches" role="search">
+        <TerminalIcon name="search" />
+        <label className="vnSrOnly" htmlFor="launch-search">Find a launch</label>
+        <input id="launch-search" name="q" defaultValue={q} placeholder="Token, symbol or exact contract"
+          maxLength={160} autoComplete="off" spellCheck={false} />
+        <button className="rmtSearchSubmit" type="submit">Find</button>
         {source ? <input type="hidden" name="source" value={source} /> : null}
       </form>
       <LaunchDiscovery
@@ -48,12 +39,8 @@ export default async function LaunchesPage({
         observedNow={Date.now()}
       />
       <p className="rmtLaunchFootnote">
-        Onchain launch provenance. No quality scores or endorsements. Trading
-        uses RMT’s existing 0x integration.
+        Launch origin is not an endorsement. Explore a token for market data and trading availability.
       </p>
     </main>
   );
-}
-function LinkToMarkets() {
-  return <a href="/">Markets / Launches</a>;
 }
