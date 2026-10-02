@@ -1078,6 +1078,40 @@ async function runViewport(browser, base, device, viewport, serverLog) {
   const video = page.video();
   const consoleErrors = [];
   const pageErrors = [];
+  const fontResources = [];
+  for (const event of ["request", "requestfinished", "requestfailed"]) {
+    page.on(event, (request) => {
+      if (request.resourceType() !== "font") return;
+      const url = new URL(request.url());
+      fontResources.push({ event, resource: `${url.origin}${url.pathname}`, failure: request.failure()?.errorText ?? null });
+    });
+  }
+  const capture = async (name) => {
+    const fontState = (probeReady) => page.evaluate(async (probe) => ({
+      readyState: document.readyState,
+      visibility: document.visibilityState,
+      status: document.fonts.status,
+      faces: [...document.fonts].map((face) => ({ family: face.family, status: face.status })),
+      readyResolved: probe ? await Promise.race([
+        document.fonts.ready.then(() => true),
+        new Promise((resolve) => setTimeout(() => resolve(false), 1_000))
+      ]) : null
+    }), probeReady);
+    const started = Date.now();
+    let error;
+    // Observe without a layout read or changing the screenshot's font wait.
+    const before = await fontState(false);
+    try {
+      await page.screenshot({ path: path.join(artifactRoot, name), fullPage: true });
+    } catch (cause) {
+      error = cause;
+    }
+    const after = await fontState(true);
+    const evidence = { name, browser: browser.version(), viewport, elapsedMs: Date.now() - started, before, after, fontResources, error: error?.message ?? null };
+    await writeFile(path.join(artifactRoot, `${name}.fonts.json`), `${JSON.stringify(evidence, null, 2)}\n`);
+    console.log(`[account-first:${device}:capture] ${JSON.stringify(evidence)}`);
+    if (error) throw error;
+  };
   page.on("console", (message) => {
     if (message.type() === "error") consoleErrors.push(message.text());
   });
@@ -1240,7 +1274,7 @@ async function runViewport(browser, base, device, viewport, serverLog) {
       marketAddress: market,
       side: "buy"
     });
-    await page.screenshot({ path: path.join(artifactRoot, `${device}-direct-receive.png`), fullPage: true });
+    await capture(`${device}-direct-receive.png`);
     await page.keyboard.press("Escape");
     await page.getByRole("heading", { name: "Receive on Robinhood Chain" }).waitFor({ state: "hidden", timeout: 5_000 });
     metrics.escapeClosesReceive = true;
@@ -1280,7 +1314,7 @@ async function runViewport(browser, base, device, viewport, serverLog) {
     const methods = await page.evaluate(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__ ?? []);
     const forbidden = financialWalletMethods(methods);
     assert.deepEqual(forbidden, [], `${device}: onboarding, Deposit, and funding return must never sign or send`);
-    await page.screenshot({ path: path.join(artifactRoot, `${device}-account-first-after.png`), fullPage: true });
+    await capture(`${device}-account-first-after.png`);
     metrics.horizontalOverflowPx = await page.evaluate(() => Math.max(0,
       document.documentElement.scrollWidth - document.documentElement.clientWidth));
     assert.ok(metrics.horizontalOverflowPx <= 1, `${device}: terminal must not create horizontal page overflow`);
