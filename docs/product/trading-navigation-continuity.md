@@ -83,7 +83,7 @@ that side without borrowing a Buy default, and directory completion does not
 replay the same initial side request over typing or draft recovery. Later explicit
 side changes and back/forward navigation keep their existing lifecycle. A
 four-width regression observes the actual first client-mounted and visible Sell
-ticket, then preserves early typing through delayed selection enrichment. The
+ticket, then preserves early typing through delayed optional market enrichment. The
 existing wallet provider is client-mounted; absent form markup in its initial HTML
 is not evidence of the wrong side. This demonstrated client race
 is separate from the still-unmatched owner desktop/mobile incident.
