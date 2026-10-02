@@ -88,7 +88,11 @@ try {
       const box = selector => { const node = document.querySelector(selector), r = node.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; };
       return { scroll: scrollY, action: box('.isTradeToken'), card: box('.rmtProjectAssetCard'), art: box('.isHeroArt'), title: document.querySelector('h1').textContent };
     });
-    await page.evaluate(() => scrollTo(0, 100)); const before = await measure();
+    // Complete the deliberate user scroll before recording passive-update
+    // stability. Global smooth scrolling otherwise leaves a zero baseline.
+    await page.evaluate(() => scrollTo({ top: 100, behavior: 'instant' }));
+    await page.waitForFunction(() => scrollY === Math.min(100, Math.max(0, document.documentElement.scrollHeight - innerHeight)));
+    const before = await measure();
     await page.waitForTimeout(1800); delayMarket = false; releaseMarket.splice(0).forEach(resolve => resolve());
     await page.waitForFunction(() => document.querySelector('.rmtProjectMetricStrip')?.textContent?.includes('Price'));
     const after = await measure(); assert.deepEqual(after, before, 'Delayed metrics cannot replace cards, move actions or reset scroll');
