@@ -1079,11 +1079,14 @@ async function runViewport(browser, base, device, viewport, serverLog) {
   const consoleErrors = [];
   const pageErrors = [];
   const fontResources = [];
+  const pendingResources = new Map();
   for (const event of ["request", "requestfinished", "requestfailed"]) {
     page.on(event, (request) => {
-      if (request.resourceType() !== "font") return;
       const url = new URL(request.url());
-      fontResources.push({ event, resource: `${url.origin}${url.pathname}`, failure: request.failure()?.errorText ?? null });
+      const resource = { type: request.resourceType(), resource: `${url.origin}${url.pathname}`, startedAt: Date.now() };
+      if (event === "request") pendingResources.set(request, resource);
+      else pendingResources.delete(request);
+      if (request.resourceType() === "font") fontResources.push({ event, ...resource, failure: request.failure()?.errorText ?? null });
     });
   }
   const capture = async (name) => {
@@ -1107,7 +1110,7 @@ async function runViewport(browser, base, device, viewport, serverLog) {
       error = cause;
     }
     const after = await fontState(true);
-    const evidence = { name, browser: browser.version(), viewport, elapsedMs: Date.now() - started, before, after, fontResources, error: error?.message ?? null };
+    const evidence = { name, browser: browser.version(), viewport, elapsedMs: Date.now() - started, before, after, fontResources, pendingResources: [...pendingResources.values()].map(resource => ({ ...resource, elapsedMs: Date.now() - resource.startedAt })), error: error?.message ?? null };
     await writeFile(path.join(artifactRoot, `${name}.fonts.json`), `${JSON.stringify(evidence, null, 2)}\n`);
     console.log(`[account-first:${device}:capture] ${JSON.stringify(evidence)}`);
     if (error) throw error;
