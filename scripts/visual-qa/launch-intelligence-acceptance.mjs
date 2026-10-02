@@ -91,7 +91,7 @@ for(const viewport of [{width:375,height:812},{width:390,height:844},{width:430,
     // Assert the visible source heading and actual evidence, not hidden copy.
     await originDisclosure.locator('[data-launch-origin] h3').waitFor();
     assert.ok((await originDisclosure.locator('[data-launch-origin] h3').innerText()).includes('pons'));
-    assert.ok((await originDisclosure.locator('[data-launch-origin]').innerText()).includes('Launched'));
+    await originDisclosure.locator('[data-launch-origin]').getByText('Launched',{exact:true}).waitFor();
   } catch(error) {
     await capture('origin-disclosure-failure');
     await writeFile(path.join(output,`${viewport.width}-origin-disclosure-failure.html`),await originDisclosure.evaluate(details=>details.outerHTML));
@@ -99,7 +99,10 @@ for(const viewport of [{width:375,height:812},{width:390,height:844},{width:430,
   }
   assert.equal(await originDisclosure.evaluate(details=>details.open),true,'Origin disclosure must actually be open');
   assert.ok((await page.locator("body").innerText()).includes("pons"));await capture("token-origin");
-  const origin=page.locator('[data-launch-origin]');await origin.locator('summary').click();await capture("origin-evidence");assert.ok((await origin.innerText()).includes('Source contract'));
+  const origin=page.locator('[data-launch-origin]');await origin.locator('summary').click();await capture("origin-evidence");await origin.getByText('Source contract',{exact:true}).waitFor();
+  const evidenceLinks=await origin.locator('a[href]').evaluateAll(links=>links.map(link=>link.href.toLowerCase()));
+  assert.ok(evidenceLinks.some(href=>href.endsWith('/'+expected.sourceContract)));
+  assert.ok(evidenceLinks.some(href=>href.endsWith('/'+expected.launchTransaction)));
   await page.goto(`${base}/launches?source=STONKBROKERS`,{waitUntil:"domcontentloaded"});await page.locator(".rmtLaunchRow").first().waitFor();assert.equal(await page.locator('.rmtLaunchRow[data-launch-id^="0x7ed"]').count(),0);await capture("stonk-source");
   await page.locator("#launch-search").fill("MONVERA");await page.getByRole("button",{name:"Find",exact:true}).click();await page.waitForURL("**q=MONVERA*");await page.locator(".rmtLaunchRow").first().waitFor();assert.equal(await page.locator(".rmtLaunchRow").count(),1);assert.ok((await page.locator("body").innerText()).includes("Existing token enrolled"));await capture("enrolled-token");
   state.mode="retained-outage";await page.goto(`${base}/launches?q=${retainedQuery}`,{waitUntil:"domcontentloaded"});await page.getByText("Launch updates delayed. Showing recorded origins.").waitFor();assert.equal(await page.locator(".rmtLaunchRow").count(),1);await capture("retained-index-outage");
