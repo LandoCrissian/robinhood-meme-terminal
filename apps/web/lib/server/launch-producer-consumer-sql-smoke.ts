@@ -38,8 +38,9 @@ const { Pool } = createRequire(
   resolve(process.cwd(), "../market-indexer/package.json"),
 )("pg");
 let pool = new Pool({ connectionString: databaseUrl, ssl: false });
-const storageMode = process.env.MARKET_INDEXER_STORAGE_MODE ?? "durable";
-assert.ok(storageMode === "durable" || storageMode === "rebuildable");
+const storageSetting = process.env.MARKET_INDEXER_STORAGE_MODE ?? "durable";
+assert.ok(storageSetting === "durable" || storageSetting === "rebuildable");
+const storageMode = storageSetting === "rebuildable" ? "rebuildable" : "durable";
 const fixture = JSON.parse(
   readFileSync(
     resolve(
