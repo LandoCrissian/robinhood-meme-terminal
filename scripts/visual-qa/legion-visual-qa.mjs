@@ -859,7 +859,12 @@ async function nftJourneyLane(browser, viewport, platform) {
   await page.locator('[data-nft-item-lookup="CONFIRMED"] [data-nft-search-item]').waitFor();
   check(new URL(page.url()).searchParams.get("q") === "ccff00 #5", state, "Search interaction did not preserve the bounded exact-item query.");
   await page.locator('[data-nft-search-item]').click();
-  await page.waitForURL(/\/nft\/ccff00\/5$/);
+  try {
+    await page.waitForURL(/\/nft\/ccff00\/5$/);
+  } catch (error) {
+    const lifecycle = await page.evaluate(() => ({ pathname: location.pathname, search: location.search, readyState: document.readyState, itemHref: document.querySelector('[data-nft-search-item]')?.getAttribute('href') ?? null }));
+    throw new Error(`NFT item navigation failed: ${JSON.stringify(lifecycle)}`, { cause: error });
+  }
   await page.getByRole("link", { name: /Back to CCFF00 collection/ }).click();
   await page.waitForURL(/\/nft\/ccff00$/);
   await page.getByRole("link", { name: "← NFTs", exact: true }).click();

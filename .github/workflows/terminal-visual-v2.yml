@@ -92,6 +92,7 @@ jobs:
       - name: Verify Project artwork, NFT-led composition and degraded-state continuity
         run: node scripts/visual-qa/project-product-acceptance.mjs
       - name: Verify durable launch discovery and exact-token navigation
+        if: ${{ !cancelled() }}
         run: node scripts/visual-qa/launch-intelligence-acceptance.mjs
       - name: Include public before capture manifests
         if: always()

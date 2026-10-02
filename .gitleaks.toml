@@ -2,6 +2,20 @@
 useDefault = true
 
 [[allowlists]]
+description = "Exact public launch token/quote contracts verified by creation events and read-only RPC; only the two genuine evidence fixtures"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''(?i)^0x(?:055650555be80649397084cd3f8a09b4350e8612|bf71e7594725d0b537e151a9de8158b24a44fad3|f4eaec43e22251547fbd2cb2f153e041c3aa4ea6|266f5626e57a4bc96d224fba7989664d09e22e47|d8b3cf377253683883693cc300042dc6344e347d|9532d6188987ac1e640b8b66d9d3d24f6d666666|90a8319b4b16e8d7823d15543d2354a35afed666|53ab2efc7eacb23a4c7af32fddb2ccdc0a172fc6|2b24e29f5d1bd0fcff5c792180eb51e193636ed9|7541872e32bb529d7ff11d6c59832269ce33a6ff|0bd7d308f8e1639fab988df18a8011f41eacad73)$''']
+paths = ['''^apps/market-indexer/fixtures/launch-(?:authority|presentation)-evidence\.json$''']
+
+[[allowlists]]
+description = "Exact public CLOCKIN token address in the mounted launch regression selector; no credential formats exempted"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''^0x53ab2efc7eacb23a4c7af32fddb2ccdc0a172fc6$''']
+paths = ['''^scripts/visual-qa/launch-intelligence-acceptance\.mjs$''']
+
+[[allowlists]]
 description = "Exact public SHCAT contract in the read-only Robinhood RPC preflight; no credential formats exempted"
 condition = "AND"
 targetRules = ["generic-api-key"]
