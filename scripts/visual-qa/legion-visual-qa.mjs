@@ -853,28 +853,34 @@ async function nftJourneyLane(browser, viewport, platform) {
   const context = await createContext(browser, viewport);
   const page = await context.newPage();
   page.setDefaultTimeout(30_000);
+  // Destination readiness is the exact route plus its rendered collection/item
+  // controls, not completion of unrelated document subresources.
+  const waitForDestination = async (url, content) => {
+    try {
+      await page.waitForURL(url, { waitUntil: "domcontentloaded" });
+      await content.waitFor();
+    } catch (error) {
+      const lifecycle = await page.evaluate(() => ({ pathname: location.pathname, search: location.search, readyState: document.readyState }));
+      throw new Error(`NFT destination readiness failed: ${JSON.stringify(lifecycle)}`, { cause: error });
+    }
+  };
   await page.goto(`${base}/nft`, { waitUntil: "networkidle", timeout: 60_000 });
   await page.getByPlaceholder("Search collection, contract or NFT").fill("ccff00 #5");
   await page.getByRole("button", { name: "Search", exact: true }).click();
   await page.locator('[data-nft-item-lookup="CONFIRMED"] [data-nft-search-item]').waitFor();
   check(new URL(page.url()).searchParams.get("q") === "ccff00 #5", state, "Search interaction did not preserve the bounded exact-item query.");
   await page.locator('[data-nft-search-item]').click();
-  try {
-    await page.waitForURL(/\/nft\/ccff00\/5$/);
-  } catch (error) {
-    const lifecycle = await page.evaluate(() => ({ pathname: location.pathname, search: location.search, readyState: document.readyState, itemHref: document.querySelector('[data-nft-search-item]')?.getAttribute('href') ?? null }));
-    throw new Error(`NFT item navigation failed: ${JSON.stringify(lifecycle)}`, { cause: error });
-  }
+  await waitForDestination(/\/nft\/ccff00\/5$/, page.getByRole("link", { name: /Back to CCFF00 collection/ }));
   await page.getByRole("link", { name: /Back to CCFF00 collection/ }).click();
-  await page.waitForURL(/\/nft\/ccff00$/);
+  await waitForDestination(/\/nft\/ccff00$/, page.locator("[data-nft-gallery] a").first());
   await page.getByRole("link", { name: "← NFTs", exact: true }).click();
-  await page.waitForURL(/\/nft$/);
+  await waitForDestination(/\/nft$/, page.locator('[data-nft-collection-status="ACTIVE"]').first());
   await page.locator('[data-nft-collection-status="ACTIVE"]').click();
-  await page.waitForURL(/\/nft\/ccff00$/);
+  await waitForDestination(/\/nft\/ccff00$/, page.locator("[data-nft-gallery] a").first());
   await page.locator("[data-nft-gallery] a").first().click();
-  await page.waitForURL(/\/nft\/ccff00\/1$/);
+  await waitForDestination(/\/nft\/ccff00\/1$/, page.getByRole("link", { name: /Back to CCFF00 collection/ }));
   await page.getByRole("link", { name: /Back to CCFF00 collection/ }).click();
-  await page.waitForURL(/\/nft\/ccff00$/);
+  await waitForDestination(/\/nft\/ccff00$/, page.locator("[data-nft-gallery] a").first());
   const forbiddenCount = await page.locator("a,button").filter({ hasText: /^(Buy|List|Offer|Fulfill|Sign|Submit)$/i }).count();
   check(forbiddenCount === 0, state, "Functional NFT journey exposed execution controls.", { forbiddenCount });
   await overflow(page, state);
