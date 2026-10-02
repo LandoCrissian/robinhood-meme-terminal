@@ -39,7 +39,7 @@
 .rmtLaunchFootnote, .rmtLaunchCoverage, .rmtLaunchQuiet { color: var(--rmt-text-muted); font-size: 11px; line-height: 1.5; }
 .rmtLaunchFootnote { margin-top: 20px; }
 .rmtLaunchQuiet { padding: 12px 0; }
-.rmtLaunchPage a:focus-visible, .rmtLaunchPage button:focus-visible, .rmtLaunchPage input:focus-visible { outline: 2px solid var(--rmt-accent); outline-offset: 3px; }
+.rmtLaunchPage a:focus-visible, .rmtLaunchPage button:focus-visible { outline: 2px solid var(--rmt-accent); outline-offset: 3px; }
 @media (max-width: 900px) {
   .rmtLaunchPage { padding: 18px 14px 36px; }
   .rmtLaunchHero { margin-bottom: 12px; }

@@ -18,7 +18,8 @@ for(const viewport of [{width:375,height:812},{width:390,height:844},{width:430,
   const retainedQuery=['DOODLR','doodlr','Doodlr','dooDLR'][lane];
   const lensQuery=['RUG','rug','Rug','rUG'][lane];
   const metadataQuery=[fixture.directory.entries[3].token,fixture.directory.entries[3].token.toUpperCase().replace('0X','0x'),fixture.directory.entries[3].token.replace('266f','266F'),fixture.directory.entries[3].token.replace('d224','D224')][lane];
-  const context=await browser.newContext({viewport,isMobile:viewport.width<768,hasTouch:viewport.width<768});const page=await context.newPage();const errors=[];page.on("pageerror",error=>errors.push(error.message));
+  const context=await browser.newContext({viewport,isMobile:viewport.width<768,hasTouch:viewport.width<768});const page=await context.newPage();const errors=[],artworkResponses=[];page.on("pageerror",error=>errors.push(error.message));
+  page.on('response',response=>{const url=new URL(response.url());if(url.pathname==='/api/vnext/token-artwork')artworkResponses.push({boundary:'RMT_ARTWORK_PROXY',token:url.searchParams.get('address'),status:response.status()});});
   await page.addInitScript(()=>{window.__walletRequests=0;window.ethereum={on(){},removeListener(){},async request({method}){if(/sign|sendTransaction|wallet_sendCalls/.test(method)){window.__walletRequests++;throw Error("Financial action prohibited");}return method==="eth_chainId"?"0x1237":[];}};});
   await page.route("**/api/vnext/asset-workspace?**",route=>route.fulfill({status:503,json:{error:"CONTROLLED_MARKET_ENRICHMENT_UNAVAILABLE"}}));
   await page.route("**/api/markets/ohlcv?**",route=>route.fulfill({status:503,json:{error:"CONTROLLED_CHART_UNAVAILABLE"}}));
@@ -125,6 +126,7 @@ for(const viewport of [{width:375,height:812},{width:390,height:844},{width:430,
   assert.equal(marketDensity.overflow,0);assert.equal(marketDensity.walletRequests,0);
   assert.deepEqual([...new Set(density.artworkSizes)],[...new Set(marketDensity.artworkSizes)],'Shared Markets artwork sizing');
   results.push({viewport,name:'markets-chassis-companion',evidence:'CONTROLLED_EXISTING_MARKETS_EXTERNAL_FIXTURES',...marketDensity});
+  results.push({viewport,name:'artwork-proxy-results',responses:artworkResponses});
   assert.deepEqual(errors,[]);await context.close();
 }
 } catch(error){failures.push(String(error));throw error;} finally{await browser.close();await new Promise(resolve=>server.close(resolve));await writeFile(path.join(output,"acceptance.json"),JSON.stringify({evidence:fixture.evidence,reviewedHead:process.env.RMT_REVIEWED_HEAD??null,results,failures,upstreamReads:state.requests.length,passiveWalletRequests:0},null,2));}
