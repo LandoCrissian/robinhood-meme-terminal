@@ -3,7 +3,7 @@ name: Account-first acceptance
 on:
   pull_request:
     paths:
-      - ".github/scripts/account-first-browser-acceptance.mjs"
+      - ".github/scripts/account-first-browser-*.mjs"
       - ".github/scripts/privy-bridge-balance-acceptance.mjs"
       - ".github/workflows/account-first-acceptance.yml"
       - "apps/web/app/providers.tsx"
@@ -42,6 +42,8 @@ jobs:
           node-version: 22
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
+      - name: Verify required-font readiness and incomplete-document capture
+        run: node --test .github/scripts/account-first-browser-capture.test.mjs
       - name: Run account-first desktop/mobile journey
         run: pnpm test:account-first-browser
       - name: Upload exact-head screenshots and screencasts
