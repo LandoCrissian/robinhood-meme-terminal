@@ -21,12 +21,20 @@ export const INITIAL_PROJECT_EVIDENCE: readonly RmtProjectIdentity[] = [
     officialEvidence: [{ kind: "OWNER_VERIFIED", url: "https://opensea.io/collection/hopium-machines" }],
     links: [link("OpenSea", "https://opensea.io/collection/hopium-machines", "https://opensea.io/collection/hopium-machines", "PROVIDER_VERIFIED"), link("Website", "https://hopiummachines.xyz/", "https://opensea.io/collection/hopium-machines")],
     assets: [token("0xB6cE51925C2e397eBF1a443b343d19267B3D4225", "Hopium Machines", "HOPIUM", "https://x.com/HopiumMachines"), collection("0x7da15c761409cb921a81f0e003704cff418b700b", "Hopium Machines", "HOPIUM", "https://opensea.io/collection/hopium-machines")] },
-  { projectId: "peeps", displayName: "PEEPS · Founding Feathers", discovery: "VERIFIED", artwork: null,
+  { projectId: "peeps", displayName: "Founding Feathers", discovery: "VERIFIED", artwork: null,
     officialEvidence: [{ kind: "PROJECT_OFFICIAL", url: "https://peeps.wtf/launchpad/peeps" }, { kind: "OWNER_VERIFIED", url: "https://opensea.io/collection/peep-founding-feathers-506906521" }],
     links: [link("Website", "https://peeps.wtf/", "https://peeps.wtf/launchpad/peeps", "PROJECT_OFFICIAL"), link("X", "https://x.com/PEEPZonRH", "https://opensea.io/collection/peep-founding-feathers-506906521"), link("OpenSea", "https://opensea.io/collection/peep-founding-feathers-506906521", "https://opensea.io/collection/peep-founding-feathers-506906521", "PROVIDER_VERIFIED")],
-    assets: [token("0xf202de51bb42a0073948b0971707d14c54ef5f44", "Peeps", "PEEPS", "https://peeps.wtf/launchpad/peeps"), collection("0xc1605fb719f388110b1b0f384b7ffd64ba4ba5df", "PEEP Founding Feathers", "PEEP", "https://opensea.io/collection/peep-founding-feathers-506906521")] },
+    assets: [collection("0xc1605fb719f388110b1b0f384b7ffd64ba4ba5df", "PEEP Founding Feathers", "PEEP", "https://opensea.io/collection/peep-founding-feathers-506906521")] },
   { projectId: "ccff00", displayName: "CCFF00", discovery: "VERIFIED", artwork: null,
     officialEvidence: [{ kind: "PROJECT_OFFICIAL", url: "https://hoodstreet.capital/ccff00" }],
     links: [link("Website", "https://hoodstreet.capital/ccff00", "https://hoodstreet.capital/ccff00", "PROJECT_OFFICIAL"), link("X", "https://x.com/CCFF00club", "https://opensea.io/collection/ccff00-161927574"), link("OpenSea", "https://opensea.io/collection/ccff00-161927574", "https://opensea.io/collection/ccff00-161927574", "PROVIDER_VERIFIED")],
     assets: [collection("0x505A22Ffed8d37ebE580FfD98d2Cdb0021189146", "CCFF00", "CCFF00", "https://opensea.io/collection/ccff00-161927574")] }
 ];
+
+// Historical evidence is retained separately from active assets/search/ownership.
+// Withdrawal changes project intelligence only; it is not token admission policy.
+export const WITHDRAWN_PROJECT_RELATIONSHIPS = [{
+  projectId: "peeps", type: "PROJECT_HAS_TOKEN", reason: "OWNER_WITHDREW_TOKEN_RELATIONSHIP",
+  asset: token("0xf202de51bb42a0073948b0971707d14c54ef5f44", "Peeps", "PEEPS", "https://peeps.wtf/launchpad/peeps"),
+  decisionEvidence: { class: "OWNER_VERIFIED", source: "RMT_PROJECT_MARKETS_FINAL_PRODUCT_QUALITY_V1" }
+}] as const;

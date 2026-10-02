@@ -1,6 +1,7 @@
 import { getAddress, isAddress, zeroAddress, type Address } from "viem";
 import { RMT_CURATED_NFT_PROJECTS, type RmtCuratedNftProject, type RmtNftProjectTokenAssociation } from "./nft/project-registry.js";
 import { INITIAL_PROJECT_EVIDENCE } from "./project-evidence.js";
+export { WITHDRAWN_PROJECT_RELATIONSHIPS } from "./project-evidence.js";
 
 export const PROJECT_EVIDENCE_CLASSES = ["OWNER_VERIFIED", "ONCHAIN_VERIFIED", "PROJECT_OFFICIAL", "PROVIDER_VERIFIED", "DERIVED"] as const;
 export type ProjectEvidence = { class: typeof PROJECT_EVIDENCE_CLASSES[number]; source: string; observedAt: string; blockNumber?: string };
@@ -97,7 +98,9 @@ export function searchProjects(query: string) {
   if (normalized.length > 160) return [];
   return RMT_DISCOVERABLE_PROJECTS.filter(project => isAddress(normalized, { strict: false })
     ? project.assets.some(asset => asset.contract.toLowerCase() === normalized)
-    : [project.displayName, project.projectId, ...project.assets.flatMap(asset => [asset.name ?? "", asset.symbol ?? ""])].some(value => value.toLowerCase().includes(normalized)));
+    // Stable routing ids can outlive a withdrawn asset association. Search only
+    // current display identity and active assets, not historical route aliases.
+    : [project.displayName, ...project.assets.flatMap(asset => [asset.name ?? "", asset.symbol ?? ""])].some(value => value.toLowerCase().includes(normalized)));
 }
 export function projectsForContract(address: string) {
   if (!isAddress(address, { strict: false })) return [];

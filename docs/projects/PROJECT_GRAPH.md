@@ -3,6 +3,26 @@
 Owner authority: `RMT_PROJECT_GRAPH_CCFF00_AND_PROJECT_MARKETS_V1`.
 Implementation base: `b0ff0f344d50727156e4ced42aaaf7c667108ad3`.
 
+## Current owner amendment
+
+`RMT_PROJECT_MARKETS_FINAL_PRODUCT_QUALITY_V1`, base
+`779ec852546c6e10006a311aca97be9779508c3c`, withdraws the active PEEPS token
+relationship. Founding Feathers remains NFT-led at its existing stable `/projects/peeps`
+URL. Active search, ownership composition and project edges contain only its exact
+NFT contract. `OWNER_WITHDREW_TOKEN_RELATIONSHIP` and the original evidence are
+retained separately in `WITHDRAWN_PROJECT_RELATIONSHIPS`; the initial verification
+record below is historical, not the current active graph. This does not quarantine
+or change permissionless trading for the independent token.
+
+Project presentation uses exact-contract retained artwork with original source,
+evidence class and content digests in `project-artwork-evidence.json`. These small
+production assets are not review screenshots. Collection logos remain provider
+presentation evidence; CCFF00 artwork comes from its onchain token URI. Retaining
+them removes a runtime OpenSea dependency. CANNACAT has no separate image in the
+observed Gecko token response: its token surface uses project identity artwork,
+without claiming a newly verified token image. Optional market and ownership
+reads remain independent, and unavailable metrics use compact states.
+
 ## Existing architecture and change
 
 `packages/shared/src/project-identity.ts` remains the shared identity model.

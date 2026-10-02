@@ -1,0 +1,69 @@
+{
+  "purpose": "Permanent production presentation assets; not review screenshots. Collection logo provenance remains provider evidence, never ownership or relationship authority.",
+  "records": [
+    {
+      "projectId": "cannacats",
+      "chainId": 4663,
+      "contract": "0x289c8ce652f38029867842048068b39bd0464a3f",
+      "kind": "NFT_COLLECTION",
+      "class": "PROVIDER_VERIFIED",
+      "source": "https://opensea.io/collection/cannacats",
+      "image": "https://i2c.seadn.io/collection/cannacats/image_type_logo/6c21153d1a0e6b0e30bc687d3033a2/0a6c21153d1a0e6b0e30bc687d3033a2.png",
+      "local": "/project-art/cannacats.avif",
+      "sha256": "2b5d46a9ca8960cbf1ad525328558c350bb5630aa30750f90733f6fd429e4974",
+      "bytes": 5734,
+      "observedAt": "2026-10-02T03:57:50.742Z"
+    },
+    {
+      "projectId": "hopium-machines",
+      "chainId": 4663,
+      "contract": "0x7da15c761409cb921a81f0e003704cff418b700b",
+      "kind": "NFT_COLLECTION",
+      "class": "PROVIDER_VERIFIED",
+      "source": "https://opensea.io/collection/hopium-machines",
+      "image": "https://i2c.seadn.io/collection/hopium-machines/image_type_logo/9425e86b4143caa183ab5363471710/509425e86b4143caa183ab5363471710.png",
+      "local": "/project-art/hopium-machines.avif",
+      "sha256": "c06fbc1bfa713f3a8dcb2a4214b8b52112a06833e841354122ed4fced6005a30",
+      "bytes": 1556,
+      "observedAt": "2026-10-02T03:57:52.616Z"
+    },
+    {
+      "projectId": "peeps",
+      "chainId": 4663,
+      "contract": "0xc1605fb719f388110b1b0f384b7ffd64ba4ba5df",
+      "kind": "NFT_COLLECTION",
+      "class": "PROVIDER_VERIFIED",
+      "source": "https://opensea.io/collection/peep-founding-feathers-506906521",
+      "image": "https://i2c.seadn.io/collection/peep-founding-feathers-506906521/image_type_logo/693c999130b3d5c92dc77430b60b32/c4693c999130b3d5c92dc77430b60b32.png",
+      "local": "/project-art/peeps.avif",
+      "sha256": "87d9839c39282a1e4f3387c23c864bc120d78d0f09c7d375b5af03a09b6381fa",
+      "bytes": 10542,
+      "observedAt": "2026-10-02T03:57:55.123Z"
+    },
+    {
+      "projectId": "hopium-machines",
+      "chainId": 4663,
+      "contract": "0xB6cE51925C2e397eBF1a443b343d19267B3D4225",
+      "kind": "TOKEN",
+      "class": "PROVIDER_VERIFIED",
+      "source": "https://api.geckoterminal.com/api/v2/networks/robinhood/tokens/0xB6cE51925C2e397eBF1a443b343d19267B3D4225/info",
+      "image": "https://coin-images.coingecko.com/coins/images/102176489/large/hopium-logo-200.png?1787895616",
+      "local": "/project-art/hopium-token.png",
+      "sha256": "efdaf4af32068125e22e7309b70115634c1897d53ad17198218f32f555be8959",
+      "bytes": 38878,
+      "observedAt": "2026-10-02T03:57:55.191Z"
+    },
+    {
+      "projectId": "ccff00",
+      "chainId": 4663,
+      "contract": "0x505A22Ffed8d37ebE580FfD98d2Cdb0021189146",
+      "kind": "NFT_COLLECTION",
+      "class": "ONCHAIN_VERIFIED",
+      "source": "tokenURI(1)",
+      "local": "/project-art/ccff00.svg",
+      "sha256": "a5690bb8386a395de61635936e1de215e81f264cdb908210c4d2dff7a10f74b5",
+      "bytes": 146,
+      "observedAt": "2026-10-02T03:52:40.901Z"
+    }
+  ]
+}

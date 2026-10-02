@@ -44,7 +44,7 @@ try {
   assert.deepEqual((await projectsNav.locator('a').allTextContents()).map(label=>label.trim()),primaryLabels);
   assert.equal(await projectsNav.locator('[aria-current="page"]').innerText(),'Projects');
   assert.equal(await page.locator('.rmtProjectCard').count(),4);
-  for(const [project,token,collection] of [['CannaCats','CANNACAT','CannaCats'],['Hopium Machines','HOPIUM','Hopium Machines'],['PEEPS · Founding Feathers','PEEPS','PEEP Founding Feathers']]) {
+  for(const [project,token,collection] of [['CannaCats','CANNACAT','CannaCats'],['Hopium Machines','HOPIUM','Hopium Machines']]) {
    const card=page.getByRole('link',{name:`Explore ${project} project`,exact:true});
    assert.ok(await card.locator('.rmtProjectPair').getByText(token,{exact:true}).isVisible());
    assert.ok(await card.locator('.rmtProjectPair').getByText(collection,{exact:true}).isVisible());
@@ -64,7 +64,7 @@ try {
   assert.equal(await page.locator('.rmtProjectCard').count(),4);await capture('projects-discovery');
   for(const query of ['CannaCats','CANNACAT',canna,nft,'Founding Feathers']) {
    const input=page.locator(mobile?'#rmt-mobile-market-search':'#rmt-desktop-market-search');
-   await input.fill(query);await page.locator('.rmtProjectCard').first().waitFor();assert.match(await page.locator('.rmtProjectDiscovery').innerText(),query==='Founding Feathers'?/PEEPS/:/CannaCats/);
+   await input.fill(query);await page.locator('.rmtProjectCard').first().waitFor();assert.match(await page.locator('.rmtProjectDiscovery').innerText(),query==='Founding Feathers'?/Founding Feathers/:/CannaCats/);
   }
   await page.locator(mobile?'#rmt-mobile-market-search':'#rmt-desktop-market-search').fill('CannaCats');
   await page.getByRole('link',{name:'Explore CannaCats project',exact:true}).click();await page.locator('[data-project-market="cannacats"]').waitFor();
@@ -93,7 +93,7 @@ try {
    };
    requestAnimationFrame(frame);
   });
-  holdMarket=true;await page.getByRole('link',{name:'Open token market',exact:false}).click();await page.locator('#vn-asset-heading').waitFor();
+  holdMarket=true;await page.getByRole('link',{name:'Trade token',exact:false}).click();await page.locator('#vn-asset-heading').waitFor();
   const directNavigation = await page.evaluate(() => { window.__projectNavigation.done = true; return window.__projectNavigation; });
   assert.equal(directNavigation.genericFrames, 0, 'Verified Project → Token never exposes a generic Markets intermediate screen');
   assert.equal(directNavigation.selectedAssetLoss, 0);
@@ -160,7 +160,7 @@ try {
   assert.equal(finalInitialTicket.wrongSideFrames,0,'No wrong-side ticket flashes during initialization or enrichment');
   await capture('sell-deep-link-first-render');
   navigationEvidence.push({viewport,evidence:'CONTROLLED_INITIAL_SELL_CLIENT_RENDER',initialTicket:finalInitialTicket,amountAfterEnrichment:await amount.inputValue()});
-  await page.goto(`${base}/projects/ccff00`,{waitUntil:'domcontentloaded'});await page.locator('[data-project-market="ccff00"]').waitFor();assert.equal(await page.getByRole('link',{name:'Open token market',exact:false}).count(),0,'No invented CCFF00 token');await capture('ccff00-nft-led');
+  await page.goto(`${base}/projects/ccff00`,{waitUntil:'domcontentloaded'});await page.locator('[data-project-market="ccff00"]').waitFor();assert.equal(await page.getByRole('link',{name:'Trade token',exact:false}).count(),0,'No invented CCFF00 token');await capture('ccff00-nft-led');
   delayed=true;unavailable=true;await page.goto(`${base}/projects/cannacats`,{waitUntil:'domcontentloaded'});await page.locator('[data-project-market="cannacats"]').waitFor();await page.evaluate(()=>document.fonts.ready);const linksBefore=await page.locator('.rmtProjectPrimary').evaluateAll(nodes=>nodes.map(n=>({y:n.getBoundingClientRect().y,height:n.getBoundingClientRect().height})));await page.getByText('Market data unavailable',{exact:true}).waitFor();const linksAfter=await page.locator('.rmtProjectPrimary').evaluateAll(nodes=>nodes.map(n=>({y:n.getBoundingClientRect().y,height:n.getBoundingClientRect().height})));assert.deepEqual(linksAfter,linksBefore);await capture('project-market-unavailable');
   assert.deepEqual(errors,[]);results.push({viewport,scope:'CONTROLLED_EXTERNAL_HTTP_REAL_PUBLIC_COMPONENTS_EMULATED_VIEWPORT',searchQueries:5,amountMovementPx:after.amount.y-aligned.amount.y,actionMovementPx:after.dock?after.dock.y-aligned.dock.y:0,chartMovementPx:after.chart?after.chart.y-aligned.chart.y:0,scrollMovementPx:after.scrollY-aligned.scrollY,focus:after.focus,caret:after.start,marketLinkMovementPx:linksAfter[0].y-linksBefore[0].y,walletRequests:await page.evaluate(()=>window.__projectWalletRequests),errors});await context.close();
  }

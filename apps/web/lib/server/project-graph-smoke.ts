@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { getAddress, type Address } from "viem";
-import { RMT_DISCOVERABLE_PROJECTS, projectById, projectsForContract, searchProjects, projectRelationships, projectCollectionLink, defineRmtProjectIdentity } from "@rmt/shared/project-identity";
+import { RMT_DISCOVERABLE_PROJECTS, projectById, projectsForContract, searchProjects, projectRelationships, projectCollectionLink, defineRmtProjectIdentity, WITHDRAWN_PROJECT_RELATIONSHIPS } from "@rmt/shared/project-identity";
+import { projectArtworkCandidates, projectComposition } from "../vnext/project-presentation";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { artworkMediaType } from "./token-artwork-reader";
+import { isSafeRmtNftInlineSvg } from "@rmt/shared/nft/inline-svg-safety";
 import { exactHolderOverlap, summarizeProjectOwnership, projectsRepresentedInWallet, parseProjectOwnershipFact, type ProjectAssetOwnership } from "@rmt/shared/project-ownership";
 import { readProjectOwnership } from "./project-ownership-reader";
 import { readRmtNftWalletOwnership } from "./nft-project-market";
@@ -14,6 +19,34 @@ assert.equal(ccff.assets.length, 1); assert.equal(ccff.assets[0]!.kind, "ERC721"
 assert.equal(projectById("robin-rabbits"), null, "WATCHING is not graph admission");
 for (const query of ["CannaCats", "CANNACAT", canna.assets[0]!.contract, canna.assets[1]!.contract]) assert.equal(searchProjects(query)[0]?.projectId, "cannacats");
 assert.equal(searchProjects("Founding Feathers")[0]?.projectId, "peeps");
+const feathers = projectById("peeps")!;
+const withdrawn = WITHDRAWN_PROJECT_RELATIONSHIPS[0];
+assert.equal(feathers.displayName, "Founding Feathers");
+assert.equal(feathers.assets.length, 1);
+assert.equal(feathers.assets[0]!.contract.toLowerCase(), "0xc1605fb719f388110b1b0f384b7ffd64ba4ba5df");
+assert.equal(projectRelationships(feathers).filter(edge => edge.type === "PROJECT_HAS_TOKEN").length, 0);
+assert.equal(searchProjects(withdrawn.asset.contract).length, 0);
+assert.equal(projectsForContract(withdrawn.asset.contract).length, 0);
+assert.equal(searchProjects("PEEPS").length, 0, "Withdrawn token symbol cannot imply the NFT-led project");
+assert.equal(withdrawn.reason, "OWNER_WITHDREW_TOKEN_RELATIONSHIP");
+assert.ok(withdrawn.asset.evidence.some(item => item.class === "ONCHAIN_VERIFIED"), "Original evidence is retained, not rewritten");
+assert.equal(projectComposition(feathers).label, "NFT-led project");
+assert.equal(projectComposition(canna).label, "Token ↔ NFT project");
+const mediaRecords = JSON.parse(readFileSync(new URL("../../../../docs/projects/project-artwork-evidence.json", import.meta.url), "utf8"));
+assert.deepEqual(mediaRecords, JSON.parse(readFileSync(new URL("../../public/project-art/evidence.json", import.meta.url), "utf8")));
+for (const record of mediaRecords.records) {
+  const project = projectById(record.projectId)!;
+  assert.ok(project.assets.some(asset => asset.contract.toLowerCase() === record.contract.toLowerCase()), "Artwork has an exact active asset binding");
+  const bytes = readFileSync(new URL(`../../public${record.local}`, import.meta.url));
+  assert.equal(createHash("sha256").update(bytes).digest("hex"), record.sha256);
+  assert.ok(bytes.length <= 1_048_576);
+  assert.ok(record.local.endsWith(".svg") ? isSafeRmtNftInlineSvg(bytes.toString()) : artworkMediaType(bytes, record.local.endsWith(".avif") ? "image/avif" : "image/png"));
+  assert.ok(projectArtworkCandidates(project, record.contract).includes(record.local));
+}
+for (const project of RMT_DISCOVERABLE_PROJECTS) {
+  assert.ok(projectArtworkCandidates(project)[0]?.startsWith("/project-art/"), "Project art is available without a provider call");
+  assert.deepEqual(projectArtworkCandidates(project, other), [], "Unrelated assets cannot inherit artwork");
+}
 assert.equal(projectsForContract("0x14C51bB55592372eAC7141A1D0527D1dD7Fbd42F").length, 0, "No inferred SHCAT relationship");
 assert.equal(searchProjects("0x1234").length, 0);
 assert.equal(projectRelationships(canna).filter(edge => edge.type === "PROJECT_HAS_TOKEN").length, 1);
