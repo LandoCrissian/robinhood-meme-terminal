@@ -108,11 +108,17 @@
 .rmtProjectMetricStrip { height:auto; width:100%; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px 12px; }
 .rmtProjectMetricStrip>span { font-size:11px; line-height:1.2; }
 .rmtProjectMetricStrip strong { font-size:16px; line-height:1.2; margin-top:4px; overflow-wrap:anywhere; }
-/* A price keeps its complete formatted width; the adjacent metrics share the
-   remaining space. Ownership metrics retain their existing two-column layout. */
+/* Keep the complete formatted price. Narrow tickets give it a full row with
+   change beside it; ownership metrics retain their existing two-column layout. */
 .rmtProjectMetricRegion:not(.isOwnership) .rmtProjectMetricStrip { grid-template-columns:minmax(max-content,1fr) repeat(2,minmax(0,1fr)); }
 .rmtProjectMetricRegion:not(.isOwnership) .rmtProjectMetricStrip>span:first-child strong { white-space:nowrap; }
-@media(max-width:389px) { .rmtProjectMetricRegion:not(.isOwnership) .rmtProjectMetricStrip { column-gap:6px; } }
+@media(max-width:430px) {
+ .rmtProjectMetricRegion:not(.isOwnership):not(.isUnavailableOwnership) { height:104px; }
+ .rmtProjectMetricRegion:not(.isOwnership) .rmtProjectMetricStrip { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .rmtProjectMetricRegion:not(.isOwnership) .rmtProjectMetricStrip>span:first-child { grid-column:1/-1; display:grid; grid-template-columns:max-content 1fr; }
+ .rmtProjectMetricRegion:not(.isOwnership) .rmtProjectMetricStrip>span:first-child strong { grid-column:1; grid-row:2; }
+ .rmtProjectMetricRegion:not(.isOwnership) .rmtProjectMetricStrip>span:first-child em { grid-column:2; grid-row:2; align-self:center; margin-left:12px; }
+}
 .rmtProjectMetricStrip em { display:block; margin-top:4px; font-style:normal; font-size:10px; color:#b9cbb8; }
 .isOwnership .rmtProjectMetricStrip { grid-template-columns:repeat(2,minmax(0,1fr)); }
 .rmtProjectMetricStrip>small { grid-column:1/-1; font-size:10px; }
