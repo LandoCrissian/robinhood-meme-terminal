@@ -1,6 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { LaunchOrigin } from "./launch-origin";
+import { launchSourceLabel, launchStateLabel } from "../../lib/vnext/launch-presentation";
 import { workspaceCanonicalMarkets, workspaceEvidenceStates, workspacePoolFeeLabel } from "../../lib/vnext/workspace-presentation";
 import { formatUnits, isAddress } from "viem";
 import { useAccount } from "wagmi";
@@ -540,7 +542,9 @@ export function VNextAssetWorkspace({
     lifecycleBySource.set(`${evidence.sourceId}:${evidence.version}:${evidence.factory}`.toLowerCase(), evidence);
   }
   const launchpadEvidence = [...lifecycleBySource.values()];
-  const originState = launchpadEvidence.length
+  const originState = directoryMarket.launchIntelligence
+    ? `${launchSourceLabel(directoryMarket.launchIntelligence)}${directoryMarket.launchIntelligence.relationship === "TOKEN_ENROLLED" ? " enrollment" : ""} · ${launchStateLabel[directoryMarket.launchIntelligence.state]}`
+    : launchpadEvidence.length
     ? launchpadEvidence.map((evidence) => `${evidence.sourceName} ${lifecycleStateLabel(evidence.state)}`).join(" · ")
     : market?.origin?.kind === "rmt-v6"
     ? "RMT V6 creation proven"
@@ -580,14 +584,14 @@ export function VNextAssetWorkspace({
         <TokenInformation presentation={workspace.presentation} />
       </section>
       <details className="vnMoreDisclosure"><summary>Markets</summary><div className="vnMarketEvidenceStack"><VerifiedMarkets directoryMarket={directoryMarket} canonicalMarkets={directoryMarket.canonicalMarkets} resolution={resolution} selectedPool={selectedChartIdentity} /><WorkspaceEcosystemIntelligence ecosystem={workspace.ecosystem} /></div></details>
-      <details className="vnMoreDisclosure"><summary>Origin &amp; launch</summary><WorkspaceOrigin market={market} token={directoryMarket.address} launchpadEvidence={launchpadEvidence} /></details>
+      <details className="vnMoreDisclosure"><summary>Origin &amp; launch</summary><LaunchOrigin key={directoryMarket.address} token={directoryMarket.address} initial={directoryMarket.launchIntelligence} fallback={<WorkspaceOrigin market={market} token={directoryMarket.address} launchpadEvidence={launchpadEvidence} />}/></details>
       {hasVerifiedRwaRelationship ? <details className="vnMoreDisclosure"><summary>RWA relationship</summary><WorkspaceRwaRelationships relationships={workspace.stockAssetRelationships} coverage={workspace.stockAssetCoverage} /></details> : null}
       <details className="vnMoreDisclosure"><summary>Evidence &amp; Sources</summary><p>{tokenIdentityVerified ? "Onchain token identity proven" : "Identity enrichment unavailable"} · {workspace.status}</p><p data-market-provenance={selectedCanonicalMarket ? "canonical" : market ? "provider-observed" : "unavailable"}>{selectedCanonicalMarket ? "Canonical onchain market inventory" : market ? `Provider-observed market · ${market.dexId}` : "No market observation"}</p><WorkspaceQuickLinks evidenceOnly directoryMarket={directoryMarket} market={market} canonicalPool={selectedCanonicalMarket?.poolAddress ?? undefined} observedPool={observedChartPool} canonicalMarket={selectedCanonicalMarket} /><PresentationSources presentation={workspace.presentation} /><p>Project origin, market observations and execution are separate authorities. Chart and enrichment availability do not determine swap availability.</p></details>
     </div>;
 
   return <section className={`vnAssetPanel vnAssetWorkspace is${presentation}`} aria-labelledby="vn-asset-heading">
     <header className="vnAssetWorkspaceHeader">
-      <div className="vnAssetWorkspaceIdentity"><TokenArtwork className="vnAssetWorkspaceMark" symbol={displaySymbol} contract={directoryMarket.address} imageUrl={directoryMarket.imageUri ?? canonicalStockRelationship?.logoUrl ?? workspace.presentation?.visual.data?.image ?? undefined} /><span><span className="vnEyebrow vnAssetClass" data-asset-class={primaryClass}>{ASSET_CLASS_LABELS[primaryClass]}</span><h2 id="vn-asset-heading" title={displayName}>{displayName} <b>{displaySymbol}</b></h2><small>Robinhood Chain · 4663</small></span></div>
+      <div className="vnAssetWorkspaceIdentity"><TokenArtwork className="vnAssetWorkspaceMark" symbol={displaySymbol} contract={directoryMarket.address} launch={!!directoryMarket.launchIntelligence} imageUrl={directoryMarket.imageUri ?? canonicalStockRelationship?.logoUrl ?? workspace.presentation?.visual.data?.image ?? undefined} /><span><span className="vnEyebrow vnAssetClass" data-asset-class={primaryClass}>{ASSET_CLASS_LABELS[primaryClass]}</span><h2 id="vn-asset-heading" title={displayName}>{displayName} <b>{displaySymbol}</b></h2><small>Robinhood Chain · 4663</small></span></div>
       <div className="vnWorkspaceStatusGroup">{executionState === "stock-token-view-only" ? <strong className="vnStockTokenViewOnlyBadge">View only</strong> : null}<span className={`vnWorkspaceStatus is${workspace.status}`}><i aria-hidden="true" />{workspace.status === "ready" ? "Live evidence" : workspace.status === "partial" ? "Partial evidence" : workspace.status === "stale" ? "Last loaded" : workspace.status === "loading" ? "Loading evidence" : "Evidence unavailable"}</span></div>
     </header>
     {showMarketSnapshot ? <><div className="vnAssetPrice"><strong>{formatUsd(priceUsd)}</strong><span className={priceChange24h !== null && priceChange24h > 0 ? "vnPositive" : priceChange24h !== null && priceChange24h < 0 ? "vnNegative" : ""}>{priceChange24h === null ? "—" : `${priceChange24h > 0 ? "+" : ""}${priceChange24h.toFixed(1)}%`} <small>24h</small></span></div>

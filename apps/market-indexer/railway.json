@@ -8,6 +8,8 @@
       "apps/market-indexer/package.json",
       "apps/market-indexer/tsconfig.json",
       "apps/market-indexer/railway.json",
+      "packages/shared/package.json",
+      "packages/shared/src/launch-intelligence.ts",
       "package.json",
       "pnpm-lock.yaml",
       "pnpm-workspace.yaml"

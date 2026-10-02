@@ -207,7 +207,9 @@ assert.doesNotMatch(presentations, /href="\/rwa"/);
 assert.doesNotMatch(shell, /href: "\/portfolio"|href="\/portfolio"/);
 assert.doesNotMatch(shell, /legacyAssetWorkspaceHref|\/market\//);
 assert.doesNotMatch(shell, /Open notifications|vnMarketTabs|vnFilterButton|vnStarButton/);
-assert.doesNotMatch(shell, /\/launch|launchpad|create token/i);
+// Read-only /launches intelligence is authorized; creation/legacy launch UI remains retired.
+assert.doesNotMatch(shell, /\/launch(?:\/|["\'])|launchpad|create token/i);
+assert.match(presentations, /href="\/launches"/);
 assert.doesNotMatch(shell, /TrendChart|Illustrative preview|vnChartLine/);
 assert.match(workspace, /<VNextMarketChart/);
 assert.match(workspace, /Market activity/);

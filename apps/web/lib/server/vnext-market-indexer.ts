@@ -555,7 +555,7 @@ function configuredValue(env: MarketIndexerEnvironment, name: string) {
   return env[name]?.trim() ?? "";
 }
 
-function resolveConfiguration(
+export function resolveVNextMarketIndexerConfiguration(
   env: MarketIndexerEnvironment,
   timeoutOverride?: number
 ):
@@ -694,7 +694,7 @@ export async function readVNextCanonicalMarketInventory(
   const normalizedQuery = normalizeQuery(query);
   if ("status" in normalizedQuery) return normalizedQuery;
 
-  const configuration = resolveConfiguration(
+  const configuration = resolveVNextMarketIndexerConfiguration(
     dependencies.env ?? process.env,
     dependencies.timeoutMs
   );
@@ -804,7 +804,7 @@ export async function searchVNextCanonicalTokenIdentities(
 ): Promise<VNextCanonicalTokenIdentitySearchResult> {
   const query = requestedQuery.trim();
   if (query.length < 1 || query.length > 160) return { status: "unavailable", entries: [] };
-  const configuration = resolveConfiguration(dependencies.env ?? process.env, dependencies.timeoutMs);
+  const configuration = resolveVNextMarketIndexerConfiguration(dependencies.env ?? process.env, dependencies.timeoutMs);
   if ("status" in configuration) return { status: "unavailable", entries: [] };
   const requestUrl = new URL(configuration.baseUrl);
   requestUrl.pathname = `${requestUrl.pathname.replace(/\/+$/, "")}/v1/token-identities/search`;

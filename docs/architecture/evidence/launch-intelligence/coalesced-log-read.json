@@ -1,0 +1,26 @@
+{
+  "method": "eth_getLogs",
+  "addressCount": 21,
+  "eventSignatureCount": 10,
+  "actualProducerABI": true,
+  "fromBlock": "78248500",
+  "toBlock": "78248600",
+  "latencyMs": 203,
+  "status": "SUCCESS",
+  "eventCount": 2,
+  "events": [
+    {
+      "address": "0x7ed598bcef8bd9edd8c97a195c6d13f40801ec7e",
+      "eventName": "TokenLaunched",
+      "block": "78248549",
+      "transaction": "0xa605849dddef5105da316d6e5f64fdc7ee0f241c31e332507a83020757a79525"
+    },
+    {
+      "address": "0x7ed598bcef8bd9edd8c97a195c6d13f40801ec7e",
+      "eventName": "TokenLaunched",
+      "block": "78248594",
+      "transaction": "0xdc19055ca27eb77d6b62c73d615a54a837f306d411f8cc6bf772801339b1dcd1"
+    }
+  ],
+  "financialActions": 0
+}

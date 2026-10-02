@@ -176,7 +176,8 @@ function MarketCategoryNav({ view, counts, searchActive, activityCoveragePending
     <div className="rmtPrimaryViews">{VNEXT_MARKET_DIRECTORY_VIEWS.filter(candidate => ["active", "new", "movers", "trending"].includes(candidate.id)).map(viewButton)}</div>
     <details className="rmtExplore"><summary><TerminalIcon name="market" />Explore{exploreClass ? ` · ${ASSET_CLASS_LABELS[exploreClass]}` : !["active", "new", "movers", "trending"].includes(view) ? ` · ${view === "rwa" ? "RWA" : view === "held" ? "Held" : "All"}` : ""}<TerminalIcon name="chevron" /></summary>
       <div className="rmtExploreChoices">{VNEXT_MARKET_DIRECTORY_VIEWS.filter(candidate => !["active", "new", "movers", "trending"].includes(candidate.id)).map(viewButton)}
-        {onExplore ? taxonomy.map(item => <button key={item.kind} type="button" aria-pressed={exploreClass === item.kind} onClick={() => { onChange("all"); onExplore(item.kind); }}>{item.kind === "LAUNCH" ? "Launches" : item.kind === "PROJECT" ? "Projects" : item.kind === "STABLECOIN" ? "Stablecoins" : "Stock Tokens"} <small>{item.count}</small></button>) : null}
+        <a href="/launches">Launches <TerminalIcon name="chevron" /></a>
+        {onExplore ? taxonomy.filter(item=>item.kind!=="LAUNCH").map(item => <button key={item.kind} type="button" aria-pressed={exploreClass === item.kind} onClick={() => { onChange("all"); onExplore(item.kind); }}>{item.kind === "PROJECT" ? "Projects" : item.kind === "STABLECOIN" ? "Stablecoins" : "Stock Tokens"} <small>{item.count}</small></button>) : null}
       </div>{taxonomy.length ? <small>Market categories and verified projects</small> : null}
     </details>
   </nav>;

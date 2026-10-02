@@ -77,7 +77,7 @@
     "test:vnext-intent": "tsx lib/vnext/intent-draft-smoke.ts",
     "test:vnext-market-inventory": "tsx lib/server/vnext-market-indexer-smoke.ts && tsx lib/server/public-vnext-market-inventory-smoke.ts",
     "test:project-identity-admission": "tsx lib/server/project-identity-admission-smoke.ts",
-    "test:vnext-market-search": "pnpm test:project-identity-admission && tsx lib/server/vnext-canonical-search-catalog-smoke.ts && tsx lib/server/vnext-universal-market-search-smoke.ts && tsx lib/server/vnext-universal-market-search-route-smoke.ts && tsx lib/vnext/launch-zero-retirement-smoke.ts && pnpm test:bounded-directory-discovery",
+    "test:vnext-market-search": "pnpm test:project-identity-admission && tsx lib/server/vnext-canonical-search-catalog-smoke.ts && tsx lib/server/vnext-universal-market-search-smoke.ts && tsx lib/server/vnext-universal-market-search-route-smoke.ts && tsx lib/vnext/launch-zero-retirement-smoke.ts && pnpm test:bounded-directory-discovery && pnpm test:launch-intelligence",
     "test:bounded-directory-discovery": "tsx lib/vnext/bounded-discovery-smoke.ts && tsx lib/server/vnext-universal-market-search-default-smoke.ts",
     "test:vnext-directory": "tsx lib/vnext/directory-enrichment-queue-smoke.ts && tsx lib/vnext/directory-enrichment-hook-smoke.ts && tsx lib/server/vnext-partial-publication-smoke.ts && tsx lib/vnext/fresh-directory-availability-smoke.ts && tsx lib/vnext/canonical-window-refresh-smoke.ts && tsx lib/vnext/market-directory-smoke.ts && tsx lib/vnext/token-terminal-trade-worthy-smoke.ts && pnpm test:vnext-market-inventory && pnpm test:vnext-market-search && pnpm test:vnext-defillama",
     "test:vnext-defillama": "tsx lib/server/vnext-defillama-smoke.ts && tsx lib/server/vnext-defillama-chain-pulse-smoke.ts && tsx lib/server/vnext-defillama-chain-pulse-route-smoke.ts && tsx lib/server/vnext-defillama-capital-flow-smoke.ts",
@@ -122,7 +122,8 @@
     "proof:zero-x:fee-rounding": "tsx scripts/zero-x-fee-rounding-proof.ts",
     "proof:zero-x:ordinary-trace-capability": "tsx scripts/zero-x-native-trace-capability.ts",
     "proof:zero-x:settlement-trace": "tsx scripts/zero-x-settlement-trace-proof.ts",
-    "test:trade-contract-coherence": "tsx lib/vnext/trade-contract-coherence-smoke.ts"
+    "test:trade-contract-coherence": "tsx lib/vnext/trade-contract-coherence-smoke.ts",
+    "test:launch-intelligence": "tsx lib/server/launch-intelligence-smoke.ts"
   },
   "dependencies": {
     "@privy-io/node": "0.28.0",

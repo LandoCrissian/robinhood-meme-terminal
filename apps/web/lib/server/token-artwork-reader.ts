@@ -4,6 +4,7 @@ import { isIP } from "node:net";
 import { projectsForContract } from "@rmt/shared/project-identity";
 import { geckoPresentationReader, geckoTokenUrl, parseTokenVisual } from "./gecko-presentation-reader";
 import { safeTokenArtworkUrl } from "../vnext/token-artwork";
+import { readLaunchIntelligence } from "./launch-intelligence-reader";
 
 const MAX_BYTES = 1024 * 1024;
 export function publicArtworkIp(address: string) {
@@ -86,13 +87,20 @@ export function createArtworkCache(load = fetchPublicArtwork, now = Date.now) {
   };
 }
 const readArtwork = createArtworkCache();
-export async function tokenArtwork(contract: string, legacy: string | null) {
+export async function tokenArtwork(contract: string, legacy: string | null, launch = false) {
   const project = projectsForContract(contract).find(item => item.artwork !== null)?.artwork;
   // A legacy hint is restricted to already-supported public provider hosts. It
   // confers no identity/project authority and causes no DexScreener API lookup.
   const existing = legacy && safeTokenArtworkUrl(legacy)?.startsWith("https:") ? legacy : null;
   for (const candidate of [...new Set([project?.url, existing].filter((value): value is string => Boolean(value)))]) {
     const image = await readArtwork(candidate); if (image) return image;
+  }
+  if (launch) {
+    const indexed=await readLaunchIntelligence({token:contract,limit:10},{timeoutMs:500});
+    for (const candidate of [...new Set(indexed.entries.map(e=>e.identity.artwork).filter((v):v is string=>!!v))].slice(0,2)) {
+      const uri=candidate.toLowerCase().startsWith("ipfs://")?`https://ipfs.io/ipfs/${candidate.slice(7).replace(/^ipfs\//i, "")}`:candidate;
+      const image=await readArtwork(uri);if(image)return image;
+    }
   }
   const visual = await geckoPresentationReader.read(geckoTokenUrl(contract, "info"), value => parseTokenVisual(value, contract), 15 * 60_000, 86_400_000).catch(() => null);
   return visual?.data.image ? readArtwork(visual.data.image) : null;

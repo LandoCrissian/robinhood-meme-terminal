@@ -1,0 +1,804 @@
+{
+  "evidence": "GENUINE_READ_ONLY_ORIGIN_AND_SOURCE_VIEWS_REPLAYED_IN_CONTROLLED_COMPONENT_TESTS",
+  "capturedAt": "2026-10-02T14:39:03.203Z",
+  "sourceObservationBlock": "78308700",
+  "directory": {
+    "chainId": 4663,
+    "status": "partial",
+    "entries": [
+      {
+        "chainId": 4663,
+        "launchId": "0xa5aab3f0c6eeadf30ef1d3eb997108e976351feb:0x055650555be80649397084cd3f8a09b4350e8612",
+        "sourceId": "pons-v1",
+        "source": "PONS",
+        "sourceVersion": "V1",
+        "sourceContract": "0xa5aab3f0c6eeadf30ef1d3eb997108e976351feb",
+        "token": "0x055650555be80649397084cd3f8a09b4350e8612",
+        "quoteAsset": "0x0bd7d308f8e1639fab988df18a8011f41eacad73",
+        "creator": "0xb6e60e418e198aad0360be847863e0477420239a",
+        "curve": null,
+        "initialMarket": "0x8f4f723f10fc7bad28742d25c91158c728557c4c",
+        "liquidityDestination": "0x736d76699c26d0d966744cae304c000d471f7f35",
+        "relationship": "TOKEN_CREATED",
+        "launchTransaction": "0x92476c6f12444023711b221057dcffab166f673027479008f959ca37f5f21eb7",
+        "launchBlock": "9019252",
+        "launchBlockHash": "0xe1a0051a3071790e0bd5d93ae261e53310111e42e30adb13673be30b0e6f460c",
+        "logIndex": 15,
+        "launchTime": "2026-07-13T22:16:02.000Z",
+        "state": "LAUNCHED",
+        "sourcePhase": "V1 locked V3 pool",
+        "progressBps": 1347,
+        "creatorTaxBps": null,
+        "graduatedMarkets": [],
+        "graduationTransaction": null,
+        "graduationBlock": null,
+        "observedBlock": "78308700",
+        "observedBlockHash": "0x11f6af3b4fcfb8cc364e715d83a53ba9c5f56a47ebf5e1d13043aa589373a13a",
+        "observedAt": "2026-10-02T14:38:42.181Z",
+        "identity": {
+          "name": "Bunee Madaf",
+          "symbol": "BUNEE",
+          "decimals": 18,
+          "artwork": "ipfs://bafybeife3oprn74bhkm5kthltoktqumc553xvs3kbq3sksbn6jaesgdlfm"
+        },
+        "evidenceClass": "ONCHAIN_VERIFIED",
+        "identityObservations": {
+          "name": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "symbol": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "decimals": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "artwork": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          }
+        }
+      },
+      {
+        "chainId": 4663,
+        "launchId": "0xa5aab3f0c6eeadf30ef1d3eb997108e976351feb:0xbf71e7594725d0b537e151a9de8158b24a44fad3",
+        "sourceId": "pons-v1",
+        "source": "PONS",
+        "sourceVersion": "V1",
+        "sourceContract": "0xa5aab3f0c6eeadf30ef1d3eb997108e976351feb",
+        "token": "0xbf71e7594725d0b537e151a9de8158b24a44fad3",
+        "quoteAsset": "0x0bd7d308f8e1639fab988df18a8011f41eacad73",
+        "creator": "0xdd6572065fb3ff1020c7b8c05b25b9e1de36c6e4",
+        "curve": null,
+        "initialMarket": "0x6494a8c15998049a5dafeb1f3521043cb67b5d7f",
+        "liquidityDestination": "0x736d76699c26d0d966744cae304c000d471f7f35",
+        "relationship": "TOKEN_CREATED",
+        "launchTransaction": "0x84309a8b3b0f5a6ef18993a4110e8d5ba89ac28c8d6c73215d4b6f4dc5e964e4",
+        "launchBlock": "9023627",
+        "launchBlockHash": "0x739c19dc42b132bf47003ab2d4d6f491e0829bda3be80fa548f0b4b8baedc2b9",
+        "logIndex": 47,
+        "launchTime": "2026-07-13T22:23:21.000Z",
+        "state": "LAUNCHED",
+        "sourcePhase": "V1 locked V3 pool",
+        "progressBps": 2383,
+        "creatorTaxBps": null,
+        "graduatedMarkets": [],
+        "graduationTransaction": null,
+        "graduationBlock": null,
+        "observedBlock": "78308700",
+        "observedBlockHash": "0x11f6af3b4fcfb8cc364e715d83a53ba9c5f56a47ebf5e1d13043aa589373a13a",
+        "observedAt": "2026-10-02T14:38:44.869Z",
+        "identity": {
+          "name": "PonsCat",
+          "symbol": "PCAT",
+          "decimals": 18,
+          "artwork": "ipfs://bafkreifbevrrhg72wkniiq22y2orkuuywqrwedfwbpklqbjrnyjq7e7joa"
+        },
+        "evidenceClass": "ONCHAIN_VERIFIED",
+        "identityObservations": {
+          "name": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "symbol": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "decimals": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "artwork": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          }
+        }
+      },
+      {
+        "chainId": 4663,
+        "launchId": "0x0c37a24f5d23a486fa692d1500881d698b1f77a4:0xf4eaec43e22251547fbd2cb2f153e041c3aa4ea6",
+        "sourceId": "pons-v1-legacy",
+        "source": "PONS",
+        "sourceVersion": "V1",
+        "sourceContract": "0x0c37a24f5d23a486fa692d1500881d698b1f77a4",
+        "token": "0xf4eaec43e22251547fbd2cb2f153e041c3aa4ea6",
+        "quoteAsset": "0x0bd7d308f8e1639fab988df18a8011f41eacad73",
+        "creator": "0xda4bcee76b29efec9697fcf663601c2042043968",
+        "curve": null,
+        "initialMarket": "0x6b67f5ac7b07859e1b0c8270a8d88439d063b185",
+        "liquidityDestination": "0x31ca5e101941a93a7dd6d0497928700625cf54b5",
+        "relationship": "TOKEN_CREATED",
+        "launchTransaction": "0x1eb12729bb73bf5ef74dc0191cc7e9a6c06a71adabc919b72f1488a5d7d8abe6",
+        "launchBlock": "8621658",
+        "launchBlockHash": "0x1d7e36b06f7bfbd3ad3a05e89bf3c0fb49d2943bb763a5152a80b3f7b510b88c",
+        "logIndex": 13,
+        "launchTime": "2026-07-13T11:12:08.000Z",
+        "state": "GRADUATED",
+        "sourcePhase": "V1 principal threshold reached",
+        "progressBps": 10000,
+        "creatorTaxBps": null,
+        "graduatedMarkets": [
+          "0x6b67f5ac7b07859e1b0c8270a8d88439d063b185"
+        ],
+        "graduationTransaction": null,
+        "graduationBlock": null,
+        "observedBlock": "78308700",
+        "observedBlockHash": "0x11f6af3b4fcfb8cc364e715d83a53ba9c5f56a47ebf5e1d13043aa589373a13a",
+        "observedAt": "2026-10-02T14:38:48.050Z",
+        "identity": {
+          "name": "Test",
+          "symbol": "TEST",
+          "decimals": 18,
+          "artwork": "ipfs://bafkreigofrgf4n5hxxlty4osbhky7sgvaxvfhsyc2f7umn5fhoaajek2eq"
+        },
+        "evidenceClass": "ONCHAIN_VERIFIED",
+        "identityObservations": {
+          "name": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "symbol": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "decimals": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "artwork": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          }
+        }
+      },
+      {
+        "chainId": 4663,
+        "launchId": "0x7ed598bcef8bd9edd8c97a195c6d13f40801ec7e:0x266f5626e57a4bc96d224fba7989664d09e22e47",
+        "sourceId": "pons-v2",
+        "source": "PONS",
+        "sourceVersion": "V2",
+        "sourceContract": "0x7ed598bcef8bd9edd8c97a195c6d13f40801ec7e",
+        "token": "0x266f5626e57a4bc96d224fba7989664d09e22e47",
+        "quoteAsset": "0x0000000000000000000000000000000000000000",
+        "creator": "0x75773071458df6f83cfb6e02586ff992cf736709",
+        "curve": "0x30d58e507632a78a696904cd314e0a53eef3a57c",
+        "initialMarket": null,
+        "liquidityDestination": "0x267444d099b10fb5ed7c3cc7b7c767adca574952",
+        "relationship": "TOKEN_CREATED",
+        "launchTransaction": "0xa605849dddef5105da316d6e5f64fdc7ee0f241c31e332507a83020757a79525",
+        "launchBlock": "78248549",
+        "launchBlockHash": "0xda398372017e863c435ba99b52bd81e8ecc19c0842439db03feabbfa7b712d37",
+        "logIndex": 72,
+        "launchTime": "2026-10-02T12:57:54.000Z",
+        "state": "BONDING",
+        "sourcePhase": "Pons V2 phase 0",
+        "progressBps": 0,
+        "creatorTaxBps": 400,
+        "graduatedMarkets": [],
+        "graduationTransaction": null,
+        "graduationBlock": null,
+        "observedBlock": "78308700",
+        "observedBlockHash": "0x11f6af3b4fcfb8cc364e715d83a53ba9c5f56a47ebf5e1d13043aa589373a13a",
+        "observedAt": "2026-10-02T14:38:51.278Z",
+        "identity": {
+          "name": "Cyfrin Audits",
+          "symbol": "CA",
+          "decimals": 18,
+          "artwork": "ipfs://bafkreib2edeen4s5twghpn5iyoyj6m2d26fjqcnk6rxm3nl7k2364pya4e"
+        },
+        "evidenceClass": "ONCHAIN_VERIFIED",
+        "identityObservations": {
+          "name": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "symbol": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "decimals": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "artwork": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          }
+        }
+      },
+      {
+        "chainId": 4663,
+        "launchId": "0x7ed598bcef8bd9edd8c97a195c6d13f40801ec7e:0xd8b3cf377253683883693cc300042dc6344e347d",
+        "sourceId": "pons-v2",
+        "source": "PONS",
+        "sourceVersion": "V2",
+        "sourceContract": "0x7ed598bcef8bd9edd8c97a195c6d13f40801ec7e",
+        "token": "0xd8b3cf377253683883693cc300042dc6344e347d",
+        "quoteAsset": "0x0000000000000000000000000000000000000000",
+        "creator": "0x692cbddb8c35c2ff3c1e8bc5b1d255e8ec988bf5",
+        "curve": "0x6fbb5074a0b850bb526da93f123b18fa67d59925",
+        "initialMarket": null,
+        "liquidityDestination": "0x267444d099b10fb5ed7c3cc7b7c767adca574952",
+        "relationship": "TOKEN_CREATED",
+        "launchTransaction": "0xdc19055ca27eb77d6b62c73d615a54a837f306d411f8cc6bf772801339b1dcd1",
+        "launchBlock": "78248594",
+        "launchBlockHash": "0x80fb7c6cd46587256ca2d7c36ca1b542629a41754e9cdd51c469664e8c3dc4e7",
+        "logIndex": 4,
+        "launchTime": "2026-10-02T12:57:58.000Z",
+        "state": "BONDING",
+        "sourcePhase": "Pons V2 phase 0",
+        "progressBps": 0,
+        "creatorTaxBps": 300,
+        "graduatedMarkets": [],
+        "graduationTransaction": null,
+        "graduationBlock": null,
+        "observedBlock": "78308700",
+        "observedBlockHash": "0x11f6af3b4fcfb8cc364e715d83a53ba9c5f56a47ebf5e1d13043aa589373a13a",
+        "observedAt": "2026-10-02T14:38:53.773Z",
+        "identity": {
+          "name": "Scribbles",
+          "symbol": "DOODLR",
+          "decimals": 18,
+          "artwork": "ipfs://bafkreiglt6bykjbslcjfn6mcujyimcosnyqaziblcbgsyng7bxjqli64gq"
+        },
+        "evidenceClass": "ONCHAIN_VERIFIED",
+        "identityObservations": {
+          "name": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "symbol": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "decimals": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "artwork": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          }
+        }
+      },
+      {
+        "chainId": 4663,
+        "launchId": "0xfcd61b25bbf3abd6cf0070d6328e351cc30eec9f:1",
+        "sourceId": "stonk-v2-weth",
+        "source": "STONKBROKERS",
+        "sourceVersion": "V2",
+        "sourceContract": "0xfcd61b25bbf3abd6cf0070d6328e351cc30eec9f",
+        "token": "0x9532d6188987ac1e640b8b66d9d3d24f6d666666",
+        "quoteAsset": "0x0bd7d308f8e1639fab988df18a8011f41eacad73",
+        "creator": "0x6decd8daa7c87613caec796b45d9b7199b70bdb0",
+        "curve": null,
+        "initialMarket": null,
+        "liquidityDestination": null,
+        "relationship": "TOKEN_CREATED",
+        "launchTransaction": "0x18b9b66c71af08b090cdea9ce18cf2e0d0d9c23340d1c67c8374123bb064c4f9",
+        "launchBlock": "42694950",
+        "launchBlockHash": "0x74f63bc46c12518dc85bdec5a587c8e106a634e5ae8099e8ba7129e94e8dc191",
+        "logIndex": 4,
+        "launchTime": "2026-08-21T23:59:08.000Z",
+        "state": "GRADUATED",
+        "sourcePhase": "bonded",
+        "progressBps": 10000,
+        "creatorTaxBps": null,
+        "graduatedMarkets": [
+          "0x0db423a2b7254d01ff282c5a1724a79d8ffee9d7"
+        ],
+        "graduationTransaction": null,
+        "graduationBlock": null,
+        "observedBlock": "78308700",
+        "observedBlockHash": "0x11f6af3b4fcfb8cc364e715d83a53ba9c5f56a47ebf5e1d13043aa589373a13a",
+        "observedAt": "2026-10-02T14:38:56.425Z",
+        "identity": {
+          "name": "Intern",
+          "symbol": "INTERN",
+          "decimals": 18,
+          "artwork": null
+        },
+        "evidenceClass": "ONCHAIN_VERIFIED",
+        "marketCapUsd8": "10836908850679",
+        "identityObservations": {
+          "name": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "symbol": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "decimals": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          }
+        }
+      },
+      {
+        "chainId": 4663,
+        "launchId": "0xfcd61b25bbf3abd6cf0070d6328e351cc30eec9f:376",
+        "sourceId": "stonk-v2-weth",
+        "source": "STONKBROKERS",
+        "sourceVersion": "V2",
+        "sourceContract": "0xfcd61b25bbf3abd6cf0070d6328e351cc30eec9f",
+        "token": "0x90a8319b4b16e8d7823d15543d2354a35afed666",
+        "quoteAsset": "0x0bd7d308f8e1639fab988df18a8011f41eacad73",
+        "creator": "0x53e14fcfc7093edfc2edaf3a39b3af1a603ac853",
+        "curve": null,
+        "initialMarket": null,
+        "liquidityDestination": null,
+        "relationship": "TOKEN_CREATED",
+        "launchTransaction": "0xec061318fef75a46536c428be641db1305de22caa261e005f03d346ba8cf4f65",
+        "launchBlock": "78229958",
+        "launchBlockHash": "0x4bdeaed20b7cfc53c030654cd3f9d3db7eed0412f23cbb34d2c34dc5d8425b72",
+        "logIndex": 7,
+        "launchTime": "2026-10-02T12:26:34.000Z",
+        "state": "BONDING",
+        "sourcePhase": "armed",
+        "progressBps": 18,
+        "creatorTaxBps": null,
+        "graduatedMarkets": [],
+        "graduationTransaction": null,
+        "graduationBlock": null,
+        "observedBlock": "78308700",
+        "observedBlockHash": "0x11f6af3b4fcfb8cc364e715d83a53ba9c5f56a47ebf5e1d13043aa589373a13a",
+        "observedAt": "2026-10-02T14:38:57.347Z",
+        "identity": {
+          "name": "RugginWifHat",
+          "symbol": "RUG",
+          "decimals": 18,
+          "artwork": null
+        },
+        "evidenceClass": "ONCHAIN_VERIFIED",
+        "marketCapUsd8": "109018690095",
+        "identityObservations": {
+          "name": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "symbol": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "decimals": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          }
+        }
+      },
+      {
+        "chainId": 4663,
+        "launchId": "0x8f6782c5aa37804d08a9b7bf3984ff3245fd6cd4:1",
+        "sourceId": "stonk-v2-stonk",
+        "source": "STONKBROKERS",
+        "sourceVersion": "V2",
+        "sourceContract": "0x8f6782c5aa37804d08a9b7bf3984ff3245fd6cd4",
+        "token": "0x53ab2efc7eacb23a4c7af32fddb2ccdc0a172fc6",
+        "quoteAsset": "0xe934e36a439c94017b64a3fece66af12099abf50",
+        "creator": "0xc8267e18db3d837155a38d7a39bca0fd00000000",
+        "curve": null,
+        "initialMarket": null,
+        "liquidityDestination": null,
+        "relationship": "TOKEN_CREATED",
+        "launchTransaction": "0xd310fd43c66de867a8675f6ca8a18a1b02b04ec0608691e3eac307963df0d88c",
+        "launchBlock": "42694986",
+        "launchBlockHash": "0xe0b0039d207e3cee9ed392f526dcf8542c107ab6183bb272d7ae1d33627b51b6",
+        "logIndex": 1,
+        "launchTime": "2026-08-21T23:59:11.000Z",
+        "state": "GRADUATED",
+        "sourcePhase": "bonded",
+        "progressBps": 120,
+        "creatorTaxBps": null,
+        "graduatedMarkets": [
+          "0xc5de978ea3f9533b663907d9b17ebf82b2078a86"
+        ],
+        "graduationTransaction": null,
+        "graduationBlock": null,
+        "observedBlock": "78308700",
+        "observedBlockHash": "0x11f6af3b4fcfb8cc364e715d83a53ba9c5f56a47ebf5e1d13043aa589373a13a",
+        "observedAt": "2026-10-02T14:38:58.567Z",
+        "identity": {
+          "name": "Clock In",
+          "symbol": "CLOCKIN",
+          "decimals": 18,
+          "artwork": null
+        },
+        "evidenceClass": "ONCHAIN_VERIFIED",
+        "marketCapUsd8": "159081146127",
+        "identityObservations": {
+          "name": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "symbol": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "decimals": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          }
+        }
+      },
+      {
+        "chainId": 4663,
+        "launchId": "0x8f6782c5aa37804d08a9b7bf3984ff3245fd6cd4:132",
+        "sourceId": "stonk-v2-stonk",
+        "source": "STONKBROKERS",
+        "sourceVersion": "V2",
+        "sourceContract": "0x8f6782c5aa37804d08a9b7bf3984ff3245fd6cd4",
+        "token": "0x2b24e29f5d1bd0fcff5c792180eb51e193636ed9",
+        "quoteAsset": "0xe934e36a439c94017b64a3fece66af12099abf50",
+        "creator": "0x6786a106f01987349f653664081b14481e573e21",
+        "curve": null,
+        "initialMarket": null,
+        "liquidityDestination": null,
+        "relationship": "TOKEN_CREATED",
+        "launchTransaction": "0x5ba74aff9a486a33f616d486f5d35d1d89fa239f068392d51454e0d9e31fd819",
+        "launchBlock": "78170652",
+        "launchBlockHash": "0x50d0593f923124e6d3ec0b5a37ef3740677c43dd40de7e4c54c30be8c8d9ab66",
+        "logIndex": 1,
+        "launchTime": "2026-10-02T10:46:42.000Z",
+        "state": "BONDING",
+        "sourcePhase": "armed",
+        "progressBps": 0,
+        "creatorTaxBps": null,
+        "graduatedMarkets": [],
+        "graduationTransaction": null,
+        "graduationBlock": null,
+        "observedBlock": "78308700",
+        "observedBlockHash": "0x11f6af3b4fcfb8cc364e715d83a53ba9c5f56a47ebf5e1d13043aa589373a13a",
+        "observedAt": "2026-10-02T14:38:59.655Z",
+        "identity": {
+          "name": "Slab",
+          "symbol": "SLAB",
+          "decimals": 18,
+          "artwork": null
+        },
+        "evidenceClass": "ONCHAIN_VERIFIED",
+        "marketCapUsd8": "439187116526",
+        "identityObservations": {
+          "name": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "symbol": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "decimals": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          }
+        }
+      },
+      {
+        "chainId": 4663,
+        "launchId": "0x5bceefba6fdf437a7388adc5c9056c827baca3b3:2",
+        "sourceId": "stonk-v2-r2-weth",
+        "source": "STONKBROKERS",
+        "sourceVersion": "V2_R2",
+        "sourceContract": "0x5bceefba6fdf437a7388adc5c9056c827baca3b3",
+        "token": "0x7541872e32bb529d7ff11d6c59832269ce33a6ff",
+        "quoteAsset": "0x0bd7d308f8e1639fab988df18a8011f41eacad73",
+        "creator": "0xc6d7709dd8ba53832bd578a88260f8b8e59fb4c7",
+        "curve": null,
+        "initialMarket": null,
+        "liquidityDestination": null,
+        "relationship": "TOKEN_ENROLLED",
+        "launchTransaction": "0xc351a647c4cf03b075e13749db5b11d88476d44f2495b40f856e37999bbcc19e",
+        "launchBlock": "52874537",
+        "launchBlockHash": "0x48a483c7462a02db40cea05913c55a86bb6979f3cd1da4a3060d481690e8808e",
+        "logIndex": 13,
+        "launchTime": "2026-09-02T21:00:35.000Z",
+        "state": "BONDING",
+        "sourcePhase": "armed",
+        "progressBps": 28,
+        "creatorTaxBps": null,
+        "graduatedMarkets": [],
+        "graduationTransaction": null,
+        "graduationBlock": null,
+        "observedBlock": "78308700",
+        "observedBlockHash": "0x11f6af3b4fcfb8cc364e715d83a53ba9c5f56a47ebf5e1d13043aa589373a13a",
+        "observedAt": "2026-10-02T14:39:00.757Z",
+        "identity": {
+          "name": "MONVERA by Virtuals",
+          "symbol": "MONVERA",
+          "decimals": 18,
+          "artwork": null
+        },
+        "evidenceClass": "ONCHAIN_VERIFIED",
+        "marketCapUsd8": "113933443010",
+        "identityObservations": {
+          "name": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "symbol": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          },
+          "decimals": {
+            "block": "78295995",
+            "blockHash": "0x75fa6b9450c2d87953298053581bb01ea875364a859517a9d68b6f36ec1d9da9",
+            "observedAt": "2026-10-02T14:17:29.628Z"
+          }
+        }
+      }
+    ],
+    "nextCursor": null,
+    "sources": [
+      {
+        "sourceId": "pons-v1",
+        "indexedThrough": null,
+        "historicalFrom": null,
+        "status": "indexing"
+      },
+      {
+        "sourceId": "pons-v1-legacy",
+        "indexedThrough": null,
+        "historicalFrom": null,
+        "status": "indexing"
+      },
+      {
+        "sourceId": "pons-v2",
+        "indexedThrough": null,
+        "historicalFrom": null,
+        "status": "indexing"
+      },
+      {
+        "sourceId": "stonk-v2-weth",
+        "indexedThrough": null,
+        "historicalFrom": null,
+        "status": "indexing"
+      },
+      {
+        "sourceId": "stonk-v2-stonk",
+        "indexedThrough": null,
+        "historicalFrom": null,
+        "status": "indexing"
+      },
+      {
+        "sourceId": "stonk-v2-usdg",
+        "indexedThrough": null,
+        "historicalFrom": null,
+        "status": "indexing"
+      },
+      {
+        "sourceId": "stonk-v2-gme",
+        "indexedThrough": null,
+        "historicalFrom": null,
+        "status": "indexing"
+      },
+      {
+        "sourceId": "stonk-v2-nvda",
+        "indexedThrough": null,
+        "historicalFrom": null,
+        "status": "indexing"
+      },
+      {
+        "sourceId": "stonk-v2-aapl",
+        "indexedThrough": null,
+        "historicalFrom": null,
+        "status": "indexing"
+      },
+      {
+        "sourceId": "stonk-v2-spcx",
+        "indexedThrough": null,
+        "historicalFrom": null,
+        "status": "indexing"
+      },
+      {
+        "sourceId": "stonk-v2-uso",
+        "indexedThrough": null,
+        "historicalFrom": null,
+        "status": "indexing"
+      },
+      {
+        "sourceId": "stonk-v2-ybtc",
+        "indexedThrough": null,
+        "historicalFrom": null,
+        "status": "indexing"
+      },
+      {
+        "sourceId": "stonk-v2-r2-weth",
+        "indexedThrough": null,
+        "historicalFrom": null,
+        "status": "indexing"
+      },
+      {
+        "sourceId": "stonk-v2-r2-stonk",
+        "indexedThrough": null,
+        "historicalFrom": null,
+        "status": "indexing"
+      },
+      {
+        "sourceId": "stonk-v2-r2-usdg",
+        "indexedThrough": null,
+        "historicalFrom": null,
+        "status": "indexing"
+      },
+      {
+        "sourceId": "stonk-v2-r2-gme",
+        "indexedThrough": null,
+        "historicalFrom": null,
+        "status": "indexing"
+      },
+      {
+        "sourceId": "stonk-v2-r2-nvda",
+        "indexedThrough": null,
+        "historicalFrom": null,
+        "status": "indexing"
+      },
+      {
+        "sourceId": "stonk-v2-r2-aapl",
+        "indexedThrough": null,
+        "historicalFrom": null,
+        "status": "indexing"
+      },
+      {
+        "sourceId": "stonk-v2-r2-spcx",
+        "indexedThrough": null,
+        "historicalFrom": null,
+        "status": "indexing"
+      },
+      {
+        "sourceId": "stonk-v2-r2-uso",
+        "indexedThrough": null,
+        "historicalFrom": null,
+        "status": "indexing"
+      },
+      {
+        "sourceId": "stonk-v2-r2-ybtc",
+        "indexedThrough": null,
+        "historicalFrom": null,
+        "status": "indexing"
+      }
+    ]
+  },
+  "outcomes": [
+    {
+      "source": "pons-v1",
+      "token": "0x055650555be80649397084cd3f8a09b4350e8612",
+      "result": "READY",
+      "state": "LAUNCHED",
+      "progressBps": 1347,
+      "markets": []
+    },
+    {
+      "source": "pons-v1",
+      "token": "0xbf71e7594725d0b537e151a9de8158b24a44fad3",
+      "result": "READY",
+      "state": "LAUNCHED",
+      "progressBps": 2383,
+      "markets": []
+    },
+    {
+      "source": "pons-v1-legacy",
+      "token": "0xf4eaec43e22251547fbd2cb2f153e041c3aa4ea6",
+      "result": "READY",
+      "state": "GRADUATED",
+      "progressBps": 10000,
+      "markets": [
+        "0x6b67f5ac7b07859e1b0c8270a8d88439d063b185"
+      ]
+    },
+    {
+      "source": "pons-v2",
+      "token": "0x266f5626e57a4bc96d224fba7989664d09e22e47",
+      "result": "READY",
+      "state": "BONDING",
+      "progressBps": 0,
+      "markets": []
+    },
+    {
+      "source": "pons-v2",
+      "token": "0xd8b3cf377253683883693cc300042dc6344e347d",
+      "result": "READY",
+      "state": "BONDING",
+      "progressBps": 0,
+      "markets": []
+    },
+    {
+      "source": "stonk-v2-weth",
+      "token": "0x9532d6188987ac1e640b8b66d9d3d24f6d666666",
+      "result": "READY",
+      "state": "GRADUATED",
+      "progressBps": 10000,
+      "markets": [
+        "0x0db423a2b7254d01ff282c5a1724a79d8ffee9d7"
+      ]
+    },
+    {
+      "source": "stonk-v2-weth",
+      "token": "0x90a8319b4b16e8d7823d15543d2354a35afed666",
+      "result": "READY",
+      "state": "BONDING",
+      "progressBps": 18,
+      "markets": []
+    },
+    {
+      "source": "stonk-v2-stonk",
+      "token": "0x53ab2efc7eacb23a4c7af32fddb2ccdc0a172fc6",
+      "result": "READY",
+      "state": "GRADUATED",
+      "progressBps": 120,
+      "markets": [
+        "0xc5de978ea3f9533b663907d9b17ebf82b2078a86"
+      ]
+    },
+    {
+      "source": "stonk-v2-stonk",
+      "token": "0x2b24e29f5d1bd0fcff5c792180eb51e193636ed9",
+      "result": "READY",
+      "state": "BONDING",
+      "progressBps": 0,
+      "markets": []
+    },
+    {
+      "source": "stonk-v2-r2-weth",
+      "token": "0x7541872e32bb529d7ff11d6c59832269ce33a6ff",
+      "result": "READY",
+      "state": "BONDING",
+      "progressBps": 28,
+      "markets": []
+    }
+  ]
+}

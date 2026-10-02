@@ -152,6 +152,8 @@ jobs:
       - run: pnpm --filter market-indexer test:decoder
       - run: pnpm --filter market-indexer test:replay
       - run: pnpm --filter market-indexer test:schema
+      - name: Verify durable launch producer, authenticated reader and exact token consumer
+        run: pnpm --filter web exec tsx lib/server/launch-producer-consumer-sql-smoke.ts
       - run: pnpm --filter market-indexer test:telemetry
       - run: pnpm --filter market-indexer test:server
       - run: pnpm --filter market-indexer test:up-enrichment
