@@ -20,7 +20,8 @@ for(const viewport of [{width:375,height:812},{width:390,height:844},{width:430,
   const metadataQuery=[fixture.directory.entries[3].token,fixture.directory.entries[3].token.toUpperCase().replace('0X','0x'),fixture.directory.entries[3].token.replace('266f','266F'),fixture.directory.entries[3].token.replace('d224','D224')][lane];
   const context=await browser.newContext({viewport,isMobile:viewport.width<768,hasTouch:viewport.width<768});const page=await context.newPage();const errors=[],artworkResponses=[];page.on("pageerror",error=>errors.push(error.message));
   page.on('response',response=>{const url=new URL(response.url());if(url.pathname==='/api/vnext/token-artwork')artworkResponses.push({boundary:'RMT_ARTWORK_PROXY',token:url.searchParams.get('address'),status:response.status()});});
-  await page.addInitScript(()=>{window.__walletRequests=0;window.ethereum={on(){},removeListener(){},async request({method}){if(/sign|sendTransaction|wallet_sendCalls/.test(method)){window.__walletRequests++;throw Error("Financial action prohibited");}return method==="eth_chainId"?"0x1237":[];}};});
+  // Monitor both the Launches page and its actual Markets companion.
+  await context.addInitScript(()=>{window.__walletRequests=0;window.ethereum={on(){},removeListener(){},async request({method}){if(/sign|sendTransaction|wallet_sendCalls/.test(method)){window.__walletRequests++;throw Error("Financial action prohibited");}return method==="eth_chainId"?"0x1237":[];}};});
   await page.route("**/api/vnext/asset-workspace?**",route=>route.fulfill({status:503,json:{error:"CONTROLLED_MARKET_ENRICHMENT_UNAVAILABLE"}}));
   await page.route("**/api/markets/ohlcv?**",route=>route.fulfill({status:503,json:{error:"CONTROLLED_CHART_UNAVAILABLE"}}));
   await page.route("**/api/vnext/asset-identity?**",route=>route.fulfill({status:503,json:{error:"CONTROLLED_METADATA_UNAVAILABLE"}}));
