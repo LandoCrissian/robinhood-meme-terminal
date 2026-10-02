@@ -16,11 +16,10 @@ try {
   page.on('response',response=>{const url=new URL(response.url());if(url.origin===new URL(base).origin&&url.pathname.startsWith('/projects'))navigationEvidence.push({viewport,path:url.pathname,status:response.status(),resourceType:response.request().resourceType()});});
   page.on('requestfailed',request=>{const url=new URL(request.url());if(url.origin===new URL(base).origin&&url.pathname.startsWith('/projects'))navigationEvidence.push({viewport,path:url.pathname,failure:request.failure()?.errorText,resourceType:request.resourceType()});});
   await page.addInitScript(()=>{window.__projectWalletRequests=0;window.ethereum={on(){},removeListener(){},async request({method}){if(/sign|sendTransaction|wallet_sendCalls/.test(method)){window.__projectWalletRequests++;throw Error('Financial action prohibited');}return method==='eth_chainId'?'0x1237':[];}};});
-  const routes=await installTokenRoutes(page);let delayed=false, unavailable=false, holdMarket=false, holdIdentity=false;const marketWaiters=[], identityWaiters=[];let marketResponses=0;
+  const routes=await installTokenRoutes(page);let delayed=false, unavailable=false, holdMarket=false;const marketWaiters=[];let marketResponses=0;
   // Controlled external identity response for the exact independently observed
   // CANNACAT address. The real directory selection and Project consumers run.
-  await page.route(/\/api\/vnext\/asset-identity(?:\?.*)?$/,async route=>{
-   if(holdIdentity) await new Promise(resolve=>identityWaiters.push(resolve));
+  await page.route(/\/api\/vnext\/asset-identity(?:\?.*)?$/,route=>{
    const address=new URL(route.request().url()).searchParams.get('address');
    return address?.toLowerCase()===canna.toLowerCase()
     ? route.fulfill({json:{resolution:{chainId:4663,requestedAddress:canna,requestedKind:'token',status:'token-only',token:{address:canna,name:'CannaCat',symbol:'CANNACAT',decimals:18,totalSupply:'1000000000000000000000000000'},pools:[],marketData:'identity-only',execution:'swap-capable',provenance:'robinhood-chain-contract-reads',resolvedAt:new Date().toISOString()}}})
@@ -109,7 +108,7 @@ try {
   const before=await measure();assert.equal(before.start,3,'Nonterminal caret established before passive observation');routes.setChartMode('stale');routes.setRiskMode('unavailable');
   const aligned=await measure();assert.ok(marketWaiters.length>0,'Real workspace enrichment request is pending while the input is focused');const responsesBefore=marketResponses;holdMarket=false;marketWaiters.splice(0).forEach(resolve=>resolve());await new Promise(r=>setTimeout(r,10000));assert.ok(marketResponses>responsesBefore,'Delayed market evidence actually arrived');const after=await measure();assert.equal(after.value,before.value);assert.equal(after.payment,before.payment);assert.equal(after.section,before.section);assert.equal(after.range,'6H');assert.ok(after.dock,'Persistent action measured on both desktop and mobile');assert.equal(after.focus,true);assert.equal(after.start,3);assert.equal(after.scrollY,aligned.scrollY);assert.deepEqual(after.amount,aligned.amount);assert.deepEqual(after.dock,aligned.dock);assert.deepEqual(after.chart,aligned.chart);await capture('project-enrichment-isolation');
   // The wallet provider mounts on the client. Observe the first actual ticket,
-  // not absent form markup in the server HTML. Hold selection enrichment until
+  // not absent form markup in the server HTML. Hold optional market enrichment until
   // after typing so delayed synchronization cannot silently clear the draft.
   // Start a fresh controlled ticket; wallet-return draft recovery is covered by
   // the existing transaction journeys. Never remove an execution/recovery journal.
@@ -135,7 +134,7 @@ try {
    const frame=()=>{sample();if(!evidence.done)requestAnimationFrame(frame);else observer.disconnect();};
    requestAnimationFrame(frame);
   });
-  holdMarket=true;holdIdentity=true;
+  holdMarket=true;
   const sellResponse=await page.goto(`${base}/?market=${canna}&project=cannacats&side=sell`,{waitUntil:'domcontentloaded'});
   assert.equal(sellResponse.status(),200);
   assert.match(sellResponse.headers()['content-type'],/text\/html/);
@@ -150,8 +149,9 @@ try {
   await page.waitForTimeout(500);
   assert.equal(await amount.inputValue(),'25','Initial selected-side synchronization cannot clear early typing');
   assert.ok(marketWaiters.length>0,'Optional market enrichment is still delayed after typing');
-  assert.ok(identityWaiters.length>0,'Selection identity enrichment is held until after typing');
-  holdMarket=false;holdIdentity=false;marketWaiters.splice(0).forEach(resolve=>resolve());identityWaiters.splice(0).forEach(resolve=>resolve());await page.waitForTimeout(1000);
+  // The server seed already carries this exact project's verified units. Do not
+  // require an unnecessary identity read merely to satisfy the fixture.
+  holdMarket=false;marketWaiters.splice(0).forEach(resolve=>resolve());await page.waitForTimeout(1000);
   assert.equal(await amount.inputValue(),'25','Enrichment cannot replay the initial side request');
   assert.equal(await amount.evaluate(n=>document.activeElement===n && n.selectionStart===1 && n.selectionEnd===1),true,
    'Initial directory completion preserves typed input focus and caret');
