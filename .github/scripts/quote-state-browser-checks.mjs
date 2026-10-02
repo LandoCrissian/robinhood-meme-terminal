@@ -14,11 +14,30 @@ export async function exerciseRestoredQuoteState({ page, api, requests, scenario
   await until(async () => (await page.evaluate(() => localStorage.getItem('rmt:vnext-execution-journal:v1:4663') ?? '')).includes('submitted'), 'approval must be journaled');
   await page.evaluate(() => sessionStorage.removeItem('rmt:pending-approval-journey:v1:4663'));
   await page.reload({ waitUntil: 'domcontentloaded' });
-  // Location restoration chooses Sell asynchronously and clears its amount.
-  // Do not type into the initial Buy render before that real UI transition.
+  const expectedContract = new URL(page.url()).searchParams.get('market')?.toLowerCase();
+  assert.match(expectedContract ?? '', /^0x[0-9a-f]{40}$/);
+  const restoredSnapshot = () => page.evaluate(() => ({
+    heading: document.querySelector('.vnTradeHeader h2')?.textContent ?? null,
+    amount: document.querySelector('[aria-label="Exact input amount"]')?.value ?? null,
+    contract: document.querySelector('.vnIdentityActionBar a')?.getAttribute('href') ?? null,
+    side: document.querySelector('.vnSideTabs [aria-selected="true"]')?.textContent ?? null
+  }));
+  const initialRestore = await restoredSnapshot();
+  // The URL-selected side exists on the first client mount. That is not proof
+  // that the ordinary token lookup/draft restoration has completed. Enter the
+  // reconstructed amount on the exact selected destination, not its empty shell.
   if (page.viewportSize().width <= 760) await page.locator('.rmtMobileSheetLayer.isOpen').waitFor();
   await page.getByRole('tab', { name: 'Sell', exact: true, selected: true }).waitFor();
+  await until(async () => {
+    const snapshot = await restoredSnapshot();
+    return snapshot.contract?.toLowerCase().includes(`/token/${expectedContract}`)
+      && snapshot.heading !== 'Select an asset' && snapshot.side === 'Sell';
+  }, 'restored ticket must belong to the exact URL-selected contract');
   await page.getByLabel('Exact input amount').fill('25');
+  await writeFile(path.join(output, `${prefix}-restore-initialization.json`), JSON.stringify({
+    evidence: 'CONTROLLED_BROWSER', expectedContract, initialRestore,
+    enteredOnDestination: await restoredSnapshot()
+  }, null, 2));
   enableReceipts();
   const authorizations = () => api.filter(x => x.path.endsWith('/authorize') && x.status === 200 && x.body.plan.kind === 'swap');
   await until(() => authorizations().length > 0, 'restored confirmed approval must freshly verify');
