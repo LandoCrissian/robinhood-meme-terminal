@@ -163,12 +163,16 @@ const EXPECTED_TABLES = [
   "market_token_identity_catalog_state"
 ] as const;
 
+// Launch evidence shares this dedicated database but is always durable, even
+// when the independently rebuildable pool inventory uses UNLOGGED tables.
+const LAUNCH_TABLES = ["rmt_launch_sources", "rmt_launch_events", "rmt_launch_checkpoints", "rmt_launch_observations", "rmt_launch_identities", "rmt_launch_refresh_attempts"];
+
 async function assertDedicatedDatabaseBeforeDdl(client: PoolClient) {
   const result = await client.query<{ tablename: string }>(
     `SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename`
   );
   const unexpected = result.rows.map((row) => row.tablename).filter(
-    (table) => !EXPECTED_TABLES.includes(table as (typeof EXPECTED_TABLES)[number])
+    (table) => !EXPECTED_TABLES.includes(table as (typeof EXPECTED_TABLES)[number]) && !LAUNCH_TABLES.includes(table)
   );
   if (unexpected.length > 0) {
     throw new Error(

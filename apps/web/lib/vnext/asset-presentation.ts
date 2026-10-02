@@ -14,7 +14,7 @@ export function assetPresentationClasses(market: VNextDirectoryMarket): RmtAsset
   const classes: RmtAssetClass[] = market.rwaRelationship === "canonical-stock-token" ? ["STOCK_TOKEN"] : ["TOKEN"];
   if (market.address.toLowerCase() === ROBINHOOD_USDG_ADDRESS.toLowerCase()) classes.push("STABLECOIN");
   if (projectsForContract(market.address).length) classes.push("PROJECT");
-  if (market.launchpadEvidence?.some(e => ["verified-contract-state-and-events", "verified-factory-and-token-state", "verified-public-feed-and-contract-state"].includes(e.provenance))) classes.push("LAUNCH");
+  if (market.launchIntelligence?.evidenceClass === "ONCHAIN_VERIFIED" || market.launchpadEvidence?.some(e => ["verified-contract-state-and-events", "verified-factory-and-token-state", "verified-public-feed-and-contract-state"].includes(e.provenance))) classes.push("LAUNCH");
   // Paired stock evidence is a relationship, not this token's classification.
   return classes;
 }

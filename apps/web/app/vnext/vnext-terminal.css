@@ -6355,7 +6355,7 @@ body .rmtTerminal button {
 .rmtMobileMarketsView > .rmtSearchStatus { min-height: 20px; margin: 0 10px 4px; padding: 0; border: 0; background: transparent; text-align: left; font-size: 11px; }
 .rmtExplore > summary { min-height: 44px; display: flex; gap: 8px; align-items: center; cursor: pointer; color: var(--vn-text-secondary); font-size: 13px; }
 .rmtExploreChoices { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0 10px; }
-.rmtExploreChoices button { min-height: 44px; padding: 10px 14px; border: 1px solid var(--vn-border); border-radius: 10px; background: var(--vn-surface); color: var(--vn-text-secondary); cursor: pointer; }
+.rmtExploreChoices button, .rmtExploreChoices a { text-decoration:none; display:inline-flex; align-items:center; min-height: 44px; padding: 10px 14px; border: 1px solid var(--vn-border); border-radius: 10px; background: var(--vn-surface); color: var(--vn-text-secondary); cursor: pointer; }
 .rmtExploreChoices button[aria-pressed="true"] { color: var(--vn-accent); border-color: var(--vn-accent); }
 .rmtMarketViews { display: block; overflow: visible; }
 .rmtPrimaryViews { display: flex; gap: 6px; }

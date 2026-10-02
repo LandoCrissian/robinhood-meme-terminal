@@ -4,6 +4,8 @@ import { vNextProductionShellReady } from "../lib/vnext/release-readiness";
 import { VNextTerminalShell } from "./vnext/vnext-terminal-shell";
 import { parseVNextTerminalLocation } from "../lib/vnext/terminal-location";
 import { projectTokenTerminalEntry } from "../lib/vnext/terminal-entry";
+import { readLaunchIntelligence } from "../lib/server/launch-intelligence-reader";
+import { launchTerminalEntry } from "../lib/vnext/launch-presentation";
 
 export const dynamic = "force-dynamic";
 export { metadata } from "./vnext/page";
@@ -16,5 +18,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<Rec
     if (typeof value === "string") query.set(key, value);
   }
   const initialLocation = parseVNextTerminalLocation(query.toString());
-  return <VNextTerminalShell initialLocation={initialLocation} initialMarket={projectTokenTerminalEntry(initialLocation, query.get("project") ?? undefined)} />;
+  let initialMarket = projectTokenTerminalEntry(initialLocation, query.get("project") ?? undefined);
+  if (initialLocation.context === "asset" && query.has("launch")) {
+    const launches = await readLaunchIntelligence({token:initialLocation.market,limit:50},{timeoutMs:500});
+    const launch=launches.entries.find(entry=>entry.launchId===query.get("launch"));
+    initialMarket ??= launchTerminalEntry(initialLocation,launch);
+  }
+  return <VNextTerminalShell initialLocation={initialLocation} initialMarket={initialMarket} />;
 }

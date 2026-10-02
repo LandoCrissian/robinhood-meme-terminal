@@ -12,6 +12,7 @@ import type {
   ExternalMarketSignal
 } from "../external-market-ranking";
 import type { AssetMetadata } from "./execution-domain";
+import type { LaunchEvidence } from "@rmt/shared/launch-intelligence";
 import { assetKey, evmAsset } from "./execution-domain";
 import {
   ROBINHOOD_MAINNET_CHAIN_ID,
@@ -82,6 +83,7 @@ export type VNextDirectoryMarket = Omit<Pick<ExternalMarket,
     symbol: string;
     decimals: number;
   };
+  launchIntelligence?: LaunchEvidence;
 };
 
 export type VNextMarketState = {

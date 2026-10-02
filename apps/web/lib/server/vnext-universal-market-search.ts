@@ -22,6 +22,7 @@ import type {
 } from "../vnext/universal-market-search-contract";
 import {
   applyProjectIdentityDirectoryAdmission,
+  excludeKnownPositiveProjectIdentityQuarantines,
   type ProjectIdentityAdmissionCandidate
 } from "./project-identity-admission";
 import {
@@ -30,6 +31,7 @@ import {
   type VNextCanonicalSearchCatalog
 } from "./vnext-canonical-search-catalog";
 import { searchRmtCuratedMarkets } from "./rmt-curated-market-search";
+import { readLaunchIntelligence } from "./launch-intelligence-reader";
 
 export type {
   VNextUniversalMarketSearchMatchedBy,
@@ -97,6 +99,7 @@ export type VNextUniversalMarketSearchDependencies = {
   admitProjectIdentities?: ProjectAdmissionFilter;
   readCanonicalCatalog?: CanonicalCatalogReader;
   searchCanonicalTokens?: CanonicalTokenSearchReader;
+  readLaunches?: typeof readLaunchIntelligence;
 };
 
 type CandidatePair = {
@@ -626,7 +629,7 @@ async function discoverCandidates(
 
 async function textSearch(
   query: string,
-  dependencies: Required<VNextUniversalMarketSearchDependencies>,
+  dependencies: Required<Omit<VNextUniversalMarketSearchDependencies,"readLaunches">>,
   includeCuratedEvidence = false
 ): Promise<VNextUniversalMarketSearchResult> {
   const discoveryPromise = discoverCandidates(
@@ -792,7 +795,7 @@ async function textSearch(
   };
 }
 
-export async function searchVNextUniversalMarkets(
+async function searchExistingVNextUniversalMarkets(
   requestedQuery: string,
   dependencies: VNextUniversalMarketSearchDependencies = {}
 ): Promise<VNextUniversalMarketSearchResult> {
@@ -929,6 +932,27 @@ const NO_STORE_HEADERS = {
   "Cache-Control": "private, no-store, max-age=0",
   "X-Content-Type-Options": "nosniff"
 };
+
+/** Indexed launch identities supplement discovery, never execution identity or
+ * existing positive conflicts. Missing units remain unknown in Launches. */
+export async function searchVNextUniversalMarkets(query:string, dependencies:VNextUniversalMarketSearchDependencies={}) {
+  const text=query.trim();
+  const useLaunches=text.length>0&&text.length<=MAXIMUM_SEARCH_QUERY_LENGTH&&!HEX_PREFIX_PATTERN.test(text)
+    && (dependencies.readLaunches!==undefined||Object.keys(dependencies).length===0);
+  const launchRead=useLaunches?(dependencies.readLaunches??readLaunchIntelligence)({q:text,limit:50}):null;
+  const result=await searchExistingVNextUniversalMarkets(query,dependencies);
+  if(!launchRead)return result;
+  const directory=await launchRead;
+  const supplemental=directory.entries.flatMap(launch=>{
+    const {name,symbol,decimals}=launch.identity;
+    if(!name||!symbol||decimals===null||!launch.identityObservations?.decimals)return [];
+    const match=matchIdentity(text,{address:launch.token,name,symbol,decimals});
+    if(!match||result.results.some(existing=>existing.address===launch.token))return [];
+    return [{address:launch.token,name,symbol,decimals,matchedBy:match.matchedBy,markets:[]} satisfies VNextUniversalMarketSearchResultItem];
+  });
+  const unique=excludeKnownPositiveProjectIdentityQuarantines([...new Map(supplemental.map(item=>[item.address,item])).values()]);
+  return unique.length?{...result,status:"found" as const,results:[...result.results,...unique].slice(0,MAXIMUM_RESULTS)}:result;
+}
 
 export async function respondWithVNextUniversalMarketSearch(
   request: Request,

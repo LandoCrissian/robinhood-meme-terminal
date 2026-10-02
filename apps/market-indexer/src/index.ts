@@ -5,6 +5,7 @@ import { createMarketIndexerServer } from "./server.js";
 import { MarketIndexerWorker } from "./worker.js";
 import { PositionGuardHeartbeat } from "./position-guard-heartbeat.js";
 import { warmCanonicalTokenIdentityIndex } from "./token-identity-index.js";
+import { migrateLaunchStore } from "./launch-store.js";
 
 const config = loadMarketIndexerConfig();
 const pool = new Pool({
@@ -14,6 +15,7 @@ const pool = new Pool({
 });
 
 await migrateMarketIndexer(pool, config.storageMode);
+await migrateLaunchStore(pool);
 await warmCanonicalTokenIdentityIndex(pool);
 const worker = new MarketIndexerWorker(pool, config);
 const positionGuardHeartbeat = new PositionGuardHeartbeat(config.positionGuardEvaluator);

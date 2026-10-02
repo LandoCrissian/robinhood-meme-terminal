@@ -64,6 +64,17 @@ for (const name of services) {
         assert.ok(candidate, `Unresolved workspace dependency ${dependency}`);
         const directory = candidate.slice(0, -"/package.json".length);
         assert.ok(matches(patterns, candidate), `${name} misses dependency manifest ${candidate}`);
+        // This service imports only a standalone shared TYPE. Its plain Node
+        // build emits no shared runtime import; unrelated NFT modules are not
+        // build inputs. The exact interface and manifest still trigger it.
+        if(name === "market-indexer" && dependency === "@rmt/shared") {
+          const imports=tracked.filter(file=>file.startsWith('apps/market-indexer/src/')&&file.endsWith('.ts'))
+            .flatMap(file=>[...readFileSync(resolve(root,file),'utf8').matchAll(/import\s+(type\s+)?[^;]*?from\s+["'](@rmt\/shared[^"']*)["']/g)]);
+          assert.ok(imports.length>0);
+          assert.ok(imports.every(imported=>imported[1] && imported[2]==='@rmt/shared/launch-intelligence'));
+          assert.ok(matches(patterns, 'packages/shared/src/launch-intelligence.ts'));
+          continue;
+        }
         for (const file of tracked.filter((file) => file.startsWith(`${directory}/src/`))) {
           assert.ok(matches(patterns, file), `${name} misses workspace source ${file}`);
         }
@@ -82,9 +93,10 @@ test("base misses main-indexer lockfile; corrected scope includes it", () => {
   assert.equal(matches(baseline.services.indexer.build.watchPatterns, "pnpm-lock.yaml"), false);
   assert.ok(matches(configs.indexer.build.watchPatterns, "pnpm-lock.yaml"));
 });
-test("shared NFT source triggers exactly its two consumers, shared docs trigger none", () => {
+test("shared NFT source triggers exactly its two runtime consumers, shared manifest covers all consumers", () => {
   assert.deepEqual(triggered("packages/shared/src/nft/activity-domain.ts"), ["nft-indexer", "nft-marketplace-indexer"]);
-  assert.deepEqual(triggered("packages/shared/package.json"), ["nft-indexer", "nft-marketplace-indexer"]);
+  assert.deepEqual(triggered("packages/shared/package.json"), ["market-indexer", "nft-indexer", "nft-marketplace-indexer"]);
+  assert.deepEqual(triggered("packages/shared/src/launch-intelligence.ts"), ["market-indexer", "nft-indexer", "nft-marketplace-indexer"]);
   assert.deepEqual(triggered("packages/shared/README.md"), []);
 });
 test("root dependency changes still trigger every worker", () => {

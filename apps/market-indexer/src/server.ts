@@ -10,6 +10,7 @@ import {
 } from "./sources.js";
 import type { MarketIndexerWorker } from "./worker.js";
 import type { PositionGuardHeartbeat } from "./position-guard-heartbeat.js";
+import { readLaunchDirectory, InvalidLaunchCursor } from "./launch-store.js";
 import {
   readCanonicalBrowseIdentities,
   readCanonicalIdentityDiagnostics,
@@ -356,6 +357,14 @@ export function createMarketIndexerServer(
         }
         return;
       }
+      if (request.method === "GET" && url.pathname === "/v1/launches") {
+        if (!bearer(request, config.readToken)) { json(response, 401, {error:"unauthorized"}); return; }
+        const token=exactToken(url.searchParams.get("token")), source=url.searchParams.get("source"), query=url.searchParams.get("q"), cursor=url.searchParams.get("cursor"), limitText=url.searchParams.get("limit") ?? "30";
+        if (token===undefined || (source!==null && !["PONS","STONKBROKERS"].includes(source)) || (query!==null && (query.length>160 || !query.trim())) || !/^(?:[1-9]|[1-4][0-9]|50)$/.test(limitText) || (cursor!==null && (cursor.length>1024 || !/^[A-Za-z0-9_-]+$/.test(cursor)))) {
+          json(response,400,{error:"invalid_launch_query"});return;
+        }
+        json(response,200,await readLaunchDirectory(pool,{ token:token??undefined,source:source??undefined,q:query??undefined,cursor:cursor??undefined,limit:Number(limitText) }));return;
+      }
       if (request.method === "GET" && url.pathname === "/v1/status") {
         if (!bearer(request, config.readToken)) {
           json(response, 401, { error: "unauthorized" });
@@ -600,6 +609,7 @@ export function createMarketIndexerServer(
       }
       json(response, 404, { error: "not found" });
     } catch (error) {
+      if(error instanceof InvalidLaunchCursor) { json(response,400,{error:"invalid launch cursor"}); return; }
       console.error(
         JSON.stringify({
           event: "market_indexer_request_failed",

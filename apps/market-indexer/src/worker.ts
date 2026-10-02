@@ -42,6 +42,7 @@ import {
   enqueueCanonicalTokenIdentityCandidates,
   refreshCanonicalTokenIdentityIndex
 } from "./token-identity-index.js";
+import { LaunchIndexer } from "./launch-worker.js";
 
 export type WorkerStatus = {
   lastWorkerSuccessAt?: string | null;
@@ -163,6 +164,7 @@ export class MarketIndexerWorker {
   };
 
   private readonly rpc: PublicClient;
+  private launchIndexer: LaunchIndexer | null = null;
   private timer: NodeJS.Timeout | null = null;
   private stopped = false;
   private lastHeartbeatLogAt = 0;
@@ -678,6 +680,13 @@ export class MarketIndexerWorker {
         );
       } catch (error) {
         failure ??= new Error(`token identity index: ${errorText(error)}`);
+      }
+      try {
+        this.launchIndexer ??= new LaunchIndexer(this.pool, this.rpc, this.config.batchSize);
+        await this.launchIndexer.tick(finalizedHead, finalizedBlock.hash);
+      } catch (error) {
+        // Launch intelligence has separate coverage and cannot change ordinary market health.
+        console.warn(JSON.stringify({ event: "launch_cycle_unavailable", errorClass: error instanceof Error ? error.name : "Error" }));
       }
       this.status.lastError = failure?.message ?? null;
     } catch (error) {
