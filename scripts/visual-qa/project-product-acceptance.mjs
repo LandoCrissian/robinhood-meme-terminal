@@ -48,9 +48,16 @@ try {
           const strong = cell.querySelector('strong'), range = document.createRange();
           range.selectNodeContents(strong);
           const bounds = cell.getBoundingClientRect(), text = [...range.getClientRects()];
+          const change = cell.querySelector('em'), changeRange = document.createRange();
+          if (change) changeRange.selectNodeContents(change);
+          const changeText = change ? [...changeRange.getClientRects()] : [];
           return { text: strong.textContent, lines: new Set(text.map(rect => rect.y)).size,
             contained: text.every(rect => rect.x >= bounds.x - 0.5 && rect.right <= bounds.right + 0.5),
-            height: strong.getBoundingClientRect().height, fontSize: getComputedStyle(strong).fontSize };
+            height: strong.getBoundingClientRect().height, width: bounds.width,
+            fontSize: getComputedStyle(strong).fontSize, fontFamily: getComputedStyle(strong).fontFamily,
+            change: change?.textContent ?? null, changeLines: new Set(changeText.map(rect => rect.y)).size,
+            changeContained: changeText.every(rect => rect.x >= bounds.x - 0.5 && rect.right <= bounds.right + 0.5),
+            priceChangeOverlap: text.some(a => changeText.some(b => a.x < b.right && a.right > b.x && a.y < b.bottom && a.bottom > b.y)) };
         });
         return { metrics, overflow: Math.max(0, document.documentElement.scrollWidth - innerWidth) };
       });
@@ -61,6 +68,11 @@ try {
         assert.equal(metric.contained, true, `${name}: ${metric.text} fits its own column`);
         assert.equal(metric.lines, 1, `${name}: neighboring metric figures remain coherent`);
         assert.equal(metric.fontSize, '16px', 'Do not reduce readability to fit the price');
+        if (metric.change) {
+          assert.equal(metric.changeLines, 1, `${name}: 24h change stays on one line`);
+          assert.equal(metric.changeContained, true, `${name}: 24h change stays inside the price row`);
+          assert.equal(metric.priceChangeOverlap, false, `${name}: price and 24h change never collide`);
+        }
       }
       assert.equal(measured.overflow, 0, name);
     };
