@@ -73,7 +73,7 @@ for(const viewport of [{width:375,height:812},{width:390,height:844},{width:430,
   const expected=fixture.directory.entries[0];
   await first.scrollIntoViewIfNeeded();
   await page.evaluate(token=>{window.__nav={started:performance.now(),genericFrames:0,shell:null,identity:null,ticket:null,token,done:false};const inspect=()=>{const n=window.__nav;if(n.done)return;const h=document.querySelector('#vn-asset-heading');const generic=document.querySelector('#rmt-market-directory-heading');if(generic&&generic.getClientRects().length&&!document.querySelector(".vnAssetWorkspace"))n.genericFrames++;const shell=document.querySelector('.vnAssetWorkspace');if(shell&&n.shell===null)n.shell=performance.now()-n.started;const text=document.querySelector('.vnAssetWorkspace')?.textContent??'';if((text.includes('BUNEE')||text.toLowerCase().includes(token))&&n.identity===null)n.identity=performance.now()-n.started;if(document.querySelector('.vnTradePanel')&&n.ticket===null)n.ticket=performance.now()-n.started;requestAnimationFrame(inspect);};requestAnimationFrame(inspect);},expected.token);
-  await first.click();await page.waitForURL(url=>url.searchParams.get("market")===expected.token,{timeout:120000});await page.locator("#vn-asset-heading").filter({hasText:expected.identity.name}).waitFor({timeout:30000});
+  await first.click();await page.waitForURL(url=>url.searchParams.get("market")===expected.token,{waitUntil:"domcontentloaded",timeout:120000});await page.locator("#vn-asset-heading").filter({hasText:expected.identity.name}).waitFor({timeout:30000});
   const navigation=await page.evaluate(()=>{window.__nav.done=true;return window.__nav;});assert.equal(navigation.genericFrames,0);assert.equal(new URL(page.url()).searchParams.get("market"),expected.token);results.push({viewport,name:"launch-to-token",...navigation});
   // A fresh public session reaches the existing terminal disclosure. Use its
   // normal non-financial action before interacting with workspace tabs.
@@ -105,7 +105,12 @@ for(const viewport of [{width:375,height:812},{width:390,height:844},{width:430,
   assert.ok(evidenceLinks.some(href=>href.endsWith('/'+expected.sourceContract)));
   assert.ok(evidenceLinks.some(href=>href.endsWith('/'+expected.launchTransaction)));
   await page.goto(`${base}/launches?source=STONKBROKERS`,{waitUntil:"domcontentloaded"});await page.locator(".rmtLaunchRow").first().waitFor();assert.equal(await page.locator('.rmtLaunchRow[data-launch-id^="0x7ed"]').count(),0);await capture("stonk-source");
-  await page.locator("#launch-search").fill("MONVERA");await page.getByRole("button",{name:"Find",exact:true}).click();await page.waitForURL("**q=MONVERA*");await page.locator(".rmtLaunchRow").first().waitFor();assert.equal(await page.locator(".rmtLaunchRow").count(),1);assert.ok((await page.locator("body").innerText()).includes("Existing token enrolled"));await capture("enrolled-token");
+  await page.locator("#launch-search").fill("MONVERA");await page.getByRole("button",{name:"Find",exact:true}).click();
+  // A correct rendered destination must not wait for unrelated subresources
+  // to finish the document load. Preserve exact URL and identity assertions.
+  await page.waitForURL(url=>url.pathname==='/launches'&&url.searchParams.get('q')==='MONVERA'&&url.searchParams.get('source')==='STONKBROKERS',{waitUntil:'domcontentloaded'});
+  const enrolled=fixture.directory.entries.find(entry=>entry.identity.symbol==='MONVERA');assert.ok(enrolled);
+  await page.locator(`.rmtLaunchRow[data-token="${enrolled.token}"]`).waitFor();assert.equal(await page.locator(".rmtLaunchRow").count(),1);assert.ok((await page.locator("body").innerText()).includes("Existing token enrolled"));await capture("enrolled-token");
   state.mode="retained-outage";await page.goto(`${base}/launches?q=${retainedQuery}`,{waitUntil:"domcontentloaded"});await page.getByText("Launch updates delayed. Showing recorded origins.").waitFor();assert.equal(await page.locator(".rmtLaunchRow").count(),1);await capture("retained-index-outage");
   await page.route('**/api/vnext/token-artwork?**',route=>route.fulfill({status:404}));
   state.mode="lens-unavailable";await page.goto(`${base}/launches?q=${lensQuery}`,{waitUntil:'domcontentloaded'});await page.locator('.rmtLaunchRow').first().waitFor();await capture('lens-and-artwork-unavailable');
