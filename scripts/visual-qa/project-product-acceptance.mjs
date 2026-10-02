@@ -68,7 +68,7 @@ try {
     delayMarket = true;
     await page.goto(`${base}/projects/cannacats`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => document.querySelector('.rmtProjectQuietState')?.textContent?.includes('Loading market'));
-    await page.waitForFunction(() => [...document.querySelectorAll('.rmtProjectArt img')].every(image => image.complete && image.naturalWidth > 0));
+    await page.waitForFunction(() => [...document.querySelectorAll('.rmtProjectArt img')].every(image => image.complete && image.naturalWidth > 0 && getComputedStyle(image).visibility === 'visible'));
     await page.evaluate(() => {
       window.__projectContinuity = { replacements: 0, missingArtFrames: 0, opacityFlashes: 0, frames: 0, done: false };
       window.__projectObserver = new MutationObserver(records => {
@@ -80,7 +80,10 @@ try {
         if (evidence.done) return;
         evidence.frames++;
         if ([...document.querySelectorAll('.rmtProjectAssetCard')].some(card => Number(getComputedStyle(card).opacity) < 1)) evidence.opacityFlashes++;
-        if ([...document.querySelectorAll('.rmtProjectArt')].some(art => !art.querySelector('img') && !art.querySelector('.rmtProjectArtFallback')?.textContent)) evidence.missingArtFrames++;
+        if ([...document.querySelectorAll('.rmtProjectArt')].some(art => {
+          const image = art.querySelector('img');
+          return image ? !image.complete || !image.naturalWidth || getComputedStyle(image).visibility !== 'visible' || Number(getComputedStyle(image).opacity) < 1 : !art.querySelector('.rmtProjectArtFallback')?.textContent;
+        })) evidence.missingArtFrames++;
         requestAnimationFrame(frame);
       }; requestAnimationFrame(frame);
     });
