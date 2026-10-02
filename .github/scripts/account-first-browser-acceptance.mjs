@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 import { mkdir, rename, rm, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { captureAccountSurface } from "./account-first-browser-capture.mjs";
 
 const root = fileURLToPath(new URL("../../", import.meta.url));
 const webRoot = path.join(root, "apps/web");
@@ -987,10 +988,7 @@ async function runFundingPrimaryBoundaries(browser, base) {
       const action = tradeSheet.getByRole("button", { name: scenario.label, exact: true });
       await action.waitFor({ timeout: 10_000 });
       assert.equal(await action.isEnabled(), true, `${scenario.name}: the funding recovery action is enabled`);
-      await page.screenshot({
-        path: path.join(artifactRoot, `mobile-${scenario.name}-deposit-action.png`),
-        fullPage: true
-      });
+      await captureAccountSurface(page, path.join(artifactRoot, `mobile-${scenario.name}-deposit-action.png`));
       await action.click();
       await page.getByRole("heading", { name: "Deposit on Robinhood Chain" }).waitFor();
       await page.getByText("0x3333…3333 · Robinhood Chain · 4663").waitFor();
@@ -1050,7 +1048,7 @@ async function runResponsiveLayoutBoundary(browser, base, label, viewport) {
     if (viewport.width <= 430) assert.ok((primaryBox?.height ?? 0) >= 44,
       `${label}: the mobile primary action retains a 44px touch target`);
     assert.deepEqual(pageErrors, [], `${label}: no fatal browser runtime errors`);
-    await page.screenshot({ path: path.join(artifactRoot, `${label}-layout.png`), fullPage: true });
+    await captureAccountSurface(page, path.join(artifactRoot, `${label}-layout.png`));
     console.log(`[account-first:${label}] responsive layout passed`);
     return {
       focusTarget: await amount.evaluate((element) => document.activeElement === element),
@@ -1102,15 +1100,16 @@ async function runViewport(browser, base, device, viewport, serverLog) {
     }), probeReady);
     const started = Date.now();
     let error;
+    let readiness;
     // Observe without a layout read or changing the screenshot's font wait.
     const before = await fontState(false);
     try {
-      await page.screenshot({ path: path.join(artifactRoot, name), fullPage: true });
+      readiness = await captureAccountSurface(page, path.join(artifactRoot, name));
     } catch (cause) {
       error = cause;
     }
     const after = await fontState(true);
-    const evidence = { name, browser: browser.version(), viewport, elapsedMs: Date.now() - started, before, after, fontResources, pendingResources: [...pendingResources.values()].map(resource => ({ ...resource, elapsedMs: Date.now() - resource.startedAt })), error: error?.message ?? null };
+    const evidence = { name, browser: browser.version(), viewport, elapsedMs: Date.now() - started, readiness, before, after, fontResources, pendingResources: [...pendingResources.values()].map(resource => ({ ...resource, elapsedMs: Date.now() - resource.startedAt })), error: error?.message ?? null };
     await writeFile(path.join(artifactRoot, `${name}.fonts.json`), `${JSON.stringify(evidence, null, 2)}\n`);
     console.log(`[account-first:${device}:capture] ${JSON.stringify(evidence)}`);
     if (error) throw error;
