@@ -48,11 +48,22 @@ for(const viewport of [{width:375,height:812},{width:390,height:844},{width:430,
       result.scrollMovement=Math.max(result.scrollMovement,Math.abs(scrollY-scroll));requestAnimationFrame(inspect);
     };requestAnimationFrame(inspect);
   });
+  // Observe real artwork completion (or its bounded unavailable fallback)
+  // while retaining the same rows, controls, caret and scroll anchors.
+  const artwork=await page.locator('.rmtLaunchArtwork img').evaluateAll(images=>Promise.all(images.map(img=>new Promise(resolve=>{
+    const result=()=>({loaded:img.complete&&img.naturalWidth>0,complete:img.complete});
+    if(img.complete)return resolve(result());
+    const timer=setTimeout(()=>{img.removeEventListener('load',done);img.removeEventListener('error',done);resolve(result());},5000);
+    function done(){clearTimeout(timer);img.removeEventListener('load',done);img.removeEventListener('error',done);resolve(result());}
+    img.addEventListener('load',done);img.addEventListener('error',done);
+  }))));
   await page.waitForTimeout(650);
+  results.push({viewport,name:'artwork-boundary-outcomes',artwork});
   const frames=await page.evaluate(()=>{window.__launchFrames.active=false;return window.__launchFrames;});assert.ok(frames.frames>0);assert.equal(frames.majorReplacementFrames,0);assert.equal(frames.hiddenArtworkFrames,0);assert.equal(frames.actionMovement,0);assert.equal(frames.cardMovement,0);assert.equal(frames.scrollMovement,0);results.push({viewport,name:'continuous-frame-continuity',...frames});
   const after=await page.locator('#launch-search').evaluate(input=>({value:input.value,caret:input.selectionStart,focused:document.activeElement===input}));assert.deepEqual({value:after.value,caret:after.caret},before);assert.equal(after.focused,true);
   const stable=await page.evaluate(()=>{const card=document.querySelector('.rmtLaunchRow'),r=card.getBoundingClientRect();return {sameCard:card===window.__launchCard,actionMovement:Math.abs(card.getBoundingClientRect().y-window.__launchAnchor.actionY),cardMovement:Math.abs(r.y-window.__launchAnchor.y),scrollMovement:Math.abs(scrollY-window.__launchAnchor.scroll)};});assert.equal(stable.sameCard,true);assert.equal(stable.actionMovement,0);assert.equal(stable.cardMovement,0);assert.equal(stable.scrollMovement,0);results.push({viewport,name:'artwork-loading-continuity',...stable});
   await page.locator('#launch-search').fill('');
+  await capture("scanner-artwork-settled");
 
   await page.getByRole("button",{name:"More launches",exact:true}).click();await page.waitForFunction(()=>document.querySelectorAll(".rmtLaunchRow").length===10);
   const clock=page.locator('.rmtLaunchRow[data-token="0x53ab2efc7eacb23a4c7af32fddb2ccdc0a172fc6"]');assert.equal(await clock.getByRole("progressbar").count(),0,"Do not show current market cap ratio as incomplete historical graduation");
@@ -76,7 +87,11 @@ for(const viewport of [{width:375,height:812},{width:390,height:844},{width:430,
   const disclosureState=await originDisclosure.evaluate(details=>({open:details.open,summary:details.querySelector('summary')?.textContent,ancestry:[details,...function*(){for(let p=details.parentElement;p;p=p.parentElement)yield p;}()].map(e=>({tag:e.tagName,className:e.className,open:e.tagName==='DETAILS'?e.open:null,display:getComputedStyle(e).display,visibility:getComputedStyle(e).visibility}))}));
   results.push({viewport,name:'origin-disclosure',openedBefore,...disclosureState});
   try {
-    await page.getByText("Launch origin",{exact:true}).waitFor();
+    // The established mobile chassis intentionally hides card eyebrows.
+    // Assert the visible source heading and actual evidence, not hidden copy.
+    await originDisclosure.locator('[data-launch-origin] h3').waitFor();
+    assert.ok((await originDisclosure.locator('[data-launch-origin] h3').innerText()).includes('pons'));
+    assert.ok((await originDisclosure.locator('[data-launch-origin]').innerText()).includes('Launched'));
   } catch(error) {
     await capture('origin-disclosure-failure');
     await writeFile(path.join(output,`${viewport.width}-origin-disclosure-failure.html`),await originDisclosure.evaluate(details=>details.outerHTML));
