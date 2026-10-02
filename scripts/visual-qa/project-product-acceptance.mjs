@@ -25,6 +25,7 @@ try {
     const page = await context.newPage();
     const errors = []; page.on('pageerror', error => errors.push(error.message));
     let delayMarket = false, releaseMarket = [], marketUnavailable = false, artworkFailure = '';
+    let marketPrice = 0.00003573, marketChange = -0.69;
     await page.addInitScript(() => {
       window.__walletRequests = 0;
       window.ethereum = { on() {}, removeListener() {}, async request({ method }) {
@@ -37,10 +38,32 @@ try {
       if (url.searchParams.get('view') !== 'market') return route.continue();
       if (delayMarket) await new Promise(resolve => releaseMarket.push(resolve));
       if (marketUnavailable) return route.fulfill({ status: 503, json: { error: 'CONTROLLED_MARKET_UNAVAILABLE' } });
-      return route.fulfill({ json: { chainId: 4663, contract, state: 'READY', observedAt: new Date().toISOString(), provenance: 'GECKOTERMINAL_TOKEN_POOLS', data: { token: contract, pool: '0x1111111111111111111111111111111111111111', priceUsd: 0.00004, liquidityUsd: 18000, volume24hUsd: 640, priceChange24h: 2.5, createdAt: null, dex: null, buys24h: null, sells24h: null } } });
+      return route.fulfill({ json: { chainId: 4663, contract, state: 'READY', observedAt: new Date().toISOString(), provenance: 'GECKOTERMINAL_TOKEN_POOLS', data: { token: contract, pool: '0x1111111111111111111111111111111111111111', priceUsd: marketPrice, liquidityUsd: 18560, volume24hUsd: 142.25, priceChange24h: marketChange, createdAt: null, dex: null, buys24h: null, sells24h: null } } });
     });
     await page.route('**/project-art/**', route => artworkFailure && (artworkFailure === 'all' || route.request().url().includes(artworkFailure)) ? route.fulfill({ status: 404 }) : route.continue());
     await page.route('**/api/vnext/token-artwork?**', route => route.fulfill({ status: 404 }));
+    const assertPriceFits = async (name, expected) => {
+      const measured = await page.locator('.rmtProjectMetricStrip').first().evaluate(strip => {
+        const metrics = [...strip.querySelectorAll(':scope > span')].map(cell => {
+          const strong = cell.querySelector('strong'), range = document.createRange();
+          range.selectNodeContents(strong);
+          const bounds = cell.getBoundingClientRect(), text = [...range.getClientRects()];
+          return { text: strong.textContent, lines: new Set(text.map(rect => rect.y)).size,
+            contained: text.every(rect => rect.x >= bounds.x - 0.5 && rect.right <= bounds.right + 0.5),
+            height: strong.getBoundingClientRect().height, fontSize: getComputedStyle(strong).fontSize };
+        });
+        return { metrics, overflow: Math.max(0, document.documentElement.scrollWidth - innerWidth) };
+      });
+      results.push({ viewport, name: `price-${name}`, evidence: 'REAL_PROJECT_COMPONENT_CONTROLLED_MARKET_PRICE', ...measured });
+      assert.equal(measured.metrics[0].lines, 1, `${name}: the complete price must occupy one line`);
+      if (expected) assert.equal(measured.metrics[0].text, expected, 'Keep the existing price formatter and precision');
+      for (const metric of measured.metrics) {
+        assert.equal(metric.contained, true, `${name}: ${metric.text} fits its own column`);
+        assert.equal(metric.lines, 1, `${name}: neighboring metric figures remain coherent`);
+        assert.equal(metric.fontSize, '16px', 'Do not reduce readability to fit the price');
+      }
+      assert.equal(measured.overflow, 0, name);
+    };
     const capture = async (name, label = 'REAL_COMPONENTS_CONTROLLED_EXTERNAL_METRICS_RETAINED_VERIFIED_ARTWORK') => {
       await page.evaluate(() => document.fonts.ready);
       const measured = await page.evaluate(() => ({ overflow: Math.max(0, document.documentElement.scrollWidth - innerWidth), walletRequests: window.__walletRequests, cardCount: document.querySelectorAll('.rmtProjectAssetCard').length }));
@@ -55,6 +78,8 @@ try {
     assert.equal(await page.locator('.rmtProjectCardIdentity img').evaluateAll(images => images.filter(image => image.complete && image.naturalWidth > 0).length), 4);
     await capture('landing');
     for (const id of ['cannacats', 'hopium-machines', 'peeps', 'ccff00']) {
+      marketPrice = id === 'hopium-machines' ? 0.00001503 : 0.00003573;
+      marketChange = id === 'hopium-machines' ? 0.44 : -0.69;
       await page.goto(`${base}/projects/${id}`, { waitUntil: 'networkidle' });
       assert.equal(await page.locator('.isHeroArt img').evaluate(image => image.complete && image.naturalWidth > 0), true, id);
       const paired = ['cannacats', 'hopium-machines'].includes(id);
@@ -62,8 +87,24 @@ try {
       assert.equal(await page.locator('.rmtProjectAssetCard').count(), paired ? 2 : 1);
       assert.equal(await page.locator('.rmtProjectMetricStrip').getByText('—', { exact: true }).count(), 0);
       if (id === 'ccff00') assert.match(await page.locator('.rmtProjectAssetsGrid').innerText(), /9,750/, 'Controlled current complete authority response is rendered');
+      if (paired) await assertPriceFits(id);
       await capture(id);
     }
+    for (const id of ['cannacats', 'hopium-machines']) {
+      for (const [shape, value, change, expected] of [
+        ['very-small', 0.000000000001234, 2.5, '$0.000000000001234'],
+        ['long-fraction', 0.0000987654321, -2.5, '$0.00009877'],
+        ['sub-dollar', 0.123456789, 0.44, '$0.1235'],
+        ['multi-digit', 1234.56, -0.69, '$1,234.56'],
+        ['large', 123456789.12, 12.34, '$123,456,789.12'],
+        ['zero', 0, -12.34, '$0']
+      ]) {
+        marketPrice = value; marketChange = change;
+        await page.goto(`${base}/projects/${id}`, { waitUntil: 'networkidle' });
+        await assertPriceFits(`${id}-${shape}`, expected);
+      }
+    }
+    marketPrice = 0.00003573; marketChange = -0.69;
     // Observe actual delayed external enrichment with real cards, not frozen screenshots.
     delayMarket = true;
     await page.goto(`${base}/projects/cannacats`, { waitUntil: 'domcontentloaded' });

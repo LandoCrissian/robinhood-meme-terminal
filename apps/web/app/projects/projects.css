@@ -108,6 +108,11 @@
 .rmtProjectMetricStrip { height:auto; width:100%; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px 12px; }
 .rmtProjectMetricStrip>span { font-size:11px; line-height:1.2; }
 .rmtProjectMetricStrip strong { font-size:16px; line-height:1.2; margin-top:4px; overflow-wrap:anywhere; }
+/* A price keeps its complete formatted width; the adjacent metrics share the
+   remaining space. Ownership metrics retain their existing two-column layout. */
+.rmtProjectMetricRegion:not(.isOwnership) .rmtProjectMetricStrip { grid-template-columns:minmax(max-content,1fr) repeat(2,minmax(0,1fr)); }
+.rmtProjectMetricRegion:not(.isOwnership) .rmtProjectMetricStrip>span:first-child strong { white-space:nowrap; }
+@media(max-width:389px) { .rmtProjectMetricRegion:not(.isOwnership) .rmtProjectMetricStrip { column-gap:6px; } }
 .rmtProjectMetricStrip em { display:block; margin-top:4px; font-style:normal; font-size:10px; color:#b9cbb8; }
 .isOwnership .rmtProjectMetricStrip { grid-template-columns:repeat(2,minmax(0,1fr)); }
 .rmtProjectMetricStrip>small { grid-column:1/-1; font-size:10px; }
