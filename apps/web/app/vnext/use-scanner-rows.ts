@@ -3,12 +3,13 @@ import { useEffect, useRef, useState } from "react";
 import { reconcileScannerRows } from "../../lib/vnext/scanner-reconciliation";
 
 /** Shared interaction policy; identity and component keys remain unchanged. */
-export function useScannerRows<T>(rows: readonly T[], key: (row: T) => string, context: string) {
+export function useScannerRows<T>(rows: readonly T[], key: (row: T) => string, context: string, retainPagedRows = false) {
   const [anchor, setAnchor] = useState({ context, ids: rows.map(key) });
   const [holding, setHolding] = useState(false);
   const latest = useRef({ rows, key, context });
   latest.current = { rows, key, context };
   const displayed = useRef(anchor);
+  const displayedRows = useRef({ context, rows });
   const pointer = useRef(false);
   const interaction = useRef(false);
   const scrollContainer = useRef<HTMLElement | null>(null);
@@ -52,8 +53,10 @@ export function useScannerRows<T>(rows: readonly T[], key: (row: T) => string, c
       setAnchor(current => current.context === context && current.ids.join("|") === ids.join("|") ? current : { context, ids });
     }
   }, [rows, key, context, holding, anchor.context]);
-  const result = reconcileScannerRows(rows, anchor.ids, key, holding && anchor.context === context);
+  const result = reconcileScannerRows(rows, anchor.ids, key, holding && anchor.context === context,
+    retainPagedRows && displayedRows.current.context === context ? displayedRows.current.rows : []);
   displayed.current = { context, ids: result.rows.map(key) };
+  displayedRows.current = { context, rows: result.rows };
   const showUpdates = () => {
     const next = latest.current;
     window.scrollTo({ top: 0, behavior: "instant" });

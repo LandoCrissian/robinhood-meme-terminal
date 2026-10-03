@@ -86,7 +86,7 @@ export async function inspectTerminalStabilization(browser, { base, createContex
       assert.ok(await page.locator(row).count() > 8);
       assert.equal(enrichmentResolved, false);
       await revealBrowseExplore(page);
-      await page.getByRole("button", { name: /^All\s+/ }).click();
+      await page.getByRole("button", { name: "Any activity", exact: true }).click();
       for (let n = 0; n < 8 && await page.locator(row).count() < canonical.length; n++) {
         await page.locator(".rmtMarketLoadMore").click();
         await page.waitForTimeout(80);
@@ -136,7 +136,7 @@ export async function inspectTerminalStabilization(browser, { base, createContex
       // replace. Active is intentionally empty without observed activity.
       await freshness.getByText(/Limited coverage/).waitFor();
       await revealBrowseExplore(page);
-      await page.getByRole("button", { name: /^All\s+/ }).click();
+      await page.getByRole("button", { name: "Any activity", exact: true }).click();
       await page.locator(row).first().waitFor();
       assert.equal(await page.locator(row).count(), 8);
       await freshness.getByText(/Limited coverage/).waitFor();
@@ -230,7 +230,7 @@ async function inspectFreshDirectoryWindow(browser, { base, createContext, insta
       const firstMs = Math.round(performance.now() - start);
       assert.ok(firstMs <= 2000, `${label}: healthy first publication ${firstMs}ms`);
       await revealBrowseExplore(page);
-      await page.getByRole("button", { name: /^All\s+/ }).click();
+      await page.getByRole("button", { name: "Any activity", exact: true }).click();
       for (let i = 0; i < 12 && await page.locator(row).count() < 120; i++) { await page.locator(".rmtMarketLoadMore").click(); await page.waitForTimeout(100); }
       assert.equal(await page.locator(row).count(), 120);
       for (const state of ["GOOD", "503", "503", "GOOD", "PARTIAL", "GOOD"]) {
@@ -250,7 +250,7 @@ async function inspectFreshDirectoryWindow(browser, { base, createContext, insta
 
 async function revealBrowseExplore(page) {
   const details = page.locator(".rmtMarketViews .rmtExplore").first();
-  if (!await details.evaluate(node => node.open)) await details.locator(":scope > summary").click();
+  if (!await page.locator(".rmtExploreDialog[open]").count()) await page.locator(".rmtExploreTrigger").first().click();
 }
 async function revealHolderSources(page) {
   const details = page.locator(".vnHolderSources");

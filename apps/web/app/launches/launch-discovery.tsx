@@ -99,7 +99,7 @@ export function LaunchDiscovery({
   }, [query, source]);
   useScannerRefresh(refresh, VNEXT_CLIENT_REFRESH_POLICY.launchDirectoryMs, { immediate: false, refreshKey: `${source ?? "ALL"}:${query}` });
   const entries = directory.entries,
-    scanner = useScannerRows(entries, launchKey, `${source ?? "ALL"}:${query}:${phase}:${pages.current}`);
+    scanner = useScannerRows(entries, launchKey, `${source ?? "ALL"}:${query}:${phase}:${pages.current}`, true);
   const phases = [
     "ALL",
     ...(phase === "NEW" || entries.some((e) => now - Date.parse(e.launchTime) < 86400000)

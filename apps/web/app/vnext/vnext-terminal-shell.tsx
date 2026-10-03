@@ -112,7 +112,7 @@ export function VNextTerminalShell({ initialLocation = { context: "markets" }, i
   const selectAddressRef = useRef(selectAddress);
   const heldAddresses = useMemo(() => new Set(walletAssets.map((asset) => asset.address.toLowerCase())), [walletAssets]);
   const universeMarkets = useMemo(() => selectMarketUniverse(markets, marketUniverse, heldAddresses), [markets, marketUniverse, heldAddresses]);
-  const universeCounts = Object.fromEntries(MARKET_UNIVERSES.map(scope => [scope, scope === "held" && walletReadStatus === "idle" ? null : selectMarketUniverse(markets, scope, heldAddresses).length])) as Record<MarketUniverse, number | null>;
+  const universeCounts = Object.fromEntries(MARKET_UNIVERSES.map(scope => [scope, (!markets.length && (status === "loading" || status === "error")) || (scope === "held" && walletReadStatus === "idle") ? null : selectMarketUniverse(markets, scope, heldAddresses).length])) as Record<MarketUniverse, number | null>;
   const directoryViewCounts = useMemo(() => vNextMarketDirectoryViewCounts(universeMarkets, heldAddresses), [heldAddresses, universeMarkets]);
   const localFilteredMarkets = useMemo(() => {
     if (query.trim()) return filterVNextLocalDirectoryMarkets(markets, query);

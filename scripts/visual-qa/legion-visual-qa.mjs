@@ -265,7 +265,7 @@ async function startupLane(browser) {
   });
   await delayedPage.goto(base, { waitUntil: "domcontentloaded", timeout: 60_000 });
   await revealBrowseExplore(delayedPage);
-  await delayedPage.getByRole("button", { name: /^All\b/ }).click();
+  await delayedPage.getByRole("button", { name: "Any activity", exact: true }).click();
   try {
     await delayedPage.locator(".rmtMobileMarketRow").first().waitFor();
   } catch (error) {
@@ -397,7 +397,7 @@ async function tokenLane(browser, viewport, platform) {
   const newRows = page.locator(marketRowSelector);
   check(await newRows.count() === BROAD_TOKEN_MARKETS.filter((market) => market.ageMinutes !== null && market.ageMinutes <= 24 * 60).length, `token-scanner-${platform}`, "NEW must derive from actual pool age evidence.");
   await revealBrowseExplore(page);
-  await categoryButtons.filter({ hasText: "All" }).click();
+  await page.getByRole("button", { name: "Any activity", exact: true }).click();
   const rows = page.locator(marketRowSelector);
   await rows.first().waitFor();
   check(await rows.count() === VISIBLE_TOKEN_MARKETS.length, `token-scanner-${platform}`, "ALL must expose the canonical seeds plus bounded broad markets.", { count: await rows.count() });
@@ -505,7 +505,7 @@ async function tokenLane(browser, viewport, platform) {
     const reopenPonsAfterFixtureReload = async () => {
       await page.locator(".rmtMobileMarketsView").waitFor();
       await revealBrowseExplore(page);
-    await page.locator(".rmtMarketViews button").filter({ hasText: "All" }).click();
+    await page.getByRole("button", { name: "Any activity", exact: true }).click();
       await page.locator(".rmtMobileMarketRow").filter({ hasText: "PONS" }).first().click();
       await page.locator(".rmtMobileAssetView").waitFor();
     };
@@ -600,7 +600,7 @@ async function tokenLane(browser, viewport, platform) {
     await page.locator(".rmtMobileAssetBack button").click();
     await page.locator(".rmtMobileMarketsView").waitFor();
     await revealBrowseExplore(page);
-    await page.locator(".rmtMarketViews button").filter({ hasText: "All" }).click();
+    await page.getByRole("button", { name: "Any activity", exact: true }).click();
     fixture.setRiskMode("unavailable");
     await page.locator(".rmtMobileMarketRow").filter({ hasText: "CASHCAT" }).first().click();
     await page.locator(".vnChartFrame svg").waitFor();
@@ -620,7 +620,7 @@ async function tokenLane(browser, viewport, platform) {
     await page.locator(".rmtMobileAssetBack button").click();
     await page.locator(".rmtMobileMarketsView").waitFor();
     await revealBrowseExplore(page);
-    await page.locator(".rmtMarketViews button").filter({ hasText: "All" }).click();
+    await page.getByRole("button", { name: "Any activity", exact: true }).click();
     fixture.setRiskMode("partial");
     await page.locator(".rmtMobileMarketRow").filter({ hasText: "PIPEDOG" }).first().click();
     await page.getByRole("tab", { name: "Holders", exact: true }).click();
@@ -996,7 +996,7 @@ if (failures.length) {
 
 async function revealBrowseExplore(page) {
   const details = page.locator(".rmtMarketViews .rmtExplore").first();
-  if (!await details.evaluate(node => node.open)) await details.locator(":scope > summary").click();
+  if (!await page.locator(".rmtExploreDialog[open]").count()) await page.locator(".rmtExploreTrigger").first().click();
 }
 async function revealHolderSources(page) {
   const details = page.locator(".vnHolderSources");
