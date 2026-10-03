@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
 import { createServer } from 'node:http';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, writeFile, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { NFT_ONCHAIN } from './legion-fixtures.mjs';
 
@@ -9,6 +9,8 @@ const base = process.env.RMT_VISUAL_BASE_URL ?? 'http://127.0.0.1:3181';
 assert.ok(['localhost', '127.0.0.1'].includes(new URL(base).hostname), 'Controlled acceptance is local only');
 const output = path.resolve(process.env.RMT_VISUAL_OUTPUT ?? 'terminal-visual-v2', 'project-product');
 await mkdir(output, { recursive: true });
+const batch = JSON.parse(await readFile(new URL('../../docs/projects/nft-project-batch-evidence.json', import.meta.url), 'utf8'));
+const batchIds = [...new Set(batch.records.map(record => record.projectId))];
 let ownershipUnavailable = false;
 const fixture = createServer((request, response) => {
   if (request.url !== '/internal/v1/projects/ccff00/onchain' || request.headers.authorization !== `Bearer ${'a'.repeat(64)}`) { response.writeHead(404).end(); return; }
@@ -84,19 +86,67 @@ try {
       results.push({ viewport, name, evidence: label, ...measured });
     };
     await page.goto(`${base}/projects`, { waitUntil: 'networkidle', timeout: 180000 });
-    assert.equal(await page.locator('.rmtProjectCard').count(), 4);
-    assert.equal(await page.getByRole('link', { name: 'Explore Founding Feathers project', exact: true }).locator('.rmtProjectPair.isNftLed').count(), 1);
+    assert.equal(await page.locator('.rmtProjectRow').count(), 15);
+    await page.locator('.rmtProjectRow').last().scrollIntoViewIfNeeded();
+    await page.locator('.rmtProjectRow').first().scrollIntoViewIfNeeded();
+    await page.waitForFunction(() => [...document.querySelectorAll('.rmtProjectRow img')].every(image => image.complete && image.naturalWidth > 0));
+    assert.equal(await page.getByRole('link', { name: 'Explore Founding Feathers project', exact: true }).getByText('NFT-led', { exact: true }).count(), 1);
     assert.equal(await page.getByRole('link', { name: 'Explore Founding Feathers project', exact: true }).getByText('Token', { exact: true }).count(), 0);
-    assert.equal(await page.locator('.rmtProjectCardIdentity img').evaluateAll(images => images.filter(image => image.complete && image.naturalWidth > 0).length), 4);
+    assert.equal(await page.locator('.rmtProjectRow img').evaluateAll(images => images.filter(image => image.complete && image.naturalWidth > 0).length), 15);
     await capture('landing');
-    for (const id of ['cannacats', 'hopium-machines', 'peeps', 'ccff00']) {
+    const scannerGeometry = await page.locator('.rmtProjectRow').evaluateAll(rows => rows.map(row => ({ height: row.getBoundingClientRect().height, artworkWidth: row.querySelector('.rmtProjectArt').getBoundingClientRect().width })));
+    assert.ok(scannerGeometry.every(row => row.height <= 88), 'Discovery is a compact scanner, including multiple collections');
+    assert.ok(scannerGeometry.every(row => row.artworkWidth === (viewport.width < 768 ? 40 : 34)), 'Artwork follows the Markets scanner scale');
+    results.push({ viewport, name: 'scanner-density', rows: scannerGeometry });
+    await page.getByRole('button', { name: 'Token + NFT', exact: true }).click();
+    assert.equal(await page.locator('.rmtProjectRow').count(), 2);
+    await page.getByRole('button', { name: 'NFT-led', exact: true }).click();
+    assert.equal(await page.locator('.rmtProjectRow').count(), 13);
+    await page.getByRole('button', { name: 'All', exact: true }).click();
+    const search = page.getByRole('searchbox', { name: 'Find a project or asset' });
+    for (const query of ['Pixel Hood Clan', 'Pixel Hood Minis', ...batch.records.filter(record => record.projectId === 'pixel-hood').map(record => record.onchain.address)]) {
+      await search.fill(query);
+      assert.equal(await page.locator('.rmtProjectRow').count(), 1);
+      assert.equal(await page.locator('.rmtProjectRow').getAttribute('data-project-id'), 'pixel-hood');
+    }
+    await search.fill('PEEPS'); assert.equal(await page.locator('.rmtProjectRow').count(), 0);
+    await search.fill('');
+    // A controlled artwork outage changes image/fallback content only. The
+    // scanner row, identity and navigation action remain the same DOM nodes.
+    await page.evaluate(() => {
+      const row = document.querySelector('[data-project-id="gogh-punks"]');
+      window.__scannerRow = row;
+      window.__scannerBefore = { top: row.getBoundingClientRect().top, height: row.getBoundingClientRect().height, scroll: scrollY, href: row.getAttribute('href') };
+      window.__scannerReplacements = 0;
+      window.__scannerObserver = new MutationObserver(records => { for (const record of records) for (const removed of record.removedNodes) if (removed === row) window.__scannerReplacements++; });
+      window.__scannerObserver.observe(row.parentElement, { childList: true });
+      row.querySelector('img').dispatchEvent(new Event('error'));
+    });
+    await page.locator('[data-project-id="gogh-punks"] [data-artwork-state="fallback"]').waitFor();
+    const scannerContinuity = await page.evaluate(() => {
+      window.__scannerObserver.disconnect();
+      const row = document.querySelector('[data-project-id="gogh-punks"]');
+      return { sameRow: row === window.__scannerRow, replacements: window.__scannerReplacements, before: window.__scannerBefore, after: { top: row.getBoundingClientRect().top, height: row.getBoundingClientRect().height, scroll: scrollY, href: row.getAttribute('href') } };
+    });
+    assert.equal(scannerContinuity.sameRow, true); assert.equal(scannerContinuity.replacements, 0);
+    assert.deepEqual(scannerContinuity.after, scannerContinuity.before);
+    results.push({ viewport, name: 'scanner-art-failure', evidence: 'CONTROLLED_ART_ERROR_EVENT_REAL_COMPONENT', ...scannerContinuity });
+    await capture('scanner-art-failure', 'CONTROLLED_ARTWORK_FAILURE');
+    for (const id of ['cannacats', 'hopium-machines', 'peeps', 'ccff00', ...batchIds]) {
       marketPrice = id === 'hopium-machines' ? 0.00001503 : 0.00003573;
       marketChange = id === 'hopium-machines' ? 0.44 : -0.69;
       await page.goto(`${base}/projects/${id}`, { waitUntil: 'networkidle' });
       assert.equal(await page.locator('.isHeroArt img').evaluate(image => image.complete && image.naturalWidth > 0), true, id);
       const paired = ['cannacats', 'hopium-machines'].includes(id);
       assert.equal(await page.getByRole('link', { name: 'Trade token', exact: true }).count(), paired ? 1 : 0);
-      assert.equal(await page.locator('.rmtProjectAssetCard').count(), paired ? 2 : 1);
+      assert.equal(await page.locator('.rmtProjectAssetCard').count(), paired ? 2 : id === 'pixel-hood' ? 2 : 1);
+      for (const record of batch.records.filter(record => record.projectId === id)) {
+        const card = page.locator(`[id="${record.onchain.address.toLowerCase()}"]`);
+        const primary = card.locator('.rmtProjectPrimary');
+        assert.equal(await primary.getAttribute('href'), record.marketplace?.url ?? 'https://robinrabbits.com/court');
+        assert.equal((await primary.innerText()).trim(), record.marketplace ? 'Explore NFT collection' : 'Official collection');
+        assert.equal(await card.getByRole('link', { name: new RegExp('contract$') }).count(), 1);
+      }
       assert.equal(await page.locator('.rmtProjectMetricStrip').getByText('—', { exact: true }).count(), 0);
       if (id === 'ccff00') assert.match(await page.locator('.rmtProjectAssetsGrid').innerText(), /9,750/, 'Controlled current complete authority response is rendered');
       if (paired) await assertPriceFits(id);

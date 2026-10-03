@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { getAddress, type Address } from "viem";
-import { RMT_DISCOVERABLE_PROJECTS, projectById, projectsForContract, searchProjects, projectRelationships, projectCollectionLink, defineRmtProjectIdentity, WITHDRAWN_PROJECT_RELATIONSHIPS } from "@rmt/shared/project-identity";
+import { RMT_DISCOVERABLE_PROJECTS, projectById, projectsForContract, searchProjects, projectRelationships, projectCollectionLink, projectCollectionDestinations, defineRmtProjectIdentity, WITHDRAWN_PROJECT_RELATIONSHIPS } from "@rmt/shared/project-identity";
+import { RMT_CURATED_NFT_PROJECTS } from "@rmt/shared/nft/project-registry";
 import { projectArtworkCandidates, projectComposition } from "../vnext/project-presentation";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
@@ -14,9 +15,10 @@ async function main() {
 const wallet = getAddress("0x1111111111111111111111111111111111111111"), other = getAddress("0x2222222222222222222222222222222222222222");
 const hash = `0x${"a".repeat(64)}`; const time = new Date().toISOString();
 const ccff = projectById("ccff00")!, canna = projectById("cannacats")!;
-assert.equal(RMT_DISCOVERABLE_PROJECTS.length, 4);
+assert.equal(RMT_DISCOVERABLE_PROJECTS.length, 15);
 assert.equal(ccff.assets.length, 1); assert.equal(ccff.assets[0]!.kind, "ERC721");
-assert.equal(projectById("robin-rabbits"), null, "WATCHING is not graph admission");
+assert.equal(projectById("robin-rabbits")!.assets.length, 1, "Only the technically established Robin Rabbits collection is admitted");
+for (const id of ["robin-rabbits", "gogh-punks"]) assert.equal(RMT_CURATED_NFT_PROJECTS.find(project => project.projectId === id)!.status, "WATCHING", "Project admission never promotes NFT discovery or starts indexing");
 for (const query of ["CannaCats", "CANNACAT", canna.assets[0]!.contract, canna.assets[1]!.contract]) assert.equal(searchProjects(query)[0]?.projectId, "cannacats");
 assert.equal(searchProjects("Founding Feathers")[0]?.projectId, "peeps");
 const feathers = projectById("peeps")!;
@@ -33,6 +35,7 @@ assert.ok(withdrawn.asset.evidence.some(item => item.class === "ONCHAIN_VERIFIED
 assert.equal(projectComposition(feathers).label, "NFT-led project");
 assert.equal(projectComposition(canna).label, "Token ↔ NFT project");
 const mediaRecords = JSON.parse(readFileSync(new URL("../../../../docs/projects/project-artwork-evidence.json", import.meta.url), "utf8"));
+const batch = JSON.parse(readFileSync(new URL("../../../../docs/projects/nft-project-batch-evidence.json", import.meta.url), "utf8"));
 assert.deepEqual(mediaRecords, JSON.parse(readFileSync(new URL("../../public/project-art/evidence.json", import.meta.url), "utf8")));
 for (const record of mediaRecords.records) {
   const project = projectById(record.projectId)!;
@@ -40,8 +43,15 @@ for (const record of mediaRecords.records) {
   if (record.kind === "NFT_COLLECTION" && record.class === "PROVIDER_VERIFIED") {
     const collection = projectCollectionLink(project, record.contract);
     assert.equal(record.source, collection?.url);
-    const slug = new URL(record.source).pathname.split("/").pop();
-    assert.ok(new URL(record.image).pathname.startsWith(`/collection/${slug}/image_type_logo/`), "A suggested/unrelated collection image cannot become this project's artwork");
+    const batchRecord = batch.records.find((item: { onchain: { address: string } }) => item.onchain.address.toLowerCase() === record.contract.toLowerCase());
+    if (batchRecord) {
+      assert.equal(batchRecord.marketplace.contract.toLowerCase(), record.contract.toLowerCase());
+      assert.equal(batchRecord.artwork.image, record.image, "The exact collection page's retained logo is independently bound, including provider slug aliases");
+      assert.equal(batchRecord.marketplace.pageSha256, record.collectionPageSha256);
+    } else {
+      const slug = new URL(record.source).pathname.split("/").pop();
+      assert.ok(new URL(record.image).pathname.startsWith(`/collection/${slug}/image_type_logo/`), "A suggested/unrelated collection image cannot become this project's artwork");
+    }
   }
   const bytes = readFileSync(new URL(`../../public${record.local}`, import.meta.url));
   assert.equal(createHash("sha256").update(bytes).digest("hex"), record.sha256);
@@ -70,6 +80,32 @@ const multiDestinations = defineRmtProjectIdentity({ ...multi,
 });
 assert.equal(projectCollectionLink(multiDestinations, other)?.url, secondCollectionUrl, "Each collection keeps its exact evidenced destination");
 assert.equal(projectCollectionLink({ ...canna, links: [] }, canna.assets[1]!.contract), null, "Missing marketplace links remain optional");
+const pixel = projectById("pixel-hood")!;
+assert.equal(pixel.assets.length, 2);
+for (const asset of pixel.assets) {
+  assert.equal(searchProjects(asset.contract)[0]?.projectId, "pixel-hood");
+  assert.equal(searchProjects(asset.name!)[0]?.projectId, "pixel-hood");
+  assert.equal(projectCollectionDestinations(pixel, asset.contract)[0]?.url, asset.name === "Pixel Hood Clan" ? "https://opensea.io/collection/pixelhoodclan" : "https://opensea.io/collection/pixelhoodminis");
+}
+assert.deepEqual(projectCollectionDestinations(pixel, other), []);
+assert.deepEqual(projectCollectionDestinations(canna, canna.assets[0]!.contract), []);
+const rabbit = projectById("robin-rabbits")!;
+assert.equal(projectCollectionDestinations(rabbit, rabbit.assets[0]!.contract)[0]?.kind, "OFFICIAL_COLLECTION");
+assert.equal(projectCollectionDestinations(rabbit, rabbit.assets[0]!.contract)[0]?.url, "https://robinrabbits.com/court");
+assert.equal(rabbit.pendingRelationships?.[0]?.reason, "SECOND_COLLECTION_CONTRACT_NOT_ESTABLISHED");
+assert.equal(RMT_DISCOVERABLE_PROJECTS.filter(project => project.projectId === "receipts").length, 1, "Duplicate owner input creates one project");
+for (const record of batch.records) {
+  const admitted = projectById(record.projectId)!;
+  const asset = admitted.assets.find(item => item.contract.toLowerCase() === record.onchain.address.toLowerCase())!;
+  assert.equal(asset.kind, "ERC721"); assert.equal(record.onchain.chainId, 4663);
+  assert.ok(record.onchain.codeBytes > 0); assert.equal(record.onchain.reads.ERC721, "true"); assert.equal(record.onchain.reads.invalidInterface, "false");
+  assert.ok(asset.evidence!.some(e => e.class === "OWNER_SUPPLIED_CANDIDATE"));
+  assert.ok(!asset.evidence!.some(e => e.class === "OWNER_VERIFIED"), "Candidate contract verification never becomes owner-verification evidence");
+  assert.equal(admitted.assets.filter(item => item.kind === "ERC20").length, 0);
+  assert.throws(() => defineRmtProjectIdentity({ ...admitted, assets: [{ ...asset, evidence: asset.evidence!.filter(e => e.class !== "ONCHAIN_VERIFIED") }] }));
+  assert.throws(() => defineRmtProjectIdentity({ ...admitted, assets: [{ ...asset, kind: "ERC20", relationship: "OWNER_CONFIRMED_PROJECT_TOKEN", destinations: [] }] }));
+  assert.throws(() => defineRmtProjectIdentity({ ...admitted, assets: [{ ...asset, destinations: [{ ...asset.destinations![0]!, url: "https://opensea.io/collection/unrelated" }] }] }));
+}
 const tokenOnly = defineRmtProjectIdentity({ ...canna, projectId: "controlled-token-only", assets: [canna.assets[0]!] });
 assert.equal(tokenOnly.assets.length, 1);
 for (const asset of canna.assets) {

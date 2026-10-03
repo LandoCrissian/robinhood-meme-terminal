@@ -1,10 +1,12 @@
 import { getAddress, isAddress, zeroAddress, type Address } from "viem";
 import { RMT_CURATED_NFT_PROJECTS, type RmtCuratedNftProject, type RmtNftProjectTokenAssociation } from "./nft/project-registry.js";
 import { INITIAL_PROJECT_EVIDENCE } from "./project-evidence.js";
+import { NFT_PROJECT_BATCH_EVIDENCE } from "./project-nft-batch-evidence.js";
 export { WITHDRAWN_PROJECT_RELATIONSHIPS } from "./project-evidence.js";
 
-export const PROJECT_EVIDENCE_CLASSES = ["OWNER_VERIFIED", "ONCHAIN_VERIFIED", "PROJECT_OFFICIAL", "PROVIDER_VERIFIED", "DERIVED"] as const;
+export const PROJECT_EVIDENCE_CLASSES = ["OWNER_VERIFIED", "OWNER_SUPPLIED_CANDIDATE", "ONCHAIN_VERIFIED", "PROJECT_OFFICIAL", "PROVIDER_VERIFIED", "DERIVED"] as const;
 export type ProjectEvidence = { class: typeof PROJECT_EVIDENCE_CLASSES[number]; source: string; observedAt: string; blockNumber?: string };
+export type ProjectCollectionDestination = { kind: "MARKETPLACE" | "OFFICIAL_COLLECTION"; label: string; url: string; evidence: readonly ProjectEvidence[] };
 export type ProjectRelationshipType = "PROJECT_HAS_TOKEN" | "PROJECT_HAS_NFT_COLLECTION" | "PROJECT_HAS_OFFICIAL_LINK" | "PROJECT_ORIGIN" | "PROJECT_HAS_MARKET" | "PROJECT_HAS_RWA" | "PROJECT_HAS_STOCK_TOKEN";
 export type ProjectRelationship = { projectId: string; type: ProjectRelationshipType; chainId: 4663; contract?: Address; url?: string; evidence: readonly ProjectEvidence[]; verification: "VERIFIED" };
 
@@ -30,6 +32,7 @@ export type RmtProjectIdentity = {
     symbol?: string;
     decimals?: number;
     evidence?: readonly ProjectEvidence[];
+    destinations?: readonly ProjectCollectionDestination[];
   }[];
 };
 
@@ -52,8 +55,21 @@ export function defineRmtProjectIdentity(input: RmtProjectIdentity): RmtProjectI
     if (asset.kind === "ERC20" && !input.officialEvidence.length) throw new Error("A token relationship needs positive project evidence.");
     if (asset.decimals !== undefined && (asset.kind !== "ERC20" || !Number.isInteger(asset.decimals) || asset.decimals < 0 || asset.decimals > 255)) throw new Error("Invalid project asset units.");
     if (asset.evidence) {
-      if (asset.evidence.length > 16 || !asset.evidence.some(e => e.class === "OWNER_VERIFIED") || !asset.evidence.some(e => e.class === "ONCHAIN_VERIFIED")) throw new Error("Graph admission requires distinct owner and onchain evidence.");
+      const ownerVerified = asset.evidence.some(e => e.class === "OWNER_VERIFIED");
+      // Candidate links are not owner-verified contracts and cannot authorize
+      // token relationships. This batch permits verified NFT identities only.
+      const nftCandidate = asset.kind !== "ERC20" && asset.evidence.some(e => e.class === "OWNER_SUPPLIED_CANDIDATE")
+        && asset.evidence.some(e => e.class === "PROJECT_OFFICIAL" || e.class === "PROVIDER_VERIFIED");
+      if (asset.evidence.length > 16 || !(ownerVerified || nftCandidate) || !asset.evidence.some(e => e.class === "ONCHAIN_VERIFIED")) throw new Error("Graph admission requires distinct owner and onchain evidence.");
       if (!asset.evidence.every(validEvidence)) throw new Error("Invalid relationship evidence.");
+    }
+    if ((asset.destinations?.length ?? 0) > 8) throw new Error("Collection destinations must be bounded.");
+    for (const destination of asset.destinations ?? []) {
+      if (asset.kind === "ERC20" || !["MARKETPLACE", "OFFICIAL_COLLECTION"].includes(destination.kind) || !destination.label.trim() || destination.label.length > 80 || !destination.evidence.length || destination.evidence.length > 16 || !destination.evidence.every(validEvidence)) throw new Error("Invalid collection destination.");
+      https(destination.url);
+      const authority = destination.kind === "MARKETPLACE" ? "PROVIDER_VERIFIED" : "PROJECT_OFFICIAL";
+      if (!destination.evidence.some(e => e.class === authority && e.source === destination.url)
+        || !asset.evidence?.some(e => e.class === authority && e.source === destination.url)) throw new Error("Collection destination requires exact-asset evidence.");
     }
     const contract = getAddress(asset.contract); const key = contract.toLowerCase();
     if (seen.has(key)) throw new Error("Duplicate project contract."); seen.add(key);
@@ -80,8 +96,9 @@ export function projectIdentityFromNftProject(project: RmtCuratedNftProject): Rm
 // This reviewed graph is independent of NFT indexer admission. Adding a project
 // never creates an activity source, deployment, execution gate or entitlement.
 export const RMT_PROJECT_IDENTITIES: readonly RmtProjectIdentity[] = [
-  ...RMT_CURATED_NFT_PROJECTS.filter(project => project.status !== "REMOVED" && !INITIAL_PROJECT_EVIDENCE.some(item => item.projectId === project.projectId)).map(projectIdentityFromNftProject),
-  ...INITIAL_PROJECT_EVIDENCE.map(defineRmtProjectIdentity)
+  ...RMT_CURATED_NFT_PROJECTS.filter(project => project.status !== "REMOVED" && ![...INITIAL_PROJECT_EVIDENCE, ...NFT_PROJECT_BATCH_EVIDENCE].some(item => item.projectId === project.projectId)).map(projectIdentityFromNftProject),
+  ...INITIAL_PROJECT_EVIDENCE.map(defineRmtProjectIdentity),
+  ...NFT_PROJECT_BATCH_EVIDENCE.map(defineRmtProjectIdentity)
 ];
 export const RMT_DISCOVERABLE_PROJECTS = RMT_PROJECT_IDENTITIES.filter(project => project.discovery === "VERIFIED");
 export function projectById(projectId: string) { return RMT_DISCOVERABLE_PROJECTS.find(project => project.projectId === projectId) ?? null; }
@@ -116,4 +133,14 @@ export function projectCollectionLink(project: RmtProjectIdentity, contract: str
     return url.hostname === "opensea.io" && /^\/collection\/[^/]+\/?$/.test(url.pathname)
       && asset?.evidence?.some(evidence => evidence.class === "PROVIDER_VERIFIED" && evidence.source === link.url);
   }) ?? null;
+}
+
+export function projectCollectionDestinations(project: RmtProjectIdentity, contract: string): readonly ProjectCollectionDestination[] {
+  const asset = project.assets.find(item => item.kind !== "ERC20" && item.contract.toLowerCase() === contract.toLowerCase());
+  if (!asset) return [];
+  if (asset.destinations?.length) return asset.destinations;
+  // Preserve the initial reviewed graph's exact collection binding. Never
+  // construct a slug or inherit another collection's marketplace.
+  const legacy = projectCollectionLink(project, contract);
+  return legacy ? [{ kind: "MARKETPLACE", label: "OpenSea", url: legacy.url, evidence: asset.evidence!.filter(e => e.class === "PROVIDER_VERIFIED" && e.source === legacy.url) }] : [];
 }
