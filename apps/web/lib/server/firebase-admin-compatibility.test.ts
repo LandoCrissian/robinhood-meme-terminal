@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { generateKeyPairSync, sign, verify } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { createServer } from "node:http";
 import { createRequire } from "node:module";
+import type { AddressInfo } from "node:net";
 import { dirname, resolve } from "node:path";
 import { test } from "node:test";
 import { cert, deleteApp, getApps } from "firebase-admin/app";
@@ -68,6 +70,37 @@ test("production Firebase SDK no longer depends on node-forge", () => {
   assert.equal(manifest.dependencies["node-forge"], undefined,
     "Use the upstream Firebase Admin release with native private-key validation");
   assert.doesNotMatch(readFileSync(resolve(adminLib, "app/credential-internal.js"), "utf8"), /node-forge/);
+});
+
+test("Firebase multipart responses remain compatible with the patched parser", { timeout: 10_000 }, async (t) => {
+  // Exercise Firebase's actual HttpClient/Dicer integration, not a mocked parser.
+  // The two regression inputs previously caused a parser crash or event-loop stall.
+  for (const [name, boundary, extraHeaders] of [
+    ["ordinary multipart response", "rmt-sdk-boundary", ""],
+    ["prototype-named part headers", "rmt-sdk-boundary", "__proto__: first\r\nconstructor: second\r\n"],
+    ["252-byte boundary", "b".repeat(252), ""]
+  ]) {
+    await t.test(name, async () => {
+      const bodies = ["first response", "second response"];
+      const server = createServer((_request, response) => {
+        response.writeHead(200, { "content-type": `multipart/mixed; boundary=${boundary}` });
+        response.end(bodies.map((body) =>
+          `--${boundary}\r\nContent-Type: text/plain\r\n${extraHeaders}\r\n${body}\r\n`
+        ).join("") + `--${boundary}--\r\n`);
+      });
+      await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+      try {
+        const { port } = server.address() as AddressInfo;
+        const response = await new HttpClient(null).send({
+          method: "GET", url: `http://127.0.0.1:${port}/multipart`, timeout: 2_000
+        });
+        assert.equal(response.status, 200);
+        assert.deepEqual(response.multipart.map((part: Buffer) => part.toString()), bodies);
+      } finally {
+        await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+      }
+    });
+  }
 });
 
 test("real Privy identity, RMT session route and Firebase SDK remain compatible", async (t) => {
