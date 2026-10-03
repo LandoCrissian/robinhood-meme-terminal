@@ -28,6 +28,7 @@ import { useVNextExecutionRecovery } from "./use-vnext-execution-recovery";
 import { useVNextMarketDirectory } from "./use-vnext-market-directory";
 import { useRmtIdentity } from "../rmt-identity";
 import { useAnchoredMarketRows } from "./use-anchored-market-rows";
+import { MARKET_UNIVERSES, selectMarketUniverse, type MarketUniverse } from "../../lib/vnext/market-universe";
 
 export function VNextTerminalShell({ initialLocation = { context: "markets" }, initialMarket }: {
   initialLocation?: VNextTerminalLocation;
@@ -53,6 +54,7 @@ export function VNextTerminalShell({ initialLocation = { context: "markets" }, i
     initialLocation.context === "asset" && initialLocation.side ? { side: initialLocation.side, nonce: 0 } : undefined
   );
   const [directoryView, setDirectoryView] = useState<VNextMarketDirectoryView>("active");
+  const [marketUniverse, setMarketUniverse] = useState<MarketUniverse>("all");
   const [visibleMarketLimit, setVisibleMarketLimit] = useState(VNEXT_MARKET_DIRECTORY_PAGE_SIZE);
   const marketSearch = useRef<HTMLInputElement>(null);
   const locationSyncEpoch = useRef(0);
@@ -109,11 +111,13 @@ export function VNextTerminalShell({ initialLocation = { context: "markets" }, i
   const effectiveTradeOpen = tradeOpen && selectedExecutionState === "normal";
   const selectAddressRef = useRef(selectAddress);
   const heldAddresses = useMemo(() => new Set(walletAssets.map((asset) => asset.address.toLowerCase())), [walletAssets]);
-  const directoryViewCounts = useMemo(() => vNextMarketDirectoryViewCounts(markets, heldAddresses), [heldAddresses, markets]);
+  const universeMarkets = useMemo(() => selectMarketUniverse(markets, marketUniverse, heldAddresses), [markets, marketUniverse, heldAddresses]);
+  const universeCounts = Object.fromEntries(MARKET_UNIVERSES.map(scope => [scope, scope === "held" && walletReadStatus === "idle" ? null : selectMarketUniverse(markets, scope, heldAddresses).length])) as Record<MarketUniverse, number | null>;
+  const directoryViewCounts = useMemo(() => vNextMarketDirectoryViewCounts(universeMarkets, heldAddresses), [heldAddresses, universeMarkets]);
   const localFilteredMarkets = useMemo(() => {
     if (query.trim()) return filterVNextLocalDirectoryMarkets(markets, query);
-    return selectVNextMarketDirectoryView(markets, directoryView, heldAddresses);
-  }, [directoryView, heldAddresses, markets, query]);
+    return selectVNextMarketDirectoryView(universeMarkets, directoryView === "all" && marketUniverse === "rwa" ? "rwa" : directoryView, heldAddresses);
+  }, [directoryView, marketUniverse, heldAddresses, markets, universeMarkets, query]);
   const filteredMarkets = useMemo(() => {
     if (!query.trim()) return localFilteredMarkets;
     const submittedQueryIsCurrent = submittedSearchQuery.trim().toLowerCase() === query.trim().toLowerCase();
@@ -126,7 +130,24 @@ export function VNextTerminalShell({ initialLocation = { context: "markets" }, i
     () => visibleVNextMarketDirectoryMarkets(filteredMarkets, visibleMarketLimit),
     [filteredMarkets, visibleMarketLimit]
   );
-  const visibleMarkets = useAnchoredMarketRows(rankedVisibleMarkets, `${directoryView}:${query}:${visibleMarketLimit}`);
+  const scanner = useAnchoredMarketRows(rankedVisibleMarkets, `${marketUniverse}:${directoryView}:${query}:${visibleMarketLimit}`);
+  const visibleMarkets = scanner.rows;
+  useEffect(() => {
+    const restore = () => {
+      const p = new URLSearchParams(window.location.search), scope = p.get("universe"), view = p.get("view");
+      setMarketUniverse(MARKET_UNIVERSES.includes(scope as MarketUniverse) ? scope as MarketUniverse : view === "rwa" ? "rwa" : "all");
+      setDirectoryView(view === "rwa" ? "all" : ["active", "movers", "new", "trending", "all"].includes(view ?? "") ? view as VNextMarketDirectoryView : "active");
+    };
+    restore(); window.addEventListener("popstate", restore);
+    return () => window.removeEventListener("popstate", restore);
+  }, []);
+  const changeUniverse = (scope: MarketUniverse) => {
+    setMarketUniverse(scope);
+    clearUniversalSearch(); setQuery("");
+    setVisibleMarketLimit(VNEXT_MARKET_DIRECTORY_PAGE_SIZE);
+    const url = new URL(window.location.href); url.searchParams.set("universe", scope);
+    window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  };
 
   useEffect(() => {
     selectAddressRef.current = selectAddress;
@@ -215,12 +236,17 @@ export function VNextTerminalShell({ initialLocation = { context: "markets" }, i
   }, [writeLocation]);
   const changeDirectoryView = useCallback((view: VNextMarketDirectoryView) => {
     setDirectoryView(view);
+    const url = new URL(window.location.href); url.searchParams.set("view", view);
+    window.history.pushState({}, "", `${url.pathname}${url.search}${url.hash}`);
     clearUniversalSearch();
     setQuery("");
     setVisibleMarketLimit(VNEXT_MARKET_DIRECTORY_PAGE_SIZE);
   }, [clearUniversalSearch]);
   const showRwa = useCallback(() => {
-    changeDirectoryView("rwa");
+    setMarketUniverse("rwa");
+    changeDirectoryView("all");
+    const url = new URL(window.location.href); url.searchParams.set("universe", "rwa");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
     setContext("markets");
     setTradeOpen(false);
     writeLocation("markets");
@@ -316,8 +342,12 @@ export function VNextTerminalShell({ initialLocation = { context: "markets" }, i
     markets,
     filteredMarkets,
     visibleMarkets,
+    scannerUpdates: scanner,
     directoryView,
     directoryViewCounts,
+    marketUniverse,
+    universeCounts,
+    onUniverseChange: changeUniverse,
     searchActive: Boolean(query.trim()),
     searchStatus,
     expandedSearchResultCount: submittedSearchQuery.trim().toLowerCase() === query.trim().toLowerCase()

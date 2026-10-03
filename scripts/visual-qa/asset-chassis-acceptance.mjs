@@ -65,11 +65,11 @@ try {
         const summaries = await page.locator('[data-chain-pulse-expanded] > button > span:first-child > span').evaluateAll(nodes=>nodes.map(n=>({text:n.textContent,clipped:n.scrollWidth>n.clientWidth+1})));
         assert.ok(summaries.length===2&&summaries.every(s=>!s.clipped),'Markets context summaries wrap without truncation');
         assert.ok(summaries.some(s=>s.text.includes('24h volume $640M')),'Ready controlled chain context passes production payload validation');
-        await page.locator('.rmtExplore > summary').first().click();
-        assert.equal(await page.locator('.rmtExploreChoices button').filter({hasText:/Launches/}).count(),0,'Empty launch categories are not presented as populated');
-        assert.equal(await page.locator('.rmtExploreChoices button').filter({hasText:/Projects/}).count(),1,'Verified Project Graph activates Projects independently of loaded token rows');
+        await page.locator('.rmtExploreTrigger').first().click();
+        assert.match(await page.locator('.rmtExploreDialog fieldset button').filter({hasText:/Launches/}).innerText(),/Launches\s*0/,'Empty launch universe reports zero and never invents population');
+        assert.equal(await page.locator('.rmtExploreDialog button').filter({hasText:/Projects/}).count(),1,'Verified Project Graph activates Projects independently of loaded token rows');
         await capture('markets-explore');
-        await page.locator('.rmtExplore > summary').first().click();
+        await page.getByRole('button',{name:'Close Explore',exact:true}).click();
       }
       for(const name of ['New','Movers','Trending','Active']) {
         await page.locator('.rmtMarketViews').first().getByRole('button',{name:new RegExp(`^${name}`)}).click();

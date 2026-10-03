@@ -508,7 +508,7 @@ export function VNextAssetWorkspace({
     directoryMarket.pairAddress,
     shouldRequestVNextExternalWorkspaceMarket(directoryMarket)
   );
-  const resolution = workspace.resolution ?? workspace.market?.resolution;
+  const resolution = workspace.resolution ?? workspace.market?.resolution ?? directoryMarket.resolution;
   const market = workspace.market;
   const presentationIdentity = workspaceTokenPresentation({
     address: directoryMarket.address,

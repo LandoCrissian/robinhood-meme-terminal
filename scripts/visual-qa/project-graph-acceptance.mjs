@@ -60,8 +60,10 @@ try {
   assert.equal(await page.locator('nav[aria-label="RMT Terminal navigation"]:visible [aria-current="page"]').innerText(),'Projects');
   await page.locator('nav[aria-label="RMT Terminal navigation"]:visible').getByRole('link',{name:'Markets',exact:true}).click();
   await page.locator(mobile?'.rmtMobileMarketRow':'.rmtMarketTableRow').first().waitFor();
-  await page.locator('.rmtExplore>summary').first().click();await page.locator('.rmtExploreChoices button').filter({hasText:'Projects'}).click();
-  assert.equal(await page.locator('.rmtProjectRow').count(),15);await capture('projects-discovery');
+  await page.locator('.rmtExploreTrigger').first().click();await page.locator('.rmtExploreDialog button').filter({hasText:'Projects'}).click();
+  assert.match(await page.locator('.rmtExploreTrigger').innerText(),/Projects/);
+  assert.equal(await page.locator('.rmtProjectRow').count(),0,'Market universe filters token relationships; the first-class Projects directory retains all 15 projects');
+  await capture('projects-token-universe');
   for(const query of ['CannaCats','CANNACAT',canna,nft,'Founding Feathers']) {
    const input=page.locator(mobile?'#rmt-mobile-market-search':'#rmt-desktop-market-search');
    await input.fill(query);await page.locator('.rmtProjectRow').first().waitFor();assert.match(await page.locator('.rmtProjectDiscovery').innerText(),query==='Founding Feathers'?/Founding Feathers/:/CannaCats/);

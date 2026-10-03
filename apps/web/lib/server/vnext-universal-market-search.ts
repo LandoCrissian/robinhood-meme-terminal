@@ -9,7 +9,7 @@ import {
   type VNextCanonicalMarketInventoryResult
 } from "./vnext-market-indexer";
 import type { VNextCanonicalTokenIdentitySearchResult } from "./vnext-market-indexer";
-import { readRobinhoodTokenIdentityEvidence } from "./universal-market-resolver";
+import { readExactLiveMarketResolution, readRobinhoodTokenIdentityEvidence } from "./universal-market-resolver";
 import {
   ROBINHOOD_USDG_ADDRESS,
   ROBINHOOD_WETH_ADDRESS
@@ -100,6 +100,7 @@ export type VNextUniversalMarketSearchDependencies = {
   readCanonicalCatalog?: CanonicalCatalogReader;
   searchCanonicalTokens?: CanonicalTokenSearchReader;
   readLaunches?: typeof readLaunchIntelligence;
+  readLiveResolution?: typeof readExactLiveMarketResolution;
 };
 
 type CandidatePair = {
@@ -332,8 +333,8 @@ async function exactAddressSearch(
   dependencies: Required<Pick<VNextUniversalMarketSearchDependencies, "readInventory" | "readIdentity" | "admitProjectIdentities">>
 ): Promise<VNextUniversalMarketSearchResult> {
   const [tokenInventoryRead, poolInventoryRead] = await Promise.allSettled([
-    dependencies.readInventory({ token: address, limit: INVENTORY_LIMIT }),
-    dependencies.readInventory({ poolKey: address, limit: INVENTORY_LIMIT })
+    settleWithin(dependencies.readInventory({ token: address, limit: INVENTORY_LIMIT }), CANONICAL_TOKEN_INDEX_TIMEOUT_MS, null),
+    settleWithin(dependencies.readInventory({ poolKey: address, limit: INVENTORY_LIMIT }), CANONICAL_TOKEN_INDEX_TIMEOUT_MS, null)
   ]);
   const tokenInventory = tokenInventoryRead.status === "fulfilled"
     ? tokenInventoryRead.value
@@ -629,7 +630,7 @@ async function discoverCandidates(
 
 async function textSearch(
   query: string,
-  dependencies: Required<Omit<VNextUniversalMarketSearchDependencies,"readLaunches">>,
+  dependencies: Required<Omit<VNextUniversalMarketSearchDependencies,"readLaunches" | "readLiveResolution">>,
   includeCuratedEvidence = false
 ): Promise<VNextUniversalMarketSearchResult> {
   const discoveryPromise = discoverCandidates(
@@ -855,6 +856,17 @@ async function searchExistingVNextUniversalMarkets(
     }
     if (exactAddress && result.results.length === 0 && positiveNonContracts.has(exactAddress)) {
       return emptyResult(query, "token-or-pool-address", "not_found");
+    }
+    if (exactAddress && result.status === "found") {
+      const liveReader = dependencies.readLiveResolution ?? (Object.keys(dependencies).length === 0 ? readExactLiveMarketResolution : undefined);
+      const exact = result.results.find(item => item.address === exactAddress && item.matchedBy === "token" && item.markets.length === 0);
+      if (exact && liveReader) {
+        const resolution = await settleWithin(liveReader(getAddress(exactAddress)), 3_000, null);
+        if (resolution?.token.address.toLowerCase() === exactAddress && resolution.status === "pool-found"
+          && resolution.token.name === exact.name && resolution.token.symbol === exact.symbol && resolution.token.decimals === exact.decimals) {
+          return { ...result, results: result.results.map(item => item === exact ? { ...item, resolution } : item) };
+        }
+      }
     }
     return result;
   }

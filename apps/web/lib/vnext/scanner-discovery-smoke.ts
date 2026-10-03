@@ -1,0 +1,30 @@
+import assert from "node:assert/strict";
+import { reconcileScannerRows } from "./scanner-reconciliation";
+import { selectMarketUniverse } from "./market-universe";
+import { parseVNextUniversalMarketSearchResult } from "./universal-market-search-contract";
+import { directoryMarketFromUniversalSearchResult, selectVNextMarketDirectoryView } from "./market-directory";
+import { searchVNextUniversalMarkets } from "../server/vnext-universal-market-search";
+import type { UniversalMarketResolution } from "../external-market";
+const address = (n: number) => `0x${n.toString(16).padStart(40,"0")}`;
+async function main() {
+const token = address(11), quote = address(12), pool = address(13);
+const resolution: UniversalMarketResolution = { chainId:4663, requestedAddress:token, requestedKind:"token", status:"pool-found", token:{address:token,name:"Uncurated",symbol:"REAL",decimals:18,totalSupply:"100000"},pools:[{venue:"uniswap-v3",protocolVersion:3,poolAddress:pool,token0:quote,token1:token,quoteToken:quote,fee:3000,canonical:true,execution:"view-only"}],marketData:"identity-only",execution:"view-only",provenance:"robinhood-chain-contract-reads",resolvedAt:new Date().toISOString() };
+let liveReads=0;
+const deps = { readInventory: async () => ({status:"verified_shadow" as const, chainId:4663 as const,mode:"shadow" as const,authoritative:false as const,sourceManifestHash:`0x${"1".repeat(64)}`,coverage:{complete:false,finalizedHead:"100",sources:[]},nextCursor:null,pools:[]}), readIdentity:async()=>resolution.token, admitProjectIdentities:async <T>(items:readonly T[])=>[...items], readLiveResolution:async()=>{liveReads++;return resolution;} };
+const result = await searchVNextUniversalMarkets(token,deps);
+assert.equal(result.status,"found"); assert.equal(liveReads,1);
+const parsed=parseVNextUniversalMarketSearchResult(result)!;assert.equal(parsed.results[0].resolution?.pools[0].poolAddress,pool);
+assert.equal(parsed.results[0].markets.length,0,"Live resolution must not invent indexed history");
+const market=directoryMarketFromUniversalSearchResult(parsed.results[0]);assert.equal(market.resolution?.pools[0].token0,quote);
+assert.equal(selectVNextMarketDirectoryView([market],"active").length,0,"Canonical code alone is not recent activity");
+assert.equal(selectVNextMarketDirectoryView([market],"new").length,0,"No guessed age");
+assert.equal(selectMarketUniverse([market],"projects",new Set()).length,0,"No inferred project admission");
+assert.equal(parseVNextUniversalMarketSearchResult({...result,results:[{...result.results[0],resolution:{...resolution,token:{...resolution.token,address:address(99)}}}]}),null,"Foreign resolution rejected");
+const unavailable=await searchVNextUniversalMarkets(token,{...deps,readLiveResolution:async()=>null});assert.equal(unavailable.status,"found","Optional pool failure retains exact identity");
+const rows=[{id:"b",price:4},{id:"a",price:3},{id:"c",price:2}];
+const held=reconcileScannerRows(rows,["a","b"],row=>row.id,true);assert.deepEqual(held.rows,[rows[1],rows[0]]);assert.equal(held.newCount,1);assert.equal(held.pending,true);
+assert.deepEqual(reconcileScannerRows(rows,["a","b"],row=>row.id,false).rows,rows);
+assert.deepEqual(reconcileScannerRows([rows[0]],["a","b"],row=>row.id,true).rows,[rows[0]],"Exclusions override anchors");
+console.log("Discovery V2: uncurated exact identity/live pools, no fabricated history/admission, failed enrichment retention, and shared scanner reconciliation PASS.");
+}
+void main();

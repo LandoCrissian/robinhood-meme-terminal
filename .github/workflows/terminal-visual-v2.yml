@@ -97,6 +97,12 @@ jobs:
       - name: Include public before capture manifests
         if: always()
         run: cp -R docs/product/asset-chassis/before terminal-visual-v2/before-public
+      - name: Verify live scanner refresh, reconciliation and focus continuity
+        if: ${{ !cancelled() }}
+        run: node scripts/visual-qa/live-scanner-acceptance.mjs
+      - name: Include discovery evidence
+        if: always()
+        run: cp docs/product/market-discovery-v2-review.md terminal-visual-v2/market-discovery-v2-review.md
       - name: Upload visual evidence and semantic report
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
