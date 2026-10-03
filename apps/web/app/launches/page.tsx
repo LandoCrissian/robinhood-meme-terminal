@@ -1,4 +1,4 @@
-import { readLaunchIntelligence } from "../../lib/server/launch-intelligence-reader";
+import { readLaunchIntelligence, readLaunchSourceAvailability } from "../../lib/server/launch-intelligence-reader";
 import { TerminalIcon } from "../vnext/terminal-icon";
 import { LaunchDiscovery } from "./launch-discovery";
 export const dynamic = "force-dynamic";
@@ -17,6 +17,7 @@ export default async function LaunchesPage({
     source,
     limit: 50,
   });
+  const availableSources = await readLaunchSourceAvailability(directory);
   return (
     <main className="rmtLaunchPage">
       <header className="rmtLaunchHero">
@@ -34,6 +35,7 @@ export default async function LaunchesPage({
       <LaunchDiscovery
         key={`${source ?? "ALL"}:${q}`}
         initial={directory}
+        availableSources={availableSources}
         query={q}
         source={source}
         observedNow={Date.now()}

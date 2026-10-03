@@ -28,7 +28,7 @@ for(const viewport of [{width:375,height:812},{width:390,height:844},{width:430,
   const capture=async name=>{const fonts=await captureAccountSurface(page,path.join(output,`${viewport.width}-${name}.png`));const measures=await page.evaluate(()=>({overflow:Math.max(0,document.documentElement.scrollWidth-innerWidth),walletRequests:window.__walletRequests}));assert.equal(measures.overflow,0,name);assert.equal(measures.walletRequests,0);results.push({viewport,name,evidence:fixture.evidence,...measures,fontReadinessMs:fonts.readinessMs});};
   state.mode="ready";state.delay=0;
   await page.goto(`${base}/launches`,{waitUntil:"domcontentloaded",timeout:120000});await page.locator(".rmtLaunchRow").first().waitFor();
-  assert.equal(await page.locator(".rmtLaunchRow").count(),6);assert.ok(await page.getByRole("link",{name:"pons",exact:true}).count());assert.ok(await page.getByRole("link",{name:"StonkBrokers",exact:true}).count());
+  assert.equal(await page.locator(".rmtLaunchRow").count(),6);assert.ok(await page.getByRole("link",{name:"Pons",exact:true}).count());assert.ok(await page.getByRole("link",{name:"StonkBrokers",exact:true}).count());
   await capture("all-sources");
   const density=await page.locator('.rmtLaunchRow').evaluateAll(rows=>({rowHeights:rows.map(row=>row.getBoundingClientRect().height),fullyVisible:rows.filter(row=>{const r=row.getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;}).length,artworkSizes:rows.map(row=>row.querySelector('.rmtMarketArtwork').getBoundingClientRect().width)}));
   assert.ok(density.rowHeights.every(height=>height<=80),'Launch discovery remains a compact scanner');
@@ -119,6 +119,17 @@ for(const viewport of [{width:375,height:812},{width:390,height:844},{width:430,
   state.mode="metadata-unavailable";state.delay=300;await page.goto(`${base}/launches?q=${metadataQuery}`,{waitUntil:"domcontentloaded"});await page.locator(".rmtLaunchRow").first().waitFor();await capture("unknown-metadata-delayed-index");state.delay=0;
   state.mode="empty-outage";await page.goto(`${base}/launches?q=controlled-outage-${viewport.width}`,{waitUntil:"domcontentloaded"});await page.getByText("Launch discovery is temporarily unavailable. Markets remain available.").waitFor();await capture("index-outage");
   state.mode="ready";
+  await page.goto(`${base}/launches?q=controlled-pons-page-${viewport.width}`,{waitUntil:'domcontentloaded'});
+  await page.locator('.rmtLaunchRow').first().waitFor();
+  const onlyPons=await page.locator('.rmtLaunchSource').allTextContents();
+  assert.ok(onlyPons.length>0&&onlyPons.every(text=>text.includes('pons')));
+  await page.getByRole('link',{name:'StonkBrokers',exact:true}).waitFor();
+  await capture('pons-only-page-with-stonk-filter');
+  await page.getByRole('link',{name:'StonkBrokers',exact:true}).click();
+  await page.waitForURL(url=>url.searchParams.get('source')==='STONKBROKERS',{waitUntil:'domcontentloaded'});
+  await page.locator('.rmtLaunchRow').first().waitFor();
+  assert.ok((await page.locator('.rmtLaunchSource').allTextContents()).every(text=>text.includes('StonkBrokers')));
+  await capture('stonk-discovered-from-pons-only-page');
   // Companion capture uses the existing real Markets components and external
   // fixture boundary, never a screenshot-only scanner implementation.
   const markets=await context.newPage();markets.on('pageerror',error=>errors.push(error.message));
