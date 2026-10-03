@@ -376,6 +376,23 @@ async function tokenLane(browser, viewport, platform) {
   const context = await createContext(browser, viewport);
   const page = await context.newPage();
   page.setDefaultTimeout(30_000);
+  const navigationTrace = [];
+  page.on("request", request => {
+    const url = new URL(request.url());
+    if (url.pathname.startsWith("/nft")) navigationTrace.push({ event: "request", time: performance.now(), path: `${url.pathname}${url.search}`, navigation: request.isNavigationRequest() });
+  });
+  page.on("response", response => {
+    const url = new URL(response.url());
+    if (url.pathname.startsWith("/nft")) navigationTrace.push({ event: "response", time: performance.now(), path: `${url.pathname}${url.search}`, status: response.status() });
+  });
+  await page.addInitScript(() => {
+    window.__rmtNftJourneyEvents = [];
+    for (const type of ["pointerdown", "pointerup", "click"]) document.addEventListener(type, event => {
+      const anchor = event.target?.closest?.("a");
+      const entry = { type, time: performance.now(), x: event.clientX, y: event.clientY, scroll: scrollY, href: anchor?.getAttribute("href"), target: event.target?.tagName, scrollBehavior: getComputedStyle(document.documentElement).scrollBehavior };
+      setTimeout(() => { entry.defaultPrevented = event.defaultPrevented; window.__rmtNftJourneyEvents.push(entry); }, 0);
+    }, true);
+  });
   const fixture = await installTokenRoutes(page);
   await page.goto(base, { waitUntil: "domcontentloaded", timeout: 60_000 });
   await page.locator(platform === "mobile" ? ".rmtMobileTerminal" : ".rmtDesktopTerminal").waitFor();
@@ -868,7 +885,7 @@ async function nftJourneyLane(browser, viewport, platform) {
       })));
       await page.screenshot({ path: path.join(output, `${state}-destination-failure.png`) });
       await writeFile(path.join(output, `${state}-destination-failure.json`), JSON.stringify({
-        lifecycle, controls, expectedUrl: String(url), error: error instanceof Error ? error.stack : String(error),
+        lifecycle, controls, expectedUrl: String(url), navigationTrace, pointerTrace: await page.evaluate(() => window.__rmtNftJourneyEvents), error: error instanceof Error ? error.stack : String(error),
       }, null, 2));
       throw new Error(`NFT destination readiness failed: ${JSON.stringify({ lifecycle, controls })}`, { cause: error });
     }
@@ -888,6 +905,7 @@ async function nftJourneyLane(browser, viewport, platform) {
     nftJourneyReadiness.push(await element.evaluate((link, platform) => ({
       platform, pathname: location.pathname, search: location.search,
       readyState: document.readyState, href: link.getAttribute("href"), clientHandlerInstalled: true,
+      scroll: scrollY, rect: link.getBoundingClientRect().toJSON(), scrollBehavior: getComputedStyle(document.documentElement).scrollBehavior,
     }), platform));
     await element.click();
     await anchor.dispose();
