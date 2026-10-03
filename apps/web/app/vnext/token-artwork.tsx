@@ -24,7 +24,7 @@ export function TokenArtwork({ symbol, imageUrl, className, contract, launch, sc
     {stable ? <span>{symbol.trim().slice(0, 1).toUpperCase() || "?"}</span> : null}
     {stable && loadedImage && loadedImage !== safeImage ? <img key={loadedImage} src={loadedImage} alt="" referrerPolicy="no-referrer" style={imageStyle} /> : null}
     {safeImage && failedImage !== safeImage
-      ? <img key={safeImage} src={safeImage} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" style={stable ? { ...imageStyle, opacity:loadedImage===safeImage?1:0 } : undefined} onLoad={stable ? () => setLoadedImage(safeImage) : undefined} onError={() => setFailedImage(safeImage)} />
+      ? <img key={stable ? safeImage : undefined} src={safeImage} alt="" loading="lazy" decoding="async" referrerPolicy="no-referrer" style={stable ? { ...imageStyle, opacity:loadedImage===safeImage?1:0 } : undefined} onLoad={stable ? () => setLoadedImage(safeImage) : undefined} onError={() => setFailedImage(safeImage)} />
       : stable ? null : (symbol.trim().slice(0, 1).toUpperCase() || "?")}
   </span>;
 }

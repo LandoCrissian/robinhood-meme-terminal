@@ -25,6 +25,8 @@ const rows=[{id:"b",price:4},{id:"a",price:3},{id:"c",price:2}];
 const held=reconcileScannerRows(rows,["a","b"],row=>row.id,true);assert.deepEqual(held.rows,[rows[1],rows[0]]);assert.equal(held.newCount,1);assert.equal(held.pending,true);
 assert.deepEqual(reconcileScannerRows(rows,["a","b"],row=>row.id,false).rows,rows);
 assert.deepEqual(reconcileScannerRows([rows[0]],["a","b"],row=>row.id,true).rows,[rows[0]],"Exclusions override anchors");
+assert.deepEqual(reconcileScannerRows([rows[0],rows[2]],["a","b"],row=>row.id,true,[rows[1],rows[0]]).rows,[rows[1],rows[0]],"Paged omission preserves previously verified rows while interacting");
+assert.deepEqual(reconcileScannerRows([rows[0],rows[2]],["a","b"],row=>row.id,false,[rows[1],rows[0]]).rows,[rows[0],rows[2]],"Idle publication uses the current page");
 console.log("Discovery V2: uncurated exact identity/live pools, no fabricated history/admission, failed enrichment retention, and shared scanner reconciliation PASS.");
 }
 void main();

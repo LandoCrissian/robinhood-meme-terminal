@@ -435,9 +435,12 @@ export function readExactLiveMarketResolution(token: Address) {
     const quotes = [ROBINHOOD_WETH, ROBINHOOD_USDC];
     const candidates = await discoverPoolsForQuotes(token, quotes);
     const pools: UniversalMarketPool[] = [];
-    for (const candidate of candidates.slice(0, 8)) {
-      const pool = await readPool(getAddress(candidate.poolAddress), quotes);
-      if (pool && [pool.token0.toLowerCase(), pool.token1.toLowerCase()].includes(key)) pools.push(pool);
+    const bounded = candidates.slice(0, 8);
+    // Two sequentially bounded validations share the existing batched client;
+    // avoid eight parallel pool reads or a serial tail hiding a live market.
+    for (let index = 0; index < bounded.length; index += 2) {
+      const verified = await Promise.all(bounded.slice(index, index + 2).map(candidate => readPool(getAddress(candidate.poolAddress), quotes)));
+      for (const pool of verified) if (pool && [pool.token0.toLowerCase(), pool.token1.toLowerCase()].includes(key)) pools.push(pool);
     }
     return { chainId: 4663, requestedAddress: token, requestedKind: "token",
       status: pools.length ? "pool-found" : "token-only", token: identity, pools,
