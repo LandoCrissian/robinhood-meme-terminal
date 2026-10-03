@@ -20,17 +20,6 @@ export const NFT_PROJECT_BATCH_EVIDENCE: readonly RmtProjectIdentity[] = [
             "observedAt": "2026-10-03T00:54:51.784Z"
           }
         ]
-      },
-      {
-        "label": "X",
-        "url": "https://x.com/TheRCPTS",
-        "evidence": [
-          {
-            "class": "DERIVED",
-            "source": "https://opensea.io/collection/rcpts",
-            "observedAt": "2026-10-03T00:54:51.784Z"
-          }
-        ]
       }
     ],
     "artwork": null,
@@ -91,28 +80,6 @@ export const NFT_PROJECT_BATCH_EVIDENCE: readonly RmtProjectIdentity[] = [
         "evidence": [
           {
             "class": "PROVIDER_VERIFIED",
-            "source": "https://opensea.io/collection/gogh-punks-255843210",
-            "observedAt": "2026-10-03T00:54:51.784Z"
-          }
-        ]
-      },
-      {
-        "label": "Website",
-        "url": "https://goghpunks.xyz/",
-        "evidence": [
-          {
-            "class": "DERIVED",
-            "source": "https://opensea.io/collection/gogh-punks-255843210",
-            "observedAt": "2026-10-03T00:54:51.784Z"
-          }
-        ]
-      },
-      {
-        "label": "X",
-        "url": "https://x.com/goghpunks",
-        "evidence": [
-          {
-            "class": "DERIVED",
             "source": "https://opensea.io/collection/gogh-punks-255843210",
             "observedAt": "2026-10-03T00:54:51.784Z"
           }
@@ -183,33 +150,11 @@ export const NFT_PROJECT_BATCH_EVIDENCE: readonly RmtProjectIdentity[] = [
         ]
       },
       {
-        "label": "X",
-        "url": "https://x.com/pixelord",
-        "evidence": [
-          {
-            "class": "DERIVED",
-            "source": "https://opensea.io/collection/pixelhoodminis",
-            "observedAt": "2026-10-03T00:54:51.784Z"
-          }
-        ]
-      },
-      {
         "label": "Pixel Hood Clan · OpenSea",
         "url": "https://opensea.io/collection/pixelhoodclan",
         "evidence": [
           {
             "class": "PROVIDER_VERIFIED",
-            "source": "https://opensea.io/collection/pixelhoodclan",
-            "observedAt": "2026-10-03T00:54:51.784Z"
-          }
-        ]
-      },
-      {
-        "label": "Website",
-        "url": "https://linktr.ee/pixelord",
-        "evidence": [
-          {
-            "class": "DERIVED",
             "source": "https://opensea.io/collection/pixelhoodclan",
             "observedAt": "2026-10-03T00:54:51.784Z"
           }
@@ -320,17 +265,6 @@ export const NFT_PROJECT_BATCH_EVIDENCE: readonly RmtProjectIdentity[] = [
             "observedAt": "2026-10-03T00:54:51.784Z"
           }
         ]
-      },
-      {
-        "label": "X",
-        "url": "https://x.com/RealCashpig",
-        "evidence": [
-          {
-            "class": "DERIVED",
-            "source": "https://opensea.io/collection/sknots-go-down",
-            "observedAt": "2026-10-03T00:54:51.784Z"
-          }
-        ]
       }
     ],
     "artwork": null,
@@ -391,17 +325,6 @@ export const NFT_PROJECT_BATCH_EVIDENCE: readonly RmtProjectIdentity[] = [
         "evidence": [
           {
             "class": "PROVIDER_VERIFIED",
-            "source": "https://opensea.io/collection/robinhoodbear",
-            "observedAt": "2026-10-03T00:54:51.784Z"
-          }
-        ]
-      },
-      {
-        "label": "X",
-        "url": "https://x.com/Robinhood_Bear",
-        "evidence": [
-          {
-            "class": "DERIVED",
             "source": "https://opensea.io/collection/robinhoodbear",
             "observedAt": "2026-10-03T00:54:51.784Z"
           }
@@ -470,28 +393,6 @@ export const NFT_PROJECT_BATCH_EVIDENCE: readonly RmtProjectIdentity[] = [
             "observedAt": "2026-10-03T00:54:51.784Z"
           }
         ]
-      },
-      {
-        "label": "Website",
-        "url": "https://suitedapes.com/",
-        "evidence": [
-          {
-            "class": "DERIVED",
-            "source": "https://opensea.io/collection/suited-ape-society",
-            "observedAt": "2026-10-03T00:54:51.784Z"
-          }
-        ]
-      },
-      {
-        "label": "X",
-        "url": "https://x.com/TheSuitedApes",
-        "evidence": [
-          {
-            "class": "DERIVED",
-            "source": "https://opensea.io/collection/suited-ape-society",
-            "observedAt": "2026-10-03T00:54:51.784Z"
-          }
-        ]
       }
     ],
     "artwork": null,
@@ -556,28 +457,6 @@ export const NFT_PROJECT_BATCH_EVIDENCE: readonly RmtProjectIdentity[] = [
             "observedAt": "2026-10-03T00:54:51.784Z"
           }
         ]
-      },
-      {
-        "label": "Website",
-        "url": "https://claystonkz.com/",
-        "evidence": [
-          {
-            "class": "DERIVED",
-            "source": "https://opensea.io/collection/claystonkz",
-            "observedAt": "2026-10-03T00:54:51.784Z"
-          }
-        ]
-      },
-      {
-        "label": "X",
-        "url": "https://x.com/Brrrbon_",
-        "evidence": [
-          {
-            "class": "DERIVED",
-            "source": "https://opensea.io/collection/claystonkz",
-            "observedAt": "2026-10-03T00:54:51.784Z"
-          }
-        ]
       }
     ],
     "artwork": null,
@@ -638,28 +517,6 @@ export const NFT_PROJECT_BATCH_EVIDENCE: readonly RmtProjectIdentity[] = [
         "evidence": [
           {
             "class": "PROVIDER_VERIFIED",
-            "source": "https://opensea.io/collection/spawnhood",
-            "observedAt": "2026-10-03T00:54:51.784Z"
-          }
-        ]
-      },
-      {
-        "label": "Website",
-        "url": "https://spawnhood.com/",
-        "evidence": [
-          {
-            "class": "DERIVED",
-            "source": "https://opensea.io/collection/spawnhood",
-            "observedAt": "2026-10-03T00:54:51.784Z"
-          }
-        ]
-      },
-      {
-        "label": "X",
-        "url": "https://x.com/Spawntoshi",
-        "evidence": [
-          {
-            "class": "DERIVED",
             "source": "https://opensea.io/collection/spawnhood",
             "observedAt": "2026-10-03T00:54:51.784Z"
           }
@@ -733,17 +590,6 @@ export const NFT_PROJECT_BATCH_EVIDENCE: readonly RmtProjectIdentity[] = [
             "observedAt": "2026-10-03T00:54:51.784Z"
           }
         ]
-      },
-      {
-        "label": "X",
-        "url": "https://x.com/proofofcar",
-        "evidence": [
-          {
-            "class": "DERIVED",
-            "source": "https://opensea.io/collection/stray-cars",
-            "observedAt": "2026-10-03T00:54:51.784Z"
-          }
-        ]
       }
     ],
     "artwork": null,
@@ -804,28 +650,6 @@ export const NFT_PROJECT_BATCH_EVIDENCE: readonly RmtProjectIdentity[] = [
         "evidence": [
           {
             "class": "PROVIDER_VERIFIED",
-            "source": "https://opensea.io/collection/0xc180f7bb3a73edad6d30cf22813f2eba0ff3042d",
-            "observedAt": "2026-10-03T00:54:51.784Z"
-          }
-        ]
-      },
-      {
-        "label": "Website",
-        "url": "https://www.theundeadz.online/",
-        "evidence": [
-          {
-            "class": "DERIVED",
-            "source": "https://opensea.io/collection/0xc180f7bb3a73edad6d30cf22813f2eba0ff3042d",
-            "observedAt": "2026-10-03T00:54:51.784Z"
-          }
-        ]
-      },
-      {
-        "label": "X",
-        "url": "https://x.com/THEUNDEADZ0",
-        "evidence": [
-          {
-            "class": "DERIVED",
             "source": "https://opensea.io/collection/0xc180f7bb3a73edad6d30cf22813f2eba0ff3042d",
             "observedAt": "2026-10-03T00:54:51.784Z"
           }

@@ -63,7 +63,22 @@
         "observedAt": "2026-10-03T00:59:43.915Z",
         "collectionPageSha256": "4dea7c355ba281205e4a10ad76e09aebe6042bdeeb37e689df02044fdec4de81"
       },
-      "conflictingEvidence": []
+      "conflictingEvidence": [],
+      "unverifiedProviderLinks": [
+        {
+          "label": "X",
+          "url": "https://x.com/TheRCPTS",
+          "evidence": [
+            {
+              "class": "DERIVED",
+              "source": "https://opensea.io/collection/rcpts",
+              "observedAt": "2026-10-03T00:54:51.784Z"
+            }
+          ],
+          "verification": "NOT_ESTABLISHED",
+          "reason": "Provider-listed destination retained as candidate evidence; not asserted as an official project link."
+        }
+      ]
     },
     {
       "projectId": "gogh-punks",
@@ -122,7 +137,35 @@
         "observedAt": "2026-10-03T00:59:44.158Z",
         "collectionPageSha256": "92cb6d7636bfc1fdf04ddf3be96be1a530b27050c3eb5fc623d26ac847732590"
       },
-      "conflictingEvidence": []
+      "conflictingEvidence": [],
+      "unverifiedProviderLinks": [
+        {
+          "label": "Website",
+          "url": "https://goghpunks.xyz/",
+          "evidence": [
+            {
+              "class": "DERIVED",
+              "source": "https://opensea.io/collection/gogh-punks-255843210",
+              "observedAt": "2026-10-03T00:54:51.784Z"
+            }
+          ],
+          "verification": "NOT_ESTABLISHED",
+          "reason": "Provider-listed destination retained as candidate evidence; not asserted as an official project link."
+        },
+        {
+          "label": "X",
+          "url": "https://x.com/goghpunks",
+          "evidence": [
+            {
+              "class": "DERIVED",
+              "source": "https://opensea.io/collection/gogh-punks-255843210",
+              "observedAt": "2026-10-03T00:54:51.784Z"
+            }
+          ],
+          "verification": "NOT_ESTABLISHED",
+          "reason": "Provider-listed destination retained as candidate evidence; not asserted as an official project link."
+        }
+      ]
     },
     {
       "projectId": "pixel-hood",
@@ -185,7 +228,35 @@
         "observedAt": "2026-10-03T00:59:44.361Z",
         "collectionPageSha256": "c17c8602f9a8bda7c543edde4c8bdf6f87a86eb06024d0d7829e32a41ddf015e"
       },
-      "conflictingEvidence": []
+      "conflictingEvidence": [],
+      "unverifiedProviderLinks": [
+        {
+          "label": "X",
+          "url": "https://x.com/pixelord",
+          "evidence": [
+            {
+              "class": "DERIVED",
+              "source": "https://opensea.io/collection/pixelhoodminis",
+              "observedAt": "2026-10-03T00:54:51.784Z"
+            }
+          ],
+          "verification": "NOT_ESTABLISHED",
+          "reason": "Provider-listed destination retained as candidate evidence; not asserted as an official project link."
+        },
+        {
+          "label": "Website",
+          "url": "https://linktr.ee/pixelord",
+          "evidence": [
+            {
+              "class": "DERIVED",
+              "source": "https://opensea.io/collection/pixelhoodclan",
+              "observedAt": "2026-10-03T00:54:51.784Z"
+            }
+          ],
+          "verification": "NOT_ESTABLISHED",
+          "reason": "Provider-listed destination retained as candidate evidence; not asserted as an official project link."
+        }
+      ]
     },
     {
       "projectId": "pixel-hood",
@@ -248,7 +319,35 @@
         "observedAt": "2026-10-03T00:59:44.525Z",
         "collectionPageSha256": "806cd186e452f6da1a389a81af6a75e4e993b1cbc406de3179913c81a1bda380"
       },
-      "conflictingEvidence": []
+      "conflictingEvidence": [],
+      "unverifiedProviderLinks": [
+        {
+          "label": "X",
+          "url": "https://x.com/pixelord",
+          "evidence": [
+            {
+              "class": "DERIVED",
+              "source": "https://opensea.io/collection/pixelhoodminis",
+              "observedAt": "2026-10-03T00:54:51.784Z"
+            }
+          ],
+          "verification": "NOT_ESTABLISHED",
+          "reason": "Provider-listed destination retained as candidate evidence; not asserted as an official project link."
+        },
+        {
+          "label": "Website",
+          "url": "https://linktr.ee/pixelord",
+          "evidence": [
+            {
+              "class": "DERIVED",
+              "source": "https://opensea.io/collection/pixelhoodclan",
+              "observedAt": "2026-10-03T00:54:51.784Z"
+            }
+          ],
+          "verification": "NOT_ESTABLISHED",
+          "reason": "Provider-listed destination retained as candidate evidence; not asserted as an official project link."
+        }
+      ]
     },
     {
       "projectId": "sknots-go-down",
@@ -307,7 +406,22 @@
         "observedAt": "2026-10-03T00:59:44.669Z",
         "collectionPageSha256": "9737315e10886d25ec52845687bf85a434d44dd1e43c0965f635bb1ccd464c6e"
       },
-      "conflictingEvidence": []
+      "conflictingEvidence": [],
+      "unverifiedProviderLinks": [
+        {
+          "label": "X",
+          "url": "https://x.com/RealCashpig",
+          "evidence": [
+            {
+              "class": "DERIVED",
+              "source": "https://opensea.io/collection/sknots-go-down",
+              "observedAt": "2026-10-03T00:54:51.784Z"
+            }
+          ],
+          "verification": "NOT_ESTABLISHED",
+          "reason": "Provider-listed destination retained as candidate evidence; not asserted as an official project link."
+        }
+      ]
     },
     {
       "projectId": "robinhood-bear",
@@ -370,6 +484,21 @@
         {
           "fact": "The ERC-721 name is 0x89cd0d2B1531e03c03ea9A33f40495a393aE7E94. Owner-supplied collection page items resolve instead to the verified 0x0084e3f586dfd424b959e80537208cef4cbcee21 contract; no contract substitution was made."
         }
+      ],
+      "unverifiedProviderLinks": [
+        {
+          "label": "X",
+          "url": "https://x.com/Robinhood_Bear",
+          "evidence": [
+            {
+              "class": "DERIVED",
+              "source": "https://opensea.io/collection/robinhoodbear",
+              "observedAt": "2026-10-03T00:54:51.784Z"
+            }
+          ],
+          "verification": "NOT_ESTABLISHED",
+          "reason": "Provider-listed destination retained as candidate evidence; not asserted as an official project link."
+        }
       ]
     },
     {
@@ -429,7 +558,35 @@
         "observedAt": "2026-10-03T00:59:44.876Z",
         "collectionPageSha256": "c7de9eaa931ee5476f58a4ab60a9d726ba62a40316d93b019f5723f83eb695f4"
       },
-      "conflictingEvidence": []
+      "conflictingEvidence": [],
+      "unverifiedProviderLinks": [
+        {
+          "label": "Website",
+          "url": "https://suitedapes.com/",
+          "evidence": [
+            {
+              "class": "DERIVED",
+              "source": "https://opensea.io/collection/suited-ape-society",
+              "observedAt": "2026-10-03T00:54:51.784Z"
+            }
+          ],
+          "verification": "NOT_ESTABLISHED",
+          "reason": "Provider-listed destination retained as candidate evidence; not asserted as an official project link."
+        },
+        {
+          "label": "X",
+          "url": "https://x.com/TheSuitedApes",
+          "evidence": [
+            {
+              "class": "DERIVED",
+              "source": "https://opensea.io/collection/suited-ape-society",
+              "observedAt": "2026-10-03T00:54:51.784Z"
+            }
+          ],
+          "verification": "NOT_ESTABLISHED",
+          "reason": "Provider-listed destination retained as candidate evidence; not asserted as an official project link."
+        }
+      ]
     },
     {
       "projectId": "claystonkz",
@@ -488,7 +645,35 @@
         "observedAt": "2026-10-03T00:59:45.036Z",
         "collectionPageSha256": "00ad2e371696e5efa1e4a86dbbf07c87f67de417e55f9f5362eb9b34d05101de"
       },
-      "conflictingEvidence": []
+      "conflictingEvidence": [],
+      "unverifiedProviderLinks": [
+        {
+          "label": "Website",
+          "url": "https://claystonkz.com/",
+          "evidence": [
+            {
+              "class": "DERIVED",
+              "source": "https://opensea.io/collection/claystonkz",
+              "observedAt": "2026-10-03T00:54:51.784Z"
+            }
+          ],
+          "verification": "NOT_ESTABLISHED",
+          "reason": "Provider-listed destination retained as candidate evidence; not asserted as an official project link."
+        },
+        {
+          "label": "X",
+          "url": "https://x.com/Brrrbon_",
+          "evidence": [
+            {
+              "class": "DERIVED",
+              "source": "https://opensea.io/collection/claystonkz",
+              "observedAt": "2026-10-03T00:54:51.784Z"
+            }
+          ],
+          "verification": "NOT_ESTABLISHED",
+          "reason": "Provider-listed destination retained as candidate evidence; not asserted as an official project link."
+        }
+      ]
     },
     {
       "projectId": "spawnhood",
@@ -553,7 +738,35 @@
         "observedAt": "2026-10-03T00:59:45.463Z",
         "collectionPageSha256": "ae7b0af1ac45b05443a92421038500591d38db2a3f594343523175d56a33dc53"
       },
-      "conflictingEvidence": []
+      "conflictingEvidence": [],
+      "unverifiedProviderLinks": [
+        {
+          "label": "Website",
+          "url": "https://spawnhood.com/",
+          "evidence": [
+            {
+              "class": "DERIVED",
+              "source": "https://opensea.io/collection/spawnhood",
+              "observedAt": "2026-10-03T00:54:51.784Z"
+            }
+          ],
+          "verification": "NOT_ESTABLISHED",
+          "reason": "Provider-listed destination retained as candidate evidence; not asserted as an official project link."
+        },
+        {
+          "label": "X",
+          "url": "https://x.com/Spawntoshi",
+          "evidence": [
+            {
+              "class": "DERIVED",
+              "source": "https://opensea.io/collection/spawnhood",
+              "observedAt": "2026-10-03T00:54:51.784Z"
+            }
+          ],
+          "verification": "NOT_ESTABLISHED",
+          "reason": "Provider-listed destination retained as candidate evidence; not asserted as an official project link."
+        }
+      ]
     },
     {
       "projectId": "stray-cars",
@@ -616,6 +829,21 @@
         {
           "fact": "Collection description says Stray Cats; onchain name and collection title say Stray Cars. Exact supplied collection preserved."
         }
+      ],
+      "unverifiedProviderLinks": [
+        {
+          "label": "X",
+          "url": "https://x.com/proofofcar",
+          "evidence": [
+            {
+              "class": "DERIVED",
+              "source": "https://opensea.io/collection/stray-cars",
+              "observedAt": "2026-10-03T00:54:51.784Z"
+            }
+          ],
+          "verification": "NOT_ESTABLISHED",
+          "reason": "Provider-listed destination retained as candidate evidence; not asserted as an official project link."
+        }
       ]
     },
     {
@@ -675,7 +903,35 @@
         "observedAt": "2026-10-03T00:59:46.042Z",
         "collectionPageSha256": "a91ed419fc593c6f95eed5f9944dd99b9d3e10e003e0b6e9da7ec320c0fd0f02"
       },
-      "conflictingEvidence": []
+      "conflictingEvidence": [],
+      "unverifiedProviderLinks": [
+        {
+          "label": "Website",
+          "url": "https://www.theundeadz.online/",
+          "evidence": [
+            {
+              "class": "DERIVED",
+              "source": "https://opensea.io/collection/0xc180f7bb3a73edad6d30cf22813f2eba0ff3042d",
+              "observedAt": "2026-10-03T00:54:51.784Z"
+            }
+          ],
+          "verification": "NOT_ESTABLISHED",
+          "reason": "Provider-listed destination retained as candidate evidence; not asserted as an official project link."
+        },
+        {
+          "label": "X",
+          "url": "https://x.com/THEUNDEADZ0",
+          "evidence": [
+            {
+              "class": "DERIVED",
+              "source": "https://opensea.io/collection/0xc180f7bb3a73edad6d30cf22813f2eba0ff3042d",
+              "observedAt": "2026-10-03T00:54:51.784Z"
+            }
+          ],
+          "verification": "NOT_ESTABLISHED",
+          "reason": "Provider-listed destination retained as candidate evidence; not asserted as an official project link."
+        }
+      ]
     },
     {
       "projectId": "robin-rabbits",
@@ -737,7 +993,8 @@
         "observedAt": "2026-10-03T00:59:46.378Z",
         "collectionPageSha256": null
       },
-      "conflictingEvidence": []
+      "conflictingEvidence": [],
+      "unverifiedProviderLinks": []
     }
   ]
 }
