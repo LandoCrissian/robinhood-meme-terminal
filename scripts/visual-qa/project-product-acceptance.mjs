@@ -104,6 +104,12 @@ try {
     assert.equal(await page.locator('.rmtProjectRow').count(), 13);
     await page.getByRole('button', { name: 'All', exact: true }).click();
     const search = page.getByRole('searchbox', { name: 'Find a project or asset' });
+    const placeholder = await search.evaluate(input => {
+      const style = getComputedStyle(input), context = document.createElement('canvas').getContext('2d');
+      context.font = `${style.fontSize} ${style.fontFamily}`;
+      return { textWidth: context.measureText(input.placeholder).width, availableWidth: input.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight) - 20 };
+    });
+    assert.ok(placeholder.textWidth <= placeholder.availableWidth, 'The scanner search prompt remains completely readable');
     for (const query of ['Pixel Hood Clan', 'Pixel Hood Minis', ...batch.records.filter(record => record.projectId === 'pixel-hood').map(record => record.onchain.address)]) {
       await search.fill(query);
       assert.equal(await page.locator('.rmtProjectRow').count(), 1);

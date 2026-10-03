@@ -76,7 +76,7 @@
 .rmtProjectPair>.rmtIcon { color:#ccff00; width:18px; height:18px; }
 .rmtProjectPair.isNftLed { grid-template-columns:1fr; }
 .rmtProjectCard strong { font-size:17px; letter-spacing:-.02em; }
-.rmtProjectCard>.rmtIcon,.rmtProjectPrimary>.rmtIcon,.rmtProjectExplore>.rmtIcon { transform:rotate(-90deg); }
+.rmtProjectCard>.rmtIcon,.rmtProjectPrimary.isTradeToken>.rmtIcon,.rmtProjectExplore>.rmtIcon { transform:rotate(-90deg); }
 .rmtProjectMonogram { width:46px; height:46px; flex-shrink:0; border-radius:12px; display:grid; place-items:center; color:#ccff00; background:#24301c; font-weight:700; }
 .rmtProjectExplore { display:inline-flex; align-items:center; gap:12px; min-height:44px; font-weight:600; }
 .rmtProjectAssetNav { margin-bottom:20px; }
@@ -142,7 +142,7 @@
 .rmtProjectHeroComposition b { color:#ccff00; padding-inline:5px; }
 .rmtProjectLinks { gap:6px; margin-top:12px; }
 .rmtProjectAssetsGrid { align-items:stretch; }
-.isNftLedProject .rmtProjectAssetsGrid { max-width:720px; }
+.isNftLedProject .rmtProjectAssetsGrid { max-width:720px; grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr)); }
 .rmtProjectAssetCard { display:flex; flex-direction:column; padding:24px; }
 .rmtProjectAssetCard header>span:not(.rmtProjectArt) { min-width:0; }
 .rmtProjectAssetCard h2 { font-size:22px; letter-spacing:-.025em; line-height:1.2; }
