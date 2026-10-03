@@ -112,8 +112,11 @@ admitted Project Market at 375, 390, 430 and 1440, retained artwork, compact
 ownership failure, market failure and exact-token navigation. Screenshots and
 videos belong to CI artifacts; no review-only binary archive is committed.
 
-The unchanged baseline dependency graph currently fails production audit on
-`@fastify/busboy` through Firebase Admin: GHSA-xjh9-v7x6-24jw and
-GHSA-x8mw-p69m-v3mx. No exclusion, waiver or dependency correction is included.
-Final release readiness requires those checks to pass through separately
-reviewed remediation.
+The starting head's web and terminal checks both failed production audit on
+`@fastify/busboy@3.2.0` through Firebase Admin: GHSA-xjh9-v7x6-24jw and
+GHSA-x8mw-p69m-v3mx. The lockfile now resolves the upstream patched 3.2.1 release
+within Firebase Admin 13.10.0's declared `^3.0.0` range. No parent upgrade,
+override, exclusion, waiver or audit-policy change is required. Compatibility
+coverage exercises Firebase's real multipart HTTP reader with ordinary
+responses, prototype-named part headers and the formerly problematic boundary
+length, alongside the existing Privy/Firebase account and session regressions.
