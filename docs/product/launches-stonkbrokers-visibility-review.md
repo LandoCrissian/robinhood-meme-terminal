@@ -70,3 +70,24 @@ with genuine records read from the unchanged production producer. It must be
 reported separately from actual public-before captures. No corrected public
 deployment is authorized by this task. Production-after acceptance remains a
 future release gate.
+
+The corrected local build, using the unchanged production producer, showed
+all three source filters at 375, 390, 430 and 1440. Selecting StonkBrokers
+rendered the 40 genuine indexed records and all six pinned samples. Twelve
+actual row clicks across the four widths covered LAUNCHED, BONDING and
+GRADUATED: exact token identity was preserved, generic intermediate frames
+were zero, and the passive-wallet/error observers recorded no requests or
+exceptions. Continuous captured frames recorded zero row replacement flashes,
+hidden-artwork frames, action movement, scroll movement and horizontal overflow.
+These are pre-deployment observations, not a claim that the public default
+directory has already changed.
+
+The first checked PR head (`708e86f`) failed visual CI at an NFT destination
+readiness boundary and at the new source-navigation regression's URL wait.
+An independently dispatched unchanged-main run (`37148199081`) also failed
+NFT destination readiness. Both complete suites subsequently passed locally
+under CI's exact browser/build profile with unchanged assertions and no NFT
+source changes. The CI timeout causes are not established. The Launches
+regression now preserves bounded URL, client-handler, rendered-content and
+fixture-request diagnostics on failure; it does not retry, extend the timeout
+or weaken its navigation/row assertions. Final-head CI remains a required gate.
