@@ -376,23 +376,6 @@ async function tokenLane(browser, viewport, platform) {
   const context = await createContext(browser, viewport);
   const page = await context.newPage();
   page.setDefaultTimeout(30_000);
-  const navigationTrace = [];
-  page.on("request", request => {
-    const url = new URL(request.url());
-    if (url.pathname.startsWith("/nft")) navigationTrace.push({ event: "request", time: performance.now(), path: `${url.pathname}${url.search}`, navigation: request.isNavigationRequest() });
-  });
-  page.on("response", response => {
-    const url = new URL(response.url());
-    if (url.pathname.startsWith("/nft")) navigationTrace.push({ event: "response", time: performance.now(), path: `${url.pathname}${url.search}`, status: response.status() });
-  });
-  await page.addInitScript(() => {
-    window.__rmtNftJourneyEvents = [];
-    for (const type of ["pointerdown", "pointerup", "click"]) document.addEventListener(type, event => {
-      const anchor = event.target?.closest?.("a");
-      const entry = { type, time: performance.now(), x: event.clientX, y: event.clientY, scroll: scrollY, href: anchor?.getAttribute("href"), target: event.target?.tagName, scrollBehavior: getComputedStyle(document.documentElement).scrollBehavior };
-      setTimeout(() => { entry.defaultPrevented = event.defaultPrevented; window.__rmtNftJourneyEvents.push(entry); }, 0);
-    }, true);
-  });
   const fixture = await installTokenRoutes(page);
   await page.goto(base, { waitUntil: "domcontentloaded", timeout: 60_000 });
   await page.locator(platform === "mobile" ? ".rmtMobileTerminal" : ".rmtDesktopTerminal").waitFor();
@@ -863,6 +846,27 @@ async function nftProgressiveLane(browser, viewport, platform, scenario) {
   nftReaderDelays = { inventory: 0, onchain: 0, marketplace: 0 };
 }
 
+async function traceNftJourney(page) {
+  const navigationTrace = [];
+  const record = (event, request, extra) => {
+    const url = new URL(request.url());
+    if (url.pathname.startsWith("/nft")) navigationTrace.push({ event, time: performance.now(), path: `${url.pathname}${url.search}`, ...extra });
+  };
+  page.on("request", request => record("request", request, { navigation: request.isNavigationRequest() }));
+  page.on("response", response => record("response", response.request(), { status: response.status() }));
+  page.on("requestfailed", request => record("requestfailed", request, { error: request.failure()?.errorText }));
+  page.on("pageerror", error => navigationTrace.push({ event: "exception", message: error.message }));
+  await page.addInitScript(() => {
+    window.__rmtNftJourneyEvents = [];
+    for (const type of ["pointerdown", "pointerup", "click"]) document.addEventListener(type, event => {
+      const anchor = event.target?.closest?.("a");
+      const entry = { type, time: performance.now(), x: event.clientX, y: event.clientY, scroll: scrollY, href: anchor?.getAttribute("href"), target: event.target?.tagName, scrollBehavior: getComputedStyle(document.documentElement).scrollBehavior };
+      setTimeout(() => { entry.defaultPrevented = event.defaultPrevented; window.__rmtNftJourneyEvents.push(entry); }, 0);
+    }, true);
+  });
+  return navigationTrace;
+}
+
 async function nftJourneyLane(browser, viewport, platform) {
   nftOwnershipMode = "available";
   nftMarketplaceMode = "available";
@@ -871,6 +875,7 @@ async function nftJourneyLane(browser, viewport, platform) {
   const context = await createContext(browser, viewport);
   const page = await context.newPage();
   page.setDefaultTimeout(30_000);
+  const navigationTrace = await traceNftJourney(page);
   // Destination readiness is the exact route plus its rendered collection/item
   // controls, not completion of unrelated document subresources.
   const waitForDestination = async (url, content) => {
@@ -946,6 +951,7 @@ async function nftJourneyLane(browser, viewport, platform) {
   await waitForDestination(/\/nft\/ccff00$/, page.locator("[data-nft-gallery] a").first());
   const forbiddenCount = await page.locator("a,button").filter({ hasText: /^(Buy|List|Offer|Fulfill|Sign|Submit)$/i }).count();
   check(forbiddenCount === 0, state, "Functional NFT journey exposed execution controls.", { forbiddenCount });
+  await writeFile(path.join(output, `${state}-navigation-trace.json`), JSON.stringify({ navigationTrace, pointerTrace: await page.evaluate(() => window.__rmtNftJourneyEvents) }, null, 2));
   await overflow(page, state);
   await capture(page, `${state}-${viewport.width}x${viewport.height}`);
   await context.close();
