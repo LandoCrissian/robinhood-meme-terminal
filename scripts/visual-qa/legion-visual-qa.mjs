@@ -862,7 +862,7 @@ async function nftJourneyLane(browser, viewport, platform) {
       await content.waitFor();
     } catch (error) {
       const lifecycle = await page.evaluate(() => ({ pathname: location.pathname, search: location.search, readyState: document.readyState }));
-      const controls = await page.locator('[data-nft-search-item]').evaluateAll(links => links.map(link => ({
+      const controls = await page.locator('[data-nft-search-item], [data-nft-gallery] a, nav[aria-label="NFT Terminal breadcrumb"] a').evaluateAll(links => links.map(link => ({
         href: link.getAttribute("href"), connected: link.isConnected,
         clientHandlerInstalled: Object.keys(link).some(key => key.startsWith("__reactProps$") && typeof link[key]?.onClick === "function"),
       })));
@@ -872,6 +872,26 @@ async function nftJourneyLane(browser, viewport, platform) {
       }, null, 2));
       throw new Error(`NFT destination readiness failed: ${JSON.stringify({ lifecycle, controls })}`, { cause: error });
     }
+  };
+  const clickReadyLink = async (link) => {
+    await link.waitFor();
+    const marker = await link.elementHandle();
+    if (!marker) throw new Error("NFT journey link is absent");
+    const anchor = await marker.evaluateHandle(node => node.closest("a") ?? node.querySelector("a"));
+    const element = anchor.asElement();
+    if (!element) throw new Error("NFT journey marker has no destination link");
+    // Every streamed destination needs the same client-handler boundary as
+    // the initial search result. Visibility alone is not hydration readiness.
+    await page.waitForFunction(link => link.isConnected && Object.keys(link).some(
+      key => key.startsWith("__reactProps$") && typeof link[key]?.onClick === "function"
+    ), element);
+    nftJourneyReadiness.push(await element.evaluate((link, platform) => ({
+      platform, pathname: location.pathname, search: location.search,
+      readyState: document.readyState, href: link.getAttribute("href"), clientHandlerInstalled: true,
+    }), platform));
+    await element.click();
+    await anchor.dispose();
+    await marker.dispose();
   };
   await page.goto(`${base}/nft`, { waitUntil: "networkidle", timeout: 60_000 });
   await page.getByPlaceholder("Search collection, contract or NFT").fill("ccff00 #5");
@@ -894,17 +914,17 @@ async function nftJourneyLane(browser, viewport, platform) {
     readyState: document.readyState, href: link.getAttribute("href"),
     clientHandlerInstalled: Object.keys(link).some(key => key.startsWith("__reactProps$") && typeof link[key]?.onClick === "function")
   }), platform));
-  await page.locator('[data-nft-search-item]').click();
+  await clickReadyLink(page.locator('[data-nft-search-item]'));
   await waitForDestination(/\/nft\/ccff00\/5$/, page.getByRole("link", { name: /Back to CCFF00 collection/ }));
-  await page.getByRole("link", { name: /Back to CCFF00 collection/ }).click();
+  await clickReadyLink(page.getByRole("link", { name: /Back to CCFF00 collection/ }));
   await waitForDestination(/\/nft\/ccff00$/, page.locator("[data-nft-gallery] a").first());
-  await page.getByRole("link", { name: "← NFTs", exact: true }).click();
+  await clickReadyLink(page.getByRole("link", { name: "← NFTs", exact: true }));
   await waitForDestination(/\/nft$/, page.locator('[data-nft-collection-status="ACTIVE"]').first());
-  await page.locator('[data-nft-collection-status="ACTIVE"]').click();
+  await clickReadyLink(page.locator('[data-nft-collection-status="ACTIVE"]'));
   await waitForDestination(/\/nft\/ccff00$/, page.locator("[data-nft-gallery] a").first());
-  await page.locator("[data-nft-gallery] a").first().click();
+  await clickReadyLink(page.locator("[data-nft-gallery] a").first());
   await waitForDestination(/\/nft\/ccff00\/1$/, page.getByRole("link", { name: /Back to CCFF00 collection/ }));
-  await page.getByRole("link", { name: /Back to CCFF00 collection/ }).click();
+  await clickReadyLink(page.getByRole("link", { name: /Back to CCFF00 collection/ }));
   await waitForDestination(/\/nft\/ccff00$/, page.locator("[data-nft-gallery] a").first());
   const forbiddenCount = await page.locator("a,button").filter({ hasText: /^(Buy|List|Offer|Fulfill|Sign|Submit)$/i }).count();
   check(forbiddenCount === 0, state, "Functional NFT journey exposed execution controls.", { forbiddenCount });
