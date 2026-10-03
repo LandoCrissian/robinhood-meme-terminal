@@ -1,4 +1,51 @@
 .rmtProjectPage { min-height:100vh; background:#070b09; color:#eaf2eb; font-family:var(--font-geist-sans),sans-serif; }
+.rmtProjectMarket.isDiscovery { max-width:1440px; padding:24px 24px 64px; }
+.rmtProjectsHeading { margin-bottom:16px; }
+.rmtProjectsHeading h1 { font-size:22px; margin:0 0 6px; letter-spacing:-.025em; }
+.rmtProjectsHeading p { margin:0; font-size:12px; color:#8a9f8e; }
+.rmtProjectFilters { gap:28px!important; border-bottom:1px solid #213027; margin-bottom:14px; }
+.rmtProjectFilters button { background:none; border:0; border-bottom:2px solid transparent; color:#8a9f8e; font:inherit; font-size:12px; min-height:44px; padding:0 8px; cursor:pointer; }
+.rmtProjectFilters button[aria-pressed="true"] { color:#eaf2eb; border-bottom-color:#ccff00; }
+.rmtProjectsSearch { height:46px; display:flex; align-items:center; gap:12px; background:#0c130e; border:1px solid #213027; border-radius:6px; padding:0 12px; margin-bottom:14px; }
+.rmtProjectsSearch input { width:100%; min-width:0; border:0; background:none; color:#eaf2eb; font:inherit; font-size:13px; outline-offset:6px; }
+.rmtProjectsSearch>span { font-size:11px; color:#8a9f8e; font-variant-numeric:tabular-nums; }
+.rmtProjectScannerHead { display:grid; grid-template-columns:minmax(180px,1fr) minmax(180px,1.3fr) 130px; padding:10px 36px 10px 64px; gap:20px; border:1px solid #213027; border-radius:6px 6px 0 0; background:#101812; color:#8a9f8e; font-size:10px; text-transform:uppercase; letter-spacing:.06em; }
+.rmtProjectScannerHead>span:last-child { text-align:right; }
+.rmtProjectScanner { border:1px solid #213027; border-radius:0 0 6px 6px; overflow:hidden; }
+.rmtProjectRow { display:grid; grid-template-columns:34px minmax(0,1fr) 82px 16px; gap:14px; align-items:center; min-height:64px; padding:8px 14px; border-bottom:1px solid #213027; color:#eaf2eb; text-decoration:none; }
+.rmtProjectRow:last-child { border-bottom:0; }
+.rmtProjectRow:hover { background:#111b13; }
+.rmtProjectRow:focus-visible { outline:2px solid #ccff00; outline-offset:-2px; }
+.rmtProjectRow>.rmtProjectArt { width:34px; height:34px; border-radius:50%; }
+.rmtProjectRowIdentity { min-width:0; display:grid; grid-template-columns:1fr; align-items:center; gap:4px; }
+.rmtProjectRowIdentity>strong { font-size:13px; letter-spacing:-.015em; }
+.rmtProjectRowAssets { font-size:12px; color:#9caf9e; line-height:1.5; overflow-wrap:anywhere; }
+.rmtProjectRowAssets b { color:#ccff00; font-weight:500; }
+.rmtProjectRowComposition { display:grid; gap:5px; text-align:right; }
+.rmtProjectRowComposition strong { color:#b8c7ba; font-size:11px; font-weight:500; }
+.rmtProjectRowComposition small { font-size:10px; color:#819586; }
+.rmtProjectRow>.rmtIcon { width:14px; height:14px; color:#819586; transform:rotate(-90deg); }
+.rmtProjectNoResults { padding:20px 0; }
+.rmtProjectDiscovery .rmtProjectScanner { border-radius:6px; }
+@media(min-width:768px) {
+ .isDiscovery .rmtProjectRow { grid-template-columns:34px minmax(0,1fr) 130px 16px; }
+ .isDiscovery .rmtProjectRowIdentity { grid-template-columns:minmax(180px,1fr) minmax(180px,1.3fr); gap:20px; }
+}
+@media(max-width:767px) {
+ .rmtProjectMarket.isDiscovery { padding:20px 12px 48px; }
+ .rmtProjectsHeading h1 { font-size:20px; }
+ .rmtProjectFilters { gap:22px!important; }
+ .rmtProjectsSearch input { font-size:16px; }
+ .rmtProjectScannerHead { display:none; }
+ .rmtProjectScanner { border:0; border-top:1px solid #213027; border-radius:0; }
+ .rmtProjectRow { grid-template-columns:40px minmax(0,1fr) 82px; gap:10px; min-height:68px; padding:9px 0; }
+ .rmtProjectRow>.rmtProjectArt { width:40px; height:40px; border-radius:50%; }
+ .rmtProjectRowIdentity { display:grid; grid-template-columns:1fr; gap:4px; }
+ .rmtProjectRowIdentity>strong { font-size:14px; line-height:1.25; }
+ .rmtProjectRowAssets { font-size:11px; line-height:1.45; }
+ .rmtProjectRowComposition strong { font-size:10px; }
+ .rmtProjectRow>.rmtIcon { display:none; }
+}
 .rmtProjectHeader { display:flex; align-items:center; gap:24px; padding:12px 24px; height:68px; border-bottom:1px solid #213027; }
 .rmtProjectHeader>a { display:flex; align-items:center; gap:10px; min-height:44px; color:#eaf2eb; text-decoration:none; }
 .rmtProjectHeader img { width:34px; height:34px; }

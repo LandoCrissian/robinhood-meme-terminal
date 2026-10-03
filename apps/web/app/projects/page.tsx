@@ -1,6 +1,5 @@
-import { ProjectDiscovery } from "../vnext/project-cards";
-import { searchProjects } from "@rmt/shared/project-identity";
+import { ProjectsScanner } from "./projects-scanner";
 export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const params = await searchParams, query = typeof params.q === "string" ? params.q : "";
-  return <main className="rmtProjectMarket"><header className="rmtProjectHero"><p>RMT · Robinhood Chain</p><h1>Project Markets<span className="rmtProjectAccent">.</span></h1><span>Tokens, collections and the communities connecting them.</span></header><form action="/projects" className="rmtProjectSearch"><label htmlFor="project-search">Find a project or asset</label><div><input id="project-search" name="q" defaultValue={query} placeholder="Project, token or NFT contract" maxLength={160} /><button type="submit">Search</button></div></form>{searchProjects(query).length ? <ProjectDiscovery query={query} heading={false} /> : <p className="rmtProjectQuietState">No linked project found.</p>}</main>;
+  return <main className="rmtProjectMarket isDiscovery"><header className="rmtProjectsHeading"><h1>Projects</h1><p>Robinhood Chain Project Markets</p></header><ProjectsScanner initialQuery={query} /></main>;
 }
