@@ -189,7 +189,7 @@ async function loadState(pool: Pool): Promise<IdentityIndexState> {
       totalCanonicalMarkets: catalog?.total_canonical_markets ?? 0,
       totalUniqueCanonicalTokens,
       totalVerifiedErc20Identities: verified,
-      indexedSearchTokenIdentities: verified,
+      indexedSearchTokenIdentities: loadedVerified,
       unresolvedTokenIdentities: Math.max(totalUniqueCanonicalTokens - evaluated, 0),
       complete: catalog?.complete === true && evaluated === totalUniqueCanonicalTokens
     }
@@ -239,8 +239,13 @@ async function rescanCanonicalTokens(pool: Pool, state: IdentityIndexState) {
   ]);
   const dirtyShards = new Set<number>();
   for (const [shardNumber, shard] of state.shards) {
-    for (const address of shard.keys()) {
+    for (const [address, identity] of shard) {
       if (canonicalTokens.has(address)) continue;
+      // A ready identity is durable address/unit evidence even when the token
+      // has no pool in the optional canonical market catalog. Exact execution
+      // lookups populate the same reviewed shard store. Only legacy negative
+      // observations remain catalog-scoped and safe to discard here.
+      if (identity[1] === "r") continue;
       shard.delete(address);
       state.readyIdentities.delete(address);
       dirtyShards.add(shardNumber);
@@ -278,7 +283,7 @@ async function rescanCanonicalTokens(pool: Pool, state: IdentityIndexState) {
     totalCanonicalMarkets: Number(marketResult.rows[0]?.count ?? 0),
     totalUniqueCanonicalTokens,
     totalVerifiedErc20Identities: verified,
-    indexedSearchTokenIdentities: verified,
+    indexedSearchTokenIdentities: state.readyIdentities.size,
     unresolvedTokenIdentities: Math.max(totalUniqueCanonicalTokens - evaluated, 0),
     complete: evaluated === totalUniqueCanonicalTokens
   };
@@ -445,7 +450,7 @@ async function refreshCanonicalTokenIdentityIndexOnce(
   state.stats = {
     ...state.stats,
     totalVerifiedErc20Identities: verified,
-    indexedSearchTokenIdentities: verified,
+    indexedSearchTokenIdentities: state.readyIdentities.size,
     unresolvedTokenIdentities: Math.max(state.stats.totalUniqueCanonicalTokens - evaluated, 0),
     complete: evaluated === state.stats.totalUniqueCanonicalTokens
   };
@@ -470,6 +475,18 @@ export async function readCanonicalBrowseIdentities(pool: Pool, addresses: reado
 export async function searchCanonicalTokenIdentityIndex(pool: Pool, query: string, limit: number) {
   const state = await stateFor(pool);
   const normalized = normalizeTokenIdentitySearch(query);
+  const exactAddress = /^0x[0-9a-fA-F]{40}$/.test(query.trim())
+    ? query.trim().toLowerCase()
+    : null;
+  if (exactAddress) {
+    const identity = state.readyIdentities.get(exactAddress);
+    return identity ? [{
+      address: `0x${identity[0]}`,
+      name: identity[2],
+      symbol: identity[3],
+      decimals: identity[4]
+    }] : [];
+  }
   const matches: Array<{ priority: number; identity: ReadyStoredIdentity }> = [];
   for (const identity of state.readyIdentities.values()) {
     const nameSearch = normalizeTokenIdentitySearch(identity[2]);
@@ -489,11 +506,94 @@ export async function searchCanonicalTokenIdentityIndex(pool: Pool, query: strin
     .sort((left, right) => left.priority - right.priority || left.identity[0].localeCompare(right.identity[0]))
     .slice(0, limit)
     .map(({ identity }) => ({
-      address: getAddress(`0x${identity[0]}`),
+      address: `0x${identity[0]}`,
       name: identity[2],
       symbol: identity[3],
       decimals: identity[4]
     }));
+}
+
+const identityMutationTails = new WeakMap<Pool, Promise<void>>();
+function serializeIdentityMutation<T>(pool: Pool, mutation: () => Promise<T>): Promise<T> {
+  const previous = identityMutationTails.get(pool) ?? Promise.resolve();
+  const operation = previous.catch(() => undefined).then(mutation);
+  const settled = operation.then(() => undefined, () => undefined);
+  identityMutationTails.set(pool, settled);
+  return operation.finally(() => {
+    if (identityMutationTails.get(pool) === settled) identityMutationTails.delete(pool);
+  });
+}
+
+export type EnsuredCanonicalTokenIdentity = Readonly<{
+  address: Address;
+  name: string;
+  symbol: string;
+  decimals: number;
+}>;
+
+const exactIdentityReads = new WeakMap<Pool, Map<string, Promise<EnsuredCanonicalTokenIdentity | null>>>();
+
+/**
+ * Resolve one authenticated exact-address miss into the existing durable
+ * identity shard. This is a bounded read-through for address/unit authority;
+ * it does not admit a market, establish liquidity, or authorize execution.
+ */
+export function ensureCanonicalTokenIdentity(
+  pool: Pool,
+  rpc: PublicClient,
+  rawAddress: string,
+  observedBlock: bigint
+): Promise<EnsuredCanonicalTokenIdentity | null> {
+  const address = getAddress(rawAddress);
+  const key = address.toLowerCase();
+  const byAddress = exactIdentityReads.get(pool) ?? new Map();
+  exactIdentityReads.set(pool, byAddress);
+  const existing = byAddress.get(key);
+  if (existing) return existing;
+
+  const read = serializeIdentityMutation(pool, async () => {
+    const state = await stateFor(pool);
+    const durable = state.readyIdentities.get(key);
+    if (durable) {
+      return { address, name: durable[2], symbol: durable[3], decimals: durable[4] };
+    }
+
+    const code = await rpc.getBytecode({ address, blockNumber: observedBlock });
+    if (!code || code === "0x") return null;
+    const results = await readIdentityIndividually(rpc, address, observedBlock);
+    const [nameResult, symbolResult, decimalsResult, supplyResult] = results;
+    if ([nameResult, symbolResult, decimalsResult, supplyResult].some((result) => result?.status !== "success")) {
+      return null;
+    }
+    const name = cleanIdentityText(nameResult?.status === "success" ? nameResult.result : null, 80);
+    const symbol = cleanIdentityText(symbolResult?.status === "success" ? symbolResult.result : null, 20);
+    const decimals = decimalsResult?.status === "success" ? decimalsResult.result : null;
+    const totalSupply = supplyResult?.status === "success" ? supplyResult.result : null;
+    if (!name || !symbol || typeof decimals !== "number" || !Number.isInteger(decimals) ||
+        decimals < 0 || decimals > 36 || typeof totalSupply !== "bigint" || totalSupply <= 0n) {
+      return null;
+    }
+
+    const shardNumber = Number.parseInt(key.slice(2, 4), 16);
+    const shard = new Map(state.shards.get(shardNumber) ?? []);
+    const stored: ReadyStoredIdentity = [key.slice(2), "r", name, symbol, decimals];
+    shard.set(key, stored);
+    await persistShard(pool, shardNumber, shard);
+    state.shards.set(shardNumber, shard);
+    state.readyIdentities.set(key, stored);
+    state.retryAfter.delete(key);
+    state.stats = {
+      ...state.stats,
+      indexedSearchTokenIdentities: state.readyIdentities.size
+    };
+    await persistStats(pool, state.stats);
+    return { address, name, symbol, decimals };
+  }).finally(() => {
+    if (byAddress.get(key) === read) byAddress.delete(key);
+    if (byAddress.size === 0 && exactIdentityReads.get(pool) === byAddress) exactIdentityReads.delete(pool);
+  });
+  byAddress.set(key, read);
+  return read;
 }
 
 // One in-flight refresh per existing database worker, including shard persistence.
@@ -503,7 +603,10 @@ export function refreshCanonicalTokenIdentityIndex(
 ): Promise<number> {
   const existing = identityRefreshes.get(pool);
   if (existing) return existing;
-  const refresh = refreshCanonicalTokenIdentityIndexOnce(pool, rpc, batchSize, observedBlock, observedBlockHash)
+  const refresh = serializeIdentityMutation(
+    pool,
+    () => refreshCanonicalTokenIdentityIndexOnce(pool, rpc, batchSize, observedBlock, observedBlockHash)
+  )
     .finally(() => { if (identityRefreshes.get(pool) === refresh) identityRefreshes.delete(pool); });
   identityRefreshes.set(pool, refresh);
   return refresh;

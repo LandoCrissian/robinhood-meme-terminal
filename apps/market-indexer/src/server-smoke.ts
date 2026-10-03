@@ -73,10 +73,16 @@ const worker = {
       },
       sources
     }
+  },
+  ensureTokenIdentity: async (address: string) => {
+    ensuredIdentityAddresses.push(address.toLowerCase());
+    return null;
   }
 } as unknown as MarketIndexerWorker;
 
 const stonkBrokerAddress = "0xe934e36a439c94017b64a3fece66af12099abf50";
+const shcatAddress = "0x14c51bb55592372eac7141a1d0527d1dd7fbd42f";
+const ensuredIdentityAddresses: string[] = [];
 const v2Pool = {
   sourceId: "uniswap-v2",
   protocol: "uniswap",
@@ -163,12 +169,20 @@ const pool = {
   query: async (text: string, values: unknown[]) => {
     poolQueries.push({ text, values });
     if (text.includes("market_token_identity_shard")) {
-      return { rows: [{
-        shard: Number.parseInt(stonkBrokerAddress.slice(2, 4), 16),
-        payload: gzipSync(Buffer.from(JSON.stringify([[
-          stonkBrokerAddress.slice(2), "r", "StonkBrokers", "STONKBROKER", 18
-        ]]), "utf8"))
-      }] };
+      return { rows: [
+        {
+          shard: Number.parseInt(stonkBrokerAddress.slice(2, 4), 16),
+          payload: gzipSync(Buffer.from(JSON.stringify([[
+            stonkBrokerAddress.slice(2), "r", "StonkBrokers", "STONKBROKER", 18
+          ]]), "utf8"))
+        },
+        {
+          shard: Number.parseInt(shcatAddress.slice(2, 4), 16),
+          payload: gzipSync(Buffer.from(JSON.stringify([[
+            shcatAddress.slice(2), "r", "Shareholder Cat", "SHCAT", 18
+          ]]), "utf8"))
+        }
+      ] };
     }
     if (text.includes("market_token_identity_catalog_state")) {
       return { rows: [{
@@ -180,7 +194,10 @@ const pool = {
       }] };
     }
     if (text.includes("FROM matched_pools AS pools")) {
-      return { rows: [{ ...v4Pool, matchedToken: stonkBrokerAddress, logIndex: 2 }] };
+      const requested = ((values[0] as Buffer[] | undefined)?.[0]?.toString("hex") ?? "").toLowerCase();
+      return { rows: requested === stonkBrokerAddress.slice(2)
+        ? [{ ...v4Pool, matchedToken: stonkBrokerAddress, logIndex: 2 }]
+        : [] };
     }
     const [
       sourceId,
@@ -293,6 +310,23 @@ try {
     poolQueries.find((query) => query.text.includes("FROM matched_pools AS pools"))?.text ?? "",
     /token_rank <= 16/
   );
+
+  const exactPoollessSearchResponse = await fetch(
+    `${origin}/v1/token-identities/search?q=${shcatAddress}&limit=64`,
+    { headers: poolHeaders }
+  );
+  const exactPoollessSearch = (await exactPoollessSearchResponse.json()) as {
+    entries: Array<{ address: string; name: string; symbol: string; decimals: number; markets: unknown[] }>;
+  };
+  assert.equal(exactPoollessSearchResponse.status, 200);
+  assert.deepEqual(exactPoollessSearch.entries, [{
+    address: shcatAddress,
+    name: "Shareholder Cat",
+    symbol: "SHCAT",
+    decimals: 18,
+    markets: []
+  }]);
+  assert.deepEqual(ensuredIdentityAddresses, [shcatAddress]);
 
   const cursorFor = (value: Record<string, unknown>) =>
     Buffer.from(JSON.stringify(value), "utf8").toString("base64url");
