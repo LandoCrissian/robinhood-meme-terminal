@@ -102,6 +102,8 @@ for (const record of batch.records) {
   assert.ok(asset.evidence!.some(e => e.class === "OWNER_SUPPLIED_CANDIDATE"));
   assert.ok(!asset.evidence!.some(e => e.class === "OWNER_VERIFIED"), "Candidate contract verification never becomes owner-verification evidence");
   assert.equal(admitted.assets.filter(item => item.kind === "ERC20").length, 0);
+  assert.ok(admitted.links.every(link => link.evidence?.some(e => e.class === "PROJECT_OFFICIAL" || e.class === "PROVIDER_VERIFIED" || e.class === "OWNER_VERIFIED")), "Provider-listed unverified socials cannot become verified official graph links");
+  for (const link of record.unverifiedProviderLinks ?? []) assert.ok(!admitted.links.some(item => item.url === link.url), "Retain candidate link evidence without publishing an unverified relationship");
   assert.throws(() => defineRmtProjectIdentity({ ...admitted, assets: [{ ...asset, evidence: asset.evidence!.filter(e => e.class !== "ONCHAIN_VERIFIED") }] }));
   assert.throws(() => defineRmtProjectIdentity({ ...admitted, assets: [{ ...asset, kind: "ERC20", relationship: "OWNER_CONFIRMED_PROJECT_TOKEN", destinations: [] }] }));
   assert.throws(() => defineRmtProjectIdentity({ ...admitted, assets: [{ ...asset, destinations: [{ ...asset.destinations![0]!, url: "https://opensea.io/collection/unrelated" }] }] }));

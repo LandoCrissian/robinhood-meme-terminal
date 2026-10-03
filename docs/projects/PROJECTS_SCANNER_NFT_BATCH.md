@@ -38,6 +38,9 @@ collection items resolve to those exact contracts. Provider supply and onchain
 `totalSupply` are verification observations, not current ownership metrics.
 Where a project-official contract reference was not established, the report
 preserves that absence rather than upgrading provider evidence.
+Provider-listed social and website URLs without independent verification are
+retained as `DERIVED` candidate evidence in the technical record. They are not
+published as verified official links by the Project Graph.
 
 | Project | Composition | Admission |
 | --- | --- | --- |
