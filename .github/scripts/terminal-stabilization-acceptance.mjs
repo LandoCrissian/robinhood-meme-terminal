@@ -131,9 +131,11 @@ export async function inspectTerminalStabilization(browser, { base, createContex
       assert.equal(await page.locator(row).count(), canonical.length - 1, "authoritative removal remains effective");
       directoryMode = "fallback";
       await page.reload({ waitUntil: "domcontentloaded" });
+      // DOMContentLoaded includes the server-rendered category controls. Wait
+      // for the client directory before opening a disclosure hydration can replace.
+      await page.locator(row).first().waitFor();
       await revealBrowseExplore(page);
       await page.getByRole("button", { name: /^All\s+/ }).click();
-      await page.locator(row).first().waitFor();
       assert.equal(await page.locator(row).count(), 8);
       await freshness.getByText(/Limited coverage/).waitFor();
       directoryMode = "indexed"; removedAddress = null;

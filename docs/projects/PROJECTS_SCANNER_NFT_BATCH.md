@@ -120,3 +120,9 @@ override, exclusion, waiver or audit-policy change is required. Compatibility
 coverage exercises Firebase's real multipart HTTP reader with ordinary
 responses, prototype-named part headers and the formerly problematic boundary
 length, alongside the existing Privy/Firebase account and session regressions.
+
+Browser readiness also distinguishes streamed HTML from interactive controls:
+the NFT search journey waits for the GET destination and installed client link
+handler before its item click. The fallback-directory reload waits for client
+rows before opening Explore. Exact destination, inventory, capture and
+degraded-state assertions remain unchanged.
