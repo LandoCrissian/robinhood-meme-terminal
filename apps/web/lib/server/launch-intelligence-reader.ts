@@ -2,6 +2,7 @@ import { z } from "zod";
 import type {
   LaunchDirectory,
   LaunchEvidence,
+  LaunchSource,
 } from "@rmt/shared/launch-intelligence";
 import { RMT_LAUNCH_AUTHORITIES } from "@rmt/shared/launch-intelligence";
 import { projectsForContract } from "@rmt/shared/project-identity";
@@ -152,13 +153,14 @@ export type LaunchQuery = {
   cursor?: string;
   limit?: number;
 };
+type LaunchReadDependencies = {
+  env?: NodeJS.ProcessEnv;
+  fetch?: typeof fetch;
+  timeoutMs?: number;
+};
 export async function readLaunchIntelligence(
   query: LaunchQuery = {},
-  deps: {
-    env?: NodeJS.ProcessEnv;
-    fetch?: typeof fetch;
-    timeoutMs?: number;
-  } = {},
+  deps: LaunchReadDependencies = {},
 ): Promise<LaunchDirectory> {
   const configuration = resolveVNextMarketIndexerConfiguration(
     deps.env ?? process.env,
@@ -219,4 +221,27 @@ export async function readLaunchIntelligence(
   } catch {
     return unavailableLaunchDirectory();
   }
+}
+
+/** Source availability is independent of the current search/page, but requires
+ * positive indexed evidence. Configured sources alone do not establish it. */
+export async function readLaunchSourceAvailability(
+  directory: LaunchDirectory,
+  deps: LaunchReadDependencies = {},
+): Promise<LaunchSource[]> {
+  const available = new Set(directory.entries.map((entry) => entry.source));
+  for (const source of ["PONS", "STONKBROKERS"] as const) {
+    if (available.has(source)) continue;
+    const configured = directory.sources.some((status) =>
+      RMT_LAUNCH_AUTHORITIES.some(
+        (authority) => authority.id === status.sourceId && authority.source === source,
+      ),
+    );
+    if (!configured) continue;
+    // At most one sequential, cached one-record read per missing source.
+    const evidence = await readLaunchIntelligence({ source, limit: 1 }, deps);
+    if (evidence.entries.some((entry) => entry.source === source))
+      available.add(source);
+  }
+  return (["PONS", "STONKBROKERS"] as const).filter((source) => available.has(source));
 }

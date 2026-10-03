@@ -5,6 +5,7 @@ import { formatTerminalAge, formatTerminalCompactUsd } from "../vnext/terminal-f
 import type {
   LaunchDirectory,
   LaunchEvidence,
+  LaunchSource,
 } from "@rmt/shared/launch-intelligence";
 import {
   launchNavigationHref,
@@ -45,11 +46,13 @@ export function LaunchRow({ launch, observedNow }: { launch: LaunchEvidence; obs
 }
 export function LaunchDiscovery({
   initial,
+  availableSources,
   query,
   source,
   observedNow,
 }: {
   initial: LaunchDirectory;
+  availableSources: readonly LaunchSource[];
   query: string;
   source?: string;
   observedNow: number;
@@ -120,14 +123,14 @@ export function LaunchDiscovery({
           All sources
         </Link>
         {(["PONS", "STONKBROKERS"] as const)
-          .filter((s) => s === source || entries.some((e) => e.source === s))
+          .filter((s) => availableSources.includes(s) || entries.some((e) => e.source === s))
           .map((s) => (
             <Link
               key={s}
               href={`/launches?${new URLSearchParams({ source: s, ...(query ? { q: query } : {}) })}`}
               aria-current={source === s ? "page" : undefined}
             >
-              {s === "PONS" ? "pons" : "StonkBrokers"}
+              {s === "PONS" ? "Pons" : "StonkBrokers"}
             </Link>
           ))}
       </nav>

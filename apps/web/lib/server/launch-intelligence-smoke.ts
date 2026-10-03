@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import React, { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { LaunchDiscovery } from "../../app/launches/launch-discovery";
 import {
   readLaunchIntelligence,
+  readLaunchSourceAvailability,
   launchEvidenceSchema,
 } from "./launch-intelligence-reader";
 import {
@@ -45,6 +49,77 @@ async function main() {
     });
   assert.equal((await read(directory)).entries.length, 10);
   assert.equal(requested!.pathname, "/internal/v1/launches");
+  // Controlled replay regression: page one contains only newer Pons records,
+  // while older StonkBrokers evidence is discoverable through a bounded query.
+  const pons = directory.entries.find((entry) => entry.source === "PONS")!;
+  const stonk = directory.entries.find((entry) => entry.source === "STONKBROKERS")!;
+  const ponsPage = { ...directory, entries: [pons] };
+  const availabilityRequests: URL[] = [];
+  const availableSources = await readLaunchSourceAvailability(ponsPage, {
+    env,
+    fetch: async (input) => {
+      const url = new URL(String(input));
+      availabilityRequests.push(url);
+      assert.equal(url.searchParams.get("source"), "STONKBROKERS");
+      assert.equal(url.searchParams.get("limit"), "1");
+      assert.equal(url.searchParams.get("q"), null);
+      assert.equal(url.searchParams.get("cursor"), null);
+      return Response.json({ ...directory, entries: [stonk], nextCursor: null });
+    },
+  });
+  assert.deepEqual(availableSources, ["PONS", "STONKBROKERS"]);
+  assert.equal(availabilityRequests.length, 1, "Only the missing source is probed");
+  // tsx's standalone JSX transform is classic; Next uses its automatic runtime.
+  const reactGlobal = globalThis as typeof globalThis & { React?: typeof React };
+  const priorReact = reactGlobal.React;
+  let markup: string;
+  try {
+    reactGlobal.React = React;
+    markup = renderToStaticMarkup(createElement(LaunchDiscovery, {
+      initial: ponsPage, availableSources, query: "", observedNow: Date.parse(pons.launchTime),
+    }));
+  } finally {
+    if (priorReact) reactGlobal.React = priorReact;
+    else Reflect.deleteProperty(reactGlobal, "React");
+  }
+  assert.match(markup, /source=STONKBROKERS[^>]*>StonkBrokers<\/a>/,
+    "The landing source filter survives a Pons-only first page");
+  assert.equal(markup.includes(`data-token="${stonk.token}"`), false,
+    "Availability never inserts synthetic rows into the current page");
+  for (const value of [
+    { ...directory, entries: [], nextCursor: null },
+    { ...directory, entries: [pons], nextCursor: null },
+  ]) {
+    assert.deepEqual(await readLaunchSourceAvailability(ponsPage, {
+      env, fetch: async () => Response.json(value),
+    }), ["PONS"], "Configured sources or mismatched evidence do not establish availability");
+  }
+  for (const status of [401, 429, 503]) {
+    assert.deepEqual(await readLaunchSourceAvailability(ponsPage, {
+      env, fetch: async () => new Response("Unavailable", { status }),
+    }), ["PONS"], "A failed availability probe preserves already displayed evidence");
+  }
+  assert.deepEqual(await readLaunchSourceAvailability(ponsPage, {
+    env, timeoutMs: 100,
+    fetch: async (_, init) => new Promise((_, reject) =>
+      init!.signal!.addEventListener("abort", () => reject(Error("Controlled timeout")))),
+  }), ["PONS"]);
+  const probeOrder: string[] = [];
+  let activeProbes = 0;
+  assert.deepEqual(await readLaunchSourceAvailability({ ...directory, entries: [] }, {
+    env, fetch: async (input) => {
+      assert.equal(activeProbes++, 0, "Availability probes remain sequential");
+      const source = new URL(String(input)).searchParams.get("source")!;
+      probeOrder.push(source);
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      activeProbes--;
+      return Response.json({ ...directory, entries: [source === "PONS" ? pons : stonk] });
+    },
+  }), ["PONS", "STONKBROKERS"], "An empty search page retains genuinely available sources");
+  assert.deepEqual(probeOrder, ["PONS", "STONKBROKERS"]);
+  assert.deepEqual(await readLaunchSourceAvailability({ ...directory, entries: [], sources: [] }, {
+    env, fetch: async () => { assert.fail("No probes without known producer source metadata"); },
+  }), []);
   for (const mutate of [
     (d: any) => (d.entries[0].chainId = 1),
     (d: any) => (d.entries[0].sourceContract = "0x" + "a".repeat(40)),
@@ -202,6 +277,8 @@ async function main() {
   console.info(
     JSON.stringify({
       launchReaderValidation: true,
+      pageIndependentSourceAvailability: true,
+      boundedPositiveEvidenceProbes: true,
       genuineReplayedRecords: 10,
       unknownUnits: true,
       timeoutRecovery: true,
