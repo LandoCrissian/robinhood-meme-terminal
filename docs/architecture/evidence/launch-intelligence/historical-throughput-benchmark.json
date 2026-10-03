@@ -196,7 +196,13 @@
     }
   ],
   "httpBatchLimit": 3,
-  "finalStoreMeasurement": {
+  "limitations": [
+    "Small read-only capability sample; no load test",
+    "Verified captured runtime proofs replayed; optional views intentionally unavailable",
+    "Database writes confined to disposable loopback PostgreSQL",
+    "Not sustained production throughput, peak RAM or long-term cost evidence"
+  ],
+  "conservativeStoreMeasurement": {
     "startedAt": "2026-10-03T13:55:56.974Z",
     "finishedAt": "2026-10-03T13:56:04.941Z",
     "initialRangeMs": 1486.4667,
@@ -218,10 +224,26 @@
     "isolatedDatabaseBytesBefore": 8354839,
     "isolatedDatabaseBytesAfter": 8764439
   },
-  "limitations": [
-    "Small read-only capability sample; no load test",
-    "Verified captured runtime proofs replayed; optional views intentionally unavailable",
-    "Database writes confined to disposable loopback PostgreSQL",
-    "Not sustained production throughput, peak RAM or long-term cost evidence"
-  ]
+  "reviewedStoreMeasurement": {
+    "startedAt": "2026-10-03T14:35:24.256Z",
+    "finishedAt": "2026-10-03T14:35:32.062Z",
+    "initialRangeMs": 1526.4631000000008,
+    "windowMs": 5338.002999999997,
+    "windowBlocks": 25000,
+    "windowRanges": 5,
+    "blocksPerSecondIncludingIdle": 3944.46010833381,
+    "httpRequests": 66,
+    "rpcMethods": 158,
+    "errorCount": 0,
+    "canonicalEvents": 136,
+    "exactOldSourceCanonicalEquivalence": true,
+    "cpuMicros": {
+      "user": 563000,
+      "system": 31000
+    },
+    "rssBefore": 110616576,
+    "rssAfter": 122687488,
+    "isolatedDatabaseBytesBefore": 8395799,
+    "isolatedDatabaseBytesAfter": 8854551
+  }
 }

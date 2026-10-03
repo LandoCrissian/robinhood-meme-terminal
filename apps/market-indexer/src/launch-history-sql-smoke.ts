@@ -118,6 +118,24 @@ async function main() {
     assert.equal(historicalFailureDelay(20), 300_000);
 
     await reset();
+    for (const source of launchSourceManifest.sources) await pool.query(
+      "UPDATE rmt_launch_sources SET historical_next=$2 WHERE source_id=$1",
+      [source.id, String(BigInt(source.startBlock) - 1n)],
+    );
+    const completed = new LaunchIndexer(pool, rpc, 5_000);
+    await completed.tick(head, hash(head));
+    assert.equal(completed.canBackfill(), false, "Completed history disables background RPC admission");
+    const completedReads = reads;
+    await completed.backfill(head, hash(head));
+    assert.equal(reads, completedReads);
+    await completed.tick(head + 1n, hash(head + 1n));
+    assert.equal(reads, completedReads + 1, "Live polling continues after historical completion");
+    // Controlled durable cursor restoration models a replay/recovered source.
+    await pool.query("UPDATE rmt_launch_sources SET historical_next=$1 WHERE source_id='pons-v1'", [String(head - 1n)]);
+    await completed.tick(head + 2n, hash(head + 2n));
+    assert.equal(completed.canBackfill(), true, "The ordinary cycle discovers newly pending durable history");
+
+    await reset();
     const slow = new LaunchIndexer(pool, rpc, 5_000);
     for (let i = 0; i < 4; i++) await slow.tick(head, hash(head));
     const slowEvidence = await evidence();

@@ -227,6 +227,7 @@ export class LaunchIndexer {
   private historyAfter: string | null = null;
   private historyFailures = 0;
   private historyRetryAt = 0;
+  private historyPending = true;
   private stopped = false;
   private historyRangeSize: number;
   private wakeHistory: (() => void) | null = null;
@@ -267,7 +268,7 @@ export class LaunchIndexer {
   }
 
   canBackfill() {
-    return !this.stopped && !this.activeRun && !this.livePending && Date.now() >= this.historyRetryAt
+    return this.historyPending && !this.stopped && !this.activeRun && !this.livePending && Date.now() >= this.historyRetryAt
       && [...this.verified.values()].some((at) => at > Date.now() - 3_600_000);
   }
 
@@ -383,6 +384,11 @@ export class LaunchIndexer {
           "SELECT source_id,next_block::text,historical_next::text,historical_end::text,scanned_at FROM rmt_launch_sources ORDER BY scanned_at ASC NULLS FIRST,source_id",
         )
       ).rows.filter((s) => active.some((a) => a.id === s.source_id));
+      const hasPendingHistory = () => states.some((s) => BigInt(s.historical_next) >=
+        BigInt(active.find((a) => a.id === s.source_id)!.startBlock));
+      // The ordinary/live cycle refreshes this from durable state, including
+      // source recovery or reorg replay. Completed history needs no head polling.
+      this.historyPending = hasPendingHistory();
       // Reconcile the shared canonical branch before any write. Deep reorgs stop advancement.
       const points = (
         await client.query<{
@@ -559,6 +565,7 @@ export class LaunchIndexer {
           else state.next_block = String(to + 1n);
         }
         if (lane === "history") {
+          this.historyPending = hasPendingHistory();
           this.historyAfter = group[0]!.source_id;
           ranges++;
           blocksScanned += to - from + 1n;
