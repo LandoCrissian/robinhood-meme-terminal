@@ -29,9 +29,12 @@ import {
   rollbackLaunchSource,
 } from "./launch-store.js";
 import { refreshLaunchIdentities } from "./launch-identity.js";
+import { LAUNCH_HISTORY_BUDGET, historicalFailureDelay, nextHistoryGroup } from "./launch-history-budget.js";
 
 const addressEqual = (a: string, b: string) =>
   a.toLowerCase() === b.toLowerCase();
+class HistoryYield extends Error {}
+class HistorySplit extends Error {}
 export async function observeLaunch(
   rpc: PublicClient,
   source: LaunchSourceManifest,
@@ -216,13 +219,23 @@ export async function observeLaunch(
 
 /** One coalesced launch stream inside the existing market worker. */
 export class LaunchIndexer {
+  lastCycleTiming = { setupMs: 0, liveMs: 0, historyMs: 0, enrichmentMs: 0, totalMs: 0 };
   private verified = new Map<string, number>();
   private lensVerifiedAt = 0;
+  private activeRun: Promise<void> | null = null;
+  private livePending = 0;
+  private historyAfter: string | null = null;
+  private historyFailures = 0;
+  private historyRetryAt = 0;
+  private stopped = false;
+  private historyRangeSize: number;
+  private wakeHistory: (() => void) | null = null;
   constructor(
     private pool: Pool,
     private rpc: PublicClient,
     private batchSize: number,
-  ) {}
+    private historyRpc: PublicClient = rpc,
+  ) { this.historyRangeSize = batchSize; }
   private async verify(source: LaunchSourceManifest, block: bigint) {
     if ((this.verified.get(source.id) ?? 0) > Date.now() - 3_600_000) return;
     const code = await this.rpc.getBytecode({
@@ -243,7 +256,51 @@ export class LaunchIndexer {
     }
     this.verified.set(source.id, Date.now());
   }
+  stop() { this.stopped = true; this.wakeHistory?.(); }
+
+  private async waitHistory(ms: number) {
+    await new Promise<void>((resolve) => {
+      const finish = () => { clearTimeout(timer); this.wakeHistory = null; resolve(); };
+      const timer = setTimeout(finish, ms);
+      this.wakeHistory = finish;
+    });
+  }
+
+  canBackfill() {
+    return !this.stopped && !this.activeRun && !this.livePending && Date.now() >= this.historyRetryAt
+      && [...this.verified.values()].some((at) => at > Date.now() - 3_600_000);
+  }
+
+  /** Live work has priority at every committed historical range boundary. */
   async tick(head: bigint, headHash: Hex) {
+    this.livePending++;
+    this.wakeHistory?.();
+    try {
+      while (this.activeRun) await this.activeRun;
+      if (this.stopped) return;
+      const run = this.run(head, headHash, false);
+      this.activeRun = run;
+      try { await run; } finally { this.activeRun = null; }
+    } finally { this.livePending--; }
+  }
+
+  async backfill(head: bigint, headHash: Hex) {
+    if (!this.canBackfill()) return;
+    const run = this.run(head, headHash, true);
+    this.activeRun = run;
+    try { await run; } finally { this.activeRun = null; }
+  }
+
+  private async run(head: bigint, headHash: Hex, historyOnly: boolean) {
+    const rpc = historyOnly ? this.historyRpc : this.rpc;
+    const started = Date.now();
+    let ranges = 0;
+    let blocksScanned = 0n;
+    let failed = false;
+    let lastRangeStarted = 0;
+    const timing = { setupMs: 0, liveMs: 0, historyMs: 0, enrichmentMs: 0, totalMs: 0 };
+    let enrichmentStarted: number | null = null;
+    let rangeTransaction = false;
     const client = await this.pool.connect();
     let locked = false;
     try {
@@ -253,11 +310,18 @@ export class LaunchIndexer {
         )
       ).rows[0]!.locked;
       if (!locked) return;
-      if ((await this.rpc.getChainId()) !== 4663)
+      if ((await rpc.getChainId()) !== 4663)
         throw new Error("launch RPC wrong chain");
       const active: LaunchSourceManifest[] = [];
       // Fixed small concurrency; runtime proofs are shared for an hour, never requested by browsers.
-      for (let i = 0; i < launchSourceManifest.sources.length; i += 3) {
+      if (historyOnly) {
+        // Only the live cycle renews runtime authority. Background catch-up
+        // cannot multiply cold/failed source verification requests.
+        active.push(...launchSourceManifest.sources.filter((s) =>
+          (this.verified.get(s.id) ?? 0) > Date.now() - 3_600_000));
+        if (!active.length) return;
+      }
+      for (let i = 0; !historyOnly && i < launchSourceManifest.sources.length; i += 3) {
         const checked = await Promise.allSettled(
           launchSourceManifest.sources.slice(i, i + 3).map(async (source) => {
             await this.verify(source, head);
@@ -267,7 +331,7 @@ export class LaunchIndexer {
         for (const result of checked)
           if (result.status === "fulfilled") active.push(result.value);
       }
-      if (this.lensVerifiedAt <= Date.now() - 3_600_000) {
+      if (!historyOnly && this.lensVerifiedAt <= Date.now() - 3_600_000) {
         const lens = await this.rpc
           .getBytecode({
             address: launchSourceManifest.lens.contract,
@@ -301,7 +365,7 @@ export class LaunchIndexer {
           throw new Error(
             "launch manifest changed; explicit migration required",
           );
-        if (!active.includes(source))
+        if (!historyOnly && !active.includes(source))
           await client.query(
             "UPDATE rmt_launch_sources SET status='unavailable',last_error='SOURCE_RUNTIME_UNAVAILABLE' WHERE source_id=$1",
             [source.id],
@@ -332,7 +396,7 @@ export class LaunchIndexer {
       if (
         points.length &&
         (
-          await this.rpc.getBlock({
+          await rpc.getBlock({
             blockNumber: BigInt(points[0]!.block_number),
           })
         ).hash !== points[0]!.block_hash
@@ -342,7 +406,7 @@ export class LaunchIndexer {
             blockNumber: BigInt(p.block_number),
             blockHash: p.block_hash,
           })),
-          async (n) => (await this.rpc.getBlock({ blockNumber: n })).hash,
+          async (n) => (await rpc.getBlock({ blockNumber: n })).hash,
         );
         if (ancestor === null)
           throw new Error(
@@ -355,37 +419,43 @@ export class LaunchIndexer {
         await client.query("COMMIT");
         return;
       }
-      for (const lane of ["live", "history"] as const) {
+      const lanes: ("live" | "history")[] = historyOnly
+        ? Array.from({ length: LAUNCH_HISTORY_BUDGET.maxRanges }, () => "history")
+        : ["live", "history"];
+      timing.setupMs = Date.now() - started;
+      for (const lane of lanes) {
+        if (this.stopped || (historyOnly && this.livePending)) break;
+        if (historyOnly) {
+          const wait = Math.max(0, lastRangeStarted + LAUNCH_HISTORY_BUDGET.rangeIntervalMs - Date.now());
+          if (Date.now() + wait >= started + LAUNCH_HISTORY_BUDGET.windowMs) break;
+          if (wait) await this.waitHistory(wait);
+          if (this.stopped || this.livePending) break;
+          lastRangeStarted = Date.now();
+        }
         const pending = states.filter((s) =>
           lane === "live"
             ? BigInt(s.next_block) <= head
             : BigInt(s.historical_next) >=
               BigInt(active.find((a) => a.id === s.source_id)!.startBlock),
         );
-        if (!pending.length) continue;
-        const coordinate =
-          lane === "live"
-            ? BigInt(pending[0]!.next_block)
-            : pending.reduce(
-                (max, s) =>
-                  BigInt(s.historical_next) > max
-                    ? BigInt(s.historical_next)
-                    : max,
-                -1n,
-              );
-        const group = pending.filter(
-          (s) =>
-            BigInt(lane === "live" ? s.next_block : s.historical_next) ===
-            coordinate,
+        if (!pending.length) {
+          if (historyOnly) break;
+          continue;
+        }
+        if (lane === "history" && Date.now() < this.historyRetryAt) continue;
+        const group = lane === "history" ? nextHistoryGroup(pending, this.historyAfter) : pending.filter(
+          (s) => s.next_block === pending[0]!.next_block,
         );
         const sources = active.filter((s) =>
           group.some((g) => g.source_id === s.id),
         );
+        const coordinate = BigInt(lane === "history" ? group[0]!.historical_next : group[0]!.next_block);
+        const rangeSize = historyOnly ? this.historyRangeSize : this.batchSize;
         const from =
           lane === "live"
             ? coordinate
-            : coordinate >= BigInt(this.batchSize - 1)
-              ? coordinate - BigInt(this.batchSize - 1)
+            : coordinate >= BigInt(rangeSize - 1)
+              ? coordinate - BigInt(rangeSize - 1)
               : 0n;
         const to =
           lane === "history"
@@ -399,7 +469,8 @@ export class LaunchIndexer {
         const uniqueEvents = [
           ...new Map(eventAbis.map((e) => [JSON.stringify(e), e])).values(),
         ];
-        const logs = await this.rpc.getLogs({
+        const rangeStarted = Date.now();
+        const logs = await rpc.getLogs({
           address: sources.map((s) => s.contract),
           events: uniqueEvents,
           fromBlock: from,
@@ -411,13 +482,22 @@ export class LaunchIndexer {
           Awaited<ReturnType<PublicClient["getBlock"]>>
         >();
         const numbers = [...new Set([...logs.map((l) => l.blockNumber!), to])];
-        for (let i = 0; i < numbers.length; i += 3)
+        if (historyOnly && numbers.length + 1 > LAUNCH_HISTORY_BUDGET.maxBlockReads && rangeSize > 1) {
+          this.historyRangeSize = Math.max(1, Math.floor(rangeSize / 2));
+          throw new HistorySplit(); // Retry a smaller contiguous range; no cursor advancement.
+        }
+        // Same three-block bound as the original producer. The background
+        // transport coalesces these into one HTTP batch of at most three reads.
+        const blockConcurrency = 3;
+        for (let i = 0; i < numbers.length; i += blockConcurrency) {
+          if (historyOnly && (this.stopped || this.livePending)) throw new HistoryYield();
           for (const b of await Promise.all(
             numbers
-              .slice(i, i + 3)
-              .map((blockNumber) => this.rpc.getBlock({ blockNumber })),
+              .slice(i, i + blockConcurrency)
+              .map((blockNumber) => rpc.getBlock({ blockNumber })),
           ))
             blocks.set(String(b.number), b);
+        }
         const checkpoint = blocks.get(String(to))!;
         if (!checkpoint.hash) throw new Error("launch checkpoint missing hash");
         const events = logs.flatMap((log) => {
@@ -444,12 +524,17 @@ export class LaunchIndexer {
           ];
         });
         if (
-          (await this.rpc.getBlock({ blockNumber: to })).hash !==
+          (await rpc.getBlock({ blockNumber: to })).hash !==
           checkpoint.hash
         )
           throw new Error("launch checkpoint changed during read");
+        if (historyOnly && (this.stopped || this.livePending)) throw new HistoryYield();
         await client.query("BEGIN");
-        for (const event of events) await insertLaunchEvent(client, event);
+        rangeTransaction = true;
+        for (const event of events) {
+          if (historyOnly && (this.stopped || this.livePending)) throw new HistoryYield();
+          await insertLaunchEvent(client, event);
+        }
         for (const source of sources) {
           await client.query(
             `INSERT INTO rmt_launch_checkpoints(source_id,lane,block_number,from_block,block_hash) VALUES($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
@@ -465,7 +550,26 @@ export class LaunchIndexer {
           );
         }
         await client.query("COMMIT");
+        rangeTransaction = false;
+        if (lane === "live") timing.liveMs += Date.now() - rangeStarted;
+        else timing.historyMs += Date.now() - rangeStarted;
+        // Advance the working selection only after the durable transaction commits.
+        for (const state of group) {
+          if (lane === "history") state.historical_next = String(from - 1n);
+          else state.next_block = String(to + 1n);
+        }
+        if (lane === "history") {
+          this.historyAfter = group[0]!.source_id;
+          ranges++;
+          blocksScanned += to - from + 1n;
+          this.historyFailures = 0;
+          this.historyRetryAt = 0;
+          if (historyOnly && numbers.length < LAUNCH_HISTORY_BUDGET.maxBlockReads / 2)
+            this.historyRangeSize = Math.min(this.batchSize, rangeSize * 2);
+        }
       }
+      if (historyOnly || this.stopped) return;
+      enrichmentStarted = Date.now();
       await refreshLaunchIdentities(client, this.rpc, head, headHash);
       const candidate = (
         await client.query<{
@@ -544,14 +648,23 @@ export class LaunchIndexer {
           [source.id, String(head), source.startBlock],
         );
     } catch (error) {
+      if (error instanceof HistoryYield || error instanceof HistorySplit) {
+        if (rangeTransaction) await client.query("ROLLBACK");
+        return;
+      }
       await client.query("ROLLBACK");
+      failed = true;
+      this.historyFailures++;
+      this.historyRetryAt = Date.now() + historicalFailureDelay(this.historyFailures);
       await client.query(
-        "UPDATE rmt_launch_sources SET status='unavailable',last_error=$1",
+        historyOnly
+          ? "UPDATE rmt_launch_sources SET last_error=$1 WHERE status='indexing'"
+          : "UPDATE rmt_launch_sources SET status='unavailable',last_error=$1",
         [error instanceof Error ? error.name : "Error"],
       );
       console.warn(
         JSON.stringify({
-          event: "launch_indexer_unavailable",
+          event: historyOnly ? "launch_history_delayed" : "launch_indexer_unavailable",
           operation: "bounded_launch_cycle",
           errorClass: error instanceof Error ? error.name : "Error",
         }),
@@ -559,6 +672,16 @@ export class LaunchIndexer {
     } finally {
       if (locked) await client.query("SELECT pg_advisory_unlock(4663,78191)");
       client.release();
+      if (enrichmentStarted !== null) timing.enrichmentMs = Date.now() - enrichmentStarted;
+      timing.totalMs = Date.now() - started;
+      if (!historyOnly) this.lastCycleTiming = timing;
+      if (historyOnly && locked) console.info(JSON.stringify({
+        event: "launch_history_window", durationMs: Date.now() - started,
+        ranges, blocksScanned: String(blocksScanned), concurrency: 1,
+        yieldedToLive: this.livePending > 0, failed,
+        retryAfterMs: Math.max(0, this.historyRetryAt - Date.now()),
+        nextRangeSize: this.historyRangeSize,
+      }));
     }
   }
 }
