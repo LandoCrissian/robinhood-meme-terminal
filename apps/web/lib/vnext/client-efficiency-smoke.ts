@@ -13,8 +13,9 @@ const spendBalance = source("../../app/vnext/spend-balance.tsx");
 const tradeComposer = source("../../app/vnext/trade-intent-composer.tsx");
 const layout = source("../../app/layout.tsx");
 
-assert.equal(VNEXT_CLIENT_REFRESH_POLICY.marketDirectoryMs, 300_000);
-assert.equal(VNEXT_CLIENT_REFRESH_POLICY.ecosystemDirectoryMs, 300_000);
+assert.equal(VNEXT_CLIENT_REFRESH_POLICY.marketDirectoryMs, 60_000);
+assert.equal(VNEXT_CLIENT_REFRESH_POLICY.ecosystemDirectoryMs, 60_000);
+assert.equal(VNEXT_CLIENT_REFRESH_POLICY.launchDirectoryMs, 30_000);
 assert.equal(VNEXT_CLIENT_REFRESH_POLICY.assetWorkspaceMs, 60_000);
 assert.equal(VNEXT_CLIENT_REFRESH_POLICY.walletBalanceMs, 60_000);
 assert.equal(VNEXT_CLIENT_REFRESH_POLICY.walletDiscoveryMs, 300_000);
@@ -32,7 +33,7 @@ assert.match(visibilityHook, /running/);
 assert.doesNotMatch(visibilityHook, /setInterval/);
 
 for (const publicReadClient of [directory, workspace, chart, spendBalance]) {
-  assert.match(publicReadClient, /useVisibilityRefresh/);
+  assert.match(publicReadClient, publicReadClient === directory ? /useScannerRefresh/ : /useVisibilityRefresh/);
   assert.doesNotMatch(publicReadClient, /cache: "no-store"/);
   assert.doesNotMatch(publicReadClient, /setInterval/);
 }

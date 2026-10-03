@@ -418,6 +418,36 @@ export async function resolveUniversalMarketAddress(
   };
 }
 
+// Exact lookup is broader than browse admission. Bounded, shared reads never
+// persist user input into the canonical inventory.
+const exactLiveMarkets = new Map<string, { until: number; read: Promise<UniversalMarketResolution | null> }>();
+let exactLiveReads = 0;
+export function readExactLiveMarketResolution(token: Address) {
+  const key = token.toLowerCase();
+  const cached = exactLiveMarkets.get(key);
+  if (cached && cached.until > Date.now()) return cached.read;
+  if (exactLiveReads >= 8) return Promise.resolve(null);
+  if (exactLiveMarkets.size >= 128) exactLiveMarkets.delete(exactLiveMarkets.keys().next().value!);
+  exactLiveReads++;
+  const read = (async () => {
+    const identity = await readRobinhoodTokenIdentity(token);
+    if (!identity) return null;
+    const quotes = [ROBINHOOD_WETH, ROBINHOOD_USDC];
+    const candidates = await discoverPoolsForQuotes(token, quotes);
+    const pools: UniversalMarketPool[] = [];
+    for (const candidate of candidates.slice(0, 8)) {
+      const pool = await readPool(getAddress(candidate.poolAddress), quotes);
+      if (pool && [pool.token0.toLowerCase(), pool.token1.toLowerCase()].includes(key)) pools.push(pool);
+    }
+    return { chainId: 4663, requestedAddress: token, requestedKind: "token",
+      status: pools.length ? "pool-found" : "token-only", token: identity, pools,
+      marketData: "identity-only", execution: pools.some(pool => pool.execution === "route-check-required") ? "route-check-required" : "view-only",
+      provenance: "robinhood-chain-contract-reads", resolvedAt: new Date().toISOString() } satisfies UniversalMarketResolution;
+  })().catch(() => null).finally(() => { exactLiveReads--; });
+  exactLiveMarkets.set(key, { until: Date.now() + 60_000, read });
+  return read;
+}
+
 export async function verifyUniversalMarketPoolForToken(
   token: Address,
   poolAddress: Address,

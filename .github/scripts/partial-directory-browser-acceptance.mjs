@@ -64,7 +64,7 @@ try {
     await enter.waitFor({ state: "visible", timeout: 20000 });
     await enter.click();
     await page.locator(".tradingTermsBackdrop").waitFor({ state: "hidden" });
-    await page.locator(".rmtMarketViews .rmtExplore > summary").first().click();
+    await page.locator(".rmtMarketViews .rmtExploreTrigger").first().click();
     const all = page.getByRole("button", { name: /^All/ }).first();
     await all.waitFor({ state: "visible", timeout: 20000 });
     assert.equal(
