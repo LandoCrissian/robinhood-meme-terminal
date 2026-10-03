@@ -123,6 +123,7 @@ length, alongside the existing Privy/Firebase account and session regressions.
 
 Browser readiness also distinguishes streamed HTML from interactive controls:
 the NFT search journey waits for the GET destination and installed client link
-handler before its item click. The fallback-directory reload waits for client
-rows before opening Explore. Exact destination, inventory, capture and
+handler before its item click. The fallback-directory reload waits for the
+client fallback result before opening Explore; it does not require an Active
+row when activity is unavailable. Exact destination, inventory, capture and
 degraded-state assertions remain unchanged.
