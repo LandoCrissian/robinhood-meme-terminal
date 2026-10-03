@@ -1,0 +1,249 @@
+{
+  "evidenceClass": "READ_ONLY_EXISTING_PROVIDER_WITH_ISOLATED_POSTGRES_NOT_PRODUCTION_ACCEPTANCE",
+  "provider": "EXISTING_CONFIGURED_RPC_URL_REDACTED",
+  "chainId": 4663,
+  "readOnly": true,
+  "productionMutated": false,
+  "sequentialLogSamples": [
+    {
+      "from": "74590000",
+      "to": "74590999",
+      "blocks": 1000,
+      "success": true,
+      "logs": 5,
+      "checkpointStable": true,
+      "durationMs": 221.15439999999944,
+      "calls": 3
+    },
+    {
+      "from": "74585000",
+      "to": "74589999",
+      "blocks": 5000,
+      "success": true,
+      "logs": 10,
+      "checkpointStable": true,
+      "durationMs": 231.81910000000062,
+      "calls": 3
+    },
+    {
+      "from": "74575000",
+      "to": "74584999",
+      "blocks": 10000,
+      "success": true,
+      "logs": 37,
+      "checkpointStable": true,
+      "durationMs": 246.47489999999925,
+      "calls": 3
+    },
+    {
+      "from": "9015000",
+      "to": "9019999",
+      "blocks": 5000,
+      "success": true,
+      "logs": 1,
+      "checkpointStable": true,
+      "durationMs": 233.08510000000024,
+      "calls": 3
+    },
+    {
+      "from": "74570000",
+      "to": "74574999",
+      "blocks": 5000,
+      "success": true,
+      "logs": 21,
+      "checkpointStable": true,
+      "durationMs": 229.91049999999996,
+      "calls": 3
+    },
+    {
+      "from": "74565000",
+      "to": "74569999",
+      "blocks": 5000,
+      "success": true,
+      "logs": 20,
+      "checkpointStable": true,
+      "durationMs": 248.46999999999935,
+      "calls": 3
+    },
+    {
+      "from": "74560000",
+      "to": "74564999",
+      "blocks": 5000,
+      "success": true,
+      "logs": 26,
+      "checkpointStable": true,
+      "durationMs": 233.52019999999902,
+      "calls": 3
+    },
+    {
+      "from": "74555000",
+      "to": "74559999",
+      "blocks": 5000,
+      "success": true,
+      "logs": 21,
+      "checkpointStable": true,
+      "durationMs": 250.9305000000004,
+      "calls": 3
+    },
+    {
+      "from": "74550000",
+      "to": "74554999",
+      "blocks": 5000,
+      "success": true,
+      "logs": 28,
+      "checkpointStable": true,
+      "durationMs": 234.96029999999882,
+      "calls": 3
+    },
+    {
+      "from": "74545000",
+      "to": "74549999",
+      "blocks": 5000,
+      "success": true,
+      "logs": 17,
+      "checkpointStable": true,
+      "durationMs": 246.34349999999904,
+      "calls": 3
+    },
+    {
+      "from": "74540000",
+      "to": "74544999",
+      "blocks": 5000,
+      "success": true,
+      "logs": 20,
+      "checkpointStable": true,
+      "durationMs": 233.70150000000103,
+      "calls": 3
+    },
+    {
+      "from": "74535000",
+      "to": "74539999",
+      "blocks": 5000,
+      "success": true,
+      "logs": 17,
+      "checkpointStable": true,
+      "durationMs": 233.26699999999983,
+      "calls": 3
+    }
+  ],
+  "fullRangeSamples": [
+    {
+      "from": "74530000",
+      "to": "74534999",
+      "blocks": 5000,
+      "success": true,
+      "logs": 33,
+      "blockReads": 35,
+      "checkpointStable": true,
+      "durationMs": 1108.3957999999998,
+      "calls": 36
+    },
+    {
+      "from": "74525000",
+      "to": "74529999",
+      "blocks": 5000,
+      "success": true,
+      "logs": 21,
+      "blockReads": 23,
+      "checkpointStable": true,
+      "durationMs": 769.6197999999999,
+      "calls": 24
+    },
+    {
+      "from": "74520000",
+      "to": "74524999",
+      "blocks": 5000,
+      "success": true,
+      "logs": 22,
+      "blockReads": 24,
+      "checkpointStable": true,
+      "durationMs": 865.0331999999999,
+      "calls": 25
+    },
+    {
+      "from": "74515000",
+      "to": "74519999",
+      "blocks": 5000,
+      "success": true,
+      "logs": 17,
+      "blockReads": 19,
+      "checkpointStable": true,
+      "durationMs": 616.4627,
+      "calls": 20
+    }
+  ],
+  "overlapSamples": [
+    {
+      "durationMs": 95.21399999999994,
+      "statuses": [
+        "fulfilled",
+        "fulfilled"
+      ]
+    },
+    {
+      "durationMs": 88.76360000000022,
+      "statuses": [
+        "fulfilled",
+        "fulfilled"
+      ]
+    },
+    {
+      "durationMs": 93.83610000000044,
+      "statuses": [
+        "fulfilled",
+        "fulfilled"
+      ]
+    }
+  ],
+  "httpBatchLimit": 3,
+  "limitations": [
+    "Small read-only capability sample; no load test",
+    "Verified captured runtime proofs replayed; optional views intentionally unavailable",
+    "Database writes confined to disposable loopback PostgreSQL",
+    "Not sustained production throughput, peak RAM or long-term cost evidence"
+  ],
+  "conservativeStoreMeasurement": {
+    "startedAt": "2026-10-03T13:55:56.974Z",
+    "finishedAt": "2026-10-03T13:56:04.941Z",
+    "initialRangeMs": 1486.4667,
+    "windowMs": 5602.2867,
+    "windowBlocks": 20000,
+    "windowRanges": 4,
+    "blocksPerSecondIncludingIdle": 3029.253485765773,
+    "httpRequests": 56,
+    "rpcMethods": 134,
+    "errorCount": 0,
+    "canonicalEvents": 115,
+    "exactOldSourceCanonicalEquivalence": true,
+    "cpuMicros": {
+      "user": 328000,
+      "system": 15000
+    },
+    "rssBefore": 143409152,
+    "rssAfter": 106999808,
+    "isolatedDatabaseBytesBefore": 8354839,
+    "isolatedDatabaseBytesAfter": 8764439
+  },
+  "reviewedStoreMeasurement": {
+    "startedAt": "2026-10-03T14:35:24.256Z",
+    "finishedAt": "2026-10-03T14:35:32.062Z",
+    "initialRangeMs": 1526.4631000000008,
+    "windowMs": 5338.002999999997,
+    "windowBlocks": 25000,
+    "windowRanges": 5,
+    "blocksPerSecondIncludingIdle": 3944.46010833381,
+    "httpRequests": 66,
+    "rpcMethods": 158,
+    "errorCount": 0,
+    "canonicalEvents": 136,
+    "exactOldSourceCanonicalEquivalence": true,
+    "cpuMicros": {
+      "user": 563000,
+      "system": 31000
+    },
+    "rssBefore": 110616576,
+    "rssAfter": 122687488,
+    "isolatedDatabaseBytesBefore": 8395799,
+    "isolatedDatabaseBytesAfter": 8854551
+  }
+}
