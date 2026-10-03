@@ -862,7 +862,15 @@ async function nftJourneyLane(browser, viewport, platform) {
       await content.waitFor();
     } catch (error) {
       const lifecycle = await page.evaluate(() => ({ pathname: location.pathname, search: location.search, readyState: document.readyState }));
-      throw new Error(`NFT destination readiness failed: ${JSON.stringify(lifecycle)}`, { cause: error });
+      const controls = await page.locator('[data-nft-search-item]').evaluateAll(links => links.map(link => ({
+        href: link.getAttribute("href"), connected: link.isConnected,
+        clientHandlerInstalled: Object.keys(link).some(key => key.startsWith("__reactProps$") && typeof link[key]?.onClick === "function"),
+      })));
+      await page.screenshot({ path: path.join(output, `${state}-destination-failure.png`) });
+      await writeFile(path.join(output, `${state}-destination-failure.json`), JSON.stringify({
+        lifecycle, controls, expectedUrl: String(url), error: error instanceof Error ? error.stack : String(error),
+      }, null, 2));
+      throw new Error(`NFT destination readiness failed: ${JSON.stringify({ lifecycle, controls })}`, { cause: error });
     }
   };
   await page.goto(`${base}/nft`, { waitUntil: "networkidle", timeout: 60_000 });
