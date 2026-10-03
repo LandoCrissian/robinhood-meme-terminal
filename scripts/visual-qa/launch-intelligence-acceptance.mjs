@@ -125,8 +125,18 @@ for(const viewport of [{width:375,height:812},{width:390,height:844},{width:430,
   assert.ok(onlyPons.length>0&&onlyPons.every(text=>text.includes('pons')));
   await page.getByRole('link',{name:'StonkBrokers',exact:true}).waitFor();
   await capture('pons-only-page-with-stonk-filter');
-  await page.getByRole('link',{name:'StonkBrokers',exact:true}).click();
-  await page.waitForURL(url=>url.searchParams.get('source')==='STONKBROKERS',{waitUntil:'domcontentloaded'});
+  const sourceClickBefore=await page.getByRole('link',{name:'StonkBrokers',exact:true}).evaluate(link=>({
+    url:location.href,href:link.getAttribute('href'),readyState:document.readyState,
+    clientHandlerInstalled:Object.keys(link).some(key=>key.startsWith('__reactProps$')&&typeof link[key]?.onClick==='function'),
+  }));
+  try {
+    await page.getByRole('link',{name:'StonkBrokers',exact:true}).click();
+    await page.waitForURL(url=>url.searchParams.get('source')==='STONKBROKERS',{waitUntil:'domcontentloaded'});
+  } catch(error) {
+    const after=await page.evaluate(()=>({url:location.href,readyState:document.readyState,body:document.body.innerText}));
+    await writeFile(path.join(output,`${viewport.width}-source-navigation-failure.json`),JSON.stringify({before:sourceClickBefore,after,errors,upstreamReads:state.requests},null,2));
+    throw error;
+  }
   await page.locator('.rmtLaunchRow').first().waitFor();
   assert.ok((await page.locator('.rmtLaunchSource').allTextContents()).every(text=>text.includes('StonkBrokers')));
   await capture('stonk-discovered-from-pons-only-page');
