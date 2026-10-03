@@ -48,6 +48,7 @@ let nftMarketplaceMode = "available";
 let nftRadarMode = "ready";
 let nftReaderDelays = { inventory: 0, onchain: 0, marketplace: 0 };
 const progressiveNftTimings = [];
+const nftJourneyReadiness = [];
 const delay = (milliseconds) => milliseconds > 0 ? new Promise((resolve) => setTimeout(resolve, milliseconds)) : Promise.resolve();
 
 const verifiedLiveRadarDrop = {
@@ -866,9 +867,25 @@ async function nftJourneyLane(browser, viewport, platform) {
   };
   await page.goto(`${base}/nft`, { waitUntil: "networkidle", timeout: 60_000 });
   await page.getByPlaceholder("Search collection, contract or NFT").fill("ccff00 #5");
-  await page.getByRole("button", { name: "Search", exact: true }).click();
+  // This is a native GET form navigation. A visible streamed search result
+  // alone does not establish that its Next Link can handle a client click.
+  await Promise.all([
+    page.waitForURL(url => url.pathname === "/nft" && url.searchParams.get("q") === "ccff00 #5", { waitUntil: "domcontentloaded" }),
+    page.getByRole("button", { name: "Search", exact: true }).click()
+  ]);
   await page.locator('[data-nft-item-lookup="CONFIRMED"] [data-nft-search-item]').waitFor();
   check(new URL(page.url()).searchParams.get("q") === "ccff00 #5", state, "Search interaction did not preserve the bounded exact-item query.");
+  // React 19's installed DOM props distinguish an interactive Next Link from
+  // its streamed HTML. Bounded by the existing timeout; no sleeps or retries.
+  await page.waitForFunction(() => {
+    const link = document.querySelector('[data-nft-search-item]');
+    return link && Object.keys(link).some(key => key.startsWith("__reactProps$") && typeof link[key]?.onClick === "function");
+  });
+  nftJourneyReadiness.push(await page.locator('[data-nft-search-item]').evaluate((link, platform) => ({
+    platform, pathname: location.pathname, search: location.search,
+    readyState: document.readyState, href: link.getAttribute("href"),
+    clientHandlerInstalled: Object.keys(link).some(key => key.startsWith("__reactProps$") && typeof link[key]?.onClick === "function")
+  }), platform));
   await page.locator('[data-nft-search-item]').click();
   await waitForDestination(/\/nft\/ccff00\/5$/, page.getByRole("link", { name: /Back to CCFF00 collection/ }));
   await page.getByRole("link", { name: /Back to CCFF00 collection/ }).click();
@@ -961,6 +978,7 @@ const summary = {
     publicWalletSubmissionEnabled: (process.env.NEXT_PUBLIC_RMT_VNEXT_WALLET_SUBMISSION_ENABLED ?? "false").toLowerCase() !== "false",
     startup: startupMetrics,
     nftProgressiveRendering: progressiveNftTimings,
+    nftJourneyReadiness,
   },
   states: stateResults,
   semantic: { status: failures.length === 0 ? "PASS" : "FAIL", failures },
