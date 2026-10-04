@@ -35,8 +35,8 @@ export function marketAtSelectedPool<T extends ObservedMarket>(market: T, pool: 
     priceUsd: observation.priceUsd, liquidityUsd: observation.liquidityUsd,
     marketCapUsd: observation.marketCapUsd, fdvUsd: observation.fdvUsd,
     volume24h: observation.volume24h, priceChange24h: observation.priceChange24h,
-    pairCreatedAt: observation.pairCreatedAt,
-    // Short-window metrics belong to the old primary and cannot be transferred.
+    pairCreatedAt: observation.pairCreatedAt, ageMinutes: null,
+    // Derived age and short-window metrics belong to the old primary and cannot be transferred.
     volume5m: null, volume1h: null, priceChange5m: null, priceChange1h: null,
     buys5m: null, sells5m: null, buys1h: null, sells1h: null, buys24h: null, sells24h: null
   };

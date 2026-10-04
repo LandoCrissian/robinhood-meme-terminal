@@ -25,10 +25,11 @@ const gecko = { state: "READY" as const, observedAt: "2026-10-04T00:00:00Z", pro
 assert.equal(selectedMarketSnapshot(selected, undefined, gecko).priceUsd, a.priceUsd, "Another pool's highest reported liquidity cannot replace the selected price");
 assert.equal(selectedMarketSnapshot(selected, undefined, { ...gecko, data: { ...gecko.data, pool: poolA, priceUsd: 12 } }).priceUsd, a.priceUsd,
   "A different provider's same-pool observation is not an interchangeable price authority");
-const next = { ...selected, pairAddress: poolB, primaryMarket: b, priceUsd: b.priceUsd, verifiedMarkets: [{ ...a, priceUsd: 0.000007 }, b] };
+const next = { ...selected, pairAddress: poolB, primaryMarket: b, priceUsd: b.priceUsd, ageMinutes: 12, verifiedMarkets: [{ ...a, priceUsd: 0.000007 }, b] };
 const held = retainSelectedMarket(selected, next);
 assert.equal(held.primaryMarket?.pool.value, poolA); assert.equal(held.priceUsd, 0.000007, "Selected market refreshes even if another pool becomes top-ranked");
 assert.equal(held.volume1h, null, "Activity belonging to the new primary cannot be copied to the selected alternate");
+assert.equal(held.ageMinutes, null, "Age belonging to the new primary cannot be copied to the selected alternate");
 assert.equal(retainSelectedMarket(selected, { ...next, verifiedMarkets: [b] }).priceUsd, a.priceUsd, "Missing selected observation retains its own last-known snapshot");
 assert.equal(selectedMarketSnapshot(selected, next as unknown as ExternalMarket, gecko).priceUsd, a.priceUsd);
 assert.equal(marketAtSelectedPool(next, poolA)?.primaryMarket?.pool.value, poolA);
