@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { runScannerRowContinuityChecks } from "./scanner-row-continuity-smoke";
 import { reconcileScannerRows } from "./scanner-reconciliation";
 import { selectMarketUniverse } from "./market-universe";
 import { parseVNextUniversalMarketSearchResult } from "./universal-market-search-contract";
@@ -28,5 +29,6 @@ assert.deepEqual(reconcileScannerRows([rows[0]],["a","b"],row=>row.id,true).rows
 assert.deepEqual(reconcileScannerRows([rows[0],rows[2]],["a","b"],row=>row.id,true,[rows[1],rows[0]]).rows,[rows[1],rows[0]],"Paged omission preserves previously verified rows while interacting");
 assert.deepEqual(reconcileScannerRows([rows[0],rows[2]],["a","b"],row=>row.id,false,[rows[1],rows[0]]).rows,[rows[0],rows[2]],"Idle publication uses the current page");
 console.log("Discovery V2: uncurated exact identity/live pools, no fabricated history/admission, failed enrichment retention, and shared scanner reconciliation PASS.");
+runScannerRowContinuityChecks();
 }
 void main();
