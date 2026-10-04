@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { reconcileScannerRows } from "../../lib/vnext/scanner-reconciliation";
 
 /** Shared interaction policy; identity and component keys remain unchanged. */
-export function useScannerRows<T>(rows: readonly T[], key: (row: T) => string, context: string, retainPagedRows = false) {
+export function useScannerRows<T>(rows: readonly T[], key: (row: T) => string, context: string, retainPagedRows = false, eligibleRows: readonly T[] = rows) {
   const [anchor, setAnchor] = useState({ context, ids: rows.map(key) });
   const [holding, setHolding] = useState(false);
   const latest = useRef({ rows, key, context });
@@ -54,7 +54,7 @@ export function useScannerRows<T>(rows: readonly T[], key: (row: T) => string, c
     }
   }, [rows, key, context, holding, anchor.context]);
   const result = reconcileScannerRows(rows, anchor.ids, key, holding && anchor.context === context,
-    retainPagedRows && displayedRows.current.context === context ? displayedRows.current.rows : []);
+    retainPagedRows && displayedRows.current.context === context ? displayedRows.current.rows : [], eligibleRows);
   displayed.current = { context, ids: result.rows.map(key) };
   displayedRows.current = { context, rows: result.rows };
   const showUpdates = () => {

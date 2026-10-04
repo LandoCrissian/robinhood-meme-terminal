@@ -130,7 +130,7 @@ export function VNextTerminalShell({ initialLocation = { context: "markets" }, i
     () => visibleVNextMarketDirectoryMarkets(filteredMarkets, visibleMarketLimit),
     [filteredMarkets, visibleMarketLimit]
   );
-  const scanner = useAnchoredMarketRows(rankedVisibleMarkets, `${marketUniverse}:${directoryView}:${query}:${visibleMarketLimit}`);
+  const scanner = useAnchoredMarketRows(rankedVisibleMarkets, `${marketUniverse}:${directoryView}:${query}:${visibleMarketLimit}`, filteredMarkets);
   const visibleMarkets = scanner.rows;
   useEffect(() => {
     const restore = () => {
