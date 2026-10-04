@@ -31,8 +31,8 @@ export async function runDirectoryQueueBrowserAcceptance(browser, base, complete
       const enter = page.getByRole("button", { name: /I understand/ });
       await enter.waitFor({ state: "visible", timeout: 20000 });
       await enter.click();
-      await page.locator(".rmtMarketViews .rmtExplore > summary").first().click();
-      const all = page.getByRole("button", { name: /^All/ }).first();
+      await page.locator(".rmtMarketViews .rmtExploreTrigger").first().click();
+      const all = page.locator('.rmtExploreDialog fieldset button').filter({ has: page.locator('span', { hasText: /^All$/ }) });
       await all.waitFor({ state: "visible", timeout: 20000 });
       assert.equal(
         await page.getByRole("button", { name: "Start with live markets", exact: true }).count(),
@@ -43,8 +43,12 @@ export async function runDirectoryQueueBrowserAcceptance(browser, base, complete
         for (let i = 0; i < 100; i++) { if (await condition()) return; await delay(100); }
         assert.fail(message);
       };
-      const count = expected => until(async () => (await all.innerText().catch(() => "")).replace(/\s/g, "") === `All${expected}`, `expected All ${expected}`);
-      await count(10); await all.click();
+      const count = async expected => {
+        assert.equal(await all.locator("span").first().textContent(), "All", "The count belongs to the All universe");
+        assert.equal(await all.getAttribute("aria-pressed"), "true", "All remains selected independently of activity");
+        await until(async () => await all.locator("small").textContent().catch(() => "") === String(expected), `expected All ${expected}`);
+      };
+      await count(10); await page.getByRole('button', { name: 'Any activity', exact: true }).click();
       for (let n = 1; n < 5; n++) {
         await page.getByRole("button", { name: /^Load more markets/ }).click();
         await count((n + 1) * 10);

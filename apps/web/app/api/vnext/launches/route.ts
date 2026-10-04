@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readLaunchIntelligence } from "../../../../lib/server/launch-intelligence-reader";
+import { readLaunchIntelligence, readLaunchSourceAvailability } from "../../../../lib/server/launch-intelligence-reader";
 export async function GET(request: Request) {
   const params = new URL(request.url).searchParams;
   const result = await readLaunchIntelligence({
@@ -9,7 +9,8 @@ export async function GET(request: Request) {
     cursor: params.get("cursor") ?? undefined,
     limit: 50,
   });
-  return NextResponse.json(result, {
+  const availableSources = await readLaunchSourceAvailability(result);
+  return NextResponse.json({ ...result, availableSources }, {
     headers: {
       "Cache-Control": "public, s-maxage=15, stale-while-revalidate=30",
     },

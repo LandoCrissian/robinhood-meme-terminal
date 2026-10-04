@@ -1,3 +1,4 @@
+import type { UniversalMarketResolution, UniversalMarketPool } from "../external-market";
 const ADDRESS_PATTERN = /^0x[0-9a-fA-F]{40}$/;
 const BYTES32_PATTERN = /^0x[0-9a-fA-F]{64}$/;
 const INTEGER_PATTERN = /^(?:0|[1-9][0-9]*)$/;
@@ -50,6 +51,7 @@ export type VNextUniversalMarketSearchResultItem = {
   decimals: number;
   matchedBy: VNextUniversalMarketSearchMatchedBy;
   markets: VNextUniversalMarketSearchPool[];
+  resolution?: UniversalMarketResolution;
 };
 
 export type VNextUniversalMarketSearchResult = {
@@ -213,6 +215,32 @@ export function parseVNextUniversalMarketSearchPool(value: unknown): VNextUniver
   };
 }
 
+export function parseExactLiveResolution(value: unknown, identity: { address: string; name: string; symbol: string; decimals: number }): UniversalMarketResolution | null {
+  const r = record(value), token = record(r?.token);
+  if (!r || !token || r.chainId !== 4663 || r.requestedKind !== "token" || address(r.requestedAddress) !== identity.address
+    || r.status !== "pool-found" || r.provenance !== "robinhood-chain-contract-reads" || r.marketData !== "identity-only"
+    || address(token.address) !== identity.address || token.name !== identity.name || token.symbol !== identity.symbol || token.decimals !== identity.decimals
+    || typeof token.totalSupply !== "string" || !INTEGER_PATTERN.test(token.totalSupply) || token.totalSupply.length > 78 || BigInt(token.totalSupply) <= 0n
+    || typeof r.resolvedAt !== "string" || !Number.isFinite(Date.parse(r.resolvedAt))
+    || !Array.isArray(r.pools) || !r.pools.length || r.pools.length > 8) return null;
+  const pools: UniversalMarketPool[] = [];
+  for (const candidate of r.pools) {
+    const p = record(candidate), poolAddress = address(p?.poolAddress), token0 = address(p?.token0), token1 = address(p?.token1), quoteToken = address(p?.quoteToken);
+    if (!p || !poolAddress || !token0 || !token1 || token0 === token1 || !quoteToken || ![token0, token1].includes(identity.address)
+      || ![token0, token1].includes(quoteToken) || quoteToken === identity.address || p.canonical !== true
+      || !["uniswap-v2", "uniswap-v3", "sushi-v2", "sushi-v3"].includes(String(p.venue))
+      || (p.protocolVersion !== 2 && p.protocolVersion !== 3) || !String(p.venue).endsWith(`v${p.protocolVersion}`)
+      || (p.protocolVersion === 2 ? p.fee !== null : !Number.isSafeInteger(p.fee) || Number(p.fee) < 1 || Number(p.fee) > 1_000_000)
+      || (p.execution !== "route-check-required" && p.execution !== "view-only")) return null;
+    pools.push({ venue: p.venue as UniversalMarketPool["venue"], protocolVersion: p.protocolVersion, poolAddress, token0, token1, quoteToken,
+      fee: p.fee as number | null, canonical: true, execution: p.execution });
+  }
+  if (r.execution !== "route-check-required" && r.execution !== "view-only") return null;
+  return { chainId: 4663, requestedAddress: identity.address, requestedKind: "token", status: "pool-found",
+    token: { ...identity, totalSupply: token.totalSupply }, pools, marketData: "identity-only", execution: r.execution,
+    provenance: "robinhood-chain-contract-reads", resolvedAt: r.resolvedAt };
+}
+
 export function parseVNextUniversalMarketSearchResult(value: unknown): VNextUniversalMarketSearchResult | null {
   const candidate = record(value);
   if (!candidate || typeof candidate.query !== "string" || candidate.query.length > 160) return null;
@@ -229,13 +257,16 @@ export function parseVNextUniversalMarketSearchResult(value: unknown): VNextUniv
     if (!item || !tokenAddress || !name || name.length > 80 || !symbol || symbol.length > 20 || /[\u0000-\u001f\u007f]/.test(name) || /[\u0000-\u001f\u007f]/.test(symbol) || !Number.isSafeInteger(item.decimals) || Number(item.decimals) < 0 || Number(item.decimals) > 36 || typeof matchedBy !== "string" || !allowedMatches.includes(matchedBy as VNextUniversalMarketSearchMatchedBy) || !Array.isArray(item.markets) || item.markets.length > 500 || ((matchedBy === "pool" || matchedBy === "pool-id") && item.markets.length === 0)) return [];
     const markets = item.markets.map(parseVNextUniversalMarketSearchPool);
     if (markets.some((market) => market === null)) return [];
+    const resolution = item.resolution === undefined ? undefined : parseExactLiveResolution(item.resolution, { address: tokenAddress, name, symbol, decimals: Number(item.decimals) });
+    if (resolution === null) return [];
     return [{
       address: tokenAddress,
       name,
       symbol,
       decimals: Number(item.decimals),
       matchedBy: matchedBy as VNextUniversalMarketSearchMatchedBy,
-      markets: markets as VNextUniversalMarketSearchPool[]
+      markets: markets as VNextUniversalMarketSearchPool[],
+      ...(resolution ? { resolution } : {})
     }];
   });
   if (results.length !== candidate.results.length || (candidate.status === "found" && results.length === 0) || (candidate.status !== "found" && results.length !== 0)) return null;

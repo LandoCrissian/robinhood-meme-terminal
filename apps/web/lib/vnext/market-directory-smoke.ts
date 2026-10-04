@@ -747,7 +747,7 @@ assert.doesNotMatch(canonicalRefreshFailure, /canonicalDirectoryMarkets\.current
 assert.match(hook, /The selected serving mode retains its last-good browse inventory/);
 assert.doesNotMatch(hook, /external-availability|external-sushi-quote|external-uniswap/);
 assert.equal((hook.match(/setInterval/g) ?? []).length, 0);
-assert.equal((hook.match(/useVisibilityRefresh/g) ?? []).length, 3);
+assert.equal((hook.match(/useScannerRefresh/g) ?? []).length, 3);
 assert.match(hook, /VNEXT_CLIENT_REFRESH_POLICY\.marketDirectoryMs/);
 assert.match(hook, /VNEXT_CLIENT_REFRESH_POLICY\.ecosystemDirectoryMs/);
 assert.match(route, /readVNextMarketDirectoryRequest/);

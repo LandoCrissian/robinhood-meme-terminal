@@ -75,7 +75,7 @@ export async function runZeroXWalletJourneys(options) {
     scenarios.splice(2, 0, 'sell-approval-healthy', 'sell-approval-identity-multiple-retry',
       'sell-approval-identity-persistent', 'sell-approval-identity-account-change',
       'sell-approval-identity-chain-change', 'sell-approval-identity-uuid-return');
-    const defaultScenarios = [...scenarios, 'contract-paused', 'contract-unregistered', 'contract-incompatible', 'contract-previous', ...(viewportName === 'desktop' ? ['contract-history'] : [])];
+    const defaultScenarios = [...scenarios, 'contract-paused', 'contract-unregistered', 'contract-incompatible', 'contract-previous', 'contract-history'];
     for (const scenario of (options.scenarios ?? defaultScenarios)) {
       state.providerInternalRoute = scenario.startsWith('internal-');
       state.registryPaused = scenario === 'contract-paused';
@@ -113,12 +113,13 @@ export async function runZeroXWalletJourneys(options) {
       const context = await browser.newContext({ viewport: isMobile ? { width: 390, height: 844 } : { width: 1440, height: 900 }, ...(['native', 'native-sell', 'sell-approval-healthy'].includes(scenario) ? { recordVideo: { dir: path.join(output, 'journey-videos') } } : {}), ...(isMobile ? { isMobile: true, hasTouch: true, userAgent: 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/128.0.0.0 Mobile Safari/537.36' } : {}) });
       const page = await context.newPage();
       await page.emulateMedia({ reducedMotion: 'reduce' });
-      await page.clock.install();
-      // These journeys call a real Next server with real Date.now() deadlines.
-      // Advancing only browser time made a fresh ~10s server plan expire before
-      // arrival (9,847ms clock skew in the regression). Keep both clocks moving
-      // together; expiry-specific scenarios still inject their explicit failure.
-      await page.clock.resume();
+      // Ordinary journeys use native time, including durable settlement/reload.
+      // Resumed fake timers can move Date.now() backwards while draining timers;
+      // journal validation correctly rejects an update before submission.
+      // Install artificial time only where this scenario explicitly tests expiry.
+      const artificialTime = scenario === 'pending' || scenario.startsWith('sell-approval-idle-')
+        || scenario.startsWith('expired-quote') || scenario.startsWith('refresh-');
+      if (artificialTime) { await page.clock.install(); await page.clock.resume(); }
       state.rpcOverride = (request) => {
         if (settledOutputAsset && (request.method === 'eth_call'
           && (lower(request.params[0]?.to) === settledOutputAsset && request.params[0]?.data?.startsWith('0x70a08231')
@@ -575,12 +576,39 @@ export async function runZeroXWalletJourneys(options) {
                 // First prove the persisted confirmed settlement survives a reload. A
                 // subsequent provider-native attempt must not race that recovery or revive
                 // the retired per-trade Settler registry/runtime proof.
+                const beforeReload = await page.evaluate(() => JSON.parse(localStorage.getItem('rmt:vnext-execution-journal:v1:4663')));
+                const confirmed = beforeReload.executions.find(entry => entry.txHash === h('c'));
+                assert.equal(confirmed?.state, 'confirmed', 'Confirmed settlement must already be durable before reload');
+                assert.ok(confirmed.outputSettlement, 'Durable history retains verified output evidence');
+                assert.ok(confirmed.updatedAtMs >= confirmed.submittedAtMs, 'Settlement time cannot precede submission');
+                let releaseLookup, lookupPending = false;
+                const lookupGate = new Promise(resolve => { releaseLookup = resolve; });
+                const delayedLookup = async route => {
+                  lookupPending = true;
+                  await lookupGate;
+                  await route.fallback();
+                };
+                const lookupPath = '**/api/markets/external?contract=*';
+                await page.route(lookupPath, delayedLookup);
                 await page.reload({waitUntil:'domcontentloaded'});
                 await page.getByLabel('Exact input amount').waitFor();
+                await until(() => lookupPending, 'Reload must begin its ordinary exact token lookup');
                 assert.equal(await page.getByText('Verified swap history', { exact: true }).count(), 0, 'Historical settlement cannot replay a premium-workspace notification');
+                if (isMobile && await page.locator('.rmtMobileSheetLayer.isOpen').count()) {
+                  await page.locator('.rmtMobileTradeSheet > header button[aria-label="Close trade sheet"]').click();
+                }
                 await page.locator('[data-terminal-nav="portfolio"]:visible').click();
                 const history = page.locator('.vnHistoryAffordance');
                 await history.waitFor({ timeout: 30000 });
+                const lookupResponse = page.waitForResponse(response => new URL(response.url()).pathname === '/api/markets/external'
+                  && new URL(response.url()).searchParams.has('contract'));
+                releaseLookup();
+                await (await lookupResponse).finished();
+                await pause(250);
+                assert.equal(await page.locator('[data-terminal-context]').getAttribute('data-terminal-context'), 'portfolio',
+                  'A completed old token lookup cannot replace explicit Portfolio navigation');
+                assert.equal(new URL(page.url()).searchParams.get('panel'), 'portfolio');
+                await page.unroute(lookupPath, delayedLookup);
                 await history.locator('summary').click();
                 state.incompatibleRuntime = true;
                 assert.match(await history.innerText(), /Previously settled/);

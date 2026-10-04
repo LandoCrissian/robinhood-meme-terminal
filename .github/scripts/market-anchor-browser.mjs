@@ -3,7 +3,7 @@ import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 // Real canonical directory reader/UI, controlled optional public metric responses. Clock advancement
-// covers the existing five-minute directory timer; quote timing is measured with
+// covers scanner refresh; quote timing is measured with
 // real wall time in stable-refresh-browser, not inferred from this test.
 export async function runMarketAnchorBrowser({ browser, base, external, output }) {
   const results = [];
@@ -52,8 +52,8 @@ export async function runMarketAnchorBrowser({ browser, base, external, output }
       };
       await page.goto(base);
       await page.getByRole('button', { name: 'I understand', exact: false }).click();
-      await page.locator('.rmtMarketViews .rmtExplore > summary').first().click();
-      await page.getByRole('button', { name: /^All/ }).click();
+      await page.locator('.rmtMarketViews .rmtExploreTrigger').first().click();
+      await page.getByRole('button', { name: 'Any activity', exact: true }).click();
       const rows = page.locator(mobile ? '.rmtMobileMarketRow' : '.rmtMarketTableRow');
       await rows.first().waitFor();
       await page.waitForFunction(() => performance.getEntriesByName('rmt:market-enrichment:published').length > 0);
@@ -79,9 +79,14 @@ export async function runMarketAnchorBrowser({ browser, base, external, output }
       const duringBox = await heldRow.boundingBox();
       const anchorMovementPx = Math.abs(duringBox.y - beforeBox.y);
       assert.deepEqual(during, before, 'ready values may update, but rows stay under the pointer');
-      assert.ok(anchorMovementPx <= 1, `row anchor movement ${anchorMovementPx}px`);
+      assert.equal(anchorMovementPx, 0, 'passive refresh must not move the held row');
       await page.mouse.move(2, 2); await page.mouse.up();
       await page.waitForTimeout(1600);
+      if (await page.evaluate(() => window.scrollY > 32)) {
+        assert.deepEqual(await names(), before, 'displaced scanner keeps ranking until updates are requested');
+        await page.locator('.rmtScannerUpdates button').click();
+        await page.waitForTimeout(1600);
+      }
       const after = await names();
       assert.notDeepEqual(after, before, 'canonical rank catches up after interaction');
       const result = { evidence: 'MOCKED_LOCAL_BROWSER', clock: 'freshness clock advanced; existing visibility resume schedules refresh', viewport: mobile ? 'mobile' : 'desktop', before, during, after, beforeBox, duringBox, anchorMovementPx, updates };

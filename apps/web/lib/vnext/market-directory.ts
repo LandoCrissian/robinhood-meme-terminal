@@ -832,6 +832,7 @@ export function directoryMarketFromUniversalSearchResult(
     riskFlags: null,
     signal: null,
     canonicalMarkets: result.markets,
+    resolution: result.resolution,
     verifiedIdentity: {
       address,
       name,

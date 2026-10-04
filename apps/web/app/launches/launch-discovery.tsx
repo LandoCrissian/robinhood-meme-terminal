@@ -1,6 +1,10 @@
 "use client";
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useScannerRefresh } from "../vnext/use-scanner-refresh";
+import { useScannerRows } from "../vnext/use-scanner-rows";
+import { ScannerUpdates } from "../vnext/scanner-updates";
+import { VNEXT_CLIENT_REFRESH_POLICY } from "../../lib/vnext/client-refresh-policy";
 import { formatTerminalAge, formatTerminalCompactUsd } from "../vnext/terminal-format";
 import type {
   LaunchDirectory,
@@ -13,6 +17,9 @@ import {
   launchStateLabel,
 } from "../../lib/vnext/launch-presentation";
 import { TokenArtwork } from "../vnext/token-artwork";
+const launchKey = (launch: LaunchEvidence) => launch.launchId;
+const validDirectory = (value: LaunchDirectory) => value.chainId === 4663 && value.status !== "unavailable" && Array.isArray(value.entries)
+  && value.entries.every(e => e.chainId === 4663 && /^0x[0-9a-f]{40}$/.test(e.token));
 /** Discovery is a scanner; complete origin evidence stays in the token workspace. */
 export function LaunchRow({ launch, observedNow }: { launch: LaunchEvidence; observedNow: number }) {
   const symbol = launch.identity.symbol ?? `${launch.token.slice(0, 6)}…${launch.token.slice(-4)}`;
@@ -61,18 +68,48 @@ export function LaunchDiscovery({
     [phase, setPhase] = useState("ALL"),
     [loading, setLoading] = useState(false),
     [error, setError] = useState(false);
+  const [delayed, setDelayed] = useState(false), [now, setNow] = useState(observedNow);
+  const [indexedSources, setIndexedSources] = useState(availableSources);
+  const pages = useRef(1), running = useRef(false);
+  const refresh = useCallback(async () => {
+    if (running.current) return;
+    running.current = true;
+    try {
+      let next: LaunchDirectory | undefined;
+      const entries: LaunchEvidence[] = [], cursors = new Set<string>();
+      let cursor: string | undefined;
+      for (let index = 0; index < pages.current; index++) {
+        const parameters = new URLSearchParams({ ...(query ? { q: query } : {}), ...(source ? { source } : {}), ...(cursor ? { cursor } : {}) });
+        const response = await fetch(`/api/vnext/launches?${parameters}`, { signal: AbortSignal.timeout(8_000) });
+        const page = await response.json() as LaunchDirectory & { availableSources?: LaunchSource[] };
+        if (!response.ok || !validDirectory(page) || (page.nextCursor && cursors.has(page.nextCursor))) throw Error("Launch revalidation delayed");
+        entries.push(...page.entries); next = page;
+        if (index === 0 && Array.isArray(page.availableSources) && page.availableSources.every(s => s === "PONS" || s === "STONKBROKERS")) setIndexedSources(page.availableSources);
+        if (!page.nextCursor) break;
+        cursor = page.nextCursor; cursors.add(cursor);
+      }
+      if (!next) return false;
+      setDirectory(current => {
+        const previous = new Map(current.entries.map(e => [e.launchId, e]));
+        return { ...next!, entries: [...new Map(entries.map(e => [e.launchId, { ...e, identity: { ...e.identity, artwork: e.identity.artwork ?? previous.get(e.launchId)?.identity.artwork ?? null } }])).values()] };
+      });
+      setNow(Date.now()); setDelayed(false); return true;
+    } catch { setDelayed(true); return false; }
+    finally { running.current = false; }
+  }, [query, source]);
+  useScannerRefresh(refresh, VNEXT_CLIENT_REFRESH_POLICY.launchDirectoryMs, { immediate: false, refreshKey: `${source ?? "ALL"}:${query}` });
   const entries = directory.entries,
-    now = observedNow;
+    scanner = useScannerRows(entries, launchKey, `${source ?? "ALL"}:${query}:${phase}:${pages.current}`, true);
   const phases = [
     "ALL",
-    ...(entries.some((e) => now - Date.parse(e.launchTime) < 86400000)
+    ...(phase === "NEW" || entries.some((e) => now - Date.parse(e.launchTime) < 86400000)
       ? ["NEW"]
       : []),
     ...(["GRADUATING", "GRADUATED"] as const).filter((state) =>
-      entries.some((e) => e.state === state),
+      phase === state || entries.some((e) => e.state === state),
     ),
   ];
-  const visible = entries.filter(
+  const visible = scanner.rows.filter(
     (e) =>
       phase === "ALL" ||
       (phase === "NEW"
@@ -80,7 +117,8 @@ export function LaunchDiscovery({
         : e.state === phase),
   );
   async function loadMore() {
-    if (loading || !directory.nextCursor) return;
+    if (loading || running.current || !directory.nextCursor || pages.current >= 8) return;
+    running.current = true;
     setLoading(true);
     setError(false);
     try {
@@ -107,10 +145,12 @@ export function LaunchDiscovery({
           ),
         ],
       }));
+      pages.current++;
     } catch {
       setError(true);
     } finally {
       setLoading(false);
+      running.current = false;
     }
   }
   return (
@@ -123,7 +163,7 @@ export function LaunchDiscovery({
           All sources
         </Link>
         {(["PONS", "STONKBROKERS"] as const)
-          .filter((s) => availableSources.includes(s) || entries.some((e) => e.source === s))
+          .filter((s) => indexedSources.includes(s) || entries.some((e) => e.source === s))
           .map((s) => (
             <Link
               key={s}
@@ -134,7 +174,7 @@ export function LaunchDiscovery({
             </Link>
           ))}
       </nav>
-      {phases.length > 1 ? (
+      {(
         <nav
           className="rmtLaunchFilters isStates"
           aria-label="Launch lifecycle"
@@ -154,7 +194,8 @@ export function LaunchDiscovery({
             </button>
           ))}
         </nav>
-      ) : null}
+      )}
+      <ScannerUpdates pending={scanner.pending} newCount={scanner.newCount} onShow={scanner.showUpdates} />
       {visible.length ? (
         <div className="rmtLaunchScanner">
           <div className="rmtLaunchScannerHead" aria-hidden="true"><span>Token</span><span>Source</span><span>State</span><span>Metric</span><span>Age</span></div>
@@ -174,7 +215,7 @@ export function LaunchDiscovery({
           Launch history is still syncing. Recorded origins remain available.
         </p>
       ) : null}
-      {directory.status === "unavailable" && entries.length ? (
+      {(delayed || directory.status === "unavailable") && entries.length ? (
         <p className="rmtLaunchCoverage" role="status">
           Launch updates delayed. Showing recorded origins.
         </p>
@@ -184,7 +225,7 @@ export function LaunchDiscovery({
           More launches could not be loaded.
         </p>
       ) : null}
-      {directory.nextCursor ? (
+      {directory.nextCursor && pages.current < 8 ? (
         <button
           className="rmtLaunchMore"
           type="button"
@@ -194,6 +235,7 @@ export function LaunchDiscovery({
           {loading ? "Loading…" : "More launches"}
         </button>
       ) : null}
+      {directory.nextCursor && pages.current >= 8 ? <p className="rmtLaunchCoverage">Showing the latest loaded window. Narrow by source or search for older launches.</p> : null}
     </section>
   );
 }

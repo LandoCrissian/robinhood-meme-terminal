@@ -1184,26 +1184,32 @@ async function inspectDesktop(browser, viewport, label) {
   await page.screenshot({ path: `${output}/portfolio-${label}.png`, fullPage: false, animations: "disabled" });
   await headerMarkets.click();
   await search.fill("R02");
-  await page.locator('.rmtExplore > summary').click();
-  await page.locator('.rmtExploreChoices button').filter({ has: page.locator('span', { hasText: /^RWA$/ }) }).click();
+  await page.locator('.rmtExploreTrigger').click();
+  await page.getByRole('button', { name: 'Any activity', exact: true }).click();
+  await page.locator('.rmtExploreTrigger').click();
+  await page.locator('.rmtExploreDialog button').filter({ has: page.locator('span', { hasText: /^RWA$/ }) }).click();
   await page.waitForTimeout(100);
   const rwaNavigation = await page.evaluate(() => ({
     pathname: window.location.pathname,
     terminalActive: Boolean(document.querySelector('.rmtDesktopTerminal[data-terminal-context="markets"]')),
     publicChromePresent: Boolean(document.querySelector(".publicHeader, .mobileDock")),
     notFound: Boolean(document.querySelector(".next-error-h1")) || document.body.innerText.includes("This page could not be found"),
-    activeCategory: document.querySelector('.rmtMarketViews button[aria-pressed="true"] span')?.textContent ?? "",
+    universe: new URL(window.location.href).searchParams.get('universe'),
+    activity: new URL(window.location.href).searchParams.get('view'),
     searchValue: document.querySelector("#rmt-desktop-market-search")?.value ?? null
   }));
   if (rwaNavigation.pathname !== "/") throw new Error(`${label}: RWA Explore control navigated away from /`);
   if (!rwaNavigation.terminalActive || rwaNavigation.publicChromePresent || rwaNavigation.notFound) throw new Error(`${label}: RWA Explore control escaped the canonical terminal ${JSON.stringify(rwaNavigation)}`);
-  if (rwaNavigation.activeCategory !== "RWA" || rwaNavigation.searchValue !== "") throw new Error(`${label}: RWA Explore control did not activate the RWA view and clear stale search ${JSON.stringify(rwaNavigation)}`);
+  if (rwaNavigation.universe !== "rwa" || rwaNavigation.activity !== "all" || rwaNavigation.searchValue !== "") throw new Error(`${label}: RWA universe did not preserve its independent activity axis and clear stale search ${JSON.stringify(rwaNavigation)}`);
   const rwaRows = page.locator(".rmtMarketTableRow");
   if (await rwaRows.count() !== 2) throw new Error(`${label}: RWA directory did not preserve both verified classifications`);
   if (!(await rwaRows.nth(0).textContent())?.includes("Stock Token")) throw new Error(`${label}: canonical Stock Token was not first or clearly labeled`);
   if (!(await rwaRows.nth(1).textContent())?.includes("RWA Pair")) throw new Error(`${label}: paired market asset was not clearly labeled`);
   await page.screenshot({ path: `${output}/rwa-${label}.png`, fullPage: false, animations: "disabled" });
   await headerMarkets.click();
+  if (new URL(page.url()).searchParams.get('universe') !== 'rwa') throw new Error(`${label}: navigation lost the selected universe`);
+  await page.locator('.rmtExploreTrigger').click();
+  await page.locator('.rmtExploreDialog fieldset button').filter({ has: page.locator('span', { hasText: /^All$/ }) }).click();
   await page.getByRole("button", { name: /^Active\s+/ }).click();
   if (await page.getByRole("button", { name: /^Active\s+/ }).getAttribute("aria-pressed") !== "true") throw new Error(`${label}: Markets navigation did not restore the default market view`);
   if (await page.locator(".rmtDesktopTerminal .rmtMarketTableRow").count() !== 24) throw new Error(`${label}: changing category did not reset the bounded market page`);
@@ -1770,9 +1776,14 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
   );
   const counts = vNextMarketDirectoryViewCounts(observed);
   for (const view of ["active", "trending", "new", "rwa", "all"]) {
-    if (view === "rwa" || view === "all") await revealBrowseExplore(page);
-    const category = page.getByRole("button", { name: new RegExp(`^${view}\\s+${counts[view]}$`, "i") });
-    await category.click();
+    if (view === "rwa" || view === "all") {
+      await revealBrowseExplore(page);
+      await page.getByRole('button', { name: 'Any activity', exact: true }).click();
+      await revealBrowseExplore(page);
+      await page.locator('.rmtExploreDialog fieldset button').filter({ has: page.locator('span', { hasText: new RegExp(`^${view}$`, 'i') }) }).click();
+    } else {
+      await page.getByRole("button", { name: new RegExp(`^${view}\\s+${counts[view]}$`, "i") }).click();
+    }
     for (let pageIndex = 0; pageIndex < 10 && await page.locator(rowSelector).count() < counts[view]; pageIndex++) {
       await page.getByRole("button", { name: /^Load \d+ more/ }).click();
     }
@@ -3544,6 +3555,8 @@ async function inspectMobile(browser, viewport, label) {
   await page.getByRole("button", { name: /^Load 24 more/ }).click();
   if (await initialMobileRows.count() !== 48) throw new Error(`${label}: mobile local pagination did not reveal the next 24 markets`);
   await revealBrowseExplore(page);
+  await page.getByRole('button', { name: 'Any activity', exact: true }).click();
+  await revealBrowseExplore(page);
   await page.getByRole("button", { name: /^RWA\s+2$/ }).click();
   const mobileRwaRows = page.locator(".rmtMobileTerminal .rmtMobileMarketRow");
   if (await mobileRwaRows.count() !== 2) throw new Error(`${label}: mobile RWA directory lost a verified classification`);
@@ -3551,6 +3564,8 @@ async function inspectMobile(browser, viewport, label) {
   if (!(await mobileRwaRows.nth(1).textContent())?.includes("RWA Pair")) throw new Error(`${label}: mobile paired market asset is not clearly labeled`);
 
   await page.screenshot({ path: `${output}/rwa-${label}.png`, fullPage: false, animations: "disabled" });
+  await revealBrowseExplore(page);
+  await page.locator('.rmtExploreDialog fieldset button').filter({ has: page.locator('span', { hasText: /^All$/ }) }).click();
   await page.getByRole("button", { name: /^Active\s+/ }).click();
   await page.getByRole("button", { name: /^Load 24 more/ }).click();
   if (await page.locator(".rmtMobileMarketRow").count() !== 48) throw new Error(`${label}: mobile page depth was not established for navigation restoration`);
@@ -3844,8 +3859,7 @@ try {
 }
 
 async function revealBrowseExplore(page) {
-  const details = page.locator(".rmtMarketViews .rmtExplore").first();
-  if (!await details.evaluate(node => node.open)) await details.locator(":scope > summary").click();
+  if (!await page.locator('.rmtExploreDialog[open]').count()) await page.locator('.rmtExploreTrigger').first().click();
 }
 async function revealHolderSources(page) {
   const details = page.locator(".vnHolderSources");

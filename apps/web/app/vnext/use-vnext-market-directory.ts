@@ -24,7 +24,7 @@ import {
   type VNextDirectoryResponse
 } from "../../lib/vnext/market-directory";
 import { VNEXT_CLIENT_REFRESH_POLICY } from "../../lib/vnext/client-refresh-policy";
-import { useVisibilityRefresh } from "./use-visibility-refresh";
+import { useScannerRefresh } from "./use-scanner-refresh";
 import { createDirectoryEnrichmentQueue } from "../../lib/vnext/directory-enrichment-queue";
 import {
   parseVNextUniversalMarketSearchResult,
@@ -543,11 +543,13 @@ export function useVNextMarketDirectory(initialMarket?: VNextDirectoryMarket) {
       hasData.current = true;
       setStatus(nextStatus);
       for (const cursor of enrichmentPages) enrichCanonicalPage(cursor, requestSequence);
+      return true;
     } catch {
       if (requestSequence === canonicalRequestSequence.current) {
         canonicalWindowStale.current = true;
         setStatus(hasData.current ? "stale" : "error");
       }
+      return false;
     } finally {
       if (canonicalRefreshLoading.current === requestSequence) canonicalRefreshLoading.current = null;
     }
@@ -612,7 +614,7 @@ export function useVNextMarketDirectory(initialMarket?: VNextDirectoryMarket) {
       const payload = await response.json() as ExternalMarketResponse;
       if (!response.ok) {
         setEnrichmentStatus("delayed");
-        return;
+        return false;
       }
       const freshMarkets = normalizeDirectoryMarkets(payload);
       discoveryCoverage.current = parseBoundedDiscoveryCoverage(payload.discoveryCoverage, freshMarkets.length);
@@ -632,14 +634,16 @@ export function useVNextMarketDirectory(initialMarket?: VNextDirectoryMarket) {
         "rmt:market-enrichment:request-start",
         "rmt:market-enrichment:published"
       );
+      return true;
     } catch {
       // The selected serving mode retains its last-good browse inventory.
       setEnrichmentStatus("delayed");
+      return false;
     }
   }, [publishMarkets]);
 
-  useVisibilityRefresh(refresh, VNEXT_CLIENT_REFRESH_POLICY.marketDirectoryMs);
-  useVisibilityRefresh(refreshEcosystemDirectory, VNEXT_CLIENT_REFRESH_POLICY.ecosystemDirectoryMs);
+  useScannerRefresh(refresh, VNEXT_CLIENT_REFRESH_POLICY.marketDirectoryMs);
+  useScannerRefresh(refreshEcosystemDirectory, VNEXT_CLIENT_REFRESH_POLICY.ecosystemDirectoryMs);
 
   const selected = useMemo(
     () => markets.find((market) => market.address.toLowerCase() === selectedAddress?.toLowerCase()),

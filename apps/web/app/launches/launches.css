@@ -9,7 +9,7 @@
 .rmtLaunchFilters { display: flex; gap: 20px; border-bottom: 1px solid var(--rmt-border); margin-bottom: 10px; }
 .rmtLaunchFilters a, .rmtLaunchFilters button { display: inline-flex; align-items: center; min-height: 44px; padding: 0; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--rmt-text-soft); font-size: 12px; text-decoration: none; cursor: pointer; }
 .rmtLaunchFilters [aria-current="page"], .rmtLaunchFilters [aria-pressed="true"] { color: var(--rmt-accent); border-bottom-color: var(--rmt-accent); }
-.rmtLaunchFilters.isStates { gap: 8px; border: 0; margin-bottom: 12px; }
+.rmtLaunchFilters.isStates { gap: 8px; border: 0; height:44px; margin-bottom: 12px; }
 .rmtLaunchFilters.isStates button { padding: 0 12px; min-height: 44px; border: 1px solid var(--rmt-border); border-radius: 6px; font-size: 11px; }
 .rmtLaunchFilters.isStates [aria-pressed="true"] { background: #18251a; border-color: var(--rmt-border-strong); }
 .rmtLaunchScanner { border: 1px solid var(--rmt-border); border-radius: 6px; background: var(--rmt-surface); overflow: hidden; }

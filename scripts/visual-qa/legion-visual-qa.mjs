@@ -265,7 +265,7 @@ async function startupLane(browser) {
   });
   await delayedPage.goto(base, { waitUntil: "domcontentloaded", timeout: 60_000 });
   await revealBrowseExplore(delayedPage);
-  await delayedPage.getByRole("button", { name: /^All\b/ }).click();
+  await delayedPage.getByRole("button", { name: "Any activity", exact: true }).click();
   try {
     await delayedPage.locator(".rmtMobileMarketRow").first().waitFor();
   } catch (error) {
@@ -397,7 +397,7 @@ async function tokenLane(browser, viewport, platform) {
   const newRows = page.locator(marketRowSelector);
   check(await newRows.count() === BROAD_TOKEN_MARKETS.filter((market) => market.ageMinutes !== null && market.ageMinutes <= 24 * 60).length, `token-scanner-${platform}`, "NEW must derive from actual pool age evidence.");
   await revealBrowseExplore(page);
-  await categoryButtons.filter({ hasText: "All" }).click();
+  await page.getByRole("button", { name: "Any activity", exact: true }).click();
   const rows = page.locator(marketRowSelector);
   await rows.first().waitFor();
   check(await rows.count() === VISIBLE_TOKEN_MARKETS.length, `token-scanner-${platform}`, "ALL must expose the canonical seeds plus bounded broad markets.", { count: await rows.count() });
@@ -505,7 +505,7 @@ async function tokenLane(browser, viewport, platform) {
     const reopenPonsAfterFixtureReload = async () => {
       await page.locator(".rmtMobileMarketsView").waitFor();
       await revealBrowseExplore(page);
-    await page.locator(".rmtMarketViews button").filter({ hasText: "All" }).click();
+    await page.getByRole("button", { name: "Any activity", exact: true }).click();
       await page.locator(".rmtMobileMarketRow").filter({ hasText: "PONS" }).first().click();
       await page.locator(".rmtMobileAssetView").waitFor();
     };
@@ -600,7 +600,7 @@ async function tokenLane(browser, viewport, platform) {
     await page.locator(".rmtMobileAssetBack button").click();
     await page.locator(".rmtMobileMarketsView").waitFor();
     await revealBrowseExplore(page);
-    await page.locator(".rmtMarketViews button").filter({ hasText: "All" }).click();
+    await page.getByRole("button", { name: "Any activity", exact: true }).click();
     fixture.setRiskMode("unavailable");
     await page.locator(".rmtMobileMarketRow").filter({ hasText: "CASHCAT" }).first().click();
     await page.locator(".vnChartFrame svg").waitFor();
@@ -620,7 +620,7 @@ async function tokenLane(browser, viewport, platform) {
     await page.locator(".rmtMobileAssetBack button").click();
     await page.locator(".rmtMobileMarketsView").waitFor();
     await revealBrowseExplore(page);
-    await page.locator(".rmtMarketViews button").filter({ hasText: "All" }).click();
+    await page.getByRole("button", { name: "Any activity", exact: true }).click();
     fixture.setRiskMode("partial");
     await page.locator(".rmtMobileMarketRow").filter({ hasText: "PIPEDOG" }).first().click();
     await page.getByRole("tab", { name: "Holders", exact: true }).click();
@@ -846,6 +846,27 @@ async function nftProgressiveLane(browser, viewport, platform, scenario) {
   nftReaderDelays = { inventory: 0, onchain: 0, marketplace: 0 };
 }
 
+async function traceNftJourney(page) {
+  const navigationTrace = [];
+  const record = (event, request, extra) => {
+    const url = new URL(request.url());
+    if (url.pathname.startsWith("/nft")) navigationTrace.push({ event, time: performance.now(), path: `${url.pathname}${url.search}`, ...extra });
+  };
+  page.on("request", request => record("request", request, { navigation: request.isNavigationRequest() }));
+  page.on("response", response => record("response", response.request(), { status: response.status() }));
+  page.on("requestfailed", request => record("requestfailed", request, { error: request.failure()?.errorText }));
+  page.on("pageerror", error => navigationTrace.push({ event: "exception", message: error.message }));
+  await page.addInitScript(() => {
+    window.__rmtNftJourneyEvents = [];
+    for (const type of ["pointerdown", "pointerup", "click"]) document.addEventListener(type, event => {
+      const anchor = event.target?.closest?.("a");
+      const entry = { type, time: performance.now(), x: event.clientX, y: event.clientY, scroll: scrollY, href: anchor?.getAttribute("href"), target: event.target?.tagName, scrollBehavior: getComputedStyle(document.documentElement).scrollBehavior };
+      setTimeout(() => { entry.defaultPrevented = event.defaultPrevented; window.__rmtNftJourneyEvents.push(entry); }, 0);
+    }, true);
+  });
+  return navigationTrace;
+}
+
 async function nftJourneyLane(browser, viewport, platform) {
   nftOwnershipMode = "available";
   nftMarketplaceMode = "available";
@@ -854,6 +875,7 @@ async function nftJourneyLane(browser, viewport, platform) {
   const context = await createContext(browser, viewport);
   const page = await context.newPage();
   page.setDefaultTimeout(30_000);
+  const navigationTrace = await traceNftJourney(page);
   // Destination readiness is the exact route plus its rendered collection/item
   // controls, not completion of unrelated document subresources.
   const waitForDestination = async (url, content) => {
@@ -862,8 +884,37 @@ async function nftJourneyLane(browser, viewport, platform) {
       await content.waitFor();
     } catch (error) {
       const lifecycle = await page.evaluate(() => ({ pathname: location.pathname, search: location.search, readyState: document.readyState }));
-      throw new Error(`NFT destination readiness failed: ${JSON.stringify(lifecycle)}`, { cause: error });
+      const controls = await page.locator('[data-nft-search-item], [data-nft-gallery] a, nav[aria-label="NFT Terminal breadcrumb"] a').evaluateAll(links => links.map(link => ({
+        href: link.getAttribute("href"), connected: link.isConnected,
+        clientHandlerInstalled: Object.keys(link).some(key => key.startsWith("__reactProps$") && typeof link[key]?.onClick === "function"),
+      })));
+      await page.screenshot({ path: path.join(output, `${state}-destination-failure.png`) });
+      await writeFile(path.join(output, `${state}-destination-failure.json`), JSON.stringify({
+        lifecycle, controls, expectedUrl: String(url), navigationTrace, pointerTrace: await page.evaluate(() => window.__rmtNftJourneyEvents), error: error instanceof Error ? error.stack : String(error),
+      }, null, 2));
+      throw new Error(`NFT destination readiness failed: ${JSON.stringify({ lifecycle, controls })}`, { cause: error });
     }
+  };
+  const clickReadyLink = async (link) => {
+    await link.waitFor();
+    const marker = await link.elementHandle();
+    if (!marker) throw new Error("NFT journey link is absent");
+    const anchor = await marker.evaluateHandle(node => node.closest("a") ?? node.querySelector("a"));
+    const element = anchor.asElement();
+    if (!element) throw new Error("NFT journey marker has no destination link");
+    // Every streamed destination needs the same client-handler boundary as
+    // the initial search result. Visibility alone is not hydration readiness.
+    await page.waitForFunction(link => link.isConnected && Object.keys(link).some(
+      key => key.startsWith("__reactProps$") && typeof link[key]?.onClick === "function"
+    ), element);
+    nftJourneyReadiness.push(await element.evaluate((link, platform) => ({
+      platform, pathname: location.pathname, search: location.search,
+      readyState: document.readyState, href: link.getAttribute("href"), clientHandlerInstalled: true,
+      scroll: scrollY, rect: link.getBoundingClientRect().toJSON(), scrollBehavior: getComputedStyle(document.documentElement).scrollBehavior,
+    }), platform));
+    await element.click();
+    await anchor.dispose();
+    await marker.dispose();
   };
   await page.goto(`${base}/nft`, { waitUntil: "networkidle", timeout: 60_000 });
   await page.getByPlaceholder("Search collection, contract or NFT").fill("ccff00 #5");
@@ -886,20 +937,21 @@ async function nftJourneyLane(browser, viewport, platform) {
     readyState: document.readyState, href: link.getAttribute("href"),
     clientHandlerInstalled: Object.keys(link).some(key => key.startsWith("__reactProps$") && typeof link[key]?.onClick === "function")
   }), platform));
-  await page.locator('[data-nft-search-item]').click();
+  await clickReadyLink(page.locator('[data-nft-search-item]'));
   await waitForDestination(/\/nft\/ccff00\/5$/, page.getByRole("link", { name: /Back to CCFF00 collection/ }));
-  await page.getByRole("link", { name: /Back to CCFF00 collection/ }).click();
+  await clickReadyLink(page.getByRole("link", { name: /Back to CCFF00 collection/ }));
   await waitForDestination(/\/nft\/ccff00$/, page.locator("[data-nft-gallery] a").first());
-  await page.getByRole("link", { name: "← NFTs", exact: true }).click();
+  await clickReadyLink(page.getByRole("link", { name: "← NFTs", exact: true }));
   await waitForDestination(/\/nft$/, page.locator('[data-nft-collection-status="ACTIVE"]').first());
-  await page.locator('[data-nft-collection-status="ACTIVE"]').click();
+  await clickReadyLink(page.locator('[data-nft-collection-status="ACTIVE"]'));
   await waitForDestination(/\/nft\/ccff00$/, page.locator("[data-nft-gallery] a").first());
-  await page.locator("[data-nft-gallery] a").first().click();
+  await clickReadyLink(page.locator("[data-nft-gallery] a").first());
   await waitForDestination(/\/nft\/ccff00\/1$/, page.getByRole("link", { name: /Back to CCFF00 collection/ }));
-  await page.getByRole("link", { name: /Back to CCFF00 collection/ }).click();
+  await clickReadyLink(page.getByRole("link", { name: /Back to CCFF00 collection/ }));
   await waitForDestination(/\/nft\/ccff00$/, page.locator("[data-nft-gallery] a").first());
   const forbiddenCount = await page.locator("a,button").filter({ hasText: /^(Buy|List|Offer|Fulfill|Sign|Submit)$/i }).count();
   check(forbiddenCount === 0, state, "Functional NFT journey exposed execution controls.", { forbiddenCount });
+  await writeFile(path.join(output, `${state}-navigation-trace.json`), JSON.stringify({ navigationTrace, pointerTrace: await page.evaluate(() => window.__rmtNftJourneyEvents) }, null, 2));
   await overflow(page, state);
   await capture(page, `${state}-${viewport.width}x${viewport.height}`);
   await context.close();
@@ -996,7 +1048,7 @@ if (failures.length) {
 
 async function revealBrowseExplore(page) {
   const details = page.locator(".rmtMarketViews .rmtExplore").first();
-  if (!await details.evaluate(node => node.open)) await details.locator(":scope > summary").click();
+  if (!await page.locator(".rmtExploreDialog[open]").count()) await page.locator(".rmtExploreTrigger").first().click();
 }
 async function revealHolderSources(page) {
   const details = page.locator(".vnHolderSources");
