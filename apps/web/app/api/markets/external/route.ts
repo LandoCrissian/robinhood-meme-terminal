@@ -41,6 +41,7 @@ import {
 import { readCompleteV6OriginTokensFromChain } from "../../../../lib/server/launch-feed";
 import { VNEXT_MARKET_DIRECTORY_MAX_MARKETS } from "../../../../lib/vnext/market-directory";
 import { boundedDiscoveryCoverage } from "../../../../lib/vnext/bounded-discovery";
+import { isExternalPoolIdentity, normalizeExternalPoolIdentity } from "../../../../lib/external-ohlcv";
 import type { VNextDirectoryMarket } from "../../../../lib/vnext/market-directory";
 import { applyProjectIdentityDirectoryAdmission } from "../../../../lib/server/project-identity-admission";
 import {
@@ -484,7 +485,7 @@ function withExternalMarketTiming(response: NextResponse, startedAt: number, cac
   return response;
 }
 
-async function readExternalMarketResponse(request: Request, requestedContract: string | null) {
+async function readExternalMarketResponse(request: Request, requestedContract: string | null, requestedPool?: string) {
   let providerReadsDelayed = false;
   const startedAt = performance.now();
   try {
@@ -723,8 +724,12 @@ async function readExternalMarketResponse(request: Request, requestedContract: s
     for (const record of assetRecords) {
       const key = record.token.address.toLowerCase();
       const candidates = marketCandidatesByToken.get(key) ?? [];
-      const primary = record.primaryMarket
-        ? candidates.find((candidate) => candidate.pairAddress.toLowerCase() === record.primaryMarket?.pool.value.toLowerCase())
+      const selectedEvidence = requestedPool
+        ? record.verifiedMarkets.find(e => e.pool.value.toLowerCase() === requestedPool.toLowerCase() && e.displayEligibility === "eligible")
+        : record.primaryMarket;
+      if (requestedPool && !selectedEvidence) continue;
+      const primary = selectedEvidence
+        ? candidates.find((candidate) => candidate.pairAddress.toLowerCase() === selectedEvidence.pool.value.toLowerCase())
         : record.verifiedMarkets
             .map((evidence) => candidates.find((candidate) => candidate.pairAddress.toLowerCase() === evidence.pool.value.toLowerCase()))
             .find(Boolean);
@@ -738,7 +743,7 @@ async function readExternalMarketResponse(request: Request, requestedContract: s
         imageUri: primary.imageUri ?? candidates.map((candidate) => candidate.imageUri).find(Boolean),
         socials: primary.socials ?? candidates.map((candidate) => candidate.socials).find(Boolean),
         stockAssetRelationships,
-        primaryMarket: record.primaryMarket ?? undefined,
+        primaryMarket: selectedEvidence ?? undefined,
         verifiedMarkets: record.verifiedMarkets
       });
     }
@@ -842,7 +847,9 @@ async function readExternalMarketResponse(request: Request, requestedContract: s
 }
 
 export async function GET(request: Request) {
-  const lookupParameter = new URL(request.url).searchParams.get("contract");
+  const searchParams = new URL(request.url).searchParams;
+  const lookupParameter = searchParams.get("contract");
+  const poolParameter = searchParams.get("pair");
   const requestedContract = canonicalExternalMarketLookupAddress(lookupParameter);
   if (lookupParameter !== null && !requestedContract) {
     return NextResponse.json(
@@ -851,6 +858,10 @@ export async function GET(request: Request) {
     );
   }
 
+  if (poolParameter !== null && (!requestedContract || !isExternalPoolIdentity(poolParameter))) {
+    return NextResponse.json({ error: "A token contract and complete pool identity are required." }, { status: 400, headers: { "Cache-Control": "no-store" } });
+  }
+  if (requestedContract && poolParameter) return readExternalMarketResponse(request, requestedContract, normalizeExternalPoolIdentity(poolParameter));
   if (requestedContract) return readExternalMarketResponse(request, requestedContract);
 
   // All callers receive a clone; the original response remains the immutable

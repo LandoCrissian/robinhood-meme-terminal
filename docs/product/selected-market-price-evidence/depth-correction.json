@@ -1,0 +1,32 @@
+{
+  "at": "2026-10-04T16:14:09.981Z",
+  "block": "80055900",
+  "correction": "No initialized tick in the three searched words is not zero depth. Clip to the searched bounds, which cover the +/-1% target. Uses already captured read-only evidence; no additional RPC.",
+  "limitations": "Virtual active-liquidity amounts only. Excludes fee, hooks and executable routing. USD unit conditional on USDG parity; not a live USD oracle.",
+  "results": [
+    {
+      "pool": "0x144b63eb5cf32f8c3aa1acd364e3cf7195188eb40eefefe5a403606f8a62ef51",
+      "quote": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
+      "quoteDown": 0.2880754908930634,
+      "quoteUp": 0.28664582702658725,
+      "conditionalUSDGDown": 777.6462720718149,
+      "conditionalUSDGUp": 773.7869615395849,
+      "bitmapSearchLowerTick": 168960,
+      "bitmapSearchUpperTick": 215040,
+      "fee": 3000,
+      "hooks": "0xF983F7CAC7Eb345eebf7c8B2886c1E4ef55b0A80"
+    },
+    {
+      "pool": "0xa45cc007913122568c6216ac1a1e65dca96a26adbfd3b97bb6fcb0cc2760df58",
+      "quote": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+      "quoteDown": 2.6576694597888326,
+      "quoteUp": 2.6709247512929504,
+      "conditionalUSDGDown": 2.6576694597888326,
+      "conditionalUSDGUp": 2.6709247512929504,
+      "bitmapSearchLowerTick": -448000,
+      "bitmapSearchUpperTick": -446000,
+      "fee": 200000,
+      "hooks": "0x0000000000000000000000000000000000000000"
+    }
+  ]
+}

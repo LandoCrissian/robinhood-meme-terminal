@@ -41,6 +41,23 @@ import { VNextMarketChart } from "./vnext-market-chart";
 import { TerminalIcon, type TerminalIconName } from "./terminal-icon";
 import { assetPresentationClasses, ASSET_CLASS_LABELS } from "../../lib/vnext/asset-presentation";
 import { TokenInformation, ProjectInformation, PresentationSources } from "./token-information";
+import { observedMarketPrices, selectedMarketPool, selectedMarketSnapshot } from "../../lib/vnext/selected-market-price";
+
+function ObservedMarketPrices({ directoryMarket, selectedPool, observedAt }: {
+  directoryMarket: VNextDirectoryMarket; selectedPool?: string; observedAt?: string;
+}) {
+  const { observations, dispersed } = observedMarketPrices(directoryMarket, selectedPool);
+  if (!observations.length) return null;
+  return <section className="vnWorkspaceCard vnObservedPrices" aria-label="Observed market prices">
+    <header className="vnWorkspaceCardHead"><div><span className="vnEyebrow">Price source</span><h3>{dispersed ? "Prices vary across markets" : "Selected market & other observations"}</h3></div></header>
+    <p>Each price belongs to one pool and one provider observation. These observations are not averaged into a token reference price. Reported liquidity is not executable depth.</p>
+    <div className="vnObservedPriceList">{observations.slice(0, 20).map(o => <div key={`${o.pool.kind}:${o.pool.value.toLowerCase()}`}>
+      <span><strong>{o.pool.value.toLowerCase() === selectedPool?.toLowerCase() ? "Selected market" : "Other market"} · {o.quoteToken.symbol}</strong><small>{o.venue} · {o.provenance.startsWith("dexscreener") ? "DexScreener" : "GeckoTerminal"} · {shortAddress(o.pool.value)}</small></span><b>{formatUsd(o.priceUsd)}</b>
+    </div>)}</div>
+    {observedAt ? <p>Snapshot loaded {new Date(observedAt).toLocaleString()}. Provider observations may differ in freshness and usable liquidity.</p> : null}
+    <footer>The displayed selected-market price is informational. Your executable price comes from a separately verified 0x quote and may use another route.</footer>
+  </section>;
+}
 
 function shortAddress(value: string) {
   return `${value.slice(0, 6)}…${value.slice(-4)}`;
@@ -503,9 +520,11 @@ export function VNextAssetWorkspace({
   onTradeSide: (side: "buy" | "sell") => void;
 }) {
   const [section, setSection] = useState<"activity" | "evidence" | "project" | "position" | "more">("activity");
+  const initialCanonicalMarket = selectVNextCanonicalMarket(directoryMarket);
+  const pinnedPool = selectedMarketPool(directoryMarket) ?? initialCanonicalMarket?.poolKey;
   const workspace = useVNextAssetWorkspace(
     directoryMarket.address,
-    directoryMarket.pairAddress,
+    pinnedPool,
     shouldRequestVNextExternalWorkspaceMarket(directoryMarket)
   );
   const resolution = workspace.resolution ?? workspace.market?.resolution ?? directoryMarket.resolution;
@@ -520,23 +539,23 @@ export function VNextAssetWorkspace({
   const displayName = presentationIdentity.name;
   const displaySymbol = presentationIdentity.symbol;
   const tokenIdentityVerified = presentationIdentity.verified || identityStatus === "verified";
-  const enrichedMarket = workspace.presentation?.market.data;
-  const priceUsd = enrichedMarket?.priceUsd ?? market?.priceUsd ?? directoryMarket.priceUsd;
-  const liquidityUsd = enrichedMarket?.liquidityUsd ?? market?.liquidityUsd ?? directoryMarket.liquidityUsd;
-  const volume24h = enrichedMarket?.volume24hUsd ?? market?.volume24h ?? directoryMarket.volume24h;
-  const priceChange24h = enrichedMarket?.priceChange24h ?? market?.priceChange24h ?? directoryMarket.priceChange24h;
+  const priceSnapshot = selectedMarketSnapshot(directoryMarket, market, workspace.presentation?.market, pinnedPool ?? workspace.selectedPool);
+  const { priceUsd, liquidityUsd, volume24h, priceChange24h } = priceSnapshot;
   const canonicalStockRelationship = workspace.stockAssetRelationships.find((relationship) => (
     relationship.relationship === "canonical-stock-token"
     && relationship.contractAddress.toLowerCase() === directoryMarket.address.toLowerCase()
   ));
-  const selectedCanonicalMarket = selectVNextCanonicalMarket(directoryMarket);
+  const selectedCanonicalMarket = initialCanonicalMarket?.poolKey.toLowerCase() === priceSnapshot.pool?.toLowerCase()
+    ? initialCanonicalMarket : undefined;
   const canonicalChartIdentity = selectedCanonicalMarket
     ? selectedCanonicalMarket.poolAddress ?? selectedCanonicalMarket.poolKey
     : undefined;
-  const observedChartPool = market
+  const observedChartPool = priceSnapshot.pool && isAddress(priceSnapshot.pool) ? priceSnapshot.pool : market
     ? selectVNextObservedChartPool(market) ?? selectVNextObservedChartPool(directoryMarket)
     : selectVNextObservedChartPool(directoryMarket);
-  const selectedChartIdentity = canonicalChartIdentity ?? observedChartPool;
+  const selectedChartIdentity = priceSnapshot.pool ?? canonicalChartIdentity ?? observedChartPool;
+  const priceObservations = market ?? directoryMarket;
+  const priceDispersion = observedMarketPrices(priceObservations, selectedChartIdentity);
   const lifecycleBySource = new Map<string, LaunchpadLifecycleEvidence>();
   for (const evidence of [...(directoryMarket.launchpadEvidence ?? []), ...(market?.launchpadEvidence ?? [])]) {
     lifecycleBySource.set(`${evidence.sourceId}:${evidence.version}:${evidence.factory}`.toLowerCase(), evidence);
@@ -583,7 +602,7 @@ export function VNextAssetWorkspace({
         <WorkspaceQuickLinks directoryMarket={directoryMarket} market={market} canonicalPool={selectedCanonicalMarket?.poolAddress ?? undefined} observedPool={observedChartPool} canonicalMarket={selectedCanonicalMarket} />
         <TokenInformation presentation={workspace.presentation} />
       </section>
-      <details className="vnMoreDisclosure"><summary>Markets</summary><div className="vnMarketEvidenceStack"><VerifiedMarkets directoryMarket={directoryMarket} canonicalMarkets={directoryMarket.canonicalMarkets} resolution={resolution} selectedPool={selectedChartIdentity} /><WorkspaceEcosystemIntelligence ecosystem={workspace.ecosystem} /></div></details>
+      <details className="vnMoreDisclosure"><summary>Markets</summary><div className="vnMarketEvidenceStack"><ObservedMarketPrices directoryMarket={priceObservations} selectedPool={selectedChartIdentity} observedAt={workspace.marketObservedAt ?? directoryMarket.marketObservedAt} /><VerifiedMarkets directoryMarket={directoryMarket} canonicalMarkets={directoryMarket.canonicalMarkets} resolution={resolution} selectedPool={selectedChartIdentity} /><WorkspaceEcosystemIntelligence ecosystem={workspace.ecosystem} /></div></details>
       <details className="vnMoreDisclosure"><summary>Origin &amp; launch</summary><LaunchOrigin key={directoryMarket.address} token={directoryMarket.address} initial={directoryMarket.launchIntelligence} fallback={<WorkspaceOrigin market={market} token={directoryMarket.address} launchpadEvidence={launchpadEvidence} />}/></details>
       {hasVerifiedRwaRelationship ? <details className="vnMoreDisclosure"><summary>RWA relationship</summary><WorkspaceRwaRelationships relationships={workspace.stockAssetRelationships} coverage={workspace.stockAssetCoverage} /></details> : null}
       <details className="vnMoreDisclosure"><summary>Evidence &amp; Sources</summary><p>{tokenIdentityVerified ? "Onchain token identity proven" : "Identity enrichment unavailable"} · {workspace.status}</p><p data-market-provenance={selectedCanonicalMarket ? "canonical" : market ? "provider-observed" : "unavailable"}>{selectedCanonicalMarket ? "Canonical onchain market inventory" : market ? `Provider-observed market · ${market.dexId}` : "No market observation"}</p><WorkspaceQuickLinks evidenceOnly directoryMarket={directoryMarket} market={market} canonicalPool={selectedCanonicalMarket?.poolAddress ?? undefined} observedPool={observedChartPool} canonicalMarket={selectedCanonicalMarket} /><PresentationSources presentation={workspace.presentation} /><p>Project origin, market observations and execution are separate authorities. Chart and enrichment availability do not determine swap availability.</p></details>
@@ -594,8 +613,11 @@ export function VNextAssetWorkspace({
       <div className="vnAssetWorkspaceIdentity"><TokenArtwork className="vnAssetWorkspaceMark" symbol={displaySymbol} contract={directoryMarket.address} launch={!!directoryMarket.launchIntelligence} imageUrl={directoryMarket.imageUri ?? canonicalStockRelationship?.logoUrl ?? workspace.presentation?.visual.data?.image ?? undefined} /><span><span className="vnEyebrow vnAssetClass" data-asset-class={primaryClass}>{ASSET_CLASS_LABELS[primaryClass]}</span><h2 id="vn-asset-heading" title={displayName}>{displayName} <b>{displaySymbol}</b></h2><small>Robinhood Chain · 4663</small></span></div>
       <div className="vnWorkspaceStatusGroup">{executionState === "stock-token-view-only" ? <strong className="vnStockTokenViewOnlyBadge">View only</strong> : null}<span className={`vnWorkspaceStatus is${workspace.status}`}><i aria-hidden="true" />{workspace.status === "ready" ? "Live evidence" : workspace.status === "partial" ? "Partial evidence" : workspace.status === "stale" ? "Last loaded" : workspace.status === "loading" ? "Loading evidence" : "Evidence unavailable"}</span></div>
     </header>
-    {showMarketSnapshot ? <><div className="vnAssetPrice"><strong>{formatUsd(priceUsd)}</strong><span className={priceChange24h !== null && priceChange24h > 0 ? "vnPositive" : priceChange24h !== null && priceChange24h < 0 ? "vnNegative" : ""}>{priceChange24h === null ? "—" : `${priceChange24h > 0 ? "+" : ""}${priceChange24h.toFixed(1)}%`} <small>24h</small></span></div>
-    <small className="vnMarketSnapshotLabel">{workspace.presentation?.market.data ? workspace.presentation.market.state === "STALE" ? "GeckoTerminal · last observed" : "GeckoTerminal market snapshot" : "Market snapshot"}</small>
+    {showMarketSnapshot ? <><div className="vnAssetPrice" data-selected-pool={priceSnapshot.pool} data-price-source={priceSnapshot.source} data-price-usd={priceUsd ?? undefined}><strong>{formatUsd(priceUsd)}</strong><span className={priceChange24h !== null && priceChange24h > 0 ? "vnPositive" : priceChange24h !== null && priceChange24h < 0 ? "vnNegative" : ""}>{priceChange24h === null ? "—" : `${priceChange24h > 0 ? "+" : ""}${priceChange24h.toFixed(1)}%`} <small>24h</small></span></div>
+    <button type="button" className="vnPriceAuthoritySummary" onClick={() => setSection("more")} aria-label="Show selected market price evidence">
+      <span>Selected market{priceSnapshot.quote ? ` · ${priceSnapshot.quote}` : ""} · {priceSnapshot.source}</span>
+      <small>{priceDispersion.dispersed ? "Prices vary across markets" : "Market price, separate from your execution quote"}</small>
+    </button>
     <dl className="vnAssetStats"><div><dt>{valuation.label}</dt><dd>{compactUsd(valuation.value)}</dd></div><div><dt>Liquidity</dt><dd>{compactUsd(liquidityUsd)}</dd></div><div><dt>24h volume</dt><dd>{compactUsd(volume24h)}</dd></div><div><dt>Market age</dt><dd>{formatAge(directoryMarket.ageMinutes)}</dd></div></dl></> : null}
 
     {executionState === "stock-token-view-only" ? <section className="vnStockIdentitySurface" aria-label="Stock Token information">

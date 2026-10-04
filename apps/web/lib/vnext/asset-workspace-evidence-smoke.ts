@@ -39,7 +39,8 @@ const providerMarket = {
   name: "Provider placeholder",
   symbol: "PAIR",
   pairAddress: mismatchedPair,
-  primaryMarket: { pool: { kind: "evm-address", value: mismatchedPair } },
+  primaryMarket: { chainId: 4663, token: { address: selected, name: "Provider placeholder", symbol: "PAIR" },
+    displayEligibility: "eligible", pool: { kind: "evm-address", value: mismatchedPair } },
   stockAssetRelationships: [stockAsset, pairedAsset]
 } as ExternalMarket;
 const payload = { markets: [providerMarket] };
@@ -48,7 +49,7 @@ assert.equal(exactWorkspaceMarket(payload, selected, exactPair), undefined, "A m
 const tokenOnly = mergeWorkspaceStockAssetRelationships(selected, [stockAsset], undefined);
 assert.deepEqual(tokenOnly, [stockAsset], "Pair mismatch must preserve canonical token-level stock identity");
 assert.equal(tokenOnly.some((relationship) => relationship.relationship === "paired-market-asset"), false);
-const exact = { ...providerMarket, pairAddress: exactPair, primaryMarket: { pool: { kind: "evm-address", value: exactPair } } } as ExternalMarket;
+const exact = { ...providerMarket, pairAddress: exactPair, primaryMarket: { ...providerMarket.primaryMarket, pool: { kind: "evm-address", value: exactPair } } } as ExternalMarket;
 const exactMarket = exactWorkspaceMarket({ markets: [exact] }, selected, exactPair);
 const merged = mergeWorkspaceStockAssetRelationships(selected, [stockAsset], exactMarket);
 assert.deepEqual(merged.map((relationship) => relationship.relationship), ["canonical-stock-token", "paired-market-asset"]);
@@ -84,8 +85,8 @@ assert.doesNotMatch(workspaceSource, /priceUsd\s*\*\s*[^\n]*currentMultiplier|cu
 assert.match(workspaceSource, /last known, non-authoritative/, "Stale registry presentation must be explicitly non-authoritative");
 assert.match(workspaceSource, /canonicalChartIdentity = selectedCanonicalMarket[\s\S]*selectedCanonicalMarket\.poolAddress \?\? selectedCanonicalMarket\.poolKey/,
   "Canonical V2/V3 pool addresses and V4 PoolIds must define canonical chart identity");
-assert.match(workspaceSource, /selectedChartIdentity = canonicalChartIdentity \?\? observedChartPool/,
-  "Canonical chart authority must precede provider-observed chart evidence");
+assert.match(workspaceSource, /selectedChartIdentity = priceSnapshot\.pool \?\? canonicalChartIdentity \?\? observedChartPool/,
+  "The explicitly selected pool must survive enrichment by alternate canonical or provider markets");
 assert.match(workspaceSource, /pair=\{selectedChartIdentity \?\? null\}/,
   "The mounted chart uses the authority-separated identity, or a no-request null scaffold");
 assert.doesNotMatch(workspaceSource, /PoolManager.*VNextMarketChart/,

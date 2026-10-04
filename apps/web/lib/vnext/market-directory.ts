@@ -7,6 +7,7 @@ import {
   type UniversalMarketResolution
 } from "../external-market";
 import { canonicalExternalAssetId } from "../external-market-identity";
+import { isExternalPoolIdentity, normalizeExternalPoolIdentity } from "../external-ohlcv";
 import type {
   ExternalMarketRiskFlag,
   ExternalMarketSignal
@@ -84,6 +85,7 @@ export type VNextDirectoryMarket = Omit<Pick<ExternalMarket,
     decimals: number;
   };
   launchIntelligence?: LaunchEvidence;
+  marketObservedAt?: string;
 };
 
 export type VNextMarketState = {
@@ -432,8 +434,8 @@ export function normalizeDirectoryMarkets(payload: Pick<ExternalMarketResponse, 
         : null,
       imageUri: safeTokenArtworkUrl(market.imageUri) ?? undefined,
       resolution: market.resolution,
-      pairAddress: typeof market.pairAddress === "string" && isAddress(market.pairAddress, { strict: false })
-        ? getAddress(market.pairAddress)
+      pairAddress: typeof market.pairAddress === "string" && isExternalPoolIdentity(market.pairAddress)
+        ? normalizeExternalPoolIdentity(market.pairAddress)
         : undefined,
       dexId: text(market.dexId, 30) || undefined,
       url: typeof market.url === "string" && market.url.startsWith("https://") ? market.url.slice(0, 300) : undefined,
@@ -442,6 +444,7 @@ export function normalizeDirectoryMarkets(payload: Pick<ExternalMarketResponse, 
       verifiedMarkets: market.verifiedMarkets,
       canonicalMarkets: directoryMarket.canonicalMarkets,
       verifiedIdentity: directoryMarket.verifiedIdentity,
+      marketObservedAt: directoryMarket.marketObservedAt ?? ("updatedAt" in payload && typeof payload.updatedAt === "string" ? payload.updatedAt : undefined),
       project: market.project,
       origin: market.origin,
       venue: market.venue,
@@ -472,7 +475,27 @@ export function normalizeDirectoryMarkets(payload: Pick<ExternalMarketResponse, 
       ...chosen,
       assetId: record.assetId,
       primaryMarket: record.primaryMarket ?? undefined,
-      verifiedMarkets: record.verifiedMarkets
+      verifiedMarkets: record.verifiedMarkets,
+      ...(record.primaryMarket && record.primaryMarket.pool.value.toLowerCase() !== chosen.primaryMarket?.pool.value.toLowerCase() ? {
+        pairAddress: normalizeExternalPoolIdentity(record.primaryMarket.pool.value),
+        dexId: record.primaryMarket.venue,
+        url: record.primaryMarket.provenance.startsWith("dexscreener")
+          ? `https://dexscreener.com/robinhood/${record.primaryMarket.pool.value}`
+          : `https://www.geckoterminal.com/robinhood/pools/${record.primaryMarket.pool.value}`,
+        venue: { kind: "dex" as const, dexId: record.primaryMarket.venue, pairAddress: record.primaryMarket.pool.value,
+          url: record.primaryMarket.provenance.startsWith("dexscreener")
+            ? `https://dexscreener.com/robinhood/${record.primaryMarket.pool.value}`
+            : `https://www.geckoterminal.com/robinhood/pools/${record.primaryMarket.pool.value}`, execution: "read-only" as const },
+        priceUsd: record.primaryMarket.priceUsd,
+        liquidityUsd: record.primaryMarket.liquidityUsd,
+        marketCapUsd: record.primaryMarket.marketCapUsd,
+        fdvUsd: record.primaryMarket.fdvUsd,
+        volume24h: record.primaryMarket.volume24h,
+        priceChange24h: record.primaryMarket.priceChange24h,
+        pairCreatedAt: record.primaryMarket.pairCreatedAt, ageMinutes: null,
+        volume5m: null, volume1h: null, priceChange5m: null, priceChange1h: null,
+        buys5m: null, sells5m: null, buys1h: null, sells1h: null, buys24h: null, sells24h: null
+      } : {})
     } : chosen;
   }).filter((market): market is VNextDirectoryMarket => Boolean(market));
 }

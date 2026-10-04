@@ -13,6 +13,7 @@ import { cachedPublicWorkspaceRead, readPublicWorkspace } from "../../lib/vnext/
 import { useVisibilityRefresh } from "./use-visibility-refresh";
 import { projectsForContract } from "@rmt/shared/project-identity";
 import { chartMarketSchema, visualSchema, parsePresentationEvidence, retainPresentationEvidence, type PresentationEvidence, type TokenMarketPresentation, type TokenVisualPresentation, type TokenPresentation } from "../../lib/vnext/token-presentation";
+import { marketAtSelectedPool, selectedMarketPool } from "../../lib/vnext/selected-market-price";
 
 export type VNextAssetWorkspaceStatus = "idle" | "loading" | "ready" | "partial" | "stale" | "unavailable";
 
@@ -52,9 +53,7 @@ export function mergeWorkspaceStockAssetRelationships(
 export function exactWorkspaceMarket(payload: ExternalMarketResponse, address: string, expectedPair?: string) {
   const market = payload.markets?.find((candidate) => candidate.address.toLowerCase() === address.toLowerCase());
   if (!market || !expectedPair) return market;
-  const primaryPool = market.primaryMarket?.pool;
-  const primaryPair = primaryPool?.kind === "evm-address" ? primaryPool.value : market.pairAddress;
-  return primaryPair.toLowerCase() === expectedPair.toLowerCase() ? market : undefined;
+  return marketAtSelectedPool(market, expectedPair);
 }
 
 export function workspaceTokenPresentation(input: {
@@ -97,8 +96,11 @@ export function useVNextAssetWorkspace(address?: string, pairAddress?: string, e
   const [stockAssetCoverage, setStockAssetCoverage] = useState<"complete" | "stale" | "unavailable">();
   const [status, setStatus] = useState<VNextAssetWorkspaceStatus>(address ? "loading" : "idle");
   const [observedAt, setObservedAt] = useState<string>();
+  const [marketObservedAt, setMarketObservedAt] = useState<string>();
+  const resolvedPool = useRef<{ address: string; pool: string } | undefined>(undefined);
   const requestId = useRef(0);
   const currentAddress = useRef<string | undefined>(undefined);
+  const currentPair = useRef<string | undefined>(undefined);
   const hasSnapshot = useRef(false);
 
   const refresh = useCallback(async (quiet = false) => {
@@ -117,18 +119,23 @@ export function useVNextAssetWorkspace(address?: string, pairAddress?: string, e
       return;
     }
     const id = ++requestId.current;
-    const sameAsset = currentAddress.current?.toLowerCase() === address.toLowerCase();
+    const expectedPair = pairAddress ?? (resolvedPool.current?.address === address.toLowerCase() ? resolvedPool.current.pool : undefined);
+    const sameAsset = currentAddress.current?.toLowerCase() === address.toLowerCase()
+      && currentPair.current?.toLowerCase() === expectedPair?.toLowerCase();
     if (!quiet || !sameAsset) setStatus("loading");
     const lookup = new URLSearchParams({ contract: address });
+    if (expectedPair) lookup.set("pair", expectedPair);
     const workspace = new URLSearchParams({ address });
-    if (pairAddress) workspace.set("pair", pairAddress);
+    if (expectedPair) workspace.set("pair", expectedPair);
     currentAddress.current = address;
+    currentPair.current = expectedPair;
     const coreUrl = `/api/vnext/asset-workspace?${workspace}&view=core`;
     const enrichmentUrl = `/api/vnext/asset-workspace?${workspace}&view=enrichment`;
     const marketUrl = `/api/markets/external?${lookup}`;
     const visualUrl = `/api/vnext/asset-workspace?address=${address}&view=visual`;
-    const chartMarketUrl = `/api/vnext/asset-workspace?address=${address}&view=market`;
+    const chartMarketUrl = `/api/vnext/asset-workspace?${workspace}&view=market`;
     const current = () => id === requestId.current;
+    const selectedPair = () => expectedPair ?? (resolvedPool.current?.address === address.toLowerCase() ? resolvedPool.current.pool : undefined);
     let success = sameAsset && hasSnapshot.current;
     let coreSnapshot: WorkspaceResolutionResponse | undefined;
     let marketSnapshot: ExternalMarket | undefined;
@@ -147,16 +154,19 @@ export function useVNextAssetWorkspace(address?: string, pairAddress?: string, e
     };
     const publishMarket = (payload: ExternalMarketResponse) => {
       if (!current()) return;
-      const market = exactWorkspaceMarket(payload, address, pairAddress);
+      const market = exactWorkspaceMarket(payload, address, selectedPair());
       if (!market) return;
+      const pool = selectedMarketPool(market);
+      if (!selectedPair() && pool) { resolvedPool.current = { address: address.toLowerCase(), pool }; currentPair.current = pool; }
       marketSnapshot = market; marketStale = Boolean(payload.stale);
       success = true; hasSnapshot.current = true; setMarket(market);
+      setMarketObservedAt(payload.updatedAt);
       setStockAssetRelationships(mergeWorkspaceStockAssetRelationships(address, coreSnapshot?.stockAssetRelationships, market));
       setObservedAt(payload.updatedAt); setStatus(payload.stale ? "stale" : "partial");
     };
     if (!sameAsset) {
       setVisual(undefined); setChartMarket(undefined);
-      setMarket(undefined); setResolution(undefined); setEcosystem(undefined); setObservedAt(undefined);
+      setMarket(undefined); setResolution(undefined); setEcosystem(undefined); setObservedAt(undefined); setMarketObservedAt(undefined);
       setIdentityStale(false);
       setStockAssetCoverage(undefined); setStockAssetRelationships([]); hasSnapshot.current = false;
       const cachedCore = cachedPublicWorkspaceRead<WorkspaceResolutionResponse>(coreUrl);
@@ -182,7 +192,12 @@ export function useVNextAssetWorkspace(address?: string, pairAddress?: string, e
     }).catch(() => { if (current()) setVisual(previous => previous ? { ...previous, state: "STALE" } : undefined); });
     const chartMarketRead = readPublicWorkspace<unknown>(chartMarketUrl).then(value => {
       const next = parsePresentationEvidence(value, address, chartMarketSchema, "GECKOTERMINAL_TOKEN_POOLS");
-      if (!next || (next.data && next.data.token.toLowerCase() !== address.toLowerCase())) throw new Error("Market presentation response unavailable.");
+      if (!next || (next.data && (next.data.token.toLowerCase() !== address.toLowerCase()
+        || (selectedPair() && next.data.pool.toLowerCase() !== selectedPair()!.toLowerCase())))) throw new Error("Market presentation response unavailable.");
+      if (current() && next.data && !selectedPair()) {
+        resolvedPool.current = { address: address.toLowerCase(), pool: next.data.pool };
+        currentPair.current = next.data.pool;
+      }
       if (current() && next && (!next.data || next.data.token.toLowerCase() === address.toLowerCase())) setChartMarket(previous => retainPresentationEvidence(sameAsset ? previous : undefined, next));
     }).catch(() => { if (current()) setChartMarket(previous => previous ? { ...previous, state: "STALE" } : undefined); });
     const results = await Promise.allSettled([core, marketRead, enrichment, visualRead, chartMarketRead]);
@@ -202,7 +217,8 @@ export function useVNextAssetWorkspace(address?: string, pairAddress?: string, e
     requestId.current += 1;
   }, [address, pairAddress]);
 
-  const snapshotIsCurrent = Boolean(address && currentAddress.current?.toLowerCase() === address.toLowerCase());
+  const snapshotIsCurrent = Boolean(address && currentAddress.current?.toLowerCase() === address.toLowerCase()
+    && (!pairAddress || currentPair.current?.toLowerCase() === pairAddress.toLowerCase()));
   const identity = snapshotIsCurrent ? resolution?.token : undefined;
   const presentation: TokenPresentation | undefined = address ? {
     chainId: 4663, contract: address,
@@ -214,10 +230,12 @@ export function useVNextAssetWorkspace(address?: string, pairAddress?: string, e
   return {
     presentation,
     market: snapshotIsCurrent ? market : undefined,
+    selectedPool: snapshotIsCurrent ? currentPair.current : undefined,
     resolution: snapshotIsCurrent ? resolution : undefined,
     ecosystem: snapshotIsCurrent ? ecosystem : undefined,
     status,
     observedAt: snapshotIsCurrent ? observedAt : undefined,
+    marketObservedAt: snapshotIsCurrent ? marketObservedAt : undefined,
     stockAssetCoverage: snapshotIsCurrent ? stockAssetCoverage : undefined,
     stockAssetRelationships: snapshotIsCurrent ? stockAssetRelationships : [],
     refresh
