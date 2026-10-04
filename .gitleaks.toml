@@ -2,6 +2,17 @@
 useDefault = true
 
 [[allowlists]]
+description = "Exact public SHRINU/WETH/USDG contracts independently verified in the selected-market chain proof; only three review/snapshot files"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''(?i)^0x(?:214f50e2f3bde5b83a13344bf6221bf0e0159925|0bd7d308f8e1639fab988df18a8011f41eacad73|5fc5360d0400a0fd4f2af552add042d716f1d168)$''']
+paths = [
+  '''^docs/product/selected-market-price-authority-review\.md$''',
+  '''^docs/product/selected-market-price-evidence/market-analysis\.json$''',
+  '''^scripts/visual-qa/selected-market-price-snapshot\.json$''',
+]
+
+[[allowlists]]
 description = "Exact public launch token/quote contracts verified by creation events and read-only RPC; only the two genuine evidence fixtures"
 condition = "AND"
 targetRules = ["generic-api-key"]
