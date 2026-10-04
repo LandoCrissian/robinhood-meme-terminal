@@ -65,7 +65,7 @@ try {
     await enter.click();
     await page.locator(".tradingTermsBackdrop").waitFor({ state: "hidden" });
     await page.locator(".rmtMarketViews .rmtExploreTrigger").first().click();
-    const all = page.getByRole("button", { name: /^All/ }).first();
+    const all = page.locator(".rmtExploreDialog fieldset button").filter({ has: page.locator("span").filter({ hasText: /^All$/ }) });
     await all.waitFor({ state: "visible", timeout: 20000 });
     assert.equal(
       await page.getByRole("button", { name: "Start with live markets", exact: true }).count(),
@@ -73,11 +73,13 @@ try {
       "The default terminal flow must not open the optional first-visit guide."
     );
     const count = async expected => {
+      assert.equal(await all.locator("span").first().textContent(), "All", "The count belongs to the All universe");
+      assert.equal(await all.getAttribute("aria-pressed"), "true", "All remains selected independently of activity");
       for (let i = 0; i < 100; i++) {
-        if ((await all.innerText().catch(() => "")).replace(/\s/g, "") === `All${expected}`) return;
+        if ((await all.locator("small").textContent().catch(() => "")) === String(expected)) return;
         await delay(100);
       }
-      assert.equal((await all.innerText()).replace(/\s/g, ""), `All${expected}`);
+      assert.equal(await all.locator("small").textContent(), String(expected), "All universe count");
     };
     await count(9);
     const refresh = async () => { await page.clock.fastForward(301000); await page.evaluate(() => window.dispatchEvent(new Event("focus"))); await delay(300); };
