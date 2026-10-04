@@ -48,11 +48,13 @@ export function useScannerRows<T>(rows: readonly T[], key: (row: T) => string, c
     };
   }, []);
   useEffect(() => {
-    if (!holding || anchor.context !== context) {
-      const ids = rows.map(key);
-      setAnchor(current => current.context === context && current.ids.join("|") === ids.join("|") ? current : { context, ids });
-    }
-  }, [rows, key, context, holding, anchor.context]);
+    if (holding && anchor.context === context && retainPagedRows) return;
+    const eligible = new Set(eligibleRows.map(key));
+    // Once positively excluded, a market is outside the held window. If it
+    // later requalifies, defer its re-entry like any other fresh membership.
+    const ids = holding && anchor.context === context ? anchor.ids.filter(id => eligible.has(id)) : rows.map(key);
+    setAnchor(current => current.context === context && current.ids.join("|") === ids.join("|") ? current : { context, ids });
+  }, [rows, key, context, holding, anchor.context, anchor.ids, retainPagedRows, eligibleRows]);
   const result = reconcileScannerRows(rows, anchor.ids, key, holding && anchor.context === context,
     retainPagedRows && displayedRows.current.context === context ? displayedRows.current.rows : [], eligibleRows);
   displayed.current = { context, ids: result.rows.map(key) };
