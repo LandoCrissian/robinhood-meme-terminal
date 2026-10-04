@@ -154,6 +154,8 @@ export function VNextTerminalShell({ initialLocation = { context: "markets" }, i
   }, [selectAddress]);
 
   const writeLocation = useCallback((nextContext: TerminalContext, market?: string, side?: "buy" | "sell", replace = false) => {
+    // Explicit navigation supersedes a pending lookup for the previous URL.
+    locationSyncEpoch.current += 1;
     const url = new URL(window.location.href);
     url.searchParams.delete("market");
     url.searchParams.delete("side");
