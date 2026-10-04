@@ -194,8 +194,8 @@ export function VNextTerminalShell({ initialLocation = { context: "markets" }, i
     setQuery(nextQuery);
     setVisibleMarketLimit(VNEXT_MARKET_DIRECTORY_PAGE_SIZE);
   }, [clearUniversalSearch]);
-  const selectMarket = useCallback((address: string) => {
-    void selectAddress(address).then((selectedMarket) => {
+  const selectMarket = useCallback((address: string, renderedMarket?: VNextDirectoryMarket) => {
+    void selectAddress(address, renderedMarket).then((selectedMarket) => {
       if (!selectedMarket) return;
       setContext("asset");
       setTradeOpen(false);

@@ -136,12 +136,12 @@ const workspaceHook = readFileSync(new URL("../app/vnext/use-vnext-asset-workspa
 const workspaceView = readFileSync(new URL("../app/vnext/vnext-asset-workspace.tsx", import.meta.url), "utf8");
 const marketDirectoryDomain = readFileSync(new URL("vnext/market-directory.ts", import.meta.url), "utf8");
 const executionDiscovery = readFileSync(new URL("server/external-trade-venues.ts", import.meta.url), "utf8");
-assert.match(workspaceHook, /primaryPair\.toLowerCase\(\) === expectedPair\.toLowerCase\(\)/, "Workspace market evidence must match the directory primary pool");
+assert.match(workspaceHook, /marketAtSelectedPool\(market, expectedPair\)/, "Workspace evidence must bind the exact selected pool, including V4 PoolIds");
 assert.doesNotMatch(workspaceView, /resolution\?\.pools\[0\]\?\.poolAddress/, "Chart selection must not silently fall back to an unrelated resolver pool");
 assert.match(workspaceView, /selectVNextCanonicalMarket/);
 assert.match(workspaceView, /selectVNextObservedChartPool/);
-assert.match(workspaceView, /selectedChartIdentity = canonicalChartIdentity \?\? observedChartPool/,
-  "Canonical chart identity must precede provider-observed chart evidence");
+assert.match(workspaceView, /selectedChartIdentity = priceSnapshot\.pool \?\? canonicalChartIdentity \?\? observedChartPool/,
+  "An explicit selected market precedes alternate canonical/default chart selection");
 assert.match(marketDirectoryDomain, /chartEligibility === "eligible"/);
 assert.match(executionDiscovery, /verifyUniswapV4/);
 assert.doesNotMatch(executionDiscovery, /primaryMarket|selectPrimaryAssetMarket/, "Display primary must not grant execution authority");

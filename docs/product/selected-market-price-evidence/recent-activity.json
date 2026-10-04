@@ -1,0 +1,55 @@
+{
+  "at": "2026-10-04T16:20:51.078Z",
+  "fromBlock": "80035901",
+  "toBlock": "80055900",
+  "requests": 5,
+  "errors": [],
+  "samples": [
+    {
+      "eventName": "Swap",
+      "args": {
+        "id": "0xa45cc007913122568c6216ac1a1e65dca96a26adbfd3b97bb6fcb0cc2760df58",
+        "sender": "0x6aa80DbBed9ae5aB45FbF61f9644faDA3b29326E",
+        "amount0": "-32705028455550000000000",
+        "amount1": "944",
+        "sqrtPriceX96": "15057811483893511943",
+        "liquidity": "2817676069730893893",
+        "tick": -447697,
+        "fee": 200800
+      },
+      "address": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+      "topics": [
+        "0x40e9cecb9f5f1f1c5b9c97dec2917b7ee92e57ba5563708daca94dd84ad7112f",
+        "0xa45cc007913122568c6216ac1a1e65dca96a26adbfd3b97bb6fcb0cc2760df58",
+        "0x0000000000000000000000006aa80dbbed9ae5ab45fbf61f9644fada3b29326e"
+      ],
+      "data": "0xfffffffffffffffffffffffffffffffffffffffffffff9130e8e0a582bf8940000000000000000000000000000000000000000000000000000000000000003b0000000000000000000000000000000000000000000000000d0f817c3d0453707000000000000000000000000000000000000000000000000271a6574ec6dc045fffffffffffffffffffffffffffffffffffffffffffffffffffffffffff92b2f0000000000000000000000000000000000000000000000000000000000031060",
+      "blockNumber": "80054443",
+      "transactionHash": "0xc3936d0c76ea4984fc950abf5394f9ce81ee7e1e95a8abb832b1e7896bb56277",
+      "transactionIndex": 7,
+      "blockHash": "0x323353d729c14c8b4251b687a617a43e914c85dd21b018fe4cdb53760731b2ca",
+      "blockTimestamp": "0",
+      "logIndex": 9,
+      "removed": false
+    }
+  ],
+  "hook": {
+    "address": "0xF983F7CAC7Eb345eebf7c8B2886c1E4ef55b0A80",
+    "observation": "latest code; price proof remains pinned separately",
+    "codePresent": true,
+    "codeHash": "0x8c522be50541ce573326359be951707cca6bef398911a822c94df7b6886dae60",
+    "behavior": "NOT_ANALYZED; DO NOT INFER EXECUTION SAFETY"
+  },
+  "summary": [
+    {
+      "pool": "0x144b63eb5cf32f8c3aa1acd364e3cf7195188eb40eefefe5a403606f8a62ef51",
+      "swapCount": 0,
+      "lastSwap": null
+    },
+    {
+      "pool": "0xa45cc007913122568c6216ac1a1e65dca96a26adbfd3b97bb6fcb0cc2760df58",
+      "swapCount": 1,
+      "lastSwap": "80054443"
+    }
+  ]
+}

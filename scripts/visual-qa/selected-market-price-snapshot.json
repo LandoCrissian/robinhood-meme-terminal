@@ -1,0 +1,1123 @@
+{
+  "evidence": "READ_ONLY_PRODUCTION_SNAPSHOT_REPLAY; ADVERSE_REFRESH_ORDER_IS_CONTROLLED, NOT_PRODUCTION",
+  "capturedAt": "2026-10-04T15:50:53.926Z",
+  "external": {
+    "markets": [
+      {
+        "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+        "name": "Shareholder Inu",
+        "symbol": "SHRINU",
+        "imageUri": "https://cdn.dexscreener.com/cms/images/DQXXo9KLPAUiyCNy?width=800&height=800&quality=95&format=auto",
+        "socials": {
+          "website": "https://shareholderinu.shop/",
+          "x": "https://x.com/ShareholderInu",
+          "telegram": "https://t.me/ShareholderInu",
+          "discord": null,
+          "farcaster": null,
+          "provenance": "dex-pair-metadata"
+        },
+        "pairAddress": "0x144b63eb5cf32f8c3aa1acd364e3cf7195188eb40eefefe5a403606f8a62ef51",
+        "url": "https://dexscreener.com/robinhood/0x144b63eb5cf32f8c3aa1acd364e3cf7195188eb40eefefe5a403606f8a62ef51",
+        "dexId": "uniswap",
+        "stockAssetRelationships": [],
+        "origin": {
+          "kind": "external",
+          "state": "unknown",
+          "coverage": "unavailable"
+        },
+        "venue": {
+          "kind": "dex",
+          "dexId": "uniswap",
+          "pairAddress": "0x144b63eb5cf32f8c3aa1acd364e3cf7195188eb40eefefe5a403606f8a62ef51",
+          "url": "https://dexscreener.com/robinhood/0x144b63eb5cf32f8c3aa1acd364e3cf7195188eb40eefefe5a403606f8a62ef51",
+          "execution": "read-only"
+        },
+        "priceUsd": 0.000006882,
+        "liquidityUsd": 276549.8,
+        "marketCapUsd": 688268,
+        "fdvUsd": 688268,
+        "volume5m": 0,
+        "volume1h": 0,
+        "volume24h": 24901994.5,
+        "priceChange5m": null,
+        "priceChange1h": null,
+        "priceChange24h": 1806,
+        "buys5m": 0,
+        "sells5m": 0,
+        "buys1h": 0,
+        "sells1h": 0,
+        "buys24h": 10110,
+        "sells24h": 8599,
+        "pairCreatedAt": 1791058195000,
+        "ageMinutes": null,
+        "momentumScore": null,
+        "buyPressureBps": null,
+        "signal": null,
+        "riskFlags": null,
+        "primaryMarket": {
+          "chainId": 4663,
+          "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+          "token": {
+            "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "name": "Shareholder Inu",
+            "symbol": "SHRINU"
+          },
+          "venue": "uniswap",
+          "protocolVersion": 4,
+          "pool": {
+            "kind": "bytes32",
+            "value": "0x144b63eb5cf32f8c3aa1acd364e3cf7195188eb40eefefe5a403606f8a62ef51"
+          },
+          "baseToken": {
+            "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "name": "Shareholder Inu",
+            "symbol": "SHRINU"
+          },
+          "quoteToken": {
+            "address": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
+            "name": "WETH",
+            "symbol": "WETH"
+          },
+          "assetSide": "BASE",
+          "displayEligibility": "eligible",
+          "chartEligibility": "unavailable",
+          "executionEligibility": "view-only",
+          "provenance": "dexscreener-token-pairs",
+          "priceUsd": 0.000006882,
+          "liquidityUsd": 276549.8,
+          "marketCapUsd": 688268,
+          "fdvUsd": 688268,
+          "volume24h": 24901994.5,
+          "priceChange24h": 1806,
+          "pairCreatedAt": 1791058195000
+        },
+        "verifiedMarkets": [
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0x019cbade447672f509efa45fa1e63eafb2052018c99acce94281fce9b0a10be0"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+              "name": "Global Dollar",
+              "symbol": "USDG"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 4.25e-7,
+            "liquidityUsd": 21.06,
+            "marketCapUsd": 42505,
+            "fdvUsd": 42505,
+            "volume24h": 13.96,
+            "priceChange24h": null,
+            "pairCreatedAt": 1791072070000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0x0c322d5539d75ebf7e57352943fbb9a96b4f0a32212a35489d18039fd785895c"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+              "name": "Global Dollar",
+              "symbol": "USDG"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 1.657e-7,
+            "liquidityUsd": 323.6,
+            "marketCapUsd": 16578,
+            "fdvUsd": 16578,
+            "volume24h": 241.83,
+            "priceChange24h": 226,
+            "pairCreatedAt": 1791071202000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0x144b63eb5cf32f8c3aa1acd364e3cf7195188eb40eefefe5a403606f8a62ef51"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
+              "name": "WETH",
+              "symbol": "WETH"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 0.000006882,
+            "liquidityUsd": 276549.8,
+            "marketCapUsd": 688268,
+            "fdvUsd": 688268,
+            "volume24h": 24901994.5,
+            "priceChange24h": 1806,
+            "pairCreatedAt": 1791058195000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0x1f790083214add6579deaeed9aaa52add3e1098a8875d8f82af4d288d1f413aa"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+              "name": "Global Dollar",
+              "symbol": "USDG"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 1.038e-7,
+            "liquidityUsd": 0.18,
+            "marketCapUsd": 10381,
+            "fdvUsd": 10381,
+            "volume24h": 47.18,
+            "priceChange24h": -99.78,
+            "pairCreatedAt": 1791062802000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0x2950f08f6326a3e9bd7d31be0a895f61720974048d5284af2d2bdcadc11821e1"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+              "name": "Global Dollar",
+              "symbol": "USDG"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 0.000001405,
+            "liquidityUsd": 52.06,
+            "marketCapUsd": 140539,
+            "fdvUsd": 140539,
+            "volume24h": 21.05,
+            "priceChange24h": -71.3,
+            "pairCreatedAt": 1791069602000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0x393b6d6cc418198c01e120db8c227f0798186afeaf48016e3ffd6276d0dcc8bb"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x0000000000000000000000000000000000000000",
+              "name": "Ether",
+              "symbol": "ETH"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 5.979e-24,
+            "liquidityUsd": null,
+            "marketCapUsd": null,
+            "fdvUsd": null,
+            "volume24h": 0.01,
+            "priceChange24h": -100,
+            "pairCreatedAt": 1791083192000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0x4758a195bf33dbe2d2e5ae627a2ac2d3445aa92c3e6bb594103756d58ada5e5e"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+              "name": "Global Dollar",
+              "symbol": "USDG"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 0.000001068,
+            "liquidityUsd": 19.97,
+            "marketCapUsd": 106827,
+            "fdvUsd": 106827,
+            "volume24h": 15.57,
+            "priceChange24h": -84.16,
+            "pairCreatedAt": 1791068712000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0x4c02a8adb8f9cb4f4d3cd41606c89fceb2d5bb99d14f73ccf016e44b3e1438d0"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+              "name": "Global Dollar",
+              "symbol": "USDG"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 0.000004579,
+            "liquidityUsd": 161.03,
+            "marketCapUsd": 457906,
+            "fdvUsd": 457906,
+            "volume24h": 41.36,
+            "priceChange24h": -90.51,
+            "pairCreatedAt": 1791063563000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0x518fd976596f05e0b8d46dc53f0c0e1bb57a7f582e76b0ed6668039b060baba6"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+              "name": "Global Dollar",
+              "symbol": "USDG"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 1.64e-8,
+            "liquidityUsd": 2.71,
+            "marketCapUsd": 1641,
+            "fdvUsd": 1641,
+            "volume24h": 72.36,
+            "priceChange24h": -97.58,
+            "pairCreatedAt": 1791063629000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0x52d6b55dc3108f3f996f11f22a7e99d96270b96cd10b99beb6959b64b6b85bc7"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+              "name": "Global Dollar",
+              "symbol": "USDG"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 6.356e-8,
+            "liquidityUsd": 1.78,
+            "marketCapUsd": 6357,
+            "fdvUsd": 6357,
+            "volume24h": 2248.99,
+            "priceChange24h": -36.77,
+            "pairCreatedAt": 1791063486000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0x58395820d7495bee52bc9f367bf80a6b8f0d53c1111a7d623ac44062d4431cae"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+              "name": "Global Dollar",
+              "symbol": "USDG"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 3.276e-8,
+            "liquidityUsd": 16.89,
+            "marketCapUsd": 3277,
+            "fdvUsd": 3277,
+            "volume24h": 541.53,
+            "priceChange24h": 163,
+            "pairCreatedAt": 1791059059000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0x745baa7cfa9cfb476db418621f3d704bdf91ea67e53271252cb75c662bd081bc"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+              "name": "Global Dollar",
+              "symbol": "USDG"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 3.079e-8,
+            "liquidityUsd": 21.6,
+            "marketCapUsd": 3079,
+            "fdvUsd": 3079,
+            "volume24h": 1401.64,
+            "priceChange24h": -89.22,
+            "pairCreatedAt": 1791058822000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0x808b59f97fd9a0552e02f322f1e69698521295dfedd7831a90ba8d33bd4e8375"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x0000000000000000000000000000000000000000",
+              "name": "Ether",
+              "symbol": "ETH"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 3.25e-8,
+            "liquidityUsd": 0.48,
+            "marketCapUsd": 3251,
+            "fdvUsd": 3251,
+            "volume24h": 0.21,
+            "priceChange24h": -67.75,
+            "pairCreatedAt": 1791083312000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0x936f0187df56131d071daf67c7e3f640d4c5fe78d05629f1ec831df9f24d89ad"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
+              "name": "WETH",
+              "symbol": "WETH"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 3.544e-7,
+            "liquidityUsd": 0.03,
+            "marketCapUsd": 35446,
+            "fdvUsd": 35446,
+            "volume24h": 11.78,
+            "priceChange24h": -99.23,
+            "pairCreatedAt": 1791058183000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0x9413e5f060a680e86c8b4c0ee69db36cbff3f370c4375c9ee82363437bf6c6f4"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x0000000000000000000000000000000000000000",
+              "name": "Ether",
+              "symbol": "ETH"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 5.682e-8,
+            "liquidityUsd": 260.21,
+            "marketCapUsd": 5683,
+            "fdvUsd": 5683,
+            "volume24h": 101.58,
+            "priceChange24h": 82.76,
+            "pairCreatedAt": 1791079152000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0xa45cc007913122568c6216ac1a1e65dca96a26adbfd3b97bb6fcb0cc2760df58"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+              "name": "Global Dollar",
+              "symbol": "USDG"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 3.612e-8,
+            "liquidityUsd": 424.73,
+            "marketCapUsd": 3612,
+            "fdvUsd": 3612,
+            "volume24h": 1484.73,
+            "priceChange24h": -78.01,
+            "pairCreatedAt": 1791071271000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0xa7485e5d32aa66226a78975403d5adb4163ffbc6a5602887bba1aba4da07ff4d"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+              "name": "Global Dollar",
+              "symbol": "USDG"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 1.015e-8,
+            "liquidityUsd": 229.82,
+            "marketCapUsd": 1016,
+            "fdvUsd": 1016,
+            "volume24h": 829.03,
+            "priceChange24h": 1.12,
+            "pairCreatedAt": 1791081789000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0xaa6678e76c49b648877904788fc399d01ff5aec7789c9bc33b29789082d4ebd0"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+              "name": "Global Dollar",
+              "symbol": "USDG"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 2.809e-7,
+            "liquidityUsd": 863.47,
+            "marketCapUsd": 28098,
+            "fdvUsd": 28098,
+            "volume24h": 243.2,
+            "priceChange24h": -1.66,
+            "pairCreatedAt": 1791065817000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0xac4fcb5fdb818fc712931d4a9a46c78e5a86b99842f47dfe831da80197d490e9"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x0000000000000000000000000000000000000000",
+              "name": "Ether",
+              "symbol": "ETH"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 2.509e-7,
+            "liquidityUsd": 1.28,
+            "marketCapUsd": 25098,
+            "fdvUsd": 25098,
+            "volume24h": 10.04,
+            "priceChange24h": null,
+            "pairCreatedAt": 1791078354000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0xb82425dc0074fd77b4d5a5d920baeca5a7ec1dacadba82ad36b1f67b0a30b244"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+              "name": "Global Dollar",
+              "symbol": "USDG"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 7.134e-8,
+            "liquidityUsd": 57.33,
+            "marketCapUsd": 7135,
+            "fdvUsd": 7135,
+            "volume24h": 474.89,
+            "priceChange24h": -80.79,
+            "pairCreatedAt": 1791062342000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0xbea69650116d64f5fabffba4bee5df0ba0e7b3cfaa8e3925a28da87434cf75f0"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+              "name": "Global Dollar",
+              "symbol": "USDG"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 7.051e-8,
+            "liquidityUsd": 498.89,
+            "marketCapUsd": 7051,
+            "fdvUsd": 7051,
+            "volume24h": 1178.01,
+            "priceChange24h": 0.52,
+            "pairCreatedAt": 1791069285000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0xd0c749add5f984d5234079e6c58cc32a6e2f49dd7ed808cc3b846317fa5b4eb8"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+              "name": "Global Dollar",
+              "symbol": "USDG"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 5.678e-8,
+            "liquidityUsd": 0.75,
+            "marketCapUsd": 5679,
+            "fdvUsd": 5679,
+            "volume24h": 1.2,
+            "priceChange24h": -46.55,
+            "pairCreatedAt": 1791079581000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0xdbc8c72fc724acf8d81f3d4e1a8572e44625e9aaf9182e6e2ed9a24cf134f12e"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x0000000000000000000000000000000000000000",
+              "name": "Ether",
+              "symbol": "ETH"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 3.582e-8,
+            "liquidityUsd": 0.37,
+            "marketCapUsd": 3582,
+            "fdvUsd": 3582,
+            "volume24h": 0.09,
+            "priceChange24h": null,
+            "pairCreatedAt": 1791084220000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0xdeeba7c9dcae42612b77cd50a52328eaf1ff0c08e7e9b7f185e3b33f6a316ac0"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+              "name": "Global Dollar",
+              "symbol": "USDG"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 7.114e-7,
+            "liquidityUsd": 370.81,
+            "marketCapUsd": 71143,
+            "fdvUsd": 71143,
+            "volume24h": 23.86,
+            "priceChange24h": -28.64,
+            "pairCreatedAt": 1791063198000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0xe79b7e09a8f1ee183f32c9007d7fde14fdfa9aec7b4ad73204445acb5a85e316"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+              "name": "Global Dollar",
+              "symbol": "USDG"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 4.017e-8,
+            "liquidityUsd": 468.46,
+            "marketCapUsd": 4018,
+            "fdvUsd": 4018,
+            "volume24h": 253.6,
+            "priceChange24h": 0.08,
+            "pairCreatedAt": 1791078151000
+          },
+          {
+            "chainId": 4663,
+            "assetId": "eip155:4663/contract:0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "token": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "venue": "uniswap",
+            "protocolVersion": 4,
+            "pool": {
+              "kind": "bytes32",
+              "value": "0xfae74bd56303003f55cc33843431fa78a0b4ecb1504f03b035df03292b593c99"
+            },
+            "baseToken": {
+              "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+              "name": "Shareholder Inu",
+              "symbol": "SHRINU"
+            },
+            "quoteToken": {
+              "address": "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168",
+              "name": "Global Dollar",
+              "symbol": "USDG"
+            },
+            "assetSide": "BASE",
+            "displayEligibility": "eligible",
+            "chartEligibility": "unavailable",
+            "executionEligibility": "view-only",
+            "provenance": "dexscreener-token-pairs",
+            "priceUsd": 2.115e-8,
+            "liquidityUsd": 191.19,
+            "marketCapUsd": 2116,
+            "fdvUsd": 2116,
+            "volume24h": 157.07,
+            "priceChange24h": -53.57,
+            "pairCreatedAt": 1791078640000
+          }
+        ],
+        "resolution": {
+          "chainId": 4663,
+          "requestedAddress": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+          "requestedKind": "token",
+          "status": "token-only",
+          "token": {
+            "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+            "name": "Shareholder Inu",
+            "symbol": "SHRINU",
+            "decimals": 18,
+            "totalSupply": "100000000000000000000000000000"
+          },
+          "pools": [],
+          "marketData": "identity-only",
+          "execution": "view-only",
+          "provenance": "robinhood-chain-contract-reads",
+          "resolvedAt": "2026-10-04T15:50:54.240Z"
+        }
+      }
+    ],
+    "updatedAt": "2026-10-04T15:50:54.243Z",
+    "source": "RMT curated markets + bounded GeckoTerminal Robinhood discovery + exact provider observations + bounded launchpad evidence + Robinhood Stock Token registry"
+  },
+  "core": {
+    "resolution": {
+      "chainId": 4663,
+      "requestedAddress": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+      "requestedKind": "token",
+      "status": "token-only",
+      "token": {
+        "address": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+        "name": "Shareholder Inu",
+        "symbol": "SHRINU",
+        "decimals": 18,
+        "totalSupply": "100000000000000000000000000000"
+      },
+      "pools": [],
+      "marketData": "identity-only",
+      "execution": "view-only",
+      "provenance": "robinhood-chain-contract-reads",
+      "resolvedAt": "2026-10-04T15:50:55.701Z"
+    },
+    "stockAssetRelationships": [],
+    "stockAssetCoverage": "complete",
+    "updatedAt": "2026-10-04T15:50:55.701Z"
+  },
+  "otherPoolPresentation": {
+    "chainId": 4663,
+    "contract": "0x214F50E2f3bDE5B83a13344BF6221Bf0E0159925",
+    "state": "READY",
+    "data": {
+      "token": "0x214f50e2f3bde5b83a13344bf6221bf0e0159925",
+      "pool": "0xa45cc007913122568c6216ac1a1e65dca96a26adbfd3b97bb6fcb0cc2760df58",
+      "priceUsd": 3.61380558e-8,
+      "liquidityUsd": 725644.055,
+      "volume24hUsd": 781.1023866419,
+      "createdAt": "2026-10-03T23:47:51Z",
+      "dex": "uniswap-v4-robinhood",
+      "priceChange24h": -98.69,
+      "buys24h": 100,
+      "sells24h": 138
+    },
+    "observedAt": "2026-10-04T15:50:44.000Z",
+    "provenance": "GECKOTERMINAL_TOKEN_POOLS"
+  }
+}

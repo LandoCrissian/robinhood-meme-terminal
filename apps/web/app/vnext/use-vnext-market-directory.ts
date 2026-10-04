@@ -25,6 +25,7 @@ import {
 } from "../../lib/vnext/market-directory";
 import { VNEXT_CLIENT_REFRESH_POLICY } from "../../lib/vnext/client-refresh-policy";
 import { useScannerRefresh } from "./use-scanner-refresh";
+import { retainSelectedMarket } from "../../lib/vnext/selected-market-price";
 import { createDirectoryEnrichmentQueue } from "../../lib/vnext/directory-enrichment-queue";
 import {
   parseVNextUniversalMarketSearchResult,
@@ -135,6 +136,7 @@ export function useVNextMarketDirectory(initialMarket?: VNextDirectoryMarket) {
   const [activitySnapshotPublished, setActivitySnapshotPublished] = useState(false);
   const discoveryCoverage = useRef<BoundedDiscoveryCoverage | null>(null);
   const [selectedAddress, setSelectedAddress] = useState<string | null>(initialMarket?.address ?? null);
+  const selectedMarketSnapshot = useRef<VNextDirectoryMarket | undefined>(initialMarket);
   const [selectedAsset, setSelectedAsset] = useState<AssetMetadata | undefined>(() => initialMarket ? selectedDirectoryAsset(initialMarket) : undefined);
   const [identityStatus, setIdentityStatus] = useState<IdentityStatus>("idle");
   const [searchMarkets, setSearchMarkets] = useState<VNextDirectoryMarket[]>([]);
@@ -209,12 +211,14 @@ export function useVNextMarketDirectory(initialMarket?: VNextDirectoryMarket) {
     publishMarkets();
   }, [publishMarkets]);
 
-  const selectAddress = useCallback(async (rawAddress: string) => {
+  const selectAddress = useCallback(async (rawAddress: string, renderedMarket?: VNextDirectoryMarket) => {
     const exactDirectory = markets.find((market) => market.address.toLowerCase() === rawAddress.toLowerCase());
     const exactSearch = searchMarketsRef.current.find((market) => market.address.toLowerCase() === rawAddress.toLowerCase());
-    const exact = exactDirectory && exactSearch
+    const current = exactDirectory && exactSearch
       ? mergeVNextDirectoryAndSearchMarkets([exactDirectory], [exactSearch])[0]
       : exactDirectory ?? exactSearch;
+    const exact = renderedMarket?.address.toLowerCase() === rawAddress.toLowerCase()
+      && isVNextDirectoryMarketSelectable(renderedMarket) ? renderedMarket : current;
     if (exact && !positiveQuarantines.current.has(rawAddress.toLowerCase()) && isVNextDirectoryMarketSelectable(exact)) {
       selectionSequence.current += 1;
       exactLookupMarket.current = mergeVNextExplicitSelectionMarket({
@@ -223,6 +227,7 @@ export function useVNextMarketDirectory(initialMarket?: VNextDirectoryMarket) {
       }) ?? exact;
       publishMarkets();
       setSelectedAddress(exact.address);
+      selectedMarketSnapshot.current = exact;
       return exactLookupMarket.current;
     }
     if (!isAddress(rawAddress, { strict: false })) return undefined;
@@ -230,6 +235,7 @@ export function useVNextMarketDirectory(initialMarket?: VNextDirectoryMarket) {
     const selectionKey = address.toLowerCase();
     if (completedExplicitSelections.current.has(selectionKey) && exact && isVNextDirectoryMarketSelectable(exact)) {
       setSelectedAddress(exact.address);
+      selectedMarketSnapshot.current = exact;
       return exact;
     }
     const inFlight = explicitSelectionRequests.current.get(selectionKey);
@@ -301,6 +307,7 @@ export function useVNextMarketDirectory(initialMarket?: VNextDirectoryMarket) {
         }) ?? fallback;
         publishMarkets();
         setSelectedAddress(fallback.address);
+        selectedMarketSnapshot.current = exactLookupMarket.current;
         return exactLookupMarket.current;
       } catch {
         return undefined;
@@ -646,7 +653,15 @@ export function useVNextMarketDirectory(initialMarket?: VNextDirectoryMarket) {
   useScannerRefresh(refreshEcosystemDirectory, VNEXT_CLIENT_REFRESH_POLICY.ecosystemDirectoryMs);
 
   const selected = useMemo(
-    () => markets.find((market) => market.address.toLowerCase() === selectedAddress?.toLowerCase()),
+    () => {
+      if (!selectedAddress || positiveQuarantines.current.has(selectedAddress.toLowerCase())) return undefined;
+      const fresh = markets.find((market) => market.address.toLowerCase() === selectedAddress.toLowerCase());
+      const previous = selectedMarketSnapshot.current;
+      const selected = previous?.address.toLowerCase() === selectedAddress.toLowerCase()
+        ? retainSelectedMarket(previous, fresh) : fresh;
+      selectedMarketSnapshot.current = selected;
+      return selected;
+    },
     [markets, selectedAddress]
   );
 

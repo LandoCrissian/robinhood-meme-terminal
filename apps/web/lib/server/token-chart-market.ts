@@ -1,5 +1,5 @@
 import { getAddress, isAddress } from "viem";
-import { externalChartRefreshMs, externalOhlcvRequestUrl, hasCatastrophicOhlcvPriceMismatch, parseExternalOhlcvList, type ExternalChartRange, type ExternalOhlcvPayload } from "../external-ohlcv";
+import { externalChartRefreshMs, externalOhlcvRequestUrl, hasCatastrophicOhlcvPriceMismatch, isExternalPoolIdentity, normalizeExternalPoolIdentity, parseExternalOhlcvList, type ExternalChartRange, type ExternalOhlcvPayload } from "../external-ohlcv";
 import { rmtCuratedMarketByToken } from "../vnext/curated-market-registry";
 import { geckoPresentationReader, geckoTokenUrl, parseTokenPools, PresentationProviderError } from "./gecko-presentation-reader";
 import { type ChartReadDiagnostic } from "./chart-read-diagnostic";
@@ -7,6 +7,20 @@ import { type ChartReadDiagnostic } from "./chart-read-diagnostic";
 /** Presentation evidence only; no execution route imports this reader. */
 export function createTokenChartReader(reader = geckoPresentationReader, canonical = (token: string) => rmtCuratedMarketByToken(token)?.market.poolKey ?? null) {
   const markets = (token: string, diagnostic?: ChartReadDiagnostic) => reader.read(geckoTokenUrl(token, "pools"), value => parseTokenPools(value, token), 5 * 60_000, undefined, diagnostic);
+  async function selectedMarket(token: string, pool?: string) {
+    if (!pool) {
+      const result = await markets(token);
+      return { ...result, data: result.data[0] ?? null };
+    }
+    if (!isExternalPoolIdentity(pool)) throw new PresentationProviderError("INVALID");
+    const exactPool = normalizeExternalPoolIdentity(pool);
+    return reader.read(`https://api.geckoterminal.com/api/v2/networks/robinhood/pools/${exactPool.toLowerCase()}`, value => {
+      const payload = value as { data?: unknown };
+      const observation = parseTokenPools({ data: [payload.data] }, token).find(m => m.pool.toLowerCase() === exactPool.toLowerCase());
+      if (!observation) throw new PresentationProviderError("INVALID");
+      return observation;
+    }, 60_000);
+  }
   async function chart(token: string, hint: string | null, range: ExternalChartRange, referencePrice: number | null, diagnostic?: ChartReadDiagnostic): Promise<ExternalOhlcvPayload> {
     const resolutionStarted = diagnostic?.now() ?? 0;
     const exact = getAddress(token);
@@ -47,6 +61,6 @@ export function createTokenChartReader(reader = geckoPresentationReader, canonic
       return readPool(alternative.pool);
     }
   }
-  return { markets, chart };
+  return { markets, selectedMarket, chart };
 }
 export const tokenChartReader = createTokenChartReader();

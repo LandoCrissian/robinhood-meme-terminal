@@ -8,6 +8,7 @@ import { readVNextEcosystemIntelligence } from "../../../../lib/server/vnext-eco
 import { resolveUniversalMarketAddress } from "../../../../lib/server/universal-market-resolver";
 import { unavailableVNextEcosystemIntelligence } from "../../../../lib/vnext/ecosystem-intelligence";
 import { readTokenPresentationCategory } from "../../../../lib/server/token-presentation-reader";
+import { isExternalPoolIdentity, normalizeExternalPoolIdentity } from "../../../../lib/external-ohlcv";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,10 @@ export async function GET(request: Request) {
     : [];
   const view = searchParams.get("view");
   if (view === "visual" || view === "market") {
-    const evidence = await readTokenPresentationCategory(address, view);
+    if (view === "market" && rawPair && !isExternalPoolIdentity(rawPair)) {
+      return NextResponse.json({ error: "A complete pool identity is required." }, { status: 400, headers: { "Cache-Control": "no-store" } });
+    }
+    const evidence = await readTokenPresentationCategory(address, view, view === "market" && rawPair ? normalizeExternalPoolIdentity(rawPair) : undefined);
     return NextResponse.json(evidence, { headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=120" } });
   }
   if (view === "enrichment") {

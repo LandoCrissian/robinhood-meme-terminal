@@ -39,12 +39,13 @@ function timeLabel(timestamp: number, range: ExternalChartRange) {
     : date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
 
-function acceptPayload(value: unknown, token: string, range: ExternalChartRange, referencePriceUsd: number | null) {
+function acceptPayload(value: unknown, token: string, range: ExternalChartRange, referencePriceUsd: number | null, selectedPool: string | null) {
   if (!value || typeof value !== "object") return null;
   const payload = value as Partial<ExternalOhlcvPayload>;
   if (
     payload.token?.toLowerCase() !== token.toLowerCase()
     || typeof payload.pair !== "string"
+    || (selectedPool !== null && payload.pair.toLowerCase() !== selectedPool.toLowerCase())
     || payload.range !== range
     || payload.source !== "GeckoTerminal"
     || !Array.isArray(payload.candles)
@@ -97,7 +98,7 @@ export function VNextMarketChart({ token, pair, symbol, referencePriceUsd, refer
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const signature = useRef("");
   const requestId = useRef(0);
-  const chartKey = `${token.toLowerCase()}:${range}`;
+  const chartKey = `${token.toLowerCase()}:${pair?.toLowerCase() ?? "unselected"}:${range}`;
   const activeKey = useRef("");
 
   useEffect(() => {
@@ -127,7 +128,7 @@ export function VNextMarketChart({ token, pair, symbol, referencePriceUsd, refer
         query.set("referencePrice", String(referencePriceUsd));
       }
       const response = await fetch(`/api/markets/ohlcv?${query}`, { signal: controller.signal });
-      const next = acceptPayload(await response.json(), token, range, referencePriceUsd);
+      const next = acceptPayload(await response.json(), token, range, referencePriceUsd, pair);
       if (!response.ok || !next) throw new Error("Chart response unavailable.");
       if (id !== requestId.current) return;
       const nextSignature = payloadSignature(next);
@@ -152,6 +153,7 @@ export function VNextMarketChart({ token, pair, symbol, referencePriceUsd, refer
 
   const candles = payload?.token.toLowerCase() === token.toLowerCase()
     && payload.range === range
+    && (!pair || payload.pair.toLowerCase() === pair.toLowerCase())
     ? payload.candles : [];
   const sparse = candles.length > 0 && candles.length < 3;
   const geometry = useMemo(() => chartComposition(candles, size.width, size.height), [candles, size]);
