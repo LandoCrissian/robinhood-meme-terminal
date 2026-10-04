@@ -50,13 +50,24 @@ assert.equal(normalizeDirectoryMarkets({ markets: [raw] })[0].priceUsd, b.priceU
 assert.equal(normalizeDirectoryMarkets({ markets: [raw] })[0].pairAddress, poolB, "A V4 PoolId survives the directory boundary");
 
 async function main() {
-  const record = (pool: string, exact = token) => ({ id: `robinhood_${pool}`, attributes: { address: pool, base_token_price_usd: "0.000006882", reserve_in_usd: "100" },
+  const record = (pool: string, exact = token) => ({ id: `robinhood_${pool}`, attributes: { address: pool, base_token_price_usd: "0.000006882", quote_token_price_usd: "1.01", reserve_in_usd: "100" },
     relationships: { base_token: { data: { id: `robinhood_${exact}` } }, quote_token: { data: { id: `robinhood_${quote}` } } } });
   let calls = 0;
   const reader = createTokenChartReader(createGeckoPresentationReader((async () => { calls++; return Response.json({ data: record(poolA) }); }) as typeof fetch));
   const results = await Promise.all([reader.selectedMarket(token, poolA), reader.selectedMarket(token, poolA)]);
   assert.equal(calls, 1, "Exact selected reads coalesce without token-directory fanout");
   assert.equal(results[0].data?.pool, poolA);
+  const quoteResult = await reader.selectedMarket(quote, poolA);
+  assert.equal(quoteResult.data?.token, quote, "A cached pool is parsed for the requesting token perspective");
+  assert.equal(quoteResult.data?.priceUsd, 1.01, "A pool's quote token cannot inherit its base token's cached price");
+  assert.equal(calls, 1, "Both valid token perspectives share one bounded provider read");
+  await assert.rejects(reader.selectedMarket(`0x${"44".repeat(20)}`, poolA), "A cached pool still rejects an unrelated token");
+  let sharedCalls = 0;
+  const sharedReader = createTokenChartReader(createGeckoPresentationReader((async () => { sharedCalls++; return Response.json({ data: record(poolA) }); }) as typeof fetch));
+  const [baseRead, quoteRead] = await Promise.all([sharedReader.selectedMarket(token, poolA), sharedReader.selectedMarket(quote, poolA)]);
+  assert.equal(baseRead.data?.token, token); assert.equal(baseRead.data?.priceUsd, 0.000006882);
+  assert.equal(quoteRead.data?.token, quote); assert.equal(quoteRead.data?.priceUsd, 1.01);
+  assert.equal(sharedCalls, 1, "Concurrent base/quote perspectives preserve single flight and exact prices");
   await assert.rejects(reader.selectedMarket(token, poolB), "Provider cannot answer another pool under the requested identity");
   const wrongToken = createTokenChartReader(createGeckoPresentationReader((async () => Response.json({ data: record(poolA, `0x${"33".repeat(20)}`) })) as typeof fetch));
   await assert.rejects(wrongToken.selectedMarket(token, poolA), "Exact pool must independently contain the selected token");
