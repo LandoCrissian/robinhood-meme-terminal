@@ -14,12 +14,18 @@ export function createTokenChartReader(reader = geckoPresentationReader, canonic
     }
     if (!isExternalPoolIdentity(pool)) throw new PresentationProviderError("INVALID");
     const exactPool = normalizeExternalPoolIdentity(pool);
-    return reader.read(`https://api.geckoterminal.com/api/v2/networks/robinhood/pools/${exactPool.toLowerCase()}`, value => {
+    // Cache the shared pool payload, not one caller's token-relative price.
+    // Base and quote perspectives reuse the same bounded read/single flight,
+    // then independently bind the observation to their exact token.
+    const result = await reader.read(`https://api.geckoterminal.com/api/v2/networks/robinhood/pools/${exactPool.toLowerCase()}`, value => {
+      if (!value || typeof value !== "object" || Array.isArray(value)) throw new PresentationProviderError("INVALID");
       const payload = value as { data?: unknown };
-      const observation = parseTokenPools({ data: [payload.data] }, token).find(m => m.pool.toLowerCase() === exactPool.toLowerCase());
-      if (!observation) throw new PresentationProviderError("INVALID");
-      return observation;
+      if (!payload.data || typeof payload.data !== "object" || Array.isArray(payload.data)) throw new PresentationProviderError("INVALID");
+      return payload;
     }, 60_000);
+    const observation = parseTokenPools({ data: [result.data.data] }, token).find(m => m.pool.toLowerCase() === exactPool.toLowerCase());
+    if (!observation) throw new PresentationProviderError("INVALID");
+    return { ...result, data: observation };
   }
   async function chart(token: string, hint: string | null, range: ExternalChartRange, referencePrice: number | null, diagnostic?: ChartReadDiagnostic): Promise<ExternalOhlcvPayload> {
     const resolutionStarted = diagnostic?.now() ?? 0;
