@@ -88,7 +88,12 @@ async function rankWindowAcceptance(page, width, selector, output) {
   await page.locator(width<768?'#rmt-mobile-market-search':'#rmt-desktop-market-search').fill(' ');
   excluded=true;const beforeReads=reads;await page.clock.fastForward(61000);
   await until(async()=>reads>beforeReads&&!(await rows.evaluateAll(nodes=>nodes.map(n=>n.querySelector('strong')?.textContent))).includes('TREE'),'excluded activity evidence removes TREE during hold');
-  return {width,evidence:'CONTROLLED_RANK_BOUNDARY_TRANSITIONS_NOT_PRODUCTION',checks,authoritativeExclusion:true};
+  assert.equal(await rows.count(),23);
+  excluded=false;const beforeReentry=reads;await page.clock.fastForward(61000);
+  await until(()=>reads>beforeReentry,'fresh qualification revalidated');await page.clock.runFor(200);
+  assert.equal(await rows.count(),23,'an authoritatively removed row is a pending entrant if it requalifies during hold');
+  await page.locator('.rmtScannerUpdates button').click();await until(async()=>await rows.count()===24,'requalified entrant returns only on publication');
+  return {width,evidence:'CONTROLLED_RANK_BOUNDARY_TRANSITIONS_NOT_PRODUCTION',checks,authoritativeExclusion:true,requalifiedEntrantDeferred:true};
 }
 async function workspaceRefreshAcceptance(page, width) {
   await installTokenRoutes(page);
