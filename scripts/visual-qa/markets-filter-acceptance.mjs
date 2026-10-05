@@ -17,7 +17,8 @@ try {
     await installTokenRoutes(page);
     await page.goto(`${base}?universe=launches`,{waitUntil:'domcontentloaded'});
     const consent=page.getByRole('button',{name:'I understand',exact:false});
-    if(await consent.isVisible()) await consent.click();
+    await consent.waitFor({state:'visible'}); await consent.click();
+    await page.locator('.tradingTermsBackdrop').waitFor({state:'hidden'});
     await page.locator(mobile?'.rmtMobileMarketRow':'.rmtMarketTableRow').first().waitFor();
     await page.waitForURL(url=>url.searchParams.get('universe')==='all');
     const trigger=page.locator('.rmtExploreTrigger').first(), dialog=page.locator('.rmtExploreDialog'), input=page.locator(mobile?'#rmt-mobile-market-search':'#rmt-desktop-market-search');

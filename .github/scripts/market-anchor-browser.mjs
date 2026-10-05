@@ -1,3 +1,4 @@
+import { restoreAllActivityDeepLink } from '../../scripts/visual-qa/market-filter-test-support.mjs';
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -52,8 +53,7 @@ export async function runMarketAnchorBrowser({ browser, base, external, output }
       };
       await page.goto(base);
       await page.getByRole('button', { name: 'I understand', exact: false }).click();
-      await page.locator('.rmtMarketViews .rmtExploreTrigger').first().click();
-      await page.getByRole('button', { name: 'Any activity', exact: true }).click();
+      await restoreAllActivityDeepLink(page);
       const rows = page.locator(mobile ? '.rmtMobileMarketRow' : '.rmtMarketTableRow');
       await rows.first().waitFor();
       await page.waitForFunction(() => performance.getEntriesByName('rmt:market-enrichment:published').length > 0);

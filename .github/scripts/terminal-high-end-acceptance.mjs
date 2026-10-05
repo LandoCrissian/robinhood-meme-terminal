@@ -1,3 +1,4 @@
+import { restoreAllActivityDeepLink } from '../../scripts/visual-qa/market-filter-test-support.mjs';
 import { openExecutionEvidence } from './trade-details-browser.mjs';
 import { chromium, devices } from "playwright";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
@@ -1184,8 +1185,7 @@ async function inspectDesktop(browser, viewport, label) {
   await page.screenshot({ path: `${output}/portfolio-${label}.png`, fullPage: false, animations: "disabled" });
   await headerMarkets.click();
   await search.fill("R02");
-  await page.locator('.rmtExploreTrigger').click();
-  await page.getByRole('button', { name: 'Any activity', exact: true }).click();
+  await restoreAllActivityDeepLink(page);
   await page.locator('.rmtExploreTrigger').click();
   await page.locator('.rmtExploreDialog button').filter({ has: page.locator('span', { hasText: /^RWA$/ }) }).click();
   await page.waitForTimeout(100);
@@ -1209,7 +1209,7 @@ async function inspectDesktop(browser, viewport, label) {
   await headerMarkets.click();
   if (new URL(page.url()).searchParams.get('universe') !== 'rwa') throw new Error(`${label}: navigation lost the selected universe`);
   await page.locator('.rmtExploreTrigger').click();
-  await page.locator('.rmtExploreDialog fieldset button').filter({ has: page.locator('span', { hasText: /^All$/ }) }).click();
+  await page.locator('.rmtExploreDialog fieldset button').filter({ has: page.locator('span', { hasText: /^All Markets$/ }) }).click();
   await page.getByRole("button", { name: /^Active\s+/ }).click();
   if (await page.getByRole("button", { name: /^Active\s+/ }).getAttribute("aria-pressed") !== "true") throw new Error(`${label}: Markets navigation did not restore the default market view`);
   if (await page.locator(".rmtDesktopTerminal .rmtMarketTableRow").count() !== 24) throw new Error(`${label}: changing category did not reset the bounded market page`);
@@ -1777,10 +1777,9 @@ async function inspectMarketLoadPerformance(browser, options, label, directoryDe
   const counts = vNextMarketDirectoryViewCounts(observed);
   for (const view of ["active", "trending", "new", "rwa", "all"]) {
     if (view === "rwa" || view === "all") {
+      await restoreAllActivityDeepLink(page);
       await revealBrowseExplore(page);
-      await page.getByRole('button', { name: 'Any activity', exact: true }).click();
-      await revealBrowseExplore(page);
-      await page.locator('.rmtExploreDialog fieldset button').filter({ has: page.locator('span', { hasText: new RegExp(`^${view}$`, 'i') }) }).click();
+      await page.locator('.rmtExploreDialog fieldset button').filter({ has: page.locator('span', { hasText: new RegExp(`^${view === 'all' ? 'All Markets' : view}$`, 'i') }) }).click();
     } else {
       await page.getByRole("button", { name: new RegExp(`^${view}\\s+${counts[view]}$`, "i") }).click();
     }
@@ -3554,8 +3553,7 @@ async function inspectMobile(browser, viewport, label) {
   await page.screenshot({ path: `${output}/markets-${label}.png`, fullPage: false, animations: "disabled" });
   await page.getByRole("button", { name: /^Load 24 more/ }).click();
   if (await initialMobileRows.count() !== 48) throw new Error(`${label}: mobile local pagination did not reveal the next 24 markets`);
-  await revealBrowseExplore(page);
-  await page.getByRole('button', { name: 'Any activity', exact: true }).click();
+  await restoreAllActivityDeepLink(page);
   await revealBrowseExplore(page);
   await page.getByRole("button", { name: /^RWA\s+2$/ }).click();
   const mobileRwaRows = page.locator(".rmtMobileTerminal .rmtMobileMarketRow");
@@ -3565,7 +3563,7 @@ async function inspectMobile(browser, viewport, label) {
 
   await page.screenshot({ path: `${output}/rwa-${label}.png`, fullPage: false, animations: "disabled" });
   await revealBrowseExplore(page);
-  await page.locator('.rmtExploreDialog fieldset button').filter({ has: page.locator('span', { hasText: /^All$/ }) }).click();
+  await page.locator('.rmtExploreDialog fieldset button').filter({ has: page.locator('span', { hasText: /^All Markets$/ }) }).click();
   await page.getByRole("button", { name: /^Active\s+/ }).click();
   await page.getByRole("button", { name: /^Load 24 more/ }).click();
   if (await page.locator(".rmtMobileMarketRow").count() !== 48) throw new Error(`${label}: mobile page depth was not established for navigation restoration`);

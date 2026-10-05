@@ -69,3 +69,18 @@ Discovery, passive search-row enrichment, selected-market price authority,
 60-second Markets/30-second Launches refresh, interaction hold and execution
 boundaries are preserved. No Launch producer, Project Graph, provider, fee,
 Privy, treasury, database configuration or PR553 change is included.
+
+### Acceptance harness boundaries
+
+The first PR head's remote acceptance and 0x browser jobs attempted to click the
+removed Any activity control. They now use the existing compatibility view=all
+URL and retain their complete inventory/count assertions. The helper waits for
+hydration and removes stale workspace URL context before history restoration.
+
+The new filter test now waits for the first-visit terms overlay to be dismissed
+before attempting a filter click. The captured genuine NFT test waits for the
+actual item link because both the loading fallback and the completed gallery
+share data-nft-gallery. It counts the 24 item links separately from the pagination link. Its item-count
+and first-click destination assertions remain
+unchanged. No navigation retry, sleep, timeout increase, or assertion waiver was
+introduced.

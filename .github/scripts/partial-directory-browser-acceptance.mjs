@@ -66,7 +66,7 @@ try {
     await enter.click();
     await page.locator(".tradingTermsBackdrop").waitFor({ state: "hidden" });
     await page.locator(".rmtMarketViews .rmtExploreTrigger").first().click();
-    const all = page.locator(".rmtExploreDialog fieldset button").filter({ has: page.locator("span").filter({ hasText: /^All$/ }) });
+    const all = page.locator(".rmtExploreDialog fieldset button").filter({ has: page.locator("span").filter({ hasText: /^All Markets$/ }) });
     await all.waitFor({ state: "visible", timeout: 20000 });
     assert.equal(
       await page.getByRole("button", { name: "Start with live markets", exact: true }).count(),
@@ -74,7 +74,7 @@ try {
       "The default terminal flow must not open the optional first-visit guide."
     );
     const count = async expected => {
-      assert.equal(await all.locator("span").first().textContent(), "All", "The count belongs to the All universe");
+      assert.equal(await all.locator("span").first().textContent(), "All Markets", "The count belongs to the All universe");
       assert.equal(await all.getAttribute("aria-pressed"), "true", "All remains selected independently of activity");
       for (let i = 0; i < 100; i++) {
         if ((await all.locator("small").textContent().catch(() => "")) === String(expected)) return;

@@ -43,13 +43,15 @@ try{
     await destination.waitFor();return {href,settledUrl:page.url(),destinationRendered:true};
   };
   await page.goto(`${base}/nft?q=ccff00%20%235`,{waitUntil:'domcontentloaded'});
-  const consent=page.getByRole('button',{name:'I understand',exact:false});if(await consent.isVisible())await consent.click();
+  const consent=page.getByRole('button',{name:'I understand',exact:false});
+  await consent.waitFor({state:'visible'}); await consent.click();
+  await page.locator('.tradingTermsBackdrop').waitFor({state:'hidden'});
   const search=page.locator('[data-nft-item-lookup="CONFIRMED"] [data-nft-search-item]');
   await search.waitFor();assert.equal(await search.getAttribute('href'),'/nft/ccff00/5');
   const searchToItem=await navigate(search,page.locator('[data-nft-item-workspace]'));
   assert.equal(await page.getByRole('heading',{name:'Token #5',exact:true}).count(),1);
-  await navigate(page.getByRole('link',{name:/Back to CCFF00 collection/}),page.locator('[data-nft-gallery]'));
-  const gallery=page.locator('[data-nft-gallery]');assert.equal(await gallery.locator('a').count(),24);
+  await navigate(page.getByRole('link',{name:/Back to CCFF00 collection/}),page.locator('[data-nft-gallery] a[href="/nft/ccff00/5"]'));
+  const gallery=page.locator('[data-nft-gallery]');assert.equal(await gallery.locator('a[href^="/nft/ccff00/"]').count(),24);
   await page.screenshot({path:path.join(output,`${width}-genuine-collection.png`)});
   const item=gallery.locator('a[href="/nft/ccff00/5"]');
   const collectionToItem=await navigate(item,page.locator('[data-nft-item-workspace]'));

@@ -1,3 +1,4 @@
+import { restoreAllActivityDeepLink } from './market-filter-test-support.mjs';
 import { installTokenRoutes } from "./token-presentation-fixtures.mjs";
 import { chromium } from "playwright";
 import { createServer } from "node:http";
@@ -1054,15 +1055,6 @@ if (failures.length) {
   console.info(`RMT Legion semantic/capture lane: PASS (${stateResults.length} states)`);
 }
 
-async function restoreAllActivityDeepLink(page) {
-  // Compatibility URLs still cover the broader inventory without restoring a
-  // duplicate activity control inside the owner-approved Markets filter.
-  await page.evaluate(() => {
-    const url = new URL(location.href); url.searchParams.set("view", "all");
-    history.pushState({}, "", url); dispatchEvent(new PopStateEvent("popstate"));
-  });
-  await page.waitForFunction(() => [...document.querySelectorAll('.rmtPrimaryViews button')].every(button => button.getAttribute('aria-pressed') !== 'true'));
-}
 async function revealHolderSources(page) {
   const details = page.locator(".vnHolderSources");
   if (!await details.evaluate(node => node.open)) await details.locator(":scope > summary").click();
