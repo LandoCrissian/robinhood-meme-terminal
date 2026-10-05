@@ -852,7 +852,7 @@ async function traceNftJourney(page) {
     const url = new URL(request.url());
     if (url.pathname.startsWith("/nft")) navigationTrace.push({ event, time: performance.now(), path: `${url.pathname}${url.search}`, ...extra });
   };
-  page.on("request", request => record("request", request, { navigation: request.isNavigationRequest() }));
+  page.on("request", request => record("request", request, { navigation: request.isNavigationRequest(), rsc: request.headers()["rsc"] === "1", partialPrefetch: request.headers()["next-router-prefetch"] === "1" }));
   page.on("response", response => record("response", response.request(), { status: response.status() }));
   page.on("requestfailed", request => record("requestfailed", request, { error: request.failure()?.errorText }));
   page.on("pageerror", error => navigationTrace.push({ event: "exception", message: error.message }));
@@ -912,6 +912,17 @@ async function nftJourneyLane(browser, viewport, platform) {
       readyState: document.readyState, href: link.getAttribute("href"), clientHandlerInstalled: true,
       scroll: scrollY, rect: link.getBoundingClientRect().toJSON(), scrollBehavior: getComputedStyle(document.documentElement).scrollBehavior,
     }), platform));
+    const href = await element.getAttribute("href");
+    // Dynamic collection/item routes must be fetched on activation, not through
+    // a speculative tree-only prefetch followed by the missing-data patch lane.
+    // Preserve the real pointer click and exact rendered-destination assertion.
+    if (href && /^\/nft\/[^/?]+(?:\/[^/?]+)?(?:\?.*)?$/.test(href)) {
+      await element.hover();
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => resolve())));
+      const speculativeReads = navigationTrace.filter(entry => entry.event === "request" && entry.partialPrefetch && new URL(entry.path, base).pathname === new URL(href, base).pathname);
+      check(speculativeReads.length === 0, state, "Dynamic NFT destination used the partial-prefetch navigation boundary.", { href, speculativeReads });
+    }
+    navigationTrace.push({ event: "activation", time: performance.now(), href, urlBefore: page.url() });
     await element.click();
     await anchor.dispose();
     await marker.dispose();
@@ -949,6 +960,7 @@ async function nftJourneyLane(browser, viewport, platform) {
   await waitForDestination(/\/nft\/ccff00\/1$/, page.getByRole("link", { name: /Back to CCFF00 collection/ }));
   await clickReadyLink(page.getByRole("link", { name: /Back to CCFF00 collection/ }));
   await waitForDestination(/\/nft\/ccff00$/, page.locator("[data-nft-gallery] a").first());
+  check(!navigationTrace.some(entry => entry.event === "exception"), state, "NFT navigation emitted a browser exception.", { exceptions: navigationTrace.filter(entry => entry.event === "exception") });
   const forbiddenCount = await page.locator("a,button").filter({ hasText: /^(Buy|List|Offer|Fulfill|Sign|Submit)$/i }).count();
   check(forbiddenCount === 0, state, "Functional NFT journey exposed execution controls.", { forbiddenCount });
   await writeFile(path.join(output, `${state}-navigation-trace.json`), JSON.stringify({ navigationTrace, pointerTrace: await page.evaluate(() => window.__rmtNftJourneyEvents) }, null, 2));
@@ -991,6 +1003,8 @@ try {
   }
   await nftJourneyLane(browser, { width: 1440, height: 900 }, "desktop");
   await nftJourneyLane(browser, { width: 390, height: 844 }, "mobile");
+  await nftJourneyLane(browser, { width: 375, height: 812 }, "mobile-375");
+  await nftJourneyLane(browser, { width: 430, height: 932 }, "mobile-430");
 } catch (error) {
   failures.push({ state: "harness", message: error instanceof Error ? error.stack ?? error.message : String(error) });
 } finally {

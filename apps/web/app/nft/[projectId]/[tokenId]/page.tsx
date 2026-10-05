@@ -7,6 +7,8 @@ import { NftItemMedia } from "../../_components/nft-item-media";
 import styles from "../project-market.module.css";
 import itemStyles from "../inventory.module.css";
 
+// Fetch dynamic NFT destinations on activation. Partial auto-prefetch can leave
+// the Next router suspended after the destination response has completed.
 export const dynamic = "force-dynamic";
 
 function short(value: string) {
@@ -25,7 +27,7 @@ export default async function NftItemPage({ params }: { params: Promise<{ projec
   if (!/^(0|[1-9]\d*)$/.test(tokenId)) notFound();
   const [model, itemResult] = await Promise.all([readRmtNftProjectMarket(projectId), readRmtNftItem(projectId, tokenId)]);
   if (!model || itemResult === null) notFound();
-  if (!("tokenId" in itemResult)) return <main className={styles.page}><section className={itemStyles.itemUnavailable}><p>RMT NFT TERMINAL</p><h1>Item data unavailable</h1><Link href={`/nft/${projectId}`}>Return to Project Market</Link></section></main>;
+  if (!("tokenId" in itemResult)) return <main className={styles.page}><section className={itemStyles.itemUnavailable}><p>RMT NFT TERMINAL</p><h1>Item data unavailable</h1><Link prefetch={false} href={`/nft/${projectId}`}>Return to Project Market</Link></section></main>;
   const item = itemResult;
   const attribute = item.metadata.attributes.find((candidate) => candidate.traitType === "Color");
   const marketplace = "provider" in model.marketplace ? model.marketplace : null;
@@ -33,7 +35,7 @@ export default async function NftItemPage({ params }: { params: Promise<{ projec
   const openSeaItem = marketplace ? `https://opensea.io/assets/robinhood/${item.collectionAddress}/${item.tokenId}` : null;
 
   return <main className={styles.page}>
-    <nav className={itemStyles.breadcrumb} aria-label="NFT Terminal breadcrumb"><Link href="/nft">NFTs</Link><span aria-hidden="true"> → </span><Link href={`/nft/${model.project.projectId}`}>{model.project.displayName} Project Market</Link><span aria-hidden="true"> → Token #{item.tokenId}</span></nav>
+    <nav className={itemStyles.breadcrumb} aria-label="NFT Terminal breadcrumb"><Link prefetch={false} href="/nft">NFTs</Link><span aria-hidden="true"> → </span><Link prefetch={false} href={`/nft/${model.project.projectId}`}>{model.project.displayName} Project Market</Link><span aria-hidden="true"> → Token #{item.tokenId}</span></nav>
     <section className={itemStyles.itemWorkspace} data-nft-item-workspace>
       <NftItemMedia metadata={item.metadata} alt={`CCFF00 token ${item.tokenId}`} className={itemStyles.itemMedia} />
       <div className={itemStyles.itemDetails}>
@@ -50,7 +52,7 @@ export default async function NftItemPage({ params }: { params: Promise<{ projec
           <div><dt>Metadata provenance</dt><dd>ONCHAIN TOKENURI</dd></div>
         </dl>
         <div className={itemStyles.itemActions}>{openSeaItem ? <a href={openSeaItem} target="_blank" rel="noreferrer">View on OpenSea ↗</a> : null}<a href={`${explorer}/token/${item.collectionAddress}/instance/${item.tokenId}`} target="_blank" rel="noreferrer">View on Blockscout ↗</a></div>
-        <Link className={itemStyles.returnMarket} href={`/nft/${model.project.projectId}`}>← Back to {model.project.displayName} collection</Link>
+        <Link prefetch={false} className={itemStyles.returnMarket} href={`/nft/${model.project.projectId}`}>← Back to {model.project.displayName} collection</Link>
       </div>
     </section>
   </main>;

@@ -26,6 +26,8 @@ import { NftMintExecutionRecovery } from "./_components/nft-mint-execution-recov
 import { NftMintReadiness } from "./_components/nft-mint-readiness";
 import styles from "./nft-terminal.module.css";
 
+// Fetch dynamic NFT destinations on activation. Partial auto-prefetch can leave
+// the Next router suspended after the destination response has completed.
 export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "RMT NFT Markets | Robinhood Chain",
@@ -142,7 +144,7 @@ function CollectionRow({ collection }: { collection: RmtNftTerminalCollectionCar
     <dl className={styles.collectionMetrics}><Suspense fallback={<><div><dt>Native floor</dt><dd>—</dd></div><div><dt>24h volume</dt><dd>—</dd></div></>}><CollectionMarketMetrics collection={collection} /></Suspense></dl>
     <span className={styles.rowAction}>{collection.projectStatus === "ACTIVE" ? "Open market →" : "Watching"}</span>
   </article>;
-  return collection.projectStatus === "ACTIVE" ? <Link className={styles.collectionRowLink} href={`/nft/${collection.projectId}`}>{row}</Link> : <div className={styles.collectionRowLink}>{row}</div>;
+  return collection.projectStatus === "ACTIVE" ? <Link prefetch={false} className={styles.collectionRowLink} href={`/nft/${collection.projectId}`}>{row}</Link> : <div className={styles.collectionRowLink}>{row}</div>;
 }
 function CompactEmpty({ title, detail }: { title: string; detail?: string }) {
   return <section className={styles.compactEmpty} data-nft-empty-state><strong>{title}</strong>{detail ? <span>{detail}</span> : null}</section>;
@@ -182,7 +184,7 @@ async function MintingSurface({ query }: { query: string }) {
 async function ExactItemResults({ query, catalog }: { query: string; catalog: RmtNftTerminalCatalog }) {
   const result = await resolveExactRmtNftItemSearch(query, catalog.projects, readItemForRequest);
   if (result.status === "NOT_APPLICABLE") return null;
-  if (result.status === "CONFIRMED") return <div className={styles.itemResults} data-nft-item-lookup="CONFIRMED">{result.matches.map(({ project, item }) => <Link href={`/nft/${project.projectId}/${item.tokenId}`} key={`${project.projectId}:${item.tokenId}`} data-nft-search-item>
+  if (result.status === "CONFIRMED") return <div className={styles.itemResults} data-nft-item-lookup="CONFIRMED">{result.matches.map(({ project, item }) => <Link prefetch={false} href={`/nft/${project.projectId}/${item.tokenId}`} key={`${project.projectId}:${item.tokenId}`} data-nft-search-item>
     <NftItemMedia metadata={item.metadata} alt={`${project.displayName} token ${item.tokenId}`} className={styles.searchItemMedia} />
     <span><strong>{project.displayName} #{item.tokenId}</strong><small>Exact indexed NFT · canonical identity confirmed</small></span><em>Open item →</em>
   </Link>)}</div>;
