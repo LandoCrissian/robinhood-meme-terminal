@@ -9,7 +9,7 @@ Module._load = function(id: string, ...args: unknown[]) {
   return load.call(this,id,...args);
 };
 const { useVNextMarketDirectory } = require("../../app/vnext/use-vnext-market-directory");Module._load = load;
-let now = 0, online = true, mode = "ready", query = "", exactReads = 0;
+let now = 0, online = true, mode = "ready", query = "", exactReads = 0, broadAddress = "";
 const realNow = Date.now, realFetch = globalThis.fetch;
 const descriptors = Object.fromEntries(["document","navigator","window"].map(k => [k,Object.getOwnPropertyDescriptor(globalThis,k)]));
 const doc = Object.assign(new EventTarget(),{ visibilityState: "visible" });
@@ -25,10 +25,12 @@ globalThis.fetch = (async (input: string) => {
     query = url.searchParams.get("q")!;
     return Response.json({ query,queryKind:"token-or-pool-address",status:query === "invalid" ? "invalid_query" : "found",results:query === "invalid" ? [] : [{ address:query,name:"Verified token",symbol:"EXACT",decimals:18,matchedBy:"token",markets:[] }] });
   }
-  if (!url.searchParams.has("contract")) return Response.json({ markets:[],discoveryCoverage:{ mode:"bounded",completeWithinObservedCandidates:false,truncated:false,returnedCount:0,observedCandidateCount:0,limit:144 } });
-  exactReads++;if (mode === "failure") return Response.json({ error:"Controlled provider outage" },{status:503});
-  if (mode === "none") return Response.json({ markets:[] });
-  const address = url.searchParams.get("contract")!;
+  const exact = url.searchParams.has("contract");
+  if (exact) {
+    exactReads++;if (mode === "failure") return Response.json({ error:"Controlled provider outage" },{status:503});
+    if (mode === "none") return Response.json({ markets:[] });
+  } else if (!broadAddress) return Response.json({ markets:[],discoveryCoverage:{ mode:"bounded",completeWithinObservedCandidates:false,truncated:false,returnedCount:0,observedCandidateCount:0,limit:144 } });
+  const address = exact ? url.searchParams.get("contract")! : broadAddress;
   const evidence = { chainId:4663,assetId:`eip155:4663/contract:${address}`,token:{address,name:"Verified token",symbol:"EXACT"},venue:"uniswap",protocolVersion:4,pool:{kind:"bytes32",value:pool},baseToken:{address,name:"Verified token",symbol:"EXACT"},quoteToken:{address:quote,name:"Quote",symbol:"WETH"},assetSide:"BASE",displayEligibility:"eligible",chartEligibility:"unavailable",executionEligibility:"view-only",provenance:"dexscreener-token-pairs",priceUsd:2,liquidityUsd:100,volume24h:50,priceChange24h:1,marketCapUsd:null,fdvUsd:null,pairCreatedAt:null };
   return Response.json({ markets:[{ address,name:"Verified token",symbol:"EXACT",pairAddress:pool,primaryMarket:evidence,verifiedMarkets:[evidence],priceUsd:2,liquidityUsd:100 }] });
 }) as typeof fetch;
@@ -50,6 +52,9 @@ async function main() {
   doc.visibilityState="visible";online=false;await refresh();assert.equal(exactReads,4);
   online=true;mode="ready";await Promise.all([refresh(),refresh(),refresh()]);assert.equal(exactReads,5,"Resume/focus opportunities coalesce");
   await hook.submitUniversalSearch("invalid");hook.retainSearchRows([]);now+=60_000;await refresh();assert.equal(exactReads,5,"Invalid/non-ERC20 search cannot be probed");
+  const broad = await hook.submitUniversalSearch(token(5));hook.retainSearchRows(broad.markets);broadAddress=token(5);now+=60_000;await refresh();
+  assert.equal(exactReads,5,"Recovered broad evidence does not cause an exact read");assert.equal(states[7][0].priceUsd,2,"Broad recovery enriches retained search identity without canonical browse admission");
+  assert.equal(states[0].some((r: any) => r.address.toLowerCase() === token(5)),false,"Broad search enrichment is not browse promotion");
   if (typeof cleanup === "function") cleanup();
   console.log("Actual directory hook: passive broad-to-exact enrichment, no browse promotion, general/no-market/provider/invalid/already-enriched cases, hidden/offline and resume single flight PASS");
 }
