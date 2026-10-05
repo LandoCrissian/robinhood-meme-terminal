@@ -43,6 +43,7 @@ import {
   refreshCanonicalTokenIdentityIndex
 } from "./token-identity-index.js";
 import { LaunchIndexer } from "./launch-worker.js";
+import { LAUNCH_HISTORY_BUDGET, historicalFailureDelay } from "./launch-history-budget.js";
 
 export type WorkerStatus = {
   lastWorkerSuccessAt?: string | null;
@@ -61,6 +62,7 @@ export type WorkerStatus = {
   lastCycleDurationMs: number | null;
   lastFinalizedHead: string | null;
   telemetry: MarketIndexerTelemetry | null;
+  lastCyclePhasesMs?: Record<string, number>;
 };
 
 const robinhoodChain = defineChain({
@@ -164,8 +166,10 @@ export class MarketIndexerWorker {
   };
 
   private readonly rpc: PublicClient;
+  private readonly historyRpc: PublicClient;
   private launchIndexer: LaunchIndexer | null = null;
   private timer: NodeJS.Timeout | null = null;
+  private historyTimer: NodeJS.Timeout | null = null;
   private stopped = false;
   private lastHeartbeatLogAt = 0;
   private lastHeartbeatError: string | null = null;
@@ -181,6 +185,12 @@ export class MarketIndexerWorker {
         retryDelay: 500,
         timeout: 15_000
       })
+    });
+    // Same configured provider. History never retries within a window; it backs
+    // off at the scheduler boundary so provider degradation cannot amplify RPC.
+    this.historyRpc = createPublicClient({
+      chain: robinhoodChain,
+      transport: http(config.rpcUrl, { retryCount: 0, timeout: 5_000, batch: { batchSize: 3, wait: 0 } })
     });
   }
 
@@ -624,7 +634,8 @@ export class MarketIndexerWorker {
             lastSyncAt: source.lastSyncAt,
             error: source.error
           })) ?? [],
-        error: this.status.lastError
+        error: this.status.lastError,
+        cyclePhasesMs: this.status.lastCyclePhasesMs ?? null
       })
     );
   }
@@ -637,6 +648,7 @@ export class MarketIndexerWorker {
     this.status.lastCycleStartedAt = new Date(startedAt).toISOString();
     let finalizedHead: bigint | null = null;
     let thrown: unknown = null;
+    const phases: Record<string, number> = {};
     try {
       await this.assertDatabaseWithinLimit();
       await this.restoreRebuildableStateIfNeeded();
@@ -651,6 +663,7 @@ export class MarketIndexerWorker {
         throw new Error("RPC omitted the finalized block hash");
       }
       let failure: Error | null = null;
+      const marketStarted = Date.now();
       for (const source of marketSources) {
         try {
           await this.indexSource(source, finalizedHead);
@@ -682,8 +695,15 @@ export class MarketIndexerWorker {
         failure ??= new Error(`token identity index: ${errorText(error)}`);
       }
       try {
-        this.launchIndexer ??= new LaunchIndexer(this.pool, this.rpc, this.config.batchSize);
+        phases.ordinaryMarket = Date.now() - marketStarted;
+        this.launchIndexer ??= new LaunchIndexer(this.pool, this.rpc, this.config.batchSize, this.historyRpc);
+        const launchStarted = Date.now();
         await this.launchIndexer.tick(finalizedHead, finalizedBlock.hash);
+        phases.launchWait = Math.max(0, Date.now() - launchStarted - this.launchIndexer.lastCycleTiming.totalMs);
+        phases.launchSetup = this.launchIndexer.lastCycleTiming.setupMs;
+        phases.liveLaunch = this.launchIndexer.lastCycleTiming.liveMs;
+        phases.historicalLaunch = this.launchIndexer.lastCycleTiming.historyMs;
+        phases.launchEnrichment = this.launchIndexer.lastCycleTiming.enrichmentMs;
       } catch (error) {
         // Launch intelligence has separate coverage and cannot change ordinary market health.
         console.warn(JSON.stringify({ event: "launch_cycle_unavailable", errorClass: error instanceof Error ? error.name : "Error" }));
@@ -704,6 +724,8 @@ export class MarketIndexerWorker {
       const completedAt = Date.now();
       this.status.lastCycleCompletedAt = new Date(completedAt).toISOString();
       this.status.lastCycleDurationMs = completedAt - startedAt;
+      phases.other = Math.max(0, this.status.lastCycleDurationMs - Object.values(phases).reduce((sum, n) => sum + n, 0));
+      this.status.lastCyclePhasesMs = phases;
       if (this.status.lastError === null) {
         this.status.lastWorkerSuccessAt = this.status.lastCycleCompletedAt;
         this.status.consecutiveWorkerFailures = 0;
@@ -719,6 +741,30 @@ export class MarketIndexerWorker {
   }
 
   start() {
+    let historyFailures = 0;
+    // One bounded background lane. It never schedules another window before
+    // the previous one completes, and yields the launch lock to live work.
+    const history = async () => {
+      if (this.stopped) return;
+      let nextDelay: number = LAUNCH_HISTORY_BUDGET.idleMs;
+      try {
+        if (this.launchIndexer?.canBackfill() && this.status.lastError === null) {
+          await this.assertDatabaseWithinLimit();
+          const head = await this.historyRpc.getBlockNumber();
+          const finalized = head - BigInt(this.config.confirmations);
+          if (finalized > 0n) {
+            const block = await this.historyRpc.getBlock({ blockNumber: finalized });
+            if (block.hash) await this.launchIndexer.backfill(finalized, block.hash);
+          }
+          historyFailures = 0;
+        }
+      } catch (error) {
+        nextDelay = historicalFailureDelay(++historyFailures);
+        console.warn(JSON.stringify({ event: "launch_history_window_unavailable", errorClass: error instanceof Error ? error.name : "Error" }));
+      } finally {
+        if (!this.stopped) this.historyTimer = setTimeout(history, nextDelay);
+      }
+    };
     const schedule = async () => {
       if (this.stopped) return;
       try {
@@ -732,10 +778,13 @@ export class MarketIndexerWorker {
       }
     };
     void schedule();
+    this.historyTimer = setTimeout(history, LAUNCH_HISTORY_BUDGET.idleMs);
   }
 
   stop() {
     this.stopped = true;
     if (this.timer) clearTimeout(this.timer);
+    if (this.historyTimer) clearTimeout(this.historyTimer);
+    this.launchIndexer?.stop();
   }
 }
