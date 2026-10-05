@@ -8,7 +8,8 @@ export async function runSearchRowEnrichmentBrowser({ browser, base, data, outpu
   for(const width of widths) {
     const context = await browser.newContext({viewport:{width,height:width===1440?900:844},isMobile:width<768,hasTouch:width<768});
     await context.addInitScript(() => {window.__searchErrors=[];window.__searchWallet=0;addEventListener('error',e=>window.__searchErrors.push(e.message));addEventListener('unhandledrejection',e=>window.__searchErrors.push(String(e.reason)));const wrap=p=>{if(!p?.request)return;const f=p.request;p.request=function(...a){window.__searchWallet++;return f.apply(this,a);};};wrap(window.ethereum);addEventListener('eip6963:announceProvider',e=>wrap(e.detail?.provider));});
-    const page = await context.newPage(), reads = [];let phase='ready';
+    const page = await context.newPage(), reads = [], browserErrors = [];let phase='ready';
+    page.on('pageerror',error=>browserErrors.push(error.message));
     if(!natural) await page.clock.install();
     await page.route('**/api/**',async route=>{
       const url = new URL(route.request().url()), p=url.pathname;reads.push({at:Date.now(),path:p,query:url.search});
@@ -48,10 +49,11 @@ export async function runSearchRowEnrichmentBrowser({ browser, base, data, outpu
       const heading=await page.locator('#vn-asset-heading').innerText();assert.ok(heading.includes(selected.token.symbol));
       assert.ok(await page.locator('.vnAssetWorkspace').getByRole('button',{name:new RegExp(`Copy full token contract ${token}`,'i')}).count(),'Workspace retains exact token identity');
       assert.match(await page.locator('.vnPriceAuthoritySummary').innerText(),new RegExp(selected.quoteToken.symbol));
+      assert.deepEqual(browserErrors,[],'No browser exception during enrichment or selected-market navigation');
       if(output)await page.screenshot({path:path.join(output,`search-${width}-workspace.png`)});
       results.push({width,evidence:data.evidence,clock:natural?'NATURAL_60_SECOND_BROWSER_REFRESH':'CONTROLLED_CLOCK_REAL_REFRESH_HOOK',token,scannerPrice:rowPrice,selectedPool:selected.pool,quote:selected.quoteToken,provider:selected.provenance,price:selected.priceUsd,initialWorkspace:initial,stability,requests:reads,exactReadsBeforeTap:exactBeforeTap.length,pass:true});
     } catch(error) {
-      if(output) {await mkdir(output,{recursive:true});await page.screenshot({path:path.join(output,`search-${width}-failure.png`)});await writeFile(path.join(output,`search-${width}-failure.json`),JSON.stringify({error:String(error),reads,body:await page.locator('body').innerText(),diagnostics:await page.evaluate(()=>({marks:performance.getEntriesByType('mark').map(m=>m.name),errors:window.__searchErrors}))},null,2));}
+      if(output) {await mkdir(output,{recursive:true});await page.screenshot({path:path.join(output,`search-${width}-failure.png`)});await writeFile(path.join(output,`search-${width}-failure.json`),JSON.stringify({error:String(error),reads,browserErrors,body:await page.locator('body').innerText(),diagnostics:await page.evaluate(()=>({marks:performance.getEntriesByType('mark').map(m=>m.name),errors:window.__searchErrors}))},null,2));}
       throw error;
     } finally {await context.close();}
   }
