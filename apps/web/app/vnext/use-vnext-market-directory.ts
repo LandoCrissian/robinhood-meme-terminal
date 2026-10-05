@@ -236,11 +236,20 @@ export function useVNextMarketDirectory(initialMarket?: VNextDirectoryMarket) {
       if (exactLookupMarket.current?.address.toLowerCase() === key) exactLookupMarket.current = enriched;
       publishMarkets(); return true;
     }, () => document.visibilityState !== "hidden" && navigator.onLine);
-    // A newly resolved broad row does not need an additional exact request.
+    // Attach available broad evidence to the search row before skipping an exact
+    // request. Canonical browse admission may still omit this exact identity.
+    let broadRecovery = false;
     const rows = retainedSearchRows.current.map(row => {
       const fresh = providerEnrichmentMarkets.current.find(m => m.address.toLowerCase() === row.address.toLowerCase());
-      return fresh ? retainSelectedMarket(row, fresh) : row;
+      const enriched = fresh ? enrichSearchRow(row, fresh) : null;
+      if (!enriched) return row;
+      const key = row.address.toLowerCase();
+      searchMarketsRef.current = searchMarketsRef.current.map(r => r.address.toLowerCase() === key ? enriched : r);
+      if (exactLookupMarket.current?.address.toLowerCase() === key) exactLookupMarket.current = enriched;
+      broadRecovery = true;
+      return enriched;
     }).filter(row => !positiveQuarantines.current.has(row.address.toLowerCase()));
+    if (broadRecovery) { setSearchMarkets(searchMarketsRef.current); publishMarkets(); }
     searchEnrichments.current.retain(rows);
     await searchEnrichments.current.opportunity();
   }, [publishMarkets]);
