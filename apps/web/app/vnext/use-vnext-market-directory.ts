@@ -25,8 +25,9 @@ import {
 } from "../../lib/vnext/market-directory";
 import { VNEXT_CLIENT_REFRESH_POLICY } from "../../lib/vnext/client-refresh-policy";
 import { useScannerRefresh } from "./use-scanner-refresh";
-import { retainSelectedMarket } from "../../lib/vnext/selected-market-price";
+import { retainSelectedMarket, selectedMarketPool } from "../../lib/vnext/selected-market-price";
 import { createDirectoryEnrichmentQueue } from "../../lib/vnext/directory-enrichment-queue";
+import { createSearchRowEnrichment, enrichSearchRow, SEARCH_ROW_ENRICHMENT_POLICY } from "../../lib/vnext/search-row-enrichment";
 import {
   parseVNextUniversalMarketSearchResult,
   type VNextUniversalMarketSearchStatus
@@ -168,10 +169,14 @@ export function useVNextMarketDirectory(initialMarket?: VNextDirectoryMarket) {
   const explicitSelectionRequests = useRef(new Map<string, Promise<VNextDirectoryMarket | undefined>>());
   const searchMarketsRef = useRef<VNextDirectoryMarket[]>([]);
   const identityEnrichments = useRef<ReturnType<typeof createDirectoryEnrichmentQueue> | null>(null);
+  const searchEnrichments = useRef<ReturnType<typeof createSearchRowEnrichment> | null>(null);
+  const retainedSearchRows = useRef<VNextDirectoryMarket[]>([]);
   useEffect(() => () => {
     canonicalRequestSequence.current++;
     identityEnrichments.current?.dispose();
     identityEnrichments.current = null;
+    searchEnrichments.current?.dispose();
+    searchEnrichments.current = null;
   }, []);
 
   const publishMarkets = useCallback(() => {
@@ -199,6 +204,51 @@ export function useVNextMarketDirectory(initialMarket?: VNextDirectoryMarket) {
       setMarkets(nextMarkets);
     }
     return nextMarkets;
+  }, []);
+
+  const retainSearchRows = useCallback((rows: VNextDirectoryMarket[]) => {
+    const explicit = new Set(searchMarketsRef.current.map(row => row.address.toLowerCase()));
+    if (exactLookupMarket.current) explicit.add(exactLookupMarket.current.address.toLowerCase());
+    retainedSearchRows.current = rows.filter(row => explicit.has(row.address.toLowerCase())
+      && !positiveQuarantines.current.has(row.address.toLowerCase())).slice(0, SEARCH_ROW_ENRICHMENT_POLICY.retainedRows);
+    searchEnrichments.current?.retain(retainedSearchRows.current);
+  }, []);
+
+  const enrichRetainedSearchRows = useCallback(async () => {
+    if (!searchEnrichments.current) searchEnrichments.current = createSearchRowEnrichment(async (row, signal) => {
+      const key = row.address.toLowerCase(), sequence = searchSequence.current;
+      const parameters = new URLSearchParams({ contract: row.address });
+      const pool = selectedMarketPool(row); if (pool) parameters.set("pair", pool);
+      const payload = await readPublicWorkspace<ExternalMarketResponse>(`/api/markets/external?${parameters}`);
+      if (signal.aborted || sequence !== searchSequence.current || document.visibilityState === "hidden" || !navigator.onLine
+        || !retainedSearchRows.current.some(r => r.address.toLowerCase() === key)) return false;
+      if (payload.directoryAdmission === "not_admitted" || payload.quarantinedAddresses?.some(address => address.toLowerCase() === key)) {
+        positiveQuarantines.current.add(key);
+        searchMarketsRef.current = searchMarketsRef.current.filter(r => r.address.toLowerCase() !== key);
+        setSearchMarkets(searchMarketsRef.current);
+        if (exactLookupMarket.current?.address.toLowerCase() === key) exactLookupMarket.current = undefined;
+        publishMarkets(); return false;
+      }
+      const enriched = enrichSearchRow(row, directoryMarketFromExactLookup(payload, row.address));
+      if (!enriched || positiveQuarantines.current.has(key)) return false;
+      searchMarketsRef.current = searchMarketsRef.current.map(r => r.address.toLowerCase() === key ? enriched : r);
+      setSearchMarkets(searchMarketsRef.current);
+      if (exactLookupMarket.current?.address.toLowerCase() === key) exactLookupMarket.current = enriched;
+      publishMarkets(); return true;
+    }, () => document.visibilityState !== "hidden" && navigator.onLine);
+    // A newly resolved broad row does not need an additional exact request.
+    const rows = retainedSearchRows.current.map(row => {
+      const fresh = providerEnrichmentMarkets.current.find(m => m.address.toLowerCase() === row.address.toLowerCase());
+      return fresh ? retainSelectedMarket(row, fresh) : row;
+    }).filter(row => !positiveQuarantines.current.has(row.address.toLowerCase()));
+    searchEnrichments.current.retain(rows);
+    await searchEnrichments.current.opportunity();
+  }, [publishMarkets]);
+
+  useEffect(() => {
+    const suspend = () => { if (document.visibilityState === "hidden" || !navigator.onLine) searchEnrichments.current?.suspend(); };
+    document.addEventListener("visibilitychange", suspend); window.addEventListener("offline", suspend);
+    return () => { document.removeEventListener("visibilitychange", suspend); window.removeEventListener("offline", suspend); };
   }, []);
 
   const retainPositiveQuarantines = useCallback((addresses: readonly string[] = []) => {
@@ -326,6 +376,8 @@ export function useVNextMarketDirectory(initialMarket?: VNextDirectoryMarket) {
   }, [markets, publishMarkets]);
 
   const clearUniversalSearch = useCallback(() => {
+    retainedSearchRows.current = [];
+    searchEnrichments.current?.retain([]);
     searchSequence.current += 1;
     searchController.current?.abort();
     searchController.current = undefined;
@@ -341,6 +393,8 @@ export function useVNextMarketDirectory(initialMarket?: VNextDirectoryMarket) {
   }, []);
 
   const submitUniversalSearch = useCallback(async (rawQuery: string) => {
+    retainedSearchRows.current = [];
+    searchEnrichments.current?.retain([]);
     const query = rawQuery.trim();
     searchController.current?.abort();
     const requestSequence = searchSequence.current + 1;
@@ -646,8 +700,10 @@ export function useVNextMarketDirectory(initialMarket?: VNextDirectoryMarket) {
       // The selected serving mode retains its last-good browse inventory.
       setEnrichmentStatus("delayed");
       return false;
+    } finally {
+      await enrichRetainedSearchRows();
     }
-  }, [publishMarkets]);
+  }, [publishMarkets, enrichRetainedSearchRows]);
 
   useScannerRefresh(refresh, VNEXT_CLIENT_REFRESH_POLICY.marketDirectoryMs);
   useScannerRefresh(refreshEcosystemDirectory, VNEXT_CLIENT_REFRESH_POLICY.ecosystemDirectoryMs);
@@ -748,6 +804,7 @@ export function useVNextMarketDirectory(initialMarket?: VNextDirectoryMarket) {
     searchStatus,
     submittedSearchQuery,
     submitUniversalSearch,
-    clearUniversalSearch
+    clearUniversalSearch,
+    retainSearchRows
   };
 }

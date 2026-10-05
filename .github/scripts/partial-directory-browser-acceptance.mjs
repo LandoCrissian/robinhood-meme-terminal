@@ -4,6 +4,7 @@ import { spawn } from "node:child_process";
 import { setTimeout as delay } from "node:timers/promises";
 import { chromium } from "playwright";
 import { runDirectoryQueueBrowserAcceptance } from "./directory-queue-browser-acceptance.mjs";
+import { runSearchRowEnrichmentBrowser } from "./search-row-enrichment-browser.mjs";
 
 const web = createRequire(new URL("../../apps/web/package.json", import.meta.url));
 web("tsx/cjs");
@@ -92,6 +93,9 @@ try {
     await context.close();
   }
   await runDirectoryQueueBrowserAcceptance(browser, `http://127.0.0.1:${port}`, expanded.body);
+  const searchToken=address(7000),pool=`0x${"cd".repeat(32)}`,quote=address(7001);
+  const observed={chainId:4663,assetId:`eip155:4663/contract:${searchToken}`,token:{address:searchToken,name:"Controlled search",symbol:"SEARCH"},venue:"uniswap",protocolVersion:4,pool:{kind:"bytes32",value:pool},baseToken:{address:searchToken,name:"Controlled search",symbol:"SEARCH"},quoteToken:{address:quote,name:"Quote",symbol:"WETH"},assetSide:"BASE",displayEligibility:"eligible",chartEligibility:"unavailable",executionEligibility:"view-only",provenance:"dexscreener-token-pairs",priceUsd:2,liquidityUsd:100,volume24h:50,priceChange24h:1,marketCapUsd:null,fdvUsd:null,pairCreatedAt:null};
+  await runSearchRowEnrichmentBrowser({browser,base:`http://127.0.0.1:${port}`,data:{evidence:"CONTROLLED_CI_FIXTURE_REAL_COMPONENTS_AND_REFRESH",canonical:{canonical:true,inventorySource:"indexed",revalidationComplete:false,coverage:"partial",nextCursor:null,updatedAt:new Date().toISOString(),stale:true,markets:[]},broad:{markets:[],delayedSources:["controlled-missing-search-observation"]},search:{query:"SEARCH",queryKind:"text",status:"found",results:[searchToken,address(7002)].map(address=>({address,name:"Controlled search",symbol:"SEARCH",decimals:18,matchedBy:"symbol",markets:[]}))},external:{markets:[{address:searchToken,name:"Controlled search",symbol:"SEARCH",pairAddress:pool,primaryMarket:observed,verifiedMarkets:[observed],priceUsd:2,liquidityUsd:100}]}},output:process.env.RMT_ACCEPTANCE_OUTPUT});
 } finally {
   await browser?.close();
   server.kill();

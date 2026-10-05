@@ -75,7 +75,8 @@ export function VNextTerminalShell({ initialLocation = { context: "markets" }, i
     searchStatus,
     submittedSearchQuery,
     submitUniversalSearch,
-    clearUniversalSearch
+    clearUniversalSearch,
+    retainSearchRows
   } = useVNextMarketDirectory(initialMarket);
   const walletReadAuthorityAddress = selectedVNextWalletReadAddress({
     selectedWalletKey: identity.activeWalletKey,
@@ -132,6 +133,9 @@ export function VNextTerminalShell({ initialLocation = { context: "markets" }, i
   );
   const scanner = useAnchoredMarketRows(rankedVisibleMarkets, `${marketUniverse}:${directoryView}:${query}:${visibleMarketLimit}`, filteredMarkets);
   const visibleMarkets = scanner.rows;
+  useEffect(() => {
+    retainSearchRows(context === "markets" && query.trim() ? visibleMarkets : []);
+  }, [context, query, visibleMarkets, retainSearchRows]);
   useEffect(() => {
     const restore = () => {
       const p = new URLSearchParams(window.location.search), scope = p.get("universe"), view = p.get("view");
