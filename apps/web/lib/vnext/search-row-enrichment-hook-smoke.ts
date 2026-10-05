@@ -9,6 +9,7 @@ Module._load = function(id: string, ...args: unknown[]) {
   return load.call(this,id,...args);
 };
 const { useVNextMarketDirectory } = require("../../app/vnext/use-vnext-market-directory");Module._load = load;
+const { directoryMarketFromUniversalSearchResult } = require("./market-directory");
 let now = 0, online = true, mode = "ready", query = "", exactReads = 0, broadAddress = "";
 const realNow = Date.now, realFetch = globalThis.fetch;
 const descriptors = Object.fromEntries(["document","navigator","window"].map(k => [k,Object.getOwnPropertyDescriptor(globalThis,k)]));
@@ -36,6 +37,7 @@ globalThis.fetch = (async (input: string) => {
 }) as typeof fetch;
 async function main() {
   const hook = useVNextMarketDirectory(), cleanup = effects[0]();
+  hook.retainSearchRows(Array.from({length:24},(_,n)=>directoryMarketFromUniversalSearchResult({address:token(100+n),name:"Normal directory identity",symbol:"NORMAL",decimals:18,matchedBy:"token",markets:[]})));
   const refresh = lanes[1];await refresh();assert.equal(exactReads,0,"No fanout for normal directory");
   const found = await hook.submitUniversalSearch(token(1));assert.equal(found.markets[0].priceUsd,null);
   hook.retainSearchRows(found.markets);await refresh();assert.equal(exactReads,1);
