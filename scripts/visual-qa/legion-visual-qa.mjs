@@ -849,10 +849,28 @@ async function traceNftJourney(page) {
   };
   page.on("request", request => record("request", request, { navigation: request.isNavigationRequest(), rsc: request.headers()["rsc"] === "1", partialPrefetch: request.headers()["next-router-prefetch"] === "1" }));
   page.on("response", response => record("response", response.request(), { status: response.status() }));
+  page.on("requestfinished", request => record("requestfinished", request));
+  page.on("response", async response => {
+    if (!response.request().headers()["rsc"] || !new URL(response.url()).pathname.startsWith("/nft")) return;
+    try {
+      const body = await response.text();
+      record("flight-body", response.request(), { bytes: Buffer.byteLength(body), body: body.slice(0, 32_768) });
+    } catch (error) {
+      record("flight-body-unavailable", response.request(), { error: String(error) });
+    }
+  });
   page.on("requestfailed", request => record("requestfailed", request, { error: request.failure()?.errorText }));
   page.on("pageerror", error => navigationTrace.push({ event: "exception", message: error.message }));
   await page.addInitScript(() => {
     window.__rmtNftJourneyEvents = [];
+    window.__rmtNftHistoryEvents = [];
+    for (const method of ["pushState", "replaceState"]) {
+      const native = history[method];
+      history[method] = function (...args) {
+        window.__rmtNftHistoryEvents.push({ method, time: performance.now(), before: location.href, target: args[2] });
+        return native.apply(this, args);
+      };
+    }
     for (const type of ["pointerdown", "pointerup", "click"]) document.addEventListener(type, event => {
       const anchor = event.target?.closest?.("a");
       const entry = { type, time: performance.now(), x: event.clientX, y: event.clientY, scroll: scrollY, href: anchor?.getAttribute("href"), target: event.target?.tagName, scrollBehavior: getComputedStyle(document.documentElement).scrollBehavior };
@@ -878,7 +896,29 @@ async function nftJourneyLane(browser, viewport, platform) {
       await page.waitForURL(url, { waitUntil: "domcontentloaded" });
       await content.waitFor();
     } catch (error) {
-      const lifecycle = await page.evaluate(() => ({ pathname: location.pathname, search: location.search, readyState: document.readyState }));
+      const lifecycle = await page.evaluate(() => {
+        let req = window.__rmtNftWebpackRequire;
+        if (!req) self.webpackChunk_N_E.push([[987654321], {}, r => window.__rmtNftWebpackRequire = req = r]);
+        const id = Object.keys(req.m).find(id => req.m[id].toString().includes("E624"));
+        const state = id && req(id).getCurrentAppRouterState?.();
+        const caches = [];
+        const walk = (node, path) => {
+          const kind = value => value === null ? null : { type: typeof value, status: value?.status, then: typeof value?.then, lazyStatus: value?._payload?.status };
+          caches.push({ path, rsc: kind(node.rsc), prefetchRsc: kind(node.prefetchRsc), lazyData: kind(node.lazyData), navigatedAt: node.navigatedAt });
+          for (const [slot, children] of node.parallelRoutes) for (const [segment, child] of children) walk(child, `${path}/${slot}:${segment}`);
+        };
+        if (state) walk(state.cache, "root");
+        const el = document.querySelector("[data-nft-gallery] a, [data-nft-search-item]");
+        let fiber = el && el[Object.keys(el).find(key => key.startsWith("__reactFiber$"))];
+        while (fiber?.return) fiber = fiber.return;
+        const root = fiber?.stateNode;
+        return {
+          pathname: location.pathname, search: location.search, readyState: document.readyState,
+          history: window.__rmtNftHistoryEvents,
+          router: state ? { canonicalUrl: state.canonicalUrl, tree: state.tree, pushRef: state.pushRef, caches } : null,
+          react: root && { pendingLanes: root.pendingLanes, suspendedLanes: root.suspendedLanes, pingedLanes: root.pingedLanes },
+        };
+      });
       const controls = await page.locator('[data-nft-search-item], [data-nft-gallery] a, nav[aria-label="NFT Terminal breadcrumb"] a').evaluateAll(links => links.map(link => ({
         href: link.getAttribute("href"), connected: link.isConnected,
         clientHandlerInstalled: Object.keys(link).some(key => key.startsWith("__reactProps$") && typeof link[key]?.onClick === "function"),

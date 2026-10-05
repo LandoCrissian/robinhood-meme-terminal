@@ -1,4 +1,7 @@
-import { restoreAllActivityDeepLink } from '../../scripts/visual-qa/market-filter-test-support.mjs';
+import { pathToFileURL } from 'node:url';
+const { restoreAllActivityDeepLink } = await import(process.env.GITHUB_WORKSPACE
+  ? pathToFileURL(`${process.env.GITHUB_WORKSPACE}/scripts/visual-qa/market-filter-test-support.mjs`).href
+  : new URL('../../scripts/visual-qa/market-filter-test-support.mjs', import.meta.url).href);
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
 import path from 'node:path';

@@ -3,6 +3,7 @@ name: 0x browser acceptance
 on:
   pull_request:
     paths:
+      - "scripts/visual-qa/market-filter-test-support.mjs"
       - '.github/scripts/zerox-browser-*'
       - '.github/scripts/quote-state-browser-checks.mjs'
       - '.github/scripts/trading-product-browser.mjs'
