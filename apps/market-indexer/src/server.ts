@@ -545,6 +545,9 @@ export function createMarketIndexerServer(
           json(response, 400, { error: "limit must be between 1 and 512" });
           return;
         }
+        if (EVM_ADDRESS_PATTERN.test(query) && query.toLowerCase() !== ZERO_ADDRESS) {
+          await worker.ensureTokenIdentity(query);
+        }
         const [identities, capacity] = await Promise.all([
           searchCanonicalTokenIdentityIndex(pool, query, limit),
           readCanonicalTokenIdentityIndexStats(pool)
@@ -597,7 +600,7 @@ export function createMarketIndexerServer(
           markets: marketRows
             .filter((market) => market.matchedToken === identity.address.toLowerCase())
             .map(({ matchedToken: _matchedToken, ...market }) => publicPool(market))
-        })).filter((identity) => identity.markets.length > 0);
+        }));
         json(response, 200, {
           chainId: MARKET_INDEXER_CHAIN_ID,
           sourceManifestHash: MARKET_SOURCE_MANIFEST_HASH,
