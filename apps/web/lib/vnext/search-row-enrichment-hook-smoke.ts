@@ -57,7 +57,11 @@ async function main() {
   const broad = await hook.submitUniversalSearch(token(5));hook.retainSearchRows(broad.markets);broadAddress=token(5);now+=60_000;await refresh();
   assert.equal(exactReads,5,"Recovered broad evidence does not cause an exact read");assert.equal(states[7][0].priceUsd,2,"Broad recovery enriches retained search identity without canonical browse admission");
   assert.equal(states[0].some((r: any) => r.address.toLowerCase() === token(5)),false,"Broad search enrichment is not browse promotion");
-  if (typeof cleanup === "function") cleanup();
+  const late = await hook.submitUniversalSearch(token(6));hook.retainSearchRows(late.markets);now+=60_000;
+  const controlledFetch=globalThis.fetch;let finishBroad: (()=>void) | undefined;
+  globalThis.fetch=(async (input: string)=>{if(!new URL(input,"https://controlled.invalid").searchParams.has("contract"))await new Promise<void>(resolve=>{finishBroad=resolve;});return controlledFetch(input);}) as typeof fetch;
+  const lateRefresh=refresh();await Promise.resolve();if (typeof cleanup === "function") cleanup();finishBroad!();await lateRefresh;
+  assert.equal(exactReads,5,"A late broad completion after unmount cannot recreate an enrichment job");
   console.log("Actual directory hook: passive broad-to-exact enrichment, no browse promotion, general/no-market/provider/invalid/already-enriched cases, hidden/offline and resume single flight PASS");
 }
 void main().catch(e => { console.error(e);process.exitCode=1; }).finally(() => {

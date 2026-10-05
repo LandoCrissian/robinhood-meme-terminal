@@ -175,6 +175,7 @@ export function useVNextMarketDirectory(initialMarket?: VNextDirectoryMarket) {
     canonicalRequestSequence.current++;
     identityEnrichments.current?.dispose();
     identityEnrichments.current = null;
+    retainedSearchRows.current = [];
     searchEnrichments.current?.dispose();
     searchEnrichments.current = null;
   }, []);
@@ -215,6 +216,7 @@ export function useVNextMarketDirectory(initialMarket?: VNextDirectoryMarket) {
   }, []);
 
   const enrichRetainedSearchRows = useCallback(async () => {
+    if (!retainedSearchRows.current.length) return;
     if (!searchEnrichments.current) searchEnrichments.current = createSearchRowEnrichment(async (row, signal) => {
       const key = row.address.toLowerCase(), sequence = searchSequence.current;
       const parameters = new URLSearchParams({ contract: row.address });
