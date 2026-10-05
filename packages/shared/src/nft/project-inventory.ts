@@ -41,7 +41,10 @@ export type RmtNftProjectInventoryRead = {
   availability: RmtNftInventoryAvailability;
   availabilityReason: RmtNftInventoryAvailabilityReason;
   asOf: string | null;
+  /** Strict ascending numeric canonical-decimal uint256 IDs, never text or
+   * JavaScript Number order. afterTokenId is exclusive in this same order. */
   items: readonly RmtNftInventoryItem[];
+  /** Last returned token ID when another numeric page exists; otherwise null. */
   nextCursor: string | null;
 };
 

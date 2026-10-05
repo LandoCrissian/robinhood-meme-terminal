@@ -263,9 +263,7 @@ async function startupLane(browser) {
     if (url.pathname === "/api/markets/external") return route.fulfill({ status: 429, contentType: "application/json", body: JSON.stringify({ error: "fixture_rate_limited" }) });
     return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ status: "unavailable" }) });
   });
-  await delayedPage.goto(base, { waitUntil: "domcontentloaded", timeout: 60_000 });
-  await revealBrowseExplore(delayedPage);
-  await delayedPage.getByRole("button", { name: "Any activity", exact: true }).click();
+  await delayedPage.goto(`${base}?view=all`, { waitUntil: "domcontentloaded", timeout: 60_000 });
   try {
     await delayedPage.locator(".rmtMobileMarketRow").first().waitFor();
   } catch (error) {
@@ -396,8 +394,7 @@ async function tokenLane(browser, viewport, platform) {
   await categoryButtons.filter({ hasText: "New" }).click();
   const newRows = page.locator(marketRowSelector);
   check(await newRows.count() === BROAD_TOKEN_MARKETS.filter((market) => market.ageMinutes !== null && market.ageMinutes <= 24 * 60).length, `token-scanner-${platform}`, "NEW must derive from actual pool age evidence.");
-  await revealBrowseExplore(page);
-  await page.getByRole("button", { name: "Any activity", exact: true }).click();
+  await restoreAllActivityDeepLink(page);
   const rows = page.locator(marketRowSelector);
   await rows.first().waitFor();
   check(await rows.count() === VISIBLE_TOKEN_MARKETS.length, `token-scanner-${platform}`, "ALL must expose the canonical seeds plus bounded broad markets.", { count: await rows.count() });
@@ -504,8 +501,7 @@ async function tokenLane(browser, viewport, platform) {
 
     const reopenPonsAfterFixtureReload = async () => {
       await page.locator(".rmtMobileMarketsView").waitFor();
-      await revealBrowseExplore(page);
-    await page.getByRole("button", { name: "Any activity", exact: true }).click();
+      await restoreAllActivityDeepLink(page);
       await page.locator(".rmtMobileMarketRow").filter({ hasText: "PONS" }).first().click();
       await page.locator(".rmtMobileAssetView").waitFor();
     };
@@ -599,8 +595,7 @@ async function tokenLane(browser, viewport, platform) {
     fixture.setChartMode("ready");
     await page.locator(".rmtMobileAssetBack button").click();
     await page.locator(".rmtMobileMarketsView").waitFor();
-    await revealBrowseExplore(page);
-    await page.getByRole("button", { name: "Any activity", exact: true }).click();
+    await restoreAllActivityDeepLink(page);
     fixture.setRiskMode("unavailable");
     await page.locator(".rmtMobileMarketRow").filter({ hasText: "CASHCAT" }).first().click();
     await page.locator(".vnChartFrame svg").waitFor();
@@ -619,8 +614,7 @@ async function tokenLane(browser, viewport, platform) {
 
     await page.locator(".rmtMobileAssetBack button").click();
     await page.locator(".rmtMobileMarketsView").waitFor();
-    await revealBrowseExplore(page);
-    await page.getByRole("button", { name: "Any activity", exact: true }).click();
+    await restoreAllActivityDeepLink(page);
     fixture.setRiskMode("partial");
     await page.locator(".rmtMobileMarketRow").filter({ hasText: "PIPEDOG" }).first().click();
     await page.getByRole("tab", { name: "Holders", exact: true }).click();
@@ -1060,9 +1054,14 @@ if (failures.length) {
   console.info(`RMT Legion semantic/capture lane: PASS (${stateResults.length} states)`);
 }
 
-async function revealBrowseExplore(page) {
-  const details = page.locator(".rmtMarketViews .rmtExplore").first();
-  if (!await page.locator(".rmtExploreDialog[open]").count()) await page.locator(".rmtExploreTrigger").first().click();
+async function restoreAllActivityDeepLink(page) {
+  // Compatibility URLs still cover the broader inventory without restoring a
+  // duplicate activity control inside the owner-approved Markets filter.
+  await page.evaluate(() => {
+    const url = new URL(location.href); url.searchParams.set("view", "all");
+    history.pushState({}, "", url); dispatchEvent(new PopStateEvent("popstate"));
+  });
+  await page.waitForFunction(() => [...document.querySelectorAll('.rmtPrimaryViews button')].every(button => button.getAttribute('aria-pressed') !== 'true'));
 }
 async function revealHolderSources(page) {
   const details = page.locator(".vnHolderSources");

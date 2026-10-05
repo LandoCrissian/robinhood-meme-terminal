@@ -128,9 +128,11 @@ export async function readNftProjectInventory(input: {
   if (source.standard !== "ERC721") return { ...base, availability: "UNAVAILABLE", availabilityReason: "SOURCE_STALE", items: [], nextCursor: null };
 
   const ownership = await input.pool.query<{ token_id: string; owner_address: string }>(
-    `SELECT token_id::text,owner_address FROM nft_erc721_ownership
-     WHERE chain_id=$1 AND lower(collection_address)=lower($2) AND token_id>$3
-     ORDER BY token_id ASC LIMIT $4`,
+    // ORDER BY must bind to the numeric storage column, not the text output
+    // alias used by JSON. The exclusive cursor uses the same uint256 order.
+    `SELECT o.token_id::text AS token_id,o.owner_address FROM nft_erc721_ownership o
+     WHERE o.chain_id=$1 AND lower(o.collection_address)=lower($2) AND o.token_id>$3
+     ORDER BY o.token_id ASC LIMIT $4`,
     [source.chainId, source.collectionAddress, after.toString(), limit + 1],
   );
   const page = ownership.rows.slice(0, limit);

@@ -6372,8 +6372,8 @@ body .rmtTerminal button {
 .rmtExploreTrigger { display:flex; align-items:center; gap:8px; min-height:44px; background:transparent; border:0; padding:0; color:var(--vn-text-secondary); font:inherit; font-size:13px; cursor:pointer; }
 .rmtExploreDialog { position:fixed; inset:var(--explore-top,130px) auto auto var(--explore-left,24px); margin:0; width:320px; max-width:calc(100vw - 32px); max-height:calc(100dvh - var(--explore-top,130px) - 16px); overflow:auto; color:var(--vn-text); background:var(--vn-surface); border:1px solid var(--vn-border); border-radius:16px; padding:20px; box-shadow:0 20px 60px #0007; }
 .rmtExploreDialog::backdrop { background:#0005; }
-.rmtExploreDialog header { display:flex; justify-content:space-between; gap:12px; margin-bottom:18px; }
-.rmtExploreDialog h2 { margin:0 0 6px; font-size:18px; }
+.rmtExploreDialog header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:8px; }
+.rmtExploreDialog h2 { margin:0; font-size:14px; font-weight:600; }
 .rmtExploreDialog p { margin:0; color:var(--vn-text-muted); font-size:12px; line-height:1.5; }
 .rmtExploreDialog header > button { flex:0 0 44px; width:44px; height:44px; border:0; border-radius:8px; color:inherit; background:transparent; font-size:24px; cursor:pointer; }
 .rmtExploreDialog fieldset { border:0; padding:0; margin:0 0 12px; }
@@ -6381,11 +6381,9 @@ body .rmtTerminal button {
 .rmtExploreDialog fieldset button { display:flex; align-items:center; gap:12px; width:100%; min-height:44px; padding:10px; color:var(--vn-text-secondary); border:0; border-radius:8px; background:transparent; font:inherit; font-size:14px; text-align:left; cursor:pointer; }
 .rmtExploreDialog fieldset button small { margin-left:auto; color:var(--vn-text-muted); font-variant-numeric:tabular-nums; }
 .rmtExploreDialog fieldset button[aria-pressed="true"] { color:var(--vn-accent); background:var(--vn-surface-raised); }
-.rmtExploreAnyActivity { min-height:44px; width:100%; border:0; border-top:1px solid var(--vn-border); color:var(--vn-text-muted); background:transparent; text-align:left; cursor:pointer; }
-.rmtExploreCoverage a { display:block; min-height:44px; align-content:center; color:var(--vn-accent); text-decoration:none; }
 .rmtScannerUpdates { height:44px; display:flex; align-items:center; font-size:12px; }
 .rmtScannerUpdates button { border:0; background:transparent; color:var(--vn-accent); cursor:pointer; font:inherit; min-height:44px; padding:0; }
-@media(max-width:767px) { .rmtExploreDialog { inset:auto 0 0; width:100%; max-width:100%; max-height:85dvh; border-radius:18px 18px 0 0; padding:22px 20px max(20px,env(safe-area-inset-bottom)); } }
+@media(max-width:767px) { .rmtExploreDialog { inset:auto 0 0; width:100%; max-width:100%; max-height:85dvh; border-radius:18px 18px 0 0; padding:12px 16px max(12px,env(safe-area-inset-bottom)); } }
 .rmtMobileMarketsView .rmtMarketViews { overflow: visible; }
 .rmtAssetNavigator .rmtMarketViews { display: block; }
 .rmtAssetNavigator .rmtPrimaryViews { display: grid; grid-template-columns: 1fr 1fr; }

@@ -210,7 +210,10 @@ assert.doesNotMatch(shell, /Open notifications|vnMarketTabs|vnFilterButton|vnSta
 // Read-only /launches intelligence is authorized; creation/legacy launch UI remains retired.
 assert.doesNotMatch(shell, /\/launch(?:\/|["\'])|launchpad|create token/i);
 assert.match(presentations, /<MarketExplore/);
-assert.match(readFileSync(new URL("../../app/vnext/market-explore.tsx", import.meta.url), "utf8"), /href="\/launches"/);
+const marketFilter = readFileSync(new URL("../../app/vnext/market-explore.tsx", import.meta.url), "utf8");
+assert.doesNotMatch(marketFilter, /href=|Any activity|Open Launches|Choose a universe/);
+assert.match(marketFilter, /group\("Markets", \["all", "projects", "rwa", "stock"\]\)/);
+assert.match(marketFilter, /group\("Your markets", \["held"\]\)/);
 assert.doesNotMatch(shell, /TrendChart|Illustrative preview|vnChartLine/);
 assert.match(workspace, /<VNextMarketChart/);
 assert.match(workspace, /Market activity/);

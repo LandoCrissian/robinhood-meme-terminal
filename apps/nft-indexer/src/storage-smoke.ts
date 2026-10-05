@@ -233,6 +233,33 @@ try {
   });
   assert.deepEqual(secondInventory.items.map((item) => item.tokenId), ['3', (2n ** 255n).toString()]);
   assert.equal(new Set([...firstInventory.items, ...secondInventory.items].map((item) => item.tokenId)).size, 4);
+  // Real PostgreSQL ordering and cursor coverage: a cast output alias must never
+  // turn numeric uint256 ownership IDs into lexicographic inventory pages.
+  const numericIds = ['1', '2', '9', '10', '11', '99', '100', '999', '1000', '1001', '9999', '10000',
+    '9007199254740992', '9007199254740993', (2n ** 255n).toString(), ((1n << 256n) - 1n).toString()];
+  await pool.query(`DELETE FROM nft_erc721_ownership WHERE chain_id=$1 AND collection_address=$2`,
+    [source.chainId, source.collectionAddress.toLowerCase()]);
+  for (const id of [...numericIds].reverse()) {
+    await pool.query(`INSERT INTO nft_erc721_ownership(chain_id,collection_address,token_id,owner_address) VALUES($1,$2,$3,$4)`,
+      [source.chainId, source.collectionAddress.toLowerCase(), id, alice.toLowerCase()]);
+  }
+  const traversed: string[] = [];
+  let cursor: string | undefined;
+  do {
+    const inventory = await readNftProjectInventory({ pool, rpc: metadataRpc, projectId: 'ccff00',
+      afterTokenId: cursor, limit: 3, pollIntervalMs: 5_000, now: syncedAt });
+    assert.ok(inventory.items.every(item => cursor === undefined || BigInt(item.tokenId) > BigInt(cursor)), 'Exclusive numeric cursor');
+    traversed.push(...inventory.items.map(item => item.tokenId));
+    assert.equal(inventory.nextCursor, traversed.length < numericIds.length ? inventory.items.at(-1)!.tokenId : null);
+    cursor = inventory.nextCursor ?? undefined;
+  } while (cursor !== undefined);
+  assert.deepEqual(traversed, numericIds, 'Numeric pages have no skips, duplicates, precision loss or textual ordering');
+  // Restore the original ownership fixture for the existing item/API checks.
+  await pool.query(`DELETE FROM nft_erc721_ownership WHERE chain_id=$1 AND collection_address=$2`,
+    [source.chainId, source.collectionAddress.toLowerCase()]);
+  await pool.query(`INSERT INTO nft_erc721_ownership(chain_id,collection_address,token_id,owner_address) VALUES
+    (4663,$1,1,$2),(4663,$1,2,$3),(4663,$1,3,$2),(4663,$1,$4,$3)`,
+    [source.collectionAddress.toLowerCase(), alice.toLowerCase(), bob.toLowerCase(), (2n ** 255n).toString()]);
   await assert.rejects(() => readNftProjectInventory({
     pool, rpc: metadataRpc, projectId: 'ccff00', limit: 49, pollIntervalMs: 5_000, now: syncedAt
   }), /limit must be between/);

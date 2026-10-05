@@ -100,9 +100,15 @@ jobs:
       - name: Verify live scanner refresh, reconciliation and focus continuity
         if: ${{ !cancelled() }}
         run: node scripts/visual-qa/live-scanner-acceptance.mjs
+      - name: Verify compact Markets-only filter at four viewports
+        if: ${{ !cancelled() }}
+        run: node scripts/visual-qa/markets-filter-acceptance.mjs
       - name: Verify selected-market price identity and refresh continuity
         if: ${{ !cancelled() }}
         run: node scripts/visual-qa/selected-market-price-acceptance.mjs
+      - name: Verify captured genuine numeric NFT inventory and first-click navigation
+        if: ${{ !cancelled() }}
+        run: node scripts/visual-qa/nft-numeric-inventory-acceptance.mjs
       - name: Include discovery evidence
         if: always()
         run: cp docs/product/market-discovery-v2-review.md terminal-visual-v2/market-discovery-v2-review.md
