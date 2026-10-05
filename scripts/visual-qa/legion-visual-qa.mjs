@@ -1,3 +1,4 @@
+import { restoreAllActivityDeepLink } from './market-filter-test-support.mjs';
 import { installTokenRoutes } from "./token-presentation-fixtures.mjs";
 import { chromium } from "playwright";
 import { createServer } from "node:http";
@@ -263,9 +264,7 @@ async function startupLane(browser) {
     if (url.pathname === "/api/markets/external") return route.fulfill({ status: 429, contentType: "application/json", body: JSON.stringify({ error: "fixture_rate_limited" }) });
     return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ status: "unavailable" }) });
   });
-  await delayedPage.goto(base, { waitUntil: "domcontentloaded", timeout: 60_000 });
-  await revealBrowseExplore(delayedPage);
-  await delayedPage.getByRole("button", { name: "Any activity", exact: true }).click();
+  await delayedPage.goto(`${base}?view=all`, { waitUntil: "domcontentloaded", timeout: 60_000 });
   try {
     await delayedPage.locator(".rmtMobileMarketRow").first().waitFor();
   } catch (error) {
@@ -396,8 +395,7 @@ async function tokenLane(browser, viewport, platform) {
   await categoryButtons.filter({ hasText: "New" }).click();
   const newRows = page.locator(marketRowSelector);
   check(await newRows.count() === BROAD_TOKEN_MARKETS.filter((market) => market.ageMinutes !== null && market.ageMinutes <= 24 * 60).length, `token-scanner-${platform}`, "NEW must derive from actual pool age evidence.");
-  await revealBrowseExplore(page);
-  await page.getByRole("button", { name: "Any activity", exact: true }).click();
+  await restoreAllActivityDeepLink(page);
   const rows = page.locator(marketRowSelector);
   await rows.first().waitFor();
   check(await rows.count() === VISIBLE_TOKEN_MARKETS.length, `token-scanner-${platform}`, "ALL must expose the canonical seeds plus bounded broad markets.", { count: await rows.count() });
@@ -504,8 +502,7 @@ async function tokenLane(browser, viewport, platform) {
 
     const reopenPonsAfterFixtureReload = async () => {
       await page.locator(".rmtMobileMarketsView").waitFor();
-      await revealBrowseExplore(page);
-    await page.getByRole("button", { name: "Any activity", exact: true }).click();
+      await restoreAllActivityDeepLink(page);
       await page.locator(".rmtMobileMarketRow").filter({ hasText: "PONS" }).first().click();
       await page.locator(".rmtMobileAssetView").waitFor();
     };
@@ -599,8 +596,7 @@ async function tokenLane(browser, viewport, platform) {
     fixture.setChartMode("ready");
     await page.locator(".rmtMobileAssetBack button").click();
     await page.locator(".rmtMobileMarketsView").waitFor();
-    await revealBrowseExplore(page);
-    await page.getByRole("button", { name: "Any activity", exact: true }).click();
+    await restoreAllActivityDeepLink(page);
     fixture.setRiskMode("unavailable");
     await page.locator(".rmtMobileMarketRow").filter({ hasText: "CASHCAT" }).first().click();
     await page.locator(".vnChartFrame svg").waitFor();
@@ -619,8 +615,7 @@ async function tokenLane(browser, viewport, platform) {
 
     await page.locator(".rmtMobileAssetBack button").click();
     await page.locator(".rmtMobileMarketsView").waitFor();
-    await revealBrowseExplore(page);
-    await page.getByRole("button", { name: "Any activity", exact: true }).click();
+    await restoreAllActivityDeepLink(page);
     fixture.setRiskMode("partial");
     await page.locator(".rmtMobileMarketRow").filter({ hasText: "PIPEDOG" }).first().click();
     await page.getByRole("tab", { name: "Holders", exact: true }).click();
@@ -854,10 +849,28 @@ async function traceNftJourney(page) {
   };
   page.on("request", request => record("request", request, { navigation: request.isNavigationRequest(), rsc: request.headers()["rsc"] === "1", partialPrefetch: request.headers()["next-router-prefetch"] === "1" }));
   page.on("response", response => record("response", response.request(), { status: response.status() }));
+  page.on("requestfinished", request => record("requestfinished", request));
+  page.on("response", async response => {
+    if (!response.request().headers()["rsc"] || !new URL(response.url()).pathname.startsWith("/nft")) return;
+    try {
+      const body = await response.text();
+      record("flight-body", response.request(), { bytes: Buffer.byteLength(body), body: body.slice(0, 32_768) });
+    } catch (error) {
+      record("flight-body-unavailable", response.request(), { error: String(error) });
+    }
+  });
   page.on("requestfailed", request => record("requestfailed", request, { error: request.failure()?.errorText }));
   page.on("pageerror", error => navigationTrace.push({ event: "exception", message: error.message }));
   await page.addInitScript(() => {
     window.__rmtNftJourneyEvents = [];
+    window.__rmtNftHistoryEvents = [];
+    for (const method of ["pushState", "replaceState"]) {
+      const native = history[method];
+      history[method] = function (...args) {
+        window.__rmtNftHistoryEvents.push({ method, time: performance.now(), before: location.href, target: args[2] });
+        return native.apply(this, args);
+      };
+    }
     for (const type of ["pointerdown", "pointerup", "click"]) document.addEventListener(type, event => {
       const anchor = event.target?.closest?.("a");
       const entry = { type, time: performance.now(), x: event.clientX, y: event.clientY, scroll: scrollY, href: anchor?.getAttribute("href"), target: event.target?.tagName, scrollBehavior: getComputedStyle(document.documentElement).scrollBehavior };
@@ -883,7 +896,29 @@ async function nftJourneyLane(browser, viewport, platform) {
       await page.waitForURL(url, { waitUntil: "domcontentloaded" });
       await content.waitFor();
     } catch (error) {
-      const lifecycle = await page.evaluate(() => ({ pathname: location.pathname, search: location.search, readyState: document.readyState }));
+      const lifecycle = await page.evaluate(() => {
+        let req = window.__rmtNftWebpackRequire;
+        if (!req) self.webpackChunk_N_E.push([[987654321], {}, r => window.__rmtNftWebpackRequire = req = r]);
+        const id = Object.keys(req.m).find(id => req.m[id].toString().includes("E624"));
+        const state = id && req(id).getCurrentAppRouterState?.();
+        const caches = [];
+        const walk = (node, path) => {
+          const kind = value => value === null ? null : { type: typeof value, status: value?.status, then: typeof value?.then, lazyStatus: value?._payload?.status };
+          caches.push({ path, rsc: kind(node.rsc), prefetchRsc: kind(node.prefetchRsc), lazyData: kind(node.lazyData), navigatedAt: node.navigatedAt });
+          for (const [slot, children] of node.parallelRoutes) for (const [segment, child] of children) walk(child, `${path}/${slot}:${segment}`);
+        };
+        if (state) walk(state.cache, "root");
+        const el = document.querySelector("[data-nft-gallery] a, [data-nft-search-item]");
+        let fiber = el && el[Object.keys(el).find(key => key.startsWith("__reactFiber$"))];
+        while (fiber?.return) fiber = fiber.return;
+        const root = fiber?.stateNode;
+        return {
+          pathname: location.pathname, search: location.search, readyState: document.readyState,
+          history: window.__rmtNftHistoryEvents,
+          router: state ? { canonicalUrl: state.canonicalUrl, tree: state.tree, pushRef: state.pushRef, caches } : null,
+          react: root && { pendingLanes: root.pendingLanes, suspendedLanes: root.suspendedLanes, pingedLanes: root.pingedLanes },
+        };
+      });
       const controls = await page.locator('[data-nft-search-item], [data-nft-gallery] a, nav[aria-label="NFT Terminal breadcrumb"] a').evaluateAll(links => links.map(link => ({
         href: link.getAttribute("href"), connected: link.isConnected,
         clientHandlerInstalled: Object.keys(link).some(key => key.startsWith("__reactProps$") && typeof link[key]?.onClick === "function"),
@@ -1060,10 +1095,6 @@ if (failures.length) {
   console.info(`RMT Legion semantic/capture lane: PASS (${stateResults.length} states)`);
 }
 
-async function revealBrowseExplore(page) {
-  const details = page.locator(".rmtMarketViews .rmtExplore").first();
-  if (!await page.locator(".rmtExploreDialog[open]").count()) await page.locator(".rmtExploreTrigger").first().click();
-}
 async function revealHolderSources(page) {
   const details = page.locator(".vnHolderSources");
   if (!await details.evaluate(node => node.open)) await details.locator(":scope > summary").click();

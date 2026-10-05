@@ -47,6 +47,14 @@ assert.match(requestedInventoryUrl, /[?&]limit=4(?:&|$)/);
 assert.deepEqual(await readRmtNftProjectInventory("ccff00", { limit: 49 }, { env, fetchImpl: response(inventory) }), { availability: "UNAVAILABLE", reason: "DATA_UNAVAILABLE" });
 assert.equal(await readRmtNftProjectInventory("unknown", {}, { env, fetchImpl: response(inventory) }), null);
 assert.equal(await readRmtNftProjectInventory("robin-rabbits", {}, { env, fetchImpl: response(inventory) }), null);
+const numericIds = ['1','2','9','10','11','99','100','999','1000','1001','9999','10000',
+  '9007199254740992','9007199254740993',((1n << 256n) - 1n).toString()];
+const numericInventory = { ...inventory, items: numericIds.map(tokenId => ({ ...inventory.items[0]!, tokenId })), nextCursor: null };
+const acceptedNumeric = await readRmtNftProjectInventory('ccff00', {}, { env, fetchImpl: response(numericInventory) });
+assert.deepEqual(acceptedNumeric && 'items' in acceptedNumeric && acceptedNumeric.items.map(item => item.tokenId), numericIds);
+assert.deepEqual(await readRmtNftProjectInventory('ccff00', {}, { env, fetchImpl: response({ ...numericInventory,
+  items: [...numericInventory.items].sort((a,b) => a.tokenId.localeCompare(b.tokenId)) }) }),
+  { availability: 'UNAVAILABLE', reason: 'DATA_UNAVAILABLE' }, 'Reader must not hide a broken producer page by locally sorting');
 for (const malformed of [
   { ...inventory, collectionStandard: "ERC1155" },
   { ...inventory, items: [inventory.items[1], inventory.items[0]] },

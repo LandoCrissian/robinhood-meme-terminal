@@ -20,7 +20,6 @@ export function runScannerRowContinuityChecks() {
   let checks = 0;
   for (const universe of MARKET_UNIVERSES) for (const view of views) {
     const rows = universe === "projects" ? projectTokens.map(make) : seed.map(row => ({ ...row,
-      ...(universe === "launches" ? { launchIntelligence: { evidenceClass: "ONCHAIN_VERIFIED" } as VNextDirectoryMarket["launchIntelligence"] } : {}),
       ...(universe === "rwa" ? { rwaRelationship: "paired-market-asset" as const } : {}),
       ...(universe === "stock" ? { rwaRelationship: "canonical-stock-token" as const } : {})
     }));

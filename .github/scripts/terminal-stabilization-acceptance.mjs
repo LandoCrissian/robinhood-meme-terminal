@@ -1,3 +1,7 @@
+import { pathToFileURL } from 'node:url';
+const { restoreAllActivityDeepLink } = await import(process.env.GITHUB_WORKSPACE
+  ? pathToFileURL(`${process.env.GITHUB_WORKSPACE}/scripts/visual-qa/market-filter-test-support.mjs`).href
+  : new URL('../../scripts/visual-qa/market-filter-test-support.mjs', import.meta.url).href);
 import assert from "node:assert/strict";
 
 export async function inspectTerminalStabilization(browser, { base, createContext, installRoutes, markets, canonicalDirectoryMarket, riskPayload }) {
@@ -70,14 +74,14 @@ export async function inspectTerminalStabilization(browser, { base, createContex
       await page.getByText("Directory temporarily unavailable", { exact: true }).waitFor();
       const unknownCounts = await page.locator(".rmtMarketViews").first().textContent();
       assert.doesNotMatch(unknownCounts, /(?:Active|Trending|New|RWA|All)\s+0(?:\s|$)/);
-      assert.match(unknownCounts, /All\s*—/);
+      assert.match(unknownCounts, /All Markets\s*—/);
       generation++; await page.clock.fastForward(300001);
       await page.getByText("Directory temporarily unavailable", { exact: true }).waitFor();
-      assert.match(await page.locator(".rmtMarketViews").first().textContent(), /All\s*—/);
+      assert.match(await page.locator(".rmtMarketViews").first().textContent(), /All Markets\s*—/);
       failPage = -1;
       await page.getByRole("button", { name: "Try again", exact: true }).click();
       await page.locator(row).first().waitFor();
-      assert.match(await page.locator(".rmtMarketViews").first().textContent(), /All\s*18/);
+      assert.match(await page.locator(".rmtMarketViews").first().textContent(), /All Markets\s*18/);
       const start = performance.now();
       await page.goto(base, { waitUntil: "domcontentloaded" });
       await page.locator(row).first().waitFor();
@@ -85,8 +89,7 @@ export async function inspectTerminalStabilization(browser, { base, createContex
       assert.ok(directoryMs <= 2000, `${label}: directory took ${directoryMs}ms`);
       assert.ok(await page.locator(row).count() > 8);
       assert.equal(enrichmentResolved, false);
-      await revealBrowseExplore(page);
-      await page.getByRole("button", { name: "Any activity", exact: true }).click();
+      await restoreAllActivityDeepLink(page);
       for (let n = 0; n < 8 && await page.locator(row).count() < canonical.length; n++) {
         await page.locator(".rmtMarketLoadMore").click();
         await page.waitForTimeout(80);
@@ -135,8 +138,7 @@ export async function inspectTerminalStabilization(browser, { base, createContex
       // for the client fallback result before opening a disclosure hydration can
       // replace. Active is intentionally empty without observed activity.
       await freshness.getByText(/Limited coverage/).waitFor();
-      await revealBrowseExplore(page);
-      await page.getByRole("button", { name: "Any activity", exact: true }).click();
+      await restoreAllActivityDeepLink(page);
       await page.locator(row).first().waitFor();
       assert.equal(await page.locator(row).count(), 8);
       await freshness.getByText(/Limited coverage/).waitFor();
@@ -218,10 +220,10 @@ async function inspectFreshDirectoryWindow(browser, { base, createContext, insta
       });
       await page.goto(base, { waitUntil: "domcontentloaded" });
       await page.getByText("Directory temporarily unavailable", { exact: true }).waitFor();
-      assert.match(await page.locator(".rmtMarketViews").first().textContent(), /All\s*—/);
+      assert.match(await page.locator(".rmtMarketViews").first().textContent(), /All Markets\s*—/);
       await page.getByRole("button", { name: "Try again", exact: true }).click();
       await page.getByText("Directory temporarily unavailable", { exact: true }).waitFor();
-      assert.match(await page.locator(".rmtMarketViews").first().textContent(), /All\s*—/);
+      assert.match(await page.locator(".rmtMarketViews").first().textContent(), /All Markets\s*—/);
       mode = "GOOD";
       const start = performance.now();
       await page.getByRole("button", { name: "Try again", exact: true }).click();
@@ -229,8 +231,7 @@ async function inspectFreshDirectoryWindow(browser, { base, createContext, insta
       await page.locator(row).first().waitFor();
       const firstMs = Math.round(performance.now() - start);
       assert.ok(firstMs <= 2000, `${label}: healthy first publication ${firstMs}ms`);
-      await revealBrowseExplore(page);
-      await page.getByRole("button", { name: "Any activity", exact: true }).click();
+      await restoreAllActivityDeepLink(page);
       for (let i = 0; i < 12 && await page.locator(row).count() < 120; i++) { await page.locator(".rmtMarketLoadMore").click(); await page.waitForTimeout(100); }
       assert.equal(await page.locator(row).count(), 120);
       for (const state of ["GOOD", "503", "503", "GOOD", "PARTIAL", "GOOD"]) {
@@ -240,7 +241,7 @@ async function inspectFreshDirectoryWindow(browser, { base, createContext, insta
         assert.ok(reads > prior);
         await page.waitForTimeout(150);
         assert.equal(await page.locator(row).count(), 120, `${label}: ${state} must retain the loaded window`);
-        assert.match(await page.locator(".rmtMarketViews").first().textContent(), /All\s*120/);
+        assert.match(await page.locator(".rmtMarketViews").first().textContent(), /All Markets\s*120/);
       }
       results[label] = { firstMs, canonicalPages: 3, loaded: 120, sequence: "GOOD_503_503_GOOD_PARTIAL_GOOD", falseZero: false, enrichmentDelayMs: 45000 };
     } finally { closed = true; for (const timer of timers) clearTimeout(timer); await context.close(); }

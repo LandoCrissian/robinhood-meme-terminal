@@ -1,3 +1,7 @@
+import { pathToFileURL } from 'node:url';
+const { restoreAllActivityDeepLink } = await import(process.env.GITHUB_WORKSPACE
+  ? pathToFileURL(`${process.env.GITHUB_WORKSPACE}/scripts/visual-qa/market-filter-test-support.mjs`).href
+  : new URL('../../scripts/visual-qa/market-filter-test-support.mjs', import.meta.url).href);
 import assert from "node:assert/strict";
 import { setTimeout as delay } from "node:timers/promises";
 
@@ -32,7 +36,7 @@ export async function runDirectoryQueueBrowserAcceptance(browser, base, complete
       await enter.waitFor({ state: "visible", timeout: 20000 });
       await enter.click();
       await page.locator(".rmtMarketViews .rmtExploreTrigger").first().click();
-      const all = page.locator('.rmtExploreDialog fieldset button').filter({ has: page.locator('span', { hasText: /^All$/ }) });
+      const all = page.locator('.rmtExploreDialog fieldset button').filter({ has: page.locator('span', { hasText: /^All Markets$/ }) });
       await all.waitFor({ state: "visible", timeout: 20000 });
       assert.equal(
         await page.getByRole("button", { name: "Start with live markets", exact: true }).count(),
@@ -44,11 +48,11 @@ export async function runDirectoryQueueBrowserAcceptance(browser, base, complete
         assert.fail(message);
       };
       const count = async expected => {
-        assert.equal(await all.locator("span").first().textContent(), "All", "The count belongs to the All universe");
+        assert.equal(await all.locator("span").first().textContent(), "All Markets", "The count belongs to the All universe");
         assert.equal(await all.getAttribute("aria-pressed"), "true", "All remains selected independently of activity");
         await until(async () => await all.locator("small").textContent().catch(() => "") === String(expected), `expected All ${expected}`);
       };
-      await count(10); await page.getByRole('button', { name: 'Any activity', exact: true }).click();
+      await count(10); await page.keyboard.press('Escape'); await restoreAllActivityDeepLink(page);
       for (let n = 1; n < 5; n++) {
         await page.getByRole("button", { name: /^Load more markets/ }).click();
         await count((n + 1) * 10);

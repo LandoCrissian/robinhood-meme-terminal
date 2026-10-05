@@ -66,10 +66,12 @@ try {
         assert.ok(summaries.length===2&&summaries.every(s=>!s.clipped),'Markets context summaries wrap without truncation');
         assert.ok(summaries.some(s=>s.text.includes('24h volume $640M')),'Ready controlled chain context passes production payload validation');
         await page.locator('.rmtExploreTrigger').first().click();
-        assert.match(await page.locator('.rmtExploreDialog fieldset button').filter({hasText:/Launches/}).innerText(),/Launches\s*0/,'Empty launch universe reports zero and never invents population');
-        assert.equal(await page.locator('.rmtExploreDialog button').filter({hasText:/Projects/}).count(),1,'Verified Project Graph activates Projects independently of loaded token rows');
+        assert.deepEqual(await page.locator('.rmtExploreDialog fieldset button > span:first-child').allTextContents(), ['All Markets','Project Tokens','RWA','Stock Tokens','Held'], 'Markets filter has only the owner-approved market semantics');
+        assert.equal(await page.locator('.rmtExploreDialog a').count(),0,'Market filter does not duplicate primary navigation');
+        assert.equal(await page.getByRole('button',{name:'Any activity',exact:true}).count(),0,'Activity remains a primary axis');
+        assert.equal(await page.locator('.rmtExploreDialog button').filter({hasText:/Project Tokens/}).count(),1,'Verified Project Graph activates Project Tokens independently of loaded token rows');
         await capture('markets-explore');
-        await page.getByRole('button',{name:'Close Explore',exact:true}).click();
+        await page.getByRole('button',{name:'Close market filter',exact:true}).click();
       }
       for(const name of ['New','Movers','Trending','Active']) {
         await page.locator('.rmtMarketViews').first().getByRole('button',{name:new RegExp(`^${name}`)}).click();

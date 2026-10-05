@@ -173,7 +173,7 @@ function MarketCategoryNav({ view, counts, searchActive, activityCoveragePending
 }) {
   return <nav className="rmtMarketViews" aria-label="Market categories">
     <div className="rmtPrimaryViews">{VNEXT_MARKET_DIRECTORY_VIEWS.filter(candidate => ["active", "new", "movers", "trending"].includes(candidate.id)).map(candidate => <button type="button" key={candidate.id} className={!searchActive && candidate.id === view ? "isActive" : ""} aria-pressed={!searchActive && candidate.id === view} onClick={() => onChange(candidate.id)}><span>{candidate.label}</span><small>{!countsObserved ? "—" : activityCoveragePending ? "…" : counts[candidate.id]}</small></button>)}</div>
-    {onUniverseChange && universeCounts ? <MarketExplore scope={marketUniverse} counts={universeCounts} onChange={onUniverseChange} anyActivity={view === "all"} onAnyActivity={() => onChange("all")} walletReadStatus={walletReadStatus} /> : null}
+    {onUniverseChange && universeCounts ? <MarketExplore scope={marketUniverse} counts={universeCounts} onChange={onUniverseChange} walletReadStatus={walletReadStatus} /> : null}
   </nav>;
 }
 

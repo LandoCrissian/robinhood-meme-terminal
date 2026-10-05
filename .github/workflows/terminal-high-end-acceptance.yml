@@ -3,6 +3,7 @@ name: Terminal high-end acceptance
 on:
   pull_request:
     paths:
+      - "scripts/visual-qa/market-filter-test-support.mjs"
       - ".github/scripts/terminal-high-end-acceptance.mjs"
       - ".github/scripts/terminal-stabilization-acceptance.mjs"
       - ".github/workflows/terminal-high-end-acceptance.yml"

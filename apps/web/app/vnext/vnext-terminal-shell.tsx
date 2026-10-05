@@ -28,7 +28,7 @@ import { useVNextExecutionRecovery } from "./use-vnext-execution-recovery";
 import { useVNextMarketDirectory } from "./use-vnext-market-directory";
 import { useRmtIdentity } from "../rmt-identity";
 import { useAnchoredMarketRows } from "./use-anchored-market-rows";
-import { MARKET_UNIVERSES, selectMarketUniverse, type MarketUniverse } from "../../lib/vnext/market-universe";
+import { MARKET_UNIVERSES, normalizeMarketUniverse, selectMarketUniverse, type MarketUniverse } from "../../lib/vnext/market-universe";
 
 export function VNextTerminalShell({ initialLocation = { context: "markets" }, initialMarket }: {
   initialLocation?: VNextTerminalLocation;
@@ -139,7 +139,12 @@ export function VNextTerminalShell({ initialLocation = { context: "markets" }, i
   useEffect(() => {
     const restore = () => {
       const p = new URLSearchParams(window.location.search), scope = p.get("universe"), view = p.get("view");
-      setMarketUniverse(MARKET_UNIVERSES.includes(scope as MarketUniverse) ? scope as MarketUniverse : view === "rwa" ? "rwa" : "all");
+      const normalizedScope = normalizeMarketUniverse(scope, view);
+      setMarketUniverse(normalizedScope);
+      if (scope !== null && scope !== normalizedScope) {
+        const url = new URL(window.location.href); url.searchParams.set("universe", normalizedScope);
+        window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+      }
       setDirectoryView(view === "rwa" ? "all" : ["active", "movers", "new", "trending", "all"].includes(view ?? "") ? view as VNextMarketDirectoryView : "active");
     };
     restore(); window.addEventListener("popstate", restore);
