@@ -51,8 +51,9 @@ try{
   assert.equal(await page.getByRole('heading',{name:'Token #5',exact:true}).count(),1);
   await navigate(page.getByRole('link',{name:/Back to CCFF00 collection/}),page.locator('[data-nft-gallery] a[href="/nft/ccff00/5"]'));
   const gallery=page.locator('[data-nft-gallery]');assert.equal(await gallery.locator('a[href^="/nft/ccff00/"]').count(),24);
-  await page.screenshot({path:path.join(output,`${width}-genuine-collection.png`)});
   const item=gallery.locator('a[href="/nft/ccff00/5"]');
+  await item.scrollIntoViewIfNeeded();
+  await page.screenshot({path:path.join(output,`${width}-genuine-collection.png`)});
   const collectionToItem=await navigate(item,page.locator('[data-nft-item-workspace]'));
   assert.equal(await page.getByRole('heading',{name:'Token #5',exact:true}).count(),1);
   await page.screenshot({path:path.join(output,`${width}-genuine-item.png`)});

@@ -84,3 +84,18 @@ share data-nft-gallery. It counts the 24 item links separately from the paginati
 and first-click destination assertions remain
 unchanged. No navigation retry, sleep, timeout increase, or assertion waiver was
 introduced.
+
+The staged high-end/0x harness runs from `/tmp`, so its shared filter helper is
+resolved from `GITHUB_WORKSPACE`, with a relative fallback for local runs. The
+original staged relative import fails before browser startup; the corrected
+import passes the same isolated module regression. Workflow triggers include the
+shared helper. No application behavior or acceptance assertions are changed by
+this correction.
+
+An intermediate full visual run recorded one 375px collection-to-item route
+response that returned 200 without committing its destination. Its original
+artifact is preserved separately from final evidence. The existing dynamic NFT
+prefetch correction and all navigation assertions remain unchanged. Bounded
+flight-body/history/router diagnostics were added; six local journeys using the
+exact CI-built application and the subsequent complete remote journey passed.
+No new application navigation repair is claimed from that isolated observation.

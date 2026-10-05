@@ -67,14 +67,6 @@ jobs:
       - name: Verify evidence-backed asset chassis and plot composition
         run: pnpm --filter web exec tsx lib/vnext/asset-chassis-smoke.ts
       - run: pnpm build
-      - name: Preserve bounded compiled browser diagnostic
-        run: tar --exclude='cache' --exclude='trace' --exclude='diagnostics' -czf /tmp/rmt-visual-build.tgz -C apps/web .next
-      - name: Upload compiled browser diagnostic
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: rmt-visual-build-diagnostic
-          path: /tmp/rmt-visual-build.tgz
-          retention-days: 1
       - name: Start production build
         run: |
           fixture_read_token=$(printf 'a%.0s' {1..64})
