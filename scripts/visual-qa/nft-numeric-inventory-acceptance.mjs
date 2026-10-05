@@ -43,9 +43,8 @@ try{
     await destination.waitFor();return {href,settledUrl:page.url(),destinationRendered:true};
   };
   await page.goto(`${base}/nft?q=ccff00%20%235`,{waitUntil:'domcontentloaded'});
-  const consent=page.getByRole('button',{name:'I understand',exact:false});
-  await consent.waitFor({state:'visible'}); await consent.click();
-  await page.locator('.tradingTermsBackdrop').waitFor({state:'hidden'});
+  // NFT routes are read-only and intentionally do not mount TradingTermsGate.
+  assert.equal(await page.locator('.tradingTermsBackdrop').count(),0);
   const search=page.locator('[data-nft-item-lookup="CONFIRMED"] [data-nft-search-item]');
   await search.waitFor();assert.equal(await search.getAttribute('href'),'/nft/ccff00/5');
   const searchToItem=await navigate(search,page.locator('[data-nft-item-workspace]'));
