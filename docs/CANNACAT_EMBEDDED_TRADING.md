@@ -51,9 +51,11 @@ different concepts. Estimates are not settled revenue.
 
 ## Client and origin setup before an owner-authorized preview
 
-1. Reuse the existing RMT Privy application. Create/verify a LAMMB app client and
-   admit only the exact preview origin under the provider's supported app-client
-   workflow. Production `https://lammb.fun` requires its own release approval.
+1. Reuse the existing RMT Privy application. The authenticated dashboard currently
+   uses exact allowed origins with per-client configuration disabled. Enroll only
+   the reviewed preview origin after owner approval; a client ID is optional.
+   Do not toggle app-wide client configuration or invent a client ID. Production
+   `https://lammb.fun` requires its own release approval.
    Public app/client IDs are configuration, never secrets. Do not copy sessions
    or use LAMMB's unrelated NFT-registration signature as RMT identity.
 2. In the isolated RMT preview only, set `RMT_CANNACAT_EMBED_ENABLED=true` and
@@ -74,6 +76,16 @@ different concepts. Estimates are not settled revenue.
 Privy documents app clients at https://docs.privy.io/basics/react/setup and the
 linked app-client guide. Confirm current dashboard capabilities before enrolling
 origins; this runbook does not claim they have been configured.
+
+The current Privy app is in development mode with a 150-user limit. Public
+release requires a separate owner decision about that provider limit. This task
+does not upgrade billing or create another application.
+
+The focused cloud workflow builds two explicitly separate artifacts. Only the
+real SDK has `fixtureOnly: false`; its exact source commit and member hashes are
+required by LAMMB's delivery validator. The disposable browser artifact aliases
+Privy at build time, makes no real wallet request, and must never be delivered.
+Chrome/Edge mobile-width tests are not native iPhone wallet acceptance.
 
 ## Wallet and mobile acceptance
 
