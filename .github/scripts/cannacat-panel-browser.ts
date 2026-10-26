@@ -86,8 +86,8 @@ try {
       if (url.origin === "https://rpc.mainnet.chain.robinhood.com") {
         if (balancesFail) { await route.fulfill({ status: 503, body: "Synthetic balance RPC outage" }); return; }
         const rpc = route.request().postDataJSON();
-        const answer = (entry: { id: number; method: string; params?: string[] }) => {
-          const saved = transactions.get(entry.params?.[0]?.toLowerCase() ?? '');
+        const answer = (entry: { id: number; method: string; params?: unknown[] }) => {
+          const saved = transactions.get(typeof entry.params?.[0] === 'string' ? entry.params[0].toLowerCase() : '');
           const values: Record<string, unknown> = { eth_chainId: "0x1237", eth_getBalance: hex(balance), eth_gasPrice: hex(gasPrice), eth_getTransactionCount: "0x0", eth_call: `0x${tokenBalance.toString(16).padStart(64, "0")}`,
             eth_getTransactionByHash: saved?.transaction ?? null, eth_getTransactionReceipt: saved?.receipt ?? null,
             eth_getBlockByNumber: { number: "0x64", hash, parentHash: hash, transactions: [], timestamp: hex(BigInt(Math.floor(Date.now() / 1000))), gasLimit: "0x1c9c380", gasUsed: "0x0", baseFeePerGas: "0x3b9aca00", difficulty: "0x0", extraData: "0x", miner: `0x${"0".repeat(40)}`, size: "0x100", nonce: "0x0000000000000000", sha3Uncles: hash, transactionsRoot: hash, stateRoot: hash, receiptsRoot: hash, logsBloom: `0x${"0".repeat(512)}` } };
@@ -448,7 +448,9 @@ try {
     check(await page.getByRole('button', { name: /^Confirm .* in wallet$/ }).count() === 0, 'Recovery permits an indicative quote but never authorizes another trade');
     const panelNode = await page.locator('.rmtcat-panel').elementHandle();
     const quoteNode = await page.getByLabel('Indicative quote review').elementHandle();
+    balance = 78_940_000_000_000n;
     await page.getByRole('button', { name: 'Refresh balances', exact: true }).click();
+    await expect(page.getByLabel('Wallet balances')).toContainText('0.00007894 ETH');
     check(await panelNode!.evaluate(element => element.isConnected) && await quoteNode!.evaluate(element => element.isConnected), 'Background balances preserve panel/quote DOM identity; no remount flicker');
     await expect(page.getByLabel('ETH to spend')).toHaveValue('0.000018716');
     await page.screenshot({ path: path.join(output, `${channel}-${width}-recovery-max.png`), fullPage: true });

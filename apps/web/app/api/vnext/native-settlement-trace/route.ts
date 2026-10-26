@@ -10,6 +10,7 @@ const headers = { "Cache-Control": "private, no-store, max-age=0" };
 const unavailable = () => Response.json({ status: "unavailable" }, { headers });
 
 export async function POST(request: Request) {
+  const startedAt = Date.now();
   try {
     const body = await readBoundedSettlementJson(request, 512);
     if (!body || typeof body !== "object" || Array.isArray(body)) return unavailable();
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
       result = await readOfficialExplorerSettlementTrace({ hash, blockHash: transaction.blockHash, blockNumber: transaction.blockNumber,
         from: transaction.from, to: transaction.to, input: transaction.input, value: transaction.value }, { timeoutMs: 5000 });
     }
-    if (result.status !== "available" || result.blockHash !== receipt.blockHash.toLowerCase()) return unavailable();
+    if (result.status !== "available" || result.blockHash !== receipt.blockHash.toLowerCase() || Date.now() - startedAt > 20_000) return unavailable();
     const canonicalAfter = await client.getTransactionReceipt({ hash });
     if (canonicalAfter.status !== "success" || canonicalAfter.blockHash !== receipt.blockHash
       || canonicalAfter.transactionHash.toLowerCase() !== hash.toLowerCase()) return unavailable();

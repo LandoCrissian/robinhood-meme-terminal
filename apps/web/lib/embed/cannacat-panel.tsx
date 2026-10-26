@@ -359,7 +359,11 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       setObservation(null);
       setNow(Date.now());
       setStatus(trade.plan.kind === "erc20_approval" ? "Approve only the displayed CannaCat amount. A fresh swap review follows after confirmation." : "Review the protected quote, then confirm explicitly in your wallet.");
-    } catch (cause) { if (generation === epoch.current && !controller.signal.aborted) { setError(safeError(cause)); setStatus("No transaction was submitted."); } }
+    } catch (cause) { if (generation === epoch.current && !controller.signal.aborted) {
+      setError(cause && typeof cause === "object" && "code" in cause && cause.code === "INSUFFICIENT_BALANCE"
+        ? "Insufficient ETH for the selected token target plus network gas. Choose a smaller amount or use Max ETH in ETH input mode." : safeError(cause));
+      setStatus("No transaction was submitted.");
+    } }
     finally { finishAction(action); }
   }
 
