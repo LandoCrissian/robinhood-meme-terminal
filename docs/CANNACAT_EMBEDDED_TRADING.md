@@ -21,7 +21,12 @@ envelope, connector-qualified selection, execution journal and settlement code.
 `apps/web/scripts/build-cannacat-client.mjs` emits a browser-only ESM artifact and
 SHA-256/source-member manifest. LAMMB pins that artifact; it does not fork a swap
 engine. A change to RMT requires a new reviewed SDK digest and LAMMB test run.
-No dependency or fee pin changes are part of this implementation.
+The owner separately approved a draft-only dependency security update after CI
+reported advisories in the existing baseline: Next 15.5.28, source-map-js 1.2.2,
+sharp 0.35.5, follow-redirects 1.16.1 and a reviewed Zod 4.6.6 migration. The
+candidate lock is resolved in disposable cloud CI, then committed and verified
+by the unchanged frozen-lock and security gates. Compatibility failure is a
+release blocker; no advisory is suppressed. Fee policy is unchanged.
 
 ## Buy and sell behavior
 
