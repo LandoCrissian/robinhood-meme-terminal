@@ -438,7 +438,7 @@ const css = `
 .rmtcat-details{font-size:13px;line-height:1.6}
 .rmtcat-details summary{min-height:44px;line-height:1.5;padding:10px 0}
 .rmtcat-contract{font-size:11px;line-height:1.6;min-height:44px;padding:10px 0}
-@media(max-width:430px){.rmtcat-wallet-actions>button{flex-basis:100%}.rmtcat-panel{padding:20px}.rmtcat-terms{padding:14px}.rmtcat-quote dl>div{gap:10px}}
+@media(max-width:430px){.rmtcat-wallet-actions>button{flex-basis:100%}.rmtcat-panel{padding:20px}.rmtcat-terms{padding:14px}.rmtcat-quote dl{gap:12px}.rmtcat-quote dl>div{grid-template-columns:minmax(0,1fr);gap:2px}.rmtcat-quote dt{font-size:12px}.rmtcat-quote dd{text-align:left;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums}}
 `;
 export function mountCannaCatPanel(element: HTMLElement, config: CannaCatPanelConfig) {
   if (window.location.protocol !== "https:" && window.location.hostname !== "localhost") throw new Error("HTTPS is required for the CannaCat panel.");

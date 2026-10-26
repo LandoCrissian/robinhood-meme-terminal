@@ -198,6 +198,10 @@ try {
     check(tinyReview.includes(formatUnits(BigInt(tiny.evidence.inputAmountAtomic),18)+" ETH"), "Small buy shows the full exact ETH input, not an eight-decimal truncation");
     check(tinyReview.includes(formatUnits(BigInt(tiny.evidence.providerNativeFee!.feeAmountAtomic),18)+" ETH"), "Sub-eight-decimal fees remain visible in exact wei precision");
     check(BigInt(tiny.evidence.providerNativeFee!.feeAmountAtomic)>0n && BigInt(tiny.evidence.providerNativeFee!.feeAmountAtomic)<10000000000n, "Tiny nonzero fee fixture covers the former display threshold");
+    for (const label of ["Exact ETH input", "RMT fee · 0.25%"]) {
+      const row = page.locator(".rmtcat-quote dl>div").filter({has:page.getByText(label,{exact:true})});
+      check(await row.locator("dd").evaluate(element=>element.getBoundingClientRect().height<=24), "Exact tiny ETH amounts stay on one readable line at every target width");
+    }
     check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth), "Exact small amounts do not create horizontal overflow");
     check(await page.evaluate(()=>(window.__CANNACAT_FIXTURE_WALLET_REQUESTS__??[]).length)===2, "Precision and quote preparation do not request another wallet action");
     await page.screenshot({path:path.join(output,`${channel}-${width}-tiny-quote.png`),fullPage:true});
