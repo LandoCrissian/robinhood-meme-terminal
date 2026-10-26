@@ -287,6 +287,15 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       }
       providerRef.current = state.provider; publish(state);
       setStatus(connectedWalletMessage(state));
+      // Safari may complete checking -> ready in one React batch. In that case
+      // a status-dependency effect sees no change. Resume recovery explicitly
+      // after the live provider read instead of waiting for its polling timer.
+      if (state.status === "ready" && currentRef.current.token && walletRef.current?.linked) {
+        try {
+          const record = findUnresolvedVNextExecution(candidate.address, localStorage);
+          if (record) void refreshRecovery.current?.(record);
+        } catch { setBlocking(true); setError("Local recovery storage is unavailable. History is preserved; trading is paused."); }
+      }
     };
     function changed() { if (document.visibilityState !== "hidden") void refresh(); else suspend(); }
     function disconnected() {
