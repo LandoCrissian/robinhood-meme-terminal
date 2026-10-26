@@ -1,0 +1,36 @@
+name: CannaCat embedded integration
+on:
+  pull_request:
+    paths:
+      - 'apps/web/lib/embed/**'
+      - 'apps/web/lib/server/cannacat-embed-boundary.ts'
+      - 'apps/web/app/api/embed/cannacat/**'
+      - 'apps/web/scripts/build-cannacat-client.mjs'
+      - '.github/workflows/cannacat-embed.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  boundary-and-sdk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter web exec tsx lib/embed/cannacat-embed-smoke.ts
+      - run: pnpm --filter web exec tsx lib/vnext/zero-x-adapter-smoke.ts
+      - run: pnpm --filter web exec tsx lib/vnext/wallet-submission-smoke.ts
+      - run: pnpm --filter web exec tsx lib/vnext/native-output-settlement-smoke.ts
+      - run: pnpm typecheck
+      - run: pnpm --filter web exec node scripts/build-cannacat-client.mjs
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: cannacat-client-sdk
+          path: apps/web/cannacat-sdk/
+          retention-days: 7
