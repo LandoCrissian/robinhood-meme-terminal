@@ -147,6 +147,14 @@ async function main() {
   } });
   await assert.rejects(() => api.quote({ side: "buy", tokenAmountAtomic: "10000", wallet, maximumEthInputAtomic: "100000000000000000" }), /quote changed/i); checks += 1;
   let quoteCalls = 0;
+  for (const retryAfter of ["61", new Date(Date.now() + 65_000).toUTCString()]) {
+    const limited = createCannaCatClient({ baseUrl: "https://rmt.example/api/embed/cannacat", identityToken: "fixture", fetch: async () =>
+      Response.json({ code: "RATE_LIMITED" }, { status: 429, headers: { "retry-after": retryAfter } }) });
+    await assert.rejects(() => limited.quoteEth({ wallet, ethAmountAtomic: "100", maximumEthInputAtomic: "100" }),
+      (cause: unknown) => Boolean(cause && typeof cause === "object" && "status" in cause && cause.status === 429
+        && "retryAfterMs" in cause && typeof cause.retryAfterMs === "number" && cause.retryAfterMs >= 60_000));
+    checks += 1;
+  }
   const fixedNow = Date.now();
   const successfulApi = createCannaCatClient({ baseUrl: "https://rmt.example/api/embed/cannacat", identityToken: "fixture", now: () => fixedNow, fetch: async (_url, init) => {
     quoteCalls += 1;

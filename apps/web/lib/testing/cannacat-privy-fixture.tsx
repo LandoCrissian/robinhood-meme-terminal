@@ -5,6 +5,7 @@ type State = { connected: boolean; authenticated: boolean; chainId: string; prov
 const initial: State = { connected: false, authenticated: false, chainId: "eip155:1", providerChainId: "0x1",
   accounts: ["0x0000000000000000000000000000000000000123"], walletCount: 1, walletClientType: "metamask", connectorType: "injected", providerAvailable: true };
 let state = initial;
+let loginPending = false;
 const listeners = new Set<() => void>();
 const providerListeners = new Map<string, Set<(...args: unknown[]) => void>>();
 const address = "0x0000000000000000000000000000000000000123";
@@ -15,6 +16,7 @@ declare global { interface Window {
   __CANNACAT_FIXTURE_RESOLVE_WALLET__?: () => void;
   __CANNACAT_FIXTURE_ATTACH_SECOND__?: boolean;
   __CANNACAT_FIXTURE_CHAIN_SWITCHES__?: number; __CANNACAT_FIXTURE_AUTH_REQUESTS__?: number;
+  __CANNACAT_FIXTURE_LOGIN_REQUESTS__?: number;
   __CANNACAT_FIXTURE_UPDATE__?: (next: Partial<State>, event?: "chainChanged" | "accountsChanged" | "disconnect") => void;
 } }
 function patch(next: Partial<State>) {
@@ -60,6 +62,18 @@ export function usePrivy() { const current = useState(); return { ready: true, a
 export function useWallets() { const current = useState(); const primary = wallet(); return { ready: true,
   wallets: current.connected ? (current.walletCount > 1 ? [primary, { ...primary, walletClientType: "rabby", meta: { id: "synthetic-second", name: "Test second wallet" } }] : [primary]) : [] }; }
 export function useIdentityToken() { const current = useState(); return { identityToken: current.authenticated ? "synthetic-identity-only" : null }; }
+export function useLogin(options?: { onComplete?: () => void; onError?: () => void }) {
+  const current = useState();
+  useEffect(() => {
+    if (loginPending && current.authenticated) { loginPending = false; options?.onComplete?.(); }
+  }, [current.authenticated]);
+  return { login: () => {
+    window.__CANNACAT_FIXTURE_LOGIN_REQUESTS__ = (window.__CANNACAT_FIXTURE_LOGIN_REQUESTS__ ?? 0) + 1;
+    loginPending = true; patch({ connected: true, providerAvailable: true });
+    // The disposable browser test completes the authentication return explicitly.
+    // Connection alone must not be treated as signed authentication.
+  } };
+}
 export function useConnectWallet(options?: { onSuccess?: (result: { wallet: ReturnType<typeof wallet> }) => void }) {
   return { connectWallet: () => {
     if (window.__CANNACAT_FIXTURE_ATTACH_SECOND__) {

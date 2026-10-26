@@ -7,6 +7,7 @@ import { VNEXT_PROVIDER_NATIVE_INPUT_FEE } from "../vnext/execution-settlement";
 import { RMT_ZERO_X_FEE_BPS, RMT_ZERO_X_MAX_SLIPPAGE_PPM } from "../vnext/zero-x-settlement";
 export { prepareVNextWalletTransaction, vNextWalletRpcTransaction, assessVNextWalletGasReadiness } from "../vnext/wallet-submission";
 export {
+  VNEXT_EXECUTION_EVENT, VNEXT_WALLET_REQUEST_EVENT, VNEXT_EXECUTION_STORAGE_KEY,
   findBlockingVNextWalletRequest, findUnresolvedVNextExecution,
   readVNextExecutionJournal, readVNextWalletRequestJournal,
   recordPreparedVNextWalletRequest, transitionVNextWalletRequest,
@@ -35,7 +36,7 @@ export type CannaCatQuote = {
 export type CannaCatPrepared = { quote: CannaCatQuote; evidence: VNextPreSignEvidence; plan: VNextAuthorizationPlan };
 
 export class CannaCatClientError extends Error {
-  constructor(readonly code: string, message: string, readonly status?: number) { super(message); this.name = "CannaCatClientError"; }
+  constructor(readonly code: string, message: string, readonly status?: number, readonly retryAfterMs?: number) { super(message); this.name = "CannaCatClientError"; }
 }
 export function parseCannaCatAmount(value: string) {
   if (!/^(?:0|[1-9][0-9]{0,40})(?:\.[0-9]{1,18})?$/.test(value)) throw new CannaCatClientError("INVALID_AMOUNT", "Enter a positive token amount with at most 18 decimal places.");
@@ -103,7 +104,10 @@ export function createCannaCatClient(options: {
         429: "Too many quote requests. Wait a minute before trying again.",
         503: "Secure CannaCat trading is temporarily unavailable. No transaction was submitted."
       };
-      throw new CannaCatClientError(code, messages[response.status] ?? "The trade could not be prepared. Refresh your quote or try again later.", response.status);
+      const retry = response.headers.get("retry-after");
+      const retryMs = retry ? (/^[0-9]+$/.test(retry) ? Number(retry) * 1000 : Date.parse(retry) - now()) : 0;
+      throw new CannaCatClientError(code, messages[response.status] ?? "The trade could not be prepared. Refresh your quote or try again later.", response.status,
+        Number.isFinite(retryMs) && retryMs > 0 ? retryMs : undefined);
     }
     return bodyValue;
   }

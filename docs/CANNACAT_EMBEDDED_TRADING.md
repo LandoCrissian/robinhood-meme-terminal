@@ -30,6 +30,31 @@ release blocker; no advisory is suppressed. Fee policy is unchanged.
 
 ## Buy and sell behavior
 
+Task117C separates automatic read-only pricing from explicit executable review.
+Connect uses Privy's wallet login UI so SDK authentication completion advances
+the session without a second manual verification click. Connected addresses,
+authenticated identities, verified linked wallets and matching live providers
+remain separate checks; the server still verifies the identity token.
+
+Valid input starts debounced indicative pricing. Foreground estimates refresh
+at 15-second intervals, serialize requests, retain the last estimate on failure,
+back off up to 120 seconds and honor a longer bounded Retry-After. Hidden pages
+and wallet prompts pause observation. A 30-second request deadline prevents a
+read from owning the interface indefinitely. Authentication errors stop retries
+until the session changes. Insufficient funds and unresolved history do not
+prevent observation. No background path calls verify, authorize or a wallet
+signature method. Review trade fetches fresh terms using actual spendable funds,
+then the separate confirmation retains every existing execution guard. Background
+prices never change a reviewed firm quote. Changed executable terms require a
+new displayed review and explicit confirmation.
+
+Authenticated restoration and visible-page resume retry journal reconciliation
+at most every 30 seconds. Only exact canonical receipt/plan/output proof can
+resolve a saved execution. Journal events synchronize the UI and cross-tab state;
+the history is never deleted. Recovery reads use a separate cancellable lifecycle
+and cannot lock Disconnect or amount editing. A receipt/indexing delay is not
+treated as execution failure and never triggers automatic resubmission.
+
 Buy accepts a **minimum CannaCat target**. A bounded search (at most five
 indicative calls) finds an exact ETH input whose protected output covers it.
 An oversized seed quote is refined downward; the indicative protected minimum

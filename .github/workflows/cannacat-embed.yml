@@ -48,7 +48,8 @@ jobs:
           retention-days: 7
   panel-browser:
     runs-on: windows-2025
-    timeout-minutes: 25
+    # Includes a real 15-minute foreground pricing soak in each browser.
+    timeout-minutes: 40
     strategy:
       fail-fast: false
       matrix:

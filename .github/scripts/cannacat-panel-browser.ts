@@ -81,7 +81,7 @@ try {
     await page.clock.install();
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
-    await context.route("**/*", async (route) => {
+    const routeHandler: Parameters<typeof context.route>[1] = async (route) => {
       const url = new URL(route.request().url());
       if (url.origin === base) { await route.continue(); return; }
       if (url.href === "https://api.exchange.coinbase.com/products/ETH-USD/ticker") {
@@ -141,7 +141,8 @@ try {
             costState: "network_fee_pending", authorizationReady: false, detail: "Synthetic bounded price fixture." }] } }); return;
       }
       throw new Error(`Unexpected external browser request: ${url.origin}`);
-    });
+    };
+    await context.route("**/*", routeHandler);
     // Compile the exact Task115 panel source for before screenshots. The fixture
     // remains synthetic and is never included in the deliverable SDK.
     await page.goto(`${base}/?baseline=1`);
@@ -186,27 +187,27 @@ try {
     await page.screenshot({ path: path.join(output, `${channel}-${width}-after-wallet.png`), fullPage: true });
     await page.getByRole("button", { name: "Verify wallet ownership" }).click();
     await page.getByRole("button", { name: "Switch to Robinhood Chain" }).click();
-    await page.getByRole("button", { name: "Get live quote" }).waitFor({ state: "visible" });
-    await expect(page.getByRole("button", { name: "Get live quote" })).toBeEnabled();
+    await page.getByRole("button", { name: "Review trade" }).waitFor({ state: "visible" });
+    await expect(page.getByRole("button", { name: "Review trade" })).toBeEnabled();
     await expect(page.getByLabel("Wallet balances")).toContainText("1 ETH");
     await expect(page.getByLabel("Wallet balances")).toContainText("50000 CannaCat");
     await expect(page.getByLabel("Wallet balances")).toContainText("$2,000.00");
     check(true, "Native ETH, timestamped USD and CannaCat balances load independently of a quote");
     checks += 1;
     await page.getByLabel("Minimum CannaCat to receive").fill("0");
-    await page.getByRole("button", { name: "Get live quote" }).click();
+    await page.getByRole("button", { name: "Review trade" }).click();
     await page.getByRole("alert").filter({ hasText: "positive token amount" }).waitFor();
     await page.getByRole("button", { name: "Sell CannaCat", exact: true }).click();
     await page.getByLabel("CannaCat to sell").fill("100000");
-    await page.getByRole("button", { name: "Get live quote" }).click();
+    await page.getByRole("button", { name: "Review trade" }).click();
     await page.getByRole("alert").filter({ hasText: "exceeds this wallet" }).waitFor();
     await page.getByRole("button", { name: "Buy CannaCat", exact: true }).click();
     await page.getByLabel("Minimum CannaCat to receive").fill("10000");
     balance = 0n;
-    await page.getByRole("button", { name: "Get live quote" }).click();
+    await page.getByRole("button", { name: "Review trade" }).click();
     await page.getByRole("alert").filter({ hasText: "Insufficient ETH for network gas" }).waitFor();
     balance = 10n ** 18n;
-    await page.getByRole("button", { name: "Get live quote" }).click();
+    await page.getByRole("button", { name: "Review trade" }).click();
     await page.getByRole("alert").filter({ hasText: "quote changed" }).waitFor();
     check(await page.getByRole("button", { name: /Confirm buy in wallet/ }).count() === 0, "Repriced quote cannot open a wallet request");
     check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "No horizontal overflow");
@@ -215,7 +216,7 @@ try {
     check(page.url() === `${base}/`, "Website flow never redirects to RMT");
     check(errors.length === 0, `No browser runtime errors: ${errors.join("; ")}`);
     verified = true;
-    await page.getByRole("button", { name: "Get live quote" }).click();
+    await page.getByRole("button", { name: "Review trade" }).click();
     await page.getByRole("button", { name: "Confirm buy in wallet" }).waitFor();
     check(await page.getByLabel("Verified trade review").innerText().then((text) => text.includes("Protected minimum") && text.includes("RMT fee · 0.25%") && text.includes("Estimated network gas")), "Complete protected buy review and unchanged fee displayed");
     check(await page.evaluate(() => (window.__CANNACAT_FIXTURE_WALLET_REQUESTS__ ?? []).length) === 0, "Verification never signs automatically");
@@ -225,18 +226,18 @@ try {
     check(await page.evaluate(() => (window.__CANNACAT_FIXTURE_WALLET_REQUESTS__ ?? []).length) === 1, "One explicit wallet gesture; rejected request never repeats");
     await page.getByRole("button", { name: "Sell CannaCat", exact: true }).click();
     await page.getByLabel("CannaCat to sell").fill("10000");
-    await page.getByRole("button", { name: "Get live quote" }).click();
+    await page.getByRole("button", { name: "Review trade" }).click();
     await page.getByRole("button", { name: "Review token approval" }).waitFor();
     check(await page.getByLabel("Verified trade review").innerText().then((text) => text.includes("No swap fee is charged by this approval")), "Approval is distinguished from swap settlement and fees");
     await page.screenshot({ path: path.join(output, `${channel}-${width}-approval.png`), fullPage: true });
     await page.evaluate(() => { window.__CANNACAT_FIXTURE_SYNC_REJECT__ = true; });
     await page.getByRole("button", { name: "Review token approval" }).click();
     await page.getByRole("status").filter({ hasText: "declined" }).waitFor();
-    await expect(page.getByRole("button", { name: "Get live quote" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Review trade" })).toBeEnabled();
     check(await page.evaluate(() => (window.__CANNACAT_FIXTURE_WALLET_REQUESTS__ ?? []).length) === 2, "Synchronous wallet rejection safely unlocks the panel without resubmission");
     await page.getByRole("button", { name: "Buy CannaCat", exact: true }).click();
     await page.getByLabel("Minimum CannaCat to receive").fill("1");
-    await page.getByRole("button", { name: "Get live quote", exact: true }).click();
+    await page.getByRole("button", { name: "Review trade", exact: true }).click();
     await page.getByRole("button", { name: "Confirm buy in wallet", exact: true }).waitFor();
     const tiny = [...bundles.values()].at(-1)!;
     const tinyReview = await page.getByLabel("Verified trade review").innerText();
@@ -255,7 +256,7 @@ try {
     // or authorize from stale balances. Every wallet request remains synthetic.
     await page.getByRole("button", { name: "USD target", exact: true }).click();
     await page.getByRole("button", { name: "$25", exact: true }).click();
-    await page.getByRole("button", { name: "Get live quote", exact: true }).click();
+    await page.getByRole("button", { name: "Review trade", exact: true }).click();
     await page.getByRole("button", { name: "Confirm buy in wallet", exact: true }).waitFor();
     await expect(page.getByLabel("Verified trade review")).toContainText("0.0125 ETH");
     check(true, "USD target becomes an exact native ETH input on the existing rail");
@@ -276,15 +277,15 @@ try {
     usdPrice = "2500.00";
     await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pageshow", {persisted:true})));
     await expect(page.getByLabel("USD purchase target")).toHaveValue("25");
-    await expect(page.getByRole("button", { name: "Get live quote", exact: true })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "Review trade", exact: true })).toBeEnabled();
     check(await page.getByRole("button", { name: "Confirm buy in wallet", exact: true }).count() === 0, "Page restoration invalidates transaction authority while retaining saved review");
     check(await page.locator(".rmtcat-quote dl>div").filter({has:page.getByText("Exact ETH input", {exact:true})}).locator("dd").innerText() === exactInputBefore, "Price refresh and page return never rewrite reviewed ETH input");
     await page.getByRole("button", { name: "ETH input", exact: true }).click();
     await page.getByLabel("ETH to spend").fill("1");
-    await page.getByRole("button", { name: "Get live quote", exact: true }).click();
+    await page.getByRole("button", { name: "Review trade", exact: true }).click();
     await expect(page.getByRole("alert")).toContainText("Insufficient ETH: input plus gas reserve");
     await page.getByRole("button", { name: "0.01", exact: true }).click();
-    await page.getByRole("button", { name: "Get live quote", exact: true }).click();
+    await page.getByRole("button", { name: "Review trade", exact: true }).click();
     await page.getByRole("button", { name: "Confirm buy in wallet", exact: true }).waitFor();
     await expect(page.getByLabel("Verified trade review")).toContainText("0.01 ETH");
     await page.screenshot({path:path.join(output, `${channel}-${width}-eth-input.png`),fullPage:true});
@@ -295,7 +296,7 @@ try {
     await page.getByRole("button", { name: "10K", exact: true }).click();
     await page.getByRole("button", { name: "Sell CannaCat", exact: true }).click();
     await page.getByLabel("CannaCat to sell").fill("10000");
-    await page.getByRole("button", { name: "Get live quote", exact: true }).click();
+    await page.getByRole("button", { name: "Review trade", exact: true }).click();
     await page.getByRole("button", { name: "Review token approval", exact: true }).waitFor();
     await expect(page.getByLabel("Verified trade review")).toContainText("Estimated proceeds · USD");
     await expect(page.getByLabel("Wallet balances")).toContainText("50000 CannaCat");
@@ -310,37 +311,37 @@ try {
       await page.evaluate(({ client, transport }) => window.__CANNACAT_FIXTURE_UPDATE__?.({ connected: true, authenticated: true,
         walletClientType: client, connectorType: transport, chainId: "eip155:1", providerChainId: "0X1237" }),
         { client: walletClientType, transport: width < 768 ? "wallet_connect" : "injected" });
-      await expect(page.getByRole("button", { name: "Get live quote", exact: true })).toBeEnabled();
+      await expect(page.getByRole("button", { name: "Review trade", exact: true })).toBeEnabled();
       check(await page.getByLabel("Choose signing wallet").count() === 0, `${walletClientType}: sole restored signer needs no USE or chooser`);
       check(await page.getByRole("button", { name: "Switch to Robinhood Chain" }).count() === 0, "Fresh provider chain wins over stale SDK metadata");
       check(await page.evaluate(() => window.__CANNACAT_FIXTURE_AUTH_REQUESTS__ ?? 0) === 0, "Restored session never triggers an authentication signature");
       check(await page.evaluate(() => window.__CANNACAT_FIXTURE_CHAIN_SWITCHES__ ?? 0) === 0, "No automatic network switch");
-      await page.getByRole("button", { name: "Get live quote", exact: true }).click();
+      await page.getByRole("button", { name: "Review trade", exact: true }).click();
       await page.getByRole("button", { name: "Confirm buy in wallet" }).waitFor();
       check(await page.evaluate(() => (window.__CANNACAT_FIXTURE_WALLET_REQUESTS__ ?? []).length) === 0, "Auto-selection prepares a quote without any transaction request");
       await page.screenshot({ path: path.join(output, `${channel}-${width}-${walletClientType}-auto-selected.png`), fullPage: true });
 
       await page.evaluate(() => window.__CANNACAT_FIXTURE_UPDATE__?.({ providerChainId: "0x1" }, "chainChanged"));
       await page.locator('[data-wallet-status="wrong-chain"]').waitFor();
-      check(await page.getByRole("button", { name: "Get live quote", exact: true }).isDisabled(), "Wrong live chain blocks quotes");
+      check(await page.getByRole("button", { name: "Review trade", exact: true }).isDisabled(), "Wrong live chain blocks quotes");
       check(await page.getByRole("button", { name: "Confirm buy in wallet" }).count() === 0, "Chain change invalidates prepared transaction");
       await page.getByRole("button", { name: "Switch to Robinhood Chain" }).click();
-      await expect(page.getByRole("button", { name: "Get live quote", exact: true })).toBeEnabled();
+      await expect(page.getByRole("button", { name: "Review trade", exact: true })).toBeEnabled();
       check(await page.evaluate(() => window.__CANNACAT_FIXTURE_CHAIN_SWITCHES__) === 1, "Exactly one explicit network switch");
 
       await page.evaluate(() => window.__CANNACAT_FIXTURE_UPDATE__?.({ accounts: ["0x1111111111111111111111111111111111111111", "0x0000000000000000000000000000000000000123"] }, "accountsChanged"));
-      await expect(page.getByRole("button", { name: "Get live quote", exact: true })).toBeEnabled();
+      await expect(page.getByRole("button", { name: "Review trade", exact: true })).toBeEnabled();
       check(await page.locator('[data-wallet-status="ready"]').count() === 1, "Account-list order does not silently replace the exact selected SDK wallet");
       await page.evaluate(() => window.__CANNACAT_FIXTURE_UPDATE__?.({ accounts: ["0x1111111111111111111111111111111111111111"] }, "accountsChanged"));
       await page.locator('[data-wallet-status="account-mismatch"]').waitFor();
-      check(await page.getByRole("button", { name: "Get live quote", exact: true }).isDisabled(), "Provider must expose the exact selected SDK wallet address");
+      check(await page.getByRole("button", { name: "Review trade", exact: true }).isDisabled(), "Provider must expose the exact selected SDK wallet address");
       await page.evaluate(() => {
         window.__CANNACAT_FIXTURE_UPDATE__?.({ accounts: ["0x0000000000000000000000000000000000000123"], chainId: "eip155:1", providerChainId: "0x1237" });
         window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
       });
-      await expect(page.getByRole("button", { name: "Get live quote", exact: true })).toBeEnabled();
+      await expect(page.getByRole("button", { name: "Review trade", exact: true })).toBeEnabled();
       check(await page.locator('[data-wallet-status="ready"]').count() === 1, "Mobile return reacquires account and chain without a wallet-choice step");
-      await page.getByRole("button", { name: "Get live quote", exact: true }).click();
+      await page.getByRole("button", { name: "Review trade", exact: true }).click();
       await page.getByRole("button", { name: "Confirm buy in wallet" }).waitFor();
       await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true })));
       check(await page.getByRole("button", { name: "Confirm buy in wallet" }).count() === 0, "Suspension removes stale wallet confirmation");
@@ -349,16 +350,16 @@ try {
         window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
       });
       await page.locator('[data-wallet-status="unavailable"]').waitFor();
-      check(await page.getByRole("button", { name: "Get live quote", exact: true }).isDisabled(), "Authenticated address without provider cannot quote");
+      check(await page.getByRole("button", { name: "Review trade", exact: true }).isDisabled(), "Authenticated address without provider cannot quote");
       await page.getByRole("button", { name: "Reconnect wallet", exact: true }).click();
-      await expect(page.getByRole("button", { name: "Get live quote", exact: true })).toBeEnabled();
+      await expect(page.getByRole("button", { name: "Review trade", exact: true })).toBeEnabled();
       await page.evaluate(() => window.__CANNACAT_FIXTURE_UPDATE__?.({}, "disconnect"));
       await page.locator('[data-wallet-status="disconnected"]').waitFor();
-      check(await page.getByRole("button", { name: "Get live quote", exact: true }).isDisabled(), "Provider disconnect invalidates signing readiness");
+      check(await page.getByRole("button", { name: "Review trade", exact: true }).isDisabled(), "Provider disconnect invalidates signing readiness");
       await page.getByRole("button", { name: "Reconnect wallet", exact: true }).click();
-      await expect(page.getByRole("button", { name: "Get live quote", exact: true })).toBeEnabled();
+      await expect(page.getByRole("button", { name: "Review trade", exact: true })).toBeEnabled();
       await page.evaluate(() => window.__CANNACAT_FIXTURE_UPDATE__?.({ authenticated: false }));
-      check(await page.getByRole("button", { name: "Get live quote", exact: true }).isDisabled(), "Expired identity remains blocked despite an available provider");
+      check(await page.getByRole("button", { name: "Review trade", exact: true }).isDisabled(), "Expired identity remains blocked despite an available provider");
       await page.getByRole("button", { name: "Verify wallet ownership" }).waitFor();
 
       // Attaching another connector during reconnect must not silently replace
@@ -376,10 +377,10 @@ try {
       await page.evaluate((client) => window.__CANNACAT_FIXTURE_UPDATE__?.({ connected: true, authenticated: true, walletCount: 2,
         walletClientType: client, chainId: "eip155:4663", providerChainId: "0x1237" }), walletClientType);
       await page.getByLabel("Choose signing wallet").waitFor();
-      check(await page.getByRole("button", { name: "Get live quote", exact: true }).isDisabled(), "Two signing connectors never auto-select, even for the same address");
+      check(await page.getByRole("button", { name: "Review trade", exact: true }).isDisabled(), "Two signing connectors never auto-select, even for the same address");
       check(await page.getByLabel("Choose signing wallet").inputValue() === "", "No first-option selection is implied");
       await page.getByLabel("Choose signing wallet").selectOption({ index: 1 });
-      await expect(page.getByRole("button", { name: "Get live quote", exact: true })).toBeEnabled();
+      await expect(page.getByRole("button", { name: "Review trade", exact: true })).toBeEnabled();
       const chosen = await page.getByLabel("Choose signing wallet").inputValue();
       await page.evaluate(() => window.__CANNACAT_FIXTURE_UPDATE__?.({ providerChainId: "0x1" }, "chainChanged"));
       await page.locator('[data-wallet-status="wrong-chain"]').waitFor();
@@ -391,6 +392,22 @@ try {
       results.push({ channel, width, walletClientType, autoSelection: "PASS", staleSdkChain: "PASS", providerAccountBinding: "PASS",
         transport: width < 768 ? "wallet_connect" : "injected", mobileResume: "SYNTHETIC_PASS", multipleWalletChoice: "PASS", realWalletSignatures: 0, realTransactions: 0 });
     }
+    // One explicit connect starts the SDK authentication flow. Its completion
+    // event, not a second Verify click or a bare address, advances the session.
+    await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
+    await page.goto(base);
+    await page.getByRole('button', { name: 'I understand — continue', exact: true }).click();
+    await page.getByRole('button', { name: 'Connect wallet', exact: true }).click();
+    check(await page.evaluate(() => window.__CANNACAT_FIXTURE_LOGIN_REQUESTS__) === 1, 'Connect requests one Privy wallet-authentication flow');
+    check(await page.getByRole('button', { name: 'Review trade', exact: true }).isDisabled(), 'A connected address without signed identity never authorizes pricing');
+    await page.evaluate(() => {
+      window.__CANNACAT_FIXTURE_UPDATE__?.({ authenticated: true, chainId: 'eip155:4663', providerChainId: '0x1237' });
+      window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+    });
+    await expect(page.getByRole('button', { name: 'Review trade', exact: true })).toBeEnabled();
+    check(await page.getByRole('button', { name: 'Verify wallet ownership', exact: true }).count() === 0, 'Signed authentication return needs no redundant verification click');
+    check((await page.evaluate(() => window.__CANNACAT_FIXTURE_AUTH_REQUESTS__)) === undefined, 'The panel never requests a second loginOrLink signature after successful wallet login');
+    check((await page.evaluate(() => window.__CANNACAT_FIXTURE_WALLET_REQUESTS__?.length ?? 0)) === 0, 'Authentication completion never signs or submits a transaction');
     // Full post-submission lifecycle uses real durable recovery code, disposable
     // wallet responses and synthetic RPC evidence. No funded wallet is involved.
     balance = 10n ** 18n; gasPrice = 1_000_000_000n; walletNonce = 0n; verified = true;
@@ -402,7 +419,7 @@ try {
       await expect.poll(() => page.evaluate(() => typeof window.__CANNACAT_FIXTURE_UPDATE__)).toBe('function');
       await page.evaluate(() => window.__CANNACAT_FIXTURE_UPDATE__?.({ connected: true, authenticated: true,
         walletClientType: 'metamask', connectorType: 'wallet_connect', chainId: 'eip155:4663', providerChainId: '0x1237' }));
-      await expect(page.getByRole('button', { name: 'Get live quote', exact: true })).toBeEnabled();
+      await expect(page.getByRole('button', { name: 'Review trade', exact: true })).toBeEnabled();
     };
     await restoreConnection();
     const submitSynthetic = async (label: string, digit: string) => {
@@ -416,7 +433,7 @@ try {
       await expect(page.getByRole('link', { name: `View transaction ${txHash.slice(0,6)}…${txHash.slice(-4)}`, exact: true })).toBeVisible();
       return txHash;
     };
-    await page.getByRole('button', { name: 'Get live quote', exact: true }).click();
+    await page.getByRole('button', { name: 'Review trade', exact: true }).click();
     await page.getByRole('button', { name: 'Confirm buy in wallet', exact: true }).waitFor();
     const buyHash = await submitSynthetic('Confirm buy in wallet', '1');
     await page.getByRole('button', { name: 'Check settlement', exact: true }).click();
@@ -424,14 +441,14 @@ try {
     check(true, 'Submitted buy verifies exact CannaCat receipt output and unlocks a fresh quote');
     await page.getByRole('button', { name: 'Sell CannaCat', exact: true }).click();
     await page.getByLabel('CannaCat to sell').fill('1');
-    await page.getByRole('button', { name: 'Get live quote', exact: true }).click();
+    await page.getByRole('button', { name: 'Review trade', exact: true }).click();
     await page.getByRole('button', { name: 'Review token approval', exact: true }).waitFor();
     const approvalHash = await submitSynthetic('Review token approval', '2');
     await page.getByRole('button', { name: 'Check settlement', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('Approval confirmed');
     check(true, 'Confirmed token approval is recovered without claiming that a sale occurred');
     approvalAlreadyGranted = true;
-    await page.getByRole('button', { name: 'Get live quote', exact: true }).click();
+    await page.getByRole('button', { name: 'Review trade', exact: true }).click();
     await page.getByRole('button', { name: 'Confirm sell in wallet', exact: true }).waitFor();
     const saleHash = await submitSynthetic('Confirm sell in wallet', '3');
     await page.getByRole('button', { name: 'Check settlement', exact: true }).click();
@@ -451,12 +468,12 @@ try {
     await expect(page.getByLabel('Amount availability')).toContainText('0.000060234 ETH gas reserve');
     await expect(page.getByLabel('Amount availability')).toContainText('Insufficient ETH');
     await expect(page.getByLabel('Transaction recovery')).toBeVisible();
-    await page.getByRole('button', { name: 'Get live quote', exact: true }).click();
+    await page.getByRole('button', { name: 'Review trade', exact: true }).click();
     await expect(page.getByRole('alert')).toContainText('Insufficient ETH');
     check(await page.getByRole('button', { name: /^Confirm .* in wallet$/ }).count() === 0, 'Owner balance/input/gas case cannot open another transaction');
     await page.getByRole('button', { name: 'Max ETH · leave gas', exact: true }).click();
     await expect(page.getByLabel('ETH to spend')).toHaveValue('0.000018716');
-    await page.getByRole('button', { name: 'Get live quote', exact: true }).click();
+    await page.getByRole('button', { name: 'Review trade', exact: true }).click();
     await expect(page.getByLabel('Indicative quote review')).toBeVisible();
     check(await page.getByRole('button', { name: /^Confirm .* in wallet$/ }).count() === 0, 'Recovery permits an indicative quote but never authorizes another trade');
     const panelNode = await page.locator('.rmtcat-panel').elementHandle();
@@ -472,26 +489,33 @@ try {
     check(await page.evaluate(value => Object.values(localStorage).some(item => item.includes(value)), saleHash), 'Disconnect preserves the exact unresolved sale hash and journal');
     await page.getByRole('button', { name: 'Connect wallet', exact: true }).click();
     await page.getByRole('button', { name: 'Verify wallet ownership', exact: true }).click();
-    await expect(page.getByRole('button', { name: 'Get live quote', exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Review trade', exact: true })).toBeEnabled();
     await expect(page.getByLabel('Transaction recovery')).toBeVisible();
     settlementAvailable = true;
-    await page.getByRole('button', { name: 'Check settlement', exact: true }).click();
+    await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
     await expect(page.getByRole('status')).toContainText('Settlement verified:');
     await expect(page.getByRole('status')).toContainText('ETH received');
     check(await page.getByLabel('Transaction recovery').count() === 0, 'Exact native-output proof resolves the saved sale after refresh and reconnect');
+    const settledJournal = await page.evaluate(value => {
+      const saved = JSON.parse(localStorage.getItem('rmt:vnext-execution-journal:v1:4663') || '{}');
+      return saved.executions?.find((entry: { txHash: string }) => entry.txHash === value);
+    }, saleHash);
+    check(settledJournal?.state === 'confirmed' && Boolean(settledJournal?.outputSettlement), 'Automatic recovery persists canonical output proof, not just a cleared banner');
+    await page.reload(); await restoreConnection();
+    check(await page.getByLabel('Transaction recovery').count() === 0, 'Refreshing an authoritatively settled journal cannot restore an obsolete pending lock');
     for (const transactionHash of [buyHash, approvalHash, saleHash]) {
       check(await page.evaluate(value => Object.values(localStorage).some(item => item.includes(value)), transactionHash), 'Confirmed buy, approval and sale history remains preserved');
     }
     balance = 10n ** 18n; gasPrice = 1_000_000_000n;
     await page.getByRole('button', { name: '0.01', exact: true }).click();
     delayQuote = true;
-    await page.getByRole('button', { name: 'Get live quote', exact: true }).click();
+    await page.getByRole('button', { name: 'Review trade', exact: true }).click();
     await page.getByRole('button', { name: 'Stop waiting', exact: true }).waitFor();
     await expect.poll(() => Boolean(delayedQuote)).toBe(true);
     await expect(page.getByRole('button', { name: 'Working…', exact: true })).toBeDisabled();
     await page.getByLabel('ETH to spend').fill('0.001');
     delayQuote = false; delayedQuote?.(); delayedQuote = null;
-    await page.getByRole('button', { name: 'Get live quote', exact: true }).click();
+    await page.getByRole('button', { name: 'Review trade', exact: true }).click();
     await page.getByRole('button', { name: 'Confirm buy in wallet', exact: true }).waitFor();
     await expect(page.getByLabel('Verified trade review')).toContainText('0.001 ETH');
     await expect(page.getByLabel('ETH to spend')).toHaveValue('0.001');
@@ -504,14 +528,14 @@ try {
     await expect(page.getByRole('status')).toContainText('It may still complete');
     await expect(page.getByRole('button', { name: 'Disconnect', exact: true })).toBeEnabled();
     await page.evaluate(() => { window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })); window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })); });
-    await expect(page.getByRole('button', { name: 'Get live quote', exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Review trade', exact: true })).toBeEnabled();
     await page.evaluate(() => window.__CANNACAT_FIXTURE_RESOLVE_WALLET__?.());
     await expect(page.getByRole('status')).toContainText('Transaction submitted');
     walletNonce += 1n;
     await page.getByRole('button', { name: 'Check settlement', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('Settlement verified:');
     check(true, 'A wallet response arriving after cancellation/mobile return is durably reconciled without resubmission');
-    await page.getByRole('button', { name: 'Get live quote', exact: true }).click();
+    await page.getByRole('button', { name: 'Review trade', exact: true }).click();
     await page.getByRole('button', { name: 'Confirm buy in wallet', exact: true }).waitFor();
     await page.evaluate(() => { window.__CANNACAT_FIXTURE_WALLET_MODE__ = 'wait'; });
     await page.getByRole('button', { name: 'Confirm buy in wallet', exact: true }).click();
@@ -527,6 +551,68 @@ try {
     await page.screenshot({ path: path.join(output, `${channel}-${width}-recovery-timeout.png`), fullPage: true });
     results.push({ channel, width, postTradeRefresh: 'PASS', unresolvedSale: 'PASS', independentNativeProof: 'SYNTHETIC_PASS', ownerInsufficientBalanceCase: 'PASS',
       maxGasReserve: 'PASS', disconnectReconnect: 'PASS', lateWalletResponse: 'PASS', loadingWatchdog: 'PASS', intentPersistence: 'PASS', realTransactions: 0 });
+
+    if (width === 390) {
+      // Fresh context uses REAL wall-clock time, not page.clock fast-forward.
+      // API/wallet fixtures are disposable; execution authorization is never requested.
+      balance = 10n ** 18n; gasPrice = 1_000_000_000n; verified = true;
+      const stableContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+      await stableContext.route('**/*', routeHandler);
+      const stable = await stableContext.newPage(); const stableErrors: string[] = [];
+      stable.on('pageerror', error => stableErrors.push(error.message));
+      await stable.goto(base);
+      await stable.getByRole('button', { name: 'I understand — continue', exact: true }).click();
+      await stable.getByRole('button', { name: 'Connect wallet', exact: true }).click();
+      await stable.evaluate(() => {
+        window.__CANNACAT_FIXTURE_UPDATE__?.({ authenticated: true, chainId: 'eip155:4663', providerChainId: '0x1237' });
+        window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true }));
+      });
+      const input = stable.getByLabel('Minimum CannaCat to receive');
+      await expect(input).toHaveValue('10000');
+      await stable.getByLabel('Indicative quote review').locator('dl').waitFor();
+      const panel = await stable.locator('.rmtcat-panel').elementHandle();
+      const observation = await stable.getByLabel('Indicative quote review').elementHandle();
+      const inputNode = await input.elementHandle();
+      await input.focus(); await input.evaluate((node: HTMLInputElement) => node.setSelectionRange(2, 2));
+      const scroll = await stable.evaluate(() => ({ x: scrollX, y: scrollY }));
+      const started = Date.now(); const callsAtStart = quoteCalls; const samples: object[] = [];
+      await stable.screenshot({ path: path.join(output, channel + '-stability-start.png'), fullPage: true });
+      for (let sample = 0; sample < 30; sample += 1) {
+        await new Promise(resolve => setTimeout(resolve, 30_000));
+        check(await input.inputValue() === '10000', '15-minute monitoring preserves the 10000 token target');
+        check(await panel!.evaluate(node => node.isConnected) && await observation!.evaluate(node => node.isConnected)
+          && await inputNode!.evaluate(node => node.isConnected), 'Live pricing never remounts panel, observation or input');
+        const state = await input.evaluate((node: HTMLInputElement) => ({ focused: document.activeElement === node, cursor: node.selectionStart,
+          x: scrollX, y: scrollY, width: document.documentElement.scrollWidth, viewport: innerWidth }));
+        check(state.focused && state.cursor === 2, 'Background quotes preserve keyboard focus and cursor');
+        check(state.x === scroll.x && Math.abs(state.y - scroll.y) <= 1, 'Background quotes never jump or reset scroll');
+        check(state.width <= state.viewport, 'Live estimate remains inside iPhone-sized viewport');
+        check(await stable.getByRole('button', { name: 'CannaCat target', exact: true }).getAttribute('aria-pressed') === 'true', 'Selected buy input mode stays unchanged');
+        samples.push({ sample: sample + 1, elapsedMs: Date.now() - started, quoteCalls: quoteCalls - callsAtStart,
+          freshness: await stable.locator('.rmtcat-freshness').innerText(), ...state });
+      }
+      const elapsedMs = Date.now() - started;
+      check(elapsedMs >= 900_000, 'Fifteen minutes actually elapsed without virtual time');
+      check(quoteCalls - callsAtStart >= 30 && quoteCalls - callsAtStart <= 310, 'Automatic updates continue within bounded request rate');
+      check((await stable.evaluate(() => window.__CANNACAT_FIXTURE_WALLET_REQUESTS__?.length ?? 0)) === 0, 'Fifteen minutes of quotes never submits or signs');
+      check(stableErrors.length === 0, 'No long-running browser runtime errors');
+      await stable.screenshot({ path: path.join(output, channel + '-stability-finish.png'), fullPage: true });
+      // Existing modes and sell use automatic observations without a Review click.
+      await stable.getByRole('button', { name: 'USD target', exact: true }).click();
+      await expect(stable.getByLabel('USD purchase target')).toHaveValue('25');
+      await expect(stable.getByLabel('Indicative quote review').locator('dl')).toBeVisible();
+      await expect(stable.getByLabel('Indicative quote review')).toContainText('0.0125 ETH');
+      await stable.getByRole('button', { name: 'ETH input', exact: true }).click();
+      await stable.getByLabel('ETH to spend').fill('0.001');
+      await expect(stable.getByLabel('Indicative quote review')).toContainText('0.001 ETH');
+      await stable.getByRole('button', { name: 'Sell CannaCat', exact: true }).click();
+      await stable.getByLabel('CannaCat to sell').fill('1');
+      await expect(stable.getByLabel('Indicative quote review')).toContainText('1 CannaCat');
+      check(await stable.getByRole('button', { name: /^Confirm .* in wallet$/ }).count() === 0, 'All automatic modes remain indicative, never executable');
+      await writeFile(path.join(output, channel + '-15-minute-stability.json'), JSON.stringify({ result: 'PASS', channel, elapsedMs,
+        clock: 'REAL_WALL_CLOCK', transport: 'SYNTHETIC_WALLET_AND_API', manualQuoteClicks: 0, realSignatures: 0, realTransactions: 0, samples }, null, 2));
+      await stableContext.close();
+    }
     await context.close();
   }
   await writeFile(path.join(output, `${channel}.json`), JSON.stringify({ result: "PASS", checks, quoteCalls, results, layouts, baselinePanelCommit:"af597d2d8ccf0c4db05e993ac5dd4bbf32171399", realTransactions: 0, realWalletSignatures: 0, nativeIphoneSafariTested: false }, null, 2));
