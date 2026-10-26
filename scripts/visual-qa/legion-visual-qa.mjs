@@ -916,7 +916,7 @@ async function nftJourneyLane(browser, viewport, platform) {
     // Dynamic collection/item routes must be fetched on activation, not through
     // a speculative tree-only prefetch followed by the missing-data patch lane.
     // Preserve the real pointer click and exact rendered-destination assertion.
-    if (href && /^\/nft\/[^/?]+(?:\/[^/?]+)?(?:\?.*)?$/.test(href)) {
+    if (href && /^\/nft(?:\/[^/?]+(?:\/[^/?]+)?)?(?:\?.*)?$/.test(href)) {
       await element.hover();
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => resolve())));
       const speculativeReads = navigationTrace.filter(entry => entry.event === "request" && entry.partialPrefetch && new URL(entry.path, base).pathname === new URL(href, base).pathname);
