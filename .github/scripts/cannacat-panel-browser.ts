@@ -49,6 +49,10 @@ let gasPrice = 1_000_000_000n;
 let walletNonce = 0n;
 let delayedQuote: (() => void) | null = null;
 let delayQuote = false;
+let variableMarket = false;
+let quoteFailure = 0;
+let quoteResumeAfter = 0;
+let firmCalls = 0;
 const bundles = new Map<string, ReturnType<typeof syntheticCannaCatBundle>>();
 const transactions = new Map<string, { receipt: object; transaction: object; trace: object }>();
 const tokenBalance = 50_000n * 10n ** 18n;
@@ -113,6 +117,7 @@ try {
         check(input.chainId === 4663 && input.recipient === "0x0000000000000000000000000000000000000123", "Exact synthetic wallet and chain binding");
         check(route.request().headers()["privy-id-token"] === "synthetic-identity-only", "Only fixture identity forwarded");
         if (!url.pathname.endsWith("/quotes")) {
+          firmCalls += 1;
           if (!verified) { await route.fulfill({ status: 409, headers, json: { code: "ZERO_X_REPRICE_REQUIRED" } }); return; }
           if (url.pathname.endsWith("/verify")) {
             const bundle = syntheticCannaCatBundle(input, { approvalAlreadyGranted });
@@ -124,9 +129,15 @@ try {
           await route.fulfill({ headers, json: bundle }); return;
         }
         quoteCalls += 1;
+        if (quoteResumeAfter) check(Date.now() >= quoteResumeAfter, 'Automatic pricing honors the complete provider Retry-After deadline');
+        if (quoteFailure) {
+          if (quoteFailure === 429) quoteResumeAfter = Date.now() + 60_000;
+          await route.fulfill({ status: quoteFailure, headers: { ...headers, ...(quoteFailure === 429 ? { 'retry-after': '60' } : {}) }, json: { code: 'SYNTHETIC_PROVIDER_OUTAGE' } }); return;
+        }
         if (delayQuote) await new Promise<void>(resolve => { delayedQuote = resolve; });
         const buying = input.inputAsset === "0x0000000000000000000000000000000000000000";
-        const output = buying ? BigInt(input.inputAmountAtomic) * 10_000_000n : BigInt(input.inputAmountAtomic) / 10_000_000n;
+        const ratio = variableMarket ? 10_000_000n + BigInt(Math.floor(Date.now() / 15_000) % 1000) : 10_000_000n;
+        const output = buying ? BigInt(input.inputAmountAtomic) * ratio : BigInt(input.inputAmountAtomic) / ratio;
         const minimum = output * 99n / 100n;
         const fee = createVNextZeroXProviderNativeFee({ inputAsset: input.inputAsset, outputAsset: input.outputAsset, userGrossInputAtomic: input.inputAmountAtomic, recipient: input.recipient,
           expectedOutputAtomic: String(output), protectedOutputAtomic: String(minimum), authorizationState: "indicative",
@@ -561,7 +572,7 @@ try {
     if (width === 390) {
       // Fresh context uses REAL wall-clock time, not page.clock fast-forward.
       // API/wallet fixtures are disposable; execution authorization is never requested.
-      balance = 10n ** 18n; gasPrice = 1_000_000_000n; verified = true;
+      balance = 10n ** 18n; gasPrice = 1_000_000_000n; verified = true; variableMarket = true;
       const stableContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
       await stableContext.route('**/*', routeHandler);
       const stable = await stableContext.newPage(); const stableErrors: string[] = [];
@@ -581,10 +592,20 @@ try {
       const inputNode = await input.elementHandle();
       await input.focus(); await input.evaluate((node: HTMLInputElement) => node.setSelectionRange(2, 2));
       const scroll = await stable.evaluate(() => ({ x: scrollX, y: scrollY }));
-      const started = Date.now(); const callsAtStart = quoteCalls; const samples: object[] = [];
+      const started = Date.now(); const callsAtStart = quoteCalls; const firmAtStart = firmCalls; const samples: object[] = [];
       await stable.screenshot({ path: path.join(output, channel + '-stability-start.png'), fullPage: true });
       for (let sample = 0; sample < 30; sample += 1) {
+        if (sample === 5) quoteFailure = 503;
+        if (sample === 6) quoteFailure = 0;
+        if (sample === 11) quoteFailure = 429;
+        if (sample === 12) quoteFailure = 0;
+        if (sample === 17 || sample === 18) await stable.evaluate(hidden => {
+          Object.defineProperty(document, 'visibilityState', { configurable: true, value: hidden ? 'hidden' : 'visible' });
+          document.dispatchEvent(new Event('visibilitychange'));
+        }, sample === 17);
+        const beforeHidden = quoteCalls;
         await new Promise(resolve => setTimeout(resolve, 30_000));
+        if (sample === 17) check(quoteCalls === beforeHidden, 'Hidden browser pauses all indicative quote requests');
         check(await input.inputValue() === '10000', '15-minute monitoring preserves the 10000 token target');
         check(await panel!.evaluate(node => node.isConnected) && await observation!.evaluate(node => node.isConnected)
           && await inputNode!.evaluate(node => node.isConnected), 'Live pricing never remounts panel, observation or input');
@@ -601,6 +622,7 @@ try {
       check(elapsedMs >= 900_000, 'Fifteen minutes actually elapsed without virtual time');
       check(quoteCalls - callsAtStart >= 30 && quoteCalls - callsAtStart <= 310, 'Automatic updates continue within bounded request rate');
       check((await stable.evaluate(() => window.__CANNACAT_FIXTURE_WALLET_REQUESTS__?.length ?? 0)) === 0, 'Fifteen minutes of quotes never submits or signs');
+      check(firmCalls === firmAtStart, 'Background estimates never call verification or authorization endpoints');
       check(stableErrors.length === 0, 'No long-running browser runtime errors');
       await stable.screenshot({ path: path.join(output, channel + '-stability-finish.png'), fullPage: true });
       // Existing modes and sell use automatic observations without a Review click.
@@ -616,7 +638,9 @@ try {
       await expect(stable.getByLabel('Indicative quote review')).toContainText('1 CannaCat');
       check(await stable.getByRole('button', { name: /^Confirm .* in wallet$/ }).count() === 0, 'All automatic modes remain indicative, never executable');
       await writeFile(path.join(output, channel + '-15-minute-stability.json'), JSON.stringify({ result: 'PASS', channel, elapsedMs,
-        clock: 'REAL_WALL_CLOCK', transport: 'SYNTHETIC_WALLET_AND_API', manualQuoteClicks: 0, realSignatures: 0, realTransactions: 0, samples }, null, 2));
+        clock: 'REAL_WALL_CLOCK', transport: 'SYNTHETIC_WALLET_AND_API', variableMarket: true, unavailable503: true, rateLimited429: true,
+        hiddenPauseAndResume: true, manualQuoteClicks: 0, realSignatures: 0, realTransactions: 0, samples }, null, 2));
+      variableMarket = false; quoteFailure = 0; quoteResumeAfter = 0;
       await stableContext.close();
     }
     await context.close();

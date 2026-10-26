@@ -163,6 +163,9 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     return action;
   }
   function recoveryRequired(address: string) { return Boolean(findBlockingVNextWalletRequest(address, localStorage) || findUnresolvedVNextExecution(address, localStorage)); }
+  function cancelRecoveryRead() {
+    recoveryRead.current?.abort(); recoveryRead.current = null; setRecoveryChecking(false);
+  }
 
   function invalidate(preserveReview = false) {
     epoch.current += 1;
@@ -278,6 +281,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       const candidate = walletRef.current;
       if (!candidate || disposed) return;
       const attempt = ++sequence;
+      cancelRecoveryRead();
       invalidate(true); publish(uncheckedConnectedWallet); providerRef.current = null;
       const state = await readConnectedWallet(candidate);
       if (disposed || sequence !== attempt || currentRef.current.key !== selectedKey) return;
@@ -287,6 +291,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       }
       providerRef.current = state.provider; publish(state);
       setStatus(connectedWalletMessage(state));
+      if (state.status === "ready") void refreshFunds.current?.();
       // Safari may complete checking -> ready in one React batch. In that case
       // a status-dependency effect sees no change. Resume recovery explicitly
       // after the live provider read instead of waiting for its polling timer.
@@ -299,11 +304,12 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     };
     function changed() { if (document.visibilityState !== "hidden") void refresh(); else suspend(); }
     function disconnected() {
+      cancelRecoveryRead();
       sequence += 1; invalidate(); providerRef.current = null;
       publish({ status: "disconnected", chainId: null, provider: null });
       setStatus("The signing wallet disconnected. Reconnect it before requesting a quote.");
     }
-    function suspend() { sequence += 1; invalidate(true); balancesRef.current = null; providerRef.current = null; publish(uncheckedConnectedWallet); }
+    function suspend() { sequence += 1; cancelRecoveryRead(); invalidate(true); balancesRef.current = null; providerRef.current = null; publish(uncheckedConnectedWallet); }
     const visible = () => { if (document.visibilityState === "hidden") suspend(); else void refresh(); };
     const resumed = () => { if (document.visibilityState !== "hidden") void refresh(); };
     refreshWallet.current = refresh;
