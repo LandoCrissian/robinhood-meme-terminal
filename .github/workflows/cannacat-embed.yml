@@ -27,6 +27,7 @@ jobs:
       - run: pnpm --filter web exec tsx lib/vnext/zero-x-adapter-smoke.ts
       - run: pnpm --filter web exec tsx lib/vnext/wallet-submission-smoke.ts
       - run: pnpm --filter web exec tsx lib/vnext/native-output-settlement-smoke.ts
+      - run: pnpm --filter web exec tsx lib/vnext/execution-recovery-smoke.ts
       - run: pnpm typecheck
       - run: pnpm --filter web exec node scripts/build-cannacat-client.mjs
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

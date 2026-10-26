@@ -1,0 +1,298 @@
+import React, { useEffect, useId, useRef, useState } from "react";
+import { createRoot } from "react-dom/client";
+import { PrivyProvider, useConnectWallet, useIdentityToken, usePrivy, useWallets } from "@privy-io/react-auth";
+import { createPublicClient, erc20Abi, formatUnits, getAddress, http, isHash, toHex, type Hex } from "viem";
+import { robinhoodChain } from "@rmt/shared/chains";
+import {
+  CANNACAT_EMBED, createCannaCatClient, parseCannaCatAmount, externalEthereumWallets, walletGatewayKey,
+  prepareVNextWalletTransaction, vNextWalletRpcTransaction, assessVNextWalletGasReadiness,
+  findBlockingVNextWalletRequest, findUnresolvedVNextExecution, recordPreparedVNextWalletRequest,
+  transitionVNextWalletRequest, promoteVNextWalletRequestToSubmitted, readVNextExecutionJournal,
+  readVNextWalletRequestJournal, resolveVNextExecution, verifyVNextErc20OutputSettlement,
+  boundVNextNativeSettlementEnvelope, verifyVNextNativeOutputSettlement,
+  type CannaCatPrepared, type CannaCatSide, type VNextExecutionRecord
+} from "./cannacat-client";
+
+export type CannaCatPanelConfig = {
+  enabled: boolean; apiBaseUrl: string; privyAppId: string; privyClientId: string;
+};
+type Provider = {
+  request: (input: { method: string; params?: unknown[] }) => Promise<unknown>;
+  on?: (name: string, listener: (...args: unknown[]) => void) => void;
+  removeListener?: (name: string, listener: (...args: unknown[]) => void) => void;
+};
+type Ready = {
+  trade: CannaCatPrepared; provider: Provider; walletKey: string; identityToken: string;
+  nonce: bigint; block: bigint; blockHash: Hex; chainId: number;
+};
+const client = createPublicClient({ chain: robinhoodChain, transport: http(CANNACAT_EMBED.rpc, { timeout: 12_000, retryCount: 0 }) });
+const short = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`;
+const units = (value: string | bigint, digits = 8) => {
+  const exact = formatUnits(BigInt(value), 18);
+  const [whole, fraction = ""] = exact.split(".");
+  const tail = fraction.slice(0, digits).replace(/0+$/, "");
+  if (whole === "0" && !tail && BigInt(value) > 0n) return `<0.${"0".repeat(digits - 1)}1`;
+  return tail ? `${whole}.${tail}` : whole;
+};
+const safeError = (cause: unknown) => cause instanceof Error ? cause.message.slice(0, 240) : "The request could not be completed. Try again after checking your wallet.";
+const isUserRejection = (cause: unknown) => Boolean(cause && typeof cause === "object" && "code" in cause && cause.code === 4001);
+const explorer = (hash: string) => `${robinhoodChain.blockExplorers.default.url}/tx/${hash}`;
+
+function Panel({ config }: { config: CannaCatPanelConfig }) {
+  const { ready, authenticated, user, logout } = usePrivy();
+  const { wallets, ready: walletsReady } = useWallets();
+  const { identityToken } = useIdentityToken();
+  const [selectedKey, setSelectedKey] = useState("");
+  const [side, setSide] = useState<CannaCatSide>("buy");
+  const [amount, setAmount] = useState("10000");
+  const [status, setStatus] = useState("Connect an existing wallet to get a live quote.");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [prepared, setPrepared] = useState<Ready | null>(null);
+  const [now, setNow] = useState(Date.now());
+  const [hash, setHash] = useState("");
+  const [balances, setBalances] = useState<{ eth: bigint; token: bigint } | null>(null);
+  const [blocking, setBlocking] = useState(false);
+  const epoch = useRef(0);
+  const operation = useRef<AbortController | null>(null);
+  const inFlight = useRef(false);
+  const providerRef = useRef<Provider | null>(null);
+  const currentRef = useRef({ key: selectedKey, token: identityToken, side, amount, userId: user?.id });
+  currentRef.current = { key: selectedKey, token: identityToken, side, amount, userId: user?.id };
+  const external = externalEthereumWallets(wallets);
+  const wallet = external.find((value) => walletGatewayKey(value) === selectedKey);
+  const inputId = useId();
+  const connected = Boolean(ready && walletsReady && authenticated && identityToken && wallet?.linked);
+
+  function invalidate() {
+    epoch.current += 1;
+    operation.current?.abort();
+    setPrepared(null);
+    setError("");
+  }
+  const { connectWallet } = useConnectWallet({ onSuccess: ({ wallet: connectedWallet }) => {
+    if (connectedWallet.type !== "ethereum" || connectedWallet.walletClientType === "privy" || connectedWallet.walletClientType === "privy-v2") {
+      setError("Select an existing external Ethereum wallet."); return;
+    }
+    invalidate(); setSelectedKey(walletGatewayKey(connectedWallet));
+    setStatus("Wallet connected. Verify ownership to request a protected quote.");
+  } });
+
+  useEffect(() => { invalidate(); setBalances(null); }, [selectedKey, identityToken, user?.id, wallet?.chainId, authenticated]);
+  useEffect(() => {
+    if (!prepared) return;
+    const timer = setInterval(() => setNow(Date.now()), 500);
+    return () => clearInterval(timer);
+  }, [prepared]);
+  useEffect(() => () => { operation.current?.abort(); epoch.current += 1; }, []);
+  useEffect(() => {
+    if (!wallet) return;
+    let disposed = false;
+    let active: Provider | undefined;
+    const changed = () => { invalidate(); setStatus("Wallet changed. Refresh the quote before continuing."); };
+    void wallet.getEthereumProvider().then((provider) => {
+      if (disposed) return;
+      active = provider as unknown as Provider; providerRef.current = active;
+      active.on?.("chainChanged", changed); active.on?.("accountsChanged", changed); active.on?.("disconnect", changed);
+    }).catch(() => setError("The selected wallet provider is unavailable. Reconnect it."));
+    try {
+      const unresolved = findUnresolvedVNextExecution(wallet.address, localStorage);
+      const pending = findBlockingVNextWalletRequest(wallet.address, localStorage);
+      setBlocking(Boolean(unresolved || pending));
+      if (unresolved) { setHash(unresolved.txHash); setStatus("An earlier transaction needs verification. Check its status before another trade."); }
+      else if (pending) setStatus("An earlier wallet response is unresolved. Check your wallet before submitting another transaction.");
+    } catch { setError("Local recovery storage is unavailable. Enable site storage before trading."); setBlocking(true); }
+    return () => {
+      disposed = true;
+      active?.removeListener?.("chainChanged", changed); active?.removeListener?.("accountsChanged", changed); active?.removeListener?.("disconnect", changed);
+      providerRef.current = null;
+    };
+  }, [selectedKey, wallet?.address]);
+
+  async function verifyWallet() {
+    if (!wallet || inFlight.current) return;
+    inFlight.current = true; setBusy(true); setError("");
+    try { await wallet.loginOrLink(); setStatus("Wallet ownership verified. Choose an amount and request a quote."); }
+    catch (cause) { setError(safeError(cause)); }
+    finally { inFlight.current = false; setBusy(false); }
+  }
+  async function switchNetwork() {
+    if (!wallet || inFlight.current) return;
+    invalidate(); inFlight.current = true; setBusy(true);
+    try { await wallet.switchChain(4663); setStatus("Robinhood Chain selected. Request a fresh quote."); }
+    catch { setError("Network switch was not completed. Select Robinhood Chain in your wallet."); }
+    finally { inFlight.current = false; setBusy(false); }
+  }
+  async function getQuote() {
+    if (!connected || !wallet || !identityToken || inFlight.current || blocking) return;
+    invalidate(); const generation = epoch.current;
+    const controller = new AbortController(); operation.current = controller;
+    const key = selectedKey; const token = identityToken;
+    inFlight.current = true; setBusy(true); setStatus("Checking wallet, live quote and transaction safety…");
+    try {
+      const tokenAmountAtomic = parseCannaCatAmount(amount);
+      const provider = await wallet.getEthereumProvider() as unknown as Provider;
+      const [accounts, chain, chainId, eth, held, nonce, block] = await Promise.all([
+        provider.request({ method: "eth_accounts" }), provider.request({ method: "eth_chainId" }), client.getChainId(),
+        client.getBalance({ address: getAddress(wallet.address) }),
+        client.readContract({ address: CANNACAT_EMBED.token, abi: erc20Abi, functionName: "balanceOf", args: [getAddress(wallet.address)] }),
+        client.getTransactionCount({ address: getAddress(wallet.address), blockTag: "pending" }), client.getBlock()
+      ]);
+      if (chain !== toHex(4663) || chainId !== 4663 || !Array.isArray(accounts)
+        || !accounts.some((address) => typeof address === "string" && address.toLowerCase() === wallet.address.toLowerCase())) throw new Error("Select this wallet on Robinhood Chain before requesting a quote.");
+      setBalances({ eth, token: held });
+      if (eth <= 0n) throw new Error("ETH is needed for network gas, including when selling tokens.");
+      if (side === "sell" && BigInt(tokenAmountAtomic) > held) throw new Error("Your selected token amount exceeds this wallet's CannaCat balance.");
+      const api = createCannaCatClient({ baseUrl: config.apiBaseUrl, identityToken: token });
+      const quote = await api.quote({ side, tokenAmountAtomic, wallet: wallet.address, maximumEthInputAtomic: eth.toString(), signal: controller.signal });
+      const trade = await api.prepare(quote, controller.signal);
+      const [balanceNow, gasPrice] = await Promise.all([client.getBalance({ address: getAddress(wallet.address) }), client.getGasPrice()]);
+      const gas = assessVNextWalletGasReadiness({ nativeBalanceWei: balanceNow, currentGasPriceWei: gasPrice,
+        evidenceFeeCeilingWei: trade.evidence.feeCeilingWei, gasLimitUnits: trade.plan.gasLimit, transactionValueAtomic: trade.plan.value });
+      if (!gas.ready) throw new Error(`More ETH is required for input and the protected gas reserve (shortfall ${units(gas.shortfallWei)} ETH).`);
+      prepareVNextWalletTransaction({ plan: trade.plan, evidence: trade.evidence, connectedAddress: wallet.address, connectedChainId: 4663, nowMs: Date.now() });
+      if (generation !== epoch.current || currentRef.current.key !== key || currentRef.current.token !== token) return;
+      if (!block.hash || !block.number) throw new Error("Current chain recovery evidence is unavailable.");
+      setPrepared({ trade, provider, walletKey: key, identityToken: token, nonce: BigInt(nonce), block: block.number, blockHash: block.hash, chainId: 4663 });
+      setNow(Date.now());
+      setStatus(trade.plan.kind === "erc20_approval" ? "Approve only the displayed CannaCat amount. A fresh swap review follows after confirmation." : "Review the protected quote, then confirm explicitly in your wallet.");
+    } catch (cause) { if (generation === epoch.current && !controller.signal.aborted) { setError(safeError(cause)); setStatus("No transaction was submitted."); } }
+    finally { inFlight.current = false; setBusy(false); }
+  }
+
+  async function checkTransaction(recordOverride?: VNextExecutionRecord) {
+    if (!wallet || inFlight.current) return;
+    inFlight.current = true; setBusy(true); setError("");
+    try {
+      const record = recordOverride ?? readVNextExecutionJournal(localStorage).find((entry) => entry.wallet.toLowerCase() === wallet.address.toLowerCase() && entry.txHash.toLowerCase() === hash.toLowerCase());
+      if (!record) throw new Error("Keep this transaction hash and check your wallet. Its saved recovery record is unavailable; do not submit again.");
+      const [receipt, transaction, chainId] = await Promise.all([client.getTransactionReceipt({ hash: record.txHash }), client.getTransaction({ hash: record.txHash }), client.getChainId()]);
+      if (chainId !== 4663) throw new Error("The recovery RPC returned the wrong network.");
+      if (receipt.status === "reverted") {
+        resolveVNextExecution(record.txHash, "reverted", localStorage);
+        setBlocking(false); setStatus("Transaction reverted. The trade did not complete; network gas may still apply."); return;
+      }
+      if (record.kind === "erc20_approval") {
+        if (receipt.from.toLowerCase() !== record.wallet.toLowerCase() || transaction.from.toLowerCase() !== record.wallet.toLowerCase()
+          || transaction.chainId !== 4663 || receipt.blockHash !== transaction.blockHash
+          || receipt.to?.toLowerCase() !== CANNACAT_EMBED.token.toLowerCase()
+          || transaction.to?.toLowerCase() !== CANNACAT_EMBED.token.toLowerCase()) throw new Error("Approval receipt does not match the saved wallet and token.");
+        // Canonical journal verifies the exact approval plan at preparation/submission.
+        const request = readVNextWalletRequestJournal(localStorage).find((entry) => entry.planId === record.planId && entry.txHash === record.txHash);
+        if (!request?.recoveryPlan || transaction.input.toLowerCase() !== request.recoveryPlan.data.toLowerCase() || transaction.value !== BigInt(request.recoveryPlan.value)) throw new Error("Approval transaction bytes do not match the saved plan.");
+        if (!resolveVNextExecution(record.txHash, "confirmed", localStorage)) throw new Error("Approval recovery could not be saved. Keep the hash.");
+        invalidate(); setBlocking(false); setStatus("Approval confirmed. Request a fresh quote to review the swap. No sale has occurred yet."); return;
+      }
+      let proof = verifyVNextErc20OutputSettlement(record, receipt, transaction);
+      if (!proof && boundVNextNativeSettlementEnvelope(record, receipt, transaction) && identityToken) {
+        const result = await createCannaCatClient({ baseUrl: config.apiBaseUrl, identityToken }).nativeSettlementTrace(record.txHash, record.wallet);
+        if (result && typeof result === "object" && "status" in result && result.status === "available"
+          && "blockHash" in result && result.blockHash === receipt.blockHash.toLowerCase() && "txHash" in result
+          && typeof result.txHash === "string" && result.txHash.toLowerCase() === record.txHash.toLowerCase() && "trace" in result) {
+          proof = verifyVNextNativeOutputSettlement(record, receipt, transaction, result.trace);
+        }
+      }
+      if (!proof) { setStatus("Receipt confirmed; output settlement is still unverified. Keep the hash and check again. Do not resend."); return; }
+      if (!resolveVNextExecution(record.txHash, "confirmed", localStorage, Date.now(), { outputAmountAtomic: proof.amountAtomic, outputSettlement: proof })) throw new Error("Verified output could not be saved. Keep the hash and check again.");
+      setBlocking(false); setBalances(null); setStatus(`Settlement verified: ${units(proof.amountAtomic)} ${record.outputAsset.toLowerCase() === CANNACAT_EMBED.token.toLowerCase() ? "CannaCat" : "ETH"} received by ${short(record.wallet)}.`);
+    } catch (cause) {
+      if (cause instanceof Error && /not.*found|could not be found/i.test(cause.message)) setStatus("Transaction submitted; confirmation is pending. Check again in a moment. Do not resend.");
+      else setError(safeError(cause));
+    } finally { inFlight.current = false; setBusy(false); }
+  }
+
+  function confirmTrade() {
+    if (!prepared || !wallet || inFlight.current || !connected || blocking) return;
+    let requestId = "";
+    try {
+      if (prepared.walletKey !== selectedKey || prepared.identityToken !== identityToken || prepared.chainId !== 4663
+        || wallet.chainId !== "eip155:4663") throw new Error("Wallet authority changed. Request a fresh quote.");
+      if (findBlockingVNextWalletRequest(wallet.address, localStorage) || findUnresolvedVNextExecution(wallet.address, localStorage)) throw new Error("Resolve the earlier wallet request before another trade.");
+      const transaction = prepareVNextWalletTransaction({ plan: prepared.trade.plan, evidence: prepared.trade.evidence, connectedAddress: wallet.address, connectedChainId: 4663, nowMs: Date.now() });
+      requestId = crypto.randomUUID();
+      const saved = recordPreparedVNextWalletRequest({ requestId, wallet: wallet.address, plan: prepared.trade.plan, walletNonceBeforeRequest: prepared.nonce, requestBlockNumber: prepared.block, requestBlockHash: prepared.blockHash, connectorType: wallet.connectorType, walletClientType: wallet.walletClientType, connectorId: wallet.meta.id }, localStorage);
+      if (!saved || !transitionVNextWalletRequest(requestId, "PROMPT_REQUESTED", localStorage)) throw new Error("Recovery storage failed. No wallet request was opened.");
+      inFlight.current = true; setBusy(true); setBlocking(true); setError(""); setStatus("Confirm the exact transaction in your wallet. Waiting for your response…");
+      // User-gesture path: no quote fetch, chain lookup or automatic signature.
+      const pending = prepared.provider.request({ method: "eth_sendTransaction", params: [{ ...vNextWalletRpcTransaction(transaction), chainId: toHex(4663) }] });
+      setPrepared(null);
+      void pending.then((result) => {
+        if (typeof result !== "string" || !isHash(result)) throw new Error("Wallet response did not contain a valid transaction hash.");
+        setHash(result);
+        const record = promoteVNextWalletRequestToSubmitted({ requestId, wallet: wallet.address, plan: prepared.trade.plan, txHash: result }, localStorage);
+        setStatus(record ? "Transaction submitted. Check confirmation and settlement below." : "Transaction submitted, but recovery storage failed. Keep this hash and check your wallet; do not resend.");
+      }).catch((cause) => {
+        const rejected = isUserRejection(cause);
+        transitionVNextWalletRequest(requestId, rejected ? "USER_REJECTED" : "UNRESOLVED", localStorage);
+        setBlocking(!rejected); setError(rejected ? "Wallet request declined. Nothing was confirmed; refresh the quote when ready." : "The wallet response is unresolved. Check wallet history before trying anything else. Do not resend.");
+      }).finally(() => { inFlight.current = false; setBusy(false); });
+    } catch (cause) { setError(safeError(cause)); setPrepared(null); }
+  }
+
+  const expired = Boolean(prepared && Math.min(prepared.trade.plan.expiresAtMs, prepared.trade.evidence.expiresAtMs) <= now);
+  const evidence = prepared?.trade.evidence;
+  const fee = evidence?.providerNativeFee;
+  return <div className="rmtcat-panel">
+    <div className="rmtcat-top"><span className="rmtcat-eyebrow">CANNACAT · ROBINHOOD CHAIN</span><span className="rmtcat-powered">Execution by RMT</span></div>
+    <h3>Get your CannaCat.</h3>
+    <p className="rmtcat-intro">Buy or sell here with your existing wallet. Keep 10,000 tokens in the same wallet for the final GTD snapshot.</p>
+    <div className="rmtcat-tabs" role="group" aria-label="Trade direction">
+      {(["buy", "sell"] as const).map((direction) => <button key={direction} type="button" aria-pressed={side === direction} disabled={busy} onClick={() => { invalidate(); setSide(direction); setStatus("Choose an amount and request a fresh quote."); }}>{direction === "buy" ? "Buy CannaCat" : "Sell CannaCat"}</button>)}
+    </div>
+    <div className="rmtcat-wallet">
+      {!wallet ? <button type="button" disabled={!ready || !walletsReady || busy} onClick={() => connectWallet({ walletChainType: "ethereum-only", walletList: ["metamask", "coinbase_wallet", "detected_ethereum_wallets", "wallet_connect"] })}>Connect wallet</button> : <>
+        <label>Trading wallet<select value={selectedKey} disabled={busy} onChange={(event) => { invalidate(); setSelectedKey(event.target.value); }}>
+          {external.map((option) => <option key={walletGatewayKey(option)} value={walletGatewayKey(option)}>{short(option.address)} · {option.meta.name ?? option.walletClientType}</option>)}
+        </select></label>
+        {!connected && <button type="button" disabled={busy} onClick={() => void verifyWallet()}>Verify wallet ownership</button>}
+        {wallet.chainId !== "eip155:4663" && <button type="button" disabled={busy} onClick={() => void switchNetwork()}>Switch to Robinhood Chain</button>}
+        <button className="rmtcat-textbutton" type="button" disabled={busy || blocking} onClick={() => { invalidate(); setSelectedKey(""); void logout(); }}>Disconnect</button>
+      </>}
+    </div>
+    <label className="rmtcat-amountlabel" htmlFor={inputId}>{side === "buy" ? "Minimum CannaCat to receive" : "CannaCat to sell"}</label>
+    <div className="rmtcat-amount"><input id={inputId} inputMode="decimal" autoComplete="off" value={amount} disabled={busy} maxLength={60} onChange={(event) => { invalidate(); setAmount(event.target.value); }} /><span>CANNACAT</span></div>
+    {side === "buy" && <div className="rmtcat-presets">{["10000", "25000", "50000"].map((value) => <button type="button" key={value} disabled={busy} onClick={() => { invalidate(); setAmount(value); }}>{Number(value).toLocaleString("en-US")}</button>)}</div>}
+    {balances && <p className="rmtcat-balances">Available: {units(balances.eth)} ETH · {units(balances.token, 4)} CannaCat</p>}
+    {evidence && <div className="rmtcat-quote" aria-label="Verified trade review"><dl>
+      <div><dt>{side === "buy" ? "Exact ETH input" : "Exact token input"}</dt><dd>{units(evidence.inputAmountAtomic)} {side === "buy" ? "ETH" : "CannaCat"}</dd></div>
+      <div><dt>Expected received</dt><dd>{units(evidence.expectedOutputAtomic)} {side === "buy" ? "CannaCat" : "ETH"}</dd></div>
+      <div><dt>Protected minimum</dt><dd>{units(evidence.protectedOutputAtomic)} {side === "buy" ? "CannaCat" : "ETH"}</dd></div>
+      <div><dt>RMT fee · 0.25%</dt><dd>{fee ? `${units(fee.feeAmountAtomic)} ETH` : "Unavailable"}</dd></div>
+      <div><dt>Estimated network gas</dt><dd>{evidence.estimatedNetworkCostWei ? `${units(evidence.estimatedNetworkCostWei)} ETH` : "Unavailable"}</dd></div>
+      <div><dt>Provider fee</dt><dd>{fee?.providerFeeAtomic ? `${units(fee.providerFeeAtomic)} ${fee.providerFeeAsset?.toLowerCase() === CANNACAT_EMBED.token.toLowerCase() ? "CannaCat" : "ETH"}` : "None disclosed"}</dd></div>
+      <div><dt>Maximum slippage</dt><dd>1%</dd></div>
+      <div><dt>Recipient</dt><dd>{short(evidence.recipient)}</dd></div>
+    </dl><p>{expired ? "Quote expired — refresh before confirming." : "Fees are disclosed estimates. Network gas is additional. Review exact amounts in your wallet."}</p></div>}
+    <div className="rmtcat-actions"><button type="button" disabled={!connected || busy || blocking || wallet?.chainId !== "eip155:4663"} onClick={() => void getQuote()}>{busy ? "Working…" : prepared ? "Refresh quote" : "Get live quote"}</button>
+      {prepared && <button type="button" className="rmtcat-confirm" disabled={busy || expired || blocking} onClick={confirmTrade}>{prepared.trade.plan.kind === "erc20_approval" ? "Review token approval" : `Confirm ${side} in wallet`}</button>}
+    </div>
+    <p className="rmtcat-status" role="status" aria-live="polite">{status}</p>
+    {error && <p className="rmtcat-error" role="alert">{error}</p>}
+    {hash && <div className="rmtcat-transaction"><a href={explorer(hash)} target="_blank" rel="noopener noreferrer">View transaction {short(hash)}</a><button type="button" disabled={busy} onClick={() => void checkTransaction()}>Check settlement</button></div>}
+    <details className="rmtcat-details"><summary>Fees, eligibility & recovery</summary><p>RMT requests a 0.25% fee in ETH for this pair. Provider fees and network gas are shown separately. Approving tokens is not a completed sale. A receipt alone is not verified settlement. If a wallet response is lost, do not send again; check the saved transaction.</p><p>Buying does not reserve an NFT or guarantee GTD. NFT holdings, the same-wallet token balance at the final snapshot, Founder exclusion and first-come-first-served access still apply. Selling before the snapshot may remove eligibility. NFT registration and minting remain closed.</p><p>Only public transaction and wallet details are stored locally for recovery. Wallet credentials and identity tokens are never written to this trading journal. Never share a private key or seed phrase.</p></details>
+    <a className="rmtcat-contract" href={`${robinhoodChain.blockExplorers.default.url}/token/${CANNACAT_EMBED.token}`} target="_blank" rel="noopener noreferrer">Token contract: {CANNACAT_EMBED.token}</a>
+  </div>;
+}
+
+const css = `
+.rmtcat-root{font:400 16px/1.5 system-ui,sans-serif;color:#f2f4e9;color-scheme:dark;width:100%;box-sizing:border-box}.rmtcat-root *{box-sizing:border-box}.rmtcat-panel{padding:clamp(20px,4vw,36px);border:1px solid #485032;background:linear-gradient(135deg,#171c13,#0c0e0b);border-radius:20px;max-width:680px;margin:auto}.rmtcat-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.rmtcat-eyebrow{font-size:11px;letter-spacing:.13em;color:#d6ff24;font-weight:800}.rmtcat-powered{font-size:11px;color:#b7beaa}.rmtcat-panel h3{font-size:clamp(28px,6vw,42px);line-height:1.1;margin:18px 0 10px;font-weight:850;letter-spacing:-.04em}.rmtcat-intro{color:#c1c8b7;font-size:14px;margin:0 0 22px}.rmtcat-tabs{display:flex;padding:4px;background:#080a06;border-radius:12px;margin-bottom:18px;gap:4px}.rmtcat-root button{font:inherit;border:1px solid #596344;border-radius:9px;min-height:44px;padding:9px 16px;cursor:pointer;color:#edf2e6;background:#252c20;font-weight:650}.rmtcat-tabs button{flex:1;border:0;background:transparent;font-size:14px}.rmtcat-tabs button[aria-pressed=true],.rmtcat-root button.rmtcat-confirm{color:#101500;background:#d6ff24}.rmtcat-root button:disabled{opacity:.45;cursor:not-allowed}.rmtcat-root :focus-visible{outline:3px solid #edff9c;outline-offset:3px}.rmtcat-wallet{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:18px}.rmtcat-wallet label{display:grid;gap:4px;font-size:11px;flex:1;min-width:0}.rmtcat-wallet select{font:inherit;font-size:13px;background:#11150d;color:#f3f8eb;border:1px solid #596344;border-radius:7px;min-height:44px;max-width:100%;padding:8px}.rmtcat-root .rmtcat-textbutton{font-size:12px;padding:5px 10px;border:0;background:none;text-decoration:underline}.rmtcat-amountlabel{font-size:13px;color:#c1c8b7;display:block;margin-bottom:6px}.rmtcat-amount{display:flex;align-items:center;gap:8px;border:1px solid #586447;background:#070a05;border-radius:12px;padding:12px 16px}.rmtcat-amount input{width:100%;min-width:0;font:700 28px/1.3 system-ui;color:#fff;background:none;border:0}.rmtcat-amount span{font-size:10px;letter-spacing:.06em;color:#c5d5aa}.rmtcat-presets{display:flex;gap:8px;margin-top:10px}.rmtcat-presets button{font-size:12px;padding:5px 12px;min-height:36px}.rmtcat-balances{font-size:12px;color:#b7beaa}.rmtcat-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}.rmtcat-actions button{flex:1;min-width:150px}.rmtcat-quote{padding:16px;background:#0a0d08;border-radius:12px;margin-top:18px}.rmtcat-quote dl{margin:0;display:grid;gap:8px;font-size:13px}.rmtcat-quote dl>div{display:flex;justify-content:space-between;gap:15px}.rmtcat-quote dt{color:#b7beaa}.rmtcat-quote dd{margin:0;text-align:right;overflow-wrap:anywhere}.rmtcat-quote p{font-size:11px;color:#c1c8b7;margin:12px 0 0}.rmtcat-status{font-size:13px;color:#d7dfcc;margin:16px 0}.rmtcat-error{font-size:13px;padding:12px;border:1px solid #b86b52;background:#27150f;border-radius:8px;color:#ffd8c9}.rmtcat-transaction{display:grid;gap:10px;padding:12px;border:1px solid #5b6d36;border-radius:9px;font-size:13px}.rmtcat-root a{color:#d6ff24;text-underline-offset:3px}.rmtcat-details{font-size:12px;color:#b7beaa;border-top:1px solid #39432c;margin-top:18px;padding-top:14px}.rmtcat-details summary{cursor:pointer;min-height:36px;display:list-item;line-height:28px;color:#d7dfcc}.rmtcat-contract{font-size:10px;overflow-wrap:anywhere;display:block;margin-top:12px}.rmtcat-root .rmtcat-paused{padding:18px;background:#0a0d08;border-radius:12px;color:#d6ff24;font-size:14px}
+`;
+export function mountCannaCatPanel(element: HTMLElement, config: CannaCatPanelConfig) {
+  if (window.location.protocol !== "https:" && window.location.hostname !== "localhost") throw new Error("HTTPS is required for the CannaCat panel.");
+  element.classList.add("rmtcat-root");
+  const style = document.createElement("style"); style.textContent = css; element.append(style);
+  const container = document.createElement("div"); element.append(container);
+  const root = createRoot(container);
+  if (!config.enabled || !config.privyAppId || !config.privyClientId) {
+    root.render(<div className="rmtcat-panel"><div className="rmtcat-top"><span className="rmtcat-eyebrow">CANNACAT · ROBINHOOD CHAIN</span><span className="rmtcat-powered">Execution by RMT</span></div><h3>Get your CannaCat.</h3><p className="rmtcat-intro">Buy or sell here with your existing wallet. Keep 10,000 tokens in the same wallet for the final GTD snapshot.</p><p className="rmtcat-paused">On-site trading is being prepared. Wallet actions remain disabled.</p><button type="button" disabled>Connect wallet · coming soon</button><p className="rmtcat-status">0.25% RMT fee · Network gas applies. Buying does not guarantee GTD.</p></div>);
+  } else {
+    const url = new URL(config.apiBaseUrl);
+    if (url.protocol !== "https:" || url.pathname !== "/api/embed/cannacat" || url.username || url.password || url.search || url.hash) throw new Error("Invalid RMT API configuration.");
+    root.render(<PrivyProvider appId={config.privyAppId} clientId={config.privyClientId} config={{
+      loginMethods: ["wallet"], defaultChain: robinhoodChain, supportedChains: [robinhoodChain],
+      appearance: { theme: "dark", accentColor: "#d6ff24", walletList: ["metamask", "coinbase_wallet", "detected_ethereum_wallets", "wallet_connect"], showWalletLoginFirst: true },
+      embeddedWallets: { ethereum: { createOnLogin: "off" } }
+    }}><Panel config={config} /></PrivyProvider>);
+  }
+  return () => { root.unmount(); container.remove(); style.remove(); element.classList.remove("rmtcat-root"); };
+}

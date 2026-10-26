@@ -80,7 +80,8 @@ async function main() {
   const duplicateJson = new Request("https://rmt.example/api/embed/cannacat/quotes", {
     method: "POST", headers: request().headers, body: '{"chainId":4663,"chainId":1}'
   });
-  check(() => assert.equal((await handleCannaCatEmbedRequest(duplicateJson, "quotes", dependencies)).status, 400));
+  const duplicateResult = await handleCannaCatEmbedRequest(duplicateJson, "quotes", dependencies);
+  check(() => assert.equal(duplicateResult.status, 400));
   const api = createCannaCatClient({ baseUrl: "https://rmt.example/api/embed/cannacat", identityToken: "fixture", fetch: async (_url, init) => {
     check(() => assert.equal(init?.credentials, "omit"));
     check(() => assert.equal(init?.redirect, "error"));
@@ -88,7 +89,8 @@ async function main() {
   } });
   await assert.rejects(() => api.quote({ side: "buy", tokenAmountAtomic: "10000", wallet, maximumEthInputAtomic: "100000000000000000" }), /quote changed/i); checks += 1;
   for (let i = 0; i < 60; i++) await handleCannaCatEmbedRequest(request(), "quotes", dependencies);
-  check(() => assert.equal((await handleCannaCatEmbedRequest(request(), "quotes", dependencies)).status, 429));
+  const limitedResult = await handleCannaCatEmbedRequest(request(), "quotes", dependencies);
+  check(() => assert.equal(limitedResult.status, 429));
   console.log(JSON.stringify({ suite: "cannacat-embed-boundary-and-client", checks, result: "PASS", realWalletRequests: 0, realTransactions: 0 }));
 }
 void main().catch((cause) => { console.error(cause); process.exitCode = 1; });
