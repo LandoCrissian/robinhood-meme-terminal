@@ -66,7 +66,8 @@ assert.match(inventoryStyles, /@media\s*\(max-width:\s*700px\)[\s\S]*grid-templa
 assert.match(item, /TOKENURI|Metadata provenance/);
 assert.match(item, /Token-bound account · ERC-6551 account/);
 assert.match(item, /data-nft-item-workspace/);
-assert.match(item, /<Link href="\/nft">NFTs<\/Link>[\s\S]*Project Market/);
+assert.match(item, /<Link prefetch=\{false\} href="\/nft">NFTs<\/Link>[\s\S]*Project Market/);
+assert.match(project, /<Link prefetch=\{false\} href="\/nft">← NFTs<\/Link>/);
 assert.doesNotMatch([catalog, project, item].join("\n"), />\s*(BUY|LIST|OFFER|FULFILL|SIGN|SUBMIT|ACCEPT|SWEEP)\s*</i);
 
 console.info("NFT Terminal VNext visual route shell smoke: PASS");
