@@ -5,6 +5,7 @@ import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "../vnext/p
 import { parseVNextAuthorizationBundle, type VNextAuthorizationPlan } from "../vnext/authorization-plan";
 import { VNEXT_PROVIDER_NATIVE_INPUT_FEE } from "../vnext/execution-settlement";
 import { RMT_ZERO_X_FEE_BPS, RMT_ZERO_X_MAX_SLIPPAGE_PPM } from "../vnext/zero-x-settlement";
+import type { VNextExecutionRecord } from "../vnext/execution-recovery";
 export { prepareVNextWalletTransaction, vNextWalletRpcTransaction, assessVNextWalletGasReadiness } from "../vnext/wallet-submission";
 export {
   VNEXT_EXECUTION_EVENT, VNEXT_WALLET_REQUEST_EVENT, VNEXT_EXECUTION_STORAGE_KEY,
@@ -34,6 +35,25 @@ export type CannaCatQuote = {
   recipient: Address; attempt: VNextQuoteAttempt;
 };
 export type CannaCatPrepared = { quote: CannaCatQuote; evidence: VNextPreSignEvidence; plan: VNextAuthorizationPlan };
+
+/** Explicit owner-initiated, local-only diagnostic. Never spread a journal or
+ * request object: it may contain authority fields that must not be exported. */
+export type CannaCatRecoveryResult = "not_checked" | "verified_token_output" | "verified_native_output"
+  | "stored_envelope_or_output_not_bound" | "authenticated_recovery_required" | "native_trace_unavailable"
+  | "trace_envelope_mismatch" | "trace_failed_saved_record_verification" | "recovery_read_unavailable";
+export function cannaCatRecoveryDetails(record: VNextExecutionRecord, result: CannaCatRecoveryResult) {
+  const fee = record.providerNativeFee;
+  return { format: "RMT_SETTLEMENT_DIAGNOSTIC_V1", lastRecoveryResult: result,
+    record: { schemaVersion: record.schemaVersion, chainId: record.chainId, wallet: record.wallet,
+      provider: record.provider, kind: record.kind, inputAsset: record.inputAsset, outputAsset: record.outputAsset,
+      inputAmountAtomic: record.inputAmountAtomic, outputAmountAtomic: record.outputAmountAtomic,
+      planId: record.planId, payloadHash: record.payloadHash, txHash: record.txHash, state: record.state,
+      submittedAtMs: record.submittedAtMs, updatedAtMs: record.updatedAtMs,
+      ...(fee ? { providerNativeFee: { provider: fee.provider, treasury: fee.treasury, feeAsset: fee.feeAsset,
+        feeBps: fee.feeBps, feeAmountAtomic: fee.feeAmountAtomic, expectedOutputAtomic: fee.expectedOutputAtomic,
+        protectedOutputAtomic: fee.protectedOutputAtomic, transactionTarget: fee.transactionTarget, calldataHash: fee.calldataHash,
+        providerFeeAsset: fee.providerFeeAsset, providerFeeAtomic: fee.providerFeeAtomic } } : {}) } };
+}
 
 export class CannaCatClientError extends Error {
   constructor(readonly code: string, message: string, readonly status?: number, readonly retryAfterMs?: number) { super(message); this.name = "CannaCatClientError"; }

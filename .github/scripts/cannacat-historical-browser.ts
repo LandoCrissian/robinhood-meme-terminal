@@ -6,6 +6,7 @@ import { execFileSync } from "node:child_process";
 import { chromium, webkit, expect, type Page } from "playwright/test";
 import { historicalSaleRecord, historicalSaleRpc, historicalSaleTransaction as transaction } from "../../apps/web/lib/testing/historical-cannacat-sale";
 import { readHistoricalSettlementTrace } from "../../apps/web/lib/server/historical-settlement-trace";
+declare global { interface Window { __HISTORICAL_COPY__?: string; } }
 
 async function main() {
   const root = execFileSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8" }).trim();
@@ -46,6 +47,9 @@ async function main() {
         const initial = width === 320 ? [record] : { schemaVersion: 2, executions: [record], walletRequests: [] };
         await context.addInitScript(({ key, initial }) => {
           if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(initial));
+          Object.defineProperty(navigator, "clipboard", { configurable: true, value: {
+            writeText: async (value: string) => { window.__HISTORICAL_COPY__ = value; }
+          } });
         }, { key: journalKey, initial });
         let archiveAvailable = false;
         await context.route("**/*", async route => {
@@ -114,6 +118,13 @@ async function main() {
           await expect(page.getByLabel("Transaction recovery")).toBeVisible();
           const saved = await page.evaluate(key => { const value = JSON.parse(localStorage.getItem(key)!); return Array.isArray(value) ? value[0] : value.executions[0]; }, journalKey);
           check(saved.state === "submitted" && !saved.outputSettlement, "Even this known hash cannot override an incompatible saved minimum");
+          await page.getByText("Recovery support details", { exact: true }).click();
+          await page.getByRole("button", { name: "Copy recovery details", exact: true }).click();
+          await expect.poll(() => page.evaluate(() => window.__HISTORICAL_COPY__)).toBeTruthy();
+          const copied = JSON.parse((await page.evaluate(() => window.__HISTORICAL_COPY__))!);
+          check(copied.record.txHash === record.txHash && copied.record.providerNativeFee.protectedOutputAtomic === "137068094859", "Explicit copy preserves the exact saved recovery identity and minimum");
+          check(copied.lastRecoveryResult === "trace_failed_saved_record_verification", "Support details distinguish available evidence from a saved-record mismatch");
+          check(!JSON.stringify(copied).includes("synthetic-identity-only"), "Recovery diagnostic excludes authentication credentials");
         } else {
           await expect(page.getByLabel("Saved transaction status")).toContainText("Settlement verified: 0.000000137068094858 ETH received.");
           await expect(page.getByLabel("Transaction recovery")).toHaveCount(0);
@@ -123,6 +134,9 @@ async function main() {
           await expect(page.getByLabel("Saved transaction status")).toContainText("Settlement verified: 0.000000137068094858 ETH received.");
           await expect(page.getByLabel("Transaction recovery")).toHaveCount(0);
           await page.getByRole("button", { name: "Disconnect", exact: true }).click();
+          // Explicit disconnect intentionally suppresses unsolicited selection.
+          // Reconnect must start with the user's Connect gesture.
+          await page.getByRole("button", { name: "Connect wallet", exact: true }).click();
           await restoreWallet();
           await expect(page.getByLabel("Saved transaction status")).toContainText("Settlement verified: 0.000000137068094858 ETH received.");
           await expect(page.getByLabel("Transaction recovery")).toHaveCount(0);

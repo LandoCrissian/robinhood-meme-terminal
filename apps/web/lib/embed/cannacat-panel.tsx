@@ -19,9 +19,10 @@ import {
   readVNextWalletRequestJournal, resolveVNextExecution, verifyVNextErc20OutputSettlement,
   boundVNextNativeSettlementEnvelope, verifyVNextNativeOutputSettlement,
   hasVerifiedVNextSwapSettlement,
+  cannaCatRecoveryDetails,
   promoteDiscoveredVNextWalletRequestToSubmitted,
   VNEXT_EXECUTION_EVENT, VNEXT_WALLET_REQUEST_EVENT, VNEXT_EXECUTION_STORAGE_KEY,
-  type CannaCatPrepared, type CannaCatQuote, type CannaCatSide, type VNextExecutionRecord
+  type CannaCatPrepared, type CannaCatQuote, type CannaCatSide, type VNextExecutionRecord, type CannaCatRecoveryResult
 } from "./cannacat-client";
 
 export type CannaCatPanelConfig = {
@@ -100,6 +101,8 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
   const [blocking, setBlocking] = useState(false);
   const [recoveryChecking, setRecoveryChecking] = useState(false);
   const recoveryRead = useRef<AbortController | null>(null);
+  const recoveryDiagnostic = useRef<{ txHash: string; result: CannaCatRecoveryResult }>({ txHash: "", result: "not_checked" });
+  const [recoveryCopyMessage, setRecoveryCopyMessage] = useState("");
   const refreshRecovery = useRef<((record?: VNextExecutionRecord) => Promise<void>) | null>(null);
   const [tabOwnsWallet, setTabOwnsWallet] = useState(false);
   const [leaseAttempt, setLeaseAttempt] = useState(0);
@@ -529,23 +532,43 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
         invalidate(true); setBlocking(recoveryRequired(wallet.address)); void refreshFunds.current?.(); setStatus("Approval confirmed. Request a fresh quote to review the swap. No sale has occurred yet."); return;
       }
       let proof = verifyVNextErc20OutputSettlement(record, receipt, transaction);
-      if (!proof && boundVNextNativeSettlementEnvelope(record, receipt, transaction) && identityToken) {
+      const nativeEnvelope = boundVNextNativeSettlementEnvelope(record, receipt, transaction);
+      let diagnostic: CannaCatRecoveryResult = proof ? "verified_token_output" : !nativeEnvelope ? "stored_envelope_or_output_not_bound"
+        : !identityToken ? "authenticated_recovery_required" : "native_trace_unavailable";
+      if (!proof && nativeEnvelope && identityToken) {
         const result = await createCannaCatClient({ baseUrl: config.apiBaseUrl, identityToken }).nativeSettlementTrace(record.txHash, record.wallet, controller.signal);
         if (!current()) return;
+        if (result && typeof result === "object" && "status" in result && result.status === "available") diagnostic = "trace_envelope_mismatch";
         if (result && typeof result === "object" && "status" in result && result.status === "available"
           && "blockHash" in result && result.blockHash === receipt.blockHash.toLowerCase() && "txHash" in result
           && typeof result.txHash === "string" && result.txHash.toLowerCase() === record.txHash.toLowerCase() && "trace" in result) {
           proof = verifyVNextNativeOutputSettlement(record, receipt, transaction, result.trace);
+          diagnostic = proof ? "verified_native_output" : "trace_failed_saved_record_verification";
         }
       }
+      recoveryDiagnostic.current = { txHash: record.txHash, result: diagnostic };
       if (!proof) { setStatus("Receipt confirmed; output settlement is still unverified. This is not proof of failed execution. Keep the hash and check again; do not resend. Wallet controls remain available."); return; }
       if (!resolveVNextExecution(record.txHash, "confirmed", localStorage, Date.now(), { outputAmountAtomic: proof.amountAtomic, outputSettlement: proof })) throw new Error("Verified output could not be saved. Keep the hash and check again.");
       invalidate(true); setBlocking(recoveryRequired(wallet.address)); balancesRef.current = null; void refreshFunds.current?.(); setStatus(`Settlement verified: ${units(proof.amountAtomic)} ${record.outputAsset.toLowerCase() === CANNACAT_EMBED.token.toLowerCase() ? "CannaCat" : "ETH"} received by ${short(record.wallet)}.`);
     } catch (cause) {
       if (!current()) return;
+      recoveryDiagnostic.current = { txHash: recordOverride?.txHash ?? hash, result: "recovery_read_unavailable" };
       if (cause instanceof Error && /not.*found|could not be found/i.test(cause.message)) setStatus("Transaction submitted; confirmation is pending. Check again in a moment. Do not resend.");
       else setError(`Settlement check unavailable. ${safeError(cause)} History is preserved; do not resend.`);
     } finally { clearTimeout(timeout); if (recoveryRead.current === controller) { recoveryRead.current = null; setRecoveryChecking(false); } }
+  }
+
+  async function copyRecoveryDetails() {
+    if (!wallet) return;
+    const record = readVNextExecutionJournal(localStorage).find(entry => entry.txHash.toLowerCase() === hash.toLowerCase()
+      && entry.wallet.toLowerCase() === wallet.address.toLowerCase());
+    if (!record) { setRecoveryCopyMessage("This transaction's saved record is unavailable. History is unchanged."); return; }
+    try {
+      const diagnostic = recoveryDiagnostic.current;
+      await navigator.clipboard.writeText(JSON.stringify(cannaCatRecoveryDetails(record,
+        diagnostic.txHash.toLowerCase() === record.txHash.toLowerCase() ? diagnostic.result : "not_checked"), null, 2));
+      setRecoveryCopyMessage("Recovery details copied. Login tokens, signatures and authorization data are excluded. History is unchanged.");
+    } catch { setRecoveryCopyMessage("Copy is unavailable in this browser. History is unchanged."); }
   }
 
   async function recoverWalletResponse() {
@@ -726,7 +749,8 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
         : displayRecord.state === "reverted" ? "Transaction reverted. Network gas may still apply."
         : displayRecord.state === "confirmed" && displayRecord.kind === "erc20_approval" ? "Approval confirmed. A token approval is not a completed sale."
         : "Submitted; settlement is not yet verified. Do not resend."}</p>}
-      <button type="button" disabled={recoveryChecking || !wallet} onClick={() => void checkTransaction()}>{recoveryChecking ? "Checking settlement…" : "Check settlement"}</button></div>}
+      <button type="button" disabled={recoveryChecking || !wallet} onClick={() => void checkTransaction()}>{recoveryChecking ? "Checking settlement…" : "Check settlement"}</button>
+      <details className="rmtcat-details"><summary>Recovery support details</summary><p>Copy this transaction's saved recovery fields for private support. This does not change history or send a transaction.</p><button type="button" disabled={!wallet || !displayRecord} onClick={() => void copyRecoveryDetails()}>Copy recovery details</button>{recoveryCopyMessage && <p>{recoveryCopyMessage}</p>}</details></div>}
     <details className="rmtcat-details"><summary>Fees, eligibility & recovery</summary><p>RMT requests a 0.25% fee in ETH for this pair. Provider fees and network gas are shown separately. Approving tokens is not a completed sale. A receipt alone is not verified settlement. If a wallet response is lost, do not send again; check the saved transaction.</p><p>Estimates update automatically while this page is visible. An estimate can become stale between updates. Review trade obtains new executable terms; it never signs or sends automatically. Review the exact input and protected minimum again if they change.</p><p>Buying does not reserve an NFT or guarantee GTD. NFT holdings, the same-wallet token balance at the final snapshot, Founder exclusion and first-come-first-served access still apply. Selling before the snapshot may remove eligibility. NFT registration and minting remain closed.</p><p>Only public transaction and wallet details are stored locally for recovery. Wallet credentials and identity tokens are never written to this trading journal. Never share a private key or seed phrase.</p></details>
     <a className="rmtcat-contract" href={`${robinhoodChain.blockExplorers.default.url}/token/${CANNACAT_EMBED.token}`} target="_blank" rel="noopener noreferrer">Token contract: {CANNACAT_EMBED.token}</a>
   </div>;

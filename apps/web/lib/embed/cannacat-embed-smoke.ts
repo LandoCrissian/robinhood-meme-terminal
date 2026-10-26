@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { zeroAddress } from "viem";
 import { allowedCannaCatOrigin, CANNACAT_ADDRESS, CANNACAT_EMBED_VERSION, handleCannaCatEmbedRequest, validateCannaCatEmbedBody } from "../server/cannacat-embed-boundary";
 import { TradeIdentityError } from "../server/rmt-trade-identity";
-import { CANNACAT_EMBED, createCannaCatClient, nextCannaCatBuyInput, parseCannaCatAmount } from "./cannacat-client";
+import { CANNACAT_EMBED, cannaCatRecoveryDetails, createCannaCatClient, nextCannaCatBuyInput, parseCannaCatAmount } from "./cannacat-client";
+import { historicalSaleRecord } from "../testing/historical-cannacat-sale";
 import { createVNextZeroXProviderNativeFee } from "../vnext/zero-x-settlement";
 import { connectedWalletChainId, exactConnectedExternalWallet, readConnectedWallet, soleConnectedExternalWallet } from "../connected-wallet-state";
 import { walletGatewayKey } from "../wallet-gateway";
@@ -53,6 +54,13 @@ check(() => assert.throws(() => nextCannaCatBuyInput(100n, 1000n, 10000n, 500n))
 check(() => assert.throws(() => nextCannaCatBuyInput(100n, 0n, 10000n, 2000n)));
 check(() => assert.equal(CANNACAT_EMBED.feeBps, 25));
 check(() => assert.equal(CANNACAT_EMBED.chainId, 4663));
+const diagnosticRecord = Object.assign(historicalSaleRecord(), { identityToken: "DO_NOT_EXPORT", signature: "DO_NOT_EXPORT", recoveryPlan: "DO_NOT_EXPORT" });
+Object.assign(diagnosticRecord.providerNativeFee!, { authorization: "DO_NOT_EXPORT" });
+const diagnostic = cannaCatRecoveryDetails(diagnosticRecord, "native_trace_unavailable");
+check(() => assert.equal(diagnostic.record.txHash, diagnosticRecord.txHash));
+check(() => assert.equal(diagnostic.record.providerNativeFee?.protectedOutputAtomic, diagnosticRecord.providerNativeFee!.protectedOutputAtomic));
+check(() => assert(!JSON.stringify(diagnostic).includes("DO_NOT_EXPORT")));
+check(() => assert.equal(diagnosticRecord.state, "submitted"));
 check(() => assert.throws(() => createCannaCatClient({ baseUrl: "http://rmt.example/api/embed/cannacat", identityToken: "fixture" })));
 check(() => assert.throws(() => createCannaCatClient({ baseUrl: "https://rmt.example/api/embed/cannacat?token=bad", identityToken: "fixture" })));
 

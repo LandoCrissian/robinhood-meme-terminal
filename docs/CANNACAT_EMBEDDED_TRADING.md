@@ -375,3 +375,11 @@ the owner's Safari storage. Chrome/Edge and WebKit tests reproduce the warnings
 with trace unavailable, then restore proof across refresh/reconnect. WebKit is
 an engine test, not physical iPhone acceptance. The issue remains unconfirmed
 until the owner verifies their existing phone history.
+
+Recovery support details provides an explicit local clipboard action for the
+displayed wallet/transaction only. It exports a fixed allowlist of saved public
+recovery fields and a categorical last-result code, including the exact saved
+minimum needed to diagnose a mismatch. It never spreads journal/request objects
+or exports login tokens, signatures, authorization bundles or recovery calldata.
+Copying neither changes history nor signs/submits anything. The owner decides
+whether to share those details privately; nothing is uploaded automatically.
