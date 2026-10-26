@@ -45,12 +45,15 @@ async function main() {
         const record = historicalSaleRecord();
         if (excessiveMinimum) { record.providerNativeFee!.protectedOutputAtomic = "137068094859"; record.providerNativeFee!.expectedOutputAtomic = "137068094860"; }
         const initial = width === 320 ? [record] : { schemaVersion: 2, executions: [record], walletRequests: [] };
-        await context.addInitScript(({ key, initial }) => {
-          if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(initial));
+        // Raw fixture JavaScript avoids serializing tsx's injected __name helper
+        // into a different browser realm. No application/runtime guard changes.
+        await context.addInitScript({ content: `(() => {
+          const key = ${JSON.stringify(journalKey)};
+          if (!localStorage.getItem(key)) localStorage.setItem(key, ${JSON.stringify(JSON.stringify(initial))});
           Object.defineProperty(navigator, "clipboard", { configurable: true, value: {
-            writeText: async (value: string) => { window.__HISTORICAL_COPY__ = value; }
+            async writeText(value) { window.__HISTORICAL_COPY__ = value; }
           } });
-        }, { key: journalKey, initial });
+        })();` });
         let archiveAvailable = false;
         await context.route("**/*", async route => {
           const url = new URL(route.request().url());
