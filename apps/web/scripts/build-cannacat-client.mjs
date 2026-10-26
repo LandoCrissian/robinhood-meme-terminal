@@ -12,11 +12,16 @@ await mkdir(outdir, { recursive: true });
 const result = await build({
   entryPoints: { 'cannacat-sdk': 'lib/embed/cannacat-client.ts', 'cannacat-panel': 'lib/embed/cannacat-panel.tsx' }, outdir,
   splitting: true, chunkNames: 'chunks/[name]-[hash]', outExtension: { '.js': '.mjs' },
-  platform: 'browser', format: 'esm', target: 'es2022', bundle: true,
+  platform: 'browser', format: 'esm', target: 'es2022', bundle: true, jsx: 'automatic',
   minify: true, sourcemap: false, metafile: true, legalComments: 'eof',
-  plugins: fixtureOnly ? [{ name: 'synthetic-wallet-boundary', setup(build) {
+  plugins: [{ name: 'on-site-original-legal-documents', setup(build) {
+    build.onResolve({ filter: /^\.\.\/legal-shell$/ }, (args) => {
+      if (!/[\\/]app[\\/](terms|risks|privacy)[\\/]page\.tsx$/.test(args.importer)) return;
+      return { path: path.resolve('lib/embed/cannacat-legal-shell.tsx') };
+    });
+  } }, ...(fixtureOnly ? [{ name: 'synthetic-wallet-boundary', setup(build) {
     build.onResolve({ filter: /^@privy-io\/react-auth$/ }, () => ({ path: path.resolve('lib/testing/cannacat-privy-fixture.tsx') }));
-  } }] : [],
+  } }] : [])],
   define: { 'process.env.NODE_ENV': '"production"', 'process.env.NEXT_PUBLIC_RMT_NETWORK': '"mainnet"', 'process.env.NEXT_PUBLIC_FACTORY_START_BLOCK': 'undefined' }
 });
 const sha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();

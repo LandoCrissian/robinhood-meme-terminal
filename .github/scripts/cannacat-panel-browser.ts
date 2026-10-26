@@ -101,6 +101,13 @@ try {
     await page.getByRole("heading", { name: "Get your CannaCat." }).waitFor();
     check(await page.getByRole("button", { name: "Connect wallet · coming soon" }).isDisabled(), "Real bundle stays closed without configuration");
     await page.goto(base);
+    await expect(page.getByRole("button", { name: "Connect wallet", exact: true })).toBeDisabled();
+    check(await page.getByLabel("RMT trading acknowledgement").getByText("Trade with your eyes open").isVisible(), "Existing RMT acknowledgement is required before wallet access");
+    await page.getByText("RMT trading terms", { exact: true }).click();
+    await page.getByRole("article", { name: "Terms of Use" }).getByText("1. Acceptance and eligibility", { exact: true }).waitFor();
+    check(page.url() === `${base}/`, "Canonical legal documents remain on the LAMMB surface");
+    await page.getByText("RMT trading terms", { exact: true }).click();
+    await page.getByRole("button", { name: "I understand — continue", exact: true }).click();
     await page.getByRole("button", { name: "Connect wallet", exact: true }).click();
     await page.getByRole("button", { name: "Verify wallet ownership" }).click();
     await page.getByRole("button", { name: "Switch to Robinhood Chain" }).click();

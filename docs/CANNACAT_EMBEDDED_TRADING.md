@@ -93,6 +93,13 @@ Chrome/Edge mobile-width tests are not native iPhone wallet acceptance.
 
 ## Wallet and mobile acceptance
 
+The panel reuses RMT's versioned trading-terms acceptance hook. Before connecting
+a wallet, the user explicitly acknowledges the existing risk notice. The original
+RMT terms, risks and privacy page components render in expandable on-site panels;
+the SDK build substitutes only their navigation shell and records the source
+hashes. No legal wording or terms version is changed, and there is no terminal
+redirect. Tests acknowledge only the disposable synthetic fixture.
+
 Use the user's explicitly selected **external** Ethereum connector. Matching an
 address alone does not choose between two providers. Reject embedded or ambiguous
 connectors in this integration. Wait for Privy and wallets to be ready, verify

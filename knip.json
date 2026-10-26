@@ -23,6 +23,7 @@
         "lib/**/*-smoke.ts",
         "lib/**/*.test.ts",
         "lib/embed/cannacat-panel.tsx",
+        "lib/embed/cannacat-legal-shell.tsx",
         "scripts/build-cannacat-client.mjs"
       ]
     },
