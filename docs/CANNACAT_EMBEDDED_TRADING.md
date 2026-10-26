@@ -175,3 +175,10 @@ existing navigation. The full browser journey still performs real trusted pointe
 clicks, exact URL/content assertions, overflow checks and execution-control bans;
 it additionally records six trusted anchor activations across document loads.
 No timeout was increased and no failed assertion or test was suppressed.
+
+The subsequent Project directory-to-market check reproduced the same stalled
+read-only navigation boundary. Project exploration cards and NFT collection
+links use the same document fallback. Token Terminal links retain client-side
+navigation and exact token intent; Project navigation avoids speculative fetches.
+The unchanged Project graph browser checks still require all 15 projects, exact
+CannaCat intent, no generic intermediate frame and isolated enrichment.
