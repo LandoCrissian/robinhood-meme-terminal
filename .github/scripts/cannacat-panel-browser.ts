@@ -46,6 +46,7 @@ let verified = false;
 let approvalAlreadyGranted = false;
 let settlementAvailable = false;
 let gasPrice = 1_000_000_000n;
+let walletNonce = 0n;
 let delayedQuote: (() => void) | null = null;
 let delayQuote = false;
 const bundles = new Map<string, ReturnType<typeof syntheticCannaCatBundle>>();
@@ -61,7 +62,7 @@ const saveSyntheticTransaction = (txHash: string, bundle: ReturnType<typeof synt
     logIndex: '0x0', removed: false, transactionHash: txHash, transactionIndex: '0x0', topics: [toEventSelector('Transfer(address,address,uint256)'), topicAddress(plan.target), topicAddress(recipient)] }] : [];
   transactions.set(txHash.toLowerCase(), {
     transaction: { hash: txHash, chainId: '0x1237', blockHash: hash, blockNumber: '0x64', transactionIndex: '0x0', from: recipient, to: plan.target,
-      input: plan.data, value: hex(BigInt(plan.value)), nonce: '0x0', type: '0x0', gas: hex(BigInt(plan.gasLimit)), gasPrice: '0x3b9aca00', v: '0x1b', r: hash, s: hash },
+      input: plan.data, value: hex(BigInt(plan.value)), nonce: hex(walletNonce), type: '0x0', gas: hex(BigInt(plan.gasLimit)), gasPrice: '0x3b9aca00', v: '0x1b', r: hash, s: hash },
     receipt: { transactionHash: txHash, blockHash: hash, blockNumber: '0x64', transactionIndex: '0x0', from: recipient, to: plan.target, status: '0x1',
       cumulativeGasUsed: '0x5208', gasUsed: '0x5208', effectiveGasPrice: '0x3b9aca00', type: '0x0', logs, logsBloom: `0x${'0'.repeat(512)}`, contractAddress: null },
     trace: { type: 'CALL', from: recipient.toLowerCase(), to: plan.target.toLowerCase(), value: hex(BigInt(plan.value)), inputHash: keccak256(plan.data), calls: [
@@ -88,7 +89,7 @@ try {
         const rpc = route.request().postDataJSON();
         const answer = (entry: { id: number; method: string; params?: unknown[] }) => {
           const saved = transactions.get(typeof entry.params?.[0] === 'string' ? entry.params[0].toLowerCase() : '');
-          const values: Record<string, unknown> = { eth_chainId: "0x1237", eth_getBalance: hex(balance), eth_gasPrice: hex(gasPrice), eth_getTransactionCount: "0x0", eth_call: `0x${tokenBalance.toString(16).padStart(64, "0")}`,
+          const values: Record<string, unknown> = { eth_chainId: "0x1237", eth_getBalance: hex(balance), eth_gasPrice: hex(gasPrice), eth_getTransactionCount: hex(walletNonce), eth_call: `0x${tokenBalance.toString(16).padStart(64, "0")}`,
             eth_getTransactionByHash: saved?.transaction ?? null, eth_getTransactionReceipt: saved?.receipt ?? null,
             eth_getBlockByNumber: { number: "0x64", hash, parentHash: hash, transactions: [], timestamp: hex(BigInt(Math.floor(Date.now() / 1000))), gasLimit: "0x1c9c380", gasUsed: "0x0", baseFeePerGas: "0x3b9aca00", difficulty: "0x0", extraData: "0x", miner: `0x${"0".repeat(40)}`, size: "0x100", nonce: "0x0000000000000000", sha3Uncles: hash, transactionsRoot: hash, stateRoot: hash, receiptsRoot: hash, logsBloom: `0x${"0".repeat(512)}` } };
           if (!(entry.method in values)) throw new Error(`Unexpected read-only RPC: ${entry.method}`);
@@ -381,7 +382,7 @@ try {
     }
     // Full post-submission lifecycle uses real durable recovery code, disposable
     // wallet responses and synthetic RPC evidence. No funded wallet is involved.
-    balance = 10n ** 18n; gasPrice = 1_000_000_000n; verified = true;
+    balance = 10n ** 18n; gasPrice = 1_000_000_000n; walletNonce = 0n; verified = true;
     approvalAlreadyGranted = false; settlementAvailable = false;
     await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
     await page.goto(base);
@@ -400,6 +401,7 @@ try {
       await page.evaluate(value => { window.__CANNACAT_FIXTURE_WALLET_MODE__ = 'hash'; window.__CANNACAT_FIXTURE_TX_HASH__ = value; }, txHash);
       await page.getByRole('button', { name: label, exact: true }).click();
       await expect(page.getByRole('status')).toContainText('Transaction submitted');
+      walletNonce += 1n;
       await expect(page.getByRole('link', { name: `View transaction ${txHash.slice(0,6)}…${txHash.slice(-4)}`, exact: true })).toBeVisible();
       return txHash;
     };
@@ -494,6 +496,7 @@ try {
     await expect(page.getByRole('button', { name: 'Get live quote', exact: true })).toBeEnabled();
     await page.evaluate(() => window.__CANNACAT_FIXTURE_RESOLVE_WALLET__?.());
     await expect(page.getByRole('status')).toContainText('Transaction submitted');
+    walletNonce += 1n;
     await page.getByRole('button', { name: 'Check settlement', exact: true }).click();
     await expect(page.getByRole('status')).toContainText('Settlement verified:');
     check(true, 'A wallet response arriving after cancellation/mobile return is durably reconciled without resubmission');
@@ -507,6 +510,7 @@ try {
     await expect(page.getByRole('button', { name: 'Buy CannaCat', exact: true })).toBeEnabled();
     await expect(page.getByRole('button', { name: 'Sell CannaCat', exact: true })).toBeEnabled();
     check(await page.getByLabel('Transaction recovery').count() === 1, 'Watchdog releases transient UI loading but never clears unresolved wallet authority');
+    await expect(page.getByLabel('Transaction hash from your wallet')).toBeVisible();
     check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Post-trade recovery fits the viewport');
     check(errors.length === 0, `No post-trade refresh/recovery runtime errors: ${errors.join('; ')}`);
     await page.screenshot({ path: path.join(output, `${channel}-${width}-recovery-timeout.png`), fullPage: true });

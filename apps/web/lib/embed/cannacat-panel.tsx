@@ -281,7 +281,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       const pending = findBlockingVNextWalletRequest(wallet.address, localStorage);
       setBlocking(Boolean(unresolved || pending));
       if (unresolved) { setHash(unresolved.txHash); setStatus("An earlier transaction needs verification. Check its status before another trade."); }
-      else { setHash(readVNextExecutionJournal(localStorage).filter(entry => entry.wallet.toLowerCase() === wallet.address.toLowerCase()).at(-1)?.txHash ?? "");
+      else { setHash(pending ? "" : readVNextExecutionJournal(localStorage).filter(entry => entry.wallet.toLowerCase() === wallet.address.toLowerCase()).at(-1)?.txHash ?? "");
         if (pending) setStatus("An earlier wallet response is unresolved. Check your wallet before submitting another transaction."); }
     } catch { setError("Local recovery storage is unavailable. Enable site storage before trading."); setBlocking(true); }
     return () => {
@@ -456,7 +456,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       requestId = crypto.randomUUID();
       const saved = recordPreparedVNextWalletRequest({ requestId, wallet: wallet.address, plan: prepared.trade.plan, walletNonceBeforeRequest: prepared.nonce, requestBlockNumber: prepared.block, requestBlockHash: prepared.blockHash, connectorType: wallet.connectorType, walletClientType: wallet.walletClientType, connectorId: wallet.meta.id }, localStorage);
       if (!saved || !transitionVNextWalletRequest(requestId, "PROMPT_REQUESTED", localStorage)) throw new Error("Recovery storage failed. No wallet request was opened.");
-      action = beginAction("wallet"); setBlocking(true); setError(""); setStatus("Confirm the exact transaction in your wallet. Waiting for your response…");
+      action = beginAction("wallet"); setBlocking(true); setHash(""); setRecoveryHash(""); setError(""); setStatus("Confirm the exact transaction in your wallet. Waiting for your response…");
       // User-gesture path: no quote fetch, chain lookup or automatic signature.
       const pending = prepared.provider.request({ method: "eth_sendTransaction", params: [{ ...vNextWalletRpcTransaction(transaction), chainId: toHex(4663) }] });
       setPrepared(null);

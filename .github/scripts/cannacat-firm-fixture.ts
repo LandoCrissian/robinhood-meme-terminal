@@ -27,7 +27,7 @@ export function syntheticCannaCatBundle(input: {
     authorizationState: approval ? "approval_required" : "verified",
     firmQuote: { zid: "synthetic_fixture", observedAtMs: now, expiresAtMs: now + 10_000,
       swapGasLimitUnits: "250000", nextActionGasLimitUnits: gas, gasPriceWei: "1000000000",
-      allowanceTarget: sell ? holder : null, providerSimulationIncomplete: true, exactSimulationPassed: false, exactSimulationState: "not_run" }
+      allowanceTarget: approval ? holder : null, providerSimulationIncomplete: true, exactSimulationPassed: false, exactSimulationState: "not_run" }
   });
   const evidence: VNextPreSignEvidence = {
     verificationId: randomUUID(), sourceQuoteRequestId: input.quoteRequestId, provider: "zero-x-swap",
