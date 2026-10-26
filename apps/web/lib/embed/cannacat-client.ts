@@ -28,6 +28,7 @@ export const CANNACAT_EMBED = Object.freeze({
 export type CannaCatSide = "buy" | "sell";
 export type CannaCatQuote = {
   side: CannaCatSide; tokenAmountAtomic: string; requestId: string;
+  buyInputMode?: "token" | "eth";
   inputAsset: Address; outputAsset: Address; inputAmountAtomic: string;
   recipient: Address; attempt: VNextQuoteAttempt;
 };
@@ -53,7 +54,7 @@ export function nextCannaCatBuyInput(input: bigint, protectedOutput: bigint, tar
 function assertPreparedTarget(quote: CannaCatQuote, evidence: VNextPreSignEvidence) {
   if (evidence.provider !== "zero-x-swap" || evidence.settlementMode !== VNEXT_PROVIDER_NATIVE_INPUT_FEE
     || evidence.providerNativeFee?.feeBps !== 25 || evidence.chainId !== 4663
-    || (quote.side === "buy" && BigInt(evidence.protectedOutputAtomic) < BigInt(quote.tokenAmountAtomic))) {
+    || (quote.side === "buy" && quote.buyInputMode !== "eth" && BigInt(evidence.protectedOutputAtomic) < BigInt(quote.tokenAmountAtomic))) {
     throw new CannaCatClientError("TARGET_REPRICE_REQUIRED", "The verified minimum no longer covers your token target. Refresh the quote before continuing.");
   }
 }
@@ -107,6 +108,20 @@ export function createCannaCatClient(options: {
     return bodyValue;
   }
   return {
+    async quoteEth(input: { ethAmountAtomic: string; wallet: string; maximumEthInputAtomic: string; signal?: AbortSignal }): Promise<CannaCatQuote> {
+      if (!/^[1-9][0-9]{0,77}$/.test(input.ethAmountAtomic) || BigInt(input.ethAmountAtomic) >= 2n ** 256n
+        || !/^[1-9][0-9]{0,77}$/.test(input.maximumEthInputAtomic) || BigInt(input.ethAmountAtomic) > BigInt(input.maximumEthInputAtomic)) {
+        throw new CannaCatClientError("INSUFFICIENT_BALANCE", "This ETH input exceeds your spending limit. Keep ETH available for network fees.");
+      }
+      input.signal?.throwIfAborted();
+      const recipient = getAddress(input.wallet);
+      const expected = { chainId: 4663, inputAsset: zeroAddress, outputAsset: CANNACAT_EMBED.token, inputAmountAtomic: input.ethAmountAtomic, recipient };
+      const response = parseVNextQuoteResponse(await post("quotes", expected, input.signal), expected, now());
+      const attempt = response.attempts.find(value => value.provider === "zero-x-swap" && value.status === "indicative"
+        && value.publicWalletExecutionEligible && value.strictVerificationAvailable && value.protectedOutputAtomic);
+      if (!attempt?.protectedOutputAtomic || !attempt.expiresAtMs || attempt.expiresAtMs <= now()) throw new CannaCatClientError("NO_ADMITTED_ROUTE", "No fresh verified 0x route is available for this ETH input.");
+      return { side: "buy", buyInputMode: "eth", tokenAmountAtomic: attempt.protectedOutputAtomic, requestId: response.requestId, ...expected, attempt };
+    },
     async quote(input: { side: CannaCatSide; tokenAmountAtomic: string; wallet: string; maximumEthInputAtomic: string; signal?: AbortSignal }): Promise<CannaCatQuote> {
       if (!["buy", "sell"].includes(input.side) || !/^[1-9][0-9]{0,77}$/.test(input.tokenAmountAtomic)
         || BigInt(input.tokenAmountAtomic) >= 2n ** 256n || !/^[1-9][0-9]{0,77}$/.test(input.maximumEthInputAtomic)) {
@@ -169,3 +184,4 @@ export function createCannaCatClient(options: {
     }
   };
 }
+

@@ -256,3 +256,41 @@ links use the same document fallback. Token Terminal links retain client-side
 navigation and exact token intent; Project navigation avoids speculative fetches.
 The unchanged Project graph browser checks still require all 15 projects, exact
 CannaCat intent, no generic intermediate frame and isolated enrichment.
+
+## Task117B funds and input modes
+
+The isolated panel supports CannaCat output targets, exact native ETH inputs and
+indicative USD targets. `quoteEth` delegates to the same authenticated canonical
+VNext quotes/verify/authorize endpoints; no provider, server permission, fee or
+execution contract changes. USD converts with integer arithmetic and is never
+an asset or settlement instruction. Firm terms remain hash-bound and wallet
+confirmation remains an explicit user gesture.
+
+`cannacat-funds.ts` reads the public Coinbase Exchange ETH-USD ticker with no
+cookies, identity token or wallet address. Official API documentation:
+https://docs.cdp.coinbase.com/api-reference/exchange-api/rest-api/products/get-product-ticker
+The last-trade timestamp and local check timestamp must be valid within 120s;
+responses are bounded to 16KiB, 8s, no redirects. USD is display/intent estimation
+only. The enabled LAMMB preview CSP admits this single additional HTTPS origin
+for connections only; closed-site policy, frames and production remain unchanged.
+
+Native ETH and token reads are bound to connector-qualified wallet identity,
+chain 4663, a fresh block/hash and observation time. Displayed spendable amounts
+are the minimum of confirmed and pending balances, so pending credits cannot
+fund a trade. Reads run sequentially per panel at 15s visible-page intervals and
+on restoration/verified settlement, with at most one refresh in flight. Balance
+age above 20s, RPC failure, wrong account/chain and missing provider block wallet
+confirmation. The exact transaction still goes through canonical gas readiness.
+Prequote headroom is 1,000,000 gas units at three times observed gas price; this
+is a conservative quote budget, not a gas charge or actual network estimate.
+The actual verified plan may need a larger reserve and is checked again before
+the explicit wallet request.
+
+Background funds/price reads never change amount, mode, or the exact quote.
+Wallet suspension/return invalidates executable authority while retaining a
+clearly marked saved review. A new verified quote is required to confirm.
+Input amounts are retained per mode and Sell in memory for the page session;
+there is no wallet-sensitive form persistence or automatic restored signing.
+
+Acceptance must distinguish disposable browser RPC/wallet fixtures from native
+iPhone Safari/MetaMask/Rabby and funded settlement. No test signs a real wallet.

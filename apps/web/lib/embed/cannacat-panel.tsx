@@ -7,6 +7,8 @@ import { useTradingTermsAcceptance } from "../use-trading-terms";
 import TermsPage from "../../app/terms/page";
 import RisksPage from "../../app/risks/page";
 import PrivacyPage from "../../app/privacy/page";
+import { approximateUsd, cannaCatQuoteBudget, freshCannaCatFunds, freshEthUsd, readEthUsd, usdTargetToWei,
+  type BuyInputMode, type CannaCatFunds, type EthUsdPrice } from "./cannacat-funds";
 import { connectedWalletMessage, exactConnectedExternalWallet, readConnectedWallet, soleConnectedExternalWallet,
   uncheckedConnectedWallet, type ConnectedWalletRead, type ConnectedWalletProvider } from "../connected-wallet-state";
 import {
@@ -41,6 +43,22 @@ const safeError = (cause: unknown) => cause instanceof Error ? cause.message.sli
 const isUserRejection = (cause: unknown) => Boolean(cause && typeof cause === "object" && "code" in cause && cause.code === 4001);
 const explorer = (hash: string) => `${robinhoodChain.blockExplorers.default.url}/tx/${hash}`;
 
+async function readWalletFunds(key: string, wallet: string): Promise<CannaCatFunds> {
+  const checkedAtMs = Date.now();
+  const address = getAddress(wallet);
+  const [chainId, block] = await Promise.all([client.getChainId(), client.getBlock()]);
+  if (chainId !== 4663 || block.number === null || !block.hash || Number(block.timestamp) * 1000 > Date.now() + 5000
+    || Date.now() - Number(block.timestamp) * 1000 > 60_000) throw new Error("Fresh Robinhood Chain balance evidence is unavailable.");
+  const [confirmedEth, pendingEth, confirmedToken, pendingToken, gasPrice] = await Promise.all([
+    client.getBalance({ address, blockNumber: block.number }), client.getBalance({ address, blockTag: "pending" }),
+    client.readContract({ address: CANNACAT_EMBED.token, abi: erc20Abi, functionName: "balanceOf", args: [address], blockNumber: block.number }),
+    client.readContract({ address: CANNACAT_EMBED.token, abi: erc20Abi, functionName: "balanceOf", args: [address], blockTag: "pending" }), client.getGasPrice()
+  ]);
+  if (gasPrice <= 0n || Date.now() - checkedAtMs > 20_000) throw new Error("Fresh gas and balance evidence is unavailable.");
+  return { key, wallet: address, chainId: 4663, checkedAtMs, block: block.number, blockHash: block.hash,
+    eth: confirmedEth < pendingEth ? confirmedEth : pendingEth, token: confirmedToken < pendingToken ? confirmedToken : pendingToken, gasPrice };
+}
+
 function Panel({ config }: { config: CannaCatPanelConfig }) {
   const terms = useTradingTermsAcceptance();
   const { ready, authenticated, user, logout } = usePrivy();
@@ -53,14 +71,22 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
   const refreshWallet = useRef<(() => Promise<void>) | null>(null);
   const [side, setSide] = useState<CannaCatSide>("buy");
   const [amount, setAmount] = useState("10000");
+  const [buyMode, setBuyMode] = useState<BuyInputMode>("token");
+  const amounts = useRef({ token: "10000", eth: "0.01", usd: "25", sell: "10000" });
   const [status, setStatus] = useState("Connect an existing wallet to get a live quote.");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [prepared, setPrepared] = useState<Ready | null>(null);
+  const [review, setReview] = useState<CannaCatPrepared | null>(null);
   const [now, setNow] = useState(Date.now());
   const [hash, setHash] = useState("");
   const [recoveryHash, setRecoveryHash] = useState("");
-  const [balances, setBalances] = useState<{ eth: bigint; token: bigint } | null>(null);
+  const [balances, setBalances] = useState<CannaCatFunds | null>(null);
+  const balancesRef = useRef<CannaCatFunds | null>(null);
+  const [balanceError, setBalanceError] = useState("");
+  const [price, setPrice] = useState<EthUsdPrice | null>(null);
+  const [priceError, setPriceError] = useState("");
+  const refreshFunds = useRef<(() => Promise<void>) | null>(null);
   const [blocking, setBlocking] = useState(false);
   const [tabOwnsWallet, setTabOwnsWallet] = useState(false);
   const [leaseAttempt, setLeaseAttempt] = useState(0);
@@ -77,10 +103,11 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
   const inputId = useId();
   const connected = Boolean(ready && walletsReady && authenticated && identityToken && wallet?.linked);
 
-  function invalidate() {
+  function invalidate(preserveReview = false) {
     epoch.current += 1;
     operation.current?.abort();
     setPrepared(null);
+    if (!preserveReview) setReview(null);
     setError("");
   }
   const { connectWallet } = useConnectWallet({ onSuccess: () => { void refreshWallet.current?.(); } });
@@ -99,12 +126,45 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     if (sole && !explicitChoiceRequired.current) setSelectedKey(walletGatewayKey(sole));
   }, [walletsReady, walletInventoryKey, selectedKey]);
 
-  useEffect(() => { invalidate(); setBalances(null); }, [selectedKey, identityToken, user?.id, wallet?.chainId, authenticated, terms.accepted]);
+  useEffect(() => { invalidate(); setBalances(null); balancesRef.current = null; }, [selectedKey, identityToken, user?.id, authenticated, terms.accepted]);
   useEffect(() => {
-    if (!prepared) return;
     const timer = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(timer);
-  }, [prepared]);
+  }, []);
+  useEffect(() => {
+    if (!terms.accepted) return;
+    let disposed = false; let active = false; let controller: AbortController | null = null;
+    const refresh = async () => {
+      if (active || document.visibilityState === "hidden") return;
+      active = true; controller = new AbortController();
+      try { const result = await readEthUsd(controller.signal); if (!disposed) { setPrice(result); setPriceError(""); } }
+      catch { if (!disposed) setPriceError("USD estimate unavailable. ETH and CannaCat inputs still work."); }
+      finally { active = false; }
+    };
+    const visible = () => { if (document.visibilityState !== "hidden") void refresh(); };
+    void refresh(); const timer = setInterval(() => void refresh(), 30_000);
+    window.addEventListener("pageshow", visible); document.addEventListener("visibilitychange", visible);
+    return () => { disposed = true; controller?.abort(); clearInterval(timer); window.removeEventListener("pageshow", visible); document.removeEventListener("visibilitychange", visible); };
+  }, [terms.accepted]);
+  useEffect(() => {
+    if (!wallet || !terms.accepted || walletState.status !== "ready") { balancesRef.current = null; return; }
+    let disposed = false; let active = false;
+    const key = selectedKey; const address = wallet.address;
+    const refresh = async () => {
+      if (active || disposed || document.visibilityState === "hidden") return;
+      active = true;
+      try {
+        const result = await readWalletFunds(key, address);
+        if (!disposed && currentRef.current.key === key && walletStateRef.current.status === "ready") {
+          if (!balancesRef.current || balancesRef.current.checkedAtMs <= result.checkedAtMs) { balancesRef.current = result; setBalances(result); }
+          setBalanceError("");
+        }
+      } catch { if (!disposed) { balancesRef.current = null; setBalanceError("Balances could not be refreshed. Confirmation is paused until fresh balances return."); } }
+      finally { active = false; }
+    };
+    refreshFunds.current = refresh; void refresh(); const timer = setInterval(() => void refresh(), 15_000);
+    return () => { disposed = true; clearInterval(timer); refreshFunds.current = null; balancesRef.current = null; };
+  }, [selectedKey, wallet?.address, walletState.status, terms.accepted]);
   useEffect(() => () => { operation.current?.abort(); epoch.current += 1; }, []);
   useEffect(() => {
     setTabOwnsWallet(false);
@@ -137,7 +197,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       const candidate = walletRef.current;
       if (!candidate || disposed) return;
       const attempt = ++sequence;
-      invalidate(); publish(uncheckedConnectedWallet); providerRef.current = null;
+      invalidate(true); publish(uncheckedConnectedWallet); providerRef.current = null;
       const state = await readConnectedWallet(candidate);
       if (disposed || sequence !== attempt || currentRef.current.key !== selectedKey) return;
       if (active !== state.provider) {
@@ -153,7 +213,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       publish({ status: "disconnected", chainId: null, provider: null });
       setStatus("The signing wallet disconnected. Reconnect it before requesting a quote.");
     }
-    function suspend() { sequence += 1; invalidate(); providerRef.current = null; publish(uncheckedConnectedWallet); }
+    function suspend() { sequence += 1; invalidate(true); balancesRef.current = null; providerRef.current = null; publish(uncheckedConnectedWallet); }
     const visible = () => { if (document.visibilityState === "hidden") suspend(); else void refresh(); };
     const resumed = () => { if (document.visibilityState !== "hidden") void refresh(); };
     refreshWallet.current = refresh;
@@ -190,42 +250,47 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
   }
   async function getQuote() {
     if (!connected || !wallet || !identityToken || inFlight.current || blocking || !tabOwnsWallet || !terms.accepted || walletStateRef.current.status !== "ready") return;
-    invalidate(); const generation = epoch.current;
+    invalidate(true); const generation = epoch.current;
     const controller = new AbortController(); operation.current = controller;
     const key = selectedKey; const token = identityToken;
     inFlight.current = true; setBusy(true); setStatus("Checking wallet, live quote and transaction safety…");
     try {
-      const tokenAmountAtomic = parseCannaCatAmount(amount);
+      const tokenAmountAtomic = side === "sell" || buyMode === "token" ? parseCannaCatAmount(amount) : "0";
+      // Freeze the indicative conversion for this request. Background prices
+      // never rewrite the entered amount or an already reviewed firm quote.
+      const ethInput = side === "buy" && buyMode !== "token" ? (buyMode === "usd" ? usdTargetToWei(amount, price) : BigInt(parseCannaCatAmount(amount))) : null;
       const liveWallet = await readConnectedWallet(wallet);
       if (generation !== epoch.current || currentRef.current.key !== key || currentRef.current.token !== token) return;
       walletStateRef.current = liveWallet; setWalletState(liveWallet);
       if (liveWallet.status !== "ready" || !liveWallet.provider) throw new Error(connectedWalletMessage(liveWallet));
       const provider = liveWallet.provider;
-      const [chainId, eth, held, nonce, block] = await Promise.all([
-        client.getChainId(),
-        client.getBalance({ address: getAddress(wallet.address) }),
-        client.readContract({ address: CANNACAT_EMBED.token, abi: erc20Abi, functionName: "balanceOf", args: [getAddress(wallet.address)] }),
-        client.getTransactionCount({ address: getAddress(wallet.address), blockTag: "pending" }), client.getBlock()
-      ]);
-      if (chainId !== 4663) throw new Error("The recovery RPC returned the wrong network. No transaction was prepared.");
-      setBalances({ eth, token: held });
+      const [funds, nonce] = await Promise.all([readWalletFunds(key, wallet.address), client.getTransactionCount({ address: getAddress(wallet.address), blockTag: "pending" })]);
+      if (generation !== epoch.current || currentRef.current.key !== key || currentRef.current.token !== token) return;
+      balancesRef.current = funds; setBalances(funds); setBalanceError("");
+      const { eth, token: held } = funds;
       if (eth <= 0n) throw new Error("ETH is needed for network gas, including when selling tokens.");
       if (side === "sell" && BigInt(tokenAmountAtomic) > held) throw new Error("Your selected token amount exceeds this wallet's CannaCat balance.");
       const api = createCannaCatClient({ baseUrl: config.apiBaseUrl, identityToken: token });
-      const quote = await api.quote({ side, tokenAmountAtomic, wallet: wallet.address, maximumEthInputAtomic: eth.toString(), signal: controller.signal });
+      const budget = cannaCatQuoteBudget(funds);
+      if (side === "buy" && (budget.spendable <= 0n || (ethInput !== null && ethInput > budget.spendable))) throw new Error("This amount would spend the ETH reserved for network gas. Choose a smaller amount.");
+      const quote = ethInput !== null
+        ? await api.quoteEth({ ethAmountAtomic: ethInput.toString(), wallet: wallet.address, maximumEthInputAtomic: budget.spendable.toString(), signal: controller.signal })
+        : await api.quote({ side, tokenAmountAtomic, wallet: wallet.address, maximumEthInputAtomic: (side === "buy" ? budget.spendable : eth).toString(), signal: controller.signal });
       const trade = await api.prepare(quote, controller.signal);
-      const [balanceNow, gasPrice] = await Promise.all([client.getBalance({ address: getAddress(wallet.address) }), client.getGasPrice()]);
-      const gas = assessVNextWalletGasReadiness({ nativeBalanceWei: balanceNow, currentGasPriceWei: gasPrice,
+      const finalFunds = await readWalletFunds(key, wallet.address);
+      const gas = assessVNextWalletGasReadiness({ nativeBalanceWei: finalFunds.eth, currentGasPriceWei: finalFunds.gasPrice,
         evidenceFeeCeilingWei: trade.evidence.feeCeilingWei, gasLimitUnits: trade.plan.gasLimit, transactionValueAtomic: trade.plan.value });
       if (!gas.ready) throw new Error(`More ETH is required for input and the protected gas reserve (shortfall ${units(gas.shortfallWei)} ETH).`);
+      if (side === "sell" && BigInt(trade.evidence.inputAmountAtomic) > finalFunds.token) throw new Error("Your CannaCat balance changed. Refresh the quote.");
       prepareVNextWalletTransaction({ plan: trade.plan, evidence: trade.evidence, connectedAddress: wallet.address, connectedChainId: 4663, nowMs: Date.now() });
       const finalWallet = await readConnectedWallet(wallet);
       if (generation !== epoch.current || currentRef.current.key !== key || currentRef.current.token !== token) return;
       walletStateRef.current = finalWallet; setWalletState(finalWallet);
       if (finalWallet.status !== "ready" || finalWallet.provider !== provider) throw new Error("The signing provider changed while preparing the quote. Request a fresh quote.");
       if (generation !== epoch.current || currentRef.current.key !== key || currentRef.current.token !== token) return;
-      if (!block.hash || !block.number) throw new Error("Current chain recovery evidence is unavailable.");
-      setPrepared({ trade, provider, walletKey: key, identityToken: token, nonce: BigInt(nonce), block: block.number, blockHash: block.hash, chainId: 4663 });
+      balancesRef.current = finalFunds; setBalances(finalFunds); setBalanceError("");
+      setPrepared({ trade, provider, walletKey: key, identityToken: token, nonce: BigInt(nonce), block: finalFunds.block, blockHash: finalFunds.blockHash, chainId: 4663 });
+      setReview(trade);
       setNow(Date.now());
       setStatus(trade.plan.kind === "erc20_approval" ? "Approve only the displayed CannaCat amount. A fresh swap review follows after confirmation." : "Review the protected quote, then confirm explicitly in your wallet.");
     } catch (cause) { if (generation === epoch.current && !controller.signal.aborted) { setError(safeError(cause)); setStatus("No transaction was submitted."); } }
@@ -257,7 +322,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
         const request = readVNextWalletRequestJournal(localStorage).find((entry) => entry.planId === record.planId && entry.txHash === record.txHash);
         if (!request?.recoveryPlan || transaction.input.toLowerCase() !== request.recoveryPlan.data.toLowerCase() || transaction.value !== BigInt(request.recoveryPlan.value)) throw new Error("Approval transaction bytes do not match the saved plan.");
         if (!resolveVNextExecution(record.txHash, "confirmed", localStorage)) throw new Error("Approval recovery could not be saved. Keep the hash.");
-        invalidate(); setBlocking(false); setStatus("Approval confirmed. Request a fresh quote to review the swap. No sale has occurred yet."); return;
+        invalidate(true); setBlocking(false); void refreshFunds.current?.(); setStatus("Approval confirmed. Request a fresh quote to review the swap. No sale has occurred yet."); return;
       }
       let proof = verifyVNextErc20OutputSettlement(record, receipt, transaction);
       if (!proof && boundVNextNativeSettlementEnvelope(record, receipt, transaction) && identityToken) {
@@ -270,7 +335,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       }
       if (!proof) { setStatus("Receipt confirmed; output settlement is still unverified. Keep the hash and check again. Do not resend."); return; }
       if (!resolveVNextExecution(record.txHash, "confirmed", localStorage, Date.now(), { outputAmountAtomic: proof.amountAtomic, outputSettlement: proof })) throw new Error("Verified output could not be saved. Keep the hash and check again.");
-      setBlocking(false); setBalances(null); setStatus(`Settlement verified: ${units(proof.amountAtomic)} ${record.outputAsset.toLowerCase() === CANNACAT_EMBED.token.toLowerCase() ? "CannaCat" : "ETH"} received by ${short(record.wallet)}.`);
+      invalidate(true); setBlocking(false); balancesRef.current = null; void refreshFunds.current?.(); setStatus(`Settlement verified: ${units(proof.amountAtomic)} ${record.outputAsset.toLowerCase() === CANNACAT_EMBED.token.toLowerCase() ? "CannaCat" : "ETH"} received by ${short(record.wallet)}.`);
     } catch (cause) {
       if (cause instanceof Error && /not.*found|could not be found/i.test(cause.message)) setStatus("Transaction submitted; confirmation is pending. Check again in a moment. Do not resend.");
       else setError(safeError(cause));
@@ -306,6 +371,11 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     try {
       if (prepared.walletKey !== selectedKey || prepared.identityToken !== identityToken || prepared.chainId !== 4663
         || walletStateRef.current.status !== "ready" || walletStateRef.current.provider !== prepared.provider) throw new Error("Wallet authority changed. Request a fresh quote.");
+      const funds = balancesRef.current;
+      if (!freshCannaCatFunds(funds, selectedKey, wallet.address)) throw new Error("Fresh matching balances are required before confirmation. Refresh your quote.");
+      const gas = assessVNextWalletGasReadiness({ nativeBalanceWei: funds.eth, currentGasPriceWei: funds.gasPrice,
+        evidenceFeeCeilingWei: prepared.trade.evidence.feeCeilingWei, gasLimitUnits: prepared.trade.plan.gasLimit, transactionValueAtomic: prepared.trade.plan.value });
+      if (!gas.ready || (prepared.trade.quote.side === "sell" && BigInt(prepared.trade.evidence.inputAmountAtomic) > funds.token)) throw new Error("Your balance or gas reserve changed. Choose a smaller amount and refresh the quote.");
       if (findBlockingVNextWalletRequest(wallet.address, localStorage) || findUnresolvedVNextExecution(wallet.address, localStorage)) throw new Error("Resolve the earlier wallet request before another trade.");
       const transaction = prepareVNextWalletTransaction({ plan: prepared.trade.plan, evidence: prepared.trade.evidence, connectedAddress: wallet.address, connectedChainId: 4663, nowMs: Date.now() });
       requestId = crypto.randomUUID();
@@ -338,9 +408,25 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     }
   }
 
-  const expired = Boolean(prepared && Math.min(prepared.trade.plan.expiresAtMs, prepared.trade.evidence.expiresAtMs) <= now);
-  const evidence = prepared?.trade.evidence;
+  const expired = Boolean(review && Math.min(review.plan.expiresAtMs, review.evidence.expiresAtMs) <= now);
+  const evidence = review?.evidence;
   const fee = evidence?.providerNativeFee;
+  const visibleFunds = balances?.key === selectedKey && balances.wallet.toLowerCase() === wallet?.address.toLowerCase() ? balances : null;
+  const fundsFresh = walletState.status === "ready" && wallet && freshCannaCatFunds(balancesRef.current, selectedKey, wallet.address, now);
+  let fundsAllowTrade = false;
+  if (prepared && fundsFresh && balancesRef.current) {
+    const funds = balancesRef.current;
+    const gas = assessVNextWalletGasReadiness({ nativeBalanceWei: funds.eth, currentGasPriceWei: funds.gasPrice,
+      evidenceFeeCeilingWei: prepared.trade.evidence.feeCeilingWei, gasLimitUnits: prepared.trade.plan.gasLimit, transactionValueAtomic: prepared.trade.plan.value });
+    fundsAllowTrade = gas.ready && (prepared.trade.quote.side !== "sell" || BigInt(prepared.trade.evidence.inputAmountAtomic) <= funds.token);
+  }
+  const freshPrice = freshEthUsd(price, now);
+  const amountKey = side === "sell" ? "sell" : buyMode;
+  const editAmount = (value: string) => { invalidate(); amounts.current[amountKey] = value; setAmount(value); };
+  const amountLabel = side === "sell" ? "CannaCat to sell" : buyMode === "token" ? "Minimum CannaCat to receive" : buyMode === "eth" ? "ETH to spend" : "USD purchase target";
+  const presets = buyMode === "usd" ? [["10", "$10"], ["25", "$25"], ["50", "$50"], ["100", "$100"]]
+    : buyMode === "eth" ? [["0.001", "0.001"], ["0.01", "0.01"], ["0.05", "0.05"], ["0.1", "0.1"]]
+    : [["10000", "10K"], ["25000", "25K"], ["50000", "50K"]];
   return <div className="rmtcat-panel">
     <div className="rmtcat-top"><span className="rmtcat-eyebrow">CANNACAT · ROBINHOOD CHAIN</span><span className="rmtcat-powered">Execution by RMT</span></div>
     <h3>Get your CannaCat.</h3>
@@ -355,7 +441,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       <button type="button" disabled={!terms.ready} onClick={terms.accept}>I understand — continue</button>
     </div>}
     <div className="rmtcat-tabs" role="group" aria-label="Trade direction">
-      {(["buy", "sell"] as const).map((direction) => <button key={direction} type="button" aria-pressed={side === direction} disabled={busy} onClick={() => { invalidate(); setSide(direction); setStatus("Choose an amount and request a fresh quote."); }}>{direction === "buy" ? "Buy CannaCat" : "Sell CannaCat"}</button>)}
+      {(["buy", "sell"] as const).map((direction) => <button key={direction} type="button" aria-pressed={side === direction} disabled={busy} onClick={() => { invalidate(); setSide(direction); setAmount(amounts.current[direction === "sell" ? "sell" : buyMode]); setStatus("Choose an amount and request a fresh quote."); }}>{direction === "buy" ? "Buy CannaCat" : "Sell CannaCat"}</button>)}
     </div>
     <div className="rmtcat-wallet">
       {(external.length > 1 || (!wallet && external.length > 0)) && <label className="rmtcat-wallet-choice">Choose signing wallet<select aria-label="Choose signing wallet" value={selectedKey} disabled={busy || !terms.accepted} onChange={(event) => { invalidate(); explicitChoiceRequired.current = true; setSelectedKey(event.target.value); }}>
@@ -374,22 +460,33 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       </div>
     </div>
     {wallet && <p className="rmtcat-balances" data-wallet-status={walletState.status}>{connectedWalletMessage(walletState)}</p>}
-    <label className="rmtcat-amountlabel" htmlFor={inputId}>{side === "buy" ? "Minimum CannaCat to receive" : "CannaCat to sell"}</label>
-    <div className="rmtcat-amount"><input id={inputId} inputMode="decimal" autoComplete="off" value={amount} disabled={busy} maxLength={60} onChange={(event) => { invalidate(); setAmount(event.target.value); }} /><span>CANNACAT</span></div>
-    {side === "buy" && <div className="rmtcat-presets">{["10000", "25000", "50000"].map((value) => <button type="button" key={value} disabled={busy} onClick={() => { invalidate(); setAmount(value); }}>{Number(value).toLocaleString("en-US")}</button>)}</div>}
-    {balances && <p className="rmtcat-balances">Available: {units(balances.eth)} ETH · {units(balances.token, 4)} CannaCat</p>}
+    {wallet && <section className="rmtcat-funds" aria-label="Wallet balances">
+      <dl><div><dt>Native Robinhood ETH</dt><dd>{visibleFunds ? `${units(visibleFunds.eth)} ETH` : "Loading…"}</dd><dd className="rmtcat-usd">{visibleFunds && approximateUsd(visibleFunds.eth, price, now) ? `≈ ${approximateUsd(visibleFunds.eth, price, now)} USD` : "USD estimate unavailable"}</dd></div>
+        <div><dt>CannaCat available</dt><dd>{visibleFunds ? `${units(visibleFunds.token, 4)} CannaCat` : "Loading…"}</dd></div></dl>
+      <p>{visibleFunds ? <>{fundsFresh ? "Updated" : "Last known · refresh required"} <time dateTime={new Date(visibleFunds.checkedAtMs).toISOString()}>{new Date(visibleFunds.checkedAtMs).toLocaleTimeString()}</time> · block {String(visibleFunds.block)}</> : "Reading this wallet on Robinhood Chain."}</p>
+      {balanceError && <p>{balanceError}</p>}
+      <button type="button" className="rmtcat-textbutton" disabled={busy || walletState.status !== "ready"} onClick={() => void refreshFunds.current?.()}>Refresh balances</button>
+    </section>}
+    {side === "buy" && <div className="rmtcat-modes" role="group" aria-label="Buy input mode">{([["usd", "USD target"], ["eth", "ETH input"], ["token", "CannaCat target"]] as const).map(([mode, label]) => <button key={mode} type="button" aria-pressed={buyMode === mode} disabled={busy} onClick={() => { invalidate(); setBuyMode(mode); setAmount(amounts.current[mode]); }}>{label}</button>)}</div>}
+    <label className="rmtcat-amountlabel" htmlFor={inputId}>{amountLabel}</label>
+    <div className="rmtcat-amount"><input id={inputId} inputMode="decimal" autoComplete="off" value={amount} disabled={busy} maxLength={60} onChange={(event) => editAmount(event.target.value)} /><span>{side === "sell" || buyMode === "token" ? "CANNACAT" : buyMode === "usd" ? "USD TARGET" : "NATIVE ETH"}</span></div>
+    {side === "buy" && <div className="rmtcat-presets" style={{ gridTemplateColumns: `repeat(${presets.length},minmax(0,1fr))` }}>{presets.map(([value, label]) => <button type="button" key={value} disabled={busy} onClick={() => editAmount(value)}>{label}</button>)}</div>}
+    <p className="rmtcat-price">{freshPrice && price ? <>ETH/USD ≈ {approximateUsd(10n ** 18n, price, now)} · {price.source} · <time dateTime={new Date(price.priceAtMs).toISOString()}>{new Date(price.priceAtMs).toLocaleTimeString()}</time></> : priceError || "ETH/USD estimate loading…"}<br/>USD is indicative only. Payment and settlement use native Robinhood ETH. Firm terms are verified before confirmation.</p>
+    {side === "buy" && visibleFunds && <p className="rmtcat-balances">Quote budget reserves {units(cannaCatQuoteBudget(visibleFunds).reserve)} ETH for gas. The verified transaction may require more.</p>}
     {evidence && <div className="rmtcat-quote" aria-label="Verified trade review"><dl>
       <div><dt>{side === "buy" ? "Exact ETH input" : "Exact token input"}</dt><dd>{units(evidence.inputAmountAtomic)} {side === "buy" ? "ETH" : "CannaCat"}</dd></div>
       <div><dt>Expected received</dt><dd>{units(evidence.expectedOutputAtomic)} {side === "buy" ? "CannaCat" : "ETH"}</dd></div>
+      {side === "sell" && <div><dt>Estimated proceeds · USD</dt><dd>{approximateUsd(evidence.expectedOutputAtomic, price, now) ? `≈ ${approximateUsd(evidence.expectedOutputAtomic, price, now)}` : "USD estimate unavailable"}</dd></div>}
+      {side === "buy" && <div><dt>Input estimate · USD</dt><dd>{approximateUsd(evidence.inputAmountAtomic, price, now) ? `≈ ${approximateUsd(evidence.inputAmountAtomic, price, now)}` : "USD estimate unavailable"}</dd></div>}
       <div><dt>Protected minimum</dt><dd>{units(evidence.protectedOutputAtomic)} {side === "buy" ? "CannaCat" : "ETH"}</dd></div>
-      <div><dt>{prepared?.trade.plan.kind === "erc20_approval" ? "Planned swap fee · 0.25%" : "RMT fee · 0.25%"}</dt><dd>{fee ? `${units(fee.feeAmountAtomic)} ETH` : "Unavailable"}</dd></div>
+      <div><dt>{review?.plan.kind === "erc20_approval" ? "Planned swap fee · 0.25%" : "RMT fee · 0.25%"}</dt><dd>{fee ? `${units(fee.feeAmountAtomic)} ETH` : "Unavailable"}</dd></div>
       <div><dt>Estimated network gas</dt><dd>{evidence.estimatedNetworkCostWei ? `${units(evidence.estimatedNetworkCostWei)} ETH` : "Unavailable"}</dd></div>
       <div><dt>Provider fee</dt><dd>{fee?.providerFeeAtomic ? `${units(fee.providerFeeAtomic)} ${fee.providerFeeAsset?.toLowerCase() === CANNACAT_EMBED.token.toLowerCase() ? "CannaCat" : "ETH"}` : "None disclosed"}</dd></div>
       <div><dt>Maximum slippage</dt><dd>1%</dd></div>
       <div><dt>Recipient</dt><dd>{short(evidence.recipient)}</dd></div>
-    </dl><p>{expired ? "Quote expired — refresh before confirming." : prepared?.trade.plan.kind === "erc20_approval" ? "No swap fee is charged by this approval. Network gas applies. Review a fresh swap quote after confirmation." : "Fees are disclosed estimates. Network gas is additional. Review exact amounts in your wallet."}</p></div>}
+    </dl><p>{!prepared ? "Saved review only. Refresh the quote before confirming." : expired ? "Quote expired — refresh before confirming." : prepared.trade.plan.kind === "erc20_approval" ? "No swap fee is charged by this approval. Network gas applies. Review a fresh swap quote after confirmation." : "Fees are disclosed estimates. Network gas is additional. Review exact amounts in your wallet."}</p>{prepared && !fundsAllowTrade && <p>Confirmation paused: fresh matching balances and enough gas are required.</p>}</div>}
     <div className="rmtcat-actions"><button type="button" disabled={!terms.accepted || !connected || busy || blocking || !tabOwnsWallet || walletState.status !== "ready"} onClick={() => void getQuote()}>{busy ? "Working…" : prepared ? "Refresh quote" : "Get live quote"}</button>
-      {prepared && <button type="button" className="rmtcat-confirm" disabled={!terms.accepted || busy || expired || blocking} onClick={confirmTrade}>{prepared.trade.plan.kind === "erc20_approval" ? "Review token approval" : `Confirm ${side} in wallet`}</button>}
+      {prepared && <button type="button" className="rmtcat-confirm" disabled={!terms.accepted || busy || expired || blocking || !connected || !tabOwnsWallet || walletState.status !== "ready" || !fundsAllowTrade} onClick={confirmTrade}>{prepared.trade.plan.kind === "erc20_approval" ? "Review token approval" : `Confirm ${side} in wallet`}</button>}
     </div>
     <p className="rmtcat-status" role="status" aria-live="polite">{status === connectedWalletMessage(walletState) || (wallet && status === "Connect an existing wallet to get a live quote.") ? "" : status}</p>
     {error && <p className="rmtcat-error" role="alert">{error}</p>}
@@ -403,6 +500,8 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
 const css = `
 .rmtcat-terms{padding:16px;border:1px solid #637b2c;background:#11180b;border-radius:12px;margin:16px 0;font-size:13px}.rmtcat-terms details{margin:12px 0}.rmtcat-terms summary{cursor:pointer;min-height:44px;line-height:44px}.rmtcat-legal{max-height:320px;overflow:auto;padding:12px;border:1px solid #39432c}.rmtcat-legal h2{font-size:15px;line-height:1.4;margin:14px 0 6px}.rmtcat-legal p{font-size:13px;line-height:1.6}.rmtcat-root{font:400 16px/1.5 system-ui,sans-serif;color:#f2f4e9;color-scheme:dark;width:100%;box-sizing:border-box}.rmtcat-root *{box-sizing:border-box}.rmtcat-panel{padding:clamp(20px,4vw,36px);border:1px solid #485032;background:linear-gradient(135deg,#171c13,#0c0e0b);border-radius:20px;max-width:680px;margin:auto}.rmtcat-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.rmtcat-eyebrow{font-size:11px;letter-spacing:.13em;color:#d6ff24;font-weight:800}.rmtcat-powered{font-size:11px;color:#b7beaa}.rmtcat-panel h3{font-size:clamp(28px,6vw,42px);line-height:1.1;margin:18px 0 10px;font-weight:850;letter-spacing:-.04em}.rmtcat-intro{color:#c1c8b7;font-size:14px;margin:0 0 22px}.rmtcat-tabs{display:flex;padding:4px;background:#080a06;border-radius:12px;margin-bottom:18px;gap:4px}.rmtcat-root button{font:inherit;border:1px solid #596344;border-radius:9px;min-height:44px;padding:9px 16px;cursor:pointer;color:#edf2e6;background:#252c20;font-weight:650}.rmtcat-tabs button{flex:1;border:0;background:transparent;font-size:14px}.rmtcat-tabs button[aria-pressed=true],.rmtcat-root button.rmtcat-confirm{color:#101500;background:#d6ff24}.rmtcat-root button:disabled{opacity:.45;cursor:not-allowed}.rmtcat-root :focus-visible{outline:3px solid #edff9c;outline-offset:3px}.rmtcat-wallet{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:18px}.rmtcat-wallet label{display:grid;gap:4px;font-size:11px;flex:1;min-width:0}.rmtcat-wallet select{font:inherit;font-size:13px;background:#11150d;color:#f3f8eb;border:1px solid #596344;border-radius:7px;min-height:44px;max-width:100%;padding:8px}.rmtcat-root .rmtcat-textbutton{font-size:12px;padding:5px 10px;border:0;background:none;text-decoration:underline}.rmtcat-amountlabel{font-size:13px;color:#c1c8b7;display:block;margin-bottom:6px}.rmtcat-amount{display:flex;align-items:center;gap:8px;border:1px solid #586447;background:#070a05;border-radius:12px;padding:12px 16px}.rmtcat-amount input{width:100%;min-width:0;font:700 28px/1.3 system-ui;color:#fff;background:none;border:0}.rmtcat-amount span{font-size:10px;letter-spacing:.06em;color:#c5d5aa}.rmtcat-presets{display:flex;gap:8px;margin-top:10px}.rmtcat-presets button{font-size:12px;padding:5px 12px;min-height:44px}.rmtcat-balances{font-size:12px;color:#b7beaa}.rmtcat-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}.rmtcat-actions button{flex:1;min-width:150px}.rmtcat-quote{padding:16px;background:#0a0d08;border-radius:12px;margin-top:18px}.rmtcat-quote dl{margin:0;display:grid;gap:8px;font-size:13px}.rmtcat-quote dl>div{display:flex;justify-content:space-between;gap:15px}.rmtcat-quote dt{color:#b7beaa}.rmtcat-quote dd{margin:0;text-align:right;overflow-wrap:anywhere}.rmtcat-quote p{font-size:11px;color:#c1c8b7;margin:12px 0 0}.rmtcat-status{font-size:13px;color:#d7dfcc;margin:16px 0}.rmtcat-error{font-size:13px;padding:12px;border:1px solid #b86b52;background:#27150f;border-radius:8px;color:#ffd8c9}.rmtcat-transaction{display:grid;gap:10px;padding:12px;border:1px solid #5b6d36;border-radius:9px;font-size:13px}.rmtcat-root a{color:#d6ff24;text-underline-offset:3px}.rmtcat-details{font-size:12px;color:#b7beaa;border-top:1px solid #39432c;margin-top:18px;padding-top:14px}.rmtcat-details summary{cursor:pointer;min-height:36px;display:list-item;line-height:28px;color:#d7dfcc}.rmtcat-contract{font-size:10px;overflow-wrap:anywhere;display:block;margin-top:12px}.rmtcat-root .rmtcat-paused{padding:18px;background:#0a0d08;border-radius:12px;color:#d6ff24;font-size:14px}
 /* Wallet identity and controls own separate rows, including unverified sessions. */
+.rmtcat-funds{min-width:0;background:#0a0d08;border:1px solid #39432c;padding:14px;border-radius:12px;margin:14px 0 18px}
+.rmtcat-funds dl{margin:0;display:grid;grid-template-columns:minmax(0,1fr);gap:14px}.rmtcat-funds dt{font-size:12px;color:#b7beaa}.rmtcat-funds dd{margin:3px 0 0;font-size:16px;font-weight:650;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.rmtcat-funds .rmtcat-usd{font-size:13px;color:#c1c8b7;font-weight:400}.rmtcat-funds p,.rmtcat-price{font-size:12px;color:#b7beaa;line-height:1.6;overflow-wrap:anywhere}.rmtcat-funds p{margin:12px 0 0}.rmtcat-modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0 0 16px}.rmtcat-modes button{min-width:0;font-size:12px;padding:8px 5px;line-height:1.4}.rmtcat-modes button[aria-pressed=true]{background:#d6ff24;color:#101500}.rmtcat-price{margin:14px 0}
 .rmtcat-root{min-width:0}
 .rmtcat-panel{min-width:0}
 .rmtcat-top{align-items:baseline}

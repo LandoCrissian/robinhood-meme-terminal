@@ -6,6 +6,7 @@ import { CANNACAT_EMBED, createCannaCatClient, nextCannaCatBuyInput, parseCannaC
 import { createVNextZeroXProviderNativeFee } from "../vnext/zero-x-settlement";
 import { connectedWalletChainId, exactConnectedExternalWallet, readConnectedWallet, soleConnectedExternalWallet } from "../connected-wallet-state";
 import { walletGatewayKey } from "../wallet-gateway";
+import { approximateUsd, cannaCatQuoteBudget, freshCannaCatFunds, freshEthUsd, parseEthUsd, readEthUsd, usdTargetToWei, type CannaCatFunds } from "./cannacat-funds";
 
 const env = { RMT_CANNACAT_EMBED_ENABLED: "true", RMT_CANNACAT_EMBED_ORIGINS: "https://lammb.fun,https://preview.lammb.fun", RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "zero-x-swap" };
 const wallet = "0x0000000000000000000000000000000000000123";
@@ -56,6 +57,30 @@ check(() => assert.throws(() => createCannaCatClient({ baseUrl: "http://rmt.exam
 check(() => assert.throws(() => createCannaCatClient({ baseUrl: "https://rmt.example/api/embed/cannacat?token=bad", identityToken: "fixture" })));
 
 async function main() {
+  const priceNow = Date.now();
+  const price = parseEthUsd({ price: "2000.00", time: new Date(priceNow).toISOString() }, priceNow);
+  check(() => assert.equal(usdTargetToWei("25", price, priceNow), 12_500_000_000_000_000n));
+  check(() => assert.equal(approximateUsd(10n ** 18n, price, priceNow), "$2,000.00"));
+  check(() => assert.equal(approximateUsd(1n, price, priceNow), "<$0.01"));
+  check(() => assert.equal(freshEthUsd(price, priceNow + 120_001), false));
+  check(() => assert.equal(approximateUsd(10n ** 18n, price, priceNow + 120_001), null));
+  for (const invalid of ["", "0", "-1", "1e2", "10.001", "01"]) check(() => assert.throws(() => usdTargetToWei(invalid, price, priceNow)));
+  check(() => assert.throws(() => usdTargetToWei("25", price, priceNow + 120_001)));
+  for (const invalid of [{ price: "0", time: new Date(priceNow).toISOString() }, { price: "NaN", time: new Date(priceNow).toISOString() }, { price: "2000", time: "invalid" }, { price: "2000", time: new Date(priceNow - 120_001).toISOString() }, { price: "2000", time: new Date(priceNow + 5001).toISOString() }]) check(() => assert.throws(() => parseEthUsd(invalid, priceNow)));
+  const funds: CannaCatFunds = { key: "fixture-key", wallet, chainId: 4663, checkedAtMs: priceNow, eth: 10n ** 18n, token: 10000n * 10n ** 18n, block: 100n, blockHash: `0x${"a".repeat(64)}`, gasPrice: 10n ** 9n };
+  check(() => assert.equal(freshCannaCatFunds(funds, "fixture-key", wallet, priceNow), true));
+  check(() => assert.equal(freshCannaCatFunds(funds, "other-wallet-key", wallet, priceNow), false));
+  check(() => assert.equal(freshCannaCatFunds(funds, "fixture-key", "0x1111111111111111111111111111111111111111", priceNow), false));
+  check(() => assert.equal(freshCannaCatFunds(funds, "fixture-key", wallet, priceNow + 20_001), false));
+  check(() => assert.equal(freshCannaCatFunds(funds, "fixture-key", wallet, priceNow - 1), false));
+  check(() => assert.equal(cannaCatQuoteBudget(funds).reserve, 3_000_000_000_000_000n));
+  check(() => assert.equal(cannaCatQuoteBudget({ ...funds, eth: 1n }).spendable, 0n));
+  const fetched = await readEthUsd(new AbortController().signal, async (_url, init) => {
+    check(() => assert.equal(init?.credentials, "omit")); check(() => assert.equal(init?.redirect, "error"));
+    return Response.json({ price: "2000.00", time: new Date().toISOString() });
+  });
+  check(() => assert.equal(fetched.source, "Coinbase Exchange ETH-USD"));
+  await assert.rejects(() => readEthUsd(new AbortController().signal, async () => new Response("x".repeat(16385))), /safety limit/); checks += 1;
   const candidate = { address: wallet, type: "ethereum" as const, connectorType: "injected", walletClientType: "metamask", meta: { id: "fixture-metamask" } };
   const rabby = { ...candidate, walletClientType: "rabby", meta: { id: "fixture-rabby" } };
   check(() => assert.equal(soleConnectedExternalWallet([candidate]), candidate));
@@ -156,6 +181,17 @@ async function main() {
   check(() => assert.equal(sold.inputAmountAtomic, parseCannaCatAmount("10000")));
   check(() => assert.equal(sold.outputAsset, zeroAddress));
   check(() => assert.equal(sold.attempt.providerNativeFee?.feeAsset, zeroAddress));
+  const beforeEth = quoteCalls;
+  const ethBuy = await successfulApi.quoteEth({ ethAmountAtomic: "10000000000000000", wallet, maximumEthInputAtomic: "90000000000000000" });
+  check(() => assert.equal(quoteCalls - beforeEth, 1));
+  check(() => assert.equal(ethBuy.buyInputMode, "eth"));
+  check(() => assert.equal(ethBuy.inputAmountAtomic, "10000000000000000"));
+  check(() => assert.equal(ethBuy.inputAsset, zeroAddress));
+  check(() => assert.equal(ethBuy.attempt.providerNativeFee?.feeBps, 25));
+  for (const invalid of ["0", "-1", "NaN", "100000000000000001", (2n ** 256n).toString()]) {
+    await assert.rejects(() => successfulApi.quoteEth({ ethAmountAtomic: invalid, wallet, maximumEthInputAtomic: "100000000000000000" })); checks += 1;
+  }
+  check(() => assert.equal(quoteCalls - beforeEth, 1));
   const expired = { ...bought, attempt: { ...bought.attempt, expiresAtMs: fixedNow } };
   await assert.rejects(() => successfulApi.prepare(expired), /expired quote/); checks += 1;
   const canceled = new AbortController(); canceled.abort();
@@ -168,3 +204,4 @@ async function main() {
   console.log(JSON.stringify({ suite: "cannacat-embed-boundary-and-client", checks, result: "PASS", realWalletRequests: 0, realTransactions: 0 }));
 }
 void main().catch((cause) => { console.error(cause); process.exitCode = 1; });
+

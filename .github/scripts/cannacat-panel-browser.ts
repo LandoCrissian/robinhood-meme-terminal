@@ -40,6 +40,8 @@ const longWalletName = "MetaMask · iPhone WalletConnect signing connection";
 let checks = 0;
 let quoteCalls = 0;
 let balance = 10n ** 18n;
+let balancesFail = false;
+let usdPrice = "2000.00";
 let verified = false;
 const bundles = new Map<string, ReturnType<typeof syntheticCannaCatBundle>>();
 const tokenBalance = 50_000n * 10n ** 18n;
@@ -56,7 +58,11 @@ try {
     await context.route("**/*", async (route) => {
       const url = new URL(route.request().url());
       if (url.origin === base) { await route.continue(); return; }
+      if (url.href === "https://api.exchange.coinbase.com/products/ETH-USD/ticker") {
+        await route.fulfill({ json: { price: usdPrice, time: new Date().toISOString() }, headers: { "access-control-allow-origin": "*" } }); return;
+      }
       if (url.origin === "https://rpc.mainnet.chain.robinhood.com") {
+        if (balancesFail) { await route.fulfill({ status: 503, body: "Synthetic balance RPC outage" }); return; }
         const rpc = route.request().postDataJSON();
         const answer = (entry: { id: number; method: string }) => {
           const values: Record<string, unknown> = { eth_chainId: "0x1237", eth_getBalance: hex(balance), eth_gasPrice: "0x3b9aca00", eth_getTransactionCount: "0x0", eth_call: `0x${tokenBalance.toString(16).padStart(64, "0")}`,
@@ -147,6 +153,10 @@ try {
     await page.getByRole("button", { name: "Switch to Robinhood Chain" }).click();
     await page.getByRole("button", { name: "Get live quote" }).waitFor({ state: "visible" });
     await expect(page.getByRole("button", { name: "Get live quote" })).toBeEnabled();
+    await expect(page.getByLabel("Wallet balances")).toContainText("1 ETH");
+    await expect(page.getByLabel("Wallet balances")).toContainText("50000 CannaCat");
+    await expect(page.getByLabel("Wallet balances")).toContainText("$2,000.00");
+    check(true, "Native ETH, timestamped USD and CannaCat balances load independently of a quote");
     checks += 1;
     await page.getByLabel("Minimum CannaCat to receive").fill("0");
     await page.getByRole("button", { name: "Get live quote" }).click();
@@ -206,6 +216,57 @@ try {
     check(await page.evaluate(()=>(window.__CANNACAT_FIXTURE_WALLET_REQUESTS__??[]).length)===2, "Precision and quote preparation do not request another wallet action");
     await page.screenshot({path:path.join(output,`${channel}-${width}-tiny-quote.png`),fullPage:true});
     results.push({ channel, width, checks: "PASS", scope: "Synthetic provider/wallet; real production bundle cold-load and real panel/SDK code", realTransactions: 0 });
+    // Funds and input-mode acceptance. Background reads cannot rewrite intent
+    // or authorize from stale balances. Every wallet request remains synthetic.
+    await page.getByRole("button", { name: "USD target", exact: true }).click();
+    await page.getByRole("button", { name: "$25", exact: true }).click();
+    await page.getByRole("button", { name: "Get live quote", exact: true }).click();
+    await page.getByRole("button", { name: "Confirm buy in wallet", exact: true }).waitFor();
+    await expect(page.getByLabel("Verified trade review")).toContainText("0.0125 ETH");
+    check(true, "USD target becomes an exact native ETH input on the existing rail");
+    const exactInputBefore = await page.locator(".rmtcat-quote dl>div").filter({has:page.getByText("Exact ETH input", {exact:true})}).locator("dd").innerText();
+    balance = 0n;
+    await page.getByRole("button", { name: "Refresh balances", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Confirm buy in wallet", exact: true })).toBeDisabled();
+    await expect(page.getByLabel("USD purchase target")).toHaveValue("25");
+    check(await page.locator(".rmtcat-quote dl>div").filter({has:page.getByText("Exact ETH input", {exact:true})}).locator("dd").innerText() === exactInputBefore, "Balance refresh preserves entered USD target and exact quote display");
+    balance = 10n ** 18n;
+    await page.getByRole("button", { name: "Refresh balances", exact: true }).click();
+    await expect(page.getByRole("button", { name: "Confirm buy in wallet", exact: true })).toBeEnabled();
+    balancesFail = true;
+    await page.getByRole("button", { name: "Refresh balances", exact: true }).click();
+    await expect(page.getByLabel("Wallet balances")).toContainText("could not be refreshed");
+    await expect(page.getByRole("button", { name: "Confirm buy in wallet", exact: true })).toBeDisabled();
+    balancesFail = false;
+    usdPrice = "2500.00";
+    await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pageshow", {persisted:true})));
+    await expect(page.getByLabel("USD purchase target")).toHaveValue("25");
+    await expect(page.getByRole("button", { name: "Get live quote", exact: true })).toBeEnabled();
+    check(await page.getByRole("button", { name: "Confirm buy in wallet", exact: true }).count() === 0, "Page restoration invalidates transaction authority while retaining saved review");
+    check(await page.locator(".rmtcat-quote dl>div").filter({has:page.getByText("Exact ETH input", {exact:true})}).locator("dd").innerText() === exactInputBefore, "Price refresh and page return never rewrite reviewed ETH input");
+    await page.getByRole("button", { name: "ETH input", exact: true }).click();
+    await page.getByLabel("ETH to spend").fill("1");
+    await page.getByRole("button", { name: "Get live quote", exact: true }).click();
+    await expect(page.getByRole("alert")).toContainText("reserved for network gas");
+    await page.getByRole("button", { name: "0.01", exact: true }).click();
+    await page.getByRole("button", { name: "Get live quote", exact: true }).click();
+    await page.getByRole("button", { name: "Confirm buy in wallet", exact: true }).waitFor();
+    await expect(page.getByLabel("Verified trade review")).toContainText("0.01 ETH");
+    await page.screenshot({path:path.join(output, `${channel}-${width}-eth-input.png`),fullPage:true});
+    await page.getByRole("button", { name: "USD target", exact: true }).click();
+    await expect(page.getByLabel("USD purchase target")).toHaveValue("25");
+    await page.screenshot({path:path.join(output, `${channel}-${width}-usd-input.png`),fullPage:true});
+    await page.getByRole("button", { name: "CannaCat target", exact: true }).click();
+    await page.getByRole("button", { name: "10K", exact: true }).click();
+    await page.getByRole("button", { name: "Sell CannaCat", exact: true }).click();
+    await page.getByLabel("CannaCat to sell").fill("10000");
+    await page.getByRole("button", { name: "Get live quote", exact: true }).click();
+    await page.getByRole("button", { name: "Review token approval", exact: true }).waitFor();
+    await expect(page.getByLabel("Verified trade review")).toContainText("Estimated proceeds · USD");
+    await expect(page.getByLabel("Wallet balances")).toContainText("50000 CannaCat");
+    await page.screenshot({path:path.join(output, `${channel}-${width}-sell-usd.png`),fullPage:true});
+    check(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth), "Balance cards, mode controls and USD proceeds fit the target viewport");
+    usdPrice = "2000.00";
     for (const walletClientType of ["metamask", "rabby"]) {
       await page.evaluate(() => localStorage.clear());
       await page.goto(base);
