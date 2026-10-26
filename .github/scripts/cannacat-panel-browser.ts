@@ -493,8 +493,14 @@ try {
     await expect(page.getByLabel('Transaction recovery')).toBeVisible();
     settlementAvailable = true;
     await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })));
-    await expect(page.getByRole('status')).toContainText('Settlement verified:');
-    await expect(page.getByRole('status')).toContainText('ETH received');
+    try {
+      await expect(page.getByLabel('Saved transaction status')).toContainText('Settlement verified:');
+      await expect(page.getByLabel('Saved transaction status')).toContainText('ETH received');
+    } catch (cause) {
+      await writeFile(path.join(output, channel + '-recovery-diagnostic.json'), JSON.stringify(await page.evaluate(() => ({
+        syntheticJournal: localStorage.getItem('rmt:vnext-execution-journal:v1:4663'), panel: document.querySelector('.rmtcat-panel')?.textContent,
+        status: document.querySelector('[role="status"]')?.textContent })), null, 2)); throw cause;
+    }
     check(await page.getByLabel('Transaction recovery').count() === 0, 'Exact native-output proof resolves the saved sale after refresh and reconnect');
     const settledJournal = await page.evaluate(value => {
       const saved = JSON.parse(localStorage.getItem('rmt:vnext-execution-journal:v1:4663') || '{}');
