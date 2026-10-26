@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import { readFile, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
-import { chromium, webkit, expect } from "playwright/test";
+import { chromium, webkit, expect, type Page } from "playwright/test";
 import { historicalSaleRecord, historicalSaleRpc, historicalSaleTransaction as transaction } from "../../apps/web/lib/testing/historical-cannacat-sale";
 import { readHistoricalSettlementTrace } from "../../apps/web/lib/server/historical-settlement-trace";
 
@@ -26,16 +26,20 @@ async function main() {
     } catch { response.writeHead(500).end(); }
   });
   await new Promise<void>(resolve => server.listen(0, "127.0.0.1", resolve));
-  const base = `http://127.0.0.1:${(server.address() as { port: number }).port}`;
+  // Match the existing SDK's explicit localhost-only HTTP acceptance boundary.
+  // Production HTTPS checks are unchanged.
+  const base = `http://localhost:${(server.address() as { port: number }).port}`;
   const browser = await (channel === "webkit" ? webkit.launch({ headless: true }) : chromium.launch({ channel, headless: true }));
   const results: object[] = []; let checks = 0, traceReads = 0;
   const check = (value: unknown, message: string) => { assert.ok(value, message); checks++; };
   const journalKey = "rmt:vnext-execution-journal:v1:4663";
+  let diagnostic: { page: Page; errors: string[]; width: number; excessiveMinimum: boolean } | null = null;
   try {
     for (const width of [320, 390]) {
       for (const excessiveMinimum of [false, true]) {
         const context = await browser.newContext({ viewport: { width, height: 844 } });
         const page = await context.newPage(); const errors: string[] = [];
+        diagnostic = { page, errors, width, excessiveMinimum };
         page.on("pageerror", error => errors.push(error.message));
         const record = historicalSaleRecord();
         if (excessiveMinimum) { record.providerNativeFee!.protectedOutputAtomic = "137068094859"; record.providerNativeFee!.expectedOutputAtomic = "137068094860"; }
@@ -135,6 +139,14 @@ async function main() {
     await writeFile(path.join(output, `${channel}.json`), JSON.stringify({ result: "PASS", channel, checks, traceReads, results,
       nativeIphoneSafariTested: false, liveFundedWallet: false, realSignatures: 0, realTransactions: 0 }, null, 2));
     console.log(JSON.stringify({ result: "PASS", suite: "historical-native-browser", channel, checks, traceReads, realTransactions: 0 }));
+  } catch (cause) {
+    if (diagnostic && !diagnostic.page.isClosed()) {
+      await writeFile(path.join(output, `${channel}-failure.json`), JSON.stringify({ error: String(cause), width: diagnostic.width,
+        excessiveMinimum: diagnostic.excessiveMinimum, pageErrors: diagnostic.errors,
+        visibleBody: await diagnostic.page.locator("body").innerText().catch(() => "Unavailable") }, null, 2));
+      await diagnostic.page.screenshot({ path: path.join(output, `${channel}-failure.png`), fullPage: true }).catch(() => undefined);
+    }
+    throw cause;
   } finally { await browser.close(); await new Promise<void>(resolve => server.close(() => resolve())); }
 }
 void main().catch(error => { console.error(error); process.exitCode = 1; });

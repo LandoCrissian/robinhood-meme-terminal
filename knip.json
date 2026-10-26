@@ -13,7 +13,8 @@
         ".github/scripts/zerox-execution-fixture.cjs",
         ".github/scripts/collect-live-journey-proof.cjs",
         ".github/scripts/live-journey-runtime-proof.cjs",
-        ".github/scripts/cannacat-panel-browser.ts"
+        ".github/scripts/cannacat-panel-browser.ts",
+        ".github/scripts/cannacat-historical-browser.ts"
       ]
     },
     "apps/web": {
