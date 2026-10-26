@@ -110,8 +110,9 @@ request a signature, change networks, approve tokens or submit a transaction.
 Global connect callbacks remain discovery notifications rather than authority.
 
 The panel now reads `eth_accounts` and `eth_chainId` from the exact provider.
-The active first account must match; merely appearing later in the authorized
-account list is insufficient. Chain identifiers are normalized and then checked
+The exact SDK-selected address must be exposed by that provider. Do not infer
+selection from array order: EIP-1193 describes available accounts, not a selected
+account ordering. Multiple SDK connectors still require a choice. Chain identifiers are normalized and then checked
 against 4663. Privy's cached CAIP chain label does not gate a live quote.
 Wrong network exposes the explicit **Switch to Robinhood Chain** action.
 After it completes, reacquire and inspect the provider instead of trusting the
@@ -132,6 +133,8 @@ without signing a trade before describing a real-device issue as resolved.
 
 Privy's [network documentation](https://docs.privy.io/basics/react/advanced/configuring-evm-networks)
 distinguishes default/supported chains from an external wallet's actual network.
+The [EIP-1193 account-change definition](https://eips.ethereum.org/EIPS/eip-1193#accountschanged)
+describes the provider's available accounts.
 
 The panel reuses RMT's versioned trading-terms acceptance hook. Before connecting
 a wallet, the user explicitly acknowledges the existing risk notice. The original

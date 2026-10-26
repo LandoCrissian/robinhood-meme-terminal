@@ -161,8 +161,9 @@ try {
       await page.goto(base);
       await page.getByRole("button", { name: "I understand — continue", exact: true }).click();
       await expect.poll(() => page.evaluate(() => typeof window.__CANNACAT_FIXTURE_UPDATE__)).toBe("function");
-      await page.evaluate((client) => window.__CANNACAT_FIXTURE_UPDATE__?.({ connected: true, authenticated: true,
-        walletClientType: client, chainId: "eip155:1", providerChainId: "0X1237" }), walletClientType);
+      await page.evaluate(({ client, transport }) => window.__CANNACAT_FIXTURE_UPDATE__?.({ connected: true, authenticated: true,
+        walletClientType: client, connectorType: transport, chainId: "eip155:1", providerChainId: "0X1237" }),
+        { client: walletClientType, transport: width === 390 ? "wallet_connect" : "injected" });
       await expect(page.getByRole("button", { name: "Get live quote", exact: true })).toBeEnabled();
       check(await page.getByLabel("Choose signing wallet").count() === 0, `${walletClientType}: sole restored signer needs no USE or chooser`);
       check(await page.getByRole("button", { name: "Switch to Robinhood Chain" }).count() === 0, "Fresh provider chain wins over stale SDK metadata");
@@ -182,8 +183,11 @@ try {
       check(await page.evaluate(() => window.__CANNACAT_FIXTURE_CHAIN_SWITCHES__) === 1, "Exactly one explicit network switch");
 
       await page.evaluate(() => window.__CANNACAT_FIXTURE_UPDATE__?.({ accounts: ["0x1111111111111111111111111111111111111111", "0x0000000000000000000000000000000000000123"] }, "accountsChanged"));
+      await expect(page.getByRole("button", { name: "Get live quote", exact: true })).toBeEnabled();
+      check(await page.locator('[data-wallet-status="ready"]').count() === 1, "Account-list order does not silently replace the exact selected SDK wallet");
+      await page.evaluate(() => window.__CANNACAT_FIXTURE_UPDATE__?.({ accounts: ["0x1111111111111111111111111111111111111111"] }, "accountsChanged"));
       await page.locator('[data-wallet-status="account-mismatch"]').waitFor();
-      check(await page.getByRole("button", { name: "Get live quote", exact: true }).isDisabled(), "Known login address later in provider accounts is not an active signer");
+      check(await page.getByRole("button", { name: "Get live quote", exact: true }).isDisabled(), "Provider must expose the exact selected SDK wallet address");
       await page.evaluate(() => {
         window.__CANNACAT_FIXTURE_UPDATE__?.({ accounts: ["0x0000000000000000000000000000000000000123"], chainId: "eip155:1", providerChainId: "0x1237" });
         window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
@@ -231,7 +235,7 @@ try {
       check(page.url() === `${base}/`, "Wallet flow stays on LAMMB");
       check(errors.length === 0, `No wallet-lifecycle browser errors: ${errors.join("; ")}`);
       results.push({ channel, width, walletClientType, autoSelection: "PASS", staleSdkChain: "PASS", providerAccountBinding: "PASS",
-        mobileResume: "SYNTHETIC_PASS", multipleWalletChoice: "PASS", realWalletSignatures: 0, realTransactions: 0 });
+        transport: width === 390 ? "wallet_connect" : "injected", mobileResume: "SYNTHETIC_PASS", multipleWalletChoice: "PASS", realWalletSignatures: 0, realTransactions: 0 });
     }
     await context.close();
   }

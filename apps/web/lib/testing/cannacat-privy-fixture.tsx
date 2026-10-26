@@ -1,9 +1,9 @@
 // Build-time alias in the disposable browser fixture only. Never a runtime flag.
 import React, { useEffect, useSyncExternalStore, type ReactNode } from "react";
 type State = { connected: boolean; authenticated: boolean; chainId: string; providerChainId: string;
-  accounts: string[]; walletCount: number; walletClientType: string; providerAvailable: boolean };
+  accounts: string[]; walletCount: number; walletClientType: string; connectorType: string; providerAvailable: boolean };
 const initial: State = { connected: false, authenticated: false, chainId: "eip155:1", providerChainId: "0x1",
-  accounts: ["0x0000000000000000000000000000000000000123"], walletCount: 1, walletClientType: "metamask", providerAvailable: true };
+  accounts: ["0x0000000000000000000000000000000000000123"], walletCount: 1, walletClientType: "metamask", connectorType: "injected", providerAvailable: true };
 let state = initial;
 const listeners = new Set<() => void>();
 const providerListeners = new Map<string, Set<(...args: unknown[]) => void>>();
@@ -33,7 +33,7 @@ const provider = {
   removeListener: (name: string, listener: (...args: unknown[]) => void) => { providerListeners.get(name)?.delete(listener); }
 };
 function wallet() {
-  return { address, chainId: state.chainId, type: "ethereum" as const, connectorType: "injected", walletClientType: state.walletClientType, linked: state.authenticated,
+  return { address, chainId: state.chainId, type: "ethereum" as const, connectorType: state.connectorType, walletClientType: state.walletClientType, linked: state.authenticated,
     meta: { id: `synthetic-${state.walletClientType}`, name: `Test ${state.walletClientType}` }, getEthereumProvider: async () => state.providerAvailable ? provider : null,
     loginOrLink: async () => { window.__CANNACAT_FIXTURE_AUTH_REQUESTS__ = (window.__CANNACAT_FIXTURE_AUTH_REQUESTS__ ?? 0) + 1; patch({ authenticated: true }); },
     switchChain: async () => { window.__CANNACAT_FIXTURE_CHAIN_SWITCHES__ = (window.__CANNACAT_FIXTURE_CHAIN_SWITCHES__ ?? 0) + 1;

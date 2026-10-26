@@ -75,7 +75,9 @@ async function main() {
   check(() => assert.notEqual(live.provider, null));
   const wrong = await probe([wallet], "0x1");
   check(() => assert.equal(wrong.status, "wrong-chain"));
-  const mismatch = await probe(["0x1111111111111111111111111111111111111111", wallet], "0x1237");
+  const unordered = await probe(["0x1111111111111111111111111111111111111111", wallet], "0x1237");
+  check(() => assert.equal(unordered.status, "ready"));
+  const mismatch = await probe(["0x1111111111111111111111111111111111111111"], "0x1237");
   check(() => assert.equal(mismatch.status, "account-mismatch"));
   const empty = await probe([], "0x1237");
   check(() => assert.equal(empty.status, "disconnected"));

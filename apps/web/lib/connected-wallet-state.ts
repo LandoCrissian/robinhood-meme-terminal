@@ -54,9 +54,10 @@ export async function readConnectedWallet(wallet: {
     ]));
     const chainId = connectedWalletChainId(rawChain);
     if (!Array.isArray(accounts) || accounts.length === 0) return { status: "disconnected", chainId, provider };
-    // The active account must match. Presence later in an authorized-account list is insufficient.
-    if (typeof accounts[0] !== "string" || !/^0x[0-9a-f]{40}$/i.test(accounts[0])
-      || accounts[0].toLowerCase() !== wallet.address.toLowerCase()) return { status: "account-mismatch", chainId, provider };
+    // EIP-1193 does not define a selected-account ordering. Keep RMT's exact
+    // SDK connector/address binding instead of inferring a signer from index 0.
+    if (!accounts.some(account => typeof account === "string" && /^0x[0-9a-f]{40}$/i.test(account)
+      && account.toLowerCase() === wallet.address.toLowerCase())) return { status: "account-mismatch", chainId, provider };
     if (!chainId) return { status: "unavailable", chainId: null, provider };
     return { status: chainId === requiredChainId ? "ready" : "wrong-chain", chainId, provider };
   } catch { return { status: "unavailable", chainId: null, provider: null }; }
