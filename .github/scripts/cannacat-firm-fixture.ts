@@ -44,7 +44,7 @@ export function syntheticCannaCatBundle(input: {
     settlementMode: "PROVIDER_NATIVE_INPUT_FEE", providerNativeFee: fee,
     providerRequestedSlippagePpm: 9900, maximumUserSlippagePpm: 10000, providerReportedMinBuyAmount: minimum,
     providerSimulationIncomplete: true, zeroXFirmQuoteCommitment: "zx1.synthetic.fixture", approvalKind: approval ? "erc20_to_allowance_holder" : null,
-    verifiedAtMs: now, expiresAtMs: now + 10_000, authorizationReady: true
+    verifiedAtMs: now, expiresAtMs: now + 10_000, authorizationReady: !approval
   };
   const plan: VNextAuthorizationPlan = {
     planId: randomUUID(), sourceQuoteRequestId: input.quoteRequestId, sourceVerificationId: evidence.verificationId,

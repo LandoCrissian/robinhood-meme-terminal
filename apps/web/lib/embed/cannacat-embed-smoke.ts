@@ -114,6 +114,10 @@ async function main() {
   check(() => assert.ok(BigInt(bought.attempt.protectedOutputAtomic!) >= 10_000n * 10n ** 18n));
   check(() => assert.equal(bought.attempt.providerNativeFee?.feeBps, 25));
   check(() => assert.equal(bought.inputAsset, zeroAddress));
+  const small = await successfulApi.quote({ side: "buy", tokenAmountAtomic: parseCannaCatAmount("10"), wallet, maximumEthInputAtomic: "100000000000000000" });
+  check(() => assert.ok(BigInt(small.attempt.protectedOutputAtomic!) >= 10n * 10n ** 18n));
+  check(() => assert.ok(BigInt(small.attempt.protectedOutputAtomic!) * 10_000n <= 10n * 10n ** 18n * 10_050n));
+  check(() => assert.ok(BigInt(small.inputAmountAtomic) < 100_000_000_000_000n));
   const beforeSell = quoteCalls;
   const sold = await successfulApi.quote({ side: "sell", tokenAmountAtomic: parseCannaCatAmount("10000"), wallet, maximumEthInputAtomic: "100000000000000000" });
   check(() => assert.equal(quoteCalls - beforeSell, 1));

@@ -32,6 +32,10 @@ release blocker; no advisory is suppressed. Fee policy is unchanged.
 
 Buy accepts a **minimum CannaCat target**. A bounded search (at most five
 indicative calls) finds an exact ETH input whose protected output covers it.
+An oversized seed quote is refined downward; the indicative protected minimum
+must stay within 0.5% above the target. Small targets cannot silently inherit
+the seed's larger ETH purchase. This precision bound does not change the
+canonical 1% maximum swap slippage or promise exact-output execution.
 The firm verifier must still cover that target; otherwise preparation stops.
 The user sees exact ETH input, expected output, protected minimum, gas estimate,
 RMT fee, provider fees and maximum 1% slippage before opening their wallet.

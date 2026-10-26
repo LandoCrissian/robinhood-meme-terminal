@@ -129,6 +129,15 @@ export function createCannaCatClient(options: {
         if (!attempt || !attempt.protectedOutputAtomic || !attempt.expiresAtMs || attempt.expiresAtMs <= now()) {
           throw new CannaCatClientError("NO_ADMITTED_ROUTE", "No fresh verified 0x route is available for this amount.");
         }
+        if (input.side === "buy" && BigInt(attempt.protectedOutputAtomic) * 10_000n > BigInt(input.tokenAmountAtomic) * 10_050n) {
+          // The seed quote must not turn a small requested target into a large
+          // minimum purchase. Refine downward using the same bounded rail.
+          const denominator = BigInt(attempt.protectedOutputAtomic) * 10_000n;
+          const refined = (amount * BigInt(input.tokenAmountAtomic) * 10_020n + denominator - 1n) / denominator;
+          if (refined <= 0n || refined >= amount) throw new CannaCatClientError("TARGET_PRECISION", "This target is too small for a precise quote. Choose another amount.");
+          amount = refined;
+          continue;
+        }
         if (input.side === "sell" || BigInt(attempt.protectedOutputAtomic) >= BigInt(input.tokenAmountAtomic)) {
           return { side: input.side, tokenAmountAtomic: input.tokenAmountAtomic, requestId: response.requestId, ...expected, recipient, attempt };
         }
