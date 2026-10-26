@@ -66,8 +66,12 @@ assert.match(inventoryStyles, /@media\s*\(max-width:\s*700px\)[\s\S]*grid-templa
 assert.match(item, /TOKENURI|Metadata provenance/);
 assert.match(item, /Token-bound account · ERC-6551 account/);
 assert.match(item, /data-nft-item-workspace/);
-assert.match(item, /<Link prefetch=\{false\} href="\/nft">NFTs<\/Link>[\s\S]*Project Market/);
-assert.match(project, /<Link prefetch=\{false\} href="\/nft">← NFTs<\/Link>/);
+assert.match(item, /<a data-nft-document-link href="\/nft">NFTs<\/a>[\s\S]*Project Market/);
+assert.match(project, /<a data-nft-document-link href="\/nft">← NFTs<\/a>/);
 assert.doesNotMatch([catalog, project, item].join("\n"), />\s*(BUY|LIST|OFFER|FULFILL|SIGN|SUBMIT|ACCEPT|SWEEP)\s*</i);
 
+for (const page of [catalog, project, item]) {
+  assert.match(page, /data-nft-document-link/, "NFT document navigation is required");
+  assert.doesNotMatch(page, /<Link[^>]*href=\{?`?"?\/nft/, "Dynamic NFT links must avoid the suspended client cache");
+}
 console.info("NFT Terminal VNext visual route shell smoke: PASS");

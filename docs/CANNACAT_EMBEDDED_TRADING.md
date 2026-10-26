@@ -163,3 +163,15 @@ authorized release. Keep read-only transaction recovery available for outstandin
 hashes. Preserve the previous static website deploy and publishing lock. No
 production environment change, deployment, trade or NFT activation is performed
 by this documentation or its tests.
+
+## Security-update compatibility
+
+The unchanged-main visual comparison passed while the upgraded branch exposed a
+silent NFT client-navigation stall after a successful RSC response. Dynamic,
+read-only NFT collection/item links therefore use standard document navigation.
+This preserves their exact URLs, server evidence and wallet return destinations
+while avoiding the suspended framework client cache. Other domains retain their
+existing navigation. The full browser journey still performs real trusted pointer
+clicks, exact URL/content assertions, overflow checks and execution-control bans;
+it additionally records six trusted anchor activations across document loads.
+No timeout was increased and no failed assertion or test was suppressed.
