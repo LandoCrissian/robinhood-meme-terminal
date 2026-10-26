@@ -43,8 +43,9 @@ export function usdTargetToWei(value: string, price: EthUsdPrice | null, now = D
 export function approximateUsd(wei: bigint | string, price: EthUsdPrice | null, now = Date.now()) {
   if (!freshEthUsd(price, now)) return null;
   // Floating point is display only. All intent conversion and spend limits use integers.
-  const dollars = Number(BigInt(wei) * price.usdE8 / 10n ** 18n) / 1e8;
-  if (dollars > 0 && dollars < 0.01) return "<$0.01";
+  const product = BigInt(wei) * price.usdE8;
+  if (product > 0n && product < 10n ** 24n) return "<$0.01";
+  const dollars = Number(product / 10n ** 18n) / 1e8;
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 }).format(dollars);
 }
 export function freshCannaCatFunds(funds: CannaCatFunds | null, key: string, wallet: string, now = Date.now()): funds is CannaCatFunds {
