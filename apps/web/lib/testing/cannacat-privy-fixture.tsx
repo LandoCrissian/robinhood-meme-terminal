@@ -13,6 +13,7 @@ declare global { interface Window {
   __CANNACAT_FIXTURE_WALLET_MODE__?: 'reject' | 'hash' | 'wait';
   __CANNACAT_FIXTURE_TX_HASH__?: string;
   __CANNACAT_FIXTURE_RESOLVE_WALLET__?: () => void;
+  __CANNACAT_FIXTURE_ATTACH_SECOND__?: boolean;
   __CANNACAT_FIXTURE_CHAIN_SWITCHES__?: number; __CANNACAT_FIXTURE_AUTH_REQUESTS__?: number;
   __CANNACAT_FIXTURE_UPDATE__?: (next: Partial<State>, event?: "chainChanged" | "accountsChanged" | "disconnect") => void;
 } }
@@ -60,6 +61,12 @@ export function useWallets() { const current = useState(); const primary = walle
   wallets: current.connected ? (current.walletCount > 1 ? [primary, { ...primary, walletClientType: "rabby", meta: { id: "synthetic-second", name: "Test second wallet" } }] : [primary]) : [] }; }
 export function useIdentityToken() { const current = useState(); return { identityToken: current.authenticated ? "synthetic-identity-only" : null }; }
 export function useConnectWallet(options?: { onSuccess?: (result: { wallet: ReturnType<typeof wallet> }) => void }) {
-  return { connectWallet: () => { patch({ connected: true, providerAvailable: true }); options?.onSuccess?.({ wallet: wallet() }); } };
+  return { connectWallet: () => {
+    if (window.__CANNACAT_FIXTURE_ATTACH_SECOND__) {
+      patch({ connected: true, providerAvailable: true, walletCount: 2 });
+      options?.onSuccess?.({ wallet: { ...wallet(), walletClientType: 'rabby', meta: { id: 'synthetic-second', name: 'Test second wallet' } } }); return;
+    }
+    patch({ connected: true, providerAvailable: true }); options?.onSuccess?.({ wallet: wallet() });
+  } };
 }
 

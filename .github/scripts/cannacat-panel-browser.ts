@@ -361,6 +361,14 @@ try {
       check(await page.getByRole("button", { name: "Get live quote", exact: true }).isDisabled(), "Expired identity remains blocked despite an available provider");
       await page.getByRole("button", { name: "Verify wallet ownership" }).waitFor();
 
+      // Attaching another connector during reconnect must not silently replace
+      // the existing signer, even when both connectors expose the same address.
+      await page.evaluate(() => { window.__CANNACAT_FIXTURE_ATTACH_SECOND__ = true; window.__CANNACAT_FIXTURE_UPDATE__?.({ providerAvailable: false }, 'chainChanged'); });
+      await page.locator('[data-wallet-status="unavailable"]').waitFor();
+      await page.getByRole('button', { name: 'Reconnect wallet', exact: true }).click();
+      await page.getByLabel('Choose signing wallet').waitFor();
+      check((await page.getByLabel('Choose signing wallet').inputValue()).includes(`synthetic-${walletClientType}`), 'Connecting a second signer never silently replaces the original explicit/sole selection');
+
       await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
       await page.goto(base);
       await page.getByRole("button", { name: "I understand — continue", exact: true }).click();

@@ -164,7 +164,8 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     setError("");
   }
   const { connectWallet } = useConnectWallet({ onSuccess: ({ wallet: attached }) => {
-    if (external.length <= 1 && soleConnectedExternalWallet([attached])) { explicitChoiceRequired.current = false; setSelectedKey(walletGatewayKey(attached)); }
+    if (external.length <= 1 && external.every(candidate => walletGatewayKey(candidate) === walletGatewayKey(attached))
+      && soleConnectedExternalWallet([attached])) { explicitChoiceRequired.current = false; setSelectedKey(walletGatewayKey(attached)); }
     void refreshWallet.current?.();
   } });
 
