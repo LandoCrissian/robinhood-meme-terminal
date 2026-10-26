@@ -588,6 +588,9 @@ async function runSoleExternalAutoSelection(browser, base) {
   const page = await context.newPage();
   const quotes = [];
   await installFixtures(page, quotes, { wallet: external, wallets: [external] });
+  // installFixtures normally exposes both transport providers for race tests.
+  // A sole-wallet test must not leave an unlisted embedded signer reconnectable.
+  await page.addInitScript(() => { delete window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_PROVIDERS__["rmt-privy-embedded"]; });
   try {
     await page.goto(`${base}/?market=${market}&side=buy`, { waitUntil: "domcontentloaded", timeout: 180_000 });
     await acceptTerms(page);
@@ -601,6 +604,11 @@ async function runSoleExternalAutoSelection(browser, base) {
       "auto-selection never signs, approves, submits or switches network");
     assert.equal(evidence.events.includes("LOGIN"), false, "auto-selection cannot authenticate a user");
     return { soleExternalSelection: "PASS", extraUseAction: false, providerBinding: "PASS", financialCalls: 0 };
+  } catch (error) {
+    const diagnostic = await page.evaluate(() => ({ snapshot: window.__RMT_PRIVY_BRIDGE_BALANCE_SNAPSHOT__,
+      events: window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_EVENTS__, methods: window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_RPC_METHODS__,
+      body: document.body.innerText.slice(-3_000) }));
+    throw new Error(`Sole external signer selection failed: ${diagnosticJson(diagnostic)}`, { cause: error });
   } finally { await context.close(); }
 }
 
