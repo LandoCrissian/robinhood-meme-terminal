@@ -353,3 +353,25 @@ Insufficient ETH is a specific amount/gas error rather than a disabled panel.
 The explicit **Max ETH · leave gas** action uses fresh matching confirmed/pending
 minimum funds minus the conservative prequote reserve. It cannot guarantee that
 every later plan fits; canonical firm gas checks remain mandatory before signing.
+### Historical full-trace recovery
+
+An unavailable live trace is different from a failed sale. The owner-reported
+Task117C historical sale retains a complete original Task117B trace in the
+server-only settlement-trace archive, with original SHA-256 and provenance.
+This is evidence recovery, not an accepted-status table: no output amount or
+wallet permission is supplied by the archive index. The fixed server reader
+checks its byte digest, exact transaction, block, height, sender, target, value
+and calldata. The protected route still authenticates the same wallet and checks
+a fresh canonical mined envelope before, and receipt after, reading this trace.
+The existing browser verifier computes native output from the full call tree,
+binds the saved plan/payload/calldata/recipient/minimum and atomically persists
+the proof. Unknown transactions, reorgs, archive changes or incompatible saved
+minimums remain unresolved. An old quote is not needed to reconcile a mined
+transaction, and no quote/authorization is recreated or resent.
+
+The historical regression uses the exact public receipt, transaction and trace,
+with explicitly representative journal authority; it does not claim access to
+the owner's Safari storage. Chrome/Edge and WebKit tests reproduce the warnings
+with trace unavailable, then restore proof across refresh/reconnect. WebKit is
+an engine test, not physical iPhone acceptance. The issue remains unconfirmed
+until the owner verifies their existing phone history.
