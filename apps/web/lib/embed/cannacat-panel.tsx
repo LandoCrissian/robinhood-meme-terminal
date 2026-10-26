@@ -385,6 +385,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
           ? buyMode === "usd" ? usdTargetToWei(amount, priceRef.current) : BigInt(parseCannaCatAmount(amount)) : null;
       } catch (cause) { setQuoteMessage(safeError(cause)); schedule(15_000); return; }
       const controller = new AbortController(); indicativeRead.current = controller;
+      const generation = epoch.current;
       const deadline = setTimeout(() => { controller.abort(); if (!disposed) { failures += 1; indicativeNotBefore.current = Date.now() + 15_000 * 2 ** Math.min(failures - 1, 3); setQuoteMessage("Pricing timed out. The last estimate is retained; retrying automatically."); } }, 30_000);
       indicativeNotBefore.current = Date.now() + 2000;
       try {
@@ -394,10 +395,10 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
         const quote = ethInput !== null
           ? await api.quoteEth({ ethAmountAtomic: ethInput.toString(), wallet: wallet.address, maximumEthInputAtomic: ethInput.toString(), signal: controller.signal })
           : await api.quote({ side, tokenAmountAtomic: target, wallet: wallet.address, maximumEthInputAtomic: (2n ** 256n - 1n).toString(), signal: controller.signal });
-        if (disposed || controller.signal.aborted || currentRef.current.key !== key || currentRef.current.token !== token) return;
+        if (disposed || controller.signal.aborted || generation !== epoch.current || currentRef.current.key !== key || currentRef.current.token !== token) return;
         setObservation(quote); setQuoteMessage(""); failures = 0;
       } catch (cause) {
-        if (disposed || controller.signal.aborted) return;
+        if (disposed || controller.signal.aborted || generation !== epoch.current) return;
         failures += 1;
         const status = cause && typeof cause === "object" && "status" in cause ? cause.status : null;
         const retry = cause && typeof cause === "object" && "retryAfterMs" in cause && typeof cause.retryAfterMs === "number" ? cause.retryAfterMs : 0;

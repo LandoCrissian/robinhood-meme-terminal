@@ -590,6 +590,23 @@ try {
       const input = stable.getByLabel('Minimum CannaCat to receive');
       await expect(input).toHaveValue('10000');
       await stable.getByLabel('Indicative quote review').locator('dl').waitFor();
+      // A delayed automatic response must not restore an earlier intent after
+      // the user edits the target. This path never clicks Review trade.
+      delayQuote = true;
+      await input.fill('10001');
+      await expect.poll(() => Boolean(delayedQuote)).toBe(true);
+      const releaseOldObservation = delayedQuote;
+      delayQuote = false; delayedQuote = null;
+      await input.fill('25000');
+      const expectedOutput = stable.getByLabel('Indicative quote review').locator('dl > div')
+        .filter({ has: stable.getByText('Expected output', { exact: true }) }).locator('dd');
+      await expect.poll(async () => Number((await expectedOutput.innerText()).split(' ')[0])).toBeGreaterThan(25000);
+      (releaseOldObservation as (() => void) | null)?.();
+      await new Promise(resolve => setTimeout(resolve, 250));
+      check(Number((await expectedOutput.innerText()).split(' ')[0]) > 25000, 'A late automatic response cannot replace the newer target estimate');
+      await input.fill('10000');
+      await expect.poll(async () => Number((await expectedOutput.innerText()).split(' ')[0])).toBeLessThan(11000);
+      await expect(input).toHaveValue('10000');
       const panel = await stable.locator('.rmtcat-panel').elementHandle();
       const observation = await stable.getByLabel('Indicative quote review').elementHandle();
       const inputNode = await input.elementHandle();
