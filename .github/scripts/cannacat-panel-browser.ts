@@ -569,6 +569,9 @@ try {
     results.push({ channel, width, postTradeRefresh: 'PASS', unresolvedSale: 'PASS', independentNativeProof: 'SYNTHETIC_PASS', ownerInsufficientBalanceCase: 'PASS',
       maxGasReserve: 'PASS', disconnectReconnect: 'PASS', lateWalletResponse: 'PASS', loadingWatchdog: 'PASS', intentPersistence: 'PASS', realTransactions: 0 });
 
+    // Close the preceding disposable trade/session before the independent
+    // long-running observer. Its timers must not contaminate rate/outage counts.
+    await context.close();
     if (width === 390) {
       // Fresh context uses REAL wall-clock time, not page.clock fast-forward.
       // API/wallet fixtures are disposable; execution authorization is never requested.
@@ -643,7 +646,6 @@ try {
       variableMarket = false; quoteFailure = 0; quoteResumeAfter = 0;
       await stableContext.close();
     }
-    await context.close();
   }
   await writeFile(path.join(output, `${channel}.json`), JSON.stringify({ result: "PASS", checks, quoteCalls, results, layouts, baselinePanelCommit:"af597d2d8ccf0c4db05e993ac5dd4bbf32171399", realTransactions: 0, realWalletSignatures: 0, nativeIphoneSafariTested: false }, null, 2));
   console.log(JSON.stringify({ result: "PASS", checks, quoteCalls, channel, viewports: 5, realTransactions: 0 }));
