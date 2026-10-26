@@ -5,6 +5,9 @@ on:
       - 'apps/web/lib/embed/**'
       - 'apps/web/lib/connected-wallet-state.ts'
       - 'apps/web/lib/server/cannacat-embed-boundary.ts'
+      - 'apps/web/lib/server/vnext-settlement-trace-client.ts'
+      - 'apps/web/lib/server/official-settlement-trace-smoke.ts'
+      - 'apps/web/app/api/vnext/native-settlement-trace/**'
       - 'apps/web/app/api/embed/cannacat/**'
       - 'apps/web/scripts/build-cannacat-client.mjs'
       - 'apps/web/lib/testing/cannacat-privy-fixture.tsx'
@@ -34,6 +37,7 @@ jobs:
       - run: pnpm --filter web exec tsx lib/vnext/zero-x-adapter-smoke.ts
       - run: pnpm --filter web exec tsx lib/vnext/wallet-submission-smoke.ts
       - run: pnpm --filter web exec tsx lib/vnext/native-output-settlement-smoke.ts
+      - run: pnpm --filter web exec tsx lib/server/official-settlement-trace-smoke.ts
       - run: pnpm --filter web exec tsx lib/vnext/execution-recovery-smoke.ts
       - run: pnpm typecheck
       - run: pnpm --filter web exec node scripts/build-cannacat-client.mjs

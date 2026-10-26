@@ -10,6 +10,9 @@ const providerListeners = new Map<string, Set<(...args: unknown[]) => void>>();
 const address = "0x0000000000000000000000000000000000000123";
 declare global { interface Window {
   __CANNACAT_FIXTURE_WALLET_REQUESTS__?: unknown[]; __CANNACAT_FIXTURE_SYNC_REJECT__?: boolean;
+  __CANNACAT_FIXTURE_WALLET_MODE__?: 'reject' | 'hash' | 'wait';
+  __CANNACAT_FIXTURE_TX_HASH__?: string;
+  __CANNACAT_FIXTURE_RESOLVE_WALLET__?: () => void;
   __CANNACAT_FIXTURE_CHAIN_SWITCHES__?: number; __CANNACAT_FIXTURE_AUTH_REQUESTS__?: number;
   __CANNACAT_FIXTURE_UPDATE__?: (next: Partial<State>, event?: "chainChanged" | "accountsChanged" | "disconnect") => void;
 } }
@@ -24,6 +27,10 @@ const provider = {
     if (method === "eth_sendTransaction") {
       (window.__CANNACAT_FIXTURE_WALLET_REQUESTS__ ??= []).push(params);
       const rejection = { code: 4001, message: "Synthetic wallet rejection" };
+      if (window.__CANNACAT_FIXTURE_WALLET_MODE__ === 'hash') return Promise.resolve(window.__CANNACAT_FIXTURE_TX_HASH__);
+      if (window.__CANNACAT_FIXTURE_WALLET_MODE__ === 'wait') return new Promise(resolve => {
+        window.__CANNACAT_FIXTURE_RESOLVE_WALLET__ = () => resolve(window.__CANNACAT_FIXTURE_TX_HASH__);
+      });
       if (window.__CANNACAT_FIXTURE_SYNC_REJECT__) throw rejection;
       return Promise.reject(rejection);
     }
@@ -55,3 +62,4 @@ export function useIdentityToken() { const current = useState(); return { identi
 export function useConnectWallet(options?: { onSuccess?: (result: { wallet: ReturnType<typeof wallet> }) => void }) {
   return { connectWallet: () => { patch({ connected: true, providerAvailable: true }); options?.onSuccess?.({ wallet: wallet() }); } };
 }
+

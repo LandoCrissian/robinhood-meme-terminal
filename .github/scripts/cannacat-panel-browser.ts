@@ -6,7 +6,7 @@ import { execFileSync } from "node:child_process";
 import { chromium, expect } from "playwright/test";
 import { createVNextZeroXProviderNativeFee } from "../../apps/web/lib/vnext/zero-x-settlement";
 import { syntheticCannaCatBundle } from "./cannacat-firm-fixture";
-import { formatUnits } from "viem";
+import { formatUnits, keccak256, toEventSelector } from "viem";
 async function main() {
 const root = execFileSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8" }).trim();
 const output = path.join(root, "cannacat-browser-evidence");
@@ -43,16 +43,38 @@ let balance = 10n ** 18n;
 let balancesFail = false;
 let usdPrice = "2000.00";
 let verified = false;
+let approvalAlreadyGranted = false;
+let settlementAvailable = false;
+let gasPrice = 1_000_000_000n;
+let delayedQuote: (() => void) | null = null;
+let delayQuote = false;
 const bundles = new Map<string, ReturnType<typeof syntheticCannaCatBundle>>();
+const transactions = new Map<string, { receipt: object; transaction: object; trace: object }>();
 const tokenBalance = 50_000n * 10n ** 18n;
 const hash = `0x${"a".repeat(64)}`;
 const hex = (amount: bigint) => `0x${amount.toString(16)}`;
+const saveSyntheticTransaction = (txHash: string, bundle: ReturnType<typeof syntheticCannaCatBundle>) => {
+  const plan = bundle.plan, recipient = plan.recipient;
+  const topicAddress = (address: string) => `0x${address.slice(2).toLowerCase().padStart(64, '0')}`;
+  const isBuy = plan.inputAsset === '0x0000000000000000000000000000000000000000';
+  const logs = plan.kind === 'swap' && isBuy ? [{ address: plan.outputAsset, blockHash: hash, blockNumber: '0x64', data: `0x${BigInt(bundle.evidence.expectedOutputAtomic).toString(16).padStart(64, '0')}`,
+    logIndex: '0x0', removed: false, transactionHash: txHash, transactionIndex: '0x0', topics: [toEventSelector('Transfer(address,address,uint256)'), topicAddress(plan.target), topicAddress(recipient)] }] : [];
+  transactions.set(txHash.toLowerCase(), {
+    transaction: { hash: txHash, chainId: '0x1237', blockHash: hash, blockNumber: '0x64', transactionIndex: '0x0', from: recipient, to: plan.target,
+      input: plan.data, value: hex(BigInt(plan.value)), nonce: '0x0', type: '0x0', gas: hex(BigInt(plan.gasLimit)), gasPrice: '0x3b9aca00', v: '0x1b', r: hash, s: hash },
+    receipt: { transactionHash: txHash, blockHash: hash, blockNumber: '0x64', transactionIndex: '0x0', from: recipient, to: plan.target, status: '0x1',
+      cumulativeGasUsed: '0x5208', gasUsed: '0x5208', effectiveGasPrice: '0x3b9aca00', type: '0x0', logs, logsBloom: `0x${'0'.repeat(512)}`, contractAddress: null },
+    trace: { type: 'CALL', from: recipient.toLowerCase(), to: plan.target.toLowerCase(), value: hex(BigInt(plan.value)), inputHash: keccak256(plan.data), calls: [
+      { type: 'CALL', from: plan.target.toLowerCase(), to: recipient.toLowerCase(), value: hex(BigInt(bundle.evidence.expectedOutputAtomic)), calls: [] } ] }
+  });
+};
 const check = (condition: unknown, message: string) => { assert.ok(condition, message); checks += 1; };
 try {
   for (const width of [320, 375, 390, 430, 1440]) {
     verified = false;
     const context = await browser.newContext({ viewport: { width, height: width < 768 ? 844 : 1000 } });
     const page = await context.newPage();
+    await page.clock.install();
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await context.route("**/*", async (route) => {
@@ -64,8 +86,10 @@ try {
       if (url.origin === "https://rpc.mainnet.chain.robinhood.com") {
         if (balancesFail) { await route.fulfill({ status: 503, body: "Synthetic balance RPC outage" }); return; }
         const rpc = route.request().postDataJSON();
-        const answer = (entry: { id: number; method: string }) => {
-          const values: Record<string, unknown> = { eth_chainId: "0x1237", eth_getBalance: hex(balance), eth_gasPrice: "0x3b9aca00", eth_getTransactionCount: "0x0", eth_call: `0x${tokenBalance.toString(16).padStart(64, "0")}`,
+        const answer = (entry: { id: number; method: string; params?: string[] }) => {
+          const saved = transactions.get(entry.params?.[0]?.toLowerCase() ?? '');
+          const values: Record<string, unknown> = { eth_chainId: "0x1237", eth_getBalance: hex(balance), eth_gasPrice: hex(gasPrice), eth_getTransactionCount: "0x0", eth_call: `0x${tokenBalance.toString(16).padStart(64, "0")}`,
+            eth_getTransactionByHash: saved?.transaction ?? null, eth_getTransactionReceipt: saved?.receipt ?? null,
             eth_getBlockByNumber: { number: "0x64", hash, parentHash: hash, transactions: [], timestamp: hex(BigInt(Math.floor(Date.now() / 1000))), gasLimit: "0x1c9c380", gasUsed: "0x0", baseFeePerGas: "0x3b9aca00", difficulty: "0x0", extraData: "0x", miner: `0x${"0".repeat(40)}`, size: "0x100", nonce: "0x0000000000000000", sha3Uncles: hash, transactionsRoot: hash, stateRoot: hash, receiptsRoot: hash, logsBloom: `0x${"0".repeat(512)}` } };
           if (!(entry.method in values)) throw new Error(`Unexpected read-only RPC: ${entry.method}`);
           return { jsonrpc: "2.0", id: entry.id, result: values[entry.method] };
@@ -76,12 +100,18 @@ try {
         const headers = { "access-control-allow-origin": base, "access-control-allow-methods": "POST, OPTIONS", "access-control-allow-headers": "content-type,privy-id-token,x-rmt-client" };
         if (route.request().method() === "OPTIONS") { await route.fulfill({ status: 204, headers }); return; }
         const input = route.request().postDataJSON();
+        if (url.pathname.endsWith('/native-settlement-trace')) {
+          check(input.wallet === '0x0000000000000000000000000000000000000123', 'Settlement read is bound to the synthetic owner');
+          check(route.request().headers()['privy-id-token'] === 'synthetic-identity-only', 'Settlement read preserves authenticated identity');
+          const saved = transactions.get(input.txHash.toLowerCase());
+          await route.fulfill({ headers, json: settlementAvailable && saved ? { status: 'available', txHash: input.txHash, blockHash: hash, trace: saved.trace } : { status: 'unavailable' } }); return;
+        }
         check(input.chainId === 4663 && input.recipient === "0x0000000000000000000000000000000000000123", "Exact synthetic wallet and chain binding");
         check(route.request().headers()["privy-id-token"] === "synthetic-identity-only", "Only fixture identity forwarded");
         if (!url.pathname.endsWith("/quotes")) {
           if (!verified) { await route.fulfill({ status: 409, headers, json: { code: "ZERO_X_REPRICE_REQUIRED" } }); return; }
           if (url.pathname.endsWith("/verify")) {
-            const bundle = syntheticCannaCatBundle(input);
+            const bundle = syntheticCannaCatBundle(input, { approvalAlreadyGranted });
             bundles.set(bundle.evidence.verificationId, bundle);
             await route.fulfill({ headers, json: bundle.evidence }); return;
           }
@@ -90,6 +120,7 @@ try {
           await route.fulfill({ headers, json: bundle }); return;
         }
         quoteCalls += 1;
+        if (delayQuote) await new Promise<void>(resolve => { delayedQuote = resolve; });
         const buying = input.inputAsset === "0x0000000000000000000000000000000000000000";
         const output = buying ? BigInt(input.inputAmountAtomic) * 10_000_000n : BigInt(input.inputAmountAtomic) / 10_000_000n;
         const minimum = output * 99n / 100n;
@@ -116,7 +147,7 @@ try {
     await page.getByRole("button", { name: "Verify wallet ownership", exact: true }).waitFor();
     await page.locator('[data-wallet-status="wrong-chain"]').waitFor();
     await page.screenshot({ path: path.join(output, `${channel}-${width}-before-wallet.png`), fullPage: true });
-    await page.evaluate(() => localStorage.clear());
+    await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
     await page.goto(`${base}/?real=1`);
     await page.getByRole("heading", { name: "Get your CannaCat." }).waitFor();
     check(await page.getByRole("button", { name: "Connect wallet · coming soon" }).isDisabled(), "Real bundle stays closed without configuration");
@@ -169,7 +200,7 @@ try {
     await page.getByLabel("Minimum CannaCat to receive").fill("10000");
     balance = 0n;
     await page.getByRole("button", { name: "Get live quote" }).click();
-    await page.getByRole("alert").filter({ hasText: "ETH is needed" }).waitFor();
+    await page.getByRole("alert").filter({ hasText: "Insufficient ETH for network gas" }).waitFor();
     balance = 10n ** 18n;
     await page.getByRole("button", { name: "Get live quote" }).click();
     await page.getByRole("alert").filter({ hasText: "quote changed" }).waitFor();
@@ -247,7 +278,7 @@ try {
     await page.getByRole("button", { name: "ETH input", exact: true }).click();
     await page.getByLabel("ETH to spend").fill("1");
     await page.getByRole("button", { name: "Get live quote", exact: true }).click();
-    await expect(page.getByRole("alert")).toContainText("reserved for network gas");
+    await expect(page.getByRole("alert")).toContainText("Insufficient ETH: input plus gas reserve");
     await page.getByRole("button", { name: "0.01", exact: true }).click();
     await page.getByRole("button", { name: "Get live quote", exact: true }).click();
     await page.getByRole("button", { name: "Confirm buy in wallet", exact: true }).waitFor();
@@ -268,7 +299,7 @@ try {
     check(await page.evaluate(()=>document.documentElement.scrollWidth <= innerWidth), "Balance cards, mode controls and USD proceeds fit the target viewport");
     usdPrice = "2000.00";
     for (const walletClientType of ["metamask", "rabby"]) {
-      await page.evaluate(() => localStorage.clear());
+      await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
       await page.goto(base);
       await page.getByRole("button", { name: "I understand — continue", exact: true }).click();
       await expect.poll(() => page.evaluate(() => typeof window.__CANNACAT_FIXTURE_UPDATE__)).toBe("function");
@@ -326,7 +357,7 @@ try {
       check(await page.getByRole("button", { name: "Get live quote", exact: true }).isDisabled(), "Expired identity remains blocked despite an available provider");
       await page.getByRole("button", { name: "Verify wallet ownership" }).waitFor();
 
-      await page.evaluate(() => localStorage.clear());
+      await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
       await page.goto(base);
       await page.getByRole("button", { name: "I understand — continue", exact: true }).click();
       await expect.poll(() => page.evaluate(() => typeof window.__CANNACAT_FIXTURE_UPDATE__)).toBe("function");
@@ -348,6 +379,137 @@ try {
       results.push({ channel, width, walletClientType, autoSelection: "PASS", staleSdkChain: "PASS", providerAccountBinding: "PASS",
         transport: width < 768 ? "wallet_connect" : "injected", mobileResume: "SYNTHETIC_PASS", multipleWalletChoice: "PASS", realWalletSignatures: 0, realTransactions: 0 });
     }
+    // Full post-submission lifecycle uses real durable recovery code, disposable
+    // wallet responses and synthetic RPC evidence. No funded wallet is involved.
+    balance = 10n ** 18n; gasPrice = 1_000_000_000n; verified = true;
+    approvalAlreadyGranted = false; settlementAvailable = false;
+    await page.evaluate(() => { localStorage.clear(); sessionStorage.clear(); });
+    await page.goto(base);
+    await page.getByRole('button', { name: 'I understand — continue', exact: true }).click();
+    const restoreConnection = async () => {
+      await expect.poll(() => page.evaluate(() => typeof window.__CANNACAT_FIXTURE_UPDATE__)).toBe('function');
+      await page.evaluate(() => window.__CANNACAT_FIXTURE_UPDATE__?.({ connected: true, authenticated: true,
+        walletClientType: 'metamask', connectorType: 'wallet_connect', chainId: 'eip155:4663', providerChainId: '0x1237' }));
+      await expect(page.getByRole('button', { name: 'Get live quote', exact: true })).toBeEnabled();
+    };
+    await restoreConnection();
+    const submitSynthetic = async (label: string, digit: string) => {
+      const txHash = `0x${digit.repeat(64)}`;
+      const bundle = [...bundles.values()].at(-1)!;
+      saveSyntheticTransaction(txHash, bundle);
+      await page.evaluate(value => { window.__CANNACAT_FIXTURE_WALLET_MODE__ = 'hash'; window.__CANNACAT_FIXTURE_TX_HASH__ = value; }, txHash);
+      await page.getByRole('button', { name: label, exact: true }).click();
+      await expect(page.getByRole('status')).toContainText('Transaction submitted');
+      await expect(page.getByRole('link', { name: `View transaction ${txHash.slice(0,6)}…${txHash.slice(-4)}`, exact: true })).toBeVisible();
+      return txHash;
+    };
+    await page.getByRole('button', { name: 'Get live quote', exact: true }).click();
+    await page.getByRole('button', { name: 'Confirm buy in wallet', exact: true }).waitFor();
+    const buyHash = await submitSynthetic('Confirm buy in wallet', '1');
+    await page.getByRole('button', { name: 'Check settlement', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('Settlement verified:');
+    check(true, 'Submitted buy verifies exact CannaCat receipt output and unlocks a fresh quote');
+    await page.getByRole('button', { name: 'Sell CannaCat', exact: true }).click();
+    await page.getByLabel('CannaCat to sell').fill('1');
+    await page.getByRole('button', { name: 'Get live quote', exact: true }).click();
+    await page.getByRole('button', { name: 'Review token approval', exact: true }).waitFor();
+    const approvalHash = await submitSynthetic('Review token approval', '2');
+    await page.getByRole('button', { name: 'Check settlement', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('Approval confirmed');
+    check(true, 'Confirmed token approval is recovered without claiming that a sale occurred');
+    approvalAlreadyGranted = true;
+    await page.getByRole('button', { name: 'Get live quote', exact: true }).click();
+    await page.getByRole('button', { name: 'Confirm sell in wallet', exact: true }).waitFor();
+    const saleHash = await submitSynthetic('Confirm sell in wallet', '3');
+    await page.getByRole('button', { name: 'Check settlement', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('Receipt confirmed; output settlement is still unverified');
+    await expect(page.getByRole('button', { name: 'Disconnect', exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Buy CannaCat', exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Sell CannaCat', exact: true })).toBeEnabled();
+    check(true, 'Unavailable native trace blocks resubmission without locking the rest of the interface');
+    await page.getByRole('button', { name: 'Buy CannaCat', exact: true }).click();
+    await page.getByRole('button', { name: 'ETH input', exact: true }).click();
+    await page.getByLabel('ETH to spend').fill('0.001');
+    balance = 78_950_000_000_000n; gasPrice = 20_078_000n;
+    await page.reload();
+    await restoreConnection();
+    await expect(page.getByLabel('ETH to spend')).toHaveValue('0.001');
+    await expect(page.getByLabel('Wallet balances')).toContainText('0.00007895 ETH');
+    await expect(page.getByLabel('Amount availability')).toContainText('0.000060234 ETH gas reserve');
+    await expect(page.getByLabel('Amount availability')).toContainText('Insufficient ETH');
+    await expect(page.getByLabel('Transaction recovery')).toBeVisible();
+    await page.getByRole('button', { name: 'Get live quote', exact: true }).click();
+    await expect(page.getByRole('alert')).toContainText('Insufficient ETH');
+    check(await page.getByRole('button', { name: /^Confirm .* in wallet$/ }).count() === 0, 'Owner balance/input/gas case cannot open another transaction');
+    await page.getByRole('button', { name: 'Max ETH · leave gas', exact: true }).click();
+    await expect(page.getByLabel('ETH to spend')).toHaveValue('0.000018716');
+    await page.getByRole('button', { name: 'Get live quote', exact: true }).click();
+    await expect(page.getByLabel('Indicative quote review')).toBeVisible();
+    check(await page.getByRole('button', { name: /^Confirm .* in wallet$/ }).count() === 0, 'Recovery permits an indicative quote but never authorizes another trade');
+    const panelNode = await page.locator('.rmtcat-panel').elementHandle();
+    const quoteNode = await page.getByLabel('Indicative quote review').elementHandle();
+    await page.getByRole('button', { name: 'Refresh balances', exact: true }).click();
+    check(await panelNode!.evaluate(element => element.isConnected) && await quoteNode!.evaluate(element => element.isConnected), 'Background balances preserve panel/quote DOM identity; no remount flicker');
+    await expect(page.getByLabel('ETH to spend')).toHaveValue('0.000018716');
+    await page.screenshot({ path: path.join(output, `${channel}-${width}-recovery-max.png`), fullPage: true });
+    await page.getByRole('button', { name: 'Disconnect', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Connect wallet', exact: true })).toBeEnabled();
+    check(await page.evaluate(value => Object.values(localStorage).some(item => item.includes(value)), saleHash), 'Disconnect preserves the exact unresolved sale hash and journal');
+    await page.getByRole('button', { name: 'Connect wallet', exact: true }).click();
+    await page.getByRole('button', { name: 'Verify wallet ownership', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Get live quote', exact: true })).toBeEnabled();
+    await expect(page.getByLabel('Transaction recovery')).toBeVisible();
+    settlementAvailable = true;
+    await page.getByRole('button', { name: 'Check settlement', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('Settlement verified:');
+    await expect(page.getByRole('status')).toContainText('ETH received');
+    check(await page.getByLabel('Transaction recovery').count() === 0, 'Exact native-output proof resolves the saved sale after refresh and reconnect');
+    for (const transactionHash of [buyHash, approvalHash, saleHash]) {
+      check(await page.evaluate(value => Object.values(localStorage).some(item => item.includes(value)), transactionHash), 'Confirmed buy, approval and sale history remains preserved');
+    }
+    balance = 10n ** 18n; gasPrice = 1_000_000_000n;
+    await page.getByRole('button', { name: '0.01', exact: true }).click();
+    delayQuote = true;
+    await page.getByRole('button', { name: 'Get live quote', exact: true }).click();
+    await page.getByRole('button', { name: 'Stop waiting', exact: true }).waitFor();
+    await expect.poll(() => Boolean(delayedQuote)).toBe(true);
+    await expect(page.getByRole('button', { name: 'Working…', exact: true })).toBeDisabled();
+    await page.getByLabel('ETH to spend').fill('0.001');
+    delayQuote = false; delayedQuote?.(); delayedQuote = null;
+    await page.getByRole('button', { name: 'Get live quote', exact: true }).click();
+    await page.getByRole('button', { name: 'Confirm buy in wallet', exact: true }).waitFor();
+    await expect(page.getByLabel('Verified trade review')).toContainText('0.001 ETH');
+    await expect(page.getByLabel('ETH to spend')).toHaveValue('0.001');
+    check(true, 'Editing cancels an old quote and a late response cannot overwrite the new intent');
+    const pendingHash = `0x${'4'.repeat(64)}`;
+    saveSyntheticTransaction(pendingHash, [...bundles.values()].at(-1)!);
+    await page.evaluate(value => { window.__CANNACAT_FIXTURE_WALLET_MODE__ = 'wait'; window.__CANNACAT_FIXTURE_TX_HASH__ = value; }, pendingHash);
+    await page.getByRole('button', { name: 'Confirm buy in wallet', exact: true }).click();
+    await page.getByRole('button', { name: 'Stop waiting', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('It may still complete');
+    await expect(page.getByRole('button', { name: 'Disconnect', exact: true })).toBeEnabled();
+    await page.evaluate(() => { window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })); window.dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })); });
+    await expect(page.getByRole('button', { name: 'Get live quote', exact: true })).toBeEnabled();
+    await page.evaluate(() => window.__CANNACAT_FIXTURE_RESOLVE_WALLET__?.());
+    await expect(page.getByRole('status')).toContainText('Transaction submitted');
+    await page.getByRole('button', { name: 'Check settlement', exact: true }).click();
+    await expect(page.getByRole('status')).toContainText('Settlement verified:');
+    check(true, 'A wallet response arriving after cancellation/mobile return is durably reconciled without resubmission');
+    await page.getByRole('button', { name: 'Get live quote', exact: true }).click();
+    await page.getByRole('button', { name: 'Confirm buy in wallet', exact: true }).waitFor();
+    await page.evaluate(() => { window.__CANNACAT_FIXTURE_WALLET_MODE__ = 'wait'; });
+    await page.getByRole('button', { name: 'Confirm buy in wallet', exact: true }).click();
+    await page.clock.fastForward(46_000);
+    await expect(page.getByRole('status')).toContainText('wallet response is still unresolved');
+    await expect(page.getByRole('button', { name: 'Disconnect', exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Buy CannaCat', exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Sell CannaCat', exact: true })).toBeEnabled();
+    check(await page.getByLabel('Transaction recovery').count() === 1, 'Watchdog releases transient UI loading but never clears unresolved wallet authority');
+    check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Post-trade recovery fits the viewport');
+    check(errors.length === 0, `No post-trade refresh/recovery runtime errors: ${errors.join('; ')}`);
+    await page.screenshot({ path: path.join(output, `${channel}-${width}-recovery-timeout.png`), fullPage: true });
+    results.push({ channel, width, postTradeRefresh: 'PASS', unresolvedSale: 'PASS', independentNativeProof: 'SYNTHETIC_PASS', ownerInsufficientBalanceCase: 'PASS',
+      maxGasReserve: 'PASS', disconnectReconnect: 'PASS', lateWalletResponse: 'PASS', loadingWatchdog: 'PASS', intentPersistence: 'PASS', realTransactions: 0 });
     await context.close();
   }
   await writeFile(path.join(output, `${channel}.json`), JSON.stringify({ result: "PASS", checks, quoteCalls, results, layouts, baselinePanelCommit:"af597d2d8ccf0c4db05e993ac5dd4bbf32171399", realTransactions: 0, realWalletSignatures: 0, nativeIphoneSafariTested: false }, null, 2));

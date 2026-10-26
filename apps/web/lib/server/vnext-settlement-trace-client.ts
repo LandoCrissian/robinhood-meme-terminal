@@ -1,4 +1,5 @@
 import { normalizeNativeTrace, type NormalizedNativeTrace } from "../vnext/normalized-native-trace";
+import { keccak256, type Hex } from "viem";
 
 if (typeof window !== "undefined") throw new Error("Settlement trace transport is server-only.");
 const MAX_BYTES = 1024 * 1024;
@@ -102,3 +103,47 @@ export function createSettlementTraceClient(options: { endpoint?: string; fetch?
   };
 }
 export const readSettlementTrace = createSettlementTraceClient();
+
+/** Read-only, fixed official-chain explorer fallback. No caller-selected URL,
+ * no balance-delta inference, and no invented call tree. Its full callTracer
+ * output passes the same canonical normalizer and browser settlement verifier. */
+export async function readOfficialExplorerSettlementTrace(expected: {
+  hash: Hex; blockHash: Hex; blockNumber: bigint; from: string; to: string; input: Hex; value: bigint;
+}, options: { fetch?: typeof fetch; timeoutMs?: number } = {}): Promise<SettlementTraceResult> {
+  if (!HASH.test(expected.hash) || !HASH.test(expected.blockHash) || expected.blockNumber < 0n
+    || expected.blockNumber > BigInt(Number.MAX_SAFE_INTEGER) || expected.value !== 0n) return { status: "unavailable", reason: "INVALID_HASH" };
+  const controller = new AbortController(); let timer: ReturnType<typeof setTimeout> | undefined;
+  const same = (a: unknown, b: string) => typeof a === "string" && a.toLowerCase() === b.toLowerCase();
+  try {
+    const get = async (path: string) => {
+      const response = await (options.fetch ?? fetch)(`https://robinhoodchain.blockscout.com/api/v2/${path}`, {
+        method: "GET", credentials: "omit", cache: "no-store", redirect: "error", headers: { Accept: "application/json" }, signal: controller.signal
+      });
+      if (!response.ok) { await response.body?.cancel(); throw Error(); }
+      return readBoundedSettlementJson(response);
+    };
+    const anchor = async () => {
+      const [blockValue, transactionValue] = await Promise.all([get(`blocks/${expected.blockNumber}`), get(`transactions/${expected.hash}`)]);
+      if (!blockValue || typeof blockValue !== "object" || Array.isArray(blockValue)
+        || !transactionValue || typeof transactionValue !== "object" || Array.isArray(transactionValue)) throw Error();
+      const block = blockValue as Record<string, unknown>, tx = transactionValue as Record<string, unknown>;
+      const from = tx.from as { hash?: unknown } | undefined, to = tx.to as { hash?: unknown } | undefined;
+      if (!same(block.hash, expected.blockHash) || block.height !== Number(expected.blockNumber) || tx.block_number !== Number(expected.blockNumber)
+        || !same(tx.hash, expected.hash) || tx.status !== "ok" || !same(from?.hash, expected.from) || !same(to?.hash, expected.to)
+        || !same(tx.raw_input, expected.input) || tx.value !== "0") throw Error();
+    };
+    const work = async (): Promise<SettlementTraceResult> => {
+      await anchor();
+      const trace = normalizeNativeTrace(await get(`transactions/${expected.hash}/raw-trace`));
+      if (!same(trace.from, expected.from) || !same(trace.to, expected.to) || trace.type !== "CALL"
+        || trace.value !== "0x0" || !same(trace.inputHash, keccak256(expected.input))) throw Error();
+      await anchor();
+      return { status: "available", txHash: expected.hash.toLowerCase(), blockHash: expected.blockHash.toLowerCase(), trace };
+    };
+    return await Promise.race([work(), new Promise<never>((_, reject) => {
+      timer = setTimeout(() => { controller.abort(); reject(Error()); }, Math.min(options.timeoutMs ?? 8000, 8000));
+    })]);
+  } catch { return { status: "unavailable", reason: "RPC_OR_TRACE_UNAVAILABLE" }; }
+  finally { if (timer) clearTimeout(timer); controller.abort(); }
+}
+

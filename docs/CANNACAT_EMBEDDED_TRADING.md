@@ -289,8 +289,42 @@ the explicit wallet request.
 Background funds/price reads never change amount, mode, or the exact quote.
 Wallet suspension/return invalidates executable authority while retaining a
 clearly marked saved review. A new verified quote is required to confirm.
-Input amounts are retained per mode and Sell in memory for the page session;
-there is no wallet-sensitive form persistence or automatic restored signing.
+Input amounts, direction and mode are retained in a bounded, versioned tab-session
+form record across refresh. This optional record contains no wallet, identity,
+quote, signature or executable authority; restored intent always needs fresh
+wallet/balance evidence and a newly verified quote.
 
 Acceptance must distinguish disposable browser RPC/wallet fixtures from native
 iPhone Safari/MetaMask/Rabby and funded settlement. No test signs a real wallet.
+
+## Post-transaction recovery and cancellation
+
+An unresolved durable transaction blocks another authorization, not navigation,
+amount editing or Disconnect. Indicative quote reads remain available but cannot
+produce a wallet confirmation until the journal is reconciled. Disconnect never
+clears either canonical journal. Refresh and reconnect restore outstanding hashes.
+
+Each foreground action owns an identifier, wallet key, abort controller and a 45s
+watchdog. Cancel, account/chain change, page suspension and timeout release only
+that action's transient loading state and invalidate prepared authority. A late
+response cannot finish a newer action or replace newer input. A late wallet hash
+is still recorded against the original exact plan, even after cancellation or
+disconnect. Stopping a wait never cancels a blockchain transaction; do not resend.
+
+For native ETH output, the authenticated server can read the fixed official
+Robinhood Chain Blockscout full call trace when the configured tracing RPC is
+unavailable. It independently anchors indexed block and exact transaction bytes
+before and after reading, applies existing response/node/depth/duplicate-key
+bounds, and rechecks the canonical successful receipt. The browser still requires
+its saved exact plan, payload, calldata hash, wallet, block and protected minimum.
+Receipt-only success, ERC-20 wrapped-native logs and balance-delta guesses remain
+insufficient. No generic RPC proxy, caller URL, credential or trade provider is
+introduced. A missing, delayed, mismatched or reverted trace stays unverified.
+
+Official read-only trace specification:
+https://github.com/blockscout/blockscout-api-v2-swagger/blob/main/swagger.yaml
+
+Insufficient ETH is a specific amount/gas error rather than a disabled panel.
+The explicit **Max ETH · leave gas** action uses fresh matching confirmed/pending
+minimum funds minus the conservative prequote reserve. It cannot guarantee that
+every later plan fits; canonical firm gas checks remain mandatory before signing.

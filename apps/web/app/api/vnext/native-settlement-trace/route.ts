@@ -1,7 +1,7 @@
 import { createPublicClient, getAddress, http } from "viem";
 import { robinhoodChain } from "@rmt/shared/chains";
 import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
-import { readBoundedSettlementJson, readSettlementTrace } from "../../../../lib/server/vnext-settlement-trace-client";
+import { readBoundedSettlementJson, readSettlementTrace, readOfficialExplorerSettlementTrace } from "../../../../lib/server/vnext-settlement-trace-client";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -29,10 +29,18 @@ export async function POST(request: Request) {
       || transaction.blockHash !== receipt.blockHash || getAddress(transaction.from) !== wallet || getAddress(receipt.from) !== wallet
       || transaction.to?.toLowerCase() !== "0x0000000000001ff3684f28c67538d4d072c22734"
       || receipt.to?.toLowerCase() !== transaction.to.toLowerCase() || transaction.value !== 0n) return unavailable();
-    const result = await readSettlementTrace(hash);
+    let result = await readSettlementTrace(hash);
+    if (result.status !== "available" && transaction.blockNumber !== null && transaction.blockHash && transaction.to) {
+      result = await readOfficialExplorerSettlementTrace({ hash, blockHash: transaction.blockHash, blockNumber: transaction.blockNumber,
+        from: transaction.from, to: transaction.to, input: transaction.input, value: transaction.value }, { timeoutMs: 5000 });
+    }
     if (result.status !== "available" || result.blockHash !== receipt.blockHash.toLowerCase()) return unavailable();
+    const canonicalAfter = await client.getTransactionReceipt({ hash });
+    if (canonicalAfter.status !== "success" || canonicalAfter.blockHash !== receipt.blockHash
+      || canonicalAfter.transactionHash.toLowerCase() !== hash.toLowerCase()) return unavailable();
     // The browser additionally binds its durable exact plan, payload, input bytes,
     // recipient, native output and minimum. This response never grants authority.
     return Response.json(result, { headers });
   } catch (cause) { return tradeIdentityErrorResponse(cause) ?? unavailable(); }
 }
+

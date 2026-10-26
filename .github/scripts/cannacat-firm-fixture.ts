@@ -8,32 +8,33 @@ import { authorizationPayloadHash, parseVNextAuthorizationBundle, type VNextAuth
 export function syntheticCannaCatBundle(input: {
   quoteRequestId: string; inputAsset: Address; outputAsset: Address; inputAmountAtomic: string;
   recipient: Address; protectedOutputFloorAtomic: string;
-}) {
+}, options: { approvalAlreadyGranted?: boolean } = {}) {
   const now = Date.now();
-  const approval = input.inputAsset !== zeroAddress;
+  const sell = input.inputAsset !== zeroAddress;
+  const approval = sell && !options.approvalAlreadyGranted;
   const holder = getAddress("0x0000000000001fF3684f28c67538d4D072C22734");
-  const output = String(BigInt(input.inputAmountAtomic) * (approval ? 1n : 10_000_000n) / (approval ? 10_000_000n : 1n));
+  const output = String(BigInt(input.inputAmountAtomic) * (sell ? 1n : 10_000_000n) / (sell ? 10_000_000n : 1n));
   const minimum = String(BigInt(output) * 99n / 100n);
   const swapData: Hex = "0xdeadbeef00";
   const actionData = approval ? encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [holder, BigInt(input.inputAmountAtomic)] }) : swapData;
   const gas = approval ? "60000" : "250000";
-  const value = approval ? "0" : input.inputAmountAtomic;
+  const value = sell ? "0" : input.inputAmountAtomic;
   const fee = createVNextZeroXProviderNativeFee({
     inputAsset: input.inputAsset, outputAsset: input.outputAsset, userGrossInputAtomic: input.inputAmountAtomic,
     expectedOutputAtomic: output, protectedOutputAtomic: minimum, recipient: input.recipient,
-    quotedFeeAmountAtomic: approval ? String(BigInt(output) * 25n / 10_000n) : undefined,
+    quotedFeeAmountAtomic: sell ? String(BigInt(output) * 25n / 10_000n) : undefined,
     transactionTarget: holder, transactionCalldataHash: keccak256(swapData), transactionValueAtomic: value,
     authorizationState: approval ? "approval_required" : "verified",
     firmQuote: { zid: "synthetic_fixture", observedAtMs: now, expiresAtMs: now + 10_000,
       swapGasLimitUnits: "250000", nextActionGasLimitUnits: gas, gasPriceWei: "1000000000",
-      allowanceTarget: approval ? holder : null, providerSimulationIncomplete: true, exactSimulationPassed: false, exactSimulationState: "not_run" }
+      allowanceTarget: sell ? holder : null, providerSimulationIncomplete: true, exactSimulationPassed: false, exactSimulationState: "not_run" }
   });
   const evidence: VNextPreSignEvidence = {
     verificationId: randomUUID(), sourceQuoteRequestId: input.quoteRequestId, provider: "zero-x-swap",
     status: approval ? "approval_required" : "verified", chainId: 4663, inputAsset: input.inputAsset, outputAsset: input.outputAsset,
     inputAmountAtomic: input.inputAmountAtomic, indicativeProtectedOutputFloorAtomic: input.protectedOutputFloorAtomic,
     expectedOutputAtomic: output, protectedOutputAtomic: minimum, recipient: input.recipient,
-    router: holder, approvalSpender: holder, approvalRequired: approval, sufficientBalance: true, allowanceAtomic: approval ? "0" : null, balanceAtomic: null,
+    router: holder, approvalSpender: holder, approvalRequired: approval, sufficientBalance: true, allowanceAtomic: sell ? (approval ? "0" : input.inputAmountAtomic) : null, balanceAtomic: null,
     route: "aggregated", fees: [], pools: [], deadline: String(Math.floor((now + 10_000) / 1000)), calldataHash: keccak256(swapData),
     nextAction: approval ? "approval" : "swap", nextActionTarget: approval ? input.inputAsset : holder, nextActionCalldataHash: keccak256(actionData),
     transactionValueAtomic: value, nativeBalanceWei: "1000000000000000000", gasPriceWei: "1000000000", feeCeilingWei: "2000000000",
@@ -59,3 +60,4 @@ export function syntheticCannaCatBundle(input: {
   parseVNextAuthorizationBundle({ evidence, plan }, evidence, input, now);
   return { evidence, plan };
 }
+
