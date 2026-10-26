@@ -321,7 +321,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       const pending = findBlockingVNextWalletRequest(wallet.address, localStorage);
       setBlocking(Boolean(unresolved || pending));
       if (unresolved) { setHash(unresolved.txHash); setStatus("An earlier transaction needs verification. Check its status before another trade."); }
-      else { setHash(pending ? "" : readVNextExecutionJournal(localStorage).filter(entry => entry.wallet.toLowerCase() === wallet.address.toLowerCase()).at(-1)?.txHash ?? "");
+      else { setHash(pending ? "" : readVNextExecutionJournal(localStorage).filter(entry => entry.wallet.toLowerCase() === wallet.address.toLowerCase())[0]?.txHash ?? "");
         if (pending) setStatus("An earlier wallet response is unresolved. Check your wallet before submitting another transaction."); }
     } catch { setError("Local recovery storage is unavailable. Enable site storage before trading."); setBlocking(true); }
     return () => {
@@ -342,7 +342,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
         const unresolved = findUnresolvedVNextExecution(wallet.address, localStorage);
         const pending = findBlockingVNextWalletRequest(wallet.address, localStorage);
         setBlocking(Boolean(unresolved || pending));
-        const latest = readVNextExecutionJournal(localStorage).filter(entry => entry.wallet.toLowerCase() === wallet.address.toLowerCase()).at(-1);
+        const latest = readVNextExecutionJournal(localStorage).filter(entry => entry.wallet.toLowerCase() === wallet.address.toLowerCase())[0];
         setDisplayRecord(unresolved ?? (pending ? null : latest ?? null));
         setHash(unresolved?.txHash ?? (pending ? "" : latest?.txHash ?? ""));
         return unresolved;
