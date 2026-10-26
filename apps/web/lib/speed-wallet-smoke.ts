@@ -95,7 +95,9 @@ assert.match(
   /environment === "mobile-wallet-browser"[\s\S]*?rmtInjectedWalletOptions\(\)[\s\S]*?: rmtExternalWalletOptions\(\)/,
   "Wallet in-app browsers must show only their detected injected wallet without narrowing desktop or standard-mobile choices."
 );
-assert.match(rmtIdentity, /needsLogin: \(\) => !currentIdentity\.current\.authenticated \|\| !wallet\.linked/, "The selected external wallet must authenticate or link when needed.");
+assert.match(rmtIdentity, /const needed = !currentIdentity\.current\.authenticated \|\| !wallet\.linked/, "The selected external wallet must authenticate or link when needed.");
+assert.match(rmtIdentity, /if \(automatic && needed\) throw new Error/, "Single-wallet automatic selection cannot initiate wallet authentication.");
+assert.match(rmtIdentity, /wallets\.filter\(candidate => candidate\.type === "ethereum"\)\.length !== 1/, "Automatic selection is restricted to one compatible connected wallet.");
 assert.match(walletConnectionController, /scope\.step\(\(\) => wallet\.loginOrLink\(\)\)/, "Wallet SIWE must run through the bounded selection scope.");
 assert.match(rmtIdentity, /embeddedSignerWallet \? confirmedEmbeddedBinding!\.key/,
   "The embedded wallet must publish the exact source wallet key whose signer authority was independently confirmed.");

@@ -4,6 +4,8 @@ import { allowedCannaCatOrigin, CANNACAT_ADDRESS, CANNACAT_EMBED_VERSION, handle
 import { TradeIdentityError } from "../server/rmt-trade-identity";
 import { CANNACAT_EMBED, createCannaCatClient, nextCannaCatBuyInput, parseCannaCatAmount } from "./cannacat-client";
 import { createVNextZeroXProviderNativeFee } from "../vnext/zero-x-settlement";
+import { connectedWalletChainId, exactConnectedExternalWallet, readConnectedWallet, soleConnectedExternalWallet } from "../connected-wallet-state";
+import { walletGatewayKey } from "../wallet-gateway";
 
 const env = { RMT_CANNACAT_EMBED_ENABLED: "true", RMT_CANNACAT_EMBED_ORIGINS: "https://lammb.fun,https://preview.lammb.fun", RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "zero-x-swap" };
 const wallet = "0x0000000000000000000000000000000000000123";
@@ -54,6 +56,34 @@ check(() => assert.throws(() => createCannaCatClient({ baseUrl: "http://rmt.exam
 check(() => assert.throws(() => createCannaCatClient({ baseUrl: "https://rmt.example/api/embed/cannacat?token=bad", identityToken: "fixture" })));
 
 async function main() {
+  const candidate = { address: wallet, type: "ethereum" as const, connectorType: "injected", walletClientType: "metamask", meta: { id: "fixture-metamask" } };
+  const rabby = { ...candidate, walletClientType: "rabby", meta: { id: "fixture-rabby" } };
+  check(() => assert.equal(soleConnectedExternalWallet([candidate]), candidate));
+  check(() => assert.equal(soleConnectedExternalWallet([candidate, rabby]), undefined));
+  check(() => assert.equal(soleConnectedExternalWallet([candidate, candidate]), undefined));
+  check(() => assert.equal(soleConnectedExternalWallet([{ ...candidate, walletClientType: "privy" }]), undefined));
+  check(() => assert.equal(exactConnectedExternalWallet([candidate, rabby], walletGatewayKey(rabby)), rabby));
+  check(() => assert.equal(exactConnectedExternalWallet([candidate, candidate], walletGatewayKey(candidate)), undefined));
+  for (const value of [4663, "4663", "0x1237", "0X1237", "eip155:4663"]) check(() => assert.equal(connectedWalletChainId(value), 4663));
+  for (const value of [0, -1, 1.5, Infinity, {}, "", "eip155:0", "0x", "4663.0", "9007199254740992"]) check(() => assert.equal(connectedWalletChainId(value), null));
+  const methods: string[] = [];
+  const probe = async (accounts: unknown, chain: unknown) => readConnectedWallet({ address: wallet,
+    getEthereumProvider: async () => ({ request: async ({ method }: { method: string }) => { methods.push(method); return method === "eth_accounts" ? accounts : chain; } }) });
+  const live = await probe([wallet], "0x1237");
+  check(() => assert.equal(live.status, "ready"));
+  check(() => assert.equal(live.chainId, 4663));
+  check(() => assert.notEqual(live.provider, null));
+  const wrong = await probe([wallet], "0x1");
+  check(() => assert.equal(wrong.status, "wrong-chain"));
+  const mismatch = await probe(["0x1111111111111111111111111111111111111111", wallet], "0x1237");
+  check(() => assert.equal(mismatch.status, "account-mismatch"));
+  const empty = await probe([], "0x1237");
+  check(() => assert.equal(empty.status, "disconnected"));
+  const malformed = await probe([wallet], {});
+  check(() => assert.equal(malformed.status, "unavailable"));
+  const unavailable = await readConnectedWallet({ address: wallet, getEthereumProvider: async () => null });
+  check(() => assert.equal(unavailable.status, "unavailable"));
+  check(() => assert(methods.every(method => method === "eth_accounts" || method === "eth_chainId")));
   const response = await handleCannaCatEmbedRequest(request(), "quotes", dependencies);
   check(() => assert.equal(response.status, 200));
   check(() => assert.equal(response.headers.get("access-control-allow-origin"), "https://lammb.fun"));

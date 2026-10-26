@@ -93,6 +93,46 @@ Chrome/Edge mobile-width tests are not native iPhone wallet acceptance.
 
 ## Wallet and mobile acceptance
 
+### Single signing wallet policy — Task115 owner correction
+
+Authentication, a connected SDK wallet, the selected signing provider and its
+active chain are independent. A stored login address never proves a live signer.
+The embedded panel selects exactly one external Ethereum binding automatically,
+including a restored session. Multiple bindings, even for the same address, still
+require an explicit connector choice; duplicate bindings fail closed. A departed
+selected binding is not silently replaced by another account.
+
+RMT's canonical Privy/Wagmi bridge also activates a sole already-authenticated,
+linked external wallet through its existing awaited connector activation. It
+does not replace an explicit preference, an embedded signer, another live Wagmi
+connection or multiple connected wallets. Automatic activation cannot log in,
+request a signature, change networks, approve tokens or submit a transaction.
+Global connect callbacks remain discovery notifications rather than authority.
+
+The panel now reads `eth_accounts` and `eth_chainId` from the exact provider.
+The active first account must match; merely appearing later in the authorized
+account list is insufficient. Chain identifiers are normalized and then checked
+against 4663. Privy's cached CAIP chain label does not gate a live quote.
+Wrong network exposes the explicit **Switch to Robinhood Chain** action.
+After it completes, reacquire and inspect the provider instead of trusting the
+old instance. Provider reads are bounded and never call `eth_requestAccounts`.
+
+Account/chain/disconnect events, mobile focus, pageshow and visibility changes
+invalidate prepared authority and recheck the selected provider. Page suspension
+removes a stale confirmation. An unavailable provider, changed account, wrong
+chain and expired authentication have separate recovery states. Before and after
+quote preparation, fresh read evidence must still match; final signing remains
+an explicit gesture over the saved exact transaction.
+
+Regression fixtures independently control SDK metadata and provider state to
+reproduce stale chain labels, restored MetaMask/Rabby sessions, multiple
+connectors, disconnects, account changes and mobile return. Browser fixtures are
+not native iPhone wallet proof. Request owner confirmation on the updated preview
+without signing a trade before describing a real-device issue as resolved.
+
+Privy's [network documentation](https://docs.privy.io/basics/react/advanced/configuring-evm-networks)
+distinguishes default/supported chains from an external wallet's actual network.
+
 The panel reuses RMT's versioned trading-terms acceptance hook. Before connecting
 a wallet, the user explicitly acknowledges the existing risk notice. The original
 RMT terms, risks and privacy page components render in expandable on-site panels;

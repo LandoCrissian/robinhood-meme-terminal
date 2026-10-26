@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'apps/web/lib/embed/**'
+      - 'apps/web/lib/connected-wallet-state.ts'
       - 'apps/web/lib/server/cannacat-embed-boundary.ts'
       - 'apps/web/app/api/embed/cannacat/**'
       - 'apps/web/scripts/build-cannacat-client.mjs'

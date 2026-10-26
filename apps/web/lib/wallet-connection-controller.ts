@@ -95,7 +95,7 @@ export class WalletConnectionController {
 type Provider = { request: (args: { method: string }) => Promise<unknown> };
 export type ConnectionWallet = { address: string; getEthereumProvider: () => Promise<Provider>; loginOrLink: () => Promise<unknown> };
 
-/** The wallet is supplied by an explicit UI selection, never a global SDK event. */
+/** The wallet is supplied by an explicit choice or validated sole-wallet policy, never a global SDK event. */
 export async function activateSelectedWallet(scope: ConnectionScope, wallet: ConnectionWallet, deps: {
   stillSelected: () => boolean;
   currentProvider?: () => Promise<Provider>;

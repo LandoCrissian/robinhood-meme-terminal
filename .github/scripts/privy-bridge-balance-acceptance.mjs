@@ -581,6 +581,29 @@ async function runExternalPreferenceRace(browser, base) {
   }
 }
 
+async function runSoleExternalAutoSelection(browser, base) {
+  const external = walletRecord({ id: "rmt-privy-external", kind: "external" });
+  const key = JSON.stringify(["injected", "metamask", "rmt-privy-external", walletA]);
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  const page = await context.newPage();
+  const quotes = [];
+  await installFixtures(page, quotes, { wallet: external, wallets: [external] });
+  try {
+    await page.goto(`${base}/?market=${market}&side=buy`, { waitUntil: "domcontentloaded", timeout: 180_000 });
+    await acceptTerms(page);
+    await page.waitForFunction(expected => window.__RMT_PRIVY_BRIDGE_BALANCE_SNAPSHOT__?.walletKey === expected,
+      key, { timeout: 20_000 });
+    const evidence = await page.evaluate(() => ({ methods: window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_RPC_METHODS__,
+      events: window.__RMT_PRIVY_BRIDGE_ACCEPTANCE_EVENTS__, snapshot: window.__RMT_PRIVY_BRIDGE_BALANCE_SNAPSHOT__ }));
+    assert.equal(evidence.snapshot.walletKey, key, "sole external signer activates without a USE action");
+    assert.ok(evidence.methods.some(({ providerId }) => providerId === "rmt-privy-external"), "actual selected provider is inspected");
+    assert.equal(evidence.methods.some(({ method }) => ["eth_sendTransaction", "personal_sign", "eth_sign", "wallet_switchEthereumChain"].includes(method)), false,
+      "auto-selection never signs, approves, submits or switches network");
+    assert.equal(evidence.events.includes("LOGIN"), false, "auto-selection cannot authenticate a user");
+    return { soleExternalSelection: "PASS", extraUseAction: false, providerBinding: "PASS", financialCalls: 0 };
+  } finally { await context.close(); }
+}
+
 async function runEmbeddedQuoteToHandoff(browser, base, executionFixture) {
   rpc.native = "success";
   rpc.token = new Map([[usdg.toLowerCase(), 5_000_000n], [weth.toLowerCase(), 15n * 10n ** 18n], [market.toLowerCase(), 15n * 10n ** 18n]]);
@@ -734,6 +757,7 @@ async function main() {
       identityTokenRecovery: await runIdentityTokenRecovery(browser, base),
       provisioningRecovery: await runProvisioningRecovery(browser, base),
       externalPreferenceRace: await runExternalPreferenceRace(browser, base),
+      soleExternalAutoSelection: await runSoleExternalAutoSelection(browser, base),
       embeddedQuoteToHandoff: await runEmbeddedQuoteToHandoff(browser, base, executionFixture),
       walletRequests: 0,
       signatures: 0,

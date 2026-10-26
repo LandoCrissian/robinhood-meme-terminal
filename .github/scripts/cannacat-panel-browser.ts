@@ -156,6 +156,83 @@ try {
     await expect(page.getByRole("button", { name: "Get live quote" })).toBeEnabled();
     check(await page.evaluate(() => (window.__CANNACAT_FIXTURE_WALLET_REQUESTS__ ?? []).length) === 2, "Synchronous wallet rejection safely unlocks the panel without resubmission");
     results.push({ channel, width, checks: "PASS", scope: "Synthetic provider/wallet; real production bundle cold-load and real panel/SDK code", realTransactions: 0 });
+    for (const walletClientType of ["metamask", "rabby"]) {
+      await page.evaluate(() => localStorage.clear());
+      await page.goto(base);
+      await page.getByRole("button", { name: "I understand — continue", exact: true }).click();
+      await expect.poll(() => page.evaluate(() => typeof window.__CANNACAT_FIXTURE_UPDATE__)).toBe("function");
+      await page.evaluate((client) => window.__CANNACAT_FIXTURE_UPDATE__?.({ connected: true, authenticated: true,
+        walletClientType: client, chainId: "eip155:1", providerChainId: "0X1237" }), walletClientType);
+      await expect(page.getByRole("button", { name: "Get live quote", exact: true })).toBeEnabled();
+      check(await page.getByLabel("Choose signing wallet").count() === 0, `${walletClientType}: sole restored signer needs no USE or chooser`);
+      check(await page.getByRole("button", { name: "Switch to Robinhood Chain" }).count() === 0, "Fresh provider chain wins over stale SDK metadata");
+      check(await page.evaluate(() => window.__CANNACAT_FIXTURE_AUTH_REQUESTS__ ?? 0) === 0, "Restored session never triggers an authentication signature");
+      check(await page.evaluate(() => window.__CANNACAT_FIXTURE_CHAIN_SWITCHES__ ?? 0) === 0, "No automatic network switch");
+      await page.getByRole("button", { name: "Get live quote", exact: true }).click();
+      await page.getByRole("button", { name: "Confirm buy in wallet" }).waitFor();
+      check(await page.evaluate(() => (window.__CANNACAT_FIXTURE_WALLET_REQUESTS__ ?? []).length) === 0, "Auto-selection prepares a quote without any transaction request");
+      await page.screenshot({ path: path.join(output, `${channel}-${width}-${walletClientType}-auto-selected.png`), fullPage: true });
+
+      await page.evaluate(() => window.__CANNACAT_FIXTURE_UPDATE__?.({ providerChainId: "0x1" }, "chainChanged"));
+      await page.locator('[data-wallet-status="wrong-chain"]').waitFor();
+      check(await page.getByRole("button", { name: "Get live quote", exact: true }).isDisabled(), "Wrong live chain blocks quotes");
+      check(await page.getByRole("button", { name: "Confirm buy in wallet" }).count() === 0, "Chain change invalidates prepared transaction");
+      await page.getByRole("button", { name: "Switch to Robinhood Chain" }).click();
+      await expect(page.getByRole("button", { name: "Get live quote", exact: true })).toBeEnabled();
+      check(await page.evaluate(() => window.__CANNACAT_FIXTURE_CHAIN_SWITCHES__) === 1, "Exactly one explicit network switch");
+
+      await page.evaluate(() => window.__CANNACAT_FIXTURE_UPDATE__?.({ accounts: ["0x1111111111111111111111111111111111111111", "0x0000000000000000000000000000000000000123"] }, "accountsChanged"));
+      await page.locator('[data-wallet-status="account-mismatch"]').waitFor();
+      check(await page.getByRole("button", { name: "Get live quote", exact: true }).isDisabled(), "Known login address later in provider accounts is not an active signer");
+      await page.evaluate(() => {
+        window.__CANNACAT_FIXTURE_UPDATE__?.({ accounts: ["0x0000000000000000000000000000000000000123"], chainId: "eip155:1", providerChainId: "0x1237" });
+        window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+      });
+      await expect(page.getByRole("button", { name: "Get live quote", exact: true })).toBeEnabled();
+      check(await page.locator('[data-wallet-status="ready"]').count() === 1, "Mobile return reacquires account and chain without a wallet-choice step");
+      await page.getByRole("button", { name: "Get live quote", exact: true }).click();
+      await page.getByRole("button", { name: "Confirm buy in wallet" }).waitFor();
+      await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true })));
+      check(await page.getByRole("button", { name: "Confirm buy in wallet" }).count() === 0, "Suspension removes stale wallet confirmation");
+      await page.evaluate(() => {
+        window.__CANNACAT_FIXTURE_UPDATE__?.({ providerAvailable: false });
+        window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true }));
+      });
+      await page.locator('[data-wallet-status="unavailable"]').waitFor();
+      check(await page.getByRole("button", { name: "Get live quote", exact: true }).isDisabled(), "Authenticated address without provider cannot quote");
+      await page.getByRole("button", { name: "Reconnect wallet", exact: true }).click();
+      await expect(page.getByRole("button", { name: "Get live quote", exact: true })).toBeEnabled();
+      await page.evaluate(() => window.__CANNACAT_FIXTURE_UPDATE__?.({}, "disconnect"));
+      await page.locator('[data-wallet-status="disconnected"]').waitFor();
+      check(await page.getByRole("button", { name: "Get live quote", exact: true }).isDisabled(), "Provider disconnect invalidates signing readiness");
+      await page.getByRole("button", { name: "Reconnect wallet", exact: true }).click();
+      await expect(page.getByRole("button", { name: "Get live quote", exact: true })).toBeEnabled();
+      await page.evaluate(() => window.__CANNACAT_FIXTURE_UPDATE__?.({ authenticated: false }));
+      check(await page.getByRole("button", { name: "Get live quote", exact: true }).isDisabled(), "Expired identity remains blocked despite an available provider");
+      await page.getByRole("button", { name: "Verify wallet ownership" }).waitFor();
+
+      await page.evaluate(() => localStorage.clear());
+      await page.goto(base);
+      await page.getByRole("button", { name: "I understand — continue", exact: true }).click();
+      await expect.poll(() => page.evaluate(() => typeof window.__CANNACAT_FIXTURE_UPDATE__)).toBe("function");
+      await page.evaluate((client) => window.__CANNACAT_FIXTURE_UPDATE__?.({ connected: true, authenticated: true, walletCount: 2,
+        walletClientType: client, chainId: "eip155:4663", providerChainId: "0x1237" }), walletClientType);
+      await page.getByLabel("Choose signing wallet").waitFor();
+      check(await page.getByRole("button", { name: "Get live quote", exact: true }).isDisabled(), "Two signing connectors never auto-select, even for the same address");
+      check(await page.getByLabel("Choose signing wallet").inputValue() === "", "No first-option selection is implied");
+      await page.getByLabel("Choose signing wallet").selectOption({ index: 1 });
+      await expect(page.getByRole("button", { name: "Get live quote", exact: true })).toBeEnabled();
+      const chosen = await page.getByLabel("Choose signing wallet").inputValue();
+      await page.evaluate(() => window.__CANNACAT_FIXTURE_UPDATE__?.({ providerChainId: "0x1" }, "chainChanged"));
+      await page.locator('[data-wallet-status="wrong-chain"]').waitFor();
+      check(await page.getByLabel("Choose signing wallet").inputValue() === chosen, "Network changes preserve the explicit connector choice");
+      check(await page.evaluate(() => (window.__CANNACAT_FIXTURE_WALLET_REQUESTS__ ?? []).length) === 0, "No account/network/reconnect event signs or submits");
+      check(await page.evaluate(() => window.__CANNACAT_FIXTURE_AUTH_REQUESTS__ ?? 0) === 0, "Multiple-wallet discovery never authenticates automatically");
+      check(page.url() === `${base}/`, "Wallet flow stays on LAMMB");
+      check(errors.length === 0, `No wallet-lifecycle browser errors: ${errors.join("; ")}`);
+      results.push({ channel, width, walletClientType, autoSelection: "PASS", staleSdkChain: "PASS", providerAccountBinding: "PASS",
+        mobileResume: "SYNTHETIC_PASS", multipleWalletChoice: "PASS", realWalletSignatures: 0, realTransactions: 0 });
+    }
     await context.close();
   }
   await writeFile(path.join(output, `${channel}.json`), JSON.stringify({ result: "PASS", checks, quoteCalls, results, realTransactions: 0, realWalletSignatures: 0, nativeIphoneSafariTested: false }, null, 2));

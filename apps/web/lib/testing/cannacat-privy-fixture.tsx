@@ -1,20 +1,26 @@
 // Build-time alias in the disposable browser fixture only. Never a runtime flag.
-import React, { useSyncExternalStore, type ReactNode } from "react";
-type State = { connected: boolean; authenticated: boolean; chainId: string };
-const initial: State = { connected: false, authenticated: false, chainId: "eip155:1" };
+import React, { useEffect, useSyncExternalStore, type ReactNode } from "react";
+type State = { connected: boolean; authenticated: boolean; chainId: string; providerChainId: string;
+  accounts: string[]; walletCount: number; walletClientType: string; providerAvailable: boolean };
+const initial: State = { connected: false, authenticated: false, chainId: "eip155:1", providerChainId: "0x1",
+  accounts: ["0x0000000000000000000000000000000000000123"], walletCount: 1, walletClientType: "metamask", providerAvailable: true };
 let state = initial;
 const listeners = new Set<() => void>();
 const providerListeners = new Map<string, Set<(...args: unknown[]) => void>>();
 const address = "0x0000000000000000000000000000000000000123";
-declare global { interface Window { __CANNACAT_FIXTURE_WALLET_REQUESTS__?: unknown[]; __CANNACAT_FIXTURE_SYNC_REJECT__?: boolean; } }
+declare global { interface Window {
+  __CANNACAT_FIXTURE_WALLET_REQUESTS__?: unknown[]; __CANNACAT_FIXTURE_SYNC_REJECT__?: boolean;
+  __CANNACAT_FIXTURE_CHAIN_SWITCHES__?: number; __CANNACAT_FIXTURE_AUTH_REQUESTS__?: number;
+  __CANNACAT_FIXTURE_UPDATE__?: (next: Partial<State>, event?: "chainChanged" | "accountsChanged" | "disconnect") => void;
+} }
 function patch(next: Partial<State>) {
   state = { ...state, ...next }; listeners.forEach((listener) => listener());
 }
 function useState() { return useSyncExternalStore((listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; }, () => state, () => initial); }
 const provider = {
   request: ({ method, params }: { method: string; params?: unknown[] }) => {
-    if (method === "eth_accounts") return Promise.resolve([address]);
-    if (method === "eth_chainId") return Promise.resolve(state.chainId === "eip155:4663" ? "0x1237" : "0x1");
+    if (method === "eth_accounts") return Promise.resolve(state.accounts);
+    if (method === "eth_chainId") return Promise.resolve(state.providerChainId);
     if (method === "eth_sendTransaction") {
       (window.__CANNACAT_FIXTURE_WALLET_REQUESTS__ ??= []).push(params);
       const rejection = { code: 4001, message: "Synthetic wallet rejection" };
@@ -27,17 +33,25 @@ const provider = {
   removeListener: (name: string, listener: (...args: unknown[]) => void) => { providerListeners.get(name)?.delete(listener); }
 };
 function wallet() {
-  return { address, chainId: state.chainId, type: "ethereum" as const, connectorType: "injected", walletClientType: "metamask", linked: state.authenticated,
-    meta: { id: "synthetic-wallet", name: "Test wallet" }, getEthereumProvider: async () => provider,
-    loginOrLink: async () => { patch({ authenticated: true }); },
-    switchChain: async () => { patch({ chainId: "eip155:4663" }); providerListeners.get("chainChanged")?.forEach((listener) => listener("0x1237")); }
+  return { address, chainId: state.chainId, type: "ethereum" as const, connectorType: "injected", walletClientType: state.walletClientType, linked: state.authenticated,
+    meta: { id: `synthetic-${state.walletClientType}`, name: `Test ${state.walletClientType}` }, getEthereumProvider: async () => state.providerAvailable ? provider : null,
+    loginOrLink: async () => { window.__CANNACAT_FIXTURE_AUTH_REQUESTS__ = (window.__CANNACAT_FIXTURE_AUTH_REQUESTS__ ?? 0) + 1; patch({ authenticated: true }); },
+    switchChain: async () => { window.__CANNACAT_FIXTURE_CHAIN_SWITCHES__ = (window.__CANNACAT_FIXTURE_CHAIN_SWITCHES__ ?? 0) + 1;
+      patch({ chainId: "eip155:4663", providerChainId: "0x1237" }); providerListeners.get("chainChanged")?.forEach((listener) => listener("0x1237")); }
   };
 }
-export function PrivyProvider({ children }: { children: ReactNode }) { return <>{children}</>; }
+export function PrivyProvider({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    window.__CANNACAT_FIXTURE_UPDATE__ = (next, event) => { patch(next); if (event) providerListeners.get(event)?.forEach(listener => listener()); };
+    return () => { delete window.__CANNACAT_FIXTURE_UPDATE__; };
+  }, []);
+  return <>{children}</>;
+}
 export function usePrivy() { const current = useState(); return { ready: true, authenticated: current.authenticated,
   user: current.authenticated ? { id: "synthetic-user" } : undefined, logout: async () => patch({ connected: false, authenticated: false }) }; }
-export function useWallets() { const current = useState(); return { ready: true, wallets: current.connected ? [wallet()] : [] }; }
+export function useWallets() { const current = useState(); const primary = wallet(); return { ready: true,
+  wallets: current.connected ? (current.walletCount > 1 ? [primary, { ...primary, walletClientType: "rabby", meta: { id: "synthetic-second", name: "Test second wallet" } }] : [primary]) : [] }; }
 export function useIdentityToken() { const current = useState(); return { identityToken: current.authenticated ? "synthetic-identity-only" : null }; }
-export function useConnectWallet(options: { onSuccess: (result: { wallet: ReturnType<typeof wallet> }) => void }) {
-  return { connectWallet: () => { patch({ connected: true }); options.onSuccess({ wallet: wallet() }); } };
+export function useConnectWallet(options?: { onSuccess?: (result: { wallet: ReturnType<typeof wallet> }) => void }) {
+  return { connectWallet: () => { patch({ connected: true, providerAvailable: true }); options?.onSuccess?.({ wallet: wallet() }); } };
 }
