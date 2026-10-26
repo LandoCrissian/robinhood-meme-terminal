@@ -1,7 +1,7 @@
 import React, { useEffect, useId, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { PrivyProvider, useConnectWallet, useIdentityToken, usePrivy, useWallets } from "@privy-io/react-auth";
-import { createPublicClient, erc20Abi, formatUnits, getAddress, http, isHash, toHex, type Hex } from "viem";
+import { createPublicClient, erc20Abi, formatUnits, getAddress, http, isHash, keccak256, toHex, type Hex } from "viem";
 import { robinhoodChain } from "@rmt/shared/chains";
 import {
   CANNACAT_EMBED, createCannaCatClient, parseCannaCatAmount, externalEthereumWallets, walletGatewayKey,
@@ -10,6 +10,7 @@ import {
   transitionVNextWalletRequest, promoteVNextWalletRequestToSubmitted, readVNextExecutionJournal,
   readVNextWalletRequestJournal, resolveVNextExecution, verifyVNextErc20OutputSettlement,
   boundVNextNativeSettlementEnvelope, verifyVNextNativeOutputSettlement,
+  promoteDiscoveredVNextWalletRequestToSubmitted,
   type CannaCatPrepared, type CannaCatSide, type VNextExecutionRecord
 } from "./cannacat-client";
 
@@ -51,8 +52,11 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
   const [prepared, setPrepared] = useState<Ready | null>(null);
   const [now, setNow] = useState(Date.now());
   const [hash, setHash] = useState("");
+  const [recoveryHash, setRecoveryHash] = useState("");
   const [balances, setBalances] = useState<{ eth: bigint; token: bigint } | null>(null);
   const [blocking, setBlocking] = useState(false);
+  const [tabOwnsWallet, setTabOwnsWallet] = useState(false);
+  const [leaseAttempt, setLeaseAttempt] = useState(0);
   const epoch = useRef(0);
   const operation = useRef<AbortController | null>(null);
   const inFlight = useRef(false);
@@ -85,6 +89,23 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     return () => clearInterval(timer);
   }, [prepared]);
   useEffect(() => () => { operation.current?.abort(); epoch.current += 1; }, []);
+  useEffect(() => {
+    setTabOwnsWallet(false);
+    if (!wallet) return;
+    let disposed = false;
+    let release: (() => void) | undefined;
+    if (!navigator.locks) {
+      setError("This browser cannot safely coordinate wallet requests across tabs. Update it before trading.");
+      return;
+    }
+    void navigator.locks.request(`rmt:cannacat:4663:${wallet.address.toLowerCase()}`, { ifAvailable: true }, async (lock) => {
+      if (disposed) return;
+      if (!lock) { setStatus("This wallet is active in another LAMMB trading tab. Close that panel, then choose Use this tab."); return; }
+      setTabOwnsWallet(true);
+      await new Promise<void>((resolve) => { release = resolve; });
+    }).catch(() => { if (!disposed) setError("Wallet tab coordination is unavailable. No transaction was opened."); });
+    return () => { disposed = true; release?.(); };
+  }, [wallet?.address, leaseAttempt]);
   useEffect(() => {
     if (!wallet) return;
     let disposed = false;
@@ -124,7 +145,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     finally { inFlight.current = false; setBusy(false); }
   }
   async function getQuote() {
-    if (!connected || !wallet || !identityToken || inFlight.current || blocking) return;
+    if (!connected || !wallet || !identityToken || inFlight.current || blocking || !tabOwnsWallet) return;
     invalidate(); const generation = epoch.current;
     const controller = new AbortController(); operation.current = controller;
     const key = selectedKey; const token = identityToken;
@@ -168,6 +189,10 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       if (!record) throw new Error("Keep this transaction hash and check your wallet. Its saved recovery record is unavailable; do not submit again.");
       const [receipt, transaction, chainId] = await Promise.all([client.getTransactionReceipt({ hash: record.txHash }), client.getTransaction({ hash: record.txHash }), client.getChainId()]);
       if (chainId !== 4663) throw new Error("The recovery RPC returned the wrong network.");
+      if (transaction.chainId !== 4663 || transaction.hash.toLowerCase() !== record.txHash.toLowerCase()
+        || receipt.transactionHash.toLowerCase() !== record.txHash.toLowerCase()
+        || transaction.from.toLowerCase() !== record.wallet.toLowerCase() || receipt.from.toLowerCase() !== record.wallet.toLowerCase()
+        || transaction.blockHash !== receipt.blockHash) throw new Error("The mined transaction does not match this wallet's saved recovery record.");
       if (receipt.status === "reverted") {
         resolveVNextExecution(record.txHash, "reverted", localStorage);
         setBlocking(false); setStatus("Transaction reverted. The trade did not complete; network gas may still apply."); return;
@@ -201,8 +226,31 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     } finally { inFlight.current = false; setBusy(false); }
   }
 
+  async function recoverWalletResponse() {
+    if (!wallet || inFlight.current || !isHash(recoveryHash)) return;
+    inFlight.current = true; setBusy(true); setError("");
+    try {
+      const request = findBlockingVNextWalletRequest(wallet.address, localStorage);
+      const plan = request?.recoveryPlan;
+      if (!request || !plan) throw new Error("No unresolved saved wallet request matches this wallet.");
+      const transaction = await client.getTransaction({ hash: recoveryHash });
+      if (transaction.chainId !== 4663 || transaction.hash.toLowerCase() !== recoveryHash.toLowerCase()
+        || transaction.from.toLowerCase() !== request.wallet.toLowerCase()
+        || transaction.to?.toLowerCase() !== plan.target.toLowerCase()
+        || transaction.value !== BigInt(plan.value) || keccak256(transaction.input).toLowerCase() !== request.calldataHash.toLowerCase()
+        || BigInt(transaction.nonce) !== BigInt(request.walletNonceBeforeRequest)
+        || (transaction.blockNumber !== null && request.requestBlockNumber && transaction.blockNumber < BigInt(request.requestBlockNumber))) {
+        throw new Error("That hash does not match the exact saved wallet request. Nothing was changed.");
+      }
+      const record = promoteDiscoveredVNextWalletRequestToSubmitted({ requestId: request.requestId, txHash: recoveryHash }, localStorage);
+      if (!record) throw new Error("The matched transaction could not be saved. Keep the hash and do not resend.");
+      setHash(record.txHash); setRecoveryHash(""); setStatus("The exact submitted transaction was recovered. Check its settlement below.");
+    } catch (cause) { setError(safeError(cause)); }
+    finally { inFlight.current = false; setBusy(false); }
+  }
+
   function confirmTrade() {
-    if (!prepared || !wallet || inFlight.current || !connected || blocking) return;
+    if (!prepared || !wallet || inFlight.current || !connected || blocking || !tabOwnsWallet) return;
     let requestId = "";
     try {
       if (prepared.walletKey !== selectedKey || prepared.identityToken !== identityToken || prepared.chainId !== 4663
@@ -246,6 +294,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
         </select></label>
         {!connected && <button type="button" disabled={busy} onClick={() => void verifyWallet()}>Verify wallet ownership</button>}
         {wallet.chainId !== "eip155:4663" && <button type="button" disabled={busy} onClick={() => void switchNetwork()}>Switch to Robinhood Chain</button>}
+        {!tabOwnsWallet && <button type="button" disabled={busy} onClick={() => setLeaseAttempt((value) => value + 1)}>Use this tab</button>}
         <button className="rmtcat-textbutton" type="button" disabled={busy || blocking} onClick={() => { invalidate(); setSelectedKey(""); void logout(); }}>Disconnect</button>
       </>}
     </div>
@@ -263,11 +312,12 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       <div><dt>Maximum slippage</dt><dd>1%</dd></div>
       <div><dt>Recipient</dt><dd>{short(evidence.recipient)}</dd></div>
     </dl><p>{expired ? "Quote expired — refresh before confirming." : "Fees are disclosed estimates. Network gas is additional. Review exact amounts in your wallet."}</p></div>}
-    <div className="rmtcat-actions"><button type="button" disabled={!connected || busy || blocking || wallet?.chainId !== "eip155:4663"} onClick={() => void getQuote()}>{busy ? "Working…" : prepared ? "Refresh quote" : "Get live quote"}</button>
+    <div className="rmtcat-actions"><button type="button" disabled={!connected || busy || blocking || !tabOwnsWallet || wallet?.chainId !== "eip155:4663"} onClick={() => void getQuote()}>{busy ? "Working…" : prepared ? "Refresh quote" : "Get live quote"}</button>
       {prepared && <button type="button" className="rmtcat-confirm" disabled={busy || expired || blocking} onClick={confirmTrade}>{prepared.trade.plan.kind === "erc20_approval" ? "Review token approval" : `Confirm ${side} in wallet`}</button>}
     </div>
     <p className="rmtcat-status" role="status" aria-live="polite">{status}</p>
     {error && <p className="rmtcat-error" role="alert">{error}</p>}
+    {blocking && !hash && <div className="rmtcat-transaction"><label>Recover an unanswered wallet request<input aria-label="Transaction hash from your wallet" value={recoveryHash} maxLength={66} autoComplete="off" onChange={(event) => setRecoveryHash(event.target.value)} placeholder="0x… transaction hash" /></label><button type="button" disabled={busy || !isHash(recoveryHash)} onClick={() => void recoverWalletResponse()}>Verify saved transaction</button><p>Paste a hash from your wallet history. Only an exact match can be recovered. This never sends another transaction.</p></div>}
     {hash && <div className="rmtcat-transaction"><a href={explorer(hash)} target="_blank" rel="noopener noreferrer">View transaction {short(hash)}</a><button type="button" disabled={busy} onClick={() => void checkTransaction()}>Check settlement</button></div>}
     <details className="rmtcat-details"><summary>Fees, eligibility & recovery</summary><p>RMT requests a 0.25% fee in ETH for this pair. Provider fees and network gas are shown separately. Approving tokens is not a completed sale. A receipt alone is not verified settlement. If a wallet response is lost, do not send again; check the saved transaction.</p><p>Buying does not reserve an NFT or guarantee GTD. NFT holdings, the same-wallet token balance at the final snapshot, Founder exclusion and first-come-first-served access still apply. Selling before the snapshot may remove eligibility. NFT registration and minting remain closed.</p><p>Only public transaction and wallet details are stored locally for recovery. Wallet credentials and identity tokens are never written to this trading journal. Never share a private key or seed phrase.</p></details>
     <a className="rmtcat-contract" href={`${robinhoodChain.blockExplorers.default.url}/token/${CANNACAT_EMBED.token}`} target="_blank" rel="noopener noreferrer">Token contract: {CANNACAT_EMBED.token}</a>

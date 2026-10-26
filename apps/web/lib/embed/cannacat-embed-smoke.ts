@@ -3,6 +3,7 @@ import { zeroAddress } from "viem";
 import { allowedCannaCatOrigin, CANNACAT_ADDRESS, CANNACAT_EMBED_VERSION, handleCannaCatEmbedRequest, validateCannaCatEmbedBody } from "../server/cannacat-embed-boundary";
 import { TradeIdentityError } from "../server/rmt-trade-identity";
 import { CANNACAT_EMBED, createCannaCatClient, nextCannaCatBuyInput, parseCannaCatAmount } from "./cannacat-client";
+import { createVNextZeroXProviderNativeFee } from "../vnext/zero-x-settlement";
 
 const env = { RMT_CANNACAT_EMBED_ENABLED: "true", RMT_CANNACAT_EMBED_ORIGINS: "https://lammb.fun,https://preview.lammb.fun", RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS: "zero-x-swap" };
 const wallet = "0x0000000000000000000000000000000000000123";
@@ -88,6 +89,42 @@ async function main() {
     return Response.json({ error: "private provider diagnostic" }, { status: 409 });
   } });
   await assert.rejects(() => api.quote({ side: "buy", tokenAmountAtomic: "10000", wallet, maximumEthInputAtomic: "100000000000000000" }), /quote changed/i); checks += 1;
+  let quoteCalls = 0;
+  const fixedNow = Date.now();
+  const successfulApi = createCannaCatClient({ baseUrl: "https://rmt.example/api/embed/cannacat", identityToken: "fixture", now: () => fixedNow, fetch: async (_url, init) => {
+    quoteCalls += 1;
+    const input = JSON.parse(String(init?.body));
+    const output = (BigInt(input.inputAmountAtomic) * (input.inputAsset === zeroAddress ? 10_000_000n : 1n) / (input.inputAsset === zeroAddress ? 1n : 10_000_000n)).toString();
+    const minimum = (BigInt(output) * 99n / 100n).toString();
+    const fee = createVNextZeroXProviderNativeFee({ inputAsset: input.inputAsset, outputAsset: input.outputAsset, userGrossInputAtomic: input.inputAmountAtomic,
+      expectedOutputAtomic: output, protectedOutputAtomic: minimum, recipient: input.recipient, authorizationState: "indicative" });
+    return Response.json({ requestId: "11111111-1111-4111-8111-111111111111", chainId: 4663,
+      inputAsset: input.inputAsset, outputAsset: input.outputAsset, inputAmountAtomic: input.inputAmountAtomic, requestedAtMs: fixedNow - 50, completedAtMs: fixedNow,
+      attempts: [{ provider: "zero-x-swap", providerLabel: "0x", providerFamily: "zeroex", adapterVersion: 1, status: "indicative", chainId: 4663,
+        inputAsset: input.inputAsset, outputAsset: input.outputAsset, inputAmountAtomic: input.inputAmountAtomic, expectedOutputAtomic: output, protectedOutputAtomic: minimum,
+        outputDecimals: 18, priceImpact: null, liquidityFeeEvidence: [], quotedAtMs: fixedNow, expiresAtMs: fixedNow + 10_000,
+        latencyMs: 50, executionKind: "aggregator", strictVerificationAvailable: true, publicWalletExecutionEligible: true, userPaysGas: true,
+        providerFeeAsset: null, providerFeeAtomic: null, gasSponsorshipFeeAsset: null, gasSponsorshipFeeAtomic: null, explicitProviderFeeOutputAtomic: null,
+        netEconomics: null, settlementMode: "PROVIDER_NATIVE_INPUT_FEE", providerNativeFee: fee, networkFeeNativeAtomic: "9000000000", networkFeeNativeSymbol: "ETH",
+        protectedNetOutputAtomic: null, costState: "network_fee_pending", authorizationReady: false, detail: "Synthetic exact-input quote fixture." }] });
+  } });
+  const bought = await successfulApi.quote({ side: "buy", tokenAmountAtomic: parseCannaCatAmount("10000"), wallet, maximumEthInputAtomic: "100000000000000000" });
+  check(() => assert.ok(quoteCalls > 1 && quoteCalls <= 5));
+  check(() => assert.ok(BigInt(bought.attempt.protectedOutputAtomic!) >= 10_000n * 10n ** 18n));
+  check(() => assert.equal(bought.attempt.providerNativeFee?.feeBps, 25));
+  check(() => assert.equal(bought.inputAsset, zeroAddress));
+  const beforeSell = quoteCalls;
+  const sold = await successfulApi.quote({ side: "sell", tokenAmountAtomic: parseCannaCatAmount("10000"), wallet, maximumEthInputAtomic: "100000000000000000" });
+  check(() => assert.equal(quoteCalls - beforeSell, 1));
+  check(() => assert.equal(sold.inputAmountAtomic, parseCannaCatAmount("10000")));
+  check(() => assert.equal(sold.outputAsset, zeroAddress));
+  check(() => assert.equal(sold.attempt.providerNativeFee?.feeAsset, zeroAddress));
+  const expired = { ...bought, attempt: { ...bought.attempt, expiresAtMs: fixedNow } };
+  await assert.rejects(() => successfulApi.prepare(expired), /expired quote/); checks += 1;
+  const canceled = new AbortController(); canceled.abort();
+  const beforeAbort = quoteCalls;
+  await assert.rejects(() => successfulApi.quote({ side: "buy", tokenAmountAtomic: "10000", wallet, maximumEthInputAtomic: "100000000000000000", signal: canceled.signal })); checks += 1;
+  check(() => assert.equal(quoteCalls, beforeAbort));
   for (let i = 0; i < 60; i++) await handleCannaCatEmbedRequest(request(), "quotes", dependencies);
   const limitedResult = await handleCannaCatEmbedRequest(request(), "quotes", dependencies);
   check(() => assert.equal(limitedResult.status, 429));

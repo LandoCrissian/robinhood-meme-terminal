@@ -123,7 +123,9 @@
     "proof:zero-x:ordinary-trace-capability": "tsx scripts/zero-x-native-trace-capability.ts",
     "proof:zero-x:settlement-trace": "tsx scripts/zero-x-settlement-trace-proof.ts",
     "test:trade-contract-coherence": "tsx lib/vnext/trade-contract-coherence-smoke.ts",
-    "test:launch-intelligence": "tsx lib/server/launch-intelligence-smoke.ts"
+    "test:launch-intelligence": "tsx lib/server/launch-intelligence-smoke.ts",
+    "build:cannacat-client": "node scripts/build-cannacat-client.mjs",
+    "test:cannacat-embed": "tsx lib/embed/cannacat-embed-smoke.ts"
   },
   "dependencies": {
     "@privy-io/node": "0.28.0",
