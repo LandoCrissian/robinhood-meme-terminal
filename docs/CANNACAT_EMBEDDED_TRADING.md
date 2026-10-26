@@ -103,6 +103,11 @@ allows a fresh review; a lost wallet response is **unknown**, not safe to retry.
 Reload recovery uses the canonical durable journal, nonce/block references and
 exact saved plan. If storage fails, stop before opening the wallet.
 
+The browser Web Lock coordinates tabs on the same LAMMB origin. It cannot share
+storage or locks with an RMT tab on another origin. Do not prepare concurrent
+trades for the same wallet on both sites. Each request still requires explicit
+wallet review, and uncertain LAMMB requests remain blocked for recovery.
+
 Required acceptance: desktop Chrome/Edge, iPhone Safari with a supported external
 wallet/WalletConnect, wrong chain, account change, insufficient ETH/token/gas,
 expired quote, rejection, approval then fresh swap, duplicate click, lost response,

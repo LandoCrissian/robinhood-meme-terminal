@@ -6,18 +6,20 @@ let state = initial;
 const listeners = new Set<() => void>();
 const providerListeners = new Map<string, Set<(...args: unknown[]) => void>>();
 const address = "0x0000000000000000000000000000000000000123";
-declare global { interface Window { __CANNACAT_FIXTURE_WALLET_REQUESTS__?: unknown[]; } }
+declare global { interface Window { __CANNACAT_FIXTURE_WALLET_REQUESTS__?: unknown[]; __CANNACAT_FIXTURE_SYNC_REJECT__?: boolean; } }
 function patch(next: Partial<State>) {
   state = { ...state, ...next }; listeners.forEach((listener) => listener());
 }
 function useState() { return useSyncExternalStore((listener) => { listeners.add(listener); return () => { listeners.delete(listener); }; }, () => state, () => initial); }
 const provider = {
-  request: async ({ method, params }: { method: string; params?: unknown[] }) => {
-    if (method === "eth_accounts") return [address];
-    if (method === "eth_chainId") return state.chainId === "eip155:4663" ? "0x1237" : "0x1";
+  request: ({ method, params }: { method: string; params?: unknown[] }) => {
+    if (method === "eth_accounts") return Promise.resolve([address]);
+    if (method === "eth_chainId") return Promise.resolve(state.chainId === "eip155:4663" ? "0x1237" : "0x1");
     if (method === "eth_sendTransaction") {
       (window.__CANNACAT_FIXTURE_WALLET_REQUESTS__ ??= []).push(params);
-      throw { code: 4001, message: "Synthetic wallet rejection" };
+      const rejection = { code: 4001, message: "Synthetic wallet rejection" };
+      if (window.__CANNACAT_FIXTURE_SYNC_REJECT__) throw rejection;
+      return Promise.reject(rejection);
     }
     throw new Error(`Unsupported fixture wallet method: ${method}`);
   },

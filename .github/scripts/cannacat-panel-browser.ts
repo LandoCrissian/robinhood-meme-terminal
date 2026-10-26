@@ -5,6 +5,7 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { chromium, expect } from "playwright/test";
 import { createVNextZeroXProviderNativeFee } from "../../apps/web/lib/vnext/zero-x-settlement";
+import { syntheticCannaCatBundle } from "./cannacat-firm-fixture";
 async function main() {
 const root = execFileSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8" }).trim();
 const output = path.join(root, "cannacat-browser-evidence");
@@ -35,12 +36,15 @@ const results: object[] = [];
 let checks = 0;
 let quoteCalls = 0;
 let balance = 10n ** 18n;
+let verified = false;
+const bundles = new Map<string, ReturnType<typeof syntheticCannaCatBundle>>();
 const tokenBalance = 50_000n * 10n ** 18n;
 const hash = `0x${"a".repeat(64)}`;
 const hex = (amount: bigint) => `0x${amount.toString(16)}`;
 const check = (condition: unknown, message: string) => { assert.ok(condition, message); checks += 1; };
 try {
   for (const width of [390, 1440]) {
+    verified = false;
     const context = await browser.newContext({ viewport: { width, height: width === 390 ? 844 : 1000 } });
     const page = await context.newPage();
     const errors: string[] = [];
@@ -64,7 +68,17 @@ try {
         const input = route.request().postDataJSON();
         check(input.chainId === 4663 && input.recipient === "0x0000000000000000000000000000000000000123", "Exact synthetic wallet and chain binding");
         check(route.request().headers()["privy-id-token"] === "synthetic-identity-only", "Only fixture identity forwarded");
-        if (!url.pathname.endsWith("/quotes")) { await route.fulfill({ status: 409, headers, json: { code: "ZERO_X_REPRICE_REQUIRED" } }); return; }
+        if (!url.pathname.endsWith("/quotes")) {
+          if (!verified) { await route.fulfill({ status: 409, headers, json: { code: "ZERO_X_REPRICE_REQUIRED" } }); return; }
+          if (url.pathname.endsWith("/verify")) {
+            const bundle = syntheticCannaCatBundle(input);
+            bundles.set(bundle.evidence.verificationId, bundle);
+            await route.fulfill({ headers, json: bundle.evidence }); return;
+          }
+          const bundle = bundles.get(input.verificationId);
+          check(Boolean(bundle) && bundle!.evidence.zeroXFirmQuoteCommitment === input.zeroXFirmQuoteCommitment, "Exact fixture verification commitment reused");
+          await route.fulfill({ headers, json: bundle }); return;
+        }
         quoteCalls += 1;
         const output = BigInt(input.inputAmountAtomic) * 10_000_000n;
         const minimum = output * 99n / 100n;
@@ -113,8 +127,26 @@ try {
     check(await page.evaluate(() => (window.__CANNACAT_FIXTURE_WALLET_REQUESTS__ ?? []).length) === 0, "No implicit signing or submission");
     check(page.url() === `${base}/`, "Website flow never redirects to RMT");
     check(errors.length === 0, `No browser runtime errors: ${errors.join("; ")}`);
-    await page.getByLabel("Minimum CannaCat to receive").fill("10000");
+    verified = true;
+    await page.getByRole("button", { name: "Get live quote" }).click();
+    await page.getByRole("button", { name: "Confirm buy in wallet" }).waitFor();
+    check(await page.getByLabel("Verified trade review").innerText().then((text) => text.includes("Protected minimum") && text.includes("RMT fee · 0.25%") && text.includes("Estimated network gas")), "Complete protected buy review and unchanged fee displayed");
+    check(await page.evaluate(() => (window.__CANNACAT_FIXTURE_WALLET_REQUESTS__ ?? []).length) === 0, "Verification never signs automatically");
     await page.screenshot({ path: path.join(output, `${channel}-${width}.png`), fullPage: true });
+    await page.getByRole("button", { name: "Confirm buy in wallet" }).click();
+    await page.getByRole("alert").filter({ hasText: "declined" }).waitFor();
+    check(await page.evaluate(() => (window.__CANNACAT_FIXTURE_WALLET_REQUESTS__ ?? []).length) === 1, "One explicit wallet gesture; rejected request never repeats");
+    await page.getByRole("button", { name: "Sell CannaCat", exact: true }).click();
+    await page.getByLabel("CannaCat to sell").fill("10000");
+    await page.getByRole("button", { name: "Get live quote" }).click();
+    await page.getByRole("button", { name: "Review token approval" }).waitFor();
+    check(await page.getByLabel("Verified trade review").innerText().then((text) => text.includes("No swap fee is charged by this approval")), "Approval is distinguished from swap settlement and fees");
+    await page.screenshot({ path: path.join(output, `${channel}-${width}-approval.png`), fullPage: true });
+    await page.evaluate(() => { window.__CANNACAT_FIXTURE_SYNC_REJECT__ = true; });
+    await page.getByRole("button", { name: "Review token approval" }).click();
+    await page.getByRole("status").filter({ hasText: "declined" }).waitFor();
+    await expect(page.getByRole("button", { name: "Get live quote" })).toBeEnabled();
+    check(await page.evaluate(() => (window.__CANNACAT_FIXTURE_WALLET_REQUESTS__ ?? []).length) === 2, "Synchronous wallet rejection safely unlocks the panel without resubmission");
     results.push({ channel, width, checks: "PASS", scope: "Synthetic provider/wallet; real production bundle cold-load and real panel/SDK code", realTransactions: 0 });
     await context.close();
   }

@@ -8,6 +8,7 @@ on:
       - 'apps/web/scripts/build-cannacat-client.mjs'
       - 'apps/web/lib/testing/cannacat-privy-fixture.tsx'
       - '.github/scripts/cannacat-panel-browser.ts'
+      - '.github/scripts/cannacat-firm-fixture.ts'
       - '.github/workflows/cannacat-embed.yml'
   workflow_dispatch:
 permissions:

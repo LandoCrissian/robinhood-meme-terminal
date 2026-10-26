@@ -274,7 +274,17 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
         transitionVNextWalletRequest(requestId, rejected ? "USER_REJECTED" : "UNRESOLVED", localStorage);
         setBlocking(!rejected); setError(rejected ? "Wallet request declined. Nothing was confirmed; refresh the quote when ready." : "The wallet response is unresolved. Check wallet history before trying anything else. Do not resend.");
       }).finally(() => { inFlight.current = false; setBusy(false); });
-    } catch (cause) { setError(safeError(cause)); setPrepared(null); }
+    } catch (cause) {
+      // An EIP-1193 provider can throw before returning its promise. Keep the
+      // durable request unresolved unless the wallet explicitly rejected it.
+      if (requestId) {
+        const rejected = isUserRejection(cause);
+        transitionVNextWalletRequest(requestId, rejected ? "USER_REJECTED" : "UNRESOLVED", localStorage);
+        setBlocking(!rejected);
+        setStatus(rejected ? "Wallet request declined. Refresh the quote when ready." : "Check wallet history before retrying. Do not resend an unresolved request.");
+      }
+      inFlight.current = false; setBusy(false); setError(safeError(cause)); setPrepared(null);
+    }
   }
 
   const expired = Boolean(prepared && Math.min(prepared.trade.plan.expiresAtMs, prepared.trade.evidence.expiresAtMs) <= now);
@@ -306,12 +316,12 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       <div><dt>{side === "buy" ? "Exact ETH input" : "Exact token input"}</dt><dd>{units(evidence.inputAmountAtomic)} {side === "buy" ? "ETH" : "CannaCat"}</dd></div>
       <div><dt>Expected received</dt><dd>{units(evidence.expectedOutputAtomic)} {side === "buy" ? "CannaCat" : "ETH"}</dd></div>
       <div><dt>Protected minimum</dt><dd>{units(evidence.protectedOutputAtomic)} {side === "buy" ? "CannaCat" : "ETH"}</dd></div>
-      <div><dt>RMT fee · 0.25%</dt><dd>{fee ? `${units(fee.feeAmountAtomic)} ETH` : "Unavailable"}</dd></div>
+      <div><dt>{prepared?.trade.plan.kind === "erc20_approval" ? "Planned swap fee · 0.25%" : "RMT fee · 0.25%"}</dt><dd>{fee ? `${units(fee.feeAmountAtomic)} ETH` : "Unavailable"}</dd></div>
       <div><dt>Estimated network gas</dt><dd>{evidence.estimatedNetworkCostWei ? `${units(evidence.estimatedNetworkCostWei)} ETH` : "Unavailable"}</dd></div>
       <div><dt>Provider fee</dt><dd>{fee?.providerFeeAtomic ? `${units(fee.providerFeeAtomic)} ${fee.providerFeeAsset?.toLowerCase() === CANNACAT_EMBED.token.toLowerCase() ? "CannaCat" : "ETH"}` : "None disclosed"}</dd></div>
       <div><dt>Maximum slippage</dt><dd>1%</dd></div>
       <div><dt>Recipient</dt><dd>{short(evidence.recipient)}</dd></div>
-    </dl><p>{expired ? "Quote expired — refresh before confirming." : "Fees are disclosed estimates. Network gas is additional. Review exact amounts in your wallet."}</p></div>}
+    </dl><p>{expired ? "Quote expired — refresh before confirming." : prepared?.trade.plan.kind === "erc20_approval" ? "No swap fee is charged by this approval. Network gas applies. Review a fresh swap quote after confirmation." : "Fees are disclosed estimates. Network gas is additional. Review exact amounts in your wallet."}</p></div>}
     <div className="rmtcat-actions"><button type="button" disabled={!connected || busy || blocking || !tabOwnsWallet || wallet?.chainId !== "eip155:4663"} onClick={() => void getQuote()}>{busy ? "Working…" : prepared ? "Refresh quote" : "Get live quote"}</button>
       {prepared && <button type="button" className="rmtcat-confirm" disabled={busy || expired || blocking} onClick={confirmTrade}>{prepared.trade.plan.kind === "erc20_approval" ? "Review token approval" : `Confirm ${side} in wallet`}</button>}
     </div>
