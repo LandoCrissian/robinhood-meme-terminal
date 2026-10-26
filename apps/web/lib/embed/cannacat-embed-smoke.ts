@@ -97,7 +97,8 @@ async function main() {
     const output = (BigInt(input.inputAmountAtomic) * (input.inputAsset === zeroAddress ? 10_000_000n : 1n) / (input.inputAsset === zeroAddress ? 1n : 10_000_000n)).toString();
     const minimum = (BigInt(output) * 99n / 100n).toString();
     const fee = createVNextZeroXProviderNativeFee({ inputAsset: input.inputAsset, outputAsset: input.outputAsset, userGrossInputAtomic: input.inputAmountAtomic,
-      expectedOutputAtomic: output, protectedOutputAtomic: minimum, recipient: input.recipient, authorizationState: "indicative" });
+      expectedOutputAtomic: output, protectedOutputAtomic: minimum, recipient: input.recipient, authorizationState: "indicative",
+      quotedFeeAmountAtomic: input.inputAsset === zeroAddress ? undefined : String(BigInt(output) * 25n / 10_000n) });
     return Response.json({ requestId: "11111111-1111-4111-8111-111111111111", chainId: 4663,
       inputAsset: input.inputAsset, outputAsset: input.outputAsset, inputAmountAtomic: input.inputAmountAtomic, requestedAtMs: fixedNow - 50, completedAtMs: fixedNow,
       attempts: [{ provider: "zero-x-swap", providerLabel: "0x", providerFamily: "zeroex", adapterVersion: 1, status: "indicative", chainId: 4663,

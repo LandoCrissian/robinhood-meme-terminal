@@ -42,7 +42,7 @@ export function allowedCannaCatOrigin(origin: string | null, env: Environment) {
 function cors(origin: string) {
   return {
     "Access-Control-Allow-Origin": origin,
-    "Access-Control-Allow-Methods": "POST, OPTIONS, GET",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "content-type, privy-id-token, x-rmt-client",
     "Access-Control-Max-Age": "300",
     "Cache-Control": "private, no-store, max-age=0",

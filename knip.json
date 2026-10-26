@@ -12,7 +12,8 @@
         ".github/scripts/zerox-browser-boundary.cjs",
         ".github/scripts/zerox-execution-fixture.cjs",
         ".github/scripts/collect-live-journey-proof.cjs",
-        ".github/scripts/live-journey-runtime-proof.cjs"
+        ".github/scripts/live-journey-runtime-proof.cjs",
+        ".github/scripts/cannacat-panel-browser.ts"
       ]
     },
     "apps/web": {
