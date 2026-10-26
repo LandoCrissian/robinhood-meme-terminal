@@ -65,6 +65,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter web exec node scripts/build-cannacat-client.mjs
       - run: pnpm --filter web exec node scripts/build-cannacat-client.mjs --acceptance
+      - name: Build pinned Task115 before-layout fixture (never delivered)
+        run: |
+          git fetch --no-tags --depth=1 origin af597d2d8ccf0c4db05e993ac5dd4bbf32171399
+          pnpm --filter web exec node scripts/build-cannacat-client.mjs --acceptance-baseline
       - run: pnpm --filter web exec tsx ../../.github/scripts/cannacat-panel-browser.ts
         working-directory: .
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

@@ -17,13 +17,14 @@ const server = createServer(async (request, response) => {
     const url = new URL(request.url!, "http://localhost");
     if (url.pathname === "/") {
       const real = url.searchParams.get("real") === "1";
+      const baseline = url.searchParams.get("baseline") === "1";
       response.setHeader("Content-Type", "text/html; charset=utf-8");
-      response.end(`<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CannaCat panel acceptance</title><style>body{background:#080b07;color:#eef4e7;font-family:system-ui;margin:0;padding:24px}header{max-width:680px;margin:0 auto 24px;font-size:12px;letter-spacing:.08em}#panel{max-width:680px;margin:auto}</style><header>LAMMB GENESIS · SYNTHETIC WALLET TEST<br>NO REAL SIGNATURES OR TRANSACTIONS</header><main id="panel"></main><script type="module">import{mountCannaCatPanel}from'/${real ? "real" : "fixture"}/cannacat-panel.mjs';mountCannaCatPanel(document.querySelector('#panel'),{enabled:${!real},apiBaseUrl:'https://rmt-fixture.invalid/api/embed/cannacat',privyAppId:'synthetic-app',privyClientId:'synthetic-client'});</script></html>`);
+      response.end(`<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CannaCat panel acceptance</title><style>body{background:#080b07;color:#eef4e7;font-family:system-ui;margin:0;padding:24px}header{max-width:680px;margin:0 auto 24px;font-size:12px;letter-spacing:.08em}#panel{max-width:680px;margin:auto}</style><header>LAMMB GENESIS · ${baseline ? "TASK115 BEFORE LAYOUT" : "TASK117 CANDIDATE"} · SYNTHETIC WALLET TEST<br>NO REAL SIGNATURES OR TRANSACTIONS</header><main id="panel"></main><script type="module">import{mountCannaCatPanel}from'/${real ? "real" : baseline ? "baseline" : "fixture"}/cannacat-panel.mjs';mountCannaCatPanel(document.querySelector('#panel'),{enabled:${!real},apiBaseUrl:'https://rmt-fixture.invalid/api/embed/cannacat',privyAppId:'synthetic-app',privyClientId:'synthetic-client'});</script></html>`);
       return;
     }
-    const match = url.pathname.match(/^\/(real|fixture)\/([A-Za-z0-9_./-]+\.mjs)$/);
+    const match = url.pathname.match(/^\/(real|fixture|baseline)\/([A-Za-z0-9_./-]+\.mjs)$/);
     if (!match || match[2].includes("..")) { response.writeHead(404).end(); return; }
-    const directory = match[1] === "real" ? "cannacat-sdk" : "cannacat-sdk-fixture";
+    const directory = match[1] === "real" ? "cannacat-sdk" : match[1] === "baseline" ? "cannacat-sdk-baseline" : "cannacat-sdk-fixture";
     response.setHeader("Content-Type", "text/javascript; charset=utf-8");
     response.end(await readFile(path.join(root, "apps/web", directory, match[2])));
   } catch { response.writeHead(500).end("Fixture server failed"); }
@@ -33,6 +34,8 @@ const port = (server.address() as { port: number }).port;
 const base = `http://localhost:${port}`;
 const browser = await chromium.launch({ channel, headless: true });
 const results: object[] = [];
+const layouts: object[] = [];
+const longWalletName = "MetaMask · iPhone WalletConnect signing connection";
 let checks = 0;
 let quoteCalls = 0;
 let balance = 10n ** 18n;
@@ -43,9 +46,9 @@ const hash = `0x${"a".repeat(64)}`;
 const hex = (amount: bigint) => `0x${amount.toString(16)}`;
 const check = (condition: unknown, message: string) => { assert.ok(condition, message); checks += 1; };
 try {
-  for (const width of [390, 1440]) {
+  for (const width of [320, 375, 390, 430, 1440]) {
     verified = false;
-    const context = await browser.newContext({ viewport: { width, height: width === 390 ? 844 : 1000 } });
+    const context = await browser.newContext({ viewport: { width, height: width < 768 ? 844 : 1000 } });
     const page = await context.newPage();
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
@@ -97,6 +100,16 @@ try {
       }
       throw new Error(`Unexpected external browser request: ${url.origin}`);
     });
+    // Compile the exact Task115 panel source for before screenshots. The fixture
+    // remains synthetic and is never included in the deliverable SDK.
+    await page.goto(`${base}/?baseline=1`);
+    await page.getByRole("button", { name: "I understand — continue", exact: true }).click();
+    await expect.poll(() => page.evaluate(() => typeof window.__CANNACAT_FIXTURE_UPDATE__)).toBe("function");
+    await page.evaluate((displayName) => window.__CANNACAT_FIXTURE_UPDATE__?.({ connected: true, authenticated: false, displayName }), longWalletName);
+    await page.getByRole("button", { name: "Verify wallet ownership", exact: true }).waitFor();
+    await page.locator('[data-wallet-status="wrong-chain"]').waitFor();
+    await page.screenshot({ path: path.join(output, `${channel}-${width}-before-wallet.png`), fullPage: true });
+    await page.evaluate(() => localStorage.clear());
     await page.goto(`${base}/?real=1`);
     await page.getByRole("heading", { name: "Get your CannaCat." }).waitFor();
     check(await page.getByRole("button", { name: "Connect wallet · coming soon" }).isDisabled(), "Real bundle stays closed without configuration");
@@ -109,6 +122,26 @@ try {
     await page.getByText("RMT trading terms", { exact: true }).click();
     await page.getByRole("button", { name: "I understand — continue", exact: true }).click();
     await page.getByRole("button", { name: "Connect wallet", exact: true }).click();
+    await page.evaluate((displayName) => window.__CANNACAT_FIXTURE_UPDATE__?.({ displayName }), longWalletName);
+    await page.locator('[data-wallet-status="wrong-chain"]').waitFor();
+    const layout = await page.evaluate(() => {
+      const root = document.querySelector(".rmtcat-wallet")!;
+      const targets = [...root.querySelectorAll("button,select,.rmtcat-wallet-identity>span")].filter(element => element.getClientRects().length > 0);
+      const boxes = targets.map(element => { const r = element.getBoundingClientRect(); return { text: element.textContent?.trim(), x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom }; });
+      const collisions = boxes.flatMap((a,i)=>boxes.slice(i+1).filter(b=>Math.min(a.right,b.right)-Math.max(a.x,b.x)>1 && Math.min(a.bottom,b.bottom)-Math.max(a.y,b.y)>1).map(b=>[a.text,b.text]));
+      const interactive = [...document.querySelectorAll(".rmtcat-panel button,.rmtcat-panel select,.rmtcat-panel summary")].filter(element=>element.getClientRects().length>0).map(element=>({text:element.textContent?.trim(),width:element.getBoundingClientRect().width,height:element.getBoundingClientRect().height}));
+      const address = document.querySelector(".rmtcat-wallet-address")!;
+      return { viewport:innerWidth,documentWidth:document.documentElement.scrollWidth,boxes,collisions,interactive,addressWhiteSpace:getComputedStyle(address).whiteSpace,addressHeight:address.getBoundingClientRect().height };
+    });
+    check(layout.collisions.length === 0, "Wallet identity, verification, network and disconnect controls never overlap");
+    check(layout.documentWidth <= width, "Unverified wallet layout has no horizontal overflow");
+    check(layout.interactive.every(target=>target.height>=44 && target.width>=44), "Every visible panel control has at least a 44px touch target");
+    check(layout.addressWhiteSpace === "nowrap" && layout.addressHeight < 30, "Wallet address remains on one readable line");
+    await page.getByRole("button", { name: "Verify wallet ownership", exact: true }).press("Tab");
+    await expect(page.getByRole("button", { name: "Switch to Robinhood Chain", exact: true })).toBeFocused();
+    check(true, "Keyboard focus follows the visible verification and network controls");
+    layouts.push({channel,width,result:"PASS",...layout});
+    await page.screenshot({ path: path.join(output, `${channel}-${width}-after-wallet.png`), fullPage: true });
     await page.getByRole("button", { name: "Verify wallet ownership" }).click();
     await page.getByRole("button", { name: "Switch to Robinhood Chain" }).click();
     await page.getByRole("button", { name: "Get live quote" }).waitFor({ state: "visible" });
@@ -163,7 +196,7 @@ try {
       await expect.poll(() => page.evaluate(() => typeof window.__CANNACAT_FIXTURE_UPDATE__)).toBe("function");
       await page.evaluate(({ client, transport }) => window.__CANNACAT_FIXTURE_UPDATE__?.({ connected: true, authenticated: true,
         walletClientType: client, connectorType: transport, chainId: "eip155:1", providerChainId: "0X1237" }),
-        { client: walletClientType, transport: width === 390 ? "wallet_connect" : "injected" });
+        { client: walletClientType, transport: width < 768 ? "wallet_connect" : "injected" });
       await expect(page.getByRole("button", { name: "Get live quote", exact: true })).toBeEnabled();
       check(await page.getByLabel("Choose signing wallet").count() === 0, `${walletClientType}: sole restored signer needs no USE or chooser`);
       check(await page.getByRole("button", { name: "Switch to Robinhood Chain" }).count() === 0, "Fresh provider chain wins over stale SDK metadata");
@@ -235,12 +268,12 @@ try {
       check(page.url() === `${base}/`, "Wallet flow stays on LAMMB");
       check(errors.length === 0, `No wallet-lifecycle browser errors: ${errors.join("; ")}`);
       results.push({ channel, width, walletClientType, autoSelection: "PASS", staleSdkChain: "PASS", providerAccountBinding: "PASS",
-        transport: width === 390 ? "wallet_connect" : "injected", mobileResume: "SYNTHETIC_PASS", multipleWalletChoice: "PASS", realWalletSignatures: 0, realTransactions: 0 });
+        transport: width < 768 ? "wallet_connect" : "injected", mobileResume: "SYNTHETIC_PASS", multipleWalletChoice: "PASS", realWalletSignatures: 0, realTransactions: 0 });
     }
     await context.close();
   }
-  await writeFile(path.join(output, `${channel}.json`), JSON.stringify({ result: "PASS", checks, quoteCalls, results, realTransactions: 0, realWalletSignatures: 0, nativeIphoneSafariTested: false }, null, 2));
-  console.log(JSON.stringify({ result: "PASS", checks, quoteCalls, channel, viewports: 2, realTransactions: 0 }));
+  await writeFile(path.join(output, `${channel}.json`), JSON.stringify({ result: "PASS", checks, quoteCalls, results, layouts, baselinePanelCommit:"af597d2d8ccf0c4db05e993ac5dd4bbf32171399", realTransactions: 0, realWalletSignatures: 0, nativeIphoneSafariTested: false }, null, 2));
+  console.log(JSON.stringify({ result: "PASS", checks, quoteCalls, channel, viewports: 5, realTransactions: 0 }));
 } finally { await browser.close(); server.close(); }
 }
 void main().catch((cause) => { console.error(cause); process.exitCode = 1; });

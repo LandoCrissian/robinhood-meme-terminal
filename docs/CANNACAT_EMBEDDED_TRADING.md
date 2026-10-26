@@ -169,6 +169,22 @@ reload and output verification. Browser fixtures are not real mobile wallet proo
 
 ## Settlement and support
 
+### Task117 responsive controls and acceptance
+
+Wallet identity, connector choice and verification/network/disconnect actions
+occupy separate responsive rows. A single shortened address stays on one line;
+long wallet names wrap within their own area. Controls retain at least 44px touch
+targets, visible keyboard focus and the existing execution handlers. Connection
+readiness is shown once; operational and recovery messages stay separate.
+
+The disposable Chrome/Edge harness covers 320, 375, 390, 430 and desktop widths,
+including an unauthenticated connected wallet, multiple connectors, long wallet
+names, buy review and sell approval. Before screenshots compile the exact pinned
+Task115 panel source at `af597d2d8ccf0c4db05e993ac5dd4bbf32171399`; both before
+and candidate fixtures are synthetic and must never be delivered to a public
+site. The real SDK retains the unchanged non-fixture manifest gate. Native
+iPhone acceptance and funded settlement are separate from those simulations.
+
 Show the actual transaction hash immediately when returned, labeled submitted.
 Buy confirmation requires matching mined transaction/receipt and net CannaCat
 Transfer evidence to the exact recipient above the protected minimum. Sale

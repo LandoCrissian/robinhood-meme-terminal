@@ -1,7 +1,7 @@
 // Build-time alias in the disposable browser fixture only. Never a runtime flag.
 import React, { useEffect, useSyncExternalStore, type ReactNode } from "react";
 type State = { connected: boolean; authenticated: boolean; chainId: string; providerChainId: string;
-  accounts: string[]; walletCount: number; walletClientType: string; connectorType: string; providerAvailable: boolean };
+  accounts: string[]; walletCount: number; walletClientType: string; connectorType: string; providerAvailable: boolean; displayName?: string };
 const initial: State = { connected: false, authenticated: false, chainId: "eip155:1", providerChainId: "0x1",
   accounts: ["0x0000000000000000000000000000000000000123"], walletCount: 1, walletClientType: "metamask", connectorType: "injected", providerAvailable: true };
 let state = initial;
@@ -34,7 +34,7 @@ const provider = {
 };
 function wallet() {
   return { address, chainId: state.chainId, type: "ethereum" as const, connectorType: state.connectorType, walletClientType: state.walletClientType, linked: state.authenticated,
-    meta: { id: `synthetic-${state.walletClientType}`, name: `Test ${state.walletClientType}` }, getEthereumProvider: async () => state.providerAvailable ? provider : null,
+    meta: { id: `synthetic-${state.walletClientType}`, name: state.displayName || `Test ${state.walletClientType}` }, getEthereumProvider: async () => state.providerAvailable ? provider : null,
     loginOrLink: async () => { window.__CANNACAT_FIXTURE_AUTH_REQUESTS__ = (window.__CANNACAT_FIXTURE_AUTH_REQUESTS__ ?? 0) + 1; patch({ authenticated: true }); },
     switchChain: async () => { window.__CANNACAT_FIXTURE_CHAIN_SWITCHES__ = (window.__CANNACAT_FIXTURE_CHAIN_SWITCHES__ ?? 0) + 1;
       patch({ chainId: "eip155:4663", providerChainId: "0x1237" }); providerListeners.get("chainChanged")?.forEach((listener) => listener("0x1237")); }

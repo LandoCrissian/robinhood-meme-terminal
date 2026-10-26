@@ -358,18 +358,20 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       {(["buy", "sell"] as const).map((direction) => <button key={direction} type="button" aria-pressed={side === direction} disabled={busy} onClick={() => { invalidate(); setSide(direction); setStatus("Choose an amount and request a fresh quote."); }}>{direction === "buy" ? "Buy CannaCat" : "Sell CannaCat"}</button>)}
     </div>
     <div className="rmtcat-wallet">
-      {(external.length > 1 || (!wallet && external.length > 0)) && <label>Choose signing wallet<select aria-label="Choose signing wallet" value={selectedKey} disabled={busy || !terms.accepted} onChange={(event) => { invalidate(); explicitChoiceRequired.current = true; setSelectedKey(event.target.value); }}>
+      {(external.length > 1 || (!wallet && external.length > 0)) && <label className="rmtcat-wallet-choice">Choose signing wallet<select aria-label="Choose signing wallet" value={selectedKey} disabled={busy || !terms.accepted} onChange={(event) => { invalidate(); explicitChoiceRequired.current = true; setSelectedKey(event.target.value); }}>
           <option value="" disabled>Select a wallet</option>
           {external.map((option) => <option key={walletGatewayKey(option)} value={walletGatewayKey(option)}>{short(option.address)} · {option.meta.name ?? option.walletClientType}</option>)}
         </select></label>}
+      {wallet && external.length === 1 && <div className="rmtcat-wallet-identity"><span className="rmtcat-wallet-caption">Trading wallet</span><span className="rmtcat-wallet-address" title={wallet.address}>{short(wallet.address)}</span><span className="rmtcat-wallet-name">{wallet.meta.name ?? wallet.walletClientType}</span></div>}
+      <div className="rmtcat-wallet-actions">
       {!wallet ? <button type="button" disabled={!ready || !walletsReady || busy || !terms.accepted} onClick={() => { explicitChoiceRequired.current = external.length > 1; connectWallet({ walletChainType: "ethereum-only", walletList: ["metamask", "coinbase_wallet", "detected_ethereum_wallets", "wallet_connect"] }); }}>Connect wallet</button> : <>
-        {external.length === 1 && <label>Trading wallet<span>{short(wallet.address)} · {wallet.meta.name ?? wallet.walletClientType}</span></label>}
         {!connected && <button type="button" disabled={busy || !terms.accepted} onClick={() => void verifyWallet()}>Verify wallet ownership</button>}
         {walletState.status === "wrong-chain" && <button type="button" disabled={busy || !terms.accepted} onClick={() => void switchNetwork()}>Switch to Robinhood Chain</button>}
         {(["disconnected", "unavailable", "account-mismatch"] as const).some(value => value === walletState.status) && <button type="button" disabled={busy || !terms.accepted} onClick={() => connectWallet({ walletChainType: "ethereum-only" })}>Reconnect wallet</button>}
         {!tabOwnsWallet && <button type="button" disabled={busy} onClick={() => setLeaseAttempt((value) => value + 1)}>Use this tab</button>}
         <button className="rmtcat-textbutton" type="button" disabled={busy || blocking} onClick={() => { invalidate(); explicitChoiceRequired.current = true; setSelectedKey(""); void logout(); }}>Disconnect</button>
       </>}
+      </div>
     </div>
     {wallet && <p className="rmtcat-balances" data-wallet-status={walletState.status}>{connectedWalletMessage(walletState)}</p>}
     <label className="rmtcat-amountlabel" htmlFor={inputId}>{side === "buy" ? "Minimum CannaCat to receive" : "CannaCat to sell"}</label>
@@ -389,7 +391,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     <div className="rmtcat-actions"><button type="button" disabled={!terms.accepted || !connected || busy || blocking || !tabOwnsWallet || walletState.status !== "ready"} onClick={() => void getQuote()}>{busy ? "Working…" : prepared ? "Refresh quote" : "Get live quote"}</button>
       {prepared && <button type="button" className="rmtcat-confirm" disabled={!terms.accepted || busy || expired || blocking} onClick={confirmTrade}>{prepared.trade.plan.kind === "erc20_approval" ? "Review token approval" : `Confirm ${side} in wallet`}</button>}
     </div>
-    <p className="rmtcat-status" role="status" aria-live="polite">{status}</p>
+    <p className="rmtcat-status" role="status" aria-live="polite">{status === connectedWalletMessage(walletState) || (wallet && status === "Connect an existing wallet to get a live quote.") ? "" : status}</p>
     {error && <p className="rmtcat-error" role="alert">{error}</p>}
     {blocking && !hash && <div className="rmtcat-transaction"><label>Recover an unanswered wallet request<input aria-label="Transaction hash from your wallet" value={recoveryHash} maxLength={66} autoComplete="off" onChange={(event) => setRecoveryHash(event.target.value)} placeholder="0x… transaction hash" /></label><button type="button" disabled={busy || !isHash(recoveryHash)} onClick={() => void recoverWalletResponse()}>Verify saved transaction</button><p>Paste a hash from your wallet history. Only an exact match can be recovered. This never sends another transaction.</p></div>}
     {hash && <div className="rmtcat-transaction"><a href={explorer(hash)} target="_blank" rel="noopener noreferrer">View transaction {short(hash)}</a><button type="button" disabled={busy} onClick={() => void checkTransaction()}>Check settlement</button></div>}
@@ -400,6 +402,43 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
 
 const css = `
 .rmtcat-terms{padding:16px;border:1px solid #637b2c;background:#11180b;border-radius:12px;margin:16px 0;font-size:13px}.rmtcat-terms details{margin:12px 0}.rmtcat-terms summary{cursor:pointer;min-height:44px;line-height:44px}.rmtcat-legal{max-height:320px;overflow:auto;padding:12px;border:1px solid #39432c}.rmtcat-legal h2{font-size:15px;line-height:1.4;margin:14px 0 6px}.rmtcat-legal p{font-size:13px;line-height:1.6}.rmtcat-root{font:400 16px/1.5 system-ui,sans-serif;color:#f2f4e9;color-scheme:dark;width:100%;box-sizing:border-box}.rmtcat-root *{box-sizing:border-box}.rmtcat-panel{padding:clamp(20px,4vw,36px);border:1px solid #485032;background:linear-gradient(135deg,#171c13,#0c0e0b);border-radius:20px;max-width:680px;margin:auto}.rmtcat-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.rmtcat-eyebrow{font-size:11px;letter-spacing:.13em;color:#d6ff24;font-weight:800}.rmtcat-powered{font-size:11px;color:#b7beaa}.rmtcat-panel h3{font-size:clamp(28px,6vw,42px);line-height:1.1;margin:18px 0 10px;font-weight:850;letter-spacing:-.04em}.rmtcat-intro{color:#c1c8b7;font-size:14px;margin:0 0 22px}.rmtcat-tabs{display:flex;padding:4px;background:#080a06;border-radius:12px;margin-bottom:18px;gap:4px}.rmtcat-root button{font:inherit;border:1px solid #596344;border-radius:9px;min-height:44px;padding:9px 16px;cursor:pointer;color:#edf2e6;background:#252c20;font-weight:650}.rmtcat-tabs button{flex:1;border:0;background:transparent;font-size:14px}.rmtcat-tabs button[aria-pressed=true],.rmtcat-root button.rmtcat-confirm{color:#101500;background:#d6ff24}.rmtcat-root button:disabled{opacity:.45;cursor:not-allowed}.rmtcat-root :focus-visible{outline:3px solid #edff9c;outline-offset:3px}.rmtcat-wallet{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:18px}.rmtcat-wallet label{display:grid;gap:4px;font-size:11px;flex:1;min-width:0}.rmtcat-wallet select{font:inherit;font-size:13px;background:#11150d;color:#f3f8eb;border:1px solid #596344;border-radius:7px;min-height:44px;max-width:100%;padding:8px}.rmtcat-root .rmtcat-textbutton{font-size:12px;padding:5px 10px;border:0;background:none;text-decoration:underline}.rmtcat-amountlabel{font-size:13px;color:#c1c8b7;display:block;margin-bottom:6px}.rmtcat-amount{display:flex;align-items:center;gap:8px;border:1px solid #586447;background:#070a05;border-radius:12px;padding:12px 16px}.rmtcat-amount input{width:100%;min-width:0;font:700 28px/1.3 system-ui;color:#fff;background:none;border:0}.rmtcat-amount span{font-size:10px;letter-spacing:.06em;color:#c5d5aa}.rmtcat-presets{display:flex;gap:8px;margin-top:10px}.rmtcat-presets button{font-size:12px;padding:5px 12px;min-height:44px}.rmtcat-balances{font-size:12px;color:#b7beaa}.rmtcat-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}.rmtcat-actions button{flex:1;min-width:150px}.rmtcat-quote{padding:16px;background:#0a0d08;border-radius:12px;margin-top:18px}.rmtcat-quote dl{margin:0;display:grid;gap:8px;font-size:13px}.rmtcat-quote dl>div{display:flex;justify-content:space-between;gap:15px}.rmtcat-quote dt{color:#b7beaa}.rmtcat-quote dd{margin:0;text-align:right;overflow-wrap:anywhere}.rmtcat-quote p{font-size:11px;color:#c1c8b7;margin:12px 0 0}.rmtcat-status{font-size:13px;color:#d7dfcc;margin:16px 0}.rmtcat-error{font-size:13px;padding:12px;border:1px solid #b86b52;background:#27150f;border-radius:8px;color:#ffd8c9}.rmtcat-transaction{display:grid;gap:10px;padding:12px;border:1px solid #5b6d36;border-radius:9px;font-size:13px}.rmtcat-root a{color:#d6ff24;text-underline-offset:3px}.rmtcat-details{font-size:12px;color:#b7beaa;border-top:1px solid #39432c;margin-top:18px;padding-top:14px}.rmtcat-details summary{cursor:pointer;min-height:36px;display:list-item;line-height:28px;color:#d7dfcc}.rmtcat-contract{font-size:10px;overflow-wrap:anywhere;display:block;margin-top:12px}.rmtcat-root .rmtcat-paused{padding:18px;background:#0a0d08;border-radius:12px;color:#d6ff24;font-size:14px}
+/* Wallet identity and controls own separate rows, including unverified sessions. */
+.rmtcat-root{min-width:0}
+.rmtcat-panel{min-width:0}
+.rmtcat-top{align-items:baseline}
+.rmtcat-wallet{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:stretch;margin:20px 0 14px}
+.rmtcat-wallet .rmtcat-wallet-choice{display:grid;gap:6px;min-width:0;font-size:13px;line-height:1.5}
+.rmtcat-wallet select{width:100%;min-width:0;max-width:100%;font-size:14px;min-height:48px}
+.rmtcat-wallet-identity{display:grid;grid-template-columns:minmax(0,1fr);gap:3px;min-width:0}
+.rmtcat-wallet-caption{font-size:12px;color:#b7beaa}
+.rmtcat-wallet-address{font:600 15px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:nowrap;max-width:100%}
+.rmtcat-wallet-name{font-size:13px;line-height:1.5;color:#c1c8b7;overflow-wrap:anywhere;min-width:0}
+.rmtcat-wallet-actions{display:flex;flex-wrap:wrap;gap:8px;min-width:0}
+.rmtcat-wallet-actions>button{flex:1 1 180px;min-width:0;max-width:100%;min-height:48px;white-space:normal;overflow-wrap:anywhere}
+.rmtcat-root .rmtcat-textbutton{min-height:48px;font-size:13px;padding:10px 12px}
+.rmtcat-balances{font-size:13px;line-height:1.6;overflow-wrap:anywhere}
+.rmtcat-amount{min-width:0;padding:12px 14px;min-height:62px}
+.rmtcat-amount input{font-size:clamp(24px,6vw,28px);line-height:1.35}
+.rmtcat-presets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.rmtcat-presets button{min-width:0;padding:8px 5px;min-height:44px}
+.rmtcat-actions{display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+.rmtcat-actions button{width:100%;min-width:0;min-height:50px;white-space:normal;line-height:1.4}
+.rmtcat-quote{padding:14px;min-width:0}
+.rmtcat-quote dl>div{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:12px;align-items:start;line-height:1.5}
+.rmtcat-quote dt,.rmtcat-quote dd{min-width:0;overflow-wrap:anywhere}
+.rmtcat-quote p{font-size:12px;line-height:1.6}
+.rmtcat-status{line-height:1.6;overflow-wrap:anywhere}
+.rmtcat-status:empty{display:none}
+.rmtcat-error{line-height:1.6;overflow-wrap:anywhere}
+.rmtcat-transaction{min-width:0;line-height:1.6}
+.rmtcat-transaction label{display:grid;gap:6px;min-width:0}
+.rmtcat-transaction input{width:100%;min-width:0;max-width:100%;min-height:48px;padding:10px;font:inherit;background:#080b07;color:#f2f4e9;border:1px solid #596344;border-radius:8px}
+.rmtcat-transaction a{overflow-wrap:anywhere;min-height:44px;display:flex;align-items:center}
+.rmtcat-transaction button{min-width:0;min-height:48px;white-space:normal}
+.rmtcat-details{font-size:13px;line-height:1.6}
+.rmtcat-details summary{min-height:44px;line-height:1.5;padding:10px 0}
+.rmtcat-contract{font-size:11px;line-height:1.6;min-height:44px;padding:10px 0}
+@media(max-width:430px){.rmtcat-wallet-actions>button{flex-basis:100%}.rmtcat-panel{padding:20px}.rmtcat-terms{padding:14px}.rmtcat-quote dl>div{gap:10px}}
 `;
 export function mountCannaCatPanel(element: HTMLElement, config: CannaCatPanelConfig) {
   if (window.location.protocol !== "https:" && window.location.hostname !== "localhost") throw new Error("HTTPS is required for the CannaCat panel.");
