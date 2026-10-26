@@ -6,6 +6,7 @@ import { execFileSync } from "node:child_process";
 import { chromium, expect } from "playwright/test";
 import { createVNextZeroXProviderNativeFee } from "../../apps/web/lib/vnext/zero-x-settlement";
 import { syntheticCannaCatBundle } from "./cannacat-firm-fixture";
+import { formatUnits } from "viem";
 async function main() {
 const root = execFileSync("git", ["rev-parse", "--show-toplevel"], { encoding: "utf8" }).trim();
 const output = path.join(root, "cannacat-browser-evidence");
@@ -188,6 +189,18 @@ try {
     await page.getByRole("status").filter({ hasText: "declined" }).waitFor();
     await expect(page.getByRole("button", { name: "Get live quote" })).toBeEnabled();
     check(await page.evaluate(() => (window.__CANNACAT_FIXTURE_WALLET_REQUESTS__ ?? []).length) === 2, "Synchronous wallet rejection safely unlocks the panel without resubmission");
+    await page.getByRole("button", { name: "Buy CannaCat", exact: true }).click();
+    await page.getByLabel("Minimum CannaCat to receive").fill("1");
+    await page.getByRole("button", { name: "Get live quote", exact: true }).click();
+    await page.getByRole("button", { name: "Confirm buy in wallet", exact: true }).waitFor();
+    const tiny = [...bundles.values()].at(-1)!;
+    const tinyReview = await page.getByLabel("Verified trade review").innerText();
+    check(tinyReview.includes(formatUnits(BigInt(tiny.evidence.inputAmountAtomic),18)+" ETH"), "Small buy shows the full exact ETH input, not an eight-decimal truncation");
+    check(tinyReview.includes(formatUnits(BigInt(tiny.evidence.providerNativeFee!.feeAmountAtomic),18)+" ETH"), "Sub-eight-decimal fees remain visible in exact wei precision");
+    check(BigInt(tiny.evidence.providerNativeFee!.feeAmountAtomic)>0n && BigInt(tiny.evidence.providerNativeFee!.feeAmountAtomic)<10000000000n, "Tiny nonzero fee fixture covers the former display threshold");
+    check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth), "Exact small amounts do not create horizontal overflow");
+    check(await page.evaluate(()=>(window.__CANNACAT_FIXTURE_WALLET_REQUESTS__??[]).length)===2, "Precision and quote preparation do not request another wallet action");
+    await page.screenshot({path:path.join(output,`${channel}-${width}-tiny-quote.png`),fullPage:true});
     results.push({ channel, width, checks: "PASS", scope: "Synthetic provider/wallet; real production bundle cold-load and real panel/SDK code", realTransactions: 0 });
     for (const walletClientType of ["metamask", "rabby"]) {
       await page.evaluate(() => localStorage.clear());

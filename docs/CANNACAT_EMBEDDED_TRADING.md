@@ -177,6 +177,21 @@ long wallet names wrap within their own area. Controls retain at least 44px touc
 targets, visible keyboard focus and the existing execution handlers. Connection
 readiness is shown once; operational and recovery messages stay separate.
 
+Trade-review input, output, fee and gas amounts retain all available 18-decimal
+precision, trimming only trailing zeroes. Small nonzero fees are not rounded to
+zero or hidden behind an eight-decimal display threshold. The balance overview
+may remain shortened; transaction amounts and the 25-bps fee policy are unchanged.
+
+The active server path is the provider-native implementation merged in
+[PR #554](https://github.com/LandoCrissian/robinhood-meme-terminal/pull/554),
+included in the reviewed Task115 base. It binds the authenticated official 0x
+response, exact wallet/chain/assets/input, returned minimum, allowance, fee
+request, immutable transaction and expiring HMAC commitment. Its regression
+suite explicitly preserves this boundary. Retained legacy runtime/route decoder
+tables are not an additional gate in that current path. Task117 does not add a
+runtime, change a provider or relax any existing execution check. Historical
+receipt/trace analysis is evidence review, never a new execution admission.
+
 The disposable Chrome/Edge harness covers 320, 375, 390, 430 and desktop widths,
 including an unauthenticated connected wallet, multiple connectors, long wallet
 names, buy review and sell approval. Before screenshots compile the exact pinned

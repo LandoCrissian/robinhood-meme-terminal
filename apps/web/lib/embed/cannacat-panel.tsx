@@ -30,7 +30,7 @@ type Ready = {
 };
 const client = createPublicClient({ chain: robinhoodChain, transport: http(CANNACAT_EMBED.rpc, { timeout: 12_000, retryCount: 0 }) });
 const short = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`;
-const units = (value: string | bigint, digits = 8) => {
+const units = (value: string | bigint, digits = 18) => {
   const exact = formatUnits(BigInt(value), 18);
   const [whole, fraction = ""] = exact.split(".");
   const tail = fraction.slice(0, digits).replace(/0+$/, "");
