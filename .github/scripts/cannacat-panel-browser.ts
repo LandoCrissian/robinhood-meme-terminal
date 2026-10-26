@@ -72,7 +72,10 @@ const saveSyntheticTransaction = (txHash: string, bundle: ReturnType<typeof synt
 const check = (condition: unknown, message: string) => { assert.ok(condition, message); checks += 1; };
 try {
   for (const width of [320, 375, 390, 430, 1440]) {
-    verified = false;
+    verified = false; approvalAlreadyGranted = false; settlementAvailable = false;
+    gasPrice = 1_000_000_000n; walletNonce = 0n; balance = 10n ** 18n;
+    balancesFail = false; usdPrice = '2000.00'; delayQuote = false; delayedQuote = null;
+    bundles.clear(); transactions.clear();
     const context = await browser.newContext({ viewport: { width, height: width < 768 ? 844 : 1000 } });
     const page = await context.newPage();
     await page.clock.install();
