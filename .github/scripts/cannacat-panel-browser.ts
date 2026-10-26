@@ -80,7 +80,8 @@ try {
           await route.fulfill({ headers, json: bundle }); return;
         }
         quoteCalls += 1;
-        const output = BigInt(input.inputAmountAtomic) * 10_000_000n;
+        const buying = input.inputAsset === "0x0000000000000000000000000000000000000000";
+        const output = buying ? BigInt(input.inputAmountAtomic) * 10_000_000n : BigInt(input.inputAmountAtomic) / 10_000_000n;
         const minimum = output * 99n / 100n;
         const fee = createVNextZeroXProviderNativeFee({ inputAsset: input.inputAsset, outputAsset: input.outputAsset, userGrossInputAtomic: input.inputAmountAtomic, recipient: input.recipient,
           expectedOutputAtomic: String(output), protectedOutputAtomic: String(minimum), authorizationState: "indicative",
