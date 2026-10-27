@@ -2,6 +2,7 @@
 import { performance } from 'node:perf_hooks';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { randomUUID } from 'node:crypto';
+import { createSharedZeroXFetch } from './shared-zero-x-quota.mts';
 
 export const config = {
   path: '/api/embed/cannacat/:operation',
@@ -13,15 +14,19 @@ const environmentKeys = [
   'NEXT_PUBLIC_PRIVY_APP_ID', 'PRIVY_VERIFICATION_KEY', 'NEXT_PUBLIC_RMT_NETWORK',
   'NEXT_PUBLIC_RMT_RPC_URL', 'RMT_RPC_URL', 'RMT_MAINNET_RPC_URL', 'ROBINHOOD_MAINNET_RPC_URL',
   'RMT_SETTLEMENT_TRACE_RPC_URL', 'RMT_ZEROX_API_KEY', 'RMT_ZEROX_ALLOWANCE_HOLDER',
+  'RMT_ZEROX_QUOTA_REDIS_URL', 'RMT_ZEROX_QUOTA_REDIS_TOKEN',
   'RMT_VNEXT_AUTHORIZATION_ENABLED', 'RMT_VNEXT_ZEROX_OBSERVATION_ENABLED',
   'RMT_VNEXT_ZEROX_FIRM_QUOTE_VERIFICATION_ENABLED', 'RMT_VNEXT_VERIFICATION_COMMITMENT_SECRET',
   'RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS', 'RMT_CANNACAT_EMBED_ENABLED', 'RMT_CANNACAT_EMBED_ORIGINS',
 ];
 let canonical: Promise<typeof import('./canonical.mts')> | undefined;
 let cold = true;
-type Observation = { requestId: string; operation: string; provider: Array<{status: number; kind: string; requestId?: string; retrySeconds?: number; resultCode?: string; liquidityAvailable?: boolean; balanceIssue?: boolean; simulationIncomplete?: boolean}> };
+type Observation = { requestId: string; operation: string; quota: Array<{decision:string;kind:string;atMs?:number;waitMs?:number}>; provider: Array<{status: number; kind: string; requestId?: string; retrySeconds?: number; resultCode?: string; liquidityAvailable?: boolean; balanceIssue?: boolean; simulationIncomplete?: boolean}> };
 const observation = new AsyncLocalStorage<Observation>();
 const originalFetch = globalThis.fetch;
+const quotaFetch = createSharedZeroXFetch(originalFetch, environment, event => {
+  const active=observation.getStore(); if(active && active.quota.length<24)active.quota.push(event);
+});
 // Inspect a bounded clone for enumerated diagnostics only. Never log bodies,
 // wallets, amounts, calldata, quote commitments, secrets or provider text.
 async function structuredResult(response: Response): Promise<Record<string, any> | null> {
@@ -37,12 +42,14 @@ const businessStates=new Set(['verified','approval_required','approval_simulatio
 // Hosting telemetry only. Do not serialize URLs, keys, accounts or provider bodies.
 globalThis.fetch = async (input, init) => {
   const active = observation.getStore();
-  if (!active) return originalFetch(input, init);
   const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url);
   if (url.hostname !== 'api.0x.org') return originalFetch(input, init);
+  if (!active) return quotaFetch(input, init);
   const kind = url.pathname.endsWith('/price') ? 'price' : url.pathname.endsWith('/quote') ? 'quote' : 'other';
   try {
-    const response = await originalFetch(input, init);
+    const response = await quotaFetch(input, init);
+    // Denials did not reach 0x and must not inflate upstream request counts.
+    if(response.headers.has('X-RMT-Quota-Decision'))return response;
     const rawId = response.headers.get('0x-request-id') ?? response.headers.get('x-request-id');
     const requestId = rawId && /^[A-Za-z0-9_-]{8,100}$/.test(rawId) ? rawId : undefined;
     const retry = Number(response.headers.get('retry-after'));
@@ -91,7 +98,7 @@ export default async function handler(request: Request, context: { requestId?: s
     return Response.json({ code: 'PILOT_PREVIEW_ONLY' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
   }
   const requestedOperation = context.params?.operation ?? '';
-  const active: Observation = {requestId: context.requestId ?? randomUUID(),operation:['quotes','verify','authorize','native-settlement-trace'].includes(requestedOperation)?requestedOperation:'unsupported',provider:[]};
+  const active: Observation = {requestId: context.requestId ?? randomUUID(),operation:['quotes','verify','authorize','native-settlement-trace'].includes(requestedOperation)?requestedOperation:'unsupported',quota:[],provider:[]};
   return observation.run(active, async () => {
    try {
     const values = environment();
@@ -112,6 +119,10 @@ export default async function handler(request: Request, context: { requestId?: s
     headers.set('X-RMT-Request-Id',active.requestId);
     headers.set('Access-Control-Expose-Headers','X-RMT-Request-Id,Retry-After');
     const limited = active.provider.find(x=>x.status===429);
+    const quotaLimited=active.quota.find(x=>x.decision==='limited');
+    const quotaUnavailable=active.quota.some(x=>x.decision==='unavailable');
+    if(quotaUnavailable)response=Response.json({code:'PROVIDER_UNAVAILABLE',stage:active.operation,retryable:true},{status:503});
+    if(quotaLimited){headers.set('Retry-After',String(Math.max(1,Math.ceil((quotaLimited.waitMs??1000)/1000))));response=Response.json({code:'RATE_LIMITED',stage:active.operation,retryable:true},{status:429});}
     if (limited && (!response.ok || active.operation === 'quotes')) {
       headers.set('Retry-After',String(limited.retrySeconds ?? 1));
       response = Response.json({code:'RATE_LIMITED',stage:active.operation,retryable:true}, {status:429});
@@ -122,7 +133,7 @@ export default async function handler(request: Request, context: { requestId?: s
     const businessStatus=typeof rawState==='string'&&businessStates.has(rawState)?rawState:undefined;
     console.info(JSON.stringify({event:'rmt_embed_request',requestId:active.requestId,operation:active.operation,
       status:response.status,...(resultCode?{resultCode}:{}),...(businessStatus?{businessStatus}:{}),providerRequests:active.provider.length,provider:active.provider,coldStart:wasCold,
-      durationMs:Math.round(performance.now()-started)}));
+      quota:active.quota,durationMs:Math.round(performance.now()-started)}));
     return new Response(response.body, { status: response.status, headers });
    } catch {
     // Never serialize provider URLs, environment values, identity tokens or errors.

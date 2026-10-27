@@ -9,6 +9,11 @@ jobs:
   api-artifact:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    services:
+      redis:
+        image: redis:7.4
+        ports: ['6379:6379']
+        options: --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -43,6 +48,10 @@ jobs:
           node .github/task120-pilot/build.mjs
       - name: Adapter authentication and preview isolation tests
         run: node .github/task120-pilot/adapter-test.mjs
+      - name: Atomic application-wide quota across independent workers
+        run: |
+          command -v redis-cli || (sudo apt-get update -qq && sudo apt-get install -y redis-tools)
+          node --experimental-strip-types .github/task120-pilot/quota-acceptance.mts
       - name: Package with Netlify's official Functions library
         env:
           TASK120_PACKAGER: ${{ runner.temp }}/task120-netlify-packager
