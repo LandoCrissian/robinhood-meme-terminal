@@ -85,11 +85,12 @@ function assertPreparedTarget(quote: CannaCatQuote, evidence: VNextPreSignEviden
 const providerBackoffByTransport = new WeakMap<typeof fetch, Map<string, number>>();
 
 export function createCannaCatClient(options: {
-  baseUrl: string; identityToken: string; fetch?: typeof fetch; now?: () => number;
+  baseUrl: string; identityToken?: string; session?: { csrfToken: string }; fetch?: typeof fetch; now?: () => number;
 }) {
   const base = new URL(options.baseUrl);
   if (base.protocol !== "https:" || base.username || base.password || base.search || base.hash
-    || base.pathname !== "/api/embed/cannacat" || !options.identityToken || options.identityToken.length > 16_384) {
+    || (options.session ? base.pathname !== "/api/rmt/cannacat" || !/^[a-f0-9]{64}$/.test(options.session.csrfToken)
+      : base.pathname !== "/api/embed/cannacat" || !options.identityToken || options.identityToken.length > 16_384)) {
     throw new CannaCatClientError("INVALID_CLIENT_CONFIGURATION", "Secure CannaCat trading is not configured.");
   }
   const now = options.now ?? Date.now;
@@ -119,8 +120,8 @@ export function createCannaCatClient(options: {
     }
     let response: Response;
     try { response = await fetcher(`${base.href}/${operation}`, {
-      method: "POST", credentials: "omit", cache: "no-store", redirect: "error",
-      headers: { "content-type": "application/json", "privy-id-token": options.identityToken, "x-rmt-client": CANNACAT_EMBED.version },
+      method: "POST", credentials: options.session ? "same-origin" : "omit", cache: "no-store", redirect: "error",
+      headers: { "content-type": "application/json", ...(options.session ? { "x-rmt-csrf": options.session.csrfToken } : { "privy-id-token": options.identityToken! }), "x-rmt-client": CANNACAT_EMBED.version },
       body: JSON.stringify(body), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(30_000)]) : AbortSignal.timeout(30_000)
     }); } catch (cause) {
       if (signal?.aborted) throw cause;

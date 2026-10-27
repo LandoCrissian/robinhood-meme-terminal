@@ -92,3 +92,6 @@ export async function verifyActiveV6LaunchIdentity(params: { launchId: bigint; t
   if (!sameAddress(launch.token, params.token)) throw new Error("This token is not the requested active V6 launch.");
   return launch;
 }
+
+/** Legacy terminal compatibility; the isolated wallet-session build substitutes this auth module. */
+export async function tradeSessionBinding(request: Request) { return identityToken(request); }

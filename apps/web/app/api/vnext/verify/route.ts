@@ -4,7 +4,7 @@ import { ZeroXRepriceRequiredError } from "../../../../lib/server/vnext-zero-x-f
 import { randomBytes, randomUUID } from "node:crypto";
 import { getAddress, isAddress } from "viem";
 import { z } from "zod";
-import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
+import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse, tradeSessionBinding } from "../../../../lib/server/rmt-trade-identity";
 import { stockTokenExecutionPolicyErrorResponse } from "../../../../lib/server/robinhood-stock-token-registry";
 import { verifyRobinhoodVNextExecution } from "../../../../lib/server/vnext-execution-engine";
 import { VNEXT_DIRECT_NO_RMT_FEE, VNEXT_PROVIDER_NATIVE_INPUT_FEE, VNEXT_V2_ATOMIC_INPUT_FEE } from "../../../../lib/vnext/execution-settlement";
@@ -140,7 +140,7 @@ async function handleRequest(request: Request) {
     if (evidence.provider === "zero-x-swap" && (evidence.status === "verified" || evidence.status === "approval_required")) {
       responseEvidence.zeroXFirmQuoteCommitment = createZeroXFirmQuoteCommitment(evidence, {
         identityId: tradeAuthorization.identityId,
-        sessionToken: request.headers.get("privy-id-token") ?? "",
+        sessionToken: await tradeSessionBinding(request),
         wallet: recipient, quoteRequestId: parsed.data.quoteRequestId, verificationId
       }, Date.now());
     }

@@ -3,7 +3,7 @@ import { verifyZeroXFirmQuoteCommitment, ZeroXFirmQuoteCommitmentError } from ".
 import { emitTradeJourney } from "../../../../lib/vnext/trade-journey";
 import { randomUUID } from "node:crypto";
 import { getAddress, type Hex } from "viem";
-import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse } from "../../../../lib/server/rmt-trade-identity";
+import { requireAuthenticatedTradeWallet, tradeIdentityErrorResponse, tradeSessionBinding } from "../../../../lib/server/rmt-trade-identity";
 import { stockTokenExecutionPolicyErrorResponse } from "../../../../lib/server/robinhood-stock-token-registry";
 import { prepareRobinhoodVNextAuthorization } from "../../../../lib/server/vnext-execution-engine";
 import { authorizationPayloadHash, type VNextAuthorizationPlan } from "../../../../lib/vnext/authorization-plan";
@@ -119,7 +119,7 @@ async function handleRequest(request: Request) {
     const authorizationWallClockMs = Date.now();
     const zeroXFirmQuoteContext = {
       identityId: tradeAuthorization.identityId,
-      sessionToken: request.headers.get("privy-id-token") ?? "",
+      sessionToken: await tradeSessionBinding(request),
       wallet: recipient, quoteRequestId: parsed.data.quoteRequestId, verificationId: parsed.data.verificationId
     };
     const zeroXEvidence = parsed.data.provider === "zero-x-swap"

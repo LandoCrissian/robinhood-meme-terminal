@@ -1,0 +1,57 @@
+name: Task125 isolated RabbyKit wallet migration
+on:
+  push:
+    branches: [codex/task125-rabbykit-auth]
+permissions:
+  contents: read
+jobs:
+  authentication-and-artifacts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      redis:
+        image: redis:7.4
+        ports: ['6379:6379']
+        options: --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
+        with:
+          version: 10.12.1
+      - run: pnpm install --frozen-lockfile
+      - name: Isolated authentication types
+        working-directory: apps/web
+        run: pnpm exec tsc --noEmit --module esnext --moduleResolution bundler --target es2022 --lib es2022,dom --types node --skipLibCheck --strict --esModuleInterop --resolveJsonModule --jsx react-jsx lib/server/wallet-session.ts lib/server/wallet-session-identity.ts lib/embed/cannacat-panel.tsx
+      - name: Redis-backed nonce, session, CSRF and replay acceptance
+        run: |
+          command -v redis-cli || (sudo apt-get update -qq && sudo apt-get install -y redis-tools)
+          pnpm --filter web exec tsx ../../.github/task125-pilot/auth-test.ts
+      - name: Preserved execution security and settlement regressions
+        working-directory: apps/web
+        run: |
+          pnpm exec tsx lib/vnext/zero-x-firm-quote-commitment-smoke.ts
+          pnpm exec tsx lib/vnext/zero-x-firm-quote-verifier-smoke.ts
+          pnpm exec tsx lib/vnext/execution-recovery-smoke.ts
+          pnpm exec tsx lib/server/historical-settlement-trace-smoke.ts
+          pnpm exec tsx lib/embed/cannacat-observation-smoke.ts
+      - name: Build actual API and RabbyKit SDK, prove execution preservation and Privy exclusion
+        run: node .github/task125-pilot/build.mjs
+      - name: Official Netlify function packaging
+        env:
+          TASK125_PACKAGER: ${{ runner.temp }}/task125-packager
+        run: |
+          npm install --prefix "$TASK125_PACKAGER" @netlify/zip-it-and-ship-it@16.5.1
+          node .github/task125-pilot/package.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: task125-wallet-${{ github.sha }}
+          path: task125-artifact/
+          if-no-files-found: warn
+          retention-days: 14
