@@ -17,6 +17,8 @@ declare global { interface Window {
   __CANNACAT_FIXTURE_ATTACH_SECOND__?: boolean;
   __CANNACAT_FIXTURE_CHAIN_SWITCHES__?: number; __CANNACAT_FIXTURE_AUTH_REQUESTS__?: number;
   __CANNACAT_FIXTURE_LOGIN_REQUESTS__?: number;
+  __CANNACAT_FIXTURE_BOOT__?: Partial<State>;
+  __CANNACAT_FIXTURE_LOGOUT_REJECT__?: boolean;
   __CANNACAT_FIXTURE_UPDATE__?: (next: Partial<State>, event?: "chainChanged" | "accountsChanged" | "disconnect") => void;
 } }
 function patch(next: Partial<State>) {
@@ -53,12 +55,18 @@ function wallet() {
 export function PrivyProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     window.__CANNACAT_FIXTURE_UPDATE__ = (next, event) => { patch(next); if (event) providerListeners.get(event)?.forEach(listener => listener()); };
+    // Disposable acceptance driver models the SDK returning a session after a
+    // document reload. This is excluded from every delivered browser bundle.
+    if (window.__CANNACAT_FIXTURE_BOOT__) patch(window.__CANNACAT_FIXTURE_BOOT__);
     return () => { delete window.__CANNACAT_FIXTURE_UPDATE__; };
   }, []);
   return <>{children}</>;
 }
 export function usePrivy() { const current = useState(); return { ready: true, authenticated: current.authenticated,
-  user: current.authenticated ? { id: "synthetic-user" } : undefined, logout: async () => patch({ connected: false, authenticated: false }) }; }
+  user: current.authenticated ? { id: "synthetic-user" } : undefined, logout: async () => {
+    if (window.__CANNACAT_FIXTURE_LOGOUT_REJECT__) throw new Error('Synthetic logout unavailable');
+    patch({ connected: false, authenticated: false });
+  } }; }
 export function useWallets() { const current = useState(); const primary = wallet(); return { ready: true,
   wallets: current.connected ? (current.walletCount > 1 ? [primary, { ...primary, walletClientType: "rabby", meta: { id: "synthetic-second", name: "Test second wallet" } }] : [primary]) : [] }; }
 export function useIdentityToken() { const current = useState(); return { identityToken: current.authenticated ? current.identityToken ?? "synthetic-identity-only" : null }; }
