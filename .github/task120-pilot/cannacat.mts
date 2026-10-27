@@ -25,8 +25,9 @@ const originalFetch = globalThis.fetch;
 // Hosting telemetry only. Do not serialize URLs, keys, accounts or provider bodies.
 globalThis.fetch = async (input, init) => {
   const active = observation.getStore();
+  if (!active) return originalFetch(input, init);
   const url = new URL(typeof input === 'string' || input instanceof URL ? input : input.url);
-  if (!active || url.hostname !== 'api.0x.org') return originalFetch(input, init);
+  if (url.hostname !== 'api.0x.org') return originalFetch(input, init);
   const kind = url.pathname.endsWith('/price') ? 'price' : url.pathname.endsWith('/quote') ? 'quote' : 'other';
   try {
     const response = await originalFetch(input, init);
@@ -41,7 +42,7 @@ globalThis.fetch = async (input, init) => {
   }
 };
 
-function environment() {
+function environment(): Record<string,string|undefined> {
   const netlify = (globalThis as any).Netlify;
   return Object.fromEntries(environmentKeys.map(key => [key, netlify?.env?.get?.(key) ?? process.env[key]]));
 }
@@ -94,7 +95,7 @@ export default async function handler(request: Request, context: { requestId?: s
     headers.set('X-RMT-Request-Id',active.requestId);
     headers.set('Access-Control-Expose-Headers','X-RMT-Request-Id,Retry-After');
     const limited = active.provider.find(x=>x.status===429);
-    if (limited && !response.ok || limited && active.operation === 'quotes') {
+    if (limited && (!response.ok || active.operation === 'quotes')) {
       headers.set('Retry-After',String(limited.retrySeconds ?? 1));
       response = Response.json({code:'RATE_LIMITED',stage:active.operation,retryable:true}, {status:429});
     }
