@@ -129,7 +129,7 @@ for (const width of [320, 375, 390, 430, 1440]) {
   await page.goto(origin); check(errors.length === 0, errors.join('; '));
   await page.getByRole('button', { name: 'I understand — continue', exact: true }).click();
   await page.getByRole('button', { name: 'Connect wallet', exact: true }).click();
-  await page.getByText('Rabby', { exact: true }).click();
+  await page.getByText('Rabby Wallet', { exact: true }).click();
   await expect(page.getByRole('button', { name: 'Disconnect', exact: true })).toBeVisible();
   await expect.poll(() => page.locator('[data-wallet-status]').getAttribute('data-wallet-status')).toBe('ready');
   await expect(page.getByRole('button', { name: 'Verify wallet ownership', exact: true })).toHaveCount(0);

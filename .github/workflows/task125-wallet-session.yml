@@ -42,6 +42,8 @@ jobs:
           pnpm exec tsx lib/embed/cannacat-observation-smoke.ts
       - name: Build actual API and RabbyKit SDK, prove execution preservation and Privy exclusion
         run: node .github/task125-pilot/build.mjs
+      - name: Audit dependencies actually emitted in the API and browser artifacts
+        run: node .github/task125-pilot/dependency-audit.mjs
       - name: Official Netlify function packaging
         env:
           TASK125_PACKAGER: ${{ runner.temp }}/task125-packager
