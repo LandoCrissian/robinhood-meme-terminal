@@ -6,6 +6,7 @@ import { numberToHex, verifyMessage } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { handleWalletAuth, requireWalletSession, walletSessionBinding, type RedisCommand } from './wallet-session';
 
+async function main() {
 // Dedicated disposable CI Redis only. Never target an owner database or a remote URL.
 assert.equal(process.env.GITHUB_ACTIONS, 'true', 'Run this suite in disposable CI');
 const command: RedisCommand = async args => JSON.parse(execFileSync('redis-cli', ['--json', '-h', '127.0.0.1', '-p', '6379', ...args.map(String)], { encoding: 'utf8' }));
@@ -92,7 +93,10 @@ pass((await handleWalletAuth(request({}, jar, undefined, 'https://evil.invalid')
 pass((await handleWalletAuth(new Request('https://api.invalid'), 'session', deps)).status === 403, 'Simple cross-site and GET requests rejected');
 pass((await handleWalletAuth(request({ wallet: alice.address, purpose: 'admin' }), 'challenge', deps)).status === 400, 'No Genesis/admin authorization escalation');
 await command(['FLUSHDB']);
-mkdirSync('task125-artifact', { recursive: true });
-writeFileSync('task125-artifact/AUTH_TESTS.json', JSON.stringify({ result: 'PASS', checks, atomicRedis: true, walletSignatures: 'disposable synthetic accounts only',
+mkdirSync('../../task125-artifact', { recursive: true });
+writeFileSync('../../task125-artifact/AUTH_TESTS.json', JSON.stringify({ result: 'PASS', checks, atomicRedis: true, walletSignatures: 'disposable synthetic accounts only',
   ownerSignatures: 0, fundedTrades: 0, eoaVerification: true, erc1271: 'public-client verifier integration requires separate test', provider: 'self-hosted-siwe' }, null, 2));
 console.log(JSON.stringify({ result: 'PASS', checks, atomicRedis: true }));
+
+}
+main().catch(error => { console.error(error); process.exitCode = 1; });
