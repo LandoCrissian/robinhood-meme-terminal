@@ -134,7 +134,11 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
   const [quoteMessage, setQuoteMessage] = useState("");
   const indicativeRead = useRef<AbortController | null>(null);
   const indicativeNotBefore = useRef(0);
-  const [now, setNow] = useState(Date.now());
+  // The heartbeat requests a render; freshness uses the actual render clock.
+  // A newly received sample must not be compared with an older UI tick, which
+  // briefly replaced current prices/balances with unavailable/loading copy.
+  const [, setNow] = useState(() => Date.now());
+  const now = Date.now();
   const [hash, setHash] = useState("");
   const [displayRecord, setDisplayRecord] = useState<VNextExecutionRecord | null>(null);
   const [recoveryHash, setRecoveryHash] = useState("");
