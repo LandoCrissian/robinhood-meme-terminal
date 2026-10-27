@@ -16,7 +16,31 @@
     "sha256": "7ed1e6d47a4445a97caabe139a9226fb34980c3758eb05984af3854f4856c108"
   },
   {
+    "path": "apps/web/lib/server/historical-settlement-trace-smoke.ts",
+    "sha256": "2f8e58cc35f9646ea9485e63e6adbd88a7584b9286e0885bd4c9f6916edac442"
+  },
+  {
+    "path": "apps/web/lib/server/historical-settlement-trace.ts",
+    "sha256": "fcded844130689ee0be7b4a75c2a094f6c89804dadbf27dfc7861dec545887d7"
+  },
+  {
+    "path": "apps/web/lib/server/settlement-trace-archive/4663/0x2250b738ddd8ce5cb411372e5d4d8d2a2945979acdedc3d165d9cd02a89ff3bc.json",
+    "sha256": "396fa63c667c970ec0e600fd6ec707ca23f0fec1d444d2c119d1912bc5aa9d79"
+  },
+  {
+    "path": "apps/web/lib/server/settlement-trace-archive/4663/0x2250b738ddd8ce5cb411372e5d4d8d2a2945979acdedc3d165d9cd02a89ff3bc.provenance.json",
+    "sha256": "a7f71dd921eb1f57dfe53d2ad14de70dfc75e6d536b0cd4ad1f96cee5efb9f68"
+  },
+  {
     "path": "apps/web/lib/testing/cannacat-privy-fixture.tsx",
     "sha256": "7a3f87106e62f0dbb0badcb23a5043bbef64363dc538db79f81d56594452be93"
+  },
+  {
+    "path": "apps/web/lib/testing/october27-cannacat-sale.json",
+    "sha256": "dafc9beb7c41cffd8ee7df8252aec6b99516b64509ee2303ed79edde734cec31"
+  },
+  {
+    "path": "apps/web/lib/testing/october27-cannacat-sale.ts",
+    "sha256": "926ef3b51a0df76d74554a1c6014ddb15a5b8d90e644842da5260869df4fc51b"
   }
 ]

@@ -17,10 +17,10 @@ for (const [member, expected] of Object.entries(frozenTrees)) {
   const actual = execFileSync('git', ['rev-parse', `HEAD:${member}`], { cwd: repo, encoding: 'utf8' }).trim();
   assert.equal(actual, expected, `Frozen source tree/blob changed: ${member}`);
 }
-const approvedClient = JSON.parse(fs.readFileSync(path.join(control, 'REVIEWED_CLIENT_INPUTS.json')));
+const approvedInputs = JSON.parse(fs.readFileSync(path.join(control, 'REVIEWED_CLIENT_INPUTS.json')));
 const delta = execFileSync('git', ['diff', '--name-only', frozen, 'HEAD', '--', 'apps/web', 'packages', 'pnpm-lock.yaml', 'package.json'], {cwd:repo,encoding:'utf8'}).trim().split('\n').filter(Boolean).sort();
-assert.deepEqual(delta, approvedClient.map(x=>x.path).sort(), 'Unexpected execution or application changes');
-for(const member of approvedClient) assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(repo,member.path))).digest('hex'),member.sha256,'Reviewed client input changed');
+assert.deepEqual(delta, approvedInputs.map(x=>x.path).sort(), 'Unexpected execution or application changes');
+for(const member of approvedInputs) assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(repo,member.path))).digest('hex'),member.sha256,'Reviewed input changed');
 const modified = execFileSync('git', ['diff', '--name-only', 'HEAD', '--', 'apps/web', 'packages', 'pnpm-lock.yaml', 'package.json'], {cwd:repo,encoding:'utf8'}).trim();
 assert.equal(modified,'','Uncommitted application changes');
 const requireWeb = createRequire(path.join(repo, 'apps/web/package.json'));
@@ -46,14 +46,15 @@ const repeated = await build({
 return repeated.outputFiles[0].contents;
 }
 const compiledSha256 = crypto.createHash('sha256').update(fs.readFileSync(path.join(out, 'source-functions/cannacat.mjs'))).digest('hex');
-// Canonical server sources remain byte-identical to 5ee50aa; the reviewed hosting adapter changed.
+// Execution/authentication/fee handlers stay frozen; only explicitly hash-reviewed historical evidence recovery may differ.
 const replay = await buildReplay();
 assert.equal(crypto.createHash('sha256').update(replay).digest('hex'), compiledSha256, 'New hosting artifact must replay exactly');
 const inputs = Object.keys(result.metafile.inputs);
 assert(!inputs.some(x => /(?:^|\/)node_modules\/(?:next|firebase|firebase-admin|react)(?:\/|$)/.test(x)), 'Full terminal/runtime dependency entered the API bundle');
 assert(inputs.some(x => x.endsWith('cannacat-embed-boundary.ts')));
 for (const operation of ['quotes', 'verify', 'authorize', 'native-settlement-trace']) assert(inputs.some(x => x.endsWith(`/api/vnext/${operation}/route.ts`)));
-assert(inputs.some(x => x.includes('settlement-trace-archive/4663/') && x.endsWith('a522.json')), 'Historical recovery evidence missing');
+assert(inputs.some(x => x.includes('settlement-trace-archive/4663/') && x.endsWith('a522.json')), 'Original historical recovery evidence missing');
+assert(inputs.some(x => x.includes('settlement-trace-archive/4663/') && x.endsWith('ff3bc.json')), 'Owner-identified historical recovery evidence missing');
 const sourceMembers = inputs.filter(x => !x.includes('node_modules')).sort().map(file => ({ path: file, sha256: crypto.createHash('sha256').update(fs.readFileSync(path.resolve(repo, file))).digest('hex') }));
 const report = { frozenSource: frozen, adapterCommit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' }).trim(), node: process.version, sourceMembers, inputModules: inputs.length, databaseRequired: false, nextServerRequired: false, walletSignatures: 0, fundedTrades: 0 };
 fs.writeFileSync(path.join(out, 'BUILD_EVIDENCE.json'), JSON.stringify(report, null, 2) + '\n');

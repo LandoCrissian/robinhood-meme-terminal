@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "chainId": 4663,
+  "txHash": "0x2250b738ddd8ce5cb411372e5d4d8d2a2945979acdedc3d165d9cd02a89ff3bc",
+  "blockHash": "0xada1b87f59dc40edff1b90f69e69195e4f17d59f1b984b2d8576393738532502",
+  "blockNumber": "99230356",
+  "source": "https://robinhoodchain.blockscout.com/tx/0x2250b738ddd8ce5cb411372e5d4d8d2a2945979acdedc3d165d9cd02a89ff3bc?tab=raw_trace",
+  "captureMethod": "Read complete JSON in public Raw trace panel; JSON.stringify; lossless gzip transport; no field synthesis",
+  "canonicalTraceSha256": "6b0dfd740e7aa2f398659a851978f29137b492759316c507bc61181240adf0e7",
+  "canonicalBytes": 21494,
+  "originalHttpResponseBytesVerified": false,
+  "notAnAuthorization": true,
+  "receivedWei": "143561490640",
+  "nodeCount": 28,
+  "reverifiedAt": "2026-10-27T14:02:34.551Z",
+  "classification": "HISTORICAL_FULL_TRACE_EVIDENCE_ONLY"
+}
