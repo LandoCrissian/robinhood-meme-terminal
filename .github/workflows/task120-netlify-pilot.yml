@@ -21,6 +21,9 @@ jobs:
         with:
           version: 10.12.1
       - run: pnpm install --frozen-lockfile
+      - name: Typecheck the isolated Node hosting adapter
+        working-directory: apps/web
+        run: pnpm exec tsc --noEmit --allowImportingTsExtensions --module esnext --moduleResolution bundler --target es2022 --lib es2022,dom --types node --skipLibCheck --strict --esModuleInterop --resolveJsonModule --jsx preserve ../../.github/task120-pilot/cannacat.mts
       - name: Unchanged focused execution and recovery regressions
         working-directory: apps/web
         run: |
