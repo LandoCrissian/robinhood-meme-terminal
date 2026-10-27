@@ -1,7 +1,7 @@
 [
   {
     "path": "apps/web/instrumentation.ts",
-    "sha256": "f71ced897222a090fc673e902d762ada07fb8faf29676c21dea2593804a9e931"
+    "sha256": "a832bd69f74d6d71432de64175c965dca44369aaa2354537bd56a943f4d0df09"
   },
   {
     "path": "apps/web/lib/embed/cannacat-client.ts",
