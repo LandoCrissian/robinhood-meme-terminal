@@ -33,8 +33,12 @@ jobs:
         run: node .github/task120-pilot/build.mjs
       - name: Adapter authentication and preview isolation tests
         run: node .github/task120-pilot/adapter-test.mjs
-      - name: Package with the official Netlify CLI
-        run: npx --yes netlify-cli@27.14.2 functions:build --filter web --src "$GITHUB_WORKSPACE/task120-artifact/source-functions" --functions "$GITHUB_WORKSPACE/task120-artifact/functions"
+      - name: Package with Netlify's official Functions library
+        env:
+          TASK120_PACKAGER: ${{ runner.temp }}/task120-netlify-packager
+        run: |
+          npm install --prefix "$TASK120_PACKAGER" @netlify/zip-it-and-ship-it@16.5.1
+          node .github/task120-pilot/package.mjs
       - name: Hash every deployable member
         run: node .github/task120-pilot/seal.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
