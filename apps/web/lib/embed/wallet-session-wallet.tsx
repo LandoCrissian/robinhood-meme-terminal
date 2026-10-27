@@ -93,6 +93,7 @@ export class WalletSessionController {
   };
   private async post(operation: string, input: object = {}, csrf?: string) {
     const response = await fetch(`${this.apiBaseUrl}/auth-${operation}`, { method: 'POST', credentials: 'same-origin',
+      keepalive: operation === 'logout',
       cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(15000),
       headers: { 'content-type': 'application/json', 'x-rmt-client': VERSION, ...(csrf ? { 'x-rmt-csrf': csrf } : {}) }, body: JSON.stringify(input) });
     const value = await response.json();

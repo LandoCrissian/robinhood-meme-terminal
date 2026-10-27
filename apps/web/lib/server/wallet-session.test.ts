@@ -106,7 +106,6 @@ if (raceVerify.ok) {
   await assert.rejects(requireWalletSession(request({}, raceJar, result.csrfToken), bob.address, deps));
 }
 pass(true, 'Logout racing sign-in cannot leave an authenticated session');
-const expired = await signed(bob, new Map());
 const expiredJar = new Map<string, string>();
 const expChallenge = await challenge(bob, expiredJar);
 const expSignature = await bob.signMessage({ message: expChallenge.message });

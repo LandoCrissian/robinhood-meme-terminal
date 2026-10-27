@@ -42,7 +42,8 @@ const client = await build({ entryPoints: { 'cannacat-panel': 'apps/web/lib/embe
 assert(!Object.keys(client.metafile.inputs).some(x => /@privy-io|privy-identity/.test(x)), 'Privy entered browser artifact');
 assert(Object.keys(client.metafile.inputs).some(x => x.includes('@rabby-wallet/rabbykit')), 'Official RabbyKit missing');
 const commit = git('rev-parse', 'HEAD');
-const sourceMembers = Object.keys(client.metafile.inputs).filter(x => !x.includes('node_modules')).map(file => ({ path: file, sha256: sha(fs.readFileSync(file)) }));
+const sourceMembers = [...Object.keys(client.metafile.inputs).filter(x => !x.includes('node_modules') && !x.startsWith('<')), '.github/task125-pilot/build.mjs']
+  .map(file => ({ path: file, sha256: sha(fs.readFileSync(file)) }));
 const outputs = Object.keys(client.metafile.outputs).map(file => ({ path: path.relative(sdkDir, file).replaceAll('\\', '/'), bytes: fs.statSync(file).size, sha256: sha(fs.readFileSync(file)) }));
 fs.writeFileSync(path.join(sdkDir, 'manifest.json'), JSON.stringify({ schema: 1, repository: 'LandoCrissian/robinhood-meme-terminal',
   commit, version: 'rmt-cannacat-embed-v1', fixtureOnly: false, sourceMembers, outputs }, null, 2));
