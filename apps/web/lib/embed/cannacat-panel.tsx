@@ -66,6 +66,20 @@ const safeError = (cause: unknown) => cause instanceof Error ? cause.message.sli
 const isUserRejection = (cause: unknown) => Boolean(cause && typeof cause === "object" && "code" in cause && cause.code === 4001);
 const explorer = (hash: string) => `${robinhoodChain.blockExplorers.default.url}/tx/${hash}`;
 
+const WALLET_RETURN_KEY = "rmt:cannacat:wallet-return:1";
+type WalletReturnPreference = { version: 1; userDisconnected: boolean; address: string | null };
+function readWalletReturnPreference(): WalletReturnPreference {
+  const empty: WalletReturnPreference = { version: 1, userDisconnected: false, address: null };
+  try {
+    const raw = localStorage.getItem(WALLET_RETURN_KEY);
+    if (!raw || raw.length > 256) return empty;
+    const saved = JSON.parse(raw);
+    if (saved?.version !== 1 || typeof saved.userDisconnected !== "boolean"
+      || saved.address !== null && (typeof saved.address !== "string" || !/^0x[0-9a-f]{40}$/i.test(saved.address))) return empty;
+    return { version: 1, userDisconnected: saved.userDisconnected, address: saved.address };
+  } catch { return empty; }
+}
+
 async function readWalletFunds(key: string, wallet: string): Promise<CannaCatFunds> {
   const checkedAtMs = Date.now();
   const address = getAddress(wallet);
@@ -115,10 +129,14 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
   const { ready, authenticated, user, logout } = usePrivy();
   const { wallets, ready: walletsReady } = useWallets();
   const { identityToken } = useIdentityToken();
+  // Public display preference only. Privy owns authentication and session
+  // renewal; a remembered address never selects or verifies a signing wallet.
+  const [walletReturn, setWalletReturn] = useState(readWalletReturnPreference);
+  const walletReturnRef = useRef(walletReturn);
   const [selectedKey, setSelectedKey] = useState("");
   const [walletState, setWalletState] = useState<ConnectedWalletRead>(uncheckedConnectedWallet);
   const walletStateRef = useRef<ConnectedWalletRead>(uncheckedConnectedWallet);
-  const explicitChoiceRequired = useRef(false);
+  const explicitChoiceRequired = useRef(walletReturn.userDisconnected);
   const refreshWallet = useRef<(() => Promise<void>) | null>(null);
   const [side, setSide] = useState<CannaCatSide>("buy");
   const [amount, setAmount] = useState("10000");
@@ -173,6 +191,14 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
   const walletInventoryKey = JSON.stringify(wallets.filter((value) => value.type === "ethereum").map(walletGatewayKey).sort());
   const inputId = useId();
   const connected = Boolean(ready && walletsReady && authenticated && identityToken && wallet?.linked);
+
+  function rememberWalletReturn(next: WalletReturnPreference) {
+    const previous = walletReturnRef.current;
+    if (previous.userDisconnected === next.userDisconnected && previous.address === next.address) return;
+    walletReturnRef.current = next; setWalletReturn(next);
+    try { localStorage.setItem(WALLET_RETURN_KEY, JSON.stringify(next)); }
+    catch { /* Optional preferences never replace live provider/authentication checks. */ }
+  }
 
   // Restore display intent only, never a quote, wallet authority or transaction.
   // The durable execution journals remain separate and are never cleared here.
@@ -233,6 +259,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     setError("");
   }
   const { connectWallet } = useConnectWallet({ onSuccess: ({ wallet: attached }) => {
+    if (walletReturnRef.current.userDisconnected) return;
     if (external.length <= 1 && external.every(candidate => walletGatewayKey(candidate) === walletGatewayKey(attached))
       && soleConnectedExternalWallet([attached])) { explicitChoiceRequired.current = false; setSelectedKey(walletGatewayKey(attached)); }
     void refreshWallet.current?.();
@@ -246,13 +273,16 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
   });
   function connectForTrading() {
     if (!ready || !walletsReady || !terms.accepted) return;
+    rememberWalletReturn({ ...walletReturnRef.current, userDisconnected: false });
     explicitChoiceRequired.current = external.length > 1;
-    if (authenticated) connectWallet({ walletChainType: "ethereum-only", walletList: ["metamask", "coinbase_wallet", "detected_ethereum_wallets", "wallet_connect"] });
+    const sole = soleConnectedExternalWallet(wallets);
+    if (authenticated && sole?.linked) setSelectedKey(walletGatewayKey(sole));
+    else if (authenticated) connectWallet({ walletChainType: "ethereum-only", walletList: ["metamask", "coinbase_wallet", "detected_ethereum_wallets", "wallet_connect"] });
     else login({ loginMethods: ["wallet"], walletChainType: "ethereum-only" });
   }
 
   useEffect(() => {
-    if (!walletsReady) return;
+    if (!walletsReady || walletReturn.userDisconnected) return;
     if (selectedKey) {
       if (!exactConnectedExternalWallet(wallets, selectedKey)) {
         invalidate(); setSelectedKey(""); explicitChoiceRequired.current = true;
@@ -263,7 +293,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     if (external.length > 1) explicitChoiceRequired.current = true;
     const sole = soleConnectedExternalWallet(wallets);
     if (sole && !explicitChoiceRequired.current) setSelectedKey(walletGatewayKey(sole));
-  }, [walletsReady, walletInventoryKey, selectedKey]);
+  }, [walletsReady, walletInventoryKey, selectedKey, walletReturn.userDisconnected]);
 
   // A rotated authentication token invalidates signing authority, not the
   // displayed public balance snapshot for the same selected wallet.
@@ -355,6 +385,10 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
         active?.on?.("chainChanged", changed); active?.on?.("accountsChanged", changed); active?.on?.("disconnect", disconnected);
       }
       providerRef.current = state.provider; publish(state);
+      if (state.status === "ready" && authenticated && currentRef.current.token && candidate.linked
+        && !walletReturnRef.current.userDisconnected) {
+        rememberWalletReturn({ version: 1, userDisconnected: false, address: candidate.address.toLowerCase() });
+      }
       // The dedicated wallet row owns network/readiness copy. A background
       // revalidation must not replace a trade or settlement status message.
       if (state.status === "ready") void refreshFunds.current?.();
@@ -498,6 +532,10 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     finally { finishAction(action); }
   }
   function disconnectWallet() {
+    // Persist the user's opt-out before logout. A delayed/failed SDK logout or
+    // a returning external provider must not silently undo this site choice.
+    rememberWalletReturn({ ...walletReturnRef.current, userDisconnected: true });
+    cancelRecoveryRead(); providerRef.current = null;
     invalidate(); explicitChoiceRequired.current = true; currentRef.current.key = ""; setSelectedKey("");
     setBlocking(false); setStatus("Disconnected. Saved transaction history is preserved; reconnect the same wallet to reconcile it.");
     void logout().catch(() => { /* Local selection is already disconnected. Never erase the journal. */ });
@@ -746,13 +784,13 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       {(["buy", "sell"] as const).map((direction) => <button key={direction} type="button" aria-pressed={side === direction} onClick={() => { invalidate(); setSide(direction); setAmount(amounts.current[direction === "sell" ? "sell" : buyMode]); setStatus("Choose an amount and request a fresh quote."); }}>{direction === "buy" ? "Buy CannaCat" : "Sell CannaCat"}</button>)}
     </div>
     <div className="rmtcat-wallet">
-      {(external.length > 1 || (!wallet && external.length > 0)) && <label className="rmtcat-wallet-choice">Choose signing wallet<select aria-label="Choose signing wallet" value={selectedKey} disabled={!terms.accepted} onChange={(event) => { invalidate(); explicitChoiceRequired.current = true; setSelectedKey(event.target.value); }}>
+      {!walletReturn.userDisconnected && (external.length > 1 || (!wallet && external.length > 0)) && <label className="rmtcat-wallet-choice">Choose signing wallet<select aria-label="Choose signing wallet" value={selectedKey} disabled={!terms.accepted} onChange={(event) => { invalidate(); explicitChoiceRequired.current = true; setSelectedKey(event.target.value); }}>
           <option value="" disabled>Select a wallet</option>
           {external.map((option) => <option key={walletGatewayKey(option)} value={walletGatewayKey(option)}>{short(option.address)} · {option.meta.name ?? option.walletClientType}</option>)}
         </select></label>}
       {wallet && external.length === 1 && <div className="rmtcat-wallet-identity"><span className="rmtcat-wallet-caption">Trading wallet</span><span className="rmtcat-wallet-address" title={wallet.address}>{short(wallet.address)}</span><span className="rmtcat-wallet-name">{wallet.meta.name ?? wallet.walletClientType}</span></div>}
       <div className="rmtcat-wallet-actions">
-      {!wallet ? <button type="button" disabled={!ready || !walletsReady || busy || !terms.accepted} onClick={connectForTrading}>Connect wallet</button> : <>
+      {!wallet ? <button type="button" disabled={!ready || !walletsReady || busy || !terms.accepted} onClick={connectForTrading}>{walletReturn.address && !walletReturn.userDisconnected ? "Reconnect wallet" : "Connect wallet"}</button> : <>
         {!connected && <button type="button" disabled={busy || !terms.accepted} onClick={() => void verifyWallet()}>Verify wallet ownership</button>}
         {walletState.status === "wrong-chain" && <button type="button" disabled={busy || !terms.accepted} onClick={() => void switchNetwork()}>Switch to Robinhood Chain</button>}
         {(["disconnected", "unavailable", "account-mismatch"] as const).some(value => value === walletState.status) && <button type="button" disabled={busy || !terms.accepted} onClick={() => connectWallet({ walletChainType: "ethereum-only" })}>Reconnect wallet</button>}
@@ -761,6 +799,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       </>}
       </div>
     </div>
+    {!wallet && walletReturn.address && !walletReturn.userDisconnected && <p className="rmtcat-balances">Previously used wallet {short(walletReturn.address)}. Reconnect your wallet to check the account and network.</p>}
     {wallet && <p className="rmtcat-balances" data-wallet-status={walletState.status}>{connectedWalletMessage(walletState)}</p>}
     {wallet && <WalletBalanceSummary funds={visibleFunds} usd={visibleFunds ? approximateUsd(visibleFunds.eth, price, now) : null}
       health={balanceError ? "unavailable" : walletState.status !== "ready" ? "checking" : !visibleFunds ? "loading" : fundsFresh ? "current" : "stale"}

@@ -78,6 +78,9 @@ for(const width of [320,390]){
   const disconnected=async(page:Page)=>{await expect(page.getByRole('button',{name:'Connect wallet',exact:true})).toBeVisible();check(await page.locator('.rmtcat-wallet-identity').count()===0,'Manual disconnect restores no signing selection');};
   await run('valid-return',ready,async page=>{
     await selected(page);await page.reload();await selected(page);
+    const preference=await page.evaluate(()=>JSON.parse(localStorage.getItem('rmt:cannacat:wallet-return:1')??'null'));
+    check(JSON.stringify(Object.keys(preference).sort())===JSON.stringify(['address','userDisconnected','version']),'Return preference contains no authentication or signing material');
+    check(preference.version===1&&!preference.userDisconnected&&preference.address==='0x0000000000000000000000000000000000000123','Remember only the live-verified public account hint');
     check(await page.getByRole('button',{name:'Verify wallet ownership',exact:true}).count()===0,'Valid restored session needs no second Verify click');
     check((await page.evaluate(()=>window.__CANNACAT_FIXTURE_LOGIN_REQUESTS__??0))===0,'Valid return opens no login prompt');
     check((await page.evaluate(()=>window.__CANNACAT_FIXTURE_CHAIN_SWITCHES__??0))===0,'Return does not silently switch networks');
@@ -101,6 +104,7 @@ for(const width of [320,390]){
   await run('logout-unavailable',ready,async page=>{
     await selected(page);await page.getByRole('button',{name:'Disconnect',exact:true}).click();await disconnected(page);
     await page.reload();await disconnected(page);
+    check(await page.evaluate(()=>JSON.parse(localStorage.getItem('rmt:cannacat:wallet-return:1')!).userDisconnected===true),'Manual disconnect survives a failed provider logout');
   },true);
   await run('provider-not-restored',ready,async(page,key)=>{
     await selected(page);boot.set(key,{state:{...ready,connected:false}});await page.reload();
