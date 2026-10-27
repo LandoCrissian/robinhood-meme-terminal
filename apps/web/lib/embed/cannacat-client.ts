@@ -80,6 +80,10 @@ function assertPreparedTarget(quote: CannaCatQuote, evidence: VNextPreSignEviden
   }
 }
 
+// Survives client recreation during explicit Review, but is browser-local only.
+// Every Netlify/Vercel consumer still needs the shared provider quota gate.
+const providerBackoffByOrigin = new Map<string, number>();
+
 export function createCannaCatClient(options: {
   baseUrl: string; identityToken: string; fetch?: typeof fetch; now?: () => number;
 }) {
@@ -91,9 +95,10 @@ export function createCannaCatClient(options: {
   const now = options.now ?? Date.now;
   const fetcher = options.fetch ?? fetch;
   let nextReadAt = 0;
-  let providerNotBefore = 0;
+  for (const [origin, until] of providerBackoffByOrigin) if (until <= now()) providerBackoffByOrigin.delete(origin);
   async function post(operation: string, body: object, signal?: AbortSignal) {
     if (operation !== "native-settlement-trace") {
+      const providerNotBefore = providerBackoffByOrigin.get(base.origin) ?? 0;
       if (now() < providerNotBefore) throw new CannaCatClientError("RATE_LIMITED", "The quote provider is busy. Wait before reviewing again; your amount is kept and no transaction was sent.", 429, providerNotBefore - now());
       // Per-intent pacing only, never a claim of an app-wide distributed quota.
       // Passive pool observations do not enter this path at all.
@@ -153,7 +158,7 @@ export function createCannaCatClient(options: {
       const retry = response.headers.get("retry-after");
       const retryMs = retry ? (/^[0-9]+$/.test(retry) ? Number(retry) * 1000 : Date.parse(retry) - now()) : 0;
       const backoff = Number.isFinite(retryMs) && retryMs > 0 ? retryMs : response.status === 429 ? 60_000 : undefined;
-      if (response.status === 429) providerNotBefore = now() + backoff!;
+      if (response.status === 429 && (providerBackoffByOrigin.has(base.origin) || providerBackoffByOrigin.size < 32)) providerBackoffByOrigin.set(base.origin, now() + backoff!);
       const rawId = response.headers.get("x-rmt-request-id") ?? response.headers.get("x-nf-request-id");
       const requestId = rawId && /^[A-Za-z0-9_-]{12,80}$/.test(rawId) ? rawId : undefined;
       const message = diagnostics[code] ?? messages[response.status] ?? "Trade review is temporarily unavailable. Your amount is kept; no transaction was sent.";

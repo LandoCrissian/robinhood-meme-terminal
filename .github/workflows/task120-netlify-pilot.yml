@@ -38,7 +38,9 @@ jobs:
           pnpm typecheck
           pnpm --filter web exec node scripts/build-cannacat-client.mjs
       - name: Bundle unchanged handlers without Next or a trading terminal
-        run: node .github/task120-pilot/build.mjs
+        run: |
+          git fetch --no-tags --depth=1 origin 5ee50aa9a776dfa70cc2708ba7fa57394c0b229d
+          node .github/task120-pilot/build.mjs
       - name: Adapter authentication and preview isolation tests
         run: node .github/task120-pilot/adapter-test.mjs
       - name: Package with Netlify's official Functions library

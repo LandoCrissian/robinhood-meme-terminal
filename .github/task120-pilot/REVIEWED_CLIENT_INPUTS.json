@@ -5,7 +5,7 @@
   },
   {
     "path": "apps/web/lib/embed/cannacat-client.ts",
-    "sha256": "131c7d6bf17f9ae8eccf72bbbaec5a65e54286a8a08b64c36bcab0bc14855179"
+    "sha256": "dfe6169c2c3c871a4a04808057fb7949c88ccc1c0938b4fe152226be96b559cd"
   },
   {
     "path": "apps/web/lib/embed/cannacat-observation.ts",

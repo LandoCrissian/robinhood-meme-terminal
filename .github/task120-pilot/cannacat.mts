@@ -74,7 +74,8 @@ export default async function handler(request: Request, context: { requestId?: s
   if (context.deploy?.published !== false) {
     return Response.json({ code: 'PILOT_PREVIEW_ONLY' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
   }
-  const active: Observation = {requestId: context.requestId ?? randomUUID(),operation:context.params?.operation ?? '',provider:[]};
+  const requestedOperation = context.params?.operation ?? '';
+  const active: Observation = {requestId: context.requestId ?? randomUUID(),operation:['quotes','verify','authorize','native-settlement-trace'].includes(requestedOperation)?requestedOperation:'unsupported',provider:[]};
   return observation.run(active, async () => {
    try {
     const values = environment();
@@ -88,7 +89,7 @@ export default async function handler(request: Request, context: { requestId?: s
         ...(allowed&&origin?{'Access-Control-Allow-Origin':origin,'Vary':'Origin'}:{})}});
     }
     const { handle } = await loadCanonical(values);
-    let response = await handle(request, active.operation);
+    let response = await handle(request, requestedOperation);
     const headers = new Headers(response.headers);
     headers.set('Server-Timing', `rmt;dur=${(performance.now() - started).toFixed(2)}`);
     headers.set('X-RMT-Pilot-Cold-Start', String(wasCold));
