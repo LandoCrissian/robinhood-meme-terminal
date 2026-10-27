@@ -257,8 +257,8 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
 
   // A rotated authentication token invalidates signing authority, not the
   // displayed public balance snapshot for the same selected wallet.
-  useEffect(() => { invalidate(); balancesRef.current = null; void refreshFunds.current?.(); }, [selectedKey, identityToken, user?.id, authenticated, terms.accepted]);
-  useEffect(() => { setBalances(null); }, [selectedKey]);
+  useEffect(() => { invalidate(true); balancesRef.current = null; void refreshFunds.current?.(); }, [selectedKey, identityToken, user?.id, authenticated, terms.accepted]);
+  useEffect(() => { setBalances(null); setObservation(null); setReview(null); }, [selectedKey]);
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
