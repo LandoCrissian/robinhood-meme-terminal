@@ -20,17 +20,23 @@ async function main() {
   page.on('requestfailed', request => events.push({ kind: 'request-failed', host: new URL(request.url()).host, path: new URL(request.url()).pathname, reason: clean(request.failure()?.errorText) }));
   page.on('response', response => { if (response.status() >= 400) events.push({ kind: 'http-error', host: new URL(response.url()).host, path: new URL(response.url()).pathname, status: response.status() }); });
   let failure: string | undefined;
+  let targetBuild: object | undefined;
+  let pairingStatus: string[] = [];
   try {
+    targetBuild = await (await page.request.get('https://task125-wallet--lammb.netlify.app/build-info.json')).json();
     await page.goto('https://task125-wallet--lammb.netlify.app/mint#cannacat-purchase');
     await page.getByRole('button', { name: 'I understand — continue', exact: true }).click();
     await page.getByRole('button', { name: 'Connect wallet', exact: true }).click();
     await page.getByRole('button', { name: 'Mobile Wallet', exact: true }).click();
     await page.locator('.sub-page.show').getByRole('button', { name: 'MetaMask', exact: true }).click();
-    await expect(page.getByText('Scan with your Mobile wallet', { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Scan with your mobile wallet', { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.sub-page.show .qr-code.svelte-wj4637:not(.loading)')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Request canceled', { exact: true })).toHaveCount(0);
   } catch (error) { failure = clean(error); }
   finally {
+    pairingStatus = await page.locator('.sub-page.show').allTextContents();
     const result = { result: failure ? 'FAIL' : 'PASS', at: new Date().toISOString(), pairingOnly: true, ownerSignatures: 0, fundedTrades: 0,
-      pairingUriPrinted: false, failure, events };
+      pairingUriPrinted: false, targetBuild, pairingStatus: pairingStatus.map(text => text.replace(/\s+/g, ' ').trim().slice(0, 500)), failure, events };
     writeFileSync('task125-relay/RESULTS.json', JSON.stringify(result, null, 2));
     await browser.close();
   }
