@@ -675,9 +675,10 @@ try {
         position:await device.input.evaluate(node=>({top:node.getBoundingClientRect().top,x:scrollX,y:scrollY}))
       })));
       for(const device of deviceState)await device.page.evaluate(()=>{
-        const record:{value:number;sources:number}[]=[];
+        const record:{value:number;sources:number;details:unknown[]}[]=[];
         Object.defineProperty(window,'__TASK120_BALANCE_LAYOUT_SHIFTS__',{configurable:true,value:record});
-        new PerformanceObserver(list=>{for(const entry of list.getEntries() as Array<PerformanceEntry & {value:number;hadRecentInput:boolean;sources?:unknown[]}>)if(!entry.hadRecentInput)record.push({value:entry.value,sources:entry.sources?.length??0});}).observe({type:'layout-shift'});
+        new PerformanceObserver(list=>{for(const entry of list.getEntries() as Array<PerformanceEntry & {value:number;hadRecentInput:boolean;sources?:Array<{node?:Element;previousRect:DOMRectReadOnly;currentRect:DOMRectReadOnly}>}>)if(!entry.hadRecentInput)record.push({value:entry.value,sources:entry.sources?.length??0,
+          details:(entry.sources??[]).map(source=>({tag:source.node?.tagName,className:source.node?.className,text:source.node?.textContent?.slice(0,80),before:{x:source.previousRect.x,y:source.previousRect.y,width:source.previousRect.width,height:source.previousRect.height},after:{x:source.currentRect.x,y:source.currentRect.y,width:source.currentRect.width,height:source.currentRect.height}}))});}).observe({type:'layout-shift'});
       });
       const balancesAtStart=balanceReadCount; peakPendingBalanceReads=0;
       const started = Date.now(); const callsAtStart = quoteCalls; const firmAtStart = firmCalls; const spotsAtStart = spotCalls; const samples: object[] = [];
@@ -717,7 +718,7 @@ try {
           const accumulated=await device.page.evaluate(()=> (window as unknown as {__TASK120_BALANCE_LAYOUT_SHIFTS__:{value:number;sources:number}[]}).__TASK120_BALANCE_LAYOUT_SHIFTS__.reduce((sum,x)=>sum+x.value,0));
           if(accumulated>0.001){
             await device.page.screenshot({path:path.join(output,`${channel}-${device.width}-background-shift-failure.png`),fullPage:true});
-            await writeFile(path.join(output,`${channel}-${device.width}-background-shift-failure.json`),JSON.stringify({sample,accumulated,state,health:await device.page.getByLabel('Wallet balances').innerText(),price:await device.page.locator('.rmtcat-price-state').innerText()},null,2));
+            await writeFile(path.join(output,`${channel}-${device.width}-background-shift-failure.json`),JSON.stringify({sample,accumulated,state,health:await device.page.getByLabel('Wallet balances').innerText(),price:await device.page.locator('.rmtcat-price-state').innerText(),layoutShifts:await device.page.evaluate(()=>(window as unknown as {__TASK120_BALANCE_LAYOUT_SHIFTS__:unknown[]}).__TASK120_BALANCE_LAYOUT_SHIFTS__)},null,2));
           }
           check(accumulated<=0.001,'Background updates keep the visible viewport stable at '+device.width+'px');
         }

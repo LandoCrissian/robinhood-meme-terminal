@@ -82,6 +82,12 @@ async function readWalletFunds(key: string, wallet: string): Promise<CannaCatFun
     eth: confirmedEth < pendingEth ? confirmedEth : pendingEth, token: confirmedToken < pendingToken ? confirmedToken : pendingToken, gasPrice };
 }
 
+function NativeEthEstimate({ atomic, fee = false }: { atomic: string; fee?: boolean }) {
+  const suffix = fee ? "ETH · estimate" : "ETH";
+  return <span className="rmtcat-native-estimate"><span>{units(atomic)} {suffix}</span>
+    <span className="rmtcat-native-sizer" aria-hidden="true">0.000000000000000000 {suffix}</span></span>;
+}
+
 const WalletBalanceSummary = React.memo(function WalletBalanceSummary({ funds, usd, health, disabled, onRefresh }: {
   funds: CannaCatFunds | null; usd: string | null; health: "loading" | "current" | "stale" | "checking" | "unavailable";
   disabled: boolean; onRefresh: () => void;
@@ -767,9 +773,9 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     {<div className="rmtcat-quote rmtcat-observation" aria-label="Indicative quote review"><strong>Live estimate · not a trade authorization</strong>
       <p className="rmtcat-freshness" aria-live="off"><span>{observation ? <> {observation.expiresAtMs && observation.expiresAtMs > now && !quoteMessage ? "Updated" : "Last estimate · refreshing"} <time dateTime={new Date(observation.observedAtMs).toISOString()}>{new Date(observation.observedAtMs).toLocaleTimeString()}</time></> : "Enter an amount and connect to see automatic estimates."}</span><span className="rmtcat-freshness-sizer" aria-hidden="true">Last estimate · refreshing 00:00:00 AM</span></p>
       {observation && <dl>
-      <div><dt>Input</dt><dd>{units(observation.inputAmountAtomic)} {observation.side === "buy" ? "ETH" : "CannaCat"}</dd></div>
-      <div><dt>Expected output</dt><dd>{units(observation.expectedOutputAtomic)} {observation.side === "buy" ? "CannaCat" : "ETH"}</dd></div>
-      <div><dt>RMT fee · 0.25%</dt><dd>{`${units(observation.feeEstimateAtomic)} ETH · estimate`}</dd></div>
+      <div><dt>Input</dt><dd>{observation.side === "buy" ? <NativeEthEstimate atomic={observation.inputAmountAtomic} /> : `${units(observation.inputAmountAtomic)} CannaCat`}</dd></div>
+      <div><dt>Expected output</dt><dd>{observation.side === "sell" ? <NativeEthEstimate atomic={observation.expectedOutputAtomic} /> : `${units(observation.expectedOutputAtomic)} CannaCat`}</dd></div>
+      <div><dt>RMT fee · 0.25%</dt><dd><NativeEthEstimate atomic={observation.feeEstimateAtomic} fee /></dd></div>
       <div><dt>Estimated network gas</dt><dd>{"Verified at trade review"}</dd></div>
       <div><dt>{observation.side === "buy" ? "Input · USD estimate" : "Proceeds · USD estimate"}</dt><dd>{approximateUsd(observation.side === "buy" ? observation.inputAmountAtomic : observation.expectedOutputAtomic, price, now) ?? "Unavailable"}</dd></div>
     </dl>}<p className="rmtcat-price-state"><span>{quoteMessage || "Pool spot estimate updates automatically; liquidity impact and pool fees are excluded. Review fresh 0x terms before signing. Network gas is additional; maximum slippage is 1%."}</span><span className="rmtcat-price-sizer" aria-hidden="true">Pool spot estimate updates automatically; liquidity impact and pool fees are excluded. Review fresh 0x terms before signing. Network gas is additional; maximum slippage is 1%.</span></p></div>}
@@ -820,6 +826,7 @@ const css = `
 .rmtcat-panel{min-width:0}
 .rmtcat-price-state,.rmtcat-observation{min-width:0;overflow-wrap:anywhere}
 .rmtcat-price-state,.rmtcat-freshness{display:grid}.rmtcat-price-state>span,.rmtcat-freshness>span{grid-area:1/1}.rmtcat-price-sizer,.rmtcat-freshness-sizer{visibility:hidden}
+.rmtcat-native-estimate{display:grid;min-width:0}.rmtcat-native-estimate>span{grid-area:1/1}.rmtcat-native-sizer{visibility:hidden}
 .rmtcat-top{align-items:baseline}
 .rmtcat-wallet{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:stretch;margin:20px 0 14px}
 .rmtcat-wallet .rmtcat-wallet-choice{display:grid;gap:6px;min-width:0;font-size:13px;line-height:1.5}
