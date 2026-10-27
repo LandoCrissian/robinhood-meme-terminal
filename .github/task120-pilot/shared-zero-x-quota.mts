@@ -101,7 +101,8 @@ export function createSharedZeroXFetch(transport: Transport, settings: () => Set
   const method=init?.method ?? (input instanceof Request?input.method:'GET');
   if(kind!=='price'||method!=='GET')return run(input,init,kind);
   const headers=new Headers(init?.headers ?? (input instanceof Request?input.headers:undefined));
-  const identity=createHash('sha256').update(url.href+'\n'+JSON.stringify([...headers.entries()].sort())).digest('hex');
+  const pairs:Array<[string,string]>=[];headers.forEach((value,key)=>pairs.push([key,value]));
+  const identity=createHash('sha256').update(url.href+'\n'+JSON.stringify(pairs.sort())).digest('hex');
   let request=identicalPrices.get(identity);
   if(!request){request=run(input,init,kind);if(identicalPrices.size<128){identicalPrices.set(identity,request);void request.finally(()=>identicalPrices.delete(identity)).catch(()=>undefined);}}
   else emit({decision:'coalesced',kind});
