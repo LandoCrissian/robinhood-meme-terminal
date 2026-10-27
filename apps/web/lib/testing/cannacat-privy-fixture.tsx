@@ -1,7 +1,7 @@
 // Build-time alias in the disposable browser fixture only. Never a runtime flag.
 import React, { useEffect, useSyncExternalStore, type ReactNode } from "react";
 type State = { connected: boolean; authenticated: boolean; chainId: string; providerChainId: string;
-  accounts: string[]; walletCount: number; walletClientType: string; connectorType: string; providerAvailable: boolean; displayName?: string; address?: string };
+  accounts: string[]; walletCount: number; walletClientType: string; connectorType: string; providerAvailable: boolean; displayName?: string; address?: string; identityToken?: string };
 const initial: State = { connected: false, authenticated: false, chainId: "eip155:1", providerChainId: "0x1",
   accounts: ["0x0000000000000000000000000000000000000123"], walletCount: 1, walletClientType: "metamask", connectorType: "injected", providerAvailable: true };
 let state = initial;
@@ -61,7 +61,7 @@ export function usePrivy() { const current = useState(); return { ready: true, a
   user: current.authenticated ? { id: "synthetic-user" } : undefined, logout: async () => patch({ connected: false, authenticated: false }) }; }
 export function useWallets() { const current = useState(); const primary = wallet(); return { ready: true,
   wallets: current.connected ? (current.walletCount > 1 ? [primary, { ...primary, walletClientType: "rabby", meta: { id: "synthetic-second", name: "Test second wallet" } }] : [primary]) : [] }; }
-export function useIdentityToken() { const current = useState(); return { identityToken: current.authenticated ? "synthetic-identity-only" : null }; }
+export function useIdentityToken() { const current = useState(); return { identityToken: current.authenticated ? current.identityToken ?? "synthetic-identity-only" : null }; }
 export function useLogin(options?: { onComplete?: () => void; onError?: () => void }) {
   const current = useState();
   useEffect(() => {

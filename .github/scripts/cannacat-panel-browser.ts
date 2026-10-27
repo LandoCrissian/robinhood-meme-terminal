@@ -38,10 +38,11 @@ const results: object[] = [];
 const layouts: object[] = [];
 const longWalletName = "MetaMask · iPhone WalletConnect signing connection";
 let checks = 0;
-let spotCalls = 0; let spotFailure = 0; let delayObservation = false; let delayedObservation: (() => void) | null = null;
+let spotCalls = 0; const spotCallsByPage = new WeakMap<object,number>(); let spotFailure = 0; let delayObservation = false; let delayedObservation: (() => void) | null = null;
 let quoteCalls = 0;
 let balance = 10n ** 18n;
 let balancesFail = false;
+let balanceReadDelayMs = 0; let pendingBalanceReads = 0; let peakPendingBalanceReads = 0; let balanceReadCount = 0;
 let usdPrice = "2000.00";
 let verified = false;
 let approvalAlreadyGranted = false;
@@ -56,7 +57,7 @@ let quoteResumeAfter = 0;
 let firmCalls = 0;
 const bundles = new Map<string, ReturnType<typeof syntheticCannaCatBundle>>();
 const transactions = new Map<string, { receipt: object; transaction: object; trace: object }>();
-const tokenBalance = 50_000n * 10n ** 18n;
+let tokenBalance = 50_000n * 10n ** 18n;
 const hash = `0x${"a".repeat(64)}`;
 const hex = (amount: bigint) => `0x${amount.toString(16)}`;
 const saveSyntheticTransaction = (txHash: string, bundle: ReturnType<typeof syntheticCannaCatBundle>) => {
@@ -79,7 +80,7 @@ try {
   for (const width of [320, 375, 390, 430, 1440]) {
     verified = false; approvalAlreadyGranted = false; settlementAvailable = false;
     gasPrice = 1_000_000_000n; walletNonce = 0n; balance = 10n ** 18n;
-    balancesFail = false; usdPrice = '2000.00'; delayQuote = false; delayedQuote = null;
+    balancesFail = false; balanceReadDelayMs = 0; tokenBalance = 50_000n * 10n ** 18n; usdPrice = '2000.00'; delayQuote = false; delayedQuote = null;
     bundles.clear(); transactions.clear();
     const context = await browser.newContext({ viewport: { width, height: width < 768 ? 844 : 1000 } });
     const page = await context.newPage();
@@ -95,10 +96,15 @@ try {
       if (url.origin === "https://rpc.mainnet.chain.robinhood.com") {
         if (balancesFail) { await route.fulfill({ status: 503, body: "Synthetic balance RPC outage" }); return; }
         const rpc = route.request().postDataJSON();
+        if ((Array.isArray(rpc) ? rpc : [rpc]).some((entry: {method?:string;params?:unknown[]}) => entry.method === 'eth_getBalance' && entry.params?.[1] === 'pending')) {
+          balanceReadCount++; pendingBalanceReads++; peakPendingBalanceReads=Math.max(peakPendingBalanceReads,pendingBalanceReads);
+          if (balanceReadDelayMs) await new Promise(resolve=>setTimeout(resolve,balanceReadDelayMs));
+          pendingBalanceReads--;
+        }
         const isSpot = (entry: {method?:string;params?:Array<{to?:string}>}) => entry.method === 'eth_call'
           && entry.params?.[0]?.to?.toLowerCase() === '0xf3334192d15450cdd385c8b70e03f9a6bd9e673b';
         if ((Array.isArray(rpc) ? rpc : [rpc]).some(isSpot)) {
-          spotCalls++;
+          spotCalls++; const ownerPage=route.request().frame().page(); spotCallsByPage.set(ownerPage,(spotCallsByPage.get(ownerPage)??0)+1);
           if (spotFailure) { await route.fulfill({status:spotFailure,body:'Synthetic read-only spot RPC outage'}); return; }
           if (delayObservation) await new Promise<void>(resolve => {delayedObservation=resolve;});
         }
@@ -217,6 +223,22 @@ try {
     await expect(page.getByLabel("Wallet balances")).toContainText("50000 CannaCat");
     await expect(page.getByLabel("Wallet balances")).toContainText("$2,000.00");
     check(true, "Native ETH, timestamped USD and CannaCat balances load independently of a quote");
+    const balancePanel = await page.getByLabel('Wallet balances').elementHandle();
+    const balanceBox = await page.getByLabel('Wallet balances').boundingBox();
+    const amountBefore = await page.getByLabel('Minimum CannaCat to receive').boundingBox();
+    balancesFail = true;
+    await page.getByRole('button',{name:'Refresh balances',exact:true}).click();
+    await expect(page.getByLabel('Wallet balances')).toContainText('could not be refreshed');
+    await expect(page.getByLabel('Wallet balances')).toContainText('1 ETH');
+    check(!((await page.getByLabel('Wallet balances').innerText()).includes('Loading')), 'Background balance failure retains values, never Loading replacements');
+    check(await balancePanel!.evaluate(node=>node.isConnected), 'Wallet balance component remains mounted through failure');
+    const failedBox = await page.getByLabel('Wallet balances').boundingBox();
+    const amountAfter = await page.getByLabel('Minimum CannaCat to receive').boundingBox();
+    check(Math.abs(failedBox!.height-balanceBox!.height)<=1 && Math.abs(amountAfter!.y-amountBefore!.y)<=1, 'Failed balance refresh does not move the amount field at '+width+'px');
+    balancesFail = false;
+    await page.getByRole('button',{name:'Refresh balances',exact:true}).click();
+    await expect(page.locator('[data-balance-health="current"]')).toBeVisible();
+
     checks += 1;
     await page.getByLabel("Minimum CannaCat to receive").fill("0");
     await page.getByRole("button", { name: "Review trade" }).click();
@@ -588,7 +610,7 @@ try {
     if (width === 390) {
       // Fresh context uses REAL wall-clock time, not page.clock fast-forward.
       // API/wallet fixtures are disposable; execution authorization is never requested.
-      balance = 10n ** 18n; gasPrice = 1_000_000_000n; verified = true; variableMarket = true;
+      balance = 78_950_000_000_000n; gasPrice = 1_000_000_000n; verified = true; variableMarket = true;
       const stableContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
       await stableContext.route('**/*', routeHandler);
       const stable = await stableContext.newPage(); const stableErrors: string[] = [];
@@ -625,9 +647,47 @@ try {
       const inputNode = await input.elementHandle();
       await input.focus(); await input.evaluate((node: HTMLInputElement) => node.setSelectionRange(2, 2));
       const scroll = await stable.evaluate(() => ({ x: scrollX, y: scrollY }));
+      const companions = await Promise.all([320,375,430].map(async deviceWidth=>{
+        const ctx=await browser.newContext({viewport:{width:deviceWidth,height:844}});
+        await ctx.route('**/*',routeHandler);const pg=await ctx.newPage();
+        pg.on('pageerror',error=>stableErrors.push(error.message));
+        await pg.goto(base);await pg.getByRole('button',{name:'I understand — continue',exact:true}).click();
+        await pg.getByRole('button',{name:'Connect wallet',exact:true}).click();
+        await pg.evaluate(()=>{window.__CANNACAT_FIXTURE_UPDATE__?.({authenticated:true,chainId:'eip155:4663',providerChainId:'0x1237'});window.dispatchEvent(new PageTransitionEvent('pageshow',{persisted:true}));});
+        const field=pg.getByLabel('Minimum CannaCat to receive');await expect(field).toHaveValue('10000');
+        await expect(pg.getByLabel('Wallet balances')).toContainText('0.00007895 ETH');
+        await pg.getByLabel('Indicative quote review').locator('dl').waitFor();
+        await field.focus();await field.evaluate((node:HTMLInputElement)=>node.setSelectionRange(2,2));
+        return {page:pg,context:ctx,input:field,width:deviceWidth};
+      }));
+      const devices=[{page:stable,context:stableContext,input,width:390},...companions];
+      const deviceState=await Promise.all(devices.map(async device=>({ ...device,
+        balanceNode:await device.page.getByLabel('Wallet balances').elementHandle(),
+        inputNode:await device.input.elementHandle(),balanceBox:await device.page.getByLabel('Wallet balances').boundingBox(),
+        position:await device.input.evaluate(node=>({top:node.getBoundingClientRect().top,x:scrollX,y:scrollY}))
+      })));
+      for(const device of deviceState)await device.page.evaluate(()=>{
+        const record:{value:number;sources:number}[]=[];
+        Object.defineProperty(window,'__TASK120_BALANCE_LAYOUT_SHIFTS__',{configurable:true,value:record});
+        new PerformanceObserver(list=>{for(const entry of list.getEntries() as Array<PerformanceEntry & {value:number;hadRecentInput:boolean;sources?:unknown[]}>)if(!entry.hadRecentInput)record.push({value:entry.value,sources:entry.sources?.length??0});}).observe({type:'layout-shift'});
+      });
+      const balancesAtStart=balanceReadCount; peakPendingBalanceReads=0;
       const started = Date.now(); const callsAtStart = quoteCalls; const firmAtStart = firmCalls; const spotsAtStart = spotCalls; const samples: object[] = [];
       await stable.screenshot({ path: path.join(output, channel + '-stability-start.png'), fullPage: true });
       for (let sample = 0; sample < 30; sample += 1) {
+        if (sample === 2) balanceReadDelayMs=8000;
+        if (sample === 4) balanceReadDelayMs=0;
+        if (sample === 8) balancesFail=true;
+        if (sample === 9) { balancesFail=false;for(const device of deviceState)await device.page.getByRole('button',{name:'Refresh balances',exact:true}).click(); }
+        if (sample === 10) {
+          balanceReadDelayMs=8000;
+          for(const device of deviceState) {
+            await device.page.evaluate(()=>window.__CANNACAT_FIXTURE_UPDATE__?.({identityToken:'synthetic-identity-rotated'}));
+            check(!((await device.page.getByLabel('Wallet balances').innerText()).includes('Loading')), 'Same-wallet auth refresh retains balance values at '+device.width+'px');
+          }
+        }
+        if (sample === 12) balanceReadDelayMs=0;
+        if (sample === 14) { balance=79_950_000_000_000n;tokenBalance=49_999n*10n**18n; }
         if (sample === 5) spotFailure = 503;
         if (sample === 6) spotFailure = 0;
         if (sample === 11) spotFailure = 429;
@@ -636,9 +696,17 @@ try {
           Object.defineProperty(document, 'visibilityState', { configurable: true, value: hidden ? 'hidden' : 'visible' });
           document.dispatchEvent(new Event('visibilitychange'));
         }, sample === 17);
-        const beforeHidden = spotCalls;
+        const beforeHidden = spotCallsByPage.get(stable)??0;
         await new Promise(resolve => setTimeout(resolve, 30_000));
-        if (sample === 17) check(spotCalls === beforeHidden, 'Hidden browser pauses passive spot requests');
+        if (sample === 17) check((spotCallsByPage.get(stable)??0)===beforeHidden, 'Hidden browser pauses its passive spot requests while other visible sessions continue');
+        for(const device of deviceState){
+          const box=await device.page.getByLabel('Wallet balances').boundingBox();
+          const state=await device.input.evaluate((node:HTMLInputElement)=>({top:node.getBoundingClientRect().top,x:scrollX,y:scrollY,focused:document.activeElement===node,cursor:node.selectionStart,width:document.documentElement.scrollWidth,viewport:innerWidth}));
+          check(await device.balanceNode!.evaluate(node=>node.isConnected)&&await device.inputNode!.evaluate(node=>node.isConnected), 'Balance and amount stay mounted at '+device.width+'px');
+          check(Math.abs(box!.height-device.balanceBox!.height)<=1&&Math.abs(state.top-device.position.top)<=1, 'Balance updates cause no vertical layout shift at '+device.width+'px');
+          check(state.x===device.position.x&&Math.abs(state.y-device.position.y)<=1&&state.width<=state.viewport,'Balance refresh preserves scroll and viewport at '+device.width+'px');
+          check(state.focused&&state.cursor===2&&await device.input.inputValue()==='10000','Balance refresh preserves focus, cursor and amount at '+device.width+'px');
+        }
         check(await input.inputValue() === '10000', '15-minute monitoring preserves the 10000 token target');
         check(await panel!.evaluate(node => node.isConnected) && await observation!.evaluate(node => node.isConnected)
           && await inputNode!.evaluate(node => node.isConnected), 'Live pricing never remounts panel, observation or input');
@@ -658,11 +726,24 @@ try {
       const elapsedMs = Date.now() - started;
       check(elapsedMs >= 900_000, 'Fifteen minutes actually elapsed without virtual time');
       check(quoteCalls === callsAtStart, 'Fifteen minutes of passive monitoring makes zero 0x price requests');
-      check(spotCalls - spotsAtStart >= 20 && spotCalls - spotsAtStart <= 40, 'Lightweight pool observations refresh within a bounded rate');
+      check(spotCalls - spotsAtStart >= 80 && spotCalls - spotsAtStart <= 160, 'Four visible sessions keep lightweight pool observations bounded');
       check((await stable.evaluate(() => window.__CANNACAT_FIXTURE_WALLET_REQUESTS__?.length ?? 0)) === 0, 'Fifteen minutes of quotes never submits or signs');
       check(firmCalls === firmAtStart, 'Background estimates never call verification or authorization endpoints');
       check(stableErrors.length === 0, 'No long-running browser runtime errors');
       await stable.screenshot({ path: path.join(output, channel + '-stability-finish.png'), fullPage: true });
+      check(balanceReadCount-balancesAtStart<=160,'Four-session background balance reads stay bounded at 30-second pacing');
+      check(peakPendingBalanceReads<=4,'Each session keeps a single background balance read in flight');
+      const balanceLayouts=[];
+      for(const device of deviceState){
+        const shifts=await device.page.evaluate(()=> (window as unknown as {__TASK120_BALANCE_LAYOUT_SHIFTS__:{value:number;sources:number}[]}).__TASK120_BALANCE_LAYOUT_SHIFTS__);
+        check(shifts.reduce((sum,x)=>sum+x.value,0)<=0.001,'No cumulative background layout shift at '+device.width+'px');
+        await device.page.screenshot({path:path.join(output,`${channel}-${device.width}-balance-stability.png`),fullPage:true});
+        balanceLayouts.push({width:device.width,layoutShiftSum:shifts.reduce((sum,x)=>sum+x.value,0),observations:shifts.length,result:'PASS'});
+      }
+      await writeFile(path.join(output,channel+'-balance-stability.json'),JSON.stringify({result:'PASS',elapsedMs,devices:balanceLayouts,balanceReads:balanceReadCount-balancesAtStart,
+        slowReads:true,rpcFailureAndRecovery:true,identityTokenRotation:true,valueUpdates:true,realWalletSignatures:0,fundedTransactions:0},null,2));
+      for(const device of companions)await device.context.close();
+      balanceReadDelayMs=0;balancesFail=false;tokenBalance=50_000n*10n**18n;
       // Existing modes and sell use automatic observations without a Review click.
       await stable.getByRole('button', { name: 'USD target', exact: true }).click();
       await expect(stable.getByLabel('USD purchase target')).toHaveValue('25');

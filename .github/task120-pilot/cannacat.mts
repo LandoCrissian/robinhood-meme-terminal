@@ -19,9 +19,21 @@ const environmentKeys = [
 ];
 let canonical: Promise<typeof import('./canonical.mts')> | undefined;
 let cold = true;
-type Observation = { requestId: string; operation: string; provider: Array<{status: number; kind: string; requestId?: string; retrySeconds?: number}> };
+type Observation = { requestId: string; operation: string; provider: Array<{status: number; kind: string; requestId?: string; retrySeconds?: number; resultCode?: string; liquidityAvailable?: boolean; balanceIssue?: boolean; simulationIncomplete?: boolean}> };
 const observation = new AsyncLocalStorage<Observation>();
 const originalFetch = globalThis.fetch;
+// Inspect a bounded clone for enumerated diagnostics only. Never log bodies,
+// wallets, amounts, calldata, quote commitments, secrets or provider text.
+async function structuredResult(response: Response): Promise<Record<string, any> | null> {
+  if (!response.headers.get('content-type')?.includes('application/json') || Number(response.headers.get('content-length') ?? 0) > 1_048_576) return null;
+  const reader=response.clone().body?.getReader(); if (!reader) return null;
+  let bytes=0,text='';const decoder=new TextDecoder();
+  try { while(true){const part=await reader.read();if(part.done)break;bytes+=part.value.byteLength;if(bytes>1_048_576)return null;text+=decoder.decode(part.value,{stream:true});}
+    const value=JSON.parse(text+decoder.decode());return value&&typeof value==='object'&&!Array.isArray(value)?value:null;
+  } catch { return null; } finally { void reader.cancel().catch(()=>undefined); }
+}
+const diagnosticCode=(value:unknown) => typeof value==='string'&&/^[A-Z][A-Z0-9_]{1,99}$/.test(value)?value:undefined;
+const businessStates=new Set(['verified','approval_required','approval_simulation_failed','insufficient_balance','insufficient_gas','gas_unavailable','simulation_failed']);
 // Hosting telemetry only. Do not serialize URLs, keys, accounts or provider bodies.
 globalThis.fetch = async (input, init) => {
   const active = observation.getStore();
@@ -34,8 +46,12 @@ globalThis.fetch = async (input, init) => {
     const rawId = response.headers.get('0x-request-id') ?? response.headers.get('x-request-id');
     const requestId = rawId && /^[A-Za-z0-9_-]{8,100}$/.test(rawId) ? rawId : undefined;
     const retry = Number(response.headers.get('retry-after'));
+    const details=await structuredResult(response);
     active.provider.push({kind,status:response.status,...(requestId ? {requestId}:{}),
-      ...(response.status === 429 ? {retrySeconds:Number.isFinite(retry)&&retry>0?Math.ceil(retry):1}:{})});
+      ...(response.status === 429 ? {retrySeconds:Number.isFinite(retry)&&retry>0?Math.ceil(retry):1}:{}),
+      ...(diagnosticCode(details?.name)?{resultCode:diagnosticCode(details?.name)}:{}),
+      ...(typeof details?.liquidityAvailable==='boolean'?{liquidityAvailable:details.liquidityAvailable}:{}),
+      ...(details?.issues&&typeof details.issues==='object'?{balanceIssue:!!details.issues.balance,simulationIncomplete:details.issues.simulationIncomplete===true}:{})});
     return response;
   } catch (error) {
     active.provider.push({kind,status:0}); throw error;
@@ -100,8 +116,12 @@ export default async function handler(request: Request, context: { requestId?: s
       headers.set('Retry-After',String(limited.retrySeconds ?? 1));
       response = Response.json({code:'RATE_LIMITED',stage:active.operation,retryable:true}, {status:429});
     }
+    const result=await structuredResult(response);
+    const resultCode=diagnosticCode(result?.code)??diagnosticCode(result?.error);
+    const rawState=result?.status??result?.evidence?.status;
+    const businessStatus=typeof rawState==='string'&&businessStates.has(rawState)?rawState:undefined;
     console.info(JSON.stringify({event:'rmt_embed_request',requestId:active.requestId,operation:active.operation,
-      status:response.status,providerRequests:active.provider.length,provider:active.provider,coldStart:wasCold,
+      status:response.status,...(resultCode?{resultCode}:{}),...(businessStatus?{businessStatus}:{}),providerRequests:active.provider.length,provider:active.provider,coldStart:wasCold,
       durationMs:Math.round(performance.now()-started)}));
     return new Response(response.body, { status: response.status, headers });
    } catch {

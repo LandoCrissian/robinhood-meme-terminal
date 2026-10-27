@@ -97,6 +97,8 @@ export function createCannaCatClient(options: {
   const providerBackoffByOrigin = providerBackoffByTransport.get(fetcher) ?? new Map<string, number>();
   providerBackoffByTransport.set(fetcher, providerBackoffByOrigin);
   let nextReadAt = 0;
+  let lastRequestId: string | undefined;
+  const withReference = (message: string) => message + (lastRequestId ? ` Reference ${lastRequestId}.` : "");
   for (const [origin, until] of providerBackoffByOrigin) if (until <= now()) providerBackoffByOrigin.delete(origin);
   async function post(operation: string, body: object, signal?: AbortSignal) {
     if (operation !== "native-settlement-trace") {
@@ -115,11 +117,20 @@ export function createCannaCatClient(options: {
       signal?.throwIfAborted();
       nextReadAt = now() + 500;
     }
-    const response = await fetcher(`${base.href}/${operation}`, {
+    let response: Response;
+    try { response = await fetcher(`${base.href}/${operation}`, {
       method: "POST", credentials: "omit", cache: "no-store", redirect: "error",
       headers: { "content-type": "application/json", "privy-id-token": options.identityToken, "x-rmt-client": CANNACAT_EMBED.version },
       body: JSON.stringify(body), signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(30_000)]) : AbortSignal.timeout(30_000)
-    });
+    }); } catch (cause) {
+      if (signal?.aborted) throw cause;
+      const timedOut = cause instanceof Error && ["TimeoutError", "AbortError"].includes(cause.name);
+      throw new CannaCatClientError(timedOut ? "TRADING_REQUEST_TIMED_OUT" : "TRADING_NETWORK_UNAVAILABLE",
+        timedOut ? "Trade review timed out. Your amount is kept; no transaction was submitted. Try again when the connection is stable."
+          : "The trading service could not be reached. Your amount is kept; no transaction was submitted. Check your connection and retry.");
+    }
+    const responseId = response.headers.get("x-rmt-request-id") ?? response.headers.get("x-nf-request-id");
+    lastRequestId = responseId && /^[A-Za-z0-9_-]{12,80}$/.test(responseId) ? responseId : undefined;
     if (Number(response.headers.get("content-length") ?? 0) > 1_048_576) throw new CannaCatClientError("RESPONSE_TOO_LARGE", "The trading response exceeded its safety limit.");
     const reader = response.body?.getReader();
     if (!reader) throw new CannaCatClientError("INVALID_RESPONSE", "The trading service returned an empty response.");
@@ -139,8 +150,9 @@ export function createCannaCatClient(options: {
     let bodyValue: unknown;
     try { bodyValue = JSON.parse(text); } catch { throw new CannaCatClientError("INVALID_RESPONSE", "The trading service returned an invalid response."); }
     if (!response.ok) {
-      const code = bodyValue && typeof bodyValue === "object" && "code" in bodyValue && typeof bodyValue.code === "string"
-        ? bodyValue.code.slice(0, 100) : `HTTP_${response.status}`;
+      const payload = bodyValue && typeof bodyValue === "object" ? bodyValue as Record<string, unknown> : {};
+      const code = typeof payload.code === "string" && /^[A-Z0-9_]{1,100}$/.test(payload.code) ? payload.code
+        : typeof payload.error === "string" && /^[A-Z0-9_]{1,100}$/.test(payload.error) ? payload.error : `HTTP_${response.status}`;
       const messages: Record<number, string> = {
         401: "Your wallet sign-in expired. Connect again before preparing another trade.",
         403: "This wallet or website is not admitted to RMT trading yet.",
@@ -155,7 +167,17 @@ export function createCannaCatClient(options: {
         PROVIDER_POLICY_REJECTED: "The provider returned terms that failed safety checks. Do not sign; review a fresh quote later.",
         EXECUTION_ENVELOPE_REJECTED: "The returned transaction failed verification. Nothing was submitted; try a fresh review later.",
         RATE_LIMITED: "The quote provider is busy. Wait before reviewing again; your amount is kept and no transaction was sent.",
-        RPC_UNAVAILABLE: "Required chain evidence is temporarily unavailable. Your amount is kept; no transaction was sent."
+        RPC_UNAVAILABLE: "Required chain evidence is temporarily unavailable. Your amount is kept; no transaction was sent.",
+        PROVIDER_UNAVAILABLE: "0x could not provide trading terms right now. Your amount is kept; try again later.",
+        ZEROX_PROVIDER_UNAVAILABLE: "0x trading terms are temporarily unavailable. Your amount is kept; try again later.",
+        FIRM_VERIFY_FAILED: "The proposed trade failed RMT verification. No transaction was submitted. Review a fresh quote later.",
+        AUTHORIZATION_FAILED: "Trade authorization could not be verified. No transaction was submitted. Reconnect if needed and review again.",
+        QUOTE_EXPIRED: "The executable quote expired. Review fresh terms before signing.",
+        ZERO_X_REPRICE_REQUIRED: "The price moved during review. Review the refreshed amounts before signing.",
+        INSUFFICIENT_GAS: "Insufficient native ETH for network gas. Selling tokens also requires ETH before the trade.",
+        GAS_UNAVAILABLE: "Network gas could not be verified. Your amount is kept; try again when network reads recover.",
+        SIMULATION_FAILED: "The proposed transaction failed simulation. No transaction was submitted. Review a fresh quote later.",
+        APPROVAL_SIMULATION_FAILED: "The token approval failed simulation. No approval was sent. Check the network and review again later."
       };
       const retry = response.headers.get("retry-after");
       const retryMs = retry ? (/^[0-9]+$/.test(retry) ? Number(retry) * 1000 : Date.parse(retry) - now()) : 0;
@@ -226,17 +248,28 @@ export function createCannaCatClient(options: {
       const expected = { quoteRequestId: quote.requestId, inputAsset: quote.inputAsset, outputAsset: quote.outputAsset,
         inputAmountAtomic: quote.inputAmountAtomic, recipient: quote.recipient };
       const raw = await post("verify", { chainId: 4663, ...expected, provider: "zero-x-swap", protectedOutputFloorAtomic: quote.attempt.protectedOutputAtomic }, signal);
-      const evidence = parseVNextPreSignEvidence(raw, { ...expected, provider: "zero-x-swap", protectedOutputFloorAtomic: quote.attempt.protectedOutputAtomic! }, now());
-      assertPreparedTarget(quote, evidence);
+      let evidence: VNextPreSignEvidence;
+      try { evidence = parseVNextPreSignEvidence(raw, { ...expected, provider: "zero-x-swap", protectedOutputFloorAtomic: quote.attempt.protectedOutputAtomic! }, now()); }
+      catch { throw new CannaCatClientError("PRE_SIGN_EVIDENCE_REJECTED", withReference("RMT could not validate the returned quote evidence. No transaction was submitted. Review fresh terms later."), undefined, undefined, lastRequestId); }
       if (evidence.status !== "verified" && evidence.status !== "approval_required") {
-        throw new CannaCatClientError(evidence.status.toUpperCase(), `Trade verification: ${evidence.status.replaceAll("_", " ")}. No transaction was submitted.`);
+        const messages = {
+          insufficient_balance: `Insufficient ${quote.inputAsset === CANNACAT_EMBED.native ? "ETH" : "CannaCat"} for this ${quote.side}. Reduce the amount or refresh balances. No transaction was submitted.`,
+          insufficient_gas: "Insufficient native ETH for network gas. Selling CannaCat still requires ETH before the trade.",
+          gas_unavailable: "Network gas could not be verified. Your amount is kept; try again when network reads recover.",
+          simulation_failed: "The proposed transaction failed simulation. No transaction was submitted. Review a fresh quote later.",
+          approval_simulation_failed: "The token approval failed simulation. No approval was sent. Check the network and review again later."
+        };
+        throw new CannaCatClientError(evidence.status.toUpperCase(), withReference(messages[evidence.status]), 200, undefined, lastRequestId);
       }
+      assertPreparedTarget(quote, evidence);
       const bundle = await post("authorize", {
         chainId: 4663, ...expected, verificationId: evidence.verificationId, provider: "zero-x-swap", expectedStatus: evidence.status,
         indicativeProtectedOutputFloorAtomic: evidence.indicativeProtectedOutputFloorAtomic, expectedProtectedOutputAtomic: evidence.protectedOutputAtomic,
         settlementMode: VNEXT_PROVIDER_NATIVE_INPUT_FEE, zeroXFirmQuoteCommitment: evidence.zeroXFirmQuoteCommitment
       }, signal);
-      const parsed = parseVNextAuthorizationBundle(bundle, evidence, expected, now());
+      let parsed: ReturnType<typeof parseVNextAuthorizationBundle>;
+      try { parsed = parseVNextAuthorizationBundle(bundle, evidence, expected, now()); }
+      catch { throw new CannaCatClientError("AUTHORIZATION_EVIDENCE_REJECTED", withReference("RMT could not validate the trade authorization. No transaction was submitted. Review fresh terms later."), undefined, undefined, lastRequestId); }
       assertPreparedTarget(quote, parsed.evidence);
       return { quote, evidence: parsed.evidence, plan: parsed.plan };
     },

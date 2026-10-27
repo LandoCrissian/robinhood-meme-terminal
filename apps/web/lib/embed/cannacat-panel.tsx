@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useRef, useState } from "react";
+import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { PrivyProvider, useConnectWallet, useIdentityToken, useLogin, usePrivy, useWallets } from "@privy-io/react-auth";
 import { createPublicClient, erc20Abi, formatUnits, getAddress, http, isHash, keccak256, toHex, type Hex } from "viem";
@@ -82,6 +82,28 @@ async function readWalletFunds(key: string, wallet: string): Promise<CannaCatFun
     eth: confirmedEth < pendingEth ? confirmedEth : pendingEth, token: confirmedToken < pendingToken ? confirmedToken : pendingToken, gasPrice };
 }
 
+const WalletBalanceSummary = React.memo(function WalletBalanceSummary({ funds, usd, health, disabled, onRefresh }: {
+  funds: CannaCatFunds | null; usd: string | null; health: "loading" | "current" | "stale" | "checking" | "unavailable";
+  disabled: boolean; onRefresh: () => void;
+}) {
+  const messages = {
+    loading: "Reading balances on Robinhood Chain.",
+    current: "Balances current. Review rechecks funds and gas.",
+    stale: "Last known balances. Review rechecks funds and gas.",
+    checking: "Rechecking wallet. Last known balances are retained.",
+    unavailable: "Balances could not be refreshed. Confirmation needs fresh data."
+  };
+  return <section className="rmtcat-funds" aria-label="Wallet balances">
+    <dl><div><dt>Native Robinhood ETH</dt><dd className="rmtcat-funds-amount">{funds ? `${units(funds.eth)} ETH` : "Loading…"}</dd>
+      <dd className="rmtcat-usd">{usd ? `≈ ${usd} USD` : "USD estimate unavailable"}</dd></div>
+      <div><dt>CannaCat available</dt><dd className="rmtcat-funds-amount">{funds ? `${units(funds.token, 4)} CannaCat` : "Loading…"}</dd></div></dl>
+    <p className="rmtcat-funds-snapshot"><span>{funds ? <>As of <time dateTime={new Date(funds.checkedAtMs).toISOString()}>{new Date(funds.checkedAtMs).toLocaleTimeString()}</time></> : "Balance snapshot pending"}</span>
+      <span>{funds ? `Block ${String(funds.block)}` : "Block pending"}</span></p>
+    <p className="rmtcat-funds-health" data-balance-health={health} aria-live="off">{messages[health]}</p>
+    <button type="button" className="rmtcat-textbutton" disabled={disabled} onClick={onRefresh}>Refresh balances</button>
+  </section>;
+});
+
 function Panel({ config }: { config: CannaCatPanelConfig }) {
   const terms = useTradingTermsAcceptance();
   const { ready, authenticated, user, logout } = usePrivy();
@@ -117,6 +139,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
   const priceRef = useRef(price); priceRef.current = price;
   const [priceError, setPriceError] = useState("");
   const refreshFunds = useRef<(() => Promise<void>) | null>(null);
+  const refreshBalanceDisplay = useCallback(() => { void refreshFunds.current?.(); }, []);
   const [blocking, setBlocking] = useState(false);
   const [recoveryChecking, setRecoveryChecking] = useState(false);
   const recoveryRead = useRef<AbortController | null>(null);
@@ -232,9 +255,12 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     if (sole && !explicitChoiceRequired.current) setSelectedKey(walletGatewayKey(sole));
   }, [walletsReady, walletInventoryKey, selectedKey]);
 
-  useEffect(() => { invalidate(); setBalances(null); balancesRef.current = null; }, [selectedKey, identityToken, user?.id, authenticated, terms.accepted]);
+  // A rotated authentication token invalidates signing authority, not the
+  // displayed public balance snapshot for the same selected wallet.
+  useEffect(() => { invalidate(); balancesRef.current = null; void refreshFunds.current?.(); }, [selectedKey, identityToken, user?.id, authenticated, terms.accepted]);
+  useEffect(() => { setBalances(null); }, [selectedKey]);
   useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 500);
+    const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
   useEffect(() => {
@@ -268,7 +294,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       } catch { if (!disposed) { balancesRef.current = null; setBalanceError("Balances could not be refreshed. Confirmation is paused until fresh balances return."); } }
       finally { active = false; }
     };
-    refreshFunds.current = refresh; void refresh(); const timer = setInterval(() => void refresh(), 15_000);
+    refreshFunds.current = refresh; void refresh(); const timer = setInterval(() => void refresh(), 30_000);
     return () => { disposed = true; clearInterval(timer); refreshFunds.current = null; balancesRef.current = null; };
   }, [selectedKey, wallet?.address, walletState.status, terms.accepted]);
   useEffect(() => () => { operation.current?.abort(); if (actionTimer.current) clearTimeout(actionTimer.current); activeAction.current = null; epoch.current += 1; }, []);
@@ -299,7 +325,14 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     const detach = () => {
       active?.removeListener?.("chainChanged", changed); active?.removeListener?.("accountsChanged", changed); active?.removeListener?.("disconnect", disconnected);
     };
-    const refresh = async () => {
+    let pendingRefresh: Promise<void> | null = null;
+    const refresh = (force = false): Promise<void> => {
+      if (pendingRefresh && !force) return pendingRefresh;
+      const work = refreshOnce(); pendingRefresh = work;
+      void work.finally(() => { if (pendingRefresh === work) pendingRefresh = null; }).catch(() => undefined);
+      return work;
+    };
+    const refreshOnce = async () => {
       const candidate = walletRef.current;
       if (!candidate || disposed) return;
       const attempt = ++sequence;
@@ -312,7 +345,8 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
         active?.on?.("chainChanged", changed); active?.on?.("accountsChanged", changed); active?.on?.("disconnect", disconnected);
       }
       providerRef.current = state.provider; publish(state);
-      setStatus(connectedWalletMessage(state));
+      // The dedicated wallet row owns network/readiness copy. A background
+      // revalidation must not replace a trade or settlement status message.
       if (state.status === "ready") void refreshFunds.current?.();
       // Safari may complete checking -> ready in one React batch. In that case
       // a status-dependency effect sees no change. Resume recovery explicitly
@@ -324,7 +358,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
         } catch { setBlocking(true); setError("Local recovery storage is unavailable. History is preserved; trading is paused."); }
       }
     };
-    function changed() { if (document.visibilityState !== "hidden") void refresh(); else suspend(); }
+    function changed() { if (document.visibilityState !== "hidden") void refresh(true); else suspend(); }
     function disconnected() {
       cancelRecoveryRead();
       sequence += 1; invalidate(); providerRef.current = null;
@@ -509,7 +543,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       setNow(Date.now());
       setStatus(trade.plan.kind === "erc20_approval" ? "Approve only the displayed CannaCat amount. A fresh swap review follows after confirmation." : "Review the protected quote, then confirm explicitly in your wallet.");
     } catch (cause) { if (generation === epoch.current && !controller.signal.aborted) {
-      setError(cause && typeof cause === "object" && "code" in cause && cause.code === "INSUFFICIENT_BALANCE"
+      setError(side === "buy" && cause && typeof cause === "object" && "code" in cause && cause.code === "INSUFFICIENT_BALANCE"
         ? "Insufficient ETH for the selected token target plus network gas. Choose a smaller amount or use Max ETH in ETH input mode." : safeError(cause));
       setStatus("No transaction was submitted.");
     } }
@@ -675,7 +709,9 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     : buyMode === "eth" ? [["0.001", "0.001"], ["0.01", "0.01"], ["0.05", "0.05"], ["0.1", "0.1"]]
     : [["10000", "10K"], ["25000", "25K"], ["50000", "50K"]];
   let inputProblem = "";
-  if (fundsFresh && visibleFunds) {
+  // Keep last-known amount warnings visible while freshness is rechecked;
+  // transaction authority still requires freshCannaCatFunds above.
+  if (visibleFunds) {
     try {
       const requested = side === "buy" ? (buyMode === "eth" ? BigInt(parseCannaCatAmount(amount)) : buyMode === "usd" && freshPrice ? usdTargetToWei(amount, price, now) : null) : null;
       const budget = cannaCatQuoteBudget(visibleFunds);
@@ -716,13 +752,9 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       </div>
     </div>
     {wallet && <p className="rmtcat-balances" data-wallet-status={walletState.status}>{connectedWalletMessage(walletState)}</p>}
-    {wallet && <section className="rmtcat-funds" aria-label="Wallet balances">
-      <dl><div><dt>Native Robinhood ETH</dt><dd>{visibleFunds ? `${units(visibleFunds.eth)} ETH` : "Loading…"}</dd><dd className="rmtcat-usd">{visibleFunds && approximateUsd(visibleFunds.eth, price, now) ? `≈ ${approximateUsd(visibleFunds.eth, price, now)} USD` : "USD estimate unavailable"}</dd></div>
-        <div><dt>CannaCat available</dt><dd>{visibleFunds ? `${units(visibleFunds.token, 4)} CannaCat` : "Loading…"}</dd></div></dl>
-      <p>{visibleFunds ? <>{fundsFresh ? "Updated" : "Last known · refresh required"} <time dateTime={new Date(visibleFunds.checkedAtMs).toISOString()}>{new Date(visibleFunds.checkedAtMs).toLocaleTimeString()}</time> · block {String(visibleFunds.block)}</> : "Reading this wallet on Robinhood Chain."}</p>
-      {balanceError && <p>{balanceError}</p>}
-      <button type="button" className="rmtcat-textbutton" disabled={busy || walletState.status !== "ready"} onClick={() => void refreshFunds.current?.()}>Refresh balances</button>
-    </section>}
+    {wallet && <WalletBalanceSummary funds={visibleFunds} usd={visibleFunds ? approximateUsd(visibleFunds.eth, price, now) : null}
+      health={balanceError ? "unavailable" : walletState.status !== "ready" ? "checking" : !visibleFunds ? "loading" : fundsFresh ? "current" : "stale"}
+      disabled={busy || walletState.status !== "ready"} onRefresh={refreshBalanceDisplay} />}
     {side === "buy" && <div className="rmtcat-modes" role="group" aria-label="Buy input mode">{([["usd", "USD target"], ["eth", "ETH input"], ["token", "CannaCat target"]] as const).map(([mode, label]) => <button key={mode} type="button" aria-pressed={buyMode === mode} onClick={() => { invalidate(); setBuyMode(mode); setAmount(amounts.current[mode]); }}>{label}</button>)}</div>}
     <label className="rmtcat-amountlabel" htmlFor={inputId}>{amountLabel}</label>
     <div className="rmtcat-amount"><input id={inputId} inputMode="decimal" autoComplete="off" value={amount} maxLength={60} onChange={(event) => editAmount(event.target.value)} /><span>{side === "sell" || buyMode === "token" ? "CANNACAT" : buyMode === "usd" ? "USD TARGET" : "NATIVE ETH"}</span></div>
@@ -740,7 +772,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       <div><dt>RMT fee · 0.25%</dt><dd>{`${units(observation.feeEstimateAtomic)} ETH · estimate`}</dd></div>
       <div><dt>Estimated network gas</dt><dd>{"Verified at trade review"}</dd></div>
       <div><dt>{observation.side === "buy" ? "Input · USD estimate" : "Proceeds · USD estimate"}</dt><dd>{approximateUsd(observation.side === "buy" ? observation.inputAmountAtomic : observation.expectedOutputAtomic, price, now) ?? "Unavailable"}</dd></div>
-    </dl>}<p className="rmtcat-price-state">{quoteMessage || "Pool spot estimate updates automatically; liquidity impact and pool fees are excluded. Review fresh 0x terms before signing. Network gas is additional; maximum slippage is 1%."}</p></div>}
+    </dl>}<p className="rmtcat-price-state"><span>{quoteMessage || "Pool spot estimate updates automatically; liquidity impact and pool fees are excluded. Review fresh 0x terms before signing. Network gas is additional; maximum slippage is 1%."}</span><span className="rmtcat-price-sizer" aria-hidden="true">Pool spot estimate updates automatically; liquidity impact and pool fees are excluded. Review fresh 0x terms before signing. Network gas is additional; maximum slippage is 1%.</span></p></div>}
     {evidence && <div className="rmtcat-quote" aria-label="Verified trade review"><dl>
       <div><dt>{side === "buy" ? "Exact ETH input" : "Exact token input"}</dt><dd>{units(evidence.inputAmountAtomic)} {side === "buy" ? "ETH" : "CannaCat"}</dd></div>
       <div><dt>Expected received</dt><dd>{units(evidence.expectedOutputAtomic)} {side === "buy" ? "CannaCat" : "ETH"}</dd></div>
@@ -777,10 +809,17 @@ const css = `
 .rmtcat-terms{padding:16px;border:1px solid #637b2c;background:#11180b;border-radius:12px;margin:16px 0;font-size:13px}.rmtcat-terms details{margin:12px 0}.rmtcat-terms summary{cursor:pointer;min-height:44px;line-height:44px}.rmtcat-legal{max-height:320px;overflow:auto;padding:12px;border:1px solid #39432c}.rmtcat-legal h2{font-size:15px;line-height:1.4;margin:14px 0 6px}.rmtcat-legal p{font-size:13px;line-height:1.6}.rmtcat-root{font:400 16px/1.5 system-ui,sans-serif;color:#f2f4e9;color-scheme:dark;width:100%;box-sizing:border-box}.rmtcat-root *{box-sizing:border-box}.rmtcat-panel{padding:clamp(20px,4vw,36px);border:1px solid #485032;background:linear-gradient(135deg,#171c13,#0c0e0b);border-radius:20px;max-width:680px;margin:auto}.rmtcat-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.rmtcat-eyebrow{font-size:11px;letter-spacing:.13em;color:#d6ff24;font-weight:800}.rmtcat-powered{font-size:11px;color:#b7beaa}.rmtcat-panel h3{font-size:clamp(28px,6vw,42px);line-height:1.1;margin:18px 0 10px;font-weight:850;letter-spacing:-.04em}.rmtcat-intro{color:#c1c8b7;font-size:14px;margin:0 0 22px}.rmtcat-tabs{display:flex;padding:4px;background:#080a06;border-radius:12px;margin-bottom:18px;gap:4px}.rmtcat-root button{font:inherit;border:1px solid #596344;border-radius:9px;min-height:44px;padding:9px 16px;cursor:pointer;color:#edf2e6;background:#252c20;font-weight:650}.rmtcat-tabs button{flex:1;border:0;background:transparent;font-size:14px}.rmtcat-tabs button[aria-pressed=true],.rmtcat-root button.rmtcat-confirm{color:#101500;background:#d6ff24}.rmtcat-root button:disabled{opacity:.45;cursor:not-allowed}.rmtcat-root :focus-visible{outline:3px solid #edff9c;outline-offset:3px}.rmtcat-wallet{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:18px}.rmtcat-wallet label{display:grid;gap:4px;font-size:11px;flex:1;min-width:0}.rmtcat-wallet select{font:inherit;font-size:13px;background:#11150d;color:#f3f8eb;border:1px solid #596344;border-radius:7px;min-height:44px;max-width:100%;padding:8px}.rmtcat-root .rmtcat-textbutton{font-size:12px;padding:5px 10px;border:0;background:none;text-decoration:underline}.rmtcat-amountlabel{font-size:13px;color:#c1c8b7;display:block;margin-bottom:6px}.rmtcat-amount{display:flex;align-items:center;gap:8px;border:1px solid #586447;background:#070a05;border-radius:12px;padding:12px 16px}.rmtcat-amount input{width:100%;min-width:0;font:700 28px/1.3 system-ui;color:#fff;background:none;border:0}.rmtcat-amount span{font-size:10px;letter-spacing:.06em;color:#c5d5aa}.rmtcat-presets{display:flex;gap:8px;margin-top:10px}.rmtcat-presets button{font-size:12px;padding:5px 12px;min-height:44px}.rmtcat-balances{font-size:12px;color:#b7beaa}.rmtcat-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}.rmtcat-actions button{flex:1;min-width:150px}.rmtcat-quote{padding:16px;background:#0a0d08;border-radius:12px;margin-top:18px}.rmtcat-quote dl{margin:0;display:grid;gap:8px;font-size:13px}.rmtcat-quote dl>div{display:flex;justify-content:space-between;gap:15px}.rmtcat-quote dt{color:#b7beaa}.rmtcat-quote dd{margin:0;text-align:right;overflow-wrap:anywhere}.rmtcat-quote p{font-size:11px;color:#c1c8b7;margin:12px 0 0}.rmtcat-status{font-size:13px;color:#d7dfcc;margin:16px 0}.rmtcat-error{font-size:13px;padding:12px;border:1px solid #b86b52;background:#27150f;border-radius:8px;color:#ffd8c9}.rmtcat-transaction{display:grid;gap:10px;padding:12px;border:1px solid #5b6d36;border-radius:9px;font-size:13px}.rmtcat-root a{color:#d6ff24;text-underline-offset:3px}.rmtcat-details{font-size:12px;color:#b7beaa;border-top:1px solid #39432c;margin-top:18px;padding-top:14px}.rmtcat-details summary{cursor:pointer;min-height:36px;display:list-item;line-height:28px;color:#d7dfcc}.rmtcat-contract{font-size:10px;overflow-wrap:anywhere;display:block;margin-top:12px}.rmtcat-root .rmtcat-paused{padding:18px;background:#0a0d08;border-radius:12px;color:#d6ff24;font-size:14px}
 /* Wallet identity and controls own separate rows, including unverified sessions. */
 .rmtcat-funds{min-width:0;background:#0a0d08;border:1px solid #39432c;padding:14px;border-radius:12px;margin:14px 0 18px}
+.rmtcat-funds .rmtcat-funds-amount{min-block-size:2.6em;line-height:1.3}
+.rmtcat-funds .rmtcat-usd{min-block-size:1.6em}
+.rmtcat-funds .rmtcat-funds-snapshot{display:grid;grid-template-rows:1.6em 1.6em;min-block-size:3.2em}
+.rmtcat-funds .rmtcat-funds-health{block-size:4.8em;min-block-size:4.8em;line-height:1.6}
+.rmtcat-balances[data-wallet-status]{min-block-size:3.2em}
+
 .rmtcat-funds dl{margin:0;display:grid;grid-template-columns:minmax(0,1fr);gap:14px}.rmtcat-funds dt{font-size:12px;color:#b7beaa}.rmtcat-funds dd{margin:3px 0 0;font-size:16px;font-weight:650;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.rmtcat-funds .rmtcat-usd{font-size:13px;color:#c1c8b7;font-weight:400}.rmtcat-funds p,.rmtcat-price{font-size:12px;color:#b7beaa;line-height:1.6;overflow-wrap:anywhere}.rmtcat-funds p{margin:12px 0 0}.rmtcat-modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0 0 16px}.rmtcat-modes button{min-width:0;font-size:12px;padding:8px 5px;line-height:1.4}.rmtcat-modes button[aria-pressed=true]{background:#d6ff24;color:#101500}.rmtcat-price{margin:14px 0}
 .rmtcat-root{min-width:0}
 .rmtcat-panel{min-width:0}
 .rmtcat-price-state,.rmtcat-observation{min-width:0;overflow-wrap:anywhere}
+.rmtcat-price-state{display:grid}.rmtcat-price-state>span{grid-area:1/1}.rmtcat-price-sizer{visibility:hidden}
 .rmtcat-top{align-items:baseline}
 .rmtcat-wallet{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:stretch;margin:20px 0 14px}
 .rmtcat-wallet .rmtcat-wallet-choice{display:grid;gap:6px;min-width:0;font-size:13px;line-height:1.5}

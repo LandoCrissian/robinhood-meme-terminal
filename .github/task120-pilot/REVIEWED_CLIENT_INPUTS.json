@@ -1,18 +1,22 @@
 [
   {
-    "path": "apps/web/lib/embed/cannacat-panel.tsx",
-    "sha256": "ec033bcefc308cb74aa057f857f2cbf24d5e64beeb5c8f27eabe6e5a5d5c5a08"
+    "path": "apps/web/lib/embed/cannacat-client.ts",
+    "sha256": "8be43a680815d13733a99a60499477c4f4f1e18a069b37391962ef67bf65118a"
   },
   {
-    "path": "apps/web/lib/embed/cannacat-client.ts",
-    "sha256": "7fc4bb04290bda5eaac3ef928edd10b33ccdfad367fc6e19c7de5d74a0000447"
+    "path": "apps/web/lib/embed/cannacat-observation-smoke.ts",
+    "sha256": "025197c98c7c5b3a69b78ee7f093993fd2b243fe2d7c7d787155030cc24c109b"
   },
   {
     "path": "apps/web/lib/embed/cannacat-observation.ts",
     "sha256": "5e09a5be6a50897526f56bd516bf0ac2b10cabf196fdf4516805f37c0c29f6ff"
   },
   {
-    "path": "apps/web/lib/embed/cannacat-observation-smoke.ts",
-    "sha256": "025197c98c7c5b3a69b78ee7f093993fd2b243fe2d7c7d787155030cc24c109b"
+    "path": "apps/web/lib/embed/cannacat-panel.tsx",
+    "sha256": "bd8cef894c83e04a218f3e30c8ecc6393fefc8fc668fdbdd26b40b3d873ab349"
+  },
+  {
+    "path": "apps/web/lib/testing/cannacat-privy-fixture.tsx",
+    "sha256": "bdba08df12100e64c9fb793fcc9aae5464121f51a8e111c8946510035faa0470"
   }
 ]
