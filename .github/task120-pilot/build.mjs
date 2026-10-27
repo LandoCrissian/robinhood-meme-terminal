@@ -32,6 +32,8 @@ const result = await build({
   banner: { js: "import { createRequire as __rmtCreateRequire } from 'node:module'; const require = __rmtCreateRequire(import.meta.url);" },
   absWorkingDir: repo, treeShaking: true,
 });
+const compiledSha256 = crypto.createHash('sha256').update(fs.readFileSync(path.join(out, 'source-functions/cannacat.mjs'))).digest('hex');
+assert.equal(compiledSha256, '23374fd132b7ca125a1d52e931854f70ae3d74ef11dd2a8ed039c5a1a4cc962f', 'Runtime differs from the independently verified Task120 pilot');
 const inputs = Object.keys(result.metafile.inputs);
 assert(!inputs.some(x => /(?:^|\/)node_modules\/(?:next|firebase|firebase-admin|react)(?:\/|$)/.test(x)), 'Full terminal/runtime dependency entered the API bundle');
 assert(inputs.some(x => x.endsWith('cannacat-embed-boundary.ts')));
