@@ -80,7 +80,7 @@ try {
 for (const width of [320, 375, 390, 430, 1440]) {
   store.clear();
   const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width, height: 900 } });
-  await context.addInitScript(({ address, other }) => {
+  const setupWallet = ({ address, other }: { address: string; other: string }) => {
     const listeners = new Map<string, Set<(...args: any[]) => void>>();
     const state = { address: localStorage.getItem('fixture.account') ?? address, chain: '0x1237' };
     const provider = {
@@ -108,7 +108,10 @@ for (const width of [320, 375, 390, 430, 1440]) {
       chain: (chain: string) => { state.chain = chain; listeners.get('chainChanged')?.forEach(cb => cb(chain)); } };
     const announce = () => window.dispatchEvent(new CustomEvent('eip6963:announceProvider', { detail: { info: { uuid: 'ecb12f76-f841-47cd-ab91-4856b924d643', name: 'Rabby synthetic wallet', icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg"/>', rdns: 'io.rabby' }, provider } }));
     window.addEventListener('eip6963:requestProvider', announce); announce();
-  }, { address: alice.address, other: bob.address });
+  };
+  // tsx preserves function names with __name. Serialize its test-only bootstrap
+  // explicitly; the application SDK does not contain this fixture or helper.
+  await context.addInitScript({ content: `const __name=(value)=>value; (${setupWallet.toString()})(${JSON.stringify({ address: alice.address, other: bob.address })});` });
   await context.route('https://api.exchange.coinbase.com/**', route => route.fulfill({ json: { price: '2000', time: new Date().toISOString() }, headers: { 'access-control-allow-origin': '*' } }));
   await context.route('https://rpc.mainnet.chain.robinhood.com/**', async route => {
     const input = route.request().postDataJSON(), hash = '0x' + 'a'.repeat(64);
@@ -123,7 +126,8 @@ for (const width of [320, 375, 390, 430, 1440]) {
   });
   const page = await context.newPage(), errors: string[] = []; page.on('pageerror', e => { errors.push(e.message); console.error('BROWSER_RUNTIME:', e.message); });
   page.on('console', event => { if (event.type() === 'error') console.error('BROWSER_CONSOLE:', event.text().slice(0, 500)); });
-  await page.goto(origin); await page.getByRole('button', { name: 'I understand — continue', exact: true }).click();
+  await page.goto(origin); check(errors.length === 0, errors.join('; '));
+  await page.getByRole('button', { name: 'I understand — continue', exact: true }).click();
   await page.getByRole('button', { name: 'Connect wallet', exact: true }).click();
   await page.getByText('Rabby', { exact: true }).click();
   await expect(page.getByRole('button', { name: 'Disconnect', exact: true })).toBeVisible();

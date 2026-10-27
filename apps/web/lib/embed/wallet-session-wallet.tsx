@@ -134,8 +134,11 @@ export class WalletSessionController {
     (window as Window & { lammbExternalWallet?: typeof bridge }).lammbExternalWallet = bridge;
     this.stopWatch = watchConnections(this.wagmi, { onChange: () => {
       this.inventory();
-      const active = getAccount(this.wagmi);
-      if (this.state.session && active.address && active.address.toLowerCase() !== this.state.session.wallet.toLowerCase()) {
+      // A temporary mobile transport disconnect is not a logout. A connected
+      // replacement account must authenticate; no provider is selected by array order.
+      const accounts = getConnections(this.wagmi).flatMap(connection => connection.accounts);
+      if (this.state.ready && this.state.session && accounts.length
+        && !accounts.some(address => address.toLowerCase() === this.state.session!.wallet.toLowerCase())) {
         void this.invalidateSession().catch(() => this.publish({ error: 'The previous account was disconnected locally. Reconnect to authenticate this account.' }));
       }
     } });
@@ -191,10 +194,20 @@ export class WalletSessionController {
     }
     const selected = this.state.wallets.find(w => walletGatewayKey(w) === selectedKey)
       ?? (this.state.wallets.length === 1 ? this.state.wallets[0] : undefined);
-    if (selected) { await selected.authenticate(); return; }
+    if (selected) {
+      const live = await readConnectedWallet(selected);
+      if (live.status === 'ready') {
+        if (this.state.authenticated && selected.linked) { this.inventory(); return; }
+        await selected.authenticate(); return;
+      }
+      if (live.status === 'wrong-chain') { this.publish({ error: 'Select Switch to Robinhood Chain before signing in.' }); return; }
+    }
     this.modal.open({ forceOpen: true, onConnect: () => {
       this.inventory(); const account = getAccount(this.wagmi);
-      if (account.address && account.connector) void this.authenticate(account.connector, getAddress(account.address)).catch(() => undefined);
+      if (account.address && account.connector) {
+        if (this.state.authenticated && this.state.session?.wallet.toLowerCase() === account.address.toLowerCase()) this.inventory();
+        else void this.authenticate(account.connector, getAddress(account.address)).catch(() => undefined);
+      }
     }, onConnectError: () => this.publish({ error: 'The wallet connection was not completed. Try again when ready.' }) });
   };
   logout = async () => {

@@ -34,7 +34,7 @@ fs.writeFileSync(path.join(out, 'API_METAFILE.json'), JSON.stringify(api.metafil
 const sdkDir = path.join(out, 'sdk');
 const client = await build({ entryPoints: { 'cannacat-panel': 'apps/web/lib/embed/cannacat-panel.tsx', 'cannacat-sdk': 'apps/web/lib/embed/cannacat-client.ts' },
   outdir: sdkDir, outExtension: { '.js': '.mjs' }, chunkNames: 'chunks/rabby-[hash]', bundle: true, splitting: true,
-  platform: 'browser', target: 'es2022', format: 'esm', sourcemap: false, metafile: true, minify: true,
+  platform: 'browser', target: 'es2022', format: 'esm', jsx: 'automatic', sourcemap: false, metafile: true, minify: true,
   // Standalone SDK has no Next.js environment injection. Only explicit PUBLIC
   // constants are compiled; never serialize process.env from the build host.
   define: { 'process.env.NODE_ENV': '"production"', 'process.env': JSON.stringify({ NODE_ENV: 'production',
