@@ -8,7 +8,17 @@ import { fileURLToPath } from 'node:url';
 const control = path.dirname(fileURLToPath(import.meta.url));
 const repo = path.resolve(control, '../..');
 const frozen = '5ee50aa9a776dfa70cc2708ba7fa57394c0b229d';
-const modified = execFileSync('git', ['diff', '--name-only', frozen, '--', 'apps/web', 'packages', 'pnpm-lock.yaml', 'package.json'], { cwd: repo, encoding: 'utf8' }).trim();
+const frozenTrees = {
+  'apps/web': '0e35b529da267bcd6c7dd7b707a8f326619e41d2',
+  packages: 'b23a245d1748d88cc27ccb0d4317b3c507c36591',
+  'pnpm-lock.yaml': 'e9dced36dfb805506e126b024c2da952e6040fd3',
+  'package.json': '95167f1422cabba0198d4f9afee5e1911c138af7',
+};
+for (const [member, expected] of Object.entries(frozenTrees)) {
+  const actual = execFileSync('git', ['rev-parse', `HEAD:${member}`], { cwd: repo, encoding: 'utf8' }).trim();
+  assert.equal(actual, expected, `Frozen source tree/blob changed: ${member}`);
+}
+const modified = execFileSync('git', ['diff', '--name-only', 'HEAD', '--', 'apps/web', 'packages', 'pnpm-lock.yaml', 'package.json'], { cwd: repo, encoding: 'utf8' }).trim();
 assert.equal(modified, '', 'Frozen application or dependency lock changed');
 const requireWeb = createRequire(path.join(repo, 'apps/web/package.json'));
 const requireTsx = createRequire(requireWeb.resolve('tsx'));
