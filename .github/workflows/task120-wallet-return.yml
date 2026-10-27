@@ -2,7 +2,7 @@ name: Task120 returning-wallet acceptance
 on:
   push:
     branches: [codex/task120-netlify-cannacat-pilot]
-    paths: ['.github/workflows/task120-wallet-return.yml', '.github/scripts/cannacat-wallet-return-browser.ts', 'apps/web/lib/embed/cannacat-panel.tsx', 'apps/web/lib/testing/cannacat-privy-fixture.tsx', '.github/task120-pilot/REVIEWED_CLIENT_INPUTS.json', '.github/task120-pilot/shared-zero-x-quota.mts']
+    paths: ['.github/workflows/task120-wallet-return.yml', '.github/scripts/cannacat-wallet-return-browser.ts', 'apps/web/lib/embed/cannacat-panel.tsx', 'apps/web/lib/testing/cannacat-privy-fixture.tsx', '.github/task120-pilot/**']
 permissions:
   contents: read
 jobs:

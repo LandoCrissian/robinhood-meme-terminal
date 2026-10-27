@@ -124,6 +124,9 @@ export default async function handler(request: Request, context: { requestId?: s
     headers.set('Server-Timing', `rmt;dur=${(performance.now() - started).toFixed(2)}`);
     headers.set('X-RMT-Pilot-Cold-Start', String(wasCold));
     headers.set('X-RMT-Request-Id',active.requestId);
+    // Admission timestamps are safe diagnostic evidence, independent of delayed
+    // provider log indexing. No wallet, credential or executable terms appear.
+    headers.set('X-RMT-Quota-Admitted-At',active.quota.filter(x=>x.decision==='admitted'&&Number.isSafeInteger(x.atMs)).map(x=>x.atMs).join(','));
     headers.set('Access-Control-Expose-Headers','X-RMT-Request-Id,Retry-After');
     const limited = active.provider.find(x=>x.status===429);
     const quotaLimited=active.quota.find(x=>x.decision==='limited');
