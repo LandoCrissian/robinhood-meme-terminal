@@ -22,8 +22,12 @@ import {
   cannaCatRecoveryDetails,
   promoteDiscoveredVNextWalletRequestToSubmitted,
   VNEXT_EXECUTION_EVENT, VNEXT_WALLET_REQUEST_EVENT, VNEXT_EXECUTION_STORAGE_KEY,
-  type CannaCatPrepared, type CannaCatQuote, type CannaCatSide, type VNextExecutionRecord, type CannaCatRecoveryResult
+  type CannaCatPrepared, type CannaCatSide, type VNextExecutionRecord, type CannaCatRecoveryResult
 } from "./cannacat-client";
+
+import { createCannaCatSpotReader, observeCannaCatAmount, type CannaCatObservation } from "./cannacat-observation";
+import { rmtCuratedMarketByToken } from "../vnext/curated-market-registry";
+import { ROBINHOOD_V4_STATE_VIEW } from "../uniswap-v4";
 
 export type CannaCatPanelConfig = {
   enabled: boolean; apiBaseUrl: string; privyAppId: string; privyClientId: string;
@@ -35,6 +39,21 @@ type Ready = {
   nonce: bigint; block: bigint; blockHash: Hex; chainId: number;
 };
 const client = createPublicClient({ chain: robinhoodChain, transport: http(CANNACAT_EMBED.rpc, { timeout: 12_000, retryCount: 0 }) });
+// Existing verified RMT market identity; no new execution adapter/provider.
+const stateViewAbi = [{ type: "function", name: "getSlot0", stateMutability: "view", inputs: [{name:"poolId",type:"bytes32"}],
+  outputs: [{name:"sqrtPriceX96",type:"uint160"},{name:"tick",type:"int24"},{name:"protocolFee",type:"uint24"},{name:"lpFee",type:"uint24"}] }] as const;
+const readCannaCatSpot = createCannaCatSpotReader(async () => {
+  const market = rmtCuratedMarketByToken(CANNACAT_EMBED.token);
+  if (!market || market.chainId !== 4663 || market.market.sourceId !== "uniswap-v4"
+    || market.market.token0 !== CANNACAT_EMBED.native || market.market.token1 !== CANNACAT_EMBED.token.toLowerCase()
+    || !/^0x[0-9a-f]{64}$/i.test(market.market.poolKey)) throw new Error("The approved CannaCat pool identity is unavailable.");
+  const [chainId, block] = await Promise.all([client.getChainId(), client.getBlock()]);
+  if (chainId !== 4663 || block.number === null || !block.hash || Date.now() - Number(block.timestamp) * 1000 > 60_000)
+    throw new Error("Fresh Robinhood Chain price evidence is unavailable.");
+  const slot = await client.readContract({ address: ROBINHOOD_V4_STATE_VIEW, abi: stateViewAbi, functionName: "getSlot0",
+    args: [market.market.poolKey as Hex], blockNumber: block.number });
+  return { chainId: 4663, sqrtPriceX96: slot[0], blockNumber: block.number, blockHash: block.hash, observedAtMs: Date.now() };
+});
 const short = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`;
 const units = (value: string | bigint, digits = 18) => {
   const exact = formatUnits(BigInt(value), 18);
@@ -83,7 +102,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
   const [busy, setBusy] = useState(false);
   const [prepared, setPrepared] = useState<Ready | null>(null);
   const [review, setReview] = useState<CannaCatPrepared | null>(null);
-  const [observation, setObservation] = useState<CannaCatQuote | null>(null);
+  const [observation, setObservation] = useState<CannaCatObservation | null>(null);
   const [quoteMessage, setQuoteMessage] = useState("");
   const indicativeRead = useRef<AbortController | null>(null);
   const indicativeNotBefore = useRef(0);
@@ -392,12 +411,8 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       const deadline = setTimeout(() => { controller.abort(); if (!disposed) { failures += 1; indicativeNotBefore.current = Date.now() + 15_000 * 2 ** Math.min(failures - 1, 3); setQuoteMessage("Pricing timed out. The last estimate is retained; retrying automatically."); } }, 30_000);
       indicativeNotBefore.current = Date.now() + 2000;
       try {
-        const api = createCannaCatClient({ baseUrl: config.apiBaseUrl, identityToken: token });
-        // This uint256 search bound is NOT a spending allowance. Pricing must
-        // remain available when a wallet lacks funds. Review uses actual funds.
-        const quote = ethInput !== null
-          ? await api.quoteEth({ ethAmountAtomic: ethInput.toString(), wallet: wallet.address, maximumEthInputAtomic: ethInput.toString(), signal: controller.signal })
-          : await api.quote({ side, tokenAmountAtomic: target, wallet: wallet.address, maximumEthInputAtomic: (2n ** 256n - 1n).toString(), signal: controller.signal });
+        const spot = await readCannaCatSpot();
+        const quote = observeCannaCatAmount(spot, { side, tokenAmountAtomic: target, ethInputAtomic: ethInput?.toString() ?? null });
         if (disposed || controller.signal.aborted || generation !== epoch.current || currentRef.current.key !== key || currentRef.current.token !== token) return;
         setObservation(quote); setQuoteMessage(""); failures = 0;
       } catch (cause) {
@@ -413,7 +428,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       } finally {
         clearTimeout(deadline);
         if (indicativeRead.current === controller) indicativeRead.current = null;
-        schedule(Math.max(15_000, indicativeNotBefore.current - Date.now()));
+        schedule(Math.max(30_000, indicativeNotBefore.current - Date.now()));
       }
     };
     const visibility = () => {
@@ -473,7 +488,9 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
         : await api.quote({ side, tokenAmountAtomic, wallet: wallet.address, maximumEthInputAtomic: (side === "buy" ? budget.spendable : eth).toString(), signal: controller.signal });
       if (!actionCurrent(action) || generation !== epoch.current) return;
       const unresolved = recoveryRequired(wallet.address); setBlocking(unresolved);
-      if (unresolved) { setObservation(quote); setReview(null); setPrepared(null); setStatus("Indicative quote only. Reconcile the saved transaction before another wallet confirmation."); return; }
+      if (unresolved) { setObservation({side:quote.side,inputAmountAtomic:quote.inputAmountAtomic,
+        expectedOutputAtomic:quote.attempt.expectedOutputAtomic!,feeEstimateAtomic:quote.attempt.providerNativeFee?.feeAmountAtomic ?? "0",
+        observedAtMs:quote.attempt.quotedAtMs!,expiresAtMs:quote.attempt.expiresAtMs!,source:"Requested 0x price"}); setReview(null); setPrepared(null); setStatus("Indicative quote only. Reconcile the saved transaction before another wallet confirmation."); return; }
       const trade = await api.prepare(quote, controller.signal);
       const finalFunds = await readWalletFunds(key, wallet.address);
       const gas = assessVNextWalletGasReadiness({ nativeBalanceWei: finalFunds.eth, currentGasPriceWei: finalFunds.gasPrice,
@@ -716,14 +733,14 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     {side === "buy" && visibleFunds && <p className="rmtcat-balances">Quote budget reserves {units(cannaCatQuoteBudget(visibleFunds).reserve)} ETH for gas. The verified transaction may require more.</p>}
     {blocking && <aside className="rmtcat-transaction" aria-label="Transaction recovery"><strong>Earlier transaction needs reconciliation</strong><p>Another wallet transaction is paused. You can change amounts, switch Buy/Sell, get an indicative quote or disconnect. Saved history remains intact. Do not resend the previous trade.</p></aside>}
     {<div className="rmtcat-quote rmtcat-observation" aria-label="Indicative quote review"><strong>Live estimate · not a trade authorization</strong>
-      <p className="rmtcat-freshness" aria-live="off">{observation ? <> {observation.attempt.expiresAtMs && observation.attempt.expiresAtMs > now && !quoteMessage ? "Updated" : "Last estimate · refreshing"} <time dateTime={new Date(observation.attempt.quotedAtMs!).toISOString()}>{new Date(observation.attempt.quotedAtMs!).toLocaleTimeString()}</time></> : "Enter an amount and connect to see automatic estimates."}</p>
+      <p className="rmtcat-freshness" aria-live="off">{observation ? <> {observation.expiresAtMs && observation.expiresAtMs > now && !quoteMessage ? "Updated" : "Last estimate · refreshing"} <time dateTime={new Date(observation.observedAtMs).toISOString()}>{new Date(observation.observedAtMs).toLocaleTimeString()}</time></> : "Enter an amount and connect to see automatic estimates."}</p>
       {observation && <dl>
       <div><dt>Input</dt><dd>{units(observation.inputAmountAtomic)} {observation.side === "buy" ? "ETH" : "CannaCat"}</dd></div>
-      <div><dt>Expected output</dt><dd>{units(observation.attempt.expectedOutputAtomic!)} {observation.side === "buy" ? "CannaCat" : "ETH"}</dd></div>
-      <div><dt>RMT fee · 0.25%</dt><dd>{observation.attempt.providerNativeFee ? `${units(observation.attempt.providerNativeFee.feeAmountAtomic)} ETH` : "Unavailable"}</dd></div>
-      <div><dt>Estimated network gas</dt><dd>{observation.attempt.networkFeeNativeAtomic ? `${units(observation.attempt.networkFeeNativeAtomic)} ETH` : "Unavailable"}</dd></div>
-      <div><dt>{observation.side === "buy" ? "Input · USD estimate" : "Proceeds · USD estimate"}</dt><dd>{approximateUsd(observation.side === "buy" ? observation.inputAmountAtomic : observation.attempt.expectedOutputAtomic!, price, now) ?? "Unavailable"}</dd></div>
-    </dl>}<p className="rmtcat-price-state">{quoteMessage || "Updates automatically. Review fresh executable terms before signing. Network gas is additional; maximum slippage is 1%."}</p></div>}
+      <div><dt>Expected output</dt><dd>{units(observation.expectedOutputAtomic)} {observation.side === "buy" ? "CannaCat" : "ETH"}</dd></div>
+      <div><dt>RMT fee · 0.25%</dt><dd>{`${units(observation.feeEstimateAtomic)} ETH · estimate`}</dd></div>
+      <div><dt>Estimated network gas</dt><dd>{"Verified at trade review"}</dd></div>
+      <div><dt>{observation.side === "buy" ? "Input · USD estimate" : "Proceeds · USD estimate"}</dt><dd>{approximateUsd(observation.side === "buy" ? observation.inputAmountAtomic : observation.expectedOutputAtomic, price, now) ?? "Unavailable"}</dd></div>
+    </dl>}<p className="rmtcat-price-state">{quoteMessage || "Pool spot estimate updates automatically; liquidity impact and pool fees are excluded. Review fresh 0x terms before signing. Network gas is additional; maximum slippage is 1%."}</p></div>}
     {evidence && <div className="rmtcat-quote" aria-label="Verified trade review"><dl>
       <div><dt>{side === "buy" ? "Exact ETH input" : "Exact token input"}</dt><dd>{units(evidence.inputAmountAtomic)} {side === "buy" ? "ETH" : "CannaCat"}</dd></div>
       <div><dt>Expected received</dt><dd>{units(evidence.expectedOutputAtomic)} {side === "buy" ? "CannaCat" : "ETH"}</dd></div>

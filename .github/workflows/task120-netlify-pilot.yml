@@ -2,7 +2,7 @@ name: Task120 isolated Netlify API artifact
 on:
   push:
     branches: [codex/task120-netlify-cannacat-pilot]
-    paths: ['.github/task120-pilot/**', '.github/workflows/task120-netlify-pilot.yml']
+    paths: ['.github/task120-pilot/**', '.github/workflows/task120-netlify-pilot.yml', 'apps/web/lib/embed/**']
 permissions:
   contents: read
 jobs:
@@ -32,6 +32,11 @@ jobs:
           pnpm exec tsx lib/server/historical-settlement-trace-smoke.ts
           pnpm exec tsx lib/vnext/zero-x-firm-quote-commitment-smoke.ts
           pnpm exec tsx lib/vnext/zero-x-firm-quote-verifier-smoke.ts
+      - name: Verify passive observation, full types and client build
+        run: |
+          pnpm --filter web exec tsx lib/embed/cannacat-observation-smoke.ts
+          pnpm typecheck
+          pnpm --filter web exec node scripts/build-cannacat-client.mjs
       - name: Bundle unchanged handlers without Next or a trading terminal
         run: node .github/task120-pilot/build.mjs
       - name: Adapter authentication and preview isolation tests

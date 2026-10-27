@@ -38,6 +38,7 @@ const results: object[] = [];
 const layouts: object[] = [];
 const longWalletName = "MetaMask · iPhone WalletConnect signing connection";
 let checks = 0;
+let spotCalls = 0; let spotFailure = 0; let delayObservation = false; let delayedObservation: (() => void) | null = null;
 let quoteCalls = 0;
 let balance = 10n ** 18n;
 let balancesFail = false;
@@ -94,12 +95,24 @@ try {
       if (url.origin === "https://rpc.mainnet.chain.robinhood.com") {
         if (balancesFail) { await route.fulfill({ status: 503, body: "Synthetic balance RPC outage" }); return; }
         const rpc = route.request().postDataJSON();
+        const isSpot = (entry: {method?:string;params?:Array<{to?:string}>}) => entry.method === 'eth_call'
+          && entry.params?.[0]?.to?.toLowerCase() === '0xf3334192d15450cdd385c8b70e03f9a6bd9e673b';
+        if ((Array.isArray(rpc) ? rpc : [rpc]).some(isSpot)) {
+          spotCalls++;
+          if (spotFailure) { await route.fulfill({status:spotFailure,body:'Synthetic read-only spot RPC outage'}); return; }
+          if (delayObservation) await new Promise<void>(resolve => {delayedObservation=resolve;});
+        }
+
         const answer = (entry: { id: number; method: string; params?: unknown[] }) => {
           const saved = transactions.get(typeof entry.params?.[0] === 'string' ? entry.params[0].toLowerCase() : '');
           const values: Record<string, unknown> = { eth_chainId: "0x1237", eth_getBalance: hex(balance), eth_gasPrice: hex(gasPrice), eth_getTransactionCount: hex(walletNonce), eth_call: `0x${tokenBalance.toString(16).padStart(64, "0")}`,
             eth_getTransactionByHash: saved?.transaction ?? null, eth_getTransactionReceipt: saved?.receipt ?? null,
             eth_getBlockByNumber: { number: "0x64", hash, parentHash: hash, transactions: [], timestamp: hex(BigInt(Math.floor(Date.now() / 1000))), gasLimit: "0x1c9c380", gasUsed: "0x0", baseFeePerGas: "0x3b9aca00", difficulty: "0x0", extraData: "0x", miner: `0x${"0".repeat(40)}`, size: "0x100", nonce: "0x0000000000000000", sha3Uncles: hash, transactionsRoot: hash, stateRoot: hash, receiptsRoot: hash, logsBloom: `0x${"0".repeat(512)}` } };
           if (!(entry.method in values)) throw new Error(`Unexpected read-only RPC: ${entry.method}`);
+          if (isSpot(entry as never)) {
+            const sqrt = (1000n + (variableMarket ? BigInt(spotCalls % 3) : 0n)) * 2n ** 96n;
+            values.eth_call = '0x' + [sqrt, 0n, 0n, 0n].map(n=>n.toString(16).padStart(64,'0')).join('');
+          }
           return { jsonrpc: "2.0", id: entry.id, result: values[entry.method] };
         };
         await route.fulfill({ json: Array.isArray(rpc) ? rpc.map(answer) : answer(rpc) }); return;
@@ -590,42 +603,42 @@ try {
       const input = stable.getByLabel('Minimum CannaCat to receive');
       await expect(input).toHaveValue('10000');
       await stable.getByLabel('Indicative quote review').locator('dl').waitFor();
-      // A delayed automatic response must not restore an earlier intent after
-      // the user edits the target. This path never clicks Review trade.
-      delayQuote = true;
+      // Passive observations share one pool read. A delayed read must resolve
+      // against the latest intent, never restore a previous amount or call 0x.
+      await new Promise(resolve => setTimeout(resolve, 16_000));
+      delayObservation = true;
       await input.fill('10001');
-      await expect.poll(() => Boolean(delayedQuote)).toBe(true);
-      const releaseOldObservation = delayedQuote;
-      delayQuote = false; delayedQuote = null;
+      await expect.poll(() => Boolean(delayedObservation)).toBe(true);
+      const releaseOldObservation = delayedObservation;
+      delayObservation = false; delayedObservation = null;
       await input.fill('25000');
+      (releaseOldObservation as (() => void) | null)?.();
       const expectedOutput = stable.getByLabel('Indicative quote review').locator('dl > div')
         .filter({ has: stable.getByText('Expected output', { exact: true }) }).locator('dd');
-      await expect.poll(async () => Number((await expectedOutput.innerText()).split(' ')[0])).toBeGreaterThan(25000);
-      (releaseOldObservation as (() => void) | null)?.();
-      await new Promise(resolve => setTimeout(resolve, 250));
-      check(Number((await expectedOutput.innerText()).split(' ')[0]) > 25000, 'A late automatic response cannot replace the newer target estimate');
+      await expect(expectedOutput).toHaveText('25000 CannaCat');
+      check(await input.inputValue() === '25000', 'A late passive response cannot replace the latest target');
       await input.fill('10000');
-      await expect.poll(async () => Number((await expectedOutput.innerText()).split(' ')[0])).toBeLessThan(11000);
+      await expect(expectedOutput).toHaveText('10000 CannaCat');
       await expect(input).toHaveValue('10000');
       const panel = await stable.locator('.rmtcat-panel').elementHandle();
       const observation = await stable.getByLabel('Indicative quote review').elementHandle();
       const inputNode = await input.elementHandle();
       await input.focus(); await input.evaluate((node: HTMLInputElement) => node.setSelectionRange(2, 2));
       const scroll = await stable.evaluate(() => ({ x: scrollX, y: scrollY }));
-      const started = Date.now(); const callsAtStart = quoteCalls; const firmAtStart = firmCalls; const samples: object[] = [];
+      const started = Date.now(); const callsAtStart = quoteCalls; const firmAtStart = firmCalls; const spotsAtStart = spotCalls; const samples: object[] = [];
       await stable.screenshot({ path: path.join(output, channel + '-stability-start.png'), fullPage: true });
       for (let sample = 0; sample < 30; sample += 1) {
-        if (sample === 5) quoteFailure = 503;
-        if (sample === 6) quoteFailure = 0;
-        if (sample === 11) quoteFailure = 429;
-        if (sample === 12) quoteFailure = 0;
+        if (sample === 5) spotFailure = 503;
+        if (sample === 6) spotFailure = 0;
+        if (sample === 11) spotFailure = 429;
+        if (sample === 12) spotFailure = 0;
         if (sample === 17 || sample === 18) await stable.evaluate(hidden => {
           Object.defineProperty(document, 'visibilityState', { configurable: true, value: hidden ? 'hidden' : 'visible' });
           document.dispatchEvent(new Event('visibilitychange'));
         }, sample === 17);
-        const beforeHidden = quoteCalls;
+        const beforeHidden = spotCalls;
         await new Promise(resolve => setTimeout(resolve, 30_000));
-        if (sample === 17) check(quoteCalls === beforeHidden, 'Hidden browser pauses all indicative quote requests');
+        if (sample === 17) check(spotCalls === beforeHidden, 'Hidden browser pauses passive spot requests');
         check(await input.inputValue() === '10000', '15-minute monitoring preserves the 10000 token target');
         check(await panel!.evaluate(node => node.isConnected) && await observation!.evaluate(node => node.isConnected)
           && await inputNode!.evaluate(node => node.isConnected), 'Live pricing never remounts panel, observation or input');
@@ -635,12 +648,13 @@ try {
         check(state.x === scroll.x && Math.abs(state.y - scroll.y) <= 1, 'Background quotes never jump or reset scroll');
         check(state.width <= state.viewport, 'Live estimate remains inside iPhone-sized viewport');
         check(await stable.getByRole('button', { name: 'CannaCat target', exact: true }).getAttribute('aria-pressed') === 'true', 'Selected buy input mode stays unchanged');
-        samples.push({ sample: sample + 1, elapsedMs: Date.now() - started, quoteCalls: quoteCalls - callsAtStart,
+        samples.push({ sample: sample + 1, elapsedMs: Date.now() - started, quoteCalls: quoteCalls - callsAtStart, spotCalls: spotCalls - spotsAtStart,
           freshness: await stable.locator('.rmtcat-freshness').innerText(), ...state });
       }
       const elapsedMs = Date.now() - started;
       check(elapsedMs >= 900_000, 'Fifteen minutes actually elapsed without virtual time');
-      check(quoteCalls - callsAtStart >= 30 && quoteCalls - callsAtStart <= 310, 'Automatic updates continue within bounded request rate');
+      check(quoteCalls === callsAtStart, 'Fifteen minutes of passive monitoring makes zero 0x price requests');
+      check(spotCalls - spotsAtStart >= 20 && spotCalls - spotsAtStart <= 40, 'Lightweight pool observations refresh within a bounded rate');
       check((await stable.evaluate(() => window.__CANNACAT_FIXTURE_WALLET_REQUESTS__?.length ?? 0)) === 0, 'Fifteen minutes of quotes never submits or signs');
       check(firmCalls === firmAtStart, 'Background estimates never call verification or authorization endpoints');
       check(stableErrors.length === 0, 'No long-running browser runtime errors');
@@ -660,7 +674,7 @@ try {
       await writeFile(path.join(output, channel + '-15-minute-stability.json'), JSON.stringify({ result: 'PASS', channel, elapsedMs,
         clock: 'REAL_WALL_CLOCK', transport: 'SYNTHETIC_WALLET_AND_API', variableMarket: true, unavailable503: true, rateLimited429: true,
         hiddenPauseAndResume: true, manualQuoteClicks: 0, realSignatures: 0, realTransactions: 0, samples }, null, 2));
-      variableMarket = false; quoteFailure = 0; quoteResumeAfter = 0;
+      variableMarket = false; quoteFailure = 0; quoteResumeAfter = 0; spotFailure = 0;
       await stableContext.close();
     }
   }

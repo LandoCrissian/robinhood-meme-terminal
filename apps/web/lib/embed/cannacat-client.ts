@@ -56,7 +56,7 @@ export function cannaCatRecoveryDetails(record: VNextExecutionRecord, result: Ca
 }
 
 export class CannaCatClientError extends Error {
-  constructor(readonly code: string, message: string, readonly status?: number, readonly retryAfterMs?: number) { super(message); this.name = "CannaCatClientError"; }
+  constructor(readonly code: string, message: string, readonly status?: number, readonly retryAfterMs?: number, readonly requestId?: string) { super(message); this.name = "CannaCatClientError"; }
 }
 export function parseCannaCatAmount(value: string) {
   if (!/^(?:0|[1-9][0-9]{0,40})(?:\.[0-9]{1,18})?$/.test(value)) throw new CannaCatClientError("INVALID_AMOUNT", "Enter a positive token amount with at most 18 decimal places.");
@@ -90,7 +90,24 @@ export function createCannaCatClient(options: {
   }
   const now = options.now ?? Date.now;
   const fetcher = options.fetch ?? fetch;
+  let nextReadAt = 0;
+  let providerNotBefore = 0;
   async function post(operation: string, body: object, signal?: AbortSignal) {
+    if (operation !== "native-settlement-trace") {
+      if (now() < providerNotBefore) throw new CannaCatClientError("RATE_LIMITED", "The quote provider is busy. Wait before reviewing again; your amount is kept and no transaction was sent.", 429, providerNotBefore - now());
+      // Per-intent pacing only, never a claim of an app-wide distributed quota.
+      // Passive pool observations do not enter this path at all.
+      const delay = nextReadAt - now();
+      if (delay > 0) await new Promise<void>((resolve, reject) => {
+        const timer = setTimeout(done, delay);
+        function done() { signal?.removeEventListener("abort", aborted); resolve(); }
+        function aborted() { clearTimeout(timer); signal?.removeEventListener("abort", aborted); reject(signal?.reason); }
+        signal?.addEventListener("abort", aborted, { once: true });
+        if (signal?.aborted) aborted();
+      });
+      signal?.throwIfAborted();
+      nextReadAt = now() + 500;
+    }
     const response = await fetcher(`${base.href}/${operation}`, {
       method: "POST", credentials: "omit", cache: "no-store", redirect: "error",
       headers: { "content-type": "application/json", "privy-id-token": options.identityToken, "x-rmt-client": CANNACAT_EMBED.version },
@@ -124,10 +141,23 @@ export function createCannaCatClient(options: {
         429: "Too many quote requests. Wait a minute before trying again.",
         503: "Secure CannaCat trading is temporarily unavailable. No transaction was submitted."
       };
+      const diagnostics: Record<string, string> = {
+        QUOTE_SERVICE_UNAVAILABLE: "The quote service could not initialize. Your amount is kept; try trade review again shortly. No transaction was sent.",
+        PILOT_CONFIGURATION_UNAVAILABLE: "The trading service configuration is not ready. Your amount is kept; no transaction was sent.",
+        NO_ROUTE: "No route is available for this amount. Try a smaller amount or review again later.",
+        PROVIDER_POLICY_REJECTED: "The provider returned terms that failed safety checks. Do not sign; review a fresh quote later.",
+        EXECUTION_ENVELOPE_REJECTED: "The returned transaction failed verification. Nothing was submitted; try a fresh review later.",
+        RATE_LIMITED: "The quote provider is busy. Wait before reviewing again; your amount is kept and no transaction was sent.",
+        RPC_UNAVAILABLE: "Required chain evidence is temporarily unavailable. Your amount is kept; no transaction was sent."
+      };
       const retry = response.headers.get("retry-after");
       const retryMs = retry ? (/^[0-9]+$/.test(retry) ? Number(retry) * 1000 : Date.parse(retry) - now()) : 0;
-      throw new CannaCatClientError(code, messages[response.status] ?? "The trade could not be prepared. Refresh your quote or try again later.", response.status,
-        Number.isFinite(retryMs) && retryMs > 0 ? retryMs : undefined);
+      const backoff = Number.isFinite(retryMs) && retryMs > 0 ? retryMs : response.status === 429 ? 60_000 : undefined;
+      if (response.status === 429) providerNotBefore = now() + backoff!;
+      const rawId = response.headers.get("x-rmt-request-id") ?? response.headers.get("x-nf-request-id");
+      const requestId = rawId && /^[A-Za-z0-9_-]{12,80}$/.test(rawId) ? rawId : undefined;
+      const message = diagnostics[code] ?? messages[response.status] ?? "Trade review is temporarily unavailable. Your amount is kept; no transaction was sent.";
+      throw new CannaCatClientError(code, message + (requestId ? ` Reference ${requestId}.` : ""), response.status, backoff, requestId);
     }
     return bodyValue;
   }
