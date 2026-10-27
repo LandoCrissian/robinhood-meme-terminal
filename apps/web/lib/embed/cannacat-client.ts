@@ -173,7 +173,7 @@ export function createCannaCatClient(options: {
         FIRM_VERIFY_FAILED: "The proposed trade failed RMT verification. No transaction was submitted. Review a fresh quote later.",
         AUTHORIZATION_FAILED: "Trade authorization could not be verified. No transaction was submitted. Reconnect if needed and review again.",
         QUOTE_EXPIRED: "The executable quote expired. Review fresh terms before signing.",
-        ZERO_X_REPRICE_REQUIRED: "The price moved during review. Review the refreshed amounts before signing.",
+        ZERO_X_REPRICE_REQUIRED: "The quote changed as the price moved. Review the refreshed amounts before signing.",
         INSUFFICIENT_GAS: "Insufficient native ETH for network gas. Selling tokens also requires ETH before the trade.",
         GAS_UNAVAILABLE: "Network gas could not be verified. Your amount is kept; try again when network reads recover.",
         SIMULATION_FAILED: "The proposed transaction failed simulation. No transaction was submitted. Review a fresh quote later.",
