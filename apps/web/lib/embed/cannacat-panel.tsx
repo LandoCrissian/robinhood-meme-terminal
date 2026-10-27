@@ -765,7 +765,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     {side === "buy" && visibleFunds && <p className="rmtcat-balances">Quote budget reserves {units(cannaCatQuoteBudget(visibleFunds).reserve)} ETH for gas. The verified transaction may require more.</p>}
     {blocking && <aside className="rmtcat-transaction" aria-label="Transaction recovery"><strong>Earlier transaction needs reconciliation</strong><p>Another wallet transaction is paused. You can change amounts, switch Buy/Sell, get an indicative quote or disconnect. Saved history remains intact. Do not resend the previous trade.</p></aside>}
     {<div className="rmtcat-quote rmtcat-observation" aria-label="Indicative quote review"><strong>Live estimate · not a trade authorization</strong>
-      <p className="rmtcat-freshness" aria-live="off">{observation ? <> {observation.expiresAtMs && observation.expiresAtMs > now && !quoteMessage ? "Updated" : "Last estimate · refreshing"} <time dateTime={new Date(observation.observedAtMs).toISOString()}>{new Date(observation.observedAtMs).toLocaleTimeString()}</time></> : "Enter an amount and connect to see automatic estimates."}</p>
+      <p className="rmtcat-freshness" aria-live="off"><span>{observation ? <> {observation.expiresAtMs && observation.expiresAtMs > now && !quoteMessage ? "Updated" : "Last estimate · refreshing"} <time dateTime={new Date(observation.observedAtMs).toISOString()}>{new Date(observation.observedAtMs).toLocaleTimeString()}</time></> : "Enter an amount and connect to see automatic estimates."}</span><span className="rmtcat-freshness-sizer" aria-hidden="true">Last estimate · refreshing 00:00:00 AM</span></p>
       {observation && <dl>
       <div><dt>Input</dt><dd>{units(observation.inputAmountAtomic)} {observation.side === "buy" ? "ETH" : "CannaCat"}</dd></div>
       <div><dt>Expected output</dt><dd>{units(observation.expectedOutputAtomic)} {observation.side === "buy" ? "CannaCat" : "ETH"}</dd></div>
@@ -819,7 +819,7 @@ const css = `
 .rmtcat-root{min-width:0}
 .rmtcat-panel{min-width:0}
 .rmtcat-price-state,.rmtcat-observation{min-width:0;overflow-wrap:anywhere}
-.rmtcat-price-state{display:grid}.rmtcat-price-state>span{grid-area:1/1}.rmtcat-price-sizer{visibility:hidden}
+.rmtcat-price-state,.rmtcat-freshness{display:grid}.rmtcat-price-state>span,.rmtcat-freshness>span{grid-area:1/1}.rmtcat-price-sizer,.rmtcat-freshness-sizer{visibility:hidden}
 .rmtcat-top{align-items:baseline}
 .rmtcat-wallet{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:stretch;margin:20px 0 14px}
 .rmtcat-wallet .rmtcat-wallet-choice{display:grid;gap:6px;min-width:0;font-size:13px;line-height:1.5}

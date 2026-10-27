@@ -665,6 +665,7 @@ try {
         await expect(pg.getByLabel('Wallet balances')).toContainText('0.00007895 ETH');
         await pg.getByLabel('Indicative quote review').locator('dl').waitFor();
         await field.focus();await field.evaluate((node:HTMLInputElement)=>node.setSelectionRange(2,2));
+        if(deviceWidth===320||deviceWidth===430)await pg.evaluate(()=>scrollBy(0,180));
         return {page:pg,context:ctx,input:field,width:deviceWidth};
       }));
       const devices=[{page:stable,context:stableContext,input,width:390},...companions];
@@ -713,6 +714,12 @@ try {
           check(Math.abs(box!.height-device.balanceBox!.height)<=1&&Math.abs(state.top-device.position.top)<=1, 'Balance updates cause no vertical layout shift at '+device.width+'px');
           check(state.x===device.position.x&&Math.abs(state.y-device.position.y)<=1&&state.width<=state.viewport,'Balance refresh preserves scroll and viewport at '+device.width+'px');
           check(state.focused&&state.cursor===2&&await device.input.inputValue()==='10000','Balance refresh preserves focus, cursor and amount at '+device.width+'px');
+          const accumulated=await device.page.evaluate(()=> (window as unknown as {__TASK120_BALANCE_LAYOUT_SHIFTS__:{value:number;sources:number}[]}).__TASK120_BALANCE_LAYOUT_SHIFTS__.reduce((sum,x)=>sum+x.value,0));
+          if(accumulated>0.001){
+            await device.page.screenshot({path:path.join(output,`${channel}-${device.width}-background-shift-failure.png`),fullPage:true});
+            await writeFile(path.join(output,`${channel}-${device.width}-background-shift-failure.json`),JSON.stringify({sample,accumulated,state,health:await device.page.getByLabel('Wallet balances').innerText(),price:await device.page.locator('.rmtcat-price-state').innerText()},null,2));
+          }
+          check(accumulated<=0.001,'Background updates keep the visible viewport stable at '+device.width+'px');
         }
         check(await input.inputValue() === '10000', '15-minute monitoring preserves the 10000 token target');
         check(await panel!.evaluate(node => node.isConnected) && await observation!.evaluate(node => node.isConnected)
