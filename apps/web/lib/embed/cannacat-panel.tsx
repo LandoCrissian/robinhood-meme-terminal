@@ -48,7 +48,7 @@ const readCannaCatSpot = createCannaCatSpotReader(async () => {
     || market.market.token0 !== CANNACAT_EMBED.native || market.market.token1 !== CANNACAT_EMBED.token.toLowerCase()
     || !/^0x[0-9a-f]{64}$/i.test(market.market.poolKey)) throw new Error("The approved CannaCat pool identity is unavailable.");
   const [chainId, block] = await Promise.all([client.getChainId(), client.getBlock()]);
-  if (chainId !== 4663 || block.number === null || !block.hash || Date.now() - Number(block.timestamp) * 1000 > 60_000)
+  if (chainId !== 4663 || block.number === null || !block.hash || Number(block.timestamp) * 1000 > Date.now() + 5000 || Date.now() - Number(block.timestamp) * 1000 > 60_000)
     throw new Error("Fresh Robinhood Chain price evidence is unavailable.");
   const slot = await client.readContract({ address: ROBINHOOD_V4_STATE_VIEW, abi: stateViewAbi, functionName: "getSlot0",
     args: [market.market.poolKey as Hex], blockNumber: block.number });

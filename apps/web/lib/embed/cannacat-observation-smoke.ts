@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import {createCannaCatSpotReader,observeCannaCatAmount,type CannaCatSpot} from "./cannacat-observation";
+async function main() {
 let now=1_000_000,calls=0;
 const spot:CannaCatSpot={chainId:4663,sqrtPriceX96:1000n*2n**96n,blockNumber:100n,blockHash:"0x"+"a".repeat(64),observedAtMs:now};
 const read=createCannaCatSpotReader(async()=>{calls++;await Promise.resolve();return{...spot,observedAtMs:now};},()=>now);
@@ -20,3 +21,5 @@ assert.throws(()=>observeCannaCatAmount({...spot,observedAtMs:now},{side:"sell",
 let failures=0;const broken=createCannaCatSpotReader(async()=>{failures++;throw new Error("Synthetic outage");},()=>now);
 await assert.rejects(broken());await assert.rejects(broken());assert.equal(failures,2,"Failure never permanently locks the shared read");
 console.log(JSON.stringify({result:"PASS",checks:16,concurrentReaders:20,passiveZeroXCalls:0,synthetic:true}));
+}
+void main().catch(error=>{console.error(error);process.exitCode=1;});

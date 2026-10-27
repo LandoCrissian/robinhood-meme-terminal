@@ -2,7 +2,7 @@ name: Task120 quote lifecycle regression and browser acceptance
 on:
   push:
     branches: [codex/task120-netlify-cannacat-pilot]
-    paths: ['apps/web/lib/embed/**', '.github/scripts/cannacat-panel-browser.ts', '.github/workflows/task120-recovery-browser.yml']
+    paths: ['apps/web/lib/embed/**', '.github/scripts/cannacat-panel-browser.ts', '.github/workflows/task120-recovery-browser.yml', '.github/task120-pilot/**']
 permissions:
   contents: read
 jobs:
