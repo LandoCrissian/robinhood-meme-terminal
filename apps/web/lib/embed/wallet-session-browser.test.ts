@@ -8,6 +8,8 @@ import { chromium, webkit, expect } from 'playwright/test';
 import { numberToHex, verifyMessage, getAddress, zeroAddress } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { handleWalletAuth, requireWalletSession, CONSUME_CHALLENGE, type RedisCommand } from '../server/wallet-session';
+import { syntheticCannaCatBundle } from '../../../../.github/scripts/cannacat-firm-fixture';
+import { createVNextZeroXProviderNativeFee } from '../vnext/zero-x-settlement';
 
 async function main() {
 assert.equal(process.env.GITHUB_ACTIONS, 'true', 'Disposable CI only');
@@ -34,6 +36,7 @@ const command: RedisCommand = async args => {
   throw Error('Unexpected fixture store operation');
 };
 let origin = '', authSignatures = 0, quoteCalls = 0, failures = 0;
+const bundles = new Map<string, ReturnType<typeof syntheticCannaCatBundle>>();
 const env = { RMT_WALLET_AUTH_ENABLED: 'true', RMT_WALLET_ORIGIN: '', RMT_WALLET_SESSION_SECRET: 'b'.repeat(64) };
 const deps = { env, command, verifySignature: verifyMessage };
 const server = createServer({ key: readFileSync(key), cert: readFileSync(cert) }, async (request, response) => {
@@ -64,8 +67,31 @@ const server = createServer({ key: readFileSync(key), cert: readFileSync(cert) }
       await requireWalletSession(new Request(origin + url.pathname, { method: 'POST', headers: request.headers as HeadersInit, body: text }), getAddress(body.recipient ?? body.wallet), deps);
       quoteCalls++;
       if (failures) { response.writeHead(failures, { 'content-type': 'application/json' }); response.end(JSON.stringify({ code: 'RATE_LIMITED' })); return; }
-      // Provider failures are exercised without authorizing fake executable transactions.
-      response.writeHead(503, { 'content-type': 'application/json' }); response.end(JSON.stringify({ code: 'PROVIDER_UNAVAILABLE' })); return;
+      response.setHeader('content-type', 'application/json');
+      if (url.pathname.endsWith('/verify')) {
+        const bundle = syntheticCannaCatBundle(body, { approvalAlreadyGranted: true });
+        bundles.set(bundle.evidence.verificationId, bundle); response.end(JSON.stringify(bundle.evidence)); return;
+      }
+      if (url.pathname.endsWith('/authorize')) {
+        const bundle = bundles.get(body.verificationId);
+        assert(bundle && bundle.evidence.zeroXFirmQuoteCommitment === body.zeroXFirmQuoteCommitment);
+        response.end(JSON.stringify(bundle)); return;
+      }
+      assert(url.pathname.endsWith('/quotes'));
+      const buying = body.inputAsset === zeroAddress, now = Date.now();
+      const output = buying ? BigInt(body.inputAmountAtomic) * 10_000_000n : BigInt(body.inputAmountAtomic) / 10_000_000n;
+      const minimum = output * 99n / 100n;
+      const fee = createVNextZeroXProviderNativeFee({ ...body, userGrossInputAtomic: body.inputAmountAtomic,
+        expectedOutputAtomic: String(output), protectedOutputAtomic: String(minimum), authorizationState: 'indicative',
+        quotedFeeAmountAtomic: buying ? undefined : String(output * 25n / 10_000n) });
+      response.end(JSON.stringify({ requestId: '11111111-1111-4111-8111-111111111111', ...body,
+        requestedAtMs: now - 10, completedAtMs: now, attempts: [{ provider: 'zero-x-swap', providerLabel: '0x', providerFamily: 'zeroex', adapterVersion: 1,
+        status: 'indicative', ...body, expectedOutputAtomic: String(output), protectedOutputAtomic: String(minimum), outputDecimals: 18, priceImpact: null,
+        liquidityFeeEvidence: [], quotedAtMs: now, expiresAtMs: now + 10000, latencyMs: 10, executionKind: 'aggregator', strictVerificationAvailable: true,
+        publicWalletExecutionEligible: true, userPaysGas: true, providerFeeAsset: null, providerFeeAtomic: null, gasSponsorshipFeeAsset: null,
+        gasSponsorshipFeeAtomic: null, explicitProviderFeeOutputAtomic: null, netEconomics: null, settlementMode: 'PROVIDER_NATIVE_INPUT_FEE', providerNativeFee: fee,
+        networkFeeNativeAtomic: '9000000000', networkFeeNativeSymbol: 'ETH', protectedNetOutputAtomic: null, costState: 'network_fee_pending', authorizationReady: false,
+        detail: 'Disposable synthetic fixture only.' }] })); return;
     }
     response.writeHead(404).end();
   } catch { response.writeHead(403, { 'content-type': 'application/json' }).end(JSON.stringify({ code: 'AUTH_FAILURE' })); }
@@ -79,7 +105,11 @@ const check = (condition: unknown, label: string) => { assert(condition, label);
 try {
 for (const width of [320, 375, 390, 430, 1440]) {
   store.clear();
-  const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width, height: 900 } });
+  // The vendor uses user-agent mobile detection, not a responsive desktop modal.
+  // Connect the injected synthetic desktop provider at desktop size, then verify
+  // the real trading panel at each requested width. Physical relay handoff is a
+  // separate owner iPhone check; it is never claimed by these injected fixtures.
+  const context = await browser.newContext({ ignoreHTTPSErrors: true, viewport: { width: 1440, height: 900 } });
   const setupWallet = ({ address, other }: { address: string; other: string }) => {
     const listeners = new Map<string, Set<(...args: any[]) => void>>();
     const state = { address: localStorage.getItem('fixture.account') ?? address, chain: '0x1237' };
@@ -134,6 +164,7 @@ for (const width of [320, 375, 390, 430, 1440]) {
   await expect.poll(() => page.locator('[data-wallet-status]').getAttribute('data-wallet-status')).toBe('ready');
   await expect(page.getByRole('button', { name: 'Verify wallet ownership', exact: true })).toHaveCount(0);
   check(true, 'RabbyKit connection completes SIWE without a redundant verification click');
+  await page.setViewportSize({ width, height: 900 });
   const cookies = await context.cookies(); check(cookies.some(c => c.name === '__Host-rmt-session' && c.httpOnly && c.secure), 'HttpOnly Secure session cookie');
   check(!await page.evaluate(() => document.cookie.includes('__Host-rmt-session')), 'Session cookie is not script-readable');
   const signaturesBefore = authSignatures;
@@ -144,9 +175,15 @@ for (const width of [320, 375, 390, 430, 1440]) {
   await expect(page.locator('.rmtcat-observation dl')).toBeVisible();
   check(quoteCalls === 0, 'Passive estimates do not call executable quote endpoints');
   await page.getByRole('button', { name: 'Sell CannaCat', exact: true }).click(); await input.fill('1');
+  failures = 503;
   await page.getByRole('button', { name: 'Review trade', exact: true }).click();
   await expect.poll(() => quoteCalls).toBeGreaterThan(0);
+  await expect(page.getByText('0x could not provide trading terms right now.', { exact: false })).toBeVisible();
   await expect(input).toHaveValue('1'); check(true, 'Provider outage preserves Sell amount and controls');
+  failures = 0;
+  await page.getByRole('button', { name: 'Review trade', exact: true }).click();
+  await expect(page.getByRole('button', { name: /Confirm sell in wallet/i })).toBeVisible();
+  check(true, 'Authenticated Sell review passes the unchanged browser evidence and authorization parsers; no signing');
   await page.getByRole('button', { name: 'Buy CannaCat', exact: true }).click();
   for (const name of ['USD target', 'ETH input', 'CannaCat target']) { await page.getByRole('button', { name, exact: true }).click(); await input.fill(name === 'USD target' ? '10' : name === 'ETH input' ? '0.001' : '10000'); }
   await page.screenshot({ path: path.join(output, `wallet-${width}.png`), fullPage: true });
@@ -166,7 +203,7 @@ for (const width of [320, 375, 390, 430, 1440]) {
   throw error;
 } finally { await browser.close(); await new Promise<void>(resolve => server.close(() => resolve())); }
 writeFileSync(path.join(output, 'RESULTS.json'), JSON.stringify({ result: 'PASS', channel, checks, results, authSignatures: 'synthetic only', ownerSignatures: 0,
-  fundedTrades: 0, realRabbyKit: true, walletConnectRelay: 'requires owner project ID and physical mobile acceptance' }, null, 2));
+  fundedTrades: 0, realRabbyKit: true, walletConnectRelay: 'owner project configured; physical mobile acceptance pending', modalConnection: 'desktop injected fixture' }, null, 2));
 console.log(JSON.stringify({ result: 'PASS', channel, checks }));
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
