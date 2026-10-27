@@ -50,6 +50,19 @@ checks.push({ name: 'Missing provider context refused', status: 503, expected: 5
 const originalKey=process.env.RMT_ZEROX_API_KEY;delete process.env.RMT_ZEROX_API_KEY;
 await check('Incomplete runtime configuration fails closed before canonical bootstrap','quotes',503);
 process.env.RMT_ZEROX_API_KEY=originalKey;
+// Production opt-in is a server configuration gate, never a client request flag.
+const savedOrigins=process.env.RMT_CANNACAT_EMBED_ORIGINS;
+process.env.RMT_CANNACAT_PRODUCTION_PILOT_ENABLED='true';
+await check('Production refuses preview origin configuration','quotes',503,{published:true});
+process.env.RMT_CANNACAT_EMBED_ORIGINS='https://lammb.fun';
+await check('Production refuses missing shared coordinator','quotes',503,{published:true});
+process.env.RMT_ZEROX_QUOTA_REDIS_URL='https://test.upstash.io';
+process.env.RMT_ZEROX_QUOTA_REDIS_TOKEN='synthetic-test-only';
+await check('Explicit production configuration permits only canonical preflight','quotes',204,{method:'OPTIONS',published:true,headers:{origin:'https://lammb.fun','access-control-request-method':'POST','access-control-request-headers':'content-type,privy-id-token,x-rmt-client'}});
+await check('Production configuration still requires identity','quotes',401,{published:true,headers:{origin:'https://lammb.fun'}});
+delete process.env.RMT_CANNACAT_PRODUCTION_PILOT_ENABLED;
+delete process.env.RMT_ZEROX_QUOTA_REDIS_URL;delete process.env.RMT_ZEROX_QUOTA_REDIS_TOKEN;
+process.env.RMT_CANNACAT_EMBED_ORIGINS=savedOrigins;
 const report = { result: 'PASS', tests: checks.length + 1, checks, nativeRateLimitConfigAsserted: true, nativeDistributedEnforcement: 'requires deployed test', authenticatedLiveQuote: false, fundedTrades: 0, walletSignatures: 0 };
 fs.writeFileSync(path.join(artifact, 'ADAPTER_TESTS.json'), JSON.stringify(report, null, 2) + '\n');
 console.log(JSON.stringify({ result: report.result, tests: report.tests }));

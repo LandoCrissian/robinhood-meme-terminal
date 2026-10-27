@@ -15,6 +15,7 @@ const environmentKeys = [
   'NEXT_PUBLIC_RMT_RPC_URL', 'RMT_RPC_URL', 'RMT_MAINNET_RPC_URL', 'ROBINHOOD_MAINNET_RPC_URL',
   'RMT_SETTLEMENT_TRACE_RPC_URL', 'RMT_ZEROX_API_KEY', 'RMT_ZEROX_ALLOWANCE_HOLDER',
   'RMT_ZEROX_QUOTA_REDIS_URL', 'RMT_ZEROX_QUOTA_REDIS_TOKEN',
+  'RMT_CANNACAT_PRODUCTION_PILOT_ENABLED',
   'RMT_VNEXT_AUTHORIZATION_ENABLED', 'RMT_VNEXT_ZEROX_OBSERVATION_ENABLED',
   'RMT_VNEXT_ZEROX_FIRM_QUOTE_VERIFICATION_ENABLED', 'RMT_VNEXT_VERIFICATION_COMMITMENT_SECRET',
   'RMT_VNEXT_PUBLIC_EXECUTION_PROVIDERS', 'RMT_CANNACAT_EMBED_ENABLED', 'RMT_CANNACAT_EMBED_ORIGINS',
@@ -93,8 +94,14 @@ export default async function handler(request: Request, context: { requestId?: s
   const started = performance.now();
   const wasCold = cold;
   cold = false;
-  // This artifact cannot serve a published production deployment.
-  if (context.deploy?.published !== false) {
+  // Default remains preview-only. A separately authorized release needs an
+  // explicit server-only opt-in, exact production origin and shared coordinator.
+  const releaseValues=environment();
+  const productionOptIn=context.deploy?.published===true
+    && releaseValues.RMT_CANNACAT_PRODUCTION_PILOT_ENABLED==='true'
+    && releaseValues.RMT_CANNACAT_EMBED_ORIGINS==='https://lammb.fun'
+    && Boolean(releaseValues.RMT_ZEROX_QUOTA_REDIS_URL?.trim() && releaseValues.RMT_ZEROX_QUOTA_REDIS_TOKEN?.trim());
+  if (context.deploy?.published !== false && !productionOptIn) {
     return Response.json({ code: 'PILOT_PREVIEW_ONLY' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
   }
   const requestedOperation = context.params?.operation ?? '';
