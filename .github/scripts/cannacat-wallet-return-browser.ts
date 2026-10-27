@@ -31,7 +31,7 @@ const server=createServer(async(req,res)=>{
 });
 await mkdir(output,{recursive:true});
 await new Promise<void>(resolve=>server.listen(0,'127.0.0.1',resolve));
-const base=`http://127.0.0.1:${(server.address() as {port:number}).port}`;
+const base=`http://localhost:${(server.address() as {port:number}).port}`;
 const browser=await(channel==='webkit'?webkit.launch({headless:true}):chromium.launch({channel,headless:true}));
 const results:{name:string;width:number;result:'PASS'|'FAIL';error?:string}[]=[];
 try{
