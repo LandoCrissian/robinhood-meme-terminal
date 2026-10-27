@@ -16,8 +16,9 @@ export type WalletSession = { version: 1; wallet: Address; chainId: 4663; origin
 type Challenge = { version: 1; wallet: Address; origin: string; nonce: string; csrf: string; message: string; expiresAt: number };
 type Env = Record<string, string | undefined>;
 export type RedisCommand = (args: Array<string | number>) => Promise<unknown>;
+type SignatureRequest = { message: string; signature: Hex; address: Address; domain: string; nonce: string; time: Date };
 type Dependencies = { env?: Env; command?: RedisCommand; now?: () => number;
-  verifySignature?: (input: { message: string; signature: Hex; address: Address; domain: string; nonce: string; time: Date }) => Promise<boolean> };
+  verifySignature?: (input: SignatureRequest) => Promise<boolean> };
 export class WalletSessionError extends Error {
   constructor(readonly code: string, readonly status = 401) { super(code); this.name = 'WalletSessionError'; }
 }
@@ -54,7 +55,7 @@ export function sessionRedis(env: Env, transport: typeof fetch = fetch): RedisCo
       const response = await transport(url, { method: 'POST', redirect: 'error', cache: 'no-store', signal: AbortSignal.timeout(2500),
         headers: { 'content-type': 'application/json', authorization: `Bearer ${env.RMT_ZEROX_QUOTA_REDIS_TOKEN}` }, body: JSON.stringify(args) });
       if (!response.ok || Number(response.headers.get('content-length') ?? 0) > 16384) throw Error();
-      const data = await response.json() as { error?: unknown; result?: unknown };
+      const data = await body(response) as { error?: unknown; result?: unknown };
       if (data.error || !Object.hasOwn(data, 'result')) throw Error();
       return data.result;
     } catch { throw failure('WALLET_AUTH_UNAVAILABLE', 503); }
@@ -78,7 +79,7 @@ export function assertWalletOrigin(request: Request, env: Env = process.env) {
     || request.method !== 'POST' || !/^application\/json(?:;|$)/i.test(request.headers.get('content-type') ?? '')) throw failure('WALLET_ORIGIN_REJECTED', 403);
   return origin;
 }
-async function body(request: Request): Promise<Record<string, unknown>> {
+async function body(request: Request | Response): Promise<Record<string, unknown>> {
   const reader = request.body?.getReader(); if (!reader) throw failure('WALLET_AUTH_BAD_REQUEST', 400);
   let size = 0, text = ''; const decoder = new TextDecoder();
   try { while (true) { const part = await reader.read(); if (part.done) break; size += part.value.byteLength;
@@ -87,6 +88,13 @@ async function body(request: Request): Promise<Record<string, unknown>> {
     if (!result || typeof result !== 'object' || Array.isArray(result)) throw Error(); return result;
   } catch (error) { if (error instanceof WalletSessionError) throw error; throw failure('WALLET_AUTH_BAD_REQUEST', 400); }
   finally { void reader.cancel().catch(() => undefined); }
+}
+export async function verifyWalletSiweSignature(params: SignatureRequest, env: Env = process.env) {
+  const client = createPublicClient({ chain: robinhoodChain, transport: http(env.RMT_RPC_URL ?? robinhoodChain.rpcUrls.default.http[0], { timeout: 8000, retryCount: 0 }) });
+  if (await client.getChainId() !== 4663) throw failure('WALLET_AUTH_UNAVAILABLE', 503);
+  // Official public-client verifier supports EOAs and ERC-1271 via read-only eth_call.
+  // It may simulate deployless validation; it never broadcasts or deploys a contract.
+  return client.verifySiweMessage(params);
 }
 const challengeKey = (id: string) => PREFIX + 'nonce:' + digest(id);
 const sessionKey = (id: string) => PREFIX + 'session:' + digest(id);
@@ -186,12 +194,7 @@ export async function handleWalletAuth(request: Request, operation: string, deps
     if (typeof input.signature !== 'string' || !/^0x(?:[a-f0-9]{2}){1,4096}$/i.test(input.signature)) throw failure('WALLET_SIGNATURE_INVALID', 403);
     const attempts = await d.command(['EVAL', RATE, 1, PREFIX + 'attempt:' + digest(id), WALLET_AUTH.challengeSeconds]);
     if (typeof attempts !== 'number' || attempts > 6) throw failure('WALLET_AUTH_RATE_LIMITED', 429);
-    const verify = deps.verifySignature ?? (async params => {
-      const client = createPublicClient({ chain: robinhoodChain, transport: http(d.env.RMT_RPC_URL ?? robinhoodChain.rpcUrls.default.http[0], { timeout: 8000, retryCount: 0 }) });
-      if (await client.getChainId() !== 4663) throw failure('WALLET_AUTH_UNAVAILABLE', 503);
-      // Public-client action validates EOA and ERC-1271 signatures using eth_call. No transactions are sent.
-      return client.verifySiweMessage(params);
-    });
+    const verify = deps.verifySignature ?? (params => verifyWalletSiweSignature(params, d.env));
     if (!await verify({ message: challenge.message, signature: input.signature as Hex, address: challenge.wallet,
       domain: new URL(d.origin).host, nonce: challenge.nonce, time: new Date(d.now()) })) throw failure('WALLET_SIGNATURE_INVALID', 403);
     const sid = token(), previous = cookie(request, WALLET_AUTH.cookie);

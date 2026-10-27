@@ -39,6 +39,7 @@ export class WalletSessionController {
   private generation = 0;
   private sessionRead?: Promise<void>;
   private authRead?: Promise<void>;
+  private logoutRead?: Promise<void>;
   private walletCache = new Map<string, SessionWallet>();
   private disposed = false;
   private timer?: ReturnType<typeof setTimeout>;
@@ -120,6 +121,7 @@ export class WalletSessionController {
   async start() {
     // Share only a live transport, not the HttpOnly cookie, CSRF token, or trading authorization.
     const bridge = { getConnection: async () => {
+      if (this.disposed) return null;
       const session = this.state.session;
       const matches = this.state.wallets.filter(w => w.address.toLowerCase() === session?.wallet.toLowerCase());
       if (!session || optedOut() || matches.length !== 1) return null;
@@ -130,16 +132,23 @@ export class WalletSessionController {
     this.stopWatch = watchConnections(this.wagmi, { onChange: () => {
       this.inventory();
       const active = getAccount(this.wagmi);
-      if (this.state.session && active.address && active.address.toLowerCase() !== this.state.session.wallet.toLowerCase()) void this.invalidateSession();
+      if (this.state.session && active.address && active.address.toLowerCase() !== this.state.session.wallet.toLowerCase()) {
+        void this.invalidateSession().catch(() => this.publish({ error: 'The previous account was disconnected locally. Reconnect to authenticate this account.' }));
+      }
     } });
     document.addEventListener('visibilitychange', this.resume); window.addEventListener('pageshow', this.resume);
     try { if (!optedOut()) { await Promise.all([reconnect(this.wagmi), this.refresh()]); } }
+    catch { this.publish({ error: 'The previous signing provider could not reconnect. Choose your wallet again.' }); }
     finally { this.inventory(); this.publish({ ready: true }); }
   }
   private async invalidateSession() {
     const session = this.state.session; ++this.generation;
     this.publish({ session: null, authenticated: false }); this.inventory();
-    if (session) await this.post('logout', {}, session.csrfToken).catch(() => undefined);
+    if (session) {
+      const work = this.post('logout', {}, session.csrfToken).then(() => undefined);
+      this.logoutRead = work;
+      try { await work; } finally { if (this.logoutRead === work) this.logoutRead = undefined; }
+    }
   }
   private authenticate(connector: Connector, address: Address): Promise<void> {
     if (this.authRead) return this.authRead;
@@ -150,6 +159,7 @@ export class WalletSessionController {
     const generation = ++this.generation;
     this.publish({ signing: true, error: '' });
     try {
+      await this.logoutRead;
       const candidate = this.state.wallets.find(w => w.address === address && w.meta.id === connector.uid);
       if (!candidate) throw Error('The selected signing provider is unavailable.');
       const before = await readConnectedWallet(candidate);
@@ -183,9 +193,11 @@ export class WalletSessionController {
   logout = async () => {
     const session = this.state.session; ++this.generation;
     this.publish({ session: null, authenticated: false, error: '' }); this.inventory();
-    try { await this.post('logout', {}, session?.csrfToken); }
+    const work = this.post('logout', {}, session?.csrfToken).then(() => undefined);
+    this.logoutRead = work;
+    try { await work; }
     catch { this.publish({ error: 'Disconnected on this device. Server sign-out could not be confirmed; reconnect to sign in again.' }); }
-    finally { await Promise.allSettled(getConnections(this.wagmi).map(c => disconnect(this.wagmi, { connector: c.connector }))); this.inventory(); }
+    finally { await Promise.allSettled(getConnections(this.wagmi).map(c => disconnect(this.wagmi, { connector: c.connector }))); this.inventory(); if (this.logoutRead === work) this.logoutRead = undefined; }
   };
   dispose() { this.disposed = true; this.stopWatch?.(); this.modal.close(); if (this.timer) clearTimeout(this.timer);
     document.removeEventListener('visibilitychange', this.resume); window.removeEventListener('pageshow', this.resume); }

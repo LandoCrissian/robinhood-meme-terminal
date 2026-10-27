@@ -121,7 +121,8 @@ for (const width of [320, 375, 390, 430, 1440]) {
     };
     await route.fulfill({ json: Array.isArray(input) ? input.map(rpc) : rpc(input), headers: { 'access-control-allow-origin': '*' } });
   });
-  const page = await context.newPage(), errors: string[] = []; page.on('pageerror', e => errors.push(e.message));
+  const page = await context.newPage(), errors: string[] = []; page.on('pageerror', e => { errors.push(e.message); console.error('BROWSER_RUNTIME:', e.message); });
+  page.on('console', event => { if (event.type() === 'error') console.error('BROWSER_CONSOLE:', event.text().slice(0, 500)); });
   await page.goto(origin); await page.getByRole('button', { name: 'I understand — continue', exact: true }).click();
   await page.getByRole('button', { name: 'Connect wallet', exact: true }).click();
   await page.getByText('Rabby', { exact: true }).click();

@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
+import { createServer } from 'node:http';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { numberToHex, verifyMessage } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { handleWalletAuth, requireWalletSession, walletSessionBinding, type RedisCommand } from './wallet-session';
+import { handleWalletAuth, requireWalletSession, walletSessionBinding, verifyWalletSiweSignature, type RedisCommand } from './wallet-session';
+import { createSiweMessage } from 'viem/siwe';
 
 async function main() {
 // Dedicated disposable CI Redis only. Never target an owner database or a remote URL.
@@ -92,10 +94,51 @@ pass(unavailable.status === 200 && unavailableWithCookie.status === 503, 'Coordi
 pass((await handleWalletAuth(request({}, jar, undefined, 'https://evil.invalid'), 'session', deps)).status === 403, 'Origin spoof without authorized cookies cannot access session');
 pass((await handleWalletAuth(new Request('https://api.invalid'), 'session', deps)).status === 403, 'Simple cross-site and GET requests rejected');
 pass((await handleWalletAuth(request({ wallet: alice.address, purpose: 'admin' }), 'challenge', deps)).status === 400, 'No Genesis/admin authorization escalation');
+const raceJar = new Map<string, string>();
+const race = await signed(bob, raceJar);
+const [raceVerify, raceLogout] = await Promise.all([
+  handleWalletAuth(request({ message: race.value.message, signature: race.signature }, raceJar, race.value.csrfToken), 'verify', deps),
+  handleWalletAuth(request({}, raceJar), 'logout', deps),
+]);
+assert.equal(raceLogout.status, 200);
+if (raceVerify.ok) {
+  save(raceVerify, raceJar); const result = await raceVerify.json();
+  await assert.rejects(requireWalletSession(request({}, raceJar, result.csrfToken), bob.address, deps));
+}
+pass(true, 'Logout racing sign-in cannot leave an authenticated session');
+const expired = await signed(bob, new Map());
+const expiredJar = new Map<string, string>();
+const expChallenge = await challenge(bob, expiredJar);
+const expSignature = await bob.signMessage({ message: expChallenge.message });
+pass((await handleWalletAuth(request({ message: expChallenge.message, signature: expSignature }, expiredJar, expChallenge.csrfToken), 'verify', { ...deps, now: () => now + 300001 })).status === 403, 'Expired challenge rejected');
+// The production verifier is exercised through an isolated RPC fixture, including
+// a contract-wallet signature which cannot pass EOA recovery. No transactions.
+let rpcValid = true, rpcChain = 4663, rpcCalls = 0;
+const rpc = createServer(async (req, res) => {
+  let raw = ''; for await (const chunk of req) raw += chunk;
+  const input = JSON.parse(raw); assert(['eth_chainId', 'eth_call'].includes(input.method)); rpcCalls++;
+  res.setHeader('content-type', 'application/json');
+  res.end(JSON.stringify({ jsonrpc: '2.0', id: input.id, result: input.method === 'eth_chainId' ? numberToHex(rpcChain) : rpcValid ? '0x01' : '0x00' }));
+});
+await new Promise<void>(resolve => rpc.listen(0, '127.0.0.1', resolve));
+try {
+  const contract = '0x0000000000000000000000000000000000000123';
+  const nonce = randomBytes(16).toString('hex');
+  const message = createSiweMessage({ address: contract, chainId: 4663, domain: new URL(origin).host, scheme: 'https', uri: origin + '/mint', version: '1', nonce,
+    issuedAt: new Date(now), expirationTime: new Date(now + 300000) });
+  const params = { address: contract as `0x${string}`, signature: '0x1234' as const, message, nonce, domain: new URL(origin).host, time: new Date(now) };
+  const verifierEnv = { RMT_RPC_URL: `http://127.0.0.1:${(rpc.address() as { port: number }).port}` };
+  pass(await verifyWalletSiweSignature(params, verifierEnv), 'Public-client contract signature uses read-only RPC verification');
+  rpcValid = false;
+  pass(!await verifyWalletSiweSignature(params, verifierEnv), 'Contract signature rejection is enforced');
+  rpcChain = 1;
+  await assert.rejects(verifyWalletSiweSignature(params, verifierEnv)); checks++;
+  pass(rpcCalls >= 5, 'Verifier checks chain and never broadcasts');
+} finally { await new Promise<void>(resolve => rpc.close(() => resolve())); }
 await command(['FLUSHDB']);
 mkdirSync('../../task125-artifact', { recursive: true });
 writeFileSync('../../task125-artifact/AUTH_TESTS.json', JSON.stringify({ result: 'PASS', checks, atomicRedis: true, walletSignatures: 'disposable synthetic accounts only',
-  ownerSignatures: 0, fundedTrades: 0, eoaVerification: true, erc1271: 'public-client verifier integration requires separate test', provider: 'self-hosted-siwe' }, null, 2));
+  ownerSignatures: 0, fundedTrades: 0, eoaVerification: true, erc1271: 'public-client read-only RPC integration fixture passed; no real smart wallet used', provider: 'self-hosted-siwe' }, null, 2));
 console.log(JSON.stringify({ result: 'PASS', checks, atomicRedis: true }));
 
 }
