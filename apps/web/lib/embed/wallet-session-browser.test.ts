@@ -66,7 +66,7 @@ const server = createServer({ key: readFileSync(key), cert: readFileSync(cert) }
       const body = JSON.parse(text);
       await requireWalletSession(new Request(origin + url.pathname, { method: 'POST', headers: request.headers as HeadersInit, body: text }), getAddress(body.recipient ?? body.wallet), deps);
       quoteCalls++;
-      if (failures) { response.writeHead(failures, { 'content-type': 'application/json' }); response.end(JSON.stringify({ code: 'RATE_LIMITED' })); return; }
+      if (failures) { response.writeHead(failures, { 'content-type': 'application/json' }); response.end(JSON.stringify({ code: failures === 429 ? 'RATE_LIMITED' : 'PROVIDER_UNAVAILABLE' })); return; }
       response.setHeader('content-type', 'application/json');
       if (url.pathname.endsWith('/verify')) {
         const bundle = syntheticCannaCatBundle(body, { approvalAlreadyGranted: true });
