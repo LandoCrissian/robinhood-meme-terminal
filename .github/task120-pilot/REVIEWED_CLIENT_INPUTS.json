@@ -13,7 +13,7 @@
   },
   {
     "path": "apps/web/lib/embed/cannacat-panel.tsx",
-    "sha256": "b8e144cb96c0156978ffddfafc931b843f1167b18da7edf86fd64ea6b06ee6d6"
+    "sha256": "508b6b9c5a7c185215d7b60c6dda5b0ea15a4d8e76ca9860bf42d3e731b766ee"
   },
   {
     "path": "apps/web/lib/testing/cannacat-privy-fixture.tsx",

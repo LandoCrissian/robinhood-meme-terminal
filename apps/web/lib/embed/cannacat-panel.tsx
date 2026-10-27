@@ -775,7 +775,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     {side === "buy" && visibleFunds && <p className="rmtcat-balances">Quote budget reserves {units(cannaCatQuoteBudget(visibleFunds).reserve)} ETH for gas. The verified transaction may require more.</p>}
     {blocking && <aside className="rmtcat-transaction" aria-label="Transaction recovery"><strong>Earlier transaction needs reconciliation</strong><p>Another wallet transaction is paused. You can change amounts, switch Buy/Sell, get an indicative quote or disconnect. Saved history remains intact. Do not resend the previous trade.</p></aside>}
     {<div className="rmtcat-quote rmtcat-observation" aria-label="Indicative quote review"><strong>Live estimate · not a trade authorization</strong>
-      <p className="rmtcat-freshness" aria-live="off"><span>{observation ? <> {observation.expiresAtMs && observation.expiresAtMs > now && !quoteMessage ? "Updated" : "Last estimate · refreshing"} <time dateTime={new Date(observation.observedAtMs).toISOString()}>{new Date(observation.observedAtMs).toLocaleTimeString()}</time></> : "Enter an amount and connect to see automatic estimates."}</span><span className="rmtcat-freshness-sizer" aria-hidden="true">Last estimate · refreshing 00:00:00 AM</span></p>
+      <p className="rmtcat-freshness" aria-live="off"><span className="rmtcat-freshness-value">{observation ? <><span>{observation.expiresAtMs && observation.expiresAtMs > now && !quoteMessage ? "Updated" : "Last estimate · refreshing"}</span><time dateTime={new Date(observation.observedAtMs).toISOString()}>{new Date(observation.observedAtMs).toLocaleTimeString()}</time></> : "Enter an amount and connect to see automatic estimates."}</span><span className="rmtcat-freshness-sizer" aria-hidden="true">Last estimate · refreshing<br/>00:00:00 AM</span></p>
       {observation && <dl>
       <div><dt>Input</dt><dd>{observation.side === "buy" ? <NativeEthEstimate atomic={observation.inputAmountAtomic} /> : `${units(observation.inputAmountAtomic)} CannaCat`}</dd></div>
       <div><dt>Expected output</dt><dd>{observation.side === "sell" ? <NativeEthEstimate atomic={observation.expectedOutputAtomic} /> : `${units(observation.expectedOutputAtomic)} CannaCat`}</dd></div>
@@ -830,6 +830,7 @@ const css = `
 .rmtcat-panel{min-width:0}
 .rmtcat-price-state,.rmtcat-observation{min-width:0;overflow-wrap:anywhere}
 .rmtcat-price-state,.rmtcat-freshness{display:grid}.rmtcat-price-state>span,.rmtcat-freshness>span{grid-area:1/1}.rmtcat-price-sizer,.rmtcat-freshness-sizer{visibility:hidden}
+.rmtcat-freshness-value{display:grid;grid-template-columns:minmax(0,1fr)}.rmtcat-freshness time{display:block;font-variant-numeric:tabular-nums}
 .rmtcat-native-estimate{display:grid;min-width:0}.rmtcat-native-estimate>span{grid-area:1/1}.rmtcat-native-sizer{visibility:hidden}
 .rmtcat-top{align-items:baseline}
 .rmtcat-wallet{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:stretch;margin:20px 0 14px}
