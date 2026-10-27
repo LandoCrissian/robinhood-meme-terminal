@@ -188,6 +188,25 @@ for (const width of [320, 375, 390, 430, 1440]) {
   for (const name of ['USD target', 'ETH input', 'CannaCat target']) { await page.getByRole('button', { name, exact: true }).click(); await input.fill(name === 'USD target' ? '10' : name === 'ETH input' ? '0.001' : '10000'); }
   await page.screenshot({ path: path.join(output, `wallet-${width}.png`), fullPage: true });
   check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'No horizontal overflow');
+  await page.evaluate(() => (window as any).fixtureWallet.chain('0x1'));
+  await expect(page.getByRole('button', { name: 'Switch to Robinhood Chain', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Review trade', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: 'Switch to Robinhood Chain', exact: true }).click();
+  await expect.poll(() => page.locator('[data-wallet-status]').getAttribute('data-wallet-status')).toBe('ready');
+  check(authSignatures === signaturesBefore, 'Explicit network correction does not repeat SIWE or sign a trade');
+  await page.evaluate(() => (window as any).fixtureWallet.account(true));
+  const selection = page.getByRole('combobox', { name: 'Choose signing wallet', exact: true });
+  await expect(selection).toBeVisible();
+  const selectedValue = await selection.locator('option:not([disabled])').getAttribute('value');
+  assert(selectedValue); await selection.selectOption(selectedValue);
+  await expect(page.getByRole('button', { name: 'Verify wallet ownership', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Review trade', exact: true })).toBeDisabled();
+  await expect.poll(async () => {
+    const read = await context.request.post(origin + '/api/rmt/cannacat/auth-session', {
+      headers: { origin, 'x-rmt-client': 'rmt-cannacat-embed-v1' }, data: {} });
+    return (await read.json()).authenticated;
+  }).toBe(false);
+  check(authSignatures === signaturesBefore, 'Account switching invalidates the old server session and requires explicit reauthentication');
   await page.getByRole('button', { name: 'Disconnect', exact: true }).click();
   await page.reload(); await expect(page.getByRole('button', { name: 'Connect wallet', exact: true })).toBeVisible();
   check(authSignatures === signaturesBefore, 'Manual disconnect persists through reload');
