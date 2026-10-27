@@ -226,6 +226,7 @@ try {
     const balancePanel = await page.getByLabel('Wallet balances').elementHandle();
     const balanceBox = await page.getByLabel('Wallet balances').boundingBox();
     const amountBefore = await page.getByLabel('Minimum CannaCat to receive').boundingBox();
+    const scrollBeforeRefresh=await page.evaluate(()=>scrollY);
     balancesFail = true;
     await page.getByRole('button',{name:'Refresh balances',exact:true}).click();
     await expect(page.getByLabel('Wallet balances')).toContainText('could not be refreshed');
@@ -234,7 +235,13 @@ try {
     check(await balancePanel!.evaluate(node=>node.isConnected), 'Wallet balance component remains mounted through failure');
     const failedBox = await page.getByLabel('Wallet balances').boundingBox();
     const amountAfter = await page.getByLabel('Minimum CannaCat to receive').boundingBox();
-    check(Math.abs(failedBox!.height-balanceBox!.height)<=1 && Math.abs(amountAfter!.y-amountBefore!.y)<=1, 'Failed balance refresh does not move the amount field at '+width+'px');
+    const scrollAfterRefresh=await page.evaluate(()=>scrollY);
+    // Playwright scrolls a clicked off-screen control into view. Compare document
+    // coordinates for layout; the background soak separately requires zero scroll.
+    const refreshGeometry={width,balanceHeightBefore:balanceBox!.height,balanceHeightAfter:failedBox!.height,
+      amountDocumentBefore:amountBefore!.y+scrollBeforeRefresh,amountDocumentAfter:amountAfter!.y+scrollAfterRefresh,scrollBeforeRefresh,scrollAfterRefresh};
+    await writeFile(path.join(output,`${channel}-${width}-balance-refresh-geometry.json`),JSON.stringify(refreshGeometry,null,2));
+    check(Math.abs(failedBox!.height-balanceBox!.height)<=1 && Math.abs(refreshGeometry.amountDocumentAfter-refreshGeometry.amountDocumentBefore)<=1, 'Failed balance refresh does not move the amount field at '+width+'px');
     balancesFail = false;
     await page.getByRole('button',{name:'Refresh balances',exact:true}).click();
     await expect(page.locator('[data-balance-health="current"]')).toBeVisible();
