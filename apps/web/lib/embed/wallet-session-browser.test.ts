@@ -41,7 +41,7 @@ const server = createServer({ key: readFileSync(key), cert: readFileSync(cert) }
     const url = new URL(request.url!, origin || 'https://localhost');
     if (url.pathname === '/') {
       response.setHeader('content-type', 'text/html; charset=utf-8');
-      response.end(`<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Task125 synthetic wallet acceptance</title><style>body{margin:0;padding:16px;background:#080b07;color:#eef4e7;font-family:system-ui}main{max-width:680px;margin:auto}</style><p>DISPOSABLE TEST WALLET · NO REAL TRADES</p><main id="panel"></main><script type="module">import{mountCannaCatPanel}from'/sdk/cannacat-panel.mjs';mountCannaCatPanel(document.querySelector('#panel'),{enabled:true,apiBaseUrl:location.origin+'/api/rmt/cannacat',walletConnectProjectId:''});</script></html>`); return;
+      response.end(`<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Task125 synthetic wallet acceptance</title><style>body{margin:0;padding:16px;background:#080b07;color:#eef4e7;font-family:system-ui}main{max-width:680px;margin:auto}</style><p>DISPOSABLE TEST WALLET · NO REAL TRADES</p><main id="panel"></main><script type="module">import{mountCannaCatPanel}from'/sdk/cannacat-panel.mjs';mountCannaCatPanel(document.querySelector('#panel'),{enabled:true,apiBaseUrl:location.origin+'/api/rmt/cannacat',walletConnectProjectId:'04cbaa4efb50ff78c719a886ee6e54c4'});</script></html>`); return;
     }
     if (url.pathname.startsWith('/sdk/')) {
       const file = path.resolve(root, 'task125-artifact/sdk', url.pathname.slice(5));
@@ -158,6 +158,12 @@ for (const width of [320, 375, 390, 430, 1440]) {
   check(errors.length === 0, errors.join('; '));
   results.push({ width, result: 'PASS' }); await context.close(); quoteCalls = 0;
 }
+} catch (error) {
+  for (const context of browser.contexts()) for (const page of context.pages()) {
+    await page.screenshot({ path: path.join(output, 'failure.png'), fullPage: true }).catch(() => undefined);
+    writeFileSync(path.join(output, 'FAILURE.json'), JSON.stringify({ message: String(error), body: await page.locator('body').innerText().catch(() => '') }, null, 2));
+  }
+  throw error;
 } finally { await browser.close(); await new Promise<void>(resolve => server.close(() => resolve())); }
 writeFileSync(path.join(output, 'RESULTS.json'), JSON.stringify({ result: 'PASS', channel, checks, results, authSignatures: 'synthetic only', ownerSignatures: 0,
   fundedTrades: 0, realRabbyKit: true, walletConnectRelay: 'requires owner project ID and physical mobile acceptance' }, null, 2));
