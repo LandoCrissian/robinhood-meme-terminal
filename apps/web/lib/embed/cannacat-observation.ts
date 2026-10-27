@@ -20,6 +20,10 @@ export function createCannaCatSpotReader(read: () => Promise<CannaCatSpot>, now 
         throw new Error("Fresh CannaCat pool price is unavailable. Your amount is retained.");
       }
       cached = value; return value;
+    }).catch(() => {
+      // RPC libraries include URLs, calldata and long diagnostic tokens. They
+      // are not user-facing pricing messages and must not distort mobile layout.
+      throw new Error("Live CannaCat pricing is temporarily unavailable. Your amount and last estimate are retained; retrying automatically.");
     }).finally(() => { pending = null; });
     return pending;
   };

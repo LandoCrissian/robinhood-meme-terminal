@@ -780,6 +780,7 @@ const css = `
 .rmtcat-funds dl{margin:0;display:grid;grid-template-columns:minmax(0,1fr);gap:14px}.rmtcat-funds dt{font-size:12px;color:#b7beaa}.rmtcat-funds dd{margin:3px 0 0;font-size:16px;font-weight:650;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.rmtcat-funds .rmtcat-usd{font-size:13px;color:#c1c8b7;font-weight:400}.rmtcat-funds p,.rmtcat-price{font-size:12px;color:#b7beaa;line-height:1.6;overflow-wrap:anywhere}.rmtcat-funds p{margin:12px 0 0}.rmtcat-modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0 0 16px}.rmtcat-modes button{min-width:0;font-size:12px;padding:8px 5px;line-height:1.4}.rmtcat-modes button[aria-pressed=true]{background:#d6ff24;color:#101500}.rmtcat-price{margin:14px 0}
 .rmtcat-root{min-width:0}
 .rmtcat-panel{min-width:0}
+.rmtcat-price-state,.rmtcat-observation{min-width:0;overflow-wrap:anywhere}
 .rmtcat-top{align-items:baseline}
 .rmtcat-wallet{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:stretch;margin:20px 0 14px}
 .rmtcat-wallet .rmtcat-wallet-choice{display:grid;gap:6px;min-width:0;font-size:13px;line-height:1.5}

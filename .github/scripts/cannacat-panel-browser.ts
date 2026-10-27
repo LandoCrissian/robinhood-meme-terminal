@@ -646,7 +646,11 @@ try {
           x: scrollX, y: scrollY, width: document.documentElement.scrollWidth, viewport: innerWidth }));
         check(state.focused && state.cursor === 2, 'Background quotes preserve keyboard focus and cursor');
         check(state.x === scroll.x && Math.abs(state.y - scroll.y) <= 1, 'Background quotes never jump or reset scroll');
-        check(state.width <= state.viewport, 'Live estimate remains inside iPhone-sized viewport');
+        if (state.width > state.viewport) {
+          await stable.screenshot({path:path.join(output,channel+'-overflow-failure.png'),fullPage:true});
+          await writeFile(path.join(output,channel+'-overflow-state.json'),JSON.stringify({state,priceMessage:await stable.locator('.rmtcat-price-state').innerText()},null,2));
+        }
+        check(state.width <= state.viewport, `Live estimate remains inside iPhone-sized viewport (${state.width}/${state.viewport})`);
         check(await stable.getByRole('button', { name: 'CannaCat target', exact: true }).getAttribute('aria-pressed') === 'true', 'Selected buy input mode stays unchanged');
         samples.push({ sample: sample + 1, elapsedMs: Date.now() - started, quoteCalls: quoteCalls - callsAtStart, spotCalls: spotCalls - spotsAtStart,
           freshness: await stable.locator('.rmtcat-freshness').innerText(), ...state });
