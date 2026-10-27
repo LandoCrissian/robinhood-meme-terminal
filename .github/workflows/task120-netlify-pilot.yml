@@ -1,0 +1,46 @@
+name: Task120 isolated Netlify API artifact
+on:
+  push:
+    branches: [codex/task120-netlify-cannacat-pilot]
+    paths: ['.github/task120-pilot/**', '.github/workflows/task120-netlify-pilot.yml']
+permissions:
+  contents: read
+jobs:
+  api-artifact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
+        with:
+          version: 10.12.1
+      - run: pnpm install --frozen-lockfile
+      - name: Unchanged focused execution and recovery regressions
+        working-directory: apps/web
+        run: |
+          pnpm test:cannacat-embed
+          pnpm test:trade-identity
+          pnpm exec tsx lib/server/historical-settlement-trace-smoke.ts
+          pnpm exec tsx lib/vnext/zero-x-firm-quote-commitment-smoke.ts
+          pnpm exec tsx lib/vnext/zero-x-firm-quote-verifier-smoke.ts
+      - name: Bundle unchanged handlers without Next or a trading terminal
+        run: node .github/task120-pilot/build.mjs
+      - name: Adapter authentication and preview isolation tests
+        run: node .github/task120-pilot/adapter-test.mjs
+      - name: Package with the official Netlify CLI
+        run: npx --yes netlify-cli@27.14.2 functions:build --src task120-artifact/source-functions --functions task120-artifact/functions
+      - name: Hash every deployable member
+        run: node .github/task120-pilot/seal.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: task120-netlify-api-${{ github.sha }}
+          path: task120-artifact/
+          if-no-files-found: warn
+          retention-days: 14
