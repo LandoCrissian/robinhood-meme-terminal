@@ -12,7 +12,9 @@ async function main() {
   page.on('console', async message => {
     if (message.type() !== 'error' && message.type() !== 'warn') return;
     const args = await Promise.all(message.args().map(arg => arg.evaluate(value => ({ name: value?.name, code: value?.code, message: value?.message })).catch(() => ({}))));
-    events.push({ kind: 'console', text: clean(message.text()), args: args.map(arg => ({ name: arg.name, code: arg.code, message: clean(arg.message) })) });
+    const firstUrl = message.text().match(/(?:https?|wss?):\/\/[^\s"']+/)?.[0];
+    const target = firstUrl ? { host: new URL(firstUrl).host, path: new URL(firstUrl).pathname } : undefined;
+    events.push({ kind: 'console', text: clean(message.text()), target, args: args.map(arg => ({ name: arg.name, code: arg.code, message: clean(arg.message) })) });
   });
   page.on('websocket', socket => { events.push({ kind: 'websocket', host: new URL(socket.url()).host }); socket.on('socketerror', error => events.push({ kind: 'websocket-error', error: clean(error) })); });
   page.on('requestfailed', request => events.push({ kind: 'request-failed', host: new URL(request.url()).host, path: new URL(request.url()).pathname, reason: clean(request.failure()?.errorText) }));
