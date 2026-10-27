@@ -48,7 +48,7 @@ export class WalletSessionController {
       throw Error('A same-origin wallet API is required.');
     if (!/^[a-f0-9]{32}$/i.test(projectId)) throw Error('An owner-controlled WalletConnect project is required.');
     this.wagmi = createConfig(getDefaultConfig({ projectId, appName: 'LAMMB Genesis', appUrl: location.origin,
-      appDesc: 'CannaCat trading on Robinhood Chain', appLogo: location.origin + '/icon.png',
+      appDesc: 'CannaCat trading on Robinhood Chain', appLogo: location.origin + '/art/cinematic-preview/wordmark.webp',
       chains: [robinhoodChain], transports: { [4663]: http(robinhoodChain.rpcUrls.default.http[0]) }, ssr: false }));
     this.modal = createModal({ wagmi: this.wagmi, showWalletConnect: true, theme: 'dark',
       themeVariables: { '--rk-primary-button-bg': '#d6ff24', '--rk-primary-button-color': '#10150b' } });
