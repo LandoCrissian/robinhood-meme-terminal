@@ -54,7 +54,7 @@ const readCannaCatSpot = createCannaCatSpotReader(async () => {
     args: [market.market.poolKey as Hex], blockNumber: block.number });
   return { chainId: 4663, sqrtPriceX96: slot[0], blockNumber: block.number, blockHash: block.hash, observedAtMs: Date.now() };
 });
-const short = (address: string) => `${address.slice(0, 6)}â€¦${address.slice(-4)}`;
+const short = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`;
 const units = (value: string | bigint, digits = 18) => {
   const exact = formatUnits(BigInt(value), 18);
   const [whole, fraction = ""] = exact.split(".");
@@ -97,7 +97,7 @@ async function readWalletFunds(key: string, wallet: string): Promise<CannaCatFun
 }
 
 function NativeEthEstimate({ atomic, fee = false }: { atomic: string; fee?: boolean }) {
-  const suffix = fee ? "ETH Â· estimate" : "ETH";
+  const suffix = fee ? "ETH · estimate" : "ETH";
   return <span className="rmtcat-native-estimate"><span>{units(atomic)} {suffix}</span>
     <span className="rmtcat-native-sizer" aria-hidden="true">0.000000000000000000 {suffix}</span></span>;
 }
@@ -114,9 +114,9 @@ const WalletBalanceSummary = React.memo(function WalletBalanceSummary({ funds, u
     unavailable: "Balances could not be refreshed. Confirmation needs fresh data."
   };
   return <section className="rmtcat-funds" aria-label="Wallet balances">
-    <dl><div><dt>Native Robinhood ETH</dt><dd className="rmtcat-funds-amount">{funds ? `${units(funds.eth)} ETH` : "Loadingâ€¦"}</dd>
-      <dd className="rmtcat-usd">{usd ? `â‰ˆ ${usd} USD` : "USD estimate unavailable"}</dd></div>
-      <div><dt>CannaCat available</dt><dd className="rmtcat-funds-amount">{funds ? `${units(funds.token, 4)} CannaCat` : "Loadingâ€¦"}</dd></div></dl>
+    <dl><div><dt>Native Robinhood ETH</dt><dd className="rmtcat-funds-amount">{funds ? `${units(funds.eth)} ETH` : "Loading…"}</dd>
+      <dd className="rmtcat-usd">{usd ? `≈ ${usd} USD` : "USD estimate unavailable"}</dd></div>
+      <div><dt>CannaCat available</dt><dd className="rmtcat-funds-amount">{funds ? `${units(funds.token, 4)} CannaCat` : "Loading…"}</dd></div></dl>
     <p className="rmtcat-funds-snapshot"><span>{funds ? <>As of <time dateTime={new Date(funds.checkedAtMs).toISOString()}>{new Date(funds.checkedAtMs).toLocaleTimeString()}</time></> : "Balance snapshot pending"}</span>
       <span>{funds ? `Block ${String(funds.block)}` : "Block pending"}</span></p>
     <p className="rmtcat-funds-health" data-balance-health={health} aria-live="off">{messages[health]}</p>
@@ -531,7 +531,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     invalidate(true); const generation = epoch.current;
     const action = beginAction("quote"); const controller = action.controller;
     const key = selectedKey; const token = csrfToken;
-    setStatus("Checking wallet, live quote and transaction safetyâ€¦");
+    setStatus("Checking wallet, live quote and transaction safety…");
     try {
       const tokenAmountAtomic = side === "sell" || buyMode === "token" ? parseCannaCatAmount(amount) : "0";
       // Freeze the indicative conversion for this request. Background prices
@@ -697,7 +697,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       requestId = crypto.randomUUID();
       const saved = recordPreparedVNextWalletRequest({ requestId, wallet: wallet.address, plan: prepared.trade.plan, walletNonceBeforeRequest: prepared.nonce, requestBlockNumber: prepared.block, requestBlockHash: prepared.blockHash, connectorType: wallet.connectorType, walletClientType: wallet.walletClientType, connectorId: wallet.meta.id }, localStorage);
       if (!saved || !transitionVNextWalletRequest(requestId, "PROMPT_REQUESTED", localStorage)) throw new Error("Recovery storage failed. No wallet request was opened.");
-      action = beginAction("wallet"); setBlocking(true); setHash(""); setRecoveryHash(""); setError(""); setStatus("Confirm the exact transaction in your wallet. Waiting for your responseâ€¦");
+      action = beginAction("wallet"); setBlocking(true); setHash(""); setRecoveryHash(""); setError(""); setStatus("Confirm the exact transaction in your wallet. Waiting for your response…");
       // User-gesture path: no quote fetch, chain lookup or automatic signature.
       const pending = prepared.provider.request({ method: "eth_sendTransaction", params: [{ ...vNextWalletRpcTransaction(transaction), chainId: toHex(4663) }] });
       setPrepared(null);
@@ -754,7 +754,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     } catch { /* Invalid or incomplete text is diagnosed on explicit quote preparation. */ }
   }
   return <div className="rmtcat-panel">
-    <div className="rmtcat-top"><span className="rmtcat-eyebrow">CANNACAT Â· ROBINHOOD CHAIN</span><span className="rmtcat-powered">Execution by RMT</span></div>
+    <div className="rmtcat-top"><span className="rmtcat-eyebrow">CANNACAT · ROBINHOOD CHAIN</span><span className="rmtcat-powered">Execution by RMT</span></div>
     <h3>Get your CannaCat.</h3>
     <p className="rmtcat-intro">Buy or sell here with your existing wallet. Keep 10,000 tokens in the same wallet for the final GTD snapshot.</p>
     {!terms.accepted && <div className="rmtcat-terms" role="note" aria-label="RMT trading acknowledgement">
@@ -764,7 +764,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
       <details><summary>RMT trading terms</summary><TermsPage /></details>
       <details><summary>Risk disclosures</summary><RisksPage /></details>
       <details><summary>Privacy</summary><PrivacyPage /></details>
-      <button type="button" disabled={!terms.ready} onClick={terms.accept}>I understand â€” continue</button>
+      <button type="button" disabled={!terms.ready} onClick={terms.accept}>I understand — continue</button>
     </div>}
     <div className="rmtcat-tabs" role="group" aria-label="Trade direction">
       {(["buy", "sell"] as const).map((direction) => <button key={direction} type="button" aria-pressed={side === direction} onClick={() => { invalidate(); setSide(direction); setAmount(amounts.current[direction === "sell" ? "sell" : buyMode]); setStatus("Choose an amount and request a fresh quote."); }}>{direction === "buy" ? "Buy CannaCat" : "Sell CannaCat"}</button>)}
@@ -772,7 +772,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     <div className="rmtcat-wallet">
       {!walletReturn.userDisconnected && (external.length > 1 || (!wallet && external.length > 0)) && <label className="rmtcat-wallet-choice">Choose signing wallet<select aria-label="Choose signing wallet" value={selectedKey} disabled={!terms.accepted} onChange={(event) => { invalidate(); explicitChoiceRequired.current = true; setSelectedKey(event.target.value); }}>
           <option value="" disabled>Select a wallet</option>
-          {external.map((option) => <option key={walletGatewayKey(option)} value={walletGatewayKey(option)}>{short(option.address)} Â· {option.meta.name ?? option.walletClientType}</option>)}
+          {external.map((option) => <option key={walletGatewayKey(option)} value={walletGatewayKey(option)}>{short(option.address)} · {option.meta.name ?? option.walletClientType}</option>)}
         </select></label>}
       {wallet && external.length === 1 && <div className="rmtcat-wallet-identity"><span className="rmtcat-wallet-caption">Trading wallet</span><span className="rmtcat-wallet-address" title={wallet.address}>{short(wallet.address)}</span><span className="rmtcat-wallet-name">{wallet.meta.name ?? wallet.walletClientType}</span></div>}
       <div className="rmtcat-wallet-actions">
@@ -794,46 +794,46 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     <label className="rmtcat-amountlabel" htmlFor={inputId}>{amountLabel}</label>
     <div className="rmtcat-amount"><input id={inputId} inputMode="decimal" autoComplete="off" value={amount} maxLength={60} onChange={(event) => editAmount(event.target.value)} /><span>{side === "sell" || buyMode === "token" ? "CANNACAT" : buyMode === "usd" ? "USD TARGET" : "NATIVE ETH"}</span></div>
     {side === "buy" && <div className="rmtcat-presets" style={{ gridTemplateColumns: `repeat(${presets.length},minmax(0,1fr))` }}>{presets.map(([value, label]) => <button type="button" key={value} onClick={() => editAmount(value)}>{label}</button>)}</div>}
-    {side === "buy" && buyMode === "eth" && <button className="rmtcat-textbutton" type="button" disabled={!fundsFresh || !visibleFunds || cannaCatQuoteBudget(visibleFunds).spendable <= 0n} onClick={() => { if (visibleFunds && fundsFresh) editAmount(formatUnits(cannaCatQuoteBudget(visibleFunds).spendable, 18)); }}>Max ETH Â· leave gas</button>}
+    {side === "buy" && buyMode === "eth" && <button className="rmtcat-textbutton" type="button" disabled={!fundsFresh || !visibleFunds || cannaCatQuoteBudget(visibleFunds).spendable <= 0n} onClick={() => { if (visibleFunds && fundsFresh) editAmount(formatUnits(cannaCatQuoteBudget(visibleFunds).spendable, 18)); }}>Max ETH · leave gas</button>}
     {inputProblem && <p className="rmtcat-error" role="note" aria-label="Amount availability">{inputProblem}</p>}
-    <p className="rmtcat-price">{freshPrice && price ? <>ETH/USD â‰ˆ {approximateUsd(10n ** 18n, price, now)} Â· {price.source} Â· <time dateTime={new Date(price.priceAtMs).toISOString()}>{new Date(price.priceAtMs).toLocaleTimeString()}</time></> : priceError || "ETH/USD estimate loadingâ€¦"}<br/>USD is indicative only. Payment and settlement use native Robinhood ETH. Firm terms are verified before confirmation.</p>
+    <p className="rmtcat-price">{freshPrice && price ? <>ETH/USD ≈ {approximateUsd(10n ** 18n, price, now)} · {price.source} · <time dateTime={new Date(price.priceAtMs).toISOString()}>{new Date(price.priceAtMs).toLocaleTimeString()}</time></> : priceError || "ETH/USD estimate loading…"}<br/>USD is indicative only. Payment and settlement use native Robinhood ETH. Firm terms are verified before confirmation.</p>
     {side === "buy" && visibleFunds && <p className="rmtcat-balances">Quote budget reserves {units(cannaCatQuoteBudget(visibleFunds).reserve)} ETH for gas. The verified transaction may require more.</p>}
-    {blocking && <aside className="rmtcat-transaction" aria-label="Transaction recovery"><strong>Earlier transaction needs reconciliation</strong><p>Another wallet transaction is paused. You can change amounts, switch Buy/Sell, get an indicative quote or disconnect. Saved history remains intact. Do not resend the previous trade.</p><a href={`#${encodeURIComponent(inputId + "-recovery")}`} aria-label={hash ? `Review recovery for transaction ${hash}` : `Review recovery for wallet request ${blockedRequestId}`}>{hash ? `Affected transaction ${short(hash)} Â· check settlement` : `Unanswered wallet request ${blockedRequestId ? short(blockedRequestId) : ""} Â· recover the response`}</a></aside>}
-    {<div className="rmtcat-quote rmtcat-observation" aria-label="Indicative quote review"><strong>Live estimate Â· not a trade authorization</strong>
-      <p className="rmtcat-freshness" aria-live="off"><span className="rmtcat-freshness-value">{observation ? <><span>{observation.expiresAtMs && observation.expiresAtMs > now && !quoteMessage ? "Updated" : "Last estimate Â· refreshing"}</span><time dateTime={new Date(observation.observedAtMs).toISOString()}>{new Date(observation.observedAtMs).toLocaleTimeString()}</time></> : "Enter an amount and connect to see automatic estimates."}</span><span className="rmtcat-freshness-sizer" aria-hidden="true">Last estimate Â· refreshing<br/>00:00:00 AM</span></p>
+    {blocking && <aside className="rmtcat-transaction" aria-label="Transaction recovery"><strong>Earlier transaction needs reconciliation</strong><p>Another wallet transaction is paused. You can change amounts, switch Buy/Sell, get an indicative quote or disconnect. Saved history remains intact. Do not resend the previous trade.</p><a href={`#${encodeURIComponent(inputId + "-recovery")}`} aria-label={hash ? `Review recovery for transaction ${hash}` : `Review recovery for wallet request ${blockedRequestId}`}>{hash ? `Affected transaction ${short(hash)} · check settlement` : `Unanswered wallet request ${blockedRequestId ? short(blockedRequestId) : ""} · recover the response`}</a></aside>}
+    {<div className="rmtcat-quote rmtcat-observation" aria-label="Indicative quote review"><strong>Live estimate · not a trade authorization</strong>
+      <p className="rmtcat-freshness" aria-live="off"><span className="rmtcat-freshness-value">{observation ? <><span>{observation.expiresAtMs && observation.expiresAtMs > now && !quoteMessage ? "Updated" : "Last estimate · refreshing"}</span><time dateTime={new Date(observation.observedAtMs).toISOString()}>{new Date(observation.observedAtMs).toLocaleTimeString()}</time></> : "Enter an amount and connect to see automatic estimates."}</span><span className="rmtcat-freshness-sizer" aria-hidden="true">Last estimate · refreshing<br/>00:00:00 AM</span></p>
       {observation && <dl>
       <div><dt>Input</dt><dd>{observation.side === "buy" ? <NativeEthEstimate atomic={observation.inputAmountAtomic} /> : `${units(observation.inputAmountAtomic)} CannaCat`}</dd></div>
       <div><dt>Expected output</dt><dd>{observation.side === "sell" ? <NativeEthEstimate atomic={observation.expectedOutputAtomic} /> : `${units(observation.expectedOutputAtomic)} CannaCat`}</dd></div>
-      <div><dt>RMT fee Â· 0.25%</dt><dd><NativeEthEstimate atomic={observation.feeEstimateAtomic} fee /></dd></div>
+      <div><dt>RMT fee · 0.25%</dt><dd><NativeEthEstimate atomic={observation.feeEstimateAtomic} fee /></dd></div>
       <div><dt>Estimated network gas</dt><dd>{"Verified at trade review"}</dd></div>
-      <div><dt>{observation.side === "buy" ? "Input Â· USD estimate" : "Proceeds Â· USD estimate"}</dt><dd>{approximateUsd(observation.side === "buy" ? observation.inputAmountAtomic : observation.expectedOutputAtomic, price, now) ?? "Unavailable"}</dd></div>
+      <div><dt>{observation.side === "buy" ? "Input · USD estimate" : "Proceeds · USD estimate"}</dt><dd>{approximateUsd(observation.side === "buy" ? observation.inputAmountAtomic : observation.expectedOutputAtomic, price, now) ?? "Unavailable"}</dd></div>
     </dl>}<p className="rmtcat-price-state"><span>{quoteMessage || "Pool spot estimate updates automatically; liquidity impact and pool fees are excluded. Review fresh 0x terms before signing. Network gas is additional; maximum slippage is 1%."}</span><span className="rmtcat-price-sizer" aria-hidden="true">Pool spot estimate updates automatically; liquidity impact and pool fees are excluded. Review fresh 0x terms before signing. Network gas is additional; maximum slippage is 1%.</span></p></div>}
     {evidence && <div className="rmtcat-quote" aria-label="Verified trade review"><dl>
       <div><dt>{side === "buy" ? "Exact ETH input" : "Exact token input"}</dt><dd>{units(evidence.inputAmountAtomic)} {side === "buy" ? "ETH" : "CannaCat"}</dd></div>
       <div><dt>Expected received</dt><dd>{units(evidence.expectedOutputAtomic)} {side === "buy" ? "CannaCat" : "ETH"}</dd></div>
-      {side === "sell" && <div><dt>Estimated proceeds Â· USD</dt><dd>{approximateUsd(evidence.expectedOutputAtomic, price, now) ? `â‰ˆ ${approximateUsd(evidence.expectedOutputAtomic, price, now)}` : "USD estimate unavailable"}</dd></div>}
-      {side === "buy" && <div><dt>Input estimate Â· USD</dt><dd>{approximateUsd(evidence.inputAmountAtomic, price, now) ? `â‰ˆ ${approximateUsd(evidence.inputAmountAtomic, price, now)}` : "USD estimate unavailable"}</dd></div>}
+      {side === "sell" && <div><dt>Estimated proceeds · USD</dt><dd>{approximateUsd(evidence.expectedOutputAtomic, price, now) ? `≈ ${approximateUsd(evidence.expectedOutputAtomic, price, now)}` : "USD estimate unavailable"}</dd></div>}
+      {side === "buy" && <div><dt>Input estimate · USD</dt><dd>{approximateUsd(evidence.inputAmountAtomic, price, now) ? `≈ ${approximateUsd(evidence.inputAmountAtomic, price, now)}` : "USD estimate unavailable"}</dd></div>}
       <div><dt>Protected minimum</dt><dd>{units(evidence.protectedOutputAtomic)} {side === "buy" ? "CannaCat" : "ETH"}</dd></div>
-      <div><dt>{review?.plan.kind === "erc20_approval" ? "Planned swap fee Â· 0.25%" : "RMT fee Â· 0.25%"}</dt><dd>{fee ? `${units(fee.feeAmountAtomic)} ETH` : "Unavailable"}</dd></div>
+      <div><dt>{review?.plan.kind === "erc20_approval" ? "Planned swap fee · 0.25%" : "RMT fee · 0.25%"}</dt><dd>{fee ? `${units(fee.feeAmountAtomic)} ETH` : "Unavailable"}</dd></div>
       <div><dt>Estimated network gas</dt><dd>{evidence.estimatedNetworkCostWei ? `${units(evidence.estimatedNetworkCostWei)} ETH` : "Unavailable"}</dd></div>
       <div><dt>Provider fee</dt><dd>{fee?.providerFeeAtomic ? `${units(fee.providerFeeAtomic)} ${fee.providerFeeAsset?.toLowerCase() === CANNACAT_EMBED.token.toLowerCase() ? "CannaCat" : "ETH"}` : "None disclosed"}</dd></div>
       <div><dt>Maximum slippage</dt><dd>1%</dd></div>
       <div><dt>Recipient</dt><dd>{short(evidence.recipient)}</dd></div>
-    </dl><p>{!prepared ? "Saved review only. Refresh the quote before confirming." : expired ? "Quote expired â€” refresh before confirming." : prepared.trade.plan.kind === "erc20_approval" ? "No swap fee is charged by this approval. Network gas applies. Review a fresh swap quote after confirmation." : "Fees are disclosed estimates. Network gas is additional. Review exact amounts in your wallet."}</p>{prepared && !fundsAllowTrade && <p>Confirmation paused: fresh matching balances and enough gas are required.</p>}</div>}
-    <div className="rmtcat-actions"><button type="button" disabled={!terms.accepted || !connected || busy || !tabOwnsWallet || walletState.status !== "ready"} onClick={() => void getQuote()}>{busy ? "Workingâ€¦" : prepared ? "Refresh quote" : "Review trade"}</button>
+    </dl><p>{!prepared ? "Saved review only. Refresh the quote before confirming." : expired ? "Quote expired — refresh before confirming." : prepared.trade.plan.kind === "erc20_approval" ? "No swap fee is charged by this approval. Network gas applies. Review a fresh swap quote after confirmation." : "Fees are disclosed estimates. Network gas is additional. Review exact amounts in your wallet."}</p>{prepared && !fundsAllowTrade && <p>Confirmation paused: fresh matching balances and enough gas are required.</p>}</div>}
+    <div className="rmtcat-actions"><button type="button" disabled={!terms.accepted || !connected || busy || !tabOwnsWallet || walletState.status !== "ready"} onClick={() => void getQuote()}>{busy ? "Working…" : prepared ? "Refresh quote" : "Review trade"}</button>
       {prepared && <button type="button" className="rmtcat-confirm" disabled={!terms.accepted || busy || expired || blocking || !connected || !tabOwnsWallet || walletState.status !== "ready" || !fundsAllowTrade} onClick={confirmTrade}>{prepared.trade.plan.kind === "erc20_approval" ? "Review token approval" : `Confirm ${side} in wallet`}</button>}
     </div>
     {busy && <button className="rmtcat-textbutton" type="button" onClick={() => { const kind = activeAction.current?.kind; invalidate(true); setStatus(kind === "wallet" ? "Stopped waiting for the wallet response. It may still complete. History is preserved; do not resend." : "Read cancelled. You can retry, edit the amount or disconnect. Transaction history is preserved."); }}>Stop waiting</button>}
     <p className="rmtcat-status" role="status" aria-live="polite">{status === connectedWalletMessage(walletState) || (wallet && status === "Connect an existing wallet to get a live quote.") ? "" : status}</p>
     {error && <p className="rmtcat-error" role="alert">{error}</p>}
-    {blocking && !hash && <div className="rmtcat-transaction" id={inputId + "-recovery"}><label>Recover an unanswered wallet request<input aria-label="Transaction hash from your wallet" value={recoveryHash} maxLength={66} autoComplete="off" onChange={(event) => setRecoveryHash(event.target.value)} placeholder="0xâ€¦ transaction hash" /></label><button type="button" disabled={busy || !isHash(recoveryHash)} onClick={() => void recoverWalletResponse()}>Verify saved transaction</button><p>Paste a hash from your wallet history. Only an exact match can be recovered. This never sends another transaction.</p></div>}
+    {blocking && !hash && <div className="rmtcat-transaction" id={inputId + "-recovery"}><label>Recover an unanswered wallet request<input aria-label="Transaction hash from your wallet" value={recoveryHash} maxLength={66} autoComplete="off" onChange={(event) => setRecoveryHash(event.target.value)} placeholder="0x… transaction hash" /></label><button type="button" disabled={busy || !isHash(recoveryHash)} onClick={() => void recoverWalletResponse()}>Verify saved transaction</button><p>Paste a hash from your wallet history. Only an exact match can be recovered. This never sends another transaction.</p></div>}
     {hash && <div className="rmtcat-transaction" id={inputId + "-recovery"}><a href={explorer(hash)} target="_blank" rel="noopener noreferrer">View transaction {short(hash)}</a>
       {displayRecord?.txHash === hash && <p aria-label="Saved transaction status">{hasVerifiedVNextSwapSettlement(displayRecord)
         ? `Settlement verified: ${units(displayRecord.outputAmountAtomic!)} ${displayRecord.outputAsset.toLowerCase() === CANNACAT_EMBED.token.toLowerCase() ? "CannaCat" : "ETH"} received.`
         : displayRecord.state === "reverted" ? "Transaction reverted. Network gas may still apply."
         : displayRecord.state === "confirmed" && displayRecord.kind === "erc20_approval" ? "Approval confirmed. A token approval is not a completed sale."
         : "Submitted; settlement is not yet verified. Do not resend."}</p>}
-      <button type="button" disabled={recoveryChecking || !wallet} onClick={() => void checkTransaction()}>{recoveryChecking ? "Checking settlementâ€¦" : "Check settlement"}</button>
+      <button type="button" disabled={recoveryChecking || !wallet} onClick={() => void checkTransaction()}>{recoveryChecking ? "Checking settlement…" : "Check settlement"}</button>
       <details className="rmtcat-details"><summary>Recovery support details</summary><p>Copy this transaction's saved recovery fields for private support. This does not change history or send a transaction.</p><button type="button" disabled={!wallet || !displayRecord} onClick={() => void copyRecoveryDetails()}>Copy recovery details</button>{recoveryCopyMessage && <p>{recoveryCopyMessage}</p>}</details></div>}
     <details className="rmtcat-details"><summary>Fees, eligibility & recovery</summary><p>RMT requests a 0.25% fee in ETH for this pair. Provider fees and network gas are shown separately. Approving tokens is not a completed sale. A receipt alone is not verified settlement. If a wallet response is lost, do not send again; check the saved transaction.</p><p>Estimates update automatically while this page is visible. An estimate can become stale between updates. Review trade obtains new executable terms; it never signs or sends automatically. Review the exact input and protected minimum again if they change.</p><p>Buying does not reserve an NFT or guarantee GTD. NFT holdings, the same-wallet token balance at the final snapshot, Founder exclusion and first-come-first-served access still apply. Selling before the snapshot may remove eligibility. NFT registration and minting remain closed.</p><p>Only public transaction and wallet details are stored locally for recovery. Wallet credentials and identity tokens are never written to this trading journal. Never share a private key or seed phrase.</p></details>
     <a className="rmtcat-contract" href={`${robinhoodChain.blockExplorers.default.url}/token/${CANNACAT_EMBED.token}`} target="_blank" rel="noopener noreferrer">Token contract: {CANNACAT_EMBED.token}</a>
@@ -899,7 +899,7 @@ export function mountCannaCatPanel(element: HTMLElement, config: CannaCatPanelCo
   const container = document.createElement("div"); element.append(container);
   const root = createRoot(container);
   if (!config.enabled) {
-    root.render(<div className="rmtcat-panel"><div className="rmtcat-top"><span className="rmtcat-eyebrow">CANNACAT Â· ROBINHOOD CHAIN</span><span className="rmtcat-powered">Execution by RMT</span></div><h3>Get your CannaCat.</h3><p className="rmtcat-intro">Buy or sell here with your existing wallet. Keep 10,000 tokens in the same wallet for the final GTD snapshot.</p><p className="rmtcat-paused">On-site trading is being prepared. Wallet actions remain disabled.</p><button type="button" disabled>Connect wallet Â· coming soon</button><p className="rmtcat-status">0.25% RMT fee Â· Network gas applies. Buying does not guarantee GTD.</p></div>);
+    root.render(<div className="rmtcat-panel"><div className="rmtcat-top"><span className="rmtcat-eyebrow">CANNACAT · ROBINHOOD CHAIN</span><span className="rmtcat-powered">Execution by RMT</span></div><h3>Get your CannaCat.</h3><p className="rmtcat-intro">Buy or sell here with your existing wallet. Keep 10,000 tokens in the same wallet for the final GTD snapshot.</p><p className="rmtcat-paused">On-site trading is being prepared. Wallet actions remain disabled.</p><button type="button" disabled>Connect wallet · coming soon</button><p className="rmtcat-status">0.25% RMT fee · Network gas applies. Buying does not guarantee GTD.</p></div>);
   } else {
     const url = new URL(config.apiBaseUrl);
     if (url.protocol !== "https:" || url.origin !== location.origin || url.pathname !== "/api/rmt/cannacat" || url.username || url.password || url.search || url.hash) throw new Error("Invalid RMT API configuration.");

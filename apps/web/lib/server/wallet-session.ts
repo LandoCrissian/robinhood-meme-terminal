@@ -94,7 +94,12 @@ export const CONSUME_CHALLENGE = `
 if redis.call('GET',KEYS[1])~=ARGV[1] then return 0 end
 if redis.call('EXISTS',KEYS[2])==1 then return 0 end
 redis.call('DEL',KEYS[1]); redis.call('DEL',KEYS[3])
-redis.call('SET',KEYS[2],ARGV[2],'EX',ARGV[3]); return 1`;
+redis.call('SET',KEYS[2],ARGV[2],'EX',ARGV[3])
+redis.call('SET',KEYS[4],KEYS[2],'EX',300); return 1`;
+const LOGOUT = `
+local completed=redis.call('GET',KEYS[3])
+if completed and string.sub(completed,1,string.len(ARGV[1]))==ARGV[1] then redis.call('DEL',completed) end
+redis.call('DEL',KEYS[1],KEYS[2],KEYS[3]); return 1`;
 const RATE = `local n=redis.call('INCR',KEYS[1]); if n==1 then redis.call('EXPIRE',KEYS[1],ARGV[1]) end; return n`;
 function dependencies(deps: Dependencies) {
   const env = deps.env ?? process.env; const config = settings(env);
@@ -143,9 +148,13 @@ export async function handleWalletAuth(request: Request, operation: string, deps
       catch (error) { if (error instanceof WalletSessionError && error.status === 401) return json({ authenticated: false }); throw error; }
     }
     if (operation === 'logout') {
-      const state = await readSession(request, deps, true);
-      await d.command(['DEL', sessionKey(state.id)]);
-      const nonce = cookie(request, WALLET_AUTH.challengeCookie); if (nonce) await d.command(['DEL', challengeKey(nonce)]);
+      // Logout uses exact Origin + the non-simple client header (both mandatory),
+      // including during an unfinished sign-in. The completed-challenge reference
+      // closes the verify/logout race before a new cookie reaches the browser.
+      const sid = cookie(request, WALLET_AUTH.cookie), nonce = cookie(request, WALLET_AUTH.challengeCookie);
+      const empty = PREFIX + 'unused:' + token();
+      await d.command(['EVAL', LOGOUT, 3, sid ? sessionKey(sid) : empty,
+        nonce ? challengeKey(nonce) : empty, nonce ? PREFIX + 'completed:' + digest(nonce) : empty, PREFIX + 'session:']);
       const response = json({ authenticated: false });
       response.headers.append('Set-Cookie', cookieHeader(WALLET_AUTH.cookie, '', 0));
       response.headers.append('Set-Cookie', cookieHeader(WALLET_AUTH.challengeCookie, '', 0));
@@ -189,7 +198,7 @@ export async function handleWalletAuth(request: Request, operation: string, deps
     const sessionIssuedAt = d.now();
     const session: WalletSession = { version: 1, wallet: getAddress(challenge.wallet), chainId: 4663, origin: d.origin,
       csrf: token(), issuedAt: sessionIssuedAt, expiresAt: sessionIssuedAt + WALLET_AUTH.sessionSeconds * 1000 };
-    const consumed = await d.command(['EVAL', CONSUME_CHALLENGE, 3, key, sessionKey(sid), previous ? sessionKey(previous) : PREFIX + 'unused:' + token(),
+    const consumed = await d.command(['EVAL', CONSUME_CHALLENGE, 4, key, sessionKey(sid), previous ? sessionKey(previous) : PREFIX + 'unused:' + token(), PREFIX + 'completed:' + digest(id),
       raw as string, seal(session, d.key, sessionKey(sid)), WALLET_AUTH.sessionSeconds]);
     if (consumed !== 1) throw failure('WALLET_CHALLENGE_ALREADY_USED', 409);
     const response = json(publicSession(session));

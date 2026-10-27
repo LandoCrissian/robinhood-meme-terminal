@@ -89,6 +89,7 @@ export function createCannaCatClient(options: {
 }) {
   const base = new URL(options.baseUrl);
   if (base.protocol !== "https:" || base.username || base.password || base.search || base.hash
+    || (options.session && typeof location !== "undefined" && base.origin !== location.origin)
     || (options.session ? base.pathname !== "/api/rmt/cannacat" || !/^[a-f0-9]{64}$/.test(options.session.csrfToken)
       : base.pathname !== "/api/embed/cannacat" || !options.identityToken || options.identityToken.length > 16_384)) {
     throw new CannaCatClientError("INVALID_CLIENT_CONFIGURATION", "Secure CannaCat trading is not configured.");

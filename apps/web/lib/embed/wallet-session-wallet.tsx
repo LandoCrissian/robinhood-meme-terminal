@@ -183,7 +183,7 @@ export class WalletSessionController {
   logout = async () => {
     const session = this.state.session; ++this.generation;
     this.publish({ session: null, authenticated: false, error: '' }); this.inventory();
-    try { if (session) await this.post('logout', {}, session.csrfToken); }
+    try { await this.post('logout', {}, session?.csrfToken); }
     catch { this.publish({ error: 'Disconnected on this device. Server sign-out could not be confirmed; reconnect to sign in again.' }); }
     finally { await Promise.allSettled(getConnections(this.wagmi).map(c => disconnect(this.wagmi, { connector: c.connector }))); this.inventory(); }
   };
