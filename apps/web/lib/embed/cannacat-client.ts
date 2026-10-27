@@ -82,7 +82,7 @@ function assertPreparedTarget(quote: CannaCatQuote, evidence: VNextPreSignEviden
 
 // Survives client recreation during explicit Review, but is browser-local only.
 // Every Netlify/Vercel consumer still needs the shared provider quota gate.
-const providerBackoffByOrigin = new Map<string, number>();
+const providerBackoffByTransport = new WeakMap<typeof fetch, Map<string, number>>();
 
 export function createCannaCatClient(options: {
   baseUrl: string; identityToken: string; fetch?: typeof fetch; now?: () => number;
@@ -94,6 +94,8 @@ export function createCannaCatClient(options: {
   }
   const now = options.now ?? Date.now;
   const fetcher = options.fetch ?? fetch;
+  const providerBackoffByOrigin = providerBackoffByTransport.get(fetcher) ?? new Map<string, number>();
+  providerBackoffByTransport.set(fetcher, providerBackoffByOrigin);
   let nextReadAt = 0;
   for (const [origin, until] of providerBackoffByOrigin) if (until <= now()) providerBackoffByOrigin.delete(origin);
   async function post(operation: string, body: object, signal?: AbortSignal) {
