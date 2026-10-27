@@ -687,7 +687,13 @@ try {
         if (sample === 2) balanceReadDelayMs=8000;
         if (sample === 4) balanceReadDelayMs=0;
         if (sample === 8) balancesFail=true;
-        if (sample === 9) { balancesFail=false;for(const device of deviceState)await device.page.getByRole('button',{name:'Refresh balances',exact:true}).click(); }
+        if (sample === 9) {
+          balancesFail=false;
+          // Exercise the refresh handler without introducing a deliberate user
+          // focus/scroll change into the background-only stability measurement.
+          // Real pointer activation is covered by the earlier refresh probe.
+          for(const device of deviceState)await device.page.getByRole('button',{name:'Refresh balances',exact:true}).evaluate((node:HTMLButtonElement)=>node.click());
+        }
         if (sample === 10) {
           balanceReadDelayMs=8000;
           for(const device of deviceState) {
