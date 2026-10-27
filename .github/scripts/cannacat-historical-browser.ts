@@ -4,8 +4,9 @@ import { readFile, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { chromium, webkit, expect, type Page } from "playwright/test";
-import { historicalSaleRecord, historicalSaleRpc, historicalSaleTransaction as transaction } from "../../apps/web/lib/testing/historical-cannacat-sale";
+import { historicalSaleRecord, historicalSaleRpc, historicalSaleReceipt, historicalSaleTransaction as transaction } from "../../apps/web/lib/testing/historical-cannacat-sale";
 import { readHistoricalSettlementTrace } from "../../apps/web/lib/server/historical-settlement-trace";
+import { verifyVNextNativeOutputSettlement, hasVerifiedVNextSwapSettlement } from "../../apps/web/lib/vnext/output-settlement";
 declare global { interface Window { __HISTORICAL_COPY__?: string; } }
 
 async function main() {
@@ -43,8 +44,25 @@ async function main() {
         diagnostic = { page, errors, width, excessiveMinimum };
         page.on("pageerror", error => errors.push(error.message));
         const record = historicalSaleRecord();
+        // Two additional completed trades model a multi-trade wallet. Their
+        // hashes/authority are explicitly synthetic; they are never claimed as
+        // owner transactions or delivered in the public SDK.
+        const sourceTrace = readHistoricalSettlementTrace({ hash: transaction.hash, blockHash: transaction.blockHash!,
+          blockNumber: transaction.blockNumber!, from: transaction.from, to: transaction.to!, input: transaction.input, value: transaction.value });
+        assert(sourceTrace?.status === "available");
+        const completedSiblings = ["a", "b"].map((digit, index) => {
+          const sibling = historicalSaleRecord();
+          sibling.txHash = `0x${digit.repeat(64)}` as typeof sibling.txHash;
+          sibling.planId = `117c117c-0000-4000-8000-00000000000${index + 2}`;
+          sibling.submittedAtMs = record.submittedAtMs - (index + 1) * 3000;
+          sibling.updatedAtMs = sibling.submittedAtMs;
+          const proof = verifyVNextNativeOutputSettlement(sibling,
+            { ...historicalSaleReceipt, transactionHash: sibling.txHash }, { ...transaction, hash: sibling.txHash }, sourceTrace.trace);
+          assert(proof); sibling.state = "confirmed"; sibling.outputAmountAtomic = proof.amountAtomic; sibling.outputSettlement = proof;
+          assert(hasVerifiedVNextSwapSettlement(sibling)); return sibling;
+        });
         if (excessiveMinimum) { record.providerNativeFee!.protectedOutputAtomic = "137068094859"; record.providerNativeFee!.expectedOutputAtomic = "137068094860"; }
-        const initial = width === 320 ? [record] : { schemaVersion: 2, executions: [record], walletRequests: [] };
+        const initial = width === 320 ? [record, ...completedSiblings] : { schemaVersion: 2, executions: [record, ...completedSiblings], walletRequests: [] };
         // Raw fixture JavaScript avoids serializing tsx's injected __name helper
         // into a different browser realm. No application/runtime guard changes.
         await context.addInitScript({ content: `(() => {
@@ -109,6 +127,7 @@ async function main() {
         await expect(page.getByRole("status")).toContainText("Receipt confirmed; output settlement is still unverified");
         await expect(page.getByLabel("Saved transaction status")).toContainText("Submitted; settlement is not yet verified");
         await expect(page.getByLabel("Transaction recovery")).toBeVisible();
+        await expect(page.getByRole("link", { name: `Review recovery for transaction ${record.txHash}`, exact: true })).toBeVisible();
         check(true, "Reproduced the owner's exact two warnings with the historical sale and unavailable trace");
         await page.screenshot({ path: path.join(output, `${channel}-${width}-${excessiveMinimum ? "rejected" : "before"}.png`), fullPage: true });
         archiveAvailable = true;
@@ -144,6 +163,11 @@ async function main() {
           await expect(page.getByLabel("Saved transaction status")).toContainText("Settlement verified: 0.000000137068094858 ETH received.");
           await expect(page.getByLabel("Transaction recovery")).toHaveCount(0);
           check(true, "Hard refresh and reconnect cannot restore obsolete submitted status");
+          const preserved = await page.evaluate(key => JSON.parse(localStorage.getItem(key)!).executions, journalKey);
+          check(preserved.length === 3 && preserved.every((entry: typeof record) => entry.state === "confirmed"
+            && entry.outputSettlement && entry.outputAmountAtomic === entry.outputSettlement.amountAtomic), "Multiple completed trades retain their proofs after refresh and reconnect without false warnings");
+          for (const sibling of completedSiblings) check(preserved.some((entry: typeof record) => entry.txHash === sibling.txHash
+            && entry.planId === sibling.planId), "Each completed sibling transaction remains in history");
           await page.screenshot({ path: path.join(output, `${channel}-${width}-settled.png`), fullPage: true });
         }
         check(await page.evaluate(() => (window.__CANNACAT_FIXTURE_WALLET_REQUESTS__ ?? []).length) === 0, "Historical reconciliation never signs, approves or resends");

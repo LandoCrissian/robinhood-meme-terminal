@@ -169,6 +169,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
   const refreshFunds = useRef<(() => Promise<void>) | null>(null);
   const refreshBalanceDisplay = useCallback(() => { void refreshFunds.current?.(); }, []);
   const [blocking, setBlocking] = useState(false);
+  const [blockedRequestId, setBlockedRequestId] = useState("");
   const [recoveryChecking, setRecoveryChecking] = useState(false);
   const recoveryRead = useRef<AbortController | null>(null);
   const recoveryDiagnostic = useRef<{ txHash: string; result: CannaCatRecoveryResult }>({ txHash: "", result: "not_checked" });
@@ -442,7 +443,9 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
         const unresolved = findUnresolvedVNextExecution(wallet.address, localStorage);
         const pending = findBlockingVNextWalletRequest(wallet.address, localStorage);
         setBlocking(Boolean(unresolved || pending));
+        setBlockedRequestId(pending?.requestId ?? "");
         const latest = readVNextExecutionJournal(localStorage).filter(entry => entry.wallet.toLowerCase() === wallet.address.toLowerCase())[0];
+        setBlockedRequestId(pending?.requestId ?? "");
         setDisplayRecord(unresolved ?? (pending ? null : latest ?? null));
         setHash(unresolved?.txHash ?? (pending ? "" : latest?.txHash ?? ""));
         return unresolved;
@@ -812,7 +815,7 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     {inputProblem && <p className="rmtcat-error" role="note" aria-label="Amount availability">{inputProblem}</p>}
     <p className="rmtcat-price">{freshPrice && price ? <>ETH/USD ≈ {approximateUsd(10n ** 18n, price, now)} · {price.source} · <time dateTime={new Date(price.priceAtMs).toISOString()}>{new Date(price.priceAtMs).toLocaleTimeString()}</time></> : priceError || "ETH/USD estimate loading…"}<br/>USD is indicative only. Payment and settlement use native Robinhood ETH. Firm terms are verified before confirmation.</p>
     {side === "buy" && visibleFunds && <p className="rmtcat-balances">Quote budget reserves {units(cannaCatQuoteBudget(visibleFunds).reserve)} ETH for gas. The verified transaction may require more.</p>}
-    {blocking && <aside className="rmtcat-transaction" aria-label="Transaction recovery"><strong>Earlier transaction needs reconciliation</strong><p>Another wallet transaction is paused. You can change amounts, switch Buy/Sell, get an indicative quote or disconnect. Saved history remains intact. Do not resend the previous trade.</p></aside>}
+    {blocking && <aside className="rmtcat-transaction" aria-label="Transaction recovery"><strong>Earlier transaction needs reconciliation</strong><p>Another wallet transaction is paused. You can change amounts, switch Buy/Sell, get an indicative quote or disconnect. Saved history remains intact. Do not resend the previous trade.</p><a href={`#${encodeURIComponent(inputId + "-recovery")}`} aria-label={hash ? `Review recovery for transaction ${hash}` : `Review recovery for wallet request ${blockedRequestId}`}>{hash ? `Affected transaction ${short(hash)} · check settlement` : `Unanswered wallet request ${blockedRequestId ? short(blockedRequestId) : ""} · recover the response`}</a></aside>}
     {<div className="rmtcat-quote rmtcat-observation" aria-label="Indicative quote review"><strong>Live estimate · not a trade authorization</strong>
       <p className="rmtcat-freshness" aria-live="off"><span className="rmtcat-freshness-value">{observation ? <><span>{observation.expiresAtMs && observation.expiresAtMs > now && !quoteMessage ? "Updated" : "Last estimate · refreshing"}</span><time dateTime={new Date(observation.observedAtMs).toISOString()}>{new Date(observation.observedAtMs).toLocaleTimeString()}</time></> : "Enter an amount and connect to see automatic estimates."}</span><span className="rmtcat-freshness-sizer" aria-hidden="true">Last estimate · refreshing<br/>00:00:00 AM</span></p>
       {observation && <dl>
@@ -840,8 +843,8 @@ function Panel({ config }: { config: CannaCatPanelConfig }) {
     {busy && <button className="rmtcat-textbutton" type="button" onClick={() => { const kind = activeAction.current?.kind; invalidate(true); setStatus(kind === "wallet" ? "Stopped waiting for the wallet response. It may still complete. History is preserved; do not resend." : "Read cancelled. You can retry, edit the amount or disconnect. Transaction history is preserved."); }}>Stop waiting</button>}
     <p className="rmtcat-status" role="status" aria-live="polite">{status === connectedWalletMessage(walletState) || (wallet && status === "Connect an existing wallet to get a live quote.") ? "" : status}</p>
     {error && <p className="rmtcat-error" role="alert">{error}</p>}
-    {blocking && !hash && <div className="rmtcat-transaction"><label>Recover an unanswered wallet request<input aria-label="Transaction hash from your wallet" value={recoveryHash} maxLength={66} autoComplete="off" onChange={(event) => setRecoveryHash(event.target.value)} placeholder="0x… transaction hash" /></label><button type="button" disabled={busy || !isHash(recoveryHash)} onClick={() => void recoverWalletResponse()}>Verify saved transaction</button><p>Paste a hash from your wallet history. Only an exact match can be recovered. This never sends another transaction.</p></div>}
-    {hash && <div className="rmtcat-transaction"><a href={explorer(hash)} target="_blank" rel="noopener noreferrer">View transaction {short(hash)}</a>
+    {blocking && !hash && <div className="rmtcat-transaction" id={inputId + "-recovery"}><label>Recover an unanswered wallet request<input aria-label="Transaction hash from your wallet" value={recoveryHash} maxLength={66} autoComplete="off" onChange={(event) => setRecoveryHash(event.target.value)} placeholder="0x… transaction hash" /></label><button type="button" disabled={busy || !isHash(recoveryHash)} onClick={() => void recoverWalletResponse()}>Verify saved transaction</button><p>Paste a hash from your wallet history. Only an exact match can be recovered. This never sends another transaction.</p></div>}
+    {hash && <div className="rmtcat-transaction" id={inputId + "-recovery"}><a href={explorer(hash)} target="_blank" rel="noopener noreferrer">View transaction {short(hash)}</a>
       {displayRecord?.txHash === hash && <p aria-label="Saved transaction status">{hasVerifiedVNextSwapSettlement(displayRecord)
         ? `Settlement verified: ${units(displayRecord.outputAmountAtomic!)} ${displayRecord.outputAsset.toLowerCase() === CANNACAT_EMBED.token.toLowerCase() ? "CannaCat" : "ETH"} received.`
         : displayRecord.state === "reverted" ? "Transaction reverted. Network gas may still apply."
