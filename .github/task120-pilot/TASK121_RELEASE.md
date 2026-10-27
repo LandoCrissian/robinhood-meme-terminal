@@ -6,7 +6,7 @@ verification, authorization and settlement are unchanged.
 
 ## Admission authority
 
-`shared-zero-x-quota.mts` guards every outbound `api.0x.org` request from this
+`apps/web/lib/server/zero-x-shared-quota.ts` guards every outbound `api.0x.org` request from this
 Netlify function, including calls without a telemetry context. All API keys and
 endpoints use the same fixed application keyspace. Lua uses Redis server time;
 there is no process-memory or per-IP admission fallback.
@@ -44,7 +44,11 @@ must adopt this same coordinator or be explicitly quiesced before an app-wide
 production guarantee is possible. In particular, this change does not modify
 preserved Vercel production services. A different key in the same 0x application
 does not provide an independent quota. Headroom does not substitute for this
-rollout requirement.
+rollout requirement. The prepared `apps/web/instrumentation.ts` installs this
+same guard once before an RMT Next server accepts requests. It fails closed
+without coordinator settings. This must be deployed to preserved RMT servers
+under separate owner authorization, or those consumers must be quiesced. Do
+not run manual 0x benchmarks with this application key outside the same guard.
 
 ## Production gate (not enabled)
 

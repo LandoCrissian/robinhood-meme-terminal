@@ -1,5 +1,9 @@
 [
   {
+    "path": "apps/web/instrumentation.ts",
+    "sha256": "f71ced897222a090fc673e902d762ada07fb8faf29676c21dea2593804a9e931"
+  },
+  {
     "path": "apps/web/lib/embed/cannacat-client.ts",
     "sha256": "4cf28fcae86c04492b809d3cbbda6aef37541ba3c23c632d31496aa54a73496a"
   },
@@ -30,6 +34,10 @@
   {
     "path": "apps/web/lib/server/settlement-trace-archive/4663/0x2250b738ddd8ce5cb411372e5d4d8d2a2945979acdedc3d165d9cd02a89ff3bc.provenance.json",
     "sha256": "a7f71dd921eb1f57dfe53d2ad14de70dfc75e6d536b0cd4ad1f96cee5efb9f68"
+  },
+  {
+    "path": "apps/web/lib/server/zero-x-shared-quota.ts",
+    "sha256": "6fa870b7c6db5830f08f42ff6e272489e468753d845fa64dffde904bacabb5fc"
   },
   {
     "path": "apps/web/lib/testing/cannacat-privy-fixture.tsx",

@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { register } from '../../apps/web/instrumentation.ts';
+let upstream=0;
+const original:typeof fetch=async()=>{upstream++;return Response.json({});};
+globalThis.fetch=original;
+process.env.NEXT_RUNTIME='edge';await register();assert.equal(globalThis.fetch,original);
+process.env.NEXT_RUNTIME='nodejs';await register();const guarded=globalThis.fetch;assert.notEqual(guarded,original);
+await register();assert.equal(globalThis.fetch,guarded,'Repeated startup must not double-admit');
+delete process.env.RMT_ZEROX_QUOTA_REDIS_URL;delete process.env.RMT_ZEROX_QUOTA_REDIS_TOKEN;
+assert.equal((await fetch('https://api.0x.org/swap/allowance-holder/quote')).status,503);assert.equal(upstream,0);
+assert.equal((await fetch('https://api.0x.org/swap/allowance-holder/price')).status,503);assert.equal(upstream,0);
+assert.equal((await fetch('https://rpc.mainnet.chain.robinhood.com/')).status,200);assert.equal(upstream,1);
+globalThis.fetch=original;
+fs.mkdirSync('task120-artifact',{recursive:true});
+const report={result:'PASS',tests:6,serverStartupGuard:true,duplicateInstallBlocked:true,missingCoordinatorFailsClosed:true,unrelatedRpcUnchanged:true,providerRequests:0,walletSignatures:0,fundedTrades:0};
+fs.writeFileSync('task120-artifact/SERVER_STARTUP_QUOTA_TESTS.json',JSON.stringify(report,null,2)+'\n');console.log(JSON.stringify(report));
