@@ -4,7 +4,7 @@ import { randomBytes } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { numberToHex, verifyMessage } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { handleWalletAuth, requireWalletSession, walletSessionBinding, type RedisCommand } from '../../apps/web/lib/server/wallet-session';
+import { handleWalletAuth, requireWalletSession, walletSessionBinding, type RedisCommand } from './wallet-session';
 
 // Dedicated disposable CI Redis only. Never target an owner database or a remote URL.
 assert.equal(process.env.GITHUB_ACTIONS, 'true', 'Run this suite in disposable CI');

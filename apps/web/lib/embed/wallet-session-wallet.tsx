@@ -118,6 +118,15 @@ export class WalletSessionController {
   };
   private resume = () => { if (document.visibilityState === 'visible') { this.inventory(); if (!this.state.signing && !optedOut()) void this.refresh(); } };
   async start() {
+    // Share only a live transport, not the HttpOnly cookie, CSRF token, or trading authorization.
+    const bridge = { getConnection: async () => {
+      const session = this.state.session;
+      const matches = this.state.wallets.filter(w => w.address.toLowerCase() === session?.wallet.toLowerCase());
+      if (!session || optedOut() || matches.length !== 1) return null;
+      const wallet = matches[0], checked = await readConnectedWallet(wallet);
+      return checked.status === 'ready' && checked.provider ? { address: wallet.address, chainId: 4663 as const, provider: checked.provider } : null;
+    } };
+    (window as Window & { lammbExternalWallet?: typeof bridge }).lammbExternalWallet = bridge;
     this.stopWatch = watchConnections(this.wagmi, { onChange: () => {
       this.inventory();
       const active = getAccount(this.wagmi);
