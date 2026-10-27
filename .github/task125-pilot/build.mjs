@@ -33,9 +33,12 @@ assert(Object.keys(api.metafile.inputs).some(x => x.endsWith('zero-x-shared-quot
 fs.writeFileSync(path.join(out, 'API_METAFILE.json'), JSON.stringify(api.metafile));
 const sdkDir = path.join(out, 'sdk');
 const client = await build({ entryPoints: { 'cannacat-panel': 'apps/web/lib/embed/cannacat-panel.tsx', 'cannacat-sdk': 'apps/web/lib/embed/cannacat-client.ts' },
-  outdir: sdkDir, outExtension: { '.js': '.mjs' }, chunkNames: 'chunks/[name]-[hash]', bundle: true, splitting: true,
+  outdir: sdkDir, outExtension: { '.js': '.mjs' }, chunkNames: 'chunks/rabby-[hash]', bundle: true, splitting: true,
   platform: 'browser', target: 'es2022', format: 'esm', sourcemap: false, metafile: true, minify: true,
-  define: { 'process.env.NODE_ENV': '"production"', global: 'globalThis' } });
+  // Standalone SDK has no Next.js environment injection. Only explicit PUBLIC
+  // constants are compiled; never serialize process.env from the build host.
+  define: { 'process.env.NODE_ENV': '"production"', 'process.env': JSON.stringify({ NODE_ENV: 'production',
+    NEXT_PUBLIC_RMT_NETWORK: 'mainnet', NEXT_PUBLIC_RMT_RPC_URL: 'https://rpc.mainnet.chain.robinhood.com/' }), global: 'globalThis' } });
 assert(!Object.keys(client.metafile.inputs).some(x => /@privy-io|privy-identity/.test(x)), 'Privy entered browser artifact');
 assert(Object.keys(client.metafile.inputs).some(x => x.includes('@rabby-wallet/rabbykit')), 'Official RabbyKit missing');
 const commit = git('rev-parse', 'HEAD');

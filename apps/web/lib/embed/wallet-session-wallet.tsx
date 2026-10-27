@@ -42,12 +42,14 @@ export class WalletSessionController {
   private logoutRead?: Promise<void>;
   private walletCache = new Map<string, SessionWallet>();
   private disposed = false;
+  private mobileRelayConfigured: boolean;
   private timer?: ReturnType<typeof setTimeout>;
   constructor(readonly apiBaseUrl: string, projectId: string) {
     const url = new URL(apiBaseUrl, location.origin);
     if (url.origin !== location.origin || url.pathname !== '/api/rmt/cannacat' || url.search || url.hash || url.username || url.password)
       throw Error('A same-origin wallet API is required.');
     if (projectId && !/^[a-f0-9]{32}$/i.test(projectId)) throw Error('Invalid WalletConnect project configuration.');
+    this.mobileRelayConfigured = Boolean(projectId);
     this.wagmi = createConfig(projectId ? getDefaultConfig({ projectId, appName: 'LAMMB Genesis', appUrl: location.origin,
       appDesc: 'CannaCat trading on Robinhood Chain', appLogo: location.origin + '/icon.png',
       chains: [robinhoodChain], transports: { [4663]: http(robinhoodChain.rpcUrls.default.http[0]) }, ssr: false })
@@ -182,6 +184,10 @@ export class WalletSessionController {
   }
   connect = async (selectedKey?: string) => {
     this.publish({ error: '' });
+    if (!this.mobileRelayConfigured && !this.state.wallets.length && /iPhone|iPad|Android/.test(navigator.userAgent)) {
+      this.publish({ error: 'Mobile wallet handoff is awaiting the owner’s free WalletConnect setup. No wallet request was opened.' });
+      return;
+    }
     const selected = this.state.wallets.find(w => walletGatewayKey(w) === selectedKey)
       ?? (this.state.wallets.length === 1 ? this.state.wallets[0] : undefined);
     if (selected) { await selected.authenticate(); return; }
