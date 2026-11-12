@@ -126,6 +126,7 @@
     "test:launch-intelligence": "tsx lib/server/launch-intelligence-smoke.ts"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
     "@privy-io/node": "0.28.0",
     "@privy-io/react-auth": "3.36.1",
     "@privy-io/wagmi": "4.0.15",
