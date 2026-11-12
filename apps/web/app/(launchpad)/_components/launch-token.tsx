@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
-import { encodeFunctionData, formatEther, parseEther, type Address } from "viem";
-import { displayAmount, factoryAbi, prepareSwap, prepareTransaction, priceInWei, readTradeHistory, type SwapReview } from "../../../lib/launchpad/direct-v4";
-import type { NewLaunchRecord } from "../../../lib/launchpad/launch-record";
+import { encodeFunctionData, formatEther, parseEther, zeroAddress, type Address } from "viem";
+import { displayAmount, factoryAbi, longevityFactoryAbi, prepareSwap, prepareTransaction, priceInWei, readTradeHistory, type SwapReview } from "../../../lib/launchpad/direct-v4";
+import type { LaunchHealth, NewLaunchRecord } from "../../../lib/launchpad/launch-record";
 import { walletMessage, type LaunchRequest } from "../../../lib/launchpad/transactions";
 import { useTradingTermsAcceptance } from "../../../lib/use-trading-terms";
 import { PriceHistoryChart, type PricePoint } from "../../price-history-chart";
@@ -117,7 +117,12 @@ function TradePanel({ launch, transaction, initialSide }: {
   </section>;
 }
 
-function FeeClaim({ launch, transaction }: { launch: NewLaunchRecord; transaction: ReturnType<typeof useLaunchTransaction> }) {
+const feeLabels = ["Creator", "Project treasury", "Liquidity reserve"] as const;
+type FeeAction = "fees" | "fees-harvest" | "fees-withdrawal";
+
+function FeeClaim({ launch, transaction, health }: {
+  launch: NewLaunchRecord; transaction: ReturnType<typeof useLaunchTransaction>; health?: LaunchHealth;
+}) {
   const { config, wallet, stillSelected } = useLaunchWallet();
   const deployment = config?.status === "ready" ? config.deployment : undefined;
   const client = useLaunchClient(deployment);
@@ -125,19 +130,34 @@ function FeeClaim({ launch, transaction }: { launch: NewLaunchRecord; transactio
   const [error, setError] = useState("");
   const [preparing, setPreparing] = useState(false);
   useEffect(() => setReview(undefined), [wallet?.generation, transaction.result]);
-  if (!wallet || !deployment || !client || wallet.address.toLowerCase() !== launch.creator.toLowerCase()) return null;
+  if (!wallet || !deployment || !client || deployment.factory.toLowerCase() !== launch.factory.toLowerCase()
+    || deployment.engineVersion !== launch.engineVersion) return null;
+  const isV2 = launch.engineVersion === 2;
+  const policy = launch.feePolicy;
+  const owns = (recipient: Address) => wallet.address.toLowerCase() === recipient.toLowerCase();
+  const bucket = policy && (policy.creatorBps > 0 && owns(policy.creator) ? 0
+    : policy.treasuryBps > 0 && owns(policy.treasury) ? 1
+      : policy.reserveBps > 0 && owns(policy.reserve) ? 2 : undefined);
+  if (isV2 ? bucket === undefined : !owns(launch.creator)) return null;
   const activeWallet = wallet;
   const activeDeployment = deployment;
   const rpc = client;
+  const balance = health?.fees.buckets?.find((entry) => entry.bucket === bucket);
+  const noPayout = balance?.nativeClaimable === "0" && balance.tokenClaimable === "0";
+  const disabled = preparing || transaction.busy || Boolean(transaction.pending);
 
-  async function prepare() {
+  async function prepare(kind: FeeAction) {
     setPreparing(true);
     setError("");
+    setReview(undefined);
     try {
       const deadline = Math.floor(Date.now() / 1000) + 5 * 60;
-      const data = encodeFunctionData({ abi: factoryAbi, functionName: "collectFees", args: [launch.token, BigInt(deadline)] });
+      const data = kind === "fees-withdrawal" && bucket !== undefined
+        ? encodeFunctionData({ abi: longevityFactoryAbi, functionName: "withdrawFees", args: [launch.token, bucket] })
+        : encodeFunctionData({ abi: factoryAbi, functionName: "collectFees", args: [launch.token, BigInt(deadline)] });
       const request = await prepareTransaction(rpc, activeDeployment, activeWallet, {
-        kind: "fees", to: activeDeployment.factory, data, deadline, token: launch.token,
+        kind, to: activeDeployment.factory, data, deadline, token: launch.token,
+        feeBucket: kind === "fees-withdrawal" ? bucket : undefined,
       });
       if (!stillSelected(activeWallet)) throw new Error("Wallet selection changed. Review fees again.");
       setReview(request);
@@ -148,49 +168,110 @@ function FeeClaim({ launch, transaction }: { launch: NewLaunchRecord; transactio
     }
   }
 
+  function handle(kind: FeeAction) {
+    if (review?.kind === kind) return transaction.send(review);
+    return prepare(kind);
+  }
+
   return <section className="lpPanel lpForm">
-    <h2>Creator fees</h2>
-    <p>Collect any accrued position fees to the creator wallet. Principal stays in the locked position. Network gas applies even if the claim is zero.</p>
+    <h2>{isV2 ? "LP fee claims" : "Creator fees"}</h2>
+    {isV2 && bucket !== undefined
+      ? <p>Your committed share is <strong>{feeLabels[bucket].toLowerCase()}</strong>. Collect earned position fees into the ledger, then claim your credited balance. Principal stays locked.</p>
+      : <p>Collect any accrued position fees to the creator wallet. Principal stays in the locked position. Network gas applies even if the claim is zero.</p>}
     {error && <p className="lpNotice lpError" role="alert">{error}</p>}
-    <button className="lpButton" type="button" disabled={preparing || transaction.busy || Boolean(transaction.pending)}
-      onClick={() => void (review ? transaction.send(review) : prepare())}>
-      {preparing ? "Simulating claim…" : review ? "Confirm fee claim in wallet" : "Review fee claim"}
+    <button className="lpButton" type="button" disabled={disabled}
+      onClick={() => void handle(isV2 ? "fees-harvest" : "fees")}>
+      {preparing ? "Simulating fees…" : review?.kind === (isV2 ? "fees-harvest" : "fees")
+        ? isV2 ? "Confirm fee collection in wallet" : "Confirm fee claim in wallet"
+        : isV2 ? "Review fee collection" : "Review fee claim"}
     </button>
+    {isV2 && <button className="lpButton lpSecondary" type="button" disabled={disabled || noPayout}
+      onClick={() => void handle("fees-withdrawal")}>
+      {review?.kind === "fees-withdrawal" ? "Confirm fee payout in wallet" : "Review fee payout"}
+    </button>}
   </section>;
 }
 
 type Check = { id: string; label: string; status: "verified" | "failed" | "unknown" | "unsupported"; detail: string };
-function LaunchChecks({ launch }: { launch: NewLaunchRecord }) {
-  const [checks, setChecks] = useState<Check[]>();
+type CheckEvidence = { blockNumber?: string; freshness?: string };
+function useLaunchHealth(launch: NewLaunchRecord, refresh?: string) {
+  const [data, setData] = useState<{ checks?: Check[]; evidence?: CheckEvidence; health?: LaunchHealth }>();
   const [status, setStatus] = useState("loading");
-  const [evidence, setEvidence] = useState<{ blockNumber?: string; freshness?: string }>();
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
     const query = new URLSearchParams({ chainId: String(launch.chainId), token: launch.token });
     fetch(`/api/launchpad/public/get_launch_checks?${query}`, { signal: controller.signal, cache: "no-store" })
       .then(async (response) => {
-        const value = await response.json() as { status: string; data?: { checks?: Check[]; evidence?: { blockNumber?: string; freshness?: string } } };
+        const value = await response.json() as { status: string; data?: typeof data };
         if (!controller.signal.aborted) {
-          setChecks(value.data?.checks);
+          setData(value.data);
           setStatus(value.status);
-          setEvidence(value.data?.evidence);
         }
-      }).catch(() => { if (!controller.signal.aborted) setStatus("delayed"); });
+      }).catch(() => {
+        if (!controller.signal.aborted) { setStatus("delayed"); setData(undefined); }
+      });
     return () => controller.abort();
-  }, [launch.chainId, launch.token, attempt]);
+  }, [launch.chainId, launch.token, attempt, refresh]);
+  return { ...data, status, retry: () => setAttempt((value) => value + 1) };
+}
+
+function LaunchChecks({ launch, state }: { launch: NewLaunchRecord; state: ReturnType<typeof useLaunchHealth> }) {
+  const { checks, evidence, health, status, retry } = state;
+  const units = (value: string | null) => value === null ? "Unknown" : BigInt(value).toLocaleString("en-US");
+  const assets = (native: string, tokens: string) => `${displayAmount(native)} ETH + ${displayAmount(tokens)} ${launch.symbol}`;
+  const liquidityTrend = health?.trends.liquidity;
+  const holderTrend = health?.trends.holders;
+  const freshness = evidence?.freshness === "observed_at_chain_head" ? "Observed at chain head" : "Freshness unknown";
+  const liquidityChange = liquidityTrend?.status === "observed"
+    ? liquidityTrend.from.activeLiquidity === liquidityTrend.to.activeLiquidity ? "Unchanged"
+      : `${units(liquidityTrend.from.activeLiquidity)} → ${units(liquidityTrend.to.activeLiquidity)}`
+    : undefined;
+  const policy = health?.fees.policy;
+  const shares = policy && [policy.creatorBps, policy.treasuryBps, policy.reserveBps];
   return <section className="lpPanel lpForm">
-    <h2>Launch checks</h2>
+    <h2>Launch health</h2>
     {status === "loading" && <p role="status">Checking onchain evidence…</p>}
     {!checks && status !== "loading" && <div className="lpNotice">Checks unavailable.
-      <button className="lpButton lpSecondary" type="button" onClick={() => setAttempt((value) => value + 1)}>Retry</button></div>}
-    {checks && <ul className="lpChecks">
+      <button className="lpButton lpSecondary" type="button" onClick={retry}>Retry</button></div>}
+    {health && <>
+      <dl className="lpFacts">
+        <dt>Position custody</dt><dd>{health.liquidity.custody.status === "verified" ? "Verified, factory held" : health.liquidity.custody.status}</dd>
+        <dt>Current position liquidity</dt><dd>{units(health.liquidity.currentPositionLiquidity)}</dd>
+        <dt>Creator vesting</dt><dd>{health.creator.vesting === "none" ? "Immediately available at launch" : "Unknown"}</dd>
+        <dt>Factory permissions</dt><dd>{health.permissions.status === "verified"
+          ? "No factory admin, mint authority or principal withdrawal" : "Unknown"}</dd>
+        <dt>Active liquidity trend</dt><dd>{liquidityTrend?.status === "observed"
+          ? `${liquidityChange} (blocks ${liquidityTrend.from.blockNumber}–${liquidityTrend.to.blockNumber})`
+          : "Unknown · insufficient comparable evidence"}</dd>
+        <dt>Holder address trend</dt><dd>{holderTrend?.status === "observed"
+          ? `${holderTrend.from.holders} → ${holderTrend.to.holders} (blocks ${holderTrend.from.blockNumber}–${holderTrend.to.blockNumber})`
+          : "Unknown · no verified holder history"}</dd>
+      </dl>
+      {health.fees.status === "verified" && shares && health.fees.buckets ? <>
+        <h3>Earned LP fee distribution</h3>
+        {health.fees.totals && <p>Collected {assets(health.fees.totals.nativeAccrued, health.fees.totals.tokenAccrued)}</p>}
+        <ul className="lpChecks">
+          {health.fees.buckets.map((entry) => {
+            if (shares[entry.bucket] === 0) return null;
+            return <li key={entry.bucket}>
+              <div><strong>{feeLabels[entry.bucket]}</strong><span>{shares[entry.bucket] / 100}%</span></div>
+              <CopyIdentity title={`${feeLabels[entry.bucket]} recipient`} value={entry.recipient} />
+              <p>Claimable {assets(entry.nativeClaimable, entry.tokenClaimable)}</p>
+              <p>Paid {assets(entry.nativeDistributed, entry.tokenDistributed)}</p>
+            </li>;
+          })}
+        </ul>
+        <p>Shares are fixed at launch. Any fractional remainder stays in the ledger until it can be credited. The reserve recipient controls its payouts.</p>
+      </> : <p>{health.fees.status === "legacy" ? "Creator receives accrued LP fees. Distribution totals are unavailable for V1." : "Fee accounting evidence unavailable."}</p>}
+    </>}
+    {checks && <details><summary>Launch checks</summary><ul className="lpChecks">
       {checks.map((check) => <li key={check.id}>
         <div><strong>{check.label}</strong><span className={`lpCheckState lp-${check.status}`}>{check.status}</span></div>
         <p>{check.detail}</p>
       </li>)}
-    </ul>}
-    {evidence?.blockNumber && <p>Evidence block {evidence.blockNumber} · {evidence.freshness ?? "Freshness unknown"}</p>}
+    </ul></details>}
+    {evidence?.blockNumber && <p>Evidence block {evidence.blockNumber} · {freshness}</p>}
     <a className="lpBack" href={`/api/launchpad/public/get_launch_checks?chainId=${launch.chainId}&token=${launch.token}`} target="_blank" rel="noreferrer">Open evidence JSON ↗</a>
     <p>These checks describe launch evidence and custody rules. Market risk and outside routing can change.</p>
   </section>;
@@ -224,6 +305,7 @@ function projectLink(value: string) {
 function VerifiedToken({ launch, initialSide }: { launch: NewLaunchRecord; initialSide: "buy" | "sell" }) {
   const { config } = useLaunchWallet();
   const transaction = useLaunchTransaction(launch);
+  const health = useLaunchHealth(launch, transaction.result?.hash);
   const trading = config?.status === "ready" && config.deployment.tradingEnabled;
   const project = projectLink(launch.projectURI);
   return <>
@@ -261,15 +343,16 @@ function VerifiedToken({ launch, initialSide }: { launch: NewLaunchRecord; initi
               <dt>Factory / position owner</dt><dd><CopyIdentity title="factory address" value={launch.factory} /></dd>
               <dt>PoolManager</dt><dd><CopyIdentity title="PoolManager address" value={launch.poolManager} /></dd>
               <dt>PoolId</dt><dd><CopyIdentity title="PoolId" value={launch.poolId} /></dd>
-              <dt>PoolKey</dt><dd>Native ETH · {launch.symbol} · fee {launch.poolKey.fee} · tick spacing {launch.poolKey.tickSpacing} · no hook</dd>
+            <dt>PoolKey</dt><dd>Native ETH · {launch.symbol} · fee {launch.poolKey.fee} · tick spacing {launch.poolKey.tickSpacing}</dd>
+            <dt>Pool hook</dt><dd>{launch.poolKey.hooks === zeroAddress ? "None" : <CopyIdentity title="initialization guard" value={launch.poolKey.hooks} />}</dd>
               <dt>Position ticks</dt><dd>{launch.tickLower} to {launch.tickUpper}</dd>
               <dt>Transaction</dt><dd><CopyIdentity title="transaction hash" value={launch.transactionHash} /></dd>
             </dl>
           </details>
         </section>
-        <LaunchChecks launch={launch} />
+        <LaunchChecks launch={launch} state={health} />
       </div>
-      <div className="lpStack lpTradeColumn"><TradePanel launch={launch} transaction={transaction} initialSide={initialSide} /><FeeClaim launch={launch} transaction={transaction} /></div>
+      <div className="lpStack lpTradeColumn"><TradePanel launch={launch} transaction={transaction} initialSide={initialSide} /><FeeClaim launch={launch} transaction={transaction} health={health.health} /></div>
     </div>
   </>;
 }

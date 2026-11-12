@@ -82,6 +82,7 @@ body .launchpad {
 }
 .lpEmpty { display: grid; place-items: center; min-height: 170px; text-align: center; }
 .lpEmpty h2, .lpPanel h2 { margin: 0; font-size: 17px; line-height: 1.25; }
+.lpPanel h3 { margin: 0; font-size: 14px; line-height: 1.35; }
 .lpEmpty .rmtIcon { color: var(--rmt-accent); }
 .lpNotice, .lpRecovery { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0 0 14px; color: var(--rmt-text-soft); }
 .lpNotice code, .lpRecovery code { overflow-wrap: anywhere; }

@@ -8,6 +8,7 @@ const rpcUrl = process.env.RMT_LAUNCHPAD_TEST_RPC_URL ?? "http://127.0.0.1:8545"
 const output = process.env.RMT_LAUNCHPAD_TEST_OUTPUT ?? ".launch-qa";
 const executablePath = process.env.RMT_LAUNCHPAD_TEST_CHROME;
 const privatePreview = process.env.RMT_LAUNCHPAD_TEST_PRIVATE_PREVIEW === "true";
+const longevity = process.env.RMT_LAUNCHPAD_TEST_LONGEVITY === "true";
 const networkName = privatePreview ? "Private preview · Chain 31337" : "Local Anvil · Base Sepolia fork";
 for (const input of [site, rpcUrl]) assert.ok(["localhost", "127.0.0.1", "[::1]"].includes(new URL(input).hostname));
 await mkdir(output, { recursive: true });
@@ -21,6 +22,8 @@ async function rpc(method, params = []) {
   return result.result;
 }
 assert.equal(await rpc("eth_chainId"), "0x7a69");
+// A resumed idle fork's latest block can predate the factory's narrow deadline window.
+if (!privatePreview) await rpc("evm_mine");
 let fixtureWallet;
 if (privatePreview) {
   assert.equal(new URL(site).protocol, "https:");
@@ -36,7 +39,9 @@ if (privatePreview) {
     transport: http(rpcUrl, { retryCount: 0 }),
   });
 }
-const account = fixtureWallet?.account.address ?? (await rpc("eth_accounts"))[0];
+const localAccounts = fixtureWallet ? [] : await rpc("eth_accounts");
+const account = fixtureWallet?.account.address ?? localAccounts[0];
+if (longevity) assert.ok(localAccounts.length >= 3, "Longevity acceptance requires three isolated fixture accounts.");
 const browser = await chromium.launch({ executablePath });
 const base = devices["iPhone 13"];
 const context = await browser.newContext({ ...base, ignoreHTTPSErrors: privatePreview });
@@ -113,10 +118,21 @@ try {
   assert.equal(await page.getByLabel("Symbol", { exact: true }).inputValue(), symbol);
   await submit("Connect Browser wallet");
   await page.getByRole("button", { name: /^Switch to (?:Local Anvil|Private preview)/ }).click();
+  if (longevity) {
+    await page.getByLabel("Split earned LP fees at launch").check();
+    await page.getByLabel("Creator fee share (%)").fill("60");
+    await page.getByLabel("Treasury fee share (%)").fill("25");
+    await page.getByLabel("Liquidity reserve fee share (%)").fill("15");
+    await page.getByLabel("Project treasury wallet").fill(localAccounts[1]);
+    await page.getByLabel("Liquidity reserve wallet").fill(localAccounts[2]);
+    await noOverflow(page);
+    await capture(page.getByRole("group", { name: /RMT Longevity/ }), "longevity-setup-phone");
+  }
   await submit("Review launch");
   await page.getByRole("heading", { name: "Review and confirm" }).waitFor();
+  if (longevity) await page.getByText("60% creator · 25% treasury · 15% reserve", { exact: true }).waitFor();
   await capture(page, "create-review-phone");
-  await page.getByRole("checkbox").check();
+  await page.getByRole("checkbox", { name: /I reviewed the allocations/ }).check();
   await page.evaluate(() => { window.rmtFixture.rejectNext = true; });
   await submit("Confirm in wallet");
   await page.getByRole("alert").getByText("Request declined in your wallet.").waitFor();
@@ -132,8 +148,11 @@ try {
   await page.getByText("Funded pool verified", { exact: true }).waitFor();
   const token = new URL(page.url()).pathname.split("/").at(-1);
   assert.match(token, /^0x[0-9a-fA-F]{40}$/);
-  await page.getByRole("heading", { name: "Launch checks" }).waitFor();
+  await page.getByRole("heading", { name: "Launch health" }).waitFor();
+  const checks = page.getByText("Launch checks", { exact: true });
+  await checks.click();
   await page.getByText("Factory origin", { exact: true }).waitFor();
+  await checks.click();
   await page.getByRole("checkbox").click();
   await page.getByRole("checkbox").waitFor({ state: "detached" });
   await page.getByLabel("You pay (ETH)").fill("0.005");
@@ -151,10 +170,28 @@ try {
   await submit("Review trade");
   await submit("Confirm sell in wallet");
   await page.getByText(/Settlement verified\. Received .* ETH\./).waitFor();
-  await submit("Review fee claim");
-  await submit("Confirm fee claim in wallet");
-  await page.getByText("Creator fee collection confirmed.", { exact: true }).waitFor();
-  assert.equal(broadcasts.length, 6);
+  if (longevity) {
+    await submit("Review fee collection");
+    await submit("Confirm fee collection in wallet");
+    await page.getByText("LP fees collected into the committed shares.", { exact: true }).waitFor();
+    await submit("Review fee payout");
+    await submit("Confirm fee payout in wallet");
+    await page.getByText("Fee payout to your committed wallet verified.", { exact: true }).waitFor();
+    const response = await context.request.get(`${site}/api/launchpad/public/get_launch_checks?chainId=31337&token=${token}`);
+    const { data } = await response.json();
+    assert.equal(response.status(), 200);
+    assert.equal(data.health.fees.status, "verified");
+    const [creator, treasury, reserve] = data.health.fees.buckets;
+    assert.ok(BigInt(creator.nativeDistributed) > 0n && BigInt(creator.tokenDistributed) > 0n);
+    assert.ok(BigInt(treasury.nativeClaimable) > 0n && BigInt(reserve.tokenClaimable) > 0n);
+    await page.getByText(/Paid (?!0 ETH \+ 0 )/).first().waitFor();
+    await capture(page.getByRole("heading", { name: "Launch health" }).locator(".."), "launch-health-phone");
+  } else {
+    await submit("Review fee claim");
+    await submit("Confirm fee claim in wallet");
+    await page.getByText("Creator fee collection confirmed.", { exact: true }).waitFor();
+  }
+  assert.equal(broadcasts.length, longevity ? 7 : 6);
   assert.ok(broadcasts.every((tx) => tx.from.toLowerCase() === account.toLowerCase() && tx.chainId === "0x7a69"));
   await noOverflow(page);
   await capture(page, "token-phone");

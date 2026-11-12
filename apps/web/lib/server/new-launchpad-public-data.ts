@@ -1,6 +1,7 @@
-import { getAddress, isAddress, parseAbi, parseAbiItem, type Hash, type PublicClient } from "viem";
+import { getAddress, isAddress, parseAbi, parseAbiItem, zeroAddress, type Hash, type PublicClient } from "viem";
 import type { NewLaunchRecord } from "../launchpad/launch-record";
 import { readLaunchpadRuntime, verifiedLaunchpadRpc, type LaunchpadRuntime } from "./new-launchpad-config";
+import { makeLaunchHealth, readLaunchHealth } from "./new-launchpad-health";
 import { sameHex } from "./new-launchpad-receipt";
 import { LaunchpadStore, type LaunchPageCursor } from "./new-launchpad-store";
 
@@ -88,13 +89,19 @@ async function exactBlock(rpc: PublicClient, blockNumber: bigint) {
 async function assertLaunchCanonical(rpc: PublicClient, launch: NewLaunchRecord) {
   const block = await exactBlock(rpc, BigInt(launch.blockNumber));
   if (!sameHex(block.hash, launch.blockHash)) throw new Error("Launch receipt is no longer canonical");
+  return block;
 }
 
-async function readPoolState(rpc: PublicClient, config: LaunchpadRuntime, launch: NewLaunchRecord) {
+async function readPoolState(rpc: PublicClient, config: LaunchpadRuntime, launch: NewLaunchRecord, withHealth: boolean) {
+  const expectedHook = config.deployment.engineVersion === 2 ? config.deployment.initializationGuard : zeroAddress;
+  if (launch.engineVersion !== config.deployment.engineVersion || !sameHex(launch.poolKey.hooks, expectedHook)
+    || !sameHex(launch.factory, config.deployment.factory) || !sameHex(launch.poolManager, config.deployment.poolManager)) {
+    throw new Error("Launch identity differs from the configured factory and guard");
+  }
   const blockNumber = await rpc.getBlockNumber();
   if (blockNumber < BigInt(launch.blockNumber)) throw new Error("RPC is behind the launch");
   const initial = await exactBlock(rpc, blockNumber);
-  await assertLaunchCanonical(rpc, launch);
+  const opening = await assertLaunchCanonical(rpc, launch);
   const state = { address: config.deployment.stateView, abi: stateViewAbi, args: [launch.poolId] as const, blockNumber };
   const position = { address: config.deployment.positionManager, abi: positionAbi, args: [BigInt(launch.positionTokenId)] as const, blockNumber };
   const [[sqrtPriceX96, tick, protocolFee, lpFee], activeLiquidity, positionOwner, positionLiquidity, totalSupply] = await Promise.all([
@@ -104,10 +111,12 @@ async function readPoolState(rpc: PublicClient, config: LaunchpadRuntime, launch
     rpc.readContract({ ...position, functionName: "getPositionLiquidity" }),
     rpc.readContract({ address: launch.token, abi: supplyAbi, functionName: "totalSupply", blockNumber }),
   ]);
+  const positionState = { positionOwner, positionLiquidity: positionLiquidity.toString(), activeLiquidity: activeLiquidity.toString() };
+  const health = withHealth ? await readLaunchHealth(rpc, config.deployment.stateView, launch, positionState, opening, initial) : undefined;
   if (!sameHex(initial.hash, (await exactBlock(rpc, blockNumber)).hash)) throw new Error("Pool state changed branches during verification");
   return {
-    sqrtPriceX96: sqrtPriceX96.toString(), tick, protocolFee, lpFee, activeLiquidity: activeLiquidity.toString(),
-    positionOwner, positionLiquidity: positionLiquidity.toString(), totalSupply: totalSupply.toString(),
+    sqrtPriceX96: sqrtPriceX96.toString(), tick, protocolFee, lpFee, ...positionState, totalSupply: totalSupply.toString(),
+    ...(health ? { health } : {}),
     launchEvidence: launchEvidence(launch),
     evidence: {
       ...poolIdentity(launch), blockNumber: blockNumber.toString(), blockHash: initial.hash,
@@ -119,12 +128,22 @@ async function readPoolState(rpc: PublicClient, config: LaunchpadRuntime, launch
 function makeChecks(launch: NewLaunchRecord, state?: Awaited<ReturnType<typeof readPoolState>>): LaunchCheck[] {
   const custodyMatches = state && sameHex(state.positionOwner, launch.factory) && state.positionLiquidity === launch.liquidity;
   const supplyMatches = state && state.totalSupply === launch.totalSupply;
+  const guarded = launch.engineVersion === 2;
   return [
     { id: "factory_origin", label: "Factory origin", status: state ? "verified" : "unknown", detail: state ? "The canonical launch receipt came from the pinned local factory." : "The stored launch receipt could not be rechecked against the current chain." },
     { id: "pool_funding", label: "Initial liquidity", status: state ? "verified" : "unknown", detail: state ? `The launch funded ${launch.amount0} wei of native ETH and ${launch.amount1} base units of the token.` : "The recorded launch deposits await a current canonical-chain check." },
     { id: "fixed_supply", label: "Fixed token supply", status: state ? (supplyMatches ? "verified" : "failed") : "unknown", detail: supplyMatches ? `The standard fixed-supply token reports ${launch.totalSupply} base units.` : "Current supply must match the factory's recorded fixed supply." },
-    { id: "lp_lock", label: "Permanent LP custody", status: state ? (custodyMatches ? "verified" : "failed") : "unknown", detail: custodyMatches ? "The immutable factory still owns the position NFT with its original liquidity. The creator can claim earned fees." : "Position ownership and liquidity must match the launch receipt." },
-    { id: "hookless_pool", label: "Hookless v4 pool", status: state ? "verified" : "unknown", detail: "The factory's pool key records zero hooks and a 0.30% static LP fee tier." },
+    { id: "lp_lock", label: "Permanent LP custody", status: state ? (custodyMatches ? "verified" : "failed") : "unknown", detail: custodyMatches ? "The immutable factory still owns the position NFT with its original liquidity." : "Position ownership and liquidity must match the launch receipt." },
+    guarded
+      ? { id: "initialization_guard", label: "Initialization-only guard", status: state ? "verified" : "unknown", detail: "The canonical pool key records the factory-bound initialization guard and a 0.30% static LP fee tier." }
+      : { id: "hookless_pool", label: "Hookless v4 pool", status: state ? "verified" : "unknown", detail: "The factory's pool key records zero hooks and a 0.30% static LP fee tier." },
+    ...(guarded ? [{
+      id: "fee_commitment", label: "Immutable fee allocation",
+      status: state?.health?.fees.status === "verified" ? "verified" as const : "unknown" as const,
+      detail: state?.health?.fees.status === "verified"
+        ? "Current collected balances, distributions and rounding dust reconcile with the canonical launch fee policy."
+        : "Current fee accounting has not been verified against the canonical launch commitment.",
+    }] : []),
     { id: "external_routing", label: "External routing", status: "unknown", detail: "No external indexing or routing observation is recorded for this local launch." },
   ];
 }
@@ -207,13 +226,16 @@ export async function readLaunchpadPublicData(input: LaunchpadPublicInput): Prom
     try {
       const rpc = await verifiedLaunchpadRpc(config);
       if (isActivity) return { status: "ready", data: await readActivity(rpc, launch, pageSize, pageCursor) };
-      const state = await readPoolState(rpc, config, launch);
+      const state = await readPoolState(rpc, config, launch, operation === "get_launch_checks");
       return operation === "get_pool_state" ? { status: "ready", data: state }
-        : { status: "ready", data: { checks: makeChecks(launch, state), evidence: state.evidence, launchEvidence: state.launchEvidence } };
+        : { status: "ready", data: { checks: makeChecks(launch, state), health: state.health, launchEvidence: state.launchEvidence,
+          evidence: { ...state.evidence, factoryRuntimeHash: config.contracts.factory.runtimeHash,
+            initializationGuardRuntimeHash: config.guard?.runtimeHash ?? null } } };
     } catch {
       return {
         status: "delayed", reason: "Current canonical chain evidence is unavailable.",
-        ...(operation === "get_launch_checks" ? { data: { checks: makeChecks(launch), evidence: { ...launchEvidence(launch), freshness: "unavailable" } } } : {}),
+        ...(operation === "get_launch_checks" ? { data: { checks: makeChecks(launch), health: makeLaunchHealth(launch),
+          evidence: { ...launchEvidence(launch), freshness: "unavailable" } } } : {}),
       };
     }
   } catch {

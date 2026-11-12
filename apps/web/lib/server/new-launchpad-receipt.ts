@@ -2,7 +2,10 @@ import {
   decodeEventLog, getAddress, parseAbi, parseAbiItem, toHex, zeroAddress,
   type AbiEvent, type Address, type Hash, type Log, type PublicClient, type TransactionReceipt,
 } from "viem";
-import { launchCreatedEvent, launchPoolId, type NewLaunchDeployment, type NewLaunchRecord } from "../launchpad/launch-record";
+import {
+  launchCreatedEvent, launchFeeLedgerAbi, launchPoolId, longevityPolicyCommittedEvent,
+  type LaunchFeePolicy, type NewLaunchDeployment, type NewLaunchRecord,
+} from "../launchpad/launch-record";
 
 const initialize = parseAbiItem("event Initialize(bytes32 indexed id, address indexed currency0, address indexed currency1, uint24 fee, int24 tickSpacing, address hooks, uint160 sqrtPriceX96, int24 tick)");
 const modifyLiquidity = parseAbiItem("event ModifyLiquidity(bytes32 indexed id, address indexed sender, int24 tickLower, int24 tickUpper, int256 liquidityDelta, bytes32 salt)");
@@ -19,6 +22,33 @@ export type LaunchReceiptBinding = { creator: Address; intentId: Hash };
 
 export function sameHex(a: string | null | undefined, b: string | null | undefined): boolean {
   return !!a && !!b && a.toLowerCase() === b.toLowerCase();
+}
+
+export function sameLaunchFeePolicy(expected: LaunchFeePolicy, actual: LaunchFeePolicy) {
+  return sameHex(expected.creator, actual.creator) && sameHex(expected.treasury, actual.treasury)
+    && sameHex(expected.reserve, actual.reserve) && expected.creatorBps === actual.creatorBps
+    && expected.treasuryBps === actual.treasuryBps && expected.reserveBps === actual.reserveBps;
+}
+
+export async function readLaunchFeePolicy(rpc: PublicClient, factory: Address, token: Address, blockNumber: bigint) {
+  const [creator, treasury, reserve, creatorBps, treasuryBps, reserveBps] = await rpc.readContract({
+    address: factory, abi: launchFeeLedgerAbi, functionName: "feePolicy", args: [token], blockNumber,
+  });
+  return { creator, treasury, reserve, creatorBps, treasuryBps, reserveBps };
+}
+
+function verifyFeeTerms(policy: LaunchFeePolicy, factory: Address, token: Address) {
+  const treasuryAllocated = policy.treasuryBps > 0;
+  const reserveAllocated = policy.reserveBps > 0;
+  const hasTreasury = !sameHex(policy.treasury, zeroAddress);
+  const hasReserve = !sameHex(policy.reserve, zeroAddress);
+  const internal = (address: Address) => sameHex(address, token) || sameHex(address, factory);
+  if (policy.creatorBps + policy.treasuryBps + policy.reserveBps !== 10_000
+    || treasuryAllocated !== hasTreasury || reserveAllocated !== hasReserve || internal(policy.creator)
+    || (treasuryAllocated && (internal(policy.treasury) || sameHex(policy.treasury, policy.creator)))
+    || (reserveAllocated && (internal(policy.reserve) || sameHex(policy.reserve, policy.creator) || sameHex(policy.reserve, policy.treasury)))) {
+    throw new InvalidLaunchReceipt("The fee allocation does not match supported launch terms");
+  }
 }
 
 function decode<Event extends AbiEvent>(event: Event, address: Address, logs: Log[]) {
@@ -56,7 +86,8 @@ export function projectLaunchReceipt(
     (!sameHex(creator, binding.creator) || !sameHex(intentId, binding.intentId)))) {
     throw new InvalidLaunchReceipt("The launch does not match the reviewed creator and intent");
   }
-  if (!sameHex(poolKey.currency0, zeroAddress) || !sameHex(poolKey.currency1, token) || !sameHex(poolKey.hooks, zeroAddress)
+  const expectedHook = deployment.engineVersion === 2 ? deployment.initializationGuard : zeroAddress;
+  if (!sameHex(poolKey.currency0, zeroAddress) || !sameHex(poolKey.currency1, token) || !sameHex(poolKey.hooks, expectedHook)
     || poolKey.fee !== 3000 || poolKey.tickSpacing !== 60 || !sameHex(poolId, launchPoolId(poolKey))
     || tickLower !== -887220 || tickUpper !== 887220 || positionTokenId <= 0n || sqrtPriceX96 <= 0n
     || liquidity <= 0n || amount0 <= 0n || amount1 <= 0n || amount1 > totalSupply) {
@@ -85,6 +116,25 @@ export function projectLaunchReceipt(
     throw new InvalidLaunchReceipt("The receipt is missing the pool, custody or token settlement evidence");
   }
 
+  let feePolicy: LaunchFeePolicy | undefined;
+  if (deployment.engineVersion === 2) {
+    const policies = decode(longevityPolicyCommittedEvent, deployment.factory, receiptLogs);
+    const commitment = policies[0];
+    if (policies.length !== 1 || !commitment?.args || commitment.logIndex >= logIndex
+      || !sameHex(commitment.args.token, token) || !sameHex(commitment.args.creator, creator)) {
+      throw new InvalidLaunchReceipt("The receipt is missing one canonical fee policy for the launch");
+    }
+    const { treasury, reserve, creatorBps, treasuryBps, reserveBps } = commitment.args;
+    feePolicy = { creator, treasury, reserve, creatorBps, treasuryBps, reserveBps };
+    verifyFeeTerms(feePolicy, deployment.factory, token);
+    const allocation = totalSupply - amount1;
+    if (allocation > 0n && !transferLogs.some(({ args: data, logIndex: index }) => data
+      && index > tokenDeposit.logIndex && index < logIndex && sameHex(data.from, deployment.factory)
+      && sameHex(data.to, creator) && data.value === allocation)) {
+      throw new InvalidLaunchReceipt("The receipt is missing the creator token allocation");
+    }
+  }
+
   return {
     chainId: deployment.chainId, factory: deployment.factory, creator: getAddress(creator), token: getAddress(token),
     poolManager: deployment.poolManager, poolId, poolKey, intentId, positionTokenId: positionTokenId.toString(),
@@ -92,6 +142,7 @@ export function projectLaunchReceipt(
     amount0: amount0.toString(), amount1: amount1.toString(), totalSupply: totalSupply.toString(), name, symbol, projectURI,
     transactionHash: receipt.transactionHash, blockNumber: receipt.blockNumber.toString(), blockHash: receipt.blockHash,
     logIndex, indexing: "pending",
+    ...(feePolicy ? { engineVersion: 2 as const, feePolicy } : {}),
   };
 }
 
@@ -104,14 +155,18 @@ export async function verifyLaunchReceipt(
   const receipt = await rpc.getTransactionReceipt({ hash: transactionHash });
   const record = projectLaunchReceipt(deployment, receipt, transactionHash, binding);
   const position = { address: deployment.positionManager, abi: positionAbi, args: [BigInt(record.positionTokenId)] as const, blockNumber: receipt.blockNumber };
-  const [owner, liquidity] = await Promise.all([
+  const [owner, liquidity, feePolicy] = await Promise.all([
     rpc.readContract({ ...position, functionName: "ownerOf" }),
     rpc.readContract({ ...position, functionName: "getPositionLiquidity" }),
+    record.feePolicy ? readLaunchFeePolicy(rpc, deployment.factory, record.token, receipt.blockNumber) : undefined,
   ]);
   const canonicalBlock = await rpc.getBlock({ blockNumber: receipt.blockNumber, includeTransactions: false });
   if (!sameHex(receipt.blockHash, canonicalBlock.hash)) throw new Error("Launch receipt block is no longer canonical");
   if (!sameHex(owner, deployment.factory) || liquidity.toString() !== record.liquidity) {
     throw new InvalidLaunchReceipt("Onchain position ownership or liquidity does not match the launch event");
+  }
+  if (record.feePolicy && (!feePolicy || !sameLaunchFeePolicy(record.feePolicy, feePolicy))) {
+    throw new InvalidLaunchReceipt("Onchain fee commitments do not match the launch event");
   }
   return { ...record, blockTimestamp: canonicalBlock.timestamp?.toString() };
 }

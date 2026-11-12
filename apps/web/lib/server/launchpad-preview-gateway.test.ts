@@ -12,13 +12,13 @@ import {
   type Address, type Hex, type PublicClient,
 } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
-import { factoryAbi, prepareSwap } from "../launchpad/direct-v4";
+import { factoryAbi, longevityFactoryAbi, prepareSwap } from "../launchpad/direct-v4";
 import { launchPoolId, type NewLaunchRecord } from "../launchpad/launch-record";
 import type { BoundWallet } from "../launchpad/transactions";
 import { readLaunchpadPreviewAccess } from "./launchpad-preview-access";
 import { createLaunchpadPreviewGateway, localPreviewBackend, previewLanAccess, previewListenHost } from "./launchpad-preview-gateway";
 import { permittedPreviewRpc, type PreviewRpcPolicy } from "./launchpad-preview-rpc";
-import { readLaunchpadRuntime } from "./new-launchpad-config";
+import { readLaunchpadRuntime, type LaunchpadRuntime } from "./new-launchpad-config";
 
 const account = privateKeyToAccount(generatePrivateKey());
 const stranger = privateKeyToAccount(generatePrivateKey());
@@ -86,6 +86,31 @@ function policy(readTransaction?: PreviewRpcPolicy["readTransaction"]): PreviewR
     readTransaction: readTransaction ?? (async () => { throw new Error("Transaction unavailable"); }),
   };
 }
+
+test("signed Longevity calls stay on the guarded engine and the committed recipient bucket", async () => {
+  const guard = toHex(0x2000, { size: 20 });
+  const guardedKey = { ...poolKey, hooks: guard };
+  const feePolicy = { creator: account.address, treasury: stranger.address, reserve: zeroAddress,
+    creatorBps: 7500, treasuryBps: 2500, reserveBps: 0 };
+  const record: NewLaunchRecord = { ...launch, engineVersion: 2, poolKey: guardedKey,
+    poolId: launchPoolId(guardedKey), feePolicy };
+  const guardedRuntime: LaunchpadRuntime = { ...runtime, deployment: { ...deployment, engineVersion: 2, initializationGuard: guard } };
+  const guardedPolicy = { ...policy(), runtime: guardedRuntime, readLaunch: () => record };
+  const value = parseEther("0.1");
+  const create = encodeFunctionData({ abi: longevityFactoryAbi, functionName: "launchWithLongevity", args: [{
+    name: launch.name, symbol: launch.symbol, projectURI: "", intentId, supplyPreset: 0,
+    poolAllocationBps: 5000, nativeAmount: value, deadline: previewDeadline(),
+  }, feePolicy] });
+  const signedCreate = await sign(create, { value });
+  assert.equal(await permittedPreviewRpc(guardedPolicy, "eth_sendRawTransaction", [signedCreate]), true);
+  assert.equal(await permittedPreviewRpc(policy(), "eth_sendRawTransaction", [signedCreate]), false);
+  for (const bucket of [0, 1, 2, 3]) {
+    const withdraw = encodeFunctionData({ abi: longevityFactoryAbi, functionName: "withdrawFees", args: [token, bucket] });
+    assert.equal(await permittedPreviewRpc(guardedPolicy, "eth_sendRawTransaction", [await sign(withdraw)]), bucket === 0);
+    assert.equal(await permittedPreviewRpc({ ...guardedPolicy, readLaunch: () => ({ ...record, poolKey }) },
+      "eth_sendRawTransaction", [await sign(withdraw)]), false);
+  }
+});
 
 test("preview config retains the private loopback RPC and fails closed outside a short HTTPS chain-31337 lease", () => {
   assert.equal(runtime.privateRpcUrl, "http://127.0.0.1:8545/");

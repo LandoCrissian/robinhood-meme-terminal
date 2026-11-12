@@ -3,7 +3,7 @@ import {
   parseTransaction, recoverTransactionAddress, toFunctionSelector, zeroAddress,
   type Address, type Hex, type TransactionSerialized,
 } from "viem";
-import { factoryAbi } from "../launchpad/direct-v4";
+import { factoryAbi, longevityFactoryAbi } from "../launchpad/direct-v4";
 import { launchPoolId, launchPoolKeyParameter, type NewLaunchRecord } from "../launchpad/launch-record";
 import type { LaunchpadRuntime } from "./new-launchpad-config";
 
@@ -53,8 +53,11 @@ function record(value: unknown): Record<string, unknown> | undefined {
 
 function matchLaunch(policy: PreviewRpcPolicy, token: Address) {
   const launch = policy.readLaunch(token);
-  return launch && launch.chainId === 31337 && equalAddress(launch.factory, policy.runtime.deployment.factory)
-    && equalAddress(launch.poolManager, policy.runtime.deployment.poolManager) && equalAddress(launch.token, token) ? launch : undefined;
+  const { deployment } = policy.runtime;
+  const hook = deployment.engineVersion === 2 ? deployment.initializationGuard : zeroAddress;
+  return launch && hook && launch.chainId === 31337 && launch.engineVersion === deployment.engineVersion
+    && equalAddress(launch.poolKey.hooks, hook) && equalAddress(launch.factory, deployment.factory)
+    && equalAddress(launch.poolManager, deployment.poolManager) && equalAddress(launch.token, token) ? launch : undefined;
 }
 
 function deadlineIsFresh(deadline: bigint) {
@@ -89,9 +92,18 @@ async function permittedRawTransaction(policy: PreviewRpcPolicy, raw: unknown) {
     || !equalAddress(await recoverTransactionAddress({ serializedTransaction: serialized }), policy.wallet)) return false;
   const { deployment } = policy.runtime;
   if (equalAddress(tx.to, deployment.factory)) {
-    const decoded = decodeFunctionData({ abi: factoryAbi, data: tx.data });
-    if (decoded.functionName === "launch") return deadlineIsFresh(decoded.args[0].deadline) && tx.value === decoded.args[0].nativeAmount;
+    const decoded = decodeFunctionData({ abi: deployment.engineVersion === 2 ? longevityFactoryAbi : factoryAbi, data: tx.data });
+    if (decoded.functionName === "launch" || decoded.functionName === "launchWithLongevity") {
+      return deadlineIsFresh(decoded.args[0].deadline) && tx.value === decoded.args[0].nativeAmount;
+    }
     if (decoded.functionName === "collectFees") return !(tx.value ?? 0n) && !!matchLaunch(policy, decoded.args[0]) && deadlineIsFresh(decoded.args[1]);
+    if (decoded.functionName === "withdrawFees") {
+      const [token, bucket] = decoded.args;
+      const terms = matchLaunch(policy, token)?.feePolicy;
+      if (tx.value || !terms || bucket > 2) return false;
+      const shares = [terms.creatorBps, terms.treasuryBps, terms.reserveBps];
+      return shares[bucket] > 0 && equalAddress([terms.creator, terms.treasury, terms.reserve][bucket], policy.wallet);
+    }
     return false;
   }
   if (equalAddress(tx.to, deployment.universalRouter)) return permittedSwap(policy, tx.data, tx.value ?? 0n);
