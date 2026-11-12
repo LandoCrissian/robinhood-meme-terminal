@@ -27,6 +27,8 @@ jobs:
       - run: pnpm audit:production
       - run: pnpm check:repo
       - run: pnpm test:terminal-release
+      - run: pnpm --filter web test:protection-center
+      - run: pnpm --filter web test:local-launchpad
       - run: pnpm test:firebase-rules
       - run: pnpm test:production-health
       - run: pnpm typecheck

@@ -1,19 +1,17 @@
-name: Terminal visual v2
+name: Legacy terminal visual replay
 
 on:
-  pull_request:
-    paths:
-      - ".github/workflows/terminal-visual-v2.yml"
-      - "apps/web/app/**"
-      - "apps/web/lib/**"
-      - "scripts/visual-qa/**"
   workflow_dispatch:
+
+# Archived browser fixtures expect the previous Terminal root and product routes.
+env:
+  RMT_REVIEWED_HEAD: 6d0b8103bdad95367445a38e5f5327458baa9ab2
 
 permissions:
   contents: read
 
 concurrency:
-  group: terminal-visual-v2-${{ github.event.pull_request.number || github.ref }}
+  group: terminal-visual-v2-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -48,13 +46,12 @@ jobs:
       NFT_MINT_RADAR_REVIEWED_SEADROP_DEPLOYMENTS: 0x5555555555555555555555555555555555555555@0xbc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a
       RMT_VISUAL_BASE_URL: http://127.0.0.1:3000
       RMT_VISUAL_OUTPUT: terminal-visual-v2
-      RMT_REVIEWED_HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
       RMT_VISUAL_FIXTURE_NOW: "2026-09-21T20:30:00.000Z"
       RMT_NFT_MINT_RADAR_FIXTURE_NOW: "2026-09-21T20:30:00.000Z"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ env.RMT_REVIEWED_HEAD }}
       - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
         with:
           version: 10.12.1

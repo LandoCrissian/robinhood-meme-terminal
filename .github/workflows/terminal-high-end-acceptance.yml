@@ -1,32 +1,17 @@
-name: Terminal high-end acceptance
+name: Legacy terminal high-end replay
 
 on:
-  pull_request:
-    paths:
-      - ".github/scripts/terminal-high-end-acceptance.mjs"
-      - ".github/scripts/terminal-stabilization-acceptance.mjs"
-      - ".github/workflows/terminal-high-end-acceptance.yml"
-      - "apps/web/app/vnext/**"
-      - "apps/web/app/market/**"
-      - "apps/web/app/markets/robinhood-chain/**"
-      - "apps/web/app/portfolio/**"
-      - "apps/web/app/robinhood-chain/**"
-      - "apps/web/app/sitemap.ts"
-      - "apps/web/lib/vnext/**"
-      - "apps/web/lib/server/vnext-*"
-      - "apps/web/app/privy-wallet-button.tsx"
-      - "apps/web/app/public-chrome.tsx"
-      - "apps/web/app/layout.tsx"
-      - "apps/web/next.config.mjs"
-      - "apps/web/package.json"
-      - "package.json"
   workflow_dispatch:
+
+# Archived browser fixtures expect the previous Terminal root and product routes.
+env:
+  RMT_LEGACY_TERMINAL_BASELINE: 6d0b8103bdad95367445a38e5f5327458baa9ab2
 
 permissions:
   contents: read
 
 concurrency:
-  group: terminal-high-end-${{ github.event.pull_request.number || github.ref }}
+  group: terminal-high-end-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -45,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ env.RMT_LEGACY_TERMINAL_BASELINE }}
       - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
         with:
           version: 10.12.1
@@ -117,7 +102,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ env.RMT_LEGACY_TERMINAL_BASELINE }}
       - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
         with:
           version: 10.12.1

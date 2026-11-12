@@ -1,31 +1,17 @@
-name: 0x browser acceptance
+name: Legacy terminal 0x browser replay
 
 on:
-  pull_request:
-    paths:
-      - '.github/scripts/zerox-browser-*'
-      - '.github/scripts/quote-state-browser-checks.mjs'
-      - '.github/scripts/trading-product-browser.mjs'
-      - '.github/scripts/stable-refresh-browser.mjs'
-      - '.github/scripts/token-enrichment-browser.mjs'
-      - '.github/scripts/market-anchor-browser.mjs'
-      - '.github/scripts/zerox-execution-fixture.cjs'
-      - '.github/scripts/terminal-high-end-acceptance.mjs'
-      - '.github/workflows/zerox-browser-acceptance.yml'
-      - 'apps/web/app/vnext/**'
-      - 'apps/web/app/api/vnext/**'
-      - 'apps/web/lib/vnext/**'
-      - 'apps/web/lib/server/vnext-*'
-      - 'apps/web/package.json'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
   workflow_dispatch:
+
+# Archived browser fixtures expect the previous Terminal root and product routes.
+env:
+  RMT_LEGACY_TERMINAL_BASELINE: 6d0b8103bdad95367445a38e5f5327458baa9ab2
 
 permissions:
   contents: read
 
 concurrency:
-  group: zerox-browser-${{ github.event.pull_request.number || github.ref }}
+  group: zerox-browser-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -46,7 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ env.RMT_LEGACY_TERMINAL_BASELINE }}
       - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
         with:
           version: 10.12.1
@@ -55,15 +41,15 @@ jobs:
           node-version: 22
       - run: pnpm install --frozen-lockfile
       - run: pnpm exec playwright install --with-deps chromium
-      - name: Build the exact PR base in an isolated checkout
+      - name: Build the archived Terminal baseline in an isolated checkout
         env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.sha }}
+          BASE_SHA: ${{ env.RMT_LEGACY_TERMINAL_BASELINE }}
         run: |
           git fetch --depth=1 origin "$BASE_SHA"
           git worktree add --detach "$RUNNER_TEMP/renewal-base" "$BASE_SHA"
           pnpm --dir "$RUNNER_TEMP/renewal-base" install --frozen-lockfile
           pnpm --dir "$RUNNER_TEMP/renewal-base" --filter web exec next build
-      - name: Observe the same 90-second mobile and desktop task before the correction
+      - name: Record the archived 90-second mobile and desktop task
         run: |
           RMT_STABILITY_BASELINE=true RMT_STABILITY_BASELINE_ROOT="$RUNNER_TEMP/renewal-base" RMT_STABLE_REFRESH_ONLY=true RMT_ACCEPTANCE_OUTPUT="$GITHUB_WORKSPACE/renewal-baseline-evidence" node .github/scripts/zerox-browser-acceptance.mjs
       - name: Upload base recordings and measured state replacements
@@ -97,7 +83,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ env.RMT_LEGACY_TERMINAL_BASELINE }}
       - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
         with:
           version: 10.12.1

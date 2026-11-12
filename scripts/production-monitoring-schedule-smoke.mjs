@@ -18,5 +18,9 @@ assert.match(readiness, /node scripts\/collect-production-directory\.mjs health-
 assert.match(readiness, /api\/vnext\/market-search/);
 assert.match(readiness, /verify-production-health\.mjs/);
 assert.match(readiness, /verify-public-surface\.mjs/);
+assert.match(readiness, /launchpad_status="\$\(route_status launchpad-config "\$base\/api\/launchpad\/config"\)"/);
+assert.match(readiness, /404\)[\s\S]*?api\/vnext\/market-directory[\s\S]*?200\)[\s\S]*?api\/launchpad\/launches/);
+assert.match(readiness, /public_status" != 404 \|\| "\$mcp_status" != 404/);
+assert.match(readiness, /verify-locked-launchpad-surface\.mjs/);
 
 console.info("Production liveness and deep-readiness schedule checks passed.");

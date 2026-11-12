@@ -1,0 +1,120 @@
+name: Launchpad browser acceptance
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/launchpad-browser-acceptance.yml"
+      - "apps/web/app/**"
+      - "apps/web/lib/launchpad/**"
+      - "apps/web/lib/server/new-launchpad-*.ts"
+      - "apps/web/scripts/new-launchpad-indexer.ts"
+      - "apps/web/middleware.ts"
+      - "apps/web/next.config.mjs"
+      - "apps/web/package.json"
+      - "packages/contracts/**"
+      - "packages/shared/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "scripts/visual-qa/rmt-launchpad-browser.mjs"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: launchpad-browser-acceptance-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  loopback-fork:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      RMT_LAUNCHPAD_TEST_URL: http://127.0.0.1:3196
+      RMT_LAUNCHPAD_TEST_RPC_URL: http://127.0.0.1:8545
+      RMT_LAUNCHPAD_TEST_OUTPUT: launchpad-browser-evidence
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1
+        with:
+          version: "1.7.1"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: bash scripts/install-v4-deps.sh
+        working-directory: packages/contracts
+      - name: Build reviewed application
+        run: pnpm --filter web exec next build
+      - name: Run the browser journey on a private loopback fork
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RMT_LAUNCHPAD_TEST_OUTPUT"
+          scratch="$(mktemp -d "$RUNNER_TEMP/rmt-launchpad.XXXXXX")"
+          children=()
+          cleanup() {
+            for pid in "${children[@]}"; do kill "$pid" 2>/dev/null || true; done
+            for pid in "${children[@]}"; do wait "$pid" 2>/dev/null || true; done
+          }
+          trap cleanup EXIT
+
+          fixture=./packages/contracts/test/fixtures/rmt-v4-deployment-identities.json
+          fork_url="$(node -p "require('$fixture').baseSepolia.rpcUrl")"
+          fork_block="$(node -p "require('$fixture').baseSepolia.block")"
+          [[ "$fork_url" == "https://sepolia.base.org" && "$fork_block" =~ ^[1-9][0-9]*$ ]]
+          anvil --host 127.0.0.1 --port 8545 --chain-id 31337 --fork-url "$fork_url" \
+            --fork-block-number "$fork_block" --silent >"$RMT_LAUNCHPAD_TEST_OUTPUT/anvil.log" 2>&1 &
+          children+=("$!")
+          for attempt in $(seq 1 30); do
+            if curl --silent --show-error --fail --max-time 2 \
+              -H 'Content-Type: application/json' \
+              -d '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}' \
+              "$RMT_LAUNCHPAD_TEST_RPC_URL" | grep -q '"result":"0x7a69"'; then
+              break
+            fi
+            [[ "$attempt" != 30 ]] || { echo "Loopback fork did not start." >&2; exit 1; }
+            sleep 1
+          done
+
+          node packages/contracts/scripts/deploy-launchpad-local.mjs "$RMT_LAUNCHPAD_TEST_RPC_URL" >"$scratch/deployment.json"
+          verified_deployment="$(node -e '
+            const deployment = require(process.argv[1]);
+            if (deployment.chainId !== 31337 ||
+                !/^0x[0-9a-f]{40}$/i.test(deployment.factory) ||
+                !/^0x[0-9a-f]{64}$/i.test(deployment.factoryRuntimeHash) ||
+                !Number.isSafeInteger(deployment.deployBlock) || deployment.deployBlock < 1) process.exit(1);
+            console.log(deployment.factory, deployment.factoryRuntimeHash, deployment.deployBlock);
+          ' "$scratch/deployment.json")"
+          read -r RMT_LAUNCHPAD_FACTORY_ADDRESS RMT_LAUNCHPAD_FACTORY_RUNTIME_HASH RMT_LAUNCHPAD_FACTORY_START_BLOCK <<<"$verified_deployment"
+          export RMT_LAUNCHPAD_FACTORY_ADDRESS RMT_LAUNCHPAD_FACTORY_RUNTIME_HASH RMT_LAUNCHPAD_FACTORY_START_BLOCK
+          export RMT_LAUNCHPAD_ENABLED=true RMT_LAUNCHPAD_TRADING_ENABLED=true RMT_LAUNCHPAD_CHAIN_ID=31337
+          export RMT_LAUNCHPAD_RPC_URL="$RMT_LAUNCHPAD_TEST_RPC_URL" RMT_LAUNCHPAD_DATABASE_PATH="$scratch/launchpad.sqlite"
+
+          pnpm --filter web launchpad:index:local >"$RMT_LAUNCHPAD_TEST_OUTPUT/indexer.log" 2>&1 &
+          children+=("$!")
+          pnpm --filter web exec next start --hostname 127.0.0.1 --port 3196 >"$RMT_LAUNCHPAD_TEST_OUTPUT/web.log" 2>&1 &
+          children+=("$!")
+          for attempt in $(seq 1 30); do
+            if curl --silent --show-error --fail --max-time 5 \
+              "$RMT_LAUNCHPAD_TEST_URL/api/launchpad/config" | grep -q '"status":"ready"'; then
+              break
+            fi
+            [[ "$attempt" != 30 ]] || { echo "Verified launchpad configuration did not become ready." >&2; exit 1; }
+            sleep 1
+          done
+          pnpm test:launchpad-browser
+      - name: Upload test-wallet browser evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: launchpad-loopback-browser-${{ github.event.pull_request.head.sha || github.sha }}
+          path: launchpad-browser-evidence
+          retention-days: 7
