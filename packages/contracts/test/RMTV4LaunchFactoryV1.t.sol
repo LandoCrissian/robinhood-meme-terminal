@@ -42,6 +42,13 @@ contract LaunchAllowanceHarness {
     }
 
     mapping(address owner => mapping(address token => mapping(address spender => Grant))) public grants;
+    bool public rejectSettlement;
+
+    error SettlementRejected();
+
+    function setRejectSettlement(bool rejection) external {
+        rejectSettlement = rejection;
+    }
 
     function approve(address token, address spender, uint160 amount, uint48 expiration) external {
         grants[msg.sender][token][spender] = Grant(amount, expiration);
@@ -52,6 +59,7 @@ contract LaunchAllowanceHarness {
         require(amount <= grant.amount && block.timestamp <= grant.expiration, "unapproved");
         grant.amount -= amount;
         require(IERC20(token).transferFrom(owner, recipient, amount), "transfer failed");
+        if (rejectSettlement) revert SettlementRejected();
     }
 }
 
@@ -200,6 +208,40 @@ contract RMTV4LaunchFactoryV1Test is Test {
 
     function testExactFundingAndCreatorAllocation() public {
         _assertLaunch(_terms());
+    }
+
+    function testFundingInterruptionRollsBackPoolPositionAndAllowance() public {
+        RMTV4LaunchFactoryV1.Terms memory terms = _terms();
+        address predicted = _predictToken(terms);
+        PoolId poolId = _pool(predicted).toId();
+        uint256 positionId = positionManager.nextTokenId();
+        uint256 creatorNative = creator.balance;
+        uint256 managerNative = address(manager).balance;
+        permit2.setRejectSettlement(true);
+
+        vm.expectRevert(LaunchAllowanceHarness.SettlementRejected.selector);
+        _launch(creator, terms);
+        assertEq(predicted.code.length, 0);
+        assertEq(factory.launches(creator, terms.intentId), address(0));
+        (address positionCreator, uint256 recordedId, uint128 recordedLiquidity) = factory.positions(predicted);
+        assertEq(positionCreator, address(0));
+        assertEq(recordedId, 0);
+        assertEq(recordedLiquidity, 0);
+        (uint160 spot,,,) = manager.getSlot0(poolId);
+        assertEq(spot, 0);
+        assertEq(manager.getLiquidity(poolId), 0);
+        assertEq(positionManager.nextTokenId(), positionId);
+        assertEq(creator.balance, creatorNative);
+        assertEq(address(manager).balance, managerNative);
+        assertEq(address(positionManager).balance, 0);
+        assertEq(address(factory).balance, 0);
+        (uint160 allowance, uint48 expiration) = permit2.grants(address(factory), predicted, address(positionManager));
+        assertEq(allowance, 0);
+        assertEq(expiration, 0);
+
+        permit2.setRejectSettlement(false);
+        _assertLaunch(terms);
+        assertEq(factory.launches(creator, terms.intentId), predicted);
     }
 
     function testFuzzExactFundingAndRounding(uint8 preset, uint16 allocationBps, uint128 nativeAmount) public {

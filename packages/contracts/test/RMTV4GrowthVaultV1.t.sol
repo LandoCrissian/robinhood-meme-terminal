@@ -5,6 +5,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {PoolManager} from "@uniswap/v4-core/src/PoolManager.sol";
+import {FullMath} from "@uniswap/v4-core/src/libraries/FullMath.sol";
 import {StateLibrary} from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
 import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
@@ -467,6 +468,190 @@ contract RMTV4GrowthVaultV1Test is GrowthVaultFixture {
         assertEq(vault.nextNonce(), 0);
     }
 
+    function testUnavailableReviewerCannotBeReplacedAndExpiredApprovalCannotBeRefreshed() public {
+        (RMTV4GrowthVaultV1 vault, address token, PoolKey memory key, uint160 reviewedPrice) = _start();
+        _earnFees(vault, token, key);
+        RMTV4GrowthVaultV1.Snapshot memory before = vault.snapshot();
+        RMTV4GrowthVaultV1.Plan memory approved = _plan(vault, reviewedPrice);
+        (bytes memory first, bytes memory second) = _signed(vault, approved);
+
+        vm.warp(uint256(approved.deadline) + 1);
+        vm.expectRevert(RMTV4GrowthVaultV1.InvalidDeadline.selector);
+        vault.reinvest(approved, first, second);
+
+        RMTV4GrowthVaultV1.Plan memory replacement = _plan(vault, reviewedPrice);
+        bytes32 replacementDigest = vault.planDigest(replacement);
+        assertNotEq(replacementDigest, vault.planDigest(approved));
+        // The first key is available to an attacker. The second reviewer has lost access.
+        bytes memory firstForReplacement = _signature(REVIEWER_A_KEY, replacementDigest);
+        bytes memory unapprovedSigner = _signature(0xC012001, replacementDigest);
+        vm.expectRevert(abi.encodeWithSignature("ECDSAInvalidSignatureLength(uint256)", 0));
+        vault.reinvest(replacement, firstForReplacement, "");
+        vm.expectRevert(RMTV4GrowthVaultV1.InvalidReviewers.selector);
+        vault.reinvest(replacement, firstForReplacement, unapprovedSigner);
+        vm.expectRevert(RMTV4GrowthVaultV1.InvalidReviewers.selector);
+        vault.reinvest(replacement, firstForReplacement, second);
+
+        assertEq(keccak256(abi.encode(vault.snapshot())), keccak256(abi.encode(before)));
+        assertEq(vault.nextNonce(), 0);
+        _assertAccounting(before);
+        _assertNoApproval(vault, token);
+    }
+
+    function testFirstSuccessfulPlanConsumesNonceForConflictingPlanAndDuplicate() public {
+        (RMTV4GrowthVaultV1 vault, address token, PoolKey memory key, uint160 reviewedPrice) = _start();
+        _earnFees(vault, token, key);
+        RMTV4GrowthVaultV1.Plan memory first = _plan(vault, reviewedPrice);
+        RMTV4GrowthVaultV1.Plan memory second = _plan(vault, reviewedPrice);
+        second.maxNativeIn = 1_000;
+        assertEq(first.nonce, second.nonce);
+        assertNotEq(vault.planDigest(first), vault.planDigest(second));
+        (bytes memory signatureAA, bytes memory signatureAB) = _signed(vault, first);
+        (bytes memory signatureBA, bytes memory signatureBB) = _signed(vault, second);
+
+        vm.prank(makeAddr("competing relayer"));
+        assertEq(uint8(vault.reinvest(second, signatureBA, signatureBB)), ADDED);
+        RMTV4GrowthVaultV1.Snapshot memory afterWinner = vault.snapshot();
+        assertGt(afterWinner.nativeAdded, 0);
+        assertLe(afterWinner.nativeAdded, second.maxNativeIn);
+        assertEq(vault.nextNonce(), first.nonce + 1);
+        vm.expectRevert(RMTV4GrowthVaultV1.InvalidPlan.selector);
+        vault.reinvest(first, signatureAA, signatureAB);
+        vm.expectRevert(RMTV4GrowthVaultV1.InvalidPlan.selector);
+        vault.reinvest(second, signatureBA, signatureBB);
+        assertEq(keccak256(abi.encode(vault.snapshot())), keccak256(abi.encode(afterWinner)));
+        _assertLocked(token, key, vault);
+        _assertAccounting(afterWinner);
+        _assertNoApproval(vault, token);
+    }
+
+    function testBothReviewerSignaturesCannotBypassCapsOrDirectlySettle() public {
+        (RMTV4GrowthVaultV1 vault, address token, PoolKey memory key, uint160 reviewedPrice) = _start();
+        _earnFees(vault, token, key);
+        RMTV4GrowthVaultV1.Snapshot memory before = vault.snapshot();
+        RMTV4GrowthVaultV1.Plan memory plan = _plan(vault, reviewedPrice);
+        plan.maxNativeIn = vault.MAX_NATIVE_IN() + 1;
+        _assertSignedPlanRejected(vault, plan);
+
+        plan = _plan(vault, reviewedPrice);
+        plan.maxSqrtDeviationBps = vault.MAX_SQRT_DEVIATION_BPS() + 1;
+        _assertSignedPlanRejected(vault, plan);
+
+        plan = _plan(vault, reviewedPrice);
+        plan.observedAt -= vault.MAX_REFERENCE_AGE() + 1;
+        _assertSignedPlanRejected(vault, plan);
+
+        RMTV4GrowthVaultV1.Addition memory addition = RMTV4GrowthVaultV1.Addition(1, 1, 1);
+        address reviewer = vault.reviewerA();
+        vm.expectRevert(RMTV4GrowthVaultV1.SettlementCaller.selector);
+        vm.prank(reviewer);
+        vault.settle(token, key, addition, _deadline());
+        assertEq(keccak256(abi.encode(vault.snapshot())), keccak256(abi.encode(before)));
+        assertEq(vault.nextNonce(), 0);
+        _assertNoApproval(vault, token);
+    }
+
+    function testInterruptedAndRepeatedAttemptsPreserveReserveUntilSuccessfulRetry() public {
+        (RMTV4GrowthVaultV1 vault, address token, PoolKey memory key, uint160 reviewedPrice) = _start();
+        _earnFees(vault, token, key);
+        RMTV4GrowthVaultV1.Plan memory plan = _plan(vault, reviewedPrice);
+        (bytes memory first, bytes memory second) = _signed(vault, plan);
+        RMTV4GrowthVaultV1.Snapshot memory before = vault.snapshot();
+        uint256 nextPosition = positionManager.nextTokenId();
+        vm.expectRevert(RMTV4GrowthVaultV1.InsufficientExecutionGas.selector);
+        vm.prank(relayer);
+        vault.reinvest{gas: 800_000}(plan, first, second);
+        assertEq(keccak256(abi.encode(vault.snapshot())), keccak256(abi.encode(before)));
+
+        allowanceHarness.setRefuseSettlement(true);
+        for (uint256 i; i < 3; ++i) {
+            vm.warp(block.timestamp + 10);
+            assertEq(_execute(vault, plan), SETTLEMENT_DEFERRED);
+            RMTV4GrowthVaultV1.Snapshot memory deferred = vault.snapshot();
+            assertEq(deferred.lastAttemptAt, block.timestamp);
+            assertEq(deferred.nativeHeld, before.nativeHeld);
+            assertEq(deferred.tokenHeld, before.tokenHeld);
+            assertEq(deferred.positionTokenId, 0);
+            assertEq(deferred.liquidityAdded, 0);
+            assertEq(vault.nextNonce(), plan.nonce);
+            assertEq(positionManager.nextTokenId(), nextPosition);
+            _assertAccounting(deferred);
+            _assertNoApproval(vault, token);
+        }
+
+        allowanceHarness.setRefuseSettlement(false);
+        assertEq(_execute(vault, plan), ADDED);
+        assertEq(vault.nextNonce(), plan.nonce + 1);
+        _assertLocked(token, key, vault);
+        _assertAccounting(vault.snapshot());
+        _assertNoApproval(vault, token);
+    }
+
+    function testOneSidedReserveRemainsHeldAfterProlongedDeferral() public {
+        (RMTV4GrowthVaultV1 vault, address token, PoolKey memory key, uint160 reviewedPrice) = _start();
+        _swap(key, true, 0.001 ether);
+        vault.collectReserve(_deadline());
+        RMTV4GrowthVaultV1.Snapshot memory collected = vault.snapshot();
+        assertGt(collected.nativeHeld, 0);
+        assertEq(collected.tokenHeld, 0);
+        RMTV4GrowthVaultV1.Plan memory plan = _plan(vault, reviewedPrice);
+        (bytes memory first, bytes memory second) = _signed(vault, plan);
+        assertEq(_execute(vault, plan), INSUFFICIENT);
+
+        vm.warp(block.timestamp + 30 days);
+        vault.collectReserve(_deadline());
+        vm.expectRevert(RMTV4GrowthVaultV1.InvalidDeadline.selector);
+        vault.reinvest(plan, first, second);
+        (uint160 syntheticReference,,,) = manager.getSlot0(key.toId());
+        assertEq(_execute(vault, _plan(vault, syntheticReference)), INSUFFICIENT);
+        RMTV4GrowthVaultV1.Snapshot memory held = vault.snapshot();
+        assertEq(held.nativeHeld, collected.nativeHeld);
+        assertEq(held.tokenHeld, 0);
+        assertEq(held.nativeAdded, 0);
+        assertEq(held.tokenAdded, 0);
+        assertEq(held.positionTokenId, 0);
+        assertEq(vault.nextNonce(), 0);
+        _assertAccounting(held);
+        _assertNoApproval(vault, token);
+    }
+
+    function testTinyTwoSidedReserveCanCostMoreToReinvestThanBothAssets() public {
+        (RMTV4GrowthVaultV1 vault, address token, PoolKey memory key, uint160 reviewedPrice) = _start();
+        _swap(key, true, 1 gwei);
+        _swap(key, false, IERC20(token).balanceOf(trader));
+        vault.collectReserve(_deadline());
+        RMTV4GrowthVaultV1.Snapshot memory collected = vault.snapshot();
+        assertGt(collected.nativeHeld, 0);
+        assertGt(collected.tokenHeld, 0);
+        assertLt(reviewedPrice, type(uint128).max);
+        uint256 referencePriceX192 = uint256(reviewedPrice) * reviewedPrice;
+        uint256 reserveNativeEquivalent = collected.nativeHeld
+            + FullMath.mulDivRoundingUp(collected.tokenHeld, uint256(1) << 192, referencePriceX192);
+
+        RMTV4GrowthVaultV1.Plan memory plan = _plan(vault, reviewedPrice);
+        (bytes memory first, bytes memory second) = _signed(vault, plan);
+        vm.txGasPrice(20 gwei);
+        vm.prank(relayer);
+        uint256 beforeGas = gasleft();
+        RMTV4GrowthVaultV1.Outcome outcome = vault.reinvest(plan, first, second);
+        uint256 measuredCallGas = beforeGas - gasleft();
+        assertEq(uint8(outcome), ADDED);
+        uint256 scenarioGasCost = measuredCallGas * tx.gasprice;
+        assertGt(scenarioGasCost, reserveNativeEquivalent);
+        emit log_named_uint("tiny reserve native-equivalent wei at fixture reference", reserveNativeEquivalent);
+        emit log_named_uint("tiny reserve measured reinvest call gas", measuredCallGas);
+        emit log_named_uint("tiny reserve scenario gas cost wei at 20 gwei", scenarioGasCost);
+
+        RMTV4GrowthVaultV1.Snapshot memory reinvested = vault.snapshot();
+        assertGt(reinvested.nativeAdded, 0);
+        assertGt(reinvested.tokenAdded, 0);
+        assertEq(reinvested.nativeAdded + reinvested.nativeHeld, collected.nativeHeld);
+        assertEq(reinvested.tokenAdded + reinvested.tokenHeld, collected.tokenHeld);
+        _assertLocked(token, key, vault);
+        _assertAccounting(reinvested);
+        _assertNoApproval(vault, token);
+    }
+
     function _start()
         private
         returns (RMTV4GrowthVaultV1 vault, address token, PoolKey memory key, uint160 reviewedPrice)
@@ -507,5 +692,11 @@ contract RMTV4GrowthVaultV1Test is GrowthVaultFixture {
         (uint160 amount, uint48 expiration) = allowanceHarness.grants(address(vault), token, address(positionManager));
         assertEq(amount, 0);
         assertEq(expiration, 0);
+    }
+
+    function _assertSignedPlanRejected(RMTV4GrowthVaultV1 vault, RMTV4GrowthVaultV1.Plan memory plan) private {
+        (bytes memory first, bytes memory second) = _signed(vault, plan);
+        vm.expectRevert(RMTV4GrowthVaultV1.InvalidPlan.selector);
+        vault.reinvest(plan, first, second);
     }
 }

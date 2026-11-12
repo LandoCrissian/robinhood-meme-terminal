@@ -1,5 +1,6 @@
 import { encodeAbiParameters, keccak256, parseAbi, parseAbiItem, type Address, type Hash } from "viem";
 import type { GrowthEvidence } from "./growth-vault";
+import type { LaunchpadRouterVersion } from "./router-pins";
 
 export const launchPoolKeyParameter = {
   type: "tuple",
@@ -101,6 +102,7 @@ export type NewLaunchDeployment = {
   poolManager: Address;
   positionManager: Address;
   universalRouter: Address;
+  universalRouterVersion?: LaunchpadRouterVersion;
   quoter: Address;
   stateView: Address;
   permit2: Address;

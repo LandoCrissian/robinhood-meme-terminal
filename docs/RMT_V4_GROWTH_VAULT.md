@@ -22,6 +22,7 @@ export RMT_LAUNCHPAD_FACTORY_RUNTIME_HASH="$(node -p 'require(process.argv[1]).f
 export RMT_LAUNCHPAD_FACTORY_START_BLOCK="$(node -p 'require(process.argv[1]).deployBlock' "$rmt_scratch/deployment.json")"
 export RMT_LAUNCHPAD_GUARD_ADDRESS="$(node -p 'require(process.argv[1]).initializationGuard' "$rmt_scratch/deployment.json")"
 export RMT_LAUNCHPAD_GUARD_RUNTIME_HASH="$(node -p 'require(process.argv[1]).initializationGuardRuntimeHash' "$rmt_scratch/deployment.json")"
+export RMT_LAUNCHPAD_GROWTH_VAULT_TEST_FIXTURE=true
 export RMT_LAUNCHPAD_GROWTH_VAULT_DEPLOYER_ADDRESS="$(node -p 'require(process.argv[1]).deployer' "$rmt_scratch/growth.json")"
 export RMT_LAUNCHPAD_GROWTH_VAULT_DEPLOYER_RUNTIME_HASH="$(node -p 'require(process.argv[1]).deployerRuntimeHash' "$rmt_scratch/growth.json")"
 ```
@@ -48,7 +49,9 @@ The [browser workflow](../.github/workflows/launchpad-browser-acceptance.yml) al
 - Insufficient balances, a price outside the signed bounds, liquidity below the minimum or failed settlement leave the reserves held. Check the receipt and the vault's latest attempt outcome together. A successful transaction can record a deferral. A reverted transaction leaves the prior outcome in place. A valid plan can retry at the same nonce while fresh. Once one plan adds liquidity, the nonce advances. Obtain a new signed plan for an expired review or a new nonce.
 - The token page and `get_launch_checks` REST/MCP response distinguish original reserve fees credited by the ledger, fees transferred into the vault, growth-position fees collected, reserve held, actual liquidity added, custody and the last reviewed attempt. Fees still unharvested in the pool are outside the credited total. Inconsistent or unavailable accounting is reported as unknown.
 
-The vault checks the two signing addresses and the onchain execution bounds. The local fixture uses the launch's opening calculation for its reference and signs from one isolated Anvil node. A production candidate still needs a validated independent price methodology, genuinely independent signing operations, a policy for conflicting plans and key loss, reviewed economics and independent security review. A second still-valid plan for the same nonce can win the race to execution. There is no onchain cancellation, reviewer rotation or reserve withdrawal. Assets may remain held indefinitely if the other asset, an acceptable price or either review stays unavailable. [Guarded pool interoperability](RMT_V4_INTEROPERABILITY.md)
+The vault checks the two signing addresses and the onchain execution bounds. The local fixture uses a synthetic opening reference, bound to the canonical launch block and its timestamp for at most 120 seconds. Both fixture reviewers sign from one isolated Anvil node. The browser offers this opt-in only when the exact fork anchor, registry code and factory binding, and both disposable reviewer accounts verify. A registry pin can support historical health reads independently of new opt-in.
+
+A production candidate still needs verified venue adapters, genuinely independent signing operations, a policy for conflicting plans and key loss, approved economics and independent security review. A second still-valid plan for the same nonce can win the race to execution. The vault lacks onchain cancellation, reviewer rotation and reserve withdrawal. Assets may remain held indefinitely if the other asset, an acceptable price or either review stays unavailable. [Release review and price requirements](RMT_LAUNCH_RELEASE_CANDIDATE.md)
 
 ## Focused tests
 

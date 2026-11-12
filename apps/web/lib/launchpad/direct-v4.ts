@@ -1,9 +1,10 @@
 import {
-  createPublicClient, encodeAbiParameters, encodeFunctionData, erc20Abi, formatEther, http, parseAbi,
+  createPublicClient, encodeAbiParameters, encodeFunctionData, erc20Abi, formatEther, http, keccak256, parseAbi,
   parseAbiItem, parseEventLogs, toHex, zeroAddress,
   type Address, type Hex, type PublicClient, type TransactionReceipt,
 } from "viem";
-import { launchPoolId, launchPoolKeyParameter, type NewLaunchRecord } from "./launch-record";
+import { launchPoolId, launchPoolKeyParameter, type LaunchPoolKey, type NewLaunchRecord } from "./launch-record";
+import { launchpadRouterPins, launchpadRouterVersion, type LaunchpadRouterVersion } from "./router-pins";
 import type { BoundWallet, LaunchDeployment, LaunchRequest } from "./transactions";
 
 export const factoryAbi = parseAbi([
@@ -29,6 +30,16 @@ const permitAbi = parseAbi([
 const swapEvent = parseAbiItem("event Swap(bytes32 indexed id,address indexed sender,int128 amount0,int128 amount1,uint160 sqrtPriceX96,uint128 liquidity,int24 tick,uint24 fee)");
 const maxInput = (1n << 127n) - 1n;
 const priceScale = 1n << 192n;
+const hopPriceScale = 10n ** 36n;
+const exactInputFields = [
+  { name: "poolKey", ...launchPoolKeyParameter },
+  { name: "zeroForOne", type: "bool" }, { name: "amountIn", type: "uint128" },
+  { name: "amountOutMinimum", type: "uint128" },
+] as const;
+const exactInput20 = [{ type: "tuple", components: [...exactInputFields, { name: "hookData", type: "bytes" }] }] as const;
+const exactInput212 = [{
+  type: "tuple", components: [...exactInputFields, { name: "minHopPriceX36", type: "uint256" }, { name: "hookData", type: "bytes" }],
+}] as const;
 
 export function launchPublicClient(deployment: LaunchDeployment) {
   return createPublicClient({ transport: http(deployment.rpcUrl, { timeout: 12_000, retryCount: 1 }) });
@@ -79,7 +90,7 @@ export type SwapReview = {
 function assertLaunchPool(deployment: LaunchDeployment, record: NewLaunchRecord) {
   const key = record.poolKey;
   const guard = deployment.engineVersion === 2 ? deployment.initializationGuard : zeroAddress;
-  if (!deployment.tradingEnabled || record.chainId !== deployment.chainId
+  if (deployment.chainId !== 31337 || record.chainId !== deployment.chainId
     || record.engineVersion !== deployment.engineVersion || !guard
     || record.poolManager.toLowerCase() !== deployment.poolManager.toLowerCase()
     || record.factory.toLowerCase() !== deployment.factory.toLowerCase()
@@ -89,11 +100,44 @@ function assertLaunchPool(deployment: LaunchDeployment, record: NewLaunchRecord)
   }
 }
 
+function routerSupportsDeployment(deployment: LaunchDeployment, version: LaunchpadRouterVersion) {
+  if (version === "2.0") return true;
+  const rpc = new URL(deployment.rpcUrl);
+  return deployment.engineVersion === 2 && rpc.protocol === "http:"
+    && ["127.0.0.1", "localhost", "[::1]"].includes(rpc.hostname) && rpc.pathname === "/"
+    && !rpc.username && !rpc.password && !rpc.search && !rpc.hash;
+}
+
+function encodeSwap(
+  version: LaunchpadRouterVersion, poolKey: LaunchPoolKey, buy: boolean,
+  amountIn: bigint, minimumOut: bigint, deadline: number,
+) {
+  const swap = { poolKey, zeroForOne: buy, amountIn, amountOutMinimum: minimumOut, hookData: "0x" as const };
+  // The router's price is output base units per input base unit. Use the same reviewed floor as amountOutMinimum.
+  const minHopPriceX36 = version === "2.1.2" ? minimumOut * hopPriceScale / amountIn : undefined;
+  if (minHopPriceX36 === 0n) throw new Error("The minimum per-hop price is outside the supported range.");
+  const swapParams = minHopPriceX36 === undefined
+    ? encodeAbiParameters(exactInput20, [swap])
+    : encodeAbiParameters(exactInput212, [{ ...swap, minHopPriceX36 }]);
+  const [currencyIn, currencyOut] = buy ? [poolKey.currency0, poolKey.currency1] : [poolKey.currency1, poolKey.currency0];
+  // Explicit exact settlement leaves a nonzero delta and reverts if the pool consumes a partial input.
+  const settleParams = encodeAbiParameters([{ type: "address" }, { type: "uint256" }, { type: "bool" }], [currencyIn, amountIn, true]);
+  const takeParams = encodeAbiParameters([{ type: "address" }, { type: "uint256" }], [currencyOut, minimumOut]);
+  const input = encodeAbiParameters([{ type: "bytes" }, { type: "bytes[]" }],
+    ["0x060b0f", [swapParams, settleParams, takeParams]]);
+  return encodeFunctionData({ abi: routerAbi, functionName: "execute", args: ["0x10", [input], BigInt(deadline)] });
+}
+
 export async function prepareSwap(
   client: PublicClient, deployment: LaunchDeployment, wallet: BoundWallet, record: NewLaunchRecord,
   side: "buy" | "sell", amountIn: bigint, slippageBps: number,
 ): Promise<SwapReview> {
   assertLaunchPool(deployment, record);
+  const version = launchpadRouterVersion(deployment.universalRouter);
+  if (!deployment.tradingEnabled || !version || !routerSupportsDeployment(deployment, version)
+    || (deployment.universalRouterVersion && deployment.universalRouterVersion !== version)) {
+    throw new Error("Direct trading is unavailable for this router.");
+  }
   if (amountIn <= 0n || amountIn > maxInput || !Number.isInteger(slippageBps) || slippageBps < 10 || slippageBps > 500) {
     throw new Error("Enter a supported amount and slippage between 0.10% and 5.00%.");
   }
@@ -133,24 +177,10 @@ export async function prepareSwap(
     }
   }
 
-  const currencyIn = buy ? zeroAddress : token;
-  const currencyOut = buy ? token : zeroAddress;
-  const actions = "0x060b0f"; // SWAP_EXACT_IN_SINGLE, SETTLE, TAKE_ALL in the pinned Universal Router v2.0.
-  const swapParams = encodeAbiParameters([
-    { type: "tuple", components: [
-      { name: "poolKey", ...launchPoolKeyParameter },
-      { name: "zeroForOne", type: "bool" }, { name: "amountIn", type: "uint128" },
-      { name: "amountOutMinimum", type: "uint128" }, { name: "hookData", type: "bytes" },
-    ] },
-  ], [{ poolKey: record.poolKey, zeroForOne: buy, amountIn, amountOutMinimum: minimumOut, hookData: "0x" }]);
-  // Explicit exact settlement leaves a nonzero delta (and reverts) if the pool consumes a partial input.
-  const settleParams = encodeAbiParameters([{ type: "address" }, { type: "uint256" }, { type: "bool" }], [currencyIn, amountIn, true]);
-  const takeParams = encodeAbiParameters([{ type: "address" }, { type: "uint256" }], [currencyOut, minimumOut]);
-  const input = encodeAbiParameters([{ type: "bytes" }, { type: "bytes[]" }], [actions, [swapParams, settleParams, takeParams]]);
   const request = await prepare({
     kind: side, to: deployment.universalRouter, token, deadline,
     amountIn: amountIn.toString(), minimumOut: minimumOut.toString(), value: buy ? amountIn : 0n,
-    data: encodeFunctionData({ abi: routerAbi, functionName: "execute", args: ["0x10", [input], BigInt(deadline)] }),
+    data: encodeSwap(version, record.poolKey, buy, amountIn, minimumOut, deadline),
   });
   return { ...review, request };
 }
@@ -164,12 +194,24 @@ export async function boundReceipt(client: PublicClient, hash: Hex, request: Lau
   const [transaction, receipt] = await Promise.all([
     client.getTransaction({ hash }), client.getTransactionReceipt({ hash }),
   ]);
-  if (!sameAddress(transaction.from, request.from) || !sameAddress(transaction.to, request.to)
-    || transaction.input !== request.data || transaction.value !== BigInt(request.value) || transaction.blockHash !== receipt.blockHash) {
+  if (transaction.hash.toLowerCase() !== hash.toLowerCase() || receipt.transactionHash.toLowerCase() !== hash.toLowerCase()
+    || !sameAddress(transaction.from, request.from) || !sameAddress(transaction.to, request.to)
+    || !sameAddress(receipt.from, request.from) || !sameAddress(receipt.to, request.to)
+    || transaction.input !== request.data || transaction.value !== BigInt(request.value)
+    || transaction.blockHash !== receipt.blockHash || transaction.blockNumber !== receipt.blockNumber) {
     throw new Error("This transaction does not match the reviewed wallet request.");
   }
-  const block = await client.getBlock({ blockNumber: receipt.blockNumber });
-  if (block.hash !== receipt.blockHash) throw new Error("The receipt block changed. Check again after network recovery.");
+  const reviewedNumber = BigInt(request.blockNumber);
+  if (receipt.blockNumber < reviewedNumber) throw new Error("The receipt predates the reviewed network block.");
+  const [block, reviewedBlock] = await Promise.all([
+    client.getBlock({ blockNumber: receipt.blockNumber }), client.getBlock({ blockNumber: reviewedNumber }),
+  ]);
+  if (block.number !== receipt.blockNumber || block.hash !== receipt.blockHash) {
+    throw new Error("The receipt block changed. Check again after network recovery.");
+  }
+  if (reviewedBlock.number !== reviewedNumber || reviewedBlock.hash !== request.blockHash) {
+    throw new Error("The reviewed network block changed. Recovery requires the original network evidence.");
+  }
   return receipt;
 }
 
@@ -186,13 +228,29 @@ export async function verifySwap(
 ) {
   assertLaunchPool(deployment, record);
   const buy = request.kind === "buy";
+  const version = launchpadRouterVersion(request.to);
+  const amountIn = BigInt(request.amountIn ?? "0");
+  const minimumOut = BigInt(request.minimumOut ?? "0");
+  if (!version || !routerSupportsDeployment(deployment, version) || request.chainId !== record.chainId
+    || (!buy && request.kind !== "sell") || !sameAddress(request.token ?? null, record.token)
+    || !sameAddress(receipt.to, request.to) || !sameAddress(receipt.from, request.from) || receipt.status !== "success"
+    || amountIn <= 0n || amountIn > maxInput || minimumOut <= 0n || minimumOut > maxInput
+    || !Number.isSafeInteger(request.deadline) || request.deadline <= 0
+    || BigInt(request.value) !== (buy ? amountIn : 0n)
+    || request.data !== encodeSwap(version, record.poolKey, buy, amountIn, minimumOut, request.deadline)) {
+    throw new Error("The transaction does not match the reviewed pool swap.");
+  }
+  const routerCode = await client.getCode({ address: request.to, blockNumber: receipt.blockNumber });
+  if (!routerCode || keccak256(routerCode) !== launchpadRouterPins[version].runtimeHash) {
+    throw new Error("The receipt router runtime does not match its pinned hash.");
+  }
   const logs = receipt.logs.filter((log) => sameAddress(log.address, deployment.poolManager));
   const swaps = parseEventLogs({ abi: [swapEvent], logs }).filter(({ args }) =>
-    args.id === record.poolId && sameAddress(args.sender, deployment.universalRouter));
+    args.id === record.poolId && sameAddress(args.sender, request.to));
   const swap = swaps[0]?.args;
   const input = buy ? -(swap?.amount0 ?? 0n) : -(swap?.amount1 ?? 0n);
   const output = buy ? (swap?.amount1 ?? 0n) : (swap?.amount0 ?? 0n);
-  if (swaps.length !== 1 || input !== BigInt(request.amountIn ?? "0") || output < BigInt(request.minimumOut ?? "0") || output <= 0n) {
+  if (swaps.length !== 1 || input !== amountIn || output < minimumOut) {
     throw new Error("The receipt does not prove the reviewed pool swap.");
   }
   const transfers = parseEventLogs({ abi: erc20Abi, eventName: "Transfer",

@@ -47,6 +47,10 @@ export async function exerciseLocalGrowth({ rpcUrl, fixture, launch, onDeferred 
   const [, , reference] = await rpc.readContract({ address: launch.factory, abi: previewAbi, functionName: "preview",
     args: [0, 8000, parseEther("0.1")] });
   assert.equal(reference, BigInt(launch.sqrtPriceX96));
+  const openingBlock = await rpc.getBlock({ blockNumber: BigInt(launch.blockNumber), includeTransactions: false });
+  assert.equal(openingBlock.hash, launch.blockHash);
+  // This synthetic reference is valid only for the fresh, canonical launch in this fixture.
+  const referenceExpires = openingBlock.timestamp + 120n;
 
   async function send(functionName, args) {
     const hash = await wallet(submitter).writeContract({ ...call, functionName, args, gas: 2_500_000n });
@@ -56,11 +60,18 @@ export async function exerciseLocalGrowth({ rpcUrl, fixture, launch, onDeferred 
   }
   const state = () => rpc.readContract({ ...call, functionName: "snapshot" });
   async function reviewedAttempt(referenceSqrtPriceX96, maxNativeIn, maxTokenIn, minLiquidity, expected) {
-    const observedAt = (await rpc.getBlock()).timestamp;
+    const [head, canonicalOpening] = await Promise.all([
+      rpc.getBlock({ includeTransactions: false }),
+      rpc.getBlock({ blockNumber: openingBlock.number, includeTransactions: false }),
+    ]);
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    assert.equal(canonicalOpening.hash, openingBlock.hash, "Synthetic launch reference was reorged");
+    assert.ok(head.timestamp >= openingBlock.timestamp && head.timestamp < referenceExpires
+      && now >= openingBlock.timestamp && now < referenceExpires, "Synthetic launch reference expired");
     const order = {
       nonce: await rpc.readContract({ ...call, functionName: "nextNonce" }),
       maxNativeIn, maxTokenIn, minLiquidity, referenceSqrtPriceX96, maxSqrtDeviationBps: 50,
-      observedAt, deadline: observedAt + 180n,
+      observedAt: openingBlock.timestamp, deadline: referenceExpires,
     };
     const typed = {
       domain: { name: "RMT V4 Growth Vault", version: "1", chainId: 31337, verifyingContract: fixture.vault },
