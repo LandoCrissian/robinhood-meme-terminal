@@ -11,18 +11,24 @@ const output = process.env.RMT_LAUNCHPAD_TEST_OUTPUT ?? ".launch-qa";
 const executablePath = process.env.RMT_LAUNCHPAD_TEST_CHROME;
 const privatePreview = process.env.RMT_LAUNCHPAD_TEST_PRIVATE_PREVIEW === "true";
 const longevity = process.env.RMT_LAUNCHPAD_TEST_LONGEVITY === "true";
+const routerVersion = process.env.RMT_LAUNCHPAD_ROUTER_VERSION ?? "2.0";
+assert.ok(routerVersion === "2.0" || (routerVersion === "2.1.2" && longevity && !privatePreview));
+const requireWeb = createRequire(new URL("../../apps/web/package.json", import.meta.url));
 const growthPath = process.env.RMT_LAUNCHPAD_TEST_GROWTH_FIXTURE;
 const growth = growthPath ? JSON.parse(readFileSync(growthPath, "utf8")) : undefined;
 if (growth) assert.ok(longevity && !privatePreview, "Growth acceptance requires the direct loopback V2 fixture.");
 const networkName = privatePreview ? "Private preview · Chain 31337" : "Local Anvil · Base Sepolia fork";
 for (const input of [site, rpcUrl]) assert.ok(["localhost", "127.0.0.1", "[::1]"].includes(new URL(input).hostname));
 await mkdir(output, { recursive: true });
-async function rpc(method, params = []) {
+async function rpcResponse(method, params = []) {
   const response = await fetch(rpcUrl, {
     method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
   });
-  const result = await response.json();
+  return response.json();
+}
+async function rpc(method, params = []) {
+  const result = await rpcResponse(method, params);
   assert.ok(!result.error, result.error?.message);
   return result.result;
 }
@@ -33,7 +39,6 @@ let fixtureWallet;
 if (privatePreview) {
   assert.equal(new URL(site).protocol, "https:");
   assert.equal(new URL(site).origin, new URL(rpcUrl).origin);
-  const requireWeb = createRequire(new URL("../../apps/web/package.json", import.meta.url));
   const { createWalletClient, defineChain, http } = requireWeb("viem");
   const { privateKeyToAccount } = requireWeb("viem/accounts");
   const account = privateKeyToAccount(process.env.RMT_LAUNCHPAD_TEST_FIXTURE_KEY);
@@ -99,6 +104,81 @@ async function noOverflow(target) {
 }
 const capture = (target, name) => target.screenshot({ path: `${output}/${name}.png`, style: "nextjs-portal { display: none; }" });
 const submit = (name) => page.getByRole("button", { name, exact: true }).click();
+
+async function proveBrowserRouter(token) {
+  const { decodeAbiParameters, decodeFunctionData, encodeAbiParameters, encodeFunctionData, getAddress, keccak256,
+    parseAbi, parseAbiItem, toFunctionSelector, toHex, zeroAddress } = requireWeb("viem");
+  const pin = JSON.parse(readFileSync(new URL("../../packages/contracts/test/fixtures/rmt-v4-deployment-identities.json", import.meta.url), "utf8")).baseSepolia;
+  const router = getAddress((routerVersion === "2.1.2" ? pin.universalRouter212 : pin.universalRouter).address);
+  const config = await context.request.get(`${site}/api/launchpad/config`);
+  assert.equal(config.status(), 200);
+  const { deployment } = await config.json();
+  assert.equal(deployment.universalRouter, router);
+  assert.equal(deployment.universalRouterVersion, routerVersion);
+  const launchReceipt = await rpc("eth_getTransactionReceipt", [hashes[0]]);
+  assert.equal(launchReceipt.status, "0x1");
+  const read = async (operation, chainId = 31337) => {
+    const response = await context.request.get(`${site}/api/launchpad/public/${operation}?chainId=${chainId}&token=${token}`);
+    assert.equal(response.status(), chainId === 31337 ? 200 : 404);
+    return response.json();
+  };
+  const [{ data: { launch } }, { data: pool }, { data: activity }, wrongChain] = await Promise.all([
+    read("get_launch"), read("get_pool_state"), read("get_launch_activity"), read("get_launch", 84532),
+  ]);
+  assert.equal(wrongChain.status, "disabled");
+  const keyAbi = parseAbiItem("function key((address currency0,address currency1,uint24 fee,int24 tickSpacing,address hooks) poolKey)").inputs[0];
+  const poolKey = { currency0: zeroAddress, currency1: getAddress(token), fee: 3000, tickSpacing: 60, hooks: deployment.initializationGuard };
+  const poolId = keccak256(encodeAbiParameters([keyAbi], [poolKey]));
+  assert.equal(launch.transactionHash, hashes[0]);
+  assert.equal(launch.blockHash, launchReceipt.blockHash);
+  for (const identity of [launch, pool.evidence, activity.evidence]) {
+    assert.equal(identity.chainId, 31337);
+    assert.equal(getAddress(identity.poolManager), getAddress(pin.poolManager.address));
+    assert.deepEqual(identity.poolKey, poolKey);
+    assert.equal(identity.poolId, poolId);
+  }
+
+  const buyHash = hashes[1];
+  const sellHash = hashes[4];
+  const abi = parseAbi(["function execute(bytes commands,bytes[] inputs,uint256 deadline) payable"]);
+  const actionsAbi = [{ type: "bytes" }, { type: "bytes[]" }];
+  const swapAbi = parseAbiItem(`function swap(((address currency0,address currency1,uint24 fee,int24 tickSpacing,address hooks) poolKey,bool zeroForOne,uint128 amountIn,uint128 amountOutMinimum,${routerVersion === "2.1.2" ? "uint256 minHopPriceX36," : ""}bytes hookData) params)`).inputs[0];
+  for (const [hash, buy] of [[buyHash, true], [sellHash, false]]) {
+    const [tx, receipt] = await Promise.all([rpc("eth_getTransactionByHash", [hash]), rpc("eth_getTransactionReceipt", [hash])]);
+    assert.equal(getAddress(tx.to), router);
+    assert.equal(receipt.status, "0x1");
+    assert.ok(activity.activity.some((event) => event.transactionHash === hash && event.blockHash === receipt.blockHash));
+    const { args: [commands, inputs, deadline] } = decodeFunctionData({ abi, data: tx.input });
+    const [actions, parameters] = decodeAbiParameters(actionsAbi, inputs[0]);
+    const [swap] = decodeAbiParameters([swapAbi], parameters[0]);
+    assert.equal(commands, "0x10");
+    assert.equal(actions, "0x060b0f");
+    assert.equal(swap.zeroForOne, buy);
+    assert.deepEqual(swap.poolKey, poolKey);
+    assert.ok(swap.amountOutMinimum > 0n);
+    if (routerVersion === "2.1.2") {
+      assert.equal(swap.minHopPriceX36, swap.amountOutMinimum * 10n ** 36n / swap.amountIn);
+      assert.ok(swap.minHopPriceX36 > 0n);
+      if (buy) {
+        const impossible = encodeAbiParameters([swapAbi], [{ ...swap, minHopPriceX36: (1n << 256n) - 1n }]);
+        const input = encodeAbiParameters(actionsAbi, [actions, [impossible, parameters[1], parameters[2]]]);
+        const data = encodeFunctionData({ abi, functionName: "execute", args: [commands, [input], deadline] });
+        const prior = toHex(BigInt(receipt.blockNumber) - 1n);
+        const reverted = await rpcResponse("eth_call", [{ from: tx.from, to: tx.to, value: tx.value, data }, prior]);
+        const selector = toFunctionSelector("V4TooLittleReceivedPerHopSingle(uint256,uint256)");
+        const revertData = reverted.error?.data;
+        const encodedError = typeof revertData === "string" ? revertData : revertData?.data;
+        assert.ok(typeof encodedError === "string" && encodedError.startsWith(selector),
+          "The official router must reject a stricter per-hop bound in simulation.");
+      }
+    }
+  }
+  await writeFile(`${output}/guarded-pool.txt`, `${token} ${BigInt(launchReceipt.blockNumber)}\n`);
+  await writeFile(`${output}/browser-router.json`, JSON.stringify({
+    chainId: 31337, router, routerVersion, poolManager: deployment.poolManager, poolKey, poolId, buyHash, sellHash,
+    perHopRevertSimulated: routerVersion === "2.1.2",
+  }, null, 2));
+}
 
 try {
   assert.equal((await page.goto(site, { timeout: 180_000, waitUntil: "domcontentloaded" })).status(), 200);
@@ -167,7 +247,16 @@ try {
   await page.getByRole("checkbox").waitFor({ state: "detached" });
   await page.getByLabel("You pay (ETH)").fill(growth ? "0.0001" : "0.005");
   await submit("Review trade");
+  if (routerVersion === "2.1.2") await page.evaluate(() => { window.rmtFixture.dropNextHash = true; });
   await submit("Confirm buy in wallet");
+  if (routerVersion === "2.1.2") {
+    const recover = page.getByLabel("Recover wallet request");
+    await recover.fill(hashes[0]);
+    await submit("Check transaction");
+    await page.getByText("This transaction does not match the reviewed wallet request.", { exact: true }).waitFor();
+    await recover.fill(hashes[1]);
+    await submit("Check transaction");
+  }
   await page.getByText(/Settlement verified\. Received .*F/).waitFor();
   await submit("Sell");
   await page.getByLabel(`You pay (${symbol})`).fill("10");
@@ -180,6 +269,7 @@ try {
   await submit("Review trade");
   await submit("Confirm sell in wallet");
   await page.getByText(/Settlement verified\. Received .* ETH\./).waitFor();
+  if (longevity && !privatePreview) await proveBrowserRouter(token);
   if (longevity) {
     await submit("Review fee collection");
     await submit("Confirm fee collection in wallet");
@@ -253,11 +343,6 @@ try {
   }
   await creatorLaunch.waitFor();
   assert.deepEqual(failures, []);
-  if (growth) {
-    const launchReceipt = await rpc("eth_getTransactionReceipt", [hashes[0]]);
-    assert.equal(launchReceipt?.status, "0x1");
-    await writeFile(`${output}/guarded-pool.txt`, `${token} ${BigInt(launchReceipt.blockNumber)}\n`);
-  }
   console.log(`${privatePreview ? "Private HTTPS gateway with a locally signed wallet fixture" : "Loopback browser/fork"} passed launch, rejection, buy, two bounded sell approvals, sell, fee claim and creator view for ${token}.`);
 } finally {
   if (failures.length) console.error("Browser page errors:", failures);

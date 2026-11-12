@@ -1,10 +1,10 @@
 import { getAddress, isAddress, parseAbi, parseAbiItem, zeroAddress, type Hash, type PublicClient } from "viem";
-import type { NewLaunchRecord } from "../launchpad/launch-record";
-import { readLaunchpadRuntime, verifiedLaunchpadRpc, type LaunchpadRuntime } from "./new-launchpad-config";
+import { launchPoolId, type NewLaunchRecord } from "../launchpad/launch-record";
+import { readLaunchpadRuntime, verifiedGrowthVaultDeployer, verifiedLaunchpadRpc, type LaunchpadRuntime } from "./new-launchpad-config";
 import { makeLaunchHealth, readLaunchHealth } from "./new-launchpad-health";
 import { readGrowthVaultHealth } from "./new-launchpad-growth-health";
 import { sameHex } from "./new-launchpad-receipt";
-import { LaunchpadStore, type LaunchPageCursor } from "./new-launchpad-store";
+import { LaunchpadStore, type LaunchCheckpoint, type LaunchPageCursor } from "./new-launchpad-store";
 
 export const launchpadPublicOperations = ["list_launches", "get_launch", "get_launch_checks", "get_pool_state", "get_launch_activity"] as const;
 export type LaunchpadPublicOperation = typeof launchpadPublicOperations[number];
@@ -71,8 +71,7 @@ function launchEvidence(launch: NewLaunchRecord) {
   };
 }
 
-function indexEvidence(store: LaunchpadStore) {
-  const checkpoint = store.checkpoint();
+function indexEvidence(store: LaunchpadStore, checkpoint: LaunchCheckpoint | undefined) {
   return {
     indexedThrough: checkpoint?.number.toString() ?? null,
     indexedBlockHash: checkpoint?.hash ?? null,
@@ -93,12 +92,40 @@ async function assertLaunchCanonical(rpc: PublicClient, launch: NewLaunchRecord)
   return block;
 }
 
-async function readPoolState(rpc: PublicClient, config: LaunchpadRuntime, launch: NewLaunchRecord, withHealth: boolean) {
-  const expectedHook = config.deployment.engineVersion === 2 ? config.deployment.initializationGuard : zeroAddress;
-  if (launch.engineVersion !== config.deployment.engineVersion || !sameHex(launch.poolKey.hooks, expectedHook)
-    || !sameHex(launch.factory, config.deployment.factory) || !sameHex(launch.poolManager, config.deployment.poolManager)) {
-    throw new Error("Launch identity differs from the configured factory and guard");
+function assertPoolIdentity({ deployment }: LaunchpadRuntime, launch: NewLaunchRecord) {
+  const expectedHook = deployment.engineVersion === 2 ? deployment.initializationGuard : zeroAddress;
+  const { poolKey } = launch;
+  if (launch.chainId !== deployment.chainId || launch.engineVersion !== deployment.engineVersion
+    || !sameHex(launch.factory, deployment.factory) || !sameHex(launch.poolManager, deployment.poolManager)
+    || !sameHex(poolKey.currency0, zeroAddress) || !sameHex(poolKey.currency1, launch.token)
+    || !sameHex(poolKey.hooks, expectedHook) || poolKey.fee !== 3000 || poolKey.tickSpacing !== 60
+    || !sameHex(launch.poolId, launchPoolId(poolKey))) {
+    throw new Error("Launch identity differs from the configured chain, manager or full pool key");
   }
+}
+
+async function verifyIndexPage(
+  rpc: PublicClient, config: LaunchpadRuntime, checkpoint: LaunchCheckpoint | undefined, launches: NewLaunchRecord[],
+) {
+  const blocks = new Map<bigint, Hash>();
+  if (checkpoint) blocks.set(checkpoint.number, checkpoint.hash);
+  for (const launch of launches) {
+    assertPoolIdentity(config, launch);
+    const height = BigInt(launch.blockNumber);
+    if (launch.indexing === "indexed") {
+      if (!checkpoint || height > checkpoint.number) throw new Error("Indexed launch has no covering checkpoint");
+      continue;
+    }
+    const hash = blocks.get(height);
+    if (hash && !sameHex(hash, launch.blockHash)) throw new Error("Launch page contains conflicting block hashes");
+    blocks.set(height, launch.blockHash);
+  }
+  await Promise.all([...blocks].map(async ([height, hash]) => {
+    if (!sameHex((await exactBlock(rpc, height)).hash, hash)) throw new Error("Launch page was reorganized");
+  }));
+}
+
+async function readPoolState(rpc: PublicClient, config: LaunchpadRuntime, launch: NewLaunchRecord, withHealth: boolean) {
   const blockNumber = await rpc.getBlockNumber();
   if (blockNumber < BigInt(launch.blockNumber)) throw new Error("RPC is behind the launch");
   const initial = await exactBlock(rpc, blockNumber);
@@ -114,9 +141,11 @@ async function readPoolState(rpc: PublicClient, config: LaunchpadRuntime, launch
   ]);
   const positionState = { positionOwner, positionLiquidity: positionLiquidity.toString(), activeLiquidity: activeLiquidity.toString() };
   const health = withHealth ? await readLaunchHealth(rpc, config.deployment.stateView, launch, positionState, opening, initial) : undefined;
-  if (health && config.growthVaultDeployer) {
-    health.growth = await readGrowthVaultHealth(rpc, config.growthVaultDeployer.address, config.deployment.positionManager,
-      launch, health.fees, blockNumber, initial.timestamp);
+  if (health && launch.feePolicy?.reserveBps && config.growthVaultDeployer) {
+    const deployer = await verifiedGrowthVaultDeployer(config, rpc, blockNumber);
+    health.growth = deployer
+      ? await readGrowthVaultHealth(rpc, deployer, config.deployment.positionManager, launch, health.fees, blockNumber, initial.timestamp)
+      : { status: "unknown", reason: "The optional vault registry could not be verified at this block." };
   }
   if (!sameHex(initial.hash, (await exactBlock(rpc, blockNumber)).hash)) throw new Error("Pool state changed branches during verification");
   return {
@@ -165,12 +194,13 @@ async function readActivity(rpc: PublicClient, launch: NewLaunchRecord, limit: n
   const toBlock = cursor?.blockNumber ?? anchor;
   if (toBlock > anchor || toBlock < floor) throw new Error("Activity cursor is outside the available range");
   const logs = await rpc.getLogs({ address: launch.poolManager, event: swapEvent, args: { id: launch.poolId }, strict: true, fromBlock: floor, toBlock });
-  if (!sameHex(anchorBlock.hash, (await exactBlock(rpc, anchor)).hash)) throw new Error("Activity branch changed during verification");
   const events = logs.flatMap((log) => {
     const { args, blockNumber, blockHash, transactionHash, logIndex } = log;
     if (log.removed || blockNumber === null || !blockHash || !transactionHash || logIndex === null || !sameHex(log.address, launch.poolManager)
-      || !sameHex(args.id, launch.poolId) || blockNumber < floor || blockNumber > toBlock
-      || (cursor && blockNumber === cursor.blockNumber && logIndex >= cursor.logIndex)) return [];
+      || !sameHex(args.id, launch.poolId) || blockNumber < floor || blockNumber > toBlock) {
+      throw new Error("RPC returned activity outside the requested pool or range");
+    }
+    if (cursor && blockNumber === cursor.blockNumber && logIndex >= cursor.logIndex) return [];
     return [{ type: "swap" as const, blockNumber: blockNumber.toString(), blockHash, transactionHash, logIndex,
       amount0: args.amount0.toString(), amount1: args.amount1.toString(), sqrtPriceX96: args.sqrtPriceX96.toString(), tick: args.tick, fee: args.fee }];
   }).sort((a, b) => Number(b.blockNumber) - Number(a.blockNumber) || b.logIndex - a.logIndex);
@@ -182,6 +212,7 @@ async function readActivity(rpc: PublicClient, launch: NewLaunchRecord, limit: n
     if (!block || !sameHex(block.hash, event.blockHash)) throw new Error("Pool activity is no longer canonical");
     return { ...event, timestampUnixSeconds: block.timestamp.toString() };
   }));
+  if (!sameHex(anchorBlock.hash, (await exactBlock(rpc, anchor)).hash)) throw new Error("Activity branch changed during verification");
   return {
     activity,
     nextCursor: unique.length > limit ? encodeCursor(page[page.length - 1], { blockNumber: anchor, poolId: launch.poolId, hash: anchorBlock.hash }) : null,
@@ -194,7 +225,9 @@ async function readActivity(rpc: PublicClient, launch: NewLaunchRecord, limit: n
   };
 }
 
-export async function readLaunchpadPublicData(input: LaunchpadPublicInput): Promise<PublicResult> {
+const runtime = { config: readLaunchpadRuntime, rpc: verifiedLaunchpadRpc };
+
+export async function readLaunchpadPublicData(input: LaunchpadPublicInput, services = runtime): Promise<PublicResult> {
   const { operation, chainId, token, cursor, limit } = input;
   const isList = operation === "list_launches";
   const isActivity = operation === "get_launch_activity";
@@ -211,25 +244,37 @@ export async function readLaunchpadPublicData(input: LaunchpadPublicInput): Prom
 
   let store: LaunchpadStore | undefined;
   try {
-    const config = readLaunchpadRuntime();
+    const config = services.config();
     if (!config || config.deployment.chainId !== chainId) return { status: "disabled", reason: "Public launch data is unavailable for this chain." };
     store = new LaunchpadStore(config.databasePath, config.scope);
     const retryAfterSeconds = store.consumePublicQuota(operation, budgets[operation]);
     if (retryAfterSeconds) return { status: "rate_limited", reason: "Launch data read limit reached.", retryAfterSeconds };
     const pageSize = limit ?? 10;
     if (isList) {
+      const checkpoint = store.checkpoint();
       const rows = store.readPage(pageSize + 1, pageCursor);
       const launches = rows.slice(0, pageSize);
-      return { status: store.status(), data: { chainId, launches, nextCursor: rows.length > pageSize ? encodeCursor(launches[launches.length - 1]) : null, evidence: indexEvidence(store) } };
+      if (checkpoint || launches.length) await verifyIndexPage(await services.rpc(config), config, checkpoint, launches);
+      const latest = store.checkpoint();
+      if (latest?.number !== checkpoint?.number || latest?.hash !== checkpoint?.hash) throw new Error("Launch index changed during verification");
+      return { status: store.status(), data: { chainId, launches, nextCursor: rows.length > pageSize ? encodeCursor(launches[launches.length - 1]) : null, evidence: indexEvidence(store, checkpoint) } };
     }
 
     const launch = store.read({ token: getAddress(token!) })[0];
-    if (!launch) return store.status() === "ready" ? { status: "not_found", reason: "No verified launch for this token." }
-      : { status: "delayed", reason: "The launch index is catching up." };
-    if (operation === "get_launch") return { status: store.status(), data: { launch, evidence: launchEvidence(launch), index: indexEvidence(store) } };
+    if (!launch) {
+      if (store.status() !== "ready") return { status: "delayed", reason: "The launch index is catching up." };
+      const checkpoint = store.checkpoint();
+      if (checkpoint) await verifyIndexPage(await services.rpc(config), config, checkpoint, []);
+      return { status: "not_found", reason: "No verified launch for this token." };
+    }
 
     try {
-      const rpc = await verifiedLaunchpadRpc(config);
+      assertPoolIdentity(config, launch);
+      const rpc = await services.rpc(config);
+      if (operation === "get_launch") {
+        await assertLaunchCanonical(rpc, launch);
+        return { status: store.status(), data: { launch, evidence: launchEvidence(launch), index: indexEvidence(store, store.checkpoint()) } };
+      }
       if (isActivity) return { status: "ready", data: await readActivity(rpc, launch, pageSize, pageCursor) };
       const state = await readPoolState(rpc, config, launch, operation === "get_launch_checks");
       return operation === "get_pool_state" ? { status: "ready", data: state }

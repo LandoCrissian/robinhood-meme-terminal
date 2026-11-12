@@ -7,8 +7,8 @@ import { LaunchpadStore, type LaunchCheckpoint } from "./new-launchpad-store";
 const rangeSize = 256n;
 
 async function canonicalHash(rpc: PublicClient, blockNumber: bigint): Promise<Hash> {
-  const { hash } = await rpc.getBlock({ blockNumber, includeTransactions: false });
-  if (!hash) throw new Error("RPC did not return a canonical block hash");
+  const { number, hash } = await rpc.getBlock({ blockNumber, includeTransactions: false });
+  if (number !== blockNumber || !hash) throw new Error("RPC did not return the requested canonical block");
   return hash;
 }
 

@@ -161,7 +161,9 @@ export async function verifyLaunchReceipt(
     record.feePolicy ? readLaunchFeePolicy(rpc, deployment.factory, record.token, receipt.blockNumber) : undefined,
   ]);
   const canonicalBlock = await rpc.getBlock({ blockNumber: receipt.blockNumber, includeTransactions: false });
-  if (!sameHex(receipt.blockHash, canonicalBlock.hash)) throw new Error("Launch receipt block is no longer canonical");
+  if (canonicalBlock.number !== receipt.blockNumber || !sameHex(receipt.blockHash, canonicalBlock.hash)) {
+    throw new Error("Launch receipt block is no longer canonical");
+  }
   if (!sameHex(owner, deployment.factory) || liquidity.toString() !== record.liquidity) {
     throw new InvalidLaunchReceipt("Onchain position ownership or liquidity does not match the launch event");
   }

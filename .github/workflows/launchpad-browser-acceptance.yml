@@ -18,6 +18,8 @@ on:
       - "scripts/visual-qa/rmt-launchpad-browser.mjs"
       - "scripts/visual-qa/launchpad-growth-fixture.mjs"
       - "scripts/verify-guarded-v4-interoperability.mjs"
+      - "scripts/verify-hosted-v4-observation.mjs"
+      - "scripts/verify-hosted-v4-observation.test.mjs"
       - "scripts/visual-qa/exercise-guarded-router-local.mjs"
   workflow_dispatch:
 
@@ -39,14 +41,21 @@ jobs:
         include:
           - mode: v1
             engine: 1
+            router: "2.0"
           - mode: v2
             engine: 2
+            router: "2.0"
+          - mode: v2-router212
+            engine: 2
+            router: "2.1.2"
           - mode: growth
             engine: 2
+            router: "2.1.2"
     env:
       RMT_LAUNCHPAD_TEST_MODE: ${{ matrix.mode }}
       RMT_LAUNCHPAD_TEST_ENGINE: ${{ matrix.engine }}
       RMT_LAUNCHPAD_TEST_LONGEVITY: ${{ matrix.engine == 2 }}
+      RMT_LAUNCHPAD_ROUTER_VERSION: ${{ matrix.router }}
       RMT_LAUNCHPAD_TEST_URL: http://127.0.0.1:3196
       RMT_LAUNCHPAD_TEST_RPC_URL: http://127.0.0.1:8545
       RMT_LAUNCHPAD_TEST_OUTPUT: launchpad-browser-evidence
@@ -66,7 +75,10 @@ jobs:
           version: "1.7.1"
       - run: pnpm install --frozen-lockfile
       - if: matrix.engine == 2
-        run: pnpm --filter web exec tsx --test lib/server/new-launchpad-holders.test.ts lib/server/new-launchpad-growth-health.test.ts
+        run: |
+          pnpm --filter web exec tsx --test lib/launchpad/direct-v4.test.ts lib/server/new-launchpad-holders.test.ts \
+            lib/server/new-launchpad-growth-health.test.ts lib/server/growth-price-evidence.test.ts lib/server/new-launchpad-growth-config.test.ts
+          node --test scripts/verify-hosted-v4-observation.test.mjs
       - run: pnpm exec playwright install --with-deps chromium
       - run: bash scripts/install-v4-deps.sh
         working-directory: packages/contracts
@@ -127,6 +139,7 @@ jobs:
           export RMT_LAUNCHPAD_ENABLED=true RMT_LAUNCHPAD_TRADING_ENABLED=true RMT_LAUNCHPAD_CHAIN_ID=31337
           export RMT_LAUNCHPAD_RPC_URL="$RMT_LAUNCHPAD_TEST_RPC_URL" RMT_LAUNCHPAD_DATABASE_PATH="$scratch/launchpad.sqlite"
           if [[ "$RMT_LAUNCHPAD_TEST_MODE" == growth ]]; then
+            export RMT_LAUNCHPAD_GROWTH_VAULT_TEST_FIXTURE=true
             export RMT_LAUNCHPAD_TEST_GROWTH_FIXTURE="$scratch/growth.json"
             node packages/contracts/scripts/deploy-growth-vault-local.mjs "$RMT_LAUNCHPAD_TEST_RPC_URL" "$scratch/deployment.json" >"$RMT_LAUNCHPAD_TEST_GROWTH_FIXTURE"
             vault_pins="$(node -e '
@@ -152,15 +165,28 @@ jobs:
             sleep 1
           done
           pnpm test:launchpad-browser
-          if [[ "$RMT_LAUNCHPAD_TEST_MODE" == growth ]]; then
+          if [[ "$RMT_LAUNCHPAD_TEST_ENGINE" == 2 ]]; then
             read -r token launch_block <"$RMT_LAUNCHPAD_TEST_OUTPUT/guarded-pool.txt"
             [[ "$token" =~ ^0x[0-9a-fA-F]{40}$ && "$launch_block" =~ ^[1-9][0-9]*$ ]]
+            proof="$RMT_LAUNCHPAD_TEST_OUTPUT/router-$RMT_LAUNCHPAD_ROUTER_VERSION.json"
             node scripts/verify-guarded-v4-interoperability.mjs "$RMT_LAUNCHPAD_TEST_RPC_URL" "$token" \
-              "$RMT_LAUNCHPAD_GUARD_ADDRESS" "$launch_block" --router=2.0 >"$RMT_LAUNCHPAD_TEST_OUTPUT/router-2.0.json"
-            node scripts/visual-qa/exercise-guarded-router-local.mjs "$RMT_LAUNCHPAD_TEST_RPC_URL" "$token" \
-              "$RMT_LAUNCHPAD_GUARD_ADDRESS" >"$RMT_LAUNCHPAD_TEST_OUTPUT/router-2.1.2-receipts.json"
-            node scripts/verify-guarded-v4-interoperability.mjs "$RMT_LAUNCHPAD_TEST_RPC_URL" "$token" \
-              "$RMT_LAUNCHPAD_GUARD_ADDRESS" "$launch_block" --router=2.1.2 >"$RMT_LAUNCHPAD_TEST_OUTPUT/router-2.1.2.json"
+              "$RMT_LAUNCHPAD_GUARD_ADDRESS" "$launch_block" --router="$RMT_LAUNCHPAD_ROUTER_VERSION" >"$proof"
+            node -e '
+              const assert = require("node:assert/strict");
+              const browser = require("./" + process.argv[1]);
+              const independent = require("./" + process.argv[2]);
+              assert.equal(browser.chainId, independent.chainId);
+              assert.equal(browser.poolId, independent.poolId);
+              assert.equal(browser.routerVersion, independent.universalRouter.version);
+              assert.equal(browser.buyHash, independent.directRouterSettlements.buy.transactionHash);
+              assert.equal(browser.sellHash, independent.directRouterSettlements.sell.transactionHash);
+            ' "$RMT_LAUNCHPAD_TEST_OUTPUT/browser-router.json" "$proof"
+            if [[ "$RMT_LAUNCHPAD_TEST_MODE" == v2 ]]; then
+              node scripts/visual-qa/exercise-guarded-router-local.mjs "$RMT_LAUNCHPAD_TEST_RPC_URL" "$token" \
+                "$RMT_LAUNCHPAD_GUARD_ADDRESS" >"$RMT_LAUNCHPAD_TEST_OUTPUT/router-2.1.2-independent-receipts.json"
+              node scripts/verify-guarded-v4-interoperability.mjs "$RMT_LAUNCHPAD_TEST_RPC_URL" "$token" \
+                "$RMT_LAUNCHPAD_GUARD_ADDRESS" "$launch_block" --router=2.1.2 >"$RMT_LAUNCHPAD_TEST_OUTPUT/router-2.1.2-independent.json"
+            fi
           fi
       - name: Upload test-wallet browser evidence
         if: always()

@@ -6,7 +6,7 @@ import { encodeFunctionData, formatEther, getAddress, isAddress, isHash, parseEt
 import { displayAmount, factoryAbi, longevityFactoryAbi, prepareTransaction, priceInWei } from "../../../lib/launchpad/direct-v4";
 import { growthVaultDeployerAbi } from "../../../lib/launchpad/growth-vault";
 import { openingExamples } from "../../../lib/launchpad/opening-examples";
-import { walletMessage, type LaunchRequest } from "../../../lib/launchpad/transactions";
+import { walletMessage, type LaunchConfig, type LaunchRequest } from "../../../lib/launchpad/transactions";
 import { TransactionFeedback, useLaunchTransaction } from "./launch-transactions";
 import { useLaunchClient, useLaunchWallet, WalletConnection } from "./launch-wallet";
 
@@ -101,6 +101,7 @@ export function CreateLaunch() {
   const [error, setError] = useState("");
   const reviewRef = useRef<HTMLElement>(null);
   const transaction = useLaunchTransaction();
+  const growthSelected = draft.longevity === "on" && draft.growthVault === "on" && Number(draft.reserveFees) > 0;
 
   useEffect(() => {
     try {
@@ -119,7 +120,7 @@ export function CreateLaunch() {
   useEffect(() => {
     setReview(undefined);
     setAccepted(false);
-  }, [wallet?.generation]);
+  }, [wallet?.generation, growthDeployer]);
   useEffect(() => {
     if (review) reviewRef.current?.focus();
   }, [review]);
@@ -141,10 +142,10 @@ export function CreateLaunch() {
     setPreparing(true);
     try {
       const fields = validated(draft);
-      const useGrowth = growthDeployer && draft.longevity === "on" && draft.growthVault === "on" && Number(draft.reserveFees) > 0;
       let intentId = toHex(crypto.getRandomValues(new Uint8Array(32)));
       let growthVault: Address | undefined;
-      if (useGrowth) {
+      if (growthSelected) {
+        if (!growthDeployer) throw new Error("The test growth vault is unavailable. Choose a reserve wallet to continue.");
         const preparedIntent = draft.growthIntent.trim();
         if (!isHash(preparedIntent) || /^0x0+$/i.test(preparedIntent)) throw new Error("Enter the prepared test vault intent.");
         const registered = await client.readContract({ address: growthDeployer, abi: growthVaultDeployerAbi,
@@ -176,6 +177,33 @@ export function CreateLaunch() {
     } catch (cause) {
       setError(walletMessage(cause));
     } finally {
+      setPreparing(false);
+    }
+  }
+
+  async function confirm(current: Review) {
+    if (!current.growthVault) return transaction.send(current.request);
+    if (!deployment || !growthDeployer || !wallet || preparing) return;
+    setPreparing(true);
+    setError("");
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 15_000);
+    try {
+      const response = await fetch("/api/launchpad/config", { cache: "no-store", signal: controller.signal });
+      const fresh = await response.json() as LaunchConfig;
+      if (!response.ok || fresh.status !== "ready" || fresh.deployment.chainId !== deployment.chainId
+        || fresh.deployment.factory !== deployment.factory || fresh.deployment.growthVaultDeployer !== growthDeployer) {
+        setReview(undefined);
+        setAccepted(false);
+        refresh();
+        throw new Error("The test vault can no longer be verified. Review the reserve choice again.");
+      }
+      if (!stillSelected(wallet)) throw new Error("Wallet selection changed. Review the launch again.");
+      await transaction.send(current.request);
+    } catch (cause) {
+      setError(walletMessage(cause));
+    } finally {
+      window.clearTimeout(timeout);
       setPreparing(false);
     }
   }
@@ -218,6 +246,10 @@ export function CreateLaunch() {
                 <input type="checkbox" checked={draft.growthVault === "on"} onChange={(event) => edit("growthVault", event.target.checked ? "on" : "off")} />
                 <span>Commit the reserve to a test growth vault</span>
               </label>}
+              {!growthDeployer && growthSelected && <div className="lpNotice">
+                <p>The saved test vault is unavailable.</p>
+                <button type="button" className="lpButton lpSecondary" onClick={() => edit("growthVault", "off")}>Use a reserve wallet</button>
+              </div>}
               {growthDeployer && draft.growthVault === "on"
                 ? <label>Prepared vault intent<input required value={draft.growthIntent} maxLength={66} spellCheck={false} onChange={(event) => edit("growthIntent", event.target.value)} placeholder="0x…" />
                   <small>Use the intent from a vault registered to the connected test wallet.</small></label>
@@ -281,8 +313,8 @@ export function CreateLaunch() {
           {review.growthVault && <p>Reserve fees can stay held indefinitely. The vault has no withdrawal path.</p>}
           <label className="lpCheck"><input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} />
             <span>I reviewed the allocations, fee terms, test ETH deposit, and permanent position lock. <Link href="/risks" target="_blank">Read risks</Link>.</span></label>
-          <button className="lpButton" type="button" disabled={!accepted || transaction.busy || Boolean(transaction.pending) || Boolean(transaction.result?.launch)}
-            onClick={() => void transaction.send(review.request)}>Confirm in wallet</button>
+          <button className="lpButton" type="button" disabled={!accepted || preparing || transaction.busy || Boolean(transaction.pending) || Boolean(transaction.result?.launch)}
+            onClick={() => void confirm(review)}>Confirm in wallet</button>
         </>}
       </section>
     </div>

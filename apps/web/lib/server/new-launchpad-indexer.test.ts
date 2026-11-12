@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { encodeAbiParameters, encodeEventTopics, getAddress, keccak256, parseAbiItem, toHex, zeroAddress, type AbiEvent, type Address, type Hash, type Log, type PublicClient, type TransactionReceipt } from "viem";
-import { launchCreatedEvent, launchPoolId, longevityPolicyCommittedEvent, type LaunchFeePolicy, type LaunchPoolKey } from "../launchpad/launch-record";
+import { launchCreatedEvent, launchPoolId, longevityPolicyCommittedEvent, type LaunchFeePolicy, type LaunchPoolKey, type NewLaunchRecord } from "../launchpad/launch-record";
 import { readLaunchpadRuntime, verifyLaunchpadRuntime } from "./new-launchpad-config";
 import { makeLaunchHealth, readLaunchHealth } from "./new-launchpad-health";
 import { syncNewLaunchpadRange } from "./new-launchpad-indexer";
@@ -105,11 +105,12 @@ function makeReceipt(poolKey = key, policy?: LaunchFeePolicy): TransactionReceip
 }
 
 function fixtureRpc(receipt = makeReceipt()) {
-  const chain = { head: 10n, providerDown: false, orphaned: false, wrongOwner: false, wrongPolicy: false, logQueryCount: 0 };
+  const chain = { head: 10n, providerDown: false, orphaned: false, wrongBlockNumber: false, wrongOwner: false, wrongPolicy: false, logQueryCount: 0 };
   const rpc = {
     async getBlockNumber() { return chain.head; },
     async getBlock({ blockNumber }: { blockNumber: bigint }) {
-      return { hash: hash(Number(blockNumber) + (chain.orphaned && blockNumber > 10n ? 1000 : 0)) };
+      return { number: chain.wrongBlockNumber ? blockNumber + 1n : blockNumber,
+        hash: hash(Number(blockNumber) + (chain.orphaned && blockNumber > 10n ? 1000 : 0)) };
     },
     async getLogs({ address: emitter, fromBlock, toBlock }: { address: Address; fromBlock: bigint; toBlock: bigint }) {
       assert.equal(emitter, factory);
@@ -239,6 +240,97 @@ test("V2 uses an isolated durable scope and preserves the existing V1 index on r
   } finally {
     v1.close();
     v2.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("rechecks chain-qualified guarded reads across restart, provider failure and a reorg", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "rmt-guarded-public-"));
+  const runtime = { ...guardedConfig, databasePath: join(directory, "launches.sqlite") };
+  const { chain, rpc, receipt } = fixtureRpc(makeReceipt(guardedKey, guardedPolicy));
+  const id = launchPoolId(guardedKey);
+  let activityPool = id;
+  const publicRpc = {
+    ...rpc,
+    async getBlock(args: Parameters<typeof rpc.getBlock>[0]) {
+      return { ...await rpc.getBlock(args), timestamp: 1_800_000_000n };
+    },
+    async getLogs(args: { address: Address; args: { id: Hash }; fromBlock: bigint; toBlock: bigint }) {
+      assert.equal(args.address, poolManager);
+      assert.equal(args.args.id, id);
+      assert.equal(args.fromBlock, 11n);
+      assert.equal(args.toBlock, 11n);
+      return [{ ...receipt.logs[0], address: poolManager, args: { id: activityPool, amount0: 10n, amount1: -9n,
+        sqrtPriceX96: sqrtPrice, tick: 0, fee: 3000 } }];
+    },
+    async readContract(args: { functionName: string; blockNumber: bigint; args: readonly [Address, number] }) {
+      assert.equal(args.blockNumber, 11n);
+      if (args.functionName === "getSlot0") return [sqrtPrice, 0, 0, 3000];
+      if (args.functionName === "totalSupply") return supply;
+      if (args.functionName === "feeTotals") return [0n, 0n, 0n, 0n];
+      if (args.functionName === "feeBucket") return [[creator, guardedPolicy.treasury, guardedPolicy.reserve][args.args[1]], 0n, 0n, 0n, 0n];
+      if (args.functionName === "ownerOf") return factory;
+      if (args.functionName === "feePolicy") return [creator, guardedPolicy.treasury, guardedPolicy.reserve, 5000, 3000, 2000];
+      return liquidity;
+    },
+  } as unknown as PublicClient;
+  const services = { config: () => runtime, rpc: async () => publicRpc };
+  const read = (operation: Parameters<typeof readLaunchpadPublicData>[0]["operation"]) =>
+    readLaunchpadPublicData({ operation, chainId: 31337, ...(operation === "list_launches" ? {} : { token }) }, services);
+  const identity = { chainId: 31337, factory, poolManager, poolKey: guardedKey, poolId: id };
+  let store = new LaunchpadStore(runtime.databasePath, runtime.scope);
+  try {
+    await syncNewLaunchpadRange(store, rpc, runtime);
+    chain.head = 11n;
+    const launch = await verifyLaunchReceipt(rpc, runtime.deployment, tx, { creator, intentId });
+    store.publish(launch);
+    assert.equal((await read("get_launch")).status, "ready");
+    store.close();
+    store = new LaunchpadStore(runtime.databasePath, runtime.scope);
+
+    chain.providerDown = true;
+    await assert.rejects(() => syncNewLaunchpadRange(store, rpc, runtime), /RPC unavailable/);
+    assert.equal((await read("get_launch")).status, "delayed");
+    assert.equal(store.checkpoint()?.number, 10n);
+    chain.providerDown = false;
+    await syncNewLaunchpadRange(store, rpc, runtime);
+    assert.equal(store.read().length, 1);
+    assert.equal(store.read()[0].indexing, "indexed");
+
+    const list = await read("list_launches");
+    assert.equal(list.status, "ready");
+    assert.equal((list.data as { launches: NewLaunchRecord[] }).launches[0].poolId, id);
+    for (const operation of ["get_launch", "get_launch_checks", "get_pool_state", "get_launch_activity"] as const) {
+      const result = await read(operation);
+      assert.equal(result.status, "ready", operation);
+      const evidence = (result.data as { evidence: typeof identity }).evidence;
+      for (const field of Object.keys(identity) as (keyof typeof identity)[]) {
+        assert.deepEqual(evidence[field], identity[field], `${operation} ${field}`);
+      }
+    }
+    const checks = await read("get_launch_checks");
+    assert.equal((checks.data as { health: { fees: { status: string } } }).health.fees.status, "verified");
+    assert.equal((await readLaunchpadPublicData({ operation: "get_launch", chainId: 84532, token }, services)).status, "disabled");
+    activityPool = poolId;
+    assert.equal((await read("get_launch_activity")).status, "delayed");
+    activityPool = id;
+
+    chain.wrongBlockNumber = true;
+    await assert.rejects(() => syncNewLaunchpadRange(store, rpc, runtime), /requested canonical block/);
+    assert.equal((await read("get_launch")).status, "delayed");
+    assert.equal(store.checkpoint()?.hash, blockHash);
+    chain.wrongBlockNumber = false;
+    chain.orphaned = true;
+    for (const operation of ["list_launches", "get_launch", "get_launch_checks", "get_pool_state", "get_launch_activity"] as const) {
+      assert.equal((await read(operation)).status, "delayed", operation);
+    }
+    assert.equal((await readLaunchpadPublicData({ operation: "get_launch", chainId: 31337, token: address(99) }, services)).status, "delayed");
+    assert.equal((await read("get_launch")).data, undefined);
+    await syncNewLaunchpadRange(store, rpc, runtime);
+    assert.equal((await read("get_launch")).status, "not_found");
+    assert.deepEqual(((await read("list_launches")).data as { launches: NewLaunchRecord[] }).launches, []);
+  } finally {
+    store.close();
     rmSync(directory, { recursive: true, force: true });
   }
 });

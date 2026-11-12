@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { readLaunchpadRuntime, verifiedLaunchpadRpc } from "../../../../lib/server/new-launchpad-config";
+import { readBrowserLaunchpadDeployment, readLaunchpadRuntime, verifiedLaunchpadRpc } from "../../../../lib/server/new-launchpad-config";
 import { LaunchpadStore } from "../../../../lib/server/new-launchpad-store";
 
 export const runtime = "nodejs";
@@ -15,8 +15,8 @@ export async function GET() {
     }
     const store = new LaunchpadStore(config.databasePath, config.scope);
     store.close();
-    await verifiedLaunchpadRpc(config);
-    return NextResponse.json({ status: "ready", deployment: config.deployment }, { headers });
+    const rpc = await verifiedLaunchpadRpc(config);
+    return NextResponse.json({ status: "ready", deployment: await readBrowserLaunchpadDeployment(config, rpc) }, { headers });
   } catch {
     return NextResponse.json({ status: "unavailable", reason: "The local launch stack could not be verified." }, { status: 503, headers });
   }

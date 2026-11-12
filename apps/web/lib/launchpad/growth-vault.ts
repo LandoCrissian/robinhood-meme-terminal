@@ -2,6 +2,8 @@ import { parseAbi, type Address } from "viem";
 
 export const growthVaultDeployerAbi = parseAbi([
   "function factory() view returns (address)",
+  "function reviewerA() view returns (address)",
+  "function reviewerB() view returns (address)",
   "function vaultFor(address creator,bytes32 intentId) view returns (address)",
   "function createVault(bytes32 intentId) returns (address)",
 ]);
