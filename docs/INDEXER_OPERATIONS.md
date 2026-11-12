@@ -1,5 +1,13 @@
 # Persistent Indexer Operations
 
+## Local RMT Launch v1
+
+The new launchpad uses a separate Node 22.13+ SQLite index. Start the Anvil deployment described by `packages/contracts/scripts/deploy-launchpad-local.mjs`, copy its factory evidence into `apps/web/.env.local` using the launchpad settings in `apps/web/.env.example`, and use an absolute SQLite path in a writable local directory. From `apps/web`, start the worker with `node --env-file=.env.local --import tsx scripts/new-launchpad-indexer.ts` and start the web app with the same environment.
+
+The worker reads only the configured factory's `LaunchCreated` events from its verified deployment block, in ranges of at most 256 blocks. A direct receipt submitted to `/api/launchpad/launches` appears immediately after pool, funding, custody and canonical block verification. The worker reconciles pending records against the current chain and rewinds SQLite rows to the last common checkpoint after a reorg. A missing worker or provider failure leaves the last evidence visible with a delayed status. The local launchpad requires a persistent filesystem shared by the web process and worker. Keep the loopback Anvil RPC private.
+
+The following sections describe the deployed V6 compatibility service.
+
 ## Purpose
 
 Production discovery reads confirmed launch and trade data from the persistent indexer in `apps/indexer`. The public launch route keeps its last confirmed snapshot during indexer delays instead of making each visitor repeat a full-history RPC scan. The indexer is a read-only chain consumer. It has no wallet, private key, governance role, or ability to move funds.
