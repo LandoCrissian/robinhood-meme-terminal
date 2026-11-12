@@ -25,7 +25,7 @@ Set the web and indexer processes to the same loopback RPC, factory address, run
 - Native ETH is `currency0`. The launch ERC-20 is `currency1`. The v4 fee is 0.30%, tick spacing is 60, hooks are zero, and the tick range is `[-887220, 887220]`. RMT charges zero creation or trading fees in this draft.
 - The initial price derives from requested token and native inventory. `preview` computes the exact funded amounts and liquidity with v4 rounding. The creator receives all tokens outside the actual deposit and any native dust. A creator contract needs to accept the native refund when the deposit rounds down.
 - The factory retains the position NFT permanently. Its creator-only claim calls the standard v4 zero-liquidity decrease action, verifies the position's custody and unchanged liquidity, and sends accrued fees to the creator. There is no principal withdrawal or mutable policy.
-- Deployment, initialization, liquidity funding and custody must all succeed before `LaunchCreated` is emitted. A preinitialized canonical PoolKey reverts. Since an attacker can predict an address from public CREATE2 inputs, a failed launch can be retried with a new intent. Review this griefing exposure before any public release.
+- Deployment, initialization, liquidity funding and custody must all succeed before `LaunchCreated` is emitted. A preinitialized canonical PoolKey reverts. The [pre-initialization analysis and test evidence](../../../docs/RMT_V4_POOL_PREINITIALIZATION.md) describes preview recovery and a proposed production mitigation.
 
 ## Verification
 
