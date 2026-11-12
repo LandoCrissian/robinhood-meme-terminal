@@ -1,27 +1,9 @@
 import { pathToFileURL } from "node:url";
+import { staticPublicSitemap } from "../app/sitemap";
 import { submitIndexNowUrls } from "../lib/server/indexnow";
 import { RMT_SITE_URL } from "../lib/site-identity";
 
-const ALL_MARKET_DIRECTORY_ROUTES = [
-  "/markets/robinhood-chain",
-  "/markets/robinhood-chain/trending",
-  "/markets/robinhood-chain/new",
-  "/markets/robinhood-chain/active"
-] as const;
-
-const ALL_STATIC_PUBLIC_ROUTES = [
-  "/",
-  "/rmt",
-  "/robinhood-chain",
-  ...ALL_MARKET_DIRECTORY_ROUTES,
-  "/status",
-  "/sources",
-  "/support",
-  "/risks",
-  "/terms",
-  "/privacy",
-  "/experience"
-] as const;
+const ALL_STATIC_PUBLIC_ROUTES = staticPublicSitemap().map(({ url }) => new URL(url).pathname);
 
 const staticRules = [
   {
@@ -38,14 +20,6 @@ const staticRules = [
   {
     matches: (file: string) => file.startsWith("apps/web/app/rmt/"),
     routes: ["/rmt"] as const
-  },
-  {
-    matches: (file: string) => file.startsWith("apps/web/app/robinhood-chain/"),
-    routes: ["/robinhood-chain"] as const
-  },
-  {
-    matches: (file: string) => file.startsWith("apps/web/app/markets/robinhood-chain/"),
-    routes: ALL_MARKET_DIRECTORY_ROUTES
   },
   {
     matches: (file: string) => file.startsWith("apps/web/app/sources/"),
@@ -70,10 +44,6 @@ const staticRules = [
   {
     matches: (file: string) => file.startsWith("apps/web/app/privacy/"),
     routes: ["/privacy"] as const
-  },
-  {
-    matches: (file: string) => file.startsWith("apps/web/app/experience/"),
-    routes: ["/experience"] as const
   }
 ] as const;
 

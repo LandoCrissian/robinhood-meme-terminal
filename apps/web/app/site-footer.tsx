@@ -5,11 +5,8 @@ export function SiteFooter() {
   return (
     <footer className="siteFooter">
       <Link href="/rmt">RMT identity</Link>
-      <Link href="/robinhood-chain">Robinhood Chain</Link>
-      <Link href="/markets/robinhood-chain">Markets</Link>
       <Link href="/terms">Terms</Link>
       <Link href="/privacy">Privacy</Link>
-      <Link href="/experience">Experience controls</Link>
       <Link href="/risks">Risks</Link>
       <Link href="/support">Support</Link>
       <Link href="/status">Status</Link>
