@@ -1,5 +1,6 @@
-import { redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
-export default function PausedCreatorConsentLayout({ children: _children }: Readonly<{ children: React.ReactNode }>) {
-  redirect("/");
+// The old consent UI is retained for source compatibility behind the retired route.
+export default function RetiredCreatorConsentLayout() {
+  notFound();
 }
