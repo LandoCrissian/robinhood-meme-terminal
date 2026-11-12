@@ -1,28 +1,19 @@
+import { redirect } from "next/navigation";
+import { getAddress, isAddress } from "viem";
 import "./vnext/vnext-terminal.css";
-import { notFound } from "next/navigation";
-import { vNextProductionShellReady } from "../lib/vnext/release-readiness";
-import { VNextTerminalShell } from "./vnext/vnext-terminal-shell";
-import { parseVNextTerminalLocation } from "../lib/vnext/terminal-location";
-import { projectTokenTerminalEntry } from "../lib/vnext/terminal-entry";
-import { readLaunchIntelligence } from "../lib/server/launch-intelligence-reader";
-import { launchTerminalEntry } from "../lib/vnext/launch-presentation";
+import "./(launchpad)/launchpad.css";
+import { LaunchDirectory } from "./(launchpad)/_components/launch-directory";
+import { legacyRmtAddress } from "../lib/launchpad/legacy-rmt";
 
-export const dynamic = "force-dynamic";
-export { metadata } from "./vnext/page";
+export const metadata = { title: "RMT Launch | Token Launchpad", robots: { index: false, follow: false } };
 
-export default async function Home({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  if (!vNextProductionShellReady(process.env)) notFound();
-  const parameters = await searchParams;
-  const query = new URLSearchParams();
-  for (const [key, value] of Object.entries(parameters)) {
-    if (typeof value === "string") query.set(key, value);
+export default async function Home({ searchParams }: { searchParams: Promise<{ market?: string; side?: string; panel?: string }> }) {
+  const { market, side, panel } = await searchParams;
+  if (panel === "portfolio") redirect("/wallet");
+  if (typeof market === "string" && isAddress(market)) {
+    const address = getAddress(market);
+    if (legacyRmtAddress(address)) redirect("/rmt#legacy-token");
+    redirect(`/launches/${address}${side === "buy" || side === "sell" ? `?side=${side}` : ""}`);
   }
-  const initialLocation = parseVNextTerminalLocation(query.toString());
-  let initialMarket = projectTokenTerminalEntry(initialLocation, query.get("project") ?? undefined);
-  if (initialLocation.context === "asset" && query.has("launch")) {
-    const launches = await readLaunchIntelligence({token:initialLocation.market,limit:50},{timeoutMs:500});
-    const launch=launches.entries.find(entry=>entry.launchId===query.get("launch"));
-    initialMarket ??= launchTerminalEntry(initialLocation,launch);
-  }
-  return <VNextTerminalShell initialLocation={initialLocation} initialMarket={initialMarket} />;
+  return <LaunchDirectory />;
 }

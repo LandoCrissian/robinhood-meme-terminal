@@ -1,23 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import "./styles.css";
-import "./feed.css";
-import "./token-detail.css";
-import "./reward-vault.css";
 import "./wallet.css";
 import "./brand.css";
 import "./legal.css";
-import "./profile.css";
 import "./mobile-polish.css";
 import "./desktop-polish.css";
-import "./trading-terms.css";
-import "./watchlist-alerts.css";
-import "./community.css";
-import "./experience.css";
-import "./interface-polish.css";
-import { Providers } from "./providers";
-import { PublicChrome } from "./public-chrome";
-import { TradingTermsGate } from "./trading-terms-gate";
-import { FirstVisitGuide } from "./first-visit-guide";
+import { AppRuntime } from "./app-runtime";
 import {
   RMT_SITE_ALTERNATE_NAME,
   RMT_SITE_DESCRIPTION,
@@ -89,12 +77,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         />
       </head>
       <body>
-        <Providers>
-          <PublicChrome />
-          <TradingTermsGate />
-          <FirstVisitGuide />
-          {children}
-        </Providers>
+        <AppRuntime>{children}</AppRuntime>
       </body>
     </html>
   );

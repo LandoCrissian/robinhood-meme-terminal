@@ -13,11 +13,13 @@ export function PriceHistoryChart({
   points,
   symbol,
   ethUsd,
+  quoteAsset,
   marketCapUsd
 }: {
   points: PricePoint[];
   symbol: string;
   ethUsd?: number;
+  quoteAsset?: "ETH";
   marketCapUsd?: number;
 }) {
   if (points.length < 2) {
@@ -58,8 +60,8 @@ export function PriceHistoryChart({
     <div className="priceChart">
       <div className="priceChartHeader">
         <div>
-          <p className="eyebrow">LIVE USD PRICE</p>
-          <h3>{latestUsd === undefined ? "USD unavailable" : formatUsd(latestUsd)}</h3>
+          <p className="eyebrow">{quoteAsset ? "RECENT POOL PRICE" : "LIVE USD PRICE"}</p>
+          <h3>{quoteAsset ? `${formatEther(points.at(-1)!.priceWei)} ETH` : latestUsd === undefined ? "USD unavailable" : formatUsd(latestUsd)}</h3>
           <small>
             {marketCapUsd === undefined ? `Price per ${symbol}` : `Market cap ${formatUsd(marketCapUsd)}`}
           </small>
@@ -68,7 +70,7 @@ export function PriceHistoryChart({
           {isPositive ? "+" : ""}{change.toFixed(2)}%
         </span>
       </div>
-      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${symbol} USD price history across ${points.length} recent trades`}>
+      <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={`${symbol} ${quoteAsset ?? "USD"} price history across ${points.length} recent trades`}>
         <defs>
           <linearGradient id="priceArea" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#48ed6d" stopOpacity="0.28" />

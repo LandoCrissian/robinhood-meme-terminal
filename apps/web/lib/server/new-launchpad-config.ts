@@ -57,7 +57,7 @@ function parseLocalRpcUrl(raw: string): string {
 }
 
 export function readLaunchpadRuntime(env: Environment = process.env): LaunchpadRuntime | null {
-  if (env.RMT_LAUNCHPAD_ENABLED !== "true" || env.VERCEL_ENV === "production") return null;
+  if (env.RMT_LAUNCHPAD_ENABLED !== "true" || (env.VERCEL === "1" || Boolean(env.VERCEL_ENV))) return null;
   if (required(env, "CHAIN_ID") !== "31337") throw new Error("Only the local launchpad factory is enabled");
   const chainId = 31337;
   const contracts: ContractPins = {

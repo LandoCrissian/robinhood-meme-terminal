@@ -1,0 +1,195 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { encodeFunctionData, formatEther, parseEther, toHex } from "viem";
+import { displayAmount, factoryAbi, prepareTransaction, priceInWei } from "../../../lib/launchpad/direct-v4";
+import { openingExamples } from "../../../lib/launchpad/opening-examples";
+import { walletMessage, type LaunchRequest } from "../../../lib/launchpad/transactions";
+import { TransactionFeedback, useLaunchTransaction } from "./launch-transactions";
+import { useLaunchClient, useLaunchWallet, WalletConnection } from "./launch-wallet";
+
+const supplies = ["1 million", "100 million", "1 billion"];
+const draftKey = "rmt:launchpad:draft:v1";
+const initial = { name: "", symbol: "", projectURI: "", supplyPreset: "0", allocation: "80", seed: "0.1" };
+type Draft = typeof initial;
+
+function validated(draft: Draft) {
+  const name = draft.name.trim();
+  const symbol = draft.symbol.trim().toUpperCase();
+  const projectURI = draft.projectURI.trim();
+  const length = (value: string) => new TextEncoder().encode(value).length;
+  if (!name || length(name) > 64 || /[\x00-\x1f\x7f]/.test(name)) throw new Error("Enter a token name up to 64 bytes.");
+  if (!/^[A-Z0-9]{1,12}$/.test(symbol)) throw new Error("Use 1–12 letters or digits for the symbol.");
+  if (projectURI) {
+    let url: URL | undefined;
+    try { url = new URL(projectURI); } catch { /* User can fix the value. */ }
+    if (!url || url.protocol !== "https:" || url.username || url.password || length(projectURI) > 512) {
+      throw new Error("Enter an HTTPS project link up to 512 bytes, or leave it empty.");
+    }
+  }
+  const supplyPreset = Number(draft.supplyPreset);
+  if (!/^[0-2]$/.test(draft.supplyPreset) || !/^\d{2,3}(?:\.\d{1,2})?$/.test(draft.allocation)) {
+    throw new Error("Choose a supply preset and enter a liquidity allocation to two decimal places.");
+  }
+  const poolAllocationBps = Math.round(Number(draft.allocation) * 100);
+  if (poolAllocationBps < 1_000 || poolAllocationBps > 10_000) throw new Error("Allocate 10–100% of supply to liquidity.");
+  if (!/^\d{1,3}(?:\.\d{1,18})?$/.test(draft.seed)) throw new Error("Enter the initial ETH deposit as a decimal.");
+  const nativeAmount = parseEther(draft.seed);
+  if (nativeAmount < parseEther("0.001") || nativeAmount > parseEther("100")) throw new Error("The test deposit must be between 0.001 and 100 ETH.");
+  return { name, symbol, projectURI, supplyPreset, poolAllocationBps, nativeAmount };
+}
+
+type Review = {
+  request: LaunchRequest;
+  symbol: string;
+  supply: bigint;
+  depositedETH: bigint;
+  depositedTokens: bigint;
+  maxETH: bigint;
+  openingPrice: bigint;
+  sqrtPrice: bigint;
+  liquidity: bigint;
+};
+
+export function CreateLaunch() {
+  const { config, wallet, stillSelected, refresh } = useLaunchWallet();
+  const deployment = config?.status === "ready" ? config.deployment : undefined;
+  const client = useLaunchClient(deployment);
+  const [draft, setDraft] = useState(initial);
+  const draftRef = useRef(initial);
+  const [review, setReview] = useState<Review>();
+  const [accepted, setAccepted] = useState(false);
+  const [preparing, setPreparing] = useState(false);
+  const [error, setError] = useState("");
+  const reviewRef = useRef<HTMLElement>(null);
+  const transaction = useLaunchTransaction();
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(draftKey) ?? "null") as Partial<Draft> | null;
+      if (saved && Object.keys(initial).every((key) => typeof saved[key as keyof Draft] === "string"
+        && saved[key as keyof Draft]!.length <= 512)) {
+        draftRef.current = { ...initial, ...saved };
+        setDraft(draftRef.current);
+      }
+    } catch { /* A clean form remains available. */ }
+  }, []);
+  useEffect(() => {
+    setReview(undefined);
+    setAccepted(false);
+  }, [wallet?.generation]);
+  useEffect(() => {
+    if (review) reviewRef.current?.focus();
+  }, [review]);
+
+  function edit(key: keyof Draft, value: string) {
+    draftRef.current = { ...draftRef.current, [key]: value };
+    setDraft(draftRef.current);
+    try { localStorage.setItem(draftKey, JSON.stringify(draftRef.current)); } catch { /* Draft stays in memory. */ }
+    setReview(undefined);
+    setAccepted(false);
+  }
+
+  async function prepare(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!client || !deployment || !wallet || preparing || transaction.pending) return;
+    setError("");
+    setReview(undefined);
+    setAccepted(false);
+    setPreparing(true);
+    try {
+      const fields = validated(draft);
+      const [supply, , sqrtPrice, liquidity, depositedETH, depositedTokens] = await client.readContract({
+        address: deployment.factory, abi: factoryAbi, functionName: "preview",
+        args: [fields.supplyPreset, fields.poolAllocationBps, fields.nativeAmount],
+      });
+      const intentId = toHex(crypto.getRandomValues(new Uint8Array(32)));
+      const deadline = Math.floor(Date.now() / 1000) + 10 * 60;
+      const data = encodeFunctionData({ abi: factoryAbi, functionName: "launch", args: [{ ...fields, intentId, deadline: BigInt(deadline) }] });
+      const request = await prepareTransaction(client, deployment, wallet, {
+        kind: "launch", to: deployment.factory, data, value: fields.nativeAmount, deadline, intentId,
+      });
+      if (!stillSelected(wallet)) throw new Error("Wallet selection changed. Review the launch again.");
+      setReview({ request, symbol: fields.symbol, supply, depositedETH, depositedTokens, maxETH: fields.nativeAmount,
+        openingPrice: priceInWei(sqrtPrice), sqrtPrice, liquidity });
+    } catch (cause) {
+      setError(walletMessage(cause));
+    } finally {
+      setPreparing(false);
+    }
+  }
+
+  const wrongNetwork = Boolean(wallet && deployment && wallet.chainId !== deployment.chainId);
+  const examples = review && openingExamples(review);
+
+  return <>
+    <header className="lpPageHeading"><div><h1>Create Token</h1><p>Review fixed supply, initial liquidity and position custody.</p></div></header>
+    {config === null && <p className="lpNotice" role="status">Checking launch deployment…</p>}
+    {config?.status === "disabled" && <p className="lpNotice">Preview only. You can fill in the form. Onchain review and signing are disabled.</p>}
+    {config?.status === "unavailable" && <div className="lpNotice">{config.reason}<button type="button" className="lpButton lpSecondary" onClick={refresh}>Retry</button></div>}
+    <TransactionFeedback transaction={transaction} />
+    <div className="lpColumns">
+      <form className="lpPanel lpForm" onSubmit={(event) => void prepare(event)}>
+        <fieldset disabled={preparing || transaction.busy || Boolean(transaction.pending)}>
+          <legend>Token details</legend>
+          <div className="lpFormGrid">
+            <label>Token name<input required value={draft.name} onChange={(event) => edit("name", event.target.value)} maxLength={64} placeholder="Token name" /></label>
+            <label>Symbol<input required value={draft.symbol} onChange={(event) => edit("symbol", event.target.value.toUpperCase())} maxLength={12} placeholder="SYMBOL" /></label>
+          </div>
+          <label>Project link <small>Optional, public</small><input type="url" value={draft.projectURI} onChange={(event) => edit("projectURI", event.target.value)} maxLength={512} placeholder="https://" /></label>
+        </fieldset>
+        <fieldset disabled={preparing || transaction.busy || Boolean(transaction.pending)}>
+          <legend>Launch terms</legend>
+          <label>Fixed token supply<select value={draft.supplyPreset} onChange={(event) => edit("supplyPreset", event.target.value)}>
+            {supplies.map((supply, index) => <option key={supply} value={index}>{supply}</option>)}
+          </select></label>
+          <div className="lpFormGrid">
+            <label>Supply for liquidity (%)<input required value={draft.allocation} onChange={(event) => edit("allocation", event.target.value)} inputMode="decimal" maxLength={6} />
+              <small>10–100%, remainder to creator</small></label>
+            <label>Initial ETH deposit<input required value={draft.seed} onChange={(event) => edit("seed", event.target.value)} inputMode="decimal" maxLength={22} />
+              <small>0.001–100 test ETH</small></label>
+          </div>
+        </fieldset>
+        {deployment && (!wallet || wrongNetwork) && <WalletConnection compact />}
+        {error && <p className="lpNotice lpError" role="alert">{error}</p>}
+        <button className="lpButton" disabled={!deployment || !wallet || wrongNetwork || preparing || transaction.busy || Boolean(transaction.pending)}>
+          {preparing ? "Simulating launch…" : "Review launch"}
+        </button>
+      </form>
+      <section ref={reviewRef} tabIndex={-1} className="lpPanel lpReview" aria-label="Launch review">
+        <h2>{review ? "Review and confirm" : "Liquidity and fees"}</h2>
+        <dl className="lpFacts">
+          <dt>Quote asset</dt><dd>Native ETH</dd>
+          <dt>Position range</dt><dd>Full range</dd>
+          <dt>Principal custody</dt><dd>Permanent, factory held</dd>
+          <dt>Pool swap fee</dt><dd>0.30%</dd>
+          <dt>RMT creation and swap fee</dt><dd>0, draft terms</dd>
+          <dt>Token transfers</dt><dd>Standard ERC-20, no transfer tax</dd>
+          <dt>Creator entitlement</dt><dd>Accrued position fees</dd>
+          {review && <>
+            <dt>Fixed supply</dt><dd>{displayAmount(review.supply)} {review.symbol}</dd>
+            <dt>Pool deposit</dt><dd>{displayAmount(review.depositedTokens)} {review.symbol} + {displayAmount(review.depositedETH)} ETH</dd>
+            <dt>Creator allocation</dt><dd>{displayAmount(review.supply - review.depositedTokens)} {review.symbol}</dd>
+            <dt>Maximum wallet value</dt><dd>{formatEther(review.maxETH)} ETH + gas</dd>
+            <dt>ETH refunded</dt><dd>{formatEther(review.maxETH - review.depositedETH)} ETH</dd>
+            <dt>Opening price</dt><dd>{displayAmount(review.openingPrice)} ETH per {review.symbol}</dd>
+            <dt>Creator and refund address</dt><dd className="lpAddress">{review.request.from}</dd>
+          </>}
+        </dl>
+        {review && examples && <details className="lpExamples">
+          <summary>Example opening trades</summary>
+          <p>Independent estimates using the starting full-range liquidity and 0.30% pool fee. Excludes gas and later price changes.</p>
+          <p>Buy with {displayAmount(examples.grossBuy)} ETH → about {displayAmount(examples.tokensOut)} {review.symbol}.</p>
+          <p>Sell {displayAmount(examples.grossSell)} {review.symbol} → about {displayAmount(examples.nativeOut)} ETH.</p>
+        </details>}
+        {review && <>
+          <label className="lpCheck"><input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} />
+            <span>I reviewed the allocations, test ETH deposit, and permanent position lock. <Link href="/risks" target="_blank">Read risks</Link>.</span></label>
+          <button className="lpButton" type="button" disabled={!accepted || transaction.busy || Boolean(transaction.pending) || Boolean(transaction.result?.launch)}
+            onClick={() => void transaction.send(review.request)}>Confirm in wallet</button>
+        </>}
+      </section>
+    </div>
+  </>;
+}

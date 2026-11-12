@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
-export default function PortfolioPage() {
-  redirect("/?panel=portfolio");
+export default function WalletCompatibilityPage() {
+  redirect("/wallet");
 }

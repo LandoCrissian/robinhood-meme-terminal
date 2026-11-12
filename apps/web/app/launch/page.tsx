@@ -1,6 +1,5 @@
 import { redirect } from "next/navigation";
-import { TERMINAL_ROOT_PATH } from "../../lib/vnext/legacy-terminal-routes";
 
-export default function LaunchPage() {
-  redirect(TERMINAL_ROOT_PATH);
+export default function CreateTokenCompatibilityPage() {
+  redirect("/create-token");
 }

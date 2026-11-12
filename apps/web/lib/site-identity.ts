@@ -2,7 +2,7 @@ export const RMT_SITE_URL = "https://www.rmtlaunch.fun";
 export const RMT_SITE_NAME = "Robinhood Meme Terminal";
 export const RMT_SITE_ALTERNATE_NAME = "RMT";
 export const RMT_SITE_DESCRIPTION =
-  "A mobile-first, non-custodial Robinhood Chain terminal for discovering, comparing, and trading markets across the ecosystem.";
+  "A non-custodial token launchpad for reviewing fixed supply, opening liquidity and position custody.";
 export const RMT_BRAND_LOGO_URL = `${RMT_SITE_URL}/brand/rmt-master-logo.png`;
 
 export const RMT_PUBLIC_IDENTITY_URLS = [

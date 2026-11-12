@@ -1,0 +1,216 @@
+import {
+  createPublicClient, encodeAbiParameters, encodeFunctionData, erc20Abi, formatEther, http, parseAbi,
+  parseAbiItem, parseEventLogs, toHex, zeroAddress,
+  type Address, type Hex, type PublicClient, type TransactionReceipt,
+} from "viem";
+import { launchPoolId, launchPoolKeyParameter, type NewLaunchRecord } from "./launch-record";
+import type { BoundWallet, LaunchDeployment, LaunchRequest } from "./transactions";
+
+export const factoryAbi = parseAbi([
+  "function preview(uint8 supplyPreset,uint16 poolAllocationBps,uint128 nativeAmount) pure returns (uint256 totalSupply,uint128 tokenMaximum,uint160 sqrtPriceX96,uint128 liquidity,uint128 amount0,uint128 amount1)",
+  "function launch((string name,string symbol,string projectURI,bytes32 intentId,uint8 supplyPreset,uint16 poolAllocationBps,uint128 nativeAmount,uint256 deadline) terms) payable returns (address token)",
+  "function collectFees(address token,uint256 deadline)",
+]);
+const routerAbi = parseAbi(["function execute(bytes commands,bytes[] inputs,uint256 deadline) payable"]);
+const quoterAbi = parseAbi([
+  "function quoteExactInputSingle(((address currency0,address currency1,uint24 fee,int24 tickSpacing,address hooks) poolKey,bool zeroForOne,uint128 exactAmount,bytes hookData) params) returns (uint256 amountOut,uint256 gasEstimate)",
+]);
+const permitAbi = parseAbi([
+  "function allowance(address owner,address token,address spender) view returns (uint160 amount,uint48 expiration,uint48 nonce)",
+  "function approve(address token,address spender,uint160 amount,uint48 expiration)",
+]);
+const swapEvent = parseAbiItem("event Swap(bytes32 indexed id,address indexed sender,int128 amount0,int128 amount1,uint160 sqrtPriceX96,uint128 liquidity,int24 tick,uint24 fee)");
+const maxInput = (1n << 127n) - 1n;
+const priceScale = 1n << 192n;
+
+export function launchPublicClient(deployment: LaunchDeployment) {
+  return createPublicClient({ transport: http(deployment.rpcUrl, { timeout: 12_000, retryCount: 1 }) });
+}
+
+export function priceInWei(sqrtPriceX96: bigint) {
+  return sqrtPriceX96 > 0n ? priceScale * 10n ** 18n / (sqrtPriceX96 * sqrtPriceX96) : 0n;
+}
+
+export function displayAmount(amount: bigint | string) {
+  const display = formatEther(BigInt(amount));
+  const [whole, fraction] = display.split(".");
+  if (!fraction) return BigInt(whole).toLocaleString("en-US");
+  if (whole === "0" && Number(display) < 0.000001) return display;
+  return `${BigInt(whole).toLocaleString("en-US")}.${fraction.slice(0, 8).replace(/0+$/, "") || "0"}`;
+}
+
+export async function prepareTransaction(
+  client: PublicClient, deployment: LaunchDeployment, wallet: BoundWallet,
+  operation: Pick<LaunchRequest, "kind" | "to" | "data" | "deadline" | "intentId" | "token" | "amountIn" | "minimumOut"> & { value?: bigint },
+): Promise<LaunchRequest> {
+  if (wallet.chainId !== deployment.chainId || await client.getChainId() !== deployment.chainId) {
+    throw new Error(`Switch your wallet to ${deployment.name} before reviewing.`);
+  }
+  const value = operation.value ?? 0n;
+  const params = { account: wallet.address, to: operation.to, data: operation.data, value };
+  const [block, balance, gas, gasPrice] = await Promise.all([
+    client.getBlock(), client.getBalance({ address: wallet.address }), client.estimateGas(params), client.getGasPrice(),
+    client.call(params),
+  ]);
+  if (balance < value + gas * gasPrice) throw new Error("Insufficient ETH for the amount and network gas.");
+  if (!block.hash || block.number === null) throw new Error("Network block evidence is unavailable. Try reviewing again.");
+  return {
+    ...operation, chainId: deployment.chainId, from: wallet.address, value: toHex(value),
+    blockNumber: toHex(block.number), blockHash: block.hash,
+  };
+}
+
+export type SwapReview = {
+  side: "buy" | "sell";
+  amountIn: bigint;
+  amountOut: bigint;
+  minimumOut: bigint;
+  deadline: number;
+  request: LaunchRequest;
+};
+
+function assertLaunchPool(deployment: LaunchDeployment, record: NewLaunchRecord) {
+  const key = record.poolKey;
+  if (!deployment.tradingEnabled || record.chainId !== deployment.chainId
+    || record.poolManager.toLowerCase() !== deployment.poolManager.toLowerCase()
+    || record.factory.toLowerCase() !== deployment.factory.toLowerCase()
+    || key.currency0 !== zeroAddress || key.currency1.toLowerCase() !== record.token.toLowerCase()
+    || key.hooks !== zeroAddress || key.fee !== 3000 || key.tickSpacing !== 60 || launchPoolId(key) !== record.poolId) {
+    throw new Error("Direct trading is unavailable for this pool.");
+  }
+}
+
+export async function prepareSwap(
+  client: PublicClient, deployment: LaunchDeployment, wallet: BoundWallet, record: NewLaunchRecord,
+  side: "buy" | "sell", amountIn: bigint, slippageBps: number,
+): Promise<SwapReview> {
+  assertLaunchPool(deployment, record);
+  if (amountIn <= 0n || amountIn > maxInput || !Number.isInteger(slippageBps) || slippageBps < 10 || slippageBps > 500) {
+    throw new Error("Enter a supported amount and slippage between 0.10% and 5.00%.");
+  }
+  const buy = side === "buy";
+  const deadline = Math.floor(Date.now() / 1000) + 5 * 60;
+  const token = record.token;
+  const prepare = (operation: Parameters<typeof prepareTransaction>[3]) => prepareTransaction(client, deployment, wallet, operation);
+
+  const { result: [amountOut] } = await client.simulateContract({
+    address: deployment.quoter, abi: quoterAbi, functionName: "quoteExactInputSingle",
+    args: [{ poolKey: record.poolKey, zeroForOne: buy, exactAmount: amountIn, hookData: "0x" }],
+    account: wallet.address,
+  });
+  const minimumOut = amountOut * BigInt(10_000 - slippageBps) / 10_000n;
+  if (minimumOut === 0n || amountOut > maxInput) throw new Error("The quoted output is outside the supported range.");
+  const review = { side, amountIn, amountOut, minimumOut, deadline };
+
+  if (!buy) {
+    const [balance, tokenAllowance, [routerAllowance, expiration]] = await Promise.all([
+      client.readContract({ address: token, abi: erc20Abi, functionName: "balanceOf", args: [wallet.address] }),
+      client.readContract({ address: token, abi: erc20Abi, functionName: "allowance", args: [wallet.address, deployment.permit2] }),
+      client.readContract({ address: deployment.permit2, abi: permitAbi, functionName: "allowance",
+        args: [wallet.address, token, deployment.universalRouter] }),
+    ]);
+    if (balance < amountIn) throw new Error("Insufficient token balance for this sell.");
+    if (tokenAllowance !== amountIn) {
+      return { ...review, request: await prepare({
+        kind: "token-approval", to: token, token, deadline, amountIn: amountIn.toString(),
+        data: encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [deployment.permit2, amountIn] }),
+      }) };
+    }
+    if (routerAllowance !== amountIn || expiration <= Math.floor(Date.now() / 1000) + 30) {
+      return { ...review, request: await prepare({
+        kind: "router-approval", to: deployment.permit2, token, deadline, amountIn: amountIn.toString(),
+        data: encodeFunctionData({ abi: permitAbi, functionName: "approve", args: [token, deployment.universalRouter, amountIn, deadline] }),
+      }) };
+    }
+  }
+
+  const currencyIn = buy ? zeroAddress : token;
+  const currencyOut = buy ? token : zeroAddress;
+  const actions = "0x060b0f"; // SWAP_EXACT_IN_SINGLE, SETTLE, TAKE_ALL in the pinned Universal Router v2.0.
+  const swapParams = encodeAbiParameters([
+    { type: "tuple", components: [
+      { name: "poolKey", ...launchPoolKeyParameter },
+      { name: "zeroForOne", type: "bool" }, { name: "amountIn", type: "uint128" },
+      { name: "amountOutMinimum", type: "uint128" }, { name: "hookData", type: "bytes" },
+    ] },
+  ], [{ poolKey: record.poolKey, zeroForOne: buy, amountIn, amountOutMinimum: minimumOut, hookData: "0x" }]);
+  // Explicit exact settlement leaves a nonzero delta (and reverts) if the pool consumes a partial input.
+  const settleParams = encodeAbiParameters([{ type: "address" }, { type: "uint256" }, { type: "bool" }], [currencyIn, amountIn, true]);
+  const takeParams = encodeAbiParameters([{ type: "address" }, { type: "uint256" }], [currencyOut, minimumOut]);
+  const input = encodeAbiParameters([{ type: "bytes" }, { type: "bytes[]" }], [actions, [swapParams, settleParams, takeParams]]);
+  const request = await prepare({
+    kind: side, to: deployment.universalRouter, token, deadline,
+    amountIn: amountIn.toString(), minimumOut: minimumOut.toString(), value: buy ? amountIn : 0n,
+    data: encodeFunctionData({ abi: routerAbi, functionName: "execute", args: ["0x10", [input], BigInt(deadline)] }),
+  });
+  return { ...review, request };
+}
+
+function sameAddress(left: string | null, right: string) {
+  return left?.toLowerCase() === right.toLowerCase();
+}
+
+export async function boundReceipt(client: PublicClient, hash: Hex, request: LaunchRequest) {
+  if (await client.getChainId() !== request.chainId) throw new Error("Receipt RPC is on a different network.");
+  const [transaction, receipt] = await Promise.all([
+    client.getTransaction({ hash }), client.getTransactionReceipt({ hash }),
+  ]);
+  if (!sameAddress(transaction.from, request.from) || !sameAddress(transaction.to, request.to)
+    || transaction.input !== request.data || transaction.value !== BigInt(request.value) || transaction.blockHash !== receipt.blockHash) {
+    throw new Error("This transaction does not match the reviewed wallet request.");
+  }
+  const block = await client.getBlock({ blockNumber: receipt.blockNumber });
+  if (block.hash !== receipt.blockHash) throw new Error("The receipt block changed. Check again after network recovery.");
+  return receipt;
+}
+
+type Trace = { type?: string; from?: string; to?: string; value?: string; error?: string; calls?: Trace[] };
+function nativePayments(call: Trace, from: Address, to: Address): bigint {
+  if (call.error) return 0n;
+  const payment = call.type?.toUpperCase() === "CALL" && sameAddress(call.from ?? null, from)
+    && sameAddress(call.to ?? null, to) && call.value ? BigInt(call.value) : 0n;
+  return payment + (call.calls ?? []).reduce((sum, child) => sum + nativePayments(child, from, to), 0n);
+}
+
+export async function verifySwap(
+  client: PublicClient, receipt: TransactionReceipt, deployment: LaunchDeployment, record: NewLaunchRecord, request: LaunchRequest,
+) {
+  assertLaunchPool(deployment, record);
+  const buy = request.kind === "buy";
+  const logs = receipt.logs.filter((log) => sameAddress(log.address, deployment.poolManager));
+  const swaps = parseEventLogs({ abi: [swapEvent], logs }).filter(({ args }) =>
+    args.id === record.poolId && sameAddress(args.sender, deployment.universalRouter));
+  const swap = swaps[0]?.args;
+  const input = buy ? -(swap?.amount0 ?? 0n) : -(swap?.amount1 ?? 0n);
+  const output = buy ? (swap?.amount1 ?? 0n) : (swap?.amount0 ?? 0n);
+  if (swaps.length !== 1 || input !== BigInt(request.amountIn ?? "0") || output < BigInt(request.minimumOut ?? "0") || output <= 0n) {
+    throw new Error("The receipt does not prove the reviewed pool swap.");
+  }
+  const transfers = parseEventLogs({ abi: erc20Abi, eventName: "Transfer",
+    logs: receipt.logs.filter((log) => sameAddress(log.address, record.token)) });
+  const exactTokenTransfer = transfers.some(({ args }) => buy
+    ? sameAddress(args.from, deployment.poolManager) && sameAddress(args.to, request.from) && args.value === output
+    : sameAddress(args.from, request.from) && sameAddress(args.to, deployment.poolManager) && args.value === input);
+  if (!exactTokenTransfer) throw new Error("The receipt does not prove the token transfer.");
+  if (!buy) {
+    const trace = await client.request({
+      method: "debug_traceTransaction", params: [receipt.transactionHash, { tracer: "callTracer" }],
+    } as never) as Trace;
+    if (!trace || nativePayments(trace, deployment.poolManager, request.from) !== output) {
+      throw new Error("The exact native ETH payout is not verified yet.");
+    }
+  }
+  return output;
+}
+
+export async function readTradeHistory(client: PublicClient, record: NewLaunchRecord) {
+  const latest = await client.getBlockNumber();
+  const first = BigInt(record.blockNumber);
+  const fromBlock = latest > first + 1_000n ? latest - 1_000n : first;
+  const logs = await client.getLogs({
+    address: record.poolManager, event: swapEvent, args: { id: record.poolId }, fromBlock, toBlock: latest, strict: true,
+  });
+  return logs.slice(-60).map(({ blockNumber, args }) => ({
+    blockNumber, priceWei: priceInWei(args.sqrtPriceX96), side: args.amount0 < 0n ? "buy" as const : "sell" as const,
+  }));
+}
