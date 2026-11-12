@@ -1,0 +1,63 @@
+{
+  "chainId": 31337,
+  "forkAnchor": {
+    "chainId": 84532,
+    "block": "57648300",
+    "hash": "0x5bb29976ce80ddede79f192c61eba8fe9d96f499f8bfa11e0820d11820e91d20"
+  },
+  "observation": {
+    "block": "57648316",
+    "hash": "0x9003f0e7fcaa0140708756bdb8e4d14d091ff12f14e278f9c5faf3acd999fc90"
+  },
+  "poolManager": "0x05E73354cFDd6745C338b50BcFDfA3Aa6fA03408",
+  "universalRouter": {
+    "address": "0x492e6456d9528771018deb9e87ef7750ef184104",
+    "version": "2.0",
+    "runtimeHash": "0x952c879f642706a4d399eb917827b5a2a5519328446dba72aef3579909bf15ef"
+  },
+  "quoter": "0x5e6B8B8AFA7e5CEF6C09dd2A67aBA9FB12C75623",
+  "positionManager": "0x4b2c77d209d3405f41a037ec6c77f7f5b8e2ca80",
+  "stateView": "0x571291b572ed32ce6751a2cb2486ebee8defb9b4",
+  "poolKey": {
+    "currency0": "0x0000000000000000000000000000000000000000",
+    "currency1": "0xc9158040Fd9F47a1C50A54dd2D371514F1F94DAE",
+    "fee": 3000,
+    "tickSpacing": 60,
+    "hooks": "0x9015E798328ff297fc6a2909640971dc50c92000"
+  },
+  "poolId": "0x23a4b541194aa30c703806702428a11276ba6e2934681741f107831a82b93f75",
+  "factory": "0x05543FAfa8545AFCA826527C59fd0a4fA0A5AcD0",
+  "initialize": {
+    "transactionHash": "0x1506d305655a938b470233678fcb331473cc6dfd6c9fe477c2c87a2416adfe28",
+    "block": "57648306"
+  },
+  "liquidity": {
+    "initial": "282842712474619009760",
+    "activeAtObservation": "282842714067175617692",
+    "positivePositionManagerEvents": 2
+  },
+  "quotes": {
+    "buy": {
+      "input": "1000000000000000",
+      "output": "7881813819344337475662"
+    },
+    "sell": {
+      "input": "1000000000000000000",
+      "output": "124870354835"
+    }
+  },
+  "directRouterSettlements": {
+    "buy": {
+      "transactionHash": "0xaccdd633b32dd417e8ef1b4ae9674ca2b57c8bb9fd18b90f3e83352aeaa9f1fc",
+      "block": "57648307",
+      "input": "100000000000000",
+      "output": "796805584831922573194"
+    },
+    "sell": {
+      "transactionHash": "0x548a794dc4655d6fe583e00c90f750b8afaaaa9d3c239eda90fac3f42949a45e",
+      "block": "57648310",
+      "input": "10000000000000000000",
+      "output": "1248720683586"
+    }
+  }
+}
