@@ -36,6 +36,7 @@ export type NewLaunchDeployment = {
   positionManager: Address;
   universalRouter: Address;
   quoter: Address;
+  stateView: Address;
   permit2: Address;
   tradingEnabled: boolean;
 };
@@ -63,6 +64,7 @@ export type NewLaunchRecord = {
   transactionHash: Hash;
   blockNumber: string;
   blockHash: Hash;
+  blockTimestamp?: string;
   logIndex: number;
   indexing: "pending" | "indexed";
 };

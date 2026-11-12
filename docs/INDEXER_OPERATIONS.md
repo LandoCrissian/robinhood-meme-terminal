@@ -6,6 +6,8 @@ The new launchpad uses a separate Node 22.13+ SQLite index. Start the Anvil depl
 
 The worker reads only the configured factory's `LaunchCreated` events from its verified deployment block, in ranges of at most 256 blocks. A direct receipt submitted to `/api/launchpad/launches` appears immediately after pool, funding, custody and canonical block verification. The worker reconciles pending records against the current chain and rewinds SQLite rows to the last common checkpoint after a reorg. A missing worker or provider failure leaves the last evidence visible with a delayed status. The local launchpad requires a persistent filesystem shared by the web process and worker. Keep the loopback Anvil RPC private.
 
+The REST reads under `/api/launchpad/public/[operation]` and the MCP data tools use the same domain. List and activity pages default to 10 records and allow up to 20. Activity covers at most the most recent 128 blocks ending at the page's canonical anchor. The SQLite database enforces a shared ceiling of 120 requests per minute and a smaller ceiling per operation. Responses carry block identity and freshness evidence for the local fork. The service exposes project metadata references as text and does not fetch them.
+
 The following sections describe the deployed V6 compatibility service.
 
 ## Purpose

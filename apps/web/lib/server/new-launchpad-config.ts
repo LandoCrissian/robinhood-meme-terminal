@@ -3,7 +3,7 @@ import { createPublicClient, getAddress, http, isAddress, isHash, keccak256, par
 import deploymentIdentities from "../../../../packages/contracts/test/fixtures/rmt-v4-deployment-identities.json";
 import type { NewLaunchDeployment } from "../launchpad/launch-record";
 
-const contractNames = ["factory", "poolManager", "positionManager", "universalRouter", "quoter", "permit2"] as const;
+const contractNames = ["factory", "poolManager", "positionManager", "universalRouter", "quoter", "permit2", "stateView"] as const;
 type ContractName = typeof contractNames[number];
 type ContractPin = { address: Address; runtimeHash: Hash };
 type ContractPins = Record<ContractName, ContractPin>;
@@ -67,6 +67,7 @@ export function readLaunchpadRuntime(env: Environment = process.env): LaunchpadR
     universalRouter: fixturePin("universalRouter"),
     quoter: fixturePin("quoter"),
     permit2: fixturePin("permit2"),
+    stateView: fixturePin("stateView"),
   };
   if (new Set(contractNames.map((name) => contracts[name].address.toLowerCase())).size !== contractNames.length) {
     throw new Error("Launchpad contract addresses must be distinct");
@@ -87,6 +88,7 @@ export function readLaunchpadRuntime(env: Environment = process.env): LaunchpadR
       universalRouter: contracts.universalRouter.address,
       quoter: contracts.quoter.address,
       permit2: contracts.permit2.address,
+      stateView: contracts.stateView.address,
       tradingEnabled: env.RMT_LAUNCHPAD_TRADING_ENABLED === "true",
     },
     contracts,
@@ -133,6 +135,7 @@ export async function verifyLaunchpadRuntime(config: LaunchpadRuntime, rpc: Publ
       [deployment.positionManager, "permit2", deployment.permit2],
       [deployment.universalRouter, "poolManager", deployment.poolManager],
       [deployment.quoter, "poolManager", deployment.poolManager],
+      [contracts.stateView.address, "poolManager", deployment.poolManager],
     ] as const).map(async ([address, functionName, expected]) => {
       const value = await rpc.readContract({ address, abi: bindingAbi, functionName, blockNumber: head });
       if (getAddress(value) !== getAddress(expected)) throw new Error("Launchpad dependency binding mismatch");

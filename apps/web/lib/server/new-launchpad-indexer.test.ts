@@ -7,6 +7,7 @@ import { encodeAbiParameters, encodeEventTopics, keccak256, parseAbiItem, toHex,
 import { launchCreatedEvent, launchPoolId, type LaunchPoolKey } from "../launchpad/launch-record";
 import { readLaunchpadRuntime, verifyLaunchpadRuntime } from "./new-launchpad-config";
 import { syncNewLaunchpadRange } from "./new-launchpad-indexer";
+import { readLaunchpadPublicData } from "./new-launchpad-public-data";
 import { InvalidLaunchReceipt, projectLaunchReceipt, verifyLaunchReceipt } from "./new-launchpad-receipt";
 import { LaunchpadStore } from "./new-launchpad-store";
 
@@ -184,4 +185,37 @@ test("blocks production, other chain IDs, arbitrary public RPC URLs and runtime 
     async readContract() { return poolManager; },
   } as unknown as PublicClient;
   await assert.rejects(() => verifyLaunchpadRuntime(config, rpc), /runtime bytecode|declared start block|binding mismatch/);
+});
+
+test("bounds public requests, paginates in log order, and shares a durable rate limit across connections", async () => {
+  assert.equal((await readLaunchpadPublicData({ operation: "list_launches", chainId: 31337, limit: 21 })).status, "invalid");
+  assert.equal((await readLaunchpadPublicData({ operation: "list_launches", chainId: 31337, cursor: "_".repeat(129) })).status, "invalid");
+  assert.equal((await readLaunchpadPublicData({ operation: "get_launch", chainId: 31337, token, limit: 1 })).status, "invalid");
+  assert.equal((await readLaunchpadPublicData({ operation: "get_pool_state", chainId: 4663, token })).status, "disabled");
+
+  const directory = mkdtempSync(join(tmpdir(), "rmt-launch-quota-"));
+  const path = join(directory, "launches.sqlite");
+  const writer = new LaunchpadStore(path, config.scope);
+  const reader = new LaunchpadStore(path, config.scope);
+  try {
+    const now = 62_000;
+    const launch = projectLaunchReceipt(deployment, makeReceipt(), tx);
+    writer.publish(launch, now);
+    writer.publish({ ...launch, token: address(4), transactionHash: hash(401), logIndex: 2 }, now);
+    writer.publish({ ...launch, token: address(5), transactionHash: hash(402), blockNumber: "10" }, now);
+    assert.deepEqual(reader.readPage(2, undefined, now).map((row) => row.token), [token, address(4)]);
+    assert.deepEqual(reader.readPage(2, { blockNumber: 11n, logIndex: 2 }, now).map((row) => row.token), [address(5)]);
+
+    assert.equal(writer.consumePublicQuota("get_launch", 2, now), 0);
+    assert.equal(reader.consumePublicQuota("get_launch", 2, now), 0);
+    assert.equal(writer.consumePublicQuota("get_launch", 2, now), 58);
+    assert.equal(reader.consumePublicQuota("get_launch_checks", 20, now), 0);
+    assert.equal(reader.consumePublicQuota("get_launch", 2, 120_000), 0);
+    for (let request = 0; request < 119; request++) assert.equal(writer.consumePublicQuota("list_launches", 200, 120_000), 0);
+    assert.equal(reader.consumePublicQuota("get_pool_state", 20, 120_000), 60);
+  } finally {
+    reader.close();
+    writer.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
 });

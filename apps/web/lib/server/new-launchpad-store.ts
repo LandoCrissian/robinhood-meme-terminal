@@ -3,6 +3,7 @@ import type { Address, Hash } from "viem";
 import type { NewLaunchRecord } from "../launchpad/launch-record";
 
 export type LaunchCheckpoint = { number: bigint; hash: Hash };
+export type LaunchPageCursor = { blockNumber: bigint; logIndex: number };
 type LaunchFilter = { token?: Address; creator?: Address };
 type Provisional = { token: Address; blockNumber: bigint; blockHash: Hash };
 
@@ -45,6 +46,13 @@ export class LaunchpadStore {
           scope TEXT PRIMARY KEY,
           caught_up INTEGER NOT NULL CHECK (caught_up IN (0, 1)),
           updated_ms INTEGER NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS rmt_new_launch_quota (
+          scope TEXT NOT NULL,
+          category TEXT NOT NULL,
+          window INTEGER NOT NULL,
+          count INTEGER NOT NULL,
+          PRIMARY KEY (scope, category)
         );
       `);
     } catch (error) {
@@ -147,6 +155,32 @@ export class LaunchpadStore {
       .all(this.scope, now - provisionalWindowMs).map((row) => ({
         token: row.token as Address, blockNumber: BigInt(String(row.height)), blockHash: row.block_hash as Hash,
       }));
+  }
+
+  readPage(limit: number, before?: LaunchPageCursor, now = Date.now()): NewLaunchRecord[] {
+    return this.db.prepare(`SELECT record FROM rmt_new_launch_records WHERE scope = ?
+      AND (height < ? OR (height = ? AND log_index < ?)) AND (indexed = 1 OR published_ms >= ?)
+      ORDER BY height DESC, log_index DESC LIMIT ?`)
+      .all(this.scope, before?.blockNumber ?? 9_000_000_000_000_000n, before?.blockNumber ?? 0n,
+        before?.logIndex ?? 0, now - provisionalWindowMs, limit)
+      .map((row) => JSON.parse(String(row.record)) as NewLaunchRecord);
+  }
+
+  consumePublicQuota(category: string, categoryLimit: number, now = Date.now()): number {
+    const window = Math.floor(now / 60_000);
+    const retryAfter = 60 - Math.floor((now % 60_000) / 1000);
+    return this.transaction(() => {
+      const read = this.db.prepare("SELECT count FROM rmt_new_launch_quota WHERE scope = ? AND category = ? AND window = ?");
+      const count = (name: string) => Number(read.get(this.scope, name, window)?.count ?? 0);
+      const globalCount = count("all");
+      const categoryCount = count(category);
+      if (globalCount >= 120 || categoryCount >= categoryLimit) return retryAfter;
+      const write = this.db.prepare(`INSERT INTO rmt_new_launch_quota (scope, category, window, count) VALUES (?, ?, ?, ?)
+        ON CONFLICT(scope, category) DO UPDATE SET window=excluded.window, count=excluded.count`);
+      write.run(this.scope, "all", window, globalCount + 1);
+      write.run(this.scope, category, window, categoryCount + 1);
+      return 0;
+    });
   }
 
   removeProvisional(record: Provisional) {

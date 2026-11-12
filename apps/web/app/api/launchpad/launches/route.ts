@@ -22,6 +22,11 @@ export async function GET(request: Request) {
     const config = readLaunchpadRuntime();
     if (!config) return NextResponse.json({ status: "disabled", launches: [] }, { headers });
     store = new LaunchpadStore(config.databasePath, config.scope);
+    const retryAfterSeconds = store.consumePublicQuota(token ? "get_launch" : "list_launches", 60);
+    if (retryAfterSeconds) {
+      return NextResponse.json({ status: "rate_limited", launches: [], retryAfterSeconds },
+        { status: 429, headers: { ...headers, "Retry-After": retryAfterSeconds.toString() } });
+    }
     const launches = store.read({ token: token ? getAddress(token) : undefined, creator: creator ? getAddress(creator) : undefined });
     return NextResponse.json({ status: store.status(), launches }, { headers });
   } catch {
@@ -69,10 +74,15 @@ export async function POST(request: Request) {
   try {
     const config = readLaunchpadRuntime();
     if (!config) return NextResponse.json({ status: "disabled", reason: "New launches are disabled on this deployment." }, { status: 403, headers });
+    store = new LaunchpadStore(config.databasePath, config.scope);
+    const retryAfterSeconds = store.consumePublicQuota("verify_receipt", 30);
+    if (retryAfterSeconds) {
+      return NextResponse.json({ status: "rate_limited", reason: "Launch verification read limit reached.", retryAfterSeconds },
+        { status: 429, headers: { ...headers, "Retry-After": retryAfterSeconds.toString() } });
+    }
     const rpc = await verifiedLaunchpadRpc(config);
     const launch = await verifyLaunchReceipt(rpc, config.deployment, transactionHash, { creator: getAddress(creator), intentId });
     if (BigInt(launch.blockNumber) < config.startBlock) throw new InvalidLaunchReceipt("The transaction predates the verified launch factory.");
-    store = new LaunchpadStore(config.databasePath, config.scope);
     const published = store.publish(launch);
     return NextResponse.json({ status: "confirmed", launch: published, indexing: published.indexing }, { headers });
   } catch (error) {

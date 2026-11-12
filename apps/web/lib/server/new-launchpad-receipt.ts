@@ -113,5 +113,5 @@ export async function verifyLaunchReceipt(
   if (!sameHex(owner, deployment.factory) || liquidity.toString() !== record.liquidity) {
     throw new InvalidLaunchReceipt("Onchain position ownership or liquidity does not match the launch event");
   }
-  return record;
+  return { ...record, blockTimestamp: canonicalBlock.timestamp?.toString() };
 }
