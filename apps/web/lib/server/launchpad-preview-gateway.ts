@@ -1,4 +1,6 @@
 import { request as forwardHttp, type IncomingMessage, type RequestListener, type ServerResponse } from "node:http";
+import { BlockList, isIPv4 } from "node:net";
+import { networkInterfaces } from "node:os";
 import { createPublicClient, http, toHex, type Address } from "viem";
 import { samePreviewCapability, type LaunchpadPreviewAccess } from "./launchpad-preview-access";
 import { permittedPreviewRpc, previewRpcMaxGas, type PreviewRpcPolicy } from "./launchpad-preview-rpc";
@@ -25,12 +27,39 @@ export function localPreviewBackend(value: string) {
 }
 
 export function previewListenHost(value: string, tls: boolean) {
-  const parts = value.split(".").map(Number);
-  const valid = /^\d{1,3}(?:\.\d{1,3}){3}$/.test(value) && parts.every((part) => part <= 255);
-  const privateNetwork = valid && (parts[0] === 10 || parts[0] === 192 && parts[1] === 168
-    || parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31);
-  if (value !== "127.0.0.1" && (!tls || !privateNetwork)) throw new Error("Only loopback or a TLS-protected private LAN address can listen.");
+  if (value !== "127.0.0.1" && (!tls || privateNetworkPrefix(value) === undefined)) {
+    throw new Error("Only loopback or a TLS-protected private LAN address can listen.");
+  }
   return value;
+}
+
+function privateNetworkPrefix(address: string) {
+  if (!isIPv4(address)) return;
+  const [first, second] = address.split(".").map(Number);
+  if (first === 10) return 8;
+  if (first === 172 && second >= 16 && second <= 31) return 12;
+  if (first === 192 && second === 168) return 16;
+}
+
+export function previewLanAccess(bind: string, peer: string | undefined, interfaces = networkInterfaces()) {
+  if (bind === "127.0.0.1") {
+    if (peer) throw new Error("Set a LAN peer only for direct private TLS.");
+    return null;
+  }
+  const minimum = privateNetworkPrefix(bind);
+  const attached = Object.values(interfaces).flat().find((entry) =>
+    entry && entry.family === "IPv4" && !entry.internal && entry.address === bind);
+  const prefix = Number(attached?.cidr?.split("/")[1]);
+  if (minimum === undefined || !Number.isInteger(prefix) || prefix < minimum || prefix > 32) {
+    throw new Error("Bind the private TLS preview to a locally attached IPv4 subnet.");
+  }
+  const peers = new BlockList();
+  peers.addSubnet(bind, prefix, "ipv4");
+  if (peer && (!isIPv4(peer) || !peers.check(peer, "ipv4"))) {
+    throw new Error("The preview peer IPv4 address must be on the same LAN subnet.");
+  }
+  return (address: string | undefined) => address !== undefined && isIPv4(address)
+    && (peer ? address === peer : peers.check(address, "ipv4"));
 }
 
 function rateBudget(limit: number) {
@@ -129,7 +158,8 @@ function permittedWebRoute(pathname: string, method: string) {
 function proxyWeb(request: IncomingMessage, response: ServerResponse, backend: URL, pathname: string, body: Buffer) {
   const headers: Record<string, string | string[]> = {};
   for (const [name, value] of Object.entries(request.headers)) {
-    if (value !== undefined && !ignoredProxyHeaders.has(name) && !name.startsWith("x-forwarded-")) headers[name] = value;
+    if (value !== undefined && !ignoredProxyHeaders.has(name) && !name.startsWith("x-forwarded-")
+      && !name.startsWith("tailscale-")) headers[name] = value;
   }
   if (body.length) headers["content-length"] = String(body.length);
   const upstream = forwardHttp(new URL(pathname, backend), { method: request.method, headers, timeout: 20_000 }, (incoming) => {
@@ -188,6 +218,9 @@ export function createLaunchpadPreviewGateway(
     }
     const url = new URL(request.url, access.origin);
     if (url.origin !== access.origin.origin) return send(response, 421, "Invalid preview origin.");
+    if (request.headers["tailscale-funnel-request"] !== undefined) {
+      return send(response, 403, "Public ingress is outside this preview.");
+    }
     if (request.headers.origin !== undefined && request.headers.origin !== access.origin.origin) {
       return send(response, 403, "Origin is not authorized.");
     }

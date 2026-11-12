@@ -16,7 +16,7 @@ import { factoryAbi, prepareSwap } from "../launchpad/direct-v4";
 import { launchPoolId, type NewLaunchRecord } from "../launchpad/launch-record";
 import type { BoundWallet } from "../launchpad/transactions";
 import { readLaunchpadPreviewAccess } from "./launchpad-preview-access";
-import { createLaunchpadPreviewGateway, localPreviewBackend, previewListenHost } from "./launchpad-preview-gateway";
+import { createLaunchpadPreviewGateway, localPreviewBackend, previewLanAccess, previewListenHost } from "./launchpad-preview-gateway";
 import { permittedPreviewRpc, type PreviewRpcPolicy } from "./launchpad-preview-rpc";
 import { readLaunchpadRuntime } from "./new-launchpad-config";
 
@@ -133,6 +133,12 @@ test("preview process rejects invalid TLS and listener bindings before connectin
       RMT_LAUNCHPAD_PREVIEW_TLS_CERT: "fixture.pem",
       RMT_LAUNCHPAD_PREVIEW_TLS_KEY: "fixture-key.pem",
     }, /TLS address must match/],
+    [{
+      RMT_LAUNCHPAD_PREVIEW_ORIGIN: "https://172.31.254.241:3198",
+      RMT_LAUNCHPAD_PREVIEW_BIND: "172.31.254.241",
+      RMT_LAUNCHPAD_PREVIEW_TLS_CERT: "fixture.pem",
+      RMT_LAUNCHPAD_PREVIEW_TLS_KEY: "fixture-key.pem",
+    }, /locally attached IPv4 subnet/],
     [{ RMT_LAUNCHPAD_PREVIEW_PORT: "3197" }, /distinct preview listener port/],
   ] as const) {
     // Explicitly use only the test environment instead of inheriting live preview settings.
@@ -141,6 +147,29 @@ test("preview process rejects invalid TLS and listener bindings before connectin
       timeout: 10_000,
       env: { NODE_ENV: "test", PATH: process.env.PATH, SystemRoot: process.env.SystemRoot, ...previewEnv, ...options, ...overrides },
     }), expected);
+  }
+});
+
+test("direct LAN TLS admits only the attached private subnet or one configured peer within it", () => {
+  const network = {
+    address: "10.0.0.22", cidr: "10.0.0.22/24", netmask: "255.255.255.0",
+    family: "IPv4" as const, internal: false, mac: "00:00:00:00:00:00",
+  };
+  const attached = { WiFi: [network] };
+  assert.equal(previewLanAccess("127.0.0.1", undefined, {}), null);
+  assert.throws(() => previewLanAccess("127.0.0.1", "10.0.0.23", attached), /only for direct private TLS/);
+  const attachedAccess = previewLanAccess(network.address, undefined, attached)!;
+  const peerAccess = previewLanAccess(network.address, "10.0.0.23", attached)!;
+  assert.equal(attachedAccess("10.0.0.23"), true);
+  assert.equal(attachedAccess("10.0.0.24"), true);
+  assert.equal(peerAccess("10.0.0.23"), true);
+  assert.equal(peerAccess("10.0.0.24"), false);
+  assert.equal(attachedAccess(undefined), false);
+  assert.throws(() => previewLanAccess("10.0.1.22", "10.0.0.23", attached), /locally attached/);
+  assert.throws(() => previewLanAccess(network.address, "10.0.0.23", { WiFi: [{ ...network, cidr: "10.0.0.22/1" }] }), /locally attached/);
+  for (const peer of ["10.0.1.23", "8.8.8.8", "127.0.0.1", "::ffff:10.0.0.23"]) {
+    assert.equal(attachedAccess(peer), false);
+    assert.throws(() => previewLanAccess(network.address, peer, attached), /same LAN subnet/);
   }
 });
 
@@ -291,6 +320,8 @@ test("gateway protects app and MCP, forwards only valid RPC, and enforces a shar
   const port = await listen(gateway);
   try {
     assert.equal((await send(port, "/", { headers: { Host: "bad.example" } })).status, 421);
+    assert.equal((await send(port, "/", { headers: { Host: "bad.example", "X-Forwarded-Host": host } })).status, 421);
+    assert.equal((await send(port, "/", { headers: { "Tailscale-Funnel-Request": "?1" } })).status, 403);
     assert.equal((await send(port, "/api/launchpad/config")).status, 401);
     assert.equal((await send(port, "/")).headers.location, "/preview-access");
     const form = await send(port, "/preview-access");
@@ -307,11 +338,14 @@ test("gateway protects app and MCP, forwards only valid RPC, and enforces a shar
     assert.equal(unlocked.status, 303);
     const cookie = unlocked.headers["set-cookie"]?.[0];
     assert.ok(cookie?.includes("Secure; HttpOnly; SameSite=Strict"));
-    const app = await send(port, "/api/launchpad/config", { headers: { Cookie: cookie!.split(";")[0], "X-Forwarded-Host": "bad.example" } });
+    const app = await send(port, "/api/launchpad/config", {
+      headers: { Cookie: cookie!.split(";")[0], "X-Forwarded-Host": "bad.example", "Tailscale-User-Login": "fixture@example.test" },
+    });
     assert.equal(app.status, 200);
     assert.equal(app.body, "private backend response");
     assert.equal(backendRequests[0].headers.cookie, undefined);
     assert.equal(backendRequests[0].headers["x-forwarded-host"], undefined);
+    assert.equal(backendRequests[0].headers["tailscale-user-login"], undefined);
     assert.equal(backendRequests[0].headers.host, `127.0.0.1:${backendPort}`);
     const mcp = await send(port, "/mcp", { method: "POST", headers: { Authorization: `Bearer ${access.accessCode}` }, body: "{}" });
     assert.equal(mcp.status, 200);

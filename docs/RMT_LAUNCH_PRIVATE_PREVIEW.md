@@ -29,14 +29,49 @@ node --env-file=.env.preview.local --import tsx scripts/launchpad-preview-gatewa
 
 The page access code sets an expiring HttpOnly, Secure cookie. The wallet RPC has its own unguessable path. It accepts bounded reads and simulations plus raw transactions signed by the one configured test wallet on chain 31337. Submissions are limited to the pinned factory, indexed launch tokens, and the pinned Uniswap Router and Permit2 paths. Administrative methods, unlocked-account sends, deployment transactions, foreign-chain signatures and unrelated legacy routes are refused. The gateway has no signing key. The two codes are test-session credentials.
 
-## Physical iPhone checklist
+## Windows private access
 
-- Connect the phone to the approved private route and open the HTTPS origin in the wallet’s in-app browser. For private LAN TLS, install and trust the operator-provided, short-lived CA only if that trust procedure is approved. [Apple certificate trust guidance](https://support.apple.com/en-us/102390)
-- Enter the preview access code. In the fresh test wallet, add chain ID 31337 with the private wallet RPC URL and Test ETH. If the wallet already has chain 31337, confirm that its RPC is this preview. A matching chain ID alone cannot identify the fork.
-- Create a launch and reject one confirmation before submitting. Confirm the receipt, check funded pool evidence, buy, approve the bounded sell allowances, sell, and claim accrued creator fees. Open the creator’s launch list.
-- To exercise recovery, preserve the wallet’s transaction hash from Activity, return to the app with the request pending, and verify the hash against the original review. Record receipt hashes, browser and wallet versions, and successful or failed steps. Keep access codes, RPC URLs and device secrets out of the evidence.
+Use a trusted Wi-Fi network that both devices can reach. Check the Windows network category and current private IPv4 address. The direct TLS gateway checks the TCP peer against the attached subnet before the handshake. When the iPhone’s Wi-Fi address is available locally, set `RMT_LAUNCHPAD_PREVIEW_LAN_PEER` to admit only that address. A changed Windows or phone lease can require a fresh configuration. This check uses the socket address and ignores forwarding headers.
 
-The Playwright fixture exercises the same review and recovery UI with disposable local signatures. Physical-device evidence requires the iPhone operator and approved private connectivity. Mainnet deployment, trading, and release stay locked.
+From the repository root, run the certificate helper in PowerShell 7. Set the gateway bind to that same address, its port to an unused port such as `9443`, and its origin to the exact `https://<address>:<port>`. Use the returned certificate and key paths in `RMT_LAUNCHPAD_PREVIEW_TLS_CERT` and `RMT_LAUNCHPAD_PREVIEW_TLS_KEY`.
+
+```powershell
+Get-NetConnectionProfile -InterfaceAlias 'Wi-Fi'
+Get-NetIPAddress -InterfaceAlias 'Wi-Fi' -AddressFamily IPv4
+$tls = ./scripts/new-launchpad-lan-certificate.ps1 -Address '<Windows Wi-Fi IPv4>'
+```
+
+The helper issues a four-hour IP-SAN leaf, writes the leaf key to ignored local scratch, and discards the issuing key. Its iPhone profile contains one public root certificate and an automatic removal date. Transfer only the profile through an existing private channel. Verify the matching certificate name and the SHA-256 fingerprint where the device exposes it. Keep the profile, access code and RPC capability separate. [Apple root payload](https://developer.apple.com/documentation/devicemanagement/certificateroot), [Apple profile removal](https://developer.apple.com/documentation/devicemanagement/toplevel)
+
+Check listeners before sharing access. Only the gateway should bind the Wi-Fi address. Keep Anvil and Next on `127.0.0.1`. Leave shared Node firewall rules alone. If Windows blocks the connection, an administrator can add a temporary Private-profile inbound rule scoped to the gateway executable, exact Windows address and port, Wi-Fi interface, and iPhone IPv4, with edge traversal blocked. Existing broad allow rules remain effective alongside a new narrow allow. The gateway peer check still applies. Keep router forwarding disabled and remove any task-specific firewall rule when finished. [Microsoft firewall rule reference](https://learn.microsoft.com/en-us/powershell/module/netsecurity/new-netfirewallrule)
+
+### Existing approved Tailscale alternative
+
+Check the Windows and iPhone clients are signed into the approved tailnet, that access rules allow the intended phone, and that HTTPS is already enabled. Use the exact Serve HTTPS origin in preview configuration, leave the gateway on `127.0.0.1`, and leave direct TLS certificate, key, and LAN peer settings empty. The origin keeps the original `Host` and `Origin` checks. The gateway rejects Tailscale’s Funnel request marker and discards Tailscale and forwarding headers on the hop to Next.
+
+```powershell
+tailscale status
+tailscale serve status --json
+tailscale funnel status --json
+# In an Administrator console, if the route is unused and the tailnet is approved.
+tailscale serve --https=9443 http://127.0.0.1:3198
+```
+
+Keep Serve in the foreground. Confirm Serve status shows only the intended gateway route and no Funnel on that origin. Check the phone can reach it with Tailscale on and cannot reach it with Wi-Fi and Tailscale off. Serve certificates disclose the machine hostname in public Certificate Transparency logs. A certificate or account prompt means the operator must resolve an unmet tailnet prerequisite before proceeding. [Serve CLI](https://tailscale.com/docs/reference/tailscale-cli/serve), [Proxy source](https://github.com/tailscale/tailscale/blob/v1.104.6/ipn/ipnlocal/serve.go#L989-L1016), [Tailscale HTTPS](https://tailscale.com/docs/how-to/set-up-https-certificates)
+
+## MetaMask on iPhone
+
+1. Join the approved Wi-Fi or tailnet. For direct LAN TLS, install the matching profile and enable SSL trust for its CA in **Settings → General → About → Certificate Trust Settings**. A wallet’s native RPC can require iOS Local Network permission even when its in-app browser loads the site. If TLS or native RPC fails, record the failing step. [Install a profile](https://support.apple.com/en-us/102400), [Certificate trust](https://support.apple.com/en-us/102390), [Local Network privacy](https://developer.apple.com/documentation/technotes/tn3179-understanding-local-network-privacy)
+2. In MetaMask, turn off Analytics under **Settings → Security & Privacy**, then fully restart the app before adding the private RPC. Sampled HTTP traces can retain URL paths while analytics is enabled. Open the bare preview origin in **Explore** and enter the separate UI access code from the Windows operator. [MetaMask analytics](https://support.metamask.io/privacy-and-security/how-to-manage-your-metametrics-settings/), [Restart behavior](https://github.com/MetaMask/metamask-mobile/blob/5e424d354d2f455607d4826c606ec3eda595001f/app/components/Views/Settings/SecuritySettings/Sections/MetaMetricsAndDataCollectionSection/MetaMetricsAndDataCollectionSection.tsx#L158-L184), [MetaMask browser](https://support.metamask.io/configure/wallet/how-to-use-the-metamask-mobile-browser/)
+3. Connect the fresh test account and use the preview’s **Switch** prompt. The network is chain `31337` with test ETH and the exact authenticated RPC supplied by the preview. MetaMask may show a registry warning because the public chain list also uses 31337 for GoChain Testnet. Check the exact intended preview endpoint. If 31337 already exists or the session rotated, replace the stale default RPC in MetaMask first. RMT also checks the reviewed fork block hash before sending. [MetaMask custom networks](https://support.metamask.io/configure/networks/how-to-add-a-custom-network-rpc), [Registry entry](https://github.com/ethereum-lists/chains/blob/89b41dc98ed2e69be11dabca60380b8dc6c61e61/_data/chains/eip155-31337.json)
+4. Review a launch, reject one wallet confirmation, then submit and verify funding. Buy, approve the exact Token and Permit2 allowances, sell, and claim fees. Switch away from the app and return. Use **Check receipt** for a saved hash. If RMT is still waiting for a hash from a reviewed request, copy its Transaction ID from MetaMask Activity and use RMT’s hash recovery field once a receipt exists. Record wallet/iOS versions, outcomes and receipt hashes. Exclude credentials, RPC settings and wallet diagnostics from evidence. [MetaMask Transaction ID](https://support.metamask.io/transactions-and-gas/transactions/how-to-find-a-transaction-id/)
+5. Close the private gateway after testing, remove the test network and certificate profile, and expire both capabilities. A renewed session needs a new wallet RPC URL.
+
+MetaMask source supports exact HTTPS endpoint validation, chain switching and single JSON-RPC requests for ordinary EOA signatures. This is compatibility research. The installed app still needs a trusted TLS connection, native RPC, a working Web Locks journal, and confirmation and recovery tests. The Playwright fixture uses disposable signatures and covers missing-hash recovery separately. Mainnet deployment, trading, and release stay locked. [MetaMask RPC validation](https://github.com/MetaMask/metamask-mobile/blob/5e424d354d2f455607d4826c606ec3eda595001f/app/core/RPCMethods/lib/ethereum-chain-utils.js#L171-L186), [MetaMask RPC transport](https://github.com/MetaMask/core/blob/2757b317ec5f8f3916968df1cba5d14ee93ee069/packages/network-controller/src/rpc-service/rpc-service.ts#L646-L670)
+
+## Verified Windows LAN evidence
+
+A direct HTTPS rehearsal on the Windows Wi-Fi address verified the IP SAN and normal certificate trust using the temporary CA. The authenticated app and config were available, the separate RPC capability reported chain 31337 and the configured test account’s fork balance, and invalid Host, Origin, Funnel, unsigned and administrative requests were rejected. Next and zero-account Anvil listened on loopback. This test originated on Windows. Reachability and the installed MetaMask behavior require the iPhone check above.
 
 ## Verified loopback evidence
 

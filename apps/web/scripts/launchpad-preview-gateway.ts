@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createServer as createHttpServer } from "node:http";
 import { createServer as createHttpsServer } from "node:https";
-import { createLaunchpadPreviewGateway, localPreviewBackend, previewListenHost } from "../lib/server/launchpad-preview-gateway";
+import { createLaunchpadPreviewGateway, localPreviewBackend, previewLanAccess, previewListenHost } from "../lib/server/launchpad-preview-gateway";
 import { readLaunchpadPreviewAccess } from "../lib/server/launchpad-preview-access";
 import { readLaunchpadRuntime, verifiedLaunchpadRpc } from "../lib/server/new-launchpad-config";
 
@@ -20,6 +20,7 @@ async function main() {
   if (cert && (access.origin.hostname !== host || Number(access.origin.port || "443") !== port)) {
     throw new Error("The direct TLS address must match the configured preview origin.");
   }
+  const allowsLanPeer = previewLanAccess(host, process.env.RMT_LAUNCHPAD_PREVIEW_LAN_PEER);
 
   const rpc = await verifiedLaunchpadRpc(runtime);
   const accounts: unknown = await rpc.request({ method: "eth_accounts" } as never);
@@ -30,6 +31,11 @@ async function main() {
   const server = cert && key
     ? createHttpsServer({ ...options, cert: readFileSync(cert), key: readFileSync(key), minVersion: "TLSv1.2" }, handler)
     : createHttpServer(options, handler);
+  if (allowsLanPeer) {
+    server.prependListener("connection", (socket) => {
+      if (!allowsLanPeer(socket.remoteAddress)) socket.destroy();
+    });
+  }
   server.maxConnections = 24;
   server.setTimeout(15_000, (socket) => socket.destroy());
   server.on("error", (error) => { console.error("Preview gateway failed:", error.name); process.exitCode = 1; });
