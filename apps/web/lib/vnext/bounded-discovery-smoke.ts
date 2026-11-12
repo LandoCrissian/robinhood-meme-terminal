@@ -31,7 +31,7 @@ assert.equal(parseBoundedDiscoveryCoverage({ ...coverage, completeWithinObserved
 assert.equal(parseBoundedDiscoveryCoverage({ ...coverage, truncated: false }, 144), null);
 assert.equal(parseBoundedDiscoveryCoverage(complete, 1), null);
 assert.equal(mergeBoundedDiscoveryRefresh([candidates[144]], loaded, coverage, false).length, 145);
-assert.equal(RMT_CURATED_MARKET_REGISTRY.length, 8);
+assert.equal(RMT_CURATED_MARKET_REGISTRY.length, 7);
 const views = Object.values(directory).find((value) => Array.isArray(value)
   && value.some((entry: unknown) => entry && typeof entry === "object" && "label" in entry && entry.label === "Active"));
 assert.ok(Array.isArray(views), "Directory must expose its existing category order");
