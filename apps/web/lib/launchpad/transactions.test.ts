@@ -2,9 +2,16 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { Hex } from "viem";
 import {
-  readPendingRequest, replacePendingRequest, submitReviewedRequest,
+  readPendingRequest, replacePendingRequest, submitReviewedRequest, walletMessage,
   type BoundWallet, type LaunchRequest, type WalletProvider,
 } from "./transactions";
+
+test("wallet errors hide the private RPC capability without altering ordinary messages", () => {
+  const capability = "a8".repeat(32);
+  const message = walletMessage(new Error(`RPC validation failed for https://preview.example.test/preview-rpc/${capability}`));
+  assert.equal(message, "RPC validation failed for https://preview.example.test/preview-rpc/[redacted]");
+  assert.equal(walletMessage(new Error("Network unavailable.")), "Network unavailable.");
+});
 
 test("stale receipt and hash recovery cannot replace a newer wallet journal", async () => {
   const account = "0x1111111111111111111111111111111111111111";

@@ -7,16 +7,21 @@ import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
 import {PoolManager} from "@uniswap/v4-core/src/PoolManager.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {IHooks} from "@uniswap/v4-core/src/interfaces/IHooks.sol";
+import {IUnlockCallback} from "@uniswap/v4-core/src/interfaces/callback/IUnlockCallback.sol";
+import {CustomRevert} from "@uniswap/v4-core/src/libraries/CustomRevert.sol";
+import {Hooks} from "@uniswap/v4-core/src/libraries/Hooks.sol";
 import {TickMath} from "@uniswap/v4-core/src/libraries/TickMath.sol";
 import {Pool} from "@uniswap/v4-core/src/libraries/Pool.sol";
 import {StateLibrary} from "@uniswap/v4-core/src/libraries/StateLibrary.sol";
+import {BalanceDelta, BalanceDeltaLibrary} from "@uniswap/v4-core/src/types/BalanceDelta.sol";
 import {Currency} from "@uniswap/v4-core/src/types/Currency.sol";
 import {PoolKey} from "@uniswap/v4-core/src/types/PoolKey.sol";
-import {PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
+import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/src/types/PoolId.sol";
 import {SwapParams} from "@uniswap/v4-core/src/types/PoolOperation.sol";
 import {PoolSwapTest} from "@uniswap/v4-core/src/test/PoolSwapTest.sol";
 import {PositionManager} from "@uniswap/v4-periphery/src/PositionManager.sol";
 import {Actions} from "@uniswap/v4-periphery/src/libraries/Actions.sol";
+import {HookMiner} from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
 import {IPositionDescriptor} from "@uniswap/v4-periphery/src/interfaces/IPositionDescriptor.sol";
 import {IPositionManager} from "@uniswap/v4-periphery/src/interfaces/IPositionManager.sol";
 import {IERC721Permit_v4} from "@uniswap/v4-periphery/src/interfaces/IERC721Permit_v4.sol";
@@ -120,6 +125,45 @@ contract LaunchCustodyProbe {
     }
 }
 
+/// @dev Calls the real PoolManager directly to exercise an undeployed currency.
+contract EmptyPoolPriceProbe is IUnlockCallback {
+    IPoolManager internal immutable manager;
+
+    constructor(IPoolManager manager_) {
+        manager = manager_;
+    }
+
+    function movePrice(PoolKey calldata key, uint160 limit) external returns (BalanceDelta) {
+        return abi.decode(manager.unlock(abi.encode(key, limit)), (BalanceDelta));
+    }
+
+    function unlockCallback(bytes calldata data) external returns (bytes memory) {
+        require(msg.sender == address(manager));
+        (PoolKey memory key, uint160 limit) = abi.decode(data, (PoolKey, uint160));
+        return abi.encode(manager.swap(key, SwapParams(true, -1, limit), ""));
+    }
+}
+
+/// @dev Test-only model of an immutable, initialization-only hook.
+contract LaunchInitializationGateProbe {
+    address internal immutable manager;
+    address internal immutable initializer;
+
+    error UnexpectedManager();
+    error UnexpectedInitializer();
+
+    constructor(address manager_, address initializer_) {
+        manager = manager_;
+        initializer = initializer_;
+    }
+
+    function beforeInitialize(address sender, PoolKey calldata, uint160) external view returns (bytes4) {
+        if (msg.sender != manager) revert UnexpectedManager();
+        if (sender != initializer) revert UnexpectedInitializer();
+        return IHooks.beforeInitialize.selector;
+    }
+}
+
 contract RMTV4LaunchFactoryV1Test is Test {
     using PoolIdLibrary for PoolKey;
     using StateLibrary for IPoolManager;
@@ -168,31 +212,142 @@ contract RMTV4LaunchFactoryV1Test is Test {
 
     function testPreinitializedPoolFailsAtomicallyAndNewIntentCanLaunch() public {
         RMTV4LaunchFactoryV1.Terms memory terms = _terms();
-        (uint256 supply,, uint160 price,,,) =
+        (,, uint160 price,,,) = factory.preview(terms.supplyPreset, terms.poolAllocationBps, terms.nativeAmount);
+        _assertPreinitializationRollsBack(terms, price);
+
+        terms.intentId = keccak256("retry");
+        _assertLaunch(terms);
+    }
+
+    function testWrongPriceAndPredictableRetryCanBothBePreinitialized() public {
+        RMTV4LaunchFactoryV1.Terms memory terms = _terms();
+        (,, uint160 price,,,) = factory.preview(terms.supplyPreset, terms.poolAllocationBps, terms.nativeAmount);
+        _assertPreinitializationRollsBack(terms, price / 2);
+
+        terms.intentId = keccak256("prepared retry");
+        _assertPreinitializationRollsBack(terms, price / 2);
+
+        terms.intentId = keccak256("unpoisoned retry");
+        _assertLaunch(terms);
+    }
+
+    function testFundingOrDeadlineChangesPreserveThePoisonedPoolIdentity() public {
+        RMTV4LaunchFactoryV1.Terms memory terms = _terms();
+        address predicted = _predictToken(terms);
+        (,, uint160 price,,,) = factory.preview(terms.supplyPreset, terms.poolAllocationBps, terms.nativeAmount);
+
+        terms.nativeAmount = 2 ether;
+        terms.poolAllocationBps = 5_000;
+        terms.deadline = block.timestamp + 10 minutes;
+        (,, uint160 newPrice,,,) = factory.preview(terms.supplyPreset, terms.poolAllocationBps, terms.nativeAmount);
+        assertNotEq(price, newPrice);
+        assertEq(_predictToken(terms), predicted);
+        _assertPreinitializationRollsBack(terms, price);
+    }
+
+    function testUnfundedPoolPriceCanMoveBeforeTokenExists() public {
+        RMTV4LaunchFactoryV1.Terms memory terms = _terms();
+        address predicted = _predictToken(terms);
+        PoolKey memory key = _pool(predicted);
+        (,, uint160 price,,,) = factory.preview(terms.supplyPreset, terms.poolAllocationBps, terms.nativeAmount);
+
+        vm.prank(stranger);
+        manager.initialize(key, price);
+        EmptyPoolPriceProbe probe = new EmptyPoolPriceProbe(manager);
+        vm.prank(stranger);
+        BalanceDelta result = probe.movePrice(key, price / 2);
+
+        assertEq(BalanceDelta.unwrap(result), BalanceDelta.unwrap(BalanceDeltaLibrary.ZERO_DELTA));
+        (uint160 storedPrice,,,) = manager.getSlot0(key.toId());
+        assertEq(storedPrice, price / 2);
+        assertEq(manager.getLiquidity(key.toId()), 0);
+        assertEq(address(manager).balance, 0);
+        assertEq(predicted.code.length, 0);
+    }
+
+    function testInitializationOnlyHookBlocksPreinitializationAndAllowsNormalTrading() public {
+        (address expectedHook, bytes32 salt) = HookMiner.find(
+            address(this),
+            Hooks.BEFORE_INITIALIZE_FLAG,
+            type(LaunchInitializationGateProbe).creationCode,
+            abi.encode(address(manager), address(this))
+        );
+        LaunchInitializationGateProbe hook =
+            new LaunchInitializationGateProbe{salt: salt}(address(manager), address(this));
+        assertEq(address(hook), expectedHook);
+        assertEq(uint160(address(hook)) & Hooks.ALL_HOOK_MASK, Hooks.BEFORE_INITIALIZE_FLAG);
+
+        RMTV4LaunchFactoryV1.Terms memory terms = _terms();
+        (uint256 supply,, uint160 price, uint128 liquidity, uint128 amount0, uint128 amount1) =
             factory.preview(terms.supplyPreset, terms.poolAllocationBps, terms.nativeAmount);
+        bytes32 tokenSalt = keccak256("gate-probe token");
         address predicted = Create2.computeAddress(
-            keccak256(abi.encode(creator, terms.intentId)),
+            tokenSalt,
             keccak256(
                 abi.encodePacked(
                     type(RMTV4LaunchTokenV1).creationCode,
                     abi.encode(terms.name, terms.symbol, terms.projectURI, supply)
                 )
             ),
-            address(factory)
+            address(this)
         );
-        manager.initialize(_pool(predicted), price);
-        uint256 firstPosition = positionManager.nextTokenId();
+        PoolKey memory unguarded = _pool(predicted);
+        PoolKey memory guarded = _pool(predicted);
+        guarded.hooks = IHooks(address(hook));
+        assertNotEq(PoolId.unwrap(unguarded.toId()), PoolId.unwrap(guarded.toId()));
 
-        vm.prank(creator);
-        vm.expectRevert(Pool.PoolAlreadyInitialized.selector);
-        factory.launch{value: terms.nativeAmount}(terms);
-        assertEq(predicted.code.length, 0);
-        assertEq(factory.launches(creator, terms.intentId), address(0));
-        assertEq(positionManager.nextTokenId(), firstPosition);
-        assertEq(address(manager).balance, 0);
+        vm.prank(stranger);
+        vm.expectRevert(LaunchInitializationGateProbe.UnexpectedManager.selector);
+        hook.beforeInitialize(address(this), guarded, price);
 
-        terms.intentId = keccak256("retry");
-        _assertLaunch(terms);
+        vm.prank(stranger);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                CustomRevert.WrappedError.selector,
+                address(hook),
+                IHooks.beforeInitialize.selector,
+                abi.encodeWithSelector(LaunchInitializationGateProbe.UnexpectedInitializer.selector),
+                abi.encodeWithSelector(Hooks.HookCallFailed.selector)
+            )
+        );
+        manager.initialize(guarded, price / 2);
+        (uint160 uninitializedPrice,,,) = manager.getSlot0(guarded.toId());
+        assertEq(uninitializedPrice, 0);
+
+        vm.prank(stranger);
+        manager.initialize(unguarded, price / 2);
+        RMTV4LaunchTokenV1 token =
+            new RMTV4LaunchTokenV1{salt: tokenSalt}(terms.name, terms.symbol, terms.projectURI, supply);
+        assertEq(address(token), predicted);
+
+        manager.initialize(guarded, price);
+        vm.deal(address(this), terms.nativeAmount);
+        token.approve(address(permit2), amount1);
+        permit2.approve(address(token), address(positionManager), amount1, uint48(terms.deadline));
+        bytes[] memory params = new bytes[](2);
+        uint256 positionId = positionManager.nextTokenId();
+        params[0] = abi.encode(
+            guarded, factory.TICK_LOWER(), factory.TICK_UPPER(), liquidity, amount0, amount1, address(this), bytes("")
+        );
+        params[1] = abi.encode(guarded.currency0, guarded.currency1);
+        bytes memory actions = abi.encodePacked(uint8(Actions.MINT_POSITION), uint8(Actions.SETTLE_PAIR));
+        positionManager.modifyLiquidities{value: amount0}(abi.encode(actions, params), terms.deadline);
+        assertEq(positionManager.ownerOf(positionId), address(this));
+        assertEq(manager.getLiquidity(guarded.toId()), liquidity);
+        assertEq(manager.getLiquidity(unguarded.toId()), 0);
+
+        PoolSwapTest router = new PoolSwapTest(manager);
+        PoolSwapTest.TestSettings memory settings = PoolSwapTest.TestSettings(false, false);
+        vm.startPrank(stranger);
+        router.swap{value: 0.1 ether}(guarded, SwapParams(true, -0.1 ether, TickMath.MIN_SQRT_PRICE + 1), settings, "");
+        uint256 bought = token.balanceOf(stranger);
+        assertGt(bought, 0);
+        token.approve(address(router), bought);
+        uint256 nativeBeforeSale = stranger.balance;
+        router.swap(guarded, SwapParams(false, -int256(bought), TickMath.MAX_SQRT_PRICE - 1), settings, "");
+        vm.stopPrank();
+        assertEq(token.balanceOf(stranger), 0);
+        assertGt(stranger.balance, nativeBeforeSale);
     }
 
     function testSameIntentIsBoundToCreatorAndCannotLaunchTwice() public {
@@ -364,6 +519,49 @@ contract RMTV4LaunchFactoryV1Test is Test {
         assertEq(slotPrice, price);
         assertGt(tick, factory.TICK_LOWER());
         assertLt(tick, factory.TICK_UPPER());
+    }
+
+    function _assertPreinitializationRollsBack(RMTV4LaunchFactoryV1.Terms memory terms, uint160 poisonPrice) internal {
+        address predicted = _predictToken(terms);
+        PoolKey memory key = _pool(predicted);
+        assertEq(predicted.code.length, 0);
+        uint256 nativeBefore = address(manager).balance;
+        uint256 creatorNativeBefore = creator.balance;
+        uint256 firstPosition = positionManager.nextTokenId();
+
+        vm.prank(stranger);
+        manager.initialize(key, poisonPrice);
+
+        vm.prank(creator);
+        vm.expectRevert(Pool.PoolAlreadyInitialized.selector);
+        factory.launch{value: terms.nativeAmount}(terms);
+        assertEq(predicted.code.length, 0);
+        assertEq(factory.launches(creator, terms.intentId), address(0));
+        (address recordedCreator, uint256 recordedId, uint128 recordedLiquidity) = factory.positions(predicted);
+        assertEq(recordedCreator, address(0));
+        assertEq(recordedId, 0);
+        assertEq(recordedLiquidity, 0);
+        assertEq(positionManager.nextTokenId(), firstPosition);
+        assertEq(address(manager).balance, nativeBefore);
+        assertEq(creator.balance, creatorNativeBefore);
+        assertEq(address(factory).balance, 0);
+        assertEq(manager.getLiquidity(key.toId()), 0);
+        (uint160 storedPrice,,,) = manager.getSlot0(key.toId());
+        assertEq(storedPrice, poisonPrice);
+    }
+
+    function _predictToken(RMTV4LaunchFactoryV1.Terms memory terms) internal view returns (address) {
+        (uint256 supply,,,,,) = factory.preview(terms.supplyPreset, terms.poolAllocationBps, terms.nativeAmount);
+        return Create2.computeAddress(
+            keccak256(abi.encode(creator, terms.intentId)),
+            keccak256(
+                abi.encodePacked(
+                    type(RMTV4LaunchTokenV1).creationCode,
+                    abi.encode(terms.name, terms.symbol, terms.projectURI, supply)
+                )
+            ),
+            address(factory)
+        );
     }
 
     function _launch(address account, RMTV4LaunchFactoryV1.Terms memory terms) internal returns (address) {

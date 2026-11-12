@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createRequire } from "node:module";
 import {
   RMT_EXTERNAL_WALLET_LIST,
   RMT_INJECTED_WALLET_LIST,
@@ -257,4 +258,29 @@ assert.equal(selectedRmtWalletReadAddress({ ...balanceReadInput, connectorUid: "
 assert.equal(selectedRmtWalletReadAddress({ ...balanceReadInput, connectedChainId: 1 }), undefined,
   "Balances from another chain cannot be presented as the active Robinhood account.");
 
-console.log("Unified wallet gateway defaults to embedded signing, preserves exact external connector identity, and fails closed on ambiguity.");
+// Exercise the pairing parser through the same dependency chain as the app's Wagmi connector.
+let pairingRequire = createRequire(import.meta.url);
+for (const dependency of ["wagmi/connectors", "@wagmi/connectors", "@walletconnect/ethereum-provider", "@walletconnect/universal-provider"]) {
+  pairingRequire = createRequire(pairingRequire.resolve(dependency));
+}
+const pairing = {
+  protocol: "wc",
+  version: 2,
+  topic: "a".repeat(64),
+  symKey: "b".repeat(64),
+  relay: { protocol: "irn", data: "encoded relay + / ? é" }
+};
+const { formatUri, parseUri } = pairingRequire("@walletconnect/utils") as {
+  formatUri(parameters: typeof pairing): string;
+  parseUri(uri: string): typeof pairing;
+};
+const parsedPairing = parseUri(formatUri(pairing));
+assert.equal(parsedPairing.topic, pairing.topic);
+assert.equal(parsedPairing.version, pairing.version);
+assert.equal(parsedPairing.symKey, pairing.symKey);
+assert.deepEqual(parsedPairing.relay, pairing.relay);
+
+const malformedUri = formatUri({ ...pairing, relay: { ...pairing.relay, data: "%zz" } }).replace("%25zz", "%zz");
+assert.equal(parseUri(malformedUri).relay.data, "%zz", "Malformed WalletConnect URI encoding must keep the decoder fallback available.");
+
+console.log("Unified wallet gateway preserves exact signer identity, fails closed on ambiguity, and parses WalletConnect pairing URIs.");

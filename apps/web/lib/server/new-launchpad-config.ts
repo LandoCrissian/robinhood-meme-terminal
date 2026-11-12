@@ -2,6 +2,7 @@ import { isAbsolute } from "node:path";
 import { createPublicClient, getAddress, http, isAddress, isHash, keccak256, parseAbi, zeroAddress, type Address, type Hash, type PublicClient } from "viem";
 import deploymentIdentities from "../../../../packages/contracts/test/fixtures/rmt-v4-deployment-identities.json";
 import type { NewLaunchDeployment } from "../launchpad/launch-record";
+import { readLaunchpadPreviewAccess } from "./launchpad-preview-access";
 
 const contractNames = ["factory", "poolManager", "positionManager", "universalRouter", "quoter", "permit2", "stateView"] as const;
 type ContractName = typeof contractNames[number];
@@ -77,11 +78,12 @@ export function readLaunchpadRuntime(env: Environment = process.env): LaunchpadR
   if (!/^[1-9]\d{0,14}$/.test(factoryStartBlock) || !isAbsolute(databasePath)) throw new Error("Invalid launchpad block or database path");
   const startBlock = BigInt(factoryStartBlock);
   const rpcUrl = parseLocalRpcUrl(required(env, "RPC_URL"));
+  const preview = readLaunchpadPreviewAccess(env);
   return {
     deployment: {
       chainId,
-      name: "Local Anvil · Base Sepolia fork",
-      rpcUrl,
+      name: preview ? "Private preview · Chain 31337" : "Local Anvil · Base Sepolia fork",
+      rpcUrl: preview ? new URL(preview.rpcPath, preview.origin).href : rpcUrl,
       factory: contracts.factory.address,
       poolManager: contracts.poolManager.address,
       positionManager: contracts.positionManager.address,

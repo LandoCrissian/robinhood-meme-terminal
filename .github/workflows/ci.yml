@@ -27,6 +27,9 @@ jobs:
       - run: pnpm audit:production
       - run: pnpm check:repo
       - run: pnpm test:terminal-release
+      - run: pnpm --filter web test:protection-center
+      - run: pnpm --filter web test:local-launchpad
+      - run: pnpm --filter web exec tsx --test lib/server/launchpad-preview-gateway.test.ts
       - run: pnpm test:firebase-rules
       - run: pnpm test:production-health
       - run: pnpm typecheck

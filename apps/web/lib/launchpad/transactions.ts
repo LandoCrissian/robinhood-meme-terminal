@@ -93,7 +93,7 @@ export function walletMessage(error: unknown) {
   if (error instanceof Error) {
     const message = "shortMessage" in error ? String(error.shortMessage) : error.message;
     if (/insufficient funds|exceeds balance/i.test(message)) return "Insufficient balance for the amount and network gas.";
-    return message.slice(0, 360);
+    return message.replace(/\/preview-rpc\/[0-9a-f]{64}/gi, "/preview-rpc/[redacted]").slice(0, 360);
   }
   return "The wallet or network could not complete this request.";
 }

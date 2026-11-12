@@ -8,7 +8,7 @@ Owner direction, 2026-11-11: return RMT to token launches, keep the existing cle
 
 The implementation branch opens the launchpad directly. Its local Base Sepolia fork supports creating fixed-supply tokens, funding hookless Uniswap v4 pools, permanent position custody, buying and selling, and creator fee claims. Launch receipts are verified and published before the bounded indexer reconciles them. Mainnet and hosted transaction paths are disabled.
 
-See the [local runbook and visual evidence](docs/RMT_LAUNCH_V4_LOCAL.md) and [REST and MCP read tools](docs/RMT_LAUNCH_PUBLIC_READS.md). External routing is unknown until independently observed.
+See the [local runbook and visual evidence](docs/RMT_LAUNCH_V4_LOCAL.md), [private HTTPS preview](docs/RMT_LAUNCH_PRIVATE_PREVIEW.md), and [REST and MCP read tools](docs/RMT_LAUNCH_PUBLIC_READS.md). External routing is unknown until independently observed.
 
 ## Product boundary
 

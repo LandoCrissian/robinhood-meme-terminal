@@ -22,7 +22,7 @@ Opening buy/sell examples use deterministic v4 math and the reviewed starting li
 
 The public root opens Launches and links to Create Token, My Launches and Wallet. It no longer mounts the old terminal directory, discovery/polling, or global onboarding, telemetry and profile providers. The old launches layout and its runtime imports were removed. Out-of-scope product routes and selected product APIs return HTTP 410. The exact shared authentication, quote, verification, authorization, native settlement and recovery paths remain available under their existing conditions. The existing RMT assets are documented under [Legacy RMT](RMT_LAUNCH_BASELINE_EVIDENCE.md).
 
-The legacy database, services, admin routes and shared compatibility source remain. Before any production cutover, reconcile the remaining old browser workflows and the production-readiness directory/search probes. Review any worker retirement separately. PR #575 dependency files overlap with this branch and require a lockfile reconciliation and combined regression run if both changes are integrated.
+The legacy database, services, admin routes and shared compatibility source remain. Pull requests run launchpad browser acceptance on a private loopback fork. The retired terminal UI workflows remain available as manual replays of the pinned legacy checkout. The production-readiness schedule keeps its directory and search probes while the live deployment serves the legacy terminal. Its launchpad checks require disabled execution and public reads. Review any worker retirement separately. PR #575 dependency files overlap with this branch and require a lockfile reconciliation and combined regression run if both changes are integrated.
 
 ## Visual evidence
 

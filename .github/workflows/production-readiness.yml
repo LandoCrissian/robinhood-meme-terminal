@@ -14,12 +14,12 @@ concurrency:
 
 jobs:
   verify:
-    name: Verify live Terminal and data
+    name: Verify live RMT and data
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - name: Check canonical domain, Terminal, and application readiness
+      - name: Check canonical domain and deployed product readiness
         shell: bash
         run: |
           set -euo pipefail
@@ -52,14 +52,27 @@ jobs:
             return 1
           }
 
+          route_status() {
+            local name="$1"
+            local url="$2"
+            shift 2
+            curl --silent --show-error --max-time 25 \
+              --dump-header "health-artifacts/$name.headers" \
+              --output "health-artifacts/$name.json" --write-out '%{http_code}' "$@" "$url"
+          }
+
           check_endpoint health "$base/api/health" "health-artifacts/health.headers"
-          check_endpoint directory "$base/api/vnext/market-directory" "health-artifacts/directory.headers"
-          # Follow genuine cursors to terminal pagination within a fail-closed budget.
-          node scripts/collect-production-directory.mjs health-artifacts
-          while read -r name symbol address; do
-            check_endpoint "search-$name" "$base/api/vnext/market-search?q=$address"
-            check_endpoint "search-$name-text" "$base/api/vnext/market-search?q=$symbol"
-          done <<'MARKET_CONTROLS'
+          launchpad_status="$(route_status launchpad-config "$base/api/launchpad/config")"
+          case "$launchpad_status" in
+            404)
+              # The legacy deployment retains its indexed directory and exact-address probes.
+              check_endpoint directory "$base/api/vnext/market-directory" "health-artifacts/directory.headers"
+              # Follow genuine cursors to terminal pagination within a fail-closed budget.
+              node scripts/collect-production-directory.mjs health-artifacts
+              while read -r name symbol address; do
+                check_endpoint "search-$name" "$base/api/vnext/market-search?q=$address"
+                check_endpoint "search-$name-text" "$base/api/vnext/market-search?q=$symbol"
+              done <<'MARKET_CONTROLS'
           stonkbroker STONKBROKER 0xe934e36a439c94017b64a3fece66af12099abf50
           pons PONS 0x39dbed3a2bd333467115de45665cc57f813c4571
           pipedog PIPEDOG 0x5cb6f181081301b44905f3ae15419112ecabd8a6
@@ -69,6 +82,23 @@ jobs:
           hopium HOPIUM 0xb6ce51925c2e397ebf1a443b343d19267b3d4225
           cannacat CANNACAT 0x1139d423c1706bdead91f03507f521635591ed92
           MARKET_CONTROLS
+              ;;
+            200)
+              check_endpoint launchpad-directory "$base/api/launchpad/launches" "health-artifacts/launchpad-directory.headers"
+              public_status="$(route_status launchpad-public-list "$base/api/launchpad/public/list_launches?chainId=31337&limit=1")"
+              mcp_status="$(route_status launchpad-mcp "$base/mcp" \
+                --header 'Content-Type: application/json' --header 'Accept: application/json, text/event-stream' \
+                --data-binary '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"rmt-readiness","version":"1"}}}')"
+              if [[ "$public_status" != 404 || "$mcp_status" != 404 ]]; then
+                echo "Launchpad public reads or MCP unexpectedly opened on Production." >&2
+                exit 1
+              fi
+              ;;
+            *)
+              echo "Unexpected launchpad configuration HTTP status: $launchpad_status" >&2
+              exit 1
+              ;;
+          esac
           if ! curl --silent --show-error --fail --location --max-time 25 \
             --user-agent "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/127.0.0.0 Safari/537.36" \
             --dump-header "health-artifacts/home.headers" "$base/" --output "health-artifacts/home.html"; then
@@ -86,10 +116,15 @@ jobs:
           mv health-artifacts/robots.json health-artifacts/robots.txt
           mv health-artifacts/sitemap.json health-artifacts/sitemap.xml
 
-          # Preserve freshness after bounded directory/search collection.
+          # Preserve freshness after bounded evidence collection.
           check_endpoint health "$base/api/health" "health-artifacts/health.headers"
-          node scripts/verify-production-health.mjs health-artifacts
-          node scripts/verify-public-surface.mjs health-artifacts
+          if [[ "$launchpad_status" == 404 ]]; then
+            node scripts/verify-production-health.mjs health-artifacts
+            node scripts/verify-public-surface.mjs health-artifacts
+          else
+            node scripts/verify-production-liveness.mjs health-artifacts
+            node scripts/verify-locked-launchpad-surface.mjs health-artifacts
+          fi
 
       - name: Preserve readiness evidence
         if: always()
