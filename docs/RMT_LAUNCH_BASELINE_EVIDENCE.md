@@ -25,7 +25,7 @@ The V6 curve and splitter independently returned the V6 token, curve and treasur
 
 ### Reproduce the read-only checks
 
-The factory return types and event signatures come from [IRMTLaunchFactoryV6](../packages/contracts/src/interfaces/IRMTLaunchFactoryV6.sol), [RMTLaunchFactoryV6](../packages/contracts/src/RMTLaunchFactoryV6.sol) and [LowCostMemeLaunchFactoryV4](../packages/contracts/src/LowCostMemeLaunchFactoryV4.sol). Use an archival endpoint if the public endpoint can no longer serve the snapshot.
+The factory return types and event signatures come from [IRMTLaunchFactoryV6](../packages/contracts/src/interfaces/IRMTLaunchFactoryV6.sol), [RMTLaunchFactoryV6](../packages/contracts/src/RMTLaunchFactoryV6.sol) and [LowCostMemeLaunchFactoryV4](../packages/contracts/src/LowCostMemeLaunchFactoryV4.sol). The documented Pinax endpoint `https://robinhood.rpc.pinax.network` also served the splitter reads at the pinned block after Robinhood's default RPC pruned that state. [Robinhood Chain RPC endpoints](https://docs.robinhood.com/chain/connecting/).
 
 ```bash
 export ETH_RPC_URL=https://rpc.mainnet.chain.robinhood.com
@@ -55,6 +55,8 @@ cast call "$v6curve" 'feeSplitter()(address)' --block "$snapshot"
 cast call "$v6curve" 'realEthReserve()(uint256)' --block "$snapshot"
 cast call "$v6curve" 'graduated()(bool)' --block "$snapshot"
 cast call "$v6splitter" 'creatorShareBps()(uint16)' --block "$snapshot"
+cast call "$v6splitter" 'launchToken()(address)' --block "$snapshot"
+cast call "$v6splitter" 'authorizedMarket()(address)' --block "$snapshot"
 cast call "$stateview" 'getSlot0(bytes32)(uint160,int24,uint24,uint24)' "$v6pool" --block "$snapshot"
 ```
 
