@@ -373,6 +373,33 @@ contract RMTV4GrowthVaultV1Test is GrowthVaultFixture {
         _assertLocked(token, key, vault);
         _assertAccounting(vault.snapshot());
         _assertNoApproval(vault, token);
+
+        // An increase harvests already-earned fees inside the same revert boundary as funding.
+        _earnFees(vault, token, key);
+        plan = _plan(vault, reviewedPrice);
+        before = vault.snapshot();
+        allowanceHarness.setRefuseSettlement(true);
+        assertEq(_execute(vault, plan), SETTLEMENT_DEFERRED);
+        failed = vault.snapshot();
+        assertEq(failed.nativePositionFees, before.nativePositionFees);
+        assertEq(failed.tokenPositionFees, before.tokenPositionFees);
+        assertEq(failed.nativeHeld, before.nativeHeld);
+        assertEq(failed.tokenHeld, before.tokenHeld);
+        assertEq(failed.positionTokenId, before.positionTokenId);
+        assertEq(failed.liquidityAdded, before.liquidityAdded);
+        assertEq(vault.nextNonce(), 1);
+        _assertNoApproval(vault, token);
+
+        allowanceHarness.setRefuseSettlement(false);
+        assertEq(_execute(vault, plan), ADDED);
+        RMTV4GrowthVaultV1.Snapshot memory increased = vault.snapshot();
+        assertGt(increased.nativePositionFees, before.nativePositionFees);
+        assertGt(increased.tokenPositionFees, before.tokenPositionFees);
+        assertEq(increased.positionTokenId, before.positionTokenId);
+        assertEq(vault.nextNonce(), 2);
+        _assertLocked(token, key, vault);
+        _assertAccounting(increased);
+        _assertNoApproval(vault, token);
     }
 
     function testSignaturesBindThePlanVaultAndChainAndCannotBeReplayed() public {

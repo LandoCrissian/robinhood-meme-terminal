@@ -40,6 +40,7 @@ contract RMTV4GrowthVaultV1 is EIP712, ReentrancyGuard {
     uint16 public constant MAX_SQRT_DEVIATION_BPS = 50;
     uint128 public constant MAX_NATIVE_IN = 100 ether;
     uint128 public constant MAX_TOKEN_IN = 1_000_000_000 ether;
+    uint256 private constant SETTLEMENT_GAS_RESERVE = 230_000;
     uint256 private constant Q96 = 1 << 96;
     uint24 private constant LP_FEE = 3_000;
     int24 private constant TICK_SPACING = 60;
@@ -181,6 +182,8 @@ contract RMTV4GrowthVaultV1 is EIP712, ReentrancyGuard {
     }
 
     /// @notice Collect original LP fees and withdraw only this vault's fixed reserve allocation.
+    // The vault-wide lock spans both balance reads and the pinned factory payout.
+    // slither-disable-next-line reentrancy-balance
     function collectReserve(uint256 deadline)
         external
         nonReentrant
@@ -216,7 +219,8 @@ contract RMTV4GrowthVaultV1 is EIP712, ReentrancyGuard {
         _checkDeadline(deadline);
         (address token, PoolKey memory key) = _verifiedLaunch();
         if (state.positionTokenId == 0) return (0, 0);
-        return _harvestGrowthFees(token, key, deadline);
+        (nativeAmount, tokenAmount) = _measureGrowthFees(token, key, deadline);
+        _creditGrowthFees(token, nativeAmount, tokenAmount);
     }
 
     /// @notice Permissionless execution of a fresh, jointly reviewed, single-pool liquidity addition.
@@ -236,14 +240,23 @@ contract RMTV4GrowthVaultV1 is EIP712, ReentrancyGuard {
         Addition memory addition;
         (outcome, addition) = _preview(poolId, plan);
         if (outcome == Outcome.Added) {
-            // Preserve enough gas to record a recoverable deferral after the isolated settlement subcall.
-            if (gasleft() < 650_000) revert InsufficientExecutionGas();
-            try this.settle{gas: gasleft() - 55_000}(token, key, addition, plan.deadline) {
+            // Leave gas for accounting or a recoverable deferral after the isolated settlement subcall.
+            if (gasleft() < 850_000) revert InsufficientExecutionGas();
+            try this.settle{gas: gasleft() - SETTLEMENT_GAS_RESERVE}(token, key, addition, plan.deadline) returns (
+                uint256 positionId, uint256 nativeFees, uint256 tokenFees
+            ) {
+                _creditGrowthFees(token, nativeFees, tokenFees);
+                state.positionTokenId = positionId;
+                state.liquidityAdded += addition.liquidity;
+                state.nativeHeld -= addition.nativeAmount;
+                state.tokenHeld -= addition.tokenAmount;
+                state.nativeAdded += addition.nativeAmount;
+                state.tokenAdded += addition.tokenAmount;
                 nextNonce = plan.nonce + 1;
                 emit GrowthLiquidityAdded(
                     token,
                     PoolId.unwrap(poolId),
-                    state.positionTokenId,
+                    positionId,
                     plan.nonce,
                     addition.nativeAmount,
                     addition.tokenAmount,
@@ -259,11 +272,15 @@ contract RMTV4GrowthVaultV1 is EIP712, ReentrancyGuard {
         emit ReinvestmentAttempt(plan.nonce, digest, outcome);
     }
 
-    /// @dev External solely to isolate failures. The only caller is this vault's validated reinvestment path.
-    function settle(address token, PoolKey calldata key, Addition calldata addition, uint256 deadline) external {
-        if (msg.sender != address(this)) revert SettlementCaller();
-        uint256 id = state.positionTokenId;
-        uint128 oldLiquidity = state.liquidityAdded;
+    /// @dev The guarded caller records accounting only after this isolated settlement succeeds.
+    // The self-call executes under the vault-wide lock and uses pinned token, manager and Permit2 code.
+    // slither-disable-next-line reentrancy-balance
+    function settle(address token, PoolKey calldata key, Addition calldata addition, uint256 deadline)
+        external
+        returns (uint256 id, uint256 nativeFees, uint256 tokenFees)
+    {
+        if (msg.sender != address(this) || !_reentrancyGuardEntered()) revert SettlementCaller();
+        id = state.positionTokenId;
         IERC20 asset = IERC20(token);
         bytes[] memory params = new bytes[](2);
         uint8 liquidityAction;
@@ -282,7 +299,7 @@ contract RMTV4GrowthVaultV1 is EIP712, ReentrancyGuard {
             );
         } else {
             // Clear already-earned fees first so they cannot silently subsidize the measured principal input.
-            _harvestGrowthFees(token, key, deadline);
+            (nativeFees, tokenFees) = _measureGrowthFees(token, key, deadline);
             liquidityAction = uint8(Actions.INCREASE_LIQUIDITY);
             params[0] = abi.encode(id, addition.liquidity, addition.nativeAmount, addition.tokenAmount, bytes(""));
         }
@@ -290,7 +307,9 @@ contract RMTV4GrowthVaultV1 is EIP712, ReentrancyGuard {
 
         uint256 nativeBefore = address(this).balance;
         uint256 tokenBefore = asset.balanceOf(address(this));
-        if (nativeBefore < state.nativeHeld || tokenBefore < state.tokenHeld) revert BalanceMismatch();
+        if (nativeBefore < state.nativeHeld + nativeFees || tokenBefore < state.tokenHeld + tokenFees) {
+            revert BalanceMismatch();
+        }
         asset.forceApprove(address(permit2), addition.tokenAmount);
         permit2.approve(token, address(positionManager), addition.tokenAmount, deadline.toUint48());
         positionManager.modifyLiquidities{value: addition.nativeAmount}(
@@ -302,22 +321,14 @@ contract RMTV4GrowthVaultV1 is EIP712, ReentrancyGuard {
             address(this).balance != nativeBefore - addition.nativeAmount
                 || asset.balanceOf(address(this)) != tokenBefore - addition.tokenAmount
         ) revert BalanceMismatch();
-        uint128 newLiquidity = oldLiquidity + addition.liquidity;
-        _checkPosition(id, address(this), key.toId(), newLiquidity);
-
-        state.positionTokenId = id;
-        state.liquidityAdded = newLiquidity;
-        state.nativeHeld -= addition.nativeAmount;
-        state.tokenHeld -= addition.tokenAmount;
-        state.nativeAdded += addition.nativeAmount;
-        state.tokenAdded += addition.tokenAmount;
+        _checkPosition(id, address(this), key.toId(), state.liquidityAdded + addition.liquidity);
     }
 
     receive() external payable {
         if (msg.sender != address(factory) && msg.sender != address(poolManager)) revert UnexpectedNativePayment();
     }
 
-    function _harvestGrowthFees(address token, PoolKey memory key, uint256 deadline)
+    function _measureGrowthFees(address token, PoolKey memory key, uint256 deadline)
         private
         returns (uint256 nativeAmount, uint256 tokenAmount)
     {
@@ -336,7 +347,10 @@ contract RMTV4GrowthVaultV1 is EIP712, ReentrancyGuard {
         _checkPosition(id, address(this), poolId, liquidity);
         nativeAmount = address(this).balance - nativeBefore;
         tokenAmount = asset.balanceOf(address(this)) - tokenBefore;
-        if (nativeAmount == 0 && tokenAmount == 0) return (0, 0);
+    }
+
+    function _creditGrowthFees(address token, uint256 nativeAmount, uint256 tokenAmount) private {
+        if (nativeAmount == 0 && tokenAmount == 0) return;
         state.nativePositionFees += nativeAmount;
         state.tokenPositionFees += tokenAmount;
         state.nativeHeld += nativeAmount;
