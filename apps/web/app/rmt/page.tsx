@@ -146,7 +146,7 @@ export default function RmtIdentityPage() {
         </div>
       </section>
 
-      <section className={styles.section} aria-labelledby="legacy-rmt">
+      <section id="legacy-token" className={styles.section} aria-labelledby="legacy-rmt">
         <div className={styles.sectionHeading}>
           <h2 id="legacy-rmt">Legacy RMT</h2>
         </div>
