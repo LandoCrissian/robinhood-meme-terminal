@@ -3,9 +3,10 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
-import { encodeAbiParameters, encodeEventTopics, keccak256, parseAbiItem, toHex, zeroAddress, type AbiEvent, type Address, type Hash, type Log, type PublicClient, type TransactionReceipt } from "viem";
-import { launchCreatedEvent, launchPoolId, type LaunchPoolKey } from "../launchpad/launch-record";
+import { encodeAbiParameters, encodeEventTopics, getAddress, keccak256, parseAbiItem, toHex, zeroAddress, type AbiEvent, type Address, type Hash, type Log, type PublicClient, type TransactionReceipt } from "viem";
+import { launchCreatedEvent, launchPoolId, longevityPolicyCommittedEvent, type LaunchFeePolicy, type LaunchPoolKey } from "../launchpad/launch-record";
 import { readLaunchpadRuntime, verifyLaunchpadRuntime } from "./new-launchpad-config";
+import { makeLaunchHealth, readLaunchHealth } from "./new-launchpad-health";
 import { syncNewLaunchpadRange } from "./new-launchpad-indexer";
 import { readLaunchpadPublicData } from "./new-launchpad-public-data";
 import { InvalidLaunchReceipt, projectLaunchReceipt, verifyLaunchReceipt } from "./new-launchpad-receipt";
@@ -28,10 +29,22 @@ const env = {
 const config = readLaunchpadRuntime(env)!;
 const { deployment } = config;
 const { poolManager, positionManager } = deployment;
+const guard = address(0x2000);
+const guardEnv = {
+  ...env,
+  RMT_LAUNCHPAD_ENGINE_VERSION: "2",
+  RMT_LAUNCHPAD_GUARD_ADDRESS: guard,
+  RMT_LAUNCHPAD_GUARD_RUNTIME_HASH: keccak256("0x2345"),
+};
+const guardedConfig = readLaunchpadRuntime(guardEnv)!;
+const guardedPolicy: LaunchFeePolicy = {
+  creator, treasury: getAddress(address(10)), reserve: getAddress(address(11)), creatorBps: 5000, treasuryBps: 3000, reserveBps: 2000,
+};
 const tx = hash(400);
 const blockHash = hash(11);
 const intentId = hash(66);
 const key: LaunchPoolKey = { currency0: zeroAddress, currency1: token, fee: 3000, tickSpacing: 60, hooks: zeroAddress };
+const guardedKey = { ...key, hooks: guard };
 const poolId = launchPoolId(key);
 const tickLower = -887220;
 const tickUpper = 887220;
@@ -61,22 +74,29 @@ function log(event: AbiEvent, emitter: Address, index: number, indexed: Record<s
   };
 }
 
-function launchLog(id = poolId, amount0 = fundedNative) {
-  return log(launchCreatedEvent, factory, 6, { creator, token, poolId: id }, [
-    intentId, positionId, key, sqrtPrice, tickLower, tickUpper, liquidity, amount0, fundedToken, supply,
+function launchLog(id = poolId, amount0 = fundedNative, poolKey = key, index = 6) {
+  return log(launchCreatedEvent, factory, index, { creator, token, poolId: id }, [
+    intentId, positionId, poolKey, sqrtPrice, tickLower, tickUpper, liquidity, amount0, fundedToken, supply,
     "Fixture", "FIX", "https://example.com/project",
   ]);
 }
 
-function makeReceipt(): TransactionReceipt {
+function makeReceipt(poolKey = key, policy?: LaunchFeePolicy): TransactionReceipt {
+  const id = launchPoolId(poolKey);
   const logs = [
     log(tokenTransfer, token, 1, { from: zeroAddress, to: factory }, [supply]),
-    log(initialize, poolManager, 2, { id: poolId, currency0: zeroAddress, currency1: token }, [3000, 60, zeroAddress, sqrtPrice, 0]),
+    log(initialize, poolManager, 2, { id, currency0: zeroAddress, currency1: token }, [3000, 60, poolKey.hooks, sqrtPrice, 0]),
     log(positionTransfer, positionManager, 3, { from: zeroAddress, to: factory, tokenId: positionId }, []),
-    log(modify, poolManager, 4, { id: poolId, sender: positionManager }, [tickLower, tickUpper, liquidity, toHex(positionId, { size: 32 })]),
+    log(modify, poolManager, 4, { id, sender: positionManager }, [tickLower, tickUpper, liquidity, toHex(positionId, { size: 32 })]),
     log(tokenTransfer, token, 5, { from: factory, to: poolManager }, [fundedToken]),
-    launchLog(),
   ];
+  if (policy) {
+    logs.push(log(tokenTransfer, token, 6, { from: factory, to: creator }, [supply - fundedToken]));
+    logs.push(log(longevityPolicyCommittedEvent, factory, 7, { token, creator: policy.creator }, [
+      policy.treasury, policy.reserve, policy.creatorBps, policy.treasuryBps, policy.reserveBps,
+    ]));
+  }
+  logs.push(launchLog(id, fundedNative, poolKey, logs.length + 1));
   return {
     blockHash, blockNumber: 11n, contractAddress: null, cumulativeGasUsed: 1n, effectiveGasPrice: 1n,
     from: creator, gasUsed: 1n, logs, logsBloom: "0x", status: "success", to: factory, transactionHash: tx,
@@ -84,9 +104,8 @@ function makeReceipt(): TransactionReceipt {
   };
 }
 
-function fixtureRpc() {
-  const chain = { head: 10n, providerDown: false, orphaned: false, wrongOwner: false, logQueryCount: 0 };
-  const receipt = makeReceipt();
+function fixtureRpc(receipt = makeReceipt()) {
+  const chain = { head: 10n, providerDown: false, orphaned: false, wrongOwner: false, wrongPolicy: false, logQueryCount: 0 };
   const rpc = {
     async getBlockNumber() { return chain.head; },
     async getBlock({ blockNumber }: { blockNumber: bigint }) {
@@ -97,11 +116,13 @@ function fixtureRpc() {
       assert.ok(toBlock - fromBlock < 256n);
       chain.logQueryCount++;
       if (chain.providerDown) throw new Error("RPC unavailable");
-      return !chain.orphaned && fromBlock <= 11n && toBlock >= 11n ? [receipt.logs[5], receipt.logs[5]] : [];
+      return !chain.orphaned && fromBlock <= 11n && toBlock >= 11n ? [receipt.logs.at(-1), receipt.logs.at(-1)] : [];
     },
     async getTransactionReceipt({ hash: wanted }: { hash: Hash }) { assert.equal(wanted, tx); return receipt; },
     async readContract({ functionName, blockNumber }: { functionName: string; blockNumber: bigint }) {
       assert.equal(blockNumber, 11n);
+      if (functionName === "feePolicy") return [creator, guardedPolicy.treasury, guardedPolicy.reserve,
+        chain.wrongPolicy ? 4999 : 5000, 3000, 2000];
       return functionName === "ownerOf" ? (chain.wrongOwner ? creator : factory) : liquidity;
     },
   } as unknown as PublicClient;
@@ -131,6 +152,29 @@ test("validates exact factory, intent, v4 pool, custody and both deposited amoun
   chain.wrongOwner = false;
   chain.orphaned = true;
   await assert.rejects(() => verifyLaunchReceipt(rpc, deployment, tx), /no longer canonical/);
+});
+
+test("verifies the exact guarded PoolKey, committed fee policy and creator allocation at the receipt block", async () => {
+  const receipt = makeReceipt(guardedKey, guardedPolicy);
+  const { chain, rpc } = fixtureRpc(receipt);
+  const launch = await verifyLaunchReceipt(rpc, guardedConfig.deployment, tx, { creator, intentId });
+  assert.equal(launch.engineVersion, 2);
+  assert.deepEqual(launch.feePolicy, guardedPolicy);
+  assert.equal(launch.poolKey.hooks, guard);
+  assert.equal(launch.poolId, launchPoolId(guardedKey));
+  assert.notEqual(launch.poolId, poolId);
+  assert.throws(() => projectLaunchReceipt(deployment, receipt, tx), /supported funded pool terms/);
+  for (const invalid of [
+    makeReceipt({ ...guardedKey, hooks: address(0x6000) }, guardedPolicy),
+    makeReceipt(guardedKey),
+    makeReceipt(guardedKey, { ...guardedPolicy, treasuryBps: 3001 }),
+    makeReceipt(guardedKey, { ...guardedPolicy, reserve: guardedPolicy.treasury }),
+    makeReceipt(guardedKey, { ...guardedPolicy, treasury: factory }),
+    { ...receipt, logs: receipt.logs.map((event) => event.logIndex === 7 ? { ...event, address: creator } : event) },
+    { ...receipt, logs: receipt.logs.filter((event) => event.logIndex !== 6) },
+  ]) assert.throws(() => projectLaunchReceipt(guardedConfig.deployment, invalid, tx), InvalidLaunchReceipt);
+  chain.wrongPolicy = true;
+  await assert.rejects(() => verifyLaunchReceipt(rpc, guardedConfig.deployment, tx), /commitments do not match/);
 });
 
 test("publishes a receipt immediately, reconciles duplicate logs after restart, and rewinds an orphan", async () => {
@@ -171,11 +215,47 @@ test("publishes a receipt immediately, reconciles duplicate logs after restart, 
   }
 });
 
+test("V2 uses an isolated durable scope and preserves the existing V1 index on reorg", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "rmt-guarded-index-"));
+  const path = join(directory, "launches.sqlite");
+  const v1 = new LaunchpadStore(path, config.scope);
+  let v2 = new LaunchpadStore(path, guardedConfig.scope);
+  const { chain, rpc, receipt } = fixtureRpc(makeReceipt(guardedKey, guardedPolicy));
+  try {
+    const oldLaunch = projectLaunchReceipt(deployment, makeReceipt(), tx);
+    const guardedLaunch = projectLaunchReceipt(guardedConfig.deployment, receipt, tx);
+    v1.publish(oldLaunch);
+    v2.publish(guardedLaunch);
+    chain.head = 11n;
+    await syncNewLaunchpadRange(v2, rpc, guardedConfig);
+    v2.close();
+    v2 = new LaunchpadStore(path, guardedConfig.scope);
+    assert.deepEqual(v2.read(), [{ ...guardedLaunch, indexing: "indexed" }]);
+    assert.deepEqual(v1.read(), [oldLaunch]);
+    chain.orphaned = true;
+    await syncNewLaunchpadRange(v2, rpc, guardedConfig);
+    assert.deepEqual(v2.read(), []);
+    assert.deepEqual(v1.read(), [oldLaunch]);
+  } finally {
+    v1.close();
+    v2.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("blocks hosted environments, other chain IDs, arbitrary public RPC URLs and runtime mismatches", async () => {
   assert.equal(readLaunchpadRuntime({}), null);
   assert.equal(readLaunchpadRuntime({ ...env, VERCEL_ENV: "production" }), null);
   assert.equal(readLaunchpadRuntime({ ...env, VERCEL_ENV: "preview" }), null);
   assert.equal(readLaunchpadRuntime({ ...env, VERCEL: "1" }), null);
+  assert.equal(readLaunchpadRuntime({ ...guardEnv, VERCEL: "1" }), null);
+  assert.equal(guardedConfig.deployment.engineVersion, 2);
+  assert.equal(guardedConfig.deployment.initializationGuard, guard);
+  assert.equal(readLaunchpadRuntime({ ...env, RMT_LAUNCHPAD_ENGINE_VERSION: "1" })?.scope, config.scope);
+  assert.notEqual(guardedConfig.scope, config.scope);
+  assert.throws(() => readLaunchpadRuntime({ ...env, RMT_LAUNCHPAD_ENGINE_VERSION: "2" }), /Missing .*GUARD_ADDRESS/);
+  assert.throws(() => readLaunchpadRuntime({ ...guardEnv, RMT_LAUNCHPAD_ENGINE_VERSION: "1" }), /Guard pins require/);
+  assert.throws(() => readLaunchpadRuntime({ ...guardEnv, RMT_LAUNCHPAD_GUARD_ADDRESS: address(0x2080) }), /only the before-initialize/);
   assert.equal(deployment.tradingEnabled, false);
   assert.equal(readLaunchpadRuntime({ ...env, RMT_LAUNCHPAD_TRADING_ENABLED: "true" })?.deployment.tradingEnabled, true);
   assert.throws(() => readLaunchpadRuntime({ ...env, RMT_LAUNCHPAD_CHAIN_ID: "4663" }), /local launchpad/);
@@ -187,6 +267,97 @@ test("blocks hosted environments, other chain IDs, arbitrary public RPC URLs and
     async readContract() { return poolManager; },
   } as unknown as PublicClient;
   await assert.rejects(() => verifyLaunchpadRuntime(config, rpc), /runtime bytecode|declared start block|binding mismatch/);
+});
+
+test("pins V2 guard bytecode, atomic deployment and reciprocal factory, manager and runtime hash bindings", async () => {
+  const code = "0x1234";
+  const runtimeHash = keccak256(code);
+  const contracts = { ...guardedConfig.contracts };
+  for (const name of Object.keys(contracts) as (keyof typeof contracts)[]) contracts[name] = { ...contracts[name], runtimeHash };
+  const runtime = { ...guardedConfig, contracts, guard: { address: guard, runtimeHash } };
+  let priorGuard = false;
+  let wrongGuardCode = false;
+  let wrongGuardFactory = false;
+  let wrongFactoryHash = false;
+  const rpc = {
+    async getChainId() { return 31337; },
+    async getBlockNumber() { return 11n; },
+    async getCode({ address: target, blockNumber }: { address: Address; blockNumber: bigint }) {
+      if (blockNumber === 9n && (target === factory || (target === guard && !priorGuard))) return "0x";
+      return target === guard && blockNumber === 11n && wrongGuardCode ? "0x4321" : code;
+    },
+    async readContract({ functionName }: { functionName: string }) {
+      if (functionName === "initializationGuard") return guard;
+      if (functionName === "initializationGuardRuntimeHash") return wrongFactoryHash ? hash(9) : runtimeHash;
+      if (functionName === "factory") return wrongGuardFactory ? creator : factory;
+      if (functionName === "positionManager") return positionManager;
+      if (functionName === "permit2") return deployment.permit2;
+      return poolManager;
+    },
+  } as unknown as PublicClient;
+  await verifyLaunchpadRuntime(runtime, rpc);
+  priorGuard = true;
+  await assert.rejects(() => verifyLaunchpadRuntime(runtime, rpc), /guard existed before/);
+  priorGuard = false;
+  wrongGuardCode = true;
+  await assert.rejects(() => verifyLaunchpadRuntime(runtime, rpc), /bytecode/);
+  wrongGuardCode = false;
+  wrongGuardFactory = true;
+  await assert.rejects(() => verifyLaunchpadRuntime(runtime, rpc), /guard dependency binding/);
+  wrongGuardFactory = false;
+  wrongFactoryHash = true;
+  await assert.rejects(() => verifyLaunchpadRuntime(runtime, rpc), /guard dependency binding/);
+});
+
+test("observes comparable liquidity and reconciled fee collection and distribution without estimating holder trends", async () => {
+  const launch = projectLaunchReceipt(guardedConfig.deployment, makeReceipt(guardedKey, guardedPolicy), tx);
+  const opening = { blockNumber: 11n, hash: blockHash, timestamp: 1000n };
+  const current = { blockNumber: 16n, hash: hash(16), timestamp: 1015n };
+  const position = { positionOwner: factory, positionLiquidity: liquidity.toString(), activeLiquidity: "205" };
+  const recipients = [creator, guardedPolicy.treasury, guardedPolicy.reserve];
+  let inconsistent = false;
+  const rpc = {
+    async readContract({ address: target, blockNumber, functionName, args }: {
+      address: Address; blockNumber: bigint; functionName: string; args: [Address, number];
+    }) {
+      if (functionName === "getLiquidity") {
+        assert.equal(target, deployment.stateView);
+        assert.equal(blockNumber, 11n);
+        assert.equal(args[0], launch.poolId);
+        return liquidity;
+      }
+      assert.equal(target, factory);
+      assert.equal(blockNumber, 16n);
+      assert.equal(args[0], token);
+      if (functionName === "feePolicy") return [creator, guardedPolicy.treasury, guardedPolicy.reserve, 5000, 3000, 2000];
+      if (functionName === "feeTotals") return [10_001n, 10_004n, inconsistent ? 2n : 1n, 1n];
+      if (args[1] === 0) return [recipients[0], 4_990n, 5_002n, 10n, 0n];
+      if (args[1] === 1) return [recipients[1], 3_000n, 2_901n, 0n, 100n];
+      return [recipients[2], 2_000n, 2_000n, 0n, 0n];
+    },
+  } as unknown as PublicClient;
+  const health = await readLaunchHealth(rpc, deployment.stateView, launch, position, opening, current);
+  assert.equal(health.liquidity.custody.status, "verified");
+  assert.deepEqual(health.creator, { initialTokenAllocation: "90", vesting: "none" });
+  assert.equal(health.permissions.initializationGuard, guard);
+  assert.equal(health.permissions.principalWithdrawal, false);
+  assert.equal(health.fees.status, "verified");
+  assert.equal(health.fees.buckets?.[1].tokenDistributed, "100");
+  assert.equal(health.fees.totals?.nativeRoundingDust, "1");
+  assert.deepEqual(health.trends.liquidity, {
+    status: "observed",
+    from: { blockNumber: "11", blockHash, timestampUnixSeconds: "1000", activeLiquidity: "125" },
+    to: { blockNumber: "16", blockHash: hash(16), timestampUnixSeconds: "1015", activeLiquidity: "205" },
+  });
+  assert.equal(health.trends.holders.status, "unknown");
+  inconsistent = true;
+  const partial = await readLaunchHealth(rpc, deployment.stateView, launch, { ...position, positionOwner: creator }, opening, current);
+  assert.equal(partial.fees.status, "unknown");
+  assert.equal(partial.fees.buckets, null);
+  assert.equal(partial.liquidity.custody.status, "failed");
+  assert.equal(makeLaunchHealth(launch).permissions.status, "unknown");
+  assert.equal(makeLaunchHealth(launch).trends.liquidity.status, "unknown");
+  assert.equal(makeLaunchHealth(projectLaunchReceipt(deployment, makeReceipt(), tx), position).fees.status, "legacy");
 });
 
 test("bounds public requests, paginates in log order, and shares a durable rate limit across connections", async () => {

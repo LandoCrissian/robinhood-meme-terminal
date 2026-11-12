@@ -11,6 +11,13 @@ export const factoryAbi = parseAbi([
   "function launch((string name,string symbol,string projectURI,bytes32 intentId,uint8 supplyPreset,uint16 poolAllocationBps,uint128 nativeAmount,uint256 deadline) terms) payable returns (address token)",
   "function collectFees(address token,uint256 deadline)",
 ]);
+export const longevityFactoryAbi = [
+  ...factoryAbi,
+  ...parseAbi([
+    "function launchWithLongevity((string name,string symbol,string projectURI,bytes32 intentId,uint8 supplyPreset,uint16 poolAllocationBps,uint128 nativeAmount,uint256 deadline) terms,(address treasury,address reserve,uint16 creatorBps,uint16 treasuryBps,uint16 reserveBps) feePolicy) payable returns (address token)",
+    "function withdrawFees(address token,uint8 bucket)",
+  ]),
+] as const;
 const routerAbi = parseAbi(["function execute(bytes commands,bytes[] inputs,uint256 deadline) payable"]);
 const quoterAbi = parseAbi([
   "function quoteExactInputSingle(((address currency0,address currency1,uint24 fee,int24 tickSpacing,address hooks) poolKey,bool zeroForOne,uint128 exactAmount,bytes hookData) params) returns (uint256 amountOut,uint256 gasEstimate)",
@@ -41,7 +48,7 @@ export function displayAmount(amount: bigint | string) {
 
 export async function prepareTransaction(
   client: PublicClient, deployment: LaunchDeployment, wallet: BoundWallet,
-  operation: Pick<LaunchRequest, "kind" | "to" | "data" | "deadline" | "intentId" | "token" | "amountIn" | "minimumOut"> & { value?: bigint },
+  operation: Pick<LaunchRequest, "kind" | "to" | "data" | "deadline" | "intentId" | "token" | "amountIn" | "minimumOut" | "feeBucket"> & { value?: bigint },
 ): Promise<LaunchRequest> {
   if (wallet.chainId !== deployment.chainId || await client.getChainId() !== deployment.chainId) {
     throw new Error(`Switch your wallet to ${deployment.name} before reviewing.`);
@@ -71,11 +78,13 @@ export type SwapReview = {
 
 function assertLaunchPool(deployment: LaunchDeployment, record: NewLaunchRecord) {
   const key = record.poolKey;
+  const guard = deployment.engineVersion === 2 ? deployment.initializationGuard : zeroAddress;
   if (!deployment.tradingEnabled || record.chainId !== deployment.chainId
+    || record.engineVersion !== deployment.engineVersion || !guard
     || record.poolManager.toLowerCase() !== deployment.poolManager.toLowerCase()
     || record.factory.toLowerCase() !== deployment.factory.toLowerCase()
     || key.currency0 !== zeroAddress || key.currency1.toLowerCase() !== record.token.toLowerCase()
-    || key.hooks !== zeroAddress || key.fee !== 3000 || key.tickSpacing !== 60 || launchPoolId(key) !== record.poolId) {
+    || key.hooks.toLowerCase() !== guard.toLowerCase() || key.fee !== 3000 || key.tickSpacing !== 60 || launchPoolId(key) !== record.poolId) {
     throw new Error("Direct trading is unavailable for this pool.");
   }
 }

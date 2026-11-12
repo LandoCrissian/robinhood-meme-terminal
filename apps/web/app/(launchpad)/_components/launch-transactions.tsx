@@ -45,6 +45,8 @@ export function useLaunches(filter: { creator?: Address; token?: Address } = {})
 }
 
 const feeEvent = parseAbiItem("event LaunchFeesCollected(address indexed creator,address indexed token,uint256 indexed positionTokenId)");
+const accruedEvent = parseAbiItem("event LongevityFeesAccrued(address indexed token,uint256 nativeAmount,uint256 tokenAmount)");
+const withdrawnEvent = parseAbiItem("event LongevityFeesWithdrawn(address indexed token,uint8 indexed bucket,address indexed recipient,uint256 nativeAmount,uint256 tokenAmount)");
 
 async function publishLaunch(hash: Hex, request: LaunchRequest): Promise<NewLaunchRecord> {
   const response = await fetch("/api/launchpad/launches", {
@@ -132,6 +134,20 @@ export function useLaunchTransaction(record?: NewLaunchRecord) {
           throw new Error("The receipt does not verify the creator fee collection.");
         }
         confirmed = "Creator fee collection confirmed.";
+      } else if (request.kind === "fees-harvest" || request.kind === "fees-withdrawal") {
+        const factoryLogs = receipt.logs.filter(({ address }) => address.toLowerCase() === request.to.toLowerCase());
+        const tokenMatches = (token: Address) => token.toLowerCase() === request.token?.toLowerCase();
+        if (request.kind === "fees-harvest") {
+          const accrual = parseEventLogs({ abi: [accruedEvent], logs: factoryLogs }).find(({ args }) => tokenMatches(args.token));
+          if (!accrual) throw new Error("The receipt does not verify the LP fee collection.");
+          confirmed = accrual.args.nativeAmount || accrual.args.tokenAmount
+            ? "LP fees collected into the committed shares." : "Fee collection confirmed. No fees accrued in this collection.";
+        } else {
+          const withdrawal = parseEventLogs({ abi: [withdrawnEvent], logs: factoryLogs }).find(({ args }) => tokenMatches(args.token)
+            && args.bucket === request.feeBucket && args.recipient.toLowerCase() === request.from.toLowerCase());
+          if (!withdrawal) throw new Error("The receipt does not verify the committed fee payout.");
+          confirmed = "Fee payout to your committed wallet verified.";
+        }
       } else {
         confirmed = "Approval confirmed. Review the next step to continue the sale.";
       }

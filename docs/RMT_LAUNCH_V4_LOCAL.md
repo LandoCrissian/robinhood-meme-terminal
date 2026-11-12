@@ -18,6 +18,18 @@ The creator selects a fixed supply of 1 million, 100 million or 1 billion tokens
 
 Opening buy/sell examples use deterministic v4 math and the reviewed starting liquidity. Each example starts at the opening price, excludes gas, and does not supply a live quote. Actual swaps use the pinned Quoter and Universal Router. The public checks and tools expose deterministic chain and index evidence. See [public reads](RMT_LAUNCH_PUBLIC_READS.md).
 
+## Guarded V2 and Longevity V1
+
+On a fresh loopback Base Sepolia fork, use `node packages/contracts/scripts/deploy-launchpad-local.mjs http://127.0.0.1:8545 --guarded`. Configure `RMT_LAUNCHPAD_ENGINE_VERSION=2` and copy the returned guard address and runtime hash to `RMT_LAUNCHPAD_GUARD_ADDRESS` and `RMT_LAUNCHPAD_GUARD_RUNTIME_HASH`. Use the returned factory pins and a separate local SQLite path. The worker and web app must use the same settings. An omitted engine version keeps the existing V1 scope. Each worker configuration serves one factory.
+
+The one-shot deployment pairs a factory with an immutable initialization-only hook. The hook checks the exact PoolManager and factory, with no swap or liquidity callbacks. Pool discovery and routing must preserve the full key including the hook address.
+
+V2 launches default to 100% of earned LP fees for the creator. Longevity opt-in fixes three disclosed shares and recipient wallets at launch. Collection credits actual earned ETH and token amounts, then each recipient can withdraw its own credited balance. Cumulative fractional remainders stay in the ledger until subsequent collection credits them. The reserve recipient controls any reinvestment. Fee collection leaves the original position liquidity unchanged, and the factory exposes no principal withdrawal.
+
+The existing token page and `get_launch_checks` tool report block-pinned custody, creator allocation and vesting status, permissions, and fee credits and payouts. Holder-address trends require a bounded reconstruction from the fixed-supply mint through two comparable blocks. The UI uses unknown when evidence is insufficient. Independent security review, production deployment provenance and economics, and external routing support remain release decisions.
+
+The loopback browser suite selects Longevity when `RMT_LAUNCHPAD_TEST_LONGEVITY=true`. It verifies a fixture split of 60% creator, 25% treasury and 15% reserve, then checks collection, a creator payout and onchain accounting. [Phone setup](../evidence/rmt-launch-longevity/longevity-setup-phone.png), [review](../evidence/rmt-launch-longevity/create-review-phone.png), [launch health](../evidence/rmt-launch-longevity/launch-health-phone.png), [phone landscape](../evidence/rmt-launch-longevity/token-phone-landscape.png), [desktop](../evidence/rmt-launch-longevity/token-desktop.png)
+
 ## Runtime changes
 
 The public root opens Launches and links to Create Token, My Launches and Wallet. It no longer mounts the old terminal directory, discovery/polling, or global onboarding, telemetry and profile providers. The old launches layout and its runtime imports were removed. Out-of-scope product routes and selected product APIs return HTTP 410. The exact shared authentication, quote, verification, authorization, native settlement and recovery paths remain available under their existing conditions. The existing RMT assets are documented under [Legacy RMT](RMT_LAUNCH_BASELINE_EVIDENCE.md).

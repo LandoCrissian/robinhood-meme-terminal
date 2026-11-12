@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { encodeFunctionData, formatEther, parseEther, toHex } from "viem";
-import { displayAmount, factoryAbi, prepareTransaction, priceInWei } from "../../../lib/launchpad/direct-v4";
+import { encodeFunctionData, formatEther, getAddress, isAddress, parseEther, toHex, zeroAddress, type Address } from "viem";
+import { displayAmount, factoryAbi, longevityFactoryAbi, prepareTransaction, priceInWei } from "../../../lib/launchpad/direct-v4";
 import { openingExamples } from "../../../lib/launchpad/opening-examples";
 import { walletMessage, type LaunchRequest } from "../../../lib/launchpad/transactions";
 import { TransactionFeedback, useLaunchTransaction } from "./launch-transactions";
@@ -11,8 +11,39 @@ import { useLaunchClient, useLaunchWallet, WalletConnection } from "./launch-wal
 
 const supplies = ["1 million", "100 million", "1 billion"];
 const draftKey = "rmt:launchpad:draft:v1";
-const initial = { name: "", symbol: "", projectURI: "", supplyPreset: "0", allocation: "80", seed: "0.1" };
+const baseDraft = { name: "", symbol: "", projectURI: "", supplyPreset: "0", allocation: "80", seed: "0.1" };
+const initial = { ...baseDraft, longevity: "off", creatorFees: "", treasuryFees: "", reserveFees: "", treasury: "", reserve: "" };
 type Draft = typeof initial;
+type FeePolicy = { treasury: Address; reserve: Address; creatorBps: number; treasuryBps: number; reserveBps: number };
+
+function feePolicyFor(draft: Draft, creator: Address): FeePolicy {
+  const basisPoints = (value: string) => {
+    if (!/^\d{1,3}(?:\.\d{1,2})?$/.test(value)) throw new Error("Enter each fee share as a percentage, using 0 for an unused share.");
+    const [whole, fraction = ""] = value.split(".");
+    return Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+  };
+  const creatorBps = basisPoints(draft.creatorFees);
+  const treasuryBps = basisPoints(draft.treasuryFees);
+  const reserveBps = basisPoints(draft.reserveFees);
+  if (creatorBps + treasuryBps + reserveBps !== 10_000 || treasuryBps + reserveBps === 0) {
+    throw new Error("Shares must total 100%, including a treasury or reserve share.");
+  }
+  const recipient = (raw: string, share: number) => {
+    if (share === 0) return zeroAddress;
+    const value = raw.trim();
+    if (!isAddress(value, { strict: false }) || value.toLowerCase() === zeroAddress) {
+      throw new Error("Enter a valid recipient for each funded fee share.");
+    }
+    return getAddress(value);
+  };
+  const treasury = recipient(draft.treasury, treasuryBps);
+  const reserve = recipient(draft.reserve, reserveBps);
+  const recipients = [creator, ...[treasury, reserve].filter((address) => address !== zeroAddress)];
+  if (new Set(recipients.map((address) => address.toLowerCase())).size !== recipients.length) {
+    throw new Error("Use distinct creator, treasury, and reserve wallets.");
+  }
+  return { treasury, reserve, creatorBps, treasuryBps, reserveBps };
+}
 
 function validated(draft: Draft) {
   const name = draft.name.trim();
@@ -50,6 +81,7 @@ type Review = {
   openingPrice: bigint;
   sqrtPrice: bigint;
   liquidity: bigint;
+  feePolicy?: FeePolicy;
 };
 
 export function CreateLaunch() {
@@ -68,9 +100,13 @@ export function CreateLaunch() {
   useEffect(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(draftKey) ?? "null") as Partial<Draft> | null;
-      if (saved && Object.keys(initial).every((key) => typeof saved[key as keyof Draft] === "string"
+      if (saved && Object.keys(baseDraft).every((key) => typeof saved[key as keyof Draft] === "string"
         && saved[key as keyof Draft]!.length <= 512)) {
-        draftRef.current = { ...initial, ...saved };
+        draftRef.current = { ...initial };
+        for (const key of Object.keys(initial) as (keyof Draft)[]) {
+          const value = saved[key];
+          if (typeof value === "string" && value.length <= 512) draftRef.current[key] = value;
+        }
         setDraft(draftRef.current);
       }
     } catch { /* A clean form remains available. */ }
@@ -100,19 +136,24 @@ export function CreateLaunch() {
     setPreparing(true);
     try {
       const fields = validated(draft);
+      const feePolicy = deployment.engineVersion === 2 && draft.longevity === "on"
+        ? feePolicyFor(draft, wallet.address) : undefined;
       const [supply, , sqrtPrice, liquidity, depositedETH, depositedTokens] = await client.readContract({
         address: deployment.factory, abi: factoryAbi, functionName: "preview",
         args: [fields.supplyPreset, fields.poolAllocationBps, fields.nativeAmount],
       });
       const intentId = toHex(crypto.getRandomValues(new Uint8Array(32)));
       const deadline = Math.floor(Date.now() / 1000) + 10 * 60;
-      const data = encodeFunctionData({ abi: factoryAbi, functionName: "launch", args: [{ ...fields, intentId, deadline: BigInt(deadline) }] });
+      const terms = { ...fields, intentId, deadline: BigInt(deadline) };
+      const data = feePolicy
+        ? encodeFunctionData({ abi: longevityFactoryAbi, functionName: "launchWithLongevity", args: [terms, feePolicy] })
+        : encodeFunctionData({ abi: factoryAbi, functionName: "launch", args: [terms] });
       const request = await prepareTransaction(client, deployment, wallet, {
         kind: "launch", to: deployment.factory, data, value: fields.nativeAmount, deadline, intentId,
       });
       if (!stillSelected(wallet)) throw new Error("Wallet selection changed. Review the launch again.");
       setReview({ request, symbol: fields.symbol, supply, depositedETH, depositedTokens, maxETH: fields.nativeAmount,
-        openingPrice: priceInWei(sqrtPrice), sqrtPrice, liquidity });
+        openingPrice: priceInWei(sqrtPrice), sqrtPrice, liquidity, feePolicy });
     } catch (cause) {
       setError(walletMessage(cause));
     } finally {
@@ -139,6 +180,23 @@ export function CreateLaunch() {
           </div>
           <label>Project link <small>Optional, public</small><input type="url" value={draft.projectURI} onChange={(event) => edit("projectURI", event.target.value)} maxLength={512} placeholder="https://" /></label>
         </fieldset>
+        {deployment?.engineVersion === 2 && <fieldset disabled={preparing || transaction.busy || Boolean(transaction.pending)}>
+          <legend>RMT Longevity V1 · Test only</legend>
+          <label className="lpCheck">
+            <input type="checkbox" checked={draft.longevity === "on"} onChange={(event) => edit("longevity", event.target.checked ? "on" : "off")} />
+            <span>Split earned LP fees at launch</span>
+          </label>
+          {draft.longevity === "on" && <>
+            <p>Choose recipients that can receive ETH and tokens. The split is permanent. The reserve wallet controls how its share is used.</p>
+            <div className="lpFormGrid">
+              <label>Creator fee share (%)<input required value={draft.creatorFees} inputMode="decimal" maxLength={6} onChange={(event) => edit("creatorFees", event.target.value)} /></label>
+              <label>Treasury fee share (%)<input required value={draft.treasuryFees} inputMode="decimal" maxLength={6} onChange={(event) => edit("treasuryFees", event.target.value)} /></label>
+              <label>Liquidity reserve fee share (%)<input required value={draft.reserveFees} inputMode="decimal" maxLength={6} onChange={(event) => edit("reserveFees", event.target.value)} /></label>
+            </div>
+            {Number(draft.treasuryFees) > 0 && <label>Project treasury wallet<input required value={draft.treasury} maxLength={42} spellCheck={false} onChange={(event) => edit("treasury", event.target.value)} placeholder="0x…" /></label>}
+            {Number(draft.reserveFees) > 0 && <label>Liquidity reserve wallet<input required value={draft.reserve} maxLength={42} spellCheck={false} onChange={(event) => edit("reserve", event.target.value)} placeholder="0x…" /></label>}
+          </>}
+        </fieldset>}
         <fieldset disabled={preparing || transaction.busy || Boolean(transaction.pending)}>
           <legend>Launch terms</legend>
           <label>Fixed token supply<select value={draft.supplyPreset} onChange={(event) => edit("supplyPreset", event.target.value)}>
@@ -166,7 +224,14 @@ export function CreateLaunch() {
           <dt>Pool swap fee</dt><dd>0.30%</dd>
           <dt>RMT creation and swap fee</dt><dd>0, draft terms</dd>
           <dt>Token transfers</dt><dd>Standard ERC-20, no transfer tax</dd>
-          <dt>Creator entitlement</dt><dd>Accrued position fees</dd>
+          {deployment?.engineVersion === 2 && <><dt>Pool initialization</dt><dd>Factory-only guard. Standard v4 trading.</dd></>}
+          <dt>Earned LP fees</dt><dd>{review?.feePolicy
+            ? `${review.feePolicy.creatorBps / 100}% creator · ${review.feePolicy.treasuryBps / 100}% treasury · ${review.feePolicy.reserveBps / 100}% reserve`
+            : "100% creator by default"}</dd>
+          {review?.feePolicy && <>
+            {review.feePolicy.treasuryBps > 0 && <><dt>Treasury recipient</dt><dd className="lpAddress">{review.feePolicy.treasury}</dd></>}
+            {review.feePolicy.reserveBps > 0 && <><dt>Reserve recipient</dt><dd className="lpAddress">{review.feePolicy.reserve}</dd></>}
+          </>}
           {review && <>
             <dt>Fixed supply</dt><dd>{displayAmount(review.supply)} {review.symbol}</dd>
             <dt>Pool deposit</dt><dd>{displayAmount(review.depositedTokens)} {review.symbol} + {displayAmount(review.depositedETH)} ETH</dd>
@@ -185,7 +250,7 @@ export function CreateLaunch() {
         </details>}
         {review && <>
           <label className="lpCheck"><input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} />
-            <span>I reviewed the allocations, test ETH deposit, and permanent position lock. <Link href="/risks" target="_blank">Read risks</Link>.</span></label>
+            <span>I reviewed the allocations, fee terms, test ETH deposit, and permanent position lock. <Link href="/risks" target="_blank">Read risks</Link>.</span></label>
           <button className="lpButton" type="button" disabled={!accepted || transaction.busy || Boolean(transaction.pending) || Boolean(transaction.result?.launch)}
             onClick={() => void transaction.send(review.request)}>Confirm in wallet</button>
         </>}

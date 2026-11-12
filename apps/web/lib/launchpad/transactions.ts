@@ -22,7 +22,7 @@ export type BoundWallet = {
 };
 
 export type LaunchRequest = {
-  kind: "launch" | "buy" | "sell" | "token-approval" | "router-approval" | "fees";
+  kind: "launch" | "buy" | "sell" | "token-approval" | "router-approval" | "fees" | "fees-harvest" | "fees-withdrawal";
   chainId: number;
   from: Address;
   to: Address;
@@ -35,6 +35,7 @@ export type LaunchRequest = {
   token?: Address;
   amountIn?: string;
   minimumOut?: string;
+  feeBucket?: 0 | 1 | 2;
 };
 
 export type PendingRequest = { request: LaunchRequest; hash?: Hex };

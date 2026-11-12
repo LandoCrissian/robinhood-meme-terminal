@@ -13,12 +13,16 @@ const bindingAbi = parseAbi([
   "function poolManager() view returns (address)",
   "function positionManager() view returns (address)",
   "function permit2() view returns (address)",
+  "function initializationGuard() view returns (address)",
+  "function initializationGuardRuntimeHash() view returns (bytes32)",
+  "function factory() view returns (address)",
 ]);
 
 type Environment = Record<string, string | undefined>;
 export type LaunchpadRuntime = {
   deployment: NewLaunchDeployment;
   contracts: ContractPins;
+  guard?: ContractPin;
   privateRpcUrl: string;
   startBlock: bigint;
   databasePath: string;
@@ -61,6 +65,15 @@ export function readLaunchpadRuntime(env: Environment = process.env): LaunchpadR
   if (env.RMT_LAUNCHPAD_ENABLED !== "true" || (env.VERCEL === "1" || Boolean(env.VERCEL_ENV))) return null;
   if (required(env, "CHAIN_ID") !== "31337") throw new Error("Only the local launchpad factory is enabled");
   const chainId = 31337;
+  const engineVersion = env.RMT_LAUNCHPAD_ENGINE_VERSION?.trim() || "1";
+  if (engineVersion !== "1" && engineVersion !== "2") throw new Error("Invalid RMT_LAUNCHPAD_ENGINE_VERSION");
+  const guard = engineVersion === "2" ? readPin(env, "GUARD") : undefined;
+  if (!guard && (env.RMT_LAUNCHPAD_GUARD_ADDRESS?.trim() || env.RMT_LAUNCHPAD_GUARD_RUNTIME_HASH?.trim())) {
+    throw new Error("Guard pins require launchpad engine version 2");
+  }
+  if (guard && (BigInt(guard.address) & 0x3fffn) !== 0x2000n) {
+    throw new Error("The guard must carry only the before-initialize permission");
+  }
   const contracts: ContractPins = {
     factory: readPin(env, "FACTORY"),
     poolManager: fixturePin("poolManager"),
@@ -70,7 +83,8 @@ export function readLaunchpadRuntime(env: Environment = process.env): LaunchpadR
     permit2: fixturePin("permit2"),
     stateView: fixturePin("stateView"),
   };
-  if (new Set(contractNames.map((name) => contracts[name].address.toLowerCase())).size !== contractNames.length) {
+  const pins = [...Object.values(contracts), ...(guard ? [guard] : [])];
+  if (new Set(pins.map(({ address }) => address.toLowerCase())).size !== pins.length) {
     throw new Error("Launchpad contract addresses must be distinct");
   }
   const factoryStartBlock = required(env, "FACTORY_START_BLOCK");
@@ -92,13 +106,16 @@ export function readLaunchpadRuntime(env: Environment = process.env): LaunchpadR
       permit2: contracts.permit2.address,
       stateView: contracts.stateView.address,
       tradingEnabled: env.RMT_LAUNCHPAD_TRADING_ENABLED === "true",
+      ...(guard ? { engineVersion: 2 as const, initializationGuard: guard.address } : {}),
     },
     contracts,
+    guard,
     privateRpcUrl: rpcUrl,
     startBlock,
     databasePath,
     confirmations: 0n,
-    scope: [chainId, startBlock, ...contractNames.flatMap((name) => [contracts[name].address, contracts[name].runtimeHash])].join(":").toLowerCase(),
+    scope: [chainId, startBlock, ...pins.flatMap(({ address, runtimeHash }) => [address, runtimeHash]),
+      ...(guard ? ["v2"] : [])].join(":").toLowerCase(),
   };
 }
 
@@ -113,7 +130,8 @@ function assertRuntimeCode(code: `0x${string}` | undefined, pin: ContractPin) {
 }
 
 export async function verifyLaunchpadRuntime(config: LaunchpadRuntime, rpc: PublicClient): Promise<void> {
-  const { deployment, contracts, startBlock } = config;
+  const { deployment, contracts, guard, startBlock } = config;
+  if ((deployment.engineVersion === 2) !== Boolean(guard)) throw new Error("Launchpad guard configuration mismatch");
   const [chainId, head] = await Promise.all([rpc.getChainId(), rpc.getBlockNumber()]);
   if (chainId !== deployment.chainId || head < startBlock) throw new Error("Launchpad RPC is on the wrong chain or below the deployment block");
 
@@ -142,7 +160,34 @@ export async function verifyLaunchpadRuntime(config: LaunchpadRuntime, rpc: Publ
       const value = await rpc.readContract({ address, abi: bindingAbi, functionName, blockNumber: head });
       if (getAddress(value) !== getAddress(expected)) throw new Error("Launchpad dependency binding mismatch");
     }),
+    ...(guard ? [verifyGuard(deployment, guard, rpc, startBlock, head)] : []),
   ]);
+}
+
+async function verifyGuard(
+  deployment: NewLaunchDeployment, guard: ContractPin, rpc: PublicClient, startBlock: bigint, head: bigint,
+) {
+  if (deployment.engineVersion !== 2 || getAddress(deployment.initializationGuard) !== getAddress(guard.address)) {
+    throw new Error("Launchpad guard configuration mismatch");
+  }
+  const factory = { address: deployment.factory, abi: bindingAbi, blockNumber: head };
+  const hook = { address: guard.address, abi: bindingAbi, blockNumber: head };
+  const [prior, deployed, current, factoryGuard, factoryGuardHash, hookFactory, hookManager] = await Promise.all([
+    rpc.getCode({ address: guard.address, blockNumber: startBlock - 1n }),
+    rpc.getCode({ address: guard.address, blockNumber: startBlock }),
+    rpc.getCode({ address: guard.address, blockNumber: head }),
+    rpc.readContract({ ...factory, functionName: "initializationGuard" }),
+    rpc.readContract({ ...factory, functionName: "initializationGuardRuntimeHash" }),
+    rpc.readContract({ ...hook, functionName: "factory" }),
+    rpc.readContract({ ...hook, functionName: "poolManager" }),
+  ]);
+  if (prior && prior !== "0x") throw new Error("The initialization guard existed before the factory's declared start block");
+  assertRuntimeCode(deployed, guard);
+  assertRuntimeCode(current, guard);
+  if (getAddress(factoryGuard) !== guard.address || factoryGuardHash.toLowerCase() !== guard.runtimeHash.toLowerCase()
+    || getAddress(hookFactory) !== getAddress(deployment.factory) || getAddress(hookManager) !== getAddress(deployment.poolManager)) {
+    throw new Error("Launchpad guard dependency binding mismatch");
+  }
 }
 
 let verified: { key: string; expiresAt: number; promise: Promise<PublicClient> } | undefined;

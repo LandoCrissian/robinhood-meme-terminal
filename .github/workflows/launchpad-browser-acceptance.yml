@@ -30,7 +30,13 @@ jobs:
     # Playwright 1.55.1 does not support the Ubuntu 26.04 runner image.
     runs-on: ubuntu-24.04
     timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [1, 2]
     env:
+      RMT_LAUNCHPAD_TEST_ENGINE: ${{ matrix.engine }}
+      RMT_LAUNCHPAD_TEST_LONGEVITY: ${{ matrix.engine == 2 }}
       RMT_LAUNCHPAD_TEST_URL: http://127.0.0.1:3196
       RMT_LAUNCHPAD_TEST_RPC_URL: http://127.0.0.1:8545
       RMT_LAUNCHPAD_TEST_OUTPUT: launchpad-browser-evidence
@@ -49,6 +55,8 @@ jobs:
         with:
           version: "1.7.1"
       - run: pnpm install --frozen-lockfile
+      - if: matrix.engine == 2
+        run: pnpm --filter web exec tsx --test lib/server/new-launchpad-holders.test.ts
       - run: pnpm exec playwright install --with-deps chromium
       - run: bash scripts/install-v4-deps.sh
         working-directory: packages/contracts
@@ -85,17 +93,27 @@ jobs:
             sleep 1
           done
 
-          node packages/contracts/scripts/deploy-launchpad-local.mjs "$RMT_LAUNCHPAD_TEST_RPC_URL" >"$scratch/deployment.json"
+          launch_args=()
+          if [[ "$RMT_LAUNCHPAD_TEST_ENGINE" == 2 ]]; then launch_args+=(--guarded); fi
+          node packages/contracts/scripts/deploy-launchpad-local.mjs "$RMT_LAUNCHPAD_TEST_RPC_URL" "${launch_args[@]}" >"$scratch/deployment.json"
           verified_deployment="$(node -e '
             const deployment = require(process.argv[1]);
             if (deployment.chainId !== 31337 ||
                 !/^0x[0-9a-f]{40}$/i.test(deployment.factory) ||
                 !/^0x[0-9a-f]{64}$/i.test(deployment.factoryRuntimeHash) ||
                 !Number.isSafeInteger(deployment.deployBlock) || deployment.deployBlock < 1) process.exit(1);
-            console.log(deployment.factory, deployment.factoryRuntimeHash, deployment.deployBlock);
-          ' "$scratch/deployment.json")"
-          read -r RMT_LAUNCHPAD_FACTORY_ADDRESS RMT_LAUNCHPAD_FACTORY_RUNTIME_HASH RMT_LAUNCHPAD_FACTORY_START_BLOCK <<<"$verified_deployment"
+            const guarded = process.argv[2] === "2";
+            if (guarded && (deployment.engineVersion !== 2 || !/^0x[0-9a-f]{40}$/i.test(deployment.initializationGuard) ||
+                !/^0x[0-9a-f]{64}$/i.test(deployment.initializationGuardRuntimeHash))) process.exit(1);
+            const pins = [deployment.factory, deployment.factoryRuntimeHash, deployment.deployBlock];
+            if (guarded) pins.push(deployment.initializationGuard, deployment.initializationGuardRuntimeHash);
+            console.log(...pins);
+          ' "$scratch/deployment.json" "$RMT_LAUNCHPAD_TEST_ENGINE")"
+          read -r RMT_LAUNCHPAD_FACTORY_ADDRESS RMT_LAUNCHPAD_FACTORY_RUNTIME_HASH RMT_LAUNCHPAD_FACTORY_START_BLOCK RMT_LAUNCHPAD_GUARD_ADDRESS RMT_LAUNCHPAD_GUARD_RUNTIME_HASH <<<"$verified_deployment"
           export RMT_LAUNCHPAD_FACTORY_ADDRESS RMT_LAUNCHPAD_FACTORY_RUNTIME_HASH RMT_LAUNCHPAD_FACTORY_START_BLOCK
+          if [[ "$RMT_LAUNCHPAD_TEST_ENGINE" == 2 ]]; then
+            export RMT_LAUNCHPAD_ENGINE_VERSION=2 RMT_LAUNCHPAD_GUARD_ADDRESS RMT_LAUNCHPAD_GUARD_RUNTIME_HASH
+          fi
           export RMT_LAUNCHPAD_ENABLED=true RMT_LAUNCHPAD_TRADING_ENABLED=true RMT_LAUNCHPAD_CHAIN_ID=31337
           export RMT_LAUNCHPAD_RPC_URL="$RMT_LAUNCHPAD_TEST_RPC_URL" RMT_LAUNCHPAD_DATABASE_PATH="$scratch/launchpad.sqlite"
 
@@ -116,6 +134,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: launchpad-loopback-browser-${{ github.event.pull_request.head.sha || github.sha }}
+          name: launchpad-v${{ matrix.engine }}-browser-${{ github.event.pull_request.head.sha || github.sha }}
           path: launchpad-browser-evidence
           retention-days: 7
