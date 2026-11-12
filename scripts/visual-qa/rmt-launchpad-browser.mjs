@@ -66,7 +66,7 @@ await page.addInitScript(({ account }) => {
 async function noOverflow(target) {
   assert.ok(await target.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), "Viewport has horizontal overflow");
 }
-const capture = (target, name) => target.screenshot({ path: `${output}/${name}.png` });
+const capture = (target, name) => target.screenshot({ path: `${output}/${name}.png`, style: "nextjs-portal { display: none; }" });
 const submit = (name) => page.getByRole("button", { name, exact: true }).click();
 
 try {
@@ -90,13 +90,14 @@ try {
   await page.getByRole("button", { name: /^Switch to Local Anvil/ }).click();
   await submit("Review launch");
   await page.getByRole("heading", { name: "Review and confirm" }).waitFor();
+  await capture(page, "create-review-phone");
   await page.getByRole("checkbox").check();
   await page.evaluate(() => { window.rmtFixture.rejectNext = true; });
   await submit("Confirm in wallet");
   await page.getByRole("alert").getByText("Request declined in your wallet.").waitFor();
   assert.equal(broadcasts.length, 0);
   await noOverflow(page);
-  await capture(page, "create-review-phone");
+  await capture(page, "create-rejection-phone");
   await page.evaluate(() => { window.rmtFixture.dropNextHash = true; });
   await submit("Confirm in wallet");
   await page.getByLabel("Recover wallet request").waitFor();
@@ -108,7 +109,8 @@ try {
   assert.match(token, /^0x[0-9a-fA-F]{40}$/);
   await page.getByRole("heading", { name: "Launch checks" }).waitFor();
   await page.getByText("Factory origin", { exact: true }).waitFor();
-  await page.getByRole("checkbox").check();
+  await page.getByRole("checkbox").click();
+  await page.getByRole("checkbox").waitFor({ state: "detached" });
   await page.getByLabel("You pay (ETH)").fill("0.005");
   await submit("Review trade");
   await submit("Confirm buy in wallet");

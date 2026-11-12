@@ -54,6 +54,7 @@ export function PriceHistoryChart({
   const first = prices[0] ?? latest;
   const change = first > 0 ? ((latest - first) / first) * 100 : 0;
   const isPositive = change >= 0;
+  const nearZero = quoteAsset === "ETH" && Math.abs(change) < 0.005;
   const latestUsd = ethUsd === undefined ? undefined : latest * ethUsd;
 
   return (

@@ -116,12 +116,13 @@ body .launchpad {
 .lpFacts dt { color: var(--rmt-text-soft); }
 .lpFacts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
 .lpAddress { overflow-wrap: anywhere; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
-.lpCheck { display: flex !important; align-items: flex-start; gap: 9px !important; cursor: pointer; }
+.lpCheck { display: flex !important; flex-direction: row; align-items: flex-start; gap: 9px !important; cursor: pointer; }
 .lpCheck input { flex: 0 0 18px; width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--rmt-accent); }
 .lpCheck a, .lpBack, .lpProjectLink a, .lpRecovery a, .lpFooter a { color: var(--rmt-accent); }
 .lpExamples summary, .lpPanel details summary { cursor: pointer; color: var(--rmt-accent); }
 .lpExamples p, .lpPanel details dl { margin-top: 8px; }
 .lpBack { display: inline-block; margin-bottom: 12px; }
+.lpPageHeading:has(.lpTokenHeading) { max-width: 1080px; }
 .lpTokenHeading { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .lpTokenHeading .lpArtwork { width: 44px; height: 44px; flex-basis: 44px; }
 .lpPill, .lpCheckState { display: inline-flex; padding: 3px 8px; border: 1px solid var(--rmt-border-strong); border-radius: 5px; color: var(--rmt-accent); font-size: 11px; }
