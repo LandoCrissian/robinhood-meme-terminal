@@ -4,7 +4,6 @@ pragma solidity 0.8.26;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -31,7 +30,6 @@ interface IGrowthPositionManagerV1 is ILaunchPositionManagerV1 {
 /// @dev Reviewed reference prices require two immutable ECDSA keys. The vault has no signer, oracle or keeper of its own.
 contract RMTV4GrowthVaultV1 is EIP712, ReentrancyGuard {
     using SafeERC20 for IERC20;
-    using SafeCast for uint256;
     using StateLibrary for IPoolManager;
     using PoolIdLibrary for PoolKey;
 
@@ -267,7 +265,8 @@ contract RMTV4GrowthVaultV1 is EIP712, ReentrancyGuard {
                 outcome = Outcome.SettlementDeferred;
             }
         }
-        state.lastAttemptAt = block.timestamp.toUint64();
+        // The validated uint48 deadline bounds the current block timestamp.
+        state.lastAttemptAt = uint64(block.timestamp);
         state.outcome = outcome;
         emit ReinvestmentAttempt(plan.nonce, digest, outcome);
     }
@@ -311,7 +310,8 @@ contract RMTV4GrowthVaultV1 is EIP712, ReentrancyGuard {
             revert BalanceMismatch();
         }
         asset.forceApprove(address(permit2), addition.tokenAmount);
-        permit2.approve(token, address(positionManager), addition.tokenAmount, deadline.toUint48());
+        // The only caller validated this deadline against the Permit2 expiration width.
+        permit2.approve(token, address(positionManager), addition.tokenAmount, uint48(deadline));
         positionManager.modifyLiquidities{value: addition.nativeAmount}(
             abi.encode(abi.encodePacked(liquidityAction, uint8(Actions.SETTLE_PAIR)), params), deadline
         );
@@ -377,12 +377,14 @@ contract RMTV4GrowthVaultV1 is EIP712, ReentrancyGuard {
         uint128 tokenLiquidity = _boundedLiquidity(tokenLimit, Q96, spot - lower, capacity);
         addition.liquidity = nativeLiquidity < tokenLiquidity ? nativeLiquidity : tokenLiquidity;
         if (addition.liquidity < plan.minLiquidity) return (Outcome.BelowMinimum, addition);
-        addition.nativeAmount = SqrtPriceMath.getAmount0Delta(spot, upper, addition.liquidity, true).toUint128();
-        addition.tokenAmount = SqrtPriceMath.getAmount1Delta(lower, spot, addition.liquidity, true).toUint128();
-        if (
-            addition.nativeAmount == 0 || addition.tokenAmount == 0 || addition.nativeAmount > nativeLimit
-                || addition.tokenAmount > tokenLimit
-        ) return (Outcome.BelowMinimum, addition);
+        uint256 nativeAmount = SqrtPriceMath.getAmount0Delta(spot, upper, addition.liquidity, true);
+        uint256 tokenAmount = SqrtPriceMath.getAmount1Delta(lower, spot, addition.liquidity, true);
+        if (nativeAmount == 0 || tokenAmount == 0 || nativeAmount > nativeLimit || tokenAmount > tokenLimit) {
+            return (Outcome.BelowMinimum, addition);
+        }
+        // Both limits are at most their respective uint128 plan caps.
+        addition.nativeAmount = uint128(nativeAmount);
+        addition.tokenAmount = uint128(tokenAmount);
         return (Outcome.Added, addition);
     }
 
@@ -392,7 +394,9 @@ contract RMTV4GrowthVaultV1 is EIP712, ReentrancyGuard {
         returns (uint128)
     {
         uint256 amountAtCapacity = Math.mulDiv(capacity, denominator, numerator, Math.Rounding.Ceil);
-        return amount >= amountAtCapacity ? capacity : Math.mulDiv(amount, numerator, denominator).toUint128();
+        if (amount >= amountAtCapacity) return capacity;
+        // Amounts below the ceiling produce liquidity strictly below uint128 capacity.
+        return uint128(Math.mulDiv(amount, numerator, denominator));
     }
 
     function _validatePlan(Plan calldata plan) private view {
@@ -452,7 +456,9 @@ contract RMTV4GrowthVaultV1 is EIP712, ReentrancyGuard {
     }
 
     function _checkDeadline(uint256 deadline) private view {
-        if (deadline < block.timestamp || deadline > block.timestamp + MAX_REFERENCE_AGE) revert InvalidDeadline();
+        if (deadline < block.timestamp || deadline > block.timestamp + MAX_REFERENCE_AGE || deadline > type(uint48).max) {
+            revert InvalidDeadline();
+        }
     }
 
     function _verifyDependencies() private view {

@@ -245,11 +245,13 @@ try {
   await noOverflow(desktop);
   await capture(desktop, "token-desktop");
   await page.getByRole("link", { name: "My Launches", exact: true }).click();
+  const creatorLaunch = page.getByRole("link", { name: new RegExp(symbol) });
   if (growth) {
-    await submit("Connect Browser wallet");
-    await page.getByRole("button", { name: /^Switch to Local Anvil/ }).click();
+    const connect = page.getByRole("button", { name: "Connect Browser wallet", exact: true });
+    await creatorLaunch.or(connect).first().waitFor();
+    if (await connect.isVisible()) await connect.click();
   }
-  await page.getByRole("link", { name: new RegExp(symbol) }).waitFor();
+  await creatorLaunch.waitFor();
   assert.deepEqual(failures, []);
   if (growth) {
     const launchReceipt = await rpc("eth_getTransactionReceipt", [hashes[0]]);
