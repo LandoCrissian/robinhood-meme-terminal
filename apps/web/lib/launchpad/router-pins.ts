@@ -1,5 +1,7 @@
 import { getAddress, type Hash } from "viem";
-import { baseSepolia } from "../../../../packages/contracts/test/fixtures/rmt-v4-deployment-identities.json";
+import deploymentIdentities from "../../../../packages/contracts/test/fixtures/rmt-v4-deployment-identities.json";
+
+const { baseSepolia } = deploymentIdentities;
 
 export type LaunchpadRouterVersion = "2.0" | "2.1.2";
 
