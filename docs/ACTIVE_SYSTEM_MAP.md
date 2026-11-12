@@ -4,7 +4,7 @@
 
 **Base inspected:** `6d0b8103bdad95367445a38e5f5327458baa9ab2`.
 
-This table separates the existing repository's runtime from the requested product. It does not assert production configuration or that removal has occurred.
+The table records the audited base and intended disposition. The [implementation runbook](RMT_LAUNCH_V4_LOCAL.md) records the local runtime changes and pending operational retirement.
 
 | Domain / known source | Observed at base | Target disposition |
 | --- | --- | --- |

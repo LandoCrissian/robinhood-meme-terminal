@@ -6,9 +6,9 @@ Owner direction, 2026-11-11: return RMT to token launches, keep the existing cle
 
 ## Implementation status
 
-This change records the scope reset and a source-backed implementation plan. It does **not** implement a new launch factory, remove the existing runtime features, enable launches, change production, or migrate a token. The current codebase still contains the broader terminal and its compatibility services.
+The implementation branch opens the launchpad directly. Its local Base Sepolia fork supports creating fixed-supply tokens, funding hookless Uniswap v4 pools, permanent position custody, buying and selling, and creator fee claims. Launch receipts are verified and published before the bounded indexer reconciles them. Mainnet and hosted transaction paths are disabled.
 
-The proposed new-launch architecture is an RMT-owned factory that creates a standard token and funds a standard Uniswap v4 pool at launch. It is separate from the existing deployed RMT curve. External discovery and routing depend on the individual platform; deploying a token does not list it everywhere automatically.
+See the [local runbook and visual evidence](docs/RMT_LAUNCH_V4_LOCAL.md) and [REST and MCP read tools](docs/RMT_LAUNCH_PUBLIC_READS.md). External routing is unknown until independently observed.
 
 ## Product boundary
 
@@ -20,7 +20,7 @@ Remove unrelated terminal expansion from the forward roadmap: NFT marketplace/ca
 
 No existing token supply, address, contract, curve, holder balance, fee entitlement, liquidity position or transaction history is changed by this reset. V6 and older deployed artifacts remain compatibility/history evidence, not the template for new public launches.
 
-There is a documented conflict between this repository's earlier README and its V6 deployment record concerning historical launch 0. Do not guess the current-token address or describe a historical token as current without reconciling factory events and deployment records. The cleanup preserves all bindings while this is resolved.
+Pinned chain records distinguish the original V4 issuance from the official V6 launch 0. The record preserves the separate addresses and the later product retirement decision. [Legacy RMT evidence](docs/RMT_LAUNCH_BASELINE_EVIDENCE.md).
 
 ## Development map
 
@@ -45,7 +45,7 @@ pnpm typecheck
 pnpm build
 ```
 
-Run the affected contract/indexer/security/visual suites as well. Existing command names reflect the current runtime; renaming a command does not complete the migration. No local full build or contract suite was run for this documentation-only reset.
+Run the affected contract/indexer/security/visual suites as well. Existing command names reflect the current runtime; renaming a command does not complete the migration. The local launchpad test commands and their evidence boundaries are in the runbook.
 
 ## Release and security
 

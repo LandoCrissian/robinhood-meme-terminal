@@ -1,6 +1,6 @@
 # RMT Launch architecture boundary
 
-**Status:** CURRENT PRODUCT DIRECTION; RUNTIME MIGRATION NOT IMPLEMENTED BY THIS CHANGE
+**Status:** CURRENT PRODUCT DIRECTION
 
 **Owner decision:** 2026-11-11. **Audited base:** `6d0b8103bdad95367445a38e5f5327458baa9ab2`.
 
@@ -14,11 +14,11 @@ RMT is a token launchpad, not a general market operating layer. This explicit ow
 4. Own the launch factory, launch records and product. Using shared Uniswap liquidity infrastructure is not outsourcing token creation to Pons, nor does it require building a private DEX.
 5. Remove unrelated product lanes in dependency-aware, tested stages. Do not treat hidden navigation as complete source/service removal.
 
-## Proposed new-launch flow
+## New-launch flow
 
 User-confirmed creation -> standard token deployment -> canonical v4 pool initialization -> disclosed, actually funded liquidity -> verified liquidity-position custody/lock -> canonical launch event -> immediate confirmed RMT launch record -> independently observed third-party indexing/routing.
 
-Prefer one atomic launch transaction where practical; otherwise incomplete funding must be clearly non-live. The initial engineering candidate is hookless v4 for compatibility. Token supply, quote asset, seed liquidity, initial price/range, LP custody and fees need explicit design and security review; no values are approved by this document. A token-only liquidity range is not proof of an existing quote-asset reserve.
+The [local implementation](RMT_LAUNCH_V4_LOCAL.md) uses one atomic launch transaction. For any future alternative, otherwise incomplete funding must be clearly non-live. The initial engineering candidate is hookless v4 for compatibility. Token supply, quote asset, seed liquidity, initial price/range, LP custody and fees need explicit design and security review; no values are approved by this document. A token-only liquidity range is not proof of an existing quote-asset reserve.
 
 Retain the full chain-qualified v4 PoolKey and PoolId rather than treating a pool as an independent pair-contract address. Onchain availability, discovery and route availability are distinct states.
 
