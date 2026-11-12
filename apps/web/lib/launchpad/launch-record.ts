@@ -1,4 +1,5 @@
 import { encodeAbiParameters, keccak256, parseAbi, parseAbiItem, type Address, type Hash } from "viem";
+import type { GrowthEvidence } from "./growth-vault";
 
 export const launchPoolKeyParameter = {
   type: "tuple",
@@ -61,6 +62,7 @@ type HolderSample = { blockNumber: string; blockHash: Hash; timestampUnixSeconds
 export type LaunchHolderTrend = { status: "observed"; from: HolderSample; to: HolderSample } | UnknownTrend;
 
 export type LaunchHealth = {
+  growth?: GrowthEvidence;
   liquidity: {
     initialNativeWei: string;
     initialTokenBaseUnits: string;
@@ -103,7 +105,10 @@ export type NewLaunchDeployment = {
   stateView: Address;
   permit2: Address;
   tradingEnabled: boolean;
-} & ({ engineVersion?: undefined; initializationGuard?: undefined } | { engineVersion: 2; initializationGuard: Address });
+} & (
+  | { engineVersion?: undefined; initializationGuard?: undefined; growthVaultDeployer?: undefined }
+  | { engineVersion: 2; initializationGuard: Address; growthVaultDeployer?: Address }
+);
 
 export type NewLaunchRecord = {
   chainId: NewLaunchDeployment["chainId"];

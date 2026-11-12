@@ -2,6 +2,7 @@ import { getAddress, isAddress, parseAbi, parseAbiItem, zeroAddress, type Hash, 
 import type { NewLaunchRecord } from "../launchpad/launch-record";
 import { readLaunchpadRuntime, verifiedLaunchpadRpc, type LaunchpadRuntime } from "./new-launchpad-config";
 import { makeLaunchHealth, readLaunchHealth } from "./new-launchpad-health";
+import { readGrowthVaultHealth } from "./new-launchpad-growth-health";
 import { sameHex } from "./new-launchpad-receipt";
 import { LaunchpadStore, type LaunchPageCursor } from "./new-launchpad-store";
 
@@ -113,6 +114,10 @@ async function readPoolState(rpc: PublicClient, config: LaunchpadRuntime, launch
   ]);
   const positionState = { positionOwner, positionLiquidity: positionLiquidity.toString(), activeLiquidity: activeLiquidity.toString() };
   const health = withHealth ? await readLaunchHealth(rpc, config.deployment.stateView, launch, positionState, opening, initial) : undefined;
+  if (health && config.growthVaultDeployer) {
+    health.growth = await readGrowthVaultHealth(rpc, config.growthVaultDeployer.address, config.deployment.positionManager,
+      launch, health.fees, blockNumber, initial.timestamp);
+  }
   if (!sameHex(initial.hash, (await exactBlock(rpc, blockNumber)).hash)) throw new Error("Pool state changed branches during verification");
   return {
     sqrtPriceX96: sqrtPriceX96.toString(), tick, protocolFee, lpFee, ...positionState, totalSupply: totalSupply.toString(),

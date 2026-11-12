@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { encodeFunctionData, formatEther, getAddress, isAddress, parseEther, toHex, zeroAddress, type Address } from "viem";
+import { encodeFunctionData, formatEther, getAddress, isAddress, isHash, parseEther, toHex, zeroAddress, type Address } from "viem";
 import { displayAmount, factoryAbi, longevityFactoryAbi, prepareTransaction, priceInWei } from "../../../lib/launchpad/direct-v4";
+import { growthVaultDeployerAbi } from "../../../lib/launchpad/growth-vault";
 import { openingExamples } from "../../../lib/launchpad/opening-examples";
 import { walletMessage, type LaunchRequest } from "../../../lib/launchpad/transactions";
 import { TransactionFeedback, useLaunchTransaction } from "./launch-transactions";
@@ -12,11 +13,12 @@ import { useLaunchClient, useLaunchWallet, WalletConnection } from "./launch-wal
 const supplies = ["1 million", "100 million", "1 billion"];
 const draftKey = "rmt:launchpad:draft:v1";
 const baseDraft = { name: "", symbol: "", projectURI: "", supplyPreset: "0", allocation: "80", seed: "0.1" };
-const initial = { ...baseDraft, longevity: "off", creatorFees: "", treasuryFees: "", reserveFees: "", treasury: "", reserve: "" };
+const initial = { ...baseDraft, longevity: "off", creatorFees: "", treasuryFees: "", reserveFees: "", treasury: "", reserve: "",
+  growthVault: "off", growthIntent: "" };
 type Draft = typeof initial;
 type FeePolicy = { treasury: Address; reserve: Address; creatorBps: number; treasuryBps: number; reserveBps: number };
 
-function feePolicyFor(draft: Draft, creator: Address): FeePolicy {
+function feePolicyFor(draft: Draft, creator: Address, growthVault?: Address): FeePolicy {
   const basisPoints = (value: string) => {
     if (!/^\d{1,3}(?:\.\d{1,2})?$/.test(value)) throw new Error("Enter each fee share as a percentage, using 0 for an unused share.");
     const [whole, fraction = ""] = value.split(".");
@@ -25,6 +27,7 @@ function feePolicyFor(draft: Draft, creator: Address): FeePolicy {
   const creatorBps = basisPoints(draft.creatorFees);
   const treasuryBps = basisPoints(draft.treasuryFees);
   const reserveBps = basisPoints(draft.reserveFees);
+  if (growthVault && reserveBps === 0) throw new Error("Allocate a positive reserve share to use the growth vault.");
   if (creatorBps + treasuryBps + reserveBps !== 10_000 || treasuryBps + reserveBps === 0) {
     throw new Error("Shares must total 100%, including a treasury or reserve share.");
   }
@@ -37,7 +40,7 @@ function feePolicyFor(draft: Draft, creator: Address): FeePolicy {
     return getAddress(value);
   };
   const treasury = recipient(draft.treasury, treasuryBps);
-  const reserve = recipient(draft.reserve, reserveBps);
+  const reserve = growthVault ?? recipient(draft.reserve, reserveBps);
   const recipients = [creator, ...[treasury, reserve].filter((address) => address !== zeroAddress)];
   if (new Set(recipients.map((address) => address.toLowerCase())).size !== recipients.length) {
     throw new Error("Use distinct creator, treasury, and reserve wallets.");
@@ -82,11 +85,13 @@ type Review = {
   sqrtPrice: bigint;
   liquidity: bigint;
   feePolicy?: FeePolicy;
+  growthVault?: Address;
 };
 
 export function CreateLaunch() {
   const { config, wallet, stillSelected, refresh } = useLaunchWallet();
   const deployment = config?.status === "ready" ? config.deployment : undefined;
+  const growthDeployer = deployment?.growthVaultDeployer;
   const client = useLaunchClient(deployment);
   const [draft, setDraft] = useState(initial);
   const draftRef = useRef(initial);
@@ -136,13 +141,27 @@ export function CreateLaunch() {
     setPreparing(true);
     try {
       const fields = validated(draft);
+      const useGrowth = growthDeployer && draft.longevity === "on" && draft.growthVault === "on" && Number(draft.reserveFees) > 0;
+      let intentId = toHex(crypto.getRandomValues(new Uint8Array(32)));
+      let growthVault: Address | undefined;
+      if (useGrowth) {
+        const preparedIntent = draft.growthIntent.trim();
+        if (!isHash(preparedIntent) || /^0x0+$/i.test(preparedIntent)) throw new Error("Enter the prepared test vault intent.");
+        const registered = await client.readContract({ address: growthDeployer, abi: growthVaultDeployerAbi,
+          functionName: "vaultFor", args: [wallet.address, preparedIntent] });
+        const code = registered === zeroAddress ? undefined : await client.getCode({ address: registered });
+        if (!code || code === "0x") {
+          throw new Error("No test vault is registered for this account and intent.");
+        }
+        intentId = preparedIntent;
+        growthVault = registered;
+      }
       const feePolicy = deployment.engineVersion === 2 && draft.longevity === "on"
-        ? feePolicyFor(draft, wallet.address) : undefined;
+        ? feePolicyFor(draft, wallet.address, growthVault) : undefined;
       const [supply, , sqrtPrice, liquidity, depositedETH, depositedTokens] = await client.readContract({
         address: deployment.factory, abi: factoryAbi, functionName: "preview",
         args: [fields.supplyPreset, fields.poolAllocationBps, fields.nativeAmount],
       });
-      const intentId = toHex(crypto.getRandomValues(new Uint8Array(32)));
       const deadline = Math.floor(Date.now() / 1000) + 10 * 60;
       const terms = { ...fields, intentId, deadline: BigInt(deadline) };
       const data = feePolicy
@@ -153,7 +172,7 @@ export function CreateLaunch() {
       });
       if (!stillSelected(wallet)) throw new Error("Wallet selection changed. Review the launch again.");
       setReview({ request, symbol: fields.symbol, supply, depositedETH, depositedTokens, maxETH: fields.nativeAmount,
-        openingPrice: priceInWei(sqrtPrice), sqrtPrice, liquidity, feePolicy });
+        openingPrice: priceInWei(sqrtPrice), sqrtPrice, liquidity, feePolicy, growthVault });
     } catch (cause) {
       setError(walletMessage(cause));
     } finally {
@@ -187,14 +206,23 @@ export function CreateLaunch() {
             <span>Split earned LP fees at launch</span>
           </label>
           {draft.longevity === "on" && <>
-            <p>Choose recipients that can receive ETH and tokens. The split is permanent. The reserve wallet controls how its share is used.</p>
+            <p>Choose recipients that can receive ETH and tokens. The split is permanent.</p>
             <div className="lpFormGrid">
               <label>Creator fee share (%)<input required value={draft.creatorFees} inputMode="decimal" maxLength={6} onChange={(event) => edit("creatorFees", event.target.value)} /></label>
               <label>Treasury fee share (%)<input required value={draft.treasuryFees} inputMode="decimal" maxLength={6} onChange={(event) => edit("treasuryFees", event.target.value)} /></label>
               <label>Liquidity reserve fee share (%)<input required value={draft.reserveFees} inputMode="decimal" maxLength={6} onChange={(event) => edit("reserveFees", event.target.value)} /></label>
             </div>
             {Number(draft.treasuryFees) > 0 && <label>Project treasury wallet<input required value={draft.treasury} maxLength={42} spellCheck={false} onChange={(event) => edit("treasury", event.target.value)} placeholder="0x…" /></label>}
-            {Number(draft.reserveFees) > 0 && <label>Liquidity reserve wallet<input required value={draft.reserve} maxLength={42} spellCheck={false} onChange={(event) => edit("reserve", event.target.value)} placeholder="0x…" /></label>}
+            {Number(draft.reserveFees) > 0 && <>
+              {growthDeployer && <label className="lpCheck">
+                <input type="checkbox" checked={draft.growthVault === "on"} onChange={(event) => edit("growthVault", event.target.checked ? "on" : "off")} />
+                <span>Commit the reserve to a test growth vault</span>
+              </label>}
+              {growthDeployer && draft.growthVault === "on"
+                ? <label>Prepared vault intent<input required value={draft.growthIntent} maxLength={66} spellCheck={false} onChange={(event) => edit("growthIntent", event.target.value)} placeholder="0x…" />
+                  <small>Use the intent from a vault registered to the connected test wallet.</small></label>
+                : <label>Liquidity reserve wallet<input required value={draft.reserve} maxLength={42} spellCheck={false} onChange={(event) => edit("reserve", event.target.value)} placeholder="0x…" /></label>}
+            </>}
           </>}
         </fieldset>}
         <fieldset disabled={preparing || transaction.busy || Boolean(transaction.pending)}>
@@ -231,6 +259,7 @@ export function CreateLaunch() {
           {review?.feePolicy && <>
             {review.feePolicy.treasuryBps > 0 && <><dt>Treasury recipient</dt><dd className="lpAddress">{review.feePolicy.treasury}</dd></>}
             {review.feePolicy.reserveBps > 0 && <><dt>Reserve recipient</dt><dd className="lpAddress">{review.feePolicy.reserve}</dd></>}
+            {review.growthVault && <><dt>Reserve handling</dt><dd>Test vault · held for two-reviewer liquidity adds</dd></>}
           </>}
           {review && <>
             <dt>Fixed supply</dt><dd>{displayAmount(review.supply)} {review.symbol}</dd>
@@ -249,6 +278,7 @@ export function CreateLaunch() {
           <p>Sell {displayAmount(examples.grossSell)} {review.symbol} → about {displayAmount(examples.nativeOut)} ETH.</p>
         </details>}
         {review && <>
+          {review.growthVault && <p>Reserve fees can stay held indefinitely. The vault has no withdrawal path.</p>}
           <label className="lpCheck"><input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} />
             <span>I reviewed the allocations, fee terms, test ETH deposit, and permanent position lock. <Link href="/risks" target="_blank">Read risks</Link>.</span></label>
           <button className="lpButton" type="button" disabled={!accepted || transaction.busy || Boolean(transaction.pending) || Boolean(transaction.result?.launch)}
