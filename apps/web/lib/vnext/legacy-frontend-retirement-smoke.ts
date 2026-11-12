@@ -40,7 +40,8 @@ const portfolioCompatibilityRoute = readFileSync(join(appDirectory, "portfolio/p
 const publicChrome = readFileSync(join(appDirectory, "public-chrome.tsx"), "utf8");
 const sitemap = readFileSync(join(appDirectory, "sitemap.ts"), "utf8");
 
-assert.match(rootPage, /<VNextTerminalShell\s/);
+assert.match(rootPage, /<LaunchDirectory \/>/);
+assert.doesNotMatch(rootPage, /VNextTerminalShell|readLaunchIntelligence/);
 assert.doesNotMatch(rootPage, /LegacyTerminalPage|ExternalMarketFeed/);
 
 const globalCssImports = [...rootLayout.matchAll(/^import\s+["'](.+\.css)["'];$/gm)].map((match) => match[1]);
@@ -64,7 +65,7 @@ assert.match(marketCompatibilityRoute, /redirect\(`\/\?\$\{query\}`\)/);
 assert.match(marketCompatibilityRoute, /new URLSearchParams\(\{ market: getAddress\(address\) \}\)/);
 assert.match(marketCompatibilityRoute, /side === "buy" \|\| side === "sell"/);
 assert.doesNotMatch(marketCompatibilityRoute, /ExternalMarketWorkspace|fetchPublicMarket|publicMarketStructuredData/);
-assert.match(portfolioCompatibilityRoute, /redirect\("\/\?panel=portfolio"\)/);
+assert.match(portfolioCompatibilityRoute, /redirect\("\/wallet"\)/);
 assert.doesNotMatch(portfolioCompatibilityRoute, /PortfolioPanel/);
 assert.match(publicChrome, /href="\/\?panel=portfolio"/);
 assert.doesNotMatch(sitemap, /fetchPublicMarketCatalog|publicMarketSitemapPaths/);

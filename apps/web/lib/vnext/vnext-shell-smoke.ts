@@ -61,15 +61,13 @@ assert.deepEqual(terminalValuation(null, 2_000_000), { label: "FDV", shortLabel:
 assert.deepEqual(terminalValuation(null, null), { label: "Valuation", shortLabel: "Value", value: null });
 
 assert.match(page, /if \(!vNextProductionShellReady\(process\.env\)\) notFound\(\)/);
-assert.match(rootPage, /if \(!vNextProductionShellReady\(process\.env\)\) notFound\(\)/);
-assert.match(rootPage, /export const dynamic = "force-dynamic"/);
 assert.match(page, /notFound\(\)/);
 assert.match(page, /export const dynamic = "force-dynamic"/);
 assert.match(page, /alternates: \{ canonical: "\/" \}/);
 assert.match(page, /openGraph:[\s\S]*url: "\/"/);
 assert.doesNotMatch(page, /index: false|follow: false/);
-assert.match(rootPage, /export \{ metadata \} from "\.\/vnext\/page"/);
-assert.match(rootPage, /<VNextTerminalShell\s/);
+assert.match(rootPage, /<LaunchDirectory \/>/);
+assert.doesNotMatch(rootPage, /VNextTerminalShell|readLaunchIntelligence/);
 assert.match(rootPage, /import "\.\/vnext\/vnext-terminal\.css"/);
 assert.doesNotMatch(rootPage, /vnext-terminal-reconstruction\.css/);
 assert.doesNotMatch(nextConfig, /source: "\/"[\s\S]*destination: "\/vnext"/);
@@ -129,7 +127,7 @@ assert.equal(previewResponse.headers.get("x-middleware-next"), "1");
 assert.equal(previewResponse.headers.get("x-rmt-vnext-mode"), "preview");
 assert.equal(previewResponse.headers.get("x-rmt-vnext-release"), "observation");
 assert.equal(previewResponse.headers.get("x-robots-tag"), "noindex, nofollow");
-assert.equal(middlewareConfig.matcher, "/vnext/:path*");
+assert.ok(middlewareConfig.matcher.includes("/vnext/:path*"));
 
 assert.equal((shellController.match(/export function VNextTerminalShell/g) ?? []).length, 1);
 assert.match(shellController, /<ResponsiveTerminal \{\.\.\.props\} desktop=\{desktop\} \/>/);

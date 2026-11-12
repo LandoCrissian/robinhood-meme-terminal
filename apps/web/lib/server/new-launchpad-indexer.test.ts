@@ -171,9 +171,11 @@ test("publishes a receipt immediately, reconciles duplicate logs after restart, 
   }
 });
 
-test("blocks production, other chain IDs, arbitrary public RPC URLs and runtime mismatches", async () => {
+test("blocks hosted environments, other chain IDs, arbitrary public RPC URLs and runtime mismatches", async () => {
   assert.equal(readLaunchpadRuntime({}), null);
   assert.equal(readLaunchpadRuntime({ ...env, VERCEL_ENV: "production" }), null);
+  assert.equal(readLaunchpadRuntime({ ...env, VERCEL_ENV: "preview" }), null);
+  assert.equal(readLaunchpadRuntime({ ...env, VERCEL: "1" }), null);
   assert.equal(deployment.tradingEnabled, false);
   assert.equal(readLaunchpadRuntime({ ...env, RMT_LAUNCHPAD_TRADING_ENABLED: "true" })?.deployment.tradingEnabled, true);
   assert.throws(() => readLaunchpadRuntime({ ...env, RMT_LAUNCHPAD_CHAIN_ID: "4663" }), /local launchpad/);

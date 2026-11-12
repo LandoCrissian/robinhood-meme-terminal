@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 const vnextAppDirectory = fileURLToPath(new URL("../../app/vnext/", import.meta.url));
 const rootAppDirectory = dirname(vnextAppDirectory);
+const vnextLayoutPath = join(vnextAppDirectory, "layout.tsx");
 
 function sourceFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -48,11 +49,15 @@ for (const { path, source } of vnextSources) {
     !specifier.startsWith("./")
     && !specifier.startsWith("../../lib/vnext/")
     && !allowedSharedImports.has(specifier)
+    && !(path === vnextLayoutPath && specifier === "../legacy-runtime")
   );
   assert.deepEqual(unexpected, [], `${path} introduced an unclassified VNext compatibility import.`);
 }
 
-const vnextLayout = readFileSync(join(vnextAppDirectory, "layout.tsx"), "utf8");
+const vnextLayout = readFileSync(vnextLayoutPath, "utf8");
+assert.match(vnextLayout, /<LegacyRuntime>\{children\}<\/LegacyRuntime>/);
+const legacyRuntime = readFileSync(join(rootAppDirectory, "legacy-runtime.tsx"), "utf8");
+assert.match(legacyRuntime, /<Providers>\{children\}<\/Providers>/);
 const vnextCssImports = [...vnextLayout.matchAll(/^import\s+["'](.+\.css)["'];$/gm)].map((match) => match[1]);
 assert.deepEqual(vnextCssImports, ["./vnext-terminal.css"]);
 const terminalCss = readFileSync(join(vnextAppDirectory, "vnext-terminal.css"), "utf8");
