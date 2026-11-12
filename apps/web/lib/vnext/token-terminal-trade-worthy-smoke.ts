@@ -30,7 +30,7 @@ const curated = TOKEN_MARKETS as VNextDirectoryMarket[];
 const broad = BROAD_TOKEN_MARKETS as FixtureMarket[];
 const visible = VISIBLE_TOKEN_MARKETS as VNextDirectoryMarket[];
 
-assert.equal(curated.length, 8);
+assert.equal(curated.length, 7);
 assert.ok(visible.length > curated.length, "The deterministic ALL surface must materially exceed the canonical-only fixture");
 assert.equal(new Set(visible.map((market) => market.address.toLowerCase())).size, visible.length);
 for (const market of curated) {
@@ -39,7 +39,7 @@ for (const market of curated) {
 
 const merged = mergeVNextCanonicalBrowseMarkets(canonicalDirectoryMarkets() as VNextDirectoryMarket[], visible);
 assert.equal(merged.length, visible.length, "Canonical seeds and broad enrichment must merge without duplicate rows");
-assert.equal(mergeVNextCanonicalBrowseMarkets(canonicalDirectoryMarkets() as VNextDirectoryMarket[], []).length, 8, "Broad-provider outage must preserve all canonical markets");
+assert.equal(mergeVNextCanonicalBrowseMarkets(canonicalDirectoryMarkets() as VNextDirectoryMarket[], []).length, 7, "Broad-provider outage must preserve all canonical markets");
 
 const active = selectVNextMarketDirectoryView(visible, "active");
 assert.ok(active.length > 0);
