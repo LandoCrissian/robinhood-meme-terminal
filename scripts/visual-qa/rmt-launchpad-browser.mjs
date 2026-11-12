@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdir } from "node:fs/promises";
+import { readFileSync } from "node:fs";
+import { mkdir, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { chromium, devices } from "playwright";
+import { exerciseLocalGrowth } from "./launchpad-growth-fixture.mjs";
 
 const site = process.env.RMT_LAUNCHPAD_TEST_URL ?? "http://127.0.0.1:3196";
 const rpcUrl = process.env.RMT_LAUNCHPAD_TEST_RPC_URL ?? "http://127.0.0.1:8545";
@@ -9,6 +11,9 @@ const output = process.env.RMT_LAUNCHPAD_TEST_OUTPUT ?? ".launch-qa";
 const executablePath = process.env.RMT_LAUNCHPAD_TEST_CHROME;
 const privatePreview = process.env.RMT_LAUNCHPAD_TEST_PRIVATE_PREVIEW === "true";
 const longevity = process.env.RMT_LAUNCHPAD_TEST_LONGEVITY === "true";
+const growthPath = process.env.RMT_LAUNCHPAD_TEST_GROWTH_FIXTURE;
+const growth = growthPath ? JSON.parse(readFileSync(growthPath, "utf8")) : undefined;
+if (growth) assert.ok(longevity && !privatePreview, "Growth acceptance requires the direct loopback V2 fixture.");
 const networkName = privatePreview ? "Private preview · Chain 31337" : "Local Anvil · Base Sepolia fork";
 for (const input of [site, rpcUrl]) assert.ok(["localhost", "127.0.0.1", "[::1]"].includes(new URL(input).hostname));
 await mkdir(output, { recursive: true });
@@ -42,6 +47,7 @@ if (privatePreview) {
 const localAccounts = fixtureWallet ? [] : await rpc("eth_accounts");
 const account = fixtureWallet?.account.address ?? localAccounts[0];
 if (longevity) assert.ok(localAccounts.length >= 3, "Longevity acceptance requires three isolated fixture accounts.");
+if (growth) assert.equal(account.toLowerCase(), growth.creator.toLowerCase());
 const browser = await chromium.launch({ executablePath });
 const base = devices["iPhone 13"];
 const context = await browser.newContext({ ...base, ignoreHTTPSErrors: privatePreview });
@@ -124,13 +130,17 @@ try {
     await page.getByLabel("Treasury fee share (%)").fill("25");
     await page.getByLabel("Liquidity reserve fee share (%)").fill("15");
     await page.getByLabel("Project treasury wallet").fill(localAccounts[1]);
-    await page.getByLabel("Liquidity reserve wallet").fill(localAccounts[2]);
+    if (growth) {
+      await page.getByLabel("Commit the reserve to a test growth vault").check();
+      await page.getByLabel("Prepared vault intent").fill(growth.intentId);
+    } else await page.getByLabel("Liquidity reserve wallet").fill(localAccounts[2]);
     await noOverflow(page);
     await capture(page.getByRole("group", { name: /RMT Longevity/ }), "longevity-setup-phone");
   }
   await submit("Review launch");
   await page.getByRole("heading", { name: "Review and confirm" }).waitFor();
   if (longevity) await page.getByText("60% creator · 25% treasury · 15% reserve", { exact: true }).waitFor();
+  if (growth) await page.getByText("Test vault · held for two-reviewer liquidity adds", { exact: true }).waitFor();
   await capture(page, "create-review-phone");
   await page.getByRole("checkbox", { name: /I reviewed the allocations/ }).check();
   await page.evaluate(() => { window.rmtFixture.rejectNext = true; });
@@ -155,7 +165,7 @@ try {
   await checks.click();
   await page.getByRole("checkbox").click();
   await page.getByRole("checkbox").waitFor({ state: "detached" });
-  await page.getByLabel("You pay (ETH)").fill("0.005");
+  await page.getByLabel("You pay (ETH)").fill(growth ? "0.0001" : "0.005");
   await submit("Review trade");
   await submit("Confirm buy in wallet");
   await page.getByText(/Settlement verified\. Received .*F/).waitFor();
@@ -186,6 +196,28 @@ try {
     assert.ok(BigInt(treasury.nativeClaimable) > 0n && BigInt(reserve.tokenClaimable) > 0n);
     await page.getByText(/Paid (?!0 ETH \+ 0 )/).first().waitFor();
     await capture(page.getByRole("heading", { name: "Launch health" }).locator(".."), "launch-health-phone");
+    if (growth) {
+      const details = await context.request.get(`${site}/api/launchpad/public/get_launch?chainId=31337&token=${token}`);
+      assert.equal(details.status(), 200);
+      const { data: { launch } } = await details.json();
+      assert.equal(launch.feePolicy.reserve.toLowerCase(), growth.vault.toLowerCase());
+      const receipts = await exerciseLocalGrowth({ rpcUrl, fixture: growth, launch, onDeferred: async () => {
+        await submit("Refresh vault evidence");
+        await page.getByText("Deferred · price outside signed bounds", { exact: false }).waitFor();
+        await capture(page.getByRole("heading", { name: "Liquidity growth vault · Test only" }).locator(".."), "growth-deferred-phone");
+      } });
+      console.log("Verified growth fixture receipts:", JSON.stringify(receipts));
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await page.getByText(/Permanently vault held/).waitFor();
+      const final = await context.request.get(`${site}/api/launchpad/public/get_launch_checks?chainId=31337&token=${token}`);
+      assert.equal(final.status(), 200);
+      const { data: { health } } = await final.json();
+      assert.equal(health.growth.status, "verified");
+      assert.equal(health.growth.lastReinvestment.outcome, "added");
+      assert.equal(health.growth.positionCustody.status, "locked");
+      assert.ok(BigInt(health.growth.liquidityAdded.units) > 0n);
+      await capture(page.getByRole("heading", { name: "Liquidity growth vault · Test only" }).locator(".."), "growth-added-phone");
+    }
   } else {
     await submit("Review fee claim");
     await submit("Confirm fee claim in wallet");
@@ -213,8 +245,19 @@ try {
   await noOverflow(desktop);
   await capture(desktop, "token-desktop");
   await page.getByRole("link", { name: "My Launches", exact: true }).click();
-  await page.getByRole("link", { name: new RegExp(symbol) }).waitFor();
+  const creatorLaunch = page.getByRole("link", { name: new RegExp(symbol) });
+  if (growth) {
+    const connect = page.getByRole("button", { name: "Connect Browser wallet", exact: true });
+    await creatorLaunch.or(connect).first().waitFor();
+    if (await connect.isVisible()) await connect.click();
+  }
+  await creatorLaunch.waitFor();
   assert.deepEqual(failures, []);
+  if (growth) {
+    const launchReceipt = await rpc("eth_getTransactionReceipt", [hashes[0]]);
+    assert.equal(launchReceipt?.status, "0x1");
+    await writeFile(`${output}/guarded-pool.txt`, `${token} ${BigInt(launchReceipt.blockNumber)}\n`);
+  }
   console.log(`${privatePreview ? "Private HTTPS gateway with a locally signed wallet fixture" : "Loopback browser/fork"} passed launch, rejection, buy, two bounded sell approvals, sell, fee claim and creator view for ${token}.`);
 } finally {
   if (failures.length) console.error("Browser page errors:", failures);

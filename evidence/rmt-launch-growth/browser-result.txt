@@ -1,0 +1,2 @@
+Verified growth fixture receipts: {"insufficient":"0xc8563be8be160f2ab5a443574f3757a4cf859a10104f86bcb2d5519f0c3136f6","collection":"0xc34191ac17e5d58dbe3cc1e7e421e10421f106fa9979c3afb8bc5d60cb851f58","deferred":"0x926c632cb8b42fa1155294fa8fda89ee60fdac7d3158fe3615b10caccd116268","added":"0xe38e7af8cbf96e9e6bb73883594a0a528caf71a24ec9c185a19078012e2bdc04"}
+Loopback browser/fork passed launch, rejection, buy, two bounded sell approvals, sell, fee claim and creator view for 0xD666f1974A4029244B22C5278b3Ae5265ab0881A.

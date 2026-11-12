@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { encodeFunctionData, formatEther, parseEther, zeroAddress, type Address } from "viem";
 import { displayAmount, factoryAbi, longevityFactoryAbi, prepareSwap, prepareTransaction, priceInWei, readTradeHistory, type SwapReview } from "../../../lib/launchpad/direct-v4";
+import type { GrowthEvidence } from "../../../lib/launchpad/growth-vault";
 import type { LaunchHealth, NewLaunchRecord } from "../../../lib/launchpad/launch-record";
 import { walletMessage, type LaunchRequest } from "../../../lib/launchpad/transactions";
 import { useTradingTermsAcceptance } from "../../../lib/use-trading-terms";
@@ -194,6 +195,14 @@ function FeeClaim({ launch, transaction, health }: {
 
 type Check = { id: string; label: string; status: "verified" | "failed" | "unknown" | "unsupported"; detail: string };
 type CheckEvidence = { blockNumber?: string; freshness?: string };
+const growthOutcome = {
+  no_attempt: "No reviewed attempt yet",
+  added: "Liquidity added",
+  insufficient_assets: "Deferred · insufficient two-sided assets",
+  price_outside_review: "Deferred · price outside signed bounds",
+  below_minimum: "Deferred · liquidity below the reviewed minimum",
+  settlement_deferred: "Deferred · settlement failed",
+} satisfies Record<Extract<GrowthEvidence, { status: "verified" }>["lastReinvestment"]["outcome"], string>;
 function useLaunchHealth(launch: NewLaunchRecord, refresh?: string) {
   const [data, setData] = useState<{ checks?: Check[]; evidence?: CheckEvidence; health?: LaunchHealth }>();
   const [status, setStatus] = useState("loading");
@@ -262,8 +271,14 @@ function LaunchChecks({ launch, state }: { launch: NewLaunchRecord; state: Retur
             </li>;
           })}
         </ul>
-        <p>Shares are fixed at launch. Any fractional remainder stays in the ledger until it can be credited. The reserve recipient controls its payouts.</p>
+        <p>Shares are fixed at launch. Any fractional remainder stays in the ledger until it can be credited.</p>
       </> : <p>{health.fees.status === "legacy" ? "Creator receives accrued LP fees. Distribution totals are unavailable for V1." : "Fee accounting evidence unavailable."}</p>}
+      {health.growth && <>
+        <h3>Liquidity growth vault · Test only</h3>
+        {health.growth.status === "verified" ? <GrowthFacts growth={health.growth} symbol={launch.symbol} />
+          : <p>{health.growth.reason}</p>}
+        <button className="lpButton lpSecondary" type="button" onClick={retry}>Refresh vault evidence</button>
+      </>}
     </>}
     {checks && <details><summary>Launch checks</summary><ul className="lpChecks">
       {checks.map((check) => <li key={check.id}>
@@ -275,6 +290,28 @@ function LaunchChecks({ launch, state }: { launch: NewLaunchRecord; state: Retur
     <a className="lpBack" href={`/api/launchpad/public/get_launch_checks?chainId=${launch.chainId}&token=${launch.token}`} target="_blank" rel="noreferrer">Open evidence JSON ↗</a>
     <p>These checks describe launch evidence and custody rules. Market risk and outside routing can change.</p>
   </section>;
+}
+
+function GrowthFacts({ growth, symbol }: { growth: Extract<GrowthEvidence, { status: "verified" }>; symbol: string }) {
+  const balance = ({ nativeWei, tokenBaseUnits }: typeof growth.reserveHeld) =>
+    `${displayAmount(nativeWei)} ETH + ${displayAmount(tokenBaseUnits)} ${symbol}`;
+  const { lastReinvestment, positionCustody } = growth;
+  const attemptDate = lastReinvestment.timestampUnixSeconds
+    ? new Date(Number(lastReinvestment.timestampUnixSeconds) * 1000).toISOString() : undefined;
+  return <>
+    <dl className="lpFacts">
+      <dt>Fees accrued to reserve</dt><dd>{balance(growth.feesAccrued)}</dd>
+      <dt>Fees collected into vault</dt><dd>{balance(growth.feesCollected)}</dd>
+      <dt>Growth position fees collected</dt><dd>{balance(growth.growthPositionFeesCollected)}</dd>
+      <dt>Reserve held</dt><dd>{balance(growth.reserveHeld)}</dd>
+      <dt>Liquidity added</dt><dd>{balance(growth.liquidityAdded)} · {BigInt(growth.liquidityAdded.units).toLocaleString("en-US")} liquidity units</dd>
+      <dt>Growth position custody</dt><dd>{positionCustody.status === "locked"
+        ? `#${positionCustody.positionTokenId} · Permanently vault held` : "No growth position minted"}</dd>
+      <dt>Last reviewed attempt</dt><dd>{growthOutcome[lastReinvestment.outcome]}{attemptDate && <> · <time dateTime={attemptDate}>{attemptDate.slice(0, 16).replace("T", " ")} UTC</time></>}</dd>
+      <dt>Vault</dt><dd><CopyIdentity title="growth vault address" value={growth.vault} /></dd>
+    </dl>
+    <p>Held fees and added liquidity are recorded separately. Each add needs a fresh plan signed by both reviewers.</p>
+  </>;
 }
 
 function TokenHistory({ launch, refresh }: { launch: NewLaunchRecord; refresh?: string }) {

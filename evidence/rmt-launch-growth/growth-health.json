@@ -1,0 +1,224 @@
+{
+  "status": "ready",
+  "data": {
+    "checks": [
+      {
+        "id": "factory_origin",
+        "label": "Factory origin",
+        "status": "verified",
+        "detail": "The canonical launch receipt came from the pinned local factory."
+      },
+      {
+        "id": "pool_funding",
+        "label": "Initial liquidity",
+        "status": "verified",
+        "detail": "The launch funded 99999999999999985 wei of native ETH and 799999999999999999999030 base units of the token."
+      },
+      {
+        "id": "fixed_supply",
+        "label": "Fixed token supply",
+        "status": "verified",
+        "detail": "The standard fixed-supply token reports 1000000000000000000000000 base units."
+      },
+      {
+        "id": "lp_lock",
+        "label": "Permanent LP custody",
+        "status": "verified",
+        "detail": "The immutable factory still owns the position NFT with its original liquidity."
+      },
+      {
+        "id": "initialization_guard",
+        "label": "Initialization-only guard",
+        "status": "verified",
+        "detail": "The canonical pool key records the factory-bound initialization guard and a 0.30% static LP fee tier."
+      },
+      {
+        "id": "fee_commitment",
+        "label": "Immutable fee allocation",
+        "status": "verified",
+        "detail": "Current collected balances, distributions and rounding dust reconcile with the canonical launch fee policy."
+      },
+      {
+        "id": "external_routing",
+        "label": "External routing",
+        "status": "unknown",
+        "detail": "No external indexing or routing observation is recorded for this local launch."
+      }
+    ],
+    "health": {
+      "liquidity": {
+        "initialNativeWei": "99999999999999985",
+        "initialTokenBaseUnits": "799999999999999999999030",
+        "positionTokenId": "33608",
+        "initialPositionLiquidity": "282842712474619009760",
+        "currentPositionLiquidity": "282842712474619009760",
+        "activePoolLiquidity": "282842714067175617692",
+        "custody": {
+          "owner": "0x05543FAfa8545AFCA826527C59fd0a4fA0A5AcD0",
+          "status": "verified"
+        }
+      },
+      "creator": {
+        "initialTokenAllocation": "200000000000000000000970",
+        "vesting": "none"
+      },
+      "permissions": {
+        "status": "verified",
+        "initializationGuard": "0x9015E798328ff297fc6a2909640971dc50c92000",
+        "factoryAdmin": false,
+        "tokenMintAuthority": false,
+        "principalWithdrawal": false,
+        "feePolicyMutable": false
+      },
+      "fees": {
+        "status": "verified",
+        "policy": {
+          "creator": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+          "treasury": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+          "reserve": "0x5867d895e0a2b1DE6cCC4f25194F32E12932133A",
+          "creatorBps": 6000,
+          "treasuryBps": 2500,
+          "reserveBps": 1500
+        },
+        "buckets": [
+          {
+            "bucket": 0,
+            "recipient": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+            "nativeClaimable": "0",
+            "tokenClaimable": "0",
+            "nativeDistributed": "179999999999",
+            "tokenDistributed": "17999999999999999"
+          },
+          {
+            "bucket": 1,
+            "recipient": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+            "nativeClaimable": "74999999999",
+            "tokenClaimable": "7499999999999999",
+            "nativeDistributed": "0",
+            "tokenDistributed": "0"
+          },
+          {
+            "bucket": 2,
+            "recipient": "0x5867d895e0a2b1DE6cCC4f25194F32E12932133A",
+            "nativeClaimable": "0",
+            "tokenClaimable": "0",
+            "nativeDistributed": "44999999999",
+            "tokenDistributed": "4499999999999999"
+          }
+        ],
+        "totals": {
+          "nativeAccrued": "299999999999",
+          "tokenAccrued": "29999999999999999",
+          "nativeRoundingDust": "2",
+          "tokenRoundingDust": "2"
+        }
+      },
+      "trends": {
+        "liquidity": {
+          "status": "observed",
+          "from": {
+            "blockNumber": "57648306",
+            "blockHash": "0xcded1c824d83d134aa199c88b07dc845e00e0b6ac3ab01a856a8668805f9c105",
+            "timestampUnixSeconds": "1794506074",
+            "activeLiquidity": "282842712474619009760"
+          },
+          "to": {
+            "blockNumber": "57648316",
+            "blockHash": "0x14ad2b4bb0d212de13f1d9dc942041e50319aeed84598d554ebaae8c82e3cfec",
+            "timestampUnixSeconds": "1794506088",
+            "activeLiquidity": "282842714067175617692"
+          }
+        },
+        "holders": {
+          "status": "observed",
+          "from": {
+            "blockNumber": "57648306",
+            "blockHash": "0xcded1c824d83d134aa199c88b07dc845e00e0b6ac3ab01a856a8668805f9c105",
+            "timestampUnixSeconds": "1794506074",
+            "holders": 2
+          },
+          "to": {
+            "blockNumber": "57648316",
+            "blockHash": "0x14ad2b4bb0d212de13f1d9dc942041e50319aeed84598d554ebaae8c82e3cfec",
+            "timestampUnixSeconds": "1794506088",
+            "holders": 4
+          }
+        }
+      },
+      "growth": {
+        "status": "verified",
+        "vault": "0x5867d895e0a2b1DE6cCC4f25194F32E12932133A",
+        "feesAccrued": {
+          "nativeWei": "44999999999",
+          "tokenBaseUnits": "4499999999999999"
+        },
+        "feesCollected": {
+          "nativeWei": "44999999999",
+          "tokenBaseUnits": "4499999999999999"
+        },
+        "growthPositionFeesCollected": {
+          "nativeWei": "0",
+          "tokenBaseUnits": "0"
+        },
+        "reserveHeld": {
+          "nativeWei": "44436391876",
+          "tokenBaseUnits": "584"
+        },
+        "liquidityAdded": {
+          "nativeWei": "563608123",
+          "tokenBaseUnits": "4499999999999415",
+          "units": "1592556607932"
+        },
+        "positionCustody": {
+          "status": "locked",
+          "positionTokenId": "33609",
+          "owner": "0x5867d895e0a2b1DE6cCC4f25194F32E12932133A"
+        },
+        "lastReinvestment": {
+          "outcome": "added",
+          "timestampUnixSeconds": "1794506088"
+        }
+      }
+    },
+    "launchEvidence": {
+      "chainId": 31337,
+      "factory": "0x05543FAfa8545AFCA826527C59fd0a4fA0A5AcD0",
+      "poolManager": "0x05E73354cFDd6745C338b50BcFDfA3Aa6fA03408",
+      "poolKey": {
+        "currency0": "0x0000000000000000000000000000000000000000",
+        "currency1": "0xD666f1974A4029244B22C5278b3Ae5265ab0881A",
+        "fee": 3000,
+        "tickSpacing": 60,
+        "hooks": "0x9015E798328ff297fc6a2909640971dc50c92000"
+      },
+      "poolId": "0x6e98d29e3430e7529cc6d4790c08faf17c4dfe3dd5a8d499b9b6561c27ece4bd",
+      "blockNumber": "57648306",
+      "blockHash": "0xcded1c824d83d134aa199c88b07dc845e00e0b6ac3ab01a856a8668805f9c105",
+      "timestampUnixSeconds": "1794506074",
+      "transactionHash": "0x5d5c03ffd7f8b982bab136b8265662491273868f8fe6445fc3ff9f1ae3c3c44a",
+      "logIndex": 12,
+      "indexing": "indexed",
+      "finality": "local_chain_observed"
+    },
+    "evidence": {
+      "chainId": 31337,
+      "factory": "0x05543FAfa8545AFCA826527C59fd0a4fA0A5AcD0",
+      "poolManager": "0x05E73354cFDd6745C338b50BcFDfA3Aa6fA03408",
+      "poolKey": {
+        "currency0": "0x0000000000000000000000000000000000000000",
+        "currency1": "0xD666f1974A4029244B22C5278b3Ae5265ab0881A",
+        "fee": 3000,
+        "tickSpacing": 60,
+        "hooks": "0x9015E798328ff297fc6a2909640971dc50c92000"
+      },
+      "poolId": "0x6e98d29e3430e7529cc6d4790c08faf17c4dfe3dd5a8d499b9b6561c27ece4bd",
+      "blockNumber": "57648316",
+      "blockHash": "0x14ad2b4bb0d212de13f1d9dc942041e50319aeed84598d554ebaae8c82e3cfec",
+      "timestampUnixSeconds": "1794506088",
+      "freshness": "observed_at_chain_head",
+      "finality": "local_chain_observed",
+      "factoryRuntimeHash": "0xd28d373357962422d02dedc533b8d2bc02e02820b083b7fc93b58fa8ae6439a5",
+      "initializationGuardRuntimeHash": "0x7a6d9abe71c5fd5a5ff135f85fdab2843852b9b679fdb60a14a19cde7020fb42"
+    }
+  }
+}

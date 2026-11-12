@@ -2,6 +2,7 @@ import { isAbsolute } from "node:path";
 import { createPublicClient, getAddress, http, isAddress, isHash, keccak256, parseAbi, zeroAddress, type Address, type Hash, type PublicClient } from "viem";
 import deploymentIdentities from "../../../../packages/contracts/test/fixtures/rmt-v4-deployment-identities.json";
 import type { NewLaunchDeployment } from "../launchpad/launch-record";
+import { growthVaultDeployerAbi } from "../launchpad/growth-vault";
 import { readLaunchpadPreviewAccess } from "./launchpad-preview-access";
 
 const contractNames = ["factory", "poolManager", "positionManager", "universalRouter", "quoter", "permit2", "stateView"] as const;
@@ -23,6 +24,7 @@ export type LaunchpadRuntime = {
   deployment: NewLaunchDeployment;
   contracts: ContractPins;
   guard?: ContractPin;
+  growthVaultDeployer?: ContractPin;
   privateRpcUrl: string;
   startBlock: bigint;
   databasePath: string;
@@ -68,6 +70,12 @@ export function readLaunchpadRuntime(env: Environment = process.env): LaunchpadR
   const engineVersion = env.RMT_LAUNCHPAD_ENGINE_VERSION?.trim() || "1";
   if (engineVersion !== "1" && engineVersion !== "2") throw new Error("Invalid RMT_LAUNCHPAD_ENGINE_VERSION");
   const guard = engineVersion === "2" ? readPin(env, "GUARD") : undefined;
+  const growthConfigured = env.RMT_LAUNCHPAD_GROWTH_VAULT_DEPLOYER_ADDRESS?.trim()
+    || env.RMT_LAUNCHPAD_GROWTH_VAULT_DEPLOYER_RUNTIME_HASH?.trim();
+  const growthVaultDeployer = growthConfigured ? readPin(env, "GROWTH_VAULT_DEPLOYER") : undefined;
+  if (growthVaultDeployer && (!guard || env.RMT_LAUNCHPAD_PREVIEW_ORIGIN)) {
+    throw new Error("The growth vault prototype requires the direct loopback V2 runtime");
+  }
   if (!guard && (env.RMT_LAUNCHPAD_GUARD_ADDRESS?.trim() || env.RMT_LAUNCHPAD_GUARD_RUNTIME_HASH?.trim())) {
     throw new Error("Guard pins require launchpad engine version 2");
   }
@@ -84,7 +92,8 @@ export function readLaunchpadRuntime(env: Environment = process.env): LaunchpadR
     stateView: fixturePin("stateView"),
   };
   const pins = [...Object.values(contracts), ...(guard ? [guard] : [])];
-  if (new Set(pins.map(({ address }) => address.toLowerCase())).size !== pins.length) {
+  const allPins = growthVaultDeployer ? [...pins, growthVaultDeployer] : pins;
+  if (new Set(allPins.map(({ address }) => address.toLowerCase())).size !== allPins.length) {
     throw new Error("Launchpad contract addresses must be distinct");
   }
   const factoryStartBlock = required(env, "FACTORY_START_BLOCK");
@@ -107,9 +116,13 @@ export function readLaunchpadRuntime(env: Environment = process.env): LaunchpadR
     tradingEnabled: env.RMT_LAUNCHPAD_TRADING_ENABLED === "true",
   } as const;
   return {
-    deployment: guard ? { ...baseDeployment, engineVersion: 2, initializationGuard: guard.address } : baseDeployment,
+    deployment: guard ? {
+      ...baseDeployment, engineVersion: 2, initializationGuard: guard.address,
+      ...(growthVaultDeployer ? { growthVaultDeployer: growthVaultDeployer.address } : {}),
+    } : baseDeployment,
     contracts,
     guard,
+    growthVaultDeployer,
     privateRpcUrl: rpcUrl,
     startBlock,
     databasePath,
@@ -130,7 +143,7 @@ function assertRuntimeCode(code: `0x${string}` | undefined, pin: ContractPin) {
 }
 
 export async function verifyLaunchpadRuntime(config: LaunchpadRuntime, rpc: PublicClient): Promise<void> {
-  const { deployment, contracts, guard, startBlock } = config;
+  const { deployment, contracts, guard, growthVaultDeployer, startBlock } = config;
   if ((deployment.engineVersion === 2) !== Boolean(guard)) throw new Error("Launchpad guard configuration mismatch");
   const [chainId, head] = await Promise.all([rpc.getChainId(), rpc.getBlockNumber()]);
   if (chainId !== deployment.chainId || head < startBlock) throw new Error("Launchpad RPC is on the wrong chain or below the deployment block");
@@ -161,6 +174,17 @@ export async function verifyLaunchpadRuntime(config: LaunchpadRuntime, rpc: Publ
       if (getAddress(value) !== getAddress(expected)) throw new Error("Launchpad dependency binding mismatch");
     }),
     ...(guard ? [verifyGuard(deployment, guard, rpc, startBlock, head)] : []),
+    ...(growthVaultDeployer ? [(async () => {
+      if (deployment.engineVersion !== 2 || deployment.growthVaultDeployer !== growthVaultDeployer.address) {
+        throw new Error("Growth vault deployer configuration mismatch");
+      }
+      const [code, factory] = await Promise.all([
+        rpc.getCode({ address: growthVaultDeployer.address, blockNumber: head }),
+        rpc.readContract({ address: growthVaultDeployer.address, abi: growthVaultDeployerAbi, functionName: "factory", blockNumber: head }),
+      ]);
+      assertRuntimeCode(code, growthVaultDeployer);
+      if (getAddress(factory) !== getAddress(deployment.factory)) throw new Error("Growth vault factory binding mismatch");
+    })()] : []),
   ]);
 }
 
@@ -193,7 +217,7 @@ async function verifyGuard(
 let verified: { key: string; expiresAt: number; promise: Promise<PublicClient> } | undefined;
 
 export function verifiedLaunchpadRpc(config: LaunchpadRuntime): Promise<PublicClient> {
-  const key = `${config.scope}\n${config.privateRpcUrl}`;
+  const key = [config.scope, config.privateRpcUrl, config.growthVaultDeployer?.address, config.growthVaultDeployer?.runtimeHash].join("\n");
   if (verified?.key === key && verified.expiresAt > Date.now()) return verified.promise;
   const rpc = launchpadRpc(config);
   const promise = verifyLaunchpadRuntime(config, rpc).then(() => rpc).catch((error: unknown) => {
