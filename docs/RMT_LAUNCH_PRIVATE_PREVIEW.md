@@ -42,6 +42,8 @@ The Playwright fixture exercises the same review and recovery UI with disposable
 
 The HTTPS gateway passed the complete Playwright journey with a disposable local wallet fixture. The fork reported zero unlocked accounts. The gateway refused administrative methods and unsigned RPC sends. After a rejected wallet prompt, the fixture submitted the signed launch and withheld its hash from the app. Recovery attached the wallet’s hash to the exact reviewed request and verified the receipt. The buy, both bounded sell approvals, native-settled sell, and fee claim each mined successfully. All five REST endpoints and all five tools through the official MCP client returned verified fork evidence over HTTPS.
 
+The same five REST and MCP reads passed through the HTTPS gateway after restarting the web backend from a production build. A separate loopback server running that build with production settings and launching disabled returned no deployment or launch records. The public list and MCP initialization both returned HTTP 404 with no-store and noindex headers.
+
 | Fixture transaction | Block | Receipt hash |
 | --- | --- | --- |
 | Create and fund the launch | 57648306 | `0x31322eae56f2f6a0b6bab2032bb7d5667a47b6480f0c2498548188d6c838b62d` |

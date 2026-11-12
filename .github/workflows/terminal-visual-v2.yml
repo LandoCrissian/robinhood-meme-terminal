@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   visual:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     env:
       NEXT_PUBLIC_RMT_NETWORK: mainnet
@@ -70,7 +70,7 @@ jobs:
           export NFT_INDEXER_READ_TOKEN="$fixture_read_token"
           export NFT_MARKETPLACE_INDEXER_READ_TOKEN="$fixture_read_token"
           nohup pnpm --filter web exec next start -p 3000 > /tmp/rmt-terminal.log 2>&1 &
-          for attempt in $(seq 1 60); do
+          for ((attempt = 1; attempt <= 60; attempt++)); do
             if curl --fail --silent http://127.0.0.1:3000/ >/dev/null; then exit 0; fi
             sleep 2
           done
