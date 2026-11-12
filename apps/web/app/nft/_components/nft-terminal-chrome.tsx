@@ -20,7 +20,7 @@ export function NftTerminalChrome() {
       </Link>
 
       <nav className={styles.desktopNav} aria-label="RMT Terminal navigation">
-        {primaryLinks.map((link) => <Link key={link.label} href={link.href} aria-current={link.active ? "page" : undefined}>{link.label}</Link>)}
+        {primaryLinks.map((link) => link.href === "/nft" ? <a data-nft-document-link key={link.label} href={link.href} aria-current={link.active ? "page" : undefined}>{link.label}</a> : <Link key={link.label} href={link.href} aria-current={link.active ? "page" : undefined}>{link.label}</Link>)}
       </nav>
 
       <span className={styles.mode}>NFT INTELLIGENCE</span>
@@ -29,7 +29,7 @@ export function NftTerminalChrome() {
     </header>
 
     <nav className={styles.mobileNav} aria-label="RMT Terminal navigation">
-      {primaryLinks.map((link) => <Link key={link.label} href={link.href} aria-current={link.active ? "page" : undefined}>{link.label}</Link>)}
+      {primaryLinks.map((link) => link.href === "/nft" ? <a data-nft-document-link key={link.label} href={link.href} aria-current={link.active ? "page" : undefined}>{link.label}</a> : <Link key={link.label} href={link.href} aria-current={link.active ? "page" : undefined}>{link.label}</Link>)}
     </nav>
   </>;
 }

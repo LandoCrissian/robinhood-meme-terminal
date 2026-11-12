@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "chainId": 4663,
+  "txHash": "0x3c5b142f2fcf2bad01a154b1b84754bd4e4c32281aa14c06641fa70f2221a522",
+  "blockHash": "0xfe71bf265f5f567f8c0362e5b57f37335e1ea79a9e3ddddb9c111a8005913dbf",
+  "blockNumber": "98582814",
+  "originalTraceSha256": "3963a8431996dbfe97781437ecdb0122b888f33a0db9e586b3d959b8002202c1",
+  "canonicalTraceSha256": "3963a8431996dbfe97781437ecdb0122b888f33a0db9e586b3d959b8002202c1",
+  "sourceUrl": "https://robinhoodchain.blockscout.com/api/v2/transactions/0x3c5b142f2fcf2bad01a154b1b84754bd4e4c32281aa14c06641fa70f2221a522/raw-trace",
+  "sourceEvidence": "Task117B chain-evidence/raw-trace.json; independently re-anchored by Task117C historical-settlement recovery",
+  "reverifiedAt": "2026-10-26T21:35:40.909Z",
+  "classification": "HISTORICAL_FULL_TRACE_EVIDENCE_ONLY",
+  "notAnAuthorization": true
+}

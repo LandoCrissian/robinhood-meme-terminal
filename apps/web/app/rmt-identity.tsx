@@ -2,6 +2,7 @@
 
 import { getIdentityToken, useConnectWallet, useIdentityToken, usePrivy, useUser, useWallets } from "@privy-io/react-auth";
 import { activateSelectedWallet, idleWalletConnection, WalletConnectionController, type WalletConnectionSnapshot } from "../lib/wallet-connection-controller";
+import { readConnectedWallet, soleConnectedExternalWallet } from "../lib/connected-wallet-state";
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { injectedSignerSelection, startInjectedSignerDiscovery } from "../lib/injected-wallet-signer";
 import { useAccount, useConnect, useConfig, useDisconnect, useReconnect, useSwitchAccount, useSwitchChain } from "wagmi";
@@ -674,6 +675,7 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
   const restored = useRef(false);
   const automaticProvisioningUser = useRef<string | undefined>(undefined);
   const automaticEmbeddedActivation = useRef<string | undefined>(undefined);
+  const automaticExternalActivation = useRef<string | undefined>(undefined);
   const embeddedActivationGeneration = useRef(0);
   const linkedExternalWalletAccounts = useMemo(
     () => linkedExternalEthereumWallets(user?.linkedAccounts ?? []),
@@ -1062,6 +1064,7 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     return () => injectedSignerSelection.setIdentity({ authenticated: false, userId: "", activeWalletKey: null });
   }, []);
   const resetTradingWalletRuntime = useCallback(() => {
+    automaticExternalActivation.current = undefined;
     connectionController.cancel();
     injectedSignerSelection.invalidate();
     restored.current = true;
@@ -1099,6 +1102,7 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
   // They are discovery only: no callback may select, authenticate, or activate a wallet.
   const { connectWallet: openExternalWalletConnect } = useConnectWallet();
   const connectTradingWallet = useCallback(() => {
+    automaticExternalActivation.current = undefined;
     restored.current = true;
     injectedSignerSelection.invalidate();
     setAppliedWalletKey(null);
@@ -1106,13 +1110,13 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     connectionController.begin();
     try {
       openExternalWalletConnect({
-        description: "Connect a wallet, then explicitly choose it in RMT.",
+        description: "Connect your wallet. RMT selects a single available signer; multiple wallets require your choice.",
         walletChainType: "ethereum-only",
         walletList: environment === "mobile-wallet-browser" ? rmtInjectedWalletOptions() : rmtExternalWalletOptions()
       });
     } catch { connectionController.fail(); }
   }, [connectionController, environment, openExternalWalletConnect]);
-  const activateTradingWallet = useCallback(async (walletKey: string) => {
+  const activateTradingWallet = useCallback(async (walletKey: string, automatic = false) => {
     restored.current = true;
     injectedSignerSelection.invalidate();
     setAppliedWalletKey(null);
@@ -1128,6 +1132,9 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
       stillSelected: () => {
         const current = currentIdentity.current;
         return (!startingUser || current.userId === startingUser)
+          && (!automatic || (current.authenticated && current.wallets.filter(candidate => candidate.type === "ethereum").length === 1
+            && current.wallets.some(candidate => walletGatewayKey(candidate) === rawKey && candidate.linked)
+            && !Array.from(config.state.connections.keys()).some(uid => uid !== selected.uid)))
           && (!activatedUid || config.state.current === activatedUid)
           && current.wallets.filter((candidate) => walletGatewayKey(candidate) === rawKey).length === 1
           && config.connectors.filter((candidate) => candidate.id === selected.id && candidate.uid === selected.uid).length === 1;
@@ -1137,7 +1144,11 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
         if (currentMatches.length !== 1) throw new Error("Wallet binding changed.");
         return currentMatches[0].getEthereumProvider();
       },
-      needsLogin: () => !currentIdentity.current.authenticated || !wallet.linked,
+      needsLogin: () => {
+        const needed = !currentIdentity.current.authenticated || !wallet.linked;
+        if (automatic && needed) throw new Error("Wallet authentication requires an explicit user action.");
+        return needed;
+      },
       activate: async (provider, check) => {
         // @privy-io/wagmi 4.0.15 setActiveWallet dispatches void mutations.
         // Await the real Wagmi mutation instead, with independently checked provider identity.
@@ -1184,6 +1195,33 @@ export function PrivyIdentityBridge({ children }: { children: ReactNode }) {
     }
     await activateTradingWallet(walletKey);
   }, [activateEmbeddedWallet, activateTradingWallet, embeddedWallets, connectionController, rememberTradingWallet, user?.id]);
+
+  useEffect(() => {
+    if (!authenticated || !user?.id || !walletsReady || !walletPreferenceLoaded || preferredWalletKey || signerWalletKey
+      || wallets.filter(candidate => candidate.type === "ethereum").length !== 1 || externalWalletBindings.length !== 1
+      || (walletConnection.state !== "IDLE" && !(walletConnection.state === "CONNECTING" && !walletConnection.walletKey))) return;
+    const sole = soleConnectedExternalWallet(wallets);
+    if (!sole?.linked) return;
+    const binding = externalWalletBindings[0]!;
+    if (binding.rawKey !== walletGatewayKey(sole) || Array.from(config.state.connections.keys()).some(uid => uid !== binding.connector.uid)) return;
+    const attemptKey = `${user.id}:${binding.key}:${binding.connector.uid}`;
+    if (automaticExternalActivation.current === attemptKey) return;
+    automaticExternalActivation.current = attemptKey;
+    let disposed = false;
+    let activating = false;
+    void readConnectedWallet(sole).then(state => {
+      if (disposed || (state.status !== "ready" && state.status !== "wrong-chain")) return;
+      const current = currentIdentity.current;
+      if (current.userId !== user.id || !current.authenticated || current.preferredWalletKey
+        || current.wallets.filter(candidate => candidate.type === "ethereum").length !== 1
+        || !current.wallets.some(candidate => walletGatewayKey(candidate) === binding.rawKey && candidate.linked)) return;
+      // No login/signature/chain change. Reuse the exact, awaited canonical signer activation.
+      activating = true;
+      void activateTradingWallet(binding.key, true);
+    });
+    return () => { disposed = true; if (!activating && automaticExternalActivation.current === attemptKey) automaticExternalActivation.current = undefined; };
+  }, [activateTradingWallet, authenticated, config, externalWalletBindings, preferredWalletKey, signerWalletKey,
+    user?.id, walletConnection.state, walletConnection.walletKey, walletPreferenceLoaded, wallets, walletsReady]);
 
   useEffect(() => {
     if (restored.current || !preferredWalletKey || connectionController.getSnapshot().state !== "IDLE") return;

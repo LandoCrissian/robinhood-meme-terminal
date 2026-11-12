@@ -848,6 +848,7 @@ async function nftProgressiveLane(browser, viewport, platform, scenario) {
 
 async function traceNftJourney(page) {
   const navigationTrace = [];
+  await page.exposeFunction("__rmtRecordNftPointer", entry => navigationTrace.push({ event: "pointer", ...entry }));
   const record = (event, request, extra) => {
     const url = new URL(request.url());
     if (url.pathname.startsWith("/nft")) navigationTrace.push({ event, time: performance.now(), path: `${url.pathname}${url.search}`, ...extra });
@@ -860,8 +861,8 @@ async function traceNftJourney(page) {
     window.__rmtNftJourneyEvents = [];
     for (const type of ["pointerdown", "pointerup", "click"]) document.addEventListener(type, event => {
       const anchor = event.target?.closest?.("a");
-      const entry = { type, time: performance.now(), x: event.clientX, y: event.clientY, scroll: scrollY, href: anchor?.getAttribute("href"), target: event.target?.tagName, scrollBehavior: getComputedStyle(document.documentElement).scrollBehavior };
-      setTimeout(() => { entry.defaultPrevented = event.defaultPrevented; window.__rmtNftJourneyEvents.push(entry); }, 0);
+      const entry = { type, time: performance.now(), x: event.clientX, y: event.clientY, scroll: scrollY, href: anchor?.getAttribute("href"), target: event.target?.tagName, trusted: event.isTrusted, scrollBehavior: getComputedStyle(document.documentElement).scrollBehavior };
+      queueMicrotask(() => { entry.defaultPrevented = event.defaultPrevented; window.__rmtNftJourneyEvents.push(entry); void window.__rmtRecordNftPointer(entry); });
     }, true);
   });
   return navigationTrace;
@@ -902,21 +903,23 @@ async function nftJourneyLane(browser, viewport, platform) {
     const anchor = await marker.evaluateHandle(node => node.closest("a") ?? node.querySelector("a"));
     const element = anchor.asElement();
     if (!element) throw new Error("NFT journey marker has no destination link");
-    // Every streamed destination needs the same client-handler boundary as
-    // the initial search result. Visibility alone is not hydration readiness.
-    await page.waitForFunction(link => link.isConnected && Object.keys(link).some(
+    // Native NFT document links deliberately avoid the framework RSC cache.
+    // Other Next links still require their installed client handler.
+    const documentNavigation = await element.getAttribute("data-nft-document-link") !== null;
+    if (!documentNavigation) await page.waitForFunction(link => link.isConnected && Object.keys(link).some(
       key => key.startsWith("__reactProps$") && typeof link[key]?.onClick === "function"
     ), element);
     nftJourneyReadiness.push(await element.evaluate((link, platform) => ({
       platform, pathname: location.pathname, search: location.search,
-      readyState: document.readyState, href: link.getAttribute("href"), clientHandlerInstalled: true,
+      readyState: document.readyState, href: link.getAttribute("href"), documentNavigation: link.hasAttribute("data-nft-document-link"),
+      clientHandlerInstalled: Object.keys(link).some(key => key.startsWith("__reactProps$") && typeof link[key]?.onClick === "function"),
       scroll: scrollY, rect: link.getBoundingClientRect().toJSON(), scrollBehavior: getComputedStyle(document.documentElement).scrollBehavior,
     }), platform));
     const href = await element.getAttribute("href");
     // Dynamic collection/item routes must be fetched on activation, not through
     // a speculative tree-only prefetch followed by the missing-data patch lane.
     // Preserve the real pointer click and exact rendered-destination assertion.
-    if (href && /^\/nft\/[^/?]+(?:\/[^/?]+)?(?:\?.*)?$/.test(href)) {
+    if (href && /^\/nft(?:\/[^/?]+(?:\/[^/?]+)?)?(?:\?.*)?$/.test(href)) {
       await element.hover();
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => resolve())));
       const speculativeReads = navigationTrace.filter(entry => entry.event === "request" && entry.partialPrefetch && new URL(entry.path, base).pathname === new URL(href, base).pathname);
@@ -937,11 +940,11 @@ async function nftJourneyLane(browser, viewport, platform) {
   ]);
   await page.locator('[data-nft-item-lookup="CONFIRMED"] [data-nft-search-item]').waitFor();
   check(new URL(page.url()).searchParams.get("q") === "ccff00 #5", state, "Search interaction did not preserve the bounded exact-item query.");
-  // React 19's installed DOM props distinguish an interactive Next Link from
-  // its streamed HTML. Bounded by the existing timeout; no sleeps or retries.
+  // Native anchors work before hydration; any remaining Next Link still needs
+  // its installed handler. Keep the same timeout and real pointer activation.
   await page.waitForFunction(() => {
     const link = document.querySelector('[data-nft-search-item]');
-    return link && Object.keys(link).some(key => key.startsWith("__reactProps$") && typeof link[key]?.onClick === "function");
+    return link && (link.hasAttribute("data-nft-document-link") || Object.keys(link).some(key => key.startsWith("__reactProps$") && typeof link[key]?.onClick === "function"));
   });
   nftJourneyReadiness.push(await page.locator('[data-nft-search-item]').evaluate((link, platform) => ({
     platform, pathname: location.pathname, search: location.search,
@@ -961,6 +964,8 @@ async function nftJourneyLane(browser, viewport, platform) {
   await clickReadyLink(page.getByRole("link", { name: /Back to CCFF00 collection/ }));
   await waitForDestination(/\/nft\/ccff00$/, page.locator("[data-nft-gallery] a").first());
   check(!navigationTrace.some(entry => entry.event === "exception"), state, "NFT navigation emitted a browser exception.", { exceptions: navigationTrace.filter(entry => entry.event === "exception") });
+  const actualClicks = navigationTrace.filter(entry => entry.event === "pointer" && entry.type === "click" && entry.href?.startsWith("/nft"));
+  check(actualClicks.length >= 6 && actualClicks.every(entry => entry.trusted), state, "NFT journey must use six trusted anchor activations.", { actualClicks });
   const forbiddenCount = await page.locator("a,button").filter({ hasText: /^(Buy|List|Offer|Fulfill|Sign|Submit)$/i }).count();
   check(forbiddenCount === 0, state, "Functional NFT journey exposed execution controls.", { forbiddenCount });
   await writeFile(path.join(output, `${state}-navigation-trace.json`), JSON.stringify({ navigationTrace, pointerTrace: await page.evaluate(() => window.__rmtNftJourneyEvents) }, null, 2));

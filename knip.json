@@ -8,34 +8,50 @@
   ],
   "workspaces": {
     ".": {
-      "entry": [".github/scripts/zerox-browser-boundary.cjs", ".github/scripts/zerox-execution-fixture.cjs", ".github/scripts/collect-live-journey-proof.cjs", ".github/scripts/live-journey-runtime-proof.cjs"]
+      "entry": [
+        ".github/scripts/zerox-browser-boundary.cjs",
+        ".github/scripts/zerox-execution-fixture.cjs",
+        ".github/scripts/collect-live-journey-proof.cjs",
+        ".github/scripts/live-journey-runtime-proof.cjs",
+        ".github/scripts/cannacat-panel-browser.ts",
+        ".github/scripts/cannacat-historical-browser.ts"
+      ]
     },
     "apps/web": {
       "entry": [
         "app/**/*.{ts,tsx}",
         "lib/testing/**/*.{ts,tsx}",
         "lib/**/*-smoke.ts",
-        "lib/**/*.test.ts"
+        "lib/**/*.test.ts",
+        "lib/embed/cannacat-panel.tsx",
+        "lib/embed/cannacat-legal-shell.tsx",
+        "scripts/build-cannacat-client.mjs"
       ]
     },
     "apps/indexer": {
       "entry": [
         "src/**/*-smoke.ts"
       ],
-      "ignoreDependencies": ["tsx"]
+      "ignoreDependencies": [
+        "tsx"
+      ]
     },
     "apps/external-origin-indexer": {
       "entry": [
         "src/**/*-smoke.ts",
         "shadow/**/*-smoke.ts"
       ],
-      "ignoreDependencies": ["tsx"]
+      "ignoreDependencies": [
+        "tsx"
+      ]
     },
     "apps/market-indexer": {
       "entry": [
         "src/**/*-smoke.ts"
       ],
-      "ignoreDependencies": ["tsx"]
+      "ignoreDependencies": [
+        "tsx"
+      ]
     }
   }
 }
