@@ -17,8 +17,7 @@ import {
 import {
   PONS_V2_FACTORY,
   PONS_V2_MEME_HOOK,
-  ponsV2LaunchEvents,
-  ponsV2PoolId
+  ponsV2LaunchEvents
 } from "./pons-v2-launch-feed";
 import { PONS_V1_FACTORY, ponsV1LaunchEvents } from "./pons-project-metadata";
 import {
