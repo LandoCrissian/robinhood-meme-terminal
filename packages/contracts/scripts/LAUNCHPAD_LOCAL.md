@@ -17,6 +17,8 @@ node scripts/deploy-launchpad-local.mjs
 
 The script checks the local node and exact runtime hashes before deploying through an unlocked test account. It advances the fork clock with a local empty block when the upstream anchor predates the browser clock. Its JSON output contains the factory address, runtime hash, starting block and receipt hash for web configuration. Recreate those settings if you reset the node. A pinned local block can become unavailable through the public RPC. An existing archival endpoint for Base Sepolia can supply the same upstream block.
 
+For the private HTTPS preview, start a fresh fork with `--accounts 0` and run `node scripts/deploy-launchpad-local.mjs http://127.0.0.1:8545 --sealed`. The temporary deployment signer is held only inside this local bootstrap process. Keep the same fork running so historical state at the deployment block can be verified. [Private preview runbook](../../../docs/RMT_LAUNCH_PRIVATE_PREVIEW.md).
+
 Set the web and indexer processes to the same loopback RPC, factory address, runtime hash and deployment block. Use a fresh SQLite file after resetting the fork. See [indexer operations](../../../docs/INDEXER_OPERATIONS.md) for the environment variables and worker command.
 
 ## Launch terms
