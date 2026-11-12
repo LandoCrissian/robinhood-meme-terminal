@@ -18,7 +18,6 @@ Project presentation uses exact-contract retained artwork with original source,
 evidence class and content digests in `project-artwork-evidence.json`. These small
 production assets are not review screenshots. Collection logos remain provider
 presentation evidence; CCFF00 artwork comes from its onchain token URI. Retaining
-them removes a runtime OpenSea dependency. CANNACAT has no separate image in the
 observed Gecko token response: its token surface uses project identity artwork,
 without claiming a newly verified token image. Optional market and ownership
 reads remain independent, and unavailable metrics use compact states.
@@ -54,14 +53,12 @@ claim about the internet.
 
 | Project | ERC20 | ERC721 | Admission |
 | --- | --- | --- | --- |
-| CannaCats | `0x1139d423C1706BDeaD91f03507F521635591eD92` | `0x289c8ce652f38029867842048068b39bd0464a3f` | Verified Token↔NFT |
 | Hopium Machines | `0xB6cE51925C2e397eBF1a443b343d19267B3D4225` | `0x7da15c761409cb921a81f0e003704cff418b700b` | Verified Token↔NFT |
 | PEEPS / Founding Feathers | `0xf202de51bb42a0073948b0971707d14c54ef5f44` | `0xc1605fb719f388110b1b0f384b7ffd64ba4ba5df` | Verified Token↔NFT |
 | CCFF00 | None admitted | `0x505A22Ffed8d37ebE580FfD98d2Cdb0021189146` | Verified NFT-led |
 
 The PEEPS token was not guessed: the existing owner-confirmed intake and official
 `https://peeps.wtf/launchpad/peeps` explorer destination agree on the exact address.
-CannaCat/Hopium supplied contracts are ERC20s, not their NFT collections. All
 three ERC20 decimals reads returned 18; this catalog records those observations,
 never an unknown-unit default. NFT `totalSupply()` results in this technical
 capture are **not** circulating supply authority or live user-facing totals.

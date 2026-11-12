@@ -8,7 +8,7 @@ const base = process.env.RMT_VISUAL_BASE_URL ?? 'http://127.0.0.1:3171';
 assert.ok(['127.0.0.1','localhost'].includes(new URL(base).hostname));
 const output=path.resolve(process.env.RMT_VISUAL_OUTPUT ?? 'terminal-visual-v2','project-graph');await mkdir(output,{recursive:true});
 const browser=await chromium.launch({headless:true});const results=[], navigationEvidence=[];
-const canna='0x1139d423C1706BDeaD91f03507F521635591eD92', nft='0x289c8ce652f38029867842048068b39bd0464a3f';
+const hopium='0xB6cE51925C2e397eBF1a443b343d19267B3D4225', nft='0x7da15c761409cb921a81f0e003704cff418b700b';
 try {
  for(const viewport of [{width:375,height:812},{width:390,height:844},{width:430,height:932},{width:1440,height:900}]) {
   const mobile=viewport.width<1024, context=await browser.newContext({viewport,isMobile:mobile,hasTouch:mobile,recordVideo:{dir:path.join(output,'videos'),size:viewport}}), page=await context.newPage(), errors=[];
@@ -18,11 +18,11 @@ try {
   await page.addInitScript(()=>{window.__projectWalletRequests=0;window.ethereum={on(){},removeListener(){},async request({method}){if(/sign|sendTransaction|wallet_sendCalls/.test(method)){window.__projectWalletRequests++;throw Error('Financial action prohibited');}return method==='eth_chainId'?'0x1237':[];}};});
   const routes=await installTokenRoutes(page);let delayed=false, unavailable=false, holdMarket=false;const marketWaiters=[];let marketResponses=0;
   // Controlled external identity response for the exact independently observed
-  // CANNACAT address. The real directory selection and Project consumers run.
+  // HOPIUM address. The real directory selection and Project consumers run.
   await page.route(/\/api\/vnext\/asset-identity(?:\?.*)?$/,route=>{
    const address=new URL(route.request().url()).searchParams.get('address');
-   return address?.toLowerCase()===canna.toLowerCase()
-    ? route.fulfill({json:{resolution:{chainId:4663,requestedAddress:canna,requestedKind:'token',status:'token-only',token:{address:canna,name:'CannaCat',symbol:'CANNACAT',decimals:18,totalSupply:'1000000000000000000000000000'},pools:[],marketData:'identity-only',execution:'swap-capable',provenance:'robinhood-chain-contract-reads',resolvedAt:new Date().toISOString()}}})
+   return address?.toLowerCase()===hopium.toLowerCase()
+    ? route.fulfill({json:{resolution:{chainId:4663,requestedAddress:hopium,requestedKind:'token',status:'token-only',token:{address:hopium,name:'Hopium Machines',symbol:'HOPIUM',decimals:18,totalSupply:'1000000000000000000000000000'},pools:[],marketData:'identity-only',execution:'swap-capable',provenance:'robinhood-chain-contract-reads',resolvedAt:new Date().toISOString()}}})
     : route.fulfill({status:503,json:{error:'CONTROLLED_IDENTITY_UNAVAILABLE'}});
   });
   await page.route(/\/api\/vnext\/asset-workspace\?[^#]*view=market/,async route=>{
@@ -43,8 +43,8 @@ try {
   const projectsNav=page.locator('nav[aria-label="RMT Terminal navigation"]:visible');
   assert.deepEqual((await projectsNav.locator('a').allTextContents()).map(label=>label.trim()),primaryLabels);
   assert.equal(await projectsNav.locator('[aria-current="page"]').innerText(),'Projects');
-  assert.equal(await page.locator('.rmtProjectRow').count(),15);
-  for(const [project,token,collection] of [['CannaCats','CANNACAT','CannaCats'],['Hopium Machines','HOPIUM','Hopium Machines']]) {
+  assert.equal(await page.locator('.rmtProjectRow').count(),14);
+  for(const [project,token,collection] of [['Hopium Machines','HOPIUM','Hopium Machines']]) {
    const card=page.getByRole('link',{name:`Explore ${project} project`,exact:true});
    assert.ok(await card.locator('.rmtProjectRowAssets').getByText(token,{exact:true}).isVisible());
    assert.ok(await card.locator('.rmtProjectRowAssets').getByText(collection,{exact:true}).isVisible());
@@ -53,23 +53,23 @@ try {
   assert.equal(await ccffCard.getByText('NFT-led',{exact:true}).count(),1);
   assert.equal(await ccffCard.locator('.rmtProjectRowAssets').getByText('Token',{exact:true}).count(),0);
   await page.evaluate(()=>document.fonts.ready);
-  const tokenLines=await page.getByRole('link',{name:'Explore CannaCats project',exact:true}).locator('.rmtProjectRowAssets').getByText('CANNACAT',{exact:true}).evaluate(node=>{const range=document.createRange();range.selectNodeContents(node);return new Set([...range.getClientRects()].map(rect=>Math.round(rect.y))).size;});
+  const tokenLines=await page.getByRole('link',{name:'Explore Hopium Machines project',exact:true}).locator('.rmtProjectRowAssets').getByText('HOPIUM',{exact:true}).evaluate(node=>{const range=document.createRange();range.selectNodeContents(node);return new Set([...range.getClientRects()].map(rect=>Math.round(rect.y))).size;});
   assert.equal(tokenLines,1,'The short exact token symbol remains legible on one line at every viewport');
   await capture('projects-landing');
-  await page.getByRole('link',{name:'Explore CannaCats project',exact:true}).click();await page.locator('[data-project-market="cannacats"]').waitFor();
+  await page.getByRole('link',{name:'Explore Hopium Machines project',exact:true}).click();await page.locator('[data-project-market="hopium-machines"]').waitFor();
   assert.equal(await page.locator('nav[aria-label="RMT Terminal navigation"]:visible [aria-current="page"]').innerText(),'Projects');
   await page.locator('nav[aria-label="RMT Terminal navigation"]:visible').getByRole('link',{name:'Markets',exact:true}).click();
   await page.locator(mobile?'.rmtMobileMarketRow':'.rmtMarketTableRow').first().waitFor();
   await page.locator('.rmtExploreTrigger').first().click();await page.locator('.rmtExploreDialog button').filter({hasText:'Projects'}).click();
   assert.match(await page.locator('.rmtExploreTrigger').innerText(),/Projects/);
-  assert.equal(await page.locator('.rmtProjectRow').count(),0,'Market universe filters token relationships; the first-class Projects directory retains all 15 projects');
+  assert.equal(await page.locator('.rmtProjectRow').count(),0,'Market universe filters token relationships; the first-class Projects directory retains all 14 projects');
   await capture('projects-token-universe');
-  for(const query of ['CannaCats','CANNACAT',canna,nft,'Founding Feathers']) {
+  for(const query of ['Hopium Machines','HOPIUM',hopium,nft,'Founding Feathers']) {
    const input=page.locator(mobile?'#rmt-mobile-market-search':'#rmt-desktop-market-search');
-   await input.fill(query);await page.locator('.rmtProjectRow').first().waitFor();assert.match(await page.locator('.rmtProjectDiscovery').innerText(),query==='Founding Feathers'?/Founding Feathers/:/CannaCats/);
+   await input.fill(query);await page.locator('.rmtProjectRow').first().waitFor();assert.match(await page.locator('.rmtProjectDiscovery').innerText(),query==='Founding Feathers'?/Founding Feathers/:/Hopium Machines/);
   }
-  await page.locator(mobile?'#rmt-mobile-market-search':'#rmt-desktop-market-search').fill('CannaCats');
-  await page.getByRole('link',{name:'Explore CannaCats project',exact:true}).click();await page.locator('[data-project-market="cannacats"]').waitFor();
+  await page.locator(mobile?'#rmt-mobile-market-search':'#rmt-desktop-market-search').fill('Hopium Machines');
+  await page.getByRole('link',{name:'Explore Hopium Machines project',exact:true}).click();await page.locator('[data-project-market="hopium-machines"]').waitFor();
   assert.equal(await page.locator('.rmtProjectAssetCard').count(),2);await capture('token-nft-project');
   await page.evaluate(() => {
    window.__projectNavigation = { started: null, destinationMs: null, identityMs: null, ticketMs: null, genericFrames: 0, selectedAssetLoss: 0, frames: 0, done: false };
@@ -99,9 +99,9 @@ try {
   const directNavigation = await page.evaluate(() => { window.__projectNavigation.done = true; return window.__projectNavigation; });
   assert.equal(directNavigation.genericFrames, 0, 'Verified Project → Token never exposes a generic Markets intermediate screen');
   assert.equal(directNavigation.selectedAssetLoss, 0);
-  assert.match(await page.locator('#vn-asset-heading').innerText(), /CANNACAT/i);
+  assert.match(await page.locator('#vn-asset-heading').innerText(), /HOPIUM/i);
   navigationEvidence.push({ viewport, evidence: 'CONTROLLED_PUBLIC_COMPONENT_NAVIGATION', ...directNavigation });
-  assert.ok(new URL(page.url()).searchParams.get('market').toLowerCase()===canna.toLowerCase());
+  assert.ok(new URL(page.url()).searchParams.get('market').toLowerCase()===hopium.toLowerCase());
   await page.getByRole('tab',{name:'Project',exact:true}).click();assert.ok(await page.getByRole('link',{name:'Explore project',exact:false}).isVisible());await capture('token-project-surface');
   await page.getByRole('tab',{name:'6H',exact:true}).click();
   if(mobile)await page.locator('.rmtMobileTradeDock .isBuy').click();
@@ -137,7 +137,7 @@ try {
    requestAnimationFrame(frame);
   });
   holdMarket=true;
-  const sellResponse=await page.goto(`${base}/?market=${canna}&project=cannacats&side=sell`,{waitUntil:'domcontentloaded'});
+  const sellResponse=await page.goto(`${base}/?market=${hopium}&project=hopium-machines&side=sell`,{waitUntil:'domcontentloaded'});
   assert.equal(sellResponse.status(),200);
   assert.match(sellResponse.headers()['content-type'],/text\/html/);
   await page.waitForFunction(()=>window.__initialSellTicket?.firstVisible!==null && window.__initialSellTicket?.firstVisible!==undefined);
@@ -163,7 +163,7 @@ try {
   await capture('sell-deep-link-first-render');
   navigationEvidence.push({viewport,evidence:'CONTROLLED_INITIAL_SELL_CLIENT_RENDER',initialTicket:finalInitialTicket,amountAfterEnrichment:await amount.inputValue()});
   await page.goto(`${base}/projects/ccff00`,{waitUntil:'domcontentloaded'});await page.locator('[data-project-market="ccff00"]').waitFor();assert.equal(await page.getByRole('link',{name:'Trade token',exact:false}).count(),0,'No invented CCFF00 token');await capture('ccff00-nft-led');
-  delayed=true;unavailable=true;await page.goto(`${base}/projects/cannacats`,{waitUntil:'domcontentloaded'});await page.locator('[data-project-market="cannacats"]').waitFor();await page.evaluate(()=>document.fonts.ready);const linksBefore=await page.locator('.rmtProjectPrimary').evaluateAll(nodes=>nodes.map(n=>({y:n.getBoundingClientRect().y,height:n.getBoundingClientRect().height})));await page.getByText('Market data unavailable',{exact:true}).waitFor();const linksAfter=await page.locator('.rmtProjectPrimary').evaluateAll(nodes=>nodes.map(n=>({y:n.getBoundingClientRect().y,height:n.getBoundingClientRect().height})));assert.deepEqual(linksAfter,linksBefore);await capture('project-market-unavailable');
+  delayed=true;unavailable=true;await page.goto(`${base}/projects/hopium-machines`,{waitUntil:'domcontentloaded'});await page.locator('[data-project-market="hopium-machines"]').waitFor();await page.evaluate(()=>document.fonts.ready);const linksBefore=await page.locator('.rmtProjectPrimary').evaluateAll(nodes=>nodes.map(n=>({y:n.getBoundingClientRect().y,height:n.getBoundingClientRect().height})));await page.getByText('Market data unavailable',{exact:true}).waitFor();const linksAfter=await page.locator('.rmtProjectPrimary').evaluateAll(nodes=>nodes.map(n=>({y:n.getBoundingClientRect().y,height:n.getBoundingClientRect().height})));assert.deepEqual(linksAfter,linksBefore);await capture('project-market-unavailable');
   assert.deepEqual(errors,[]);results.push({viewport,scope:'CONTROLLED_EXTERNAL_HTTP_REAL_PUBLIC_COMPONENTS_EMULATED_VIEWPORT',searchQueries:5,amountMovementPx:after.amount.y-aligned.amount.y,actionMovementPx:after.dock?after.dock.y-aligned.dock.y:0,chartMovementPx:after.chart?after.chart.y-aligned.chart.y:0,scrollMovementPx:after.scrollY-aligned.scrollY,focus:after.focus,caret:after.start,marketLinkMovementPx:linksAfter[0].y-linksBefore[0].y,walletRequests:await page.evaluate(()=>window.__projectWalletRequests),errors});await context.close();
  }
 } catch(error) {

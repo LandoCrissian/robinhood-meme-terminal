@@ -18,7 +18,6 @@ const controls = [
   ["lemon", "0xf0e17e54239cd945cd7bea471a3a2ca6a8c7f7a3"],
   ["peep", "0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f"],
   ["hopium", "0xb6ce51925c2e397ebf1a443b343d19267b3d4225"],
-  ["cannacat", "0x1139d423c1706bdead91f03507f521635591ed92"]
 ];
 const writeJson = (name, value) => fs.writeFileSync(path.join(directory, name), JSON.stringify(value));
 const writeHeaders = (name, type, shared = null) => fs.writeFileSync(

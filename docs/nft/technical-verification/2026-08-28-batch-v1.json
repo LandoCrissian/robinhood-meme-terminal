@@ -71,28 +71,6 @@
       "verifiedAt": "2026-08-28T11:30:04.914Z"
     },
     {
-      "projectId": "cannacats",
-      "collectionAddress": "0x289c8Ce652F38029867842048068B39BD0464a3F",
-      "classification": "UNSUPPORTED_FACTORY_CREATION_V1",
-      "creationTransaction": "0x5ee756a0f9ca9e36b3cc5eea703f9e2543323333c2232e388d7cd719e49d5893",
-      "startBlock": "30802604",
-      "creator": "0x008EbCCaE39d001200c3003c3225ce0A00690066",
-      "runtimeBytecodeHash": "0xe3e252831cdd0c11e1327d04a57ddd9bfa11ef49d50edb524040d98bfb228bc4",
-      "supportsErc165": true,
-      "supportsInvalidInterface": false,
-      "supportsErc721": true,
-      "supportsErc721Metadata": true,
-      "name": "CannaCats",
-      "symbol": "CCATS",
-      "representativeTokenId": null,
-      "tokenUriKind": "UNAVAILABLE",
-      "proxyDetected": "YES",
-      "implementationAddress": "0x09a26fC8FCEF18192E267D7A6da9dFb4be81Dd6A",
-      "implementationRuntimeBytecodeHash": "0xda60742d810ae5de9c087af2e82b05fb84e9112cfade927fca0db6490ea52519",
-      "failureReason": "Creation transaction targets a factory or existing contract",
-      "verifiedAt": "2026-08-28T11:30:04.915Z"
-    },
-    {
       "projectId": "pixel-hood-minis",
       "collectionAddress": "0x8215824669C453136cabe59a079c32ACa2f87cD5",
       "classification": "UNSUPPORTED_FACTORY_CREATION_V1",

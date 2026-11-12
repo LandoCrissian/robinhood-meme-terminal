@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { decodeFunctionData, encodeFunctionData, getAddress, parseAbi, zeroAddress, type Hex } from "viem";
 import { decodeZeroXExecutableMinimum, verifyZeroXEncodedFee, inspectZeroXRoute, ZERO_X_PPM_SETTLER_RUNTIME_HASH } from "../server/vnext-zero-x-execution-decoder";
-import { cannacatRouteActions, routeTokens } from "./zero-x-robinhood-route-smoke";
+import { sampleRouteActions, routeTokens } from "./zero-x-robinhood-route-smoke";
 import { feeMutations, mutateZeroXActions } from "./zero-x-provider-native-fee-smoke";
 import { ExecutionEnvelopeFailure } from "./trade-failure";
 import { ZERO_X_NATIVE_TOKEN } from "./zero-x-settlement";
@@ -21,17 +21,17 @@ const basic = (args: readonly unknown[]) => encodeFunctionData({ abi: basicAbi, 
  * synthetic nested arguments. NOT the discarded production calldata/path.
  */
 export function liquidityBookRouteActions(body: any, recipient = user): Hex[] {
-  const previous = cannacatRouteActions(body, recipient);
+  const previous = sampleRouteActions(body, recipient);
   return [...previous.slice(0, 3), basic([routeTokens.usdg, 1_000_000n, router, 4n,
     nested([0n, 0n, [20n], [routeTokens.usdg, routeTokens.weth], settler, 2n ** 64n])]), ...previous.slice(5)];
 }
 
 export function runZeroXLiquidityBookSmoke() {
-  const body = { sellToken: routeTokens.usdg, buyToken: routeTokens.canna, sellAmount: "1000000",
+  const body = { sellToken: routeTokens.usdg, buyToken: routeTokens.sample, sellAmount: "1000000",
     buyAmount: "31281759107382449535190", minBuyAmount: "30971939696219283184792",
     fees: { zeroExFee: { token: routeTokens.usdg, amount: "1500" } }, transaction: { to: holder } };
   const data = fixture.encodeQuote({ ...body, actionsForTest: liquidityBookRouteActions(body) }, user) as Hex;
-  const input = { target: holder, data, inputAsset: routeTokens.usdg, outputAsset: routeTokens.canna,
+  const input = { target: holder, data, inputAsset: routeTokens.usdg, outputAsset: routeTokens.sample,
     inputAmountAtomic: "1000000", recipient: user, valueAtomic: "0", runtimeHash: ZERO_X_PPM_SETTLER_RUNTIME_HASH,
     expectedOutputAtomic: body.buyAmount, providerFeeAsset: routeTokens.usdg, providerFeeAtomic: "1500" };
   assert.equal(verifyZeroXEncodedFee(input).count, 1);

@@ -13,7 +13,6 @@ async function main() {
   const inputs = [
     ["STONKBROKER", "0xe934e36a439c94017b64a3fece66af12099abf50", "known market"],
     ["SHCAT", "0x14c51bb55592372eac7141a1d0527d1dd7fbd42f", "no reviewed RMT canonical market; actual index membership not inferred"],
-    ["CANNACAT", "0x1139d423c1706bdead91f03507f521635591ed92", "future project candidate; NFT relationship unverified"],
     ["HOPIUM", "0xb6ce51925c2e397ebf1a443b343d19267b3d4225", "future project candidate; NFT relationship unverified"],
     ["PEEP", "0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f", "reviewed PEEP contract; not assumed to establish PEEPS/Founding Feathers"],
     ["USDG", "0x5fc5360d0400a0fd4f2af552add042d716f1d168", "stablecoin"],

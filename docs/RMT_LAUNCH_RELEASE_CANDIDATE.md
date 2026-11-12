@@ -13,11 +13,10 @@ The frozen core source is commit `69cfaa392e488f475b8b1e15a34c0ac986abd24e` in d
 | Guard and Longevity #578 | `f17e2eb3a014976d7adeab78e54ea63191850693` | `rmt-launch-v4-preview` |
 | Growth Vault #579 | `50ac0c62e39ce11332025f774d164d72c155b878` | `rmt-launch-longevity-v1` |
 | Hardened launchpad #580 | `69cfaa392e488f475b8b1e15a34c0ac986abd24e` | `rmt-launch-liquidity-growth-v1` |
-| CannaCat consumer #575 | `5ee50aa9a776dfa70cc2708ba7fa57394c0b229d` | Separate draft targeting `main` |
 
-### Protected #575 integration
+### Legacy integrations excluded
 
-The #580 delta from #579 has zero changed-path overlap with #575. The inherited stack from `6d0b8103` conflicts with #575 in `apps/web/lib/server/vnext-defillama.ts`, `apps/web/lib/server/wallet-constellation.ts`, `apps/web/package.json`, root `package.json` and `pnpm-lock.yaml`. A three-input `git merge-tree` comparison at the pinned heads showed conflict markers in all five files. Combined integration remains open. Preserve the CannaCat embed origin and session boundary, account-bound authorization, wallet submission, strict native and token settlement, and historical receipt recovery. Reconcile the five files in a separate reviewed integration and rerun the CannaCat and core launch suites on that combined commit. The existing RMT token, curve and deployment evidence remain the preservation baseline. [Protected integration](https://github.com/LandoCrissian/robinhood-meme-terminal/pull/575), [RMT identity evidence](RMT_LAUNCH_BASELINE_EVIDENCE.md)
+This RMT Launch candidate does not include the previously proposed embedded trading integration or its partner-specific SDK. Those draft branches are not launch prerequisites. Shared authorization, wallet recovery and verified execution protections are independently tested in the core release. Historical private-client recovery and partner-specific receipt archives are not required for the new launchpad release. No production records were modified.
 
 ### Final source manifest
 
@@ -37,11 +36,9 @@ Use these commands from the repository root to reproduce the exact manifest, inh
 ```sh
 candidate=69cfaa392e488f475b8b1e15a34c0ac986abd24e
 main=6d0b8103bdad95367445a38e5f5327458baa9ab2
-embed=5ee50aa9a776dfa70cc2708ba7fa57394c0b229d
 git rev-parse "$candidate^{tree}"
 git ls-tree -r --full-tree "$candidate"
 git diff --name-status "$main" "$candidate"
-git merge-tree "$main" "$candidate" "$embed"
 ```
 
 ## Authority and threats
@@ -147,7 +144,7 @@ All 18 checks passed at the frozen commit. Foundry reported 535 passed, zero fai
 | `RMTV4LaunchFactoryV1ForkTest.testForkLaunchQuoteBuySellAndClaimWithOfficialUniswap` | `RMT_V4_BASE_SEPOLIA_RPC` was unset. Passed the separate pinned Base Sepolia fork run. |
 | `RMTV4LaunchFactoryV2ForkTest.testForkGuardedPoolQuotesSwapsIndependentLiquidityAndLongevityClaims` | Same opt-in. Passed the separate pinned Base Sepolia fork run. |
 | `RMTV4GrowthVaultV1ForkTest.testOfficialForkReinvestsEarnedFeesOnlyAfterReviewedPriceRecovery` | Same opt-in. Passed the separate pinned Base Sepolia fork run. This covers optional Growth. |
-| `RMTUniswapV4FeeExecutorV2ForkTest.setUp()` | The default job leaves `RMT_RUN_TERMINAL_V4_FORK` off, so the suite reports one setup skip. Dedicated exact-head CI passed `testCanonicalCannaCatNativeBuyOnFork` and `testCanonicalCannaCatNativeSellOnFork`. This is protected terminal fork evidence. [Dedicated job](https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/43287272916/job/131423878560) |
+| `RMTUniswapV4FeeExecutorV2ForkTest.setUp()` | The default job leaves `RMT_RUN_TERMINAL_V4_FORK` off, so the suite reports one setup skip. Dedicated exact-head CI passed two legacy native-swap regressions. These are separate historical terminal tests, not a partner integration release requirement. [Dedicated job](https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/43287272916/job/131423878560) |
 
 ```sh
 cd packages/contracts
@@ -182,7 +179,7 @@ The [hosted capture verifier](../scripts/verify-hosted-v4-observation.mjs) valid
 
 - [ ] Approve the independent-review engagement, including reviewer, scope, access and any spend. Review guarded V2 deployment and initialization, token and position funding, both V1/V2 funding analysis gaps, approvals, settlement, custody, ledger and public evidence. Engagement and release are separate decisions.
 - [ ] Approve the target chain and core economics decision sheet. Require a new, pinned target-chain build and deployment manifest for review, with wallet/RPC, durable indexing, finality, quotas and recovery. The frozen loopback result establishes the current candidate evidence.
-- [ ] Review the combined #575 integration and repeat both test suites before a combined release. Decide release eligibility on the actual target build and intended device evidence. Hosted routing and hosted indexing stay unknown until observed for the exact deployment and full PoolKey.
+- [ ] Review the core launchpad on the exact approved target-chain build and intended device evidence; exclude legacy embedded trading integrations. Hosted routing and hosted indexing stay unknown until observed for the exact deployment and full PoolKey.
 
 ### B. Optional Growth Vault
 

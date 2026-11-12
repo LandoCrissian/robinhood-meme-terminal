@@ -189,13 +189,7 @@ const entries = [
     hooks: getAddress("0xE5e702641Ea86F4ae6cC3cDaeD2B886f976Be044"),
     transactionHash: "0x82b7d0771002e7b6ed257445dd4f34f051408165ed8e64762c8980af397611ef", blockNumber: "46294063", blockHash: "0xaf1b3a61caf6515d5ad7f7a48a97d8ec0d0f0a3cd1224cebc214f990708a0578"
   }),
-  v4Market({
-    token: getAddress("0x1139d423c1706bdead91f03507f521635591ed92"), aliases: ["CANNACAT", "$CANNACAT", "CannaCat", "Canna Cat"],
-    poolId: "0x5f5ec0e1016bae2f04c122bbcd2c141a4177cc681d7c2e4463a1d172ed8430b3",
-    currency0: zeroAddress, currency1: getAddress("0x1139d423c1706bdead91f03507f521635591ed92"), fee: 0, tickSpacing: 200,
-    hooks: getAddress("0xE5e702641Ea86F4ae6cC3cDaeD2B886f976Be044"),
-    transactionHash: "0x239660e071411e86da99eaad2f5bbe1427b40fae6868ce21475ef34f009994a9", blockNumber: "44544646", blockHash: "0x10582df74469058a95c64ea407d853cd640cf2d9365d12154e3f57da9f995788"
-  })
+
 ] as const;
 
 export const RMT_CURATED_MARKET_REGISTRY: readonly RmtCuratedMarketEntry[] = Object.freeze(

@@ -2,19 +2,6 @@
   "purpose": "Permanent production presentation assets; not review screenshots. Collection logo provenance remains provider evidence, never ownership or relationship authority.",
   "records": [
     {
-      "projectId": "cannacats",
-      "chainId": 4663,
-      "contract": "0x289c8ce652f38029867842048068b39bd0464a3f",
-      "kind": "NFT_COLLECTION",
-      "class": "PROVIDER_VERIFIED",
-      "source": "https://opensea.io/collection/cannacats",
-      "image": "https://i2c.seadn.io/collection/cannacats/image_type_logo/6c21153d1a0e6b0e30bc687d3033a2/0a6c21153d1a0e6b0e30bc687d3033a2.png",
-      "local": "/project-art/cannacats.avif",
-      "sha256": "2b5d46a9ca8960cbf1ad525328558c350bb5630aa30750f90733f6fd429e4974",
-      "bytes": 5734,
-      "observedAt": "2026-10-02T03:57:50.742Z"
-    },
-    {
       "projectId": "hopium-machines",
       "chainId": 4663,
       "contract": "0x7da15c761409cb921a81f0e003704cff418b700b",

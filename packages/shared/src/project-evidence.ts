@@ -13,10 +13,6 @@ const token = (contract: `0x${string}`, name: string, symbol: string, source: st
 // These units are observed facts, not defaults. No supply/holder/market totals
 // are pinned here. Graph data cannot authorize an ordinary-token transaction.
 export const INITIAL_PROJECT_EVIDENCE: readonly RmtProjectIdentity[] = [
-  { projectId: "cannacats", displayName: "CannaCats", discovery: "VERIFIED", artwork: null,
-    officialEvidence: [{ kind: "OWNER_VERIFIED", url: "https://opensea.io/collection/cannacats" }],
-    links: [link("OpenSea", "https://opensea.io/collection/cannacats", "https://opensea.io/collection/cannacats", "PROVIDER_VERIFIED"), link("X", "https://x.com/CannaCatMeme", "https://opensea.io/collection/cannacats")],
-    assets: [token("0x1139d423C1706BDeaD91f03507F521635591eD92", "CannaCat", "CANNACAT", "https://opensea.io/collection/cannacats"), collection("0x289c8ce652f38029867842048068b39bd0464a3f", "CannaCats", "CCATS", "https://opensea.io/collection/cannacats")] },
   { projectId: "hopium-machines", displayName: "Hopium Machines", discovery: "VERIFIED", artwork: null,
     officialEvidence: [{ kind: "OWNER_VERIFIED", url: "https://opensea.io/collection/hopium-machines" }],
     links: [link("OpenSea", "https://opensea.io/collection/hopium-machines", "https://opensea.io/collection/hopium-machines", "PROVIDER_VERIFIED"), link("Website", "https://hopiummachines.xyz/", "https://opensea.io/collection/hopium-machines")],

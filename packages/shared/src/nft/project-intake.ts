@@ -235,22 +235,6 @@ export const RMT_NFT_PROJECT_INTAKE = defineRmtNftProjectIntakeCatalog([
     projectToken: { status: "UNCONFIRMED", contractAddress: null, evidence: [] }
   },
   {
-    projectId: "cannacats",
-    displayName: "CannaCats",
-    state: "READY_FOR_TECHNICAL_VERIFICATION",
-    ownerApproved: true,
-    approvedAt: APPROVED_AT,
-    references: [{ kind: "OWNER_SUPPLIED_REFERENCE", url: "https://opensea.io/collection/cannacats" }],
-    collections: [{
-      chainId: RMT_NFT_CHAIN_ID,
-      contractAddress: "0x289c8ce652f38029867842048068b39bd0464a3f",
-      declaredStandard: "ERC721",
-      verificationStatus: "PENDING",
-      referenceUrl: "https://opensea.io/collection/cannacats"
-    }],
-    projectToken: { status: "UNCONFIRMED", contractAddress: null, evidence: [] }
-  },
-  {
     projectId: "pixel-hood-minis",
     displayName: "Pixel Hood Minis",
     state: "READY_FOR_TECHNICAL_VERIFICATION",
