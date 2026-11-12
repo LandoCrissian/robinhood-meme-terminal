@@ -197,7 +197,8 @@ export async function boundReceipt(client: PublicClient, hash: Hex, request: Lau
   if (transaction.hash.toLowerCase() !== hash.toLowerCase() || receipt.transactionHash.toLowerCase() !== hash.toLowerCase()
     || !sameAddress(transaction.from, request.from) || !sameAddress(transaction.to, request.to)
     || !sameAddress(receipt.from, request.from) || !sameAddress(receipt.to, request.to)
-    || transaction.input !== request.data || transaction.value !== BigInt(request.value) || transaction.blockHash !== receipt.blockHash) {
+    || transaction.input !== request.data || transaction.value !== BigInt(request.value)
+    || transaction.blockHash !== receipt.blockHash || transaction.blockNumber !== receipt.blockNumber) {
     throw new Error("This transaction does not match the reviewed wallet request.");
   }
   const reviewedNumber = BigInt(request.blockNumber);
@@ -205,8 +206,12 @@ export async function boundReceipt(client: PublicClient, hash: Hex, request: Lau
   const [block, reviewedBlock] = await Promise.all([
     client.getBlock({ blockNumber: receipt.blockNumber }), client.getBlock({ blockNumber: reviewedNumber }),
   ]);
-  if (block.hash !== receipt.blockHash) throw new Error("The receipt block changed. Check again after network recovery.");
-  if (reviewedBlock.hash !== request.blockHash) throw new Error("The reviewed network block changed. Recovery requires the original network evidence.");
+  if (block.number !== receipt.blockNumber || block.hash !== receipt.blockHash) {
+    throw new Error("The receipt block changed. Check again after network recovery.");
+  }
+  if (reviewedBlock.number !== reviewedNumber || reviewedBlock.hash !== request.blockHash) {
+    throw new Error("The reviewed network block changed. Recovery requires the original network evidence.");
+  }
   return receipt;
 }
 

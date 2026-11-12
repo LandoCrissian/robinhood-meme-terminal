@@ -121,17 +121,20 @@ test("requires a nonzero hop floor and exact version-specific Permit2 authorizat
 
 test("recovers only from the reviewed chain, original block, and exact transaction", async () => {
   const { request } = await prepareSwap(rpc(), candidate.deployment, wallet, launch, "buy", exactInput, 100);
-  const tx = { hash: txHash, from: account, to: request.to, input: request.data, value: exactInput, blockHash: hash(10) };
+  const tx = { hash: txHash, from: account, to: request.to, input: request.data, value: exactInput, blockHash: hash(10), blockNumber: 11n };
   const receipt = { transactionHash: txHash, blockNumber: 11n, blockHash: tx.blockHash, from: account, to: request.to };
-  const receiptRpc = (chainId: number, reviewed: typeof blockHash, input = tx.input) => ({
+  const receiptRpc = (chainId: number, reviewed: typeof blockHash, input = tx.input, wrongBlockNumber = false) => ({
     async getChainId() { return chainId; },
     async getTransaction() { return { ...tx, input }; },
     async getTransactionReceipt() { return receipt; },
-    async getBlock({ blockNumber }: { blockNumber: bigint }) { return { hash: blockNumber === 10n ? reviewed : tx.blockHash }; },
+    async getBlock({ blockNumber }: { blockNumber: bigint }) {
+      return { number: wrongBlockNumber ? blockNumber + 1n : blockNumber, hash: blockNumber === 10n ? reviewed : tx.blockHash };
+    },
   }) as unknown as PublicClient;
   assert.equal(await boundReceipt(receiptRpc(31337, blockHash), txHash, request), receipt);
   await assert.rejects(() => boundReceipt(receiptRpc(84532, blockHash), txHash, request), /different network/);
   await assert.rejects(() => boundReceipt(receiptRpc(31337, hash(11)), txHash, request), /reviewed network block changed/);
+  await assert.rejects(() => boundReceipt(receiptRpc(31337, blockHash, tx.input, true), txHash, request), /receipt block changed/);
   await assert.rejects(() => boundReceipt(receiptRpc(31337, blockHash, "0x1234"), txHash, request), /does not match/);
 });
 
