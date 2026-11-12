@@ -29,6 +29,14 @@ export function verifyLockedLaunchpadSurface(read) {
   const publicList = requireDisabled(read, "launchpad-public-list");
   if (Object.hasOwn(publicList, "data")) throw new Error("The locked public read exposed data.");
 
+  requireHeader(read, "launchpad-mcp", "content-type", "application/json");
+  requireHeader(read, "launchpad-mcp", "cache-control", "no-store");
+  requireHeader(read, "launchpad-mcp", "x-robots-tag", "noindex");
+  const mcp = JSON.parse(read("launchpad-mcp.json"));
+  if (mcp?.jsonrpc !== "2.0" || mcp.error?.code !== -32000 || Object.hasOwn(mcp, "result")) {
+    throw new Error("The locked MCP endpoint accepted initialization.");
+  }
+
   requireHeader(read, "home", "content-type", "text/html");
   const home = read("home.html");
   for (const fragment of [

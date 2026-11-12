@@ -27,7 +27,8 @@ concurrency:
 
 jobs:
   loopback-fork:
-    runs-on: ubuntu-latest
+    # Playwright 1.55.1 does not support the Ubuntu 26.04 runner image.
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     env:
       RMT_LAUNCHPAD_TEST_URL: http://127.0.0.1:3196

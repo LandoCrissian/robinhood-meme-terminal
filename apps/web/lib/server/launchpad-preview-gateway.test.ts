@@ -137,7 +137,9 @@ test("preview process rejects invalid TLS and listener bindings before connectin
   ] as const) {
     // Explicitly use only the test environment instead of inheriting live preview settings.
     await assert.rejects(command(process.execPath, ["--import", "tsx", entry], {
-      cwd, timeout: 10_000, env: { PATH: process.env.PATH, SystemRoot: process.env.SystemRoot, ...previewEnv, ...options, ...overrides },
+      cwd,
+      timeout: 10_000,
+      env: { NODE_ENV: "test", PATH: process.env.PATH, SystemRoot: process.env.SystemRoot, ...previewEnv, ...options, ...overrides },
     }), expected);
   }
 });

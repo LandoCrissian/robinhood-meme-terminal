@@ -55,9 +55,10 @@ jobs:
           route_status() {
             local name="$1"
             local url="$2"
+            shift 2
             curl --silent --show-error --max-time 25 \
               --dump-header "health-artifacts/$name.headers" \
-              --output "health-artifacts/$name.json" --write-out '%{http_code}' "$url"
+              --output "health-artifacts/$name.json" --write-out '%{http_code}' "$@" "$url"
           }
 
           check_endpoint health "$base/api/health" "health-artifacts/health.headers"
@@ -85,7 +86,9 @@ jobs:
             200)
               check_endpoint launchpad-directory "$base/api/launchpad/launches" "health-artifacts/launchpad-directory.headers"
               public_status="$(route_status launchpad-public-list "$base/api/launchpad/public/list_launches?chainId=31337&limit=1")"
-              mcp_status="$(route_status launchpad-mcp "$base/mcp")"
+              mcp_status="$(route_status launchpad-mcp "$base/mcp" \
+                --header 'Content-Type: application/json' --header 'Accept: application/json, text/event-stream' \
+                --data-binary '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"rmt-readiness","version":"1"}}}')"
               if [[ "$public_status" != 404 || "$mcp_status" != 404 ]]; then
                 echo "Launchpad public reads or MCP unexpectedly opened on Production." >&2
                 exit 1

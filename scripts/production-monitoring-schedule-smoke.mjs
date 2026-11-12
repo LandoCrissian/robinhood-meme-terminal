@@ -21,6 +21,7 @@ assert.match(readiness, /verify-public-surface\.mjs/);
 assert.match(readiness, /launchpad_status="\$\(route_status launchpad-config "\$base\/api\/launchpad\/config"\)"/);
 assert.match(readiness, /404\)[\s\S]*?api\/vnext\/market-directory[\s\S]*?200\)[\s\S]*?api\/launchpad\/launches/);
 assert.match(readiness, /public_status" != 404 \|\| "\$mcp_status" != 404/);
+assert.match(readiness, /route_status launchpad-mcp "\$base\/mcp"[\s\S]*?--data-binary '[^\r\n]+"method":"initialize"/);
 assert.match(readiness, /verify-locked-launchpad-surface\.mjs/);
 
 console.info("Production liveness and deep-readiness schedule checks passed.");
