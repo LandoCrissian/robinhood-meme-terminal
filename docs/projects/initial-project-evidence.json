@@ -5,41 +5,6 @@
   "source": "PUBLIC_ROBINHOOD_RPC",
   "contracts": [
     {
-      "address": "0x1139d423C1706BDeaD91f03507F521635591eD92",
-      "reads": {
-        "name": "CannaCat",
-        "symbol": "CANNACAT",
-        "decimals": "18",
-        "totalSupply": "1000000000000000000000000000",
-        "erc721": {
-          "error": "ContractFunctionExecutionError",
-          "shortMessage": "The contract function \"supportsInterface\" reverted."
-        },
-        "erc1155": {
-          "error": "ContractFunctionExecutionError",
-          "shortMessage": "The contract function \"supportsInterface\" reverted."
-        }
-      },
-      "codeBytes": 3248,
-      "latencyMs": 2541
-    },
-    {
-      "address": "0x289c8ce652f38029867842048068b39bd0464a3f",
-      "reads": {
-        "name": "CannaCats",
-        "symbol": "CCATS",
-        "decimals": {
-          "error": "ContractFunctionExecutionError",
-          "shortMessage": "The contract function \"decimals\" reverted."
-        },
-        "totalSupply": "420",
-        "erc721": "true",
-        "erc1155": "false"
-      },
-      "codeBytes": 45,
-      "latencyMs": 614
-    },
-    {
       "address": "0xB6cE51925C2e397eBF1a443b343d19267B3D4225",
       "reads": {
         "name": "Hopium Machines",
@@ -121,16 +86,6 @@
     }
   ],
   "pages": [
-    {
-      "url": "https://opensea.io/collection/cannacats",
-      "status": 200,
-      "contracts": [
-        "0x289c8ce652f38029867842048068b39bd0464a3f"
-      ],
-      "projectLinks": [
-        "https://x.com/CannaCatMeme"
-      ]
-    },
     {
       "url": "https://opensea.io/collection/hopium-machines",
       "status": 200,

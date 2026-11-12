@@ -15,8 +15,8 @@ function intakeAddress(projectId: string) {
   return rmtNftProjectIntakeRecord(projectId)?.collections[0]?.contractAddress?.toLowerCase() ?? null;
 }
 
-assert.equal(RMT_NFT_PROJECT_INTAKE.length, 8);
-assert.equal(readyRmtNftProjectIntakeRecords().length, 4);
+assert.equal(RMT_NFT_PROJECT_INTAKE.length, 7);
+assert.equal(readyRmtNftProjectIntakeRecords().length, 3);
 assert.deepEqual(
   RMT_NFT_PROJECT_INTAKE.filter((record) => record.state === "TECHNICALLY_VERIFIED").map((record) => record.projectId),
   ["robin-rabbits", "gogh-punks"]
@@ -33,7 +33,6 @@ if (hopiumAssociation?.status === "CONFIRMED") {
 
 assert.equal(intakeAddress("robin-rabbits"), "0xb87522e093858d992b7555077ff3541597deb34e");
 assert.equal(rmtNftProjectIntakeRecord("robin-rabbits")?.collections[0]?.verificationStatus, "VERIFIED");
-assert.equal(intakeAddress("cannacats"), "0x289c8ce652f38029867842048068b39bd0464a3f");
 assert.equal(intakeAddress("pixel-hood-minis"), "0x8215824669c453136cabe59a079c32aca2f87cd5");
 assert.equal(intakeAddress("gogh-punks"), "0xe0f92b3b0e6ded3654177fe3809cd300e5ffadf6");
 assert.equal(rmtNftProjectIntakeRecord("gogh-punks")?.collections[0]?.verificationStatus, "VERIFIED");
@@ -52,7 +51,7 @@ if (peeps?.projectToken.status === "CONFIRMED") {
   assert.ok(peeps.projectToken.evidence.some((item) => item.url.startsWith("https://peeps.wtf/")));
 }
 
-for (const projectId of ["robin-rabbits", "cannacats", "pixel-hood-minis", "gogh-punks", "clay-stonkz"]) {
+for (const projectId of ["robin-rabbits", "pixel-hood-minis", "gogh-punks", "clay-stonkz"]) {
   assert.equal(
     rmtNftProjectIntakeRecord(projectId)?.projectToken.status,
     "UNCONFIRMED",
@@ -129,7 +128,7 @@ assert.throws(() => defineRmtNftProjectIntakeRecord({
   }
 }), /require association evidence/);
 
-const duplicate = rmtNftProjectIntakeRecord("cannacats");
+const duplicate = rmtNftProjectIntakeRecord("pixel-hood-minis");
 assert.ok(duplicate);
 assert.throws(() => defineRmtNftProjectIntakeCatalog([duplicate!, duplicate!]), /Duplicate RMT NFT intake project id/);
 

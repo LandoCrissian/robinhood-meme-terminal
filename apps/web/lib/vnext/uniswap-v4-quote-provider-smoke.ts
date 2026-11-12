@@ -74,7 +74,7 @@ const request = {
   amountIn: 1_000_000_000_000_000n,
   recipient,
   inputIdentity: { address: zeroAddress, symbol: "ETH", decimals: 18 },
-  outputIdentity: { address: token, symbol: "CANNACAT", decimals: 18 },
+  outputIdentity: { address: token, symbol: "TEST_TOKEN", decimals: 18 },
   canonicalMarket: { sourceId: "uniswap-v4" as const, poolId }
 };
 

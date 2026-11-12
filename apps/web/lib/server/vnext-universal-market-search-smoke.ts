@@ -27,8 +27,6 @@ const nativeV4PoolId = `0x${"d".repeat(64)}`;
 const nativeV4TokenAddress = "0x7777777777777777777777777777777777777777";
 const peepAddress = "0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f";
 const peepPairAddress = "0xe70dd15481ba143f145fbe23e8916236d554d3c7";
-const cannaCatAddress = "0x1139d423c1706bdead91f03507f521635591ed92";
-const cannaCatPoolId = "0x5f5ec0e1016bae2f04c122bbcd2c141a4177cc681d7c2e4463a1d172ed8430b3";
 const hopiumAddress = "0xb6ce51925c2e397ebf1a443b343d19267b3d4225";
 const hopiumPoolId = "0xc1dbd75280b6d117b4ac1e27fcd00c6dccb1a2b2fbfa9923a2c492711299d337";
 const supplementalPeepAddress = "0x0dadc46063c8a4ece0a2c1d7c65f4363053c66b2";
@@ -934,18 +932,6 @@ async function assertCanonicalInventoryIsAnIndependentTextCandidateLane() {
     token0: ROBINHOOD_WETH_ADDRESS.toLowerCase(),
     token1: peepAddress
   });
-  const cannaCatMarket = pool({
-    sourceId: "uniswap-v4",
-    protocol: "uniswap",
-    version: 4,
-    poolKey: cannaCatPoolId,
-    poolAddress: null,
-    token0: zeroAddress,
-    token1: cannaCatAddress,
-    fee: 0,
-    tickSpacing: 200,
-    hooks: "0xe5e702641ea86f4ae6cc3cdaed2b886f976be044"
-  });
   const hopiumMarket = pool({
     sourceId: "uniswap-v4",
     protocol: "uniswap",
@@ -1010,25 +996,6 @@ async function assertCanonicalInventoryIsAnIndependentTextCandidateLane() {
     ROBINHOOD_WETH_ADDRESS,
     "ethereum"
   ));
-  const cannaCat = await searchVNextUniversalMarkets("CANNACAT", {
-    ...base,
-    fetch: candidateFetch({
-      pairs: globalDistractors,
-      items: Array.from({ length: 24 }, (_, index) => blockscoutCandidate(
-        `0x${(index + 5_000).toString(16).padStart(40, "0")}`,
-        { name: `Distractor ${index}`, symbol: `WRONG${index}` }
-      ))
-    }),
-    readCanonicalCatalog: async () => catalog([{
-      identity: { address: cannaCatAddress, name: "CannaCat", symbol: "CANNACAT", decimals: 18 },
-      markets: [cannaCatMarket]
-    }])
-  });
-  assert.equal(cannaCat.status, "found");
-  assert.equal(cannaCat.results[0]?.markets[0]?.poolKey, cannaCatPoolId);
-  assert.equal(cannaCat.results[0]?.markets[0]?.poolAddress, null);
-  assert.equal(cannaCat.results[0]?.markets[0]?.token0, zeroAddress);
-
   const hopium = await searchVNextUniversalMarkets("HOPIUM", {
     ...base,
     fetch: candidateFetch({

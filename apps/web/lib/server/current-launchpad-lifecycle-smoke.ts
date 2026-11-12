@@ -17,8 +17,7 @@ import {
 import {
   PONS_V2_FACTORY,
   PONS_V2_MEME_HOOK,
-  ponsV2LaunchEvents,
-  ponsV2PoolId
+  ponsV2LaunchEvents
 } from "./pons-v2-launch-feed";
 import { PONS_V1_FACTORY, ponsV1LaunchEvents } from "./pons-project-metadata";
 import {
@@ -254,13 +253,6 @@ assert.equal(normalized[0]?.marketCapUsd, null, "launch identity must not fabric
 assert.equal(selectVNextMarketDirectoryView(normalized, "active").length, 1, "launch-native recent activity belongs in Active");
 assert.equal(selectVNextMarketDirectoryView(normalized, "new").length, 1, "a recent current launch belongs in New");
 
-const cannaCatPoolId = ponsV2PoolId(
-  getAddress("0x1139d423C1706BDeaD91f03507F521635591eD92"),
-  getAddress("0x0000000000000000000000000000000000000000"),
-  0,
-  200
-);
-assert.equal(cannaCatPoolId, "0x5f5ec0e1016bae2f04c122bbcd2c141a4177cc681d7c2e4463a1d172ed8430b3");
 assert.equal(PONS_V2_MEME_HOOK, getAddress("0xE5e702641Ea86F4ae6cC3cDaeD2B886f976Be044"));
 assert.deepEqual(ponsV2LaunchEvents([
   log("TokenLaunched(address,address,address)", { token: TOKEN, curve: POOL, deployer: CREATOR }, 5)

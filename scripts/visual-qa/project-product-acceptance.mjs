@@ -138,12 +138,12 @@ try {
     assert.deepEqual(scannerContinuity.after, scannerContinuity.before);
     results.push({ viewport, name: 'scanner-art-failure', evidence: 'CONTROLLED_ART_ERROR_EVENT_REAL_COMPONENT', ...scannerContinuity });
     await capture('scanner-art-failure', 'CONTROLLED_ARTWORK_FAILURE');
-    for (const id of ['cannacats', 'hopium-machines', 'peeps', 'ccff00', ...batchIds]) {
+    for (const id of ['hopium-machines', 'peeps', 'ccff00', ...batchIds]) {
       marketPrice = id === 'hopium-machines' ? 0.00001503 : 0.00003573;
       marketChange = id === 'hopium-machines' ? 0.44 : -0.69;
       await page.goto(`${base}/projects/${id}`, { waitUntil: 'networkidle' });
       assert.equal(await page.locator('.isHeroArt img').evaluate(image => image.complete && image.naturalWidth > 0), true, id);
-      const paired = ['cannacats', 'hopium-machines'].includes(id);
+      const paired = ['hopium-machines'].includes(id);
       assert.equal(await page.getByRole('link', { name: 'Trade token', exact: true }).count(), paired ? 1 : 0);
       assert.equal(await page.locator('.rmtProjectAssetCard').count(), paired ? 2 : id === 'pixel-hood' ? 2 : 1);
       for (const record of batch.records.filter(record => record.projectId === id)) {
@@ -158,7 +158,7 @@ try {
       if (paired) await assertPriceFits(id);
       await capture(id);
     }
-    for (const id of ['cannacats', 'hopium-machines']) {
+    for (const id of ['hopium-machines']) {
       for (const [shape, value, change, expected] of [
         ['very-small', 0.000000000001234, 2.5, '$0.000000000001234'],
         ['long-fraction', 0.0000987654321, -2.5, '$0.00009877'],
@@ -175,7 +175,7 @@ try {
     marketPrice = 0.00003573; marketChange = -0.69;
     // Observe actual delayed external enrichment with real cards, not frozen screenshots.
     delayMarket = true;
-    await page.goto(`${base}/projects/cannacats`, { waitUntil: 'domcontentloaded' });
+    await page.goto(`${base}/projects/hopium-machines`, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(() => document.querySelector('.rmtProjectQuietState')?.textContent?.includes('Loading market'));
     await page.waitForFunction(() => [...document.querySelectorAll('.rmtProjectArt img')].every(image => image.complete && image.naturalWidth > 0 && getComputedStyle(image).visibility === 'visible'));
     await page.evaluate(() => {

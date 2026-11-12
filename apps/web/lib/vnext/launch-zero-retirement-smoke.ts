@@ -45,7 +45,6 @@ for (const currentControl of [
   "0xf0e17e54239cd945cd7bea471a3a2ca6a8c7f7a3",
   "0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f",
   "0xb6ce51925c2e397ebf1a443b343d19267b3d4225",
-  "0x1139d423c1706bdead91f03507f521635591ed92"
 ]) assert.match(healthVerifier, new RegExp(currentControl, "i"));
 assert.match(healthVerifier, /search-\$\{name\}-text\.json/);
 

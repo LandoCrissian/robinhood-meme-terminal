@@ -389,15 +389,14 @@ assert.doesNotMatch(hook + shell + presentation, /rmt-market-indexer-shadow-prod
 console.log("VNext Terminal universal search integration preserves local-first filtering, canonical evidence, null metrics, ambiguity, and race-safe explicit submission.");
 
 async function curatedRegistryChecks() {
-  assert.equal(RMT_CURATED_MARKET_REGISTRY.length, 8);
-  assert.equal(new Set(RMT_CURATED_MARKET_REGISTRY.map((entry) => entry.token.toLowerCase())).size, 8);
+  assert.equal(RMT_CURATED_MARKET_REGISTRY.length, 7);
+  assert.equal(new Set(RMT_CURATED_MARKET_REGISTRY.map((entry) => entry.token.toLowerCase())).size, 7);
   assert.deepEqual(
     RMT_CURATED_MARKET_REGISTRY.map((entry) => entry.aliases[0]),
-    ["STONKBROKER", "PONS", "PIPEDOG", "CASHCAT", "LEMON.FUN", "PEEP", "HOPIUM", "CANNACAT"]
+    ["STONKBROKER", "PONS", "PIPEDOG", "CASHCAT", "LEMON.FUN", "PEEP", "HOPIUM"]
   );
   assert.equal(rmtCuratedMarketByToken("0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f")?.market.sourceId, "uniswap-v2");
   assert.equal(rmtCuratedMarketByPool("0xc1dbd75280b6d117b4ac1e27fcd00c6dccb1a2b2fbfa9923a2c492711299d337")?.token.toLowerCase(), "0xb6ce51925c2e397ebf1a443b343d19267b3d4225");
-  assert.equal(rmtCuratedMarketSearchCandidates("Canna Cat")[0]?.token.toLowerCase(), "0x1139d423c1706bdead91f03507f521635591ed92");
   assert.equal(rmtCuratedMarketSearchCandidates("STONKBROKERS")[0]?.token.toLowerCase(), STONKBROKER);
   assert.equal(rmtCuratedMarketSearchCandidates("unknown").length, 0);
 
@@ -412,8 +411,8 @@ async function curatedRegistryChecks() {
     verifyMarket: async () => { verifiedMarkets += 1; },
     now: () => 1_700_000_000_000
   });
-  assert.equal(snapshot.markets.length, 8);
-  assert.equal(verifiedMarkets, 8);
+  assert.equal(snapshot.markets.length, 7);
+  assert.equal(verifiedMarkets, 7);
   const peep = await searchRmtCuratedMarkets("PEEP", { readSnapshot: async () => snapshot });
   assert.equal(peep.status, "found");
   assert.equal(peep.results[0]?.address, "0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f");

@@ -4,7 +4,6 @@ import type { RmtProjectIdentity } from "@rmt/shared/project-identity";
 // class and content digest: docs/projects/project-artwork-evidence.json.
 // Retaining validated artwork avoids making identity depend on marketplace uptime.
 const collectionArtwork: Readonly<Record<string, string>> = {
-  "0x289c8ce652f38029867842048068b39bd0464a3f": "/project-art/cannacats.avif",
   "0x7da15c761409cb921a81f0e003704cff418b700b": "/project-art/hopium-machines.avif",
   "0xc1605fb719f388110b1b0f384b7ffd64ba4ba5df": "/project-art/peeps.avif",
   "0x505a22ffed8d37ebe580ffd98d2cdb0021189146": "/project-art/ccff00.svg",

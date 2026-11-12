@@ -27,9 +27,9 @@ async function main() {
     baseToken: { address: entry.market.token0 },
     quoteToken: { address: entry.market.token1 }
   }));
-  assert.equal(rmtCuratedEnrichmentTokens().length, 8, "Every enabled curated token must seed broad enrichment");
-  assert.equal(Math.ceil(rmtCuratedEnrichmentTokens().length / 30), 1, "The curated eight must fit in one provider batch");
-  assert.equal(filterRmtCuratedProviderPairs(curatedPairs).length, 8, "Exact address pools and V4 PoolIds must all bind to their curated entry");
+  assert.equal(rmtCuratedEnrichmentTokens().length, 7, "Every enabled curated token must seed broad enrichment");
+  assert.equal(Math.ceil(rmtCuratedEnrichmentTokens().length / 30), 1, "The curated seven must fit in one provider batch");
+  assert.equal(filterRmtCuratedProviderPairs(curatedPairs).length, 7, "Exact address pools and V4 PoolIds must all bind to their curated entry");
   assert.deepEqual(missingRmtCuratedProviderTokens(curatedPairs), []);
   const wrongPool = { ...curatedPairs[0], pairAddress: curatedPairs[1].pairAddress };
   assert.equal(filterRmtCuratedProviderPairs([wrongPool]).length, 0, "Provider ranking must not substitute another curated pool");

@@ -28,8 +28,8 @@ function sorted(values: Iterable<string>) {
   return [...values].map((value) => value.toLowerCase()).sort();
 }
 
-assert.equal(RMT_CURATED_MARKET_REGISTRY.length, 8, "Production curated registry must contain exactly eight entries");
-assert.equal(TOKEN_MARKETS.length, 8, "Legion Token fixture must contain exactly eight entries");
+assert.equal(RMT_CURATED_MARKET_REGISTRY.length, 7, "Production curated registry must contain exactly seven entries");
+assert.equal(TOKEN_MARKETS.length, 7, "Legion Token fixture must contain exactly seven entries");
 
 const fixtureByToken = new Map(TOKEN_MARKETS.map((market) => [market.address.toLowerCase(), market]));
 assert.equal(fixtureByToken.size, TOKEN_MARKETS.length, "Legion Token fixture contains a duplicate token contract");

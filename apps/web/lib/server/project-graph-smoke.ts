@@ -14,12 +14,12 @@ import { readRmtNftWalletOwnership } from "./nft-project-market";
 async function main() {
 const wallet = getAddress("0x1111111111111111111111111111111111111111"), other = getAddress("0x2222222222222222222222222222222222222222");
 const hash = `0x${"a".repeat(64)}`; const time = new Date().toISOString();
-const ccff = projectById("ccff00")!, canna = projectById("cannacats")!;
-assert.equal(RMT_DISCOVERABLE_PROJECTS.length, 15);
+const ccff = projectById("ccff00")!, hopium = projectById("hopium-machines")!;
+assert.equal(RMT_DISCOVERABLE_PROJECTS.length, 14);
 assert.equal(ccff.assets.length, 1); assert.equal(ccff.assets[0]!.kind, "ERC721");
 assert.equal(projectById("robin-rabbits")!.assets.length, 1, "Only the technically established Robin Rabbits collection is admitted");
 for (const id of ["robin-rabbits", "gogh-punks"]) assert.equal(RMT_CURATED_NFT_PROJECTS.find(project => project.projectId === id)!.status, "WATCHING", "Project admission never promotes NFT discovery or starts indexing");
-for (const query of ["CannaCats", "CANNACAT", canna.assets[0]!.contract, canna.assets[1]!.contract]) assert.equal(searchProjects(query)[0]?.projectId, "cannacats");
+for (const query of ["Hopium Machines", "HOPIUM", hopium.assets[0]!.contract, hopium.assets[1]!.contract]) assert.equal(searchProjects(query)[0]?.projectId, "hopium-machines");
 assert.equal(searchProjects("Founding Feathers")[0]?.projectId, "peeps");
 const feathers = projectById("peeps")!;
 const withdrawn = WITHDRAWN_PROJECT_RELATIONSHIPS[0];
@@ -33,7 +33,7 @@ assert.equal(searchProjects("PEEPS").length, 0, "Withdrawn token symbol cannot i
 assert.equal(withdrawn.reason, "OWNER_WITHDREW_TOKEN_RELATIONSHIP");
 assert.ok(withdrawn.asset.evidence.some(item => item.class === "ONCHAIN_VERIFIED"), "Original evidence is retained, not rewritten");
 assert.equal(projectComposition(feathers).label, "NFT-led project");
-assert.equal(projectComposition(canna).label, "Token ↔ NFT project");
+assert.equal(projectComposition(hopium).label, "Token ↔ NFT project");
 const mediaRecords = JSON.parse(readFileSync(new URL("../../../../docs/projects/project-artwork-evidence.json", import.meta.url), "utf8"));
 const batch = JSON.parse(readFileSync(new URL("../../../../docs/projects/nft-project-batch-evidence.json", import.meta.url), "utf8"));
 assert.deepEqual(mediaRecords, JSON.parse(readFileSync(new URL("../../public/project-art/evidence.json", import.meta.url), "utf8")));
@@ -66,20 +66,20 @@ for (const project of RMT_DISCOVERABLE_PROJECTS) {
 }
 assert.equal(projectsForContract("0x14C51bB55592372eAC7141A1D0527D1dD7Fbd42F").length, 0, "No inferred SHCAT relationship");
 assert.equal(searchProjects("0x1234").length, 0);
-assert.equal(projectRelationships(canna).filter(edge => edge.type === "PROJECT_HAS_TOKEN").length, 1);
-assert.equal(projectRelationships(canna).filter(edge => edge.type === "PROJECT_HAS_NFT_COLLECTION").length, 1);
+assert.equal(projectRelationships(hopium).filter(edge => edge.type === "PROJECT_HAS_TOKEN").length, 1);
+assert.equal(projectRelationships(hopium).filter(edge => edge.type === "PROJECT_HAS_NFT_COLLECTION").length, 1);
 assert.ok(RMT_DISCOVERABLE_PROJECTS.every(project => projectRelationships(project).every(edge => edge.evidence.length > 0)), "Every admitted asset/link edge retains explicit evidence");
-const multi = defineRmtProjectIdentity({ ...canna, projectId: "controlled-multiple", assets: [...canna.assets, { ...canna.assets[1]!, contract: other }] });
+const multi = defineRmtProjectIdentity({ ...hopium, projectId: "controlled-multiple", assets: [...hopium.assets, { ...hopium.assets[1]!, contract: other }] });
 assert.equal(multi.assets.length, 3);
-assert.equal(projectCollectionLink(canna, canna.assets[1]!.contract)?.url, "https://opensea.io/collection/cannacats");
-assert.equal(projectCollectionLink(canna, canna.assets[0]!.contract), null, "Token cannot inherit an NFT destination");
+assert.equal(projectCollectionLink(hopium, hopium.assets[1]!.contract)?.url, "https://opensea.io/collection/hopium-machines");
+assert.equal(projectCollectionLink(hopium, hopium.assets[0]!.contract), null, "Token cannot inherit an NFT destination");
 const secondCollectionUrl = "https://opensea.io/collection/controlled-second-collection";
 const multiDestinations = defineRmtProjectIdentity({ ...multi,
   links: [...multi.links, { label: "OpenSea", url: secondCollectionUrl }],
   assets: multi.assets.map(asset => asset.contract === other ? { ...asset, evidence: asset.evidence!.map(e => e.class === "PROVIDER_VERIFIED" ? { ...e, source: secondCollectionUrl } : e) } : asset)
 });
 assert.equal(projectCollectionLink(multiDestinations, other)?.url, secondCollectionUrl, "Each collection keeps its exact evidenced destination");
-assert.equal(projectCollectionLink({ ...canna, links: [] }, canna.assets[1]!.contract), null, "Missing marketplace links remain optional");
+assert.equal(projectCollectionLink({ ...hopium, links: [] }, hopium.assets[1]!.contract), null, "Missing marketplace links remain optional");
 const pixel = projectById("pixel-hood")!;
 assert.equal(pixel.assets.length, 2);
 for (const asset of pixel.assets) {
@@ -88,7 +88,7 @@ for (const asset of pixel.assets) {
   assert.equal(projectCollectionDestinations(pixel, asset.contract)[0]?.url, asset.name === "Pixel Hood Clan" ? "https://opensea.io/collection/pixelhoodclan" : "https://opensea.io/collection/pixelhoodminis");
 }
 assert.deepEqual(projectCollectionDestinations(pixel, other), []);
-assert.deepEqual(projectCollectionDestinations(canna, canna.assets[0]!.contract), []);
+assert.deepEqual(projectCollectionDestinations(hopium, hopium.assets[0]!.contract), []);
 const rabbit = projectById("robin-rabbits")!;
 assert.equal(projectCollectionDestinations(rabbit, rabbit.assets[0]!.contract)[0]?.kind, "OFFICIAL_COLLECTION");
 assert.equal(projectCollectionDestinations(rabbit, rabbit.assets[0]!.contract)[0]?.url, "https://robinrabbits.com/court");
@@ -108,12 +108,12 @@ for (const record of batch.records) {
   assert.throws(() => defineRmtProjectIdentity({ ...admitted, assets: [{ ...asset, kind: "ERC20", relationship: "OWNER_CONFIRMED_PROJECT_TOKEN", destinations: [] }] }));
   assert.throws(() => defineRmtProjectIdentity({ ...admitted, assets: [{ ...asset, destinations: [{ ...asset.destinations![0]!, url: "https://opensea.io/collection/unrelated" }] }] }));
 }
-const tokenOnly = defineRmtProjectIdentity({ ...canna, projectId: "controlled-token-only", assets: [canna.assets[0]!] });
+const tokenOnly = defineRmtProjectIdentity({ ...hopium, projectId: "controlled-token-only", assets: [hopium.assets[0]!] });
 assert.equal(tokenOnly.assets.length, 1);
-for (const asset of canna.assets) {
+for (const asset of hopium.assets) {
   assert.ok(asset.evidence?.some(e => e.class === "OWNER_VERIFIED")); assert.ok(asset.evidence?.some(e => e.class === "ONCHAIN_VERIFIED"));
-  assert.throws(() => defineRmtProjectIdentity({ ...canna, assets: [{ ...asset, chainId: 1 as 4663 }] }));
-  assert.throws(() => defineRmtProjectIdentity({ ...canna, assets: [{ ...asset, evidence: asset.evidence!.filter(e => e.class !== "OWNER_VERIFIED") }] }));
+  assert.throws(() => defineRmtProjectIdentity({ ...hopium, assets: [{ ...asset, chainId: 1 as 4663 }] }));
+  assert.throws(() => defineRmtProjectIdentity({ ...hopium, assets: [{ ...asset, evidence: asset.evidence!.filter(e => e.class !== "OWNER_VERIFIED") }] }));
 }
 const fact = (contract: Address, balance: string, authority: ProjectAssetOwnership["authority"] = "ONCHAIN_BALANCE"): ProjectAssetOwnership => ({ chainId: 4663, contract, wallet, state: "READY", balance, authority, blockNumber: "10", blockHash: hash, observedAt: time });
 for (const count of ["0", "1", "3"]) {
@@ -122,24 +122,24 @@ for (const count of ["0", "1", "3"]) {
 }
 assert.equal(summarizeProjectOwnership(ccff, wallet, []).holdsNft, null);
 assert.equal(summarizeProjectOwnership(ccff, wallet, [{ ...fact(ccff.assets[0]!.contract, "1"), wallet: other }]).nftCount, null);
-const facts = canna.assets.map(asset => fact(asset.contract, "1"));
-assert.equal(parseProjectOwnershipFact({ ...facts[0], balance: "-1" }, canna.assets[0]!.contract, wallet), null);
-assert.equal(parseProjectOwnershipFact({ ...facts[0], authority: "USER_PROFILE" }, canna.assets[0]!.contract, wallet), null);
-assert.equal(summarizeProjectOwnership(canna, wallet, [facts[0]!, facts[0]!]).holdsToken, null, "Duplicate fact binding cannot invent ownership");
-assert.equal(summarizeProjectOwnership(canna, wallet, facts).holdsBoth, true);
-assert.equal(summarizeProjectOwnership(canna, wallet, [facts[0]!]).holdsBoth, null);
-assert.equal(summarizeProjectOwnership(canna, wallet, [facts[0]!, { ...facts[1]!, blockNumber: "11" }]).holdsBoth, null, "Different block observations cannot fabricate simultaneous overlap");
-assert.equal(projectsRepresentedInWallet([ccff,canna], wallet, facts).filter(p => p.holdsToken || p.holdsNft).length, 1);
+const facts = hopium.assets.map(asset => fact(asset.contract, "1"));
+assert.equal(parseProjectOwnershipFact({ ...facts[0], balance: "-1" }, hopium.assets[0]!.contract, wallet), null);
+assert.equal(parseProjectOwnershipFact({ ...facts[0], authority: "USER_PROFILE" }, hopium.assets[0]!.contract, wallet), null);
+assert.equal(summarizeProjectOwnership(hopium, wallet, [facts[0]!, facts[0]!]).holdsToken, null, "Duplicate fact binding cannot invent ownership");
+assert.equal(summarizeProjectOwnership(hopium, wallet, facts).holdsBoth, true);
+assert.equal(summarizeProjectOwnership(hopium, wallet, [facts[0]!]).holdsBoth, null);
+assert.equal(summarizeProjectOwnership(hopium, wallet, [facts[0]!, { ...facts[1]!, blockNumber: "11" }]).holdsBoth, null, "Different block observations cannot fabricate simultaneous overlap");
+assert.equal(projectsRepresentedInWallet([ccff,hopium], wallet, facts).filter(p => p.holdsToken || p.holdsNft).length, 1);
 const holders = { chainId: 4663 as const, contract: wallet, blockNumber: "10", blockHash: hash, completeness: "COMPLETE" as const, holders: [wallet, other], authority: "RMT_CANONICAL_OWNERSHIP" as const };
 assert.equal(exactHolderOverlap(holders, { ...holders, holders: [wallet] }).both, 1);
 assert.equal(exactHolderOverlap(holders, { ...holders, completeness: "PARTIAL" }).state, "UNAVAILABLE");
 assert.equal(exactHolderOverlap(holders, { ...holders, blockNumber: "9" }).state, "UNAVAILABLE");
 
 let calls = 0, failNft = false, chain = 4663;
-const client = { getChainId: async () => chain, getBlock: async () => ({ number: 10n, hash }), readContract: async (input: { address: string; blockNumber: bigint; functionName: string }) => { calls++; assert.equal(input.functionName, "balanceOf"); assert.equal(input.blockNumber, 10n); if (failNft && input.address.toLowerCase() === canna.assets[1]!.contract.toLowerCase()) throw Error("RPC unavailable"); return 2n; } } as unknown as NonNullable<Parameters<typeof readProjectOwnership>[2]>["client"];
-assert.equal((await readProjectOwnership("cannacats", wallet, { client }))!.holdsBoth, true); assert.equal(calls, 2);
-failNft = true; const partial = await readProjectOwnership("cannacats", wallet, { client }); assert.equal(partial!.holdsToken, true); assert.equal(partial!.holdsNft, null);
-chain = 1; calls = 0; assert.equal((await readProjectOwnership("cannacats", wallet, { client }))!.holdsToken, null); assert.equal(calls, 0, "Wrong-chain RPC is not ownership authority");
+const client = { getChainId: async () => chain, getBlock: async () => ({ number: 10n, hash }), readContract: async (input: { address: string; blockNumber: bigint; functionName: string }) => { calls++; assert.equal(input.functionName, "balanceOf"); assert.equal(input.blockNumber, 10n); if (failNft && input.address.toLowerCase() === hopium.assets[1]!.contract.toLowerCase()) throw Error("RPC unavailable"); return 2n; } } as unknown as NonNullable<Parameters<typeof readProjectOwnership>[2]>["client"];
+assert.equal((await readProjectOwnership("hopium-machines", wallet, { client }))!.holdsBoth, true); assert.equal(calls, 2);
+failNft = true; const partial = await readProjectOwnership("hopium-machines", wallet, { client }); assert.equal(partial!.holdsToken, true); assert.equal(partial!.holdsNft, null);
+chain = 1; calls = 0; assert.equal((await readProjectOwnership("hopium-machines", wallet, { client }))!.holdsToken, null); assert.equal(calls, 0, "Wrong-chain RPC is not ownership authority");
 assert.equal(await readProjectOwnership("unknown", wallet, { client }), null);
 const env = { NFT_INDEXER_URL: "http://127.0.0.1:4000", NFT_INDEXER_READ_TOKEN: "a".repeat(64) };
 const indexed = fact(ccff.assets[0]!.contract, "3", "RMT_NFT_INDEXER");
