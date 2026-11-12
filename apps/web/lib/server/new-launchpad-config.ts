@@ -93,21 +93,21 @@ export function readLaunchpadRuntime(env: Environment = process.env): LaunchpadR
   const startBlock = BigInt(factoryStartBlock);
   const rpcUrl = parseLocalRpcUrl(required(env, "RPC_URL"));
   const preview = readLaunchpadPreviewAccess(env);
+  const baseDeployment = {
+    chainId,
+    name: preview ? "Private preview · Chain 31337" : "Local Anvil · Base Sepolia fork",
+    rpcUrl: preview ? new URL(preview.rpcPath, preview.origin).href : rpcUrl,
+    factory: contracts.factory.address,
+    poolManager: contracts.poolManager.address,
+    positionManager: contracts.positionManager.address,
+    universalRouter: contracts.universalRouter.address,
+    quoter: contracts.quoter.address,
+    permit2: contracts.permit2.address,
+    stateView: contracts.stateView.address,
+    tradingEnabled: env.RMT_LAUNCHPAD_TRADING_ENABLED === "true",
+  } as const;
   return {
-    deployment: {
-      chainId,
-      name: preview ? "Private preview · Chain 31337" : "Local Anvil · Base Sepolia fork",
-      rpcUrl: preview ? new URL(preview.rpcPath, preview.origin).href : rpcUrl,
-      factory: contracts.factory.address,
-      poolManager: contracts.poolManager.address,
-      positionManager: contracts.positionManager.address,
-      universalRouter: contracts.universalRouter.address,
-      quoter: contracts.quoter.address,
-      permit2: contracts.permit2.address,
-      stateView: contracts.stateView.address,
-      tradingEnabled: env.RMT_LAUNCHPAD_TRADING_ENABLED === "true",
-      ...(guard ? { engineVersion: 2 as const, initializationGuard: guard.address } : {}),
-    },
+    deployment: guard ? { ...baseDeployment, engineVersion: 2, initializationGuard: guard.address } : baseDeployment,
     contracts,
     guard,
     privateRpcUrl: rpcUrl,

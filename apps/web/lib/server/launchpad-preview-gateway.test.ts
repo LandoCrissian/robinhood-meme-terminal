@@ -18,7 +18,7 @@ import type { BoundWallet } from "../launchpad/transactions";
 import { readLaunchpadPreviewAccess } from "./launchpad-preview-access";
 import { createLaunchpadPreviewGateway, localPreviewBackend, previewLanAccess, previewListenHost } from "./launchpad-preview-gateway";
 import { permittedPreviewRpc, type PreviewRpcPolicy } from "./launchpad-preview-rpc";
-import { readLaunchpadRuntime } from "./new-launchpad-config";
+import { readLaunchpadRuntime, type LaunchpadRuntime } from "./new-launchpad-config";
 
 const account = privateKeyToAccount(generatePrivateKey());
 const stranger = privateKeyToAccount(generatePrivateKey());
