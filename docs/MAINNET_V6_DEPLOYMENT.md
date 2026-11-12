@@ -2,6 +2,8 @@
 
 Status: **historical evidence only; launchpad retired; launch 0 dead; no current Terminal market or release requirement**
 
+> The status line records the prior Terminal product classification. The [pinned factory and receipt evidence](RMT_LAUNCH_BASELINE_EVIDENCE.md#existing-rmt-token-and-curve) identifies launch 0 as the official V6 issuance and shows its original curve state. Use that evidence for contract identity.
+
 - Public application: https://www.rmtlaunch.fun
 - Live status: https://www.rmtlaunch.fun/status
 - Chain ID: `4663`

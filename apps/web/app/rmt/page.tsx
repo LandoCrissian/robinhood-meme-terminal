@@ -1,10 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  RMT_SITE_DESCRIPTION,
-  RMT_SITE_NAME,
-  RMT_SITE_URL
-} from "../../lib/site-identity";
+import { RMT_SITE_NAME, RMT_SITE_URL } from "../../lib/site-identity";
 import { SiteFooter } from "../site-footer";
 import styles from "../robinhood-chain/page.module.css";
 
@@ -13,6 +9,7 @@ const pageUrl = `${RMT_SITE_URL}${pagePath}`;
 const title = "RMT | Official Robinhood Meme Terminal Identity";
 const description =
   "Official product identity and evidence boundaries for Robinhood Meme Terminal (RMT) on Robinhood Chain.";
+const explorer = "https://robinhoodchain.blockscout.com";
 
 export const metadata: Metadata = {
   title,
@@ -75,13 +72,34 @@ const currentIdentities = [
     title: "Canonical website",
     value: "www.rmtlaunch.fun",
     href: "/",
-    note: "The current Robinhood Meme Terminal product and canonical terminal entry point."
+    note: "The canonical RMT Launch application."
   },
   {
     title: "Robinhood Chain mainnet",
     value: "Chain ID 4663",
-    href: "https://robinhoodchain.blockscout.com/",
-    note: "The network used by the current Terminal market and execution surfaces."
+    href: `${explorer}/`,
+    note: "The network for RMT’s existing token and curve records."
+  }
+] as const;
+
+const legacyIssuances = [
+  {
+    id: "v6-official-provenance",
+    title: "Official RMT V6 issuance",
+    token: "0xdBa33be56C89CC9fc014c4459028d7e5c7878671",
+    curve: "0xb26Fb775c0ac365d369BEe9ac2E044C5D90FfBee",
+    block: "10387857",
+    transaction: "0x4eb7b596ccdf5d0aa5e4c8d0d50311df5108b44f47d9d39d09b1916524d825d5",
+    note: "V6 launch 0 used the factory’s one-time official identity authorization. The receipt records the original V4 token and the new V6 issuance."
+  },
+  {
+    id: "v4-original-provenance",
+    title: "Original RMT V4 issuance",
+    token: "0xaB374D24aFBD943a134AdB381D9646e71C6f6C0C",
+    curve: "0xfeee90288a7037fbdb4ec5b05dc7cc5e762d5fb7",
+    block: "9156510",
+    transaction: "0xe5cd6ed09a3cccae743b7c29c0ee0971f3797986bce171eadc3642de60b3410b",
+    note: "V4 launch 1 is the legacy identity recorded by the V6 factory. Each issuance has its own token supply and curve."
   }
 ] as const;
 
@@ -95,15 +113,15 @@ export default function RmtIdentityPage() {
 
       <section className={styles.hero}>
         <p className={styles.eyebrow}>RMT · ROBINHOOD MEME TERMINAL · OFFICIAL IDENTITY</p>
-        <h1>Verify RMT by the exact identity, not the ticker alone.</h1>
+        <h1>Verify RMT by network and contract address.</h1>
         <p className={styles.lead}>
           RMT means Robinhood Meme Terminal. This page is the canonical public identity reference for the RMT website,
           Robinhood Chain network, and public repository. Token names and tickers can be duplicated, so exact contract and
           network identity remain essential.
         </p>
         <div className={styles.actions}>
-          <Link className={styles.primaryAction} href="/">Open RMT Terminal</Link>
-          <Link className={styles.secondaryAction} href="/status">View system status</Link>
+          <Link className={styles.primaryAction} href="/">Open RMT Launch</Link>
+          <a className={styles.secondaryAction} href="#v6-official-provenance">Verify the V6 issuance</a>
         </div>
       </section>
 
@@ -128,15 +146,33 @@ export default function RmtIdentityPage() {
         </div>
       </section>
 
+      <section className={styles.section} aria-labelledby="legacy-rmt">
+        <div className={styles.sectionHeading}>
+          <h2 id="legacy-rmt">Legacy RMT</h2>
+        </div>
+        <div className={styles.splitSection}>
+          {legacyIssuances.map((issuance) => (
+            <article id={issuance.id} key={issuance.id}>
+              <h3>{issuance.title}</h3>
+              <p>{issuance.note}</p>
+              <p>Token <a href={`${explorer}/address/${issuance.token}`} target="_blank" rel="noreferrer"><code style={{ overflowWrap: "anywhere" }}>{issuance.token}</code></a></p>
+              <p>Curve <a href={`${explorer}/address/${issuance.curve}`} target="_blank" rel="noreferrer"><code style={{ overflowWrap: "anywhere" }}>{issuance.curve}</code></a></p>
+              <p>
+                <a href={`${explorer}/tx/${issuance.transaction}`} target="_blank" rel="noreferrer">Creation receipt</a>
+                {" · "}
+                <a href={`${explorer}/block/${issuance.block}`} target="_blank" rel="noreferrer">Block {issuance.block}</a>
+              </p>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className={styles.splitSection}>
         <article>
           <p className={styles.kicker}>PRODUCT IDENTITY</p>
-          <h2>RMT is a trading terminal, not a token ticker page.</h2>
-          <p>
-            {RMT_SITE_DESCRIPTION} The current product is the Terminal at the canonical root. Market discovery, asset intelligence,
-            portfolio context, and reviewed execution evidence belong to this one application.
-          </p>
-          <Link href="/robinhood-chain">See the Robinhood Chain terminal surface →</Link>
+          <h2>RMT Launch</h2>
+          <p>Explore token launches and verify each token’s contract and onchain launch terms.</p>
+          <Link href="/">Browse launches →</Link>
         </article>
         <article>
           <p className={styles.kicker}>NETWORK IDENTITY</p>
@@ -155,7 +191,7 @@ export default function RmtIdentityPage() {
           <h2 id="rmt-verification-links">Public RMT verification surfaces</h2>
         </div>
         <nav className={styles.linkGrid} aria-label="RMT verification links">
-          <Link href="/">Live terminal<span>Canonical RMT application</span></Link>
+          <Link href="/">RMT Launch<span>Canonical RMT application</span></Link>
           <Link href="/status">System status<span>Current network and protocol checks</span></Link>
           <Link href="/sources">Sources<span>Origin and venue evidence</span></Link>
           <Link href="/risks">Risks<span>Trading and market limitations</span></Link>

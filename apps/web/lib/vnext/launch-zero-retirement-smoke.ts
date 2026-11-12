@@ -12,7 +12,6 @@ const currentProductFiles = [
   "../../app/page.tsx",
   "../../app/public-chrome.tsx",
   "../../app/sources/page.tsx",
-  "../../app/rmt/page.tsx",
   "./robinhood-assets.ts",
   "./wallet-assets.ts",
   "./market-directory.ts",
@@ -51,11 +50,14 @@ for (const currentControl of [
 assert.match(healthVerifier, /search-\$\{name\}-text\.json/);
 
 const rmtIdentityPage = read("../../app/rmt/page.tsx");
-assert.doesNotMatch(rmtIdentityPage, retiredToken);
-assert.doesNotMatch(rmtIdentityPage, retiredMarket);
-assert.doesNotMatch(rmtIdentityPage, /Retired launchpad launch 0 token/);
-assert.doesNotMatch(rmtIdentityPage, /Official RMT V6 token/);
-assert.doesNotMatch(rmtIdentityPage, /existing official V6 market/);
+assert.match(rmtIdentityPage, retiredToken);
+assert.match(rmtIdentityPage, retiredMarket);
+assert.match(rmtIdentityPage, /id: "v6-official-provenance"/);
+assert.match(rmtIdentityPage, /block: "10387857"/);
+assert.match(rmtIdentityPage, /0x4eb7b596ccdf5d0aa5e4c8d0d50311df5108b44f47d9d39d09b1916524d825d5/);
+assert.match(rmtIdentityPage, /\$\{explorer\}\/tx\/\$\{issuance\.transaction\}/);
+assert.match(rmtIdentityPage, /\$\{explorer\}\/block\/\$\{issuance\.block\}/);
+assert.doesNotMatch(rmtIdentityPage, /\/api\/|\/project\/|\?market=|\/token\/|sendTransaction|writeContract|useWallet/);
 
 const historicalDeployment = read("../../../../docs/MAINNET_V6_DEPLOYMENT.md");
 assert.match(historicalDeployment, retiredToken);
@@ -72,4 +74,4 @@ for (const path of [
   assert.doesNotMatch(source, retiredMarket, `${path} must remain generic`);
 }
 
-console.info("Retired launch-zero history is preserved without current product, release, search, or indexer special-casing.");
+console.info("Official launch-zero provenance is read-only, with release, search, indexer and execution entry points checked.");

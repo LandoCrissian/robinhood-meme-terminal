@@ -27,9 +27,9 @@ This table separates the existing repository's runtime from the requested produc
 
 The target is one launchpad shell: launch discovery, creation, token detail/trading, creator launch management and required wallet/fee state. Deep links and transaction recovery must survive the transition. Redirects must not convert an old token address into a different asset or discard pending transaction state.
 
-## Known identity inconsistency
+## Existing RMT identity
 
-The old README describes an existing official V6 market, whereas `MAINNET_V6_DEPLOYMENT.md` labels launch 0 as retired and explicitly not the current token. This reset does not choose between those claims. Preserve all bindings and reconcile exact chain/factory/launch/transaction evidence before address-specific action.
+The [baseline preservation evidence](RMT_LAUNCH_BASELINE_EVIDENCE.md) identifies V6 launch 0 as the official V6 issuance and distinguishes its token and curve from the earlier V4 issuance. It records the pinned factory and receipt evidence, protected execution consumers, and operational retirement work. Prior product retirement and current onchain provenance are separate records.
 
 ## Runtime retirement evidence required
 

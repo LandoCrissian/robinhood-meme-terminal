@@ -41,10 +41,12 @@ assert.match(rmtIdentitySource, /RMT \| Official Robinhood Meme Terminal Identit
 assert.match(rmtIdentitySource, /0xdBa33be56C89CC9fc014c4459028d7e5c7878671/);
 assert.match(rmtIdentitySource, /0xb26Fb775c0ac365d369BEe9ac2E044C5D90FfBee/);
 assert.match(rmtIdentitySource, /0xaB374D24aFBD943a134AdB381D9646e71C6f6C0C/);
-assert.match(rmtIdentitySource, /Retired launchpad launch 0 token/);
-assert.match(rmtIdentitySource, /not the current RMT token or a Terminal release requirement/);
-assert.doesNotMatch(rmtIdentitySource, /Official RMT V6 token/);
-assert.doesNotMatch(rmtIdentitySource, /existing official V6 market/);
+assert.match(rmtIdentitySource, /Official RMT V6 issuance/);
+assert.match(rmtIdentitySource, /Original RMT V4 issuance/);
+assert.match(rmtIdentitySource, /block: "9156510"/);
+assert.match(rmtIdentitySource, /0xe5cd6ed09a3cccae743b7c29c0ee0971f3797986bce171eadc3642de60b3410b/);
+assert.match(rmtIdentitySource, /href="#v6-official-provenance"/);
+assert.doesNotMatch(rmtIdentitySource, /Retired launchpad launch 0 token|user-created token/);
 assert.match(rmtIdentitySource, /"@type": "AboutPage"/);
 
 assert.match(sitemapSource, /\["\/rmt", "monthly", 0\.9\]/);

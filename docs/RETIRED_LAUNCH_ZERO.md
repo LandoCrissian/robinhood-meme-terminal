@@ -2,6 +2,8 @@
 
 Owner classification: **historical dead launchpad token**.
 
+> This records prior Terminal product visibility. The [pinned factory and receipt evidence](RMT_LAUNCH_BASELINE_EVIDENCE.md#existing-rmt-token-and-curve) identifies the official V6 issuance, its original curve, and the distinct V4 provenance anchor.
+
 - Historical contract identity: `0xdBa33be56C89CC9fc014c4459028d7e5c7878671`
 - Historical market: `0xb26Fb775c0ac365d369BEe9ac2E044C5D90FfBee`
 - Historical launch ID: `0`
