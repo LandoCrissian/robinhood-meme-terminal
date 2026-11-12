@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { mkdir } from "node:fs/promises";
+import { mkdir, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { chromium, devices } from "playwright";
 import { exerciseLocalGrowth } from "./launchpad-growth-fixture.mjs";
@@ -251,6 +251,11 @@ try {
   }
   await page.getByRole("link", { name: new RegExp(symbol) }).waitFor();
   assert.deepEqual(failures, []);
+  if (growth) {
+    const launchReceipt = await rpc("eth_getTransactionReceipt", [hashes[0]]);
+    assert.equal(launchReceipt?.status, "0x1");
+    await writeFile(`${output}/guarded-pool.txt`, `${token} ${BigInt(launchReceipt.blockNumber)}\n`);
+  }
   console.log(`${privatePreview ? "Private HTTPS gateway with a locally signed wallet fixture" : "Loopback browser/fork"} passed launch, rejection, buy, two bounded sell approvals, sell, fee claim and creator view for ${token}.`);
 } finally {
   if (failures.length) console.error("Browser page errors:", failures);

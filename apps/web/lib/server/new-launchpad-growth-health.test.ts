@@ -12,8 +12,14 @@ const factory = address(9);
 const deployer = address(10);
 const positionManager = address(11);
 const policy = { creator, treasury: zeroAddress, reserve: vault, creatorBps: 6000, treasuryBps: 0, reserveBps: 4000 };
-const launch = { engineVersion: 2, token: poolKey.currency1, creator, factory, poolId: launchPoolId(poolKey),
-  intentId: toHex(42, { size: 32 }), blockNumber: "10", tickLower: -887220, tickUpper: 887220, feePolicy: policy } as NewLaunchRecord;
+const launch: NewLaunchRecord = {
+  chainId: 31337, engineVersion: 2, token: poolKey.currency1, creator, factory, poolManager: address(12),
+  poolId: launchPoolId(poolKey), poolKey, intentId: toHex(42, { size: 32 }), positionTokenId: "10",
+  sqrtPriceX96: (2n ** 96n).toString(), tickLower: -887220, tickUpper: 887220, liquidity: "100",
+  amount0: "100", amount1: "100", totalSupply: "200", name: "Vault fixture", symbol: "VAULT", projectURI: "",
+  transactionHash: toHex(43, { size: 32 }), blockNumber: "10", blockHash: toHex(44, { size: 32 }),
+  logIndex: 0, indexing: "indexed", feePolicy: policy,
+};
 const fees: LaunchHealth["fees"] = {
   status: "verified", policy, totals: null, buckets: [{ bucket: 2, recipient: vault,
     nativeClaimable: "6", tokenClaimable: "15", nativeDistributed: "20", tokenDistributed: "40" }],
