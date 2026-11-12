@@ -76,6 +76,14 @@ if (receipt?.status !== "0x1" || receipt.contractAddress?.toLowerCase() !== depl
   throw new Error("Local factory deployment receipt was not verified.");
 }
 
+const tip = await rpc("eth_getBlockByNumber", ["latest", false]);
+const wallClockSeconds = Math.floor(Date.now() / 1_000);
+if (Number(tip.timestamp) < wallClockSeconds) {
+  // The pinned upstream block may be much older than a browser-generated deadline.
+  await rpc("evm_setNextBlockTimestamp", [wallClockSeconds]);
+  await rpc("evm_mine");
+}
+
 process.stdout.write(`${JSON.stringify({
   chainId: 31337,
   factory: deployed.deployedTo,
