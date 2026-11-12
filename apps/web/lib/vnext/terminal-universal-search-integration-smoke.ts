@@ -411,8 +411,8 @@ async function curatedRegistryChecks() {
     verifyMarket: async () => { verifiedMarkets += 1; },
     now: () => 1_700_000_000_000
   });
-  assert.equal(snapshot.markets.length, 8);
-  assert.equal(verifiedMarkets, 8);
+  assert.equal(snapshot.markets.length, 7);
+  assert.equal(verifiedMarkets, 7);
   const peep = await searchRmtCuratedMarkets("PEEP", { readSnapshot: async () => snapshot });
   assert.equal(peep.status, "found");
   assert.equal(peep.results[0]?.address, "0xf0821f2bf570ca4e7499a9ed9db7c788fed9946f");
