@@ -26,6 +26,12 @@ export function runScannerRowContinuityChecks() {
     }));
     const heldAddresses = new Set(rows.map(key));
     const eligible = selectVNextMarketDirectoryView(selectMarketUniverse(rows, universe, heldAddresses), view);
+    if (universe === "projects" && eligible.length < 2) {
+      // Project classification is evidence-bound: removing an admitted project must
+      // never be compensated with a fictitious publicly discoverable token.
+      assert.equal(eligible.length, projectTokens.length, "Only actually admitted project tokens are eligible");
+      continue;
+    }
     assert.ok(eligible.length >= 2, `${universe}/${view} has a meaningful eligible fixture`);
     const limit = Math.min(24, eligible.length - 1), baseline = eligible.slice(0, limit);
     const changed = rows.map((row, n) => ({ ...row, priceUsd: 2, buys1h: n + 1, ageMinutes: rows.length - n, priceChange24h: n + 1, momentumScore: n + 1 }));
