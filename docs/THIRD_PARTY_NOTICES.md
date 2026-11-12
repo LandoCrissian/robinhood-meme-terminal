@@ -11,3 +11,9 @@ Before RMT vendors, copies, modifies, links, or redistributes any upstream imple
 ## OpenZeppelin Contracts
 
 The migration router imports `IERC20`, `SafeERC20`, and `ReentrancyGuard` from the project-pinned OpenZeppelin Contracts dependency. Preserve the dependency's license and notices whenever the contracts are redistributed.
+
+## Zolva public API and MCP reference
+
+RMT reviewed [Zolva commit `1ad8c29b6eaf162749742af95ec7f5fbc367608b`](https://github.com/zolvaagent/zolva/tree/1ad8c29b6eaf162749742af95ec7f5fbc367608b) for the separation of public response shaping, data reads and transport. The [upstream MIT license and copyright notice](third-party/ZOLVA-MIT.txt) are preserved here. RMT wrote its own launch-domain implementation. RMT includes no Zolva source, assets, names in its product UI, or branding.
+
+RMT's MCP route imports `@modelcontextprotocol/sdk` version `1.32.2`, published under MIT, and uses the existing MIT-licensed `zod` dependency. Keep their package license files with redistributions. The MCP SDK and Zod package sources and license files are available from their upstream projects. [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk), [Zod](https://github.com/colinhacks/zod).
