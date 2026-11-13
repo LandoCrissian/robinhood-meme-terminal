@@ -1,11 +1,11 @@
-import { parseAbi, zeroAddress, type Address, type Hash, type PublicClient } from "viem";
+import { parseAbi, zeroAddress, type Address, type PublicClient } from "viem";
 import { launchFeeLedgerAbi, type LaunchHealth, type NewLaunchRecord } from "../launchpad/launch-record";
+import { canonicalLaunchpadBlock, type LaunchpadObservedBlock } from "./new-launchpad-finality";
 import { readLaunchHolderTrend } from "./new-launchpad-holders";
 import { readLaunchFeePolicy, sameHex, sameLaunchFeePolicy } from "./new-launchpad-receipt";
 
 const activeLiquidityAbi = parseAbi(["function getLiquidity(bytes32 poolId) view returns (uint128)"]);
 
-type ObservedBlock = { blockNumber: bigint; hash: Hash; timestamp: bigint };
 type ObservedPosition = { positionOwner: Address; positionLiquidity: string; activeLiquidity: string };
 
 export function makeLaunchHealth(launch: NewLaunchRecord, position?: ObservedPosition): LaunchHealth {
@@ -43,12 +43,13 @@ export function makeLaunchHealth(launch: NewLaunchRecord, position?: ObservedPos
   };
 }
 
-async function observedFees(rpc: PublicClient, launch: NewLaunchRecord, blockNumber: bigint): Promise<LaunchHealth["fees"]> {
+async function observedFees(rpc: PublicClient, launch: NewLaunchRecord, current: LaunchpadObservedBlock): Promise<LaunchHealth["fees"]> {
   const commitment = launch.feePolicy;
   if (!commitment) throw new Error("Canonical fee commitment unavailable");
-  const feeCall = { address: launch.factory, abi: launchFeeLedgerAbi, blockNumber };
+  const block = canonicalLaunchpadBlock(current);
+  const feeCall = { address: launch.factory, abi: launchFeeLedgerAbi, ...block };
   const [policy, totals, ...buckets] = await Promise.all([
-    readLaunchFeePolicy(rpc, launch.factory, launch.token, blockNumber),
+    readLaunchFeePolicy(rpc, launch.factory, launch.token, block),
     rpc.readContract({ ...feeCall, functionName: "feeTotals", args: [launch.token] }),
     ...([0, 1, 2] as const).map((bucket) =>
       rpc.readContract({ ...feeCall, functionName: "feeBucket", args: [launch.token, bucket] })),
@@ -81,22 +82,22 @@ async function observedFees(rpc: PublicClient, launch: NewLaunchRecord, blockNum
   };
 }
 
-function liquiditySample(block: ObservedBlock, activeLiquidity: string) {
+function liquiditySample(block: LaunchpadObservedBlock, activeLiquidity: string) {
   return { blockNumber: block.blockNumber.toString(), blockHash: block.hash,
     timestampUnixSeconds: block.timestamp.toString(), activeLiquidity };
 }
 
 export async function readLaunchHealth(
   rpc: PublicClient, stateView: Address, launch: NewLaunchRecord, position: ObservedPosition,
-  opening: ObservedBlock, current: ObservedBlock,
+  opening: LaunchpadObservedBlock, current: LaunchpadObservedBlock,
 ): Promise<LaunchHealth> {
   const health = makeLaunchHealth(launch, position);
   const compareLiquidity = current.blockNumber >= opening.blockNumber + 2n && current.timestamp > opening.timestamp;
   const [fees, openingLiquidity, holderTrend] = await Promise.all([
-    launch.engineVersion === 2 ? observedFees(rpc, launch, current.blockNumber).catch(() => health.fees) : health.fees,
+    launch.engineVersion === 2 ? observedFees(rpc, launch, current).catch(() => health.fees) : health.fees,
     compareLiquidity ? rpc.readContract({
       address: stateView, abi: activeLiquidityAbi, functionName: "getLiquidity", args: [launch.poolId],
-      blockNumber: opening.blockNumber,
+      ...canonicalLaunchpadBlock(opening),
     }).catch(() => undefined) : undefined,
     readLaunchHolderTrend(rpc, launch, { number: current.blockNumber, hash: current.hash, timestamp: current.timestamp })
       .catch(() => health.trends.holders),

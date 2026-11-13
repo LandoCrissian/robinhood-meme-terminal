@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { test } from "node:test";
 import { encodeAbiParameters, encodeEventTopics, getAddress, keccak256, parseAbiItem, toHex, zeroAddress, type AbiEvent, type Address, type Hash, type Log, type PublicClient, type TransactionReceipt } from "viem";
 import { launchCreatedEvent, launchPoolId, longevityPolicyCommittedEvent, type LaunchFeePolicy, type LaunchPoolKey, type NewLaunchRecord } from "../launchpad/launch-record";
@@ -11,6 +12,7 @@ import { syncNewLaunchpadRange } from "./new-launchpad-indexer";
 import { readLaunchpadPublicData } from "./new-launchpad-public-data";
 import { InvalidLaunchReceipt, projectLaunchReceipt, verifyLaunchReceipt } from "./new-launchpad-receipt";
 import { LaunchpadStore } from "./new-launchpad-store";
+import { LaunchpadSettlementStore } from "./new-launchpad-settlement-store";
 
 const hash = (value: number): Hash => toHex(value, { size: 32 });
 const address = (value: number): Address => toHex(value, { size: 20 });
@@ -105,23 +107,29 @@ function makeReceipt(poolKey = key, policy?: LaunchFeePolicy): TransactionReceip
 }
 
 function fixtureRpc(receipt = makeReceipt()) {
-  const chain = { head: 10n, providerDown: false, orphaned: false, wrongBlockNumber: false, wrongOwner: false, wrongPolicy: false, logQueryCount: 0 };
+  const chain = { head: 10n, providerDown: false, orphaned: false, wrongBlockNumber: false, wrongOwner: false,
+    wrongPolicy: false, logQueryCount: 0, conflictingLog: false, omitLaunch: false };
   const rpc = {
+    async getChainId() { return 31337; },
     async getBlockNumber() { return chain.head; },
     async getBlock({ blockNumber }: { blockNumber: bigint }) {
       return { number: chain.wrongBlockNumber ? blockNumber + 1n : blockNumber,
-        hash: hash(Number(blockNumber) + (chain.orphaned && blockNumber > 10n ? 1000 : 0)) };
+        hash: hash(Number(blockNumber) + (chain.orphaned && blockNumber > 10n ? 1000 : 0)),
+        timestamp: 1_800_000_000n };
     },
     async getLogs({ address: emitter, fromBlock, toBlock }: { address: Address; fromBlock: bigint; toBlock: bigint }) {
       assert.equal(emitter, factory);
       assert.ok(toBlock - fromBlock < 256n);
       chain.logQueryCount++;
       if (chain.providerDown) throw new Error("RPC unavailable");
-      return !chain.orphaned && fromBlock <= 11n && toBlock >= 11n ? [receipt.logs.at(-1), receipt.logs.at(-1)] : [];
+      const event = receipt.logs.at(-1)!;
+      return !chain.omitLaunch && !chain.orphaned && fromBlock <= 11n && toBlock >= 11n
+        ? [event, chain.conflictingLog ? { ...event, data: "0x" } : event] : [];
     },
     async getTransactionReceipt({ hash: wanted }: { hash: Hash }) { assert.equal(wanted, tx); return receipt; },
-    async readContract({ functionName, blockNumber }: { functionName: string; blockNumber: bigint }) {
-      assert.equal(blockNumber, 11n);
+    async readContract({ functionName, blockHash: wanted, requireCanonical }: { functionName: string; blockHash: Hash; requireCanonical: boolean }) {
+      assert.equal(wanted, receipt.blockHash);
+      assert.equal(requireCanonical, true);
       if (functionName === "feePolicy") return [creator, guardedPolicy.treasury, guardedPolicy.reserve,
         chain.wrongPolicy ? 4999 : 5000, 3000, 2000];
       return functionName === "ownerOf" ? (chain.wrongOwner ? creator : factory) : liquidity;
@@ -202,7 +210,7 @@ test("publishes a receipt immediately, reconciles duplicate logs after restart, 
     chain.providerDown = false;
     await syncNewLaunchpadRange(store, rpc, config);
     assert.equal(store.checkpoint()?.number, 11n);
-    assert.deepEqual(store.read(), [{ ...launch, indexing: "indexed" }]);
+    assert.deepEqual(store.read(), [{ ...launch, blockTimestamp: "1800000000", indexing: "indexed" }]);
     assert.equal(store.publish(launch).indexing, "indexed");
     chain.orphaned = true;
     await syncNewLaunchpadRange(store, rpc, config);
@@ -211,6 +219,184 @@ test("publishes a receipt immediately, reconciles duplicate logs after restart, 
     assert.equal(store.status(), "ready");
     assert.equal(chain.logQueryCount, 4);
   } finally {
+    store.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("fails closed on stale or disagreeing witnesses, contradictory duplicates and interrupted reorgs", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "rmt-launch-witness-"));
+  const store = new LaunchpadStore(join(directory, "launches.sqlite"), config.scope);
+  const { chain, rpc, receipt } = fixtureRpc();
+  const launch = projectLaunchReceipt(deployment, receipt, tx);
+  try {
+    await syncNewLaunchpadRange(store, rpc, config, rpc);
+    assert.deepEqual(store.anchor(), { number: 9n, hash: hash(9) });
+    store.publish(launch);
+    chain.head = 11n;
+    chain.conflictingLog = true;
+    await assert.rejects(syncNewLaunchpadRange(store, rpc, config, rpc), /conflicting duplicate/);
+    assert.equal(store.checkpoint()?.number, 10n);
+    assert.deepEqual(store.read(), [launch]);
+    chain.conflictingLog = false;
+    chain.omitLaunch = true;
+    await assert.rejects(syncNewLaunchpadRange(store, rpc, config, rpc), /omits a verified provisional receipt/);
+    assert.equal(store.checkpoint()?.number, 10n);
+    chain.omitLaunch = false;
+    const contradictingReceipt = {
+      ...rpc,
+      async getLogs() {
+        return [{ ...receipt.logs.at(-1)!, data: launchLog(poolId, fundedNative + 1n).data }];
+      },
+    } as unknown as PublicClient;
+    await assert.rejects(syncNewLaunchpadRange(store, contradictingReceipt, config, rpc), /does not match|disagree/);
+    assert.equal(store.checkpoint()?.number, 10n);
+    await syncNewLaunchpadRange(store, rpc, config, rpc);
+    assert.equal(store.status(), "ready");
+    const indexed = store.read();
+    assert.equal(indexed.length, 1);
+    assert.equal(indexed[0].indexing, "indexed");
+
+    const stale = { ...rpc, async getBlockNumber() { return 10n; } };
+    await assert.rejects(syncNewLaunchpadRange(store, rpc, config, stale), /behind the durable checkpoint/);
+    const wrongChain = { ...rpc, async getChainId() { return 4663; } };
+    await assert.rejects(syncNewLaunchpadRange(store, rpc, config, wrongChain), /chain ID mismatch/);
+    const disagreeing = { ...rpc, async getBlock(args: Parameters<typeof rpc.getBlock>[0]) {
+      const block = await rpc.getBlock(args);
+      return block.number === 11n ? { ...block, hash: hash(555) } : block;
+    } } as Pick<PublicClient, "getChainId" | "getBlockNumber" | "getBlock">;
+    await assert.rejects(syncNewLaunchpadRange(store, rpc, config, disagreeing), /providers disagree/);
+    assert.equal(store.status(), "delayed");
+    assert.deepEqual(store.read(), indexed);
+
+    chain.orphaned = true;
+    chain.providerDown = true;
+    await assert.rejects(syncNewLaunchpadRange(store, rpc, config, rpc), /RPC unavailable/);
+    assert.deepEqual(store.checkpoint(), { number: 11n, hash: hash(11) });
+    assert.deepEqual(store.read(), indexed);
+    chain.providerDown = false;
+    await syncNewLaunchpadRange(store, rpc, config, rpc);
+    assert.deepEqual(store.checkpoint(), { number: 11n, hash: hash(1011) });
+    assert.deepEqual(store.read(), []);
+  } finally {
+    store.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("binds every persisted event to its scope, complete PoolKey and unique event slot", async () => {
+  const store = new LaunchpadStore(":memory:", config.scope);
+  const { chain, rpc, receipt } = fixtureRpc();
+  const launch = projectLaunchReceipt(deployment, receipt, tx);
+  try {
+    for (const invalid of [
+      { ...launch, chainId: 4663 as 31337 },
+      { ...launch, factory: creator },
+      { ...launch, poolManager: creator },
+      { ...launch, poolKey: { ...key, hooks: guard } },
+      { ...launch, poolKey: { ...key, currency1: creator } },
+      { ...launch, poolId: hash(18) },
+      { ...launch, blockNumber: "9" },
+      { ...launch, blockHash: "0x" as Hash },
+      { ...launch, logIndex: -1 },
+    ]) assert.throws(() => store.publish(invalid), /does not match/);
+    const launch2Key = { ...key, currency1: address(14) };
+    store.publish(launch);
+    assert.throws(() => store.publish({ ...launch, name: "Conflicting receipt contents" }), /conflicting payloads/);
+    assert.throws(() => store.publish({ ...launch, token: address(14), poolKey: launch2Key, poolId: launchPoolId(launch2Key),
+      transactionHash: hash(401) }), /UNIQUE/);
+    chain.head = 11n;
+    await syncNewLaunchpadRange(store, rpc, config);
+    assert.throws(() => store.publish({ ...launch, logIndex: launch.logIndex + 1 }), /conflicts with an indexed record/);
+    assert.equal(store.read().length, 1);
+  } finally { store.close(); }
+});
+
+test("restores a checksum-verified live-WAL snapshot into a fresh, delayed index before replay", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "rmt-launch-backup-"));
+  const original = join(directory, "live.sqlite");
+  const snapshot = join(directory, "snapshot.sqlite");
+  const destination = join(directory, "restored.sqlite");
+  const writer = new LaunchpadStore(original, config.scope);
+  const { chain, rpc } = fixtureRpc();
+  try {
+    chain.head = 11n;
+    await syncNewLaunchpadRange(writer, rpc, config);
+    assert.equal(existsSync(original + "-wal"), true);
+    const backup = await writer.backup(snapshot);
+    assert.deepEqual(backup.checkpoint, { number: 11n, hash: hash(11) });
+    assert.match(backup.sha256, /^[a-f0-9]{64}$/);
+    assert.equal(existsSync(snapshot + "-wal"), false);
+    await assert.rejects(writer.backup(snapshot), /fresh absolute file/);
+    await assert.rejects(LaunchpadStore.restore(snapshot, destination, config.scope, "0".repeat(64)), /SHA-256 mismatch/);
+    assert.equal(existsSync(destination), false);
+    await assert.rejects(LaunchpadStore.restore(snapshot, destination, guardedConfig.scope, backup.sha256), /requested index scope/);
+    assert.equal(existsSync(destination), false);
+
+    chain.head = 12n;
+    await syncNewLaunchpadRange(writer, rpc, config);
+    const restored = await LaunchpadStore.restore(snapshot, destination, config.scope, backup.sha256);
+    assert.deepEqual(restored.checkpoint, backup.checkpoint);
+    assert.notEqual(restored.sha256, backup.sha256);
+    const replica = new LaunchpadStore(destination, config.scope);
+    try {
+      assert.equal(replica.status(), "delayed");
+      assert.deepEqual(replica.checkpoint(), backup.checkpoint);
+      assert.deepEqual(replica.read(), writer.read());
+      await syncNewLaunchpadRange(replica, rpc, config);
+      assert.equal(replica.status(), "ready");
+      assert.deepEqual(replica.checkpoint(), writer.checkpoint());
+      assert.deepEqual(replica.read(), writer.read());
+    } finally { replica.close(); }
+  } finally {
+    writer.close();
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("retains late provisional evidence and commits reorg proof cleanup only with the replacement range", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "rmt-launch-atomic-"));
+  const path = join(directory, "launches.sqlite");
+  const store = new LaunchpadStore(path, config.scope);
+  const settlement = new LaunchpadSettlementStore(path, config.scope);
+  const db = new DatabaseSync(path);
+  const { chain, rpc, receipt } = fixtureRpc();
+  const launch = projectLaunchReceipt(deployment, receipt, tx);
+  try {
+    await syncNewLaunchpadRange(store, rpc, config);
+    chain.head = 11n;
+    const latePublisher = { ...rpc, async getLogs() { store.publish(launch); return []; } } as unknown as PublicClient;
+    await assert.rejects(syncNewLaunchpadRange(store, latePublisher, config), /provisional launch receipt unexplained/);
+    assert.deepEqual(store.checkpoint(), { number: 10n, hash: hash(10) });
+    assert.deepEqual(store.read(), [launch]);
+    await syncNewLaunchpadRange(store, rpc, config);
+
+    // Seed retention rows directly so the test isolates the indexer's transaction from the proof writer.
+    const write = db.prepare(`INSERT INTO rmt_launch_native_settlement_proofs
+      (scope, height, block_hash, tx_hash, log_index, expires_ms, proof) VALUES (?, ?, ?, ?, ?, ?, '{}')`);
+    const fresh = Date.now() + 60_000;
+    write.run(config.scope, 11, hash(11), hash(801), 1, fresh);
+    write.run(config.scope, 10, hash(10), hash(802), 2, Date.now() - 1);
+    write.run(guardedConfig.scope, 11, hash(11), hash(803), 3, fresh);
+    const proofs = () => db.prepare("SELECT tx_hash FROM rmt_launch_native_settlement_proofs ORDER BY log_index").all().map((row) => row.tx_hash);
+    db.exec(`CREATE TRIGGER interrupt_reorg BEFORE INSERT ON rmt_new_launch_checkpoints
+      BEGIN SELECT RAISE(ABORT, 'interrupted SQLite replacement'); END`);
+    chain.orphaned = true;
+    await assert.rejects(syncNewLaunchpadRange(store, rpc, config), /interrupted SQLite replacement/);
+    assert.deepEqual(store.checkpoint(), { number: 11n, hash: hash(11) });
+    assert.equal(store.read().length, 1);
+    assert.deepEqual(proofs(), [hash(801), hash(802), hash(803)]);
+    assert.equal(store.status(), "delayed");
+
+    db.exec("DROP TRIGGER interrupt_reorg");
+    await syncNewLaunchpadRange(store, rpc, config);
+    assert.deepEqual(store.checkpoint(), { number: 11n, hash: hash(1011) });
+    assert.deepEqual(store.read(), []);
+    assert.deepEqual(proofs(), [hash(803)]);
+    assert.equal(store.status(), "ready");
+  } finally {
+    db.close();
+    settlement.close();
     store.close();
     rmSync(directory, { recursive: true, force: true });
   }
@@ -231,7 +417,7 @@ test("V2 uses an isolated durable scope and preserves the existing V1 index on r
     await syncNewLaunchpadRange(v2, rpc, guardedConfig);
     v2.close();
     v2 = new LaunchpadStore(path, guardedConfig.scope);
-    assert.deepEqual(v2.read(), [{ ...guardedLaunch, indexing: "indexed" }]);
+    assert.deepEqual(v2.read(), [{ ...guardedLaunch, blockTimestamp: "1800000000", indexing: "indexed" }]);
     assert.deepEqual(v1.read(), [oldLaunch]);
     chain.orphaned = true;
     await syncNewLaunchpadRange(v2, rpc, guardedConfig);
@@ -263,8 +449,9 @@ test("rechecks chain-qualified guarded reads across restart, provider failure an
       return [{ ...receipt.logs[0], address: poolManager, args: { id: activityPool, amount0: 10n, amount1: -9n,
         sqrtPriceX96: sqrtPrice, tick: 0, fee: 3000 } }];
     },
-    async readContract(args: { functionName: string; blockNumber: bigint; args: readonly [Address, number] }) {
-      assert.equal(args.blockNumber, 11n);
+    async readContract(args: { functionName: string; blockHash: Hash; requireCanonical: boolean; args: readonly [Address, number] }) {
+      assert.equal(args.blockHash, blockHash);
+      assert.equal(args.requireCanonical, true);
       if (args.functionName === "getSlot0") return [sqrtPrice, 0, 0, 3000];
       if (args.functionName === "totalSupply") return supply;
       if (args.functionName === "feeTotals") return [0n, 0n, 0n, 0n];
@@ -409,17 +596,18 @@ test("observes comparable liquidity and reconciled fee collection and distributi
   const recipients = [creator, guardedPolicy.treasury, guardedPolicy.reserve];
   let inconsistent = false;
   const rpc = {
-    async readContract({ address: target, blockNumber, functionName, args }: {
-      address: Address; blockNumber: bigint; functionName: string; args: [Address, number];
+    async readContract({ address: target, blockHash: observedHash, requireCanonical, functionName, args }: {
+      address: Address; blockHash: Hash; requireCanonical: boolean; functionName: string; args: [Address, number];
     }) {
+      assert.equal(requireCanonical, true);
       if (functionName === "getLiquidity") {
         assert.equal(target, deployment.stateView);
-        assert.equal(blockNumber, 11n);
+        assert.equal(observedHash, opening.hash);
         assert.equal(args[0], launch.poolId);
         return liquidity;
       }
       assert.equal(target, factory);
-      assert.equal(blockNumber, 16n);
+      assert.equal(observedHash, current.hash);
       assert.equal(args[0], token);
       if (functionName === "feePolicy") return [creator, guardedPolicy.treasury, guardedPolicy.reserve, 5000, 3000, 2000];
       if (functionName === "feeTotals") return [10_001n, 10_004n, inconsistent ? 2n : 1n, 1n];
@@ -466,8 +654,12 @@ test("bounds public requests, paginates in log order, and shares a durable rate 
     const now = 62_000;
     const launch = projectLaunchReceipt(deployment, makeReceipt(), tx);
     writer.publish(launch, now);
-    writer.publish({ ...launch, token: address(4), transactionHash: hash(401), logIndex: 2 }, now);
-    writer.publish({ ...launch, token: address(5), transactionHash: hash(402), blockNumber: "10" }, now);
+    const secondKey = { ...key, currency1: address(4) };
+    const thirdKey = { ...key, currency1: address(5) };
+    writer.publish({ ...launch, token: address(4), poolKey: secondKey, poolId: launchPoolId(secondKey),
+      transactionHash: hash(401), logIndex: 2 }, now);
+    writer.publish({ ...launch, token: address(5), poolKey: thirdKey, poolId: launchPoolId(thirdKey),
+      transactionHash: hash(402), blockNumber: "10", blockHash: hash(10) }, now);
     assert.deepEqual(reader.readPage(2, undefined, now).map((row) => row.token), [token, address(4)]);
     assert.deepEqual(reader.readPage(2, { blockNumber: 11n, logIndex: 2 }, now).map((row) => row.token), [address(5)]);
 

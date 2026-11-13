@@ -1,25 +1,131 @@
-import { DatabaseSync } from "node:sqlite";
-import type { Address, Hash } from "viem";
-import type { NewLaunchRecord } from "../launchpad/launch-record";
+import { createHash, randomUUID } from "node:crypto";
+import { constants, copyFileSync, createReadStream, existsSync, fsyncSync, linkSync, lstatSync, openSync, closeSync, unlinkSync } from "node:fs";
+import { dirname, isAbsolute, join } from "node:path";
+import { backup, DatabaseSync } from "node:sqlite";
+import { isDeepStrictEqual } from "node:util";
+import { isAddress, isHash, zeroAddress, type Address, type Hash } from "viem";
+import { launchPoolId, type NewLaunchRecord } from "../launchpad/launch-record";
 
 export type LaunchCheckpoint = { number: bigint; hash: Hash };
 export type LaunchPageCursor = { blockNumber: bigint; logIndex: number };
 type LaunchFilter = { token?: Address; creator?: Address };
 type Provisional = { token: Address; blockNumber: bigint; blockHash: Hash };
+type IndexUpdate = {
+  anchor: LaunchCheckpoint;
+  keep: LaunchCheckpoint | undefined;
+  next?: LaunchCheckpoint;
+  records: NewLaunchRecord[];
+  orphaned: Provisional[];
+  caughtUp: boolean;
+};
+type LaunchBackup = { bytes: number; sha256: string; checkpoint?: LaunchCheckpoint };
 
 // Provisional receipts remain visible while the worker catches up. A fresh receipt can
 // be submitted again if the worker was unavailable for the entire provisional window.
 const provisionalWindowMs = 30 * 60_000;
+const maximumPending = 128;
+const maximumRecordBytes = 8 * 1024;
+const maximumCheckpoints = 32;
+const maximumBackupBytes = 256 * 1024 * 1024;
+const maximumBlock = 9_000_000_000_000_000n;
+const sameCheckpoint = (left: LaunchCheckpoint | undefined, right: LaunchCheckpoint | undefined) =>
+  left?.number === right?.number && left?.hash.toLowerCase() === right?.hash.toLowerCase();
+
+export function launchpadScopeIdentity(scope: string) {
+  const [chain, firstBlock, ...pins] = scope.split(":");
+  const chainId = Number(chain);
+  const guarded = pins.length === 17 && pins[16] === "v2";
+  if (!/^[1-9]\d{0,15}$/.test(chain) || !Number.isSafeInteger(chainId)
+    || !/^[1-9]\d{0,14}$/.test(firstBlock) || (pins.length !== 14 && !guarded)
+    || pins.slice(0, guarded ? -1 : undefined).some((pin, index) => index % 2 ? !isHash(pin) : !isAddress(pin))) {
+    throw new Error("Invalid launch index scope");
+  }
+  return { chainId, firstBlock: BigInt(firstBlock), factory: pins[0].toLowerCase(), manager: pins[2].toLowerCase(),
+    hook: guarded ? pins[14].toLowerCase() : zeroAddress, guarded };
+}
+
+function blockHeight(value: string) {
+  if (!/^[1-9]\d{0,15}$/.test(value) || BigInt(value) >= maximumBlock) throw new Error("Invalid launch record block height");
+  return BigInt(value);
+}
+
+function requireCheckpoint(checkpoint: LaunchCheckpoint) {
+  if (checkpoint.number < 0n || checkpoint.number >= maximumBlock || !isHash(checkpoint.hash)) {
+    throw new Error("Invalid launch index checkpoint");
+  }
+}
+
+async function fileEvidence(path: string, checkpoint?: LaunchCheckpoint): Promise<LaunchBackup> {
+  const info = lstatSync(path);
+  const { size } = info;
+  if (!info.isFile() || size < 512 || size > maximumBackupBytes) throw new Error("Invalid launch backup file size or type");
+  const digest = createHash("sha256");
+  let bytes = 0;
+  for await (const chunk of createReadStream(path, { end: maximumBackupBytes })) {
+    bytes += chunk.length;
+    digest.update(chunk);
+  }
+  if (bytes !== size || bytes > maximumBackupBytes) throw new Error("Launch backup size changed during verification");
+  return { bytes, sha256: digest.digest("hex"), checkpoint };
+}
+
+function checkedBackup(db: DatabaseSync, scope: string) {
+  if (db.prepare("PRAGMA quick_check(1)").get()?.quick_check !== "ok") throw new Error("Launch backup failed SQLite integrity check");
+  const row = db.prepare(`SELECT height, hash FROM rmt_new_launch_checkpoints
+    WHERE scope = ? ORDER BY height DESC LIMIT 1`).get(scope);
+  if (!row && !db.prepare("SELECT 1 FROM rmt_new_launch_health WHERE scope = ?").get(scope)
+    && !db.prepare("SELECT 1 FROM rmt_new_launch_records WHERE scope = ? LIMIT 1").get(scope)) {
+    throw new Error("Launch backup does not contain the requested index scope");
+  }
+  if (!row) return undefined;
+  const checkpoint = { number: BigInt(String(row.height)), hash: row.hash as Hash };
+  requireCheckpoint(checkpoint);
+  return checkpoint;
+}
+
+async function stageBackup(destination: string, prepare: (staged: string) => Promise<LaunchCheckpoint | undefined>) {
+  if (!isAbsolute(destination) || ["", "-wal", "-shm", "-journal"].some((suffix) => existsSync(destination + suffix))) {
+    throw new Error("Launch backup destination must be a fresh absolute file without SQLite sidecars");
+  }
+  const staged = join(dirname(destination), `.rmt-launch-backup-${randomUUID()}.sqlite`);
+  closeSync(openSync(staged, "wx", 0o600));
+  try {
+    const checkpoint = await prepare(staged);
+    const result = await fileEvidence(staged, checkpoint);
+    const file = openSync(staged, "r+");
+    try { fsyncSync(file); } finally { closeSync(file); }
+    // Same-directory hard link publishes the verified snapshot atomically and never overwrites a file.
+    linkSync(staged, destination);
+    if (process.platform !== "win32") {
+      const directory = openSync(dirname(destination), "r");
+      try { fsyncSync(directory); } finally { closeSync(directory); }
+    }
+    return result;
+  } finally {
+    for (const path of [staged, staged + "-wal", staged + "-shm", staged + "-journal"]) {
+      if (existsSync(path)) unlinkSync(path);
+    }
+  }
+}
 
 export class LaunchpadStore {
   private readonly db: DatabaseSync;
+  private readonly identity: ReturnType<typeof launchpadScopeIdentity>;
 
-  constructor(path: string, private readonly scope: string) {
+  constructor(private readonly path: string, private readonly scope: string) {
+    this.identity = launchpadScopeIdentity(scope);
     this.db = new DatabaseSync(path);
     try {
       this.db.exec(`
         PRAGMA busy_timeout = 2500;
         PRAGMA journal_mode = WAL;
+        PRAGMA synchronous = FULL;
+        PRAGMA trusted_schema = OFF;
+        CREATE TABLE IF NOT EXISTS rmt_new_launch_anchors (
+          scope TEXT PRIMARY KEY,
+          height INTEGER NOT NULL,
+          hash TEXT NOT NULL
+        );
         CREATE TABLE IF NOT EXISTS rmt_new_launch_checkpoints (
           scope TEXT NOT NULL,
           height INTEGER NOT NULL,
@@ -42,6 +148,8 @@ export class LaunchpadStore {
         );
         CREATE INDEX IF NOT EXISTS rmt_new_launch_creator ON rmt_new_launch_records (scope, creator, height DESC);
         CREATE INDEX IF NOT EXISTS rmt_new_launch_height ON rmt_new_launch_records (scope, height DESC);
+        CREATE INDEX IF NOT EXISTS rmt_new_launch_pending ON rmt_new_launch_records (scope, published_ms) WHERE indexed = 0;
+        CREATE UNIQUE INDEX IF NOT EXISTS rmt_new_launch_event_slot ON rmt_new_launch_records (scope, block_hash, log_index);
         CREATE TABLE IF NOT EXISTS rmt_new_launch_health (
           scope TEXT PRIMARY KEY,
           caught_up INTEGER NOT NULL CHECK (caught_up IN (0, 1)),
@@ -65,6 +173,52 @@ export class LaunchpadStore {
     this.db.close();
   }
 
+  assertScope(scope: string) {
+    if (scope !== this.scope) throw new Error("Launch index runtime does not match the open database scope");
+  }
+
+  backup(destination: string): Promise<LaunchBackup> {
+    if (!isAbsolute(this.path)) throw new Error("Launch backup requires a file-backed database with an absolute path");
+    return stageBackup(destination, async (staged) => {
+      const source = new DatabaseSync(this.path, { readOnly: true });
+      try {
+        source.exec("PRAGMA busy_timeout=2500; PRAGMA trusted_schema=OFF; BEGIN");
+        const pages = Number(source.prepare("PRAGMA page_count").get()?.page_count);
+        const pageSize = Number(source.prepare("PRAGMA page_size").get()?.page_size);
+        if (!Number.isSafeInteger(pages * pageSize) || pages * pageSize > maximumBackupBytes) {
+          throw new Error("Launch database exceeds the backup size limit");
+        }
+        await backup(source, staged);
+      } finally { source.close(); }
+      const snapshot = new DatabaseSync(staged);
+      try {
+        snapshot.exec("PRAGMA trusted_schema=OFF; PRAGMA journal_mode=DELETE; PRAGMA synchronous=FULL");
+        return checkedBackup(snapshot, this.scope);
+      } finally { snapshot.close(); }
+    });
+  }
+
+  static restore(source: string, destination: string, scope: string, expectedSha256: string): Promise<LaunchBackup> {
+    launchpadScopeIdentity(scope);
+    if (!isAbsolute(source) || !/^[a-f0-9]{64}$/i.test(expectedSha256)) {
+      throw new Error("Launch restore requires an absolute source and its recorded SHA-256");
+    }
+    return stageBackup(destination, async (staged) => {
+      const sourceFile = lstatSync(source);
+      if (!sourceFile.isFile() || sourceFile.size > maximumBackupBytes) throw new Error("Invalid launch backup file size or type");
+      // The checksum authenticates the staged copy against the operator's recorded backup, without trusting sidecars.
+      copyFileSync(source, staged, constants.COPYFILE_FICLONE);
+      if ((await fileEvidence(staged)).sha256 !== expectedSha256.toLowerCase()) throw new Error("Launch backup SHA-256 mismatch");
+      const snapshot = new DatabaseSync(staged);
+      try {
+        snapshot.exec("PRAGMA trusted_schema=OFF; PRAGMA journal_mode=DELETE; PRAGMA synchronous=FULL");
+        const checkpoint = checkedBackup(snapshot, scope);
+        snapshot.exec("UPDATE rmt_new_launch_health SET caught_up=0");
+        return checkpoint;
+      } finally { snapshot.close(); }
+    });
+  }
+
   private transaction<T>(work: () => T): T {
     this.db.exec("BEGIN IMMEDIATE");
     try {
@@ -79,18 +233,82 @@ export class LaunchpadStore {
 
   checkpoint(before?: bigint): LaunchCheckpoint | undefined {
     const row = this.db.prepare(`SELECT height, hash FROM rmt_new_launch_checkpoints
-      WHERE scope = ? AND height < ? ORDER BY height DESC LIMIT 1`).get(this.scope, before ?? 9_000_000_000_000_000n);
-    return row ? { number: BigInt(String(row.height)), hash: row.hash as Hash } : undefined;
+      WHERE scope = ? AND height < ? ORDER BY height DESC LIMIT 1`).get(this.scope, before ?? maximumBlock);
+    return this.parseCheckpoint(row);
+  }
+
+  anchor(): LaunchCheckpoint | undefined {
+    return this.parseCheckpoint(this.db.prepare("SELECT height, hash FROM rmt_new_launch_anchors WHERE scope = ?").get(this.scope));
+  }
+
+  private parseCheckpoint(row: Record<string, unknown> | undefined) {
+    if (!row) return undefined;
+    const checkpoint = { number: BigInt(String(row.height)), hash: row.hash as Hash };
+    requireCheckpoint(checkpoint);
+    return checkpoint;
   }
 
   private assertCheckpoint(expected: LaunchCheckpoint | undefined) {
-    const current = this.checkpoint();
-    if (current?.number !== expected?.number || current?.hash !== expected?.hash) {
+    if (!sameCheckpoint(this.checkpoint(), expected)) {
       throw new Error("Launch index checkpoint changed during synchronization");
     }
   }
 
-  private write(record: NewLaunchRecord, indexed: boolean, now: number) {
+  private recordHeight(record: NewLaunchRecord): bigint {
+    const { chainId, firstBlock, factory, manager, hook, guarded } = this.identity;
+    const height = blockHeight(record.blockNumber);
+    const { poolKey } = record;
+    if (record.chainId !== chainId || height < firstBlock || record.factory?.toLowerCase() !== factory
+      || record.poolManager?.toLowerCase() !== manager || record.engineVersion !== (guarded ? 2 : undefined)
+      || !isAddress(record.token, { strict: false }) || record.token === zeroAddress
+      || !isAddress(record.creator, { strict: false }) || record.creator === zeroAddress
+      || poolKey?.hooks.toLowerCase() !== hook || poolKey.currency0.toLowerCase() !== zeroAddress
+      || poolKey.currency1.toLowerCase() !== record.token.toLowerCase() || poolKey.fee !== 3000 || poolKey.tickSpacing !== 60
+      || !isHash(record.poolId) || launchPoolId(poolKey).toLowerCase() !== record.poolId.toLowerCase()
+      || !isHash(record.blockHash) || !isHash(record.transactionHash) || !isHash(record.intentId)
+      || !Number.isSafeInteger(record.logIndex) || record.logIndex < 0 || record.logIndex >= 2 ** 31) {
+      throw new Error("Launch record does not match its deployment or full event identity");
+    }
+    return height;
+  }
+
+  private decodeRow(row: Record<string, unknown>): NewLaunchRecord {
+    if (typeof row.record !== "string" || Buffer.byteLength(row.record) > maximumRecordBytes) {
+      throw new Error("Launch record exceeds its storage limit");
+    }
+    const record = JSON.parse(row.record) as NewLaunchRecord;
+    if (this.recordHeight(record) !== BigInt(String(row.height)) || record.token.toLowerCase() !== row.token
+      || record.creator.toLowerCase() !== row.creator || record.blockHash.toLowerCase() !== row.block_hash
+      || record.transactionHash.toLowerCase() !== row.tx_hash || record.logIndex !== row.log_index
+      || record.indexing !== (row.indexed === 1 ? "indexed" : "pending")) {
+      throw new Error("Stored launch record does not match its event identity");
+    }
+    return record;
+  }
+
+  private write(record: NewLaunchRecord, indexed: boolean, now: number): NewLaunchRecord {
+    const height = this.recordHeight(record);
+    const existing = this.db.prepare("SELECT * FROM rmt_new_launch_records WHERE scope = ? AND token = ?")
+      .get(this.scope, record.token.toLowerCase());
+    if (existing) {
+      const prior = this.decodeRow(existing);
+      const sameEvent = prior.blockHash.toLowerCase() === record.blockHash.toLowerCase()
+        && prior.transactionHash.toLowerCase() === record.transactionHash.toLowerCase() && prior.logIndex === record.logIndex;
+      if (sameEvent) {
+        const payload = (launch: NewLaunchRecord) => ({ ...launch, indexing: undefined, blockTimestamp: undefined });
+        if (!isDeepStrictEqual(payload(prior), payload(record))
+          || (prior.blockTimestamp && record.blockTimestamp && prior.blockTimestamp !== record.blockTimestamp)) {
+          throw new Error("Launch record has conflicting payloads for the same event");
+        }
+        if (prior.indexing === "indexed" || !indexed) return prior;
+        if (!record.blockTimestamp && prior.blockTimestamp) record = { ...record, blockTimestamp: prior.blockTimestamp };
+      } else if (prior.indexing === "indexed") {
+        throw new Error("Launch receipt conflicts with an indexed record pending canonical reconciliation");
+      }
+    }
+    const saved: NewLaunchRecord = { ...record, indexing: indexed ? "indexed" : "pending" };
+    const payload = JSON.stringify(saved);
+    if (Buffer.byteLength(payload) > maximumRecordBytes) throw new Error("Launch record exceeds its storage limit");
     this.db.prepare(`INSERT INTO rmt_new_launch_records
       (scope, token, creator, height, block_hash, tx_hash, log_index, indexed, published_ms, record)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -98,72 +316,126 @@ export class LaunchpadStore {
         creator=excluded.creator, height=excluded.height, block_hash=excluded.block_hash, tx_hash=excluded.tx_hash,
         log_index=excluded.log_index, indexed=excluded.indexed, published_ms=excluded.published_ms, record=excluded.record
       WHERE rmt_new_launch_records.indexed = 0`)
-      .run(this.scope, record.token.toLowerCase(), record.creator.toLowerCase(), BigInt(record.blockNumber),
+      .run(this.scope, record.token.toLowerCase(), record.creator.toLowerCase(), height,
         record.blockHash.toLowerCase(), record.transactionHash.toLowerCase(), record.logIndex, Number(indexed), now,
-        JSON.stringify({ ...record, indexing: indexed ? "indexed" : "pending" }));
+        payload);
+    return saved;
+  }
+
+  private pruneProvisional(now: number) {
+    this.db.prepare("DELETE FROM rmt_new_launch_records WHERE scope = ? AND indexed = 0 AND published_ms < ?")
+      .run(this.scope, now - provisionalWindowMs);
   }
 
   publish(record: NewLaunchRecord, now = Date.now()): NewLaunchRecord {
     return this.transaction(() => {
-      const indexed = this.read({ token: record.token }, now)[0];
-      if (indexed?.indexing === "indexed") {
-        if (indexed.transactionHash.toLowerCase() !== record.transactionHash.toLowerCase()
-          || indexed.blockHash.toLowerCase() !== record.blockHash.toLowerCase()) {
-          throw new Error("Launch receipt conflicts with an indexed record pending canonical reconciliation");
-        }
-        return indexed;
+      this.pruneProvisional(now);
+      const prior = this.read({ token: record.token }, now)[0];
+      const checkpoint = this.checkpoint();
+      if (!prior && checkpoint && this.recordHeight(record) <= checkpoint.number) {
+        throw new Error("Launch receipt is missing from the covered index range pending canonical reconciliation");
       }
-      this.write(record, false, now);
-      return record;
+      if (!prior && this.provisional(now).length >= maximumPending) throw new Error("Launch provisional receipt limit reached");
+      return this.write(record, false, now);
     });
   }
 
   advance(expected: LaunchCheckpoint | undefined, next: LaunchCheckpoint, records: NewLaunchRecord[]) {
     this.transaction(() => {
       this.assertCheckpoint(expected);
-      for (const record of records) this.write(record, true, Date.now());
-      this.db.prepare("DELETE FROM rmt_new_launch_records WHERE scope = ? AND indexed = 0 AND height <= ?")
-        .run(this.scope, next.number);
-      this.db.prepare("INSERT INTO rmt_new_launch_checkpoints (scope, height, hash) VALUES (?, ?, ?)")
-        .run(this.scope, next.number, next.hash);
+      this.writeRange(expected, next, records, Date.now());
     });
   }
 
-  rewind(expected: LaunchCheckpoint, keep: LaunchCheckpoint | undefined, startBlock: bigint) {
-    const firstOrphan = (keep?.number ?? (startBlock - 1n)) + 1n;
+  private writeRange(keep: LaunchCheckpoint | undefined, next: LaunchCheckpoint, records: NewLaunchRecord[], now: number) {
+    const start = keep ? keep.number + 1n : this.identity.firstBlock;
+    requireCheckpoint(next);
+    if (next.number < start || next.number - start >= 256n || records.length > 128) {
+      throw new Error("Invalid launch index checkpoint range");
+    }
+    for (const record of records) {
+      const height = this.recordHeight(record);
+      if (height < start || height > next.number
+        || (height === next.number && record.blockHash.toLowerCase() !== next.hash.toLowerCase())) {
+        throw new Error("Launch record lies outside the verified index range");
+      }
+      this.write(record, true, now);
+    }
+    // A verified receipt may have been published while RPC observations were in flight.
+    // Leave it available and retry the range before advancing past unexplained evidence.
+    if (this.db.prepare("SELECT 1 FROM rmt_new_launch_records WHERE scope = ? AND indexed = 0 AND height <= ? LIMIT 1")
+      .get(this.scope, next.number)) throw new Error("Index range leaves a provisional launch receipt unexplained");
+    this.db.prepare("INSERT INTO rmt_new_launch_checkpoints (scope, height, hash) VALUES (?, ?, ?)")
+      .run(this.scope, next.number, next.hash.toLowerCase());
+    this.db.prepare(`DELETE FROM rmt_new_launch_checkpoints WHERE scope = ? AND height IN
+      (SELECT height FROM rmt_new_launch_checkpoints WHERE scope = ? ORDER BY height DESC LIMIT -1 OFFSET ?)`)
+      .run(this.scope, this.scope, maximumCheckpoints);
+  }
+
+  commitIndex(expected: LaunchCheckpoint | undefined, update: IndexUpdate, now = Date.now()) {
+    const { anchor, keep, next, records, orphaned, caughtUp } = update;
     this.transaction(() => {
       this.assertCheckpoint(expected);
-      this.db.prepare("DELETE FROM rmt_new_launch_records WHERE scope = ? AND height >= ?").run(this.scope, firstOrphan);
-      this.db.prepare("DELETE FROM rmt_new_launch_checkpoints WHERE scope = ? AND height >= ?").run(this.scope, firstOrphan);
+      requireCheckpoint(anchor);
+      const savedAnchor = this.anchor();
+      if (anchor.number !== this.identity.firstBlock - 1n || (savedAnchor && !sameCheckpoint(savedAnchor, anchor))) {
+        throw new Error("Launch deployment anchor changed during synchronization");
+      }
+      if (keep && (!expected || keep.number > expected.number || !sameCheckpoint(this.checkpoint(keep.number + 1n), keep))) {
+        throw new Error("Launch index rewind checkpoint is unavailable");
+      }
+      const hasSettlementProofs = this.db.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='rmt_launch_native_settlement_proofs'").get();
+      if (expected && !sameCheckpoint(keep, expected)) {
+        const firstOrphan = (keep?.number ?? anchor.number) + 1n;
+        this.db.prepare("DELETE FROM rmt_new_launch_records WHERE scope = ? AND indexed = 1 AND height >= ?").run(this.scope, firstOrphan);
+        this.db.prepare("DELETE FROM rmt_new_launch_checkpoints WHERE scope = ? AND height >= ?").run(this.scope, firstOrphan);
+        if (hasSettlementProofs) {
+          this.db.prepare("DELETE FROM rmt_launch_native_settlement_proofs WHERE scope = ? AND height >= ?").run(this.scope, firstOrphan);
+        }
+      }
+      if (hasSettlementProofs) this.db.prepare("DELETE FROM rmt_launch_native_settlement_proofs WHERE scope = ? AND expires_ms <= ?")
+        .run(this.scope, now);
+      for (const record of orphaned) this.removeProvisional(record);
+      this.pruneProvisional(now);
+      if (!savedAnchor) this.db.prepare("INSERT INTO rmt_new_launch_anchors (scope, height, hash) VALUES (?, ?, ?)")
+        .run(this.scope, anchor.number, anchor.hash.toLowerCase());
+      if (next) this.writeRange(keep, next, records, now);
+      this.markHealth(caughtUp, now);
+    });
+  }
+
+  markDelayed(expected: LaunchCheckpoint | undefined) {
+    this.transaction(() => {
+      if (sameCheckpoint(this.checkpoint(), expected)) this.markHealth(false);
     });
   }
 
   read(filter: LaunchFilter = {}, now = Date.now()): NewLaunchRecord[] {
     const token = filter.token?.toLowerCase() ?? null;
     const creator = filter.creator?.toLowerCase() ?? null;
-    return this.db.prepare(`SELECT record FROM rmt_new_launch_records WHERE scope = ?
+    return this.db.prepare(`SELECT * FROM rmt_new_launch_records WHERE scope = ?
       AND (? IS NULL OR token = ?) AND (? IS NULL OR creator = ?)
       AND (indexed = 1 OR published_ms >= ?)
       ORDER BY height DESC, log_index DESC LIMIT 50`)
       .all(this.scope, token, token, creator, creator, now - provisionalWindowMs)
-      .map((row) => JSON.parse(String(row.record)) as NewLaunchRecord);
+      .map((row) => this.decodeRow(row));
   }
 
   provisional(now = Date.now()): Provisional[] {
     return this.db.prepare(`SELECT token, height, block_hash FROM rmt_new_launch_records
-      WHERE scope = ? AND indexed = 0 AND published_ms >= ? ORDER BY height DESC LIMIT 25`)
-      .all(this.scope, now - provisionalWindowMs).map((row) => ({
+      WHERE scope = ? AND indexed = 0 AND published_ms >= ? ORDER BY height DESC LIMIT ?`)
+      .all(this.scope, now - provisionalWindowMs, maximumPending).map((row) => ({
         token: row.token as Address, blockNumber: BigInt(String(row.height)), blockHash: row.block_hash as Hash,
       }));
   }
 
   readPage(limit: number, before?: LaunchPageCursor, now = Date.now()): NewLaunchRecord[] {
-    return this.db.prepare(`SELECT record FROM rmt_new_launch_records WHERE scope = ?
+    return this.db.prepare(`SELECT * FROM rmt_new_launch_records WHERE scope = ?
       AND (height < ? OR (height = ? AND log_index < ?)) AND (indexed = 1 OR published_ms >= ?)
       ORDER BY height DESC, log_index DESC LIMIT ?`)
-      .all(this.scope, before?.blockNumber ?? 9_000_000_000_000_000n, before?.blockNumber ?? 0n,
+      .all(this.scope, before?.blockNumber ?? maximumBlock, before?.blockNumber ?? 0n,
         before?.logIndex ?? 0, now - provisionalWindowMs, limit)
-      .map((row) => JSON.parse(String(row.record)) as NewLaunchRecord);
+      .map((row) => this.decodeRow(row));
   }
 
   consumePublicQuota(category: string, categoryLimit: number, now = Date.now()): number {
@@ -183,7 +455,7 @@ export class LaunchpadStore {
     });
   }
 
-  removeProvisional(record: Provisional) {
+  private removeProvisional(record: Provisional) {
     this.db.prepare(`DELETE FROM rmt_new_launch_records WHERE scope = ? AND indexed = 0
       AND token = ? AND height = ? AND block_hash = ?`)
       .run(this.scope, record.token, record.blockNumber, record.blockHash);
@@ -197,6 +469,7 @@ export class LaunchpadStore {
 
   status(now = Date.now()): "ready" | "delayed" {
     const row = this.db.prepare("SELECT caught_up, updated_ms FROM rmt_new_launch_health WHERE scope = ?").get(this.scope);
-    return row?.caught_up === 1 && now - Number(row.updated_ms) <= 30_000 ? "ready" : "delayed";
+    const age = now - Number(row?.updated_ms);
+    return row?.caught_up === 1 && age >= 0 && age <= 30_000 ? "ready" : "delayed";
   }
 }

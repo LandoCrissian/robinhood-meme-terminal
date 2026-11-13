@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -14,12 +14,13 @@ import { GET as normalPublicGet } from "../app/api/launchpad/public/[operation]/
 import { POST as normalMcpPost } from "../app/mcp/route";
 import { verifySwap as normalVerifySwap } from "../lib/launchpad/direct-v4";
 import type { LaunchHealth, LaunchPoolKey, NewLaunchRecord } from "../lib/launchpad/launch-record";
+import type { NativeSettlementProof } from "../lib/launchpad/native-settlement";
 import { assertWalletBinding, readPendingRequest, replacePendingRequest, submitReviewedRequest, type LaunchRequest, type WalletProvider } from "../lib/launchpad/transactions";
 import { readLaunchpadRuntime } from "../lib/server/new-launchpad-config";
 import type { LaunchpadPublicOperation } from "../lib/server/new-launchpad-public-data";
 import { sameHex } from "../lib/server/new-launchpad-receipt";
 
-const baseline = "648bf05eb30664ef25c5d006cb90a5480fd39394";
+const baseline = "e9f8038b34a771c119ae94157bbe1e4af3beee63";
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
 const restPath = "apps/web/app/api/launchpad/public/[operation]/route.ts";
 const publicationPath = "apps/web/app/api/launchpad/launches/route.ts";
@@ -36,12 +37,17 @@ const sourcePaths = [
   "apps/web/lib/server/new-launchpad-growth-health.ts",
   "apps/web/lib/server/new-launchpad-health.ts",
   "apps/web/lib/server/new-launchpad-holders.ts",
+  "apps/web/lib/server/new-launchpad-finality.ts",
   "apps/web/lib/server/new-launchpad-indexer.ts",
   "apps/web/lib/server/new-launchpad-mcp.ts",
   "apps/web/lib/server/new-launchpad-public-data.ts",
   "apps/web/lib/server/new-launchpad-receipt.ts",
+  "apps/web/lib/server/new-launchpad-settlement-store.ts",
   "apps/web/lib/server/new-launchpad-store.ts",
   "apps/web/lib/launchpad/growth-vault.ts",
+  "apps/web/lib/launchpad/native-settlement.ts",
+  "apps/web/lib/launchpad/receipt-logs.ts",
+  "apps/web/lib/vnext/normalized-native-trace.ts",
 ] as const;
 
 type Pin = { address: Address; runtimeHash: Hash };
@@ -85,6 +91,7 @@ type ForkLifecycle = ForkLaunch & {
 };
 type ResponseBody = {
   status: string;
+  evidence?: { l2Observation?: { status: string }; l1Finality?: { status: string } };
   launch?: NewLaunchRecord;
   indexing?: string;
   data?: {
@@ -99,6 +106,8 @@ type ResponseBody = {
       poolKey?: LaunchPoolKey;
       blockHash?: Hash;
       finality?: string;
+      l2Observation?: { status: "observed" | "unavailable"; blockNumber: string | null; blockHash: Hash | null };
+      l1Finality?: { status: "unverified"; reason: string };
       freshness?: string;
     };
     checks?: { id: string; status: string }[];
@@ -116,10 +125,6 @@ function replaceOnce(source: string, before: string, after: string) {
   return source.replace(before, after);
 }
 
-function readPinnedSource(path: string) {
-  return execFileSync("git", ["show", baseline + ":" + path], { cwd: repo, encoding: "utf8" });
-}
-
 async function createReviewCopy(scratch: string, network: Network) {
   const replacements = [
     { path: configPath, before: 'required(env, "CHAIN_ID") !== "31337"', after: 'required(env, "CHAIN_ID") !== "4663"' },
@@ -127,9 +132,10 @@ async function createReviewCopy(scratch: string, network: Network) {
     { path: configPath, before: '"Local Anvil · Base Sepolia fork"', after: '"Local review Anvil · Robinhood 4663 fork"' },
     { path: directPath, before: "deployment.chainId !== 31337", after: "deployment.chainId !== 4663" },
   ];
+  const candidateHead = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repo, encoding: "utf8" }).trim();
   const sourceManifest = [];
   for (const path of sourcePaths) {
-    const source = readPinnedSource(path);
+    const source = (await readFile(join(repo, path), "utf8")).replace(/\r\n/g, "\n");
     let contents = source;
     for (const { before, after } of replacements.filter((replacement) => replacement.path === path)) {
       contents = replaceOnce(contents, before, after);
@@ -149,9 +155,16 @@ async function createReviewCopy(scratch: string, network: Network) {
     const destination = join(scratch, path);
     await mkdir(dirname(destination), { recursive: true });
     await writeFile(destination, contents, "utf8");
-    sourceManifest.push({ path, pinnedSha256: sha256(source), reviewSha256: sha256(contents) });
+    const headPath = candidateHead + ":" + path;
+    const tracked = execFileSync("git", ["ls-tree", candidateHead, "--", path], { cwd: repo, encoding: "utf8" }).length > 0;
+    const committedSha256 = tracked
+      ? sha256(execFileSync("git", ["show", headPath], { cwd: repo, encoding: "utf8" }).replace(/\r\n/g, "\n"))
+      : null;
+    sourceManifest.push({ path, committedSha256, candidateSha256: sha256(source), reviewSha256: sha256(contents) });
   }
-  return { baseline, replacements, fixtureReplacement: "Rebind only the baseSepolia fixture entry to the approved 4663 fork anchor and dependencies. The historical Robinhood Router 2.0 pin is retained solely for the original store scope formula.", sourceManifest };
+  const allSourcesMatchHead = sourceManifest.every(({ committedSha256, candidateSha256 }) => committedSha256 === candidateSha256);
+  if (process.env.GITHUB_ACTIONS === "true") assert.ok(allSourcesMatchHead, "Review sources must match the exact CI candidate commit");
+  return { baseline, candidateHead, allSourcesMatchHead, replacements, fixtureReplacement: "Rebind only the baseSepolia fixture entry to the approved 4663 fork anchor and dependencies. The historical Robinhood Router 2.0 pin is retained solely for the original store scope formula.", sourceManifest };
 }
 
 function requiredBlock(number: bigint | null, hash: Hash | null) {
@@ -159,14 +172,27 @@ function requiredBlock(number: bigint | null, hash: Hash | null) {
   return { number, hash };
 }
 
-function rpcWith(rpc: PublicClient, override: Partial<Pick<PublicClient, "getLogs" | "request">>): PublicClient {
+function rpcWith(rpc: PublicClient, override: Partial<Pick<PublicClient, "getBlock" | "getBlockNumber" | "getLogs" | "request">>): PublicClient {
   return new Proxy(rpc, {
     get(target, property, receiver) {
+      if (property === "getBlock" && override.getBlock) return override.getBlock;
+      if (property === "getBlockNumber" && override.getBlockNumber) return override.getBlockNumber;
       if (property === "getLogs" && override.getLogs) return override.getLogs;
       if (property === "request" && override.request) return override.request;
       return Reflect.get(target, property, receiver);
     },
   });
+}
+
+function traceFault(rpc: PublicClient, trace: () => unknown): PublicClient {
+  return rpcWith(rpc, {
+    request: (async (args: { method: string; params?: readonly unknown[] }) =>
+      args.method === "debug_traceTransaction" ? trace() : rpc.request(args as never)) as PublicClient["request"],
+  });
+}
+
+function pendingReason(reason: string) {
+  return (error: unknown) => error instanceof Error && "reason" in error && error.reason === reason;
 }
 
 async function verifyWalletJournal(rpc: PublicClient, request: LaunchRequest, hash: Hash, settle: () => Promise<void>) {
@@ -293,6 +319,7 @@ export async function runPublicEvidence({
     const direct: typeof import("../lib/launchpad/direct-v4") = await load(directPath);
     const indexer: typeof import("../lib/server/new-launchpad-indexer") = await load("apps/web/lib/server/new-launchpad-indexer.ts");
     const storeModule: typeof import("../lib/server/new-launchpad-store") = await load("apps/web/lib/server/new-launchpad-store.ts");
+    const settlementModule: typeof import("../lib/server/new-launchpad-settlement-store") = await load("apps/web/lib/server/new-launchpad-settlement-store.ts");
     const publicData: typeof import("../lib/server/new-launchpad-public-data") = await load("apps/web/lib/server/new-launchpad-public-data.ts");
     const receiptVerifier: typeof import("../lib/server/new-launchpad-receipt") = await load("apps/web/lib/server/new-launchpad-receipt.ts");
     const config = configModule.readLaunchpadRuntime();
@@ -419,6 +446,13 @@ export async function runPublicEvidence({
         const data = result.body.data;
         assert.ok(data, operation);
         assert.equal(data.evidence?.finality, "local_chain_observed");
+        const observation = data.evidence?.l2Observation;
+        assert.equal(observation?.status, "observed", operation);
+        assert.ok(observation.blockNumber && observation.blockHash, operation);
+        assert.equal((await rpc.getBlock({ blockNumber: BigInt(observation.blockNumber) })).hash, observation.blockHash, operation);
+        assert.deepEqual(data.evidence?.l1Finality, {
+          status: "unverified", reason: "independent_l1_verifier_unconfigured",
+        }, operation);
         if (operation === "list_launches") {
           assert.equal(data.chainId, 4663);
           assert.equal(data.launches?.length, 1);
@@ -456,6 +490,13 @@ export async function runPublicEvidence({
     assert.deepEqual(activitySecondPage.body.data?.activity?.map(({ transactionHash }) => transactionHash), [lifecycle.buy.hash]);
 
     const swaps: Record<string, unknown> = {};
+    const corroboratingRpc = createPublicClient({ transport: transport(), cacheTime: 0 });
+    const proofs: NativeSettlementProof[] = [];
+    const withSettlement = <T>(path: string, use: (store: InstanceType<typeof settlementModule.LaunchpadSettlementStore>) => T) => {
+      const store = new settlementModule.LaunchpadSettlementStore(path, config.scope);
+      try { return use(store); }
+      finally { store.close(); }
+    };
     for (const side of ["buy", "sell"] as const) {
       const trade = lifecycle[side];
       assert.ok(sameHex(trade.account, trade.recipient));
@@ -480,32 +521,83 @@ export async function runPublicEvidence({
       await assert.rejects(direct.verifySwap(rpc, bound, config.deployment, {
         ...launch, poolKey: { ...launch.poolKey, hooks: zeroAddress },
       }, request), /unavailable for this pool/);
-      const missingTrace = rpcWith(rpc, {
-        request: ((args: { method: string; params?: readonly unknown[] }) => {
-          if (args.method === "debug_traceTransaction") throw new Error("review fault: debug_traceTransaction unavailable");
-          return rpc.request(args as never);
-        }) as PublicClient["request"],
-      });
       await verifyWalletJournal(rpc, request, trade.hash, async () => {
         if (side === "sell") {
-          await assert.rejects(direct.verifySwap(missingTrace, bound, config.deployment, launch, request), /debug_traceTransaction unavailable/);
-          const noPayout = rpcWith(rpc, {
-            request: ((args: { method: string; params?: readonly unknown[] }) =>
-              args.method === "debug_traceTransaction" ? Promise.resolve(null) : rpc.request(args as never)) as PublicClient["request"],
+          const result: unknown = await rpc.request({ method: "debug_traceTransaction", params: [trade.hash, { tracer: "callTracer" }] } as never);
+          assert.ok(result && typeof result === "object" && !Array.isArray(result));
+          const trace = result as Record<string, unknown>;
+          const corroboration = { mode: "simulation" as const, source: "fork-observer-b", client: corroboratingRpc };
+          const options = { primarySource: "fork-observer-a", corroboration,
+            saveProof: (proof: NativeSettlementProof) => {
+              withSettlement(databasePath, (store) => store.save(proof));
+              proofs.push(proof);
+            },
+          };
+          const verify = (client: PublicClient = rpc, witness: PublicClient = corroboratingRpc) => direct.verifySwap(client, bound, config.deployment, launch, request, {
+            ...options, corroboration: { ...corroboration, client: witness },
           });
-          await assert.rejects(direct.verifySwap(noPayout, bound, config.deployment, launch, request), /native ETH payout is not verified/);
+          await assert.rejects(direct.verifySwap(rpc, bound, config.deployment, launch, request), pendingReason("unavailable"));
+          await assert.rejects(verify(traceFault(rpc, () => { throw new Error("review fault: missing trace"); })), pendingReason("unavailable"));
+          await assert.rejects(verify(traceFault(rpc, () => null)), pendingReason("payout_unproven"));
+          await assert.rejects(verify(traceFault(rpc, () => ({ ...trace, calls: [null] }))), pendingReason("malformed"));
+          await assert.rejects(verify(traceFault(rpc, () => { throw Object.assign(new Error("HTTP 429"), { status: 429 }); })), pendingReason("rate_limited"));
+          await assert.rejects(verify(rpc, traceFault(corroboratingRpc, () => ({ ...trace, calls: [] }))), pendingReason("disagreement"));
+          const stale = rpcWith(corroboratingRpc, {
+            getBlock: async () => { throw new Error("review fault: archive state unavailable"); },
+          });
+          await assert.rejects(verify(rpc, stale), pendingReason("stale"));
+          await assert.rejects(direct.verifySwap(rpc, bound, config.deployment, launch, request, {
+            ...options, saveProof: () => { throw new Error("review fault: proof write interrupted"); },
+          }), pendingReason("unavailable"));
+          assert.equal(proofs.length, 0);
           assert.deepEqual(readPendingRequest(4663, request.from), { request, hash: trade.hash });
+          assert.equal(await verify(), BigInt(trade.amountOut));
+          assert.equal(proofs.length, 1);
+          const [proof] = proofs;
+          assert.equal(proof.mode, "simulated_agreement");
+          assert.equal(proof.transactionHash, trade.hash);
+          assert.equal(proof.blockHash, receipt.blockHash);
+          assert.equal(proof.amountAtomic, String(trade.amountOut));
+          assert.deepEqual(proof.poolKey, launch.poolKey);
+        } else {
+          assert.equal(await direct.verifySwap(rpc, bound, config.deployment, launch, request), BigInt(trade.amountOut));
         }
-        assert.equal(await direct.verifySwap(rpc, bound, config.deployment, launch, request), BigInt(trade.amountOut));
       });
       swaps[side] = {
         transactionHash: trade.hash, receiptBlockNumber: String(receipt.blockNumber), receiptBlockHash: receipt.blockHash,
         reviewedBlockNumber: String(originalBlock.number), reviewedBlockHash: originalBlock.hash,
         exactAmountOut: String(trade.amountOut), recovered: true, journalRecoveredWithoutRebroadcast: true, incorrectAccountChainCalldataAndReviewBlockRejected: true,
         incorrectFullPoolKeyRejected: true,
-        ...(side === "sell" ? { exactNativePayout: true, missingTraceRejected: true, noPayoutTraceRejected: true, journalRetainedWithoutTrace: true } : {}),
+        ...(side === "sell" ? { nativeSettlementProof: proofs[0], pendingOn: ["missing", "no_payout", "malformed",
+          "rate_limited", "disagreement", "stale_archive", "interrupted_proof_write"], journalRetainedWithoutTrace: true } : {}),
       };
     }
+
+    const backupPath = join(scratch, "review-backup.sqlite");
+    const restorePath = join(scratch, "review-restored.sqlite");
+    const backup = await withStore((store) => store.backup(backupPath));
+    assert.deepEqual(backup.checkpoint, indexed);
+    const restored = await storeModule.LaunchpadStore.restore(backupPath, restorePath, config.scope, backup.sha256);
+    assert.deepEqual(restored.checkpoint, indexed);
+    const [proof] = proofs;
+    assert.ok(proof);
+    const proofKey = { transactionHash: proof.transactionHash, logIndex: proof.logIndex,
+      blockHash: proof.blockHash, blockNumber: BigInt(proof.blockNumber) };
+    assert.deepEqual(withSettlement(restorePath, (store) => store.read(proofKey)), proof);
+    assert.equal(withSettlement(restorePath, (store) => store.read({ ...proofKey, blockHash: keccak256("0x") })), undefined);
+    const withRestoredStore = async <T>(use: (store: InstanceType<typeof storeModule.LaunchpadStore>) => Promise<T>) => {
+      const store = new storeModule.LaunchpadStore(restorePath, config.scope);
+      try { return await use(store); }
+      finally { store.close(); }
+    };
+    await withRestoredStore(async (store) => {
+      assert.equal(store.status(), "delayed");
+      assert.deepEqual(store.checkpoint(), indexed);
+      assert.ok((await indexer.syncNewLaunchpadRange(store, rpc, config, corroboratingRpc)).caughtUp);
+      assert.equal(store.status(), "ready");
+      assert.equal(store.read().length, 1);
+      assert.equal(store.read()[0].transactionHash, launch.transactionHash);
+    });
 
     const beforeFork = await rpc.getBlock();
     const snapshot = await anvil.snapshot();
@@ -516,6 +608,20 @@ export async function runPublicEvidence({
       const interrupted = rpcWith(rpc, {
         getLogs: async () => { throw new Error("review fault: launch log provider interrupted"); },
       });
+      const staleIndexWitness = rpcWith(corroboratingRpc, { getBlockNumber: async () => indexed.number - 1n });
+      const disagreeingIndexWitness = rpcWith(corroboratingRpc, {
+        getBlock: (async (parameters: Parameters<PublicClient["getBlock"]>[0]) => ({
+          ...await corroboratingRpc.getBlock(parameters), hash: keccak256("0x"),
+        })) as PublicClient["getBlock"],
+      });
+      for (const witness of [staleIndexWitness, disagreeingIndexWitness]) {
+        await withStore(async (store) => {
+          await assert.rejects(indexer.syncNewLaunchpadRange(store, rpc, config, witness), /behind|stale|disagree/i);
+          assert.deepEqual(store.checkpoint(), indexed);
+          assert.equal(store.read().length, 1);
+          assert.equal(store.status(), "delayed");
+        });
+      }
       await withStore(async (store) => {
         await assert.rejects(indexer.syncNewLaunchpadRange(store, interrupted, config), /launch log provider interrupted/);
         assert.deepEqual(store.checkpoint(), indexed);
@@ -527,6 +633,11 @@ export async function runPublicEvidence({
         assert.equal(store.read().length, 2);
         assert.ok(sameHex(store.read({ token: orphan.token })[0].transactionHash, orphan.launch.hash));
       });
+      await withRestoredStore(async (store) => {
+        assert.ok((await indexer.syncNewLaunchpadRange(store, rpc, config, corroboratingRpc)).caughtUp);
+        assert.equal(store.read().length, 2);
+        assert.equal(store.read({ token: orphan.token })[0].transactionHash, orphan.launch.hash);
+      });
       assert.equal((await fetchRest("get_launch", orphan.token)).code, 200);
       await anvil.revert({ id: snapshot });
       reverted = true;
@@ -536,7 +647,10 @@ export async function runPublicEvidence({
       await anvil.mine({ blocks: Number(branchLength) });
       const replacement = await rpc.getBlock({ blockNumber: BigInt(orphan.launch.blockNumber) });
       assert.notEqual(replacement.hash, orphan.launch.blockHash);
-      assert.equal((await fetchRest("get_launch", orphan.token)).code, 503);
+      const unavailable = await fetchRest("get_launch", orphan.token);
+      assert.equal(unavailable.code, 503);
+      assert.equal(unavailable.body.evidence?.l2Observation?.status, "unavailable");
+      assert.equal(unavailable.body.evidence?.l1Finality?.status, "unverified");
       await assert.rejects(rpc.getTransactionReceipt({ hash: orphan.launch.hash }), /not be found|not found/i);
       await withStore(async (store) => {
         assert.ok((await indexer.syncNewLaunchpadRange(store, rpc, config)).caughtUp);
@@ -544,8 +658,15 @@ export async function runPublicEvidence({
         assert.equal(store.read().length, 1);
         assert.equal(store.checkpoint()?.hash, replacement.hash);
       });
+      await withRestoredStore(async (store) => {
+        assert.ok((await indexer.syncNewLaunchpadRange(store, rpc, config, corroboratingRpc)).caughtUp);
+        assert.equal(store.read({ token: orphan.token }).length, 0);
+        assert.equal(store.read().length, 1);
+        assert.equal(store.checkpoint()?.hash, replacement.hash);
+      });
       assert.equal((await fetchRest("get_launch", orphan.token)).code, 404);
       assert.equal((await fetchRest("get_launch", lifecycle.token)).code, 200);
+      assert.deepEqual(withSettlement(restorePath, (store) => store.read(proofKey)), proof);
       return {
         source,
         normalRuntime: { configuration4663Rejected: true, rest4663Disabled: true, mcp4663Disabled: true, trading4663Rejected: true },
@@ -557,6 +678,9 @@ export async function runPublicEvidence({
         activityPagination: { first: lifecycle.sell.hash, second: lifecycle.buy.hash, eachPageLimit: 1 },
         indexer: {
           realLogDuplicateCount: deliveredDuplicates, persistentRestart: true, providerInterruptionPreservedCheckpoint: true,
+          staleAndDisagreeingWitnessPreservedCheckpoint: true,
+          backup: { bytes: backup.bytes, sha256: backup.sha256, restoredBytes: restored.bytes, checkpoint: indexed,
+            delayedUntilReconciled: true, replayedAfterRestore: true, rewoundRestoredDatabase: true, nativeProofRestored: true },
           orphanTransactionHash: orphan.launch.hash, orphanBlockHash: orphan.launch.blockHash,
           replacementBlockHash: replacement.hash, orphanUnavailableBeforeReconciliation: true,
           orphanRemovedAfterReplay: true, originalRetained: true,
