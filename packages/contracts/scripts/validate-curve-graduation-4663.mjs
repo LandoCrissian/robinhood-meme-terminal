@@ -98,7 +98,7 @@ const addressEq = (a, b) => getAddress(a) === getAddress(b);
 const poolIdFor = (key) => keccak256(encodeAbiParameters([keyParam], [key]));
 const normalizedSource = (path) => readFileSync(path, "utf8").replace(/\r\n/g, "\n");
 
-function compile({ solc, lib }, chainId, backing) {
+export function buildCurveReviewCompilerInput({ solc, lib }, chainId, backing) {
   const compiler = resolve(solc);
   const executableSha256 = sha(readFileSync(compiler));
   assert.equal(executableSha256, solcHashes[process.platform + "-" + process.arch], "Solidity 0.8.26 executable pin mismatch");
@@ -158,7 +158,12 @@ function compile({ solc, lib }, chainId, backing) {
       "@uniswap/v4-periphery/=lib/v4-periphery/"],
     outputSelection,
   } });
-  const output = JSON.parse(execFileSync(compiler, ["--standard-json", "--no-import-callback"], {
+  return { input, executableSha256, sourceSha256, sourceChanges };
+}
+
+function compile(options, chainId, backing) {
+  const { input, executableSha256, sourceSha256, sourceChanges } = buildCurveReviewCompilerInput(options, chainId, backing);
+  const output = JSON.parse(execFileSync(resolve(options.solc), ["--standard-json", "--no-import-callback"], {
     cwd: root, input, encoding: "utf8", maxBuffer: 16 * 1024 * 1024, timeout: 180_000,
     env: process.env.SystemRoot ? { SystemRoot: process.env.SystemRoot } : {},
   }));
@@ -417,8 +422,11 @@ async function deploy(client, accounts, pins, artifacts) {
   const data = encodeDeployData({ abi: bootstrap.abi, bytecode: bootstrap.bytecode,
     args: [dependencies, guardSalt, operatingRecipient, futureReserveRecipient, projectRegistry,
       successorDeployer, successorDeployerRuntimeHash, fixtureCreationFee] });
-  assert.ok((data.length - 2) / 2 <= 49_152, "Encoded bootstrap exceeds the EIP-3860 initcode limit");
-  const receipt = await send(client, operator, { data, gas: 14_000_000n });
+  const initcode = Buffer.from(data.slice(2), "hex");
+  assert.ok(initcode.length <= 49_152, "Encoded bootstrap exceeds the EIP-3860 initcode limit");
+  const zeroBytes = initcode.reduce((count, byte) => count + Number(byte === 0), 0);
+  const gasLimit = 14_000_000n;
+  const receipt = await send(client, operator, { data, gas: gasLimit });
   assert.ok(addressEq(receipt.contractAddress, deployer));
   assert.ok(addressEq(await read(client, deployer, bootstrap.abi, "factory"), factory));
   assert.ok(addressEq(await read(client, deployer, bootstrap.abi, "graduationEngine"), engine));
@@ -438,6 +446,17 @@ async function deploy(client, accounts, pins, artifacts) {
     chainId: client.chain.id, factory, factoryRuntimeHash, graduationEngine: engine, graduationRuntimeHash,
     guard: guardAddress, guardRuntimeHash, deployBlock: receipt.blockNumber, router: pins.universalRouter,
     deployment: { ...receiptEvidence(receipt), address: deployer, deploymentRuntimeHash, operator, nonce,
+      initcode: {
+        sizeBytes: initcode.length,
+        constructorBytes: initcode.length - (bootstrap.bytecode.length - 2) / 2,
+        sha256: sha(initcode),
+        headroomBytes: 49_152 - initcode.length,
+        eip3860Gas: 2 * Math.ceil(initcode.length / 32),
+        calldataGas: zeroBytes * 4 + (initcode.length - zeroBytes) * 16,
+        gasLimit,
+        effectiveGasPrice: receipt.effectiveGasPrice,
+        executionFeeWei: receipt.gasUsed * receipt.effectiveGasPrice,
+      },
       dependencies, operatingRecipient, futureReserveRecipient, projectRegistry, guardSalt, guardCodeHash: bytecodeHash,
       successorDeployer, successorDeployerRuntimeHash, successorDeployerReceipt: receiptEvidence(helperReceipt) },
   };
