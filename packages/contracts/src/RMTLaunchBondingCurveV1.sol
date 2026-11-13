@@ -277,6 +277,10 @@ contract RMTLaunchBondingCurveV1 is ReentrancyGuard {
         uint256 inventory = totalSupply - sold;
         uint256 nativeBefore = address(this).balance;
         uint256 tokenBefore = token.balanceOf(address(this));
+        // Seal curve trades and clear backing before interacting with the v4 engine.
+        // Any funding or settlement revert atomically restores both fields.
+        graduated = true;
+        backingReserve = 0;
         receivingGraduationRefund = true;
         token.forceApprove(address(graduationEngine), inventory);
         (bytes32 id, uint256 position, uint256 nativeUsed, uint256 tokenUsed) = graduationEngine.graduate{
@@ -291,10 +295,8 @@ contract RMTLaunchBondingCurveV1 is ReentrancyGuard {
                 || tokenUsed > inventory || address(this).balance != nativeBefore - nativeUsed
                 || token.balanceOf(address(this)) != tokenBefore - tokenUsed
         ) revert InvalidGraduationSettlement();
-        graduated = true;
         poolId = id;
         positionTokenId = position;
-        backingReserve = 0;
         nativeDust = backing - nativeUsed;
         tokenDust = inventory - tokenUsed;
         emit CurveGraduated(id, position, nativeUsed, tokenUsed, nativeDust, tokenDust);

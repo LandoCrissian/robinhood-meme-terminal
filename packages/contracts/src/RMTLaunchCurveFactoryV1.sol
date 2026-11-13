@@ -98,7 +98,7 @@ contract RMTLaunchCurveFactoryV1 {
         curve = address(market);
         tokenForIntent[msg.sender][intentId] = token;
         curveForToken[token] = curve;
-        launchedToken.transfer(curve, supply);
+        if (!launchedToken.transfer(curve, supply)) revert InvalidLaunch();
         if (address(projectRegistry) != address(0)) projectRegistry.register(token, curve);
         emit CurveCreated(
             token,
