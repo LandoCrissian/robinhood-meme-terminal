@@ -10,6 +10,12 @@ import {RMTLaunchCurveFactoryV1} from "../src/RMTLaunchCurveFactoryV1.sol";
 import {RMTLaunchCurveRevenueLedgerV1} from "../src/RMTLaunchCurveRevenueLedgerV1.sol";
 import {IRMTV4CurveGraduationV1} from "../src/interfaces/IRMTV4CurveGraduationV1.sol";
 
+contract ForcedCurveRefund {
+    constructor(address payable curve) payable {
+        selfdestruct(curve);
+    }
+}
+
 contract CurveGraduationProbe is IRMTV4CurveGraduationV1 {
     address public immutable factory;
     uint8 public behavior;
@@ -38,10 +44,18 @@ contract CurveGraduationProbe is IRMTV4CurveGraduationV1 {
             msg.sender.call(abi.encodeCall(RMTLaunchBondingCurveV1.graduate, (deadline)));
         require(!entered && bytes4(failure) == ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
         require(IERC20(token).transferFrom(msg.sender, address(this), tokenReserve - 2));
-        (bool refunded,) = msg.sender.call{value: 1}("");
-        require(refunded);
+        if (behavior == 3) {
+            new ForcedCurveRefund{value: 1}(payable(msg.sender));
+        } else {
+            (bool refunded,) = msg.sender.call{value: 1}("");
+            require(refunded);
+        }
+        if (behavior == 4) {
+            (bool refunded, bytes memory reason) = msg.sender.call{value: 1}("");
+            require(!refunded && bytes4(reason) == RMTLaunchBondingCurveV1.UnauthorizedNativeTransfer.selector);
+        }
         if (behavior == 1) revert("interrupted funding");
-        return (EXPECTED_POOL, 1, nativeReserve - behavior - 1, tokenReserve - 2);
+        return (EXPECTED_POOL, 1, nativeReserve - (behavior == 2 ? 3 : 1), tokenReserve - 2);
     }
 }
 
@@ -348,6 +362,49 @@ contract RMTLaunchBondingCurveV1Test is Test {
         curve.graduate(block.timestamp);
         assertEq(address(curve).balance, 1 ether + curve.nativeDust());
         assertEq(token.balanceOf(address(curve)), bought + curve.tokenDust());
+    }
+
+    function testGraduationRejectsForcedRefundEvenWhenNativeBalanceMatches() external {
+        _buy(ALICE, 3 ether);
+        uint256 inventory = token.balanceOf(address(curve));
+        graduation.setBehavior(3);
+        vm.expectRevert(RMTLaunchBondingCurveV1.InvalidGraduationSettlement.selector);
+        curve.graduate(block.timestamp);
+        assertFalse(curve.graduated());
+        assertEq(curve.backingReserve(), 1 ether);
+        assertEq(address(curve).balance, 1 ether);
+        assertEq(token.balanceOf(address(curve)), inventory);
+        assertEq(token.balanceOf(address(graduation)), 0);
+        assertEq(token.allowance(address(curve), address(graduation)), 0);
+
+        graduation.setBehavior(4);
+        curve.graduate(block.timestamp);
+        assertTrue(curve.graduated());
+        assertEq(curve.nativeDust(), 1);
+    }
+
+    function testGraduationRejectsFakeApprovalGrantOrRevocation() external {
+        _buy(ALICE, 3 ether);
+        uint256 inventory = token.balanceOf(address(curve));
+        vm.mockCall(address(token), abi.encodeCall(token.approve, (address(graduation), inventory)), abi.encode(true));
+        vm.expectRevert(RMTLaunchBondingCurveV1.InvalidGraduationSettlement.selector);
+        curve.graduate(block.timestamp);
+        vm.clearMockedCalls();
+
+        vm.mockCall(address(token), abi.encodeCall(token.approve, (address(graduation), 0)), abi.encode(true));
+        vm.expectRevert(RMTLaunchBondingCurveV1.InvalidGraduationSettlement.selector);
+        curve.graduate(block.timestamp);
+        vm.clearMockedCalls();
+        assertFalse(curve.graduated());
+        assertEq(curve.backingReserve(), 1 ether);
+        assertEq(address(curve).balance, 1 ether);
+        assertEq(token.balanceOf(address(curve)), inventory);
+        assertEq(token.allowance(address(curve), address(graduation)), 0);
+        assertEq(address(graduation).balance, 0);
+
+        curve.graduate(block.timestamp);
+        assertTrue(curve.graduated());
+        assertEq(token.allowance(address(curve), address(graduation)), 0);
     }
 
     function testExplicitThresholdBuyAndGraduationSettleAtomically() external {

@@ -44,6 +44,7 @@ contract RMTLaunchBondingCurveV1 is ReentrancyGuard {
     address public migratedTo;
     bool public active;
     bool private receivingGraduationRefund;
+    uint256 private graduationRefund;
 
     struct BuyFill {
         uint256 tokensOut;
@@ -122,7 +123,11 @@ contract RMTLaunchBondingCurveV1 is ReentrancyGuard {
     }
 
     receive() external payable {
-        if (!receivingGraduationRefund || msg.sender != address(graduationEngine)) revert UnauthorizedNativeTransfer();
+        if (
+            !receivingGraduationRefund || msg.sender != address(graduationEngine) || msg.value == 0
+                || graduationRefund != 0
+        ) revert UnauthorizedNativeTransfer();
+        graduationRefund = msg.value;
     }
 
     function executionVersion() public pure virtual returns (uint32) {
@@ -190,13 +195,15 @@ contract RMTLaunchBondingCurveV1 is ReentrancyGuard {
         backingReserve = 0;
         // The only admitted token is the factory's fixed-supply ERC-20, whose transfer is exact.
         token.safeTransfer(nextCurve, inventory);
-        next.acceptMigration{value: backing}(soldAmount, backing, inventory);
+        // The successor remains closed throughout the ledger interaction.
         revenueLedger.moveAccrual(nextCurve);
+        next.acceptMigration{value: backing}(soldAmount, backing, inventory);
         if (
             address(this).balance != sourceNative - backing || nextCurve.balance != destinationNative + backing
                 || token.balanceOf(address(this)) != sourceTokens - inventory
                 || token.balanceOf(nextCurve) != destinationTokens + inventory
-                || revenueLedger.activeCurve() != nextCurve
+                || revenueLedger.activeCurve() != nextCurve || !next.active() || next.sold() != soldAmount
+                || next.backingReserve() != backing
         ) revert InvalidMigrationSettlement();
     }
 
@@ -208,6 +215,7 @@ contract RMTLaunchBondingCurveV1 is ReentrancyGuard {
                 || backing != RMTLaunchCurveMathV1.requiredBacking(virtualToken, soldAmount)
                 || token.balanceOf(address(this)) < inventory
                 || RMTLaunchBondingCurveV1(payable(msg.sender)).migratedTo() != address(this)
+                || revenueLedger.activeCurve() != address(this)
         ) revert InvalidMigrationSettlement();
         sold = soldAmount;
         backingReserve = backing;
@@ -319,18 +327,19 @@ contract RMTLaunchBondingCurveV1 is ReentrancyGuard {
         // Any funding or settlement revert atomically restores both fields.
         graduated = true;
         backingReserve = 0;
+        _approveGraduation(inventory);
         receivingGraduationRefund = true;
-        token.forceApprove(address(graduationEngine), inventory);
         (bytes32 id, uint256 position, uint256 nativeUsed, uint256 tokenUsed) = graduationEngine.graduate{
             value: backing
         }(
             address(token), backing, inventory, virtualToken - sold, VIRTUAL_ETH + backing, deadline
         );
-        token.forceApprove(address(graduationEngine), 0);
         receivingGraduationRefund = false;
+        _approveGraduation(0);
         if (
             id == bytes32(0) || position == 0 || nativeUsed == 0 || tokenUsed == 0 || nativeUsed > backing
-                || tokenUsed > inventory || address(this).balance != nativeBefore - nativeUsed
+                || tokenUsed > inventory || graduationRefund != backing - nativeUsed
+                || address(this).balance != nativeBefore - nativeUsed
                 || token.balanceOf(address(this)) != tokenBefore - tokenUsed
         ) revert InvalidGraduationSettlement();
         poolId = id;
@@ -338,6 +347,14 @@ contract RMTLaunchBondingCurveV1 is ReentrancyGuard {
         nativeDust = backing - nativeUsed;
         tokenDust = inventory - tokenUsed;
         emit CurveGraduated(id, position, nativeUsed, tokenUsed, nativeDust, tokenDust);
+    }
+
+    function _approveGraduation(uint256 amount) private {
+        // The factory's immutable ERC-20 exposes checked, exact, boolean-returning approvals.
+        address spender = address(graduationEngine);
+        if (!token.approve(spender, amount) || token.allowance(address(this), spender) != amount) {
+            revert InvalidGraduationSettlement();
+        }
     }
 
     function _pay(address recipient, uint256 amount) private {

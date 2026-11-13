@@ -201,6 +201,12 @@ contract RMTLaunchCurveFactoryV1 is ReentrancyGuard {
             revert InvalidMigration();
         }
         nextCurve = IRMTCurveMigrationTemplate(deployer).prepare(source, salt);
+        // A template can call out during creation. Recheck the source and publication
+        // before making the candidate available for a creator's proposal.
+        (address admitted, bytes32 admittedHash) = projectRegistry.migrationTemplate(address(this), fromVersion);
+        if (!market.active() || market.graduated() || admitted != deployer || admittedHash != runtimeHash) {
+            revert InvalidMigration();
+        }
         _validateCandidate(market, nextCurve, nextVersion, token);
         migrationCandidate[token][nextVersion] = nextCurve;
         emit CurveMigrationPrepared(token, source, nextCurve, nextVersion);
