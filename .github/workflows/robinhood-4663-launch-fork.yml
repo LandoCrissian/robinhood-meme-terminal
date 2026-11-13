@@ -14,6 +14,12 @@ on:
       - "apps/web/lib/server/new-launchpad-*.ts"
       - "pnpm-lock.yaml"
   workflow_dispatch:
+    inputs:
+      archive:
+        description: Read-only Robinhood archive for the entire fork run
+        type: choice
+        options: [drpc, pocket, pinax]
+        default: drpc
 
 permissions:
   contents: read
@@ -32,7 +38,7 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4d8de1a7e8a1994be8446e0773504
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
         with:
           version: 10.12.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -52,10 +58,12 @@ jobs:
           chmod 700 "$RUNNER_TEMP/solc-0.8.26"
       - name: Exercise the exact V2 review build on loopback Anvil
         working-directory: apps/web
+        env:
+          FORK_ARCHIVE: ${{ inputs.archive || 'drpc' }}
         run: |
           set -euo pipefail
           node --import tsx ../../packages/contracts/scripts/validate-launch-4663-fork.mjs \
-            --anvil "$(command -v anvil)" --solc "$RUNNER_TEMP/solc-0.8.26" \
+            --anvil "$(command -v anvil)" --solc "$RUNNER_TEMP/solc-0.8.26" --archive "$FORK_ARCHIVE" \
             > "$RUNNER_TEMP/robinhood-4663-fork-evidence.json" \
             2> >(tee "$RUNNER_TEMP/robinhood-4663-fork-diagnostics.log" >&2)
           node -e 'JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"))' \

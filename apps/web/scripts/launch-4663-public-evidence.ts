@@ -169,7 +169,7 @@ function rpcWith(rpc: PublicClient, override: Partial<Pick<PublicClient, "getLog
   });
 }
 
-async function verifyWalletJournal(rpc: PublicClient, request: LaunchRequest, hash: Hash) {
+async function verifyWalletJournal(rpc: PublicClient, request: LaunchRequest, hash: Hash, settle: () => Promise<void>) {
   const journalKey = ["rmt:launchpad:pending:v1", request.chainId, request.from.toLowerCase()].join(":");
   const storage = new Map<string, string>([[journalKey, JSON.stringify({ request })]]);
   const savedGlobals = new Map(["localStorage", "navigator"].map((name) =>
@@ -204,6 +204,8 @@ async function verifyWalletJournal(rpc: PublicClient, request: LaunchRequest, ha
     assert.equal(await replacePendingRequest(pending), false);
     const recovered = readPendingRequest(4663, request.from);
     assert.deepEqual(recovered, { request, hash });
+    await settle();
+    assert.deepEqual(readPendingRequest(4663, request.from), recovered);
     assert.equal(await replacePendingRequest(recovered!), true);
     assert.equal(readPendingRequest(4663, request.from), undefined);
   } finally {
@@ -471,8 +473,6 @@ export async function runPublicEvidence({
       };
       const bound = await direct.boundReceipt(rpc, trade.hash, request);
       await assert.rejects(normalVerifySwap(rpc, bound, config.deployment, launch, request), /unavailable for this pool/);
-      assert.equal(await direct.verifySwap(rpc, bound, config.deployment, launch, request), BigInt(trade.amountOut));
-      await verifyWalletJournal(rpc, request, trade.hash);
       await assert.rejects(direct.boundReceipt(rpc, trade.hash, { ...request, from: zeroAddress }), /reviewed wallet request/);
       await assert.rejects(direct.boundReceipt(rpc, trade.hash, { ...request, chainId: 31337 }), /different network/);
       await assert.rejects(direct.boundReceipt(rpc, trade.hash, { ...request, data: "0x" }), /reviewed wallet request/);
@@ -486,20 +486,24 @@ export async function runPublicEvidence({
           return rpc.request(args as never);
         }) as PublicClient["request"],
       });
-      if (side === "sell") {
-        await assert.rejects(direct.verifySwap(missingTrace, bound, config.deployment, launch, request), /debug_traceTransaction unavailable/);
-        const noPayout = rpcWith(rpc, {
-          request: ((args: { method: string; params?: readonly unknown[] }) =>
-            args.method === "debug_traceTransaction" ? Promise.resolve(null) : rpc.request(args as never)) as PublicClient["request"],
-        });
-        await assert.rejects(direct.verifySwap(noPayout, bound, config.deployment, launch, request), /native ETH payout is not verified/);
-      }
+      await verifyWalletJournal(rpc, request, trade.hash, async () => {
+        if (side === "sell") {
+          await assert.rejects(direct.verifySwap(missingTrace, bound, config.deployment, launch, request), /debug_traceTransaction unavailable/);
+          const noPayout = rpcWith(rpc, {
+            request: ((args: { method: string; params?: readonly unknown[] }) =>
+              args.method === "debug_traceTransaction" ? Promise.resolve(null) : rpc.request(args as never)) as PublicClient["request"],
+          });
+          await assert.rejects(direct.verifySwap(noPayout, bound, config.deployment, launch, request), /native ETH payout is not verified/);
+          assert.deepEqual(readPendingRequest(4663, request.from), { request, hash: trade.hash });
+        }
+        assert.equal(await direct.verifySwap(rpc, bound, config.deployment, launch, request), BigInt(trade.amountOut));
+      });
       swaps[side] = {
         transactionHash: trade.hash, receiptBlockNumber: String(receipt.blockNumber), receiptBlockHash: receipt.blockHash,
         reviewedBlockNumber: String(originalBlock.number), reviewedBlockHash: originalBlock.hash,
         exactAmountOut: String(trade.amountOut), recovered: true, journalRecoveredWithoutRebroadcast: true, incorrectAccountChainCalldataAndReviewBlockRejected: true,
         incorrectFullPoolKeyRejected: true,
-        ...(side === "sell" ? { exactNativePayout: true, missingTraceRejected: true, noPayoutTraceRejected: true } : {}),
+        ...(side === "sell" ? { exactNativePayout: true, missingTraceRejected: true, noPayoutTraceRejected: true, journalRetainedWithoutTrace: true } : {}),
       };
     }
 

@@ -110,7 +110,9 @@ async function expectRevert(client, call, errorName, allowEmpty = false) {
   } catch (error) {
     for (let detail = error; detail; detail = detail.cause) {
       const data = typeof detail.data === "string" ? detail.data : detail.data?.data;
-      if (allowEmpty && data === "0x" && detail.code === 3) return { code: 3, message: "execution reverted", data };
+      if (allowEmpty && data === "0x" && detail.code === 3) {
+        return { code: detail.code, message: detail.details ?? detail.message, data };
+      }
       if (!data || !/^0x[0-9a-f]+$/i.test(data)) continue;
       if (errorName) {
         const expectedSelector = toFunctionSelector(errorName.includes("(") ? errorName : errorName + "()");
@@ -361,7 +363,8 @@ export async function runGuardedV2ForkLifecycle({ rpcUrl, report, accounts, arti
   }
 
   const launched = await launch(baseTerms);
-  console.error("Loopback launch confirmed: " + launched.launch.hash);
+  console.error("Loopback launch confirmed: " + launched.launch.hash + " pool=" + launched.poolId
+    + " refundWei=" + launched.launch.refund + " fundingRollback=" + fundingInterruption.hash);
   assertAddress(launched.token, token, "Retry token");
   assert.ok(launched.launch.refund > 0n, "The primary fixture must exercise an actual refund.");
   assert.equal(await balanceAt(factory), 0n);
@@ -432,7 +435,7 @@ function swapData(key, buy, amountIn, minimumOut, deadline, minHopPriceX36 = min
   }
 
   const buy = await swap(true, parseEther("0.2"));
-  console.error("Official Router 2.1.2 buy confirmed: " + buy.hash);
+  console.error("Official Router 2.1.2 buy confirmed: " + buy.hash + " tokenOutAtomic=" + buy.amountOut);
   const sellAmount = buy.amountOut / 2n;
   assert.ok(sellAmount > 0n);
   const sellDeadline = (await client.getBlock()).timestamp + 600n;
@@ -449,7 +452,7 @@ function swapData(key, buy, amountIn, minimumOut, deadline, minHopPriceX36 = min
     from: buyer, to: router, data: swapData(poolKey, false, sellAmount + 1n, 1n, sellDeadline),
   });
   const sell = await swap(false, sellAmount);
-  console.error("Official Router 2.1.2 sell confirmed with native trace: " + sell.hash);
+  console.error("Official Router 2.1.2 sell confirmed with native trace: " + sell.hash + " nativeOutWei=" + sell.amountOut);
   assert.equal(await tokenRead(token, "allowance", [buyer, permit2]), 0n);
   assert.equal((await allowanceAt(buyer, token, router))[0], 0n);
 
@@ -531,12 +534,12 @@ function swapData(key, buy, amountIn, minimumOut, deadline, minHopPriceX36 = min
 }
 
 async function main() {
-  const { values } = parseArgs({ options: { anvil: { type: "string" }, solc: { type: "string" }, lib: { type: "string" } } });
-  assert.ok(values.anvil && values.solc, "Supply --anvil and --solc paths, optionally --lib for pinned dependencies.");
+  const { values } = parseArgs({ options: { anvil: { type: "string" }, solc: { type: "string" }, lib: { type: "string" }, archive: { type: "string" } } });
+  assert.ok(values.anvil && values.solc, "Supply --anvil and --solc paths, optionally --lib for pinned dependencies and --archive for a listed read provider.");
   const { runPublicEvidence } = await import("../../../apps/web/scripts/launch-4663-public-evidence.ts");
   const output = await withRobinhood4663Fork(values, async (environment) => {
     const lifecycle = await runGuardedV2ForkLifecycle({ ...environment, onLaunch: runPublicEvidence });
-    const wrongChain = await withAnvilFork({ anvil: values.anvil, chainId: 31337 },
+    const wrongChain = await withAnvilFork({ anvil: values.anvil, archive: values.archive, chainId: 31337 },
       (wrong) => runWrongChainCheck({ ...wrong, artifacts: environment.artifacts }));
     return { purpose: "loopback-review-fork", network: environment.report.network,
       build: environment.report.build, execution: environment.report.execution,

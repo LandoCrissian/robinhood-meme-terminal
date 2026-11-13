@@ -21,7 +21,7 @@ const network = {
   chainId: 4663,
   blockNumber: 113412054,
   blockHash: "0x17252a232b68a4e9fc494caf0660cff722ac2da966ee5c62b40e20dbcfd32ea2",
-  provider: "https://robinhood.drpc.org",
+  stateRoot: "0x40bd233c2ec47cdd834b5df1bd12252d85987ca6256d87ed1340c0e6f47dc494",
   corroboratingProvider: published.rpcUrl,
   contracts: {
     poolManager: published.poolManager,
@@ -35,6 +35,11 @@ const network = {
     },
   },
 };
+const archiveProviders = new Map([
+  ["pocket", "https://robinhood.api.pocket.network"],
+  ["drpc", "https://robinhood.drpc.org"],
+  ["pinax", "https://robinhood.rpc.pinax.network"],
+]);
 const anchor = "0x" + network.blockNumber.toString(16);
 // Verified against both #583 compiler runs. The only omitted fields identify the platform binary.
 const reviewDigest = "97cf74656e86ca3fce2ecc020478d4589394f08d03301667322ccdeaa7872793";
@@ -62,13 +67,13 @@ const fixtures = Array.from({ length: 6 }, (_, index) =>
 let requestId = 0;
 let nextArchiveRead = 0;
 
-async function readArchive(payload) {
+async function readArchive(provider, payload) {
   for (let attempt = 0; attempt < 3; attempt++) {
     const now = Date.now();
     const slot = Math.max(now, nextArchiveRead);
     nextArchiveRead = slot + 500;
     await delay(slot - now);
-    const response = await fetch(network.provider, {
+    const response = await fetch(provider, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload),
@@ -83,16 +88,16 @@ async function readArchive(payload) {
 
 async function rpc(url, method, params = []) {
   const body = { jsonrpc: "2.0", id: ++requestId, method, params };
-  const response = url === network.provider ? await readArchive(body) : await fetch(url, {
+  const response = [...archiveProviders.values()].includes(url) ? await readArchive(url, body) : await fetch(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
     redirect: "error",
     signal: AbortSignal.timeout(45_000),
   });
-  assert.ok(response.ok, method + " returned HTTP " + response.status);
   const payload = await response.json();
-  if (payload.error) throw new Error(method + ": " + JSON.stringify(payload.error));
+  if (payload.error) throw new Error(method + " HTTP " + response.status + ": " + JSON.stringify(payload.error));
+  assert.ok(response.ok, method + " returned HTTP " + response.status);
   assert.ok("result" in payload, method + " response omitted result");
   return payload.result;
 }
@@ -103,6 +108,7 @@ async function assertAnchor(url, chainId) {
   const block = await rpc(url, "eth_getBlockByNumber", [anchor, false]);
   assert.equal(block?.number, anchor, "fork anchor number");
   assert.equal(block?.hash, network.blockHash, "fork anchor hash");
+  assert.equal(block?.stateRoot, network.stateRoot, "fork anchor state root");
   return block;
 }
 
@@ -144,14 +150,14 @@ async function verifyOfficialBindings(url) {
   return { block, bindings, permit2: contracts.permit2.address };
 }
 
-async function verifyUpstream() {
+async function verifyUpstream(provider) {
   const [verified, corroborated, primaryFinalized, corroboratingFinalized, tx, receipt] = await Promise.all([
-    verifyOfficialBindings(network.provider),
+    verifyOfficialBindings(provider),
     assertAnchor(network.corroboratingProvider, network.chainId),
-    rpc(network.provider, "eth_getBlockByNumber", ["finalized", false]),
+    rpc(provider, "eth_getBlockByNumber", ["finalized", false]),
     rpc(network.corroboratingProvider, "eth_getBlockByNumber", ["finalized", false]),
-    rpc(network.provider, "eth_getTransactionByHash", [routerDeployment.transactionHash]),
-    rpc(network.provider, "eth_getTransactionReceipt", [routerDeployment.transactionHash]),
+    rpc(provider, "eth_getTransactionByHash", [routerDeployment.transactionHash]),
+    rpc(provider, "eth_getTransactionReceipt", [routerDeployment.transactionHash]),
   ]);
   for (const finalized of [primaryFinalized, corroboratingFinalized]) {
     assert.ok(BigInt(finalized?.number) >= BigInt(anchor), "upstream has not finalized the pinned block");
@@ -196,7 +202,7 @@ function sendJson(response, status, payload) {
   response.end(JSON.stringify(payload));
 }
 
-async function openReadOnlyUpstream() {
+async function openReadOnlyUpstream(provider) {
   const methods = new Set();
   const blockedMethods = new Set();
   const server = createServer(async (request, response) => {
@@ -212,9 +218,10 @@ async function openReadOnlyUpstream() {
         return;
       }
       for (const call of requests) methods.add(call.method);
-      const upstream = await readArchive(payload);
+      const upstream = await readArchive(provider, payload);
+      const result = await upstream.text();
       response.writeHead(upstream.status, { "content-type": "application/json" });
-      response.end(await upstream.text());
+      response.end(result);
     } catch {
       if (!response.headersSent) sendJson(response, 502, { error: "fork read transport failed" });
       else response.end();
@@ -223,14 +230,27 @@ async function openReadOnlyUpstream() {
   server.listen(0, "127.0.0.1");
   await once(server, "listening");
   const url = "http://127.0.0.1:" + server.address().port;
-  const check = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_sendRawTransaction", params: ["0x"] }),
-  });
-  assert.equal(check.status, 403, "local archive write denial test");
-  await check.text();
-  return { server, url, methods, blockedMethods };
+  try {
+    const check = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "eth_sendRawTransaction", params: ["0x"] }),
+      signal: AbortSignal.timeout(5_000),
+    });
+    await check.text();
+    assert.equal(check.status, 403, "local archive write denial test");
+    return { server, url, methods, blockedMethods };
+  } catch (error) {
+    await closeUpstream(server);
+    throw error;
+  }
+}
+
+async function closeUpstream(server) {
+  const closed = once(server, "close");
+  server.close();
+  server.closeAllConnections();
+  await closed;
 }
 
 function startAnvil(anvil, upstream, chainId) {
@@ -244,11 +264,13 @@ function startAnvil(anvil, upstream, chainId) {
 function waitForLocalPort(child) {
   return new Promise((resolvePort, reject) => {
     let output = "";
-    const startup = setTimeout(() => finish(new Error("Anvil startup timed out")), 40_000);
+    let diagnostics = "";
+    const startup = setTimeout(() => finish(new Error("Anvil startup timed out: " + diagnostics)), 40_000);
     const failed = (error) => finish(error);
-    const exited = (code) => finish(new Error("Anvil exited before listening (" + code + "): " + output));
+    const exited = (code) => finish(new Error("Anvil exited before listening (" + code + "): " + diagnostics));
+    const captureError = (chunk) => { diagnostics = (diagnostics + chunk.toString()).slice(-4_096); };
     const capture = (chunk) => {
-      output = (output + chunk.toString()).slice(-8_192);
+      output = (output + chunk.toString()).slice(-1_024);
       const port = /Listening on 127\.0\.0\.1:(\d+)/.exec(output)?.[1];
       if (port) finish(null, "http://127.0.0.1:" + port);
     };
@@ -257,7 +279,7 @@ function waitForLocalPort(child) {
       child.off("error", failed);
       child.off("exit", exited);
       child.stdout.off("data", capture);
-      child.stderr.off("data", capture);
+      child.stderr.off("data", captureError);
       child.stdout.resume();
       child.stderr.resume();
       if (error) reject(error);
@@ -266,7 +288,7 @@ function waitForLocalPort(child) {
     child.once("error", failed);
     child.once("exit", exited);
     child.stdout.on("data", capture);
-    child.stderr.on("data", capture);
+    child.stderr.on("data", captureError);
   });
 }
 
@@ -281,13 +303,15 @@ async function stopAnvil(child) {
   }
 }
 
-export async function withAnvilFork({ anvil, chainId = network.chainId }, run) {
+export async function withAnvilFork({ anvil, chainId = network.chainId, archive = "drpc" }, run) {
   assert.ok(chainId === 4663 || chainId === 31337, "unsupported review fork chain ID");
   const binary = anvil.includes("/") || anvil.includes("\\") ? resolve(anvil) : anvil;
   const version = execFileSync(binary, ["--version"], { encoding: "utf8", windowsHide: true });
   assert.match(version, /^anvil Version: 1\.7\.1\s/m, "unexpected Anvil version");
-  const upstream = await verifyUpstream();
-  const proxy = await openReadOnlyUpstream();
+  const provider = archiveProviders.get(archive);
+  assert.ok(provider, "unsupported public archive provider");
+  const upstream = await verifyUpstream(provider);
+  const proxy = await openReadOnlyUpstream(provider);
   let child;
   try {
     child = startAnvil(binary, proxy.url, chainId);
@@ -305,12 +329,13 @@ export async function withAnvilFork({ anvil, chainId = network.chainId }, run) {
       await rpc(rpcUrl, "anvil_impersonateAccount", [account]);
     }
     const report = {
-      network: { ...network, ...upstream },
+      network: { ...network, provider, ...upstream },
       execution: { chainId, anvil: "1.7.1", hardfork: "cancun", host: "127.0.0.1", fixtureKeys: 0 },
       archiveBoundary: { methodAllowlist: [...remoteMethods].sort(), blockedWriteProbe: "HTTP 403" },
     };
     const result = await run({ rpcUrl, report, accounts: [...fixtures] });
     assert.deepEqual([...proxy.blockedMethods], ["eth_sendRawTransaction"], "unexpected archive RPC blocked");
+    report.archiveBoundary.forwardedMethods = [...proxy.methods].sort();
     return result;
   } catch (error) {
     if (proxy.blockedMethods.size > 1) {
@@ -321,22 +346,19 @@ export async function withAnvilFork({ anvil, chainId = network.chainId }, run) {
     try {
       await stopAnvil(child);
     } finally {
-      const closed = once(proxy.server, "close");
-      proxy.server.close();
-      proxy.server.closeAllConnections();
-      await closed;
+      await closeUpstream(proxy.server);
     }
   }
 }
 
-export async function withRobinhood4663Fork({ anvil, solc, lib }, run) {
+export async function withRobinhood4663Fork({ anvil, solc, lib, archive }, run) {
   const { manifest, templates } = buildLaunch4663Review({ solc, lib }, true);
   const { executablePlatform, executableSha256, ...portableCompiler } = manifest.compiler;
   const portable = { ...manifest, compiler: portableCompiler };
   const digest = createHash("sha256").update(JSON.stringify(portable)).digest("hex");
   assert.equal(digest, reviewDigest, "review build differs from independently reproduced #583 manifest");
   const fullManifestSha256 = createHash("sha256").update(JSON.stringify(manifest, null, 2) + "\n").digest("hex");
-  return withAnvilFork({ anvil }, (context) => {
+  return withAnvilFork({ anvil, archive }, (context) => {
     context.report.build = { portableManifestSha256: digest, fullManifestSha256, manifest };
     return run({ ...context, manifest, artifacts: templates });
   });
@@ -345,10 +367,10 @@ export async function withRobinhood4663Fork({ anvil, solc, lib }, run) {
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
   try {
     const { values } = parseArgs({ options: {
-      anvil: { type: "string" }, solc: { type: "string" }, lib: { type: "string" },
+      anvil: { type: "string" }, solc: { type: "string" }, lib: { type: "string" }, archive: { type: "string" },
     } });
     if (!values.anvil || !values.solc) {
-      throw new Error("Provide --anvil and --solc executable paths, and optional --lib dependency path");
+      throw new Error("Provide --anvil and --solc executable paths, and optional --lib dependency path and --archive provider");
     }
     const report = await withRobinhood4663Fork(values, ({ report }) => report);
     console.log(JSON.stringify(report, null, 2));
