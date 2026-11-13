@@ -3,6 +3,8 @@ pragma solidity 0.8.26;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {RMTLaunchBondingCurveV1} from "./RMTLaunchBondingCurveV1.sol";
+import {RMTLaunchCurveSuccessorDeployerV1} from "./RMTLaunchBondingCurveV2.sol";
+import {RMTLaunchCurveRevenueLedgerV1} from "./RMTLaunchCurveRevenueLedgerV1.sol";
 import {RMTLaunchCurveTokenV1} from "./RMTLaunchCurveTokenV1.sol";
 import {IRMTV4CurveGraduationV1} from "./interfaces/IRMTV4CurveGraduationV1.sol";
 
@@ -17,8 +19,12 @@ contract RMTLaunchCurveFactoryV1 {
     address public immutable operatingRecipient;
     address public immutable futureReserveRecipient;
     IRMTLaunchCurveRegistryV1 public immutable projectRegistry;
+    RMTLaunchCurveSuccessorDeployerV1 public immutable successorDeployer;
+    bytes32 public immutable successorDeployerRuntimeHash;
 
     mapping(address token => address curve) public curveForToken;
+    mapping(address token => address curve) public originCurveForToken;
+    mapping(address token => mapping(uint32 version => address curve)) public migrationCandidate;
     mapping(address creator => mapping(bytes32 intentId => address token)) public tokenForIntent;
 
     error WrongChain();
@@ -26,6 +32,7 @@ contract RMTLaunchCurveFactoryV1 {
     error InvalidLaunch();
     error DuplicateIntent();
     error DeadlineExpired();
+    error InvalidMigration();
 
     event CurveCreated(
         address indexed token,
@@ -40,12 +47,27 @@ contract RMTLaunchCurveFactoryV1 {
         string symbol,
         string projectURI
     );
+    event CurveMigrationPrepared(
+        address indexed token, address indexed fromCurve, address indexed toCurve, uint32 version
+    );
+    event CurveAssetsMigrated(
+        address indexed token,
+        address indexed fromCurve,
+        address indexed toCurve,
+        uint32 version,
+        uint256 sold,
+        uint256 backing,
+        uint256 inventory,
+        address ledger
+    );
 
     constructor(
         address graduationEngine_,
         address operatingRecipient_,
         address futureReserveRecipient_,
-        address projectRegistry_
+        address projectRegistry_,
+        address successorDeployer_,
+        bytes32 successorDeployerRuntimeHash_
     ) {
         if (block.chainid != 31_337) revert WrongChain();
         // Registry-free construction is restricted to isolated local unit fixtures.
@@ -54,12 +76,15 @@ contract RMTLaunchCurveFactoryV1 {
             graduationEngine_.code.length == 0 || operatingRecipient_ == address(0)
                 || futureReserveRecipient_ == address(0) || operatingRecipient_ == futureReserveRecipient_
                 || (projectRegistry_ != address(0) && projectRegistry_.code.length == 0)
+                || successorDeployer_.code.length == 0 || successorDeployer_.codehash != successorDeployerRuntimeHash_
                 || IRMTV4CurveGraduationV1(graduationEngine_).factory() != address(this)
         ) revert InvalidConfiguration();
         graduationEngine = IRMTV4CurveGraduationV1(graduationEngine_);
         operatingRecipient = operatingRecipient_;
         futureReserveRecipient = futureReserveRecipient_;
         projectRegistry = IRMTLaunchCurveRegistryV1(projectRegistry_);
+        successorDeployer = RMTLaunchCurveSuccessorDeployerV1(successorDeployer_);
+        successorDeployerRuntimeHash = successorDeployerRuntimeHash_;
     }
 
     function create(
@@ -92,12 +117,16 @@ contract RMTLaunchCurveFactoryV1 {
             operatingRecipient,
             futureReserveRecipient,
             graduationEngine,
-            address(projectRegistry)
+            address(projectRegistry),
+            address(this),
+            address(0),
+            RMTLaunchCurveRevenueLedgerV1(address(0))
         );
         token = address(launchedToken);
         curve = address(market);
         tokenForIntent[msg.sender][intentId] = token;
         curveForToken[token] = curve;
+        originCurveForToken[token] = curve;
         if (!launchedToken.transfer(curve, supply)) revert InvalidLaunch();
         if (address(projectRegistry) != address(0)) projectRegistry.register(token, curve);
         emit CurveCreated(
@@ -113,5 +142,33 @@ contract RMTLaunchCurveFactoryV1 {
             symbol,
             projectURI
         );
+    }
+
+    function prepareMigration(address token, uint32 nextVersion) external returns (address nextCurve) {
+        if (address(projectRegistry) == address(0) || nextVersion != 2) revert InvalidMigration();
+        address source = curveForToken[token];
+        if (source == address(0)) revert InvalidMigration();
+        RMTLaunchBondingCurveV1 market = RMTLaunchBondingCurveV1(payable(source));
+        if (market.executionVersion() != 1 || !market.active() || market.graduated()) revert InvalidMigration();
+        nextCurve = migrationCandidate[token][nextVersion];
+        if (nextCurve != address(0)) return nextCurve;
+        if (address(successorDeployer).codehash != successorDeployerRuntimeHash) revert InvalidMigration();
+        nextCurve = successorDeployer.prepare(market, keccak256(abi.encode(token, source, nextVersion)));
+        migrationCandidate[token][nextVersion] = nextCurve;
+        emit CurveMigrationPrepared(token, source, nextCurve, nextVersion);
+    }
+
+    function executeMigration(address token, address nextCurve, bytes32 expectedRuntimeHash) external {
+        address source = curveForToken[token];
+        if (
+            msg.sender != address(projectRegistry) || source == address(0) || nextCurve == address(0)
+                || nextCurve != migrationCandidate[token][2] || nextCurve.codehash != expectedRuntimeHash
+        ) revert InvalidMigration();
+        RMTLaunchBondingCurveV1 market = RMTLaunchBondingCurveV1(payable(source));
+        if (market.executionVersion() != 1) revert InvalidMigration();
+        (uint256 sold, uint256 backing, uint256 inventory) =
+            market.migrateAssets(payable(nextCurve), expectedRuntimeHash);
+        curveForToken[token] = nextCurve;
+        emit CurveAssetsMigrated(token, source, nextCurve, 2, sold, backing, inventory, address(market.revenueLedger()));
     }
 }

@@ -10,17 +10,22 @@ contract RegistryMarketFixture {
     address public immutable projectRegistry;
     address public immutable token;
     address public immutable creator;
-    uint32 public executionVersion = 1;
-    address public executionEngine;
+    uint32 public immutable executionVersion;
+    address public immutable executionEngine = address(this);
+    address public immutable migrationSource;
+    address public migratedTo;
+    bool public active;
     bool public graduated;
     bool public reject;
     uint256 public backing = 21;
 
-    constructor(address registry, address asset, address creator_) {
+    constructor(address registry, address asset, address creator_, address source) {
         projectRegistry = registry;
         token = asset;
         creator = creator_;
-        executionEngine = address(this);
+        migrationSource = source;
+        executionVersion = source == address(0) ? 1 : 2;
+        active = source == address(0);
     }
 
     function configure(bool reject_, bool graduated_) external {
@@ -28,22 +33,45 @@ contract RegistryMarketFixture {
         graduated = graduated_;
     }
 
-    function migrateExecution(address engine, bytes32 runtimeHash) external {
-        require(msg.sender == projectRegistry && engine.codehash == runtimeHash);
-        ++executionVersion;
-        executionEngine = engine;
+    function migrationCommitment() external view returns (bytes32) {
+        return keccak256(abi.encode(projectRegistry, token, creator));
+    }
+
+    function migrate(address next) external {
+        require(msg.sender == factory);
+        active = false;
+        migratedTo = next;
         if (reject) revert("fixture migration fault");
+    }
+
+    function activate() external {
+        require(msg.sender == factory);
+        active = true;
     }
 }
 
 contract RegistryFactoryFixture {
     uint32 public constant engineVersion = 1;
     mapping(address => address) public curveForToken;
+    mapping(address => mapping(uint32 => address)) public migrationCandidate;
 
     function create(Registry registry, address token, address creator) external returns (RegistryMarketFixture market) {
-        market = new RegistryMarketFixture(address(registry), token, creator);
+        market = new RegistryMarketFixture(address(registry), token, creator, address(0));
         curveForToken[token] = address(market);
         registry.register(token, address(market));
+    }
+
+    function prepare(Registry registry, address token, address creator) external returns (address next) {
+        next = address(new RegistryMarketFixture(address(registry), token, creator, curveForToken[token]));
+        migrationCandidate[token][2] = next;
+    }
+
+    function executeMigration(address token, address next, bytes32 runtimeHash) external {
+        RegistryMarketFixture previous = RegistryMarketFixture(curveForToken[token]);
+        require(msg.sender == previous.projectRegistry() && next.codehash == runtimeHash);
+        previous.migrate(next);
+        RegistryMarketFixture(next).activate();
+        curveForToken[token] = next;
     }
 }
 
@@ -73,8 +101,8 @@ contract RMTLaunchProjectRegistryV1Test is Test {
         vm.warp(block.timestamp + directory.publicationDelay());
         directory.execute(publication);
         token = address(new RegistryFactoryFixture());
-        engine = address(new RegistryFactoryFixture());
         market = factory.create(registry, token, address(this));
+        engine = factory.prepare(registry, token, address(this));
     }
 
     function _sign(bytes32 digest, uint256 key) private pure returns (bytes memory) {
@@ -108,7 +136,8 @@ contract RMTLaunchProjectRegistryV1Test is Test {
         registry.executeMigration(token);
         (address factory_, address curve, uint32 version, address current, uint64 count) = registry.project(token);
         assertEq(factory_, address(factory));
-        assertEq(curve, address(market));
+        assertEq(curve, engine);
+        assertEq(registry.originCurve(token), address(market));
         assertEq(version, 2);
         assertEq(current, engine);
         assertEq(count, 1);

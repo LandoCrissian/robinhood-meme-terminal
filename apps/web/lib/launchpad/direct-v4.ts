@@ -61,7 +61,7 @@ export function displayAmount(amount: bigint | string) {
 
 export async function prepareTransaction(
   client: PublicClient, deployment: LaunchDeployment, wallet: BoundWallet,
-  operation: Pick<LaunchRequest, "kind" | "to" | "data" | "deadline" | "intentId" | "token" | "amountIn" | "minimumOut" | "feeBucket"> & { value?: bigint },
+  operation: Pick<LaunchRequest, "kind" | "to" | "data" | "deadline" | "intentId" | "token" | "curveTarget" | "amountIn" | "minimumOut" | "feeBucket"> & { value?: bigint },
 ): Promise<LaunchRequest> {
   if (wallet.chainId !== deployment.chainId || await client.getChainId() !== deployment.chainId) {
     throw new Error(`Switch your wallet to ${deployment.name} before reviewing.`);

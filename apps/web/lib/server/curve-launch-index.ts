@@ -1,8 +1,9 @@
 import { DatabaseSync } from "node:sqlite";
-import { erc20Abi, isHash, parseAbi, parseEventLogs, zeroAddress, type Address, type Hash, type PublicClient } from "viem";
+import { erc20Abi, isHash, keccak256, parseAbi, parseEventLogs, zeroAddress, type Address, type Hash, type PublicClient, type TransactionReceipt } from "viem";
 import { projectCurveReceipt } from "../launchpad/curve-receipt";
-import { curveAbi, curveCreatedEvent, curveFactoryAbi, curveGraduatedEvent, curveLedgerAbi, curveRegistryAbi, graduationEngineEvent,
-  sameCurveAddress, type CurveLaunch, type CurveState } from "../launchpad/curve-v1";
+import { curveAbi, curveAssetsMigratedEvent, curveCreatedEvent, curveDirectoryAbi, curveFactoryAbi, curveGraduatedEvent,
+  curveGraduationAbi, curveLedgerAbi, curveLpCollectedEvent, curveLpLedgerAbi, curveRegistryAbi, graduationEngineEvent, projectMigratedEvent,
+  sameCurveAddress, type CurveFeeAmounts, type CurveLaunch, type CurveState } from "../launchpad/curve-v1";
 import { launchPoolId } from "../launchpad/launch-record";
 import { boundedReceiptLogs } from "../launchpad/receipt-logs";
 import { canonicalLaunchpadBlock, readLaunchpadBlock, type LaunchpadObservedBlock } from "./new-launchpad-finality";
@@ -11,6 +12,11 @@ import type { readCurveRuntime, verifiedCurveRuntime } from "./curve-launch-conf
 type Runtime = NonNullable<ReturnType<typeof readCurveRuntime>>;
 type Ready = Awaited<ReturnType<typeof verifiedCurveRuntime>>;
 type EventIdentity = { transactionHash: Hash; blockHash: Hash; blockNumber: string; logIndex: number };
+type IndexedMigration = EventIdentity & {
+  transactionIndex: number; fromCurve: Address; toCurve: Address; version: number;
+  backing: string; inventory: string; sold: string; ledger: Address;
+};
+type IndexedCollection = EventIdentity & { positionTokenId: string; ledger: Address; amounts: CurveFeeAmounts };
 const maxRange = 128n;
 const maxLogs = 80;
 const retainedCheckpoints = 24;
@@ -31,7 +37,7 @@ async function verifiedCreation(rpc: PublicClient, factory: Address, hash: Hash,
   const canonical = canonicalLaunchpadBlock(block);
   const curve = { address: launch.curve, abi: curveAbi, ...canonical } as const;
   const [registered, curveFactory, token, creator, ledger, supply, ledgerCurve, treasury, treasuryShareBps] = await Promise.all([
-    rpc.readContract({ address: factory, abi: curveFactoryAbi, functionName: "curveForToken", args: [launch.token], ...canonical }),
+    rpc.readContract({ address: factory, abi: curveFactoryAbi, functionName: "originCurveForToken", args: [launch.token], ...canonical }),
     rpc.readContract({ ...curve, functionName: "factory" }),
     rpc.readContract({ ...curve, functionName: "token" }),
     rpc.readContract({ ...curve, functionName: "creator" }),
@@ -62,6 +68,11 @@ export class CurveLaunchIndex {
           tx TEXT NOT NULL,idx INTEGER NOT NULL,payload TEXT NOT NULL, PRIMARY KEY(scope,token),UNIQUE(scope,tx,idx),UNIQUE(scope,height,idx));
         CREATE TABLE IF NOT EXISTS curve_graduations(scope TEXT NOT NULL,token TEXT NOT NULL,height INTEGER NOT NULL,tx TEXT NOT NULL,
           idx INTEGER NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(scope,token),UNIQUE(scope,tx,idx),UNIQUE(scope,height,idx));
+        CREATE TABLE IF NOT EXISTS curve_migrations(scope TEXT NOT NULL,token TEXT NOT NULL,version INTEGER NOT NULL,height INTEGER NOT NULL,
+          tx TEXT NOT NULL,idx INTEGER NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(scope,token,version),UNIQUE(scope,tx,idx),UNIQUE(scope,height,idx));
+        CREATE TABLE IF NOT EXISTS curve_lp_collections(scope TEXT NOT NULL,token TEXT NOT NULL,height INTEGER NOT NULL,tx TEXT NOT NULL,
+          idx INTEGER NOT NULL,payload TEXT NOT NULL,PRIMARY KEY(scope,tx,idx),UNIQUE(scope,height,idx));
+        CREATE INDEX IF NOT EXISTS curve_lp_latest ON curve_lp_collections(scope,token,height DESC,idx DESC);
         CREATE TABLE IF NOT EXISTS curve_quota(scope TEXT PRIMARY KEY,window INTEGER NOT NULL,requests INTEGER NOT NULL);`);
     } catch (error) {
       this.db.close();
@@ -106,6 +117,15 @@ export class CurveLaunchIndex {
     const row = this.db.prepare("SELECT payload FROM curve_graduations WHERE scope=? AND token=?").get(this.config.scope, token.toLowerCase());
     return row ? JSON.parse(String(row.payload)) as EventIdentity : undefined;
   }
+  migration(token: Address, version: number): IndexedMigration | undefined {
+    const row = this.db.prepare("SELECT payload FROM curve_migrations WHERE scope=? AND token=? AND version=?").get(this.config.scope, token.toLowerCase(), version);
+    return row ? JSON.parse(String(row.payload)) as IndexedMigration : undefined;
+  }
+  collection(token: Address): IndexedCollection | undefined {
+    const row = this.db.prepare("SELECT payload FROM curve_lp_collections WHERE scope=? AND token=? ORDER BY height DESC,idx DESC LIMIT 1")
+      .get(this.config.scope, token.toLowerCase());
+    return row ? JSON.parse(String(row.payload)) as IndexedCollection : undefined;
+  }
   async sync({ rpc, browser }: Ready, observed: LaunchpadObservedBlock) {
     const { factory, startBlock, scope } = this.config;
     const checkpoints = this.checkpoints();
@@ -129,11 +149,15 @@ export class CurveLaunchIndex {
     const toBlock = fromBlock + maxRange - 1n < observed.blockNumber ? fromBlock + maxRange - 1n : observed.blockNumber;
     const ending = await readLaunchpadBlock(rpc, toBlock, observed.blockNumber);
     const engine = browser.curve!.graduationEngine;
-    const [creations, graduations] = await Promise.all([
+    const registry = browser.curve!.projectRegistry;
+    if (!registry) throw new Error("The curve index requires the verified project registry.");
+    const [creations, graduations, migrations, collections] = await Promise.all([
       rpc.getLogs({ address: factory, event: curveCreatedEvent, fromBlock, toBlock, strict: true }),
       rpc.getLogs({ address: engine, event: graduationEngineEvent, fromBlock, toBlock, strict: true }),
+      rpc.getLogs({ address: factory, event: curveAssetsMigratedEvent, fromBlock, toBlock, strict: true }),
+      rpc.getLogs({ address: engine, event: curveLpCollectedEvent, fromBlock, toBlock, strict: true }),
     ]);
-    if (creations.length + graduations.length > maxLogs) throw new Error("Curve event range exceeds processing limits.");
+    if (creations.length + graduations.length + migrations.length + collections.length > maxLogs) throw new Error("Curve event range exceeds processing limits.");
     const records: CurveLaunch[] = [];
     for (const log of creations) {
       const event = eventIdentity(log);
@@ -162,6 +186,40 @@ export class CurveLaunchIndex {
       }
       transitions.push({ token: log.args.token, event });
     }
+    const eventReceipt = async (log: Parameters<typeof eventIdentity>[0] & { address: Address }, emitter: Address) => {
+      const event = eventIdentity(log);
+      if (BigInt(event.blockNumber) < fromBlock || BigInt(event.blockNumber) > toBlock || !sameCurveAddress(log.address, emitter)) {
+        throw new Error("Curve lifecycle event is outside its indexed range.");
+      }
+      const receipt = await rpc.getTransactionReceipt({ hash: event.transactionHash });
+      assertEventReceipt(receipt, event);
+      const canonical = await readLaunchpadBlock(rpc, receipt.blockNumber, observed.blockNumber);
+      if (canonical.hash !== event.blockHash) throw new Error("Curve lifecycle receipt is no longer canonical.");
+      return { event, receipt };
+    };
+    const moves: { token: Address; record: IndexedMigration }[] = [];
+    for (const log of migrations) {
+      const { event, receipt } = await eventReceipt(log, factory);
+      const token = log.args.token;
+      const record = projectMigration(receipt, event, factory, registry, token, log.args.version);
+      if (!sameCurveAddress(record.fromCurve, log.args.fromCurve) || !sameCurveAddress(record.toCurve, log.args.toCurve)
+        || !sameCurveAddress(record.ledger, log.args.ledger) || record.sold !== log.args.sold.toString()
+        || record.backing !== log.args.backing.toString() || record.inventory !== log.args.inventory.toString()) {
+        throw new Error("Curve migration receipt and index log disagree.");
+      }
+      moves.push({ token, record });
+    }
+    const fees: { token: Address; record: IndexedCollection }[] = [];
+    for (const log of collections) {
+      const { event, receipt } = await eventReceipt(log, engine);
+      const token = log.args.token;
+      const record = projectCollection(receipt, event, engine, token);
+      if (record.positionTokenId !== log.args.positionTokenId.toString() || !sameCurveAddress(record.ledger, log.args.ledger)
+        || record.amounts.native !== log.args.nativeAmount.toString() || record.amounts.token !== log.args.tokenAmount.toString()) {
+        throw new Error("LP collection receipt and index log disagree.");
+      }
+      fees.push({ token, record });
+    }
     if ((common && (await readLaunchpadBlock(rpc, common.number, observed.blockNumber)).hash !== common.hash)
       || (await readLaunchpadBlock(rpc, ending.blockNumber, observed.blockNumber)).hash !== ending.hash
       || (await readLaunchpadBlock(rpc, observed.blockNumber, observed.blockNumber)).hash !== observed.hash
@@ -172,12 +230,26 @@ export class CurveLaunchIndex {
       if (current?.number !== previous?.number || current?.hash !== previous?.hash) throw new Error("Curve cursor changed during synchronization.");
       if (!existingAnchor) this.db.prepare("INSERT INTO curve_anchors(scope,height,hash) VALUES(?,?,?)").run(scope, anchor.blockNumber, anchor.hash);
       if (previous && common?.number !== previous.number) {
-        for (const table of ["curve_launches", "curve_graduations", "curve_checkpoints"]) {
+        for (const table of ["curve_launches", "curve_graduations", "curve_migrations", "curve_lp_collections", "curve_checkpoints"]) {
           this.db.prepare(`DELETE FROM ${table} WHERE scope=? AND height>?`).run(scope, common?.number ?? anchor.blockNumber);
         }
       }
       for (const record of records) this.writeLaunch(record);
       for (const { token, event } of transitions) this.writeGraduation(token, event);
+      for (const { token, record } of moves) {
+        const existing = this.migration(token, record.version);
+        if (existing && JSON.stringify(existing) !== JSON.stringify(record)) throw new Error("Conflicting indexed migration.");
+        if (!existing) this.db.prepare("INSERT INTO curve_migrations(scope,token,version,height,tx,idx,payload) VALUES(?,?,?,?,?,?,?)")
+          .run(scope, token.toLowerCase(), record.version, BigInt(record.blockNumber), record.transactionHash, record.logIndex, JSON.stringify(record));
+      }
+      for (const { token, record } of fees) {
+        const payload = JSON.stringify(record);
+        const existing = this.db.prepare("SELECT token,payload FROM curve_lp_collections WHERE scope=? AND tx=? AND idx=?")
+          .get(scope, record.transactionHash, record.logIndex);
+        if (existing && (existing.token !== token.toLowerCase() || existing.payload !== payload)) throw new Error("Conflicting indexed LP collection.");
+        if (!existing) this.db.prepare("INSERT INTO curve_lp_collections(scope,token,height,tx,idx,payload) VALUES(?,?,?,?,?,?)")
+          .run(scope, token.toLowerCase(), BigInt(record.blockNumber), record.transactionHash, record.logIndex, payload);
+      }
       this.db.prepare("INSERT INTO curve_checkpoints(scope,height,hash) VALUES(?,?,?)").run(scope, ending.blockNumber, ending.hash);
       this.db.prepare(`DELETE FROM curve_checkpoints WHERE scope=? AND height IN
         (SELECT height FROM curve_checkpoints WHERE scope=? ORDER BY height DESC LIMIT -1 OFFSET ?)`).run(scope, scope, retainedCheckpoints);
@@ -190,10 +262,39 @@ export class CurveLaunchIndex {
   }
 }
 
-function projectGraduation(receipt: Awaited<ReturnType<PublicClient["getTransactionReceipt"]>>, engine: Address, expected: EventIdentity, token: Address) {
+function assertEventReceipt(receipt: TransactionReceipt, expected: EventIdentity) {
   const { transactionHash, blockHash, blockNumber } = receipt;
   if (receipt.status !== "success" || transactionHash !== expected.transactionHash || blockHash !== expected.blockHash
-    || blockNumber.toString() !== expected.blockNumber) throw new Error("Curve graduation transaction does not match the index.");
+    || blockNumber.toString() !== expected.blockNumber) throw new Error("Curve lifecycle transaction does not match the index.");
+}
+
+function projectMigration(receipt: TransactionReceipt, expected: EventIdentity, factory: Address, registry: Address, token: Address, version: number): IndexedMigration {
+  assertEventReceipt(receipt, expected);
+  const logs = boundedReceiptLogs(receipt);
+  const assets = parseEventLogs({ abi: [curveAssetsMigratedEvent], logs: logs.filter((log) => sameCurveAddress(log.address, factory)) });
+  const history = parseEventLogs({ abi: [projectMigratedEvent], logs: logs.filter((log) => sameCurveAddress(log.address, registry)) });
+  if (assets.length !== 1 || history.length !== 1 || assets[0].logIndex !== expected.logIndex
+    || !sameCurveAddress(assets[0].args.token, token) || !sameCurveAddress(history[0].args.token, token)
+    || !sameCurveAddress(assets[0].args.toCurve, history[0].args.nextEngine)
+    || assets[0].args.version !== version || history[0].args.toVersion !== version
+    || history[0].args.index !== BigInt(version - 1)) throw new Error("Missing paired canonical migration events.");
+  const { fromCurve, toCurve, sold, backing, inventory, ledger } = assets[0].args;
+  return { ...expected, transactionIndex: receipt.transactionIndex, fromCurve, toCurve, version, sold: sold.toString(),
+    backing: backing.toString(), inventory: inventory.toString(), ledger };
+}
+
+function projectCollection(receipt: TransactionReceipt, expected: EventIdentity, engine: Address, token: Address): IndexedCollection {
+  assertEventReceipt(receipt, expected);
+  const events = parseEventLogs({ abi: [curveLpCollectedEvent], logs: boundedReceiptLogs(receipt).filter((log) => sameCurveAddress(log.address, engine)) });
+  if (events.length !== 1 || events[0].logIndex !== expected.logIndex || !sameCurveAddress(events[0].args.token, token)) {
+    throw new Error("Missing canonical LP fee collection event.");
+  }
+  const { positionTokenId, ledger, nativeAmount, tokenAmount } = events[0].args;
+  return { ...expected, positionTokenId: positionTokenId.toString(), ledger, amounts: feeAmounts([nativeAmount, tokenAmount]) };
+}
+
+function projectGraduation(receipt: TransactionReceipt, engine: Address, expected: EventIdentity, token: Address) {
+  assertEventReceipt(receipt, expected);
   const events = parseEventLogs({ abi: [graduationEngineEvent], logs: boundedReceiptLogs(receipt)
     .filter((log) => sameCurveAddress(log.address, engine)) });
   if (events.length !== 1 || events[0].logIndex !== expected.logIndex || !sameCurveAddress(events[0].args.token, token)) {
@@ -202,72 +303,190 @@ function projectGraduation(receipt: Awaited<ReturnType<PublicClient["getTransact
   return events[0].args;
 }
 
-async function readProjectHistory(ready: Ready, launch: CurveLaunch, observed: LaunchpadObservedBlock): Promise<CurveState["project"]> {
+function feeAmounts(pair: readonly [bigint, bigint]): CurveFeeAmounts {
+  return { native: pair[0].toString(), token: pair[1].toString() };
+}
+
+async function readLpFees(ready: Ready, launch: CurveLaunch, observed: LaunchpadObservedBlock, positionTokenId: bigint,
+  originalLiquidity: bigint, operatingRecipient: Address, futureReserveRecipient: Address,
+  collection: IndexedCollection | undefined, account?: Address): Promise<CurveState["lpFees"]> {
+  const { rpc, browser } = ready;
+  const engine = browser.curve!.graduationEngine;
+  const canonical = canonicalLaunchpadBlock(observed);
+  const manager = { address: engine, abi: curveGraduationAbi, args: [launch.token], ...canonical } as const;
+  const [ledger, [registeredPosition, registeredLiquidity]] = await Promise.all([
+    rpc.readContract({ ...manager, functionName: "lpFeeLedger" }), rpc.readContract({ ...manager, functionName: "positions" }),
+  ]);
+  if (ledger === zeroAddress || registeredPosition !== positionTokenId || registeredLiquidity !== originalLiquidity) {
+    throw new Error("The locked position has no verified LP fee ledger.");
+  }
+  const read = { address: ledger, abi: curveLpLedgerAbi, ...canonical } as const;
+  const [collected, claimed, buckets, claimable, uncollected, ledgerEngine, managerAddress, token, creator, treasury,
+    treasuryShareBps, operating, reserve] = await Promise.all([
+    rpc.readContract({ ...read, functionName: "totalAccrued" }),
+    rpc.readContract({ ...read, functionName: "totalClaimed" }),
+    Promise.all([0n, 1n, 2n, 3n].map((bucket) => rpc.readContract({ ...read, functionName: "bucketAccrued", args: [bucket] }))),
+    account ? rpc.readContract({ ...read, functionName: "claimable", args: [account] }) : null,
+    rpc.readContract({ ...manager, functionName: "previewLpFees" }).catch(() => null),
+    rpc.readContract({ ...read, functionName: "engine" }),
+    rpc.readContract({ ...read, functionName: "poolManager" }),
+    rpc.readContract({ ...read, functionName: "token" }),
+    rpc.readContract({ ...read, functionName: "creator" }),
+    rpc.readContract({ ...read, functionName: "treasury" }),
+    rpc.readContract({ ...read, functionName: "treasuryShareBps" }),
+    rpc.readContract({ ...read, functionName: "operatingRecipient" }),
+    rpc.readContract({ ...read, functionName: "futureReserveRecipient" }),
+  ]);
+  if (!sameCurveAddress(ledgerEngine, engine) || !sameCurveAddress(managerAddress, browser.deployment.poolManager)
+    || !sameCurveAddress(token, launch.token) || !sameCurveAddress(creator, launch.creator) || !sameCurveAddress(treasury, launch.treasury)
+    || treasuryShareBps !== launch.treasuryShareBps || !sameCurveAddress(operating, operatingRecipient)
+    || !sameCurveAddress(reserve, futureReserveRecipient)) throw new Error("LP fee ledger policy does not match the original launch.");
+  if ([0, 1].some((asset) => buckets.reduce((total, bucket) => total + bucket[asset], 0n) !== collected[asset]
+    || claimed[asset] > collected[asset] || (claimable !== null && claimable[asset] > collected[asset] - claimed[asset]))) {
+    throw new Error("LP fee ledger totals are inconsistent.");
+  }
+  let latestCollection: NonNullable<CurveState["lpFees"]>["latestCollection"];
+  if (collection) {
+    const receipt = await rpc.getTransactionReceipt({ hash: collection.transactionHash });
+    const projected = projectCollection(receipt, collection, engine, launch.token);
+    const block = await readLaunchpadBlock(rpc, receipt.blockNumber, observed.blockNumber);
+    if (block.hash !== collection.blockHash || !sameCurveAddress(collection.ledger, ledger) || collection.positionTokenId !== positionTokenId.toString()
+      || JSON.stringify(projected) !== JSON.stringify(collection) || BigInt(collection.amounts.native) > collected[0]
+      || BigInt(collection.amounts.token) > collected[1]) throw new Error("Indexed LP fee collection is inconsistent.");
+    const { transactionHash, blockHash, blockNumber, logIndex, amounts } = collection;
+    latestCollection = { transactionHash, blockHash, blockNumber, logIndex, amounts };
+  } else if (collected[0] || collected[1]) throw new Error("The LP fee ledger has no canonical collection receipt.");
+  return { ledger, collected: feeAmounts(collected), claimed: feeAmounts(claimed), bucketAccrued: buckets.map(feeAmounts),
+    claimable: claimable ? feeAmounts(claimable) : null, uncollected: uncollected ? feeAmounts(uncollected) : null, latestCollection };
+}
+
+type Lifecycle = { graduation?: EventIdentity; migration(version: number): IndexedMigration | undefined; collection?: IndexedCollection };
+
+async function readProjectHistory(ready: Ready, launch: CurveLaunch, observed: LaunchpadObservedBlock, lifecycle: Lifecycle) {
   const registry = ready.browser.curve?.projectRegistry;
-  if (!registry) return;
+  if (!registry) throw new Error("No verified project registry.");
   const { rpc } = ready;
-  const read = { address: registry, abi: curveRegistryAbi, ...canonicalLaunchpadBlock(observed) } as const;
-  const curveContract = { address: launch.curve, abi: curveAbi, ...canonicalLaunchpadBlock(observed) } as const;
-  const [[factory, curve, currentVersion, currentEngine, count], localVersion, localEngine, localRuntimeHash, economicRules,
-    localRegistry, [nextEngine, runtimeHash, deadline, executableAt, expiresAt]] = await Promise.all([
+  const canonical = canonicalLaunchpadBlock(observed);
+  const read = { address: registry, abi: curveRegistryAbi, ...canonical } as const;
+  const factoryRead = { address: launch.factory, abi: curveFactoryAbi, args: [launch.token], ...canonical } as const;
+  const [[factory, activeCurve, currentVersion, currentEngine, count], origin, factoryOrigin, factoryActive, directory, nonce,
+    [nextEngine, runtimeHash, deadline, executableAt, expiresAt]] = await Promise.all([
     rpc.readContract({ ...read, functionName: "project", args: [launch.token] }),
+    rpc.readContract({ ...read, functionName: "originCurve", args: [launch.token] }),
+    rpc.readContract({ ...factoryRead, functionName: "originCurveForToken" }),
+    rpc.readContract({ ...factoryRead, functionName: "curveForToken" }),
+    rpc.readContract({ ...read, functionName: "directory" }),
+    rpc.readContract({ ...read, functionName: "migrationNonce", args: [launch.token] }),
+    rpc.readContract({ ...read, functionName: "proposal", args: [launch.token] }),
+  ]);
+  if (!sameCurveAddress(factory, launch.factory) || !sameCurveAddress(origin, launch.curve)
+    || !sameCurveAddress(factoryOrigin, launch.curve) || !sameCurveAddress(activeCurve, currentEngine)
+    || !sameCurveAddress(activeCurve, factoryActive) || sameCurveAddress(activeCurve, zeroAddress)
+    || currentVersion < 1 || count !== BigInt(currentVersion - 1)) throw new Error("Permanent project identity does not match the active curve.");
+  const curveContract = { address: activeCurve, abi: curveAbi, ...canonical } as const;
+  const [localVersion, localEngine, localRuntimeHash, economicRules, localRegistry, localSource, active, graduated, commitment,
+    curveToken, curveFactory, curveLedger, suspended, runtime, candidate] = await Promise.all([
     rpc.readContract({ ...curveContract, functionName: "executionVersion" }),
     rpc.readContract({ ...curveContract, functionName: "executionEngine" }),
     rpc.readContract({ ...curveContract, functionName: "executionEngineRuntimeHash" }),
     rpc.readContract({ ...curveContract, functionName: "economicRules" }),
     rpc.readContract({ ...curveContract, functionName: "projectRegistry" }),
-    rpc.readContract({ ...read, functionName: "proposal", args: [launch.token] }),
+    rpc.readContract({ ...curveContract, functionName: "migrationSource" }),
+    rpc.readContract({ ...curveContract, functionName: "active" }),
+    rpc.readContract({ ...curveContract, functionName: "graduated" }),
+    rpc.readContract({ ...curveContract, functionName: "migrationCommitment" }),
+    rpc.readContract({ ...curveContract, functionName: "token" }),
+    rpc.readContract({ ...curveContract, functionName: "factory" }),
+    rpc.readContract({ ...curveContract, functionName: "revenueLedger" }),
+    rpc.readContract({ address: directory, abi: curveDirectoryAbi, functionName: "suspended", ...canonical }),
+    rpc.getCode({ address: activeCurve, ...canonical }),
+    currentVersion === 1
+      ? rpc.readContract({ address: launch.factory, abi: curveFactoryAbi, functionName: "migrationCandidate", args: [launch.token, 2], ...canonical })
+      : zeroAddress,
   ]);
-  if (!sameCurveAddress(factory, launch.factory) || !sameCurveAddress(curve, launch.curve) || currentVersion < 1
-    || sameCurveAddress(currentEngine, zeroAddress) || !sameCurveAddress(localRegistry, registry)
-    || currentVersion !== localVersion || !sameCurveAddress(currentEngine, localEngine)
-    || (!count && (currentVersion !== 1 || !sameCurveAddress(currentEngine, launch.curve)))) {
+  if (!sameCurveAddress(localRegistry, registry) || !sameCurveAddress(curveToken, launch.token)
+    || !sameCurveAddress(curveFactory, launch.factory) || !sameCurveAddress(curveLedger, launch.ledger)
+    || currentVersion !== localVersion || !sameCurveAddress(currentEngine, localEngine) || !runtime || runtime === "0x"
+    || localRuntimeHash !== keccak256(runtime)
+    || (!count && (!sameCurveAddress(currentEngine, launch.curve) || !sameCurveAddress(localSource, zeroAddress)))) {
     throw new Error("Permanent project identity does not match the curve.");
   }
   const migrations = await Promise.all(Array.from({ length: Number(count < 10n ? count : 10n) }, async (_, offset) => {
     const index = count - BigInt(offset);
     const [fromVersion, toVersion, previousEngine, nextEngine, runtimeHash, effectiveBlock, timestamp] =
       await rpc.readContract({ ...read, functionName: "migration", args: [launch.token, index] });
-    if (toVersion <= fromVersion || !isHash(runtimeHash) || effectiveBlock > observed.blockNumber || BigInt(timestamp) > observed.timestamp) {
+    const evidence = lifecycle.migration(toVersion);
+    if (toVersion !== fromVersion + 1 || !isHash(runtimeHash) || effectiveBlock > observed.blockNumber || BigInt(timestamp) > observed.timestamp
+      || !evidence || evidence.blockNumber !== effectiveBlock.toString() || !sameCurveAddress(evidence.fromCurve, previousEngine)
+      || !sameCurveAddress(evidence.toCurve, nextEngine) || !sameCurveAddress(evidence.ledger, launch.ledger)
+      || BigInt(evidence.sold) > BigInt(launch.totalSupply) * 3n / 5n
+      || BigInt(evidence.inventory) !== BigInt(launch.totalSupply) - BigInt(evidence.sold)) {
       throw new Error("Project migration evidence is inconsistent.");
     }
-    return { index: index.toString(), fromVersion, toVersion, previousEngine, nextEngine, runtimeHash, blockNumber: effectiveBlock.toString(), timestamp };
+    const block = await readLaunchpadBlock(rpc, effectiveBlock, observed.blockNumber);
+    if (block.hash !== evidence.blockHash || block.timestamp !== BigInt(timestamp)) throw new Error("Project migration is no longer canonical.");
+    const { transactionHash, transactionIndex, logIndex, blockHash, backing, inventory, sold } = evidence;
+    return { index: index.toString(), fromVersion, toVersion, previousEngine, nextEngine, runtimeHash, blockNumber: effectiveBlock.toString(),
+      timestamp, transactionHash, transactionIndex, logIndex, blockHash, backing, inventory, sold };
   }));
   if (migrations.some((entry, index) => index === 0
-    ? entry.toVersion !== currentVersion || !sameCurveAddress(entry.nextEngine, currentEngine) || entry.runtimeHash !== localRuntimeHash
-    : entry.toVersion !== migrations[index - 1].fromVersion || !sameCurveAddress(entry.nextEngine, migrations[index - 1].previousEngine))) {
+    ? entry.toVersion !== currentVersion || !sameCurveAddress(entry.nextEngine, currentEngine)
+      || entry.runtimeHash !== localRuntimeHash || !sameCurveAddress(localSource, entry.previousEngine)
+    : entry.toVersion !== migrations[index - 1].fromVersion || !sameCurveAddress(entry.nextEngine, migrations[index - 1].previousEngine))
+    || (migrations.length > 0 && BigInt(migrations.length) === count && !sameCurveAddress(migrations.at(-1)?.previousEngine, launch.curve))) {
     throw new Error("Project migration history does not resolve to the current version.");
   }
-  const pending = sameCurveAddress(nextEngine, zeroAddress) ? undefined : { nextEngine, runtimeHash, deadline, executableAt, expiresAt };
-  return { registry, currentVersion, currentEngine, economicRules, count: count.toString(), migrations, pending };
+  if (migrations.length) {
+    const originContract = { address: launch.curve, abi: curveAbi, ...canonical } as const;
+    const [originActive, migratedTo, originCommitment] = await Promise.all([
+      rpc.readContract({ ...originContract, functionName: "active" }),
+      rpc.readContract({ ...originContract, functionName: "migratedTo" }),
+      rpc.readContract({ ...originContract, functionName: "migrationCommitment" }),
+    ]);
+    if (originActive || !sameCurveAddress(migratedTo, migrations.at(-1)?.nextEngine) || originCommitment !== commitment) {
+      throw new Error("The origin curve's closure and successor do not match the migration.");
+    }
+  }
+  const pendingStatus = observed.timestamp > BigInt(expiresAt || deadline) ? "expired" : !active || graduated || suspended ? "blocked"
+    : !executableAt ? "awaiting_approvals" : observed.timestamp < BigInt(executableAt) ? "timelocked" : "executable";
+  const pending: NonNullable<CurveState["project"]>["pending"] = sameCurveAddress(nextEngine, zeroAddress)
+    ? undefined : { nextEngine, runtimeHash, deadline, executableAt, expiresAt, status: pendingStatus };
+  const eligibility = graduated ? "graduated" : !active ? "inactive" : suspended ? "suspended"
+    : currentVersion !== 1 ? "version_unsupported" : pending ? "proposal_pending" : "eligible";
+  const project: NonNullable<CurveState["project"]> = { registry, currentVersion, currentEngine, economicRules, count: count.toString(),
+    eligibility, migrationNonce: nonce.toString(), migrations, pending, ...(candidate === zeroAddress ? {} : { candidate }) };
+  return { activeCurve, project, graduated };
 }
 
-export async function readCurveState(ready: Ready, launch: CurveLaunch, observed: LaunchpadObservedBlock, graduation: EventIdentity | undefined, account?: Address) {
+export async function readCurveState(ready: Ready, launch: CurveLaunch, observed: LaunchpadObservedBlock, lifecycle: Lifecycle, account?: Address) {
   const { rpc, browser } = ready;
+  const { graduation } = lifecycle;
   const canonical = canonicalLaunchpadBlock(observed);
-  const opening = await readLaunchpadBlock(rpc, BigInt(launch.blockNumber), observed.blockNumber);
+  const [opening, { activeCurve, project, graduated }] = await Promise.all([
+    readLaunchpadBlock(rpc, BigInt(launch.blockNumber), observed.blockNumber),
+    readProjectHistory(ready, launch, observed, lifecycle),
+  ]);
   if (opening.hash !== launch.blockHash) throw new Error("Curve creation is no longer canonical.");
-  const curve = { address: launch.curve, abi: curveAbi, ...canonical } as const;
+  const curve = { address: activeCurve, abi: curveAbi, ...canonical } as const;
   const ledger = { address: launch.ledger, abi: curveLedgerAbi, ...canonical } as const;
-  const [sold, backingReserve, graduationSold, graduated, operatingRecipient, futureReserveRecipient, claimable, registered,
-    totalAccrued, totalClaimed, buckets, project] = await Promise.all([
+  const [sold, backingReserve, graduationSold, operatingRecipient, futureReserveRecipient, claimable, ledgerOrigin, ledgerActive,
+    totalAccrued, totalClaimed, buckets] = await Promise.all([
     rpc.readContract({ ...curve, functionName: "sold" }),
     rpc.readContract({ ...curve, functionName: "backingReserve" }),
     rpc.readContract({ ...curve, functionName: "graduationSold" }),
-    rpc.readContract({ ...curve, functionName: "graduated" }),
     rpc.readContract({ ...curve, functionName: "operatingRecipient" }),
     rpc.readContract({ ...curve, functionName: "futureReserveRecipient" }),
     account ? rpc.readContract({ ...ledger, functionName: "claimable", args: [account] }) : null,
-    rpc.readContract({ address: launch.factory, abi: curveFactoryAbi, functionName: "curveForToken", args: [launch.token], ...canonical }),
+    rpc.readContract({ ...ledger, functionName: "curve" }),
+    rpc.readContract({ ...ledger, functionName: "activeCurve" }),
     rpc.readContract({ ...ledger, functionName: "totalAccrued" }),
     rpc.readContract({ ...ledger, functionName: "totalClaimed" }),
     Promise.all([0n, 1n, 2n, 3n].map((bucket) => rpc.readContract({ ...ledger, functionName: "bucketAccrued", args: [bucket] }))),
-    readProjectHistory(ready, launch, observed),
   ]);
-  if (!sameCurveAddress(registered, launch.curve) || !graduationSold || sold > graduationSold
+  if (!sameCurveAddress(ledgerOrigin, launch.curve) || !sameCurveAddress(ledgerActive, activeCurve) || !graduationSold || sold > graduationSold
     || totalAccrued !== buckets.reduce((total, entry) => total + entry, 0n) || totalClaimed > totalAccrued
     || (claimable !== null && claimable > totalAccrued - totalClaimed)) throw new Error("Curve registry or revenue binding unavailable.");
-  const result: CurveState = { sold: sold.toString(), backingReserve: backingReserve.toString(), graduationSold: graduationSold.toString(),
+  const result: CurveState = { activeCurve, sold: sold.toString(), backingReserve: backingReserve.toString(), graduationSold: graduationSold.toString(),
     graduated, operatingRecipient, futureReserveRecipient, claimable: claimable?.toString() ?? null, blockHash: observed.hash,
     blockNumber: observed.blockNumber.toString(), totalAccrued: totalAccrued.toString(), totalClaimed: totalClaimed.toString(),
     bucketAccrued: [buckets[0].toString(), buckets[1].toString(), buckets[2].toString(), buckets[3].toString()], project };
@@ -277,16 +496,17 @@ export async function readCurveState(ready: Ready, launch: CurveLaunch, observed
     const event = projectGraduation(receipt, engine, graduation, launch.token);
     const block = await readLaunchpadBlock(rpc, receipt.blockNumber, observed.blockNumber);
     const confirmations = parseEventLogs({ abi: [curveGraduatedEvent], logs: boundedReceiptLogs(receipt)
-      .filter((log) => sameCurveAddress(log.address, launch.curve)) });
+      .filter((log) => sameCurveAddress(log.address, activeCurve)) });
     const { poolKey, poolId, positionTokenId, sqrtPriceX96, liquidity, nativeUsed, tokenUsed } = event;
     const position = { address: browser.deployment.positionManager, abi: checkedPositionAbi, args: [positionTokenId], ...canonical } as const;
-    const [recordedPool, recordedPosition, owner, currentLiquidity] = await Promise.all([
+    const [recordedPool, recordedPosition, owner, currentLiquidity, lpFees] = await Promise.all([
       rpc.readContract({ ...curve, functionName: "poolId" }),
       rpc.readContract({ ...curve, functionName: "positionTokenId" }),
       rpc.readContract({ ...position, functionName: "ownerOf" }),
       rpc.readContract({ ...position, functionName: "getPositionLiquidity" }),
+      readLpFees(ready, launch, observed, positionTokenId, liquidity, operatingRecipient, futureReserveRecipient, lifecycle.collection, account),
     ]);
-    if (block.hash !== receipt.blockHash || !sameCurveAddress(event.curve, launch.curve) || poolKey.currency0 !== zeroAddress
+    if (block.hash !== receipt.blockHash || !sameCurveAddress(event.curve, activeCurve) || poolKey.currency0 !== zeroAddress
       || !sameCurveAddress(poolKey.currency1, launch.token) || !sameCurveAddress(poolKey.hooks, browser.deployment.initializationGuard)
       || poolKey.fee !== 3_000 || poolKey.tickSpacing !== 60 || launchPoolId(poolKey) !== poolId || recordedPool !== poolId
       || positionTokenId !== recordedPosition || !sameCurveAddress(owner, engine) || currentLiquidity !== liquidity
@@ -300,6 +520,7 @@ export async function readCurveState(ready: Ready, launch: CurveLaunch, observed
       liquidity: liquidity.toString(), amount0: nativeUsed.toString(), amount1: tokenUsed.toString(), indexing: "indexed",
       blockTimestamp: block.timestamp.toString(), ...graduation };
     result.positionOwner = owner;
+    result.lpFees = lpFees;
   }
   if ((await readLaunchpadBlock(rpc, observed.blockNumber, observed.blockNumber)).hash !== observed.hash
     || (await readLaunchpadBlock(rpc, opening.blockNumber, observed.blockNumber)).hash !== opening.hash) {

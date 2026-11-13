@@ -15,7 +15,9 @@ Curve V1 is an isolated review candidate. This branch provides development contr
 | Graduate | Funded threshold, canonical full PoolKey, deposited assets and LP custody |
 | Trade on v4 | Verified pool identity, transaction settlement and observed routing availability |
 
-Pool creation and external indexing are separate observations. Curve V1 imposes no RMT fee on v4 swaps. Earnings attributable to the initial LP position remain locked under this version's custody policy.
+Pool creation and external indexing are separate observations. The original LP position stays permanently locked. Its earned fees are claimable under the launch's fixed allocations. Swaps through other pools generate no fees for this position.
+
+Active curves can migrate from V1 to a reviewed V2 successor after creator approval, two independent signatures and public notice. The migration preserves the token, holder balances, tracked backing, inventory and original fee ledger. The token page shows both curve addresses, the current version and verified migration history.
 
 ## Development
 

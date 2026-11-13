@@ -123,12 +123,14 @@ contract RMTLaunchHolderMigrationV1 is ReentrancyGuard {
 
         totalRedeemed = prior + amount;
         originalToken.safeTransferFrom(msg.sender, address(this), amount);
-        if (!replacementToken.transfer(msg.sender, amount)) revert SettlementMismatch();
         if (
             originalToken.balanceOf(msg.sender) != originalHolderBefore - amount
                 || originalToken.balanceOf(address(this)) != originalEscrowBefore + amount
                 || originalToken.allowance(msg.sender, address(this)) != 0 || originalToken.totalSupply() != supply
-                || replacementToken.balanceOf(msg.sender) != replacementHolderBefore + amount
+        ) revert SettlementMismatch();
+        if (!replacementToken.transfer(msg.sender, amount)) revert SettlementMismatch();
+        if (
+            replacementToken.balanceOf(msg.sender) != replacementHolderBefore + amount
                 || replacementToken.balanceOf(address(this)) != replacementEscrowBefore - amount
         ) revert SettlementMismatch();
         emit TokensRedeemed(msg.sender, amount, totalRedeemed);

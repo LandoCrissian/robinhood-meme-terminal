@@ -43,7 +43,10 @@ export async function GET(request: Request) {
     }
     const launch = launches[0];
     if (!launch) return respond({ status: "not_found", reason: "This token has no verified curve launch." }, 404);
-    const state = await readCurveState(ready, launch, block, index.graduation(launch.token), address("account"));
+    const state = await readCurveState(ready, launch, block, {
+      graduation: index.graduation(launch.token), migration: (version) => index!.migration(launch.token, version),
+      collection: index.collection(launch.token),
+    }, address("account"));
     return respond({ status: "ready", launch, state });
   } catch {
     return respond({ status: "delayed", reason: "Curve evidence could not be verified. Retry without resubmitting a transaction." }, 503);
