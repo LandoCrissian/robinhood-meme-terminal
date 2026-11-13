@@ -166,17 +166,24 @@ export class CurveLaunchIndex {
     }
     const fromBlock = common ? common.number + 1n : startBlock;
     if (fromBlock > observed.blockNumber) return true;
-    const toBlock = fromBlock + maxRange - 1n < observed.blockNumber ? fromBlock + maxRange - 1n : observed.blockNumber;
-    const ending = await readLaunchpadBlock(rpc, toBlock, observed.blockNumber);
     if (!browser.curve) throw new Error("The curve index requires the verified project registry.");
     const { graduationEngine: engine, projectRegistry: registry, creationFee } = browser.curve;
-    const [creations, graduations, migrations, collections] = await Promise.all([
+    const logsInRange = (toBlock: bigint) => Promise.all([
       rpc.getLogs({ address: factory, event: curveCreatedEvent, fromBlock, toBlock, strict: true }),
       rpc.getLogs({ address: engine, event: graduationEngineEvent, fromBlock, toBlock, strict: true }),
       rpc.getLogs({ address: factory, event: curveAssetsMigratedEvent, fromBlock, toBlock, strict: true }),
       rpc.getLogs({ address: engine, event: curveLpCollectedEvent, fromBlock, toBlock, strict: true }),
     ]);
-    if (creations.length + graduations.length + migrations.length + collections.length > maxLogs) throw new Error("Curve event range exceeds processing limits.");
+    let toBlock = fromBlock + maxRange - 1n < observed.blockNumber ? fromBlock + maxRange - 1n : observed.blockNumber;
+    let ending = await readLaunchpadBlock(rpc, toBlock, observed.blockNumber);
+    let logs = await logsInRange(toBlock);
+    while (logs.reduce((count, batch) => count + batch.length, 0) > maxLogs) {
+      if (toBlock === fromBlock) throw new Error("Single curve block exceeds event processing limits.");
+      toBlock = fromBlock + (toBlock - fromBlock) / 2n;
+      ending = await readLaunchpadBlock(rpc, toBlock, observed.blockNumber);
+      logs = await logsInRange(toBlock);
+    }
+    const [creations, graduations, migrations, collections] = logs;
     const records: CurveLaunch[] = [];
     for (const log of creations) {
       const event = eventIdentity(log);

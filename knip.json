@@ -24,7 +24,9 @@
         "lib/**/*-smoke.ts",
         "lib/**/*.test.ts",
         "scripts/launch-4663-public-evidence.ts",
-        "scripts/new-launchpad-backup.ts"
+        "scripts/new-launchpad-backup.ts",
+        "scripts/curve-launch-backup.ts",
+        "scripts/probe-robinhood-launch-readiness.ts"
       ]
     },
     "apps/indexer": {

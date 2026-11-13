@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -9,6 +9,7 @@ import { curveAssetsMigratedEvent, curveCreatedEvent, curveCreationFeePaidEvent,
   curveLpCollectedEvent, projectMigratedEvent } from "../launchpad/curve-v1";
 import type { LaunchRequest } from "../launchpad/transactions";
 import { curveLoopbackRequest, readCurveRuntime, type verifiedCurveRuntime } from "./curve-launch-config";
+import { backupCurveIndex, restoreCurveIndex } from "./curve-launch-backup";
 import { CurveLaunchIndex, readCurveState } from "./curve-launch-index";
 
 const address = (number: number): Address => toHex(number, { size: 20 });
@@ -156,10 +157,23 @@ test("curve index persists exact records, handles duplicate delivery, and restor
     assert.equal(await index.sync(ready, observed(11n)), true);
     assert.equal(index.list().length, 1);
     assert.equal(index.list()[0].creationFee.refundWei, "5");
+    const snapshot = join(folder, "snapshot.sqlite");
+    const recovered = join(folder, "recovered.sqlite");
+    const backup = await backupCurveIndex(config, snapshot);
+    assert.deepEqual(backup.checkpoint, { number: "11", hash: hash(11), anchorHash: hash(9) });
+    await assert.rejects(backupCurveIndex(config, snapshot), /fresh absolute file/);
+    await assert.rejects(restoreCurveIndex(config, snapshot, recovered, "0".repeat(64)), /SHA-256 mismatch/);
+    await assert.rejects(restoreCurveIndex({ ...config, scope: "wrong" }, snapshot, recovered, backup.sha256), /deployment scope/);
+    assert.equal(existsSync(recovered), false);
+    assert.deepEqual((await restoreCurveIndex(config, snapshot, recovered, backup.sha256)).checkpoint, backup.checkpoint);
     index.close();
     index = new CurveLaunchIndex(config);
     assert.equal(index.list({ creator })[0].transactionHash, receipt.transactionHash);
     await assert.rejects(index.sync(ready, observed(10n)), /behind/);
+    index.close();
+    index = new CurveLaunchIndex({ ...config, databasePath: recovered });
+    assert.equal(await index.sync(ready, observed(11n)), true);
+    assert.equal(index.list().length, 1);
     branch = 500;
     unavailable = true;
     await assert.rejects(index.sync(ready, observed(11n, branch)), /Provider unavailable/);
@@ -195,6 +209,38 @@ test("canonical nested creations advance the loopback cursor without becoming di
     assert.equal(await index.sync(ready, observed(11n)), true);
     assert.deepEqual(index.list(), []);
     await assert.rejects(index.sync(ready, observed(10n)), /behind the durable cursor/);
+  } finally {
+    index.close();
+    rmSync(folder, { recursive: true, force: true });
+  }
+});
+
+test("curve index bisects busy ranges and refuses single-block overflow without advancing", async () => {
+  const folder = mkdtempSync(join(tmpdir(), "rmt-curve-range-"));
+  const config = readCurveRuntime(env(join(folder, "index.sqlite")))!;
+  const requested: bigint[] = [];
+  let overflow = true;
+  const rpc = {
+    async getBlock({ blockNumber }: { blockNumber: bigint }) {
+      return { number: blockNumber, timestamp, hash: hash(blockNumber) };
+    },
+    async getLogs({ event, fromBlock, toBlock }: { event: { name: string }; fromBlock: bigint; toBlock: bigint }) {
+      if (event.name !== "CurveCreated") return [];
+      requested.push(toBlock);
+      return toBlock >= 13n && fromBlock <= 13n && overflow ? Array(81).fill(creation().event) : [];
+    },
+  };
+  const ready = { rpc, browser: { curve: { graduationEngine, projectRegistry: registry, creationFee: feePolicy } } } as unknown as Awaited<ReturnType<typeof verifiedCurveRuntime>>;
+  const index = new CurveLaunchIndex(config);
+  try {
+    assert.equal(await index.sync(ready, observed(14n)), false);
+    assert.deepEqual(requested.splice(0), [14n, 12n]);
+    await assert.rejects(index.sync(ready, observed(14n)), /Single curve block/);
+    assert.deepEqual(requested.splice(0), [14n, 13n]);
+    overflow = false;
+    assert.equal(await index.sync(ready, observed(14n)), true);
+    assert.deepEqual(requested, [14n]);
+    assert.deepEqual(index.list(), []);
   } finally {
     index.close();
     rmSync(folder, { recursive: true, force: true });
