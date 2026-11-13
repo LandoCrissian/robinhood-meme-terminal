@@ -18,7 +18,9 @@ export function readLaunchpadPreviewAccess(
   now = Date.now(),
 ): LaunchpadPreviewAccess | null {
   if (!env.RMT_LAUNCHPAD_PREVIEW_ORIGIN) return null;
-  if (env.VERCEL === "1" || env.VERCEL_ENV || env.RMT_LAUNCHPAD_ENABLED !== "true" || env.RMT_LAUNCHPAD_CHAIN_ID !== "31337") {
+  const curve = env.RMT_CURVE_ENABLED === "true";
+  const direct = env.RMT_LAUNCHPAD_ENABLED === "true";
+  if (env.VERCEL === "1" || env.VERCEL_ENV || curve === direct || (direct && env.RMT_LAUNCHPAD_CHAIN_ID !== "31337")) {
     throw new Error("Preview access requires the isolated chain 31337 runtime.");
   }
   const origin = new URL(env.RMT_LAUNCHPAD_PREVIEW_ORIGIN);

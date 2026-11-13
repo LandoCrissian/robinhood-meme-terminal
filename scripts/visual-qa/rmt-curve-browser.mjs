@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdir, writeFile } from "node:fs/promises";
+import { createHash, X509Certificate } from "node:crypto";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { chromium, devices } from "playwright";
 
@@ -8,12 +10,30 @@ const site = new URL(process.env.RMT_CURVE_TEST_SITE ?? "http://127.0.0.1:3196")
 const rpcUrl = new URL(process.env.RMT_CURVE_TEST_RPC ?? "http://127.0.0.1:8545");
 const output = process.env.RMT_CURVE_TEST_OUTPUT ?? ".launch-qa";
 const compiler = process.env.RMT_CURVE_TEST_SOLC;
+const accessFile = process.env.RMT_CURVE_TEST_ACCESS_FILE;
+const privatePreview = Boolean(accessFile);
+const backing = process.env.RMT_CURVE_TEST_BACKING_WEI ?? "1000000000000000000";
 const migrationTool = fileURLToPath(new URL("../../packages/contracts/scripts/validate-curve-graduation-4663.mjs", import.meta.url));
-for (const url of [site, rpcUrl]) {
-  assert.equal(url.protocol, "http:");
-  assert.equal(url.hostname, "127.0.0.1");
-  assert.ok(url.port && url.pathname === "/" && !url.username && !url.password && !url.search && !url.hash);
+const webRequire = createRequire(new URL("../../apps/web/package.json", import.meta.url));
+assert.ok(site.port && site.pathname === "/" && !site.username && !site.password && !site.search && !site.hash);
+if (privatePreview) {
+  assert.equal(site.protocol, "https:");
+  assert.match(site.hostname, /^(?:10\.\d{1,3}|192\.168|172\.(?:1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}$/);
+  assert.equal(backing, "2000000000000000000");
+  assert.ok(compiler);
+} else {
+  assert.equal(site.protocol, "http:");
+  assert.equal(site.hostname, "127.0.0.1");
 }
+assert.equal(rpcUrl.protocol, "http:");
+assert.equal(rpcUrl.hostname, "127.0.0.1");
+assert.ok(rpcUrl.port && rpcUrl.pathname === "/" && !rpcUrl.username && !rpcUrl.password && !rpcUrl.search && !rpcUrl.hash);
+assert.ok(["1000000000000000000", "2000000000000000000"].includes(backing));
+// The private acceptance fixture uses a disposable signing key from a local test file.
+// The gateway and operator runner never receive this key.
+const signer = privatePreview ? webRequire("viem/accounts").privateKeyToAccount(
+  (await readFile(process.env.RMT_CURVE_TEST_SIGNER_FILE, "utf8")).trim()) : undefined;
+const fillBudget = backing === "2000000000000000000" ? "3" : "2";
 await mkdir(output, { recursive: true });
 const allowed = new Set(["eth_chainId", "eth_accounts", "eth_getBlockByNumber", "eth_getTransactionByHash", "eth_getTransactionReceipt", "eth_sendTransaction",
   "web3_clientVersion", "evm_mine", "evm_setNextBlockTimestamp"]);
@@ -34,38 +54,94 @@ async function rpc(method, params = []) {
 assert.equal(await rpc("eth_chainId"), "0x7a69");
 assert.match(await rpc("web3_clientVersion"), /^anvil/i);
 const accounts = await rpc("eth_accounts");
-const [account] = accounts;
+const account = signer?.address ?? accounts[0];
+if (privatePreview) assert.deepEqual(accounts, []);
 assert.ok(account);
 const latest = await rpc("eth_getBlockByNumber", ["latest", false]);
 const wallClock = Math.floor(Date.now() / 1_000);
 if (Number(BigInt(latest.timestamp)) < wallClock) await rpc("evm_setNextBlockTimestamp", [wallClock]);
 await rpc("evm_mine");
-const config = await fetch(new URL("/api/launchpad/config", site)).then((response) => response.json());
+const requestHeaders = { Connection: "close" };
+if (privatePreview) {
+  const code = (await readFile(accessFile, "utf8")).trim();
+  const unlock = await fetch(new URL("/preview-access", site), { method: "POST", redirect: "manual",
+    headers: { ...requestHeaders, Origin: site.origin }, body: new URLSearchParams({ code }) });
+  assert.equal(unlock.status, 303);
+  requestHeaders.Cookie = unlock.headers.get("set-cookie").split(";")[0];
+}
+const config = await fetch(new URL("/api/launchpad/config", site), { headers: requestHeaders }).then((response) => response.json());
 assert.equal(config.status, "ready");
 assert.equal(config.deployment.chainId, 31337);
-assert.equal(config.deployment.rpcUrl, rpcUrl.href);
+if (privatePreview) {
+  const endpoint = new URL(config.deployment.rpcUrl);
+  assert.equal(endpoint.origin, site.origin);
+  assert.match(endpoint.pathname, /^\/preview-rpc\/[a-f0-9]{64}$/);
+} else assert.equal(config.deployment.rpcUrl, rpcUrl.href);
 assert.ok(config.curve.graduationEngine);
 assert.ok(config.curve.projectRegistry);
 assert.equal(config.curve.creationFee.amountWei, "400000000000000");
 assert.match(config.curve.creationFee.recipient, /^0x[0-9a-f]{40}$/i);
+assert.equal(config.curve.graduationBackingWei, backing);
 
-const browser = await chromium.launch({ executablePath: process.env.RMT_CURVE_TEST_CHROME });
+const browserOptions = { executablePath: process.env.RMT_CURVE_TEST_CHROME };
+if (privatePreview) {
+  const certificate = new X509Certificate(await readFile(process.env.RMT_CURVE_TEST_TLS_CERT));
+  const key = certificate.publicKey.export({ type: "spki", format: "der" });
+  const pin = createHash("sha256").update(key).digest("base64");
+  browserOptions.args = [`--ignore-certificate-errors-spki-list=${pin}`];
+}
+const browser = await chromium.launch(browserOptions);
 const context = await browser.newContext(devices["iPhone 13"]);
+if (privatePreview) {
+  const [name, value] = requestHeaders.Cookie.split("=");
+  await context.addCookies([{ name, value, url: site.origin, httpOnly: true, secure: true, sameSite: "Strict" }]);
+}
 const page = await context.newPage();
 page.setDefaultTimeout(45_000);
 const pageErrors = [];
 const hashes = [];
 const evidence = {};
+async function walletRpc(method, params = []) {
+  if (!privatePreview) return rpc(method, params);
+  if (method === "eth_getBlockByNumber") return gatewayRpc(method, params);
+  assert.equal(method, "eth_sendTransaction");
+  const [tx] = params;
+  assert.equal(tx.chainId, "0x7a69");
+  const [nonce, gasPrice, gas] = (await Promise.all([
+    gatewayRpc("eth_getTransactionCount", [account, "pending"]),
+    gatewayRpc("eth_gasPrice", []),
+    gatewayRpc("eth_estimateGas", [{ from: account, to: tx.to, data: tx.data, value: tx.value }]),
+  ])).map(BigInt);
+  const raw = await signer.signTransaction({ to: tx.to, data: tx.data, value: BigInt(tx.value), gas: gas * 125n / 100n,
+    chainId: 31337, nonce: Number(nonce), gasPrice, type: "legacy" });
+  return gatewayRpc("eth_sendRawTransaction", [raw]);
+}
+
+async function gatewayRpc(method, params) {
+  const response = await fetch(config.deployment.rpcUrl, { method: "POST", redirect: "error",
+    headers: { "Content-Type": "application/json", Origin: site.origin, Connection: "close" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }), signal: AbortSignal.timeout(15_000) });
+  const payload = await response.json();
+  if (!response.ok || payload.error) throw new Error(`Preview wallet method ${method} failed (HTTP ${response.status}).`);
+  return payload.result;
+}
+
+if (privatePreview) {
+  assert.equal(await gatewayRpc("eth_chainId", []), "0x7a69");
+  for (const method of ["anvil_setBalance", "eth_sendTransaction"]) {
+    await assert.rejects(gatewayRpc(method, []), /failed/);
+  }
+}
 page.on("pageerror", (error) => pageErrors.push(error.message));
 await page.exposeFunction("curveFixtureRpc", async (method, params) => {
   if (method !== "eth_sendTransaction") {
     assert.equal(method, "eth_getBlockByNumber", "Only a reviewed network read is routed through the injected wallet.");
-    return rpc(method, params);
+    return walletRpc(method, params);
   }
   assert.equal(params.length, 1);
   const [tx] = params;
   assert.equal(tx.from.toLowerCase(), account.toLowerCase());
-  const hash = await rpc(method, params);
+  const hash = await walletRpc(method, params);
   hashes.push(hash);
   return hash;
 });
@@ -120,7 +196,7 @@ try {
   await page.getByLabel("Token name").fill("Curve Review");
   await page.getByLabel("Symbol", { exact: true }).fill("RCV");
   await page.getByRole("button", { name: /Browser wallet/ }).click();
-  await page.getByRole("button", { name: /^Switch to Local curve review/ }).click();
+  await page.getByRole("button", { name: /^Switch to (?:Local curve review|Private curve test)/ }).click();
   await button("Review creation").click();
   await shown("0.0004 ETH");
   await shown("$1.00 at $2,500 per ETH");
@@ -150,7 +226,7 @@ try {
   const readLaunch = async () => {
     // A fixture compiler invocation between reads can outlive Next's keep-alive window.
     const response = await fetch(new URL(`/api/launchpad/curve?token=${token}&account=${account}`, site),
-      { headers: { Connection: "close" } });
+      { headers: requestHeaders });
     assert.equal(response.status, 200);
     return response.json();
   };
@@ -183,7 +259,8 @@ try {
     evidence.migrations = [];
     for (const nextVersion of [2, 3]) {
       const before = await readLaunch();
-      const result = execFileSync(process.execPath, [migrationTool, "--rpc", rpcUrl.href, "--operator", account,
+      const mode = privatePreview ? ["--owner-test", "--simulate-creator"] : ["--operator", account];
+      const result = execFileSync(process.execPath, [migrationTool, "--rpc", rpcUrl.href, ...mode, "--backing-wei", backing,
         "--solc", compiler, "--factory", config.deployment.factory, "--migrate-token", token, "--creator", account],
       { encoding: "utf8", timeout: 180_000, maxBuffer: 1024 * 1024 });
       const after = await readLaunch();
@@ -232,17 +309,38 @@ try {
   await button("Confirm sell in wallet").click();
   await settled(/curve settlement verified.*ETH/i);
   await receipt("curveSell", 3 + migrationTradeCount);
+  const feeState = (await readLaunch()).state;
+  const grossFees = BigInt(feeState.totalAccrued);
+  const platform = grossFees / 10n;
+  assert.ok(platform > 0n);
+  assert.deepEqual(feeState.bucketAccrued.map(BigInt), [grossFees - platform, 0n, platform / 2n, platform - platform / 2n]);
+  evidence.curveFeeBuckets = feeState.bucketAccrued;
 
   await button("Buy").click();
-  await page.getByLabel(/You pay \(ETH\)/i).fill("2");
+  await page.getByLabel(/You pay \(ETH\)/i).fill(fillBudget);
   await button("Review trade").click();
   await button("Confirm buy in wallet").click();
   await settled(/curve settlement verified.*RCV/i);
   await receipt("thresholdBuy", 4 + migrationTradeCount);
+  const funded = (await readLaunch()).state;
+  assert.equal(funded.backingReserve, backing);
   await button("Review graduation").click();
   await button("Confirm graduation in wallet").click();
   await settled(/graduation and permanently locked v4 liquidity verified/i);
   await receipt("graduation", 5 + migrationTradeCount);
+  const graduated = (await readLaunch()).state;
+  assert.ok(BigInt(graduated.position.amount0) > 0n && BigInt(graduated.position.amount0) <= BigInt(backing));
+  assert.ok(BigInt(graduated.position.amount1) > 0n && BigInt(graduated.position.liquidity) > 0n);
+  evidence.graduationFunding = {
+    backingWei: funded.backingReserve,
+    nativeDepositedWei: graduated.position.amount0,
+    tokensDeposited: graduated.position.amount1,
+    positionOwner: graduated.positionOwner,
+    positionTokenId: graduated.position.positionTokenId,
+    liquidity: graduated.position.liquidity,
+    poolKey: graduated.position.poolKey,
+    poolId: graduated.position.poolId,
+  };
   await screenshot("03-graduated-phone");
 
   await button("Review fee claim").click();
@@ -299,7 +397,7 @@ try {
   await button("Confirm creation in wallet").click();
   await page.getByRole("link", { name: "Open RATOM", exact: true }).click();
   await receipt("atomicLaunchCreation", 13 + migrationTradeCount);
-  await page.getByLabel(/You pay \(ETH\)/i).fill("2");
+  await page.getByLabel(/You pay \(ETH\)/i).fill(fillBudget);
   await button("Review trade").click();
   await button("Confirm buy and graduate in wallet").click();
   await settled(/curve settlement and locked v4 liquidity verified/i);

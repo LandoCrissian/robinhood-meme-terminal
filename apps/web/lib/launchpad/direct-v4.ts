@@ -32,14 +32,14 @@ const permitAbi = parseAbi([
 const swapEvent = parseAbiItem("event Swap(bytes32 indexed id,address indexed sender,int128 amount0,int128 amount1,uint160 sqrtPriceX96,uint128 liquidity,int24 tick,uint24 fee)");
 const maxInput = (1n << 127n) - 1n;
 const priceScale = 1n << 192n;
-const hopPriceScale = 10n ** 36n;
+export const hopPriceScale = 10n ** 36n;
 const exactInputFields = [
   { name: "poolKey", ...launchPoolKeyParameter },
   { name: "zeroForOne", type: "bool" }, { name: "amountIn", type: "uint128" },
   { name: "amountOutMinimum", type: "uint128" },
 ] as const;
-const exactInput20 = [{ type: "tuple", components: [...exactInputFields, { name: "hookData", type: "bytes" }] }] as const;
-const exactInput212 = [{
+export const exactInput20 = [{ type: "tuple", components: [...exactInputFields, { name: "hookData", type: "bytes" }] }] as const;
+export const exactInput212 = [{
   type: "tuple", components: [...exactInputFields, { name: "minHopPriceX36", type: "uint256" }, { name: "hookData", type: "bytes" }],
 }] as const;
 
@@ -105,14 +105,19 @@ function assertLaunchPool(deployment: LaunchDeployment, record: NewLaunchRecord)
 function routerSupportsDeployment(deployment: LaunchDeployment, version: LaunchpadRouterVersion) {
   if (version === "2.0") return true;
   const rpc = new URL(deployment.rpcUrl);
+  if (deployment.privateCurvePreview) {
+    return deployment.engineVersion === 2 && typeof window !== "undefined" && rpc.origin === window.location.origin
+      && rpc.protocol === "https:" && /^\/preview-rpc\/[a-f0-9]{64}$/.test(rpc.pathname)
+      && !rpc.username && !rpc.password && !rpc.search && !rpc.hash;
+  }
   return deployment.engineVersion === 2 && rpc.protocol === "http:"
     && ["127.0.0.1", "localhost", "[::1]"].includes(rpc.hostname) && rpc.pathname === "/"
     && !rpc.username && !rpc.password && !rpc.search && !rpc.hash;
 }
 
-function encodeSwap(
+export function encodeSwap(
   version: LaunchpadRouterVersion, poolKey: LaunchPoolKey, buy: boolean,
-  amountIn: bigint, minimumOut: bigint, deadline: number,
+  amountIn: bigint, minimumOut: bigint, deadline: number | bigint,
 ) {
   const swap = { poolKey, zeroForOne: buy, amountIn, amountOutMinimum: minimumOut, hookData: "0x" as const };
   // The router's price is output base units per input base unit. Use the same reviewed floor as amountOutMinimum.

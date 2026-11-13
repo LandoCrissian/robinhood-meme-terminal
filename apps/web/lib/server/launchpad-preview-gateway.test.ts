@@ -8,16 +8,17 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import {
-  encodeFunctionData, erc20Abi, keccak256, parseAbi, parseEther, toHex, zeroAddress,
+  encodeAbiParameters, encodeFunctionData, erc20Abi, keccak256, parseAbi, parseEther, toHex, zeroAddress,
   type Address, type Hex, type PublicClient,
 } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
-import { factoryAbi, longevityFactoryAbi, prepareSwap } from "../launchpad/direct-v4";
+import { curveAbi, curveDraftCreationFeeWei, curveFactoryAbi, curveGraduationAbi, curveLedgerAbi } from "../launchpad/curve-v1";
+import { exactInput212, factoryAbi, hopPriceScale, longevityFactoryAbi, prepareSwap } from "../launchpad/direct-v4";
 import { launchPoolId, type NewLaunchRecord } from "../launchpad/launch-record";
 import type { BoundWallet } from "../launchpad/transactions";
 import { readLaunchpadPreviewAccess } from "./launchpad-preview-access";
 import { createLaunchpadPreviewGateway, localPreviewBackend, previewLanAccess, previewListenHost } from "./launchpad-preview-gateway";
-import { permittedPreviewRpc, type PreviewRpcPolicy } from "./launchpad-preview-rpc";
+import { permittedPreviewRpc, type CurvePreviewRpcPolicy, type PreviewRpcPolicy } from "./launchpad-preview-rpc";
 import { readLaunchpadRuntime, type LaunchpadRuntime } from "./new-launchpad-config";
 
 const account = privateKeyToAccount(generatePrivateKey());
@@ -294,6 +295,88 @@ test("preview RPC admits only the test wallet's chain-31337 launch, claim, exact
     assert.equal(await permittedPreviewRpc(policy(async () => tx), "debug_traceTransaction", traceParams), false);
   }
   assert.equal(await permittedPreviewRpc(policy(async () => traced), "debug_traceTransaction", [hash, { tracer: "callTracer", timeout: "1h" }]), false);
+});
+
+test("curve owner preview binds paid creation, lifecycle, receipts and Router 2.1.2 to the isolated fixture", async () => {
+  const activeCurve = toHex(0xc0, { size: 20 });
+  const previousCurve = toHex(0xc1, { size: 20 });
+  const curveLedger = toHex(0xc2, { size: 20 });
+  const lpLedger = toHex(0xc3, { size: 20 });
+  const engine = toHex(0xc4, { size: 20 });
+  const guard = toHex(0x2000, { size: 20 });
+  const key = { ...poolKey, hooks: guard };
+  const fixture = { ...deployment, engineVersion: 2, initializationGuard: guard,
+    universalRouterVersion: "2.1.2", privateCurvePreview: true } as const;
+  const chainTime = previewDeadline() + 345_600n;
+  const deadline = chainTime + 300n;
+  const fee = curveDraftCreationFeeWei;
+  const amountIn = parseEther("0.1");
+  const minimumOut = parseEther("100");
+  const roles = new Map([[token, "token"], [activeCurve, "activeCurve"], [previousCurve, "previousCurve"],
+    [curveLedger, "curveLedger"], [lpLedger, "lpLedger"]] as const);
+  const sell = encodeFunctionData({ abi: curveAbi, functionName: "sell", args: [minimumOut, amountIn, deadline] });
+  let graduated = false;
+  let canonical = true;
+  const authority: CurvePreviewRpcPolicy = {
+    runtime: { deployment: fixture, contracts: runtime.contracts, startBlock: runtime.startBlock }, wallet: account.address,
+    readTransaction: async () => ({ from: account.address, to: previousCurve, blockHash: hash, blockNumber: 12n, input: sell }),
+    curve: { creationFee: fee, graduationEngine: engine, timestamp: async () => chainTime, canonicalBlock: async () => canonical,
+      lookup: async (target) => {
+        const targetRole = roles.get(target.toLowerCase() as Address);
+        if (targetRole) return { token, activeCurve, targetRole, poolId: graduated ? launchPoolId(key) : undefined };
+      } },
+  };
+  const create = encodeFunctionData({ abi: curveFactoryAbi, functionName: "create",
+    args: ["Owner Fixture", "OWN", "", 0, zeroAddress, 0, intentId, deadline] });
+  const buy = encodeFunctionData({ abi: curveAbi, functionName: "buyAndGraduate", args: [minimumOut, deadline] });
+  const graduate = encodeFunctionData({ abi: curveAbi, functionName: "graduate", args: [deadline] });
+  const claim = encodeFunctionData({ abi: curveLedgerAbi, functionName: "claim" });
+  const collect = encodeFunctionData({ abi: curveGraduationAbi, functionName: "collectLpFees", args: [token, deadline] });
+  const approve = (spender: Address, amount = minimumOut) => encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [spender, amount] });
+  const raw = async (data: Hex, options?: Parameters<typeof sign>[1]) => permittedPreviewRpc(authority, "eth_sendRawTransaction", [await sign(data, options)]);
+  assert.equal(await raw(create, { value: fee }), true);
+  assert.equal(await raw(create, { value: fee - 1n }), false);
+  assert.equal(await raw(create, { value: fee, signer: stranger }), false);
+  assert.equal(await raw(create, { value: fee, chainId: 4663 }), false);
+  assert.equal(await raw(buy, { to: activeCurve, value: amountIn }), true);
+  assert.equal(await raw(buy, { to: previousCurve, value: amountIn }), false);
+  assert.equal(await raw(graduate, { to: activeCurve }), true);
+  assert.equal(await raw(sell, { to: activeCurve }), true);
+  assert.equal(await raw(claim, { to: curveLedger }), true);
+  assert.equal(await raw(collect, { to: engine }), false);
+  assert.equal(await raw(approve(activeCurve), { to: token }), true);
+  assert.equal(await raw(approve(previousCurve), { to: token }), false);
+  assert.equal(await raw(approve(activeCurve, parseEther("1000000001")), { to: token }), false);
+  assert.equal(await raw("0x74b4cf1f", { to: activeCurve }), false);
+  assert.equal(await permittedPreviewRpc(authority, "eth_call", [{ to: factory }, { blockHash: hash, requireCanonical: true }]), true);
+  assert.equal(await permittedPreviewRpc(authority, "eth_call", [{ to: factory }, { blockHash: hash, requireCanonical: false }]), false);
+  assert.equal(await permittedPreviewRpc(authority, "eth_call", [{ to: token, from: stranger.address }]), false);
+  assert.equal(await permittedPreviewRpc(authority, "anvil_impersonateAccount", [account.address]), false);
+  assert.equal(await permittedPreviewRpc(authority, "eth_sendTransaction", [{ to: factory }]), false);
+  assert.equal(await permittedPreviewRpc(authority, "debug_traceTransaction", [hash, { tracer: "callTracer" }]), true);
+  canonical = false;
+  assert.equal(await permittedPreviewRpc(authority, "debug_traceTransaction", [hash, { tracer: "callTracer" }]), false);
+
+  graduated = true;
+  assert.equal(await raw(sell, { to: activeCurve }), false);
+  assert.equal(await raw(approve(fixture.permit2), { to: token }), true);
+  assert.equal(await raw(collect, { to: engine }), true);
+  assert.equal(await raw(claim, { to: lpLedger }), true);
+  const routerAbi = parseAbi(["function execute(bytes commands,bytes[] inputs,uint256 deadline) payable"]);
+  const swap = (minHopPriceX36: bigint, hooks = key.hooks) => {
+    const swaps = encodeAbiParameters(exactInput212, [{ poolKey: { ...key, hooks }, zeroForOne: true,
+      amountIn, amountOutMinimum: minimumOut, hookData: "0x", minHopPriceX36 }]);
+    const settle = encodeAbiParameters([{ type: "address" }, { type: "uint256" }, { type: "bool" }], [zeroAddress, amountIn, true]);
+    const take = encodeAbiParameters([{ type: "address" }, { type: "uint256" }], [token, minimumOut]);
+    const input = encodeAbiParameters([{ type: "bytes" }, { type: "bytes[]" }], ["0x060b0f", [swaps, settle, take]]);
+    return encodeFunctionData({ abi: routerAbi, functionName: "execute", args: ["0x10", [input], deadline] });
+  };
+  const price = minimumOut * hopPriceScale / amountIn;
+  const router = { to: fixture.universalRouter, value: amountIn };
+  assert.equal(await raw(swap(price), router), true);
+  assert.equal(await raw(swap(price - 1n), router), false);
+  assert.equal(await raw(swap(price, zeroAddress), router), false);
+  assert.equal(await raw(swap(price), { ...router, value: amountIn - 1n }), false);
 });
 
 async function listen(server: Server) {

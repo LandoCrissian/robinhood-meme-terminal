@@ -107,6 +107,7 @@ export type NewLaunchDeployment = {
   stateView: Address;
   permit2: Address;
   tradingEnabled: boolean;
+  privateCurvePreview?: true;
 } & (
   | { engineVersion?: undefined; initializationGuard?: undefined; growthVaultDeployer?: undefined }
   | { engineVersion: 2; initializationGuard: Address; growthVaultDeployer?: Address }

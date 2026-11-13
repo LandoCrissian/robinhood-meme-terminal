@@ -22,6 +22,7 @@ export const curveAbi = parseAbi([
   "function futureReserveRecipient() view returns (address)",
   "function sold() view returns (uint256)",
   "function backingReserve() view returns (uint256)",
+  "function GRADUATION_BACKING() view returns (uint256)",
   "function graduationSold() view returns (uint256)",
   "function graduated() view returns (bool)",
   "function active() view returns (bool)",
@@ -105,10 +106,12 @@ export const curveOperatingShareBps = 500;
 export const curveReserveShareBps = 500;
 export const curveGraduationBps = 6_000;
 export const curveDraftCreationFeeWei = 400_000_000_000_000n;
+export const curveBaselineBackingWei = "1000000000000000000";
+export const curveOwnerBackingWei = "2000000000000000000";
 export const curveMaxVersion = 32;
 
 export type CurveCreationFeePolicy = { amountWei: string; recipient: Address };
-export type CurveDeployment = { graduationEngine: Address; projectRegistry: Address; creationFee: CurveCreationFeePolicy };
+export type CurveDeployment = { graduationEngine: Address; projectRegistry: Address; creationFee: CurveCreationFeePolicy; graduationBackingWei: string };
 export type CurveLaunch = {
   chainId: 31337;
   factory: Address;
@@ -133,6 +136,7 @@ export type CurveState = {
   activeCurve: Address;
   sold: string;
   backingReserve: string;
+  graduationBackingWei: string;
   graduationSold: string;
   graduated: boolean;
   operatingRecipient: Address;
