@@ -34,12 +34,10 @@ const stonkBrokerToken = `0x${["e934e36a", "439c9401", "7b64a3fe", "ce66af12", "
 const nativeAsset = address(0);
 const stonkBrokerHooks = address(0x9003);
 const stonkBrokerPoolId = "0xadc81b7cc584d4576c944baa1f6128c4d80e636b0e1efa7ce2248c56c9614a49";
-const cannaCatToken = "0x1139d423c1706bdead91f03507f521635591ed92";
-const cannaCatHooks = "0xe5e702641ea86f4ae6cc3cdaed2b886f976be044";
-const cannaCatPoolId = "0x5f5ec0e1016bae2f04c122bbcd2c141a4177cc681d7c2e4463a1d172ed8430b3";
 const peepToken = ["0xf0821f2b", "f570ca4e", "7499a9ed", "9db7c788", "fed9946f"].join("");
 const peepPair = ["0xe70dd154", "81ba143f", "145fbe23", "e8916236", "d554d3c7"].join("");
 const hopiumToken = ["0xb6ce5192", "5c2e397e", "bf1a443b", "343d1926", "7b3d4225"].join("");
+const hopiumHooks = "0xe5e702641ea86f4ae6cc3cdaed2b886f976be044";
 const hopiumPoolId = "0xc1dbd75280b6d117b4ac1e27fcd00c6dccb1a2b2fbfa9923a2c492711299d337";
 const acceptanceWallet = "0x3333333333333333333333333333333333333333";
 const spcxToken = ["0x4a0e65a3", "eccec6db", "e60ae065", "f2e7bb85", "fae35eea"].join("");
@@ -825,7 +823,7 @@ function hopiumCanonicalDirectoryMarket() {
       token1: hopiumToken,
       fee: 0,
       tickSpacing: 200,
-      hooks: cannaCatHooks
+      hooks: hopiumHooks
     }]
   };
 }
@@ -2408,6 +2406,7 @@ async function inspectV4PreviewUserJourney(browser, fixture) {
 }
 
 async function inspectV4WalletReviewJourney(browser, fixture) {
+  const { token, hooks, poolId } = fixture.v4;
   const state = {
     approved: true,
     receiptsAvailable: false,
@@ -2436,9 +2435,9 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
   await page.route(/\/api\/vnext\/market-search(?:\?.*)?$/, async (route) => {
     const query = new URL(route.request().url()).searchParams.get("q") ?? "";
     const normalized = query.trim().replace(/^\$/, "").toLowerCase().replace(/[\s_-]+/g, "");
-    const matches = normalized === "cannacat"
-      || query.trim().toLowerCase() === cannaCatToken
-      || query.trim().toLowerCase() === cannaCatPoolId;
+    const matches = normalized === "fixturev4"
+      || query.trim().toLowerCase() === token
+      || query.trim().toLowerCase() === poolId;
     if (!matches) return route.fallback();
     state.searchRouteHits += 1;
     universalSearchQueries.set(page, [...(universalSearchQueries.get(page) ?? []), query]);
@@ -2447,26 +2446,26 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
       contentType: "application/json",
       body: JSON.stringify({
         query,
-        queryKind: query.trim().toLowerCase() === cannaCatPoolId ? "v4-pool-id" : query.trim().toLowerCase() === cannaCatToken ? "token-or-pool-address" : "text",
+        queryKind: query.trim().toLowerCase() === poolId ? "v4-pool-id" : query.trim().toLowerCase() === token ? "token-or-pool-address" : "text",
         status: "found",
         results: [{
-          address: cannaCatToken,
-          name: "CannaCat",
-          symbol: "CANNACAT",
+          address: token,
+          name: "V4 Fixture Token",
+          symbol: "FIXTUREV4",
           decimals: 18,
-          matchedBy: query.trim().toLowerCase() === cannaCatPoolId ? "pool-id" : query.trim().toLowerCase() === cannaCatToken ? "token" : "symbol",
+          matchedBy: query.trim().toLowerCase() === poolId ? "pool-id" : query.trim().toLowerCase() === token ? "token" : "symbol",
           markets: [{
             sourceId: "uniswap-v4",
             protocol: "uniswap",
             version: 4,
-            poolKey: cannaCatPoolId,
+            poolKey: poolId,
             poolAddress: null,
             token0: nativeAsset,
-            token1: cannaCatToken,
+            token1: token,
             stable: null,
             fee: 0,
             tickSpacing: 200,
-            hooks: cannaCatHooks,
+            hooks,
             transactionHash: txHash(0x7171),
             blockNumber: "49000000",
             blockHash: txHash(0x7272),
@@ -2502,10 +2501,10 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
     const quotedAtMs = Date.now();
     const exact = request.chainId === 4_663
       && String(request.inputAsset).toLowerCase() === nativeAsset
-      && String(request.outputAsset).toLowerCase() === cannaCatToken
+      && String(request.outputAsset).toLowerCase() === token
       && String(request.recipient).toLowerCase() === acceptanceWallet
       && request.canonicalMarket?.sourceId === "uniswap-v4"
-      && request.canonicalMarket?.poolId === cannaCatPoolId;
+      && request.canonicalMarket?.poolId === poolId;
     const attempt = exact ? {
       ...fixture.v4.quote.attempts[0],
       publicWalletExecutionEligible: v4WalletReviewOnly,
@@ -2575,10 +2574,10 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
     const exact = request.provider === "uniswap-v4"
       && request.chainId === 4_663
       && String(request.inputAsset).toLowerCase() === nativeAsset
-      && String(request.outputAsset).toLowerCase() === cannaCatToken
-      && request.canonicalMarket?.poolId === cannaCatPoolId
-      && request.v4QuoteEvidence?.poolId === cannaCatPoolId
-      && String(request.v4QuoteEvidence?.hooks).toLowerCase() === cannaCatHooks;
+      && String(request.outputAsset).toLowerCase() === token
+      && request.canonicalMarket?.poolId === poolId
+      && request.v4QuoteEvidence?.poolId === poolId
+      && String(request.v4QuoteEvidence?.hooks).toLowerCase() === hooks;
     if (!exact) throw new Error(`V4 browser verification request lost canonical binding: ${JSON.stringify(request)}`);
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(freshEvidence()) });
   });
@@ -2587,8 +2586,8 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
     state.authorizations += 1;
     state.authorizeRequests.push(request);
     const exact = request.provider === "uniswap-v4"
-      && request.canonicalMarket?.poolId === cannaCatPoolId
-      && request.v4QuoteEvidence?.poolId === cannaCatPoolId
+      && request.canonicalMarket?.poolId === poolId
+      && request.v4QuoteEvidence?.poolId === poolId
       && String(request.recipient).toLowerCase() === acceptanceWallet;
     if (!exact) throw new Error(`V4 browser authorization request lost exact fee-free binding: ${JSON.stringify(request)}`);
     await route.fulfill({
@@ -2600,7 +2599,7 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
 
   await gotoReady(page, base, ".rmtDesktopTerminal .rmtMarketTableRow");
   const search = page.getByRole("textbox", { name: "Search Robinhood Chain markets" });
-  await search.fill("CannaCat");
+  await search.fill("FIXTUREV4");
   await search.press("Enter");
   try {
     await page.locator('.rmtDesktopTerminal[data-terminal-context="asset"] #vn-asset-heading').waitFor({ state: "visible" });
@@ -2612,8 +2611,8 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
     }));
     throw new Error(`V4 wallet fixture search did not enter the asset workspace: ${JSON.stringify({ diagnostic, queries: universalSearchQueries.get(page), searchRouteHits: state.searchRouteHits })}`, { cause: error });
   }
-  if (new URL(page.url()).searchParams.get("market")?.toLowerCase() !== cannaCatToken) {
-    throw new Error("V4 wallet journey did not select the exact CannaCat fixture token");
+  if (new URL(page.url()).searchParams.get("market")?.toLowerCase() !== token) {
+    throw new Error("V4 wallet journey did not select the exact fixture token");
   }
   const panel = page.locator(".vnTradePanel").last();
   await panel.getByLabel("Pay with asset").selectOption("eip155:4663/native");
@@ -2644,11 +2643,11 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
     if (state.verifications !== 0 || state.authorizations !== 0 || walletMethods.includes("eth_sendTransaction")) {
       throw new Error(`The V4 quote-only winner produced wallet side effects: ${JSON.stringify({ state, walletMethods })}`);
     }
-    await page.screenshot({ path: `${output}/v4-quote-only-cannacat-desktop-1440x900.png`, fullPage: false, animations: "disabled" });
+    await page.screenshot({ path: `${output}/v4-quote-only-desktop-1440x900.png`, fullPage: false, animations: "disabled" });
     await context.close();
     return {
-      token: cannaCatToken,
-      poolId: cannaCatPoolId,
+      token,
+      poolId,
       provider: "uniswap-v4",
       publicExecutionEligible: false,
       quotePreserved: true,
@@ -2680,18 +2679,18 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
     throw new Error(`V4 wallet review did not use exactly one verify and authorize request: ${JSON.stringify(state)}`);
   }
   if (fixture.v4.plan.target.toLowerCase() !== "0x06afba43fd06227fa663b0daecf536f6eaa6bf99"
-    || fixture.v4.plan.v4Execution?.poolId !== cannaCatPoolId
+    || fixture.v4.plan.v4Execution?.poolId !== poolId
     || fixture.v4.plan.v4Execution?.rmtFeeAtomic !== "0"
     || fixture.v4.plan.v4Execution?.treasuryTransferAtomic !== "0") {
     throw new Error("V4 deterministic wallet plan did not preserve official no-fee execution authority");
   }
-  await page.screenshot({ path: `${output}/v4-wallet-review-cannacat-desktop-1440x900.png`, fullPage: false, animations: "disabled" });
+  await page.screenshot({ path: `${output}/v4-wallet-review-desktop-1440x900.png`, fullPage: false, animations: "disabled" });
   await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("cancel"));
   await page.getByText("Wallet request was rejected by the owner. Nothing was broadcast.", { exact: true }).waitFor({ state: "visible" });
   await context.close();
   return {
-    token: cannaCatToken,
-    poolId: cannaCatPoolId,
+    token,
+    poolId,
     provider: "uniswap-v4",
     executionTarget: fixture.v4.plan.target,
     verifyRequests: state.verifications,
@@ -2705,6 +2704,7 @@ async function inspectV4WalletReviewJourney(browser, fixture) {
 }
 
 async function inspectV4FreshWalletSellJourney(browser, fixture) {
+  const { token, hooks, poolId } = fixture.v4;
   const sell = fixture.v4.sell;
   const stages = [sell.tokenApproval, sell.permit2Approval, sell.swap];
   const state = {
@@ -2738,7 +2738,7 @@ async function inspectV4FreshWalletSellJourney(browser, fixture) {
   await page.route(/\/api\/vnext\/market-search(?:\?.*)?$/, async (route) => {
     const query = new URL(route.request().url()).searchParams.get("q") ?? "";
     const normalized = query.trim().replace(/^\$/, "").toLowerCase().replace(/[\s_-]+/g, "");
-    if (normalized !== "cannacat" && query.trim().toLowerCase() !== cannaCatToken) return route.fallback();
+    if (normalized !== "fixturev4" && query.trim().toLowerCase() !== token) return route.fallback();
     state.searchRouteHits += 1;
     universalSearchQueries.set(page, [...(universalSearchQueries.get(page) ?? []), query]);
     await route.fulfill({
@@ -2746,26 +2746,26 @@ async function inspectV4FreshWalletSellJourney(browser, fixture) {
       contentType: "application/json",
       body: JSON.stringify({
         query,
-        queryKind: query.trim().toLowerCase() === cannaCatToken ? "token-or-pool-address" : "text",
+        queryKind: query.trim().toLowerCase() === token ? "token-or-pool-address" : "text",
         status: "found",
         results: [{
-          address: cannaCatToken,
-          name: "CannaCat",
-          symbol: "CANNACAT",
+          address: token,
+          name: "V4 Fixture Token",
+          symbol: "FIXTUREV4",
           decimals: 18,
-          matchedBy: query.trim().toLowerCase() === cannaCatToken ? "token" : "symbol",
+          matchedBy: query.trim().toLowerCase() === token ? "token" : "symbol",
           markets: [{
             sourceId: "uniswap-v4",
             protocol: "uniswap",
             version: 4,
-            poolKey: cannaCatPoolId,
+            poolKey: poolId,
             poolAddress: null,
             token0: nativeAsset,
-            token1: cannaCatToken,
+            token1: token,
             stable: null,
             fee: 0,
             tickSpacing: 200,
-            hooks: cannaCatHooks,
+            hooks,
             transactionHash: txHash(0x7373),
             blockNumber: "49000000",
             blockHash: txHash(0x7474),
@@ -2838,12 +2838,12 @@ async function inspectV4FreshWalletSellJourney(browser, fixture) {
     state.quotes += 1;
     state.quoteRequests.push(request);
     const exact = request.chainId === 4_663
-      && String(request.inputAsset).toLowerCase() === cannaCatToken
+      && String(request.inputAsset).toLowerCase() === token
       && String(request.outputAsset).toLowerCase() === nativeAsset
       && String(request.recipient).toLowerCase() === acceptanceWallet
       && request.inputAmountAtomic === sell.inputAmountAtomic
       && request.canonicalMarket?.sourceId === "uniswap-v4"
-      && request.canonicalMarket?.poolId === cannaCatPoolId;
+      && request.canonicalMarket?.poolId === poolId;
     if (!exact) throw new Error(`V4 fresh-wallet sell quote lost canonical binding: ${JSON.stringify(request)}`);
     await route.fulfill({
       status: 200,
@@ -2857,12 +2857,12 @@ async function inspectV4FreshWalletSellJourney(browser, fixture) {
     state.verifyRequests.push(request);
     const exact = request.provider === "uniswap-v4"
       && request.chainId === 4_663
-      && String(request.inputAsset).toLowerCase() === cannaCatToken
+      && String(request.inputAsset).toLowerCase() === token
       && String(request.outputAsset).toLowerCase() === nativeAsset
       && request.inputAmountAtomic === sell.inputAmountAtomic
-      && request.canonicalMarket?.poolId === cannaCatPoolId
-      && request.v4QuoteEvidence?.poolId === cannaCatPoolId
-      && String(request.v4QuoteEvidence?.hooks).toLowerCase() === cannaCatHooks;
+      && request.canonicalMarket?.poolId === poolId
+      && request.v4QuoteEvidence?.poolId === poolId
+      && String(request.v4QuoteEvidence?.hooks).toLowerCase() === hooks;
     if (!exact) throw new Error(`V4 fresh-wallet sell verification lost exact binding: ${JSON.stringify(request)}`);
     await route.fulfill({
       status: 200,
@@ -2879,8 +2879,8 @@ async function inspectV4FreshWalletSellJourney(browser, fixture) {
       && request.quoteRequestId === scenario.evidence.sourceQuoteRequestId
       && request.verificationId === scenario.evidence.verificationId
       && request.expectedStatus === scenario.evidence.status
-      && request.canonicalMarket?.poolId === cannaCatPoolId
-      && request.v4QuoteEvidence?.poolId === cannaCatPoolId
+      && request.canonicalMarket?.poolId === poolId
+      && request.v4QuoteEvidence?.poolId === poolId
       && String(request.recipient).toLowerCase() === acceptanceWallet;
     if (!exact) throw new Error(`V4 fresh-wallet sell authorization lost stage binding: ${JSON.stringify(request)}`);
     const evidence = freshEvidence(scenario);
@@ -2893,7 +2893,7 @@ async function inspectV4FreshWalletSellJourney(browser, fixture) {
 
   await gotoReady(page, base, ".rmtDesktopTerminal .rmtMarketTableRow");
   const search = page.getByRole("textbox", { name: "Search Robinhood Chain markets" });
-  await search.fill("CannaCat");
+  await search.fill("FIXTUREV4");
   await search.press("Enter");
   await page.locator('.rmtDesktopTerminal[data-terminal-context="asset"] #vn-asset-heading').waitFor({ state: "visible" });
   const panel = page.locator(".vnTradePanel").last();
@@ -2947,7 +2947,7 @@ async function inspectV4FreshWalletSellJourney(browser, fixture) {
   if (new Set(quoteIds).size !== 3 || new Set(verificationIds).size !== 3) {
     throw new Error(`V4 fresh-wallet sell reused a discarded quote or verification payload: ${JSON.stringify({ quoteIds, verificationIds })}`);
   }
-  if (stages[0].plan.target.toLowerCase() !== cannaCatToken
+  if (stages[0].plan.target.toLowerCase() !== token
     || stages[1].plan.target.toLowerCase() !== sell.permit2.toLowerCase()
     || stages[2].plan.target.toLowerCase() !== sell.universalRouter.toLowerCase()
     || stages[0].plan.inputAmountAtomic !== sell.inputAmountAtomic
@@ -2956,7 +2956,7 @@ async function inspectV4FreshWalletSellJourney(browser, fixture) {
     || stages[2].plan.v4Execution?.treasuryTransferAtomic !== "0") {
     throw new Error("V4 fresh-wallet sell authority changed across the approval chain");
   }
-  await page.screenshot({ path: `${output}/v4-fresh-wallet-sell-review-cannacat-desktop-1440x900.png`, fullPage: false, animations: "disabled" });
+  await page.screenshot({ path: `${output}/v4-fresh-wallet-sell-review-desktop-1440x900.png`, fullPage: false, animations: "disabled" });
   await page.evaluate(() => window.__RMT_ACCEPTANCE_RELEASE_WALLET__("cancel"));
   await page.getByText("Wallet request was rejected by the owner. Nothing was broadcast.", { exact: true }).waitFor({ state: "visible" });
   const walletMethods = await page.evaluate(() => window.__RMT_ACCEPTANCE_WALLET_METHODS__);

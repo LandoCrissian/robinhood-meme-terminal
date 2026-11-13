@@ -21,20 +21,17 @@ import {
   createRmtUniswapV4FeeExecutionV2,
   encodeRmtUniswapV4FeeExecutionV2,
   RMT_UNISWAP_V4_V2_PROVIDER_ID,
-  rmtUniswapV4FeeExecutorV2Abi,
-  rmtUniswapV4PoolIdV2
+  rmtUniswapV4FeeExecutorV2Abi
 } from "./uniswap-v4-fee-executor-v2";
 import { reconcileRmtUniswapV4SettlementV2 } from "./uniswap-v4-settlement-reconciliation";
 import { VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY } from "./provider-fee-settlement";
+import { legacyV4TestPoolId as poolId, legacyV4TestPoolKey as poolKey } from "./legacy-v4-test-fixture";
 
-const token = getAddress("0x1139d423C1706BDeaD91f03507F521635591eD92"); // test-only V4 control
-const hooks = getAddress("0xE5e702641Ea86F4ae6cC3cDaeD2B886f976Be044");
+const { currency1: token, hooks } = poolKey;
 const recipient = getAddress("0x1111111111111111111111111111111111111111");
 const trader = getAddress("0x2222222222222222222222222222222222222222");
 const executor = getAddress("0x3333333333333333333333333333333333333333");
 const treasury = getAddress("0x4444444444444444444444444444444444444444");
-const poolKey = { currency0: zeroAddress, currency1: token, fee: 0, tickSpacing: 200, hooks };
-const poolId = rmtUniswapV4PoolIdV2(poolKey);
 const now = Date.now();
 const runtimeHash = `0x${"a".repeat(64)}` as Hex;
 const poolRuntimeHash = `0x${"b".repeat(64)}` as Hex;

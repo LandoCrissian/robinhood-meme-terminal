@@ -22,11 +22,10 @@ import { directExecutionBinding } from "./execution-settlement";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "./pre-sign-evidence";
 import { vnextSpotTradeInstruction } from "./execution-authority";
 import { recordSubmittedVNextExecution, settledVNextOutputAtomic, type VNextExecutionStorage } from "./execution-recovery";
+import { legacyV4TestPoolId as poolId, legacyV4TestPoolKey } from "./legacy-v4-test-fixture";
 
-const token = getAddress("0x1139d423C1706BDeaD91f03507F521635591eD92");
+const { currency1: token, hooks } = legacyV4TestPoolKey;
 const recipient = getAddress("0x1111111111111111111111111111111111111111");
-const hooks = getAddress("0xE5e702641Ea86F4ae6cC3cDaeD2B886f976Be044");
-const poolId = "0x5f5ec0e1016bae2f04c122bbcd2c141a4177cc681d7c2e4463a1d172ed8430b3" as Hex;
 const quoteHash = `0x${"5".repeat(64)}` as Hex;
 const simulationHash = `0x${"6".repeat(64)}` as Hex;
 const now = 1_786_000_000_000;

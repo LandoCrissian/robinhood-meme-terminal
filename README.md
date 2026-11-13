@@ -31,7 +31,7 @@ Pinned chain records distinguish the original V4 issuance from the official V6 l
 - [Historical V6 deployment evidence](docs/MAINNET_V6_DEPLOYMENT.md)
 - [Historical terminal authority snapshot](docs/archive/terminal-scope-2026-11-11/README.md)
 
-The current terminal execution/recovery stack also has a LAMMB embed consumer in open PR #575. Separate that dependency before deleting shared modules. Do not merge or modify that PR as an incidental part of this cleanup.
+The retired CannaCat integration drafts #575 and #581 are closed. The release stack retains generic wallet, execution and recovery protections. LAMMB Empires continues independently.
 
 ## Verification
 

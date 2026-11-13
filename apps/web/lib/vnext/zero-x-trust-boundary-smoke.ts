@@ -11,7 +11,7 @@ const holder = getAddress("0x0000000000001fF3684f28c67538d4D072C22734");
 const user = getAddress("0x0000000000000000000000000000000000010000");
 const other = getAddress("0x0000000000000000000000000000000000023456");
 const usdg = getAddress("0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168");
-const canna = getAddress("0x1139d423C1706BDeaD91f03507F521635591eD92");
+const fixtureToken = getAddress("0x0000000000000000000000000000000000005101");
 const settler = getAddress(fixture.settler);
 const inner = parseAbi(["function execute((address recipient,address buyToken,uint256 minAmountOut) slippage,bytes[] actions,bytes32 tag) payable returns(bool)"]);
 const basic = parseAbi(["function BASIC(address sellToken,uint256 proportion,address pool,uint256 offset,bytes data)"]);
@@ -51,7 +51,7 @@ export function internalRouteActions(body: { sellToken: Address; buyToken: Addre
 
 export function runZeroXTrustBoundarySmoke() {
   let positives = 0, negatives = 0;
-  for (const [sell, buy] of [[zeroAddress, usdg], [usdg, zeroAddress], [usdg, canna]] as const) {
+  for (const [sell, buy] of [[zeroAddress, usdg], [usdg, zeroAddress], [usdg, fixtureToken]] as const) {
     for (const kind of ["PANCAKE_HOOK", "UNKNOWN_TO_RMT_V2", "OPAQUE_BASIC"] as const) {
       const body = { sellToken: sell === zeroAddress ? ZERO_X_NATIVE_TOKEN : sell,
         buyToken: buy === zeroAddress ? ZERO_X_NATIVE_TOKEN : buy, sellAmount: "1000000", minBuyAmount: "990100",

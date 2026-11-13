@@ -65,6 +65,9 @@ for (const route of redirectRoutes) {
 
 assert.match(read("../app/launch/page.tsx"), /redirect\("\/create-token"\)/);
 
+assert.equal(existsSync(new URL("../app/api/embed/cannacat", import.meta.url)), false,
+  "The retired partner embed must have no application route");
+
 for (const route of [
   "/nft", "/nft/collection/item", "/projects", "/project/0x", "/markets/robinhood-chain",
   "/profile", "/invite/test", "/watchlist", "/api/nft/mint-preflight",
@@ -80,9 +83,8 @@ for (const route of [
 
 for (const route of [
   "/", "/create-token", "/my-launches", "/wallet", "/api/launchpad/config", "/mcp",
-  "/api/embed/cannacat/quotes", "/api/embed/cannacat/verify", "/api/embed/cannacat/authorize",
-  "/api/embed/cannacat/native-settlement-trace", "/api/vnext/quotes", "/api/vnext/verify",
-  "/api/vnext/authorize", "/api/vnext/native-settlement-trace", "/api/vnext/wallet-request-recovery"
+  "/api/vnext/quotes", "/api/vnext/verify", "/api/vnext/authorize",
+  "/api/vnext/native-settlement-trace", "/api/vnext/wallet-request-recovery"
 ]) {
   const url = new URL(route, appUrl).href;
   assert.equal(unstable_doesMiddlewareMatch({ config: middlewareConfig, url }), false,

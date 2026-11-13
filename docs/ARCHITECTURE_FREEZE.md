@@ -10,7 +10,7 @@ RMT is a token launchpad, not a general market operating layer. This explicit ow
 
 1. Preserve the existing UI, branding, mobile ergonomics and useful token/trading components.
 2. Preserve the existing RMT token and curve. New third-party launches must be a separately versioned engine; do not reopen or mutate the legacy factory as a shortcut.
-3. Keep LAMMB Empires independent. Protect its current RMT embed dependencies until a tested separation is available.
+3. Keep LAMMB Empires independent. Preserve generic wallet and settlement protections while retiring dedicated CannaCat integration dependencies.
 4. Own the launch factory, launch records and product. Using shared Uniswap liquidity infrastructure is not outsourcing token creation to Pons, nor does it require building a private DEX.
 5. Remove unrelated product lanes in dependency-aware, tested stages. Do not treat hidden navigation as complete source/service removal.
 
