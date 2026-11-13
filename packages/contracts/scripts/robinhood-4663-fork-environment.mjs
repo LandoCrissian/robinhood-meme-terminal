@@ -303,7 +303,7 @@ async function stopAnvil(child) {
   }
 }
 
-export async function withAnvilFork({ anvil, chainId = network.chainId, archive = "drpc" }, run) {
+export async function withAnvilFork({ anvil, chainId = network.chainId, archive = "pocket" }, run) {
   assert.ok(chainId === 4663 || chainId === 31337, "unsupported review fork chain ID");
   const binary = anvil.includes("/") || anvil.includes("\\") ? resolve(anvil) : anvil;
   const version = execFileSync(binary, ["--version"], { encoding: "utf8", windowsHide: true });

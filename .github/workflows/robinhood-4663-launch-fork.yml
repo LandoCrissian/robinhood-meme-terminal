@@ -18,8 +18,8 @@ on:
       archive:
         description: Read-only Robinhood archive for the entire fork run
         type: choice
-        options: [drpc, pocket, pinax]
-        default: drpc
+        options: [pocket, drpc, pinax]
+        default: pocket
 
 permissions:
   contents: read
@@ -59,7 +59,7 @@ jobs:
       - name: Exercise the exact V2 review build on loopback Anvil
         working-directory: apps/web
         env:
-          FORK_ARCHIVE: ${{ inputs.archive || 'drpc' }}
+          FORK_ARCHIVE: ${{ inputs.archive || 'pocket' }}
         run: |
           set -euo pipefail
           node --import tsx ../../packages/contracts/scripts/validate-launch-4663-fork.mjs \
