@@ -33,6 +33,7 @@ const sourcePaths = [
   "apps/web/lib/launchpad/launch-record.ts",
   "apps/web/lib/launchpad/router-pins.ts",
   "apps/web/lib/server/launchpad-preview-access.ts",
+  "apps/web/lib/server/launchpad-sqlite-backup.ts",
   "apps/web/lib/server/media-request-guard.ts",
   "apps/web/lib/server/new-launchpad-growth-health.ts",
   "apps/web/lib/server/new-launchpad-health.ts",
