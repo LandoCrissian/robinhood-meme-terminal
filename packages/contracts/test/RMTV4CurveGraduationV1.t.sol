@@ -301,7 +301,7 @@ contract RMTV4CurveGraduationV1Test is Test {
             abi.encode(manager, engine)
         );
         RMTLaunchCurveDeploymentV1 deployment = new RMTLaunchCurveDeploymentV1(
-            dependencies, salt, operating, reserve, address(0), address(successor), address(successor).codehash
+            dependencies, salt, operating, reserve, address(0), address(successor), address(successor).codehash, 0
         );
         graduation = deployment.graduationEngine();
         factory = deployment.factory();

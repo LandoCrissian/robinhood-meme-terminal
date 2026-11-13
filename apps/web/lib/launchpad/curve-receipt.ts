@@ -1,7 +1,8 @@
-import { decodeFunctionData, erc20Abi, isHash, keccak256, parseAbi, parseEventLogs, zeroAddress, type Address, type PublicClient, type TransactionReceipt } from "viem";
+import { decodeFunctionData, erc20Abi, isHash, keccak256, parseAbi, parseEventLogs, zeroAddress, type Address, type Hex, type PublicClient, type TransactionReceipt } from "viem";
 import { normalizeNativeTrace, type NormalizedNativeTrace } from "../vnext/normalized-native-trace";
-import { curveAbi, curveCreatedEvent, curveFactoryAbi, curveFeeClaimedEvent, curveGraduatedEvent, curveGraduationAbi, curveLpClaimedEvent,
-  curveLpCollectedEvent, curveLpLedgerAbi, curveSupplyPresets, curveTradeEvent, sameCurveAddress, type CurveLaunch, type CurveState } from "./curve-v1";
+import { curveAbi, curveCreatedEvent, curveCreationFeePaidEvent, curveFactoryAbi, curveFeeClaimedEvent, curveGraduatedEvent, curveGraduationAbi,
+  curveLpClaimedEvent, curveLpCollectedEvent, curveLpLedgerAbi, curveSupplyPresets, curveTradeEvent, sameCurveAddress,
+  type CurveCreationFeePolicy, type CurveLaunch, type CurveState } from "./curve-v1";
 import { boundReceipt, displayAmount, verifySwap } from "./direct-v4";
 import { NativeSettlementPending } from "./native-settlement";
 import { boundedReceiptLogs } from "./receipt-logs";
@@ -12,9 +13,10 @@ const permit2Abi = parseAbi([
   "event Approval(address indexed owner,address indexed token,address indexed spender,uint160 amount,uint48 expiration)",
 ]);
 
-export function projectCurveReceipt(factory: Address, receipt: TransactionReceipt, request?: LaunchRequest): CurveLaunch {
+export function projectCurveReceipt(factory: Address, receipt: TransactionReceipt, policy: CurveCreationFeePolicy, request?: LaunchRequest): CurveLaunch {
   if (receipt.status !== "success" || !sameCurveAddress(receipt.to, factory)) throw new Error("The curve creation receipt is unavailable.");
-  const events = parseEventLogs({ abi: [curveCreatedEvent], logs: boundedReceiptLogs(receipt).filter((log) => sameCurveAddress(log.address, factory)) });
+  const logs = boundedReceiptLogs(receipt).filter((log) => sameCurveAddress(log.address, factory));
+  const events = parseEventLogs({ abi: [curveCreatedEvent], logs });
   if (events.length !== 1) throw new Error("Expected one canonical curve creation event.");
   const { args, logIndex } = events[0];
   const { token, curve, creator, intentId, supply, revenueLedger, treasury, treasuryShareBps, name, symbol, projectURI } = args;
@@ -24,20 +26,36 @@ export function projectCurveReceipt(factory: Address, receipt: TransactionReceip
     || (treasuryShareBps === 0) !== sameCurveAddress(treasury, zeroAddress) || treasuryShareBps > 9_000
     || new TextEncoder().encode(name).length > 48 || new TextEncoder().encode(symbol).length > 12
     || new TextEncoder().encode(projectURI).length > 196) throw new Error("Curve creation evidence is malformed.");
+  const fees = parseEventLogs({ abi: [curveCreationFeePaidEvent], logs });
+  const [feeEvent] = fees;
+  if (fees.length !== 1 || !sameCurveAddress(feeEvent.args.token, token) || !sameCurveAddress(feeEvent.args.creator, creator)
+    || !sameCurveAddress(feeEvent.args.recipient, policy.recipient) || feeEvent.args.fee !== BigInt(policy.amountWei)) {
+    throw new Error("The creation fee receipt does not match the immutable factory terms.");
+  }
+  const launch: CurveLaunch = { chainId: 31337, factory, token, curve, creator, intentId, name, symbol, projectURI,
+    totalSupply: supply.toString(), treasury, treasuryShareBps, ledger: revenueLedger,
+    creationFee: { amountWei: feeEvent.args.fee.toString(), recipient: feeEvent.args.recipient,
+      refundWei: feeEvent.args.refund.toString(), logIndex: feeEvent.logIndex },
+    transactionHash: receipt.transactionHash, blockHash: receipt.blockHash, blockNumber: receipt.blockNumber.toString(), logIndex };
   if (request) {
-    const reviewed = decodeFunctionData({ abi: curveFactoryAbi, data: request.data });
     if (request.kind !== "curve-create" || request.chainId !== 31337 || !sameCurveAddress(request.to, factory) || !sameCurveAddress(request.from, creator)
-      || BigInt(request.value) !== 0n || !sameCurveAddress(intentId, request.intentId) || reviewed.functionName !== "create"
-      || reviewed.args[0] !== name || reviewed.args[1] !== symbol || reviewed.args[2] !== projectURI
-      || !curveSupplyPresets.some((preset, index) => index === reviewed.args[3] && supply === BigInt(preset) * 10n ** 18n)
-      || !sameCurveAddress(reviewed.args[4], treasury) || reviewed.args[5] !== treasuryShareBps || !sameCurveAddress(reviewed.args[6], intentId)
-      || reviewed.args[7] !== BigInt(request.deadline)) {
+      || !sameCurveAddress(intentId, request.intentId) || feeEvent.args.refund !== 0n || BigInt(request.value) !== feeEvent.args.fee) {
       throw new Error("Curve creation did not match the reviewed request.");
     }
+    assertCurveCreationTransaction(launch, request.data, BigInt(request.value), BigInt(request.deadline));
   }
-  return { chainId: 31337, factory, token, curve, creator, intentId, name, symbol, projectURI,
-    totalSupply: supply.toString(), treasury, treasuryShareBps, ledger: revenueLedger,
-    transactionHash: receipt.transactionHash, blockHash: receipt.blockHash, blockNumber: receipt.blockNumber.toString(), logIndex };
+  return launch;
+}
+
+export function assertCurveCreationTransaction(launch: CurveLaunch, data: Hex, value: bigint, deadline?: bigint) {
+  const reviewed = decodeFunctionData({ abi: curveFactoryAbi, data });
+  if (reviewed.functionName !== "create" || value !== BigInt(launch.creationFee.amountWei) + BigInt(launch.creationFee.refundWei)
+    || reviewed.args[0] !== launch.name || reviewed.args[1] !== launch.symbol || reviewed.args[2] !== launch.projectURI
+    || !curveSupplyPresets.some((preset, index) => index === reviewed.args[3] && BigInt(launch.totalSupply) === BigInt(preset) * 10n ** 18n)
+    || !sameCurveAddress(reviewed.args[4], launch.treasury) || reviewed.args[5] !== launch.treasuryShareBps
+    || !sameCurveAddress(reviewed.args[6], launch.intentId) || (deadline !== undefined && reviewed.args[7] !== deadline)) {
+    throw new Error("Curve creation did not match the reviewed request.");
+  }
 }
 
 function successfulNativePayment(trace: NormalizedNativeTrace, from: Address, to: Address): bigint {
@@ -46,8 +64,8 @@ function successfulNativePayment(trace: NormalizedNativeTrace, from: Address, to
   return own + trace.calls.reduce((total, child) => total + successfulNativePayment(child, from, to), 0n);
 }
 
-async function proveCurvePayout(rpc: PublicClient, receipt: TransactionReceipt, request: LaunchRequest, payout: bigint,
-  from = request.to, to = request.from) {
+async function proveCurvePayoutTrace(rpc: PublicClient, receipt: TransactionReceipt,
+  request: Pick<LaunchRequest, "from" | "to" | "data" | "value">, payout: bigint, from: Address, to: Address) {
   if (!payout) return;
   let raw: unknown;
   try {
@@ -55,9 +73,20 @@ async function proveCurvePayout(rpc: PublicClient, receipt: TransactionReceipt, 
   } catch { throw new NativeSettlementPending("unavailable"); }
   let trace: NormalizedNativeTrace;
   try { trace = normalizeNativeTrace(raw); } catch { throw new NativeSettlementPending("malformed"); }
-  if (!sameCurveAddress(trace.from, request.from) || !sameCurveAddress(trace.to, request.to) || trace.inputHash !== keccak256(request.data)
+  if (trace.error || !sameCurveAddress(trace.from, request.from) || !sameCurveAddress(trace.to, request.to) || trace.inputHash !== keccak256(request.data)
     || BigInt(trace.value!) !== BigInt(request.value)
     || successfulNativePayment(trace, from, to) !== payout) throw new NativeSettlementPending("payout_unproven");
+}
+
+export async function verifyCurveCreationRefund(rpc: PublicClient, receipt: TransactionReceipt, launch: CurveLaunch, data: Hex, value: Hex) {
+  await proveCurvePayoutTrace(rpc, receipt, { from: launch.creator, to: launch.factory, data, value },
+    BigInt(launch.creationFee.refundWei), launch.factory, launch.creator);
+}
+
+async function proveCurvePayout(rpc: PublicClient, receipt: TransactionReceipt, request: LaunchRequest, payout: bigint,
+  from = request.to, to = request.from) {
+  if (!payout) return;
+  await proveCurvePayoutTrace(rpc, receipt, request, payout, from, to);
   let current: TransactionReceipt;
   try { current = await boundReceipt(rpc, receipt.transactionHash, request); }
   catch { throw new NativeSettlementPending("stale"); }

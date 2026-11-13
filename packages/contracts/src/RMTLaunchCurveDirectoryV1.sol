@@ -8,11 +8,18 @@ interface IRMTLaunchCurveVersion {
     function engineVersion() external view returns (uint32);
 }
 
+interface IRMTCurveMigrationTemplate {
+    function fromVersion() external view returns (uint32);
+    function toVersion() external view returns (uint32);
+    function prepare(address source, bytes32 salt) external returns (address);
+}
+
 /// @notice Non-custodial discovery authority for new curve versions.
 /// @dev The directory never owns a launch and has no call path into a launch.
 contract RMTLaunchCurveDirectoryV1 is EIP712 {
     uint48 public constant publicationDelay = 2 days;
     uint48 public constant executionWindow = 7 days;
+    uint32 public constant MAX_CURVE_VERSION = 32;
     bytes32 public constant ACTION_TYPEHASH =
         keccak256("Action(uint8 kind,uint64 nonce,uint32 version,address factory,bytes32 runtimeHash,uint48 deadline)");
 
@@ -20,7 +27,8 @@ contract RMTLaunchCurveDirectoryV1 is EIP712 {
         Publish,
         Resume,
         Suspend,
-        Cancel
+        Cancel,
+        PublishMigrationTemplate
     }
 
     struct Action {
@@ -52,6 +60,7 @@ contract RMTLaunchCurveDirectoryV1 is EIP712 {
     bool public suspended;
     Pending public pending;
     mapping(uint32 => FactoryPin) public factories;
+    mapping(uint32 => FactoryPin) public migrationTemplates;
 
     error InvalidSigners();
     error InvalidAction();
@@ -62,6 +71,7 @@ contract RMTLaunchCurveDirectoryV1 is EIP712 {
     event ActionScheduled(bytes32 indexed digest, uint64 indexed nonce, uint48 executableAt, uint48 expiresAt);
     event ActionCleared(bytes32 indexed digest, uint64 indexed nonce);
     event FactoryPublished(uint32 indexed version, address indexed factory, bytes32 runtimeHash);
+    event MigrationTemplatePublished(uint32 indexed toVersion, address indexed deployer, bytes32 runtimeHash);
     event DiscoverySuspended(bool suspended);
 
     constructor(address signerA_, address signerB_, address signerC_) EIP712("RMT Launch Curve Directory", "1") {
@@ -93,6 +103,7 @@ contract RMTLaunchCurveDirectoryV1 is EIP712 {
     function schedule(Action calldata action, bytes calldata first, bytes calldata second) external {
         if (pending.digest != bytes32(0)) revert PendingAction();
         if (action.kind == ActionKind.Publish) _validateFactory(action);
+        else if (action.kind == ActionKind.PublishMigrationTemplate) _validateMigrationTemplate(action);
         else if (action.kind != ActionKind.Resume || !suspended || !_empty(action)) revert InvalidAction();
 
         bytes32 digest = _authorize(action, first, second);
@@ -115,6 +126,10 @@ contract RMTLaunchCurveDirectoryV1 is EIP712 {
             latestVersion = action.version;
             factories[action.version] = FactoryPin(action.factory, action.runtimeHash);
             emit FactoryPublished(action.version, action.factory, action.runtimeHash);
+        } else if (action.kind == ActionKind.PublishMigrationTemplate) {
+            _validateMigrationTemplate(action);
+            migrationTemplates[action.version] = FactoryPin(action.factory, action.runtimeHash);
+            emit MigrationTemplatePublished(action.version, action.factory, action.runtimeHash);
         } else {
             if (action.kind != ActionKind.Resume || !suspended) revert InvalidAction();
             suspended = false;
@@ -159,6 +174,26 @@ contract RMTLaunchCurveDirectoryV1 is EIP712 {
         ) revert InvalidFactory();
         try IRMTLaunchCurveVersion(action.factory).engineVersion{gas: 30_000}() returns (uint32 version) {
             if (version != action.version) revert InvalidFactory();
+        } catch {
+            revert InvalidFactory();
+        }
+    }
+
+    function _validateMigrationTemplate(Action calldata action) private view {
+        uint32 version = action.version;
+        if (
+            suspended || version < 3 || version > MAX_CURVE_VERSION || action.factory.code.length == 0
+                || action.factory.codehash != action.runtimeHash || migrationTemplates[version].factory != address(0)
+                || (version != 3 && migrationTemplates[version - 1].factory == address(0))
+        ) revert InvalidFactory();
+        IRMTCurveMigrationTemplate template = IRMTCurveMigrationTemplate(action.factory);
+        try template.fromVersion{gas: 30_000}() returns (uint32 from) {
+            if (from != version - 1) revert InvalidFactory();
+        } catch {
+            revert InvalidFactory();
+        }
+        try template.toVersion{gas: 30_000}() returns (uint32 to) {
+            if (to != version) revert InvalidFactory();
         } catch {
             revert InvalidFactory();
         }

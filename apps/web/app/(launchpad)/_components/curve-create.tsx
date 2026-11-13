@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { encodeFunctionData, getAddress, isAddress, toHex, zeroAddress } from "viem";
+import { encodeFunctionData, formatEther, getAddress, isAddress, toHex, zeroAddress } from "viem";
 import { curveReviewTime } from "../../../lib/launchpad/curve-receipt";
-import { curveFactoryAbi, curveProjectURI, curveSupplyPresets } from "../../../lib/launchpad/curve-v1";
+import { curveFactoryAbi, curveProjectURI, curveSupplyPresets, sameCurveAddress } from "../../../lib/launchpad/curve-v1";
 import { prepareTransaction } from "../../../lib/launchpad/direct-v4";
 import { walletMessage, type LaunchRequest } from "../../../lib/launchpad/transactions";
 import { TransactionFeedback, useLaunchTransaction } from "./launch-transactions";
@@ -15,6 +15,7 @@ const draftKey = "rmt:curve-v1:create";
 export function CurveCreate() {
   const { config, wallet, stillSelected, refresh } = useLaunchWallet();
   const deployment = config?.status === "ready" && config.curve ? config.deployment : undefined;
+  const creationFee = config?.status === "ready" ? config.curve?.creationFee : undefined;
   const rpc = useLaunchClient(deployment);
   const transaction = useLaunchTransaction();
   const [draft, setDraft] = useState(initial);
@@ -33,7 +34,7 @@ export function CurveCreate() {
   useEffect(() => {
     if (restored) try { localStorage.setItem(draftKey, JSON.stringify(draft)); } catch { /* Retain in-memory input. */ }
   }, [draft, restored]);
-  useEffect(() => { setReview(undefined); }, [wallet?.generation, transaction.result]);
+  useEffect(() => { setReview(undefined); }, [wallet?.generation, transaction.result, deployment?.factory, creationFee?.amountWei, creationFee?.recipient]);
 
   function edit(key: keyof typeof draft, value: string) {
     setDraft((prior) => ({ ...prior, [key]: value }));
@@ -43,7 +44,7 @@ export function CurveCreate() {
 
   async function prepare(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!wallet || !deployment || !rpc || preparing || transaction.pending) return;
+    if (!wallet || !deployment || !creationFee || !rpc || preparing || transaction.pending) return;
     setReview(undefined);
     setError("");
     setPreparing(true);
@@ -70,7 +71,14 @@ export function CurveCreate() {
       const deadline = await curveReviewTime(rpc) + 300;
       const data = encodeFunctionData({ abi: curveFactoryAbi, functionName: "create",
         args: [name, symbol, projectURI, preset, treasury, treasuryShareBps, intentId, BigInt(deadline)] });
-      const request = await prepareTransaction(rpc, deployment, wallet, { kind: "curve-create", to: deployment.factory, data, deadline, intentId });
+      const value = BigInt(creationFee.amountWei);
+      const request = await prepareTransaction(rpc, deployment, wallet, { kind: "curve-create", to: deployment.factory, data, deadline, intentId, value });
+      const canonicalFactory = { address: deployment.factory, abi: curveFactoryAbi, blockHash: request.blockHash, requireCanonical: true } as const;
+      const [amount, recipient] = await Promise.all([
+        rpc.readContract({ ...canonicalFactory, functionName: "creationFeeWei" }),
+        rpc.readContract({ ...canonicalFactory, functionName: "operatingRecipient" }),
+      ]);
+      if (amount !== value || !sameCurveAddress(recipient, creationFee.recipient)) throw new Error("Creation fee terms changed. Refresh the review deployment.");
       if (!stillSelected(wallet)) throw new Error("Wallet selection changed. Review creation again.");
       setReview({ request, name, symbol, preset, treasuryShareBps });
     } catch (cause) { setError(walletMessage(cause)); }
@@ -79,6 +87,9 @@ export function CurveCreate() {
 
   const wrongNetwork = Boolean(wallet && deployment && wallet.chainId !== deployment.chainId);
   const busy = preparing || transaction.busy || Boolean(transaction.pending);
+  const feeWei = review?.request.value ?? creationFee?.amountWei;
+  const fee = feeWei === undefined ? null : BigInt(feeWei);
+  const illustrativeCents = fee === null ? null : Number(fee * 250_000n / 10n ** 18n);
   return <>
     <header className="lpPageHeading"><div><h1>Create Token</h1><p>Fixed supply, bonding-curve trading and v4 graduation.</p></div></header>
     {!config && <p className="lpNotice" role="status">Checking the review deployment…</p>}
@@ -110,7 +121,10 @@ export function CurveCreate() {
       <section className="lpPanel lpForm">
         <h2>{review ? `Review ${review.symbol}` : "Launch terms"}</h2>
         <dl className="lpFacts">
-          <dt>Creation cost</dt><dd>Network gas only</dd>
+          <dt>Draft creation fee</dt><dd>{fee === null ? "Awaiting verified factory terms" : `${formatEther(fee)} ETH`}</dd>
+          {illustrativeCents !== null && <><dt>Illustrative value</dt><dd>${(illustrativeCents / 100).toFixed(2)} at $2,500 per ETH</dd></>}
+          <dt>Network gas</dt><dd>Estimated separately by your wallet</dd>
+          {creationFee && <><dt>Creation fee recipient</dt><dd className="lpAddress">{creationFee.recipient}</dd></>}
           <dt>Creator token allocation</dt><dd>0 tokens</dd>
           <dt>Curve inventory</dt><dd>{review ? `${curveSupplyPresets[review.preset].toLocaleString("en-US")} tokens` : "100% of fixed supply"}</dd>
           <dt>Opening real ETH reserve</dt><dd>0 ETH</dd>

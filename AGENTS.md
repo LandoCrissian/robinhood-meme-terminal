@@ -4,7 +4,7 @@
 
 RMT Launch is a dedicated token launchpad. LAMMB Empires remains a separate, parallel project. Preserve the existing RMT visual design and mobile/desktop interaction quality. Preserve the existing RMT token and its deployed curve/contract history; do not replace, migrate or reconfigure them as part of this cleanup.
 
-New third-party launches use a separately versioned gas-only bonding-curve engine. Creation mints one fixed supply. Successful graduation uses actual curve backing and the same token in Uniswap v4 with permanent original-position custody. Draft parameters are review inputs. Preserve both the historical direct-to-v4 review and the existing deployed RMT assets. Use the [Curve V1 guide](docs/RMT_LAUNCH_CURVE_V1.md) for the active implementation and release gates.
+New third-party launches use a separately versioned bonding-curve engine. Creation mints one fixed supply and discloses a fixed ETH creation fee targeted at approximately $1, plus network gas. Creators need no seed liquidity or initial purchase. Successful graduation uses actual curve backing and the same token in Uniswap v4 with permanent original-position custody. Draft parameters are review inputs. Preserve the historical direct-to-v4 review and the deployed RMT assets. Use the [curve guide](docs/RMT_LAUNCH_CURVE_V1.md) and [audit handoff](docs/RMT_CURVE_TASK021_AUDIT_HANDOFF.md) for implementation and release gates.
 
 Read before substantial work:
 

@@ -15,7 +15,7 @@ for (const url of [site, rpcUrl]) {
   assert.ok(url.port && url.pathname === "/" && !url.username && !url.password && !url.search && !url.hash);
 }
 await mkdir(output, { recursive: true });
-const allowed = new Set(["eth_chainId", "eth_accounts", "eth_getBlockByNumber", "eth_getTransactionReceipt", "eth_sendTransaction",
+const allowed = new Set(["eth_chainId", "eth_accounts", "eth_getBlockByNumber", "eth_getTransactionByHash", "eth_getTransactionReceipt", "eth_sendTransaction",
   "web3_clientVersion", "evm_mine", "evm_setNextBlockTimestamp"]);
 async function rpc(method, params = []) {
   assert.ok(allowed.has(method), "Browser fixture RPC method is outside its allowlist.");
@@ -46,6 +46,8 @@ assert.equal(config.deployment.chainId, 31337);
 assert.equal(config.deployment.rpcUrl, rpcUrl.href);
 assert.ok(config.curve.graduationEngine);
 assert.ok(config.curve.projectRegistry);
+assert.equal(config.curve.creationFee.amountWei, "400000000000000");
+assert.match(config.curve.creationFee.recipient, /^0x[0-9a-f]{40}$/i);
 
 const browser = await chromium.launch({ executablePath: process.env.RMT_CURVE_TEST_CHROME });
 const context = await browser.newContext(devices["iPhone 13"]);
@@ -120,6 +122,10 @@ try {
   await page.getByRole("button", { name: /Browser wallet/ }).click();
   await page.getByRole("button", { name: /^Switch to Local curve review/ }).click();
   await button("Review creation").click();
+  await shown("0.0004 ETH");
+  await shown("$1.00 at $2,500 per ETH");
+  await shown("Estimated separately by your wallet");
+  await button("Confirm creation in wallet").waitFor();
   await screenshot("01-create-review-phone");
   await page.evaluate(() => { window.curveFixture.reject = true; });
   await button("Confirm creation in wallet").click();
@@ -131,6 +137,8 @@ try {
   await page.getByLabel("Recover wallet request").waitFor();
   const created = await receipt("creation", 0);
   assert.equal(created.from.toLowerCase(), account.toLowerCase());
+  const creationTransaction = await rpc("eth_getTransactionByHash", [created.transactionHash]);
+  assert.equal(BigInt(creationTransaction.value), BigInt(config.curve.creationFee.amountWei));
   await page.getByLabel("Recover wallet request").fill(hashes[0]);
   await button("Check transaction").click();
   await page.getByRole("link", { name: "Open RCV", exact: true }).click();
@@ -140,16 +148,22 @@ try {
   evidence.tokenPage = new URL(page.url()).pathname;
   const token = evidence.tokenPage.split("/").pop();
   const readLaunch = async () => {
-    const response = await fetch(new URL(`/api/launchpad/curve?token=${token}&account=${account}`, site));
+    // A fixture compiler invocation between reads can outlive Next's keep-alive window.
+    const response = await fetch(new URL(`/api/launchpad/curve?token=${token}&account=${account}`, site),
+      { headers: { Connection: "close" } });
     assert.equal(response.status, 200);
     return response.json();
   };
-  const { state: registered } = await readLaunch();
+  const { state: registered, launch: indexedCreation } = await readLaunch();
+  assert.deepEqual(indexedCreation.creationFee, { ...config.curve.creationFee, refundWei: "0", logIndex: indexedCreation.creationFee.logIndex });
+  assert.ok(Number.isSafeInteger(indexedCreation.creationFee.logIndex));
+  evidence.creationFee = indexedCreation.creationFee;
   assert.equal(registered.project.registry, config.curve.projectRegistry);
   assert.equal(registered.project.currentVersion, 1);
   assert.match(registered.project.economicRules, /^0x[0-9a-f]{64}$/);
   assert.equal(registered.project.count, "0");
   assert.equal(registered.project.eligibility, "eligible");
+  assert.equal(registered.project.nextVersion, 2);
   assert.deepEqual(registered.project.migrations, []);
   await shown(/project version and migrations/i);
   evidence.registry = registered.project;
@@ -163,35 +177,49 @@ try {
   if (compiler) await page.getByLabel("Recover wallet request").waitFor();
   else await settled(/curve settlement verified.*RCV/i);
   await receipt("curveBuy", 1);
+  const migrationTradeCount = compiler ? 1 : 0;
 
   if (compiler) {
-    const before = await readLaunch();
-    const result = execFileSync(process.execPath, [migrationTool, "--rpc", rpcUrl.href, "--operator", account,
-      "--solc", compiler, "--factory", config.deployment.factory, "--migrate-token", token, "--creator", account],
-    { encoding: "utf8", timeout: 180_000, maxBuffer: 1024 * 1024 });
-    evidence.migration = JSON.parse(result);
-    const after = await readLaunch();
-    assert.equal(after.launch.token, before.launch.token);
-    assert.equal(after.launch.curve, before.launch.curve);
-    assert.equal(after.launch.ledger, before.launch.ledger);
-    assert.notEqual(after.state.activeCurve, before.state.activeCurve);
-    assert.equal(after.state.backingReserve, before.state.backingReserve);
-    assert.equal(after.state.sold, before.state.sold);
-    assert.equal(after.state.claimable, before.state.claimable);
-    assert.equal(after.state.project.currentVersion, 2);
-    assert.equal(after.state.project.migrations[0].previousEngine, before.state.activeCurve);
-    assert.equal(after.state.project.migrations[0].nextEngine, after.state.activeCurve);
-    evidence.migrationRegistry = after.state.project;
-    await page.getByLabel("Recover wallet request").fill(hashes[1]);
-    await button("Check transaction").click();
-    await settled(/curve settlement verified.*RCV/i);
-    assert.equal(hashes.length, 2, "Historical curve recovery must never resubmit the trade.");
-    await page.getByRole("link", { name: "My Launches", exact: true }).click();
-    await page.locator(`a[href="${evidence.tokenPage}"]`).click();
-    await page.getByRole("heading", { name: "Curve Review", exact: true }).waitFor();
-    await page.getByText("Project version and migrations", { exact: true }).click();
-    await shown("Version 2");
-    await screenshot("06-migration-phone");
+    evidence.migrations = [];
+    for (const nextVersion of [2, 3]) {
+      const before = await readLaunch();
+      const result = execFileSync(process.execPath, [migrationTool, "--rpc", rpcUrl.href, "--operator", account,
+        "--solc", compiler, "--factory", config.deployment.factory, "--migrate-token", token, "--creator", account],
+      { encoding: "utf8", timeout: 180_000, maxBuffer: 1024 * 1024 });
+      const after = await readLaunch();
+      assert.deepEqual(after.launch, before.launch);
+      assert.notEqual(after.state.activeCurve, before.state.activeCurve);
+      assert.equal(after.state.backingReserve, before.state.backingReserve);
+      assert.equal(after.state.sold, before.state.sold);
+      assert.equal(after.state.claimable, before.state.claimable);
+      assert.equal(after.state.project.currentVersion, nextVersion);
+      assert.equal(after.state.project.migrations.length, nextVersion - 1);
+      assert.equal(after.state.project.migrations[0].previousEngine, before.state.activeCurve);
+      assert.equal(after.state.project.migrations[0].nextEngine, after.state.activeCurve);
+      assert.equal(after.state.project.migrations.at(-1).previousEngine, before.launch.curve);
+      evidence.migrations.push({ fixture: JSON.parse(result), registry: after.state.project });
+      await page.getByLabel("Recover wallet request").fill(hashes[nextVersion - 1]);
+      await button("Check transaction").click();
+      await settled(/curve settlement verified.*RCV/i);
+      assert.equal(hashes.length, nextVersion, "Historical curve recovery must never resubmit the trade.");
+      await page.getByRole("link", { name: "My Launches", exact: true }).click();
+      await page.locator(`a[href="${evidence.tokenPage}"]`).click();
+      await page.getByRole("heading", { name: "Curve Review", exact: true }).waitFor();
+      await page.getByText("Project version and migrations", { exact: true }).click();
+      await page.locator(".lpFacts dd").getByText(`Version ${nextVersion}`, { exact: true }).waitFor();
+      await shown(`Version ${nextVersion - 1} to ${nextVersion}`);
+      await screenshot(nextVersion === 2 ? "06-migration-phone" : "07-repeated-migration-phone");
+      if (nextVersion === 2) {
+        assert.equal(after.state.project.nextVersion, 3);
+        await page.getByLabel(/You pay \(ETH\)/i).fill("0.01");
+        await button("Review trade").click();
+        await page.evaluate(() => { window.curveFixture.loseHash = true; });
+        await button("Confirm buy in wallet").click();
+        await page.getByLabel("Recover wallet request").waitFor();
+        const buyOnV2 = await receipt("secondCurveBuy", 2);
+        assert.equal(buyOnV2.to.toLowerCase(), after.state.activeCurve.toLowerCase());
+      }
+    }
   }
 
   await button("Sell").click();
@@ -199,61 +227,61 @@ try {
   await button("Review trade").click();
   await button("Confirm curve allowance").click();
   await settled(/curve allowance verified/i);
-  await receipt("sellApproval", 2);
+  await receipt("sellApproval", 2 + migrationTradeCount);
   await button("Review trade").click();
   await button("Confirm sell in wallet").click();
   await settled(/curve settlement verified.*ETH/i);
-  await receipt("curveSell", 3);
+  await receipt("curveSell", 3 + migrationTradeCount);
 
   await button("Buy").click();
   await page.getByLabel(/You pay \(ETH\)/i).fill("2");
   await button("Review trade").click();
   await button("Confirm buy in wallet").click();
   await settled(/curve settlement verified.*RCV/i);
-  await receipt("thresholdBuy", 4);
+  await receipt("thresholdBuy", 4 + migrationTradeCount);
   await button("Review graduation").click();
   await button("Confirm graduation in wallet").click();
   await settled(/graduation and permanently locked v4 liquidity verified/i);
-  await receipt("graduation", 5);
+  await receipt("graduation", 5 + migrationTradeCount);
   await screenshot("03-graduated-phone");
 
   await button("Review fee claim").click();
   await button("Confirm fee claim in wallet").click();
   await settled(/fee payout|fee claim verified/i);
-  await receipt("curveFeeClaim", 6);
+  await receipt("curveFeeClaim", 6 + migrationTradeCount);
   await page.getByRole("heading", { name: "Trade on Uniswap v4" }).waitFor();
   await page.getByLabel(/You pay \(ETH\)/i).fill("0.01");
   await button("Review trade").click();
   await button("Confirm buy in wallet").click();
   await settled(/v4 settlement verified.*RCV/i);
-  await receipt("v4Buy", 7);
+  await receipt("v4Buy", 7 + migrationTradeCount);
   await button("Sell").click();
   await page.getByLabel(/You pay \(RCV\)/i).fill("100");
   await button("Review trade").click();
   await button("Confirm token approval").click();
   await settled(/v4 token allowance verified/i);
-  await receipt("v4TokenApproval", 8);
+  await receipt("v4TokenApproval", 8 + migrationTradeCount);
   await button("Review trade").click();
   await button("Confirm router approval").click();
   await settled(/v4 router allowance verified/i);
-  await receipt("v4RouterApproval", 9);
+  await receipt("v4RouterApproval", 9 + migrationTradeCount);
   await button("Review trade").click();
   await button("Confirm sell in wallet").click();
   await settled(/v4 settlement verified.*ETH/i);
-  await receipt("v4Sell", 10);
+  await receipt("v4Sell", 10 + migrationTradeCount);
   const earned = await readLaunch();
   assert.ok(BigInt(earned.state.lpFees.uncollected.native) > 0n && BigInt(earned.state.lpFees.uncollected.token) > 0n);
   await button("Review LP fee collection").click();
   await button("Confirm LP fee collection in wallet").click();
   await settled(/LP fee collection verified/i);
-  const collection = await receipt("lpCollection", 11);
+  const collection = await receipt("lpCollection", 11 + migrationTradeCount);
   const collected = await readLaunch();
   assert.equal(collected.state.lpFees.latestCollection.transactionHash, collection.transactionHash);
   assert.ok(BigInt(collected.state.lpFees.claimable.native) > 0n && BigInt(collected.state.lpFees.claimable.token) > 0n);
   await button("Review LP fee claim").click();
   await button("Confirm LP fee claim in wallet").click();
   await settled(/LP fee payout verified/i);
-  await receipt("lpFeeClaim", 12);
+  await receipt("lpFeeClaim", 12 + migrationTradeCount);
   const paid = await readLaunch();
   assert.deepEqual(paid.state.lpFees.claimable, { native: "0", token: "0" });
   assert.equal(paid.state.positionOwner, earned.state.positionOwner);
@@ -270,12 +298,12 @@ try {
   await button("Review creation").click();
   await button("Confirm creation in wallet").click();
   await page.getByRole("link", { name: "Open RATOM", exact: true }).click();
-  await receipt("atomicLaunchCreation", 13);
+  await receipt("atomicLaunchCreation", 13 + migrationTradeCount);
   await page.getByLabel(/You pay \(ETH\)/i).fill("2");
   await button("Review trade").click();
   await button("Confirm buy and graduate in wallet").click();
   await settled(/curve settlement and locked v4 liquidity verified/i);
-  await receipt("atomicBuyAndGraduate", 14);
+  await receipt("atomicBuyAndGraduate", 14 + migrationTradeCount);
   assert.deepEqual(pageErrors, []);
 } catch (error) {
   evidence.browserFailure = { path: new URL(page.url()).pathname,

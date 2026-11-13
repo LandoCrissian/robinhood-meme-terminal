@@ -20,7 +20,7 @@ type Review = {
   graduate?: LaunchRequest;
 };
 const migrationStatus = {
-  eligible: "Eligible for the reviewed V1 to V2 migration",
+  eligible: "Eligible for an adjacent migration",
   graduated: "Graduated projects keep their existing v4 position",
   suspended: "Migration operations are paused",
   proposal_pending: "Migration proposal pending",
@@ -234,6 +234,8 @@ function CurveDetail({ launch, state, initialSide, transaction, refresh }: {
         <dl className="lpFacts">
           <dt>Fixed supply</dt><dd>{displayAmount(launch.totalSupply)} {launch.symbol}</dd>
           <dt>Creator token allocation</dt><dd>0 {launch.symbol}</dd>
+          <dt>Verified creation fee</dt><dd>{formatEther(BigInt(launch.creationFee.amountWei))} ETH</dd>
+          {BigInt(launch.creationFee.refundWei) > 0n && <><dt>Verified creation refund</dt><dd>{formatEther(BigInt(launch.creationFee.refundWei))} ETH</dd></>}
           <dt>Net curve tokens sold</dt><dd>{displayAmount(sold)} of {displayAmount(threshold)}</dd>
           <dt>Curve backing reserve</dt><dd>{displayAmount(state.backingReserve)} ETH</dd>
           <dt>Graduation progress</dt><dd>{progress.toFixed(2)}%</dd>
@@ -273,6 +275,7 @@ function CurveDetail({ launch, state, initialSide, transaction, refresh }: {
             <dt>Permanent registry</dt><dd><CopyIdentity title="project registry" value={state.project.registry} /></dd>
             <dt>Active version</dt><dd>Version {state.project.currentVersion}</dd>
             <dt>Migration eligibility</dt><dd>{migrationStatus[state.project.eligibility]}</dd>
+            {state.project.nextVersion && <><dt>Published successor version</dt><dd>Version {state.project.nextVersion}</dd></>}
             {state.project.candidate && <><dt>Prepared successor curve</dt><dd><CopyIdentity title="prepared successor curve" value={state.project.candidate} /></dd></>}
             <dt>Economic rules commitment</dt><dd><CopyIdentity title="economic rules commitment" value={state.project.economicRules} /></dd>
             <dt>Recorded migrations</dt><dd>{state.project.count}</dd>
@@ -283,7 +286,7 @@ function CurveDetail({ launch, state, initialSide, transaction, refresh }: {
               <dt>Executable after</dt><dd>{state.project.pending.executableAt ? new Date(state.project.pending.executableAt * 1_000).toISOString() : "Awaiting signer approvals"}</dd>
               <dt>Expires</dt><dd>{new Date((state.project.pending.expiresAt || state.project.pending.deadline) * 1_000).toISOString()}</dd>
             </>}
-            {state.project.migrations.map((migration) => <div className="lpMigration" key={migration.index}>
+            {state.project.migrations.slice(0, 10).map((migration) => <div className="lpMigration" key={migration.index}>
               <dt>Version {migration.fromVersion} to {migration.toVersion}</dt><dd>Block {migration.blockNumber}</dd>
               <dt>Previous engine</dt><dd><CopyIdentity title="previous execution engine" value={migration.previousEngine} /></dd>
               <dt>Next engine</dt><dd><CopyIdentity title="next execution engine" value={migration.nextEngine} /></dd>
@@ -291,6 +294,7 @@ function CurveDetail({ launch, state, initialSide, transaction, refresh }: {
               <dt>Migration transaction</dt><dd><CopyIdentity title="migration transaction" value={migration.transactionHash} /></dd>
               <dt>Runtime hash</dt><dd><CopyIdentity title="execution runtime hash" value={migration.runtimeHash} /></dd>
             </div>)}
+            {state.project.migrations.length > 10 && <><dt>Earlier transitions</dt><dd>Available in the verified project data</dd></>}
           </dl> : <p>Registry evidence is unavailable for this review deployment.</p>}
         </details>
         {position && <p>The standard v4 pool fee is 0.30%. Only earnings from the original locked position accrue to this ledger. Outside liquidity and routing depend on the venue.</p>}

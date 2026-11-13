@@ -264,11 +264,15 @@ contract RMTLaunchHolderMigrationV1Test is Test {
         address successorDeployer = address(new RMTLaunchCurveSuccessorDeployerV1());
         address predictedFactory = vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1);
         HolderMigrationGraduationFixture graduate = new HolderMigrationGraduationFixture(predictedFactory);
-        RMTLaunchCurveFactoryV1 launchFactory =
-            new RMTLaunchCurveFactoryV1(
-                address(graduate), makeAddr("ops"), makeAddr("reserve"), address(projects),
-                successorDeployer, successorDeployer.codehash
-            );
+        RMTLaunchCurveFactoryV1 launchFactory = new RMTLaunchCurveFactoryV1(
+            address(graduate),
+            makeAddr("ops"),
+            makeAddr("reserve"),
+            address(projects),
+            successorDeployer,
+            successorDeployer.codehash,
+            0
+        );
         Directory.Action memory publish = Directory.Action(
             Directory.ActionKind.Publish,
             0,
