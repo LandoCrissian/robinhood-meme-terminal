@@ -70,6 +70,14 @@ jobs:
             --fork-evidence "$RUNNER_TEMP/curve-fork-evidence-2000000000000000000.json" \
             --fork-evidence "$RUNNER_TEMP/curve-fork-evidence-4200000000000000000.json" \
             > "$RUNNER_TEMP/curve-graduation-terms.json"
+      - name: Observe the public Nitro fee estimator
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          node packages/contracts/scripts/measure-curve-fee-gas-4663.mjs \
+            --fork-evidence "$RUNNER_TEMP/curve-fork-evidence.json" \
+            --fork-evidence "$RUNNER_TEMP/curve-fork-evidence-2000000000000000000.json" \
+            --fork-evidence "$RUNNER_TEMP/curve-fork-evidence-4200000000000000000.json" \
+            > "$RUNNER_TEMP/curve-fee-gas.json"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
@@ -77,6 +85,7 @@ jobs:
           path: |
             ${{ runner.temp }}/curve-economics.json
             ${{ runner.temp }}/curve-graduation-terms.json
+            ${{ runner.temp }}/curve-fee-gas.json
             ${{ runner.temp }}/curve-fork-evidence.json
             ${{ runner.temp }}/curve-fork-evidence-*.json
             ${{ runner.temp }}/curve-fork-diagnostics.log
