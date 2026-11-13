@@ -13,7 +13,7 @@ const packageJson = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8"),
 ) as { scripts?: { start?: string }; dependencies?: Record<string, string> };
 assert.equal(packageJson.scripts?.start, "tsx src/index.ts");
-assert.equal(packageJson.dependencies?.tsx, "4.19.2");
+assert.equal(packageJson.dependencies?.tsx, "4.23.0");
 assert.throws(
   () =>
     loadNftMarketplaceConfig({
