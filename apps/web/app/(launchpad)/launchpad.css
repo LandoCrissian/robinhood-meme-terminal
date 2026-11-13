@@ -116,6 +116,7 @@ body .launchpad {
 }
 .lpFacts dt { color: var(--rmt-text-soft); }
 .lpFacts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.lpMigration { display: contents; }
 .lpAddress { overflow-wrap: anywhere; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
 .lpCheck { display: flex !important; flex-direction: row; align-items: flex-start; gap: 9px !important; cursor: pointer; }
 .lpCheck input { flex: 0 0 18px; width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--rmt-accent); }

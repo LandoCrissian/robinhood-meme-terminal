@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { isHash, parseAbiItem, parseEventLogs, type Address, type Hex, type PublicClient } from "viem";
 import { boundReceipt, displayAmount, verifySwap } from "../../../lib/launchpad/direct-v4";
+import { fetchCurveState, isCurveAction, projectCurveReceipt, verifyCurveAction } from "../../../lib/launchpad/curve-receipt";
 import type { NewLaunchRecord } from "../../../lib/launchpad/launch-record";
 import { NativeSettlementPending } from "../../../lib/launchpad/native-settlement";
 import {
@@ -68,7 +69,7 @@ export function useLaunchTransaction(record?: NewLaunchRecord) {
   const deployment = config?.status === "ready" ? config.deployment : undefined;
   const client = useLaunchClient(deployment);
   const [pending, setPending] = useState<PendingRequest>();
-  const [result, setResult] = useState<{ message: string; hash: Hex; launch?: NewLaunchRecord }>();
+  const [result, setResult] = useState<{ message: string; hash: Hex; launch?: Pick<NewLaunchRecord, "token" | "symbol"> }>();
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -117,11 +118,25 @@ export function useLaunchTransaction(record?: NewLaunchRecord) {
         return;
       }
       let confirmed = "Transaction confirmed.";
-      let launch: NewLaunchRecord | undefined;
-      if (request.kind === "launch") {
+      let launch: Pick<NewLaunchRecord, "token" | "symbol"> | undefined;
+      if (config?.status === "ready" && config.curve && request.kind === "curve-create") {
+        const created = projectCurveReceipt(config.deployment.factory, receipt, request);
+        const indexed = await fetchCurveState(created.token);
+        if (indexed.launch.transactionHash !== hash || indexed.launch.blockHash !== receipt.blockHash) {
+          throw new Error("Curve creation is being reconciled with the index.");
+        }
+        launch = created;
+        confirmed = "Curve token created and verified. Curve trading is open.";
+      } else if (config?.status === "ready" && config.curve && request.token && isCurveAction(request)) {
+        const { launch: indexed, state } = await fetchCurveState(request.token, request.from);
+        confirmed = await verifyCurveAction(rpc, receipt, request, config, indexed, state);
+      } else if (isCurveAction(request)) {
+        throw new Error("Reconnect to the reviewed curve deployment to verify this request.");
+      } else if (request.kind === "launch") {
         setMessage("Transaction confirmed onchain. Verifying the funded pool and position custody…");
-        launch = await publishLaunch(hash, request);
-        confirmed = launch.indexing === "indexed" ? "Funded launch verified and indexed." : "Funded launch verified. Directory indexing is pending.";
+        const published = await publishLaunch(hash, request);
+        launch = published;
+        confirmed = published.indexing === "indexed" ? "Funded launch verified and indexed." : "Funded launch verified. Directory indexing is pending.";
       } else if (request.kind === "buy" || request.kind === "sell") {
         setMessage("Transaction confirmed onchain. Verifying swap settlement…");
         const exactRecord = record?.token.toLowerCase() === request.token?.toLowerCase() ? record : undefined;
@@ -167,7 +182,7 @@ export function useLaunchTransaction(record?: NewLaunchRecord) {
     } finally {
       checking.current = false;
     }
-  }, [deployment, record, refresh]);
+  }, [config, deployment, record, refresh]);
 
   const hash = pending?.hash;
   useEffect(() => {
@@ -245,7 +260,7 @@ export function TransactionFeedback({ transaction }: { transaction: ReturnType<t
     {error && <p className="lpNotice lpError" role="alert">{error}</p>}
     {pending?.hash && <div className="lpRecovery"><code>{pending.hash}</code>
       <button type="button" className="lpButton lpSecondary" onClick={transaction.retry}>Check receipt</button>
-      {pending.request.token && (pending.request.kind === "buy" || pending.request.kind === "sell") &&
+      {pending.request.token && (pending.request.kind === "buy" || pending.request.kind === "sell" || isCurveAction(pending.request)) &&
         <Link href={`/launches/${pending.request.token}`}>Open token to verify settlement</Link>}
     </div>}
     {pending && !pending.hash && <div className="lpRecovery">

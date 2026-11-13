@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getAddress, isAddress } from "viem";
-import { LaunchTokenDetail } from "../../_components/launch-token";
+import { ProductToken } from "../../_components/launch-product";
 
 export default async function LaunchTokenPage({ params, searchParams }: {
   params: Promise<{ token: string }>;
@@ -8,5 +8,5 @@ export default async function LaunchTokenPage({ params, searchParams }: {
 }) {
   const [{ token }, { side }] = await Promise.all([params, searchParams]);
   if (!isAddress(token)) notFound();
-  return <LaunchTokenDetail token={getAddress(token)} side={side === "sell" ? "sell" : "buy"} />;
+  return <ProductToken token={getAddress(token)} side={side === "sell" ? "sell" : "buy"} />;
 }

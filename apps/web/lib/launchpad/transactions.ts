@@ -1,10 +1,11 @@
 import { isAddress, isHash, isHex, toHex, type Address, type Hex } from "viem";
 
 import type { NewLaunchDeployment } from "./launch-record";
+import type { CurveDeployment } from "./curve-v1";
 
 export type LaunchDeployment = NewLaunchDeployment;
 
-export type LaunchConfig = { status: "ready"; deployment: LaunchDeployment }
+export type LaunchConfig = { status: "ready"; deployment: LaunchDeployment; curve?: CurveDeployment }
   | { status: "disabled" | "unavailable"; reason: string };
 
 export type WalletProvider = {
@@ -22,7 +23,9 @@ export type BoundWallet = {
 };
 
 export type LaunchRequest = {
-  kind: "launch" | "buy" | "sell" | "token-approval" | "router-approval" | "fees" | "fees-harvest" | "fees-withdrawal";
+  kind: "launch" | "buy" | "sell" | "token-approval" | "router-approval" | "fees" | "fees-harvest" | "fees-withdrawal"
+    | "curve-create" | "curve-buy" | "curve-sell" | "curve-approval" | "curve-graduate" | "curve-claim"
+    | "curve-v4-buy" | "curve-v4-sell" | "curve-v4-token-approval" | "curve-v4-router-approval";
   chainId: number;
   from: Address;
   to: Address;
