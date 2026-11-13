@@ -65,6 +65,10 @@ function env(path: string) {
 test("curve preview fails closed on hosted, credentialed, and cross-origin access", () => {
   const local = env(join(tmpdir(), "rmt-curve-config.sqlite"));
   assert.ok(readCurveRuntime(local));
+  assert.equal(readCurveRuntime(local)?.graduationBackingWei, "1000000000000000000");
+  assert.equal(readCurveRuntime({ ...local, RMT_CURVE_GRADUATION_BACKING_WEI: "2000000000000000000" })
+    ?.graduationBackingWei, "2000000000000000000");
+  assert.throws(() => readCurveRuntime({ ...local, RMT_CURVE_GRADUATION_BACKING_WEI: "4200000000000000000" }), /review economics/);
   assert.equal(readCurveRuntime({ ...local, VERCEL: "1" }), null);
   assert.equal(readCurveRuntime({ ...local, RMT_CURVE_ENABLED: "false" }), null);
   assert.throws(() => readCurveRuntime({ ...local, RMT_CURVE_REGISTRY_RUNTIME_HASH: "" }), /pinned deployment/);
@@ -260,6 +264,7 @@ test("curve state binds public migration and proposed engine evidence to the per
   let moved = newCurve;
   let wrongEngine = false;
   let wrongClosure = false;
+  let graduationBacking = 2n * 10n ** 18n;
   const rpc = {
     async getCode() { return runtime; },
     async getBlock({ blockNumber }: { blockNumber: bigint }) {
@@ -301,6 +306,7 @@ test("curve state binds public migration and proposed engine evidence to the per
         case "revenueLedger": return ledger;
         case "sold": return 0n;
         case "graduationSold": return 600_000n * 10n ** 18n;
+        case "GRADUATION_BACKING": return graduationBacking;
         case "graduated": return false;
         case "backingReserve": return 0n;
         case "totalAccrued":
@@ -312,9 +318,14 @@ test("curve state binds public migration and proposed engine evidence to the per
       }
     },
   };
-  const ready = { rpc, browser: { curve: { graduationEngine, projectRegistry: registry, creationFee: feePolicy } } } as unknown as Awaited<ReturnType<typeof verifiedCurveRuntime>>;
+  const ready = { rpc, economicRules: hash(81), browser: { curve: { graduationEngine, projectRegistry: registry, creationFee: feePolicy,
+    graduationBackingWei: "2000000000000000000" } } } as unknown as Awaited<ReturnType<typeof verifiedCurveRuntime>>;
   const lifecycle = { migration: (entryVersion: number) => entryVersion === 2 ? evidence : entryVersion === 3 ? second : undefined };
   const state = await readCurveState(ready, launch, observed(13n), lifecycle);
+  assert.equal(state.graduationBackingWei, "2000000000000000000");
+  graduationBacking = 10n ** 18n;
+  await assert.rejects(readCurveState(ready, launch, observed(13n), lifecycle), /revenue binding/);
+  graduationBacking = 2n * 10n ** 18n;
   assert.equal(state.activeCurve, newCurve);
   assert.equal(state.project?.currentVersion, 2);
   assert.equal(state.project.migrations[0].runtimeHash, engineHash);

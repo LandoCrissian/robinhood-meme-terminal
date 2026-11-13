@@ -131,7 +131,8 @@ export function CurveCreate() {
           <dt>Curve trade fee</dt><dd>1% of gross ETH, plus gas</dd>
           <dt>RMT operating and future reserve</dt><dd>5% of collected fees each</dd>
           <dt>Project treasury</dt><dd>{review ? `${review.treasuryShareBps / 100}% of collected fees` : "Optional share of collected fees"}</dd>
-          <dt>Graduation</dt><dd>60% net supply sold · 1 ETH backing target</dd>
+          <dt>Graduation</dt><dd>60% net supply sold{config?.status === "ready" && config.curve
+            ? ` · ${formatEther(BigInt(config.curve.graduationBackingWei))} ETH backing target` : ""}</dd>
           <dt>v4 position</dt><dd>Permanent principal custody</dd>
         </dl>
         {review && <button className="lpButton" type="button" disabled={busy} onClick={() => void transaction.send(review.request)}>Confirm creation in wallet</button>}

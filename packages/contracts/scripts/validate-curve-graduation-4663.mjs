@@ -56,6 +56,9 @@ const chainGates = [
 ];
 const allowedBacking = new Set(["1000000000000000000", "2000000000000000000", "4200000000000000000"]);
 const baselineBacking = parseEther("1");
+const ownerBacking = parseEther("2");
+const ownerTestAccounts = [0x31337023n, 0x31337024n, 0x31337025n]
+  .map((address) => getAddress(toHex(address, { size: 20 })));
 // Illustrative reference of $2,500 per ETH. This is a fixed fixture parameter, with no price feed.
 const fixtureCreationFee = parseEther("0.0004");
 const keyTuple = "(address currency0,address currency1,uint24 fee,int24 tickSpacing,address hooks)";
@@ -131,8 +134,9 @@ function compile({ solc, lib }, chainId, backing) {
   } else {
     assert.equal(chainId, 31337, "Only local 31337 and the internal 4663 review profile can compile");
   }
-  if (backing !== baselineBacking) {
-    assert.equal(chainId, 4663, "Alternative economics require the isolated 4663 fork");
+if (backing !== baselineBacking) {
+    assert.ok(chainId === 4663 || backing === ownerBacking,
+      "Local 31337 supports only the 1 ETH regression and 2 ETH owner profiles");
     const file = "src/RMTLaunchCurveMathV1.sol";
     const replacements = [
       ["2ether-virtual-eth;60%-sold;1ether-backing", (backing * 2n) + "wei-virtual-eth;60%-sold;" + backing + "wei-backing"],
@@ -290,7 +294,8 @@ async function publishDirectoryPin(client, operator, artifacts, directory, kind,
   return { scheduled: receiptEvidence(scheduled), executed: receiptEvidence(executed) };
 }
 
-async function migrateCurve(client, creator, operator, artifacts, deployed, token, holders = []) {
+async function migrateCurve(client, creator, operator, artifacts, deployed, token, holders = [],
+  submitProposal = (transaction) => send(client, creator, transaction)) {
   const { projectRegistry, factory } = deployed;
   const abi = artifacts.RMTLaunchProjectRegistryV1.abi;
   const factoryAbi = artifacts.RMTLaunchCurveFactoryV1.abi;
@@ -306,21 +311,26 @@ async function migrateCurve(client, creator, operator, artifacts, deployed, toke
   const previousProject = await read(client, projectRegistry, abi, "project", [token]);
   const migrationHistoryIndex = previousProject[4] + 1n;
   const deadline = Number((await client.getBlock()).timestamp + 4n * 86400n);
-  const proposal = await send(client, creator, request(projectRegistry, abi, "proposeMigration", [token, nextEngine, runtimeHash, deadline]));
+  const proposal = await submitProposal(request(projectRegistry, abi, "proposeMigration", [token, nextEngine, runtimeHash, deadline]));
   const digest = await read(client, projectRegistry, abi, "migrationDigest", [token]);
   const [first, second] = await Promise.all(fixtureSigners().slice(0, 2).map((signer) => signer.sign({ hash: digest })));
   const scheduled = await send(client, operator, request(projectRegistry, abi, "scheduleMigration", [token, first, second]));
   const execution = request(projectRegistry, abi, "executeMigration", [token]);
   const premature = await send(client, operator, execution, "reverted");
   const ledgerAbi = artifacts.RMTLaunchCurveRevenueLedgerV1.abi;
+  const beneficiaries = [creator, ...await Promise.all(["treasury", "operatingRecipient", "futureReserveRecipient"]
+    .map((name) => read(client, curve, curveAbi, name)))];
+  const checkedHolders = [...new Set([creator, ...holders].map((holder) => getAddress(holder)))];
   const snapshot = (target) => Promise.all([
     read(client, target, curveAbi, "backingReserve"), read(client, target, curveAbi, "sold"),
     read(client, token, erc20Abi, "balanceOf", [target]), read(client, token, erc20Abi, "totalSupply"),
-    read(client, ledger, ledgerAbi, "totalAccrued"), read(client, ledger, ledgerAbi, "claimable", [creator]),
+    read(client, ledger, ledgerAbi, "totalAccrued"), read(client, ledger, ledgerAbi, "totalClaimed"),
+    ...[0n, 1n, 2n, 3n].map((bucket) => read(client, ledger, ledgerAbi, "bucketAccrued", [bucket])),
+    ...beneficiaries.map((beneficiary) => read(client, ledger, ledgerAbi, "claimable", [beneficiary])),
     read(client, target, curveAbi, "quoteBuy", [parseEther("0.01")]),
     read(client, target, curveAbi, "economicRules"), client.getBalance({ address: target }),
     read(client, target, curveAbi, "migrationCommitment"), client.getBalance({ address: ledger }),
-    ...holders.map((holder) => read(client, token, erc20Abi, "balanceOf", [holder])),
+    ...checkedHolders.map((holder) => read(client, token, erc20Abi, "balanceOf", [holder])),
   ]);
   const before = await snapshot(curve);
   await warp(client, 2n * 86400n);
@@ -433,7 +443,17 @@ async function deploy(client, accounts, pins, artifacts) {
     v3Template: { deployer: v3Deployer, runtimeHash: v3DeployerHash, deployed: receiptEvidence(v3Receipt), ...v3Publication } };
 }
 
-async function verifiedLocalProfile({ rpc, operator, creator, factory, "migrate-token": migrateToken }, artifacts) {
+async function withLocalImpersonation(client, address, run) {
+  await client.request({ method: "anvil_impersonateAccount", params: [address] });
+  try {
+    return await run();
+  } finally {
+    await client.request({ method: "anvil_stopImpersonatingAccount", params: [address] });
+  }
+}
+
+async function verifiedLocalProfile({ rpc, operator, creator, factory, "owner-test": ownerTest,
+  "migrate-token": migrateToken }, artifacts, backing) {
   const client = localClient(rpc, 31337);
   assert.equal(await client.getChainId(), 31337);
   assert.match(await client.request({ method: "web3_clientVersion" }), /^anvil\//i);
@@ -445,20 +465,56 @@ async function verifiedLocalProfile({ rpc, operator, creator, factory, "migrate-
     assert.ok(code && keccak256(code) === runtimeHash, "Base Sepolia fork runtime mismatch for " + address);
   }
   const accounts = (await client.request({ method: "eth_accounts" })).map((address) => getAddress(address));
-  const sender = getAddress(operator);
-  assert.ok(accounts.includes(sender), "Operator must be a local unlocked fixture account");
+  const economicRules = keccak256(toHex(backing === baselineBacking
+    ? "RMTLaunchCurveV1:180%-virtual-token;2ether-virtual-eth;60%-sold;1ether-backing;100bps-gross-ceil"
+    : "RMTLaunchCurveV1:180%-virtual-token;" + (backing * 2n) + "wei-virtual-eth;60%-sold;" + backing + "wei-backing;100bps-gross-ceil"));
+  const terms = { backingWei: backing, virtualEthWei: backing * 2n, economicRules };
+  const sender = ownerTest ? ownerTestAccounts[0] : getAddress(operator);
+  if (ownerTest) {
+    assert.equal(accounts.length, 0, "Owner test Anvil must start with zero unlocked accounts");
+  } else {
+    assert.ok(accounts.includes(sender), "Operator must be a local unlocked fixture account");
+  }
   if (migrateToken) {
     const proposer = getAddress(creator);
-    assert.ok(accounts.includes(proposer), "Creator must be a local unlocked fixture account");
+    const token = getAddress(migrateToken);
     const artifact = artifacts.RMTLaunchCurveFactoryV1;
     const factoryAddress = getAddress(factory);
     await verifiedRuntime(client, factoryAddress, artifact);
     const projectRegistry = await read(client, factoryAddress, artifact.abi, "projectRegistry");
     await verifiedRuntime(client, projectRegistry, artifacts.RMTLaunchProjectRegistryV1);
-    return migrateCurve(client, proposer, sender, artifacts, { factory: factoryAddress, projectRegistry }, getAddress(migrateToken));
+    const active = await read(client, factoryAddress, artifact.abi, "curveForToken", [token]);
+    const curveAbi = artifacts.RMTLaunchBondingCurveV1.abi;
+    assert.equal(await read(client, active, curveAbi, "economicRules"), economicRules);
+    assert.ok(addressEq(await read(client, active, curveAbi, "creator"), proposer), "Creator does not match the active curve");
+    const deployed = { factory: factoryAddress, projectRegistry };
+    if (ownerTest) {
+      assert.ok(!ownerTestAccounts.includes(proposer), "Owner test creator must be distinct from the fixture operator and recipients");
+      const code = await client.getCode({ address: proposer });
+      assert.ok(!code || code === "0x", "Use a fresh externally owned test wallet for the creator");
+      const result = await withLocalImpersonation(client, sender, () => migrateCurve(client, proposer, sender, artifacts, deployed,
+        token, [], (transaction) => withLocalImpersonation(client, proposer, () => send(client, proposer, transaction))));
+      assert.deepEqual(await client.request({ method: "eth_accounts" }), []);
+      return { ...result, terms, ownerTest, simulatedCreatorAuthorization: true };
+    }
+    assert.ok(accounts.includes(proposer), "Creator must be a local unlocked fixture account");
+    return { ...await migrateCurve(client, proposer, sender, artifacts, deployed, token), terms };
+  }
+  if (ownerTest) {
+    const latest = await client.getBlock();
+    assert.equal(latest.number, BigInt(baseSepolia.block), "Start a fresh pinned Anvil fork before owner fixture deployment");
+    const now = BigInt(Math.floor(Date.now() / 1000));
+    if (latest.timestamp < now) {
+      await client.request({ method: "evm_setNextBlockTimestamp", params: [Number(now)] });
+      await client.request({ method: "evm_mine" });
+    }
+    await client.request({ method: "anvil_setBalance", params: [sender, toHex(parseEther("2"))] });
+    const result = await withLocalImpersonation(client, sender, () => deploy(client, ownerTestAccounts, pins, artifacts));
+    assert.deepEqual(await client.request({ method: "eth_accounts" }), []);
+    return { ...result, terms, ownerTest };
   }
   assert.ok(accounts.length >= 3, "Local fixture needs separate simulated revenue recipients");
-  return deploy(client, [sender, ...accounts.filter((address) => address !== sender).slice(0, 2)], pins, artifacts);
+  return { ...await deploy(client, [sender, ...accounts.filter((address) => address !== sender).slice(0, 2)], pins, artifacts), terms };
 }
 
 function routerCall(router, key, buy, amountIn, minimumOut, deadline) {
@@ -846,17 +902,22 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
     const { values } = parseArgs({ options: { anvil: { type: "string" }, solc: { type: "string" },
       lib: { type: "string" }, archive: { type: "string" }, rpc: { type: "string" }, operator: { type: "string" },
       "migrate-token": { type: "string" }, creator: { type: "string" }, factory: { type: "string" },
-      "backing-wei": { type: "string" } } });
-    assert.ok(values.solc && (values.rpc ? values.operator && !values.anvil && !values.archive : values.anvil && !values.operator),
-      "Supply --solc and --anvil for the 4663 fork, or --solc and --rpc plus --operator for local 31337");
-    assert.ok(values["migrate-token"] ? values.rpc && values.creator && values.factory : !values.creator && !values.factory,
+      "backing-wei": { type: "string" }, "owner-test": { type: "boolean" }, "simulate-creator": { type: "boolean" } } });
+    const ownerTest = values["owner-test"];
+    const migration = values["migrate-token"];
+    assert.ok(values.solc && (values.rpc ? !values.anvil && !values.archive && (ownerTest ? !values.operator : values.operator)
+      : values.anvil && !values.operator && !ownerTest),
+      "Supply --solc and --anvil for the 4663 fork, or --solc and --rpc with --operator or --owner-test for local 31337");
+    assert.ok(migration ? values.rpc && values.creator && values.factory : !values.creator && !values.factory,
       "Migration needs local 31337, --migrate-token, --creator and --factory");
+    assert.equal(Boolean(values["simulate-creator"]), Boolean(ownerTest && migration),
+      "Owner test migration requires explicit --simulate-creator for local impersonation");
     const threshold = values["backing-wei"];
-    assert.ok(threshold === undefined || (!values.rpc && allowedBacking.has(threshold)),
-      "Backing must be exactly 1, 2 or 4.20 ETH in wei and requires the isolated 4663 fork");
+    assert.ok(threshold === undefined || allowedBacking.has(threshold), "Backing must be exactly 1, 2 or 4.20 ETH in wei");
     const backing = threshold === undefined ? baselineBacking : BigInt(threshold);
+    assert.ok(!ownerTest || backing === ownerBacking, "Owner test requires the explicit 2 ETH review backing");
     const { artifacts, manifest } = compile(values, values.rpc ? 31337 : 4663, backing);
-    const result = values.rpc ? await verifiedLocalProfile(values, artifacts)
+    const result = values.rpc ? await verifiedLocalProfile(values, artifacts, backing)
       : await withAnvilFork(values, (context) => review(context, artifacts, backing));
     console.log(JSON.stringify({ ...result, manifest }, (_, value) => typeof value === "bigint" ? value.toString() : value, 2));
   } catch (error) {

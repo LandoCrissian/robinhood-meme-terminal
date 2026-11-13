@@ -238,6 +238,7 @@ function CurveDetail({ launch, state, initialSide, transaction, refresh }: {
           {BigInt(launch.creationFee.refundWei) > 0n && <><dt>Verified creation refund</dt><dd>{formatEther(BigInt(launch.creationFee.refundWei))} ETH</dd></>}
           <dt>Net curve tokens sold</dt><dd>{displayAmount(sold)} of {displayAmount(threshold)}</dd>
           <dt>Curve backing reserve</dt><dd>{displayAmount(state.backingReserve)} ETH</dd>
+          <dt>Graduation backing target</dt><dd>{displayAmount(state.graduationBackingWei)} ETH</dd>
           <dt>Graduation progress</dt><dd>{progress.toFixed(2)}%</dd>
           <dt>Curve trading fee</dt><dd>1% of gross ETH</dd>
           <dt>Collected fee allocation</dt><dd>{90 - share}% creator · {share}% project treasury · 5% RMT operating · 5% future RMT reserve</dd>

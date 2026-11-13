@@ -3,30 +3,37 @@ import { createServer as createHttpServer } from "node:http";
 import { createServer as createHttpsServer } from "node:https";
 import { createLaunchpadPreviewGateway, localPreviewBackend, previewLanAccess, previewListenHost } from "../lib/server/launchpad-preview-gateway";
 import { readLaunchpadPreviewAccess } from "../lib/server/launchpad-preview-access";
+import { readCurveRuntime, verifiedCurveRuntime } from "../lib/server/curve-launch-config";
 import { readLaunchpadRuntime, verifiedLaunchpadRpc } from "../lib/server/new-launchpad-config";
 
 async function main() {
   const access = readLaunchpadPreviewAccess();
-  const runtime = readLaunchpadRuntime();
-  if (!access || !runtime) throw new Error("Explicit isolated preview configuration is required.");
+  const curveRuntime = readCurveRuntime();
+  const runtime = curveRuntime ? null : readLaunchpadRuntime();
+  if (!access || (!curveRuntime && !runtime)) throw new Error("Explicit isolated preview configuration is required.");
   const web = localPreviewBackend(process.env.RMT_LAUNCHPAD_PREVIEW_WEB_URL ?? "http://127.0.0.1:3197");
   const cert = process.env.RMT_LAUNCHPAD_PREVIEW_TLS_CERT;
   const key = process.env.RMT_LAUNCHPAD_PREVIEW_TLS_KEY;
   if (Boolean(cert) !== Boolean(key)) throw new Error("Provide both preview TLS certificate and key.");
+  if (curveRuntime && !cert) throw new Error("The private curve preview requires direct TLS.");
   const host = previewListenHost(process.env.RMT_LAUNCHPAD_PREVIEW_BIND ?? "127.0.0.1", !!cert);
   const port = Number(process.env.RMT_LAUNCHPAD_PREVIEW_PORT ?? "3198");
   if (!Number.isSafeInteger(port) || port < 1_024 || port > 65_535 || port === Number(web.port)
-    || port === Number(new URL(runtime.privateRpcUrl).port)) throw new Error("Set a distinct preview listener port.");
+    || port === Number(new URL(curveRuntime?.rpcUrl ?? runtime!.privateRpcUrl).port)) throw new Error("Set a distinct preview listener port.");
   if (cert && (access.origin.hostname !== host || Number(access.origin.port || "443") !== port)) {
     throw new Error("The direct TLS address must match the configured preview origin.");
   }
   const allowsLanPeer = previewLanAccess(host, process.env.RMT_LAUNCHPAD_PREVIEW_LAN_PEER);
 
-  const rpc = await verifiedLaunchpadRpc(runtime);
+  if (curveRuntime && host !== "127.0.0.1" && !process.env.RMT_LAUNCHPAD_PREVIEW_LAN_PEER) {
+    throw new Error("Set the exact phone peer for a direct private curve preview.");
+  }
+  const verified = curveRuntime ? await verifiedCurveRuntime(curveRuntime) : undefined;
+  const rpc = verified?.rpc ?? await verifiedLaunchpadRpc(runtime!);
   const accounts: unknown = await rpc.request({ method: "eth_accounts" } as never);
   if (!Array.isArray(accounts) || accounts.length !== 0) throw new Error("Restart the isolated fork with zero unlocked accounts before opening a preview.");
 
-  const handler = createLaunchpadPreviewGateway(access, runtime, web);
+  const handler = createLaunchpadPreviewGateway(access, curveRuntime && verified ? { curveRuntime, verified } : runtime!, web);
   const options = { requestTimeout: 12_000, headersTimeout: 8_000, maxHeaderSize: 8_192 };
   const server = cert && key
     ? createHttpsServer({ ...options, cert: readFileSync(cert), key: readFileSync(key), minVersion: "TLSv1.2" }, handler)

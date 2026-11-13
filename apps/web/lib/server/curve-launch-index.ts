@@ -133,6 +133,16 @@ export class CurveLaunchIndex {
       ORDER BY height DESC,idx DESC LIMIT 20`).all(this.config.scope, token, token, creator, creator)
       .map(({ payload }) => JSON.parse(String(payload)) as CurveLaunch);
   }
+  previewTarget(target: Address, creator: Address): CurveLaunch | undefined {
+    const scope = this.config.scope;
+    const address = target.toLowerCase();
+    const matches = this.db.prepare(`SELECT l.payload FROM curve_launches l WHERE l.scope=? AND l.creator=? AND (
+      l.token=? OR lower(json_extract(l.payload,'$.curve'))=? OR lower(json_extract(l.payload,'$.ledger'))=?
+      OR EXISTS (SELECT 1 FROM curve_migrations m WHERE m.scope=l.scope AND m.token=l.token AND lower(json_extract(m.payload,'$.toCurve'))=?)
+      OR EXISTS (SELECT 1 FROM curve_lp_collections c WHERE c.scope=l.scope AND c.token=l.token AND lower(json_extract(c.payload,'$.ledger'))=?)
+    ) LIMIT 2`).all(scope, creator.toLowerCase(), address, address, address, address, address);
+    return matches.length === 1 ? JSON.parse(String(matches[0].payload)) as CurveLaunch : undefined;
+  }
   graduation(token: Address): EventIdentity | undefined {
     const row = this.db.prepare("SELECT payload FROM curve_graduations WHERE scope=? AND token=?").get(this.config.scope, token.toLowerCase());
     return row ? JSON.parse(String(row.payload)) as EventIdentity : undefined;
@@ -440,7 +450,7 @@ async function readProjectHistory(ready: Ready, launch: CurveLaunch, observed: L
   if (!sameCurveAddress(localRegistry, registry) || !sameCurveAddress(curveToken, launch.token)
     || !sameCurveAddress(curveFactory, launch.factory) || !sameCurveAddress(curveLedger, launch.ledger)
     || currentVersion !== localVersion || !sameCurveAddress(currentEngine, localEngine) || !runtime || runtime === "0x"
-    || localRuntimeHash !== keccak256(runtime)
+    || localRuntimeHash !== keccak256(runtime) || economicRules !== ready.economicRules
     || (!count && (!sameCurveAddress(currentEngine, launch.curve) || !sameCurveAddress(localSource, zeroAddress)))) {
     throw new Error("Permanent project identity does not match the curve.");
   }
@@ -524,11 +534,12 @@ export async function readCurveState(ready: Ready, launch: CurveLaunch, observed
   if (opening.hash !== launch.blockHash) throw new Error("Curve creation is no longer canonical.");
   const curve = { address: activeCurve, abi: curveAbi, ...canonical } as const;
   const ledger = { address: launch.ledger, abi: curveLedgerAbi, ...canonical } as const;
-  const [sold, backingReserve, graduationSold, operatingRecipient, futureReserveRecipient, claimable, ledgerOrigin, ledgerActive,
+  const [sold, backingReserve, graduationSold, graduationBacking, operatingRecipient, futureReserveRecipient, claimable, ledgerOrigin, ledgerActive,
     totalAccrued, totalClaimed, buckets] = await Promise.all([
     rpc.readContract({ ...curve, functionName: "sold" }),
     rpc.readContract({ ...curve, functionName: "backingReserve" }),
     rpc.readContract({ ...curve, functionName: "graduationSold" }),
+    rpc.readContract({ ...curve, functionName: "GRADUATION_BACKING" }),
     rpc.readContract({ ...curve, functionName: "operatingRecipient" }),
     rpc.readContract({ ...curve, functionName: "futureReserveRecipient" }),
     account ? rpc.readContract({ ...ledger, functionName: "claimable", args: [account] }) : null,
@@ -538,10 +549,13 @@ export async function readCurveState(ready: Ready, launch: CurveLaunch, observed
     rpc.readContract({ ...ledger, functionName: "totalClaimed" }),
     Promise.all([0n, 1n, 2n, 3n].map((bucket) => rpc.readContract({ ...ledger, functionName: "bucketAccrued", args: [bucket] }))),
   ]);
-  if (!sameCurveAddress(ledgerOrigin, launch.curve) || !sameCurveAddress(ledgerActive, activeCurve) || !graduationSold || sold > graduationSold
+  if (!sameCurveAddress(ledgerOrigin, launch.curve) || !sameCurveAddress(ledgerActive, activeCurve)
+    || graduationSold !== BigInt(launch.totalSupply) * 3n / 5n || sold > graduationSold
+    || graduationBacking.toString() !== browser.curve?.graduationBackingWei || backingReserve > graduationBacking
     || totalAccrued !== buckets.reduce((total, entry) => total + entry, 0n) || totalClaimed > totalAccrued
     || (claimable !== null && claimable > totalAccrued - totalClaimed)) throw new Error("Curve registry or revenue binding unavailable.");
-  const result: CurveState = { activeCurve, sold: sold.toString(), backingReserve: backingReserve.toString(), graduationSold: graduationSold.toString(),
+  const result: CurveState = { activeCurve, sold: sold.toString(), backingReserve: backingReserve.toString(),
+    graduationSold: graduationSold.toString(), graduationBackingWei: graduationBacking.toString(),
     graduated, operatingRecipient, futureReserveRecipient, claimable: claimable?.toString() ?? null, blockHash: observed.hash,
     blockNumber: observed.blockNumber.toString(), totalAccrued: totalAccrued.toString(), totalClaimed: totalClaimed.toString(),
     bucketAccrued: [buckets[0].toString(), buckets[1].toString(), buckets[2].toString(), buckets[3].toString()], project };
@@ -567,7 +581,10 @@ export async function readCurveState(ready: Ready, launch: CurveLaunch, observed
       || positionTokenId !== recordedPosition || !sameCurveAddress(owner, engine) || currentLiquidity !== liquidity
       || confirmations.length !== 1 || confirmations[0].args.poolId !== poolId
       || confirmations[0].args.positionTokenId !== positionTokenId || confirmations[0].args.nativeUsed !== nativeUsed
-      || confirmations[0].args.tokenUsed !== tokenUsed || !liquidity || !nativeUsed || !tokenUsed) {
+      || confirmations[0].args.tokenUsed !== tokenUsed || confirmations[0].args.nativeDust !== event.nativeDust
+      || confirmations[0].args.tokenDust !== event.tokenDust || nativeUsed + event.nativeDust !== graduationBacking
+      || tokenUsed + event.tokenDust !== BigInt(launch.totalSupply) - graduationSold
+      || !liquidity || !nativeUsed || !tokenUsed) {
       throw new Error("Graduation funding and permanent position custody could not be verified.");
     }
     result.position = { ...launch, engineVersion: 2, poolManager: browser.deployment.poolManager, poolId, poolKey,

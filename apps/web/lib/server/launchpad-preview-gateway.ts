@@ -2,6 +2,7 @@ import { request as forwardHttp, type IncomingMessage, type RequestListener, typ
 import { BlockList, isIPv4 } from "node:net";
 import { networkInterfaces } from "node:os";
 import { createPublicClient, http, toHex, type Address } from "viem";
+import { createCurvePreviewRpcPolicy, type CurvePreviewGatewayConfig } from "./curve-preview-rpc";
 import { samePreviewCapability, type LaunchpadPreviewAccess } from "./launchpad-preview-access";
 import { permittedPreviewRpc, previewRpcMaxGas, type PreviewRpcPolicy } from "./launchpad-preview-rpc";
 import type { LaunchpadRuntime } from "./new-launchpad-config";
@@ -145,14 +146,14 @@ function permittedAsset(pathname: string) {
     && decoded.split("/").every((part) => part !== "." && part !== "..");
 }
 
-function permittedWebRoute(pathname: string, method: string) {
+function permittedWebRoute(pathname: string, method: string, curve: boolean) {
   if (method === "GET" || method === "HEAD") {
-    return safePages.has(pathname) || /^\/launches\/0x[\da-f]{40}$/i.test(pathname)
-      || permittedAsset(pathname)
-      || /^\/api\/launchpad\/(?:config|launches|public\/[a-z_]+)$/.test(pathname)
+    if (safePages.has(pathname) || /^\/launches\/0x[\da-f]{40}$/i.test(pathname) || permittedAsset(pathname)) return true;
+    if (curve) return pathname === "/api/launchpad/config" || pathname === "/api/launchpad/curve";
+    return /^\/api\/launchpad\/(?:config|launches|public\/[a-z_]+)$/.test(pathname)
       || pathname === "/mcp";
   }
-  return method === "POST" && (pathname === "/api/launchpad/launches" || pathname === "/mcp");
+  return !curve && method === "POST" && (pathname === "/api/launchpad/launches" || pathname === "/mcp");
 }
 
 function proxyWeb(request: IncomingMessage, response: ServerResponse, backend: URL, pathname: string, body: Buffer) {
@@ -185,22 +186,17 @@ const unlockForm = '<!doctype html><html lang="en"><meta charset="utf-8"><meta n
 
 export function createLaunchpadPreviewGateway(
   access: LaunchpadPreviewAccess,
-  config: LaunchpadRuntime,
+  config: LaunchpadRuntime | CurvePreviewGatewayConfig,
   backend: URL,
   upstreamFetch: typeof fetch = fetch,
 ): RequestListener {
-  if (config.deployment.chainId !== 31337 || config.deployment.rpcUrl !== new URL(access.rpcPath, access.origin).href
-    || backend.origin === new URL(config.privateRpcUrl).origin) {
+  const deployment = "curveRuntime" in config ? config.verified.browser.deployment : config.deployment;
+  const privateRpcUrl = "curveRuntime" in config ? config.curveRuntime.rpcUrl : config.privateRpcUrl;
+  if (deployment.chainId !== 31337 || deployment.rpcUrl !== new URL(access.rpcPath, access.origin).href
+    || backend.origin === new URL(privateRpcUrl).origin) {
     throw new Error("Preview gateway bindings disagree with the local launchpad runtime.");
   }
-  const client = createPublicClient({ transport: http(config.privateRpcUrl, { retryCount: 0, timeout: 5_000 }) });
-  const policy: PreviewRpcPolicy = {
-    runtime: config, wallet: access.wallet, readTransaction: (hash) => client.getTransaction({ hash }),
-    readLaunch: (token: Address) => {
-      const store = new LaunchpadStore(config.databasePath, config.scope);
-      try { return store.read({ token })[0]; } finally { store.close(); }
-    },
-  };
+  const policy = "curveRuntime" in config ? createCurvePreviewRpcPolicy(config, access.wallet) : legacyPolicy(config, access.wallet);
   const allowRequest = rateBudget(600);
   const allowUnlock = rateBudget(12);
   const allowRpc = rateBudget(360);
@@ -265,7 +261,7 @@ export function createLaunchpadPreviewGateway(
       const boundedParams = method === "eth_call" || method === "eth_estimateGas"
         ? [{ gas: toHex(previewRpcMaxGas), ...params[0] as object }, ...params.slice(1)] : params;
       try {
-        const upstream = await upstreamFetch(config.privateRpcUrl, {
+        const upstream = await upstreamFetch(privateRpcUrl, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ jsonrpc, id, method, params: boundedParams }),
           signal: AbortSignal.timeout(8_000), redirect: "error",
@@ -278,7 +274,7 @@ export function createLaunchpadPreviewGateway(
       } catch { return rpcError(response, 502, id, "Test-chain RPC unavailable."); }
     }
     const method = request.method ?? "";
-    if (!permittedWebRoute(url.pathname, method)) return send(response, 404, "Preview route not found.");
+    if (!permittedWebRoute(url.pathname, method, "curveRuntime" in config)) return send(response, 404, "Preview route not found.");
     if (!authenticated(request, access)) {
       if (method === "GET" && safePages.has(url.pathname)) {
         response.writeHead(303, { Location: accessPath });
@@ -296,5 +292,15 @@ export function createLaunchpadPreviewGateway(
       if (error instanceof PreviewInputError) return send(response, error.status, error.message);
       return send(response, 502, "Preview request failed.");
     });
+  };
+}
+
+function legacyPolicy(config: LaunchpadRuntime, wallet: Address): PreviewRpcPolicy {
+  const client = createPublicClient({ transport: http(config.privateRpcUrl, { retryCount: 0, timeout: 5_000 }) });
+  return { runtime: config, wallet, readTransaction: (hash) => client.getTransaction({ hash }),
+    readLaunch: (token: Address) => {
+      const store = new LaunchpadStore(config.databasePath, config.scope);
+      try { return store.read({ token })[0]; } finally { store.close(); }
+    },
   };
 }
