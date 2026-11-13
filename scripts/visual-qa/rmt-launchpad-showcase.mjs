@@ -116,7 +116,7 @@ try {
       await verifyReadOnly();
       await page.screenshot({ path: join(output, `${name}-curve.png`) });
 
-      assert.equal((await page.goto(new URL("/launches/example-harbor", site))).status(), 200);
+      assert.equal((await page.goto(new URL("/launches/example-harbor", site).href)).status(), 200);
       await main.getByRole("heading", { name: "Harbor Example", exact: true }).waitFor();
       await main.getByRole("heading", { name: "Trade on Uniswap v4", exact: true }).waitFor();
       await main.getByRole("heading", { name: "Sample launch details", exact: true }).waitFor();
@@ -136,7 +136,7 @@ try {
         await main.getByRole("heading", { name: destination, exact: true }).waitFor();
         await verifyReadOnly();
       }
-      const missing = await page.goto(new URL(`/launches/${unlistedToken}`, site));
+      const missing = await page.goto(new URL(`/launches/${unlistedToken}`, site).href);
       assert.equal(missing.status(), 404);
       assert.deepEqual(attempts, [], `${name} attempted wallet access`);
       assert.deepEqual(externalConnections, [], `${name} made an external connection`);
