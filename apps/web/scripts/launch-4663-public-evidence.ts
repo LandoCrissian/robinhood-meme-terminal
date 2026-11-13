@@ -30,9 +30,11 @@ const directPath = "apps/web/lib/launchpad/direct-v4.ts";
 const fixturePath = "packages/contracts/test/fixtures/rmt-v4-deployment-identities.json";
 const sourcePaths = [
   restPath, publicationPath, mcpPath, configPath, directPath, fixturePath,
+  "apps/web/lib/launchpad/curve-showcase.ts",
   "apps/web/lib/launchpad/launch-record.ts",
   "apps/web/lib/launchpad/router-pins.ts",
   "apps/web/lib/server/launchpad-preview-access.ts",
+  "apps/web/lib/server/launchpad-site-mode.ts",
   "apps/web/lib/server/launchpad-sqlite-backup.ts",
   "apps/web/lib/server/media-request-guard.ts",
   "apps/web/lib/server/new-launchpad-growth-health.ts",
