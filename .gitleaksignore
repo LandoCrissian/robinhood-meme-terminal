@@ -71,3 +71,9 @@ a462d3d161800210536d0296c808b11bceda9495:apps/web/lib/consent-testnet-activation
 a462d3d161800210536d0296c808b11bceda9495:apps/web/lib/consent-testnet-activation.ts:generic-api-key:51
 # Solidity test helper declaration with typed parameters and no credential literal.
 2fbf58ea80f8d6e6132a2f2555a56892f2db390f:packages/contracts/test/RMTV4GrowthVaultV1.t.sol:generic-api-key:189
+# Exact Task 019 false positives from Solidity typed tuple declarations. No credential literals.
+4cb57e4d87d4c4949285bcb6be2af1634cc9d18c:packages/contracts/src/RMTV4CurveGraduationV1.sol:generic-api-key:114
+4cb57e4d87d4c4949285bcb6be2af1634cc9d18c:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:245
+4cb57e4d87d4c4949285bcb6be2af1634cc9d18c:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:267
+4cb57e4d87d4c4949285bcb6be2af1634cc9d18c:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:340
+4cb57e4d87d4c4949285bcb6be2af1634cc9d18c:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:394
