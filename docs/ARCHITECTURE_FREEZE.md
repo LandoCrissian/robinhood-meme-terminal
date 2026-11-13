@@ -16,7 +16,7 @@ RMT is a token launchpad, not a general market operating layer. This explicit ow
 
 ## New-launch flow
 
-User-confirmed gas-only creation → fixed-supply token and immutable curve → ETH buys and sells under disclosed terms → funded graduation threshold → permissionless graduation → funded Uniswap v4 pool and permanent original LP custody → independently observed third-party indexing or routing.
+User-confirmed fixed ETH creation fee plus gas → fixed-supply token and immutable curve → ETH buys and sells under disclosed terms → funded graduation threshold → permissionless graduation → funded Uniswap v4 pool and permanent original LP custody → independently observed third-party indexing or routing.
 
 The [Curve V1 review](RMT_LAUNCH_CURVE_V1.md) contains the active architecture, draft economics, governance and recovery. The [direct-to-v4 implementation](RMT_LAUNCH_V4_LOCAL.md) remains historical evidence. A curve launch is tradable on its curve while actual backing accumulates. Treat eligibility and verified graduation as distinct states.
 

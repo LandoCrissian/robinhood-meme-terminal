@@ -6,6 +6,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {RMTLaunchBondingCurveV1 as Curve} from "../src/RMTLaunchBondingCurveV1.sol";
 import {RMTLaunchCurveSuccessorDeployerV1 as Deployer} from "../src/RMTLaunchBondingCurveV2.sol";
+import {RMTLaunchCurveSuccessorDeployerV2 as V3Deployer} from "../src/RMTLaunchBondingCurveV3.sol";
 import {RMTLaunchCurveFactoryV1 as Factory} from "../src/RMTLaunchCurveFactoryV1.sol";
 import {RMTLaunchCurveDirectoryV1 as Directory} from "../src/RMTLaunchCurveDirectoryV1.sol";
 import {RMTLaunchProjectRegistryV1 as Registry} from "../src/RMTLaunchProjectRegistryV1.sol";
@@ -19,7 +20,7 @@ contract MigrationGraduationBinding {
     }
 }
 
-/// @dev An economic-identity-compatible V3 candidate that the current factory and registry cannot admit.
+/// @dev An economic-identity-compatible V3 candidate outside the canonical template path.
 contract MigrationV3Probe is Curve {
     constructor(Curve source)
         Curve(
@@ -44,6 +45,12 @@ contract MigrationV3Probe is Curve {
     function engineVersion() external pure returns (uint32) {
         return 2;
     }
+}
+
+/// @dev Exercises directory admission metadata without providing a V4 migration implementation.
+contract V4TemplateAdmissionFixture {
+    uint32 public constant fromVersion = 3;
+    uint32 public constant toVersion = 4;
 }
 
 /// @dev Test-only fault injection. Delegates to the exact original bytecode at the existing storage address.
@@ -110,7 +117,7 @@ contract MigrationCallbackProbe {
             _rejected(
                 address(factory),
                 abi.encodeCall(Factory.executeMigration, (asset, address(successor), address(successor).codehash)),
-                Factory.InvalidMigration.selector
+                ReentrancyGuard.ReentrancyGuardReentrantCall.selector
             );
             if (!successor.active()) {
                 _rejected(
@@ -172,7 +179,7 @@ contract RMTLaunchMigrationReadinessTest is Test {
         address expectedFactory = vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1);
         MigrationGraduationBinding graduation = new MigrationGraduationBinding(expectedFactory);
         factory = new Factory(
-            address(graduation), OPERATING, FUTURE, address(registry), address(helper), address(helper).codehash
+            address(graduation), OPERATING, FUTURE, address(registry), address(helper), address(helper).codehash, 0
         );
         Directory.Action memory publication = Directory.Action(
             Directory.ActionKind.Publish,
@@ -198,7 +205,7 @@ contract RMTLaunchMigrationReadinessTest is Test {
         successor = Curve(payable(factory.prepareMigration(asset, 2)));
     }
 
-    function testV2ToV3BlockedByFactoryRegistryAndPublicationWithoutLossOfExit() external {
+    function testV2ToV3NeedsSeparateTemplateAdmissionDespiteFactoryPublication() external {
         Snapshot memory before = _snapshot(origin);
         _schedule();
         vm.prank(STRANGER);
@@ -206,6 +213,7 @@ contract RMTLaunchMigrationReadinessTest is Test {
         assertEq(keccak256(abi.encode(_snapshot(successor))), keccak256(abi.encode(before)));
         assertEq(origin.migratedTo(), address(successor));
         assertEq(successor.executionVersion(), 2);
+        assertEq(registry.nextMigrationVersion(address(token)), 0);
         assertEq(registry.originCurve(address(token)), address(origin));
 
         MigrationV3Probe candidate = new MigrationV3Probe(successor);
@@ -243,6 +251,7 @@ contract RMTLaunchMigrationReadinessTest is Test {
         directory.execute(publication);
         Directory.FactoryPin memory current = directory.currentFactory();
         assertEq(current.factory, address(candidate));
+        assertEq(registry.nextMigrationVersion(address(token)), 0);
         vm.prank(CREATOR);
         vm.expectRevert(Registry.InvalidProposal.selector);
         registry.proposeMigration(
@@ -262,6 +271,134 @@ contract RMTLaunchMigrationReadinessTest is Test {
         assertEq(keccak256(abi.encode(_snapshot(successor))), keccak256(abi.encode(before)));
         _sell(successor, before.holderTokens);
         assertEq(successor.backingReserve(), 0);
+    }
+
+    function testGovernedV2ToV3MigrationRollsBackOnFailedAcceptanceThenRetries() external {
+        _schedule();
+        registry.executeMigration(address(token));
+        vm.prank(HOLDER);
+        successor.buy{value: 0.1 ether}(1, block.timestamp);
+        Snapshot memory before = _snapshot(successor);
+        address helper = address(new V3Deployer());
+        Directory.Action memory publication = _templateAction(helper, 3);
+        bytes32 templateDigest = directory.actionDigest(publication);
+        directory.schedule(publication, _sign(templateDigest, 1), _sign(templateDigest, 3));
+        vm.expectRevert(Directory.NotExecutable.selector);
+        directory.execute(publication);
+        vm.expectRevert(Factory.InvalidMigration.selector);
+        factory.prepareMigration(address(token), 3);
+        vm.warp(block.timestamp + directory.publicationDelay());
+        directory.execute(publication);
+        (address pinned, bytes32 pinnedHash) = registry.migrationTemplate(address(factory), 2);
+        assertEq(pinned, helper);
+        assertEq(pinnedHash, helper.codehash);
+        assertEq(registry.nextMigrationVersion(address(token)), 3);
+        address next = factory.prepareMigration(address(token), 3);
+        assertEq(factory.prepareMigration(address(token), 3), next);
+        assertFalse(Curve(payable(next)).active());
+        vm.prank(CREATOR);
+        registry.proposeMigration(address(token), next, next.codehash, uint48(block.timestamp + 4 days));
+        bytes32 digest = registry.migrationDigest(address(token));
+        registry.scheduleMigration(address(token), _sign(digest, 1), _sign(digest, 2));
+        vm.warp(block.timestamp + registry.migrationDelay());
+        vm.mockCallRevert(
+            next,
+            abi.encodeCall(Curve.acceptMigration, (before.sold, before.backing, before.inventory)),
+            bytes("interrupted V3 acceptance")
+        );
+        vm.expectRevert(bytes("interrupted V3 acceptance"));
+        registry.executeMigration(address(token));
+        vm.clearMockedCalls();
+        assertEq(factory.curveForToken(address(token)), address(successor));
+        assertTrue(successor.active());
+        assertEq(successor.migratedTo(), address(0));
+        assertEq(address(successor).balance, before.backing);
+        assertEq(ledger.activeCurve(), address(successor));
+        assertEq(next.balance, 0);
+        assertEq(token.balanceOf(next), 0);
+        assertFalse(Curve(payable(next)).active());
+        assertEq(keccak256(abi.encode(_snapshot(successor))), keccak256(abi.encode(before)));
+        assertEq(registry.migrationNonce(address(token)), 1);
+        vm.prank(STRANGER);
+        registry.executeMigration(address(token));
+        Curve latest = Curve(payable(next));
+        assertEq(latest.executionVersion(), 3);
+        assertEq(latest.migrationCommitment(), origin.migrationCommitment());
+        assertEq(keccak256(abi.encode(_snapshot(latest))), keccak256(abi.encode(before)));
+        assertEq(address(successor).balance, 0);
+        assertEq(token.balanceOf(address(successor)), 0);
+        assertFalse(successor.active());
+        assertEq(successor.migratedTo(), next);
+        assertEq(ledger.activeCurve(), next);
+        assertEq(registry.originCurve(address(token)), address(origin));
+        assertEq(registry.nextMigrationVersion(address(token)), 0);
+        (uint32 from, uint32 to, address previous, address destination, bytes32 runtimeHash,,) =
+            registry.migration(address(token), 2);
+        assertEq(from, 2);
+        assertEq(to, 3);
+        assertEq(previous, address(successor));
+        assertEq(destination, next);
+        assertEq(runtimeHash, next.codehash);
+        _sell(latest, before.holderTokens);
+        assertEq(latest.backingReserve(), 0);
+    }
+
+    function testFutureTemplateAdmissionRejectsUnreviewedVersionHashOrTemplateReplacement() external {
+        address helper = address(new V3Deployer());
+        address v4Helper = address(new V4TemplateAdmissionFixture());
+        Directory.Action memory action = _templateAction(v4Helper, 4);
+        bytes32 digest = directory.actionDigest(action);
+        bytes memory first = _sign(digest, 1);
+        bytes memory second = _sign(digest, 2);
+        vm.expectRevert(Directory.InvalidFactory.selector);
+        directory.schedule(action, first, second);
+        action = _templateAction(helper, 3);
+        action.runtimeHash = bytes32(uint256(1));
+        vm.expectRevert(Directory.InvalidFactory.selector);
+        directory.schedule(action, first, second);
+        action = _templateAction(helper, 3);
+        digest = directory.actionDigest(action);
+        first = _sign(digest, 1);
+        second = _sign(digest, 2);
+        vm.expectRevert(Directory.InvalidSigners.selector);
+        directory.schedule(action, first, first);
+        directory.schedule(action, first, second);
+        vm.warp(block.timestamp + directory.publicationDelay());
+        directory.execute(action);
+        action = _templateAction(helper, 3);
+        vm.expectRevert(Directory.InvalidFactory.selector);
+        directory.schedule(action, first, second);
+
+        action = _templateAction(helper, 4);
+        digest = directory.actionDigest(action);
+        first = _sign(digest, 1);
+        second = _sign(digest, 2);
+        vm.expectRevert(Directory.InvalidFactory.selector);
+        directory.schedule(action, first, second);
+
+        action = _templateAction(v4Helper, 4);
+        digest = directory.actionDigest(action);
+        first = _sign(digest, 1);
+        second = _sign(digest, 2);
+        directory.schedule(action, first, second);
+        (address pending,) = directory.migrationTemplates(4);
+        assertEq(pending, address(0));
+        vm.warp(block.timestamp + directory.publicationDelay());
+        directory.execute(action);
+        (address published, bytes32 publishedHash) = directory.migrationTemplates(4);
+        assertEq(published, v4Helper);
+        assertEq(publishedHash, v4Helper.codehash);
+    }
+
+    function _templateAction(address deployer, uint32 version) private view returns (Directory.Action memory) {
+        return Directory.Action(
+            Directory.ActionKind.PublishMigrationTemplate,
+            directory.nonce(),
+            version,
+            deployer,
+            deployer.codehash,
+            uint48(block.timestamp + 4 days)
+        );
     }
 
     function testTokenCallbackCannotReenterEitherCurveFactoryOrRegistry() external {

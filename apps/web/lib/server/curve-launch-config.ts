@@ -1,7 +1,7 @@
 import { isAbsolute } from "node:path";
 import { createPublicClient, getAddress, http, isAddress, isHash, keccak256, zeroAddress, type Address, type Hash } from "viem";
 import identities from "../../../../packages/contracts/test/fixtures/rmt-v4-deployment-identities.json";
-import { curveFactoryAbi, curveGraduationAbi, sameCurveAddress } from "../launchpad/curve-v1";
+import { curveDraftCreationFeeWei, curveFactoryAbi, curveGraduationAbi, sameCurveAddress } from "../launchpad/curve-v1";
 import type { LaunchConfig } from "../launchpad/transactions";
 
 const loopback = new Set(["127.0.0.1", "localhost", "[::1]"]);
@@ -63,12 +63,15 @@ export async function verifiedCurveRuntime(config: CurveRuntime) {
   };
   await pin(config.factory, config.factoryHash);
   const factory = { address: config.factory, abi: curveFactoryAbi, ...canonical } as const;
-  const [graduationEngine, version, registry] = await Promise.all([
+  const [graduationEngine, version, registry, amount, recipient] = await Promise.all([
     rpc.readContract({ ...factory, functionName: "graduationEngine" }),
     rpc.readContract({ ...factory, functionName: "engineVersion" }),
     rpc.readContract({ ...factory, functionName: "projectRegistry" }),
+    rpc.readContract({ ...factory, functionName: "creationFeeWei" }),
+    rpc.readContract({ ...factory, functionName: "operatingRecipient" }),
   ]);
   if (version !== 1 || registry === zeroAddress) throw new Error("Unexpected curve engine or project registry.");
+  if (amount !== curveDraftCreationFeeWei || recipient === zeroAddress) throw new Error("Unexpected draft creation fee or operating recipient.");
   await pin(graduationEngine, config.graduationHash);
   const engine = { address: graduationEngine, abi: curveGraduationAbi, ...canonical } as const;
   const [guard, manager, positions, permit, engineFactory] = await Promise.all([
@@ -90,7 +93,7 @@ export async function verifiedCurveRuntime(config: CurveRuntime) {
   if ((await rpc.getBlock({ blockNumber: block.number })).hash !== block.hash) throw new Error("Curve deployment observation changed.");
   const browser: Extract<LaunchConfig, { status: "ready" }> = {
     status: "ready",
-    curve: { graduationEngine, projectRegistry: registry },
+    curve: { graduationEngine, projectRegistry: registry, creationFee: { amountWei: amount.toString(), recipient } },
     deployment: { chainId: 31337, name: "Local curve review · Chain 31337", rpcUrl: config.rpcUrl, factory: config.factory,
       engineVersion: 2, initializationGuard: guard, poolManager: manager, positionManager: positions, permit2: permit,
       universalRouter: getAddress(fixture.universalRouter212.address), universalRouterVersion: "2.1.2",

@@ -120,9 +120,13 @@ export function useLaunchTransaction(record?: NewLaunchRecord) {
       let confirmed = "Transaction confirmed.";
       let launch: Pick<NewLaunchRecord, "token" | "symbol"> | undefined;
       if (config?.status === "ready" && config.curve && request.kind === "curve-create") {
-        const created = projectCurveReceipt(config.deployment.factory, receipt, request);
+        const created = projectCurveReceipt(config.deployment.factory, receipt, config.curve.creationFee, request);
         const indexed = await fetchCurveState(created.token);
-        if (indexed.launch.transactionHash !== hash || indexed.launch.blockHash !== receipt.blockHash) {
+        if (indexed.launch.transactionHash !== hash || indexed.launch.blockHash !== receipt.blockHash
+          || indexed.launch.creationFee.amountWei !== created.creationFee.amountWei
+          || indexed.launch.creationFee.recipient.toLowerCase() !== created.creationFee.recipient.toLowerCase()
+          || indexed.launch.creationFee.refundWei !== created.creationFee.refundWei
+          || indexed.launch.creationFee.logIndex !== created.creationFee.logIndex) {
           throw new Error("Curve creation is being reconciled with the index.");
         }
         launch = created;

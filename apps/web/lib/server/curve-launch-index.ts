@@ -1,9 +1,9 @@
 import { DatabaseSync } from "node:sqlite";
-import { erc20Abi, isHash, keccak256, parseAbi, parseEventLogs, zeroAddress, type Address, type Hash, type PublicClient, type TransactionReceipt } from "viem";
-import { projectCurveReceipt } from "../launchpad/curve-receipt";
+import { erc20Abi, isHash, keccak256, parseAbi, parseEventLogs, toHex, zeroAddress, type Address, type Hash, type PublicClient, type TransactionReceipt } from "viem";
+import { assertCurveCreationTransaction, projectCurveReceipt, verifyCurveCreationRefund } from "../launchpad/curve-receipt";
 import { curveAbi, curveAssetsMigratedEvent, curveCreatedEvent, curveDirectoryAbi, curveFactoryAbi, curveGraduatedEvent,
-  curveGraduationAbi, curveLedgerAbi, curveLpCollectedEvent, curveLpLedgerAbi, curveRegistryAbi, graduationEngineEvent, projectMigratedEvent,
-  sameCurveAddress, type CurveFeeAmounts, type CurveLaunch, type CurveState } from "../launchpad/curve-v1";
+  curveGraduationAbi, curveLedgerAbi, curveLpCollectedEvent, curveLpLedgerAbi, curveMaxVersion, curveRegistryAbi, graduationEngineEvent,
+  projectMigratedEvent, sameCurveAddress, type CurveCreationFeePolicy, type CurveFeeAmounts, type CurveLaunch, type CurveState } from "../launchpad/curve-v1";
 import { launchPoolId } from "../launchpad/launch-record";
 import { boundedReceiptLogs } from "../launchpad/receipt-logs";
 import { canonicalLaunchpadBlock, readLaunchpadBlock, type LaunchpadObservedBlock } from "./new-launchpad-finality";
@@ -28,15 +28,32 @@ function eventIdentity(log: { transactionHash: Hash | null; blockHash: Hash | nu
   return { transactionHash: log.transactionHash, blockHash: log.blockHash, blockNumber: log.blockNumber.toString(), logIndex: log.logIndex };
 }
 
-async function verifiedCreation(rpc: PublicClient, factory: Address, hash: Hash, head: bigint) {
-  const receipt = await rpc.getTransactionReceipt({ hash });
-  const launch = projectCurveReceipt(factory, receipt);
-  if (!sameCurveAddress(launch.transactionHash, hash)) throw new Error("Curve receipt hash mismatch.");
+async function verifiedCreation(rpc: PublicClient, factory: Address, policy: CurveCreationFeePolicy,
+  event: EventIdentity, originLog: { data: `0x${string}`; topics: readonly `0x${string}`[] }, head: bigint) {
+  const hash = event.transactionHash;
+  const [receipt, transaction] = await Promise.all([rpc.getTransactionReceipt({ hash }), rpc.getTransaction({ hash })]);
+  assertEventReceipt(receipt, event);
+  if (!sameCurveAddress(transaction.hash, hash) || transaction.blockHash !== receipt.blockHash || transaction.blockNumber !== receipt.blockNumber
+    || transaction.transactionIndex !== receipt.transactionIndex || transaction.to?.toLowerCase() !== receipt.to?.toLowerCase()
+    || !sameCurveAddress(transaction.from, receipt.from)) throw new Error("Curve creation transaction and receipt disagree.");
+  if (!sameCurveAddress(receipt.to, factory)) {
+    // Nested smart-account calls have no direct wallet request in this profile. Canonical nested events must not stall direct-launch discovery.
+    const nested = boundedReceiptLogs(receipt).find((entry) => entry.logIndex === event.logIndex && sameCurveAddress(entry.address, factory));
+    if (!nested || nested.data !== originLog.data || nested.topics.length !== originLog.topics.length
+      || nested.topics.some((topic, index) => topic !== originLog.topics[index])
+      || (await readLaunchpadBlock(rpc, receipt.blockNumber, head)).hash !== event.blockHash) {
+      throw new Error("Nested curve creation does not match its canonical event.");
+    }
+    return undefined;
+  }
+  const launch = projectCurveReceipt(factory, receipt, policy);
+  assertCurveCreationTransaction(launch, transaction.input, transaction.value);
+  await verifyCurveCreationRefund(rpc, receipt, launch, transaction.input, toHex(transaction.value));
   const block = await readLaunchpadBlock(rpc, receipt.blockNumber, head);
   if (block.hash !== launch.blockHash) throw new Error("Curve creation is no longer canonical.");
   const canonical = canonicalLaunchpadBlock(block);
   const curve = { address: launch.curve, abi: curveAbi, ...canonical } as const;
-  const [registered, curveFactory, token, creator, ledger, supply, ledgerCurve, treasury, treasuryShareBps] = await Promise.all([
+  const [registered, curveFactory, token, creator, ledger, supply, ledgerCurve, treasury, treasuryShareBps, amount, recipient] = await Promise.all([
     rpc.readContract({ address: factory, abi: curveFactoryAbi, functionName: "originCurveForToken", args: [launch.token], ...canonical }),
     rpc.readContract({ ...curve, functionName: "factory" }),
     rpc.readContract({ ...curve, functionName: "token" }),
@@ -46,10 +63,13 @@ async function verifiedCreation(rpc: PublicClient, factory: Address, hash: Hash,
     rpc.readContract({ address: launch.ledger, abi: curveLedgerAbi, functionName: "curve", ...canonical }),
     rpc.readContract({ ...curve, functionName: "treasury" }),
     rpc.readContract({ ...curve, functionName: "treasuryShareBps" }),
+    rpc.readContract({ address: factory, abi: curveFactoryAbi, functionName: "creationFeeWei", ...canonical }),
+    rpc.readContract({ address: factory, abi: curveFactoryAbi, functionName: "operatingRecipient", ...canonical }),
   ]);
   if (!sameCurveAddress(registered, launch.curve) || !sameCurveAddress(curveFactory, factory) || !sameCurveAddress(token, launch.token)
     || !sameCurveAddress(creator, launch.creator) || !sameCurveAddress(ledger, launch.ledger) || !sameCurveAddress(ledgerCurve, launch.curve)
-    || !sameCurveAddress(treasury, launch.treasury) || treasuryShareBps !== launch.treasuryShareBps || supply.toString() !== launch.totalSupply) {
+    || !sameCurveAddress(treasury, launch.treasury) || treasuryShareBps !== launch.treasuryShareBps || supply.toString() !== launch.totalSupply
+    || amount.toString() !== policy.amountWei || !sameCurveAddress(recipient, policy.recipient)) {
     throw new Error("Curve launch factory or token binding mismatch.");
   }
   return launch;
@@ -148,9 +168,8 @@ export class CurveLaunchIndex {
     if (fromBlock > observed.blockNumber) return true;
     const toBlock = fromBlock + maxRange - 1n < observed.blockNumber ? fromBlock + maxRange - 1n : observed.blockNumber;
     const ending = await readLaunchpadBlock(rpc, toBlock, observed.blockNumber);
-    const engine = browser.curve!.graduationEngine;
-    const registry = browser.curve!.projectRegistry;
-    if (!registry) throw new Error("The curve index requires the verified project registry.");
+    if (!browser.curve) throw new Error("The curve index requires the verified project registry.");
+    const { graduationEngine: engine, projectRegistry: registry, creationFee } = browser.curve;
     const [creations, graduations, migrations, collections] = await Promise.all([
       rpc.getLogs({ address: factory, event: curveCreatedEvent, fromBlock, toBlock, strict: true }),
       rpc.getLogs({ address: engine, event: graduationEngineEvent, fromBlock, toBlock, strict: true }),
@@ -164,7 +183,8 @@ export class CurveLaunchIndex {
       if (BigInt(event.blockNumber) < fromBlock || BigInt(event.blockNumber) > toBlock || !sameCurveAddress(log.address, factory)) {
         throw new Error("Curve creation is outside its indexed range.");
       }
-      const launch = await verifiedCreation(rpc, factory, event.transactionHash, observed.blockNumber);
+      const launch = await verifiedCreation(rpc, factory, creationFee, event, log, observed.blockNumber);
+      if (!launch) continue;
       if (launch.logIndex !== event.logIndex || launch.blockHash !== event.blockHash || launch.blockNumber !== event.blockNumber
         || !sameCurveAddress(launch.token, log.args.token) || !sameCurveAddress(launch.curve, log.args.curve)
         || !sameCurveAddress(launch.creator, log.args.creator) || !sameCurveAddress(launch.intentId, log.args.intentId)) {
@@ -273,7 +293,7 @@ function projectMigration(receipt: TransactionReceipt, expected: EventIdentity, 
   const logs = boundedReceiptLogs(receipt);
   const assets = parseEventLogs({ abi: [curveAssetsMigratedEvent], logs: logs.filter((log) => sameCurveAddress(log.address, factory)) });
   const history = parseEventLogs({ abi: [projectMigratedEvent], logs: logs.filter((log) => sameCurveAddress(log.address, registry)) });
-  if (assets.length !== 1 || history.length !== 1 || assets[0].logIndex !== expected.logIndex
+  if (version < 2 || version > curveMaxVersion || assets.length !== 1 || history.length !== 1 || assets[0].logIndex !== expected.logIndex
     || !sameCurveAddress(assets[0].args.token, token) || !sameCurveAddress(history[0].args.token, token)
     || !sameCurveAddress(assets[0].args.toCurve, history[0].args.nextEngine)
     || assets[0].args.version !== version || history[0].args.toVersion !== version
@@ -369,7 +389,7 @@ async function readProjectHistory(ready: Ready, launch: CurveLaunch, observed: L
   const canonical = canonicalLaunchpadBlock(observed);
   const read = { address: registry, abi: curveRegistryAbi, ...canonical } as const;
   const factoryRead = { address: launch.factory, abi: curveFactoryAbi, args: [launch.token], ...canonical } as const;
-  const [[factory, activeCurve, currentVersion, currentEngine, count], origin, factoryOrigin, factoryActive, directory, nonce,
+  const [[factory, activeCurve, currentVersion, currentEngine, count], origin, factoryOrigin, factoryActive, directory, nonce, nextVersion,
     [nextEngine, runtimeHash, deadline, executableAt, expiresAt]] = await Promise.all([
     rpc.readContract({ ...read, functionName: "project", args: [launch.token] }),
     rpc.readContract({ ...read, functionName: "originCurve", args: [launch.token] }),
@@ -377,15 +397,20 @@ async function readProjectHistory(ready: Ready, launch: CurveLaunch, observed: L
     rpc.readContract({ ...factoryRead, functionName: "curveForToken" }),
     rpc.readContract({ ...read, functionName: "directory" }),
     rpc.readContract({ ...read, functionName: "migrationNonce", args: [launch.token] }),
+    rpc.readContract({ ...read, functionName: "nextMigrationVersion", args: [launch.token] }),
     rpc.readContract({ ...read, functionName: "proposal", args: [launch.token] }),
   ]);
   if (!sameCurveAddress(factory, launch.factory) || !sameCurveAddress(origin, launch.curve)
     || !sameCurveAddress(factoryOrigin, launch.curve) || !sameCurveAddress(activeCurve, currentEngine)
     || !sameCurveAddress(activeCurve, factoryActive) || sameCurveAddress(activeCurve, zeroAddress)
-    || currentVersion < 1 || count !== BigInt(currentVersion - 1)) throw new Error("Permanent project identity does not match the active curve.");
+    || currentVersion < 1 || currentVersion > curveMaxVersion || count !== BigInt(currentVersion - 1)
+    || (nextVersion !== 0 && (nextVersion > curveMaxVersion || nextVersion !== currentVersion + 1))) {
+    throw new Error("Permanent project identity does not match the active curve.");
+  }
   const curveContract = { address: activeCurve, abi: curveAbi, ...canonical } as const;
+  const pendingNotice = !sameCurveAddress(nextEngine, zeroAddress);
   const [localVersion, localEngine, localRuntimeHash, economicRules, localRegistry, localSource, active, graduated, commitment,
-    curveToken, curveFactory, curveLedger, suspended, runtime, candidate] = await Promise.all([
+    curveToken, curveFactory, curveLedger, suspended, runtime, candidate, pendingRuntime] = await Promise.all([
     rpc.readContract({ ...curveContract, functionName: "executionVersion" }),
     rpc.readContract({ ...curveContract, functionName: "executionEngine" }),
     rpc.readContract({ ...curveContract, functionName: "executionEngineRuntimeHash" }),
@@ -400,9 +425,10 @@ async function readProjectHistory(ready: Ready, launch: CurveLaunch, observed: L
     rpc.readContract({ ...curveContract, functionName: "revenueLedger" }),
     rpc.readContract({ address: directory, abi: curveDirectoryAbi, functionName: "suspended", ...canonical }),
     rpc.getCode({ address: activeCurve, ...canonical }),
-    currentVersion === 1
-      ? rpc.readContract({ address: launch.factory, abi: curveFactoryAbi, functionName: "migrationCandidate", args: [launch.token, 2], ...canonical })
+    currentVersion < curveMaxVersion && (nextVersion || pendingNotice)
+      ? rpc.readContract({ address: launch.factory, abi: curveFactoryAbi, functionName: "migrationCandidate", args: [launch.token, currentVersion + 1], ...canonical })
       : zeroAddress,
+    pendingNotice ? rpc.getCode({ address: nextEngine, ...canonical }) : undefined,
   ]);
   if (!sameCurveAddress(localRegistry, registry) || !sameCurveAddress(curveToken, launch.token)
     || !sameCurveAddress(curveFactory, launch.factory) || !sameCurveAddress(curveLedger, launch.ledger)
@@ -411,50 +437,72 @@ async function readProjectHistory(ready: Ready, launch: CurveLaunch, observed: L
     || (!count && (!sameCurveAddress(currentEngine, launch.curve) || !sameCurveAddress(localSource, zeroAddress)))) {
     throw new Error("Permanent project identity does not match the curve.");
   }
-  const migrations = await Promise.all(Array.from({ length: Number(count < 10n ? count : 10n) }, async (_, offset) => {
-    const index = count - BigInt(offset);
-    const [fromVersion, toVersion, previousEngine, nextEngine, runtimeHash, effectiveBlock, timestamp] =
-      await rpc.readContract({ ...read, functionName: "migration", args: [launch.token, index] });
-    const evidence = lifecycle.migration(toVersion);
-    if (toVersion !== fromVersion + 1 || !isHash(runtimeHash) || effectiveBlock > observed.blockNumber || BigInt(timestamp) > observed.timestamp
-      || !evidence || evidence.blockNumber !== effectiveBlock.toString() || !sameCurveAddress(evidence.fromCurve, previousEngine)
-      || !sameCurveAddress(evidence.toCurve, nextEngine) || !sameCurveAddress(evidence.ledger, launch.ledger)
-      || BigInt(evidence.sold) > BigInt(launch.totalSupply) * 3n / 5n
-      || BigInt(evidence.inventory) !== BigInt(launch.totalSupply) - BigInt(evidence.sold)) {
-      throw new Error("Project migration evidence is inconsistent.");
-    }
-    const block = await readLaunchpadBlock(rpc, effectiveBlock, observed.blockNumber);
-    if (block.hash !== evidence.blockHash || block.timestamp !== BigInt(timestamp)) throw new Error("Project migration is no longer canonical.");
-    const { transactionHash, transactionIndex, logIndex, blockHash, backing, inventory, sold } = evidence;
-    return { index: index.toString(), fromVersion, toVersion, previousEngine, nextEngine, runtimeHash, blockNumber: effectiveBlock.toString(),
-      timestamp, transactionHash, transactionIndex, logIndex, blockHash, backing, inventory, sold };
-  }));
+  if ((nextVersion && (!active || graduated || suspended))
+    || (pendingNotice && (!sameCurveAddress(candidate, nextEngine) || !pendingRuntime || pendingRuntime === "0x"
+      || keccak256(pendingRuntime) !== runtimeHash || currentVersion >= curveMaxVersion))) {
+    throw new Error("The proposed successor does not match the pinned project route.");
+  }
+  const migrations: NonNullable<CurveState["project"]>["migrations"] = [];
+  const totalSupply = BigInt(launch.totalSupply);
+  // The contract caps history at 31 transitions. Small batches bound concurrent RPC work while retaining every recovery boundary.
+  for (let first = count; first > 0n; first -= 4n) {
+    migrations.push(...await Promise.all(Array.from({ length: Number(first < 4n ? first : 4n) }, async (_, offset) => {
+      const index = first - BigInt(offset);
+      const [fromVersion, toVersion, previousEngine, nextEngine, runtimeHash, effectiveBlock, timestamp] =
+        await rpc.readContract({ ...read, functionName: "migration", args: [launch.token, index] });
+      const evidence = lifecycle.migration(toVersion);
+      if (fromVersion !== Number(index) || toVersion !== fromVersion + 1 || !isHash(runtimeHash)
+        || effectiveBlock < BigInt(launch.blockNumber) || effectiveBlock > observed.blockNumber || BigInt(timestamp) > observed.timestamp
+        || !evidence || evidence.version !== toVersion || evidence.blockNumber !== effectiveBlock.toString()
+        || !sameCurveAddress(evidence.fromCurve, previousEngine) || !sameCurveAddress(evidence.toCurve, nextEngine)
+        || !sameCurveAddress(evidence.ledger, launch.ledger) || BigInt(evidence.sold) > totalSupply * 3n / 5n
+        || BigInt(evidence.inventory) !== totalSupply - BigInt(evidence.sold)) {
+        throw new Error("Project migration evidence is inconsistent.");
+      }
+      const block = await readLaunchpadBlock(rpc, effectiveBlock, observed.blockNumber);
+      if (block.hash !== evidence.blockHash || block.timestamp !== BigInt(timestamp)) throw new Error("Project migration is no longer canonical.");
+      const { transactionHash, transactionIndex, logIndex, blockHash, backing, inventory, sold } = evidence;
+      return { index: index.toString(), fromVersion, toVersion, previousEngine, nextEngine, runtimeHash, blockNumber: effectiveBlock.toString(),
+        timestamp, transactionHash, transactionIndex, logIndex, blockHash, backing, inventory, sold };
+    })));
+  }
   if (migrations.some((entry, index) => index === 0
     ? entry.toVersion !== currentVersion || !sameCurveAddress(entry.nextEngine, currentEngine)
       || entry.runtimeHash !== localRuntimeHash || !sameCurveAddress(localSource, entry.previousEngine)
-    : entry.toVersion !== migrations[index - 1].fromVersion || !sameCurveAddress(entry.nextEngine, migrations[index - 1].previousEngine))
-    || (migrations.length > 0 && BigInt(migrations.length) === count && !sameCurveAddress(migrations.at(-1)?.previousEngine, launch.curve))) {
+    : entry.toVersion !== migrations[index - 1].fromVersion || !sameCurveAddress(entry.nextEngine, migrations[index - 1].previousEngine)
+      || BigInt(entry.blockNumber) > BigInt(migrations[index - 1].blockNumber)
+      || (entry.blockNumber === migrations[index - 1].blockNumber && entry.transactionIndex >= migrations[index - 1].transactionIndex))
+    || (migrations.length > 0 && !sameCurveAddress(migrations.at(-1)?.previousEngine, launch.curve))) {
     throw new Error("Project migration history does not resolve to the current version.");
   }
-  if (migrations.length) {
-    const originContract = { address: launch.curve, abi: curveAbi, ...canonical } as const;
-    const [originActive, migratedTo, originCommitment] = await Promise.all([
-      rpc.readContract({ ...originContract, functionName: "active" }),
-      rpc.readContract({ ...originContract, functionName: "migratedTo" }),
-      rpc.readContract({ ...originContract, functionName: "migrationCommitment" }),
-    ]);
-    if (originActive || !sameCurveAddress(migratedTo, migrations.at(-1)?.nextEngine) || originCommitment !== commitment) {
-      throw new Error("The origin curve's closure and successor do not match the migration.");
-    }
+  for (let offset = 0; offset < migrations.length; offset += 4) {
+    await Promise.all(migrations.slice(offset, offset + 4).map(async (migration, index) => {
+      const previous = { address: migration.previousEngine, abi: curveAbi, ...canonical } as const;
+      const priorMigration = migrations[offset + index + 1];
+      const [previousActive, migratedTo, previousCommitment, previousVersion, previousSource, previousBacking] = await Promise.all([
+        rpc.readContract({ ...previous, functionName: "active" }),
+        rpc.readContract({ ...previous, functionName: "migratedTo" }),
+        rpc.readContract({ ...previous, functionName: "migrationCommitment" }),
+        rpc.readContract({ ...previous, functionName: "executionVersion" }),
+        rpc.readContract({ ...previous, functionName: "migrationSource" }),
+        rpc.readContract({ ...previous, functionName: "backingReserve" }),
+      ]);
+      if (previousActive || !sameCurveAddress(migratedTo, migration.nextEngine) || previousCommitment !== commitment
+        || previousVersion !== migration.fromVersion || previousBacking !== 0n
+        || !sameCurveAddress(previousSource, priorMigration?.previousEngine ?? zeroAddress)) {
+        throw new Error("A predecessor curve's closure and successor do not match the migration.");
+      }
+    }));
   }
   const pendingStatus = observed.timestamp > BigInt(expiresAt || deadline) ? "expired" : !active || graduated || suspended ? "blocked"
     : !executableAt ? "awaiting_approvals" : observed.timestamp < BigInt(executableAt) ? "timelocked" : "executable";
-  const pending: NonNullable<CurveState["project"]>["pending"] = sameCurveAddress(nextEngine, zeroAddress)
-    ? undefined : { nextEngine, runtimeHash, deadline, executableAt, expiresAt, status: pendingStatus };
+  const pending: NonNullable<CurveState["project"]>["pending"] = pendingNotice
+    ? { nextEngine, runtimeHash, deadline, executableAt, expiresAt, status: pendingStatus } : undefined;
   const eligibility = graduated ? "graduated" : !active ? "inactive" : suspended ? "suspended"
-    : currentVersion !== 1 ? "version_unsupported" : pending ? "proposal_pending" : "eligible";
+    : pending ? "proposal_pending" : nextVersion ? "eligible" : "version_unsupported";
   const project: NonNullable<CurveState["project"]> = { registry, currentVersion, currentEngine, economicRules, count: count.toString(),
-    eligibility, migrationNonce: nonce.toString(), migrations, pending, ...(candidate === zeroAddress ? {} : { candidate }) };
+    eligibility, migrationNonce: nonce.toString(), migrations, pending,
+    ...(nextVersion ? { nextVersion } : {}), ...(candidate === zeroAddress ? {} : { candidate }) };
   return { activeCurve, project, graduated };
 }
 

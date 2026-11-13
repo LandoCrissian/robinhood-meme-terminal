@@ -5,7 +5,8 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { encodeAbiParameters, encodeEventTopics, encodeFunctionData, keccak256, toHex, zeroAddress, type Address, type Hash, type Log, type TransactionReceipt } from "viem";
 import { curveAtReceipt, projectCurveReceipt } from "../launchpad/curve-receipt";
-import { curveAssetsMigratedEvent, curveCreatedEvent, curveFactoryAbi, curveLpCollectedEvent, projectMigratedEvent } from "../launchpad/curve-v1";
+import { curveAssetsMigratedEvent, curveCreatedEvent, curveCreationFeePaidEvent, curveDraftCreationFeeWei, curveFactoryAbi,
+  curveLpCollectedEvent, projectMigratedEvent } from "../launchpad/curve-v1";
 import type { LaunchRequest } from "../launchpad/transactions";
 import { curveLoopbackRequest, readCurveRuntime, type verifiedCurveRuntime } from "./curve-launch-config";
 import { CurveLaunchIndex, readCurveState } from "./curve-launch-index";
@@ -21,6 +22,8 @@ const graduationEngine = address(6);
 const registry = address(7);
 const newCurve = address(8);
 const lpLedger = address(12);
+const operating = address(30);
+const feePolicy = { amountWei: curveDraftCreationFeeWei.toString(), recipient: operating };
 const intentId = hash(100);
 const timestamp = 1_800_000_000n;
 const supply = 1_000_000n * 10n ** 18n;
@@ -31,7 +34,7 @@ function observed(number: bigint, branch: number = 0) {
   return { blockNumber: number, hash: hash(number + BigInt(branch)), timestamp };
 }
 
-function creation(blockHash = hash(11), transactionHash = hash(1000)) {
+function creation(blockHash = hash(11), transactionHash = hash(1000), refund = 0n, recipient = operating) {
   const event = {
     address: factory, logIndex: 3, transactionHash, transactionIndex: 0, blockHash, blockNumber: 11n, removed: false,
     topics: encodeEventTopics({ abi: [curveCreatedEvent], eventName: "CurveCreated", args: { token, curve, creator } }),
@@ -39,9 +42,17 @@ function creation(blockHash = hash(11), transactionHash = hash(1000)) {
       { type: "uint16" }, { type: "string" }, { type: "string" }, { type: "string" }],
     [intentId, supply, ledger, zeroAddress, 0, project.name, project.symbol, ""]),
   } as Log;
+  const fee = { ...event, logIndex: 4,
+    topics: encodeEventTopics({ abi: [curveCreationFeePaidEvent], eventName: "CreationFeePaid", args: { token, creator, recipient } }),
+    data: encodeAbiParameters([{ type: "uint256" }, { type: "uint256" }], [curveDraftCreationFeeWei, refund]),
+  } as Log;
   const receipt = { status: "success", transactionHash, transactionIndex: 0, blockHash, blockNumber: 11n, from: creator, to: factory,
-    logs: [event] } as TransactionReceipt;
-  return { receipt, event: { ...event, args: project } };
+    logs: [event, fee] } as TransactionReceipt;
+  const input = encodeFunctionData({ abi: curveFactoryAbi, functionName: "create",
+    args: [project.name, project.symbol, "", 0, zeroAddress, 0, intentId, timestamp] });
+  const transaction = { hash: transactionHash, transactionIndex: 0, blockHash, blockNumber: 11n,
+    from: creator, to: factory, input, value: curveDraftCreationFeeWei + refund };
+  return { receipt, transaction, event: { ...event, args: project } };
 }
 
 function env(path: string) {
@@ -66,24 +77,31 @@ test("curve preview fails closed on hosted, credentialed, and cross-origin acces
 test("curve creation projection verifies exact wallet terms and one canonical receipt log", () => {
   const { receipt } = creation();
   const deadline = 1_800_000_000;
-  const request: LaunchRequest = { kind: "curve-create", chainId: 31337, from: creator, to: factory, value: "0x0",
+  const request: LaunchRequest = { kind: "curve-create", chainId: 31337, from: creator, to: factory, value: toHex(curveDraftCreationFeeWei),
     intentId, blockHash: hash(10), blockNumber: "0xa", deadline,
     data: encodeFunctionData({ abi: curveFactoryAbi, functionName: "create",
       args: [project.name, project.symbol, "", 0, zeroAddress, 0, intentId, BigInt(deadline)] }) };
-  const projected = projectCurveReceipt(factory, receipt, request);
+  const projected = projectCurveReceipt(factory, receipt, feePolicy, request);
   assert.equal(projected.token, token);
   assert.equal(projected.totalSupply, supply.toString());
-  assert.throws(() => projectCurveReceipt(factory, receipt, { ...request, intentId: hash(101) }), /reviewed request/);
-  assert.throws(() => projectCurveReceipt(factory, receipt, { ...request, value: "0x1" }), /reviewed request/);
-  assert.throws(() => projectCurveReceipt(factory, { ...receipt, logs: [receipt.logs[0], receipt.logs[0]] }), /duplicate/);
+  assert.deepEqual(projected.creationFee, { ...feePolicy, refundWei: "0", logIndex: 4 });
+  assert.throws(() => projectCurveReceipt(factory, receipt, feePolicy, { ...request, intentId: hash(101) }), /reviewed request/);
+  assert.throws(() => projectCurveReceipt(factory, receipt, feePolicy, { ...request, value: "0x1" }), /reviewed request/);
+  assert.throws(() => projectCurveReceipt(factory, creation(undefined, undefined, 1n).receipt, feePolicy, request), /reviewed request/);
+  assert.throws(() => projectCurveReceipt(factory, creation(undefined, undefined, 0n, address(31)).receipt, feePolicy), /immutable factory terms/);
+  assert.throws(() => projectCurveReceipt(factory, { ...receipt, logs: [receipt.logs[0]] }, feePolicy), /immutable factory terms/);
+  assert.throws(() => projectCurveReceipt(factory, { ...receipt, logs: [...receipt.logs, receipt.logs[0]] }, feePolicy), /duplicate/);
 });
 
 test("curve index persists exact records, handles duplicate delivery, and restores an orphaned first range only after provider recovery", async () => {
   const folder = mkdtempSync(join(tmpdir(), "rmt-curve-index-"));
   const config = readCurveRuntime(env(join(folder, "index.sqlite")))!;
-  const { event, receipt } = creation();
+  const { event, receipt, transaction } = creation(undefined, undefined, 5n);
   let branch = 0;
   let unavailable = false;
+  let traceUnavailable = true;
+  let traceValue = "0x5";
+  let transactionValue = transaction.value;
   const rpc = {
     async getBlock({ blockNumber }: { blockNumber: bigint }) {
       return { number: blockNumber, timestamp, hash: hash(blockNumber + (blockNumber >= 11n ? BigInt(branch) : 0n)) };
@@ -95,6 +113,12 @@ test("curve index persists exact records, handles duplicate delivery, and restor
     async getTransactionReceipt({ hash: transactionHash }: { hash: Hash }) {
       assert.equal(transactionHash, receipt.transactionHash);
       return receipt;
+    },
+    async getTransaction() { return { ...transaction, value: transactionValue }; },
+    async request() {
+      if (traceUnavailable) throw new Error("Trace unavailable.");
+      return { type: "CALL", from: creator, to: factory, input: transaction.input, value: toHex(transaction.value),
+        calls: [{ type: "CALL", from: factory, to: creator, input: "0x", value: traceValue }] };
     },
     async readContract({ address: emitter, functionName, requireCanonical, blockHash }: {
       address: Address; functionName: string; requireCanonical: boolean; blockHash: Hash;
@@ -111,15 +135,27 @@ test("curve index persists exact records, handles duplicate delivery, and restor
         case "totalSupply": return supply;
         case "treasury": return zeroAddress;
         case "treasuryShareBps": return 0;
+        case "creationFeeWei": return curveDraftCreationFeeWei;
+        case "operatingRecipient": return operating;
         default: throw new Error("Unexpected fixture call.");
       }
     },
   };
-  const ready = { rpc, browser: { curve: { graduationEngine, projectRegistry: registry } } } as unknown as Awaited<ReturnType<typeof verifiedCurveRuntime>>;
+  const ready = { rpc, browser: { curve: { graduationEngine, projectRegistry: registry, creationFee: feePolicy } } } as unknown as Awaited<ReturnType<typeof verifiedCurveRuntime>>;
   let index = new CurveLaunchIndex(config);
   try {
+    await assert.rejects(index.sync(ready, observed(11n)), /settlement|trace/i);
+    assert.equal(index.list().length, 0);
+    traceUnavailable = false;
+    traceValue = "0x4";
+    await assert.rejects(index.sync(ready, observed(11n)), /settlement|trace/i);
+    traceValue = "0x5";
+    transactionValue = transaction.value + 1n;
+    await assert.rejects(index.sync(ready, observed(11n)), /reviewed request/);
+    transactionValue = transaction.value;
     assert.equal(await index.sync(ready, observed(11n)), true);
     assert.equal(index.list().length, 1);
+    assert.equal(index.list()[0].creationFee.refundWei, "5");
     index.close();
     index = new CurveLaunchIndex(config);
     assert.equal(index.list({ creator })[0].transactionHash, receipt.transactionHash);
@@ -137,14 +173,47 @@ test("curve index persists exact records, handles duplicate delivery, and restor
   }
 });
 
+test("canonical nested creations advance the loopback cursor without becoming direct-wallet launches", async () => {
+  const folder = mkdtempSync(join(tmpdir(), "rmt-curve-nested-"));
+  const config = readCurveRuntime(env(join(folder, "index.sqlite")))!;
+  const { event, receipt, transaction } = creation();
+  const smartAccount = address(42);
+  let wrongNestedLog = true;
+  const rpc = {
+    async getBlock({ blockNumber }: { blockNumber: bigint }) { return { number: blockNumber, hash: hash(blockNumber), timestamp }; },
+    async getLogs({ event: selected }: { event: { name: string } }) { return selected.name === "CurveCreated" ? [event] : []; },
+    async getTransaction() { return { ...transaction, to: smartAccount }; },
+    async getTransactionReceipt() {
+      return { ...receipt, to: smartAccount, logs: wrongNestedLog ? [receipt.logs[1]] : receipt.logs };
+    },
+  };
+  const ready = { rpc, browser: { curve: { graduationEngine, projectRegistry: registry, creationFee: feePolicy } } } as unknown as Awaited<ReturnType<typeof verifiedCurveRuntime>>;
+  const index = new CurveLaunchIndex(config);
+  try {
+    await assert.rejects(index.sync(ready, observed(11n)), /Nested curve creation/);
+    wrongNestedLog = false;
+    assert.equal(await index.sync(ready, observed(11n)), true);
+    assert.deepEqual(index.list(), []);
+    await assert.rejects(index.sync(ready, observed(10n)), /behind the durable cursor/);
+  } finally {
+    index.close();
+    rmSync(folder, { recursive: true, force: true });
+  }
+});
+
 test("curve state binds public migration and proposed engine evidence to the permanent project", async () => {
-  const launch = projectCurveReceipt(factory, creation().receipt);
+  const launch = projectCurveReceipt(factory, creation().receipt, feePolicy);
   const proposalEngine = address(9);
+  const thirdCurve = address(11);
   const runtime = "0x6000";
   const engineHash = keccak256(runtime);
   const evidence = { transactionHash: hash(1200), blockHash: hash(12), blockNumber: "12", logIndex: 1, transactionIndex: 2,
     fromCurve: curve, toCurve: newCurve, version: 2, backing: "0", inventory: supply.toString(), sold: "0", ledger };
+  const second = { ...evidence, transactionHash: hash(1201), transactionIndex: 3, fromCurve: newCurve, toCurve: thirdCurve, version: 3 };
+  let version = 2;
+  let moved = newCurve;
   let wrongEngine = false;
+  let wrongClosure = false;
   const rpc = {
     async getCode() { return runtime; },
     async getBlock({ blockNumber }: { blockNumber: bigint }) {
@@ -156,33 +225,38 @@ test("curve state binds public migration and proposed engine evidence to the per
       assert.equal(requireCanonical, true);
       assert.equal(blockHash, hash(13));
       switch (functionName) {
-        case "project": assert.deepEqual(args, [token]); return [factory, newCurve, 2, newCurve, 1n];
+        case "project": assert.deepEqual(args, [token]); return [factory, moved, version, moved, BigInt(version - 1)];
         case "originCurve":
         case "originCurveForToken":
-        case "migrationSource":
         case "curve": return curve;
-        case "migration": assert.deepEqual(args, [token, 1n]); return [1, 2, curve, newCurve, engineHash, 12n, Number(timestamp)];
-        case "proposal": return [proposalEngine, hash(90), Number(timestamp) + 600, 0, 0];
-        case "executionVersion": return 2;
-        case "executionEngine": return wrongEngine ? proposalEngine : newCurve;
+        case "migrationSource": return emitter === thirdCurve ? newCurve : emitter === newCurve ? curve : zeroAddress;
+        case "migration":
+          assert.equal(args?.[0], token);
+          return args?.[1] === 1n ? [1, 2, curve, newCurve, engineHash, 12n, Number(timestamp)]
+            : [2, 3, newCurve, thirdCurve, engineHash, 12n, Number(timestamp)];
+        case "proposal": return version === 2 ? [proposalEngine, engineHash, Number(timestamp) + 600, 0, 0] : [zeroAddress, hash(0), 0, 0, 0];
+        case "nextMigrationVersion": return version === 2 ? 3 : 0;
+        case "migrationCandidate": assert.deepEqual(args, [token, 3]); return proposalEngine;
+        case "executionVersion": return emitter === thirdCurve ? 3 : emitter === newCurve ? 2 : 1;
+        case "executionEngine": return wrongEngine ? proposalEngine : moved;
         case "executionEngineRuntimeHash": return engineHash;
         case "economicRules": return hash(81);
         case "projectRegistry": return registry;
-        case "active": return emitter === newCurve;
+        case "active": return emitter === moved;
         case "migrationCommitment": return hash(91);
-        case "migratedTo": assert.equal(emitter, curve); return newCurve;
+        case "migratedTo": return emitter === curve ? newCurve : wrongClosure ? proposalEngine : thirdCurve;
         case "suspended": return false;
         case "directory": return address(10);
         case "migrationNonce": return 1n;
         case "curveForToken":
-        case "activeCurve": return newCurve;
+        case "activeCurve": return moved;
         case "factory": return factory;
         case "token": return token;
         case "revenueLedger": return ledger;
         case "sold": return 0n;
         case "graduationSold": return 600_000n * 10n ** 18n;
         case "graduated": return false;
-        case "backingReserve": assert.equal(emitter, newCurve); return 0n;
+        case "backingReserve": return 0n;
         case "totalAccrued":
         case "totalClaimed":
         case "bucketAccrued": return 0n;
@@ -192,15 +266,16 @@ test("curve state binds public migration and proposed engine evidence to the per
       }
     },
   };
-  const ready = { rpc, browser: { curve: { graduationEngine, projectRegistry: registry } } } as unknown as Awaited<ReturnType<typeof verifiedCurveRuntime>>;
-  const lifecycle = { migration: (version: number) => version === 2 ? evidence : undefined };
+  const ready = { rpc, browser: { curve: { graduationEngine, projectRegistry: registry, creationFee: feePolicy } } } as unknown as Awaited<ReturnType<typeof verifiedCurveRuntime>>;
+  const lifecycle = { migration: (entryVersion: number) => entryVersion === 2 ? evidence : entryVersion === 3 ? second : undefined };
   const state = await readCurveState(ready, launch, observed(13n), lifecycle);
   assert.equal(state.activeCurve, newCurve);
   assert.equal(state.project?.currentVersion, 2);
   assert.equal(state.project.migrations[0].runtimeHash, engineHash);
   assert.equal(state.project.migrations[0].transactionHash, evidence.transactionHash);
   assert.equal(state.project.pending?.nextEngine, proposalEngine);
-  assert.equal(state.project.eligibility, "version_unsupported");
+  assert.equal(state.project.eligibility, "proposal_pending");
+  assert.equal(state.project.nextVersion, 3);
   assert.equal(curveAtReceipt(launch, state, { blockNumber: 12n, blockHash: hash(12), transactionIndex: 1 }), curve);
   assert.equal(curveAtReceipt(launch, state, { blockNumber: 12n, blockHash: hash(12), transactionIndex: 3 }), newCurve);
   assert.throws(() => curveAtReceipt(launch, state, { blockNumber: 12n, blockHash: hash(90), transactionIndex: 3 }), /different branches/);
@@ -213,6 +288,18 @@ test("curve state binds public migration and proposed engine evidence to the per
   }), /migration evidence/);
   wrongEngine = true;
   await assert.rejects(readCurveState(ready, launch, observed(13n), lifecycle), /Permanent project identity/);
+  wrongEngine = false;
+  version = 3;
+  moved = thirdCurve;
+  const updated = await readCurveState(ready, launch, observed(13n), lifecycle);
+  assert.equal(updated.project?.currentVersion, 3);
+  assert.deepEqual(updated.project.migrations.map(({ toVersion }) => toVersion), [3, 2]);
+  assert.equal(updated.project.eligibility, "version_unsupported");
+  assert.equal(curveAtReceipt(launch, updated, { blockNumber: 12n, blockHash: hash(12), transactionIndex: 1 }), curve);
+  assert.throws(() => curveAtReceipt(launch, updated, { blockNumber: 12n, blockHash: hash(12), transactionIndex: 2 }), /migration transaction/);
+  assert.equal(curveAtReceipt(launch, updated, { blockNumber: 12n, blockHash: hash(12), transactionIndex: 4 }), thirdCurve);
+  wrongClosure = true;
+  await assert.rejects(readCurveState(ready, launch, observed(13n), lifecycle), /predecessor curve/);
 });
 
 test("index binds exact migration and LP collection receipts and rolls them back without rewriting project origin", async () => {
@@ -258,6 +345,7 @@ test("index binds exact migration and LP collection receipts and rolls them back
       assert.equal(transactionHash, initial.receipt.transactionHash);
       return initial.receipt;
     },
+    async getTransaction() { return initial.transaction; },
     async readContract({ functionName }: { functionName: string }) {
       switch (functionName) {
         case "originCurveForToken":
@@ -269,11 +357,13 @@ test("index binds exact migration and LP collection receipts and rolls them back
         case "totalSupply": return supply;
         case "treasury": return zeroAddress;
         case "treasuryShareBps": return 0;
+        case "creationFeeWei": return curveDraftCreationFeeWei;
+        case "operatingRecipient": return operating;
         default: throw new Error("Unexpected fixture call.");
       }
     },
   };
-  const ready = { rpc, browser: { curve: { graduationEngine, projectRegistry: registry } } } as unknown as Awaited<ReturnType<typeof verifiedCurveRuntime>>;
+  const ready = { rpc, browser: { curve: { graduationEngine, projectRegistry: registry, creationFee: feePolicy } } } as unknown as Awaited<ReturnType<typeof verifiedCurveRuntime>>;
   let index = new CurveLaunchIndex(config);
   try {
     assert.equal(await index.sync(ready, observed(11n)), true);

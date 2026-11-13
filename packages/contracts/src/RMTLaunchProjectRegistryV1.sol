@@ -24,6 +24,8 @@ interface IRegisteredCurveFactoryV1 is IRMTLaunchCurveVersion {
     function curveForToken(address token) external view returns (address);
     function migrationCandidate(address token, uint32 version) external view returns (address);
     function executeMigration(address token, address nextCurve, bytes32 runtimeHash) external;
+    function successorDeployer() external view returns (address);
+    function successorDeployerRuntimeHash() external view returns (bytes32);
 }
 
 /// @notice Permanent project identity and append-only migration evidence.
@@ -219,6 +221,40 @@ contract RMTLaunchProjectRegistryV1 is EIP712, ReentrancyGuard {
         _clear(token);
     }
 
+    /// @notice Exact reviewed deployer for the next adjacent version. Zero means the transition is unavailable.
+    function migrationTemplate(address factory, uint32 fromVersion)
+        public
+        view
+        returns (address deployer, bytes32 runtimeHash)
+    {
+        if (
+            directory.suspended() || factory.code.length == 0 || fromVersion == 0
+                || fromVersion >= directory.MAX_CURVE_VERSION()
+        ) return (address(0), bytes32(0));
+        (address approved, bytes32 factoryHash) =
+            directory.factories(IRegisteredCurveFactoryV1(factory).engineVersion());
+        if (approved != factory || factory.codehash != factoryHash) return (address(0), bytes32(0));
+        if (fromVersion == 1) {
+            deployer = IRegisteredCurveFactoryV1(factory).successorDeployer();
+            runtimeHash = IRegisteredCurveFactoryV1(factory).successorDeployerRuntimeHash();
+        } else {
+            (deployer, runtimeHash) = directory.migrationTemplates(fromVersion + 1);
+        }
+        if (deployer.code.length == 0 || deployer.codehash != runtimeHash) return (address(0), bytes32(0));
+    }
+
+    function nextMigrationVersion(address token) external view returns (uint32) {
+        Project storage item = project[token];
+        if (item.curve == address(0)) return 0;
+        IRegisteredCurveV1 current = IRegisteredCurveV1(item.curve);
+        if (
+            !current.active() || current.graduated() || current.executionVersion() != item.version
+                || IRegisteredCurveFactoryV1(item.factory).curveForToken(token) != item.curve
+        ) return 0;
+        (address deployer,) = migrationTemplate(item.factory, item.version);
+        return deployer == address(0) ? 0 : item.version + 1;
+    }
+
     function _clear(address token) private {
         delete proposal[token];
         emit MigrationCleared(token, migrationNonce[token]++);
@@ -233,14 +269,20 @@ contract RMTLaunchProjectRegistryV1 is EIP712, ReentrancyGuard {
         view
         returns (bool)
     {
-        if (
-            item.version != 1 || nextCurve == address(0) || nextCurve.code.length == 0
-                || nextCurve.codehash != runtimeHash
-                || IRegisteredCurveFactoryV1(item.factory).migrationCandidate(token, 2) != nextCurve
-        ) return false;
+        if (item.curve == address(0) || nextCurve.code.length == 0 || nextCurve.codehash != runtimeHash) {
+            return false;
+        }
+        (address deployer,) = migrationTemplate(item.factory, item.version);
+        if (deployer == address(0)) return false;
+        uint32 nextVersion = item.version + 1;
+        IRegisteredCurveFactoryV1 factory = IRegisteredCurveFactoryV1(item.factory);
+        if (factory.curveForToken(token) != item.curve || factory.migrationCandidate(token, nextVersion) != nextCurve) {
+            return false;
+        }
         IRegisteredCurveV1 candidate = IRegisteredCurveV1(nextCurve);
         return candidate.migrationSource() == item.curve && !candidate.active() && !candidate.graduated()
-            && candidate.executionVersion() == 2 && candidate.token() == token && candidate.factory() == item.factory
+            && candidate.executionVersion() == nextVersion && candidate.token() == token
+            && candidate.factory() == item.factory && candidate.projectRegistry() == address(this)
             && candidate.migrationCommitment() == IRegisteredCurveV1(item.curve).migrationCommitment();
     }
 }

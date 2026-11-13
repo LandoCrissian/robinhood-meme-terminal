@@ -26,10 +26,12 @@ const contractNames = [
   "RMTLaunchCurveDeploymentV1", "RMTLaunchCurveFactoryV1", "RMTLaunchCurveTokenV1", "RMTLaunchBondingCurveV1",
   "RMTLaunchCurveRevenueLedgerV1", "RMTV4CurveGraduationV1", "RMTV4CurveInitializationGuardV1",
   "RMTLaunchCurveDirectoryV1", "RMTLaunchProjectRegistryV1", "RMTLaunchBondingCurveV2",
-  "RMTLaunchCurveSuccessorDeployerV1", "RMTLaunchCurveLpFeeLedgerV1",
+  "RMTLaunchCurveSuccessorDeployerV1", "RMTLaunchBondingCurveV3", "RMTLaunchCurveSuccessorDeployerV2",
+  "RMTLaunchCurveLpFeeLedgerV1", "RMTLaunchHolderMigrationV1",
 ];
 const sourceFiles = {
   RMTLaunchCurveSuccessorDeployerV1: "src/RMTLaunchBondingCurveV2.sol",
+  RMTLaunchCurveSuccessorDeployerV2: "src/RMTLaunchBondingCurveV3.sol",
 };
 const governanceDependencyHashes = {
   "utils/cryptography/ECDSA.sol": "37828cb50b47bcc51c7b770bde15d5885d871ef1e67028057a0b788c3568726e",
@@ -54,6 +56,8 @@ const chainGates = [
 ];
 const allowedBacking = new Set(["1000000000000000000", "2000000000000000000", "4200000000000000000"]);
 const baselineBacking = parseEther("1");
+// Illustrative reference of $2,500 per ETH. This is a fixed fixture parameter, with no price feed.
+const fixtureCreationFee = parseEther("0.0004");
 const keyTuple = "(address currency0,address currency1,uint24 fee,int24 tickSpacing,address hooks)";
 const [keyParam] = parseAbi(["function params(" + keyTuple + " poolKey)"])[0].inputs;
 const [swapParam] = parseAbi(["function params((" + keyTuple
@@ -273,33 +277,34 @@ async function deployGovernance(client, operator, artifacts) {
   return { directory, directoryRuntimeHash, projectRegistry, registryRuntimeHash };
 }
 
-async function publishFactory(client, operator, artifacts, governance, deployed) {
+async function publishDirectoryPin(client, operator, artifacts, directory, kind, version, target, runtimeHash) {
   const abi = artifacts.RMTLaunchCurveDirectoryV1.abi;
-  const { directory } = governance;
   const now = (await client.getBlock()).timestamp;
-  const action = { kind: 0, nonce: 0n, version: 1, factory: deployed.factory,
-    runtimeHash: deployed.factoryRuntimeHash, deadline: Number(now + 3n * 86400n) };
+  const nonce = await read(client, directory, abi, "nonce");
+  const action = { kind, nonce, version, factory: target, runtimeHash, deadline: Number(now + 3n * 86400n) };
   const digest = await read(client, directory, abi, "actionDigest", [action]);
   const [first, second] = await Promise.all(fixtureSigners().slice(0, 2).map((signer) => signer.sign({ hash: digest })));
   const scheduled = await send(client, operator, request(directory, abi, "schedule", [action, first, second]));
   await warp(client, 2n * 86400n);
   const executed = await send(client, operator, request(directory, abi, "execute", [action]));
-  const pin = await read(client, directory, abi, "currentFactory");
-  assert.ok(addressEq(pin.factory, deployed.factory));
-  assert.equal(pin.runtimeHash, deployed.factoryRuntimeHash);
   return { scheduled: receiptEvidence(scheduled), executed: receiptEvidence(executed) };
 }
 
-async function migrateCurve(client, creator, operator, artifacts, deployed, token) {
+async function migrateCurve(client, creator, operator, artifacts, deployed, token, holders = []) {
   const { projectRegistry, factory } = deployed;
   const abi = artifacts.RMTLaunchProjectRegistryV1.abi;
   const factoryAbi = artifacts.RMTLaunchCurveFactoryV1.abi;
   const curveAbi = artifacts.RMTLaunchBondingCurveV1.abi;
   const curve = await read(client, factory, factoryAbi, "curveForToken", [token]);
   const ledger = await read(client, curve, curveAbi, "revenueLedger");
-  const prepared = await send(client, operator, request(factory, factoryAbi, "prepareMigration", [token, 2]));
-  const nextEngine = await read(client, factory, factoryAbi, "migrationCandidate", [token, 2]);
-  const runtimeHash = await verifiedRuntime(client, nextEngine, artifacts.RMTLaunchBondingCurveV2);
+  const fromVersion = await read(client, curve, curveAbi, "executionVersion");
+  const toVersion = fromVersion + 1;
+  assert.ok(toVersion === 2 || toVersion === 3, "Fixture supports only the reviewed V2 and V3 templates");
+  const prepared = await send(client, operator, request(factory, factoryAbi, "prepareMigration", [token, toVersion]));
+  const nextEngine = await read(client, factory, factoryAbi, "migrationCandidate", [token, toVersion]);
+  const runtimeHash = await verifiedRuntime(client, nextEngine, artifacts["RMTLaunchBondingCurveV" + toVersion]);
+  const previousProject = await read(client, projectRegistry, abi, "project", [token]);
+  const migrationHistoryIndex = previousProject[4] + 1n;
   const deadline = Number((await client.getBlock()).timestamp + 4n * 86400n);
   const proposal = await send(client, creator, request(projectRegistry, abi, "proposeMigration", [token, nextEngine, runtimeHash, deadline]));
   const digest = await read(client, projectRegistry, abi, "migrationDigest", [token]);
@@ -314,6 +319,8 @@ async function migrateCurve(client, creator, operator, artifacts, deployed, toke
     read(client, ledger, ledgerAbi, "totalAccrued"), read(client, ledger, ledgerAbi, "claimable", [creator]),
     read(client, target, curveAbi, "quoteBuy", [parseEther("0.01")]),
     read(client, target, curveAbi, "economicRules"), client.getBalance({ address: target }),
+    read(client, target, curveAbi, "migrationCommitment"), client.getBalance({ address: ledger }),
+    ...holders.map((holder) => read(client, token, erc20Abi, "balanceOf", [holder])),
   ]);
   const before = await snapshot(curve);
   await warp(client, 2n * 86400n);
@@ -326,19 +333,21 @@ async function migrateCurve(client, creator, operator, artifacts, deployed, toke
   assert.deepEqual(await snapshot(nextEngine), before);
   assert.equal(await client.getBalance({ address: curve }), 0n);
   assert.equal(await read(client, token, erc20Abi, "balanceOf", [curve]), 0n);
+  assert.equal(await read(client, curve, curveAbi, "active"), false);
+  assert.ok(addressEq(await read(client, ledger, ledgerAbi, "activeCurve"), nextEngine));
   assert.equal((await read(client, curve, curveAbi, "quoteBuy", [parseEther("0.01")]))[0], 0n);
   assert.ok(addressEq(await read(client, nextEngine, curveAbi, "revenueLedger"), ledger));
-  assert.ok(addressEq(await read(client, factory, factoryAbi, "originCurveForToken", [token]), curve));
   assert.ok(addressEq(await read(client, factory, factoryAbi, "curveForToken", [token]), nextEngine));
   const project = await read(client, projectRegistry, abi, "project", [token]);
   assert.ok(addressEq(project[0], deployed.factory) && addressEq(project[1], nextEngine));
-  assert.equal(project[2], 2);
+  assert.equal(project[2], toVersion);
   assert.ok(addressEq(project[3], nextEngine));
-  assert.equal(project[4], 1n);
-  const history = await read(client, projectRegistry, abi, "migration", [token, 1n]);
+  assert.equal(project[4], migrationHistoryIndex);
+  const history = await read(client, projectRegistry, abi, "migration", [token, migrationHistoryIndex]);
   assert.ok(addressEq(history[2], curve) && addressEq(history[3], nextEngine));
   assert.equal(history[4], runtimeHash);
-  return { originCurve: curve, activeCurve: nextEngine, runtimeHash, prepared: receiptEvidence(prepared),
+  return { originCurve: curve, activeCurve: nextEngine, fromVersion, toVersion, migrationHistoryIndex,
+    runtimeHash, prepared: receiptEvidence(prepared),
     proposal: receiptEvidence(proposal), scheduled: receiptEvidence(scheduled), premature: receiptEvidence(premature),
     interrupted: receiptEvidence(interrupted), migrated: receiptEvidence(migrated), backingInventoryFeesAndQuotesUnchanged: true };
 }
@@ -383,7 +392,7 @@ async function deploy(client, accounts, pins, artifacts) {
   };
   const data = encodeDeployData({ abi: bootstrap.abi, bytecode: bootstrap.bytecode,
     args: [dependencies, guardSalt, operatingRecipient, futureReserveRecipient, projectRegistry,
-      successorDeployer, successorDeployerRuntimeHash] });
+      successorDeployer, successorDeployerRuntimeHash, fixtureCreationFee] });
   const receipt = await send(client, operator, { data, gas: 14_000_000n });
   assert.ok(addressEq(receipt.contractAddress, deployer));
   assert.ok(addressEq(await read(client, deployer, bootstrap.abi, "factory"), factory));
@@ -392,6 +401,7 @@ async function deploy(client, accounts, pins, artifacts) {
   assert.ok(addressEq(await read(client, factory, factoryArtifact.abi, "graduationEngine"), engine));
   assert.ok(addressEq(await read(client, factory, factoryArtifact.abi, "successorDeployer"), successorDeployer));
   assert.equal(await read(client, factory, factoryArtifact.abi, "successorDeployerRuntimeHash"), successorDeployerRuntimeHash);
+  assert.equal(await read(client, factory, factoryArtifact.abi, "creationFeeWei"), fixtureCreationFee);
   assert.ok(addressEq(await read(client, engine, graduation.abi, "factory"), factory));
   assert.ok(addressEq(await read(client, engine, graduation.abi, "initializationGuard"), guardAddress));
   assert.ok(addressEq(await read(client, guardAddress, guard.abi, "graduationEngine"), engine));
@@ -406,8 +416,21 @@ async function deploy(client, accounts, pins, artifacts) {
       dependencies, operatingRecipient, futureReserveRecipient, projectRegistry, guardSalt, guardCodeHash: bytecodeHash,
       successorDeployer, successorDeployerRuntimeHash, successorDeployerReceipt: receiptEvidence(helperReceipt) },
   };
-  const factoryPublication = await publishFactory(client, operator, artifacts, governance, deployed);
-  return { ...deployed, ...governance, factoryPublication };
+  const directoryAbi = artifacts.RMTLaunchCurveDirectoryV1.abi;
+  const factoryPublication = await publishDirectoryPin(client, operator, artifacts, governance.directory, 0, 1, factory, factoryRuntimeHash);
+  const pin = await read(client, governance.directory, directoryAbi, "currentFactory");
+  assert.ok(addressEq(pin.factory, factory));
+  assert.equal(pin.runtimeHash, factoryRuntimeHash);
+  const v3Helper = artifacts.RMTLaunchCurveSuccessorDeployerV2;
+  const v3Receipt = await send(client, operator, { data: encodeDeployData({ abi: v3Helper.abi, bytecode: v3Helper.bytecode }) });
+  const v3Deployer = v3Receipt.contractAddress;
+  const v3DeployerHash = await verifiedRuntime(client, v3Deployer, v3Helper);
+  const v3Publication = await publishDirectoryPin(client, operator, artifacts, governance.directory, 4, 3, v3Deployer, v3DeployerHash);
+  const template = await read(client, governance.directory, directoryAbi, "migrationTemplates", [3]);
+  assert.ok(addressEq(template[0], v3Deployer));
+  assert.equal(template[1], v3DeployerHash);
+  return { ...deployed, ...governance, creationFeeWei: fixtureCreationFee, factoryPublication,
+    v3Template: { deployer: v3Deployer, runtimeHash: v3DeployerHash, deployed: receiptEvidence(v3Receipt), ...v3Publication } };
 }
 
 async function verifiedLocalProfile({ rpc, operator, creator, factory, "migrate-token": migrateToken }, artifacts) {
@@ -623,6 +646,57 @@ async function proveOutsideLiquidity(client, pins, artifacts, engine, position, 
     swap, grossLpFees, addedOriginalNativeFees };
 }
 
+async function proveCreation(client, deployment, factoryAbi, creator, args, refund) {
+  const { factory, creationFeeWei } = deployment;
+  const recipient = deployment.deployment.operatingRecipient;
+  const call = request(factory, factoryAbi, "create", args);
+  const priorFees = await read(client, factory, factoryAbi, "creationFeesAccrued");
+  const priorBalance = await client.getBalance({ address: factory });
+  const rejected = await send(client, creator, { ...call, value: creationFeeWei - 1n }, "reverted");
+  assert.equal(rejected.logs.length, 0);
+  assert.ok(addressEq(await read(client, factory, factoryAbi, "tokenForIntent", [creator, args[6]]), zeroAddress));
+  assert.equal(await read(client, factory, factoryAbi, "creationFeesAccrued"), priorFees);
+
+  const creatorBalance = await client.getBalance({ address: creator });
+  const launch = await send(client, creator, { ...call, value: creationFeeWei + refund });
+  const created = oneEvent(launch, factory, factoryAbi, "CurveCreated");
+  const fee = oneEvent(launch, factory, factoryAbi, "CreationFeePaid");
+  assert.ok(addressEq(fee.args.token, created.args.token) && addressEq(fee.args.creator, creator)
+    && addressEq(fee.args.recipient, recipient));
+  assert.equal(fee.args.fee, creationFeeWei);
+  assert.equal(fee.args.refund, refund);
+  assert.equal(creatorBalance - await client.getBalance({ address: creator }) - launch.gasUsed * launch.effectiveGasPrice,
+    creationFeeWei);
+  assert.equal(await read(client, factory, factoryAbi, "creationFeesAccrued"), priorFees + creationFeeWei);
+  assert.equal(await client.getBalance({ address: factory }), priorBalance + creationFeeWei);
+  const trace = await client.request({ method: "debug_traceTransaction", params: [launch.transactionHash, { tracer: "callTracer" }] });
+  assert.ok(!trace.error && addressEq(trace.from, creator) && addressEq(trace.to, factory));
+  const refundPayments = (trace.calls ?? []).filter((frame) => !frame.error && frame.type === "CALL" &&
+    addressEq(frame.from, factory) && addressEq(frame.to, creator) && BigInt(frame.value ?? 0) > 0n);
+  assert.equal(refundPayments.length, refund === 0n ? 0 : 1);
+  assert.equal(refundPayments.reduce((sum, frame) => sum + BigInt(frame.value), 0n), refund);
+  const refundSettlement = refundPayments.map(({ from, to, value }) => ({ from, to, value }));
+  return { launch, created, fee: { ...fee.args, logIndex: fee.logIndex, refundSettlement }, insufficient: receiptEvidence(rejected) };
+}
+
+async function proveCreationClaim(client, deployment, factoryAbi, caller) {
+  const { factory, creationFeeWei } = deployment;
+  const recipient = deployment.deployment.operatingRecipient;
+  assert.ok(!addressEq(caller, recipient));
+  const call = request(factory, factoryAbi, "claimCreationFees");
+  const accrued = await read(client, factory, factoryAbi, "creationFeesAccrued");
+  assert.equal(accrued, creationFeeWei * 2n);
+  const recipientBefore = await client.getBalance({ address: recipient });
+  const receipt = await send(client, caller, call);
+  const { args } = oneEvent(receipt, factory, factoryAbi, "CreationFeesClaimed");
+  assert.ok(addressEq(args.recipient, recipient));
+  assert.equal(args.amount, accrued);
+  assert.equal(await client.getBalance({ address: recipient }) - recipientBefore, accrued);
+  assert.equal(await read(client, factory, factoryAbi, "creationFeesAccrued"), 0n);
+  assert.equal(await client.getBalance({ address: factory }), 0n);
+  return { ...receiptEvidence(receipt), recipient, amount: accrued };
+}
+
 async function review({ rpcUrl, accounts, report }, artifacts, backing) {
   const client = localClient(rpcUrl, 4663);
   assert.equal(await client.getChainId(), 4663);
@@ -637,9 +711,8 @@ async function review({ rpcUrl, accounts, report }, artifacts, backing) {
   const curveAbi = artifacts.RMTLaunchBondingCurveV1.abi;
   const engineAbi = artifacts.RMTV4CurveGraduationV1.abi;
   let deadline = (await client.getBlock()).timestamp + 900n;
-  const launch = await send(client, creator, request(factory, factoryAbi, "create",
-    ["Robinhood Curve Review", "RCR", "", 0, zeroAddress, 0, toHex(1, { size: 32 }), deadline]));
-  const created = oneEvent(launch, factory, factoryAbi, "CurveCreated");
+  const { launch, created, fee: creationFee, insufficient } = await proveCreation(client, deployment, factoryAbi, creator,
+    ["Robinhood Curve Review", "RCR", "", 0, zeroAddress, 0, toHex(1, { size: 32 }), deadline], 0n);
   const { token, curve: originCurve, revenueLedger, supply } = created.args;
   let curve = originCurve;
   const [tokenRuntimeHash, curveRuntimeHash, ledgerRuntimeHash] = await Promise.all([
@@ -650,6 +723,7 @@ async function review({ rpcUrl, accounts, report }, artifacts, backing) {
   assert.equal(await read(client, token, erc20Abi, "balanceOf", [curve]), supply);
   assert.equal(await read(client, token, erc20Abi, "balanceOf", [creator]), 0n);
   assert.equal(await client.getBalance({ address: curve }), 0n);
+  assert.equal(await client.getBalance({ address: revenueLedger }), 0n);
 
   const key = await read(client, engine, engineAbi, "canonicalPoolKey", [token]);
   assert.ok(addressEq(key.hooks, guard));
@@ -668,8 +742,16 @@ async function review({ rpcUrl, accounts, report }, artifacts, backing) {
   const curveSell = await send(client, trader, request(curve, curveAbi, "sell", [sellSize, firstSell, deadline]));
   assert.equal(await read(client, token, erc20Abi, "allowance", [trader, curve]), 0n);
 
-  const migration = await migrateCurve(client, creator, operator, artifacts, deployment, token);
-  curve = migration.activeCurve;
+  const migration = await migrateCurve(client, creator, operator, artifacts, deployment, token, [creator, trader]);
+  const successorDeadline = (await client.getBlock()).timestamp + 900n;
+  const [v2Fill] = await read(client, migration.activeCurve, curveAbi, "quoteBuy", [firstBudget]);
+  const v2Trade = await send(client, trader, {
+    ...request(migration.activeCurve, curveAbi, "buy", [v2Fill, successorDeadline]), value: firstBudget,
+  });
+  assert.equal(oneEvent(v2Trade, migration.activeCurve, curveAbi, "CurveTrade").args.tokenAmount, v2Fill);
+  const successorMigration = await migrateCurve(client, creator, operator, artifacts, deployment, token, [creator, trader]);
+  curve = successorMigration.activeCurve;
+  assert.ok(addressEq(await read(client, factory, factoryAbi, "originCurveForToken", [token]), originCurve));
   deadline = (await client.getBlock()).timestamp + 900n;
   const budget = backing * 2n;
   const [finalBuy, grossUsed, fee, refund] = await read(client, curve, curveAbi, "quoteBuy", [budget]);
@@ -734,21 +816,24 @@ async function review({ rpcUrl, accounts, report }, artifacts, backing) {
   assert.ok(addressEq(await read(client, positions, positionAbi, "ownerOf", [positionTokenId]), engine));
   assert.equal(await read(client, token, erc20Abi, "totalSupply"), supply);
 
-  const secondLaunch = await send(client, creator, request(factory, factoryAbi, "create",
-    ["Atomic Graduation", "ATOMIC", "", 1, zeroAddress, 0, toHex(2, { size: 32 }), deadline]));
-  const { args: { token: secondToken, curve: secondCurve, supply: secondSupply } } = oneEvent(secondLaunch, factory, factoryAbi, "CurveCreated");
+  const second = await proveCreation(client, deployment, factoryAbi, creator,
+    ["Atomic Graduation", "ATOMIC", "", 1, zeroAddress, 0, toHex(2, { size: 32 }), deadline], 123_456n);
+  const { token: secondToken, curve: secondCurve, supply: secondSupply } = second.created.args;
   const [atomicOut] = await read(client, secondCurve, curveAbi, "quoteBuy", [budget]);
   const atomic = await send(client, trader, { ...request(secondCurve, curveAbi, "buyAndGraduate", [atomicOut, deadline]), value: budget });
   const atomicSettled = oneEvent(atomic, engine, engineAbi, "CurveGraduated");
   assert.ok(addressEq(atomicSettled.args.token, secondToken));
   assert.equal(await read(client, secondCurve, curveAbi, "graduated"), true);
   assert.equal(await read(client, secondToken, erc20Abi, "totalSupply"), secondSupply);
+  const creationFeeClaim = await proveCreationClaim(client, deployment, factoryAbi, graduateCaller);
 
-  return { report, deployment, migration, terms: { backingWei: backing, virtualEthWei: backing * 2n,
+  return { report, deployment, migration, successorMigration, terms: { backingWei: backing, virtualEthWei: backing * 2n,
     expectedThresholdTradeGross: (backing * 10_000n + 9_899n) / 9_900n },
   creation: { ...receiptEvidence(launch), ...created.args, logIndex: created.logIndex,
-    tokenRuntimeHash, curveRuntimeHash, ledgerRuntimeHash },
-  curve: { buy: receiptEvidence(curveBuy), sell: receiptEvidence(curveSell), thresholdBuy: { ...receiptEvidence(thresholdBuy), refund },
+    tokenRuntimeHash, curveRuntimeHash, ledgerRuntimeHash, fee: creationFee, insufficient,
+    overpayment: { ...receiptEvidence(second.launch), ...second.fee }, claim: creationFeeClaim },
+  curve: { buy: receiptEvidence(curveBuy), sell: receiptEvidence(curveSell), v2Buy: receiptEvidence(v2Trade),
+    thresholdBuy: { ...receiptEvidence(thresholdBuy), refund },
     preinitializationBlocked: receiptEvidence(blocked) },
   graduation: { ...receiptEvidence(completion), ...settled.args, logIndex: settled.logIndex,
     rejectedFunding: receiptEvidence(interrupted), blockedTransfer: receiptEvidence(blockedTransfer), principalUnchangedAfterSwaps: true },

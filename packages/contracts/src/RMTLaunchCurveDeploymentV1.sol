@@ -21,7 +21,8 @@ contract RMTLaunchCurveDeploymentV1 {
         address futureReserveRecipient,
         address projectRegistry,
         address successorDeployer,
-        bytes32 successorDeployerRuntimeHash
+        bytes32 successorDeployerRuntimeHash,
+        uint256 creationFeeWei
     ) {
         // Creation starts at nonce 1. CREATE2 of the guard consumes nonce 1.
         address expectedEngine = _createdAtNonce(2);
@@ -31,8 +32,13 @@ contract RMTLaunchCurveDeploymentV1 {
         graduationEngine =
             new RMTV4CurveGraduationV1(dependencies, ICurveGraduationFactoryV1(expectedFactory), initializationGuard);
         factory = new RMTLaunchCurveFactoryV1(
-            address(graduationEngine), operatingRecipient, futureReserveRecipient, projectRegistry,
-            successorDeployer, successorDeployerRuntimeHash
+            address(graduationEngine),
+            operatingRecipient,
+            futureReserveRecipient,
+            projectRegistry,
+            successorDeployer,
+            successorDeployerRuntimeHash,
+            creationFeeWei
         );
         if (address(graduationEngine) != expectedEngine || address(factory) != expectedFactory) {
             revert DeploymentAddressMismatch();

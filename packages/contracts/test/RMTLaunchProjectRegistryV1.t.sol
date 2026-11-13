@@ -52,8 +52,13 @@ contract RegistryMarketFixture {
 
 contract RegistryFactoryFixture {
     uint32 public constant engineVersion = 1;
+    address public immutable successorDeployer = address(this);
     mapping(address => address) public curveForToken;
     mapping(address => mapping(uint32 => address)) public migrationCandidate;
+
+    function successorDeployerRuntimeHash() external view returns (bytes32) {
+        return address(this).codehash;
+    }
 
     function create(Registry registry, address token, address creator) external returns (RegistryMarketFixture market) {
         market = new RegistryMarketFixture(address(registry), token, creator, address(0));

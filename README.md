@@ -1,23 +1,25 @@
 # RMT Launch
 
-RMT Launch is a token launchpad for Robinhood Chain. The product path is gas-only creation, ETH trading on a bonding curve, then permissionless graduation into a funded Uniswap v4 pool with permanently locked liquidity.
+RMT Launch is a token launchpad for Robinhood Chain. The product path is token creation for a small fixed ETH fee plus network gas, ETH trading on a bonding curve, then permissionless graduation into a funded Uniswap v4 pool with permanently locked initial liquidity.
 
 ## Curve V1 review
 
-The new engine mints a fixed token supply at creation. The creator pays network gas, with no creation fee, seed-liquidity payment or initial purchase. Trading uses a disclosed curve fee and separate accounting for project revenue, RMT operations and a future RMT token reserve. The final buyer can choose atomic buy-and-graduate, or anyone can submit graduation after the funded threshold is reached. The same token moves into the v4 pool, and the original position stays in immutable custody.
+The engine mints a fixed supply at creation. The creator sees the exact ETH fee before signing. The isolated fixture charges 0.0004 ETH, approximately $1 at an illustrative $2,500 per ETH. The factory credits the fee to its fixed operating recipient and refunds excess ETH. Creators need no seed liquidity or initial purchase. The production ETH amount and treasury address are pending approval.
+
+Trading applies the provisional 1% curve fee. The committed project policy receives 90% of collected curve fees, RMT operations receive 5%, and the future RMT reserve receives 5%. Creation fees are accounted for separately. At 60% sold, the remaining 40% pairs with actual backing. The final buyer can choose atomic buy-and-graduate, or anyone can submit graduation once the curve is funded. The same token moves into the v4 pool, and the original position stays in immutable custody.
 
 Curve V1 is an isolated review candidate. This branch provides development contracts, simulations and local acceptance paths. Robinhood Chain execution is reviewed in a loopback fork. Production deployment, economics and release remain pending separate approval and independent review.
 
 | Lifecycle | Evidence shown in the launchpad |
 | --- | --- |
-| Create | Fixed supply, creator and project terms, factory event and transaction |
+| Create | Exact ETH fee, fixed supply, creator and project terms, factory events and transaction |
 | Trade on curve | Virtual curve terms, actual ETH backing, quotes, progress and fees |
 | Graduate | Funded threshold, canonical full PoolKey, deposited assets and LP custody |
 | Trade on v4 | Verified pool identity, transaction settlement and observed routing availability |
 
 Pool creation and external indexing are separate observations. The original LP position stays permanently locked. Its earned fees are claimable under the launch's fixed allocations. Swaps through other pools generate no fees for this position.
 
-Active curves can migrate from V1 to a reviewed V2 successor after creator approval, two independent signatures and public notice. The migration preserves the token, holder balances, tracked backing, inventory and original fee ledger. The token page shows both curve addresses, the current version and verified migration history.
+Active curves can migrate from V1 to V2 and then to V3 after creator approval, two independent signatures and public notice for each transition. Later adjacent versions require independently reviewed template approval and exact successor authorization. Migration preserves the token, holder balances, tracked backing, inventory and original fee ledger. The token page shows the origin, current version and verified history.
 
 ## Development
 
@@ -31,6 +33,6 @@ pnpm typecheck
 pnpm build
 ```
 
-See the [Curve V1 review guide and release decisions](docs/RMT_LAUNCH_CURVE_V1.md), [repository authority](AGENTS.md), and [architecture boundary](docs/ARCHITECTURE_FREEZE.md).
+See the [independent-audit handoff](docs/RMT_CURVE_TASK021_AUDIT_HANDOFF.md), [curve review guide](docs/RMT_LAUNCH_CURVE_V1.md) and [repository authority](AGENTS.md).
 
 The existing RMT token, deployed curve, balances, contracts, receipts and history retain their original terms. The [prior direct-to-v4 review](docs/RMT_LAUNCH_PRODUCTION_DATA_READINESS.md) is historical engineering evidence. LAMMB Empires continues independently.

@@ -89,6 +89,13 @@ contract CurveRegistryProbe {
         registered[token] = curve;
     }
 
+    function migrationTemplate(address factory, uint32 version) external view returns (address deployer, bytes32 hash) {
+        if (version == 1) {
+            deployer = address(RMTLaunchCurveFactoryV1(factory).successorDeployer());
+            hash = deployer.codehash;
+        }
+    }
+
     function migrate(RMTLaunchCurveFactoryV1 factory, address token, address successor, bytes32 codeHash) external {
         factory.executeMigration(token, successor, codeHash);
     }
@@ -117,7 +124,7 @@ contract RMTLaunchBondingCurveV1Test is Test {
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1);
         graduation = new CurveGraduationProbe(predicted);
         factory = new RMTLaunchCurveFactoryV1(
-            address(graduation), OPERATING, FUTURE, address(registry), successorDeployer, successorDeployer.codehash
+            address(graduation), OPERATING, FUTURE, address(registry), successorDeployer, successorDeployer.codehash, 0
         );
         (token, curve) = _create(CREATOR, TREASURY, 2_500, 0, bytes32(uint256(1)));
         ledger = curve.revenueLedger();
@@ -148,7 +155,7 @@ contract RMTLaunchBondingCurveV1Test is Test {
         assertFalse(minted);
     }
 
-    function testInvalidCreationPolicyAndNativeValueCannotPublishAToken() external {
+    function testInvalidCreationPolicyAndUnsolicitedNativeValueCannotPublishAToken() external {
         bytes32 intent = bytes32(uint256(2));
         vm.startPrank(CREATOR);
         vm.expectRevert(RMTLaunchCurveFactoryV1.InvalidLaunch.selector);
@@ -160,13 +167,14 @@ contract RMTLaunchBondingCurveV1Test is Test {
         vm.expectRevert(RMTLaunchCurveFactoryV1.InvalidLaunch.selector);
         factory.create("Token", "TEST", "", 3, address(0), 0, intent, block.timestamp);
         vm.deal(CREATOR, 1);
-        (bool created,) = address(factory).call{value: 1}(
-            abi.encodeCall(factory.create, ("Token", "TEST", "", 0, address(0), 0, intent, block.timestamp))
-        );
+        vm.expectRevert(RMTLaunchCurveFactoryV1.InvalidLaunch.selector);
+        factory.create{value: 1}("Token", "TEST", "", 3, address(0), 0, intent, block.timestamp);
+        (bool accepted,) = address(factory).call{value: 1}("");
         vm.stopPrank();
-        assertFalse(created);
+        assertFalse(accepted);
         assertEq(factory.tokenForIntent(CREATOR, intent), address(0));
         assertEq(address(factory).balance, 0);
+        assertEq(factory.creationFeesAccrued(), 0);
     }
 
     function testBuySellRoundTripReturnsBackingAndSeparatesAllFeeClaims() external {

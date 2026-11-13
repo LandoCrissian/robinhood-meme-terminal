@@ -21,7 +21,7 @@ contract RMTLaunchBondingCurveV2 is RMTLaunchBondingCurveV1 {
         )
     {}
 
-    function executionVersion() public pure override returns (uint32) {
+    function executionVersion() public pure virtual override returns (uint32) {
         return 2;
     }
 }
