@@ -37,12 +37,14 @@ import {RMTV4CurveInitializationGuardV1} from "../src/RMTV4CurveInitializationGu
 /// @dev Models Permit2 allowance spending and a failure within funding, after v4 initialization.
 contract CurvePermit2Fixture {
     mapping(address => mapping(address => mapping(address => uint160))) public amount;
+    mapping(address => mapping(address => mapping(address => uint48))) private expiration;
     bool public settlementFails;
     address private reentryEngine;
     address private reentryCurve;
     bytes4 public engineReentry;
     bytes4 public curveReentry;
     bool public stickyApproval;
+    bool private wrongExpiry;
     bool private reentryOnApproval;
     bytes4[2] public approvalEngineReentry;
     bytes4[2] public approvalCurveReentry;
@@ -53,17 +55,17 @@ contract CurvePermit2Fixture {
         settlementFails = fails;
     }
 
-    function approve(address token, address spender, uint160 grant, uint48) external {
+    function approve(address token, address spender, uint160 grant, uint48 expiresAt) external {
         uint256 phase = grant == 0 ? 1 : 0;
-        if (stickyApproval && grant == 0) grant = 1;
         amount[msg.sender][token][spender] = grant;
+        expiration[msg.sender][token][spender] = wrongExpiry ? expiresAt + 1 : expiresAt;
         if (reentryOnApproval) {
             (approvalEngineReentry[phase], approvalCurveReentry[phase]) = _tryReentry(token);
         }
     }
 
     function allowance(address owner, address token, address spender) external view returns (uint160, uint48, uint48) {
-        return (amount[owner][token][spender], 0, 0);
+        return (amount[owner][token][spender], expiration[owner][token][spender], 0);
     }
 
     function attemptReentry(address engine, address curve) external {
@@ -75,12 +77,17 @@ contract CurvePermit2Fixture {
         stickyApproval = value;
     }
 
+    function setWrongExpiry(bool value) external {
+        wrongExpiry = value;
+    }
+
     function attemptApprovalReentry() external {
         reentryOnApproval = true;
     }
 
     function transferFrom(address from, address to, uint160 spend, address token) external {
         amount[from][token][msg.sender] -= spend;
+        if (stickyApproval) amount[from][token][msg.sender] += 1;
         require(IERC20(token).transferFrom(from, to, spend));
         if (reentryEngine != address(0)) {
             (engineReentry, curveReentry) = _tryReentry(token);
@@ -210,6 +217,7 @@ contract AdversarialCurveToken is ERC20 {
     RMTLaunchBondingCurveV1 private immutable curve;
     bool private immutable shortTransfer;
     bool private immutable stickyApproval;
+    bool private immutable rejectApproval;
     bytes4[3] public engineCallbackErrors;
     bytes4[3] public curveCallbackErrors;
 
@@ -217,20 +225,27 @@ contract AdversarialCurveToken is ERC20 {
         RMTV4CurveGraduationV1 engine_,
         RMTLaunchBondingCurveV1 curve_,
         bool shortTransfer_,
-        bool stickyApproval_
+        bool stickyApproval_,
+        bool rejectApproval_
     ) ERC20("", "") {
         engine = engine_;
         curve = curve_;
         shortTransfer = shortTransfer_;
         stickyApproval = stickyApproval_;
+        rejectApproval = rejectApproval_;
     }
 
     function approve(address spender, uint256 value) public override returns (bool) {
         if (msg.sender == address(engine)) {
             _probe(value == 0 ? 2 : 1);
-            if (value == 0 && stickyApproval) return super.approve(spender, 1);
+            if (rejectApproval) return false;
         }
         return super.approve(spender, value);
+    }
+
+    function _spendAllowance(address owner, address spender, uint256 value) internal override {
+        super._spendAllowance(owner, spender, value);
+        if (owner == address(engine) && stickyApproval) _approve(owner, spender, 1);
     }
 
     function transferFrom(address from, address to, uint256 value) public override returns (bool) {
@@ -425,16 +440,28 @@ contract RMTV4CurveGraduationV1Test is Test {
         assertFalse(curve.graduated());
         assertEq(curve.backingReserve(), 1 ether);
         assertEq(address(graduation.lpFeeLedger(token)), address(0));
+        assertEq(permit.amount(address(graduation), token, address(positions)), 0);
+        assertEq(IERC20(token).allowance(address(graduation), address(permit)), 0);
 
         permit.setStickyApproval(false);
+        permit.setWrongExpiry(true);
+        vm.expectRevert(RMTV4CurveGraduationV1.SettlementMismatch.selector);
+        curve.graduate(deadline);
+        assertFalse(curve.graduated());
+        assertEq(curve.backingReserve(), 1 ether);
+        assertEq(address(graduation.lpFeeLedger(token)), address(0));
+        assertEq(permit.amount(address(graduation), token, address(positions)), 0);
+        assertEq(IERC20(token).allowance(address(graduation), address(permit)), 0);
+
+        permit.setWrongExpiry(false);
         curve.graduate(deadline);
         assertTrue(curve.graduated());
         assertEq(permit.engineReentry(), ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
         assertEq(permit.curveReentry(), ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
-        for (uint256 phase; phase < 2; ++phase) {
-            assertEq(permit.approvalEngineReentry(phase), ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
-            assertEq(permit.approvalCurveReentry(phase), ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
-        }
+        assertEq(permit.approvalEngineReentry(0), ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
+        assertEq(permit.approvalCurveReentry(0), ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
+        assertEq(permit.approvalEngineReentry(1), bytes4(0));
+        assertEq(permit.approvalCurveReentry(1), bytes4(0));
         assertEq(permit.amount(address(graduation), token, address(positions)), 0);
     }
 
@@ -456,7 +483,7 @@ contract RMTV4CurveGraduationV1Test is Test {
         (address token, RMTLaunchBondingCurveV1 curve, uint256 deadline) = _fundCurve();
         assertEq(token.codehash, keccak256(type(RMTLaunchCurveTokenV1).runtimeCode));
         uint256 inventory = IERC20(token).balanceOf(address(curve));
-        AdversarialCurveToken short = new AdversarialCurveToken(graduation, curve, true, false);
+        AdversarialCurveToken short = new AdversarialCurveToken(graduation, curve, true, false, false);
         vm.etch(token, address(short).code);
         vm.expectRevert(RMTV4CurveGraduationV1.SettlementMismatch.selector);
         curve.graduate(deadline);
@@ -466,7 +493,7 @@ contract RMTV4CurveGraduationV1Test is Test {
         assertEq(IERC20(token).balanceOf(address(graduation)), 0);
         assertEq(address(graduation.lpFeeLedger(token)), address(0));
 
-        AdversarialCurveToken sticky = new AdversarialCurveToken(graduation, curve, false, true);
+        AdversarialCurveToken sticky = new AdversarialCurveToken(graduation, curve, false, true, false);
         vm.etch(token, address(sticky).code);
         vm.expectRevert(RMTV4CurveGraduationV1.SettlementMismatch.selector);
         curve.graduate(deadline);
@@ -476,10 +503,20 @@ contract RMTV4CurveGraduationV1Test is Test {
         assertEq(IERC20(token).allowance(address(graduation), address(permit)), 0);
         assertEq(address(graduation.lpFeeLedger(token)), address(0));
 
-        AdversarialCurveToken callbacks = new AdversarialCurveToken(graduation, curve, false, false);
+        AdversarialCurveToken rejecting = new AdversarialCurveToken(graduation, curve, false, false, true);
+        vm.etch(token, address(rejecting).code);
+        vm.expectRevert(RMTV4CurveGraduationV1.SettlementMismatch.selector);
+        curve.graduate(deadline);
+        assertFalse(curve.graduated());
+        assertEq(curve.backingReserve(), 1 ether);
+        assertEq(IERC20(token).balanceOf(address(curve)), inventory);
+        assertEq(IERC20(token).allowance(address(graduation), address(permit)), 0);
+        assertEq(address(graduation.lpFeeLedger(token)), address(0));
+
+        AdversarialCurveToken callbacks = new AdversarialCurveToken(graduation, curve, false, false, false);
         vm.etch(token, address(callbacks).code);
         curve.graduate(deadline);
-        for (uint256 phase; phase < 3; ++phase) {
+        for (uint256 phase; phase < 2; ++phase) {
             assertEq(
                 AdversarialCurveToken(token).engineCallbackErrors(phase),
                 ReentrancyGuard.ReentrancyGuardReentrantCall.selector
@@ -489,6 +526,8 @@ contract RMTV4CurveGraduationV1Test is Test {
                 ReentrancyGuard.ReentrancyGuardReentrantCall.selector
             );
         }
+        assertEq(AdversarialCurveToken(token).engineCallbackErrors(2), bytes4(0));
+        assertEq(AdversarialCurveToken(token).curveCallbackErrors(2), bytes4(0));
         vm.etch(token, type(RMTLaunchCurveTokenV1).runtimeCode);
         assertTrue(curve.graduated());
         assertEq(positions.ownerOf(curve.positionTokenId()), address(graduation));

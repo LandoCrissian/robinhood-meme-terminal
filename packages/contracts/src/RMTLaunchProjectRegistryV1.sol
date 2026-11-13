@@ -179,12 +179,15 @@ contract RMTLaunchProjectRegistryV1 is EIP712, ReentrancyGuard {
         }
         uint32 nextVersion = item.version + 1;
         IRegisteredCurveFactoryV1 factory = IRegisteredCurveFactoryV1(item.factory);
+        // Consume the scheduled authorization before crossing into the factory. Keep the
+        // current project pointer intact until asset settlement has been verified.
+        uint64 nonce = _consume(token);
         factory.executeMigration(token, next.nextEngine, next.runtimeHash);
         IRegisteredCurveV1 successor = IRegisteredCurveV1(next.nextEngine);
         if (
-            factory.curveForToken(token) != next.nextEngine || market.active() || market.migratedTo() != next.nextEngine
-                || !successor.active() || successor.executionVersion() != nextVersion
-                || successor.executionEngine() != next.nextEngine
+            directory.suspended() || factory.curveForToken(token) != next.nextEngine || market.active()
+                || market.migratedTo() != next.nextEngine || !successor.active()
+                || successor.executionVersion() != nextVersion || successor.executionEngine() != next.nextEngine
         ) {
             revert NotExecutable();
         }
@@ -201,7 +204,7 @@ contract RMTLaunchProjectRegistryV1 is EIP712, ReentrancyGuard {
         item.version = nextVersion;
         item.engine = next.nextEngine;
         item.curve = next.nextEngine;
-        _clear(token);
+        emit MigrationCleared(token, nonce);
         emit ProjectMigrated(token, index, next.nextEngine, nextVersion);
     }
 
@@ -256,8 +259,12 @@ contract RMTLaunchProjectRegistryV1 is EIP712, ReentrancyGuard {
     }
 
     function _clear(address token) private {
+        emit MigrationCleared(token, _consume(token));
+    }
+
+    function _consume(address token) private returns (uint64 nonce) {
         delete proposal[token];
-        emit MigrationCleared(token, migrationNonce[token]++);
+        nonce = migrationNonce[token]++;
     }
 
     function _signer(address account) private view returns (bool) {

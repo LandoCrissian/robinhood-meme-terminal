@@ -22,12 +22,14 @@ const solcHashes = {
   "linux-x64": "d5f23436f443edb85d8e76906d12f0a86ce0490e7663a9e608efeb7a93f149ef",
   "win32-x64": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
 };
+// Exact deployment review scope. The standalone 31337 replacement-token
+// escrow has no deployment edge here and remains in the full Foundry/Slither tree.
 const contractNames = [
   "RMTLaunchCurveDeploymentV1", "RMTLaunchCurveFactoryV1", "RMTLaunchCurveTokenV1", "RMTLaunchBondingCurveV1",
   "RMTLaunchCurveRevenueLedgerV1", "RMTV4CurveGraduationV1", "RMTV4CurveInitializationGuardV1",
   "RMTLaunchCurveDirectoryV1", "RMTLaunchProjectRegistryV1", "RMTLaunchBondingCurveV2",
   "RMTLaunchCurveSuccessorDeployerV1", "RMTLaunchBondingCurveV3", "RMTLaunchCurveSuccessorDeployerV2",
-  "RMTLaunchCurveLpFeeLedgerV1", "RMTLaunchHolderMigrationV1",
+  "RMTLaunchCurveLpFeeLedgerV1",
 ];
 const sourceFiles = {
   RMTLaunchCurveSuccessorDeployerV1: "src/RMTLaunchBondingCurveV2.sol",
@@ -134,7 +136,7 @@ function compile({ solc, lib }, chainId, backing) {
   } else {
     assert.equal(chainId, 31337, "Only local 31337 and the internal 4663 review profile can compile");
   }
-if (backing !== baselineBacking) {
+  if (backing !== baselineBacking) {
     assert.ok(chainId === 4663 || backing === ownerBacking,
       "Local 31337 supports only the 1 ETH regression and 2 ETH owner profiles");
     const file = "src/RMTLaunchCurveMathV1.sol";
@@ -173,7 +175,19 @@ if (backing !== baselineBacking) {
     const runtimeBytes = (runtime.length - 2) / 2;
     const creationBytes = (bytecode.length - 2) / 2;
     assert.ok(runtimeBytes <= 24_576, "EIP-170 runtime too large: " + name);
-    assert.ok(creationBytes + 1024 <= 49_152, "EIP-3860 creation too large: " + name);
+    let constructorBytes = 1024;
+    if (name === "RMTLaunchCurveDeploymentV1") {
+      // All bootstrap constructor fields have static ABI widths. Measure their
+      // encoded size with the compiled ABI instead of estimating the arguments.
+      const sampleHash = toHex(0, { size: 32 });
+      const example = encodeDeployData({ abi, bytecode, args: [{
+        poolManager: zeroAddress, positionManager: zeroAddress, permit2: zeroAddress,
+        poolManagerHash: sampleHash, positionManagerHash: sampleHash, permit2Hash: sampleHash,
+      }, sampleHash, zeroAddress, zeroAddress, zeroAddress, zeroAddress, sampleHash, fixtureCreationFee] });
+      constructorBytes = (example.length - bytecode.length) / 2;
+    }
+    assert.ok(creationBytes + constructorBytes <= 49_152,
+      `EIP-3860 creation too large: ${name} (${creationBytes} + ${constructorBytes} bytes)`);
     artifacts[name] = { abi, bytecode, runtime, immutableReferences };
     templates[name] = { creationBytes, runtimeBytes, creationSha256: hexSha(bytecode), runtimeSha256: hexSha(runtime) };
   }
@@ -403,6 +417,7 @@ async function deploy(client, accounts, pins, artifacts) {
   const data = encodeDeployData({ abi: bootstrap.abi, bytecode: bootstrap.bytecode,
     args: [dependencies, guardSalt, operatingRecipient, futureReserveRecipient, projectRegistry,
       successorDeployer, successorDeployerRuntimeHash, fixtureCreationFee] });
+  assert.ok((data.length - 2) / 2 <= 49_152, "Encoded bootstrap exceeds the EIP-3860 initcode limit");
   const receipt = await send(client, operator, { data, gas: 14_000_000n });
   assert.ok(addressEq(receipt.contractAddress, deployer));
   assert.ok(addressEq(await read(client, deployer, bootstrap.abi, "factory"), factory));

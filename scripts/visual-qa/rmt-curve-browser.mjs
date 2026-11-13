@@ -3,6 +3,7 @@ import { execFileSync } from "node:child_process";
 import { createHash, X509Certificate } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
+import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { chromium, devices } from "playwright";
 
@@ -225,8 +226,17 @@ try {
   const token = evidence.tokenPage.split("/").pop();
   const readLaunch = async () => {
     // A fixture compiler invocation between reads can outlive Next's keep-alive window.
-    const response = await fetch(new URL(`/api/launchpad/curve?token=${token}&account=${account}`, site),
-      { headers: requestHeaders });
+    const url = new URL(`/api/launchpad/curve?token=${token}&account=${account}`, site);
+    let response = await fetch(url, { headers: requestHeaders });
+    if (response.status === 429) {
+      const seconds = Number(response.headers.get("retry-after"));
+      assert.ok(Number.isInteger(seconds) && seconds > 0 && seconds <= 60, "Expected a bounded curve read retry");
+      await response.body?.cancel();
+      evidence.rateLimitedReads = (evidence.rateLimitedReads ?? 0) + 1;
+      // Retry only this evidence read. The wallet transaction and receipt checks have already run.
+      await delay(seconds * 1_000);
+      response = await fetch(url, { headers: requestHeaders });
+    }
     assert.equal(response.status, 200);
     return response.json();
   };

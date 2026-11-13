@@ -55,6 +55,7 @@ contract RegistryFactoryFixture {
     address public immutable successorDeployer = address(this);
     mapping(address => address) public curveForToken;
     mapping(address => mapping(uint32 => address)) public migrationCandidate;
+    bytes private suspension;
 
     function successorDeployerRuntimeHash() external view returns (bytes32) {
         return address(this).codehash;
@@ -71,12 +72,24 @@ contract RegistryFactoryFixture {
         migrationCandidate[token][2] = next;
     }
 
+    function useSuspension(bytes calldata callData) external {
+        suspension = callData;
+    }
+
     function executeMigration(address token, address next, bytes32 runtimeHash) external {
         RegistryMarketFixture previous = RegistryMarketFixture(curveForToken[token]);
         require(msg.sender == previous.projectRegistry() && next.codehash == runtimeHash);
+        Registry registry = Registry(msg.sender);
+        (, address published,,,) = registry.project(token);
+        (address pending,,,,) = registry.proposal(token);
+        require(published == address(previous) && pending == address(0) && registry.migrationNonce(token) == 1);
         previous.migrate(next);
         RegistryMarketFixture(next).activate();
         curveForToken[token] = next;
+        if (suspension.length != 0) {
+            (bool suspended,) = address(registry.directory()).call(suspension);
+            require(suspended, "fixture suspension fault");
+        }
     }
 }
 
@@ -165,11 +178,42 @@ contract RMTLaunchProjectRegistryV1Test is Test {
         (,, uint32 version,, uint64 count) = registry.project(token);
         assertEq(version, 1);
         assertEq(count, 0);
+        assertEq(registry.migrationNonce(token), 0);
+        (address pending,,, uint48 executableAt,) = registry.proposal(token);
+        assertEq(pending, engine);
+        assertGt(executableAt, 0);
         assertEq(market.executionVersion(), 1);
         market.configure(false, true);
         vm.expectRevert(Registry.NotExecutable.selector);
         registry.executeMigration(token);
         assertEq(market.executionVersion(), 1);
+    }
+
+    function testSuspensionDuringFactorySettlementRevertsAssetTransitionAndPreservesNotice() public {
+        _propose();
+        _schedule();
+        vm.warp(block.timestamp + registry.migrationDelay());
+        Directory.Action memory action = Directory.Action(
+            Directory.ActionKind.Suspend, directory.nonce(), 0, address(0), bytes32(0), uint48(block.timestamp + 1 days)
+        );
+        bytes32 digest = directory.actionDigest(action);
+        factory.useSuspension(abi.encodeCall(Directory.suspend, (action, _sign(digest, 1), _sign(digest, 2))));
+
+        vm.expectRevert(Registry.NotExecutable.selector);
+        registry.executeMigration(token);
+
+        assertEq(registry.migrationNonce(token), 0);
+        (address pending,,,,) = registry.proposal(token);
+        assertEq(pending, engine);
+        assertEq(factory.curveForToken(token), address(market));
+        assertTrue(market.active());
+        assertFalse(RegistryMarketFixture(engine).active());
+        assertFalse(directory.suspended());
+
+        factory.useSuspension("");
+        registry.executeMigration(token);
+        assertEq(factory.curveForToken(token), engine);
+        assertEq(registry.migrationNonce(token), 1);
     }
 
     function testCancelledSignaturesCannotScheduleAReplacementProposal() public {

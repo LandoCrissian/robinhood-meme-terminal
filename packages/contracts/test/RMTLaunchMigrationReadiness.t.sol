@@ -6,7 +6,10 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {RMTLaunchBondingCurveV1 as Curve} from "../src/RMTLaunchBondingCurveV1.sol";
 import {RMTLaunchCurveSuccessorDeployerV1 as Deployer} from "../src/RMTLaunchBondingCurveV2.sol";
-import {RMTLaunchCurveSuccessorDeployerV2 as V3Deployer} from "../src/RMTLaunchBondingCurveV3.sol";
+import {
+    RMTLaunchBondingCurveV3,
+    RMTLaunchCurveSuccessorDeployerV2 as V3Deployer
+} from "../src/RMTLaunchBondingCurveV3.sol";
 import {RMTLaunchCurveFactoryV1 as Factory} from "../src/RMTLaunchCurveFactoryV1.sol";
 import {RMTLaunchCurveDirectoryV1 as Directory} from "../src/RMTLaunchCurveDirectoryV1.sol";
 import {RMTLaunchProjectRegistryV1 as Registry} from "../src/RMTLaunchProjectRegistryV1.sol";
@@ -53,6 +56,31 @@ contract V4TemplateAdmissionFixture {
     uint32 public constant toVersion = 4;
 }
 
+contract V3TemplateWithSuspension {
+    uint32 public constant fromVersion = 2;
+    uint32 public constant toVersion = 3;
+    Directory private immutable directory;
+    bytes private suspension;
+
+    constructor(Directory directory_) {
+        directory = directory_;
+    }
+
+    function useSuspension(bytes calldata callData) external {
+        suspension = callData;
+    }
+
+    function prepare(address source, bytes32 salt) external returns (address next) {
+        require(Curve(payable(source)).factory() == msg.sender);
+        next =
+            address(new RMTLaunchBondingCurveV3{salt: keccak256(abi.encode(msg.sender, salt))}(Curve(payable(source))));
+        if (suspension.length != 0) {
+            (bool suspended,) = address(directory).call(suspension);
+            require(suspended, "fixture suspension fault");
+        }
+    }
+}
+
 /// @dev Test-only fault injection. Delegates to the exact original bytecode at the existing storage address.
 contract MigrationCallbackProbe {
     address private immutable originalRuntime;
@@ -88,7 +116,7 @@ contract MigrationCallbackProbe {
         if (msg.sig == intercepted) {
             require(!predecessor.active() && predecessor.migratedTo() == address(successor));
             require(predecessor.backingReserve() == 0 && factory.curveForToken(asset) == address(predecessor));
-            require(successor.active() == (intercepted == Ledger.moveAccrual.selector));
+            require(!successor.active());
             _rejected(
                 address(predecessor),
                 abi.encodeCall(Curve.buy, (1, block.timestamp)),
@@ -119,11 +147,7 @@ contract MigrationCallbackProbe {
                 abi.encodeCall(Factory.executeMigration, (asset, address(successor), address(successor).codehash)),
                 ReentrancyGuard.ReentrancyGuardReentrantCall.selector
             );
-            if (!successor.active()) {
-                _rejected(
-                    address(successor), abi.encodeCall(Curve.buy, (1, block.timestamp)), Curve.CurveClosed.selector
-                );
-            }
+            _rejected(address(successor), abi.encodeCall(Curve.buy, (1, block.timestamp)), Curve.CurveClosed.selector);
         }
         (bool ok, bytes memory output) = originalRuntime.delegatecall(msg.data);
         if (ok && msg.sig == Ledger.moveAccrual.selector && buyAfterAccrual) {
@@ -390,6 +414,34 @@ contract RMTLaunchMigrationReadinessTest is Test {
         assertEq(publishedHash, v4Helper.codehash);
     }
 
+    function testTemplateCannotPublishCandidateAfterSuspendingDirectory() external {
+        _schedule();
+        registry.executeMigration(address(token));
+        V3TemplateWithSuspension helper = new V3TemplateWithSuspension(directory);
+        Directory.Action memory publication = _templateAction(address(helper), 3);
+        bytes32 digest = directory.actionDigest(publication);
+        directory.schedule(publication, _sign(digest, 1), _sign(digest, 2));
+        vm.warp(block.timestamp + directory.publicationDelay());
+        directory.execute(publication);
+
+        uint64 nonce = directory.nonce();
+        Directory.Action memory suspension = Directory.Action(
+            Directory.ActionKind.Suspend, nonce, 0, address(0), bytes32(0), uint48(block.timestamp + 1 days)
+        );
+        digest = directory.actionDigest(suspension);
+        helper.useSuspension(abi.encodeCall(Directory.suspend, (suspension, _sign(digest, 1), _sign(digest, 2))));
+        vm.expectRevert(Factory.InvalidMigration.selector);
+        factory.prepareMigration(address(token), 3);
+        assertEq(factory.migrationCandidate(address(token), 3), address(0));
+        assertEq(factory.curveForToken(address(token)), address(successor));
+        assertTrue(successor.active());
+        assertFalse(directory.suspended());
+        assertEq(directory.nonce(), nonce);
+
+        helper.useSuspension("");
+        assertNotEq(factory.prepareMigration(address(token), 3), address(0));
+    }
+
     function _templateAction(address deployer, uint32 version) private view returns (Directory.Action memory) {
         return Directory.Action(
             Directory.ActionKind.PublishMigrationTemplate,
@@ -434,7 +486,7 @@ contract RMTLaunchMigrationReadinessTest is Test {
         assertEq(ledger.activeCurve(), address(successor));
     }
 
-    function testLedgerCallbackTamperingAfterHandoffRevertsAllEffectsAndCanRetry() external {
+    function testLedgerCallbackCannotTradeAfterWriterHandoffAndCanRetry() external {
         Snapshot memory before = _snapshot(origin);
         _schedule();
         // The fault-injected ledger gets surplus ETH to prove even a funded nested buy cannot survive.
@@ -442,7 +494,7 @@ contract RMTLaunchMigrationReadinessTest is Test {
         before.ledgerNative = address(ledger).balance;
         bytes memory reviewedRuntime = address(ledger).code;
         _etchProbe(address(ledger), Ledger.moveAccrual.selector, true);
-        vm.expectRevert(Curve.InvalidMigrationSettlement.selector);
+        vm.expectRevert(Curve.CurveClosed.selector);
         registry.executeMigration(address(token));
         _assertIntact(before);
         assertEq(token.balanceOf(address(ledger)), 0);
@@ -458,6 +510,18 @@ contract RMTLaunchMigrationReadinessTest is Test {
         registry.executeMigration(address(token));
         assertEq(keccak256(abi.encode(_snapshot(successor))), keccak256(abi.encode(before)));
         assertEq(ledger.activeCurve(), address(successor));
+    }
+
+    function testIncorrectAcceptedAccountingRollsBackLedgerAndAssetHandoff() external {
+        Snapshot memory before = _snapshot(origin);
+        _schedule();
+        vm.mockCall(address(successor), abi.encodeWithSignature("sold()"), abi.encode(before.sold + 1));
+        vm.expectRevert(Curve.InvalidMigrationSettlement.selector);
+        registry.executeMigration(address(token));
+        vm.clearMockedCalls();
+        _assertIntact(before);
+        registry.executeMigration(address(token));
+        assertEq(keccak256(abi.encode(_snapshot(successor))), keccak256(abi.encode(before)));
     }
 
     function testCreatorConsentDoesNotAllowExpirySuspensionOrReplay() external {

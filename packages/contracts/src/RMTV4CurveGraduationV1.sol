@@ -350,14 +350,22 @@ contract RMTV4CurveGraduationV1 is IRMTV4CurveGraduationV1, ReentrancyGuard {
         uint256 deadline
     ) private {
         IERC20 asset = IERC20(token);
+        _verifyAllowances(asset);
         uint256 engineBefore = asset.balanceOf(address(this));
         uint256 poolBefore = asset.balanceOf(address(poolManager));
         uint256 nativeBefore = address(poolManager).balance;
         asset.safeTransferFrom(msg.sender, address(this), funding.tokenUsed);
         if (asset.balanceOf(address(this)) != engineBefore + funding.tokenUsed) revert SettlementMismatch();
 
-        asset.forceApprove(address(permit2), funding.tokenUsed);
+        if (!asset.approve(address(permit2), funding.tokenUsed)) revert SettlementMismatch();
         permit2.approve(token, address(positionManager), funding.tokenUsed, uint48(deadline));
+        (uint160 granted, uint48 expiry,) = permit2.allowance(address(this), token, address(positionManager));
+        if (
+            granted != funding.tokenUsed || expiry != deadline
+                || asset.allowance(address(this), address(permit2)) != funding.tokenUsed
+        ) {
+            revert SettlementMismatch();
+        }
         bytes[] memory params = new bytes[](2);
         params[0] = abi.encode(
             key,
@@ -372,14 +380,14 @@ contract RMTV4CurveGraduationV1 is IRMTV4CurveGraduationV1, ReentrancyGuard {
         params[1] = abi.encode(key.currency0, key.currency1);
         bytes memory actions = abi.encodePacked(uint8(Actions.MINT_POSITION), uint8(Actions.SETTLE_PAIR));
         positionManager.modifyLiquidities{value: funding.nativeUsed}(abi.encode(actions, params), deadline);
-        permit2.approve(token, address(positionManager), 0, 0);
-        asset.forceApprove(address(permit2), 0);
+        // The fixed token and pinned Permit2 consume finite approvals on transfer.
+        // Require complete consumption. A cleanup approval would hide residual spending authority.
+        _verifyAllowances(asset);
         if (
             asset.balanceOf(address(this)) != engineBefore
                 || asset.balanceOf(address(poolManager)) != poolBefore + funding.tokenUsed
                 || address(poolManager).balance != nativeBefore + funding.nativeUsed
         ) revert SettlementMismatch();
-        _verifyAllowances(asset);
         _verifyPosition(key, LockedPosition(positionTokenId, funding.liquidity));
     }
 
