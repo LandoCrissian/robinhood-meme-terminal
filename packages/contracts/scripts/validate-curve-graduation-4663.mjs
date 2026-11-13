@@ -52,6 +52,8 @@ const chainGates = [
   ["RMTLaunchCurveFactoryV1", "block.chainid != 31_337", "block.chainid != 4_663", 2],
   ["RMTV4CurveGraduationV1", "CHAIN_ID = 31_337", "CHAIN_ID = 4_663", 1],
 ];
+const allowedBacking = new Set(["1000000000000000000", "2000000000000000000", "4200000000000000000"]);
+const baselineBacking = parseEther("1");
 const keyTuple = "(address currency0,address currency1,uint24 fee,int24 tickSpacing,address hooks)";
 const [keyParam] = parseAbi(["function params(" + keyTuple + " poolKey)"])[0].inputs;
 const [swapParam] = parseAbi(["function params((" + keyTuple
@@ -87,7 +89,7 @@ const addressEq = (a, b) => getAddress(a) === getAddress(b);
 const poolIdFor = (key) => keccak256(encodeAbiParameters([keyParam], [key]));
 const normalizedSource = (path) => readFileSync(path, "utf8").replace(/\r\n/g, "\n");
 
-function compile({ solc, lib }, chainId) {
+function compile({ solc, lib }, chainId, backing) {
   const compiler = resolve(solc);
   const executableSha256 = sha(readFileSync(compiler));
   assert.equal(executableSha256, solcHashes[process.platform + "-" + process.arch], "Solidity 0.8.26 executable pin mismatch");
@@ -124,6 +126,20 @@ function compile({ solc, lib }, chainId) {
     }
   } else {
     assert.equal(chainId, 31337, "Only local 31337 and the internal 4663 review profile can compile");
+  }
+  if (backing !== baselineBacking) {
+    assert.equal(chainId, 4663, "Alternative economics require the isolated 4663 fork");
+    const file = "src/RMTLaunchCurveMathV1.sol";
+    const replacements = [
+      ["2ether-virtual-eth;60%-sold;1ether-backing", (backing * 2n) + "wei-virtual-eth;60%-sold;" + backing + "wei-backing"],
+      ["VIRTUAL_ETH = 2 ether", "VIRTUAL_ETH = " + (backing * 2n)],
+      ["GRADUATION_BACKING = 1 ether", "GRADUATION_BACKING = " + backing],
+    ];
+    for (const [from, to] of replacements) {
+      assert.equal(sources[file].content.split(from).length, 2, "Unexpected source literal: " + from);
+      sources[file].content = sources[file].content.replace(from, to);
+    }
+    sourceChanges.push({ file, replacements, inputSha256: sha(sources[file].content) });
   }
   const input = JSON.stringify({ language: "Solidity", sources, settings: {
     evmVersion: "cancun", viaIR: true, optimizer: { enabled: true, runs: 200 },
@@ -212,6 +228,12 @@ function oneEvent(receipt, address, abi, eventName) {
 
 function receiptEvidence({ transactionHash, blockNumber, blockHash, gasUsed }) {
   return { transactionHash, blockNumber, blockHash, gasUsed };
+}
+
+function executionCost(receipt, call, from) {
+  assert.ok(receipt.gasUsed > 0n && receipt.effectiveGasPrice > 0n);
+  return { ...receiptEvidence(receipt), from, to: call.to, calldata: call.data,
+    effectiveGasPrice: receipt.effectiveGasPrice, loopbackExecutionWei: receipt.gasUsed * receipt.effectiveGasPrice };
 }
 
 async function verifiedRuntime(client, address, template) {
@@ -520,7 +542,8 @@ async function proveLpFees(client, pins, artifacts, deployment, position, creato
   }
   const creatorTokenBefore = await read(client, token, erc20Abi, "balanceOf", [creator]);
   const creatorNativeBefore = await client.getBalance({ address: creator });
-  const claim = await send(client, creator, request(ledger, abi, "claim"));
+  const combinedCall = request(ledger, abi, "claim");
+  const claim = await send(client, creator, combinedCall);
   const { args: claimed } = oneEvent(claim, ledger, abi, "LpFeesClaimed");
   assert.ok(addressEq(claimed.recipient, creator));
   assert.deepEqual([claimed.nativeAmount, claimed.tokenAmount], credits);
@@ -528,6 +551,19 @@ async function proveLpFees(client, pins, artifacts, deployment, position, creato
   assert.equal((await client.getBalance({ address: creator })) - creatorNativeBefore + claim.gasUsed * claim.effectiveGasPrice, credits[0]);
   assert.deepEqual(await read(client, ledger, abi, "totalClaimed"), credits);
   assert.deepEqual(await read(client, ledger, abi, "claimable", [creator]), [0n, 0n]);
+  const operating = deployment.deployment.operatingRecipient;
+  const claimCosts = { combined: executionCost(claim, combinedCall, creator) };
+  for (const [name, native, index] of [["native", true, 0], ["token", false, 1]]) {
+    const before = await read(client, ledger, abi, "claimable", [operating]);
+    assert.ok(before[index] > 0n);
+    const requestAsset = request(ledger, abi, "claimAsset", [native]);
+    const paid = await send(client, operating, requestAsset);
+    const { args: payment } = oneEvent(paid, ledger, abi, "LpFeesClaimed");
+    assert.ok(addressEq(payment.recipient, operating));
+    assert.deepEqual([payment.nativeAmount, payment.tokenAmount], native ? [before[0], 0n] : [0n, before[1]]);
+    assert.deepEqual(await read(client, ledger, abi, "claimable", [operating]), native ? [0n, before[1]] : [before[0], 0n]);
+    claimCosts[name] = executionCost(paid, requestAsset, operating);
+  }
   assert.equal(await read(client, positions, positionAbi, "getPositionLiquidity", [positionTokenId]), liquidity);
   assert.ok(addressEq(await read(client, positions, positionAbi, "ownerOf", [positionTokenId]), engine));
   assert.ok(addressEq(await read(client, positions, positionAbi, "getApproved", [positionTokenId]), zeroAddress));
@@ -536,7 +572,7 @@ async function proveLpFees(client, pins, artifacts, deployment, position, creato
   return { ledger, ledgerRuntimeHash, collected: { ...receiptEvidence(receipt), nativeFee, tokenFee, logIndex },
     claim: { ...receiptEvidence(claim), native: credits[0], token: credits[1] },
     duplicateCollection: receiptEvidence(duplicateCollection), approvalDenied: receiptEvidence(approvalDenied),
-    principalAndCustodyUnchanged: true };
+    principalAndCustodyUnchanged: true, feeCosts: { collection: executionCost(receipt, collection, collector), ...claimCosts } };
 }
 
 async function proveOutsideLiquidity(client, pins, artifacts, engine, position, provider, trader) {
@@ -587,7 +623,7 @@ async function proveOutsideLiquidity(client, pins, artifacts, engine, position, 
     swap, grossLpFees, addedOriginalNativeFees };
 }
 
-async function review({ rpcUrl, accounts, report }, artifacts) {
+async function review({ rpcUrl, accounts, report }, artifacts, backing) {
   const client = localClient(rpcUrl, 4663);
   assert.equal(await client.getChainId(), 4663);
   const pins = report.network.contracts;
@@ -635,7 +671,7 @@ async function review({ rpcUrl, accounts, report }, artifacts) {
   const migration = await migrateCurve(client, creator, operator, artifacts, deployment, token);
   curve = migration.activeCurve;
   deadline = (await client.getBlock()).timestamp + 900n;
-  const budget = parseEther("2");
+  const budget = backing * 2n;
   const [finalBuy, grossUsed, fee, refund] = await read(client, curve, curveAbi, "quoteBuy", [budget]);
   assert.ok(refund > 0n && grossUsed + refund === budget && fee > 0n);
   const thresholdBuy = await send(client, trader, { ...request(curve, curveAbi, "buy", [finalBuy, deadline]), value: budget });
@@ -644,7 +680,7 @@ async function review({ rpcUrl, accounts, report }, artifacts) {
   assert.equal(finalTrade.grossNative, grossUsed);
   const nativeReserve = await read(client, curve, curveAbi, "backingReserve");
   const tokenReserve = await read(client, token, erc20Abi, "balanceOf", [curve]);
-  assert.equal(nativeReserve, parseEther("1"));
+  assert.equal(nativeReserve, backing);
   assert.equal(tokenReserve, supply * 2n / 5n);
   assert.equal(await client.getBalance({ address: curve }), nativeReserve);
 
@@ -676,7 +712,7 @@ async function review({ rpcUrl, accounts, report }, artifacts) {
   assert.equal(await read(client, token, erc20Abi, "balanceOf", [curve]), tokenDust);
   assert.equal(await read(client, curve, curveAbi, "backingReserve"), 0n);
   assert.equal(await read(client, token, erc20Abi, "totalSupply"), supply);
-  const q192 = (supply * 6n / 5n << 192n) / parseEther("3");
+  const q192 = (supply * 6n / 5n << 192n) / (backing * 3n);
   assert.ok(sqrtPriceX96 ** 2n <= q192 && (sqrtPriceX96 + 1n) ** 2n > q192);
   const [chainPrice,,, poolFee] = await read(client, stateView, stateAbi, "getSlot0", [poolId]);
   assert.equal(chainPrice, sqrtPriceX96);
@@ -708,28 +744,35 @@ async function review({ rpcUrl, accounts, report }, artifacts) {
   assert.equal(await read(client, secondCurve, curveAbi, "graduated"), true);
   assert.equal(await read(client, secondToken, erc20Abi, "totalSupply"), secondSupply);
 
-  return { report, deployment, migration, creation: { ...receiptEvidence(launch), ...created.args, logIndex: created.logIndex,
+  return { report, deployment, migration, terms: { backingWei: backing, virtualEthWei: backing * 2n,
+    expectedThresholdTradeGross: (backing * 10_000n + 9_899n) / 9_900n },
+  creation: { ...receiptEvidence(launch), ...created.args, logIndex: created.logIndex,
     tokenRuntimeHash, curveRuntimeHash, ledgerRuntimeHash },
   curve: { buy: receiptEvidence(curveBuy), sell: receiptEvidence(curveSell), thresholdBuy: { ...receiptEvidence(thresholdBuy), refund },
     preinitializationBlocked: receiptEvidence(blocked) },
   graduation: { ...receiptEvidence(completion), ...settled.args, logIndex: settled.logIndex,
     rejectedFunding: receiptEvidence(interrupted), blockedTransfer: receiptEvidence(blockedTransfer), principalUnchangedAfterSwaps: true },
   atomicGraduation: { ...receiptEvidence(atomic), token: secondToken, curve: secondCurve, poolId: atomicSettled.args.poolId },
-  v4Trades: { buy, sell }, lpFees, outsideLiquidity };
+  v4Trades: { buy, sell }, lpFees, outsideLiquidity, feeCosts: lpFees.feeCosts };
 }
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
   try {
     const { values } = parseArgs({ options: { anvil: { type: "string" }, solc: { type: "string" },
       lib: { type: "string" }, archive: { type: "string" }, rpc: { type: "string" }, operator: { type: "string" },
-      "migrate-token": { type: "string" }, creator: { type: "string" }, factory: { type: "string" } } });
+      "migrate-token": { type: "string" }, creator: { type: "string" }, factory: { type: "string" },
+      "backing-wei": { type: "string" } } });
     assert.ok(values.solc && (values.rpc ? values.operator && !values.anvil && !values.archive : values.anvil && !values.operator),
       "Supply --solc and --anvil for the 4663 fork, or --solc and --rpc plus --operator for local 31337");
     assert.ok(values["migrate-token"] ? values.rpc && values.creator && values.factory : !values.creator && !values.factory,
       "Migration needs local 31337, --migrate-token, --creator and --factory");
-    const { artifacts, manifest } = compile(values, values.rpc ? 31337 : 4663);
+    const threshold = values["backing-wei"];
+    assert.ok(threshold === undefined || (!values.rpc && allowedBacking.has(threshold)),
+      "Backing must be exactly 1, 2 or 4.20 ETH in wei and requires the isolated 4663 fork");
+    const backing = threshold === undefined ? baselineBacking : BigInt(threshold);
+    const { artifacts, manifest } = compile(values, values.rpc ? 31337 : 4663, backing);
     const result = values.rpc ? await verifiedLocalProfile(values, artifacts)
-      : await withAnvilFork(values, (context) => review(context, artifacts));
+      : await withAnvilFork(values, (context) => review(context, artifacts, backing));
     console.log(JSON.stringify({ ...result, manifest }, (_, value) => typeof value === "bigint" ? value.toString() : value, 2));
   } catch (error) {
     console.error(error);
