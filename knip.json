@@ -8,14 +8,22 @@
   ],
   "workspaces": {
     ".": {
-      "entry": [".github/scripts/zerox-browser-boundary.cjs", ".github/scripts/zerox-execution-fixture.cjs", ".github/scripts/collect-live-journey-proof.cjs", ".github/scripts/live-journey-runtime-proof.cjs", "packages/contracts/scripts/build-launch-4663-review.mjs"]
+      "entry": [
+        ".github/scripts/zerox-browser-boundary.cjs",
+        ".github/scripts/zerox-execution-fixture.cjs",
+        ".github/scripts/collect-live-journey-proof.cjs",
+        ".github/scripts/live-journey-runtime-proof.cjs",
+        "packages/contracts/scripts/build-launch-4663-review.mjs",
+        "packages/contracts/scripts/validate-launch-4663-fork.mjs"
+      ]
     },
     "apps/web": {
       "entry": [
         "app/**/*.{ts,tsx}",
         "lib/testing/**/*.{ts,tsx}",
         "lib/**/*-smoke.ts",
-        "lib/**/*.test.ts"
+        "lib/**/*.test.ts",
+        "scripts/launch-4663-public-evidence.ts"
       ]
     },
     "apps/indexer": {
