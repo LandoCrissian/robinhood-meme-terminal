@@ -13,10 +13,14 @@ The frozen core source is commit `69cfaa392e488f475b8b1e15a34c0ac986abd24e` in d
 | Guard and Longevity #578 | `f17e2eb3a014976d7adeab78e54ea63191850693` | `rmt-launch-v4-preview` |
 | Growth Vault #579 | `50ac0c62e39ce11332025f774d164d72c155b878` | `rmt-launch-longevity-v1` |
 | Hardened launchpad #580 | `69cfaa392e488f475b8b1e15a34c0ac986abd24e` | `rmt-launch-liquidity-growth-v1` |
+| Audit handoff #580 | `02936ff3e914390dbd240bfde9ad66717525cdab` | Parent of the cleanup stack |
+| Cleanup #582 verification baseline | `c2b96033a036f020ac1fd16f93752730a5fdcb30` | `rmt-launch-release-candidate` |
+
+The cleanup baseline passed all 14 reported checks, including 535 Foundry passes with the four default skips listed below. All tracked Solidity still matches the freeze and the contract source tree remains `f0d132e63fcba8d2e354f5abe5a72ad46ac3dc0b`. [Cleanup baseline checks](https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/43309047238)
 
 ### Legacy integrations excluded
 
-This RMT Launch candidate does not include the previously proposed embedded trading integration or its partner-specific SDK. Those draft branches are not launch prerequisites. Shared authorization, wallet recovery and verified execution protections are independently tested in the core release. Historical private-client recovery and partner-specific receipt archives are not required for the new launchpad release. No production records were modified.
+The CannaCat drafts #575 and #581 are closed and excluded. #582 removes the curated entry, artwork, project metadata and dedicated release dependency. The remaining synthetic security fixtures use a fictitious token and hooked pool. The launchpad browser checks that all four former embed POST endpoints return 404. Generic authorization, wallet binding, verified settlement and transaction recovery tests remain active. The frozen historical Terminal V4 fork is a manual replay, with its own evidence. LAMMB Empires remains independent.
 
 ### Final source manifest
 
@@ -88,7 +92,7 @@ Each change to signer authority needs a separately reviewed version and owner de
 
 The local fork is anchored to Base Sepolia block 57648300 and its recorded hash. Verify the manager, position manager, StateView, Quoter, Permit2, router and guard bindings and runtime hashes against the checked-in pins. The router 2.1.2 Base Sepolia address is `0x8702463e73f74d0b6765aBceb314Ef07aCb92650`. The local V2 runtime can select it explicitly. Router 2.0 remains the default compatibility path. [Deployment fixture](../packages/contracts/test/fixtures/rmt-v4-deployment-identities.json), [official deployments](https://developers.uniswap.org/docs/protocols/v4/deployments#base-sepolia-84532), [official API support](https://developers.uniswap.org/docs/trading/swapping-api/supported-chains)
 
-The release target chain has yet to be approved. The changes below define the review boundary for any target-chain build. The frozen chain-31337 results apply to the pinned source, build and fork only.
+Robinhood Chain 4663 is the review target. The [isolated compile](RMT_ROBINHOOD_4663_PROVENANCE.md#offline-review-build) compares a 4663 bytecode template with a 31337 template from the frozen sources under identical compiler settings. The two source changes are applied only inside compiler input. The deployer constructor and V2 factory gate change, with the latter inherited from the ledger. The frozen 31337 Foundry and browser evidence remains separate. Review and approval of exact production constructor inputs, deployment provenance and the full launch runtime remain outstanding.
 
 | Layer | Target-chain review input still needed |
 | --- | --- |
@@ -144,7 +148,7 @@ All 18 checks passed at the frozen commit. Foundry reported 535 passed, zero fai
 | `RMTV4LaunchFactoryV1ForkTest.testForkLaunchQuoteBuySellAndClaimWithOfficialUniswap` | `RMT_V4_BASE_SEPOLIA_RPC` was unset. Passed the separate pinned Base Sepolia fork run. |
 | `RMTV4LaunchFactoryV2ForkTest.testForkGuardedPoolQuotesSwapsIndependentLiquidityAndLongevityClaims` | Same opt-in. Passed the separate pinned Base Sepolia fork run. |
 | `RMTV4GrowthVaultV1ForkTest.testOfficialForkReinvestsEarnedFeesOnlyAfterReviewedPriceRecovery` | Same opt-in. Passed the separate pinned Base Sepolia fork run. This covers optional Growth. |
-| `RMTUniswapV4FeeExecutorV2ForkTest.setUp()` | The default job leaves `RMT_RUN_TERMINAL_V4_FORK` off, so the suite reports one setup skip. Dedicated exact-head CI passed two legacy native-swap regressions. These are separate historical terminal tests, not a partner integration release requirement. [Dedicated job](https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/43287272916/job/131423878560) |
+| `RMTUniswapV4FeeExecutorV2ForkTest.setUp()` | The default job leaves `RMT_RUN_TERMINAL_V4_FORK` off, so the suite reports one setup skip. Dedicated exact-head CI passed two legacy native-swap regressions. Replay from the Mainnet readiness workflow by setting the manual `legacy_terminal_v4` input. This preserves historical evidence outside the core release gate. [Dedicated job](https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/43287272916/job/131423878560) |
 
 ```sh
 cd packages/contracts
@@ -178,7 +182,7 @@ The [hosted capture verifier](../scripts/verify-hosted-v4-observation.mjs) valid
 ### A. Core launchpad
 
 - [ ] Approve the independent-review engagement, including reviewer, scope, access and any spend. Review guarded V2 deployment and initialization, token and position funding, both V1/V2 funding analysis gaps, approvals, settlement, custody, ledger and public evidence. Engagement and release are separate decisions.
-- [ ] Approve the target chain and core economics decision sheet. Require a new, pinned target-chain build and deployment manifest for review, with wallet/RPC, durable indexing, finality, quotas and recovery. The frozen loopback result establishes the current candidate evidence.
+- [ ] Approve the target chain and core economics decision sheet. Review the isolated compile manifest, then approve exact production constructor and deployment inputs, wallet/RPC, durable indexing, finality, quotas and recovery. Re-test the approved build on an isolated 4663 fork. The frozen loopback result establishes separate baseline evidence.
 - [ ] Review the core launchpad on the exact approved target-chain build and intended device evidence; exclude legacy embedded trading integrations. Hosted routing and hosted indexing stay unknown until observed for the exact deployment and full PoolKey.
 
 ### B. Optional Growth Vault

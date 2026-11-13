@@ -1,0 +1,57 @@
+name: Robinhood 4663 launch review build
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/robinhood-4663-launch-review.yml"
+      - "packages/contracts/**/*.sol"
+      - "packages/contracts/foundry.toml"
+      - "packages/contracts/remappings.txt"
+      - "packages/contracts/scripts/build-launch-4663-review.mjs"
+      - "packages/contracts/scripts/install-v4-deps.sh"
+      - "packages/contracts/scripts/launch-4663-review-inputs.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  review-manifest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: packages/contracts
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1
+        with:
+          version: "1.7.1"
+      - run: bash scripts/install-v4-deps.sh
+      - name: Fetch the official compiler
+        run: |
+          curl --fail --silent --show-error --retry 2 \
+            'https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.26+commit.8a97fa7a' \
+            --output "$RUNNER_TEMP/solc-0.8.26"
+          chmod 700 "$RUNNER_TEMP/solc-0.8.26"
+      - name: Reproduce the review manifest without deployment
+        run: |
+          set -euo pipefail
+          first="$RUNNER_TEMP/robinhood-4663-launch-review.json"
+          node scripts/build-launch-4663-review.mjs --solc "$RUNNER_TEMP/solc-0.8.26" > "$first"
+          node scripts/build-launch-4663-review.mjs --solc "$RUNNER_TEMP/solc-0.8.26" \
+            > "$RUNNER_TEMP/robinhood-4663-launch-review-repeat.json"
+          cmp "$first" "$RUNNER_TEMP/robinhood-4663-launch-review-repeat.json"
+          sha256sum "$first"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: robinhood-4663-launch-review-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ runner.temp }}/robinhood-4663-launch-review.json
+          if-no-files-found: error
