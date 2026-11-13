@@ -99,6 +99,7 @@ await page.addInitScript(({ account }) => {
 
 const button = (name) => page.getByRole("button", { name, exact: true });
 const shown = (message) => page.getByText(message).first().waitFor();
+const settled = (message) => page.locator('[role="status"] strong').filter({ hasText: message }).waitFor();
 async function screenshot(name) {
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), `${name} overflow`);
   await page.screenshot({ path: `${output}/${name}.png` });
@@ -160,7 +161,7 @@ try {
   if (compiler) await page.evaluate(() => { window.curveFixture.loseHash = true; });
   await button("Confirm buy in wallet").click();
   if (compiler) await page.getByLabel("Recover wallet request").waitFor();
-  else await shown(/curve settlement verified.*RCV/i);
+  else await settled(/curve settlement verified.*RCV/i);
   await receipt("curveBuy", 1);
 
   if (compiler) {
@@ -183,7 +184,7 @@ try {
     evidence.migrationRegistry = after.state.project;
     await page.getByLabel("Recover wallet request").fill(hashes[1]);
     await button("Check transaction").click();
-    await shown(/curve settlement verified.*RCV/i);
+    await settled(/curve settlement verified.*RCV/i);
     assert.equal(hashes.length, 2, "Historical curve recovery must never resubmit the trade.");
     await page.getByRole("link", { name: "My Launches", exact: true }).click();
     await page.locator(`a[href="${evidence.tokenPage}"]`).click();
@@ -197,61 +198,61 @@ try {
   await page.getByLabel(/You pay \(RCV\)/i).fill("100");
   await button("Review trade").click();
   await button("Confirm curve allowance").click();
-  await shown(/allowance verified/i);
+  await settled(/curve allowance verified/i);
   await receipt("sellApproval", 2);
   await button("Review trade").click();
   await button("Confirm sell in wallet").click();
-  await shown(/curve settlement verified.*ETH/i);
+  await settled(/curve settlement verified.*ETH/i);
   await receipt("curveSell", 3);
 
   await button("Buy").click();
   await page.getByLabel(/You pay \(ETH\)/i).fill("2");
   await button("Review trade").click();
   await button("Confirm buy in wallet").click();
-  await shown(/curve settlement verified.*RCV/i);
+  await settled(/curve settlement verified.*RCV/i);
   await receipt("thresholdBuy", 4);
   await button("Review graduation").click();
   await button("Confirm graduation in wallet").click();
-  await shown(/graduation and permanently locked v4 liquidity verified/i);
+  await settled(/graduation and permanently locked v4 liquidity verified/i);
   await receipt("graduation", 5);
   await screenshot("03-graduated-phone");
 
   await button("Review fee claim").click();
   await button("Confirm fee claim in wallet").click();
-  await shown(/fee payout|fee claim verified/i);
+  await settled(/fee payout|fee claim verified/i);
   await receipt("curveFeeClaim", 6);
   await page.getByRole("heading", { name: "Trade on Uniswap v4" }).waitFor();
   await page.getByLabel(/You pay \(ETH\)/i).fill("0.01");
   await button("Review trade").click();
   await button("Confirm buy in wallet").click();
-  await shown(/v4 settlement verified.*RCV/i);
+  await settled(/v4 settlement verified.*RCV/i);
   await receipt("v4Buy", 7);
   await button("Sell").click();
   await page.getByLabel(/You pay \(RCV\)/i).fill("100");
   await button("Review trade").click();
   await button("Confirm token approval").click();
-  await shown(/v4 token allowance verified/i);
+  await settled(/v4 token allowance verified/i);
   await receipt("v4TokenApproval", 8);
   await button("Review trade").click();
   await button("Confirm router approval").click();
-  await shown(/v4 router allowance verified/i);
+  await settled(/v4 router allowance verified/i);
   await receipt("v4RouterApproval", 9);
   await button("Review trade").click();
   await button("Confirm sell in wallet").click();
-  await shown(/v4 settlement verified.*ETH/i);
+  await settled(/v4 settlement verified.*ETH/i);
   await receipt("v4Sell", 10);
   const earned = await readLaunch();
   assert.ok(BigInt(earned.state.lpFees.uncollected.native) > 0n && BigInt(earned.state.lpFees.uncollected.token) > 0n);
   await button("Review LP fee collection").click();
   await button("Confirm LP fee collection in wallet").click();
-  await shown(/LP fee collection verified/i);
+  await settled(/LP fee collection verified/i);
   const collection = await receipt("lpCollection", 11);
   const collected = await readLaunch();
   assert.equal(collected.state.lpFees.latestCollection.transactionHash, collection.transactionHash);
   assert.ok(BigInt(collected.state.lpFees.claimable.native) > 0n && BigInt(collected.state.lpFees.claimable.token) > 0n);
   await button("Review LP fee claim").click();
   await button("Confirm LP fee claim in wallet").click();
-  await shown(/LP fee payout verified/i);
+  await settled(/LP fee payout verified/i);
   await receipt("lpFeeClaim", 12);
   const paid = await readLaunch();
   assert.deepEqual(paid.state.lpFees.claimable, { native: "0", token: "0" });
@@ -273,9 +274,14 @@ try {
   await page.getByLabel(/You pay \(ETH\)/i).fill("2");
   await button("Review trade").click();
   await button("Confirm buy and graduate in wallet").click();
-  await shown(/curve settlement and locked v4 liquidity verified/i);
+  await settled(/curve settlement and locked v4 liquidity verified/i);
   await receipt("atomicBuyAndGraduate", 14);
   assert.deepEqual(pageErrors, []);
+} catch (error) {
+  evidence.browserFailure = { path: new URL(page.url()).pathname,
+    alerts: await page.getByRole("alert").allTextContents(),
+    statuses: await page.getByRole("status").allTextContents() };
+  throw error;
 } finally {
   await writeFile(`${output}/curve-browser-evidence.json`, JSON.stringify({ evidence, pageErrors, observedBroadcasts: hashes }, null, 2));
   await browser.close();

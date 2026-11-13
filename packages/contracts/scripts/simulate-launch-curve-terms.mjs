@@ -55,6 +55,11 @@ function modeledLaunch(backing) {
   const opening = funding(backing);
   const grossToFill = ceilDiv(backing * bps, bps - curveFeeBps);
   const totalCurveFee = grossToFill - backing;
+  const completeSellFee = ceilDiv(backing * curveFeeBps, bps);
+  // Before graduation a single threshold buyer can unwind the entire fill. Fees and gas are the direct cost.
+  const preGraduationExit = backing - completeSellFee;
+  const roundTripCost = grossToFill - preGraduationExit;
+  assert.equal(roundTripCost, totalCurveFee + completeSellFee);
   const typicalBudget = 5n * unit / 100n;
   // A single directional fill is a lower bound. Reversals and gas require additional flow.
   const typicalBuyerCount = ceilDiv(grossToFill, typicalBudget);
@@ -62,7 +67,7 @@ function modeledLaunch(backing) {
   const soldAtExampleDemand = netAtDemand >= backing ? soldAtGraduation :
     virtualToken - ceilDiv(virtualEth * virtualToken, virtualEth + netAtDemand);
   return { backing, virtualEth, virtualToken, soldAtGraduation, tokenAtGraduation, opening,
-    grossToFill, totalCurveFee, typicalBudget, typicalBuyerCount, exampleGrossDemand: 2n * unit,
+    grossToFill, totalCurveFee, preGraduationExit, roundTripCost, typicalBudget, typicalBuyerCount, exampleGrossDemand: 2n * unit,
     soldAtExampleDemand, exampleDemandGraduates: netAtDemand >= backing,
     openingBuys: [unit / 100n, unit / 10n, unit / 2n].map((input) => quoteOpeningBuy(opening, input)) };
 }
@@ -92,10 +97,18 @@ const lpRevenue = [10n, 100n, 1000n].flatMap((volume) =>
     return { nativeInputInCanonicalPool, totalNativeFees, originalActiveShareBps, originalPositionNativeFees, recipients };
   }));
 
-const gasUnits = [699765n, 916115n];
+// Measured on the pinned 4663 Task 019 fork with the 1 ETH review configuration.
+const gasUnits = [1523044n, 1739882n];
 const gasPricesGwei = [1n, 10n, 30n];
 const graduationGas = gasUnits.map((units) => ({ units,
   executionCosts: gasPricesGwei.map((gasPriceGwei) => ({ gasPriceGwei, wei: units * gasPriceGwei * 10n ** 9n })) }));
+const feeCollectionGasUnits = 560153n;
+const nativeCollectionBreakEven = gasPricesGwei.flatMap((gasPriceGwei) =>
+  [10_000n, 2_500n, 500n].map((activeShareBps) => {
+    const gasCost = feeCollectionGasUnits * gasPriceGwei * 10n ** 9n;
+    const nativeVolume = ceilDiv(gasCost * bps ** 2n, poolFeeBps * activeShareBps);
+    return { gasPriceGwei, activeShareBps, gasCost, nativeVolume };
+  }));
 
 console.log(JSON.stringify({
   assumptions: [
@@ -104,7 +117,7 @@ console.log(JSON.stringify({
     "Gross threshold flow assumes uninterrupted buying and excludes network fees. Actual demand, reversals, and fragmentation change timing and cost.",
     "LP revenue assumes a stated average active share and only native-side inputs on this exact PoolKey. Token-side fees accrue in tokens.",
     "Independent routers are equivalent only when they generate fees in this pool. Volume in any other pool contributes zero.",
-    "Gas units come from the prior measured 4663 review transactions. Price cases exclude L2 data fees and are not forecasts.",
+    "Gas units come from Task 019 4663 review transactions. Price cases exclude L2 data fees and are not forecasts.",
   ],
-  ticks, supply, curveFeeBps, poolFeeBps, configurations, lpRevenue, graduationGas,
+  ticks, supply, curveFeeBps, poolFeeBps, configurations, lpRevenue, graduationGas, nativeCollectionBreakEven,
 }, (_, value) => typeof value === "bigint" ? value.toString() : value, 2));
