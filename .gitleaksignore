@@ -77,3 +77,9 @@ a462d3d161800210536d0296c808b11bceda9495:apps/web/lib/consent-testnet-activation
 4cb57e4d87d4c4949285bcb6be2af1634cc9d18c:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:267
 4cb57e4d87d4c4949285bcb6be2af1634cc9d18c:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:340
 4cb57e4d87d4c4949285bcb6be2af1634cc9d18c:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:394
+# Exact Task 020 false positives for Solidity typed test declarations. No credential literals.
+7d5453d26734cc4ab9d68d3ef7fa4a7b17872d4b:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:442
+7d5453d26734cc4ab9d68d3ef7fa4a7b17872d4b:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:456
+7d5453d26734cc4ab9d68d3ef7fa4a7b17872d4b:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:500
+7d5453d26734cc4ab9d68d3ef7fa4a7b17872d4b:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:549
+7d5453d26734cc4ab9d68d3ef7fa4a7b17872d4b:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:830
