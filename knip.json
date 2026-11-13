@@ -13,6 +13,7 @@
         ".github/scripts/zerox-execution-fixture.cjs",
         ".github/scripts/collect-live-journey-proof.cjs",
         ".github/scripts/live-journey-runtime-proof.cjs",
+        "packages/contracts/scripts/analyze-curve-production-scope.mjs",
         "packages/contracts/scripts/build-launch-4663-review.mjs",
         "packages/contracts/scripts/validate-launch-4663-fork.mjs"
       ]
