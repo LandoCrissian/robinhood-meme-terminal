@@ -45,9 +45,7 @@ jobs:
             --output "$RUNNER_TEMP/solc-0.8.26"
           chmod 700 "$RUNNER_TEMP/solc-0.8.26"
       - name: Simulate curve and post-graduation economics
-        run: |
-          node packages/contracts/scripts/simulate-launch-curve.mjs > "$RUNNER_TEMP/curve-economics.json"
-          node packages/contracts/scripts/simulate-launch-curve-terms.mjs > "$RUNNER_TEMP/curve-graduation-terms.json"
+        run: node packages/contracts/scripts/simulate-launch-curve.mjs > "$RUNNER_TEMP/curve-economics.json"
       - name: Validate guarded graduation and independent v4 swaps on loopback
         run: |
           set -euo pipefail
@@ -58,6 +56,20 @@ jobs:
           node -e 'JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"))' \
             "$RUNNER_TEMP/curve-fork-evidence.json"
           sha256sum "$RUNNER_TEMP/curve-fork-evidence.json"
+      - name: Compare isolated graduation thresholds against official v4 settlement
+        run: |
+          set -euo pipefail
+          for backing in 2000000000000000000 4200000000000000000; do
+            node packages/contracts/scripts/validate-curve-graduation-4663.mjs \
+              --anvil "$(command -v anvil)" --solc "$RUNNER_TEMP/solc-0.8.26" --archive pocket \
+              --backing-wei "$backing" > "$RUNNER_TEMP/curve-fork-evidence-$backing.json" \
+              2> >(tee "$RUNNER_TEMP/curve-fork-diagnostics-$backing.log" >&2)
+          done
+          node packages/contracts/scripts/simulate-launch-curve-terms.mjs \
+            --fork-evidence "$RUNNER_TEMP/curve-fork-evidence.json" \
+            --fork-evidence "$RUNNER_TEMP/curve-fork-evidence-2000000000000000000.json" \
+            --fork-evidence "$RUNNER_TEMP/curve-fork-evidence-4200000000000000000.json" \
+            > "$RUNNER_TEMP/curve-graduation-terms.json"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
@@ -66,7 +78,9 @@ jobs:
             ${{ runner.temp }}/curve-economics.json
             ${{ runner.temp }}/curve-graduation-terms.json
             ${{ runner.temp }}/curve-fork-evidence.json
+            ${{ runner.temp }}/curve-fork-evidence-*.json
             ${{ runner.temp }}/curve-fork-diagnostics.log
+            ${{ runner.temp }}/curve-fork-diagnostics-*.log
 
   browser:
     runs-on: ubuntu-24.04
