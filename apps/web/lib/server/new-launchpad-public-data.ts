@@ -1,6 +1,7 @@
-import { getAddress, isAddress, parseAbi, parseAbiItem, zeroAddress, type Hash, type PublicClient } from "viem";
+import { encodeAbiParameters, getAddress, isAddress, isHash, keccak256, parseAbi, parseAbiItem, zeroAddress, type Hash, type PublicClient } from "viem";
 import { launchPoolId, type NewLaunchRecord } from "../launchpad/launch-record";
 import { readLaunchpadRuntime, verifiedGrowthVaultDeployer, verifiedLaunchpadRpc, type LaunchpadRuntime } from "./new-launchpad-config";
+import { canonicalLaunchpadBlock, launchpadFinalityEvidence, readLaunchpadBlock, type LaunchpadObservedBlock } from "./new-launchpad-finality";
 import { makeLaunchHealth, readLaunchHealth } from "./new-launchpad-health";
 import { readGrowthVaultHealth } from "./new-launchpad-growth-health";
 import { sameHex } from "./new-launchpad-receipt";
@@ -27,6 +28,7 @@ const positionAbi = parseAbi([
 ]);
 const supplyAbi = parseAbi(["function totalSupply() view returns (uint256)"]);
 const swapEvent = parseAbiItem("event Swap(bytes32 indexed id, address indexed sender, int128 amount0, int128 amount1, uint160 sqrtPriceX96, uint128 liquidity, int24 tick, uint24 fee)");
+const MAX_ACTIVITY_LOGS = 1_024;
 
 export type LaunchCheck = {
   id: string;
@@ -36,23 +38,35 @@ export type LaunchCheck = {
 };
 
 type ReadStatus = "ready" | "delayed" | "disabled" | "not_found" | "rate_limited" | "invalid";
-type PublicResult = { status: ReadStatus; data?: unknown; reason?: string; retryAfterSeconds?: number };
-type Cursor = LaunchPageCursor & { anchor?: bigint; poolId?: Hash; anchorHash?: Hash };
+type PublicResult = {
+  status: ReadStatus;
+  data?: unknown;
+  evidence?: ReturnType<typeof indexEvidence> | ReturnType<typeof launchpadFinalityEvidence>;
+  reason?: string;
+  retryAfterSeconds?: number;
+};
+type Cursor = LaunchPageCursor & { anchor?: bigint; binding?: string };
+const cursorIdentity = [{ type: "uint256" }, { type: "address" }, { type: "address" }, { type: "bytes32" }, { type: "bytes32" }] as const;
 
 function parseCursor(value: string | undefined, forActivity: boolean): Cursor | undefined {
   if (!value) return;
   if (!/^[A-Za-z0-9_-]{1,128}$/.test(value)) throw new Error("Invalid cursor");
   const text = Buffer.from(value, "base64url").toString("ascii");
-  const match = /^(\d{1,15})\.(\d{1,8})(?:\.(\d{1,15})\.([0-9a-f]{16})\.([0-9a-f]{16}))?$/.exec(text);
+  const match = /^(\d{1,15})\.(\d{1,8})(?:\.(\d{1,15})\.([A-Za-z0-9_-]{43}))?$/.exec(text);
   if (!match || !!match[3] !== forActivity || Buffer.from(text).toString("base64url") !== value) throw new Error("Invalid cursor");
   return {
     blockNumber: BigInt(match[1]), logIndex: Number(match[2]), anchor: match[3] ? BigInt(match[3]) : undefined,
-    poolId: match[4] ? `0x${match[4]}` : undefined, anchorHash: match[5] ? `0x${match[5]}` : undefined,
+    binding: match[4],
   };
 }
 
-function encodeCursor(item: { blockNumber: string; logIndex: number }, anchor?: { blockNumber: bigint; poolId: Hash; hash: Hash }) {
-  const suffix = anchor ? `.${anchor.blockNumber}.${anchor.poolId.slice(2, 18).toLowerCase()}.${anchor.hash.slice(2, 18).toLowerCase()}` : "";
+function activityCursorBinding(launch: NewLaunchRecord, hash: Hash) {
+  const digest = keccak256(encodeAbiParameters(cursorIdentity, [BigInt(launch.chainId), launch.factory, launch.poolManager, launch.poolId, hash]));
+  return Buffer.from(digest.slice(2), "hex").toString("base64url");
+}
+
+function encodeCursor(item: { blockNumber: string; logIndex: number }, anchor?: LaunchpadObservedBlock, launch?: NewLaunchRecord) {
+  const suffix = anchor && launch ? `.${anchor.blockNumber}.${activityCursorBinding(launch, anchor.hash)}` : "";
   return Buffer.from(`${item.blockNumber}.${item.logIndex}${suffix}`).toString("base64url");
 }
 
@@ -62,33 +76,41 @@ function poolIdentity(launch: NewLaunchRecord) {
   };
 }
 
-function launchEvidence(launch: NewLaunchRecord) {
+function launchEvidence(launch: NewLaunchRecord, block?: LaunchpadObservedBlock) {
   return {
     ...poolIdentity(launch),
-    blockNumber: launch.blockNumber, blockHash: launch.blockHash, timestampUnixSeconds: launch.blockTimestamp ?? null,
+    blockNumber: launch.blockNumber, blockHash: launch.blockHash,
+    timestampUnixSeconds: block?.timestamp.toString() ?? launch.blockTimestamp ?? null,
     transactionHash: launch.transactionHash, logIndex: launch.logIndex, indexing: launch.indexing,
-    finality: "local_chain_observed" as const,
+    ...launchpadFinalityEvidence(block),
   };
 }
 
-function indexEvidence(store: LaunchpadStore, checkpoint: LaunchCheckpoint | undefined) {
+function indexEvidence(config: LaunchpadRuntime, store: LaunchpadStore, page?: Awaited<ReturnType<typeof verifyIndexPage>>) {
+  const { chainId, factory, poolManager } = config.deployment;
+  const caughtUp = page?.checkpoint && page.checkpoint.blockNumber >= page.head - config.confirmations && store.status() === "ready";
   return {
-    indexedThrough: checkpoint?.number.toString() ?? null,
-    indexedBlockHash: checkpoint?.hash ?? null,
-    finality: "local_chain_observed" as const,
-    freshness: store.status() === "ready" ? "caught_up" : "delayed",
+    chainId, factory, poolManager,
+    indexedThrough: page?.checkpoint?.blockNumber.toString() ?? null,
+    indexedBlockHash: page?.checkpoint?.hash ?? null,
+    timestampUnixSeconds: page?.checkpoint?.timestamp.toString() ?? null,
+    ...launchpadFinalityEvidence(page?.checkpoint),
+    freshness: caughtUp ? "caught_up" as const : "delayed" as const,
   };
 }
 
-async function exactBlock(rpc: PublicClient, blockNumber: bigint) {
-  const block = await rpc.getBlock({ blockNumber, includeTransactions: false });
-  if (!block.hash || block.number !== blockNumber) throw new Error("Canonical block unavailable");
-  return { blockNumber, hash: block.hash, timestamp: block.timestamp };
+async function assertBlockUnchanged(rpc: PublicClient, block: LaunchpadObservedBlock, head: bigint) {
+  const current = await readLaunchpadBlock(rpc, block.blockNumber, head);
+  if (!sameHex(current.hash, block.hash) || current.timestamp !== block.timestamp) {
+    throw new Error("Canonical launch evidence changed during verification");
+  }
 }
 
-async function assertLaunchCanonical(rpc: PublicClient, launch: NewLaunchRecord) {
-  const block = await exactBlock(rpc, BigInt(launch.blockNumber));
-  if (!sameHex(block.hash, launch.blockHash)) throw new Error("Launch receipt is no longer canonical");
+async function assertLaunchCanonical(rpc: PublicClient, launch: NewLaunchRecord, head: bigint) {
+  const block = await readLaunchpadBlock(rpc, BigInt(launch.blockNumber), head);
+  if (!sameHex(block.hash, launch.blockHash) || (launch.blockTimestamp !== undefined && block.timestamp.toString() !== launch.blockTimestamp)) {
+    throw new Error("Launch receipt is no longer canonical");
+  }
   return block;
 }
 
@@ -107,37 +129,49 @@ function assertPoolIdentity({ deployment }: LaunchpadRuntime, launch: NewLaunchR
 async function verifyIndexPage(
   rpc: PublicClient, config: LaunchpadRuntime, checkpoint: LaunchCheckpoint | undefined, launches: NewLaunchRecord[],
 ) {
-  const blocks = new Map<bigint, Hash>();
-  if (checkpoint) blocks.set(checkpoint.number, checkpoint.hash);
+  const head = await rpc.getBlockNumber({ cacheTime: 0 });
+  const anchor = await readLaunchpadBlock(rpc, head, head);
+  const expected = new Map<bigint, Hash>();
+  if (checkpoint) expected.set(checkpoint.number, checkpoint.hash);
   for (const launch of launches) {
     assertPoolIdentity(config, launch);
     const height = BigInt(launch.blockNumber);
-    if (launch.indexing === "indexed") {
-      if (!checkpoint || height > checkpoint.number) throw new Error("Indexed launch has no covering checkpoint");
-      continue;
-    }
-    const hash = blocks.get(height);
+    if (launch.indexing === "indexed" && (!checkpoint || height > checkpoint.number)) throw new Error("Indexed launch has no covering checkpoint");
+    const hash = expected.get(height);
     if (hash && !sameHex(hash, launch.blockHash)) throw new Error("Launch page contains conflicting block hashes");
-    blocks.set(height, launch.blockHash);
+    expected.set(height, launch.blockHash);
   }
-  await Promise.all([...blocks].map(async ([height, hash]) => {
-    if (!sameHex((await exactBlock(rpc, height)).hash, hash)) throw new Error("Launch page was reorganized");
-  }));
+  const blocks = new Map(await Promise.all([...expected].map(async ([height, hash]) => {
+    const block = height === head ? anchor : await readLaunchpadBlock(rpc, height, head);
+    if (!sameHex(block.hash, hash)) throw new Error("Launch page was reorganized");
+    return [height, block] as const;
+  })));
+  for (const launch of launches) {
+    if (launch.blockTimestamp !== undefined && blocks.get(BigInt(launch.blockNumber))?.timestamp.toString() !== launch.blockTimestamp) {
+      throw new Error("Launch page contains contradictory timestamps");
+    }
+  }
+  await Promise.all([anchor, ...[...blocks.values()].filter((block) => block.blockNumber !== head)]
+    .map((block) => assertBlockUnchanged(rpc, block, head)));
+  return { head, blocks, checkpoint: checkpoint ? blocks.get(checkpoint.number) : undefined };
 }
 
 async function readPoolState(rpc: PublicClient, config: LaunchpadRuntime, launch: NewLaunchRecord, withHealth: boolean) {
-  const blockNumber = await rpc.getBlockNumber();
-  if (blockNumber < BigInt(launch.blockNumber)) throw new Error("RPC is behind the launch");
-  const initial = await exactBlock(rpc, blockNumber);
-  const opening = await assertLaunchCanonical(rpc, launch);
-  const state = { address: config.deployment.stateView, abi: stateViewAbi, args: [launch.poolId] as const, blockNumber };
-  const position = { address: config.deployment.positionManager, abi: positionAbi, args: [BigInt(launch.positionTokenId)] as const, blockNumber };
+  const blockNumber = await rpc.getBlockNumber({ cacheTime: 0 });
+  const initial = await readLaunchpadBlock(rpc, blockNumber, blockNumber);
+  const opening = await assertLaunchCanonical(rpc, launch, blockNumber);
+  if (initial.blockNumber === opening.blockNumber && !sameHex(initial.hash, opening.hash)) {
+    throw new Error("Launch and pool state have contradictory block hashes");
+  }
+  const block = canonicalLaunchpadBlock(initial);
+  const state = { address: config.deployment.stateView, abi: stateViewAbi, args: [launch.poolId] as const, ...block };
+  const position = { address: config.deployment.positionManager, abi: positionAbi, args: [BigInt(launch.positionTokenId)] as const, ...block };
   const [[sqrtPriceX96, tick, protocolFee, lpFee], activeLiquidity, positionOwner, positionLiquidity, totalSupply] = await Promise.all([
     rpc.readContract({ ...state, functionName: "getSlot0" }),
     rpc.readContract({ ...state, functionName: "getLiquidity" }),
     rpc.readContract({ ...position, functionName: "ownerOf" }),
     rpc.readContract({ ...position, functionName: "getPositionLiquidity" }),
-    rpc.readContract({ address: launch.token, abi: supplyAbi, functionName: "totalSupply", blockNumber }),
+    rpc.readContract({ address: launch.token, abi: supplyAbi, functionName: "totalSupply", ...block }),
   ]);
   const positionState = { positionOwner, positionLiquidity: positionLiquidity.toString(), activeLiquidity: activeLiquidity.toString() };
   const health = withHealth ? await readLaunchHealth(rpc, config.deployment.stateView, launch, positionState, opening, initial) : undefined;
@@ -147,14 +181,14 @@ async function readPoolState(rpc: PublicClient, config: LaunchpadRuntime, launch
       ? await readGrowthVaultHealth(rpc, deployer, config.deployment.positionManager, launch, health.fees, blockNumber, initial.timestamp)
       : { status: "unknown", reason: "The optional vault registry could not be verified at this block." };
   }
-  if (!sameHex(initial.hash, (await exactBlock(rpc, blockNumber)).hash)) throw new Error("Pool state changed branches during verification");
+  await Promise.all([assertBlockUnchanged(rpc, initial, blockNumber), assertBlockUnchanged(rpc, opening, blockNumber)]);
   return {
     sqrtPriceX96: sqrtPriceX96.toString(), tick, protocolFee, lpFee, ...positionState, totalSupply: totalSupply.toString(),
     ...(health ? { health } : {}),
-    launchEvidence: launchEvidence(launch),
+    launchEvidence: launchEvidence(launch, opening),
     evidence: {
       ...poolIdentity(launch), blockNumber: blockNumber.toString(), blockHash: initial.hash,
-      timestampUnixSeconds: initial.timestamp.toString(), freshness: "observed_at_chain_head", finality: "local_chain_observed",
+      timestampUnixSeconds: initial.timestamp.toString(), freshness: "observed_at_chain_head", ...launchpadFinalityEvidence(initial),
     },
   };
 }
@@ -183,44 +217,65 @@ function makeChecks(launch: NewLaunchRecord, state?: Awaited<ReturnType<typeof r
 }
 
 async function readActivity(rpc: PublicClient, launch: NewLaunchRecord, limit: number, cursor: Cursor | undefined) {
-  const head = await rpc.getBlockNumber();
+  const head = await rpc.getBlockNumber({ cacheTime: 0 });
   const anchor = cursor?.anchor ?? head;
-  if (anchor > head || anchor < BigInt(launch.blockNumber)
-    || (cursor?.poolId && !launch.poolId.toLowerCase().startsWith(cursor.poolId))) throw new Error("Activity cursor expired or belongs to another pool");
-  const anchorBlock = await exactBlock(rpc, anchor);
-  if (cursor?.anchorHash && !anchorBlock.hash.toLowerCase().startsWith(cursor.anchorHash)) throw new Error("Activity cursor was reorganized");
-  await assertLaunchCanonical(rpc, launch);
+  const anchorBlock = await readLaunchpadBlock(rpc, anchor, head);
+  if (cursor?.binding && cursor.binding !== activityCursorBinding(launch, anchorBlock.hash)) throw new Error("Activity cursor expired or belongs to another pool");
+  if (anchor < BigInt(launch.blockNumber)) throw new Error("Activity anchor precedes the launch");
+  const opening = await assertLaunchCanonical(rpc, launch, head);
+  if (anchor === opening.blockNumber && !sameHex(anchorBlock.hash, opening.hash)) throw new Error("Activity and launch block disagree");
   const floor = anchor > BigInt(launch.blockNumber) + 127n ? anchor - 127n : BigInt(launch.blockNumber);
   const toBlock = cursor?.blockNumber ?? anchor;
   if (toBlock > anchor || toBlock < floor) throw new Error("Activity cursor is outside the available range");
   const logs = await rpc.getLogs({ address: launch.poolManager, event: swapEvent, args: { id: launch.poolId }, strict: true, fromBlock: floor, toBlock });
-  const events = logs.flatMap((log) => {
+  if (logs.length > MAX_ACTIVITY_LOGS) throw new Error("RPC exceeded bounded activity coverage");
+  const events = logs.map((log) => {
     const { args, blockNumber, blockHash, transactionHash, logIndex } = log;
-    if (log.removed || blockNumber === null || !blockHash || !transactionHash || logIndex === null || !sameHex(log.address, launch.poolManager)
+    if (log.removed || blockNumber === null || !blockHash || !isHash(blockHash) || !transactionHash || !isHash(transactionHash)
+      || logIndex === null || !Number.isSafeInteger(logIndex) || logIndex < 0 || !sameHex(log.address, launch.poolManager)
       || !sameHex(args.id, launch.poolId) || blockNumber < floor || blockNumber > toBlock) {
       throw new Error("RPC returned activity outside the requested pool or range");
     }
-    if (cursor && blockNumber === cursor.blockNumber && logIndex >= cursor.logIndex) return [];
-    return [{ type: "swap" as const, blockNumber: blockNumber.toString(), blockHash, transactionHash, logIndex,
-      amount0: args.amount0.toString(), amount1: args.amount1.toString(), sqrtPriceX96: args.sqrtPriceX96.toString(), tick: args.tick, fee: args.fee }];
-  }).sort((a, b) => Number(b.blockNumber) - Number(a.blockNumber) || b.logIndex - a.logIndex);
-  const unique = [...new Map(events.map((event) => [`${event.transactionHash}:${event.logIndex}`, event])).values()];
+    return { type: "swap" as const, blockNumber: blockNumber.toString(), blockHash: blockHash.toLowerCase(), transactionHash: transactionHash.toLowerCase(), logIndex,
+      amount0: args.amount0.toString(), amount1: args.amount1.toString(), sqrtPriceX96: args.sqrtPriceX96.toString(), tick: args.tick, fee: args.fee };
+  });
+  const byPosition = new Map<string, typeof events[number]>();
+  const byTransactionLog = new Map<string, string>();
+  const blockHashes = new Map<string, string>();
+  for (const event of events) {
+    const position = `${event.blockNumber}:${event.logIndex}`;
+    const identity = `${event.transactionHash}:${event.logIndex}`;
+    const previous = byPosition.get(position);
+    const previousHash = blockHashes.get(event.blockNumber);
+    if ((previousHash && previousHash !== event.blockHash) || (previous && JSON.stringify(previous) !== JSON.stringify(event))
+      || (byTransactionLog.has(identity) && byTransactionLog.get(identity) !== position)) throw new Error("RPC returned contradictory activity logs");
+    blockHashes.set(event.blockNumber, event.blockHash);
+    byPosition.set(position, event);
+    byTransactionLog.set(identity, position);
+  }
+  const unique = [...byPosition.values()]
+    .filter((event) => !cursor || event.blockNumber !== cursor.blockNumber.toString() || event.logIndex < cursor.logIndex)
+    .sort((a, b) => Number(b.blockNumber) - Number(a.blockNumber) || b.logIndex - a.logIndex);
   const page = unique.slice(0, limit);
-  const blocks = new Map([...new Set(page.map((event) => event.blockNumber))].map((number) => [number, exactBlock(rpc, BigInt(number))]));
+  const blocks = new Map([...new Set(page.map((event) => event.blockNumber))].map((number) => [number, readLaunchpadBlock(rpc, BigInt(number), head)]));
   const activity = await Promise.all(page.map(async (event) => {
     const block = await blocks.get(event.blockNumber);
-    if (!block || !sameHex(block.hash, event.blockHash)) throw new Error("Pool activity is no longer canonical");
+    if (!block || !sameHex(block.hash, event.blockHash)
+      || (block.blockNumber === anchor && !sameHex(block.hash, anchorBlock.hash))
+      || (block.blockNumber === opening.blockNumber && !sameHex(block.hash, opening.hash))) throw new Error("Pool activity is no longer canonical");
     return { ...event, timestampUnixSeconds: block.timestamp.toString() };
   }));
-  if (!sameHex(anchorBlock.hash, (await exactBlock(rpc, anchor)).hash)) throw new Error("Activity branch changed during verification");
+  const observedBlocks = new Map([[anchorBlock.blockNumber, anchorBlock], [opening.blockNumber, opening]]);
+  for (const observed of await Promise.all(blocks.values())) observedBlocks.set(observed.blockNumber, observed);
+  await Promise.all([...observedBlocks.values()].map((block) => assertBlockUnchanged(rpc, block, head)));
   return {
     activity,
-    nextCursor: unique.length > limit ? encodeCursor(page[page.length - 1], { blockNumber: anchor, poolId: launch.poolId, hash: anchorBlock.hash }) : null,
-    launchEvidence: launchEvidence(launch),
+    nextCursor: unique.length > limit ? encodeCursor(page[page.length - 1], anchorBlock, launch) : null,
+    launchEvidence: launchEvidence(launch, opening),
     evidence: {
       ...poolIdentity(launch), blockNumber: anchor.toString(), blockHash: anchorBlock.hash,
       timestampUnixSeconds: anchorBlock.timestamp.toString(), fromBlock: floor.toString(), freshness: "observed_at_anchor",
-      coverage: "bounded_pool_swap_events", finality: "local_chain_observed",
+      coverage: "bounded_pool_swap_events", ...launchpadFinalityEvidence(anchorBlock),
     },
   };
 }
@@ -246,34 +301,47 @@ export async function readLaunchpadPublicData(input: LaunchpadPublicInput, servi
   try {
     const config = services.config();
     if (!config || config.deployment.chainId !== chainId) return { status: "disabled", reason: "Public launch data is unavailable for this chain." };
-    store = new LaunchpadStore(config.databasePath, config.scope);
+    const activeStore = store = new LaunchpadStore(config.databasePath, config.scope);
     const retryAfterSeconds = store.consumePublicQuota(operation, budgets[operation]);
     if (retryAfterSeconds) return { status: "rate_limited", reason: "Launch data read limit reached.", retryAfterSeconds };
     const pageSize = limit ?? 10;
+    const readRpc = async () => {
+      const rpc = await services.rpc(config);
+      if (await rpc.getChainId() !== chainId) throw new Error("Launch RPC returned the wrong chain");
+      return rpc;
+    };
+    const verifyPage = async (checkpoint: LaunchCheckpoint | undefined, launches: NewLaunchRecord[], rpc?: PublicClient) => {
+      const page = checkpoint || launches.length ? await verifyIndexPage(rpc ?? await readRpc(), config, checkpoint, launches) : undefined;
+      const latest = activeStore.checkpoint();
+      if (latest?.number !== checkpoint?.number || latest?.hash !== checkpoint?.hash) throw new Error("Launch index changed during verification");
+      return page;
+    };
     if (isList) {
       const checkpoint = store.checkpoint();
       const rows = store.readPage(pageSize + 1, pageCursor);
       const launches = rows.slice(0, pageSize);
-      if (checkpoint || launches.length) await verifyIndexPage(await services.rpc(config), config, checkpoint, launches);
-      const latest = store.checkpoint();
-      if (latest?.number !== checkpoint?.number || latest?.hash !== checkpoint?.hash) throw new Error("Launch index changed during verification");
-      return { status: store.status(), data: { chainId, launches, nextCursor: rows.length > pageSize ? encodeCursor(launches[launches.length - 1]) : null, evidence: indexEvidence(store, checkpoint) } };
+      const page = await verifyPage(checkpoint, launches);
+      const evidence = indexEvidence(config, store, page);
+      return { status: evidence.freshness === "caught_up" ? "ready" : "delayed",
+        data: { chainId, launches, nextCursor: rows.length > pageSize ? encodeCursor(launches[launches.length - 1]) : null, evidence } };
     }
 
     const launch = store.read({ token: getAddress(token!) })[0];
     if (!launch) {
-      if (store.status() !== "ready") return { status: "delayed", reason: "The launch index is catching up." };
-      const checkpoint = store.checkpoint();
-      if (checkpoint) await verifyIndexPage(await services.rpc(config), config, checkpoint, []);
-      return { status: "not_found", reason: "No verified launch for this token." };
+      const page = await verifyPage(store.checkpoint(), []);
+      const evidence = indexEvidence(config, store, page);
+      if (evidence.freshness !== "caught_up") return { status: "delayed", reason: "The launch index is catching up.", evidence };
+      return { status: "not_found", reason: "No verified launch for this token.", evidence };
     }
 
     try {
       assertPoolIdentity(config, launch);
-      const rpc = await services.rpc(config);
+      const rpc = await readRpc();
       if (operation === "get_launch") {
-        await assertLaunchCanonical(rpc, launch);
-        return { status: store.status(), data: { launch, evidence: launchEvidence(launch), index: indexEvidence(store, store.checkpoint()) } };
+        const page = await verifyPage(store.checkpoint(), [launch], rpc);
+        const block = page?.blocks.get(BigInt(launch.blockNumber));
+        if (!block) throw new Error("Canonical launch block unavailable");
+        return { status: store.status(), data: { launch, evidence: launchEvidence(launch, block), index: indexEvidence(config, store, page) } };
       }
       if (isActivity) return { status: "ready", data: await readActivity(rpc, launch, pageSize, pageCursor) };
       const state = await readPoolState(rpc, config, launch, operation === "get_launch_checks");
@@ -283,13 +351,13 @@ export async function readLaunchpadPublicData(input: LaunchpadPublicInput, servi
             initializationGuardRuntimeHash: config.guard?.runtimeHash ?? null } } };
     } catch {
       return {
-        status: "delayed", reason: "Current canonical chain evidence is unavailable.",
+        status: "delayed", reason: "Current canonical chain evidence is unavailable.", evidence: launchpadFinalityEvidence(),
         ...(operation === "get_launch_checks" ? { data: { checks: makeChecks(launch), health: makeLaunchHealth(launch),
           evidence: { ...launchEvidence(launch), freshness: "unavailable" } } } : {}),
       };
     }
   } catch {
-    return { status: "delayed", reason: "Launch data is temporarily unavailable." };
+    return { status: "delayed", reason: "Launch data is temporarily unavailable.", evidence: launchpadFinalityEvidence() };
   } finally {
     store?.close();
   }

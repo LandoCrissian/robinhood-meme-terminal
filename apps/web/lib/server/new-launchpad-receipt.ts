@@ -6,6 +6,7 @@ import {
   launchCreatedEvent, launchFeeLedgerAbi, launchPoolId, longevityPolicyCommittedEvent,
   type LaunchFeePolicy, type NewLaunchDeployment, type NewLaunchRecord,
 } from "../launchpad/launch-record";
+import { boundedReceiptLogs } from "../launchpad/receipt-logs";
 
 const initialize = parseAbiItem("event Initialize(bytes32 indexed id, address indexed currency0, address indexed currency1, uint24 fee, int24 tickSpacing, address hooks, uint160 sqrtPriceX96, int24 tick)");
 const modifyLiquidity = parseAbiItem("event ModifyLiquidity(bytes32 indexed id, address indexed sender, int24 tickLower, int24 tickUpper, int256 liquidityDelta, bytes32 salt)");
@@ -18,7 +19,11 @@ const positionAbi = parseAbi([
 
 export class InvalidLaunchReceipt extends Error {}
 
-export type LaunchReceiptBinding = { creator: Address; intentId: Hash };
+export type LaunchReceiptBinding = {
+  creator?: Address;
+  intentId?: Hash;
+  event?: Pick<Log, "address" | "data" | "topics" | "logIndex">;
+};
 
 export function sameHex(a: string | null | undefined, b: string | null | undefined): boolean {
   return !!a && !!b && a.toLowerCase() === b.toLowerCase();
@@ -30,9 +35,10 @@ export function sameLaunchFeePolicy(expected: LaunchFeePolicy, actual: LaunchFee
     && expected.treasuryBps === actual.treasuryBps && expected.reserveBps === actual.reserveBps;
 }
 
-export async function readLaunchFeePolicy(rpc: PublicClient, factory: Address, token: Address, blockNumber: bigint) {
+export async function readLaunchFeePolicy(rpc: PublicClient, factory: Address, token: Address, block: { blockHash: Hash; requireCanonical: true }) {
   const [creator, treasury, reserve, creatorBps, treasuryBps, reserveBps] = await rpc.readContract({
-    address: factory, abi: launchFeeLedgerAbi, functionName: "feePolicy", args: [token], blockNumber,
+    address: factory, abi: launchFeeLedgerAbi, functionName: "feePolicy", args: [token],
+    ...block,
   });
   return { creator, treasury, reserve, creatorBps, treasuryBps, reserveBps };
 }
@@ -73,16 +79,26 @@ export function projectLaunchReceipt(
   if (receipt.status !== "success" || !sameHex(receipt.transactionHash, requestedHash)) {
     throw new InvalidLaunchReceipt("The launch transaction did not succeed");
   }
-  const receiptLogs = receipt.logs.filter((log) => sameHex(log.transactionHash, receipt.transactionHash)
-    && sameHex(log.blockHash, receipt.blockHash) && log.blockNumber === receipt.blockNumber);
+  let receiptLogs: TransactionReceipt["logs"];
+  try { receiptLogs = boundedReceiptLogs(receipt); }
+  catch { throw new InvalidLaunchReceipt("The launch receipt contains malformed or unbound logs"); }
   const canonicalEvents = decode(launchCreatedEvent, deployment.factory, receiptLogs);
   if (canonicalEvents.length !== 1) throw new InvalidLaunchReceipt("Expected one canonical factory launch event");
   const [{ args, logIndex }] = canonicalEvents;
   if (!args) throw new InvalidLaunchReceipt("Invalid factory launch event");
+  if (binding?.event) {
+    const observed = binding.event;
+    const raw = receiptLogs.find((log) => log.logIndex === logIndex);
+    if (!raw || observed.logIndex !== logIndex || !sameHex(observed.address, raw.address)
+      || !sameHex(observed.data, raw.data) || observed.topics.length !== raw.topics.length
+      || observed.topics.some((topic, index) => !sameHex(topic, raw.topics[index]))) {
+      throw new InvalidLaunchReceipt("The indexed event does not match the canonical receipt log");
+    }
+  }
   const { creator, token, poolId, intentId, poolKey, positionTokenId, sqrtPriceX96,
     tickLower, tickUpper, liquidity, amount0, amount1, totalSupply, name, symbol, projectURI } = args;
 
-  if (sameHex(creator, zeroAddress) || sameHex(token, zeroAddress) || (binding &&
+  if (sameHex(creator, zeroAddress) || sameHex(token, zeroAddress) || ((binding?.creator || binding?.intentId) &&
     (!sameHex(creator, binding.creator) || !sameHex(intentId, binding.intentId)))) {
     throw new InvalidLaunchReceipt("The launch does not match the reviewed creator and intent");
   }
@@ -152,13 +168,19 @@ export async function verifyLaunchReceipt(
   transactionHash: Hash,
   binding?: LaunchReceiptBinding,
 ): Promise<NewLaunchRecord> {
+  if (await rpc.getChainId() !== deployment.chainId) throw new Error("Launch receipt RPC is on a different network");
   const receipt = await rpc.getTransactionReceipt({ hash: transactionHash });
   const record = projectLaunchReceipt(deployment, receipt, transactionHash, binding);
-  const position = { address: deployment.positionManager, abi: positionAbi, args: [BigInt(record.positionTokenId)] as const, blockNumber: receipt.blockNumber };
+  const blockBefore = await rpc.getBlock({ blockNumber: receipt.blockNumber, includeTransactions: false });
+  if (blockBefore.number !== receipt.blockNumber || !sameHex(receipt.blockHash, blockBefore.hash)) {
+    throw new Error("Launch receipt block is no longer canonical");
+  }
+  const historicalBlock = { blockHash: receipt.blockHash, requireCanonical: true } as const;
+  const position = { address: deployment.positionManager, abi: positionAbi, args: [BigInt(record.positionTokenId)] as const, ...historicalBlock };
   const [owner, liquidity, feePolicy] = await Promise.all([
     rpc.readContract({ ...position, functionName: "ownerOf" }),
     rpc.readContract({ ...position, functionName: "getPositionLiquidity" }),
-    record.feePolicy ? readLaunchFeePolicy(rpc, deployment.factory, record.token, receipt.blockNumber) : undefined,
+    record.feePolicy ? readLaunchFeePolicy(rpc, deployment.factory, record.token, historicalBlock) : undefined,
   ]);
   const canonicalBlock = await rpc.getBlock({ blockNumber: receipt.blockNumber, includeTransactions: false });
   if (canonicalBlock.number !== receipt.blockNumber || !sameHex(receipt.blockHash, canonicalBlock.hash)) {

@@ -4,6 +4,8 @@ import {
   type Address, type Hex, type PublicClient, type TransactionReceipt,
 } from "viem";
 import { launchPoolId, launchPoolKeyParameter, type LaunchPoolKey, type NewLaunchRecord } from "./launch-record";
+import { NativeSettlementPending, verifyNativeSettlement, type NativeSettlementOptions } from "./native-settlement";
+import { boundedReceiptLogs } from "./receipt-logs";
 import { launchpadRouterPins, launchpadRouterVersion, type LaunchpadRouterVersion } from "./router-pins";
 import type { BoundWallet, LaunchDeployment, LaunchRequest } from "./transactions";
 
@@ -42,7 +44,7 @@ const exactInput212 = [{
 }] as const;
 
 export function launchPublicClient(deployment: LaunchDeployment) {
-  return createPublicClient({ transport: http(deployment.rpcUrl, { timeout: 12_000, retryCount: 1 }) });
+  return createPublicClient({ transport: http(deployment.rpcUrl, { timeout: 12_000, retryCount: 1, maxResponseBodySize: 1024 * 1024 }) });
 }
 
 export function priceInWei(sqrtPriceX96: bigint) {
@@ -215,16 +217,9 @@ export async function boundReceipt(client: PublicClient, hash: Hex, request: Lau
   return receipt;
 }
 
-type Trace = { type?: string; from?: string; to?: string; value?: string; error?: string; calls?: Trace[] };
-function nativePayments(call: Trace, from: Address, to: Address): bigint {
-  if (call.error) return 0n;
-  const payment = call.type?.toUpperCase() === "CALL" && sameAddress(call.from ?? null, from)
-    && sameAddress(call.to ?? null, to) && call.value ? BigInt(call.value) : 0n;
-  return payment + (call.calls ?? []).reduce((sum, child) => sum + nativePayments(child, from, to), 0n);
-}
-
 export async function verifySwap(
   client: PublicClient, receipt: TransactionReceipt, deployment: LaunchDeployment, record: NewLaunchRecord, request: LaunchRequest,
+  options?: NativeSettlementOptions,
 ) {
   assertLaunchPool(deployment, record);
   const buy = request.kind === "buy";
@@ -240,32 +235,32 @@ export async function verifySwap(
     || request.data !== encodeSwap(version, record.poolKey, buy, amountIn, minimumOut, request.deadline)) {
     throw new Error("The transaction does not match the reviewed pool swap.");
   }
-  const routerCode = await client.getCode({ address: request.to, blockNumber: receipt.blockNumber });
+  const routerCode = await client.getCode({ address: request.to, blockHash: receipt.blockHash, requireCanonical: true });
   if (!routerCode || keccak256(routerCode) !== launchpadRouterPins[version].runtimeHash) {
     throw new Error("The receipt router runtime does not match its pinned hash.");
   }
-  const logs = receipt.logs.filter((log) => sameAddress(log.address, deployment.poolManager));
+  const receiptLogs = boundedReceiptLogs(receipt);
+  const logs = receiptLogs.filter((log) => sameAddress(log.address, deployment.poolManager));
   const swaps = parseEventLogs({ abi: [swapEvent], logs }).filter(({ args }) =>
     args.id === record.poolId && sameAddress(args.sender, request.to));
-  const swap = swaps[0]?.args;
-  const input = buy ? -(swap?.amount0 ?? 0n) : -(swap?.amount1 ?? 0n);
-  const output = buy ? (swap?.amount1 ?? 0n) : (swap?.amount0 ?? 0n);
+  const swap = swaps[0];
+  const input = buy ? -(swap?.args.amount0 ?? 0n) : -(swap?.args.amount1 ?? 0n);
+  const output = buy ? (swap?.args.amount1 ?? 0n) : (swap?.args.amount0 ?? 0n);
   if (swaps.length !== 1 || input !== amountIn || output < minimumOut) {
     throw new Error("The receipt does not prove the reviewed pool swap.");
   }
   const transfers = parseEventLogs({ abi: erc20Abi, eventName: "Transfer",
-    logs: receipt.logs.filter((log) => sameAddress(log.address, record.token)) });
-  const exactTokenTransfer = transfers.some(({ args }) => buy
-    ? sameAddress(args.from, deployment.poolManager) && sameAddress(args.to, request.from) && args.value === output
-    : sameAddress(args.from, request.from) && sameAddress(args.to, deployment.poolManager) && args.value === input);
-  if (!exactTokenTransfer) throw new Error("The receipt does not prove the token transfer.");
+    logs: receiptLogs.filter((log) => sameAddress(log.address, record.token)) });
+  const tokenPayments = transfers.filter(({ args }) => buy
+    ? sameAddress(args.from, deployment.poolManager) && sameAddress(args.to, request.from)
+    : sameAddress(args.from, request.from) && sameAddress(args.to, deployment.poolManager));
+  if (tokenPayments.length !== 1 || tokenPayments[0].args.value !== (buy ? output : input)) {
+    throw new Error("The receipt does not prove the token transfer.");
+  }
   if (!buy) {
-    const trace = await client.request({
-      method: "debug_traceTransaction", params: [receipt.transactionHash, { tracer: "callTracer" }],
-    } as never) as Trace;
-    if (!trace || nativePayments(trace, deployment.poolManager, request.from) !== output) {
-      throw new Error("The exact native ETH payout is not verified yet.");
-    }
+    if (request.chainId !== 31337 && !options?.corroboration) throw new NativeSettlementPending("unavailable");
+    await verifyNativeSettlement(client, receipt, record, request, swap.logIndex, output,
+      (rpc, hash) => boundReceipt(rpc, hash, request), options);
   }
   return output;
 }

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { isHash, parseAbiItem, parseEventLogs, type Address, type Hex, type PublicClient } from "viem";
 import { boundReceipt, displayAmount, verifySwap } from "../../../lib/launchpad/direct-v4";
 import type { NewLaunchRecord } from "../../../lib/launchpad/launch-record";
+import { NativeSettlementPending } from "../../../lib/launchpad/native-settlement";
 import {
   readPendingRequest, replacePendingRequest, submitReviewedRequest, walletMessage,
   type LaunchRequest, type PendingRequest,
@@ -158,7 +159,10 @@ export function useLaunchTransaction(record?: NewLaunchRecord) {
       setError("");
       setMessage("");
     } catch (cause) {
-      if (isPendingReceipt(cause)) setMessage("Transaction pending. Waiting for a receipt…");
+      if (cause instanceof NativeSettlementPending) {
+        setError("");
+        setMessage(cause.message);
+      } else if (isPendingReceipt(cause)) setMessage("Transaction pending. Waiting for a receipt…");
       else setError(walletMessage(cause));
     } finally {
       checking.current = false;
