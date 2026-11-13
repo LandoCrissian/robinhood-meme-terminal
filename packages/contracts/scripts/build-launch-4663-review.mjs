@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
@@ -113,7 +113,7 @@ function describeBytecode(bytecode) {
   };
 }
 
-function compile(solc, sources) {
+function compile(solc, sources, includeTemplates = false) {
   const input = JSON.stringify({ language: "Solidity", settings, sources });
   const output = JSON.parse(execFileSync(solc, ["--standard-json", "--no-import-callback"], {
     cwd: scriptDir,
@@ -128,6 +128,7 @@ function compile(solc, sources) {
     throw new Error(errors.map(({ formattedMessage }) => formattedMessage).join("\n"));
   }
   const artifacts = {};
+  const templates = {};
   for (const [name, file] of Object.entries(contracts)) {
     const artifact = output.contracts["src/" + file + ".sol"][name];
     artifacts[name] = {
@@ -138,8 +139,16 @@ function compile(solc, sources) {
         immutableReferences: artifact.evm.deployedBytecode.immutableReferences ?? {},
       },
     };
+    if (includeTemplates) {
+      templates[name] = {
+        abi: artifact.abi,
+        creationBytecode: "0x" + artifact.evm.bytecode.object,
+        runtimeTemplate: "0x" + artifact.evm.deployedBytecode.object,
+        immutableReferences: artifacts[name].runtimeTemplate.immutableReferences,
+      };
+    }
   }
-  return { inputSha256: sha256(input), artifacts };
+  return { summary: { inputSha256: sha256(input), artifacts }, templates };
 }
 
 function checkComparison(baseline, target) {
@@ -164,27 +173,21 @@ function checkComparison(baseline, target) {
   }
 }
 
-function main() {
-  const { values } = parseArgs({
-    options: { solc: { type: "string" }, lib: { type: "string" } },
-  });
-  if (!values.solc) {
-    throw new Error("Usage: node packages/contracts/scripts/build-launch-4663-review.mjs --solc <native-solc-path> [--lib <pinned-lib-directory>]");
-  }
+export function buildLaunch4663Review({ solc: compiler, lib: dependencyDirectory }, includeTemplates = false) {
   verifyFrozenSource();
-  const solc = resolve(values.solc);
+  const solc = resolve(compiler);
   const compilerTarget = process.platform + "-" + process.arch;
   const executableSha256 = sha256(readFileSync(solc));
   if (compilerSha256[compilerTarget] !== executableSha256) {
     throw new Error("Expected an official native solc " + compilerVersion + " binary for " + compilerTarget);
   }
-  const lib = values.lib ? resolve(values.lib) : resolve(scriptDir, "../lib");
+  const lib = dependencyDirectory ? resolve(dependencyDirectory) : resolve(scriptDir, "../lib");
   const local = readSources(lib);
   const target = targetSources(local);
-  const baseline = compile(solc, local);
-  const review = compile(solc, target);
+  const { summary: baseline } = compile(solc, local);
+  const { summary: review, templates } = compile(solc, target, includeTemplates);
   checkComparison(baseline, review);
-  console.log(JSON.stringify({
+  const manifest = {
     schema: 1,
     purpose: "offline-independent-review",
     frozenSource: inputs.frozenSource,
@@ -211,12 +214,22 @@ function main() {
         reviewSha256: sha256(target[file].content),
       })),
     },
-  }, null, 2));
+  };
+  return { manifest, templates };
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(error.message);
-  process.exitCode = 1;
+if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
+  try {
+    const { values } = parseArgs({
+      options: { solc: { type: "string" }, lib: { type: "string" } },
+    });
+    if (!values.solc) {
+      throw new Error("Usage: node packages/contracts/scripts/build-launch-4663-review.mjs --solc <native-solc-path> [--lib <pinned-lib-directory>]");
+    }
+    const { manifest } = buildLaunch4663Review(values);
+    console.log(JSON.stringify(manifest, null, 2));
+  } catch (error) {
+    console.error(error.message);
+    process.exitCode = 1;
+  }
 }
