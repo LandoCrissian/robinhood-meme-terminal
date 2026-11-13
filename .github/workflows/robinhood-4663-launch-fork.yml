@@ -12,6 +12,7 @@ on:
       - "apps/web/app/mcp/**"
       - "apps/web/lib/launchpad/**"
       - "apps/web/lib/server/new-launchpad-*.ts"
+      - "apps/web/lib/server/launchpad-sqlite-backup.ts"
       - "pnpm-lock.yaml"
   workflow_dispatch:
     inputs:

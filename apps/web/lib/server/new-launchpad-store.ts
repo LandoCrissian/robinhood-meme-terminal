@@ -1,10 +1,9 @@
-import { createHash, randomUUID } from "node:crypto";
-import { constants, copyFileSync, createReadStream, existsSync, fsyncSync, linkSync, lstatSync, openSync, closeSync, unlinkSync } from "node:fs";
-import { dirname, isAbsolute, join } from "node:path";
-import { backup, DatabaseSync } from "node:sqlite";
+import { isAbsolute } from "node:path";
+import { DatabaseSync } from "node:sqlite";
 import { isDeepStrictEqual } from "node:util";
 import { isAddress, isHash, zeroAddress, type Address, type Hash } from "viem";
 import { launchPoolId, type NewLaunchRecord } from "../launchpad/launch-record";
+import { copyLaunchSnapshot, copyVerifiedLaunchBackup, stageLaunchBackup } from "./launchpad-sqlite-backup";
 
 export type LaunchCheckpoint = { number: bigint; hash: Hash };
 export type LaunchPageCursor = { blockNumber: bigint; logIndex: number };
@@ -26,7 +25,6 @@ const provisionalWindowMs = 30 * 60_000;
 const maximumPending = 128;
 const maximumRecordBytes = 8 * 1024;
 const maximumCheckpoints = 32;
-const maximumBackupBytes = 256 * 1024 * 1024;
 const maximumBlock = 9_000_000_000_000_000n;
 const sameCheckpoint = (left: LaunchCheckpoint | undefined, right: LaunchCheckpoint | undefined) =>
   left?.number === right?.number && left?.hash.toLowerCase() === right?.hash.toLowerCase();
@@ -55,20 +53,6 @@ function requireCheckpoint(checkpoint: LaunchCheckpoint) {
   }
 }
 
-async function fileEvidence(path: string, checkpoint?: LaunchCheckpoint): Promise<LaunchBackup> {
-  const info = lstatSync(path);
-  const { size } = info;
-  if (!info.isFile() || size < 512 || size > maximumBackupBytes) throw new Error("Invalid launch backup file size or type");
-  const digest = createHash("sha256");
-  let bytes = 0;
-  for await (const chunk of createReadStream(path, { end: maximumBackupBytes })) {
-    bytes += chunk.length;
-    digest.update(chunk);
-  }
-  if (bytes !== size || bytes > maximumBackupBytes) throw new Error("Launch backup size changed during verification");
-  return { bytes, sha256: digest.digest("hex"), checkpoint };
-}
-
 function checkedBackup(db: DatabaseSync, scope: string) {
   if (db.prepare("PRAGMA quick_check(1)").get()?.quick_check !== "ok") throw new Error("Launch backup failed SQLite integrity check");
   const row = db.prepare(`SELECT height, hash FROM rmt_new_launch_checkpoints
@@ -81,31 +65,6 @@ function checkedBackup(db: DatabaseSync, scope: string) {
   const checkpoint = { number: BigInt(String(row.height)), hash: row.hash as Hash };
   requireCheckpoint(checkpoint);
   return checkpoint;
-}
-
-async function stageBackup(destination: string, prepare: (staged: string) => Promise<LaunchCheckpoint | undefined>) {
-  if (!isAbsolute(destination) || ["", "-wal", "-shm", "-journal"].some((suffix) => existsSync(destination + suffix))) {
-    throw new Error("Launch backup destination must be a fresh absolute file without SQLite sidecars");
-  }
-  const staged = join(dirname(destination), `.rmt-launch-backup-${randomUUID()}.sqlite`);
-  closeSync(openSync(staged, "wx", 0o600));
-  try {
-    const checkpoint = await prepare(staged);
-    const result = await fileEvidence(staged, checkpoint);
-    const file = openSync(staged, "r+");
-    try { fsyncSync(file); } finally { closeSync(file); }
-    // Same-directory hard link publishes the verified snapshot atomically and never overwrites a file.
-    linkSync(staged, destination);
-    if (process.platform !== "win32") {
-      const directory = openSync(dirname(destination), "r");
-      try { fsyncSync(directory); } finally { closeSync(directory); }
-    }
-    return result;
-  } finally {
-    for (const path of [staged, staged + "-wal", staged + "-shm", staged + "-journal"]) {
-      if (existsSync(path)) unlinkSync(path);
-    }
-  }
 }
 
 export class LaunchpadStore {
@@ -179,17 +138,8 @@ export class LaunchpadStore {
 
   backup(destination: string): Promise<LaunchBackup> {
     if (!isAbsolute(this.path)) throw new Error("Launch backup requires a file-backed database with an absolute path");
-    return stageBackup(destination, async (staged) => {
-      const source = new DatabaseSync(this.path, { readOnly: true });
-      try {
-        source.exec("PRAGMA busy_timeout=2500; PRAGMA trusted_schema=OFF; BEGIN");
-        const pages = Number(source.prepare("PRAGMA page_count").get()?.page_count);
-        const pageSize = Number(source.prepare("PRAGMA page_size").get()?.page_size);
-        if (!Number.isSafeInteger(pages * pageSize) || pages * pageSize > maximumBackupBytes) {
-          throw new Error("Launch database exceeds the backup size limit");
-        }
-        await backup(source, staged);
-      } finally { source.close(); }
+    return stageLaunchBackup(destination, async (staged) => {
+      await copyLaunchSnapshot(this.path, staged);
       const snapshot = new DatabaseSync(staged);
       try {
         snapshot.exec("PRAGMA trusted_schema=OFF; PRAGMA journal_mode=DELETE; PRAGMA synchronous=FULL");
@@ -200,15 +150,8 @@ export class LaunchpadStore {
 
   static restore(source: string, destination: string, scope: string, expectedSha256: string): Promise<LaunchBackup> {
     launchpadScopeIdentity(scope);
-    if (!isAbsolute(source) || !/^[a-f0-9]{64}$/i.test(expectedSha256)) {
-      throw new Error("Launch restore requires an absolute source and its recorded SHA-256");
-    }
-    return stageBackup(destination, async (staged) => {
-      const sourceFile = lstatSync(source);
-      if (!sourceFile.isFile() || sourceFile.size > maximumBackupBytes) throw new Error("Invalid launch backup file size or type");
-      // The checksum authenticates the staged copy against the operator's recorded backup, without trusting sidecars.
-      copyFileSync(source, staged, constants.COPYFILE_FICLONE);
-      if ((await fileEvidence(staged)).sha256 !== expectedSha256.toLowerCase()) throw new Error("Launch backup SHA-256 mismatch");
+    return stageLaunchBackup(destination, async (staged) => {
+      await copyVerifiedLaunchBackup(source, staged, expectedSha256);
       const snapshot = new DatabaseSync(staged);
       try {
         snapshot.exec("PRAGMA trusted_schema=OFF; PRAGMA journal_mode=DELETE; PRAGMA synchronous=FULL");

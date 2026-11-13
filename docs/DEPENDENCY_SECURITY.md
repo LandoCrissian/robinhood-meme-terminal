@@ -13,7 +13,22 @@ RMT installs production dependencies from the committed `pnpm-lock.yaml` with pn
 - The web app pins the modular Firebase SDK to `12.16.0`. Firebase is loaded only when the complete public web configuration is present; Firestore access remains restricted by the committed per-user rules.
 - Firebase rules are exercised against the local Firestore emulator with pinned `firebase-tools@15.24.0` and `@firebase/rules-unit-testing@5.0.1`. CI supplies Temurin Java 21 for the emulator; these tools are development-only and are not included in the production web bundle.
 
-## Accepted moderate wallet-connector advisory
+## Task 022 dependency review
+
+The exact #589 lockfile reported nine moderate and two low production advisories. The Task 022 maintenance commit updates patched versions using pnpm 10.12.1 and retains the pinned Solidity, Uniswap and OpenZeppelin inputs. The production dependency audit on the regenerated lockfile returned zero known vulnerabilities.
+
+| Dependency and patched version | Advisory disposition and RMT reachability |
+| --- | --- |
+| `hono` 4.13.16 | [Mount path](https://github.com/advisories/GHSA-4m76-xfj5-7975), [RegExpRouter middleware](https://github.com/advisories/GHSA-h7mg-cq63-vhpq), [CSS interpolation](https://github.com/advisories/GHSA-3gg2-335m-rxc6), [text/ping CSRF](https://github.com/advisories/GHSA-46wx-v44x-9hh2), [multipart validation](https://github.com/advisories/GHSA-4h7h-rv7c-7m2v). The public-read dependency graph includes the MCP SDK. The Next route uses the SDK Web Standard transport, its own origin boundary and bounded JSON parsing. It does not call the affected Hono routing, HTML or form helpers. |
+| `@hono/node-server` 2.1.6 | [WebSocket reset](https://github.com/advisories/GHSA-qv5m-9pm6-hqp3), [backslash path](https://github.com/advisories/GHSA-jpvv-r467-5p4w). Present through the MCP SDK, within its declared 2.x range. Next serves the reviewed MCP route through Web Standard transport, without this adapter or its upgrade path. |
+| `pino-pretty > fast-copy` 3.1.0 | [Deep-copy stack exhaustion](https://github.com/advisories/GHSA-jggr-w7fw-pc2j). Same major and upstream range. Reaches the shared Privy logger graph. The injected curve wallet and its transaction journal do not use the logger to establish account or settlement. |
+| `firebase-admin > @fastify/busboy` 3.2.2 | [Multipart field injection](https://github.com/advisories/GHSA-gxm5-99cw-xjw9). Same major and upstream range. Firebase Admin is shared server infrastructure. The curve reads and wallet path do not use that multipart parser. |
+| `@google-cloud/storage > fast-xml-parser` 5.12.0 | [Unterminated XML stop-node parsing](https://github.com/advisories/GHSA-474x-hrwr-fgx4). Same major and upstream range. The path is through Firebase Admin's Cloud Storage dependency. The curve index, wallet and read endpoints do not parse external XML. |
+| `nft-marketplace-indexer > tsx` 4.23.0 | [esbuild development server](https://github.com/advisories/GHSA-67mh-4wv8-2f99). Aligns the worker with the already resolved workspace `tsx` 4.23.0 and removes esbuild 0.23.1 from the lock. The affected development server does not serve the launchpad. The worker's exact runner pin and assertion move together. |
+
+The web build, wallet/recovery regressions, MCP transport tests, and indexer unit/build and schema coverage are the acceptance surfaces for this dependency-only commit. Production dependency review remains tied to the exact lockfile and a current registry advisory snapshot.
+
+## Historical moderate wallet-connector advisory
 
 The production audit on 2026-07-16 reports two paths to the same moderate `uuid` advisory, [GHSA-w5hq-g745-h8pq](https://github.com/advisories/GHSA-w5hq-g745-h8pq):
 
