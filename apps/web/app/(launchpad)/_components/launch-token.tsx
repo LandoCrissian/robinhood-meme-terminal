@@ -9,7 +9,7 @@ import type { LaunchHealth, NewLaunchRecord } from "../../../lib/launchpad/launc
 import { walletMessage, type LaunchRequest } from "../../../lib/launchpad/transactions";
 import { useTradingTermsAcceptance } from "../../../lib/use-trading-terms";
 import { PriceHistoryChart, type PricePoint } from "../../price-history-chart";
-import { TokenArtwork } from "./launch-directory";
+import { TokenArtwork } from "./token-artwork";
 import { CopyIdentity } from "./launch-shell";
 import { TransactionFeedback, useLaunches, useLaunchTransaction } from "./launch-transactions";
 import { useLaunchClient, useLaunchWallet, WalletConnection } from "./launch-wallet";

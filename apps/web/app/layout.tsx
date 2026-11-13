@@ -5,7 +5,6 @@ import "./brand.css";
 import "./legal.css";
 import "./mobile-polish.css";
 import "./desktop-polish.css";
-import { AppRuntime } from "./app-runtime";
 import {
   RMT_SITE_ALTERNATE_NAME,
   RMT_SITE_DESCRIPTION,
@@ -77,7 +76,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         />
       </head>
       <body>
-        <AppRuntime>{children}</AppRuntime>
+        {children}
       </body>
     </html>
   );

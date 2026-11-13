@@ -7,7 +7,15 @@ on:
       - ".github/scripts/run-curve-review-fork.sh"
       - "packages/contracts/**"
       - "apps/web/**/*curve*"
+      - "apps/web/app/(launchpad)/**"
+      - "apps/web/app/api/launchpad/**"
+      - "apps/web/app/app-runtime.tsx"
+      - "apps/web/app/layout.tsx"
+      - "apps/web/lib/server/launchpad-site-mode*"
+      - "apps/web/middleware.ts"
+      - "package.json"
       - "scripts/visual-qa/rmt-curve-browser.mjs"
+      - "scripts/visual-qa/rmt-launchpad-showcase.mjs"
   workflow_dispatch:
 
 permissions:
@@ -114,6 +122,23 @@ jobs:
             --output "$RUNNER_TEMP/solc-0.8.26"
           chmod 700 "$RUNNER_TEMP/solc-0.8.26"
       - run: pnpm --filter web exec next build
+      - name: Verify the read-only launch website
+        run: |
+          set -euo pipefail
+          export RMT_LAUNCHPAD_SHOWCASE_OUTPUT="$RUNNER_TEMP/launch-showcase-evidence"
+          mkdir "$RMT_LAUNCHPAD_SHOWCASE_OUTPUT"
+          export RMT_LAUNCHPAD_SITE_MODE=showcase RMT_CURVE_ENABLED=true RMT_LAUNCHPAD_ENABLED=true
+          node apps/web/node_modules/next/dist/bin/next start apps/web --hostname 127.0.0.1 --port 3195 > "$RMT_LAUNCHPAD_SHOWCASE_OUTPUT/next.log" 2>&1 &
+          child="$!"
+          trap 'kill "$child" 2>/dev/null || true; wait "$child" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 40); do
+            if curl --fail --silent --max-time 8 http://127.0.0.1:3195/api/launchpad/config | grep -q '"status":"disabled"'; then
+              break
+            fi
+            [[ "$attempt" != 40 ]] || { echo "Read-only preview did not become ready." >&2; exit 1; }
+            sleep 1
+          done
+          pnpm test:launchpad-showcase
       - name: Exercise the curve wallet flow on loopback
         run: |
           set -euo pipefail
@@ -169,3 +194,8 @@ jobs:
         with:
           name: curve-v1-browser-${{ github.event.pull_request.head.sha || github.sha }}
           path: ${{ runner.temp }}/curve-browser-evidence
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c64a875d1fc6a0a
+        if: always()
+        with:
+          name: launch-showcase-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ runner.temp }}/launch-showcase-evidence

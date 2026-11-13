@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { readVNextReleaseReadiness, type VNextReleaseEnvironment } from "./lib/vnext/release-readiness";
+import { showcaseIngressAllowed } from "./lib/server/launchpad-site-mode";
 
 const blockedHeaders = {
   "Cache-Control": "private, no-store, max-age=0",
@@ -40,6 +41,20 @@ export function launchpadRouteRetired(path: string) {
 
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
+  // Explicit showcase mode keeps historical routes off the isolated preview.
+  if (process.env.RMT_LAUNCHPAD_SITE_MODE === "showcase") {
+    if (showcaseIngressAllowed(path, request.method)) {
+      const response = NextResponse.next();
+      response.headers.set("X-Robots-Tag", "noindex, nofollow");
+      return response;
+    }
+    if (request.method === "POST" && path === "/api/launchpad/launches") {
+      return NextResponse.json({ status: "disabled", reason: "New launches are disabled on this deployment." }, {
+        status: 403, headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" },
+      });
+    }
+    return new NextResponse(request.method === "HEAD" ? null : "Not Found", { status: 404, headers: blockedHeaders });
+  }
   if (launchpadRouteRetired(path)) {
     return new NextResponse(request.method === "HEAD" ? null : "This RMT product route has retired.", {
       status: 410,
@@ -51,12 +66,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: [
-    "/vnext/:path*", "/nft/:path*", "/projects/:path*", "/project/:path*", "/markets/:path*",
-    "/robinhood-chain/:path*", "/explore/:path*", "/runners/:path*", "/profile/:path*",
-    "/invite/:path*", "/r/:path*", "/watchlist/:path*", "/experience/:path*", "/sushi/:path*",
-    "/creator-consent/:path*", "/api/community/:path*", "/api/experience/:path*", "/api/nft/:path*",
-    "/api/projects/:path*", "/api/vnext/chain-pulse/:path*", "/api/vnext/capital-flow/:path*",
-    "/api/vnext/market-directory/:path*", "/api/vnext/market-search/:path*", "/api/markets/wallet-constellation/:path*",
-  ],
+  matcher: ["/:path*"],
 };

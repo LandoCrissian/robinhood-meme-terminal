@@ -3,6 +3,7 @@ import { getAddress, isAddress, isHash, TransactionReceiptNotFoundError, zeroAdd
 import { readLaunchpadRuntime, verifiedLaunchpadRpc } from "../../../../lib/server/new-launchpad-config";
 import { InvalidLaunchReceipt, verifyLaunchReceipt } from "../../../../lib/server/new-launchpad-receipt";
 import { LaunchpadStore } from "../../../../lib/server/new-launchpad-store";
+import { isLaunchShowcase } from "../../../../lib/server/launchpad-site-mode";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -63,6 +64,7 @@ async function readRequest(request: Request): Promise<Record<string, unknown> | 
 }
 
 export async function POST(request: Request) {
+  if (isLaunchShowcase()) return NextResponse.json({ status: "disabled", reason: "New launches are disabled on this deployment." }, { status: 403, headers });
   const data = await readRequest(request);
   const { transactionHash, creator, intentId } = data ?? {};
   if (typeof transactionHash !== "string" || !isHash(transactionHash) || typeof creator !== "string" || !isAddress(creator)

@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { unstable_doesMiddlewareMatch } from "next/experimental/testing/server";
 import { config as middlewareConfig, vnextRequestBoundary } from "../../middleware";
 import { formatTerminalAge, formatTerminalCompactUsd, formatTerminalPercent, formatTerminalPrice, terminalValuation } from "../../app/vnext/terminal-format";
 import { capitalFlowStatusLabel, heldCountIsIndeterminate, heldCountLabel } from "./terminal-presentation-state";
 import { vnextShellAvailable, vnextShellMode } from "./vnext-shell-access";
 
 const page = readFileSync(new URL("../../app/vnext/page.tsx", import.meta.url), "utf8");
-const rootPage = readFileSync(new URL("../../app/page.tsx", import.meta.url), "utf8");
+const rootPage = readFileSync(new URL("../../app/(launchpad)/page.tsx", import.meta.url), "utf8");
+const launchpadLayout = readFileSync(new URL("../../app/(launchpad)/layout.tsx", import.meta.url), "utf8");
 const nextConfig = readFileSync(new URL("../../next.config.mjs", import.meta.url), "utf8");
 const shellController = readFileSync(new URL("../../app/vnext/vnext-terminal-shell.tsx", import.meta.url), "utf8");
 const presentations = readFileSync(new URL("../../app/vnext/terminal-presentations.tsx", import.meta.url), "utf8");
@@ -68,8 +70,9 @@ assert.match(page, /openGraph:[\s\S]*url: "\/"/);
 assert.doesNotMatch(page, /index: false|follow: false/);
 assert.match(rootPage, /<ProductDirectory \/>/);
 assert.doesNotMatch(rootPage, /VNextTerminalShell|readLaunchIntelligence/);
-assert.match(rootPage, /import "\.\/vnext\/vnext-terminal\.css"/);
+assert.match(launchpadLayout, /import "\.\.\/vnext\/vnext-terminal\.css"/);
 assert.doesNotMatch(rootPage, /vnext-terminal-reconstruction\.css/);
+assert.doesNotMatch(launchpadLayout, /vnext-terminal-reconstruction\.css/);
 assert.doesNotMatch(nextConfig, /source: "\/"[\s\S]*destination: "\/vnext"/);
 assert.match(nextConfig, /source: "\/vnext"[\s\S]*destination: "\/"[\s\S]*permanent: true/);
 assert.match(chrome, /"\/vnext"/);
@@ -127,7 +130,7 @@ assert.equal(previewResponse.headers.get("x-middleware-next"), "1");
 assert.equal(previewResponse.headers.get("x-rmt-vnext-mode"), "preview");
 assert.equal(previewResponse.headers.get("x-rmt-vnext-release"), "observation");
 assert.equal(previewResponse.headers.get("x-robots-tag"), "noindex, nofollow");
-assert.ok(middlewareConfig.matcher.includes("/vnext/:path*"));
+assert.ok(unstable_doesMiddlewareMatch({ config: middlewareConfig, url: "https://www.rmtlaunch.fun/vnext" }));
 
 assert.equal((shellController.match(/export function VNextTerminalShell/g) ?? []).length, 1);
 assert.match(shellController, /<ResponsiveTerminal \{\.\.\.props\} desktop=\{desktop\} \/>/);

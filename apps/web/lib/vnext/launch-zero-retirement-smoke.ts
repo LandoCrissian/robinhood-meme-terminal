@@ -9,7 +9,7 @@ const currentProductFiles = [
   "../../app/api/markets/external/route.ts",
   "../../app/sitemap.ts",
   "../../app/sushi/page.tsx",
-  "../../app/page.tsx",
+  "../../app/(launchpad)/page.tsx",
   "../../app/public-chrome.tsx",
   "../../app/sources/page.tsx",
   "./robinhood-assets.ts",

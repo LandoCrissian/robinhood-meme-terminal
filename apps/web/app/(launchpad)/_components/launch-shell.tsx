@@ -8,10 +8,16 @@ import { useLaunchWallet } from "./launch-wallet";
 
 const navigation = [["/", "Launches"], ["/create-token", "Create Token"], ["/my-launches", "My Launches"], ["/wallet", "Wallet"]] as const;
 
-export function LaunchShell({ children }: { children: ReactNode }) {
-  const path = usePathname();
+export function LaunchWalletShell({ children }: { children: ReactNode }) {
   const { config, wallet } = useLaunchWallet();
   const network = config?.status === "ready" ? config.deployment.name : "Preview";
+  return <LaunchShell network={network} walletLabel={wallet ? `${wallet.address.slice(0, 6)}…${wallet.address.slice(-4)}` : "Connect wallet"}>
+    {children}
+  </LaunchShell>;
+}
+
+export function LaunchShell({ children, network, walletLabel }: { children: ReactNode; network: string; walletLabel: string }) {
+  const path = usePathname();
   return <div className="rmtVnext rmtTerminal launchpad">
     <a className="vnSkipLink" href="#launch-content">Skip to launchpad</a>
     <header className="rmtDesktopHeader lpHeader">
@@ -27,7 +33,7 @@ export function LaunchShell({ children }: { children: ReactNode }) {
       </nav>
       <div className="lpHeaderRight">
         <span className="lpNetwork"><i aria-hidden="true" />{network}</span>
-        <Link className="lpButton" href="/wallet">{wallet ? `${wallet.address.slice(0, 6)}…${wallet.address.slice(-4)}` : "Connect wallet"}</Link>
+        <Link className="lpButton" href="/wallet">{walletLabel}</Link>
       </div>
     </header>
     <main id="launch-content" className="lpContent">{children}</main>
