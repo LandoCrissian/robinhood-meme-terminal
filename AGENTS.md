@@ -1,16 +1,16 @@
 # RMT Launch repository authority
 
-## Owner decision: 2026-11-11
+## Owner decision for Task 018
 
 RMT Launch is a dedicated token launchpad. LAMMB Empires remains a separate, parallel project. Preserve the existing RMT visual design and mobile/desktop interaction quality. Preserve the existing RMT token and its deployed curve/contract history; do not replace, migrate or reconfigure them as part of this cleanup.
 
-The owner requested new third-party launches that are immediately usable beyond RMT, with research into Uniswap v4 and Pons. The engineering proposal is direct-to-standard-v4 liquidity for new launches, not reopening the legacy curve factory. That proposal is not an approved deployment, fee schedule, supply policy or liquidity commitment.
+New third-party launches use a separately versioned gas-only bonding-curve engine. Creation mints one fixed supply. Successful graduation uses actual curve backing and the same token in Uniswap v4 with permanent original-position custody. Draft parameters are review inputs. Preserve both the historical direct-to-v4 review and the existing deployed RMT assets. Use the [Curve V1 guide](docs/RMT_LAUNCH_CURVE_V1.md) for the active implementation and release gates.
 
 Read before substantial work:
 
 1. [Architecture and change boundary](docs/ARCHITECTURE_FREEZE.md)
 2. [Observed runtime versus target scope](docs/ACTIVE_SYSTEM_MAP.md)
-3. [Audit, research and implementation acceptance](docs/RMT_LAUNCHPAD_RESET_2026-11-11.md)
+3. [Curve V1 implementation and acceptance](docs/RMT_LAUNCH_CURVE_V1.md)
 
 ## Scope
 
@@ -27,6 +27,7 @@ General NFT browsing/marketplace products, unrelated RWA/stock-token browsing, s
 - The existing runtime's ZERO_X_ONLY execution boundary remains unchanged until a separately reviewed replacement is implemented and authorized. This is compatibility/security protection, not a renewed general-terminal roadmap. Existing provider-specific evidence and Stock Token execution exclusions remain binding wherever those paths remain reachable.
 - Separate token deployment, funded onchain pool availability, RMT listing, external indexing and external routing. Never promise immediate listing everywhere, exchange acceptance, safety, price support or guaranteed liquidity.
 - New factory/locker/router code requires adversarial tests, exact deployment/runtime verification and explicit release authorization. A standard v4 pool or source verification is not a security audit.
+- Factories, curves, tokens, fee ledgers and LP custody are versioned deployments. Governance may approve discovery of a future factory through a delayed multisignature action. It may not rewrite an existing launch or move its assets. Preserve existing curve exits and fee claims across directory changes.
 - No production deployment, environment change, contract transaction, existing-token migration, fee activation, cloud service shutdown, destructive data migration, merge or automation change is authorized by this scope reset.
 
 ## Validation and reporting

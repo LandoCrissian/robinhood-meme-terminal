@@ -1,5 +1,7 @@
 # RMT Launch: scope reset, research and cleanup plan
 
+Historical record. Task 018's [Curve V1 roadmap](RMT_LAUNCH_CURVE_V1.md) governs future launches.
+
 Date: 2026-11-11 (America/Denver)
 
 Base: `LandoCrissian/robinhood-meme-terminal` at `6d0b8103bdad95367445a38e5f5327458baa9ab2`; tree `fdc846300c1d980f3b5c8de34885417098f02448`.
