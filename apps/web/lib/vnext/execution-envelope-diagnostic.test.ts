@@ -8,10 +8,9 @@ import { captureResponseDiagnostic, consumeResponseDiagnostic, appendResponseDia
 import { feeMutations, mutateZeroXActions } from "./zero-x-provider-native-fee-smoke";
 import { safeEnvelopeDiagnostic } from "./execution-envelope-diagnostic";
 const fixture = createRequire(import.meta.url)("../../../../.github/scripts/zerox-execution-fixture.cjs");
-// Synthetic reviewed V3 grammar with the exact selected contracts. NOT the
-// owner's production envelope, which was not retained by the deployed server.
+// Reviewed V3 action grammar with a synthetic output token.
 const inputAsset = getAddress("0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168");
-const outputAsset = getAddress("0x1139d423C1706BDeaD91f03507F521635591eD92");
+const outputAsset = getAddress("0x0000000000000000000000000000000000005101");
 const recipient = getAddress("0x0000000000000000000000000000000000010000");
 const target = getAddress("0x0000000000001fF3684f28c67538d4D072C22734");
 const body = { sellToken: inputAsset, buyToken: outputAsset, sellAmount: "1000000", minBuyAmount: "990000", actionBasisForTest: 1000000n, transaction: {to: target} };

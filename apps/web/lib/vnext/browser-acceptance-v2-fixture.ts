@@ -15,6 +15,7 @@ import { authorizationPayloadHash, parseVNextAuthorizationBundle, type VNextAuth
 import { normalizeDisabledRmtFee } from "./execution-fee-policy";
 import { createRmtExecutionFeeV2Policy, normalizeRmtExecutionFeeV2Input } from "./execution-fee-policy-v2";
 import { bindVNextAtomicFeeAuthorization, type VNextAtomicFeeSettlementProof } from "./provider-fee-settlement";
+import { legacyV4TestPoolId as v4PoolId, legacyV4TestPoolKey as v4PoolKey } from "./legacy-v4-test-fixture";
 import { parseVNextPreSignEvidence, type VNextPreSignEvidence } from "./pre-sign-evidence";
 import { parseVNextQuoteResponse } from "./quote-observation";
 import { ROBINHOOD_NATIVE_ASSET_ADDRESS, ROBINHOOD_USDG_ADDRESS, ROBINHOOD_WETH_ADDRESS } from "./robinhood-assets";
@@ -56,18 +57,9 @@ const walletPlanExpiresAt = (onchainDeadline: string | bigint) => Math.min(
   Number(BigInt(onchainDeadline) * 1_000n) - 180_000
 );
 
-const v4Token = getAddress("0x1139d423C1706BDeaD91f03507F521635591eD92");
-const v4Hooks = getAddress("0xE5e702641Ea86F4ae6cC3cDaeD2B886f976Be044");
-const v4PoolId = "0x5f5ec0e1016bae2f04c122bbcd2c141a4177cc681d7c2e4463a1d172ed8430b3" as Hex;
+const { currency1: v4Token, hooks: v4Hooks } = v4PoolKey;
 const v4QuoteBlockHash = `0x${"5".repeat(64)}` as Hex;
 const v4SimulationBlockHash = `0x${"6".repeat(64)}` as Hex;
-const v4PoolKey = {
-  currency0: zeroAddress,
-  currency1: v4Token,
-  fee: 0,
-  tickSpacing: 200,
-  hooks: v4Hooks
-};
 
 function uuid(seed: string) {
   return `${seed.repeat(8)}-${seed.repeat(4)}-4${seed.repeat(3)}-8${seed.repeat(3)}-${seed.repeat(12)}`;

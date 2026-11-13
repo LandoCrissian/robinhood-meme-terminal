@@ -18,7 +18,7 @@ The table records the audited base and intended disposition. The [implementation
 | General RWA/stock-token discovery and broad terminal intelligence | Existing market filters and chain/capital-flow cards | REMOVE unrelated public product use. Keep safety exclusions wherever shared execution remains reachable. |
 | Profiles/referrals, community/RMT Live, creator/V7 NFT features | Previously paused code/data | RETIRE product surfaces and unnecessary runtime dependencies after checking consumers; do not delete user data. |
 | General distribution planner / Position Guard expansion / agent product tracks | Preserved or future foundations, not a new launch requirement | OUT OF SCOPE. No autonomous trade or distribution activation. |
-| LAMMB CannaCat embed, open PR #575 | Separate consumer of RMT auth/execution/recovery work | PRESERVE dependency and branch; establish a tested extraction/reuse boundary before shared code removal. |
+| CannaCat embed drafts #575 and #581 | Closed and unmerged. #582 removes dedicated catalog, artwork and product metadata. | RETIRE remaining dedicated release and fixture dependencies. Preserve generic auth, execution and recovery safeguards and historical evidence. |
 | Existing provider integrations, contracts, fee/release receipts | Mixed live compatibility and historical/controlled evidence | PRESERVE exact evidence and release boundaries. Source presence is not activation. |
 
 ## Route migration

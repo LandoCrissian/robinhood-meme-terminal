@@ -194,6 +194,10 @@ try {
   for (const path of ["/nft", "/projects", "/profile", "/api/vnext/chain-pulse", "/api/nft/mint-preflight"]) {
     assert.equal((await context.request.get(site + path)).status(), privatePreview ? 404 : 410, path);
   }
+  for (const operation of ["quotes", "verify", "authorize", "native-settlement-trace"]) {
+    const path = `/api/embed/cannacat/${operation}`;
+    assert.equal((await context.request.post(site + path, { data: {} })).status(), 404, path);
+  }
   await page.getByRole("navigation", { name: "Launchpad navigation" }).getByRole("link", { name: "Create Token" }).click();
   await page.getByLabel("Token name").fill("Fork Proof");
   const symbol = `F${Date.now().toString(36).toUpperCase()}`;

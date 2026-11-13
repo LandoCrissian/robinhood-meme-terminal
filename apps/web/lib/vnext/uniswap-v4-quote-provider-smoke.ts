@@ -7,10 +7,9 @@ import {
   VNEXT_PROVIDER_FEE_SETTLEMENT_REGISTRY,
   hasVNextWalletAuthorizationCodec
 } from "./provider-fee-settlement";
+import { legacyV4TestPoolId as poolId, legacyV4TestPoolKey } from "./legacy-v4-test-fixture";
 
-const token = getAddress("0x1139d423C1706BDeaD91f03507F521635591eD92");
-const poolId = "0x5f5ec0e1016bae2f04c122bbcd2c141a4177cc681d7c2e4463a1d172ed8430b3" as const;
-const hooks = getAddress("0xE5e702641Ea86F4ae6cC3cDaeD2B886f976Be044");
+const { currency1: token, hooks } = legacyV4TestPoolKey;
 const recipient = getAddress("0x1111111111111111111111111111111111111111");
 const now = Date.now();
 const inventory: VNextCanonicalMarketInventoryResult = {
