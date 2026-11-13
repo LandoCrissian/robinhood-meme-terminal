@@ -20,7 +20,7 @@ library RMTLaunchCurveMathV1 {
     {
         if (!state.isBuy) {
             if (state.amountIn == 0 || state.amountIn > state.sold) return (0, 0, 0, 0);
-            gross = state.backing - _requiredBacking(state.virtualToken, state.sold - state.amountIn);
+            gross = state.backing - requiredBacking(state.virtualToken, state.sold - state.amountIn);
             fee = Math.mulDiv(gross, TRADE_FEE_BPS, BPS, Math.Rounding.Ceil);
             return (gross - fee, gross, fee, 0);
         }
@@ -31,14 +31,14 @@ library RMTLaunchCurveMathV1 {
         uint256 newSold =
             state.virtualToken - Math.ceilDiv(VIRTUAL_ETH * state.virtualToken, VIRTUAL_ETH + targetBacking);
         if (newSold <= state.sold) return (0, 0, 0, state.amountIn);
-        uint256 backingIn = _requiredBacking(state.virtualToken, newSold) - state.backing;
+        uint256 backingIn = requiredBacking(state.virtualToken, newSold) - state.backing;
         if (backingIn == 0) return (0, 0, 0, state.amountIn);
         gross = Math.mulDiv(backingIn, BPS, BPS - TRADE_FEE_BPS, Math.Rounding.Ceil);
         return (newSold - state.sold, gross, gross - backingIn, state.amountIn - gross);
     }
 
     /// @dev Integer reserve potential is anchored to zero at creation.
-    function _requiredBacking(uint256 virtualToken, uint256 sold) private pure returns (uint256) {
+    function requiredBacking(uint256 virtualToken, uint256 sold) internal pure returns (uint256) {
         return Math.ceilDiv(VIRTUAL_ETH * virtualToken, virtualToken - sold) - VIRTUAL_ETH;
     }
 }

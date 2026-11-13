@@ -1,4 +1,4 @@
-name: Curve V1 review
+name: Curve migration and graduation review
 
 on:
   pull_request:
@@ -45,7 +45,9 @@ jobs:
             --output "$RUNNER_TEMP/solc-0.8.26"
           chmod 700 "$RUNNER_TEMP/solc-0.8.26"
       - name: Simulate curve and post-graduation economics
-        run: node packages/contracts/scripts/simulate-launch-curve.mjs > "$RUNNER_TEMP/curve-economics.json"
+        run: |
+          node packages/contracts/scripts/simulate-launch-curve.mjs > "$RUNNER_TEMP/curve-economics.json"
+          node packages/contracts/scripts/simulate-launch-curve-terms.mjs > "$RUNNER_TEMP/curve-graduation-terms.json"
       - name: Validate guarded graduation and independent v4 swaps on loopback
         run: |
           set -euo pipefail
@@ -62,6 +64,7 @@ jobs:
           name: curve-v1-fork-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
             ${{ runner.temp }}/curve-economics.json
+            ${{ runner.temp }}/curve-graduation-terms.json
             ${{ runner.temp }}/curve-fork-evidence.json
             ${{ runner.temp }}/curve-fork-diagnostics.log
 
@@ -141,7 +144,8 @@ jobs:
             [[ "$attempt" != 40 ]] || { echo "Curve preview did not become ready." >&2; exit 1; }
             sleep 1
           done
-          RMT_CURVE_TEST_OUTPUT="$evidence" node scripts/visual-qa/rmt-curve-browser.mjs
+          RMT_CURVE_TEST_SOLC="$RUNNER_TEMP/solc-0.8.26" RMT_CURVE_TEST_OUTPUT="$evidence" \
+            node scripts/visual-qa/rmt-curve-browser.mjs
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:

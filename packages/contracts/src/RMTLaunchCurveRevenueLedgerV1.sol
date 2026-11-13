@@ -10,6 +10,7 @@ contract RMTLaunchCurveRevenueLedgerV1 is ReentrancyGuard {
     uint256 private constant PLATFORM_BPS = 1_000;
 
     address public immutable curve;
+    address public activeCurve;
     address public immutable creator;
     address public immutable treasury;
     address public immutable operatingRecipient;
@@ -31,6 +32,7 @@ contract RMTLaunchCurveRevenueLedgerV1 is ReentrancyGuard {
         uint256 fee, uint256 creatorAmount, uint256 treasuryAmount, uint256 operatingAmount, uint256 futureReserveAmount
     );
     event CurveFeeClaimed(address indexed recipient, uint256 amount);
+    event CurveAccrualMoved(address indexed previousCurve, address indexed activeCurve);
 
     constructor(
         address creator_,
@@ -45,6 +47,7 @@ contract RMTLaunchCurveRevenueLedgerV1 is ReentrancyGuard {
                 || (treasury_ == address(0)) != (treasuryShareBps_ == 0) || treasury_ == creator_
         ) revert InvalidFeePolicy();
         curve = msg.sender;
+        activeCurve = msg.sender;
         creator = creator_;
         treasury = treasury_;
         treasuryShareBps = treasuryShareBps_;
@@ -53,7 +56,7 @@ contract RMTLaunchCurveRevenueLedgerV1 is ReentrancyGuard {
     }
 
     function accrue() external payable {
-        if (msg.sender != curve) revert Unauthorized();
+        if (msg.sender != activeCurve) revert Unauthorized();
         totalAccrued += msg.value;
         uint256 platform = Math.mulDiv(totalAccrued, PLATFORM_BPS, BPS);
         uint256 operating = platform / 2;
@@ -65,6 +68,14 @@ contract RMTLaunchCurveRevenueLedgerV1 is ReentrancyGuard {
         uint256 operatingAmount = _credit(2, operatingRecipient, operating);
         uint256 reserveAmount = _credit(3, futureReserveRecipient, platform - operating);
         emit CurveFeesAccrued(msg.value, creatorAmount, treasuryAmount, operatingAmount, reserveAmount);
+    }
+
+    /// @notice The active immutable curve changes its successor's accrual access during the asset transition.
+    /// @dev Neither escrow balances nor recipient rights move.
+    function moveAccrual(address nextCurve) external {
+        if (msg.sender != activeCurve || nextCurve.code.length == 0 || nextCurve == msg.sender) revert Unauthorized();
+        activeCurve = nextCurve;
+        emit CurveAccrualMoved(msg.sender, nextCurve);
     }
 
     function _credit(uint256 bucket, address recipient, uint256 total) private returns (uint256 amount) {

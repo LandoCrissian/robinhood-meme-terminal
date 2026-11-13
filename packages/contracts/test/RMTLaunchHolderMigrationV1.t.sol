@@ -5,6 +5,7 @@ import {Test} from "forge-std/Test.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {RMTLaunchBondingCurveV1} from "../src/RMTLaunchBondingCurveV1.sol";
+import {RMTLaunchCurveSuccessorDeployerV1} from "../src/RMTLaunchBondingCurveV2.sol";
 import {RMTLaunchCurveDirectoryV1 as Directory} from "../src/RMTLaunchCurveDirectoryV1.sol";
 import {RMTLaunchCurveFactoryV1} from "../src/RMTLaunchCurveFactoryV1.sol";
 import {RMTLaunchHolderMigrationV1} from "../src/RMTLaunchHolderMigrationV1.sol";
@@ -55,6 +56,7 @@ contract HolderMigrationGraduationFixture {
 
 contract HolderMigrationTokenFixture is ERC20 {
     bool private levy;
+    uint8 private returnMode;
     uint8 private precision = 18;
     bool public attemptedReentry;
     bool public reentrySucceeded;
@@ -77,6 +79,10 @@ contract HolderMigrationTokenFixture is ERC20 {
         levy = on;
     }
 
+    function setReturnMode(uint8 mode) external {
+        returnMode = mode;
+    }
+
     function tryReenter(address escrow) external {
         reentryEscrow = escrow;
     }
@@ -89,7 +95,17 @@ contract HolderMigrationTokenFixture is ERC20 {
                 reentryEscrow.call(abi.encodeCall(RMTLaunchHolderMigrationV1.redeem, (amount, block.timestamp)));
             reentryFailure = bytes4(reason);
         }
-        if (!levy) return super.transferFrom(from, to, amount);
+        if (!levy) {
+            bool moved = super.transferFrom(from, to, amount);
+            if (returnMode == 1) return false;
+            if (returnMode == 2) {
+                assembly ("memory-safe") {
+                    mstore(0, 2)
+                    return(0, 32)
+                }
+            }
+            return moved;
+        }
         _spendAllowance(from, _msgSender(), amount);
         _transfer(from, to, amount - 1);
         _transfer(from, address(1), 1);
@@ -207,6 +223,27 @@ contract RMTLaunchHolderMigrationV1Test is Test {
         assertEq(original.balanceOf(address(migration)), 100);
     }
 
+    function testFalseOrMalformedReturnRollsBackOriginalTransferAndReplacementCredit() public {
+        vm.prank(holder);
+        original.approve(address(migration), 100);
+        for (uint8 mode = 1; mode <= 2; ++mode) {
+            original.setReturnMode(mode);
+            vm.expectRevert();
+            vm.prank(holder);
+            migration.redeem(100, block.timestamp);
+            assertEq(original.balanceOf(holder), SUPPLY);
+            assertEq(original.balanceOf(address(migration)), 0);
+            assertEq(original.allowance(holder, address(migration)), 100);
+            assertEq(migration.replacementToken().balanceOf(holder), 0);
+            assertEq(migration.replacementToken().balanceOf(address(migration)), SUPPLY);
+            assertEq(migration.totalRedeemed(), 0);
+        }
+        original.setReturnMode(0);
+        vm.prank(holder);
+        migration.redeem(100, block.timestamp);
+        assertEq(migration.totalRedeemed(), 100);
+    }
+
     function testDirectDonationDoesNotCreateRedemptionOrClaim() public {
         vm.prank(holder);
         original.transfer(address(migration), 50);
@@ -224,10 +261,14 @@ contract RMTLaunchHolderMigrationV1Test is Test {
     function testRegisteredLaunchEscrowPreservesCanonicalProjectAndCurveBacking() public {
         Directory directory = new Directory(vm.addr(41), vm.addr(42), vm.addr(43));
         RMTLaunchProjectRegistryV1 projects = new RMTLaunchProjectRegistryV1(directory);
+        address successorDeployer = address(new RMTLaunchCurveSuccessorDeployerV1());
         address predictedFactory = vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1);
         HolderMigrationGraduationFixture graduate = new HolderMigrationGraduationFixture(predictedFactory);
         RMTLaunchCurveFactoryV1 launchFactory =
-            new RMTLaunchCurveFactoryV1(address(graduate), makeAddr("ops"), makeAddr("reserve"), address(projects));
+            new RMTLaunchCurveFactoryV1(
+                address(graduate), makeAddr("ops"), makeAddr("reserve"), address(projects),
+                successorDeployer, successorDeployer.codehash
+            );
         Directory.Action memory publish = Directory.Action(
             Directory.ActionKind.Publish,
             0,

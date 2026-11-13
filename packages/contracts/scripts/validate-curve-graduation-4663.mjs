@@ -6,6 +6,7 @@ import { createRequire } from "node:module";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
+import { setTimeout as delay } from "node:timers/promises";
 import { withAnvilFork } from "./robinhood-4663-fork-environment.mjs";
 
 const requireWeb = createRequire(new URL("../../../apps/web/package.json", import.meta.url));
@@ -24,8 +25,12 @@ const solcHashes = {
 const contractNames = [
   "RMTLaunchCurveDeploymentV1", "RMTLaunchCurveFactoryV1", "RMTLaunchCurveTokenV1", "RMTLaunchBondingCurveV1",
   "RMTLaunchCurveRevenueLedgerV1", "RMTV4CurveGraduationV1", "RMTV4CurveInitializationGuardV1",
-  "RMTLaunchCurveDirectoryV1", "RMTLaunchProjectRegistryV1", "RMTLaunchCurveExecutionV2",
+  "RMTLaunchCurveDirectoryV1", "RMTLaunchProjectRegistryV1", "RMTLaunchBondingCurveV2",
+  "RMTLaunchCurveSuccessorDeployerV1", "RMTLaunchCurveLpFeeLedgerV1",
 ];
+const sourceFiles = {
+  RMTLaunchCurveSuccessorDeployerV1: "src/RMTLaunchBondingCurveV2.sol",
+};
 const governanceDependencyHashes = {
   "utils/cryptography/ECDSA.sol": "37828cb50b47bcc51c7b770bde15d5885d871ef1e67028057a0b788c3568726e",
   "utils/cryptography/EIP712.sol": "27dac0732a0154f432c0a7a1d1f067ab51116105e157d0e5d68d040fd83954d5",
@@ -35,6 +40,13 @@ const governanceDependencyHashes = {
   "utils/StorageSlot.sol": "b4a5fb7ab93bfeda06509eafbd5f71fde0e0de84b6d9129553bd535a42166c15",
   "utils/math/SignedMath.sol": "768c28e3a33c3312e57ae8a1caaec2893bc89ac6e386621de018f85e9a2d6e99",
   "interfaces/IERC5267.sol": "efd1ebd1e04b6ef9c3b8781a097588f83da954323f438d54a71dc06508e6c7b8",
+};
+const feeEvidenceDependencyHashes = {
+  "lib/v4-core/src/libraries/StateLibrary.sol": "eebdbc1b6e431072ce5521b9e1b603d43831e3b6e062743e6665e070d5cf8a1a",
+  "lib/v4-core/src/libraries/Position.sol": "3dc4e2ad1564fa94eddf3ff06ce9ac592c9d578ea64ca194050382da454c8fcb",
+  "lib/v4-core/src/libraries/FixedPoint128.sol": "1ca2f55160697b73bd66fd27c8724d79a57108121ce1e8a0ab8b79f38bb58fbb",
+  "lib/v4-core/src/libraries/LiquidityMath.sol": "67a39e58732340af4870342ba9230691f35501d89ed8725ca1b338deaa0eb26a",
+  "lib/v4-periphery/src/libraries/PositionInfoLibrary.sol": "5c889e1d5f259291045413e28069101eba1e7b8b72df6586bf54e4de5e525099",
 };
 const chainGates = [
   ["RMTLaunchCurveFactoryV1", "block.chainid != 31_337", "block.chainid != 4_663", 2],
@@ -53,10 +65,14 @@ const stateAbi = parseAbi([
   "function getLiquidity(bytes32 poolId) view returns (uint128 liquidity)",
 ]);
 const positionAbi = parseAbi([
+  "function nextTokenId() view returns(uint256)",
   "function ownerOf(uint256 id) view returns(address)",
   "function getPositionLiquidity(uint256 id) view returns(uint128)",
   "function getPoolAndPositionInfo(uint256 id) view returns(" + keyTuple + " poolKey,uint256 info)",
   "function transferFrom(address from,address to,uint256 id)",
+  "function getApproved(uint256 id) view returns(address)",
+  "function approve(address approved,uint256 id)",
+  "function modifyLiquidities(bytes unlockData,uint256 deadline) payable",
 ]);
 const permitAbi = parseAbi([
   "function approve(address token,address spender,uint160 amount,uint48 expiration)",
@@ -78,9 +94,10 @@ function compile({ solc, lib }, chainId) {
   const sources = {};
   const outputSelection = {};
   for (const name of contractNames) {
-    const file = "src/" + name + ".sol";
+    const file = sourceFiles[name] ?? "src/" + name + ".sol";
     sources[file] = { content: normalizedSource(join(root, file)) };
-    outputSelection[file] = { [name]: ["abi", "evm.bytecode.object", "evm.deployedBytecode"] };
+    outputSelection[file] ??= {};
+    outputSelection[file][name] = ["abi", "evm.bytecode.object", "evm.deployedBytecode"];
   }
   for (const file of ["src/interfaces/IRMTV4CurveGraduationV1.sol", "src/interfaces/IRMTLaunchCurveExecution.sol",
     "src/RMTLaunchCurveMathV1.sol"]) {
@@ -88,7 +105,7 @@ function compile({ solc, lib }, chainId) {
   }
   const sourceSha256 = Object.fromEntries(Object.entries(sources).map(([file, { content }]) => [file, sha(content)]));
   const dependencyRoot = lib ? resolve(lib) : join(root, "lib");
-  const dependencyPins = { ...existingInputs.dependencySourceSha256 };
+  const dependencyPins = { ...existingInputs.dependencySourceSha256, ...feeEvidenceDependencyHashes };
   for (const [file, hash] of Object.entries(governanceDependencyHashes)) {
     dependencyPins["lib/v4-core/lib/openzeppelin-contracts/contracts/" + file] = hash;
   }
@@ -124,7 +141,7 @@ function compile({ solc, lib }, chainId) {
   const artifacts = {};
   const templates = {};
   for (const name of contractNames) {
-    const { abi, evm } = output.contracts["src/" + name + ".sol"][name];
+    const { abi, evm } = output.contracts[sourceFiles[name] ?? "src/" + name + ".sol"][name];
     const bytecode = "0x" + evm.bytecode.object;
     const runtime = "0x" + evm.deployedBytecode.object;
     assert.ok(/^0x(?:[a-f0-9]{2})+$/.test(bytecode) && /^0x(?:[a-f0-9]{2})+$/.test(runtime), "Unlinked bytecode");
@@ -154,7 +171,7 @@ const read = (client, address, abi, functionName, args = []) => client.readContr
 async function send(client, from, { to, data, value = 0n, gas = 8_000_000n }, status = "success") {
   const hash = await client.request({ method: "eth_sendTransaction",
     params: [{ from, ...(to ? { to } : {}), data, value: toHex(value), gas: toHex(gas) }] });
-  const receipt = await client.waitForTransactionReceipt({ hash, timeout: 35_000, pollingInterval: 100 });
+  const receipt = await readExactReceipt(client, hash);
   assert.equal(receipt.status, status, "Unexpected transaction outcome: " + hash);
   const [transaction, block] = await Promise.all([client.getTransaction({ hash }), client.getBlock({ blockNumber: receipt.blockNumber })]);
   assert.equal(transaction.chainId, client.chain.id);
@@ -165,6 +182,26 @@ async function send(client, from, { to, data, value = 0n, gas = 8_000_000n }, st
   assert.equal(transaction.blockHash, receipt.blockHash);
   assert.equal(block.hash, receipt.blockHash);
   return receipt;
+}
+
+async function readExactReceipt(client, hash) {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    try {
+      return await client.getTransactionReceipt({ hash });
+    } catch (error) {
+      if (error.name !== "TransactionReceiptNotFoundError") throw error;
+      if (attempt === 9) {
+        const pending = await client.getTransaction({ hash }).catch(() => null);
+        throw new Error("Exact loopback receipt unavailable: " + hash
+          + (pending ? " (transaction known at block " + pending.blockNumber + ")" : " (transaction also unavailable)"), { cause: error });
+      }
+      // A submitted fixture transaction can remain in Anvil's local queue after a time jump.
+      // Advance the isolated chain without broadcasting the transaction again.
+      if (attempt === 2) await client.request({ method: "evm_mine" });
+      await delay(250);
+    }
+  }
+  throw new Error("Exact loopback receipt unavailable: " + hash);
 }
 
 function oneEvent(receipt, address, abi, eventName) {
@@ -231,15 +268,16 @@ async function publishFactory(client, operator, artifacts, governance, deployed)
   return { scheduled: receiptEvidence(scheduled), executed: receiptEvidence(executed) };
 }
 
-async function migrateCurve(client, creator, operator, artifacts, deployed, token, curve, curveAbi, ledger) {
-  const { projectRegistry } = deployed;
+async function migrateCurve(client, creator, operator, artifacts, deployed, token) {
+  const { projectRegistry, factory } = deployed;
   const abi = artifacts.RMTLaunchProjectRegistryV1.abi;
-  const calculator = artifacts.RMTLaunchCurveExecutionV2;
-  const implementation = await send(client, operator, {
-    data: encodeDeployData({ abi: calculator.abi, bytecode: calculator.bytecode }),
-  });
-  const nextEngine = implementation.contractAddress;
-  const runtimeHash = await verifiedRuntime(client, nextEngine, calculator);
+  const factoryAbi = artifacts.RMTLaunchCurveFactoryV1.abi;
+  const curveAbi = artifacts.RMTLaunchBondingCurveV1.abi;
+  const curve = await read(client, factory, factoryAbi, "curveForToken", [token]);
+  const ledger = await read(client, curve, curveAbi, "revenueLedger");
+  const prepared = await send(client, operator, request(factory, factoryAbi, "prepareMigration", [token, 2]));
+  const nextEngine = await read(client, factory, factoryAbi, "migrationCandidate", [token, 2]);
+  const runtimeHash = await verifiedRuntime(client, nextEngine, artifacts.RMTLaunchBondingCurveV2);
   const deadline = Number((await client.getBlock()).timestamp + 4n * 86400n);
   const proposal = await send(client, creator, request(projectRegistry, abi, "proposeMigration", [token, nextEngine, runtimeHash, deadline]));
   const digest = await read(client, projectRegistry, abi, "migrationDigest", [token]);
@@ -248,26 +286,39 @@ async function migrateCurve(client, creator, operator, artifacts, deployed, toke
   const execution = request(projectRegistry, abi, "executeMigration", [token]);
   const premature = await send(client, operator, execution, "reverted");
   const ledgerAbi = artifacts.RMTLaunchCurveRevenueLedgerV1.abi;
-  const snapshot = () => Promise.all([
-    read(client, curve, curveAbi, "backingReserve"), read(client, curve, curveAbi, "sold"),
-    read(client, token, erc20Abi, "balanceOf", [curve]), read(client, token, erc20Abi, "totalSupply"),
+  const snapshot = (target) => Promise.all([
+    read(client, target, curveAbi, "backingReserve"), read(client, target, curveAbi, "sold"),
+    read(client, token, erc20Abi, "balanceOf", [target]), read(client, token, erc20Abi, "totalSupply"),
     read(client, ledger, ledgerAbi, "totalAccrued"), read(client, ledger, ledgerAbi, "claimable", [creator]),
-    read(client, curve, curveAbi, "quoteBuy", [parseEther("0.01")]),
+    read(client, target, curveAbi, "quoteBuy", [parseEther("0.01")]),
+    read(client, target, curveAbi, "economicRules"), client.getBalance({ address: target }),
   ]);
-  const before = await snapshot();
+  const before = await snapshot(curve);
   await warp(client, 2n * 86400n);
+  const interrupted = await send(client, operator, { ...execution, gas: 60_000n }, "reverted");
+  assert.equal(interrupted.logs.length, 0);
+  assert.deepEqual(await snapshot(curve), before);
+  assert.ok(addressEq(await read(client, factory, factoryAbi, "curveForToken", [token]), curve));
+  assert.equal(await read(client, token, erc20Abi, "balanceOf", [nextEngine]), 0n);
   const migrated = await send(client, operator, execution);
-  assert.deepEqual(await snapshot(), before);
+  assert.deepEqual(await snapshot(nextEngine), before);
+  assert.equal(await client.getBalance({ address: curve }), 0n);
+  assert.equal(await read(client, token, erc20Abi, "balanceOf", [curve]), 0n);
+  assert.equal((await read(client, curve, curveAbi, "quoteBuy", [parseEther("0.01")]))[0], 0n);
+  assert.ok(addressEq(await read(client, nextEngine, curveAbi, "revenueLedger"), ledger));
+  assert.ok(addressEq(await read(client, factory, factoryAbi, "originCurveForToken", [token]), curve));
+  assert.ok(addressEq(await read(client, factory, factoryAbi, "curveForToken", [token]), nextEngine));
   const project = await read(client, projectRegistry, abi, "project", [token]);
-  assert.ok(addressEq(project[0], deployed.factory) && addressEq(project[1], curve));
+  assert.ok(addressEq(project[0], deployed.factory) && addressEq(project[1], nextEngine));
   assert.equal(project[2], 2);
   assert.ok(addressEq(project[3], nextEngine));
   assert.equal(project[4], 1n);
   const history = await read(client, projectRegistry, abi, "migration", [token, 1n]);
   assert.ok(addressEq(history[2], curve) && addressEq(history[3], nextEngine));
   assert.equal(history[4], runtimeHash);
-  return { nextEngine, runtimeHash, proposal: receiptEvidence(proposal), scheduled: receiptEvidence(scheduled),
-    premature: receiptEvidence(premature), migrated: receiptEvidence(migrated), backingInventoryFeesAndQuotesUnchanged: true };
+  return { originCurve: curve, activeCurve: nextEngine, runtimeHash, prepared: receiptEvidence(prepared),
+    proposal: receiptEvidence(proposal), scheduled: receiptEvidence(scheduled), premature: receiptEvidence(premature),
+    interrupted: receiptEvidence(interrupted), migrated: receiptEvidence(migrated), backingInventoryFeesAndQuotesUnchanged: true };
 }
 
 async function deploy(client, accounts, pins, artifacts) {
@@ -278,6 +329,12 @@ async function deploy(client, accounts, pins, artifacts) {
   const guard = artifacts.RMTV4CurveInitializationGuardV1;
   const graduation = artifacts.RMTV4CurveGraduationV1;
   const factoryArtifact = artifacts.RMTLaunchCurveFactoryV1;
+  const successorDeployerArtifact = artifacts.RMTLaunchCurveSuccessorDeployerV1;
+  const helperReceipt = await send(client, operator, { data: encodeDeployData({
+    abi: successorDeployerArtifact.abi, bytecode: successorDeployerArtifact.bytecode,
+  }) });
+  const successorDeployer = helperReceipt.contractAddress;
+  const successorDeployerRuntimeHash = await verifiedRuntime(client, successorDeployer, successorDeployerArtifact);
   const manager = pins.poolManager.address;
   const nonce = await client.getTransactionCount({ address: operator });
   const deployer = getContractAddress({ from: operator, nonce: BigInt(nonce) });
@@ -303,13 +360,16 @@ async function deploy(client, accounts, pins, artifacts) {
     permit2Hash: pins.permit2.runtimeHash,
   };
   const data = encodeDeployData({ abi: bootstrap.abi, bytecode: bootstrap.bytecode,
-    args: [dependencies, guardSalt, operatingRecipient, futureReserveRecipient, projectRegistry] });
+    args: [dependencies, guardSalt, operatingRecipient, futureReserveRecipient, projectRegistry,
+      successorDeployer, successorDeployerRuntimeHash] });
   const receipt = await send(client, operator, { data, gas: 14_000_000n });
   assert.ok(addressEq(receipt.contractAddress, deployer));
   assert.ok(addressEq(await read(client, deployer, bootstrap.abi, "factory"), factory));
   assert.ok(addressEq(await read(client, deployer, bootstrap.abi, "graduationEngine"), engine));
   assert.ok(addressEq(await read(client, deployer, bootstrap.abi, "initializationGuard"), guardAddress));
   assert.ok(addressEq(await read(client, factory, factoryArtifact.abi, "graduationEngine"), engine));
+  assert.ok(addressEq(await read(client, factory, factoryArtifact.abi, "successorDeployer"), successorDeployer));
+  assert.equal(await read(client, factory, factoryArtifact.abi, "successorDeployerRuntimeHash"), successorDeployerRuntimeHash);
   assert.ok(addressEq(await read(client, engine, graduation.abi, "factory"), factory));
   assert.ok(addressEq(await read(client, engine, graduation.abi, "initializationGuard"), guardAddress));
   assert.ok(addressEq(await read(client, guardAddress, guard.abi, "graduationEngine"), engine));
@@ -321,13 +381,14 @@ async function deploy(client, accounts, pins, artifacts) {
     chainId: client.chain.id, factory, factoryRuntimeHash, graduationEngine: engine, graduationRuntimeHash,
     guard: guardAddress, guardRuntimeHash, deployBlock: receipt.blockNumber, router: pins.universalRouter,
     deployment: { ...receiptEvidence(receipt), address: deployer, deploymentRuntimeHash, operator, nonce,
-      dependencies, operatingRecipient, futureReserveRecipient, projectRegistry, guardSalt, guardCodeHash: bytecodeHash },
+      dependencies, operatingRecipient, futureReserveRecipient, projectRegistry, guardSalt, guardCodeHash: bytecodeHash,
+      successorDeployer, successorDeployerRuntimeHash, successorDeployerReceipt: receiptEvidence(helperReceipt) },
   };
   const factoryPublication = await publishFactory(client, operator, artifacts, governance, deployed);
   return { ...deployed, ...governance, factoryPublication };
 }
 
-async function verifiedLocalProfile({ rpc, operator }, artifacts) {
+async function verifiedLocalProfile({ rpc, operator, creator, factory, "migrate-token": migrateToken }, artifacts) {
   const client = localClient(rpc, 31337);
   assert.equal(await client.getChainId(), 31337);
   assert.match(await client.request({ method: "web3_clientVersion" }), /^anvil\//i);
@@ -341,6 +402,16 @@ async function verifiedLocalProfile({ rpc, operator }, artifacts) {
   const accounts = (await client.request({ method: "eth_accounts" })).map((address) => getAddress(address));
   const sender = getAddress(operator);
   assert.ok(accounts.includes(sender), "Operator must be a local unlocked fixture account");
+  if (migrateToken) {
+    const proposer = getAddress(creator);
+    assert.ok(accounts.includes(proposer), "Creator must be a local unlocked fixture account");
+    const artifact = artifacts.RMTLaunchCurveFactoryV1;
+    const factoryAddress = getAddress(factory);
+    await verifiedRuntime(client, factoryAddress, artifact);
+    const projectRegistry = await read(client, factoryAddress, artifact.abi, "projectRegistry");
+    await verifiedRuntime(client, projectRegistry, artifacts.RMTLaunchProjectRegistryV1);
+    return migrateCurve(client, proposer, sender, artifacts, { factory: factoryAddress, projectRegistry }, getAddress(migrateToken));
+  }
   assert.ok(accounts.length >= 3, "Local fixture needs separate simulated revenue recipients");
   return deploy(client, [sender, ...accounts.filter((address) => address !== sender).slice(0, 2)], pins, artifacts);
 }
@@ -400,6 +471,122 @@ async function proveSwap(client, pins, key, trader, buy, amountIn) {
     settlement: payments.map(({ from, to, value }) => ({ from, to, value })) };
 }
 
+async function proveLpFees(client, pins, artifacts, deployment, position, creator, collector) {
+  const { token, positionTokenId, liquidity, poolKey } = position;
+  const { graduationEngine: engine } = deployment;
+  const { address: manager } = pins.poolManager;
+  const { address: positions } = pins.positionManager;
+  const engineAbi = artifacts.RMTV4CurveGraduationV1.abi;
+  const ledgerArtifact = artifacts.RMTLaunchCurveLpFeeLedgerV1;
+  const ledger = await read(client, engine, engineAbi, "lpFeeLedger", [token]);
+  const ledgerRuntimeHash = await verifiedRuntime(client, ledger, ledgerArtifact);
+  const abi = ledgerArtifact.abi;
+  const preview = await read(client, engine, engineAbi, "previewLpFees", [token]);
+  const [nativeFee, tokenFee] = preview;
+  assert.ok(nativeFee > 0n && tokenFee > 0n);
+  assert.deepEqual(await read(client, ledger, abi, "totalAccrued"), [0n, 0n]);
+  const startBalances = await Promise.all([client.getBalance({ address: ledger }), read(client, token, erc20Abi, "balanceOf", [ledger])]);
+  const deadline = (await client.getBlock()).timestamp + 300n;
+  const collection = request(engine, engineAbi, "collectLpFees", [token, deadline]);
+  await client.call({ account: collector, ...collection });
+  const receipt = await send(client, collector, collection);
+  const { args, logIndex } = oneEvent(receipt, engine, engineAbi, "LpFeesCollected");
+  assert.ok(addressEq(args.token, token) && addressEq(args.ledger, ledger));
+  assert.equal(args.positionTokenId, positionTokenId);
+  assert.equal(args.nativeAmount, nativeFee);
+  assert.equal(args.tokenAmount, tokenFee);
+  assert.deepEqual(await read(client, ledger, abi, "totalAccrued"), preview);
+  assert.deepEqual(await read(client, engine, engineAbi, "previewLpFees", [token]), [0n, 0n]);
+  assert.equal((await client.getBalance({ address: ledger })) - startBalances[0], nativeFee);
+  assert.equal((await read(client, token, erc20Abi, "balanceOf", [ledger])) - startBalances[1], tokenFee);
+  const { args: transfer } = oneEvent(receipt, token, erc20Abi, "Transfer");
+  assert.ok(addressEq(transfer.from, manager) && addressEq(transfer.to, ledger));
+  assert.equal(transfer.value, tokenFee);
+  const trace = await client.request({ method: "debug_traceTransaction", params: [receipt.transactionHash, { tracer: "callTracer" }] });
+  const successful = (frame) => frame.error ? [] : [frame, ...(frame.calls ?? []).flatMap(successful)];
+  const nativePayments = successful(trace).filter((frame) => frame.type === "CALL" && frame.from && frame.to
+    && addressEq(frame.from, manager) && addressEq(frame.to, ledger) && BigInt(frame.value ?? 0) > 0n);
+  assert.equal(nativePayments.reduce((sum, frame) => sum + BigInt(frame.value), 0n), nativeFee);
+  const duplicateCollection = await send(client, collector, collection, "reverted");
+  assert.deepEqual(await read(client, ledger, abi, "totalAccrued"), preview);
+  const credits = await read(client, ledger, abi, "claimable", [creator]);
+  const split = (amount) => {
+    const platform = amount / 10n;
+    return [amount - platform, 0n, platform / 2n, platform - platform / 2n];
+  };
+  for (const [index, recipient] of [creator, zeroAddress, deployment.deployment.operatingRecipient,
+    deployment.deployment.futureReserveRecipient].entries()) {
+    assert.deepEqual(await read(client, ledger, abi, "claimable", [recipient]), [split(nativeFee)[index], split(tokenFee)[index]]);
+  }
+  const creatorTokenBefore = await read(client, token, erc20Abi, "balanceOf", [creator]);
+  const creatorNativeBefore = await client.getBalance({ address: creator });
+  const claim = await send(client, creator, request(ledger, abi, "claim"));
+  const { args: claimed } = oneEvent(claim, ledger, abi, "LpFeesClaimed");
+  assert.ok(addressEq(claimed.recipient, creator));
+  assert.deepEqual([claimed.nativeAmount, claimed.tokenAmount], credits);
+  assert.equal((await read(client, token, erc20Abi, "balanceOf", [creator])) - creatorTokenBefore, credits[1]);
+  assert.equal((await client.getBalance({ address: creator })) - creatorNativeBefore + claim.gasUsed * claim.effectiveGasPrice, credits[0]);
+  assert.deepEqual(await read(client, ledger, abi, "totalClaimed"), credits);
+  assert.deepEqual(await read(client, ledger, abi, "claimable", [creator]), [0n, 0n]);
+  assert.equal(await read(client, positions, positionAbi, "getPositionLiquidity", [positionTokenId]), liquidity);
+  assert.ok(addressEq(await read(client, positions, positionAbi, "ownerOf", [positionTokenId]), engine));
+  assert.ok(addressEq(await read(client, positions, positionAbi, "getApproved", [positionTokenId]), zeroAddress));
+  assert.equal(poolIdFor((await read(client, positions, positionAbi, "getPoolAndPositionInfo", [positionTokenId]))[0]), poolIdFor(poolKey));
+  const approvalDenied = await send(client, creator, request(positions, positionAbi, "approve", [creator, positionTokenId]), "reverted");
+  return { ledger, ledgerRuntimeHash, collected: { ...receiptEvidence(receipt), nativeFee, tokenFee, logIndex },
+    claim: { ...receiptEvidence(claim), native: credits[0], token: credits[1] },
+    duplicateCollection: receiptEvidence(duplicateCollection), approvalDenied: receiptEvidence(approvalDenied),
+    principalAndCustodyUnchanged: true };
+}
+
+async function proveOutsideLiquidity(client, pins, artifacts, engine, position, provider, trader) {
+  const { token, poolKey, liquidity, positionTokenId, nativeUsed, tokenUsed } = position;
+  const { address: manager } = pins.poolManager;
+  const { address: positionManager } = pins.positionManager;
+  const { address: permit2 } = pins.permit2;
+  const abi = artifacts.RMTV4CurveGraduationV1.abi;
+  const originalFees = () => read(client, engine, abi, "previewLpFees", [token]);
+  const [nativeBefore, tokenBefore] = await originalFees();
+  const tokenBudget = await read(client, token, erc20Abi, "balanceOf", [provider]);
+  assert.ok(tokenBudget > tokenUsed / 4n, "Outside provider has insufficient earned tokens");
+  const nativeBudget = nativeUsed / 2n;
+  const addedLiquidity = liquidity / 4n;
+  const deadline = (await client.getBlock()).timestamp + 300n;
+  const nextPositionId = await read(client, positionManager, positionAbi, "nextTokenId");
+  await send(client, provider, request(token, erc20Abi, "approve", [permit2, tokenBudget]));
+  await send(client, provider, request(permit2, permitAbi, "approve", [token, positionManager, tokenBudget, Number(deadline)]));
+  const mint = encodeAbiParameters([
+    keyParam, { type: "int24" }, { type: "int24" }, { type: "uint256" }, { type: "uint128" }, { type: "uint128" },
+    { type: "address" }, { type: "bytes" },
+  ], [poolKey, -887220, 887220, addedLiquidity, nativeBudget, tokenBudget, provider, "0x"]);
+  const pair = encodeAbiParameters([{ type: "address" }, { type: "address" }], [poolKey.currency0, poolKey.currency1]);
+  const refund = encodeAbiParameters([{ type: "address" }, { type: "address" }], [poolKey.currency0, provider]);
+  const encodeActions = (actions, parameters) =>
+    encodeAbiParameters([{ type: "bytes" }, { type: "bytes[]" }], [actions, parameters]);
+  const outside = await send(client, provider, {
+    ...request(positionManager, positionAbi, "modifyLiquidities", [encodeActions("0x020d14", [mint, pair, refund]), deadline]),
+    value: nativeBudget,
+  });
+  await send(client, provider, request(permit2, permitAbi, "approve", [token, positionManager, 0n, 0]));
+  await send(client, provider, request(token, erc20Abi, "approve", [permit2, 0n]));
+  assert.ok(addressEq(await read(client, positionManager, positionAbi, "ownerOf", [nextPositionId]), provider));
+  assert.equal(await read(client, positionManager, positionAbi, "getPositionLiquidity", [nextPositionId]), addedLiquidity);
+  assert.deepEqual(await originalFees(), [nativeBefore, tokenBefore]);
+  const swap = await proveSwap(client, pins, poolKey, trader, true, parseEther("0.05"));
+  const [nativeAfter, tokenAfter] = await originalFees();
+  assert.equal(tokenAfter, tokenBefore);
+  const addedOriginalNativeFees = nativeAfter - nativeBefore;
+  const grossLpFees = swap.amountIn * BigInt(poolKey.fee) / 1_000_000n;
+  const modeledOriginalFees = grossLpFees * liquidity / (liquidity + addedLiquidity);
+  assert.ok(addedOriginalNativeFees > 0n && addedOriginalNativeFees < grossLpFees);
+  assert.ok(addedOriginalNativeFees === modeledOriginalFees || addedOriginalNativeFees + 1n === modeledOriginalFees);
+  assert.equal(await read(client, positionManager, positionAbi, "getPositionLiquidity", [positionTokenId]), liquidity);
+  assert.ok(addressEq(await read(client, positionManager, positionAbi, "ownerOf", [positionTokenId]), engine));
+  assert.equal(swap.settlement[0].to.toLowerCase(), manager.toLowerCase());
+  return { mint: receiptEvidence(outside), outsidePositionTokenId: nextPositionId, outsideLiquidity: addedLiquidity,
+    swap, grossLpFees, addedOriginalNativeFees };
+}
+
 async function review({ rpcUrl, accounts, report }, artifacts) {
   const client = localClient(rpcUrl, 4663);
   assert.equal(await client.getChainId(), 4663);
@@ -417,7 +604,8 @@ async function review({ rpcUrl, accounts, report }, artifacts) {
   const launch = await send(client, creator, request(factory, factoryAbi, "create",
     ["Robinhood Curve Review", "RCR", "", 0, zeroAddress, 0, toHex(1, { size: 32 }), deadline]));
   const created = oneEvent(launch, factory, factoryAbi, "CurveCreated");
-  const { token, curve, revenueLedger, supply } = created.args;
+  const { token, curve: originCurve, revenueLedger, supply } = created.args;
+  let curve = originCurve;
   const [tokenRuntimeHash, curveRuntimeHash, ledgerRuntimeHash] = await Promise.all([
     verifiedRuntime(client, token, artifacts.RMTLaunchCurveTokenV1), verifiedRuntime(client, curve, artifacts.RMTLaunchBondingCurveV1),
     verifiedRuntime(client, revenueLedger, artifacts.RMTLaunchCurveRevenueLedgerV1),
@@ -444,7 +632,8 @@ async function review({ rpcUrl, accounts, report }, artifacts) {
   const curveSell = await send(client, trader, request(curve, curveAbi, "sell", [sellSize, firstSell, deadline]));
   assert.equal(await read(client, token, erc20Abi, "allowance", [trader, curve]), 0n);
 
-  const migration = await migrateCurve(client, creator, operator, artifacts, deployment, token, curve, curveAbi, revenueLedger);
+  const migration = await migrateCurve(client, creator, operator, artifacts, deployment, token);
+  curve = migration.activeCurve;
   deadline = (await client.getBlock()).timestamp + 900n;
   const budget = parseEther("2");
   const [finalBuy, grossUsed, fee, refund] = await read(client, curve, curveAbi, "quoteBuy", [budget]);
@@ -501,6 +690,10 @@ async function review({ rpcUrl, accounts, report }, artifacts) {
 
   const buy = await proveSwap(client, pins, key, trader, true, parseEther("0.1"));
   const sell = await proveSwap(client, pins, key, trader, false, buy.output / 2n);
+  const lpFees = await proveLpFees(client, pins, artifacts, deployment, settled.args, creator, graduateCaller);
+  const provider = graduateCaller;
+  await send(client, trader, request(token, erc20Abi, "transfer", [provider, settled.args.tokenUsed / 3n]));
+  const outsideLiquidity = await proveOutsideLiquidity(client, pins, artifacts, engine, settled.args, provider, trader);
   assert.equal(await read(client, positions, positionAbi, "getPositionLiquidity", [positionTokenId]), liquidity);
   assert.ok(addressEq(await read(client, positions, positionAbi, "ownerOf", [positionTokenId]), engine));
   assert.equal(await read(client, token, erc20Abi, "totalSupply"), supply);
@@ -522,15 +715,18 @@ async function review({ rpcUrl, accounts, report }, artifacts) {
   graduation: { ...receiptEvidence(completion), ...settled.args, logIndex: settled.logIndex,
     rejectedFunding: receiptEvidence(interrupted), blockedTransfer: receiptEvidence(blockedTransfer), principalUnchangedAfterSwaps: true },
   atomicGraduation: { ...receiptEvidence(atomic), token: secondToken, curve: secondCurve, poolId: atomicSettled.args.poolId },
-  v4Trades: { buy, sell } };
+  v4Trades: { buy, sell }, lpFees, outsideLiquidity };
 }
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
   try {
     const { values } = parseArgs({ options: { anvil: { type: "string" }, solc: { type: "string" },
-      lib: { type: "string" }, archive: { type: "string" }, rpc: { type: "string" }, operator: { type: "string" } } });
+      lib: { type: "string" }, archive: { type: "string" }, rpc: { type: "string" }, operator: { type: "string" },
+      "migrate-token": { type: "string" }, creator: { type: "string" }, factory: { type: "string" } } });
     assert.ok(values.solc && (values.rpc ? values.operator && !values.anvil && !values.archive : values.anvil && !values.operator),
       "Supply --solc and --anvil for the 4663 fork, or --solc and --rpc plus --operator for local 31337");
+    assert.ok(values["migrate-token"] ? values.rpc && values.creator && values.factory : !values.creator && !values.factory,
+      "Migration needs local 31337, --migrate-token, --creator and --factory");
     const { artifacts, manifest } = compile(values, values.rpc ? 31337 : 4663);
     const result = values.rpc ? await verifiedLocalProfile(values, artifacts)
       : await withAnvilFork(values, (context) => review(context, artifacts));

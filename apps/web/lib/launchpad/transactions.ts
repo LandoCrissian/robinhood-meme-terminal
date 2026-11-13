@@ -25,7 +25,8 @@ export type BoundWallet = {
 export type LaunchRequest = {
   kind: "launch" | "buy" | "sell" | "token-approval" | "router-approval" | "fees" | "fees-harvest" | "fees-withdrawal"
     | "curve-create" | "curve-buy" | "curve-sell" | "curve-approval" | "curve-graduate" | "curve-claim"
-    | "curve-v4-buy" | "curve-v4-sell" | "curve-v4-token-approval" | "curve-v4-router-approval";
+    | "curve-v4-buy" | "curve-v4-sell" | "curve-v4-token-approval" | "curve-v4-router-approval"
+    | "curve-lp-collect" | "curve-lp-claim";
   chainId: number;
   from: Address;
   to: Address;
@@ -36,6 +37,7 @@ export type LaunchRequest = {
   blockHash: Hex;
   intentId?: Hex;
   token?: Address;
+  curveTarget?: Address;
   amountIn?: string;
   minimumOut?: string;
   feeBucket?: 0 | 1 | 2;
@@ -56,6 +58,7 @@ export function readPendingRequest(chainId: number, address: Address): PendingRe
   if (!request || request.chainId !== chainId || request.from?.toLowerCase() !== address.toLowerCase()
     || !isAddress(request.to) || !isHex(request.data) || !isHex(request.value)
     || !isHash(request.blockHash) || !isHex(request.blockNumber)
+    || (request.curveTarget !== undefined && !isAddress(request.curveTarget))
     || (saved.hash && !isHash(saved.hash))) {
     throw new Error("The saved wallet request cannot be read safely.");
   }

@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { encodeFunctionData, erc20Abi, formatEther, parseEther, zeroAddress, type Address } from "viem";
 import { curveReviewTime, fetchCurveState } from "../../../lib/launchpad/curve-receipt";
-import { curveAbi, curveLedgerAbi, curveProjectURI, sameCurveAddress, type CurveLaunch, type CurveState } from "../../../lib/launchpad/curve-v1";
+import { curveAbi, curveGraduationAbi, curveLedgerAbi, curveLpLedgerAbi, curveProjectURI, sameCurveAddress,
+  type CurveFeeAmounts, type CurveLaunch, type CurveState } from "../../../lib/launchpad/curve-v1";
 import { displayAmount, prepareSwap, prepareTransaction } from "../../../lib/launchpad/direct-v4";
 import { walletMessage, type LaunchRequest } from "../../../lib/launchpad/transactions";
 import { useTradingTermsAcceptance } from "../../../lib/use-trading-terms";
@@ -18,6 +19,24 @@ type Review = {
   request: LaunchRequest; amountIn?: bigint; amountOut?: bigint; minimumOut?: bigint; nativeFee?: bigint; refund?: bigint;
   graduate?: LaunchRequest;
 };
+const migrationStatus = {
+  eligible: "Eligible for the reviewed V1 to V2 migration",
+  graduated: "Graduated projects keep their existing v4 position",
+  suspended: "Migration operations are paused",
+  proposal_pending: "Migration proposal pending",
+  version_unsupported: "No reviewed successor for this version",
+  inactive: "The active curve could not be established",
+};
+const proposalStatus = { awaiting_approvals: "Awaiting signer approvals", timelocked: "Public notice period", executable: "Execution window open",
+  expired: "Proposal expired", blocked: "Migration unavailable" };
+
+function feeLabel(amounts: CurveFeeAmounts | null, symbol: string) {
+  return amounts ? `${displayAmount(amounts.native)} ETH · ${displayAmount(amounts.token)} ${symbol}` : "Unavailable";
+}
+
+function positiveFees(amounts: CurveFeeAmounts | null) {
+  return Boolean(amounts && (BigInt(amounts.native) > 0n || BigInt(amounts.token) > 0n));
+}
 const v4Kinds = { buy: "curve-v4-buy", sell: "curve-v4-sell", "token-approval": "curve-v4-token-approval",
   "router-approval": "curve-v4-router-approval" } as const;
 
@@ -57,12 +76,13 @@ export function CurveToken({ token, initialSide }: { token: Address; initialSide
     {config && !enabled && <p className="lpNotice">Onchain curve launches are disabled on this deployment.</p>}
     {error && <div className="lpNotice lpError" role="status">{error}<button type="button" className="lpButton lpSecondary" onClick={() => setAttempt((prior) => prior + 1)}>Retry</button></div>}
     {enabled && snapshot && <CurveDetail key={snapshot.launch.token} launch={snapshot.launch} state={snapshot.state}
+      refresh={() => setAttempt((prior) => prior + 1)}
       initialSide={initialSide} transaction={transaction} />}
   </>;
 }
 
-function CurveDetail({ launch, state, initialSide, transaction }: {
-  launch: CurveLaunch; state: CurveState; initialSide: "buy" | "sell"; transaction: ReturnType<typeof useLaunchTransaction>;
+function CurveDetail({ launch, state, initialSide, transaction, refresh }: {
+  launch: CurveLaunch; state: CurveState; initialSide: "buy" | "sell"; transaction: ReturnType<typeof useLaunchTransaction>; refresh: () => void;
 }) {
   const { config, wallet, stillSelected } = useLaunchWallet();
   const deployment = config?.status === "ready" && config.curve ? config.deployment : undefined;
@@ -86,8 +106,10 @@ function CurveDetail({ launch, state, initialSide, transaction }: {
   const locked = preparing || transaction.busy || Boolean(transaction.pending);
   const claimable = BigInt(state.claimable ?? "0");
   const position = state.position;
+  const activeCurve = state.activeCurve;
+  const lpFees = state.lpFees;
   const atomicGraduation = review?.graduate;
-  const canTrade = !state.graduated || Boolean(position);
+  const canTrade = !state.graduated && state.project?.eligibility !== "inactive" || Boolean(position);
   const input = side === "buy" ? "ETH" : launch.symbol;
   const output = side === "buy" ? launch.symbol : "ETH";
 
@@ -103,9 +125,9 @@ function CurveDetail({ launch, state, initialSide, transaction }: {
   useEffect(() => {
     if (restored) try { localStorage.setItem(key, JSON.stringify({ amount, side, slippage })); } catch { /* Retain in-memory inputs. */ }
   }, [amount, side, slippage, key, restored]);
-  useEffect(() => { setReview(undefined); }, [wallet?.generation, transaction.result, state.graduated]);
+  useEffect(() => { setReview(undefined); }, [wallet?.generation, transaction.result, state.graduated, activeCurve]);
 
-  async function prepare(kind: "trade" | "graduate" | "claim", event?: FormEvent<HTMLFormElement>) {
+  async function prepare(kind: "trade" | "graduate" | "claim" | "lp-collect" | "lp-claim", event?: FormEvent<HTMLFormElement>) {
     event?.preventDefault();
     if (!wallet || !deployment || !rpc || !walletConnected || locked || (kind === "trade" && (!terms.accepted || !canTrade))) return;
     setPreparing(true);
@@ -117,11 +139,19 @@ function CurveDetail({ launch, state, initialSide, transaction }: {
       const submit = (operation: Parameters<typeof prepareTransaction>[3]) => prepareTransaction(rpc, deployment, wallet, operation);
       let next: Review;
       if (kind === "graduate") {
-        next = { request: await submit({ kind: "curve-graduate", token: launch.token, to: launch.curve, deadline,
+        next = { request: await submit({ kind: "curve-graduate", token: launch.token, to: activeCurve, curveTarget: activeCurve, deadline,
           data: encodeFunctionData({ abi: curveAbi, functionName: "graduate", args: [BigInt(deadline)] }) }) };
       } else if (kind === "claim") {
         next = { request: await submit({ kind: "curve-claim", token: launch.token, to: launch.ledger, deadline,
           data: encodeFunctionData({ abi: curveLedgerAbi, functionName: "claim" }) }) };
+      } else if (kind === "lp-collect" || kind === "lp-claim") {
+        const graduation = config?.status === "ready" ? config.curve?.graduationEngine : undefined;
+        if (!position || !lpFees || !graduation) throw new Error("The original LP position fee ledger is unavailable.");
+        next = { request: await submit(kind === "lp-collect"
+          ? { kind: "curve-lp-collect", token: launch.token, to: graduation, deadline,
+            data: encodeFunctionData({ abi: curveGraduationAbi, functionName: "collectLpFees", args: [launch.token, BigInt(deadline)] }) }
+          : { kind: "curve-lp-claim", token: launch.token, to: lpFees.ledger, deadline,
+            data: encodeFunctionData({ abi: curveLpLedgerAbi, functionName: "claim" }) }) };
       } else {
         const amountIn = parseAmount(amount);
         const slip = /^\d(?:\.\d{1,2})?$/.test(slippage) ? Math.round(Number(slippage) * 100) : 0;
@@ -134,16 +164,16 @@ function CurveDetail({ launch, state, initialSide, transaction }: {
           }
           next = { ...swap, request: { ...swap.request, kind: v4Kinds[kind] } };
         } else {
-          const curve = { address: launch.curve, abi: curveAbi } as const;
+          const curve = { address: activeCurve, abi: curveAbi } as const;
           const buy = side === "buy";
           const [amountOut, , nativeFee, refund] = buy
             ? await rpc.readContract({ ...curve, functionName: "quoteBuy", args: [amountIn] })
             : await rpc.readContract({ ...curve, functionName: "quoteSell", args: [amountIn] });
           const minimumOut = amountOut * BigInt(10_000 - slip) / 10_000n;
           if (!minimumOut) throw new Error("The quoted output is too small for this trade.");
-          const common = { token: launch.token, deadline, amountIn: amountIn.toString(), minimumOut: minimumOut.toString() };
+          const common = { token: launch.token, curveTarget: activeCurve, deadline, amountIn: amountIn.toString(), minimumOut: minimumOut.toString() };
           if (buy) {
-            const buyRequest = (functionName: "buy" | "buyAndGraduate") => submit({ ...common, kind: "curve-buy", to: launch.curve, value: amountIn,
+            const buyRequest = (functionName: "buy" | "buyAndGraduate") => submit({ ...common, kind: "curve-buy", to: activeCurve, value: amountIn,
               data: encodeFunctionData({ abi: curveAbi, functionName, args: [minimumOut, BigInt(deadline)] }) });
             const request = await buyRequest("buy");
             const graduate = sold + amountOut === threshold ? await buyRequest("buyAndGraduate").catch(() => undefined) : undefined;
@@ -151,14 +181,14 @@ function CurveDetail({ launch, state, initialSide, transaction }: {
           } else {
             const [balance, allowance] = await Promise.all([
               rpc.readContract({ address: launch.token, abi: erc20Abi, functionName: "balanceOf", args: [wallet.address] }),
-              rpc.readContract({ address: launch.token, abi: erc20Abi, functionName: "allowance", args: [wallet.address, launch.curve] }),
+              rpc.readContract({ address: launch.token, abi: erc20Abi, functionName: "allowance", args: [wallet.address, activeCurve] }),
             ]);
             if (balance < amountIn) throw new Error("Insufficient token balance for this sell.");
             const request = allowance === amountIn
-              ? await submit({ ...common, kind: "curve-sell", to: launch.curve,
+              ? await submit({ ...common, kind: "curve-sell", to: activeCurve,
                 data: encodeFunctionData({ abi: curveAbi, functionName: "sell", args: [amountIn, minimumOut, BigInt(deadline)] }) })
               : await submit({ ...common, kind: "curve-approval", to: launch.token,
-                data: encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [launch.curve, amountIn] }) });
+                data: encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [activeCurve, amountIn] }) });
             next = { request, amountIn, amountOut, minimumOut, nativeFee };
           }
         }
@@ -172,7 +202,27 @@ function CurveDetail({ launch, state, initialSide, transaction }: {
   const action = review?.request.kind;
   const confirm = action === "curve-approval" ? "Confirm curve allowance"
     : action === "curve-v4-token-approval" ? "Confirm token approval" : action === "curve-v4-router-approval" ? "Confirm router approval"
-      : action === "curve-graduate" ? "Confirm graduation in wallet" : action === "curve-claim" ? "Confirm fee claim in wallet" : `Confirm ${side} in wallet`;
+      : action === "curve-graduate" ? "Confirm graduation in wallet" : action === "curve-claim" ? "Confirm fee claim in wallet"
+        : action === "curve-lp-collect" ? "Confirm LP fee collection in wallet" : action === "curve-lp-claim" ? "Confirm LP fee claim in wallet" : `Confirm ${side} in wallet`;
+
+  async function send(request: LaunchRequest) {
+    if (!wallet || locked) return;
+    setPreparing(true);
+    setError("");
+    try {
+      if (request.curveTarget) {
+        const { state: current } = await fetchCurveState(launch.token, wallet.address);
+        if (current.graduated || !sameCurveAddress(current.activeCurve, request.curveTarget)) {
+          setReview(undefined);
+          refresh();
+          throw new Error("The active curve changed. Review the new quote and allowance before confirming.");
+        }
+      }
+      if (!stillSelected(wallet)) throw new Error("Wallet selection changed. Review the action again.");
+      await transaction.send(request);
+    } catch (cause) { setError(walletMessage(cause)); }
+    finally { setPreparing(false); }
+  }
   return <>
     <header className="lpPageHeading"><div className="lpTokenHeading"><TokenArtwork symbol={launch.symbol} /><div>
       <h1>{launch.name}</h1><p>{launch.symbol}</p></div></div>
@@ -190,7 +240,8 @@ function CurveDetail({ launch, state, initialSide, transaction }: {
           <dt>Curve trading fee</dt><dd>1% of gross ETH</dd>
           <dt>Collected fee allocation</dt><dd>{90 - share}% creator · {share}% project treasury · 5% RMT operating · 5% future RMT reserve</dd>
           <dt>Token contract</dt><dd><CopyIdentity title="token contract" value={launch.token} /></dd>
-          <dt>Curve contract</dt><dd><CopyIdentity title="curve contract" value={launch.curve} /></dd>
+          <dt>Active curve contract</dt><dd><CopyIdentity title="active curve contract" value={activeCurve} /></dd>
+          {!sameCurveAddress(launch.curve, activeCurve) && <><dt>Origin curve contract</dt><dd><CopyIdentity title="origin curve contract" value={launch.curve} /></dd></>}
           <dt>Creation transaction</dt><dd><CopyIdentity title="creation transaction" value={launch.transactionHash} /></dd>
           <dt>Observed block</dt><dd>{state.blockNumber} · L1 finality unverified</dd>
           {project && <><dt>Project</dt><dd><a href={project} target="_blank" rel="noreferrer">Open project website</a></dd></>}
@@ -221,10 +272,12 @@ function CurveDetail({ launch, state, initialSide, transaction }: {
           {state.project ? <dl className="lpFacts">
             <dt>Permanent registry</dt><dd><CopyIdentity title="project registry" value={state.project.registry} /></dd>
             <dt>Active version</dt><dd>Version {state.project.currentVersion}</dd>
-            <dt>Execution engine</dt><dd><CopyIdentity title="execution engine" value={state.project.currentEngine} /></dd>
+            <dt>Migration eligibility</dt><dd>{migrationStatus[state.project.eligibility]}</dd>
+            {state.project.candidate && <><dt>Prepared successor curve</dt><dd><CopyIdentity title="prepared successor curve" value={state.project.candidate} /></dd></>}
             <dt>Economic rules commitment</dt><dd><CopyIdentity title="economic rules commitment" value={state.project.economicRules} /></dd>
             <dt>Recorded migrations</dt><dd>{state.project.count}</dd>
             {state.project.pending && <>
+              <dt>Migration notice</dt><dd>{proposalStatus[state.project.pending.status]}</dd>
               <dt>Proposed engine</dt><dd><CopyIdentity title="proposed execution engine" value={state.project.pending.nextEngine} /></dd>
               <dt>Proposed runtime</dt><dd><CopyIdentity title="proposed runtime hash" value={state.project.pending.runtimeHash} /></dd>
               <dt>Executable after</dt><dd>{state.project.pending.executableAt ? new Date(state.project.pending.executableAt * 1_000).toISOString() : "Awaiting signer approvals"}</dd>
@@ -234,11 +287,27 @@ function CurveDetail({ launch, state, initialSide, transaction }: {
               <dt>Version {migration.fromVersion} to {migration.toVersion}</dt><dd>Block {migration.blockNumber}</dd>
               <dt>Previous engine</dt><dd><CopyIdentity title="previous execution engine" value={migration.previousEngine} /></dd>
               <dt>Next engine</dt><dd><CopyIdentity title="next execution engine" value={migration.nextEngine} /></dd>
+              <dt>Assets moved</dt><dd>{displayAmount(migration.backing)} ETH · {displayAmount(migration.inventory)} {launch.symbol}</dd>
+              <dt>Migration transaction</dt><dd><CopyIdentity title="migration transaction" value={migration.transactionHash} /></dd>
               <dt>Runtime hash</dt><dd><CopyIdentity title="execution runtime hash" value={migration.runtimeHash} /></dd>
             </div>)}
           </dl> : <p>Registry evidence is unavailable for this review deployment.</p>}
         </details>
-        {position && <p>The standard v4 LP fee is 0.30%. This version leaves fees earned by the locked position in custody. Outside liquidity and routing depend on the venue.</p>}
+        {position && <p>The standard v4 pool fee is 0.30%. Only earnings from the original locked position accrue to this ledger. Outside liquidity and routing depend on the venue.</p>}
+        {lpFees && <div className="lpForm">
+          <h3>Original position fees</h3>
+          <dl className="lpFacts">
+            <dt>Accrued, awaiting collection</dt><dd>{feeLabel(lpFees.uncollected, launch.symbol)}</dd>
+            <dt>Collected</dt><dd>{feeLabel(lpFees.collected, launch.symbol)}</dd>
+            <dt>Claimed</dt><dd>{feeLabel(lpFees.claimed, launch.symbol)}</dd>
+            {wallet && <><dt>Your claimable fees</dt><dd>{feeLabel(lpFees.claimable, launch.symbol)}</dd></>}
+            {lpFees.latestCollection && <><dt>Latest collection</dt><dd><CopyIdentity title="LP fee collection transaction" value={lpFees.latestCollection.transactionHash} /></dd></>}
+          </dl>
+          {walletConnected && <div className="lpWalletOptions">
+            <button className="lpButton lpSecondary" type="button" disabled={locked || !positiveFees(lpFees.uncollected)} onClick={() => void prepare("lp-collect")}>Review LP fee collection</button>
+            <button className="lpButton lpSecondary" type="button" disabled={locked || !positiveFees(lpFees.claimable)} onClick={() => void prepare("lp-claim")}>Review LP fee claim</button>
+          </div>}
+        </div>}
         {canGraduate && <button className="lpButton" type="button" disabled={locked || !walletConnected} onClick={() => void prepare("graduate")}>Review graduation</button>}
         {wallet && <div className="lpForm">
           <h3>Your curve revenue</h3><p>{state.claimable === null ? "Claim evidence is unavailable." : `${displayAmount(claimable)} ETH claimable`}</p>
@@ -248,7 +317,9 @@ function CurveDetail({ launch, state, initialSide, transaction }: {
       <section className="lpPanel lpForm lpTradeColumn">
         <h2>{position ? "Trade on Uniswap v4" : `Trade ${launch.symbol}`}</h2>
         {!walletConnected && <WalletConnection compact />}
-        {!canTrade && <p className="lpNotice" role="status">Graduation was observed. Trading waits for canonical funding and custody verification.</p>}
+        {!canTrade && <p className="lpNotice" role="status">{state.graduated
+          ? "Graduation was observed. Trading waits for canonical funding and custody verification."
+          : "The active curve is unavailable. Refresh the project evidence before reviewing a trade."}</p>}
         {canTrade && <>
           <div className="lpTabs" aria-label="Trade direction">
             {(["buy", "sell"] as const).map((option) => <button key={option} className={side === option ? "isActive" : undefined}
@@ -282,13 +353,15 @@ function CurveDetail({ launch, state, initialSide, transaction }: {
             {review.refund !== undefined && review.refund > 0n && <><dt>Estimated unspent ETH refund</dt><dd>{formatEther(review.refund)} ETH</dd></>}
             {action === "curve-graduate" && <><dt>Graduation</dt><dd>Use the existing token and backing reserve to fund the canonical locked v4 position.</dd></>}
             {action === "curve-claim" && <><dt>Available fees</dt><dd>{displayAmount(claimable)} ETH</dd></>}
+            {action === "curve-lp-collect" && lpFees && <><dt>Accrued fees</dt><dd>{feeLabel(lpFees.uncollected, launch.symbol)}</dd></>}
+            {action === "curve-lp-claim" && lpFees && <><dt>Available LP fees</dt><dd>{feeLabel(lpFees.claimable, launch.symbol)}</dd></>}
             <dt>Wallet</dt><dd className="lpAddress">{review.request.from}</dd>
             <dt>Expires</dt><dd>{new Date(review.request.deadline * 1_000).toLocaleTimeString()}</dd>
           </dl>
           {(action === "curve-approval" || action === "curve-v4-token-approval" || action === "curve-v4-router-approval") && <p>Approve only the reviewed amount. Review the sale again after approval confirms.</p>}
-          <button className="lpButton" type="button" disabled={locked} onClick={() => void transaction.send(review.request)}>{confirm}</button>
+          <button className="lpButton" type="button" disabled={locked} onClick={() => void send(review.request)}>{confirm}</button>
           {atomicGraduation && <button className="lpButton lpSecondary" type="button" disabled={locked}
-            onClick={() => void transaction.send(atomicGraduation)}>Confirm buy and graduate in wallet</button>}
+            onClick={() => void send(atomicGraduation)}>Confirm buy and graduate in wallet</button>}
         </div>}
       </section>
     </div>
