@@ -6,7 +6,7 @@ import type { Address } from "viem";
 import type { CurveLaunch } from "../../../lib/launchpad/curve-v1";
 import { displayAmount } from "../../../lib/launchpad/direct-v4";
 import { TerminalIcon } from "../../vnext/terminal-icon";
-import { TokenArtwork } from "./launch-directory";
+import { TokenArtwork } from "./token-artwork";
 import { useLaunchWallet, WalletConnection } from "./launch-wallet";
 
 type Directory = { status: "ready" | "disabled" | "delayed"; launches?: CurveLaunch[]; reason?: string };

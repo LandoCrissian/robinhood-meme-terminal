@@ -9,7 +9,7 @@ import { curveAbi, curveGraduationAbi, curveLedgerAbi, curveLpLedgerAbi, curvePr
 import { displayAmount, prepareSwap, prepareTransaction } from "../../../lib/launchpad/direct-v4";
 import { walletMessage, type LaunchRequest } from "../../../lib/launchpad/transactions";
 import { useTradingTermsAcceptance } from "../../../lib/use-trading-terms";
-import { TokenArtwork } from "./launch-directory";
+import { TokenArtwork } from "./token-artwork";
 import { CopyIdentity } from "./launch-shell";
 import { TransactionFeedback, useLaunchTransaction } from "./launch-transactions";
 import { useLaunchClient, useLaunchWallet, WalletConnection } from "./launch-wallet";

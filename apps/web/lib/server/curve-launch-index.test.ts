@@ -4,6 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { encodeAbiParameters, encodeEventTopics, encodeFunctionData, keccak256, toHex, zeroAddress, type Address, type Hash, type Log, type TransactionReceipt } from "viem";
+import { GET as launchpadConfig } from "../../app/api/launchpad/config/route";
+import { GET as readCurve } from "../../app/api/launchpad/curve/route";
+import { POST as verifyHistoricalLaunch } from "../../app/api/launchpad/launches/route";
 import { curveAtReceipt, projectCurveReceipt } from "../launchpad/curve-receipt";
 import { curveAssetsMigratedEvent, curveCreatedEvent, curveCreationFeePaidEvent, curveDraftCreationFeeWei, curveFactoryAbi,
   curveLpCollectedEvent, projectMigratedEvent } from "../launchpad/curve-v1";
@@ -77,6 +80,39 @@ test("curve preview fails closed on hosted, credentialed, and cross-origin acces
   assert.equal(curveLoopbackRequest(new Request("http://127.0.0.1:3000/api/launchpad/curve")), true);
   assert.equal(curveLoopbackRequest(new Request("http://127.0.0.1:3000/api/launchpad/curve", { headers: { Origin: "https://example.org" } })), false);
   assert.equal(curveLoopbackRequest(new Request("https://example.org/api/launchpad/curve")), false);
+});
+
+test("showcase handlers never open fixture dependencies even for loopback requests", async () => {
+  const settings = {
+    RMT_LAUNCHPAD_SITE_MODE: "showcase",
+    RMT_CURVE_ENABLED: "true",
+    RMT_LAUNCHPAD_ENABLED: "true",
+    RMT_CURVE_DATABASE_PATH: "must-not-open-curve.sqlite",
+    RMT_LAUNCHPAD_RPC_URL: "must-not-contact-rpc",
+  };
+  const original = Object.keys(settings).map((key) => [key, process.env[key]] as const);
+  Object.assign(process.env, settings);
+  try {
+    const origin = "http://127.0.0.1:3000";
+    const config = await launchpadConfig(new Request(`${origin}/api/launchpad/config`));
+    assert.equal(config.status, 200);
+    const body = await config.json();
+    assert.equal(body.status, "disabled");
+    assert.equal(body.deployment, undefined);
+
+    const curve = await readCurve(new Request(`${origin}/api/launchpad/curve`));
+    assert.equal(curve.status, 404);
+    assert.deepEqual(await curve.json(), { status: "disabled" });
+
+    const receipt = await verifyHistoricalLaunch(new Request(`${origin}/api/launchpad/launches`, { method: "POST" }));
+    assert.equal(receipt.status, 403);
+    assert.equal((await receipt.json()).status, "disabled");
+  } finally {
+    for (const [key, value] of original) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  }
 });
 
 test("curve creation projection verifies exact wallet terms and one canonical receipt log", () => {

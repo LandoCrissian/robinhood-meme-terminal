@@ -6,6 +6,7 @@ import type { NewLaunchDeployment } from "../launchpad/launch-record";
 import { growthVaultDeployerAbi } from "../launchpad/growth-vault";
 import { launchpadRouterPins } from "../launchpad/router-pins";
 import { readLaunchpadPreviewAccess } from "./launchpad-preview-access";
+import { launchSiteMode } from "./launchpad-site-mode";
 
 const contractNames = ["factory", "poolManager", "positionManager", "universalRouter", "quoter", "permit2", "stateView"] as const;
 type ContractName = typeof contractNames[number];
@@ -77,7 +78,7 @@ function parseLocalRpcUrl(raw: string): string {
 }
 
 export function readLaunchpadRuntime(env: Environment = process.env): LaunchpadRuntime | null {
-  if (env.RMT_LAUNCHPAD_ENABLED !== "true" || (env.VERCEL === "1" || Boolean(env.VERCEL_ENV))) return null;
+  if (launchSiteMode(env) !== "historical") return null;
   if (required(env, "CHAIN_ID") !== "31337") throw new Error("Only the local launchpad factory is enabled");
   const chainId = 31337;
   const engineVersion = env.RMT_LAUNCHPAD_ENGINE_VERSION?.trim() || "1";

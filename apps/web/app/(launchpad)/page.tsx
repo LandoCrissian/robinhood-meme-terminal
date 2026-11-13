@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { getAddress, isAddress } from "viem";
-import "./vnext/vnext-terminal.css";
-import "./(launchpad)/launchpad.css";
-import { ProductDirectory } from "./(launchpad)/_components/launch-product";
-import { legacyRmtAddress } from "../lib/launchpad/legacy-rmt";
+import { ProductDirectory } from "./_components/launch-product";
+import { ShowcaseDirectory } from "./_components/launch-showcase-directory";
+import { legacyRmtAddress } from "../../lib/launchpad/legacy-rmt";
+import { isLaunchShowcase } from "../../lib/server/launchpad-site-mode";
 
 export const metadata = { title: "RMT Launch | Token Launchpad", robots: { index: false, follow: false } };
 
@@ -15,5 +15,5 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ m
     if (legacyRmtAddress(address)) redirect("/rmt#legacy-token");
     redirect(`/launches/${address}${side === "buy" || side === "sell" ? `?side=${side}` : ""}`);
   }
-  return <ProductDirectory />;
+  return isLaunchShowcase() ? <ShowcaseDirectory /> : <ProductDirectory />;
 }

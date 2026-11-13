@@ -32,7 +32,7 @@ for (const file of retiredPresentationFiles) {
   assert.equal(existsSync(join(appDirectory, file)), false, `${file} must remain retired.`);
 }
 
-const rootPage = readFileSync(join(appDirectory, "page.tsx"), "utf8");
+const rootPage = readFileSync(join(appDirectory, "(launchpad)", "page.tsx"), "utf8");
 const launchProduct = readFileSync(join(appDirectory, "(launchpad)/_components/launch-product.tsx"), "utf8");
 const rootLayout = readFileSync(join(appDirectory, "layout.tsx"), "utf8");
 const shell = readFileSync(join(appDirectory, "vnext/vnext-terminal-shell.tsx"), "utf8");
@@ -41,7 +41,7 @@ const portfolioCompatibilityRoute = readFileSync(join(appDirectory, "portfolio/p
 const publicChrome = readFileSync(join(appDirectory, "public-chrome.tsx"), "utf8");
 const sitemap = readFileSync(join(appDirectory, "sitemap.ts"), "utf8");
 
-assert.match(rootPage, /import \{ ProductDirectory \} from "\.\/\(launchpad\)\/_components\/launch-product"/);
+assert.match(rootPage, /import \{ ProductDirectory \} from "\.\/_components\/launch-product"/);
 assert.match(rootPage, /<ProductDirectory \/>/);
 assert.match(launchProduct, /config\?\.status === "ready" && !config\.curve/);
 assert.match(launchProduct, /historical \? mine \? <MyLaunches \/> : <LaunchDirectory \/> : <CurveDirectory mine=\{mine\} \/>/);

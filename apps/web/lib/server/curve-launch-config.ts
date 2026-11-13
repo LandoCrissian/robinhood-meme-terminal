@@ -4,13 +4,14 @@ import identities from "../../../../packages/contracts/test/fixtures/rmt-v4-depl
 import { curveBaselineBackingWei, curveDraftCreationFeeWei, curveFactoryAbi, curveGraduationAbi, curveOwnerBackingWei, sameCurveAddress } from "../launchpad/curve-v1";
 import type { LaunchConfig } from "../launchpad/transactions";
 import { readLaunchpadPreviewAccess } from "./launchpad-preview-access";
+import { launchSiteMode } from "./launchpad-site-mode";
 
 const loopback = new Set(["127.0.0.1", "localhost", "[::1]"]);
 const fixture = identities.baseSepolia;
 type Environment = Record<string, string | undefined>;
 
 export function curvePreviewSelected(env: Environment = process.env) {
-  return env.RMT_CURVE_ENABLED === "true";
+  return launchSiteMode(env) === "curve";
 }
 
 export function curveLoopbackRequest(request: Request) {
@@ -23,7 +24,7 @@ export function curveLoopbackRequest(request: Request) {
 }
 
 export function readCurveRuntime(env: Environment = process.env) {
-  if (!curvePreviewSelected(env) || env.VERCEL === "1" || env.VERCEL_ENV) return null;
+  if (!curvePreviewSelected(env)) return null;
   const raw = (name: string) => env["RMT_CURVE_" + name]?.trim() || "";
   const rpcUrl = new URL(raw("RPC_URL"));
   if (rpcUrl.protocol !== "http:" || !loopback.has(rpcUrl.hostname) || !rpcUrl.port

@@ -7,10 +7,7 @@ import type { NewLaunchRecord } from "../../../lib/launchpad/launch-record";
 import { TerminalIcon } from "../../vnext/terminal-icon";
 import { useLaunches } from "./launch-transactions";
 import { useLaunchWallet, WalletConnection } from "./launch-wallet";
-
-export function TokenArtwork({ symbol }: { symbol: string }) {
-  return <span className="rmtMarketArtwork lpArtwork" aria-hidden="true">{symbol.slice(0, 2).toUpperCase()}</span>;
-}
+import { TokenArtwork } from "./token-artwork";
 
 export function LaunchList({ launches }: { launches: NewLaunchRecord[] }) {
   return <div className="rmtMarketTable lpTable">

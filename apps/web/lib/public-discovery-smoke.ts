@@ -5,6 +5,7 @@ import { NextRequest } from "next/server";
 import robots from "../app/robots";
 import { staticPublicSitemap } from "../app/sitemap";
 import { config as middlewareConfig, middleware } from "../middleware";
+import { launchSiteMode } from "./server/launchpad-site-mode";
 import {
   legacyTerminalMarketRedirect,
   normalizeLegacyTerminalMarketAddress
@@ -48,7 +49,7 @@ assert.equal(RMT_SITE_NAME, "Robinhood Meme Terminal");
 assert.equal(RMT_SITE_ALTERNATE_NAME, "RMT");
 assert.equal(rmtWebsiteStructuredData.url, `${appUrl}/`);
 
-const homeSource = read("../app/page.tsx");
+const homeSource = read("../app/(launchpad)/page.tsx");
 const vnextSource = read("../app/vnext/page.tsx");
 const nextConfigSource = read("../next.config.mjs");
 assert.match(homeSource, /<ProductDirectory \/>/, "ROOT_RENDERS_LAUNCHPAD");
@@ -68,27 +69,78 @@ assert.match(read("../app/launch/page.tsx"), /redirect\("\/create-token"\)/);
 assert.equal(existsSync(new URL("../app/api/embed/cannacat", import.meta.url)), false,
   "The retired partner embed must have no application route");
 
-for (const route of [
-  "/nft", "/nft/collection/item", "/projects", "/project/0x", "/markets/robinhood-chain",
-  "/profile", "/invite/test", "/watchlist", "/api/nft/mint-preflight",
-  "/api/projects/project-id/ownership", "/api/vnext/chain-pulse", "/api/vnext/capital-flow",
-  "/api/markets/wallet-constellation"
-]) {
-  const url = new URL(route, appUrl).href;
-  assert.ok(unstable_doesMiddlewareMatch({ config: middlewareConfig, url }), `Retirement must intercept ${route}`);
-  const response = middleware(new NextRequest(url));
-  assert.equal(response.status, 410, `Retired surface must be unavailable at ${route}`);
-  assert.equal(response.headers.get("x-robots-tag"), "noindex, nofollow");
+const previousMode = process.env.RMT_LAUNCHPAD_SITE_MODE;
+try {
+  delete process.env.RMT_LAUNCHPAD_SITE_MODE;
+  for (const route of [
+    "/nft", "/nft/collection/item", "/projects", "/project/0x", "/markets/robinhood-chain",
+    "/profile", "/invite/test", "/watchlist", "/api/nft/mint-preflight",
+    "/api/projects/project-id/ownership", "/api/vnext/chain-pulse", "/api/vnext/capital-flow",
+    "/api/markets/wallet-constellation"
+  ]) {
+    const url = new URL(route, appUrl).href;
+    assert.ok(unstable_doesMiddlewareMatch({ config: middlewareConfig, url }), `Retirement must intercept ${route}`);
+    const response = middleware(new NextRequest(url));
+    assert.equal(response.status, 410, `Retired surface must be unavailable at ${route}`);
+    assert.equal(response.headers.get("x-robots-tag"), "noindex, nofollow");
+  }
+
+  for (const route of [
+    "/", "/create-token", "/my-launches", "/wallet", "/api/launchpad/config", "/mcp",
+    "/api/vnext/quotes", "/api/vnext/verify", "/api/vnext/authorize",
+    "/api/vnext/native-settlement-trace", "/api/vnext/wallet-request-recovery"
+  ]) {
+    const url = new URL(route, appUrl).href;
+    assert.equal(middleware(new NextRequest(url)).headers.get("x-middleware-next"), "1",
+      `Retirement must preserve the route boundary at ${route}`);
+  }
+
+  process.env.RMT_LAUNCHPAD_SITE_MODE = "showcase";
+  for (const route of [
+    "/", "/create-token", "/my-launches", "/wallet", "/rmt",
+    "/launches/example-alder", "/launches/example-harbor",
+    "/brand/rmt-master-logo.png", "/_next/static/chunks/app/(launchpad)/layout.js",
+    "/_next/static/chunks/app/(launchpad)/launches/%5Btoken%5D/page.js", "/api/launchpad/config",
+  ]) {
+    const url = new URL(route, appUrl).href;
+    const response = middleware(new NextRequest(url));
+    assert.equal(response.headers.get("x-middleware-next"), "1", `Showcase must allow navigation to ${route}`);
+    assert.equal(response.headers.get("x-robots-tag"), "noindex, nofollow");
+  }
+
+  for (const route of [
+    "/launches/0x0000000000000000000000000000000000000001", "/launches/example-forged",
+    "/status", "/mcp", "/api/vnext/authorize", "/api/vnext/native-settlement-trace",
+    "/api/unreviewed-route", "/brand/%2F..%2Fapi", "/_next/static/%5C..%5Capi", "/_next/static/%252E%252E/api",
+  ]) {
+    const url = new URL(route, appUrl).href;
+    assert.ok(unstable_doesMiddlewareMatch({ config: middlewareConfig, url }), `Showcase must intercept ${route}`);
+    const response = middleware(new NextRequest(url, { method: "HEAD" }));
+    assert.equal(response.status, 404, `Showcase must deny ${route}`);
+    assert.equal(response.body, null);
+  }
+
+  const receipt = middleware(new NextRequest(new URL("/api/launchpad/launches", appUrl), { method: "POST" }));
+  assert.equal(receipt.status, 403);
+  assert.match(receipt.headers.get("cache-control") ?? "", /no-store/);
+  const serverAction = new NextRequest(new URL("/create-token", appUrl), { method: "POST" });
+  assert.equal(middleware(serverAction).status, 404);
+} finally {
+  if (previousMode === undefined) delete process.env.RMT_LAUNCHPAD_SITE_MODE;
+  else process.env.RMT_LAUNCHPAD_SITE_MODE = previousMode;
 }
 
-for (const route of [
-  "/", "/create-token", "/my-launches", "/wallet", "/api/launchpad/config", "/mcp",
-  "/api/vnext/quotes", "/api/vnext/verify", "/api/vnext/authorize",
-  "/api/vnext/native-settlement-trace", "/api/vnext/wallet-request-recovery"
-]) {
-  const url = new URL(route, appUrl).href;
-  assert.equal(unstable_doesMiddlewareMatch({ config: middlewareConfig, url }), false,
-    `Retirement must preserve the route boundary at ${route}`);
+assert.equal(launchSiteMode({}), "showcase");
+const curveFixture = { RMT_CURVE_ENABLED: "true" };
+const historicalFixture = { RMT_LAUNCHPAD_ENABLED: "true" };
+assert.equal(launchSiteMode(curveFixture), "curve");
+assert.equal(launchSiteMode(historicalFixture), "historical");
+assert.equal(launchSiteMode({ ...curveFixture, ...historicalFixture }), "showcase");
+for (const fixture of [curveFixture, historicalFixture]) {
+  assert.equal(launchSiteMode({ ...fixture, VERCEL: "1" }), "showcase");
+  assert.equal(launchSiteMode({ ...fixture, VERCEL_ENV: "preview" }), "showcase");
+  assert.equal(launchSiteMode({ ...fixture, RMT_LAUNCHPAD_SITE_MODE: "showcase" }), "showcase");
+  assert.equal(launchSiteMode({ ...fixture, RMT_LAUNCHPAD_SITE_MODE: "unrecognized" }), "showcase");
 }
 
 const validAddress = "0x39DBed3A2BD333467115DE45665Cc57f813C4571";
