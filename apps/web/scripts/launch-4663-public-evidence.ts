@@ -304,7 +304,9 @@ export async function runPublicEvidence({
   try {
     const source = await createReviewCopy(scratch, network);
     for (const key of Object.keys(process.env)) {
-      if (key.startsWith("RMT_LAUNCHPAD_") || key === "VERCEL" || key === "VERCEL_ENV") setEnv(key, undefined);
+      if (key.startsWith("RMT_LAUNCHPAD_") || key === "RMT_CURVE_ENABLED" || key === "VERCEL" || key === "VERCEL_ENV") {
+        setEnv(key, undefined);
+      }
     }
     const databasePath = join(scratch, "review.sqlite");
     for (const [key, value] of Object.entries({
