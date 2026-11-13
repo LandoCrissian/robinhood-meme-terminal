@@ -125,6 +125,7 @@ try {
   await shown("0.0004 ETH");
   await shown("$1.00 at $2,500 per ETH");
   await shown("Estimated separately by your wallet");
+  await button("Confirm creation in wallet").waitFor();
   await screenshot("01-create-review-phone");
   await page.evaluate(() => { window.curveFixture.reject = true; });
   await button("Confirm creation in wallet").click();
@@ -147,7 +148,9 @@ try {
   evidence.tokenPage = new URL(page.url()).pathname;
   const token = evidence.tokenPage.split("/").pop();
   const readLaunch = async () => {
-    const response = await fetch(new URL(`/api/launchpad/curve?token=${token}&account=${account}`, site));
+    // A fixture compiler invocation between reads can outlive Next's keep-alive window.
+    const response = await fetch(new URL(`/api/launchpad/curve?token=${token}&account=${account}`, site),
+      { headers: { Connection: "close" } });
     assert.equal(response.status, 200);
     return response.json();
   };

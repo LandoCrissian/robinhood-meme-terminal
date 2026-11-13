@@ -154,6 +154,26 @@ contract RMTLaunchCurveCreationFeeV1Test is Test {
         assertEq(factory.creationFeesAccrued(), FEE);
     }
 
+    function testRejectsInvalidOperatingTreasuryBindings() public {
+        address reserve = factory.futureReserveRecipient();
+        address deployer = address(factory.successorDeployer());
+        bytes32 runtimeHash = factory.successorDeployerRuntimeHash();
+        address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1);
+        CreationFeeGraduationBinding graduation = new CreationFeeGraduationBinding(predicted);
+        vm.expectRevert(RMTLaunchCurveFactoryV1.InvalidConfiguration.selector);
+        new RMTLaunchCurveFactoryV1(
+            address(graduation), predicted, reserve, address(registry), deployer, runtimeHash, FEE
+        );
+        vm.expectRevert(RMTLaunchCurveFactoryV1.InvalidConfiguration.selector);
+        new RMTLaunchCurveFactoryV1(
+            address(graduation), address(0), reserve, address(registry), deployer, runtimeHash, FEE
+        );
+        vm.expectRevert(RMTLaunchCurveFactoryV1.InvalidConfiguration.selector);
+        new RMTLaunchCurveFactoryV1(
+            address(graduation), reserve, reserve, address(registry), deployer, runtimeHash, FEE
+        );
+    }
+
     function testUnderpaymentDuplicateAndRegistryFailureKeepFeesAndIntentAtomic() public {
         vm.expectRevert(abi.encodeWithSelector(RMTLaunchCurveFactoryV1.InsufficientCreationFee.selector, FEE, FEE - 1));
         _create(FEE - 1);

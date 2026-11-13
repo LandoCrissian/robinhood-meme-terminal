@@ -26,6 +26,20 @@ The branch retains the fixed-supply virtual-reserve curve, 60% sold and 40% pair
 
 The initial v4 position remains permanently locked. Collection uses a zero-liquidity change and a fixed ledger recipient. It checks the original NFT owner, full PoolKey, ticks, liquidity, allowances and exact earnings. Independent LPs receive their own share. Trades through a different pool earn no fees for the original position. The manual collection proposal uses a minimum **2× estimated-cost** threshold based on realizable fee value, including execution and parent-chain posting estimates. Treat the collector's costs and each beneficiary's own claim costs separately. No collection scheduler or principal-funded spend is included.
 
+### Exact-source fork results
+
+The three loopback profiles used Pocket for archive state and the official Robinhood RPC to corroborate block `113412054` and its hash `0x17252a232b68a4e9fc494caf0660cff722ac2da966ee5c62b40e20dbcfd32ea2`. The input hashes cover each profile's offline substitutions. All 16 tracked Solidity input hashes match the implementation at `014f93c45913887561331986315e7bd4a1eaf7d1`.
+
+| Backing | Standard input SHA-256 | Graduation gas | Atomic graduation gas | 0.10 ETH opening buy shortfall |
+| --- | --- | ---: | ---: | ---: |
+| 1 ETH | `fe416b0860cd8171cd8e287fab54b45aa468e1e507744f6482ae7683eeb22312` | 1,523,110 | 1,739,948 | 9.34% |
+| 2 ETH | `5bcd4ab1e266cad700c14ee67cb97668fe34f034e855f66cb8e21166ada06849` | 1,523,001 | 1,739,930 | 5.04% |
+| 4.20 ETH | `f614827340309321365270a5fddd6b15c6a08bf83524923efd6344b89c4de084` | 1,523,075 | 1,739,912 | 2.62% |
+
+The 2 ETH profile deposited 1.999999999999999952 ETH and 399,999.999999999999999652 tokens, with rounding dust recorded separately. Opening price was approximately 0.000005 ETH per token. The fork rejected interrupted funding and unauthorized NFT transfer. After retry, a 0.10 ETH official router buy received 18,993.189503262370814877 tokens. Selling half returned 0.050912822341918303 ETH. The original position's subsequent collection credited 0.000299999999999999 ETH and 28.489784254893556222 tokens, with principal and NFT custody verified. The 2 ETH V2→V3 receipt was `0x51b7259e28c33b7338d65cdc98d2417f926081845c428d46706b25da780d5ae7`. All hashes describe isolated simulated transactions.
+
+The official RPC's read-only fee estimator at block `113589193` returned a 20,128,000 wei L2 base fee and nonzero poster estimates. Combining those observations with 2 ETH fork receipts gives a collection estimate of 0.000011290459424 ETH at 560,153 gas. Combined, native-only and token-only claims used 110,605, 42,932 and 68,957 gas. Their estimates were 0.000002237106432, 0.000000877379520 and 0.000001401210720 ETH. At that point sample, the proposed aggregate native-only collection trigger is about 0.00002258 ETH before beneficiary claims. Reprice against a current canonical block and use defensible token proceeds only. Poster quotes, token prices and trading volume can change.
+
 ## Reproduce and review
 
 The stacked heads below identify the review inputs. They do not imply that their open pull requests are approved.
