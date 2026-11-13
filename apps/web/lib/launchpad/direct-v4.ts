@@ -132,7 +132,7 @@ function encodeSwap(
 
 export async function prepareSwap(
   client: PublicClient, deployment: LaunchDeployment, wallet: BoundWallet, record: NewLaunchRecord,
-  side: "buy" | "sell", amountIn: bigint, slippageBps: number,
+  side: "buy" | "sell", amountIn: bigint, slippageBps: number, reviewTime = Math.floor(Date.now() / 1000),
 ): Promise<SwapReview> {
   assertLaunchPool(deployment, record);
   const version = launchpadRouterVersion(deployment.universalRouter);
@@ -144,7 +144,7 @@ export async function prepareSwap(
     throw new Error("Enter a supported amount and slippage between 0.10% and 5.00%.");
   }
   const buy = side === "buy";
-  const deadline = Math.floor(Date.now() / 1000) + 5 * 60;
+  const deadline = reviewTime + 5 * 60;
   const token = record.token;
   const prepare = (operation: Parameters<typeof prepareTransaction>[3]) => prepareTransaction(client, deployment, wallet, operation);
 
@@ -171,7 +171,7 @@ export async function prepareSwap(
         data: encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [deployment.permit2, amountIn] }),
       }) };
     }
-    if (routerAllowance !== amountIn || expiration <= Math.floor(Date.now() / 1000) + 30) {
+    if (routerAllowance !== amountIn || expiration <= reviewTime + 30) {
       return { ...review, request: await prepare({
         kind: "router-approval", to: deployment.permit2, token, deadline, amountIn: amountIn.toString(),
         data: encodeFunctionData({ abi: permitAbi, functionName: "approve", args: [token, deployment.universalRouter, amountIn, deadline] }),

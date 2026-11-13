@@ -1,14 +1,20 @@
 import { NextResponse } from "next/server";
 import { readBrowserLaunchpadDeployment, readLaunchpadRuntime, verifiedLaunchpadRpc } from "../../../../lib/server/new-launchpad-config";
 import { LaunchpadStore } from "../../../../lib/server/new-launchpad-store";
+import { curveLoopbackRequest, curvePreviewSelected, readCurveRuntime, verifiedCurveRuntime } from "../../../../lib/server/curve-launch-config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const headers = { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" };
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    if (curvePreviewSelected()) {
+      const curve = curveLoopbackRequest(request) ? readCurveRuntime() : null;
+      if (!curve) return NextResponse.json({ status: "disabled", reason: "Curve launches are disabled on this deployment." }, { headers });
+      return NextResponse.json((await verifiedCurveRuntime(curve)).browser, { headers });
+    }
     const config = readLaunchpadRuntime();
     if (!config) {
       return NextResponse.json({ status: "disabled", reason: "New launches are disabled on this deployment." }, { headers });

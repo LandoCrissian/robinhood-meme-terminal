@@ -1,0 +1,149 @@
+name: Curve V1 review
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/launch-curve-review.yml"
+      - "packages/contracts/**"
+      - "apps/web/**/*curve*"
+      - "scripts/visual-qa/rmt-curve-browser.mjs"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: launch-curve-review-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fork:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a
+        with:
+          version: "1.7.1"
+      - run: pnpm install --frozen-lockfile
+      - run: bash scripts/install-v4-deps.sh
+        working-directory: packages/contracts
+      - name: Download the checksum-verified compiler input
+        run: |
+          curl --fail --silent --show-error --retry 2 \
+            'https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.26+commit.8a97fa7a' \
+            --output "$RUNNER_TEMP/solc-0.8.26"
+          chmod 700 "$RUNNER_TEMP/solc-0.8.26"
+      - name: Simulate curve and post-graduation economics
+        run: node packages/contracts/scripts/simulate-launch-curve.mjs > "$RUNNER_TEMP/curve-economics.json"
+      - name: Validate guarded graduation and independent v4 swaps on loopback
+        run: |
+          set -euo pipefail
+          node packages/contracts/scripts/validate-curve-graduation-4663.mjs \
+            --anvil "$(command -v anvil)" --solc "$RUNNER_TEMP/solc-0.8.26" --archive pocket \
+            > "$RUNNER_TEMP/curve-fork-evidence.json" \
+            2> >(tee "$RUNNER_TEMP/curve-fork-diagnostics.log" >&2)
+          node -e 'JSON.parse(require("node:fs").readFileSync(process.argv[1], "utf8"))' \
+            "$RUNNER_TEMP/curve-fork-evidence.json"
+          sha256sum "$RUNNER_TEMP/curve-fork-evidence.json"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: curve-v1-fork-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            ${{ runner.temp }}/curve-economics.json
+            ${{ runner.temp }}/curve-fork-evidence.json
+            ${{ runner.temp }}/curve-fork-diagnostics.log
+
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a
+        with:
+          version: "1.7.1"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: bash scripts/install-v4-deps.sh
+        working-directory: packages/contracts
+      - name: Download the checksum-verified compiler input
+        run: |
+          curl --fail --silent --show-error --retry 2 \
+            'https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.26+commit.8a97fa7a' \
+            --output "$RUNNER_TEMP/solc-0.8.26"
+          chmod 700 "$RUNNER_TEMP/solc-0.8.26"
+      - run: pnpm --filter web exec next build
+      - name: Exercise the curve wallet flow on loopback
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/curve-browser-evidence"
+          mkdir "$evidence"
+          children=()
+          cleanup() {
+            for pid in "${children[@]}"; do kill "$pid" 2>/dev/null || true; done
+            for pid in "${children[@]}"; do wait "$pid" 2>/dev/null || true; done
+          }
+          trap cleanup EXIT
+          fixture=./packages/contracts/test/fixtures/rmt-v4-deployment-identities.json
+          fork_url="$(node -p "require('$fixture').baseSepolia.rpcUrl")"
+          fork_block="$(node -p "require('$fixture').baseSepolia.block")"
+          [[ "$fork_url" == "https://sepolia.base.org" && "$fork_block" =~ ^[0-9]+$ ]]
+          anvil --host 127.0.0.1 --port 8545 --chain-id 31337 --fork-url "$fork_url" \
+            --fork-block-number "$fork_block" --silent > "$evidence/anvil.log" 2>&1 &
+          children+=("$!")
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --max-time 2 -H 'Content-Type: application/json' \
+              -d '{"jsonrpc":"2.0","id":1,"method":"eth_chainId","params":[]}' http://127.0.0.1:8545 | grep -q '"result":"0x7a69"'; then
+              break
+            fi
+            [[ "$attempt" != 30 ]] || { echo "Loopback fork did not start." >&2; exit 1; }
+            sleep 1
+          done
+          node packages/contracts/scripts/validate-curve-graduation-4663.mjs \
+            --rpc http://127.0.0.1:8545 --operator 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266 \
+            --solc "$RUNNER_TEMP/solc-0.8.26" > "$evidence/deployment.json"
+          export RMT_CURVE_ENABLED=true RMT_CURVE_RPC_URL=http://127.0.0.1:8545/
+          export RMT_CURVE_DATABASE_PATH="$RUNNER_TEMP/curve.sqlite"
+          pins="$(node -e '
+            const fixture = require(process.argv[1]);
+            const pins = [fixture.factory, fixture.factoryRuntimeHash, fixture.graduationRuntimeHash, fixture.guardRuntimeHash, fixture.registryRuntimeHash, fixture.deployBlock];
+            if (!/^0x[0-9a-f]{40}$/i.test(pins[0]) || !pins.slice(1,5).every((pin) => /^0x[0-9a-f]{64}$/i.test(pin)) || !/^[0-9]+$/.test(pins[5])) process.exit(1);
+            console.log(pins.join(" "));
+          ' "$evidence/deployment.json")"
+          read -r RMT_CURVE_FACTORY_ADDRESS RMT_CURVE_FACTORY_RUNTIME_HASH RMT_CURVE_GRADUATION_RUNTIME_HASH RMT_CURVE_GUARD_RUNTIME_HASH RMT_CURVE_REGISTRY_RUNTIME_HASH RMT_CURVE_START_BLOCK <<< "$pins"
+          export RMT_CURVE_FACTORY_ADDRESS RMT_CURVE_FACTORY_RUNTIME_HASH RMT_CURVE_GRADUATION_RUNTIME_HASH RMT_CURVE_GUARD_RUNTIME_HASH RMT_CURVE_REGISTRY_RUNTIME_HASH RMT_CURVE_START_BLOCK
+          pnpm --filter web exec next start --hostname 127.0.0.1 --port 3196 > "$evidence/next.log" 2>&1 &
+          children+=("$!")
+          for attempt in $(seq 1 40); do
+            if curl --fail --silent --max-time 8 http://127.0.0.1:3196/api/launchpad/config | grep -q '"curve":'; then
+              break
+            fi
+            [[ "$attempt" != 40 ]] || { echo "Curve preview did not become ready." >&2; exit 1; }
+            sleep 1
+          done
+          RMT_CURVE_TEST_OUTPUT="$evidence" node scripts/visual-qa/rmt-curve-browser.mjs
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: curve-v1-browser-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ runner.temp }}/curve-browser-evidence

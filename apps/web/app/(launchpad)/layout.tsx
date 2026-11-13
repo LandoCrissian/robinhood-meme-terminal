@@ -6,7 +6,7 @@ import "./launchpad.css";
 
 export const metadata: Metadata = {
   title: "RMT Launch | Token Launchpad",
-  description: "Browse RMT token launches and review fixed supply, seeded liquidity and position custody before signing.",
+  description: "Browse RMT token launches and review fixed supply, curve trading and Uniswap v4 graduation before signing.",
   robots: { index: false, follow: false },
 };
 

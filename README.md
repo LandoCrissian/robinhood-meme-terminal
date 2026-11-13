@@ -1,54 +1,34 @@
 # RMT Launch
 
-**A dedicated token launchpad for Robinhood Chain.**
+RMT Launch is a token launchpad for Robinhood Chain. The product path is gas-only creation, ETH trading on a bonding curve, then permissionless graduation into a funded Uniswap v4 pool with permanently locked liquidity.
 
-Owner direction, 2026-11-11: return RMT to token launches, keep the existing clean UI, preserve the existing RMT token/curve, and make new third-party launches usable outside the RMT interface. LAMMB Empires continues independently.
+## Curve V1 review
 
-## Implementation status
+The new engine mints a fixed token supply at creation. The creator pays network gas, with no creation fee, seed-liquidity payment or initial purchase. Trading uses a disclosed curve fee and separate accounting for project revenue, RMT operations and a future RMT token reserve. The final buyer can choose atomic buy-and-graduate, or anyone can submit graduation after the funded threshold is reached. The same token moves into the v4 pool, and the original position stays in immutable custody.
 
-The implementation branch opens the launchpad directly. Its local Base Sepolia fork supports creating fixed-supply tokens, funding hookless Uniswap v4 pools, permanent position custody, buying and selling, and creator fee claims. Launch receipts are verified and published before the bounded indexer reconciles them. Mainnet and hosted transaction paths are disabled.
+Curve V1 is an isolated review candidate. This branch provides development contracts, simulations and local acceptance paths. Robinhood Chain execution is reviewed in a loopback fork. Production deployment, economics and release remain pending separate approval and independent review.
 
-See the [local runbook and visual evidence](docs/RMT_LAUNCH_V4_LOCAL.md), [private HTTPS preview](docs/RMT_LAUNCH_PRIVATE_PREVIEW.md), and [REST and MCP read tools](docs/RMT_LAUNCH_PUBLIC_READS.md). External routing is unknown until independently observed.
+| Lifecycle | Evidence shown in the launchpad |
+| --- | --- |
+| Create | Fixed supply, creator and project terms, factory event and transaction |
+| Trade on curve | Virtual curve terms, actual ETH backing, quotes, progress and fees |
+| Graduate | Funded threshold, canonical full PoolKey, deposited assets and LP custody |
+| Trade on v4 | Verified pool identity, transaction settlement and observed routing availability |
 
-## Product boundary
+Pool creation and external indexing are separate observations. Curve V1 imposes no RMT fee on v4 swaps. Earnings attributable to the initial LP position remain locked under this version's custody policy.
 
-Keep the existing mobile/desktop design system, branding, wallet connection, token detail/trade surfaces, safe transaction recovery and reusable launch indexing. Focus the product on discovering launches, creating a token, managing its launch and transparently accounting for applicable fees.
+## Development
 
-Remove unrelated terminal expansion from the forward roadmap: NFT marketplace/catalog products, general stock-token/RWA discovery, social profiles and referrals, community chat, creator NFT products, general-purpose distribution, agent products and broad chain intelligence. Retire their runtime use only after shared dependencies are separated and tested.
-
-## Existing-token protection
-
-No existing token supply, address, contract, curve, holder balance, fee entitlement, liquidity position or transaction history is changed by this reset. V6 and older deployed artifacts remain compatibility/history evidence, not the template for new public launches.
-
-Pinned chain records distinguish the original V4 issuance from the official V6 launch 0. The record preserves the separate addresses and the later product retirement decision. [Legacy RMT evidence](docs/RMT_LAUNCH_BASELINE_EVIDENCE.md).
-
-## Development map
-
-- [Owner scope, research and staged cleanup](docs/RMT_LAUNCHPAD_RESET_2026-11-11.md)
-- [Architecture and authorization boundary](docs/ARCHITECTURE_FREEZE.md)
-- [Runtime inventory and target disposition](docs/ACTIVE_SYSTEM_MAP.md)
-- [Agent/contributor instructions](AGENTS.md)
-- [Historical V6 deployment evidence](docs/MAINNET_V6_DEPLOYMENT.md)
-- [Historical terminal authority snapshot](docs/archive/terminal-scope-2026-11-11/README.md)
-
-The retired CannaCat integration drafts #575 and #581 are closed. The release stack retains generic wallet, execution and recovery protections. LAMMB Empires continues independently.
-
-## Verification
-
-Use the repository's pinned toolchain and lockfile. The existing documented checks include:
+Use the pinned toolchain and dependency lockfile.
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm audit:production
-pnpm test:terminal-release
+node packages/contracts/scripts/simulate-launch-curve.mjs
+pnpm --filter web test:local-launchpad
 pnpm typecheck
 pnpm build
 ```
 
-Run the affected contract/indexer/security/visual suites as well. Existing command names reflect the current runtime; renaming a command does not complete the migration. The local launchpad test commands and their evidence boundaries are in the runbook.
+See the [Curve V1 review guide and release decisions](docs/RMT_LAUNCH_CURVE_V1.md), [repository authority](AGENTS.md), and [architecture boundary](docs/ARCHITECTURE_FREEZE.md).
 
-## Release and security
-
-Changes stay in reviewable PRs. No automatic merge, production deployment, onchain transaction, provider or fee activation, service shutdown or database deletion. Wallet actions remain explicitly user-confirmed, non-custodial and bound to verified transaction terms. Retain reconciliation and recovery for existing transactions.
-
-RMT is independent software, not Robinhood Markets, Inc. or an official Robinhood product. Protocol integration does not imply endorsement. Token launches can lose all value; contract verification, liquidity locks and listing status are not guarantees of safety or profitability.
+The existing RMT token, deployed curve, balances, contracts, receipts and history retain their original terms. The [prior direct-to-v4 review](docs/RMT_LAUNCH_PRODUCTION_DATA_READINESS.md) is historical engineering evidence. LAMMB Empires continues independently.

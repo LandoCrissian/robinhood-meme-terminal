@@ -1,5 +1,5 @@
-import { CreateLaunch } from "../_components/create-launch";
+import { ProductCreate } from "../_components/launch-product";
 
 export default function CreateTokenPage() {
-  return <CreateLaunch />;
+  return <ProductCreate />;
 }

@@ -60,8 +60,10 @@ const git = (...args) => execFileSync("git", args, { cwd: repo, encoding: "utf8"
 
 function verifyFrozenSource() {
   try {
+    // New engines may add files. Every path in the historical Solidity snapshot remains frozen.
+    git("diff", "--quiet", "--no-ext-diff", "--no-renames", "--diff-filter=CDMRTUXB", inputs.frozenSource, "--", "*.sol");
     git("diff", "--quiet", "--no-ext-diff", inputs.frozenSource, "--",
-      "*.sol", "packages/contracts/foundry.toml", "packages/contracts/remappings.txt");
+      "packages/contracts/foundry.toml", "packages/contracts/remappings.txt");
   } catch (error) {
     if (error.status === 1) {
       throw new Error("Tracked Solidity or compiler settings differ from the frozen source.");

@@ -51,7 +51,7 @@ assert.equal(rmtWebsiteStructuredData.url, `${appUrl}/`);
 const homeSource = read("../app/page.tsx");
 const vnextSource = read("../app/vnext/page.tsx");
 const nextConfigSource = read("../next.config.mjs");
-assert.match(homeSource, /<LaunchDirectory \/>/, "ROOT_RENDERS_LAUNCHPAD");
+assert.match(homeSource, /<ProductDirectory \/>/, "ROOT_RENDERS_LAUNCHPAD");
 assert.doesNotMatch(homeSource, /VNextTerminalShell|readLaunchIntelligence/);
 assert.match(vnextSource, /<VNextTerminalShell \/>/, "VNEXT_RENDERS_TERMINAL");
 assert.match(nextConfigSource, /source: "\/vnext"[\s\S]*destination: "\/"[\s\S]*permanent: true/);

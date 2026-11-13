@@ -2,7 +2,7 @@
 
 **Status:** CURRENT PRODUCT DIRECTION
 
-**Owner decision:** 2026-11-11. **Audited base:** `6d0b8103bdad95367445a38e5f5327458baa9ab2`.
+**Owner direction:** Task 018. **Review baseline:** #585 at `2dc6d3fc7c88e72ea0752dc14a057931b8a947da`.
 
 RMT is a token launchpad, not a general market operating layer. This explicit owner decision supersedes the old terminal/NFT product roadmap and the rule that unrelated terminal completion must precede launch work. It does not waive security, authorize release, or assert that the deployed application already matches this scope.
 
@@ -16,15 +16,15 @@ RMT is a token launchpad, not a general market operating layer. This explicit ow
 
 ## New-launch flow
 
-User-confirmed creation -> standard token deployment -> canonical v4 pool initialization -> disclosed, actually funded liquidity -> verified liquidity-position custody/lock -> canonical launch event -> immediate confirmed RMT launch record -> independently observed third-party indexing/routing.
+User-confirmed gas-only creation → fixed-supply token and immutable curve → ETH buys and sells under disclosed terms → funded graduation threshold → permissionless graduation → funded Uniswap v4 pool and permanent original LP custody → independently observed third-party indexing or routing.
 
-The [local implementation](RMT_LAUNCH_V4_LOCAL.md) uses one atomic launch transaction. For any future alternative, otherwise incomplete funding must be clearly non-live. The initial engineering candidate is hookless v4 for compatibility. Token supply, quote asset, seed liquidity, initial price/range, LP custody and fees need explicit design and security review; no values are approved by this document. A token-only liquidity range is not proof of an existing quote-asset reserve.
+The [Curve V1 review](RMT_LAUNCH_CURVE_V1.md) contains the active architecture, draft economics, governance and recovery. The [direct-to-v4 implementation](RMT_LAUNCH_V4_LOCAL.md) remains historical evidence. A curve launch is tradable on its curve while actual backing accumulates. Treat eligibility and verified graduation as distinct states.
 
 Retain the full chain-qualified v4 PoolKey and PoolId rather than treating a pool as an independent pair-contract address. Onchain availability, discovery and route availability are distinct states.
 
 ## Existing execution remains protected
 
-The compatibility runtime retains its existing ZERO_X_ONLY provider boundary, explicit wallet confirmation, recipient binding, strict firm-quote verification, simulation and settlement/recovery. Direct v4 launch/pool creation is a separate domain; source existence does not authorize a new public trading route. Keep Stock Token execution exclusion wherever the old route remains reachable.
+The compatibility runtime retains its existing ZERO_X_ONLY provider boundary, explicit wallet confirmation, recipient binding, strict firm-quote verification, simulation and settlement/recovery. Curve V1 production execution requires separate authorization. Keep Stock Token execution exclusion wherever the old route remains reachable.
 
 Existing fee schedules, treasury addresses and historical splits are neither modified nor automatically copied into new-launch economics. Preserve deployed source, manifests, receipts, journals and user data. Resolve the old-token identity inconsistency before any address-specific migration or relabeling.
 

@@ -1,5 +1,5 @@
-import { MyLaunches } from "../_components/launch-directory";
+import { ProductDirectory } from "../_components/launch-product";
 
 export default function MyLaunchesPage() {
-  return <MyLaunches />;
+  return <ProductDirectory mine />;
 }

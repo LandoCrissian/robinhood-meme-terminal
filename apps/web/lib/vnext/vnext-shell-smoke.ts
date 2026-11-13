@@ -66,7 +66,7 @@ assert.match(page, /export const dynamic = "force-dynamic"/);
 assert.match(page, /alternates: \{ canonical: "\/" \}/);
 assert.match(page, /openGraph:[\s\S]*url: "\/"/);
 assert.doesNotMatch(page, /index: false|follow: false/);
-assert.match(rootPage, /<LaunchDirectory \/>/);
+assert.match(rootPage, /<ProductDirectory \/>/);
 assert.doesNotMatch(rootPage, /VNextTerminalShell|readLaunchIntelligence/);
 assert.match(rootPage, /import "\.\/vnext\/vnext-terminal\.css"/);
 assert.doesNotMatch(rootPage, /vnext-terminal-reconstruction\.css/);

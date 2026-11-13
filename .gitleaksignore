@@ -4,6 +4,11 @@
 # Reviewed 2026-08-09: public Robinhood token contract address used by a smoke test.
 # Reviewed 2026-08-12: public RMT token contract address in the preserved Sushi guard fork test.
 # Reviewed 2026-08-15: public ERC-6551 proxy and implementation contract addresses in an isolated read-only research probe.
+# Curve V1 draft review: exact historical false positives on Solidity variable/type syntax and public contract names.
+1b96f6c5a1517282302902a7b95a59078072503d:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:121
+1b96f6c5a1517282302902a7b95a59078072503d:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:141
+1b96f6c5a1517282302902a7b95a59078072503d:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:194
+1b96f6c5a1517282302902a7b95a59078072503d:packages/contracts/scripts/validate-curve-graduation-4663.mjs:generic-api-key:25
 e3abde561ab50b9a4de22bcaccb63cbb107be6d6:scripts/ccff00-tba-probe.mjs:generic-api-key:10
 e3abde561ab50b9a4de22bcaccb63cbb107be6d6:scripts/ccff00-tba-probe.mjs:generic-api-key:11
 7e6fc44df9e3cd4be2f9c4a9f94f94f59e5606bd:packages/contracts/test/RMTSushiDeadlineGuardFork.t.sol:generic-api-key:22
