@@ -146,9 +146,14 @@ export async function runWrongChainCheck({ rpcUrl, report, accounts, artifacts }
   const data = encodeDeployData({ abi, bytecode: creationBytecode,
     args: [zeroAddress, zeroAddress, zeroAddress, blank, blank, blank, blank] });
   const revertData = await expectRevert(client, { from, data }, "WrongChain");
+  const nonce = await client.getTransactionCount({ address: from });
+  const predicted = getContractAddress({ from, nonce: BigInt(nonce) });
   const receipt = await send(client, { from, data }, "reverted");
-  assert.equal(receipt.contractAddress, null);
-  return { chainId: 31337, revertData, ...receiptInfo(receipt) };
+  // Anvil may report the predicted CREATE address even when its constructor reverts.
+  assert.ok(receipt.contractAddress === null || sameAddress(receipt.contractAddress, predicted));
+  assert.equal(await codeAt(client, predicted), "0x");
+  assert.equal(receipt.logs.length, 0);
+  return { chainId: 31337, revertData, predicted, codeAbsent: true, ...receiptInfo(receipt) };
 }
 
 export async function runGuardedV2ForkLifecycle({ rpcUrl, report, accounts, artifacts, manifest, onLaunch }) {
@@ -539,6 +544,7 @@ async function main() {
   const { runPublicEvidence } = await import("../../../apps/web/scripts/launch-4663-public-evidence.ts");
   const output = await withRobinhood4663Fork(values, async (environment) => {
     const lifecycle = await runGuardedV2ForkLifecycle({ ...environment, onLaunch: runPublicEvidence });
+    console.error("Launch, five REST/MCP reads, recovery and reorg checks passed.");
     const wrongChain = await withAnvilFork({ anvil: values.anvil, archive: values.archive, chainId: 31337 },
       (wrong) => runWrongChainCheck({ ...wrong, artifacts: environment.artifacts }));
     return { purpose: "loopback-review-fork", network: environment.report.network,
