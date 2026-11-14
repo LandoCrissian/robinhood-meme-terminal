@@ -94,3 +94,29 @@ Restoring a known-good cursor avoids rescanning from the V6 deployment block.
 The archive must support the pinned block's state, receipts and the configured
 factory log range. A full initial replay can be expensive on rate-limited
 providers and is not part of a website request.
+
+## New bonding-curve engine registration review
+
+`src/curve-launch-evidence.ts` verifies registration evidence for a future
+reviewed V1 factory using a separate `curve-launch-v1` record. The verifier is
+called by fixture tests only. No worker configuration, polling, writer, schema
+or HTTP route is enabled. Without an explicit binding it performs zero reads.
+
+A future binding needs chain 4663, engine version 1, the factory deployment
+height and hash, pinned factory and registry runtime identities, immutable
+creation fee and recipient, and at least 20 L2 confirmations. The verifier
+compares runtime at deployment and creation, confirms the transaction's slot in
+the canonical block, and binds the successful receipt's factory creation and fee
+logs to the registry registration and transaction calldata. No refund transfer
+trace is inferred from the fee event. The result records creation only and marks
+Ethereum L1 finality unverified. Project text and metadata URI are untrusted
+event fields. The verifier performs no metadata dereferencing.
+
+After approval, consume this verifier inside the existing authoritative writer.
+Persist the separate source identity, registration log and canonical checkpoint
+under the same transaction. Include chain, factory, block hash, transaction hash
+and log index in replay/rollback tests. Bind later engine and pool state to the
+registered project and verified active version separately. Production archive
+and independent canonicality, reorg, and L1 finality operations require their own
+review before exposing a new-engine read endpoint. The V6 reader keeps its own
+source and schema throughout.

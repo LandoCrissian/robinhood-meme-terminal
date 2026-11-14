@@ -3,6 +3,7 @@ import test from "node:test";
 import { createLaunchHistoryHandler } from "./launch-api";
 import { indexedFreshnessMs } from "./launch-data";
 import type { LaunchDirectoryData } from "../launch-data";
+import { creationReviewPath } from "../launch-draft";
 import { config as edge } from "../../netlify/edge-functions/launch-discovery-limit";
 
 const now = Date.UTC(2026, 10, 14, 5, 0);
@@ -58,14 +59,16 @@ test("invalid, missing, unavailable and write requests are never shared", async 
   }
 });
 
-test("native per-IP rule covers exact history routes and excludes unrelated paths", () => {
+test("native per-IP rule covers exact history routes and draft review", () => {
   const path = new RegExp(edge.pattern);
   assert.equal(path.test(url.pathname), true);
   assert.equal(path.test(url.pathname + "/" + token), true);
   assert.equal(path.test("/launches/" + token), true);
   assert.equal(path.test("/"), true);
   assert.equal(path.test("/rmt"), true);
-  for (const rejected of ["/wallet", "/api/launchpad/config", "/api/launchpad/launches/random", "/launches/" + token + "/admin"]) {
+  assert.equal(path.test(creationReviewPath), true);
+  for (const rejected of ["/wallet", "/api/launchpad/config", "/api/launchpad/launches/random", "/launches/" + token + "/admin",
+    creationReviewPath + "/extra", "/api/launchpad/curve"]) {
     assert.equal(path.test(rejected), false);
   }
   assert.deepEqual(edge.rateLimit, { windowSize: 60, windowLimit: 120, aggregateBy: ["ip", "domain"] });
