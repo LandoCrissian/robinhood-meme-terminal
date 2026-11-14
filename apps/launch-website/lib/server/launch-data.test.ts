@@ -138,3 +138,112 @@ test("uses address-bound indexed lookup for an older result outside a truncated 
   assert.equal((await read(token)).launches[0].token, token);
   assert.deepEqual(requested, ["?limit=25", "?token=" + token]);
 });
+
+test("serves snapshot during an outage and resumes fresh reads after the cache window", async () => {
+  let at = clock;
+  let stage = "down";
+  let calls = 0;
+  const read = withFeed(async () => {
+    calls++;
+    if (stage === "down") return new Response(null, { status: 503 });
+    if (stage === "disagreement") {
+      const response = indexed();
+      response.checkpoint.blockHash = word("8");
+      return Response.json(response);
+    }
+    return Response.json(indexed());
+  }, () => at);
+
+  assert.equal((await read()).coverage, "verified-snapshot");
+  stage = "up";
+  assert.equal((await read()).status, "stale");
+  assert.equal(calls, 1);
+  at += 30_001;
+  assert.equal((await read()).status, "ready");
+  stage = "disagreement";
+  at += 30_001;
+  assert.equal((await read()).coverage, "verified-snapshot");
+  stage = "up";
+  at += 30_001;
+  assert.equal((await read()).status, "ready");
+  assert.equal(calls, 4);
+});
+
+test("ages out a previously ready checkpoint even within its local cache window", async () => {
+  let at = Date.parse(checkpoint.timestamp) + 290_000;
+  const read = withFeed(async () => Response.json(indexed()), () => at);
+  assert.equal((await read()).status, "ready");
+  at += 10_000;
+  assert.equal((await read()).status, "stale");
+});
+
+test("coalesces exact reads and invalidates them when the list checkpoint changes", async () => {
+  const token = account("4");
+  let at = clock;
+  let exactCalls = 0;
+  let head = BigInt(checkpoint.blockNumber) + 10n;
+  let checkpointCharacter = "c";
+  const read = withFeed(async (url) => {
+    const query = new URL(String(url)).search;
+    const data = indexed();
+    data.checkpoint = {
+      ...data.checkpoint, blockNumber: String(head), blockHash: word(checkpointCharacter),
+      timestamp: new Date(at - 2000).toISOString(), observedAt: new Date(at).toISOString(),
+    };
+    if (query === "?limit=25") return Response.json({ ...data, nextCursor: "opaque" });
+    exactCalls += 1;
+    return Response.json({ ...data, nextCursor: null, launches: [] });
+  }, () => at);
+  await Promise.all([read(token), read(token)]);
+  await read(token.toUpperCase());
+  assert.equal(exactCalls, 1);
+  at += 30_001;
+  head += 1n;
+  checkpointCharacter = "d";
+  await read(token);
+  assert.equal(exactCalls, 2);
+});
+
+test("authenticates over a real HTTP connection and recovers from an interrupted response", async () => {
+  const { createServer } = await import("node:http");
+  const fixture = indexed();
+  let at = clock;
+  let closeConnection = true;
+  const headers: Array<string | undefined> = [];
+  const server = createServer((request, response) => {
+    headers.push(request.headers.authorization);
+    if (request.url !== "/historical-launches?limit=25" || request.headers.authorization !== "Bearer fixture") {
+      response.writeHead(401).end();
+      return;
+    }
+    response.writeHead(200, { "Content-Type": "application/json" });
+    if (closeConnection) {
+      response.write("{");
+      response.destroy();
+    } else {
+      response.end(JSON.stringify(fixture));
+    }
+  });
+  try {
+    await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+    const listener = server.address();
+    assert.ok(listener && typeof listener !== "string");
+    const read = withFeed((request, init) => {
+      // The production reader still validates its HTTPS origin. Transport stays on this test's local socket.
+      const original = new URL(String(request));
+      assert.equal(original.origin, "https://history.example");
+      const loopback = new URL(original.pathname + original.search, "http://127.0.0.1:" + listener.port);
+      return fetch(loopback, init);
+    }, () => at);
+    assert.equal((await read()).coverage, "verified-snapshot");
+    closeConnection = false;
+    at += 30_001;
+    const recovered = await read();
+    assert.equal(recovered.coverage, "v6-indexed");
+    assert.equal(recovered.status, "ready");
+    assert.ok(!JSON.stringify(recovered).includes("Bearer fixture"));
+    assert.deepEqual(headers, ["Bearer fixture", "Bearer fixture"]);
+  } finally {
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  }
+});

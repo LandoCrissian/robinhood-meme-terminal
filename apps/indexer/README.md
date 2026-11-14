@@ -25,7 +25,7 @@ It:
 
 There are no legacy-factory or legacy-start-block defaults. A missing value, an invalid address/block, an RPC failure, or a factory version other than V6 stops startup before any database indexing begins. The archive RPC must prove that the configured factory first has bytecode at the exact start block and has no bytecode at the preceding block. Current-chain reads remain on the primary RPC so a constrained archive provider cannot throttle live ingestion. The indexer derives the policy registry from the configured factory, reads the V6 governance/creator-payout authority and canonical protocol treasury from that deployed stack, and fails closed unless those bindings match and both authority contracts contain bytecode. No V5 governance or treasury address is configured or accepted as a fallback.
 
-`/ready`, `/health`, and data endpoints return `503` until the first confirmed-chain backfill and all V6 accounting invariants complete successfully. After that point, `/ready` remains RPC-independent but verifies the local database and fails on local worker/invariant errors. `/health` still reports degraded synchronization. During a classified upstream RPC delay, `/launches` can serve the last confirmed PostgreSQL checkpoint and marks that response stale; exact origin and market-trade reads fail closed until synchronization recovers. Upstream diagnostics remain private in service logs. `/launches`, `/origins`, and `/markets/:market/trades` require `Authorization: Bearer <RMT_INDEXER_READ_TOKEN>` when the token is configured. Origin reads accept 1–100 explicit token addresses, return only confirmed RMT V6 creation claims, and never infer origin from a DEX listing. Market trade reads are limited to 50 confirmed rows, reject unknown/non-V6 markets, and return the indexer checkpoint with every response. Changing the schema version, factory, or exact deployment block forces a clean replay rather than trusting earlier indexed rows.
+`/ready` is a process and database readiness check. It can return `200` after factory verification, acquisition of the sole PostgreSQL writer lock, startup validation of the persisted state and checkpoint reconciliation. It does not wait for the full backfill. Check `initialSyncComplete` separately. `/health` reports the last head observed by the worker and returns `503` while backfill is running or synchronization is degraded. It does not start an RPC request on behalf of each visitor. Data endpoints remain unavailable until initial sync succeeds, and historical data additionally requires verified receipt coverage. During a classified upstream RPC delay, `/launches` can serve the last confirmed PostgreSQL checkpoint and marks that response stale; exact origin and market-trade reads fail closed until synchronization recovers. Upstream diagnostics remain private in service logs. `/launches`, `/origins`, and `/markets/:market/trades` require `Authorization: Bearer <RMT_INDEXER_READ_TOKEN>` when the token is configured. Origin reads accept 1–100 explicit token addresses, return only confirmed RMT V6 creation claims, and never infer origin from a DEX listing. Market trade reads are limited to 50 confirmed rows, reject unknown/non-V6 markets, and return the indexer checkpoint with every response. The recovery binary accepts the same chain, factory, deployment block and existing index schema version 5. A previously indexed database with an absent or inconsistent checkpoint a cursor ahead of the confirmed chain head, or an older/newer schema stops without a reset. Test an isolated backup restore for incompatible data.
 
 Production should also set:
 - `RMT_CONFIRMATION_DEPTH` (default 20)
@@ -34,7 +34,7 @@ Production should also set:
 - `RMT_DB_POOL_SIZE` (default 10)
 - `PORT`
 
-Run one writer instance until leader election is added. The database constraints make replay idempotent, but multiple simultaneous writers create unnecessary RPC and lock contention.
+Run one worker replica and stop any pre-lock worker against the same database before deploying. The worker uses one dedicated direct PostgreSQL session for the chain-scoped advisory lock, schema initialization, backfill, proof updates, and reorg writes. Session loss aborts that worker, and another instance can then open the last committed checkpoint. Do not point the writer at a transaction-pooling endpoint. The HTTP query pool defaults to a read-only transaction mode and does not hold the writer lock.
 
 ## Historical launch projection
 
@@ -67,6 +67,10 @@ least 20. This route describes historical V6 registrations only.
   scan may use the archive when its range boundary agrees with the primary
   before and after the scan. Trade and fee-event scans retain the existing
   primary-provider retry/backoff behavior.
+- Authenticated history requests share a 120 per minute budget with a burst of
+  12 and at most four concurrent database reads. Throttled requests return
+  HTTP 429 with Retry-After. The endpoint sets a one-second database acquire
+  timeout and one-second statement limit.
 - Read-only repeatable-read transactions keep the response consistent across
   a checkout or rollback. A transient upstream error can return the previous
   checkpoint marked stale for up to two minutes after verification. A block

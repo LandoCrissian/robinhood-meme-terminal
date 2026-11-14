@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
-import { Pool, type PoolClient } from "pg";
+import { Client, Pool, type PoolClient } from "pg";
+import { setTimeout as wait } from "node:timers/promises";
 import {
   createPublicClient,
   getAddress,
@@ -42,7 +43,8 @@ import {
   type SyncFailureKind
 } from "./rpc-resilience.js";
 import { resolveArchiveRpcUrl } from "./rpc-config.js";
-import { schemaSql } from "./schema.js";
+import { createHistoryReadBudget } from "./history-read-budget.js";
+import { IndexStoreError, initializeIndexStore, lockIndexWriter } from "./index-store.js";
 
 const CHAIN_ID = 4663;
 const INDEXER_SCHEMA_VERSION = 5;
@@ -125,32 +127,31 @@ const archiveRpc = createPublicClient({
   transport: http(config.archiveRpcUrl, { retryCount: 3, retryDelay: 1_000, timeout: 12_000 })
 });
 const distinctArchive = config.archiveRpcUrl !== config.rpcUrl ? archiveRpc : undefined;
-const servesHistorical = Boolean(config.readToken) && lower(config.factory) === historicalFactory
-  && config.startBlock === historicalStartBlock
-  && config.confirmations >= historicalConfirmationDepth;
+const usesHistoricalBinding = lower(config.factory) === historicalFactory
+  && config.startBlock === historicalStartBlock;
 
-const pool = new Pool({
+const database = {
   connectionString: config.databaseUrl,
-  ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false },
+  ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false }
+};
+const pool = new Pool({
+  ...database,
+  connectionTimeoutMillis: 1_000,
+  options: "-c default_transaction_read_only=on -c statement_timeout=5000",
   max: positiveInteger("RMT_DB_POOL_SIZE", 10)
 });
+pool.on("error", (error) => console.error(JSON.stringify({ event: "indexer_read_pool_error", errorType: errorType(error) })));
+const writer = new Client({ ...database, connectionTimeoutMillis: 10_000, keepAlive: true });
+const historyReadBudget = createHistoryReadBudget();
 
 let indexedThrough = config.startBlock - 1n;
 let lastSyncAt: string | null = null;
 let lastSyncFailed = false;
 let lastFailureKind: SyncFailureKind | null = null;
 let initialSyncComplete = false;
-let healthHeadCache: { block: bigint; expiresAt: number } | null = null;
+let latestObservedHead: bigint | null = null;
 let historicalCheckpoint: { blockNumber: bigint; blockHash: string; verifiedAt: number } | null = null;
 let historicalUpstreamDelayed = false;
-
-async function currentHealthHead() {
-  const now = Date.now();
-  if (healthHeadCache && healthHeadCache.expiresAt > now) return healthHeadCache.block;
-  const block = await rpc.getBlockNumber();
-  healthHeadCache = { block, expiresAt: now + 5_000 };
-  return block;
-}
 
 type V6ProtocolBindings = {
   policyRegistry: Address;
@@ -310,7 +311,7 @@ async function verifyV6Factory(): Promise<V6ProtocolBindings> {
   if (factoryCodeBeforeStart && factoryCodeBeforeStart !== "0x") {
     throw new Error("RMT_FACTORY_START_BLOCK is later than the configured factory deployment block");
   }
-  if (servesHistorical) {
+  if (usesHistoricalBinding) {
     const [primaryChain, archiveChain] = await Promise.all([rpc.getChainId(), archiveRpc.getChainId()]);
     if (primaryChain !== CHAIN_ID || archiveChain !== CHAIN_ID
         || keccak256(factoryCodeAtStart) !== historicalFactoryCodeHash) {
@@ -393,7 +394,7 @@ async function verifyV6Factory(): Promise<V6ProtocolBindings> {
   return bindings;
 }
 
-async function refreshCreatorPayoutState(db: PoolClient) {
+async function refreshCreatorPayoutState(db: Pick<Client, "query">) {
   await db.query(
     `UPDATE launches l
      SET original_creator = COALESCE(l.original_creator, l.creator),
@@ -411,86 +412,13 @@ async function refreshCreatorPayoutState(db: PoolClient) {
   );
 }
 
-async function migrate() {
-  await pool.query(schemaSql);
-  const factory = lower(config.factory);
-  const state = await pool.query<{
-    factory: string | null;
-    start_block: string | null;
-    schema_version: number | null;
-  }>(
-    "SELECT factory, start_block, schema_version FROM indexer_state WHERE chain_id = $1",
-    [CHAIN_ID]
-  );
-  const previous = state.rows[0];
-  const indexedData = await pool.query<{ has_rows: boolean }>(
-    "SELECT EXISTS (SELECT 1 FROM launches LIMIT 1) AS has_rows"
-  );
-  const hasIndexedRows = indexedData.rows[0]?.has_rows === true;
-  const configurationChanged = previous
-    ? previous.factory !== factory ||
-      previous.start_block !== config.startBlock.toString() ||
-      previous.schema_version !== INDEXER_SCHEMA_VERSION
-    : hasIndexedRows;
-
-  if (configurationChanged) {
-    const db = await pool.connect();
-    try {
-      await db.query("BEGIN");
-      await db.query("DELETE FROM fee_splitter_events");
-      await db.query("DELETE FROM graduation_fee_collections");
-      await db.query("DELETE FROM creator_payout_events");
-      await db.query("DELETE FROM liquidity_migrations");
-      await db.query("DELETE FROM graduations");
-      await db.query("DELETE FROM trades");
-      await db.query("DELETE FROM launches");
-      await db.query("DELETE FROM sync_points WHERE chain_id = $1", [CHAIN_ID]);
-      await db.query(
-        `INSERT INTO indexer_state (chain_id, next_block, factory, start_block, schema_version)
-         VALUES ($1, $2, $3, $2, $4)
-         ON CONFLICT (chain_id) DO UPDATE SET
-           next_block = EXCLUDED.next_block,
-           factory = EXCLUDED.factory,
-           start_block = EXCLUDED.start_block,
-           schema_version = EXCLUDED.schema_version,
-           updated_at = NOW()`,
-        [CHAIN_ID, config.startBlock.toString(), factory, INDEXER_SCHEMA_VERSION]
-      );
-      await db.query("COMMIT");
-      console.info(JSON.stringify({ event: "factory_cutover", factory, startBlock: config.startBlock.toString() }));
-    } catch (error) {
-      await db.query("ROLLBACK");
-      throw error;
-    } finally {
-      db.release();
-    }
-    return;
-  }
-
-  await pool.query(
-    `INSERT INTO indexer_state (chain_id, next_block, factory, start_block, schema_version)
-     VALUES ($1, $2, $3, $2, $4)
-     ON CONFLICT (chain_id) DO UPDATE SET
-       factory = EXCLUDED.factory,
-       start_block = EXCLUDED.start_block,
-       schema_version = EXCLUDED.schema_version`,
-    [CHAIN_ID, config.startBlock.toString(), factory, INDEXER_SCHEMA_VERSION]
-  );
-  const db = await pool.connect();
-  try {
-    await refreshCreatorPayoutState(db);
-  } finally {
-    db.release();
-  }
-}
-
-async function rollbackAfter(db: PoolClient, blockNumber: bigint) {
+async function rollbackAfter(db: Pick<Client, "query">, blockNumber: bigint) {
   await rollbackIndexRows(db, CHAIN_ID, blockNumber);
   await refreshCreatorPayoutState(db);
 }
 
 async function reconcileReorg() {
-  const points = await pool.query<{ block_number: string; block_hash: string }>(
+  const points = await writer.query<{ block_number: string; block_hash: string }>(
     `SELECT block_number, block_hash
      FROM sync_points
      WHERE chain_id = $1
@@ -501,7 +429,7 @@ async function reconcileReorg() {
   if (points.rows.length === 0) return;
 
   let ancestor = config.startBlock - 1n;
-  if (servesHistorical) {
+  if (usesHistoricalBinding) {
     ancestor = await historicalCommonAncestor(
       points.rows,
       async (blockNumber) => (await rpc.getBlock({ blockNumber })).hash,
@@ -523,20 +451,18 @@ async function reconcileReorg() {
   if (ancestor === newest) return;
   historicalCheckpoint = null;
 
-  const db = await pool.connect();
+  if (stopping) return;
+  await writer.query("BEGIN");
   try {
-    await db.query("BEGIN");
-    await rollbackAfter(db, ancestor);
-    await db.query("COMMIT");
-    indexedThrough = ancestor;
-    lastSyncAt = new Date().toISOString();
-    console.warn(JSON.stringify({ event: "reorg_rollback", fromBlock: newest.toString(), ancestor: ancestor.toString() }));
+    await rollbackAfter(writer, ancestor);
+    await writer.query("COMMIT");
   } catch (error) {
-    await db.query("ROLLBACK");
+    await writer.query("ROLLBACK").catch(() => undefined);
     throw error;
-  } finally {
-    db.release();
   }
+  indexedThrough = ancestor;
+  lastSyncAt = new Date().toISOString();
+  console.warn(JSON.stringify({ event: "reorg_rollback", fromBlock: newest.toString(), ancestor: ancestor.toString() }));
 }
 
 async function readMarketLogs(markets: Address[], fromBlock: bigint, toBlock: bigint) {
@@ -587,7 +513,7 @@ async function readGraduationFeeLogs(adapters: Address[], fromBlock: bigint, toB
 }
 
 async function insertFeeSplitterEvent(
-  db: PoolClient,
+  db: Pick<Client, "query">,
   log: DecodedConfirmedLog,
   launchToken: string,
   eventType: string,
@@ -620,7 +546,7 @@ async function insertFeeSplitterEvent(
 }
 
 async function insertCreatorPayoutEvent(
-  db: PoolClient,
+  db: Pick<Client, "query">,
   log: DecodedConfirmedLog,
   launchToken: string,
   eventType: "changed" | "invalidated",
@@ -661,7 +587,7 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
   const bindings = requireProtocolBindings();
   const canonicalCreatorPayoutAuthority = lower(bindings.creatorPayoutAuthority);
   const canonicalProtocolTreasury = lower(bindings.protocolTreasury);
-  const previousBoundary = servesHistorical ? await rpc.getBlock({ blockNumber: toBlock }) : null;
+  const previousBoundary = usesHistoricalBinding ? await rpc.getBlock({ blockNumber: toBlock }) : null;
   const launchFilter = { address: config.factory, event: tokenLaunchedEvent, fromBlock, toBlock };
   const launches = await readWithArchive(
     () => rpc.getLogs(launchFilter),
@@ -676,7 +602,7 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
     } : undefined
   );
 
-  const storedLaunches = await pool.query<{
+  const storedLaunches = await writer.query<{
     market: string;
     reward_vault: string;
     token: string;
@@ -751,7 +677,7 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
     ? await readMarketLogs(markets, fromBlock, toBlock)
     : { trades: [], graduations: [], migrations: [] };
 
-  const storedAdapters = await pool.query<{ adapter: string }>(
+  const storedAdapters = await writer.query<{ adapter: string }>(
     "SELECT DISTINCT adapter FROM liquidity_migrations"
   );
   const adapterSet = new Set<string>(storedAdapters.rows.map((row) => row.adapter));
@@ -782,10 +708,10 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
     throw new Error("Historical index range changed during event reads");
   }
 
-  const db = await pool.connect();
+  if (stopping) return;
+  const db = writer;
+  await db.query("BEGIN");
   try {
-    await db.query("BEGIN");
-
     for (const log of confirmedLaunches) {
       const args = log.args;
       await db.query(
@@ -1159,10 +1085,8 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
     );
     await db.query("COMMIT");
   } catch (error) {
-    await db.query("ROLLBACK");
+    await db.query("ROLLBACK").catch(() => undefined);
     throw error;
-  } finally {
-    db.release();
   }
 
   indexedThrough = toBlock;
@@ -1182,14 +1106,19 @@ async function processRange(fromBlock: bigint, toBlock: bigint) {
 
 async function syncOnce() {
   await reconcileReorg();
-  const state = await pool.query<{ next_block: string }>(
+  if (stopping) return;
+  const state = await writer.query<{ next_block: string }>(
     "SELECT next_block FROM indexer_state WHERE chain_id = $1",
     [CHAIN_ID]
   );
   const nextBlock = BigInt(state.rows[0]?.next_block ?? config.startBlock);
-  const latest = await rpc.getBlockNumber();
-  if (latest <= BigInt(config.confirmations)) return;
+  const latest = await rpc.getBlockNumber({ cacheTime: 0 });
+  latestObservedHead = latest;
   const safeHead = latest - BigInt(config.confirmations);
+  if (nextBlock > config.startBlock && nextBlock > safeHead + 1n) {
+    historicalCheckpoint = null;
+    throw new IndexStoreError("database_checkpoint_ahead");
+  }
   if (nextBlock > safeHead) {
     indexedThrough = nextBlock - 1n;
     lastSyncAt = new Date().toISOString();
@@ -1197,7 +1126,7 @@ async function syncOnce() {
   }
 
   let cursor = nextBlock;
-  while (cursor <= safeHead) {
+  while (!stopping && cursor <= safeHead) {
     const candidate = cursor + BigInt(config.chunkSize) - 1n;
     const end = candidate < safeHead ? candidate : safeHead;
     await processRange(cursor, end);
@@ -1213,7 +1142,7 @@ async function refreshHistoricalCheckpoint() {
       () => rpc.getBlock({ blockNumber }),
       distinctArchive && (() => distinctArchive.getBlock({ blockNumber }))
     );
-    const point = await pool.query<{ block_hash: string }>(
+    const point = await writer.query<{ block_hash: string }>(
       "SELECT block_hash FROM sync_points WHERE chain_id = $1 AND block_number = $2",
       [CHAIN_ID, blockNumber.toString()]
     );
@@ -1221,9 +1150,10 @@ async function refreshHistoricalCheckpoint() {
     if (!blockHash || point.rows[0]?.block_hash.toLowerCase() !== blockHash) {
       throw new Error("Indexed block no longer matches the historical chain checkpoint");
     }
-    await proveHistoricalRows(pool, rpc, distinctArchive);
+    if (stopping) return;
+    await proveHistoricalRows(writer, rpc, distinctArchive);
     const [registered, onchainCount, latestBoundary] = await Promise.all([
-      pool.query<{ count: string; distinct_count: string; unproven: string }>(
+      writer.query<{ count: string; distinct_count: string; unproven: string }>(
         `SELECT COUNT(*) AS count, COUNT(DISTINCT launch_id) AS distinct_count,
                 COUNT(*) FILTER (WHERE block_hash IS NULL) AS unproven
          FROM launches WHERE protocol_version = 6 AND block_number BETWEEN $1 AND $2`,
@@ -1245,7 +1175,7 @@ async function refreshHistoricalCheckpoint() {
         || coverage.unproven !== "0" || latestBoundary.hash?.toLowerCase() !== blockHash) {
       throw new Error("Historical registry coverage or checkpoint could not be verified");
     }
-    await pool.query(
+    await writer.query(
       `UPDATE sync_points SET block_timestamp = to_timestamp($1::double precision)
        WHERE chain_id = $2 AND block_number = $3 AND block_hash = $4 AND block_timestamp IS NULL`,
       [boundary.timestamp.toString(), CHAIN_ID, blockNumber.toString(), blockHash]
@@ -1382,30 +1312,9 @@ function startServer() {
         return;
       }
       if (url.pathname === "/health") {
-        let latest: bigint;
-        try {
-          latest = await currentHealthHead();
-        } catch (error) {
-          console.error(JSON.stringify({
-            event: "indexer_health_error",
-            errorType: errorType(error)
-          }));
-          json(response, 503, {
-            ok: false,
-            chainId: CHAIN_ID,
-            protocolVersion: 6,
-            factory: config.factory,
-            factoryStartBlock: config.startBlock.toString(),
-            indexedThrough: indexedThrough.toString(),
-            confirmationDepth: config.confirmations,
-            initialSyncComplete,
-            lastSyncAt,
-            error: "RPC health check is temporarily unavailable."
-          });
-          return;
-        }
+        const latest = latestObservedHead;
         const syncState = publicSyncState(initialSyncComplete, lastFailureKind);
-        const healthy = syncState.available && !syncState.stale;
+        const healthy = !stopping && latest !== null && syncState.available && !syncState.stale;
         json(response, healthy ? 200 : 503, {
           ok: healthy,
           chainId: CHAIN_ID,
@@ -1417,9 +1326,9 @@ function startServer() {
           protocolTreasury: bindings.protocolTreasury,
           factoryStartBlock: config.startBlock.toString(),
           indexedThrough: indexedThrough.toString(),
-          latestBlock: latest.toString(),
+          latestBlock: latest?.toString() ?? null,
           confirmationDepth: config.confirmations,
-          lagBlocks: latest > indexedThrough ? (latest - indexedThrough).toString() : "0",
+          lagBlocks: latest === null ? null : latest > indexedThrough ? (latest - indexedThrough).toString() : "0",
           initialSyncComplete,
           lastSyncAt,
           error: syncState.publicError
@@ -1439,7 +1348,7 @@ function startServer() {
             errorType: errorType(error)
           }));
         }
-        const ready = initialSyncComplete && lastFailureKind !== "local" && databaseReady;
+        const ready = !stopping && lastFailureKind !== "local" && databaseReady;
         json(response, ready ? 200 : 503, {
           ok: ready,
           initialSyncComplete,
@@ -1447,6 +1356,10 @@ function startServer() {
           lastSyncAt,
           error: ready ? null : "Indexer data service is temporarily unavailable."
         });
+        return;
+      }
+      if (stopping) {
+        json(response, 503, { error: "Indexer data service is temporarily unavailable." });
         return;
       }
       if (url.pathname === "/historical-launches") {
@@ -1462,9 +1375,16 @@ function startServer() {
         }
         const checkpoint = historicalCheckpoint;
         const stale = lastFailureKind === "upstream" || historicalUpstreamDelayed;
-        if (!servesHistorical || !initialSyncComplete || !checkpoint || lastFailureKind === "local"
+        if (!usesHistoricalBinding || config.confirmations < historicalConfirmationDepth
+            || !initialSyncComplete || !checkpoint || lastFailureKind === "local"
             || Date.now() - checkpoint.verifiedAt > 120_000) {
           json(response, 503, { error: "Historical launch evidence is temporarily unavailable." });
+          return;
+        }
+        const releaseRead = historyReadBudget.acquire();
+        if (!releaseRead) {
+          response.setHeader("Retry-After", "1");
+          json(response, 429, { error: "Historical launch requests are temporarily limited." });
           return;
         }
         let db: PoolClient | undefined;
@@ -1472,6 +1392,7 @@ function startServer() {
         try {
           db = await pool.connect();
           await db.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+          await db.query("SET LOCAL statement_timeout = '1s'");
           result = await readHistoricalLaunches(db, query, checkpoint, stale);
           await db.query("COMMIT");
         } catch (error) {
@@ -1479,8 +1400,9 @@ function startServer() {
           console.error(JSON.stringify({ event: "historical_read_error", errorType: errorType(error) }));
         } finally {
           db?.release();
+          releaseRead();
         }
-        if (!result || historicalCheckpoint !== checkpoint || !publicSyncState(initialSyncComplete, lastFailureKind).available) {
+        if (stopping || !result || historicalCheckpoint !== checkpoint || !publicSyncState(initialSyncComplete, lastFailureKind).available) {
           json(response, 503, { error: "Historical launch evidence is temporarily unavailable." });
           return;
         }
@@ -1584,50 +1506,86 @@ function startServer() {
 }
 
 let stopping = false;
+const stopSignal = new AbortController();
+const stop = () => {
+  stopping = true;
+  stopSignal.abort();
+};
+process.once("SIGTERM", stop);
+process.once("SIGINT", stop);
+
 async function run() {
   protocolBindings = await verifyV6Factory();
-  await migrate();
+  if (stopping) return;
+  await writer.connect();
+  await lockIndexWriter(writer, CHAIN_ID);
+  indexedThrough = await initializeIndexStore(writer, {
+    chainId: CHAIN_ID,
+    factory: lower(config.factory),
+    startBlock: config.startBlock,
+    schemaVersion: INDEXER_SCHEMA_VERSION
+  }, refreshCreatorPayoutState);
   await reconcileReorg();
+  if (stopping) return;
+  const startupHead = await rpc.getBlockNumber({ cacheTime: 0 });
+  if (startupHead - BigInt(config.confirmations) < indexedThrough && indexedThrough >= config.startBlock) {
+    throw new IndexStoreError("database_checkpoint_ahead");
+  }
+  latestObservedHead = startupHead;
   const server = startServer();
-
-  const stop = async () => {
-    if (stopping) return;
-    stopping = true;
-    server.close();
-    await pool.end();
-    process.exit(0);
-  };
-  process.on("SIGTERM", stop);
-  process.on("SIGINT", stop);
-
-  let consecutiveFailures = 0;
-  while (!stopping) {
-    let delayMs = config.pollMs;
-    try {
-      await syncOnce();
-      if (servesHistorical) await refreshHistoricalCheckpoint();
-      initialSyncComplete = true;
-      lastSyncFailed = false;
-      lastFailureKind = null;
-      consecutiveFailures = 0;
-    } catch (error) {
-      consecutiveFailures += 1;
-      lastSyncFailed = true;
-      lastFailureKind = classifySyncFailure(error);
-      delayMs = failureBackoffMs(config.pollMs, consecutiveFailures);
-      console.error(JSON.stringify({
-        event: "indexer_error",
-        errorType: errorType(error),
-        failureKind: lastFailureKind,
-        consecutiveFailures,
-        retryInMs: delayMs
-      }));
+  try {
+    let consecutiveFailures = 0;
+    while (!stopping) {
+      let delayMs = config.pollMs;
+      try {
+        await syncOnce();
+        if (!stopping && usesHistoricalBinding && config.readToken && config.confirmations >= historicalConfirmationDepth) {
+          await refreshHistoricalCheckpoint();
+        }
+        initialSyncComplete = true;
+        lastSyncFailed = false;
+        lastFailureKind = null;
+        consecutiveFailures = 0;
+      } catch (error) {
+        consecutiveFailures += 1;
+        lastSyncFailed = true;
+        lastFailureKind = classifySyncFailure(error);
+        delayMs = failureBackoffMs(config.pollMs, consecutiveFailures);
+        console.error(JSON.stringify({
+          event: "indexer_error",
+          errorType: errorType(error),
+          failureKind: lastFailureKind,
+          consecutiveFailures,
+          retryInMs: delayMs
+        }));
+      }
+      try {
+        await wait(delayMs, undefined, { signal: stopSignal.signal });
+      } catch (error) {
+        if (!stopping) throw error;
+      }
     }
-    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  } finally {
+    server.close();
   }
 }
 
+let writerSessionLost = false;
+writer.on("error", (error) => {
+  writerSessionLost = true;
+  historicalCheckpoint = null;
+  console.error(JSON.stringify({ event: "indexer_writer_session_lost", errorType: errorType(error) }));
+  stop();
+});
+
 run().catch((error) => {
-  console.error(JSON.stringify({ event: "indexer_fatal_error", errorType: errorType(error) }));
-  process.exit(1);
+  console.error(JSON.stringify({
+    event: "indexer_fatal_error",
+    errorType: errorType(error),
+    reason: error instanceof IndexStoreError ? error.code : undefined
+  }));
+  process.exitCode = 1;
+}).finally(async () => {
+  await Promise.allSettled([writer.end(), pool.end()]);
+  if (writerSessionLost) process.exitCode = 1;
 });

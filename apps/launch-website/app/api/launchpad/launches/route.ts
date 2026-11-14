@@ -5,3 +5,7 @@ export const dynamic = "force-dynamic";
 export function GET(request: Request) {
   return respondWithLaunchHistory(request);
 }
+
+export function HEAD(request: Request) {
+  return respondWithLaunchHistory(request);
+}
