@@ -8,7 +8,15 @@
   ],
   "workspaces": {
     ".": {
-      "entry": [".github/scripts/zerox-browser-boundary.cjs", ".github/scripts/zerox-execution-fixture.cjs", ".github/scripts/collect-live-journey-proof.cjs", ".github/scripts/live-journey-runtime-proof.cjs", "scripts/visual-qa/rmt-creator-integration.mjs"]
+      "entry": [
+        ".github/scripts/zerox-browser-boundary.cjs",
+        ".github/scripts/zerox-execution-fixture.cjs",
+        ".github/scripts/collect-live-journey-proof.cjs",
+        ".github/scripts/live-journey-runtime-proof.cjs",
+        "scripts/visual-qa/rmt-creator-integration.mjs",
+        "docs/evidence/rmt-task039/probe-robinhood-4663.mjs",
+        "docs/evidence/rmt-task039/verify-4663-bytecode.mjs"
+      ]
     },
     "apps/web": {
       "entry": [
