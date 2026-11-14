@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { createServer as createSocket } from "node:net";
@@ -243,8 +243,9 @@ try {
   await writeFile(pgPasswordFile, pgPass, { mode: 0o600 });
   try { await successful(start(pgExecutable("initdb"), ["-D", cluster, "-U", pgUser, "-A", "scram-sha-256", "--pwfile", pgPasswordFile, "--no-locale"], "postgres-init")); }
   finally { await unlink(pgPasswordFile); }
+  await appendFile(join(cluster, "postgresql.conf"), "\nunix_socket_directories = ''\n");
   await successful(start(pgExecutable("pg_ctl"), ["-D", cluster, "-l", join(out, "postgres.log"), "-o",
-    `-h 127.0.0.1 -p ${pgPort}`, "-w", "start"], "postgres-start", { discard: true }));
+    `-h 127.0.0.1 -p ${pgPort}`, "-w", "start"], "postgres-start"));
   pgStarted = true;
   await successful(start(pgExecutable("createdb"), ["-h", "127.0.0.1", "-p", String(pgPort), "-U", pgUser, database], "postgres-createdb",
     { env: { ...childBase, PGPASSWORD: pgPass } }));
@@ -568,12 +569,13 @@ try {
   };
   const openTradeWallet = async () => {
     const connect = button("Connect test trading wallet");
-    await connect.or(page.getByLabel("Curve trade", { exact: true })).first().waitFor();
+    const side = page.getByRole("region", { name: "Isolated test trading" }).getByRole("combobox");
+    await connect.or(side).first().waitFor();
     if (await connect.isVisible()) await connect.click();
-    await page.getByLabel("Curve trade", { exact: true }).waitFor();
+    await side.waitFor();
   };
   const reviewed = async (side, amount) => {
-    await page.getByLabel("Curve trade", { exact: true }).selectOption({ label: side });
+    await page.getByRole("region", { name: "Isolated test trading" }).getByRole("combobox").selectOption({ label: side });
     await page.getByLabel("Trade amount", { exact: true }).fill(amount);
   };
   const checkSettlement = async (description, continueJourney = true) => {

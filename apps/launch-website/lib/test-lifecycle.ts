@@ -100,7 +100,7 @@ export function isLifecycleSlippage(operation: TestLifecycleOperation, value: un
 export function isTestLifecycleRequest(value: unknown): value is TestLifecycleRequest {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const r = value as Partial<TestLifecycleRequest>;
-  if (Object.keys(r).length !== 17 || !isLifecycleOperation(r.operation) || !address(r.token) || !address(r.curve)
+  if (Object.keys(r).length !== 18 || !isLifecycleOperation(r.operation) || !address(r.token) || !address(r.curve)
       || !address(r.factory) || !address(r.from) || !address(r.to) || r.chainId !== testCreationChain
       || typeof r.data !== "string" || !data.test(r.data) || typeof r.value !== "string" || !/^0x[0-9a-f]{1,64}$/i.test(r.value)
       || typeof r.nonce !== "string" || !quantity.test(r.nonce) || BigInt(r.nonce) >= BigInt(Number.MAX_SAFE_INTEGER)

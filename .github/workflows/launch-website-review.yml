@@ -115,6 +115,13 @@ jobs:
             --candidate "$RUNNER_TEMP/curve-candidate" --anvil "$(command -v anvil)" \
             --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$(pg_config --bindir)" \
             --output "$RUNNER_TEMP/rmt-creator-lifecycle"
+      - name: Read local PostgreSQL diagnostics after failure
+        if: failure()
+        run: |
+          for name in postgres-init postgres-start postgres; do
+            file="$RUNNER_TEMP/rmt-creator-lifecycle/$name.log"
+            if [ -f "$file" ]; then tail -n 20 "$file"; fi
+          done
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:

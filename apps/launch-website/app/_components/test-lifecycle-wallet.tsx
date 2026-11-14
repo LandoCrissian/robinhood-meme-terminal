@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { FixtureLifecycle } from "../../lib/server/fixture-discovery";
 import { isLocalTestWallet, isTransactionHash } from "../../lib/test-creation";
@@ -130,6 +130,7 @@ export function TestLifecycleWallet({ factory, token, blockNumber, blockHash, sy
   const binding = { factory, token, blockNumber, blockHash };
   const key = testTradeJournalKey(blockHash);
   const router = useRouter();
+  const formId = useId();
   const [ready, setReady] = useState(false);
   const [busy, setBusy] = useState(false);
   const [wallet, setWallet] = useState<TestWallet>();
@@ -448,16 +449,25 @@ export function TestLifecycleWallet({ factory, token, blockNumber, blockHash, sy
             <p>Connected test account <code className="lpAddress">{wallet.account}</code></p>
             <fieldset disabled={busy}>
               <legend>Review a synthetic curve trade</legend>
-              <label>Curve trade<select value={side} onChange={(event) => { invalidateReview(); setSide(event.target.value === "sell" ? "sell" : "buy"); }}>
-                <option value="buy">Buy</option><option value="sell">Sell</option>
-              </select></label>
+              <div className="lpDraftField">
+                <label htmlFor={`${formId}-side`}>Curve trade</label>
+                <select id={`${formId}-side`} value={side} onChange={(event) => { invalidateReview(); setSide(event.target.value === "sell" ? "sell" : "buy"); }}>
+                  <option value="buy">Buy</option><option value="sell">Sell</option>
+                </select>
+              </div>
               <div className="lpFormGrid">
-                <div className="lpDraftField"><label>Trade amount<input value={amount} onChange={(event) => { invalidateReview(); setAmount(event.target.value); }}
-                  inputMode="decimal" maxLength={31} aria-describedby="fixture-trade-unit" /></label>
-                  <small id="fixture-trade-unit">{side === "buy" ? "Synthetic ETH budget" : unit}</small></div>
-                <div className="lpDraftField"><label>Slippage (%)<input value={slippage} onChange={(event) => { invalidateReview(); setSlippage(event.target.value); }}
-                  inputMode="decimal" maxLength={4} aria-describedby="fixture-trade-slippage" /></label>
-                  <small id="fixture-trade-slippage">0% to 5%</small></div>
+                <div className="lpDraftField">
+                  <label htmlFor={`${formId}-amount`}>Trade amount</label>
+                  <input id={`${formId}-amount`} value={amount} onChange={(event) => { invalidateReview(); setAmount(event.target.value); }}
+                    inputMode="decimal" maxLength={31} aria-describedby={`${formId}-amount-hint`} />
+                  <small id={`${formId}-amount-hint`}>{side === "buy" ? "Synthetic ETH budget" : unit}</small>
+                </div>
+                <div className="lpDraftField">
+                  <label htmlFor={`${formId}-slippage`}>Slippage (%)</label>
+                  <input id={`${formId}-slippage`} value={slippage} onChange={(event) => { invalidateReview(); setSlippage(event.target.value); }}
+                    inputMode="decimal" maxLength={4} aria-describedby={`${formId}-slippage-hint`} />
+                  <small id={`${formId}-slippage-hint`}>0% to 5%</small>
+                </div>
               </div>
             </fieldset>
             <button type="button" className="lpButton lpSecondary" disabled={!canSign || (phase === "eligible" && side === "buy")}
