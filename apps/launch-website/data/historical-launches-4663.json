@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "chainId": 4663,
+  "observedAt": "2026-11-14T04:26:14.000Z",
+  "verificationBlock": {
+    "blockNumber": "113899119",
+    "blockHash": "0x0a20d4db277fe2c689ffd68763710c54a59d833dab097f2994c6aa7937ccc10c",
+    "timestamp": "2026-11-14T04:26:14.000Z"
+  },
+  "coverage": "reviewed-v4-and-v6-receipts",
+  "completeForPinnedFactories": true,
+  "l1Finality": "unverified",
+  "receiptProviders": [
+    "rpc.mainnet.chain.robinhood.com",
+    "robinhood.api.pocket.network"
+  ],
+  "stateProviders": [
+    "rpc.mainnet.chain.robinhood.com",
+    "robinhood.api.pocket.network"
+  ],
+  "factories": [
+    {
+      "version": 4,
+      "factory": "0x88b86f10d874c2e3c8cfe63161ffa969f3273cd4",
+      "runtimeHash": "0x98da08e97c0611954a18ecafe1a3638a0d88f8a274b472930d80735a1e4fc69d",
+      "registry": "0xfff3f69f473780ea5ea7f5525526986bb491e00e",
+      "registryHash": "0x6c4b7c4978075a73a87829c2367c520304d3eda17173f97a5d8710115b222c2e",
+      "versionHash": "0xdef50385924e38ff5aec5dc38e5e0215be1b43ba2d4d1d0bfbf6f3141e1b3426",
+      "launchCount": 2,
+      "marketImplementation": "0x6723276d2aecae0ab7a1c71898a01c8329ca8a0f",
+      "marketRuntimeHash": "0x205520656c57f0b74dfb4bc3aef32a6feb0cbbb23d57b2734bfa003f5a9c8098"
+    },
+    {
+      "version": 5,
+      "factory": "0x25a92d8c79c38d07b0d3efd0ebe929d30e401cdd",
+      "runtimeHash": "0xf398d4dd1da1523ae38caac108e94374332e1df61caf5b7d87dd87e8d7ec842e",
+      "registry": "0x4b8b222b5caa7066c02a54e51ec1a674adf5b3a1",
+      "registryHash": "0x9acfd535fe96d32310ae0afb3fcf108a26ec4900fda2e8fe48ce1f234084846f",
+      "versionHash": "0xa31c264f9aebfa7156ccdcd5180bc3c073a84160bdb471b03f1e56e67fec751d",
+      "launchCount": 0
+    },
+    {
+      "version": 6,
+      "factory": "0x8e75c57079a01ce2094bc4187b78710887547651",
+      "runtimeHash": "0x274321493d48091b4443e007b8335a93a977e67dffe67d6147ff8557a1e58830",
+      "registry": "0x27c0269e16209eee149e2738d0819a2633f44246",
+      "registryHash": "0xf841ffa82a73f04e52e76a4074801b0a9f0793d720c2aa1e5c4c7fef899ded81",
+      "versionHash": "0xed6920a17ef2329c2af2fdcc7e5161caa6adc888a820cc1f04b540aab70a5c7f",
+      "launchCount": 2,
+      "marketImplementation": "0x7cfa54a82baee5bc3cf6177f76c20eab9afedf41",
+      "marketRuntimeHash": "0xf2bb6739d04de8dfd4db3cac070a46f08c42588804a8f9b516d8edfbc8b33225"
+    }
+  ],
+  "launches": [
+    {
+      "kind": "historical-rmt",
+      "version": 4,
+      "classification": "deployment-test",
+      "factory": "0x88b86f10d874c2e3c8cfe63161ffa969f3273cd4",
+      "launchId": "0",
+      "token": "0xbde596366551aacae3e7c397b72f53f2a524582a",
+      "market": "0xe0ded88c6d2ab5831c64d57f4d4ed21c3512f6c4",
+      "name": "RMT Mainnet Smoke 579213",
+      "symbol": "RMS9213",
+      "creator": "0x7e8e7d3af28584a8b9eeddbe16cd3308bd1e76ca",
+      "receipt": {
+        "blockNumber": "8886328",
+        "blockHash": "0x089775ef06c8c8c8752fd364ac12c24027f7d6e31e493c71a13691d679f9fcf8",
+        "timestamp": "2026-07-13T18:34:00.000Z",
+        "transactionHash": "0x5cd5a0300fb1a10f12a63b89ae6ae32dbaa25429db06a78a3b1b0c23adea3f6e",
+        "logIndex": 8
+      },
+      "lifecycle": "curve",
+      "lifecycleAt": {
+        "blockNumber": "113899119",
+        "blockHash": "0x0a20d4db277fe2c689ffd68763710c54a59d833dab097f2994c6aa7937ccc10c",
+        "timestamp": "2026-11-14T04:26:14.000Z"
+      },
+      "reservedPoolId": "0x901826463a688f00fe2f42bfb8d74ac6854649ec39dca74b099ff3e7d62a23c2"
+    },
+    {
+      "kind": "historical-rmt",
+      "version": 4,
+      "classification": "historical",
+      "factory": "0x88b86f10d874c2e3c8cfe63161ffa969f3273cd4",
+      "launchId": "1",
+      "token": "0xab374d24afbd943a134adb381d9646e71c6f6c0c",
+      "market": "0xfeee90288a7037fbdb4ec5b05dc7cc5e762d5fb7",
+      "name": "Robinhood Meme Terminal",
+      "symbol": "RMT",
+      "creator": "0x7e8e7d3af28584a8b9eeddbe16cd3308bd1e76ca",
+      "receipt": {
+        "blockNumber": "9156510",
+        "blockHash": "0x6b2c691c6cbdb29538e29c7c02134a8472cf8356183e2e4cf01c36f2a7d41e46",
+        "timestamp": "2026-07-14T02:05:29.000Z",
+        "transactionHash": "0xe5cd6ed09a3cccae743b7c29c0ee0971f3797986bce171eadc3642de60b3410b",
+        "logIndex": 7
+      },
+      "lifecycle": "curve",
+      "lifecycleAt": {
+        "blockNumber": "113899119",
+        "blockHash": "0x0a20d4db277fe2c689ffd68763710c54a59d833dab097f2994c6aa7937ccc10c",
+        "timestamp": "2026-11-14T04:26:14.000Z"
+      },
+      "reservedPoolId": "0x8139bd05754bd4625c15978cd1500553fec3aed79ce889421cde8876e86087d0"
+    },
+    {
+      "kind": "historical-rmt",
+      "version": 6,
+      "classification": "retired",
+      "factory": "0x8e75c57079a01ce2094bc4187b78710887547651",
+      "launchId": "0",
+      "token": "0xdba33be56c89cc9fc014c4459028d7e5c7878671",
+      "market": "0xb26fb775c0ac365d369bee9ac2e044c5d90ffbee",
+      "name": "Robinhood Meme Terminal",
+      "symbol": "RMT",
+      "creator": "0x7e8e7d3af28584a8b9eeddbe16cd3308bd1e76ca",
+      "receipt": {
+        "blockNumber": "10387857",
+        "blockHash": "0x1e1811cdc66df1da8a5aacaeb6a68f5df73963acdac61f113ff123a965547158",
+        "timestamp": "2026-07-15T12:19:57.000Z",
+        "transactionHash": "0x4eb7b596ccdf5d0aa5e4c8d0d50311df5108b44f47d9d39d09b1916524d825d5",
+        "logIndex": 42
+      },
+      "lifecycle": "curve",
+      "lifecycleAt": {
+        "blockNumber": "113899119",
+        "blockHash": "0x0a20d4db277fe2c689ffd68763710c54a59d833dab097f2994c6aa7937ccc10c",
+        "timestamp": "2026-11-14T04:26:14.000Z"
+      },
+      "reservedPoolId": "0x752469c7db2ae1dfe84805da2544f49182a4e09bde952acb548a824f8eb8815b"
+    },
+    {
+      "kind": "historical-rmt",
+      "version": 6,
+      "classification": "historical",
+      "factory": "0x8e75c57079a01ce2094bc4187b78710887547651",
+      "launchId": "1",
+      "token": "0xfe7e1595c757ce5f034ba3e3e002c7184df6075e",
+      "market": "0x5cc52f3370b942e7c1414986ae97e41b319085b7",
+      "name": "SEIS0",
+      "symbol": "SI0",
+      "creator": "0x05f066ff7d5fd3ac4e3c2ae4dcacae89242df1c7",
+      "receipt": {
+        "blockNumber": "15849639",
+        "blockHash": "0x4158a559c8cbd48b7ade27074ca6757bac6671e02c5b9fc36fb0adfa52606c86",
+        "timestamp": "2026-07-21T20:26:48.000Z",
+        "transactionHash": "0x245491e8f8c370a66ff0355d5554bdfa933c8849adc4a86050fbc4469ae87a41",
+        "logIndex": 26
+      },
+      "lifecycle": "curve",
+      "lifecycleAt": {
+        "blockNumber": "113899119",
+        "blockHash": "0x0a20d4db277fe2c689ffd68763710c54a59d833dab097f2994c6aa7937ccc10c",
+        "timestamp": "2026-11-14T04:26:14.000Z"
+      },
+      "reservedPoolId": "0x568a211877c25f6e0bc1389ff8d7fa1be325c7f42e5dbc13816d941374f3dd8f"
+    }
+  ]
+}

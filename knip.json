@@ -18,6 +18,9 @@
         "lib/**/*.test.ts"
       ]
     },
+    "apps/launch-website": {
+      "entry": ["scripts/refresh-historical-launches.ts", "lib/server/*.test.ts"]
+    },
     "apps/indexer": {
       "entry": [
         "src/**/*-smoke.ts"
