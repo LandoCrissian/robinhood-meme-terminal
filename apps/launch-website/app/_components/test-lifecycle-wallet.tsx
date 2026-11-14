@@ -332,20 +332,26 @@ export function TestLifecycleWallet({ factory, token, blockNumber, blockHash, sy
     setReview({ ...next, wallet, formRevision: form });
   }
 
-  async function reconcile(entry: TestTradeJournalEntry, journalAtLock: TestTradeJournal, manualHash?: string) {
+  async function reconcile(entry: TestTradeJournalEntry, journalAtLock: TestTradeJournal, manualHash?: string, complete = false) {
     setResult(undefined);
     try {
       if (!boundRequest(entry.request, binding)) throw new Error("The original request belongs to another test token.");
       const settled = await readResult(entry, manualHash);
-      if (settled.transactionHash && settled.status !== "unavailable" && !same(settled.transactionHash, entry.transactionHash)) {
+      const archived = complete && canContinue(settled) && settled.transactionHash;
+      if (archived) {
+        const next = archiveTestTrade(journalAtLock, { request: entry.request, transactionHash: archived });
+        writeTestTradeJournal(key, next);
+        setJournal(next);
+        setRestoreHash("");
+      } else if (settled.transactionHash && settled.status !== "unavailable" && !same(settled.transactionHash, entry.transactionHash)) {
         const updated = { ...journalAtLock, pending: { request: entry.request, transactionHash: settled.transactionHash } };
         writeTestTradeJournal(key, updated);
         setJournal(updated);
       }
-      setResult(settled);
+      setResult(archived ? undefined : settled);
       setRevision((prior) => prior + 1);
-      router.refresh();
-      return settled;
+      // A refresh can remount the token page. Persist the final journal under the lock first.
+      if (mounted.current) router.refresh();
     } catch {
       setResult({ status: "unavailable" });
     }
@@ -413,20 +419,26 @@ export function TestLifecycleWallet({ factory, token, blockNumber, blockHash, sy
   async function recover(manual = false, complete = false) {
     const hash = restoreHash.trim();
     if (manual && !isTransactionHash(hash)) throw new Error("Enter the 32-byte transaction hash from your test wallet.");
+    const expected = journal.pending;
     await navigator.locks.request(key, { mode: "exclusive", ifAvailable: true }, async (lock) => {
       if (!lock) throw new Error("Another tab is handling the original test request.");
       const current = readTestTradeJournal(key);
       const entry = current.pending;
-      if (!entry || !boundRequest(entry.request, binding)) throw new Error("The original request belongs to another test token.");
       setJournal(current);
-      const settled = await reconcile(entry, current, manual ? hash : undefined);
-      if (complete && canContinue(settled) && settled?.transactionHash) {
-        const next = archiveTestTrade(current, { request: entry.request, transactionHash: settled.transactionHash });
-        writeTestTradeJournal(key, next);
-        setJournal(next);
+      if (!expected || !boundRequest(expected.request, binding) || (entry && !boundRequest(entry.request, binding))) {
+        throw new Error("The original request belongs to another test token.");
+      }
+      if (!entry && current.history.some((settled) => sameTestLifecycleRequest(expected.request, settled.request) &&
+          (!expected.transactionHash || same(expected.transactionHash, settled.transactionHash)))) {
         setRestoreHash("");
         setResult(undefined);
+        return;
       }
+      if (!entry || !sameTestLifecycleRequest(expected.request, entry.request)) {
+        setResult(undefined);
+        throw new Error("The test transaction journal changed. Check the current request.");
+      }
+      await reconcile(entry, current, manual ? hash : undefined, complete);
     });
   }
 
