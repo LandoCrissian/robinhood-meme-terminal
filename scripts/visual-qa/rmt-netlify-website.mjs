@@ -98,15 +98,26 @@ for (const field of ["deployment", "rpcUrl", "curve", "factory", "chainId"]) {
   assert.equal(config[field], undefined, `Preview config must not disclose ${field}`);
 }
 
-const unverifiedTokenPath = "/launches/0x0000000000000000000000000000000000000001";
+const unverifiedToken = "0x0000000000000000000000000000000000000001";
+const unverifiedTokenPath = `/launches/${unverifiedToken}`;
+const unverifiedTokenApi = `/api/launchpad/launches/${unverifiedToken}`;
+const unverifiedTokenData = await request(unverifiedTokenApi);
+assert.ok([404, 503].includes(unverifiedTokenData.status));
+await readPublicJson(unverifiedTokenData);
+const unverifiedTokenDataHead = await request(unverifiedTokenApi, { method: "HEAD" });
+assert.equal(unverifiedTokenDataHead.status, unverifiedTokenData.status);
+assert.equal(await unverifiedTokenDataHead.text(), "");
+const lookupUnavailable = unverifiedTokenData.status === 503;
+const lookupHeading = lookupUnavailable ? "Launch data unavailable" : "No verified RMT registration for this address";
 const unverifiedTokenPage = await request(unverifiedTokenPath);
-assert.equal(unverifiedTokenPage.status, 404);
-assert.match(await unverifiedTokenPage.text(), /No verified RMT registration for this address/);
+assert.equal(unverifiedTokenPage.status, lookupUnavailable ? 200 : 404);
+assert.ok((await unverifiedTokenPage.text()).includes(lookupHeading));
+const unverifiedTokenPageHead = await request(unverifiedTokenPath, { method: "HEAD" });
+assert.equal(unverifiedTokenPageHead.status, unverifiedTokenPage.status);
+assert.equal(await unverifiedTokenPageHead.text(), "");
 
 const unsupportedRoutes = [
   "/launches/example-alder", "/launches/example-harbor", "/launches/not-a-launch",
-  unverifiedTokenPath,
-  "/api/launchpad/launches/0x0000000000000000000000000000000000000001",
   "/admin", "/admin/creator-applications", "/deploy-mainnet", "/deploy-testnet",
   "/activate-consent-testnet", "/mainnet-smoke", "/vnext", "/status",
   "/api/launchpad/curve", "/api/launchpad/public/list_launches?chainId=31337",
@@ -127,7 +138,7 @@ for (const path of unsupportedRoutes) {
   }
 }
 
-for (const path of ["/", "/create-token", detailPath(v4), "/wallet", "/api/launchpad/config", "/api/launchpad/launches", `/api/launchpad/launches/${v4.token}`]) {
+for (const path of ["/", "/create-token", detailPath(v4), "/wallet", "/api/launchpad/config", "/api/launchpad/launches", `/api/launchpad/launches/${v4.token}`, unverifiedTokenPath, unverifiedTokenApi]) {
   // The application exposes no actions, even when submitted as an App Router request.
   const response = await request(path, { method: "POST", headers: { "Next-Action": "invalid", "Content-Type": "application/json" }, body: "{}" });
   assert.equal(response.status, 404, `POST ${path}`);
@@ -202,13 +213,19 @@ try {
       assert.equal((await page.goto(site.href)).status(), 200);
       await verifyReadOnly("Launches");
       await main.getByText(/new RMT Launch engine is in prelaunch/i).waitFor();
-      if (directory.status === "stale") await main.getByText(/chain data is stale/i).waitFor();
+      if (directory.status === "stale") {
+        const source = directory.coverage === "verified-snapshot" ? "verified historical snapshot" : "last verified V6 index records";
+        await main.getByText(`Chain data is stale. Showing the ${source}.`).waitFor();
+      }
       const legacy = main.locator(`a[href="${detailPath(v4)}"]`);
       const official = main.locator(`a[href="${detailPath(v6)}"]`);
       const deploymentTest = directory.launches.find(({ classification }) => classification === "deployment-test");
       await legacy.waitFor();
       await official.waitFor();
       const search = main.getByRole("textbox", { name: "Search launches" });
+      await search.fill("no matching RMT project");
+      await main.getByRole("heading", { name: "No matching launches" }).waitFor();
+      assert.equal(await main.getByRole("link", { name: "Look up this address" }).count(), 0);
       if (deploymentTest) {
         const testRow = main.locator(`a[href="${detailPath(deploymentTest)}"]`);
         assert.equal(await testRow.count(), 0);
@@ -218,6 +235,18 @@ try {
       await search.fill(v6.token.toUpperCase());
       await legacy.waitFor({ state: "detached" });
       await official.waitFor();
+      await search.fill(` ${unverifiedToken.toUpperCase()} `);
+      const addressLookup = main.getByRole("link", { name: "Look up this address" });
+      await addressLookup.waitFor();
+      assert.equal(await addressLookup.getAttribute("href"), unverifiedTokenPath);
+      await screenshot("address-lookup");
+      await addressLookup.click();
+      await verifyReadOnly(lookupHeading);
+      await main.getByText(lookupUnavailable
+        ? /try again when the directory is available/i
+        : /external tokens and newer or unindexed records may be absent/i).waitFor();
+      await nav.getByRole("link", { name: "Launches", exact: true }).click();
+      await verifyReadOnly("Launches");
       await search.fill("");
       await search.blur();
       await legacy.waitFor();

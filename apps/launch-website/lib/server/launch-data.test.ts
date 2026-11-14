@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import snapshot from "../../data/historical-launches-4663.json";
+import { createLaunchHistoryHandler } from "./launch-api";
 import { createLaunchDirectoryReader } from "./launch-data";
 
 const checkpoint = snapshot.verificationBlock;
@@ -167,6 +168,38 @@ test("serves snapshot during an outage and resumes fresh reads after the cache w
   at += 30_001;
   assert.equal((await read()).status, "ready");
   assert.equal(calls, 4);
+});
+
+test("a stale or unavailable worker cannot establish absence for an exact token", async () => {
+  const token = account("4");
+  const archived = v6[0].token;
+  let at = clock;
+  let stage = "unauthorized";
+  const read = withFeed(async () => {
+    if (stage === "unauthorized") return new Response(null, { status: 401 });
+    const data = indexed();
+    data.checkpoint.stale = stage === "behind";
+    return Response.json(data);
+  }, () => at);
+  const respond = createLaunchHistoryHandler(read, () => at);
+  const url = "https://rmt.example/api/launchpad/launches/";
+
+  assert.equal((await respond(new Request(url + archived), archived)).status, 200);
+  const unauthorized = await respond(new Request(url + token), token);
+  assert.equal(unauthorized.status, 503);
+  assert.equal(unauthorized.headers.get("netlify-cdn-cache-control"), "no-store");
+  assert.equal((await unauthorized.json()).status, "unavailable");
+
+  stage = "behind";
+  at += 30_001;
+  assert.equal((await respond(new Request(url + token), token)).status, 503);
+  assert.equal((await respond(new Request(url + archived), archived)).status, 200);
+
+  stage = "current";
+  at += 30_001;
+  const absent = await respond(new Request(url + token), token);
+  assert.equal(absent.status, 404);
+  assert.equal((await absent.json()).status, "ready");
 });
 
 test("ages out a previously ready checkpoint even within its local cache window", async () => {

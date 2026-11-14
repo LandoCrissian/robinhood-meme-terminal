@@ -226,6 +226,7 @@ export function createLaunchDirectoryReader(options: ReaderOptions) {
   const fetchFeed = options.fetch ?? fetch;
   const feed = getFeedUrl(options.indexerUrl);
   const credential = options.indexerReadToken;
+  const liveConfigured = Boolean(options.indexerUrl || credential);
   const input = options.snapshot === undefined ? snapshot : options.snapshot;
   let cachedList: { evidence: Evidence | null; expiresAt: number } | undefined;
   let pendingList: Promise<Evidence | null> | undefined;
@@ -315,7 +316,10 @@ export function createLaunchDirectoryReader(options: ReaderOptions) {
       .slice(0, launchDirectoryLimit);
     const status = evidence.status === "ready" && evidence.checkpoint
       && now() - Date.parse(evidence.checkpoint.timestamp) >= indexedFreshnessMs ? "stale" : evidence.status;
-    return { ...evidence, status, launches, chainId: robinhoodChainId, future: "prelaunch", finality: "l1-unverified" };
+    // A stale snapshot can verify a known historical record, but cannot establish current absence.
+    const result = token && liveConfigured && launches.length === 0 && status !== "ready"
+      ? unavailable : { ...evidence, status, launches };
+    return { ...result, chainId: robinhoodChainId, future: "prelaunch", finality: "l1-unverified" };
   };
 }
 

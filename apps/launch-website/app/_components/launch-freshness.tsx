@@ -13,10 +13,11 @@ export function ChainTime({ value }: { value: string }) {
 export function LaunchFreshness({ data }: { data: LaunchDirectoryData }) {
   const { status, checkpoint, observedAt, coverage } = data;
   const checkpointLabel = coverage === "v6-indexed" ? "V6 index checkpoint" : "Historical snapshot block";
+  const source = coverage === "verified-snapshot" ? "the verified historical snapshot" : "the last verified V6 index records";
   const message = status === "unavailable"
     ? "Chain data unavailable. No unverified launches are shown."
     : status === "stale"
-      ? "Chain data is stale. Showing the last verified records."
+      ? `Chain data is stale. Showing ${source}.`
       : coverage === "verified-snapshot" ? "Verified historical snapshot." : "Verified legacy RMT index.";
   return <div className="lpNotice lpProjectLink" role="status">
     <span>{message}</span>

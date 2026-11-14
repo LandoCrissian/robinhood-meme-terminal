@@ -5,7 +5,7 @@ export default function LaunchNotFound() {
     <Link className="lpBack" href="/" prefetch={false}>← Launches</Link>
     <div className="lpEmpty">
       <h2>No verified RMT registration for this address</h2>
-      <p>The directory covers verified RMT factory records. New or unindexed registrations may be unavailable here.</p>
+      <p>This lookup covers available RMT factory records on Robinhood Chain. External tokens and newer or unindexed records may be absent.</p>
     </div>
   </>;
 }
