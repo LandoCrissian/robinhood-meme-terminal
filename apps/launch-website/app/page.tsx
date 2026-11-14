@@ -11,10 +11,9 @@ async function VerifiedDirectory() {
   return <>
     <LaunchFreshness data={data} />
     <p className="lpNotice">The new RMT Launch engine is in prelaunch. This directory covers RMT factory records only.</p>
-    {data.truncated && <p className="lpNotice">This view shows the most recent indexed records.</p>}
-    {data.launches.length > 0 ? <LaunchDirectory launches={data.launches.map(({ name, symbol, token, version, lifecycle, classification, receipt }) =>
-      ({ name, symbol, token, version, lifecycle, classification, registrationBlock: receipt.blockNumber }))} /> : data.status !== "unavailable" &&
-      <div className="lpEmpty"><h2>No verified launches in this view</h2></div>}
+    {data.truncated && <p className="lpNotice">This view shows the most recent indexed records. Enter a full token address to look up other records.</p>}
+    <LaunchDirectory launches={data.launches.map(({ name, symbol, token, version, lifecycle, classification, receipt }) =>
+      ({ name, symbol, token, version, lifecycle, classification, registrationBlock: receipt.blockNumber }))} />
   </>;
 }
 

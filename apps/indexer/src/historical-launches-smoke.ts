@@ -4,9 +4,11 @@ import { encodeAbiParameters, encodeEventTopics, type Address, type Hash } from 
 import { marketEvents, tokenLaunchedEvent } from "./abi.js";
 import {
   hasHistoricalReadAccess,
+  historicalBoundary,
   historicalCommonAncestor,
   historicalFactory,
   historicalStartBlock,
+  observeHistoricalCheckpoint,
   parseHistoricalQuery,
   proveHistoricalRows,
   readHistoricalLaunches,
@@ -20,7 +22,8 @@ const hash = (id: number): Hash => `0x${id.toString(16).padStart(64, "0")}`;
 const height = historicalStartBlock + 20n;
 const previous = height - 10n;
 const timestamp = 1_795_000_000n;
-const verified = { blockNumber: height, blockHash: hash(92), verifiedAt: Number(timestamp + 60n) * 1_000 };
+const verifiedAt = Number(timestamp + 60n) * 1_000;
+const verified = { blockNumber: height, blockHash: hash(92), blockTimestamp: timestamp, proofAt: verifiedAt, verifiedAt };
 const olderPoint = { ...verified, blockNumber: previous, blockHash: hash(91) };
 const launchBlock = previous - 1n;
 const token = address(1);
@@ -58,16 +61,57 @@ export async function testHistoricalResilience() {
     { block_number: height.toString(), block_hash: hash(92) },
     { block_number: previous.toString(), block_hash: hash(91) }
   ];
-  const canonical = async (n: bigint) => n === height ? hash(93) : hash(91);
-  assert.equal(await historicalCommonAncestor(points, canonical, canonical), previous);
-  assert.equal(await historicalCommonAncestor(points, async () => { throw absentReceipt; }, archive), height);
-  await assert.rejects(historicalCommonAncestor(points, canonical, async () => hash(94)), /both configured providers/);
+  const block = (number: bigint, blockHash: Hash) => ({ number, hash: blockHash, timestamp });
+  const canonical = async (n: bigint) => block(n, n === height ? hash(93) : hash(91));
+  assert.equal((await historicalCommonAncestor(points, canonical, canonical)).blockNumber, previous);
+  assert.equal((await historicalCommonAncestor(points, async () => { throw absentReceipt; },
+    async (n) => block(n, hash(92)))).blockNumber, height);
+  await assert.rejects(historicalCommonAncestor(points, canonical, async (n) => block(n, hash(94))), /both configured providers/);
   await assert.rejects(historicalCommonAncestor(points, canonical), /both configured providers/);
-  await assert.rejects(historicalCommonAncestor(points, async () => hash(1), async () => hash(1)), /retained checkpoint/);
+  const noCommonAncestor = async (n: bigint) => block(n, hash(1));
+  await assert.rejects(historicalCommonAncestor(points, noCommonAncestor, noCommonAncestor), /retained checkpoint/);
+  await assert.rejects(historicalCommonAncestor(points, async (n) => block(n - 1n, hash(92))), /invalid block evidence/);
   let mismatches = 0;
   const pruned = async () => { throw absentReceipt; };
   await assert.rejects(historicalCommonAncestor(points, pruned, canonical, () => { mismatches += 1; }), absentReceipt);
   assert.equal(mismatches, 1);
+
+  let now = verifiedAt;
+  let boundaryCalls = 0;
+  let registryProofCalls = 0;
+  const clock = () => now;
+  const prove = async () => {
+    registryProofCalls += 1;
+    return true;
+  };
+  const observeBoundary = () => historicalCommonAncestor(points, async (n) => {
+    boundaryCalls += 1;
+    return block(n, hash(92));
+  });
+  let checkpoint = await observeHistoricalCheckpoint(await observeBoundary(), null, prove, clock);
+  for (let poll = 0; poll < 2; poll += 1) {
+    now += 30_000;
+    checkpoint = await observeHistoricalCheckpoint(await observeBoundary(), checkpoint, prove, clock);
+    assert.equal(checkpoint.verifiedAt, verifiedAt, "reuse does not renew proof freshness");
+  }
+  assert.deepEqual({ boundaryCalls, registryProofCalls }, { boundaryCalls: 3, registryProofCalls: 1 });
+  now += 30_000;
+  checkpoint = await observeHistoricalCheckpoint(await observeBoundary(), checkpoint, prove, clock);
+  assert.equal(registryProofCalls, 2, "the full proof runs again after 90 seconds");
+  assert.equal(checkpoint.verifiedAt, now);
+  const advanced = historicalBoundary(block(height + 1n, hash(93)), height + 1n);
+  checkpoint = await observeHistoricalCheckpoint(advanced, checkpoint, prove, clock);
+  assert.equal(registryProofCalls, 3, "a new block requires a new proof");
+  const reorganized = historicalBoundary(block(height + 1n, hash(94)), height + 1n);
+  checkpoint = await observeHistoricalCheckpoint(reorganized, checkpoint, prove, clock);
+  assert.equal(registryProofCalls, 4, "a changed hash requires a new proof at the same height");
+  await observeHistoricalCheckpoint(reorganized, null, prove, clock);
+  assert.equal(registryProofCalls, 5, "recovery and restart have no reusable proof");
+  await assert.rejects(observeHistoricalCheckpoint(advanced, checkpoint, async () => { throw absentReceipt; }, clock), absentReceipt);
+  const incomplete = await observeHistoricalCheckpoint(reorganized, null, async () => false, clock);
+  assert.equal(incomplete.proofAt, null);
+  await observeHistoricalCheckpoint(reorganized, incomplete, prove, clock);
+  assert.equal(registryProofCalls, 6, "proof backfill resumes at an unchanged checkpoint");
 }
 
 const receiptEmitter = {
@@ -121,7 +165,7 @@ const providers = {
 } as unknown as HistoricalProofRpc;
 
 async function lookup(db: PoolClient, details = verified) {
-  return readHistoricalLaunches(db, { limit: 25 }, details, false);
+  return readHistoricalLaunches(db, { limit: 25 }, details, false, details.verifiedAt);
 }
 
 export async function testHistoricalSchema(db: PoolClient, pool: Pool, schema: string) {
@@ -172,7 +216,10 @@ export async function testHistoricalSchema(db: PoolClient, pool: Pool, schema: s
   assert.equal(first?.launches[0]?.lifecycleEvidence?.transactionHash, hash(22));
   assert.equal(first?.launches[0]?.pool, null);
   assert.equal(first?.launches[0]?.custody, null);
+  assert.equal(await lookup(db, { ...verified, blockTimestamp: verified.blockTimestamp - 1n }), null);
   assert.equal((await lookup(db, { ...verified, verifiedAt: verified.verifiedAt + 301_000 }))?.checkpoint.stale, true);
+  assert.equal((await readHistoricalLaunches(db, { limit: 25 }, verified, false, verified.verifiedAt + 241_000))?.checkpoint.stale, true,
+    "serving time can make the block stale while the observation time stays fixed");
   assert.deepEqual((await readHistoricalLaunches(db, { token: address(500) }, verified, false))?.launches, []);
 
   // A persisted reader on a different PostgreSQL connection simulates process restart.

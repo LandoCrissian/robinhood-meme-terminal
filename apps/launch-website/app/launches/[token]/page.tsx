@@ -19,6 +19,6 @@ export default async function LaunchPage({ params }: { params: Promise<{ token: 
     <Link className="lpBack" href="/" prefetch={false}>← Launches</Link>
     <header className="lpPageHeading"><div><h1>Launch data unavailable</h1><p>Robinhood Chain 4663</p></div></header>
     <LaunchFreshness data={data} />
-    <p className="lpNotice">Registration could not be verified for <code className="lpAddress">{address}</code>.</p>
+    <p className="lpNotice">Registration could not be verified for <code className="lpAddress">{address}</code>. Try again when the directory is available.</p>
   </>;
 }

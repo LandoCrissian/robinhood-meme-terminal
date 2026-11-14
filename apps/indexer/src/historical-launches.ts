@@ -8,10 +8,41 @@ export const historicalFactory = "0x8e75c57079a01ce2094bc4187b78710887547651";
 export const historicalStartBlock = 10_248_855n;
 export const historicalFactoryCodeHash = "0x274321493d48091b4443e007b8335a93a977e67dffe67d6147ff8557a1e58830";
 export const historicalConfirmationDepth = 20;
+export const historicalCheckpointMaxAgeMs = 120_000;
+const historicalFullProofMaxAgeMs = 90_000;
 const historicalPageLimit = 25;
 const historicalChainId = 4_663;
 const addressPattern = /^0x[0-9a-f]{40}$/i;
 const hashPattern = /^0x[0-9a-f]{64}$/i;
+
+type RpcBlock = { number: bigint | null; hash: Hash | null; timestamp: bigint };
+export type HistoricalBoundary = { blockNumber: bigint; blockHash: string; blockTimestamp: bigint };
+export type HistoricalCheckpoint = HistoricalBoundary & { proofAt: number | null; verifiedAt: number };
+
+export function historicalBoundary(block: RpcBlock, expectedHeight: bigint): HistoricalBoundary {
+  if (block.number !== expectedHeight || !block.hash || !hashPattern.test(block.hash) || block.timestamp <= 0n) {
+    throw new Error("Historical canonical checkpoint has invalid block evidence");
+  }
+  return { blockNumber: expectedHeight, blockHash: block.hash.toLowerCase(), blockTimestamp: block.timestamp };
+}
+
+export async function observeHistoricalCheckpoint(
+  boundary: HistoricalBoundary,
+  reusable: HistoricalCheckpoint | null,
+  prove: () => Promise<boolean>,
+  clock = Date.now
+): Promise<HistoricalCheckpoint> {
+  const now = clock();
+  if (reusable && reusable.proofAt !== null &&
+      reusable.blockNumber === boundary.blockNumber && reusable.blockHash === boundary.blockHash &&
+      reusable.blockTimestamp === boundary.blockTimestamp && now >= reusable.verifiedAt &&
+      now - reusable.proofAt < historicalFullProofMaxAgeMs) {
+    return reusable;
+  }
+  const proofBackfillComplete = await prove();
+  const proofAt = clock();
+  return { ...boundary, proofAt: proofBackfillComplete ? proofAt : null, verifiedAt: proofAt };
+}
 
 export type HistoricalQuery =
   | { token: string }
@@ -44,25 +75,27 @@ export function hasHistoricalReadAccess(token: string | null, authorization: str
 
 export async function historicalCommonAncestor(
   points: readonly { block_number: string; block_hash: string }[],
-  primary: (height: bigint) => Promise<Hash | null>,
-  archive?: (height: bigint) => Promise<Hash | null>,
+  primary: (height: bigint) => Promise<RpcBlock>,
+  archive?: (height: bigint) => Promise<RpcBlock>,
   onMismatch?: () => void
 ) {
   for (const point of points) {
     const height = BigInt(point.block_number);
-    const canonical = await readWithArchive(() => primary(height), archive && (() => archive(height)));
-    if (!canonical || !hashPattern.test(canonical)) throw new Error("Historical canonical checkpoint lacks a valid hash");
-    if (canonical.toLowerCase() === point.block_hash.toLowerCase()) return height;
+    const canonical = historicalBoundary(
+      await readWithArchive(() => primary(height), archive && (() => archive(height))),
+      height
+    );
+    if (canonical.blockHash === point.block_hash.toLowerCase()) return canonical;
     onMismatch?.();
 
     // Do not discard data based on a single disagreeing provider or an absent archive block.
     const witness = await archive?.(height);
-    if (!witness || witness.toLowerCase() !== canonical.toLowerCase()) {
+    if (!witness || historicalBoundary(witness, height).blockHash !== canonical.blockHash) {
       throw new Error("Historical reorg could not be witnessed by both configured providers");
     }
     // The read-with-fallback call might itself have returned the archive's answer.
-    const primaryWitness = await primary(height);
-    if (primaryWitness?.toLowerCase() !== canonical.toLowerCase()) {
+    const primaryWitness = historicalBoundary(await primary(height), height);
+    if (primaryWitness.blockHash !== canonical.blockHash) {
       throw new Error("Historical reorg could not be witnessed by both configured providers");
     }
   }
@@ -145,8 +178,9 @@ type StoredHistorical = RegistrationRow & {
 export async function readHistoricalLaunches(
   db: Pick<PoolClient, "query">,
   query: HistoricalQuery,
-  verified: { blockNumber: bigint; blockHash: string; verifiedAt: number },
-  stale: boolean
+  verified: HistoricalCheckpoint,
+  stale: boolean,
+  now = Date.now()
 ) {
   const result = await db.query<{
     block_number: string;
@@ -164,6 +198,7 @@ export async function readHistoricalLaunches(
   if (!point || !Number.isSafeInteger(blockNumber) || blockNumber < Number(historicalStartBlock) ||
       !hashPattern.test(point.block_hash) || !point.block_timestamp ||
       point.block_timestamp.getTime() > verified.verifiedAt + 30_000 ||
+      point.block_timestamp.getTime() !== Number(verified.blockTimestamp) * 1_000 ||
       BigInt(point.block_number) !== verified.blockNumber || point.block_hash.toLowerCase() !== verified.blockHash) return null;
 
   const isExact = "token" in query;
@@ -225,7 +260,7 @@ export async function readHistoricalLaunches(
       blockHash: point.block_hash.toLowerCase(),
       timestamp: point.block_timestamp.toISOString(),
       observedAt: new Date(verified.verifiedAt).toISOString(),
-      stale: stale || verified.verifiedAt - point.block_timestamp.getTime() > 300_000,
+      stale: stale || now - point.block_timestamp.getTime() > 300_000,
       finality: "l2-confirmed" as const
     },
     launches,
@@ -325,4 +360,6 @@ export async function proveHistoricalRows(db: Pick<PoolClient, "query">, primary
       [proof.blockHash, proof.timestamp.toString(), row.market, row.block_number, row.transaction_hash, row.log_index]
     );
   }
+  // A full batch may leave additional rows to prove at the next poll, even at the same checkpoint.
+  return registrations.rows.length < historicalPageLimit && migrations.rows.length < historicalPageLimit;
 }

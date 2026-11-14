@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { HistoricalLaunch } from "../../lib/launch-data";
+import { isLaunchAddress, type HistoricalLaunch } from "../../lib/launch-data";
 import { launchClassificationLabel, launchLifecycleLabel } from "./launch-evidence";
 import { ShowcaseIcon } from "./showcase-icon";
 import { TokenArtwork } from "./token-artwork";
@@ -16,13 +16,16 @@ export function LaunchDirectory({ launches }: { launches: DirectoryRow[] }) {
   const [searchReady, setSearchReady] = useState(false);
   useEffect(() => setSearchReady(true), []);
   const search = query.trim().toLowerCase();
-  const matching = launches.filter(({ name, symbol, token, classification }) => classification === "deployment-test"
-    ? token.toLowerCase() === search
-    : name.toLowerCase().includes(search) || symbol.toLowerCase().includes(search) || token.toLowerCase().includes(search));
+  const exactAddress = isLaunchAddress(search) ? search : null;
+  const matching = launches.filter(({ name, symbol, token, classification }) => {
+    if (exactAddress) return token.toLowerCase() === exactAddress;
+    return classification !== "deployment-test"
+      && (name.toLowerCase().includes(search) || symbol.toLowerCase().includes(search) || token.toLowerCase().includes(search));
+  });
 
   return <>
     <label className="rmtMarketSearch lpSearch"><span><ShowcaseIcon name="search" /></span>
-      <input aria-label="Search launches" placeholder="Name, symbol or token address" maxLength={160}
+      <input aria-label="Search launches" placeholder="Name, symbol or token address" maxLength={160} autoCapitalize="none" spellCheck={false}
         disabled={!searchReady} value={query} onChange={(event) => setQuery(event.target.value)} />
     </label>
     {matching.length ? <div className="rmtMarketTable lpTable">
@@ -40,7 +43,15 @@ export function LaunchDirectory({ launches }: { launches: DirectoryRow[] }) {
         <span className="lpIndex">RMT V{launch.version}</span>
       </Link>)}
     </div> : <div className="lpEmpty">
-      <ShowcaseIcon name="market" /><h2>No matching launches</h2><p>Search by name, symbol or chain-4663 token address.</p>
+      <ShowcaseIcon name="market" />
+      {exactAddress ? <>
+        <h2>Look up a token address</h2>
+        <p>Check verified Robinhood Chain factory records for this address.</p>
+        <Link className="lpButton lpSecondary" href={`/launches/${exactAddress}`} prefetch={false}>Look up this address</Link>
+      </> : <>
+        <h2>{search ? "No matching launches" : "No verified launches in this view"}</h2>
+        <p>Search this view by name or symbol, or enter a full Robinhood Chain token address.</p>
+      </>}
     </div>}
   </>;
 }
