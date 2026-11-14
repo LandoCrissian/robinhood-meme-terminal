@@ -6,6 +6,7 @@ export const tokenLaunchedEvent = parseAbiItem(
 
 export const factoryReadAbi = [
   parseAbiItem("function protocolVersion() view returns (uint32)"),
+  parseAbiItem("function launchCount() view returns (uint256)"),
   parseAbiItem("function creatorPayoutAuthority() view returns (address)"),
   parseAbiItem("function policyRegistry() view returns (address)")
 ] as const;

@@ -35,3 +35,51 @@ Production should also set:
 - `PORT`
 
 Run one writer instance until leader election is added. The database constraints make replay idempotent, but multiple simultaneous writers create unnecessary RPC and lock contention.
+
+## Historical launch projection
+
+`GET /historical-launches` requires a configured bearer token. The projection is
+limited to the pinned Robinhood Chain 4663 V6 factory
+`0x8e75c57079a01ce2094bc4187b78710887547651`, deployment block `10248855`,
+and runtime Keccak-256
+`0x274321493d48091b4443e007b8335a93a977e67dffe67d6147ff8557a1e58830`.
+Both configured RPCs must report chain 4663. The confirmation depth must be at
+least 20. This route describes historical V6 registrations only.
+
+- Query by exact `?token=0x…` or request a page with `?limit=1..25` and the
+  optional cursor returned by the previous page. Each response carries its
+  own checkpoint. A client should restart pagination if the checkpoint
+  changes and a consistent historical page sequence is required.
+- Each row includes the factory receipt's transaction hash, block hash, block
+  number, log index and canonical block timestamp. A `graduated` lifecycle requires a
+  successful, canonical `LiquidityMigrated` receipt with positive amounts and
+  liquidity. Pool and custody remain unknown. Without proven migration the
+  lifecycle is unknown. The response contains no market metrics.
+- The checkpoint joins the persisted cursor and range hash and verifies
+  registry coverage against `launchCount()` there. `timestamp` is the block
+  timestamp and `observedAt` is the worker's last verification time.
+  `l2-confirmed` reflects the configured L2 depth. Ethereum L1 finality is
+  unverified.
+- Restart resumes the existing PostgreSQL cursor. Additive proof columns are
+  backfilled from at most 25 registration receipts and 25 migration receipts
+  per sync pass. Timed-out, rate-limited or missing proof reads may retry
+  against a separately configured archive endpoint. A factory registration
+  scan may use the archive when its range boundary agrees with the primary
+  before and after the scan. Trade and fee-event scans retain the existing
+  primary-provider retry/backoff behavior.
+- Read-only repeatable-read transactions keep the response consistent across
+  a checkout or rollback. A transient upstream error can return the previous
+  checkpoint marked stale for up to two minutes after verification. A block
+  over five minutes old is also marked stale. Missing proof coverage, invalid
+  identity, provider disagreement and database failures cause the projection
+  to return HTTP 503. A reorg rollback requires both configured providers to
+  agree on changed canonical hashes and a common ancestor among the last
+  64 stored checkpoints. A deeper disagreement requires operator review.
+
+Maintain an isolated PostgreSQL backup with the cursor and all associated
+tables in the same backup. Verify restoration to an isolated database and
+check the chain, runtime pin and newest checkpoint before offering data.
+Restoring a known-good cursor avoids rescanning from the V6 deployment block.
+The archive must support the pinned block's state, receipts and the configured
+factory log range. A full initial replay can be expensive on rate-limited
+providers and is not part of a website request.
