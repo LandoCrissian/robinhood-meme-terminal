@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   visual:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     env:
       NEXT_PUBLIC_RMT_NETWORK: mainnet

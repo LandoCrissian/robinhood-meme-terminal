@@ -26,7 +26,7 @@ concurrency:
 
 jobs:
   account-first-browser:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
       RMT_ACCOUNT_ACCEPTANCE_OUTPUT: "${{ github.workspace }}/account-first-browser-evidence"
@@ -55,7 +55,7 @@ jobs:
           retention-days: 14
 
   production-privy-bridge:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
       RMT_PRIVY_BRIDGE_ACCEPTANCE_OUTPUT: "${{ github.workspace }}/privy-bridge-balance-evidence"
