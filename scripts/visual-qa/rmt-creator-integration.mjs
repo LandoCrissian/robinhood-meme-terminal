@@ -581,14 +581,15 @@ try {
   const checkSettlement = async (description, continueJourney = true) => {
     const label = description === "approval" ? "exact test approval" : `test ${description}`;
     const status = page.getByText(`On-chain ${label} confirmed`, { exact: true });
+    const proceed = button("Continue from verified transaction");
     await waitFor(`${description} confirmation from the original receipt`, async () => {
-      if (await status.isVisible()) return true;
+      if (await status.isVisible() && (!continueJourney || await proceed.isEnabled())) return true;
       const check = button("Check original transaction");
-      if (await check.isEnabled()) await check.click();
-      return status.isVisible();
+      if (await check.isVisible() && await check.isEnabled()) await check.click();
+      return false;
     });
     if (continueJourney) {
-      await button("Continue from verified transaction").click();
+      await proceed.click();
       await openTradeWallet();
     }
   };
