@@ -29,10 +29,10 @@ export function LaunchShell({ children }: { children: ReactNode }) {
     </header>
     <main id="launch-content" className="lpContent">{children}</main>
     <footer className="lpFooter">
-      <Link href="/rmt">Legacy RMT</Link>
-      <Link href="/terms">Terms</Link>
-      <Link href="/risks">Risks</Link>
-      <Link href="/privacy">Privacy</Link>
+      <Link href="/rmt" prefetch={false}>Legacy RMT</Link>
+      <Link href="/terms" prefetch={false}>Terms</Link>
+      <Link href="/risks" prefetch={false}>Risks</Link>
+      <Link href="/privacy" prefetch={false}>Privacy</Link>
     </footer>
   </div>;
 }

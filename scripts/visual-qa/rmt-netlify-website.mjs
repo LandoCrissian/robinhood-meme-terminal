@@ -183,6 +183,16 @@ try {
         await nav.getByRole("link", { name: destination, exact: true }).click();
         await verifyReadOnly(destination);
       }
+      const footer = page.getByRole("contentinfo");
+      for (const [label, path, heading] of [
+        ["Terms", "/terms", "Preview Terms"],
+        ["Risks", "/risks", "Risk Disclosures"],
+        ["Privacy", "/privacy", "Preview Privacy"],
+      ]) {
+        await footer.getByRole("link", { name: label, exact: true }).click();
+        await main.getByRole("heading", { name: heading, exact: true }).waitFor();
+        assert.equal(new URL(page.url()).pathname, path);
+      }
       assert.ok(scripts.size > 0, `${name} did not verify any Next.js scripts`);
       for (const script of inliningMarker ? scripts : []) {
         const response = await request(new URL(script).pathname);
