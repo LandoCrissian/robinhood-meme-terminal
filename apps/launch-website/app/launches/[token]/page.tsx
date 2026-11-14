@@ -5,7 +5,7 @@ import { isLaunchAddress } from "../../../lib/launch-data";
 import { readLaunchDirectory } from "../../../lib/server/launch-data";
 import { HistoricalLaunchDetails } from "../../_components/historical-launch";
 import { LaunchFreshness } from "../../_components/launch-freshness";
-import { FixtureLaunchDetails } from "../../_components/fixture-launches";
+import { FixtureLaunchDetails, FixtureTransactionRecovery } from "../../_components/fixture-launches";
 import { configuredCurveFixture } from "../../../lib/server/curve-fixture";
 import { readFixtureLaunches } from "../../../lib/server/fixture-discovery";
 
@@ -21,11 +21,12 @@ export default async function LaunchPage({ params }: { params: Promise<{ token: 
   const fixture = configuredCurveFixture(await headers());
   if (fixture) {
     const directory = await readFixtureLaunches(fixture, address);
-    if (directory.status === "ready" && directory.launches[0]) return <FixtureLaunchDetails launch={directory.launches[0]} />;
-    if (directory.status === "unavailable") return <>
+    if (directory.status === "ready" && directory.launches[0]) return <FixtureLaunchDetails launch={directory.launches[0]} fixture={fixture} />;
+    return <>
       <Link className="lpBack" href="/" prefetch={false}>← Launches</Link>
-      <header className="lpPageHeading"><div><h1>New-engine evidence unavailable</h1><p>Anvil 31337 · Synthetic test only</p></div></header>
-      <p className="lpNotice" role="status">Registration evidence for <code className="lpAddress">{address}</code> cannot be verified at this checkpoint.</p>
+      <header className="lpPageHeading"><div><h1>{directory.status === "unavailable" ? "New-engine evidence unavailable" : "Test token not registered"}</h1><p>Anvil 31337 · Synthetic test only</p></div></header>
+      <p className="lpNotice" role="status"><code className="lpAddress">{address}</code> {directory.status === "unavailable" ? "cannot be verified at this checkpoint." : "has no registration at the verified checkpoint."}</p>
+      <FixtureTransactionRecovery token={address} fixture={fixture} />
     </>;
   }
   if (data.status !== "unavailable") notFound();

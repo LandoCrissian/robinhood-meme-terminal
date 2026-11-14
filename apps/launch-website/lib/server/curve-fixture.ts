@@ -45,7 +45,8 @@ function loopback(value: string | undefined) {
 }
 
 export function parseCurveFixture(env: Record<string, string | undefined>, manifest: unknown): CurveFixture | null {
-  if (env.RMT_CURVE_FIXTURE !== "task036-local-only" || env.NETLIFY || env.VERCEL || env.DEPLOY_ID || env.CONTEXT) return null;
+  if (env.RMT_CURVE_FIXTURE !== "task036-local-only" || env.NETLIFY || env.VERCEL || env.DEPLOY_ID || env.CONTEXT || env.RAILWAY_ENVIRONMENT_ID
+      || !env.RMT_CURVE_FIXTURE_READ_KEY || !/^[0-9a-f]{64}$/.test(env.RMT_CURVE_FIXTURE_READ_KEY) || /^0+$/.test(env.RMT_CURVE_FIXTURE_READ_KEY)) return null;
   const origin = loopback(env.RMT_CURVE_FIXTURE_SITE_ORIGIN);
   const rpcUrl = loopback(env.RMT_CURVE_FIXTURE_RPC);
   const indexerUrl = loopback(env.RMT_CURVE_FIXTURE_INDEXER);
@@ -67,7 +68,7 @@ export function parseCurveFixture(env: Record<string, string | undefined>, manif
 
 export function configuredCurveFixture(headers: Headers): CurveFixture | null {
   const env = process.env;
-  if (env.RMT_CURVE_FIXTURE !== "task036-local-only" || env.NETLIFY || env.VERCEL || env.DEPLOY_ID || env.CONTEXT) return null;
+  if (env.RMT_CURVE_FIXTURE !== "task036-local-only" || env.NETLIFY || env.VERCEL || env.DEPLOY_ID || env.CONTEXT || env.RAILWAY_ENVIRONMENT_ID) return null;
   const origin = loopback(env.RMT_CURVE_FIXTURE_SITE_ORIGIN);
   const manifest = env.RMT_CURVE_FIXTURE_DEPLOYMENT;
   if (!origin || headers.get("host") !== new URL(origin).host || !manifest || !isAbsolute(manifest)) return null;
