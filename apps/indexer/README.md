@@ -30,7 +30,8 @@ There are no legacy-factory or legacy-start-block defaults. A missing value, an 
 Production should also set:
 - `RMT_CONFIRMATION_DEPTH` (default 20)
 - `RMT_INDEXER_CHUNK_SIZE` (default 2000)
-- `RMT_INDEXER_POLL_MS` (default 10000)
+- `RMT_INDEXER_POLL_MS` (default 10000, allowed values 1 through 60000 ms)
+- `RMT_INDEXER_CAUGHT_UP_POLL_MS` (default 30000, allowed values 1 through 60000 ms). Applies only to the pinned historical V6 binding with an authenticated, verified checkpoint and completed proof backfill. The interval is at least the base polling interval. Failures and incomplete proof backfill keep the base interval or existing failure backoff.
 - `RMT_DB_POOL_SIZE` (default 10)
 - `PORT`
 
@@ -67,6 +68,12 @@ least 20. This route describes historical V6 registrations only.
   scan may use the archive when its range boundary agrees with the primary
   before and after the scan. Trade and fee-event scans retain the existing
   primary-provider retry/backoff behavior.
+- A caught-up poll rechecks the canonical checkpoint and reads the latest L2
+  head. When the exact checkpoint block, hash and timestamp are unchanged,
+  it can reuse a complete proof for up to 90 seconds. Reuse preserves the
+  original verification time. A changed checkpoint, restart or recovery
+  after an observed upstream failure requires a full proof. Real block age
+  is measured when serving responses.
 - Authenticated history requests share a 120 per minute budget with a burst of
   12 and at most four concurrent database reads. Throttled requests return
   HTTP 429 with Retry-After. The endpoint sets a one-second database acquire
