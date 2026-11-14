@@ -1,0 +1,64 @@
+name: Read-only launch website
+
+on:
+  pull_request:
+    paths:
+      - "apps/launch-website/**"
+      - "apps/web/app/**/*.css"
+      - "apps/web/public/brand/rmt-master-logo.png"
+      - "netlify.toml"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "patches/**"
+      - "scripts/visual-qa/rmt-netlify-website.mjs"
+      - ".github/workflows/launch-website-review.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      RMT_CURVE_ENABLED: "true"
+      RMT_LAUNCHPAD_ENABLED: "true"
+      NEXT_PUBLIC_RMT_NETWORK: mainnet
+      RMT_WEBSITE_PREVIEW_SECRET_MARKER: rmt-website-synthetic-secret-027
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile --filter @rmt/launch-website... --filter robinhood-meme-terminal
+      - run: pnpm --filter @rmt/launch-website build
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Verify website navigation and read-only HTTP boundary
+        run: |
+          set -euo pipefail
+          export RMT_WEBSITE_PREVIEW_ARTIFACTS="$RUNNER_TEMP/rmt-website-preview"
+          mkdir "$RMT_WEBSITE_PREVIEW_ARTIFACTS"
+          node apps/launch-website/node_modules/next/dist/bin/next start apps/launch-website \
+            --hostname 127.0.0.1 --port 3205 > "$RMT_WEBSITE_PREVIEW_ARTIFACTS/next.log" 2>&1 &
+          child="$!"
+          trap 'kill "$child" 2>/dev/null || true; wait "$child" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --max-time 3 http://127.0.0.1:3205/api/launchpad/config | grep -q '"status":"disabled"'; then
+              break
+            fi
+            [[ "$attempt" != 30 ]] || { echo "Website preview did not become ready." >&2; exit 1; }
+            sleep 1
+          done
+          node scripts/visual-qa/rmt-netlify-website.mjs
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: rmt-website-preview-${{ github.event.pull_request.head.sha }}
+          path: ${{ runner.temp }}/rmt-website-preview
