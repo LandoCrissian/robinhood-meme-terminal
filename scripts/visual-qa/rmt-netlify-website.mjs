@@ -316,6 +316,7 @@ try {
       const draftReview = main.getByRole("button", { name: "Review draft", exact: true });
       await draftReview.click();
       assert.equal(await tokenName.getAttribute("aria-invalid"), "true");
+      await page.waitForFunction(() => document.activeElement?.id === "draft-name");
       assert.equal(draftRequests, 0);
       await tokenName.fill(draftFields.name);
       await main.getByLabel("Ticker").fill(draftFields.symbol);
@@ -323,8 +324,19 @@ try {
       await main.getByLabel("Project description").fill("This sample text stays on the device.");
       await main.getByLabel("Project or metadata URL").fill(draftFields.projectURI);
       await main.getByLabel("Artwork URL").fill("https://example.test/artwork.png");
-      await draftReview.click();
-      await main.getByRole("alert").filter({ hasText: /temporarily unavailable/i }).waitFor();
+      try {
+        await Promise.all([
+          page.waitForResponse((response) => new URL(response.url()).pathname === creationReviewPath && response.request().method() === "POST", { timeout: 12_000 })
+            .then((response) => assert.equal(response.status(), 503)),
+          draftReview.click(),
+        ]);
+        await main.getByRole("alert").filter({ hasText: /temporarily unavailable/i }).waitFor();
+      } catch (error) {
+        await screenshot("creation-error");
+        const inputs = await main.locator("input, textarea, select").evaluateAll((nodes) => nodes.map((node) =>
+          ({ id: node.id, length: node.value.length, invalid: node.getAttribute("aria-invalid") })));
+        throw new Error(`Creator outage fixture failed after ${draftRequests} requests. ${JSON.stringify({ inputs, errors, operationalRequests })}`, { cause: error });
+      }
       assert.equal(await tokenName.inputValue(), draftFields.name);
       await draftReview.click();
       const reviewed = main.getByRole("heading", { name: "Review token draft", exact: true });
