@@ -1,0 +1,15 @@
+{
+  "engine": "PostgreSQL 18.6",
+  "blockRange": "100–102",
+  "loopback": true,
+  "chainId": 31337,
+  "checks": [
+    "foreign-key batch rollback",
+    "duplicate range rollback",
+    "old snapshot isolation",
+    "replacement checkpoint proof",
+    "orphan checkpoint rejection",
+    "fee and graduation removal",
+    "registration retained"
+  ]
+}

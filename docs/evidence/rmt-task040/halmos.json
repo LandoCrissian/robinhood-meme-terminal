@@ -1,0 +1,58 @@
+{
+    "exitcode": 0,
+    "test_results": {
+        "test/RMTLaunchCurveSymbolic.t.sol:RMTLaunchCurveSymbolic": [
+            {
+                "name": "check_ForeignCallerCannotCreditOrTakeLpFees(address,uint256,uint256)",
+                "exitcode": 0,
+                "num_models": 0,
+                "models": [],
+                "num_paths": [
+                    2,
+                    1,
+                    0
+                ],
+                "time": [
+                    0.21885249996557832,
+                    0.21882980002555996,
+                    1.0699965059757233e-05
+                ],
+                "num_bounded_loops": 0
+            },
+            {
+                "name": "check_ForeignCallerCannotMoveCurveAssets(address,address,bytes32)",
+                "exitcode": 0,
+                "num_models": 0,
+                "models": [],
+                "num_paths": [
+                    3,
+                    1,
+                    0
+                ],
+                "time": [
+                    0.11676710000028834,
+                    0.11674849997507408,
+                    1.3999990187585354e-05
+                ],
+                "num_bounded_loops": 0
+            },
+            {
+                "name": "check_GraduationRequiresMatchingNativeRefund(uint256)",
+                "exitcode": 0,
+                "num_models": 0,
+                "models": [],
+                "num_paths": [
+                    3,
+                    3,
+                    0
+                ],
+                "time": [
+                    0.4141615999978967,
+                    0.414149800024461,
+                    7.90000194683671e-06
+                ],
+                "num_bounded_loops": 0
+            }
+        ]
+    }
+}
