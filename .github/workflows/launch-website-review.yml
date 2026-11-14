@@ -27,6 +27,7 @@ jobs:
       RMT_LAUNCHPAD_ENABLED: "true"
       NEXT_PUBLIC_RMT_NETWORK: mainnet
       RMT_WEBSITE_PREVIEW_SECRET_MARKER: rmt-website-synthetic-secret-027
+      RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN: rmt-website-synthetic-secret-027
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -38,8 +39,9 @@ jobs:
         with:
           node-version: 22
       - run: pnpm install --frozen-lockfile --filter @rmt/launch-website... --filter robinhood-meme-terminal
+      - run: pnpm --filter @rmt/launch-website test:history
       - run: pnpm --filter @rmt/launch-website build
-      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm exec playwright install --with-deps chromium webkit
       - name: Verify website navigation and read-only HTTP boundary
         run: |
           set -euo pipefail
@@ -56,7 +58,11 @@ jobs:
             [[ "$attempt" != 30 ]] || { echo "Website preview did not become ready." >&2; exit 1; }
             sleep 1
           done
-          node scripts/visual-qa/rmt-netlify-website.mjs
+          for engine in chromium webkit; do
+            RMT_WEBSITE_BROWSER="$engine" \
+              RMT_WEBSITE_PREVIEW_ARTIFACTS="$RMT_WEBSITE_PREVIEW_ARTIFACTS/$engine" \
+              node scripts/visual-qa/rmt-netlify-website.mjs
+          done
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:

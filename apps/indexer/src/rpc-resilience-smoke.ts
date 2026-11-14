@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { testHistoricalResilience } from "./historical-launches-smoke.js";
 import {
   classifySyncFailure,
   failureBackoffMs,
@@ -58,4 +59,5 @@ assert.deepEqual(publicSyncState(true, "local"), {
   publicError: null
 });
 
+await testHistoricalResilience();
 console.info("RPC resilience smoke test passed");

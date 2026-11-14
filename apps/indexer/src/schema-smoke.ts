@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { Pool, type PoolClient } from "pg";
+import { testHistoricalSchema } from "./historical-launches-smoke.js";
 import { launchRowsQuery } from "./launch-rows-query.js";
 import { schemaSql } from "./schema.js";
 
@@ -265,6 +266,18 @@ try {
     );
     await assertLaunchCandidateQuery(client);
     await client.query("ROLLBACK");
+    const historicalSchema = `historical_smoke_${process.pid}_${Date.now()}`;
+    try {
+      await client.query("BEGIN");
+      await client.query(`CREATE SCHEMA "${historicalSchema}"`);
+      await client.query(`SET LOCAL search_path TO "${historicalSchema}"`);
+      await client.query(schemaSql);
+      await client.query("INSERT INTO indexer_state (chain_id, next_block) VALUES (4663, 1)");
+      await testHistoricalSchema(client, pool, historicalSchema);
+    } finally {
+      await client.query("ROLLBACK");
+      await client.query(`DROP SCHEMA IF EXISTS "${historicalSchema}" CASCADE`);
+    }
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
     throw error;

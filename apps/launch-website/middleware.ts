@@ -1,10 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { curveShowcaseExamples } from "./lib/curve-showcase";
+import { isLaunchAddress } from "./lib/launch-data";
 
 const publicRoutes = new Set([
   "/", "/create-token", "/my-launches", "/wallet", "/rmt",
   "/terms", "/risks", "/privacy", "/robots.txt", "/api/launchpad/config",
-  ...curveShowcaseExamples.map(({ slug }) => `/launches/${slug}`),
+  "/api/launchpad/launches",
 ]);
 
 function isStaticAsset(path: string) {
@@ -20,10 +20,15 @@ function isStaticAsset(path: string) {
   }
 }
 
+function isLaunchDetail(path: string) {
+  const match = /^\/(?:api\/launchpad\/)?launches\/([^/]+)$/.exec(path);
+  return match !== null && isLaunchAddress(match[1]);
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   if ((request.method === "GET" || request.method === "HEAD")
-      && (publicRoutes.has(pathname) || isStaticAsset(pathname))) {
+      && (publicRoutes.has(pathname) || isLaunchDetail(pathname) || isStaticAsset(pathname))) {
     return NextResponse.next();
   }
   return new NextResponse(request.method === "HEAD" ? null : "Not Found", {

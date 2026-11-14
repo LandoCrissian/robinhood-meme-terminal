@@ -119,3 +119,13 @@ condition = "AND"
 targetRules = ["generic-api-key"]
 regexes = ['''^99e1afe285b5c614ebc9586ab5196db9d24a63fd924a449f5d99f490a6a6d6a9$''']
 paths = ['''^packages/contracts/scripts/launch-4663-review-inputs\.json$''']
+
+[[allowlists]]
+description = "Four exact Robinhood Chain token contracts corroborated by public receipts and factory state"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''(?i)^0x(?:bde596366551aacae3e7c397b72f53f2a524582a|ab374d24afbd943a134adb381d9646e71c6f6c0c|dba33be56c89cc9fc014c4459028d7e5c7878671|fe7e1595c757ce5f034ba3e3e002c7184df6075e)$''']
+paths = [
+  '''^apps/launch-website/data/historical-launches-4663\.json$''',
+  '''^apps/launch-website/lib/server/verify-historical-launches\.ts$''',
+]

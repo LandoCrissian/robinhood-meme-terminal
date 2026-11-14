@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS sync_points (
   indexed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   PRIMARY KEY (chain_id, block_number)
 );
+ALTER TABLE sync_points ADD COLUMN IF NOT EXISTS block_timestamp TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS launches (
   token TEXT PRIMARY KEY,
@@ -59,6 +60,8 @@ ALTER TABLE launches ADD COLUMN IF NOT EXISTS fair_start_max_tx_bps INTEGER;
 ALTER TABLE launches ADD COLUMN IF NOT EXISTS fair_start_max_wallet_bps INTEGER;
 ALTER TABLE launches ADD COLUMN IF NOT EXISTS official_migration BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE launches ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ;
+ALTER TABLE launches ADD COLUMN IF NOT EXISTS block_hash TEXT;
+CREATE INDEX IF NOT EXISTS launches_historical_lookup_idx ON launches (block_number DESC, log_index DESC);
 ALTER TABLE launches ADD COLUMN IF NOT EXISTS original_creator TEXT;
 ALTER TABLE launches ADD COLUMN IF NOT EXISTS current_creator_fee_recipient TEXT;
 ALTER TABLE launches ADD COLUMN IF NOT EXISTS protocol_treasury TEXT;
@@ -109,6 +112,8 @@ CREATE TABLE IF NOT EXISTS liquidity_migrations (
   liquidity NUMERIC(78,0) NOT NULL,
   block_number BIGINT NOT NULL
 );
+ALTER TABLE liquidity_migrations ADD COLUMN IF NOT EXISTS block_hash TEXT;
+ALTER TABLE liquidity_migrations ADD COLUMN IF NOT EXISTS occurred_at TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS creator_payout_events (
   transaction_hash TEXT NOT NULL,
