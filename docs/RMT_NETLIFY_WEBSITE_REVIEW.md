@@ -1,5 +1,7 @@
 # RMT Launch website review
 
+Historical review for Task 027. The site was later published to www.rmtlaunch.fun. See the [Robinhood Chain discovery review](RMT_ROBINHOOD_CHAIN_DISCOVERY_REVIEW.md) for the new data paths and current indexer evidence.
+
 The website-only branch starts at `main` commit `6d0b8103bdad95367445a38e5f5327458baa9ab2`. The interface comes from [draft #594](https://github.com/LandoCrissian/robinhood-meme-terminal/pull/594) at `8dca5773cbd4dc98f52a45616f420bce96b000f0`. The new `apps/launch-website` Next.js package reuses the original brand artwork and shared styles from `apps/web`. Its only runtime dependencies are Next.js and React.
 
 ## Review site

@@ -1,6 +1,6 @@
 # Production indexer deployment
 
-Current status: **the V6 Railway/PostgreSQL indexer is live and is the production Discovery source**. This document retains the deployment and recovery procedure; provider credentials and database details remain private.
+This runbook retains the former V6 Railway/PostgreSQL discovery deployment and recovery procedure. The service was unavailable during the Netlify website integration review. See [Robinhood Chain launch discovery](RMT_ROBINHOOD_CHAIN_DISCOVERY_REVIEW.md) for that review and its separate read-only data path.
 
 ## Recommended beta topology
 

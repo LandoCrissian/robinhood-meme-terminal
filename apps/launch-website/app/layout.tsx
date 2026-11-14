@@ -14,7 +14,7 @@ import { LaunchShell } from "./_components/launch-shell";
 
 export const metadata: Metadata = {
   title: "RMT Launch | Token Launchpad",
-  description: "Read-only preview of RMT token discovery, curve trading and Uniswap v4 graduation.",
+  description: "Read-only discovery of verified RMT launches and their provenance on Robinhood Chain.",
   robots: { index: false, follow: false },
   icons: { icon: logo.src, apple: logo.src },
 };

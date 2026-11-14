@@ -12,19 +12,19 @@ export function LaunchShell({ children }: { children: ReactNode }) {
   return <div className="rmtVnext rmtTerminal launchpad">
     <a className="vnSkipLink" href="#launch-content">Skip to launchpad</a>
     <header className="rmtDesktopHeader lpHeader">
-      <Link className="rmtTerminalBrand" href="/" aria-label="RMT Launch home">
+      <Link className="rmtTerminalBrand" href="/" prefetch={false} aria-label="RMT Launch home">
         <img src={logo.src} alt="" width={34} height={34} />
         <strong>RMT</strong>
       </Link>
       <nav aria-label="Launchpad navigation">
         {navigation.map(([href, label]) => {
           const active = path === href || href === "/" && path.startsWith("/launches/");
-          return <Link key={href} href={href} className={active ? "isActive" : undefined} aria-current={active ? "page" : undefined}>{label}</Link>;
+          return <Link key={href} href={href} prefetch={false} className={active ? "isActive" : undefined} aria-current={active ? "page" : undefined}>{label}</Link>;
         })}
       </nav>
       <div className="lpHeaderRight">
-        <span className="lpNetwork"><i aria-hidden="true" />Read-only preview</span>
-        <Link className="lpButton" href="/wallet">Wallet</Link>
+        <span className="lpNetwork"><i aria-hidden="true" />Read-only</span>
+        <Link className="lpButton" href="/wallet" prefetch={false}>Wallet</Link>
       </div>
     </header>
     <main id="launch-content" className="lpContent">{children}</main>
