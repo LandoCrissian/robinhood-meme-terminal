@@ -183,16 +183,24 @@ async function verifyPostEventCoverage(rpc: PublicClient, graduation: FixtureGra
   const groups = await Promise.all([
     query(poolManager, [swap, poolIds]), query(graduation.graduationEngine, [collect, tokens]), query(ledgers, [claim]),
   ]);
-  const expected = new Map(events.map(({ evidence }) => [`${evidence.transactionHash.toLowerCase()}:${evidence.logIndex}`, evidence]));
+  const byToken = new Map(graduated.map(cursor => [cursor.launch.token.toLowerCase(), cursor]));
+  const expected = new Map(events.map(({ token, evidence }) => [`${evidence.transactionHash.toLowerCase()}:${evidence.logIndex}`, { token, evidence }]));
+  if (expected.size !== events.length) throw new Error("Fixture post-graduation duplicate receipt identity");
   for (const [group, logs] of groups.entries()) {
     if (!Array.isArray(logs) || logs.length > maxBlocks * BigInt(maxTransactionsPerBlock)) throw new Error("Fixture post-graduation log bounds invalid");
     for (const log of logs) {
       if (!hexHash(log.transactionHash) || !hexHash(log.blockHash) || !hexQuantity(log.blockNumber) || !hexQuantity(log.logIndex)
           || log.removed !== false) throw new Error("Fixture post-graduation log identity invalid");
       const key = `${log.transactionHash.toLowerCase()}:${Number(log.logIndex)}`;
-      const event = expected.get(key);
+      const match = expected.get(key);
+      const event = match?.evidence;
+      const cursor = match && byToken.get(match.token.toLowerCase());
       const topic = [swap, collect, claim][group];
-      if (!event || !topic || !same(log.topics[0] ?? "", topic) || event.blockNumber !== BigInt(log.blockNumber).toString()
+      const emitter = group === 0 ? poolManager : group === 1 ? graduation.graduationEngine : cursor?.lpLedger;
+      const identity = group === 0 ? cursor?.graduation?.poolId : group === 1 && match ? toHex(BigInt(match.token), { size: 32 })
+        : event && toHex(BigInt(event.account), { size: 32 });
+      if (!event || !topic || !emitter || !identity || !same(log.address, emitter) || !same(log.topics[0] ?? "", topic)
+          || !same(log.topics[1] ?? "", identity) || event.blockNumber !== BigInt(log.blockNumber).toString()
           || !same(event.blockHash, log.blockHash)
           || (group === 0 && event.kind !== "v4-buy" && event.kind !== "v4-sell")
           || (group === 1 && event.kind !== "lp-collect") || (group === 2 && event.kind !== "lp-claim")) {

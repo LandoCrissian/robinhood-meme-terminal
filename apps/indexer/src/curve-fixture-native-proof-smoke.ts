@@ -20,4 +20,8 @@ export function testFixtureNativeProof() {
   assert.throws(() => assertFixtureNativeProof({ ...root, calls: [reverted, credit] }, origin, payments), /not independently proven/);
   assert.throws(() => assertFixtureNativeProof({ ...root, calls: [payout, { ...credit, to: wallet }] }, origin, payments), /not independently proven/);
   assert.throws(() => assertFixtureNativeProof({ ...root, calls: [payout, payout, credit] }, origin, payments), /not independently proven/);
+  const routerInput = `0x${"01".repeat(1600)}` as const;
+  const tooLarge = `0x${"01".repeat(1601)}` as const;
+  assert.doesNotThrow(() => assertFixtureNativeProof({ ...root, input: routerInput, calls: [payout, credit] }, { ...origin, input: routerInput }, payments));
+  assert.throws(() => assertFixtureNativeProof({ ...root, input: tooLarge, calls: [payout, credit] }, { ...origin, input: tooLarge }, payments), /transaction mismatch/);
 }
