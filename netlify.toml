@@ -1,4 +1,5 @@
 [build]
+  edge_functions = "apps/launch-website/netlify/edge-functions"
   command = "pnpm --filter @rmt/launch-website build"
   publish = "apps/launch-website/.next"
 

@@ -19,7 +19,7 @@
       ]
     },
     "apps/launch-website": {
-      "entry": ["scripts/refresh-historical-launches.ts", "lib/server/*.test.ts"]
+      "entry": ["scripts/refresh-historical-launches.ts", "lib/server/*.test.ts", "netlify/edge-functions/*.ts"]
     },
     "apps/indexer": {
       "entry": [

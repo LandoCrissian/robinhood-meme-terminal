@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { Pool, type PoolClient } from "pg";
 import { testHistoricalSchema } from "./historical-launches-smoke.js";
+import { testIndexStoreRecovery } from "./index-store-smoke.js";
 import { launchRowsQuery } from "./launch-rows-query.js";
 import { schemaSql } from "./schema.js";
 
@@ -284,6 +285,7 @@ try {
   } finally {
     client.release();
   }
+  await testIndexStoreRecovery(url, pool);
   console.info("Indexer schema smoke test passed.");
 } finally {
   await pool.end();

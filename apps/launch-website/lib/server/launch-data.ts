@@ -6,11 +6,12 @@ import {
 
 const v4Factory = "0x88b86f10d874c2e3c8cfe63161ffa969f3273cd4";
 const v6Factory = "0x8e75c57079a01ce2094bc4187b78710887547651";
-const indexedFreshnessMs = 5 * 60_000;
+export const indexedFreshnessMs = 5 * 60_000;
 const responseCacheMs = 30_000;
 const feedTimeoutMs = 3_000;
 const feedMaxBytes = 64 * 1024;
 const maxExactReads = 4;
+const maxCachedExactReads = 64;
 
 type Fields = Record<string, unknown>;
 type Evidence = Omit<LaunchDirectoryData, "chainId" | "future" | "finality">;
@@ -229,6 +230,7 @@ export function createLaunchDirectoryReader(options: ReaderOptions) {
   let cachedList: { evidence: Evidence | null; expiresAt: number } | undefined;
   let pendingList: Promise<Evidence | null> | undefined;
   const pendingExact = new Map<string, Promise<Evidence | null>>();
+  const cachedExact = new Map<string, { evidence: Evidence | null; expiresAt: number }>();
 
   async function fetchIndex(archived: Evidence, token?: string): Promise<Evidence | null> {
     if (!feed || !credential || !/^[\x21-\x7e]{1,512}$/.test(credential)) return null;
@@ -240,6 +242,10 @@ export function createLaunchDirectoryReader(options: ReaderOptions) {
         headers: { Accept: "application/json", Authorization: "Bearer " + credential },
         redirect: "error", cache: "no-store", signal: AbortSignal.timeout(feedTimeoutMs),
       });
+      if (!response.ok) {
+        void response.body?.cancel().catch(() => undefined);
+        return null;
+      }
       return mergeEvidence(readIndexedEvidence(await readBoundedJson(response), now(), token), archived, token);
     } catch {
       return null;
@@ -256,12 +262,32 @@ export function createLaunchDirectoryReader(options: ReaderOptions) {
     return pendingList;
   }
 
-  function getExact(archived: Evidence, token: string) {
-    const pending = pendingExact.get(token);
+  function getExact(archived: Evidence, token: string, checkpoint: LaunchBlock) {
+    // A new list checkpoint may invalidate both a missing token and a prior registration.
+    const key = checkpoint.blockHash + ":" + token;
+    const cached = cachedExact.get(key);
+    if (cached && cached.expiresAt > now()) return cached.evidence;
+    const pending = pendingExact.get(key);
     if (pending) return pending;
     if (pendingExact.size >= maxExactReads) return null;
-    const request = fetchIndex(archived, token).finally(() => pendingExact.delete(token));
-    pendingExact.set(token, request);
+    const request = fetchIndex(archived, token).then((result) => {
+      let evidence = result;
+      if (evidence?.checkpoint) {
+        try {
+          assertInCheckpoint(checkpoint, evidence.checkpoint);
+        } catch {
+          evidence = null;
+        }
+      }
+      cachedExact.delete(key);
+      cachedExact.set(key, { evidence, expiresAt: now() + responseCacheMs });
+      if (cachedExact.size > maxCachedExactReads) {
+        const oldest = cachedExact.keys().next().value;
+        if (oldest) cachedExact.delete(oldest);
+      }
+      return evidence;
+    }).finally(() => pendingExact.delete(key));
+    pendingExact.set(key, request);
     return request;
   }
 
@@ -272,8 +298,8 @@ export function createLaunchDirectoryReader(options: ReaderOptions) {
       try {
         const archived = readCheckedSnapshot(input, now());
         const current = await getList(archived);
-        if (token && current?.truncated && !current.launches.some((row) => row.token.toLowerCase() === token)) {
-          const exact = await getExact(archived, token);
+        if (token && current?.checkpoint && current.truncated && !current.launches.some((row) => row.token.toLowerCase() === token)) {
+          const exact = await getExact(archived, token, current.checkpoint);
           const knownHistorically = archived.launches.some((row) => row.token.toLowerCase() === token);
           evidence = exact ?? (knownHistorically ? archived : unavailable);
         } else {
@@ -287,7 +313,9 @@ export function createLaunchDirectoryReader(options: ReaderOptions) {
       .filter((row) => !token || row.token.toLowerCase() === token)
       .sort((a, b) => Number(BigInt(b.receipt.blockNumber) - BigInt(a.receipt.blockNumber)))
       .slice(0, launchDirectoryLimit);
-    return { ...evidence, launches, chainId: robinhoodChainId, future: "prelaunch", finality: "l1-unverified" };
+    const status = evidence.status === "ready" && evidence.checkpoint
+      && now() - Date.parse(evidence.checkpoint.timestamp) >= indexedFreshnessMs ? "stale" : evidence.status;
+    return { ...evidence, status, launches, chainId: robinhoodChainId, future: "prelaunch", finality: "l1-unverified" };
   };
 }
 

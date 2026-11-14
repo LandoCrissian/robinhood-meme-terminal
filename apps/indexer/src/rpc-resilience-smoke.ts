@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHistoryReadBudget } from "./history-read-budget.js";
 import { testHistoricalResilience } from "./historical-launches-smoke.js";
 import {
   classifySyncFailure,
@@ -59,5 +60,25 @@ assert.deepEqual(publicSyncState(true, "local"), {
   publicError: null
 });
 
+let budgetClock = 0;
+const budget = createHistoryReadBudget(() => budgetClock);
+const leases = Array.from({ length: 4 }, () => budget.acquire());
+assert.ok(leases.every(Boolean));
+assert.equal(budget.acquire(), null);
+for (const release of leases) {
+  release!();
+  release!();
+}
+for (let request = 0; request < 8; request += 1) {
+  const release = budget.acquire();
+  assert.ok(release);
+  release();
+}
+assert.equal(budget.acquire(), null);
+budgetClock += 500;
+assert.ok(budget.acquire());
+assert.equal(budget.acquire(), null);
+budgetClock -= 1000;
+assert.equal(budget.acquire(), null);
 await testHistoricalResilience();
 console.info("RPC resilience smoke test passed");

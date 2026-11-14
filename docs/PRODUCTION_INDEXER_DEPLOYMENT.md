@@ -1,6 +1,6 @@
 # Production indexer deployment
 
-This runbook retains the former V6 Railway/PostgreSQL discovery deployment and recovery procedure. The service was unavailable during the Netlify website integration review. See [Robinhood Chain launch discovery](RMT_ROBINHOOD_CHAIN_DISCOVERY_REVIEW.md) for that review and its separate read-only data path.
+This runbook retains the former V6 Railway/PostgreSQL discovery deployment and recovery procedure. The service was unavailable during the Netlify website integration review. See [Robinhood Chain launch discovery](RMT_ROBINHOOD_CHAIN_DISCOVERY_REVIEW.md) for that review and its separate read-only data path. See [the Railway recovery runbook](RMT_RAILWAY_RECOVERY.md) before starting any worker against persisted data.
 
 ## Recommended beta topology
 

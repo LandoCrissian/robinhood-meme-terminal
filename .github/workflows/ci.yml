@@ -78,6 +78,12 @@ jobs:
       - run: pnpm --filter indexer build
       - run: pnpm --filter indexer test:resilience
       - run: pnpm --filter indexer test:schema
+      - name: Check worker readiness, lease and restart over HTTP
+        run: |
+          docker exec "${{ job.services.postgres.id }}" createdb -U postgres rmt_worker_smoke
+          pnpm --filter indexer test:worker-http
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/rmt_worker_smoke
 
   external-origin-indexer:
     runs-on: ubuntu-latest
