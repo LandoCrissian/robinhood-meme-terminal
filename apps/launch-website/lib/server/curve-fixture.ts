@@ -26,6 +26,7 @@ export type CurveFixture = {
   deploymentBlock: bigint;
   deploymentBlockHash: Hex;
   feeRecipient: Address;
+  graduation?: { engine: Address; engineRuntimeHash: Hex; guard: Address; guardRuntimeHash: Hex };
 };
 
 export function fixtureAddress(value: unknown): value is Address {
@@ -60,10 +61,19 @@ export function parseCurveFixture(env: Record<string, string | undefined>, manif
       || typeof block !== "string" || !/^[1-9][0-9]{0,15}$/.test(block)
       || data.creationFeeWei !== fixtureCreationFee.toString() || !fixtureAddress(data.creationFeeRecipient)
       || new Set([data.factory.toLowerCase(), data.projectRegistry.toLowerCase(), data.creationFeeRecipient.toLowerCase()]).size !== 3) return null;
+  const hasGraduation = ["graduationEngine", "graduationRuntimeHash", "guard", "guardRuntimeHash"].some((key) => Object.hasOwn(data, key));
+  let graduation: CurveFixture["graduation"];
+  if (hasGraduation) {
+    if (!fixtureAddress(data.graduationEngine) || !fixtureHash(data.graduationRuntimeHash)
+        || !fixtureAddress(data.guard) || !fixtureHash(data.guardRuntimeHash) || (BigInt(data.guard) & 0x3fffn) !== 0x2000n
+        || new Set([data.factory, data.projectRegistry, data.graduationEngine, data.guard].map((entry) => entry.toLowerCase())).size !== 4) return null;
+    graduation = { engine: getAddress(data.graduationEngine.toLowerCase()), engineRuntimeHash: data.graduationRuntimeHash,
+      guard: getAddress(data.guard.toLowerCase()), guardRuntimeHash: data.guardRuntimeHash };
+  }
   return { origin, rpcUrl, indexerUrl, factory: getAddress(data.factory.toLowerCase()), factoryRuntimeHash: data.factoryRuntimeHash,
     registry: getAddress(data.projectRegistry.toLowerCase()), registryRuntimeHash: data.registryRuntimeHash,
     deploymentBlock: BigInt(block), deploymentBlockHash: data.deploymentBlockHash,
-    feeRecipient: getAddress(data.creationFeeRecipient.toLowerCase()) };
+    feeRecipient: getAddress(data.creationFeeRecipient.toLowerCase()), ...(graduation && { graduation }) };
 }
 
 export function configuredCurveFixture(headers: Headers): CurveFixture | null {

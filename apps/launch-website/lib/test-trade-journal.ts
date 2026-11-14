@@ -5,6 +5,7 @@ export type TestTradeJournalEntry = { request: TestLifecycleRequest; transaction
 export type TestTradeJournal = { pending?: TestTradeJournalEntry; history: TestTradeJournalEntry[] };
 
 const maxHistory = 12;
+const maxJournalLength = 65_536;
 
 // One pending request for all token pages on this fixture. Retain original envelopes for reorg checks.
 export function testTradeJournalKey(deploymentHash: string) {
@@ -21,7 +22,7 @@ function isEntry(value: unknown): value is TestTradeJournalEntry {
 export function readTestTradeJournal(key: string) {
   const raw = localStorage.getItem(key);
   if (!raw) return { history: [] } as TestTradeJournal;
-  if (raw.length > 20_000) throw new Error("Test journal exceeds its storage bound");
+  if (raw.length > maxJournalLength) throw new Error("Test journal exceeds its storage bound");
   const data = JSON.parse(raw) as Partial<TestTradeJournal>;
   if (!data || !Array.isArray(data.history) || data.history.length > maxHistory ||
       !data.history.every((entry) => isEntry(entry) && isTransactionHash(entry.transactionHash)) ||
@@ -30,7 +31,9 @@ export function readTestTradeJournal(key: string) {
 }
 
 export function writeTestTradeJournal(key: string, journal: TestTradeJournal) {
-  localStorage.setItem(key, JSON.stringify(journal));
+  const raw = JSON.stringify(journal);
+  if (raw.length > maxJournalLength) throw new Error("Test journal exceeds its storage bound");
+  localStorage.setItem(key, raw);
 }
 
 export function archiveTestTrade(journal: TestTradeJournal, entry: TestTradeJournalEntry) {

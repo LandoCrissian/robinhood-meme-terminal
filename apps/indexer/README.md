@@ -156,6 +156,19 @@ graduation proof ties the full PoolKey to its initialized pool and locked
 position, checks principal liquidity and settlement dust, and distinguishes the
 opening price from the observed pool spot state.
 
+Task 038 admits the pinned Base Sepolia router 2.1.2 and Quoter in the
+loopback fork. Graduated details report verified v4 swaps, permissionless
+collection from the original locked position, and beneficiary self-claims.
+Exact calldata, token transfers and native call traces are mandatory. The
+worker reconciles all indexed fee amounts and beneficiary credits against the
+immutable ledger at a canonical checkpoint. It compares admitted direct
+receipts against pool and ledger log coverage. Same-block approval and sell,
+or other routes touching an admitted pool, fall outside this fixture profile.
+Pages return at most 20 post-graduation events. The worker keeps at most 256
+events per token and fails closed above that bound. Use a fresh isolated
+fixture database for schema revision 38. There is no migration for earlier
+disposable fixture databases, and the production indexer schema is separate.
+
 Each range commits its tokens, lifecycle events, state and checkpoints together
 under one database writer lock. Restart resumes the latest canonical checkpoint.
 Reorgs discard the orphaned suffix and its registrations and lifecycle atomically. With no

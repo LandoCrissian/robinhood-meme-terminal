@@ -3,6 +3,8 @@ import { isAddress, type Address, type Hex } from "viem";
 type Node = { type: string; from: string; to: string; value: bigint; input?: string; calls: Node[] };
 type Payment = { from: Address; to: Address; amount: bigint };
 const types = new Set(["CALL", "STATICCALL", "DELEGATECALL", "CALLCODE", "CREATE", "CREATE2", "SELFDESTRUCT"]);
+// Single exact-in Uniswap v4 2.1.2 action with its bounded settlement steps.
+const maxReviewedInput = 3_202;
 
 /** Uses #594's bounded callTracer approach with exact direct transfers for this EOA fixture path. */
 export function assertFixtureNativeProof(raw: unknown, origin: { from: Address; to: Address; value: bigint; input: Hex }, payments: Payment[]) {
@@ -22,7 +24,8 @@ export function assertFixtureNativeProof(raw: unknown, origin: { from: Address; 
       throw new Error("Fixture malformed native trace");
     }
     return { type: node.type, from: node.from.toLowerCase(), to: node.to.toLowerCase(), value: BigInt(value),
-      input: depth === 0 && typeof node.input === "string" && node.input.length <= 1024 ? node.input.toLowerCase() : undefined, calls: children };
+      input: depth === 0 && typeof node.input === "string" && node.input.length <= maxReviewedInput
+        ? node.input.toLowerCase() : undefined, calls: children };
   }
   const trace = parse(raw, 0);
   if (!trace || trace.type !== "CALL" || trace.input !== origin.input.toLowerCase() || trace.value !== origin.value

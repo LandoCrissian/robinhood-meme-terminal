@@ -12,15 +12,19 @@ const minTick = -887_220;
 const maxTick = 887_220;
 
 // Base Sepolia identities from the pinned #594 fixture manifest. This fixture only uses chain 31337.
-const poolManager = "0x05E73354cFDd6745C338b50BcFDfA3Aa6fA03408";
-const positionManager = "0x4b2c77d209d3405f41a037ec6c77f7f5b8e2ca80";
-const permit2 = "0x000000000022D473030F116dDEE9F6B43aC78BA3";
+export const poolManager = "0x05E73354cFDd6745C338b50BcFDfA3Aa6fA03408";
+export const positionManager = "0x4b2c77d209d3405f41a037ec6c77f7f5b8e2ca80";
+export const permit2 = "0x000000000022D473030F116dDEE9F6B43aC78BA3";
+export const fixtureRouter = "0x8702463e73f74d0b6765aBceb314Ef07aCb92650";
+export const fixtureQuoter = "0x5e6B8B8AFA7e5CEF6C09dd2A67aBA9FB12C75623";
 const stateView = "0x571291b572ed32ce6751a2cb2486ebee8defb9b4";
 const dependencies = [
   [poolManager, "0x03c45db6d09b14da7c1f7239a5a49697f976d395277e6d2acb6fbed3f9e0249f"],
   [positionManager, "0xe8329b35b8b34290b6cf03affc0836f7b23205229cc96ffdc66544b93112c076"],
   [permit2, "0xdcde65555316946c298e4c60c6213eb5c3aeab4354d1f3fac5427236bcbb9ebe"],
   [stateView, "0x0e54f1b36938b15a1d4207f9cfe5e13eee61c5393c7a498e859d5bdc86999c39"],
+  [fixtureRouter, "0x2aa613cbe4bce524d53cb3ed1d6a8924d9ef1ccd00b250b64aa77c8eb376bf7e"],
+  [fixtureQuoter, "0x146bee3fc52c77af0dea3bb02e5d733841cd7e682e359c9b08b6ab2b36797c7f"],
 ] as const;
 const factoryAbi = parseAbi(["function graduationEngine() view returns (address)", "function curveForToken(address token) view returns (address)"]);
 const keyFields = "(address currency0,address currency1,uint24 fee,int24 tickSpacing,address hooks)";
@@ -56,7 +60,7 @@ const positionAbi = parseAbi([
   "function getPositionLiquidity(uint256 tokenId) view returns (uint128)",
   "function getPoolAndPositionInfo(uint256 tokenId) view returns ((address currency0,address currency1,uint24 fee,int24 tickSpacing,address hooks),uint256)",
 ]);
-const managerAbi = parseAbi([
+export const fixturePoolManagerAbi = parseAbi([
   "event Initialize(bytes32 indexed id,address indexed currency0,address indexed currency1,uint24 fee,int24 tickSpacing,address hooks,uint160 sqrtPriceX96,int24 tick)",
   "event ModifyLiquidity(bytes32 indexed id,address indexed sender,int24 tickLower,int24 tickUpper,int256 liquidityDelta,bytes32 salt)",
 ]);
@@ -67,8 +71,8 @@ const stateAbi = parseAbi([
 ]);
 
 export type FixtureGraduationBinding = { graduationEngine: Address; graduationHash: Hash; guard: Address; guardHash: Hash };
-type LogProof = BlockEvidence & { transactionHash: Hash; logIndex: number };
-type PoolKey = { currency0: Address; currency1: Address; fee: number; tickSpacing: number; hooks: Address };
+export type LogProof = BlockEvidence & { transactionHash: Hash; logIndex: number };
+export type PoolKey = { currency0: Address; currency1: Address; fee: number; tickSpacing: number; hooks: Address };
 export type FixtureTrade = LogProof & {
   side: "buy" | "sell"; account: Address; tokenWei: string; nativeWei: string; feeWei: string; nativeRefundWei: string;
   backingWei: string; soldWei: string;
@@ -87,14 +91,14 @@ export type FixtureLifecycleState = {
 export type FixtureCursor = {
   launch: CurveLaunchRegistration; grossFees: bigint; latestTrade?: FixtureTrade; graduation?: FixtureGraduation;
 };
-type FixtureTx = {
+export type FixtureTx = {
   from: Address; to: Address | null; hash: Hash; value: bigint; input: Hex; chainId?: number | null;
   blockNumber: bigint | null; blockHash: Hash | null; transactionIndex?: number | null;
 };
 
 const same = (a: string | null | undefined, b: string) => a?.toLowerCase() === b.toLowerCase();
 const ceil = (n: bigint, d: bigint) => (n + d - 1n) / d;
-const poolIdentity = (key: PoolKey) => keccak256(encodeAbiParameters([{ name: "key", type: "tuple", components: [
+export const poolIdentity = (key: PoolKey) => keccak256(encodeAbiParameters([{ name: "key", type: "tuple", components: [
   { name: "currency0", type: "address" }, { name: "currency1", type: "address" }, { name: "fee", type: "uint24" },
   { name: "tickSpacing", type: "int24" }, { name: "hooks", type: "address" },
 ] }], [key]));
@@ -139,7 +143,7 @@ export async function verifyFixtureLifecycleRuntime(rpc: PublicClient, binding: 
   }));
 }
 
-function feeBuckets(total: bigint, share: number) {
+export function feeBuckets(total: bigint, share: number) {
   const platform = total / 10n;
   const operations = platform / 2n;
   const project = total - platform;
@@ -147,7 +151,7 @@ function feeBuckets(total: bigint, share: number) {
   return [project - treasury, treasury, operations, platform - operations];
 }
 
-function receiptLogs(transaction: FixtureTx, receipt: TransactionReceipt, block: BlockEvidence, index: number, recipient: Address) {
+export function receiptLogs(transaction: FixtureTx, receipt: TransactionReceipt, block: BlockEvidence, index: number, recipient: Address) {
   const logs = receipt.logs;
   requireProof(transaction.chainId === 31337 && same(transaction.to, recipient) && same(receipt.to, recipient) && same(receipt.from, transaction.from)
     && same(receipt.blockHash, block.blockHash) && receipt.blockNumber.toString() === block.blockNumber && same(receipt.transactionHash, transaction.hash)
@@ -164,7 +168,7 @@ function receiptLogs(transaction: FixtureTx, receipt: TransactionReceipt, block:
   return logs;
 }
 
-async function nativeProof(rpc: PublicClient, tx: FixtureTx, to: Address, payments: Parameters<typeof assertFixtureNativeProof>[2]) {
+export async function nativeProof(rpc: PublicClient, tx: FixtureTx, to: Address, payments: Parameters<typeof assertFixtureNativeProof>[2]) {
   const raw = await rpc.request({ method: "debug_traceTransaction", params: [tx.hash, { tracer: "callTracer" }] } as never, { retryCount: 0 });
   assertFixtureNativeProof(raw, { ...tx, to }, payments);
 }
@@ -249,8 +253,8 @@ export async function indexFixtureCurveTransaction(rpc: PublicClient, binding: F
       && curveResult.tokenDust === tokenDust && nativeUsed + nativeDust === backing && tokenUsed + tokenDust === BigInt(launch.totalSupplyWei) - sold
       && positionTokenId > 0n && sqrtPriceX96 > 0n && liquidity > 0n && nativeUsed > 0n && tokenUsed > 0n, "graduation amounts and full PoolKey");
     const managerLogs = logs.filter((log) => same(log.address, poolManager));
-    const init = parseEventLogs({ abi: managerAbi, eventName: "Initialize", logs: managerLogs, strict: true });
-    const funding = parseEventLogs({ abi: managerAbi, eventName: "ModifyLiquidity", logs: managerLogs, strict: true });
+    const init = parseEventLogs({ abi: fixturePoolManagerAbi, eventName: "Initialize", logs: managerLogs, strict: true });
+    const funding = parseEventLogs({ abi: fixturePoolManagerAbi, eventName: "ModifyLiquidity", logs: managerLogs, strict: true });
     const mint = parseEventLogs({ abi: parseAbi(["event Transfer(address indexed from,address indexed to,uint256 indexed tokenId)"]), eventName: "Transfer",
       logs: logs.filter((log) => same(log.address, positionManager)), strict: true });
     const tokenDeposit = assetTransfers.filter(({ args }) => same(args.to, poolManager));
@@ -314,26 +318,36 @@ export async function fixtureLifecycleState(rpc: PublicClient, binding: FixtureG
     graduationBackingWei: targetBacking.toString(), graduationSoldWei: targetSold.toString(), feeBps,
   };
   if (!graduation) return state;
+  state.graduation = { ...graduation, ...await verifyFixtureV4Position(rpc, binding, token, graduation, blockNumber) };
+  const [pool, curveId, nativeDust, tokenDust] = await Promise.all([
+    rpc.readContract({ ...curve, functionName: "poolId" }), rpc.readContract({ ...curve, functionName: "positionTokenId" }),
+    rpc.readContract({ ...curve, functionName: "nativeDust" }), rpc.readContract({ ...curve, functionName: "tokenDust" }),
+  ]);
+  requireProof(same(pool, graduation.poolId) && curveId.toString() === graduation.positionTokenId
+    && nativeDust === nativeHeld && tokenDust === inventory, "live v4 curve identity or dust mismatch");
+  return state;
+}
+
+export async function verifyFixtureV4Position(rpc: PublicClient, binding: FixtureGraduationBinding, token: Address,
+  graduation: FixtureGraduation, blockNumber: bigint): Promise<PoolSpot> {
   const id = BigInt(graduation.positionTokenId);
   const position = { address: positionManager, abi: positionAbi, blockNumber, args: [id] } as const;
   const engine = { address: binding.graduationEngine, abi: graduationAbi, blockNumber, args: [token] } as const;
   const view = { address: stateView, abi: stateAbi, blockNumber, args: [graduation.poolId] } as const;
-  const [pool, curveId, nativeDust, tokenDust, owner, approved, liquidity, positionRecord, enginePosition, canonicalKey, slot, poolLiquidity] = await Promise.all([
-    rpc.readContract({ ...curve, functionName: "poolId" }), rpc.readContract({ ...curve, functionName: "positionTokenId" }),
-    rpc.readContract({ ...curve, functionName: "nativeDust" }), rpc.readContract({ ...curve, functionName: "tokenDust" }),
+  const [owner, approved, liquidity, positionRecord, enginePosition, canonicalKey, slot, poolLiquidity] = await Promise.all([
     rpc.readContract({ ...position, functionName: "ownerOf" }), rpc.readContract({ ...position, functionName: "getApproved" }),
     rpc.readContract({ ...position, functionName: "getPositionLiquidity" }), rpc.readContract({ ...position, functionName: "getPoolAndPositionInfo" }),
     rpc.readContract({ ...engine, functionName: "positions" }), rpc.readContract({ ...engine, functionName: "canonicalPoolKey" }),
     rpc.readContract({ ...view, functionName: "getSlot0" }), rpc.readContract({ ...view, functionName: "getLiquidity" }),
   ]);
   const [actualKey, info] = positionRecord;
+  const pool = graduation.poolId;
   const positionPool = toHex(info >> 56n, { size: 25 });
-  requireProof(same(pool, graduation.poolId) && curveId === id && same(owner, binding.graduationEngine) && same(approved, zeroAddress)
+  requireProof(same(owner, binding.graduationEngine) && same(approved, zeroAddress)
     && liquidity === BigInt(graduation.liquidityWei) && enginePosition[0] === id && enginePosition[1] === liquidity
     && same(poolIdentity(actualKey), pool) && same(poolIdentity(canonicalKey), pool) && same(positionPool, pool.slice(0, 52))
     && BigInt.asIntN(24, info >> 8n) === BigInt(minTick) && BigInt.asIntN(24, info >> 32n) === BigInt(maxTick)
-    && (info & 0xffn) === 0n && nativeDust === nativeHeld && tokenDust === inventory && slot[0] > 0n && slot[3] === canonicalKey.fee,
-    "live v4 pool, locked principal or dust mismatch");
-  state.graduation = { ...graduation, spotSqrtPriceX96: slot[0].toString(), spotTick: slot[1], poolLiquidityWei: poolLiquidity.toString() };
-  return state;
+    && (info & 0xffn) === 0n && slot[0] > 0n && poolLiquidity >= liquidity && slot[3] === canonicalKey.fee,
+    "live v4 pool or locked principal mismatch");
+  return { spotSqrtPriceX96: slot[0].toString(), spotTick: slot[1], poolLiquidityWei: poolLiquidity.toString() };
 }

@@ -164,6 +164,16 @@ for (const path of unsupportedRoutes) {
   }
 }
 
+for (const operation of ["v4-buy", "v4-sell", "v4-token-approve", "v4-permit2-approve", "lp-collect", "lp-claim"]) {
+  const response = await request("/api/launchpad/test-lifecycle", {
+    method: "POST", headers: { "Content-Type": "application/json", Origin: site.origin },
+    body: JSON.stringify({ action: "prepare", operation, token: v4.token, account: v4.token,
+      amountWei: operation.startsWith("lp-") ? "0" : "1000000000000000000", slippageBps: operation === "v4-buy" || operation === "v4-sell" ? 100 : 0 }),
+  });
+  assert.equal(response.status, 404, `Hosted build denied ${operation}`);
+  denied.push(`POST test-lifecycle ${operation}`);
+}
+
 for (const path of ["/", "/create-token", detailPath(v4), "/wallet", "/api/launchpad/config", "/api/launchpad/launches", `/api/launchpad/launches/${v4.token}`, unverifiedTokenPath, unverifiedTokenApi]) {
   // The application exposes no actions, even when submitted as an App Router request.
   const response = await request(path, { method: "POST", headers: { "Next-Action": "invalid", "Content-Type": "application/json" }, body: "{}" });
@@ -230,7 +240,7 @@ try {
     });
     const main = page.getByRole("main");
     const nav = page.getByRole("navigation", { name: "Launchpad navigation" });
-    const operationalControls = /connect wallet|browser wallet|open (?:inside|in) (?:a |your )?wallet|switch to|confirm|review creation|review trade|claim fees|recover wallet request/i;
+    const operationalControls = /connect (?:test (?:trading )?)?wallet|browser wallet|open (?:inside|in) (?:a |your )?wallet|switch to|confirm|review creation|review trade|review (?:test |exact ).*(?:buy|sell|approval|fee)|claim fees|recover wallet request/i;
     async function verifyReadOnly(heading, draftForm = false) {
       await main.getByRole("heading", { name: heading, exact: true }).waitFor();
       await page.getByText("Read-only", { exact: true }).first().waitFor();

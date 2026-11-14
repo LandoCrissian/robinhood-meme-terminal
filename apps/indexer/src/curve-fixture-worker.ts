@@ -10,8 +10,9 @@ import { blockEvidence, curveCreationAbi, fixtureChainId, fixtureConfirmations, 
 import { commitCurveFixtureRange, curveScope, fixtureCheckpoint, initializeCurveFixtureStore,
   loadCurveFixtureCursors, readCurveFixtureRows, rollbackCurveFixture, storedCurveCheckpoints,
   type CurveFixtureRange } from "./curve-fixture-store.js";
-import { fixtureLifecycleState, indexFixtureCurveTransaction, verifyFixtureGraduationDeployment, verifyFixtureLifecycleRuntime, type FixtureCursor,
+import { fixtureLifecycleState, indexFixtureCurveTransaction, poolManager, verifyFixtureGraduationDeployment, verifyFixtureLifecycleRuntime,
   type FixtureGraduationBinding } from "./curve-fixture-lifecycle.js";
+import { fixturePostEventTopics, indexFixturePostTransaction, loadFixtureLpLedger, readFixturePostState, type FixturePostCursor } from "./curve-fixture-post-graduation.js";
 
 const maxBlocks = 32n;
 const maxFixtureSpan = 4096n;
@@ -73,7 +74,7 @@ async function openingState(rpc: PublicClient, registration: CurveLaunchRegistra
 }
 
 async function readSegment(rpc: PublicClient, binding: CurveFixtureBinding, graduation: FixtureGraduationBinding,
-  cursors: FixtureCursor[], from: bigint, to: bigint, parent?: BlockEvidence): Promise<CurveFixtureRange> {
+  cursors: FixturePostCursor[], from: bigint, to: bigint, parent?: BlockEvidence): Promise<CurveFixtureRange> {
   const blocks: BlockEvidence[] = [];
   const transactions: { block: BlockEvidence; transaction: Parameters<typeof indexFixtureCurveTransaction>[3]; index: number }[] = [];
   const expectedLogs = new Set<string>();
@@ -139,29 +140,88 @@ async function readSegment(rpc: PublicClient, binding: CurveFixtureBinding, grad
     launches.push({ ...record, opening: await openingState(rpc, record), checkpoint: fixtureCheckpoint(blocks.at(-1)!) });
   }
   const end = blocks.at(-1)!;
-  const combined = [...cursors, ...launches.map((launch) => ({ launch, grossFees: 0n }))];
+  const combined: FixturePostCursor[] = [...cursors, ...launches.map((launch) => ({ launch, grossFees: 0n }))];
+  await Promise.all(combined.map(cursor => loadFixtureLpLedger(rpc, graduation, cursor)));
   const byCurve = new Map(combined.map((cursor) => [cursor.launch.initialCurve.toLowerCase(), cursor]));
   if (combined.length > maxEvents || byCurve.size !== combined.length) throw new Error("Fixture lifecycle launch bound exceeded");
   const trades: CurveFixtureRange["trades"] = [];
   const graduations: CurveFixtureRange["graduations"] = [];
+  const postEvents: CurveFixtureRange["postEvents"] = [];
   for (const { transaction, block, index } of transactions) {
     const cursor = transaction.to ? byCurve.get(transaction.to.toLowerCase()) : undefined;
-    if (!cursor || BigInt(block.blockNumber) <= BigInt(cursor.launch.creation.blockNumber)) continue;
-    const result = await indexFixtureCurveTransaction(rpc, graduation, cursor, transaction, block, index);
-    if (result.trade) trades.push({ token: cursor.launch.token, evidence: result.trade });
-    if (result.graduation) graduations.push({ token: cursor.launch.token, evidence: result.graduation });
+    if (cursor && BigInt(block.blockNumber) > BigInt(cursor.launch.creation.blockNumber)) {
+      const result = await indexFixtureCurveTransaction(rpc, graduation, cursor, transaction, block, index);
+      if (result.trade) trades.push({ token: cursor.launch.token, evidence: result.trade });
+      if (result.graduation) {
+        await loadFixtureLpLedger(rpc, graduation, cursor);
+        graduations.push({ token: cursor.launch.token, evidence: result.graduation });
+      }
+    }
+    const post = await indexFixturePostTransaction(rpc, graduation, combined, transaction, block, index);
+    if (post) postEvents.push(post);
   }
+  await verifyPostEventCoverage(rpc, graduation, combined, blocks, postEvents);
   const states = await readLifecycleStates(rpc, binding, graduation, combined, end);
   const current = blockEvidence(await rpc.getBlock({ blockNumber: to, includeTransactions: false }), to);
   if (!same(end.blockHash, current.blockHash)) throw new Error("Fixture range endpoint was replaced");
-  return { blocks, launches, trades, graduations, states };
+  return { blocks, launches, trades, graduations, postEvents, states };
+}
+
+// Compare direct verified receipts with protocol logs. A different execution path touching
+// an admitted pool or ledger is unavailable instead of being silently left out of history.
+async function verifyPostEventCoverage(rpc: PublicClient, graduation: FixtureGraduationBinding,
+  cursors: FixturePostCursor[], blocks: BlockEvidence[], events: CurveFixtureRange["postEvents"]) {
+  const graduated = cursors.filter(cursor => cursor.graduation && cursor.lpLedger);
+  if (graduated.length === 0) return;
+  const fromBlock = toHex(BigInt(blocks[0]!.blockNumber)), toBlock = toHex(BigInt(blocks.at(-1)!.blockNumber));
+  const poolIds = graduated.map(cursor => cursor.graduation!.poolId);
+  const ledgers = graduated.map(cursor => cursor.lpLedger!);
+  const tokens = graduated.map(cursor => toHex(BigInt(cursor.launch.token), { size: 32 }));
+  const { swap, collect, claim } = fixturePostEventTopics;
+  const query = (address: `0x${string}` | `0x${string}`[], topics: [Hash, ...Hash[][]]) =>
+    rpc.request({ method: "eth_getLogs", params: [{ address, topics, fromBlock, toBlock }] });
+  const groups = await Promise.all([
+    query(poolManager, [swap, poolIds]), query(graduation.graduationEngine, [collect, tokens]), query(ledgers, [claim]),
+  ]);
+  const byToken = new Map(graduated.map(cursor => [cursor.launch.token.toLowerCase(), cursor]));
+  const expected = new Map(events.map(({ token, evidence }) => [`${evidence.transactionHash.toLowerCase()}:${evidence.logIndex}`, { token, evidence }]));
+  if (expected.size !== events.length) throw new Error("Fixture post-graduation duplicate receipt identity");
+  for (const [group, logs] of groups.entries()) {
+    if (!Array.isArray(logs) || logs.length > maxBlocks * BigInt(maxTransactionsPerBlock)) throw new Error("Fixture post-graduation log bounds invalid");
+    for (const log of logs) {
+      if (!hexHash(log.transactionHash) || !hexHash(log.blockHash) || !hexQuantity(log.blockNumber) || !hexQuantity(log.logIndex)
+          || log.removed !== false) throw new Error("Fixture post-graduation log identity invalid");
+      const key = `${log.transactionHash.toLowerCase()}:${Number(log.logIndex)}`;
+      const match = expected.get(key);
+      const event = match?.evidence;
+      const cursor = match && byToken.get(match.token.toLowerCase());
+      const topic = [swap, collect, claim][group];
+      const emitter = group === 0 ? poolManager : group === 1 ? graduation.graduationEngine : cursor?.lpLedger;
+      const identity = group === 0 ? cursor?.graduation?.poolId : group === 1 && match ? toHex(BigInt(match.token), { size: 32 })
+        : event && toHex(BigInt(event.account), { size: 32 });
+      if (!event || !topic || !emitter || !identity || !same(log.address, emitter) || !same(log.topics[0] ?? "", topic)
+          || !same(log.topics[1] ?? "", identity) || event.blockNumber !== BigInt(log.blockNumber).toString()
+          || !same(event.blockHash, log.blockHash)
+          || (group === 0 && event.kind !== "v4-buy" && event.kind !== "v4-sell")
+          || (group === 1 && event.kind !== "lp-collect") || (group === 2 && event.kind !== "lp-claim")) {
+        throw new Error("Fixture post-graduation log has no verified direct receipt");
+      }
+      expected.delete(key);
+    }
+  }
+  if (expected.size !== 0) throw new Error("Fixture post-graduation logs omitted a verified receipt");
 }
 
 async function readLifecycleStates(rpc: PublicClient, binding: CurveFixtureBinding, graduation: FixtureGraduationBinding,
-  cursors: FixtureCursor[], at: BlockEvidence): Promise<CurveFixtureRange["states"]> {
+  cursors: FixturePostCursor[], at: BlockEvidence): Promise<CurveFixtureRange["states"]> {
   const states: CurveFixtureRange["states"] = [];
   await verifyFixtureLifecycleRuntime(rpc, binding, graduation, BigInt(at.blockNumber));
-  for (const cursor of cursors) states.push({ token: cursor.launch.token, evidence: await fixtureLifecycleState(rpc, graduation, cursor, at) });
+  for (const cursor of cursors) {
+    const evidence = await fixtureLifecycleState(rpc, graduation, cursor, at);
+    if (cursor.graduation && !cursor.lpLedger) await loadFixtureLpLedger(rpc, graduation, cursor);
+    const postGraduation = await readFixturePostState(rpc, graduation, cursor, BigInt(at.blockNumber));
+    states.push({ token: cursor.launch.token, evidence: { ...evidence, ...(postGraduation && { postGraduation }) } });
+  }
   return states;
 }
 
@@ -277,7 +337,7 @@ async function main() {
           const states = await readLifecycleStates(rpc, binding, graduation, cursors, latest);
           const stillCanonical = blockEvidence(await rpc.getBlock({ blockNumber: BigInt(latest.blockNumber) }), BigInt(latest.blockNumber));
           if (!same(stillCanonical.blockHash, latest.blockHash)) throw new Error("Fixture checkpoint changed during state recovery");
-          await commitCurveFixtureRange(writer, scope, { blocks: [], launches: [], trades: [], graduations: [], states });
+          await commitCurveFixtureRange(writer, scope, { blocks: [], launches: [], trades: [], graduations: [], postEvents: [], states });
         }
         verified = latest && BigInt(latest.blockNumber) === safe && !stop.signal.aborted ? latest : null;
         previousIssue = "";
