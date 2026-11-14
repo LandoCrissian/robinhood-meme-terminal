@@ -260,7 +260,10 @@ export async function readCurveFixtureRows(db: Database, scope: Scope, checkpoin
       throw new Error("Fixture row identity mismatch");
     }
     const { postGraduation, ...lifecycle } = state;
-    return { ...payload, lifecycle: { ...lifecycle, trades,
+    // A rollback may retain the registration block while replacing the block that
+    // originally completed its batch. The receipt stays bound to its checkpoint
+    // row through the FK; its advertised confirmation now comes from this read.
+    return { ...payload, checkpoint: fixtureCheckpoint(checkpoint), lifecycle: { ...lifecycle, trades,
       ...(token && postGraduation ? { postGraduation: { ...postGraduation, events: post_events } } : {}) } };
   });
 }

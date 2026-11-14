@@ -596,6 +596,14 @@ try {
     const indexed = await response.json();
     return indexed.launches?.[0];
   };
+  const assertCurrentIndex = async (expectedPhase) => {
+    const direct = await fetchAt(workerOrigin, "/curve-launches/" + token, { headers: { "X-RMT-Fixture-Key": indexReadKey } });
+    assert.equal(direct.status, 200);
+    const verified = await direct.json();
+    const launch = verified.launches[0];
+    assert.equal(launch.lifecycle.phase, expectedPhase);
+    return launch;
+  };
   const indexed = await waitFor("verified application detail API", getIndexed);
   eq(indexed.token, token);
   eq(indexed.creator, creator.address);
@@ -1127,6 +1135,7 @@ try {
   assert.equal((await fetchAt(site, path)).status, 503);
   interruptLogScan = false;
   await workerReady(worker);
+  await assertCurrentIndex("curve");
   const restored = await waitFor("restored pre-graduation state", getIndexed);
   assert.equal(restored.lifecycle.phase, "curve");
   assert.equal(restored.lifecycle.backingWei, sell.indexed.backingWei);
