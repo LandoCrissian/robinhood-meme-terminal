@@ -688,11 +688,21 @@ try {
         observed = true;
         if (!continueJourney) return true;
       }
-      if (observed && !await check.isVisible()) return true;
       if (await proceed.isVisible() && await proceed.isEnabled()) {
+        observed = true;
         await proceed.click({ timeout: 1500 });
       } else if (await check.isVisible() && await check.isEnabled()) {
         await check.click({ timeout: 1500 });
+      }
+      // An awaited browser refresh may remount the resolved journal before React shows the
+      // ephemeral status. The durable browser archive must contain this exact signed hash.
+      if (continueJourney && !await check.isVisible()) {
+        const hash = signatures.at(-1).transactionHash;
+        const archived = await page.evaluate(({ expected, bindingHash }) => {
+          const entry = JSON.parse(localStorage.getItem(`rmt:test-trades:31337:v1:${bindingHash.toLowerCase()}`) ?? "null");
+          return entry?.pending === undefined && entry?.history?.[0]?.transactionHash?.toLowerCase() === expected.toLowerCase();
+        }, { expected: hash, bindingHash: binding.deploymentBlockHash });
+        if (archived) return true;
       }
       return false;
     });
