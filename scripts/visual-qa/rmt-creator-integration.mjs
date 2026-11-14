@@ -60,6 +60,9 @@ const creator = privateKeyToAccount(generatePrivateKey());
 const alternate = privateKeyToAccount(generatePrivateKey()).address;
 const treasurySigner = privateKeyToAccount(generatePrivateKey());
 const treasury = treasurySigner.address;
+const deploymentOperator = privateKeyToAccount(generatePrivateKey());
+const operationsSigner = privateKeyToAccount(generatePrivateKey());
+const reserveSigner = privateKeyToAccount(generatePrivateKey());
 const project = { name: "Fixture Creator 036", symbol: "FRESH036", projectURI: "https://example.test/rmt036",
   supplyPreset: 1, treasury, treasuryShareBps: 1250, supplyWei: (10_000_000n * 10n ** 18n).toString() };
 const draftOnly = { description: "Private fixture draft description 036", artwork: "https://example.test/local-only-art.png" };
@@ -234,13 +237,30 @@ const evidence = { candidateCommit, solidityTree, compilerSha, compilerInput,
   anchor: { block: anchor.block, blockHash: anchor.blockHash }, chainId: 31337, project };
 try {
   const chain = start(anvil, ["--host", "127.0.0.1", "--port", new URL(rpcUrl).port, "--chain-id", "31337",
-    "--fork-url", anchor.rpcUrl, "--fork-block-number", String(anchor.block), "--silent"], "anvil", { discard: true });
+    "--fork-url", anchor.rpcUrl, "--fork-block-number", String(anchor.block), "--accounts", "0", "--silent"], "anvil", { discard: true });
   await waitFor("Anvil chain 31337", async () => (await rpc("eth_chainId")) === "0x7a69", chain);
   assert.match(await rpc("web3_clientVersion"), /^anvil\//i);
   eq((await rpc("eth_getBlockByNumber", [toHex(anchor.block), false])).hash, anchor.blockHash);
-  const [operator, operations, reserve] = await rpc("eth_accounts");
-  const deployed = JSON.parse(await successful(start(process.execPath, ["packages/contracts/scripts/validate-curve-graduation-4663.mjs",
-    "--rpc", rpcUrl, "--solc", solc, "--backing-wei", backingWei.toString(), "--operator", operator], "deploy-contract-fixture", { cwd: fixtureSource })));
+  assert.deepEqual(await rpc("eth_accounts"), []);
+  // Use fresh EOAs so a forked address with existing code cannot enter the signing fixture.
+  // The pinned deployment script uses the first address as operator and the next two as beneficiaries.
+  const operator = deploymentOperator.address;
+  const operations = operationsSigner.address;
+  const reserve = reserveSigner.address;
+  const deploymentAccounts = [operator, operations, reserve];
+  for (const address of deploymentAccounts) {
+    assert.equal(await rpc("eth_getCode", [address, "latest"]), "0x");
+    await rpc("anvil_setBalance", [address, toHex(20n * 10n ** 18n)]);
+    await rpc("anvil_impersonateAccount", [address]);
+  }
+  let deployed;
+  try {
+    deployed = JSON.parse(await successful(start(process.execPath, ["packages/contracts/scripts/validate-curve-graduation-4663.mjs",
+      "--rpc", rpcUrl, "--solc", solc, "--backing-wei", backingWei.toString(), "--operator", operator], "deploy-contract-fixture", { cwd: fixtureSource })));
+  } finally {
+    for (const address of deploymentAccounts) await rpc("anvil_stopImpersonatingAccount", [address]);
+  }
+  assert.deepEqual(await rpc("eth_accounts"), []);
   assert.equal(deployed.chainId, 31337);
   assert.equal(deployed.creationFeeWei, feeWei.toString());
   assert.equal(deployed.terms.backingWei, backingWei.toString());
@@ -252,7 +272,11 @@ try {
   const contractAddress = (word) => `0x${word.slice(-40)}`;
   const recipient = contractAddress(await call(deployed.factory, factoryAbi, "operatingRecipient"));
   eq(recipient, deployed.deployment.operatingRecipient);
-  eq(recipient, operations);
+  const payableOperations = recipient;
+  const payableReserve = deployed.deployment.futureReserveRecipient;
+  assert.deepEqual([payableOperations, payableReserve].map((address) => address.toLowerCase()).sort(),
+    [operations, reserve].map((address) => address.toLowerCase()).sort());
+  assert.notEqual(payableOperations, payableReserve);
   eq(keccak256(await rpc("eth_getCode", [router, "latest"])), anchor.universalRouter212.runtimeHash);
   eq(keccak256(await rpc("eth_getCode", [permit2, "latest"])), anchor.permit2.runtimeHash);
   eq(keccak256(await rpc("eth_getCode", [anchor.quoter.address, "latest"])), anchor.quoter.runtimeHash);
@@ -333,8 +357,7 @@ try {
   let currentCurve;
   let currentGraduation;
   let currentLedger;
-  const signerFor = new Map([creator, treasurySigner].map((account) => [account.address.toLowerCase(), account]));
-  const protocolAccounts = new Set([operations, reserve].map((account) => account.toLowerCase()));
+  const signerFor = new Map([creator, treasurySigner, operationsSigner, reserveSigner].map((account) => [account.address.toLowerCase(), account]));
   const pageErrors = [];
   const offOrigin = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
@@ -349,7 +372,7 @@ try {
     const [request] = params;
     const from = request.from.toLowerCase();
     const signer = signerFor.get(from);
-    assert.ok(signer || protocolAccounts.has(from), "Wallet is a known synthetic account");
+    assert.ok(signer, "Wallet is a known synthetic account");
     assert.equal(request.chainId, "0x7a69");
     assert.equal(await rpc("eth_chainId"), "0x7a69");
     const transactionValue = BigInt(request.value);
@@ -425,11 +448,9 @@ try {
     const gas = BigInt(await rpc("eth_estimateGas", [{ from: request.from, to: request.to, data: request.data, value: request.value }]));
     const nonce = BigInt(await rpc("eth_getTransactionCount", [request.from, "pending"]));
     if (request.nonce !== undefined) assert.equal(BigInt(request.nonce), nonce, "Bound account nonce");
-    const hash = signer ? await rpc("eth_sendRawTransaction", [await signer.signTransaction({ chainId: 31337, to: request.to,
+    const hash = await rpc("eth_sendRawTransaction", [await signer.signTransaction({ chainId: 31337, to: request.to,
       data: request.data, value: transactionValue, nonce: Number(nonce), gas: gas * 125n / 100n,
-      gasPrice: BigInt(await rpc("eth_gasPrice")), type: "legacy" })])
-      : await rpc("eth_sendTransaction", [{ from: request.from, to: request.to, data: request.data, value: request.value,
-        nonce: toHex(nonce), gas: toHex(gas * 125n / 100n) }]);
+      gasPrice: BigInt(await rpc("eth_gasPrice")), type: "legacy" })]);
     signatures.push({ ...request, transactionHash: hash, operation: decoded.functionName, intentId, deadline: deadline?.toString() });
     if (decoded.functionName === "create") hideReceipt = hash;
     return hash;
@@ -1016,7 +1037,7 @@ try {
   assert.equal((await preparedPost("lp-claim", 0n, 0, alternate)).reason, "no-fees");
   await assert.rejects(call(currentLedger, ledgerAbi, "claim", [], "latest", { from: alternate }), /eth_call failed/);
   const claims = [];
-  for (const account of [creator.address, treasury, operations, reserve]) {
+  for (const account of [creator.address, treasury, payableOperations, payableReserve]) {
     const credit = await expectedFees(account);
     assert.ok(BigInt(credit.nativeWei) > 0n && BigInt(credit.tokenWei) > 0n);
     await exactWallet(account);
