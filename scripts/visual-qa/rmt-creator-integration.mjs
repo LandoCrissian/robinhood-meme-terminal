@@ -26,6 +26,12 @@ const out = resolve(args.output);
 const anvil = resolve(args.anvil);
 const solc = resolve(args.solc);
 const pgBin = resolve(args["pg-bin"]);
+// Build the new app and fixture worker before opening any local ports.
+for (const item of ["apps/launch-website/.next/BUILD_ID", "apps/indexer/dist/curve-fixture-worker.js"]) {
+  await readFile(join(repository, item)).catch(() => {
+    throw new Error(`Missing ${item}. Run pnpm --filter @rmt/launch-website build and pnpm --filter indexer build.`);
+  });
+}
 
 const candidateCommit = "8dca5773cbd4dc98f52a45616f420bce96b000f0";
 const solidityTree = "e98de2eaedcf9d233bac0860094e7179db2ab562";
@@ -121,10 +127,10 @@ async function stop(job) {
   if (job.child.exitCode === null && !job.child.signalCode) job.child.kill();
   await job.done;
 }
-async function waitFor(description, probe, process) {
+async function waitFor(description, probe, job) {
   const until = Date.now() + 55_000;
   while (Date.now() < until) {
-    if (process?.child.exitCode !== undefined && process.child.exitCode !== null) throw new Error(`${process.name} exited before ${description}`);
+    if (job && (job.child.exitCode !== null || job.child.signalCode)) throw new Error(`${job.name} exited before ${description}`);
     try {
       const value = await probe();
       if (value) return value;
@@ -249,7 +255,7 @@ try {
   let web = startWeb("website-invalid-binding", { ...env, RMT_CURVE_FIXTURE_DEPLOYMENT: wrongManifest });
   await webReady(web);
   const { supplyWei: _supply, ...reviewFields } = project;
-  const prepareBody = (fields) => ({ action: "prepare", account: creator.address,
+  const prepareBody = (fields, account = creator.address) => ({ action: "prepare", account,
     intentId: `0x${randomBytes(32).toString("hex")}`, fields });
   const post = (body) => fetchAt(site, "/api/launchpad/test-creation", { method: "POST",
     headers: { Origin: site, "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -266,6 +272,8 @@ try {
   await rpc("anvil_setBalance", [creator.address, toHex(10n ** 18n)]);
   const ownTreasury = await post(prepareBody({ ...reviewFields, treasury: creator.address.toLowerCase() }));
   assert.equal(ownTreasury.status, 422, "The creator cannot also be the project treasury");
+  const unfunded = await post(prepareBody({ ...reviewFields, treasury: treasury.toLowerCase() }, alternate));
+  assert.notEqual((await unfunded.json()).status, "prepared", "The fixture cannot simulate a creation without its fee");
   const snapshot = await rpc("evm_snapshot");
   const beforeSnapshot = await rpc("eth_getBlockByNumber", ["latest", false]);
   const countBefore = BigInt(await rpc("eth_getTransactionCount", [creator.address, "latest"]));
@@ -393,6 +401,12 @@ try {
   assert.equal(BigInt(await call(token, erc20Abi, "balanceOf", [curve], receipt.blockNumber)).toString(), project.supplyWei);
   assert.equal(BigInt(await call(token, erc20Abi, "balanceOf", [creator.address], receipt.blockNumber)), 0n);
   assert.equal(BigInt(await call(deployed.factory, factoryAbi, "creationFeesAccrued", [], receipt.blockNumber)), feeWei);
+  const original = { from: persistedTx.from, to: deployed.factory, data: persistedTx.input, value: persistedTx.value,
+    chainId: "0x7a69", intentId: tx.intentId, deadline: tx.deadline, blockNumber: toHex(BigInt(binding.deployBlock)), blockHash: binding.deploymentBlockHash };
+  for (const altered of [{ ...original, value: toHex(feeWei - 1n) }, { ...original, to: treasury }]) {
+    const refused = await post({ action: "verify", request: altered, transactionHash: tx.transactionHash });
+    assert.equal(refused.status, 422, "Recovery must accept only the original reviewed fee and factory");
+  }
 
   await page.getByText("Transaction pending", { exact: true }).first().waitFor();
   await page.reload();
@@ -509,9 +523,9 @@ try {
   Object.assign(evidence, { reviewedTransaction: tx, receipt: { hash: receipt.transactionHash, blockNumber: receipt.blockNumber,
     blockHash: receipt.blockHash, status: receipt.status }, indexed, postgresRow: row,
     initial: { backingWei: "0", soldWei: "0", inventoryWei: project.supplyWei, creatorInitialTokensWei: "0" },
-    checks: { rejected: true, accountInvalidatedReview: true, chainInvalidatedReview: true, lostHashRefreshRecovered: true,
+    checks: { rejected: true, accountInvalidatedReview: true, chainInvalidatedReview: true, lostHashRefreshRecovered: true, insufficientFeeRejected: true,
       missingReceiptReads, omittedCreationReads, indexingDelay: true, restart: true, reorgRollback: true, interruptedLogReads,
-      wrongBinding: true, duplicateWriterRejected: true, singleSignedTransaction: true } });
+      mutatedRequestRejected: true, wrongBinding: true, duplicateWriterRejected: true, singleSignedTransaction: true } });
   await writeFile(join(out, "creation-journey-evidence.json"), JSON.stringify(evidence, null, 2));
   console.log(`Creator form → receipt → PostgreSQL → page passed on 31337. ${join(out, "creation-journey-evidence.json")}`);
 } finally {
