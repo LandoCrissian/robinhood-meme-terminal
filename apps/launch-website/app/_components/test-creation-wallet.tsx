@@ -5,34 +5,13 @@ import { useEffect, useRef, useState } from "react";
 import { isLaunchAddress } from "../../lib/launch-data";
 import type { ReviewedLaunchDraft } from "../../lib/launch-draft";
 import { calldataMatchesTestCreation, isLocalTestWallet, isTestCreationRequest, isTransactionHash, sameTestCreationRequest,
-  testCreationChain, testCreationPath, type TestCreationFields, type TestCreationRequest, type TestCreationVerification } from "../../lib/test-creation";
+  testCreationPath, type TestCreationFields, type TestCreationRequest, type TestCreationVerification } from "../../lib/test-creation";
+import { assertTestWalletBinding, connectTestWallet, sameWalletHex as same, subscribeTestWallet, testProviderAtWindow, testWalletErrorCode, type TestWallet as Wallet } from "../../lib/test-wallet";
 
-type WalletProvider = {
-  request(args: { method: string; params?: readonly unknown[] }): Promise<unknown>;
-  on?(event: string, listener: () => void): void;
-  removeListener?(event: string, listener: () => void): void;
-};
-type Wallet = { account: string; provider: WalletProvider; request: WalletProvider["request"] };
 type Prepared = { draft: ReviewedLaunchDraft; wallet: Wallet; factory: string; request: TestCreationRequest };
 type Journal = { request: TestCreationRequest; transactionHash?: `0x${string}` };
 
 const journalKey = "rmt:creation-test:31337:v1";
-const same = (value: unknown, expected: string) => typeof value === "string" && value.toLowerCase() === expected.toLowerCase();
-
-function providerAtWindow() {
-  const provider = (window as typeof window & { ethereum?: WalletProvider }).ethereum;
-  return provider && typeof provider.request === "function" ? provider : undefined;
-}
-
-function walletErrorCode(error: unknown): number | undefined {
-  // Match the reviewed request handling in #594, including wrapped EIP-1193 errors.
-  for (let depth = 0; depth < 6 && error && typeof error === "object"; depth++) {
-    const detail = error as { code?: unknown; cause?: unknown };
-    if (typeof detail.code === "number") return detail.code;
-    error = detail.cause;
-  }
-}
-
 function readJournal(): Journal | undefined {
   const raw = localStorage.getItem(journalKey);
   if (!raw) return;
@@ -55,23 +34,6 @@ async function post(body: object) {
   });
   if (!response.ok) throw new Error("Test creation evidence unavailable");
   return await response.json() as Record<string, unknown>;
-}
-
-function selectedAccount(accounts: unknown) {
-  return Array.isArray(accounts) && isLaunchAddress(accounts[0]) && !/^0x0{40}$/i.test(accounts[0])
-    ? accounts[0].toLowerCase() : undefined;
-}
-
-async function assertWalletBinding(wallet: Wallet, request?: TestCreationRequest) {
-  if (providerAtWindow() !== wallet.provider || wallet.provider.request !== wallet.request) throw new Error("Wallet changed");
-  const [accounts, chain, anchor] = await Promise.all([
-    wallet.request.call(wallet.provider, { method: "eth_accounts" }),
-    wallet.request.call(wallet.provider, { method: "eth_chainId" }),
-    request && wallet.request.call(wallet.provider, { method: "eth_getBlockByNumber", params: [request.blockNumber, false] }),
-  ]);
-  if (!same(selectedAccount(accounts), wallet.account) || chain !== testCreationChain) throw new Error("Wallet changed");
-  if (request && (!anchor || typeof anchor !== "object" || !("hash" in anchor) || !same(anchor.hash, request.blockHash)
-      || !("number" in anchor) || !same(anchor.number, request.blockNumber))) throw new Error("Wallet fixture differs from server fixture");
 }
 
 async function prepare(draft: ReviewedLaunchDraft, account: string, factory: string, prior?: TestCreationRequest) {
@@ -147,18 +109,13 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
   }, []);
 
   useEffect(() => {
-    if (!wallet?.provider.on || !wallet.provider.removeListener) return;
-    const invalidate = () => {
+    if (!wallet) return;
+    return subscribeTestWallet(wallet, () => {
       selection.current++;
       setPrepared(undefined);
       setWallet(undefined);
       setMessage("Test wallet account or network changed. Connect and review again.");
-    };
-    const events = ["accountsChanged", "chainChanged", "disconnect"];
-    for (const event of events) wallet.provider.on(event, invalidate);
-    return () => {
-      for (const event of events) wallet.provider.removeListener?.(event, invalidate);
-    };
+    });
   }, [wallet]);
 
   async function withOperation(action: () => Promise<void>, onFailure: string) {
@@ -175,13 +132,7 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
   }
 
   async function connect() {
-    const provider = providerAtWindow();
-    if (!provider) throw new Error("No test wallet");
-    const request = provider.request;
-    const account = selectedAccount(await request.call(provider, { method: "eth_requestAccounts" }));
-    if (!account) throw new Error("Select an account");
-    const connected = { account, provider, request };
-    await assertWalletBinding(connected);
+    const connected = await connectTestWallet();
     selection.current++;
     setWallet(connected);
     setPrepared(undefined);
@@ -196,7 +147,7 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
       return;
     }
     const request = await prepare(draft, wallet.account, factory);
-    await assertWalletBinding(wallet, request);
+    await assertTestWalletBinding(wallet, request);
     if (!isCurrentDraft(draft) || selection.current !== generation) throw new Error("Review changed");
     setPrepared({ draft, wallet, factory, request });
   }
@@ -229,8 +180,8 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
       }
       const current = await prepare(candidate, bound.account, factory, request);
       if (!sameTestCreationRequest(request, current)) throw new Error("Factory or reviewed terms changed");
-      await assertWalletBinding(bound, request);
-      if (!mounted.current || !isCurrentDraft(candidate) || selection.current !== generation || providerAtWindow() !== bound.provider
+      await assertTestWalletBinding(bound, request);
+      if (!mounted.current || !isCurrentDraft(candidate) || selection.current !== generation || testProviderAtWindow() !== bound.provider
           || bound.provider.request !== bound.request) throw new Error("Review changed");
       let submitted: Journal = { request };
       // Record before the wallet call, even when the provider returns no hash.
@@ -248,7 +199,7 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
           setMessage("The wallet did not return a hash. Check the original request before continuing.");
         }
       } catch (error) {
-        if (walletErrorCode(error) === 4001) {
+        if (testWalletErrorCode(error) === 4001) {
           localStorage.removeItem(journalKey);
           setJournal(undefined);
           setMessage("Request declined in your test wallet.");

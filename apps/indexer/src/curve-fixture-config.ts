@@ -22,6 +22,9 @@ function loopbackUrl(value: string | undefined, protocol: "http:" | "postgresql:
 
 export function curveFixtureConfig(env: NodeJS.ProcessEnv) {
   if (env.RMT_CURVE_FIXTURE !== curveFixtureProfile) throw new Error("Isolated curve fixture is disabled");
+  if (env.RAILWAY_ENVIRONMENT_ID || env.NETLIFY || env.DEPLOY_ID || env.CONTEXT) throw new Error("Fixture indexer is local only");
+  const readKey = env.RMT_CURVE_FIXTURE_READ_KEY;
+  if (!readKey || !/^[0-9a-f]{64}$/.test(readKey) || /^0+$/.test(readKey)) throw new Error("Fixture read authentication is missing");
   const port = explicitPort(env.RMT_CURVE_FIXTURE_PORT ?? "");
   const rpc = loopbackUrl(env.RMT_CURVE_FIXTURE_RPC, "http:");
   if (rpc.username || rpc.password || rpc.pathname !== "/") throw new Error("Fixture RPC must be a bare loopback origin");
@@ -45,5 +48,15 @@ export function curveFixtureConfig(env: NodeJS.ProcessEnv) {
     creationFeeRecipient: row.creationFeeRecipient as Address, creationFeeWei: BigInt(row.creationFeeWei),
   };
   assertCurveLaunchBinding(binding);
-  return { binding, rpcUrl: rpc.href, databaseUrl: database.href, databaseName: database.pathname.slice(1), port };
+  const graduationAbiBindings = {
+    graduationEngine: row.graduationEngine, graduationHash: row.graduationRuntimeHash,
+    guard: row.guard, guardHash: row.guardRuntimeHash,
+  };
+  if (!/^0x[0-9a-f]{40}$/i.test(String(graduationAbiBindings.graduationEngine)) || /^0x0+$/i.test(String(graduationAbiBindings.graduationEngine))
+      || !/^0x[0-9a-f]{40}$/i.test(String(graduationAbiBindings.guard)) || (BigInt(String(graduationAbiBindings.guard)) & 0x3fffn) !== 0x2000n
+      || ![graduationAbiBindings.graduationHash, graduationAbiBindings.guardHash].every((hash) => typeof hash === "string" && /^0x[0-9a-f]{64}$/i.test(hash) && !/^0x0+$/i.test(hash))) {
+    throw new Error("Fixture graduation deployment binding is missing or invalid");
+  }
+  const graduation = graduationAbiBindings as { graduationEngine: Address; graduationHash: Hash; guard: Address; guardHash: Hash };
+  return { binding, graduation, rpcUrl: rpc.href, databaseUrl: database.href, databaseName: database.pathname.slice(1), port, readKey };
 }

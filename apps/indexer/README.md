@@ -132,7 +132,10 @@ port, an absolute `RMT_CURVE_FIXTURE_DEPLOYMENT` manifest, and a separately name
 loopback TCP PostgreSQL `RMT_CURVE_FIXTURE_DATABASE` database. The disposable
 database name must begin with `rmt_curve_fixture_` and carry an explicit
 `rmt_curve_fixture_marker` row with identity `task036-local-only`. A legacy
-indexer table or another public relation causes startup to refuse the DB.
+indexer table or another public relation causes startup to refuse the DB. The
+fixture read server also requires a local `RMT_CURVE_FIXTURE_READ_KEY` with 64
+lowercase hexadecimal characters. The website supplies this key from its server
+environment via `X-RMT-Fixture-Key`. Never publish the key or the fixture URLs.
 
 The fixture verifies the manifest deployment hash, runtime identities, chain
 31337 and immutable 0.0004 ETH creation fee before opening the database. A
@@ -146,12 +149,21 @@ supply, full opening inventory, zero sold and backing, the 2 ETH target and
 the exact treasury split from creation-block state. The contract records project
 URI in creation calldata and the event. It has no separate URI storage getter.
 
-Each range commits its tokens and checkpoints together under one database
-writer lock. Restart resumes the latest canonical checkpoint. Reorgs discard
-the orphaned checkpoint suffix and its registrations atomically. With no
+Task 037 also proves direct curve buys and sells, the reviewed fee ledger
+allocations, and the graduated position using canonical transactions,
+strict native traces, and contract state at the observed checkpoint. The
+graduation proof ties the full PoolKey to its initialized pool and locked
+position, checks principal liquidity and settlement dust, and distinguishes the
+opening price from the observed pool spot state.
+
+Each range commits its tokens, lifecycle events, state and checkpoints together
+under one database writer lock. Restart resumes the latest canonical checkpoint.
+Reorgs discard the orphaned suffix and its registrations and lifecycle atomically. With no
 matching checkpoint in the bounded lookback, the worker verifies the deployment
 anchor before replaying from it. Missing receipts, changed deployment, failed
 proofs and incomplete replay return HTTP 503. `GET /curve-launches` returns at
 most 25 records, and `GET /curve-launches/<token>` returns 404 only when the
-confirmed range is verified. These routes use private no-store caching and have
-no public binding or production credential.
+confirmed range is verified. The detail response includes up to 25 verified
+trades. These routes use private no-store caching and have no public binding or
+production credential. Nested calls, migrated curves and same-block opening state
+changes are outside the fixture acceptance path.

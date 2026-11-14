@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
 import { createHash, randomBytes } from "node:crypto";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
 import { createServer as createSocket } from "node:net";
@@ -13,7 +13,7 @@ import { chromium, devices } from "playwright";
 
 const repository = fileURLToPath(new URL("../../", import.meta.url));
 const require = createRequire(new URL("../../apps/indexer/package.json", import.meta.url));
-const { decodeFunctionData, encodeFunctionData, erc20Abi, keccak256, parseAbi, toHex } = require("viem");
+const { decodeFunctionData, encodeFunctionData, erc20Abi, keccak256, parseAbi, parseEventLogs, toHex } = require("viem");
 const { generatePrivateKey, privateKeyToAccount } = require("viem/accounts");
 const { Pool } = require("pg");
 const { values: args } = parseArgs({ options: {
@@ -73,6 +73,13 @@ const curveAbi = parseAbi([
   "function backingReserve() view returns (uint256)", "function sold() view returns (uint256)",
   "function creator() view returns (address)", "function treasury() view returns (address)",
   "function treasuryShareBps() view returns (uint16)", "function GRADUATION_BACKING() view returns (uint256)",
+  "function quoteBuy(uint256) view returns (uint256,uint256,uint256,uint256)",
+  "function quoteSell(uint256) view returns (uint256,uint256,uint256)",
+  "function buy(uint256 minimumTokenOut,uint256 deadline) payable returns (uint256)",
+  "function sell(uint256 amountIn,uint256 minimumEthOut,uint256 deadline) returns (uint256)",
+  "function graduate(uint256 deadline)",
+  "function graduated() view returns (bool)", "function graduationEngine() view returns (address)",
+  "event CurveTrade(address indexed account,bool indexed isBuy,uint256 tokenAmount,uint256 grossNative,uint256 fee,uint256 nativeRefund,uint256 sold,uint256 backingReserve)",
 ]);
 const ports = new Set();
 async function unusedPort() {
@@ -92,6 +99,7 @@ const pgPort = await unusedPort();
 const cluster = join(out, "postgres");
 const pgUser = "rmt_fixture_operator";
 const pgPass = randomBytes(24).toString("hex");
+const indexReadKey = randomBytes(32).toString("hex");
 const database = `rmt_curve_fixture_${randomBytes(5).toString("hex")}`;
 const databaseUrl = `postgresql://${pgUser}:${pgPass}@127.0.0.1:${pgPort}/${database}`;
 const pg = new Pool({ connectionString: databaseUrl });
@@ -111,7 +119,8 @@ function start(executable, params, name, { cwd = repository, env = childBase, di
     child.once("error", (error) => complete({ code: -1, stdout, stderr: error.message }));
     child.once("close", (code) => complete({ code, stdout, stderr }));
   }).then(async (result) => {
-    if (!discard) await writeFile(join(out, `${name}.log`), (result.stdout + result.stderr).replaceAll(pgPass, "[redacted]"));
+    if (!discard) await writeFile(join(out, `${name}.log`), (result.stdout + result.stderr)
+      .replaceAll(pgPass, "[redacted]").replaceAll(indexReadKey, "[redacted]"));
     return result;
   });
   const job = { child, done, name };
@@ -155,8 +164,10 @@ let omitCreationLogs = false;
 let omittedCreationReads = 0;
 let interruptLogScan = false;
 let interruptedLogReads = 0;
+let hideTradeTrace = false;
+let hiddenTradeTraces = 0;
 const readProxyMethods = new Set(["eth_chainId", "eth_blockNumber", "eth_getBlockByNumber", "eth_getBlockByHash", "eth_getCode",
-  "eth_getLogs", "eth_getTransactionByHash", "eth_getTransactionReceipt", "eth_getBalance", "eth_call", "eth_estimateGas", "web3_clientVersion",
+  "eth_getLogs", "eth_getTransactionByHash", "eth_getTransactionReceipt", "eth_getTransactionCount", "eth_getBalance", "eth_call", "eth_estimateGas", "eth_gasPrice", "web3_clientVersion",
   "debug_traceTransaction"]);
 const proxy = createServer(async (request, response) => {
   const write = (result, status = 200) => {
@@ -182,6 +193,10 @@ const proxy = createServer(async (request, response) => {
         missingReceiptReads++;
         return { id, jsonrpc: "2.0", result: null };
       }
+      if (method === "debug_traceTransaction" && hideTradeTrace) {
+        hiddenTradeTraces++;
+        return { id, jsonrpc: "2.0", error: { code: -32000, message: "Fixture paused transaction proof" } };
+      }
       try { return { id, jsonrpc: "2.0", result: await rpc(method, params) }; }
       catch { return { id, jsonrpc: "2.0", error: { code: -32000, message: "Isolated upstream read failed" } }; }
     };
@@ -193,6 +208,7 @@ const rpcProxy = loopback(proxy.address().port) + "/";
 
 let pgStarted = false;
 let browser;
+let page;
 const evidence = { candidateCommit, solidityTree, compilerSha, compilerInput,
   anchor: { block: anchor.block, blockHash: anchor.blockHash }, chainId: 31337, project };
 try {
@@ -210,8 +226,8 @@ try {
   assert.equal(deployed.manifest.inputSha256, compilerInput);
   const deployBlock = await rpc("eth_getBlockByNumber", [toHex(BigInt(deployed.deployBlock)), false]);
   eq(deployBlock.hash, deployed.deployment.blockHash);
-  const call = async (to, abi, functionName, args = [], block = "latest") => rpc("eth_call", [{ to,
-    data: encodeFunctionData({ abi, functionName, args }) }, block]);
+  const call = async (to, abi, functionName, args = [], block = "latest", overrides = {}) => rpc("eth_call", [{ to,
+    data: encodeFunctionData({ abi, functionName, args }), ...overrides }, block]);
   const contractAddress = (word) => `0x${word.slice(-40)}`;
   const recipient = contractAddress(await call(deployed.factory, factoryAbi, "operatingRecipient"));
   eq(recipient, deployed.deployment.operatingRecipient);
@@ -227,8 +243,9 @@ try {
   await writeFile(pgPasswordFile, pgPass, { mode: 0o600 });
   try { await successful(start(pgExecutable("initdb"), ["-D", cluster, "-U", pgUser, "-A", "scram-sha-256", "--pwfile", pgPasswordFile, "--no-locale"], "postgres-init")); }
   finally { await unlink(pgPasswordFile); }
+  await appendFile(join(cluster, "postgresql.conf"), "\nunix_socket_directories = ''\n");
   await successful(start(pgExecutable("pg_ctl"), ["-D", cluster, "-l", join(out, "postgres.log"), "-o",
-    `-h 127.0.0.1 -p ${pgPort}`, "-w", "start"], "postgres-start", { discard: true }));
+    `-h 127.0.0.1 -p ${pgPort}`, "-w", "start"], "postgres-start", { discard: process.platform === "win32" }));
   pgStarted = true;
   await successful(start(pgExecutable("createdb"), ["-h", "127.0.0.1", "-p", String(pgPort), "-U", pgUser, database], "postgres-createdb",
     { env: { ...childBase, PGPASSWORD: pgPass } }));
@@ -236,6 +253,7 @@ try {
     INSERT INTO rmt_curve_fixture_marker VALUES ('task036-local-only');`);
 
   const env = { ...childBase, RMT_CURVE_FIXTURE: "task036-local-only", RMT_CURVE_FIXTURE_RPC: rpcProxy,
+    RMT_CURVE_FIXTURE_READ_KEY: indexReadKey,
     RMT_CURVE_FIXTURE_DEPLOYMENT: manifestPath, RMT_CURVE_FIXTURE_SITE_ORIGIN: site, RMT_CURVE_FIXTURE_INDEXER: workerOrigin + "/" };
   const workerEnv = { ...env, RMT_CURVE_FIXTURE_DATABASE: databaseUrl, RMT_CURVE_FIXTURE_PORT: new URL(workerOrigin).port };
   const webArgs = ["apps/launch-website/node_modules/next/dist/bin/next", "start", "apps/launch-website", "--hostname", "127.0.0.1", "--port", new URL(site).port];
@@ -243,6 +261,9 @@ try {
   const webReady = (web) => waitFor("Next.js site", async () => (await fetchAt(site, "/create-token")).ok, web);
   const startWorker = (name, config = workerEnv) => start(process.execPath, ["apps/indexer/dist/curve-fixture-worker.js"], name, { env: config });
   const workerReady = (worker) => waitFor("durable indexer", async () => (await fetchAt(workerOrigin, "/ready")).ok, worker);
+  const lifePost = (body, origin = site) => fetchAt(site, "/api/launchpad/test-lifecycle", {
+    method: "POST", headers: { Origin: origin, "Content-Type": "application/json" }, body: JSON.stringify(body),
+  });
 
   const wrongManifest = join(out, "invalid-deployment.json");
   const unrelated = "0x" + "bd".repeat(32);
@@ -269,7 +290,7 @@ try {
   const head = await rpc("eth_getBlockByNumber", ["latest", false]);
   const now = Math.floor(Date.now() / 1000);
   if (BigInt(head.timestamp) < BigInt(now)) { await rpc("evm_setNextBlockTimestamp", [now]); await rpc("evm_mine"); }
-  await rpc("anvil_setBalance", [creator.address, toHex(10n ** 18n)]);
+  await rpc("anvil_setBalance", [creator.address, toHex(20n * 10n ** 18n)]);
   const ownTreasury = await post(prepareBody({ ...reviewFields, treasury: creator.address.toLowerCase() }));
   assert.equal(ownTreasury.status, 422, "The creator cannot also be the project treasury");
   const unfunded = await post(prepareBody({ ...reviewFields, treasury: treasury.toLowerCase() }, alternate));
@@ -279,9 +300,11 @@ try {
   const countBefore = BigInt(await rpc("eth_getTransactionCount", [creator.address, "latest"]));
   browser = await chromium.launch();
   const context = await browser.newContext(devices["iPhone 13"]);
-  const page = await context.newPage();
+  page = await context.newPage();
   page.setDefaultTimeout(20_000);
   const signatures = [];
+  let currentToken;
+  let currentCurve;
   const pageErrors = [];
   const offOrigin = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
@@ -290,43 +313,65 @@ try {
     return route.continue();
   });
   await page.exposeFunction("localCreationWallet", async (method, params = []) => {
-    if (method === "eth_getBlockByNumber") return rpc(method, params);
+    if (method === "eth_getBlockByNumber" || method === "eth_getTransactionCount") return rpc(method, params);
     assert.equal(method, "eth_sendTransaction");
     assert.equal(params.length, 1);
     const [request] = params;
     eq(request.from, creator.address);
-    eq(request.to, binding.factory);
     assert.equal(request.chainId, "0x7a69");
-    assert.equal(BigInt(request.value), feeWei);
     assert.equal(await rpc("eth_chainId"), "0x7a69");
-    const decoded = decodeFunctionData({ abi: factoryAbi, data: request.data });
-    assert.equal(decoded.functionName, "create");
-    const [name, symbol, projectURI, preset, toTreasury, share, intentId, deadline] = decoded.args;
-    assert.deepEqual({ name, symbol, projectURI, preset, share }, { name: project.name, symbol: project.symbol, projectURI: project.projectURI,
-      preset: project.supplyPreset, share: project.treasuryShareBps });
-    eq(toTreasury, treasury);
-    assert.match(intentId, /^0x[0-9a-f]{64}$/i);
+    const transactionValue = BigInt(request.value);
+    let decoded;
+    let intentId, deadline;
+    if (request.to.toLowerCase() === binding.factory.toLowerCase()) {
+      decoded = decodeFunctionData({ abi: factoryAbi, data: request.data });
+      assert.equal(transactionValue, feeWei);
+      assert.equal(decoded.functionName, "create");
+      const [name, symbol, projectURI, preset, toTreasury, share, intent, expires] = decoded.args;
+      assert.deepEqual({ name, symbol, projectURI, preset, share }, { name: project.name, symbol: project.symbol, projectURI: project.projectURI,
+        preset: project.supplyPreset, share: project.treasuryShareBps });
+      eq(toTreasury, treasury);
+      assert.match(intent, /^0x[0-9a-f]{64}$/i);
+      intentId = intent;
+      deadline = expires;
+    } else {
+      assert.ok(currentToken && currentCurve);
+      if (request.to.toLowerCase() === currentToken.toLowerCase()) {
+        decoded = decodeFunctionData({ abi: erc20Abi, data: request.data });
+        assert.equal(decoded.functionName, "approve", "The wallet must only sign exact curve allowance");
+        eq(decoded.args[0], currentCurve);
+        assert.equal(transactionValue, 0n);
+      } else {
+        eq(request.to, currentCurve);
+        decoded = decodeFunctionData({ abi: curveAbi, data: request.data });
+        assert.ok(["buy", "sell", "graduate"].includes(decoded.functionName));
+        assert.equal(transactionValue > 0n, decoded.functionName === "buy");
+      }
+    }
     const gas = BigInt(await rpc("eth_estimateGas", [{ from: request.from, to: request.to, data: request.data, value: request.value }]));
-    const signed = await creator.signTransaction({ chainId: 31337, to: request.to, data: request.data, value: feeWei,
-      nonce: Number(BigInt(await rpc("eth_getTransactionCount", [creator.address, "pending"]))), gas: gas * 125n / 100n,
+    const nonce = BigInt(await rpc("eth_getTransactionCount", [creator.address, "pending"]));
+    if (request.nonce !== undefined) assert.equal(BigInt(request.nonce), nonce, "Bound account nonce");
+    const signed = await creator.signTransaction({ chainId: 31337, to: request.to, data: request.data, value: transactionValue,
+      nonce: Number(nonce), gas: gas * 125n / 100n,
       gasPrice: BigInt(await rpc("eth_gasPrice")), type: "legacy" });
     const hash = await rpc("eth_sendRawTransaction", [signed]);
-    signatures.push({ ...request, transactionHash: hash, intentId, deadline: deadline.toString() });
-    hideReceipt = hash;
+    signatures.push({ ...request, transactionHash: hash, operation: decoded.functionName, intentId, deadline: deadline?.toString() });
+    if (decoded.functionName === "create") hideReceipt = hash;
     return hash;
   });
   await page.addInitScript(({ account, substitute }) => {
     let connected = account, chain = "0x7a69";
     let decision = "normal";
     const listeners = new Map();
+    const emit = (name, payload) => { for (const listener of listeners.get(name) ?? []) listener(payload); };
     window.fixtureWallet = {
       setDecision: (next) => { decision = next; },
-      setAccount: (changed) => { connected = changed ? substitute : account; listeners.get("accountsChanged")?.([connected]); },
-      setChain: (changed) => { chain = changed ? "0x1" : "0x7a69"; listeners.get("chainChanged")?.(chain); },
+      setAccount: (changed) => { connected = changed ? substitute : account; emit("accountsChanged", [connected]); },
+      setChain: (changed) => { chain = changed ? "0x1" : "0x7a69"; emit("chainChanged", chain); },
     };
     window.ethereum = {
-      on: (name, listener) => listeners.set(name, listener),
-      removeListener: (name, listener) => { if (listeners.get(name) === listener) listeners.delete(name); },
+      on: (name, listener) => { const group = listeners.get(name) ?? new Set(); group.add(listener); listeners.set(name, group); },
+      removeListener: (name, listener) => listeners.get(name)?.delete(listener),
       request: async ({ method, params }) => {
         if (method === "eth_accounts" || method === "eth_requestAccounts") return [connected];
         if (method === "eth_chainId") return chain;
@@ -389,6 +434,8 @@ try {
   assert.equal(BigInt(persistedTx.value), feeWei);
   const token = contractAddress(await call(deployed.factory, factoryAbi, "tokenForIntent", [creator.address, tx.intentId], receipt.blockNumber));
   const curve = contractAddress(await call(deployed.factory, factoryAbi, "originCurveForToken", [token], receipt.blockNumber));
+  currentToken = token;
+  currentCurve = curve;
   assert.match(token, /^(?!0x0{40}$)0x[0-9a-f]{40}$/i);
   const getCurve = (method) => call(curve, curveAbi, method, [], receipt.blockNumber);
   assert.equal(BigInt(await getCurve("backingReserve")), 0n);
@@ -408,7 +455,7 @@ try {
     assert.equal(refused.status, 422, "Recovery must accept only the original reviewed fee and factory");
   }
 
-  await page.getByText("Transaction pending", { exact: true }).first().waitFor();
+  await page.getByText("The wallet did not return a hash. Check the original request before continuing.", { exact: true }).waitFor();
   await page.reload();
   await button("Check creation transaction").waitFor();
   await button("Check creation transaction").click();
@@ -441,6 +488,11 @@ try {
   assert.equal((await pg.query("SELECT COUNT(*)::int AS count FROM rmt_curve_fixture_launches")).rows[0].count, 0);
   omitCreationLogs = false;
   await workerReady(worker);
+  for (const key of [undefined, unrelated.slice(2)]) {
+    const headers = key ? { "X-RMT-Fixture-Key": key } : {};
+    assert.ok([401, 404].includes((await fetchAt(workerOrigin, "/curve-launches/" + token, { headers })).status),
+      "Direct worker reads require the fixture session key");
+  }
   const getIndexed = async () => {
     const response = await fetchAt(site, path);
     if (!response.ok) return null;
@@ -479,12 +531,182 @@ try {
   await button("Check creation transaction").click();
   await page.getByText("Indexed and verified", { exact: true }).waitFor();
 
-  await page.goto(`${site}/launches/${token}`);
+  await page.getByRole("link", { name: "Open test token", exact: true }).click();
   await page.getByRole("heading", { name: project.name, exact: true }).waitFor();
   await capture("04-indexed-token");
   await page.goto(site + "/");
   await page.getByRole("region", { name: "New RMT Launch engine" }).getByRole("link", { name: `${project.name} · ${project.symbol}` }).waitFor();
   await capture("05-discovery");
+
+  const testCall = (operation, args, value = 0n) =>
+    call(curve, curveAbi, operation, args, "latest", { from: creator.address, value: toHex(value) });
+  const uint = (raw, index = 0) => BigInt("0x" + raw.slice(2 + index * 64, 2 + (index + 1) * 64));
+  const balance = (owner = creator.address, height = "latest") =>
+    call(token, erc20Abi, "balanceOf", [owner], height).then(uint);
+  const allowance = () => call(token, erc20Abi, "allowance", [creator.address, curve]).then(uint);
+  const state = () => Promise.all(["sold", "backingReserve"].map((fn) => call(curve, curveAbi, fn).then(uint)));
+  const mine = () => rpc("anvil_mine", ["0x3"]);
+  const lastReceipt = async (operation) => {
+    const submission = signatures.at(-1);
+    assert.equal(submission.operation, operation);
+    const settled = await rpc("eth_getTransactionReceipt", [submission.transactionHash]);
+    const block = await rpc("eth_getBlockByNumber", [settled.blockNumber, false]);
+    assert.equal(settled.status, "0x1");
+    eq(settled.blockHash, block.hash);
+    eq(settled.transactionHash, submission.transactionHash);
+    return { operation, hash: submission.transactionHash, blockNumber: settled.blockNumber, blockHash: settled.blockHash,
+      gasUsed: settled.gasUsed, input: submission.data, value: submission.value, logs: settled.logs };
+  };
+  const sendThroughPage = async (label, decision = "normal") => {
+    const before = signatures.length;
+    await page.evaluate((mode) => window.fixtureWallet.setDecision(mode), decision);
+    await button(label).click();
+    await waitFor(label, async () => signatures.length === before + 1);
+  };
+  const openToken = async () => {
+    await page.goto(`${site}/launches/${token}`);
+    await page.getByRole("heading", { name: project.name, exact: true }).waitFor();
+  };
+  const openTradeWallet = async () => {
+    const connect = button("Connect test trading wallet");
+    const side = page.getByRole("region", { name: "Isolated test trading" }).getByRole("combobox");
+    await connect.or(side).first().waitFor();
+    if (await connect.isVisible()) await connect.click();
+    await side.waitFor();
+  };
+  const reviewed = async (side, amount) => {
+    await page.getByRole("region", { name: "Isolated test trading" }).getByRole("combobox").selectOption({ label: side });
+    await page.getByLabel("Trade amount", { exact: true }).fill(amount);
+  };
+  const checkSettlement = async (description, continueJourney = true) => {
+    const label = description === "approval" ? "exact test approval" : `test ${description}`;
+    const status = page.getByText(`On-chain ${label} confirmed`, { exact: true });
+    const proceed = button("Continue from verified transaction");
+    const check = button("Check original transaction");
+    let observed = false;
+    await waitFor(`${description} confirmation from the original receipt`, async () => {
+      if (await status.isVisible()) {
+        observed = true;
+        if (!continueJourney) return true;
+      }
+      if (observed && !await check.isVisible()) return true;
+      if (await proceed.isVisible() && await proceed.isEnabled()) {
+        await proceed.click({ timeout: 1500 });
+      } else if (await check.isVisible() && await check.isEnabled()) {
+        await check.click({ timeout: 1500 });
+      }
+      return false;
+    });
+    if (continueJourney) await openTradeWallet();
+  };
+  const indexTx = (hash) => waitFor("same canonical PostgreSQL trade", async () => {
+    const row = await getIndexed();
+    return row?.lifecycle.trades.find((trade) => trade.transactionHash.toLowerCase() === hash.toLowerCase());
+  });
+  const assertCurveTrade = async (receiptProof, side, beforeTokens, beforeBacking) => {
+    const [event] = parseEventLogs({ abi: curveAbi, eventName: "CurveTrade",
+      logs: receiptProof.logs.filter((entry) => entry.address.toLowerCase() === curve.toLowerCase()) });
+    assert.ok(event);
+    const { account, isBuy, tokenAmount, grossNative, fee, nativeRefund: refund, backingReserve, sold } = event.args;
+    eq(account, creator.address);
+    assert.equal(isBuy, side === "buy");
+    assert.ok(tokenAmount > 0n && grossNative > fee && fee > 0n);
+    assert.equal(await balance(), isBuy ? beforeTokens + tokenAmount : beforeTokens - tokenAmount);
+    assert.deepEqual(await state(), [sold, isBuy ? beforeBacking + grossNative - fee : beforeBacking - grossNative]);
+    assert.equal(backingReserve, (await state())[1]);
+    if (isBuy) assert.equal(grossNative + refund, BigInt(receiptProof.value));
+    else assert.equal(refund, 0n);
+    const nativeTrace = await rpc("debug_traceTransaction", [receiptProof.hash, { tracer: "callTracer" }]);
+    const transfers = (nativeTrace.calls ?? []).filter((edge) =>
+      edge.from.toLowerCase() === curve.toLowerCase() && edge.to.toLowerCase() === creator.address.toLowerCase());
+    const expected = isBuy ? refund : grossNative - fee;
+    assert.deepEqual(transfers.map((edge) => BigInt(edge.value)), expected > 0n ? [expected] : []);
+    const accrued = (nativeTrace.calls ?? []).filter((edge) => edge.to.toLowerCase() === indexed.revenueLedger.toLowerCase());
+    assert.deepEqual(accrued.map((edge) => BigInt(edge.value)), [fee]);
+    const trade = await indexTx(receiptProof.hash);
+    eq(trade.blockHash, receiptProof.blockHash);
+    assert.equal(trade.side, side);
+    eq(trade.account, creator.address);
+    assert.deepEqual([trade.tokenWei, trade.nativeWei, trade.feeWei, trade.nativeRefundWei], [tokenAmount, grossNative, fee, refund].map(String));
+    return { receipt: receiptProof, indexed: trade };
+  };
+
+  await openToken();
+  await page.getByRole("heading", { name: "Verified bonding curve" }).waitFor();
+  await openTradeWallet();
+  assert.equal((await lifePost({ action: "state", token }, "http://outside.invalid")).status, 403);
+  assert.equal((await lifePost({ action: "state", token, account: creator.address })).status, 200);
+  const initialState = await state();
+  const firstBudget = 200_000_000_000_000_000n;
+  const nowOnChain = () => rpc("eth_getBlockByNumber", ["latest", false]).then(({ timestamp }) => BigInt(timestamp));
+  const liveDeadline = (await nowOnChain()) + 240n;
+  const firstQuote = uint(await call(curve, curveAbi, "quoteBuy", [firstBudget]));
+  await assert.rejects(testCall("buy", [1n, 1n], firstBudget), /eth_call failed/, "Expired curve buy must revert");
+  await assert.rejects(testCall("buy", [firstQuote + 1n, liveDeadline], firstBudget), /eth_call failed/, "Impossible minimum buy output must revert");
+  assert.deepEqual(await state(), initialState);
+  const prepareTrade = (operation, amountWei, slippageBps = 100, prior) => lifePost({
+    action: "prepare", token, account: creator.address, operation, amountWei: amountWei.toString(), slippageBps,
+    ...(prior && { prior }),
+  }).then((response) => response.json());
+  const firstPreview = await prepareTrade("buy", firstBudget);
+  assert.equal(firstPreview.status, "prepared");
+  assert.equal(BigInt(firstPreview.quote.outputWei), firstQuote);
+  assert.equal(BigInt(firstPreview.quote.minimumOutputWei), firstQuote * 99n / 100n);
+  assert.equal((await prepareTrade("buy", firstBudget, 501)).status, "invalid");
+  await reviewed("Buy", "0.2");
+  await button("Review test buy").click();
+  await button("Confirm test buy").waitFor();
+  await capture("07-reviewed-test-buy");
+  hideTradeTrace = true;
+  await sendThroughPage("Confirm test buy", "lose");
+  const buyReceipt = await lastReceipt("buy");
+  await mine();
+  await waitFor("interrupted native trade proof", async () => hiddenTradeTraces > 0, worker);
+  assert.equal((await fetchAt(site, path)).status, 503, "Missing exact native proof cannot publish a canonical trade");
+  await page.reload();
+  await button("Check original transaction").waitFor();
+  await button("Check original transaction").click();
+  assert.equal(signatures.length, 2, "Loss and reload never repeat a transaction");
+  await capture("08-trade-proof-unavailable");
+  hideTradeTrace = false;
+  await workerReady(worker);
+  const buy = await assertCurveTrade(buyReceipt, "buy", 0n, 0n);
+  await checkSettlement("buy");
+  await openToken();
+  await openTradeWallet();
+  const tokenBalanceBuy = await balance();
+  const [soldAfterBuy, backingAfterBuy] = await state();
+  const sellTokens = 1_000n * 10n ** 18n;
+  assert.ok(tokenBalanceBuy > sellTokens);
+  assert.equal(await allowance(), 0n);
+  const sellQuote = uint(await call(curve, curveAbi, "quoteSell", [sellTokens]));
+  assert.ok(sellQuote > 0n);
+  await assert.rejects(testCall("sell", [sellTokens, 1n, (await nowOnChain()) + 240n]), /eth_call failed/,
+    "An unapproved sale must revert");
+  assert.deepEqual(await prepareTrade("sell", sellTokens), { status: "invalid", reason: "insufficient-allowance" });
+  assert.deepEqual(await state(), [soldAfterBuy, backingAfterBuy]);
+  await reviewed("Sell", "1000");
+  await button("Review exact test approval").click();
+  await sendThroughPage("Confirm exact test approval");
+  const approval = await lastReceipt("approve");
+  assert.equal(await allowance(), sellTokens);
+  await mine();
+  await workerReady(worker);
+  await checkSettlement("approval");
+  await assert.rejects(testCall("sell", [sellTokens, sellQuote + 1n, (await nowOnChain()) + 240n]), /eth_call failed/,
+    "Impossible minimum sell output must revert with a valid allowance");
+  assert.equal(await allowance(), sellTokens);
+  await reviewed("Sell", "1000");
+  await button("Review test sell").click();
+  await button("Confirm test sell").waitFor();
+  await capture("09-reviewed-test-sell");
+  await sendThroughPage("Confirm test sell");
+  const sellReceipt = await lastReceipt("sell");
+  assert.equal(await allowance(), 0n, "Curve consumes only the exact granted allowance");
+  await mine();
+  await workerReady(worker);
+  const sell = await assertCurveTrade(sellReceipt, "sell", tokenBalanceBuy, backingAfterBuy);
+  await checkSettlement("sell");
 
   const conflicting = startWorker("worker-duplicate-writer", { ...workerEnv, RMT_CURVE_FIXTURE_PORT: String(await unusedPort()) });
   assert.notEqual((await conflicting.done).code, 0, "Concurrent writer must fail closed");
@@ -495,13 +717,106 @@ try {
   assert.equal((await fetchAt(site, path)).status, 503);
   worker = startWorker("worker-restarted");
   await workerReady(worker);
-  assert.deepEqual((await waitFor("rediscovery after both processes restart", getIndexed)).creation, indexed.creation);
+  const restarted = await waitFor("rediscovery after both processes restart", getIndexed);
+  assert.deepEqual(restarted.creation, indexed.creation);
+  assert.deepEqual(restarted.lifecycle.trades, (await getIndexed()).lifecycle.trades);
+  assert.equal(restarted.lifecycle.trades.length, 2);
+  assert.ok(restarted.lifecycle.trades.some((trade) => trade.transactionHash === sellReceipt.hash));
   rows = (await sqlLaunches()).rows;
   assert.equal(rows.length, 1, "Restart and replay cannot duplicate a registration");
   assert.deepEqual(rows[0], row);
   await page.goto(`${site}/launches/${token}`);
   await page.getByRole("heading", { name: project.name, exact: true }).waitFor();
   await capture("06-rediscovered-after-restart");
+
+  const preGraduationSnapshot = await rpc("evm_snapshot");
+  await openTradeWallet();
+  await reviewed("Buy", "3");
+  await button("Review test buy").click();
+  await sendThroughPage("Confirm test buy");
+  const thresholdReceipt = await lastReceipt("buy");
+  await mine();
+  await workerReady(worker);
+  const threshold = await assertCurveTrade(thresholdReceipt, "buy", tokenBalanceBuy - sellTokens, BigInt(sell.indexed.backingWei));
+  assert.deepEqual(await state(), [BigInt(project.supplyWei) * 3n / 5n, backingWei]);
+  assert.ok(BigInt(threshold.indexed.nativeRefundWei) > 0n, "Terminal purchase returns the exact excess");
+  await checkSettlement("buy");
+  await openToken();
+  await openTradeWallet();
+  assert.equal((await getIndexed()).lifecycle.phase, "eligible");
+  await assert.rejects(testCall("buy", [1n, (await nowOnChain()) + 240n], firstBudget), /eth_call failed/, "Threshold closes curve purchases");
+  await button("Review test graduation").click();
+  await button("Confirm test graduation").waitFor();
+  await capture("10-reviewed-test-graduation");
+  await sendThroughPage("Confirm test graduation");
+  const graduationReceipt = await lastReceipt("graduate");
+  await mine();
+  await workerReady(worker);
+  const graduated = await waitFor("indexed canonical position", async () => {
+    const value = await getIndexed();
+    return value?.lifecycle.phase === "graduated" && value.lifecycle;
+  });
+  const v4 = graduated.graduation;
+  eq(v4.transactionHash, graduationReceipt.hash);
+  eq(v4.blockHash, graduationReceipt.blockHash);
+  eq(v4.poolKey.currency1, token);
+  assert.equal(v4.poolKey.currency0, "0x0000000000000000000000000000000000000000");
+  assert.deepEqual([v4.poolKey.fee, v4.poolKey.tickSpacing], [3000, 60]);
+  eq(v4.owner, contractAddress(await call(curve, curveAbi, "graduationEngine")));
+  const positionAbi = parseAbi(["function ownerOf(uint256) view returns (address)", "function getPositionLiquidity(uint256) view returns (uint128)"]);
+  eq(contractAddress(await call(v4.positionManager, positionAbi, "ownerOf", [BigInt(v4.positionTokenId)])), v4.owner);
+  assert.equal(uint(await call(v4.positionManager, positionAbi, "getPositionLiquidity", [BigInt(v4.positionTokenId)])).toString(), v4.liquidityWei);
+  assert.equal(BigInt(v4.nativeUsedWei) + BigInt(v4.nativeDustWei), backingWei);
+  assert.equal(BigInt(v4.tokenUsedWei) + BigInt(v4.tokenDustWei), BigInt(project.supplyWei) * 2n / 5n);
+  assert.equal(await balance(curve), BigInt(v4.tokenDustWei));
+  assert.equal((await state())[1], 0n);
+  assert.equal(uint(await call(curve, curveAbi, "graduated")), 1n);
+  for (const [op, values, payment] of [["buy", [1n, (await nowOnChain()) + 240n], firstBudget],
+    ["sell", [1n, 1n, (await nowOnChain()) + 240n], 0n], ["graduate", [(await nowOnChain()) + 240n], 0n]]) {
+    await assert.rejects(testCall(op, values, payment), /eth_call failed/, `Completed graduation closes ${op}`);
+  }
+  await checkSettlement("graduation", false);
+  await openToken();
+  await page.getByRole("heading", { name: "Verified Uniswap v4 graduation", exact: true }).waitFor();
+  await capture("11-verified-v4-position");
+  assert.equal(signatures.length, 6);
+
+  const dbEvidence = async (tableName) => (await pg.query(`SELECT token, block_number, block_hash, transaction_hash, log_index
+    FROM rmt_curve_fixture_${tableName} ORDER BY block_number, log_index`)).rows;
+  const tradesBeforeReorg = await dbEvidence("trades");
+  const graduationsBeforeReorg = await dbEvidence("graduations");
+  assert.equal(tradesBeforeReorg.length, 3);
+  assert.equal(graduationsBeforeReorg.length, 1);
+  eq(graduationsBeforeReorg[0].transaction_hash, graduationReceipt.hash);
+  await stop(web);
+  await stop(worker);
+  web = startWeb("website-after-graduation");
+  worker = startWorker("worker-after-graduation");
+  await webReady(web);
+  await workerReady(worker);
+  assert.deepEqual((await waitFor("persistent graduated token", getIndexed)).lifecycle, graduated);
+  await openToken();
+  await page.getByRole("heading", { name: "Verified Uniswap v4 graduation", exact: true }).waitFor();
+  await capture("12-verified-v4-after-restart");
+
+  interruptLogScan = true;
+  assert.equal(await rpc("evm_revert", [preGraduationSnapshot]), true);
+  const revivedHead = await nowOnChain();
+  await rpc("evm_setNextBlockTimestamp", [Number(revivedHead + 41n)]);
+  await rpc("anvil_mine", ["0x6"]);
+  await waitFor("graduation rollback", async () => (await dbEvidence("graduations")).length === 0, worker);
+  assert.equal((await fetchAt(site, path)).status, 503);
+  interruptLogScan = false;
+  await workerReady(worker);
+  const restored = await waitFor("restored pre-graduation state", getIndexed);
+  assert.equal(restored.lifecycle.phase, "curve");
+  assert.equal(restored.lifecycle.backingWei, sell.indexed.backingWei);
+  assert.equal(restored.lifecycle.trades.length, 2);
+  assert.equal(await rpc("eth_getTransactionReceipt", [graduationReceipt.hash]), null);
+  await openToken();
+  await page.getByRole("heading", { name: "Verified bonding curve" }).waitFor();
+  assert.equal(await page.getByRole("heading", { name: "Verified Uniswap v4 graduation", exact: true }).count(), 0);
+  await capture("13-curve-restored-after-reorg");
 
   interruptLogScan = true;
   assert.equal(await rpc("evm_revert", [snapshot]), true);
@@ -517,17 +832,29 @@ try {
   assert.equal(reorg.status, 404, "Once rebuilt, a reorged registration cannot remain verified");
   const after = await fetchAt(site, "/api/launchpad/new-engine").then((response) => response.json());
   assert.deepEqual(after.launches, []);
-  assert.equal(signatures.length, 1, "Reorg must never rebroadcast a creation");
+  assert.equal(signatures.length, 6, "Neither reorg may rebroadcast a transaction");
   assert.deepEqual(pageErrors, []);
   assert.deepEqual(offOrigin, []);
   Object.assign(evidence, { reviewedTransaction: tx, receipt: { hash: receipt.transactionHash, blockNumber: receipt.blockNumber,
     blockHash: receipt.blockHash, status: receipt.status }, indexed, postgresRow: row,
     initial: { backingWei: "0", soldWei: "0", inventoryWei: project.supplyWei, creatorInitialTokensWei: "0" },
+    lifecycle: { buy, approval, sell, threshold, graduation: { receipt: graduationReceipt, verified: v4 },
+      postgres: { trades: tradesBeforeReorg, graduation: graduationsBeforeReorg },
+      preGraduationAfterReorg: restored.lifecycle },
     checks: { rejected: true, accountInvalidatedReview: true, chainInvalidatedReview: true, lostHashRefreshRecovered: true, insufficientFeeRejected: true,
       missingReceiptReads, omittedCreationReads, indexingDelay: true, restart: true, reorgRollback: true, interruptedLogReads,
-      mutatedRequestRejected: true, wrongBinding: true, duplicateWriterRejected: true, singleSignedTransaction: true } });
+      mutatedRequestRejected: true, wrongBinding: true, duplicateWriterRejected: true, singleCreationBroadcast: true,
+      totalWalletBroadcasts: signatures.length, hiddenTradeTraces, approvalConsumed: true, expiredAndSlippageRejected: true,
+      indexedTradeRestart: true, indexedGraduationRestart: true, graduationRollback: true } });
   await writeFile(join(out, "creation-journey-evidence.json"), JSON.stringify(evidence, null, 2));
-  console.log(`Creator form → receipt → PostgreSQL → page passed on 31337. ${join(out, "creation-journey-evidence.json")}`);
+  console.log(`Same-app creation → buy/sell → graduation → v4 discovery passed on 31337. ${join(out, "creation-journey-evidence.json")}`);
+} catch (error) {
+  if (page && !page.isClosed()) {
+    await page.screenshot({ path: join(out, "failure.png"), fullPage: true }).catch(() => undefined);
+    const text = await page.locator("main").innerText({ timeout: 2_000 }).catch(() => "");
+    if (text) await writeFile(join(out, "failure-page.txt"), text.slice(0, 16_000));
+  }
+  throw error;
 } finally {
   await browser?.close();
   for (const job of processes.toReversed()) await stop(job);
