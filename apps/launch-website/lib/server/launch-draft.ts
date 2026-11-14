@@ -27,7 +27,7 @@ function sameOrigin(request: Request, url: URL) {
   }
 }
 
-async function readDraftBody(body: ReadableStream<Uint8Array>) {
+export async function readDraftBody(body: ReadableStream<Uint8Array>) {
   const reader = body.getReader();
   const buffer = new Uint8Array(maxDraftRequestBytes);
   let bytes = 0;

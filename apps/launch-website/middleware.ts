@@ -28,6 +28,10 @@ function isLaunchDetail(path: string) {
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  // Each local-only handler repeats its full manifest, host and origin checks.
+  if ((pathname === "/api/launchpad/test-creation" && request.method === "POST") ||
+      (/^\/api\/launchpad\/new-engine(?:\/0[xX][0-9A-Fa-f]{40})?$/.test(pathname) &&
+        (request.method === "GET" || request.method === "HEAD"))) return NextResponse.next();
   if (request.method === "POST" && pathname === creationReviewPath) return NextResponse.next();
   if ((request.method === "GET" || request.method === "HEAD")
       && (publicRoutes.has(pathname) || isLaunchDetail(pathname) || isStaticAsset(pathname))) {

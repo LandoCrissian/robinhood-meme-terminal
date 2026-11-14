@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { connection } from "next/server";
+import { headers } from "next/headers";
 import type { ReactNode } from "react";
 import logo from "../../web/public/brand/rmt-master-logo.png";
 import "../../web/app/styles.css";
@@ -11,6 +12,7 @@ import "../../web/app/vnext/vnext-terminal.css";
 import "../../web/app/token-detail.css";
 import "./launchpad.css";
 import { LaunchShell } from "./_components/launch-shell";
+import { configuredCurveFixture } from "../lib/server/curve-fixture";
 
 export const metadata: Metadata = {
   title: "RMT Launch | Token Launchpad",
@@ -28,5 +30,5 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   await connection();
-  return <html lang="en"><body><LaunchShell>{children}</LaunchShell></body></html>;
+  return <html lang="en"><body><LaunchShell fixture={Boolean(configuredCurveFixture(await headers()))}>{children}</LaunchShell></body></html>;
 }

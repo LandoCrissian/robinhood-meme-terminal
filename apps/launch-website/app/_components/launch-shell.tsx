@@ -7,7 +7,7 @@ import logo from "../../../web/public/brand/rmt-master-logo.png";
 
 const navigation = [["/", "Launches"], ["/create-token", "Create Token"], ["/my-launches", "My Launches"], ["/wallet", "Wallet"]] as const;
 
-export function LaunchShell({ children }: { children: ReactNode }) {
+export function LaunchShell({ children, fixture = false }: { children: ReactNode; fixture?: boolean }) {
   const path = usePathname();
   return <div className="rmtVnext rmtTerminal launchpad">
     <a className="vnSkipLink" href="#launch-content">Skip to launchpad</a>
@@ -23,7 +23,7 @@ export function LaunchShell({ children }: { children: ReactNode }) {
         })}
       </nav>
       <div className="lpHeaderRight">
-        <span className="lpNetwork"><i aria-hidden="true" />Read-only</span>
+        <span className="lpNetwork"><i aria-hidden="true" />{fixture ? "Anvil test only" : "Read-only"}</span>
         <Link className="lpButton" href="/wallet" prefetch={false}>Wallet</Link>
       </div>
     </header>

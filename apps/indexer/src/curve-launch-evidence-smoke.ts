@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { encodeAbiParameters, encodeEventTopics, encodeFunctionData, keccak256, zeroAddress, type Address, type Hash } from "viem";
-import { curveCreationAbi, readCurveLaunchRegistration, type CurveEvidenceRpc, type CurveLaunchBinding } from "./curve-launch-evidence.js";
+import { curveCreationAbi, readCurveLaunchRegistration, verifyCurveDeployment,
+  type CurveEvidenceRpc, type CurveFixtureBinding, type CurveLaunchBinding } from "./curve-launch-evidence.js";
 import { historicalFactory } from "./historical-launches.js";
 
 const address = (id: number): Address => `0x${id.toString(16).padStart(40, "0")}`;
@@ -111,6 +112,26 @@ export async function testCurveLaunchEvidence() {
     ...providers, getChainId: async () => 31337,
     getBlockNumber: async () => { throw new Error("wrong chain must not proceed"); },
   }, eventRef), /chain ID/);
+
+  const fixture: CurveFixtureBinding = { ...binding, chainId: 31337, profile: "task036-local-only", confirmations: 2 };
+  const fixtureRpc: CurveEvidenceRpc = { ...providers, getChainId: async () => 31337 };
+  await assert.rejects(readCurveLaunchRegistration({ ...fixture, confirmations: 1 }, forbidden, eventRef), /deployment binding/);
+  await assert.rejects(readCurveLaunchRegistration({ ...fixture, profile: undefined } as unknown as CurveFixtureBinding,
+    forbidden, eventRef), /deployment binding/);
+  await assert.rejects(readCurveLaunchRegistration(fixture, providers, eventRef), /chain ID/);
+  const local = await readCurveLaunchRegistration(fixture, fixtureRpc, eventRef);
+  assert.ok(local);
+  assert.equal(local.chainId, 31337);
+  assert.equal(local.checkpoint.confirmations, 2);
+  assert.equal(local.checkpoint.finality, "fixture-confirmed");
+  assert.equal(local.checkpoint.l1Finality, "unverified");
+  await verifyCurveDeployment(fixture, { ...fixtureRpc, readContract: (params) => {
+    assert.equal(params.blockNumber, binding.deploymentBlock);
+    return providers.readContract({ ...params, blockNumber });
+  } });
+  await assert.rejects(verifyCurveDeployment({ ...fixture, deploymentBlockHash: hash(101) }, {
+    ...fixtureRpc, readContract: (params) => providers.readContract({ ...params, blockNumber }),
+  }), /deployment or runtime mismatch/);
 
   const verified = await readCurveLaunchRegistration(binding, providers, eventRef);
   assert.ok(verified);
