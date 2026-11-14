@@ -23,3 +23,9 @@ node scripts/visual-qa/rmt-creator-integration.mjs --candidate /path/to/exact-59
 - The UI shows pool-fee estimates in the input asset. Uncollected fees are observations of the original locked position. Collection credits the bound ledger. Claims pay only the selected account’s verified credit. The connected test checks principal and owner before and after swaps, collection, claims and restart.
 - The loopback fixture accepts direct EOA transactions and bounds receipt recovery/history. Smart wallet paths, arbitrary router calldata and full external pool history require separate evidence. Public Netlify production and deploy previews remain read-only. No contracts, prices, custody, fees or production services are changed.
 - Funded activation remains gated by independent disposition of the 18 active-engine Slither highs and migration warnings, exact 4663 deployment/runtime provenance, economics and signer approval, production traces and L1 finality, hosted routing/indexing and physical-wallet acceptance.
+
+## Legacy Terminal visual disposition
+
+The first exact #604 run failed both the deterministic NFT destination readiness check on `/nft/ccff00` and the live scanner's `bounded page window changes` assertion. On the same commit the second run passed the complete workflow. There were no changes in #604 from its #602 base to the legacy terminal application, the two legacy visual scripts, the dependency lockfile or the visual workflow. The retry establishes intermittent behavior on the checked revision. The root cause within the legacy workflow remains unverified. Those legacy paths and their assertions were left intact.
+
+[Initial #604 failure](https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/43633451834/attempts/1) · [Exact-commit rerun](https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/43633451834/attempts/2)

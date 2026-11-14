@@ -977,11 +977,13 @@ try {
   await mine();
   await workerReady(worker);
   await checkSettlement("v4 token approval");
+  await reviewed("Sell", "100");
   const v4PermitApproval = await executeReviewed("exact Permit2 approval", "v4-permit2-approve");
   assert.equal(await routerPermitAllowance(), sellV4Amount);
   await mine();
   await workerReady(worker);
   await checkSettlement("Permit2 approval");
+  await reviewed("Sell", "100");
   assert.equal((await preparedPost("v4-sell", sellV4Amount - 1n, 100)).reason, "insufficient-allowance",
     "An allowance in excess of the chosen sale cannot be reused");
   const v4SellBefore = await balance();
