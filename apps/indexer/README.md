@@ -98,9 +98,9 @@ providers and is not part of a website request.
 ## New bonding-curve engine registration review
 
 `src/curve-launch-evidence.ts` verifies registration evidence for a future
-reviewed V1 factory using a separate `curve-launch-v1` record. The verifier is
-called by fixture tests only. No worker configuration, polling, writer, schema
-or HTTP route is enabled. Without an explicit binding it performs zero reads.
+reviewed V1 factory using a separate `curve-launch-v1` record. The production
+worker has no new-engine configuration, polling, writer, schema or HTTP route.
+Without an explicit binding the verifier performs zero reads.
 
 A future binding needs chain 4663, engine version 1, the factory deployment
 height and hash, pinned factory and registry runtime identities, immutable
@@ -120,3 +120,38 @@ registered project and verified active version separately. Production archive
 and independent canonicality, reorg, and L1 finality operations require their own
 review before exposing a new-engine read endpoint. The V6 reader keeps its own
 source and schema throughout.
+
+### Isolated creator fixture
+
+`pnpm --filter indexer start:curve-fixture` runs the Task 036 worker after
+`pnpm --filter indexer build`. `scripts/visual-qa/rmt-creator-integration.mjs`
+creates its isolated services and runs the actual creator journey. The worker
+binds to IPv4 loopback and requires `RMT_CURVE_FIXTURE=task036-local-only`, an
+explicit `RMT_CURVE_FIXTURE_PORT`, `RMT_CURVE_FIXTURE_RPC` on a distinct loopback
+port, an absolute `RMT_CURVE_FIXTURE_DEPLOYMENT` manifest, and a separately named
+loopback TCP PostgreSQL `RMT_CURVE_FIXTURE_DATABASE` database. The disposable
+database name must begin with `rmt_curve_fixture_` and carry an explicit
+`rmt_curve_fixture_marker` row with identity `task036-local-only`. A legacy
+indexer table or another public relation causes startup to refuse the DB.
+
+The fixture verifies the manifest deployment hash, runtime identities, chain
+31337 and immutable 0.0004 ETH creation fee before opening the database. A
+two-block confirmation delay qualifies its output as `fixture-confirmed`.
+Successful ranges span at most 32 blocks within a 4,096-block fixture window.
+They independently compare creation logs with every direct factory creation
+receipt in the range, with a limit of 32 transactions per block. Nested
+smart-account entry and blocks with same-block changes to the opening balances
+are outside this fixture's accepted evidence. The proof reads fixed token
+supply, full opening inventory, zero sold and backing, the 2 ETH target and
+the exact treasury split from creation-block state. The contract records project
+URI in creation calldata and the event. It has no separate URI storage getter.
+
+Each range commits its tokens and checkpoints together under one database
+writer lock. Restart resumes the latest canonical checkpoint. Reorgs discard
+the orphaned checkpoint suffix and its registrations atomically. With no
+matching checkpoint in the bounded lookback, the worker verifies the deployment
+anchor before replaying from it. Missing receipts, changed deployment, failed
+proofs and incomplete replay return HTTP 503. `GET /curve-launches` returns at
+most 25 records, and `GET /curve-launches/<token>` returns 404 only when the
+confirmed range is verified. These routes use private no-store caching and have
+no public binding or production credential.

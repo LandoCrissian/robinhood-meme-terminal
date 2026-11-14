@@ -7,6 +7,7 @@ import {
 } from "../../lib/launch-draft";
 import { proposedCurveLifecycle } from "../../lib/curve-lifecycle";
 import { launchTerms } from "../../lib/launch-terms";
+import { TestCreationWallet } from "./test-creation-wallet";
 import { TokenArtwork } from "./token-artwork";
 
 const storageKey = "rmt:new-engine:creation-draft:v1";
@@ -51,7 +52,7 @@ function DraftTerms({ draft }: { draft?: ReviewedLaunchDraft }) {
   </section>;
 }
 
-export function CreatorDraft() {
+export function CreatorDraft({ executionTest }: { executionTest?: { factory: string } }) {
   const [draft, setDraft] = useState<LaunchDraft>(emptyLaunchDraft);
   const [restored, setRestored] = useState(false);
   const [reviewed, setReviewed] = useState<ReviewedLaunchDraft>();
@@ -59,6 +60,7 @@ export function CreatorDraft() {
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
   const reviewing = useRef(false);
+  const currentDraft = useRef<ReviewedLaunchDraft>(undefined);
   const reviewHeading = useRef<HTMLHeadingElement>(null);
   const formHeading = useRef<HTMLHeadingElement>(null);
 
@@ -133,6 +135,7 @@ export function CreatorDraft() {
       const expected = Object.entries(reviewableFields(checked.draft));
       if (result.status !== "reviewed" || !result.draft || Object.keys(result.draft).length !== expected.length
         || !expected.every(([key, value]) => result.draft?.[key] === value)) throw new Error("Draft validation did not match");
+      currentDraft.current = checked.draft;
       setReviewed(checked.draft);
     } catch {
       setMessage("The draft review is temporarily unavailable. Your fields are still here. Try again.");
@@ -158,8 +161,7 @@ export function CreatorDraft() {
     return errors[key] && <span className="lpDraftFieldError" id={fieldId(key) + "-error"}>{errors[key]}</span>;
   }
 
-  return <div className="lpColumns">
-    {reviewed ? <section className="lpPanel lpForm lpDraft">
+  const draftPanel = reviewed ? <section className="lpPanel lpForm lpDraft">
       <h2 ref={reviewHeading} tabIndex={-1}>Review token draft</h2>
       <div className="lpTokenHeading">
         <TokenArtwork symbol={reviewed.symbol} />
@@ -173,8 +175,10 @@ export function CreatorDraft() {
         <dt>Artwork URL</dt><dd>{reviewed.artworkURL || "None"}</dd>
         <dt>Project treasury</dt><dd className={reviewed.treasury ? "lpAddress" : undefined}>{reviewed.treasury || "None"}</dd>
       </dl>
-      <p>The server verified the launch fields for this review. Your description and artwork URL stay in this browser. No token has been created.</p>
+      <p>The server verified the launch fields for this review. Your description and artwork URL stay in this browser.
+        {executionTest ? " The test wallet signs only the transaction reviewed below." : " No token has been created."}</p>
       <button type="button" className="lpButton lpSecondary" onClick={() => {
+        currentDraft.current = undefined;
         setReviewed(undefined);
         requestAnimationFrame(() => formHeading.current?.focus());
       }}>Edit draft</button>
@@ -234,7 +238,13 @@ export function CreatorDraft() {
         }}>Clear draft</button>
       </div>
       <p>Drafts are saved in this browser. Review sends the launch fields and fee choices for validation. Your description and artwork URL stay here.</p>
-    </form>}
+    </form>;
+  return <div className="lpColumns">
+    {executionTest ? <div className="lpStack">
+      {draftPanel}
+      <TestCreationWallet factory={executionTest.factory} draft={reviewed}
+        isCurrentDraft={(value) => value === currentDraft.current} />
+    </div> : draftPanel}
     <DraftTerms draft={reviewed} />
   </div>;
 }

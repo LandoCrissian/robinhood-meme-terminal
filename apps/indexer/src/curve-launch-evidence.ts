@@ -21,14 +21,15 @@ const createdTopic = toEventSelector(createdEvent);
 const feeTopic = toEventSelector(feeEvent);
 const registeredTopic = toEventSelector(registeredEvent);
 const supplyIncrement = 1_000_000n * 10n ** 18n;
-const chainId = 4663;
+const publicChainId = 4663;
+export const fixtureChainId = 31337;
+export const fixtureConfirmations = 2;
 const minimumConfirmations = 20;
 const maxLogs = 256;
 const maxLogBytes = 64 * 1024;
 const maxCreationInputBytes = 1024;
 
-export type CurveLaunchBinding = {
-  chainId: 4663;
+type CommonBinding = {
   engineVersion: 1;
   deploymentBlock: bigint;
   deploymentBlockHash: Hash;
@@ -41,6 +42,9 @@ export type CurveLaunchBinding = {
   creationFeeRecipient: Address;
 };
 
+export type CurveFixtureBinding = CommonBinding & { chainId: 31337; profile: "task036-local-only" };
+export type CurveLaunchBinding = (CommonBinding & { chainId: 4663; profile?: never }) | CurveFixtureBinding;
+
 export type CurveCreationLogRef = {
   blockNumber: bigint;
   blockHash: Hash;
@@ -48,12 +52,13 @@ export type CurveCreationLogRef = {
   logIndex: number;
 };
 
-type BlockEvidence = { blockNumber: string; blockHash: Hash; timestamp: string };
+export type BlockEvidence = { blockNumber: string; blockHash: Hash; timestamp: string };
+export type OpeningEvidence = { inventoryWei: string; backingWei: string; soldWei: string };
 
 export type CurveLaunchRegistration = {
   kind: "curve-launch-v1";
   status: "created";
-  chainId: 4663;
+  chainId: 4663 | 31337;
   engineVersion: 1;
   factory: Address;
   projectRegistry: Address;
@@ -71,7 +76,8 @@ export type CurveLaunchRegistration = {
   creation: BlockEvidence & { transactionHash: Hash; logIndex: number };
   projectRegistrationLogIndex: number;
   creationFee: { amountWei: string; refundWei: string; recipient: Address; logIndex: number };
-  checkpoint: BlockEvidence & { confirmations: number; finality: "l2-confirmed"; l1Finality: "unverified" };
+  opening?: OpeningEvidence;
+  checkpoint: BlockEvidence & { confirmations: number; finality: "l2-confirmed" | "fixture-confirmed"; l1Finality: "unverified" };
 };
 
 type Block = { number: bigint | null; hash: Hash | null; timestamp: bigint; transactions: readonly Hash[] };
@@ -120,7 +126,7 @@ function requireEvidence(condition: unknown, reason: string): asserts condition 
   if (!condition) throw new Error("New-engine creation evidence rejected: " + reason);
 }
 
-function blockEvidence(block: Block, height: bigint): BlockEvidence {
+export function blockEvidence(block: Pick<Block, "number" | "hash" | "timestamp">, height: bigint): BlockEvidence {
   requireEvidence(block.number === height && validHash(block.hash) && block.timestamp > 0n
     && block.timestamp <= 8_640_000_000_000n, "bad canonical block identity");
   return {
@@ -130,17 +136,43 @@ function blockEvidence(block: Block, height: bigint): BlockEvidence {
   };
 }
 
-function bindingIsValid(binding: CurveLaunchBinding) {
-  return binding.chainId === chainId && binding.engineVersion === 1
+export function assertCurveLaunchBinding(binding: CurveLaunchBinding) {
+  const validProfile = binding.chainId === publicChainId
+    ? binding.profile === undefined && Number.isSafeInteger(binding.confirmations) && binding.confirmations >= minimumConfirmations
+    : binding.chainId === fixtureChainId && binding.profile === "task036-local-only" && binding.confirmations === fixtureConfirmations;
+  requireEvidence(validProfile && binding.engineVersion === 1
     && typeof binding.deploymentBlock === "bigint" && binding.deploymentBlock > 0n
     && validHash(binding.deploymentBlockHash)
-    && Number.isSafeInteger(binding.confirmations) && binding.confirmations >= minimumConfirmations
     && validAddress(binding.factory) && !same(binding.factory, historicalFactory)
     && validHash(binding.factoryRuntimeHash)
     && validAddress(binding.projectRegistry) && !same(binding.projectRegistry, binding.factory)
     && validHash(binding.projectRegistryRuntimeHash)
     && validAddress(binding.creationFeeRecipient) && !same(binding.creationFeeRecipient, binding.factory)
-    && typeof binding.creationFeeWei === "bigint" && binding.creationFeeWei > 0n;
+    && typeof binding.creationFeeWei === "bigint" && binding.creationFeeWei > 0n, "deployment binding");
+}
+
+/** Validate the anchor before serving even an empty fixture directory. */
+export async function verifyCurveDeployment(binding: CurveLaunchBinding, rpc: CurveEvidenceRpc) {
+  assertCurveLaunchBinding(binding);
+  const at = binding.deploymentBlock;
+  const read = (functionName: FactoryRead) => rpc.readContract({
+    address: binding.factory, abi: curveCreationAbi, blockNumber: at, functionName,
+  });
+  requireEvidence(await rpc.getChainId() === binding.chainId, "chain ID");
+  const [block, previous, factory, registry, version, registryAddress, fee, recipient] = await Promise.all([
+    rpc.getBlock({ blockNumber: at, includeTransactions: false }),
+    rpc.getCode({ address: binding.factory, blockNumber: at - 1n }),
+    rpc.getCode({ address: binding.factory, blockNumber: at }),
+    rpc.getCode({ address: binding.projectRegistry, blockNumber: at }),
+    read("engineVersion"), read("projectRegistry"), read("creationFeeWei"), read("operatingRecipient"),
+  ]);
+  const evidence = blockEvidence(block, at);
+  requireEvidence(same(evidence.blockHash, binding.deploymentBlockHash) && (previous === undefined || previous === "0x")
+    && factory && same(keccak256(factory), binding.factoryRuntimeHash)
+    && registry && same(keccak256(registry), binding.projectRegistryRuntimeHash)
+    && version === binding.engineVersion && typeof registryAddress === "string" && same(registryAddress, binding.projectRegistry)
+    && fee === binding.creationFeeWei && typeof recipient === "string" && same(recipient, binding.creationFeeRecipient), "deployment or runtime mismatch");
+  return evidence;
 }
 
 function checkedReceiptLogs(receipt: Receipt) {
@@ -181,10 +213,10 @@ export async function readCurveLaunchRegistration(
   ref: CurveCreationLogRef,
 ): Promise<CurveLaunchRegistration | null> {
   if (binding === null) return null;
-  requireEvidence(bindingIsValid(binding), "deployment binding");
+  assertCurveLaunchBinding(binding);
   requireEvidence(typeof ref.blockNumber === "bigint" && ref.blockNumber >= binding.deploymentBlock
     && validHash(ref.blockHash) && validHash(ref.transactionHash) && validIndex(ref.logIndex), "creation event reference");
-  requireEvidence(await rpc.getChainId() === chainId, "chain ID");
+  requireEvidence(await rpc.getChainId() === binding.chainId, "chain ID");
   const tip = await rpc.getBlockNumber({ cacheTime: 0 });
   const confirmations = tip - ref.blockNumber;
   requireEvidence(confirmations >= BigInt(binding.confirmations) && confirmations <= BigInt(Number.MAX_SAFE_INTEGER),
@@ -263,13 +295,14 @@ export async function readCurveLaunchRegistration(
     "canonical checkpoint changed");
 
   return {
-    kind: "curve-launch-v1", status: "created", chainId, engineVersion: binding.engineVersion,
+    kind: "curve-launch-v1", status: "created", chainId: binding.chainId, engineVersion: binding.engineVersion,
     factory: binding.factory, projectRegistry: binding.projectRegistry, token, initialCurve: curve,
     creator, revenueLedger, totalSupplyWei: supply.toString(), intentId, name, symbol, projectURI,
     treasury: treasuryShareBps === 0 ? null : treasury, treasuryShareBps,
     creation: { ...creationBlock, transactionHash: ref.transactionHash, logIndex: ref.logIndex },
     projectRegistrationLogIndex: registered.logIndex,
     creationFee: { amountWei: fee.fee.toString(), refundWei: fee.refund.toString(), recipient: fee.recipient, logIndex: paid.logIndex },
-    checkpoint: { ...checkpoint, confirmations: binding.confirmations, finality: "l2-confirmed", l1Finality: "unverified" },
+    checkpoint: { ...checkpoint, confirmations: binding.confirmations,
+      finality: binding.chainId === fixtureChainId ? "fixture-confirmed" : "l2-confirmed", l1Finality: "unverified" },
   };
 }
