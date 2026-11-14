@@ -582,16 +582,22 @@ try {
     const label = description === "approval" ? "exact test approval" : `test ${description}`;
     const status = page.getByText(`On-chain ${label} confirmed`, { exact: true });
     const proceed = button("Continue from verified transaction");
+    const check = button("Check original transaction");
+    let observed = false;
     await waitFor(`${description} confirmation from the original receipt`, async () => {
-      if (await status.isVisible() && (!continueJourney || await proceed.isEnabled())) return true;
-      const check = button("Check original transaction");
-      if (await check.isVisible() && await check.isEnabled()) await check.click();
+      if (await status.isVisible()) {
+        observed = true;
+        if (!continueJourney) return true;
+      }
+      if (observed && !await check.isVisible()) return true;
+      if (await proceed.isVisible() && await proceed.isEnabled()) {
+        await proceed.click({ timeout: 1500 });
+      } else if (await check.isVisible() && await check.isEnabled()) {
+        await check.click({ timeout: 1500 });
+      }
       return false;
     });
-    if (continueJourney) {
-      await proceed.click();
-      await openTradeWallet();
-    }
+    if (continueJourney) await openTradeWallet();
   };
   const indexTx = (hash) => waitFor("same canonical PostgreSQL trade", async () => {
     const row = await getIndexed();
