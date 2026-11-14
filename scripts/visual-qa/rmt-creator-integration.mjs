@@ -245,7 +245,7 @@ try {
   finally { await unlink(pgPasswordFile); }
   await appendFile(join(cluster, "postgresql.conf"), "\nunix_socket_directories = ''\n");
   await successful(start(pgExecutable("pg_ctl"), ["-D", cluster, "-l", join(out, "postgres.log"), "-o",
-    `-h 127.0.0.1 -p ${pgPort}`, "-w", "start"], "postgres-start"));
+    `-h 127.0.0.1 -p ${pgPort}`, "-w", "start"], "postgres-start", { discard: process.platform === "win32" }));
   pgStarted = true;
   await successful(start(pgExecutable("createdb"), ["-h", "127.0.0.1", "-p", String(pgPort), "-U", pgUser, database], "postgres-createdb",
     { env: { ...childBase, PGPASSWORD: pgPass } }));
