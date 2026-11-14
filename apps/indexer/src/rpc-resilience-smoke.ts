@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { testCurveLaunchEvidence } from "./curve-launch-evidence-smoke.js";
 import { createHistoryReadBudget } from "./history-read-budget.js";
 import { testHistoricalResilience } from "./historical-launches-smoke.js";
 import {
@@ -81,4 +82,5 @@ assert.equal(budget.acquire(), null);
 budgetClock -= 1000;
 assert.equal(budget.acquire(), null);
 await testHistoricalResilience();
+await testCurveLaunchEvidence();
 console.info("RPC resilience smoke test passed");

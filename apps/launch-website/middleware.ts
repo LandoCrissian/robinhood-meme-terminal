@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { isLaunchAddress } from "./lib/launch-data";
+import { creationReviewPath } from "./lib/launch-draft";
 
 const publicRoutes = new Set([
   "/", "/create-token", "/my-launches", "/wallet", "/rmt",
@@ -27,6 +28,7 @@ function isLaunchDetail(path: string) {
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  if (request.method === "POST" && pathname === creationReviewPath) return NextResponse.next();
   if ((request.method === "GET" || request.method === "HEAD")
       && (publicRoutes.has(pathname) || isLaunchDetail(pathname) || isStaticAsset(pathname))) {
     return NextResponse.next();

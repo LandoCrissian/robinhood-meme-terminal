@@ -98,22 +98,46 @@ for (const field of ["deployment", "rpcUrl", "curve", "factory", "chainId"]) {
   assert.equal(config[field], undefined, `Preview config must not disclose ${field}`);
 }
 
+const creationReviewPath = "/api/launchpad/creation-review";
+const draftFields = { name: "Browser Test Token", symbol: "BROWSE", projectURI: "https://example.test/project",
+  supplyPreset: "1", treasury: "", treasuryShare: "" };
+function postDraft(body, origin = site.origin) {
+  return request(creationReviewPath, { method: "POST", headers: { Origin: origin, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+}
+const validReview = await postDraft(draftFields);
+assert.equal(validReview.status, 200);
+assert.match(validReview.headers.get("cache-control") ?? "", /no-store/);
+const reviewPayload = await readPublicJson(validReview);
+assert.equal(reviewPayload.status, "reviewed");
+assert.equal(reviewPayload.draft.supply, 10_000_000);
+for (const key of ["token", "transactionHash", "factory", "rpcUrl", "calldata"]) {
+  assert.equal(reviewPayload[key], undefined);
+  assert.equal(reviewPayload.draft[key], undefined);
+}
+assert.equal((await postDraft({ ...draftFields, treasuryShare: "95" })).status, 422);
+assert.equal((await postDraft(draftFields, "https://example.test")).status, 403);
+assert.equal((await postDraft({ ...draftFields, privateKey: "unexpected-field" })).status, 400);
+assert.equal((await request(creationReviewPath)).status, 404);
+
 const unverifiedToken = "0x0000000000000000000000000000000000000001";
 const unverifiedTokenPath = `/launches/${unverifiedToken}`;
 const unverifiedTokenApi = `/api/launchpad/launches/${unverifiedToken}`;
 const unverifiedTokenData = await request(unverifiedTokenApi);
 assert.ok([404, 503].includes(unverifiedTokenData.status));
-await readPublicJson(unverifiedTokenData);
+const missingData = await readPublicJson(unverifiedTokenData);
+assert.equal(missingData.launches.length, 0);
+assert.equal(missingData.status === "unavailable", unverifiedTokenData.status === 503);
 const unverifiedTokenDataHead = await request(unverifiedTokenApi, { method: "HEAD" });
-assert.equal(unverifiedTokenDataHead.status, unverifiedTokenData.status);
+assert.ok([404, 503].includes(unverifiedTokenDataHead.status));
 assert.equal(await unverifiedTokenDataHead.text(), "");
-const lookupUnavailable = unverifiedTokenData.status === 503;
-const lookupHeading = lookupUnavailable ? "Launch data unavailable" : "No verified RMT registration for this address";
+const missingHeading = "No verified RMT registration for this address";
+const unavailableHeading = "Launch data unavailable";
 const unverifiedTokenPage = await request(unverifiedTokenPath);
-assert.equal(unverifiedTokenPage.status, lookupUnavailable ? 200 : 404);
-assert.ok((await unverifiedTokenPage.text()).includes(lookupHeading));
+const pageIsUnavailable = unverifiedTokenPage.status === 200;
+assert.ok([200, 404].includes(unverifiedTokenPage.status));
+assert.ok((await unverifiedTokenPage.text()).includes(pageIsUnavailable ? unavailableHeading : missingHeading));
 const unverifiedTokenPageHead = await request(unverifiedTokenPath, { method: "HEAD" });
-assert.equal(unverifiedTokenPageHead.status, unverifiedTokenPage.status);
+assert.ok([200, 404].includes(unverifiedTokenPageHead.status));
 assert.equal(await unverifiedTokenPageHead.text(), "");
 
 const unsupportedRoutes = [
@@ -172,12 +196,20 @@ try {
     });
     const operationalRequests = [];
     const outsideRequests = [];
+    let draftRequests = 0;
     await context.route("**/*", async (route) => {
       const sent = route.request();
       const url = new URL(sent.url());
       if (url.origin !== site.origin) {
         outsideRequests.push(url.origin);
         return route.abort();
+      }
+      if (sent.method() === "POST" && url.pathname === creationReviewPath && !url.search) {
+        draftRequests++;
+        const payload = sent.postDataJSON();
+        assert.deepEqual(Object.keys(payload).sort(), Object.keys(draftFields).sort());
+        if (draftRequests === 1) return route.fulfill({ status: 503 });
+        return route.continue();
       }
       if (sent.method() !== "GET" || /^(?:\/api\/|\/preview-|\/mcp(?:\/|$)|\/\.netlify\/)/.test(url.pathname)) {
         operationalRequests.push(`${sent.method()} ${url.pathname}`);
@@ -197,12 +229,12 @@ try {
     const main = page.getByRole("main");
     const nav = page.getByRole("navigation", { name: "Launchpad navigation" });
     const operationalControls = /connect wallet|browser wallet|open (?:inside|in) (?:a |your )?wallet|switch to|confirm|review creation|review trade|claim fees|recover wallet request/i;
-    async function verifyReadOnly(heading) {
+    async function verifyReadOnly(heading, draftForm = false) {
       await main.getByRole("heading", { name: heading, exact: true }).waitFor();
       await page.getByText("Read-only", { exact: true }).first().waitFor();
       assert.equal(await page.getByRole("button", { name: operationalControls }).count(), 0);
       assert.equal(await page.getByRole("link", { name: operationalControls }).count(), 0);
-      assert.equal(await page.locator("form").count(), 0);
+      assert.equal(await page.locator("form").count(), Number(draftForm));
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${name} has horizontal overflow`);
       if (inliningMarker) assert.ok(!(await page.content()).includes(inliningMarker), "A private marker appeared in HTML");
     }
@@ -212,11 +244,12 @@ try {
     try {
       assert.equal((await page.goto(site.href)).status(), 200);
       await verifyReadOnly("Launches");
-      await main.getByText(/new RMT Launch engine is in prelaunch/i).waitFor();
-      if (directory.status === "stale") {
-        const source = directory.coverage === "verified-snapshot" ? "verified historical snapshot" : "last verified V6 index records";
-        await main.getByText(`Chain data is stale. Showing the ${source}.`).waitFor();
-      }
+      const prelaunch = main.getByRole("region", { name: "New RMT Launch engine" });
+      await prelaunch.getByText(/new RMT Launch engine is in prelaunch/i).waitFor();
+      assert.equal(await prelaunch.locator('a[href*="/launches/"]').count(), 0);
+      await main.getByRole("region", { name: "Historical V4/V6 registrations" }).waitFor();
+      const visibleHistory = main.getByRole("region", { name: "Historical V4/V6 registrations" });
+      await visibleHistory.getByText(/Chain data is stale\. Showing the (?:verified historical snapshot|last verified V6 index records)\.|Verified legacy RMT index\./).waitFor();
       const legacy = main.locator(`a[href="${detailPath(v4)}"]`);
       const official = main.locator(`a[href="${detailPath(v6)}"]`);
       const deploymentTest = directory.launches.find(({ classification }) => classification === "deployment-test");
@@ -241,8 +274,11 @@ try {
       assert.equal(await addressLookup.getAttribute("href"), unverifiedTokenPath);
       await screenshot("address-lookup");
       await addressLookup.click();
-      await verifyReadOnly(lookupHeading);
-      await main.getByText(lookupUnavailable
+      const currentLookup = main.getByRole("heading", { name: new RegExp(`^(${missingHeading}|${unavailableHeading})$`) });
+      await currentLookup.waitFor();
+      const selectedHeading = await currentLookup.textContent();
+      await verifyReadOnly(selectedHeading);
+      await main.getByText(selectedHeading === unavailableHeading
         ? /try again when the directory is available/i
         : /external tokens and newer or unindexed records may be absent/i).waitFor();
       await nav.getByRole("link", { name: "Launches", exact: true }).click();
@@ -270,13 +306,54 @@ try {
       await screenshot("historical-v6");
 
       await nav.getByRole("link", { name: "Create Token", exact: true }).click();
-      await verifyReadOnly("Create Token");
+      await verifyReadOnly("Create Token", true);
+      const terms = main.getByRole("region", { name: "Provisional launch terms" });
       for (const disclosure of [/0\.0004 ETH/i, /\b2 ETH\b/i, /60%/, /40%/, /1%/, /90%/, /5% RMT operations/i, /5% RMT future reserve/i]) {
-        await main.getByText(disclosure).first().waitFor();
+        await terms.getByText(disclosure).first().waitFor();
       }
       await screenshot("creation");
-      assert.equal((await page.reload()).status(), 200);
+      const tokenName = main.getByLabel("Token name");
+      const draftReview = main.getByRole("button", { name: "Review draft", exact: true });
+      await draftReview.click();
+      assert.equal(await tokenName.getAttribute("aria-invalid"), "true");
+      await page.waitForFunction(() => document.activeElement?.id === "draft-name");
+      assert.equal(draftRequests, 0);
+      await tokenName.fill(draftFields.name);
+      await main.getByLabel("Ticker").fill(draftFields.symbol);
+      await main.getByLabel("Fixed supply").selectOption("1");
+      await main.getByLabel("Project description").fill("This sample text stays on the device.");
+      await main.getByLabel("Project or metadata URL").fill(draftFields.projectURI);
+      await main.getByLabel("Artwork URL").fill("https://example.test/artwork.png");
+      try {
+        await Promise.all([
+          page.waitForResponse((response) => new URL(response.url()).pathname === creationReviewPath && response.request().method() === "POST", { timeout: 12_000 })
+            .then((response) => assert.equal(response.status(), 503)),
+          draftReview.click(),
+        ]);
+        await main.getByRole("alert").filter({ hasText: /temporarily unavailable/i }).waitFor();
+      } catch (error) {
+        await screenshot("creation-error");
+        const inputs = await main.locator("input, textarea, select").evaluateAll((nodes) => nodes.map((node) =>
+          ({ id: node.id, length: node.value.length, invalid: node.getAttribute("aria-invalid") })));
+        throw new Error(`Creator outage fixture failed after ${draftRequests} requests. ${JSON.stringify({ inputs, errors, operationalRequests })}`, { cause: error });
+      }
+      assert.equal(await tokenName.inputValue(), draftFields.name);
+      await draftReview.click();
+      const reviewed = main.getByRole("heading", { name: "Review token draft", exact: true });
+      await reviewed.waitFor();
+      await page.waitForFunction(() => document.activeElement?.textContent === "Review token draft");
+      await main.getByText("Proposed token draft", { exact: true }).waitFor();
+      await main.getByText("10,000,000 tokens", { exact: true }).first().waitFor();
       await verifyReadOnly("Create Token");
+      await screenshot("creation-review");
+      await main.getByRole("button", { name: "Edit draft", exact: true }).click();
+      assert.equal(await tokenName.inputValue(), draftFields.name);
+      assert.equal((await page.reload()).status(), 200);
+      await verifyReadOnly("Create Token", true);
+      await page.waitForFunction((name) => document.querySelector('#draft-name')?.value === name, draftFields.name);
+      assert.equal(draftRequests, 2);
+      await main.getByRole("button", { name: "Clear draft", exact: true }).click();
+      assert.equal(await tokenName.inputValue(), "");
 
       await page.getByRole("contentinfo").getByRole("link", { name: "Legacy RMT", exact: true }).click();
       await verifyReadOnly("Legacy RMT");

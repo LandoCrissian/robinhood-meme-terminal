@@ -95,7 +95,7 @@ body .launchpad {
 .lpForm label, .lpRecovery label { display: grid; gap: 4px; min-width: 0; margin: 0; color: var(--rmt-text); font-size: 13px; }
 .lpForm label small { color: var(--rmt-text-soft); font-weight: 400; }
 .lpFormGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.lpForm input:not([type="checkbox"]), .lpForm select, .lpRecovery input {
+.lpForm input:not([type="checkbox"]), .lpForm select, .lpDraft textarea, .lpRecovery input {
   width: 100%;
   min-width: 0;
   min-height: 42px;
@@ -107,6 +107,14 @@ body .launchpad {
   border-radius: 6px;
   background: var(--rmt-canvas);
 }
+.lpDraft textarea { resize: vertical; font-family: inherit; }
+.lpDraftField { display: grid; min-width: 0; gap: 4px; }
+.lpDraftField small { color: var(--rmt-text-soft); }
+.lpDraftFieldError { color: #ffb1b4; font-size: 13px; }
+.lpDraft [aria-invalid="true"] { border-color: #ffb1b4; }
+.lpDraftDescription { white-space: pre-wrap; }
+.lpDraftTreasury fieldset { margin-top: 8px; }
+.lpDraftActions { display: flex; flex-wrap: wrap; gap: 8px; }
 .lpFacts {
   display: grid;
   grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr);
@@ -162,7 +170,7 @@ body .launchpad {
   .lpTable .rmtMarketTableRow > span { padding-inline: 4px; }
   .lpTable .lpSeed { color: var(--rmt-text); }
   .lpPanel { padding: 13px; }
-  .lpForm input:not([type="checkbox"]), .lpForm select, .lpRecovery input, .lpSearch input { font-size: 16px; }
+  .lpForm input:not([type="checkbox"]), .lpForm select, .lpDraft textarea, .lpRecovery input, .lpSearch input { font-size: 16px; }
 }
 @media (max-width: 350px) {
   .lpNetwork { display: none; }
