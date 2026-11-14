@@ -307,8 +307,9 @@ try {
 
       await nav.getByRole("link", { name: "Create Token", exact: true }).click();
       await verifyReadOnly("Create Token", true);
+      const terms = main.getByRole("region", { name: "Provisional launch terms" });
       for (const disclosure of [/0\.0004 ETH/i, /\b2 ETH\b/i, /60%/, /40%/, /1%/, /90%/, /5% RMT operations/i, /5% RMT future reserve/i]) {
-        await main.getByText(disclosure).first().waitFor();
+        await terms.getByText(disclosure).first().waitFor();
       }
       await screenshot("creation");
       const tokenName = main.getByLabel("Token name");
