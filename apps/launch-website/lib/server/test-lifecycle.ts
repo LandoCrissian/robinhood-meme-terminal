@@ -1,13 +1,16 @@
-import { encodeFunctionData, erc20Abi, getAddress, parseAbi, parseAbiItem, parseEventLogs, toHex,
+import { erc20Abi, getAddress, parseAbi, parseAbiItem, parseEventLogs, toHex,
   type Address, type Hash, type Hex } from "viem";
 import { isTransactionHash, testCreationChain } from "../test-creation";
-import { curveBuySignature, curveGraduateSignature, curveSellSignature, curveTradeFeeBps, isLifecycleAmount, isLifecycleOperation,
-  isLifecycleSlippage, isTestLifecycleRequest, lifecycleCalldataMatches, sameLifecycleValue as same, sameTestLifecycleRequest,
+import { curveBuySignature, curveGraduateSignature, curveSellSignature, curveTradeFeeBps, encodeLifecycleCalldata, isLifecycleAmount,
+  isLifecycleOperation, isLifecycleSlippage, isLifecycleTrade, isTestLifecycleRequest, isTestV4Operation, lifecycleCalldataMatches,
+  lifecycleDestination, sameLifecycleValue as same, sameTestLifecycleRequest,
   type TestLifecycleOperation, type TestLifecycleQuote, type TestLifecycleRequest, type TestLifecycleState,
   type TestLifecycleVerification } from "../test-lifecycle";
 import { configuredCurveFixture, fixtureAddress, fixtureRpc, verifyCurveFixture, type CurveFixture } from "./curve-fixture";
 import { readFixtureLaunches, type FixtureLaunch } from "./fixture-discovery";
 import { readDraftBody } from "./launch-draft";
+import { assertV4Binding, exactV4Approval, fixtureV4State, quoteFixtureV4 } from "./test-v4";
+import { testPoolFeePips, type TestLpAmounts, type TestV4Binding } from "../test-v4";
 
 const deadlineWindow = 180n;
 const reviewWindow = 4n;
@@ -92,15 +95,17 @@ async function currentState(rpc: Rpc, fixture: CurveFixture, head: Head, token: 
       sold > graduationSold || backing > graduationBacking || ((!graduated) && inventory !== totalSupply - sold) ||
       (graduated !== (lifecycle.phase === "graduated"))) throw new Error("Curve state and indexed evidence disagree");
   const phase = graduated ? "graduated" : sold === graduationSold && backing === graduationBacking ? "eligible" : "curve";
+  const v4 = graduated ? await fixtureV4State(rpc, fixture, head, launch, account) : undefined;
   const state: TestLifecycleState & { lifecycle: Lifecycle } = {
     factory: fixture.factory, token, curve: curveAddress, phase, blockNumber: toHex(head.number), blockHash: head.hash,
     inventoryWei: inventory.toString(), backingWei: backing.toString(), soldWei: sold.toString(), totalSupplyWei: totalSupply.toString(),
     targetBackingWei: graduationBacking.toString(), targetSoldWei: graduationSold.toString(), feeBps: curveTradeFeeBps,
     priceWei: graduated ? null : ((virtualEth + backing) * 10n ** 18n / (virtualToken - sold)).toString(),
     lifecycle,
+    ...(v4 && { postGraduation: v4.state }),
     ...(balances ? { account: { ethWei: balances[0].toString(), tokenWei: balances[1].toString(), allowanceWei: balances[2].toString() } } : {}),
   };
-  return state;
+  return { state, v4: v4?.binding };
 }
 
 async function prepare(
@@ -111,13 +116,18 @@ async function prepare(
   if (prior !== undefined && (!isTestLifecycleRequest(prior) || !same(prior.factory, fixture.factory) || !same(prior.blockHash, fixture.deploymentBlockHash)
       || BigInt(prior.blockNumber) !== fixture.deploymentBlock || !same(prior.token, token) || !same(prior.from, from) ||
       prior.operation !== operation || prior.amountWei !== amountWei || prior.slippageBps !== slippageBps)) return invalid("stale-review");
-  const [state, confirmedNonce, pendingNonce, code] = await Promise.all([
+  const [{ state, v4 }, confirmedNonce, pendingNonce, code] = await Promise.all([
     currentState(rpc, fixture, head, token, from),
     rpc.getTransactionCount({ address: from, blockNumber: head.number }),
     rpc.getTransactionCount({ address: from, blockTag: "pending" }),
     rpc.getCode({ address: from, blockNumber: head.number }),
   ]);
-  if (state.phase === "graduated" || (state.phase === "eligible" && operation === "buy")) return invalid("curve-closed");
+  const v4Operation = isTestV4Operation(operation);
+  const v4Trade = operation === "v4-buy" || operation === "v4-sell";
+  const buy = operation === "buy" || operation === "v4-buy";
+  if (v4Operation ? state.phase !== "graduated" : state.phase === "graduated" || (state.phase === "eligible" && operation === "buy")) {
+    return invalid("curve-closed");
+  }
   if (operation === "graduate" && state.phase !== "eligible") return invalid("graduation-not-ready");
   if ((code && code !== "0x") || confirmedNonce !== pendingNonce) return invalid("wallet-pending");
   if (!state.account) return unavailable();
@@ -133,12 +143,39 @@ async function prepare(
   let output = 0n;
   let fee = 0n;
   let refund = 0n;
+  let lpAmounts: TestLpAmounts | undefined;
   if (operation === "sell" || operation === "approve") {
     if (BigInt(state.account.tokenWei) < amount) return invalid("insufficient-balance");
     if (operation === "sell" && BigInt(state.account.allowanceWei) !== amount) return invalid("insufficient-allowance");
     if (operation === "approve" && BigInt(state.account.allowanceWei) === amount) return invalid("amount-unavailable");
   }
-  if (operation === "buy") {
+  if (v4Operation) {
+    if (!v4 || !state.postGraduation?.balances) return unavailable();
+    const post = state.postGraduation;
+    const { erc20AllowanceWei, permit2AllowanceWei, permit2Expiration } = state.postGraduation.balances;
+    const tokenAllowance = BigInt(erc20AllowanceWei);
+    const routerAllowance = BigInt(permit2AllowanceWei);
+    if (operation === "lp-claim" || operation === "lp-collect") {
+      lpAmounts = operation === "lp-claim" ? post.fees.claimable : post.fees.uncollected;
+      if (!lpAmounts || (lpAmounts.nativeWei === "0" && lpAmounts.tokenWei === "0")) return invalid("no-fees");
+    } else if (!buy && BigInt(state.account.tokenWei) < amount) {
+      return invalid("insufficient-balance");
+    } else if (operation === "v4-token-approve") {
+      if (tokenAllowance === amount) return invalid("amount-unavailable");
+    } else if (operation === "v4-permit2-approve") {
+      if (tokenAllowance !== amount) return invalid("insufficient-allowance");
+      if (routerAllowance === amount && BigInt(permit2Expiration) >= deadline) return invalid("amount-unavailable");
+    } else {
+      if (buy && BigInt(state.account.ethWei) <= amount) return invalid("insufficient-balance");
+      if (!buy && (tokenAllowance !== amount || routerAllowance !== amount || BigInt(permit2Expiration) < deadline)) {
+        return invalid("insufficient-allowance");
+      }
+      output = await quoteFixtureV4(rpc, head, v4, from, buy, amount);
+      if (output >= 2n ** 127n) return invalid("amount-unavailable");
+      // This is the quoted pool-rate estimate in the input currency, not measured LP earnings.
+      fee = (amount * BigInt(testPoolFeePips) + 999_999n) / 1_000_000n;
+    }
+  } else if (operation === "buy") {
     if (BigInt(state.account.ethWei) <= amount) return invalid("insufficient-balance");
     const [quoted, gross, charge, unused] = await rpc.readContract({ ...curve, functionName: "quoteBuy", args: [amount] });
     if (gross + unused !== amount || charge < 1n || feeFor(gross) !== charge || quoted + BigInt(state.soldWei) > BigInt(state.targetSoldWei)) {
@@ -156,27 +193,28 @@ async function prepare(
     }
   }
   const minimum = output * BigInt(10_000 - slippageBps) / 10_000n;
-  if ((operation === "buy" || operation === "sell") && (output === 0n || minimum === 0n)) return invalid("amount-unavailable");
-  const value = operation === "buy" ? amount : 0n;
-  const to = operation === "approve" ? token : state.curve;
-  const data = operation === "approve" ? encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [state.curve, amount] })
-    : operation === "buy" ? encodeFunctionData({ abi: curveAbi, functionName: "buy", args: [minimum, deadline] })
-    : operation === "sell" ? encodeFunctionData({ abi: curveAbi, functionName: "sell", args: [amount, minimum, deadline] })
-    : encodeFunctionData({ abi: curveAbi, functionName: "graduate", args: [deadline] });
+  if (isLifecycleTrade(operation) && (output === 0n || minimum === 0n)) return invalid("amount-unavailable");
+  const value = buy ? amount : 0n;
+  const execution = v4Operation ? v4 : undefined;
+  const to = lifecycleDestination(operation, token, state.curve, execution);
+  if (!to) return unavailable();
+  const data = await encodeLifecycleCalldata(operation, token, state.curve, amount, minimum, deadline, execution);
   const request: TestLifecycleRequest = { operation, token, curve: state.curve, factory: fixture.factory, from, to, data, value: toHex(value),
     chainId: testCreationChain, nonce, blockNumber: toHex(fixture.deploymentBlock), blockHash: fixture.deploymentBlockHash,
     reviewBlockNumber: toHex(reviewBlockNumber), reviewBlockHash: reviewBlock.hash, deadline: deadline.toString(), amountWei,
-    minimumOutputWei: minimum.toString(), slippageBps };
+    minimumOutputWei: minimum.toString(), slippageBps, ...(execution && { v4: execution }) };
   if (prior && !sameTestLifecycleRequest(request, prior)) return invalid("stale-review");
-  const [gas, gasPrice, latest] = await Promise.all([
+  const [gas, gasPrice] = await Promise.all([
     rpc.estimateGas({ account: from, to, data, value, blockNumber: head.number }),
     rpc.getGasPrice(),
-    rpc.getBlock({ blockTag: "latest", includeTransactions: false }),
+    rpc.call({ account: from, to, data, value, blockNumber: head.number }),
   ]);
+  const latest = await rpc.getBlock({ blockTag: "latest", includeTransactions: false });
   if (!same(latest.hash, head.hash)) return invalid("stale-review");
   if (BigInt(state.account.ethWei) < value + gas * gasPrice) return invalid("insufficient-balance");
   const quote: TestLifecycleQuote = { inputWei: amountWei, outputWei: output.toString(), minimumOutputWei: minimum.toString(),
-    feeWei: fee.toString(), refundWei: refund.toString(), gasUnits: gas.toString(), gasPriceWei: gasPrice.toString() };
+    feeWei: fee.toString(), refundWei: refund.toString(), gasUnits: gas.toString(), gasPriceWei: gasPrice.toString(),
+    ...(v4Trade && { feePips: testPoolFeePips, feeAsset: buy ? "native" : "token" }), ...(lpAmounts && { lpAmounts }) };
   return reply({ status: "prepared", request, quote, state });
 }
 
@@ -220,6 +258,7 @@ async function verify(
       || reviewed.number > head.number || !same(await readCurveIdentity(rpc, fixture, request.token, reviewed.number), request.curve)) {
     return { status: "unavailable" };
   }
+  if (request.v4) await assertV4Binding(rpc, fixture, request.token, request.v4, reviewed.number);
   const found = transactionHash ?? await recoverHash(rpc, head, request);
   if (found === "pending" || found === "unavailable") return { status: found };
   const tx = await rpc.getTransaction({ hash: found });
@@ -242,7 +281,9 @@ async function verify(
   const indexed = discovery.status === "ready" && discovery.launches.length === 1 &&
     BigInt(discovery.checkpoint.blockNumber) >= receipt.blockNumber && head.number >= receipt.blockNumber + 2n;
   if (receipt.status === "reverted") return { status: "reverted", indexed, ...bound };
-  if (receipt.status !== "success" || (request.operation !== "approve" && block.timestamp > BigInt(request.deadline))) return { status: "unavailable" };
+  const noOnchainDeadline = request.operation === "approve" || request.operation === "v4-token-approve"
+    || request.operation === "v4-permit2-approve" || request.operation === "lp-claim";
+  if (receipt.status !== "success" || (!noOnchainDeadline && block.timestamp > BigInt(request.deadline))) return { status: "unavailable" };
   if (request.operation === "approve") {
     const events = parseEventLogs({ abi: erc20Abi, eventName: "Approval", logs: receipt.logs.filter(log => same(log.address, request.token)) });
     const [approved] = events;
@@ -251,6 +292,31 @@ async function verify(
       ? { status: "confirmed", indexed, ...bound } : { status: "unavailable" };
   }
   const lifecycle = discovery.status === "ready" ? discovery.launches[0]?.lifecycle : undefined;
+  if (request.v4) {
+    const post = lifecycle?.postGraduation;
+    const graduation = lifecycle?.graduation;
+    if (!indexed || !post || !graduation) return { status: "pending", settlementPending: true, ...bound };
+    if (!same(graduation.poolId, request.v4.poolId) || !same(graduation.owner, request.v4.engine)
+        || !same(post.ledger, request.v4.ledger)) return { status: "unavailable" };
+    const canonical = await rpc.getBlock({ blockNumber: receipt.blockNumber, includeTransactions: false });
+    if (!same(canonical.hash, receipt.blockHash)) return { status: "unavailable" };
+    if (request.operation === "v4-token-approve" || request.operation === "v4-permit2-approve") {
+      return exactV4Approval(receipt, request) ? { status: "confirmed", indexed: true, ...bound } : { status: "unavailable" };
+    }
+    const event = post.events.find((entry) => entry.kind === request.operation && same(entry.transactionHash, found));
+    if (!event) return { status: "pending", settlementPending: true, ...bound };
+    if (!same(event.account, request.from) || !same(event.blockHash, receipt.blockHash) || event.blockNumber !== receipt.blockNumber.toString()
+        || !receipt.logs.some(log => log.logIndex === event.logIndex)) return { status: "unavailable" };
+    if (request.operation === "lp-collect" || request.operation === "lp-claim") {
+      return { status: "confirmed", indexed: true, lpAmounts: { nativeWei: event.nativeWei, tokenWei: event.tokenWei }, ...bound };
+    }
+    const input = request.operation === "v4-buy" ? event.nativeWei : event.tokenWei;
+    const output = request.operation === "v4-buy" ? event.tokenWei : event.nativeWei;
+    if (input !== request.amountWei || BigInt(output) < BigInt(request.minimumOutputWei) || event.feePips !== testPoolFeePips) {
+      return { status: "unavailable" };
+    }
+    return { status: "confirmed", indexed: true, outputWei: output, refundWei: "0", ...bound };
+  }
   if (request.operation === "graduate") {
     const events = parseEventLogs({ abi: [graduationEvent], logs: receipt.logs.filter(log => same(log.address, request.curve)) });
     const [event] = events;
@@ -304,7 +370,7 @@ export async function handleTestLifecycle(request: Request) {
         (body.account === undefined || fixtureAddress(body.account))) {
       const rpc = fixtureRpc(fixture);
       const head = await verifyCurveFixture(fixture, rpc);
-      const state = await currentState(rpc, fixture, head, address(body.token), body.account === undefined ? undefined : address(body.account));
+      const { state } = await currentState(rpc, fixture, head, address(body.token), body.account === undefined ? undefined : address(body.account));
       return reply({ status: "ready", state });
     }
     if (body.action === "prepare" && pickKeys(body, ["action", "token", "account", "operation", "amountWei", "slippageBps"], ["prior"]) &&

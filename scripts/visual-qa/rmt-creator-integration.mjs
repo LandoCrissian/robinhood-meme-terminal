@@ -13,7 +13,8 @@ import { chromium, devices } from "playwright";
 
 const repository = fileURLToPath(new URL("../../", import.meta.url));
 const require = createRequire(new URL("../../apps/indexer/package.json", import.meta.url));
-const { decodeFunctionData, encodeFunctionData, erc20Abi, keccak256, parseAbi, parseEventLogs, toHex } = require("viem");
+const { decodeAbiParameters, decodeFunctionData, encodeAbiParameters, encodeFunctionData, erc20Abi, keccak256, parseAbi,
+  parseAbiParameters, parseEventLogs, toHex } = require("viem");
 const { generatePrivateKey, privateKeyToAccount } = require("viem/accounts");
 const { Pool } = require("pg");
 const { values: args } = parseArgs({ options: {
@@ -57,7 +58,8 @@ const feeWei = 400_000_000_000_000n;
 const backingWei = 2_000_000_000_000_000_000n;
 const creator = privateKeyToAccount(generatePrivateKey());
 const alternate = privateKeyToAccount(generatePrivateKey()).address;
-const treasury = privateKeyToAccount(generatePrivateKey()).address;
+const treasurySigner = privateKeyToAccount(generatePrivateKey());
+const treasury = treasurySigner.address;
 const project = { name: "Fixture Creator 036", symbol: "FRESH036", projectURI: "https://example.test/rmt036",
   supplyPreset: 1, treasury, treasuryShareBps: 1250, supplyWei: (10_000_000n * 10n ** 18n).toString() };
 const draftOnly = { description: "Private fixture draft description 036", artwork: "https://example.test/local-only-art.png" };
@@ -81,6 +83,23 @@ const curveAbi = parseAbi([
   "function graduated() view returns (bool)", "function graduationEngine() view returns (address)",
   "event CurveTrade(address indexed account,bool indexed isBuy,uint256 tokenAmount,uint256 grossNative,uint256 fee,uint256 nativeRefund,uint256 sold,uint256 backingReserve)",
 ]);
+const nativeCurrency = "0x0000000000000000000000000000000000000000";
+const router = anchor.universalRouter212.address;
+const permit2 = anchor.permit2.address;
+const routerAbi = parseAbi(["function execute(bytes commands,bytes[] inputs,uint256 deadline) payable"]);
+const permitAbi = parseAbi(["function approve(address token,address spender,uint160 amount,uint48 expiration)",
+  "function allowance(address owner,address token,address spender) view returns (uint160 amount,uint48 expiration,uint48 nonce)"]);
+const feesAbi = parseAbi(["function collectLpFees(address token,uint256 deadline) returns (uint256,uint256)",
+  "function previewLpFees(address token) view returns (uint256,uint256)", "function lpFeeLedger(address token) view returns (address)",
+  "event LpFeesCollected(address indexed token,uint256 indexed positionTokenId,address indexed ledger,uint256 nativeAmount,uint256 tokenAmount)"]);
+const ledgerAbi = parseAbi(["function claim() returns (uint256,uint256)", "function claimable(address) view returns (uint256,uint256)",
+  "event LpFeesClaimed(address indexed recipient,uint256 nativeAmount,uint256 tokenAmount)"]);
+const v4Routes = parseAbiParameters("bytes actions,bytes[] inputs");
+const v4Swap = parseAbiParameters("(address currency0,address currency1,uint24 fee,int24 tickSpacing,address hooks) poolKey,bool zeroForOne,uint128 amountIn,uint128 amountOutMinimum,uint256 minHopPriceX36,bytes hookData");
+const routerSwap = [{ type: "tuple", components: v4Swap }];
+const settleV4 = parseAbiParameters("address currency,uint256 amount,bool payerIsUser");
+const takeV4 = parseAbiParameters("address currency,uint256 minimum");
+const swapAbi = parseAbi(["event Swap(bytes32 indexed id,address indexed sender,int128 amount0,int128 amount1,uint160 sqrtPriceX96,uint128 liquidity,int24 tick,uint24 fee)"]);
 const ports = new Set();
 async function unusedPort() {
   for (;;) {
@@ -166,6 +185,7 @@ let interruptLogScan = false;
 let interruptedLogReads = 0;
 let hideTradeTrace = false;
 let hiddenTradeTraces = 0;
+let rpcOutage = false;
 const readProxyMethods = new Set(["eth_chainId", "eth_blockNumber", "eth_getBlockByNumber", "eth_getBlockByHash", "eth_getCode",
   "eth_getLogs", "eth_getTransactionByHash", "eth_getTransactionReceipt", "eth_getTransactionCount", "eth_getBalance", "eth_call", "eth_estimateGas", "eth_gasPrice", "web3_clientVersion",
   "debug_traceTransaction"]);
@@ -181,6 +201,7 @@ const proxy = createServer(async (request, response) => {
     const incoming = JSON.parse(Buffer.concat(raw).toString("utf8"));
     const route = async ({ id, method, params = [] }) => {
       if (!readProxyMethods.has(method)) return { id, jsonrpc: "2.0", error: { code: -32601, message: "Fixture RPC allows read methods only" } };
+      if (rpcOutage) return { id, jsonrpc: "2.0", error: { code: -32000, message: "Fixture RPC is offline" } };
       if (method === "eth_getLogs" && interruptLogScan) {
         interruptedLogReads++;
         return { id, jsonrpc: "2.0", error: { code: -32000, message: "Fixture paused the log scan" } };
@@ -217,7 +238,7 @@ try {
   await waitFor("Anvil chain 31337", async () => (await rpc("eth_chainId")) === "0x7a69", chain);
   assert.match(await rpc("web3_clientVersion"), /^anvil\//i);
   eq((await rpc("eth_getBlockByNumber", [toHex(anchor.block), false])).hash, anchor.blockHash);
-  const [operator] = await rpc("eth_accounts");
+  const [operator, operations, reserve] = await rpc("eth_accounts");
   const deployed = JSON.parse(await successful(start(process.execPath, ["packages/contracts/scripts/validate-curve-graduation-4663.mjs",
     "--rpc", rpcUrl, "--solc", solc, "--backing-wei", backingWei.toString(), "--operator", operator], "deploy-contract-fixture", { cwd: fixtureSource })));
   assert.equal(deployed.chainId, 31337);
@@ -231,6 +252,10 @@ try {
   const contractAddress = (word) => `0x${word.slice(-40)}`;
   const recipient = contractAddress(await call(deployed.factory, factoryAbi, "operatingRecipient"));
   eq(recipient, deployed.deployment.operatingRecipient);
+  eq(recipient, operations);
+  eq(keccak256(await rpc("eth_getCode", [router, "latest"])), anchor.universalRouter212.runtimeHash);
+  eq(keccak256(await rpc("eth_getCode", [permit2, "latest"])), anchor.permit2.runtimeHash);
+  eq(keccak256(await rpc("eth_getCode", [anchor.quoter.address, "latest"])), anchor.quoter.runtimeHash);
   eq(keccak256(await rpc("eth_getCode", [deployed.factory, "latest"])), deployed.factoryRuntimeHash);
   eq(keccak256(await rpc("eth_getCode", [deployed.projectRegistry, "latest"])), deployed.registryRuntimeHash);
   const manifestPath = join(out, "candidate-deployment.json");
@@ -291,6 +316,7 @@ try {
   const now = Math.floor(Date.now() / 1000);
   if (BigInt(head.timestamp) < BigInt(now)) { await rpc("evm_setNextBlockTimestamp", [now]); await rpc("evm_mine"); }
   await rpc("anvil_setBalance", [creator.address, toHex(20n * 10n ** 18n)]);
+  await rpc("anvil_setBalance", [treasury, toHex(10n ** 18n)]);
   const ownTreasury = await post(prepareBody({ ...reviewFields, treasury: creator.address.toLowerCase() }));
   assert.equal(ownTreasury.status, 422, "The creator cannot also be the project treasury");
   const unfunded = await post(prepareBody({ ...reviewFields, treasury: treasury.toLowerCase() }, alternate));
@@ -305,6 +331,10 @@ try {
   const signatures = [];
   let currentToken;
   let currentCurve;
+  let currentGraduation;
+  let currentLedger;
+  const signerFor = new Map([creator, treasurySigner].map((account) => [account.address.toLowerCase(), account]));
+  const protocolAccounts = new Set([operations, reserve].map((account) => account.toLowerCase()));
   const pageErrors = [];
   const offOrigin = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
@@ -317,7 +347,9 @@ try {
     assert.equal(method, "eth_sendTransaction");
     assert.equal(params.length, 1);
     const [request] = params;
-    eq(request.from, creator.address);
+    const from = request.from.toLowerCase();
+    const signer = signerFor.get(from);
+    assert.ok(signer || protocolAccounts.has(from), "Wallet is a known synthetic account");
     assert.equal(request.chainId, "0x7a69");
     assert.equal(await rpc("eth_chainId"), "0x7a69");
     const transactionValue = BigInt(request.value);
@@ -326,6 +358,7 @@ try {
     if (request.to.toLowerCase() === binding.factory.toLowerCase()) {
       decoded = decodeFunctionData({ abi: factoryAbi, data: request.data });
       assert.equal(transactionValue, feeWei);
+      eq(request.from, creator.address);
       assert.equal(decoded.functionName, "create");
       const [name, symbol, projectURI, preset, toTreasury, share, intent, expires] = decoded.args;
       assert.deepEqual({ name, symbol, projectURI, preset, share }, { name: project.name, symbol: project.symbol, projectURI: project.projectURI,
@@ -338,9 +371,50 @@ try {
       assert.ok(currentToken && currentCurve);
       if (request.to.toLowerCase() === currentToken.toLowerCase()) {
         decoded = decodeFunctionData({ abi: erc20Abi, data: request.data });
-        assert.equal(decoded.functionName, "approve", "The wallet must only sign exact curve allowance");
-        eq(decoded.args[0], currentCurve);
+        assert.equal(decoded.functionName, "approve");
+        eq(decoded.args[0], currentGraduation ? permit2 : currentCurve);
         assert.equal(transactionValue, 0n);
+        if (currentGraduation) decoded.functionName = "v4-token-approve";
+      } else if (currentGraduation && request.to.toLowerCase() === permit2.toLowerCase()) {
+        decoded = decodeFunctionData({ abi: permitAbi, data: request.data });
+        assert.equal(decoded.functionName, "approve");
+        eq(decoded.args[0], currentToken);
+        eq(decoded.args[1], router);
+        assert.equal(transactionValue, 0n);
+        decoded.functionName = "v4-permit2-approve";
+      } else if (currentGraduation && request.to.toLowerCase() === router.toLowerCase()) {
+        decoded = decodeFunctionData({ abi: routerAbi, data: request.data });
+        assert.equal(decoded.functionName, "execute");
+        const [operations, [nested]] = decoded.args;
+        assert.equal(operations, "0x10");
+        const [actions, [swap, settle, take]] = decodeAbiParameters(v4Routes, nested);
+        assert.equal(actions, "0x060b0f");
+        const [terms] = decodeAbiParameters(routerSwap, swap);
+        const [payment, spent, payerIsUser] = decodeAbiParameters(settleV4, settle);
+        const [receive, minimum] = decodeAbiParameters(takeV4, take);
+        for (const part of ["currency0", "currency1", "hooks"]) eq(terms.poolKey[part], currentGraduation.poolKey[part]);
+        assert.equal(terms.poolKey.fee, currentGraduation.poolKey.fee);
+        assert.equal(terms.poolKey.tickSpacing, currentGraduation.poolKey.tickSpacing);
+        eq(payment, terms.zeroForOne ? nativeCurrency : currentToken);
+        eq(receive, terms.zeroForOne ? currentToken : nativeCurrency);
+        assert.ok(payerIsUser && minimum > 0n);
+        assert.equal(spent, terms.amountIn);
+        assert.equal(minimum, terms.amountOutMinimum);
+        assert.equal(terms.minHopPriceX36, minimum * 10n ** 36n / spent);
+        assert.equal(terms.hookData, "0x");
+        assert.equal(transactionValue, terms.zeroForOne ? spent : 0n);
+        decoded.functionName = terms.zeroForOne ? "v4-buy" : "v4-sell";
+      } else if (currentGraduation && request.to.toLowerCase() === currentGraduation.owner.toLowerCase()) {
+        decoded = decodeFunctionData({ abi: feesAbi, data: request.data });
+        assert.equal(decoded.functionName, "collectLpFees");
+        eq(decoded.args[0], currentToken);
+        assert.equal(transactionValue, 0n);
+        decoded.functionName = "lp-collect";
+      } else if (currentLedger && request.to.toLowerCase() === currentLedger.toLowerCase()) {
+        decoded = decodeFunctionData({ abi: ledgerAbi, data: request.data });
+        assert.equal(decoded.functionName, "claim");
+        assert.equal(transactionValue, 0n);
+        decoded.functionName = "lp-claim";
       } else {
         eq(request.to, currentCurve);
         decoded = decodeFunctionData({ abi: curveAbi, data: request.data });
@@ -349,12 +423,13 @@ try {
       }
     }
     const gas = BigInt(await rpc("eth_estimateGas", [{ from: request.from, to: request.to, data: request.data, value: request.value }]));
-    const nonce = BigInt(await rpc("eth_getTransactionCount", [creator.address, "pending"]));
+    const nonce = BigInt(await rpc("eth_getTransactionCount", [request.from, "pending"]));
     if (request.nonce !== undefined) assert.equal(BigInt(request.nonce), nonce, "Bound account nonce");
-    const signed = await creator.signTransaction({ chainId: 31337, to: request.to, data: request.data, value: transactionValue,
-      nonce: Number(nonce), gas: gas * 125n / 100n,
-      gasPrice: BigInt(await rpc("eth_gasPrice")), type: "legacy" });
-    const hash = await rpc("eth_sendRawTransaction", [signed]);
+    const hash = signer ? await rpc("eth_sendRawTransaction", [await signer.signTransaction({ chainId: 31337, to: request.to,
+      data: request.data, value: transactionValue, nonce: Number(nonce), gas: gas * 125n / 100n,
+      gasPrice: BigInt(await rpc("eth_gasPrice")), type: "legacy" })])
+      : await rpc("eth_sendTransaction", [{ from: request.from, to: request.to, data: request.data, value: request.value,
+        nonce: toHex(nonce), gas: toHex(gas * 125n / 100n) }]);
     signatures.push({ ...request, transactionHash: hash, operation: decoded.functionName, intentId, deadline: deadline?.toString() });
     if (decoded.functionName === "create") hideReceipt = hash;
     return hash;
@@ -367,6 +442,7 @@ try {
     window.fixtureWallet = {
       setDecision: (next) => { decision = next; },
       setAccount: (changed) => { connected = changed ? substitute : account; emit("accountsChanged", [connected]); },
+      selectAccount: (next) => { connected = next; emit("accountsChanged", [connected]); },
       setChain: (changed) => { chain = changed ? "0x1" : "0x7a69"; emit("chainChanged", chain); },
     };
     window.ethereum = {
@@ -578,8 +654,10 @@ try {
     await page.getByRole("region", { name: "Isolated test trading" }).getByRole("combobox").selectOption({ label: side });
     await page.getByLabel("Trade amount", { exact: true }).fill(amount);
   };
-  const checkSettlement = async (description, continueJourney = true) => {
-    const label = description === "approval" ? "exact test approval" : `test ${description}`;
+  const checkSettlement = async (description, continueJourney = true, nextWallet = true) => {
+    const labels = { approval: "exact test approval", "v4 token approval": "exact v4 token approval",
+      "Permit2 approval": "exact Permit2 approval", "LP fee collection": "test LP fee collection", "LP fee claim": "test LP fee claim" };
+    const label = labels[description] ?? `test ${description}`;
     const status = page.getByText(`On-chain ${label} confirmed`, { exact: true });
     const proceed = button("Continue from verified transaction");
     const check = button("Check original transaction");
@@ -597,7 +675,7 @@ try {
       }
       return false;
     });
-    if (continueJourney) await openTradeWallet();
+    if (continueJourney && nextWallet) await openTradeWallet();
   };
   const indexTx = (hash) => waitFor("same canonical PostgreSQL trade", async () => {
     const row = await getIndexed();
@@ -775,7 +853,7 @@ try {
     ["sell", [1n, 1n, (await nowOnChain()) + 240n], 0n], ["graduate", [(await nowOnChain()) + 240n], 0n]]) {
     await assert.rejects(testCall(op, values, payment), /eth_call failed/, `Completed graduation closes ${op}`);
   }
-  await checkSettlement("graduation", false);
+  await checkSettlement("graduation", true, false);
   await openToken();
   await page.getByRole("heading", { name: "Verified Uniswap v4 graduation", exact: true }).waitFor();
   await capture("11-verified-v4-position");
@@ -783,10 +861,189 @@ try {
 
   const dbEvidence = async (tableName) => (await pg.query(`SELECT token, block_number, block_hash, transaction_hash, log_index
     FROM rmt_curve_fixture_${tableName} ORDER BY block_number, log_index`)).rows;
+  currentGraduation = v4;
+  currentLedger = contractAddress(await call(v4.owner, feesAbi, "lpFeeLedger", [token]));
+  const postSnapshot = await rpc("evm_snapshot");
+  const postState = async () => (await getIndexed())?.lifecycle.postGraduation;
+  const startPost = await waitFor("verified v4 and fee ledger detail", postState);
+  assert.deepEqual(startPost.events, []);
+  eq(startPost.ledger, currentLedger);
+  eq(startPost.router, router);
+  eq(startPost.permit2, permit2);
+  eq(startPost.quoter, anchor.quoter.address);
+
+  const exactWallet = (account) => page.evaluate((address) => window.fixtureWallet.selectAccount(address), account);
+  const executeReviewed = async (label, operation, mode = "normal") => {
+    await button(`Review ${label}`).click();
+    const confirm = `Confirm ${label}`;
+    await button(confirm).waitFor();
+    await sendThroughPage(confirm, mode);
+    return lastReceipt(operation);
+  };
+  const preparedPost = (operation, amountWei, slippageBps, account = creator.address, prior) => lifePost({
+    action: "prepare", token, operation, account, amountWei: amountWei.toString(), slippageBps,
+    ...(prior && { prior }),
+  }).then((response) => response.json());
+  const eventFor = (hash, kind) => waitFor(`verified ${kind} in new-engine detail`, async () =>
+    (await postState())?.events.find((event) => event.kind === kind && event.transactionHash.toLowerCase() === hash.toLowerCase()));
+  const expectedFees = async (account, block = "latest") => {
+    const raw = await call(currentLedger, ledgerAbi, "claimable", [account], block);
+    return { nativeWei: uint(raw).toString(), tokenWei: uint(raw, 1).toString() };
+  };
+  const checkPosition = async () => {
+    const spot = (await getIndexed()).lifecycle.graduation;
+    eq(spot.poolId, v4.poolId);
+    eq(spot.owner, v4.owner);
+    assert.equal(spot.positionTokenId, v4.positionTokenId);
+    assert.equal(spot.liquidityWei, v4.liquidityWei);
+    assert.equal(uint(await call(v4.positionManager, positionAbi, "getPositionLiquidity", [BigInt(v4.positionTokenId)])).toString(), spot.liquidityWei);
+    eq(contractAddress(await call(v4.positionManager, positionAbi, "ownerOf", [BigInt(v4.positionTokenId)])), v4.owner);
+  };
+  const tokenPermitAllowance = () => call(token, erc20Abi, "allowance", [creator.address, permit2]).then(uint);
+  const routerPermitAllowance = () => call(permit2, permitAbi, "allowance", [creator.address, token, router]).then(uint);
+  const assertV4Receipt = async (proof, kind, balanceBefore) => {
+    const buy = kind === "v4-buy";
+    const events = parseEventLogs({ abi: swapAbi, eventName: "Swap",
+      logs: proof.logs.filter((log) => log.address.toLowerCase() === v4.poolManager.toLowerCase()) });
+    assert.equal(events.length, 1);
+    const { id, sender, amount0, amount1, fee } = events[0].args;
+    eq(id, v4.poolId);
+    eq(sender, router);
+    assert.equal(fee, 3000);
+    const nativeAmount = buy ? -amount0 : amount0;
+    const tokenAmount = buy ? amount1 : -amount1;
+    assert.ok(nativeAmount > 0n && tokenAmount > 0n);
+    assert.equal(await balance(), buy ? balanceBefore + tokenAmount : balanceBefore - tokenAmount);
+    const observed = await eventFor(proof.hash, kind);
+    eq(observed.blockHash, proof.blockHash);
+    eq(observed.account, creator.address);
+    assert.deepEqual([observed.nativeWei, observed.tokenWei], [nativeAmount, tokenAmount].map(String));
+    await checkPosition();
+    return { receipt: proof, indexed: observed };
+  };
+
+  await page.getByRole("heading", { name: "Verified Uniswap v4 trading", exact: true }).waitFor();
+  await openTradeWallet();
+  const v4Budget = 10_000_000_000_000_000n;
+  const v4Preview = await preparedPost("v4-buy", v4Budget, 100);
+  assert.equal(v4Preview.status, "prepared");
+  assert.equal((await preparedPost("v4-buy", v4Budget, 501)).status, "invalid");
+  const selectedPool = v4Preview.request.v4.poolKey;
+  const wrongPool = { ...v4Preview.request, v4: { ...v4Preview.request.v4,
+    poolKey: { ...selectedPool, fee: selectedPool.fee + 1 } } };
+  const wrongRouter = { ...v4Preview.request, to: alternate };
+  for (const mutated of [wrongPool, wrongRouter]) {
+    assert.equal((await preparedPost("v4-buy", v4Budget, 100, creator.address, mutated)).status, "invalid");
+  }
+  const [route, [encoded]] = decodeFunctionData({ abi: routerAbi, data: v4Preview.request.data }).args;
+  const [actions, [v4Payload, settlement, receiving]] = decodeAbiParameters(v4Routes, encoded);
+  const [tradeTerms] = decodeAbiParameters(routerSwap, v4Payload);
+  const expiry = BigInt(v4Preview.request.deadline);
+  const routerSim = (params, at) => call(router, routerAbi, "execute", [route, [params], at], "latest",
+    { from: creator.address, value: toHex(v4Budget) });
+  await assert.rejects(routerSim(encoded, 1n), /eth_call failed/, "Expired v4 deadline must revert");
+  const impossible = BigInt(v4Preview.quote.outputWei) + 1n;
+  const withNewTerms = (terms) => encodeAbiParameters(v4Routes, [actions, [encodeAbiParameters(routerSwap, [terms]), settlement, receiving]]);
+  await assert.rejects(routerSim(withNewTerms({ ...tradeTerms, poolKey: wrongPool.v4.poolKey }), expiry), /eth_call failed/, "Wrong full PoolKey must revert");
+  await assert.rejects(routerSim(withNewTerms({ ...tradeTerms, amountOutMinimum: impossible,
+    minHopPriceX36: impossible * 10n ** 36n / v4Budget }), expiry), /eth_call failed/, "v4 minimum output must protect the buyer");
+
+  await reviewed("Buy", "0.01");
+  await button("Review test v4 buy").click();
+  await button("Confirm test v4 buy").waitFor();
+  await capture("14-reviewed-v4-buy");
+  const v4BalanceBefore = await balance();
+  hideTradeTrace = true;
+  await sendThroughPage("Confirm test v4 buy", "lose");
+  const v4BuyReceipt = await lastReceipt("v4-buy");
+  const v4TraceReads = hiddenTradeTraces;
+  await mine();
+  await waitFor("v4 trace missing", async () => hiddenTradeTraces > v4TraceReads, worker);
+  assert.equal((await fetchAt(site, path)).status, 503);
+  await page.reload();
+  await button("Check original transaction").click();
+  assert.equal(signatures.length, 7, "Missing v4 response hash never triggers a duplicate request");
+  await capture("15-v4-recovery-pending");
+  hideTradeTrace = false;
+  await workerReady(worker);
+  const v4Buy = await assertV4Receipt(v4BuyReceipt, "v4-buy", v4BalanceBefore);
+  await checkSettlement("v4 buy");
+
+  const sellV4Amount = 100n * 10n ** 18n;
+  assert.equal((await preparedPost("v4-sell", sellV4Amount, 100)).reason, "insufficient-allowance");
+  await reviewed("Sell", "100");
+  const v4TokenApproval = await executeReviewed("exact v4 token approval", "v4-token-approve");
+  assert.equal(await tokenPermitAllowance(), sellV4Amount);
+  await mine();
+  await workerReady(worker);
+  await checkSettlement("v4 token approval");
+  const v4PermitApproval = await executeReviewed("exact Permit2 approval", "v4-permit2-approve");
+  assert.equal(await routerPermitAllowance(), sellV4Amount);
+  await mine();
+  await workerReady(worker);
+  await checkSettlement("Permit2 approval");
+  assert.equal((await preparedPost("v4-sell", sellV4Amount - 1n, 100)).reason, "insufficient-allowance",
+    "An allowance in excess of the chosen sale cannot be reused");
+  const v4SellBefore = await balance();
+  await button("Review test v4 sell").click();
+  await button("Confirm test v4 sell").waitFor();
+  await capture("16-reviewed-v4-sell");
+  await sendThroughPage("Confirm test v4 sell");
+  const v4SellReceipt = await lastReceipt("v4-sell");
+  assert.equal(await tokenPermitAllowance(), 0n);
+  assert.equal(await routerPermitAllowance(), 0n);
+  await mine();
+  await workerReady(worker);
+  const v4Sell = await assertV4Receipt(v4SellReceipt, "v4-sell", v4SellBefore);
+  await checkSettlement("v4 sell");
+  const earned = await waitFor("both real LP fee assets", async () => {
+    const post = await postState();
+    return post && BigInt(post.uncollected.nativeWei) > 0n && BigInt(post.uncollected.tokenWei) > 0n && post;
+  });
+  assert.deepEqual(earned.accrued, { nativeWei: "0", tokenWei: "0" });
+  const collectProof = await executeReviewed("test LP fee collection", "lp-collect");
+  await mine();
+  await workerReady(worker);
+  const collected = await eventFor(collectProof.hash, "lp-collect");
+  assert.deepEqual({ nativeWei: collected.nativeWei, tokenWei: collected.tokenWei }, earned.uncollected);
+  const collectedState = await postState();
+  assert.deepEqual(collectedState.accrued, earned.uncollected);
+  assert.deepEqual(collectedState.uncollected, { nativeWei: "0", tokenWei: "0" });
+  await checkPosition();
+  await checkSettlement("LP fee collection", true, false);
+  assert.equal((await preparedPost("lp-claim", 0n, 0, alternate)).reason, "no-fees");
+  await assert.rejects(call(currentLedger, ledgerAbi, "claim", [], "latest", { from: alternate }), /eth_call failed/);
+  const claims = [];
+  for (const account of [creator.address, treasury, operations, reserve]) {
+    const credit = await expectedFees(account);
+    assert.ok(BigInt(credit.nativeWei) > 0n && BigInt(credit.tokenWei) > 0n);
+    await exactWallet(account);
+    await button("Connect test trading wallet").click();
+    await page.getByText(new RegExp(`Connected test account ${account}`, "i")).waitFor();
+    const proof = await executeReviewed("test LP fee claim", "lp-claim");
+    await mine();
+    await workerReady(worker);
+    const claim = await eventFor(proof.hash, "lp-claim");
+    eq(claim.account, account);
+    eq(claim.blockHash, proof.blockHash);
+    assert.deepEqual({ nativeWei: claim.nativeWei, tokenWei: claim.tokenWei }, credit);
+    assert.deepEqual(await expectedFees(account), { nativeWei: "0", tokenWei: "0" });
+    await checkPosition();
+    await checkSettlement("LP fee claim", true, false);
+    claims.push({ receipt: proof, indexed: claim });
+  }
+  const settledPost = await postState();
+  assert.deepEqual(settledPost.claimed, settledPost.accrued);
+  await page.getByRole("heading", { name: "Canonical Uniswap v4 and LP fee activity", exact: true }).waitFor();
+  await capture("17-v4-swaps-and-fee-claims");
+  assert.equal(signatures.length, 15);
+
   const tradesBeforeReorg = await dbEvidence("trades");
   const graduationsBeforeReorg = await dbEvidence("graduations");
+  const postBeforeReorg = await dbEvidence("post_events");
   assert.equal(tradesBeforeReorg.length, 3);
   assert.equal(graduationsBeforeReorg.length, 1);
+  assert.equal(postBeforeReorg.length, 7);
   eq(graduationsBeforeReorg[0].transaction_hash, graduationReceipt.hash);
   await stop(web);
   await stop(worker);
@@ -794,10 +1051,39 @@ try {
   worker = startWorker("worker-after-graduation");
   await webReady(web);
   await workerReady(worker);
-  assert.deepEqual((await waitFor("persistent graduated token", getIndexed)).lifecycle, graduated);
+  const reopened = await waitFor("persistent graduated token", getIndexed);
+  assert.deepEqual(reopened.lifecycle.postGraduation, settledPost);
+  assert.deepEqual(await dbEvidence("post_events"), postBeforeReorg);
+  await checkPosition();
   await openToken();
   await page.getByRole("heading", { name: "Verified Uniswap v4 graduation", exact: true }).waitFor();
   await capture("12-verified-v4-after-restart");
+  await page.setViewportSize({ width: 844, height: 390 });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  await capture("18-fee-and-custody-landscape");
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await capture("19-fee-and-custody-desktop");
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  rpcOutage = true;
+  await waitFor("local RPC outage withholds post-graduation proof", async () => (await fetchAt(site, path)).status === 503, worker);
+  rpcOutage = false;
+  await workerReady(worker);
+  assert.deepEqual(await postState(), settledPost);
+
+  interruptLogScan = true;
+  assert.equal(await rpc("evm_revert", [postSnapshot]), true);
+  await rpc("evm_setNextBlockTimestamp", [Number((await nowOnChain()) + 73n)]);
+  await rpc("anvil_mine", ["0x6"]);
+  await waitFor("v4 trades and fee rollback", async () => (await dbEvidence("post_events")).length === 0, worker);
+  assert.equal((await fetchAt(site, path)).status, 503);
+  interruptLogScan = false;
+  await workerReady(worker);
+  await checkPosition();
+  const rolledBack = await postState();
+  assert.deepEqual(rolledBack, startPost, "Replacing v4 transactions must roll back fees while preserving graduation");
+  assert.equal(await rpc("eth_getTransactionReceipt", [v4SellReceipt.hash]), null);
+  assert.equal(await rpc("eth_getTransactionReceipt", [collectProof.hash]), null);
 
   interruptLogScan = true;
   assert.equal(await rpc("evm_revert", [preGraduationSnapshot]), true);
@@ -832,22 +1118,26 @@ try {
   assert.equal(reorg.status, 404, "Once rebuilt, a reorged registration cannot remain verified");
   const after = await fetchAt(site, "/api/launchpad/new-engine").then((response) => response.json());
   assert.deepEqual(after.launches, []);
-  assert.equal(signatures.length, 6, "Neither reorg may rebroadcast a transaction");
+  assert.equal(signatures.length, 15, "Reorg and outages must not rebroadcast transactions");
   assert.deepEqual(pageErrors, []);
   assert.deepEqual(offOrigin, []);
   Object.assign(evidence, { reviewedTransaction: tx, receipt: { hash: receipt.transactionHash, blockNumber: receipt.blockNumber,
     blockHash: receipt.blockHash, status: receipt.status }, indexed, postgresRow: row,
     initial: { backingWei: "0", soldWei: "0", inventoryWei: project.supplyWei, creatorInitialTokensWei: "0" },
     lifecycle: { buy, approval, sell, threshold, graduation: { receipt: graduationReceipt, verified: v4 },
-      postgres: { trades: tradesBeforeReorg, graduation: graduationsBeforeReorg },
+      v4: { buy: v4Buy, tokenApproval: v4TokenApproval, permit2Approval: v4PermitApproval, sell: v4Sell,
+        collect: { receipt: collectProof, indexed: collected }, claims, settled: settledPost },
+      postgres: { trades: tradesBeforeReorg, graduation: graduationsBeforeReorg, postEvents: postBeforeReorg },
       preGraduationAfterReorg: restored.lifecycle },
     checks: { rejected: true, accountInvalidatedReview: true, chainInvalidatedReview: true, lostHashRefreshRecovered: true, insufficientFeeRejected: true,
       missingReceiptReads, omittedCreationReads, indexingDelay: true, restart: true, reorgRollback: true, interruptedLogReads,
       mutatedRequestRejected: true, wrongBinding: true, duplicateWriterRejected: true, singleCreationBroadcast: true,
       totalWalletBroadcasts: signatures.length, hiddenTradeTraces, approvalConsumed: true, expiredAndSlippageRejected: true,
-      indexedTradeRestart: true, indexedGraduationRestart: true, graduationRollback: true } });
+      indexedTradeRestart: true, indexedGraduationRestart: true, graduationRollback: true,
+      postGraduationRestart: true, postGraduationReorg: true, rpcOutage: true, unauthorizedClaimRejected: true,
+      wrongRouterAndPoolKeyRejected: true, excessiveApprovalRejected: true, exactCustodyPreserved: true } });
   await writeFile(join(out, "creation-journey-evidence.json"), JSON.stringify(evidence, null, 2));
-  console.log(`Same-app creation → buy/sell → graduation → v4 discovery passed on 31337. ${join(out, "creation-journey-evidence.json")}`);
+  console.log(`Same-app creation → curve trades → v4 swaps → fee collection and claims passed on 31337. ${join(out, "creation-journey-evidence.json")}`);
 } catch (error) {
   if (page && !page.isClosed()) {
     await page.screenshot({ path: join(out, "failure.png"), fullPage: true }).catch(() => undefined);

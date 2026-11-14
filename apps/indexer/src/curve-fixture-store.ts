@@ -3,6 +3,7 @@ import { lockIndexWriter } from "./index-store.js";
 import { curveFixtureProfile } from "./curve-fixture-config.js";
 import { fixtureConfirmations, type BlockEvidence, type CurveFixtureBinding, type CurveLaunchRegistration } from "./curve-launch-evidence.js";
 import type { FixtureCursor, FixtureGraduation, FixtureGraduationBinding, FixtureLifecycleState, FixtureTrade } from "./curve-fixture-lifecycle.js";
+import type { FixturePostCursor, FixturePostEvent, FixturePostState } from "./curve-fixture-post-graduation.js";
 
 type Database = Pick<Client, "query">;
 type Scope = [number, string, string];
@@ -11,7 +12,7 @@ const scopePredicate = "chain_id = $1 AND factory = $2 AND deployment_block_hash
 const scopedTokenMatch = (row: string) => `${row}.chain_id = launch.chain_id AND ${row}.factory = launch.factory
     AND ${row}.deployment_block_hash = launch.deployment_block_hash AND ${row}.token = launch.token`;
 const approvedTables = new Set([markerTable, "rmt_curve_fixture_binding", "rmt_curve_fixture_checkpoints", "rmt_curve_fixture_launches",
-  "rmt_curve_fixture_trades", "rmt_curve_fixture_graduations", "rmt_curve_fixture_states"]);
+  "rmt_curve_fixture_trades", "rmt_curve_fixture_graduations", "rmt_curve_fixture_states", "rmt_curve_fixture_post_events"]);
 const lifecycleColumns = `
     chain_id integer NOT NULL CHECK (chain_id = 31337),
     factory text NOT NULL,
@@ -74,6 +75,10 @@ const schema = `
     ${lifecycleColumns},
     PRIMARY KEY (chain_id, factory, deployment_block_hash, token, block_number)
   );
+  CREATE TABLE IF NOT EXISTS rmt_curve_fixture_post_events (
+    ${lifecycleColumns}, ${eventColumns},
+    PRIMARY KEY (chain_id, factory, deployment_block_hash, token, block_number, log_index)
+  );
 `;
 
 export function curveScope(binding: CurveFixtureBinding): Scope {
@@ -118,7 +123,7 @@ export async function initializeCurveFixtureStore(writer: Database, databaseName
   await lockIndexWriter(writer, binding.chainId);
   await writer.query("SET search_path TO public, pg_catalog");
   await writer.query("SET statement_timeout = '5s'");
-  const snapshot = JSON.stringify({ ...binding, graduationEngine: graduation.graduationEngine.toLowerCase(),
+  const snapshot = JSON.stringify({ ...binding, schemaRevision: 38, graduationEngine: graduation.graduationEngine.toLowerCase(),
     graduationHash: graduation.graduationHash.toLowerCase(), guard: graduation.guard.toLowerCase(), guardHash: graduation.guardHash.toLowerCase(),
     factory: binding.factory.toLowerCase(), projectRegistry: binding.projectRegistry.toLowerCase(),
     creationFeeRecipient: binding.creationFeeRecipient.toLowerCase(), deploymentBlock: binding.deploymentBlock.toString(),
@@ -163,22 +168,29 @@ export type CurveFixtureRange = {
   launches: CurveLaunchRegistration[];
   trades: ScopedEvent<FixtureTrade>[];
   graduations: ScopedEvent<FixtureGraduation>[];
-  states: ScopedEvent<FixtureLifecycleState>[];
+  postEvents: ScopedEvent<FixturePostEvent>[];
+  states: ScopedEvent<FixtureLifecycleState & { postGraduation?: FixturePostState }>[];
 };
 
-export async function loadCurveFixtureCursors(db: Database, scope: Scope): Promise<FixtureCursor[]> {
-  const result = await db.query<{ payload: CurveLaunchRegistration; gross_fees: string; latest: FixtureTrade | null; graduation: FixtureGraduation | null }>(
+export async function loadCurveFixtureCursors(db: Database, scope: Scope): Promise<FixturePostCursor[]> {
+  const result = await db.query<{ payload: CurveLaunchRegistration; gross_fees: string; latest: FixtureTrade | null;
+    graduation: FixtureGraduation | null; post_events: FixturePostEvent[] }>(
     `SELECT launch.payload,
       coalesce((SELECT sum((trade.payload->>'feeWei')::numeric) FROM rmt_curve_fixture_trades AS trade
        WHERE ${scopedTokenMatch("trade")}), 0)::text AS gross_fees,
       (SELECT trade.payload FROM rmt_curve_fixture_trades AS trade WHERE ${scopedTokenMatch("trade")}
        ORDER BY trade.block_number DESC, trade.log_index DESC LIMIT 1) AS latest,
-      (SELECT g.payload FROM rmt_curve_fixture_graduations AS g WHERE ${scopedTokenMatch("g")}) AS graduation
+      (SELECT g.payload FROM rmt_curve_fixture_graduations AS g WHERE ${scopedTokenMatch("g")}) AS graduation,
+      coalesce((SELECT json_agg(recent.payload ORDER BY recent.block_number, recent.log_index)
+        FROM (SELECT event.payload, event.block_number, event.log_index FROM rmt_curve_fixture_post_events AS event
+          WHERE ${scopedTokenMatch("event")} ORDER BY event.block_number, event.log_index LIMIT 257) AS recent), '[]'::json) AS post_events
      FROM rmt_curve_fixture_launches AS launch WHERE ${scopePredicate} LIMIT 26`, scope);
   if (result.rows.length > 25) throw new Error("Fixture lifecycle launch bound exceeded");
-  return result.rows.map(({ payload, gross_fees, latest, graduation }) => ({
-    launch: payload, grossFees: BigInt(gross_fees), latestTrade: latest ?? undefined, graduation: graduation ?? undefined,
-  }));
+  return result.rows.map(({ payload, gross_fees, latest, graduation, post_events }) => {
+    if (post_events.length > 256 || (!graduation && post_events.length !== 0)) throw new Error("Fixture post-graduation event history invalid");
+    return { launch: payload, grossFees: BigInt(gross_fees), latestTrade: latest ?? undefined,
+      graduation: graduation ?? undefined, postEvents: post_events };
+  });
 }
 
 export async function commitCurveFixtureRange(db: Database, scope: Scope, range: CurveFixtureRange) {
@@ -198,6 +210,7 @@ export async function commitCurveFixtureRange(db: Database, scope: Scope, range:
     const eventGroups = [
       ["rmt_curve_fixture_trades", range.trades],
       ["rmt_curve_fixture_graduations", range.graduations],
+      ["rmt_curve_fixture_post_events", range.postEvents],
     ] as const;
     for (const [table, events] of eventGroups) {
       for (const { token, evidence } of events) {
@@ -222,25 +235,32 @@ export async function commitCurveFixtureRange(db: Database, scope: Scope, range:
 
 export async function readCurveFixtureRows(db: Database, scope: Scope, checkpoint: BlockEvidence, token?: string) {
   const result = await db.query<{ payload: CurveLaunchRegistration; token: string; block_number: string; block_hash: string;
-    transaction_hash: string; log_index: number; state: FixtureLifecycleState | null; trades: FixtureTrade[] }>(
+    transaction_hash: string; log_index: number; state: FixtureLifecycleState & { postGraduation?: FixturePostState } | null;
+    trades: FixtureTrade[]; post_events: FixturePostEvent[] }>(
     `SELECT launch.payload, token, block_number, block_hash, transaction_hash, log_index,
       (SELECT state.payload FROM rmt_curve_fixture_states AS state
        WHERE ${scopedTokenMatch("state")} AND state.block_number = $4 AND state.block_hash = $6) AS state,
       CASE WHEN $5::text IS NULL THEN '[]'::json ELSE coalesce((SELECT json_agg(recent.payload ORDER BY recent.block_number DESC, recent.log_index DESC)
         FROM (SELECT trade.payload, trade.block_number, trade.log_index FROM rmt_curve_fixture_trades AS trade
           WHERE ${scopedTokenMatch("trade")} AND trade.block_number <= $4
-          ORDER BY trade.block_number DESC, trade.log_index DESC LIMIT 25) AS recent), '[]'::json) END AS trades
+          ORDER BY trade.block_number DESC, trade.log_index DESC LIMIT 25) AS recent), '[]'::json) END AS trades,
+      CASE WHEN $5::text IS NULL THEN '[]'::json ELSE coalesce((SELECT json_agg(recent.payload ORDER BY recent.block_number DESC, recent.log_index DESC)
+        FROM (SELECT event.payload, event.block_number, event.log_index FROM rmt_curve_fixture_post_events AS event
+          WHERE ${scopedTokenMatch("event")} AND event.block_number <= $4
+          ORDER BY event.block_number DESC, event.log_index DESC LIMIT 20) AS recent), '[]'::json) END AS post_events
      FROM rmt_curve_fixture_launches AS launch
      WHERE ${scopePredicate} AND block_number <= $4 AND ($5::text IS NULL OR token = $5)
      ORDER BY block_number DESC, log_index DESC LIMIT 25`, [...scope, checkpoint.blockNumber, token ?? null, checkpoint.blockHash.toLowerCase()]);
-  return result.rows.map(({ payload, token, block_number, block_hash, transaction_hash, log_index, state, trades }) => {
-    if (payload.chainId !== scope[0] || payload.factory.toLowerCase() !== scope[1] || payload.token.toLowerCase() !== token
+  return result.rows.map(({ payload, token: rowToken, block_number, block_hash, transaction_hash, log_index, state, trades, post_events }) => {
+    if (payload.chainId !== scope[0] || payload.factory.toLowerCase() !== scope[1] || payload.token.toLowerCase() !== rowToken
         || payload.creation.blockNumber !== block_number || payload.creation.blockHash.toLowerCase() !== block_hash
         || payload.creation.transactionHash.toLowerCase() !== transaction_hash || payload.creation.logIndex !== log_index
-        || !state || state.observed.blockNumber !== checkpoint.blockNumber
+        || !state || (state.phase === "graduated") !== Boolean(state.postGraduation) || state.observed.blockNumber !== checkpoint.blockNumber
         || state.observed.blockHash.toLowerCase() !== checkpoint.blockHash.toLowerCase()) {
       throw new Error("Fixture row identity mismatch");
     }
-    return { ...payload, lifecycle: { ...state, trades } };
+    const { postGraduation, ...lifecycle } = state;
+    return { ...payload, lifecycle: { ...lifecycle, trades,
+      ...(token && postGraduation ? { postGraduation: { ...postGraduation, events: post_events } } : {}) } };
   });
 }

@@ -9,6 +9,7 @@ import { isLifecycleAmount, isLifecycleSlippage, isTestLifecycleRequest, lifecyc
   type TestLifecycleState, type TestLifecycleVerification } from "../../lib/test-lifecycle";
 import { archiveTestTrade, readTestTradeJournal, testTradeJournalKey, writeTestTradeJournal,
   type TestTradeJournal, type TestTradeJournalEntry } from "../../lib/test-trade-journal";
+import { testPermit2Lifetime } from "../../lib/test-v4";
 import { assertTestWalletBinding, connectTestWallet, subscribeTestWallet, testProviderAtWindow,
   sameWalletHex, testWalletErrorCode, type TestWallet } from "../../lib/test-wallet";
 import { formatTestAmount, formatTestPercent } from "./fixture-lifecycle-evidence";
@@ -16,7 +17,11 @@ import { formatTestAmount, formatTestPercent } from "./fixture-lifecycle-evidenc
 type Binding = { factory: string; token: string; blockNumber: string; blockHash: string };
 type Prepared = { request: TestLifecycleRequest; quote: TestLifecycleQuote; wallet: TestWallet; formRevision: number };
 
-const operationLabel = { buy: "test buy", sell: "test sell", approve: "exact test approval", graduate: "test graduation" };
+const operationLabel: Record<TestLifecycleOperation, string> = {
+  buy: "test buy", sell: "test sell", approve: "exact test approval", graduate: "test graduation",
+  "v4-buy": "test v4 buy", "v4-sell": "test v4 sell", "v4-token-approve": "exact v4 token approval",
+  "v4-permit2-approve": "exact Permit2 approval", "lp-collect": "test LP fee collection", "lp-claim": "test LP fee claim",
+};
 const reasons: Record<string, string> = {
   "insufficient-allowance": "Review and grant the exact allowance before selling.",
   "insufficient-balance": "The selected wallet does not have enough test assets.",
@@ -25,10 +30,31 @@ const reasons: Record<string, string> = {
   "graduation-not-ready": "The curve has not reached both graduation thresholds.",
   "amount-unavailable": "A quote is unavailable for this amount.",
   "wallet-pending": "A wallet transaction is pending. Recover it before making another request.",
+  "lp-fees-unavailable": "Current LP fee evidence is unavailable. Refresh the verified pool state.",
+  "no-fees": "No verified fees are available for this request.",
+  "unauthorized-claim": "This test wallet has no verified claimable credit.",
+  "v4-unavailable": "The canonical v4 pool or router could not be verified.",
 };
 
 const uint = (value: unknown): value is string =>
   typeof value === "string" && /^(?:0|[1-9][0-9]{0,77})$/.test(value) && BigInt(value) < 2n ** 256n;
+type FeeAmounts = { nativeWei: string; tokenWei: string };
+const swap = (operation: TestLifecycleOperation) =>
+  operation === "buy" || operation === "sell" || operation === "v4-buy" || operation === "v4-sell";
+const nativeInput = (operation: TestLifecycleOperation) => operation === "buy" || operation === "v4-buy";
+const feeAction = (operation: TestLifecycleOperation) => operation === "lp-collect" || operation === "lp-claim";
+const approval = (operation: TestLifecycleOperation) =>
+  operation === "approve" || operation === "v4-token-approve" || operation === "v4-permit2-approve";
+const validFees = (value: FeeAmounts | undefined): value is FeeAmounts =>
+  !!value && uint(value.nativeWei) && uint(value.tokenWei);
+const nonzeroFees = (amounts?: FeeAmounts) =>
+  validFees(amounts) && (amounts.nativeWei !== "0" || amounts.tokenWei !== "0");
+const address = /^0x[0-9a-f]{40}$/i;
+
+function feeAmounts(amounts: FeeAmounts | undefined, symbol: string) {
+  if (!validFees(amounts)) return "Unavailable";
+  return `${formatTestAmount(amounts.nativeWei)} test ETH · ${formatTestAmount(amounts.tokenWei)} ${symbol}`;
+}
 
 function parseTradeAmount(input: string) {
   if (!/^\d{1,12}(?:\.\d{1,18})?$/.test(input)) throw new Error("Enter a positive amount with up to 18 decimal places.");
@@ -73,6 +99,20 @@ function readState(data: Record<string, unknown>, binding: Binding, account?: st
       || (account && (!state.account || ![state.account.ethWei, state.account.tokenWei, state.account.allowanceWei].every(uint)))) {
     throw new Error("Current curve evidence is unavailable.");
   }
+  const post = state.postGraduation;
+  const graduated = state.lifecycle.graduation;
+  const indexedPost = state.lifecycle.postGraduation;
+  if (state.phase === "graduated" && (!post || !graduated || !indexedPost || !same(post.poolId, graduated.poolId)
+      || !same(post.poolKey.currency0, graduated.poolKey.currency0) || !same(post.poolKey.currency1, graduated.poolKey.currency1)
+      || !same(post.poolKey.hooks, graduated.poolKey.hooks) || post.poolKey.tickSpacing !== graduated.poolKey.tickSpacing
+      || post.poolKey.fee !== graduated.poolKey.fee || post.feeBps !== 30 || ![post.router, post.permit2, post.ledger].every((value) => address.test(value))
+      || !same(post.router, indexedPost.router) || !same(post.permit2, indexedPost.permit2) || !same(post.ledger, indexedPost.ledger)
+      || !post.fees || ![post.fees.uncollected, post.fees.collected, post.fees.claimed].every(validFees)
+      || (account && (!post.balances || !Number.isSafeInteger(post.balances.chainTimestamp) || post.balances.chainTimestamp < 0
+        || !Number.isSafeInteger(post.balances.permit2Expiration) || post.balances.permit2Expiration < 0
+        || !uint(post.balances.erc20AllowanceWei) || !uint(post.balances.permit2AllowanceWei) || !validFees(post.fees.claimable))))) {
+    throw new Error("Current Uniswap v4 evidence is unavailable.");
+  }
   return state;
 }
 
@@ -81,8 +121,12 @@ function readQuote(quote: unknown, request: TestLifecycleRequest): quote is Test
   const q = quote as TestLifecycleQuote;
   if (![q.inputWei, q.outputWei, q.minimumOutputWei, q.feeWei, q.refundWei, q.gasUnits, q.gasPriceWei].every(uint)
       || q.inputWei !== request.amountWei || q.minimumOutputWei !== request.minimumOutputWei) return false;
-  if (request.operation !== "buy" && request.operation !== "sell") {
-    return q.outputWei === "0" && q.feeWei === "0" && q.refundWei === "0";
+  if (!swap(request.operation)) {
+    return q.outputWei === "0" && q.feeWei === "0" && q.refundWei === "0" && (!feeAction(request.operation) || nonzeroFees(q.lpAmounts));
+  }
+  if (request.operation === "v4-buy" || request.operation === "v4-sell") {
+    if (q.feePips !== 3000 || q.feeAsset !== (nativeInput(request.operation) ? "native" : "token")
+        || q.refundWei !== "0" || q.feeWei === "0" || BigInt(q.feeWei) > BigInt(q.inputWei)) return false;
   }
   return BigInt(q.minimumOutputWei) === BigInt(q.outputWei) * BigInt(10_000 - request.slippageBps) / 10_000n
     && (request.operation === "buy" ? BigInt(q.feeWei) + BigInt(q.refundWei) <= BigInt(q.inputWei) : q.refundWei === "0");
@@ -104,15 +148,19 @@ async function prepare(binding: Binding, account: string, operation: TestLifecyc
 async function readResult(entry: TestTradeJournalEntry, manualHash?: string): Promise<TestLifecycleVerification> {
   const transactionHash = manualHash ?? entry.transactionHash;
   const data = await lifecyclePost({ action: "verify", request: entry.request, ...(transactionHash && { transactionHash }) });
-  const { status, transactionHash: hash, indexed, settlementPending, outputWei, feeWei, refundWei } = data;
+  const { status, transactionHash: hash, indexed, settlementPending, outputWei, feeWei, refundWei, lpAmounts } = data;
+  const verifiedLp = lpAmounts as FeeAmounts | undefined;
+  const operation = entry.request.operation;
   if ((status !== "pending" && status !== "confirmed" && status !== "reverted" && status !== "unavailable")
       || (hash !== undefined && (!isTransactionHash(hash) || (transactionHash && !same(hash, transactionHash))))
       || ((status === "confirmed" || status === "reverted") && (!isTransactionHash(hash) || typeof indexed !== "boolean"))
-      || ((status === "confirmed" && (entry.request.operation === "buy" || entry.request.operation === "sell"))
-        && ![outputWei, feeWei, refundWei].every(uint))) throw new Error("The original transaction could not be verified.");
+      || (status === "confirmed" && swap(operation) && (![outputWei, refundWei].every(uint)
+        || ((operation === "buy" || operation === "sell") && !uint(feeWei))))
+      || (status === "confirmed" && feeAction(operation) && !nonzeroFees(verifiedLp))) throw new Error("The original transaction could not be verified.");
   return { status, transactionHash: isTransactionHash(hash) ? hash : undefined, indexed: indexed === true,
     settlementPending: settlementPending === true, outputWei: uint(outputWei) ? outputWei : undefined,
-    feeWei: uint(feeWei) ? feeWei : undefined, refundWei: uint(refundWei) ? refundWei : undefined };
+    feeWei: uint(feeWei) ? feeWei : undefined, refundWei: uint(refundWei) ? refundWei : undefined,
+    lpAmounts: validFees(verifiedLp) ? verifiedLp : undefined };
 }
 
 function canContinue(result: TestLifecycleVerification | undefined) {
@@ -195,8 +243,13 @@ export function TestLifecycleWallet({ factory, token, blockNumber, blockHash, sy
     });
   }, [wallet]);
 
+  const indexedBlock = lifecycle?.observed.blockHash;
   useEffect(() => {
-    if (!hasRegistration) return;
+    if (!hasRegistration) {
+      setSnapshot(undefined);
+      setLoading(false);
+      return;
+    }
     const controller = new AbortController();
     setSnapshot(undefined);
     setLoading(true);
@@ -211,7 +264,7 @@ export function TestLifecycleWallet({ factory, token, blockNumber, blockHash, sy
       if (!controller.signal.aborted) setLoading(false);
     });
     return () => controller.abort();
-  }, [hasRegistration, factory, token, blockNumber, blockHash, revision, wallet]);
+  }, [hasRegistration, factory, token, blockNumber, blockHash, indexedBlock, revision, wallet]);
 
   const { tokenEntry, accountEntry } = priorJournalEntries(journal, token, wallet?.account);
   const priorEntries = [tokenEntry, accountEntry].filter((entry): entry is TestTradeJournalEntry => !!entry);
@@ -260,14 +313,17 @@ export function TestLifecycleWallet({ factory, token, blockNumber, blockHash, sy
     setReview(undefined);
     const generation = walletGeneration.current;
     const form = formRevision.current;
-    const amountWei = selected === "graduate" ? "0" : parseTradeAmount(amount);
-    const slippageBps = selected === "buy" || selected === "sell" ? parseSlippage(slippage) : 0;
+    const amountWei = selected === "graduate" || feeAction(selected) ? "0" : parseTradeAmount(amount);
+    const slippageBps = swap(selected) ? parseSlippage(slippage) : 0;
     if (!isLifecycleAmount(selected, amountWei)) throw new Error("Enter an amount within the isolated fixture limit.");
-    if (!isLifecycleSlippage(selected, slippageBps)) throw new Error("Enter slippage from 0% through 5%.");
+    if (!isLifecycleSlippage(selected, slippageBps)) throw new Error(selected === "v4-buy" || selected === "v4-sell"
+      ? "Enter slippage from 0.10% through 5%." : "Enter slippage from 0% through 5%.");
     const next = await prepare(binding, wallet.account, selected, amountWei, slippageBps);
     await assertTestWalletBinding(wallet, next.request);
     if (!same(next.request.curve, snapshot.curve) || generation !== walletGeneration.current
-      || form !== formRevision.current || !mounted.current) throw new Error("The review changed. Review the current terms.");
+      || form !== formRevision.current || !mounted.current
+      || (next.request.v4 && (!snapshot.postGraduation || !same(next.request.v4.poolId, snapshot.postGraduation.poolId)
+        || !same(next.request.v4.ledger, snapshot.postGraduation.ledger)))) throw new Error("The review changed. Review the current terms.");
     setReview({ ...next, wallet, formRevision: form });
   }
 
@@ -308,7 +364,9 @@ export function TestLifecycleWallet({ factory, token, blockNumber, blockHash, sy
       }
       const fresh = await prepare(binding, bound.account, request.operation, request.amountWei, request.slippageBps, request);
       if (!sameTestLifecycleRequest(request, fresh.request) || quote.outputWei !== fresh.quote.outputWei ||
-          quote.feeWei !== fresh.quote.feeWei || quote.refundWei !== fresh.quote.refundWei) {
+          quote.feeWei !== fresh.quote.feeWei || quote.refundWei !== fresh.quote.refundWei ||
+          quote.feePips !== fresh.quote.feePips || quote.feeAsset !== fresh.quote.feeAsset ||
+          quote.lpAmounts?.nativeWei !== fresh.quote.lpAmounts?.nativeWei || quote.lpAmounts?.tokenWei !== fresh.quote.lpAmounts?.tokenWei) {
         throw new Error("The quote changed. Review the new terms.");
       }
       const nonce = await bound.request.call(bound.provider, { method: "eth_getTransactionCount", params: [bound.account, "pending"] });
@@ -371,39 +429,60 @@ export function TestLifecycleWallet({ factory, token, blockNumber, blockHash, sy
   const unit = symbol ?? "tokens";
   const account = snapshot?.account;
   const phase = snapshot?.phase ?? lifecycle?.phase;
+  const v4 = phase === "graduated" && lifecycle?.graduation ? snapshot?.postGraduation : undefined;
   const amountWei = /^\d{1,12}(?:\.\d{1,18})?$/.test(amount) ? parseTradeAmount(amount) : undefined;
-  const approvalNeeded = side === "sell" && !!account && !!amountWei && BigInt(amountWei) > 0n && account.allowanceWei !== amountWei;
-  const chosenOperation = approvalNeeded ? "approve" : side;
-  const canSign = ready && !busy && !!snapshot && !!wallet && !!account && !pending && !previousInvalid;
+  let chosenOperation: TestLifecycleOperation = side;
+  if (v4) {
+    chosenOperation = side === "buy" ? "v4-buy" : "v4-sell";
+    const grants = v4.balances;
+    if (side === "sell" && grants && amountWei && amountWei !== "0") {
+      if (grants.erc20AllowanceWei !== amountWei) chosenOperation = "v4-token-approve";
+      else if (grants.permit2AllowanceWei !== amountWei || grants.permit2Expiration < grants.chainTimestamp + 180) chosenOperation = "v4-permit2-approve";
+    }
+  } else if (side === "sell" && account && amountWei && amountWei !== "0" && account.allowanceWei !== amountWei) {
+    chosenOperation = "approve";
+  }
+  const canSign = ready && !busy && hasRegistration && !!snapshot && !!wallet && !!account && !pending && !previousInvalid;
   const progress = snapshot && BigInt(snapshot.soldWei) * 10_000n / BigInt(snapshot.targetSoldWei);
   const soldShare = snapshot && BigInt(snapshot.soldWei) * 10_000n / BigInt(snapshot.totalSupplyWei);
-  const currentReview = review && review.wallet === wallet && review.formRevision === formRevision.current ? review : undefined;
+  const currentReview = review && review.wallet === wallet && review.formRevision === formRevision.current &&
+    hasRegistration && (phase === "graduated") === Boolean(review.request.v4) ? review : undefined;
   const status = result?.status;
-  const trade = thisPage?.request.operation === "buy" || thisPage?.request.operation === "sell";
+  const trade = thisPage && swap(thisPage.request.operation);
 
   if (!hasRegistration && !pending) return null;
 
   return <section className="lpPanel lpForm lpTradeColumn" aria-label="Isolated test trading">
-    <h2>Verified bonding curve</h2>
+    <h2>{phase === "graduated" ? "Verified Uniswap v4 trading" : "Verified bonding curve"}</h2>
     {snapshot ? <>
-      <p role="status">{phase === "graduated" ? "Curve trading is closed. Uniswap v4 custody has been verified."
+      <p role="status">{phase === "graduated" ? "The bonding curve is closed. This isolated market uses the verified v4 pool and permanently locked original position."
         : phase === "eligible" ? "Backing reached the threshold. Buying is closed. Selling before graduation can reopen buying."
         : "Curve is open on the isolated test network."}</p>
       <dl className="lpFacts">
-        <dt>Curve inventory</dt><dd>{formatTestAmount(snapshot.inventoryWei)} {unit}</dd>
-        <dt>Curve ETH backing</dt><dd>{formatTestAmount(snapshot.backingWei)} of {formatTestAmount(snapshot.targetBackingWei)} test ETH</dd>
-        <dt>Net tokens sold</dt><dd>{formatTestAmount(snapshot.soldWei)} {unit} · {formatTestPercent(soldShare ?? 0n)} of fixed supply</dd>
-        <dt>Graduation progress</dt><dd>{formatTestPercent(progress ?? 0n)} of token target</dd>
-        <dt>Curve fee</dt><dd>{formatTestPercent(snapshot.feeBps)} of gross test ETH</dd>
-        {phase === "curve" && <><dt>Current curve price</dt><dd>{snapshot.priceWei === null ? "Unavailable" : `${formatTestAmount(snapshot.priceWei)} test ETH per token before fees and price impact`}</dd></>}
+        {v4 ? <>
+          <dt>Pool fee</dt><dd>{formatTestPercent(v4.feeBps)} of the input asset</dd>
+          <dt>Verified pool ID</dt><dd><code className="lpAddress">{v4.poolId}</code></dd>
+          <dt>Universal Router</dt><dd><code className="lpAddress">{v4.router}</code></dd>
+        </> : <>
+          <dt>Curve inventory</dt><dd>{formatTestAmount(snapshot.inventoryWei)} {unit}</dd>
+          <dt>Curve ETH backing</dt><dd>{formatTestAmount(snapshot.backingWei)} of {formatTestAmount(snapshot.targetBackingWei)} test ETH</dd>
+          <dt>Net tokens sold</dt><dd>{formatTestAmount(snapshot.soldWei)} {unit} · {formatTestPercent(soldShare ?? 0n)} of fixed supply</dd>
+          <dt>Graduation progress</dt><dd>{formatTestPercent(progress ?? 0n)} of token target</dd>
+          <dt>Curve fee</dt><dd>{formatTestPercent(snapshot.feeBps)} of gross test ETH</dd>
+          {phase === "curve" && <><dt>Current curve price</dt><dd>{snapshot.priceWei === null ? "Unavailable" : `${formatTestAmount(snapshot.priceWei)} test ETH per token before fees and price impact`}</dd></>}
+        </>}
         <dt>Current state block</dt><dd>{BigInt(snapshot.blockNumber).toString()} · isolated chain only</dd>
         {account && <>
           <dt>Wallet test ETH</dt><dd>{formatTestAmount(account.ethWei)}</dd>
           <dt>Wallet {unit}</dt><dd>{formatTestAmount(account.tokenWei)}</dd>
-          <dt>Curve token allowance</dt><dd>{formatTestAmount(account.allowanceWei)} {unit}</dd>
+          {v4?.balances ? <>
+            <dt>Token allowance to Permit2</dt><dd>{formatTestAmount(v4.balances.erc20AllowanceWei)} {unit}</dd>
+            <dt>Permit2 allowance to router</dt><dd>{formatTestAmount(v4.balances.permit2AllowanceWei)} {unit}{v4.balances.permit2AllowanceWei !== "0" &&
+              v4.balances.permit2Expiration <= v4.balances.chainTimestamp ? " · Expired" : ""}</dd>
+          </> : <><dt>Curve token allowance</dt><dd>{formatTestAmount(account.allowanceWei)} {unit}</dd></>}
         </>}
       </dl>
-    </> : <p role="status">{loading ? "Verifying current curve state…" : "Current curve evidence is unavailable."}</p>}
+    </> : <p role="status">{loading ? "Verifying current market state…" : "Current market evidence is unavailable."}</p>}
     <button className="lpButton lpSecondary" type="button" disabled={busy}
       onClick={() => { invalidateReview(); setRevision((prior) => prior + 1); router.refresh(); }}>Refresh test state</button>
     {walletUnavailable && <p>Test signing requires a loopback browser with Web Locks support.</p>}
@@ -425,16 +504,19 @@ export function TestLifecycleWallet({ factory, token, blockNumber, blockHash, sy
         <dt>Original test account</dt><dd><code className="lpAddress">{thisPage.request.from}</code></dd>
         <dt>Original wallet nonce</dt><dd>{BigInt(thisPage.request.nonce).toString()}</dd>
         <dt>Original transaction hash</dt><dd><code className="lpAddress">{thisPage.transactionHash ?? "Awaiting evidence"}</code></dd>
-        {trade && result?.outputWei !== undefined && result.feeWei !== undefined && <>
-          <dt>Verified output</dt><dd>{formatTestAmount(result.outputWei)} {thisPage.request.operation === "buy" ? unit : "test ETH"}</dd>
-          <dt>Verified fee</dt><dd>{formatTestAmount(result.feeWei)} test ETH</dd>
+        {trade && result?.outputWei !== undefined && <>
+          <dt>Verified output</dt><dd>{formatTestAmount(result.outputWei)} {nativeInput(thisPage.request.operation) ? unit : "test ETH"}</dd>
+          {thisPage.request.v4 ? <><dt>Verified pool fee rate</dt><dd>0.30%</dd></>
+            : result.feeWei !== undefined && <><dt>Verified fee</dt><dd>{formatTestAmount(result.feeWei)} test ETH</dd></>}
           {result.refundWei !== undefined && result.refundWei !== "0" && <><dt>Verified refund</dt><dd>{formatTestAmount(result.refundWei)} test ETH</dd></>}
         </>}
+        {feeAction(thisPage.request.operation) && result?.lpAmounts &&
+          <><dt>Verified fee transfer</dt><dd>{feeAmounts(result.lpAmounts, unit)}</dd></>}
       </dl>
       <button type="button" className="lpButton lpSecondary" disabled={!ready || busy}
         onClick={() => void act(() => recover(), "Original transaction evidence unavailable.")}>Check original transaction</button>
       {(!thisPage.transactionHash || status === "unavailable") && <>
-        <label>Original trade or graduation hash<input value={restoreHash} onChange={(event) => setRestoreHash(event.target.value)}
+        <label>Original transaction hash<input value={restoreHash} onChange={(event) => setRestoreHash(event.target.value)}
           autoComplete="off" maxLength={66} spellCheck={false} /></label>
         <button type="button" className="lpButton lpSecondary" disabled={!ready || busy}
           onClick={() => void act(() => recover(true), "The hash could not be matched to the original request.")}>Recover with transaction hash</button>
@@ -442,15 +524,15 @@ export function TestLifecycleWallet({ factory, token, blockNumber, blockHash, sy
       {canContinue(result) && <button type="button" className="lpButton" disabled={!ready || busy}
         onClick={() => void act(() => recover(false, true), "The original receipt is unavailable.")}>Continue from verified transaction</button>}
     </> : pending ? <p role="status">An original request is pending on <a className="lpBack" href={`/launches/${pending.request.token}`}>its test token page</a>.</p>
-      : snapshot && phase !== "graduated" && <>
+      : snapshot && hasRegistration && (phase !== "graduated" || v4) && <>
         {!wallet ? <button type="button" className="lpButton lpSecondary" disabled={!ready || busy}
           onClick={() => void act(connect, "Connect an injected test wallet on chain 31337.")}>Connect test trading wallet</button>
           : <>
             <p>Connected test account <code className="lpAddress">{wallet.account}</code></p>
             <fieldset disabled={busy}>
-              <legend>Review a synthetic curve trade</legend>
+              <legend>{v4 ? "Review a synthetic Uniswap v4 swap" : "Review a synthetic curve trade"}</legend>
               <div className="lpDraftField">
-                <label htmlFor={`${formId}-side`}>Curve trade</label>
+                <label htmlFor={`${formId}-side`}>{v4 ? "Uniswap v4 trade" : "Curve trade"}</label>
                 <select id={`${formId}-side`} value={side} onChange={(event) => { invalidateReview(); setSide(event.target.value === "sell" ? "sell" : "buy"); }}>
                   <option value="buy">Buy</option><option value="sell">Sell</option>
                 </select>
@@ -460,13 +542,13 @@ export function TestLifecycleWallet({ factory, token, blockNumber, blockHash, sy
                   <label htmlFor={`${formId}-amount`}>Trade amount</label>
                   <input id={`${formId}-amount`} value={amount} onChange={(event) => { invalidateReview(); setAmount(event.target.value); }}
                     inputMode="decimal" maxLength={31} aria-describedby={`${formId}-amount-hint`} />
-                  <small id={`${formId}-amount-hint`}>{side === "buy" ? "Synthetic ETH budget" : unit}</small>
+                  <small id={`${formId}-amount-hint`}>{side === "buy" ? v4 ? "Exact synthetic ETH input" : "Synthetic ETH budget" : unit}</small>
                 </div>
                 <div className="lpDraftField">
                   <label htmlFor={`${formId}-slippage`}>Slippage (%)</label>
                   <input id={`${formId}-slippage`} value={slippage} onChange={(event) => { invalidateReview(); setSlippage(event.target.value); }}
                     inputMode="decimal" maxLength={4} aria-describedby={`${formId}-slippage-hint`} />
-                  <small id={`${formId}-slippage-hint`}>0% to 5%</small>
+                  <small id={`${formId}-slippage-hint`}>{v4 ? "0.10% to 5%" : "0% to 5%"}</small>
                 </div>
               </div>
             </fieldset>
@@ -474,39 +556,69 @@ export function TestLifecycleWallet({ factory, token, blockNumber, blockHash, sy
               onClick={() => void act(() => reviewAction(chosenOperation), "Cannot review this trade.")}>Review {operationLabel[chosenOperation]}</button>
             {phase === "eligible" && <button type="button" className="lpButton lpSecondary" disabled={!canSign}
               onClick={() => void act(() => reviewAction("graduate"), "Graduation proof is unavailable.")}>Review test graduation</button>}
+            {v4 && <div className="lpReview">
+              <h3>Original locked position fees</h3>
+              <p>Collection credits the fee ledger. Eligible wallets claim their own verified credit. Both operations preserve the locked position.</p>
+              <dl className="lpFacts">
+                <dt>Observed uncollected earnings</dt><dd>{feeAmounts(v4.fees.uncollected, unit)}</dd>
+                <dt>Collected lifetime</dt><dd>{feeAmounts(v4.fees.collected, unit)}</dd>
+                <dt>Claimed lifetime</dt><dd>{feeAmounts(v4.fees.claimed, unit)}</dd>
+                <dt>Claimable by this wallet</dt><dd>{feeAmounts(v4.fees.claimable, unit)}</dd>
+              </dl>
+              <button type="button" className="lpButton lpSecondary" disabled={!canSign || !nonzeroFees(v4.fees.uncollected)}
+                onClick={() => void act(() => reviewAction("lp-collect"), "Original position fee evidence is unavailable.")}>Review test LP fee collection</button>
+              <button type="button" className="lpButton lpSecondary" disabled={!canSign || !nonzeroFees(v4.fees.claimable)}
+                onClick={() => void act(() => reviewAction("lp-claim"), "Fee credit evidence is unavailable.")}>Review test LP fee claim</button>
+            </div>}
           </>}
       </>}
-    {currentReview && !pending && <TransactionReview review={currentReview} symbol={unit} busy={busy}
+    {currentReview && !pending && <TransactionReview review={currentReview} symbol={unit} busy={busy} market={v4}
       confirm={() => void act(confirm, "Wallet or reviewed terms changed. Review again.")} />}
     {message && <p role="alert">{message}</p>}
   </section>;
 }
 
-function TransactionReview({ review, symbol, busy, confirm }: { review: Prepared; symbol: string; busy: boolean; confirm(): void }) {
+function TransactionReview({ review, symbol, busy, confirm, market }: {
+  review: Prepared; symbol: string; busy: boolean; confirm(): void; market?: TestLifecycleState["postGraduation"];
+}) {
   const { request, quote } = review;
-  const trade = request.operation === "buy" || request.operation === "sell";
-  const buy = request.operation === "buy";
+  const trade = swap(request.operation);
+  const buy = nativeInput(request.operation);
   const input = buy ? "test ETH" : symbol;
   const output = buy ? symbol : "test ETH";
+  const isApproval = approval(request.operation);
+  const v4 = request.v4;
   return <div className="lpReview">
     <h3>Review {operationLabel[request.operation]}</h3>
     <dl className="lpFacts">
       <dt>Destination</dt><dd><code className="lpAddress">{request.to}</code></dd>
-      {request.operation === "approve" && <>
+      {v4 && <><dt>Canonical pool ID</dt><dd><code className="lpAddress">{v4.poolId}</code></dd></>}
+      {isApproval && <>
         <dt>Exact allowance</dt><dd>{formatTestAmount(request.amountWei)} {symbol}</dd>
-        <dt>Approved spender</dt><dd><code className="lpAddress">{request.curve}</code></dd>
+        <dt>Approved spender</dt><dd><code className="lpAddress">{request.operation === "approve" ? request.curve
+          : request.operation === "v4-token-approve" ? market?.permit2 : market?.router}</code></dd>
+        {request.operation === "v4-permit2-approve" && <><dt>Permit2 grant expires</dt>
+          <dd>{new Date(Number(BigInt(request.deadline) + testPermit2Lifetime) * 1000).toISOString().replace("T", " ").replace(".000Z", " UTC")}</dd></>}
       </>}
       {trade && <>
-        <dt>{buy ? "Exact ETH budget" : "Exact token input"}</dt><dd>{formatTestAmount(request.amountWei)} {input}</dd>
+        <dt>{buy ? v4 ? "Exact ETH input" : "Exact ETH budget" : "Exact token input"}</dt><dd>{formatTestAmount(request.amountWei)} {input}</dd>
         <dt>Quoted output</dt><dd>{formatTestAmount(quote.outputWei)} {output}</dd>
         <dt>Minimum output</dt><dd>{formatTestAmount(quote.minimumOutputWei)} {output}</dd>
         <dt>Reviewed slippage</dt><dd>{formatTestPercent(request.slippageBps)}</dd>
-        <dt>Curve fee</dt><dd>{formatTestAmount(quote.feeWei)} test ETH</dd>
-        {buy && <><dt>Expected refund</dt><dd>{formatTestAmount(quote.refundWei)} test ETH</dd></>}
+        <dt>{v4 ? "Estimated pool fee (0.30%)" : "Curve fee"}</dt><dd>{formatTestAmount(quote.feeWei)} {v4 ? input : "test ETH"}</dd>
+        {buy && !v4 && <><dt>Expected refund</dt><dd>{formatTestAmount(quote.refundWei)} test ETH</dd></>}
+      </>}
+      {feeAction(request.operation) && <>
+        <dt>{request.operation === "lp-collect" ? "Observed uncollected fees" : "Your verified credit"}</dt>
+        <dd>{feeAmounts(quote.lpAmounts, symbol)}</dd>
+        <dt>{request.operation === "lp-collect" ? "Credited ledger" : "Credited wallet"}</dt>
+        <dd><code className="lpAddress">{request.operation === "lp-collect" ? v4?.ledger : request.from}</code></dd>
       </>}
       <dt>Gas estimate</dt><dd>{quote.gasUnits} gas · approx. {formatTestAmount(BigInt(quote.gasUnits) * BigInt(quote.gasPriceWei))} test ETH</dd>
       <dt>Review deadline</dt><dd>{new Date(Number(request.deadline) * 1000).toISOString().replace("T", " ").replace(".000Z", " UTC")}</dd>
     </dl>
+    {request.operation === "lp-collect" && <p>This permissionless action pays gas and credits the original position’s fee ledger.</p>}
+    {isApproval && <p>Verify this grant before reviewing the sale. Each approval requires a separate wallet confirmation.</p>}
     <button type="button" className="lpButton" disabled={busy} onClick={confirm}>Confirm {operationLabel[request.operation]}</button>
   </div>;
 }

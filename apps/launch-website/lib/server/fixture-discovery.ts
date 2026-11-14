@@ -1,5 +1,6 @@
 import { isLaunchAddress } from "../launch-data";
 import { encodeAbiParameters, getAddress, keccak256, zeroAddress } from "viem";
+import { testV4Pins } from "../test-v4";
 import { fixtureAddress, fixtureChainId, fixtureCreationFee, fixtureHash, sameHex, type CurveFixture } from "./curve-fixture";
 
 type EvidenceBlock = { blockNumber: string; blockHash: string; timestamp: string };
@@ -15,10 +16,21 @@ type Graduation = ReceiptEvent & {
   nativeDustWei: string; tokenDustWei: string; poolManager: string; positionManager: string; sqrtPriceX96: string;
   spotSqrtPriceX96: string; spotTick: number; poolLiquidityWei: string;
 };
+type AssetPair = { nativeWei: string; tokenWei: string };
+type BeneficiaryRole = "creator" | "treasury" | "operations" | "reserve";
+export type FixturePostEvent = ReceiptEvent & AssetPair & {
+  kind: "v4-buy" | "v4-sell" | "lp-collect" | "lp-claim"; account: string; feePips?: number;
+};
+export type FixturePostGraduation = {
+  router: string; permit2: string; quoter: string; ledger: string;
+  uncollected: AssetPair; accrued: AssetPair; claimed: AssetPair; balances: AssetPair;
+  beneficiaries: Array<{ address: string; roles: BeneficiaryRole[]; claimable: AssetPair }>;
+  events: FixturePostEvent[];
+};
 export type FixtureLifecycle = {
   phase: "curve" | "eligible" | "graduated"; activeCurve: string; observed: EvidenceBlock;
   backingWei: string; soldWei: string; inventoryWei: string; graduationBackingWei: string; graduationSoldWei: string;
-  feeBps: number; trades: CurveTrade[]; graduation?: Graduation;
+  feeBps: number; trades: CurveTrade[]; graduation?: Graduation; postGraduation?: FixturePostGraduation;
 };
 export type FixtureLaunch = {
   chainId: 31337; kind: "curve-launch-v1"; status: "created"; engineVersion: 1;
@@ -54,6 +66,62 @@ function after(later: EvidenceBlock, earlier: EvidenceBlock) {
     && (later.blockNumber !== earlier.blockNumber || sameHex(later.blockHash, earlier.blockHash));
 }
 
+function confirmPostGraduation(data: FixtureLaunch, state: FixtureLifecycle, graduation: Graduation, detailed: boolean) {
+  const proof = state.postGraduation;
+  if (!detailed) return proof === undefined;
+  const validPair = (pair: AssetPair | undefined) => !!pair && wei(pair.nativeWei) && wei(pair.tokenWei);
+  if (!proof || !fixtureAddress(proof.ledger)
+      || !sameHex(proof.router, testV4Pins.router.address)
+      || !sameHex(proof.permit2, testV4Pins.permit2.address)
+      || !sameHex(proof.quoter, testV4Pins.quoter.address)
+      || ![proof.uncollected, proof.accrued, proof.claimed, proof.balances].every(validPair)
+      || !Array.isArray(proof.beneficiaries) || proof.beneficiaries.length < 1 || proof.beneficiaries.length > 4
+      || !Array.isArray(proof.events) || proof.events.length > 20) return false;
+  const roles = new Map<BeneficiaryRole, string>();
+  const addresses = new Set<string>();
+  for (const entry of proof.beneficiaries) {
+    if (!fixtureAddress(entry.address) || !validPair(entry.claimable) || !Array.isArray(entry.roles)
+        || entry.roles.length < 1 || entry.roles.length > 4 || addresses.has(entry.address.toLowerCase())) return false;
+    addresses.add(entry.address.toLowerCase());
+    for (const role of entry.roles) {
+      if (roles.has(role) || !["creator", "treasury", "operations", "reserve"].includes(role)) return false;
+      roles.set(role, entry.address);
+    }
+  }
+  if (!sameHex(roles.get("creator"), data.creator) || !roles.has("operations") || !roles.has("reserve")
+      || (data.treasury ? !sameHex(roles.get("treasury"), data.treasury) : roles.has("treasury"))) return false;
+  for (const asset of ["nativeWei", "tokenWei"] as const) {
+    const available = BigInt(proof.accrued[asset]) - BigInt(proof.claimed[asset]);
+    if (available < 0n || BigInt(proof.balances[asset]) < available
+        || proof.beneficiaries.reduce((sum, item) => sum + BigInt(item.claimable[asset]), 0n) !== available) return false;
+  }
+  const seen = new Set<string>();
+  for (const event of proof.events) {
+    if (!block(event) || !fixtureHash(event.transactionHash) || !index(event.logIndex) || !after(event, graduation)
+        || !after(state.observed, event) || !fixtureAddress(event.account) || !validPair(event)
+        || (event.blockNumber === graduation.blockNumber && event.logIndex <= graduation.logIndex)) return false;
+    const identity = event.transactionHash.toLowerCase() + ":" + event.logIndex;
+    if (seen.has(identity)) return false;
+    seen.add(identity);
+    switch (event.kind) {
+      case "v4-buy":
+      case "v4-sell":
+        if (event.feePips !== graduation.poolKey.fee || event.nativeWei === "0" || event.tokenWei === "0") return false;
+        break;
+      case "lp-claim":
+        if (!addresses.has(event.account.toLowerCase())) return false;
+        // Both ledger event kinds describe a nonzero transfer of at least one asset.
+        if (event.nativeWei === "0" && event.tokenWei === "0") return false;
+        break;
+      case "lp-collect":
+        if (event.nativeWei === "0" && event.tokenWei === "0") return false;
+        break;
+      default: return false;
+    }
+  }
+  return true;
+}
+
 function confirmLifecycle(data: FixtureLaunch, current: Checkpoint, detailed: boolean) {
   const state = data.lifecycle;
   if (!state || !sameHex(state.activeCurve, data.initialCurve) || !block(state.observed) || !after(state.observed, data.checkpoint)
@@ -78,7 +146,7 @@ function confirmLifecycle(data: FixtureLaunch, current: Checkpoint, detailed: bo
     seen.add(identity);
   }
   const graduation = state.graduation;
-  if (state.phase === "curve" || state.phase === "eligible") return !graduation && (state.phase === "eligible") === eligible
+  if (state.phase === "curve" || state.phase === "eligible") return !graduation && !state.postGraduation && (state.phase === "eligible") === eligible
     && BigInt(state.inventoryWei) + BigInt(state.soldWei) === BigInt(data.totalSupplyWei);
   if (state.phase !== "graduated" || !graduation || !validEvent(graduation) || state.backingWei !== "0"
       || state.soldWei !== state.graduationSoldWei || !fixtureHash(graduation.poolId)
@@ -98,7 +166,7 @@ function confirmLifecycle(data: FixtureLaunch, current: Checkpoint, detailed: bo
   const { currency1, fee, tickSpacing, hooks } = graduation.poolKey;
   const poolId = keccak256(encodeAbiParameters([{ type: "address" }, { type: "address" }, { type: "uint24" }, { type: "int24" }, { type: "address" }],
     [zeroAddress, getAddress(currency1.toLowerCase()), fee, tickSpacing, getAddress(hooks.toLowerCase())]));
-  return sameHex(graduation.poolId, poolId);
+  return sameHex(graduation.poolId, poolId) && confirmPostGraduation(data, state, graduation, detailed);
 }
 
 function confirmLaunch(fixture: CurveFixture, data: FixtureLaunch, current: Checkpoint, token?: string) {
