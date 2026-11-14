@@ -12,6 +12,21 @@ function failure(status: number, error: string) {
   return Response.json({ status: "error", error }, { status, headers });
 }
 
+function sameOrigin(request: Request, url: URL) {
+  // Next's production-style local server can use localhost in Request.url.
+  // Host is the browser's authority. Ignore forwarded host/proto headers.
+  const host = (request.headers.get("host") ?? url.host).toLowerCase();
+  if (!/^[a-z0-9.-]+(?::[0-9]{1,5})?$/.test(host)) return false;
+  const loopback = /^(?:localhost|127\.0\.0\.1)(?::[0-9]{1,5})?$/.test(host)
+    && ["localhost", "127.0.0.1"].includes(url.hostname) && url.protocol === "http:";
+  try {
+    const expected = new URL(`${loopback ? "http" : "https"}://${host}`).origin;
+    return request.headers.get("origin") === expected;
+  } catch {
+    return false;
+  }
+}
+
 async function readDraftBody(body: ReadableStream<Uint8Array>) {
   const reader = body.getReader();
   const buffer = new Uint8Array(maxDraftRequestBytes);
@@ -41,7 +56,7 @@ async function readDraftBody(body: ReadableStream<Uint8Array>) {
 export async function reviewLaunchDraft(request: Request) {
   if (request.method !== "POST") return failure(405, "Use POST to validate a draft.");
   const url = new URL(request.url);
-  if (request.headers.get("origin") !== url.origin) return failure(403, "Review from this website to validate a draft.");
+  if (!sameOrigin(request, url)) return failure(403, "Review from this website to validate a draft.");
   if (url.search) return failure(400, "Draft review does not accept query parameters.");
   if (request.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() !== "application/json") {
     return failure(415, "Send the draft as JSON.");

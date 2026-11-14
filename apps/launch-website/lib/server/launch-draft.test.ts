@@ -82,3 +82,16 @@ test("bounds declared and streamed draft payloads and rejects malformed UTF-8", 
   });
   assert.equal((await reviewLaunchDraft(malformed)).status, 400);
 });
+
+test("binds the real browser authority through Next's loopback URL and ignores forwarded authority", async () => {
+  const review = (url: string, host: string, origin: string) => reviewLaunchDraft(new Request(url + creationReviewPath, {
+    method: "POST",
+    headers: { host, origin, "content-type": "application/json", "x-forwarded-host": "spoof.example" },
+    body: JSON.stringify(reviewFields),
+  }));
+  assert.equal((await review("http://localhost:3263", "127.0.0.1:3263", "http://127.0.0.1:3263")).status, 200);
+  assert.equal((await review("http://localhost:3263", "127.0.0.1:3263", "http://localhost:3263")).status, 403);
+  assert.equal((await review("http://localhost:443", "rmt.example", "https://rmt.example")).status, 200);
+  assert.equal((await review("http://localhost:443", "rmt.example", "http://rmt.example")).status, 403);
+  assert.equal((await review("https://rmt.example", "rmt.example", "https://spoof.example")).status, 403);
+});

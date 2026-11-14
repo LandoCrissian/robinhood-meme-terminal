@@ -323,7 +323,7 @@ try {
       await main.getByLabel("Project or metadata URL").fill(draftFields.projectURI);
       await main.getByLabel("Artwork URL").fill("https://example.test/artwork.png");
       await draftReview.click();
-      await main.getByRole("alert").getByText(/temporarily unavailable/i).waitFor();
+      await main.getByRole("alert").filter({ hasText: /temporarily unavailable/i }).waitFor();
       assert.equal(await tokenName.inputValue(), draftFields.name);
       await draftReview.click();
       const reviewed = main.getByRole("heading", { name: "Review token draft", exact: true });
