@@ -1,0 +1,135 @@
+No files changed, compilation skipped
+
+Ran 1 test for test/RMTLaunchAdjacentMigrationProof.t.sol:RMTLaunchAdjacentMigrationProofTest
+[PASS] testGovernedV1ToV2ToV3PreservesAssetsCreditsAndTradeExits() (gas: 5685580)
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 21.89ms (4.88ms CPU time)
+
+Ran 5 tests for test/RMTLaunchCurveDirectoryV1.t.sol:RMTLaunchCurveDirectoryV1Test
+[PASS] testChangedRuntimeCannotExecuteAndApprovedReplacementCannotRewriteV1() (gas: 322941)
+[PASS] testExpiredPublicationAndDigestBoundCancellation() (gas: 161350)
+[PASS] testReplayAcrossDirectoriesAndChainsRejected() (gas: 1531932)
+[PASS] testSuspensionLeavesExistingClaimsAndVersionPinsUntouched() (gas: 223402)
+[PASS] testTwoSignersAndTimelockRequiredEvenWhenRelayerChanges() (gas: 165073)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 22.30ms (26.20ms CPU time)
+
+Ran 4 tests for test/RMTLaunchProjectRegistryV1.t.sol:RMTLaunchProjectRegistryV1Test
+[PASS] testCancelledSignaturesCannotScheduleAReplacementProposal() (gas: 272967)
+[PASS] testMigrationFailureOrGraduationDoesNotAdvanceHistory() (gas: 225500)
+[PASS] testRequiresExactCreatorProposalTwoSignersAndPublicDelay() (gas: 389294)
+[PASS] testSuspensionDuringFactorySettlementRevertsAssetTransitionAndPreservesNotice() (gas: 649647)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 22.30ms (6.75ms CPU time)
+
+Ran 11 tests for test/RMTLaunchMigrationReadiness.t.sol:RMTLaunchMigrationReadinessTest
+[PASS] testCreatorConsentDoesNotAllowExpirySuspensionOrReplay() (gas: 477474)
+[PASS] testDestinationAcceptanceCallbackCannotReenterPredecessorFactoryOrRegistry() (gas: 1023860)
+[PASS] testDestinationCodePinRejectsRuntimeSubstitution() (gas: 1015516)
+[PASS] testFutureTemplateAdmissionRejectsUnreviewedVersionHashOrTemplateReplacement() (gas: 3433737)
+[PASS] testGovernedV2ToV3MigrationRollsBackOnFailedAcceptanceThenRetries() (gas: 6494869)
+[PASS] testIncorrectAcceptedAccountingRollsBackLedgerAndAssetHandoff() (gas: 707269)
+[PASS] testLedgerCallbackCannotReenterPredecessorFactoryOrRegistry() (gas: 998118)
+[PASS] testLedgerCallbackCannotTradeAfterWriterHandoffAndCanRetry() (gas: 1122928)
+[PASS] testTemplateCannotPublishCandidateAfterSuspendingDirectory() (gas: 8256556)
+[PASS] testTokenCallbackCannotReenterEitherCurveFactoryOrRegistry() (gas: 998899)
+[PASS] testV2ToV3NeedsSeparateTemplateAdmissionDespiteFactoryPublication() (gas: 2925650)
+Suite result: ok. 11 passed; 0 failed; 0 skipped; finished in 24.19ms (29.01ms CPU time)
+
+Ran 13 tests for test/RMTV4CurveGraduationV1.t.sol:RMTV4CurveGraduationV1Test
+[PASS] testCanonicalTokenHasNoCallbackAndFundingStillRejectsInjectedTokenFaults() (gas: 11133492)
+[PASS] testFundingRollbackKeepsCurveBackingAndRetriableGraduation() (gas: 6476773)
+[PASS] testFundingUsesCurveSpotAndRealCapitalAcrossPresets() (gas: 43520)
+[PASS] testGuardBlocksFrontRunAndOnlyRegisteredCurveCanFund() (gas: 3263810)
+[PASS] testHostilePermit2CannotReenterAndRetainedAllowanceRollsBack() (gas: 7733260)
+[PASS] testOriginalPositionFeesAccrueClaimAndKeepPrincipalLocked() (gas: 7077479)
+[PASS] testOutsideLpKeepsItsFeesAndDoesNotShareOriginalCustody() (gas: 6770778)
+[PASS] testPositionEvidenceAndResidualAllowancesMustMatch() (gas: 5033759)
+[PASS] testPositionManagerCorruptFundingRollsBackEveryBalanceAndCanRetry() (gas: 13859870)
+[PASS] testPositionManagerFundingCallbackCannotReenterOrReadTransientFees() (gas: 5135628)
+[PASS] testPositionManagerHarvestRejectsReentryFeeDiversionAndPrincipalChange() (gas: 7576885)
+[PASS] testRejectingNativeBeneficiaryKeepsEthCreditAndCanClaimToken() (gas: 4669275)
+[PASS] testUnbalancedOrUnfundedMigrationRejected() (gas: 18537)
+Suite result: ok. 13 passed; 0 failed; 0 skipped; finished in 417.42ms (50.21ms CPU time)
+
+Ran 20 tests for test/RMTLaunchBondingCurveV1.t.sol:RMTLaunchBondingCurveV1Test
+[PASS] testAtomicGraduationRefundOnlySeesFinalStateAndCanStillRevertEverything() (gas: 1652813)
+[PASS] testAuthorizedAssetMigrationPreservesTokenInventoryBackingAndClaims() (gas: 2795911)
+[PASS] testBuySellRoundTripReturnsBackingAndSeparatesAllFeeClaims() (gas: 494652)
+[PASS] testCannotWithdrawBackingOrAccrueFeesAsCreator() (gas: 376737)
+[PASS] testDonationsDoNotChangeQuotesBackingOrGraduationAmounts() (gas: 582854)
+[PASS] testExpiredOperationsAndPrematureGraduationFail() (gas: 58314)
+[PASS] testExplicitThresholdBuyAndGraduationSettleAtomically() (gas: 781236)
+[PASS] testFeeSplitIsIndependentOfTradeFragmentationForSameFeesCollected() (gas: 1597588)
+[PASS] testFrontRunningAffectsQuoteAndFailedTradeLeavesAccountingUnchanged() (gas: 351006)
+[PASS] testFuzzQuotesRoundingAndSolvencyAcrossAllSupplySizes(uint8,uint96,uint96) (runs: 2048, μ: 3502431, ~: 3493903)
+Logs:
+  Bound result 0
+  Bound result 65747858543137
+  Bound result 21648414884
+
+[PASS] testGasOnlyCreatesFixedSupplyAndIsolatesSameIntentAcrossCreators() (gas: 3260073)
+[PASS] testGraduatedCurveRejectsEvenAuthorizedAssetMigration() (gas: 2746547)
+[PASS] testGraduationRejectsFakeApprovalGrantOrRevocation() (gas: 658806)
+[PASS] testGraduationRejectsForcedRefundEvenWhenNativeBalanceMatches() (gas: 662348)
+[PASS] testInvalidCreationPolicyAndUnsolicitedNativeValueCannotPublishAToken() (gas: 71248)
+[PASS] testMigrationRejectsInsufficientBackingAndPreservesUntrackedSurpluses() (gas: 2725642)
+[PASS] testOverfillRefundAndPermissionlessGraduationWithAtomicRetries() (gas: 928953)
+[PASS] testRefundFailureAndReentrancyPreserveTradeAndFeeState() (gas: 4242645)
+[PASS] testUnexpectedTransferSettlementRevertsBothCurvesAndPreservesLedger() (gas: 2824903)
+[PASS] testUnregisteredDestinationAndInterruptedMigrationLeaveOldCurveTradable() (gas: 2626761)
+Suite result: ok. 20 passed; 0 failed; 0 skipped; finished in 429.32ms (425.58ms CPU time)
+
+Ran 8 tests for test/RMTLaunchHolderMigrationV1.t.sol:RMTLaunchHolderMigrationV1Test
+[PASS] testDirectDonationDoesNotCreateRedemptionOrClaim() (gas: 142058)
+[PASS] testFalseOrMalformedReturnRollsBackOriginalTransferAndReplacementCredit() (gas: 255383)
+[PASS] testHolderCannotRedeemForAnotherOrUseOpenEndedApproval() (gas: 75947)
+[PASS] testMaliciousCallbackCannotReenterOrReleaseAdditionalSupply() (gas: 143491)
+[PASS] testNoHolderChangesBeforeOptInAndAllUnitsRedeemOneForOne() (gas: 145791)
+[PASS] testRegisteredLaunchEscrowPreservesCanonicalProjectAndCurveBacking() (gas: 17143505)
+[PASS] testRequiresVerifiedProjectRuntimeCreatorAndDecimals() (gas: 349498)
+[PASS] testUnderpaymentRevertsEveryBalanceAndExactAllowanceThenCanRetry() (gas: 224442)
+Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 489.79ms (16.32ms CPU time)
+
+Ran 6 tests for test/RMTLaunchCurveCreationFeeV1.t.sol:RMTLaunchCurveCreationFeeV1Test
+[PASS] testExactFeeCreatesZeroBackingAndClaimsOnlyFixedTreasuryCredit() (gas: 3339785)
+[PASS] testFuzzOverpaymentRefundsExactSurplus(uint96) (runs: 2048, μ: 3259142, ~: 3259083)
+Logs:
+  Bound result 3395723176
+
+[PASS] testRefundRejectionRollsBackAndReentrantRefundCanRetrySameIntent() (gas: 6960513)
+[PASS] testRejectingTreasuryCannotBlockCreationAndKeepsItsCreditForRetry() (gas: 3293374)
+[PASS] testRejectsInvalidOperatingTreasuryBindings() (gas: 260914)
+[PASS] testUnderpaymentDuplicateAndRegistryFailureKeepFeesAndIntentAtomic() (gas: 6506866)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 489.85ms (487.47ms CPU time)
+
+Ran 1 test for test/RMTLaunchCurveAccountingInvariant.t.sol:RMTLaunchCurveAccountingInvariantTest
+[PASS] invariantConservesBackingInventoryAndIndependentFeeBucketsAcrossGovernedVersions() (runs: 64, calls: 2048, reverts: 0)
+
+╭------------------------+----------+-------+---------+----------╮
+| Contract               | Selector | Calls | Reverts | Discards |
++================================================================+
+| CurveAccountingHandler | buy      | 509   | 0       | 0        |
+|------------------------+----------+-------+---------+----------|
+| CurveAccountingHandler | claim    | 504   | 0       | 0        |
+|------------------------+----------+-------+---------+----------|
+| CurveAccountingHandler | migrate  | 529   | 0       | 0        |
+|------------------------+----------+-------+---------+----------|
+| CurveAccountingHandler | sell     | 506   | 0       | 0        |
+╰------------------------+----------+-------+---------+----------╯
+
+Logs:
+  Bound result 5
+  Bound result 369303
+  Bound result 6028420661712842
+  Bound result 43857326
+  Bound result 14
+  Bound result 4960060304798293645986
+  Bound result 7712
+  Bound result 2442898
+  Bound result 30215553193820
+  Bound result 9990
+  Bound result 8523
+  Bound result 8032762386194613093
+  Bound result 4969
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 1.93s (1.91s CPU time)
+
+Ran 9 test suites in 1.94s (3.85s CPU time): 69 tests passed, 0 failed, 0 skipped (69 total tests)

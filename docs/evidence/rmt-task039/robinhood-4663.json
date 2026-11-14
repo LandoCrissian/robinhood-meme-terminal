@@ -1,0 +1,578 @@
+{
+  "observedAt": "2026-11-14T20:54:18.383Z",
+  "forkBlock": 113412054,
+  "forkHash": "0x17252a232b68a4e9fc494caf0660cff722ac2da966ee5c62b40e20dbcfd32ea2",
+  "evidence": {
+    "official": {
+      "chainId": {
+        "status": "observed",
+        "value": "0x1237"
+      },
+      "blocks": {
+        "safe": {
+          "status": "observed",
+          "value": {
+            "number": 114436129,
+            "hash": "0x8e6caa5dc80912658c3f445f2f219184854c81bb05e2059717737b3976db48f1",
+            "parentHash": "0xeb5c4662ea1ebf103357018522755cdfea4be2f119fa033a45fdf1c9845ea506",
+            "stateRoot": "0x72a584c05de3fc1738f718fd94e0f61143ad7c9acde33df30e5ce0be4570e484",
+            "timestamp": "2026-11-14T20:43:58.000Z",
+            "gasLimit": "1125899906842624"
+          }
+        },
+        "finalized": {
+          "status": "observed",
+          "value": {
+            "number": 114433058,
+            "hash": "0xd956a101fc9862ea86f90eea102286cb817c0432f09f7eafdcc433de46740538",
+            "parentHash": "0x575efa2eae1b79b2f8da31b3bde513edac7d0122258b04f713cc5686a791b7bc",
+            "stateRoot": "0x93188e55ee7807b0ba0d4e1e3c673d0e0f8424e9bc0925f3bf04517853382658",
+            "timestamp": "2026-11-14T20:38:36.000Z",
+            "gasLimit": "1125899906842624"
+          }
+        },
+        "0x6d23e28": {
+          "status": "observed",
+          "value": {
+            "number": 114441768,
+            "hash": "0xbab066e7e80f5771c3798a9453499dfd137a0201b557988c30ecae0314c74e1c",
+            "parentHash": "0xc62a4fc1f1457b5b464290d69326651a4c40f81d85641419a7774889d19f5784",
+            "stateRoot": "0x8f8fd7e0b0e6e1d39b27cafe6af6d0363c25414e062001d232f83b3bd077162f",
+            "timestamp": "2026-11-14T20:54:16.000Z",
+            "gasLimit": "1125899906842624"
+          }
+        },
+        "0x6c287d6": {
+          "status": "observed",
+          "value": {
+            "number": 113412054,
+            "hash": "0x17252a232b68a4e9fc494caf0660cff722ac2da966ee5c62b40e20dbcfd32ea2",
+            "parentHash": "0xe4583cfe34cf6a8fb385dfe6b2abb206062bac6ef878c9051bbe649d32c7e71f",
+            "stateRoot": "0x40bd233c2ec47cdd834b5df1bd12252d85987ca6256d87ed1340c0e6f47dc494",
+            "timestamp": "2026-11-13T14:08:02.000Z",
+            "gasLimit": "1125899906842624"
+          }
+        }
+      },
+      "dependencies": {
+        "poolManager": {
+          "status": "observed",
+          "value": {
+            "address": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+            "bytes": 24009,
+            "hash": "0xbd3881180b547f5fe817545743cfb4343e96b1bc6640dcd70c106b0066e95626",
+            "matches": true
+          }
+        },
+        "positionManager": {
+          "status": "observed",
+          "value": {
+            "address": "0x58daec3116aae6d93017baaea7749052e8a04fa7",
+            "bytes": 23877,
+            "hash": "0xc873e135dc9aaec88489cfbad146b4cb49d6a32e0d80326377784b7ba17670b2",
+            "matches": true
+          }
+        },
+        "permit2": {
+          "status": "observed",
+          "value": {
+            "address": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+            "bytes": 9152,
+            "hash": "0x5208783f52488f7d3493e5e38311ab707c1d75457fe472a19b0b4d57d66a7fca",
+            "matches": true
+          }
+        },
+        "quoter": {
+          "status": "observed",
+          "value": {
+            "address": "0x8dc178efb8111bb0973dd9d722ebeff267c98f94",
+            "bytes": 6118,
+            "hash": "0xd707b1da8cb165e5ea35a3b4450d971eb562ec171e23492aa117036b78a868f6",
+            "matches": true
+          }
+        },
+        "stateView": {
+          "status": "observed",
+          "value": {
+            "address": "0xf3334192d15450cdd385c8b70e03f9a6bd9e673b",
+            "bytes": 3531,
+            "hash": "0x7d9c591e0956fd89d98feb4ffcfe8bf1f7a62bd485edd979fa21d104b49878a6",
+            "matches": true
+          }
+        },
+        "universalRouter212": {
+          "status": "observed",
+          "value": {
+            "address": "0x204FAca1764B154221e35c0d20aBb3c525710498",
+            "bytes": 24380,
+            "hash": "0x76b92a5bba2dd32019a64eb421f1750e78c6ba044dbfa6840b722eb5ac63d296",
+            "matches": true,
+            "immutableMatches": {
+              "permit2": true,
+              "poolManager": true,
+              "positionManager": true
+            }
+          }
+        }
+      },
+      "archiveForkDependencies": {
+        "poolManager": {
+          "status": "unavailable",
+          "reason": "historical-state-unavailable",
+          "code": -32000
+        },
+        "positionManager": {
+          "status": "unavailable",
+          "reason": "historical-state-unavailable",
+          "code": -32000
+        },
+        "permit2": {
+          "status": "unavailable",
+          "reason": "historical-state-unavailable",
+          "code": -32000
+        },
+        "quoter": {
+          "status": "unavailable",
+          "reason": "historical-state-unavailable",
+          "code": -32000
+        },
+        "stateView": {
+          "status": "unavailable",
+          "reason": "historical-state-unavailable",
+          "code": -32000
+        },
+        "universalRouter212": {
+          "status": "unavailable",
+          "reason": "historical-state-unavailable",
+          "code": -32000
+        }
+      },
+      "forkHeaderByHash": {
+        "status": "observed",
+        "value": {
+          "number": 113412054,
+          "hash": "0x17252a232b68a4e9fc494caf0660cff722ac2da966ee5c62b40e20dbcfd32ea2",
+          "parentHash": "0xe4583cfe34cf6a8fb385dfe6b2abb206062bac6ef878c9051bbe649d32c7e71f",
+          "stateRoot": "0x40bd233c2ec47cdd834b5df1bd12252d85987ca6256d87ed1340c0e6f47dc494",
+          "timestamp": "2026-11-13T14:08:02.000Z",
+          "gasLimit": "1125899906842624"
+        }
+      },
+      "bindings": {
+        "positionManager.poolManager": {
+          "status": "observed",
+          "value": "0x0000000000000000000000008366a39cc670b4001a1121b8f6a443a643e40951"
+        },
+        "quoter.poolManager": {
+          "status": "observed",
+          "value": "0x0000000000000000000000008366a39cc670b4001a1121b8f6a443a643e40951"
+        },
+        "stateView.poolManager": {
+          "status": "observed",
+          "value": "0x0000000000000000000000008366a39cc670b4001a1121b8f6a443a643e40951"
+        },
+        "universalRouter212.poolManager": {
+          "status": "observed",
+          "value": "0x0000000000000000000000008366a39cc670b4001a1121b8f6a443a643e40951"
+        },
+        "positionManager.permit2": {
+          "status": "observed",
+          "value": "0x000000000000000000000000000000000022d473030f116ddee9f6b43ac78ba3"
+        },
+        "historicalFactory.factoryRegistry": {
+          "status": "observed",
+          "value": "0x00000000000000000000000027c0269e16209eee149e2738d0819a2633f44246"
+        }
+      },
+      "historicalFactoryCode": {
+        "status": "observed",
+        "value": {
+          "hash": "0x274321493d48091b4443e007b8335a93a977e67dffe67d6147ff8557a1e58830",
+          "matches": true
+        }
+      },
+      "historicalRegistryCode": {
+        "status": "observed",
+        "value": {
+          "hash": "0xf841ffa82a73f04e52e76a4074801b0a9f0793d720c2aa1e5c4c7fef899ded81",
+          "matches": true
+        }
+      },
+      "curveForkFactoryCode": {
+        "status": "observed",
+        "value": {
+          "address": "0x33905B3A95BA5E09Cbf7EaE887B4f0466820944E",
+          "empty": true
+        }
+      },
+      "arbGasAccounting": {
+        "status": "observed",
+        "value": {
+          "speedLimitPerSecond": "7000000",
+          "gasPoolMax": "32000000",
+          "maxBlockGas": "32000000"
+        }
+      },
+      "arbMaxTransactionGas": {
+        "status": "observed",
+        "value": "32000000"
+      },
+      "verifyHistoricalReceipt": {
+        "status": "observed",
+        "value": {
+          "status": "0x1",
+          "matched": true
+        }
+      },
+      "historicalLogs": {
+        "status": "observed",
+        "value": {
+          "count": 1,
+          "matched": true
+        }
+      },
+      "routerCreation": {
+        "status": "observed",
+        "value": {
+          "status": "0x1",
+          "contractAddress": "0x204faca1764b154221e35c0d20abb3c525710498",
+          "blockHash": "0x34b52ae62932a3b93c9a1a053d30409909c805c98b730dae59279b39fd414001",
+          "matches": true
+        }
+      },
+      "historicalTrace": {
+        "status": "unavailable",
+        "reason": "method-unavailable",
+        "code": -32601
+      },
+      "recheckedBlock": {
+        "status": "observed",
+        "value": {
+          "number": 114441768,
+          "hash": "0xbab066e7e80f5771c3798a9453499dfd137a0201b557988c30ecae0314c74e1c",
+          "parentHash": "0xc62a4fc1f1457b5b464290d69326651a4c40f81d85641419a7774889d19f5784",
+          "stateRoot": "0x8f8fd7e0b0e6e1d39b27cafe6af6d0363c25414e062001d232f83b3bd077162f",
+          "timestamp": "2026-11-14T20:54:16.000Z",
+          "gasLimit": "1125899906842624"
+        }
+      }
+    },
+    "pocket": {
+      "chainId": {
+        "status": "unavailable",
+        "reason": "http-error",
+        "httpStatus": 499
+      },
+      "status": "unverified-chain"
+    },
+    "pinax": {
+      "chainId": {
+        "status": "observed",
+        "value": "0x1237"
+      },
+      "blocks": {
+        "safe": {
+          "status": "observed",
+          "value": {
+            "number": 114436129,
+            "hash": "0x8e6caa5dc80912658c3f445f2f219184854c81bb05e2059717737b3976db48f1",
+            "parentHash": "0xeb5c4662ea1ebf103357018522755cdfea4be2f119fa033a45fdf1c9845ea506",
+            "stateRoot": "0x72a584c05de3fc1738f718fd94e0f61143ad7c9acde33df30e5ce0be4570e484",
+            "timestamp": "2026-11-14T20:43:58.000Z",
+            "gasLimit": "1125899906842624"
+          }
+        },
+        "finalized": {
+          "status": "observed",
+          "value": {
+            "number": 114433058,
+            "hash": "0xd956a101fc9862ea86f90eea102286cb817c0432f09f7eafdcc433de46740538",
+            "parentHash": "0x575efa2eae1b79b2f8da31b3bde513edac7d0122258b04f713cc5686a791b7bc",
+            "stateRoot": "0x93188e55ee7807b0ba0d4e1e3c673d0e0f8424e9bc0925f3bf04517853382658",
+            "timestamp": "2026-11-14T20:38:36.000Z",
+            "gasLimit": "1125899906842624"
+          }
+        },
+        "0x6d23e28": {
+          "status": "observed",
+          "value": {
+            "number": 114441768,
+            "hash": "0xbab066e7e80f5771c3798a9453499dfd137a0201b557988c30ecae0314c74e1c",
+            "parentHash": "0xc62a4fc1f1457b5b464290d69326651a4c40f81d85641419a7774889d19f5784",
+            "stateRoot": "0x8f8fd7e0b0e6e1d39b27cafe6af6d0363c25414e062001d232f83b3bd077162f",
+            "timestamp": "2026-11-14T20:54:16.000Z",
+            "gasLimit": "1125899906842624"
+          }
+        },
+        "0x6c287d6": {
+          "status": "observed",
+          "value": {
+            "number": 113412054,
+            "hash": "0x17252a232b68a4e9fc494caf0660cff722ac2da966ee5c62b40e20dbcfd32ea2",
+            "parentHash": "0xe4583cfe34cf6a8fb385dfe6b2abb206062bac6ef878c9051bbe649d32c7e71f",
+            "stateRoot": "0x40bd233c2ec47cdd834b5df1bd12252d85987ca6256d87ed1340c0e6f47dc494",
+            "timestamp": "2026-11-13T14:08:02.000Z",
+            "gasLimit": "1125899906842624"
+          }
+        }
+      },
+      "dependencies": {
+        "poolManager": {
+          "status": "observed",
+          "value": {
+            "address": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+            "bytes": 24009,
+            "hash": "0xbd3881180b547f5fe817545743cfb4343e96b1bc6640dcd70c106b0066e95626",
+            "matches": true
+          }
+        },
+        "positionManager": {
+          "status": "observed",
+          "value": {
+            "address": "0x58daec3116aae6d93017baaea7749052e8a04fa7",
+            "bytes": 23877,
+            "hash": "0xc873e135dc9aaec88489cfbad146b4cb49d6a32e0d80326377784b7ba17670b2",
+            "matches": true
+          }
+        },
+        "permit2": {
+          "status": "observed",
+          "value": {
+            "address": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+            "bytes": 9152,
+            "hash": "0x5208783f52488f7d3493e5e38311ab707c1d75457fe472a19b0b4d57d66a7fca",
+            "matches": true
+          }
+        },
+        "quoter": {
+          "status": "observed",
+          "value": {
+            "address": "0x8dc178efb8111bb0973dd9d722ebeff267c98f94",
+            "bytes": 6118,
+            "hash": "0xd707b1da8cb165e5ea35a3b4450d971eb562ec171e23492aa117036b78a868f6",
+            "matches": true
+          }
+        },
+        "stateView": {
+          "status": "observed",
+          "value": {
+            "address": "0xf3334192d15450cdd385c8b70e03f9a6bd9e673b",
+            "bytes": 3531,
+            "hash": "0x7d9c591e0956fd89d98feb4ffcfe8bf1f7a62bd485edd979fa21d104b49878a6",
+            "matches": true
+          }
+        },
+        "universalRouter212": {
+          "status": "observed",
+          "value": {
+            "address": "0x204FAca1764B154221e35c0d20aBb3c525710498",
+            "bytes": 24380,
+            "hash": "0x76b92a5bba2dd32019a64eb421f1750e78c6ba044dbfa6840b722eb5ac63d296",
+            "matches": true,
+            "immutableMatches": {
+              "permit2": true,
+              "poolManager": true,
+              "positionManager": true
+            }
+          }
+        }
+      },
+      "archiveForkDependencies": {
+        "poolManager": {
+          "status": "observed",
+          "value": {
+            "address": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+            "bytes": 24009,
+            "hash": "0xbd3881180b547f5fe817545743cfb4343e96b1bc6640dcd70c106b0066e95626",
+            "matches": true
+          }
+        },
+        "positionManager": {
+          "status": "observed",
+          "value": {
+            "address": "0x58daec3116aae6d93017baaea7749052e8a04fa7",
+            "bytes": 23877,
+            "hash": "0xc873e135dc9aaec88489cfbad146b4cb49d6a32e0d80326377784b7ba17670b2",
+            "matches": true
+          }
+        },
+        "permit2": {
+          "status": "observed",
+          "value": {
+            "address": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+            "bytes": 9152,
+            "hash": "0x5208783f52488f7d3493e5e38311ab707c1d75457fe472a19b0b4d57d66a7fca",
+            "matches": true
+          }
+        },
+        "quoter": {
+          "status": "observed",
+          "value": {
+            "address": "0x8dc178efb8111bb0973dd9d722ebeff267c98f94",
+            "bytes": 6118,
+            "hash": "0xd707b1da8cb165e5ea35a3b4450d971eb562ec171e23492aa117036b78a868f6",
+            "matches": true
+          }
+        },
+        "stateView": {
+          "status": "observed",
+          "value": {
+            "address": "0xf3334192d15450cdd385c8b70e03f9a6bd9e673b",
+            "bytes": 3531,
+            "hash": "0x7d9c591e0956fd89d98feb4ffcfe8bf1f7a62bd485edd979fa21d104b49878a6",
+            "matches": true
+          }
+        },
+        "universalRouter212": {
+          "status": "observed",
+          "value": {
+            "address": "0x204FAca1764B154221e35c0d20aBb3c525710498",
+            "bytes": 24380,
+            "hash": "0x76b92a5bba2dd32019a64eb421f1750e78c6ba044dbfa6840b722eb5ac63d296",
+            "matches": true,
+            "immutableMatches": {
+              "permit2": true,
+              "poolManager": true,
+              "positionManager": true
+            }
+          }
+        }
+      },
+      "forkHeaderByHash": {
+        "status": "observed",
+        "value": {
+          "number": 113412054,
+          "hash": "0x17252a232b68a4e9fc494caf0660cff722ac2da966ee5c62b40e20dbcfd32ea2",
+          "parentHash": "0xe4583cfe34cf6a8fb385dfe6b2abb206062bac6ef878c9051bbe649d32c7e71f",
+          "stateRoot": "0x40bd233c2ec47cdd834b5df1bd12252d85987ca6256d87ed1340c0e6f47dc494",
+          "timestamp": "2026-11-13T14:08:02.000Z",
+          "gasLimit": "1125899906842624"
+        }
+      },
+      "bindings": {
+        "positionManager.poolManager": {
+          "status": "observed",
+          "value": "0x0000000000000000000000008366a39cc670b4001a1121b8f6a443a643e40951"
+        },
+        "quoter.poolManager": {
+          "status": "observed",
+          "value": "0x0000000000000000000000008366a39cc670b4001a1121b8f6a443a643e40951"
+        },
+        "stateView.poolManager": {
+          "status": "observed",
+          "value": "0x0000000000000000000000008366a39cc670b4001a1121b8f6a443a643e40951"
+        },
+        "universalRouter212.poolManager": {
+          "status": "observed",
+          "value": "0x0000000000000000000000008366a39cc670b4001a1121b8f6a443a643e40951"
+        },
+        "positionManager.permit2": {
+          "status": "observed",
+          "value": "0x000000000000000000000000000000000022d473030f116ddee9f6b43ac78ba3"
+        },
+        "historicalFactory.factoryRegistry": {
+          "status": "observed",
+          "value": "0x00000000000000000000000027c0269e16209eee149e2738d0819a2633f44246"
+        }
+      },
+      "historicalFactoryCode": {
+        "status": "observed",
+        "value": {
+          "hash": "0x274321493d48091b4443e007b8335a93a977e67dffe67d6147ff8557a1e58830",
+          "matches": true
+        }
+      },
+      "historicalRegistryCode": {
+        "status": "observed",
+        "value": {
+          "hash": "0xf841ffa82a73f04e52e76a4074801b0a9f0793d720c2aa1e5c4c7fef899ded81",
+          "matches": true
+        }
+      },
+      "curveForkFactoryCode": {
+        "status": "observed",
+        "value": {
+          "address": "0x33905B3A95BA5E09Cbf7EaE887B4f0466820944E",
+          "empty": true
+        }
+      },
+      "arbGasAccounting": {
+        "status": "observed",
+        "value": {
+          "speedLimitPerSecond": "7000000",
+          "gasPoolMax": "32000000",
+          "maxBlockGas": "32000000"
+        }
+      },
+      "arbMaxTransactionGas": {
+        "status": "observed",
+        "value": "32000000"
+      },
+      "verifyHistoricalReceipt": {
+        "status": "observed",
+        "value": {
+          "status": "0x1",
+          "matched": true
+        }
+      },
+      "historicalLogs": {
+        "status": "observed",
+        "value": {
+          "count": 1,
+          "matched": true
+        }
+      },
+      "routerCreation": {
+        "status": "observed",
+        "value": {
+          "status": "0x1",
+          "contractAddress": "0x204faca1764b154221e35c0d20abb3c525710498",
+          "blockHash": "0x34b52ae62932a3b93c9a1a053d30409909c805c98b730dae59279b39fd414001",
+          "matches": true
+        }
+      },
+      "historicalTrace": {
+        "status": "observed",
+        "value": {
+          "tracer": "callTracer",
+          "rootMatchesFactory": true,
+          "rootType": "CALL"
+        }
+      },
+      "recheckedBlock": {
+        "status": "observed",
+        "value": {
+          "number": 114441768,
+          "hash": "0xbab066e7e80f5771c3798a9453499dfd137a0201b557988c30ecae0314c74e1c",
+          "parentHash": "0xc62a4fc1f1457b5b464290d69326651a4c40f81d85641419a7774889d19f5784",
+          "stateRoot": "0x8f8fd7e0b0e6e1d39b27cafe6af6d0363c25414e062001d232f83b3bd077162f",
+          "timestamp": "2026-11-14T20:54:16.000Z",
+          "gasLimit": "1125899906842624"
+        }
+      }
+    }
+  },
+  "observation": {
+    "number": 114441768,
+    "hash": "0xbab066e7e80f5771c3798a9453499dfd137a0201b557988c30ecae0314c74e1c",
+    "parentHash": "0xc62a4fc1f1457b5b464290d69326651a4c40f81d85641419a7774889d19f5784",
+    "stateRoot": "0x8f8fd7e0b0e6e1d39b27cafe6af6d0363c25414e062001d232f83b3bd077162f",
+    "timestamp": "2026-11-14T20:54:16.000Z",
+    "gasLimit": "1125899906842624"
+  },
+  "currentEvidence": {
+    "official": {
+      "sameBlockHash": true,
+      "allSixRuntimePinsMatch": true
+    },
+    "pocket": {
+      "sameBlockHash": false,
+      "allSixRuntimePinsMatch": false
+    },
+    "pinax": {
+      "sameBlockHash": true,
+      "allSixRuntimePinsMatch": true
+    }
+  },
+  "currentDependenciesVerified": true
+}

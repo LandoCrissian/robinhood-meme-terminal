@@ -1,0 +1,108 @@
+{
+  "chainId": 4663,
+  "backingWei": "2000000000000000000",
+  "compilerSha256": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
+  "inputSha256": "a28e0ae5a50ea1375644a0b737ad6d55d1da90d04bc1f169de0ad9e0553d0bd2",
+  "forkEvidenceSha256": "a4c46f7d7abe5fd4d01221cdad580e005e1f6d04783daf428bc883f738f680e3",
+  "templates": {
+    "RMTLaunchBondingCurveV1": {
+      "creationBytes": 14116,
+      "runtimeBytes": 10268,
+      "creationSha256": "342e590463cb5d00f31fa27e6c7a04c8ce4e883913cdad2776d0eea357e7d9fa",
+      "runtimeSha256": "05942b47130412ae98e5e960c5a7787fd74060be42fdb8bb62511af5bbe066f5"
+    },
+    "RMTLaunchBondingCurveV2": {
+      "creationBytes": 14837,
+      "runtimeBytes": 10268,
+      "creationSha256": "4dfabb49b4201b2e403fcd768a1943230b6a2777b1a51b8649b7577f25f48963",
+      "runtimeSha256": "f20e8bea32f6afe39230a182186ed45cf42c83d8cd711db5282c16dd73e36ea2"
+    },
+    "RMTLaunchCurveSuccessorDeployerV1": {
+      "creationBytes": 15305,
+      "runtimeBytes": 15279,
+      "creationSha256": "553afcc3466e97cf134b22910f5f8ae80ffeb85cb8d5d6a9667d49473521e782",
+      "runtimeSha256": "14a40e76ef6a93f96d2d6294a6ec3edafea0aeb972e2a3b3f266c571e2e8e7c5"
+    },
+    "RMTLaunchBondingCurveV3": {
+      "creationBytes": 14837,
+      "runtimeBytes": 10268,
+      "creationSha256": "3fb51cac54bd0f4e426ae67c3ff68620a4b2416905abe55a42a01fd3f6dcf778",
+      "runtimeSha256": "c5d35954b7be9dd13dad2c62ef8378bbfbdc52dc4beabf4798d6d905e57fc9b1"
+    },
+    "RMTLaunchCurveSuccessorDeployerV2": {
+      "creationBytes": 15509,
+      "runtimeBytes": 15483,
+      "creationSha256": "eb90cd3d32f5035d306517b97835b8bffff1622e1f895ef1bff542de9772c52b",
+      "runtimeSha256": "4006da6d9338b485abd28d0869eb8a056950ab6584c23ccc9751cc3ed8088671"
+    },
+    "RMTLaunchCurveDeploymentV1": {
+      "creationBytes": 48478,
+      "runtimeBytes": 320,
+      "creationSha256": "e97a77582813525a376eab864f3073a5bb6b2b99d5b29e5b7d811584d67bbdfd",
+      "runtimeSha256": "e58b926631c10084d1b5137cc0d5b848aeb6bb259fca93e6c72584e591b5d20f"
+    },
+    "RMTLaunchCurveDirectoryV1": {
+      "creationBytes": 8596,
+      "runtimeBytes": 7188,
+      "creationSha256": "0205c8169d372218678242de0759460d250281ec2da2289c3d95a4c7c43cb737",
+      "runtimeSha256": "274ecf2859ed2a4a9f4cb55e3c21ab7423e797740cccfd2f8fb61cff7db2c38b"
+    },
+    "RMTLaunchCurveFactoryV1": {
+      "creationBytes": 24857,
+      "runtimeBytes": 23980,
+      "creationSha256": "252c39b28421a520d15b6d62135bc43a0ab3c8da5ab58f53e01a21a9a3c80043",
+      "runtimeSha256": "a0aacdbfdac648fb030166b8298fa2280e7ebe8e21633fbdbc9a256d87f9e10c"
+    },
+    "RMTLaunchCurveLpFeeLedgerV1": {
+      "creationBytes": 4372,
+      "runtimeBytes": 3632,
+      "creationSha256": "e6e6bbf6894b174e237511c11adb309a37bd8186f47d21e13dd2cb3361cef945",
+      "runtimeSha256": "020356ae87c54f7491983e6b23f83458e9cb97aa4ea997b69e6134570a5f89cf"
+    },
+    "RMTLaunchCurveRevenueLedgerV1": {
+      "creationBytes": 2667,
+      "runtimeBytes": 2154,
+      "creationSha256": "2ca9781bca8cfcec8e8d460329a69f3b5296f677c85a8d48b25ac7c31ddef042",
+      "runtimeSha256": "8d869d07d5949295254a561bf13bc39607cc7096f9a2156d9f76f4ecffa9db54"
+    },
+    "RMTLaunchCurveTokenV1": {
+      "creationBytes": 2584,
+      "runtimeBytes": 1544,
+      "creationSha256": "b4137f5885f250327cccb68802c4d5ccdd7b6909ab81b53a53a2c21f2a7e22ad",
+      "runtimeSha256": "220f21603e0c6f5328f5d387c52836b3c1b242da79b87d9ff9db0faf9ddafa39"
+    },
+    "RMTLaunchProjectRegistryV1": {
+      "creationBytes": 14570,
+      "runtimeBytes": 13343,
+      "creationSha256": "6d8ca0634319ceee040b020427fb78dca543adffa0ac401264c578674e771262",
+      "runtimeSha256": "b7ccc450ab0e26a5f5aac60b52aa52f5e4bc4c832d8916d05f3a2846fd04b690"
+    },
+    "RMTV4CurveGraduationV1": {
+      "creationBytes": 21211,
+      "runtimeBytes": 19710,
+      "creationSha256": "7afb37c68a710787dd0f4773e48caab81363f0f90ba469f9dd20cd58b56c77e8",
+      "runtimeSha256": "03ada418a644484c65a08251142a8c3f16fef3fd4ff88e246a939b71cd72df03"
+    },
+    "RMTV4CurveInitializationGuardV1": {
+      "creationBytes": 1193,
+      "runtimeBytes": 949,
+      "creationSha256": "72054575473c2d43d187336c30fe76b9414221d18b4e8dd12080046b4e3f4dbe",
+      "runtimeSha256": "3c91f7ec0be7b37d259ad99a9cd56d5ccb746e7f9f0f252a21543b0a901a3ec4"
+    }
+  },
+  "bootstrapInitcode": {
+    "sizeBytes": 48894,
+    "constructorBytes": 416,
+    "sha256": "99f4d4b955d574a5c2682a1a615f51a314e8618bbd123205a8e011b7aed593f6",
+    "headroomBytes": 258,
+    "eip3860Gas": 3056,
+    "calldataGas": 715596
+  },
+  "fixtureAddressDerivations": {
+    "bootstrap": "0x04178D698DfA1BCA0Fe381ae8d5520F2bAfb9D26",
+    "graduationEngine": "0x6c0fcA3E712672bF861C6178ea43C3d90dC90d70",
+    "factory": "0x33905B3A95BA5E09Cbf7EaE887B4f0466820944E",
+    "initializationGuard": "0x0AB748d5975328094D074611f97B566E84c4A000",
+    "guardHash": "0x72093b5bd98c11c46b9638c6c4d5dd5efa887f4b785c90ba66d8e770d3f72092"
+  }
+}
