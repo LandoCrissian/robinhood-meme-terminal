@@ -1,0 +1,522 @@
+{
+  "profile": "rmt-curve-v1-4663-governance-rotation-v2",
+  "chainId": 4663,
+  "status": "BLOCKED_NO_BROADCAST",
+  "broadcastAuthorized": false,
+  "compilerVersion": "0.8.26+commit.8a97fa7a",
+  "executablePlatform": "win32-x64",
+  "executableSha256": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
+  "inputSha256": "90122536b22c847aebc0182d75290b9ba281399481d90daffc8b0f66ed92f65b",
+  "historicalInputSha256": "a28e0ae5a50ea1375644a0b737ad6d55d1da90d04bc1f169de0ad9e0553d0bd2",
+  "historicalSource": {
+    "solidityCommit": "5fe80e04713cd0d72dedc087ede3a54ba2d6920d",
+    "solidityTree": "e98de2eaedcf9d233bac0860094e7179db2ab562",
+    "harnessCommit": "8dca5773cbd4dc98f52a45616f420bce96b000f0",
+    "harnessBlob": "d161ec8c987aee426258902fc718cd0ed5e13a8c"
+  },
+  "sourceChanges": [
+    {
+      "file": "src/RMTLaunchCurveFactoryV1.sol",
+      "occurrences": 2,
+      "from": "block.chainid != 31_337",
+      "to": "block.chainid != 4_663",
+      "inputSha256": "416aea241443a2171a1c4ba706af7aed46a68008907d2d4ff984d6ab37b1fed0"
+    },
+    {
+      "file": "src/RMTV4CurveGraduationV1.sol",
+      "occurrences": 1,
+      "from": "CHAIN_ID = 31_337",
+      "to": "CHAIN_ID = 4_663",
+      "inputSha256": "9d513915a4d36f05e1d4114bbe4f727ac6e6a504ef35bb856c47307e14795009"
+    },
+    {
+      "file": "src/RMTLaunchCurveMathV1.sol",
+      "replacements": [
+        [
+          "2ether-virtual-eth;60%-sold;1ether-backing",
+          "4000000000000000000wei-virtual-eth;60%-sold;2000000000000000000wei-backing"
+        ],
+        [
+          "VIRTUAL_ETH = 2 ether",
+          "VIRTUAL_ETH = 4000000000000000000"
+        ],
+        [
+          "GRADUATION_BACKING = 1 ether",
+          "GRADUATION_BACKING = 2000000000000000000"
+        ]
+      ],
+      "inputSha256": "e798849036e4adce7b50cdb88f2e6968a9dd1690912aa424a0ad8c9d85950c6c"
+    }
+  ],
+  "replacementSources": [
+    {
+      "excludedDeploymentArtifact": "RMTLaunchCurveDirectoryV1",
+      "retainedAsDependency": true,
+      "replacement": "src/RMTLaunchCurveDirectoryV2.sol",
+      "sha256": "0bb4beb821652d079620050c228783647d865da6a05da4df1628cc84ca3c1531"
+    },
+    {
+      "excludedDeploymentArtifact": "RMTLaunchProjectRegistryV1",
+      "retainedAsDependency": false,
+      "replacement": "src/RMTLaunchProjectRegistryV2.sol",
+      "sha256": "67f22eed981c6627ce6045001dbcfd23eff2e7d8b178c540b9f9979b7acee6ab"
+    }
+  ],
+  "sourceSha256": [
+    [
+      "src/RMTLaunchCurveDeploymentV1.sol",
+      "b6af09cf6cfb05ef0965c1e19ad2fbb4b4409730887c92f34b51d47ac84c1069"
+    ],
+    [
+      "src/RMTLaunchCurveFactoryV1.sol",
+      "416aea241443a2171a1c4ba706af7aed46a68008907d2d4ff984d6ab37b1fed0"
+    ],
+    [
+      "src/RMTLaunchCurveTokenV1.sol",
+      "0bc9ab30ce8663a8b069996eda007179e76fe3d1e08dce1c7442f7e0b9ecdad0"
+    ],
+    [
+      "src/RMTLaunchBondingCurveV1.sol",
+      "4c9cfe390076fcf4b99ff308b3c3f9e53c9f17700aacf27b950ebee3202eb344"
+    ],
+    [
+      "src/RMTLaunchCurveRevenueLedgerV1.sol",
+      "558c2ea7b7bae540d3c92d482cd9df2aa88b4b20d1da1c4ada1d986c0bc7bd54"
+    ],
+    [
+      "src/RMTV4CurveGraduationV1.sol",
+      "9d513915a4d36f05e1d4114bbe4f727ac6e6a504ef35bb856c47307e14795009"
+    ],
+    [
+      "src/RMTV4CurveInitializationGuardV1.sol",
+      "0c1498c636aae8954c6f47420cd7341eecbeb1eaaae9b3c743c22aa8907eb31f"
+    ],
+    [
+      "src/RMTLaunchCurveDirectoryV1.sol",
+      "cc8e4b76a3783b5422a309d0ed83a3346985e363e68fa2145b37cf0fba1fe3e0"
+    ],
+    [
+      "src/RMTLaunchBondingCurveV2.sol",
+      "ced2dd6ef8999c52f3f05c9d8a28124a665ebeac7e2696ebe75592ecafafdbb5"
+    ],
+    [
+      "src/RMTLaunchBondingCurveV3.sol",
+      "5c5e13be8e978545c54771a27e6315315eb7e411f4f190daf01d9c397818fc93"
+    ],
+    [
+      "src/RMTLaunchCurveLpFeeLedgerV1.sol",
+      "dff06312947d67835b9c313f0e68e26a3db989149477ec968663a86576b441f5"
+    ],
+    [
+      "src/interfaces/IRMTV4CurveGraduationV1.sol",
+      "d3fe566a9b14f907c5289860d96f26b58649027f0ea6d1718862c377839ebefe"
+    ],
+    [
+      "src/interfaces/IRMTLaunchCurveExecution.sol",
+      "9b5793ca3cfbffc912e53f6e26d6744aa49a1dfce913791e867e466a5bfa451c"
+    ],
+    [
+      "src/RMTLaunchCurveMathV1.sol",
+      "e798849036e4adce7b50cdb88f2e6968a9dd1690912aa424a0ad8c9d85950c6c"
+    ],
+    [
+      "lib/v4-core/lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol",
+      "4aea87243e6de38804bf8737bf86f750443d3b5e63dd0fd0b7ad92f77cdbd3e3"
+    ],
+    [
+      "lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol",
+      "2d874da1c1478ed22a2d30dcf1a6ec0d09a13f897ca680d55fb49fbcc0e0c5b1"
+    ],
+    [
+      "lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol",
+      "6f2faae462e286e24e091d7718575179644dc60e79936ef0c92e2d1ab3ca3cee"
+    ],
+    [
+      "lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol",
+      "1d079c20a192a135308e99fa5515c27acfbb071e6cdb0913b13634e630865939"
+    ],
+    [
+      "lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol",
+      "912509e0e9bf74e0f8a8c92d031b5b26d2d35c6d4abf3f56251be1ea9ca946bf"
+    ],
+    [
+      "lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol",
+      "471157c89111d7b9eab456b53ebe9042bc69504a64cb5cc980d38da9103379ae"
+    ],
+    [
+      "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/Address.sol",
+      "b3710b1712637eb8c0df81912da3450da6ff67b0b3ed18146b033ed15b1aa3b9"
+    ],
+    [
+      "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/Context.sol",
+      "847fda5460fee70f56f4200f59b82ae622bb03c79c77e67af010e31b7e2cc5b6"
+    ],
+    [
+      "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol",
+      "8d0bac508a25133c9ff80206f65164cef959ec084645d1e7b06050c2971ae0fc"
+    ],
+    [
+      "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/math/Math.sol",
+      "a6ee779fc42e6bf01b5e6a963065706e882b016affbedfd8be19a71ea48e6e15"
+    ],
+    [
+      "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/math/SafeCast.sol",
+      "089488198de38548e4e8ee7940d307f18396e5b295de5bca7ff7567fd4142cc3"
+    ],
+    [
+      "lib/v4-core/src/interfaces/IExtsload.sol",
+      "9421ef4ba198d94058cd9a4c9fd2d663c61fc682f7dafa449a873456853f0025"
+    ],
+    [
+      "lib/v4-core/src/interfaces/IExttload.sol",
+      "c21643d2c7f48d2d2407438a64a3ff0f376324cf6a0c62608977713652308c9e"
+    ],
+    [
+      "lib/v4-core/src/interfaces/IHooks.sol",
+      "6eb35c9c598eb932e963219f1ff180748bc4c30ac6a02d924893b3c29abb1d73"
+    ],
+    [
+      "lib/v4-core/src/interfaces/IPoolManager.sol",
+      "a98405333567e4ab344489728014795721cf0071c151536377d2fcc986e0600c"
+    ],
+    [
+      "lib/v4-core/src/interfaces/IProtocolFees.sol",
+      "807d68adea106ec2aa51a8009155de09ebfe09e1ee7053d5a5ae448d7e840654"
+    ],
+    [
+      "lib/v4-core/src/interfaces/external/IERC20Minimal.sol",
+      "5e966a2d22b3b234a56af4b17e36bf7be90f9b29b1ddb6a15bfefc0b6dab4282"
+    ],
+    [
+      "lib/v4-core/src/interfaces/external/IERC6909Claims.sol",
+      "1cd65496c829036bc6aee67bc71363ab5fb6989c65e793087d0e1e2379f7d7d8"
+    ],
+    [
+      "lib/v4-core/src/libraries/BitMath.sol",
+      "e8a45eb3d57f9427fc47bbb2543c1a6a5f394113b378123ac7ca9f113a7502b4"
+    ],
+    [
+      "lib/v4-core/src/libraries/CustomRevert.sol",
+      "9d3dbe6b742cb1ac30f57df89d879ade9649389de1165fc637114bd062d39fca"
+    ],
+    [
+      "lib/v4-core/src/libraries/FixedPoint96.sol",
+      "66ee26d4fb3ac639124bdfa27d3256d196970997fa127c09e9bf7154e30d4590"
+    ],
+    [
+      "lib/v4-core/src/libraries/FullMath.sol",
+      "a9607255a6fd604d9c92f6b7416811c38b9d86e5dfdb0c345a494ebd35f7a4a3"
+    ],
+    [
+      "lib/v4-core/src/libraries/Hooks.sol",
+      "297d577998cdede64d48b47b12f15e4f442eea032fbb9676bb3c2f89da89b83c"
+    ],
+    [
+      "lib/v4-core/src/libraries/LPFeeLibrary.sol",
+      "e96c3fa7deac991dc09b6c5e560a340d01d6c68ccba483d4b29f8a66e5aa44e0"
+    ],
+    [
+      "lib/v4-core/src/libraries/ParseBytes.sol",
+      "6a6f3d1cec0143fd70ea68c34e6dce3bde72f368b213f1a225ada23dbfd99bb8"
+    ],
+    [
+      "lib/v4-core/src/libraries/SafeCast.sol",
+      "c1a815a41607be5b4c86ca588a951f368156da8ee21bdfc18b5d51b58a0f27be"
+    ],
+    [
+      "lib/v4-core/src/libraries/SqrtPriceMath.sol",
+      "42440c21bbab86c7eed4716b281ed5ca281cf14af8b5e06dc6dc3bc6864bcfdf"
+    ],
+    [
+      "lib/v4-core/src/libraries/TickMath.sol",
+      "272d4f6d3ff9ae33596ebcdb84a71a3c2d4542ae8fb5c88ddf1aca8043f5d06b"
+    ],
+    [
+      "lib/v4-core/src/libraries/UnsafeMath.sol",
+      "2de236e7ca0b9572a6b0184557565b6fd54e177224e202c727fe248785ede427"
+    ],
+    [
+      "lib/v4-core/src/types/BalanceDelta.sol",
+      "320d9c13dec135c3903729e66d3a1040fe86d537a7ee53728915012ca183af32"
+    ],
+    [
+      "lib/v4-core/src/types/BeforeSwapDelta.sol",
+      "6aee06f1553e879f5909e8f4c0eac26ec23dd4821a7e56e4d5077db39a227e12"
+    ],
+    [
+      "lib/v4-core/src/types/Currency.sol",
+      "ba6726fd24fbc66848208dfbb2899116c10729c505e6e5552316ac2444f1dfc3"
+    ],
+    [
+      "lib/v4-core/src/types/PoolId.sol",
+      "548424ac50ad58212545da70207283fb8990731578c115c85d5acbcb0e1d3c9f"
+    ],
+    [
+      "lib/v4-core/src/types/PoolKey.sol",
+      "99e1afe285b5c614ebc9586ab5196db9d24a63fd924a449f5d99f490a6a6d6a9"
+    ],
+    [
+      "lib/v4-core/src/types/PoolOperation.sol",
+      "cf72ad0c3e5e91662029e862acd841fabce8753040b0d4e802dee64ef1157232"
+    ],
+    [
+      "lib/v4-periphery/src/libraries/Actions.sol",
+      "404b842f30a05783b20eb37b20cc86e7a0df2730f6a7399229b46ae77f63e63a"
+    ],
+    [
+      "lib/v4-periphery/src/libraries/LiquidityAmounts.sol",
+      "dbfbef7aed94a6a56885124f0802b42adf7ee7bdd658f11fed40ffbb93fe6ba5"
+    ],
+    [
+      "lib/v4-core/src/libraries/StateLibrary.sol",
+      "eebdbc1b6e431072ce5521b9e1b603d43831e3b6e062743e6665e070d5cf8a1a"
+    ],
+    [
+      "lib/v4-core/src/libraries/Position.sol",
+      "3dc4e2ad1564fa94eddf3ff06ce9ac592c9d578ea64ca194050382da454c8fcb"
+    ],
+    [
+      "lib/v4-core/src/libraries/FixedPoint128.sol",
+      "1ca2f55160697b73bd66fd27c8724d79a57108121ce1e8a0ab8b79f38bb58fbb"
+    ],
+    [
+      "lib/v4-core/src/libraries/LiquidityMath.sol",
+      "67a39e58732340af4870342ba9230691f35501d89ed8725ca1b338deaa0eb26a"
+    ],
+    [
+      "lib/v4-periphery/src/libraries/PositionInfoLibrary.sol",
+      "5c889e1d5f259291045413e28069101eba1e7b8b72df6586bf54e4de5e525099"
+    ],
+    [
+      "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol",
+      "37828cb50b47bcc51c7b770bde15d5885d871ef1e67028057a0b788c3568726e"
+    ],
+    [
+      "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/cryptography/EIP712.sol",
+      "27dac0732a0154f432c0a7a1d1f067ab51116105e157d0e5d68d040fd83954d5"
+    ],
+    [
+      "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol",
+      "2fd5c641cf452efd15f784827cb2835664970d7fbc166bf80824ed27011cc374"
+    ],
+    [
+      "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol",
+      "ddd52921d2996abf2e3d9c1c4f6d00194a3e3b278a164948f995862371444a55"
+    ],
+    [
+      "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/Strings.sol",
+      "0519199dbc635f98ce2e4537986604ee618bca665c65e9a1738702dfacf72010"
+    ],
+    [
+      "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/StorageSlot.sol",
+      "b4a5fb7ab93bfeda06509eafbd5f71fde0e0de84b6d9129553bd535a42166c15"
+    ],
+    [
+      "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/math/SignedMath.sol",
+      "768c28e3a33c3312e57ae8a1caaec2893bc89ac6e386621de018f85e9a2d6e99"
+    ],
+    [
+      "lib/v4-core/lib/openzeppelin-contracts/contracts/interfaces/IERC5267.sol",
+      "efd1ebd1e04b6ef9c3b8781a097588f83da954323f438d54a71dc06508e6c7b8"
+    ],
+    [
+      "src/RMTLaunchCurveDirectoryV2.sol",
+      "0bb4beb821652d079620050c228783647d865da6a05da4df1628cc84ca3c1531"
+    ],
+    [
+      "src/RMTLaunchProjectRegistryV2.sol",
+      "67f22eed981c6627ce6045001dbcfd23eff2e7d8b178c540b9f9979b7acee6ab"
+    ]
+  ],
+  "compilerSettings": {
+    "evmVersion": "cancun",
+    "viaIR": true,
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "metadata": {
+      "bytecodeHash": "ipfs",
+      "appendCBOR": true,
+      "useLiteralContent": false
+    },
+    "remappings": [
+      "@openzeppelin/=lib/v4-core/lib/openzeppelin-contracts/",
+      "@uniswap/v4-core/=lib/v4-core/",
+      "@uniswap/v4-periphery/=lib/v4-periphery/"
+    ]
+  },
+  "governance": {
+    "directory": {
+      "contract": "RMTLaunchCurveDirectoryV2",
+      "domain": {
+        "name": "RMT Launch Curve Directory",
+        "version": "2"
+      },
+      "action": "Action(uint8 kind,uint64 nonce,uint32 version,address factory,bytes32 runtimeHash,uint64 signerSetEpoch,uint48 deadline)",
+      "rotation": "SignerRotation(address departingSigner,address incomingSigner,uint64 signerSetEpoch,uint64 nonce,uint48 deadline)",
+      "acceptance": "RotationAcceptance(bytes32 rotationDigest)",
+      "cancellation": "RotationCancellation(bytes32 rotationDigest,uint64 signerSetEpoch,uint64 nonce,uint48 deadline)"
+    },
+    "registry": {
+      "contract": "RMTLaunchProjectRegistryV2",
+      "domain": {
+        "name": "RMT Launch Project Registry",
+        "version": "3"
+      },
+      "migration": "CurveAssetMigration(address token,address sourceCurve,uint64 nonce,uint32 fromVersion,address nextCurve,bytes32 runtimeHash,uint64 signerSetEpoch,uint48 deadline)"
+    },
+    "initialSignerSetEpoch": 1,
+    "distinctSigners": 3,
+    "quorum": 2,
+    "noticeSeconds": 172800,
+    "maximumExecutionWindowSeconds": 604800
+  },
+  "limits": {
+    "initcodeBytes": 49152,
+    "runtimeBytes": 24576
+  },
+  "externalRuntimePins": {
+    "poolManager": {
+      "address": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+      "runtimeHash": "0xbd3881180b547f5fe817545743cfb4343e96b1bc6640dcd70c106b0066e95626"
+    },
+    "positionManager": {
+      "address": "0x58daec3116aae6d93017baaea7749052e8a04fa7",
+      "runtimeHash": "0xc873e135dc9aaec88489cfbad146b4cb49d6a32e0d80326377784b7ba17670b2"
+    },
+    "permit2": {
+      "address": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+      "runtimeHash": "0x5208783f52488f7d3493e5e38311ab707c1d75457fe472a19b0b4d57d66a7fca"
+    },
+    "quoter": {
+      "address": "0x8dc178efb8111bb0973dd9d722ebeff267c98f94",
+      "runtimeHash": "0xd707b1da8cb165e5ea35a3b4450d971eb562ec171e23492aa117036b78a868f6"
+    },
+    "stateView": {
+      "address": "0xf3334192d15450cdd385c8b70e03f9a6bd9e673b",
+      "runtimeHash": "0x7d9c591e0956fd89d98feb4ffcfe8bf1f7a62bd485edd979fa21d104b49878a6"
+    },
+    "universalRouter": {
+      "address": "0x204FAca1764B154221e35c0d20aBb3c525710498",
+      "runtimeHash": "0x76b92a5bba2dd32019a64eb421f1750e78c6ba044dbfa6840b722eb5ac63d296"
+    }
+  },
+  "provisionalTerms": {
+    "approved": false,
+    "creationFeeWei": "400000000000000",
+    "supplyPresetsWholeTokens": [
+      1000000,
+      10000000,
+      100000000
+    ],
+    "graduationBackingWei": "2000000000000000000",
+    "virtualEthWei": "4000000000000000000",
+    "curveInventoryShareBps": 6000,
+    "liquidityInventoryShareBps": 4000,
+    "curveTradeFeeBps": 100,
+    "projectFeesBps": 9000,
+    "operationsFeesBps": 500,
+    "futureReserveFeesBps": 500,
+    "treasuryShareOfAllFeesBpsRange": [
+      0,
+      9000
+    ],
+    "poolFeePips": 3000,
+    "tickSpacing": 60,
+    "originalLpPrincipal": "permanently locked"
+  },
+  "templates": {
+    "RMTLaunchBondingCurveV1": {
+      "creationBytes": 14116,
+      "runtimeBytes": 10268,
+      "creationSha256": "342e590463cb5d00f31fa27e6c7a04c8ce4e883913cdad2776d0eea357e7d9fa",
+      "runtimeSha256": "05942b47130412ae98e5e960c5a7787fd74060be42fdb8bb62511af5bbe066f5"
+    },
+    "RMTLaunchBondingCurveV2": {
+      "creationBytes": 14837,
+      "runtimeBytes": 10268,
+      "creationSha256": "4dfabb49b4201b2e403fcd768a1943230b6a2777b1a51b8649b7577f25f48963",
+      "runtimeSha256": "f20e8bea32f6afe39230a182186ed45cf42c83d8cd711db5282c16dd73e36ea2"
+    },
+    "RMTLaunchCurveSuccessorDeployerV1": {
+      "creationBytes": 15305,
+      "runtimeBytes": 15279,
+      "creationSha256": "553afcc3466e97cf134b22910f5f8ae80ffeb85cb8d5d6a9667d49473521e782",
+      "runtimeSha256": "14a40e76ef6a93f96d2d6294a6ec3edafea0aeb972e2a3b3f266c571e2e8e7c5"
+    },
+    "RMTLaunchBondingCurveV3": {
+      "creationBytes": 14837,
+      "runtimeBytes": 10268,
+      "creationSha256": "3fb51cac54bd0f4e426ae67c3ff68620a4b2416905abe55a42a01fd3f6dcf778",
+      "runtimeSha256": "c5d35954b7be9dd13dad2c62ef8378bbfbdc52dc4beabf4798d6d905e57fc9b1"
+    },
+    "RMTLaunchCurveSuccessorDeployerV2": {
+      "creationBytes": 15509,
+      "runtimeBytes": 15483,
+      "creationSha256": "eb90cd3d32f5035d306517b97835b8bffff1622e1f895ef1bff542de9772c52b",
+      "runtimeSha256": "4006da6d9338b485abd28d0869eb8a056950ab6584c23ccc9751cc3ed8088671"
+    },
+    "RMTLaunchCurveDeploymentV1": {
+      "creationBytes": 48478,
+      "runtimeBytes": 320,
+      "creationSha256": "e97a77582813525a376eab864f3073a5bb6b2b99d5b29e5b7d811584d67bbdfd",
+      "runtimeSha256": "e58b926631c10084d1b5137cc0d5b848aeb6bb259fca93e6c72584e591b5d20f"
+    },
+    "RMTLaunchCurveDirectoryV2": {
+      "creationBytes": 11737,
+      "runtimeBytes": 10290,
+      "creationSha256": "2c3aa5f6d0cd2100bc7839d2e73fc77af61ead5dc3a81e76224aaa8eeb0a0a95",
+      "runtimeSha256": "5effb9878dbe30c5b6af9a9e3fc789a781a8beb2f24ef854112a66ff63983f27"
+    },
+    "RMTLaunchCurveFactoryV1": {
+      "creationBytes": 24857,
+      "runtimeBytes": 23980,
+      "creationSha256": "252c39b28421a520d15b6d62135bc43a0ab3c8da5ab58f53e01a21a9a3c80043",
+      "runtimeSha256": "a0aacdbfdac648fb030166b8298fa2280e7ebe8e21633fbdbc9a256d87f9e10c"
+    },
+    "RMTLaunchCurveLpFeeLedgerV1": {
+      "creationBytes": 4372,
+      "runtimeBytes": 3632,
+      "creationSha256": "e6e6bbf6894b174e237511c11adb309a37bd8186f47d21e13dd2cb3361cef945",
+      "runtimeSha256": "020356ae87c54f7491983e6b23f83458e9cb97aa4ea997b69e6134570a5f89cf"
+    },
+    "RMTLaunchCurveRevenueLedgerV1": {
+      "creationBytes": 2667,
+      "runtimeBytes": 2154,
+      "creationSha256": "2ca9781bca8cfcec8e8d460329a69f3b5296f677c85a8d48b25ac7c31ddef042",
+      "runtimeSha256": "8d869d07d5949295254a561bf13bc39607cc7096f9a2156d9f76f4ecffa9db54"
+    },
+    "RMTLaunchCurveTokenV1": {
+      "creationBytes": 2584,
+      "runtimeBytes": 1544,
+      "creationSha256": "b4137f5885f250327cccb68802c4d5ccdd7b6909ab81b53a53a2c21f2a7e22ad",
+      "runtimeSha256": "220f21603e0c6f5328f5d387c52836b3c1b242da79b87d9ff9db0faf9ddafa39"
+    },
+    "RMTLaunchProjectRegistryV2": {
+      "creationBytes": 15661,
+      "runtimeBytes": 14275,
+      "creationSha256": "5e1635d597d2fc182a3ea63b0fd16fca2e1d30de5a1d7cc53b0502f7bd8168ac",
+      "runtimeSha256": "b93f1b6946531618bb74f1d121665b19ef98668c0f710cbdb9c28f4f698b042f"
+    },
+    "RMTV4CurveGraduationV1": {
+      "creationBytes": 21211,
+      "runtimeBytes": 19710,
+      "creationSha256": "7afb37c68a710787dd0f4773e48caab81363f0f90ba469f9dd20cd58b56c77e8",
+      "runtimeSha256": "03ada418a644484c65a08251142a8c3f16fef3fd4ff88e246a939b71cd72df03"
+    },
+    "RMTV4CurveInitializationGuardV1": {
+      "creationBytes": 1193,
+      "runtimeBytes": 949,
+      "creationSha256": "72054575473c2d43d187336c30fe76b9414221d18b4e8dd12080046b4e3f4dbe",
+      "runtimeSha256": "3c91f7ec0be7b37d259ad99a9cd56d5ccb746e7f9f0f252a21543b0a901a3ec4"
+    }
+  },
+  "size": {
+    "bootstrapConstructorBytes": 416,
+    "bootstrapInitcodeBytes": 48894,
+    "bootstrapInitcodeHeadroom": 258,
+    "factoryRuntimeBytes": 23980,
+    "factoryRuntimeHeadroom": 596
+  }
+}

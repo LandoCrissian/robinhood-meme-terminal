@@ -1,0 +1,322 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.26;
+
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {RMTLaunchCurveDirectoryV2 as Directory, IRMTLaunchCurveVersionV2} from "./RMTLaunchCurveDirectoryV2.sol";
+
+interface IRegisteredCurveV1 {
+    function factory() external view returns (address);
+    function token() external view returns (address);
+    function creator() external view returns (address);
+    function projectRegistry() external view returns (address);
+    function graduated() external view returns (bool);
+    function active() external view returns (bool);
+    function migrationSource() external view returns (address);
+    function migratedTo() external view returns (address);
+    function executionVersion() external view returns (uint32);
+    function executionEngine() external view returns (address);
+    function migrationCommitment() external view returns (bytes32);
+}
+
+interface IRegisteredCurveFactoryV1 is IRMTLaunchCurveVersionV2 {
+    function curveForToken(address token) external view returns (address);
+    function migrationCandidate(address token, uint32 version) external view returns (address);
+    function executeMigration(address token, address nextCurve, bytes32 runtimeHash) external;
+    function successorDeployer() external view returns (address);
+    function successorDeployerRuntimeHash() external view returns (bytes32);
+}
+
+/// @notice Permanent project identity and append-only migration evidence.
+contract RMTLaunchProjectRegistryV2 is EIP712, ReentrancyGuard {
+    uint48 public constant migrationDelay = 2 days;
+    uint48 public constant migrationWindow = 7 days;
+    bytes32 public constant MIGRATION_TYPEHASH = keccak256(
+        "CurveAssetMigration(address token,address sourceCurve,uint64 nonce,uint32 fromVersion,address nextCurve,bytes32 runtimeHash,uint64 signerSetEpoch,uint48 deadline)"
+    );
+
+    struct Project {
+        address factory;
+        address curve;
+        uint32 version;
+        address engine;
+        uint64 migrations;
+    }
+
+    struct Migration {
+        uint32 fromVersion;
+        uint32 toVersion;
+        address previousEngine;
+        address nextEngine;
+        bytes32 runtimeHash;
+        uint64 effectiveBlock;
+        uint48 effectiveAt;
+    }
+
+    struct Proposal {
+        address nextEngine;
+        bytes32 runtimeHash;
+        uint48 deadline;
+        uint48 executableAt;
+        uint48 expiresAt;
+        uint64 signerSetEpoch;
+    }
+
+    Directory public immutable directory;
+    mapping(address token => Project) public project;
+    mapping(address token => address curve) public originCurve;
+    mapping(address token => mapping(uint64 index => Migration)) public migration;
+    mapping(address token => Proposal) public proposal;
+    mapping(address token => uint64) public migrationNonce;
+
+    error InvalidDirectory();
+    error InvalidProject();
+    error InvalidProposal();
+    error Unauthorized();
+    error NotExecutable();
+
+    event ProjectRegistered(address indexed token, address indexed factory, address indexed curve, uint32 version);
+    event MigrationProposed(
+        address indexed token, uint64 indexed nonce, address indexed nextEngine, bytes32 runtimeHash
+    );
+    event MigrationScheduled(
+        address indexed token, uint64 indexed nonce, uint48 executableAt, uint48 expiresAt, uint64 signerSetEpoch
+    );
+    event MigrationAuthorizationInvalidated(
+        address indexed token, uint64 indexed nonce, uint64 indexed previousEpoch, uint64 currentEpoch
+    );
+    event MigrationCleared(address indexed token, uint64 indexed nonce);
+    event ProjectMigrated(address indexed token, uint64 indexed index, address indexed nextEngine, uint32 toVersion);
+
+    constructor(Directory directory_) EIP712("RMT Launch Project Registry", "3") {
+        if (address(directory_).code.length == 0 || directory_.signerSetEpoch() == 0) revert InvalidDirectory();
+        directory = directory_;
+    }
+
+    function register(address token, address curve) external nonReentrant {
+        if (
+            directory.suspended() || token.code.length == 0 || curve.code.length == 0
+                || project[token].curve != address(0)
+        ) {
+            revert InvalidProject();
+        }
+        IRegisteredCurveFactoryV1 factory = IRegisteredCurveFactoryV1(msg.sender);
+        (address approved, bytes32 runtimeHash) = directory.factories(factory.engineVersion());
+        IRegisteredCurveV1 market = IRegisteredCurveV1(curve);
+        uint32 version = market.executionVersion();
+        address engine = market.executionEngine();
+        if (
+            approved != msg.sender || msg.sender.codehash != runtimeHash || factory.curveForToken(token) != curve
+                || market.factory() != msg.sender || market.token() != token || market.creator() == address(0)
+                || market.projectRegistry() != address(this) || version != 1 || engine != curve || !market.active()
+                || market.migrationSource() != address(0)
+        ) revert InvalidProject();
+        project[token] = Project(msg.sender, curve, version, engine, 0);
+        originCurve[token] = curve;
+        emit ProjectRegistered(token, msg.sender, curve, version);
+    }
+
+    function proposeMigration(address token, address nextEngine, bytes32 runtimeHash, uint48 deadline)
+        external
+        nonReentrant
+    {
+        Project storage item = project[token];
+        IRegisteredCurveV1 market = IRegisteredCurveV1(item.curve);
+        if (item.curve == address(0) || market.creator() != msg.sender) revert Unauthorized();
+        if (
+            directory.suspended() || market.graduated() || !market.active() || proposal[token].nextEngine != address(0)
+                || !_candidate(item, token, nextEngine, runtimeHash) || deadline < block.timestamp + migrationDelay
+                || deadline > block.timestamp + 30 days
+        ) revert InvalidProposal();
+        proposal[token] = Proposal(nextEngine, runtimeHash, deadline, 0, 0, 0);
+        emit MigrationProposed(token, migrationNonce[token], nextEngine, runtimeHash);
+    }
+
+    function migrationDigest(address token) public view returns (bytes32) {
+        return _migrationDigest(token, directory.signerSetEpoch());
+    }
+
+    function _migrationDigest(address token, uint64 epoch) private view returns (bytes32) {
+        Proposal storage next = proposal[token];
+        return _hashTypedDataV4(
+            keccak256(
+                abi.encode(
+                    MIGRATION_TYPEHASH,
+                    token,
+                    project[token].curve,
+                    migrationNonce[token],
+                    project[token].version,
+                    next.nextEngine,
+                    next.runtimeHash,
+                    epoch,
+                    next.deadline
+                )
+            )
+        );
+    }
+
+    function scheduleMigration(address token, bytes calldata first, bytes calldata second) external nonReentrant {
+        Proposal storage next = proposal[token];
+        uint48 executableAt = uint48(block.timestamp) + migrationDelay;
+        if (
+            directory.suspended() || next.nextEngine == address(0) || next.executableAt != 0
+                || executableAt > next.deadline || !_candidate(project[token], token, next.nextEngine, next.runtimeHash)
+                || IRegisteredCurveV1(project[token].curve).graduated()
+        ) revert InvalidProposal();
+        uint64 epoch = directory.signerSetEpoch();
+        bytes32 digest = _migrationDigest(token, epoch);
+        address a = ECDSA.recover(digest, first);
+        address b = ECDSA.recover(digest, second);
+        if (a == b || !directory.isSigner(a) || !directory.isSigner(b)) revert Unauthorized();
+        next.signerSetEpoch = epoch;
+        next.executableAt = executableAt;
+        uint48 latest = executableAt + migrationWindow;
+        next.expiresAt = latest < next.deadline ? latest : next.deadline;
+        emit MigrationScheduled(token, migrationNonce[token], executableAt, next.expiresAt, epoch);
+    }
+
+    function executeMigration(address token) external nonReentrant {
+        Project storage item = project[token];
+        Proposal memory next = proposal[token];
+        if (
+            directory.suspended() || next.executableAt == 0 || next.signerSetEpoch != directory.signerSetEpoch()
+                || block.timestamp < next.executableAt
+                || block.timestamp > next.expiresAt || !_candidate(item, token, next.nextEngine, next.runtimeHash)
+        ) revert NotExecutable();
+        IRegisteredCurveV1 market = IRegisteredCurveV1(item.curve);
+        if (
+            market.graduated() || !market.active() || market.executionVersion() != item.version
+                || market.executionEngine() != item.engine
+        ) {
+            revert NotExecutable();
+        }
+        uint32 nextVersion = item.version + 1;
+        IRegisteredCurveFactoryV1 factory = IRegisteredCurveFactoryV1(item.factory);
+        // Consume the scheduled authorization before crossing into the factory. Keep the
+        // current project pointer intact until settlement and the signer epoch have been verified.
+        uint64 nonce = _consume(token);
+        factory.executeMigration(token, next.nextEngine, next.runtimeHash);
+        IRegisteredCurveV1 successor = IRegisteredCurveV1(next.nextEngine);
+        if (
+            directory.suspended() || next.signerSetEpoch != directory.signerSetEpoch()
+                || factory.curveForToken(token) != next.nextEngine || market.active()
+                || market.migratedTo() != next.nextEngine || !successor.active()
+                || successor.executionVersion() != nextVersion || successor.executionEngine() != next.nextEngine
+        ) {
+            revert NotExecutable();
+        }
+        uint64 index = ++item.migrations;
+        migration[token][index] = Migration(
+            item.version,
+            nextVersion,
+            item.engine,
+            next.nextEngine,
+            next.runtimeHash,
+            uint64(block.number),
+            uint48(block.timestamp)
+        );
+        item.version = nextVersion;
+        item.engine = next.nextEngine;
+        item.curve = next.nextEngine;
+        emit MigrationCleared(token, nonce);
+        emit ProjectMigrated(token, index, next.nextEngine, nextVersion);
+    }
+
+    function cancelMigration(address token) external nonReentrant {
+        if (
+            proposal[token].nextEngine == address(0) || IRegisteredCurveV1(project[token].curve).creator() != msg.sender
+        ) {
+            revert Unauthorized();
+        }
+        _clear(token);
+    }
+
+    function clearExpiredMigration(address token) external nonReentrant {
+        Proposal memory next = proposal[token];
+        uint48 expiry = next.expiresAt != 0 && next.signerSetEpoch == directory.signerSetEpoch()
+            ? next.expiresAt
+            : next.deadline;
+        if (expiry == 0 || block.timestamp <= expiry) revert NotExecutable();
+        _clear(token);
+    }
+
+    /// @notice Clear obsolete quorum approval while preserving the creator's exact proposal and deadline.
+    function clearStaleMigration(address token) external nonReentrant {
+        Proposal storage next = proposal[token];
+        uint64 epoch = directory.signerSetEpoch();
+        uint64 previousEpoch = next.signerSetEpoch;
+        if (next.executableAt == 0 || previousEpoch == epoch || block.timestamp > next.deadline) {
+            revert NotExecutable();
+        }
+        next.executableAt = 0;
+        next.expiresAt = 0;
+        next.signerSetEpoch = 0;
+        emit MigrationAuthorizationInvalidated(token, migrationNonce[token]++, previousEpoch, epoch);
+    }
+
+    /// @notice Exact reviewed deployer for the next adjacent version. Zero means the transition is unavailable.
+    function migrationTemplate(address factory, uint32 fromVersion)
+        public
+        view
+        returns (address deployer, bytes32 runtimeHash)
+    {
+        if (
+            directory.suspended() || factory.code.length == 0 || fromVersion == 0
+                || fromVersion >= directory.MAX_CURVE_VERSION()
+        ) return (address(0), bytes32(0));
+        (address approved, bytes32 factoryHash) =
+            directory.factories(IRegisteredCurveFactoryV1(factory).engineVersion());
+        if (approved != factory || factory.codehash != factoryHash) return (address(0), bytes32(0));
+        if (fromVersion == 1) {
+            deployer = IRegisteredCurveFactoryV1(factory).successorDeployer();
+            runtimeHash = IRegisteredCurveFactoryV1(factory).successorDeployerRuntimeHash();
+        } else {
+            (deployer, runtimeHash) = directory.migrationTemplates(fromVersion + 1);
+        }
+        if (deployer.code.length == 0 || deployer.codehash != runtimeHash) return (address(0), bytes32(0));
+    }
+
+    function nextMigrationVersion(address token) external view returns (uint32) {
+        Project storage item = project[token];
+        if (item.curve == address(0)) return 0;
+        IRegisteredCurveV1 current = IRegisteredCurveV1(item.curve);
+        if (
+            !current.active() || current.graduated() || current.executionVersion() != item.version
+                || IRegisteredCurveFactoryV1(item.factory).curveForToken(token) != item.curve
+        ) return 0;
+        (address deployer,) = migrationTemplate(item.factory, item.version);
+        return deployer == address(0) ? 0 : item.version + 1;
+    }
+
+    function _clear(address token) private {
+        emit MigrationCleared(token, _consume(token));
+    }
+
+    function _consume(address token) private returns (uint64 nonce) {
+        delete proposal[token];
+        nonce = migrationNonce[token]++;
+    }
+
+    function _candidate(Project storage item, address token, address nextCurve, bytes32 runtimeHash)
+        private
+        view
+        returns (bool)
+    {
+        if (item.curve == address(0) || nextCurve.code.length == 0 || nextCurve.codehash != runtimeHash) {
+            return false;
+        }
+        (address deployer,) = migrationTemplate(item.factory, item.version);
+        if (deployer == address(0)) return false;
+        uint32 nextVersion = item.version + 1;
+        IRegisteredCurveFactoryV1 factory = IRegisteredCurveFactoryV1(item.factory);
+        if (factory.curveForToken(token) != item.curve || factory.migrationCandidate(token, nextVersion) != nextCurve) {
+            return false;
+        }
+        IRegisteredCurveV1 candidate = IRegisteredCurveV1(nextCurve);
+        return candidate.migrationSource() == item.curve && !candidate.active() && !candidate.graduated()
+            && candidate.executionVersion() == nextVersion && candidate.token() == token
+            && candidate.factory() == item.factory && candidate.projectRegistry() == address(this)
+            && candidate.migrationCommitment() == IRegisteredCurveV1(item.curve).migrationCommitment();
+    }
+}
