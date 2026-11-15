@@ -1,0 +1,31 @@
+{
+  "profile": "rmt-curve-v1-4663-governance-rotation-v2",
+  "state": "BLOCKED_NO_BROADCAST",
+  "broadcastAuthorized": false,
+  "inputSha256": "90122536b22c847aebc0182d75290b9ba281399481d90daffc8b0f66ed92f65b",
+  "evidenceSha256Lf": "c445147b311911a8fadc2d2149f0b693c56a9923f007c5ac6705c8f37765edac",
+  "matchedAddresses": 8,
+  "matchedRuntimeHashes": 8,
+  "guardPermissionBits": "0x2000",
+  "forkBlock": 114549452,
+  "deploymentExecutionGas": 22617164,
+  "gasByStep": {
+    "directory": 2376060,
+    "registry": 3185463,
+    "v2Template": 3333116,
+    "bootstrap": 9951309,
+    "publishFactorySchedule": 101369,
+    "publishFactoryExecution": 102429,
+    "v3Template": 3377132,
+    "publishV3Schedule": 104301,
+    "publishV3Execution": 85985
+  },
+  "bootstrapIntrinsicGas": 771652,
+  "size": {
+    "bootstrapConstructorBytes": 416,
+    "bootstrapInitcodeBytes": 48894,
+    "bootstrapInitcodeHeadroom": 258,
+    "factoryRuntimeBytes": 23980,
+    "factoryRuntimeHeadroom": 596
+  }
+}

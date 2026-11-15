@@ -33,12 +33,13 @@ The compiler input SHA-256 is 90122536b22c847aebc0182d75290b9ba281399481d90daffc
 | Bootstrap | 48,894 encoded initcode and **258 bytes of EIP-3860 headroom** |
 | Factory | 23,980 runtime and 596 bytes of EIP-170 headroom |
 
-The nine-step 4663 rehearsal used **22,617,176 gas units**. Directory V2 used 2,376,060 and Registry V2 used 3,185,463. Bootstrap used 9,951,309, matching #614's bootstrap measurement. These are fork receipt values. Actual ETH cost, constructor input bytes and L1 data charges depend on the approved inputs and execution conditions.
+The [nine-step 4663 deployment rehearsal](evidence/rmt-task043/4663-rotation-deployment-measurements.json) used **22,617,164 gas units** in the retained Safe replay. Directory V2 used 2,376,060 and Registry V2 used 3,185,463. Bootstrap used 9,951,309, matching #614's bootstrap measurement. The verifier reproduced eight fixture addresses, eight materialized runtime hashes and the exact guard derivation. These are fork receipt values. Actual ETH cost, constructor calldata and L1 data charges depend on the approved inputs and execution conditions.
 
     node docs/evidence/rmt-task043/compile-rotation-profile.mjs --checkout "$PINNED_594" --solc "$PINNED_SOLC" --verify-manifest
     node docs/evidence/rmt-task043/deploy-rotation.mjs
     node docs/evidence/rmt-task043/deploy-rotation.mjs --checkout "$PINNED_594" --typed-data "$REQUEST_JSON"
     node docs/evidence/rmt-task043/deploy-rotation.mjs --checkout "$PINNED_594" --solc "$PINNED_SOLC" --input "$OWNER_INPUTS" --output "$NEW_UNSIGNED_PLAN"
+    node docs/evidence/rmt-task043/deploy-rotation.mjs --checkout "$PINNED_594" --solc "$PINNED_SOLC" --check-fixture docs/evidence/rmt-task043/4663-rotation-safe-claims.json
 
 The typed-data request contains exactly schema, verifyingContract and message. Its domain chain ID is 4663. Before signing in a separately authorized process, compare the returned digest and epoch with the pinned on-chain directory or registry, independently verify the exact target, and use only the intended action schema and key. The input sheet accepts public addresses and excludes keys and signatures.
 
@@ -53,6 +54,14 @@ The broad Windows Foundry run returned **505 passed, 1 failed, 1 skipped**. The 
     node docs/evidence/rmt-task043/run-rotation-fork.mjs --checkout "$PINNED_594" --solc "$PINNED_SOLC" --anvil "$PINNED_ANVIL" --archive pinax --safe-only
 
 The fork harness uses the named 4663 compiler profile, original Router 2.1.2 and Safe pins, a loopback Anvil instance and a method-allowlisted upstream archive proxy that returns HTTP 403 for the write probe. The [governance receipt observer](evidence/rmt-task043/observe-governance.mjs) verifies canonical log identity, registered runtime hashes, registry-to-directory binding, monotone epochs, the restarted execution window and unchanged creator proposal. It checks fixture blocks with one transaction per block. Production indexing and database state remain unchanged. The existing registry project and registration ABI is preserved, and any future migration event index must read the new schedule event and invalidation epoch.
+
+The [treasury matrix](evidence/rmt-task043/4663-rotation-treasury-matrix.json) passed on the same pinned block for 0%, 25%, 50% and 100% of the project share. All four cases verified creation and refunds, V1→V2→V3 migration, graduation, v4 buy and sell execution, LP harvest, and creator, treasury, operations and reserve claims. The 50% rejecting recipient retained its native credit and recovered its ERC-20 claim separately. Every case preserved the original LP principal and independently reconciled total credits. The first case confirmed unchanged assets and credits across rotation and the rejection of epoch-1 authorizations.
+
+The [Safe 1.4.1 replay](evidence/rmt-task043/4663-rotation-safe-claims.json) passed at Robinhood block **114549452**. Its independently signed 2-of-3 Safe claimed curve ETH and combined, native-only and token-only LP fees, then transferred the earned assets to its separate spending wallet. Its one-signature and replay attempts reverted with GS020 and GS026. The protocol also exercised a genuine signer rotation during the first migration, epoch-1 rejection, permissionless approval clearing, renewed notice, V1→V2→V3, graduation, standard v4 swaps and unchanged locked principal. The recorded rotation schedule used 107,319 gas and execution used 55,707. The receipt observer accepted all six events across epochs 1 and 2.
+
+An earlier receipt projection inferred deployment blocks and encountered an empty Anvil block. The harness now reads the actual constructor receipts. The combined attempt reached all four treasury cases and timed out on a later historical Safe code read. A dRPC Safe retry also lacked a local bootstrap receipt. The retained Pinax replays ran separately. The isolation, code pins and receipt checks stayed in force.
+
+All five retained cases match #614 exactly for supply, creation fee, accrued buckets, LP claims, deposit quantities, locked liquidity and every v4 swap amount. The treasury replay's nine deployment and publication steps used 22,617,176 gas units. Different fixture signatures can change calldata gas slightly across runs.
 
 ## Static analysis
 
