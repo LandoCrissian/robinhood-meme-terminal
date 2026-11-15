@@ -1,0 +1,24 @@
+{
+  "schema": "rmt-launch-provisional-wallet-overlay-v1",
+  "chainId": 4663,
+  "candidateCommit": "d4d81d1153a11728d98e694c1f3976ceb3408915",
+  "releaseManifestSha256Lf": "9273ba1c41b3891153e4f3810ddaacff62cd152fc4072b9636976c0db3d2e689",
+  "state": "BLOCKED_NO_BROADCAST",
+  "approval": "PROPOSED_UNAPPROVED",
+  "broadcastAuthorized": false,
+  "ownerOverrides": {
+    "governanceSigners": [
+      "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+      "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+      "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697"
+    ]
+  },
+  "unassigned": {
+    "operatingTreasury": null,
+    "futureReserve": null,
+    "deployer": null,
+    "economicsApprovalReference": null,
+    "signerKeyContinuity": [null, null, null],
+    "incidentLead": null
+  }
+}

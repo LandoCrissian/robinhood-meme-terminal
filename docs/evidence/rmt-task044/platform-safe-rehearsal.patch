@@ -1,0 +1,118 @@
+diff --git a/packages/contracts/scripts/safe-rehearsal.mjs b/packages/contracts/scripts/safe-rehearsal.mjs
+index ec8d487..b410c8a 100644
+--- a/packages/contracts/scripts/safe-rehearsal.mjs
++++ b/packages/contracts/scripts/safe-rehearsal.mjs
+@@ -76 +76,2 @@ function matchingCalls(trace, from, to) {
+-export async function setupFixtureSafe({ client, submit, sender, fixtureBlock = reviewedFork.number }) {
++export async function setupFixtureSafe({ client, submit, sender, fixtureBlock = reviewedFork.number, fixtureThreshold = 2 }) {
++  assert.ok([2, 3].includes(fixtureThreshold));
+@@ -101 +102 @@ export async function setupFixtureSafe({ client, submit, sender, fixtureBlock =
+-  const args = [ownerAddresses, 2n, zeroAddress, "0x", fallback, zeroAddress, 0n, zeroAddress];
++  const args = [ownerAddresses, BigInt(fixtureThreshold), zeroAddress, "0x", fallback, zeroAddress, 0n, zeroAddress];
+@@ -114 +115 @@ export async function setupFixtureSafe({ client, submit, sender, fixtureBlock =
+-  assert.ok(same(master, singleton) && release === "1.4.1" && threshold === 2n);
++  assert.ok(same(master, singleton) && release === "1.4.1" && threshold === BigInt(fixtureThreshold));
+@@ -130 +131 @@ export async function setupFixtureSafe({ client, submit, sender, fixtureBlock =
+-    for (const owner of owners.slice(0, 2)) {
++    for (const owner of owners.slice(0, fixtureThreshold)) {
+@@ -139 +140 @@ export async function setupFixtureSafe({ client, submit, sender, fixtureBlock =
+-  function encodeExecution(transaction, count = 2) {
++  function encodeExecution(transaction, count = fixtureThreshold) {
+@@ -180 +181 @@ export async function setupFixtureSafe({ client, submit, sender, fixtureBlock =
+-      return reject(encodeExecution(transaction, 1), transaction.nonce, "GS020");
++      return reject(encodeExecution(transaction, fixtureThreshold - 1), transaction.nonce, "GS020");
+diff --git a/packages/contracts/scripts/treasury-rehearsal.mjs b/packages/contracts/scripts/treasury-rehearsal.mjs
+index fa9a400..fe6feb4 100644
+--- a/packages/contracts/scripts/treasury-rehearsal.mjs
++++ b/packages/contracts/scripts/treasury-rehearsal.mjs
+@@ -161 +161 @@ async function launchCase(client, accounts, artifacts, pins, deployment, test, o
+-  const { percent, treasury } = test;
++  const { percent, treasury, platform } = test;
+@@ -168 +168,3 @@ async function launchCase(client, accounts, artifacts, pins, deployment, test, o
+-  const senders = recipients.map((account, i) => i === 1 ? treasuryExec : (call) => send(client, account, call));
++  const safeExecutors = new Map([[1, treasury.execute], ...platform.map(({ slot, execute }) => [slot, execute])]);
++  const senders = recipients.map((account, i) => safeExecutors.get(i) ??
++    (i === 1 ? treasuryExec : (call) => send(client, account, call)));
+@@ -295 +297 @@ async function launchCase(client, accounts, artifacts, pins, deployment, test, o
+-      } else if (round === 1 && i === 1 && treasury.execute) {
++      } else if (round === 1 && safeExecutors.get(i)) {
+@@ -324 +326,15 @@ async function launchCase(client, accounts, artifacts, pins, deployment, test, o
+-  return { percent, bps, recipients, treasuryKind: treasury.kind, treasurySetup: treasury.setup,
++  const platformSpending = [];
++  for (const { role, slot, safe, spendingWallet, proveSpending } of platform) {
++    const other = platform.find(({ slot: candidate }) => candidate !== slot);
++    const otherBefore = await balances(client, token, other.safe.address);
++    const [nativeAmount, tokenAmount] = lpClaimed[slot].map(amount => amount / 2n);
++    const revenueBeforeSpending = await balances(client, token, safe.address);
++    assert.deepEqual(revenueBeforeSpending, [claimed[slot] + lpClaimed[slot][0], lpClaimed[slot][1]]);
++    const payments = await proveSpending({ safe, client, token, spendingWallet, nativeAmount, tokenAmount });
++    const remaining = await balances(client, token, safe.address);
++    assert.deepEqual(remaining, subtract(revenueBeforeSpending, [nativeAmount, tokenAmount]));
++    assert.deepEqual(await balances(client, token, other.safe.address), otherBefore);
++    assert.deepEqual(await verifyPosition(client, pins, position, engine), custody);
++    platformSpending.push({ role, beneficiary: safe.address, spendingWallet, revenueBeforeSpending, payments, remaining });
++  }
++  return { percent, bps, recipients, platformSpending, treasuryKind: treasury.kind, treasurySetup: treasury.setup,
+@@ -336,0 +353 @@ const { values } = parseArgs({ options: {
++  "platform-safes": { type: "boolean", default: false },
+@@ -341,0 +359 @@ assert.ok(!values["safe-only"] || values.safe, "Select --safe with --safe-only")
++assert.ok(!values["platform-safes"] || (!values.safe && values["project-share"] === undefined));
+@@ -356 +374,27 @@ const results = await withAnvilFork(values, async ({ rpcUrl, accounts, report })
+-  const deployment = await deploy(client, accounts, pins, artifacts);
++  const [, originalOperating, originalReserve, , , collector] = accounts;
++  const platform = [];
++  const boundAccounts = [...accounts];
++  if (values["platform-safes"]) {
++    const { setupFixtureSafe, proveSafeSpending } = await import("./safe-rehearsal.mjs");
++    for (const [role, slot, fixtureThreshold, spendingWallet] of [
++      ["operations", 2, 2, originalOperating], ["reserve", 3, 3, originalReserve],
++    ]) {
++      const safe = await setupFixtureSafe({ client, sender: collector, submit: (from, payload, expected) =>
++        send(client, from, payload, expected), fixtureBlock: BigInt(report.network.blockNumber), fixtureThreshold });
++      let checkedAuthorization = false;
++      async function execute(call) {
++        if (checkedAuthorization) return safe.execute(call);
++        const insufficient = await safe.rejectInsufficient(call);
++        const execution = await safe.execute(call);
++        const replay = await safe.rejectReplay(execution);
++        checkedAuthorization = true;
++        return { ...execution, authorization: { insufficient, replay } };
++      }
++      platform.push({ role, slot, safe, spendingWallet, execute, proveSpending: proveSafeSpending });
++      boundAccounts[slot - 1] = safe.address;
++    }
++    const [ops, reserve] = platform.map(({ safe }) => safe.setup);
++    assert.notEqual(ops.proxy, reserve.proxy);
++    assert.equal(new Set([...ops.ownerAddresses, ...reserve.ownerAddresses]).size, 6);
++  }
++  const deployment = await deploy(client, boundAccounts, pins, artifacts);
+@@ -362 +406 @@ const results = await withAnvilFork(values, async ({ rpcUrl, accounts, report })
+-  const [operator, operating, , , , collector] = accounts;
++  const [operator, operating, reserve] = boundAccounts;
+@@ -366 +410 @@ const results = await withAnvilFork(values, async ({ rpcUrl, accounts, report })
+-    const launched = await launchCase(client, accounts, artifacts, pins, deployment, { percent, treasury }, ordinal);
++    const launched = await launchCase(client, boundAccounts, artifacts, pins, deployment, { percent, treasury, platform }, ordinal);
+@@ -382 +426,3 @@ const results = await withAnvilFork(values, async ({ rpcUrl, accounts, report })
+-  if (!values["safe-only"]) {
++  if (values["platform-safes"]) {
++    await runCase(0, { address: zeroAddress, kind: "none" }, 1);
++  } else if (!values["safe-only"]) {
+@@ -410,0 +457 @@ const results = await withAnvilFork(values, async ({ rpcUrl, accounts, report })
++  const reserveBefore = await client.getBalance({ address: reserve });
+@@ -412 +459,7 @@ const results = await withAnvilFork(values, async ({ rpcUrl, accounts, report })
+-  const claim = await send(client, operator, request(deployment.factory, artifacts.RMTLaunchCurveFactoryV1.abi, "claimCreationFees"));
++  const factoryAbi = artifacts.RMTLaunchCurveFactoryV1.abi;
++  const claim = await send(client, operator, request(deployment.factory, factoryAbi, "claimCreationFees"));
++  const { args: claimedCreation, logIndex: creationClaimLogIndex } =
++    oneEvent(claim, deployment.factory, factoryAbi, "CreationFeesClaimed");
++  assert.ok(same(claimedCreation.recipient, operating));
++  assert.equal(claimedCreation.amount, creationFees);
++  const creationNativeProof = await nativeSettlement(client, claim, deployment.factory, operating, creationFees);
+@@ -413,0 +467,2 @@ const results = await withAnvilFork(values, async ({ rpcUrl, accounts, report })
++  assert.equal(await client.getBalance({ address: reserve }), reserveBefore);
++  assert.equal(await read(client, deployment.factory, factoryAbi, "creationFeesAccrued"), 0n);
+@@ -428 +483,3 @@ const results = await withAnvilFork(values, async ({ rpcUrl, accounts, report })
+-    creationFeeClaim: { ...receiptEvidence(claim), recipient: operating, nativeAmount: creationFees } };
++    platformSafes: platform.map(({ role, slot, safe }) => ({ role, slot, ...safe.setup })),
++    creationFeeClaim: { ...receiptEvidence(claim), recipient: operating, nativeAmount: creationFees,
++      logIndex: creationClaimLogIndex, nativeProof: creationNativeProof, reserveUnaffected: true } };

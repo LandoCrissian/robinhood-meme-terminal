@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "candidateCommit": "d4d81d1153a11728d98e694c1f3976ceb3408915",
+  "releaseManifestSha256Lf": "9273ba1c41b3891153e4f3810ddaacff62cd152fc4072b9636976c0db3d2e689",
+  "releaseStatus": "BLOCKED_NO_BROADCAST",
+  "broadcastAuthorized": false,
+  "chainId": 4663,
+  "endpoints": {
+    "official": "https://rpc.mainnet.chain.robinhood.com",
+    "pinax": "https://robinhood.rpc.pinax.network"
+  },
+  "readMethods": [
+    "eth_chainId",
+    "eth_getBlockByNumber",
+    "eth_getCode"
+  ],
+  "directory": {
+    "sourcePath": "src/RMTLaunchCurveDirectoryV2.sol",
+    "sourceSha256": "0bb4beb821652d079620050c228783647d865da6a05da4df1628cc84ca3c1531",
+    "threshold": 2,
+    "signerCount": 3,
+    "eligibility": "Code-empty account with address above 0xffff"
+  },
+  "status": "ELIGIBLE_AT_PINNED_BLOCK",
+  "anchor": {
+    "number": "114738660",
+    "hash": "0x8f3b3f2894f5d4d3f5fd8b462b10a6d38877ab2a3cff9acd8274e01ca563ef5e",
+    "stateRoot": "0x726d4a95769843c5b71dc89d4c63c59ecac5fb372938332bd02812ae8132873e",
+    "timestamp": "2026-11-15T05:42:47.000Z"
+  },
+  "capture": {
+    "method": "Matching direct RPC reads against the pinned height, with block hashes checked before and after code reads. Block timestamp verified separately on the official RPC.",
+    "successfulCodeReadsBeforeUtc": "2026-11-15T05:44:44.058Z",
+    "subsequentReplay": {
+      "completedAt": "2026-11-15T05:44:44.058Z",
+      "status": "UNVERIFIED",
+      "reason": "pinax returned HTTP 429"
+    }
+  },
+  "wallets": [
+    {
+      "role": "RMT-GOV-01",
+      "submittedAddress": "0xc447a378cfd8460febc2eef67501d7a5473b9001",
+      "address": "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+      "submittedEncoding": "unchecksummed",
+      "aboveReservedRange": true,
+      "codeState": "EMPTY",
+      "policyEligible": true,
+      "keyControl": "UNVERIFIED",
+      "codes": {
+        "official": "0x",
+        "pinax": "0x"
+      }
+    },
+    {
+      "role": "RMT-GOV-02",
+      "submittedAddress": "0xc3600f2df60929d2ab9ab294cff42eedcb984f51",
+      "address": "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+      "submittedEncoding": "unchecksummed",
+      "aboveReservedRange": true,
+      "codeState": "EMPTY",
+      "policyEligible": true,
+      "keyControl": "UNVERIFIED",
+      "codes": {
+        "official": "0x",
+        "pinax": "0x"
+      }
+    },
+    {
+      "role": "RMT-GOV-03",
+      "submittedAddress": "0x2bcc3fafce77ccc7fdbed46e0b5bb80ba3e76697",
+      "address": "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697",
+      "submittedEncoding": "unchecksummed",
+      "aboveReservedRange": true,
+      "codeState": "EMPTY",
+      "policyEligible": true,
+      "keyControl": "UNVERIFIED",
+      "codes": {
+        "official": "0x",
+        "pinax": "0x"
+      }
+    }
+  ]
+}

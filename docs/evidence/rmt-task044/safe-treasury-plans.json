@@ -1,0 +1,53 @@
+{
+  "schema": "rmt-launch-proposed-safe-treasuries-v1",
+  "chainId": 4663,
+  "candidateCommit": "d4d81d1153a11728d98e694c1f3976ceb3408915",
+  "releaseManifestSha256Lf": "9273ba1c41b3891153e4f3810ddaacff62cd152fc4072b9636976c0db3d2e689",
+  "state": "BLOCKED_NO_BROADCAST",
+  "approval": "PROPOSED_UNAPPROVED",
+  "broadcastAuthorized": false,
+  "safeProfile": {
+    "proposedSingleton": "SafeL2 1.4.1",
+    "factoryMethod": "createProxyWithNonce",
+    "setupDelegateCall": false,
+    "enabledModules": [],
+    "guard": null,
+    "handler": "pinned standard compatibility fallback handler",
+    "setupPaymentWei": "0"
+  },
+  "treasuries": [
+    {
+      "name": "RMT-OPERATIONS",
+      "releaseInputField": "operatingTreasury",
+      "safeAddress": null,
+      "owners": null,
+      "threshold": null,
+      "deploymentSaltNonce": null,
+      "gasPayer": null,
+      "creationFeeShareBps": 10000,
+      "eligibleCurveAndOriginalLpFeeShareBps": 500,
+      "spendingScope": "approved operating expenses and transfers",
+      "spendingReview": "Safe threshold approval and expense or transfer record"
+    },
+    {
+      "name": "RMT-RESERVE",
+      "releaseInputField": "futureReserve",
+      "safeAddress": null,
+      "owners": null,
+      "threshold": null,
+      "deploymentSaltNonce": null,
+      "gasPayer": null,
+      "creationFeeShareBps": 0,
+      "eligibleCurveAndOriginalLpFeeShareBps": 500,
+      "spendingScope": "approved long-term reserve allocations only",
+      "spendingReview": "choose stronger Safe approval coverage than Operations and record a separate reserve decision before spending"
+    }
+  ],
+  "claimCalls": [
+    { "ledger": "factory", "signature": "claimCreationFees()", "destinationRole": "RMT-OPERATIONS", "caller": "any" },
+    { "ledger": "curve revenue ledger", "signature": "claim()", "assets": ["ETH"], "caller": "beneficiary Safe" },
+    { "ledger": "original LP fee ledger", "signature": "claim()", "assets": ["ETH", "ERC-20"], "caller": "beneficiary Safe" },
+    { "ledger": "original LP fee ledger", "signature": "claimAsset(bool)", "argument": true, "assets": ["ETH"], "caller": "beneficiary Safe" },
+    { "ledger": "original LP fee ledger", "signature": "claimAsset(bool)", "argument": false, "assets": ["ERC-20"], "caller": "beneficiary Safe" }
+  ]
+}
