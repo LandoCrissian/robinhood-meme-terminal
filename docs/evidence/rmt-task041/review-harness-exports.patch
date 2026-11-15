@@ -1,0 +1,9 @@
+--- a/packages/contracts/scripts/validate-curve-graduation-4663.mjs
++++ b/packages/contracts/scripts/validate-curve-graduation-4663.mjs
+@@ -965,3 +965,6 @@
+     process.exitCode = 1;
+   }
+ }
++
++export { compile, localClient, deploy, migrateCurve, proveCreation, proveSwap, send, read, request,
++  verifiedRuntime, oneEvent, receiptEvidence, poolIdFor, positionAbi, stateAbi };

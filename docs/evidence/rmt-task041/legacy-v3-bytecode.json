@@ -1,0 +1,66 @@
+{
+  "fixtureHead": "8dca5773cbd4dc98f52a45616f420bce96b000f0",
+  "frozenContractsTree": "e98de2eaedcf9d233bac0860094e7179db2ab562",
+  "compiler": "0.8.26+commit.8a97fa7a",
+  "compilerSha256": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
+  "package": "RMTUniswapV3FeeExecutorV2",
+  "sourceContentsVerified": 6,
+  "compiledCreationExpected": "0x4aad11354c2be1ac4632ddfa1968e40394fdd3127e51038e369c73d389d79a02",
+  "compiledCreationObserved": "0x931e25266c30b04ae26e5159c2b43ff7454c68a4732fa1ae008ce860a1b67ce2",
+  "junctionCrossesCheckout": true,
+  "normalizedAbsoluteRemappings": 10,
+  "sourceOnlyLineEndingChangeReproducedFailure": true,
+  "targetedNativeForgeRerun": {
+    "configuration": "FOUNDRY_AUTO_DETECT_REMAPPINGS=false and all 14 effective remappings injected with relative paths",
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "exactHashTestGas": 91818,
+    "fullFrozenWindowsOriginal": { "passed": 603, "failed": 1, "skipped": 4 }
+  },
+  "compilerInputVariants": [
+    {
+      "variant": "windowsJunction",
+      "creationKeccak": "0x931e25266c30b04ae26e5159c2b43ff7454c68a4732fa1ae008ce860a1b67ce2",
+      "creationWithoutMetadataKeccak": "0x2d60c6a9b5ece6e4820282e1397de361017b7a82926afc1a0383566435502591",
+      "runtimeWithoutMetadataKeccak": "0x12c93d910c5d5ddde90d2c90bc9d915f2a648225bc45c809cfca42325a67032b",
+      "matchesExpected": false,
+      "matchesWindows": true,
+      "byteLength": 12927,
+      "metadataTrailer": "a26469706673582212203b453b89368825918bc74a41feb52578b9c6ce2a5d9a84925d69d2897322b9c464736f6c634300081a0033"
+    },
+    {
+      "variant": "linuxRelative",
+      "creationKeccak": "0x4aad11354c2be1ac4632ddfa1968e40394fdd3127e51038e369c73d389d79a02",
+      "creationWithoutMetadataKeccak": "0x2d60c6a9b5ece6e4820282e1397de361017b7a82926afc1a0383566435502591",
+      "runtimeWithoutMetadataKeccak": "0x12c93d910c5d5ddde90d2c90bc9d915f2a648225bc45c809cfca42325a67032b",
+      "matchesExpected": true,
+      "matchesWindows": false,
+      "byteLength": 12927,
+      "metadataTrailer": "a26469706673582212208c19093aee566ccab41249e3200b77932352277656baa29da5a7e33fc4adef8364736f6c634300081a0033"
+    },
+    {
+      "variant": "explicitOnly",
+      "creationKeccak": "0x1c6bb52a92c4ff7b3acc23ea5cf0d52c58451aed0c280f2728f3c5ad97aa049c",
+      "creationWithoutMetadataKeccak": "0x2d60c6a9b5ece6e4820282e1397de361017b7a82926afc1a0383566435502591",
+      "runtimeWithoutMetadataKeccak": "0x12c93d910c5d5ddde90d2c90bc9d915f2a648225bc45c809cfca42325a67032b",
+      "matchesExpected": false,
+      "matchesWindows": false,
+      "byteLength": 12927,
+      "metadataTrailer": "a2646970667358221220aa35c5b8c59753d2b49817b08a767edae436ec3f078a073a8ef803c8996d4abb64736f6c634300081a0033"
+    }
+  ],
+  "curveClosure": {
+    "inputSha256": "a28e0ae5a50ea1375644a0b737ad6d55d1da90d04bc1f169de0ad9e0553d0bd2",
+    "compiledSources": 65,
+    "templateSelectionFiles": 12,
+    "remappings": [
+      "@openzeppelin/=lib/v4-core/lib/openzeppelin-contracts/",
+      "@uniswap/v4-core/=lib/v4-core/",
+      "@uniswap/v4-periphery/=lib/v4-periphery/"
+    ],
+    "sameBytesThroughJunctionAndPhysicalDependencyPath": true,
+    "v3ExecutorSources": 0,
+    "noImportCallback": true
+  }
+}
