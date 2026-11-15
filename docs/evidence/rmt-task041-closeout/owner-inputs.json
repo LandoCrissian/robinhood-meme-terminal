@@ -1,0 +1,29 @@
+{
+  "operatingTreasury": null,
+  "futureReserve": null,
+  "deployer": null,
+  "governanceSigners": [null, null, null],
+  "economics": {
+    "approvalReference": null,
+    "proposed": {
+      "creationFeeWei": "400000000000000",
+      "supplyPresetsWholeTokens": [1000000, 10000000, 100000000],
+      "graduationBackingWei": "2000000000000000000",
+      "virtualEthWei": "4000000000000000000",
+      "curveInventoryShareBps": 6000,
+      "liquidityInventoryShareBps": 4000,
+      "curveTradeFeeBps": 100,
+      "projectFeesBps": 9000,
+      "operationsFeesBps": 500,
+      "futureReserveFeesBps": 500,
+      "treasuryShareOfAllFeesBpsRange": [0, 9000],
+      "poolFeePips": 3000,
+      "tickSpacing": 60,
+      "originalLpPrincipal": "permanently locked"
+    }
+  },
+  "responsibilities": {
+    "signerKeyContinuity": [null, null, null],
+    "incidentLead": null
+  }
+}

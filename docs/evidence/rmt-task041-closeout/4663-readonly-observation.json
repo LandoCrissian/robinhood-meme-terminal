@@ -1,0 +1,313 @@
+{
+  "schemaVersion": 1,
+  "scope": "Public read-only operational observation. No owner addresses or deployment calldata were used.",
+  "profile": "rmt-curve-v1-4663-governance-rotation-v2",
+  "candidateCommit": "d4d81d1153a11728d98e694c1f3976ceb3408915",
+  "compilerInputSha256": "90122536b22c847aebc0182d75290b9ba281399481d90daffc8b0f66ed92f65b",
+  "status": "BLOCKED_NO_BROADCAST",
+  "observedAtUtc": "2026-11-15T03:38:01.802Z",
+  "providerUrls": {
+    "official": "https://rpc.mainnet.chain.robinhood.com",
+    "pinax": "https://robinhood.rpc.pinax.network"
+  },
+  "methods": [
+    "eth_chainId",
+    "eth_getBlockByNumber",
+    "eth_gasPrice",
+    "eth_maxPriorityFeePerGas",
+    "eth_call",
+    "eth_getCode",
+    "eth_getTransactionReceipt",
+    "debug_traceTransaction"
+  ],
+  "official": {
+    "chainId": {
+      "status": "observed",
+      "value": "0x1237"
+    },
+    "latest": {
+      "status": "observed",
+      "value": {
+        "height": "114671490",
+        "hash": "0x29b926193974715e63fb98a82f7caf1685b930092190fc766670959b4444fdef",
+        "stateRoot": "0xfc54fb0f7c1a043366ea21a33632fc96a810f5290099b5aa77f4fa75e5ab5885",
+        "timestampUtc": "2026-11-15T03:38:01.000Z",
+        "gasLimit": "1125899906842624",
+        "baseFeeWeiPerGas": "20104000"
+      }
+    },
+    "safe": {
+      "status": "observed",
+      "value": {
+        "height": "114665840",
+        "hash": "0x2e8e4d0c4ea2b7c01d35a49084558020fa47a0774dfc30399fd72edc5c088e16",
+        "stateRoot": "0xa7b5886693116baeb2baa251c547e65bf054bec1ecb9c6b86cd70ca87abfce76",
+        "timestampUtc": "2026-11-15T03:28:01.000Z",
+        "gasLimit": "1125899906842624",
+        "baseFeeWeiPerGas": "20048000"
+      }
+    },
+    "finalized": {
+      "status": "observed",
+      "value": {
+        "height": "114661940",
+        "hash": "0xe4d76ecd88fcf5cca80647b08eb95b73a488b464f97c1b07b00d0daa12f291e7",
+        "stateRoot": "0xcf33091941255c1ad45cad61de767658427f61b41b9767168666df105ef06c40",
+        "timestampUtc": "2026-11-15T03:20:53.000Z",
+        "gasLimit": "1125899906842624",
+        "baseFeeWeiPerGas": "20014000"
+      }
+    },
+    "observedBlockRechecked": {
+      "status": "observed",
+      "value": {
+        "height": "114671490",
+        "hash": "0x29b926193974715e63fb98a82f7caf1685b930092190fc766670959b4444fdef",
+        "stateRoot": "0xfc54fb0f7c1a043366ea21a33632fc96a810f5290099b5aa77f4fa75e5ab5885",
+        "timestampUtc": "2026-11-15T03:38:01.000Z",
+        "gasLimit": "1125899906842624",
+        "baseFeeWeiPerGas": "20104000"
+      }
+    },
+    "observedBlockMatch": true,
+    "gasPriceWeiPerGas": {
+      "status": "observed",
+      "value": "20068000"
+    },
+    "maxPriorityFeeWeiPerGas": {
+      "status": "observed",
+      "value": "0"
+    },
+    "arbGasInfo": {
+      "status": "observed",
+      "value": {
+        "perL2TransactionWei": "0",
+        "perL1CalldataByteWei": "0",
+        "perStorageAllocationWei": "402080000000",
+        "arbGasBaseWei": "20000000",
+        "arbGasCongestionWei": "104000",
+        "arbGasTotalWei": "20104000"
+      }
+    },
+    "arbL1BaseFeeEstimate": {
+      "status": "observed",
+      "value": {
+        "arbOsL1BaseFeeEstimateWei": "0"
+      }
+    },
+    "arbTransactionGasCap": {
+      "status": "observed",
+      "value": {
+        "maxGasPerTransaction": "32000000"
+      }
+    },
+    "nodeInterfaceFeeComponentProbe": {
+      "scope": "Value zero, empty calldata, public empty-code sample. Shows endpoint capability only.",
+      "precompile": "0x00000000000000000000000000000000000000c8",
+      "result": {
+        "status": "observed",
+        "value": {
+          "gasTotal": "21000",
+          "gasL1Included": "0",
+          "gasL2Execution": "21000",
+          "baseFeeWeiPerGas": "20000000",
+          "l1BaseFeeEstimateWei": "0",
+          "estimatedTotalWei": "420000000000",
+          "estimatedL1Wei": "0"
+        }
+      }
+    },
+    "currentRuntimePins": {
+      "poolManager": {
+        "status": "observed",
+        "value": {
+          "address": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+          "codeHash": "0xbd3881180b547f5fe817545743cfb4343e96b1bc6640dcd70c106b0066e95626",
+          "matches": true
+        }
+      },
+      "positionManager": {
+        "status": "observed",
+        "value": {
+          "address": "0x58daec3116aae6d93017baaea7749052e8a04fa7",
+          "codeHash": "0xc873e135dc9aaec88489cfbad146b4cb49d6a32e0d80326377784b7ba17670b2",
+          "matches": true
+        }
+      },
+      "permit2": {
+        "status": "observed",
+        "value": {
+          "address": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+          "codeHash": "0x5208783f52488f7d3493e5e38311ab707c1d75457fe472a19b0b4d57d66a7fca",
+          "matches": true
+        }
+      },
+      "quoter": {
+        "status": "observed",
+        "value": {
+          "address": "0x8dc178efb8111bb0973dd9d722ebeff267c98f94",
+          "codeHash": "0xd707b1da8cb165e5ea35a3b4450d971eb562ec171e23492aa117036b78a868f6",
+          "matches": true
+        }
+      },
+      "stateView": {
+        "status": "observed",
+        "value": {
+          "address": "0xf3334192d15450cdd385c8b70e03f9a6bd9e673b",
+          "codeHash": "0x7d9c591e0956fd89d98feb4ffcfe8bf1f7a62bd485edd979fa21d104b49878a6",
+          "matches": true
+        }
+      },
+      "universalRouter": {
+        "status": "observed",
+        "value": {
+          "address": "0x204FAca1764B154221e35c0d20aBb3c525710498",
+          "codeHash": "0x76b92a5bba2dd32019a64eb421f1750e78c6ba044dbfa6840b722eb5ac63d296",
+          "matches": true
+        }
+      }
+    }
+  },
+  "archive": {
+    "forkAnchor": {
+      "height": 114549452,
+      "hash": "0xf9a8ca5d8e26ebb426ebd2e663ad82afc878c16d8bba5f5542f6341890cf7710",
+      "official": {
+        "status": "observed",
+        "value": {
+          "height": "114549452",
+          "hash": "0xf9a8ca5d8e26ebb426ebd2e663ad82afc878c16d8bba5f5542f6341890cf7710",
+          "stateRoot": "0xc9b051b09f2399988057f4610ffece80f896ed95afedd7c8cf083592a98005f3",
+          "timestampUtc": "2026-11-15T00:02:45.000Z",
+          "gasLimit": "1125899906842624",
+          "baseFeeWeiPerGas": "20334000"
+        }
+      },
+      "pinax": {
+        "status": "observed",
+        "value": {
+          "height": "114549452",
+          "hash": "0xf9a8ca5d8e26ebb426ebd2e663ad82afc878c16d8bba5f5542f6341890cf7710",
+          "stateRoot": "0xc9b051b09f2399988057f4610ffece80f896ed95afedd7c8cf083592a98005f3",
+          "timestampUtc": "2026-11-15T00:02:45.000Z",
+          "gasLimit": "1125899906842624",
+          "baseFeeWeiPerGas": "20334000"
+        }
+      },
+      "bothMatch": true
+    },
+    "pinaxChainId": {
+      "status": "observed",
+      "value": "0x1237"
+    },
+    "routerCodeAtAnchor": {
+      "official": {
+        "status": "unavailable",
+        "code": -32000,
+        "reason": "historical state c9b051b09f2399988057f4610ffece80f896ed95afedd7c8cf083592a98005f3 is not available"
+      },
+      "pinax": {
+        "status": "observed",
+        "value": {
+          "codeHash": "0x76b92a5bba2dd32019a64eb421f1750e78c6ba044dbfa6840b722eb5ac63d296",
+          "matches": true
+        }
+      }
+    },
+    "historicalV6Registration": {
+      "transactionHash": "0x4eb7b596ccdf5d0aa5e4c8d0d50311df5108b44f47d9d39d09b1916524d825d5",
+      "receipt": {
+        "official": {
+          "status": "observed",
+          "value": {
+            "matched": true,
+            "blockHash": "0x1e1811cdc66df1da8a5aacaeb6a68f5df73963acdac61f113ff123a965547158",
+            "receiptStatus": "0x1"
+          }
+        },
+        "pinax": {
+          "status": "observed",
+          "value": {
+            "matched": true,
+            "blockHash": "0x1e1811cdc66df1da8a5aacaeb6a68f5df73963acdac61f113ff123a965547158",
+            "receiptStatus": "0x1"
+          }
+        }
+      },
+      "callTrace": {
+        "official": {
+          "status": "unavailable",
+          "code": -32601,
+          "reason": "the method debug_traceTransaction does not exist/is not available"
+        },
+        "pinax": {
+          "status": "observed",
+          "value": {
+            "rootType": "CALL",
+            "rootMatchesHistoricalFactory": true
+          }
+        }
+      }
+    }
+  },
+  "finality": {
+    "providerReportedBatchHintForAnchor": {
+      "status": "observed",
+      "value": {
+        "batchNumber": "393922"
+      }
+    },
+    "independentlyVerifiedEthereumFinality": false
+  },
+  "rehearsal": {
+    "receiptEvidenceSha256Lf": "c445147b311911a8fadc2d2149f0b693c56a9923f007c5ac6705c8f37765edac",
+    "gasUnits": 22617164,
+    "executionIllustration": {
+      "source": "Pinned Safe rehearsal execution measurement times observed eth_gasPrice",
+      "scope": "L2 execution illustration only. Excludes compressed Ethereum data posting, stage-specific fee conditions, tips, and real owner input changes.",
+      "atObservedQuoteWeiPerGas": "20068000",
+      "atObservedQuote": {
+        "allNineSteps": {
+          "gasUnits": 22617164,
+          "wei": "453881247152000",
+          "eth": "0.000453881247152"
+        },
+        "bootstrap": {
+          "gasUnits": 9951309,
+          "wei": "199702869012000",
+          "eth": "0.000199702869012"
+        }
+      },
+      "sensitivitiesWeiPerGas": [
+        {
+          "rate": 10000000,
+          "allNineSteps": {
+            "gasUnits": 22617164,
+            "wei": "226171640000000",
+            "eth": "0.00022617164"
+          }
+        },
+        {
+          "rate": 100000000,
+          "allNineSteps": {
+            "gasUnits": 22617164,
+            "wei": "2261716400000000",
+            "eth": "0.0022617164"
+          }
+        },
+        {
+          "rate": 1000000000,
+          "allNineSteps": {
+            "gasUnits": 22617164,
+            "wei": "22617164000000000",
+            "eth": "0.022617164"
+          }
+        }
+      ]
+    },
+    "inputSpecificFork": null,
+    "inputSpecificGas": null,
+    "inputSpecificEthCost": null,
+    "reason": "Owner public inputs and approval remain unassigned."
+  }
+}

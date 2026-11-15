@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "profile": "rmt-curve-v1-4663-governance-rotation-v2",
+  "chainId": 4663,
+  "candidateCommit": "d4d81d1153a11728d98e694c1f3976ceb3408915",
+  "state": "BLOCKED_NO_BROADCAST",
+  "broadcastAuthorized": false,
+  "compilerProfileSha256Lf": "ac359af6ace7d9a4724e251889962c1328c1d2e9c297a06dd9bb164982d9e936",
+  "compilerInputSha256": "90122536b22c847aebc0182d75290b9ba281399481d90daffc8b0f66ed92f65b",
+  "releaseGate": {
+    "scope": "EXACT_4663_COMPILER_CLOSURE",
+    "status": "FAIL_HIGH",
+    "exitCode": 1,
+    "tool": "Slither 0.11.5",
+    "cryticCompile": "0.3.11",
+    "compilerSha256": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
+    "analysisInputSha256": "08d0b9b34d619ff056a3a78dfd9d3da3d76f254735bd1acdc9270aa149393700",
+    "reportArchiveSha256": "b4c75054e658bd7bef3e9dc4673f85c39e1f155f0e9f0b1d0d7e874fb369fa52",
+    "reportSha256": "fc88c2a7844772e0f30ceeed299e686474286c32140982300067bd0718243c3b",
+    "sourceCount": 66,
+    "detectorCount": 101,
+    "findings": {
+      "High": 22,
+      "Informational": 111,
+      "Low": 38,
+      "Medium": 60,
+      "Optimization": 2
+    },
+    "activeEngineHigh": 18,
+    "dependencyHigh": 4,
+    "governanceMedium": 7,
+    "highFindingIdsSha256": "dda293434174a84775d7f34ae97aa624fab55c4f643b6c43af786f4ff6170b47"
+  },
+  "repositoryCI": {
+    "scope": "REPOSITORY_FILTERED",
+    "passedChecks": 14,
+    "clearsReleaseGate": false
+  },
+  "windowsFoundry": {
+    "scope": "REPOSITORY_TREE_WITH_LEGACY_V3",
+    "passed": 505,
+    "failed": 1,
+    "skipped": 1,
+    "failure": "RMTUniswapV3FeeExecutorV2ProposedPackageTest.testProposedOwnerAuthorizationPackageIsExact",
+    "cause": "Absolute Windows junction remappings in Solidity metadata",
+    "inReleaseClosure": false
+  },
+  "ownerInputs": {
+    "state": "UNASSIGNED",
+    "inputSpecificFork": "WAITING_FOR_APPROVED_PUBLIC_INPUTS",
+    "inputSpecificCost": "UNAVAILABLE"
+  }
+}
