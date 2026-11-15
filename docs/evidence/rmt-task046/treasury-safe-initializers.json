@@ -1,0 +1,69 @@
+{
+  "chainId": 4663,
+  "candidateCommit": "d4d81d1153a11728d98e694c1f3976ceb3408915",
+  "releaseManifestSha256Lf": "9273ba1c41b3891153e4f3810ddaacff62cd152fc4072b9636976c0db3d2e689",
+  "state": "BLOCKED_NO_BROADCAST",
+  "broadcastAuthorized": false,
+  "initcodeKeccak256": "0xe298282cefe913ab5d282047161268a8222e4bd4ed106300c547894bbefd31ee",
+  "proposals": [
+    {
+      "role": "RMT-OPERATIONS",
+      "status": "SALT_PROPOSED_UNAPPROVED",
+      "saltLabel": "RMT Launch / Task 046 / chain 4663 / SafeL2 1.4.1 / RMT-OPERATIONS / salt candidate 1",
+      "saltNonce": "0x8094029c8a767b073fdbe606186b138b416682f2584ca87d38b3eaaa7af16cc2",
+      "create2Salt": "0x888907e1a47ea3a37cf6e51f20e36a89ce771320fd09015ff0f6e3c2190a7706",
+      "initializerKeccak256": "0x151a0612bf013560eaf16129615ae6262a6889db13410623ddcb49f2a8506ac2",
+      "initializerBytes": 420,
+      "counterfactualAddress": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+      "approvedDeploymentSaltNonce": null,
+      "verifiedBeneficiary": null
+    },
+    {
+      "role": "RMT-RESERVE",
+      "status": "SALT_PROPOSED_UNAPPROVED",
+      "saltLabel": "RMT Launch / Task 046 / chain 4663 / SafeL2 1.4.1 / RMT-RESERVE / salt candidate 1",
+      "saltNonce": "0xe0e8b0060b79275b10d83a2573dfc2e48e749a76e0a2efea0ffe422a30b89a87",
+      "create2Salt": "0xf7eb3bd812af043403525965a83801f950a4e7a6e5d93219fca1ba2c12a7d89f",
+      "initializerKeccak256": "0x151a0612bf013560eaf16129615ae6262a6889db13410623ddcb49f2a8506ac2",
+      "initializerBytes": 420,
+      "counterfactualAddress": "0x8D44078642ce938Fd799b23087BcdD6114A302e5",
+      "approvedDeploymentSaltNonce": null,
+      "verifiedBeneficiary": null
+    }
+  ],
+  "observation": {
+    "provider": "https://rpc.mainnet.chain.robinhood.com",
+    "blockNumber": "115122924",
+    "blockHash": "0x2c65a6c5c96d9932027628d5214d1b1bfce0130a20298d989b3ac690711a0a4f",
+    "blockTimeUtc": "2026-11-15T17:23:19.000Z",
+    "runtimePins": [
+      {
+        "address": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+        "runtimeKeccak256": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff"
+      },
+      {
+        "address": "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
+        "runtimeKeccak256": "0x50c3cdc4074750a7a974204a716c999edd37482f907608d960b2b025ee0b3317"
+      },
+      {
+        "address": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+        "runtimeKeccak256": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9"
+      }
+    ],
+    "writeMethodsCalled": false,
+    "proposals": [
+      {
+        "role": "RMT-OPERATIONS",
+        "code": "0x",
+        "nonce": 0,
+        "simulatedAddress": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b"
+      },
+      {
+        "role": "RMT-RESERVE",
+        "code": "0x",
+        "nonce": 0,
+        "simulatedAddress": "0x8D44078642ce938Fd799b23087BcdD6114A302e5"
+      }
+    ]
+  }
+}
