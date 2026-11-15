@@ -37,6 +37,28 @@
       "reason": "pinax returned HTTP 429"
     }
   },
+  "laterRecheck": {
+    "oldBlockReplay": {
+      "completedAt": "2026-11-15T05:55:22.741Z",
+      "status": "UNVERIFIED",
+      "provider": "official",
+      "method": "eth_getCode",
+      "rpcErrorCode": -32000,
+      "reason": "historical state 726d4a95769843c5b71dc89d4c63c59ecac5fb372938332bd02812ae8132873e is not available"
+    },
+    "freshMatchedBlock": {
+      "observedAt": "2026-11-15T05:55:45.286Z",
+      "number": "114745436",
+      "hash": "0x33b70c2041d2ed981927c2fec917c6a759d9b4e0a971259de278aee07e0e77f3",
+      "stateRoot": "0xf2a6c71debb8969d72df87a749ebe9c94cce026f5fcb9a3396b3514207481dd9",
+      "timestamp": "2026-11-15T05:55:41.000Z",
+      "status": "ELIGIBLE_AT_PINNED_BLOCK",
+      "codesInWalletOrder": {
+        "official": ["0x", "0x", "0x"],
+        "pinax": ["0x", "0x", "0x"]
+      }
+    }
+  },
   "wallets": [
     {
       "role": "RMT-GOV-01",

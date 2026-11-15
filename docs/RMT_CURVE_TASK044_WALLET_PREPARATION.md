@@ -69,12 +69,12 @@ $env:RMT_DEPLOYMENT_TEST_CHECKOUT = "../rmt-task026-acceptance"
 $anvil = "C:/path/to/anvil.exe"
 $solc = "C:/path/to/solc-0.8.26.exe"
 node --test docs/evidence/rmt-task044/preparation.test.mjs docs/evidence/rmt-task044/governance-wallets.test.mjs docs/evidence/rmt-task041-closeout/closeout.test.mjs docs/evidence/rmt-task041-closeout/preflight.test.mjs docs/evidence/rmt-task043/deploy-rotation.test.mjs
-node docs/evidence/rmt-task044/governance-wallets.mjs --checkout $env:RMT_DEPLOYMENT_TEST_CHECKOUT --block 114738660 --block-hash 0x8f3b3f2894f5d4d3f5fd8b462b10a6d38877ab2a3cff9acd8274e01ca563ef5e
+node docs/evidence/rmt-task044/governance-wallets.mjs --checkout $env:RMT_DEPLOYMENT_TEST_CHECKOUT
 node docs/evidence/rmt-task043/run-rotation-fork.mjs --checkout $env:RMT_DEPLOYMENT_TEST_CHECKOUT --anvil $anvil --solc $solc --lib packages/contracts/lib --archive pinax --safe-only
 node docs/evidence/rmt-task044/run-platform-safe-fork.mjs --checkout $env:RMT_DEPLOYMENT_TEST_CHECKOUT --anvil $anvil --solc $solc --lib packages/contracts/lib --archive pinax
 ```
 
-The governance verifier restricts upstream calls to chain ID, block and code reads. One later replay reached Pinax's HTTP 429 limit. The retained evidence records that replay as unverified and preserves the earlier matching observations. Fork rehearsals use public synthetic keys and their own test identities only.
+The governance verifier restricts upstream calls to chain ID, block and code reads. The command above binds a fresh shared block. To request the exact original anchor, pass `--block 114738660` and its matching `--block-hash`. Later reads of that block encountered Pinax's HTTP 429 limit and the official endpoint's historical-state unavailability. Both providers confirmed empty code again at fresh block **114745436**. Fork rehearsals use public synthetic keys and their own test identities only. [Both observations and provider limits](evidence/rmt-task044/governance-wallets.json)
 
 ## Remaining owner decisions
 

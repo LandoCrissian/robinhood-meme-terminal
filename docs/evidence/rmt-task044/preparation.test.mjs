@@ -47,6 +47,13 @@ test("the proposal binds only the three checksummed governance addresses", () =>
     assert.deepEqual(wallet.codes, { official: "0x", pinax: "0x" });
     assert.equal(wallet.keyControl, "UNVERIFIED");
   }
+  const { oldBlockReplay, freshMatchedBlock } = governance.laterRecheck;
+  assert.equal(oldBlockReplay.status, "UNVERIFIED");
+  assert.equal(freshMatchedBlock.status, governance.status);
+  assert.ok(BigInt(freshMatchedBlock.number) > BigInt(governance.anchor.number));
+  for (const [provider, codes] of Object.entries(freshMatchedBlock.codesInWalletOrder)) {
+    assert.deepEqual(codes, governance.wallets.map((wallet) => wallet.codes[provider]));
+  }
   assert.equal(new Set(supplied).size, 3);
   assert.ok(supplied.every((address) => BigInt(address) > 0xffffn));
   assert.deepEqual(blank.governanceSigners, [null, null, null]);
