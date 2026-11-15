@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 1,
+  "candidateCommit": "d4d81d1153a11728d98e694c1f3976ceb3408915",
+  "releaseManifestSha256Lf": "9273ba1c41b3891153e4f3810ddaacff62cd152fc4072b9636976c0db3d2e689",
+  "releaseStatus": "BLOCKED_NO_BROADCAST",
+  "broadcastAuthorized": false,
+  "chainId": 4663,
+  "scope": "Read-only verification of the previously reported governance-wallet anchor. Account code and EIP-55 formatting do not verify key control or Ethereum L1 finality.",
+  "priorCommittedEvidence": {
+    "path": "docs/evidence/rmt-task044/governance-wallets.json",
+    "initialBlock": "114738660",
+    "freshRecheckBlock": "114745436"
+  },
+  "reportedObservation": {
+    "observedAt": "2026-11-15T16:06:05.390Z",
+    "sources": [
+      "official",
+      "pinax"
+    ],
+    "status": "ELIGIBLE_AT_PINNED_BLOCK",
+    "anchor": {
+      "number": "115080843",
+      "rpcBlockTag": "0x6dbfe8b",
+      "hash": "0xad4d8570e91442acb2def83f4d383a79cce63942b9a1c9b8ee23f36648444e0e",
+      "stateRoot": "0xd905e3eb5b317d1d8ab2247878597d6c64bd7e0565fc5d36158de2f270c9fbd5",
+      "timestamp": "2026-11-15T16:06:01.000Z"
+    }
+  },
+  "replay": {
+    "status": "TWO_ARCHIVE_SOURCES_CONFIRMED_CODE",
+    "rpcMethods": [
+      "eth_chainId",
+      "eth_getBlockByNumber",
+      "eth_getCode"
+    ],
+    "wallets": [
+      {
+        "role": "RMT-GOV-01",
+        "address": "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+        "aboveReservedRange": true
+      },
+      {
+        "role": "RMT-GOV-02",
+        "address": "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+        "aboveReservedRange": true
+      },
+      {
+        "role": "RMT-GOV-03",
+        "address": "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697",
+        "aboveReservedRange": true
+      }
+    ],
+    "observations": {
+      "official": {
+        "url": "https://rpc.mainnet.chain.robinhood.com",
+        "networkChainIdHex": "0x1237",
+        "beforeCodeRead": {
+          "observedAt": "2026-11-15T16:56:30.937Z",
+          "anchor": {
+            "number": "115080843",
+            "rpcBlockTag": "0x6dbfe8b",
+            "hash": "0xad4d8570e91442acb2def83f4d383a79cce63942b9a1c9b8ee23f36648444e0e",
+            "stateRoot": "0xd905e3eb5b317d1d8ab2247878597d6c64bd7e0565fc5d36158de2f270c9fbd5",
+            "timestamp": "2026-11-15T16:06:01.000Z"
+          }
+        },
+        "codeReadError": {
+          "observedAt": "2026-11-15T16:56:31.009Z",
+          "role": "RMT-GOV-01",
+          "rpcErrorCode": -32000,
+          "message": "historical state d905e3eb5b317d1d8ab2247878597d6c64bd7e0565fc5d36158de2f270c9fbd5 is not available"
+        }
+      },
+      "pocket": {
+        "url": "https://robinhood.api.pocket.network",
+        "networkChainIdHex": "0x1237",
+        "beforeCodeRead": {
+          "observedAt": "2026-11-15T16:56:55.260Z",
+          "anchor": {
+            "number": "115080843",
+            "rpcBlockTag": "0x6dbfe8b",
+            "hash": "0xad4d8570e91442acb2def83f4d383a79cce63942b9a1c9b8ee23f36648444e0e",
+            "stateRoot": "0xd905e3eb5b317d1d8ab2247878597d6c64bd7e0565fc5d36158de2f270c9fbd5",
+            "timestamp": "2026-11-15T16:06:01.000Z"
+          }
+        },
+        "codeReads": [
+          {
+            "role": "RMT-GOV-01",
+            "code": "0x",
+            "observedAt": "2026-11-15T16:56:55.437Z"
+          },
+          {
+            "role": "RMT-GOV-02",
+            "code": "0x",
+            "observedAt": "2026-11-15T16:56:55.622Z"
+          },
+          {
+            "role": "RMT-GOV-03",
+            "code": "0x",
+            "observedAt": "2026-11-15T16:56:55.805Z"
+          }
+        ],
+        "afterCodeRead": {
+          "observedAt": "2026-11-15T16:56:55.970Z",
+          "anchor": {
+            "number": "115080843",
+            "rpcBlockTag": "0x6dbfe8b",
+            "hash": "0xad4d8570e91442acb2def83f4d383a79cce63942b9a1c9b8ee23f36648444e0e",
+            "stateRoot": "0xd905e3eb5b317d1d8ab2247878597d6c64bd7e0565fc5d36158de2f270c9fbd5",
+            "timestamp": "2026-11-15T16:06:01.000Z"
+          }
+        }
+      },
+      "pinax": {
+        "url": "https://robinhood.rpc.pinax.network",
+        "networkChainIdHex": "0x1237",
+        "beforeCodeRead": {
+          "observedAt": "2026-11-15T17:00:56.264Z",
+          "anchor": {
+            "number": "115080843",
+            "rpcBlockTag": "0x6dbfe8b",
+            "hash": "0xad4d8570e91442acb2def83f4d383a79cce63942b9a1c9b8ee23f36648444e0e",
+            "stateRoot": "0xd905e3eb5b317d1d8ab2247878597d6c64bd7e0565fc5d36158de2f270c9fbd5",
+            "timestamp": "2026-11-15T16:06:01.000Z"
+          }
+        },
+        "codeReads": [
+          {
+            "role": "RMT-GOV-01",
+            "code": "0x",
+            "observedAt": "2026-11-15T17:00:56.350Z"
+          },
+          {
+            "role": "RMT-GOV-02",
+            "code": "0x",
+            "observedAt": "2026-11-15T17:00:56.428Z"
+          },
+          {
+            "role": "RMT-GOV-03",
+            "code": "0x",
+            "observedAt": "2026-11-15T17:00:56.534Z"
+          }
+        ],
+        "afterCodeRead": {
+          "observedAt": "2026-11-15T17:00:56.626Z",
+          "anchor": {
+            "number": "115080843",
+            "rpcBlockTag": "0x6dbfe8b",
+            "hash": "0xad4d8570e91442acb2def83f4d383a79cce63942b9a1c9b8ee23f36648444e0e",
+            "stateRoot": "0xd905e3eb5b317d1d8ab2247878597d6c64bd7e0565fc5d36158de2f270c9fbd5",
+            "timestamp": "2026-11-15T16:06:01.000Z"
+          }
+        }
+      }
+    }
+  }
+}
