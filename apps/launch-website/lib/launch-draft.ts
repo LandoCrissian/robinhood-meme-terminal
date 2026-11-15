@@ -10,7 +10,13 @@ export const emptyLaunchDraft = {
 };
 
 export type LaunchDraft = typeof emptyLaunchDraft;
-export type LaunchReviewRequest = Omit<LaunchDraft, "description" | "artworkURL">;
+export const projectTreasuryShareUnit = "project-percent" as const;
+export const projectFeeShareBps = launchTerms.projectFeeSharePercent * 100;
+const fullFeeShareBps = 10_000;
+
+export type LaunchReviewRequest = Omit<LaunchDraft, "description" | "artworkURL"> & {
+  treasuryShareUnit?: typeof projectTreasuryShareUnit;
+};
 export type LaunchDraftField = keyof LaunchDraft;
 export type LaunchDraftErrors = Partial<Record<LaunchDraftField, string>>;
 export type ReviewedLaunchDraft = {
@@ -42,7 +48,8 @@ export function isLaunchDraft(input: unknown): input is LaunchDraft {
 }
 
 export function isLaunchReviewRequest(input: unknown): input is LaunchReviewRequest {
-  return hasStringFields(input, reviewFields);
+  return hasStringFields(input, reviewFields) || (hasStringFields(input, [...reviewFields, "treasuryShareUnit"])
+    && (input as LaunchReviewRequest).treasuryShareUnit === projectTreasuryShareUnit);
 }
 
 export function reviewableFields(draft: ReviewedLaunchDraft): ReviewedLaunchTerms {
@@ -61,7 +68,35 @@ function httpsURL(input: string, maxBytes: number) {
   return null;
 }
 
-export function validateLaunchDraft(draft: LaunchDraft):
+function percentageBps(value: string) {
+  const amount = /^(\d{1,3})(?:\.(\d{1,2}))?$/.exec(value);
+  return amount ? Number(amount[1]) * 100 + Number((amount[2] ?? "").padEnd(2, "0")) : null;
+}
+
+export function totalTreasuryFeePercent(treasuryShareBps: number) {
+  return (treasuryShareBps / 100).toFixed(2);
+}
+
+const projectPercentFormat = new Intl.NumberFormat("en-US", { maximumFractionDigits: 4 });
+
+export function treasuryProjectPercent(treasuryShareBps: number) {
+  const percent = projectPercentFormat.format(treasuryShareBps * 100 / projectFeeShareBps);
+  const approximate = treasuryShareBps * 1_000_000 % projectFeeShareBps !== 0;
+  return (approximate ? "≈" : "") + percent + "%";
+}
+
+export function restoreLegacyLaunchDraft(draft: LaunchDraft): LaunchDraft {
+  const saved = draft.treasuryShare.trim();
+  if (!saved) return draft;
+  const previous = /^\d{1,2}(?:\.\d{1,2})?$/.test(saved) ? percentageBps(saved) : null;
+  // The first two-decimal project percentage that floors to the original contract value.
+  const share = previous !== null && previous <= projectFeeShareBps
+    ? totalTreasuryFeePercent(Math.ceil(previous * fullFeeShareBps / projectFeeShareBps))
+    : "";
+  return { ...draft, treasuryShare: share };
+}
+
+export function validateLaunchDraft(draft: LaunchDraft, unit: "project-percent" | "total-fee-percent" = projectTreasuryShareUnit):
   { ok: true; draft: ReviewedLaunchDraft } | { ok: false; errors: LaunchDraftErrors } {
   const errors: LaunchDraftErrors = {};
   const name = draft.name.trim();
@@ -86,10 +121,15 @@ export function validateLaunchDraft(draft: LaunchDraft):
 
   const treasury = draft.treasury.trim().toLowerCase();
   const share = draft.treasuryShare.trim();
-  const amount = /^(\d{1,2})(?:\.(\d{1,2}))?$/.exec(share);
-  const treasuryShareBps = amount ? Number(amount[1]) * 100 + Number((amount[2] ?? "").padEnd(2, "0")) : 0;
-  if (share && (!amount || treasuryShareBps > launchTerms.projectFeeSharePercent * 100)) {
-    errors.treasuryShare = "Use a percentage up to 90% with at most two decimal places.";
+  const enteredBps = percentageBps(share);
+  const maxShare = unit === projectTreasuryShareUnit ? fullFeeShareBps : projectFeeShareBps;
+  const treasuryShareBps = enteredBps === null ? 0 : unit === projectTreasuryShareUnit
+    ? Math.floor(enteredBps * projectFeeShareBps / fullFeeShareBps)
+    : enteredBps;
+  if (share && (enteredBps === null || enteredBps > maxShare || (unit === "total-fee-percent" && /^\d{3}/.test(share)))) {
+    errors.treasuryShare = `Use a percentage up to ${maxShare / 100}% with at most two decimal places.`;
+  } else if (enteredBps && treasuryShareBps === 0) {
+    errors.treasuryShare = "Use at least 0.02% of project fees for a nonzero on-chain allocation.";
   }
   if ((treasury && (!isLaunchAddress(treasury) || /^0x0{40}$/.test(treasury))) || (!treasury && treasuryShareBps > 0)) {
     errors.treasury = "Enter a nonzero Ethereum address for the project treasury.";

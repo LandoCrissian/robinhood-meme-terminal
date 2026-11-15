@@ -115,6 +115,12 @@ for (const key of ["token", "transactionHash", "factory", "rpcUrl", "calldata"])
   assert.equal(reviewPayload.draft[key], undefined);
 }
 assert.equal((await postDraft({ ...draftFields, treasuryShare: "95" })).status, 422);
+const fullProjectShare = { ...draftFields, treasury: "0x1000000000000000000000000000000000000001",
+  treasuryShare: "100", treasuryShareUnit: "project-percent" };
+const fullShareReview = await postDraft(fullProjectShare);
+assert.equal(fullShareReview.status, 200);
+assert.equal((await readPublicJson(fullShareReview)).draft.treasuryShareBps, 9_000);
+assert.equal((await postDraft({ ...fullProjectShare, treasuryShare: "100.01" })).status, 422);
 assert.equal((await postDraft(draftFields, "https://example.test")).status, 403);
 assert.equal((await postDraft({ ...draftFields, privateKey: "unexpected-field" })).status, 400);
 assert.equal((await request(creationReviewPath)).status, 404);
@@ -219,7 +225,8 @@ try {
       if (sent.method() === "POST" && url.pathname === creationReviewPath && !url.search) {
         draftRequests++;
         const payload = sent.postDataJSON();
-        assert.deepEqual(Object.keys(payload).sort(), Object.keys(draftFields).sort());
+        assert.deepEqual(Object.keys(payload).sort(), [...Object.keys(draftFields), "treasuryShareUnit"].sort());
+        assert.equal(payload.treasuryShareUnit, "project-percent");
         if (draftRequests === 1) return route.fulfill({ status: 503 });
         return route.continue();
       }

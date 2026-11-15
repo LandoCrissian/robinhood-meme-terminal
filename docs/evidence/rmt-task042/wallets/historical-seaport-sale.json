@@ -1,0 +1,32 @@
+{
+  "observedAt": "2026-11-15T00:15:29.452Z",
+  "readOnly": true,
+  "lookup": [
+    {
+      "fromBlock": 114556240,
+      "toBlock": 114556539,
+      "eitherCountOrError": 7
+    }
+  ],
+  "sample": {
+    "blockNumber": 114556326,
+    "blockHash": "0xfeb99454a7e5d605cc6aaa880481295ca932fe75fde24bdab349ea57f0b5c257",
+    "transactionHash": "0x3b94bb8b8b8ab9070b6e1a3aab2ecfd37407ac4549d60c382a9068eb538d6fd7",
+    "orderHash": "0xb96ab0d82dc12978e52d2cc6c35555bab70417129c1774842bcb9ad2088f5eec",
+    "chainId": 4663,
+    "protocol": "0x0000000000000068f116a894984e2db1123eb395",
+    "zone": "0x000056f7000000ece9003ca63978907a00ffd100",
+    "orderFulfilledLogIndex": 3,
+    "nft": {
+      "collection": "0xcbe2aba66c1ae5E2b3b280D25ce32Fd1917Cc3f0",
+      "tokenId": "17"
+    },
+    "paymentWei": "2200000000000000",
+    "transferLogIndex": 5,
+    "from": "0x9B001359Fba9f7Db7Ad8ec8b24c562565d3f1256",
+    "recipient": "0x657Dc522579Ed47581833515960d7505340Fd42b",
+    "ownerAtReceiptBlock": "0x657Dc522579Ed47581833515960d7505340Fd42b",
+    "receiptsAgree": true,
+    "recipientRuntimeBytesAtReceiptBlock": 0
+  }
+}

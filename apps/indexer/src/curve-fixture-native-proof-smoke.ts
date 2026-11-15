@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { assertFixtureNativeProof } from "./curve-fixture-native-proof.js";
+import { assertFixtureNativeProof, fixtureTreasuryClaimInput } from "./curve-fixture-native-proof.js";
 
 export function testFixtureNativeProof() {
   const wallet = "0x1000000000000000000000000000000000000000";
@@ -24,4 +24,19 @@ export function testFixtureNativeProof() {
   const tooLarge = `0x${"01".repeat(1601)}` as const;
   assert.doesNotThrow(() => assertFixtureNativeProof({ ...root, input: routerInput, calls: [payout, credit] }, { ...origin, input: routerInput }, payments));
   assert.throws(() => assertFixtureNativeProof({ ...root, input: tooLarge, calls: [payout, credit] }, { ...origin, input: tooLarge }, payments), /transaction mismatch/);
+
+  const owner = "0x4000000000000000000000000000000000000000";
+  const treasury = { type: "CALL", from: owner, to: wallet, value: "0x0", input: "0x6a761202" } as const;
+  const claim = { type: "CALL", from: wallet, to: ledger, value: "0x0", input: "0x4e71d92d",
+    calls: [{ type: "CALL", from: ledger, to: wallet, value: "0x63" }] } as const;
+  const invocation = { type: "DELEGATECALL", from: wallet, to: curve, calls: [claim] };
+  const treasuryOrigin = { ...treasury, value: 0n };
+  assert.equal(fixtureTreasuryClaimInput({ ...treasury, calls: [invocation] }, treasuryOrigin, ledger, 99n), claim.input);
+  assert.throws(() => fixtureTreasuryClaimInput({ ...treasury, calls: [claim, claim] }, treasuryOrigin, ledger, 198n), /claim call/);
+  assert.throws(() => fixtureTreasuryClaimInput({ ...treasury, calls: [{ ...claim, from: owner }] }, treasuryOrigin, ledger, 99n), /claim call/);
+  assert.throws(() => fixtureTreasuryClaimInput({ ...treasury, calls: [{ ...claim, error: "reverted" }] }, treasuryOrigin, ledger, 99n), /claim call/);
+  assert.throws(() => fixtureTreasuryClaimInput({ ...treasury, calls: [{ ...claim, calls: [] }],
+    }, treasuryOrigin, ledger, 99n), /not independently proven/);
+  assert.throws(() => fixtureTreasuryClaimInput({ ...treasury, calls: [{ ...claim, calls: [] }, ...claim.calls],
+    }, treasuryOrigin, ledger, 99n), /not independently proven/);
 }

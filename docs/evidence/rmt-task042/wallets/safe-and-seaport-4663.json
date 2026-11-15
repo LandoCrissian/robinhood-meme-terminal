@@ -1,0 +1,594 @@
+{
+  "observedAt": "2026-11-15T00:14:25.206Z",
+  "chainId": 4663,
+  "registryCommit": "c25243b456237ee5af122c4fe444866315afab53",
+  "registry": {
+    "1.4.1": {
+      "safe": {
+        "address": "0x41675C099F32341bf84BFc5382aF534df5C7461a",
+        "codeHash": "0x1fe2df852ba3299d6534ef416eefa406e56ced995bca886ab7a553e6d0c5e1c4"
+      },
+      "safe_l2": {
+        "address": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+        "codeHash": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff"
+      },
+      "safe_proxy_factory": {
+        "address": "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
+        "codeHash": "0x50c3cdc4074750a7a974204a716c999edd37482f907608d960b2b025ee0b3317"
+      },
+      "compatibility_fallback_handler": {
+        "address": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+        "codeHash": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9"
+      },
+      "multi_send": {
+        "address": "0x38869bf66a61cF6bDB996A6aE40D5853Fd43B526",
+        "codeHash": "0x0e4f7fc66550a322d1e7688e181b75e217e662a4f3f4d6a29b22bc61217c4b77"
+      },
+      "multi_send_call_only": {
+        "address": "0x9641d764fc13c8B624c04430C7356C1C7C8102e2",
+        "codeHash": "0xecd5bd14a08c5d2122379900b2f272bdf107a7e92423c10dd5fe3254386c9939"
+      }
+    },
+    "1.5.0": {
+      "safe": {
+        "address": "0xFf51A5898e281Db6DfC7855790607438dF2ca44b",
+        "codeHash": "0xdda019cbd7c867a533a2a86e5c53434fdc50b13122b5a5ddb4a8df61b31c20f2"
+      },
+      "safe_l2": {
+        "address": "0xEdd160fEBBD92E350D4D398fb636302fccd67C7e",
+        "codeHash": "0x180193227186ccb85316c94db1f0d156ed932b14712cfaac78901899178572dc"
+      },
+      "safe_proxy_factory": {
+        "address": "0x14F2982D601c9458F93bd70B218933A6f8165e7b",
+        "codeHash": "0x967dae4cda22b0c9ef7f31b010bdc1ceb0af9904b0c3dc060b5302e4c18a4529"
+      },
+      "compatibility_fallback_handler": {
+        "address": "0x3EfCBb83A4A7AfcB4F68D501E2c2203a38be77f4",
+        "codeHash": "0x3c6a85bcf7b563daa624b884b4e9a1b9fa5371edde7be945d998071a48f28bbc"
+      },
+      "multi_send": {
+        "address": "0x218543288004CD07832472D464648173c77D7eB7",
+        "codeHash": "0xca1147a12963172a93910c5cb2bfa5ad0e941c7f03fc7eb017dd06a8ea4e5604"
+      },
+      "multi_send_call_only": {
+        "address": "0xA83c336B20401Af773B6219BA5027174338D1836",
+        "codeHash": "0xcdbdcec38d2f1c7d961b0029ff8416b7e86e9974d6f0e9c9580c7d17fcfb6663"
+      }
+    }
+  },
+  "safeHosted": {
+    "chainId": "4663",
+    "configHttp": 200,
+    "name": "Robinhood Chain",
+    "shortName": "robinhood",
+    "isTestnet": false,
+    "recommended": "1.5.0",
+    "features": [
+      "BRIDGE",
+      "EIP1559",
+      "MULTI_CHAIN_SAFE_ADD_NETWORK",
+      "MULTI_CHAIN_SAFE_CREATION",
+      "NATIVE_SWAPS",
+      "NATIVE_SWAPS_FEE_ENABLED",
+      "POLICY_INDEXER_SPENDING_LIMIT",
+      "PORTFOLIO_ENDPOINT",
+      "POSITIONS",
+      "TX_SIMULATION"
+    ],
+    "serviceUrl": "https://api.safe.global/tx-service/robinhood",
+    "serviceHttp": 200,
+    "serviceVersion": "6.14.0",
+    "serviceBuild": "77c1723a9c35be34838bf9fbe09cd16c2759271c"
+  },
+  "openSeaRead": {
+    "status": 200,
+    "mentionsRobinhood": true,
+    "hasCollections": true
+  },
+  "sampleProxy": "0xffe8dd7bd7c52d211879104aef901ccea5727b67",
+  "sampleCreation": "0xe957e0e296eebc5c0d8153fd43097c55cd672c19817ff21312e0f94248c00dac",
+  "seaport": "0x0000000000000068F116a894984e2DB1123eB395",
+  "evidence": {
+    "official": {
+      "chain": {
+        "status": "observed",
+        "value": "0x1237"
+      },
+      "block": {
+        "height": 114556006,
+        "hash": "0x4d4136b255e131260c3d65163f9074764407c3bff4a13e51a82ce6b38ed67446",
+        "at": "2026-11-15T00:14:15.000Z"
+      },
+      "sameBlockHashAfterReads": true,
+      "contracts": {
+        "1.4.1": {
+          "safe": {
+            "status": "observed",
+            "bytes": 23579,
+            "keccak256": "0x1fe2df852ba3299d6534ef416eefa406e56ced995bca886ab7a553e6d0c5e1c4",
+            "matchesRegistry": true
+          },
+          "safe_l2": {
+            "status": "observed",
+            "bytes": 24421,
+            "keccak256": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+            "matchesRegistry": true
+          },
+          "safe_proxy_factory": {
+            "status": "observed",
+            "bytes": 3054,
+            "keccak256": "0x50c3cdc4074750a7a974204a716c999edd37482f907608d960b2b025ee0b3317",
+            "matchesRegistry": true
+          },
+          "compatibility_fallback_handler": {
+            "status": "observed",
+            "bytes": 5637,
+            "keccak256": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9",
+            "matchesRegistry": true
+          },
+          "multi_send": {
+            "status": "observed",
+            "bytes": 629,
+            "keccak256": "0x0e4f7fc66550a322d1e7688e181b75e217e662a4f3f4d6a29b22bc61217c4b77",
+            "matchesRegistry": true
+          },
+          "multi_send_call_only": {
+            "status": "observed",
+            "bytes": 410,
+            "keccak256": "0xecd5bd14a08c5d2122379900b2f272bdf107a7e92423c10dd5fe3254386c9939",
+            "matchesRegistry": true
+          }
+        },
+        "1.5.0": {
+          "safe": {
+            "status": "observed",
+            "bytes": 21451,
+            "keccak256": "0xdda019cbd7c867a533a2a86e5c53434fdc50b13122b5a5ddb4a8df61b31c20f2",
+            "matchesRegistry": true
+          },
+          "safe_l2": {
+            "status": "observed",
+            "bytes": 22231,
+            "keccak256": "0x180193227186ccb85316c94db1f0d156ed932b14712cfaac78901899178572dc",
+            "matchesRegistry": true
+          },
+          "safe_proxy_factory": {
+            "status": "observed",
+            "bytes": 3321,
+            "keccak256": "0x967dae4cda22b0c9ef7f31b010bdc1ceb0af9904b0c3dc060b5302e4c18a4529",
+            "matchesRegistry": true
+          },
+          "compatibility_fallback_handler": {
+            "status": "observed",
+            "bytes": 6294,
+            "keccak256": "0x3c6a85bcf7b563daa624b884b4e9a1b9fa5371edde7be945d998071a48f28bbc",
+            "matchesRegistry": true
+          },
+          "multi_send": {
+            "status": "observed",
+            "bytes": 640,
+            "keccak256": "0xca1147a12963172a93910c5cb2bfa5ad0e941c7f03fc7eb017dd06a8ea4e5604",
+            "matchesRegistry": true
+          },
+          "multi_send_call_only": {
+            "status": "observed",
+            "bytes": 421,
+            "keccak256": "0xcdbdcec38d2f1c7d961b0029ff8416b7e86e9974d6f0e9c9580c7d17fcfb6663",
+            "matchesRegistry": true
+          }
+        }
+      },
+      "oldFork": {
+        "hashMatches": true,
+        "contracts": {
+          "safe_l2": {
+            "status": "rpc-error",
+            "code": -32000
+          },
+          "safe_proxy_factory": {
+            "status": "rpc-error",
+            "code": -32000
+          },
+          "compatibility_fallback_handler": {
+            "status": "rpc-error",
+            "code": -32000
+          }
+        }
+      },
+      "deployedSample": {
+        "runtime": {
+          "status": "observed",
+          "bytes": 171,
+          "keccak256": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+          "matchesRegistry": true
+        },
+        "singletonViaGetter": {
+          "status": "observed",
+          "value": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762"
+        },
+        "singletonViaSlot": {
+          "status": "observed",
+          "value": "0x29fcb43b46531bca003ddc8fcb67ffe91900c762"
+        },
+        "version": {
+          "status": "observed",
+          "value": "1.4.1"
+        },
+        "threshold": {
+          "status": "observed",
+          "value": "2"
+        },
+        "ownerCount": 3,
+        "modulesCount": 0,
+        "modulesCursor": "0x0000000000000000000000000000000000000001",
+        "guard": {
+          "status": "observed",
+          "value": "0x0000000000000000000000000000000000000000"
+        },
+        "fallbackHandler": {
+          "status": "observed",
+          "value": "0xfd0732dc9e303f09fcef3a7388ad10a83459ec99"
+        },
+        "creation": {
+          "status": "observed",
+          "receiptSucceeded": true,
+          "canonical": true,
+          "logMatches": true,
+          "logIndex": "0xd",
+          "block": {
+            "height": 114339644,
+            "hash": "0x053c518c630690228bef2696479d88644e2879c8b3526578fc28d0e6ebcc6cc7",
+            "at": "2026-11-14T17:52:04.000Z"
+          }
+        }
+      },
+      "seaport": {
+        "runtime": {
+          "status": "observed",
+          "bytes": 23981,
+          "keccak256": "0x95809b70c9659c30188db5fdd87103e24b1a55379af8c851fca393aba0224a00"
+        },
+        "version": "1.6",
+        "conduitController": "0x00000000F9490004C11Cef243f5400493c00Ad63"
+      }
+    },
+    "pinax": {
+      "chain": {
+        "status": "observed",
+        "value": "0x1237"
+      },
+      "block": {
+        "height": 114556006,
+        "hash": "0x4d4136b255e131260c3d65163f9074764407c3bff4a13e51a82ce6b38ed67446",
+        "at": "2026-11-15T00:14:15.000Z"
+      },
+      "sameBlockHashAfterReads": true,
+      "contracts": {
+        "1.4.1": {
+          "safe": {
+            "status": "observed",
+            "bytes": 23579,
+            "keccak256": "0x1fe2df852ba3299d6534ef416eefa406e56ced995bca886ab7a553e6d0c5e1c4",
+            "matchesRegistry": true
+          },
+          "safe_l2": {
+            "status": "observed",
+            "bytes": 24421,
+            "keccak256": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+            "matchesRegistry": true
+          },
+          "safe_proxy_factory": {
+            "status": "observed",
+            "bytes": 3054,
+            "keccak256": "0x50c3cdc4074750a7a974204a716c999edd37482f907608d960b2b025ee0b3317",
+            "matchesRegistry": true
+          },
+          "compatibility_fallback_handler": {
+            "status": "observed",
+            "bytes": 5637,
+            "keccak256": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9",
+            "matchesRegistry": true
+          },
+          "multi_send": {
+            "status": "observed",
+            "bytes": 629,
+            "keccak256": "0x0e4f7fc66550a322d1e7688e181b75e217e662a4f3f4d6a29b22bc61217c4b77",
+            "matchesRegistry": true
+          },
+          "multi_send_call_only": {
+            "status": "observed",
+            "bytes": 410,
+            "keccak256": "0xecd5bd14a08c5d2122379900b2f272bdf107a7e92423c10dd5fe3254386c9939",
+            "matchesRegistry": true
+          }
+        },
+        "1.5.0": {
+          "safe": {
+            "status": "observed",
+            "bytes": 21451,
+            "keccak256": "0xdda019cbd7c867a533a2a86e5c53434fdc50b13122b5a5ddb4a8df61b31c20f2",
+            "matchesRegistry": true
+          },
+          "safe_l2": {
+            "status": "observed",
+            "bytes": 22231,
+            "keccak256": "0x180193227186ccb85316c94db1f0d156ed932b14712cfaac78901899178572dc",
+            "matchesRegistry": true
+          },
+          "safe_proxy_factory": {
+            "status": "observed",
+            "bytes": 3321,
+            "keccak256": "0x967dae4cda22b0c9ef7f31b010bdc1ceb0af9904b0c3dc060b5302e4c18a4529",
+            "matchesRegistry": true
+          },
+          "compatibility_fallback_handler": {
+            "status": "observed",
+            "bytes": 6294,
+            "keccak256": "0x3c6a85bcf7b563daa624b884b4e9a1b9fa5371edde7be945d998071a48f28bbc",
+            "matchesRegistry": true
+          },
+          "multi_send": {
+            "status": "observed",
+            "bytes": 640,
+            "keccak256": "0xca1147a12963172a93910c5cb2bfa5ad0e941c7f03fc7eb017dd06a8ea4e5604",
+            "matchesRegistry": true
+          },
+          "multi_send_call_only": {
+            "status": "observed",
+            "bytes": 421,
+            "keccak256": "0xcdbdcec38d2f1c7d961b0029ff8416b7e86e9974d6f0e9c9580c7d17fcfb6663",
+            "matchesRegistry": true
+          }
+        }
+      },
+      "oldFork": {
+        "hashMatches": true,
+        "contracts": {
+          "safe_l2": {
+            "status": "observed",
+            "bytes": 24421,
+            "keccak256": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+            "matchesRegistry": true
+          },
+          "safe_proxy_factory": {
+            "status": "observed",
+            "bytes": 3054,
+            "keccak256": "0x50c3cdc4074750a7a974204a716c999edd37482f907608d960b2b025ee0b3317",
+            "matchesRegistry": true
+          },
+          "compatibility_fallback_handler": {
+            "status": "observed",
+            "bytes": 5637,
+            "keccak256": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9",
+            "matchesRegistry": true
+          }
+        }
+      },
+      "deployedSample": {
+        "runtime": {
+          "status": "observed",
+          "bytes": 171,
+          "keccak256": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+          "matchesRegistry": true
+        },
+        "singletonViaGetter": {
+          "status": "observed",
+          "value": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762"
+        },
+        "singletonViaSlot": {
+          "status": "observed",
+          "value": "0x29fcb43b46531bca003ddc8fcb67ffe91900c762"
+        },
+        "version": {
+          "status": "observed",
+          "value": "1.4.1"
+        },
+        "threshold": {
+          "status": "observed",
+          "value": "2"
+        },
+        "ownerCount": 3,
+        "modulesCount": 0,
+        "modulesCursor": "0x0000000000000000000000000000000000000001",
+        "guard": {
+          "status": "observed",
+          "value": "0x0000000000000000000000000000000000000000"
+        },
+        "fallbackHandler": {
+          "status": "observed",
+          "value": "0xfd0732dc9e303f09fcef3a7388ad10a83459ec99"
+        },
+        "creation": {
+          "status": "observed",
+          "receiptSucceeded": true,
+          "canonical": true,
+          "logMatches": true,
+          "logIndex": "0xd",
+          "block": {
+            "height": 114339644,
+            "hash": "0x053c518c630690228bef2696479d88644e2879c8b3526578fc28d0e6ebcc6cc7",
+            "at": "2026-11-14T17:52:04.000Z"
+          }
+        }
+      },
+      "seaport": {
+        "runtime": {
+          "status": "observed",
+          "bytes": 23981,
+          "keccak256": "0x95809b70c9659c30188db5fdd87103e24b1a55379af8c851fca393aba0224a00"
+        },
+        "version": "1.6",
+        "conduitController": "0x00000000F9490004C11Cef243f5400493c00Ad63"
+      }
+    },
+    "pocket": {
+      "chain": {
+        "status": "observed",
+        "value": "0x1237"
+      },
+      "block": {
+        "height": 114556006,
+        "hash": "0x4d4136b255e131260c3d65163f9074764407c3bff4a13e51a82ce6b38ed67446",
+        "at": "2026-11-15T00:14:15.000Z"
+      },
+      "sameBlockHashAfterReads": true,
+      "contracts": {
+        "1.4.1": {
+          "safe": {
+            "status": "observed",
+            "bytes": 23579,
+            "keccak256": "0x1fe2df852ba3299d6534ef416eefa406e56ced995bca886ab7a553e6d0c5e1c4",
+            "matchesRegistry": true
+          },
+          "safe_l2": {
+            "status": "observed",
+            "bytes": 24421,
+            "keccak256": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+            "matchesRegistry": true
+          },
+          "safe_proxy_factory": {
+            "status": "observed",
+            "bytes": 3054,
+            "keccak256": "0x50c3cdc4074750a7a974204a716c999edd37482f907608d960b2b025ee0b3317",
+            "matchesRegistry": true
+          },
+          "compatibility_fallback_handler": {
+            "status": "observed",
+            "bytes": 5637,
+            "keccak256": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9",
+            "matchesRegistry": true
+          },
+          "multi_send": {
+            "status": "observed",
+            "bytes": 629,
+            "keccak256": "0x0e4f7fc66550a322d1e7688e181b75e217e662a4f3f4d6a29b22bc61217c4b77",
+            "matchesRegistry": true
+          },
+          "multi_send_call_only": {
+            "status": "observed",
+            "bytes": 410,
+            "keccak256": "0xecd5bd14a08c5d2122379900b2f272bdf107a7e92423c10dd5fe3254386c9939",
+            "matchesRegistry": true
+          }
+        },
+        "1.5.0": {
+          "safe": {
+            "status": "observed",
+            "bytes": 21451,
+            "keccak256": "0xdda019cbd7c867a533a2a86e5c53434fdc50b13122b5a5ddb4a8df61b31c20f2",
+            "matchesRegistry": true
+          },
+          "safe_l2": {
+            "status": "observed",
+            "bytes": 22231,
+            "keccak256": "0x180193227186ccb85316c94db1f0d156ed932b14712cfaac78901899178572dc",
+            "matchesRegistry": true
+          },
+          "safe_proxy_factory": {
+            "status": "observed",
+            "bytes": 3321,
+            "keccak256": "0x967dae4cda22b0c9ef7f31b010bdc1ceb0af9904b0c3dc060b5302e4c18a4529",
+            "matchesRegistry": true
+          },
+          "compatibility_fallback_handler": {
+            "status": "observed",
+            "bytes": 6294,
+            "keccak256": "0x3c6a85bcf7b563daa624b884b4e9a1b9fa5371edde7be945d998071a48f28bbc",
+            "matchesRegistry": true
+          },
+          "multi_send": {
+            "status": "observed",
+            "bytes": 640,
+            "keccak256": "0xca1147a12963172a93910c5cb2bfa5ad0e941c7f03fc7eb017dd06a8ea4e5604",
+            "matchesRegistry": true
+          },
+          "multi_send_call_only": {
+            "status": "observed",
+            "bytes": 421,
+            "keccak256": "0xcdbdcec38d2f1c7d961b0029ff8416b7e86e9974d6f0e9c9580c7d17fcfb6663",
+            "matchesRegistry": true
+          }
+        }
+      },
+      "oldFork": {
+        "hashMatches": true,
+        "contracts": {
+          "safe_l2": {
+            "status": "observed",
+            "bytes": 24421,
+            "keccak256": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+            "matchesRegistry": true
+          },
+          "safe_proxy_factory": {
+            "status": "observed",
+            "bytes": 3054,
+            "keccak256": "0x50c3cdc4074750a7a974204a716c999edd37482f907608d960b2b025ee0b3317",
+            "matchesRegistry": true
+          },
+          "compatibility_fallback_handler": {
+            "status": "observed",
+            "bytes": 5637,
+            "keccak256": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9",
+            "matchesRegistry": true
+          }
+        }
+      },
+      "deployedSample": {
+        "runtime": {
+          "status": "observed",
+          "bytes": 171,
+          "keccak256": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+          "matchesRegistry": true
+        },
+        "singletonViaGetter": {
+          "status": "observed",
+          "value": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762"
+        },
+        "singletonViaSlot": {
+          "status": "observed",
+          "value": "0x29fcb43b46531bca003ddc8fcb67ffe91900c762"
+        },
+        "version": {
+          "status": "observed",
+          "value": "1.4.1"
+        },
+        "threshold": {
+          "status": "observed",
+          "value": "2"
+        },
+        "ownerCount": 3,
+        "modulesCount": 0,
+        "modulesCursor": "0x0000000000000000000000000000000000000001",
+        "guard": {
+          "status": "observed",
+          "value": "0x0000000000000000000000000000000000000000"
+        },
+        "fallbackHandler": {
+          "status": "observed",
+          "value": "0xfd0732dc9e303f09fcef3a7388ad10a83459ec99"
+        },
+        "creation": {
+          "status": "observed",
+          "receiptSucceeded": true,
+          "canonical": true,
+          "logMatches": true,
+          "logIndex": "0xd",
+          "block": {
+            "height": 114339644,
+            "hash": "0x053c518c630690228bef2696479d88644e2879c8b3526578fc28d0e6ebcc6cc7",
+            "at": "2026-11-14T17:52:04.000Z"
+          }
+        }
+      },
+      "seaport": {
+        "runtime": {
+          "status": "observed",
+          "bytes": 23981,
+          "keccak256": "0x95809b70c9659c30188db5fdd87103e24b1a55379af8c851fca393aba0224a00"
+        },
+        "version": "1.6",
+        "conduitController": "0x00000000F9490004C11Cef243f5400493c00Ad63"
+      }
+    }
+  }
+}

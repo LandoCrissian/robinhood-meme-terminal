@@ -71,7 +71,8 @@ export async function reviewLaunchDraft(request: Request) {
     const body = await readDraftBody(request.body);
     if (body.tooLarge) return failure(413, "Draft exceeds the request size limit.");
     if (!isLaunchReviewRequest(body.input)) return failure(400, "Enter the draft fields and try again.");
-    const result = validateLaunchDraft({ ...emptyLaunchDraft, ...body.input });
+    const { treasuryShareUnit, ...fields } = body.input;
+    const result = validateLaunchDraft({ ...emptyLaunchDraft, ...fields }, treasuryShareUnit ?? "total-fee-percent");
     return result.ok
       ? Response.json({ status: "reviewed", draft: reviewableFields(result.draft) }, { headers })
       : Response.json({ status: "invalid", errors: result.errors }, { status: 422, headers });

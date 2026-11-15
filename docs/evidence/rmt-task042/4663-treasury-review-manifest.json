@@ -1,0 +1,155 @@
+{
+  "profile": "rmt-curve-v1-4663-treasury-review-v1",
+  "chainId": 4663,
+  "status": "BLOCKED_NO_BROADCAST",
+  "broadcastAuthorized": false,
+  "source": {
+    "solidityCommit": "5fe80e04713cd0d72dedc087ede3a54ba2d6920d",
+    "solidityTree": "e98de2eaedcf9d233bac0860094e7179db2ab562",
+    "harnessCommit": "8dca5773cbd4dc98f52a45616f420bce96b000f0",
+    "harnessBlob": "d161ec8c987aee426258902fc718cd0ed5e13a8c"
+  },
+  "compiler": {
+    "version": "0.8.26+commit.8a97fa7a",
+    "evmVersion": "cancun",
+    "viaIR": true,
+    "optimizerRuns": 200,
+    "metadata": "ipfs+cbor",
+    "inputSha256": "a28e0ae5a50ea1375644a0b737ad6d55d1da90d04bc1f169de0ad9e0553d0bd2",
+    "slitherInputSha256": "d21d9f5df69b41b939bc01202002859ef630019e50faa10ba3781f2c827a8e70",
+    "exactInputTransformation": [
+      {
+        "file": "src/RMTLaunchCurveFactoryV1.sol",
+        "occurrences": 2,
+        "from": "block.chainid != 31_337",
+        "to": "block.chainid != 4_663",
+        "inputSha256": "416aea241443a2171a1c4ba706af7aed46a68008907d2d4ff984d6ab37b1fed0"
+      },
+      {
+        "file": "src/RMTV4CurveGraduationV1.sol",
+        "occurrences": 1,
+        "from": "CHAIN_ID = 31_337",
+        "to": "CHAIN_ID = 4_663",
+        "inputSha256": "9d513915a4d36f05e1d4114bbe4f727ac6e6a504ef35bb856c47307e14795009"
+      },
+      {
+        "file": "src/RMTLaunchCurveMathV1.sol",
+        "replacements": [
+          [
+            "2ether-virtual-eth;60%-sold;1ether-backing",
+            "4000000000000000000wei-virtual-eth;60%-sold;2000000000000000000wei-backing"
+          ],
+          [
+            "VIRTUAL_ETH = 2 ether",
+            "VIRTUAL_ETH = 4000000000000000000"
+          ],
+          [
+            "GRADUATION_BACKING = 1 ether",
+            "GRADUATION_BACKING = 2000000000000000000"
+          ]
+        ],
+        "inputSha256": "e798849036e4adce7b50cdb88f2e6968a9dd1690912aa424a0ad8c9d85950c6c"
+      }
+    ],
+    "sourceClosureFiles": 65
+  },
+  "replayInputsSha256Lf": {
+    "historical-4663-fork-2eth.json": "9c58bde83c6387b8491d4332e085a405f9651758c990ccf0e16f384b33e93297",
+    "scope-report.json": "2e7ea841ed92e4053cc6deb5724feabf948d63632e78a514a561772a295022af"
+  },
+  "externalRuntimePins": {
+    "poolManager": {
+      "address": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+      "runtimeHash": "0xbd3881180b547f5fe817545743cfb4343e96b1bc6640dcd70c106b0066e95626"
+    },
+    "positionManager": {
+      "address": "0x58daec3116aae6d93017baaea7749052e8a04fa7",
+      "runtimeHash": "0xc873e135dc9aaec88489cfbad146b4cb49d6a32e0d80326377784b7ba17670b2"
+    },
+    "permit2": {
+      "address": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+      "runtimeHash": "0x5208783f52488f7d3493e5e38311ab707c1d75457fe472a19b0b4d57d66a7fca"
+    },
+    "quoter": {
+      "address": "0x8dc178efb8111bb0973dd9d722ebeff267c98f94",
+      "runtimeHash": "0xd707b1da8cb165e5ea35a3b4450d971eb562ec171e23492aa117036b78a868f6"
+    },
+    "stateView": {
+      "address": "0xf3334192d15450cdd385c8b70e03f9a6bd9e673b",
+      "runtimeHash": "0x7d9c591e0956fd89d98feb4ffcfe8bf1f7a62bd485edd979fa21d104b49878a6"
+    },
+    "universalRouter": {
+      "address": "0x204FAca1764B154221e35c0d20aBb3c525710498",
+      "runtimeHash": "0x76b92a5bba2dd32019a64eb421f1750e78c6ba044dbfa6840b722eb5ac63d296"
+    }
+  },
+  "provisionalTerms": {
+    "approved": false,
+    "creationFeeWei": "400000000000000",
+    "supplyPresetsWholeTokens": [
+      1000000,
+      10000000,
+      100000000
+    ],
+    "graduationBackingWei": "2000000000000000000",
+    "virtualEthWei": "4000000000000000000",
+    "curveInventoryShareBps": 6000,
+    "liquidityInventoryShareBps": 4000,
+    "curveTradeFeeBps": 100,
+    "projectFeesBps": 9000,
+    "operationsFeesBps": 500,
+    "futureReserveFeesBps": 500,
+    "treasuryShareOfAllFeesBpsRange": [
+      0,
+      9000
+    ],
+    "poolFeePips": 3000,
+    "tickSpacing": 60,
+    "originalLpPrincipal": "permanently locked"
+  },
+  "historicalFixture": {
+    "originBlock": 113412054,
+    "originHash": "0x17252a232b68a4e9fc494caf0660cff722ac2da966ee5c62b40e20dbcfd32ea2",
+    "bootstrapSizeBytes": 48894,
+    "bootstrapSha256": "99f4d4b955d574a5c2682a1a615f51a314e8618bbd123205a8e011b7aed593f6",
+    "factoryRuntimeBytes": 23980,
+    "runtimePinsAndReceipts": "../rmt-task039/historical-4663-fork-2eth.json"
+  },
+  "productionInputs": {
+    "operatingRecipient": null,
+    "futureReserveRecipient": null,
+    "directorySignerA": null,
+    "directorySignerB": null,
+    "directorySignerC": null,
+    "deployer": null,
+    "confirmedDeployerNonce": null,
+    "directoryAddress": null,
+    "projectRegistryAddress": null,
+    "successorDeployers": null,
+    "guardSalt": null,
+    "derivedAddresses": null,
+    "encodedConstructors": null,
+    "expectedRuntimeHashes": null,
+    "signedTransactions": null
+  },
+  "signerPolicy": {
+    "distinctEoas": 3,
+    "quorum": 2,
+    "publicationDelaySeconds": 172800,
+    "maximumExecutionWindowSeconds": 604800
+  },
+  "limits": {
+    "initcodeBytes": 49152,
+    "runtimeBytes": 24576
+  },
+  "freshFork": {
+    "block": 114549452,
+    "blockHash": "0xf9a8ca5d8e26ebb426ebd2e663ad82afc878c16d8bba5f5542f6341890cf7710",
+    "stateRoot": "0xc9b051b09f2399988057f4610ffece80f896ed95afedd7c8cf083592a98005f3",
+    "archive": "pinax",
+    "receiptEvidence": "fork/4663-lifecycle.json",
+    "receiptEvidenceSha256Lf": "f152ff3ebbfc6b4796eef902d5fc42f9c2c72e7a4ffa27768d7eead50d5687c5",
+    "reanchorPatch": "fork/reanchor.patch",
+    "reviewProfile": "creator-only treasury, isolated Anvil"
+  }
+}

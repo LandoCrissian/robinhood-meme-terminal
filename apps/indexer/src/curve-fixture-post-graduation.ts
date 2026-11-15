@@ -3,6 +3,7 @@ import {
   parseAbiItem, parseEventLogs, toHex, zeroAddress, type Address, type Hash, type Hex, type PublicClient, type TransactionReceipt,
 } from "viem";
 import type { BlockEvidence } from "./curve-launch-evidence.js";
+import { fixtureTreasuryClaimInput } from "./curve-fixture-native-proof.js";
 import {
   feeBuckets, fixturePoolManagerAbi, fixtureQuoter, fixtureRouter, nativeProof, permit2, poolIdentity, poolManager, positionManager, receiptLogs,
   verifyFixtureV4Position, type FixtureCursor, type FixtureGraduation, type FixtureGraduationBinding, type FixtureTx, type LogProof,
@@ -11,6 +12,9 @@ import {
 const maxSignedInput = (1n << 127n) - 1n;
 const priceScale = 10n ** 36n;
 const routerAbi = parseAbi(["function execute(bytes commands,bytes[] inputs,uint256 deadline) payable"]);
+const safeAbi = parseAbi([
+  "function execTransaction(address to,uint256 value,bytes data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address refundReceiver,bytes signatures) returns (bool)",
+]);
 const swapEvent = parseAbiItem("event Swap(bytes32 indexed id,address indexed sender,int128 amount0,int128 amount1,uint160 sqrtPriceX96,uint128 liquidity,int24 tick,uint24 fee)");
 const collectionEvent = parseAbiItem("event LpFeesCollected(address indexed token,uint256 indexed positionTokenId,address indexed ledger,uint256 nativeAmount,uint256 tokenAmount)");
 const claimEvent = parseAbiItem("event LpFeesClaimed(address indexed recipient,uint256 nativeAmount,uint256 tokenAmount)");
@@ -178,37 +182,64 @@ async function collectSettlement(rpc: PublicClient, tx: FixtureTx, block: BlockE
   return { kind: "lp-collect" as const, nativeWei: nativeAmount.toString(), tokenWei: tokenAmount.toString(), logIndex: event.logIndex };
 }
 
+function claimAssetMode(input: Hex) {
+  try {
+    const call = decodeFunctionData({ abi: lpLedgerAbi, data: input });
+    if ((call.functionName === "claim" || call.functionName === "claimAsset")
+        && same(input, encodeFunctionData({ abi: lpLedgerAbi, ...call }))) return call.functionName === "claim" ? "both" : call.args[0] ? "native" : "token";
+  } catch { /* Unrecognized claim calldata. */ }
+}
+
+/** A single Safe CALL to a known fee ledger. All other executions are left to coverage reconciliation. */
+export function fixtureExternalClaim(input: Hex) {
+  if (input.length > 3_202) return;
+  try {
+    const decoded = decodeFunctionData({ abi: safeAbi, data: input });
+    const [ledger, value, calldata, operation, , , gasPrice, gasToken, refundReceiver] = decoded.args;
+    if (operation === 0 && value === 0n && gasPrice === 0n && same(gasToken, zeroAddress) && same(refundReceiver, zeroAddress)
+        && claimAssetMode(calldata) && same(input, encodeFunctionData({ abi: safeAbi, ...decoded }))) return { ledger, calldata };
+  } catch { /* Unrecognized external treasury transaction. */ }
+}
+
 async function claimSettlement(rpc: PublicClient, tx: FixtureTx, block: BlockEvidence, logs: TransactionReceipt["logs"],
-  token: Address, ledger: Address, nativeOnly: boolean | undefined) {
+  token: Address, ledger: Address, account: Address, externalCall?: Hex) {
   const events = parseEventLogs({ abi: [claimEvent], strict: true, logs: logs.filter(log => same(log.address, ledger)) });
   const [event] = events;
-  requireProof(events.length === 1 && event && same(event.args.recipient, tx.from) && tx.value === 0n, "claim recipient");
+  requireProof(events.length === 1 && event && same(event.args.recipient, account) && tx.value === 0n, "claim recipient");
   const { nativeAmount, tokenAmount } = event.args;
-  const claimable = { address: ledger, abi: lpLedgerAbi, functionName: "claimable", args: [tx.from] } as const;
+  const input = externalCall
+    ? fixtureTreasuryClaimInput(await rpc.request({ method: "debug_traceTransaction", params: [tx.hash, { tracer: "callTracer" }] } as never,
+        { retryCount: 0 }), { ...tx, to: account }, ledger, nativeAmount)
+    : tx.input;
+  requireProof(!externalCall || same(externalCall, input), "outer and inner claim calldata disagree");
+  const mode = claimAssetMode(input);
+  requireProof(mode, "exact claim calldata");
+  const claimable = { address: ledger, abi: lpLedgerAbi, functionName: "claimable", args: [account] } as const;
   const height = BigInt(block.blockNumber);
   const [before, after] = await Promise.all([
     rpc.readContract({ ...claimable, blockNumber: height - 1n }), rpc.readContract({ ...claimable, blockNumber: height }),
   ]);
-  const expected: Pair = [nativeOnly === false ? 0n : before[0], nativeOnly === true ? 0n : before[1]];
+  const expected: Pair = [mode === "token" ? 0n : before[0], mode === "native" ? 0n : before[1]];
   requireProof(positive(expected) && equal(expected, [nativeAmount, tokenAmount]) && equal(after, subtract(before, expected)),
     "claim exceeds the exact original entitlement");
-  expectTokenTransfer(logs, token, ledger, tx.from, tokenAmount);
-  await nativeProof(rpc, tx, ledger, [{ from: ledger, to: tx.from, amount: nativeAmount }]);
+  expectTokenTransfer(logs, token, ledger, account, tokenAmount);
+  if (!externalCall) await nativeProof(rpc, tx, ledger, [{ from: ledger, to: account, amount: nativeAmount }]);
   return { kind: "lp-claim" as const, nativeWei: nativeAmount.toString(), tokenWei: tokenAmount.toString(), logIndex: event.logIndex };
 }
 
 export async function indexFixturePostTransaction(rpc: PublicClient, binding: FixtureGraduationBinding, cursors: FixturePostCursor[],
   tx: FixtureTx, block: BlockEvidence, index: number) {
-  if (!tx.to || cursors.every(cursor => !cursor.graduation)) return;
+  const target = tx.to;
+  if (!target || cursors.every(cursor => !cursor.graduation)) return;
   let cursor: FixturePostCursor | undefined;
   let decoded: ReturnType<typeof fixtureSwapInput>;
   let collectDeadline: bigint | undefined;
-  let nativeOnly: boolean | undefined;
-  if (same(tx.to, fixtureRouter)) {
+  let externalCall: Hex | undefined;
+  if (same(target, fixtureRouter)) {
     decoded = fixtureSwapInput(tx.input);
     if (!decoded) return;
     cursor = cursors.find(item => item.graduation && same(item.graduation.poolId, decoded!.poolId));
-  } else if (same(tx.to, binding.graduationEngine)) {
+  } else if (same(target, binding.graduationEngine)) {
     try {
       const call = decodeFunctionData({ abi: engineAbi, data: tx.input });
       if (call.functionName !== "collectLpFees" || !same(tx.input, encodeFunctionData({ abi: engineAbi, ...call }))) return;
@@ -216,28 +247,35 @@ export async function indexFixturePostTransaction(rpc: PublicClient, binding: Fi
       cursor = cursors.find(item => item.graduation && same(call.args[0], item.launch.token));
     } catch { return; }
   } else {
-    cursor = cursors.find(item => item.lpLedger && same(item.lpLedger, tx.to!));
-    if (!cursor) return;
-    try {
-      const call = decodeFunctionData({ abi: lpLedgerAbi, data: tx.input });
-      if (call.functionName === "claimAsset") nativeOnly = call.args[0];
-      else if (call.functionName !== "claim") return;
-      if (!same(tx.input, encodeFunctionData({ abi: lpLedgerAbi, ...call }))) return;
-    } catch { return; }
+    cursor = cursors.find(item => item.lpLedger && same(item.lpLedger, target));
+    if (cursor) {
+      if (!claimAssetMode(tx.input)) return;
+    } else {
+      if (tx.value !== 0n) return;
+      const claim = fixtureExternalClaim(tx.input);
+      if (!claim) return;
+      cursor = cursors.find(item => item.lpLedger && item.launch.treasury && same(item.lpLedger, claim.ledger)
+        && same(item.launch.treasury, target));
+      externalCall = claim.calldata;
+    }
   }
   if (!cursor?.graduation || !cursor.lpLedger) return;
-  const { graduation, lpLedger: ledger, launch: { token } } = cursor;
   const receipt = await rpc.getTransactionReceipt({ hash: tx.hash });
-  const logs = receiptLogs(tx, receipt, block, index, tx.to);
+  const logs = receiptLogs(tx, receipt, block, index, target);
   if (receipt.status === "reverted") {
     requireProof(logs.length === 0, "reverted action emitted evidence");
     return;
   }
+  // Safe can report a reverted internal call in a successful outer receipt.
+  // The range's independent ledger log scan still rejects a silently omitted claim.
+  if (externalCall && !logs.some(log => same(log.address, cursor.lpLedger!) && same(log.topics[0] ?? "", fixturePostEventTopics.claim))) return;
+  const { graduation, lpLedger: ledger, launch: { token } } = cursor;
+  const account = externalCall ? target : tx.from;
   const proof = decoded ? await swapSettlement(rpc, tx, block, receipt, logs, token, graduation, decoded)
     : collectDeadline !== undefined ? await collectSettlement(rpc, tx, block, logs, token, graduation, ledger, collectDeadline)
-      : await claimSettlement(rpc, tx, block, logs, token, ledger, nativeOnly);
+      : await claimSettlement(rpc, tx, block, logs, token, ledger, account, externalCall);
   await verifyFixtureV4Position(rpc, binding, token, graduation, receipt.blockNumber);
-  const event: FixturePostEvent = { ...block, transactionHash: tx.hash, account: tx.from, ...proof };
+  const event: FixturePostEvent = { ...block, transactionHash: tx.hash, account, ...proof };
   cursor.postEvents ??= [];
   requireProof(cursor.postEvents.length < maxPostEvents, "event history exceeds fixture limit");
   cursor.postEvents.push(event);

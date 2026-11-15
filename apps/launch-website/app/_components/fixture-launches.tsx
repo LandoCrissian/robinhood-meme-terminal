@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { FixtureDiscovery, FixtureLaunch } from "../../lib/server/fixture-discovery";
 import type { CurveFixture } from "../../lib/server/curve-fixture";
+import { treasuryProjectPercent } from "../../lib/launch-draft";
 import { FixtureLifecycleEvidence } from "./fixture-lifecycle-evidence";
 import { TestLifecycleWallet } from "./test-lifecycle-wallet";
 import { ChainTime } from "./launch-freshness";
@@ -38,11 +39,17 @@ export function FixtureLaunchDetails({ launch, fixture }: { launch: FixtureLaunc
             <dt>Opening curve inventory</dt><dd>{(BigInt(launch.opening.inventoryWei) / 10n ** 18n).toLocaleString("en-US")} tokens</dd>
             <dt>Project URI</dt><dd>{launch.projectURI || "None"}</dd>
             <dt>Treasury</dt><dd><code className="lpAddress">{launch.treasury || "None"}</code></dd>
-            <dt>Treasury fee share</dt><dd>{launch.treasuryShareBps / 100}% of collected curve fees</dd>
+            <dt>Treasury share of project fees</dt><dd>{treasuryProjectPercent(launch.treasuryShareBps)} · {launch.treasuryShareBps / 100}% of all eligible fees</dd>
+            <dt>Curve ETH fee ledger</dt><dd><code className="lpAddress">{launch.revenueLedger}</code></dd>
+            {launch.lifecycle.postGraduation && <><dt>Locked-position ETH and token fee ledger</dt>
+              <dd><code className="lpAddress">{launch.lifecycle.postGraduation.ledger}</code></dd></>}
             <dt>Creation fee</dt><dd>0.0004 test ETH · fee receipt log {fee.logIndex}</dd>
             <dt>Creation transaction</dt><dd><code className="lpAddress">{launch.creation.transactionHash}</code></dd>
             <dt>Creation block and log</dt><dd>{launch.creation.blockNumber} · log {launch.creation.logIndex} · <ChainTime value={launch.creation.timestamp} /></dd>
           </dl>
+          <p>Each recipient authorizes claims from its own wallet. The curve ledger supports <code>claim()</code>.
+            The locked-position ledger supports <code>claim()</code> for both assets and <code>claimAsset(bool native)</code> for one asset.
+            Smart-account owners submit those calls through their own wallet.</p>
         </section>
       </div>
       <FixtureTransactionRecovery token={launch.token} fixture={fixture} launch={launch} />

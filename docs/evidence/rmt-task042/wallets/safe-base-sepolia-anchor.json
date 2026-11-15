@@ -1,0 +1,23 @@
+{
+  "chainId": 84532,
+  "block": 57648300,
+  "hash": "0x5bb29976ce80ddede79f192c61eba8fe9d96f499f8bfa11e0820d11820e91d20",
+  "observedAt": "2026-11-15T00:18:40.8651014Z",
+  "results": [
+    {
+      "address": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+      "keccak256": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+      "runtimeBytes": 24421
+    },
+    {
+      "address": "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
+      "keccak256": "0x50c3cdc4074750a7a974204a716c999edd37482f907608d960b2b025ee0b3317",
+      "runtimeBytes": 3054
+    },
+    {
+      "address": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+      "keccak256": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9",
+      "runtimeBytes": 5637
+    }
+  ]
+}

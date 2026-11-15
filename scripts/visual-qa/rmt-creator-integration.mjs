@@ -64,7 +64,7 @@ const deploymentOperator = privateKeyToAccount(generatePrivateKey());
 const operationsSigner = privateKeyToAccount(generatePrivateKey());
 const reserveSigner = privateKeyToAccount(generatePrivateKey());
 const project = { name: "Fixture Creator 036", symbol: "FRESH036", projectURI: "https://example.test/rmt036",
-  supplyPreset: 1, treasury, treasuryShareBps: 1250, supplyWei: (10_000_000n * 10n ** 18n).toString() };
+  supplyPreset: 1, treasury, treasuryShareBps: 2250, supplyWei: (10_000_000n * 10n ** 18n).toString() };
 const draftOnly = { description: "Private fixture draft description 036", artwork: "https://example.test/local-only-art.png" };
 const factoryAbi = parseAbi([
   "function create(string,string,string,uint8,address,uint16,bytes32,uint256) payable returns (address,address)",
@@ -190,7 +190,7 @@ let hideTradeTrace = false;
 let hiddenTradeTraces = 0;
 let rpcOutage = false;
 const readProxyMethods = new Set(["eth_chainId", "eth_blockNumber", "eth_getBlockByNumber", "eth_getBlockByHash", "eth_getCode",
-  "eth_getLogs", "eth_getTransactionByHash", "eth_getTransactionReceipt", "eth_getTransactionCount", "eth_getBalance", "eth_call", "eth_estimateGas", "eth_gasPrice", "web3_clientVersion",
+  "eth_getStorageAt", "eth_getLogs", "eth_getTransactionByHash", "eth_getTransactionReceipt", "eth_getTransactionCount", "eth_getBalance", "eth_call", "eth_estimateGas", "eth_gasPrice", "web3_clientVersion",
   "debug_traceTransaction"]);
 const proxy = createServer(async (request, response) => {
   const write = (result, status = 200) => {
@@ -296,8 +296,14 @@ try {
   await successful(start(pgExecutable("pg_ctl"), ["-D", cluster, "-l", join(out, "postgres.log"), "-o",
     `-h 127.0.0.1 -p ${pgPort}`, "-w", "start"], "postgres-start", { discard: process.platform === "win32" }));
   pgStarted = true;
-  await successful(start(pgExecutable("createdb"), ["-h", "127.0.0.1", "-p", String(pgPort), "-U", pgUser, database], "postgres-createdb",
-    { env: { ...childBase, PGPASSWORD: pgPass } }));
+  const maintenanceUrl = new URL(databaseUrl);
+  maintenanceUrl.pathname = "/postgres";
+  const fixtureAdmin = new Pool({ connectionString: maintenanceUrl.toString(), connectionTimeoutMillis: 5_000 });
+  try {
+    await fixtureAdmin.query(`CREATE DATABASE "${database}"`);
+  } finally {
+    await fixtureAdmin.end();
+  }
   await pg.query(`CREATE TABLE rmt_curve_fixture_marker (identity text PRIMARY KEY CHECK (identity = 'task036-local-only'));
     INSERT INTO rmt_curve_fixture_marker VALUES ('task036-local-only');`);
 
@@ -343,6 +349,8 @@ try {
   await rpc("anvil_setBalance", [treasury, toHex(10n ** 18n)]);
   const ownTreasury = await post(prepareBody({ ...reviewFields, treasury: creator.address.toLowerCase() }));
   assert.equal(ownTreasury.status, 422, "The creator cannot also be the project treasury");
+  const reservedTreasury = await post(prepareBody({ ...reviewFields, treasury: binding.factory.toLowerCase() }));
+  assert.equal(reservedTreasury.status, 422, "The factory cannot be committed as a project treasury");
   const unfunded = await post(prepareBody({ ...reviewFields, treasury: treasury.toLowerCase() }, alternate));
   assert.notEqual((await unfunded.json()).status, "prepared", "The fixture cannot simulate a creation without its fee");
   const snapshot = await rpc("evm_snapshot");
@@ -481,6 +489,15 @@ try {
 
   const button = (name) => page.getByRole("button", { name, exact: true });
   const capture = (name) => page.screenshot({ path: join(out, `${name}.png`), fullPage: true });
+  const reviewTreasuryCreation = async () => {
+    await button("Review test creation").click();
+    const acknowledgment = page.getByRole("checkbox", {
+      name: "I verified that the treasury controls this address and can submit fee claims.", exact: true,
+    });
+    await acknowledgment.waitFor();
+    assert.equal(await button("Confirm test creation").isEnabled(), false);
+    await acknowledgment.check();
+  };
   await page.goto(site + "/create-token");
   await page.getByLabel("Token name", { exact: true }).fill(project.name);
   await page.getByLabel("Ticker", { exact: true }).fill(project.symbol.toLowerCase());
@@ -490,26 +507,23 @@ try {
   await page.getByLabel("Artwork URL", { exact: true }).fill(draftOnly.artwork);
   await page.getByText("Optional project treasury", { exact: true }).click();
   await page.getByLabel("Treasury address", { exact: true }).fill(treasury);
-  await page.getByLabel("Treasury share of collected fees (%)", { exact: true }).fill("12.50");
+  await page.getByLabel("Treasury share of project fees (%)", { exact: true }).fill("25");
   await button("Review draft").click();
   await page.getByRole("heading", { name: "Review token draft", exact: true }).waitFor();
   await button("Connect test wallet").click();
-  await button("Review test creation").click();
-  await button("Confirm test creation").waitFor();
+  await reviewTreasuryCreation();
   await page.evaluate(() => window.fixtureWallet.setAccount(true));
   await button("Connect test wallet").waitFor();
   assert.equal(await button("Confirm test creation").count(), 0);
   await page.evaluate(() => window.fixtureWallet.setAccount(false));
   await button("Connect test wallet").click();
-  await button("Review test creation").click();
-  await button("Confirm test creation").waitFor();
+  await reviewTreasuryCreation();
   await page.evaluate(() => window.fixtureWallet.setChain(true));
   await button("Connect test wallet").waitFor();
   assert.equal(await button("Confirm test creation").count(), 0);
   await page.evaluate(() => window.fixtureWallet.setChain(false));
   await button("Connect test wallet").click();
-  await button("Review test creation").click();
-  await button("Confirm test creation").waitFor();
+  await reviewTreasuryCreation();
   await capture("01-final-review");
   await page.evaluate(() => window.fixtureWallet.setDecision("reject"));
   await button("Confirm test creation").click();
@@ -517,7 +531,7 @@ try {
   assert.equal(signatures.length, 0);
   assert.equal(BigInt(await rpc("eth_getTransactionCount", [creator.address, "latest"])), countBefore);
 
-  await button("Review test creation").click();
+  await reviewTreasuryCreation();
   await page.evaluate(() => window.fixtureWallet.setDecision("lose"));
   await button("Confirm test creation").click();
   await waitFor("one synthetic signed transaction", async () => signatures.length === 1);

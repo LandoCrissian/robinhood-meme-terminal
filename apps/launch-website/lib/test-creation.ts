@@ -19,6 +19,21 @@ export type TestCreationRequest = {
   blockHash: `0x${string}`;
 };
 
+export type TestCreationPayouts = {
+  operating: `0x${string}`;
+  reserve: `0x${string}`;
+  treasuryKind: "none" | "no-code" | "safe-1.4.1";
+};
+
+export function isTestCreationPayouts(value: unknown, hasTreasury: boolean): value is TestCreationPayouts {
+  if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length !== 3) return false;
+  const input = value as Partial<TestCreationPayouts>;
+  return isLaunchAddress(input.operating) && isLaunchAddress(input.reserve)
+    && !/^0x0{40}$/i.test(input.operating) && !/^0x0{40}$/i.test(input.reserve)
+    && input.operating.toLowerCase() !== input.reserve.toLowerCase()
+    && (hasTreasury ? input.treasuryKind === "no-code" || input.treasuryKind === "safe-1.4.1" : input.treasuryKind === "none");
+}
+
 export type TestCreationVerification = {
   status: "pending" | "confirmed" | "reverted" | "unavailable";
   transactionHash?: `0x${string}`;
