@@ -1,0 +1,170 @@
+--- a/packages/contracts/scripts/validate-curve-graduation-4663.mjs
++++ b/packages/contracts/scripts/validate-curve-graduation-4663.mjs
+@@ -10,0 +11,2 @@
++import { checkedMigrationDigest, currentFixtureSigners, expectedDirectoryDigest, reauthorizeAfterFixtureRotation }
++  from "./fork-rotation-authority.mjs";
+@@ -208 +210 @@
+-  return createPublicClient({ chain, transport: http(url.href, { retryCount: 0, timeout: 35_000 }), cacheTime: 0 });
++  return createPublicClient({ chain, transport: http(url.href, { retryCount: 0, timeout: 90_000 }), cacheTime: 0 });
+@@ -287,2 +289,2 @@
+-  const directoryArtifact = artifacts.RMTLaunchCurveDirectoryV1;
+-  const registryArtifact = artifacts.RMTLaunchProjectRegistryV1;
++  const directoryArtifact = artifacts.RMTLaunchCurveDirectoryV2;
++  const registryArtifact = artifacts.RMTLaunchProjectRegistryV2;
+@@ -300 +302,7 @@
+-  return { directory, directoryRuntimeHash, projectRegistry, registryRuntimeHash };
++  const governanceSigners = await Promise.all(["signerA", "signerB", "signerC"].map((name) =>
++    read(client, directory, directoryArtifact.abi, name)));
++  assert.deepEqual(governanceSigners.map((address) => getAddress(address)), signers.map(({ address }) => getAddress(address)));
++  assert.equal(await read(client, directory, directoryArtifact.abi, "signerSetEpoch"), 1n);
++  assert.ok(addressEq(await read(client, projectRegistry, registryArtifact.abi, "directory"), directory));
++  return { directory, directoryRuntimeHash, projectRegistry, registryRuntimeHash, governanceSigners,
++    directoryDeployment: receiptEvidence(directoryReceipt), registryDeployment: receiptEvidence(registryReceipt) };
+@@ -304 +312 @@
+-  const abi = artifacts.RMTLaunchCurveDirectoryV1.abi;
++  const abi = artifacts.RMTLaunchCurveDirectoryV2.abi;
+@@ -307 +315,2 @@
+-  const action = { kind, nonce, version, factory: target, runtimeHash, deadline: Number(now + 3n * 86400n) };
++  const signerSetEpoch = await read(client, directory, abi, "signerSetEpoch");
++  const action = { kind, nonce, version, factory: target, runtimeHash, signerSetEpoch, deadline: Number(now + 3n * 86400n) };
+@@ -308,0 +318 @@
++  assert.equal(digest, expectedDirectoryDigest(client, directory, abi, action));
+@@ -318,2 +328,3 @@
+-  const { projectRegistry, factory } = deployed;
+-  const abi = artifacts.RMTLaunchProjectRegistryV1.abi;
++  const { projectRegistry, factory, directory } = deployed;
++  const abi = artifacts.RMTLaunchProjectRegistryV2.abi;
++  const directoryAbi = artifacts.RMTLaunchCurveDirectoryV2.abi;
+@@ -332 +343 @@
+-  const deadline = Number((await client.getBlock()).timestamp + 4n * 86400n);
++  const deadline = Number((await client.getBlock()).timestamp + 10n * 86400n);
+@@ -334,3 +345,5 @@
+-  const digest = await read(client, projectRegistry, abi, "migrationDigest", [token]);
+-  const [first, second] = await Promise.all(fixtureSigners().slice(0, 2).map((signer) => signer.sign({ hash: digest })));
+-  const scheduled = await send(client, operator, request(projectRegistry, abi, "scheduleMigration", [token, first, second]));
++  const digest = await checkedMigrationDigest(client, projectRegistry, abi, directory, directoryAbi, token, read);
++  const original = fixtureSigners();
++  const signers = await currentFixtureSigners(client, directory, directoryAbi, original, read);
++  const signedMigration = await Promise.all(signers.slice(0, 2).map((signer) => signer.sign({ hash: digest })));
++  const scheduled = await send(client, operator, request(projectRegistry, abi, "scheduleMigration", [token, ...signedMigration]));
+@@ -354,0 +368,9 @@
++  const rotation = toVersion === 2 && await read(client, directory, directoryAbi, "signerSetEpoch") === 1n
++    ? await reauthorizeAfterFixtureRotation({ client, operator, directory, projectRegistry, projectAsset: token,
++      directoryAbi, registryAbi: abi, original, signedMigration, read, send, request, warp, oneEvent, receiptEvidence })
++    : undefined;
++  if (rotation) {
++    assert.deepEqual(await snapshot(curve), before, "Governance rotation changed launch assets or ledgers");
++    rotation.assetsAndCreditsUnchanged = true;
++    rotation.renewedTooEarly = receiptEvidence(await send(client, operator, execution, "reverted"));
++  }
+@@ -381 +403,2 @@
+-    interrupted: receiptEvidence(interrupted), migrated: receiptEvidence(migrated), backingInventoryFeesAndQuotesUnchanged: true };
++    interrupted: receiptEvidence(interrupted), migrated: receiptEvidence(migrated), rotation,
++    backingInventoryFeesAndQuotesUnchanged: true };
+@@ -463 +486 @@
+-  const directoryAbi = artifacts.RMTLaunchCurveDirectoryV1.abi;
++  const directoryAbi = artifacts.RMTLaunchCurveDirectoryV2.abi;
+@@ -519 +542 @@
+-    await verifiedRuntime(client, projectRegistry, artifacts.RMTLaunchProjectRegistryV1);
++    await verifiedRuntime(client, projectRegistry, artifacts.RMTLaunchProjectRegistryV2);
+@@ -961,0 +985,3 @@
++
++export { localClient, deploy, migrateCurve, proveCreation, proveSwap, send, read, request,
++  verifiedRuntime, oneEvent, receiptEvidence, poolIdFor, positionAbi, stateAbi };
+--- a/packages/contracts/scripts/treasury-rehearsal.mjs
++++ b/packages/contracts/scripts/treasury-rehearsal.mjs
+@@ -3 +3 @@
+-import { readFileSync } from "node:fs";
++import { appendFileSync, readFileSync } from "node:fs";
+@@ -5,0 +6 @@
++import { pathToFileURL } from "node:url";
+@@ -12 +13 @@
+-  compile, localClient, deploy, migrateCurve, proveCreation, proveSwap, send, read, request,
++  localClient, deploy, migrateCurve, proveCreation, proveSwap, send, read, request,
+@@ -337 +338 @@
+-  lib: { type: "string" },
++  lib: { type: "string" }, checkout: { type: "string" }, "rotation-compiler": { type: "string" }, checkpoint: { type: "string" }, "project-share": { type: "string" },
+@@ -341,2 +342,8 @@
+-const { artifacts, manifest } = compile(values, 4663, backing);
+-assert.equal(manifest.inputSha256, terms.compiler.inputSha256);
++assert.ok(values.checkout && values["rotation-compiler"], "A pristine pinned checkout and the replacement compiler module are required");
++const { compileRotationProfile } = await import(pathToFileURL(resolve(values["rotation-compiler"])));
++const { artifacts, manifest } = await compileRotationProfile({
++  checkout: resolve(values.checkout), solc: resolve(values.solc), lib: values.lib,
++});
++assert.equal(manifest.chainId, 4663);
++assert.equal(manifest.provisionalTerms.graduationBackingWei, backing.toString());
++assert.equal(manifest.broadcastAuthorized, false);
+@@ -349,0 +357,5 @@
++  const save = (kind, evidence) => {
++    if (values.checkpoint) appendFileSync(values.checkpoint, JSON.stringify({ kind, evidence }, (_, value) =>
++      typeof value === "bigint" ? value.toString() : value) + "\n", "utf8");
++  };
++  save("deployment", { report, deployment, profile: manifest.profile, inputSha256: manifest.inputSha256 });
+@@ -354 +366,14 @@
+-    cases.push(await launchCase(client, accounts, artifacts, pins, deployment, { percent, treasury }, ordinal));
++    const launched = await launchCase(client, accounts, artifacts, pins, deployment, { percent, treasury }, ordinal);
++    cases.push(launched);
++    save("case", launched);
++    if (cases.length === 1) {
++      const migration = launched.curve.migrations[0];
++      assert.ok(migration.rotation?.creatorProposalPreserved);
++      const { observeGovernanceReceipts } = await import("./observe-governance.mjs");
++      const { directory, projectRegistry, directoryRuntimeHash, registryRuntimeHash } = deployment;
++      report.governanceIndexed = await observeGovernanceReceipts({
++        client, directory, registry: projectRegistry, directoryRuntimeHash, registryRuntimeHash,
++        migration, projectAsset: launched.token,
++      });
++      save("governance", report.governanceIndexed);
++    }
+@@ -361 +386,5 @@
+-    for (const [ordinal, [percent, treasury]] of matrix.entries()) await runCase(percent, treasury, ordinal + 1);
++    for (const [ordinal, [percent, treasury]] of matrix.entries()) {
++      if (values["project-share"] === undefined || String(percent) === values["project-share"]) {
++        await runCase(percent, treasury, ordinal + 1);
++      }
++    }
+@@ -386,12 +415,12 @@
+-  const constructors = {};
+-  for (const [i, [name, address]] of Object.entries([
+-    ["directory", deployment.directory], ["registry", deployment.projectRegistry],
+-    ["v2Template", deployment.deployment.successorDeployer], ["bootstrap", deployment.deployment.address],
+-  ])) {
+-    const block = await client.getBlock({ blockNumber: deployment.deployBlock - 3n + BigInt(i) });
+-    assert.equal(block.transactions.length, 1);
+-    const receipt = await client.getTransactionReceipt({ hash: block.transactions[0] });
+-    assert.ok(same(receipt.contractAddress, address) && receipt.status === "success");
+-    constructors[name] = { ...receiptEvidence(receipt), address };
+-  }
+-  constructors.v3Template = { ...deployment.v3Template.deployed, address: deployment.v3Template.deployer };
++  const constructors = {
++    directory: { ...deployment.directoryDeployment, address: deployment.directory },
++    registry: { ...deployment.registryDeployment, address: deployment.projectRegistry },
++    v2Template: { ...deployment.deployment.successorDeployerReceipt, address: deployment.deployment.successorDeployer },
++    bootstrap: { ...receiptEvidence(deployment.deployment), address: deployment.deployment.address },
++    v3Template: { ...deployment.v3Template.deployed, address: deployment.v3Template.deployer },
++  };
++  for (const observed of Object.values(constructors)) {
++    const receipt = await client.getTransactionReceipt({ hash: observed.transactionHash });
++    assert.ok(receipt.status === "success" && same(receipt.contractAddress, observed.address));
++    assert.ok(same(receipt.blockHash, observed.blockHash));
++  }
+@@ -401 +430 @@
+-console.log(JSON.stringify({ profile: terms.profile, compiler: manifest, ...results }, (_, value) =>
++console.log(JSON.stringify({ profile: manifest.profile, compiler: manifest, ...results }, (_, value) =>
+--- a/packages/contracts/scripts/safe-rehearsal.mjs
++++ b/packages/contracts/scripts/safe-rehearsal.mjs
+@@ -93,4 +93,4 @@
+-  await Promise.all([
+-    matchRuntime(client, singleton, singletonHash, reviewedFork.number), matchRuntime(client, factory, factoryHash, reviewedFork.number),
+-    matchRuntime(client, fallback, fallbackHash, reviewedFork.number),
+-  ]);
++  // Serialize the three historical archive reads to stay within the read-only proxy's limits.
++  await matchRuntime(client, singleton, singletonHash, reviewedFork.number);
++  await matchRuntime(client, factory, factoryHash, reviewedFork.number);
++  await matchRuntime(client, fallback, fallbackHash, reviewedFork.number);
+--- a/packages/contracts/scripts/robinhood-4663-fork-environment.mjs
++++ b/packages/contracts/scripts/robinhood-4663-fork-environment.mjs
+@@ -261 +261 @@
+-    "--hardfork", "cancun", "--no-storage-caching", "--timeout", "40000", "--retries", "3",
++    "--hardfork", "cancun", "--no-storage-caching", "--timeout", "90000", "--retries", "3",

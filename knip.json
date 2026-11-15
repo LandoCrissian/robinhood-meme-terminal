@@ -20,7 +20,12 @@
         "docs/evidence/rmt-task042/verify-4663-treasury-review.mjs",
         "docs/evidence/rmt-task041/deploy-inputs.mjs",
         "docs/evidence/rmt-task041/format-treasury-evidence.mjs",
-        "docs/evidence/rmt-task041/treasury-rehearsal.mjs"
+        "docs/evidence/rmt-task041/treasury-rehearsal.mjs",
+        "docs/evidence/rmt-task043/compile-rotation-profile.mjs",
+        "docs/evidence/rmt-task043/deploy-rotation.mjs",
+        "docs/evidence/rmt-task043/fork-rotation-authority.mjs",
+        "docs/evidence/rmt-task043/observe-governance.mjs",
+        "docs/evidence/rmt-task043/run-rotation-fork.mjs"
       ]
     },
     "apps/web": {

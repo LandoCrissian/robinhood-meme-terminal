@@ -1,0 +1,32 @@
+{
+  "profile": "rmt-curve-v1-4663-governance-rotation-v2",
+  "chainId": 4663,
+  "broadcastAuthorized": false,
+  "operatingTreasury": null,
+  "futureReserve": null,
+  "deployer": null,
+  "confirmedDeployerNonce": null,
+  "governanceSigners": [
+    null,
+    null,
+    null
+  ],
+  "governanceQuorum": null,
+  "economics": {
+    "creationFeeWei": null,
+    "supplyPresetsWholeTokens": null,
+    "graduationBackingWei": null,
+    "virtualEthWei": null,
+    "curveInventoryShareBps": null,
+    "liquidityInventoryShareBps": null,
+    "curveTradeFeeBps": null,
+    "projectFeesBps": null,
+    "operationsFeesBps": null,
+    "futureReserveFeesBps": null,
+    "treasuryShareOfAllFeesBpsRange": null,
+    "poolFeePips": null,
+    "tickSpacing": null,
+    "originalLpPrincipal": null
+  },
+  "ownerApprovalReference": null
+}
