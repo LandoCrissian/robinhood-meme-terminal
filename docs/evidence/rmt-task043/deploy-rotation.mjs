@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import { validateInputs as validateHistoricalInputs } from "../rmt-task041/deploy-inputs.mjs";
+import { verifiedRelease } from "../rmt-task041-closeout/verify-release.mjs";
 import { compileRotationProfile, governance, profile, verifyRotationManifest, webTools } from "./compile-rotation-profile.mjs";
 
 const read = (path) => readFileSync(path, "utf8").replaceAll("\r\n", "\n");
@@ -24,6 +25,43 @@ const status = {
 export function validateInputs(input, getAddress) {
   assert.equal(input.profile, profile, "Governance-rotation profile required");
   return validateHistoricalInputs({ ...input, profile: baseline.profile }, getAddress);
+}
+
+export function verifiedNonceObservation(preflight, release) {
+  const { deploymentInput: input, observation } = preflight;
+  assert.equal(preflight.state, "BLOCKED_NO_BROADCAST");
+  assert.equal(preflight.broadcastAuthorized, false);
+  assert.equal(preflight.chainId, chainId);
+  assert.equal(preflight.profile, profile);
+  assert.equal(preflight.planSha256Lf, null, "Use the input-only preflight");
+  assert.equal(preflight.candidateCommit, release.candidateCommit);
+  assert.equal(preflight.releaseManifestSha256Lf, release.releaseManifestSha256Lf);
+  assert.deepEqual(preflight.releaseGate, release.releaseGate);
+  assert.ok(input?.ownerApprovalReference, "Record explicit owner approval before deriving an input-specific plan");
+  assert.equal(observation?.source, "https://rpc.mainnet.chain.robinhood.com");
+  assert.ok(Number.isFinite(Date.parse(observation.observedAt)), "Missing observation time");
+  assert.match(observation.block?.number, /^[1-9]\d*$/, "Missing canonical observation block");
+  assert.match(observation.block?.hash, /^0x[0-9a-f]{64}$/i, "Missing canonical observation hash");
+  assert.match(observation.block?.stateRoot, /^0x[0-9a-f]{64}$/i, "Missing canonical observation state root");
+  assert.match(input.confirmedDeployerNonce, /^(0|[1-9]\d*)$/, "Recorded nonce is unassigned");
+  for (const field of ["latest", "pending", "anchored", "recheckedLatest", "recheckedPending"]) {
+    assert.equal(observation.nonce?.[field], input.confirmedDeployerNonce, "Nonce changed or pending use detected: " + field);
+  }
+  const roles = new Map(observation.roles.map((account) => [account.role, account]));
+  const expected = [
+    ["deployer", input.deployer], ["operatingTreasury", input.operatingTreasury], ["futureReserve", input.futureReserve],
+    ...input.governanceSigners.map((address, i) => ["governanceSigner" + (i + 1), address]),
+  ];
+  assert.equal(observation.roles.length, expected.length);
+  assert.equal(roles.size, expected.length);
+  for (const [role, address] of expected) {
+    const recorded = roles.get(role);
+    assert.equal(recorded?.address?.toLowerCase(), address.toLowerCase(), "Preflight role mismatch: " + role);
+    if (role === "deployer" || role.startsWith("governanceSigner")) {
+      assert.equal(recorded.accountCode, "empty", "Expected code-empty EOA for " + role);
+    }
+  }
+  return { input, observation };
 }
 
 export function governanceTypedData(input, viem) {
@@ -179,9 +217,15 @@ export function deriveDeployment(input, compilation, viem) {
     return { kind: "CREATE", nonce: (firstNonce + BigInt(nonceOffset)).toString(), address, contract, ...data };
   }
   function publication(nonceOffset, method, kind, nonce, version, target, runtimeHash) {
+    const expectedEvents = method === "schedule"
+      ? [{ name: "ActionScheduled", nonce, noticeSeconds: governance.noticeSeconds,
+        maximumExecutionWindowSeconds: governance.maximumExecutionWindowSeconds }]
+      : [{ name: kind === 0 ? "FactoryPublished" : "MigrationTemplatePublished", version, target, runtimeHash },
+        { name: "ActionCleared", nonce }];
     return {
       kind: method, nonce: (firstNonce + BigInt(nonceOffset)).toString(), address: directory,
       action: { kind, nonce, version, factory: target, runtimeHash, signerSetEpoch: governance.initialSignerSetEpoch, deadline: null },
+      expectedEvents,
     };
   }
   return {
@@ -282,17 +326,18 @@ function verifyFixtureDeployment(fork, compilation, viem) {
 async function main() {
   const { values } = parseArgs({ options: {
     checkout: { type: "string" }, solc: { type: "string" }, lib: { type: "string" },
-    input: { type: "string" }, output: { type: "string" },
+    input: { type: "string" }, preflight: { type: "string" }, output: { type: "string" },
     "typed-data": { type: "string" }, "check-fixture": { type: "string" },
   } });
   if (values["typed-data"]) {
-    assert.ok(values.checkout && !values.input && !values.output && !values.solc && !values.lib && !values["check-fixture"],
+    assert.ok(values.checkout && !values.input && !values.preflight && !values.output && !values.solc && !values.lib && !values["check-fixture"],
       "Use --typed-data only with --checkout");
     console.log(JSON.stringify(governanceTypedData(parse(values["typed-data"]), webTools(values.checkout)), null, 2));
     return;
   }
   if (values["check-fixture"]) {
-    assert.ok(values.checkout && values.solc && !values.input && !values.output, "Fixture verification cannot write a production plan");
+    assert.ok(values.checkout && values.solc && !values.input && !values.preflight && !values.output,
+      "Fixture verification cannot write a production plan");
     const compilation = await compileRotationProfile(values);
     verifyRotationManifest(compilation.manifest);
     const path = values["check-fixture"];
@@ -302,28 +347,36 @@ async function main() {
     return;
   }
 
-  const input = values.input ? parse(values.input) : template;
+  const release = verifiedRelease();
+  const releaseStatus = { ...status, candidateCommit: release.candidateCommit,
+    releaseManifestSha256Lf: release.releaseManifestSha256Lf, releaseGate: release.releaseGate };
+  assert.ok(!values.preflight || !values.input, "Use either --preflight or --input");
+  const direct = values.preflight && verifiedNonceObservation(parse(values.preflight), release);
+  const input = direct ? direct.input : values.input ? parse(values.input) : template;
   const viem = values.checkout && webTools(values.checkout);
   const missingInputs = validateInputs(input, viem?.getAddress);
   if (missingInputs.length) {
     assert.ok(!values.output, "Deployment output is blocked by unassigned inputs");
-    console.log(JSON.stringify({ ...status, missingInputs, derivedDeployment: null }, null, 2));
+    console.log(JSON.stringify({ ...releaseStatus, missingInputs, derivedDeployment: null }, null, 2));
     return;
   }
-  assert.ok(values.input && values.checkout && values.solc && values.output, "Require --checkout, --solc, --input and a new --output");
+  assert.ok(direct && values.checkout && values.solc && values.output,
+    "Require a direct --preflight report, --checkout, --solc and a new --output");
   const compilation = await compileRotationProfile(values);
   verifyRotationManifest(compilation.manifest);
   const result = {
-    ...status, missingInputs, suppliedInputs: input, manifest: compilation.manifest,
+    ...releaseStatus, missingInputs, suppliedInputs: input, manifest: compilation.manifest,
+    nonceObservation: direct.observation,
     derivedDeployment: deriveDeployment(input, compilation, viem),
     releaseRequirements: [
       "Reconfirm exact approvals, signer EOA control, beneficiary custody, deployer nonce and derived address vacancy.",
+      "Reserve exclusive use of the deployer until completion and re-read latest and pending nonce immediately before each later authorized step.",
       "Reproduce exact runtime and estimate total execution and posting gas with approved inputs on an isolated fork.",
       "Resolve the security and release gates before separate approvals for signing, broadcasting, funding or activation.",
     ],
   };
   writeFileSync(resolve(values.output), JSON.stringify(result, null, 2) + "\n", { flag: "wx" });
-  console.log(JSON.stringify({ ...status, derived: true, inputSha256: compilation.manifest.inputSha256, size: compilation.manifest.size }));
+  console.log(JSON.stringify({ ...releaseStatus, derived: true, inputSha256: compilation.manifest.inputSha256, size: compilation.manifest.size }));
 }
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) await main();

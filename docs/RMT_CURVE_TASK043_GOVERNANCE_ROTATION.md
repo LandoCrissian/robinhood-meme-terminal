@@ -20,8 +20,10 @@ The original token and fixed supply, creator consent, immutable treasury and pay
 
 ## Exact unsigned package
 
+The [release closeout](RMT_CURVE_TASK041_RELEASE_CLOSEOUT.md) governs current owner input binding. It attaches the exact failed closure analysis to the plan and requires a direct 4663 nonce observation before emitting an input-specific plan.
+
 - [Compiler profile](evidence/rmt-task043/4663-rotation-profile.json) pins 66 input files, both new sources, original chain and economics transformations, all fourteen template hashes, external runtime pins and the five EIP-712 schemas.
-- [Owner inputs](evidence/rmt-task043/deploy-rotation-inputs.json) leaves the operating treasury, reserve, deployer, deployer nonce, three public signer identities, quorum and proposed terms unassigned.
+- [Historical blank machine-input schema](evidence/rmt-task043/deploy-rotation-inputs.json) remains available for fixture and default-tool diagnostics. Use the single [closeout owner sheet](evidence/rmt-task041-closeout/owner-inputs.json) for current input collection.
 - [Deployment verifier and typed data tool](evidence/rmt-task043/deploy-rotation.mjs) emits unsigned payloads. It separates fixture replay from owner-input validation and refuses to write a plan with unassigned values. Production approvals, public key control, nonce and address vacancy still require direct verification.
 
 The compiler input SHA-256 is 90122536b22c847aebc0182d75290b9ba281399481d90daffc8b0f66ed92f65b. The verifier derives CREATE, CREATE2 and constructor-dependent runtime identities for the directory, registry, successor helpers, bootstrap, guard, graduation engine and factory. The five CREATE transactions and four directory publication transactions remain the initial sequence. The guard uses permission bits 0x2000.
@@ -38,7 +40,7 @@ The [nine-step 4663 deployment rehearsal](evidence/rmt-task043/4663-rotation-dep
     node docs/evidence/rmt-task043/compile-rotation-profile.mjs --checkout "$PINNED_594" --solc "$PINNED_SOLC" --verify-manifest
     node docs/evidence/rmt-task043/deploy-rotation.mjs
     node docs/evidence/rmt-task043/deploy-rotation.mjs --checkout "$PINNED_594" --typed-data "$REQUEST_JSON"
-    node docs/evidence/rmt-task043/deploy-rotation.mjs --checkout "$PINNED_594" --solc "$PINNED_SOLC" --input "$OWNER_INPUTS" --output "$NEW_UNSIGNED_PLAN"
+    node docs/evidence/rmt-task043/deploy-rotation.mjs --checkout "$PINNED_594" --solc "$PINNED_SOLC" --preflight "$INPUT_OBSERVATION" --output "$NEW_UNSIGNED_PLAN"
     node docs/evidence/rmt-task043/deploy-rotation.mjs --checkout "$PINNED_594" --solc "$PINNED_SOLC" --check-fixture docs/evidence/rmt-task043/4663-rotation-safe-claims.json
 
 The typed-data request contains exactly schema, verifyingContract and message. Its domain chain ID is 4663. Before signing in a separately authorized process, compare the returned digest and epoch with the pinned on-chain directory or registry, independently verify the exact target, and use only the intended action schema and key. The input sheet accepts public addresses and excludes keys and signatures.

@@ -25,7 +25,10 @@
         "docs/evidence/rmt-task043/deploy-rotation.mjs",
         "docs/evidence/rmt-task043/fork-rotation-authority.mjs",
         "docs/evidence/rmt-task043/observe-governance.mjs",
-        "docs/evidence/rmt-task043/run-rotation-fork.mjs"
+        "docs/evidence/rmt-task043/run-rotation-fork.mjs",
+        "docs/evidence/rmt-task041-closeout/owner-inputs.mjs",
+        "docs/evidence/rmt-task041-closeout/preflight.mjs",
+        "docs/evidence/rmt-task041-closeout/verify-release.mjs"
       ]
     },
     "apps/web": {
