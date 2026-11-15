@@ -1,0 +1,24 @@
+{
+  "profile": "rmt-curve-v1-4663-treasury-review-v1",
+  "status": "BLOCKED_NO_BROADCAST",
+  "broadcastAuthorized": false,
+  "compilerInputSha256": "a28e0ae5a50ea1375644a0b737ad6d55d1da90d04bc1f169de0ad9e0553d0bd2",
+  "profileSha256Lf": "41b7483738ce4883b6580983666a8af3d0aa6dc9c9213d78acda6afbdf462b79",
+  "compilerSha256": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
+  "unassignedInputs": 22,
+  "fixtureMatch": {
+    "addresses": 8,
+    "runtimeHashes": 8,
+    "guardPermissionBits": "0x2000",
+    "fixtureBlock": 114549452,
+    "gas": {
+      "unit": "local fork gas units",
+      "measuredSteps": 9,
+      "measuredSubtotal": 21631868,
+      "evidenceSha256Lf": "7f06cb4051f1c2d2b2eab2c65e22c270aef55562555568c5ebe17706986e8b2a",
+      "bootstrapExecution": 9951309,
+      "bootstrapIntrinsic": 771652,
+      "unmeasuredContracts": []
+    }
+  }
+}
