@@ -1,0 +1,50 @@
+{
+  "approved": {
+    "initializerKeccak256": "0x151a0612bf013560eaf16129615ae6262a6889db13410623ddcb49f2a8506ac2",
+    "initializerBytes": 420,
+    "safeAddress": null,
+    "deploymentSaltNonce": null,
+    "broadcastAuthorized": false
+  },
+  "fixture": {
+    "scope": "ILLUSTRATIVE_SYNTHETIC_ONLY",
+    "ownerAddresses": [
+      "0x9A6A2C03D4Af91661260Ca9ea884A7FE4a953d76",
+      "0xd8952Ff8eB974Ad74e98b56935ec315A7d94Ce71",
+      "0xE9399F51f68581190b0b98E8a0Ea4e096A43F002"
+    ],
+    "initializerKeccak256": "0xcf09022457ba910e30ffdd9bf83e48a14a56a5016eb347920b2773357b04f349",
+    "saltLabel": "RMT Task 045 / synthetic Operations Safe / 4663 / SafeL2 1.4.1",
+    "saltNonce": "0xe335f555915eb488ebbf3c914ed369c55523b23b887173df6f170e44ca99cfcf",
+    "create2Salt": "0xcf2f4c92e7e1192e78161e467c4f074a0e477a96eb87796a453b6953b21f2707",
+    "initcodeKeccak256": "0xe298282cefe913ab5d282047161268a8222e4bd4ed106300c547894bbefd31ee",
+    "fixtureAddress": "0x08b270DFD29F32701cde74657E0f84bC739b18a7"
+  },
+  "fixtureObservation": {
+    "scope": "ILLUSTRATIVE_SYNTHETIC_ONLY",
+    "provider": "https://rpc.mainnet.chain.robinhood.com",
+    "chainId": 4663,
+    "blockNumber": "115110122",
+    "blockHash": "0xbdb7b7a4ce168bce7b0f6f21a8302b3a31df8abdfbb2e00338a9e84c7de14c6e",
+    "blockTimeUtc": "2026-11-15T16:59:49.000Z",
+    "runtimePins": [
+      {
+        "address": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+        "runtimeKeccak256": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff"
+      },
+      {
+        "address": "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
+        "runtimeKeccak256": "0x50c3cdc4074750a7a974204a716c999edd37482f907608d960b2b025ee0b3317"
+      },
+      {
+        "address": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+        "runtimeKeccak256": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9"
+      }
+    ],
+    "fixtureCode": "0x",
+    "fixtureNonce": 0,
+    "simulatedAddress": "0x08b270DFD29F32701cde74657E0f84bC739b18a7",
+    "writeMethodsCalled": false,
+    "broadcastAuthorized": false
+  }
+}

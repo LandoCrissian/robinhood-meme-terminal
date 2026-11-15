@@ -1,0 +1,53 @@
+{
+  "schema": "rmt-launch-operations-safe-policy-v1",
+  "approvalReference": "https://github.com/LandoCrissian/robinhood-meme-terminal/issues/619",
+  "baseCommit": "0611b8aeaee0ab882345e0391c0a5051634163ca",
+  "chainId": 4663,
+  "candidateCommit": "d4d81d1153a11728d98e694c1f3976ceb3408915",
+  "releaseManifestSha256Lf": "9273ba1c41b3891153e4f3810ddaacff62cd152fc4072b9636976c0db3d2e689",
+  "state": "BLOCKED_NO_BROADCAST",
+  "approval": "APPROVED_FOR_PREPARATION_ONLY",
+  "broadcastAuthorized": false,
+  "operations": {
+    "name": "RMT-OPERATIONS",
+    "safeProfile": "SafeL2 1.4.1",
+    "factory": "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
+    "factoryMethod": "createProxyWithNonce",
+    "singleton": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+    "owners": [
+      "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+      "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+      "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697"
+    ],
+    "threshold": 2,
+    "setup": {
+      "to": "0x0000000000000000000000000000000000000000",
+      "data": "0x",
+      "fallbackHandler": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+      "paymentToken": "0x0000000000000000000000000000000000000000",
+      "paymentWei": "0",
+      "paymentReceiver": "0x0000000000000000000000000000000000000000",
+      "enabledModules": [],
+      "guard": null
+    },
+    "safeAddress": null,
+    "deploymentSaltNonce": null,
+    "gasPayer": null,
+    "creationFeeShareBps": 10000,
+    "eligibleCurveAndOriginalLpFeeShareBps": 500
+  },
+  "reserve": {
+    "name": "RMT-RESERVE",
+    "approval": "UNASSIGNED",
+    "safeProfile": null,
+    "owners": null,
+    "threshold": null,
+    "safeAddress": null,
+    "deploymentSaltNonce": null,
+    "gasPayer": null,
+    "creationFeeShareBps": 0,
+    "eligibleCurveAndOriginalLpFeeShareBps": 500
+  },
+  "deployer": null,
+  "economicsApprovalReference": null
+}
