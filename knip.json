@@ -16,7 +16,8 @@
         "scripts/visual-qa/rmt-creator-integration.mjs",
         "docs/evidence/rmt-task039/probe-robinhood-4663.mjs",
         "docs/evidence/rmt-task039/verify-4663-bytecode.mjs",
-        "docs/evidence/rmt-task040/curve-store-reorg.mjs"
+        "docs/evidence/rmt-task040/curve-store-reorg.mjs",
+        "docs/evidence/rmt-task042/verify-4663-treasury-review.mjs"
       ]
     },
     "apps/web": {

@@ -1,9 +1,10 @@
 import { decodeFunctionData, encodeFunctionData, erc20Abi, getAddress, parseAbi, parseAbiItem, parseEventLogs, toHex, zeroAddress, type Hex } from "viem";
-import { emptyLaunchDraft, validateLaunchDraft } from "../launch-draft";
+import { emptyLaunchDraft, totalTreasuryFeePercent, validateLaunchDraft } from "../launch-draft";
 import { testCreationChain, type TestCreationRequest } from "../test-creation";
 import { configuredCurveFixture, factoryAbi, fixtureAddress, fixtureCreationFee, fixtureHash, fixtureRpc, sameHex, verifyCurveFixture, type CurveFixture } from "./curve-fixture";
 import { readDraftBody } from "./launch-draft";
 import { readFixtureLaunches } from "./fixture-discovery";
+import { classifyFixtureTreasury } from "./fixture-treasury";
 
 const maxDeadlineSeconds = 300n;
 const recoveryRange = 256n;
@@ -15,7 +16,7 @@ const curveAbi = parseAbi([
   "function factory() view returns (address)", "function token() view returns (address)", "function creator() view returns (address)",
   "function treasury() view returns (address)", "function treasuryShareBps() view returns (uint16)", "function sold() view returns (uint256)",
   "function backingReserve() view returns (uint256)", "function totalSupply() view returns (uint256)",
-  "function GRADUATION_BACKING() view returns (uint256)",
+  "function GRADUATION_BACKING() view returns (uint256)", "function revenueLedger() view returns (address)",
 ]);
 
 const keys = (value: unknown, names: string[]): value is Record<string, unknown> => !!value && typeof value === "object"
@@ -32,7 +33,8 @@ function normalizedFields(fields: unknown) {
       typeof fields.treasury !== "string" || typeof fields.supplyPreset !== "number" || !Number.isInteger(fields.supplyPreset) ||
       typeof fields.treasuryShareBps !== "number" || !Number.isInteger(fields.treasuryShareBps) || fields.treasuryShareBps < 0) return null;
   const checked = validateLaunchDraft({ ...emptyLaunchDraft, name: fields.name, symbol: fields.symbol, projectURI: fields.projectURI,
-    supplyPreset: String(fields.supplyPreset), treasury: fields.treasury, treasuryShare: fields.treasuryShareBps ? (fields.treasuryShareBps / 100).toFixed(2) : "" });
+    supplyPreset: String(fields.supplyPreset), treasury: fields.treasury,
+    treasuryShare: totalTreasuryFeePercent(fields.treasuryShareBps) }, "total-fee-percent");
   if (!checked.ok) return null;
   const draft = checked.draft;
   return draft.name === fields.name && draft.symbol === fields.symbol && draft.projectURI === fields.projectURI && draft.supplyPreset === fields.supplyPreset
@@ -60,15 +62,29 @@ async function prepare(fixture: CurveFixture, body: Record<string, unknown>) {
   const from = asAddress(body.account);
   const rpc = fixtureRpc(fixture);
   const head = await verifyCurveFixture(fixture, rpc);
+  const toTreasury = draft.treasury ? asAddress(draft.treasury) : zeroAddress;
+  const [operating, reserve] = await Promise.all([
+    rpc.readContract({ address: fixture.factory, abi: factoryAbi, functionName: "operatingRecipient", blockNumber: head.number }),
+    rpc.readContract({ address: fixture.factory, abi: factoryAbi, functionName: "futureReserveRecipient", blockNumber: head.number }),
+  ]);
+  if (!sameHex(operating, fixture.feeRecipient) || !fixtureAddress(reserve) || sameHex(operating, reserve)) return unavailable();
+  if (draft.treasury && [operating, reserve].some((address) => sameHex(address, toTreasury))) {
+    return reply({ status: "treasury-unsupported" }, 422);
+  }
+  const treasuryKind = draft.treasury ? await classifyFixtureTreasury(rpc, toTreasury, head.number) : "none";
+  if (!treasuryKind) return reply({ status: "treasury-unsupported" }, 422);
+
   const deadline = body.deadline === undefined ? head.timestamp + maxDeadlineSeconds : BigInt(body.deadline as string);
   if (deadline <= head.timestamp || deadline > head.timestamp + maxDeadlineSeconds) return reply({ status: "invalid" }, 422);
-  const args = [draft.name, draft.symbol, draft.projectURI, draft.supplyPreset, draft.treasury ? asAddress(draft.treasury) : zeroAddress,
+  const args = [draft.name, draft.symbol, draft.projectURI, draft.supplyPreset, toTreasury,
     draft.treasuryShareBps, body.intentId, deadline] as const;
   await rpc.simulateContract({ address: fixture.factory, abi: factoryAbi, functionName: "create", account: from, args, value: fixtureCreationFee });
   const request: TestCreationRequest = { from, to: fixture.factory, data: encodeFunctionData({ abi: factoryAbi, functionName: "create", args }),
     value: feeHex, chainId: testCreationChain, intentId: body.intentId, deadline: deadline.toString(),
     blockNumber: toHex(fixture.deploymentBlock), blockHash: fixture.deploymentBlockHash };
-  return reply({ status: "prepared", request });
+  const canonical = await rpc.getBlock({ blockNumber: head.number });
+  if (!sameHex(canonical.hash, head.hash)) return unavailable();
+  return reply({ status: "prepared", request, payouts: { operating, reserve, treasuryKind } });
 }
 
 async function verify(fixture: CurveFixture, body: Record<string, unknown>) {
@@ -128,17 +144,18 @@ async function verify(fixture: CurveFixture, body: Record<string, unknown>) {
   const at = { blockNumber: receipt.blockNumber };
   const curve = { address: c.curve, abi: curveAbi, ...at } as const;
   const token = { address: c.token, abi: erc20Abi, ...at } as const;
-  const [bound, curveFactory, curveToken, creator, curveTreasury, curveShare, boardSupply, tokenName, tokenSymbol, sold, backing, inventory, target] = await Promise.all([
+  const [bound, curveFactory, curveToken, creator, curveTreasury, curveShare, revenueLedger, boardSupply, tokenName, tokenSymbol, sold, backing, inventory, target] = await Promise.all([
     rpc.readContract({ address: fixture.factory, abi: factoryAbi, functionName: "originCurveForToken", args: [c.token], ...at }),
     rpc.readContract({ ...curve, functionName: "factory" }), rpc.readContract({ ...curve, functionName: "token" }),
     rpc.readContract({ ...curve, functionName: "creator" }), rpc.readContract({ ...curve, functionName: "treasury" }),
-    rpc.readContract({ ...curve, functionName: "treasuryShareBps" }), rpc.readContract({ ...token, functionName: "totalSupply" }),
+    rpc.readContract({ ...curve, functionName: "treasuryShareBps" }), rpc.readContract({ ...curve, functionName: "revenueLedger" }), rpc.readContract({ ...token, functionName: "totalSupply" }),
     rpc.readContract({ ...token, functionName: "name" }), rpc.readContract({ ...token, functionName: "symbol" }),
     rpc.readContract({ ...curve, functionName: "sold" }), rpc.readContract({ ...curve, functionName: "backingReserve" }),
     rpc.readContract({ ...token, functionName: "balanceOf", args: [c.curve] }), rpc.readContract({ ...curve, functionName: "GRADUATION_BACKING" }),
   ]);
   if (!sameHex(bound, c.curve) || !sameHex(curveFactory, fixture.factory) || !sameHex(curveToken, c.token) || !sameHex(creator, request.from)
-      || !sameHex(curveTreasury, treasury) || curveShare !== share || boardSupply !== supply || tokenName !== name || tokenSymbol !== symbol
+      || !sameHex(curveTreasury, treasury) || curveShare !== share || !fixtureAddress(revenueLedger) || !sameHex(revenueLedger, c.revenueLedger)
+      || boardSupply !== supply || tokenName !== name || tokenSymbol !== symbol
       || sold !== 0n || backing !== 0n || inventory !== supply || target !== 2n * 10n ** 18n) return unavailable();
   const discovery = await readFixtureLaunches(fixture, c.token);
   const indexed = discovery.status === "ready" && discovery.launches.some((launch) => sameHex(launch.creation.transactionHash, hash)

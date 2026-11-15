@@ -1,0 +1,12 @@
+Compiling 200 files with Solc 0.8.26
+Solc 0.8.26 finished in 147.72s
+Compiler run successful!
+
+Ran 4 tests for test/RMTLaunchTreasuryReview.t.sol:RMTLaunchTreasuryReviewTest
+[PASS] testFullTreasuryShareKeepsPlatformSplitAndCanRecoverAnAssetSeparately() (gas: 2792067)
+[PASS] testIndependentEoaReceivesQuarterOfProjectShareInBothLedgers() (gas: 2544262)
+[PASS] testSmartTreasuryReceivesHalfAndFundsAnIndependentSpendingWallet() (gas: 2832600)
+[PASS] testSoloCreatorReceivesProjectShareInBothLedgers() (gas: 2403861)
+Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 2.07ms (3.20ms CPU time)
+
+Ran 1 test suite in 8.63ms (2.07ms CPU time): 4 tests passed, 0 failed, 0 skipped (4 total tests)

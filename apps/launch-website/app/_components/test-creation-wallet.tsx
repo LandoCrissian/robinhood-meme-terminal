@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { isLaunchAddress } from "../../lib/launch-data";
-import type { ReviewedLaunchDraft } from "../../lib/launch-draft";
-import { calldataMatchesTestCreation, isLocalTestWallet, isTestCreationRequest, isTransactionHash, sameTestCreationRequest,
-  testCreationPath, type TestCreationFields, type TestCreationRequest, type TestCreationVerification } from "../../lib/test-creation";
+import { treasuryProjectPercent, type ReviewedLaunchDraft } from "../../lib/launch-draft";
+import { calldataMatchesTestCreation, isLocalTestWallet, isTestCreationPayouts, isTestCreationRequest, isTransactionHash, sameTestCreationRequest,
+  testCreationPath, type TestCreationFields, type TestCreationPayouts, type TestCreationRequest, type TestCreationVerification } from "../../lib/test-creation";
 import { assertTestWalletBinding, connectTestWallet, sameWalletHex as same, subscribeTestWallet, testProviderAtWindow, testWalletErrorCode, type TestWallet as Wallet } from "../../lib/test-wallet";
 
-type Prepared = { draft: ReviewedLaunchDraft; wallet: Wallet; factory: string; request: TestCreationRequest };
+type Prepared = { draft: ReviewedLaunchDraft; wallet: Wallet; factory: string; request: TestCreationRequest; payouts: TestCreationPayouts };
 type Journal = { request: TestCreationRequest; transactionHash?: `0x${string}` };
 
 const journalKey = "rmt:creation-test:31337:v1";
@@ -26,14 +26,18 @@ function writeJournal(entry: Journal) {
   localStorage.setItem(journalKey, JSON.stringify(entry));
 }
 
+class UnsupportedTreasury extends Error {}
+
 async function post(body: object) {
   if (!isLocalTestWallet(window.location)) throw new Error("Isolated test origin required");
   const response = await fetch(testCreationPath, {
     method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
     cache: "no-store", redirect: "error", signal: AbortSignal.timeout(8000),
   });
+  const payload = await response.json() as Record<string, unknown>;
+  if (response.status === 422 && payload.status === "treasury-unsupported") throw new UnsupportedTreasury();
   if (!response.ok) throw new Error("Test creation evidence unavailable");
-  return await response.json() as Record<string, unknown>;
+  return payload;
 }
 
 async function prepare(draft: ReviewedLaunchDraft, account: string, factory: string, prior?: TestCreationRequest) {
@@ -41,12 +45,13 @@ async function prepare(draft: ReviewedLaunchDraft, account: string, factory: str
   const fields: TestCreationFields = { name, symbol, projectURI, supplyPreset, treasury, treasuryShareBps };
   const intentId = prior?.intentId ?? "0x" + Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) => byte.toString(16).padStart(2, "0")).join("");
   const payload = await post({ action: "prepare", account, fields, intentId, ...(prior && { deadline: prior.deadline }) });
-  const request = payload.request;
-  if (payload.status !== "prepared" || !isTestCreationRequest(request) || !same(request.from, account)
+  const { request, payouts } = payload;
+  if (payload.status !== "prepared" || !isTestCreationRequest(request) || !isTestCreationPayouts(payouts, !!treasury)
+      || [payouts.operating, payouts.reserve].some((recipient) => same(recipient, treasury)) || !same(request.from, account)
       || !same(request.to, factory) || !same(request.intentId, intentId) || !await calldataMatchesTestCreation(request, fields)) {
     throw new Error("Review did not match the isolated deployment or draft fields");
   }
-  return request;
+  return { request, payouts };
 }
 
 async function verify(entry: Journal, inputHash?: string): Promise<TestCreationVerification> {
@@ -76,6 +81,7 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
   const [journal, setJournal] = useState<Journal>();
   const [result, setResult] = useState<TestCreationVerification>();
   const [message, setMessage] = useState("");
+  const [treasuryAcknowledged, setTreasuryAcknowledged] = useState(false);
   const [recoveryHash, setRecoveryHash] = useState("");
   const [busy, setBusy] = useState(false);
   const operation = useRef(false);
@@ -124,7 +130,11 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
     setBusy(true);
     setMessage("");
     try { await action(); }
-    catch { setMessage(onFailure); }
+    catch (error) {
+      setMessage(error instanceof UnsupportedTreasury
+        ? "This address is not a supported independent treasury in the test deployment. Choose a wallet you control or a verified Safe 1.4.1."
+        : onFailure);
+    }
     finally {
       setBusy(false);
       operation.current = false;
@@ -141,15 +151,16 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
   async function reviewCreation() {
     if (!wallet || !draft) return;
     setPrepared(undefined);
+    setTreasuryAcknowledged(false);
     const generation = selection.current;
     if (draft.treasury && same(draft.treasury, wallet.account)) {
       setMessage("Choose a project treasury address different from the creator.");
       return;
     }
-    const request = await prepare(draft, wallet.account, factory);
+    const { request, payouts } = await prepare(draft, wallet.account, factory);
     await assertTestWalletBinding(wallet, request);
     if (!isCurrentDraft(draft) || selection.current !== generation) throw new Error("Review changed");
-    setPrepared({ draft, wallet, factory, request });
+    setPrepared({ draft, wallet, factory, request, payouts });
   }
 
   async function check(entry: Journal, manualHash?: string) {
@@ -167,8 +178,9 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
   }
 
   async function confirm() {
-    if (!prepared || !isCurrentDraft(prepared.draft) || !same(prepared.factory, factory)) return;
-    const { request, wallet: bound, draft: candidate } = prepared;
+    if (!prepared || !isCurrentDraft(prepared.draft) || !same(prepared.factory, factory)
+        || (prepared.draft.treasury && !treasuryAcknowledged)) return;
+    const { request, payouts, wallet: bound, draft: candidate } = prepared;
     const generation = selection.current;
     setPrepared(undefined);
     await navigator.locks.request(journalKey, { mode: "exclusive", ifAvailable: true }, async (lock) => {
@@ -179,7 +191,10 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
         throw new Error("Creation already recorded");
       }
       const current = await prepare(candidate, bound.account, factory, request);
-      if (!sameTestCreationRequest(request, current)) throw new Error("Factory or reviewed terms changed");
+      if (!sameTestCreationRequest(request, current.request) || !same(payouts.operating, current.payouts.operating)
+          || !same(payouts.reserve, current.payouts.reserve) || payouts.treasuryKind !== current.payouts.treasuryKind) {
+        throw new Error("Factory or reviewed terms changed");
+      }
       await assertTestWalletBinding(bound, request);
       if (!mounted.current || !isCurrentDraft(candidate) || selection.current !== generation || testProviderAtWindow() !== bound.provider
           || bound.provider.request !== bound.request) throw new Error("Review changed");
@@ -260,8 +275,22 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
             <dt>Creator</dt><dd className="lpAddress">{currentReview.request.from}</dd>
             <dt>Verified test factory</dt><dd className="lpAddress">{currentReview.request.to}</dd>
             <dt>Exact creation fee</dt><dd>0.0004 test ETH, plus gas</dd>
+            <dt>RMT operations</dt><dd className="lpAddress">{currentReview.payouts.operating}</dd>
+            <dt>RMT future reserve</dt><dd className="lpAddress">{currentReview.payouts.reserve}</dd>
+            <dt>Project treasury</dt><dd className={currentReview.draft.treasury ? "lpAddress" : undefined}>{currentReview.draft.treasury || "None"}</dd>
+            {currentReview.draft.treasury && <>
+              <dt>Treasury share of project fees</dt><dd>{treasuryProjectPercent(currentReview.draft.treasuryShareBps)}</dd>
+              <dt>Treasury compatibility</dt><dd>{currentReview.payouts.treasuryKind === "safe-1.4.1"
+                ? "Verified Safe 1.4.1 configuration · submit claims through Safe"
+                : "No contract code detected · verify control of this wallet"}</dd>
+            </>}
           </dl>
-          <button type="button" className="lpButton" disabled={busy || !ready}
+          {currentReview.draft.treasury && <label className="lpTreasuryAcknowledge">
+            <input type="checkbox" checked={treasuryAcknowledged} disabled={busy}
+              onChange={(event) => setTreasuryAcknowledged(event.target.checked)} />
+            I verified that the treasury controls this address and can submit fee claims.
+          </label>}
+          <button type="button" className="lpButton" disabled={busy || !ready || (!!currentReview.draft.treasury && !treasuryAcknowledged)}
             onClick={() => void withOperation(confirm, "The test wallet or reviewed terms changed. Review again.")}>Confirm test creation</button>
         </> : <button type="button" className="lpButton lpSecondary" disabled={busy || !ready}
           onClick={() => void withOperation(reviewCreation, "The test deployment or wallet could not be verified. Try review again.")}>Review test creation</button>}

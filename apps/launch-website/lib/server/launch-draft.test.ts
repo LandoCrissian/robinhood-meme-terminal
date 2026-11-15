@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { creationReviewPath, emptyLaunchDraft, reviewableFields, validateLaunchDraft } from "../launch-draft";
+import { creationReviewPath, emptyLaunchDraft, projectTreasuryShareUnit, restoreLegacyLaunchDraft, reviewableFields, treasuryProjectPercent, validateLaunchDraft } from "../launch-draft";
 import { reviewLaunchDraft } from "./launch-draft";
 
 const origin = "https://rmt.example";
@@ -8,7 +8,7 @@ const treasury = "0x" + "A".repeat(40);
 const draft = {
   ...emptyLaunchDraft, name: " Civic Builders ", symbol: " build ", description: "Draft only\r\nSecond line",
   projectURI: "https://example.org/launch", artworkURL: "https://example.org/art.png",
-  supplyPreset: "1", treasury, treasuryShare: "12.03",
+  supplyPreset: "1", treasury, treasuryShare: "25",
 };
 const { description, artworkURL, ...reviewFields } = draft;
 
@@ -27,9 +27,9 @@ test("validates a fixed-supply draft and normalizes project terms", () => {
   assert.deepEqual(result.draft, {
     name: "Civic Builders", symbol: "BUILD", description: "Draft only\nSecond line",
     projectURI: draft.projectURI, artworkURL, supply: 10_000_000, supplyPreset: 1,
-    treasury: treasury.toLowerCase(), treasuryShareBps: 1203,
+    treasury: treasury.toLowerCase(), treasuryShareBps: 2250,
   });
-  assert.equal(validateLaunchDraft({ ...draft, name: "é".repeat(24), treasuryShare: "90.00" }).ok, true);
+  assert.equal(validateLaunchDraft({ ...draft, name: "é".repeat(24), treasuryShare: "100.00" }).ok, true);
   assert.equal(validateLaunchDraft({ ...draft, treasury: "", treasuryShare: "" }).ok, true);
 });
 
@@ -42,7 +42,7 @@ test("rejects invalid strings, noncanonical options and unpaired treasury data",
     { artworkURL: "https://example.org\\bad" }, { artworkURL: "http://example.org/art.png" },
     { supplyPreset: "01" }, { supplyPreset: "3" },
     { treasury: "0x" + "0".repeat(40) }, { treasury: "" }, { treasuryShare: "0.00" },
-    { treasuryShare: "90.01" }, { treasuryShare: "0.001" }, { treasuryShare: "2e1" },
+    { treasuryShare: "100.01" }, { treasuryShare: "0.01" }, { treasuryShare: "0.001" }, { treasuryShare: "2e1" },
   ];
   for (const item of cases) {
     const result = validateLaunchDraft({ ...draft, ...item });
@@ -52,7 +52,7 @@ test("rejects invalid strings, noncanonical options and unpaired treasury data",
 });
 
 test("accepts only a same-origin JSON review and returns only contract-relevant fields", async () => {
-  const response = await reviewLaunchDraft(post(reviewFields));
+  const response = await reviewLaunchDraft(post({ ...reviewFields, treasuryShareUnit: projectTreasuryShareUnit }));
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("cache-control"), "private, no-store");
   assert.equal(response.headers.get("netlify-cdn-cache-control"), "no-store");
@@ -70,6 +70,42 @@ test("accepts only a same-origin JSON review and returns only contract-relevant 
   assert.equal((await reviewLaunchDraft(post(reviewFields, { method: "GET" }))).status, 405);
   assert.equal((await reviewLaunchDraft(post(reviewFields, { url: creationReviewPath + "?chainId=4663" }))).status, 400);
   assert.equal((await reviewLaunchDraft(post(reviewFields, { contentType: "text/plain" }))).status, 415);
+});
+
+test("converts project percentages to contract bps and displays the actual encoded fraction", () => {
+  for (const [entered, expected] of [["0", 0], ["25", 2250], ["50", 4500], ["100", 9000], ["11.22", 1009]] as const) {
+    const result = validateLaunchDraft({ ...draft, treasury: expected ? treasury : "", treasuryShare: entered });
+    assert.ok(result.ok, entered);
+    assert.equal(result.draft.treasuryShareBps, expected);
+  }
+  assert.equal(treasuryProjectPercent(2250), "25%");
+  assert.equal(treasuryProjectPercent(9000), "100%");
+  assert.equal(treasuryProjectPercent(1009), "≈11.2111%");
+});
+
+test("restores all 9001 encoded legacy splits without changing their committed bps", () => {
+  for (let bps = 0; bps <= 9000; bps++) {
+    const prior = { ...draft, treasury: bps ? treasury : "", treasuryShare: (bps / 100).toFixed(2) };
+    const restored = restoreLegacyLaunchDraft(prior);
+    const result = validateLaunchDraft(restored);
+    assert.ok(result.ok, String(bps));
+    assert.equal(result.draft.treasuryShareBps, bps);
+    assert.equal(restored.treasury, prior.treasury);
+  }
+  const invalidPrior = restoreLegacyLaunchDraft({ ...draft, treasuryShare: "95" });
+  assert.equal(invalidPrior.treasuryShare, "");
+  assert.equal(validateLaunchDraft(invalidPrior).ok, false);
+});
+
+test("keeps the legacy HTTP unit and rejects unknown or spoofed units", async () => {
+  const old = await reviewLaunchDraft(post({ ...reviewFields, treasuryShare: "12.03" }));
+  assert.equal(old.status, 200);
+  assert.equal((await old.json()).draft.treasuryShareBps, 1203);
+  const full = await reviewLaunchDraft(post({ ...reviewFields, treasuryShare: "100", treasuryShareUnit: projectTreasuryShareUnit }));
+  assert.equal(full.status, 200);
+  assert.equal((await full.json()).draft.treasuryShareBps, 9000);
+  assert.equal((await reviewLaunchDraft(post({ ...reviewFields, treasuryShare: "100" }))).status, 422);
+  assert.equal((await reviewLaunchDraft(post({ ...reviewFields, treasuryShareUnit: "basis-points" }))).status, 400);
 });
 
 test("bounds declared and streamed draft payloads and rejects malformed UTF-8", async () => {

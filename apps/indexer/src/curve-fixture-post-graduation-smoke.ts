@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { encodeAbiParameters, encodeFunctionData, parseAbi, zeroAddress } from "viem";
-import { fixtureSwapInput } from "./curve-fixture-post-graduation.js";
+import { fixtureExternalClaim, fixtureSwapInput } from "./curve-fixture-post-graduation.js";
 import { poolIdentity, type PoolKey } from "./curve-fixture-lifecycle.js";
 
 const router = parseAbi(["function execute(bytes commands,bytes[] inputs,uint256 deadline) payable"]);
@@ -29,6 +29,13 @@ function encode(options: {
   return encodeFunctionData({ abi: router, functionName: "execute", args: [options.allowRevert ? "0x90" : "0x10", [actions], 123n] });
 }
 
+const safe = parseAbi([
+  "function execTransaction(address to,uint256 value,bytes data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address refundReceiver,bytes signatures) returns (bool)",
+]);
+const claimAbi = parseAbi(["function claimAsset(bool native)"]);
+const claim = encodeFunctionData({ abi: claimAbi, functionName: "claimAsset", args: [false] });
+const external = (data = claim, operation = 0, fee = 0n) => encodeFunctionData({ abi: safe, functionName: "execTransaction",
+  args: [key.currency1, 0n, data, operation, 0n, 0n, fee, zeroAddress, zeroAddress, "0x"] });
 export function testFixturePostGraduation() {
   assert.deepEqual(fixtureSwapInput(encode()), { buy: false, poolId: poolIdentity(key), amountIn: 100n, amountOutMinimum: 99n, deadline: 123n });
   assert.equal(fixtureSwapInput(encode({ allowRevert: true })), undefined);
@@ -37,4 +44,8 @@ export function testFixturePostGraduation() {
   assert.equal(fixtureSwapInput(encode({ extraStep: true })), undefined);
   assert.equal(fixtureSwapInput(encode({ hopFloor: 1n })), undefined);
   assert.notEqual(fixtureSwapInput(encode({ poolKey: { ...key, fee: 500 } }))?.poolId, poolIdentity(key));
+  assert.deepEqual(fixtureExternalClaim(external()), { ledger: key.currency1, calldata: claim });
+  assert.equal(fixtureExternalClaim(external("0x")), undefined);
+  assert.equal(fixtureExternalClaim(external(claim, 1)), undefined);
+  assert.equal(fixtureExternalClaim(external(claim, 0, 1n)), undefined);
 }

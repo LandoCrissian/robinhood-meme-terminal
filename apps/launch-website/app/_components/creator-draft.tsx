@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import {
-  creationReviewPath, emptyLaunchDraft, isLaunchDraft, launchDraftLimits, reviewableFields, validateLaunchDraft,
+  creationReviewPath, emptyLaunchDraft, isLaunchDraft, launchDraftLimits, projectTreasuryShareUnit,
+  restoreLegacyLaunchDraft, reviewableFields, treasuryProjectPercent, validateLaunchDraft,
   type LaunchDraft, type LaunchDraftErrors, type LaunchDraftField, type LaunchReviewRequest, type ReviewedLaunchDraft,
 } from "../../lib/launch-draft";
 import { proposedCurveLifecycle } from "../../lib/curve-lifecycle";
@@ -10,7 +11,8 @@ import { launchTerms } from "../../lib/launch-terms";
 import { TestCreationWallet } from "./test-creation-wallet";
 import { TokenArtwork } from "./token-artwork";
 
-const storageKey = "rmt:new-engine:creation-draft:v1";
+const storageKey = "rmt:new-engine:creation-draft:v2";
+const legacyStorageKey = "rmt:new-engine:creation-draft:v1";
 const controls = [
   { key: "name", label: "Token name", max: launchDraftLimits.name, placeholder: "e.g. Robinhood Builders" },
   { key: "symbol", label: "Ticker", max: launchDraftLimits.symbol, placeholder: "e.g. BUILD" },
@@ -21,7 +23,7 @@ const projectLinks = [
 ] as const;
 const treasuryFields = [
   { key: "treasury", label: "Treasury address", max: 42, placeholder: "0x…" },
-  { key: "treasuryShare", label: "Treasury share of collected fees (%)", max: 5, placeholder: "0" },
+  { key: "treasuryShare", label: "Treasury share of project fees (%)", max: 6, placeholder: "0" },
 ] as const;
 const number = new Intl.NumberFormat("en-US");
 const percent = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
@@ -38,12 +40,14 @@ function DraftTerms({ draft }: { draft?: ReviewedLaunchDraft }) {
       <dt>Opening curve inventory</dt><dd>{draft ? `${number.format(draft.supply)} tokens` : "100% of the fixed supply"}</dd>
       <dt>Opening real reserve</dt><dd>0 ETH · creators supply no liquidity</dd>
       <dt>Curve trading fee</dt><dd>{launchTerms.curveTradeFeePercent}% of gross ETH, plus gas</dd>
-      <dt>Collected curve fees</dt><dd>
+      <dt>Curve and locked-position fee split</dt><dd>
         {draft ? <>
           {percent.format(launchTerms.projectFeeSharePercent - draft.treasuryShareBps / 100)}% creator · {percent.format(draft.treasuryShareBps / 100)}% treasury
         </> : <>{launchTerms.projectFeeSharePercent}% creator/project</>}
         { " · " }{launchTerms.operatingFeeSharePercent}% RMT operations · {launchTerms.futureReserveFeeSharePercent}% RMT future reserve
       </dd>
+      <dt>Treasury share of project fees</dt><dd>{treasuryProjectPercent(draft?.treasuryShareBps ?? 0)}</dd>
+      <dt>Rewards after graduation</dt><dd>Same recipients for ETH and token fees collected from the original locked position</dd>
       <dt>Graduation target</dt><dd>{launchTerms.curveAllocationPercent}% net supply sold and {launchTerms.graduationBackingEth} ETH of real backing in the review fixture</dd>
       <dt>Original v4 position</dt><dd>{launchTerms.liquidityAllocationPercent}% of supply available before rounding · permanently locked principal</dd>
       <dt>v4 pool fee</dt><dd>{launchTerms.graduationPoolFeePercent}% · project earnings depend on fees earned by the locked position</dd>
@@ -65,13 +69,20 @@ export function CreatorDraft({ executionTest }: { executionTest?: { factory: str
   const formHeading = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
-    try {
-      const saved = localStorage.getItem(storageKey);
-      if (saved && saved.length <= 4096) {
+    function storedDraft(key: string) {
+      try {
+        const saved = localStorage.getItem(key);
+        if (!saved || saved.length > 4096) return;
         const input: unknown = JSON.parse(saved);
-        if (isLaunchDraft(input) && Object.values(input).every((value) => value.length <= 500)) setDraft(input);
-      }
-    } catch { /* Draft entry still works when storage is unavailable. */ }
+        if (isLaunchDraft(input) && Object.values(input).every((value) => value.length <= 500)) return input;
+      } catch { /* Try the other storage version if this entry is unavailable. */ }
+    }
+    const current = storedDraft(storageKey);
+    if (current) setDraft(current);
+    else {
+      const legacy = storedDraft(legacyStorageKey);
+      if (legacy) setDraft(restoreLegacyLaunchDraft(legacy));
+    }
     setRestored(true);
   }, []);
 
@@ -83,6 +94,7 @@ export function CreatorDraft({ executionTest }: { executionTest?: { factory: str
       } else {
         localStorage.setItem(storageKey, JSON.stringify(draft));
       }
+      localStorage.removeItem(legacyStorageKey);
     } catch { /* Keep the in-memory draft. */ }
   }, [draft, restored]);
 
@@ -121,7 +133,7 @@ export function CreatorDraft({ executionTest }: { executionTest?: { factory: str
     setPending(true);
     try {
       const { name, symbol, projectURI, supplyPreset, treasury, treasuryShare } = draft;
-      const request: LaunchReviewRequest = { name, symbol, projectURI, supplyPreset, treasury, treasuryShare };
+      const request: LaunchReviewRequest = { name, symbol, projectURI, supplyPreset, treasury, treasuryShare, treasuryShareUnit: projectTreasuryShareUnit };
       const response = await fetch(creationReviewPath, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -174,6 +186,7 @@ export function CreatorDraft({ executionTest }: { executionTest?: { factory: str
         <dt>Project or metadata URL</dt><dd>{reviewed.projectURI || "None"}</dd>
         <dt>Artwork URL</dt><dd>{reviewed.artworkURL || "None"}</dd>
         <dt>Project treasury</dt><dd className={reviewed.treasury ? "lpAddress" : undefined}>{reviewed.treasury || "None"}</dd>
+        <dt>Treasury share of project fees</dt><dd>{treasuryProjectPercent(reviewed.treasuryShareBps)} · {percent.format(reviewed.treasuryShareBps / 100)}% of all eligible fees</dd>
       </dl>
       <p>The server verified the launch fields for this review. Your description and artwork URL stay in this browser.
         {executionTest ? " The test wallet signs only the transaction reviewed below." : " No token has been created."}</p>
@@ -219,11 +232,13 @@ export function CreatorDraft({ executionTest }: { executionTest?: { factory: str
       <details className="lpDraftTreasury">
         <summary>Optional project treasury</summary>
         <fieldset disabled={pending || !restored} aria-label="Project treasury settings">
-          <p>The project treasury can receive up to 90% of collected fees. The creator receives the rest of the project share.</p>
+          <p>Choose 0–100% of the project’s 90% share. The creator receives the remaining project fees. Leave both fields empty to pay the creator directly.</p>
+          <p>Choose a wallet that can submit fee claims. The address is permanent. For a smart account, verify its claim support on the launch chain first.</p>
           {treasuryFields.map(({ key, label, max, placeholder }) => <div className="lpDraftField" key={key}>
             <label htmlFor={fieldId(key)}>{label}</label>
-            <input {...inputProps(key)} maxLength={max} placeholder={placeholder} autoComplete="off"
+            <input {...inputProps(key, key === "treasuryShare")} maxLength={max} placeholder={placeholder} autoComplete="off"
               inputMode={key === "treasuryShare" ? "decimal" : undefined} spellCheck={false} />
+            {key === "treasuryShare" && <small id={fieldId(key) + "-hint"}>The contract rounds down to whole basis points of all fees. Review the exact split before confirming.</small>}
             {errorFor(key)}
           </div>)}
         </fieldset>

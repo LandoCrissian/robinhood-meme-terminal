@@ -11,6 +11,7 @@ export const factoryAbi = parseAbi([
   "function projectRegistry() view returns (address)",
   "function creationFeeWei() view returns (uint256)",
   "function operatingRecipient() view returns (address)",
+  "function futureReserveRecipient() view returns (address)",
   "function tokenForIntent(address creator,bytes32 intentId) view returns (address)",
   "function originCurveForToken(address token) view returns (address)",
 ]);
