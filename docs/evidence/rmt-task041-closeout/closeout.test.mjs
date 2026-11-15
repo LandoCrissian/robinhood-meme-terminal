@@ -32,7 +32,8 @@ test("closure report is bound to the pinned 4663 compiler and remains failed", (
   assert.equal(release.releaseGate.governanceMedium, 7);
   assert.equal(release.repositoryCI.clearsReleaseGate, false);
   assert.equal(release.windowsFoundry.inReleaseClosure, false);
-  assert.equal(verifyReleaseEvidence({ ...state, manifestText: state.manifestText.replaceAll("\n", "\r\n") })
+  const windowsText = state.manifestText.replaceAll("\r\n", "\n").replaceAll("\n", "\r\n");
+  assert.equal(verifyReleaseEvidence({ ...state, manifestText: windowsText })
     .releaseManifestSha256Lf, release.releaseManifestSha256Lf);
 });
 

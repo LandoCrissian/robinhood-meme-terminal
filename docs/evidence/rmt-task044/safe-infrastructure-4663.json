@@ -1,0 +1,381 @@
+{
+  "status": "BLOCKED_NO_BROADCAST",
+  "candidate": "d4d81d1153a11728d98e694c1f3976ceb3408915",
+  "chainId": 4663,
+  "observationTimeUtc": "2026-11-15T05:47:30.969Z",
+  "block": {
+    "number": "114741069",
+    "hash": "0xb9a84d9afdafa2de5a170a7a0bbc80d1c49464e0a7ac212f561313c87e1077d0",
+    "stateRoot": "0xea3a1cda6806f2456fd465f960da4c8f413279702744a73108d6cd4cdadfae5b",
+    "timestampUtc": "2026-11-15T05:47:19.000Z",
+    "baseFeeWeiPerGas": "20012000",
+    "tag": "0x6d6cf4d",
+    "postReadHashUnchanged": true,
+    "l1FinalityVerified": false
+  },
+  "providers": {
+    "officialRuntimeAndBlock": "https://rpc.mainnet.chain.robinhood.com/",
+    "independentBlock": "https://robinhood.rpc.pinax.network/",
+    "retainedHistoricalIndependentRuntime": {
+      "height": 114556006,
+      "hash": "0x4d4136b255e131260c3d65163f9074764407c3bff4a13e51a82ce6b38ed67446",
+      "at": "2026-11-15T00:14:15.000Z"
+    }
+  },
+  "registry": {
+    "release": "v1.37.58",
+    "commit": "c25243b456237ee5af122c4fe444866315afab53",
+    "releaseUrl": "https://github.com/safe-global/safe-deployments/releases/tag/v1.37.58",
+    "networks": "canonical",
+    "contracts": {
+      "1.4.1": {
+        "safe": {
+          "registryUrl": "https://raw.githubusercontent.com/safe-global/safe-deployments/c25243b456237ee5af122c4fe444866315afab53/src/assets/v1.4.1/safe.json",
+          "address": "0x41675C099F32341bf84BFc5382aF534df5C7461a",
+          "registryRuntimeKeccak256": "0x1fe2df852ba3299d6534ef416eefa406e56ced995bca886ab7a553e6d0c5e1c4",
+          "officialRuntimeKeccak256": "0x1fe2df852ba3299d6534ef416eefa406e56ced995bca886ab7a553e6d0c5e1c4",
+          "historicalPinaxRuntimeKeccak256": "0x1fe2df852ba3299d6534ef416eefa406e56ced995bca886ab7a553e6d0c5e1c4",
+          "runtimeBytes": 23579
+        },
+        "safe_l2": {
+          "registryUrl": "https://raw.githubusercontent.com/safe-global/safe-deployments/c25243b456237ee5af122c4fe444866315afab53/src/assets/v1.4.1/safe_l2.json",
+          "address": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+          "registryRuntimeKeccak256": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+          "officialRuntimeKeccak256": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+          "historicalPinaxRuntimeKeccak256": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+          "runtimeBytes": 24421
+        },
+        "safe_proxy_factory": {
+          "registryUrl": "https://raw.githubusercontent.com/safe-global/safe-deployments/c25243b456237ee5af122c4fe444866315afab53/src/assets/v1.4.1/safe_proxy_factory.json",
+          "address": "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
+          "registryRuntimeKeccak256": "0x50c3cdc4074750a7a974204a716c999edd37482f907608d960b2b025ee0b3317",
+          "officialRuntimeKeccak256": "0x50c3cdc4074750a7a974204a716c999edd37482f907608d960b2b025ee0b3317",
+          "historicalPinaxRuntimeKeccak256": "0x50c3cdc4074750a7a974204a716c999edd37482f907608d960b2b025ee0b3317",
+          "runtimeBytes": 3054
+        },
+        "compatibility_fallback_handler": {
+          "registryUrl": "https://raw.githubusercontent.com/safe-global/safe-deployments/c25243b456237ee5af122c4fe444866315afab53/src/assets/v1.4.1/compatibility_fallback_handler.json",
+          "address": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+          "registryRuntimeKeccak256": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9",
+          "officialRuntimeKeccak256": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9",
+          "historicalPinaxRuntimeKeccak256": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9",
+          "runtimeBytes": 5637
+        },
+        "multi_send": {
+          "registryUrl": "https://raw.githubusercontent.com/safe-global/safe-deployments/c25243b456237ee5af122c4fe444866315afab53/src/assets/v1.4.1/multi_send.json",
+          "address": "0x38869bf66a61cF6bDB996A6aE40D5853Fd43B526",
+          "registryRuntimeKeccak256": "0x0e4f7fc66550a322d1e7688e181b75e217e662a4f3f4d6a29b22bc61217c4b77",
+          "officialRuntimeKeccak256": "0x0e4f7fc66550a322d1e7688e181b75e217e662a4f3f4d6a29b22bc61217c4b77",
+          "historicalPinaxRuntimeKeccak256": "0x0e4f7fc66550a322d1e7688e181b75e217e662a4f3f4d6a29b22bc61217c4b77",
+          "runtimeBytes": 629
+        },
+        "multi_send_call_only": {
+          "registryUrl": "https://raw.githubusercontent.com/safe-global/safe-deployments/c25243b456237ee5af122c4fe444866315afab53/src/assets/v1.4.1/multi_send_call_only.json",
+          "address": "0x9641d764fc13c8B624c04430C7356C1C7C8102e2",
+          "registryRuntimeKeccak256": "0xecd5bd14a08c5d2122379900b2f272bdf107a7e92423c10dd5fe3254386c9939",
+          "officialRuntimeKeccak256": "0xecd5bd14a08c5d2122379900b2f272bdf107a7e92423c10dd5fe3254386c9939",
+          "historicalPinaxRuntimeKeccak256": "0xecd5bd14a08c5d2122379900b2f272bdf107a7e92423c10dd5fe3254386c9939",
+          "runtimeBytes": 410
+        }
+      },
+      "1.5.0": {
+        "safe": {
+          "registryUrl": "https://raw.githubusercontent.com/safe-global/safe-deployments/c25243b456237ee5af122c4fe444866315afab53/src/assets/v1.5.0/safe.json",
+          "address": "0xFf51A5898e281Db6DfC7855790607438dF2ca44b",
+          "registryRuntimeKeccak256": "0xdda019cbd7c867a533a2a86e5c53434fdc50b13122b5a5ddb4a8df61b31c20f2",
+          "officialRuntimeKeccak256": "0xdda019cbd7c867a533a2a86e5c53434fdc50b13122b5a5ddb4a8df61b31c20f2",
+          "historicalPinaxRuntimeKeccak256": "0xdda019cbd7c867a533a2a86e5c53434fdc50b13122b5a5ddb4a8df61b31c20f2",
+          "runtimeBytes": 21451
+        },
+        "safe_l2": {
+          "registryUrl": "https://raw.githubusercontent.com/safe-global/safe-deployments/c25243b456237ee5af122c4fe444866315afab53/src/assets/v1.5.0/safe_l2.json",
+          "address": "0xEdd160fEBBD92E350D4D398fb636302fccd67C7e",
+          "registryRuntimeKeccak256": "0x180193227186ccb85316c94db1f0d156ed932b14712cfaac78901899178572dc",
+          "officialRuntimeKeccak256": "0x180193227186ccb85316c94db1f0d156ed932b14712cfaac78901899178572dc",
+          "historicalPinaxRuntimeKeccak256": "0x180193227186ccb85316c94db1f0d156ed932b14712cfaac78901899178572dc",
+          "runtimeBytes": 22231
+        },
+        "safe_proxy_factory": {
+          "registryUrl": "https://raw.githubusercontent.com/safe-global/safe-deployments/c25243b456237ee5af122c4fe444866315afab53/src/assets/v1.5.0/safe_proxy_factory.json",
+          "address": "0x14F2982D601c9458F93bd70B218933A6f8165e7b",
+          "registryRuntimeKeccak256": "0x967dae4cda22b0c9ef7f31b010bdc1ceb0af9904b0c3dc060b5302e4c18a4529",
+          "officialRuntimeKeccak256": "0x967dae4cda22b0c9ef7f31b010bdc1ceb0af9904b0c3dc060b5302e4c18a4529",
+          "historicalPinaxRuntimeKeccak256": "0x967dae4cda22b0c9ef7f31b010bdc1ceb0af9904b0c3dc060b5302e4c18a4529",
+          "runtimeBytes": 3321
+        },
+        "compatibility_fallback_handler": {
+          "registryUrl": "https://raw.githubusercontent.com/safe-global/safe-deployments/c25243b456237ee5af122c4fe444866315afab53/src/assets/v1.5.0/compatibility_fallback_handler.json",
+          "address": "0x3EfCBb83A4A7AfcB4F68D501E2c2203a38be77f4",
+          "registryRuntimeKeccak256": "0x3c6a85bcf7b563daa624b884b4e9a1b9fa5371edde7be945d998071a48f28bbc",
+          "officialRuntimeKeccak256": "0x3c6a85bcf7b563daa624b884b4e9a1b9fa5371edde7be945d998071a48f28bbc",
+          "historicalPinaxRuntimeKeccak256": "0x3c6a85bcf7b563daa624b884b4e9a1b9fa5371edde7be945d998071a48f28bbc",
+          "runtimeBytes": 6294
+        },
+        "multi_send": {
+          "registryUrl": "https://raw.githubusercontent.com/safe-global/safe-deployments/c25243b456237ee5af122c4fe444866315afab53/src/assets/v1.5.0/multi_send.json",
+          "address": "0x218543288004CD07832472D464648173c77D7eB7",
+          "registryRuntimeKeccak256": "0xca1147a12963172a93910c5cb2bfa5ad0e941c7f03fc7eb017dd06a8ea4e5604",
+          "officialRuntimeKeccak256": "0xca1147a12963172a93910c5cb2bfa5ad0e941c7f03fc7eb017dd06a8ea4e5604",
+          "historicalPinaxRuntimeKeccak256": "0xca1147a12963172a93910c5cb2bfa5ad0e941c7f03fc7eb017dd06a8ea4e5604",
+          "runtimeBytes": 640
+        },
+        "multi_send_call_only": {
+          "registryUrl": "https://raw.githubusercontent.com/safe-global/safe-deployments/c25243b456237ee5af122c4fe444866315afab53/src/assets/v1.5.0/multi_send_call_only.json",
+          "address": "0xA83c336B20401Af773B6219BA5027174338D1836",
+          "registryRuntimeKeccak256": "0xcdbdcec38d2f1c7d961b0029ff8416b7e86e9974d6f0e9c9580c7d17fcfb6663",
+          "officialRuntimeKeccak256": "0xcdbdcec38d2f1c7d961b0029ff8416b7e86e9974d6f0e9c9580c7d17fcfb6663",
+          "historicalPinaxRuntimeKeccak256": "0xcdbdcec38d2f1c7d961b0029ff8416b7e86e9974d6f0e9c9580c7d17fcfb6663",
+          "runtimeBytes": 421
+        }
+      }
+    }
+  },
+  "factorySource": {
+    "1.4.1": {
+      "url": "https://raw.githubusercontent.com/safe-global/safe-smart-account/v1.4.1/contracts/proxies/SafeProxyFactory.sol",
+      "sha256": "0bf51e2baa3945a0e975d602d85aec63f49513e4c4a159e1c538d0a5f0808889"
+    },
+    "1.5.0": {
+      "url": "https://raw.githubusercontent.com/safe-global/safe-smart-account/v1.5.0/contracts/proxies/SafeProxyFactory.sol",
+      "sha256": "92f893a998cb3b1c7ea1a2317e5761a34e17610b98eb8824deab8b1f4321829b"
+    }
+  },
+  "hosted": {
+    "safeWalletCreatePage": {
+      "http": 200,
+      "walletConnected": false,
+      "signingTested": false
+    },
+    "chainConfig": {
+      "http": 200,
+      "network": "robinhood",
+      "l2": true,
+      "isTestnet": false,
+      "recommendedMasterCopyVersion": "1.5.0",
+      "disabledWallets": [
+        "coinbase",
+        "keystone",
+        "ledger_v2",
+        "NONE",
+        "opera",
+        "operaTouch",
+        "pk",
+        "safeMobile",
+        "socialSigner",
+        "tally",
+        "trezor",
+        "trust",
+        "walletConnect"
+      ],
+      "features": [
+        "BRIDGE",
+        "EIP1559",
+        "MULTI_CHAIN_SAFE_ADD_NETWORK",
+        "MULTI_CHAIN_SAFE_CREATION",
+        "NATIVE_SWAPS",
+        "NATIVE_SWAPS_FEE_ENABLED",
+        "POLICY_INDEXER_SPENDING_LIMIT",
+        "PORTFOLIO_ENDPOINT",
+        "POSITIONS",
+        "TX_SIMULATION"
+      ]
+    },
+    "transactionService": {
+      "http": 200,
+      "version": "6.14.0",
+      "buildCommit": "77c1723a9c35be34838bf9fbe09cd16c2759271c",
+      "indexedL2Singletons": [
+        {
+          "address": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+          "version": "1.4.1+L2",
+          "lastIndexedBlockNumber": 114741096
+        },
+        {
+          "address": "0xEdd160fEBBD92E350D4D398fb636302fccd67C7e",
+          "version": "1.5.0+L2",
+          "lastIndexedBlockNumber": 114741096
+        }
+      ]
+    },
+    "unrelatedPublicSample": {
+      "profileHttp": 200,
+      "historyHttp": 200,
+      "indexedHistoryCount": 0,
+      "address": "0xFfe8DD7bD7C52d211879104aef901ccEa5727B67",
+      "version": "1.4.1+L2",
+      "ownerCount": 3,
+      "threshold": 2,
+      "singleton": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+      "fallbackHandler": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+      "modules": [],
+      "guard": "0x0000000000000000000000000000000000000000",
+      "moduleGuard": "0x0000000000000000000000000000000000000000",
+      "actualHistoricalCreationReceipt": {
+        "transactionHash": "0xe957e0e296eebc5c0d8153fd43097c55cd672c19817ff21312e0f94248c00dac",
+        "blockNumber": "114339644",
+        "blockHash": "0x053c518c630690228bef2696479d88644e2879c8b3526578fc28d0e6ebcc6cc7",
+        "gasUsed": "305847",
+        "gasUsedForL1": "0",
+        "effectiveGasPriceWei": "20068000",
+        "paidWei": "6137737596000",
+        "paidEth": "0.000006137737596"
+      }
+    }
+  },
+  "fees": {
+    "gasPriceWeiPerGas": "20016000",
+    "simulationSaltPrefix": "RMT Task 044 read-only Safe fee observation v1",
+    "readOnlyFixtureProfiles": {
+      "1.4.1": {
+        "fixtureOwnerCount": 3,
+        "fixtureThreshold": "2",
+        "method": "createProxyWithNonce",
+        "initializerKeccak256": "0x94ab87588f506e7e29b1ddacd2369aacf7e9050f0644c58d84b445ac13e3dcbd",
+        "initializerCalldataHashOnly": true,
+        "proxyInitcodeKeccak256": "0xe298282cefe913ab5d282047161268a8222e4bd4ed106300c547894bbefd31ee",
+        "callDataKeccak256": "0x9477a83daf8dbf5ee7851e25eb4eb0576aad984f41dd2fd5ac1b869ccaa0f1cd",
+        "create2MatchesStaticCallWithEmptyPredictedAddress": true,
+        "rpcEstimateGas": "313391",
+        "rpcEstimateEthAtObservedPrice": "0.000006272834256",
+        "nodeInterfaceEstimate": {
+          "totalGas": "313391",
+          "l2ExecutionGas": "313391",
+          "l1DataGasInL2Units": "0",
+          "l2BaseFeeWei": "20022000",
+          "l1BaseFeeEstimateWei": "0",
+          "totalEstimateWei": "6274714602000",
+          "totalEstimateEth": "0.000006274714602",
+          "l1DataEstimateEth": "0"
+        },
+        "errors": {}
+      },
+      "1.5.0": {
+        "fixtureOwnerCount": 3,
+        "fixtureThreshold": "2",
+        "method": "createProxyWithNonce",
+        "initializerKeccak256": "0x97b09ebcae4d47af3ba58f417342e96ab8de4656cec65e6018197a7b64676473",
+        "initializerCalldataHashOnly": true,
+        "proxyInitcodeKeccak256": "0xc00f8ed2d8e1bacf9a81836a956d9be01fbb50416bce76c09d18859e6bb6d223",
+        "callDataKeccak256": "0xaebf54f401021d7aae90a1a02074e2206b20423cd7816c18598058a42439e479",
+        "create2MatchesStaticCallWithEmptyPredictedAddress": true,
+        "rpcEstimateGas": "303321",
+        "rpcEstimateEthAtObservedPrice": "0.000006071273136",
+        "nodeInterfaceEstimate": {
+          "totalGas": "303321",
+          "l2ExecutionGas": "303321",
+          "l1DataGasInL2Units": "0",
+          "l2BaseFeeWei": "20022000",
+          "l1BaseFeeEstimateWei": "0",
+          "totalEstimateWei": "6073093062000",
+          "totalEstimateEth": "0.000006073093062",
+          "l1DataEstimateEth": "0"
+        },
+        "errors": {}
+      }
+    },
+    "retainedSyntheticReceipt": {
+      "evidencePath": "docs/evidence/rmt-task043/4663-rotation-safe-claims.json",
+      "evidenceSha256Lf": "c445147b311911a8fadc2d2149f0b693c56a9923f007c5ac6705c8f37765edac",
+      "transactionHash": "0x9ead5510105537572b2b49d48b8a8a45b77434cb35bde7a0b04b5a0e935c840d",
+      "gasUsed": "305811",
+      "ethForOneAtObservedGasPrice": "0.000006121112976",
+      "ethForTwoIdenticalAtObservedGasPrice": "0.000012242225952",
+      "estimateScope": "Execution only, frozen 2-of-3 1.4.1 local proxy receipt repriced at observed public gas price"
+    },
+    "ownerInputSpecificEstimate": false
+  },
+  "methods": [
+    "eth_chainId",
+    "eth_getBlockByNumber",
+    "eth_gasPrice",
+    "eth_getTransactionReceipt",
+    "eth_getCode",
+    "eth_call",
+    "eth_estimateGas"
+  ],
+  "httpReads": [
+    {
+      "url": "https://api.safe.global/tx-service/robinhood/api/v1/about/",
+      "status": 200
+    },
+    {
+      "url": "https://api.safe.global/tx-service/robinhood/api/v1/about/singletons/",
+      "status": 200
+    },
+    {
+      "url": "https://api.safe.global/tx-service/robinhood/api/v1/safes/0xFfe8DD7bD7C52d211879104aef901ccEa5727B67/",
+      "status": 200
+    },
+    {
+      "url": "https://api.safe.global/tx-service/robinhood/api/v1/safes/0xFfe8DD7bD7C52d211879104aef901ccEa5727B67/all-transactions/?limit=1",
+      "status": 200
+    },
+    {
+      "url": "https://app.safe.global/new-safe/create?chain=robinhood",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/safe-global/safe-deployments/c25243b456237ee5af122c4fe444866315afab53/src/assets/v1.4.1/compatibility_fallback_handler.json",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/safe-global/safe-deployments/c25243b456237ee5af122c4fe444866315afab53/src/assets/v1.4.1/multi_send_call_only.json",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/safe-global/safe-deployments/c25243b456237ee5af122c4fe444866315afab53/src/assets/v1.4.1/multi_send.json",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/safe-global/safe-deployments/c25243b456237ee5af122c4fe444866315afab53/src/assets/v1.4.1/safe_l2.json",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/safe-global/safe-deployments/c25243b456237ee5af122c4fe444866315afab53/src/assets/v1.4.1/safe_proxy_factory.json",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/safe-global/safe-deployments/c25243b456237ee5af122c4fe444866315afab53/src/assets/v1.4.1/safe.json",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/safe-global/safe-deployments/c25243b456237ee5af122c4fe444866315afab53/src/assets/v1.5.0/compatibility_fallback_handler.json",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/safe-global/safe-deployments/c25243b456237ee5af122c4fe444866315afab53/src/assets/v1.5.0/multi_send_call_only.json",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/safe-global/safe-deployments/c25243b456237ee5af122c4fe444866315afab53/src/assets/v1.5.0/multi_send.json",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/safe-global/safe-deployments/c25243b456237ee5af122c4fe444866315afab53/src/assets/v1.5.0/safe_l2.json",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/safe-global/safe-deployments/c25243b456237ee5af122c4fe444866315afab53/src/assets/v1.5.0/safe_proxy_factory.json",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/safe-global/safe-deployments/c25243b456237ee5af122c4fe444866315afab53/src/assets/v1.5.0/safe.json",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/safe-global/safe-smart-account/v1.4.1/contracts/proxies/SafeProxyFactory.sol",
+      "status": 200
+    },
+    {
+      "url": "https://raw.githubusercontent.com/safe-global/safe-smart-account/v1.5.0/contracts/proxies/SafeProxyFactory.sol",
+      "status": 200
+    },
+    {
+      "url": "https://safe-client.safe.global/v1/chains/4663/",
+      "status": 200
+    }
+  ],
+  "writesPerformed": false,
+  "signaturesRequested": false,
+  "treasuryAddressesAssigned": false
+}
