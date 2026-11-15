@@ -1,0 +1,198 @@
+diff --git a/packages/contracts/scripts/safe-rehearsal.mjs b/packages/contracts/scripts/safe-rehearsal.mjs
+index b410c8a..937cf53 100644
+--- a/packages/contracts/scripts/safe-rehearsal.mjs
++++ b/packages/contracts/scripts/safe-rehearsal.mjs
+@@ -7 +7 @@ const {
+-  concatHex, decodeErrorResult, encodeFunctionData, erc20Abi, getAddress, keccak256, parseAbi, parseEventLogs,
++  concatHex, decodeErrorResult, encodeFunctionData, erc20Abi, getAddress, getCreate2Address, keccak256, padHex, parseAbi, parseEventLogs, toHex,
+@@ -22,0 +23 @@ const factoryAbi = parseAbi([
++  "function proxyCreationCode() pure returns (bytes)",
+@@ -26,0 +28,3 @@ const safeAbi = parseAbi([
++  "function swapOwner(address prevOwner,address oldOwner,address newOwner)",
++  "event AddedOwner(address indexed owner)",
++  "event RemovedOwner(address indexed owner)",
+@@ -76 +80,9 @@ function matchingCalls(trace, from, to) {
+-export async function setupFixtureSafe({ client, submit, sender, fixtureBlock = reviewedFork.number, fixtureThreshold = 2 }) {
++const fixtureInternals = new WeakMap();
++const sortOwners = (owners) => [...owners].sort((left, right) => left.address.toLowerCase().localeCompare(right.address.toLowerCase()));
++
++export function newFixtureOwners() {
++  return sortOwners(Array.from({ length: 3 }, () => privateKeyToAccount(generatePrivateKey())));
++}
++
++export async function setupFixtureSafe({ client, submit, sender, fixtureBlock = reviewedFork.number, fixtureThreshold = 2,
++  fixtureOwners = newFixtureOwners(), saltNonce = 0n }) {
+@@ -98,2 +110,2 @@ export async function setupFixtureSafe({ client, submit, sender, fixtureBlock =
+-  const owners = Array.from({ length: 3 }, () => privateKeyToAccount(generatePrivateKey()))
+-    .sort((left, right) => left.address.toLowerCase().localeCompare(right.address.toLowerCase()));
++  let owners = sortOwners(fixtureOwners);
++  assert.equal(owners.length, 3);
+@@ -104 +116,7 @@ export async function setupFixtureSafe({ client, submit, sender, fixtureBlock =
+-  const creation = encodeFunctionData({ abi: factoryAbi, functionName: "createProxyWithNonce", args: [singleton, initializer, 0n] });
++  const creation = encodeFunctionData({ abi: factoryAbi, functionName: "createProxyWithNonce", args: [singleton, initializer, saltNonce] });
++  const initializerHash = keccak256(initializer);
++  const proxyCreation = await client.readContract({ address: factory, abi: factoryAbi, functionName: "proxyCreationCode",
++    blockNumber: reviewedFork.number });
++  const predictedProxy = getCreate2Address({ from: factory,
++    salt: keccak256(concatHex([initializerHash, toHex(saltNonce, { size: 32 })])),
++    bytecodeHash: keccak256(concatHex([proxyCreation, padHex(singleton, { size: 32 })])) });
+@@ -108,0 +127 @@ export async function setupFixtureSafe({ client, submit, sender, fixtureBlock =
++  assert.ok(same(address, predictedProxy));
+@@ -124 +143 @@ export async function setupFixtureSafe({ client, submit, sender, fixtureBlock =
+-  async function prepare(call) {
++  async function prepare(call, { self = false, signers = owners.slice(0, fixtureThreshold) } = {}) {
+@@ -126 +145 @@ export async function setupFixtureSafe({ client, submit, sender, fixtureBlock =
+-    assert.notEqual(to.toLowerCase(), address.toLowerCase(), "Fixture must leave Safe ownership and controls intact");
++    assert.equal(same(to, address), self, "Safe self-calls are reserved for the fixture rotation");
+@@ -131 +150 @@ export async function setupFixtureSafe({ client, submit, sender, fixtureBlock =
+-    for (const owner of owners.slice(0, fixtureThreshold)) {
++    for (const owner of sortOwners(signers)) {
+@@ -157 +176,25 @@ export async function setupFixtureSafe({ client, submit, sender, fixtureBlock =
+-  return {
++  async function execute(call, options) {
++    const transaction = await prepare(call, options);
++    const calldata = encodeExecution(transaction);
++    const receipt = await submit(sender, { to: address, data: calldata });
++    const event = singleEvent(receipt, address, safeAbi, "ExecutionSuccess");
++    assert.equal(event.args.txHash, transaction.hash);
++    assert.equal(event.args.payment, 0n);
++    assert.equal(await read("nonce"), transaction.nonce + 1n);
++    const trace = await traceTransaction(client, receipt, sender, address);
++    const inner = matchingCalls(trace, address, transaction.to);
++    assert.equal(inner.length, 1);
++    assert.ok(same(inner[0].input, transaction.data) && BigInt(inner[0].value ?? 0) === transaction.value);
++    const result = { receipt, nonce: transaction.nonce, safeTxHash: transaction.hash,
++      attribution: { sender, beneficiary: address, target: transaction.to, executionLogIndex: event.logIndex,
++        innerCallVerified: true } };
++    sent.set(result, calldata);
++    return result;
++  }
++
++  async function state() {
++    const [linkedOwners, threshold, nonce] = await Promise.all([read("getOwners"), read("getThreshold"), read("nonce")]);
++    return { linkedOwners, threshold, nonce };
++  }
++
++  const fixture = {
+@@ -160,18 +203,45 @@ export async function setupFixtureSafe({ client, submit, sender, fixtureBlock =
+-      runtimeHash: safePins.proxyHash, proxyCreationLogIndex: deployment.logIndex },
+-    async execute(call) {
+-      const transaction = await prepare(call);
+-      const calldata = encodeExecution(transaction);
+-      const receipt = await submit(sender, { to: address, data: calldata });
+-      const event = singleEvent(receipt, address, safeAbi, "ExecutionSuccess");
+-      assert.equal(event.args.txHash, transaction.hash);
+-      assert.equal(event.args.payment, 0n);
+-      assert.equal(await read("nonce"), transaction.nonce + 1n);
+-      const trace = await traceTransaction(client, receipt, sender, address);
+-      const inner = matchingCalls(trace, address, transaction.to);
+-      assert.equal(inner.length, 1);
+-      assert.ok(same(inner[0].input, transaction.data) && BigInt(inner[0].value ?? 0) === transaction.value);
+-      const result = { receipt, nonce: transaction.nonce, safeTxHash: transaction.hash,
+-        attribution: { sender, beneficiary: address, target: transaction.to, executionLogIndex: event.logIndex,
+-          innerCallVerified: true } };
+-      sent.set(result, calldata);
+-      return result;
++      saltNonce, initializerHash, predictedProxy, runtimeHash: safePins.proxyHash, proxyCreationLogIndex: deployment.logIndex },
++    state,
++    execute: (call) => execute(call),
++    async rejectForeignSignatures(other, call) {
++      assert.ok(!same(other.address, address), "Cross-Safe replay requires distinct recipient domains");
++      const prepareSource = fixtureInternals.get(other);
++      assert.ok(prepareSource, "Expected a different fixture Safe");
++      const source = await prepareSource(call);
++      const target = await prepare(call);
++      assert.equal(source.nonce, target.nonce, "Test must isolate domain from nonce mismatch");
++      assert.notEqual(source.hash, target.hash);
++      return { sourceProxy: other.address, targetProxy: address, signedNonce: source.nonce,
++        sourceDigest: source.hash, targetDigest: target.hash,
++        rejected: await reject(encodeExecution(source), target.nonce, "GS026") };
++    },
++    async rotateOwner(spendingWallet) {
++      const before = await state();
++      const departing = owners.at(-1);
++      const incoming = privateKeyToAccount(generatePrivateKey());
++      assert.ok(!before.linkedOwners.some((owner) => same(owner, incoming.address)));
++      const index = before.linkedOwners.findIndex((owner) => same(owner, departing.address));
++      assert.ok(index >= 0);
++      const previous = index === 0 ? sentinel : before.linkedOwners[index - 1];
++      const data = encodeFunctionData({ abi: safeAbi, functionName: "swapOwner", args: [previous, departing.address, incoming.address] });
++      const rotation = await execute({ to: address, data }, { self: true });
++      const removed = singleEvent(rotation.receipt, address, safeAbi, "RemovedOwner");
++      const added = singleEvent(rotation.receipt, address, safeAbi, "AddedOwner");
++      assert.ok(same(removed.args.owner, departing.address) && same(added.args.owner, incoming.address));
++      const [retained] = owners;
++      owners = sortOwners([...owners.slice(0, -1), incoming]);
++      const afterRotation = await state();
++      assert.deepEqual(afterRotation.linkedOwners.map(owner => owner.toLowerCase()),
++        before.linkedOwners.map(owner => same(owner, departing.address) ? incoming.address.toLowerCase() : owner.toLowerCase()));
++      assert.equal(afterRotation.threshold, before.threshold);
++      assert.equal(afterRotation.nonce, before.nonce + 1n);
++      const followUp = { to: spendingWallet };
++      const revoked = await prepare(followUp, { signers: [retained, departing] });
++      const formerOwnerRejected = await reject(encodeExecution(revoked), afterRotation.nonce, "GS026");
++      const accepted = await execute(followUp, { signers: [retained, incoming] });
++      const afterRehearsal = await state();
++      assert.equal(afterRehearsal.nonce, afterRotation.nonce + 1n);
++      return { before, afterRotation, afterRehearsal, departing: departing.address, incoming: incoming.address,
++        rotation: { ...receiptProof(rotation.receipt), safeTxHash: rotation.safeTxHash, removedLogIndex: removed.logIndex,
++          addedLogIndex: added.logIndex, attribution: rotation.attribution },
++        formerOwnerRejected, incomingOwnerAccepted: { ...receiptProof(accepted.receipt), safeTxHash: accepted.safeTxHash } };
+@@ -188,0 +259,2 @@ export async function setupFixtureSafe({ client, submit, sender, fixtureBlock =
++  fixtureInternals.set(fixture, prepare);
++  return fixture;
+diff --git a/packages/contracts/scripts/treasury-rehearsal.mjs b/packages/contracts/scripts/treasury-rehearsal.mjs
+index fe6feb4..6dfe763 100644
+--- a/packages/contracts/scripts/treasury-rehearsal.mjs
++++ b/packages/contracts/scripts/treasury-rehearsal.mjs
+@@ -235,0 +236,19 @@ async function launchCase(client, accounts, artifacts, pins, deployment, test, o
++  const platformDomainIsolation = [];
++  if (platform.length > 0) {
++    const snapshot = async () => {
++      const state = [];
++      for (const { safe } of platform) {
++        state.push({ ownerState: await safe.state(), balances: await balances(client, token, safe.address),
++          credit: await read(client, revenueLedger, revenueAbi, "claimable", [safe.address]) });
++      }
++      return state;
++    };
++    const before = await snapshot();
++    assert.ok(before.every(({ ownerState, credit }) => ownerState.nonce === 0n && credit > 0n));
++    for (const entry of platform) {
++      const other = platform.find(({ role }) => role !== entry.role);
++      const rejected = await entry.safe.rejectForeignSignatures(other.safe, request(revenueLedger, revenueAbi, "claim"));
++      assert.deepEqual(await snapshot(), before, "Cross-Safe replay changed funds, entitlement or nonce");
++      platformDomainIsolation.push({ sourceRole: other.role, targetRole: entry.role, ...rejected, balancesAndCreditsUnchanged: true });
++    }
++  }
+@@ -340 +359,13 @@ async function launchCase(client, accounts, artifacts, pins, deployment, test, o
+-  return { percent, bps, recipients, platformSpending, treasuryKind: treasury.kind, treasurySetup: treasury.setup,
++  const platformRotations = [];
++  for (const entry of platform) {
++    const other = platform.find(({ role }) => role !== entry.role);
++    const otherBefore = await other.safe.state();
++    const treasuryBalances = await Promise.all(platform.map(({ safe }) => balances(client, token, safe.address)));
++    const rotation = await entry.safe.rotateOwner(entry.spendingWallet);
++    assert.deepEqual(await other.safe.state(), otherBefore);
++    assert.deepEqual(await Promise.all(platform.map(({ safe }) => balances(client, token, safe.address))), treasuryBalances);
++    assert.deepEqual(await verifyPosition(client, pins, position, engine), custody);
++    platformRotations.push({ role: entry.role, ...rotation, otherSafe: other.safe.address, otherSafeUnchanged: true,
++      treasuryBalancesAndPrincipalUnchanged: true });
++  }
++  return { percent, bps, recipients, platformSpending, platformDomainIsolation, platformRotations, treasuryKind: treasury.kind, treasurySetup: treasury.setup,
+@@ -378,3 +409,4 @@ const results = await withAnvilFork(values, async ({ rpcUrl, accounts, report })
+-    const { setupFixtureSafe, proveSafeSpending } = await import("./safe-rehearsal.mjs");
+-    for (const [role, slot, fixtureThreshold, spendingWallet] of [
+-      ["operations", 2, 2, originalOperating], ["reserve", 3, 3, originalReserve],
++    const { newFixtureOwners, setupFixtureSafe, proveSafeSpending } = await import("./safe-rehearsal.mjs");
++    const fixtureOwners = newFixtureOwners();
++    for (const [role, slot, saltNonce, spendingWallet] of [
++      ["operations", 2, 1n, originalOperating], ["reserve", 3, 2n, originalReserve],
+@@ -383 +415 @@ const results = await withAnvilFork(values, async ({ rpcUrl, accounts, report })
+-        send(client, from, payload, expected), fixtureBlock: BigInt(report.network.blockNumber), fixtureThreshold });
++        send(client, from, payload, expected), fixtureBlock: BigInt(report.network.blockNumber), fixtureOwners, saltNonce });
+@@ -398 +430,3 @@ const results = await withAnvilFork(values, async ({ rpcUrl, accounts, report })
+-    assert.equal(new Set([...ops.ownerAddresses, ...reserve.ownerAddresses]).size, 6);
++    assert.deepEqual(ops.ownerAddresses, reserve.ownerAddresses);
++    assert.notEqual(ops.saltNonce, reserve.saltNonce);
++    assert.equal(ops.initializerHash, reserve.initializerHash);

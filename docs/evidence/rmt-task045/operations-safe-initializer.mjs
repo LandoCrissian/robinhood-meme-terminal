@@ -28,11 +28,21 @@ const abi = [{
   outputs: [],
 }];
 
-function encodeSafeSetup(viem, owners, setup) {
+export function encodeSafeSetup(viem, owners, setup) {
   return viem.encodeFunctionData({
     abi, functionName: "setup",
     args: [owners, 2n, setup.to, setup.data, setup.fallbackHandler, setup.paymentToken, 0n, setup.paymentReceiver],
   });
+}
+
+export function deriveSafeProxy(viem, factory, initializer, saltNonce, initcodeKeccak256) {
+  const create2Salt = viem.keccak256(viem.encodePacked(
+    ["bytes32", "uint256"], [viem.keccak256(initializer), BigInt(saltNonce)],
+  ));
+  const address = viem.getContractAddress({
+    from: factory, opcode: "CREATE2", salt: create2Salt, bytecodeHash: initcodeKeccak256,
+  });
+  return { create2Salt, address };
 }
 
 export function buildOperationsSafeInitializer(viem, policy = read("./operations-safe-policy.json")) {
@@ -91,12 +101,8 @@ export function buildOperationsSafeInitializer(viem, policy = read("./operations
   const syntheticInitializer = encodeSafeSetup(viem, synthetic.ownerAddresses, setup);
   const fixtureSaltNonce = viem.keccak256(viem.stringToHex(fixtureSaltLabel));
   const fixtureInitcodeHash = infrastructure.fees.readOnlyFixtureProfiles["1.4.1"].proxyInitcodeKeccak256;
-  const fixtureCreate2Salt = viem.keccak256(viem.encodePacked(
-    ["bytes32", "uint256"], [viem.keccak256(syntheticInitializer), BigInt(fixtureSaltNonce)],
-  ));
-  const fixtureAddress = viem.getContractAddress({
-    from: policy.operations.factory, opcode: "CREATE2", salt: fixtureCreate2Salt, bytecodeHash: fixtureInitcodeHash,
-  });
+  const { create2Salt: fixtureCreate2Salt, address: fixtureAddress } =
+    deriveSafeProxy(viem, policy.operations.factory, syntheticInitializer, fixtureSaltNonce, fixtureInitcodeHash);
   assert.ok(![...owners, ...baseline.platformSafes.map(({ proxy }) => proxy)].includes(fixtureAddress));
   return {
     approved: {
@@ -112,10 +118,11 @@ export function buildOperationsSafeInitializer(viem, policy = read("./operations
   };
 }
 
-async function observeIllustrativeFixture(viem, policy, fixture) {
+export async function observeSafeProxyDerivation(viem, policy, fixture, pinnedBlockNumber) {
   const pins = read("../rmt-task044/safe-infrastructure-4663.json").registry.contracts["1.4.1"];
   const client = viem.createPublicClient({ transport: viem.http(officialRpc, { timeout: 8_000, retryCount: 0 }) });
-  const [chainId, block] = await Promise.all([client.getChainId(), client.getBlock({ blockTag: "latest" })]);
+  const blockQuery = pinnedBlockNumber === undefined ? { blockTag: "latest" } : { blockNumber: pinnedBlockNumber };
+  const [chainId, block] = await Promise.all([client.getChainId(), client.getBlock(blockQuery)]);
   assert.equal(chainId, policy.chainId);
   const blockNumber = block.number;
   const tag = viem.numberToHex(blockNumber);
@@ -137,8 +144,8 @@ async function observeIllustrativeFixture(viem, policy, fixture) {
   ]);
   assert.equal(viem.keccak256(viem.concatHex([proxyCreationCode, viem.padHex(singleton, { size: 32 })])),
     fixture.initcodeKeccak256, "Factory proxy initcode differs");
-  assert.equal(fixtureCode, "0x", "Illustrative fixture address already has code");
-  assert.equal(fixtureNonce, 0, "Illustrative fixture address already has a nonce");
+  assert.equal(fixtureCode, "0x", "Derived address already has code");
+  assert.equal(fixtureNonce, 0, "Derived address already has a nonce");
   const syntheticInitializer = encodeSafeSetup(viem, fixture.ownerAddresses, setup);
   const data = viem.encodeFunctionData({ abi: factoryAbi, functionName: "createProxyWithNonce",
     args: [singleton, syntheticInitializer, BigInt(fixture.saltNonce)] });
@@ -160,6 +167,6 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
   const viem = webTools(resolve(values.checkout));
   const policy = read("./operations-safe-policy.json");
   const result = buildOperationsSafeInitializer(viem, policy);
-  if (values["observe-fixture"]) result.fixtureObservation = await observeIllustrativeFixture(viem, policy, result.fixture);
+  if (values["observe-fixture"]) result.fixtureObservation = await observeSafeProxyDerivation(viem, policy, result.fixture);
   console.log(JSON.stringify(result, null, 2));
 }
