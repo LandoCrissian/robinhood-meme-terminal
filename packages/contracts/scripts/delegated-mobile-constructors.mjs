@@ -18,8 +18,9 @@ function selectGuard(compilation, bootstrap, poolManager, engine) {
   throw new Error("No admissible initialization guard salt in the bounded search");
 }
 
-// Recompute from one nonce/signer/beneficiary scenario. Export hashes and sizes only.
-export function deriveDelegatedConstructors(compilation, { sender, createDestinations, signers, safeAddresses }) {
+// Recompute from one nonce/signer/beneficiary scenario. Public callers receive hashes and sizes only.
+export function deriveDelegatedConstructors(compilation, { sender, createDestinations, signers, safeAddresses },
+  { includePrivateInitcode = false } = {}) {
   assert.equal(compilation.manifest.chainId, 4663);
   assert.equal(signers.length, 3);
   assert.equal(safeAddresses.length, 2);
@@ -40,8 +41,11 @@ export function deriveDelegatedConstructors(compilation, { sender, createDestina
   const factory = getContractAddress({ from: bootstrap.address, nonce: 3n });
   const guard = selectGuard(compilation, bootstrap.address, dependencies.poolManager, engine);
   const materialize = (contract, address, args, immutables) => {
-    const { constructorData: _constructor, ...review } = materializeArtifact(compilation, contract, address, args, immutables);
-    return review;
+    const { constructorData, ...review } = materializeArtifact(compilation, contract, address, args, immutables);
+    if (!includePrivateInitcode) return review;
+    const initcode = compilation.artifacts[contract].bytecode + constructorData.slice(2);
+    assert.equal(keccak256(initcode), review.initcodeHash);
+    return { ...review, constructorData, initcode };
   };
   const directoryPlan = materialize("RMTLaunchCurveDirectoryV2", directory.address, signers,
     eip712("RMT Launch Curve Directory", "2", directory.address));

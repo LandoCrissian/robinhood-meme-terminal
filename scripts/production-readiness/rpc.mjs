@@ -407,6 +407,34 @@ async function identifySources(sources, fetcher, expectedChain) {
   }));
 }
 
+export async function attestDeploymentDependencies(anchor, { fetcher = fetch, clock = Date.now } = {}) {
+  const maxAgeMs = 120_000;
+  const blockTime = Date.parse(anchor?.blockTimeUtc);
+  if (typeof anchor?.number !== "string" || !/^[1-9][0-9]{0,11}$/.test(anchor.number)
+      || typeof anchor.hash !== "string" || !hashPattern.test(anchor.hash) || BigInt(anchor.hash) === 0n
+      || !Number.isFinite(blockTime) || blockTime < clock() - maxAgeMs || blockTime > clock() + 10_000) {
+    throw new Error("A fresh canonical 4663 sender anchor is required");
+  }
+  const tag = quantity(anchor.number);
+  const identified = await identifySources(ROBINHOOD_SOURCES, fetcher, "4663");
+  const observations = await Promise.all(identified.filter(({ eligible }) => eligible)
+    .map(async ({ name, read }) => ({ name, probe: await inspectDependencies(read, tag, anchor.hash.toLowerCase(), true) })));
+  const compared = checksFromProviders(observations, ({ before }) => before.value);
+  const conflictingChain = identified.some(({ chain }) => chain.value !== undefined && chain.value !== "4663");
+  const conflictingTime = observations.some(({ probe }) =>
+    probe.before.value !== undefined && probe.before.value.timestamp !== anchor.blockTimeUtc);
+  let status = "UNVERIFIED";
+  if (conflictingChain || conflictingTime || compared.status === "CONFLICT") {
+    status = "CONFLICT";
+  } else if (compared.status === "CORROBORATED" && compared.providers.includes("official") && clock() - blockTime <= maxAgeMs) {
+    status = "CORROBORATED";
+  }
+  return { scope: "READ_ONLY_4663_DEPENDENCY_BINDING", chainId: 4663, status, broadcastAuthorized: false,
+    anchor, expiresAt: new Date(blockTime + maxAgeMs).toISOString(), providers: compared.providers,
+    runtimePins: pins, getterBindings: getterBindings.map(([contract, signature, expected]) => ({ contract, signature, expected })),
+    observations };
+}
+
 export async function runRpcProbe({ fetcher = fetch, checkpoint } = {}) {
   const observedAt = now();
   const identified = await identifySources(ROBINHOOD_SOURCES, fetcher, "4663");
