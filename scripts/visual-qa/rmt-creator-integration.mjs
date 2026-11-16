@@ -53,6 +53,7 @@ assert.equal(anchor.blockHash, "0x5bb29976ce80ddede79f192c61eba8fe9d96f499f8bfa1
 await mkdir(out);
 
 const creator = privateKeyToAccount(generatePrivateKey());
+const mobileCreator = mobilePlan && privateKeyToAccount(generatePrivateKey());
 const alternate = privateKeyToAccount(generatePrivateKey()).address;
 const treasurySigner = privateKeyToAccount(generatePrivateKey());
 const treasury = treasurySigner.address;
@@ -313,8 +314,8 @@ try {
   const env = { ...childBase, RMT_CURVE_FIXTURE: profile, RMT_CURVE_FIXTURE_RPC: rpcProxy,
     RMT_CURVE_FIXTURE_READ_KEY: indexReadKey,
     RMT_CURVE_FIXTURE_DEPLOYMENT: manifestPath, RMT_CURVE_FIXTURE_SITE_ORIGIN: site, RMT_CURVE_FIXTURE_INDEXER: workerOrigin + "/",
-    ...(mobilePlan && { RMT_MOBILE_REVIEW_FIXTURE: "local-reviewed-31337",
-      RMT_MOBILE_REVIEW_FIXTURE_ACCOUNT: creator.address, RMT_MOBILE_REVIEW_PLAN: mobilePlan }) };
+    ...(mobileCreator && { RMT_MOBILE_REVIEW_FIXTURE: "local-reviewed-31337",
+      RMT_MOBILE_REVIEW_FIXTURE_ACCOUNT: mobileCreator.address, RMT_MOBILE_REVIEW_PLAN: mobilePlan }) };
   const workerEnv = { ...env, RMT_CURVE_FIXTURE_DATABASE: databaseUrl, RMT_CURVE_FIXTURE_PORT: new URL(workerOrigin).port };
   const webArgs = ["apps/launch-website/node_modules/next/dist/bin/next", "start", "apps/launch-website", "--hostname", "127.0.0.1", "--port", new URL(site).port];
   const startWeb = (name, config = env) => start(process.execPath, webArgs, name, { env: config });
@@ -1188,9 +1189,10 @@ try {
   const after = await fetchAt(site, "/api/launchpad/new-engine").then((response) => response.json());
   assert.deepEqual(after.launches, []);
   assert.equal(signatures.length, 15, "Reorg and outages must not rebroadcast transactions");
-  if (mobilePlan) {
+  if (mobileCreator) {
+    await rpc("anvil_setBalance", [mobileCreator.address, toHex(20n * 10n ** 18n)]);
     evidence.mobileReview = await testMobileReview({
-      context, site, out, rpc, creator, alternate, factory: binding.factory, feeWei,
+      context, site, out, rpc, creator: mobileCreator, alternate, factory: binding.factory, feeWei,
       setGasDrift: (active) => { mobileGasDrift = active; },
       hideReceipt: (value) => { hideReceipt = value; },
     });

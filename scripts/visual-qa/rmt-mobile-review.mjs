@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
 import { createRequire } from "node:module";
 import { join } from "node:path";
+import { setTimeout as delay } from "node:timers/promises";
 
 const require = createRequire(new URL("../../apps/launch-website/package.json", import.meta.url));
 const { decodeFunctionData, keccak256, parseAbi, toHex } = require("viem");
@@ -19,6 +20,22 @@ export async function testMobileReview({ context, site, out, rpc, creator, alter
   let account = creator.address, connectedChain = chain, decision = "normal", attempts = 0;
   let walletBlockMismatch = false;
   let walletFailure;
+  async function mineSigned(signed) {
+    const hash = keccak256(signed);
+    assert.equal(await rpc("eth_sendRawTransaction", [signed]), hash);
+    let receipt = await rpc("eth_getTransactionReceipt", [hash]);
+    if (!receipt) {
+      await rpc("evm_mine");
+      for (let i = 0; i < 30 && !receipt; i++) {
+        await delay(200);
+        receipt = await rpc("eth_getTransactionReceipt", [hash]);
+      }
+    }
+    assert.ok(receipt, "No receipt for the single locally signed transaction " + hash);
+    const block = await rpc("eth_getBlockByNumber", [receipt.blockNumber, false]);
+    assert.equal(block.hash, receipt.blockHash);
+    return { hash, receipt };
+  }
   async function walletRequest({ method, params = [] }) {
     if (method === "eth_accounts" || method === "eth_requestAccounts") return { value: [account] };
     if (method === "eth_chainId") return { value: connectedChain };
@@ -52,30 +69,13 @@ export async function testMobileReview({ context, site, out, rpc, creator, alter
       chainId: 31337, nonce: Number(BigInt(request.nonce)), gas: BigInt(request.gas), gasPrice: BigInt(request.gasPrice),
       to: request.to, data: request.data, value: BigInt(request.value), type: "legacy",
     });
-    const hash = keccak256(signed);
-    try {
-      assert.equal(await rpc("eth_sendRawTransaction", [signed]), hash);
-    } catch (error) {
-      // Some providers return a JSON-RPC revert error even if the transaction mined.
-      if (decision !== "revert" || !(await rpc("eth_getTransactionReceipt", [hash]))) throw error;
-    }
-    let receipt = await rpc("eth_getTransactionReceipt", [hash]);
-    if (!receipt) {
-      const pending = await rpc("eth_getTransactionByHash", [hash]);
-      if (pending?.hash === hash && pending.blockNumber === null) {
-        await rpc("evm_mine");
-        receipt = await rpc("eth_getTransactionReceipt", [hash]);
-      }
-    }
-    assert.ok(receipt);
+    const { hash, receipt } = await mineSigned(signed);
     assert.equal(receipt.status, decision === "revert" ? "0x0" : "0x1");
     const transaction = await rpc("eth_getTransactionByHash", [hash]);
     assert.equal(BigInt(transaction.nonce), BigInt(request.nonce));
     assert.equal(transaction.input, request.data);
     assert.equal(BigInt(transaction.gas), BigInt(request.gas));
     assert.equal(BigInt(transaction.gasPrice), BigInt(request.gasPrice));
-    const block = await rpc("eth_getBlockByNumber", [receipt.blockNumber, false]);
-    assert.equal(block.hash, receipt.blockHash);
     receipts.push({ hash, nonce: request.nonce, calldataHash: keccak256(request.data), intent, value: request.value, gas: request.gas,
       gasPrice: request.gasPrice, status: receipt.status, blockNumber: receipt.blockNumber, blockHash: receipt.blockHash });
     if (decision === "lose") {
@@ -182,13 +182,16 @@ export async function testMobileReview({ context, site, out, rpc, creator, alter
     noSend();
 
     await prepare();
-    const checkpoint = await rpc("evm_snapshot");
     const nonce = BigInt(await rpc("eth_getTransactionCount", [creator.address, "pending"]));
-    await rpc("anvil_setNonce", [creator.address, toHex(nonce + 1n)]);
+    const gasPrice = BigInt(await rpc("eth_gasPrice"));
+    const competing = await mineSigned(await creator.signTransaction({
+      chainId: 31337, nonce: Number(nonce), gas: 21_000n, gasPrice, type: "legacy", to: creator.address, value: 1n,
+    }));
+    assert.equal(competing.receipt.status, "0x1");
+    assert.equal(await rpc("eth_getTransactionCount", [creator.address, "pending"]), toHex(nonce + 1n));
     await submit();
     await status("stale");
     noSend();
-    assert.equal(await rpc("evm_revert", [checkpoint]), true);
 
     await prepare();
     decision = "reject";
@@ -241,6 +244,7 @@ export async function testMobileReview({ context, site, out, rpc, creator, alter
     assert.equal(attempts, 4, "Recovery from an unrelated wallet-returned hash never broadcasts again");
     return { chainId: 31337, attemptedWalletRequests: attempts, receipts, wrongAccountRejected: true,
       wrongChainRejected: true, walletAnchorMismatchRejected: true, staleGasRejected: true, nonceDriftRejected: true,
+      competingNonceReceipt: { hash: competing.hash, blockHash: competing.receipt.blockHash, nonce: toHex(nonce) },
       walletRejection: true, minedRevert: true, receiptMismatch: true, recoveredUnknownHashAfterReload: true,
       recoveredUnrelatedReturnedHash: true, duplicateBroadcast: false };
   } catch (error) {
