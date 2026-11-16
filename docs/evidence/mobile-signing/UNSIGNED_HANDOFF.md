@@ -4,13 +4,13 @@
 
 MetaMask on the owner's iPhone returned the proposed account `0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA` and verified its pinned delegation at block `116037169`. The new read-only probes check that delegation again. Type-2 Safe calls and top-level CREATE transactions were exercised with synthetic funds on the pinned fork. Physical-device transaction signing remains unverified. [Connection evidence](https://github.com/LandoCrissian/robinhood-meme-terminal/pull/644)
 
-## Owner approvals
+## Approved configuration
 
-1. **Treasuries.** Confirm the existing personal MetaMask account as the gas payer for the two Safe creations. Review both zero-value calls and a fresh combined gas estimate. Both SafeL2 1.4.1 instances use the existing three governance owners and require two approvals. Their addresses become protocol input candidates after canonical creation receipts and runtime checks.
-2. **First project.** Approve the proposed `RMT` name and `RMT` symbol or supply the final values. Supply the exact project URI or explicitly approve an empty URI, the existing creator address that will submit creation, and the percentage of the project share going to a separate treasury. Supply the existing treasury address if that percentage is above zero. The contract takes basis points of eligible fees, so 25% of the project share is encoded as 2,250 of 10,000. Its maximum is 9,000. The treasury must differ from the creator. At 0%, the contract uses the zero address for the treasury.
-3. **Protocol terms.** Approve the proposed 0.0004 ETH creation fee, 2 ETH graduation backing, 1% bonding-curve trade fee and 90% project, 5% Operations, 5% Reserve split. The candidate mints 1 billion units at 18 decimals, sells 600 million along the curve and reserves 400 million for the original permanently locked v4 position. The v4 pool fee is 0.30%. Post-graduation revenue is earned by that position.
+The owner approved both SafeL2 1.4.1 configurations, the pinned salts, the existing 2-of-3 governance owners and the personal MetaMask payer. Both treasury addresses remain predicted until canonical creation receipts and runtime checks. [Owner approval on issue #645](https://github.com/LandoCrissian/robinhood-meme-terminal/issues/645#issuecomment-6930920399)
 
-Treasury creation, protocol deployment, first funded acceptance and public activation each require a separate release decision. The two Safe roles and their proposed addresses and salts are recorded in the existing treasury evidence. [Safe preparations](../rmt-task046/treasury-safe-initializers.json)
+The first new token is `RMT` (`RMT`). The creator is the same existing personal MetaMask address and receives the full project share. The project URI is the empty string. The separate project treasury allocation is zero and encodes the zero address and zero basis points of eligible fees. Launch economics are 1 billion units with 18 decimals, 600 million curve inventory, 400 million for the original permanently locked v4 position, 0.0004 ETH creation, 2 ETH graduation backing, a 1% curve trading fee, a 0.30% v4 pool fee, and a 90% project, 5% Operations, 5% Reserve split of eligible earned fees. Post-graduation LP revenue is earned by the original position.
+
+The phone reviews only transaction 1, the zero-value Operations Safe creation. Each Safe creation, protocol deployment, first funded acceptance and public activation requires its own approval. Reserve and the protocol queue wait for verified canonical receipts and the applicable release gates. [Safe preparations](../rmt-task046/treasury-safe-initializers.json)
 
 | Safe | Predicted 4663 address | Pinned `saltNonce` |
 | --- | --- | --- |
@@ -26,19 +26,19 @@ Treasury creation, protocol deployment, first funded acceptance and public activ
 | Governance | Schedule factory publication, execute it, schedule V3 successor admission, execute it | Bind both current signers to the exact Directory domain, chain, epoch, nonce, action and deadline. Each action has a two-day notice and up to seven days to execute, subject to its signed deadline. The Directory allows one pending action, so the two notices take at least four days in sequence. Verify each scheduled action, delay, canonical receipt and resulting state. |
 | First launch | Create new RMT from the approved creator | Bind the immutable metadata, treasury allocation, fresh intent and deadline. Review the exact fee value. Verify the token, curve, supply, starting backing and inventory, registry event and fee settlement from the canonical receipt. |
 
-Stop on sender, chain, delegate, nonce, block, calldata, destination or runtime mismatch. If a wallet returns no hash or the receipt is missing, keep the original request pending and recover its exact sender, nonce, transaction and receipt before preparing a later step. A revert consumes a nonce when mined. Recompute affected addresses and constructor data from a fresh observation. Two signatures, actual Directory receipts and approved creator inputs are needed to complete the later unsigned envelopes.
+Stop on sender, chain, delegate, nonce, block, calldata, destination or runtime mismatch. If a wallet returns no hash or the receipt is missing, keep the original request pending and recover its exact sender, nonce, transaction and receipt before preparing a later step. A revert consumes a nonce when mined. Recompute affected addresses and constructor data from a fresh observation. The Directory actions still require two current signatures, verified receipts and mature notices. First RMT creation still needs a fresh intent, nonce, deadline and verified deployment bindings.
 
 ## Private preparation and phone review
 
-Use the pinned tool paths from the [deployment runbook](../../DEPLOYMENT.md). Use fresh output paths in an owner-controlled directory outside the Git checkout. The packet contains exact private calldata for the two Safe calls and five conditional constructors. Its phone projection contains only review fields and hashes. Keep both the packet and decryption key in private storage.
+Use the pinned tool paths from the [deployment runbook](../../DEPLOYMENT.md). Use fresh output paths in an owner-controlled directory outside the Git checkout. The packet keeps the Operations call and the privately queued Reserve and constructor preparations. Its encrypted phone projection contains one transaction's review fields and hashes. Keep the unsigned packet and decryption key in private storage.
 
 ```powershell
-pnpm test:fork-4663 --anvil $anvil --solc $solc --archive pocket --delegated --output $forkEvidenceFile
+pnpm test:fork-4663 --anvil $anvil --solc $solc --archive pocket --delegated --approved-rmt --output $forkEvidenceFile
 pnpm prepare:unsigned-4663 --solc $solc --rehearsal $forkEvidenceFile --refresh --out-private $privatePacket --out-review $reviewPacket
 pnpm export:private-phone-review --url $approvedPrivateHttpsUrl --review $reviewPacket --output $privateHtml --key-file $separateKeyFile --expires $expiryUtc
 ```
 
-The public site has no new review or execution route. For phone review, open the separately provided private review origin in MetaMask's browser and unlock the encrypted projection. The review binds the selected account, chain, delegation, nonce and reference block without requesting a signature. If the evidence has expired or the nonce has changed, refresh the packet before reviewing a transaction for approval. Figures for later dependent transactions are fork observations until exact live prerequisites exist. Ethereum L1 data fees and protocol execution costs remain subject to fresh estimates at the applicable phase.
+Open the exact review URL in MetaMask's browser, enter the separate access code and select **Connect wallet and check nonce**. The review verifies the selected account, chain, delegation, nonce and reference block through public wallet reads. If the fee estimate has expired, the page shows it as a historical quote. Before separate approval of transaction 1, refresh account, chain, nonce, runtime, vacancy and fee evidence. Review the exact destination, calldata hash and maximum network fee. Figures for later dependent transactions are fork observations until their exact live prerequisites exist.
 
 ## Release evidence
 

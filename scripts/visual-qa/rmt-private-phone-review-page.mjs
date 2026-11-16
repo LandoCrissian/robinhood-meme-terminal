@@ -7,7 +7,6 @@ export function privateReviewPage(config) {
   const connect = field("connect");
   const status = field("status");
   const review = field("review");
-  const unavailable = "Awaiting verified inputs";
   const providers = new WeakSet();
   const encoder = new TextEncoder();
   let packet;
@@ -48,69 +47,83 @@ export function privateReviewPage(config) {
   }
   function properties(target, rows) {
     const list = insert(target, "dl");
-    for (const [label, value] of rows) {
+    for (const [label, value, id] of rows) {
       insert(list, "dt", label);
-      insert(list, "dd", value ?? unavailable);
+      const data = insert(list, "dd", value);
+      if (id) data.id = id;
     }
   }
+  function details(target, label) {
+    const item = insert(target, "details");
+    insert(item, "summary", label);
+    return item;
+  }
   function eth(value) {
-    if (value === null) return null;
     const amount = BigInt(value);
     const units = amount.toString().padStart(19, "0");
     const fraction = units.slice(-18).replace(/0+$/, "");
     return units.slice(0, -18) + (fraction ? "." + fraction : "") + " ETH";
   }
-  function renderReview(number) {
-    insert(review, "h2", "Unsigned deployment sequence");
+  function renderReview(verificationBlock) {
+    const row = packet.operation;
+    const verifiedAt = performance.now();
+    const verifiedBlockTime = Number(BigInt(verificationBlock.timestamp)) * 1000;
     const quote = insert(review, "p");
+    quote.id = "fee-status";
+    quote.setAttribute("aria-live", "polite");
     const updateQuote = () => {
-      quote.textContent = Date.now() >= Date.parse(packet.expiresAt)
-        ? "The fee snapshot has expired. Refresh the package before using any fee estimate."
-        : "Fees reflect the recorded observation. Refresh the package before any owner-approved transaction.";
+      const now = Math.max(Date.now(), verifiedBlockTime + performance.now() - verifiedAt);
+      const expired = now >= Date.parse(packet.expiresAt);
+      if (quote.dataset.expired === String(expired)) return;
+      quote.dataset.expired = String(expired);
+      quote.textContent = expired
+        ? "Fee quote expired. Get a fresh quote before transaction approval."
+        : "Unsigned review. Separate transaction approval is required.";
+      price.textContent = expired ? "Expired · see recorded estimate" : eth(row.gas.estimatedFeeWei);
     };
-    updateQuote();
     properties(review, [
-      ["Wallet", packet.sender], ["Chain", "Robinhood Chain 4663"], ["Verified pending nonce", packet.pendingNonce],
-      ["Wallet verification block", BigInt(number).toString()], ["Package observation block", packet.anchor.number + " · " + packet.anchor.hash],
-      ["Fee snapshot captured", packet.observedAt], ["Fee snapshot expires", packet.expiresAt],
-      ["Recorded balance", eth(packet.balanceWei)], ["Review digest", packet.planId],
+      ["Sender", row.sender], ["Pending nonce", row.nonce], ["Proxy factory", row.destination], ["Value", eth(row.valueWei)],
+      ["Est. network cost", "", "fee-value"], ["Expected Safe", row.predictedAddress],
+      ["Safe setup", row.safeVersion + " · " + row.threshold + " of " + row.owners.length],
     ]);
-    insert(review, "h3", "Proposed first project terms");
+    const price = field("fee-value");
+    updateQuote();
+    const safeDetails = details(review, "Calldata hash and Safe owners");
+    properties(safeDetails, [
+      ["Action", row.action], ["Calldata hash", row.inputHash], ["Salt nonce", row.saltNonce],
+      ["Initializer hash", row.initializerHash], ["Expected Safe runtime hash", row.expectedRuntimeHash],
+    ]);
+    const owners = insert(safeDetails, "ol");
+    for (const owner of row.owners) insert(owners, "li", owner);
+    const evidence = details(review, "Gas and on-chain evidence");
+    properties(evidence, [
+      ["Recorded network estimate", eth(row.gas.estimatedFeeWei)], ["Recorded L2 cost", eth(row.gas.estimatedL2FeeWei)],
+      ["Recorded L1 posting cost", eth(row.gas.estimatedL1FeeWei)], ["Estimated total gas", row.gas.gasUnits],
+      ["L2 gas units", row.gas.l2GasUnits], ["L1 posting gas units", row.gas.l1PosterGasUnits],
+      ["Estimated at", packet.observedAt], ["Quote expiry", packet.expiresAt],
+      ["Quote block", packet.anchor.number + " · " + packet.anchor.hash],
+      ["Wallet check block", BigInt(verificationBlock.number).toString()],
+      ["Review digest", packet.planId],
+    ]);
+    const checks = insert(evidence, "ul");
+    for (const check of row.checks) insert(checks, "li", check);
+
     const terms = packet.terms;
-    properties(review, [
-      ["Fixed supply", terms.fixedSupplyTokens + " tokens · " + terms.decimals + " decimals"],
-      ["Allocation", terms.curveTokens + " curve · " + terms.liquidityTokens + " locked initial liquidity"],
+    const project = packet.firstProject;
+    properties(details(review, "Approved RMT project configuration"), [
+      ["Name and ticker", project.name + " · " + project.symbol], ["Creator", project.creator], ["Project URI", "Empty"],
+      ["Separate project treasury", project.treasuryShareBpsOfEligibleFees / 100 + "%"],
+      ["Fixed supply", Number(terms.fixedSupplyTokens).toLocaleString("en-US") + " tokens · " + terms.decimals + " decimals"],
+      ["Allocation", Number(terms.curveTokens).toLocaleString("en-US") + " curve · "
+        + Number(terms.liquidityTokens).toLocaleString("en-US") + " locked initial liquidity"],
       ["Revenue share", terms.projectShareBps / 100 + "% project · " + terms.operationsShareBps / 100
         + "% Operations · " + terms.reserveShareBps / 100 + "% Reserve"],
       ["Creation fee", eth(terms.creationFeeWei)],
       ["Graduation backing", eth(terms.graduationBackingWei)],
-      ["Curve fee", terms.curveFeeBps / 100 + "%"],
+      ["Curve fee", terms.curveFeeBps / 100 + "%"], ["v4 pool fee", (terms.v4PoolFeeBps / 100).toFixed(2) + "%"],
     ]);
-    const label = new Map(packet.rows.map((row) => [row.id, row.label]));
-    for (const [index, row] of packet.rows.entries()) {
-      const stage = insert(review, "details");
-      insert(stage, "summary", index + 1 + ". " + row.label);
-      properties(stage, [
-        ["Action", row.action], ["Status", row.status], ["Sender", row.sender], ["Nonce", row.nonce],
-        ["Destination", row.destination ?? (row.predictedAddress ? "Direct contract creation" : null)],
-        ["Predicted address", row.predictedAddress], ["Value", eth(row.valueWei)], ["Calldata hash", row.inputHash],
-        ["Expected runtime hash", row.expectedRuntimeHash], ["Gas units", row.gas.gasUnits],
-        ["L2 gas units", row.gas.l2GasUnits], ["L1 posting gas units", row.gas.l1PosterGasUnits],
-        ["Estimated fee", eth(row.gas.estimatedFeeWei)], ["Fee evidence", row.gas.provenance],
-        ["Prerequisites", row.dependsOn.map((id) => label.get(id)).join(", ") || "None"],
-      ]);
-      if (row.checks.length) {
-        const list = insert(stage, "ul");
-        for (const check of row.checks) insert(list, "li", check);
-      }
-    }
-    if (packet.approvals.length) {
-      insert(review, "h3", "Owner decisions pending");
-      const list = insert(review, "ul");
-      for (const approval of packet.approvals) insert(list, "li", approval.label);
-    }
     review.hidden = false;
-    status.textContent = "Wallet and pending nonce verified. This review is read-only.";
+    status.textContent = "Wallet, pending nonce and Safe vacancy verified.";
     const refreshUntil = Math.min(config.expiryMs, Date.now() + 120_000);
     const tick = () => {
       if (!ready()) return;
@@ -189,7 +202,8 @@ export function privateReviewPage(config) {
       if (!chainMatches(await read("eth_chainId"))) return hide("Select Robinhood Chain 4663 in MetaMask.");
       const anchorTag = "0x" + BigInt(packet.anchor.number).toString(16);
       const anchor = await read("eth_getBlockByNumber", [anchorTag, false]);
-      if (!block(anchor) || anchor.number !== anchorTag || !matches(anchor.hash, packet.anchor.hash)) {
+      if (!block(anchor) || anchor.number !== anchorTag || !matches(anchor.hash, packet.anchor.hash) ||
+          BigInt(anchor.timestamp) * 1000n !== BigInt(Date.parse(packet.anchor.blockTimeUtc))) {
         return hide("The package observation block did not match. Refresh the unsigned package.");
       }
       const tip = await read("eth_getBlockByNumber", ["latest", false]);
@@ -208,10 +222,11 @@ export function privateReviewPage(config) {
       const digest = await crypto.subtle.digest("SHA-256", runtime);
       const actual = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
       if (actual !== config.runtimeSha256) return hide("The wallet delegate runtime did not match.");
-      const [canonical, canonicalAnchor, finalPending, finalAccounts, finalChain, liveCode] = await Promise.all([
+      const [canonical, canonicalAnchor, finalPending, finalAccounts, finalChain, liveCode, safeCode, safeNonce] = await Promise.all([
         read("eth_getBlockByNumber", [tip.number, false]), read("eth_getBlockByNumber", [anchorTag, false]),
         read("eth_getTransactionCount", [packet.sender, "pending"]), read("eth_accounts"), read("eth_chainId"),
-        read("eth_getCode", [packet.sender, "latest"]),
+        read("eth_getCode", [packet.sender, "latest"]), read("eth_getCode", [packet.operation.predictedAddress, "pending"]),
+        read("eth_getTransactionCount", [packet.operation.predictedAddress, "pending"]),
       ]);
       if (!ready()) return;
       if (!bound() || !accountMatches(finalAccounts) || !chainMatches(finalChain)) return selectionChanged();
@@ -219,7 +234,8 @@ export function privateReviewPage(config) {
       if (!currentBlock(canonical)) return hide("Current wallet block evidence is unavailable.");
       if (!nonceMatches(finalPending)) return hide("The wallet nonce changed. Refresh the unsigned package.");
       if (!matches(liveCode, packet.delegation.designator)) return hide("The wallet delegation changed. Refresh the unsigned package.");
-      renderReview(tip.number);
+      if (safeCode !== "0x" || safeNonce !== "0x0") return hide("The expected Safe vacancy could not be verified. Refresh the unsigned package.");
+      renderReview(tip);
     } catch (error) {
       if (!ready()) return;
       if (!bound()) return selectionChanged();

@@ -20,8 +20,10 @@ const historicalPin = "8dca5773cbd4dc98f52a45616f420bce96b000f0";
 const { values: args } = parseArgs({ options: {
   solc: { type: "string" }, anvil: { type: "string" }, lib: { type: "string" },
   archive: { type: "string", default: "pinax" }, output: { type: "string" }, delegated: { type: "boolean" },
+  "approved-rmt": { type: "boolean" },
 } });
 assert.ok(args.solc && args.anvil && args.output, "Supply --solc, --anvil and a new --output file");
+assert.ok(!args["approved-rmt"] || args.delegated, "Approved RMT inputs require the delegated loopback fixture");
 const { artifacts, manifest } = compileFixedSupplyProfile({ ...args, chainId: 4663 });
 const reportPath = resolve(args.output);
 writeFileSync(reportPath, "", { flag: "wx" });
@@ -55,6 +57,72 @@ function split(total, treasuryBps) {
   const project = total - platform;
   const treasury = project * BigInt(treasuryBps) / 9000n;
   return [project - treasury, treasury, platform / 2n, platform - platform / 2n];
+}
+
+async function rehearseApprovedFirstProject(client, artifacts, deployment, delegated, submit, deadline) {
+  const { approvedFirstProject, approvedRmtTerms } = await import("./prepare-unsigned-4663.mjs");
+  const { creator, name, symbol, projectURI, treasuryShareBpsOfEligibleFees } = approvedFirstProject;
+  const { sender, operations, reserve } = delegated;
+  assert.equal(creator, sender);
+  assert.equal(treasuryShareBpsOfEligibleFees, 0);
+  const { factory, projectRegistry, graduationEngine } = deployment;
+  const factoryAbi = artifacts.RMTLaunchCurveFactoryV2.abi;
+  const curveAbi = artifacts.RMTLaunchBondingCurveV1.abi;
+  const ledgerAbi = artifacts.RMTLaunchCurveRevenueLedgerV1.abi;
+  const registryAbi = artifacts.RMTLaunchProjectRegistryV3.abi;
+  const fee = BigInt(approvedRmtTerms.creationFeeWei);
+  const intent = toHex(58, { size: 32 });
+  const feeBefore = await call(client, factory, factoryAbi, "creationFeesAccrued");
+  const nonceBefore = await client.getTransactionCount({ address: creator });
+  const checkIntent = () => call(client, factory, factoryAbi, "tokenForIntent", [creator, intent]);
+  assert.equal(await checkIntent(), zeroAddress);
+  const proof = await delegated.withLocalSnapshot(async () => {
+    const fixtureDeadline = await deadline();
+    const request = { ...transact(factory, factoryAbi, "create", [name, symbol, projectURI, zeroAddress, 0, intent, fixtureDeadline]),
+      value: fee };
+    await client.call({ account: creator, ...request });
+    const receipt = await submit(creator, request);
+    const launch = event(receipt, factory, factoryAbi, "CurveCreated");
+    const paid = event(receipt, factory, factoryAbi, "CreationFeePaid");
+    assert.deepEqual([launch.creator, launch.name, launch.symbol, launch.projectURI, launch.treasury, launch.treasuryShareBps,
+      launch.supply, launch.intentId], [creator, name, symbol, projectURI, zeroAddress, 0, supply, intent]);
+    assert.deepEqual([paid.token, paid.creator, paid.recipient, paid.fee, paid.refund], [launch.token, creator, operations, fee, 0n]);
+    assert.equal(await call(client, factory, factoryAbi, "creationFeesAccrued"), feeBefore + fee);
+    assert.equal(await checkIntent(), launch.token);
+    assert.deepEqual(await call(client, projectRegistry, registryAbi, "project", [launch.token]),
+      [factory, launch.curve, 1, launch.curve, 0n]);
+    const tokenArtifact = artifacts.RMTLaunchCurveTokenV2;
+    const erc20RuntimeHash = await verifyRuntime(client, launch.token, tokenArtifact, receipt.blockNumber);
+    assert.equal(await call(client, launch.token, tokenArtifact.abi, "totalSupply"), supply);
+    assert.equal(await call(client, launch.token, tokenArtifact.abi, "decimals"), approvedRmtTerms.decimals);
+    assert.equal(await call(client, launch.token, tokenArtifact.abi, "name"), name);
+    assert.equal(await call(client, launch.token, tokenArtifact.abi, "symbol"), symbol);
+    assert.equal(await call(client, launch.curve, curveAbi, "backingReserve"), 0n);
+    assert.equal(await call(client, launch.curve, curveAbi, "graduationSold"), supply * 3n / 5n);
+    assert.equal(await call(client, launch.curve, curveAbi, "GRADUATION_BACKING"), BigInt(approvedRmtTerms.graduationBackingWei));
+    assert.equal(await call(client, launch.curve, curveAbi, "TRADE_FEE_BPS"), BigInt(approvedRmtTerms.curveFeeBps));
+    assert.equal(await call(client, graduationEngine, artifacts.RMTV4CurveGraduationV1.abi, "POOL_FEE"), approvedRmtTerms.v4PoolFeeBps * 100);
+    assert.deepEqual(await Promise.all(["creator", "treasury", "operatingRecipient", "futureReserveRecipient"].map(
+      (getter) => call(client, launch.revenueLedger, ledgerAbi, getter))), [creator, zeroAddress, operations, reserve]);
+    const value = 500_000_000_000_000_000n;
+    const [quoted] = await call(client, launch.curve, curveAbi, "quoteBuy", [value]);
+    const buy = await submit(creator, { ...transact(launch.curve, curveAbi, "buy", [quoted, await deadline()]), value });
+    const tradeFee = event(buy, launch.curve, curveAbi, "CurveTrade").fee;
+    const credits = await Promise.all([creator, zeroAddress, operations, reserve].map(
+      (address) => call(client, launch.revenueLedger, ledgerAbi, "claimable", [address])));
+    assert.deepEqual(credits, split(tradeFee, 0));
+    return { project: approvedFirstProject, factory, assetAddress: launch.token, curve: launch.curve, erc20RuntimeHash,
+      operations, reserve, exactCreationFeeWei: paid.fee, creation: await reviewTransactionEvidence(client, receipt),
+      intentId: intent, deadline: fixtureDeadline, buy: await reviewTransactionEvidence(client, buy),
+      curveTradeFeeWei: tradeFee, curveFeeCreditsWei: credits };
+  });
+  assert.equal(await client.getTransactionCount({ address: creator }), nonceBefore);
+  assert.equal(await checkIntent(), zeroAddress);
+  assert.equal(await call(client, factory, factoryAbi, "creationFeesAccrued"), feeBefore);
+  assert.equal(await client.getCode({ address: proof.assetAddress }), undefined);
+  assert.deepEqual(await call(client, projectRegistry, registryAbi, "project", [proof.assetAddress]),
+    [zeroAddress, zeroAddress, 0, zeroAddress, 0n]);
+  return { scope: "SYNTHETIC_APPROVED_FIRST_RMT", broadcastAuthorized: false, rollbackVerified: true, ...proof };
 }
 
 try {
@@ -171,6 +239,10 @@ try {
       "function transferFrom(address,address,uint256)"]);
     const poolManagerAbi = parseAbi(["function initialize((address currency0,address currency1,uint24 fee,int24 tickSpacing,address hooks),uint160) returns (int24)"]);
     const deadline = async () => (await client.getBlock()).timestamp + 600n;
+    if (args["approved-rmt"]) {
+      checkpoints.approvedFirstRmt = await rehearseApprovedFirstProject(client, artifacts, deployment, delegated, submit, deadline);
+      save();
+    }
     for (const [index, project] of cases.entries()) {
       const { name, symbol, creator, treasury, treasuryBps } = project;
       const parts = [name, symbol, project.projectURI ?? ("https://example.test/rmt-fixture/" + symbol.toLowerCase()),
