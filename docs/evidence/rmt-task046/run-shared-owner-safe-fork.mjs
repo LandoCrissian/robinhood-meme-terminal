@@ -11,6 +11,7 @@ import { parseArgs } from "node:util";
 const { values } = parseArgs({ options: {
   checkout: { type: "string" }, anvil: { type: "string" }, solc: { type: "string" }, lib: { type: "string" },
   archive: { type: "string", default: "pinax" },
+  "support-fixture": { type: "boolean" },
 } });
 assert.ok(values.checkout && values.anvil && values.solc, "Supply the pinned #594 checkout, Anvil and Solc");
 const source = "8dca5773cbd4dc98f52a45616f420bce96b000f0";
@@ -57,9 +58,16 @@ try {
       }
     }
   }
-  for (const [index, sourcePatch] of [
+  const patches = [
     "../rmt-task042/fork/reanchor.patch", "../rmt-task043/rotation-rehearsal.patch", "../rmt-task044/platform-safe-rehearsal.patch", "shared-owner-safe-rehearsal.patch",
-  ].entries()) {
+  ];
+  if (values["support-fixture"]) {
+    for (const name of ["treasury-support.mjs", "treasury-support-fork.mjs"]) {
+      copyFileSync(join(evidence, "../rmt-task047", name), join(scripts, name));
+    }
+    patches.push("../rmt-task047/treasury-support-rehearsal.patch");
+  }
+  for (const [index, sourcePatch] of patches.entries()) {
     const patch = join(scratch, `overlay-${index}.patch`);
     writeFileSync(patch, readFileSync(join(evidence, sourcePatch), "utf8").replaceAll("\r\n", "\n"));
     execFileSync("git", ["-C", scratch, "apply", ...(index ? ["--unidiff-zero"] : []), patch]);
@@ -67,6 +75,7 @@ try {
   const raw = execFileSync(process.execPath, [join(scripts, "treasury-rehearsal.mjs"),
     "--checkout", checkout, "--rotation-compiler", join(evidence, "../rmt-task043/compile-rotation-profile.mjs"),
     "--solc", resolve(values.solc), "--anvil", resolve(values.anvil), "--archive", values.archive, "--platform-safes",
+    ...(values["support-fixture"] ? ["--support-fixture"] : []),
     ...(values.lib ? ["--lib", resolve(values.lib)] : []),
   ], { cwd: scratch, stdio: ["ignore", "pipe", "inherit"], encoding: "utf8", maxBuffer: 8 * 1024 * 1024, windowsHide: true });
   const output = JSON.parse(raw);
@@ -85,6 +94,11 @@ try {
   assert.equal(output.creationFeeClaim.reserveUnaffected, true);
   assert.equal(output.cases.length, 1);
   const proof = output.cases[0];
+  if (values["support-fixture"]) {
+    assert.equal(proof.support.scope, "SYNTHETIC_4663_FORK");
+    assert.deepEqual(proof.support.payments.map(({ review }) => review.approval.intent.direction),
+      ["RMT_SUPPORTS_LAMMB", "LAMMB_SUPPORTS_RMT"]);
+  }
   assert.deepEqual(proof.recipients.slice(2), [operations.proxy, reserve.proxy]);
   for (const { proxy } of output.platformSafes) {
     assert.deepEqual(proof.lp.claims.filter(({ beneficiary }) => beneficiary === proxy).map(({ mode }) => mode),

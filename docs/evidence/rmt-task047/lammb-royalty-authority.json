@@ -1,0 +1,115 @@
+{
+  "schema": "RMT_LAMMB_ROYALTY_OBSERVATION_V1",
+  "releaseStatus": "BLOCKED_NO_BROADCAST",
+  "broadcastAuthorized": false,
+  "chainId": 4663,
+  "collection": {
+    "label": "LAMMB Genesis 720",
+    "address": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+    "officialLink": "https://lammb.fun/genesis/",
+    "marketplaceLink": "https://opensea.io/collection/lammbs-59693791",
+    "marketplaceItemLink": "https://opensea.io/item/robinhood/0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf/169",
+    "observedSupply": "720",
+    "proxyKind": "EIP-1167",
+    "proxyRuntime": "0x363d3d373d3d3d363d7309a26fc8fcef18192e267d7a6da9dfb4be81dd6a5af43d82803e903d91602b57fd5bf3",
+    "implementation": "0x09a26fC8FCEF18192E267D7A6da9dFb4be81Dd6A",
+    "implementationName": "ERC721SeaDropCloneable",
+    "implementationRuntimeBytes": 21257,
+    "implementationRuntimeKeccak256": "0xda60742d810ae5de9c087af2e82b05fb84e9112cfade927fca0db6490ea52519",
+    "sourceApi": "https://robinhoodchain.blockscout.com/api/v2/smart-contracts/0x09a26fC8FCEF18192E267D7A6da9dFb4be81Dd6A",
+    "sourceVerification": "BLOCKSCOUT_PARTIAL",
+    "metadataSourcePath": "src/clones/ERC721ContractMetadataCloneable.sol",
+    "metadataSourceSha256Lf": "ab524e31e9c77dc3df6dbd46107ba5ffe046600aaa0b297f913edd91bd0fe078"
+  },
+  "publicRepositoryObservations": [
+    {
+      "url": "https://github.com/LandoCrissian/LAMMB/tree/c3d5618bc1712043e506e81ca54e35a41194a1a0",
+      "evidence": "The public collection site's contract workspace is a design placeholder."
+    },
+    {
+      "url": "https://github.com/LandoCrissian/LAMMB-Empires/blob/1ece17d56a448287a0a41b3f2070b93ae1fed21a/README.md",
+      "evidence": "The game README identifies the same Genesis OpenSea collection."
+    }
+  ],
+  "deployment": {
+    "factory": "0x008EbCCaE39d001200c3003c3225ce0A00690066",
+    "transactionHash": "0x6d36d4a1f0f7b223d44df6676e69d612ac4acefd0dbeaac3076b8cbb49e31af9",
+    "blockNumber": 90329135,
+    "blockHash": "0xdd8c60f85b79390941e22199fbc0606ca52c1d09a9172db976bd8e5c79d52d1c",
+    "status": "0x1",
+    "collectionOwnershipTransferLogIndex": 8,
+    "collectionDeploymentLogIndex": 9,
+    "allowedSeaDrop": "0x00005EA00Ac477B1030CE78506496e8C2dE24bf5",
+    "allowedSeaDropLogIndex": 7
+  },
+  "onchainRoyalty": {
+    "timestamp": "2026-11-16T04:52:40.000Z",
+    "blockNumber": 115504421,
+    "blockHash": "0xcc29658ef6fde9ff288c386de8a9ee01bf58eff2d13fe0ab7d9d26b2f199b856",
+    "stateRoot": "0x28538cb692b9067e0f9ef25aa2ed03a906b3920b87adbc1852149f5d219bdf36",
+    "officialRpc": "https://rpc.mainnet.chain.robinhood.com",
+    "corroboratingRpc": "https://robinhood.rpc.pinax.network",
+    "corroborated": ["chainId", "blockHash", "stateRoot", "owner()", "royaltyAddress()", "royaltyInfo(169,1000000000000000000)"],
+    "l1FinalityVerified": false,
+    "erc721Interface": true,
+    "erc2981Interface": true,
+    "invalidInterfaceSentinel": false,
+    "owner": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+    "receiver": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+    "royaltyBasisPoints": 1000,
+    "quoteAssetIds": [169, 720],
+    "quoteSalePriceBaseUnits": "1000000000000000000",
+    "quoteRoyaltyBaseUnits": "100000000000000000",
+    "ownerAndReceiverCode": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b",
+    "delegationAddress": "0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B",
+    "transferValidator": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+    "transferValidationSelector": "0xcaee23ea",
+    "transferValidationView": false,
+    "mutable": true,
+    "setter": "setRoyaltyInfo((address,uint96))",
+    "authority": "Collection owner or authorized collection self-call under _onlyOwnerOrSelf. Transfer-validator changes require the collection owner.",
+    "authorityKeyControlVerified": false
+  },
+  "openSeaSecondary": {
+    "pageReportedCreatorFeeRequired": true,
+    "pageReportedCreatorFeeBasisPoints": 1000,
+    "marketplaceSettingsAuthority": "OpenSea's documented collection-owner Studio permissions. No admin session inspected.",
+    "sampleSuccessfulSale": {
+      "transactionHash": "0xbbd7ebdc2b3665ae7781afbf8854125ed430baaf2bb1fd4629612b6e269827fe",
+      "blockNumber": 115258144,
+      "blockHash": "0x48497245bac8273975a0c362c351d38998d03a8ec0a7224e1da0aca281f6c886",
+      "status": "0x1",
+      "seaport": "0x0000000000000068F116a894984e2DB1123eB395",
+      "orderFulfilledLogIndex": 8,
+      "nftTransferLogIndex": 5,
+      "assetId": 408,
+      "paymentAsset": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
+      "paymentAssetSymbol": "WETH",
+      "paymentAssetDecimals": 18,
+      "saleAmountBaseUnits": "900000000000000",
+      "creatorConsiderationBaseUnits": "90000000000000",
+      "creatorTransferLogIndex": 7,
+      "creatorReceiver": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+      "marketplaceFeeBaseUnits": "9000000000000",
+      "marketplaceFeeLogIndex": 6
+    }
+  },
+  "seaDropPrimary": {
+    "source": "Official Robinhood RPC eth_call reads of getCreatorPayoutAddress(collection) and getPublicDrop(collection).",
+    "timestamp": "2026-11-16T04:55:40.000Z",
+    "blockNumber": 115506070,
+    "blockHash": "0x74e37b403bb7b087d7be92832d451e6040deeab2939e4fd4a7fd948fea12df40",
+    "drop": "0x00005EA00Ac477B1030CE78506496e8C2dE24bf5",
+    "creatorPayout": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+    "publicMintPriceWei": "0",
+    "maxSupply": "720",
+    "authority": "Collection owner or authorized collection self-call through updateCreatorPayoutAddress on an allowed SeaDrop."
+  },
+  "crossProjectSpending": {
+    "lammbAuthorizedTreasuryAccount": null,
+    "rmtOperationsSafeBeneficiary": null,
+    "rmtReserveSafeBeneficiary": null,
+    "configurationUpdatesObservedFromTask": 0,
+    "automaticRoutingPermitted": false
+  }
+}

@@ -30,7 +30,10 @@
         "docs/evidence/rmt-task041-closeout/preflight.mjs",
         "docs/evidence/rmt-task041-closeout/verify-release.mjs",
         "docs/evidence/rmt-task044/run-platform-safe-fork.mjs",
-        "docs/evidence/rmt-task046/run-shared-owner-safe-fork.mjs"
+        "docs/evidence/rmt-task046/run-shared-owner-safe-fork.mjs",
+        "docs/evidence/rmt-task047/probe-hosted-launchpad.mjs",
+        "docs/evidence/rmt-task047/rmt-token-identity.mjs",
+        "docs/evidence/rmt-task047/treasury-support-fork.mjs"
       ]
     },
     "apps/web": {

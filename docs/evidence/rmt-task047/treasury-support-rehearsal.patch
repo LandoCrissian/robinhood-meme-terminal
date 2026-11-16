@@ -1,0 +1,24 @@
+diff --git a/packages/contracts/scripts/treasury-rehearsal.mjs b/packages/contracts/scripts/treasury-rehearsal.mjs
+--- a/packages/contracts/scripts/treasury-rehearsal.mjs
++++ b/packages/contracts/scripts/treasury-rehearsal.mjs
+@@ -371,1 +371,16 @@
+-  return { percent, bps, recipients, platformSpending, platformDomainIsolation, platformRotations, treasuryKind: treasury.kind, treasurySetup: treasury.setup,
++  let support;
++  if (values["support-fixture"]) {
++    assert.equal(platform.length, 2);
++    const { verifySupportFixture } = await import("./treasury-support-fork.mjs");
++    const protectedState = async () => ({
++      reserveBalances: await balances(client, token, platform[1].safe.address),
++      projectBalances: await balances(client, token, creator),
++      curveCredits: await Promise.all(recipients.map((recipient) => read(client, revenueLedger, revenueAbi, "claimable", [recipient]))),
++      lpCredits: await Promise.all(recipients.map((recipient) => read(client, ledger, lpAbi, "claimable", [recipient]))),
++      curveAccrued: await read(client, revenueLedger, revenueAbi, "totalAccrued"),
++      lpAccrued: await read(client, ledger, lpAbi, "totalAccrued"),
++      custody: await verifyPosition(client, pins, position, engine),
++    });
++    support = await verifySupportFixture({ client, send, collector, platform, projectAsset: token, protectedState });
++  }
++  return { percent, bps, recipients, platformSpending, platformDomainIsolation, platformRotations, support, treasuryKind: treasury.kind, treasurySetup: treasury.setup,
+@@ -389,1 +407,2 @@
+   "platform-safes": { type: "boolean", default: false },
++  "support-fixture": { type: "boolean", default: false },
