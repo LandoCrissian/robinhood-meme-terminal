@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+import { lstatSync, mkdtempSync, mkdirSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -28,7 +28,6 @@ writeFileSync(reportPath, "", { flag: "wx" });
 const scratchParent = realpathSync(tmpdir());
 const scratch = mkdtempSync(join(scratchParent, "rmt-049-fork-"));
 const moduleLink = join(scratch, "apps/web/node_modules");
-let linked = false;
 function frozen(path) {
   return execFileSync("git", ["show", historicalPin + ":" + path], { cwd: root, encoding: "utf8", maxBuffer: 4 * 1024 * 1024 });
 }
@@ -84,7 +83,6 @@ try {
   await matchRuntime(client, fallback, fallbackHash, reviewedFork.number);`));
   mkdirSync(dirname(moduleLink), { recursive: true });
   symlinkSync(join(root, "apps/launch-website/node_modules"), moduleLink, process.platform === "win32" ? "junction" : "dir");
-  linked = true;
   const reanchor = join(root, "docs/evidence/rmt-task042/fork/reanchor.patch");
   execFileSync("git", ["apply", "-"], { cwd: scratch, input: readFileSync(reanchor, "utf8").replaceAll("\r\n", "\n"), windowsHide: true });
   const env = await import(pathToFileURL(join(scratch, scriptPath, "robinhood-4663-fork-environment.mjs")));
@@ -290,9 +288,18 @@ try {
     return checkpoints;
   });
   writeFileSync(reportPath, stringify(result) + "\n");
-  console.log("Fixed-supply official 4663 fork passed for RMT and two unrelated projects: " + reportPath);
 } finally {
   assert.equal(dirname(realpathSync(scratch)), scratchParent);
-  if (linked) unlinkSync(moduleLink); // Remove the junction before clearing only the verified temporary directory.
+  const moduleEntry = lstatSync(moduleLink, { throwIfNoEntry: false });
+  if (moduleEntry) {
+    assert.ok(moduleEntry.isSymbolicLink(), "Fixture dependency path is not the expected link");
+    try {
+      unlinkSync(moduleLink);
+    } catch (error) {
+      if (error.code !== "ENOENT" || lstatSync(moduleLink, { throwIfNoEntry: false })) throw error;
+    }
+  }
+  assert.equal(lstatSync(moduleLink, { throwIfNoEntry: false }), undefined);
   rmSync(scratch, { recursive: true, force: true });
 }
+console.log("Fixed-supply official 4663 fork passed for RMT and two unrelated projects: " + reportPath);

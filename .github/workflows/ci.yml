@@ -25,6 +25,8 @@ jobs:
       - run: pnpm audit:production
       - run: pnpm check:repo
       - run: pnpm test:release-evidence
+      - run: pnpm test:production-readiness
+      - run: pnpm probe:production-readiness --fixture --output "$RUNNER_TEMP/readiness-fixture.json"
 
   indexer:
     runs-on: ubuntu-latest

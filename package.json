@@ -12,6 +12,8 @@
     "typecheck": "pnpm --filter @rmt/launch-website --filter indexer typecheck",
     "test": "pnpm --filter @rmt/launch-website test:history && pnpm --filter indexer test:resilience && node --test scripts/railway-watch-scope.test.mjs",
     "test:release-evidence": "node --test \"docs/evidence/**/*.test.mjs\"",
+    "test:production-readiness": "node --test scripts/production-readiness/*.test.mjs",
+    "probe:production-readiness": "node scripts/production-readiness/run.mjs",
     "audit:production": "pnpm audit --prod --audit-level high",
     "check:repo": "knip --include files,dependencies",
     "test:fork-4663": "node packages/contracts/scripts/rehearse-fixed-supply-4663.mjs"

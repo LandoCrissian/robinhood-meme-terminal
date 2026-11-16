@@ -1,6 +1,6 @@
 # Security
 
-**BLOCKED_NO_BROADCAST.** The exact 4663 profile reports **22 high findings**, with all 22 finding IDs unchanged from #629. The 18 engine findings remain open for independent assessment. The four dependency findings have arithmetic evidence supporting an internal false-positive assessment. The seven governance-medium findings retain separate dispositions. [Finding-by-finding matrix](evidence/fixed-supply-security/findings.md) · [Candidate evidence manifest](evidence/fixed-supply-security/release-manifest.json) · [Exact Slither report](evidence/fixed-supply-security/slither-4663.json.gz)
+**BLOCKED_NO_BROADCAST.** The exact 4663 profile reports **22 high findings**, with all 22 finding IDs unchanged from #629. The 18 engine findings remain open for independent assessment. The four dependency findings have arithmetic evidence supporting an internal false-positive assessment. The seven governance-medium findings retain separate dispositions. [Finding-by-finding matrix](evidence/fixed-supply-security/findings.md) · [Candidate evidence manifest](evidence/fixed-supply-security/release-manifest.json) · [Exact Slither report](evidence/fixed-supply-security/slither-4663.json.gz) · [Independent-review packet](evidence/production-readiness/independent-review.md)
 
 ## Required controls
 
