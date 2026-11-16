@@ -9,6 +9,8 @@ import { parseArgs } from "node:util";
 import { backing, compileFixedSupplyProfile, creationFee, rmtFixture, supply } from "./fixed-supply-profile.mjs";
 import { call, deployFixedSupplyFixture, localFixtureClient, receiptEvidence, sendFixture, transact, verifyRuntime }
   from "./deploy-fixed-supply-fixture.mjs";
+import { proveFundedMigrations } from "./prove-fixed-supply-funded-migrations.mjs";
+import { proveFixedSupplySettlementTrace } from "./prove-fixed-supply-settlement-trace.mjs";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
 const require = createRequire(new URL("../../../apps/launch-website/package.json", import.meta.url));
@@ -58,9 +60,15 @@ function split(total, treasuryBps) {
 try {
   const scriptPath = "packages/contracts/scripts/";
   for (const path of ["packages/contracts/test/fixtures/rmt-v4-deployment-identities.json",
-    ...["build-launch-4663-review.mjs", "launch-4663-review-inputs.json", "robinhood-4663-fork-environment.mjs"].map((name) => scriptPath + name)]) {
+    ...["build-launch-4663-review.mjs", "launch-4663-review-inputs.json"].map((name) => scriptPath + name)]) {
     fixtureFile(path, frozen(path));
   }
+  const environmentPath = scriptPath + "robinhood-4663-fork-environment.mjs";
+  const environment = frozen(environmentPath);
+  const ready = '    const rpcUrl = await waitForLocalPort(child);';
+  assert.equal(environment.split(ready).length, 2, "Pinned fork startup probe shape changed");
+  // Continue draining Anvil's piped RPC logs after the startup probe detaches.
+  fixtureFile(environmentPath, environment.replace(ready, ready + "\n    child.stdout.resume();\n    child.stderr.resume();"));
   const inherited = frozen(scriptPath + "validate-curve-graduation-4663.mjs");
   fixtureFile(scriptPath + "swap-proof.mjs", inherited + "\nexport { proveSwap, poolIdFor, routerCall };\n");
   const safeSource = readFileSync(join(root, "docs/evidence/rmt-task041/safe-rehearsal.mjs"), "utf8").replaceAll("\r\n", "\n");
@@ -86,7 +94,13 @@ try {
   const result = await env.withAnvilFork({ anvil: resolve(args.anvil), archive: args.archive }, async ({ rpcUrl, accounts, report }) => {
     const client = await localFixtureClient(rpcUrl, 4663);
     const [operator, operations, reserve, rmt, unrelatedA, unrelatedB] = accounts;
-    const submit = (from, call, status) => sendFixture(client, from, call, status);
+    const submit = async (from, request, status) => {
+      try {
+        return await sendFixture(client, from, request, status);
+      } catch (error) {
+        throw new Error("Fixture transaction failed at " + (request.to ?? "CREATE") + " " + request.data.slice(0, 10), { cause: error });
+      }
+    };
     const pins = report.network.contracts;
     const unsignedConstructors = [];
     const deployment = await deployFixedSupplyFixture(client, artifacts, pins, { operator, operations, reserve,
@@ -132,7 +146,8 @@ try {
       const unsigned = { from: creator, ...request, chainId: 4663, status: "BLOCKED_NO_BROADCAST" };
       await client.call({ account: creator, ...request });
       const created = await submit(creator, request);
-      const { token, curve, supply: observedSupply, revenueLedger } = event(created, factory, factoryAbi, "CurveCreated");
+      const { token, curve: originCurve, supply: observedSupply, revenueLedger } = event(created, factory, factoryAbi, "CurveCreated");
+      let curve = originCurve;
       const tokenArtifact = artifacts.RMTLaunchCurveTokenV2;
       assert.equal(observedSupply, supply);
       const tokenRuntimeHash = await verifyRuntime(client, token, tokenArtifact, created.blockNumber);
@@ -152,6 +167,11 @@ try {
       const buy = await submit(creator, { ...transact(curve, curveAbi, "buy", [quotedBuy, await deadline()]), value: buyBudget });
       const bought = event(buy, curve, curveAbi, "CurveTrade");
       assert.deepEqual([bought.tokenAmount, bought.grossNative, bought.fee, bought.nativeRefund], [quotedBuy, grossBuy, buyFee, refund]);
+      const beneficiaries = [creator, treasury, operations, reserve];
+      const migration = index === 0
+        ? await proveFundedMigrations(client, artifacts, deployment, submit, transact, { token, curve, creator, revenueLedger, beneficiaries })
+        : undefined;
+      if (migration) curve = migration.curve;
       const sellAmount = quotedBuy / 7n;
       await submit(creator, transact(token, erc20Abi, "approve", [curve, sellAmount]));
       const [nativeOut, grossSell, sellFee] = await call(client, curve, curveAbi, "quoteSell", [sellAmount]);
@@ -170,7 +190,6 @@ try {
 
       const curveFees = buyFee + sellFee + closingEvent.fee;
       assert.equal(await call(client, revenueLedger, curveLedgerAbi, "totalAccrued"), curveFees);
-      const beneficiaries = [creator, treasury, operations, reserve];
       const curveCredits = split(curveFees, treasuryBps);
       const wrongBeneficiary = index === 0 ? unrelatedA : rmt;
       const crossProjectCurveClaim = await submit(wrongBeneficiary, transact(revenueLedger, curveLedgerAbi, "claim"), "reverted");
@@ -188,7 +207,8 @@ try {
       assert.equal(await call(client, revenueLedger, curveLedgerAbi, "totalClaimed"), curveFees);
       const key = await call(client, engine, engineAbi, "canonicalPoolKey", [token]);
       const preinitialize = await submit(creator, transact(pins.poolManager.address, poolManagerAbi, "initialize", [key, 2n ** 96n]), "reverted");
-      const graduated = await submit(creator, transact(curve, curveAbi, "graduate", [await deadline()]));
+      const graduationDeadline = await deadline();
+      const graduated = await submit(creator, transact(curve, curveAbi, "graduate", [graduationDeadline]));
       const position = event(graduated, engine, engineAbi, "CurveGraduated");
       assert.equal(position.poolId, poolIdFor(key));
       assert.deepEqual(position.poolKey, key);
@@ -223,10 +243,24 @@ try {
       const ledger = await call(client, engine, engineAbi, "lpFeeLedger", [token]);
       const preview = await call(client, engine, engineAbi, "previewLpFees", [token]);
       assert.ok(preview[0] > 0n && preview[1] > 0n);
-      const collection = await submit(operator, transact(engine, engineAbi, "collectLpFees", [token, await deadline()]));
+      const collectionDeadline = await deadline();
+      const collection = await submit(operator, transact(engine, engineAbi, "collectLpFees", [token, collectionDeadline]));
       const collected = event(collection, engine, engineAbi, "LpFeesCollected");
       assert.deepEqual([collected.nativeAmount, collected.tokenAmount], preview);
       assert.equal(collected.ledger, ledger);
+      const traceBindings = { factory, curve, engine, token, ledger, key, position, positionManager,
+        poolManager: pins.poolManager.address, permit2: pins.permit2.address };
+      const settlementTraces = {
+        graduation: await proveFixedSupplySettlementTrace(client, "graduation", {
+          ...traceBindings, receipt: graduated, deadline: graduationDeadline,
+          liquidityLedgerArtifact: artifacts.RMTLaunchCurveLpFeeLedgerV1,
+          beneficiaries: { creator, treasury, treasuryShareBps: treasuryBps, operatingRecipient: operations,
+            futureReserveRecipient: reserve },
+        }),
+        collection: await proveFixedSupplySettlementTrace(client, "collection", {
+          ...traceBindings, receipt: collection, deadline: collectionDeadline, collected,
+        }),
+      };
       const lpCredits = preview.map((amount) => split(amount, treasuryBps));
       const crossProjectLpClaim = await submit(wrongBeneficiary, transact(ledger, lpLedgerAbi, "claim"), "reverted");
       const lpClaims = [];
@@ -246,10 +280,10 @@ try {
         nativeAmount: lpCredits[0][1] / 2n, tokenAmount: lpCredits[1][1] / 2n }) : undefined;
       previous.push({ ...project, projectAsset: token, tokenRuntimeHash, unsigned,
         creation: receiptEvidence(created), initialBackingWei: "0", supplyWei: supply,
-        early: receiptEvidence(early), buy: receiptEvidence(buy), sell: receiptEvidence(sell), closing: receiptEvidence(closing),
+        migrations: migration?.transitions, early: receiptEvidence(early), buy: receiptEvidence(buy), sell: receiptEvidence(sell), closing: receiptEvidence(closing),
         curveFees, curveCredits, curveClaims, preinitialize: receiptEvidence(preinitialize),
         graduation: { receipt: receiptEvidence(graduated), ...position }, v4Buy, v4Sell, collection: receiptEvidence(collection),
-        preview, lpCredits, lpClaims, principalUnchanged: true, safeSpending, invalidRoutes,
+        preview, lpCredits, lpClaims, principalUnchanged: true, safeSpending, invalidRoutes, settlementTraces,
         crossProjectClaims: { curve: receiptEvidence(crossProjectCurveClaim), lp: receiptEvidence(crossProjectLpClaim) } });
       save();
     }

@@ -1,0 +1,85 @@
+{
+  "schemaVersion": 1,
+  "profile": "rmt-curve-fixed-supply-security-v2",
+  "status": "BLOCKED_NO_BROADCAST",
+  "broadcastAuthorized": false,
+  "deployableSourceCommit": "58638966db82cffe89db6df4e918f73eced8ad2b",
+  "parentReview": 631,
+  "coordinationIssue": 632,
+  "compiler": {
+    "inputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+    "profileSha256Lf": "fbff928915fe154734ce2fa08f1b28c984d0d28f50bfc3010450cf15b9d7f1ef",
+    "bootstrapInitcodeBytes": 48729,
+    "bootstrapInitcodeHeadroom": 423,
+    "factoryRuntimeBytes": 23843,
+    "factoryRuntimeHeadroom": 733
+  },
+  "staticAnalysis": {
+    "status": "FAIL_HIGH",
+    "tool": "Slither 0.11.5",
+    "cryticCompile": "0.3.11",
+    "inputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+    "sourceCount": 66,
+    "detectorCount": 101,
+    "resultCount": 233,
+    "highFindings": 22,
+    "engineHighFindings": 18,
+    "dependencyHighFindings": 4,
+    "governanceMediumFindings": 7,
+    "archiveSha256": "55e2381bc551c89839b36429a6847ee583b11b185490171bd5787b0a2c393eb0",
+    "reportSha256": "9d792e7ca84cb3b511fa4ec5ad73d05ded3597b58ac79430bf39934b048c44e1"
+  },
+  "unsignedBundleSha256Lf": "6e8bab1e28c11c60771d8c6906b14345f8b842d7c1f57e5af8ebd84a15d2636f",
+  "productionEvidence": {
+    "status": "BLOCKED_NO_BROADCAST",
+    "historicalFeed": "VERIFIED_V6_ONLY",
+    "newEngineHostedIndexing": "UNVERIFIED",
+    "newEngineHostedRouting": "UNVERIFIED",
+    "newEngineIndependentL1Finality": "UNVERIFIED",
+    "physicalWalletAcceptance": "UNVERIFIED",
+    "beneficiaryBindings": "UNASSIGNED",
+    "observationPath": "production.md"
+  },
+  "fork": {
+    "scope": "SYNTHETIC_LOOPBACK_FORK",
+    "blockNumber": 114549452,
+    "blockHash": "0xf9a8ca5d8e26ebb426ebd2e663ad82afc878c16d8bba5f5542f6341890cf7710",
+    "provider": "https://robinhood.api.pocket.network",
+    "archiveSha256": "347556ad76f92e8c731ad97602e3c2f5385ab61822b6e5c357661e883608f4ae",
+    "reportSha256": "01f2e935fa18629bd2d14577910edfd1516fc5fe46b85c65a5512ad1f675f871",
+    "constructors": 5,
+    "projects": [
+      {
+        "symbol": "RMT",
+        "asset": "0x0018D6A77914AB44172A395358CD99E8d240886A",
+        "creation": "0xbc55ee3ae44f1d3abc4b03807612077251caf0519b8af6b0a1e3a7a5b49ec040",
+        "migration": [
+          "0x541bcfc78d68f45f57322599b090b6f134eecbb99c5f4814c806d7c37503fc07",
+          "0xbfa3a41407099fb2543d24002069f6497e7ee3ecdba4d5e0eb9f76357ac352cb"
+        ],
+        "graduation": "0x54efbb52514d5a702e9650a2fa15be9fbc5c277119a8f9642ba82a3a8cdeb501",
+        "poolId": "0xfa5a7e73560cd9f84a23dc49088d81a236c6327d76b97ff14c558721baffca6a",
+        "positionTokenId": "4291829",
+        "collection": "0x379deec3b43344a05c8f39061591bb947a00183fa7be293b9c71428c67c6c470"
+      },
+      {
+        "symbol": "HBR",
+        "asset": "0x0de492E85442D62C88A4DC8b3f3566e15421F523",
+        "creation": "0x9f9feba4ace66da8335ebe915b97e1f4c50a899fd440feb301c0d78455dfdfdf",
+        "graduation": "0x75dd5f61e535ea7f9b3d6f23790139aa3aa51a2527015086a0f1a419f3c5334a",
+        "poolId": "0xa60c30ef589f34c483b3be1cfce67cfa8fce413613cc2d84dfec608ad1b01273",
+        "positionTokenId": "4291830",
+        "collection": "0x6d1eb54e0bc2aa5565fccd9f19548e85e661ecb4539ba99780d43dd48444d83d"
+      },
+      {
+        "symbol": "CDR",
+        "asset": "0xC69ac8B729C77E61E069f2d73cB362C4e6D901dC",
+        "creation": "0x048d903de0a55d7115a9d1e8892c0af1930c21dd2cfdae3f5e4391af4ee2d8ad",
+        "graduation": "0xad292fdd69553e38fbeb3432a4fce4b72bd059efc5a78cc9fab270aefb4acc25",
+        "poolId": "0x9147c33391b8039874d88c39881d415490906fee06f4338be37fd861ca288691",
+        "positionTokenId": "4291831",
+        "collection": "0xbc8338103b21f756c589382dfe1946112e1e9f32bba3c14a4167ef0ab27306ab"
+      }
+    ]
+  }
+}

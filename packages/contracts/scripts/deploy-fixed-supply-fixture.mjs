@@ -162,7 +162,16 @@ export async function deployFixedSupplyFixture(client, artifacts, pins, {
       signers: signerAccounts, factoryPin: current })
     : undefined;
 
+  // Local rehearsal only. Expose quorum approval without returning signer keys.
+  const scheduleFixtureMigration = exerciseRotation ? async (token) => {
+    const digest = await call(client, registry.address, registryArtifact.abi, "migrationDigest", [token]);
+    const signatures = await Promise.all(signerAccounts.slice(0, 2).map((signer) => signer.sign({ hash: digest })));
+    const scheduled = await sendFixture(client, operator, transact(registry.address, registryArtifact.abi, "scheduleMigration", [token, ...signatures]));
+    return receiptEvidence(scheduled);
+  } : undefined;
+
   return {
+    scheduleFixtureMigration,
     profile, fixedSupplyWei: supply.toString(), chainId: client.chain.id, creationFeeWei: creationFee.toString(),
     terms: { backingWei: backing.toString() }, factory, factoryRuntimeHash, projectRegistry: registry.address,
     registryRuntimeHash: registry.runtimeHash, graduationEngine: engine, graduationRuntimeHash, guard, guardRuntimeHash,

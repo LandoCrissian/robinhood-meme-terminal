@@ -1,0 +1,169 @@
+{
+  "scope": "BOUNDED_PUBLIC_READ_ONLY",
+  "sourceUrls": {
+    "l2": {
+      "official": "https://rpc.mainnet.chain.robinhood.com",
+      "pocket": "https://robinhood.api.pocket.network",
+      "pinax": "https://robinhood.rpc.pinax.network"
+    },
+    "l1": {
+      "publicnode": "https://ethereum-rpc.publicnode.com",
+      "drpc": "https://eth.drpc.org",
+      "flashbots": "https://rpc.flashbots.net",
+      "llamarpc": "https://eth.llamarpc.com"
+    }
+  },
+  "l2": {
+    "chainId": 4663,
+    "observedAt": "2026-11-16T14:34:03.054Z",
+    "nodeInterface": "0x00000000000000000000000000000000000000c8",
+    "queryBlockNumber": 115833472,
+    "queryBlockHash": "0x6544fc218b8187728a442a08707ea3dc6c09f4feef92f9ec21062b39c2d1d689",
+    "finalizedTagSample": {
+      "number": 115822919,
+      "hash": "0xb495cfc7f8ea324d9bd7edc88c985ea7c8fc280fbd07481f141b0e9dca2d5650",
+      "timestamp": "2026-11-16T14:14:28.000Z"
+    },
+    "initialHostedCheckpoint": {
+      "block": "115833396",
+      "blockHash": "0x82fa1ed2d019010edd80e4a30ee6b4ab5a4baa19b0f0498ac62b47f0d818f280",
+      "finality": "l1-unverified",
+      "observedAt": "2026-11-16T14:32:43.102Z"
+    },
+    "mapping": {
+      "official": {
+        "finalizedTagBatch": {
+          "value": 396507
+        },
+        "l1Confirmations": {
+          "value": 95
+        },
+        "recordedL1Block": {
+          "value": 26428119
+        },
+        "hostedCheckpointBatch": {
+          "unavailable": "eth_call -32000"
+        },
+        "hostedHeader": {
+          "value": {
+            "hash": "0x82fa1ed2d019010edd80e4a30ee6b4ab5a4baa19b0f0498ac62b47f0d818f280",
+            "match": true
+          }
+        }
+      },
+      "pinax": {
+        "finalizedTagBatch": {
+          "value": 396507
+        },
+        "l1Confirmations": {
+          "value": 95
+        },
+        "recordedL1Block": {
+          "value": 26428119
+        },
+        "hostedCheckpointBatch": {
+          "unavailable": "eth_call -32000"
+        },
+        "hostedHeader": {
+          "value": {
+            "hash": "0x82fa1ed2d019010edd80e4a30ee6b4ab5a4baa19b0f0498ac62b47f0d818f280",
+            "match": true
+          }
+        }
+      },
+      "pocket": {
+        "finalizedTagBatch": {
+          "value": 396507
+        },
+        "l1Confirmations": {
+          "value": 95
+        },
+        "recordedL1Block": {
+          "value": 26428119
+        },
+        "hostedCheckpointBatch": {
+          "value": 396557
+        },
+        "hostedHeader": {
+          "value": {
+            "hash": "0x82fa1ed2d019010edd80e4a30ee6b4ab5a4baa19b0f0498ac62b47f0d818f280",
+            "match": true
+          }
+        }
+      }
+    }
+  },
+  "l1": {
+    "observedAt": "2026-11-16T14:34:44.434Z",
+    "inbox": "0xBd0D173EEb87D57A09521c24388a12789F33ba96",
+    "signature": "SequencerBatchDelivered(uint256,bytes32,bytes32,bytes32,uint256,(uint64,uint64,uint64,uint64),uint8)",
+    "selector": "0x7394f4a19a13c7b92b5bb71033245305946ef78452f7b4986ac1390b5df4ebd7",
+    "batches": {
+      "l2Finalized": 396507,
+      "hostedCheckpoint": 396557
+    },
+    "sources": {
+      "publicnode": {
+        "chainId": 1,
+        "latest": 26428221,
+        "finalized": {
+          "number": 26428154,
+          "hash": "0x89bc5784e2b9677205b10c1602d95b2c790d1e90b7da80f7ee458f6c37963538"
+        },
+        "entries": {
+          "396507": {
+            "blockNumber": 26428122,
+            "blockHash": "0xeef6d444f66b37743c7817348dc30de1d4c4dee2a51a2b4c8394c34749a52930",
+            "blockTime": "2026-11-16T14:14:47.000Z",
+            "transactionHash": "0xf5256e2005c20cec527dd82b13b645dc91d049a763f96408294d150a3639827b",
+            "logIndex": 710,
+            "receiptStatus": "0x1",
+            "canonicalHeader": true,
+            "matchingReceiptLog": true,
+            "atOrBeforeFinalized": true
+          },
+          "396557": {
+            "blockNumber": 26428218,
+            "blockHash": "0x83e3797e13b351e0898acbf0071ee78f98e5c5e9b376ab249c13f6a1581e0a98",
+            "blockTime": "2026-11-16T14:33:59.000Z",
+            "transactionHash": "0x895ab27ce2f17bcc2aeacc1d729f1870df43cad6415d41413254db266a954d19",
+            "logIndex": 1103,
+            "receiptStatus": "0x1",
+            "canonicalHeader": true,
+            "matchingReceiptLog": true,
+            "atOrBeforeFinalized": false
+          }
+        }
+      },
+      "drpc": {
+        "unavailable": "HTTP 400"
+      },
+      "flashbots": {
+        "observedAt": "2026-11-16T14:35:15.952Z",
+        "chainId": 1,
+        "finalized": {
+          "number": 26428154,
+          "hash": "0x89bc5784e2b9677205b10c1602d95b2c790d1e90b7da80f7ee458f6c37963538"
+        },
+        "firstSourceFinalizedHeaderMatches": true,
+        "entries": {
+          "396507": {
+            "headerMatches": true,
+            "receiptMatches": true,
+            "logMatches": true,
+            "atOrBeforeFinalized": true
+          },
+          "396557": {
+            "headerMatches": true,
+            "receiptMatches": true,
+            "logMatches": true,
+            "atOrBeforeFinalized": false
+          }
+        }
+      },
+      "llamarpc": {
+        "unavailable": "HTTP 525"
+      }
+    }
+  }
+}

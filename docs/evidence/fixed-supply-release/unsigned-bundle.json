@@ -1,0 +1,207 @@
+{
+  "schemaVersion": 1,
+  "profile": "rmt-curve-fixed-supply-security-v2",
+  "status": "BLOCKED_NO_BROADCAST",
+  "broadcastAuthorized": false,
+  "chainId": 4663,
+  "compiler": {
+    "version": "0.8.26+commit.8a97fa7a",
+    "inputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+    "auxiliaryOutputInputSha256": "7923ec6acc0666f18c7dd9d8d181eb15d5e664be841325f0787b0dd046132426"
+  },
+  "provisionalTerms": {
+    "fixedSupplyWei": "1000000000000000000000000000",
+    "decimals": 18,
+    "curveInventoryWei": "600000000000000000000000000",
+    "initialLiquidityInventoryWei": "400000000000000000000000000",
+    "creationFeeWei": "400000000000000",
+    "graduationBackingWei": "2000000000000000000",
+    "tradingFeeBps": 100,
+    "projectBps": 9000,
+    "operationsBps": 500,
+    "reserveBps": 500
+  },
+  "production": {
+    "deployer": null,
+    "confirmedNonce": null,
+    "pendingNonce": null,
+    "operationsSafe": null,
+    "reserveSafe": null,
+    "governanceSigners": null,
+    "firstProjectName": null,
+    "firstProjectURI": null,
+    "firstProjectCreator": null,
+    "firstProjectTreasury": null,
+    "firstProjectTreasuryBps": null,
+    "economicApproval": null,
+    "deploymentApproval": null,
+    "transactions": []
+  },
+  "fixtureOnly": {
+    "scope": "LOOPBACK_FIXTURE_ONLY",
+    "forkSha256": "01f2e935fa18629bd2d14577910edfd1516fc5fe46b85c65a5512ad1f675f871",
+    "anchor": {
+      "number": 114549452,
+      "hash": "0xf9a8ca5d8e26ebb426ebd2e663ad82afc878c16d8bba5f5542f6341890cf7710"
+    },
+    "deployer": "0x0000000000000000000000000000000046630000",
+    "signers": [
+      "0xA82e880836F206A63A548D5cDF06d16ACfcB25c0",
+      "0x978aDF6B199FA5Df87e8B504070CCA1AC603D353",
+      "0x5AE6ef19C3eA6107fBc217B30730710A11469DAa"
+    ],
+    "quorum": 2,
+    "operatingRecipient": "0x0000000000000000000000000000000046630001",
+    "futureReserveRecipient": "0x0000000000000000000000000000000046630002",
+    "transactions": [
+      {
+        "name": "directory",
+        "nonce": 0,
+        "valueWei": "0",
+        "contract": "RMTLaunchCurveDirectoryV2",
+        "address": "0x6db1ec5fe453dbe3f610f0043dbb2aa09e2560f3",
+        "constructorData": "0x000000000000000000000000a82e880836f206a63a548d5cdf06d16acfcb25c0000000000000000000000000978adf6b199fa5df87e8b504070cca1ac603d3530000000000000000000000005ae6ef19c3ea6107fbc217b30730710a11469daa",
+        "initcodeHash": "0xb5b25318defd5e1cec4e3caf2987e6e8a67c762cd16b03ac46234fd2e015ef11",
+        "runtimeHash": "0x430bc268e4144c86f179b5d37ecdf59a91703baac3a22b5f16e01c95caa6622d",
+        "initcodeBytes": 11833,
+        "initcodeHeadroom": 37319,
+        "runtimeBytes": 10290,
+        "runtimeHeadroom": 14286,
+        "observedForkReceipt": "0xf04b5a0ccb2a3d9f160a2beac2302213d7fa231eee58b6039d4b4ec1d059d4bd",
+        "observedForkGasUsed": "2376060"
+      },
+      {
+        "name": "registry",
+        "nonce": 1,
+        "valueWei": "0",
+        "contract": "RMTLaunchProjectRegistryV3",
+        "address": "0x2ca5ca753c9f5ef8ffc4be410c76f9f49ca8f442",
+        "constructorData": "0x0000000000000000000000006db1ec5fe453dbe3f610f0043dbb2aa09e2560f3",
+        "initcodeHash": "0x02fb1f251eae8190fbc50975ca25b761dcda2c3373d93d5fb0a06b4702c3d2cc",
+        "runtimeHash": "0x220dc83305e17d5290a49014e5d545ac616e900e7e3f5eef3de9ff584d0fc503",
+        "initcodeBytes": 17691,
+        "initcodeHeadroom": 31461,
+        "runtimeBytes": 16273,
+        "runtimeHeadroom": 8303,
+        "observedForkReceipt": "0x14fcc6f65e0d46210007cf4417a4d4037fde32be0bbffda82be969f6eecc76d9",
+        "observedForkGasUsed": "3617564"
+      },
+      {
+        "name": "successor-v2",
+        "nonce": 2,
+        "valueWei": "0",
+        "contract": "RMTLaunchCurveSuccessorDeployerV1",
+        "address": "0xe7b5906415d09c473ae8719304a2bae2fa86b9a6",
+        "constructorData": "0x",
+        "initcodeHash": "0xef8c62038760eadaa5e7cf985febe23f9444e80710fbb3b30f5cf13d6513f3fa",
+        "runtimeHash": "0xc0894c78000f427a4a1c5b1ef9774dea3dcc53c93be42cdd196ef4b072bff0be",
+        "initcodeBytes": 15252,
+        "initcodeHeadroom": 33900,
+        "runtimeBytes": 15226,
+        "runtimeHeadroom": 9350,
+        "observedForkReceipt": "0x1d22eb36a32b374eb0651ff9b052b493b244635d309dc37e7e082f0376c9b5f1",
+        "observedForkGasUsed": "3321733"
+      },
+      {
+        "name": "successor-v3",
+        "nonce": 3,
+        "valueWei": "0",
+        "contract": "RMTLaunchCurveSuccessorDeployerV2",
+        "address": "0x04178d698dfa1bca0fe381ae8d5520f2bafb9d26",
+        "constructorData": "0x",
+        "initcodeHash": "0x5492ddda03a48dd5718830b01043bfbfd5ea1862e2d2f370851d41a5840914e8",
+        "runtimeHash": "0x07efd03ff4ec2028d176deb6bfde1b77e3d5fd4d32c69851b59e7d78b1ac7fc9",
+        "initcodeBytes": 15456,
+        "initcodeHeadroom": 33696,
+        "runtimeBytes": 15430,
+        "runtimeHeadroom": 9146,
+        "observedForkReceipt": "0xfbc218f0f08a3074baa027b6f615133731fc609495bb79256f7c96a355bd60e6",
+        "observedForkGasUsed": "3365744"
+      },
+      {
+        "name": "bootstrap",
+        "nonce": 4,
+        "valueWei": "0",
+        "contract": "RMTLaunchCurveDeploymentV2",
+        "address": "0xeC4EB5352CAfD5092deFBee5B78C8d997Ba141EC",
+        "constructorData": "0x0000000000000000000000008366a39cc670b4001a1121b8f6a443a643e4095100000000000000000000000058daec3116aae6d93017baaea7749052e8a04fa7000000000000000000000000000000000022d473030f116ddee9f6b43ac78ba3bd3881180b547f5fe817545743cfb4343e96b1bc6640dcd70c106b0066e95626c873e135dc9aaec88489cfbad146b4cb49d6a32e0d80326377784b7ba17670b25208783f52488f7d3493e5e38311ab707c1d75457fe472a19b0b4d57d66a7fca00000000000000000000000000000000000000000000000000000000000038a1000000000000000000000000000000000000000000000000000000004663000100000000000000000000000000000000000000000000000000000000466300020000000000000000000000002ca5ca753c9f5ef8ffc4be410c76f9f49ca8f442000000000000000000000000e7b5906415d09c473ae8719304a2bae2fa86b9a6c0894c78000f427a4a1c5b1ef9774dea3dcc53c93be42cdd196ef4b072bff0be00000000000000000000000000000000000000000000000000016bcc41e90000",
+        "initcodeHash": "0x5164ca776ceaf299982ef30acd8ab02b1954c0ee7317781c7883e390c7285442",
+        "runtimeHash": "0x92a317c4bb2cd6246723a8f6fa7e974bd291d2ac949fa5b67770adbd62f6594f",
+        "initcodeBytes": 48729,
+        "initcodeHeadroom": 423,
+        "runtimeBytes": 320,
+        "runtimeHeadroom": 24256,
+        "observedForkReceipt": "0xda9246d76f30e43a2e81759a991b2b9914865584d1fc5c67c73e8f4303b2d349",
+        "observedForkGasUsed": "9922655"
+      }
+    ],
+    "bootstrapChildren": [
+      {
+        "contract": "RMTV4CurveInitializationGuardV1",
+        "address": "0x79618FbF080217aE638901680Eb2C35d945ea000",
+        "constructorData": "0x0000000000000000000000008366a39cc670b4001a1121b8f6a443a643e4095100000000000000000000000041fe4773a420a78acf9b23f16b1e2d7057e01837",
+        "initcodeHash": "0x40cc5921d63f679999fba70a2b4b73cd11049ab933dacba01a6a519794e026fd",
+        "runtimeHash": "0xe56cc1c7166da3cb1c7390608c78ef5c18b0a672d0b28a2a5300efe18c27860a",
+        "initcodeBytes": 1257,
+        "initcodeHeadroom": 47895,
+        "runtimeBytes": 949,
+        "runtimeHeadroom": 23627,
+        "create2Salt": "0x00000000000000000000000000000000000000000000000000000000000038a1",
+        "hookPermissionBits": "0x2000"
+      },
+      {
+        "contract": "RMTV4CurveGraduationV1",
+        "address": "0x41FE4773A420A78ACF9b23F16B1e2D7057e01837",
+        "constructorData": "0x0000000000000000000000008366a39cc670b4001a1121b8f6a443a643e4095100000000000000000000000058daec3116aae6d93017baaea7749052e8a04fa7000000000000000000000000000000000022d473030f116ddee9f6b43ac78ba3bd3881180b547f5fe817545743cfb4343e96b1bc6640dcd70c106b0066e95626c873e135dc9aaec88489cfbad146b4cb49d6a32e0d80326377784b7ba17670b25208783f52488f7d3493e5e38311ab707c1d75457fe472a19b0b4d57d66a7fca00000000000000000000000090416edf53158d83326bee3c5bbe9a97dc8c09b700000000000000000000000079618fbf080217ae638901680eb2c35d945ea000",
+        "initcodeHash": "0x619320c5a9d7460efa8df6fc04acdcc79a569fdb178c9dd21453c8ab38b7e0e2",
+        "runtimeHash": "0x053b66e52fba218cecb8366bc9886b5f103c3f0212adf425377473d591cc6f22",
+        "initcodeBytes": 21467,
+        "initcodeHeadroom": 27685,
+        "runtimeBytes": 19710,
+        "runtimeHeadroom": 4866
+      },
+      {
+        "contract": "RMTLaunchCurveFactoryV2",
+        "address": "0x90416edf53158d83326bEE3c5bBE9a97dC8C09b7",
+        "constructorData": "0x00000000000000000000000041fe4773a420a78acf9b23f16b1e2d7057e01837000000000000000000000000000000000000000000000000000000004663000100000000000000000000000000000000000000000000000000000000466300020000000000000000000000002ca5ca753c9f5ef8ffc4be410c76f9f49ca8f442000000000000000000000000e7b5906415d09c473ae8719304a2bae2fa86b9a6c0894c78000f427a4a1c5b1ef9774dea3dcc53c93be42cdd196ef4b072bff0be00000000000000000000000000000000000000000000000000016bcc41e90000",
+        "initcodeHash": "0xe3d1f9d7fc9d1e94ee4c2dbe147a6778d90a814a7613f6b355533bad52f1e03e",
+        "runtimeHash": "0x7849f101c7cc4f10f607d533536786cc5923c107c267f1d09732aac3447c4401",
+        "initcodeBytes": 24916,
+        "initcodeHeadroom": 24236,
+        "runtimeBytes": 23843,
+        "runtimeHeadroom": 733
+      }
+    ],
+    "totalConstructorGasObservedOnFork": "22603756",
+    "firstProject": {
+      "from": "0x0000000000000000000000000000000046630003",
+      "to": "0x90416edf53158d83326bEE3c5bBE9a97dC8C09b7",
+      "data": "0x71c5186500000000000000000000000000000000000000000000000000000000000000e0000000000000000000000000000000000000000000000000000000000000012000000000000000000000000000000000000000000000000000000000000001600000000000000000000000007909808c6a6d3f05819c97c5021b5fb32a389c4a00000000000000000000000000000000000000000000000000000000000008ca0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000006b00e2670000000000000000000000000000000000000000000000000000000000000003524d5400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003524d540000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002668747470733a2f2f6578616d706c652e746573742f726d742d66697273742d70726f6a6563740000000000000000000000000000000000000000000000000000",
+      "value": "400000000000000",
+      "chainId": 4663,
+      "status": "BLOCKED_NO_BROADCAST",
+      "token": {
+        "contract": "RMTLaunchCurveTokenV2",
+        "address": "0x0018D6A77914AB44172A395358CD99E8d240886A",
+        "constructorData": "0x000000000000000000000000000000000000000000000000000000000000004000000000000000000000000000000000000000000000000000000000000000800000000000000000000000000000000000000000000000000000000000000003524d5400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000003524d540000000000000000000000000000000000000000000000000000000000",
+        "initcodeHash": "0x4019028843242a40a33fdcd01495f2aff7fb8c3ea378e009598ed7eb0f7f2ae6",
+        "runtimeHash": "0xbb1018a75a30c33d830a5ab203b0063c00d24853b69641472649262837f9cd42",
+        "initcodeBytes": 2851,
+        "initcodeHeadroom": 46301,
+        "runtimeBytes": 1593,
+        "runtimeHeadroom": 22983,
+        "create2Salt": "0x823a894d0e29b01045f3d77971e0a1962be3b3dd7096905bb70bdb2a3bde7f78"
+      },
+      "poolKey": {
+        "currency0": "0x0000000000000000000000000000000000000000",
+        "currency1": "0x0018D6A77914AB44172A395358CD99E8d240886A",
+        "fee": 3000,
+        "tickSpacing": 60,
+        "hooks": "0x79618FbF080217aE638901680Eb2C35d945ea000"
+      },
+      "poolId": "0xfa5a7e73560cd9f84a23dc49088d81a236c6327d76b97ff14c558721baffca6a",
+      "observesCreation": "0xbc55ee3ae44f1d3abc4b03807612077251caf0519b8af6b0a1e3a7a5b49ec040",
+      "observedForkGasUsed": "3348684"
+    }
+  }
+}
