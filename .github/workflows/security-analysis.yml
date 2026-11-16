@@ -88,6 +88,11 @@ jobs:
           node packages/contracts/scripts/verify-fixed-supply-bundle.mjs \
             --solc "$RUNNER_TEMP/solc" --fork docs/evidence/fixed-supply-release/fork-4663.json.gz \
             --verify docs/evidence/fixed-supply-release/unsigned-bundle.json
+      - name: Export the exact Blockscout verification inputs offline
+        if: ${{ !cancelled() && steps.compiler.outcome == 'success' }}
+        run: |
+          node packages/contracts/scripts/export-blockscout-4663.mjs \
+            --solc "$RUNNER_TEMP/solc" --output-dir "$RUNNER_TEMP/rmt-blockscout"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
@@ -95,4 +100,5 @@ jobs:
           path: |
             ${{ runner.temp }}/fixed-supply-4663.json
             ${{ runner.temp }}/4663-slither.json
+            ${{ runner.temp }}/rmt-blockscout
           retention-days: 7

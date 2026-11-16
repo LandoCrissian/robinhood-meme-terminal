@@ -3,6 +3,7 @@ pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {PoolManager} from "@uniswap/v4-core/src/PoolManager.sol";
 import {IPoolManager} from "@uniswap/v4-core/src/interfaces/IPoolManager.sol";
 import {IUnlockCallback} from "@uniswap/v4-core/src/interfaces/callback/IUnlockCallback.sol";
@@ -46,6 +47,42 @@ contract SharedPoolUnlockProbe is IUnlockCallback {
         (bool success, bytes memory result) = target.call(data);
         require(!success, "nested settlement unexpectedly succeeded");
         return abi.encode(bytes4(result));
+    }
+}
+
+contract LpClaimCallbackProbe {
+    RMTV4CurveGraduationV1 private immutable graduation;
+    RMTLaunchCurveLpFeeLedgerV1 private ledger;
+    address private token;
+    address private otherToken;
+
+    bytes4 public nestedClaimError;
+    bytes4 public samePoolHarvestError;
+    uint256 public otherPoolNativeCollected;
+    uint256 public otherPoolTokenCollected;
+
+    constructor(RMTV4CurveGraduationV1 graduation_) {
+        graduation = graduation_;
+    }
+
+    function claim(RMTLaunchCurveLpFeeLedgerV1 ledger_, address token_, address otherToken_) external {
+        ledger = ledger_;
+        token = token_;
+        otherToken = otherToken_;
+        ledger_.claim();
+    }
+
+    receive() external payable {
+        require(msg.sender == address(ledger));
+        (bool claimed, bytes memory claimResult) =
+            address(ledger).call(abi.encodeCall(RMTLaunchCurveLpFeeLedgerV1.claimAsset, (false)));
+        require(!claimed, "nested claim unexpectedly succeeded");
+        nestedClaimError = bytes4(claimResult);
+        (bool harvested, bytes memory harvestResult) =
+            address(graduation).call(abi.encodeCall(RMTV4CurveGraduationV1.collectLpFees, (token, block.timestamp)));
+        require(!harvested, "same-pool harvest unexpectedly succeeded");
+        samePoolHarvestError = bytes4(harvestResult);
+        (otherPoolNativeCollected, otherPoolTokenCollected) = graduation.collectLpFees(otherToken, block.timestamp);
     }
 }
 
@@ -183,9 +220,97 @@ contract RMTV4SharedPoolSettlementTest is Test {
         assertEq(positions.getPositionLiquidity(id), principal);
     }
 
+    function testBeneficiaryClaimCallbackRollsBackSamePoolHarvestAndSettlesOtherPool() external {
+        LpClaimCallbackProbe beneficiary = new LpClaimCallbackProbe(graduation);
+        (IERC20 asset, Curve curve) = _reachGraduation("CLAIM", address(beneficiary), 2_250);
+        (IERC20 other, Curve otherCurve) = _reachGraduation("OTHER");
+        curve.graduate(block.timestamp);
+        otherCurve.graduate(block.timestamp);
+        address token = address(asset);
+        address otherToken = address(other);
+        RMTLaunchCurveLpFeeLedgerV1 ledger = graduation.lpFeeLedger(token);
+        RMTLaunchCurveLpFeeLedgerV1 otherLedger = graduation.lpFeeLedger(otherToken);
+        (uint256 positionId, uint128 principal) = graduation.positions(token);
+        (uint256 otherPositionId, uint128 otherPrincipal) = graduation.positions(otherToken);
+
+        _swapBothWays(asset);
+        (uint256 accruedNative, uint256 accruedToken) = graduation.collectLpFees(token, block.timestamp);
+        (uint256 nativeClaim, uint256 tokenClaim) = ledger.claimable(address(beneficiary));
+        assertGt(nativeClaim, 0);
+        assertGt(tokenClaim, 0);
+        _swapBothWays(asset);
+        _swapBothWays(other);
+        (uint256 pendingNative, uint256 pendingToken) = graduation.previewLpFees(token);
+        (uint256 otherNative, uint256 otherTokens) = graduation.previewLpFees(otherToken);
+        assertGt(pendingNative, 0);
+        assertGt(pendingToken, 0);
+        assertGt(otherNative, 0);
+        assertGt(otherTokens, 0);
+        uint256 managerNative = address(manager).balance;
+        uint256 managerToken = asset.balanceOf(address(manager));
+        uint256 managerOtherToken = other.balanceOf(address(manager));
+
+        beneficiary.claim(ledger, token, otherToken);
+        assertEq(beneficiary.nestedClaimError(), ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
+        assertEq(beneficiary.samePoolHarvestError(), ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
+        assertEq(address(beneficiary).balance, nativeClaim);
+        assertEq(asset.balanceOf(address(beneficiary)), tokenClaim);
+        (uint256 remainingNative, uint256 remainingToken) = ledger.claimable(address(beneficiary));
+        assertEq(remainingNative, 0);
+        assertEq(remainingToken, 0);
+        (uint256 totalClaimedNative, uint256 totalClaimedToken) = ledger.totalClaimed();
+        assertEq(totalClaimedNative, nativeClaim);
+        assertEq(totalClaimedToken, tokenClaim);
+        assertEq(address(ledger).balance, accruedNative - nativeClaim);
+        assertEq(asset.balanceOf(address(ledger)), accruedToken - tokenClaim);
+        assertEq(address(manager).balance, managerNative - otherNative);
+        assertEq(asset.balanceOf(address(manager)), managerToken);
+        assertEq(other.balanceOf(address(manager)), managerOtherToken - otherTokens);
+
+        (uint256 retryNative, uint256 retryToken) = graduation.previewLpFees(token);
+        assertEq(retryNative, pendingNative);
+        assertEq(retryToken, pendingToken);
+        (uint256 collectedNative, uint256 collectedToken) = graduation.collectLpFees(token, block.timestamp);
+        assertEq(collectedNative, pendingNative);
+        assertEq(collectedToken, pendingToken);
+        assertEq(address(ledger).balance, accruedNative - nativeClaim + pendingNative);
+        assertEq(asset.balanceOf(address(ledger)), accruedToken - tokenClaim + pendingToken);
+        assertEq(beneficiary.otherPoolNativeCollected(), otherNative);
+        assertEq(beneficiary.otherPoolTokenCollected(), otherTokens);
+        assertEq(address(otherLedger).balance, otherNative);
+        assertEq(other.balanceOf(address(otherLedger)), otherTokens);
+        assertEq(other.balanceOf(address(beneficiary)), 0);
+        (remainingNative, remainingToken) = otherLedger.claimable(address(beneficiary));
+        assertEq(remainingNative, 0);
+        assertEq(remainingToken, 0);
+        (uint256 otherCreatorNative, uint256 otherCreatorToken) = otherLedger.claimable(otherLedger.creator());
+        assertEq(otherCreatorNative, otherNative - otherNative / 10);
+        assertEq(otherCreatorToken, otherTokens - otherTokens / 10);
+        _assertOriginalCustody(token, positionId, principal);
+        _assertOriginalCustody(otherToken, otherPositionId, otherPrincipal);
+    }
+
+    function _assertOriginalCustody(address token, uint256 expectedId, uint128 expectedPrincipal) private view {
+        (uint256 id, uint128 principal) = graduation.positions(token);
+        assertEq(id, expectedId);
+        assertEq(principal, expectedPrincipal);
+        assertGt(principal, 0);
+        assertEq(positions.ownerOf(id), address(graduation));
+        assertEq(positions.getApproved(id), address(0));
+        assertEq(positions.getPositionLiquidity(id), principal);
+    }
+
     function _reachGraduation(string memory label) private returns (IERC20 asset, Curve curve) {
-        (address token, address market) =
-            factory.create(label, label, "", address(0), 0, keccak256(bytes(label)), block.timestamp);
+        return _reachGraduation(label, address(0), 0);
+    }
+
+    function _reachGraduation(string memory label, address treasury, uint16 treasuryShareBps)
+        private
+        returns (IERC20 asset, Curve curve)
+    {
+        (address token, address market) = factory.create(
+            label, label, "", treasury, treasuryShareBps, keccak256(bytes(label)), block.timestamp
+        );
         asset = IERC20(token);
         curve = Curve(payable(market));
         uint256 minimum = curve.graduationSold();

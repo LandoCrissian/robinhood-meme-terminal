@@ -43,7 +43,7 @@ pnpm test:fork-4663 --anvil $anvil --solc $solc --archive pocket --output $forkE
 
 The provisional review economics include a 0.0004 ETH creation fee, 2 ETH graduation backing, a 1% curve trading fee, 90/5/5 earned-fee allocation and permanent original LP custody. Factory V2 fixes the 1B supply and the candidate preserves the 600M/400M allocation. Production rates, addresses and funding remain unapproved.
 
-[Current production acceptance, Safe estimates and deployment checklist](evidence/production-readiness/readiness.md)
+[Current unsigned deployment and source-verification handoff](evidence/source-verification/launch-handoff.md) · [Production readiness probes](evidence/production-readiness/readiness.md)
 
 ## Historical operating evidence
 

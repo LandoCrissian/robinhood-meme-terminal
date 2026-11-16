@@ -1,0 +1,24 @@
+# Blockscout verification for the new 1B engine
+
+The Robinhood 4663 explorer exposed Standard JSON, Cancun and `v0.8.26+commit.8a97fa7a` in its public verifier configuration on 16 November 2026. Explorer-reported runtime bytes matched all six Uniswap and three Safe external pins. The six Uniswap source records were marked partially verified. The three Safe infrastructure source records were marked fully verified. Some dependency creation bytecodes or constructor fields were unavailable from the explorer. [Timestamped GET evidence](blockscout-observation.json) · [Robinhood network and explorer](https://docs.robinhood.com/chain/connecting/) · [Blockscout verification UI](https://docs.blockscout.com/devs/verification/blockscout-ui)
+
+## Reproduce the offline export
+
+From a clean checkout with the pinned solc and v4 dependencies, provide the compiler executable and a fresh output directory.
+
+~~~sh
+node packages/contracts/scripts/export-blockscout-4663.mjs --solc "$PINNED_SOLC" --output-dir "$NEW_OUTPUT"
+~~~
+
+The exporter checks the compiler profile, source pins, archived fork digests and reconstructed unsigned fixture. Its `solc-standard-input-4663.json` is the original 66-source Standard JSON with SHA-256 `66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10`. Preserve the exact transformed source paths and import remappings, Cancun EVM, IR pipeline, enabled optimizer with 200 runs, and IPFS metadata hash with CBOR appended and literal content disabled. `blockscout-verification.json` binds each fully qualified Solidity name to a constructor suffix, creation transaction, block and derived identity. Where the archived fork omitted an observed runtime or internal creation frame, it labels the reconstruction and leaves the observed hash blank. [Pinned profile](../fixed-supply-security/4663-profile.json) · [Archived evidence](../fixed-supply-release/release-manifest.json)
+
+The export covers 14 loopback contracts. Directory V2, Registry V3, the two successor deployers and bootstrap use top-level CREATE. Bootstrap uses CREATE2 for the guard and CREATE for the graduation engine and Factory V2. Factory V2 uses CREATE2 for Token V2, then CREATE for the original curve. The original curve creates its revenue ledger. The two reviewed successor helpers use scoped CREATE2. Graduation creates its LP fee ledger, whose reconstructed initcode hash matches the archived CREATE trace. These fixture addresses and arguments remain outside all live bindings.
+
+## Bind verified production evidence after separate deployment approval
+
+1. Rebuild the exact profile and unsigned plan from approved beneficiary, deployer, nonce, project and governance inputs. Archive each transaction, canonical receipt, initcode, constructor suffix, runtime bytes and creation frame. Derive each internal address independently. The guard salt must retain permission bits `0x2000`. The token address must match the exact factory CREATE2 input, project registration and creation receipt. A missing or mismatched creation frame or runtime stays unresolved.
+2. For each new RMT contract on the official explorer, select **Contract → Verify & publish → Solidity (Standard JSON input)**, select the pinned compiler, use the emitted source input and select the corresponding fully qualified name. Supply the constructor suffix from the **production** creation input when the instance requests it. Do not infer from a factory call's outer input. For internal creations, require the creation trace and exact deployed runtime before accepting the explorer result.
+3. Record the verified address URL, compiler version, full-match status, metadata and runtime hash. Compare the deployed bytes and immutable bindings with the canonical receipt and independent RPC. Source from a partial match does not close this check.
+4. Bind the official Uniswap addresses and runtime hashes separately. For the two Safe proxies, verify the factory receipt and proxy runtime, pinned singleton and fallback handler, exact owners, threshold, nonce and empty additional controls before associating the proxy with its implementation in the explorer. Preserve predicted Safe salts separately from accepted beneficiary addresses. [Safe receipt procedure](../production-readiness/readiness.md#safe-and-execution-inputs)
+
+The optional `node packages/contracts/scripts/probe-blockscout-4663.mjs --output "$NEW_OBSERVATION"` uses bounded public GETs. Node fetch returned HTTP 403 in the test environment while PowerShell's normal read-only client returned HTTP 200. The observed report records the successful client. This check only observes public instance capability and known dependencies. Verification of the new RMT contracts is deployment-dependent. Explorer source matching, unresolved security findings and release authorization are separate evidence. **BLOCKED_NO_BROADCAST.**

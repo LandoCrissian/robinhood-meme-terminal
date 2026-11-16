@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import { gunzipSync } from "node:zlib";
 import { compileFixedSupplyProfile, creationFee, rmtFixture, supply } from "./fixed-supply-profile.mjs";
@@ -34,7 +36,7 @@ function eip712(name, version, verifyingContract) {
   };
 }
 
-function artifactPlan(compilation, contract, address, args, immutables, observedRuntimeHash) {
+export function materializeArtifact(compilation, contract, address, args, immutables) {
   const { abi, bytecode, runtime, immutableOffsets } = compilation.artifacts[contract];
   const initcode = encodeDeployData({ abi, bytecode, args });
   const materialized = bytes(runtime);
@@ -49,7 +51,6 @@ function artifactPlan(compilation, contract, address, args, immutables, observed
     }
   }
   const runtimeHash = keccak256("0x" + materialized.toString("hex"));
-  assert.equal(runtimeHash, observedRuntimeHash, "Materialized runtime mismatch " + contract);
   const initcodeBytes = bytes(initcode).length;
   assert.ok(initcodeBytes <= 49_152 && materialized.length <= 24_576, "EVM size limit exceeded");
   return { contract, address, constructorData: "0x" + initcode.slice(bytecode.length), initcodeHash: keccak256(initcode),
@@ -57,7 +58,13 @@ function artifactPlan(compilation, contract, address, args, immutables, observed
     runtimeBytes: materialized.length, runtimeHeadroom: 24_576 - materialized.length };
 }
 
-function buildBundle(compilation, fork, forkSha256) {
+function artifactPlan(compilation, contract, address, args, immutables, observedRuntimeHash) {
+  const artifact = materializeArtifact(compilation, contract, address, args, immutables);
+  assert.equal(artifact.runtimeHash, observedRuntimeHash, "Materialized runtime mismatch " + contract);
+  return artifact;
+}
+
+export function buildBundle(compilation, fork, forkSha256) {
   const { deployment, report, unsignedConstructors, projects } = fork;
   const { manifest, artifacts } = compilation;
   const { profile, inputSha256, templates, terms } = manifest;
@@ -184,20 +191,22 @@ function buildBundle(compilation, fork, forkSha256) {
   };
 }
 
-const { values } = parseArgs({ options: {
-  solc: { type: "string" }, lib: { type: "string" }, fork: { type: "string" }, verify: { type: "string" }, output: { type: "string" },
-} });
-assert.ok(values.solc && values.fork && Boolean(values.verify) !== Boolean(values.output), "Supply --solc, --fork and --verify or --output");
-const compilation = compileFixedSupplyProfile({ ...values, chainId, includeImmutableNames: true });
-const pinned = readJson(new URL("4663-profile.json", evidence));
-const portable = ({ executablePlatform, executableSha256, ...fields }) => fields;
-assert.deepEqual(portable(compilation.manifest), portable(pinned));
-const archive = readFileSync(values.fork);
-const raw = values.fork.endsWith(".gz") ? gunzipSync(archive) : archive;
-const bundle = buildBundle(compilation, JSON.parse(raw), sha256(raw));
-if (values.verify) {
-  assert.deepEqual(bundle, readJson(values.verify));
-  console.log("Verified unsigned deployment and fixture-only RMT creation bundle; BLOCKED_NO_BROADCAST");
-} else {
-  writeFileSync(values.output, JSON.stringify(bundle, null, 2) + "\n", { flag: "wx" });
+if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
+  const { values } = parseArgs({ options: {
+    solc: { type: "string" }, lib: { type: "string" }, fork: { type: "string" }, verify: { type: "string" }, output: { type: "string" },
+  } });
+  assert.ok(values.solc && values.fork && Boolean(values.verify) !== Boolean(values.output), "Supply --solc, --fork and --verify or --output");
+  const compilation = compileFixedSupplyProfile({ ...values, chainId, includeImmutableNames: true });
+  const pinned = readJson(new URL("4663-profile.json", evidence));
+  const portable = ({ executablePlatform, executableSha256, ...fields }) => fields;
+  assert.deepEqual(portable(compilation.manifest), portable(pinned));
+  const archive = readFileSync(values.fork);
+  const raw = values.fork.endsWith(".gz") ? gunzipSync(archive) : archive;
+  const bundle = buildBundle(compilation, JSON.parse(raw), sha256(raw));
+  if (values.verify) {
+    assert.deepEqual(bundle, readJson(values.verify));
+    console.log("Verified unsigned deployment and fixture-only RMT creation bundle; BLOCKED_NO_BROADCAST");
+  } else {
+    writeFileSync(values.output, JSON.stringify(bundle, null, 2) + "\n", { flag: "wx" });
+  }
 }
