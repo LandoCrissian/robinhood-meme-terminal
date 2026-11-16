@@ -32,7 +32,7 @@ node scripts/visual-qa/rmt-creator-integration.mjs --anvil $anvil --solc $solc -
 pnpm test:fork-4663 --anvil $anvil --solc $solc --archive pocket --output $forkEvidenceFile
 ~~~
 
-[Current verification and unsigned fork calldata](evidence/fixed-supply-security/release-manifest.json) · [First RMT project and unassigned live inputs](evidence/fixed-supply-security/first-project.json) · [Prior 4663 treasury replay](evidence/rmt-task046/4663-shared-owner-safe-rehearsal.json) · [Historical browser replay guide](https://github.com/LandoCrissian/robinhood-meme-terminal/blob/ec7296ea5b52eeaa74e2dbadd12e647f9dbf2482/docs/RMT_CURVE_TASK038_V4_SETTLEMENT.md)
+[Current review handoff and unsigned fixture bundle](evidence/fixed-supply-release/README.md) · [First RMT project and unassigned live inputs](evidence/fixed-supply-security/first-project.json) · [Prior 4663 treasury replay](evidence/rmt-task046/4663-shared-owner-safe-rehearsal.json) · [Historical browser replay guide](https://github.com/LandoCrissian/robinhood-meme-terminal/blob/ec7296ea5b52eeaa74e2dbadd12e647f9dbf2482/docs/RMT_CURVE_TASK038_V4_SETTLEMENT.md)
 
 ## Production release
 

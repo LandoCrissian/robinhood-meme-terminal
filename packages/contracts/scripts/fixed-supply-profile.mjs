@@ -91,8 +91,16 @@ export function buildFixedSupplyInput({ solc, lib = join(root, "lib"), chainId }
 
 export function compileFixedSupplyProfile(options) {
   const { input, manifest } = buildFixedSupplyInput(options);
+  // The release input is fixed. Bundle verification requests AST output in
+  // addition to the canonical bytecode output without changing codegen settings.
+  let compilerInput = input;
+  if (options.includeImmutableNames) {
+    const extended = JSON.parse(input);
+    extended.settings.outputSelection["*"] = { "": ["ast"] };
+    compilerInput = JSON.stringify(extended);
+  }
   const compiled = JSON.parse(execFileSync(resolve(options.solc), ["--standard-json", "--no-import-callback"], {
-    cwd: root, input, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 240_000, windowsHide: true,
+    cwd: root, input: compilerInput, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 240_000, windowsHide: true,
     env: process.env.SystemRoot ? { SystemRoot: process.env.SystemRoot } : {},
   }));
   const errors = (compiled.errors ?? []).filter(({ severity }) => severity === "error");
@@ -106,12 +114,13 @@ export function compileFixedSupplyProfile(options) {
       const runtime = "0x" + evm.deployedBytecode.object;
       assert.match(bytecode, /^0x(?:[a-f0-9]{2})+$/, "Unlinked creation code for " + name);
       assert.match(runtime, /^0x(?:[a-f0-9]{2})+$/, "Unlinked runtime for " + name);
-      const immutableReferences = Object.values(evm.deployedBytecode.immutableReferences ?? {}).flat();
+      const immutableOffsets = evm.deployedBytecode.immutableReferences ?? {};
+      const immutableReferences = Object.values(immutableOffsets).flat();
       const runtimeBytes = hexBytes(runtime).length;
       const creationBytes = hexBytes(bytecode).length;
       assert.ok(runtimeBytes <= 24_576, "EIP-170 runtime too large: " + name);
       assert.ok(creationBytes <= 49_152, "EIP-3860 initcode too large: " + name);
-      artifacts[name] = { abi, bytecode, runtime, immutableReferences };
+      artifacts[name] = { abi, bytecode, runtime, immutableReferences, immutableOffsets };
       templates[name] = { file, creationBytes, runtimeBytes,
         creationSha256: sha256(hexBytes(bytecode)), runtimeSha256: sha256(hexBytes(runtime)) };
     }
@@ -130,7 +139,18 @@ export function compileFixedSupplyProfile(options) {
   }, zeroHash, zeroAddress, zeroAddress, zeroAddress, zeroAddress, zeroHash, creationFee] });
   const bootstrapInitcodeBytes = hexBytes(initcode).length;
   assert.ok(bootstrapInitcodeBytes <= 49_152, "Encoded bootstrap exceeds EIP-3860");
-  return { artifacts, manifest: { ...manifest, templates, size: {
+  const immutableNames = new Map();
+  if (options.includeImmutableNames) {
+    for (const { ast } of Object.values(compiled.sources)) {
+      for (const definition of ast.nodes.filter(({ nodeType }) => nodeType === "ContractDefinition")) {
+        for (const field of definition.nodes.filter(({ mutability }) => mutability === "immutable")) {
+          immutableNames.set(String(field.id), field.name);
+        }
+      }
+    }
+  }
+  return { artifacts, immutableNames, auxiliaryCompilerInputSha256: options.includeImmutableNames ? sha256(compilerInput) : undefined,
+    manifest: { ...manifest, templates, size: {
     bootstrapInitcodeBytes, bootstrapInitcodeHeadroom: 49_152 - bootstrapInitcodeBytes,
     factoryRuntimeBytes: templates.RMTLaunchCurveFactoryV2.runtimeBytes,
   } } };

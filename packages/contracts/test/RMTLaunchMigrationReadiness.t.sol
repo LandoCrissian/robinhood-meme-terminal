@@ -682,6 +682,94 @@ contract RMTLaunchMigrationReadinessTest is Test {
         assertEq(factory.curveForToken(unrelatedAsset), unrelatedCurve);
     }
 
+    function testSignerRotationRespectsCommittedMigrationAndSeparatelyReauthorizesStaleProject() external {
+        address otherCreator = address(0x207);
+        address otherTreasury = address(0x208);
+        address otherHolder = address(0x209);
+        uint48 now_ = uint48(vm.getBlockTimestamp());
+        vm.prank(otherCreator);
+        (address otherAsset, address otherOrigin) =
+            factory.create("Independent migration", "OTHER", "", otherTreasury, 4_500, bytes32(uint256(1)), now_);
+        Curve otherCurve = Curve(payable(otherOrigin));
+        vm.deal(otherHolder, 1 ether);
+        vm.prank(otherHolder);
+        otherCurve.buy{value: 0.2 ether}(1, now_);
+        address otherTarget = factory.prepareMigration(otherAsset, 2);
+        Curve otherSuccessor = Curve(payable(otherTarget));
+        Ledger otherFees = otherCurve.revenueLedger();
+        Snapshot memory firstBefore = _snapshot(origin);
+        Snapshot memory otherBefore =
+            _snapshot(otherCurve, IERC20(otherAsset), otherFees, otherHolder, otherCreator, otherTreasury);
+        assertGt(firstBefore.backing, 0);
+        assertGt(otherBefore.backing, 0);
+        assertGt(otherBefore.credits[1], 0);
+
+        address asset = address(token);
+        uint48 deadline = now_ + 8 days;
+        vm.prank(CREATOR);
+        registry.proposeMigration(asset, address(successor), address(successor).codehash, deadline);
+        vm.prank(otherCreator);
+        registry.proposeMigration(otherAsset, otherTarget, otherTarget.codehash, deadline);
+        bytes32 firstDigest = registry.migrationDigest(asset);
+        bytes32 otherDigest = registry.migrationDigest(otherAsset);
+        assertNotEq(firstDigest, otherDigest);
+        vm.expectRevert(Registry.Unauthorized.selector);
+        registry.scheduleMigration(otherAsset, _sign(firstDigest, 1), _sign(firstDigest, 2));
+        registry.scheduleMigration(asset, _sign(firstDigest, 1), _sign(firstDigest, 2));
+        registry.scheduleMigration(otherAsset, _sign(otherDigest, 1), _sign(otherDigest, 2));
+
+        uint64 epoch = directory.signerSetEpoch();
+        Directory.SignerRotation memory rotation =
+            Directory.SignerRotation(vm.addr(1), vm.addr(4), epoch, directory.rotationNonce(), deadline);
+        bytes32 rotationDigest = directory.signerRotationDigest(rotation);
+        directory.scheduleSignerRotation(
+            rotation,
+            _sign(rotationDigest, 2),
+            _sign(rotationDigest, 3),
+            _sign(directory.rotationAcceptanceDigest(rotationDigest), 4)
+        );
+        vm.warp(now_ + registry.migrationDelay());
+        registry.executeMigration(asset);
+        _assertSettledHandoff(origin, successor, HOLDER, firstBefore, 1);
+        directory.executeSignerRotation(rotation);
+        assertEq(directory.signerSetEpoch(), epoch + 1);
+        vm.expectRevert(Registry.NotExecutable.selector);
+        registry.executeMigration(otherAsset);
+        assertEq(factory.curveForToken(otherAsset), otherOrigin);
+        assertEq(otherFees.activeCurve(), otherOrigin);
+        assertEq(
+            keccak256(abi.encode(_snapshot(otherCurve, IERC20(otherAsset), otherFees, otherHolder, otherCreator, otherTreasury))),
+            keccak256(abi.encode(otherBefore))
+        );
+        assertEq(otherOrigin.balance, otherBefore.backing);
+        assertTrue(otherCurve.active());
+        assertFalse(otherSuccessor.active());
+        assertEq(otherTarget.balance, 0);
+        assertEq(IERC20(otherAsset).balanceOf(otherTarget), 0);
+        assertEq(registry.migrationNonce(otherAsset), 0);
+
+        bytes32 staleNonceDigest = registry.migrationDigest(otherAsset);
+        registry.clearStaleMigration(otherAsset);
+        (address approvedTarget, bytes32 reviewedHash, uint48 consentUntil, uint48 readyAt,, uint64 approvedEpoch) =
+            registry.proposal(otherAsset);
+        assertEq(approvedTarget, otherTarget);
+        assertEq(reviewedHash, otherTarget.codehash);
+        assertEq(consentUntil, deadline);
+        assertEq(readyAt, 0);
+        assertEq(approvedEpoch, 0);
+        vm.expectRevert(Registry.Unauthorized.selector);
+        registry.scheduleMigration(otherAsset, _sign(staleNonceDigest, 2), _sign(staleNonceDigest, 4));
+        otherDigest = registry.migrationDigest(otherAsset);
+        registry.scheduleMigration(otherAsset, _sign(otherDigest, 2), _sign(otherDigest, 4));
+        vm.warp(vm.getBlockTimestamp() + registry.migrationDelay() - 1);
+        vm.expectRevert(Registry.NotExecutable.selector);
+        registry.executeMigration(otherAsset);
+        vm.warp(vm.getBlockTimestamp() + 1);
+        registry.executeMigration(otherAsset);
+        _assertSettledHandoff(otherCurve, otherSuccessor, otherHolder, otherBefore, 2);
+        _assertSettledHandoff(origin, successor, HOLDER, firstBefore, 1);
+    }
+
     function testCreatorConsentDoesNotAllowExpirySuspensionOrReplay() external {
         Snapshot memory before = _snapshot(origin);
         uint48 deadline = uint48(block.timestamp + 4 days);
@@ -720,18 +808,57 @@ contract RMTLaunchMigrationReadinessTest is Test {
         vm.etch(target, address(wrapper).code);
     }
 
-    function _snapshot(Curve curve) private view returns (Snapshot memory result) {
+    function _snapshot(Curve curve) private view returns (Snapshot memory) {
+        return _snapshot(curve, token, ledger, HOLDER, CREATOR, TREASURY);
+    }
+
+    function _snapshot(Curve curve, IERC20 asset, Ledger fees, address holder, address creator, address treasury)
+        private
+        view
+        returns (Snapshot memory result)
+    {
         result.sold = curve.sold();
         result.backing = curve.backingReserve();
-        result.inventory = token.balanceOf(address(curve));
-        result.supply = token.totalSupply();
-        result.holderTokens = token.balanceOf(HOLDER);
-        result.ledgerNative = address(ledger).balance;
-        result.accrued = ledger.totalAccrued();
-        result.claimed = ledger.totalClaimed();
+        result.inventory = asset.balanceOf(address(curve));
+        result.supply = asset.totalSupply();
+        result.holderTokens = asset.balanceOf(holder);
+        result.ledgerNative = address(fees).balance;
+        result.accrued = fees.totalAccrued();
+        result.claimed = fees.totalClaimed();
         result.credits = [
-            ledger.claimable(CREATOR), ledger.claimable(TREASURY), ledger.claimable(OPERATING), ledger.claimable(FUTURE)
+            fees.claimable(creator), fees.claimable(treasury), fees.claimable(OPERATING), fees.claimable(FUTURE)
         ];
+    }
+
+    function _assertSettledHandoff(Curve predecessor, Curve target, address holder, Snapshot memory before, uint64 nonce)
+        private
+        view
+    {
+        IERC20 assetToken = predecessor.token();
+        Ledger fees = predecessor.revenueLedger();
+        address asset = address(assetToken);
+        (, address active, uint32 version, address engine, uint64 migrations) = registry.project(asset);
+        assertEq(active, address(target));
+        assertEq(engine, address(target));
+        assertEq(version, 2);
+        assertEq(migrations, 1);
+        assertEq(factory.curveForToken(asset), active);
+        assertEq(registry.migrationNonce(asset), nonce);
+        assertFalse(registry.migrationInProgress(asset));
+        assertEq(address(target.token()), asset);
+        assertEq(address(target.revenueLedger()), address(fees));
+        assertEq(target.creator(), predecessor.creator());
+        assertEq(target.treasury(), predecessor.treasury());
+        assertEq(fees.activeCurve(), active);
+        assertFalse(predecessor.active());
+        assertEq(address(predecessor).balance, 0);
+        assertEq(assetToken.balanceOf(address(predecessor)), 0);
+        assertTrue(target.active());
+        assertEq(address(target).balance, before.backing);
+        assertEq(
+            keccak256(abi.encode(_snapshot(target, assetToken, fees, holder, predecessor.creator(), predecessor.treasury()))),
+            keccak256(abi.encode(before))
+        );
     }
 
     function _assertIntact(Snapshot memory before) private view {

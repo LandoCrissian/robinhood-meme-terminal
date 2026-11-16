@@ -65,6 +65,7 @@ jobs:
       - run: bash scripts/install-v4-deps.sh
         working-directory: packages/contracts
       - name: Prepare the pinned review compiler
+        id: compiler
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --retry 2 \
@@ -80,6 +81,12 @@ jobs:
         run: |
           python docs/evidence/rmt-task043/analyze-rotation.py "$RUNNER_TEMP/fixed-supply-4663.json" \
             "$RUNNER_TEMP/solc" "$RUNNER_TEMP/4663-source" "$RUNNER_TEMP/4663-slither.json"
+      - name: Reconstruct the unsigned fixture deployment and first RMT project
+        if: ${{ !cancelled() && steps.compiler.outcome == 'success' }}
+        run: |
+          node packages/contracts/scripts/verify-fixed-supply-bundle.mjs \
+            --solc "$RUNNER_TEMP/solc" --fork docs/evidence/fixed-supply-release/fork-4663.json.gz \
+            --verify docs/evidence/fixed-supply-release/unsigned-bundle.json
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
