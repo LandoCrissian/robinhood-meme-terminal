@@ -1,0 +1,25 @@
+{
+  "schema": "rmt-launch-treasury-support-release-inputs-v1",
+  "chainId": 4663,
+  "scope": "READINESS_ONLY",
+  "status": "BLOCKED_UNVERIFIED_LIVE_BINDINGS",
+  "broadcastAuthorized": false,
+  "canonicalReleaseInputs": "../rmt-task041-closeout/owner-inputs.json",
+  "protocol": {
+    "operatingTreasury": null,
+    "futureReserve": null,
+    "deployer": null,
+    "economicApproval": null,
+    "allocationBps": { "project": 9000, "operations": 500, "reserve": 500 },
+    "creationFeeRecipientRole": "operatingTreasury"
+  },
+  "support": {
+    "lammbTreasury": null,
+    "lammbSupportPayee": null,
+    "rmtSupportPayee": null,
+    "rmtSpendingApproval": null,
+    "lammbSpendingApproval": null,
+    "allowedInReadinessMode": false
+  },
+  "unsignedLiveTransaction": null
+}

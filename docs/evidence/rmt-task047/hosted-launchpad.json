@@ -1,0 +1,216 @@
+{
+  "observedAt": "2026-11-16T04:59:07.311Z",
+  "origin": "https://www.rmtlaunch.fun",
+  "scope": "READ_ONLY_HTTP",
+  "rows": [
+    {
+      "name": "directory",
+      "path": "/",
+      "method": "GET",
+      "status": 200,
+      "type": "text/html; charset=utf-8",
+      "cache": "private,no-cache,no-store,max-age=0,must-revalidate",
+      "bodySha256": "d744d285872af124453c5b109d946381daebbf62bf4c686fa3ce20725f16fea7",
+      "markers": {
+        "read-only": true,
+        "prelaunch": true
+      }
+    },
+    {
+      "name": "create",
+      "path": "/create-token",
+      "method": "GET",
+      "status": 200,
+      "type": "text/html; charset=utf-8",
+      "cache": "private,no-cache,no-store,max-age=0,must-revalidate",
+      "bodySha256": "e5184812b3dcc51465f2a4bc3ad9a1eb90ca272313dd36c4f51df2e3616d7c52",
+      "markers": {
+        "read-only": true,
+        "creation": true,
+        "wallet": true
+      }
+    },
+    {
+      "name": "legacy-rmt",
+      "path": "/rmt",
+      "method": "GET",
+      "status": 200,
+      "type": "text/html; charset=utf-8",
+      "cache": "private,no-cache,no-store,max-age=0,must-revalidate",
+      "bodySha256": "30a724e0eb2ad2abf4c9dfc3fa50f574479c30df23916d9e21f31ed2a7975d3b",
+      "markers": {
+        "read-only": true,
+        "legacy": true
+      }
+    },
+    {
+      "name": "exact-token-page",
+      "path": "/launches/0xdba33be56c89cc9fc014c4459028d7e5c7878671",
+      "method": "GET",
+      "status": 200,
+      "type": "text/html; charset=utf-8",
+      "cache": "private,no-cache,no-store,max-age=0,must-revalidate",
+      "bodySha256": "7f70bd007563cce4272f47f1fa1d631f0a8e092104077b6813f85b188dea6e72",
+      "markers": {
+        "0xdba33be56c89cc9fc014c4459028d7e5c7878671": true
+      }
+    },
+    {
+      "name": "historical-api",
+      "path": "/api/launchpad/launches",
+      "method": "GET",
+      "status": 200,
+      "type": "application/json",
+      "cache": "private,no-store",
+      "bodySha256": "db6884508cd010606d135cdad0a29a82e422c4d3b6960299a13ce920388a5bc8",
+      "markers": {},
+      "json": {
+        "keys": [
+          "coverage",
+          "status",
+          "checkpoint",
+          "observedAt",
+          "launches",
+          "truncated",
+          "chainId",
+          "future",
+          "finality"
+        ],
+        "status": "ready",
+        "chainId": 4663,
+        "coverage": "v6-indexed",
+        "future": "prelaunch",
+        "finality": "l1-unverified",
+        "recordCount": 4,
+        "block": "115507829",
+        "blockHash": "0x3ba50278e9e8b5a101069f4e9f975a54dae15a66f11c7c0960f6a374f75d8248",
+        "observedAt": "2026-11-16T04:58:58.632Z"
+      }
+    },
+    {
+      "name": "exact-historical-api",
+      "path": "/api/launchpad/launches/0xdba33be56c89cc9fc014c4459028d7e5c7878671",
+      "method": "GET",
+      "status": 200,
+      "type": "application/json",
+      "cache": "private,no-store",
+      "bodySha256": "64de0df8a65999529882b77d5cbb4ec101e30acd225c707b7984514d09327718",
+      "markers": {},
+      "json": {
+        "keys": [
+          "coverage",
+          "status",
+          "checkpoint",
+          "observedAt",
+          "launches",
+          "truncated",
+          "chainId",
+          "future",
+          "finality"
+        ],
+        "status": "ready",
+        "chainId": 4663,
+        "coverage": "v6-indexed",
+        "future": "prelaunch",
+        "finality": "l1-unverified",
+        "recordCount": 1,
+        "returnedIdentity": "0xdba33be56c89cc9fc014c4459028d7e5c7878671",
+        "classification": "retired",
+        "lifecycle": "curve",
+        "block": "115507829",
+        "blockHash": "0x3ba50278e9e8b5a101069f4e9f975a54dae15a66f11c7c0960f6a374f75d8248",
+        "observedAt": "2026-11-16T04:58:58.632Z"
+      }
+    },
+    {
+      "name": "absent-historical-api",
+      "path": "/api/launchpad/launches/0x0000000000000000000000000000000000000000",
+      "method": "GET",
+      "status": 404,
+      "type": "application/json",
+      "cache": "private,no-store",
+      "bodySha256": "3a29dacba78f5cab93a0443fa251edccca99be52ad25be27b47324be768ca9b7",
+      "markers": {},
+      "json": {
+        "keys": [
+          "coverage",
+          "status",
+          "checkpoint",
+          "observedAt",
+          "launches",
+          "truncated",
+          "chainId",
+          "future",
+          "finality"
+        ],
+        "status": "ready",
+        "chainId": 4663,
+        "coverage": "v6-indexed",
+        "future": "prelaunch",
+        "finality": "l1-unverified",
+        "recordCount": 0,
+        "block": "115507829",
+        "blockHash": "0x3ba50278e9e8b5a101069f4e9f975a54dae15a66f11c7c0960f6a374f75d8248",
+        "observedAt": "2026-11-16T04:58:58.632Z"
+      }
+    },
+    {
+      "name": "execution-config",
+      "path": "/api/launchpad/config",
+      "method": "GET",
+      "status": 200,
+      "type": "application/json",
+      "cache": "private,no-store",
+      "bodySha256": "b644a7037efde8767af54ebff6c039ba507079251b7be61d078b381acce1906d",
+      "markers": {},
+      "json": {
+        "keys": [
+          "status",
+          "reason"
+        ],
+        "status": "disabled",
+        "reason": "Wallet signing and transactions are disabled in this read-only preview."
+      }
+    },
+    {
+      "name": "new-engine-discovery",
+      "path": "/api/launchpad/new-engine",
+      "method": "GET",
+      "status": 404,
+      "type": "text/plain;charset=UTF-8",
+      "cache": "private, no-store",
+      "bodySha256": "0019dfc4b32d63c1392aa264aed2253c1e0c2fb09216f8e2cc269bbfb8bb49b5",
+      "markers": {}
+    },
+    {
+      "name": "new-engine-exact-lookup",
+      "path": "/api/launchpad/new-engine/0xdba33be56c89cc9fc014c4459028d7e5c7878671",
+      "method": "GET",
+      "status": 404,
+      "type": "text/plain;charset=UTF-8",
+      "cache": "private, no-store",
+      "bodySha256": "0019dfc4b32d63c1392aa264aed2253c1e0c2fb09216f8e2cc269bbfb8bb49b5",
+      "markers": {}
+    },
+    {
+      "name": "fixture-create",
+      "path": "/api/launchpad/test-creation",
+      "method": "GET",
+      "status": 404,
+      "type": "text/plain;charset=UTF-8",
+      "cache": "private, no-store",
+      "bodySha256": "0019dfc4b32d63c1392aa264aed2253c1e0c2fb09216f8e2cc269bbfb8bb49b5",
+      "markers": {}
+    },
+    {
+      "name": "fixture-lifecycle",
+      "path": "/api/launchpad/test-lifecycle",
+      "method": "GET",
+      "status": 404,
+      "type": "text/plain;charset=UTF-8",
+      "cache": "private, no-store",
+      "bodySha256": "0019dfc4b32d63c1392aa264aed2253c1e0c2fb09216f8e2cc269bbfb8bb49b5",
+      "markers": {}
+    }
+  ]
+}
