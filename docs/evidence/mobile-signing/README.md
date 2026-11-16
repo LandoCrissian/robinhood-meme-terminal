@@ -1,5 +1,7 @@
 # Mobile deployment review
 
+See the [Task 055 delegated-wallet handoff](DELEGATED_WALLET.md) for the later 4663 delegate qualification and the iPhone connection-only test. This file records the Task 054 review.
+
 **BLOCKED_NO_BROADCAST.** The 4663 packet orders the two Safe proposals, five contract deployments, both directory notice and execution pairs, and the first NEW RMT creation. It contains hashes, reviewed values and expected addresses. The live transaction list and verified production beneficiaries are empty. The proposed personal sender has no Safe ownership. Both SafeL2 1.4.1 proposals keep the three existing governance owners, 2-of-3 threshold and separate salts. [Review packet](review-plan-4663.json)
 
 At Robinhood block 115909907, three read-only providers agreed on the proposed sender's confirmed and pending nonce of 475, balance of 0.004457035386534138 ETH and EIP-7702 delegation. The current binding requires a code-empty account. The packet cannot derive binding production CREATE addresses from this observation. Both Safe CREATE2 addresses were vacant at the observed block. Estimated execution was 313,391 gas and 0.000006322976816 ETH each, with zero L1 poster fee quoted at that block. The combined sample was 0.000012645953632 ETH. The snapshot records an expiry and is unsuitable as a current fee quote or proof of key control. [Read-only observation](sender-observation-4663.json) · [Delegation format](https://eips.ethereum.org/EIPS/eip-7702)

@@ -18,7 +18,7 @@ const sha256 = (data) => createHash("sha256").update(data).digest("hex");
 const bytes = (hex) => Buffer.from(hex.slice(2), "hex");
 const chainId = 4663;
 
-function eip712(name, version, verifyingContract) {
+export function eip712(name, version, verifyingContract) {
   const domain = { name, version, chainId, verifyingContract };
   const shortString = (value) => {
     const encoded = Buffer.from(value, "utf8");

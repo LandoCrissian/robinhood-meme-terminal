@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { test } from "node:test";
 import { encodeSafeSetup } from "../../docs/evidence/rmt-task045/operations-safe-initializer.mjs";
-import { assertCurrentMobileObservation, deriveFutureCreateDestinations, MOBILE_DEPLOYMENT_PAYER,
+import { assertCurrentMobileObservation, deriveFutureCreateDestinations, MOBILE_DELEGATE_POLICY, MOBILE_DEPLOYMENT_PAYER,
   observeMobileSender } from "./mobile-sender.mjs";
 import { makeReadOnlyRpc, ROBINHOOD_SOURCES } from "./rpc.mjs";
 
@@ -17,15 +17,22 @@ const byte32 = (number) => viem.numberToHex(number, { size: 32 });
 const block = { number: "0x1234", hash: byte32(5), timestamp: viem.numberToHex(Math.floor(timestamp / 1000)) };
 
 function reader({ chainId = "0x1237", header = block, code = "0x", balance = "0x2a", confirmed = "0x5",
-  pending = () => "0x5", destinationCode = "0x", destinationNonce = "0x0", fail } = {}) {
+  pending = () => "0x5", destinationCode = "0x", destinationNonce = "0x0", pendingCode = () => code,
+  delegateHash = () => MOBILE_DELEGATE_POLICY.runtimeHash, fail } = {}) {
   let pendingChecks = 0;
+  let pendingCodeChecks = 0;
+  let delegateChecks = 0;
   return async (method, params, summarize) => {
     if (fail === method) return { status: "unavailable" };
     const isSender = params[0] === MOBILE_DEPLOYMENT_PAYER;
+    if (method === "eth_getCode" && params[0] === MOBILE_DELEGATE_POLICY.address) {
+      const hash = delegateHash(++delegateChecks, params[1]);
+      return hash ? { status: "observed", value: hash } : { status: "unavailable" };
+    }
     const responses = {
       eth_chainId: () => chainId,
       eth_getBlockByNumber: () => header,
-      eth_getCode: () => isSender ? code : destinationCode,
+      eth_getCode: () => isSender ? (params[1] === "pending" ? pendingCode(++pendingCodeChecks) : code) : destinationCode,
       eth_getBalance: () => balance,
       eth_getTransactionCount: () => isSender ? (params[1] === "pending" ? pending(++pendingChecks) : confirmed) : destinationNonce,
     };
@@ -51,6 +58,33 @@ test("read-only sender observation requires agreeing code, nonce and canonical L
   assert.equal((await observe({}, { header: { ...block, hash: byte32(6) } })).status, "CONFLICT");
   assert.equal((await observe({}, { fail: "eth_getBalance" })).status, "UNVERIFIED");
   assert.equal((await observe({}, {}, { now: () => timestamp + 180_000 })).status, "UNVERIFIED");
+});
+
+test("the explicit delegated path requires the exact designator and verified delegate at anchored and pending state", async () => {
+  const code = MOBILE_DELEGATE_POLICY.designator;
+  const delegated = { allowPinnedDelegation: true };
+  const accepted = await observe({ code }, undefined, delegated);
+  assert.equal(accepted.accountType, "EIP_7702_DELEGATION");
+  assert.deepEqual(accepted.delegation, { ...MOBILE_DELEGATE_POLICY, status: "PINNED_RUNTIME" });
+  assert.deepEqual(accepted.createDestinations.map(({ deploymentNonce }) => deploymentNonce), ["7", "8", "9", "10", "11"]);
+  for (const options of [
+    { code: "0x" }, // Code-empty is a distinct legacy policy and is not accepted as revocation fallback.
+    { code: "0xef0100" + "12".repeat(20) },
+    { code, delegateHash: (_, tag) => tag === "pending" ? MOBILE_DELEGATE_POLICY.runtimeHash : byte32(8) },
+    { code, pendingCode: (count) => count === 3 ? "0x" : code },
+    { code, delegateHash: (count) => count === 4 ? byte32(12) : MOBILE_DELEGATE_POLICY.runtimeHash },
+    { code, delegateHash: (count) => count === 4 ? null : MOBILE_DELEGATE_POLICY.runtimeHash },
+  ]) {
+    const denied = await observe(options, undefined, delegated);
+    assert.equal(denied.delegation, null);
+    assert.deepEqual(denied.createDestinations, []);
+  }
+  const disagreement = await observe({ code }, { code, pendingCode: () => "0x" }, delegated);
+  assert.equal(disagreement.delegation, null);
+  assert.deepEqual(disagreement.createDestinations, []);
+  const pendingNonce = await observe({ code, pending: () => "0x6" }, undefined, delegated);
+  assert.equal(pendingNonce.nonceSynchronized, false);
+  assert.deepEqual(pendingNonce.createDestinations, []);
 });
 
 test("changed pending nonce, occupied destinations and contract-like accounts never yield usable sender binding", async () => {
@@ -90,6 +124,31 @@ test("admitting a synthetic proof recomputes account, vacancy, Safe runtime and 
   altered = structuredClone(fixture);
   altered.safes.proposals[0].gas.estimatedTotalWei = "0";
   assert.throws(() => assertCurrentMobileObservation(altered, timestamp), /arithmetic/);
+});
+
+test("delegated evidence separately fails on stale or altered sender, code, nonce, vacancy, and estimates", () => {
+  const report = load("mobile-signing/sender-delegation-4663.json");
+  const observed = Date.parse(report.observedAt);
+  const check = (proof, now = observed) => assertCurrentMobileObservation(proof, now, { allowPinnedDelegation: true });
+  const accepted = check(report);
+  assert.equal(accepted.delegation.runtimeHash, MOBILE_DELEGATE_POLICY.runtimeHash);
+  assert.deepEqual(accepted.createDestinations.map(({ deploymentNonce }) => deploymentNonce), ["478", "479", "480", "481", "482"]);
+  assert.throws(() => check(report, observed + 120_001), /Stale/);
+  assert.throws(() => assertCurrentMobileObservation(report, observed), /code-empty account/);
+  for (const [mutate, reason] of [
+    [(p) => { p.chainId = 31337; }, /Unrecognized/],
+    [(p) => { p.proposedSender = viem.zeroAddress; }, /Expected values/],
+    [(p) => { p.sender.providers[0].delegate.pending[1].designator = "0x"; }, /pinned delegation/],
+    [(p) => { p.sender.providers[0].delegate.pending[1].runtimeHash = byte32(15); }, /pinned delegation/],
+    [(p) => { p.sender.providers[0].delegate.anchoredRuntimeHash = byte32(15); }, /pinned delegation/],
+    [(p) => { p.sender.providers[0].pendingAfter = "477"; }, /pinned delegation/],
+    [(p) => { p.sender.createDestinations[0].providers[0].code = "0x60"; }, /occupancy/],
+    [(p) => { p.safes.proposals[0].gas = null; }, /exact Safe estimate/],
+  ]) {
+    const mutated = structuredClone(report);
+    mutate(mutated);
+    assert.throws(() => check(mutated), reason);
+  }
 });
 
 test("the personal payer estimate admits only the exact reviewed Safe transactions", async () => {

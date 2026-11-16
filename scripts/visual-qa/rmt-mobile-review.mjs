@@ -10,15 +10,26 @@ const factoryAbi = parseAbi(["function create(string,string,string,address,uint1
 const chain = "0x7a69";
 const route = "/wallet/mobile-review";
 const endpoint = "/api/launchpad/test-mobile-review";
+const delegate = "0x000000000000000000000000000000007702dEaD";
+const runtime = "0x5f5ffd";
+const designator = "0xef0100" + delegate.slice(2).toLowerCase();
 
 // The shim signs only exact requests for the disposable local account. A wallet
 // rejection returns code 4001 without invoking the signer or the Anvil sender.
-export async function testMobileReview({ context, site, out, rpc, creator, alternate, factory, feeWei, setGasDrift, hideReceipt }) {
+export async function testMobileReview({ context, site, out, rpc, creator, alternate, factory, feeWei, setGasDrift, hideReceipt, injectAuthorization }) {
+  assert.equal(await rpc("eth_chainId"), chain);
+  assert.equal(await rpc("eth_getCode", [creator.address, "latest"]), "0x");
+  assert.equal(await rpc("eth_getCode", [delegate, "latest"]), "0x");
+  await rpc("anvil_setCode", [delegate, runtime]);
+  await rpc("anvil_setCode", [creator.address, designator]);
+  await rpc("evm_mine");
+  assert.equal(await rpc("eth_getCode", [creator.address, "latest"]), designator);
   const page = await context.newPage();
   page.setDefaultTimeout(25_000);
   const receipts = [];
   let account = creator.address, connectedChain = chain, decision = "normal", attempts = 0;
   let walletBlockMismatch = false;
+  let walletDelegateMismatch = false;
   let walletFailure;
   async function mineSigned(signed) {
     const hash = keccak256(signed);
@@ -40,6 +51,7 @@ export async function testMobileReview({ context, site, out, rpc, creator, alter
     if (method === "eth_accounts" || method === "eth_requestAccounts") return { value: [account] };
     if (method === "eth_chainId") return { value: connectedChain };
     if (method === "eth_getTransactionCount") return { value: await rpc(method, params) };
+    if (method === "eth_getCode") return { value: walletDelegateMismatch ? "0x" : await rpc(method, params) };
     if (method === "eth_getBlockByNumber") {
       const block = await rpc(method, params);
       return { value: walletBlockMismatch ? { ...block, hash: "0x" + "aa".repeat(32) } : block };
@@ -53,7 +65,9 @@ export async function testMobileReview({ context, site, out, rpc, creator, alter
     assert.equal(request.chainId, chain);
     assert.equal(request.from.toLowerCase(), creator.address.toLowerCase());
     assert.equal(request.to.toLowerCase(), factory.toLowerCase());
-    assert.ok([request.nonce, request.value, request.gas, request.gasPrice].every((value) => /^0x[0-9a-f]+$/i.test(value)));
+    assert.deepEqual(Object.keys(request).sort(), ["chainId", "data", "from", "gas", "maxFeePerGas", "maxPriorityFeePerGas", "nonce", "to", "type", "value"]);
+    assert.equal(request.type, "0x2");
+    assert.ok([request.nonce, request.value, request.gas, request.maxFeePerGas, request.maxPriorityFeePerGas].every((value) => /^0x[0-9a-f]+$/i.test(value)));
     assert.equal(BigInt(request.value), feeWei);
     const nonce = await rpc("eth_getTransactionCount", [creator.address, "pending"]);
     assert.equal(BigInt(request.nonce), BigInt(nonce));
@@ -66,8 +80,8 @@ export async function testMobileReview({ context, site, out, rpc, creator, alter
     if (decision === "revert") await rpc("evm_setNextBlockTimestamp", [Number(deadline + 1n)]);
 
     const signed = await creator.signTransaction({
-      chainId: 31337, nonce: Number(BigInt(request.nonce)), gas: BigInt(request.gas), gasPrice: BigInt(request.gasPrice),
-      to: request.to, data: request.data, value: BigInt(request.value), type: "legacy",
+      chainId: 31337, nonce: Number(BigInt(request.nonce)), gas: BigInt(request.gas), maxFeePerGas: BigInt(request.maxFeePerGas),
+      maxPriorityFeePerGas: BigInt(request.maxPriorityFeePerGas), to: request.to, data: request.data, value: BigInt(request.value), type: "eip1559",
     });
     const { hash, receipt } = await mineSigned(signed);
     assert.equal(receipt.status, decision === "revert" ? "0x0" : "0x1");
@@ -75,9 +89,14 @@ export async function testMobileReview({ context, site, out, rpc, creator, alter
     assert.equal(BigInt(transaction.nonce), BigInt(request.nonce));
     assert.equal(transaction.input, request.data);
     assert.equal(BigInt(transaction.gas), BigInt(request.gas));
-    assert.equal(BigInt(transaction.gasPrice), BigInt(request.gasPrice));
+    assert.equal(transaction.type, "0x2");
+    assert.equal(transaction.maxFeePerGas, request.maxFeePerGas);
+    assert.equal(transaction.maxPriorityFeePerGas, request.maxPriorityFeePerGas);
+    assert.deepEqual(transaction.accessList, []);
+    assert.equal(await rpc("eth_getCode", [creator.address, receipt.blockNumber]), designator);
     receipts.push({ hash, nonce: request.nonce, calldataHash: keccak256(request.data), intent, value: request.value, gas: request.gas,
-      gasPrice: request.gasPrice, status: receipt.status, blockNumber: receipt.blockNumber, blockHash: receipt.blockHash });
+      maxFeePerGas: request.maxFeePerGas, maxPriorityFeePerGas: request.maxPriorityFeePerGas, type: transaction.type,
+      status: receipt.status, blockNumber: receipt.blockNumber, blockHash: receipt.blockHash });
     if (decision === "lose") {
       hideReceipt(hash);
       return {};
@@ -142,11 +161,12 @@ export async function testMobileReview({ context, site, out, rpc, creator, alter
     assert.match(text, /4663/);
     assert.match(text, /31337/);
     assert.match(text, /BLOCKED_NO_BROADCAST/i);
+    assert.match(text, /Direct type 2/);
     assert.match(text, /0[.]0004\s*synthetic ETH/i);
     assert.ok(text.toLowerCase().includes(creator.address.toLowerCase()));
     assert.ok(text.toLowerCase().includes(factory.toLowerCase()));
     assert.equal(await id("offline-plan").locator("details").count(), 12);
-    assert.match(await id("observed-sender").innerText(), /475/);
+    assert.match(await id("observed-sender").innerText(), /\d+ \/ \d+ · unbound/);
     assert.match(await id("observed-sender").innerText(), /7702/);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     await screenshot("portrait");
@@ -175,6 +195,27 @@ export async function testMobileReview({ context, site, out, rpc, creator, alter
     noSend();
 
     await prepare();
+    walletDelegateMismatch = true;
+    await submit();
+    await status("stale");
+    walletDelegateMismatch = false;
+    noSend();
+
+    await prepare();
+    await rpc("anvil_setCode", [creator.address, "0x"]);
+    await submit();
+    await status("stale");
+    await rpc("anvil_setCode", [creator.address, designator]);
+    noSend();
+
+    await prepare();
+    await rpc("anvil_setCode", [delegate, "0x00"]);
+    await submit();
+    await status("stale");
+    await rpc("anvil_setCode", [delegate, runtime]);
+    noSend();
+
+    await prepare();
     setGasDrift(true);
     await submit();
     await status("stale");
@@ -185,7 +226,7 @@ export async function testMobileReview({ context, site, out, rpc, creator, alter
     const nonce = BigInt(await rpc("eth_getTransactionCount", [creator.address, "pending"]));
     const gasPrice = BigInt(await rpc("eth_gasPrice"));
     const competing = await mineSigned(await creator.signTransaction({
-      chainId: 31337, nonce: Number(nonce), gas: 21_000n, gasPrice, type: "legacy", to: creator.address, value: 1n,
+      chainId: 31337, nonce: Number(nonce), gas: 21_000n, gasPrice, type: "legacy", to: alternate, value: 1n,
     }));
     assert.equal(competing.receipt.status, "0x1");
     assert.equal(await rpc("eth_getTransactionCount", [creator.address, "pending"]), toHex(nonce + 1n));
@@ -230,6 +271,13 @@ export async function testMobileReview({ context, site, out, rpc, creator, alter
     assert.deepEqual(receipts.map(({ status }) => status), ["0x0", "0x1"]);
     assert.notEqual(receipts[0].nonce, receipts[1].nonce);
     await screenshot("confirmed");
+    injectAuthorization(receipts[1].hash);
+    await id("check").click();
+    await status("mismatch");
+    injectAuthorization(undefined);
+    await id("check").click();
+    await status("confirmed");
+    assert.equal(attempts, 3, "Malformed RPC envelopes never cause resubmission");
     await id("clear").click();
     await status("disconnected");
     await id("connect").click();
@@ -244,6 +292,8 @@ export async function testMobileReview({ context, site, out, rpc, creator, alter
     assert.equal(attempts, 4, "Recovery from an unrelated wallet-returned hash never broadcasts again");
     return { chainId: 31337, attemptedWalletRequests: attempts, receipts, wrongAccountRejected: true,
       wrongChainRejected: true, walletAnchorMismatchRejected: true, staleGasRejected: true, nonceDriftRejected: true,
+      walletDelegationMismatchRejected: true, revokedDelegationRejected: true, changedDelegateRuntimeRejected: true,
+      unexpectedAuthorizationRejected: true,
       competingNonceReceipt: { hash: competing.hash, blockHash: competing.receipt.blockHash, nonce: toHex(nonce) },
       walletRejection: true, minedRevert: true, receiptMismatch: true, recoveredUnknownHashAfterReload: true,
       recoveredUnrelatedReturnedHash: true, duplicateBroadcast: false };
@@ -254,6 +304,7 @@ export async function testMobileReview({ context, site, out, rpc, creator, alter
   } finally {
     setGasDrift(false);
     hideReceipt(undefined);
+    injectAuthorization(undefined);
     await page.close();
   }
 }

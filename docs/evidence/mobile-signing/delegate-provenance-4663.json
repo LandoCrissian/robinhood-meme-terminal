@@ -1,0 +1,59 @@
+{
+  "status": "BLOCKED_NO_BROADCAST",
+  "scope": "PUBLIC_READ_ONLY_DELEGATE_PROVENANCE",
+  "broadcastAuthorized": false,
+  "delegate": {
+    "address": "0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B",
+    "release": "MetaMask Delegation Framework v1.3.0",
+    "releaseCommit": "bfbdf9795a976833ed2fa000baf42fbb83958b03",
+    "deploymentReference": "https://github.com/MetaMask/delegation-framework/blob/bfbdf9795a976833ed2fa000baf42fbb83958b03/documents/Deployments.md",
+    "implementationSource": "https://github.com/MetaMask/delegation-framework/blob/bfbdf9795a976833ed2fa000baf42fbb83958b03/src/EIP7702/EIP7702StatelessDeleGator.sol",
+    "metaMaskReference": "https://support.metamask.io/configure/accounts/what-is-a-smart-account/",
+    "sourceVerificationApi": "Robinhood Blockscout returned HTTP 403",
+    "observedGetters": {
+      "name": "EIP7702StatelessDeleGator",
+      "version": "1.3.0",
+      "entryPoint": "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
+      "delegationManager": "0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3"
+    }
+  },
+  "runtimeComparison": {
+    "byteCount": 11185,
+    "cachedChainWordOffset": 5801,
+    "cachedDomainWordOffset": 5843,
+    "wordBytes": 32,
+    "domainVersion": "1",
+    "immutableExcludedKeccak256": "0x29e80da8dce2a5184fbbe98d907f0b4c01c9ad4f40c485bb038c82f28db5425a",
+    "basis": "Compared eth_getCode for the documented MetaMask deployment on Ethereum and the target on Robinhood. Both chain/domain words were independently recomputed. Clearing those two words gives identical remaining bytes.",
+    "robinhood": {
+      "chainId": 4663,
+      "blockNumber": 115936087,
+      "blockHash": "0x67a60670021e13867e9075ce35b6249044d7863eb305c248ee653b2bdd1a8a2b",
+      "providers": ["official", "pocket", "pinax"],
+      "runtimeHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0",
+      "domainSeparator": "0xfab2281ad1703af768d105ab041bcf0ef9ee1054ce1bfc81e8b951766773cd7d"
+    },
+    "ethereum": {
+      "chainId": 1,
+      "blockNumberHex": "0x19346a1",
+      "blockHash": "0x5a5a06b027ffbb8a0a61c240ae9fc76c97991bc704ed9b259590de7d354587f8",
+      "provider": "ethereum-rpc.publicnode.com",
+      "runtimeHash": "0x0b77e469f5603ed1e9ff0e7ee56238b61a8cf7cb3185b33e53e2eeaad50109ab",
+      "domainSeparator": "0xa19b62214f2551ffb2d44413716fd580710b2992e6261b9e161e65847d90b77e"
+    }
+  },
+  "observedDirectCall": {
+    "chainId": 4663,
+    "sender": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+    "transactionHash": "0xf945bdba2d342e657f619c800d8b25825870edb3f2a7cf958ffeaf2f259ef5db",
+    "blockNumber": 115938896,
+    "blockHash": "0x3be9645367cd2b4349aee7683fb03e231bcde06a930e964e717c0ba8d52b7539",
+    "providers": ["official", "pocket", "pinax"],
+    "receiptStatus": "SUCCESS",
+    "transactionType": "0x2",
+    "transactionNonce": "475",
+    "authorizationListLength": 0,
+    "priorAndResultingDesignator": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b",
+    "observations": "The ordinary direct CALL, its receipt and unchanged designator at the previous and resulting blocks were corroborated with public reads. During the first probe the pending nonce advanced from 475 to 476, invalidating all nonce-bound predictions. This transaction was already onchain independently of the rehearsal. Direct CREATE, signing-client behavior and private key control require separate evidence."
+  }
+}

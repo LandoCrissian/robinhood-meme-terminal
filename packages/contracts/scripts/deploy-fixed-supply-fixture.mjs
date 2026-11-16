@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import { backing, creationFee, profile, supply } from "./fixed-supply-profile.mjs";
+import { buildLoopbackType2Envelope } from "./delegated-mobile-transaction.mjs";
 
 const require = createRequire(new URL("../../../apps/launch-website/package.json", import.meta.url));
 const { createPublicClient, defineChain, encodeDeployData, encodeFunctionData, getContractAddress, getCreate2Address,
@@ -26,11 +27,13 @@ export const call = (client, address, abi, functionName, args = [], blockNumber)
 export const transact = (address, abi, functionName, args = []) =>
   ({ to: address, data: encodeFunctionData({ abi, functionName, args }) });
 
-export async function sendFixture(client, from, { to, data, value = 0n, gas = 8_000_000n }, expected = "success") {
+export async function sendFixture(client, from, { to, data, value = 0n, gas = 8_000_000n, type2 }, expected = "success") {
   assert.ok(verifiedFixtureClients.has(client), "Fixture writes require a verified loopback Anvil client");
-  const hash = await client.request({ method: "eth_sendTransaction", params: [{
-    from, ...(to ? { to } : {}), data, value: toHex(value), gas: toHex(gas),
-  }] });
+  const envelope = type2
+    ? buildLoopbackType2Envelope({ endpoint: client.transport.url, chainId: client.chain.id, from, to, data, value, gas,
+      nonce: type2.nonce, maxFeePerGas: type2.maxFeePerGas, maxPriorityFeePerGas: type2.maxPriorityFeePerGas })
+    : { from, ...(to ? { to } : {}), data, value: toHex(value), gas: toHex(gas) };
+  const hash = await client.request({ method: "eth_sendTransaction", params: [envelope] });
   const observed = await client.request({ method: "eth_getTransactionReceipt", params: [hash] });
   if (!observed) {
     const pending = await client.request({ method: "eth_getTransactionByHash", params: [hash] });
@@ -76,7 +79,8 @@ export async function verifyRuntime(client, address, artifact, blockNumber) {
 }
 
 export async function deployFixedSupplyFixture(client, artifacts, pins, {
-  operator, operations, reserve, observeConstructor, exerciseRotation = false,
+  operator, operations, reserve, observeConstructor, exerciseRotation = false, fixtureMigrationAuthority = exerciseRotation,
+  send = sendFixture, observedGovernors,
 }) {
   assert.ok(!isAddressEqual(operations, reserve), "Fixture platform roles must be distinct");
   for (const { address, runtimeHash } of Object.values(pins)) {
@@ -91,12 +95,13 @@ export async function deployFixedSupplyFixture(client, artifacts, pins, {
   const registryArtifact = artifacts.RMTLaunchProjectRegistryV3;
   const deployerArtifact = artifacts.RMTLaunchCurveSuccessorDeployerV1;
   const successorArtifact = artifacts.RMTLaunchCurveSuccessorDeployerV2;
-  const signerAccounts = Array.from({ length: 3 }, () => privateKeyToAccount(generatePrivateKey()));
+  const signerAccounts = observedGovernors ? [] : Array.from({ length: 3 }, () => privateKeyToAccount(generatePrivateKey()));
+  const governors = observedGovernors ?? signerAccounts.map((signer) => signer.address);
   const deploy = async (name, artifact, args = []) => {
     const nonce = await client.getTransactionCount({ address: operator, blockTag: "pending" });
     const derived = getContractAddress({ from: operator, nonce: BigInt(nonce) });
     const data = encodeDeployData({ abi: artifact.abi, bytecode: artifact.bytecode, args });
-    const receipt = await sendFixture(client, operator, { data });
+    const receipt = await send(client, operator, { data });
     const address = receipt.contractAddress;
     assert.ok(address && isAddressEqual(address, derived));
     const runtimeHash = await verifyRuntime(client, address, artifact, receipt.blockNumber);
@@ -104,7 +109,7 @@ export async function deployFixedSupplyFixture(client, artifacts, pins, {
       chainId: client.chain.id, value: "0", scope: "LOOPBACK_FIXTURE_ONLY", broadcastAuthorized: false });
     return { address, runtimeHash, receipt: receiptEvidence(receipt) };
   };
-  const directory = await deploy("directory", directoryArtifact, signerAccounts.map((signer) => signer.address));
+  const directory = await deploy("directory", directoryArtifact, governors);
   const registry = await deploy("registry", registryArtifact, [directory.address]);
   const v2 = await deploy("successor-v2", deployerArtifact);
   const v3 = await deploy("successor-v3", successorArtifact);
@@ -134,7 +139,7 @@ export async function deployFixedSupplyFixture(client, artifacts, pins, {
   const initcodeBytes = (data.length - 2) / 2;
   assert.ok(initcodeBytes <= 49_152);
   assert.equal(await client.getTransactionCount({ address: operator, blockTag: "pending" }), deployerNonce);
-  const deployed = await sendFixture(client, operator, { data, gas: 14_000_000n });
+  const deployed = await send(client, operator, { data, gas: 14_000_000n });
   assert.ok(isAddressEqual(deployed.contractAddress, bootstrap));
   for (const [getter, expected] of [["factory", factory], ["graduationEngine", engine], ["initializationGuard", guard]]) {
     assert.ok(isAddressEqual(await call(client, bootstrap, deploymentArtifact.abi, getter), expected));
@@ -166,14 +171,29 @@ export async function deployFixedSupplyFixture(client, artifacts, pins, {
       signerSetEpoch: await readDirectory("signerSetEpoch"), deadline: Number((await client.getBlock()).timestamp) + 4 * 86400 };
     const digest = await readDirectory("actionDigest", [action]);
     const signatures = await Promise.all(signerAccounts.slice(0, 2).map((signer) => signer.sign({ hash: digest })));
-    const scheduled = await sendFixture(client, operator, transact(directory.address, directoryArtifact.abi, "schedule", [action, ...signatures]));
+    const scheduled = await send(client, operator, transact(directory.address, directoryArtifact.abi, "schedule", [action, ...signatures]));
     await client.request({ method: "evm_increaseTime", params: [2 * 86400] });
     // Apply the local time jump in a block before submitting the notice execution.
     await client.request({ method: "evm_mine" });
-    const executed = await sendFixture(client, operator, transact(directory.address, directoryArtifact.abi, "execute", [action]));
+    const executed = await send(client, operator, transact(directory.address, directoryArtifact.abi, "execute", [action]));
     return { scheduled: await reviewTransactionEvidence(client, scheduled), executed: await reviewTransactionEvidence(client, executed),
       reviewAction: action, actionDigest: digest };
   };
+  const summary = {
+    profile, fixedSupplyWei: supply.toString(), chainId: client.chain.id, creationFeeWei: creationFee.toString(),
+    terms: { backingWei: backing.toString() }, factory, factoryRuntimeHash, projectRegistry: registry.address,
+    registryRuntimeHash: registry.runtimeHash, graduationEngine: engine, graduationRuntimeHash, guard, guardRuntimeHash,
+    directory: directory.address, directoryRuntimeHash: directory.runtimeHash, deployBlock: deployed.blockNumber,
+    deployment: { ...receiptEvidence(deployed), address: bootstrap, blockHash: deployed.blockHash, bootstrapRuntimeHash,
+      operatingRecipient: operations, futureReserveRecipient: reserve, guardSalt, guardCodeHash, initcodeBytes, deployerNonce,
+      constructors: { directory, registry, v2, v3 } },
+  };
+  if (observedGovernors) {
+    assert.equal(await readDirectory("latestVersion"), 0);
+    for (const governor of governors) assert.equal(await readDirectory("isSigner", [governor]), true);
+    return summary;
+  }
+
   const factoryVersion = await readFactory("engineVersion");
   const publication = await publish(0, factoryVersion, factory, factoryRuntimeHash);
   const templatePublication = await publish(4, 3, v3.address, v3.runtimeHash);
@@ -189,23 +209,15 @@ export async function deployFixedSupplyFixture(client, artifacts, pins, {
     : undefined;
 
   // Local rehearsal only. Expose quorum approval without returning signer keys.
-  const scheduleFixtureMigration = exerciseRotation ? async (token) => {
+  const scheduleFixtureMigration = fixtureMigrationAuthority ? async (token) => {
     const digest = await call(client, registry.address, registryArtifact.abi, "migrationDigest", [token]);
     const signatures = await Promise.all(signerAccounts.slice(0, 2).map((signer) => signer.sign({ hash: digest })));
-    const scheduled = await sendFixture(client, operator, transact(registry.address, registryArtifact.abi, "scheduleMigration", [token, ...signatures]));
+    const scheduled = await send(client, operator, transact(registry.address, registryArtifact.abi, "scheduleMigration", [token, ...signatures]));
     return receiptEvidence(scheduled);
   } : undefined;
 
-  return {
-    scheduleFixtureMigration,
-    profile, fixedSupplyWei: supply.toString(), chainId: client.chain.id, creationFeeWei: creationFee.toString(),
-    terms: { backingWei: backing.toString() }, factory, factoryRuntimeHash, projectRegistry: registry.address,
-    registryRuntimeHash: registry.runtimeHash, graduationEngine: engine, graduationRuntimeHash, guard, guardRuntimeHash,
-    directory: directory.address, directoryRuntimeHash: directory.runtimeHash, deployBlock: deployed.blockNumber,
-    deployment: { ...receiptEvidence(deployed), address: bootstrap, blockHash: deployed.blockHash, bootstrapRuntimeHash,
-      operatingRecipient: operations, futureReserveRecipient: reserve, guardSalt, guardCodeHash, initcodeBytes, deployerNonce,
-      publication, templatePublication, rotation, constructors: { directory, registry, v2, v3 } },
-  };
+  Object.assign(summary.deployment, { publication, templatePublication, rotation });
+  return { scheduleFixtureMigration, ...summary };
 }
 
 

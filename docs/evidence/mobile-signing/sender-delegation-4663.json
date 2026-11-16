@@ -1,0 +1,420 @@
+{
+  "schemaVersion": 1,
+  "scope": "READ_ONLY_4663_MOBILE_PREPARATION",
+  "status": "BLOCKED_NO_BROADCAST",
+  "broadcastAuthorized": false,
+  "chainId": 4663,
+  "observedAt": "2026-11-16T17:35:51.091Z",
+  "expiresAt": "2026-11-16T17:37:51.091Z",
+  "proposedSender": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+  "observedSignerControl": "UNVERIFIED",
+  "sender": {
+    "status": "OBSERVED",
+    "anchor": {
+      "number": "115939588",
+      "hash": "0x6a9cd5e8bf89627dec90bc0a7bab62f962089adb15ffa6b783d09107dca31d1f",
+      "blockTimeUtc": "2026-11-16T17:35:29.000Z"
+    },
+    "accountType": "EIP_7702_DELEGATION",
+    "balanceWei": "4455788086534138",
+    "confirmedNonce": "476",
+    "pendingNonce": "476",
+    "nonceSynchronized": true,
+    "providers": [
+      {
+        "name": "official",
+        "chainId": "4663",
+        "latest": {
+          "number": "115939723",
+          "hash": "0xe8a40a4e539a13a792e9885b98db44ec626a2b014fb6789bba0b26118636af01",
+          "blockTimeUtc": "2026-11-16T17:35:43.000Z"
+        },
+        "before": {
+          "number": "115939588",
+          "hash": "0x6a9cd5e8bf89627dec90bc0a7bab62f962089adb15ffa6b783d09107dca31d1f",
+          "blockTimeUtc": "2026-11-16T17:35:29.000Z"
+        },
+        "pendingBefore": "476",
+        "pendingAfter": "476",
+        "after": {
+          "number": "115939588",
+          "hash": "0x6a9cd5e8bf89627dec90bc0a7bab62f962089adb15ffa6b783d09107dca31d1f",
+          "blockTimeUtc": "2026-11-16T17:35:29.000Z"
+        },
+        "code": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b",
+        "balanceWei": "4455788086534138",
+        "confirmedNonce": "476",
+        "delegate": {
+          "anchoredRuntimeHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0",
+          "pending": [
+            {
+              "designator": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b",
+              "runtimeHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0"
+            },
+            {
+              "designator": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b",
+              "runtimeHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0"
+            },
+            {
+              "designator": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b",
+              "runtimeHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0"
+            },
+            {
+              "designator": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b",
+              "runtimeHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0"
+            }
+          ]
+        }
+      },
+      {
+        "name": "pocket",
+        "chainId": "4663",
+        "latest": {
+          "number": "115939729",
+          "hash": "0x4564181dc62d892d226e00dd4aa91d1beadd6d4f7e6aa1f96ca1e47e14d1c2e1",
+          "blockTimeUtc": "2026-11-16T17:35:44.000Z"
+        },
+        "before": {
+          "number": "115939588",
+          "hash": "0x6a9cd5e8bf89627dec90bc0a7bab62f962089adb15ffa6b783d09107dca31d1f",
+          "blockTimeUtc": "2026-11-16T17:35:29.000Z"
+        },
+        "pendingBefore": "476",
+        "pendingAfter": "476",
+        "after": {
+          "number": "115939588",
+          "hash": "0x6a9cd5e8bf89627dec90bc0a7bab62f962089adb15ffa6b783d09107dca31d1f",
+          "blockTimeUtc": "2026-11-16T17:35:29.000Z"
+        },
+        "code": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b",
+        "balanceWei": "4455788086534138",
+        "confirmedNonce": "476",
+        "delegate": {
+          "anchoredRuntimeHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0",
+          "pending": [
+            {
+              "designator": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b",
+              "runtimeHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0"
+            },
+            {
+              "designator": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b",
+              "runtimeHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0"
+            },
+            {
+              "designator": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b",
+              "runtimeHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0"
+            },
+            {
+              "designator": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b",
+              "runtimeHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0"
+            }
+          ]
+        }
+      },
+      {
+        "name": "pinax",
+        "chainId": "4663",
+        "latest": {
+          "number": "115939723",
+          "hash": "0xe8a40a4e539a13a792e9885b98db44ec626a2b014fb6789bba0b26118636af01",
+          "blockTimeUtc": "2026-11-16T17:35:43.000Z"
+        },
+        "before": {
+          "number": "115939588",
+          "hash": "0x6a9cd5e8bf89627dec90bc0a7bab62f962089adb15ffa6b783d09107dca31d1f",
+          "blockTimeUtc": "2026-11-16T17:35:29.000Z"
+        },
+        "pendingBefore": "476",
+        "code": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b",
+        "balanceWei": "4455788086534138",
+        "confirmedNonce": "476",
+        "delegate": {
+          "anchoredRuntimeHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0",
+          "pending": [
+            {
+              "designator": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b",
+              "runtimeHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0"
+            },
+            {
+              "designator": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b",
+              "runtimeHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0"
+            },
+            {
+              "runtimeHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0"
+            }
+          ]
+        }
+      }
+    ],
+    "delegation": {
+      "address": "0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B",
+      "designator": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b",
+      "runtimeHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0",
+      "name": "EIP7702StatelessDeleGator",
+      "version": "1.3.0",
+      "entryPoint": "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
+      "delegationManager": "0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3",
+      "status": "PINNED_RUNTIME"
+    },
+    "createDestinations": [
+      {
+        "deploymentNonce": "478",
+        "address": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+        "status": "VACANT",
+        "code": "0x",
+        "accountNonce": "0",
+        "providers": [
+          {
+            "name": "official",
+            "code": "0x",
+            "nonce": "0"
+          },
+          {
+            "name": "pocket",
+            "code": "0x",
+            "nonce": "0"
+          },
+          {
+            "name": "pinax",
+            "code": "0x",
+            "nonce": "0"
+          }
+        ]
+      },
+      {
+        "deploymentNonce": "479",
+        "address": "0xf1113714Dda31f31532995D2525e034271425398",
+        "status": "VACANT",
+        "code": "0x",
+        "accountNonce": "0",
+        "providers": [
+          {
+            "name": "official",
+            "code": "0x",
+            "nonce": "0"
+          },
+          {
+            "name": "pocket",
+            "code": "0x",
+            "nonce": "0"
+          },
+          {
+            "name": "pinax",
+            "code": "0x",
+            "nonce": "0"
+          }
+        ]
+      },
+      {
+        "deploymentNonce": "480",
+        "address": "0xcB25a3DF74729F7104C4f924Cb04F687F69391C6",
+        "status": "VACANT",
+        "code": "0x",
+        "accountNonce": "0",
+        "providers": [
+          {
+            "name": "official",
+            "code": "0x",
+            "nonce": "0"
+          },
+          {
+            "name": "pocket",
+            "code": "0x",
+            "nonce": "0"
+          },
+          {
+            "name": "pinax",
+            "code": "0x",
+            "nonce": "0"
+          }
+        ]
+      },
+      {
+        "deploymentNonce": "481",
+        "address": "0x622D2f878B328406861DA18F4BBdD27E4730Cb65",
+        "status": "VACANT",
+        "code": "0x",
+        "accountNonce": "0",
+        "providers": [
+          {
+            "name": "official",
+            "code": "0x",
+            "nonce": "0"
+          },
+          {
+            "name": "pocket",
+            "code": "0x",
+            "nonce": "0"
+          },
+          {
+            "name": "pinax",
+            "code": "0x",
+            "nonce": "0"
+          }
+        ]
+      },
+      {
+        "deploymentNonce": "482",
+        "address": "0xb65380aE9A452813c4e6b0fF391cfE34faE676A5",
+        "status": "VACANT",
+        "code": "0x",
+        "accountNonce": "0",
+        "providers": [
+          {
+            "name": "official",
+            "code": "0x",
+            "nonce": "0"
+          },
+          {
+            "name": "pocket",
+            "code": "0x",
+            "nonce": "0"
+          },
+          {
+            "name": "pinax"
+          }
+        ]
+      }
+    ]
+  },
+  "safes": {
+    "anchor": {
+      "number": "115939588",
+      "hash": "0x6a9cd5e8bf89627dec90bc0a7bab62f962089adb15ffa6b783d09107dca31d1f",
+      "blockTimeUtc": "2026-11-16T17:35:29.000Z"
+    },
+    "probeStatus": "READ_ONLY_ESTIMATED",
+    "runtimePins": [
+      {
+        "address": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+        "hash": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+        "witnesses": [
+          {
+            "name": "official",
+            "observedHash": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff"
+          },
+          {
+            "name": "pocket",
+            "observedHash": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff"
+          }
+        ]
+      },
+      {
+        "address": "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
+        "hash": "0x50c3cdc4074750a7a974204a716c999edd37482f907608d960b2b025ee0b3317",
+        "witnesses": [
+          {
+            "name": "official",
+            "observedHash": "0x50c3cdc4074750a7a974204a716c999edd37482f907608d960b2b025ee0b3317"
+          },
+          {
+            "name": "pocket",
+            "observedHash": "0x50c3cdc4074750a7a974204a716c999edd37482f907608d960b2b025ee0b3317"
+          }
+        ]
+      },
+      {
+        "address": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+        "hash": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9",
+        "witnesses": [
+          {
+            "name": "official",
+            "observedHash": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9"
+          },
+          {
+            "name": "pocket",
+            "observedHash": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9"
+          }
+        ]
+      }
+    ],
+    "safeVersion": "SafeL2 1.4.1",
+    "payer": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+    "owners": [
+      "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+      "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+      "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697"
+    ],
+    "threshold": 2,
+    "factory": "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
+    "singleton": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+    "initcodeHash": "0xe298282cefe913ab5d282047161268a8222e4bd4ed106300c547894bbefd31ee",
+    "proposals": [
+      {
+        "role": "RMT-OPERATIONS",
+        "counterfactualAddress": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+        "create2Salt": "0x888907e1a47ea3a37cf6e51f20e36a89ce771320fd09015ff0f6e3c2190a7706",
+        "saltNonce": "0x8094029c8a767b073fdbe606186b138b416682f2584ca87d38b3eaaa7af16cc2",
+        "initializerKeccak256": "0x151a0612bf013560eaf16129615ae6262a6889db13410623ddcb49f2a8506ac2",
+        "simulatedAddress": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+        "vacancy": [
+          {
+            "name": "official",
+            "code": "0x",
+            "nonce": "0",
+            "balanceWei": "0"
+          },
+          {
+            "name": "pocket",
+            "code": "0x",
+            "nonce": "0",
+            "balanceWei": "0"
+          }
+        ],
+        "gas": {
+          "nitroGasEstimate": "313391",
+          "l2GasUnits": "313391",
+          "l1PosterGasUnits": "0",
+          "l2BaseFeeWei": "20198000",
+          "l1BaseFeeEstimateWei": "0",
+          "l2ExecutionWei": "6329871418000",
+          "l1PosterWei": "0",
+          "estimatedTotalWei": "6329871418000",
+          "estimatedTotalEth": "0.000006329871418",
+          "rpcEstimateGas": "313391"
+        },
+        "estimateStatus": "observed",
+        "estimationRpcCode": null
+      },
+      {
+        "role": "RMT-RESERVE",
+        "counterfactualAddress": "0x8D44078642ce938Fd799b23087BcdD6114A302e5",
+        "create2Salt": "0xf7eb3bd812af043403525965a83801f950a4e7a6e5d93219fca1ba2c12a7d89f",
+        "saltNonce": "0xe0e8b0060b79275b10d83a2573dfc2e48e749a76e0a2efea0ffe422a30b89a87",
+        "initializerKeccak256": "0x151a0612bf013560eaf16129615ae6262a6889db13410623ddcb49f2a8506ac2",
+        "simulatedAddress": "0x8D44078642ce938Fd799b23087BcdD6114A302e5",
+        "vacancy": [
+          {
+            "name": "official",
+            "code": "0x",
+            "nonce": "0",
+            "balanceWei": "0"
+          },
+          {
+            "name": "pocket",
+            "code": "0x",
+            "nonce": "0",
+            "balanceWei": "0"
+          }
+        ],
+        "gas": {
+          "nitroGasEstimate": "313391",
+          "l2GasUnits": "313391",
+          "l1PosterGasUnits": "0",
+          "l2BaseFeeWei": "20198000",
+          "l1BaseFeeEstimateWei": "0",
+          "l2ExecutionWei": "6329871418000",
+          "l1PosterWei": "0",
+          "estimatedTotalWei": "6329871418000",
+          "estimatedTotalEth": "0.000006329871418",
+          "rpcEstimateGas": "313391"
+        },
+        "estimateStatus": "observed",
+        "estimationRpcCode": null
+      }
+    ],
+    "estimatedTotalWei": "12659742836000",
+    "estimatedTotalEth": "0.000012659742836",
+    "budgetAtObservation": true
+  }
+}
