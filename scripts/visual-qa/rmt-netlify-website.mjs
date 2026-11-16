@@ -49,7 +49,7 @@ for (const launch of directory.launches) {
 
 const v4 = directory.launches.find(({ version, launchId }) => version === 4 && launchId === "1");
 const v6 = directory.launches.find(({ version, launchId }) => version === 6 && launchId === "0");
-assert.ok(v4 && v6, "Both original RMT registrations must remain searchable");
+assert.ok(v4 && v6, "The historical compatibility API must retain both exact RMT registrations");
 assert.notEqual(v4.token.toLowerCase(), v6.token.toLowerCase());
 for (const launch of [v4, v6]) {
   const response = await request(`/api/launchpad/launches/${launch.token}`);
@@ -63,9 +63,6 @@ const detailPath = (launch) => `/launches/${launch.token}`;
 
 const pages = [
   ["/", "Launches"],
-  [detailPath(v4), v4.name],
-  [detailPath(v6), v6.name],
-  ["/rmt", "Legacy RMT"],
   ["/create-token", "Create Token"],
   ["/my-launches", "My Launches"],
   ["/wallet", "Wallet"],
@@ -79,15 +76,18 @@ for (const [path, text] of pages) {
   assert.ok(html.includes(text), `${path} did not server-render its content`);
   assert.doesNotMatch(html, /Alder Example|Harbor Example/);
 }
-const identityResponse = await request("/rmt");
-const identityHtml = await identityResponse.text();
-assert.ok(identityHtml.includes(v4.receipt.transactionHash) && identityHtml.includes(v6.receipt.transactionHash));
+assert.equal((await request("/rmt")).status, 404);
+for (const launch of [v4, v6]) {
+  const response = await request(detailPath(launch));
+  assert.equal(response.status, 404);
+  assert.match(await response.text(), /Launch unavailable/);
+}
 assert.equal((await request("/create-token", { method: "HEAD" })).status, 200);
 
-const flight = await request(detailPath(v4), { headers: { RSC: "1" } });
+const flight = await request("/create-token", { headers: { RSC: "1" } });
 assert.equal(flight.status, 200);
 assert.match(flight.headers.get("content-type") ?? "", /^text\/x-component\b/);
-assert.ok((await flight.text()).includes(v4.name));
+assert.ok((await flight.text()).includes("Create Token"));
 
 const configResponse = await request("/api/launchpad/config");
 assert.equal(configResponse.status, 200);
@@ -100,7 +100,7 @@ for (const field of ["deployment", "rpcUrl", "curve", "factory", "chainId"]) {
 
 const creationReviewPath = "/api/launchpad/creation-review";
 const draftFields = { name: "Browser Test Token", symbol: "BROWSE", projectURI: "https://example.test/project",
-  supplyPreset: "1", treasury: "", treasuryShare: "" };
+  treasury: "", treasuryShare: "" };
 function postDraft(body, origin = site.origin) {
   return request(creationReviewPath, { method: "POST", headers: { Origin: origin, "Content-Type": "application/json" }, body: JSON.stringify(body) });
 }
@@ -109,12 +109,14 @@ assert.equal(validReview.status, 200);
 assert.match(validReview.headers.get("cache-control") ?? "", /no-store/);
 const reviewPayload = await readPublicJson(validReview);
 assert.equal(reviewPayload.status, "reviewed");
-assert.equal(reviewPayload.draft.supply, 10_000_000);
-for (const key of ["token", "transactionHash", "factory", "rpcUrl", "calldata"]) {
+assert.equal(reviewPayload.draft.supply, 1_000_000_000);
+for (const key of ["token", "transactionHash", "factory", "rpcUrl", "calldata", "supplyPreset"]) {
   assert.equal(reviewPayload[key], undefined);
   assert.equal(reviewPayload.draft[key], undefined);
 }
 assert.equal((await postDraft({ ...draftFields, treasuryShare: "95" })).status, 422);
+assert.equal((await postDraft({ ...draftFields, supplyPreset: "1" })).status, 400);
+assert.equal((await postDraft({ ...draftFields, supply: "10000000" })).status, 400);
 const fullProjectShare = { ...draftFields, treasury: "0x1000000000000000000000000000000000000001",
   treasuryShare: "100", treasuryShareUnit: "project-percent" };
 const fullShareReview = await postDraft(fullProjectShare);
@@ -136,20 +138,17 @@ assert.equal(missingData.status === "unavailable", unverifiedTokenData.status ==
 const unverifiedTokenDataHead = await request(unverifiedTokenApi, { method: "HEAD" });
 assert.ok([404, 503].includes(unverifiedTokenDataHead.status));
 assert.equal(await unverifiedTokenDataHead.text(), "");
-const missingHeading = "No verified RMT registration for this address";
-const unavailableHeading = "Launch data unavailable";
 const unverifiedTokenPage = await request(unverifiedTokenPath);
-const pageIsUnavailable = unverifiedTokenPage.status === 200;
-assert.ok([200, 404].includes(unverifiedTokenPage.status));
-assert.ok((await unverifiedTokenPage.text()).includes(pageIsUnavailable ? unavailableHeading : missingHeading));
+assert.equal(unverifiedTokenPage.status, 404);
+assert.match(await unverifiedTokenPage.text(), /Launch unavailable/);
 const unverifiedTokenPageHead = await request(unverifiedTokenPath, { method: "HEAD" });
-assert.ok([200, 404].includes(unverifiedTokenPageHead.status));
+assert.equal(unverifiedTokenPageHead.status, 404);
 assert.equal(await unverifiedTokenPageHead.text(), "");
 
 const unsupportedRoutes = [
   "/launches/example-alder", "/launches/example-harbor", "/launches/not-a-launch",
   "/admin", "/admin/creator-applications", "/deploy-mainnet", "/deploy-testnet",
-  "/activate-consent-testnet", "/mainnet-smoke", "/vnext", "/status",
+  "/activate-consent-testnet", "/mainnet-smoke", "/vnext", "/status", "/rmt",
   "/api/launchpad/curve", "/api/launchpad/public/list_launches?chainId=31337",
   "/api/launchpad/test-creation", "/api/launchpad/test-lifecycle", "/api/launchpad/new-engine",
   "/api/launchpad/new-engine/0x0000000000000000000000000000000000000001",
@@ -266,63 +265,14 @@ try {
       const prelaunch = main.getByRole("region", { name: "New RMT Launch engine" });
       await prelaunch.getByText(/new RMT Launch engine is in prelaunch/i).waitFor();
       assert.equal(await prelaunch.locator('a[href*="/launches/"]').count(), 0);
-      await main.getByRole("region", { name: "Historical V4/V6 registrations" }).waitFor();
-      const visibleHistory = main.getByRole("region", { name: "Historical V4/V6 registrations" });
-      await visibleHistory.getByText(/Chain data is stale\. Showing the (?:verified historical snapshot|last verified V6 index records)\.|Verified legacy RMT index\./).waitFor();
-      const legacy = main.locator(`a[href="${detailPath(v4)}"]`);
-      const official = main.locator(`a[href="${detailPath(v6)}"]`);
-      const deploymentTest = directory.launches.find(({ classification }) => classification === "deployment-test");
-      await legacy.waitFor();
-      await official.waitFor();
-      const search = main.getByRole("textbox", { name: "Search launches" });
-      await search.fill("no matching RMT project");
-      await main.getByRole("heading", { name: "No matching launches" }).waitFor();
-      assert.equal(await main.getByRole("link", { name: "Look up this address" }).count(), 0);
-      if (deploymentTest) {
-        const testRow = main.locator(`a[href="${detailPath(deploymentTest)}"]`);
-        assert.equal(await testRow.count(), 0);
-        await search.fill(deploymentTest.token);
-        await testRow.getByText(/RMT deployment test/i).waitFor();
-      }
-      await search.fill(v6.token.toUpperCase());
-      await legacy.waitFor({ state: "detached" });
-      await official.waitFor();
-      await search.fill(` ${unverifiedToken.toUpperCase()} `);
-      const addressLookup = main.getByRole("link", { name: "Look up this address" });
-      await addressLookup.waitFor();
-      assert.equal(await addressLookup.getAttribute("href"), unverifiedTokenPath);
-      await screenshot("address-lookup");
-      await addressLookup.click();
-      const currentLookup = main.getByRole("heading", { name: new RegExp(`^(${missingHeading}|${unavailableHeading})$`) });
-      await currentLookup.waitFor();
-      const selectedHeading = await currentLookup.textContent();
-      await verifyReadOnly(selectedHeading);
-      await main.getByText(selectedHeading === unavailableHeading
-        ? /try again when the directory is available/i
-        : /external tokens and newer or unindexed records may be absent/i).waitFor();
+      assert.equal(await main.getByRole("region", { name: "Historical V4/V6 registrations" }).count(), 0);
+      assert.equal(await main.locator('a[href*="/launches/"]').count(), 0);
+      assert.equal(await page.getByRole("link", { name: "Legacy RMT", exact: true }).count(), 0);
+      await screenshot("discovery");
+      assert.equal((await page.goto(new URL(detailPath(v6), site).href)).status(), 404);
+      await verifyReadOnly("Launch unavailable");
       await nav.getByRole("link", { name: "Launches", exact: true }).click();
       await verifyReadOnly("Launches");
-      await search.fill("");
-      await search.blur();
-      await legacy.waitFor();
-      await screenshot("discovery");
-
-      await legacy.click();
-      await verifyReadOnly(v4.name);
-      await main.getByText("Launch provenance", { exact: true }).waitFor();
-      await main.getByText(v4.token, { exact: true }).waitFor();
-      await main.getByText(v4.receipt.transactionHash, { exact: true }).waitFor();
-      await screenshot("historical-v4");
-      const reloaded = await page.reload();
-      assert.equal(reloaded.status(), 200);
-      await verifyReadOnly(v4.name);
-
-      assert.equal((await page.goto(new URL(detailPath(v6), site).href)).status(), 200);
-      await verifyReadOnly(v6.name);
-      await main.getByRole("heading", { name: "Confirmed activity" }).waitFor();
-      await main.getByText(v6.receipt.transactionHash, { exact: true }).waitFor();
-      await main.getByText("Ethereum L1 finality", { exact: true }).waitFor();
-      await screenshot("historical-v6");
 
       await nav.getByRole("link", { name: "Create Token", exact: true }).click();
       await verifyReadOnly("Create Token", true);
@@ -339,7 +289,10 @@ try {
       assert.equal(draftRequests, 0);
       await tokenName.fill(draftFields.name);
       await main.getByLabel("Ticker").fill(draftFields.symbol);
-      await main.getByLabel("Fixed supply").selectOption("1");
+      const plannedSupply = main.getByLabel("Planned fixed supply");
+      assert.equal(await plannedSupply.inputValue(), "1,000,000,000 tokens");
+      assert.equal(await plannedSupply.getAttribute("readonly"), "");
+      assert.equal(await main.locator("select").count(), 0);
       await main.getByLabel("Project description").fill("This sample text stays on the device.");
       await main.getByLabel("Project or metadata URL").fill(draftFields.projectURI);
       await main.getByLabel("Artwork URL").fill("https://example.test/artwork.png");
@@ -362,7 +315,7 @@ try {
       await reviewed.waitFor();
       await page.waitForFunction(() => document.activeElement?.textContent === "Review token draft");
       await main.getByText("Proposed token draft", { exact: true }).waitFor();
-      await main.getByText("10,000,000 tokens", { exact: true }).first().waitFor();
+      await main.getByText("1,000,000,000 tokens", { exact: true }).first().waitFor();
       await verifyReadOnly("Create Token");
       await screenshot("creation-review");
       await main.getByRole("button", { name: "Edit draft", exact: true }).click();
@@ -373,11 +326,6 @@ try {
       assert.equal(draftRequests, 2);
       await main.getByRole("button", { name: "Clear draft", exact: true }).click();
       assert.equal(await tokenName.inputValue(), "");
-
-      await page.getByRole("contentinfo").getByRole("link", { name: "Legacy RMT", exact: true }).click();
-      await verifyReadOnly("Legacy RMT");
-      assert.deepEqual((await main.getByRole("link", { name: "View launch evidence" }).evaluateAll((links) =>
-        links.map((link) => link.getAttribute("href")))).sort(), [detailPath(v4), detailPath(v6)].sort());
 
       for (const destination of ["My Launches", "Wallet"]) {
         await nav.getByRole("link", { name: destination, exact: true }).click();

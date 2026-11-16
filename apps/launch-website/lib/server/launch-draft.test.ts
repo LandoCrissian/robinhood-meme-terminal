@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { creationReviewPath, emptyLaunchDraft, projectTreasuryShareUnit, restoreLegacyLaunchDraft, reviewableFields, treasuryProjectPercent, validateLaunchDraft } from "../launch-draft";
+import { creationReviewPath, emptyLaunchDraft, projectTreasuryShareUnit, restoreLegacyLaunchDraft, reviewableFields,
+  treasuryProjectPercent, validateFixtureLaunchDraft, validateLaunchDraft } from "../launch-draft";
 import { reviewLaunchDraft } from "./launch-draft";
 
 const origin = "https://rmt.example";
@@ -10,7 +11,7 @@ const draft = {
   projectURI: "https://example.org/launch", artworkURL: "https://example.org/art.png",
   supplyPreset: "1", treasury, treasuryShare: "25",
 };
-const { description, artworkURL, ...reviewFields } = draft;
+const { description, artworkURL, supplyPreset, ...reviewFields } = draft;
 
 function post(input: unknown, opts: { url?: string; method?: string; origin?: string | null; contentType?: string } = {}) {
   const headers = new Headers({ "content-type": opts.contentType ?? "application/json" });
@@ -26,7 +27,7 @@ test("validates a fixed-supply draft and normalizes project terms", () => {
   if (!result.ok) return;
   assert.deepEqual(result.draft, {
     name: "Civic Builders", symbol: "BUILD", description: "Draft only\nSecond line",
-    projectURI: draft.projectURI, artworkURL, supply: 10_000_000, supplyPreset: 1,
+    projectURI: draft.projectURI, artworkURL, supply: 1_000_000_000,
     treasury: treasury.toLowerCase(), treasuryShareBps: 2250,
   });
   assert.equal(validateLaunchDraft({ ...draft, name: "é".repeat(24), treasuryShare: "100.00" }).ok, true);
@@ -40,7 +41,6 @@ test("rejects invalid strings, noncanonical options and unpaired treasury data",
     { projectURI: "javascript:alert(1)" }, { projectURI: "https://user:pass@example.org/" },
     { projectURI: "https://example.org/" + "é".repeat(50) },
     { artworkURL: "https://example.org\\bad" }, { artworkURL: "http://example.org/art.png" },
-    { supplyPreset: "01" }, { supplyPreset: "3" },
     { treasury: "0x" + "0".repeat(40) }, { treasury: "" }, { treasuryShare: "0.00" },
     { treasuryShare: "100.01" }, { treasuryShare: "0.01" }, { treasuryShare: "0.001" }, { treasuryShare: "2e1" },
   ];
@@ -49,6 +49,23 @@ test("rejects invalid strings, noncanonical options and unpaired treasury data",
     assert.equal(result.ok, false, JSON.stringify(item));
     if (!result.ok) assert.ok(Object.keys(result.errors).includes(Object.keys(item)[0]));
   }
+});
+
+test("isolates the existing contract's supply presets to the local fixture review", async () => {
+  for (const value of ["01", "3", "-1"]) {
+    const result = validateFixtureLaunchDraft({ ...draft, supplyPreset: value });
+    assert.equal(result.ok, false);
+    assert.ok(!result.ok && result.errors.supplyPreset);
+  }
+  const valid = { ...reviewFields, supplyPreset, treasuryShareUnit: projectTreasuryShareUnit };
+  assert.equal((await reviewLaunchDraft(post(valid))).status, 400);
+  assert.equal((await reviewLaunchDraft(post({ ...reviewFields, supply: "1000000" }))).status, 400);
+  assert.equal((await reviewLaunchDraft(post(reviewFields), true)).status, 400);
+  const response = await reviewLaunchDraft(post(valid), true);
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.draft.supply, 10_000_000);
+  assert.equal(result.draft.supplyPreset, 1);
 });
 
 test("accepts only a same-origin JSON review and returns only contract-relevant fields", async () => {

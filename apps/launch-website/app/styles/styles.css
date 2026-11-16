@@ -1,0 +1,54 @@
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#f4f7f4;background:#060906;color-scheme:dark;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html{scroll-behavior:smooth;overflow-x:clip;background:#060906}
+*{box-sizing:border-box;min-width:0}
+body{width:100%;min-width:320px;margin:0;overflow-x:clip;background:radial-gradient(circle at 18% -8%,rgba(37,118,56,.34) 0,transparent 34%),#060906}
+button,input,textarea,select{font:inherit}
+button,a{-webkit-tap-highlight-color:transparent}
+img{max-width:100%}
+section{scroll-margin-top:88px}
+main{width:100%;max-width:1220px;margin:auto;padding:0 24px 88px}
+label{display:flex;flex-direction:column;gap:8px;margin:16px 0;color:#b8c2ba;font-size:.8rem;font-weight:800}
+input,textarea,select{font-size:16px}
+input,textarea{width:100%;border:1px solid #2d3a31;background:#080c09;color:#fff;border-radius:12px;padding:14px;outline:none;transition:border-color .16s,box-shadow .16s}
+input:focus,textarea:focus{border-color:#38ed67;box-shadow:0 0 0 3px rgba(56,237,103,.1)}
+input[aria-invalid="true"]{border-color:#a74b47;box-shadow:0 0 0 3px rgba(255,108,101,.08)}
+textarea{min-height:94px;resize:vertical}
+article small{display:block;margin-bottom:5px;color:#758178;font-size:.68rem}
+.socialFields[open] summary:after{content:"–"}
+
+
+@media(max-width:880px){main{padding:0 16px 96px}
+}
+
+@media(max-width:640px){main{padding-right:12px;padding-left:12px}
+.feed article>div:nth-child(4),.feed article>div:nth-child(5){display:none}
+.feed article>div:nth-child(3){text-align:right}
+input,textarea,select{font-size:16px}
+}
+
+@media(max-width:380px){
+.feed article>div:nth-child(3){display:none}
+}
+
+.statusHero p:not(.eyebrow){display:block;margin:0;color:#8e9a91;line-height:1.55}
+
+
+/* V5 product polish: calmer type scale, denser surfaces, and an anchored mobile dock. */
+body{background:radial-gradient(circle at 18% -8%,rgba(37,118,56,.26) 0,transparent 31%),#060906}
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid #67ef7a;outline-offset:3px}
+section{scroll-margin-top:80px}
+main{max-width:1180px}
+@media(max-width:880px){
+  main{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+}
+
+/* V6 compact terminal and dedicated launch flow */
+.launchPausePanel>p:not(.eyebrow){max-width:720px;color:#929f96;line-height:1.6}
+
+/* Shared public navigation and focused discovery pages */
+.publicNavLinks a[aria-current="page"]{background:#111713;color:#edf4ee}
+.publicNavLinks a[aria-current="page"]{box-shadow:inset 0 -2px #42e966}
+.publicMore[open] summary{border-color:#304038;background:#121913;color:#fff}
+
+.mobileDock a[aria-current="page"]{background:#16291b;color:#72ef83}
+.mobileDock a[aria-current="page"] span{color:#7af08a}

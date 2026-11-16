@@ -35,9 +35,9 @@ jobs:
         run: python -m pip install --disable-pip-version-check slither-analyzer==0.11.5
       - name: Reject high-severity static-analysis findings
         working-directory: packages/contracts
-        # Legacy prototypes remain covered by Foundry tests; this gate targets the reviewed release surface.
+        # The archived exact 4663 release gate is verified separately by test:release-evidence.
         run: >-
           slither .
           --fail-high
           --filter-paths
-          "(lib/|test/|script/|broadcast/|src/BondingCurveMarket.sol|src/LaunchRewardVault.sol|src/MemeLaunchFactory.sol|src/LowCostMemeLaunchFactory.sol|src/LowCostMemeLaunchFactoryV2.sol|src/LowCostMemeLaunchFactoryV3.sol|src/clone/CloneBondingCurveMarket.sol)"
+          "(lib/|test/|script/|broadcast/)"

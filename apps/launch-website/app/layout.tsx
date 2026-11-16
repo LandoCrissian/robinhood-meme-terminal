@@ -2,21 +2,19 @@ import type { Metadata, Viewport } from "next";
 import { connection } from "next/server";
 import { headers } from "next/headers";
 import type { ReactNode } from "react";
-import logo from "../../web/public/brand/rmt-master-logo.png";
-import "../../web/app/styles.css";
-import "../../web/app/brand.css";
-import "../../web/app/legal.css";
-import "../../web/app/mobile-polish.css";
-import "../../web/app/desktop-polish.css";
-import "../../web/app/vnext/vnext-terminal.css";
-import "../../web/app/token-detail.css";
+import logo from "../public/brand/rmt-master-logo.png";
+import "./styles/styles.css";
+import "./styles/mobile-polish.css";
+import "./styles/desktop-polish.css";
+import "./styles/launch-theme.css";
+import "./styles/token-detail.css";
 import "./launchpad.css";
 import { LaunchShell } from "./_components/launch-shell";
 import { configuredCurveFixture } from "../lib/server/curve-fixture";
 
 export const metadata: Metadata = {
   title: "RMT Launch | Token Launchpad",
-  description: "Read-only discovery of verified RMT launches and their provenance on Robinhood Chain.",
+  description: "Prepare a token launch on Robinhood Chain. The launchpad is currently read-only.",
   robots: { index: false, follow: false },
   icons: { icon: logo.src, apple: logo.src },
 };

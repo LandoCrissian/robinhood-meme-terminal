@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import logo from "../../../web/public/brand/rmt-master-logo.png";
+import logo from "../../public/brand/rmt-master-logo.png";
 
 const navigation = [["/", "Launches"], ["/create-token", "Create Token"], ["/my-launches", "My Launches"], ["/wallet", "Wallet"]] as const;
 
@@ -29,7 +29,6 @@ export function LaunchShell({ children, fixture = false }: { children: ReactNode
     </header>
     <main id="launch-content" className="lpContent">{children}</main>
     <footer className="lpFooter">
-      <Link href="/rmt" prefetch={false}>Legacy RMT</Link>
       <Link href="/terms" prefetch={false}>Terms</Link>
       <Link href="/risks" prefetch={false}>Risks</Link>
       <Link href="/privacy" prefetch={false}>Privacy</Link>

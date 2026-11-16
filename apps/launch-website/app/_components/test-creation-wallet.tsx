@@ -3,12 +3,12 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { isLaunchAddress } from "../../lib/launch-data";
-import { treasuryProjectPercent, type ReviewedLaunchDraft } from "../../lib/launch-draft";
+import { treasuryProjectPercent, type ReviewedFixtureLaunchDraft } from "../../lib/launch-draft";
 import { calldataMatchesTestCreation, isLocalTestWallet, isTestCreationPayouts, isTestCreationRequest, isTransactionHash, sameTestCreationRequest,
   testCreationPath, type TestCreationFields, type TestCreationPayouts, type TestCreationRequest, type TestCreationVerification } from "../../lib/test-creation";
 import { assertTestWalletBinding, connectTestWallet, sameWalletHex as same, subscribeTestWallet, testProviderAtWindow, testWalletErrorCode, type TestWallet as Wallet } from "../../lib/test-wallet";
 
-type Prepared = { draft: ReviewedLaunchDraft; wallet: Wallet; factory: string; request: TestCreationRequest; payouts: TestCreationPayouts };
+type Prepared = { draft: ReviewedFixtureLaunchDraft; wallet: Wallet; factory: string; request: TestCreationRequest; payouts: TestCreationPayouts };
 type Journal = { request: TestCreationRequest; transactionHash?: `0x${string}` };
 
 const journalKey = "rmt:creation-test:31337:v1";
@@ -40,7 +40,7 @@ async function post(body: object) {
   return payload;
 }
 
-async function prepare(draft: ReviewedLaunchDraft, account: string, factory: string, prior?: TestCreationRequest) {
+async function prepare(draft: ReviewedFixtureLaunchDraft, account: string, factory: string, prior?: TestCreationRequest) {
   const { name, symbol, projectURI, supplyPreset, treasury, treasuryShareBps } = draft;
   const fields: TestCreationFields = { name, symbol, projectURI, supplyPreset, treasury, treasuryShareBps };
   const intentId = prior?.intentId ?? "0x" + Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -72,8 +72,8 @@ async function verify(entry: Journal, inputHash?: string): Promise<TestCreationV
 
 export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
   factory: string;
-  draft?: ReviewedLaunchDraft;
-  isCurrentDraft(draft: ReviewedLaunchDraft): boolean;
+  draft?: ReviewedFixtureLaunchDraft;
+  isCurrentDraft(draft: ReviewedFixtureLaunchDraft): boolean;
 }) {
   const [ready, setReady] = useState(false);
   const [wallet, setWallet] = useState<Wallet>();

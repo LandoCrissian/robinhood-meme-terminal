@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import {
-  creationReviewPath, emptyLaunchDraft, isLaunchDraft, launchDraftLimits, projectTreasuryShareUnit,
-  restoreLegacyLaunchDraft, reviewableFields, treasuryProjectPercent, validateLaunchDraft,
+  creationReviewPath, emptyLaunchDraft, isLaunchDraft, isReviewedFixtureDraft, launchDraftLimits, projectTreasuryShareUnit,
+  restoreLegacyLaunchDraft, reviewableFields, treasuryProjectPercent, validateFixtureLaunchDraft, validateLaunchDraft,
   type LaunchDraft, type LaunchDraftErrors, type LaunchDraftField, type LaunchReviewRequest, type ReviewedLaunchDraft,
 } from "../../lib/launch-draft";
 import { proposedCurveLifecycle } from "../../lib/curve-lifecycle";
-import { launchTerms } from "../../lib/launch-terms";
+import { fixtureSupplyPresets, launchTerms, plannedLaunchSupply } from "../../lib/launch-terms";
 import { TestCreationWallet } from "./test-creation-wallet";
 import { TokenArtwork } from "./token-artwork";
 
@@ -123,7 +123,7 @@ export function CreatorDraft({ executionTest }: { executionTest?: { factory: str
     event.preventDefault();
     if (reviewing.current) return;
     setMessage("");
-    const checked = validateLaunchDraft(draft);
+    const checked = executionTest ? validateFixtureLaunchDraft(draft) : validateLaunchDraft(draft);
     if (!checked.ok) {
       showErrors(checked.errors);
       return;
@@ -133,7 +133,10 @@ export function CreatorDraft({ executionTest }: { executionTest?: { factory: str
     setPending(true);
     try {
       const { name, symbol, projectURI, supplyPreset, treasury, treasuryShare } = draft;
-      const request: LaunchReviewRequest = { name, symbol, projectURI, supplyPreset, treasury, treasuryShare, treasuryShareUnit: projectTreasuryShareUnit };
+      const request: LaunchReviewRequest & { supplyPreset?: string } = {
+        name, symbol, projectURI, treasury, treasuryShare, treasuryShareUnit: projectTreasuryShareUnit,
+        ...(executionTest ? { supplyPreset } : {}),
+      };
       const response = await fetch(creationReviewPath, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -181,7 +184,7 @@ export function CreatorDraft({ executionTest }: { executionTest?: { factory: str
       </div>
       <div><span className="lpPill">{proposedCurveLifecycle.label}</span></div>
       <dl className="lpFacts">
-        <dt>Total supply</dt><dd>{number.format(reviewed.supply)} tokens</dd>
+        <dt>{executionTest ? "Total supply" : "Planned total supply"}</dt><dd>{number.format(reviewed.supply)} tokens</dd>
         {reviewed.description && <><dt>Project description</dt><dd className="lpDraftDescription">{reviewed.description}</dd></>}
         <dt>Project or metadata URL</dt><dd>{reviewed.projectURI || "None"}</dd>
         <dt>Artwork URL</dt><dd>{reviewed.artworkURL || "None"}</dd>
@@ -206,13 +209,16 @@ export function CreatorDraft({ executionTest }: { executionTest?: { factory: str
             {errorFor(key)}
           </div>)}
         </div>
-        <div className="lpDraftField">
+        {executionTest ? <div className="lpDraftField">
           <label htmlFor={fieldId("supplyPreset")}>Fixed supply</label>
           <select {...inputProps("supplyPreset")}>
-            {launchTerms.supplyPresets.map((supply, preset) => <option key={supply} value={preset}>{number.format(supply)} tokens</option>)}
+            {fixtureSupplyPresets.map((supply, preset) => <option key={supply} value={preset}>{number.format(supply)} tokens</option>)}
           </select>
           {errorFor("supplyPreset")}
-        </div>
+        </div> : <div className="lpDraftField">
+          <label htmlFor="draft-planned-supply">Planned fixed supply</label>
+          <input id="draft-planned-supply" value={`${number.format(plannedLaunchSupply)} tokens`} readOnly />
+        </div>}
       </fieldset>
       <fieldset disabled={pending || !restored}>
         <legend>Project information</legend>
@@ -257,7 +263,8 @@ export function CreatorDraft({ executionTest }: { executionTest?: { factory: str
   return <div className="lpColumns">
     {executionTest ? <div className="lpStack">
       {draftPanel}
-      <TestCreationWallet factory={executionTest.factory} draft={reviewed}
+      <TestCreationWallet factory={executionTest.factory}
+        draft={reviewed && isReviewedFixtureDraft(reviewed) ? reviewed : undefined}
         isCurrentDraft={(value) => value === currentDraft.current} />
     </div> : draftPanel}
     <DraftTerms draft={reviewed} />

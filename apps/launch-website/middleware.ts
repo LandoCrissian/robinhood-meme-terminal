@@ -3,7 +3,7 @@ import { isLaunchAddress } from "./lib/launch-data";
 import { creationReviewPath } from "./lib/launch-draft";
 
 const publicRoutes = new Set([
-  "/", "/create-token", "/my-launches", "/wallet", "/rmt",
+  "/", "/create-token", "/my-launches", "/wallet",
   "/terms", "/risks", "/privacy", "/robots.txt", "/api/launchpad/config",
   "/api/launchpad/launches",
 ]);

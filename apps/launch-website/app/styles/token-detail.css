@@ -1,0 +1,44 @@
+dl{display:grid;grid-template-columns:1fr 1.4fr;gap:13px;margin:0 0 20px}
+dt{color:#758179}
+dd{margin:0;text-align:right;overflow-wrap:anywhere}
+.projectModulePanel>header p:not(.eyebrow){max-width:720px;margin:0;color:#78867d;font-size:.7rem;line-height:1.5}.projectProfileState p:not(.eyebrow){color:#849188}
+.approvedProjectHero>div>p:not(.eyebrow){max-width:820px;margin:0;color:#95a198;font-size:.82rem;line-height:1.65}.projectAudienceControls>button[aria-pressed=true]{background:#112016;color:#8ee99b}
+.creatorControlPrompt p:not(.eyebrow),.creatorControlPanel header p:not(.eyebrow){max-width:760px;margin:0;color:#7c8980;font-size:.66rem;line-height:1.5}.creatorGameUpdateEditor>p:not(.creatorControlMessage){margin:9px 0 0;color:#66736a;font-size:.54rem;line-height:1.45}.creatorAssetHeader p:not(.eyebrow){max-width:720px;margin:0;color:#748078;font-size:.6rem;line-height:1.5}.approvedGameShowcase header p:not(.eyebrow){max-width:720px;margin:0;color:#7f8d83;font-size:.68rem;line-height:1.5}.gameReleaseLog header p:not(.eyebrow){margin:0;color:#78857c;font-size:.65rem}.gameReleaseLogList article:has(>img){grid-template-columns:minmax(140px,.32fr) minmax(0,1fr)}
+
+@media (max-width: 640px) {
+ .approvedProjectHero>div>p:not(.eyebrow){grid-column:1/-1;font-size:.74rem}.gameReleaseLogList article:has(>img){grid-template-columns:1fr}
+}
+
+@media (max-width: 640px) {
+ .approvedProjectHero>div>p:not(.eyebrow){display:-webkit-box;overflow:hidden;font-size:.7rem;line-height:1.4;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+ #project-follow{scroll-margin-top:70px}
+ .approvedProjectMobileDock>a:nth-last-child(2){border-color:#61dc75;background:#66e97a;color:#041108}
+ .approvedProjectMobileDock>button[aria-pressed=true]{border-color:#45654c;background:#132219;color:#8eeb9a}
+ .approvedGameShowcase header p:not(.eyebrow){display:-webkit-box;overflow:hidden;font-size:.62rem;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+ .gameReleaseLog header p:not(.eyebrow){display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+ .projectModulePanel>header p:not(.eyebrow){display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+}
+.tradeRow>span:not(.tradeSide){display:flex;flex-direction:column;gap:3px;min-width:0}
+@media(max-width:520px){
+.chartRange span:nth-child(2){display:none}
+}
+
+@media(max-width:560px){
+dl{grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr)}
+}
+
+.quickAmounts button:hover:not(:disabled){border-color:#46d965;background:#122518;color:#7cf28d}
+
+@keyframes tradePulse{50%{opacity:.45;transform:scale(.82)}
+}
+
+/* Keep project identity prominent without letting long meme names dominate. */
+
+/* V6 trade-first token workspace */
+.tradeRail.sell .tradeTabs button:nth-child(2).active{background:#e54848;color:#fff}
+.tradeRail .launch.sellAction:not(:disabled){background:#e54848;color:#fff}
+.aboutPane>section>p:not(.eyebrow){color:#9eaaa1;line-height:1.6}
+
+/* Discovery quick-trade reuses the verified market engine in a compact shell. */
+
+/* Compact terminal hierarchy: chart and execution first, supporting detail second. */
