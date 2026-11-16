@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { agreedObservation, checkL1Receipt, checkTraceRoot, classifyL1Posting,
+import { agreedObservation, attestDeploymentDependencies, checkL1Receipt, checkTraceRoot, classifyL1Posting,
   makeReadOnlyRpc, ROBINHOOD_SOURCES, runRpcProbe } from "./rpc.mjs";
 
 const rpc = (fetcher) => makeReadOnlyRpc({ name: "official", url: ROBINHOOD_SOURCES.official }, { fetcher });
@@ -60,6 +60,28 @@ test("corroboration demands two distinct sources and fails closed on conflicting
   const two = [observed("primary", exact), observed("alternate", exact)];
   assert.equal(agreedObservation(two, String).status, "CORROBORATED");
   assert.equal(agreedObservation([...two, observed("third", byte32(2))], String).status, "CONFLICT");
+});
+
+test("deployment dependency reads require a fresh sender anchor and reject a canonical hash conflict", async () => {
+  const clock = () => Date.parse("2026-11-16T19:30:00.000Z");
+  const blockTimeUtc = new Date(clock() - 1_000).toISOString();
+  const anchor = { number: "116037169", hash: byte32(101), blockTimeUtc };
+  let calls = 0;
+  const fetcher = async (url, { body }) => {
+    calls++;
+    const { id, method, params } = JSON.parse(body);
+    if (method === "eth_chainId") return response(id, "0x1237");
+    assert.equal(method, "eth_getBlockByNumber");
+    assert.deepEqual(params, [hex(anchor.number), false]);
+    return response(id, { number: params[0], hash: url === ROBINHOOD_SOURCES.official ? byte32(102) : null,
+      parentHash: byte32(4), stateRoot: byte32(5), timestamp: hex(Date.parse(blockTimeUtc) / 1000) });
+  };
+  await assert.rejects(attestDeploymentDependencies({ ...anchor, blockTimeUtc: new Date(clock() - 120_001).toISOString() },
+    { fetcher, clock }), /fresh canonical/);
+  assert.equal(calls, 0);
+  const result = await attestDeploymentDependencies(anchor, { fetcher, clock });
+  assert.equal(result.status, "CONFLICT");
+  assert.equal(result.broadcastAuthorized, false);
 });
 
 const testHash = byte32(3);

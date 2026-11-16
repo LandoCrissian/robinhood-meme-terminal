@@ -1,6 +1,6 @@
 # Mobile deployment review
 
-See the [Task 055 delegated-wallet handoff](DELEGATED_WALLET.md) for the later 4663 delegate qualification and the iPhone connection-only test. This file records the Task 054 review.
+See the [current unsigned deployment handoff](UNSIGNED_HANDOFF.md) for the private review packet and owner approvals, and the [Task 055 delegated-wallet handoff](DELEGATED_WALLET.md) for the 4663 delegate qualification. This file records the Task 054 review.
 
 **BLOCKED_NO_BROADCAST.** The 4663 packet orders the two Safe proposals, five contract deployments, both directory notice and execution pairs, and the first NEW RMT creation. It contains hashes, reviewed values and expected addresses. The live transaction list and verified production beneficiaries are empty. The proposed personal sender has no Safe ownership. Both SafeL2 1.4.1 proposals keep the three existing governance owners, 2-of-3 threshold and separate salts. [Review packet](review-plan-4663.json)
 

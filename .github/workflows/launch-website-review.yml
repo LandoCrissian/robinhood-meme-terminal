@@ -17,6 +17,9 @@ on:
       - "scripts/visual-qa/rmt-mobile-review.mjs"
       - "scripts/visual-qa/rmt-mobile-connection-check.mjs"
       - "scripts/visual-qa/export-mobile-connection-check.mjs"
+      - "scripts/visual-qa/export-rmt-private-phone-review.mjs"
+      - "scripts/visual-qa/rmt-private-phone-review-page.mjs"
+      - "scripts/visual-qa/test-rmt-private-phone-review.mjs"
       - "scripts/visual-qa/rmt-netlify-website.mjs"
       - "docs/evidence/mobile-signing/**"
       - ".github/workflows/launch-website-review.yml"
@@ -55,6 +58,7 @@ jobs:
           export RMT_WEBSITE_PREVIEW_ARTIFACTS="$RUNNER_TEMP/rmt-website-preview"
           mkdir "$RMT_WEBSITE_PREVIEW_ARTIFACTS"
           node scripts/visual-qa/rmt-mobile-connection-check.mjs
+          node scripts/visual-qa/test-rmt-private-phone-review.mjs
           node apps/launch-website/node_modules/next/dist/bin/next start apps/launch-website \
             --hostname 127.0.0.1 --port 3205 > "$RMT_WEBSITE_PREVIEW_ARTIFACTS/next.log" 2>&1 &
           child="$!"

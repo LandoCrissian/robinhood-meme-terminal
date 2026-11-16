@@ -26,7 +26,7 @@ const sha256 = (data) => createHash("sha256").update(data).digest("hex");
 export const mobilePayer = MOBILE_DEPLOYMENT_PAYER;
 const chainId = 4663;
 const { noticeSeconds } = governance;
-const safeProxyRuntimeHash = "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c";
+export const safeProxyRuntimeHash = "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c";
 const createProxyAbi = parseAbi(["function createProxyWithNonce(address singleton,bytes initializer,uint256 saltNonce) returns (address proxy)"]);
 const constructorStages = [
   ["directory", "Deploy governance directory", ["operations-safe", "reserve-safe"]],
@@ -83,7 +83,7 @@ function row({ id, label, dependsOn, from, to, nonce = null, valueWei = "0", dat
   };
 }
 
-function safeRows() {
+export function pinnedSafeCreationRows({ includePrivateCalldata = false } = {}) {
   const policy = readJson("rmt-task045/operations-safe-policy.json").operations;
   const approved = buildTreasurySafeInitializers(viem);
   const { factory, singleton, owners, setup, safeProfile, threshold } = policy;
@@ -96,16 +96,17 @@ function safeRows() {
     assert.equal(proposal.initializerKeccak256, keccak256(initializer));
     assert.equal(proposal.verifiedBeneficiary, null);
     assert.equal(proposal.approvedDeploymentSaltNonce, null);
-    return row({
+    const calldata = encodeFunctionData({
+      abi: createProxyAbi, functionName: "createProxyWithNonce",
+      args: [singleton, initializer, BigInt(proposal.saltNonce)],
+    });
+    const review = row({
       id: index === 0 ? "operations-safe" : "reserve-safe",
       label: "Prepare " + proposal.role,
       dependsOn: index === 0 ? [] : ["operations-safe"],
       scope: "PROPOSED_SAFE_REVIEW_ONLY",
       from: mobilePayer, to: factory,
-      dataHash: keccak256(encodeFunctionData({
-        abi: createProxyAbi, functionName: "createProxyWithNonce",
-        args: [singleton, initializer, BigInt(proposal.saltNonce)],
-      })),
+      dataHash: keccak256(calldata),
       expectedAddress: proposal.counterfactualAddress,
       authorization: "SALT_APPROVAL_AND_LIVE_AUTHORIZATION_REQUIRED",
       details: {
@@ -120,6 +121,7 @@ function safeRows() {
           "Expected proxy runtime, three owners and threshold 2"],
       },
     });
+    return includePrivateCalldata ? { ...review, calldata } : review;
   });
 }
 
@@ -308,7 +310,7 @@ export function reviewDelegatedMobileObservation(observation, nowMs) {
 // The directory cannot publish without human-authorized governance actions.
 export function delegatedCounterfactual(compilation, observation, fixtureRows, nowMs) {
   const verified = reviewDelegatedMobileObservation(observation, nowMs);
-  const safeProposals = safeRows();
+  const safeProposals = pinnedSafeCreationRows();
   const safeAddresses = safeProposals.map(({ expectedAddress }) => expectedAddress);
   const signers = safeProposals[0].details.owners;
   const { constructors, bootstrapChildren } = deriveDelegatedConstructors(compilation, {
@@ -355,7 +357,7 @@ function verifyDelegatedRehearsal(compilation, fixture, rows) {
   assert.equal(observed.designator, MOBILE_DELEGATE_POLICY.designator);
   assert.equal(observed.delegateRuntimeHash, MOBILE_DELEGATE_POLICY.runtimeHash);
   const start = nonce(String(observed.initialNonce));
-  const safes = safeRows();
+  const safes = pinnedSafeCreationRows();
   assert.equal(observed.platformSafes.length, safes.length);
   const safeReceipts = safes.map((row, index) => {
     const safe = observed.platformSafes[index];
@@ -459,7 +461,7 @@ export function buildMobileReviewPlan(compilation, input, sources, { observation
   }
   const fixture = replayed ? { fork: replay.report, rawSha256: replay.sha256, bundle: replayed } : archived;
   const rows = [
-    ...safeRows(),
+    ...pinnedSafeCreationRows(),
     ...constructorRows(fixture),
     ...governanceRows(fixture, compilation.artifacts.RMTLaunchCurveDirectoryV2.abi, Boolean(replay)),
     projectRow(fixture, replay),
