@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "scope": "SYNTHETIC_LOOPBACK_FORK_ONLY",
+  "status": "BLOCKED_NO_BROADCAST",
+  "broadcastAuthorized": false,
+  "chainId": 4663,
+  "archiveProvider": "robinhood.rpc.pinax.network",
+  "upstreamReadOnlyProbe": "HTTP 403",
+  "upstreamForkBlock": {
+    "number": 114549452,
+    "hash": "0xf9a8ca5d8e26ebb426ebd2e663ad82afc878c16d8bba5f5542f6341890cf7710"
+  },
+  "source": {
+    "deployableCommit": "58638966db82cffe89db6df4e918f73eced8ad2b",
+    "profile": "rmt-curve-fixed-supply-security-v2",
+    "compilerInputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+    "compilerProfileFile": "../fixed-supply-security/4663-profile.json",
+    "compilerProfileSha256Lf": "fbff928915fe154734ce2fa08f1b28c984d0d28f50bfc3010450cf15b9d7f1ef"
+  },
+  "validatedCheckpointSha256": "a1329320c71b39014257de42c4a7c0690e65d0eb6304101a5126a9822537c1cd",
+  "completedForkReportSha256": "443c449b4c97bc10cfc5b1a3352c0dcf7dd18ad2189976c96a4cc2b2d294f7bb",
+  "steps": [
+    {
+      "step": "schedule-factory",
+      "from": "0x0000000000000000000000000000000046630000",
+      "to": "0x6db1ec5fe453dbe3f610f0043dbb2aa09e2560f3",
+      "nonce": "5",
+      "valueWei": "0",
+      "actionDigest": "0x97a27a0e8c96e0af397b69f2832ffe4b50025b4de170a37f57fa85551451b273",
+      "calldataKeccak256": "0xe053b013a3ac60e39578ab31b6a3b7fdc8538b470e4cc7fb2138116400bb4e08",
+      "syntheticTransactionHash": "0x0ac100e642788582a233bf9f52e6bd22fb925ca516fa151155940734ab93ae8f",
+      "syntheticReceiptBlock": {
+        "number": "114549458",
+        "hash": "0x6bbe76e75b7ee2b8ccfce3876b0bd53d7aff767eaf6da3cea11f8bc770d4c2d6"
+      }
+    },
+    {
+      "step": "execute-factory",
+      "from": "0x0000000000000000000000000000000046630000",
+      "to": "0x6db1ec5fe453dbe3f610f0043dbb2aa09e2560f3",
+      "nonce": "6",
+      "valueWei": "0",
+      "actionDigest": "0x97a27a0e8c96e0af397b69f2832ffe4b50025b4de170a37f57fa85551451b273",
+      "calldataKeccak256": "0x05df8763c3fd646177eb09a52321a1d9ae84437174880f10d48c62f703ef67eb",
+      "syntheticTransactionHash": "0x3370cb569dc207c62785458ed2e50baee5687b313eeb5593485fc7b8c038b4a4",
+      "syntheticReceiptBlock": {
+        "number": "114549460",
+        "hash": "0x2e0caeef0a465a51423b4e2e7570fdd933a38e222a93c43d7eebb472f10cd2b1"
+      }
+    },
+    {
+      "step": "schedule-migration-template",
+      "from": "0x0000000000000000000000000000000046630000",
+      "to": "0x6db1ec5fe453dbe3f610f0043dbb2aa09e2560f3",
+      "nonce": "7",
+      "valueWei": "0",
+      "actionDigest": "0x89965c42788046835bf59e0c64d5c674924e5536ec4ccf6920f9bbd522efa198",
+      "calldataKeccak256": "0xd8467bf8edb910e0bda3ec79670b447da18f94d6bba755a19d677e76aab5b261",
+      "syntheticTransactionHash": "0x604d21a0c1bbafce26b89dfd7e60040ba4ddb94322fba01d8cd37063df5463d0",
+      "syntheticReceiptBlock": {
+        "number": "114549461",
+        "hash": "0xaffbc403e5f8d1301f65f0bfd90764c4cb8cf5b4c5f944e177b55e4f8390f419"
+      }
+    },
+    {
+      "step": "execute-migration-template",
+      "from": "0x0000000000000000000000000000000046630000",
+      "to": "0x6db1ec5fe453dbe3f610f0043dbb2aa09e2560f3",
+      "nonce": "8",
+      "valueWei": "0",
+      "actionDigest": "0x89965c42788046835bf59e0c64d5c674924e5536ec4ccf6920f9bbd522efa198",
+      "calldataKeccak256": "0x218107e6b0d7c68471dd8d8c768aed7599c65ee9591e466a16e608595c4f2e53",
+      "syntheticTransactionHash": "0x63210b8ba0422d6c53caf90f836af3113dbf59b23c67d069d04117ce1e5dd157",
+      "syntheticReceiptBlock": {
+        "number": "114549463",
+        "hash": "0x64b65577a1165a3521cf145c556f917edd43e0dfcc5b10fca13fbd1e88335c92"
+      }
+    },
+    {
+      "step": "first-rmt",
+      "from": "0x0000000000000000000000000000000046630003",
+      "to": "0x90416edf53158d83326bEE3c5bBE9a97dC8C09b7",
+      "nonce": "0",
+      "valueWei": "400000000000000",
+      "assetAddress": "0x0018D6A77914AB44172A395358CD99E8d240886A",
+      "fixedSupplyWei": "1000000000000000000000000000",
+      "openingBackingWei": "0",
+      "calldataKeccak256": "0x6e17097a33495f7c136632d9f605b05be198f1f91a8fcd74d9d82e56978aa17c",
+      "syntheticTransactionHash": "0x8d61f60665920798e4dbf269d752310a82e8cbf07842aeeb192f2a25200ee27b",
+      "syntheticReceiptBlock": {
+        "number": "114549472",
+        "hash": "0x6093d64369e8f10b21de3bf1d62782a3853499793bdf5b8790afbd9290da768b"
+      }
+    }
+  ]
+}

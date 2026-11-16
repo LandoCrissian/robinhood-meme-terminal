@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { encodeSafeSetup } from "../../docs/evidence/rmt-task045/operations-safe-initializer.mjs";
 import { buildTreasurySafeInitializers } from "../../docs/evidence/rmt-task046/treasury-safe-initializers.mjs";
-import { makeReadOnlyRpc, ROBINHOOD_SOURCES } from "./rpc.mjs";
+import { makeReadOnlyRpc, MOBILE_DEPLOYMENT_PAYER, ROBINHOOD_SOURCES } from "./rpc.mjs";
 
 const require = createRequire(new URL("../../apps/launch-website/package.json", import.meta.url));
 const viem = require("viem");
@@ -11,7 +11,6 @@ const loadEvidence = (name) => JSON.parse(readFileSync(new URL("../../docs/evide
 const operation = loadEvidence("rmt-task045/operations-safe-policy.json").operations;
 const registry = loadEvidence("rmt-task044/safe-infrastructure-4663.json").registry.contracts["1.4.1"];
 const { factory, singleton, owners, setup } = operation;
-const payer = owners[0];
 const pins = [registry.safe_l2, registry.safe_proxy_factory, registry.compatibility_fallback_handler];
 const factoryAbi = viem.parseAbi([
   "function proxyCreationCode() pure returns (bytes)",
@@ -161,9 +160,11 @@ function validateSafeReceipt(plan, hash, approvedPayer, receipt, tx) {
 }
 
 export async function runSafeProbe({
-  readers = Object.fromEntries(Object.entries(ROBINHOOD_SOURCES).map(([name, url]) => [name, makeReadOnlyRpc({ name, url })])),
+  mobileSafePayer = false,
+  readers = Object.fromEntries(Object.entries(ROBINHOOD_SOURCES).map(([name, url]) => [name, makeReadOnlyRpc({ name, url }, { mobileSafePayer })])),
   now = Date.now,
 } = {}) {
+  const payer = mobileSafePayer === true ? MOBILE_DEPLOYMENT_PAYER : owners[0];
   const observedAt = new Date(now()).toISOString();
   const proposals = plans();
   const base = { observedAt, chainId: 4663, safeVersion: "SafeL2 1.4.1", owners, threshold: 2, factory, singleton,

@@ -14,7 +14,9 @@ on:
       - "apps/indexer/package.json"
       - "apps/indexer/tsconfig.json"
       - "scripts/visual-qa/rmt-creator-integration.mjs"
+      - "scripts/visual-qa/rmt-mobile-review.mjs"
       - "scripts/visual-qa/rmt-netlify-website.mjs"
+      - "docs/evidence/mobile-signing/**"
       - ".github/workflows/launch-website-review.yml"
 
 permissions:
@@ -107,11 +109,14 @@ jobs:
             --output "$RUNNER_TEMP/solc-0.8.26"
           chmod 700 "$RUNNER_TEMP/solc-0.8.26"
           "$(pg_config --bindir)/pg_ctl" --version
+          node packages/contracts/scripts/mobile-review-plan.mjs --solc "$RUNNER_TEMP/solc-0.8.26" \
+            --verify docs/evidence/mobile-signing/review-plan-4663.json
       - name: Verify the same-app lifecycle on synthetic chain 31337
         run: |
           node scripts/visual-qa/rmt-creator-integration.mjs \
             --anvil "$(command -v anvil)" \
             --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$(pg_config --bindir)" \
+            --mobile-plan docs/evidence/mobile-signing/review-plan-4663.json \
             --output "$RUNNER_TEMP/rmt-creator-lifecycle"
       - name: Read local PostgreSQL diagnostics after failure
         if: failure()

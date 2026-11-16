@@ -55,7 +55,7 @@ function preparedRequest(fixture: CurveFixture, raw: unknown): TestCreationReque
     deadline: raw.deadline, blockNumber: toHex(fixture.deploymentBlock), blockHash: fixture.deploymentBlockHash };
 }
 
-async function prepare(fixture: CurveFixture, body: Record<string, unknown>) {
+export async function prepareTestCreation(fixture: CurveFixture, body: Record<string, unknown>) {
   const draft = normalizedFields(body.fields);
   if (!draft || !fixtureAddress(body.account) || !fixtureHash(body.intentId) || sameHex(draft.treasury, body.account) ||
       (body.deadline !== undefined && !decimal(body.deadline))) return reply({ status: "invalid" }, 422);
@@ -87,7 +87,7 @@ async function prepare(fixture: CurveFixture, body: Record<string, unknown>) {
   return reply({ status: "prepared", request, payouts: { operating, reserve, treasuryKind } });
 }
 
-async function verify(fixture: CurveFixture, body: Record<string, unknown>) {
+export async function verifyTestCreation(fixture: CurveFixture, body: Record<string, unknown>, includeCurve = false) {
   const request = preparedRequest(fixture, body.request);
   if (!request || (body.transactionHash !== undefined && !fixtureHash(body.transactionHash))) return reply({ status: "invalid" }, 422);
   const rpc = fixtureRpc(fixture);
@@ -165,7 +165,7 @@ async function verify(fixture: CurveFixture, body: Record<string, unknown>) {
     && sameHex(launch.creation.blockHash, receipt.blockHash) && launch.creation.logIndex === creation.logIndex);
   const canonical = await rpc.getBlock({ blockNumber: receipt.blockNumber });
   if (!sameHex(canonical.hash, receipt.blockHash)) return unavailable();
-  return reply({ status: "confirmed", transactionHash: hash, token: c.token, indexed });
+  return reply({ status: "confirmed", transactionHash: hash, token: c.token, indexed, ...(includeCurve && { curve: c.curve }) });
 }
 
 export async function handleTestCreation(request: Request) {
@@ -180,10 +180,10 @@ export async function handleTestCreation(request: Request) {
     if (payload.tooLarge) return reply({ status: "invalid" }, 413);
     const body = payload.input as Record<string, unknown> | null;
     if (keys(body, ["action", "fields", "account", "intentId", ...(body && Object.hasOwn(body, "deadline") ? ["deadline"] : [])]) && body.action === "prepare") {
-      return await prepare(fixture, body);
+      return await prepareTestCreation(fixture, body);
     }
     if (keys(body, ["action", "request", ...(body && Object.hasOwn(body, "transactionHash") ? ["transactionHash"] : [])]) && body.action === "verify") {
-      return await verify(fixture, body);
+      return await verifyTestCreation(fixture, body);
     }
     return reply({ status: "invalid" }, 400);
   } catch {

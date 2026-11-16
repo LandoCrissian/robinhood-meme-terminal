@@ -6,6 +6,7 @@ const require = createRequire(new URL("../../../apps/launch-website/package.json
 const { createPublicClient, defineChain, encodeDeployData, encodeFunctionData, getContractAddress, getCreate2Address,
   http, isAddressEqual, keccak256, toHex } = require("viem");
 const { generatePrivateKey, privateKeyToAccount } = require("viem/accounts");
+const verifiedFixtureClients = new WeakSet();
 
 export async function localFixtureClient(url, chainId) {
   const endpoint = new URL(url);
@@ -16,6 +17,7 @@ export async function localFixtureClient(url, chainId) {
   const client = createPublicClient({ chain, transport: http(endpoint.href, { retryCount: 0, timeout: 90_000 }), cacheTime: 0 });
   assert.equal(await client.getChainId(), chainId);
   assert.match(await client.request({ method: "web3_clientVersion" }), /^anvil Version|^anvil\//i);
+  verifiedFixtureClients.add(client);
   return client;
 }
 
@@ -25,9 +27,15 @@ export const transact = (address, abi, functionName, args = []) =>
   ({ to: address, data: encodeFunctionData({ abi, functionName, args }) });
 
 export async function sendFixture(client, from, { to, data, value = 0n, gas = 8_000_000n }, expected = "success") {
+  assert.ok(verifiedFixtureClients.has(client), "Fixture writes require a verified loopback Anvil client");
   const hash = await client.request({ method: "eth_sendTransaction", params: [{
     from, ...(to ? { to } : {}), data, value: toHex(value), gas: toHex(gas),
   }] });
+  const observed = await client.request({ method: "eth_getTransactionReceipt", params: [hash] });
+  if (!observed) {
+    const pending = await client.request({ method: "eth_getTransactionByHash", params: [hash] });
+    if (pending?.blockNumber === null && pending.hash === hash) await client.request({ method: "evm_mine" });
+  }
   const receipt = await client.waitForTransactionReceipt({ hash, checkReplacement: false, timeout: 90_000, pollingInterval: 250 })
     .catch((cause) => {
       throw new Error("Isolated receipt unavailable for " + (to ?? "CREATE") + " " + data.slice(0, 10) + " " + hash, { cause });
@@ -42,6 +50,18 @@ export async function sendFixture(client, from, { to, data, value = 0n, gas = 8_
 
 export const receiptEvidence = ({ transactionHash, blockNumber, blockHash, gasUsed, status }) =>
   ({ transactionHash, blockNumber, blockHash, gasUsed, status });
+
+export async function reviewTransactionEvidence(client, receipt) {
+  const transaction = await client.getTransaction({ hash: receipt.transactionHash });
+  assert.equal(transaction.hash, receipt.transactionHash);
+  assert.equal(transaction.blockHash, receipt.blockHash);
+  assert.equal(transaction.blockNumber, receipt.blockNumber);
+  assert.equal(transaction.transactionIndex, receipt.transactionIndex);
+  assert.ok(isAddressEqual(transaction.from, receipt.from));
+  assert.equal(transaction.to, receipt.to);
+  return { ...receiptEvidence(receipt), from: transaction.from, to: transaction.to, nonce: transaction.nonce.toString(),
+    valueWei: transaction.value.toString(), calldataHash: keccak256(transaction.input) };
+}
 
 export async function verifyRuntime(client, address, artifact, blockNumber) {
   const actual = await client.getCode({ address, blockNumber });
@@ -151,7 +171,8 @@ export async function deployFixedSupplyFixture(client, artifacts, pins, {
     // Apply the local time jump in a block before submitting the notice execution.
     await client.request({ method: "evm_mine" });
     const executed = await sendFixture(client, operator, transact(directory.address, directoryArtifact.abi, "execute", [action]));
-    return { scheduled: receiptEvidence(scheduled), executed: receiptEvidence(executed) };
+    return { scheduled: await reviewTransactionEvidence(client, scheduled), executed: await reviewTransactionEvidence(client, executed),
+      reviewAction: action, actionDigest: digest };
   };
   const factoryVersion = await readFactory("engineVersion");
   const publication = await publish(0, factoryVersion, factory, factoryRuntimeHash);
