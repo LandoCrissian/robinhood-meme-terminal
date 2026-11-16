@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -44,7 +44,9 @@ const replacements = [
 ];
 
 export function webTools(checkout) {
-  return createRequire(resolve(checkout, "apps/web/package.json"))("viem");
+  const priorWorkspace = resolve(checkout, "apps/web/package.json");
+  const workspace = existsSync(priorWorkspace) ? priorWorkspace : resolve(checkout, "apps/launch-website/package.json");
+  return createRequire(workspace)("viem");
 }
 
 export function verifyRotationManifest(manifest) {

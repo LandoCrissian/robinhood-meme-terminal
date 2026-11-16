@@ -9,41 +9,22 @@ permissions:
   contents: read
 
 jobs:
-  web:
+  repository:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
         with:
           version: 10.12.1
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
         with:
           node-version: 22
-      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
-        with:
-          distribution: temurin
-          java-version: 21
       - run: pnpm install --frozen-lockfile
       - run: pnpm audit:production
       - run: pnpm check:repo
-      - run: pnpm test:terminal-release
-      - run: pnpm test:firebase-rules
-      - run: pnpm test:production-health
-      - run: pnpm typecheck
-      - run: pnpm build
-
-  paused-integrity:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
-        with:
-          version: 10.12.1
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 22
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm test:paused-integrity
+      - run: pnpm test:release-evidence
 
   indexer:
     runs-on: ubuntu-latest
@@ -85,299 +66,30 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/rmt_worker_smoke
 
-  external-origin-indexer:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: rmt_external_origin
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d rmt_external_origin"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    env:
-      EXTERNAL_ORIGIN_DATABASE_URL: postgres://postgres:postgres@localhost:5432/rmt_external_origin
-      EXTERNAL_ORIGIN_READ_TOKEN: ci-external-origin-read-token-0000000000000001
-      PGSSLMODE: disable
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
-        with:
-          version: 10.12.1
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 22
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter external-origin-indexer typecheck
-      - run: pnpm --filter external-origin-indexer typecheck:shadow
-      - run: pnpm --filter external-origin-indexer build
-      - run: pnpm --filter external-origin-indexer test:schema
-      - run: pnpm --filter external-origin-indexer test:api
-      - run: pnpm --filter external-origin-indexer test:candidates
-      - run: pnpm --filter external-origin-indexer test:shadow-replay
-
-  market-indexer:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: rmt_market_indexer
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d rmt_market_indexer"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    env:
-      MARKET_INDEXER_DATABASE_URL: postgres://postgres:postgres@localhost:5432/rmt_market_indexer
-      MARKET_INDEXER_RPC_URL: https://rpc.mainnet.chain.robinhood.com/
-      MARKET_INDEXER_READ_TOKEN: ci-market-indexer-read-token-000000000001
-      PGSSLMODE: disable
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
-        with:
-          version: 10.12.1
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 22
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter market-indexer typecheck
-      - run: pnpm --filter market-indexer build
-      - run: pnpm --filter market-indexer test:config
-      - run: pnpm --filter market-indexer test:decoder
-      - run: pnpm --filter market-indexer test:replay
-      - run: pnpm --filter market-indexer test:schema
-      - name: Verify durable launch producer, authenticated reader and exact token consumer
-        run: pnpm --filter web exec tsx lib/server/launch-producer-consumer-sql-smoke.ts
-        env:
-          # test:schema intentionally leaves pool tables in rebuildable mode.
-          # Launch evidence must still use logged tables in that same database.
-          MARKET_INDEXER_STORAGE_MODE: rebuildable
-      - run: pnpm --filter market-indexer test:telemetry
-      - run: pnpm --filter market-indexer test:server
-      - run: pnpm --filter market-indexer test:up-enrichment
-      - run: pnpm --filter market-indexer test:position-guard
-      - run: pnpm --filter market-indexer test:compact-migration
-        env:
-          MARKET_INDEXER_MIGRATION_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/rmt_market_indexer
-          MARKET_INDEXER_MIGRATION_TEST_ALLOW_LOCAL: "1"
-
-  nft-indexer:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: rmt_nft_indexer
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d rmt_nft_indexer"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    env:
-      NFT_INDEXER_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/rmt_nft_indexer
-      PGSSLMODE: disable
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
-        with:
-          version: 10.12.1
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 22
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter nft-indexer typecheck
-      - run: pnpm --filter nft-indexer build
-      - run: pnpm --filter nft-indexer test
-
-  nft-marketplace-indexer:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_DB: rmt_nft_marketplace
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U postgres -d rmt_nft_marketplace"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-    env:
-      NFT_MARKETPLACE_TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/rmt_nft_marketplace
-      PGSSLMODE: disable
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a # v4.4.0
-        with:
-          version: 10.12.1
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 22
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm --filter nft-marketplace-indexer typecheck
-      - run: pnpm --filter nft-marketplace-indexer build
-      - run: pnpm --filter nft-marketplace-indexer test
-
   contracts:
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: packages/contracts
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a # v1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a
         with:
           version: "1.7.1"
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: 22
       - run: bash scripts/install-v4-deps.sh
-      - name: Verify mainnet release formatting
+      - name: Verify the exact active Solidity tree
         run: |
-          forge fmt --check \
-            script/MainnetReleaseConfig.sol \
-            script/DeployMainnetMemeLaunchFactory.s.sol \
-            script/MainnetReleaseConfigV6.sol \
-            script/DeployMainnetV6OfficialMigration.s.sol \
-            src/RMTV6Governance.sol \
-            src/RMTV6BootstrapController.sol \
-            src/RMTV6BootstrapFoundationVerifier.sol \
-            src/RMTV6BootstrapSmokeVerifier.sol \
-            src/RMTLaunchGate.sol \
-            src/RMTLaunchPolicyRegistry.sol \
-            src/RMTLaunchFactoryV6.sol \
-            src/VersionedFactoryRegistry.sol \
-            src/OfficialRMTIdentityMigration.sol \
-            src/DirectLaunchFeeSplitter.sol \
-            src/RMTDistributionEngineV1.sol \
-            src/RMTRetirementSinkV1.sol \
-            src/RMTUniswapV3FeeExecutorV1.sol \
-            src/RMTUniswapV3FeeExecutorV2.sol \
-            src/RMTTestnetSushiV3RehearsalStack.sol \
-            src/clone/CloneBondingCurveMarketV6.sol \
-            src/interfaces/IRMTDistributionEngineV1.sol \
-            src/V5GraduationHook.sol \
-            src/V4GraduationAdapter.sol \
-            test/MainnetReleaseConfig.t.sol \
-            test/MainnetReleaseConfigV6.t.sol \
-            test/RMTV6Governance.t.sol \
-            test/RMTV6BootstrapController.t.sol \
-            test/RMTV6BootstrapFlow.t.sol \
-            test/RMTLaunchGate.t.sol \
-            test/RMTLaunchPolicyRegistry.t.sol \
-            test/RMTLaunchFactoryV6.t.sol \
-            test/DirectLaunchFeeSplitter.t.sol \
-            test/RMTDistributionEngineV1.t.sol \
-            test/RMTDistributionEngineV1Fork.t.sol \
-            test/RMTDistributionEngineV1Gas.t.sol \
-            test/RMTDistributionEngineV1Invariant.t.sol \
-            test/RMTRetirementSinkV1.t.sol \
-            test/RMTUniswapV3FeeExecutorV1.t.sol \
-            test/RMTUniswapV3FeeExecutorV1Fork.t.sol \
-            test/RMTUniswapV3FeeExecutorV2.t.sol \
-            test/RMTUniswapV3FeeExecutorV2Fork.t.sol \
-            test/RMTTestnetSushiV3RehearsalStack.t.sol \
-            test/mocks/RMTDistributionEngineV1Mocks.sol \
-            test/V4GraduationAdapter.t.sol \
-            test/V6MainnetFork.t.sol \
-            test/V6UniversalRouterFork.t.sol \
-            test/VersionedFactoryRegistry.t.sol
-      - name: Verify V7 creator foundation formatting and production lock
-        run: |
-          forge fmt --check \
-            script/DeployRMTV7CreatorFoundation.s.sol \
-            src/RMTV7ConsentBoundSplit.sol \
-            src/RMTV7ConsentBoundSplitModule.sol \
-            src/RMTV7CreatorCollection.sol \
-            src/RMTV7CreatorEditions.sol \
-            src/RMTV7CreatorFoundationCoreBundle.sol \
-            src/RMTV7CreatorFoundationModulesBundle.sol \
-            src/RMTV7ERC1155EditionModule.sol \
-            src/RMTV7ERC721CollectionModule.sol \
-            src/RMTV7MediaEvidenceVerifier.sol \
-            src/RMTV7ModuleRegistry.sol \
-            src/RMTV7ReleaseRegistry.sol \
-            src/interfaces/IRMTV7ConsentBoundSplitModule.sol \
-            src/interfaces/IRMTV7ERC1155EditionModule.sol \
-            src/interfaces/IRMTV7ERC721CollectionModule.sol \
-            src/interfaces/IRMTV7MediaEvidenceVerifier.sol \
-            src/interfaces/IRMTV7ModuleRegistry.sol \
-            src/interfaces/IRMTV7ReleaseRegistry.sol \
-            test/RMTV7ConsentBoundSplitModule.t.sol \
-            test/RMTV7CreatorFoundationDeployment.t.sol \
-            test/RMTV7ERC1155EditionModule.t.sol \
-            test/RMTV7ERC721CollectionModule.t.sol \
-            test/RMTV7EconomicInvariants.t.sol \
-            test/RMTV7ReleaseFoundation.t.sol \
-            test/RMTV7TransactionSimulationVectors.t.sol
-          python3 -m json.tool deployments/rmt-v7-creator-foundation.template.json >/dev/null
-          grep -q 'APPROVED_DEPLOYMENT_MANIFEST_HASH = bytes32(0)' \
-            script/DeployRMTV7CreatorFoundation.s.sol
-      - name: Build the exact checked-in contract sources
-        run: |
-          set -o pipefail
+          set -euo pipefail
           git diff --exit-code -- .
           forge build 2>&1 | tee forge-build.log
           forge build --sizes --skip script --skip test 2>&1 | tee -a forge-build.log
           git diff --exit-code -- .
-      - name: Upload Foundry diagnostics
+      - run: forge test -vvv
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: foundry-build-log
           path: packages/contracts/forge-build.log
           retention-days: 3
-      - run: forge test -vvv
-      - name: Verify wallet deployment artifacts
-        run: |
-          node scripts/export-testnet-web-artifacts.mjs
-          node scripts/export-consent-testnet-web-artifacts.mjs
-          node scripts/export-mainnet-web-artifacts.mjs
-          git diff --exit-code -- \
-            ../../apps/web/lib/generated/testnet-stack.json \
-            ../../apps/web/lib/generated/consent-testnet-stack.json \
-            ../../apps/web/lib/generated/consent-testnet-release.json \
-            ../../apps/web/lib/generated/mainnet-stack.json
-      - name: Upload wallet deployment artifacts
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: wallet-deployment-artifacts
-          path: |
-            apps/web/lib/generated/testnet-stack.json
-            apps/web/lib/generated/consent-testnet-stack.json
-            apps/web/lib/generated/consent-testnet-release.json
-            apps/web/lib/generated/mainnet-stack.json
-          retention-days: 3
-      - name: Validate deployment scripts
-        run: |
-          bash -n scripts/deploy-testnet.sh
-          bash -n scripts/verify-consent-testnet-deployment.sh
-          bash -n scripts/verify-consent-testnet-sources.sh
-          bash -n scripts/verify-consent-testnet-terms.sh
-          bash scripts/verify-consent-testnet-terms.sh
-          python3 -m json.tool deployments/robinhood-testnet-consent-rehearsal.template.json >/dev/null
-          bash -n scripts/smoke-test-factory.sh
-          bash -n scripts/deploy-mainnet.sh
-          bash -n scripts/smoke-test-mainnet.sh
-          bash -n scripts/test-mainnet-fork.sh
-          bash -n scripts/verify-mainnet-v6.sh

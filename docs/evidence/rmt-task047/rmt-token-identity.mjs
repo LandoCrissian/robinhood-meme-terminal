@@ -2,14 +2,19 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { spawnSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { parseArgs } from "node:util";
+import { fileURLToPath } from "node:url";
 import { webTools } from "../rmt-task043/compile-rotation-profile.mjs";
 
 const { values } = parseArgs({ options: { checkout: { type: "string" }, solc: { type: "string" } } });
 assert.ok(values.checkout && values.solc, "Provide --checkout with pinned viem and --solc with the pinned native compiler");
 const { keccak256, getAddress, parseAbi, encodeAbiParameters, encodeFunctionData, decodeFunctionResult, decodeEventLog, toFunctionSelector, numberToHex, toHex, size } = webTools(resolve(values.checkout));
-const snapshot = JSON.parse(readFileSync(new URL("../../../apps/launch-website/data/historical-launches-4663.json", import.meta.url)));
+const archiveCommit = "ec7296ea5b52eeaa74e2dbadd12e647f9dbf2482";
+const archiveText = (path) => execFileSync("git", ["show", archiveCommit + ":" + path], {
+  cwd: fileURLToPath(new URL("../../../", import.meta.url)), encoding: "utf8",
+}).replaceAll("\r\n", "\n");
+const snapshot = JSON.parse(archiveText("apps/launch-website/data/historical-launches-4663.json"));
 const [legacy, official] = [[4, "1"], [6, "0"]].map(([version, launchId]) => {
   const launch = snapshot.launches.find((item) => item.version === version && item.launchId === launchId);
   const factory = snapshot.factories.find((item) => item.version === version);
@@ -86,7 +91,7 @@ function codeIdentity(code) {
 
 function compiledToken() {
   const path = "src/clone/CloneFixedSupplyMemeToken.sol";
-  const source = readFileSync(new URL("../../../packages/contracts/" + path, import.meta.url), "utf8").replaceAll("\r\n", "\n");
+  const source = archiveText("packages/contracts/" + path);
   assert.equal(sha256(readFileSync(values.solc)), trustedSolcHash);
   const settings = { optimizer: { enabled: true, runs: 200 }, viaIR: true, evmVersion: "cancun",
     outputSelection: { "*": { "*": ["evm.deployedBytecode.object", "evm.methodIdentifiers"] } } };

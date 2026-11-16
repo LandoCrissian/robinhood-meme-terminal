@@ -1,4 +1,4 @@
-import { emptyLaunchDraft, isLaunchReviewRequest, reviewableFields, validateLaunchDraft } from "../launch-draft";
+import { emptyLaunchDraft, isLaunchReviewRequest, reviewableFields, validateFixtureLaunchDraft, validateLaunchDraft } from "../launch-draft";
 
 const maxDraftRequestBytes = 4096;
 const requestTimeoutMs = 3000;
@@ -53,7 +53,7 @@ export async function readDraftBody(body: ReadableStream<Uint8Array>) {
 }
 
 /** Returns a draft preview only. This handler never writes, signs, or reads chain state. */
-export async function reviewLaunchDraft(request: Request) {
+export async function reviewLaunchDraft(request: Request, fixture = false) {
   if (request.method !== "POST") return failure(405, "Use POST to validate a draft.");
   const url = new URL(request.url);
   if (!sameOrigin(request, url)) return failure(403, "Review from this website to validate a draft.");
@@ -70,9 +70,10 @@ export async function reviewLaunchDraft(request: Request) {
   try {
     const body = await readDraftBody(request.body);
     if (body.tooLarge) return failure(413, "Draft exceeds the request size limit.");
-    if (!isLaunchReviewRequest(body.input)) return failure(400, "Enter the draft fields and try again.");
+    if (!isLaunchReviewRequest(body.input, fixture)) return failure(400, "Enter the draft fields and try again.");
     const { treasuryShareUnit, ...fields } = body.input;
-    const result = validateLaunchDraft({ ...emptyLaunchDraft, ...fields }, treasuryShareUnit ?? "total-fee-percent");
+    const validate = fixture ? validateFixtureLaunchDraft : validateLaunchDraft;
+    const result = validate({ ...emptyLaunchDraft, ...fields }, treasuryShareUnit ?? "total-fee-percent");
     return result.ok
       ? Response.json({ status: "reviewed", draft: reviewableFields(result.draft) }, { headers })
       : Response.json({ status: "invalid", errors: result.errors }, { status: 422, headers });

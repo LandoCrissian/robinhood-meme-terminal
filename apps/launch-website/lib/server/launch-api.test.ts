@@ -65,9 +65,8 @@ test("native per-IP rule covers exact history routes and draft review", () => {
   assert.equal(path.test(url.pathname + "/" + token), true);
   assert.equal(path.test("/launches/" + token), true);
   assert.equal(path.test("/"), true);
-  assert.equal(path.test("/rmt"), true);
   assert.equal(path.test(creationReviewPath), true);
-  for (const rejected of ["/wallet", "/api/launchpad/config", "/api/launchpad/launches/random", "/launches/" + token + "/admin",
+  for (const rejected of ["/rmt", "/wallet", "/api/launchpad/config", "/api/launchpad/launches/random", "/launches/" + token + "/admin",
     creationReviewPath + "/extra", "/api/launchpad/curve"]) {
     assert.equal(path.test(rejected), false);
   }

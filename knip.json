@@ -1,19 +1,8 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "ignore": [
-    "scripts/visual-qa/legion-token-fixture-authority-smoke.ts",
-    "packages/contracts/scripts/export-consent-testnet-web-artifacts.mjs",
-    "packages/contracts/scripts/export-mainnet-web-artifacts.mjs",
-    "packages/contracts/scripts/export-testnet-web-artifacts.mjs"
-  ],
   "workspaces": {
     ".": {
       "entry": [
-        ".github/scripts/zerox-browser-boundary.cjs",
-        ".github/scripts/zerox-execution-fixture.cjs",
-        ".github/scripts/collect-live-journey-proof.cjs",
-        ".github/scripts/live-journey-runtime-proof.cjs",
-        "scripts/visual-qa/rmt-creator-integration.mjs",
         "docs/evidence/rmt-task039/probe-robinhood-4663.mjs",
         "docs/evidence/rmt-task039/verify-4663-bytecode.mjs",
         "docs/evidence/rmt-task040/curve-store-reorg.mjs",
@@ -36,36 +25,18 @@
         "docs/evidence/rmt-task047/treasury-support-fork.mjs"
       ]
     },
-    "apps/web": {
-      "entry": [
-        "app/**/*.{ts,tsx}",
-        "lib/testing/**/*.{ts,tsx}",
-        "lib/**/*-smoke.ts",
-        "lib/**/*.test.ts"
-      ]
-    },
     "apps/launch-website": {
-      "entry": ["scripts/refresh-historical-launches.ts", "lib/server/*.test.ts", "netlify/edge-functions/*.ts"]
+      "entry": [
+        "scripts/refresh-historical-launches.ts",
+        "lib/server/*.test.ts",
+        "netlify/edge-functions/*.ts"
+      ]
     },
     "apps/indexer": {
       "entry": [
         "src/**/*-smoke.ts",
         "src/curve-fixture-worker.ts"
-      ],
-      "ignoreDependencies": ["tsx"]
-    },
-    "apps/external-origin-indexer": {
-      "entry": [
-        "src/**/*-smoke.ts",
-        "shadow/**/*-smoke.ts"
-      ],
-      "ignoreDependencies": ["tsx"]
-    },
-    "apps/market-indexer": {
-      "entry": [
-        "src/**/*-smoke.ts"
-      ],
-      "ignoreDependencies": ["tsx"]
+      ]
     }
   }
 }

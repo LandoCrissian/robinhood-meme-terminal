@@ -3,69 +3,30 @@
   "private": true,
   "packageManager": "pnpm@10.12.1",
   "workspaces": [
-    "apps/*",
-    "packages/*"
+    "apps/launch-website",
+    "apps/indexer"
   ],
   "scripts": {
-    "dev": "pnpm --filter web dev",
-    "build": "pnpm --filter web build",
+    "dev": "pnpm --filter @rmt/launch-website exec next dev",
+    "build": "pnpm --filter @rmt/launch-website --filter indexer build",
+    "typecheck": "pnpm --filter @rmt/launch-website --filter indexer typecheck",
+    "test": "pnpm --filter @rmt/launch-website test:history && pnpm --filter indexer test:resilience && node --test scripts/railway-watch-scope.test.mjs",
+    "test:release-evidence": "node --test \"docs/evidence/**/*.test.mjs\"",
     "audit:production": "pnpm audit --prod --audit-level high",
-    "check:community-readiness": "node scripts/check-rmt-live-readiness.mjs",
-    "check:repo": "knip --include files,dependencies",
-    "lint": "pnpm --filter web lint",
-    "monitor:uniswap-v3-fees": "node scripts/uniswap-v3-fee-settlement-monitor.mjs",
-    "preflight:metamask-agent-wallet": "node scripts/metamask-agent-wallet-preflight.mjs",
-    "test:firebase-rules": "firebase emulators:exec --project rmt-rules-test --only firestore \"pnpm --filter web test:firebase-rules:unit\"",
-    "test:community-readiness": "node scripts/community-readiness-smoke.mjs",
-    "test:metamask-agent-wallet-preflight": "node --test scripts/metamask-agent-wallet-preflight.test.mjs",
-    "test:uniswap-v3-fee-monitor": "node --test scripts/uniswap-v3-fee-settlement-monitor.test.mjs",
-    "test:terminal-release": "pnpm --filter web test:terminal-release",
-    "test:paused-integrity": "pnpm --filter web test:paused-integrity && pnpm test:community-readiness && pnpm check:community-readiness -- --repository-only",
-    "test:production-health": "node scripts/production-health-smoke.mjs",
-    "test:terminal-high-end": "node .github/scripts/terminal-high-end-acceptance.mjs && node .github/scripts/partial-directory-browser-acceptance.mjs && pnpm --filter web exec tsx lib/wallet-connection-browser-smoke.ts",
-    "test:account-first-browser": "node .github/scripts/account-first-browser-acceptance.mjs",
-    "test:privy-bridge-browser": "node .github/scripts/privy-bridge-balance-acceptance.mjs",
-    "typecheck": "pnpm --filter web typecheck"
+    "check:repo": "knip --include files,dependencies"
   },
   "devDependencies": {
-    "firebase-tools": "15.26.0",
     "knip": "6.29.0",
     "playwright": "1.55.1"
   },
   "pnpm": {
     "overrides": {
-      "@firebase/firestore>@grpc/grpc-js@<1.13.6": "1.13.6",
-      "google-gax>@grpc/grpc-js@>=1.14.0 <1.14.5": "1.14.5",
-      "@google-cloud/storage>fast-xml-parser@<5.12.0": "5.12.0",
-      "@hono/node-server@<2.1.6": "2.1.6",
-      "@opentelemetry/core@<2.8.0": "2.8.0",
-      "axios@>=1.0.0 <1.20.0": "1.20.0",
       "brace-expansion@<=5.0.8": "5.0.9",
-      "body-parser@>=2.0.0 <2.4.0": "2.4.0",
-      "fast-uri@>=3.0.0 <3.1.9": "3.1.9",
-      "follow-redirects@>=1.16.0 <1.16.2": "1.16.2",
-      "firebase-admin>@fastify/busboy@<3.2.2": "3.2.2",
-      "hono@<4.13.16": "4.13.16",
-      "ip-address@<10.7.4": "10.7.4",
-      "js-yaml@>=4.0.0 <4.3.1": "4.3.1",
       "nanoid@<3.3.18": "3.3.18",
-      "pino-pretty>fast-copy@<3.1.0": "3.1.0",
       "postcss@<=8.5.22": "8.5.23",
-      "query-string@7.1.3>decode-uri-component": "0.5.1",
-      "proxy-addr@>=2.0.0 <2.0.8": "2.0.8",
-      "qs@>=6.0.0 <6.16.1": "6.16.1",
-      "re2@<=1.26.0": "1.26.1",
-      "socket.io-parser@>=4.0.0 <4.2.7": "4.2.7",
       "source-map-js@>=1.2.0 <1.2.2": "1.2.2",
-      "tar@<=7.5.20": "7.5.21",
-      "undici@<6.28.0": "6.28.0",
-      "undici@>=8.0.0 <8.9.0": "8.9.0",
-      "uuid@<11.1.1": "11.1.1",
       "ws@>=8.0.0 <8.21.0": "8.21.0",
       "zod@<4.6.6": "4.6.6"
-    },
-    "patchedDependencies": {
-      "query-string@7.1.3": "patches/query-string@7.1.3.patch"
     }
   }
 }

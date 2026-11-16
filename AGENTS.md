@@ -1,32 +1,18 @@
-# RMT repository authority
+# RMT Launch repository instructions
 
-RMT is becoming the market operating layer for Robinhood Chain. Current product architecture connects discovery, the curated Token Terminal, the curated NFT Terminal, Project Market, portfolio/ownership, market activity, community, and future distribution.
+RMT Launch is a dedicated Robinhood Chain token launchpad. Keep the existing UI, wallet review and transaction recovery. The product covers launch discovery, token creation, bonding-curve trading, locked Uniswap v4 graduation, and fee accounting with independent project treasuries.
 
-Before substantial work, read:
+Read [Architecture](docs/ARCHITECTURE.md), [Deployment](docs/DEPLOYMENT.md), [Security](docs/SECURITY.md) and [Creator treasuries](docs/CREATOR_TREASURIES.md) before changing those areas.
 
-1. [`docs/ARCHITECTURE_FREEZE.md`](docs/ARCHITECTURE_FREEZE.md)
-2. [`docs/ACTIVE_SYSTEM_MAP.md`](docs/ACTIVE_SYSTEM_MAP.md)
-3. [`docs/TERMINAL_COMPLETION_GATE.md`](docs/TERMINAL_COMPLETION_GATE.md)
+## Current decisions
 
-Working rules:
+- [Task 048A](https://github.com/LandoCrissian/robinhood-meme-terminal/issues/627) narrows the repository to the launchpad. Legacy terminal, NFT marketplace, stock/RWA, social, game and agent product surfaces are outside this scope.
+- [Task 049](https://github.com/LandoCrissian/robinhood-meme-terminal/issues/626) follows the cleanup with a separately versioned candidate. The first RMT project will get a fresh token address. Every creation must have exactly 1,000,000,000 whole tokens with 18 decimals, fixed at creation by the contract. The current fixture predates this condition. Archived V4/V6 deployments have separate identities, balances and receipts.
+- Keep legacy records and user assets intact. A historical address or event does not identify a new-engine project. Keep evidence and required shared compatibility separate from product scope. LAMMB operates independently. A project-specific treasury integration requires its own beneficiary authority.
+- Keep proposed economics explicit. Curve fees and the original position's earned LP fees are split 90% project, 5% Operations and 5% Reserve. Only the project can choose its share's beneficiary allocation under committed terms. Initial liquidity principal is permanently locked.
+- Keep exact chain, account, nonce, recipient, amount, full PoolKey, runtime and transaction binding. Use narrow approvals, explicit confirmation, simulation, verified settlement and duplicate prevention. Fail closed on missing or conflicting evidence. Background work never requests signatures or submits transactions. Keep credentials and wallet secrets private.
+- Keep production read-only and `BLOCKED_NO_BROADCAST`. Deployment, funded acceptance and public activation require distinct approval. Preserve the security gate and independent review requirement. Synthetic tests, successful CI and repository cleanup cannot clear contract findings.
+- Preserve approved production configuration, user data, deployed contract sources, manifests and receipts. Never infer authority to merge, provision paid services, sign, broadcast, publish, alter royalties, delete data or clean up remote branches.
+- Prefer existing components and reproduce changes on isolated inputs. Run affected website, indexer, wallet and contract checks. Report the exact candidate, meaningful failures and evidence boundaries.
 
-- VNext (`apps/web/lib/vnext/*`, `apps/web/lib/server/vnext-*`) remains the canonical Token Terminal architecture. Its eight owner-curated markets are canonical seed authority, not a ceiling on bounded public Robinhood Chain market visibility. Visibility, curated authority and execution eligibility remain separate; do not restore exhaustive chain-wide indexing as a Terminal dependency or create another state/execution framework.
-- The NFT Terminal is an active, curated, read-only-execution product lane. CCFF00 is the only public `ACTIVE` NFT project. Robin Rabbits and Gogh Punks are technically verified `WATCHING` projects; `WATCHING` never implies public admission.
-- Creator/V7 launch, creator media/marketplace creation, profiles/referrals, and community/RMT Live remain separate preserved domains and are paused unless explicitly reauthorized. Do not bundle the active NFT Terminal back into Creator/V7.
-- Project Market is the future evidence-backed connection between token and NFT lanes. Never infer an NFT-to-ERC20 relationship from names, symbols, branding, metadata, or contract functions; require owner confirmation plus independent technical verification.
-- Current public Token Terminal execution is `ZERO_X_ONLY` (`zero-x-swap`). Detailed provider/source authority is [the 0x AllowanceHolder boundary](docs/RMT_ZEROX_ALLOWANCE_HOLDER_PUBLIC_EXECUTION_V1.md); [execution hot-path authorities](docs/execution-hot-path-authorities.md) governs identity, intelligence, execution and settlement separation. Current economics use provider-native direction-aware base-currency fees (`zeroXFeeAsset`); the legacy serialized `PROVIDER_NATIVE_INPUT_FEE` identifier remains for compatibility, not a sell-token-only policy. Historical custom-executor policy is not provider-independent authority.
-- Public wallet submission is user-controlled and enabled only behind existing release/authorization gates and explicit wallet review/confirmation. RMT never automatically signs or broadcasts, holds private keys/seed phrases, or autonomously executes customer trades. Background work never signs or submits. Stock Tokens remain view-only/execution-ineligible, fail closed. Strict firm verification, committed authorization, simulation and settlement reconciliation remain mandatory.
-- Preserve Uniswap V3/V2 deployments, controlled proofs, receipts, hashes, manifests and `RMT_EXECUTION_V1/V2` release records as historical/versioned evidence, not current public-provider authority. Source or deployment existence never activates a provider.
-- NFT execution is `NONE`. Marketplace providers supply read evidence only and never replace canonical ownership authority.
-- Preserve exact recipient binding, narrow approvals, pinned deployment/runtime evidence, provider-specific verification, and fail-closed unknown-field behavior.
-- `apps/indexer` is deployed V6 compatibility; `apps/external-origin-indexer` owns external project origin; `apps/market-indexer` is optional historical external-market infrastructure. Origin, venue, marketplace evidence, ownership, and RMT execution attribution remain independent.
-- Do not deploy, change production environment values, enable providers/fees/automation, broadcast transactions, promote `WATCHING` to `ACTIVE`, admit assets, merge, or delete user data without explicit owner authorization. “Continue” is not merge or deployment authorization.
-- Read the relevant domain document before changing execution, funding, indexers, contracts, NFT verification, or marketplace evidence. Historical documents and research are not current roadmap authority.
-- Run validation proportionate to the change. Documentation-only authority work does not require a production build unless a repository rule or affected executable surface requires it.
-- Update current authority documents only for explicit owner decisions. Do not rewrite valid historical records.
-
-## Authority resolution
-
-Durable safety, security and prohibition invariants remain binding across domains. For mutable current-state facts (provider, release state, economics or verification boundary), the newest explicit owner-approved CURRENT authority for that exact domain governs; older general current-state prose does not override it. Establish owner approval, scope and supersession, not merely a newer filename, timestamp or source implementation. Neither execution reference above governs unrelated domains or proves current Production environment values.
-
-An exact task narrows work; it does not broaden product, R2/R3 or Production authority. An explicit owner decision may be recorded only through permitted change control. Historical/research records and worker output are evidence, not authority. If scope, recency and explicit owner decision cannot resolve two CURRENT claims, `STOP_FOR_OWNER_REVIEW`. See the deterministic procedure in [RMT Agent Control Plane](docs/RMT_AGENT_CONTROL_PLANE.md).
+Issue-specific owner decisions govern forward scope. Git history and [retained evidence](docs/SECURITY.md) provide provenance. Earlier product directions and provisional terms do not override an explicit current decision.

@@ -1,0 +1,124 @@
+/* Mobile V8: the calm, personal Profile-page language applied across RMT. */
+@media (max-width: 760px) {
+  :root {
+    --mobile-gutter: 10px;
+    --mobile-radius-lg: 22px;
+    --mobile-radius-md: 16px;
+    --mobile-card: linear-gradient(180deg, rgba(13, 19, 15, .98), rgba(7, 11, 8, .98));
+    --mobile-card-line: #26372c;
+  }
+
+  body {
+    background:
+      radial-gradient(circle at 12% -4%, rgba(49, 161, 73, .18), transparent 28%),
+      #050705;
+  }
+
+  main {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+
+  /* A quieter header with three clear targets: brand, wallet, menu. */
+
+  .publicMore[open] summary {
+    border-color: #3b6845;
+    border-radius: 14px;
+    background: #112017;
+  }
+
+  .publicMore:not([open]) > .publicMenu {
+    display: none;
+  }
+
+  .publicMore[open] > .publicMenu {
+    display: grid;
+  }
+
+  /* Mobile dock remains persistent without squeezing its labels. */
+
+  .mobileDock a[aria-current="page"] {
+    background: linear-gradient(145deg, #17301d, #102116);
+    box-shadow: inset 0 0 0 1px rgba(92, 238, 119, .1);
+  }
+
+  /* Profile stays the source of truth, with consistent page gutters. */
+
+  /* Project discovery uses the phone width instead of becoming a long stack. */
+
+  .followedProjectsHub > header p:not(.eyebrow),
+  .approvedDirectoryHeader p:not(.eyebrow),
+  .gameDirectoryHeader p:not(.eyebrow) {
+    display: -webkit-box;
+    overflow: hidden;
+    font-size: .68rem;
+    line-height: 1.4;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .followedProjectModules span:nth-child(n + 3),
+  .approvedDirectoryModules span:nth-child(n + 3) {
+    display: none;
+  }
+
+  .gameDirectoryFilters label:nth-of-type(3) {
+    grid-column: 1 / -1;
+  }
+
+  .gameDirectoryActions a:nth-child(2) {
+    display: none;
+  }
+
+  /* Home: a personal command surface instead of stacked square ledgers. */
+  main:has(.rmtDiscovery) {
+    padding: var(--mobile-gutter) var(--mobile-gutter) calc(98px + env(safe-area-inset-bottom));
+  }
+
+  .terminalIntro .trustStrip span:nth-child(2) {
+    display: none;
+  }
+
+  /* Shared discovery, portfolio, and watchlist page framing. */
+
+  .statusHero p:not(.eyebrow) {
+    color: #8a978f;
+    font-family: inherit;
+    font-size: .8rem;
+    line-height: 1.55;
+  }
+
+  /* Runner Radar cards become readable, self-contained mobile objects. */
+
+  .runnerMarketCard .runnerStats span:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .runnerMarketCard .runnerStats span:nth-last-child(-n + 2) {
+    border-bottom: 0;
+  }
+
+  /* External trade review: no collapsed columns or overlapping stage labels. */
+
+  /* Launch form uses the same rounded section rhythm as Profile. */
+
+  .launchConfigPanel .confirm input[type="checkbox"] {
+    flex: 0 0 20px;
+    width: 20px;
+    min-width: 20px;
+    height: 20px;
+  }
+
+  /* Status communicates state without exposing raw RPC payloads. */
+
+  .safeguardGrid > div:nth-child(2n),
+  .safeguardGrid > div:nth-child(3n),
+  .safeguardGrid > div:nth-last-child(-n + 3),
+  .safeguardGrid > div:nth-last-child(-n + 2) {
+    padding: 13px;
+    border: 1px solid #26352c;
+    border-radius: 14px;
+    background: #090e0b;
+  }
+
+  /* Token workspace inherits the same card system on mobile. */
+}

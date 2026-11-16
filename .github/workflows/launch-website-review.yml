@@ -4,15 +4,13 @@ on:
   pull_request:
     paths:
       - "apps/launch-website/**"
-      - "apps/web/app/**/*.css"
-      - "apps/web/public/brand/rmt-master-logo.png"
       - "netlify.toml"
       - "package.json"
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
-      - "patches/**"
       - "apps/indexer/src/curve-*.ts"
       - "apps/indexer/package.json"
+      - "apps/indexer/tsconfig.json"
       - "scripts/visual-qa/rmt-creator-integration.mjs"
       - "scripts/visual-qa/rmt-netlify-website.mjs"
       - ".github/workflows/launch-website-review.yml"
@@ -21,7 +19,7 @@ permissions:
   contents: read
 
 jobs:
-  preview:
+  web:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:

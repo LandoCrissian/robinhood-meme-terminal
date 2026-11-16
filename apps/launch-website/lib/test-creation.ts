@@ -1,12 +1,12 @@
 import { isLaunchAddress } from "./launch-data";
-import type { ReviewedLaunchTerms } from "./launch-draft";
+import type { ReviewedFixtureLaunchTerms } from "./launch-draft";
 
 export const testCreationPath = "/api/launchpad/test-creation";
 export const testCreationChain = "0x7a69";
 export const testCreationFeeWei = 400_000_000_000_000n;
 export const testCreationSignature = "function create(string name,string symbol,string projectURI,uint8 supplyPreset,address treasury,uint16 treasuryShareBps,bytes32 intentId,uint256 deadline) payable returns (address token,address curve)" as const;
 
-export type TestCreationFields = Omit<ReviewedLaunchTerms, "supply">;
+export type TestCreationFields = Omit<ReviewedFixtureLaunchTerms, "supply">;
 export type TestCreationRequest = {
   from: `0x${string}`;
   to: `0x${string}`;

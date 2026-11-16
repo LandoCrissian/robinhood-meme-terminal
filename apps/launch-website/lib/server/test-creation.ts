@@ -1,5 +1,5 @@
 import { decodeFunctionData, encodeFunctionData, erc20Abi, getAddress, parseAbi, parseAbiItem, parseEventLogs, toHex, zeroAddress, type Hex } from "viem";
-import { emptyLaunchDraft, totalTreasuryFeePercent, validateLaunchDraft } from "../launch-draft";
+import { emptyLaunchDraft, totalTreasuryFeePercent, validateFixtureLaunchDraft } from "../launch-draft";
 import { testCreationChain, type TestCreationRequest } from "../test-creation";
 import { configuredCurveFixture, factoryAbi, fixtureAddress, fixtureCreationFee, fixtureHash, fixtureRpc, sameHex, verifyCurveFixture, type CurveFixture } from "./curve-fixture";
 import { readDraftBody } from "./launch-draft";
@@ -32,7 +32,7 @@ function normalizedFields(fields: unknown) {
       typeof fields.name !== "string" || typeof fields.symbol !== "string" || typeof fields.projectURI !== "string" ||
       typeof fields.treasury !== "string" || typeof fields.supplyPreset !== "number" || !Number.isInteger(fields.supplyPreset) ||
       typeof fields.treasuryShareBps !== "number" || !Number.isInteger(fields.treasuryShareBps) || fields.treasuryShareBps < 0) return null;
-  const checked = validateLaunchDraft({ ...emptyLaunchDraft, name: fields.name, symbol: fields.symbol, projectURI: fields.projectURI,
+  const checked = validateFixtureLaunchDraft({ ...emptyLaunchDraft, name: fields.name, symbol: fields.symbol, projectURI: fields.projectURI,
     supplyPreset: String(fields.supplyPreset), treasury: fields.treasury,
     treasuryShare: totalTreasuryFeePercent(fields.treasuryShareBps) }, "total-fee-percent");
   if (!checked.ok) return null;

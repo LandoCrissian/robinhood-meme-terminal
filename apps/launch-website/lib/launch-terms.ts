@@ -1,8 +1,13 @@
-// Website disclosures mirror the #594 review fixture. They confer no release approval.
+// The public draft previews the planned supply. Execution remains disabled.
+export const plannedLaunchSupply = 1_000_000_000;
+
+// Retained solely for the pinned synthetic 31337 factory and its calldata.
+export const fixtureSupplyPresets = [1_000_000, 10_000_000, 100_000_000] as const;
+
+// Fee and liquidity disclosures come from the review fixture and remain provisional.
 export const launchTerms = {
   creationFeeEth: "0.0004",
   graduationBackingEth: 2,
-  supplyPresets: [1_000_000, 10_000_000, 100_000_000],
   curveAllocationPercent: 60,
   liquidityAllocationPercent: 40,
   curveTradeFeePercent: 1,

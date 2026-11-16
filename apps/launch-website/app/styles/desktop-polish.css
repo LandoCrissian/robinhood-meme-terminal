@@ -1,0 +1,72 @@
+/* Desktop V8: extend the calm, rounded Profile language across the terminal. */
+@media (min-width: 761px) {
+  :root {
+    --desktop-card: linear-gradient(180deg, rgba(12, 18, 14, .99), rgba(7, 11, 8, .99));
+    --desktop-card-line: #26372c;
+    --desktop-soft-line: #223027;
+    --desktop-muted: #849188;
+    --desktop-green: #55ee72;
+  }
+
+  body {
+    background:
+      radial-gradient(circle at 12% -10%, rgba(49, 161, 73, .12), transparent 30%),
+      #050705;
+  }
+
+  /* Keep every primary workspace on the same generous frame as Profile. */
+  main:has(.rmtDiscovery) {
+    width: 100%;
+    max-width: 1480px;
+    margin-right: auto;
+    margin-left: auto;
+    padding: 18px 24px 72px;
+  }
+
+  /* Discovery: preserve dense market data without presenting it as one square ledger. */
+
+  /* Shared directory hero and personal-data framing. */
+
+  .statusHero p:not(.eyebrow) {
+    max-width: 780px;
+    color: #8b9a90;
+    font-family: inherit;
+    font-size: .84rem;
+    line-height: 1.55;
+  }
+
+  /* Runner Radar: legible self-contained rows with unmistakable trade actions. */
+
+  /* Portfolio and watchlist use modern asset cards instead of fused rows. */
+
+  /* Launch: one calm configuration card and a distinct reference rail. */
+
+  /* Status: glanceable live cards and a clearly grouped safeguard section. */
+
+  .safeguardGrid > div:nth-child(3n),
+  .safeguardGrid > div:nth-last-child(-n + 3) {
+    min-height: 106px;
+    padding: 15px;
+    border: 1px solid #26352c;
+    border-radius: 14px;
+    background: #090e0b;
+  }
+
+  /* Restore the polished review dialog that the ledger stylesheet flattened. */
+}
+
+/* Laptop widths retain the desktop language without squeezing the market rows. */
+@media (min-width: 761px) and (max-width: 1180px) {
+  main:has(.rmtDiscovery) {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+}
+
+/* Tablet widths bridge the mobile cards and desktop command center. */
+@media (min-width: 761px) and (max-width: 900px) {
+  main:has(.rmtDiscovery) {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+}

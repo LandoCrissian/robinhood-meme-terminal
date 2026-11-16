@@ -129,3 +129,17 @@ paths = [
   '''^apps/launch-website/data/historical-launches-4663\.json$''',
   '''^apps/launch-website/lib/server/verify-historical-launches\.ts$''',
 ]
+
+[[allowlists]]
+description = "Exact public Solidity type in the pinned graduation contract"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''^RMTLaunchCurveLpFeeLedgerV1$''']
+paths = ['''^packages/contracts/src/RMTV4CurveGraduationV1\.sol$''']
+
+[[allowlists]]
+description = "Exact public Solidity type in the pinned graduation test"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''^RMTLaunchBondingCurveV1$''']
+paths = ['''^packages/contracts/test/RMTV4CurveGraduationV1\.t\.sol$''']
