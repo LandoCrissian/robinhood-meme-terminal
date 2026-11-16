@@ -31,7 +31,8 @@ contract RMTLaunchCurveFactoryV2 is ReentrancyGuard {
     uint256 public immutable creationFeeWei;
 
     uint256 public creationFeesAccrued;
-    mapping(address token => address curve) public curveForToken;
+    mapping(address token => address curve) private _curves;
+    address private settlingToken;
     mapping(address token => address curve) public originCurveForToken;
     mapping(address token => mapping(uint32 version => address curve)) public migrationCandidate;
     mapping(address creator => mapping(bytes32 intentId => address token)) public tokenForIntent;
@@ -42,6 +43,7 @@ contract RMTLaunchCurveFactoryV2 is ReentrancyGuard {
     error DuplicateIntent();
     error DeadlineExpired();
     error InvalidMigration();
+    error MigrationInProgress();
     error InsufficientCreationFee(uint256 required, uint256 provided);
     error CreationRefundFailed();
     error NoCreationFees();
@@ -145,7 +147,7 @@ contract RMTLaunchCurveFactoryV2 is ReentrancyGuard {
         token = address(launchedToken);
         curve = address(market);
         tokenForIntent[msg.sender][intentId] = token;
-        curveForToken[token] = curve;
+        _curves[token] = curve;
         originCurveForToken[token] = curve;
         creationFeesAccrued += fee;
         if (!launchedToken.transfer(curve, tokenSupply)) revert InvalidLaunch();
@@ -181,8 +183,14 @@ contract RMTLaunchCurveFactoryV2 is ReentrancyGuard {
         emit CreationFeesClaimed(operatingRecipient, amount);
     }
 
+    /// @notice Current factory route. A migrating token has no readable route until settlement completes.
+    function curveForToken(address token) external view returns (address) {
+        if (token != address(0) && token == settlingToken) revert MigrationInProgress();
+        return _curves[token];
+    }
+
     function prepareMigration(address token, uint32 nextVersion) external nonReentrant returns (address nextCurve) {
-        address source = curveForToken[token];
+        address source = _curves[token];
         if (address(projectRegistry) == address(0) || source == address(0)) revert InvalidMigration();
         RMTLaunchBondingCurveV1 market = RMTLaunchBondingCurveV1(payable(source));
         uint32 fromVersion = market.executionVersion();
@@ -212,7 +220,7 @@ contract RMTLaunchCurveFactoryV2 is ReentrancyGuard {
     }
 
     function executeMigration(address token, address nextCurve, bytes32 expectedRuntimeHash) external nonReentrant {
-        address source = curveForToken[token];
+        address source = _curves[token];
         if (
             msg.sender != address(projectRegistry) || source == address(0) || nextCurve == address(0)
                 || nextCurve.codehash != expectedRuntimeHash
@@ -226,12 +234,14 @@ contract RMTLaunchCurveFactoryV2 is ReentrancyGuard {
                 || deployer.codehash != runtimeHash
         ) revert InvalidMigration();
         _validateCandidate(market, nextCurve, nextVersion, token);
+        settlingToken = token;
         (uint256 sold, uint256 backing, uint256 inventory) =
             market.migrateAssets(payable(nextCurve), expectedRuntimeHash);
-        curveForToken[token] = nextCurve;
+        _curves[token] = nextCurve;
         emit CurveAssetsMigrated(
             token, source, nextCurve, nextVersion, sold, backing, inventory, address(market.revenueLedger())
         );
+        delete settlingToken;
     }
 
     function _validateCandidate(RMTLaunchBondingCurveV1 market, address nextCurve, uint32 nextVersion, address token)

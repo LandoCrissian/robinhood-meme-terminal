@@ -3,6 +3,7 @@ pragma solidity 0.8.26;
 
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {RMTLaunchCurveTokenV2 as Token} from "../src/RMTLaunchCurveTokenV2.sol";
 import {RMTLaunchCurveDirectoryV2 as Directory} from "../src/RMTLaunchCurveDirectoryV2.sol";
 import {RMTLaunchProjectRegistryV2 as RegistryV2} from "../src/RMTLaunchProjectRegistryV2.sol";
@@ -20,12 +21,22 @@ interface ICallbackRegistry {
     function scheduleMigration(address token, bytes calldata first, bytes calldata second) external;
     function executeMigration(address token) external;
     function migrationNonce(address token) external view returns (uint64);
+    function nextMigrationVersion(address token) external view returns (uint32);
+    function cancelMigration(address token) external;
+    function clearExpiredMigration(address token) external;
+    function clearStaleMigration(address token) external;
 }
 
 contract MigrationRouteConsumer {
     address public routedCurve;
     uint32 public routedVersion;
     bytes4 public unavailable;
+    bytes4 public digestUnavailable;
+    bytes4 public versionUnavailable;
+    bytes4 public nestedExecutionFailure;
+    bytes4 public nestedCancellationFailure;
+    bytes4 public nestedExpiryClearFailure;
+    bytes4 public nestedStaleClearFailure;
     uint64 public observedNonce;
     address public unrelatedRoute;
 
@@ -35,6 +46,30 @@ contract MigrationRouteConsumer {
             routedVersion = version;
         } catch (bytes memory failure) {
             unavailable = bytes4(failure);
+        }
+        try registry.migrationDigest(token) {}
+        catch (bytes memory failure) {
+            digestUnavailable = bytes4(failure);
+        }
+        try registry.nextMigrationVersion(token) {}
+        catch (bytes memory failure) {
+            versionUnavailable = bytes4(failure);
+        }
+        try registry.executeMigration(token) {}
+        catch (bytes memory failure) {
+            nestedExecutionFailure = bytes4(failure);
+        }
+        try registry.cancelMigration(token) {}
+        catch (bytes memory failure) {
+            nestedCancellationFailure = bytes4(failure);
+        }
+        try registry.clearExpiredMigration(token) {}
+        catch (bytes memory failure) {
+            nestedExpiryClearFailure = bytes4(failure);
+        }
+        try registry.clearStaleMigration(token) {}
+        catch (bytes memory failure) {
+            nestedStaleClearFailure = bytes4(failure);
         }
         observedNonce = registry.migrationNonce(token);
         (, unrelatedRoute,,,) = registry.project(unrelated);
@@ -128,6 +163,8 @@ contract RMTLaunchProjectRegistryV3Test is Test {
         if (guarded) {
             assertFalse(RegistryV3(address(registry)).migrationInProgress(token));
             assertEq(consumer.unavailable(), RegistryV3.MigrationInProgress.selector);
+            assertEq(consumer.digestUnavailable(), RegistryV3.MigrationInProgress.selector);
+            assertEq(consumer.versionUnavailable(), RegistryV3.MigrationInProgress.selector);
             assertEq(consumer.routedCurve(), address(0));
             assertEq(consumer.observedNonce(), 0);
         } else {
@@ -137,6 +174,11 @@ contract RMTLaunchProjectRegistryV3Test is Test {
             assertFalse(RegistryEpochCurve(origin).active());
             assertEq(consumer.observedNonce(), 1);
         }
+        bytes4 locked = ReentrancyGuard.ReentrancyGuardReentrantCall.selector;
+        assertEq(consumer.nestedExecutionFailure(), locked);
+        assertEq(consumer.nestedCancellationFailure(), locked);
+        assertEq(consumer.nestedExpiryClearFailure(), locked);
+        assertEq(consumer.nestedStaleClearFailure(), locked);
         assertEq(consumer.unrelatedRoute(), unrelated);
         (, address committed, uint32 version, address engine, uint64 migrations) = registry.project(token);
         assertEq(committed, successor);

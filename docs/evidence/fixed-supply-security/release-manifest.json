@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "profile": "rmt-curve-fixed-supply-security-v2",
+  "status": "BLOCKED_NO_BROADCAST",
+  "broadcastAuthorized": false,
+  "reviewedBaseCommit": "ac0b2dd8fdbbd31c632d30d474272bcdddf06d37",
+  "compiler": {
+    "inputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+    "profileSha256Lf": "fbff928915fe154734ce2fa08f1b28c984d0d28f50bfc3010450cf15b9d7f1ef",
+    "bootstrapInitcodeBytes": 48729,
+    "bootstrapInitcodeHeadroom": 423,
+    "factoryRuntimeBytes": 23843,
+    "factoryRuntimeHeadroom": 733
+  },
+  "staticAnalysis": {
+    "status": "FAIL_HIGH",
+    "tool": "Slither 0.11.5",
+    "cryticCompile": "0.3.11",
+    "inputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+    "sourceCount": 66,
+    "detectorCount": 101,
+    "resultCount": 233,
+    "highFindings": 22,
+    "engineHighFindings": 18,
+    "dependencyHighFindings": 4,
+    "governanceMediumFindings": 7,
+    "archiveSha256": "55e2381bc551c89839b36429a6847ee583b11b185490171bd5787b0a2c393eb0",
+    "reportSha256": "9d792e7ca84cb3b511fa4ec5ad73d05ded3597b58ac79430bf39934b048c44e1"
+  },
+  "fork": {
+    "scope": "SYNTHETIC_LOOPBACK_FORK",
+    "blockNumber": 114549452,
+    "blockHash": "0xf9a8ca5d8e26ebb426ebd2e663ad82afc878c16d8bba5f5542f6341890cf7710",
+    "archiveSha256": "4f3740be00e88107d24df5373118ba8e6322dfe90257a64a6c3f0c0a7d442faf",
+    "reportSha256": "f17d3799e9fb86e8c1e7997d8865722e461d54381eac13153301b61b1f25c185",
+    "constructors": 5,
+    "projects": [
+      {
+        "symbol": "RMT",
+        "projectAsset": "0x0018D6A77914AB44172A395358CD99E8d240886A",
+        "creationReceipt": "0x2994e1605b1fd785c502c9eaf959a0a968b81686072bdcac982b8ccb757921d5",
+        "graduationReceipt": "0xe768581f84ef59ef6c0088e62e5d7fc7caa2b21f396b61d678013d5b6236987b",
+        "positionTokenId": "4291829"
+      },
+      {
+        "symbol": "HBR",
+        "projectAsset": "0x0de492E85442D62C88A4DC8b3f3566e15421F523",
+        "creationReceipt": "0x0f921e5fe80f7c74ba17fdf2dde849ee9592aaf93e524a064faf2fd303744904",
+        "graduationReceipt": "0x0f8f807c4afe8315949cf83feb2b33e855b4cc6017190e572f1eeeddfa844013",
+        "positionTokenId": "4291830"
+      },
+      {
+        "symbol": "CDR",
+        "projectAsset": "0xC69ac8B729C77E61E069f2d73cB362C4e6D901dC",
+        "creationReceipt": "0x5c976aba11654f31cf8002a7206a8ceb04387c9e2cd2e19af01cf4922c6f28ea",
+        "graduationReceipt": "0xad03bcbe93aa8d9281079e8d4f9c314b6a05ba85cba810c5ac277184cfa9ac11",
+        "positionTokenId": "4291831"
+      }
+    ]
+  },
+  "production": {
+    "newEngineHostedIndexing": "UNVERIFIED",
+    "exactPoolKeyHostedRouting": "UNVERIFIED",
+    "independentL1Finality": "UNVERIFIED",
+    "physicalWalletAcceptance": "UNVERIFIED",
+    "immutableBeneficiaryAddresses": "UNASSIGNED"
+  }
+}

@@ -15,7 +15,7 @@ const read = (file) => readFileSync(file, "utf8").replaceAll("\r\n", "\n");
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const hexBytes = (hex) => Buffer.from(hex.slice(2), "hex");
 
-export const profile = "rmt-curve-fixed-supply-v2";
+export const profile = "rmt-curve-fixed-supply-security-v2";
 export const supply = 1_000_000_000n * 10n ** 18n;
 export const backing = 2n * 10n ** 18n;
 export const creationFee = 400_000_000_000_000n;
@@ -25,7 +25,7 @@ export const termEvidence = Object.freeze({
   creationFeeWei: creationFee.toString(), graduationBackingWei: backing.toString(),
   tradingFeeBps: 100, projectBps: 9000, operationsBps: 500, reserveBps: 500,
 });
-const firstProject = JSON.parse(read(new URL("../../../docs/evidence/fixed-supply/first-project.json", import.meta.url)));
+const firstProject = JSON.parse(read(new URL("../../../docs/evidence/fixed-supply-security/first-project.json", import.meta.url)));
 assert.equal(firstProject.profile, profile);
 assert.equal(firstProject.status, "BLOCKED_NO_BROADCAST");
 assert.equal(firstProject.broadcastAuthorized, false);

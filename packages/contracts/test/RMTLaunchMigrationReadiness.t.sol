@@ -115,9 +115,12 @@ contract MigrationCallbackProbe {
     fallback() external payable {
         if (msg.sig == intercepted) {
             require(!predecessor.active() && predecessor.migratedTo() == address(successor));
-            require(predecessor.backingReserve() == 0 && factory.curveForToken(asset) == address(predecessor));
+            require(predecessor.backingReserve() == 0);
             require(!successor.active());
             require(registry.migrationInProgress(asset), "callback sees no migration lock");
+            _rejected(
+                address(factory), abi.encodeCall(Factory.curveForToken, (asset)), Factory.MigrationInProgress.selector
+            );
             _rejected(
                 address(registry), abi.encodeCall(Registry.project, (asset)), Registry.MigrationInProgress.selector
             );
@@ -177,6 +180,83 @@ contract MigrationCallbackProbe {
     function _rejected(address target, bytes memory data, bytes4 expected) private {
         (bool success, bytes memory failure) = target.call(data);
         require(!success && bytes4(failure) == expected, "unexpected callback result");
+    }
+}
+
+/// @dev Holds one already scheduled rotation for the synthetic callback.
+contract MigrationRotationRelay {
+    Directory private immutable directory;
+    Directory.SignerRotation private rotation;
+    bool private enabled = true;
+
+    constructor(Directory directory_, Directory.SignerRotation memory rotation_) {
+        directory = directory_;
+        rotation = rotation_;
+    }
+
+    function disable() external {
+        enabled = false;
+    }
+
+    function executeIfEnabled() external {
+        if (enabled) directory.executeSignerRotation(rotation);
+    }
+}
+
+/// @dev Fault injection only. Executes the actual successor runtime, then observes the funded intermediate state.
+contract FundedMigrationCallbackProbe {
+    address private immutable originalRuntime;
+    Registry private immutable registry;
+    Factory private immutable factory;
+    MigrationRotationRelay private immutable relay;
+    address private immutable asset;
+    address private immutable unrelatedAsset;
+    address private immutable unrelatedCurve;
+
+    constructor(
+        address originalRuntime_,
+        Registry registry_,
+        Factory factory_,
+        MigrationRotationRelay relay_,
+        address asset_,
+        address unrelatedAsset_,
+        address unrelatedCurve_
+    ) {
+        originalRuntime = originalRuntime_;
+        registry = registry_;
+        factory = factory_;
+        relay = relay_;
+        asset = asset_;
+        unrelatedAsset = unrelatedAsset_;
+        unrelatedCurve = unrelatedCurve_;
+    }
+
+    fallback() external payable {
+        (bool ok, bytes memory output) = originalRuntime.delegatecall(msg.data);
+        if (ok && msg.sig == Curve.acceptMigration.selector) {
+            Curve funded = Curve(payable(address(this)));
+            require(funded.active() && msg.value != 0 && funded.backingReserve() == msg.value);
+            require(address(funded).balance == msg.value && IERC20(asset).balanceOf(address(funded)) != 0);
+            _expectHidden(
+                address(factory), abi.encodeCall(Factory.curveForToken, (asset)), Factory.MigrationInProgress.selector
+            );
+            _expectHidden(
+                address(registry), abi.encodeCall(Registry.project, (asset)), Registry.MigrationInProgress.selector
+            );
+            (, address committed,,,) = registry.project(unrelatedAsset);
+            require(committed == unrelatedCurve && factory.curveForToken(unrelatedAsset) == unrelatedCurve);
+            relay.executeIfEnabled();
+        }
+        assembly ("memory-safe") {
+            switch ok
+            case 0 { revert(add(output, 32), mload(output)) }
+            default { return(add(output, 32), mload(output)) }
+        }
+    }
+
+    function _expectHidden(address target, bytes memory data, bytes4 expected) private view {
+        (bool ok, bytes memory result) = target.staticcall(data);
+        require(!ok && bytes4(result) == expected, "in-flight migration route available");
     }
 }
 
@@ -539,6 +619,67 @@ contract RMTLaunchMigrationReadinessTest is Test {
         _assertIntact(before);
         registry.executeMigration(address(token));
         assertEq(keccak256(abi.encode(_snapshot(successor))), keccak256(abi.encode(before)));
+    }
+
+    function testFundedAcceptanceHidesBothRoutesAndLateRotationRollsBackAssetsAndAuthority() external {
+        Snapshot memory before = _snapshot(origin);
+        address asset = address(token);
+        vm.prank(CREATOR);
+        (address unrelatedAsset, address unrelatedCurve) = factory.create(
+            "Unrelated project", "OTHER", "", TREASURY, 2_000, bytes32(uint256(2)), vm.getBlockTimestamp()
+        );
+        uint64 epoch = directory.signerSetEpoch();
+        uint64 directoryNonce = directory.nonce();
+        uint64 rotationNonce = directory.rotationNonce();
+        Directory.SignerRotation memory rotation = Directory.SignerRotation(
+            vm.addr(1), vm.addr(4), epoch, rotationNonce, uint48(vm.getBlockTimestamp() + 4 days)
+        );
+        bytes32 rotationDigest = directory.signerRotationDigest(rotation);
+        directory.scheduleSignerRotation(
+            rotation,
+            _sign(rotationDigest, 2),
+            _sign(rotationDigest, 3),
+            _sign(directory.rotationAcceptanceDigest(rotationDigest), 4)
+        );
+        MigrationRotationRelay relay = new MigrationRotationRelay(directory, rotation);
+        address runtime = makeAddr("original funded successor runtime");
+        vm.etch(runtime, address(successor).code);
+        FundedMigrationCallbackProbe wrapper =
+            new FundedMigrationCallbackProbe(runtime, registry, factory, relay, asset, unrelatedAsset, unrelatedCurve);
+        vm.etch(address(successor), address(wrapper).code);
+        _schedule();
+        bytes32 migrationDigest = registry.migrationDigest(asset);
+        (bytes32 queued, uint48 executableAt, uint48 expiresAt) = directory.pendingRotation();
+        assertEq(queued, rotationDigest);
+
+        vm.expectRevert(Registry.NotExecutable.selector);
+        registry.executeMigration(asset);
+        _assertIntact(before);
+        assertFalse(registry.migrationInProgress(asset));
+        assertEq(registry.migrationNonce(asset), 0);
+        assertEq(registry.migrationDigest(asset), migrationDigest);
+        assertEq(directory.signerSetEpoch(), epoch);
+        assertEq(directory.nonce(), directoryNonce);
+        assertEq(directory.rotationNonce(), rotationNonce);
+        assertEq(directory.signerA(), vm.addr(1));
+        (bytes32 afterQueued, uint48 afterExecutableAt, uint48 afterExpiresAt) = directory.pendingRotation();
+        assertEq(afterQueued, queued);
+        assertEq(afterExecutableAt, executableAt);
+        assertEq(afterExpiresAt, expiresAt);
+
+        relay.disable();
+        registry.executeMigration(asset);
+        assertEq(keccak256(abi.encode(_snapshot(successor))), keccak256(abi.encode(before)));
+        assertEq(factory.curveForToken(asset), address(successor));
+        (, address active, uint32 version,, uint64 migrations) = registry.project(asset);
+        assertEq(active, address(successor));
+        assertEq(version, 2);
+        assertEq(migrations, 1);
+        assertEq(registry.migrationNonce(asset), 1);
+        directory.executeSignerRotation(rotation);
+        assertEq(directory.signerSetEpoch(), epoch + 1);
+        assertEq(directory.signerA(), vm.addr(4));
+        assertEq(factory.curveForToken(unrelatedAsset), unrelatedCurve);
     }
 
     function testCreatorConsentDoesNotAllowExpirySuspensionOrReplay() external {

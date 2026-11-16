@@ -9,7 +9,7 @@
 | Local Anvil 31337 | Synthetic wallet, website and PostgreSQL integration, with separate fixture configuration. |
 | Local Robinhood 4663 fork | Synthetic review of the named compiler profile against official on-fork Uniswap dependencies, governance and Safe behavior. Upstream traffic is read-only. |
 
-The `rmt-curve-fixed-supply-v2` profile remains **BLOCKED_NO_BROADCAST**. The profile pins compiler inputs, source transformations, external contract runtimes and bytecode templates. Its chain-4663 output is for isolated review. Foundry and the browser fixture retain the chain-31337 execution gate. The [new compiler manifest](evidence/fixed-supply/4663-profile.json) is separate from the [frozen 4663 evidence](evidence/rmt-task043/4663-rotation-profile.json).
+The `rmt-curve-fixed-supply-security-v2` profile remains **BLOCKED_NO_BROADCAST**. The profile pins compiler inputs, source transformations, external contract runtimes and bytecode templates. Its chain-4663 output is for isolated review. Foundry and the browser fixture retain the chain-31337 execution gate. The [current compiler manifest](evidence/fixed-supply-security/4663-profile.json) is separate from the [frozen 4663 evidence](evidence/rmt-task043/4663-rotation-profile.json).
 
 ## Review locally
 
@@ -27,12 +27,12 @@ node docs/evidence/rmt-task047/probe-hosted-launchpad.mjs
 The browser uses a local synthetic wallet and the same creator interface as the read-only website build. Set `$anvil`, `$solc` and `$postgresBin` to local tool paths. Choose a fresh output directory for browser evidence and a fresh output file for the 4663 rehearsal.
 
 ~~~powershell
-node packages/contracts/scripts/fixed-supply-profile.mjs --solc $solc --chain 4663 --verify docs/evidence/fixed-supply/4663-profile.json
+node packages/contracts/scripts/fixed-supply-profile.mjs --solc $solc --chain 4663 --verify docs/evidence/fixed-supply-security/4663-profile.json
 node scripts/visual-qa/rmt-creator-integration.mjs --anvil $anvil --solc $solc --pg-bin $postgresBin --output $browserEvidenceDirectory
-pnpm test:fork-4663 --anvil $anvil --solc $solc --archive pinax --output $forkEvidenceFile
+pnpm test:fork-4663 --anvil $anvil --solc $solc --archive pocket --output $forkEvidenceFile
 ~~~
 
-[First RMT project and unassigned live inputs](evidence/fixed-supply/first-project.json) · [Prior 4663 treasury replay](evidence/rmt-task046/4663-shared-owner-safe-rehearsal.json) · [Historical browser replay guide](https://github.com/LandoCrissian/robinhood-meme-terminal/blob/ec7296ea5b52eeaa74e2dbadd12e647f9dbf2482/docs/RMT_CURVE_TASK038_V4_SETTLEMENT.md)
+[Current verification and unsigned fork calldata](evidence/fixed-supply-security/release-manifest.json) · [First RMT project and unassigned live inputs](evidence/fixed-supply-security/first-project.json) · [Prior 4663 treasury replay](evidence/rmt-task046/4663-shared-owner-safe-rehearsal.json) · [Historical browser replay guide](https://github.com/LandoCrissian/robinhood-meme-terminal/blob/ec7296ea5b52eeaa74e2dbadd12e647f9dbf2482/docs/RMT_CURVE_TASK038_V4_SETTLEMENT.md)
 
 ## Production release
 
@@ -42,6 +42,8 @@ pnpm test:fork-4663 --anvil $anvil --solc $solc --archive pinax --output $forkEv
 4. **Keep separate approvals.** Deployment, first funded acceptance and public transaction activation each require their own owner decision. The existing website, DNS and Railway service stay within their current hosting configuration.
 
 The provisional review economics include a 0.0004 ETH creation fee, 2 ETH graduation backing, a 1% curve trading fee, 90/5/5 earned-fee allocation and permanent original LP custody. Factory V2 fixes the 1B supply and the candidate preserves the 600M/400M allocation. Production rates, addresses and funding remain unapproved.
+
+[Read-only production observations and open checks](evidence/fixed-supply-security/production.md)
 
 ## Historical operating evidence
 

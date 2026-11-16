@@ -4,7 +4,7 @@ import { createPublicClient, getAddress, http, keccak256, parseAbi, zeroAddress,
 import { launchTokenSupplyWei } from "../launch-terms";
 import { isTransactionHash, testCreationFeeWei, testCreationSignature } from "../test-creation";
 
-const fixtureProfile = "rmt-curve-fixed-supply-v2";
+const fixtureProfile = "rmt-curve-fixed-supply-security-v2";
 export const fixtureChainId = 31337;
 export const fixtureCreationFee = testCreationFeeWei;
 export const factoryAbi = parseAbi([

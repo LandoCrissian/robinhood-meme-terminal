@@ -102,7 +102,7 @@ reviewed fixed-supply V2 factory using a separate `curve-launch-1b-v2` record. T
 worker has no new-engine configuration, polling, writer, schema or HTTP route.
 Without an explicit binding the verifier performs zero reads.
 
-A future binding needs chain 4663, the `rmt-curve-fixed-supply-v2` profile,
+A future binding needs chain 4663, the `rmt-curve-fixed-supply-security-v2` profile,
 curve engine version 1, the factory deployment
 height and hash, pinned factory and registry runtime identities, immutable
 creation fee and recipient, and at least 20 L2 confirmations. The verifier
@@ -130,12 +130,12 @@ source and schema throughout.
 `pnpm --filter indexer start:curve-fixture` runs the fixed-supply fixture worker after
 `pnpm --filter indexer build`. `scripts/visual-qa/rmt-creator-integration.mjs`
 creates its isolated services and runs the actual creator journey. The worker
-binds to IPv4 loopback and requires `RMT_CURVE_FIXTURE=rmt-curve-fixed-supply-v2`, an
+binds to IPv4 loopback and requires `RMT_CURVE_FIXTURE=rmt-curve-fixed-supply-security-v2`, an
 explicit `RMT_CURVE_FIXTURE_PORT`, `RMT_CURVE_FIXTURE_RPC` on a distinct loopback
 port, an absolute `RMT_CURVE_FIXTURE_DEPLOYMENT` manifest, and a separately named
 loopback TCP PostgreSQL `RMT_CURVE_FIXTURE_DATABASE` database. The disposable
 database name must begin with `rmt_curve_fixture_` and carry an explicit
-`rmt_curve_fixture_marker` row with identity `rmt-curve-fixed-supply-v2`. A legacy
+`rmt_curve_fixture_marker` row with identity `rmt-curve-fixed-supply-security-v2`. A legacy
 indexer table or another public relation causes startup to refuse the DB. The
 fixture read server also requires a local `RMT_CURVE_FIXTURE_READ_KEY` with 64
 lowercase hexadecimal characters. The website supplies this key from its server

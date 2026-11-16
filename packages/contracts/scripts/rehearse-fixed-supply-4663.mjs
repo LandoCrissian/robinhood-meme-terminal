@@ -62,16 +62,25 @@ try {
     fixtureFile(path, frozen(path));
   }
   const inherited = frozen(scriptPath + "validate-curve-graduation-4663.mjs");
-  fixtureFile(scriptPath + "swap-proof.mjs", inherited + "\nexport { proveSwap, poolIdFor };\n");
-  const safeSource = readFileSync(join(root, "docs/evidence/rmt-task041/safe-rehearsal.mjs"), "utf8");
-  fixtureFile(scriptPath + "safe-proof.mjs", safeSource);
+  fixtureFile(scriptPath + "swap-proof.mjs", inherited + "\nexport { proveSwap, poolIdFor, routerCall };\n");
+  const safeSource = readFileSync(join(root, "docs/evidence/rmt-task041/safe-rehearsal.mjs"), "utf8").replaceAll("\r\n", "\n");
+  // Keep the exact pinned runtime checks and avoid concurrent historical reads
+  // through the rate-limited read-only archive proxy.
+  const parallelPins = `  await Promise.all([
+    matchRuntime(client, singleton, singletonHash, reviewedFork.number), matchRuntime(client, factory, factoryHash, reviewedFork.number),
+    matchRuntime(client, fallback, fallbackHash, reviewedFork.number),
+  ]);`;
+  assert.equal(safeSource.split(parallelPins).length, 2, "Safe fixture probe shape changed");
+  fixtureFile(scriptPath + "safe-proof.mjs", safeSource.replace(parallelPins, `  await matchRuntime(client, singleton, singletonHash, reviewedFork.number);
+  await matchRuntime(client, factory, factoryHash, reviewedFork.number);
+  await matchRuntime(client, fallback, fallbackHash, reviewedFork.number);`));
   mkdirSync(dirname(moduleLink), { recursive: true });
   symlinkSync(join(root, "apps/launch-website/node_modules"), moduleLink, process.platform === "win32" ? "junction" : "dir");
   linked = true;
   const reanchor = join(root, "docs/evidence/rmt-task042/fork/reanchor.patch");
   execFileSync("git", ["apply", "-"], { cwd: scratch, input: readFileSync(reanchor, "utf8").replaceAll("\r\n", "\n"), windowsHide: true });
   const env = await import(pathToFileURL(join(scratch, scriptPath, "robinhood-4663-fork-environment.mjs")));
-  const { proveSwap, poolIdFor } = await import(pathToFileURL(join(scratch, scriptPath, "swap-proof.mjs")));
+  const { proveSwap, poolIdFor, routerCall } = await import(pathToFileURL(join(scratch, scriptPath, "swap-proof.mjs")));
   const { setupFixtureSafe, proveSafeSpending } = await import(pathToFileURL(join(scratch, scriptPath, "safe-proof.mjs")));
 
   const result = await env.withAnvilFork({ anvil: resolve(args.anvil), archive: args.archive }, async ({ rpcUrl, accounts, report }) => {
@@ -79,7 +88,19 @@ try {
     const [operator, operations, reserve, rmt, unrelatedA, unrelatedB] = accounts;
     const submit = (from, call, status) => sendFixture(client, from, call, status);
     const pins = report.network.contracts;
-    const deployment = await deployFixedSupplyFixture(client, artifacts, pins, { operator, operations, reserve });
+    const unsignedConstructors = [];
+    const deployment = await deployFixedSupplyFixture(client, artifacts, pins, { operator, operations, reserve,
+      exerciseRotation: true, observeConstructor: (record) => unsignedConstructors.push(record) });
+    const previous = [];
+    const checkpoints = { manifest, deployment, unsignedConstructors, report, projects: previous };
+    const save = () => writeFileSync(reportPath, stringify(checkpoints) + "\n");
+    save();
+    const independentTreasury = toHex(0x46630006n, { size: 20 });
+    assert.equal(await client.getCode({ address: independentTreasury }), undefined);
+    assert.equal(await client.getTransactionCount({ address: independentTreasury }), 0);
+    assert.equal(await client.getBalance({ address: independentTreasury }), 0n);
+    await client.request({ method: "anvil_setBalance", params: [independentTreasury, toHex(10n ** 18n)] });
+    await client.request({ method: "anvil_impersonateAccount", params: [independentTreasury] });
     const factory = deployment.factory;
     const engine = deployment.graduationEngine;
     const factoryAbi = artifacts.RMTLaunchCurveFactoryV2.abi;
@@ -88,10 +109,12 @@ try {
     const curveLedgerAbi = artifacts.RMTLaunchCurveRevenueLedgerV1.abi;
     const lpLedgerAbi = artifacts.RMTLaunchCurveLpFeeLedgerV1.abi;
     const safe = await setupFixtureSafe({ client, submit, sender: operator });
+    checkpoints.safe = safe.setup;
+    save();
     const cases = [
       { name: rmtFixture.name, symbol: rmtFixture.symbol, projectURI: rmtFixture.projectURI,
         creator: rmt, treasury: safe.address, treasuryBps: rmtFixture.treasuryShareBpsOfEligibleFees },
-      { name: "Harbor Research", symbol: "HBR", creator: unrelatedA, treasury: unrelatedB, treasuryBps: 4500 },
+      { name: "Harbor Research", symbol: "HBR", creator: unrelatedA, treasury: independentTreasury, treasuryBps: 4500 },
       { name: "Cedar Toolkit", symbol: "CDR", creator: unrelatedB, treasury: zeroAddress, treasuryBps: 0 },
     ];
     const positionAbi = parseAbi(["function ownerOf(uint256) view returns (address)",
@@ -99,10 +122,6 @@ try {
       "function transferFrom(address,address,uint256)"]);
     const poolManagerAbi = parseAbi(["function initialize((address currency0,address currency1,uint24 fee,int24 tickSpacing,address hooks),uint160) returns (int24)"]);
     const deadline = async () => (await client.getBlock()).timestamp + 600n;
-    const previous = [];
-    const checkpoints = { manifest, deployment, safe: safe.setup, report, projects: previous };
-    const save = () => writeFileSync(reportPath, stringify(checkpoints) + "\n");
-    save();
     for (const [index, project] of cases.entries()) {
       const { name, symbol, creator, treasury, treasuryBps } = project;
       const parts = [name, symbol, project.projectURI ?? ("https://example.test/rmt-fixture/" + symbol.toLowerCase()),
@@ -153,8 +172,8 @@ try {
       assert.equal(await call(client, revenueLedger, curveLedgerAbi, "totalAccrued"), curveFees);
       const beneficiaries = [creator, treasury, operations, reserve];
       const curveCredits = split(curveFees, treasuryBps);
-      const wrongBeneficiary = index === 2 ? rmt : operator;
-      await submit(wrongBeneficiary, transact(revenueLedger, curveLedgerAbi, "claim"), "reverted");
+      const wrongBeneficiary = index === 0 ? unrelatedA : rmt;
+      const crossProjectCurveClaim = await submit(wrongBeneficiary, transact(revenueLedger, curveLedgerAbi, "claim"), "reverted");
       const authorized = async (beneficiary, transaction) => beneficiary === safe.address
         ? (await safe.execute(transaction)).receipt : submit(beneficiary, transaction);
       const curveClaims = [];
@@ -187,6 +206,20 @@ try {
       await submit(creator, transact(positionManager, positionAbi, "transferFrom", [engine, creator, positionId]), "reverted");
       const v4Buy = await proveSwap(client, pins, key, creator, true, 30_000_000_000_000_000n);
       const v4Sell = await proveSwap(client, pins, key, creator, false, v4Buy.output / 3n);
+      let invalidRoutes;
+      if (index === 0) {
+        const amount = 2_000_000_000_000_000n;
+        const expiration = await deadline();
+        const wrongPool = routerCall(pins.universalRouter.address, { ...key, fee: 500 }, true, amount, 1n, expiration);
+        const correctPool = routerCall(pins.universalRouter.address, key, true, amount, 1n, expiration);
+        const tokenBefore = await call(client, token, erc20Abi, "balanceOf", [creator]);
+        const rejectedPool = await submit(creator, wrongPool, "reverted");
+        const rejectedRouter = await submit(creator, { ...correctPool, to: pins.quoter.address }, "reverted");
+        assert.equal(rejectedPool.logs.length + rejectedRouter.logs.length, 0);
+        assert.equal(await call(client, token, erc20Abi, "balanceOf", [creator]), tokenBefore);
+        await assertCustody();
+        invalidRoutes = { wrongPool: receiptEvidence(rejectedPool), wrongRouter: receiptEvidence(rejectedRouter) };
+      }
       const ledger = await call(client, engine, engineAbi, "lpFeeLedger", [token]);
       const preview = await call(client, engine, engineAbi, "previewLpFees", [token]);
       assert.ok(preview[0] > 0n && preview[1] > 0n);
@@ -195,7 +228,7 @@ try {
       assert.deepEqual([collected.nativeAmount, collected.tokenAmount], preview);
       assert.equal(collected.ledger, ledger);
       const lpCredits = preview.map((amount) => split(amount, treasuryBps));
-      await submit(wrongBeneficiary, transact(ledger, lpLedgerAbi, "claim"), "reverted");
+      const crossProjectLpClaim = await submit(wrongBeneficiary, transact(ledger, lpLedgerAbi, "claim"), "reverted");
       const lpClaims = [];
       for (const [bucket, beneficiary] of beneficiaries.entries()) {
         const due = lpCredits.map((credits) => credits[bucket]);
@@ -216,7 +249,8 @@ try {
         early: receiptEvidence(early), buy: receiptEvidence(buy), sell: receiptEvidence(sell), closing: receiptEvidence(closing),
         curveFees, curveCredits, curveClaims, preinitialize: receiptEvidence(preinitialize),
         graduation: { receipt: receiptEvidence(graduated), ...position }, v4Buy, v4Sell, collection: receiptEvidence(collection),
-        preview, lpCredits, lpClaims, principalUnchanged: true, safeSpending });
+        preview, lpCredits, lpClaims, principalUnchanged: true, safeSpending, invalidRoutes,
+        crossProjectClaims: { curve: receiptEvidence(crossProjectCurveClaim), lp: receiptEvidence(crossProjectLpClaim) } });
       save();
     }
     return checkpoints;
