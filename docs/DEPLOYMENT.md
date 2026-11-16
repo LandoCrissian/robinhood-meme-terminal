@@ -28,7 +28,7 @@ The browser uses a local synthetic wallet and the same creator interface as the 
 
 ~~~powershell
 node packages/contracts/scripts/fixed-supply-profile.mjs --solc $solc --chain 4663 --verify docs/evidence/fixed-supply-security/4663-profile.json
-node scripts/visual-qa/rmt-creator-integration.mjs --anvil $anvil --solc $solc --pg-bin $postgresBin --output $browserEvidenceDirectory
+node scripts/visual-qa/rmt-creator-integration.mjs --anvil $anvil --solc $solc --pg-bin $postgresBin --mobile-plan docs/evidence/mobile-signing/review-plan-4663.json --output $browserEvidenceDirectory
 pnpm test:fork-4663 --anvil $anvil --solc $solc --archive pocket --output $forkEvidenceFile
 ~~~
 
@@ -43,7 +43,7 @@ pnpm test:fork-4663 --anvil $anvil --solc $solc --archive pocket --output $forkE
 
 The provisional review economics include a 0.0004 ETH creation fee, 2 ETH graduation backing, a 1% curve trading fee, 90/5/5 earned-fee allocation and permanent original LP custody. Factory V2 fixes the 1B supply and the candidate preserves the 600M/400M allocation. Production rates, addresses and funding remain unapproved.
 
-[Current unsigned deployment and source-verification handoff](evidence/source-verification/launch-handoff.md) · [Production readiness probes](evidence/production-readiness/readiness.md)
+[Mobile wallet review and rehearsal](evidence/mobile-signing/README.md) · [Current unsigned deployment and source-verification handoff](evidence/source-verification/launch-handoff.md) · [Production readiness probes](evidence/production-readiness/readiness.md)
 
 ## Historical operating evidence
 

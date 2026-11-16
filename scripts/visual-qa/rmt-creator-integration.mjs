@@ -14,6 +14,7 @@ import { backing as backingWei, compileFixedSupplyProfile, creationFee as feeWei
   from "../../packages/contracts/scripts/fixed-supply-profile.mjs";
 import { deployFixedSupplyFixture, localFixtureClient }
   from "../../packages/contracts/scripts/deploy-fixed-supply-fixture.mjs";
+import { testMobileReview } from "./rmt-mobile-review.mjs";
 
 const repository = fileURLToPath(new URL("../../", import.meta.url));
 const require = createRequire(new URL("../../apps/indexer/package.json", import.meta.url));
@@ -23,13 +24,15 @@ const { generatePrivateKey, privateKeyToAccount } = require("viem/accounts");
 const { Pool } = require("pg");
 const { values: args } = parseArgs({ options: {
   lib: { type: "string" }, anvil: { type: "string" }, solc: { type: "string" },
-  "pg-bin": { type: "string" }, output: { type: "string" },
+  "pg-bin": { type: "string" }, output: { type: "string" }, "mobile-plan": { type: "string" },
 } });
 for (const option of ["anvil", "solc", "pg-bin", "output"]) assert.ok(args[option], `Supply --${option}`);
 const out = resolve(args.output);
 const anvil = resolve(args.anvil);
 const solc = resolve(args.solc);
 const pgBin = resolve(args["pg-bin"]);
+const mobilePlan = args["mobile-plan"] && resolve(args["mobile-plan"]);
+if (mobilePlan) await readFile(mobilePlan);
 // Build the new app and fixture worker before opening any local ports.
 for (const item of ["apps/launch-website/.next/BUILD_ID", "apps/indexer/dist/curve-fixture-worker.js"]) {
   await readFile(join(repository, item)).catch(() => {
@@ -174,6 +177,7 @@ const fetchAt = (base, path, options) => fetch(new URL(path, base), { signal: Ab
 const eq = (actual, expected) => assert.equal(actual.toLowerCase(), expected.toLowerCase());
 
 let hideReceipt;
+let mobileGasDrift = false;
 let missingReceiptReads = 0;
 let omitCreationLogs = false;
 let omittedCreationReads = 0;
@@ -213,6 +217,9 @@ const proxy = createServer(async (request, response) => {
       if (method === "debug_traceTransaction" && hideTradeTrace) {
         hiddenTradeTraces++;
         return { id, jsonrpc: "2.0", error: { code: -32000, message: "Fixture paused transaction proof" } };
+      }
+      if (method === "eth_gasPrice" && mobileGasDrift) {
+        return { id, jsonrpc: "2.0", result: toHex(BigInt(await rpc(method, params)) + 100_000n) };
       }
       try { return { id, jsonrpc: "2.0", result: await rpc(method, params) }; }
       catch { return { id, jsonrpc: "2.0", error: { code: -32000, message: "Isolated upstream read failed" } }; }
@@ -305,7 +312,9 @@ try {
 
   const env = { ...childBase, RMT_CURVE_FIXTURE: profile, RMT_CURVE_FIXTURE_RPC: rpcProxy,
     RMT_CURVE_FIXTURE_READ_KEY: indexReadKey,
-    RMT_CURVE_FIXTURE_DEPLOYMENT: manifestPath, RMT_CURVE_FIXTURE_SITE_ORIGIN: site, RMT_CURVE_FIXTURE_INDEXER: workerOrigin + "/" };
+    RMT_CURVE_FIXTURE_DEPLOYMENT: manifestPath, RMT_CURVE_FIXTURE_SITE_ORIGIN: site, RMT_CURVE_FIXTURE_INDEXER: workerOrigin + "/",
+    ...(mobilePlan && { RMT_MOBILE_REVIEW_FIXTURE: "local-reviewed-31337",
+      RMT_MOBILE_REVIEW_FIXTURE_ACCOUNT: creator.address, RMT_MOBILE_REVIEW_PLAN: mobilePlan }) };
   const workerEnv = { ...env, RMT_CURVE_FIXTURE_DATABASE: databaseUrl, RMT_CURVE_FIXTURE_PORT: new URL(workerOrigin).port };
   const webArgs = ["apps/launch-website/node_modules/next/dist/bin/next", "start", "apps/launch-website", "--hostname", "127.0.0.1", "--port", new URL(site).port];
   const startWeb = (name, config = env) => start(process.execPath, webArgs, name, { env: config });
@@ -1179,6 +1188,13 @@ try {
   const after = await fetchAt(site, "/api/launchpad/new-engine").then((response) => response.json());
   assert.deepEqual(after.launches, []);
   assert.equal(signatures.length, 15, "Reorg and outages must not rebroadcast transactions");
+  if (mobilePlan) {
+    evidence.mobileReview = await testMobileReview({
+      context, site, out, rpc, creator, alternate, factory: binding.factory, feeWei,
+      setGasDrift: (active) => { mobileGasDrift = active; },
+      hideReceipt: (value) => { hideReceipt = value; },
+    });
+  }
   assert.deepEqual(pageErrors, []);
   assert.deepEqual(offOrigin, []);
   Object.assign(evidence, { reviewedTransaction: tx, receipt: { hash: receipt.transactionHash, blockNumber: receipt.blockNumber,

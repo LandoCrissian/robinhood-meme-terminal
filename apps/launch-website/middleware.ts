@@ -28,6 +28,15 @@ function isLaunchDetail(path: string) {
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  if (process.env.RMT_MOBILE_REVIEW_FIXTURE === "local-reviewed-31337" &&
+      !process.env.NETLIFY && !process.env.VERCEL && !process.env.DEPLOY_ID && !process.env.CONTEXT && !process.env.RAILWAY_ENVIRONMENT_ID &&
+      request.nextUrl.protocol === "http:" && ["127.0.0.1", "localhost"].includes(request.nextUrl.hostname) &&
+      request.headers.get("host") === request.nextUrl.host.replace(/^localhost:/, "127.0.0.1:") &&
+      !request.headers.has("forwarded") &&
+      ((pathname === "/wallet/mobile-review" && (request.method === "GET" || request.method === "HEAD")) ||
+      (pathname === "/api/launchpad/test-mobile-review" && request.method === "POST"))) {
+    return NextResponse.next({ headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" } });
+  }
   // Each local-only handler repeats its full manifest, host and origin checks.
   if (((pathname === "/api/launchpad/test-creation" || pathname === "/api/launchpad/test-lifecycle") && request.method === "POST") ||
       (/^\/api\/launchpad\/new-engine(?:\/0[xX][0-9A-Fa-f]{40})?$/.test(pathname) &&

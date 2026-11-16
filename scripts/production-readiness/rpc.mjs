@@ -18,6 +18,7 @@ const nodeInterface = knownBatch.l2.nodeInterface;
 const safeFactory = safeInitializers.observation.runtimePins[1].address.toLowerCase();
 const safeSingleton = safeInitializers.observation.runtimePins[0].address.toLowerCase();
 const safeProposalSelector = toFunctionSelector("createProxyWithNonce(address,bytes,uint256)");
+export const MOBILE_DEPLOYMENT_PAYER = "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA";
 const safeGasPayer = evidence("rmt-task044/governance-wallets.json").wallets[0].address.toLowerCase();
 const abiTypes = (...types) => types.map((type) => ({ type }));
 
@@ -55,10 +56,10 @@ const canonicalBytes = (value) => checked(value, (input) => typeof input === "st
 const readQuantity = (value) => BigInt(checked(value, (input) => typeof input === "string" && quantityPattern.test(input)));
 const decimal = (value) => readQuantity(value).toString();
 
-function checkSafeGasEstimate(params) {
+function checkSafeGasEstimate(params, allowedPayer) {
   const [transaction, block] = params;
   if (params.length < 1 || params.length > 2 || !transaction || transaction.to?.toLowerCase() !== safeFactory ||
-      transaction.from?.toLowerCase() !== safeGasPayer || (transaction.value !== undefined && transaction.value !== "0x0") ||
+      transaction.from?.toLowerCase() !== allowedPayer || (transaction.value !== undefined && transaction.value !== "0x0") ||
       Object.keys(transaction).some((key) => !["from", "to", "data", "value"].includes(key)) ||
       (block !== undefined && block !== "latest" && !quantityPattern.test(block)) ||
       !transaction.data?.startsWith(safeProposalSelector)) throw new Error("Gas estimate outside the reviewed Safe preparation scope");
@@ -70,7 +71,7 @@ function checkSafeGasEstimate(params) {
   }
 }
 
-function checkScope(method, params) {
+function checkScope(method, params, allowedPayer) {
   if (!readMethods.has(method)) throw new Error("RPC method outside the read-only allowlist");
   if (!Array.isArray(params) || JSON.stringify(params).length > 4096) throw new Error("RPC parameters outside the probe bounds");
   if (method === "debug_traceTransaction" && (params.length !== 2 ||
@@ -86,7 +87,7 @@ function checkScope(method, params) {
       throw new Error("Log query outside the bounded address, topic and block range");
     }
   }
-  if (method === "eth_estimateGas") checkSafeGasEstimate(params);
+  if (method === "eth_estimateGas") checkSafeGasEstimate(params, allowedPayer);
 }
 
 function failure(reason, details = {}) {
@@ -115,8 +116,9 @@ async function readJson(response) {
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
 }
 
-export function makeReadOnlyRpc({ name, url }, { fetcher = fetch } = {}) {
+export function makeReadOnlyRpc({ name, url }, { fetcher = fetch, mobileSafePayer = false } = {}) {
   if (typeof name !== "string" || !endpointUrls.has(url)) throw new Error("RPC endpoint outside the pinned public providers");
+  const allowedPayer = mobileSafePayer === true ? MOBILE_DEPLOYMENT_PAYER.toLowerCase() : safeGasPayer;
   let requestId = 0;
   async function attempt(method, params, summarize) {
     const id = ++requestId;
@@ -150,7 +152,7 @@ export function makeReadOnlyRpc({ name, url }, { fetcher = fetch } = {}) {
     }
   }
   return async (method, params = [], summarize = (value) => value) => {
-    checkScope(method, params);
+    checkScope(method, params, allowedPayer);
     if (["eth_estimateGas", "debug_traceTransaction"].includes(method) && !Object.values(ROBINHOOD_SOURCES).includes(url)) {
       throw new Error("Method outside the reviewed Robinhood probe scope");
     }

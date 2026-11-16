@@ -7,7 +7,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import { backing, compileFixedSupplyProfile, creationFee, rmtFixture, supply } from "./fixed-supply-profile.mjs";
-import { call, deployFixedSupplyFixture, localFixtureClient, receiptEvidence, sendFixture, transact, verifyRuntime }
+import { call, deployFixedSupplyFixture, localFixtureClient, receiptEvidence, reviewTransactionEvidence, sendFixture, transact, verifyRuntime }
   from "./deploy-fixed-supply-fixture.mjs";
 import { proveFundedMigrations } from "./prove-fixed-supply-funded-migrations.mjs";
 import { proveFixedSupplySettlementTrace } from "./prove-fixed-supply-settlement-trace.mjs";
@@ -277,7 +277,7 @@ try {
       const safeSpending = index === 0 ? await proveSafeSpending({ safe, client, token, spendingWallet: rmt,
         nativeAmount: lpCredits[0][1] / 2n, tokenAmount: lpCredits[1][1] / 2n }) : undefined;
       previous.push({ ...project, projectAsset: token, tokenRuntimeHash, unsigned,
-        creation: receiptEvidence(created), initialBackingWei: "0", supplyWei: supply,
+        creation: await reviewTransactionEvidence(client, created), initialBackingWei: "0", supplyWei: supply,
         migrations: migration?.transitions, early: receiptEvidence(early), buy: receiptEvidence(buy), sell: receiptEvidence(sell), closing: receiptEvidence(closing),
         curveFees, curveCredits, curveClaims, preinitialize: receiptEvidence(preinitialize),
         graduation: { receipt: receiptEvidence(graduated), ...position }, v4Buy, v4Sell, collection: receiptEvidence(collection),
