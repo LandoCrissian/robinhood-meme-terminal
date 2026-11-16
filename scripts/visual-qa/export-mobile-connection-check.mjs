@@ -14,8 +14,8 @@ const previewLifetime = 72 * 60 * 60 * 1000;
 export function mobileConnectionCheck(endpoint, { runtimeSha256, runtimeByteLength, expiresAt = Date.now() + previewLifetime } = {}) {
   const url = new URL(endpoint);
   assert.ok(url.protocol === "https:" && !url.username && !url.password && !url.search && !url.hash
-    && /^[a-z0-9.-]+$/i.test(url.hostname) && /^\/[a-z0-9/_-]+\.html$/i.test(url.pathname),
-  "Supply the exact approved HTTPS page URL with a plain .html path");
+    && /^[a-z0-9.-]+$/i.test(url.hostname) && (url.pathname === "/" || /^\/[a-z0-9/_-]+\.html$/i.test(url.pathname)),
+  "Supply the exact approved HTTPS site root or a plain .html path");
   assert.ok(Number.isSafeInteger(expiresAt) && expiresAt <= Date.now() + previewLifetime, "Preview lifetime is at most 72 hours");
   const testRuntime = runtimeSha256 !== undefined || runtimeByteLength !== undefined;
   assert.ok(!testRuntime || (url.hostname.endsWith(".test") && typeof runtimeSha256 === "string" && /^[0-9a-f]{64}$/.test(runtimeSha256)

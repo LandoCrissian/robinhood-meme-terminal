@@ -9,7 +9,9 @@ import { mobileConnectionCheck } from "./export-mobile-connection-check.mjs";
 const { values: { url: remoteUrl, html: htmlPath } } = parseArgs({
   options: { url: { type: "string" }, html: { type: "string" } },
 });
-const url = new URL(remoteUrl ?? "https://rmt-review.example.test/connection.html").href;
+const endpoint = new URL(remoteUrl ?? "https://rmt-review.example.test/");
+const url = endpoint.href;
+const aliasUrl = remoteUrl && endpoint.pathname === "/" ? new URL("/connection.html", endpoint).href : null;
 const payer = "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA";
 const delegate = "0x63c0c19a282a1b52b07dd5a65b58948a07dae32b";
 const designator = "0xef0100" + delegate.slice(2);
@@ -23,6 +25,7 @@ const knownRuntimeSha = "c921aae598d4413e7e93d9b69cfce4043c59687bd988c31a41d56fd
 
 assert.throws(() => mobileConnectionCheck("http://example.test/connection.html"));
 assert.throws(() => mobileConnectionCheck("https://example.test/connection.html?copy=1"));
+assert.throws(() => mobileConnectionCheck("https://example.test/?copy=1"));
 assert.equal(Boolean(remoteUrl), Boolean(htmlPath), "A remote check requires --url and the generated --html file");
 if (remoteUrl) assert.ok(process.env.RMT_CHECKER_DELEGATE_RUNTIME, "Supply the independently verified raw-hex fixture in RMT_CHECKER_DELEGATE_RUNTIME");
 const runtime = remoteUrl
@@ -49,6 +52,14 @@ if (remoteUrl) {
   assert.match(served.headers.get("cache-control") ?? "", /\bno-store\b/i);
   assert.match(served.headers.get("x-robots-tag") ?? "", /\bnoindex\b/i);
   assert.equal(served.headers.has("access-control-allow-origin"), false);
+  if (aliasUrl) {
+    const alias = await read(aliasUrl);
+    assert.equal(alias.status, 302, "The old checker path must redirect to the preview root");
+    const location = alias.headers.get("location");
+    assert.ok(location, "The old checker path must provide a redirect destination");
+    assert.equal(new URL(location, aliasUrl).href, url, "The old checker path must redirect to the exact same-origin root");
+    await alias.body?.cancel();
+  }
 
   for (const path of ["/api/launchpad/test-creation", "/api/launchpad/test-lifecycle", "/api/launchpad/test-mobile-review",
     "/wallet/mobile-review", "/create", "/api/rpc"]) {
@@ -81,13 +92,19 @@ for (const [name, engine] of [["chromium", chromium], ["webkit", webkit]]) {
     const page = await browser.newPage({ ...devices["iPhone 13"], serviceWorkers: "block" });
     page.setDefaultTimeout(10_000);
     const unexpectedRequests = [];
+    const navigationUrls = new Set(aliasUrl ? [url, aliasUrl] : [url]);
+    const allowedNavigation = (request) =>
+      request.isNavigationRequest() && request.method() === "GET" && navigationUrls.has(request.url());
+    if (remoteUrl) page.on("request", (request) => {
+      if (!allowedNavigation(request)) unexpectedRequests.push(request.method() + " " + request.url());
+    });
     let fixtureHtml = html;
     await page.route("**/*", (route) => {
       if (route.request().isNavigationRequest()) {
         if (!remoteUrl) return route.fulfill({ contentType: "text/html", body: fixtureHtml });
-        if (route.request().url() === url && route.request().method() === "GET") return route.continue();
+        if (allowedNavigation(route.request())) return route.continue();
       }
-      unexpectedRequests.push(route.request().method() + " " + route.request().url());
+      if (!remoteUrl) unexpectedRequests.push(route.request().method() + " " + route.request().url());
       return route.abort();
     });
     const check = page.getByRole("button", { name: "Check connection" });
@@ -101,9 +118,15 @@ for (const [name, engine] of [["chromium", chromium], ["webkit", webkit]]) {
       assert.equal(await check.isEnabled(), false);
       fixtureHtml = html;
     }
-    const first = await page.goto(url);
+    const first = await page.goto(aliasUrl ?? url);
     assert.equal(first?.status(), 200);
     assert.equal(page.url(), url);
+    if (aliasUrl) {
+      const alias = first.request().redirectedFrom();
+      assert.equal(alias?.url(), aliasUrl, "Browser must follow the real old-path redirect");
+      assert.equal(alias.redirectedFrom(), null, "Expected one redirect to the preview root");
+      assert.equal((await alias.response())?.status(), 302);
+    }
     assert.equal(await page.evaluate(() => window.isSecureContext), true);
     await check.click();
     await status(/no compatible injected wallet/i);
