@@ -28,7 +28,10 @@ export async function sendFixture(client, from, { to, data, value = 0n, gas = 8_
   const hash = await client.request({ method: "eth_sendTransaction", params: [{
     from, ...(to ? { to } : {}), data, value: toHex(value), gas: toHex(gas),
   }] });
-  const receipt = await client.waitForTransactionReceipt({ hash, checkReplacement: false, timeout: 90_000, pollingInterval: 250 });
+  const receipt = await client.waitForTransactionReceipt({ hash, checkReplacement: false, timeout: 90_000, pollingInterval: 250 })
+    .catch((cause) => {
+      throw new Error("Isolated receipt unavailable for " + (to ?? "CREATE") + " " + data.slice(0, 10) + " " + hash, { cause });
+    });
   assert.equal(receipt.transactionHash, hash);
   assert.equal(receipt.status, expected, "Unexpected isolated receipt status for " + hash);
   const block = await client.getBlock({ blockNumber: receipt.blockNumber });
@@ -145,6 +148,8 @@ export async function deployFixedSupplyFixture(client, artifacts, pins, {
     const signatures = await Promise.all(signerAccounts.slice(0, 2).map((signer) => signer.sign({ hash: digest })));
     const scheduled = await sendFixture(client, operator, transact(directory.address, directoryArtifact.abi, "schedule", [action, ...signatures]));
     await client.request({ method: "evm_increaseTime", params: [2 * 86400] });
+    // Apply the local time jump in a block before submitting the notice execution.
+    await client.request({ method: "evm_mine" });
     const executed = await sendFixture(client, operator, transact(directory.address, directoryArtifact.abi, "execute", [action]));
     return { scheduled: receiptEvidence(scheduled), executed: receiptEvidence(executed) };
   };
@@ -203,6 +208,7 @@ async function rehearseRotation({ client, operator, directory, abi, signers, fac
   const scheduled = await send("scheduleSignerRotation", [rotation, first, second, acceptance]);
   const premature = await send("executeSignerRotation", [rotation], "reverted");
   await client.request({ method: "evm_increaseTime", params: [2 * 86400] });
+  await client.request({ method: "evm_mine" });
   const rotated = await send("executeSignerRotation", [rotation]);
   const replay = await send("executeSignerRotation", [rotation], "reverted");
   assert.equal(await read("signerSetEpoch"), beforeEpoch + 1n);

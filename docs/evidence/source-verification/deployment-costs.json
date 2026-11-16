@@ -1,0 +1,281 @@
+{
+  "schemaVersion": 1,
+  "status": "BLOCKED_NO_BROADCAST",
+  "broadcastAuthorized": false,
+  "chainId": 4663,
+  "mode": "PUBLIC_READ_ONLY",
+  "safeEstimates": {
+    "scope": "PUBLIC_RPC_SIMULATION",
+    "observedAt": "2026-11-16T15:44:01.672Z",
+    "anchor": {
+      "number": "115875465",
+      "hash": "0xec16627b1094f7f86ae7069944675f8d30fa39d3f100fb6b67cf3f0be5ed2af2",
+      "blockTimeUtc": "2026-11-16T15:44:00.000Z"
+    },
+    "proposedGasPayer": "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+    "status": "READ_ONLY_ESTIMATED",
+    "rows": [
+      {
+        "role": "RMT-OPERATIONS",
+        "counterfactualAddress": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+        "saltNonce": "0x8094029c8a767b073fdbe606186b138b416682f2584ca87d38b3eaaa7af16cc2",
+        "gas": {
+          "nitroGasEstimate": "313391",
+          "l2GasUnits": "313391",
+          "l1PosterGasUnits": "0",
+          "l2BaseFeeWei": "20542000",
+          "l1BaseFeeEstimateWei": "0",
+          "l2ExecutionWei": "6437677922000",
+          "l1PosterWei": "0",
+          "estimatedTotalWei": "6437677922000",
+          "estimatedTotalEth": "0.000006437677922",
+          "rpcEstimateGas": "313391"
+        }
+      },
+      {
+        "role": "RMT-RESERVE",
+        "counterfactualAddress": "0x8D44078642ce938Fd799b23087BcdD6114A302e5",
+        "saltNonce": "0xe0e8b0060b79275b10d83a2573dfc2e48e749a76e0a2efea0ffe422a30b89a87",
+        "gas": {
+          "nitroGasEstimate": "313391",
+          "l2GasUnits": "313391",
+          "l1PosterGasUnits": "0",
+          "l2BaseFeeWei": "20542000",
+          "l1BaseFeeEstimateWei": "0",
+          "l2ExecutionWei": "6437677922000",
+          "l1PosterWei": "0",
+          "estimatedTotalWei": "6437677922000",
+          "estimatedTotalEth": "0.000006437677922",
+          "rpcEstimateGas": "313391"
+        }
+      }
+    ],
+    "totalNetworkFeeWei": "12875355844000",
+    "totalNetworkFeeEth": "0.000012875355844"
+  },
+  "networkReference": {
+    "status": "CORROBORATED_BLOCK_BASE_FEE",
+    "anchor": {
+      "number": "115875465",
+      "hash": "0xec16627b1094f7f86ae7069944675f8d30fa39d3f100fb6b67cf3f0be5ed2af2",
+      "blockTimeUtc": "2026-11-16T15:44:00.000Z"
+    },
+    "providers": [
+      "official",
+      "pocket",
+      "pinax"
+    ],
+    "baseFeeWei": "20524000",
+    "l1BaseFeeReferenceWei": "0",
+    "observations": [
+      {
+        "provider": "official",
+        "chain": {
+          "status": "observed",
+          "observedAt": "2026-11-16T15:44:04.191Z",
+          "value": "4663"
+        },
+        "before": {
+          "status": "observed",
+          "observedAt": "2026-11-16T15:44:04.276Z",
+          "value": {
+            "number": "115875465",
+            "hash": "0xec16627b1094f7f86ae7069944675f8d30fa39d3f100fb6b67cf3f0be5ed2af2",
+            "time": "2026-11-16T15:44:00.000Z",
+            "baseFeeWei": "20524000"
+          }
+        },
+        "l1Base": {
+          "status": "observed",
+          "observedAt": "2026-11-16T15:44:04.350Z",
+          "value": "0"
+        },
+        "after": {
+          "status": "observed",
+          "observedAt": "2026-11-16T15:44:04.462Z",
+          "value": {
+            "number": "115875465",
+            "hash": "0xec16627b1094f7f86ae7069944675f8d30fa39d3f100fb6b67cf3f0be5ed2af2",
+            "time": "2026-11-16T15:44:00.000Z",
+            "baseFeeWei": "20524000"
+          }
+        }
+      },
+      {
+        "provider": "pocket",
+        "chain": {
+          "status": "observed",
+          "observedAt": "2026-11-16T15:44:04.321Z",
+          "value": "4663"
+        },
+        "before": {
+          "status": "observed",
+          "observedAt": "2026-11-16T15:44:04.497Z",
+          "value": {
+            "number": "115875465",
+            "hash": "0xec16627b1094f7f86ae7069944675f8d30fa39d3f100fb6b67cf3f0be5ed2af2",
+            "time": "2026-11-16T15:44:00.000Z",
+            "baseFeeWei": "20524000"
+          }
+        },
+        "l1Base": {
+          "status": "observed",
+          "observedAt": "2026-11-16T15:44:04.672Z",
+          "value": "0"
+        },
+        "after": {
+          "status": "observed",
+          "observedAt": "2026-11-16T15:44:04.844Z",
+          "value": {
+            "number": "115875465",
+            "hash": "0xec16627b1094f7f86ae7069944675f8d30fa39d3f100fb6b67cf3f0be5ed2af2",
+            "time": "2026-11-16T15:44:00.000Z",
+            "baseFeeWei": "20524000"
+          }
+        }
+      },
+      {
+        "provider": "pinax",
+        "chain": {
+          "status": "observed",
+          "observedAt": "2026-11-16T15:44:04.178Z",
+          "value": "4663"
+        },
+        "before": {
+          "status": "observed",
+          "observedAt": "2026-11-16T15:44:04.256Z",
+          "value": {
+            "number": "115875465",
+            "hash": "0xec16627b1094f7f86ae7069944675f8d30fa39d3f100fb6b67cf3f0be5ed2af2",
+            "time": "2026-11-16T15:44:00.000Z",
+            "baseFeeWei": "20524000"
+          }
+        },
+        "l1Base": {
+          "status": "observed",
+          "observedAt": "2026-11-16T15:44:04.325Z",
+          "value": "0"
+        },
+        "after": {
+          "status": "observed",
+          "observedAt": "2026-11-16T15:44:04.407Z",
+          "value": {
+            "number": "115875465",
+            "hash": "0xec16627b1094f7f86ae7069944675f8d30fa39d3f100fb6b67cf3f0be5ed2af2",
+            "time": "2026-11-16T15:44:00.000Z",
+            "baseFeeWei": "20524000"
+          }
+        }
+      }
+    ]
+  },
+  "protocolCosts": {
+    "scope": "LOOPBACK_RECEIPT_GAS_AT_LIVE_BASE_FEE_EXECUTION_ONLY",
+    "compilerInputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+    "forkAnchor": {
+      "number": 114549452,
+      "hash": "0xf9a8ca5d8e26ebb426ebd2e663ad82afc878c16d8bba5f5542f6341890cf7710"
+    },
+    "forkReportSha256": "01f2e935fa18629bd2d14577910edfd1516fc5fe46b85c65a5512ad1f675f871",
+    "rows": [
+      {
+        "action": "directory",
+        "gasUsedOnFork": "2376060",
+        "forkReceipt": "0xf04b5a0ccb2a3d9f160a2beac2302213d7fa231eee58b6039d4b4ec1d059d4bd",
+        "provisionalValueWei": "0",
+        "illustrativeExecutionWei": "48766255440000",
+        "mainnetL1PosterWei": null,
+        "mainnetTotalNetworkFeeWei": null
+      },
+      {
+        "action": "registry",
+        "gasUsedOnFork": "3617564",
+        "forkReceipt": "0x14fcc6f65e0d46210007cf4417a4d4037fde32be0bbffda82be969f6eecc76d9",
+        "provisionalValueWei": "0",
+        "illustrativeExecutionWei": "74246883536000",
+        "mainnetL1PosterWei": null,
+        "mainnetTotalNetworkFeeWei": null
+      },
+      {
+        "action": "successor-v2",
+        "gasUsedOnFork": "3321733",
+        "forkReceipt": "0x1d22eb36a32b374eb0651ff9b052b493b244635d309dc37e7e082f0376c9b5f1",
+        "provisionalValueWei": "0",
+        "illustrativeExecutionWei": "68175248092000",
+        "mainnetL1PosterWei": null,
+        "mainnetTotalNetworkFeeWei": null
+      },
+      {
+        "action": "successor-v3",
+        "gasUsedOnFork": "3365744",
+        "forkReceipt": "0xfbc218f0f08a3074baa027b6f615133731fc609495bb79256f7c96a355bd60e6",
+        "provisionalValueWei": "0",
+        "illustrativeExecutionWei": "69078529856000",
+        "mainnetL1PosterWei": null,
+        "mainnetTotalNetworkFeeWei": null
+      },
+      {
+        "action": "bootstrap",
+        "gasUsedOnFork": "9922655",
+        "forkReceipt": "0xda9246d76f30e43a2e81759a991b2b9914865584d1fc5c67c73e8f4303b2d349",
+        "provisionalValueWei": "0",
+        "illustrativeExecutionWei": "203652571220000",
+        "mainnetL1PosterWei": null,
+        "mainnetTotalNetworkFeeWei": null
+      },
+      {
+        "action": "factory-schedule",
+        "gasUsedOnFork": "101369",
+        "forkReceipt": "0x3f865e3a2a45853acb851d1ba1981e156ebdecabdca81c9a0784ff7404143440",
+        "provisionalValueWei": "0",
+        "illustrativeExecutionWei": "2080497356000",
+        "mainnetL1PosterWei": null,
+        "mainnetTotalNetworkFeeWei": null
+      },
+      {
+        "action": "factory-execute",
+        "gasUsedOnFork": "102429",
+        "forkReceipt": "0x213adb53c6ed2b721a30c0ef117995f7601c5bb102ced6ece9fb5b6689a84598",
+        "provisionalValueWei": "0",
+        "illustrativeExecutionWei": "2102252796000",
+        "mainnetL1PosterWei": null,
+        "mainnetTotalNetworkFeeWei": null
+      },
+      {
+        "action": "v3-template-schedule",
+        "gasUsedOnFork": "104313",
+        "forkReceipt": "0xca5ba6d952a8bf6ee935cc2145b6dd53459742992c3b10c8f723c50228749a40",
+        "provisionalValueWei": "0",
+        "illustrativeExecutionWei": "2140920012000",
+        "mainnetL1PosterWei": null,
+        "mainnetTotalNetworkFeeWei": null
+      },
+      {
+        "action": "v3-template-execute",
+        "gasUsedOnFork": "85985",
+        "forkReceipt": "0x4d9b7c4875306cc386f9f991aa56d1ef7b799371dfbe383ec76dabb3a21511d4",
+        "provisionalValueWei": "0",
+        "illustrativeExecutionWei": "1764756140000",
+        "mainnetL1PosterWei": null,
+        "mainnetTotalNetworkFeeWei": null
+      },
+      {
+        "action": "first-rmt-project",
+        "gasUsedOnFork": "3348684",
+        "forkReceipt": "0xbc55ee3ae44f1d3abc4b03807612077251caf0519b8af6b0a1e3a7a5b49ec040",
+        "provisionalValueWei": "400000000000000",
+        "illustrativeExecutionWei": "68728390416000",
+        "mainnetL1PosterWei": null,
+        "mainnetTotalNetworkFeeWei": null
+      }
+    ],
+    "observedForkGasUsedTotal": "26346536",
+    "illustrativeExecutionSubtotalEth": "0.000540736304864",
+    "provisionalFirstProjectCreationFeeWei": "400000000000000",
+    "provisionalFirstProjectCreationFeeEth": "0.0004",
+    "creatorPurchaseOrLiquidityDepositWei": "0",
+    "mainnetExactEstimate": "BLOCKED_UNBOUND_PRODUCTION_INPUTS",
+    "liveTransactions": [],
+    "mainnetTotalNetworkFeeWei": null
+  }
+}
