@@ -181,6 +181,133 @@ contract RMTLaunchCurveDirectoryV2Test is Test {
         directory.scheduleSignerRotation(rotation, first, second, acceptance);
     }
 
+    function testOrdinaryExecutionAndCancellationHonorOnlyFirstInclusion() public {
+        Directory.Action memory publication = _publication();
+        _schedule(publication, A, B);
+        Directory.Action memory cancellation = _action(Directory.ActionKind.Cancel);
+        cancellation.runtimeHash = directory.actionDigest(publication);
+        bytes32 digest = directory.actionDigest(cancellation);
+        bytes memory first = _sign(B, digest);
+        bytes memory second = _sign(C, digest);
+        vm.warp(vm.getBlockTimestamp() + directory.publicationDelay());
+        uint256 ready = vm.snapshotState();
+
+        directory.cancel(cancellation, first, second);
+        vm.expectRevert(Directory.NotExecutable.selector);
+        directory.execute(publication);
+        assertEq(directory.currentFactory().factory, address(0));
+        assertEq(directory.nonce(), 1);
+        assertEq(directory.rotationNonce(), 0);
+        assertEq(directory.signerSetEpoch(), 1);
+
+        assertTrue(vm.revertToState(ready));
+        directory.execute(publication);
+        vm.expectRevert(Directory.InvalidAction.selector);
+        directory.cancel(cancellation, first, second);
+        assertEq(directory.currentFactory().factory, factory);
+        assertEq(directory.nonce(), 1);
+        assertEq(directory.rotationNonce(), 0);
+        assertEq(directory.signerSetEpoch(), 1);
+    }
+
+    function testOrdinaryExecutionUsesExactDigestWithInclusiveExpiry() public {
+        vm.expectRevert(Directory.NotExecutable.selector);
+        directory.clearExpired();
+        Directory.Action memory publication = _publication();
+        _schedule(publication, A, B);
+        (,, uint48 expiry) = directory.pending();
+        vm.warp(expiry);
+        vm.expectRevert(Directory.NotExecutable.selector);
+        directory.clearExpired();
+        Directory.Action memory altered = _publication();
+        altered.deadline = publication.deadline + 1;
+        vm.expectRevert(Directory.NotExecutable.selector);
+        directory.execute(altered);
+        uint256 lastValidSecond = vm.snapshotState();
+
+        directory.execute(publication);
+        assertEq(directory.currentFactory().factory, factory);
+        assertTrue(vm.revertToState(lastValidSecond));
+        vm.warp(uint256(expiry) + 1);
+        vm.expectRevert(Directory.NotExecutable.selector);
+        directory.execute(publication);
+        directory.clearExpired();
+        assertEq(directory.currentFactory().factory, address(0));
+        assertEq(directory.nonce(), 1);
+        assertEq(directory.rotationNonce(), 0);
+        assertEq(directory.signerSetEpoch(), 1);
+    }
+
+    function testRotationExecutionAndCancellationHonorOnlyFirstInclusion() public {
+        Directory.SignerRotation memory rotation = _rotation(signerA, signerD);
+        _scheduleRotation(rotation, B, C, D);
+        Directory.RotationCancellation memory cancellation = Directory.RotationCancellation(
+            directory.signerRotationDigest(rotation),
+            directory.signerSetEpoch(),
+            directory.rotationNonce(),
+            rotation.deadline
+        );
+        bytes32 digest = directory.rotationCancellationDigest(cancellation);
+        bytes memory first = _sign(B, digest);
+        bytes memory second = _sign(C, digest);
+        vm.warp(vm.getBlockTimestamp() + directory.publicationDelay());
+        uint256 ready = vm.snapshotState();
+
+        directory.cancelSignerRotation(cancellation, first, second);
+        vm.expectRevert(Directory.NotExecutable.selector);
+        directory.executeSignerRotation(rotation);
+        assertEq(directory.signerA(), signerA);
+        assertEq(directory.rotationNonce(), 1);
+        assertEq(directory.nonce(), 0);
+        assertEq(directory.signerSetEpoch(), 1);
+
+        assertTrue(vm.revertToState(ready));
+        directory.executeSignerRotation(rotation);
+        vm.expectRevert(Directory.InvalidRotation.selector);
+        directory.cancelSignerRotation(cancellation, first, second);
+        assertEq(directory.signerA(), signerD);
+        assertEq(directory.rotationNonce(), 1);
+        assertEq(directory.nonce(), 1);
+        assertEq(directory.signerSetEpoch(), 2);
+    }
+
+    function testStaleEpochCancellationCannotCancelAfterSignerIsReadded() public {
+        Directory.SignerRotation memory initial = _rotation(signerA, signerD);
+        Directory.RotationCancellation memory old = Directory.RotationCancellation(
+            directory.signerRotationDigest(initial),
+            directory.signerSetEpoch(),
+            directory.rotationNonce(),
+            initial.deadline
+        );
+        bytes32 digest = directory.rotationCancellationDigest(old);
+        bytes memory first = _sign(B, digest);
+        bytes memory second = _sign(C, digest);
+        _scheduleRotation(initial, B, C, D);
+        vm.warp(vm.getBlockTimestamp() + directory.publicationDelay());
+        directory.executeSignerRotation(initial);
+        _rotate(signerD, signerA, B, C, A);
+
+        Directory.SignerRotation memory current = _rotation(signerA, signerD);
+        _scheduleRotation(current, B, C, D);
+        assertLt(vm.getBlockTimestamp(), old.deadline);
+        assertEq(directory.signerA(), signerA);
+        vm.expectRevert(Directory.InvalidRotation.selector);
+        directory.cancelSignerRotation(old, first, second);
+        Directory.RotationCancellation memory fresh = Directory.RotationCancellation(
+            directory.signerRotationDigest(current),
+            directory.signerSetEpoch(),
+            directory.rotationNonce(),
+            current.deadline
+        );
+        vm.expectRevert(Directory.InvalidSigners.selector);
+        directory.cancelSignerRotation(fresh, first, second);
+        digest = directory.rotationCancellationDigest(fresh);
+        directory.cancelSignerRotation(fresh, _sign(B, digest), _sign(C, digest));
+        assertEq(directory.rotationNonce(), 3);
+        assertEq(directory.nonce(), 2);
+        assertEq(directory.signerSetEpoch(), 3);
+    }
+
     function testRotationInvalidatesPendingPublicationAndReaddedKeyCannotReplay() public {
         Directory.Action memory old = _publication();
         bytes32 oldDigest = directory.actionDigest(old);

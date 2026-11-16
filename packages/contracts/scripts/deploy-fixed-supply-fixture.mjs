@@ -52,7 +52,9 @@ export async function verifyRuntime(client, address, artifact, blockNumber) {
   return keccak256(actual);
 }
 
-export async function deployFixedSupplyFixture(client, artifacts, pins, { operator, operations, reserve }) {
+export async function deployFixedSupplyFixture(client, artifacts, pins, {
+  operator, operations, reserve, observeConstructor, exerciseRotation = false,
+}) {
   assert.ok(!isAddressEqual(operations, reserve), "Fixture platform roles must be distinct");
   for (const { address, runtimeHash } of Object.values(pins)) {
     const code = await client.getCode({ address });
@@ -67,16 +69,22 @@ export async function deployFixedSupplyFixture(client, artifacts, pins, { operat
   const deployerArtifact = artifacts.RMTLaunchCurveSuccessorDeployerV1;
   const successorArtifact = artifacts.RMTLaunchCurveSuccessorDeployerV2;
   const signerAccounts = Array.from({ length: 3 }, () => privateKeyToAccount(generatePrivateKey()));
-  const deploy = async (artifact, args = []) => {
-    const receipt = await sendFixture(client, operator, { data: encodeDeployData({ abi: artifact.abi, bytecode: artifact.bytecode, args }) });
+  const deploy = async (name, artifact, args = []) => {
+    const nonce = await client.getTransactionCount({ address: operator, blockTag: "pending" });
+    const derived = getContractAddress({ from: operator, nonce: BigInt(nonce) });
+    const data = encodeDeployData({ abi: artifact.abi, bytecode: artifact.bytecode, args });
+    const receipt = await sendFixture(client, operator, { data });
     const address = receipt.contractAddress;
-    assert.ok(address);
-    return { address, runtimeHash: await verifyRuntime(client, address, artifact, receipt.blockNumber), receipt: receiptEvidence(receipt) };
+    assert.ok(address && isAddressEqual(address, derived));
+    const runtimeHash = await verifyRuntime(client, address, artifact, receipt.blockNumber);
+    observeConstructor?.({ name, nonce, from: operator, data, address, runtimeHash,
+      chainId: client.chain.id, value: "0", scope: "LOOPBACK_FIXTURE_ONLY", broadcastAuthorized: false });
+    return { address, runtimeHash, receipt: receiptEvidence(receipt) };
   };
-  const directory = await deploy(directoryArtifact, signerAccounts.map((signer) => signer.address));
-  const registry = await deploy(registryArtifact, [directory.address]);
-  const v2 = await deploy(deployerArtifact);
-  const v3 = await deploy(successorArtifact);
+  const directory = await deploy("directory", directoryArtifact, signerAccounts.map((signer) => signer.address));
+  const registry = await deploy("registry", registryArtifact, [directory.address]);
+  const v2 = await deploy("successor-v2", deployerArtifact);
+  const v3 = await deploy("successor-v3", successorArtifact);
   const deployerNonce = await client.getTransactionCount({ address: operator });
   const bootstrap = getContractAddress({ from: operator, nonce: BigInt(deployerNonce) });
   const engine = getContractAddress({ from: bootstrap, nonce: 2n });
@@ -112,6 +120,9 @@ export async function deployFixedSupplyFixture(client, artifacts, pins, { operat
   const graduationRuntimeHash = await verifyRuntime(client, engine, graduationArtifact);
   const guardRuntimeHash = await verifyRuntime(client, guard, guardArtifact);
   const bootstrapRuntimeHash = await verifyRuntime(client, bootstrap, deploymentArtifact);
+  observeConstructor?.({ name: "bootstrap", nonce: deployerNonce, from: operator, data, address: bootstrap,
+    runtimeHash: bootstrapRuntimeHash, chainId: client.chain.id, value: "0", scope: "LOOPBACK_FIXTURE_ONLY",
+    broadcastAuthorized: false });
   const readFactory = (name) => call(client, factory, factoryArtifact.abi, name);
   for (const [getter, expected] of [["operatingRecipient", operations], ["futureReserveRecipient", reserve],
     ["projectRegistry", registry.address], ["graduationEngine", engine], ["successorDeployer", v2.address]]) {
@@ -146,6 +157,11 @@ export async function deployFixedSupplyFixture(client, artifacts, pins, { operat
   const migrationPin = await readDirectory("migrationTemplates", [3]);
   assert.ok(isAddressEqual(migrationPin[0], v3.address) && migrationPin[1] === v3.runtimeHash);
 
+  const rotation = exerciseRotation
+    ? await rehearseRotation({ client, operator, directory: directory.address, abi: directoryArtifact.abi,
+      signers: signerAccounts, factoryPin: current })
+    : undefined;
+
   return {
     profile, fixedSupplyWei: supply.toString(), chainId: client.chain.id, creationFeeWei: creationFee.toString(),
     terms: { backingWei: backing.toString() }, factory, factoryRuntimeHash, projectRegistry: registry.address,
@@ -153,6 +169,40 @@ export async function deployFixedSupplyFixture(client, artifacts, pins, { operat
     directory: directory.address, directoryRuntimeHash: directory.runtimeHash, deployBlock: deployed.blockNumber,
     deployment: { ...receiptEvidence(deployed), address: bootstrap, blockHash: deployed.blockHash, bootstrapRuntimeHash,
       operatingRecipient: operations, futureReserveRecipient: reserve, guardSalt, guardCodeHash, initcodeBytes, deployerNonce,
-      publication, templatePublication, constructors: { directory, registry, v2, v3 } },
+      publication, templatePublication, rotation, constructors: { directory, registry, v2, v3 } },
   };
+}
+
+
+async function rehearseRotation({ client, operator, directory, abi, signers, factoryPin }) {
+  assert.equal(client.chain.id, 4663, "Rotation evidence uses the target chain fork");
+  const read = (name, args) => call(client, directory, abi, name, args);
+  const send = (name, args, status) => sendFixture(client, operator, transact(directory, abi, name, args), status);
+  const [retainedA, retainedB, departing] = signers;
+  const incoming = privateKeyToAccount(generatePrivateKey());
+  const beforeEpoch = await read("signerSetEpoch");
+  const nonce = await read("rotationNonce");
+  const rotation = { departingSigner: departing.address, incomingSigner: incoming.address, signerSetEpoch: beforeEpoch,
+    nonce, deadline: Number((await client.getBlock()).timestamp) + 4 * 86400 };
+  const digest = await read("signerRotationDigest", [rotation]);
+  const [first, second, acceptance] = await Promise.all([
+    retainedA.sign({ hash: digest }), retainedB.sign({ hash: digest }),
+    read("rotationAcceptanceDigest", [digest]).then((hash) => incoming.sign({ hash })),
+  ]);
+  const oneSigner = await send("scheduleSignerRotation", [rotation, first, first, acceptance], "reverted");
+  const missingAcceptance = await send("scheduleSignerRotation", [rotation, first, second, first], "reverted");
+  const scheduled = await send("scheduleSignerRotation", [rotation, first, second, acceptance]);
+  const premature = await send("executeSignerRotation", [rotation], "reverted");
+  await client.request({ method: "evm_increaseTime", params: [2 * 86400] });
+  const rotated = await send("executeSignerRotation", [rotation]);
+  const replay = await send("executeSignerRotation", [rotation], "reverted");
+  assert.equal(await read("signerSetEpoch"), beforeEpoch + 1n);
+  assert.equal(await read("rotationNonce"), nonce + 1n);
+  assert.equal(await read("isSigner", [departing.address]), false);
+  assert.equal(await read("isSigner", [incoming.address]), true);
+  assert.deepEqual(await read("currentFactory"), factoryPin);
+  return { beforeEpoch, afterEpoch: beforeEpoch + 1n, departing: departing.address, incoming: incoming.address,
+    oneSigner: receiptEvidence(oneSigner), missingAcceptance: receiptEvidence(missingAcceptance),
+    scheduled: receiptEvidence(scheduled), premature: receiptEvidence(premature), executed: receiptEvidence(rotated),
+    replay: receiptEvidence(replay) };
 }
