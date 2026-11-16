@@ -226,6 +226,16 @@ export async function rehearseDelegatedSender(client, report, fixtureRelayer) {
     for (const address of [operations, reserve]) assert.equal(keccak256(await client.getCode({ address })), proxyRuntimeHash);
     receipts = receipts.slice(0, 2);
   };
+  const withLocalSnapshot = async (operation) => {
+    const id = await client.request({ method: "evm_snapshot" });
+    const receiptCount = receipts.length;
+    try {
+      return await operation();
+    } finally {
+      assert.equal(await client.request({ method: "evm_revert", params: [id] }), true);
+      receipts = receipts.slice(0, receiptCount);
+    }
+  };
   const exactClaims = async (address, request) => {
     assert.ok(safes.some((safe) => isAddressEqual(address, safe.address)));
     // Safe's approved-hash path tests exact platform recipients with locally impersonated public
@@ -248,7 +258,7 @@ export async function rehearseDelegatedSender(client, report, fixtureRelayer) {
     return receipt;
   };
   return {
-    sender: MOBILE_DEPLOYMENT_PAYER, operations, reserve, governors: owners, safes, submit, recoverSnapshot, exactClaims,
+    sender: MOBILE_DEPLOYMENT_PAYER, operations, reserve, governors: owners, safes, submit, recoverSnapshot, withLocalSnapshot, exactClaims,
     receipts: () => [...receipts],
     evidence: { status: "BLOCKED_NO_BROADCAST", broadcastAuthorized: false, scope: "LOOPBACK_FIXTURE_ONLY",
       sender: MOBILE_DEPLOYMENT_PAYER, initialNonce, anchoredBalanceWei, delegate, designator, delegateRuntimeHash,

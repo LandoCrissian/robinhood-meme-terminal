@@ -41,7 +41,7 @@ pnpm test:fork-4663 --anvil $anvil --solc $solc --archive pocket --output $forkE
 3. **Qualify production observations.** Require dependable archive receipts and native settlement traces, independent Ethereum L1 finality, durable new-engine indexer checkpoints with backup and restore, read authentication, exact full-PoolKey routing and physical-wallet recovery. Keep credentials server-side. When evidence is absent, retain explicit pending or stale states.
 4. **Keep separate approvals.** Deployment, first funded acceptance and public transaction activation each require their own owner decision. The existing website, DNS and Railway service stay within their current hosting configuration.
 
-The provisional review economics include a 0.0004 ETH creation fee, 2 ETH graduation backing, a 1% curve trading fee, 90/5/5 earned-fee allocation and permanent original LP custody. Factory V2 fixes the 1B supply and the candidate preserves the 600M/400M allocation. Production rates, addresses and funding remain unapproved.
+The owner approved candidate economics of 0.0004 ETH for creation, 2 ETH graduation backing, a 1% curve trading fee, a 0.30% v4 pool fee and a 90/5/5 eligible earned-fee allocation. Factory V2 fixes the 1B supply and the candidate preserves the 600M/400M allocation and permanent original LP custody. Live beneficiary addresses, funding and transaction approvals remain gated. [Owner-approved configuration and private review](evidence/mobile-signing/UNSIGNED_HANDOFF.md)
 
 [Mobile wallet review and rehearsal](evidence/mobile-signing/README.md) · [Current unsigned deployment and source-verification handoff](evidence/source-verification/launch-handoff.md) · [Production readiness probes](evidence/production-readiness/readiness.md)
 

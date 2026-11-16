@@ -8,7 +8,7 @@ Each launch can direct its own project earnings to the creator and an independen
 | Curve trading fees | 90% | 5% | 5% |
 | Fees earned by the original locked LP position | 90% | 5% | 5% |
 
-The fee rates and launch threshold remain provisional. After graduation, the ledger records fees earned by the original position in ETH and the launched token. The mechanism collects that position's earnings and leaves principal locked. Fees earned by other liquidity providers remain outside this allocation.
+The owner approved the candidate rates and launch threshold for unsigned preparation. Production activation remains gated. After graduation, the ledger records fees earned by the original position in ETH and the launched token. The mechanism collects that position's earnings and leaves principal locked. Fees earned by other liquidity providers remain outside this allocation. [Approved configuration](evidence/mobile-signing/UNSIGNED_HANDOFF.md)
 
 Beneficiaries claim only their own credits. ETH and ERC-20 claims can be tested separately when a recipient rejects one asset. The pinned fork exercised an EOA, controlled recipient fixtures and authorized Safe claims and spending. The two proposed protocol Safes use the same three owners and separate 2-of-3 custody. Their roles, balances, nonces and credits remain distinct. The owners currently share a phone, so signer continuity and incident response require a defined operator. Populate live beneficiary fields only after the two Safe deployments and their claims are separately authorized and verified. [Treasury and wallet fork evidence](evidence/rmt-task046/4663-shared-owner-safe-rehearsal.json) · [Unassigned live bindings](evidence/rmt-task047/treasury-live-bindings.json)
 

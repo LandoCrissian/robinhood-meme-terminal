@@ -6,12 +6,14 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { pinnedSafeCreationRows } from "../../../packages/contracts/scripts/mobile-review-plan.mjs";
-import { assertFreshUnsignedBinding, assertUnsignedDependencyEvidence, assertUnsignedGovernanceEvidence, privateOutputPath }
+import { approvedFirstProject, approvedRmtTerms, assertApprovedLaunchTerms, assertApprovedProjectRehearsal, assertFreshUnsignedBinding,
+  assertUnsignedDependencyEvidence, assertUnsignedGovernanceEvidence, buildFirstProject, privateOutputPath }
   from "../../../packages/contracts/scripts/prepare-unsigned-4663.mjs";
+import { termEvidence } from "../../../packages/contracts/scripts/fixed-supply-profile.mjs";
 import { deriveFutureCreateDestinations } from "../../../scripts/production-readiness/mobile-sender.mjs";
 
 const require = createRequire(new URL("../../../apps/launch-website/package.json", import.meta.url));
-const { decodeFunctionData, keccak256, parseAbi } = require("viem");
+const { decodeFunctionData, encodeFunctionData, keccak256, parseAbi, zeroAddress, zeroHash } = require("viem");
 const read = (name) => JSON.parse(readFileSync(new URL(name, import.meta.url)));
 const recorded = read("sender-delegation-4663.json");
 const now = Date.parse(recorded.observedAt) + 1_000;
@@ -84,6 +86,73 @@ test("only explicitly private Safe rows contain exact initializer calldata", () 
     assert.equal(row.details.owners.length, 3);
     assert.equal(row.details.beneficiaryStatus, "UNASSIGNED");
   }
+});
+
+test("owner-approved fee terms match the frozen 4663 compile profile and v4 pool fee", () => {
+  const file = "src/RMTV4CurveGraduationV1.sol";
+  const content = readFileSync(new URL("../../../packages/contracts/" + file, import.meta.url), "utf8");
+  const compileInput = (source) => JSON.stringify({ sources: { [file]: { content: source } } });
+  assert.doesNotThrow(() => assertApprovedLaunchTerms(compileInput(content), termEvidence));
+  assert.throws(() => assertApprovedLaunchTerms(compileInput(content.replace("POOL_FEE = 3_000;", "POOL_FEE = 3_001;")),
+    termEvidence), /compiled v4 pool fee/);
+  assert.throws(() => assertApprovedLaunchTerms(compileInput(content), { ...termEvidence, creationFeeWei: "0" }), /compiled terms/);
+  assert.equal(approvedRmtTerms.v4PoolFeeBps, 30);
+});
+
+test("approved RMT configuration binds exactly the owner and zero treasury without authorizing a live creation", () => {
+  const safeAddresses = pinnedSafeCreationRows().map(({ expectedAddress }) => expectedAddress);
+  const factory = "0x0000000000000000000000000000000000000001";
+  const project = buildFirstProject(factory, safeAddresses);
+  assert.deepEqual(approvedFirstProject, {
+    name: "RMT", symbol: "RMT", projectURI: "", creator: recorded.proposedSender, treasuryShareBpsOfEligibleFees: 0,
+  });
+  assert.equal(project.projectShareRecipient, recorded.proposedSender);
+  assert.equal(project.projectTreasury, zeroAddress);
+  assert.deepEqual(project.plannedCall, {
+    from: recorded.proposedSender, predictedFactory: factory, valueWei: "400000000000000",
+    function: "create(string,string,string,address,uint16,bytes32,uint256)",
+    args: ["RMT", "RMT", "", zeroAddress, 0, null, null],
+    nonce: null, intentId: null, deadline: null, calldata: null,
+  });
+  assert.deepEqual(project.revenueRecipients, {
+    operations: { predictedAddress: safeAddresses[0], beneficiary: null },
+    reserve: { predictedAddress: safeAddresses[1], beneficiary: null },
+  });
+  assert.equal(project.transactionApproval, null);
+});
+
+test("production preparation requires approved configuration in the full synthetic rehearsal", () => {
+  const [operations, reserve] = pinnedSafeCreationRows().map(({ expectedAddress }) => expectedAddress);
+  const factory = "0x0000000000000000000000000000000000000001";
+  const curve = "0x0000000000000000000000000000000000000002";
+  const mockHash = "0x" + "f".repeat(64);
+  const receipt = { status: "success", from: approvedFirstProject.creator, calldataHash: mockHash, transactionHash: mockHash };
+  const abi = parseAbi(["function create(string,string,string,address,uint16,bytes32,uint256) payable returns (address,address)"]);
+  const exactCreationCalldataHash = keccak256(encodeFunctionData({ abi, functionName: "create",
+    args: ["RMT", "RMT", "", zeroAddress, 0, mockHash, 1n] }));
+  const proof = {
+    scope: "SYNTHETIC_APPROVED_FIRST_RMT", broadcastAuthorized: false, rollbackVerified: true,
+    project: approvedFirstProject, factory, curve, operations, reserve, erc20RuntimeHash: mockHash,
+    exactCreationFeeWei: approvedRmtTerms.creationFeeWei, intentId: mockHash, deadline: "1", curveTradeFeeWei: "20",
+    creation: { ...receipt, to: factory, valueWei: approvedRmtTerms.creationFeeWei, calldataHash: exactCreationCalldataHash },
+    buy: { ...receipt, to: curve },
+    curveFeeCreditsWei: ["18", "0", "1", "1"],
+  };
+  const report = { approvedFirstRmt: proof, deployment: { factory }, delegatedSender: { phase: "LIFECYCLE_REHEARSED" } };
+  assert.equal(assertApprovedProjectRehearsal(report, [operations, reserve], mockHash), proof);
+  for (const changed of [
+    undefined,
+    { ...proof, rollbackVerified: false },
+    { ...proof, project: { ...approvedFirstProject, projectURI: "https://example.test" } },
+    { ...proof, project: { ...approvedFirstProject, treasuryShareBpsOfEligibleFees: 1 } },
+    { ...proof, operations: reserve },
+    { ...proof, creation: { ...receipt, to: factory, valueWei: "0" } },
+    { ...proof, creation: { ...proof.creation, calldataHash: mockHash } },
+    { ...proof, intentId: zeroHash },
+    { ...proof, deadline: "2" },
+    { ...proof, curveTradeFeeWei: "21" },
+    { ...proof, curveFeeCreditsWei: ["17", "1", "1", "1"] },
+  ]) assert.throws(() => assertApprovedProjectRehearsal({ ...report, approvedFirstRmt: changed }, [operations, reserve], mockHash));
 });
 
 test("the generator requires fresh absolute paths outside source control", (context) => {

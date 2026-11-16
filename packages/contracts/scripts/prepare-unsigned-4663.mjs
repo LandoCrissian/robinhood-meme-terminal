@@ -11,12 +11,12 @@ import { normalizeGovernanceWallets, observeGovernanceWallets, proposals }
 import { runMobileSenderProbe } from "../../../scripts/production-readiness/mobile-sender.mjs";
 import { attestDeploymentDependencies, makeReadOnlyRpc, ROBINHOOD_SOURCES } from "../../../scripts/production-readiness/rpc.mjs";
 import { deriveDelegatedConstructors } from "./delegated-mobile-constructors.mjs";
-import { buildFixedSupplyInput, compileFixedSupplyProfile, rmtFixture, termEvidence } from "./fixed-supply-profile.mjs";
+import { buildFixedSupplyInput, compileFixedSupplyProfile, termEvidence } from "./fixed-supply-profile.mjs";
 import { buildMobileReviewPlan, mobilePayer, pinnedSafeCreationRows, reviewDelegatedMobileObservation, reviewSources,
   safeProxyRuntimeHash } from "./mobile-review-plan.mjs";
 
 const require = createRequire(new URL("../../../apps/launch-website/package.json", import.meta.url));
-const { getAddress, isAddressEqual, keccak256, toHex, zeroAddress } = require("viem");
+const { encodeFunctionData, getAddress, isAddressEqual, keccak256, parseAbi, toHex, zeroAddress, zeroHash } = require("viem");
 const repository = realpathSync(fileURLToPath(new URL("../../../", import.meta.url)));
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const digest = (value) => "0x" + sha256(JSON.stringify(value));
@@ -24,21 +24,47 @@ const gate = "BLOCKED_NO_BROADCAST";
 const profile = "rmt-curve-fixed-supply-security-v2";
 const chainId = 4663;
 const provedOwnerConnection = "OWNER_REPORTED_READ_ONLY_ON_PHYSICAL_IPHONE";
+const createProjectAbi = parseAbi(["function create(string,string,string,address,uint16,bytes32,uint256) payable returns (address,address)"]);
 
-const approvals = [
-  { id: "treasuries", label: "Approve the two CREATE2 salts, this payer, and treasury transaction bounds" },
-  { id: "economics", label: "Approve the proposed immutable launch economics" },
-  { id: "protocol-deployment", label: "Approve protocol deployment after verified Safe receipts and security clearance" },
-  { id: "first-project", label: "Approve actual name, symbol, metadata URI, creator, treasury and allocation for the first RMT project" },
-  { id: "funded-acceptance", label: "Authorize first funded acceptance with a separately approved transaction" },
-  { id: "public-activation", label: "Authorize public activation after verified infrastructure and funded acceptance" },
-].map((item) => ({ ...item, status: "UNASSIGNED" }));
+const configurationApproval = Object.freeze({
+  scope: "OWNER_APPROVED_CONFIGURATION_ONLY",
+  source: "https://github.com/LandoCrissian/robinhood-meme-terminal/issues/645#issuecomment-6930920399",
+  owner: "LandoCrissian",
+  transactionApproval: null,
+});
 
-const terms = Object.freeze({
-  fixedSupplyTokens: "1000000000", decimals: termEvidence.decimals, curveTokens: "600000000", liquidityTokens: "400000000",
-  projectShareBps: termEvidence.projectBps, operationsShareBps: termEvidence.operationsBps, reserveShareBps: termEvidence.reserveBps,
-  creationFeeWei: termEvidence.creationFeeWei, graduationBackingWei: termEvidence.graduationBackingWei,
-  curveFeeBps: termEvidence.tradingFeeBps,
+export const approvedFirstProject = Object.freeze({
+  name: "RMT", symbol: "RMT", projectURI: "", creator: mobilePayer, treasuryShareBpsOfEligibleFees: 0,
+});
+
+export const approvedRmtTerms = Object.freeze({
+  fixedSupplyTokens: "1000000000", decimals: 18, curveTokens: "600000000", liquidityTokens: "400000000",
+  projectShareBps: 9000, operationsShareBps: 500, reserveShareBps: 500,
+  creationFeeWei: "400000000000000", graduationBackingWei: "2000000000000000000", curveFeeBps: 100, v4PoolFeeBps: 30,
+});
+
+export function assertApprovedLaunchTerms(input, compiledTerms) {
+  const { fixedSupplyTokens, decimals, curveTokens, liquidityTokens, creationFeeWei, graduationBackingWei,
+    curveFeeBps, projectShareBps, operationsShareBps, reserveShareBps, v4PoolFeeBps } = approvedRmtTerms;
+  const supplyScale = 10n ** BigInt(decimals);
+  const supplyWei = (amount) => (BigInt(amount) * supplyScale).toString();
+  const approved = {
+    fixedSupplyWei: supplyWei(fixedSupplyTokens), decimals,
+    curveInventoryWei: supplyWei(curveTokens), initialLiquidityInventoryWei: supplyWei(liquidityTokens),
+    creationFeeWei, graduationBackingWei, tradingFeeBps: curveFeeBps,
+    projectBps: projectShareBps, operationsBps: operationsShareBps, reserveBps: reserveShareBps,
+  };
+  assert.deepEqual(termEvidence, approved, "Owner approval differs from the fixed-supply profile");
+  assert.deepEqual(compiledTerms, approved, "Owner approval differs from the compiled terms");
+  const { content } = JSON.parse(input).sources["src/RMTV4CurveGraduationV1.sol"];
+  const poolFees = Array.from(content.matchAll(/\buint24 public constant POOL_FEE = ([\d_]+);/g),
+    ([, literal]) => Number(literal.replaceAll("_", "")));
+  assert.deepEqual(poolFees,
+    [v4PoolFeeBps * 100], "Owner approval differs from the compiled v4 pool fee");
+}
+
+const transactionApprovals = Object.freeze({
+  operationsSafe: null, reserveSafe: null, protocolDeployment: null, firstFundedAcceptance: null, publicActivation: null,
 });
 
 const stopOnDrift = "Stop if the payer, chain, pending nonce, delegation runtime, fees, input hash or approved destination differs";
@@ -99,22 +125,58 @@ export function assertUnsignedGovernanceEvidence(evidence, anchor, expectedOwner
   return evidence;
 }
 
-function firstProject(safeAddresses) {
+export function buildFirstProject(factory, safeAddresses) {
+  const { name, symbol, projectURI, creator, treasuryShareBpsOfEligibleFees } = approvedFirstProject;
   return {
-    proposedName: rmtFixture.name,
-    proposedSymbol: rmtFixture.symbol,
-    approvedName: null,
-    approvedSymbol: null,
-    approvedProjectUri: null,
-    creator: null,
-    projectTreasury: null,
-    treasuryShareBpsOfEligibleFees: null,
-    termsApproval: null,
-    treasuryRecipients: { operations: safeAddresses[0], reserve: safeAddresses[1], verified: false },
-    allocationBasis: "Treasury BPS use eligible fees as denominator, from 0 to 9000. 9000 means 100% of the project allocation. Zero allocation if and only if no treasury. Creator and treasury must differ.",
-    tokenIntent: null,
-    deadline: null,
+    scope: "APPROVED_CONFIGURATION_CREATION_QUEUED",
+    name, symbol, projectURI, creator, projectTreasury: zeroAddress, treasuryShareBpsOfEligibleFees,
+    projectShareRecipient: creator,
+    revenueRecipients: {
+      operations: { predictedAddress: safeAddresses[0], beneficiary: null },
+      reserve: { predictedAddress: safeAddresses[1], beneficiary: null },
+    },
+    terms: approvedRmtTerms,
+    plannedCall: {
+      from: creator, predictedFactory: factory, valueWei: approvedRmtTerms.creationFeeWei,
+      function: "create(string,string,string,address,uint16,bytes32,uint256)",
+      args: [name, symbol, projectURI, zeroAddress, treasuryShareBpsOfEligibleFees, null, null],
+      nonce: null, intentId: null, deadline: null, calldata: null,
+    },
+    transactionApproval: null,
   };
+}
+
+export function assertApprovedProjectRehearsal(report, safeAddresses, tokenRuntimeHash) {
+  const proven = report.approvedFirstRmt;
+  assert.ok(proven?.scope === "SYNTHETIC_APPROVED_FIRST_RMT" && proven.broadcastAuthorized === false &&
+    proven.rollbackVerified === true, "A complete --approved-rmt synthetic fork rehearsal is required");
+  assert.equal(report.delegatedSender.phase, "LIFECYCLE_REHEARSED");
+  assert.deepEqual(proven.project, approvedFirstProject, "Synthetic creation did not use the approved inputs");
+  assert.deepEqual([proven.operations, proven.reserve], safeAddresses, "Synthetic fee recipients differ from pinned Safe addresses");
+  assert.equal(proven.factory, report.deployment.factory);
+  assert.equal(proven.erc20RuntimeHash, tokenRuntimeHash);
+  assert.equal(proven.exactCreationFeeWei, approvedRmtTerms.creationFeeWei);
+  for (const [receipt, destination] of [[proven.creation, proven.factory], [proven.buy, proven.curve]]) {
+    assert.equal(receipt.status, "success");
+    assert.ok(isAddressEqual(receipt.from, approvedFirstProject.creator) && isAddressEqual(receipt.to, destination));
+    assert.match(receipt.calldataHash, /^0x[a-f0-9]{64}$/);
+    assert.match(receipt.transactionHash, /^0x[a-f0-9]{64}$/);
+  }
+  assert.equal(proven.creation.valueWei, approvedRmtTerms.creationFeeWei);
+  const { name, symbol, projectURI, treasuryShareBpsOfEligibleFees } = approvedFirstProject;
+  assert.match(proven.intentId, /^0x[a-f0-9]{64}$/);
+  assert.notEqual(proven.intentId, zeroHash);
+  assert.match(proven.deadline, /^[1-9]\d*$/);
+  const data = encodeFunctionData({ abi: createProjectAbi, functionName: "create",
+    args: [name, symbol, projectURI, zeroAddress, treasuryShareBpsOfEligibleFees, proven.intentId, BigInt(proven.deadline)] });
+  assert.equal(proven.creation.calldataHash, keccak256(data), "Synthetic calldata differs from the approved configuration");
+  const credits = proven.curveFeeCreditsWei.map(BigInt);
+  assert.match(proven.curveTradeFeeWei, /^[1-9]\d*$/);
+  const total = BigInt(proven.curveTradeFeeWei);
+  const platform = total / 10n;
+  const operations = platform / 2n;
+  assert.deepEqual(credits, [total - platform, 0n, operations, platform - operations]);
+  return proven;
 }
 
 function makeReviewRow(item, action, gas, status, checks, expectedRuntimeHash = null) {
@@ -142,6 +204,12 @@ function forkGas(receipt) {
     provenance: "SYNTHETIC_4663_FORK_GAS_USED_ONLY" };
 }
 
+function safeGas(estimate) {
+  const { nitroGasEstimate, l2GasUnits, l1PosterGasUnits, estimatedTotalWei, l1PosterWei, l2ExecutionWei } = estimate;
+  return { gasUnits: nitroGasEstimate, l2GasUnits, l1PosterGasUnits, estimatedFeeWei: estimatedTotalWei,
+    estimatedL1FeeWei: l1PosterWei, estimatedL2FeeWei: l2ExecutionWei, provenance: "CURRENT_4663_READ_ONLY_NITRO_GAS_COMPONENTS" };
+}
+
 function actionTemplate({ observed, constructors, kind, contract, version }) {
   return {
     typedDataDomain: { ...governance.directory.domain, chainId,
@@ -167,6 +235,7 @@ export function prepareUnsignedDeployment({ compilation, input, rehearsal, first
   bindingSource = "FRESH_SUPPLIED_READ_ONLY_RECHECKS", dependencyEvidence, governanceEvidence }) {
   const observed = assertFreshUnsignedBinding(firstObservation, secondObservation);
   assert.equal(compilation.manifest.profile, profile);
+  assertApprovedLaunchTerms(input, compilation.manifest.terms);
   assertUnsignedDependencyEvidence(dependencyEvidence, secondObservation, compilation.manifest.externalRuntimePins);
   const prior = buildMobileReviewPlan(compilation, input, reviewSources(), {
     replay: rehearsal, delegatedObservation: secondObservation,
@@ -181,67 +250,76 @@ export function prepareUnsignedDeployment({ compilation, input, rehearsal, first
   assertUnsignedGovernanceEvidence(governanceEvidence, secondObservation.sender.anchor, safes[0].details.owners);
   const safeAddresses = safes.map(({ expectedAddress }) => expectedAddress);
   assert.ok(safeAddresses.every((address) => !isAddressEqual(address, mobilePayer) && !isAddressEqual(address, zeroAddress)));
+  const approvedRehearsal = assertApprovedProjectRehearsal(rehearsal.report, safeAddresses,
+    keccak256(compilation.artifacts.RMTLaunchCurveTokenV2.runtime));
   const { constructors, bootstrapChildren } = deriveDelegatedConstructors(compilation, {
     sender: mobilePayer, createDestinations: observed.createDestinations,
     signers: scenario.governanceSignerProposal, safeAddresses,
   }, { includePrivateInitcode: true });
-  const reviewRows = [];
-  const privateRows = [];
-  for (const [index, item] of scenario.rows.entries()) {
-    if (index < 2) {
-      const safe = safes[index];
-      const { owners, safeProfile, threshold, singleton, fallbackHandler, saltNonce, create2Salt, initializerHash } = safe.details;
-      const { nitroGasEstimate, l2GasUnits, l1PosterGasUnits, estimatedTotalWei } = item.estimate;
-      const checks = [stopOnDrift, "Recheck the exact pinned Safe infrastructure and vacancy before separate treasury approval",
-        `${safeProfile}, ${threshold} of ${owners.length}. Owners ${owners.join(", ")}`,
-        "All three proposed governance addresses were code-empty at the observed block. Owner key control is unverified.",
-        `Salt nonce ${saltNonce}. CREATE2 salt ${create2Salt}`,
-        `Initializer hash ${initializerHash}`,
-        `Singleton ${singleton}. Fallback handler ${fallbackHandler}`,
-        receiptRule, treasuryReceipt, "Keep the predicted Safe address outside beneficiary configuration until its receipt is verified"];
-      if (!secondObservation.safes.budgetAtObservation) checks.push("The observed payer balance was below the combined Safe estimate");
-      reviewRows.push(makeReviewRow(item, "createProxyWithNonce(address,bytes,uint256)", {
-        gasUnits: nitroGasEstimate, l2GasUnits, l1PosterGasUnits, estimatedFeeWei: estimatedTotalWei,
-        provenance: "CURRENT_4663_READ_ONLY_NITRO_GAS_COMPONENTS",
-      }, "UNSIGNED_TREASURY_APPROVAL_REQUIRED", checks, safeProxyRuntimeHash));
-      privateRows.push({ ...privateEnvelope(item, safe.calldata), setup: safe.details,
-        gasAtObservedBlock: item.estimate, syntheticReceipt: proof.safeReceipts[index] });
-    } else if (index < 7) {
+  const [operations, reserve, ...projectedProtocol] = scenario.rows;
+  const [operationsSafe, reserveSafe] = safes;
+  const { owners, safeProfile: safeVersion, threshold, saltNonce, initializerHash } = operationsSafe.details;
+  const signature = "createProxyWithNonce(address,bytes,uint256)";
+  const operationsGas = safeGas(operations.estimate);
+  const operationsChecks = [stopOnDrift, "Recheck the exact pinned Safe infrastructure and vacancy before separate transaction approval",
+    receiptRule, treasuryReceipt, "Verify Operations before preparing a separate Reserve review"];
+  if (BigInt(observed.balanceWei) < BigInt(operationsGas.estimatedFeeWei)) {
+    operationsChecks.push("The observed payer balance was below this Operations Safe estimate");
+  }
+  const operation = {
+    ...makeReviewRow(operations, signature, operationsGas, "UNSIGNED_OPERATIONS_APPROVAL_REQUIRED", operationsChecks, safeProxyRuntimeHash),
+    owners, threshold, safeVersion, saltNonce, initializerHash,
+  };
+  const unsigned = {
+    ...privateEnvelope(operations, operationsSafe.calldata),
+    setup: operationsSafe.details, gasAtObservedBlock: operations.estimate, syntheticReceipt: proof.safeReceipts[0],
+    transactionApproval: null,
+  };
+  const project = buildFirstProject(bootstrapChildren[2].address, safeAddresses);
+  const queue = [
+    { ...makeReviewRow({ ...reserve, nonce: null }, signature, safeGas(reserve.estimate),
+      "QUEUED_AWAITING_CANONICAL_OPERATIONS_SAFE_AND_SEPARATE_APPROVAL",
+      [stopOnDrift, receiptRule, treasuryReceipt, "Verify the Operations receipt and refresh the Reserve nonce, vacancy and fee quote before review"],
+      safeProxyRuntimeHash), projectedNonce: reserve.nonce, setup: reserveSafe.details, syntheticReceipt: proof.safeReceipts[1] },
+  ];
+  for (const [offset, item] of projectedProtocol.entries()) {
+    const index = offset + 2;
+    if (index < 7) {
       const candidate = constructors[index - 2];
       assert.equal(item.inputHash, candidate.initcodeHash);
       assert.equal(item.runtimeHash, candidate.runtimeHash);
-      reviewRows.push(makeReviewRow(item, candidate.contract + " constructor", forkGas(proof.constructorReceipts[index - 2]),
-        "CONDITIONAL_VERIFIED_SAFE_RECEIPTS_AND_PROTOCOL_APPROVAL_REQUIRED",
-        [stopOnDrift, "Bind both verified Safe receipts and approved economics before protocol approval", receiptRule,
+      const receipt = proof.constructorReceipts[index - 2];
+      queue.push({ ...makeReviewRow({ ...item, nonce: null }, candidate.contract + " constructor", forkGas(receipt),
+        "QUEUED_AWAITING_VERIFIED_SAFE_RECEIPTS_AND_PROTOCOL_APPROVAL",
+        [stopOnDrift, "Bind both verified Safe receipts before protocol review", receiptRule,
           protocolReceipt, ...(item.id === "bootstrap" ? ["Verify all three bootstrap children, hook permission bits and pinned Uniswap runtimes"] : [])],
-        candidate.runtimeHash));
-      privateRows.push({ ...privateEnvelope(item, candidate.initcode), candidate: codeIdentity(compilation, candidate),
-        syntheticReceipt: proof.constructorReceipts[index - 2],
-        condition: "PREDICTED_SAFE_ADDRESSES_REQUIRE_VERIFIED_RECEIPTS_AND_PROTOCOL_APPROVAL" });
+        candidate.runtimeHash), projectedNonce: item.nonce, candidate: codeIdentity(compilation, candidate), syntheticReceipt: receipt });
     } else if (index < 11) {
       const schedule = index % 2 === 1;
-      reviewRows.push(makeReviewRow(item, schedule ? "schedule(Action,bytes,bytes)" : "execute(Action)",
+      queue.push(makeReviewRow(item, schedule ? "schedule(Action,bytes,bytes)" : "execute(Action)",
         forkGas(proof.publicationReceipts[index - 7]),
-        schedule ? "AWAITING_BOUND_CURRENT_GOVERNANCE_SIGNATURES" : "AWAITING_CANONICAL_SCHEDULE_AND_MATURE_NOTICE",
+        schedule ? "QUEUED_AWAITING_BOUND_CURRENT_GOVERNANCE_SIGNATURES" : "QUEUED_AWAITING_CANONICAL_SCHEDULE_AND_MATURE_NOTICE",
         [stopOnDrift, schedule ? "Bind exact runtime, directory EIP-712 domain, signer epoch, action nonce and deadline before two current signatures"
           : "Confirm the matching canonical scheduled action and enforce its two-day notice and execution deadline",
         receiptRule, "Confirm the exact publication event before moving to the next Directory action"]));
     } else {
-      reviewRows.push(makeReviewRow(item, "create(string,string,string,address,uint16,bytes32,uint256)",
-        forkGas(proof.firstProjectReceipt), "AWAITING_FIRST_PROJECT_INPUTS_AND_FUNDED_ACCEPTANCE",
-        [stopOnDrift, "Bind the real creator, name, symbol, metadata URI, treasury allocation, intent and deadline",
+      queue.push(makeReviewRow({ ...item, sender: project.creator, valueWei: project.plannedCall.valueWei },
+        project.plannedCall.function, forkGas(approvedRehearsal.creation), "QUEUED_AWAITING_PUBLISHED_FACTORY_AND_FUNDED_ACCEPTANCE",
+        [stopOnDrift, "Bind the verified factory, fresh intent and deadline to the approved creation configuration",
           receiptRule, "Verify the created token and curve, registry row, exact creation fee and beneficiary policy on the canonical receipt"]));
     }
   }
   const noncePair = { pendingNonce: observed.pendingNonce, confirmedNonce: observed.confirmedNonce };
   const summary = {
-    schemaVersion: 1, scope: "RMT_4663_UNSIGNED_PRIVATE_REVIEW", status: gate, broadcastAuthorized: false, chainId, sender: mobilePayer,
+    schemaVersion: 2, scope: "RMT_4663_OPERATIONS_SAFE_UNSIGNED_REVIEW", status: gate, broadcastAuthorized: false, chainId, sender: mobilePayer,
     observedAt: observed.observedAt, expiresAt: new Date(Math.min(Date.parse(firstObservation.expiresAt), Date.parse(observed.expiresAt),
       Date.parse(dependencyEvidence.expiresAt))).toISOString(), anchor: observed.anchor, ...noncePair,
     balanceWei: observed.balanceWei, delegation: { address: observed.delegation.address, runtimeHash: observed.delegation.runtimeHash,
       designator: observed.delegation.designator },
-    rows: reviewRows, terms, approvals,
+    operation, terms: approvedRmtTerms, firstProject: approvedFirstProject,
   };
+  const protocolForkGas = queue.slice(1).reduce((total, item) => total + BigInt(item.gas.gasUnits), 0n);
+  const { estimatedSafesWeiAtObservedBlock, observedL2BaseFeeWei, protocolLiveEstimate } = scenario.costs;
   const protectedCandidate = {
     bindingSource, walletConnection: provedOwnerConnection, signingAcceptance: "UNVERIFIED",
     initialObservationDigest: digest(firstObservation), recheckObservationDigest: digest(secondObservation),
@@ -249,8 +327,12 @@ export function prepareUnsignedDeployment({ compilation, input, rehearsal, first
     noncePair, compiler: prior.fixture.compiler, releaseGate: prior.releaseGate, forkSha256: prior.fixture.forkSha256,
     dependencyEvidenceDigest: digest(dependencyEvidence), dependencyAttestation: dependencyEvidence,
     governanceEvidenceDigest: digest(governanceEvidence), governanceAttestation: governanceEvidence,
-    costs: { ...scenario.costs, safeBudgetAtObservation: secondObservation.safes.budgetAtObservation,
-      protocolPosterCost: "UNAVAILABLE_FOR_DEPENDENT_CREATIONS_AND_UNAPPROVED_ACTIONS",
+    costs: { estimatedSafesWeiAtObservedBlock, observedL2BaseFeeWei, protocolLiveEstimate,
+      safeBudgetAtObservation: secondObservation.safes.budgetAtObservation,
+      protocolObservedForkGasUnits: protocolForkGas.toString(),
+      protocolForkGasAtObservedL2BaseFeeWei: observedL2BaseFeeWei === null
+        ? null : (protocolForkGas * BigInt(observedL2BaseFeeWei)).toString(),
+      protocolPosterCost: "UNAVAILABLE_FOR_DEPENDENT_CREATIONS_AND_QUEUED_ACTIONS",
       protocolModel: "Synthetic EVM gas times observed L2 base fee, excluding any L1 poster fee. No production fee caps are assigned." },
     sourceVerification: {
       standardInputSha256: compilation.manifest.inputSha256,
@@ -258,19 +340,21 @@ export function prepareUnsignedDeployment({ compilation, input, rehearsal, first
       externalRuntimePins: compilation.manifest.externalRuntimePins,
       readiness: "POST_DEPLOYMENT_CANONICAL_RECEIPTS_AND_EXACT_RUNTIME_REQUIRED",
     },
-    unsigned: privateRows,
+    configurationApproval, transactionApprovals,
+    unsigned: [unsigned], queue,
     directoryTemplates: [
       actionTemplate({ observed: null, constructors, kind: 0, contract: bootstrapChildren[2], version: 1 }),
       actionTemplate({ observed: null, constructors, kind: 4, contract: constructors[3], version: 3 }),
     ],
-    firstProject: firstProject(safeAddresses),
+    firstProject: project,
+    approvedFirstProjectRehearsal: approvedRehearsal,
     recovery: "Leave an unresolved original transaction pending and resolve its canonical hash/receipt. Never submit a replacement or advance from an unknown result.",
   };
   const planId = digest({ summary, protectedCandidate });
   assertFreshUnsignedBinding(firstObservation, secondObservation);
   assertUnsignedDependencyEvidence(dependencyEvidence, secondObservation, compilation.manifest.externalRuntimePins);
   return { review: { ...summary, planId }, privatePackage: {
-    schemaVersion: 1, scope: "RMT_4663_PRIVATE_INCOMPLETE_UNSIGNED_PACKAGE", status: gate, broadcastAuthorized: false, planId,
+    schemaVersion: 2, scope: "RMT_4663_PRIVATE_INCOMPLETE_UNSIGNED_PACKAGE", status: gate, broadcastAuthorized: false, planId,
     review: { ...summary, planId }, ...protectedCandidate,
   } };
 }
@@ -298,7 +382,7 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
       refresh: { type: "boolean" }, observation: { type: "string" }, "observation-after": { type: "string" },
       "out-private": { type: "string" }, "out-review": { type: "string" },
     } });
-    assert.ok(values.solc && values.rehearsal, "Supply --solc and --rehearsal from the synthetic --delegated 4663 fork");
+    assert.ok(values.solc && values.rehearsal, "Supply --solc and --rehearsal from the synthetic --delegated --approved-rmt 4663 fork");
     assert.ok(values.refresh
       ? !values.observation && !values["observation-after"]
       : values.observation && values["observation-after"], "Supply --refresh or two current read-only observations");
