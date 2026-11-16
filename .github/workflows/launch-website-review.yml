@@ -5,6 +5,7 @@ on:
     paths:
       - "apps/launch-website/**"
       - "packages/contracts/**"
+      - "scripts/production-readiness/**"
       - "netlify.toml"
       - "package.json"
       - "pnpm-lock.yaml"

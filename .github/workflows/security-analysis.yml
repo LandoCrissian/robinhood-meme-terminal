@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "packages/contracts/**"
+      - "scripts/production-readiness/**"
       - ".github/workflows/security-analysis.yml"
   workflow_dispatch:
 
