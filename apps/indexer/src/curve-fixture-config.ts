@@ -1,9 +1,10 @@
 import { readFileSync, statSync } from "node:fs";
 import { isAbsolute } from "node:path";
-import { assertCurveLaunchBinding, fixtureChainId, fixtureConfirmations, type CurveFixtureBinding } from "./curve-launch-evidence.js";
+import { assertCurveLaunchBinding, curveFixedSupplyProfile, curveFixedSupplyWei,
+  fixtureChainId, fixtureConfirmations, type CurveFixtureBinding } from "./curve-launch-evidence.js";
 import type { Address, Hash } from "viem";
 
-export const curveFixtureProfile = "task036-local-only";
+export const curveFixtureProfile = curveFixedSupplyProfile;
 
 function explicitPort(value: string) {
   if (!/^[1-9]\d{0,4}$/.test(value) || Number(value) < 1_024 || Number(value) > 65_535) throw new Error("Fixture requires its explicit unprivileged port");
@@ -40,6 +41,9 @@ export function curveFixtureConfig(env: NodeJS.ProcessEnv) {
   const row = data as Record<string, unknown>;
   if (row.chainId !== fixtureChainId || typeof row.deployBlock !== "string" || !/^[1-9]\d{0,15}$/.test(row.deployBlock)
       || row.creationFeeWei !== "400000000000000") throw new Error("Invalid fixture chain, height or exact creation fee");
+  if (row.profile !== curveFixtureProfile || row.fixedSupplyWei !== curveFixedSupplyWei.toString()) {
+    throw new Error("Invalid fixed-supply fixture profile or amount");
+  }
   const binding: CurveFixtureBinding = {
     chainId: fixtureChainId, profile: curveFixtureProfile, engineVersion: 1, confirmations: fixtureConfirmations,
     deploymentBlock: BigInt(row.deployBlock), deploymentBlockHash: row.deploymentBlockHash as Hash,

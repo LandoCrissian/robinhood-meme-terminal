@@ -13,7 +13,8 @@
     "test": "pnpm --filter @rmt/launch-website test:history && pnpm --filter indexer test:resilience && node --test scripts/railway-watch-scope.test.mjs",
     "test:release-evidence": "node --test \"docs/evidence/**/*.test.mjs\"",
     "audit:production": "pnpm audit --prod --audit-level high",
-    "check:repo": "knip --include files,dependencies"
+    "check:repo": "knip --include files,dependencies",
+    "test:fork-4663": "node packages/contracts/scripts/rehearse-fixed-supply-4663.mjs"
   },
   "devDependencies": {
     "knip": "6.29.0",

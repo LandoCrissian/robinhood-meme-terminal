@@ -16,6 +16,6 @@ Beneficiaries claim only their own credits. ETH and ERC-20 claims can be tested 
 
 A project can use its settled treasury funds for an explicitly approved expense with a verified asset, payee, amount, purpose and independent authorization. Preparation evidence covers distinct synthetic RMT and LAMMB spending decisions. A future LAMMB NFT purchase is a project treasury expense. It is not a general RMT marketplace, payout diversion or automatic reciprocal transfer. Project tokens and royalties remain under their existing authorities.
 
-Creation of the fresh RMT token and hard-fixed 1B supply comes first under [Task 049](https://github.com/LandoCrissian/robinhood-meme-terminal/issues/626). Optional earnings automation requires separately reviewed beneficiary rules and acceptance. No live purchase, sale, fee change or royalty redirect is authorized.
+Factory V2 supports independent beneficiaries for the first RMT project and unrelated projects. RMT's own creator allocation can be committed to a project treasury. Optional earnings automation requires separately reviewed beneficiary rules and acceptance. No live purchase, sale, fee change or royalty redirect is authorized.
 
 [Royalty authority evidence](evidence/rmt-task047/lammb-royalty-authority.md) · [Synthetic expense receipts](evidence/rmt-task047/4663-treasury-support-rehearsal.json)

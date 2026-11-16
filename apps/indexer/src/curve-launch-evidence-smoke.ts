@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
-import { encodeAbiParameters, encodeEventTopics, encodeFunctionData, keccak256, zeroAddress, type Address, type Hash } from "viem";
-import { curveCreationAbi, readCurveLaunchRegistration, verifyCurveDeployment,
+import { encodeAbiParameters, encodeEventTopics, encodeFunctionData, keccak256, parseAbi, zeroAddress, type Address, type Hash } from "viem";
+import { curveCreationAbi, curveFixedSupplyProfile, readCurveLaunchRegistration, verifyCurveDeployment,
   type CurveEvidenceRpc, type CurveFixtureBinding, type CurveLaunchBinding } from "./curve-launch-evidence.js";
 import { historicalFactory } from "./historical-launches.js";
 
@@ -24,9 +24,9 @@ const tip = 130n;
 const blockHash = hash(Number(blockNumber));
 const timestamp = 1_795_000_000n;
 const fee = 400_000_000_000_000n;
-const supply = 10_000_000n * 10n ** 18n;
+const supply = 1_000_000_000n * 10n ** 18n;
 const binding: CurveLaunchBinding = {
-  chainId: 4663, engineVersion: 1, deploymentBlock, deploymentBlockHash: hash(Number(deploymentBlock)),
+  chainId: 4663, profile: curveFixedSupplyProfile, engineVersion: 1, deploymentBlock, deploymentBlockHash: hash(Number(deploymentBlock)),
   factory, factoryRuntimeHash: keccak256(factoryCode), projectRegistry: registry,
   projectRegistryRuntimeHash: keccak256(registryCode), creationFeeWei: fee, creationFeeRecipient: operator,
   confirmations: 20,
@@ -40,6 +40,10 @@ function fixtureTopics(params: Parameters<typeof encodeEventTopics<typeof curveC
 }
 
 const event = { blockNumber, blockHash, transactionHash, transactionIndex: 3, removed: false };
+function fixedSupplyTransfer(from: Address, to: Address, logIndex: number) {
+  return { ...event, address: token, logIndex, topics: fixtureTopics({ abi: curveCreationAbi, eventName: "Transfer", args: { from, to } }),
+    data: encodeAbiParameters([{ type: "uint256" }], [supply]) };
+}
 const baseReceipt: Awaited<ReturnType<CurveEvidenceRpc["getTransactionReceipt"]>> = {
   blockNumber, blockHash, transactionHash, transactionIndex: 3, status: "success", from: creator, to: factory,
   logs: [
@@ -64,17 +68,17 @@ const baseReceipt: Awaited<ReturnType<CurveEvidenceRpc["getTransactionReceipt"]>
       }),
       data: encodeAbiParameters([{ type: "uint256" }, { type: "uint256" }], [fee, 5n]),
     },
-    // ERC-20 mint logs may contain a valid all-zero topic.
-    { ...event, address: token, logIndex: 1, topics: [hash(0)], data: "0x" },
+    fixedSupplyTransfer(zeroAddress, factory, 1),
+    fixedSupplyTransfer(factory, curve, 3),
   ],
 };
 const receipt = () => structuredClone(baseReceipt);
 const tx = {
-  hash: transactionHash, blockNumber, blockHash, transactionIndex: 3, from: creator, to: factory,
+  hash: transactionHash, blockNumber, blockHash, transactionIndex: 3, chainId: 4663, from: creator, to: factory,
   value: fee + 5n,
   input: encodeFunctionData({
     abi: curveCreationAbi, functionName: "create",
-    args: ["Project", "TEST", "ipfs://untrusted", 1, treasury, 2_000, intent, timestamp + blockNumber],
+    args: ["Project", "TEST", "ipfs://untrusted", treasury, 2_000, intent, timestamp + blockNumber],
   }),
 };
 const block: CurveEvidenceRpc["getBlock"] = async ({ blockNumber: number }) => ({
@@ -94,8 +98,12 @@ const providers: CurveEvidenceRpc = {
   getTransaction: async ({ hash }) => { assert.equal(hash, transactionHash); return tx; },
   readContract: async ({ address, blockNumber: at, functionName }) => {
     assert.equal(at, blockNumber);
+    if (functionName === "FIXED_SUPPLY" || functionName === "totalSupply" || functionName === "decimals") {
+      assert.equal(address, token);
+      return functionName === "decimals" ? 18 : supply;
+    }
     assert.equal(address, factory);
-    return { engineVersion: 1, projectRegistry: registry, creationFeeWei: fee, operatingRecipient: operator }[functionName];
+    return { engineVersion: 1, projectRegistry: registry, creationFeeWei: fee, operatingRecipient: operator, tokenSupply: supply }[functionName];
   },
 };
 
@@ -113,8 +121,8 @@ export async function testCurveLaunchEvidence() {
     getBlockNumber: async () => { throw new Error("wrong chain must not proceed"); },
   }, eventRef), /chain ID/);
 
-  const fixture: CurveFixtureBinding = { ...binding, chainId: 31337, profile: "task036-local-only", confirmations: 2 };
-  const fixtureRpc: CurveEvidenceRpc = { ...providers, getChainId: async () => 31337 };
+  const fixture: CurveFixtureBinding = { ...binding, chainId: 31337, confirmations: 2 };
+  const fixtureRpc: CurveEvidenceRpc = { ...providers, getChainId: async () => 31337, getTransaction: async () => ({ ...tx, chainId: 31337 }) };
   await assert.rejects(readCurveLaunchRegistration({ ...fixture, confirmations: 1 }, forbidden, eventRef), /deployment binding/);
   await assert.rejects(readCurveLaunchRegistration({ ...fixture, profile: undefined } as unknown as CurveFixtureBinding,
     forbidden, eventRef), /deployment binding/);
@@ -138,11 +146,12 @@ export async function testCurveLaunchEvidence() {
   assert.deepEqual({
     kind: verified.kind, lifecycle: verified.status, chainId: verified.chainId, engineVersion: verified.engineVersion,
     factory: verified.factory, registry: verified.projectRegistry, token: verified.token, initialCurve: verified.initialCurve,
-    creator: verified.creator, totalSupplyWei: verified.totalSupplyWei, registration: verified.projectRegistrationLogIndex,
+    creator: verified.creator, totalSupplyWei: verified.totalSupplyWei, tokenDecimals: verified.tokenDecimals,
+    registration: verified.projectRegistrationLogIndex,
     receipt: verified.creation, funding: verified.creationFee, checkpoint: verified.checkpoint,
   }, {
-    kind: "curve-launch-v1", lifecycle: "created", chainId: 4663, engineVersion: 1, factory, registry, token, initialCurve: curve,
-    creator, totalSupplyWei: supply.toString(), registration: 4,
+    kind: "curve-launch-1b-v2", lifecycle: "created", chainId: 4663, engineVersion: 1, factory, registry, token, initialCurve: curve,
+    creator, totalSupplyWei: supply.toString(), tokenDecimals: 18, registration: 4,
     receipt: { blockNumber: "108", blockHash, timestamp: new Date(Number(timestamp + blockNumber) * 1000).toISOString(),
       transactionHash, logIndex: 5 },
     funding: { amountWei: fee.toString(), recipient: operator, refundWei: "5", logIndex: 6 },
@@ -158,15 +167,29 @@ export async function testCurveLaunchEvidence() {
       /deployment or runtime/],
     ["unexpected protocol", { readContract: async (params) => params.functionName === "engineVersion" ? 6 : providers.readContract(params) },
       /factory protocol binding/],
+    ["wrong factory fixed supply", { readContract: async (params) => params.functionName === "tokenSupply" ? supply - 1n : providers.readContract(params) },
+      /factory protocol binding/],
+    ["wrong token supply", { readContract: async (params) => params.functionName === "totalSupply" ? supply - 1n : providers.readContract(params) },
+      /fixed supply token state/],
+    ["wrong immutable token supply", { readContract: async (params) => params.functionName === "FIXED_SUPPLY" ? supply - 1n : providers.readContract(params) },
+      /fixed supply token state/],
+    ["wrong token decimals", { readContract: async (params) => params.functionName === "decimals" ? 17 : providers.readContract(params) },
+      /fixed supply token state/],
     ["different recipient", { readContract: async (params) => params.functionName === "operatingRecipient" ? zeroAddress : providers.readContract(params) },
       /factory protocol binding/],
     ["unknown receipt", { getTransactionReceipt: async () => { throw new Error("receipt unavailable"); } }, /receipt unavailable/],
     ["reverted receipt", { getTransactionReceipt: async () => ({ ...receipt(), status: "reverted" }) }, /unsuccessful receipt/],
     ["wrong transaction value", { getTransaction: async () => ({ ...tx, value: fee }) }, /creation fee mismatch/],
+    ["wrong signed transaction chain", { getTransaction: async () => ({ ...tx, chainId: 31337 }) }, /unbound creation transaction/],
     ["wrong transaction sender", { getTransaction: async () => ({ ...tx, from: operator }) }, /unbound creation transaction/],
     ["expired creation tx", { getTransaction: async () => ({ ...tx, input: encodeFunctionData({
       abi: curveCreationAbi, functionName: "create",
-      args: ["Project", "TEST", "ipfs://untrusted", 1, treasury, 2_000, intent, timestamp],
+      args: ["Project", "TEST", "ipfs://untrusted", treasury, 2_000, intent, timestamp],
+    }) }) }, /creation calldata mismatch/],
+    ["trailing supply data", { getTransaction: async () => ({ ...tx, input: `${tx.input}${"0".repeat(64)}` }) }, /creation calldata mismatch/],
+    ["legacy selectable-supply selector", { getTransaction: async () => ({ ...tx, input: encodeFunctionData({
+      abi: parseAbi(["function create(string,string,string,uint8,address,uint16,bytes32,uint256)"]),
+      functionName: "create", args: ["Project", "TEST", "ipfs://untrusted", 1, treasury, 2_000, intent, timestamp + blockNumber],
     }) }) }, /creation calldata mismatch/],
     ["wrong canonical block", { getBlock: async (params) => ({ ...await block(params), hash: hash(99) }) }, /block mismatch/],
     ["transaction missing from canonical block", { getBlock: async (params) => ({ ...await block(params), transactions: [] }) },
@@ -188,6 +211,28 @@ export async function testCurveLaunchEvidence() {
       r.logs.push({ ...r.logs[1]!, logIndex: 200 });
       return r;
     } }, /expected one indexed event/],
+    ["less than one billion in the creation event", { getTransactionReceipt: async () => {
+      const r = receipt();
+      r.logs[1]!.data = encodeAbiParameters([{ type: "bytes32" }, { type: "uint256" }, { type: "address" }, { type: "address" },
+        { type: "uint16" }, { type: "string" }, { type: "string" }, { type: "string" }],
+      [intent, supply - 1n, revenueLedger, treasury, 2_000, "Project", "TEST", "ipfs://untrusted"]);
+      return r;
+    } }, /creation fixed supply mismatch/],
+    ["wrong mint destination", { getTransactionReceipt: async () => {
+      const r = receipt();
+      r.logs[3] = fixedSupplyTransfer(zeroAddress, creator, 1);
+      return r;
+    } }, /fixed supply mint and opening inventory transfers/],
+    ["second mint", { getTransactionReceipt: async () => {
+      const r = receipt();
+      r.logs.push(fixedSupplyTransfer(zeroAddress, factory, 2));
+      return r;
+    } }, /fixed supply mint and opening inventory transfers/],
+    ["no curve funding transfer", { getTransactionReceipt: async () => {
+      const r = receipt();
+      r.logs.pop();
+      return r;
+    } }, /fixed supply mint and opening inventory transfers/],
     ["spoofed project registry", { getTransactionReceipt: async () => {
       const r = receipt();
       r.logs[0]!.address = address(9);

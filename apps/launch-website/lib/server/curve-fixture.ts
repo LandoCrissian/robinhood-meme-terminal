@@ -1,13 +1,16 @@
 import { readFileSync } from "node:fs";
 import { isAbsolute } from "node:path";
 import { createPublicClient, getAddress, http, keccak256, parseAbi, zeroAddress, type Address, type Hex } from "viem";
+import { launchTokenSupplyWei } from "../launch-terms";
 import { isTransactionHash, testCreationFeeWei, testCreationSignature } from "../test-creation";
 
+const fixtureProfile = "rmt-curve-fixed-supply-v2";
 export const fixtureChainId = 31337;
 export const fixtureCreationFee = testCreationFeeWei;
 export const factoryAbi = parseAbi([
   testCreationSignature,
   "function engineVersion() view returns (uint32)",
+  "function tokenSupply() view returns (uint256)",
   "function projectRegistry() view returns (address)",
   "function creationFeeWei() view returns (uint256)",
   "function operatingRecipient() view returns (address)",
@@ -47,7 +50,7 @@ function loopback(value: string | undefined) {
 }
 
 export function parseCurveFixture(env: Record<string, string | undefined>, manifest: unknown): CurveFixture | null {
-  if (env.RMT_CURVE_FIXTURE !== "task036-local-only" || env.NETLIFY || env.VERCEL || env.DEPLOY_ID || env.CONTEXT || env.RAILWAY_ENVIRONMENT_ID
+  if (env.RMT_CURVE_FIXTURE !== fixtureProfile || env.NETLIFY || env.VERCEL || env.DEPLOY_ID || env.CONTEXT || env.RAILWAY_ENVIRONMENT_ID
       || !env.RMT_CURVE_FIXTURE_READ_KEY || !/^[0-9a-f]{64}$/.test(env.RMT_CURVE_FIXTURE_READ_KEY) || /^0+$/.test(env.RMT_CURVE_FIXTURE_READ_KEY)) return null;
   const origin = loopback(env.RMT_CURVE_FIXTURE_SITE_ORIGIN);
   const rpcUrl = loopback(env.RMT_CURVE_FIXTURE_RPC);
@@ -57,7 +60,8 @@ export function parseCurveFixture(env: Record<string, string | undefined>, manif
   const data = manifest as Record<string, unknown>;
   const block = typeof data.deployBlock === "number" && Number.isSafeInteger(data.deployBlock)
     ? String(data.deployBlock) : data.deployBlock;
-  if (data.chainId !== fixtureChainId || !fixtureAddress(data.factory) || !fixtureHash(data.factoryRuntimeHash)
+  if (data.profile !== fixtureProfile || data.fixedSupplyWei !== launchTokenSupplyWei.toString()
+      || data.chainId !== fixtureChainId || !fixtureAddress(data.factory) || !fixtureHash(data.factoryRuntimeHash)
       || !fixtureAddress(data.projectRegistry) || !fixtureHash(data.registryRuntimeHash) || !fixtureHash(data.deploymentBlockHash)
       || typeof block !== "string" || !/^[1-9][0-9]{0,15}$/.test(block)
       || data.creationFeeWei !== fixtureCreationFee.toString() || !fixtureAddress(data.creationFeeRecipient)
@@ -79,7 +83,7 @@ export function parseCurveFixture(env: Record<string, string | undefined>, manif
 
 export function configuredCurveFixture(headers: Headers): CurveFixture | null {
   const env = process.env;
-  if (env.RMT_CURVE_FIXTURE !== "task036-local-only" || env.NETLIFY || env.VERCEL || env.DEPLOY_ID || env.CONTEXT || env.RAILWAY_ENVIRONMENT_ID) return null;
+  if (env.RMT_CURVE_FIXTURE !== fixtureProfile || env.NETLIFY || env.VERCEL || env.DEPLOY_ID || env.CONTEXT || env.RAILWAY_ENVIRONMENT_ID) return null;
   const origin = loopback(env.RMT_CURVE_FIXTURE_SITE_ORIGIN);
   const manifest = env.RMT_CURVE_FIXTURE_DEPLOYMENT;
   if (!origin || headers.get("host") !== new URL(origin).host || !manifest || !isAbsolute(manifest)) return null;
@@ -106,18 +110,20 @@ export function sameHex(a: string | null | undefined, b: string) {
 export async function verifyCurveFixture(fixture: CurveFixture, rpc = fixtureRpc(fixture)) {
   if (await rpc.getChainId() !== fixtureChainId) throw new Error("Fixture chain mismatch");
   const read = { address: fixture.factory, abi: factoryAbi } as const;
-  const [block, tip, factoryAtDeployment, factoryCode, registryCode, version, registry, fee, feeRecipient] = await Promise.all([
+  const [block, tip, factoryAtDeployment, factoryCode, registryCode, version, registry, fee, feeRecipient, supply] = await Promise.all([
     rpc.getBlock({ blockNumber: fixture.deploymentBlock }), rpc.getBlock({ blockTag: "latest" }),
     rpc.getCode({ address: fixture.factory, blockNumber: fixture.deploymentBlock }),
     rpc.getCode({ address: fixture.factory }), rpc.getCode({ address: fixture.registry }),
     rpc.readContract({ ...read, functionName: "engineVersion" }), rpc.readContract({ ...read, functionName: "projectRegistry" }),
     rpc.readContract({ ...read, functionName: "creationFeeWei" }), rpc.readContract({ ...read, functionName: "operatingRecipient" }),
+    rpc.readContract({ ...read, functionName: "tokenSupply" }),
   ]);
   if (block.number !== fixture.deploymentBlock || !sameHex(block.hash, fixture.deploymentBlockHash)
       || tip.number < fixture.deploymentBlock || !factoryAtDeployment || !sameHex(keccak256(factoryAtDeployment), fixture.factoryRuntimeHash)
       || !factoryCode || !sameHex(keccak256(factoryCode), fixture.factoryRuntimeHash)
       || !registryCode || !sameHex(keccak256(registryCode), fixture.registryRuntimeHash)
-      || version !== 1 || !sameHex(registry, fixture.registry) || fee !== fixtureCreationFee || !sameHex(feeRecipient, fixture.feeRecipient)) {
+      || version !== 1 || !sameHex(registry, fixture.registry) || fee !== fixtureCreationFee || !sameHex(feeRecipient, fixture.feeRecipient)
+      || supply !== launchTokenSupplyWei) {
     throw new Error("Fixture deployment mismatch");
   }
   return tip;

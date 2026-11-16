@@ -7,9 +7,9 @@ const hash = (digit: string) => "0x" + digit.repeat(64);
 const height = { blockNumber: "100", blockHash: hash("a"), timestamp: "2026-11-14T12:00:00.000Z" };
 const observed = { blockNumber: "101", blockHash: hash("b"), timestamp: "2026-11-14T12:00:02.000Z" };
 const registration: CurveRegistration = {
-  kind: "curve-launch-v1", status: "created", chainId: 4663, engineVersion: 1,
+  kind: "curve-launch-1b-v2", status: "created", chainId: 4663, engineVersion: 1,
   factory: address("1"), projectRegistry: address("2"), token: address("3"), initialCurve: address("4"), creator: address("5"),
-  name: "Fixture token", symbol: "FIX",
+  name: "Fixture token", symbol: "FIX", totalSupplyWei: "1000000000000000000000000000", tokenDecimals: 18,
   creation: { ...height, transactionHash: hash("c"), logIndex: 4 },
   checkpoint: { ...observed, confirmations: 20, finality: "l2-confirmed", l1Finality: "unverified" },
 };
@@ -40,6 +40,8 @@ test("keeps proposed, created and observed curve states distinct", () => {
 test("rejects historical, immature and conflicting registration observations", () => {
   const legacy = { ...registration, kind: "historical-rmt" } as unknown as CurveRegistration;
   assert.equal(hasCurveRegistration(legacy), false);
+  assert.equal(hasCurveRegistration({ ...registration, totalSupplyWei: "100000000000000000000000000" }), false);
+  assert.equal(hasCurveRegistration({ ...registration, tokenDecimals: 6 } as unknown as CurveRegistration), false);
   assert.equal(hasCurveRegistration({ ...registration, checkpoint: { ...registration.checkpoint, confirmations: 19 } }), false);
   assert.equal(hasCurveRegistration({ ...registration, checkpoint: { ...height, confirmations: 20,
     finality: "l2-confirmed", l1Finality: "unverified", blockHash: hash("f") } }), false);

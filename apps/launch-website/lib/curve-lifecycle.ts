@@ -1,7 +1,8 @@
 import { isLaunchAddress, robinhoodChainId, type LaunchBlock, type LaunchReceipt } from "./launch-data";
+import { launchRegistrationKind, launchTokenDecimals, launchTokenSupplyWei } from "./launch-terms";
 
 export type CurveRegistration = {
-  kind: "curve-launch-v1";
+  kind: typeof launchRegistrationKind;
   status: "created";
   chainId: typeof robinhoodChainId;
   engineVersion: 1;
@@ -12,6 +13,8 @@ export type CurveRegistration = {
   creator: string;
   name: string;
   symbol: string;
+  totalSupplyWei: string;
+  tokenDecimals: typeof launchTokenDecimals;
   creation: LaunchReceipt;
   checkpoint: LaunchBlock & { confirmations: number; finality: "l2-confirmed"; l1Finality: "unverified" };
 };
@@ -90,7 +93,8 @@ function comesAfter(receipt: LaunchReceipt, creation: LaunchReceipt) {
 
 export function hasCurveRegistration(record: CurveRegistration) {
   const { creation, checkpoint } = record;
-  return record.kind === "curve-launch-v1" && record.status === "created" && record.chainId === robinhoodChainId
+  return record.kind === launchRegistrationKind && record.status === "created" && record.chainId === robinhoodChainId
+    && record.totalSupplyWei === launchTokenSupplyWei.toString() && record.tokenDecimals === launchTokenDecimals
     && record.engineVersion === 1 && [record.factory, record.projectRegistry, record.token, record.initialCurve, record.creator].every(address)
     && isReceipt(creation) && isBlock(checkpoint) && between(creation, creation, checkpoint)
     && checkpoint.finality === "l2-confirmed" && checkpoint.l1Finality === "unverified"

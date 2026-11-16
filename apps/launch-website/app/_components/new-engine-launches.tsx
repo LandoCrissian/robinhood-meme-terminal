@@ -52,6 +52,7 @@ export function NewEngineLaunches({ directory }: { directory: NewEngineDirectory
         <p>{describeCurveLifecycle(launch).label}</p>
         <dl className="lpFacts lpProjectLink">
           <dt>New-engine token</dt><dd><a href={`${robinhoodExplorer}/address/${registration.token}`} className="lpAddress">{registration.token}</a></dd>
+          <dt>Fixed supply</dt><dd>{units(registration.totalSupplyWei)} tokens · {registration.tokenDecimals} decimals</dd>
           <dt>Factory registration</dt><dd><a href={`${robinhoodExplorer}/tx/${registration.creation.transactionHash}`}>Block {registration.creation.blockNumber} · log {registration.creation.logIndex}</a></dd>
           <LifecycleEvidence launch={launch} />
           <dt>Ethereum L1 finality</dt><dd>Unverified</dd>

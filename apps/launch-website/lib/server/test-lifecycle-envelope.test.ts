@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { encodeFunctionData, parseAbi } from "viem";
-import { curveBuySignature, isTestLifecycleRequest, lifecycleCalldataMatches, sameTestLifecycleRequest, type TestLifecycleRequest } from "../test-lifecycle";
+import { curveBuySignature, isLifecycleAmount, isTestLifecycleRequest, lifecycleCalldataMatches, sameTestLifecycleRequest, type TestLifecycleRequest } from "../test-lifecycle";
 
 test("the reviewed curve buy envelope matches the wallet's exact calldata", async () => {
   const request = {
@@ -19,4 +19,11 @@ test("the reviewed curve buy envelope matches the wallet's exact calldata", asyn
   assert.equal(isTestLifecycleRequest({ ...request, value: "0x15" }), false);
   assert.equal(await lifecycleCalldataMatches({ ...request, deadline: "101" }), false);
   assert.equal(sameTestLifecycleRequest(request, { ...request, nonce: "0x2" }), false);
+});
+
+test("admits token amounts up to the fixed supply while preserving the native input cap", () => {
+  assert.equal(isLifecycleAmount("sell", "600000000000000000000000000"), true);
+  assert.equal(isLifecycleAmount("v4-token-approve", "1000000000000000000000000000"), true);
+  assert.equal(isLifecycleAmount("v4-permit2-approve", "1000000000000000000000000001"), false);
+  assert.equal(isLifecycleAmount("v4-buy", "100000000000000000001"), false);
 });

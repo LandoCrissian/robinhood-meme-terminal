@@ -7,7 +7,7 @@ import {RMTLaunchBondingCurveV1} from "./RMTLaunchBondingCurveV1.sol";
 import {IRMTCurveMigrationTemplate} from "./RMTLaunchCurveDirectoryV1.sol";
 import {RMTLaunchCurveSuccessorDeployerV1} from "./RMTLaunchBondingCurveV2.sol";
 import {RMTLaunchCurveRevenueLedgerV1} from "./RMTLaunchCurveRevenueLedgerV1.sol";
-import {RMTLaunchCurveTokenV1} from "./RMTLaunchCurveTokenV1.sol";
+import {RMTLaunchCurveTokenV2, RMT_FIXED_TOKEN_SUPPLY} from "./RMTLaunchCurveTokenV2.sol";
 import {IRMTV4CurveGraduationV1} from "./interfaces/IRMTV4CurveGraduationV1.sol";
 
 interface IRMTLaunchCurveRegistryV1 {
@@ -18,9 +18,10 @@ interface IRMTLaunchCurveRegistryV1 {
         returns (address deployer, bytes32 runtimeHash);
 }
 
-/// @notice Creates immutable V1 curves and accounts for the factory's fixed creation fee.
-contract RMTLaunchCurveFactoryV1 is ReentrancyGuard {
+/// @notice Creates one-billion-token launches and accounts for the factory's fixed creation fee.
+contract RMTLaunchCurveFactoryV2 is ReentrancyGuard {
     uint32 public constant engineVersion = 1;
+    uint256 public constant tokenSupply = RMT_FIXED_TOKEN_SUPPLY;
     IRMTV4CurveGraduationV1 public immutable graduationEngine;
     address public immutable operatingRecipient;
     address public immutable futureReserveRecipient;
@@ -110,7 +111,6 @@ contract RMTLaunchCurveFactoryV1 is ReentrancyGuard {
         string calldata name,
         string calldata symbol,
         string calldata projectURI,
-        uint8 supplyPreset,
         address treasury,
         uint16 treasuryShareBps,
         bytes32 intentId,
@@ -120,16 +120,15 @@ contract RMTLaunchCurveFactoryV1 is ReentrancyGuard {
         if (block.timestamp > deadline) revert DeadlineExpired();
         if (
             bytes(name).length == 0 || bytes(name).length > 48 || bytes(symbol).length == 0 || bytes(symbol).length > 12
-                || bytes(projectURI).length > 196 || supplyPreset > 2 || intentId == bytes32(0)
+                || bytes(projectURI).length > 196 || intentId == bytes32(0)
                 || treasuryShareBps > 9_000 || treasury == msg.sender
                 || (treasury == address(0)) != (treasuryShareBps == 0)
         ) revert InvalidLaunch();
         if (tokenForIntent[msg.sender][intentId] != address(0)) revert DuplicateIntent();
         uint256 fee = creationFeeWei;
         if (msg.value < fee) revert InsufficientCreationFee(fee, msg.value);
-        uint256 supply = 1_000_000 ether * (10 ** supplyPreset);
         bytes32 salt = keccak256(abi.encode(msg.sender, intentId));
-        RMTLaunchCurveTokenV1 launchedToken = new RMTLaunchCurveTokenV1{salt: salt}(name, symbol, supply);
+        RMTLaunchCurveTokenV2 launchedToken = new RMTLaunchCurveTokenV2{salt: salt}(name, symbol);
         RMTLaunchBondingCurveV1 market = new RMTLaunchBondingCurveV1(
             IERC20(address(launchedToken)),
             msg.sender,
@@ -149,7 +148,7 @@ contract RMTLaunchCurveFactoryV1 is ReentrancyGuard {
         curveForToken[token] = curve;
         originCurveForToken[token] = curve;
         creationFeesAccrued += fee;
-        if (!launchedToken.transfer(curve, supply)) revert InvalidLaunch();
+        if (!launchedToken.transfer(curve, tokenSupply)) revert InvalidLaunch();
         if (address(projectRegistry) != address(0)) projectRegistry.register(token, curve);
         uint256 refund = msg.value - fee;
         if (refund != 0) {
@@ -161,7 +160,7 @@ contract RMTLaunchCurveFactoryV1 is ReentrancyGuard {
             curve,
             msg.sender,
             intentId,
-            supply,
+            tokenSupply,
             address(market.revenueLedger()),
             treasury,
             treasuryShareBps,

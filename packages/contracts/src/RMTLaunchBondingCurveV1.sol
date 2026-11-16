@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
+import {RMT_FIXED_TOKEN_SUPPLY} from "./RMTLaunchCurveTokenV2.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -109,9 +110,7 @@ contract RMTLaunchBondingCurveV1 is ReentrancyGuard {
         futureReserveRecipient = futureReserveRecipient_;
         graduationEngine = graduationEngine_;
         uint256 supply = token_.totalSupply();
-        if (supply != 1_000_000 ether && supply != 10_000_000 ether && supply != 100_000_000 ether) {
-            revert InvalidConfiguration();
-        }
+        if (supply != RMT_FIXED_TOKEN_SUPPLY) revert InvalidConfiguration();
         totalSupply = supply;
         virtualToken = supply * 9 / 5;
         graduationSold = supply * 3 / 5;

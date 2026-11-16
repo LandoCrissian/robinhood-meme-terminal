@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { creationReviewPath, emptyLaunchDraft, projectTreasuryShareUnit, restoreLegacyLaunchDraft, reviewableFields,
-  treasuryProjectPercent, validateFixtureLaunchDraft, validateLaunchDraft } from "../launch-draft";
+import { creationReviewPath, emptyLaunchDraft, projectTreasuryShareUnit, readStoredLaunchDraft, restoreLegacyLaunchDraft,
+  reviewableFields, treasuryProjectPercent, validateLaunchDraft } from "../launch-draft";
 import { reviewLaunchDraft } from "./launch-draft";
 
 const origin = "https://rmt.example";
@@ -9,9 +9,9 @@ const treasury = "0x" + "A".repeat(40);
 const draft = {
   ...emptyLaunchDraft, name: " Civic Builders ", symbol: " build ", description: "Draft only\r\nSecond line",
   projectURI: "https://example.org/launch", artworkURL: "https://example.org/art.png",
-  supplyPreset: "1", treasury, treasuryShare: "25",
+  treasury, treasuryShare: "25",
 };
-const { description, artworkURL, supplyPreset, ...reviewFields } = draft;
+const { description, artworkURL, ...reviewFields } = draft;
 
 function post(input: unknown, opts: { url?: string; method?: string; origin?: string | null; contentType?: string } = {}) {
   const headers = new Headers({ "content-type": opts.contentType ?? "application/json" });
@@ -51,21 +51,23 @@ test("rejects invalid strings, noncanonical options and unpaired treasury data",
   }
 });
 
-test("isolates the existing contract's supply presets to the local fixture review", async () => {
-  for (const value of ["01", "3", "-1"]) {
-    const result = validateFixtureLaunchDraft({ ...draft, supplyPreset: value });
-    assert.equal(result.ok, false);
-    assert.ok(!result.ok && result.errors.supplyPreset);
+test("uses the same one-billion review on every origin and rejects client-supplied supply", async () => {
+  const valid = { ...reviewFields, treasuryShareUnit: projectTreasuryShareUnit };
+  for (const extra of [{ supplyPreset: "0" }, { supply: "1000000" }, { supply: "1000000000" },
+    { fixedSupplyWei: "1000000000000000000000000000" }]) {
+    assert.equal((await reviewLaunchDraft(post({ ...valid, ...extra }))).status, 400);
   }
-  const valid = { ...reviewFields, supplyPreset, treasuryShareUnit: projectTreasuryShareUnit };
-  assert.equal((await reviewLaunchDraft(post(valid))).status, 400);
-  assert.equal((await reviewLaunchDraft(post({ ...reviewFields, supply: "1000000" }))).status, 400);
-  assert.equal((await reviewLaunchDraft(post(reviewFields), true)).status, 400);
-  const response = await reviewLaunchDraft(post(valid), true);
+  const response = await reviewLaunchDraft(post(valid));
   assert.equal(response.status, 200);
   const result = await response.json();
-  assert.equal(result.draft.supply, 10_000_000);
-  assert.equal(result.draft.supplyPreset, 1);
+  assert.equal(result.draft.supply, 1_000_000_000);
+  assert.equal(Object.hasOwn(result.draft, "supplyPreset"), false);
+});
+
+test("restores editable text from an earlier draft without restoring its supply option", () => {
+  assert.deepEqual(readStoredLaunchDraft({ ...draft, supplyPreset: "1" }), draft);
+  assert.equal(readStoredLaunchDraft({ ...draft, symbol: false }), undefined);
+  assert.equal(readStoredLaunchDraft({ ...draft, symbol: "x".repeat(501) }), undefined);
 });
 
 test("accepts only a same-origin JSON review and returns only contract-relevant fields", async () => {

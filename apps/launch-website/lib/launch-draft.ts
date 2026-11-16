@@ -1,12 +1,12 @@
 import { isLaunchAddress } from "./launch-data";
-import { fixtureSupplyPresets, launchTerms, plannedLaunchSupply } from "./launch-terms";
+import { launchTerms, launchTokenSupply } from "./launch-terms";
 
 export const creationReviewPath = "/api/launchpad/creation-review";
 export const launchDraftLimits = { name: 48, symbol: 12, description: 500, projectURI: 196, artworkURL: 256 } as const;
 
 export const emptyLaunchDraft = {
   name: "", symbol: "", description: "", projectURI: "", artworkURL: "",
-  supplyPreset: "0", treasury: "", treasuryShare: "",
+  treasury: "", treasuryShare: "",
 };
 
 export type LaunchDraft = typeof emptyLaunchDraft;
@@ -14,10 +14,9 @@ export const projectTreasuryShareUnit = "project-percent" as const;
 export const projectFeeShareBps = launchTerms.projectFeeSharePercent * 100;
 const fullFeeShareBps = 10_000;
 
-export type LaunchReviewRequest = Omit<LaunchDraft, "description" | "artworkURL" | "supplyPreset"> & {
+export type LaunchReviewRequest = Omit<LaunchDraft, "description" | "artworkURL"> & {
   treasuryShareUnit?: typeof projectTreasuryShareUnit;
 };
-type FixtureLaunchReviewRequest = LaunchReviewRequest & { supplyPreset: string };
 type TreasuryShareUnit = "project-percent" | "total-fee-percent";
 export type LaunchDraftField = keyof LaunchDraft;
 export type LaunchDraftErrors = Partial<Record<LaunchDraftField, string>>;
@@ -32,13 +31,10 @@ export type ReviewedLaunchDraft = {
   treasuryShareBps: number;
 };
 export type ReviewedLaunchTerms = Omit<ReviewedLaunchDraft, "description" | "artworkURL">;
-export type ReviewedFixtureLaunchDraft = ReviewedLaunchDraft & { supplyPreset: number };
-export type ReviewedFixtureLaunchTerms = ReviewedLaunchTerms & { supplyPreset: number };
-type DraftResult<T extends ReviewedLaunchDraft> = { ok: true; draft: T } | { ok: false; errors: LaunchDraftErrors };
+type DraftResult = { ok: true; draft: ReviewedLaunchDraft } | { ok: false; errors: LaunchDraftErrors };
 
 const reviewFields = ["name", "symbol", "projectURI", "treasury", "treasuryShare"] as const;
-const fixtureReviewFields = [...reviewFields, "supplyPreset"] as const;
-const fields = [...fixtureReviewFields, "description", "artworkURL"] as const;
+const fields = [...reviewFields, "description", "artworkURL"] as const;
 const encoder = new TextEncoder();
 const unsafeText = /[\p{Cc}\p{Cf}\p{Cs}]/u;
 
@@ -48,24 +44,27 @@ function hasStringFields(input: unknown, keys: readonly string[]) {
     && keys.every((key) => Object.hasOwn(input, key) && typeof (input as Record<string, unknown>)[key] === "string");
 }
 
-export function isLaunchDraft(input: unknown): input is LaunchDraft {
-  return hasStringFields(input, fields);
+export function readStoredLaunchDraft(input: unknown): LaunchDraft | undefined {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return;
+  const record = input as Record<string, unknown>;
+  const restored = { ...emptyLaunchDraft };
+  // Only restore known editable fields. Earlier drafts may contain a retired option.
+  for (const key of fields) {
+    const value = record[key];
+    if (!Object.hasOwn(record, key) || typeof value !== "string" || value.length > 500) return;
+    restored[key] = value;
+  }
+  return restored;
 }
 
-export function isLaunchReviewRequest(input: unknown, fixture = false): input is LaunchReviewRequest | FixtureLaunchReviewRequest {
-  const keys = fixture ? fixtureReviewFields : reviewFields;
-  return hasStringFields(input, keys) || (hasStringFields(input, [...keys, "treasuryShareUnit"])
+export function isLaunchReviewRequest(input: unknown): input is LaunchReviewRequest {
+  return hasStringFields(input, reviewFields) || (hasStringFields(input, [...reviewFields, "treasuryShareUnit"])
     && (input as LaunchReviewRequest).treasuryShareUnit === projectTreasuryShareUnit);
 }
 
-export function isReviewedFixtureDraft(draft: ReviewedLaunchDraft): draft is ReviewedFixtureLaunchDraft {
-  return "supplyPreset" in draft && typeof draft.supplyPreset === "number";
-}
-
-export function reviewableFields(draft: ReviewedLaunchDraft): ReviewedLaunchTerms | ReviewedFixtureLaunchTerms {
+export function reviewableFields(draft: ReviewedLaunchDraft): ReviewedLaunchTerms {
   const { name, symbol, projectURI, supply, treasury, treasuryShareBps } = draft;
-  return { name, symbol, projectURI, supply, treasury, treasuryShareBps,
-    ...(isReviewedFixtureDraft(draft) ? { supplyPreset: draft.supplyPreset } : {}) };
+  return { name, symbol, projectURI, supply, treasury, treasuryShareBps };
 }
 
 function httpsURL(input: string, maxBytes: number) {
@@ -107,7 +106,7 @@ export function restoreLegacyLaunchDraft(draft: LaunchDraft): LaunchDraft {
   return { ...draft, treasuryShare: share };
 }
 
-export function validateLaunchDraft(draft: LaunchDraft, unit: TreasuryShareUnit = projectTreasuryShareUnit): DraftResult<ReviewedLaunchDraft> {
+export function validateLaunchDraft(draft: LaunchDraft, unit: TreasuryShareUnit = projectTreasuryShareUnit): DraftResult {
   const errors: LaunchDraftErrors = {};
   const name = draft.name.trim();
   const symbol = draft.symbol.trim();
@@ -148,17 +147,6 @@ export function validateLaunchDraft(draft: LaunchDraft, unit: TreasuryShareUnit 
   if (Object.keys(errors).length) return { ok: false, errors };
   return { ok: true, draft: {
     name, symbol: symbol.toUpperCase(), description, projectURI: projectURI ?? "", artworkURL: artworkURL ?? "",
-    supply: plannedLaunchSupply, treasury, treasuryShareBps,
+    supply: launchTokenSupply, treasury, treasuryShareBps,
   } };
-}
-
-export function validateFixtureLaunchDraft(draft: LaunchDraft, unit?: TreasuryShareUnit): DraftResult<ReviewedFixtureLaunchDraft> {
-  const validated = validateLaunchDraft(draft, unit);
-  const supplyPreset = /^[0-2]$/.test(draft.supplyPreset) ? Number(draft.supplyPreset) : -1;
-  const supply = fixtureSupplyPresets[supplyPreset];
-  if (supply === undefined) return { ok: false, errors: {
-    ...(validated.ok ? {} : validated.errors), supplyPreset: "Choose one of the fixed test supply presets.",
-  } };
-  if (!validated.ok) return validated;
-  return { ok: true, draft: { ...validated.draft, supply, supplyPreset } };
 }

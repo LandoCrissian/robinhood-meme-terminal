@@ -6,11 +6,11 @@ RMT Launch is a token launchpad for Robinhood Chain. Creators prepare a token, t
 
 The hosted site is read-only. The creator, trading, graduation and claim flows have been exercised with synthetic assets in isolated environments. Production execution remains **BLOCKED_NO_BROADCAST**.
 
-## Next release
+## Fixed-supply candidate
 
-[Task 049](https://github.com/LandoCrissian/robinhood-meme-terminal/issues/626) implements a fresh RMT token as the first project on a separately versioned engine. Every creation will mint exactly **1,000,000,000 tokens** with 18 decimals and no further minting. Creators choose project details and their own payout terms. The factory sets supply without creator or administrator overrides. The current fixture predates that rule and still needs the contract, website and indexing changes in Task 049.
+The [Task 049 candidate](https://github.com/LandoCrissian/robinhood-meme-terminal/issues/626) creates a fresh **RMT** token as its first project in the isolated rehearsal. The factory mints exactly **1,000,000,000 tokens** with 18 decimals for every launch. Creators choose project details and their own payout terms. Supply is fixed in the ERC-20 constructor and creation has no supply argument.
 
-The proposed launch economics are 60% of supply for the curve and 40% for graduation liquidity. The 90% project, 5% Operations and 5% Reserve split applies to curve trading fees and fees earned by the original locked LP position. Review configuration and production approvals are tracked separately. Earlier V4/V6 issuances have independent historical identities.
+The candidate makes 600 million tokens available on the curve and reserves 400 million for graduation liquidity. The 90% project, 5% Operations and 5% Reserve split applies to curve trading fees and fees earned by the original locked LP position. Review configuration and production approvals are tracked separately. Earlier V4/V6 issuances have independent historical identities.
 
 ## Local checks
 

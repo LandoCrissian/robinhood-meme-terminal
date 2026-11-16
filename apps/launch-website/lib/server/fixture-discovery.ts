@@ -1,4 +1,5 @@
 import { isLaunchAddress } from "../launch-data";
+import { launchRegistrationKind, launchTokenDecimals, launchTokenSupplyWei } from "../launch-terms";
 import { encodeAbiParameters, getAddress, keccak256, zeroAddress } from "viem";
 import { testV4Pins } from "../test-v4";
 import { fixtureAddress, fixtureChainId, fixtureCreationFee, fixtureHash, sameHex, type CurveFixture } from "./curve-fixture";
@@ -33,9 +34,9 @@ export type FixtureLifecycle = {
   feeBps: number; trades: CurveTrade[]; graduation?: Graduation; postGraduation?: FixturePostGraduation;
 };
 export type FixtureLaunch = {
-  chainId: 31337; kind: "curve-launch-v1"; status: "created"; engineVersion: 1;
+  chainId: 31337; kind: typeof launchRegistrationKind; status: "created"; engineVersion: 1;
   factory: string; projectRegistry: string; token: string; initialCurve: string; creator: string; revenueLedger: string; name: string; symbol: string;
-  projectURI: string; totalSupplyWei: string; treasury: string | null; treasuryShareBps: number;
+  projectURI: string; totalSupplyWei: string; tokenDecimals: typeof launchTokenDecimals; treasury: string | null; treasuryShareBps: number;
   creation: EvidenceBlock & { transactionHash: string; logIndex: number };
   creationFee: { amountWei: string; refundWei: string; recipient: string; logIndex: number };
   opening: { inventoryWei: string; backingWei: string; soldWei: string };
@@ -173,12 +174,13 @@ function confirmLaunch(fixture: CurveFixture, data: FixtureLaunch, current: Chec
   const f = data.creationFee;
   const event = data.creation;
   const check = data.checkpoint;
-  return data.chainId === fixtureChainId && data.kind === "curve-launch-v1" && data.status === "created" && data.engineVersion === 1
+  return data.chainId === fixtureChainId && data.kind === launchRegistrationKind && data.status === "created" && data.engineVersion === 1
     && [data.token, data.initialCurve, data.creator, data.factory, data.projectRegistry, data.revenueLedger].every(fixtureAddress)
     && new Set([data.token, data.initialCurve, data.factory, data.projectRegistry, data.revenueLedger].map((address) => address.toLowerCase())).size === 5
     && (!token || sameHex(data.token, token)) && sameHex(data.factory, fixture.factory) && sameHex(data.projectRegistry, fixture.registry)
     && typeof data.name === "string" && data.name.length > 0 && data.name.length <= 48 && typeof data.symbol === "string" && data.symbol.length > 0 && data.symbol.length <= 12
-    && typeof data.projectURI === "string" && data.projectURI.length <= 196 && /^1(?:0{24}|0{25}|0{26})$/.test(data.totalSupplyWei)
+    && typeof data.projectURI === "string" && data.projectURI.length <= 196
+    && data.totalSupplyWei === launchTokenSupplyWei.toString() && data.tokenDecimals === launchTokenDecimals
     && (data.treasury === null || fixtureAddress(data.treasury)) && index(data.treasuryShareBps) && data.treasuryShareBps <= 9000
     && (data.treasury === null) === (data.treasuryShareBps === 0) && block(event)
     && fixtureHash(event.transactionHash) && index(event.logIndex) && BigInt(event.blockNumber) >= fixture.deploymentBlock

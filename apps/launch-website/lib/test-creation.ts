@@ -1,12 +1,14 @@
 import { isLaunchAddress } from "./launch-data";
-import type { ReviewedFixtureLaunchTerms } from "./launch-draft";
+import type { ReviewedLaunchTerms } from "./launch-draft";
 
 export const testCreationPath = "/api/launchpad/test-creation";
 export const testCreationChain = "0x7a69";
 export const testCreationFeeWei = 400_000_000_000_000n;
-export const testCreationSignature = "function create(string name,string symbol,string projectURI,uint8 supplyPreset,address treasury,uint16 treasuryShareBps,bytes32 intentId,uint256 deadline) payable returns (address token,address curve)" as const;
+export const testCreationSignature = "function create(string name,string symbol,string projectURI,address treasury,uint16 treasuryShareBps,bytes32 intentId,uint256 deadline) payable returns (address token,address curve)" as const;
+// Reject a journal from another factory ABI without loading the wallet encoder.
+const testCreationSelector = "0x71c51865";
 
-export type TestCreationFields = Omit<ReviewedFixtureLaunchTerms, "supply">;
+export type TestCreationFields = Omit<ReviewedLaunchTerms, "supply">;
 export type TestCreationRequest = {
   from: `0x${string}`;
   to: `0x${string}`;
@@ -46,11 +48,12 @@ export function isTransactionHash(value: unknown): value is `0x${string}` {
 }
 
 export function isTestCreationRequest(value: unknown): value is TestCreationRequest {
-  if (!value || typeof value !== "object") return false;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const input = value as Partial<TestCreationRequest>;
   return Object.keys(input).length === 9 && isLaunchAddress(input.from) && !/^0x0{40}$/i.test(input.from)
     && isLaunchAddress(input.to) && !/^0x0{40}$/i.test(input.to)
     && typeof input.data === "string" && input.data.length <= 2058 && /^0x(?:[0-9a-f]{2}){4,}$/i.test(input.data)
+    && input.data.slice(0, 10).toLowerCase() === testCreationSelector
     && typeof input.value === "string" && /^0x[0-9a-f]{1,16}$/i.test(input.value) && BigInt(input.value) === testCreationFeeWei
     && input.chainId === testCreationChain && isTransactionHash(input.intentId)
     && typeof input.deadline === "string" && /^[1-9][0-9]{0,19}$/.test(input.deadline)
@@ -73,8 +76,8 @@ export async function calldataMatchesTestCreation(request: TestCreationRequest, 
   const { encodeFunctionData, parseAbi, isAddress, zeroAddress } = await import("viem");
   const treasury = fields.treasury || zeroAddress;
   if (!isAddress(treasury) || treasury.toLowerCase() === request.from.toLowerCase()) return false;
-  const { name, symbol, projectURI, supplyPreset, treasuryShareBps } = fields;
+  const { name, symbol, projectURI, treasuryShareBps } = fields;
   const encoded = encodeFunctionData({ abi: parseAbi([testCreationSignature]), functionName: "create",
-    args: [name, symbol, projectURI, supplyPreset, treasury, treasuryShareBps, request.intentId, BigInt(request.deadline)] });
+    args: [name, symbol, projectURI, treasury, treasuryShareBps, request.intentId, BigInt(request.deadline)] });
   return encoded.toLowerCase() === request.data.toLowerCase();
 }

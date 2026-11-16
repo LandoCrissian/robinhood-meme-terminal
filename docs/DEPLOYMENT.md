@@ -9,11 +9,11 @@
 | Local Anvil 31337 | Synthetic wallet, website and PostgreSQL integration, with separate fixture configuration. |
 | Local Robinhood 4663 fork | Synthetic review of the named compiler profile against official on-fork Uniswap dependencies, governance and Safe behavior. Upstream traffic is read-only. |
 
-The frozen 4663 candidate `d4d81d1153a11728d98e694c1f3976ceb3408915` remains **BLOCKED_NO_BROADCAST**. It supplies review evidence for an earlier engine. Task 049 must rebuild the one-billion-token engine as a separately identified candidate with updated manifests, reproducible tests and independent review. [Frozen compiler profile](evidence/rmt-task043/4663-rotation-profile.json) · [Release manifest](evidence/rmt-task041-closeout/release-manifest.json) · [Task 049](https://github.com/LandoCrissian/robinhood-meme-terminal/issues/626)
+The `rmt-curve-fixed-supply-v2` profile remains **BLOCKED_NO_BROADCAST**. The profile pins compiler inputs, source transformations, external contract runtimes and bytecode templates. Its chain-4663 output is for isolated review. Foundry and the browser fixture retain the chain-31337 execution gate. The [new compiler manifest](evidence/fixed-supply/4663-profile.json) is separate from the [frozen 4663 evidence](evidence/rmt-task043/4663-rotation-profile.json).
 
 ## Review locally
 
-Use Node 22, pnpm 10.12.1, Anvil 1.7.1 and PostgreSQL 18. Use the checksum-pinned native solc 0.8.26 binary recorded in the manifest. The historical fixture build inputs come from [#594 at `8dca5773cbd4dc98f52a45616f420bce96b000f0`](https://github.com/LandoCrissian/robinhood-meme-terminal/tree/8dca5773cbd4dc98f52a45616f420bce96b000f0). Install the pinned dependencies there for the replay tools. Use separate scratch directories for app and index state.
+Use Node 22, pnpm 10.12.1, Anvil 1.7.1 and a dedicated local PostgreSQL instance. Use the checksum-pinned native solc 0.8.26 binary recorded in the manifest. Run `bash scripts/install-v4-deps.sh` from `packages/contracts`. The harness reads existing fork pins and read-only helpers from the immutable #594 Git object. Both fixtures compile the current candidate. Use separate scratch outputs for each run.
 
 ~~~powershell
 pnpm install --frozen-lockfile
@@ -24,14 +24,15 @@ node docs/evidence/rmt-task041-closeout/verify-release.mjs
 node docs/evidence/rmt-task047/probe-hosted-launchpad.mjs
 ~~~
 
-The browser uses a local synthetic wallet and the same creator interface as the production-style build. Set `$anvil`, `$solc` and `$postgresBin` to local tool paths, `$pinnedCheckout` to the pinned #594 worktree and `$newOutputDirectory` to a new evidence directory.
+The browser uses a local synthetic wallet and the same creator interface as the read-only website build. Set `$anvil`, `$solc` and `$postgresBin` to local tool paths. Choose a fresh output directory for browser evidence and a fresh output file for the 4663 rehearsal.
 
 ~~~powershell
-node scripts/visual-qa/rmt-creator-integration.mjs --candidate $pinnedCheckout --anvil $anvil --solc $solc --pg-bin $postgresBin --output $newOutputDirectory
-node docs/evidence/rmt-task046/run-shared-owner-safe-fork.mjs --checkout $pinnedCheckout --anvil $anvil --solc $solc --lib "$pinnedCheckout/packages/contracts/lib" --archive pinax
+node packages/contracts/scripts/fixed-supply-profile.mjs --solc $solc --chain 4663 --verify docs/evidence/fixed-supply/4663-profile.json
+node scripts/visual-qa/rmt-creator-integration.mjs --anvil $anvil --solc $solc --pg-bin $postgresBin --output $browserEvidenceDirectory
+pnpm test:fork-4663 --anvil $anvil --solc $solc --archive pinax --output $forkEvidenceFile
 ~~~
 
-[Browser, restart and rollback evidence](evidence/rmt-task047/31337-browser-indexer-rehearsal.json) · [4663 fork evidence](evidence/rmt-task046/4663-shared-owner-safe-rehearsal.json) · [Historical browser replay guide](https://github.com/LandoCrissian/robinhood-meme-terminal/blob/ec7296ea5b52eeaa74e2dbadd12e647f9dbf2482/docs/RMT_CURVE_TASK038_V4_SETTLEMENT.md)
+[First RMT project and unassigned live inputs](evidence/fixed-supply/first-project.json) · [Prior 4663 treasury replay](evidence/rmt-task046/4663-shared-owner-safe-rehearsal.json) · [Historical browser replay guide](https://github.com/LandoCrissian/robinhood-meme-terminal/blob/ec7296ea5b52eeaa74e2dbadd12e647f9dbf2482/docs/RMT_CURVE_TASK038_V4_SETTLEMENT.md)
 
 ## Production release
 
@@ -40,7 +41,7 @@ node docs/evidence/rmt-task046/run-shared-owner-safe-fork.mjs --checkout $pinned
 3. **Qualify production observations.** Require dependable archive receipts and native settlement traces, independent Ethereum L1 finality, durable new-engine indexer checkpoints with backup and restore, read authentication, exact full-PoolKey routing and physical-wallet recovery. Keep credentials server-side. When evidence is absent, retain explicit pending or stale states.
 4. **Keep separate approvals.** Deployment, first funded acceptance and public transaction activation each require their own owner decision. The existing website, DNS and Railway service stay within their current hosting configuration.
 
-The provisional review economics include a 0.0004 ETH creation fee, 2 ETH graduation backing, a 1% curve trading fee, 90/5/5 earned-fee allocation and permanent original LP custody. Task 049 binds the 1B rule and 600M/400M candidate allocation to the new implementation. Production rates, addresses and funding remain unapproved.
+The provisional review economics include a 0.0004 ETH creation fee, 2 ETH graduation backing, a 1% curve trading fee, 90/5/5 earned-fee allocation and permanent original LP custody. Factory V2 fixes the 1B supply and the candidate preserves the 600M/400M allocation. Production rates, addresses and funding remain unapproved.
 
 ## Historical operating evidence
 

@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { isLaunchAddress } from "../../lib/launch-data";
-import { treasuryProjectPercent, type ReviewedFixtureLaunchDraft } from "../../lib/launch-draft";
+import { treasuryProjectPercent, type ReviewedLaunchDraft } from "../../lib/launch-draft";
+import { launchTokenDecimals } from "../../lib/launch-terms";
 import { calldataMatchesTestCreation, isLocalTestWallet, isTestCreationPayouts, isTestCreationRequest, isTransactionHash, sameTestCreationRequest,
   testCreationPath, type TestCreationFields, type TestCreationPayouts, type TestCreationRequest, type TestCreationVerification } from "../../lib/test-creation";
 import { assertTestWalletBinding, connectTestWallet, sameWalletHex as same, subscribeTestWallet, testProviderAtWindow, testWalletErrorCode, type TestWallet as Wallet } from "../../lib/test-wallet";
 
-type Prepared = { draft: ReviewedFixtureLaunchDraft; wallet: Wallet; factory: string; request: TestCreationRequest; payouts: TestCreationPayouts };
+type Prepared = { draft: ReviewedLaunchDraft; wallet: Wallet; factory: string; request: TestCreationRequest; payouts: TestCreationPayouts };
 type Journal = { request: TestCreationRequest; transactionHash?: `0x${string}` };
 
 const journalKey = "rmt:creation-test:31337:v1";
@@ -40,9 +41,9 @@ async function post(body: object) {
   return payload;
 }
 
-async function prepare(draft: ReviewedFixtureLaunchDraft, account: string, factory: string, prior?: TestCreationRequest) {
-  const { name, symbol, projectURI, supplyPreset, treasury, treasuryShareBps } = draft;
-  const fields: TestCreationFields = { name, symbol, projectURI, supplyPreset, treasury, treasuryShareBps };
+async function prepare(draft: ReviewedLaunchDraft, account: string, factory: string, prior?: TestCreationRequest) {
+  const { name, symbol, projectURI, treasury, treasuryShareBps } = draft;
+  const fields: TestCreationFields = { name, symbol, projectURI, treasury, treasuryShareBps };
   const intentId = prior?.intentId ?? "0x" + Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) => byte.toString(16).padStart(2, "0")).join("");
   const payload = await post({ action: "prepare", account, fields, intentId, ...(prior && { deadline: prior.deadline }) });
   const { request, payouts } = payload;
@@ -72,8 +73,8 @@ async function verify(entry: Journal, inputHash?: string): Promise<TestCreationV
 
 export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
   factory: string;
-  draft?: ReviewedFixtureLaunchDraft;
-  isCurrentDraft(draft: ReviewedFixtureLaunchDraft): boolean;
+  draft?: ReviewedLaunchDraft;
+  isCurrentDraft(draft: ReviewedLaunchDraft): boolean;
 }) {
   const [ready, setReady] = useState(false);
   const [wallet, setWallet] = useState<Wallet>();
@@ -246,7 +247,7 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
   const state = result?.status ?? "pending";
   return <section className="lpPanel lpForm" aria-label="Isolated test creation">
     <h2>Isolated test creation</h2>
-    <p>Local chain 31337 · synthetic ETH only. The transaction includes the reviewed token name, ticker, project URI, fixed supply preset and treasury terms. Artwork and description stay in this browser.</p>
+    <p>Local chain 31337 · synthetic ETH only. The transaction includes the reviewed token name, ticker, project URI and treasury terms. The factory sets the one-billion-token supply. Artwork and description stay in this browser.</p>
     {journal ? <>
       <p role="status">{state === "confirmed" ? "On-chain creation confirmed" : state === "reverted" ? "Creation reverted"
         : state === "unavailable" ? "Evidence unavailable" : "Transaction pending"}</p>
@@ -274,6 +275,7 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
           <dl className="lpFacts">
             <dt>Creator</dt><dd className="lpAddress">{currentReview.request.from}</dd>
             <dt>Verified test factory</dt><dd className="lpAddress">{currentReview.request.to}</dd>
+            <dt>Fixed total supply</dt><dd>{currentReview.draft.supply.toLocaleString("en-US")} tokens · {launchTokenDecimals} decimals</dd>
             <dt>Exact creation fee</dt><dd>0.0004 test ETH, plus gas</dd>
             <dt>RMT operations</dt><dd className="lpAddress">{currentReview.payouts.operating}</dd>
             <dt>RMT future reserve</dt><dd className="lpAddress">{currentReview.payouts.reserve}</dd>

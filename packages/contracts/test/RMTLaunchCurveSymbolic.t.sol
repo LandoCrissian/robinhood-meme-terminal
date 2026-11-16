@@ -4,7 +4,7 @@ pragma solidity 0.8.26;
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {RMTLaunchBondingCurveV1 as Curve} from "../src/RMTLaunchBondingCurveV1.sol";
-import {RMTLaunchCurveTokenV1 as Token} from "../src/RMTLaunchCurveTokenV1.sol";
+import {RMTLaunchCurveTokenV2 as Token} from "../src/RMTLaunchCurveTokenV2.sol";
 import {RMTLaunchCurveRevenueLedgerV1 as RevenueLedger} from "../src/RMTLaunchCurveRevenueLedgerV1.sol";
 import {RMTLaunchCurveLpFeeLedgerV1 as LpLedger} from "../src/RMTLaunchCurveLpFeeLedgerV1.sol";
 import {IRMTV4CurveGraduationV1} from "../src/interfaces/IRMTV4CurveGraduationV1.sol";
@@ -37,7 +37,7 @@ contract RMTLaunchCurveSymbolic is Test {
     address private constant CREATOR = address(0x1001);
     address private constant OPERATING = address(0x1002);
     address private constant FUTURE = address(0x1003);
-    uint256 private constant SUPPLY = 1_000_000 ether;
+    uint256 private constant SUPPLY = 1_000_000_000 ether;
     uint256 private constant THRESHOLD_BUY = 1_010_101_010_101_010_102;
 
     Token private token;
@@ -48,7 +48,7 @@ contract RMTLaunchCurveSymbolic is Test {
     receive() external payable {}
 
     function setUp() public {
-        token = new Token("Symbolic", "SYM", SUPPLY);
+        token = new Token("Symbolic", "SYM");
         engine = new SymbolicGraduationRefund();
         curve = new Curve(
             IERC20(address(token)),

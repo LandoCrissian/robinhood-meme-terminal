@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
-import { createHash, randomBytes } from "node:crypto";
+import { randomBytes } from "node:crypto";
 import { appendFile, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { createRequire } from "node:module";
@@ -10,6 +10,10 @@ import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { chromium, devices } from "playwright";
+import { backing as backingWei, compileFixedSupplyProfile, creationFee as feeWei, profile, rmtFixture, supply }
+  from "../../packages/contracts/scripts/fixed-supply-profile.mjs";
+import { deployFixedSupplyFixture, localFixtureClient }
+  from "../../packages/contracts/scripts/deploy-fixed-supply-fixture.mjs";
 
 const repository = fileURLToPath(new URL("../../", import.meta.url));
 const require = createRequire(new URL("../../apps/indexer/package.json", import.meta.url));
@@ -18,11 +22,10 @@ const { decodeAbiParameters, decodeFunctionData, encodeAbiParameters, encodeFunc
 const { generatePrivateKey, privateKeyToAccount } = require("viem/accounts");
 const { Pool } = require("pg");
 const { values: args } = parseArgs({ options: {
-  candidate: { type: "string" }, anvil: { type: "string" }, solc: { type: "string" },
+  lib: { type: "string" }, anvil: { type: "string" }, solc: { type: "string" },
   "pg-bin": { type: "string" }, output: { type: "string" },
 } });
-for (const option of ["candidate", "anvil", "solc", "pg-bin", "output"]) assert.ok(args[option], `Supply --${option}`);
-const fixtureSource = resolve(args.candidate);
+for (const option of ["anvil", "solc", "pg-bin", "output"]) assert.ok(args[option], `Supply --${option}`);
 const out = resolve(args.output);
 const anvil = resolve(args.anvil);
 const solc = resolve(args.solc);
@@ -34,28 +37,18 @@ for (const item of ["apps/launch-website/.next/BUILD_ID", "apps/indexer/dist/cur
   });
 }
 
-const candidateCommit = "8dca5773cbd4dc98f52a45616f420bce96b000f0";
-const solidityTree = "e98de2eaedcf9d233bac0860094e7179db2ab562";
-const compilerSha = {
-  "darwin-x64": "0ff016aef2396b12d1fc65429d8ea6cf53c2ee4b041bb8925644615ee1c30ab9",
-  "linux-x64": "d5f23436f443edb85d8e76906d12f0a86ce0490e7663a9e608efeb7a93f149ef",
-  "win32-x64": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
-}[`${process.platform}-${process.arch}`];
-const compilerInput = "992dc7cf86dbd3a6d2cc305422a6f667a2f2624538259145505c2e9703cbbc9f";
-const git = (...params) => execFileSync("git", params, { cwd: fixtureSource, encoding: "utf8" }).trim();
-assert.equal(git("rev-parse", "HEAD"), candidateCommit);
-assert.equal(git("rev-parse", "HEAD:packages/contracts/src"), solidityTree);
-assert.equal(git("status", "--porcelain", "--untracked-files=no"), "", "Pinned candidate must be clean");
-assert.equal(createHash("sha256").update(await readFile(solc)).digest("hex"), compilerSha);
-const anchor = JSON.parse(await readFile(join(fixtureSource, "packages/contracts/test/fixtures/rmt-v4-deployment-identities.json"), "utf8")).baseSepolia;
+const historical = "8dca5773cbd4dc98f52a45616f420bce96b000f0";
+const candidateCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repository, encoding: "utf8" }).trim();
+const { artifacts, manifest } = compileFixedSupplyProfile({ solc, lib: args.lib, chainId: 31337 });
+const anchor = JSON.parse(execFileSync("git", ["show",
+  historical + ":packages/contracts/test/fixtures/rmt-v4-deployment-identities.json",
+], { cwd: repository, encoding: "utf8" })).baseSepolia;
 assert.equal(anchor.rpcUrl, "https://sepolia.base.org");
 assert.equal(anchor.chainId, 84532);
 assert.equal(anchor.block, 57648300);
 assert.equal(anchor.blockHash, "0x5bb29976ce80ddede79f192c61eba8fe9d96f499f8bfa11e0820d11820e91d20");
 await mkdir(out);
 
-const feeWei = 400_000_000_000_000n;
-const backingWei = 2_000_000_000_000_000_000n;
 const creator = privateKeyToAccount(generatePrivateKey());
 const alternate = privateKeyToAccount(generatePrivateKey()).address;
 const treasurySigner = privateKeyToAccount(generatePrivateKey());
@@ -63,11 +56,11 @@ const treasury = treasurySigner.address;
 const deploymentOperator = privateKeyToAccount(generatePrivateKey());
 const operationsSigner = privateKeyToAccount(generatePrivateKey());
 const reserveSigner = privateKeyToAccount(generatePrivateKey());
-const project = { name: "Fixture Creator 036", symbol: "FRESH036", projectURI: "https://example.test/rmt036",
-  supplyPreset: 1, treasury, treasuryShareBps: 2250, supplyWei: (10_000_000n * 10n ** 18n).toString() };
+const project = { name: rmtFixture.name, symbol: rmtFixture.symbol, projectURI: rmtFixture.projectURI,
+  treasury, treasuryShareBps: rmtFixture.treasuryShareBpsOfEligibleFees, supplyWei: supply.toString() };
 const draftOnly = { description: "Private fixture draft description 036", artwork: "https://example.test/local-only-art.png" };
 const factoryAbi = parseAbi([
-  "function create(string,string,string,uint8,address,uint16,bytes32,uint256) payable returns (address,address)",
+  "function create(string,string,string,address,uint16,bytes32,uint256) payable returns (address,address)",
   "function tokenForIntent(address,bytes32) view returns (address)",
   "function originCurveForToken(address) view returns (address)",
   "function operatingRecipient() view returns (address)",
@@ -233,7 +226,7 @@ const rpcProxy = loopback(proxy.address().port) + "/";
 let pgStarted = false;
 let browser;
 let page;
-const evidence = { candidateCommit, solidityTree, compilerSha, compilerInput,
+const evidence = { candidateCommit, compilerProfile: manifest,
   anchor: { block: anchor.block, blockHash: anchor.blockHash }, chainId: 31337, project };
 try {
   const chain = start(anvil, ["--host", "127.0.0.1", "--port", new URL(rpcUrl).port, "--chain-id", "31337",
@@ -255,8 +248,11 @@ try {
   }
   let deployed;
   try {
-    deployed = JSON.parse(await successful(start(process.execPath, ["packages/contracts/scripts/validate-curve-graduation-4663.mjs",
-      "--rpc", rpcUrl, "--solc", solc, "--backing-wei", backingWei.toString(), "--operator", operator], "deploy-contract-fixture", { cwd: fixtureSource })));
+    const client = await localFixtureClient(rpcUrl, 31337);
+    const { poolManager, positionManager, permit2: allowanceTransfer, universalRouter212, quoter, stateView } = anchor;
+    deployed = await deployFixedSupplyFixture(client, artifacts,
+      { poolManager, positionManager, permit2: allowanceTransfer, universalRouter: universalRouter212, quoter, stateView },
+      { operator, operations, reserve });
   } finally {
     for (const address of deploymentAccounts) await rpc("anvil_stopImpersonatingAccount", [address]);
   }
@@ -264,7 +260,7 @@ try {
   assert.equal(deployed.chainId, 31337);
   assert.equal(deployed.creationFeeWei, feeWei.toString());
   assert.equal(deployed.terms.backingWei, backingWei.toString());
-  assert.equal(deployed.manifest.inputSha256, compilerInput);
+  assert.equal(deployed.fixedSupplyWei, project.supplyWei);
   const deployBlock = await rpc("eth_getBlockByNumber", [toHex(BigInt(deployed.deployBlock)), false]);
   eq(deployBlock.hash, deployed.deployment.blockHash);
   const call = async (to, abi, functionName, args = [], block = "latest", overrides = {}) => rpc("eth_call", [{ to,
@@ -284,7 +280,7 @@ try {
   eq(keccak256(await rpc("eth_getCode", [deployed.projectRegistry, "latest"])), deployed.registryRuntimeHash);
   const manifestPath = join(out, "candidate-deployment.json");
   const binding = { ...deployed, deploymentBlockHash: deployBlock.hash, creationFeeRecipient: recipient };
-  await writeFile(manifestPath, JSON.stringify(binding, null, 2));
+  await writeFile(manifestPath, JSON.stringify(binding, (_, value) => typeof value === "bigint" ? value.toString() : value, 2));
   evidence.deployment = { factory: binding.factory, projectRegistry: binding.projectRegistry, factoryRuntimeHash: binding.factoryRuntimeHash,
     registryRuntimeHash: binding.registryRuntimeHash, blockNumber: binding.deployBlock, blockHash: deployBlock.hash, feeRecipient: recipient };
 
@@ -304,10 +300,10 @@ try {
   } finally {
     await fixtureAdmin.end();
   }
-  await pg.query(`CREATE TABLE rmt_curve_fixture_marker (identity text PRIMARY KEY CHECK (identity = 'task036-local-only'));
-    INSERT INTO rmt_curve_fixture_marker VALUES ('task036-local-only');`);
+  await pg.query(`CREATE TABLE rmt_curve_fixture_marker (identity text PRIMARY KEY CHECK (identity = '${profile}'));
+    INSERT INTO rmt_curve_fixture_marker VALUES ('${profile}');`);
 
-  const env = { ...childBase, RMT_CURVE_FIXTURE: "task036-local-only", RMT_CURVE_FIXTURE_RPC: rpcProxy,
+  const env = { ...childBase, RMT_CURVE_FIXTURE: profile, RMT_CURVE_FIXTURE_RPC: rpcProxy,
     RMT_CURVE_FIXTURE_READ_KEY: indexReadKey,
     RMT_CURVE_FIXTURE_DEPLOYMENT: manifestPath, RMT_CURVE_FIXTURE_SITE_ORIGIN: site, RMT_CURVE_FIXTURE_INDEXER: workerOrigin + "/" };
   const workerEnv = { ...env, RMT_CURVE_FIXTURE_DATABASE: databaseUrl, RMT_CURVE_FIXTURE_PORT: new URL(workerOrigin).port };
@@ -322,7 +318,7 @@ try {
 
   const wrongManifest = join(out, "invalid-deployment.json");
   const unrelated = "0x" + "bd".repeat(32);
-  await writeFile(wrongManifest, JSON.stringify({ ...binding, registryRuntimeHash: unrelated }));
+  await writeFile(wrongManifest, JSON.stringify({ ...binding, registryRuntimeHash: unrelated }, (_, value) => typeof value === "bigint" ? value.toString() : value));
   const badWorker = startWorker("worker-wrong-binding", { ...workerEnv, RMT_CURVE_FIXTURE_DEPLOYMENT: wrongManifest });
   assert.notEqual((await badWorker.done).code, 0, "A wrong registry runtime hash cannot start the worker");
   const catalog = (await pg.query("SELECT to_regclass('rmt_curve_fixture_launches') AS launches")).rows[0];
@@ -391,9 +387,9 @@ try {
       assert.equal(transactionValue, feeWei);
       eq(request.from, creator.address);
       assert.equal(decoded.functionName, "create");
-      const [name, symbol, projectURI, preset, toTreasury, share, intent, expires] = decoded.args;
-      assert.deepEqual({ name, symbol, projectURI, preset, share }, { name: project.name, symbol: project.symbol, projectURI: project.projectURI,
-        preset: project.supplyPreset, share: project.treasuryShareBps });
+      const [name, symbol, projectURI, toTreasury, share, intent, expires] = decoded.args;
+      assert.deepEqual({ name, symbol, projectURI, share }, { name: project.name, symbol: project.symbol,
+        projectURI: project.projectURI, share: project.treasuryShareBps });
       eq(toTreasury, treasury);
       assert.match(intent, /^0x[0-9a-f]{64}$/i);
       intentId = intent;
@@ -501,7 +497,13 @@ try {
   await page.goto(site + "/create-token");
   await page.getByLabel("Token name", { exact: true }).fill(project.name);
   await page.getByLabel("Ticker", { exact: true }).fill(project.symbol.toLowerCase());
-  await page.getByLabel("Fixed supply", { exact: true }).selectOption(String(project.supplyPreset));
+  const fixedSupplyField = page.getByLabel("Fixed supply", { exact: true });
+  assert.equal(await fixedSupplyField.inputValue(), "1,000,000,000 tokens");
+  assert.equal(await fixedSupplyField.getAttribute("readonly"), "");
+  for (const proposedSupply of [{ supply: "1000000" }, { supplyPreset: "0" }]) {
+    const forged = await post(prepareBody({ ...reviewFields, ...proposedSupply }));
+    assert.notEqual((await forged.json()).status, "prepared", "The transaction API rejects supply overrides");
+  }
   await page.getByLabel("Project description", { exact: true }).fill(draftOnly.description);
   await page.getByLabel("Project or metadata URL", { exact: true }).fill(project.projectURI);
   await page.getByLabel("Artwork URL", { exact: true }).fill(draftOnly.artwork);
@@ -628,7 +630,9 @@ try {
   assert.equal(indexed.name, project.name);
   assert.equal(indexed.symbol, project.symbol);
   assert.equal(indexed.projectURI, project.projectURI);
+  assert.equal(indexed.kind, "curve-launch-1b-v2");
   assert.equal(indexed.totalSupplyWei, project.supplyWei);
+  assert.equal(indexed.tokenDecimals, 18);
   eq(indexed.creation.transactionHash, tx.transactionHash);
   eq(indexed.creation.blockHash, receipt.blockHash);
   assert.equal(indexed.creationFee.amountWei, feeWei.toString());
@@ -1192,7 +1196,7 @@ try {
       indexedTradeRestart: true, indexedGraduationRestart: true, graduationRollback: true,
       postGraduationRestart: true, postGraduationReorg: true, rpcOutage: true, unauthorizedClaimRejected: true,
       wrongRouterAndPoolKeyRejected: true, excessiveApprovalRejected: true, exactCustodyPreserved: true } });
-  await writeFile(join(out, "creation-journey-evidence.json"), JSON.stringify(evidence, null, 2));
+  await writeFile(join(out, "creation-journey-evidence.json"), JSON.stringify(evidence, (_, value) => typeof value === "bigint" ? value.toString() : value, 2));
   console.log(`Same-app creation → curve trades → v4 swaps → fee collection and claims passed on 31337. ${join(out, "creation-journey-evidence.json")}`);
 } catch (error) {
   if (page && !page.isClosed()) {

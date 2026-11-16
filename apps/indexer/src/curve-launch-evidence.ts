@@ -1,12 +1,12 @@
 import {
-  decodeEventLog, decodeFunctionData, isAddress, keccak256, parseAbi, toEventSelector, zeroAddress,
+  decodeEventLog, decodeFunctionData, encodeFunctionData, isAddress, keccak256, parseAbi, toEventSelector, toFunctionSelector, zeroAddress,
   type Address, type Hash, type Hex, type TransactionReceipt,
 } from "viem";
 import { historicalFactory } from "./historical-launches.js";
 
-// Frozen #592 contract blobs 038484de and d4a34a9b. The shipping factory is 31337-only.
+// Factory V2 takes no supply argument. Its engineVersion still identifies curve migration version 1.
 export const curveCreationAbi = parseAbi([
-  "function create(string name,string symbol,string projectURI,uint8 supplyPreset,address treasury,uint16 treasuryShareBps,bytes32 intentId,uint256 deadline) payable returns (address token,address curve)",
+  "function create(string name,string symbol,string projectURI,address treasury,uint16 treasuryShareBps,bytes32 intentId,uint256 deadline) payable returns (address token,address curve)",
   "function engineVersion() view returns (uint32)",
   "function projectRegistry() view returns (address)",
   "function creationFeeWei() view returns (uint256)",
@@ -14,13 +14,22 @@ export const curveCreationAbi = parseAbi([
   "event CurveCreated(address indexed token,address indexed curve,address indexed creator,bytes32 intentId,uint256 supply,address revenueLedger,address treasury,uint16 treasuryShareBps,string name,string symbol,string projectURI)",
   "event CreationFeePaid(address indexed token,address indexed creator,address indexed recipient,uint256 fee,uint256 refund)",
   "event ProjectRegistered(address indexed token,address indexed factory,address indexed curve,uint32 version)",
+  "function tokenSupply() view returns (uint256)",
+  "function FIXED_SUPPLY() view returns (uint256)",
+  "function totalSupply() view returns (uint256)",
+  "function decimals() view returns (uint8)",
+  "event Transfer(address indexed from,address indexed to,uint256 value)",
 ]);
 
-const [create, , , , , createdEvent, feeEvent, registeredEvent] = curveCreationAbi;
+const [create, , , , , createdEvent, feeEvent, registeredEvent, , , , , transferEvent] = curveCreationAbi;
+const createSelector = toFunctionSelector(create);
 const createdTopic = toEventSelector(createdEvent);
 const feeTopic = toEventSelector(feeEvent);
 const registeredTopic = toEventSelector(registeredEvent);
-const supplyIncrement = 1_000_000n * 10n ** 18n;
+const transferTopic = toEventSelector(transferEvent);
+export const curveFixedSupplyProfile = "rmt-curve-fixed-supply-v2";
+export const curveFixedSupplyWei = 1_000_000_000n * 10n ** 18n;
+export const curveGraduationSoldWei = 600_000_000n * 10n ** 18n;
 const publicChainId = 4663;
 export const fixtureChainId = 31337;
 export const fixtureConfirmations = 2;
@@ -30,6 +39,7 @@ const maxLogBytes = 64 * 1024;
 const maxCreationInputBytes = 1024;
 
 type CommonBinding = {
+  profile: typeof curveFixedSupplyProfile;
   engineVersion: 1;
   deploymentBlock: bigint;
   deploymentBlockHash: Hash;
@@ -42,8 +52,8 @@ type CommonBinding = {
   creationFeeRecipient: Address;
 };
 
-export type CurveFixtureBinding = CommonBinding & { chainId: 31337; profile: "task036-local-only" };
-export type CurveLaunchBinding = (CommonBinding & { chainId: 4663; profile?: never }) | CurveFixtureBinding;
+export type CurveFixtureBinding = CommonBinding & { chainId: 31337 };
+export type CurveLaunchBinding = (CommonBinding & { chainId: 4663 }) | CurveFixtureBinding;
 
 export type CurveCreationLogRef = {
   blockNumber: bigint;
@@ -56,7 +66,7 @@ export type BlockEvidence = { blockNumber: string; blockHash: Hash; timestamp: s
 export type OpeningEvidence = { inventoryWei: string; backingWei: string; soldWei: string };
 
 export type CurveLaunchRegistration = {
-  kind: "curve-launch-v1";
+  kind: "curve-launch-1b-v2";
   status: "created";
   chainId: 4663 | 31337;
   engineVersion: 1;
@@ -67,6 +77,7 @@ export type CurveLaunchRegistration = {
   creator: Address;
   revenueLedger: Address;
   totalSupplyWei: string;
+  tokenDecimals: 18;
   intentId: Hash;
   name: string;
   symbol: string;
@@ -92,8 +103,10 @@ type CreationTransaction = {
   transactionIndex: number | null;
   input: Hex;
   value: bigint;
+  chainId?: number;
 };
-type FactoryRead = "engineVersion" | "projectRegistry" | "creationFeeWei" | "operatingRecipient";
+type FactoryRead = "engineVersion" | "projectRegistry" | "creationFeeWei" | "operatingRecipient" | "tokenSupply";
+type TokenRead = "FIXED_SUPPLY" | "totalSupply" | "decimals";
 
 /** Uses the same viem read-only client contract as the V6 Railway worker. */
 export type CurveEvidenceRpc = {
@@ -107,7 +120,7 @@ export type CurveEvidenceRpc = {
     address: Address;
     abi: typeof curveCreationAbi;
     blockNumber: bigint;
-    functionName: FactoryRead;
+    functionName: FactoryRead | TokenRead;
   }): Promise<bigint | number | Address>;
 };
 
@@ -137,10 +150,10 @@ export function blockEvidence(block: Pick<Block, "number" | "hash" | "timestamp"
 }
 
 export function assertCurveLaunchBinding(binding: CurveLaunchBinding) {
-  const validProfile = binding.chainId === publicChainId
-    ? binding.profile === undefined && Number.isSafeInteger(binding.confirmations) && binding.confirmations >= minimumConfirmations
-    : binding.chainId === fixtureChainId && binding.profile === "task036-local-only" && binding.confirmations === fixtureConfirmations;
-  requireEvidence(validProfile && binding.engineVersion === 1
+  const validConfirmations = binding.chainId === publicChainId
+    ? Number.isSafeInteger(binding.confirmations) && binding.confirmations >= minimumConfirmations
+    : binding.chainId === fixtureChainId && binding.confirmations === fixtureConfirmations;
+  requireEvidence(binding.profile === curveFixedSupplyProfile && validConfirmations && binding.engineVersion === 1
     && typeof binding.deploymentBlock === "bigint" && binding.deploymentBlock > 0n
     && validHash(binding.deploymentBlockHash)
     && validAddress(binding.factory) && !same(binding.factory, historicalFactory)
@@ -159,19 +172,20 @@ export async function verifyCurveDeployment(binding: CurveLaunchBinding, rpc: Cu
     address: binding.factory, abi: curveCreationAbi, blockNumber: at, functionName,
   });
   requireEvidence(await rpc.getChainId() === binding.chainId, "chain ID");
-  const [block, previous, factory, registry, version, registryAddress, fee, recipient] = await Promise.all([
+  const [block, previous, factory, registry, version, registryAddress, fee, recipient, fixedSupply] = await Promise.all([
     rpc.getBlock({ blockNumber: at, includeTransactions: false }),
     rpc.getCode({ address: binding.factory, blockNumber: at - 1n }),
     rpc.getCode({ address: binding.factory, blockNumber: at }),
     rpc.getCode({ address: binding.projectRegistry, blockNumber: at }),
-    read("engineVersion"), read("projectRegistry"), read("creationFeeWei"), read("operatingRecipient"),
+    read("engineVersion"), read("projectRegistry"), read("creationFeeWei"), read("operatingRecipient"), read("tokenSupply"),
   ]);
   const evidence = blockEvidence(block, at);
   requireEvidence(same(evidence.blockHash, binding.deploymentBlockHash) && (previous === undefined || previous === "0x")
     && factory && same(keccak256(factory), binding.factoryRuntimeHash)
     && registry && same(keccak256(registry), binding.projectRegistryRuntimeHash)
     && version === binding.engineVersion && typeof registryAddress === "string" && same(registryAddress, binding.projectRegistry)
-    && fee === binding.creationFeeWei && typeof recipient === "string" && same(recipient, binding.creationFeeRecipient), "deployment or runtime mismatch");
+    && fee === binding.creationFeeWei && typeof recipient === "string" && same(recipient, binding.creationFeeRecipient)
+    && fixedSupply === curveFixedSupplyWei, "deployment or runtime mismatch");
   return evidence;
 }
 
@@ -227,7 +241,7 @@ export async function readCurveLaunchRegistration(
   });
   const readBlock = (blockNumber: bigint) => rpc.getBlock({ blockNumber, includeTransactions: false });
   const [block, checkpointBlock, deploymentBlock, receipt, tx, priorFactoryCode, deploymentCode, factoryCode, registryCode,
-    version, registry, fixedFee, feeRecipient] = await Promise.all([
+    version, registry, fixedFee, feeRecipient, factorySupply] = await Promise.all([
     readBlock(ref.blockNumber), readBlock(checkpointHeight), readBlock(binding.deploymentBlock),
     rpc.getTransactionReceipt({ hash: ref.transactionHash }),
     rpc.getTransaction({ hash: ref.transactionHash }),
@@ -235,7 +249,7 @@ export async function readCurveLaunchRegistration(
     rpc.getCode({ address: binding.factory, blockNumber: binding.deploymentBlock }),
     rpc.getCode({ address: binding.factory, blockNumber: ref.blockNumber }),
     rpc.getCode({ address: binding.projectRegistry, blockNumber: ref.blockNumber }),
-    readFactory("engineVersion"), readFactory("projectRegistry"), readFactory("creationFeeWei"), readFactory("operatingRecipient"),
+    readFactory("engineVersion"), readFactory("projectRegistry"), readFactory("creationFeeWei"), readFactory("operatingRecipient"), readFactory("tokenSupply"),
   ]);
   const creationBlock = blockEvidence(block, ref.blockNumber);
   const checkpoint = blockEvidence(checkpointBlock, checkpointHeight);
@@ -248,7 +262,8 @@ export async function readCurveLaunchRegistration(
     && factoryCode && same(keccak256(factoryCode), binding.factoryRuntimeHash)
     && registryCode && same(keccak256(registryCode), binding.projectRegistryRuntimeHash), "deployment or runtime mismatch");
   requireEvidence(version === binding.engineVersion && typeof registry === "string" && same(registry, binding.projectRegistry)
-    && fixedFee === binding.creationFeeWei && typeof feeRecipient === "string" && same(feeRecipient, binding.creationFeeRecipient),
+    && fixedFee === binding.creationFeeWei && typeof feeRecipient === "string" && same(feeRecipient, binding.creationFeeRecipient)
+    && factorySupply === curveFixedSupplyWei,
     "factory protocol binding");
 
   requireEvidence(receipt.status === "success" && receipt.blockNumber === ref.blockNumber
@@ -257,7 +272,7 @@ export async function readCurveLaunchRegistration(
     && validIndex(receipt.transactionIndex) && Array.isArray(block.transactions)
     && same(block.transactions[receipt.transactionIndex], ref.transactionHash), "unbound or unsuccessful receipt");
   requireEvidence(same(tx.hash, ref.transactionHash) && same(tx.blockHash, ref.blockHash) && tx.blockNumber === ref.blockNumber
-    && tx.transactionIndex === receipt.transactionIndex && same(tx.from, receipt.from) && same(tx.to, binding.factory)
+    && tx.chainId === binding.chainId && tx.transactionIndex === receipt.transactionIndex && same(tx.from, receipt.from) && same(tx.to, binding.factory)
     && typeof tx.input === "string" && /^0x(?:[0-9a-f]{2})*$/i.test(tx.input)
     && tx.input.length <= maxCreationInputBytes * 2 + 2, "unbound creation transaction");
 
@@ -282,22 +297,40 @@ export async function readCurveLaunchRegistration(
   requireEvidence(same(fee.token, token) && same(fee.creator, creator)
     && same(fee.recipient, binding.creationFeeRecipient) && fee.fee === binding.creationFeeWei
     && tx.value === fee.fee + fee.refund, "creation fee mismatch");
+  requireEvidence(same(tx.input.slice(0, 10), createSelector), "creation calldata mismatch");
   const request = decodeFunctionData({ abi: [create], data: tx.input }).args;
-  const [requestName, requestSymbol, requestUri, preset, requestTreasury, requestShare, requestIntent, deadline] = request;
-  requireEvidence(preset <= 2 && supply === supplyIncrement * 10n ** BigInt(preset) && block.timestamp <= deadline
+  const [requestName, requestSymbol, requestUri, requestTreasury, requestShare, requestIntent, deadline] = request;
+  requireEvidence(same(tx.input, encodeFunctionData({ abi: [create], functionName: "create", args: request }))
+    && block.timestamp <= deadline
     && name === requestName && symbol === requestSymbol && projectURI === requestUri
     && same(treasury, requestTreasury) && treasuryShareBps === requestShare && same(intentId, requestIntent),
     "creation calldata mismatch");
+
+  requireEvidence(supply === curveFixedSupplyWei, "creation fixed supply mismatch");
+  const moves = logs.filter((log) => same(log.address, token) && same(log.topics[0], transferTopic)).sort((a, b) => a.logIndex - b.logIndex);
+  requireEvidence(moves.length === 2 && moves[0] && moves[1] && moves[1].logIndex < registered.logIndex,
+    "fixed supply mint and opening inventory transfers");
+  const { args: minted } = decodeEventLog({ abi: [transferEvent], data: moves[0].data, topics: moves[0].topics });
+  const { args: funded } = decodeEventLog({ abi: [transferEvent], data: moves[1].data, topics: moves[1].topics });
+  requireEvidence(same(minted.from, zeroAddress) && same(minted.to, binding.factory) && minted.value === curveFixedSupplyWei
+    && same(funded.from, binding.factory) && same(funded.to, curve) && funded.value === curveFixedSupplyWei,
+    "fixed supply mint and opening inventory transfers");
+  const [immutableSupply, issuedSupply, decimals] = await Promise.all((["FIXED_SUPPLY", "totalSupply", "decimals"] as const)
+    .map((functionName) => rpc.readContract({ address: token, abi: curveCreationAbi, blockNumber: ref.blockNumber, functionName })));
+  requireEvidence(immutableSupply === curveFixedSupplyWei && issuedSupply === curveFixedSupplyWei && decimals === 18,
+    "fixed supply token state");
 
   // Detect a canonical replacement while receipts and historical binding reads were being prepared.
   const checked = blockEvidence(await readBlock(checkpointHeight), checkpointHeight);
   requireEvidence(same(checked.blockHash, checkpoint.blockHash) && checked.timestamp === checkpoint.timestamp,
     "canonical checkpoint changed");
 
+  const creationAgain = blockEvidence(await readBlock(ref.blockNumber), ref.blockNumber);
+  requireEvidence(same(creationAgain.blockHash, creationBlock.blockHash), "canonical creation block changed");
   return {
-    kind: "curve-launch-v1", status: "created", chainId: binding.chainId, engineVersion: binding.engineVersion,
+    kind: "curve-launch-1b-v2", status: "created", chainId: binding.chainId, engineVersion: binding.engineVersion,
     factory: binding.factory, projectRegistry: binding.projectRegistry, token, initialCurve: curve,
-    creator, revenueLedger, totalSupplyWei: supply.toString(), intentId, name, symbol, projectURI,
+    creator, revenueLedger, totalSupplyWei: supply.toString(), tokenDecimals: 18, intentId, name, symbol, projectURI,
     treasury: treasuryShareBps === 0 ? null : treasury, treasuryShareBps,
     creation: { ...creationBlock, transactionHash: ref.transactionHash, logIndex: ref.logIndex },
     projectRegistrationLogIndex: registered.logIndex,
