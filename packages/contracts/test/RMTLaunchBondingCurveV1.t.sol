@@ -6,7 +6,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {RMTLaunchBondingCurveV1} from "../src/RMTLaunchBondingCurveV1.sol";
 import {RMTLaunchCurveSuccessorDeployerV1} from "../src/RMTLaunchBondingCurveV2.sol";
-import {RMTLaunchCurveFactoryV1} from "../src/RMTLaunchCurveFactoryV1.sol";
+import {RMTLaunchCurveFactoryV2} from "../src/RMTLaunchCurveFactoryV2.sol";
 import {RMTLaunchCurveRevenueLedgerV1} from "../src/RMTLaunchCurveRevenueLedgerV1.sol";
 import {IRMTV4CurveGraduationV1} from "../src/interfaces/IRMTV4CurveGraduationV1.sol";
 
@@ -39,7 +39,7 @@ contract CurveGraduationProbe is IRMTV4CurveGraduationV1 {
     ) external payable returns (bytes32, uint256, uint256, uint256) {
         require(block.timestamp <= deadline && msg.value == nativeReserve && nativeReserve == 1 ether);
         require(priceNumerator == tokenReserve * 3 && priceDenominator == nativeReserve * 3);
-        require(RMTLaunchCurveFactoryV1(factory).curveForToken(token) == msg.sender);
+        require(RMTLaunchCurveFactoryV2(factory).curveForToken(token) == msg.sender);
         (bool entered, bytes memory failure) =
             msg.sender.call(abi.encodeCall(RMTLaunchBondingCurveV1.graduate, (deadline)));
         require(!entered && bytes4(failure) == ReentrancyGuard.ReentrancyGuardReentrantCall.selector);
@@ -105,12 +105,12 @@ contract CurveRegistryProbe {
 
     function migrationTemplate(address factory, uint32 version) external view returns (address deployer, bytes32 hash) {
         if (version == 1) {
-            deployer = address(RMTLaunchCurveFactoryV1(factory).successorDeployer());
+            deployer = address(RMTLaunchCurveFactoryV2(factory).successorDeployer());
             hash = deployer.codehash;
         }
     }
 
-    function migrate(RMTLaunchCurveFactoryV1 factory, address token, address successor, bytes32 codeHash) external {
+    function migrate(RMTLaunchCurveFactoryV2 factory, address token, address successor, bytes32 codeHash) external {
         factory.executeMigration(token, successor, codeHash);
     }
 }
@@ -124,7 +124,7 @@ contract RMTLaunchBondingCurveV1Test is Test {
     address private constant BOB = address(0x106);
     uint256 private constant FILL = 1_010_101_010_101_010_102;
 
-    RMTLaunchCurveFactoryV1 private factory;
+    RMTLaunchCurveFactoryV2 private factory;
     RMTLaunchBondingCurveV1 private curve;
     RMTLaunchCurveRevenueLedgerV1 private ledger;
     IERC20 private token;
@@ -137,10 +137,10 @@ contract RMTLaunchBondingCurveV1Test is Test {
         address successorDeployer = address(new RMTLaunchCurveSuccessorDeployerV1());
         address predicted = vm.computeCreateAddress(address(this), vm.getNonce(address(this)) + 1);
         graduation = new CurveGraduationProbe(predicted);
-        factory = new RMTLaunchCurveFactoryV1(
+        factory = new RMTLaunchCurveFactoryV2(
             address(graduation), OPERATING, FUTURE, address(registry), successorDeployer, successorDeployer.codehash, 0
         );
-        (token, curve) = _create(CREATOR, TREASURY, 2_500, 0, bytes32(uint256(1)));
+        (token, curve) = _create(CREATOR, TREASURY, 2_500, bytes32(uint256(1)));
         ledger = curve.revenueLedger();
         vm.deal(ALICE, 100 ether);
         vm.deal(BOB, 100 ether);
@@ -151,38 +151,68 @@ contract RMTLaunchBondingCurveV1Test is Test {
         assertEq(address(curve).balance, 0);
         assertEq(address(ledger).balance, 0);
         assertEq(curve.backingReserve(), 0);
-        assertEq(token.totalSupply(), 1_000_000 ether);
+        assertEq(token.totalSupply(), 1_000_000_000 ether);
         assertEq(token.balanceOf(address(curve)), token.totalSupply());
         assertEq(token.balanceOf(CREATOR), 0);
         assertEq(factory.engineVersion(), 1);
         assertEq(factory.curveForToken(address(token)), address(curve));
         assertEq(factory.tokenForIntent(CREATOR, bytes32(uint256(1))), address(token));
         vm.prank(CREATOR);
-        vm.expectRevert(RMTLaunchCurveFactoryV1.DuplicateIntent.selector);
-        factory.create("Another", "RMT", "", 0, address(0), 0, bytes32(uint256(1)), block.timestamp);
-        (IERC20 other, RMTLaunchBondingCurveV1 otherCurve) = _create(ALICE, address(0), 0, 2, bytes32(uint256(1)));
+        vm.expectRevert(RMTLaunchCurveFactoryV2.DuplicateIntent.selector);
+        factory.create("Another", "RMT", "", address(0), 0, bytes32(uint256(1)), block.timestamp);
+        (IERC20 other, RMTLaunchBondingCurveV1 otherCurve) = _create(ALICE, address(0), 0, bytes32(uint256(1)));
         assertTrue(address(other) != address(token));
-        assertEq(other.totalSupply(), 100_000_000 ether);
+        assertEq(other.totalSupply(), 1_000_000_000 ether);
         assertEq(other.balanceOf(address(otherCurve)), other.totalSupply());
         vm.prank(CREATOR);
         (bool minted,) = address(token).call(abi.encodeWithSignature("mint(address,uint256)", CREATOR, 1));
         assertFalse(minted);
     }
 
+    function testLegacySupplySelectionAndPrivilegeSelectorsCannotChangeSupply() external {
+        bytes32 intent = bytes32(uint256(2));
+        bytes4 legacySelector = bytes4(keccak256("create(string,string,string,uint8,address,uint16,bytes32,uint256)"));
+        for (uint8 preset; preset < 3; ++preset) {
+            vm.prank(CREATOR);
+            (bool legacyAccepted,) = address(factory).call(
+                abi.encodeWithSelector(legacySelector, "Legacy", "OLD", "", preset, address(0), 0, intent, block.timestamp)
+            );
+            assertFalse(legacyAccepted);
+        }
+        assertEq(factory.tokenForIntent(CREATOR, intent), address(0));
+        assertEq(factory.tokenSupply(), 1_000_000_000 ether);
+        assertEq(curve.graduationSold(), 600_000_000 ether);
+
+        vm.prank(CREATOR);
+        (address minted, address market) = factory.create("RMT", "RMT", "", address(0), 0, intent, block.timestamp);
+        assertEq(IERC20(minted).totalSupply(), factory.tokenSupply());
+        assertEq(IERC20(minted).balanceOf(market), factory.tokenSupply());
+        (bool decimalsOk, bytes memory decimals) = minted.staticcall(abi.encodeWithSignature("decimals()"));
+        assertTrue(decimalsOk);
+        assertEq(abi.decode(decimals, (uint8)), 18);
+        vm.prank(CREATOR);
+        (bool initialized,) = minted.call(abi.encodeWithSignature("initialize(uint256)", 1));
+        assertFalse(initialized);
+        vm.prank(CREATOR);
+        (bool burned,) = minted.call(abi.encodeWithSignature("burn(uint256)", 1));
+        assertFalse(burned);
+        assertEq(IERC20(minted).totalSupply(), 1_000_000_000 ether);
+    }
+
     function testInvalidCreationPolicyAndUnsolicitedNativeValueCannotPublishAToken() external {
         bytes32 intent = bytes32(uint256(2));
         vm.startPrank(CREATOR);
-        vm.expectRevert(RMTLaunchCurveFactoryV1.InvalidLaunch.selector);
-        factory.create("Token", "TEST", "", 0, address(0), 1, intent, block.timestamp);
-        vm.expectRevert(RMTLaunchCurveFactoryV1.InvalidLaunch.selector);
-        factory.create("Token", "TEST", "", 0, CREATOR, 9_000, intent, block.timestamp);
-        vm.expectRevert(RMTLaunchCurveFactoryV1.InvalidLaunch.selector);
-        factory.create("Token", "TEST", "", 0, TREASURY, 9_001, intent, block.timestamp);
-        vm.expectRevert(RMTLaunchCurveFactoryV1.InvalidLaunch.selector);
-        factory.create("Token", "TEST", "", 3, address(0), 0, intent, block.timestamp);
+        vm.expectRevert(RMTLaunchCurveFactoryV2.InvalidLaunch.selector);
+        factory.create("Token", "TEST", "", address(0), 1, intent, block.timestamp);
+        vm.expectRevert(RMTLaunchCurveFactoryV2.InvalidLaunch.selector);
+        factory.create("Token", "TEST", "", CREATOR, 9_000, intent, block.timestamp);
+        vm.expectRevert(RMTLaunchCurveFactoryV2.InvalidLaunch.selector);
+        factory.create("Token", "TEST", "", TREASURY, 9_001, intent, block.timestamp);
+        vm.expectRevert(RMTLaunchCurveFactoryV2.InvalidLaunch.selector);
+        factory.create("Token", "TEST", "", address(0), 0, bytes32(0), block.timestamp);
         vm.deal(CREATOR, 1);
-        vm.expectRevert(RMTLaunchCurveFactoryV1.InvalidLaunch.selector);
-        factory.create{value: 1}("Token", "TEST", "", 3, address(0), 0, intent, block.timestamp);
+        vm.expectRevert(RMTLaunchCurveFactoryV2.InvalidLaunch.selector);
+        factory.create{value: 1}("Token", "", "", address(0), 0, intent, block.timestamp);
         (bool accepted,) = address(factory).call{value: 1}("");
         vm.stopPrank();
         assertFalse(accepted);
@@ -221,9 +251,8 @@ contract RMTLaunchBondingCurveV1Test is Test {
         ledger.claim();
     }
 
-    function testFuzzQuotesRoundingAndSolvencyAcrossAllSupplySizes(uint8 preset, uint96 raw, uint96 portion) external {
-        preset = uint8(bound(preset, 0, 2));
-        (token, curve) = _create(CREATOR, address(0), 0, preset, bytes32(uint256(2)));
+    function testFuzzQuotesRoundingAndSolvencyAtOneBillion(uint96 raw, uint96 portion) external {
+        (token, curve) = _create(CREATOR, address(0), 0, bytes32(uint256(2)));
         uint256 budget = bound(raw, 3, 3 ether);
         uint256 tokensOut = _buy(ALICE, budget);
         uint256 soldBefore = curve.sold();
@@ -271,8 +300,8 @@ contract RMTLaunchBondingCurveV1Test is Test {
     function testExpiredOperationsAndPrematureGraduationFail() external {
         vm.warp(100);
         vm.prank(CREATOR);
-        vm.expectRevert(RMTLaunchCurveFactoryV1.DeadlineExpired.selector);
-        factory.create("Token", "TEST", "", 0, address(0), 0, bytes32(uint256(2)), block.timestamp - 1);
+        vm.expectRevert(RMTLaunchCurveFactoryV2.DeadlineExpired.selector);
+        factory.create("Token", "TEST", "", address(0), 0, bytes32(uint256(2)), block.timestamp - 1);
         vm.prank(ALICE);
         vm.expectRevert(RMTLaunchBondingCurveV1.DeadlineExpired.selector);
         curve.buy{value: 1 ether}(1, block.timestamp - 1);
@@ -323,7 +352,7 @@ contract RMTLaunchBondingCurveV1Test is Test {
         assertEq(curve.tokenDust(), 2);
         assertEq(token.balanceOf(address(curve)), 2);
         assertEq(address(curve).balance, 1);
-        assertEq(token.totalSupply(), 1_000_000 ether);
+        assertEq(token.totalSupply(), 1_000_000_000 ether);
         assertTrue(curve.graduated());
         vm.expectRevert(RMTLaunchBondingCurveV1.CurveClosed.selector);
         curve.graduate(block.timestamp);
@@ -437,7 +466,7 @@ contract RMTLaunchBondingCurveV1Test is Test {
 
     function testRefundFailureAndReentrancyPreserveTradeAndFeeState() external {
         CurvePaymentProbe malicious = new CurvePaymentProbe();
-        (token, curve) = _create(address(malicious), address(0), 0, 0, bytes32(uint256(3)));
+        (token, curve) = _create(address(malicious), address(0), 0, bytes32(uint256(3)));
         malicious.setTargets(curve);
         ledger = curve.revenueLedger();
         vm.deal(address(malicious), 5 ether);
@@ -540,7 +569,7 @@ contract RMTLaunchBondingCurveV1Test is Test {
         vm.prank(CREATOR);
         vm.expectRevert(RMTLaunchBondingCurveV1.UnauthorizedMigration.selector);
         previous.migrateAssets(payable(successor), successor.codehash);
-        vm.expectRevert(RMTLaunchCurveFactoryV1.InvalidMigration.selector);
+        vm.expectRevert(RMTLaunchCurveFactoryV2.InvalidMigration.selector);
         registry.migrate(factory, address(token), successor, bytes32(uint256(1)));
         registry.migrate(factory, address(token), successor, successor.codehash);
         curve = next;
@@ -572,7 +601,7 @@ contract RMTLaunchBondingCurveV1Test is Test {
         (uint256 afterSell,,) = curve.quoteSell(bought);
         assertEq(afterBuy, beforeBuy);
         assertEq(afterSell, beforeSell);
-        vm.expectRevert(RMTLaunchCurveFactoryV1.InvalidMigration.selector);
+        vm.expectRevert(RMTLaunchCurveFactoryV2.InvalidMigration.selector);
         registry.migrate(factory, address(token), successor, successor.codehash);
         vm.deal(CREATOR, 1 ether);
         vm.prank(CREATOR);
@@ -595,9 +624,9 @@ contract RMTLaunchBondingCurveV1Test is Test {
         address successor = factory.prepareMigration(address(token), 2);
         uint256 backing = curve.backingReserve();
         uint256 inventory = token.balanceOf(address(curve));
-        vm.expectRevert(RMTLaunchCurveFactoryV1.InvalidMigration.selector);
+        vm.expectRevert(RMTLaunchCurveFactoryV2.InvalidMigration.selector);
         registry.migrate(factory, address(token), address(graduation), address(graduation).codehash);
-        vm.expectRevert(RMTLaunchCurveFactoryV1.InvalidMigration.selector);
+        vm.expectRevert(RMTLaunchCurveFactoryV2.InvalidMigration.selector);
         factory.executeMigration(address(token), successor, successor.codehash);
         vm.mockCallRevert(
             successor,
@@ -679,13 +708,13 @@ contract RMTLaunchBondingCurveV1Test is Test {
         assertEq(curve.positionTokenId(), 1);
     }
 
-    function _create(address creator, address treasury, uint16 share, uint8 preset, bytes32 intent)
+    function _create(address creator, address treasury, uint16 share, bytes32 intent)
         private
         returns (IERC20, RMTLaunchBondingCurveV1)
     {
         vm.prank(creator);
         (address deployedToken, address deployedCurve) =
-            factory.create("Curve Token", "CURVE", "", preset, treasury, share, intent, block.timestamp);
+            factory.create("Curve Token", "CURVE", "", treasury, share, intent, block.timestamp);
         return (IERC20(deployedToken), RMTLaunchBondingCurveV1(payable(deployedCurve)));
     }
 

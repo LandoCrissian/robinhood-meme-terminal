@@ -1,0 +1,23 @@
+{
+  "profile": "rmt-curve-fixed-supply-v2",
+  "status": "BLOCKED_NO_BROADCAST",
+  "broadcastAuthorized": false,
+  "fixtureOnly": {
+    "name": "RMT",
+    "symbol": "RMT",
+    "projectURI": "https://example.test/rmt-first-project",
+    "treasuryShareBpsOfEligibleFees": 2250
+  },
+  "production": {
+    "approvedDisplayName": null,
+    "approvedProjectURI": null,
+    "creator": null,
+    "projectTreasury": null,
+    "treasuryShareBpsOfEligibleFees": null,
+    "factoryDeployer": null,
+    "operationsSafe": null,
+    "reserveSafe": null,
+    "economicApproval": null,
+    "deploymentApproval": null
+  }
+}

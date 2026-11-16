@@ -7,21 +7,25 @@ import { configuredCurveFixture, parseCurveFixture } from "./curve-fixture";
 
 const address = (digit: string) => `0x${digit.repeat(40)}`;
 const hash = (digit: string) => `0x${digit.repeat(64)}`;
-const env = { RMT_CURVE_FIXTURE: "task036-local-only", RMT_CURVE_FIXTURE_SITE_ORIGIN: "http://127.0.0.1:3100",
+const env = { RMT_CURVE_FIXTURE: "rmt-curve-fixed-supply-v2", RMT_CURVE_FIXTURE_SITE_ORIGIN: "http://127.0.0.1:3100",
   RMT_CURVE_FIXTURE_READ_KEY: "1".repeat(64),
   RMT_CURVE_FIXTURE_RPC: "http://127.0.0.1:3200/", RMT_CURVE_FIXTURE_INDEXER: "http://127.0.0.1:3300/" };
-const manifest = { chainId: 31337, factory: address("1"), projectRegistry: address("2"), factoryRuntimeHash: hash("a"),
+const manifest = { profile: "rmt-curve-fixed-supply-v2", fixedSupplyWei: "1000000000000000000000000000",
+  chainId: 31337, factory: address("1"), projectRegistry: address("2"), factoryRuntimeHash: hash("a"),
   registryRuntimeHash: hash("b"), deployBlock: "57648304", deploymentBlockHash: hash("c"), creationFeeWei: "400000000000000", creationFeeRecipient: address("3") };
 
 test("test execution is unreachable unless all loopback inputs and the pinned fixture profile match", () => {
   assert.equal(parseCurveFixture(env, manifest)?.origin, env.RMT_CURVE_FIXTURE_SITE_ORIGIN);
   for (const changes of [{ NETLIFY: "true" }, { VERCEL: "1" }, { DEPLOY_ID: "preview" }, { CONTEXT: "deploy-preview" },
     { RAILWAY_ENVIRONMENT_ID: "reference" }, { RMT_CURVE_FIXTURE_READ_KEY: undefined }, { RMT_CURVE_FIXTURE_READ_KEY: "0".repeat(64) },
-    { RMT_CURVE_FIXTURE: "1" }, { RMT_CURVE_FIXTURE_RPC: "http://localhost:3200/" }, { RMT_CURVE_FIXTURE_RPC: "https://127.0.0.1:3200" },
+    { RMT_CURVE_FIXTURE: "1" }, { RMT_CURVE_FIXTURE: "task036-local-only" },
+    { RMT_CURVE_FIXTURE_RPC: "http://localhost:3200/" }, { RMT_CURVE_FIXTURE_RPC: "https://127.0.0.1:3200" },
     { RMT_CURVE_FIXTURE_INDEXER: "http://127.0.0.1:3200" }, { RMT_CURVE_FIXTURE_RPC: "http://127.0.0.1:3200/?other" },
     { RMT_CURVE_FIXTURE_RPC: "http://127.0.0.1:3200@outside.invalid" }]) assert.equal(parseCurveFixture({ ...env, ...changes }, manifest), null);
   for (const changes of [{ chainId: 4663 }, { chainId: 31338 }, { deploymentBlockHash: hash("0") }, { creationFeeWei: "1" },
-    { factory: address("0") }, { projectRegistry: manifest.factory }, { deployBlock: 0 }]) assert.equal(parseCurveFixture(env, { ...manifest, ...changes }), null);
+    { factory: address("0") }, { projectRegistry: manifest.factory }, { deployBlock: 0 },
+    { profile: undefined }, { profile: "task036-local-only" }, { fixedSupplyWei: undefined },
+    { fixedSupplyWei: "100000000000000000000000000" }]) assert.equal(parseCurveFixture(env, { ...manifest, ...changes }), null);
 });
 
 test("server fixture reads the manifest only for the exact bound Host and HTTP transport", () => {

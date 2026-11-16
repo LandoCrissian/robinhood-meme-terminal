@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.26;
 
-import {RMTLaunchCurveFactoryV1} from "./RMTLaunchCurveFactoryV1.sol";
+import {RMTLaunchCurveFactoryV2} from "./RMTLaunchCurveFactoryV2.sol";
 import {ICurveGraduationFactoryV1, RMTV4CurveGraduationV1} from "./RMTV4CurveGraduationV1.sol";
 import {RMTV4CurveInitializationGuardV1} from "./RMTV4CurveInitializationGuardV1.sol";
 
-/// @notice One-shot deployment of the immutable V1 implementation set.
+/// @notice One-shot deployment of the immutable fixed-supply implementation set.
 /// @dev The guard, engine, and factory bind to one another within the same transaction.
-contract RMTLaunchCurveDeploymentV1 {
-    RMTLaunchCurveFactoryV1 public immutable factory;
+contract RMTLaunchCurveDeploymentV2 {
+    RMTLaunchCurveFactoryV2 public immutable factory;
     RMTV4CurveGraduationV1 public immutable graduationEngine;
     RMTV4CurveInitializationGuardV1 public immutable initializationGuard;
 
@@ -31,7 +31,7 @@ contract RMTLaunchCurveDeploymentV1 {
             new RMTV4CurveInitializationGuardV1{salt: guardSalt}(dependencies.poolManager, expectedEngine);
         graduationEngine =
             new RMTV4CurveGraduationV1(dependencies, ICurveGraduationFactoryV1(expectedFactory), initializationGuard);
-        factory = new RMTLaunchCurveFactoryV1(
+        factory = new RMTLaunchCurveFactoryV2(
             address(graduationEngine),
             operatingRecipient,
             futureReserveRecipient,

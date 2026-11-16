@@ -98,16 +98,20 @@ providers and is not part of a website request.
 ## New bonding-curve engine registration review
 
 `src/curve-launch-evidence.ts` verifies registration evidence for a future
-reviewed V1 factory using a separate `curve-launch-v1` record. The production
+reviewed fixed-supply V2 factory using a separate `curve-launch-1b-v2` record. The production
 worker has no new-engine configuration, polling, writer, schema or HTTP route.
 Without an explicit binding the verifier performs zero reads.
 
-A future binding needs chain 4663, engine version 1, the factory deployment
+A future binding needs chain 4663, the `rmt-curve-fixed-supply-v2` profile,
+curve engine version 1, the factory deployment
 height and hash, pinned factory and registry runtime identities, immutable
 creation fee and recipient, and at least 20 L2 confirmations. The verifier
 compares runtime at deployment and creation, confirms the transaction's slot in
 the canonical block, and binds the successful receipt's factory creation and fee
-logs to the registry registration and transaction calldata. No refund transfer
+logs to the registry registration and exact calldata without a supply field.
+The factory and ERC-20 must each state exactly 1 billion tokens, the token
+must use 18 decimals, and receipt logs must show one mint and onward transfer
+of the full supply to the curve. No refund transfer
 trace is inferred from the fee event. The result records creation only and marks
 Ethereum L1 finality unverified. Project text and metadata URI are untrusted
 event fields. The verifier performs no metadata dereferencing.
@@ -123,29 +127,31 @@ source and schema throughout.
 
 ### Isolated creator fixture
 
-`pnpm --filter indexer start:curve-fixture` runs the Task 036 worker after
+`pnpm --filter indexer start:curve-fixture` runs the fixed-supply fixture worker after
 `pnpm --filter indexer build`. `scripts/visual-qa/rmt-creator-integration.mjs`
 creates its isolated services and runs the actual creator journey. The worker
-binds to IPv4 loopback and requires `RMT_CURVE_FIXTURE=task036-local-only`, an
+binds to IPv4 loopback and requires `RMT_CURVE_FIXTURE=rmt-curve-fixed-supply-v2`, an
 explicit `RMT_CURVE_FIXTURE_PORT`, `RMT_CURVE_FIXTURE_RPC` on a distinct loopback
 port, an absolute `RMT_CURVE_FIXTURE_DEPLOYMENT` manifest, and a separately named
 loopback TCP PostgreSQL `RMT_CURVE_FIXTURE_DATABASE` database. The disposable
 database name must begin with `rmt_curve_fixture_` and carry an explicit
-`rmt_curve_fixture_marker` row with identity `task036-local-only`. A legacy
+`rmt_curve_fixture_marker` row with identity `rmt-curve-fixed-supply-v2`. A legacy
 indexer table or another public relation causes startup to refuse the DB. The
 fixture read server also requires a local `RMT_CURVE_FIXTURE_READ_KEY` with 64
 lowercase hexadecimal characters. The website supplies this key from its server
 environment via `X-RMT-Fixture-Key`. Never publish the key or the fixture URLs.
 
 The fixture verifies the manifest deployment hash, runtime identities, chain
-31337 and immutable 0.0004 ETH creation fee before opening the database. A
+31337, fixed-supply profile and amount, and immutable 0.0004 ETH creation fee
+before opening the database. A
 two-block confirmation delay qualifies its output as `fixture-confirmed`.
 Successful ranges span at most 32 blocks within a 4,096-block fixture window.
 They independently compare creation logs with every direct factory creation
 receipt in the range, with a limit of 32 transactions per block. Nested
 smart-account entry and blocks with same-block changes to the opening balances
 are outside this fixture's accepted evidence. The proof reads fixed token
-supply, full opening inventory, zero sold and backing, the 2 ETH target and
+supply, full opening inventory, zero creator/factory balances, zero sold and
+backing, the 600 million token and 2 ETH targets, and
 the exact treasury split from creation-block state. The contract records project
 URI in creation calldata and the event. It has no separate URI storage getter.
 
@@ -166,7 +172,7 @@ receipts against pool and ledger log coverage. Same-block approval and sell,
 or other routes touching an admitted pool, fall outside this fixture profile.
 Pages return at most 20 post-graduation events. The worker keeps at most 256
 events per token and fails closed above that bound. Use a fresh isolated
-fixture database for schema revision 38. There is no migration for earlier
+fixture database for schema revision 49. There is no migration for earlier
 disposable fixture databases, and the production indexer schema is separate.
 
 Each range commits its tokens, lifecycle events, state and checkpoints together

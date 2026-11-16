@@ -10,9 +10,9 @@ import {
     RMTLaunchBondingCurveV3,
     RMTLaunchCurveSuccessorDeployerV2 as V3Deployer
 } from "../src/RMTLaunchBondingCurveV3.sol";
-import {RMTLaunchCurveFactoryV1 as Factory} from "../src/RMTLaunchCurveFactoryV1.sol";
-import {RMTLaunchCurveDirectoryV1 as Directory} from "../src/RMTLaunchCurveDirectoryV1.sol";
-import {RMTLaunchProjectRegistryV1 as Registry} from "../src/RMTLaunchProjectRegistryV1.sol";
+import {RMTLaunchCurveFactoryV2 as Factory} from "../src/RMTLaunchCurveFactoryV2.sol";
+import {RMTLaunchCurveDirectoryV2 as Directory} from "../src/RMTLaunchCurveDirectoryV2.sol";
+import {RMTLaunchProjectRegistryV3 as Registry} from "../src/RMTLaunchProjectRegistryV3.sol";
 import {RMTLaunchCurveRevenueLedgerV1 as Ledger} from "../src/RMTLaunchCurveRevenueLedgerV1.sol";
 
 contract MigrationGraduationBinding {
@@ -117,6 +117,20 @@ contract MigrationCallbackProbe {
             require(!predecessor.active() && predecessor.migratedTo() == address(successor));
             require(predecessor.backingReserve() == 0 && factory.curveForToken(asset) == address(predecessor));
             require(!successor.active());
+            require(registry.migrationInProgress(asset), "callback sees no migration lock");
+            _rejected(
+                address(registry), abi.encodeCall(Registry.project, (asset)), Registry.MigrationInProgress.selector
+            );
+            _rejected(
+                address(registry),
+                abi.encodeCall(Registry.migrationDigest, (asset)),
+                Registry.MigrationInProgress.selector
+            );
+            _rejected(
+                address(registry),
+                abi.encodeCall(Registry.nextMigrationVersion, (asset)),
+                Registry.MigrationInProgress.selector
+            );
             _rejected(
                 address(predecessor),
                 abi.encodeCall(Curve.buy, (1, block.timestamp)),
@@ -211,6 +225,7 @@ contract RMTLaunchMigrationReadinessTest is Test {
             1,
             address(factory),
             address(factory).codehash,
+            directory.signerSetEpoch(),
             uint48(block.timestamp + 4 days)
         );
         bytes32 digest = directory.actionDigest(publication);
@@ -219,7 +234,7 @@ contract RMTLaunchMigrationReadinessTest is Test {
         directory.execute(publication);
         vm.prank(CREATOR);
         (address asset, address curve) =
-            factory.create("Migration review", "RMTM", "", 0, TREASURY, 2_000, bytes32(uint256(1)), block.timestamp);
+            factory.create("Migration review", "RMTM", "", TREASURY, 2_000, bytes32(uint256(1)), block.timestamp);
         token = IERC20(asset);
         origin = Curve(payable(curve));
         ledger = origin.revenueLedger();
@@ -267,6 +282,7 @@ contract RMTLaunchMigrationReadinessTest is Test {
             2,
             address(candidate),
             address(candidate).codehash,
+            directory.signerSetEpoch(),
             uint48(block.timestamp + 4 days)
         );
         bytes32 digest = directory.actionDigest(publication);
@@ -426,7 +442,7 @@ contract RMTLaunchMigrationReadinessTest is Test {
 
         uint64 nonce = directory.nonce();
         Directory.Action memory suspension = Directory.Action(
-            Directory.ActionKind.Suspend, nonce, 0, address(0), bytes32(0), uint48(block.timestamp + 1 days)
+            Directory.ActionKind.Suspend, nonce, 0, address(0), bytes32(0), directory.signerSetEpoch(), uint48(block.timestamp + 1 days)
         );
         digest = directory.actionDigest(suspension);
         helper.useSuspension(abi.encodeCall(Directory.suspend, (suspension, _sign(digest, 1), _sign(digest, 2))));
@@ -449,6 +465,7 @@ contract RMTLaunchMigrationReadinessTest is Test {
             version,
             deployer,
             deployer.codehash,
+            directory.signerSetEpoch(),
             uint48(block.timestamp + 4 days)
         );
     }
@@ -540,7 +557,7 @@ contract RMTLaunchMigrationReadinessTest is Test {
         registry.scheduleMigration(address(token), _sign(digest, 1), _sign(digest, 2));
         vm.warp(block.timestamp + registry.migrationDelay());
         Directory.Action memory suspension =
-            Directory.Action(Directory.ActionKind.Suspend, 1, 0, address(0), bytes32(0), deadline);
+            Directory.Action(Directory.ActionKind.Suspend, 1, 0, address(0), bytes32(0), directory.signerSetEpoch(), deadline);
         digest = directory.actionDigest(suspension);
         directory.suspend(suspension, _sign(digest, 1), _sign(digest, 3));
         vm.expectRevert(Registry.NotExecutable.selector);

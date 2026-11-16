@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "apps/launch-website/**"
+      - "packages/contracts/**"
       - "netlify.toml"
       - "package.json"
       - "pnpm-lock.yaml"
@@ -75,7 +76,7 @@ jobs:
     timeout-minutes: 20
     env:
       NEXT_TELEMETRY_DISABLED: "1"
-      CANDIDATE_SHA: 8dca5773cbd4dc98f52a45616f420bce96b000f0
+      HISTORICAL_ANCHOR_SHA: 8dca5773cbd4dc98f52a45616f420bce96b000f0
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -95,13 +96,11 @@ jobs:
           pnpm --filter @rmt/launch-website build
           pnpm --filter indexer build
           pnpm exec playwright install --with-deps chromium
-      - name: Prepare the pinned candidate and check local PostgreSQL binaries
+      - name: Prepare the fixed-supply candidate and local tools
         run: |
           set -euo pipefail
-          git fetch --no-tags --depth=1 origin "$CANDIDATE_SHA"
-          git worktree add --detach "$RUNNER_TEMP/curve-candidate" "$CANDIDATE_SHA"
-          pnpm --dir "$RUNNER_TEMP/curve-candidate" install --frozen-lockfile --filter web...
-          (cd "$RUNNER_TEMP/curve-candidate/packages/contracts" && bash scripts/install-v4-deps.sh)
+          git fetch --no-tags --depth=1 origin "$HISTORICAL_ANCHOR_SHA"
+          (cd packages/contracts && bash scripts/install-v4-deps.sh)
           curl --fail --silent --show-error --retry 2 \
             'https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.26+commit.8a97fa7a' \
             --output "$RUNNER_TEMP/solc-0.8.26"
@@ -110,7 +109,7 @@ jobs:
       - name: Verify the same-app lifecycle on synthetic chain 31337
         run: |
           node scripts/visual-qa/rmt-creator-integration.mjs \
-            --candidate "$RUNNER_TEMP/curve-candidate" --anvil "$(command -v anvil)" \
+            --anvil "$(command -v anvil)" \
             --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$(pg_config --bindir)" \
             --output "$RUNNER_TEMP/rmt-creator-lifecycle"
       - name: Read local PostgreSQL diagnostics after failure

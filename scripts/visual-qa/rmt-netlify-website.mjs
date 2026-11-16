@@ -117,6 +117,7 @@ for (const key of ["token", "transactionHash", "factory", "rpcUrl", "calldata", 
 assert.equal((await postDraft({ ...draftFields, treasuryShare: "95" })).status, 422);
 assert.equal((await postDraft({ ...draftFields, supplyPreset: "1" })).status, 400);
 assert.equal((await postDraft({ ...draftFields, supply: "10000000" })).status, 400);
+assert.equal((await postDraft({ ...draftFields, fixedSupplyWei: "1000000000000000000000000000" })).status, 400);
 const fullProjectShare = { ...draftFields, treasury: "0x1000000000000000000000000000000000000001",
   treasuryShare: "100", treasuryShareUnit: "project-percent" };
 const fullShareReview = await postDraft(fullProjectShare);
@@ -277,7 +278,8 @@ try {
       await nav.getByRole("link", { name: "Create Token", exact: true }).click();
       await verifyReadOnly("Create Token", true);
       const terms = main.getByRole("region", { name: "Provisional launch terms" });
-      for (const disclosure of [/0\.0004 ETH/i, /\b2 ETH\b/i, /60%/, /40%/, /1%/, /90%/, /5% RMT operations/i, /5% RMT future reserve/i]) {
+      for (const disclosure of [/0\.0004 ETH/i, /\b2 ETH\b/i, /600,000,000 tokens net sold \(60%\)/,
+        /400,000,000 tokens available before rounding \(40%\)/, /1%/, /90%/, /5% RMT operations/i, /5% RMT future reserve/i]) {
         await terms.getByText(disclosure).first().waitFor();
       }
       await screenshot("creation");
@@ -289,9 +291,11 @@ try {
       assert.equal(draftRequests, 0);
       await tokenName.fill(draftFields.name);
       await main.getByLabel("Ticker").fill(draftFields.symbol);
-      const plannedSupply = main.getByLabel("Planned fixed supply");
-      assert.equal(await plannedSupply.inputValue(), "1,000,000,000 tokens");
-      assert.equal(await plannedSupply.getAttribute("readonly"), "");
+      const fixedSupply = main.getByLabel("Fixed supply");
+      assert.equal(await fixedSupply.inputValue(), "1,000,000,000 tokens");
+      assert.equal(await fixedSupply.getAttribute("readonly"), "");
+      assert.equal(await fixedSupply.getAttribute("name"), null);
+      await main.getByText("Set by the launch contract · 18 decimals").waitFor();
       assert.equal(await main.locator("select").count(), 0);
       await main.getByLabel("Project description").fill("This sample text stays on the device.");
       await main.getByLabel("Project or metadata URL").fill(draftFields.projectURI);
@@ -315,7 +319,7 @@ try {
       await reviewed.waitFor();
       await page.waitForFunction(() => document.activeElement?.textContent === "Review token draft");
       await main.getByText("Proposed token draft", { exact: true }).waitFor();
-      await main.getByText("1,000,000,000 tokens", { exact: true }).first().waitFor();
+      await main.getByText("1,000,000,000 tokens · 18 decimals", { exact: true }).waitFor();
       await verifyReadOnly("Create Token");
       await screenshot("creation-review");
       await main.getByRole("button", { name: "Edit draft", exact: true }).click();

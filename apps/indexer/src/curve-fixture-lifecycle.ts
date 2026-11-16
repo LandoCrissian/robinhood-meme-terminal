@@ -1,6 +1,7 @@
 import { decodeFunctionData, encodeAbiParameters, encodeFunctionData, erc20Abi, keccak256, parseAbi, parseEventLogs, toHex, zeroAddress,
   type Address, type Hash, type Hex, type PublicClient, type TransactionReceipt } from "viem";
-import type { CurveFixtureBinding, BlockEvidence, CurveLaunchRegistration } from "./curve-launch-evidence.js";
+import { curveFixedSupplyWei, curveGraduationSoldWei, type CurveFixtureBinding,
+  type BlockEvidence, type CurveLaunchRegistration } from "./curve-launch-evidence.js";
 import { assertFixtureNativeProof } from "./curve-fixture-native-proof.js";
 
 const unit = 10n ** 18n;
@@ -34,6 +35,7 @@ export const lifecycleCurveAbi = parseAbi([
   "function graduate(uint256 deadline)", "function buyAndGraduate(uint256 minimumTokenOut,uint256 deadline) payable returns (uint256)",
   "function active() view returns (bool)", "function graduated() view returns (bool)", "function sold() view returns (uint256)",
   "function backingReserve() view returns (uint256)", "function graduationSold() view returns (uint256)", "function token() view returns (address)",
+  "function totalSupply() view returns (uint256)",
   "function GRADUATION_BACKING() view returns (uint256)", "function VIRTUAL_ETH() view returns (uint256)", "function TRADE_FEE_BPS() view returns (uint256)",
   "function graduationEngine() view returns (address)", "function nativeDust() view returns (uint256)", "function tokenDust() view returns (uint256)",
   "function poolId() view returns (bytes32)", "function positionTokenId() view returns (uint256)",
@@ -203,7 +205,8 @@ export async function indexFixtureCurveTransaction(rpc: PublicClient, binding: F
   const payments: Parameters<typeof assertFixtureNativeProof>[2] = [];
   const ledger = launch.revenueLedger;
   const assetTransfers = parseEventLogs({ abi: erc20Abi, eventName: "Transfer", logs: logs.filter((log) => same(log.address, launch.token)), strict: true });
-  const soldTarget = BigInt(launch.totalSupplyWei) * 3n / 5n;
+  requireProof(launch.totalSupplyWei === curveFixedSupplyWei.toString() && launch.tokenDecimals === 18, "registration token supply");
+  const soldTarget = curveGraduationSoldWei;
   let sold = BigInt(cursor.latestTrade?.soldWei ?? "0");
   let backing = BigInt(cursor.latestTrade?.backingWei ?? "0");
   if (isTrade) {
@@ -289,7 +292,7 @@ export async function fixtureLifecycleState(rpc: PublicClient, binding: FixtureG
   const curve = { address, abi: lifecycleCurveAbi, blockNumber } as const;
   const ledger = { address: launch.revenueLedger, abi: ledgerAbi, blockNumber } as const;
   const [active, graduated, sold, backing, targetSold, targetBacking, inventory, nativeHeld, current, registry,
-    curveEngine, activeAccrual, accrued, claimed, buckets, liveFeeBps, liveVirtualEth, asset] = await Promise.all([
+    curveEngine, activeAccrual, accrued, claimed, buckets, liveFeeBps, liveVirtualEth, asset, tokenSupply, curveSupply] = await Promise.all([
     rpc.readContract({ ...curve, functionName: "active" }), rpc.readContract({ ...curve, functionName: "graduated" }),
     rpc.readContract({ ...curve, functionName: "sold" }), rpc.readContract({ ...curve, functionName: "backingReserve" }),
     rpc.readContract({ ...curve, functionName: "graduationSold" }), rpc.readContract({ ...curve, functionName: "GRADUATION_BACKING" }),
@@ -302,14 +305,17 @@ export async function fixtureLifecycleState(rpc: PublicClient, binding: FixtureG
     Promise.all([0n, 1n, 2n, 3n].map((bucket) => rpc.readContract({ ...ledger, functionName: "bucketAccrued", args: [bucket] }))),
     rpc.readContract({ ...curve, functionName: "TRADE_FEE_BPS" }), rpc.readContract({ ...curve, functionName: "VIRTUAL_ETH" }),
     rpc.readContract({ ...curve, functionName: "token" }),
+    rpc.readContract({ address: token, abi: erc20Abi, functionName: "totalSupply", blockNumber }),
+    rpc.readContract({ ...curve, functionName: "totalSupply" }),
   ]);
   const supply = BigInt(launch.totalSupplyWei);
-  requireProof(active && graduated === !!graduation && same(current, address) && same(registry[0], launch.factory)
+  requireProof(supply === curveFixedSupplyWei && tokenSupply === supply && curveSupply === supply && launch.tokenDecimals === 18
+    && active && graduated === !!graduation && same(current, address) && same(registry[0], launch.factory)
     && same(registry[1], address) && registry[2] === 1 && same(registry[3], address) && registry[4] === 0n && same(asset, token)
     && same(curveEngine, binding.graduationEngine) && same(activeAccrual, address) && liveFeeBps === BigInt(feeBps) && liveVirtualEth === virtualEth
     && sold === BigInt(latestTrade?.soldWei ?? "0") && backing === (graduation ? 0n : BigInt(latestTrade?.backingWei ?? "0"))
     && nativeHeld === (graduation ? BigInt(graduation.nativeDustWei) : backing)
-    && inventory === (graduation ? BigInt(graduation.tokenDustWei) : supply - sold) && targetSold === supply * 3n / 5n
+    && inventory === (graduation ? BigInt(graduation.tokenDustWei) : supply - sold) && targetSold === curveGraduationSoldWei
     && targetBacking === threshold && accrued === grossFees && claimed <= accrued && feeBuckets(accrued, launch.treasuryShareBps).every((amount, idx) => amount === buckets[idx]),
     "on-chain lifecycle and event settlement disagree");
   const state: FixtureLifecycleState = {

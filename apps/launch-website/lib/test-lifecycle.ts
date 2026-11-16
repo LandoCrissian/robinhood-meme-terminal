@@ -1,4 +1,5 @@
 import { isLaunchAddress } from "./launch-data";
+import { launchTokenSupplyWei } from "./launch-terms";
 import { isTransactionHash, testCreationChain } from "./test-creation";
 import { encodeTestV4Swap, isTestV4Binding, sameTestV4Binding, testLpClaimSignature, testLpCollectSignature, testPermit2Lifetime,
   testV4PermitSignature, testV4Pins, testV4PoolId, type TestLpAmounts, type TestV4Binding } from "./test-v4";
@@ -14,7 +15,6 @@ export const curveGraduateSignature = "function graduate(uint256 deadline)" as c
 const unsigned = /^(?:0|[1-9][0-9]{0,77})$/;
 const quantity = /^0x(?:0|[1-9a-f][0-9a-f]{0,15})$/i;
 const data = /^0x(?:[0-9a-f]{2}){4,1600}$/i;
-const maxTokenWei = 100_000_000n * 10n ** 18n;
 
 type Address = `0x${string}`;
 
@@ -116,7 +116,7 @@ export function isLifecycleAmount(operation: TestLifecycleOperation, value: unkn
   if (typeof value !== "string" || !unsigned.test(value)) return false;
   const amount = BigInt(value);
   if (operation === "graduate" || operation === "lp-collect" || operation === "lp-claim") return amount === 0n;
-  return amount > 0n && amount <= (operation === "buy" || operation === "v4-buy" ? maxCurveBuyWei : maxTokenWei);
+  return amount > 0n && amount <= (operation === "buy" || operation === "v4-buy" ? maxCurveBuyWei : launchTokenSupplyWei);
 }
 
 export function isLifecycleSlippage(operation: TestLifecycleOperation, value: unknown): value is number {

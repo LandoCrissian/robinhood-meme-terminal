@@ -6,9 +6,9 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {RMTLaunchBondingCurveV1 as Curve} from "../src/RMTLaunchBondingCurveV1.sol";
 import {RMTLaunchCurveSuccessorDeployerV1 as V2Template} from "../src/RMTLaunchBondingCurveV2.sol";
 import {RMTLaunchCurveSuccessorDeployerV2 as V3Template} from "../src/RMTLaunchBondingCurveV3.sol";
-import {RMTLaunchCurveDirectoryV1 as Directory} from "../src/RMTLaunchCurveDirectoryV1.sol";
-import {RMTLaunchCurveFactoryV1 as Factory} from "../src/RMTLaunchCurveFactoryV1.sol";
-import {RMTLaunchProjectRegistryV1 as Registry} from "../src/RMTLaunchProjectRegistryV1.sol";
+import {RMTLaunchCurveDirectoryV2 as Directory} from "../src/RMTLaunchCurveDirectoryV2.sol";
+import {RMTLaunchCurveFactoryV2 as Factory} from "../src/RMTLaunchCurveFactoryV2.sol";
+import {RMTLaunchProjectRegistryV3 as Registry} from "../src/RMTLaunchProjectRegistryV3.sol";
 import {RMTLaunchCurveRevenueLedgerV1 as Ledger} from "../src/RMTLaunchCurveRevenueLedgerV1.sol";
 import {MigrationGraduationBinding} from "./RMTLaunchMigrationReadiness.t.sol";
 
@@ -146,7 +146,7 @@ contract RMTLaunchCurveAccountingInvariantTest is Test {
         vm.deal(CREATOR, CREATION_FEE);
         vm.prank(CREATOR);
         (address tokenAddress, address curveAddress) = factory.create{value: CREATION_FEE}(
-            "Accounting review", "ACCT", "", 0, TREASURY, 2_000, bytes32(uint256(1)), block.timestamp
+            "Accounting review", "ACCT", "", TREASURY, 2_000, bytes32(uint256(1)), block.timestamp
         );
         asset = IERC20(tokenAddress);
         origin = Curve(payable(curveAddress));
@@ -179,7 +179,7 @@ contract RMTLaunchCurveAccountingInvariantTest is Test {
 
         uint256 sold = market.sold();
         uint256 supply = asset.totalSupply();
-        assertEq(supply, 1_000_000 ether);
+        assertEq(supply, 1_000_000_000 ether);
         assertLe(sold, market.graduationSold());
         assertEq(asset.balanceOf(ALICE) + asset.balanceOf(BOB), sold);
         assertEq(asset.balanceOf(registeredCurve) + sold, supply);
@@ -217,7 +217,7 @@ contract RMTLaunchCurveAccountingInvariantTest is Test {
 
     function _publish(Directory directory, Directory.ActionKind kind, uint32 version, address target) private {
         Directory.Action memory action = Directory.Action(
-            kind, directory.nonce(), version, target, target.codehash, uint48(block.timestamp + 4 days)
+            kind, directory.nonce(), version, target, target.codehash, directory.signerSetEpoch(), uint48(block.timestamp + 4 days)
         );
         bytes32 digest = directory.actionDigest(action);
         (uint8 v1, bytes32 r1, bytes32 s1) = vm.sign(1, digest);

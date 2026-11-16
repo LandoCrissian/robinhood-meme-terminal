@@ -10,7 +10,7 @@ import {RMTLaunchBondingCurveV1 as Curve} from "../src/RMTLaunchBondingCurveV1.s
 import {RMTLaunchCurveSuccessorDeployerV1 as V2Deployer} from "../src/RMTLaunchBondingCurveV2.sol";
 import {RMTLaunchCurveDirectoryV1 as Directory} from "../src/RMTLaunchCurveDirectoryV1.sol";
 import {RMTLaunchCurveRevenueLedgerV1 as Ledger} from "../src/RMTLaunchCurveRevenueLedgerV1.sol";
-import {RMTLaunchCurveTokenV1 as Token} from "../src/RMTLaunchCurveTokenV1.sol";
+import {RMTLaunchCurveTokenV2 as Token} from "../src/RMTLaunchCurveTokenV2.sol";
 import {IRMTV4CurveGraduationV1} from "../src/interfaces/IRMTV4CurveGraduationV1.sol";
 
 /// @dev Isolated pre-release template for an adjacent successor with identical launch economics.
@@ -70,7 +70,7 @@ contract AdjacentProofFactory {
     }
 
     function create(address treasury, address operating, address future) external returns (Token token, Curve curve) {
-        token = new Token("Adjacent migration proof", "ADJ", 1_000_000 ether);
+        token = new Token("Adjacent migration proof", "ADJ");
         curve = new Curve(
             IERC20(address(token)),
             msg.sender,

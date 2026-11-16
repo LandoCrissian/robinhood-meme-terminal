@@ -35,9 +35,56 @@ jobs:
         run: python -m pip install --disable-pip-version-check slither-analyzer==0.11.5
       - name: Reject high-severity static-analysis findings
         working-directory: packages/contracts
-        # The archived exact 4663 release gate is verified separately by test:release-evidence.
+        # The review-profile gate below analyzes the exact fixed-supply 4663 compiler closure.
         run: >-
           slither .
           --fail-high
           --filter-paths
           "(lib/|test/|script/|broadcast/)"
+
+  fixed-supply-4663:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.10"
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a
+        with:
+          version: "1.7.1"
+      - run: pnpm install --frozen-lockfile --filter @rmt/launch-website...
+      - run: bash scripts/install-v4-deps.sh
+        working-directory: packages/contracts
+      - name: Prepare the pinned review compiler
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 2 \
+            'https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.26+commit.8a97fa7a' \
+            --output "$RUNNER_TEMP/solc"
+          chmod 700 "$RUNNER_TEMP/solc"
+          node packages/contracts/scripts/fixed-supply-profile.mjs \
+            --solc "$RUNNER_TEMP/solc" --chain 4663 --verify docs/evidence/fixed-supply/4663-profile.json
+          node packages/contracts/scripts/fixed-supply-profile.mjs \
+            --solc "$RUNNER_TEMP/solc" --chain 4663 --standard-json "$RUNNER_TEMP/fixed-supply-4663.json"
+      - run: python -m pip install --disable-pip-version-check slither-analyzer==0.11.5 crytic-compile==0.3.11
+      - name: Analyze the pinned compiler closure with every detector
+        run: |
+          python docs/evidence/rmt-task043/analyze-rotation.py "$RUNNER_TEMP/fixed-supply-4663.json" \
+            "$RUNNER_TEMP/solc" "$RUNNER_TEMP/4663-source" "$RUNNER_TEMP/4663-slither.json"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: fixed-supply-4663-analysis
+          path: |
+            ${{ runner.temp }}/fixed-supply-4663.json
+            ${{ runner.temp }}/4663-slither.json
+          retention-days: 7

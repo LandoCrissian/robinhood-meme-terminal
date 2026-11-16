@@ -11,11 +11,11 @@ const treasury: Address = "0x" + "33".repeat(20) as Address;
 const deadline = "1783776000";
 const intentId = "0x" + "aa".repeat(32) as `0x${string}`;
 const blockHash = "0x" + "bb".repeat(32) as `0x${string}`;
-const fields: TestCreationFields = { name: "Fixture token", symbol: "FIX", supplyPreset: 1,
+const fields: TestCreationFields = { name: "Fixture token", symbol: "FIX",
   projectURI: "https://example.test/project", treasury, treasuryShareBps: 1234 };
 const data = encodeFunctionData({
   abi: parseAbi([testCreationSignature]), functionName: "create",
-  args: [fields.name, fields.symbol, fields.projectURI, fields.supplyPreset, treasury,
+  args: [fields.name, fields.symbol, fields.projectURI, treasury,
     fields.treasuryShareBps, intentId, BigInt(deadline)],
 });
 const request: TestCreationRequest = {
@@ -27,7 +27,7 @@ test("binds reviewed test calldata to each committed field and creator", async (
   assert.equal(await calldataMatchesTestCreation(request, fields), true);
   for (const changed of [
     { name: "Other token" }, { symbol: "BAD" }, { projectURI: "https://example.test/other" },
-    { supplyPreset: 0 }, { treasury: account }, { treasury: "" }, { treasuryShareBps: 1235 },
+    { treasury: account }, { treasury: "" }, { treasuryShareBps: 1235 },
   ]) {
     assert.equal(await calldataMatchesTestCreation(request, { ...fields, ...changed }), false);
   }
@@ -45,6 +45,16 @@ test("tests exact execution request format, fee, chain, and stable review", () =
   assert.equal(isTestCreationRequest({ ...request, value: "0x1" }), false);
   assert.equal(isTestCreationRequest({ ...request, deadline: "0" }), false);
   assert.equal(isTestCreationRequest({ ...request, data: "0x0" }), false);
+});
+
+test("rejects an archived preset transaction as a new review or recovery request", async () => {
+  const data = encodeFunctionData({
+    abi: parseAbi(["function create(string,string,string,uint8,address,uint16,bytes32,uint256)"]),
+    functionName: "create", args: [fields.name, fields.symbol, fields.projectURI, 1, treasury,
+      fields.treasuryShareBps, intentId, BigInt(deadline)],
+  });
+  assert.equal(isTestCreationRequest({ ...request, data }), false);
+  assert.equal(await calldataMatchesTestCreation({ ...request, data }, fields), false);
 });
 
 test("requires an exact HTTP loopback origin and explicit port for the test wallet", () => {

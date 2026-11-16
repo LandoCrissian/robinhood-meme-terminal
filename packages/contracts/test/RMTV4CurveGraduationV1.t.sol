@@ -27,10 +27,10 @@ import {HookMiner} from "@uniswap/v4-periphery/src/utils/HookMiner.sol";
 import {IAllowanceTransfer} from "permit2/src/interfaces/IAllowanceTransfer.sol";
 import {RMTLaunchBondingCurveV1} from "../src/RMTLaunchBondingCurveV1.sol";
 import {RMTLaunchCurveSuccessorDeployerV1} from "../src/RMTLaunchBondingCurveV2.sol";
-import {RMTLaunchCurveFactoryV1} from "../src/RMTLaunchCurveFactoryV1.sol";
+import {RMTLaunchCurveFactoryV2} from "../src/RMTLaunchCurveFactoryV2.sol";
 import {RMTLaunchCurveLpFeeLedgerV1} from "../src/RMTLaunchCurveLpFeeLedgerV1.sol";
-import {RMTLaunchCurveDeploymentV1} from "../src/RMTLaunchCurveDeploymentV1.sol";
-import {RMTLaunchCurveTokenV1} from "../src/RMTLaunchCurveTokenV1.sol";
+import {RMTLaunchCurveDeploymentV2} from "../src/RMTLaunchCurveDeploymentV2.sol";
+import {RMTLaunchCurveTokenV2} from "../src/RMTLaunchCurveTokenV2.sol";
 import {ICurvePermit2V1, ICurvePositionManagerV1, RMTV4CurveGraduationV1} from "../src/RMTV4CurveGraduationV1.sol";
 import {RMTV4CurveInitializationGuardV1} from "../src/RMTV4CurveInitializationGuardV1.sol";
 
@@ -284,7 +284,7 @@ contract RMTV4CurveGraduationV1Test is Test {
     IPoolManager private manager;
     AdversarialCurvePositionManager private positions;
     CurvePermit2Fixture private permit;
-    RMTLaunchCurveFactoryV1 private factory;
+    RMTLaunchCurveFactoryV2 private factory;
     RMTV4CurveGraduationV1 private graduation;
     address private creator = makeAddr("creator");
     address private buyer = makeAddr("buyer");
@@ -315,7 +315,7 @@ contract RMTV4CurveGraduationV1Test is Test {
             type(RMTV4CurveInitializationGuardV1).creationCode,
             abi.encode(manager, engine)
         );
-        RMTLaunchCurveDeploymentV1 deployment = new RMTLaunchCurveDeploymentV1(
+        RMTLaunchCurveDeploymentV2 deployment = new RMTLaunchCurveDeploymentV2(
             dependencies, salt, operating, reserve, address(0), address(successor), address(successor).codehash, 0
         );
         graduation = deployment.graduationEngine();
@@ -327,22 +327,19 @@ contract RMTV4CurveGraduationV1Test is Test {
         vm.deal(buyer, 10 ether);
     }
 
-    function testFundingUsesCurveSpotAndRealCapitalAcrossPresets() public view {
-        uint256[3] memory supply = [uint256(1_000_000 ether), 10_000_000 ether, 100_000_000 ether];
-        for (uint256 i; i < supply.length; ++i) {
-            uint256 tokenReserve = supply[i] * 2 / 5;
-            uint256 numerator = supply[i] * 6 / 5;
-            uint256 denominator = 3 ether;
-            RMTV4CurveGraduationV1.Funding memory funding =
-                graduation.previewFunding(1 ether, tokenReserve, numerator, denominator);
-            uint256 q192Price = Math.mulDiv(numerator, 1 << 192, denominator);
-            uint256 root = uint256(funding.sqrtPriceX96);
-            assertLe(root * root, q192Price);
-            assertGt((root + 1) * (root + 1), q192Price);
-            assertGt(funding.liquidity, 0);
-            assertLe(1 ether - funding.nativeUsed, 100_000);
-            assertLe(tokenReserve - funding.tokenUsed, 100_000);
-        }
+    function testFundingUsesCurveSpotAndRealCapitalAtOneBillion() public view {
+        uint256 tokenReserve = 400_000_000 ether;
+        uint256 numerator = 1_200_000_000 ether;
+        uint256 denominator = 3 ether;
+        RMTV4CurveGraduationV1.Funding memory funding =
+            graduation.previewFunding(1 ether, tokenReserve, numerator, denominator);
+        uint256 q192Price = Math.mulDiv(numerator, 1 << 192, denominator);
+        uint256 root = uint256(funding.sqrtPriceX96);
+        assertLe(root * root, q192Price);
+        assertGt((root + 1) * (root + 1), q192Price);
+        assertGt(funding.liquidity, 0);
+        assertLe(1 ether - funding.nativeUsed, 100_000);
+        assertLe(tokenReserve - funding.tokenUsed, 100_000);
     }
 
     function testUnbalancedOrUnfundedMigrationRejected() public {
@@ -411,7 +408,7 @@ contract RMTV4CurveGraduationV1Test is Test {
         assertEq(permit.amount(address(graduation), token, address(positions)), 0);
         assertEq(address(manager).balance + address(curve).balance, backing);
         assertEq(IERC20(token).balanceOf(address(manager)) + IERC20(token).balanceOf(address(curve)), inventory);
-        assertEq(IERC20(token).totalSupply(), 1_000_000 ether);
+        assertEq(IERC20(token).totalSupply(), 1_000_000_000 ether);
 
         vm.expectRevert();
         vm.prank(creator);
@@ -481,7 +478,7 @@ contract RMTV4CurveGraduationV1Test is Test {
 
     function testCanonicalTokenHasNoCallbackAndFundingStillRejectsInjectedTokenFaults() public {
         (address token, RMTLaunchBondingCurveV1 curve, uint256 deadline) = _fundCurve();
-        assertEq(token.codehash, keccak256(type(RMTLaunchCurveTokenV1).runtimeCode));
+        assertEq(token.codehash, keccak256(type(RMTLaunchCurveTokenV2).runtimeCode));
         uint256 inventory = IERC20(token).balanceOf(address(curve));
         AdversarialCurveToken short = new AdversarialCurveToken(graduation, curve, true, false, false);
         vm.etch(token, address(short).code);
@@ -528,7 +525,7 @@ contract RMTV4CurveGraduationV1Test is Test {
         }
         assertEq(AdversarialCurveToken(token).engineCallbackErrors(2), bytes4(0));
         assertEq(AdversarialCurveToken(token).curveCallbackErrors(2), bytes4(0));
-        vm.etch(token, type(RMTLaunchCurveTokenV1).runtimeCode);
+        vm.etch(token, type(RMTLaunchCurveTokenV2).runtimeCode);
         assertTrue(curve.graduated());
         assertEq(positions.ownerOf(curve.positionTokenId()), address(graduation));
         assertEq(IERC20(token).allowance(address(graduation), address(permit)), 0);
@@ -764,7 +761,7 @@ contract RMTV4CurveGraduationV1Test is Test {
         (uint256 originalId, uint128 originalLiquidity) = graduation.positions(token);
         PoolKey memory key = graduation.canonicalPoolKey(token);
         RMTV4CurveGraduationV1.Funding memory outside =
-            graduation.previewFunding(0.2 ether, 80_000 ether, 400_000 ether, 1 ether);
+            graduation.previewFunding(0.2 ether, 80_000_000 ether, 400_000_000 ether, 1 ether);
         uint256 outsideId = positions.nextTokenId();
         _mintOutside(token, key, outside, deadline);
         assertEq(positions.ownerOf(outsideId), buyer);
@@ -862,7 +859,7 @@ contract RMTV4CurveGraduationV1Test is Test {
         vm.prank(creator);
         address curveAddress;
         (token, curveAddress) =
-            factory.create("Graduation Test", "GRAD", "", 0, treasury, 2_000, bytes32(uint256(1)), block.timestamp);
+            factory.create("Graduation Test", "GRAD", "", treasury, 2_000, bytes32(uint256(1)), block.timestamp);
         curve = RMTLaunchBondingCurveV1(payable(curveAddress));
     }
 

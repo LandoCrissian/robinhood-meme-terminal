@@ -5,7 +5,7 @@ import pg from "pg";
 import { createPublicClient, erc20Abi, http, isAddress, parseAbi, toEventSelector, toFunctionSelector, toHex, zeroAddress,
   type Hash, type PublicClient } from "viem";
 import { curveFixtureConfig } from "./curve-fixture-config.js";
-import { blockEvidence, curveCreationAbi, fixtureChainId, fixtureConfirmations, readCurveLaunchRegistration,
+import { blockEvidence, curveCreationAbi, curveFixedSupplyWei, curveGraduationSoldWei, fixtureChainId, fixtureConfirmations, readCurveLaunchRegistration,
   verifyCurveDeployment, type BlockEvidence, type CurveFixtureBinding, type CurveLaunchRegistration } from "./curve-launch-evidence.js";
 import { commitCurveFixtureRange, curveScope, fixtureCheckpoint, initializeCurveFixtureStore,
   loadCurveFixtureCursors, readCurveFixtureRows, rollbackCurveFixture, storedCurveCheckpoints,
@@ -45,10 +45,13 @@ async function openingState(rpc: PublicClient, registration: CurveLaunchRegistra
   const blockNumber = BigInt(creation.blockNumber);
   const curve = { address, abi: fixtureCurveAbi, blockNumber } as const;
   const erc20 = { address: token, abi: erc20Abi, blockNumber } as const;
-  const [inventory, supply, nativeBalance, name, symbol, sold, backing, targetSold, targetBacking,
+  const [inventory, supply, curveSupply, creatorInventory, factoryInventory, nativeBalance, name, symbol, sold, backing, targetSold, targetBacking,
     creator, treasury, share, factory, curveToken, origin] = await Promise.all([
     rpc.readContract({ ...erc20, functionName: "balanceOf", args: [address] }),
     rpc.readContract({ ...erc20, functionName: "totalSupply" }),
+    rpc.readContract({ ...curve, functionName: "totalSupply" }),
+    rpc.readContract({ ...erc20, functionName: "balanceOf", args: [registration.creator] }),
+    rpc.readContract({ ...erc20, functionName: "balanceOf", args: [registration.factory] }),
     rpc.getBalance({ address, blockNumber }),
     rpc.readContract({ ...erc20, functionName: "name" }),
     rpc.readContract({ ...erc20, functionName: "symbol" }),
@@ -63,8 +66,10 @@ async function openingState(rpc: PublicClient, registration: CurveLaunchRegistra
     rpc.readContract({ ...curve, functionName: "token" }),
     rpc.readContract({ address: registration.factory, abi: originCurveAbi, functionName: "originCurveForToken", args: [token], blockNumber }),
   ]);
-  if (inventory !== supply || supply.toString() !== totalSupplyWei || name !== registration.name || symbol !== registration.symbol
-      || sold !== 0n || backing !== 0n || nativeBalance !== 0n || targetSold !== supply * 3n / 5n
+  if (inventory !== curveFixedSupplyWei || supply !== curveFixedSupplyWei || curveSupply !== curveFixedSupplyWei
+      || supply.toString() !== totalSupplyWei || creatorInventory !== 0n || factoryInventory !== 0n
+      || name !== registration.name || symbol !== registration.symbol
+      || sold !== 0n || backing !== 0n || nativeBalance !== 0n || targetSold !== curveGraduationSoldWei
       || targetBacking !== 2n * 10n ** 18n || !same(creator, registration.creator) || !same(curveToken, token)
       || !same(factory, registration.factory) || !same(origin, address) || share !== registration.treasuryShareBps
       || !same(treasury, registration.treasury ?? zeroAddress)) {

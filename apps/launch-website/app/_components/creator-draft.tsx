@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import {
-  creationReviewPath, emptyLaunchDraft, isLaunchDraft, isReviewedFixtureDraft, launchDraftLimits, projectTreasuryShareUnit,
-  restoreLegacyLaunchDraft, reviewableFields, treasuryProjectPercent, validateFixtureLaunchDraft, validateLaunchDraft,
+  creationReviewPath, emptyLaunchDraft, launchDraftLimits, projectTreasuryShareUnit, readStoredLaunchDraft,
+  restoreLegacyLaunchDraft, reviewableFields, treasuryProjectPercent, validateLaunchDraft,
   type LaunchDraft, type LaunchDraftErrors, type LaunchDraftField, type LaunchReviewRequest, type ReviewedLaunchDraft,
 } from "../../lib/launch-draft";
 import { proposedCurveLifecycle } from "../../lib/curve-lifecycle";
-import { fixtureSupplyPresets, launchTerms, plannedLaunchSupply } from "../../lib/launch-terms";
+import { launchTerms, launchTokenDecimals, launchTokenSupply } from "../../lib/launch-terms";
 import { TestCreationWallet } from "./test-creation-wallet";
 import { TokenArtwork } from "./token-artwork";
 
@@ -37,7 +37,7 @@ function DraftTerms({ draft }: { draft?: ReviewedLaunchDraft }) {
       <dt>Illustrative value</dt><dd>About $1 at a fixed $2,500 per ETH reference</dd>
       <dt>Creation fee recipient</dt><dd>RMT operations · production address pending approval</dd>
       <dt>Creator token allocation</dt><dd>0 tokens</dd>
-      <dt>Opening curve inventory</dt><dd>{draft ? `${number.format(draft.supply)} tokens` : "100% of the fixed supply"}</dd>
+      <dt>Opening curve inventory</dt><dd>{number.format(launchTokenSupply)} tokens</dd>
       <dt>Opening real reserve</dt><dd>0 ETH · creators supply no liquidity</dd>
       <dt>Curve trading fee</dt><dd>{launchTerms.curveTradeFeePercent}% of gross ETH, plus gas</dd>
       <dt>Curve and locked-position fee split</dt><dd>
@@ -48,8 +48,8 @@ function DraftTerms({ draft }: { draft?: ReviewedLaunchDraft }) {
       </dd>
       <dt>Treasury share of project fees</dt><dd>{treasuryProjectPercent(draft?.treasuryShareBps ?? 0)}</dd>
       <dt>Rewards after graduation</dt><dd>Same recipients for ETH and token fees collected from the original locked position</dd>
-      <dt>Graduation target</dt><dd>{launchTerms.curveAllocationPercent}% net supply sold and {launchTerms.graduationBackingEth} ETH of real backing in the review fixture</dd>
-      <dt>Original v4 position</dt><dd>{launchTerms.liquidityAllocationPercent}% of supply available before rounding · permanently locked principal</dd>
+      <dt>Graduation target</dt><dd>{number.format(launchTokenSupply * launchTerms.curveAllocationPercent / 100)} tokens net sold ({launchTerms.curveAllocationPercent}%) and {launchTerms.graduationBackingEth} ETH of real backing in the review fixture</dd>
+      <dt>Original v4 position</dt><dd>{number.format(launchTokenSupply * launchTerms.liquidityAllocationPercent / 100)} tokens available before rounding ({launchTerms.liquidityAllocationPercent}%) · permanently locked principal</dd>
       <dt>v4 pool fee</dt><dd>{launchTerms.graduationPoolFeePercent}% · project earnings depend on fees earned by the locked position</dd>
     </dl>
     <p>At the target, the reviewed engine permits a separate graduation transaction. Production terms require approval.</p>
@@ -73,8 +73,7 @@ export function CreatorDraft({ executionTest }: { executionTest?: { factory: str
       try {
         const saved = localStorage.getItem(key);
         if (!saved || saved.length > 4096) return;
-        const input: unknown = JSON.parse(saved);
-        if (isLaunchDraft(input) && Object.values(input).every((value) => value.length <= 500)) return input;
+        return readStoredLaunchDraft(JSON.parse(saved));
       } catch { /* Try the other storage version if this entry is unavailable. */ }
     }
     const current = storedDraft(storageKey);
@@ -123,7 +122,7 @@ export function CreatorDraft({ executionTest }: { executionTest?: { factory: str
     event.preventDefault();
     if (reviewing.current) return;
     setMessage("");
-    const checked = executionTest ? validateFixtureLaunchDraft(draft) : validateLaunchDraft(draft);
+    const checked = validateLaunchDraft(draft);
     if (!checked.ok) {
       showErrors(checked.errors);
       return;
@@ -132,10 +131,9 @@ export function CreatorDraft({ executionTest }: { executionTest?: { factory: str
     reviewing.current = true;
     setPending(true);
     try {
-      const { name, symbol, projectURI, supplyPreset, treasury, treasuryShare } = draft;
-      const request: LaunchReviewRequest & { supplyPreset?: string } = {
+      const { name, symbol, projectURI, treasury, treasuryShare } = draft;
+      const request: LaunchReviewRequest = {
         name, symbol, projectURI, treasury, treasuryShare, treasuryShareUnit: projectTreasuryShareUnit,
-        ...(executionTest ? { supplyPreset } : {}),
       };
       const response = await fetch(creationReviewPath, {
         method: "POST",
@@ -166,7 +164,7 @@ export function CreatorDraft({ executionTest }: { executionTest?: { factory: str
       id: fieldId(key),
       name: key,
       value: draft[key],
-      onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => edit(key, event.target.value),
+      onChange: (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => edit(key, event.target.value),
       "aria-invalid": Boolean(errors[key]),
       "aria-describedby": description || undefined,
     };
@@ -184,7 +182,7 @@ export function CreatorDraft({ executionTest }: { executionTest?: { factory: str
       </div>
       <div><span className="lpPill">{proposedCurveLifecycle.label}</span></div>
       <dl className="lpFacts">
-        <dt>{executionTest ? "Total supply" : "Planned total supply"}</dt><dd>{number.format(reviewed.supply)} tokens</dd>
+        <dt>Fixed total supply</dt><dd>{number.format(reviewed.supply)} tokens · {launchTokenDecimals} decimals</dd>
         {reviewed.description && <><dt>Project description</dt><dd className="lpDraftDescription">{reviewed.description}</dd></>}
         <dt>Project or metadata URL</dt><dd>{reviewed.projectURI || "None"}</dd>
         <dt>Artwork URL</dt><dd>{reviewed.artworkURL || "None"}</dd>
@@ -209,16 +207,11 @@ export function CreatorDraft({ executionTest }: { executionTest?: { factory: str
             {errorFor(key)}
           </div>)}
         </div>
-        {executionTest ? <div className="lpDraftField">
-          <label htmlFor={fieldId("supplyPreset")}>Fixed supply</label>
-          <select {...inputProps("supplyPreset")}>
-            {fixtureSupplyPresets.map((supply, preset) => <option key={supply} value={preset}>{number.format(supply)} tokens</option>)}
-          </select>
-          {errorFor("supplyPreset")}
-        </div> : <div className="lpDraftField">
-          <label htmlFor="draft-planned-supply">Planned fixed supply</label>
-          <input id="draft-planned-supply" value={`${number.format(plannedLaunchSupply)} tokens`} readOnly />
-        </div>}
+        <div className="lpDraftField">
+          <label htmlFor="draft-fixed-supply">Fixed supply</label>
+          <input id="draft-fixed-supply" value={`${number.format(launchTokenSupply)} tokens`} readOnly aria-describedby="draft-fixed-supply-hint" />
+          <small id="draft-fixed-supply-hint">Set by the launch contract · {launchTokenDecimals} decimals</small>
+        </div>
       </fieldset>
       <fieldset disabled={pending || !restored}>
         <legend>Project information</legend>
@@ -264,7 +257,7 @@ export function CreatorDraft({ executionTest }: { executionTest?: { factory: str
     {executionTest ? <div className="lpStack">
       {draftPanel}
       <TestCreationWallet factory={executionTest.factory}
-        draft={reviewed && isReviewedFixtureDraft(reviewed) ? reviewed : undefined}
+        draft={reviewed}
         isCurrentDraft={(value) => value === currentDraft.current} />
     </div> : draftPanel}
     <DraftTerms draft={reviewed} />

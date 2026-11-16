@@ -1,7 +1,8 @@
 import type { Client } from "pg";
 import { lockIndexWriter } from "./index-store.js";
 import { curveFixtureProfile } from "./curve-fixture-config.js";
-import { fixtureConfirmations, type BlockEvidence, type CurveFixtureBinding, type CurveLaunchRegistration } from "./curve-launch-evidence.js";
+import { curveFixedSupplyWei, fixtureConfirmations, type BlockEvidence,
+  type CurveFixtureBinding, type CurveLaunchRegistration } from "./curve-launch-evidence.js";
 import type { FixtureCursor, FixtureGraduation, FixtureGraduationBinding, FixtureLifecycleState, FixtureTrade } from "./curve-fixture-lifecycle.js";
 import type { FixturePostCursor, FixturePostEvent, FixturePostState } from "./curve-fixture-post-graduation.js";
 
@@ -34,7 +35,7 @@ const eventColumns = `
 `;
 const schema = `
   CREATE TABLE IF NOT EXISTS rmt_curve_fixture_binding (
-    profile text PRIMARY KEY CHECK (profile = 'task036-local-only'),
+    profile text PRIMARY KEY CHECK (profile = '${curveFixtureProfile}'),
     identity jsonb NOT NULL
   );
   CREATE TABLE IF NOT EXISTS rmt_curve_fixture_checkpoints (
@@ -123,7 +124,8 @@ export async function initializeCurveFixtureStore(writer: Database, databaseName
   await lockIndexWriter(writer, binding.chainId);
   await writer.query("SET search_path TO public, pg_catalog");
   await writer.query("SET statement_timeout = '5s'");
-  const snapshot = JSON.stringify({ ...binding, schemaRevision: 38, graduationEngine: graduation.graduationEngine.toLowerCase(),
+  const snapshot = JSON.stringify({ ...binding, schemaRevision: 49, fixedSupplyWei: curveFixedSupplyWei.toString(),
+    graduationEngine: graduation.graduationEngine.toLowerCase(),
     graduationHash: graduation.graduationHash.toLowerCase(), guard: graduation.guard.toLowerCase(), guardHash: graduation.guardHash.toLowerCase(),
     factory: binding.factory.toLowerCase(), projectRegistry: binding.projectRegistry.toLowerCase(),
     creationFeeRecipient: binding.creationFeeRecipient.toLowerCase(), deploymentBlock: binding.deploymentBlock.toString(),
@@ -252,7 +254,8 @@ export async function readCurveFixtureRows(db: Database, scope: Scope, checkpoin
      WHERE ${scopePredicate} AND block_number <= $4 AND ($5::text IS NULL OR token = $5)
      ORDER BY block_number DESC, log_index DESC LIMIT 25`, [...scope, checkpoint.blockNumber, token ?? null, checkpoint.blockHash.toLowerCase()]);
   return result.rows.map(({ payload, token: rowToken, block_number, block_hash, transaction_hash, log_index, state, trades, post_events }) => {
-    if (payload.chainId !== scope[0] || payload.factory.toLowerCase() !== scope[1] || payload.token.toLowerCase() !== rowToken
+    if (payload.kind !== "curve-launch-1b-v2" || payload.totalSupplyWei !== curveFixedSupplyWei.toString() || payload.tokenDecimals !== 18
+        || payload.chainId !== scope[0] || payload.factory.toLowerCase() !== scope[1] || payload.token.toLowerCase() !== rowToken
         || payload.creation.blockNumber !== block_number || payload.creation.blockHash.toLowerCase() !== block_hash
         || payload.creation.transactionHash.toLowerCase() !== transaction_hash || payload.creation.logIndex !== log_index
         || !state || (state.phase === "graduated") !== Boolean(state.postGraduation) || state.observed.blockNumber !== checkpoint.blockNumber

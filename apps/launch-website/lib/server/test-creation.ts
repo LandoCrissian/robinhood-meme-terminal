@@ -1,6 +1,7 @@
 import { decodeFunctionData, encodeFunctionData, erc20Abi, getAddress, parseAbi, parseAbiItem, parseEventLogs, toHex, zeroAddress, type Hex } from "viem";
-import { emptyLaunchDraft, totalTreasuryFeePercent, validateFixtureLaunchDraft } from "../launch-draft";
-import { testCreationChain, type TestCreationRequest } from "../test-creation";
+import { emptyLaunchDraft, totalTreasuryFeePercent, validateLaunchDraft } from "../launch-draft";
+import { launchTokenDecimals, launchTokenSupplyWei } from "../launch-terms";
+import { isTestCreationRequest, testCreationChain, type TestCreationRequest } from "../test-creation";
 import { configuredCurveFixture, factoryAbi, fixtureAddress, fixtureCreationFee, fixtureHash, fixtureRpc, sameHex, verifyCurveFixture, type CurveFixture } from "./curve-fixture";
 import { readDraftBody } from "./launch-draft";
 import { readFixtureLaunches } from "./fixture-discovery";
@@ -12,6 +13,7 @@ const feeHex = toHex(fixtureCreationFee);
 const created = parseAbiItem("event CurveCreated(address indexed token,address indexed curve,address indexed creator,bytes32 intentId,uint256 supply,address revenueLedger,address treasury,uint16 treasuryShareBps,string name,string symbol,string projectURI)");
 const paid = parseAbiItem("event CreationFeePaid(address indexed token,address indexed creator,address indexed recipient,uint256 fee,uint256 refund)");
 const registered = parseAbiItem("event ProjectRegistered(address indexed token,address indexed factory,address indexed curve,uint32 version)");
+const tokenAbi = [...erc20Abi, parseAbiItem("function FIXED_SUPPLY() view returns (uint256)")] as const;
 const curveAbi = parseAbi([
   "function factory() view returns (address)", "function token() view returns (address)", "function creator() view returns (address)",
   "function treasury() view returns (address)", "function treasuryShareBps() view returns (uint16)", "function sold() view returns (uint256)",
@@ -23,32 +25,30 @@ const keys = (value: unknown, names: string[]): value is Record<string, unknown>
   && !Array.isArray(value) && Object.keys(value).length === names.length && names.every((name) => Object.hasOwn(value, name));
 const asAddress = (address: string) => getAddress(address.toLowerCase());
 const decimal = (value: unknown): value is string => typeof value === "string" && /^[1-9][0-9]{0,11}$/.test(value);
-const calldata = (value: unknown): value is Hex => typeof value === "string" && value.length <= 2304 && /^0x(?:[0-9a-f]{2})+$/i.test(value);
 const reply = (body: object, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "private, no-store", "Netlify-CDN-Cache-Control": "no-store" } });
 const unavailable = () => reply({ status: "unavailable" });
 
 function normalizedFields(fields: unknown) {
-  if (!keys(fields, ["name", "symbol", "projectURI", "supplyPreset", "treasury", "treasuryShareBps"]) ||
+  if (!keys(fields, ["name", "symbol", "projectURI", "treasury", "treasuryShareBps"]) ||
       typeof fields.name !== "string" || typeof fields.symbol !== "string" || typeof fields.projectURI !== "string" ||
-      typeof fields.treasury !== "string" || typeof fields.supplyPreset !== "number" || !Number.isInteger(fields.supplyPreset) ||
+      typeof fields.treasury !== "string" ||
       typeof fields.treasuryShareBps !== "number" || !Number.isInteger(fields.treasuryShareBps) || fields.treasuryShareBps < 0) return null;
-  const checked = validateFixtureLaunchDraft({ ...emptyLaunchDraft, name: fields.name, symbol: fields.symbol, projectURI: fields.projectURI,
-    supplyPreset: String(fields.supplyPreset), treasury: fields.treasury,
+  const checked = validateLaunchDraft({ ...emptyLaunchDraft, name: fields.name, symbol: fields.symbol, projectURI: fields.projectURI,
+    treasury: fields.treasury,
     treasuryShare: totalTreasuryFeePercent(fields.treasuryShareBps) }, "total-fee-percent");
   if (!checked.ok) return null;
   const draft = checked.draft;
-  return draft.name === fields.name && draft.symbol === fields.symbol && draft.projectURI === fields.projectURI && draft.supplyPreset === fields.supplyPreset
+  return draft.name === fields.name && draft.symbol === fields.symbol && draft.projectURI === fields.projectURI
     && draft.treasury === fields.treasury && draft.treasuryShareBps === fields.treasuryShareBps ? draft : null;
 }
 
 function preparedRequest(fixture: CurveFixture, raw: unknown): TestCreationRequest | null {
-  if (!keys(raw, ["from", "to", "data", "value", "chainId", "intentId", "deadline", "blockNumber", "blockHash"]) ||
-    !fixtureAddress(raw.from) || raw.to !== fixture.factory || raw.chainId !== testCreationChain || raw.value !== feeHex || !fixtureHash(raw.intentId) ||
-    !decimal(raw.deadline) || !calldata(raw.data) || raw.blockNumber !== toHex(fixture.deploymentBlock) || raw.blockHash !== fixture.deploymentBlockHash) return null;
+  if (!isTestCreationRequest(raw) || raw.to !== fixture.factory || raw.value !== feeHex || !decimal(raw.deadline)
+    || raw.blockNumber !== toHex(fixture.deploymentBlock) || raw.blockHash !== fixture.deploymentBlockHash) return null;
   const decoded = decodeFunctionData({ abi: factoryAbi, data: raw.data });
   if (decoded.functionName !== "create") return null;
-  const [name, symbol, projectURI, supplyPreset, treasury, treasuryShareBps, intentId, deadline] = decoded.args;
-  if (!normalizedFields({ name, symbol, projectURI, supplyPreset, treasury: sameHex(treasury, zeroAddress) ? "" : treasury.toLowerCase(), treasuryShareBps }) ||
+  const [name, symbol, projectURI, treasury, treasuryShareBps, intentId, deadline] = decoded.args;
+  if (!normalizedFields({ name, symbol, projectURI, treasury: sameHex(treasury, zeroAddress) ? "" : treasury.toLowerCase(), treasuryShareBps }) ||
       sameHex(treasury, raw.from) || !sameHex(intentId, raw.intentId) || deadline !== BigInt(raw.deadline) ||
       !sameHex(encodeFunctionData({ abi: factoryAbi, functionName: "create", args: decoded.args }), raw.data)) return null;
   return { from: asAddress(raw.from), to: fixture.factory, data: raw.data, value: feeHex, chainId: testCreationChain, intentId: raw.intentId,
@@ -76,7 +76,7 @@ async function prepare(fixture: CurveFixture, body: Record<string, unknown>) {
 
   const deadline = body.deadline === undefined ? head.timestamp + maxDeadlineSeconds : BigInt(body.deadline as string);
   if (deadline <= head.timestamp || deadline > head.timestamp + maxDeadlineSeconds) return reply({ status: "invalid" }, 422);
-  const args = [draft.name, draft.symbol, draft.projectURI, draft.supplyPreset, toTreasury,
+  const args = [draft.name, draft.symbol, draft.projectURI, toTreasury,
     draft.treasuryShareBps, body.intentId, deadline] as const;
   await rpc.simulateContract({ address: fixture.factory, abi: factoryAbi, functionName: "create", account: from, args, value: fixtureCreationFee });
   const request: TestCreationRequest = { from, to: fixture.factory, data: encodeFunctionData({ abi: factoryAbi, functionName: "create", args }),
@@ -130,12 +130,11 @@ async function verify(fixture: CurveFixture, body: Record<string, unknown>) {
   const project = registryLogs[0];
   const decoded = decodeFunctionData({ abi: factoryAbi, data: request.data });
   if (decoded.functionName !== "create") return unavailable();
-  const [name, symbol, uri, preset, treasury, share, intent] = decoded.args;
-  const supply = 1_000_000n * 10n ** (18n + BigInt(preset));
+  const [name, symbol, uri, treasury, share, intent] = decoded.args;
   if (![c.token, c.curve, c.revenueLedger].every(fixtureAddress)
       || new Set([fixture.factory, fixture.registry, c.token, c.curve, c.revenueLedger].map((address) => address.toLowerCase())).size !== 5
       || !sameHex(c.creator, request.from) || !sameHex(c.intentId, intent) || c.name !== name || c.symbol !== symbol
-      || c.projectURI !== uri || c.supply !== supply || !sameHex(c.treasury, treasury) || c.treasuryShareBps !== share
+      || c.projectURI !== uri || c.supply !== launchTokenSupplyWei || !sameHex(c.treasury, treasury) || c.treasuryShareBps !== share
       || !sameHex(fee.token, c.token) || !sameHex(fee.creator, request.from) || !sameHex(fee.recipient, fixture.feeRecipient)
       || fee.fee !== fixtureCreationFee || fee.refund !== 0n
       || project.args.version !== 1 || !sameHex(project.args.token, c.token) || !sameHex(project.args.factory, fixture.factory) || !sameHex(project.args.curve, c.curve)
@@ -143,20 +142,24 @@ async function verify(fixture: CurveFixture, body: Record<string, unknown>) {
 
   const at = { blockNumber: receipt.blockNumber };
   const curve = { address: c.curve, abi: curveAbi, ...at } as const;
-  const token = { address: c.token, abi: erc20Abi, ...at } as const;
-  const [bound, curveFactory, curveToken, creator, curveTreasury, curveShare, revenueLedger, boardSupply, tokenName, tokenSymbol, sold, backing, inventory, target] = await Promise.all([
+  const token = { address: c.token, abi: tokenAbi, ...at } as const;
+  const [bound, curveFactory, curveToken, creator, curveTreasury, curveShare, revenueLedger, curveSupply,
+    tokenSupply, fixedSupply, decimals, tokenName, tokenSymbol, sold, backing, inventory, target] = await Promise.all([
     rpc.readContract({ address: fixture.factory, abi: factoryAbi, functionName: "originCurveForToken", args: [c.token], ...at }),
     rpc.readContract({ ...curve, functionName: "factory" }), rpc.readContract({ ...curve, functionName: "token" }),
     rpc.readContract({ ...curve, functionName: "creator" }), rpc.readContract({ ...curve, functionName: "treasury" }),
-    rpc.readContract({ ...curve, functionName: "treasuryShareBps" }), rpc.readContract({ ...curve, functionName: "revenueLedger" }), rpc.readContract({ ...token, functionName: "totalSupply" }),
+    rpc.readContract({ ...curve, functionName: "treasuryShareBps" }), rpc.readContract({ ...curve, functionName: "revenueLedger" }),
+    rpc.readContract({ ...curve, functionName: "totalSupply" }), rpc.readContract({ ...token, functionName: "totalSupply" }),
+    rpc.readContract({ ...token, functionName: "FIXED_SUPPLY" }), rpc.readContract({ ...token, functionName: "decimals" }),
     rpc.readContract({ ...token, functionName: "name" }), rpc.readContract({ ...token, functionName: "symbol" }),
     rpc.readContract({ ...curve, functionName: "sold" }), rpc.readContract({ ...curve, functionName: "backingReserve" }),
     rpc.readContract({ ...token, functionName: "balanceOf", args: [c.curve] }), rpc.readContract({ ...curve, functionName: "GRADUATION_BACKING" }),
   ]);
   if (!sameHex(bound, c.curve) || !sameHex(curveFactory, fixture.factory) || !sameHex(curveToken, c.token) || !sameHex(creator, request.from)
       || !sameHex(curveTreasury, treasury) || curveShare !== share || !fixtureAddress(revenueLedger) || !sameHex(revenueLedger, c.revenueLedger)
-      || boardSupply !== supply || tokenName !== name || tokenSymbol !== symbol
-      || sold !== 0n || backing !== 0n || inventory !== supply || target !== 2n * 10n ** 18n) return unavailable();
+      || [curveSupply, tokenSupply, fixedSupply, inventory].some((amount) => amount !== launchTokenSupplyWei)
+      || decimals !== launchTokenDecimals || tokenName !== name || tokenSymbol !== symbol
+      || sold !== 0n || backing !== 0n || target !== 2n * 10n ** 18n) return unavailable();
   const discovery = await readFixtureLaunches(fixture, c.token);
   const indexed = discovery.status === "ready" && discovery.launches.some((launch) => sameHex(launch.creation.transactionHash, hash)
     && sameHex(launch.creation.blockHash, receipt.blockHash) && launch.creation.logIndex === creation.logIndex);

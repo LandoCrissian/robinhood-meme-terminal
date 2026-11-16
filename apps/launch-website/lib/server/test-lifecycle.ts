@@ -50,7 +50,7 @@ async function readCurveIdentity(rpc: Rpc, fixture: CurveFixture, token: Address
     rpc.readContract({ address: fixture.factory, abi: factoryAbi, functionName: "curveForToken", args: [token], ...at }),
     rpc.readContract({ address: fixture.registry, abi: registryAbi, functionName: "project", args: [token], ...at }),
   ]);
-  // A successor requires its own runtime and historical acceptance. The local website exercises the pinned V1 profile.
+  // A successor requires its own runtime and historical acceptance. The fixture exercises the initial curve.
   if (!fixtureAddress(origin) || !same(current, origin) || !same(project[0], fixture.factory) || !same(project[1], origin)
       || project[2] !== 1 || project[4] !== 0n) throw new Error("Unverified curve identity");
   return origin;
