@@ -179,6 +179,7 @@ const eq = (actual, expected) => assert.equal(actual.toLowerCase(), expected.toL
 
 let hideReceipt;
 let mobileGasDrift = false;
+let unexpectedAuthorization;
 let missingReceiptReads = 0;
 let omitCreationLogs = false;
 let omittedCreationReads = 0;
@@ -188,7 +189,7 @@ let hideTradeTrace = false;
 let hiddenTradeTraces = 0;
 let rpcOutage = false;
 const readProxyMethods = new Set(["eth_chainId", "eth_blockNumber", "eth_getBlockByNumber", "eth_getBlockByHash", "eth_getCode",
-  "eth_getStorageAt", "eth_getLogs", "eth_getTransactionByHash", "eth_getTransactionReceipt", "eth_getTransactionCount", "eth_getBalance", "eth_call", "eth_estimateGas", "eth_gasPrice", "web3_clientVersion",
+  "eth_getStorageAt", "eth_getLogs", "eth_getTransactionByHash", "eth_getTransactionReceipt", "eth_getTransactionCount", "eth_getBalance", "eth_call", "eth_estimateGas", "eth_gasPrice", "eth_maxPriorityFeePerGas", "web3_clientVersion",
   "debug_traceTransaction"]);
 const proxy = createServer(async (request, response) => {
   const write = (result, status = 200) => {
@@ -219,8 +220,11 @@ const proxy = createServer(async (request, response) => {
         hiddenTradeTraces++;
         return { id, jsonrpc: "2.0", error: { code: -32000, message: "Fixture paused transaction proof" } };
       }
-      if (method === "eth_gasPrice" && mobileGasDrift) {
+      if (method === "eth_maxPriorityFeePerGas" && mobileGasDrift) {
         return { id, jsonrpc: "2.0", result: toHex(BigInt(await rpc(method, params)) + 100_000n) };
+      }
+      if (method === "eth_getTransactionByHash" && unexpectedAuthorization && params[0]?.toLowerCase() === unexpectedAuthorization) {
+        return { id, jsonrpc: "2.0", result: { ...await rpc(method, params), authorizationList: [] } };
       }
       try { return { id, jsonrpc: "2.0", result: await rpc(method, params) }; }
       catch { return { id, jsonrpc: "2.0", error: { code: -32000, message: "Isolated upstream read failed" } }; }
@@ -238,6 +242,7 @@ const evidence = { candidateCommit, compilerProfile: manifest,
   anchor: { block: anchor.block, blockHash: anchor.blockHash }, chainId: 31337, project };
 try {
   const chain = start(anvil, ["--host", "127.0.0.1", "--port", new URL(rpcUrl).port, "--chain-id", "31337",
+    ...(mobileCreator ? ["--hardfork", "prague"] : []),
     "--fork-url", anchor.rpcUrl, "--fork-block-number", String(anchor.block), "--accounts", "0", "--silent"], "anvil", { discard: true });
   await waitFor("Anvil chain 31337", async () => (await rpc("eth_chainId")) === "0x7a69", chain);
   assert.match(await rpc("web3_clientVersion"), /^anvil\//i);
@@ -315,7 +320,8 @@ try {
     RMT_CURVE_FIXTURE_READ_KEY: indexReadKey,
     RMT_CURVE_FIXTURE_DEPLOYMENT: manifestPath, RMT_CURVE_FIXTURE_SITE_ORIGIN: site, RMT_CURVE_FIXTURE_INDEXER: workerOrigin + "/",
     ...(mobileCreator && { RMT_MOBILE_REVIEW_FIXTURE: "local-reviewed-31337",
-      RMT_MOBILE_REVIEW_FIXTURE_ACCOUNT: mobileCreator.address, RMT_MOBILE_REVIEW_PLAN: mobilePlan }) };
+      RMT_MOBILE_REVIEW_FIXTURE_ACCOUNT: mobileCreator.address, RMT_MOBILE_REVIEW_TEST_DELEGATION: "synthetic-7702-v1",
+      RMT_MOBILE_REVIEW_PLAN: mobilePlan }) };
   const workerEnv = { ...env, RMT_CURVE_FIXTURE_DATABASE: databaseUrl, RMT_CURVE_FIXTURE_PORT: new URL(workerOrigin).port };
   const webArgs = ["apps/launch-website/node_modules/next/dist/bin/next", "start", "apps/launch-website", "--hostname", "127.0.0.1", "--port", new URL(site).port];
   const startWeb = (name, config = env) => start(process.execPath, webArgs, name, { env: config });
@@ -1195,6 +1201,7 @@ try {
       context, site, out, rpc, creator: mobileCreator, alternate, factory: binding.factory, feeWei,
       setGasDrift: (active) => { mobileGasDrift = active; },
       hideReceipt: (value) => { hideReceipt = value; },
+      injectAuthorization: (hash) => { unexpectedAuthorization = hash?.toLowerCase(); },
     });
   }
   assert.deepEqual(pageErrors, []);

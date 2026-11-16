@@ -2,7 +2,8 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { readFileSync, statSync } from "node:fs";
 import { dirname, isAbsolute, join } from "node:path";
 import { decodeFunctionData, getAddress, keccak256, toHex, type Address, type Hex, type Transaction } from "viem";
-import { isMobileAddress, isMobileQuantity, isMobileReview, mobileReviewProfile, mobileTestFields, proposedProductionSender,
+import { isDirectMobileReview, isMobileAddress, isMobileQuantity, isMobileReview, mobileReviewProfile, mobileTestFields, proposedProductionSender, sameMobileFees,
+  syntheticDelegate, syntheticDelegateHash, syntheticDesignator,
   type MobilePlan, type MobileReview, type ObservedSender } from "../mobile-wallet-review";
 import { isTestCreationRequest, isTestCreationPayouts, isTransactionHash, sameTestCreationRequest } from "../test-creation";
 import { configuredCurveFixture, factoryAbi, fixtureChainId, fixtureRpc, sameHex, verifyCurveFixture, type CurveFixture } from "./curve-fixture";
@@ -13,8 +14,8 @@ const rejectedAccounts = [proposedProductionSender,
   "0xc447a378cfd8460febc2eef67501d7a5473b9001", "0xc3600f2df60929d2ab9ab294cff42eedcb984f51", "0x2bcc3fafce77ccc7fdbed46e0b5bb80ba3e76697"];
 const quoteLifetimeMs = 60_000;
 const jsonLimit = 4096;
-type MobileFixture = { fixture: CurveFixture; account: Address; attestationKey: string };
-type ReviewFields = Omit<MobileReview, "attestation">;
+type MobileFixture = { fixture: CurveFixture; account: Address; attestationKey: string; delegated: boolean };
+type ReviewFields<T = MobileReview> = T extends MobileReview ? Omit<T, "attestation"> : never;
 
 function record(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -26,20 +27,25 @@ const reply = (body: object, status = 200) => Response.json(body, { status, head
 } });
 
 export function configuredMobileReview(headers: Headers): MobileFixture | null {
-  const { RMT_MOBILE_REVIEW_FIXTURE: profile, RMT_MOBILE_REVIEW_FIXTURE_ACCOUNT: account, RMT_CURVE_FIXTURE_READ_KEY: attestationKey } = process.env;
+  const { RMT_MOBILE_REVIEW_FIXTURE: profile, RMT_MOBILE_REVIEW_FIXTURE_ACCOUNT: account,
+    RMT_MOBILE_REVIEW_TEST_DELEGATION: delegateMode, RMT_CURVE_FIXTURE_READ_KEY: attestationKey } = process.env;
   if (profile !== mobileReviewProfile || !isMobileAddress(account) || rejectedAccounts.some((address) => sameHex(account, address))
-      || !attestationKey || headers.has("forwarded")) return null;
+      || !attestationKey || headers.has("forwarded") || (delegateMode !== undefined && delegateMode !== "synthetic-7702-v1")) return null;
   const fixture = configuredCurveFixture(headers);
-  if (!fixture || [fixture.factory, fixture.registry, fixture.feeRecipient].some((address) => sameHex(account, address))) return null;
-  return { fixture, account: getAddress(account.toLowerCase()), attestationKey };
+  if (!fixture || [fixture.factory, fixture.registry, fixture.feeRecipient, syntheticDelegate].some((address) => sameHex(account, address))) return null;
+  return { fixture, account: getAddress(account.toLowerCase()), attestationKey, delegated: delegateMode === "synthetic-7702-v1" };
 }
 
-function attest(key: string, { request, payouts, expectedToken, expectedCurve, calldataHash, nonce, gas, gasPrice,
-  estimatedL2Wei, l1DataFeeWei, reviewBlockNumber, reviewBlockHash, expiresAt }: ReviewFields): Hex {
+function attest(key: string, review: ReviewFields): Hex {
+  const { request, payouts, expectedToken, expectedCurve, calldataHash, nonce, gas,
+    estimatedL2Wei, l1DataFeeWei, reviewBlockNumber, reviewBlockHash, expiresAt } = review;
+  const delegated = "delegateRuntimeHash" in review;
+  const fees = delegated ? [review.maxFeePerGas, review.maxPriorityFeePerGas, review.delegateRuntimeHash] : [review.gasPrice];
   const input = [request.from, request.to, request.data, request.value, request.chainId, request.intentId, request.deadline,
     request.blockNumber, request.blockHash, payouts.operating, payouts.reserve, payouts.treasuryKind,
-    expectedToken, expectedCurve, calldataHash, nonce, gas, gasPrice, estimatedL2Wei, l1DataFeeWei, reviewBlockNumber, reviewBlockHash, expiresAt];
-  const digest = createHmac("sha256", Buffer.from(key, "hex")).update("RMT mobile rehearsal 31337 v1\n").update(JSON.stringify(input)).digest("hex");
+    expectedToken, expectedCurve, calldataHash, nonce, gas, ...fees, estimatedL2Wei, l1DataFeeWei, reviewBlockNumber, reviewBlockHash, expiresAt];
+  const domain = delegated ? "RMT mobile rehearsal 31337 direct type-2 v1\n" : "RMT mobile rehearsal 31337 v1\n";
+  const digest = createHmac("sha256", Buffer.from(key, "hex")).update(domain).update(JSON.stringify(input)).digest("hex");
   return "0x" + digest as Hex;
 }
 
@@ -48,7 +54,7 @@ function hasProof(value: unknown, { fixture, account, attestationKey }: MobileFi
     && timingSafeEqual(Buffer.from(value.attestation.slice(2), "hex"), Buffer.from(attest(attestationKey, value).slice(2), "hex"));
 }
 
-async function prepare({ fixture, account, attestationKey }: MobileFixture, intentId: Hex, deadline?: string): Promise<MobileReview> {
+async function prepare({ fixture, account, attestationKey, delegated }: MobileFixture, intentId: Hex, deadline?: string): Promise<MobileReview> {
   const base = await prepareTestCreation(fixture, { fields: mobileTestFields, account, intentId, ...(deadline && { deadline }) });
   const { status, request, payouts } = record(await base.json());
   if (status !== "prepared" || !isTestCreationRequest(request) || !isTestCreationPayouts(payouts, false)) throw new Error("Preparation unavailable");
@@ -59,24 +65,36 @@ async function prepare({ fixture, account, attestationKey }: MobileFixture, inte
   const head = await verifyCurveFixture(fixture, rpc);
   const at = { blockNumber: head.number };
   const value = BigInt(request.value);
-  const [simulation, gas, gasPrice, nonce, pendingNonce, balance, accountCode] = await Promise.all([
+  const pending = { blockTag: "pending" } as const;
+  const verifyAccount = async (block: typeof at | typeof pending) => {
+    const code = await rpc.getCode({ address: account, ...block });
+    if (!delegated) return !code || code === "0x";
+    if (!sameHex(code, syntheticDesignator)) return false;
+    const implementation = await rpc.getCode({ address: syntheticDelegate, ...block });
+    return implementation !== undefined && keccak256(implementation) === syntheticDelegateHash;
+  };
+  const [simulation, gas, price, nonce, pendingNonce, balance, allowedCode] = await Promise.all([
     rpc.simulateContract({ address: fixture.factory, abi: factoryAbi, functionName: "create", args: decoded.args, account, value, ...at }),
     rpc.estimateGas({ account, to: request.to, data: request.data, value, ...at }),
-    rpc.getGasPrice(), rpc.getTransactionCount({ address: account, ...at }),
-    rpc.getTransactionCount({ address: account, blockTag: "pending" }),
-    rpc.getBalance({ address: account, ...at }), rpc.getCode({ address: account, ...at }),
+    delegated ? rpc.request({ method: "eth_maxPriorityFeePerGas" }).then(BigInt) : rpc.getGasPrice(),
+    rpc.getTransactionCount({ address: account, ...at }), rpc.getTransactionCount({ address: account, ...pending }),
+    rpc.getBalance({ address: account, ...at }), verifyAccount(at),
   ]);
+  if (delegated && (head.baseFeePerGas === null || price < 0n || price > 10n ** 10n)) throw new Error("Invalid type-2 fee quote");
+  const maxPrice = delegated ? 2n * (head.baseFeePerGas ?? 0n) + price : price;
   const [expectedToken, expectedCurve] = simulation.result;
-  const totalGas = gas * gasPrice;
+  const totalGas = gas * maxPrice;
   if (!isMobileAddress(expectedToken) || !isMobileAddress(expectedCurve) || sameHex(expectedToken, expectedCurve)
-      || nonce !== pendingNonce || !Number.isSafeInteger(nonce) || gas <= 0n || gasPrice <= 0n || balance < value + totalGas
-      || (accountCode && accountCode !== "0x")) throw new Error("Unbound account, insufficient balance or pending nonce");
-  const [canonical, confirmedPendingNonce] = await Promise.all([
-    rpc.getBlock(at), rpc.getTransactionCount({ address: account, blockTag: "pending" }),
+      || nonce !== pendingNonce || !Number.isSafeInteger(nonce) || gas <= 0n || maxPrice <= 0n || balance < value + totalGas
+      || !allowedCode) throw new Error("Unbound account, insufficient balance or pending nonce");
+  const [canonical, confirmedPendingNonce, pendingCode] = await Promise.all([
+    rpc.getBlock(at), rpc.getTransactionCount({ address: account, ...pending }), verifyAccount(pending),
   ]);
-  if (!sameHex(canonical.hash, head.hash) || confirmedPendingNonce !== nonce || !isTransactionHash(head.hash)) throw new Error("Preparation changed");
+  if (!sameHex(canonical.hash, head.hash) || confirmedPendingNonce !== nonce || !pendingCode || !isTransactionHash(head.hash)) throw new Error("Preparation changed");
+  const fee = delegated ? { maxFeePerGas: toHex(maxPrice), maxPriorityFeePerGas: toHex(price), delegateRuntimeHash: syntheticDelegateHash }
+    : { gasPrice: toHex(price) };
   const review = { request, payouts, expectedToken, expectedCurve, calldataHash: keccak256(request.data),
-    nonce: toHex(nonce), gas: toHex(gas), gasPrice: toHex(gasPrice), estimatedL2Wei: totalGas.toString(),
+    nonce: toHex(nonce), gas: toHex(gas), ...fee, estimatedL2Wei: totalGas.toString(),
     l1DataFeeWei: "0", reviewBlockNumber: toHex(head.number), reviewBlockHash: head.hash, expiresAt: Date.now() + quoteLifetimeMs } as const;
   return { ...review, attestation: attest(attestationKey, review) };
 }
@@ -85,14 +103,17 @@ function unchanged(first: MobileReview, next: MobileReview) {
   return sameTestCreationRequest(first.request, next.request)
     && first.payouts.operating === next.payouts.operating && first.payouts.reserve === next.payouts.reserve
     && first.expectedToken === next.expectedToken && first.expectedCurve === next.expectedCurve
-    && first.calldataHash === next.calldataHash && first.nonce === next.nonce && first.gas === next.gas && first.gasPrice === next.gasPrice;
+    && first.calldataHash === next.calldataHash && first.nonce === next.nonce && first.gas === next.gas && sameMobileFees(first, next);
 }
 
 function exactTx(tx: Transaction, review: MobileReview) {
   const { request } = review;
   return sameHex(tx.from, request.from) && sameHex(tx.to, request.to) && sameHex(tx.input, request.data)
     && tx.chainId === fixtureChainId && tx.value === BigInt(request.value) && BigInt(tx.nonce) === BigInt(review.nonce)
-    && tx.gas === BigInt(review.gas) && tx.gasPrice === BigInt(review.gasPrice);
+    && tx.gas === BigInt(review.gas) && (isDirectMobileReview(review)
+      ? tx.type === "eip1559" && !Object.hasOwn(tx, "authorizationList") && tx.accessList.length === 0 && tx.maxFeePerGas === BigInt(review.maxFeePerGas)
+        && tx.maxPriorityFeePerGas === BigInt(review.maxPriorityFeePerGas)
+      : tx.type === "legacy" && tx.gasPrice === BigInt(review.gasPrice));
 }
 
 async function verify({ fixture }: MobileFixture, review: MobileReview, transactionHash?: Hex) {
@@ -246,7 +267,10 @@ export function readMobilePlan(): MobilePlan | null {
         scope, receiptHash, receiptBlock, dependencies: row.dependsOn, safe });
     }
     if (rows.some((row) => row.dependencies.some((id) => id === row.id || !rows.some((item) => item.id === id)))) return null;
-    return { rows, observation: readObservedSender(join(dirname(pathname), "sender-observation-4663.json")) };
+    const evidenceDirectory = dirname(pathname);
+    const observation = readObservedSender(join(evidenceDirectory, "sender-delegation-4663.json"))
+      ?? readObservedSender(join(evidenceDirectory, "sender-observation-4663.json"));
+    return { rows, observation };
   } catch {
     return null;
   }

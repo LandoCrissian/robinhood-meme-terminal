@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { formatEther, keccak256 } from "viem";
-import { isMobileAddress, isMobileReview, mobileReviewApi, mobileTestFields, type MobilePlan, type MobileReview } from "../../lib/mobile-wallet-review";
+import { isDirectMobileReview, isMobileAddress, isMobileReview, mobileReviewApi, mobileTestFields, mobileWalletTransaction, sameMobileFees,
+  syntheticDelegate, syntheticDesignator, type MobilePlan, type MobileReview } from "../../lib/mobile-wallet-review";
 import { launchTerms } from "../../lib/launch-terms";
 import { calldataMatchesTestCreation, isLocalTestWallet, isTransactionHash, sameTestCreationRequest } from "../../lib/test-creation";
 import { assertTestWalletBinding, connectTestWallet, sameWalletHex as same, subscribeTestWallet,
@@ -75,7 +76,18 @@ function sameReview(first: MobileReview, next: MobileReview) {
   return sameTestCreationRequest(first.request, next.request)
     && same(first.expectedToken, next.expectedToken) && same(first.expectedCurve, next.expectedCurve)
     && same(first.payouts.operating, next.payouts.operating) && same(first.payouts.reserve, next.payouts.reserve)
-    && first.nonce === next.nonce && first.gas === next.gas && first.gasPrice === next.gasPrice;
+    && first.nonce === next.nonce && first.gas === next.gas && sameMobileFees(first, next);
+}
+
+async function assertWalletDelegation(wallet: TestWallet, review: MobileReview) {
+  if (!isDirectMobileReview(review)) return;
+  const read = (address: string, block: string) =>
+    wallet.request.call(wallet.provider, { method: "eth_getCode", params: [address, block] });
+  for (const block of [review.reviewBlockNumber, "pending"]) {
+    const [designator, implementation] = await Promise.all([read(wallet.account, block), read(syntheticDelegate, block)]);
+    if (!same(designator, syntheticDesignator) || typeof implementation !== "string" || !/^0x[0-9a-f]{6}$/i.test(implementation)
+      || keccak256(implementation as Hex) !== review.delegateRuntimeHash) throw new Error("Fixture delegation changed");
+  }
 }
 
 function ReviewFacts({ review }: { review: MobileReview }) {
@@ -90,7 +102,11 @@ function ReviewFacts({ review }: { review: MobileReview }) {
       <div><dt>Value</dt><dd>{formatEther(BigInt(request.value))} synthetic ETH</dd></div>
       <div><dt>Nonce</dt><dd>{BigInt(review.nonce).toString()}</dd></div>
       <div><dt>Gas limit</dt><dd>{BigInt(review.gas).toString()} gas</dd></div>
-      <div><dt>Gas price</dt><dd>{BigInt(review.gasPrice).toString()} wei per gas</dd></div>
+      {isDirectMobileReview(review) ? <>
+        <div><dt>Transaction</dt><dd>Direct type 2 · synthetic EIP-7702 sender</dd></div>
+        <div><dt>Maximum gas price</dt><dd>{BigInt(review.maxFeePerGas).toString()} wei per gas</dd></div>
+        <div><dt>Priority fee cap</dt><dd>{BigInt(review.maxPriorityFeePerGas).toString()} wei per gas</dd></div>
+      </> : <div><dt>Gas price</dt><dd>{BigInt(review.gasPrice).toString()} wei per gas</dd></div>}
       <div><dt>Maximum L2 fee</dt><dd>{formatEther(BigInt(review.estimatedL2Wei))} synthetic ETH</dd></div>
       <div><dt>L1 data fee</dt><dd>0 synthetic ETH · local Anvil only</dd></div>
       <div><dt>Estimate evidence</dt><dd className="lpAddress">Block {BigInt(review.reviewBlockNumber).toString()} · {review.reviewBlockHash}</dd></div>
@@ -123,7 +139,7 @@ function OfflinePlan({ plan, proposedSender }: { plan: MobilePlan | null; propos
       <div><dt>Archived account observation</dt><dd>{last.observedAt}</dd></div>
       <div><dt>Observed confirmed and pending nonces</dt><dd>{last.confirmedNonce} / {last.pendingNonce} · unbound to any transaction</dd></div>
       <div><dt>Observed account type</dt><dd>{last.accountType === "EIP_7702_DELEGATION"
-        ? "EIP-7702 delegated account · ineligible for this deployment plan" : last.accountType === "CODE_EMPTY" ? "No contract code observed" : "Contract code observed"}</dd></div>
+        ? "EIP-7702 delegated account · live binding withheld" : last.accountType === "CODE_EMPTY" ? "No contract code observed" : "Contract code observed"}</dd></div>
       <div><dt>Observation block</dt><dd className="lpAddress">{last.blockNumber} · {last.blockHash}</dd></div>
       <div><dt>Archive estimate validity ended</dt><dd>{last.expiresAt} · refresh required before any approval</dd></div>
     </dl>}
@@ -282,6 +298,7 @@ export function MobileWalletReview({ account, factory, plan, proposedSender }: {
           return;
         }
         await assertTestWalletBinding(wallet, anchors(next));
+        await assertWalletDelegation(wallet, next);
         if (boundary !== generation.current || readJournal()) {
           setPhase("stale");
           return;
@@ -366,6 +383,7 @@ export function MobileWalletReview({ account, factory, plan, proposedSender }: {
         }
         next = candidate;
         await assertTestWalletBinding(wallet, anchors(next));
+        await assertWalletDelegation(wallet, next);
         const nonce = await wallet.request.call(wallet.provider, {
           method: "eth_getTransactionCount", params: [next.request.from, "pending"],
         });
@@ -392,8 +410,9 @@ export function MobileWalletReview({ account, factory, plan, proposedSender }: {
       let hash: unknown;
       try {
         const { from, to, data, value, chainId } = next.request;
-        hash = await wallet.request.call(wallet.provider, { method: "eth_sendTransaction",
-          params: [{ from, to, data, value, chainId, nonce: next.nonce, gas: next.gas, gasPrice: next.gasPrice }],
+        const transaction = isDirectMobileReview(next) ? mobileWalletTransaction(next)
+          : { from, to, data, value, chainId, nonce: next.nonce, gas: next.gas, gasPrice: next.gasPrice };
+        hash = await wallet.request.call(wallet.provider, { method: "eth_sendTransaction", params: [transaction],
         });
       } catch (error) {
         if (testWalletErrorCode(error) === 4001) {

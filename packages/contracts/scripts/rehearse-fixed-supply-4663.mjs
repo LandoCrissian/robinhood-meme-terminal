@@ -11,6 +11,7 @@ import { call, deployFixedSupplyFixture, localFixtureClient, receiptEvidence, re
   from "./deploy-fixed-supply-fixture.mjs";
 import { proveFundedMigrations } from "./prove-fixed-supply-funded-migrations.mjs";
 import { proveFixedSupplySettlementTrace } from "./prove-fixed-supply-settlement-trace.mjs";
+import { rehearseDelegatedSender } from "./rehearse-delegated-sender.mjs";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
 const require = createRequire(new URL("../../../apps/launch-website/package.json", import.meta.url));
@@ -18,7 +19,7 @@ const { decodeEventLog, erc20Abi, isAddressEqual, parseAbi, toHex, zeroAddress }
 const historicalPin = "8dca5773cbd4dc98f52a45616f420bce96b000f0";
 const { values: args } = parseArgs({ options: {
   solc: { type: "string" }, anvil: { type: "string" }, lib: { type: "string" },
-  archive: { type: "string", default: "pinax" }, output: { type: "string" },
+  archive: { type: "string", default: "pinax" }, output: { type: "string" }, delegated: { type: "boolean" },
 } });
 assert.ok(args.solc && args.anvil && args.output, "Supply --solc, --anvil and a new --output file");
 const { artifacts, manifest } = compileFixedSupplyProfile({ ...args, chainId: 4663 });
@@ -63,7 +64,9 @@ try {
     fixtureFile(path, frozen(path));
   }
   const environmentPath = scriptPath + "robinhood-4663-fork-environment.mjs";
-  const environment = frozen(environmentPath);
+  const baselineEnvironment = frozen(environmentPath);
+  assert.equal(baselineEnvironment.split('"cancun"').length, 3, "Pinned fork hardfork declaration changed");
+  const environment = args.delegated ? baselineEnvironment.replaceAll('"cancun"', '"prague"') : baselineEnvironment;
   const ready = '    const rpcUrl = await waitForLocalPort(child);';
   assert.equal(environment.split(ready).length, 2, "Pinned fork startup probe shape changed");
   // Continue draining Anvil's piped RPC logs after the startup probe detaches.
@@ -91,20 +94,54 @@ try {
 
   const result = await env.withAnvilFork({ anvil: resolve(args.anvil), archive: args.archive }, async ({ rpcUrl, accounts, report }) => {
     const client = await localFixtureClient(rpcUrl, 4663);
-    const [operator, operations, reserve, rmt, unrelatedA, unrelatedB] = accounts;
+    const [fixtureOperator, fixtureOperations, fixtureReserve, fixtureRmt, unrelatedA, unrelatedB] = accounts;
+    const delegated = args.delegated ? await rehearseDelegatedSender(client, report, fixtureOperator) : null;
+    const { sender: operator, operations, reserve } = delegated ?? {
+      sender: fixtureOperator, operations: fixtureOperations, reserve: fixtureReserve,
+    };
+    const rmt = delegated ? operator : fixtureRmt;
+    const send = delegated?.submit ?? sendFixture;
     const submit = async (from, request, status) => {
       try {
-        return await sendFixture(client, from, request, status);
+        return await send(client, from, request, status);
       } catch (error) {
         throw new Error("Fixture transaction failed at " + (request.to ?? "CREATE") + " " + request.data.slice(0, 10), { cause: error });
       }
     };
     const pins = report.network.contracts;
+    const saveDelegatedCheckpoint = (phase) => {
+      delegated.evidence.phase = phase;
+      writeFileSync(reportPath, stringify({ manifest, report, delegatedSender: delegated.evidence }) + "\n");
+    };
+    if (delegated) {
+      saveDelegatedCheckpoint("PLATFORM_SAFES_REHEARSED");
+      const constructors = [];
+      const exact = await deployFixedSupplyFixture(client, artifacts, pins, { operator, operations, reserve, send,
+        observedGovernors: delegated.governors, observeConstructor: (record) => constructors.push(record) });
+      delegated.evidence.exactConstructorReceipts = delegated.receipts().slice(2).map((receipt, index) => {
+        const expected = constructors[index];
+        assert.ok(isAddressEqual(receipt.contractAddress, expected.address));
+        return { ...receipt, name: expected.name, runtimeHash: expected.runtimeHash };
+      });
+      delegated.evidence.exactGovernors = delegated.governors;
+      delegated.evidence.exactFactory = exact.factory;
+      delegated.evidence.exactFactoryRuntimeHash = exact.factoryRuntimeHash;
+      await delegated.recoverSnapshot();
+      delegated.evidence.exactConstructorReplay = "ROLLED_BACK_BEFORE_DISPOSABLE_GOVERNORS_REPLAY";
+      saveDelegatedCheckpoint("EXACT_CONSTRUCTORS_REHEARSED");
+    }
     const unsignedConstructors = [];
-    const deployment = await deployFixedSupplyFixture(client, artifacts, pins, { operator, operations, reserve,
-      exerciseRotation: true, observeConstructor: (record) => unsignedConstructors.push(record) });
+    const deployment = await deployFixedSupplyFixture(client, artifacts, pins, { operator, operations, reserve, send,
+      exerciseRotation: !delegated, fixtureMigrationAuthority: true, observeConstructor: (record) => unsignedConstructors.push(record) });
+    if (delegated) {
+      assert.equal(delegated.evidence.exactFactory, deployment.factory);
+      assert.equal(delegated.evidence.exactFactoryRuntimeHash, deployment.factoryRuntimeHash);
+      delegated.evidence.replayedNotices = delegated.receipts().slice(7, 11);
+      delegated.evidence.phase = "GOVERNANCE_REHEARSED";
+    }
     const previous = [];
-    const checkpoints = { manifest, deployment, unsignedConstructors, report, projects: previous };
+    const checkpoints = { manifest, deployment, unsignedConstructors, report, projects: previous,
+      ...(delegated && { delegatedSender: delegated.evidence }) };
     const save = () => writeFileSync(reportPath, stringify(checkpoints) + "\n");
     save();
     const independentTreasury = toHex(0x46630006n, { size: 20 });
@@ -120,7 +157,7 @@ try {
     const curveAbi = artifacts.RMTLaunchBondingCurveV1.abi;
     const curveLedgerAbi = artifacts.RMTLaunchCurveRevenueLedgerV1.abi;
     const lpLedgerAbi = artifacts.RMTLaunchCurveLpFeeLedgerV1.abi;
-    const safe = await setupFixtureSafe({ client, submit, sender: operator });
+    const safe = await setupFixtureSafe({ client, submit, sender: fixtureOperator });
     checkpoints.safe = safe.setup;
     save();
     const cases = [
@@ -144,6 +181,12 @@ try {
       const unsigned = { from: creator, ...request, chainId: 4663, status: "BLOCKED_NO_BROADCAST" };
       await client.call({ account: creator, ...request });
       const created = await submit(creator, request);
+      if (delegated && index === 0) {
+        delegated.evidence.replayedRmtCreation = delegated.receipts()[11];
+        assert.equal(delegated.evidence.replayedRmtCreation.transactionHash, created.transactionHash);
+        delegated.evidence.phase = "FIRST_RMT_CREATED";
+        save();
+      }
       const { token, curve: originCurve, supply: observedSupply, revenueLedger } = event(created, factory, factoryAbi, "CurveCreated");
       let curve = originCurve;
       const tokenArtifact = artifacts.RMTLaunchCurveTokenV2;
@@ -191,8 +234,13 @@ try {
       const curveCredits = split(curveFees, treasuryBps);
       const wrongBeneficiary = index === 0 ? unrelatedA : rmt;
       const crossProjectCurveClaim = await submit(wrongBeneficiary, transact(revenueLedger, curveLedgerAbi, "claim"), "reverted");
-      const authorized = async (beneficiary, transaction) => beneficiary === safe.address
-        ? (await safe.execute(transaction)).receipt : submit(beneficiary, transaction);
+      const authorized = async (beneficiary, transaction) => {
+        if (isAddressEqual(beneficiary, safe.address)) return (await safe.execute(transaction)).receipt;
+        if (delegated?.safes.some(({ address }) => isAddressEqual(address, beneficiary))) {
+          return delegated.exactClaims(beneficiary, transaction);
+        }
+        return submit(beneficiary, transaction);
+      };
       const curveClaims = [];
       for (const [bucket, beneficiary] of beneficiaries.entries()) {
         assert.equal(await call(client, revenueLedger, curveLedgerAbi, "claimable", [beneficiary]), curveCredits[bucket]);
@@ -285,6 +333,7 @@ try {
         crossProjectClaims: { curve: receiptEvidence(crossProjectCurveClaim), lp: receiptEvidence(crossProjectLpClaim) } });
       save();
     }
+    if (delegated) delegated.evidence.phase = "LIFECYCLE_REHEARSED";
     return checkpoints;
   });
   writeFileSync(reportPath, stringify(result) + "\n");

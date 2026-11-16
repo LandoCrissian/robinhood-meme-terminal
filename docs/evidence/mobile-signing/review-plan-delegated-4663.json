@@ -1,0 +1,1155 @@
+{
+  "schemaVersion": 1,
+  "status": "BLOCKED_NO_BROADCAST",
+  "broadcastAuthorized": false,
+  "target": {
+    "chainId": 4663,
+    "proposedSender": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+    "senderApproval": "PROPOSED_ONLY",
+    "productionInputs": {
+      "deployer": null,
+      "confirmedNonce": null,
+      "pendingNonce": null,
+      "operationsSafe": null,
+      "reserveSafe": null,
+      "governanceSigners": null,
+      "firstProjectName": null,
+      "firstProjectURI": null,
+      "firstProjectCreator": null,
+      "firstProjectTreasury": null,
+      "firstProjectTreasuryBps": null,
+      "economicApproval": null,
+      "deploymentApproval": null,
+      "transactions": []
+    },
+    "transactions": [],
+    "observation": null,
+    "delegatedReview": {
+      "scope": "UNAPPROVED_COUNTERFACTUAL_4663",
+      "observed": {
+        "scope": "READ_ONLY_4663_MOBILE_PREPARATION",
+        "observedAt": "2026-11-16T17:35:51.091Z",
+        "expiresAt": "2026-11-16T17:37:51.091Z",
+        "anchor": {
+          "number": "115939588",
+          "hash": "0x6a9cd5e8bf89627dec90bc0a7bab62f962089adb15ffa6b783d09107dca31d1f",
+          "blockTimeUtc": "2026-11-16T17:35:29.000Z"
+        },
+        "confirmedNonce": "476",
+        "pendingNonce": "476",
+        "balanceWei": "4455788086534138",
+        "safes": [
+          {
+            "role": "RMT-OPERATIONS",
+            "counterfactualAddress": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+            "gas": {
+              "nitroGasEstimate": "313391",
+              "l2GasUnits": "313391",
+              "l1PosterGasUnits": "0",
+              "l2BaseFeeWei": "20198000",
+              "l1BaseFeeEstimateWei": "0",
+              "l2ExecutionWei": "6329871418000",
+              "l1PosterWei": "0",
+              "estimatedTotalWei": "6329871418000",
+              "estimatedTotalEth": "0.000006329871418",
+              "rpcEstimateGas": "313391"
+            },
+            "estimateStatus": "ESTIMATED_AT_OBSERVED_BLOCK"
+          },
+          {
+            "role": "RMT-RESERVE",
+            "counterfactualAddress": "0x8D44078642ce938Fd799b23087BcdD6114A302e5",
+            "gas": {
+              "nitroGasEstimate": "313391",
+              "l2GasUnits": "313391",
+              "l1PosterGasUnits": "0",
+              "l2BaseFeeWei": "20198000",
+              "l1BaseFeeEstimateWei": "0",
+              "l2ExecutionWei": "6329871418000",
+              "l1PosterWei": "0",
+              "estimatedTotalWei": "6329871418000",
+              "estimatedTotalEth": "0.000006329871418",
+              "rpcEstimateGas": "313391"
+            },
+            "estimateStatus": "ESTIMATED_AT_OBSERVED_BLOCK"
+          }
+        ],
+        "createDestinations": [
+          {
+            "id": "directory",
+            "address": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+            "nonce": "478",
+            "status": "VACANT_AT_OBSERVED_BLOCK_ONLY"
+          },
+          {
+            "id": "registry",
+            "address": "0xf1113714Dda31f31532995D2525e034271425398",
+            "nonce": "479",
+            "status": "VACANT_AT_OBSERVED_BLOCK_ONLY"
+          },
+          {
+            "id": "successor-v2",
+            "address": "0xcB25a3DF74729F7104C4f924Cb04F687F69391C6",
+            "nonce": "480",
+            "status": "VACANT_AT_OBSERVED_BLOCK_ONLY"
+          },
+          {
+            "id": "successor-v3",
+            "address": "0x622D2f878B328406861DA18F4BBdD27E4730Cb65",
+            "nonce": "481",
+            "status": "VACANT_AT_OBSERVED_BLOCK_ONLY"
+          },
+          {
+            "id": "bootstrap",
+            "address": "0xb65380aE9A452813c4e6b0fF391cfE34faE676A5",
+            "nonce": "482",
+            "status": "VACANT_AT_OBSERVED_BLOCK_ONLY"
+          }
+        ],
+        "observedSignerControl": "UNVERIFIED",
+        "accountType": "EIP_7702_DELEGATION",
+        "delegation": {
+          "address": "0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B",
+          "designator": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b",
+          "runtimeHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0",
+          "name": "EIP7702StatelessDeleGator",
+          "version": "1.3.0",
+          "entryPoint": "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
+          "delegationManager": "0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3",
+          "status": "PINNED_RUNTIME"
+        }
+      },
+      "transactionType": "DIRECT_EIP_1559",
+      "broadcastAuthorized": false,
+      "predictedTreasuriesAreBeneficiaries": false,
+      "governanceSignerProposal": [
+        "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+        "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+        "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697"
+      ],
+      "threshold": 2,
+      "walletAcceptance": "UNVERIFIED_PHYSICAL_IPHONE",
+      "rows": [
+        {
+          "id": "operations-safe",
+          "label": "Prepare RMT-OPERATIONS",
+          "dependsOn": [],
+          "valueWei": "0",
+          "sender": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+          "nonce": "476",
+          "destination": "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
+          "predictedAddress": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+          "inputHash": "0x64c42b60490759e71c4777faab3ac157f5c565b6b379629bdaaec7e5352c2250",
+          "estimate": {
+            "nitroGasEstimate": "313391",
+            "l2GasUnits": "313391",
+            "l1PosterGasUnits": "0",
+            "l2BaseFeeWei": "20198000",
+            "l1BaseFeeEstimateWei": "0",
+            "l2ExecutionWei": "6329871418000",
+            "l1PosterWei": "0",
+            "estimatedTotalWei": "6329871418000",
+            "estimatedTotalEth": "0.000006329871418",
+            "rpcEstimateGas": "313391"
+          },
+          "authorization": "SAFE_SALT_AND_TRANSACTION_APPROVAL_REQUIRED"
+        },
+        {
+          "id": "reserve-safe",
+          "label": "Prepare RMT-RESERVE",
+          "dependsOn": [
+            "operations-safe"
+          ],
+          "valueWei": "0",
+          "sender": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+          "nonce": "477",
+          "destination": "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
+          "predictedAddress": "0x8D44078642ce938Fd799b23087BcdD6114A302e5",
+          "inputHash": "0x6b13f3d79874ba9b1417f547170acf2e5bcf19fe5bab43f1ab0da6aede826604",
+          "estimate": {
+            "nitroGasEstimate": "313391",
+            "l2GasUnits": "313391",
+            "l1PosterGasUnits": "0",
+            "l2BaseFeeWei": "20198000",
+            "l1BaseFeeEstimateWei": "0",
+            "l2ExecutionWei": "6329871418000",
+            "l1PosterWei": "0",
+            "estimatedTotalWei": "6329871418000",
+            "estimatedTotalEth": "0.000006329871418",
+            "rpcEstimateGas": "313391"
+          },
+          "authorization": "SAFE_SALT_AND_TRANSACTION_APPROVAL_REQUIRED"
+        },
+        {
+          "id": "directory",
+          "label": "Deploy governance directory",
+          "dependsOn": [
+            "operations-safe",
+            "reserve-safe"
+          ],
+          "valueWei": "0",
+          "sender": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+          "nonce": "478",
+          "destination": null,
+          "predictedAddress": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+          "inputHash": "0x8dc67390ae8f34d293894cec0067c9a053dcfbb7cf3ca09d4d5b9b077b9f336c",
+          "runtimeHash": "0x9534a4223eb7e50e2387a7e5486e256416b468980436852ce1a91624904e8735",
+          "initcodeBytes": 11833,
+          "runtimeBytes": 10290,
+          "estimate": null,
+          "authorization": "VERIFIED_SAFE_RECEIPTS_AND_DEPLOYMENT_APPROVAL_REQUIRED"
+        },
+        {
+          "id": "registry",
+          "label": "Deploy project registry",
+          "dependsOn": [
+            "directory"
+          ],
+          "valueWei": "0",
+          "sender": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+          "nonce": "479",
+          "destination": null,
+          "predictedAddress": "0xf1113714Dda31f31532995D2525e034271425398",
+          "inputHash": "0xb8521e681298045055d5cd3d05f526248b9cfca71ef808733faa32a228940c1d",
+          "runtimeHash": "0xd1b4756bcdabb6a8ee04c827b5a6a76079bedc996df39b76dffa24269a61f644",
+          "initcodeBytes": 17691,
+          "runtimeBytes": 16273,
+          "estimate": null,
+          "authorization": "VERIFIED_SAFE_RECEIPTS_AND_DEPLOYMENT_APPROVAL_REQUIRED"
+        },
+        {
+          "id": "successor-v2",
+          "label": "Deploy the V2 migration helper",
+          "dependsOn": [
+            "registry"
+          ],
+          "valueWei": "0",
+          "sender": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+          "nonce": "480",
+          "destination": null,
+          "predictedAddress": "0xcB25a3DF74729F7104C4f924Cb04F687F69391C6",
+          "inputHash": "0xef8c62038760eadaa5e7cf985febe23f9444e80710fbb3b30f5cf13d6513f3fa",
+          "runtimeHash": "0xc0894c78000f427a4a1c5b1ef9774dea3dcc53c93be42cdd196ef4b072bff0be",
+          "initcodeBytes": 15252,
+          "runtimeBytes": 15226,
+          "estimate": null,
+          "authorization": "VERIFIED_SAFE_RECEIPTS_AND_DEPLOYMENT_APPROVAL_REQUIRED"
+        },
+        {
+          "id": "successor-v3",
+          "label": "Deploy the V3 migration helper",
+          "dependsOn": [
+            "successor-v2"
+          ],
+          "valueWei": "0",
+          "sender": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+          "nonce": "481",
+          "destination": null,
+          "predictedAddress": "0x622D2f878B328406861DA18F4BBdD27E4730Cb65",
+          "inputHash": "0x5492ddda03a48dd5718830b01043bfbfd5ea1862e2d2f370851d41a5840914e8",
+          "runtimeHash": "0x07efd03ff4ec2028d176deb6bfde1b77e3d5fd4d32c69851b59e7d78b1ac7fc9",
+          "initcodeBytes": 15456,
+          "runtimeBytes": 15430,
+          "estimate": null,
+          "authorization": "VERIFIED_SAFE_RECEIPTS_AND_DEPLOYMENT_APPROVAL_REQUIRED"
+        },
+        {
+          "id": "bootstrap",
+          "label": "Deploy the guarded launch factory and graduation engine",
+          "dependsOn": [
+            "registry",
+            "successor-v2",
+            "successor-v3"
+          ],
+          "valueWei": "0",
+          "sender": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+          "nonce": "482",
+          "destination": null,
+          "predictedAddress": "0xb65380aE9A452813c4e6b0fF391cfE34faE676A5",
+          "inputHash": "0xda021596047c40c0c35467e319385e87d95bd6781dbf407ec5cc7b8c3778c50a",
+          "runtimeHash": "0xa42587c77a2e9002be762c26229a150eca01d9076463f1cd93f608080ad0b400",
+          "initcodeBytes": 48729,
+          "runtimeBytes": 320,
+          "estimate": null,
+          "authorization": "VERIFIED_SAFE_RECEIPTS_AND_DEPLOYMENT_APPROVAL_REQUIRED"
+        },
+        {
+          "id": "schedule-factory",
+          "label": "Schedule publication of the launch factory",
+          "dependsOn": [
+            "bootstrap"
+          ],
+          "valueWei": "0",
+          "sender": null,
+          "nonce": null,
+          "destination": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+          "predictedAddress": null,
+          "inputHash": null,
+          "estimate": null,
+          "authorization": "CURRENT_2_OF_3_GOVERNANCE_APPROVAL_REQUIRED"
+        },
+        {
+          "id": "execute-factory",
+          "label": "Execute publication of the launch factory",
+          "dependsOn": [
+            "schedule-factory"
+          ],
+          "valueWei": "0",
+          "sender": null,
+          "nonce": null,
+          "destination": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+          "predictedAddress": null,
+          "inputHash": null,
+          "estimate": null,
+          "authorization": "MATCHING_SCHEDULED_NOTICE_REQUIRED"
+        },
+        {
+          "id": "schedule-migration-template",
+          "label": "Schedule publication of the V3 migration template",
+          "dependsOn": [
+            "execute-factory",
+            "successor-v3"
+          ],
+          "valueWei": "0",
+          "sender": null,
+          "nonce": null,
+          "destination": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+          "predictedAddress": null,
+          "inputHash": null,
+          "estimate": null,
+          "authorization": "CURRENT_2_OF_3_GOVERNANCE_APPROVAL_REQUIRED"
+        },
+        {
+          "id": "execute-migration-template",
+          "label": "Execute publication of the V3 migration template",
+          "dependsOn": [
+            "schedule-migration-template"
+          ],
+          "valueWei": "0",
+          "sender": null,
+          "nonce": null,
+          "destination": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+          "predictedAddress": null,
+          "inputHash": null,
+          "estimate": null,
+          "authorization": "MATCHING_SCHEDULED_NOTICE_REQUIRED"
+        },
+        {
+          "id": "first-rmt",
+          "label": "Create the first fixed-supply RMT project",
+          "dependsOn": [
+            "execute-factory",
+            "execute-migration-template"
+          ],
+          "valueWei": "400000000000000",
+          "sender": null,
+          "nonce": null,
+          "destination": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+          "predictedAddress": null,
+          "inputHash": null,
+          "estimate": null,
+          "authorization": "FIRST_PROJECT_TERMS_AND_CREATOR_APPROVAL_REQUIRED"
+        }
+      ],
+      "bootstrapChildren": [
+        {
+          "contract": "RMTV4CurveInitializationGuardV1",
+          "address": "0x998F3C0CE20cFF92655D495a159B1Ca37c162000",
+          "initcodeHash": "0x04dd135b023e29d4509f2e32ebb8cfbee5c7504111a6166f9522b995c5361551",
+          "runtimeHash": "0xdb92a74276834e63bf191ffe23ae5925f8cd4aaac9b1aa6cf872ae8f55c38a3e",
+          "initcodeBytes": 1257,
+          "initcodeHeadroom": 47895,
+          "runtimeBytes": 949,
+          "runtimeHeadroom": 23627,
+          "create2Salt": "0x00000000000000000000000000000000000000000000000000000000000051df",
+          "hookPermissionBits": "0x2000"
+        },
+        {
+          "contract": "RMTV4CurveGraduationV1",
+          "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "initcodeHash": "0x7489e1c044eb7971f7cf148a747025539c61ef1b2f6d07b5776ce109691a62b7",
+          "runtimeHash": "0x24f5b57ef0091e5830747efee6b8372abebe61226dbaadeb04860a4461ede849",
+          "initcodeBytes": 21467,
+          "initcodeHeadroom": 27685,
+          "runtimeBytes": 19710,
+          "runtimeHeadroom": 4866
+        },
+        {
+          "contract": "RMTLaunchCurveFactoryV2",
+          "address": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+          "initcodeHash": "0xa9a337271cd3a91f9de691800b98526bd612de1cace33c3f18e41df0c1aabbfa",
+          "runtimeHash": "0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091",
+          "initcodeBytes": 24916,
+          "initcodeHeadroom": 24236,
+          "runtimeBytes": 23843,
+          "runtimeHeadroom": 733
+        }
+      ],
+      "costs": {
+        "estimatedSafesWeiAtObservedBlock": "12659742836000",
+        "protocolObservedForkGasUnits": "26346932",
+        "protocolPaidInSyntheticWei": "117234706806423",
+        "observedL2BaseFeeWei": "20198000",
+        "protocolForkGasAtObservedL2BaseFeeWei": "532155332536000",
+        "protocolLiveEstimate": "UNAVAILABLE_UNTIL_EXACT_VERIFIED_DEPLOYMENT_INPUTS"
+      },
+      "observationMode": "ARCHIVED_RECONSTRUCTION_REFRESH_REQUIRED"
+    }
+  },
+  "fixture": {
+    "chainId": 4663,
+    "scope": "LOOPBACK_FIXTURE_ONLY",
+    "profile": "rmt-curve-fixed-supply-security-v2",
+    "compiler": {
+      "version": "0.8.26+commit.8a97fa7a",
+      "inputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+      "auxiliaryOutputInputSha256": "7923ec6acc0666f18c7dd9d8d181eb15d5e664be841325f0787b0dd046132426"
+    },
+    "forkSha256": "455bdf491eeeac9586c6d1ff9a7e8e24e1c532edfee57e9c3e3666edb80ac45f",
+    "anchor": {
+      "number": 114549452,
+      "hash": "0xf9a8ca5d8e26ebb426ebd2e663ad82afc878c16d8bba5f5542f6341890cf7710"
+    },
+    "rows": [
+      {
+        "id": "operations-safe",
+        "label": "Prepare RMT-OPERATIONS",
+        "dependsOn": [],
+        "scope": "PROPOSED_SAFE_REVIEW_ONLY",
+        "chainId": 4663,
+        "from": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+        "to": "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
+        "nonce": null,
+        "valueWei": "0",
+        "dataHash": "0x64c42b60490759e71c4777faab3ac157f5c565b6b379629bdaaec7e5352c2250",
+        "expectedAddress": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+        "observedForkGas": null,
+        "receiptHash": null,
+        "receiptBlock": null,
+        "authorization": "SALT_APPROVAL_AND_LIVE_AUTHORIZATION_REQUIRED",
+        "details": {
+          "safeProfile": "SafeL2 1.4.1",
+          "owners": [
+            "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+            "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+            "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697"
+          ],
+          "threshold": 2,
+          "singleton": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+          "fallbackHandler": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+          "initialFundingWei": "0",
+          "saltNonce": "0x8094029c8a767b073fdbe606186b138b416682f2584ca87d38b3eaaa7af16cc2",
+          "create2Salt": "0x888907e1a47ea3a37cf6e51f20e36a89ce771320fd09015ff0f6e3c2190a7706",
+          "initializerHash": "0x151a0612bf013560eaf16129615ae6262a6889db13410623ddcb49f2a8506ac2",
+          "beneficiaryStatus": "UNASSIGNED",
+          "payerIsOwner": false,
+          "requiredReceiptChecks": [
+            "ProxyCreation emitted by the pinned proxy factory",
+            "Exact proxy and singleton",
+            "Expected proxy runtime, three owners and threshold 2"
+          ]
+        }
+      },
+      {
+        "id": "reserve-safe",
+        "label": "Prepare RMT-RESERVE",
+        "dependsOn": [
+          "operations-safe"
+        ],
+        "scope": "PROPOSED_SAFE_REVIEW_ONLY",
+        "chainId": 4663,
+        "from": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+        "to": "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
+        "nonce": null,
+        "valueWei": "0",
+        "dataHash": "0x6b13f3d79874ba9b1417f547170acf2e5bcf19fe5bab43f1ab0da6aede826604",
+        "expectedAddress": "0x8D44078642ce938Fd799b23087BcdD6114A302e5",
+        "observedForkGas": null,
+        "receiptHash": null,
+        "receiptBlock": null,
+        "authorization": "SALT_APPROVAL_AND_LIVE_AUTHORIZATION_REQUIRED",
+        "details": {
+          "safeProfile": "SafeL2 1.4.1",
+          "owners": [
+            "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+            "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+            "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697"
+          ],
+          "threshold": 2,
+          "singleton": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+          "fallbackHandler": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+          "initialFundingWei": "0",
+          "saltNonce": "0xe0e8b0060b79275b10d83a2573dfc2e48e749a76e0a2efea0ffe422a30b89a87",
+          "create2Salt": "0xf7eb3bd812af043403525965a83801f950a4e7a6e5d93219fca1ba2c12a7d89f",
+          "initializerHash": "0x151a0612bf013560eaf16129615ae6262a6889db13410623ddcb49f2a8506ac2",
+          "beneficiaryStatus": "UNASSIGNED",
+          "payerIsOwner": false,
+          "requiredReceiptChecks": [
+            "ProxyCreation emitted by the pinned proxy factory",
+            "Exact proxy and singleton",
+            "Expected proxy runtime, three owners and threshold 2"
+          ]
+        }
+      },
+      {
+        "id": "directory",
+        "label": "Deploy governance directory",
+        "dependsOn": [
+          "operations-safe",
+          "reserve-safe"
+        ],
+        "scope": "LOOPBACK_FIXTURE_ONLY",
+        "chainId": 4663,
+        "from": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+        "to": null,
+        "nonce": "475",
+        "valueWei": "0",
+        "dataHash": "0xc5273927e1294236080dd71b93c16c0ec2a1ec5c7d13e178133e6269f84cf219",
+        "expectedAddress": "0x6e138b8bf3f1012e73cfdc8ffeb6b2743fdd4256",
+        "observedForkGas": "2376060",
+        "receiptHash": "0x6fb05ec698e64c4d5ed5fb4916143f970112210ed8e70f9c787a77a33d87b45c",
+        "receiptBlock": {
+          "number": "114549459",
+          "hash": "0xdfe7e4ebf921bdc23cc1d328759e16f1ee61e0a8a9d6077bd73deb1364ea0572"
+        },
+        "authorization": "FIXTURE_ONLY_PRODUCTION_INPUTS_UNASSIGNED",
+        "details": {
+          "contract": "RMTLaunchCurveDirectoryV2",
+          "runtimeHash": "0x0e1e4d59df2ee0b086f2345e4b55089b5e87dfb6b9471c8dcdde176468583f9f",
+          "initcodeBytes": 11833,
+          "runtimeBytes": 10290,
+          "requiredReceiptChecks": [
+            "Receipt contract address matches sender and nonce",
+            "Exact materialized runtime hash"
+          ],
+          "signers": [
+            "0xAfFEb0Ceb49fDe58666d719A276be6Abf46bd7fA",
+            "0x6014b8Ec366d6fC9dd2e2e0C1dd0A3a5ce1Cb210",
+            "0xA66A6A2F041f4CA3373A48f4984ba0CAF250Cfab"
+          ],
+          "threshold": 2
+        }
+      },
+      {
+        "id": "registry",
+        "label": "Deploy project registry",
+        "dependsOn": [
+          "directory"
+        ],
+        "scope": "LOOPBACK_FIXTURE_ONLY",
+        "chainId": 4663,
+        "from": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+        "to": null,
+        "nonce": "476",
+        "valueWei": "0",
+        "dataHash": "0x44501921d07161b70569ff72869828fe99a506e72133eff6a224721d423ab5ba",
+        "expectedAddress": "0x485b3faa867e11c5add05c9836f4e1dbfe0c4522",
+        "observedForkGas": "3617564",
+        "receiptHash": "0xa7bfa41ba57a45ac266dd7ec90454c0880b56ad5f6bb3e19bbbdd343f55dc460",
+        "receiptBlock": {
+          "number": "114549461",
+          "hash": "0x40dd6e94096be2c9ccfb0891331a480d4ab42fd32c57fe65821b0faabead3763"
+        },
+        "authorization": "FIXTURE_ONLY_PRODUCTION_INPUTS_UNASSIGNED",
+        "details": {
+          "contract": "RMTLaunchProjectRegistryV3",
+          "runtimeHash": "0x7d90bccb6c5876935f07db6144bd8292635d90cdea89d2999a4c92e295ad59c6",
+          "initcodeBytes": 17691,
+          "runtimeBytes": 16273,
+          "requiredReceiptChecks": [
+            "Receipt contract address matches sender and nonce",
+            "Exact materialized runtime hash"
+          ]
+        }
+      },
+      {
+        "id": "successor-v2",
+        "label": "Deploy the V2 migration helper",
+        "dependsOn": [
+          "registry"
+        ],
+        "scope": "LOOPBACK_FIXTURE_ONLY",
+        "chainId": 4663,
+        "from": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+        "to": null,
+        "nonce": "477",
+        "valueWei": "0",
+        "dataHash": "0xef8c62038760eadaa5e7cf985febe23f9444e80710fbb3b30f5cf13d6513f3fa",
+        "expectedAddress": "0xf9321e1e29c6f19f90e112d527de0c2391ab2e6f",
+        "observedForkGas": "3321733",
+        "receiptHash": "0xa383aad43c5a78ec165e6fcdb3ed37c5336372b3c8f7c381229bd1495ebfb84e",
+        "receiptBlock": {
+          "number": "114549462",
+          "hash": "0x84cac29e7726dafed8b097961fefbb9258c42d02ee588c6f07dc41dbff5e9be2"
+        },
+        "authorization": "FIXTURE_ONLY_PRODUCTION_INPUTS_UNASSIGNED",
+        "details": {
+          "contract": "RMTLaunchCurveSuccessorDeployerV1",
+          "runtimeHash": "0xc0894c78000f427a4a1c5b1ef9774dea3dcc53c93be42cdd196ef4b072bff0be",
+          "initcodeBytes": 15252,
+          "runtimeBytes": 15226,
+          "requiredReceiptChecks": [
+            "Receipt contract address matches sender and nonce",
+            "Exact materialized runtime hash"
+          ]
+        }
+      },
+      {
+        "id": "successor-v3",
+        "label": "Deploy the V3 migration helper",
+        "dependsOn": [
+          "successor-v2"
+        ],
+        "scope": "LOOPBACK_FIXTURE_ONLY",
+        "chainId": 4663,
+        "from": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+        "to": null,
+        "nonce": "478",
+        "valueWei": "0",
+        "dataHash": "0x5492ddda03a48dd5718830b01043bfbfd5ea1862e2d2f370851d41a5840914e8",
+        "expectedAddress": "0xe677a69a8124714dd0d88b73bdf1b89cc791ca9c",
+        "observedForkGas": "3365744",
+        "receiptHash": "0x72dddf3c2d7d9ee4f94de65fd41597c19c7a46f7119dcbebf7414aea1e4fc098",
+        "receiptBlock": {
+          "number": "114549463",
+          "hash": "0x326c859263d922b7b1d8de7bcdc1c0d34bc47d86a0be83cce9664a026b0bde75"
+        },
+        "authorization": "FIXTURE_ONLY_PRODUCTION_INPUTS_UNASSIGNED",
+        "details": {
+          "contract": "RMTLaunchCurveSuccessorDeployerV2",
+          "runtimeHash": "0x07efd03ff4ec2028d176deb6bfde1b77e3d5fd4d32c69851b59e7d78b1ac7fc9",
+          "initcodeBytes": 15456,
+          "runtimeBytes": 15430,
+          "requiredReceiptChecks": [
+            "Receipt contract address matches sender and nonce",
+            "Exact materialized runtime hash"
+          ]
+        }
+      },
+      {
+        "id": "bootstrap",
+        "label": "Deploy the guarded launch factory and graduation engine",
+        "dependsOn": [
+          "registry",
+          "successor-v2",
+          "successor-v3"
+        ],
+        "scope": "LOOPBACK_FIXTURE_ONLY",
+        "chainId": 4663,
+        "from": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+        "to": null,
+        "nonce": "479",
+        "valueWei": "0",
+        "dataHash": "0xc2b3de494307fc243b0567e404a93fdf9c9fc34e63faaa075ce64dc9b7eab84c",
+        "expectedAddress": "0xf1113714Dda31f31532995D2525e034271425398",
+        "observedForkGas": "9923063",
+        "receiptHash": "0x43ecf9346cbf927e4a23510906e4598f432912c5c5a676b27c6cbf7b4e182c5a",
+        "receiptBlock": {
+          "number": "114549464",
+          "hash": "0x32309c52bbca9737585584a6b80dded75a14a5fc3877f6758088cb7a192131ee"
+        },
+        "authorization": "FIXTURE_ONLY_PRODUCTION_INPUTS_UNASSIGNED",
+        "details": {
+          "contract": "RMTLaunchCurveDeploymentV2",
+          "runtimeHash": "0x45d345d66e7da1c90f073c486f07c8c4a320f67d64c4a76e1422b5f3e99bb1bb",
+          "initcodeBytes": 48729,
+          "runtimeBytes": 320,
+          "requiredReceiptChecks": [
+            "Receipt contract address matches sender and nonce",
+            "Exact materialized runtime hash"
+          ],
+          "operatingRecipient": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+          "futureReserveRecipient": "0x8D44078642ce938Fd799b23087BcdD6114A302e5",
+          "children": [
+            {
+              "contract": "RMTV4CurveInitializationGuardV1",
+              "address": "0x171BcFd919e4118a1587179285f143006bb7e000",
+              "runtimeHash": "0xf23e59774dd1b39135894eb2b40714bc41945ae7813656fa8735e8fc9fd3bf0a",
+              "create2Salt": "0x0000000000000000000000000000000000000000000000000000000000004d05",
+              "hookPermissionBits": "0x2000"
+            },
+            {
+              "contract": "RMTV4CurveGraduationV1",
+              "address": "0xbD0364B5F2Ace5FE1E1940b62390fDB7090fb649",
+              "runtimeHash": "0x0ad71b163b44448450636dace96f751892a5bf87247f2e5789a32c5e880423c1"
+            },
+            {
+              "contract": "RMTLaunchCurveFactoryV2",
+              "address": "0x7c27A6a3d4B863d3f4EaC5Df00c2bF155a52D83b",
+              "runtimeHash": "0xec2d990666947f4da385326490e6785b9d1841ca96bee04117b75e99a43d5c68"
+            }
+          ]
+        }
+      },
+      {
+        "id": "schedule-factory",
+        "label": "Schedule publication of the launch factory",
+        "dependsOn": [
+          "bootstrap"
+        ],
+        "scope": "LOOPBACK_FIXTURE_ONLY",
+        "chainId": 4663,
+        "from": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+        "to": "0x6e138b8bf3f1012e73cfdc8ffeb6b2743fdd4256",
+        "nonce": "480",
+        "valueWei": "0",
+        "dataHash": null,
+        "expectedAddress": null,
+        "observedForkGas": "101357",
+        "receiptHash": "0x7ce80e100be09999018af02e1d8a3203b976320555b52d04b9e9268165c97eae",
+        "receiptBlock": {
+          "number": "114549466",
+          "hash": "0x7a6942ea0776b139aa2d863cb3040b8deabb8238c8982a3aebda08c41de7270e"
+        },
+        "authorization": "TWO_CURRENT_GOVERNANCE_SIGNATURES_REQUIRED",
+        "details": {
+          "digest": "0xdc16d72c97d2024651d08f49d995bd55c9ad786a478348531978048ebc371667",
+          "domain": {
+            "chainId": 4663,
+            "verifyingContract": "0x6e138b8bf3f1012e73cfdc8ffeb6b2743fdd4256",
+            "name": "RMT Launch Curve Directory",
+            "version": "2"
+          },
+          "primaryType": "Action",
+          "types": {
+            "Action": [
+              {
+                "name": "kind",
+                "type": "uint8"
+              },
+              {
+                "name": "nonce",
+                "type": "uint64"
+              },
+              {
+                "name": "version",
+                "type": "uint32"
+              },
+              {
+                "name": "factory",
+                "type": "address"
+              },
+              {
+                "name": "runtimeHash",
+                "type": "bytes32"
+              },
+              {
+                "name": "signerSetEpoch",
+                "type": "uint64"
+              },
+              {
+                "name": "deadline",
+                "type": "uint48"
+              }
+            ]
+          },
+          "message": {
+            "kind": 0,
+            "nonce": "0",
+            "version": 1,
+            "factory": "0x7c27A6a3d4B863d3f4EaC5Df00c2bF155a52D83b",
+            "runtimeHash": "0xec2d990666947f4da385326490e6785b9d1841ca96bee04117b75e99a43d5c68",
+            "signerSetEpoch": "1",
+            "deadline": 1795046688
+          },
+          "noticeSeconds": 172800,
+          "timing": "FORK_TYPED_DATA",
+          "callDataStatus": "WITHHELD_WITHOUT_GOVERNANCE_AUTHORIZATION",
+          "receiptInputStatus": "HASH_AND_NONCE_OBSERVED",
+          "syntheticReceiptInputHash": "0x82418599a31cc080ad09ffe2856e678b8f9daf9e05a42f16f8e0865781700eac",
+          "requiredReceiptChecks": [
+            "ActionScheduled binds digest, governance nonce, earliest execution and expiry"
+          ]
+        }
+      },
+      {
+        "id": "execute-factory",
+        "label": "Execute publication of the launch factory",
+        "dependsOn": [
+          "schedule-factory"
+        ],
+        "scope": "LOOPBACK_FIXTURE_ONLY",
+        "chainId": 4663,
+        "from": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+        "to": "0x6e138b8bf3f1012e73cfdc8ffeb6b2743fdd4256",
+        "nonce": "481",
+        "valueWei": "0",
+        "dataHash": "0x5efa6023a77b37ce0f1625b5fd950722e7558b735aec0fb375a17a768ab6d721",
+        "expectedAddress": null,
+        "observedForkGas": "102417",
+        "receiptHash": "0x0149c97a993e1d3b482e61b36a4b882bc0bdbeb6b853cd589e6c913172255e55",
+        "receiptBlock": {
+          "number": "114549468",
+          "hash": "0xb22f038ae01824dcf76a787e0501583ad008ecefd385ecd4afaf3beb7454b474"
+        },
+        "authorization": "EXECUTABLE_ONLY_AFTER_TWO_DAY_NOTICE_AND_BEFORE_EXPIRY",
+        "details": {
+          "digest": "0xdc16d72c97d2024651d08f49d995bd55c9ad786a478348531978048ebc371667",
+          "noticeSeconds": 172800,
+          "timing": "FORK_TYPED_DATA",
+          "receiptInputStatus": "HASH_AND_NONCE_OBSERVED",
+          "requiredReceiptChecks": [
+            "FactoryPublished binds version, factory and runtime hash"
+          ]
+        }
+      },
+      {
+        "id": "schedule-migration-template",
+        "label": "Schedule publication of the V3 migration template",
+        "dependsOn": [
+          "execute-factory",
+          "successor-v3"
+        ],
+        "scope": "LOOPBACK_FIXTURE_ONLY",
+        "chainId": 4663,
+        "from": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+        "to": "0x6e138b8bf3f1012e73cfdc8ffeb6b2743fdd4256",
+        "nonce": "482",
+        "valueWei": "0",
+        "dataHash": null,
+        "expectedAddress": null,
+        "observedForkGas": "104313",
+        "receiptHash": "0x261d661acbbd560d1b5dbf05d5d0336db51015e0726a63ea50b458fc780e6b6e",
+        "receiptBlock": {
+          "number": "114549469",
+          "hash": "0xaa70c9eb000a899eead3397f69d0786bcdd8c0ef7218b360a20917fb009216ed"
+        },
+        "authorization": "TWO_CURRENT_GOVERNANCE_SIGNATURES_REQUIRED",
+        "details": {
+          "digest": "0x736f25d0c3800fbd859c0728babb27b709220fedec4af450fa3434b30e6f9454",
+          "domain": {
+            "chainId": 4663,
+            "verifyingContract": "0x6e138b8bf3f1012e73cfdc8ffeb6b2743fdd4256",
+            "name": "RMT Launch Curve Directory",
+            "version": "2"
+          },
+          "primaryType": "Action",
+          "types": {
+            "Action": [
+              {
+                "name": "kind",
+                "type": "uint8"
+              },
+              {
+                "name": "nonce",
+                "type": "uint64"
+              },
+              {
+                "name": "version",
+                "type": "uint32"
+              },
+              {
+                "name": "factory",
+                "type": "address"
+              },
+              {
+                "name": "runtimeHash",
+                "type": "bytes32"
+              },
+              {
+                "name": "signerSetEpoch",
+                "type": "uint64"
+              },
+              {
+                "name": "deadline",
+                "type": "uint48"
+              }
+            ]
+          },
+          "message": {
+            "kind": 4,
+            "nonce": "1",
+            "version": 3,
+            "factory": "0xe677a69a8124714dd0d88b73bdf1b89cc791ca9c",
+            "runtimeHash": "0x07efd03ff4ec2028d176deb6bfde1b77e3d5fd4d32c69851b59e7d78b1ac7fc9",
+            "signerSetEpoch": "1",
+            "deadline": 1795219492
+          },
+          "noticeSeconds": 172800,
+          "timing": "FORK_TYPED_DATA",
+          "callDataStatus": "WITHHELD_WITHOUT_GOVERNANCE_AUTHORIZATION",
+          "receiptInputStatus": "HASH_AND_NONCE_OBSERVED",
+          "syntheticReceiptInputHash": "0xe77427a1e48e248e0a5e0cbcc8fe85369f5a38959d2ba5d0c4e41439080e9fad",
+          "requiredReceiptChecks": [
+            "ActionScheduled binds digest, governance nonce, earliest execution and expiry"
+          ]
+        }
+      },
+      {
+        "id": "execute-migration-template",
+        "label": "Execute publication of the V3 migration template",
+        "dependsOn": [
+          "schedule-migration-template"
+        ],
+        "scope": "LOOPBACK_FIXTURE_ONLY",
+        "chainId": 4663,
+        "from": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+        "to": "0x6e138b8bf3f1012e73cfdc8ffeb6b2743fdd4256",
+        "nonce": "483",
+        "valueWei": "0",
+        "dataHash": "0x27d1dcd5ebfdc81974fe65d7604218bd86d7f3a69de77eeef3b66213c868a9ad",
+        "expectedAddress": null,
+        "observedForkGas": "85985",
+        "receiptHash": "0xc3934655bf3b69f2b83f9c33b955087ea72c9a3e700cbd584a3d458af9434490",
+        "receiptBlock": {
+          "number": "114549471",
+          "hash": "0x9231e85dda770eabf03305681e1a06660738f06e0537e194f74d854c4151d588"
+        },
+        "authorization": "EXECUTABLE_ONLY_AFTER_TWO_DAY_NOTICE_AND_BEFORE_EXPIRY",
+        "details": {
+          "digest": "0x736f25d0c3800fbd859c0728babb27b709220fedec4af450fa3434b30e6f9454",
+          "noticeSeconds": 172800,
+          "timing": "FORK_TYPED_DATA",
+          "receiptInputStatus": "HASH_AND_NONCE_OBSERVED",
+          "requiredReceiptChecks": [
+            "MigrationTemplatePublished binds successor version, deployer and runtime hash"
+          ]
+        }
+      },
+      {
+        "id": "first-rmt",
+        "label": "Create the first fixed-supply RMT project",
+        "dependsOn": [
+          "execute-factory",
+          "execute-migration-template"
+        ],
+        "scope": "LOOPBACK_FIXTURE_ONLY",
+        "chainId": 4663,
+        "from": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+        "to": "0x7c27A6a3d4B863d3f4EaC5Df00c2bF155a52D83b",
+        "nonce": "484",
+        "valueWei": "400000000000000",
+        "dataHash": "0xd4abc4424bcd7c4dc8e738312816b04fa489e854b6ed08dedbcefed6bf598d59",
+        "expectedAddress": "0x14C0900913C28d8898c762Dd6444c03b02A872BD",
+        "observedForkGas": "3348696",
+        "receiptHash": "0xc1b3a6ed3a6a57f1c1b096154cbac421ce496f272aa9d9f85134d816e454e778",
+        "receiptBlock": {
+          "number": "114549473",
+          "hash": "0x4317f60fcc65ad5b90bac789decf3aa535d0dd1ae5d846e4f3722863b26f0034"
+        },
+        "authorization": "FIXTURE_ONLY_FIRST_PROJECT_TERMS_UNAPPROVED",
+        "details": {
+          "name": "RMT",
+          "symbol": "RMT",
+          "projectURI": "https://example.test/rmt-first-project",
+          "supplyWei": "1000000000000000000000000000",
+          "initialBackingWei": "0",
+          "treasury": "0x0a27C3e6E1E3Fb184445b92c42855506CD411640",
+          "treasuryShareBpsOfEligibleFees": 2250,
+          "erc20RuntimeHash": "0xbb1018a75a30c33d830a5ab203b0063c00d24853b69641472649262837f9cd42",
+          "reviewedGraduationPoolKey": {
+            "currency0": "0x0000000000000000000000000000000000000000",
+            "currency1": "0x14C0900913C28d8898c762Dd6444c03b02A872BD",
+            "fee": 3000,
+            "tickSpacing": 60,
+            "hooks": "0x171BcFd919e4118a1587179285f143006bb7e000"
+          },
+          "receiptInputStatus": "HASH_AND_NONCE_OBSERVED",
+          "requiredReceiptChecks": [
+            "Canonical CurveCreated and CreationFeePaid from the exact factory",
+            "Verified registry identity, token runtime and fixed supply",
+            "Exact native trace if a refund must be proven"
+          ]
+        }
+      }
+    ],
+    "delegationProof": {
+      "scope": "SYNTHETIC_PRAGUE_4663_IMPERSONATED_SENDER",
+      "ownerKeyControl": "UNVERIFIED",
+      "safeReceipts": [
+        {
+          "transactionHash": "0xf65c6c0c82ee3d0e9b4262e0b33c9097ed468c83854ad8341af09697ce86f122",
+          "blockHash": "0x4a3961a461a0683750c0c91734ad54d739ecca537f49076282e56a32950b1a55",
+          "blockNumber": "114549457",
+          "status": "success",
+          "gasLimit": "8000000",
+          "gasUsed": "306195",
+          "effectiveGasPriceWei": "10429492",
+          "maxFeePerGasWei": "23838838",
+          "maxPriorityFeePerGasWei": "0"
+        },
+        {
+          "transactionHash": "0x46d42d81ff9d1353f072432d3ef5ba8305802c80144d9b45f895f80778efc940",
+          "blockHash": "0xbc13ccab83d3c8879f352c67fc9ffb1f32ba5fbe53d5dd5b821e6f4962aca685",
+          "blockNumber": "114549458",
+          "status": "success",
+          "gasLimit": "8000000",
+          "gasUsed": "306195",
+          "effectiveGasPriceWei": "9125806",
+          "maxFeePerGasWei": "20858984",
+          "maxPriorityFeePerGasWei": "0"
+        }
+      ],
+      "constructorReceipts": [
+        {
+          "id": "directory",
+          "transactionHash": "0xc6109848957e0f73fbf65af6fcd720e99a110f91b166b83a3a82a39ed0047b6a",
+          "blockHash": "0x5fe97dbc068006acb6c699921f547955382d299ab0c1136691b7aca9b8d6efc1",
+          "blockNumber": "114549459",
+          "status": "success",
+          "gasLimit": "8000000",
+          "gasUsed": "2376060",
+          "effectiveGasPriceWei": "7985081",
+          "maxFeePerGasWei": "18251612",
+          "maxPriorityFeePerGasWei": "0"
+        },
+        {
+          "id": "registry",
+          "transactionHash": "0xffce2f9cf228f1ba19b97eafc504d982fb3e89082bccc9769c9ed6cb67651fdc",
+          "blockHash": "0x57be6001047e59931e3f1f0990f7665202d0b682cd6f8fb0a09b922e5cfee88a",
+          "blockNumber": "114549461",
+          "status": "success",
+          "gasLimit": "8000000",
+          "gasUsed": "3617564",
+          "effectiveGasPriceWei": "6113578",
+          "maxFeePerGasWei": "13973892",
+          "maxPriorityFeePerGasWei": "0"
+        },
+        {
+          "id": "successor-v2",
+          "transactionHash": "0x4049851102221beca83e2d14c52667ddbeb4873010fb722a78b064a49b768391",
+          "blockHash": "0x75c09dc6be7d0c4759966511ba20d801c429f5c5f3b9c3f2ae7fdc4227ccd858",
+          "blockNumber": "114549462",
+          "status": "success",
+          "gasLimit": "8000000",
+          "gasUsed": "3321733",
+          "effectiveGasPriceWei": "5349381",
+          "maxFeePerGasWei": "12227156",
+          "maxPriorityFeePerGasWei": "0"
+        },
+        {
+          "id": "successor-v3",
+          "transactionHash": "0xb7eee0900667ac1c939954c96800d3f07bcd1a907f53e44f81a072a8390e6ad9",
+          "blockHash": "0x59c2746da2ffe0debf2ec68d5a4ac544bc423ce9cb23993e574dbc79db23d78c",
+          "blockNumber": "114549463",
+          "status": "success",
+          "gasLimit": "8000000",
+          "gasUsed": "3365744",
+          "effectiveGasPriceWei": "4680709",
+          "maxFeePerGasWei": "10698762",
+          "maxPriorityFeePerGasWei": "0"
+        },
+        {
+          "id": "bootstrap",
+          "transactionHash": "0xa40b8a8627f873f69afcd49ac372cdb11a2da361fd7a04876ad0b073646ffbef",
+          "blockHash": "0xc623293a320c944db92314ba0d18c6163aeb300addc335641bc8ba3b3c6a688a",
+          "blockNumber": "114549464",
+          "status": "success",
+          "gasLimit": "14000000",
+          "gasUsed": "9923063",
+          "effectiveGasPriceWei": "4095621",
+          "maxFeePerGasWei": "9361418",
+          "maxPriorityFeePerGasWei": "0"
+        }
+      ],
+      "publicationReceipts": [
+        {
+          "id": "schedule-factory",
+          "transactionHash": "0x7ce80e100be09999018af02e1d8a3203b976320555b52d04b9e9268165c97eae",
+          "blockHash": "0x7a6942ea0776b139aa2d863cb3040b8deabb8238c8982a3aebda08c41de7270e",
+          "blockNumber": "114549466",
+          "status": "success",
+          "gasLimit": "8000000",
+          "gasUsed": "101357",
+          "effectiveGasPriceWei": "1231384",
+          "maxFeePerGasWei": "2814590",
+          "maxPriorityFeePerGasWei": "0"
+        },
+        {
+          "id": "execute-factory",
+          "transactionHash": "0x0149c97a993e1d3b482e61b36a4b882bc0bdbeb6b853cd589e6c913172255e55",
+          "blockHash": "0xb22f038ae01824dcf76a787e0501583ad008ecefd385ecd4afaf3beb7454b474",
+          "blockNumber": "114549468",
+          "status": "success",
+          "gasLimit": "8000000",
+          "gasUsed": "102417",
+          "effectiveGasPriceWei": "942780",
+          "maxFeePerGasWei": "2154924",
+          "maxPriorityFeePerGasWei": "0"
+        },
+        {
+          "id": "schedule-migration-template",
+          "transactionHash": "0x261d661acbbd560d1b5dbf05d5d0336db51015e0726a63ea50b458fc780e6b6e",
+          "blockHash": "0xaa70c9eb000a899eead3397f69d0786bcdd8c0ef7218b360a20917fb009216ed",
+          "blockNumber": "114549469",
+          "status": "success",
+          "gasLimit": "8000000",
+          "gasUsed": "104313",
+          "effectiveGasPriceWei": "824933",
+          "maxFeePerGasWei": "1885560",
+          "maxPriorityFeePerGasWei": "0"
+        },
+        {
+          "id": "execute-migration-template",
+          "transactionHash": "0xc3934655bf3b69f2b83f9c33b955087ea72c9a3e700cbd584a3d458af9434490",
+          "blockHash": "0x9231e85dda770eabf03305681e1a06660738f06e0537e194f74d854c4151d588",
+          "blockNumber": "114549471",
+          "status": "success",
+          "gasLimit": "8000000",
+          "gasUsed": "85985",
+          "effectiveGasPriceWei": "631590",
+          "maxFeePerGasWei": "1443634",
+          "maxPriorityFeePerGasWei": "0"
+        }
+      ],
+      "firstProjectReceipt": {
+        "transactionHash": "0xc1b3a6ed3a6a57f1c1b096154cbac421ce496f272aa9d9f85134d816e454e778",
+        "blockHash": "0x4317f60fcc65ad5b90bac789decf3aa535d0dd1ae5d846e4f3722863b26f0034",
+        "blockNumber": "114549473",
+        "status": "success",
+        "gasLimit": "8000000",
+        "gasUsed": "3348696",
+        "effectiveGasPriceWei": "483562",
+        "maxFeePerGasWei": "1105284",
+        "maxPriorityFeePerGasWei": "0"
+      },
+      "signedDisposableSmoke": {
+        "created": {
+          "transactionHash": "0x8f61add6721ba0cfdcd5f51ccd273c28e1b724ef34875003b8710e2e693c83b5",
+          "blockHash": "0x453788e2e514bbe34f1373e7643c2cc1deb4d471bb2832306b65e1682756bbe3",
+          "blockNumber": "114549453",
+          "status": "success",
+          "gasLimit": "90000",
+          "gasUsed": "53398",
+          "effectiveGasPriceWei": "17792251",
+          "maxFeePerGasWei": "40668000",
+          "maxPriorityFeePerGasWei": "0"
+        },
+        "reverted": {
+          "transactionHash": "0x8284fa8f1987735f3b2345c8612858b18ed348931273f9150b4281e1570718f1",
+          "blockHash": "0x7b29f2848fbd985c8a72c38bddaa133849463c0ab685920dfc99f0a6c7044123",
+          "blockNumber": "114549455",
+          "status": "reverted",
+          "gasLimit": "90000",
+          "gasUsed": "53064",
+          "effectiveGasPriceWei": "13622193",
+          "maxFeePerGasWei": "31136440",
+          "maxPriorityFeePerGasWei": "0"
+        },
+        "revokedRejected": true,
+        "changedDelegateRejected": true
+      }
+    }
+  },
+  "terms": {
+    "fixedSupplyWei": "1000000000000000000000000000",
+    "decimals": 18,
+    "curveInventoryWei": "600000000000000000000000000",
+    "initialLiquidityInventoryWei": "400000000000000000000000000",
+    "creationFeeWei": "400000000000000",
+    "graduationBackingWei": "2000000000000000000",
+    "tradingFeeBps": 100,
+    "projectBps": 9000,
+    "operationsBps": 500,
+    "reserveBps": 500,
+    "status": "PROVISIONAL_UNAPPROVED"
+  },
+  "releaseGate": {
+    "status": "FAIL_HIGH",
+    "highFindings": 22,
+    "engineHighFindings": 18,
+    "dependencyHighFindings": 4,
+    "governanceMediumFindings": 7,
+    "sourceCommit": "58638966db82cffe89db6df4e918f73eced8ad2b"
+  }
+}

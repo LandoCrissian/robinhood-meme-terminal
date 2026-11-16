@@ -8,6 +8,15 @@ import { makeReadOnlyRpc, MOBILE_DEPLOYMENT_PAYER, ROBINHOOD_SOURCES } from "./r
 import { runSafeProbe, summarizeGas } from "./safe.mjs";
 
 export { MOBILE_DEPLOYMENT_PAYER };
+export const MOBILE_DELEGATE_POLICY = Object.freeze({
+  address: "0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B",
+  designator: "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b",
+  runtimeHash: "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0",
+  name: "EIP7702StatelessDeleGator",
+  version: "1.3.0",
+  entryPoint: "0x0000000071727De22E5E9d8BAf0edAc6f37da032",
+  delegationManager: "0xdb9B1e94B5b69Df7e401DDbedE43491141047dB3",
+});
 const require = createRequire(new URL("../../apps/launch-website/package.json", import.meta.url));
 const { getContractAddress, isAddressEqual, keccak256 } = require("viem");
 const evidence = new URL("../../docs/evidence/", import.meta.url);
@@ -100,7 +109,43 @@ function accountSummary(witnesses, anchor) {
 const makeReaders = () => Object.fromEntries(knownProviders.map((name) =>
   [name, makeReadOnlyRpc({ name, url: ROBINHOOD_SOURCES[name] }, { mobileSafePayer: true })]));
 
-export async function observeMobileSender({ readers = makeReaders(), now = Date.now, anchor } = {}) {
+async function readPendingDelegation(reader) {
+  const [designator, runtimeHash] = await Promise.all([
+    reader("eth_getCode", [MOBILE_DEPLOYMENT_PAYER, "pending"], codeOnly),
+    reader("eth_getCode", [MOBILE_DELEGATE_POLICY.address, "pending"], (code) => keccak256(codeOnly(code))),
+  ]);
+  return { designator: value(designator), runtimeHash: value(runtimeHash) };
+}
+
+function pinnedDelegation(witnesses, anchor) {
+  const participants = witnesses.filter(({ chainId, before, after }) =>
+    chainId === "4663" && sameBlock(anchor, before) && sameBlock(anchor, after));
+  const { designator, runtimeHash } = MOBILE_DELEGATE_POLICY;
+  const observations = ({ delegate }) => Array.isArray(delegate?.pending) ? delegate.pending : [];
+  // An available contradictory observation is fatal, even from a third provider.
+  if (participants.some((peer) => (peer.code !== undefined && peer.code !== designator) ||
+    (peer.delegate?.anchoredRuntimeHash !== undefined && peer.delegate.anchoredRuntimeHash !== runtimeHash) ||
+    observations(peer).some((sample) => (sample?.designator !== undefined && sample.designator !== designator) ||
+      (sample?.runtimeHash !== undefined && sample.runtimeHash !== runtimeHash)))) return null;
+  const complete = participants.filter((peer) => {
+    const pending = observations(peer);
+    return peer.code === designator && peer.delegate?.anchoredRuntimeHash === runtimeHash &&
+      peer.balanceWei !== undefined && peer.confirmedNonce !== undefined &&
+      peer.pendingBefore === peer.confirmedNonce && peer.pendingAfter === peer.confirmedNonce &&
+      pending.length >= 2 && pending.length <= 4 &&
+      pending.every((sample) => sample?.designator === designator && sample?.runtimeHash === runtimeHash);
+  });
+  const providers = [...new Set(complete.map(({ name }) => name))];
+  if (providers.length < 2 || !providers.includes("official")) return null;
+  return { ...MOBILE_DELEGATE_POLICY, status: "PINNED_RUNTIME" };
+}
+
+async function recheckPendingDelegation(witness, reader) {
+  if (witness.delegate) witness.delegate.pending.push(await readPendingDelegation(reader));
+}
+
+export async function observeMobileSender({ readers = makeReaders(), now = Date.now, anchor,
+  allowPinnedDelegation = false } = {}) {
   const providers = knownProviders.filter((name) => typeof readers[name] === "function");
   const initial = await Promise.all(providers.map(async (name) => {
     const read = readers[name];
@@ -125,16 +170,25 @@ export async function observeMobileSender({ readers = makeReaders(), now = Date.
     const before = await readHeader(read);
     if (!sameBlock(anchor, before)) return { ...initialRead, before };
     const pendingBefore = await readPending(read);
-    const [code, balance, nonce] = await Promise.all([
+    const [code, balance, nonce, pending, runtime] = await Promise.all([
       read("eth_getCode", [MOBILE_DEPLOYMENT_PAYER, tag], codeOnly),
       read("eth_getBalance", [MOBILE_DEPLOYMENT_PAYER, tag], decimal),
       read("eth_getTransactionCount", [MOBILE_DEPLOYMENT_PAYER, tag], decimal),
+      allowPinnedDelegation === true ? readPendingDelegation(read) : null,
+      allowPinnedDelegation === true
+        ? read("eth_getCode", [MOBILE_DELEGATE_POLICY.address, tag], (code) => keccak256(codeOnly(code))) : null,
     ]);
-    return { ...initialRead, before, pendingBefore, pendingAfter: await readPending(read), after: await readHeader(read),
+    const witness = { ...initialRead, before, pendingBefore, pendingAfter: await readPending(read), after: await readHeader(read),
       code: value(code), balanceWei: value(balance), confirmedNonce: value(nonce) };
+    if (pending) {
+      witness.delegate = { anchoredRuntimeHash: value(runtime), pending: [pending] };
+      await recheckPendingDelegation(witness, read);
+    }
+    return witness;
   }));
   const sender = accountSummary(witnesses, anchor);
-  const predicted = sender.status === "OBSERVED" && sender.accountType === "CODE_EMPTY" && sender.nonceSynchronized
+  const eligible = allowPinnedDelegation === true ? Boolean(pinnedDelegation(witnesses, anchor)) : sender.accountType === "CODE_EMPTY";
+  const predicted = sender.status === "OBSERVED" && eligible && sender.nonceSynchronized
     ? deriveFutureCreateDestinations(sender.pendingNonce) : [];
   const createDestinations = [];
   const participants = witnesses.filter(({ name, before, after }) => readers[name] && sameBlock(anchor, before) && sameBlock(anchor, after));
@@ -151,12 +205,16 @@ export async function observeMobileSender({ readers = makeReaders(), now = Date.
   if (predicted.length) {
     await Promise.all(participants.map(async (witness) => {
       const read = readers[witness.name];
+      await recheckPendingDelegation(witness, read);
       witness.after = await readHeader(read);
       witness.pendingAfter = await readPending(read);
     }));
   }
   const rechecked = accountSummary(witnesses, anchor);
-  return { ...rechecked, createDestinations: rechecked.status === "OBSERVED" && rechecked.nonceSynchronized ? createDestinations : [] };
+  const delegation = allowPinnedDelegation === true ? pinnedDelegation(witnesses, anchor) : null;
+  return { ...rechecked, ...(allowPinnedDelegation === true && { delegation }),
+    createDestinations: rechecked.status === "OBSERVED" && rechecked.nonceSynchronized &&
+      (allowPinnedDelegation !== true || delegation) ? createDestinations : [] };
 }
 
 function destinationStatus(checks) {
@@ -199,23 +257,28 @@ async function summarizeSafes(report, readers, sender) {
       ? BigInt(sender.balanceWei) >= BigInt(report.combinedEstimatedWei) : null };
 }
 
-export async function runMobileSenderProbe({ readers = makeReaders(), now = Date.now } = {}) {
+export async function runMobileSenderProbe({ readers = makeReaders(), now = Date.now,
+  allowPinnedDelegation = false } = {}) {
   const quote = await runSafeProbe({ readers, now, mobileSafePayer: true });
-  const observedSender = await observeMobileSender({ readers, now, anchor: quote.anchor });
+  const observedSender = await observeMobileSender({ readers, now, anchor: quote.anchor, allowPinnedDelegation });
   const safes = await summarizeSafes(quote, readers, observedSender);
   // Recheck the pinned header and the pending account nonce after the independent Safe reads.
   const sender = observedSender;
   await Promise.all(sender.providers.map(async (peer) => {
     if (!sameBlock(peer.after, sender.anchor)) return;
+    await recheckPendingDelegation(peer, readers[peer.name]);
     peer.after = value(await readers[peer.name]("eth_getBlockByNumber", [hex(sender.anchor.number), false], header));
     peer.pendingAfter = value(await readers[peer.name]("eth_getTransactionCount", [MOBILE_DEPLOYMENT_PAYER, "pending"], decimal));
   }));
   const evidenceTime = now();
   const finalSender = accountSummary(sender.providers, sender.anchor);
+  const delegation = allowPinnedDelegation === true ? pinnedDelegation(finalSender.providers, sender.anchor) : null;
   return { schemaVersion: 1, scope, status: blocked, broadcastAuthorized: false, chainId: 4663,
     observedAt: new Date(evidenceTime).toISOString(), expiresAt: new Date(evidenceTime + maxAgeMs).toISOString(),
     proposedSender: MOBILE_DEPLOYMENT_PAYER, observedSignerControl: "UNVERIFIED",
-    sender: { ...finalSender, createDestinations: finalSender.status === "OBSERVED" && finalSender.nonceSynchronized
+    sender: { ...finalSender, ...(allowPinnedDelegation === true && { delegation }),
+      createDestinations: finalSender.status === "OBSERVED" && finalSender.nonceSynchronized &&
+        (allowPinnedDelegation !== true || delegation)
       ? sender.createDestinations : [] }, safes };
 }
 
@@ -227,7 +290,7 @@ function admittedWitnessNames(rows) {
 }
 
 // An observation is admissible only for a blocked review. This validator never grants signing authority.
-export function assertCurrentMobileObservation(observation, nowMs = Date.now()) {
+export function assertCurrentMobileObservation(observation, nowMs = Date.now(), { allowPinnedDelegation = false } = {}) {
   assert.ok(observation?.schemaVersion === 1 && observation.scope === scope && observation.status === blocked &&
     observation.broadcastAuthorized === false && observation.chainId === 4663, "Unrecognized or unblocked observation");
   assert.equal(observation.proposedSender, MOBILE_DEPLOYMENT_PAYER);
@@ -238,8 +301,16 @@ export function assertCurrentMobileObservation(observation, nowMs = Date.now()) 
   const { sender, safes } = observation;
   admittedWitnessNames(sender.providers);
   const summary = accountSummary(sender.providers, sender.anchor);
-  assert.ok(summary.status === "OBSERVED" && summary.accountType === "CODE_EMPTY" && summary.nonceSynchronized,
-    "Corroborated, code-empty account with equal pending and confirmed nonce required");
+  let delegation;
+  if (allowPinnedDelegation === true) {
+    delegation = pinnedDelegation(sender.providers, sender.anchor);
+    assert.ok(summary.status === "OBSERVED" && summary.accountType === "EIP_7702_DELEGATION" && summary.nonceSynchronized &&
+      delegation, "Corroborated pinned delegation with equal pending and confirmed nonce required");
+    assert.deepEqual(sender.delegation, delegation, "Delegation summary mismatch");
+  } else {
+    assert.ok(summary.status === "OBSERVED" && summary.accountType === "CODE_EMPTY" && summary.nonceSynchronized,
+      "Corroborated, code-empty account with equal pending and confirmed nonce required");
+  }
   const fields = ["status", "accountType", "balanceWei", "confirmedNonce", "pendingNonce", "nonceSynchronized"];
   for (const field of fields) assert.equal(sender[field], summary[field], "Sender summary mismatch");
   for (const key of ["balanceWei", "confirmedNonce", "pendingNonce"]) assert.match(sender[key], decimalPattern);
@@ -272,6 +343,7 @@ export function assertCurrentMobileObservation(observation, nowMs = Date.now()) 
       "Safe infrastructure codehash missing or mismatched");
   }
   assert.equal(safes.proposals.length, safeProposals.proposals.length);
+  if (delegation) assert.equal(safes.probeStatus, "READ_ONLY_ESTIMATED", "Current exact Safe quotes required");
   for (const [i, proposal] of safes.proposals.entries()) {
     const pinned = safeProposals.proposals[i];
     for (const key of ["role", "counterfactualAddress", "create2Salt", "saltNonce", "initializerKeccak256"]) {
@@ -282,6 +354,7 @@ export function assertCurrentMobileObservation(observation, nowMs = Date.now()) 
     assert.deepEqual(destinationStatus(proposal.vacancy), { status: "VACANT", code: "0x", accountNonce: "0" },
       "Safe CREATE2 vacancy missing or mismatched");
     assert.equal(proposal.simulatedAddress, pinned.counterfactualAddress, "Safe simulation address mismatch");
+    if (delegation) assert.ok(proposal.gas && proposal.estimateStatus === "observed", "Current exact Safe estimate required");
     if (proposal.gas) {
       const gas = proposal.gas;
       assert.deepEqual(gas, summarizeGas({ total: BigInt(gas.nitroGasEstimate), l1: BigInt(gas.l1PosterGasUnits),
@@ -293,12 +366,13 @@ export function assertCurrentMobileObservation(observation, nowMs = Date.now()) 
     ? safes.proposals.reduce((total, { gas }) => total + BigInt(gas.estimatedTotalWei), 0n) : null;
   assert.equal(safes.estimatedTotalWei, totalWei?.toString() ?? null, "Combined Safe quote mismatch");
   assert.equal(safes.budgetAtObservation, totalWei === null ? null : BigInt(sender.balanceWei) >= totalWei);
-  return { ...summary, createDestinations: sender.createDestinations };
+  return { ...summary, ...(delegation && { delegation }), createDestinations: sender.createDestinations };
 }
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
-  const { values } = parseArgs({ options: { output: { type: "string" } } });
-  const report = JSON.stringify(await runMobileSenderProbe(), null, 2) + "\n";
+  const { values } = parseArgs({ options: { output: { type: "string" }, "pinned-delegation": { type: "boolean" } } });
+  const observation = await runMobileSenderProbe({ allowPinnedDelegation: values["pinned-delegation"] === true });
+  const report = JSON.stringify(observation, null, 2) + "\n";
   if (values.output) writeFileSync(values.output, report, { flag: "wx" });
   else process.stdout.write(report);
 }

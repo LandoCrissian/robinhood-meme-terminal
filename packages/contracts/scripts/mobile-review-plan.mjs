@@ -8,7 +8,9 @@ import { parseArgs } from "node:util";
 import { governance } from "../../../docs/evidence/rmt-task043/compile-rotation-profile.mjs";
 import { encodeSafeSetup } from "../../../docs/evidence/rmt-task045/operations-safe-initializer.mjs";
 import { buildTreasurySafeInitializers } from "../../../docs/evidence/rmt-task046/treasury-safe-initializers.mjs";
-import { assertCurrentMobileObservation, MOBILE_DEPLOYMENT_PAYER } from "../../../scripts/production-readiness/mobile-sender.mjs";
+import { assertCurrentMobileObservation, MOBILE_DELEGATE_POLICY, MOBILE_DEPLOYMENT_PAYER } from "../../../scripts/production-readiness/mobile-sender.mjs";
+import { deriveDelegatedConstructors } from "./delegated-mobile-constructors.mjs";
+import { verifyDirectType2Outcome } from "./delegated-mobile-transaction.mjs";
 import { verifyExportInputs } from "./export-blockscout-4663.mjs";
 import { buildFixedSupplyInput, compileFixedSupplyProfile } from "./fixed-supply-profile.mjs";
 import { buildBundle } from "./verify-fixed-supply-bundle.mjs";
@@ -24,6 +26,7 @@ const sha256 = (data) => createHash("sha256").update(data).digest("hex");
 export const mobilePayer = MOBILE_DEPLOYMENT_PAYER;
 const chainId = 4663;
 const { noticeSeconds } = governance;
+const safeProxyRuntimeHash = "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c";
 const createProxyAbi = parseAbi(["function createProxyWithNonce(address singleton,bytes initializer,uint256 saltNonce) returns (address proxy)"]);
 const constructorStages = [
   ["directory", "Deploy governance directory", ["operations-safe", "reserve-safe"]],
@@ -276,7 +279,10 @@ function projectRow(archived, replay) {
 }
 
 export function reviewCurrentMobileObservation(observation, nowMs) {
-  const { anchor, confirmedNonce, pendingNonce, balanceWei, createDestinations } = assertCurrentMobileObservation(observation, nowMs);
+  return summarizeObservation(observation, assertCurrentMobileObservation(observation, nowMs));
+}
+
+function summarizeObservation(observation, { anchor, confirmedNonce, pendingNonce, balanceWei, createDestinations }) {
   const destinations = verifyCreateVacancies({ sender: mobilePayer, confirmedNonce, pendingNonce, destinations: createDestinations });
   return {
     scope: "READ_ONLY_4663_MOBILE_PREPARATION",
@@ -291,7 +297,153 @@ export function reviewCurrentMobileObservation(observation, nowMs) {
   };
 }
 
-export function buildMobileReviewPlan(compilation, input, sources, { observation = null, replay = null } = {}) {
+export function reviewDelegatedMobileObservation(observation, nowMs) {
+  const summary = assertCurrentMobileObservation(observation, nowMs, { allowPinnedDelegation: true });
+  assert.equal(summary.accountType, "EIP_7702_DELEGATION");
+  assert.equal(summary.delegation?.status, "PINNED_RUNTIME");
+  return { ...summarizeObservation(observation, summary), accountType: summary.accountType, delegation: summary.delegation };
+}
+
+// The sender, nonce and beneficiary addresses only define a counterfactual scenario.
+// The directory cannot publish without human-authorized governance actions.
+export function delegatedCounterfactual(compilation, observation, fixtureRows, nowMs) {
+  const verified = reviewDelegatedMobileObservation(observation, nowMs);
+  const safeProposals = safeRows();
+  const safeAddresses = safeProposals.map(({ expectedAddress }) => expectedAddress);
+  const signers = safeProposals[0].details.owners;
+  const { constructors, bootstrapChildren } = deriveDelegatedConstructors(compilation, {
+    sender: mobilePayer, createDestinations: verified.createDestinations, signers, safeAddresses,
+  });
+  const initialNonce = BigInt(verified.pendingNonce);
+  assert.deepEqual(fixtureRows.map(({ id }) => id), ["operations-safe", "reserve-safe", ...constructorStages.map(([id]) => id),
+    "schedule-factory", "execute-factory", "schedule-migration-template", "execute-migration-template", "first-rmt"]);
+  const rows = fixtureRows.map(({ id, label, dependsOn, valueWei }, index) => {
+    const base = { id, label, dependsOn, valueWei };
+    if (index < 2) {
+      const safe = safeProposals[index];
+      return { ...base, sender: mobilePayer, nonce: (initialNonce + BigInt(index)).toString(), destination: safe.to,
+        predictedAddress: safe.expectedAddress, inputHash: safe.dataHash, estimate: verified.safes[index].gas,
+        authorization: "SAFE_SALT_AND_TRANSACTION_APPROVAL_REQUIRED" };
+    }
+    if (index < 7) {
+      const { address, nonce, initcodeHash, runtimeHash, initcodeBytes, runtimeBytes } = constructors[index - 2];
+      return { ...base, sender: mobilePayer, nonce, destination: null, predictedAddress: address, inputHash: initcodeHash,
+        runtimeHash, initcodeBytes, runtimeBytes, estimate: null, authorization: "VERIFIED_SAFE_RECEIPTS_AND_DEPLOYMENT_APPROVAL_REQUIRED" };
+    }
+    if (index < 11) {
+      return { ...base, sender: null, nonce: null, destination: constructors[0].address, predictedAddress: null,
+        inputHash: null, estimate: null, authorization: index % 2 === 1 ? "CURRENT_2_OF_3_GOVERNANCE_APPROVAL_REQUIRED" : "MATCHING_SCHEDULED_NOTICE_REQUIRED" };
+    }
+    return { ...base, sender: null, nonce: null, destination: bootstrapChildren[2].address, predictedAddress: null,
+      inputHash: null, estimate: null, authorization: "FIRST_PROJECT_TERMS_AND_CREATOR_APPROVAL_REQUIRED" };
+  });
+  return {
+    scope: "UNAPPROVED_COUNTERFACTUAL_4663", observed: verified, transactionType: "DIRECT_EIP_1559",
+    broadcastAuthorized: false, predictedTreasuriesAreBeneficiaries: false, governanceSignerProposal: signers, threshold: 2,
+    walletAcceptance: "UNVERIFIED_PHYSICAL_IPHONE", rows, bootstrapChildren,
+  };
+}
+
+function verifyDelegatedRehearsal(compilation, fixture, rows) {
+  const { fork } = fixture;
+  const observed = fork.delegatedSender;
+  assert.ok(observed?.status === "BLOCKED_NO_BROADCAST" && observed.scope === "LOOPBACK_FIXTURE_ONLY"
+    && observed.broadcastAuthorized === false && observed.ownerKeyControl === "UNVERIFIED", "Exact delegated fork proof required");
+  assert.equal(fork.report.execution.hardfork, "prague");
+  assert.ok(isAddressEqual(observed.sender, mobilePayer));
+  assert.ok(isAddressEqual(observed.delegate, MOBILE_DELEGATE_POLICY.address));
+  assert.equal(observed.designator, MOBILE_DELEGATE_POLICY.designator);
+  assert.equal(observed.delegateRuntimeHash, MOBILE_DELEGATE_POLICY.runtimeHash);
+  const start = nonce(String(observed.initialNonce));
+  const safes = safeRows();
+  assert.equal(observed.platformSafes.length, safes.length);
+  const safeReceipts = safes.map((row, index) => {
+    const safe = observed.platformSafes[index];
+    assert.ok(isAddressEqual(safe.address, row.expectedAddress));
+    assert.equal(safe.role, index === 0 ? "RMT-OPERATIONS" : "RMT-RESERVE");
+    assert.deepEqual(safe.owners, row.details.owners);
+    assert.equal(safe.threshold, 2);
+    assert.equal(safe.version, "1.4.1");
+    assert.equal(safe.initializerHash, row.details.initializerHash);
+    assert.equal(safe.saltNonce, row.details.saltNonce);
+    assert.equal(safe.create2Salt, row.details.create2Salt);
+    assert.equal(safe.runtimeHash, safeProxyRuntimeHash);
+    return verifyDirectType2Outcome(safe.receipt, { sender: mobilePayer, to: row.to, nonce: start + BigInt(index),
+      valueWei: row.valueWei, dataHash: row.dataHash });
+  });
+  const { constructors, bootstrapChildren } = deriveDelegatedConstructors(compilation, {
+    sender: mobilePayer, signers: safes[0].details.owners, safeAddresses: safes.map(({ expectedAddress }) => expectedAddress),
+    createDestinations: constructorStages.map(([id], index) => {
+      const deploymentNonce = start + 2n + BigInt(index);
+      return { id, nonce: deploymentNonce.toString(), address: getContractAddress({ from: mobilePayer, nonce: deploymentNonce }) };
+    }),
+  });
+  assert.deepEqual(observed.exactGovernors, safes[0].details.owners);
+  assert.equal(observed.exactConstructorReplay, "ROLLED_BACK_BEFORE_DISPOSABLE_GOVERNORS_REPLAY");
+  assert.ok(isAddressEqual(observed.exactFactory, bootstrapChildren[2].address));
+  assert.equal(observed.exactFactoryRuntimeHash, bootstrapChildren[2].runtimeHash);
+  assert.equal(observed.exactConstructorReceipts.length, constructors.length);
+  const constructorReceipts = constructors.map(({ id, address, nonce, initcodeHash, runtimeHash }, index) => {
+    const receipt = observed.exactConstructorReceipts[index];
+    assert.equal(receipt.name, id);
+    assert.equal(receipt.runtimeHash, runtimeHash);
+    return { id, ...verifyDirectType2Outcome(receipt, { sender: mobilePayer, to: null, nonce, valueWei: "0",
+      dataHash: initcodeHash, expectedAddress: address }) };
+  });
+  const smoke = observed.signedSmoke;
+  assert.ok(!isAddressEqual(smoke.account, mobilePayer) && safes[0].details.owners.every((owner) => !isAddressEqual(owner, smoke.account)));
+  const smokeCreated = verifyDirectType2Outcome(smoke.signedTopLevelType2, { sender: smoke.account, to: null, nonce: "0",
+    valueWei: "0", dataHash: keccak256("0x6001600c60003960016000f300"),
+    expectedAddress: getContractAddress({ from: smoke.account, nonce: 0n }) });
+  const smokeReverted = verifyDirectType2Outcome(smoke.minedRevert, { sender: smoke.account, to: null, nonce: "1",
+    valueWei: "0", dataHash: keccak256("0x60006000fd"), expectedStatus: "reverted", expectedAddress: smoke.revertedDestination });
+  assert.equal(smoke.stateRolledBack, true);
+  assert.equal(smoke.revertingTransactionConsumedNonce, true);
+  assert.equal(smoke.revokedRejected, true);
+  assert.equal(smoke.changedDelegateRejected, true);
+  assert.equal(smoke.noDelegationMutationToProposedSender, true);
+  assert.equal(observed.replayedNotices.length, 4);
+  const publicationReceipts = observed.replayedNotices.map((receipt, index) => {
+    const row = rows[7 + index];
+    assert.equal(receipt.transactionHash, row.receiptHash);
+    return { id: row.id, ...verifyDirectType2Outcome(receipt, { sender: mobilePayer, to: row.to, nonce: start + 7n + BigInt(index),
+      valueWei: row.valueWei, dataHash: row.dataHash ?? row.details.syntheticReceiptInputHash }) };
+  });
+  const first = rows.at(-1);
+  assert.equal(observed.replayedRmtCreation.transactionHash, first.receiptHash);
+  const firstProjectReceipt = verifyDirectType2Outcome(observed.replayedRmtCreation, { sender: mobilePayer, to: first.to,
+    nonce: start + 11n, valueWei: first.valueWei, dataHash: first.dataHash });
+  return {
+    scope: "SYNTHETIC_PRAGUE_4663_IMPERSONATED_SENDER", ownerKeyControl: "UNVERIFIED",
+    safeReceipts, constructorReceipts, publicationReceipts, firstProjectReceipt,
+    signedDisposableSmoke: { created: smokeCreated, reverted: smokeReverted, revokedRejected: true, changedDelegateRejected: true },
+  };
+}
+
+function summarizeDelegatedCosts(observation, proof) {
+  const safeQuotes = observation.safes.map(({ gas }) => gas);
+  const forkReceipts = [...proof.constructorReceipts, ...proof.publicationReceipts, proof.firstProjectReceipt];
+  const observedForkGasUnits = forkReceipts.reduce((sum, receipt) => sum + BigInt(receipt.gasUsed), 0n);
+  const baseFees = new Set(safeQuotes.map((quote) => quote?.l2BaseFeeWei));
+  const observedL2BaseFeeWei = baseFees.size === 1 ? safeQuotes[0]?.l2BaseFeeWei ?? null : null;
+  return {
+    estimatedSafesWeiAtObservedBlock: safeQuotes.every(Boolean)
+      ? safeQuotes.reduce((sum, quote) => sum + BigInt(quote.estimatedTotalWei), 0n).toString() : null,
+    protocolObservedForkGasUnits: observedForkGasUnits.toString(),
+    protocolPaidInSyntheticWei: forkReceipts.reduce((sum, { gasUsed, effectiveGasPriceWei }) =>
+      sum + BigInt(gasUsed) * BigInt(effectiveGasPriceWei), 0n).toString(),
+    observedL2BaseFeeWei,
+    protocolForkGasAtObservedL2BaseFeeWei: observedL2BaseFeeWei === null
+      ? null : (observedForkGasUnits * BigInt(observedL2BaseFeeWei)).toString(),
+    protocolLiveEstimate: "UNAVAILABLE_UNTIL_EXACT_VERIFIED_DEPLOYMENT_INPUTS",
+  };
+}
+
+export function buildMobileReviewPlan(compilation, input, sources, { observation = null, replay = null, delegatedObservation = null,
+  reconstructRecordedObservation = false } = {}) {
+  assert.ok(!observation || !delegatedObservation, "Select one account observation mode");
+  assert.ok(!delegatedObservation || replay, "A pinned delegated fork rehearsal must accompany the observation");
+  assert.ok(!reconstructRecordedObservation || delegatedObservation, "Archived reconstruction requires explicit delegated evidence");
   const archived = verifyExportInputs({ input, ...sources, compiled: compilation.manifest });
   assert.deepEqual(buildBundle(compilation, archived.fork, archived.rawSha256), archived.bundle);
   let replayed = null;
@@ -317,14 +469,20 @@ export function buildMobileReviewPlan(compilation, input, sources, { observation
     assert.ok(!prior.has(id) && dependsOn.every((dependency) => prior.has(dependency)), "Incorrect review sequence");
     prior.add(id);
   }
+  const delegationProof = delegatedObservation && verifyDelegatedRehearsal(compilation, fixture, rows);
+  const delegatedReview = delegatedObservation && delegatedCounterfactual(compilation, delegatedObservation, rows,
+    reconstructRecordedObservation ? Date.parse(delegatedObservation.observedAt) : undefined);
   return {
     schemaVersion: 1, status: "BLOCKED_NO_BROADCAST", broadcastAuthorized: false,
     target: { chainId, proposedSender: mobilePayer, senderApproval: "PROPOSED_ONLY",
       productionInputs: fixture.bundle.production, transactions: [],
-      observation: observation === null ? null : reviewCurrentMobileObservation(observation) },
+      observation: observation === null ? null : reviewCurrentMobileObservation(observation),
+      ...(delegatedReview && { delegatedReview: { ...delegatedReview, costs: summarizeDelegatedCosts(delegatedReview.observed, delegationProof),
+        observationMode: reconstructRecordedObservation ? "ARCHIVED_RECONSTRUCTION_REFRESH_REQUIRED" : "FRESH_READ_ONLY_OBSERVATION" } }) },
     fixture: {
       chainId, scope: "LOOPBACK_FIXTURE_ONLY", profile: fixture.bundle.profile,
       compiler: fixture.bundle.compiler, forkSha256: fixture.rawSha256, anchor: fixture.bundle.fixtureOnly.anchor, rows,
+      ...(delegationProof && { delegationProof }),
     },
     terms: { ...fixture.bundle.provisionalTerms, status: "PROVISIONAL_UNAPPROVED" },
     releaseGate: { status: sources.release.staticAnalysis.status, highFindings: sources.release.staticAnalysis.highFindings,
@@ -347,7 +505,8 @@ export function reviewSources() {
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
   const { values } = parseArgs({ options: {
     solc: { type: "string" }, lib: { type: "string" }, output: { type: "string" }, verify: { type: "string" },
-    observation: { type: "string" }, rehearsal: { type: "string" },
+    observation: { type: "string" }, rehearsal: { type: "string" }, "delegated-observation": { type: "string" },
+    "reconstruct-recorded-observation": { type: "boolean" },
   } });
   assert.ok(values.solc, "Supply the pinned compiler with --solc");
   assert.ok(!values.verify || !values.output, "Select either --verify or --output");
@@ -355,12 +514,16 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
   const { input } = buildFixedSupplyInput(options);
   const compilation = compileFixedSupplyProfile({ ...options, includeImmutableNames: true });
   const observation = values.observation ? JSON.parse(readFileSync(values.observation)) : null;
+  const delegatedObservation = values["delegated-observation"] ? JSON.parse(readFileSync(values["delegated-observation"])) : null;
+  const reconstructRecordedObservation = values["reconstruct-recorded-observation"] === true;
   let replay = null;
   if (values.rehearsal) {
     const bytes = readFileSync(values.rehearsal);
     replay = { report: JSON.parse(bytes), sha256: sha256(bytes) };
   }
-  const review = buildMobileReviewPlan(compilation, input, reviewSources(), { observation, replay });
+  const review = buildMobileReviewPlan(compilation, input, reviewSources(), {
+    observation, replay, delegatedObservation, reconstructRecordedObservation,
+  });
   const result = JSON.stringify(review, null, 2) + "\n";
   if (values.verify) {
     assert.deepEqual(JSON.parse(readFileSync(values.verify)), review, "Checked-in mobile review differs from exact input");
