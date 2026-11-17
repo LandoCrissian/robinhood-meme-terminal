@@ -385,10 +385,10 @@
       },
       "identities": [
         {
-          "token": "0xfe7e1595c757ce5f034ba3e3e002c7184df6075e"
+          "contractAddress": "0xfe7e1595c757ce5f034ba3e3e002c7184df6075e"
         },
         {
-          "token": "0xdba33be56c89cc9fc014c4459028d7e5c7878671"
+          "contractAddress": "0xdba33be56c89cc9fc014c4459028d7e5c7878671"
         }
       ]
     },

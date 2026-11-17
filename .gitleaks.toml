@@ -2,6 +2,13 @@
 useDefault = true
 
 [[allowlists]]
+description = "Two exact public historical ERC20 contract addresses in Task066 API evidence, including its original committed token-key spelling; not API credentials"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''(?i)^0x(?:dba33be56c89cc9fc014c4459028d7e5c7878671|fe7e1595c757ce5f034ba3e3e002c7184df6075e)$''']
+paths = ['''^docs/evidence/production-readiness/task066-backend-activation\.json$''']
+
+[[allowlists]]
 description = "Exact public SHRINU/WETH/USDG contracts independently verified in the selected-market chain proof; only three review/snapshot files"
 condition = "AND"
 targetRules = ["generic-api-key"]
