@@ -104,7 +104,7 @@ async function recheckGovernanceAt(anchor) {
     const provider = makeReadOnlyRpc({ name, url: ROBINHOOD_SOURCES[name] });
     return [name, async (method, params) => {
       const result = await provider(method, params);
-      assert.equal(result.status, "observed", "Governance provider unavailable");
+      assert.equal(result.status, "observed", `Governance ${name} ${method} unavailable`);
       return result.value;
     }];
   }));
@@ -438,6 +438,8 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
   } catch (error) {
     // Do not log caught assertion values that could include unsigned inputs or raw RPC responses.
     console.error(gate + ": preparation failed while " + stage + ". " + (error.code ? "Error " + error.code + "." : ""));
+    const governanceFailure = error.message?.match(/^Governance (official|pinax) (eth_chainId|eth_getBlockByNumber|eth_getCode) unavailable$/);
+    if (governanceFailure) console.error("Required governance read unavailable at " + governanceFailure[1] + " for " + governanceFailure[2] + ".");
     process.exitCode = 1;
   }
 }
