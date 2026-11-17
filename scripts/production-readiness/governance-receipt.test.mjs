@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { makeGovernanceTransactionFixture } from "../../packages/contracts/scripts/governance-transaction.fixture.mjs";
 import { governanceTransactionAbi, governanceEventConfiguration } from "../../packages/contracts/scripts/prepare-governance-transaction.mjs";
 import { buildPublicationAction, publicationActionTypes } from "../../packages/contracts/scripts/prepare-governance-publication.mjs";
 import { verifyGovernanceAuthorization } from "../../packages/contracts/scripts/verify-governance-authorization.mjs";
-import { verifyGovernanceReceipt } from "./governance-receipt.mjs";
+import { assertGovernanceDeploymentBinding, verifyGovernanceReceipt } from "./governance-receipt.mjs";
 const require = createRequire(new URL("../../apps/launch-website/package.json", import.meta.url));
 const { decodeFunctionData, encodeFunctionData, encodeFunctionResult, encodeAbiParameters, parseAbi, toHex, zeroAddress, zeroHash } = require("viem");
 const executeHash = "0x" + "99".repeat(32), executeBlockHash = "0x" + "66".repeat(32);
@@ -14,6 +15,24 @@ const selector = (name) => encodeFunctionData({ abi: governanceTransactionAbi, f
 const nonceData = selector("nonce"), pendingData = selector("pending"), latestData = selector("latestVersion");
 const epochAbi = parseAbi(["function signerSetEpoch() view returns(uint64)"]);
 const epochData = encodeFunctionData({ abi: epochAbi, functionName: "signerSetEpoch" });
+
+test("production governance binds the actual deployment plan, Directory, all eight runtimes and authorized target", () => {
+  const manifest = JSON.parse(readFileSync(new URL("../../docs/evidence/mobile-signing/protocol-mainnet.json", import.meta.url)));
+  const publication = { action: "publish-factory", sourcePlanSha256: manifest.planSha256, compilerInputSha256: manifest.compiler.inputSha256,
+    directory: manifest.constructors[0].address, runtimePins: [...manifest.constructors, ...manifest.bootstrapChildren].map((row) =>
+      ({ address: row.address, runtimeHash: row.runtimeHash, byteLength: row.runtimeBytes })),
+    target: { address: manifest.bootstrapChildren[2].address, runtimeHash: manifest.bootstrapChildren[2].runtimeHash } };
+  assert.equal(assertGovernanceDeploymentBinding(publication).sourcePlanSha256, manifest.planSha256);
+  for (const change of [(p) => { p.directory = zeroAddress; }, (p) => { p.sourcePlanSha256 = "aa".repeat(32); },
+    (p) => { p.runtimePins[4].address = zeroAddress; }, (p) => { p.runtimePins[5].runtimeHash = zeroHash; },
+    (p) => { p.runtimePins[6].byteLength++; }, (p) => { p.target.address = manifest.constructors[3].address; },
+    (p) => { p.runtimePins.reverse(); }]) {
+    const clone = structuredClone(publication); change(clone); assert.throws(() => assertGovernanceDeploymentBinding(clone));
+  }
+  const migration = structuredClone(publication); migration.action = "publish-v3-template";
+  migration.target = { address: manifest.constructors[3].address, runtimeHash: manifest.constructors[3].runtimeHash };
+  assert.doesNotThrow(() => assertGovernanceDeploymentBinding(migration));
+});
 
 async function harness({ phase = "schedule", template = false, advanced = false, later = false, early = false, expiredExecute = false, unavailable,
   changeTx, changeReceipt, peerMismatch = false, badRuntime = false, badArchivePending = false, reorg = false, badScheduleTime = false } = {}) {

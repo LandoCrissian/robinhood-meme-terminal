@@ -16,6 +16,7 @@ const require = createRequire(new URL("../../apps/launch-website/package.json", 
 const { decodeFunctionData, decodeFunctionResult, encodeFunctionData, encodeFunctionResult, isAddressEqual, keccak256, parseAbi, toHex, zeroHash, zeroAddress } = require("viem");
 const ownerPolicy = JSON.parse(readFileSync(new URL("../../docs/evidence/rmt-task045/operations-safe-policy.json", import.meta.url))).operations;
 const compiler = JSON.parse(readFileSync(new URL("../../docs/evidence/fixed-supply-security/4663-profile.json", import.meta.url)));
+const deployed = JSON.parse(readFileSync(new URL("../../docs/evidence/mobile-signing/protocol-mainnet.json", import.meta.url)));
 const names = ["official", "pocket"], hash = /^0x[0-9a-f]{64}$/i, bytes = /^0x(?:[0-9a-f]{2})+$/i, quantity = /^0x(?:0|[1-9a-f][0-9a-f]{0,63})$/i;
 const same = (a, b) => typeof a === "string" && typeof b === "string" && isAddressEqual(a, b);
 const amount = (value) => { assert.ok(typeof value === "string" && quantity.test(value), "Malformed RPC quantity"); return BigInt(value); };
@@ -40,6 +41,29 @@ function blockHeader(block) {
   assert.ok(block && hash.test(block.hash) && block.hash !== zeroHash, "Malformed canonical governance block");
   return { number: amount(block.number).toString(), hash: block.hash.toLowerCase(), timestamp: amount(block.timestamp).toString() };
 }
+/** Production acceptance is bound to the recorded actual deployment, not merely to a self-consistent supplied Directory. */
+export function assertGovernanceDeploymentBinding(publication) {
+  assert.equal(deployed.scope, "CONFIRMED_4663_INFRASTRUCTURE_NO_TOKEN_ISSUANCE");
+  assert.equal(deployed.chainId, 4663);
+  assert.equal(deployed.compiler.inputSha256, compiler.inputSha256);
+  assert.equal(publication.sourcePlanSha256, deployed.planSha256, "Governance source plan differs from the actual deployment manifest");
+  assert.equal(publication.compilerInputSha256, deployed.compiler.inputSha256);
+  assert.deepEqual(deployed.constructors.map((row) => row.id), ["directory", "registry", "successor-v2", "successor-v3", "bootstrap"]);
+  const expectedPins = [...deployed.constructors, ...deployed.bootstrapChildren];
+  assert.equal(expectedPins.length, 8);
+  assert.ok(same(publication.directory, deployed.constructors[0].address), "Governance Directory is not the actual deployed Directory");
+  assert.equal(publication.runtimePins?.length, expectedPins.length);
+  for (const [index, candidate] of expectedPins.entries()) {
+    const pin = publication.runtimePins[index];
+    assert.ok(same(pin.address, candidate.address), "Governance dependency address differs from the actual deployment");
+    assert.equal(pin.runtimeHash, candidate.runtimeHash, "Governance runtime differs from the actual deployment");
+    assert.equal(pin.byteLength, candidate.runtimeBytes, "Governance runtime size differs from the actual deployment");
+  }
+  const target = publication.action === "publish-factory" ? deployed.bootstrapChildren[2] : deployed.constructors[3];
+  assert.ok(same(publication.target?.address, target.address), "Governance target is outside the actual deployment closure");
+  assert.equal(publication.target.runtimeHash, target.runtimeHash);
+  return { sourcePlanSha256: deployed.planSha256, directory: deployed.constructors[0].address, compilerInputSha256: deployed.compiler.inputSha256 };
+}
 function assertPublication(publication, expectedRequest, phase, allowTestFixture) {
   assert.ok(!publication?.testOnly || allowTestFixture, "Synthetic governance inputs cannot verify production acceptance");
   assert.equal(publication.scope, "UNSIGNED_DIRECTORY_PUBLICATION_AUTHORIZATION");
@@ -48,6 +72,7 @@ function assertPublication(publication, expectedRequest, phase, allowTestFixture
   assert.equal(publication.requiredSignatures, 2); assert.equal(publication.owners.length, 3);
   assert.equal(new Set(publication.owners.map((owner) => owner.toLowerCase())).size, 3);
   if (!publication.testOnly) assert.deepEqual(publication.owners, ownerPolicy.owners);
+  if (!publication.testOnly) assertGovernanceDeploymentBinding(publication);
   assert.equal(publication.compilerInputSha256, compiler.inputSha256);
   assert.ok(same(publication.protocolSender, MOBILE_DEPLOYMENT_PAYER));
   assert.equal(publicationDigest(publication.typedData), publication.digest);
