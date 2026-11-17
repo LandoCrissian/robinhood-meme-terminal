@@ -24,6 +24,8 @@ export function ownerSafePage(encrypted) {
   let review;
   let journal;
   const isCreation = () => configuration?.mode === "CREATE";
+  const isGovernance = () => configuration?.mode === "GOVERNANCE_CALL";
+  const isProtocol = () => isCreation() || isGovernance();
   const destinationMatches = (actual, expected) => isCreation()
     ? actual == null && expected == null : same(actual, expected);
 
@@ -117,16 +119,23 @@ export function ownerSafePage(encrypted) {
       same(log.transactionHash, proof.hash) && log.blockHash === proof.blockHash && log.blockNumber === receiptTag && !log.removed);
     assert(matches?.length === 1, "The approved Operations creation event is unavailable. Reserve remains blocked.");
     await codeMatches(code, proof.proxy ?? configuration.proxy);
-    if (isCreation()) {
+    if (isProtocol()) {
       const pendingCode = await read("eth_getCode", [proof.safe, "pending"]);
       assert(same(code, pendingCode), "A treasury's pending runtime differs from its canonical implementation.");
     }
     for (const state of proof.postState ?? configuration.postState) {
       const result = await read("eth_call", [{ to: proof.safe, data: state.data }, tag]);
       assert(same(result, state.expected), "Operations ownership, approvals or permissions changed. Reserve remains blocked.");
-      if (isCreation()) {
+      if (isProtocol()) {
         const pending = await read("eth_call", [{ to: proof.safe, data: state.data }, "pending"]);
         assert(same(result, pending), "A treasury's pending permissions differ from its canonical configuration.");
+      }
+    }
+    if (isGovernance()) {
+      for (const at of [tag, "pending"]) {
+        const nonce = await read("eth_call", [{ to: proof.safe, data: configuration.safeNonceGetterData }, at]);
+        assert(typeof nonce === "string" && /^0x[0-9a-f]{64}$/i.test(nonce) && BigInt(nonce) >= 0n,
+          "The treasury's current nonce is unavailable. Preserve its existing permissions and recovery evidence.");
       }
     }
     const rechecked = await read("eth_getBlockByNumber", [receiptTag, false]);
@@ -184,7 +193,26 @@ export function ownerSafePage(encrypted) {
     const block = await read("eth_getBlockByNumber", ["latest", false]);
     assert(validBlock(block), "Current canonical block evidence is unavailable.");
     const tag = block.number;
-    if (isCreation()) {
+    if (isGovernance()) {
+      const gov = configuration.governance, chainTime = BigInt(block.timestamp);
+      if (gov.phase === "execute") assert(chainTime >= BigInt(gov.executeAfter) && chainTime <= BigInt(gov.executeBy),
+        "The real governance notice is not mature, or its execution window expired. No transaction can be prepared.");
+      else assert(BigInt(gov.deadline) >= chainTime + 172800n,
+        "The authorization no longer permits the required real two-day notice. Recollect a newly bound authorization.");
+      if (configuration.governancePredecessor) {
+        const proof = configuration.governancePredecessor;
+        const [receipt, tx, header] = await Promise.all([read("eth_getTransactionReceipt", [proof.hash]), read("eth_getTransactionByHash", [proof.hash]),
+          read("eth_getBlockByNumber", [proof.blockNumber, false])]);
+        assert(receipt?.status === "0x1" && same(receipt.transactionHash, proof.hash) && receipt.blockHash === proof.blockHash &&
+          receipt.blockNumber === proof.blockNumber && header?.hash === proof.blockHash && same(receipt.to, op.to) &&
+          same(tx?.hash, proof.hash) && same(tx.from, configuration.sender) && same(tx.to, op.to) && tx.input === proof.input &&
+          tx.nonce === proof.nonce && tx.value === "0x0" && tx.type === "0x2" && tx.chainId === configuration.chainId &&
+          tx.blockHash === proof.blockHash && tx.blockNumber === proof.blockNumber && !Object.hasOwn(tx, "authorizationList") &&
+          Array.isArray(tx.accessList) && tx.accessList.length === 0,
+        "The canonical governance schedule predecessor is unavailable or changed.");
+      }
+    }
+    if (isProtocol()) {
       assert(configuration.prerequisites?.length === 2, "Both verified treasury receipts are required.");
       for (const proof of configuration.prerequisites) await verifyOperations(tag, proof);
       await verifyPredecessors(tag);
@@ -207,8 +235,8 @@ export function ownerSafePage(encrypted) {
     assert(quantity(balance), "The available balance could not be verified.");
     assert(same(accountCode, configuration.delegate.designator) && same(pendingCode, accountCode),
       "The wallet delegation differs from the reviewed implementation.");
-    assert(vacancyCode === "0x" && pendingVacancyCode === "0x" && quantity(vacancyNonce) && quantity(pendingVacancyNonce) &&
-      BigInt(vacancyNonce) === 0n && BigInt(pendingVacancyNonce) === 0n,
+    assert(isGovernance() || (vacancyCode === "0x" && pendingVacancyCode === "0x" && quantity(vacancyNonce) && quantity(pendingVacancyNonce) &&
+      BigInt(vacancyNonce) === 0n && BigInt(pendingVacancyNonce) === 0n),
     "The expected Safe address is occupied or its vacancy is unverified.");
     for (const pin of [...configuration.runtimePins, configuration.delegate]) {
       const [code, pending] = await Promise.all([read("eth_getCode", [pin.address, tag]), read("eth_getCode", [pin.address, "pending"])]);
@@ -222,7 +250,8 @@ export function ownerSafePage(encrypted) {
       read("eth_call", [{ from: configuration.sender, to: "0x00000000000000000000000000000000000000c8", value: "0x0", data: configuration.nitroData }, tag]),
       read("eth_maxPriorityFeePerGas"), read("eth_gasPrice"),
     ]);
-    if (isCreation()) await codeMatches(simulated, configuration.createdContract);
+    if (isGovernance()) assert(simulated === "0x", "The exact governance call did not return the reviewed empty result.");
+    else if (isCreation()) await codeMatches(simulated, configuration.createdContract);
     else assert(same(abiAddress(simulated), op.expectedAddress), "The exact Safe creation simulation returned a different address.");
     assert(quantity(estimatedGas) && quantity(priority) && quantity(gasPrice) &&
       typeof components === "string" && /^0x[0-9a-f]{256}$/i.test(components), "Live wallet fee evidence is unavailable.");
@@ -250,8 +279,8 @@ export function ownerSafePage(encrypted) {
     const target = element("facts");
     target.replaceChildren();
     const dl = document.createElement("dl");
-    const rows = [["Sender", configuration.sender], ["Action", isCreation() ? configuration.operation.label : "Create " + configuration.safeLabel + "L2 1.4.1"],
-      ["Value", "0 ETH"], [isCreation() ? "Expected contract" : "Expected Safe", configuration.operation.expectedAddress],
+    const rows = [["Sender", configuration.sender], ["Action", isProtocol() ? configuration.operation.label : "Create " + configuration.safeLabel + "L2 1.4.1"],
+      ["Value", "0 ETH"], [isGovernance() ? "Governance Directory" : isCreation() ? "Expected contract" : "Expected Safe", configuration.operation.expectedAddress],
       ["Nonce", BigInt(next.request.nonce).toString()], ["Network estimate", ether(next.estimatedWei)],
       ["Maximum network cost", ether(next.maximumWei)], ["Included L1 posting estimate", ether(next.l1Wei)],
       ["Gas limit", BigInt(next.request.gas).toString()], ["Maximum fee per gas", BigInt(next.request.maxFeePerGas).toString() + " wei"],
@@ -375,16 +404,36 @@ export function ownerSafePage(encrypted) {
       return;
     }
     assert(receipt.status === "0x1" && Array.isArray(receipt.logs), "Receipt settlement is unavailable.");
-    const matches = isCreation() ? [] : receipt.logs.filter((log) => same(log.address, configuration.operation.to) &&
+    const matches = isCreation() || isGovernance() ? [] : receipt.logs.filter((log) => same(log.address, configuration.operation.to) &&
       log.topics?.[0] === configuration.creationEvent.topic && same(log.topics[1], configuration.creationEvent.proxyTopic) &&
       same(log.data, configuration.creationEvent.data) && !log.removed);
-    if (isCreation()) {
+    if (isGovernance()) {
+      assert(receipt.contractAddress == null && quantity(canonical.timestamp), "Governance receipt identity or canonical timestamp is unavailable.");
+      const gov = configuration.governance;
+      const matchesEvent = (log, event) => same(log.address, configuration.operation.to) && log.removed === false &&
+        same(log.transactionHash, transactionHash) && log.blockHash === receipt.blockHash && log.blockNumber === receipt.blockNumber &&
+        Array.isArray(log.topics) && log.topics.length === event.topics.length && log.topics.every((topic, i) => same(topic, event.topics[i])) &&
+        same(log.data, event.data);
+      if (gov.phase === "schedule") {
+        const executableAt = BigInt(canonical.timestamp) + 172800n, limit = executableAt + 604800n;
+        const expiresAt = limit < BigInt(gov.deadline) ? limit : BigInt(gov.deadline);
+        assert(expiresAt >= executableAt, "The scheduled authorization cannot preserve its two-day notice.");
+        const word = (value) => BigInt(value).toString(16).padStart(64, "0");
+        const expected = { topics: gov.scheduleEventTopics, data: "0x" + word(executableAt) + word(expiresAt) };
+        assert(receipt.logs.length === 1 && matchesEvent(receipt.logs[0], expected),
+          "Canonical ActionScheduled digest, nonce or real notice timestamps differ.");
+        const pending = await read("eth_call", [{ to: configuration.operation.to, data: gov.pendingGetterData }, receipt.blockNumber]);
+        assert(same(pending, gov.digest + word(executableAt) + word(expiresAt)), "Directory pending authorization differs from the canonical schedule event.");
+      } else assert(receipt.logs.length === gov.executionEvents.length &&
+        gov.executionEvents.every((event, i) => matchesEvent(receipt.logs[i], event)),
+      "Canonical publication or ActionCleared event differs from the approved action.");
+    } else if (isCreation()) {
       assert(same(receipt.contractAddress, configuration.operation.expectedAddress), "The CREATE receipt deployed an unexpected contract address.");
       assert(receipt.logs.length === 0, "Unexpected events were emitted by the reviewed constructor.");
     } else assert(matches.length === 1 && matches[0].transactionHash === receipt.transactionHash && matches[0].blockHash === receipt.blockHash,
       "The canonical Safe creation event does not match the reviewed address and singleton.");
     await codeMatches(await read("eth_getCode", [configuration.operation.expectedAddress, receipt.blockNumber]),
-      isCreation() ? configuration.createdContract : configuration.proxy);
+      isGovernance() ? configuration.directoryRuntime : isCreation() ? configuration.createdContract : configuration.proxy);
     for (const state of configuration.postState) {
       const result = await read("eth_call", [{ to: configuration.operation.expectedAddress, data: state.data }, receipt.blockNumber]);
       assert(same(result, state.expected), "Safe ownership, approvals or permissions differ from the approved setup.");
@@ -393,7 +442,7 @@ export function ownerSafePage(encrypted) {
     const rechecked = await read("eth_getBlockByNumber", [receipt.blockNumber, false]);
     assert(rechecked?.hash === receipt.blockHash, "The receipt block changed during verification.");
     storageWrite({ ...journal, phase: "confirmed" });
-    status((isCreation() ? configuration.operation.label : configuration.safeLabel) + " has a verified wallet-observed L2 receipt. Independent RPC and L1 finality acceptance remain required before the next dependent deployment. Hash " + transactionHash);
+    status((isProtocol() ? configuration.operation.label : configuration.safeLabel) + " has a verified wallet-observed L2 receipt. Independent RPC and L1 finality acceptance remain required before the next dependent action. Hash " + transactionHash);
   }
   async function unlock(code) {
     assert(location.href === encrypted.endpoint, "Use the exact approved deployment URL.");
@@ -405,13 +454,21 @@ export function ownerSafePage(encrypted) {
       additionalData: new TextEncoder().encode(encrypted.binding), tagLength: 128 }, key, decode(encrypted.payload));
     configuration = JSON.parse(new TextDecoder().decode(plaintext));
     assert(configuration.endpoint === encrypted.endpoint && configuration.task === encrypted.task &&
-      ["OWNER_CONTROLLED_OPERATIONS_SAFE_1", "OWNER_CONTROLLED_RESERVE_SAFE", "OWNER_CONTROLLED_PROTOCOL_DIRECTORY", "OWNER_CONTROLLED_PROTOCOL_STAGE"].includes(configuration.task) &&
+      ["OWNER_CONTROLLED_OPERATIONS_SAFE_1", "OWNER_CONTROLLED_RESERVE_SAFE", "OWNER_CONTROLLED_PROTOCOL_DIRECTORY", "OWNER_CONTROLLED_PROTOCOL_STAGE", "OWNER_CONTROLLED_GOVERNANCE_SCHEDULE", "OWNER_CONTROLLED_GOVERNANCE_EXECUTE"].includes(configuration.task) &&
       (configuration.task === "OWNER_CONTROLLED_RESERVE_SAFE") === Boolean(configuration.operationsVerification), "Unexpected owner action.");
     assert(!isCreation() || (configuration.prerequisites?.length === 2 && configuration.operation.to == null && quantity(configuration.operation.nonce) &&
       ((configuration.task === "OWNER_CONTROLLED_PROTOCOL_DIRECTORY" && configuration.operation.id === "directory") ||
       (configuration.task === "OWNER_CONTROLLED_PROTOCOL_STAGE" && ["registry", "successor-v2", "successor-v3", "bootstrap"].includes(configuration.operation.id) &&
       configuration.protocolPrerequisites?.length === ["directory", "registry", "successor-v2", "successor-v3", "bootstrap"].indexOf(configuration.operation.id)))),
     "Unexpected constructor deployment configuration.");
+    assert(!isGovernance() || (configuration.prerequisites?.length === 2 && configuration.protocolPrerequisites?.length === 5 &&
+      same(configuration.operation.to, configuration.operation.expectedAddress) && hash(configuration.governance?.digest) &&
+      configuration.operation.id === configuration.governance.phase + "-" +
+        (configuration.governance.kind === 0 && configuration.governance.version === 1 ? "factory" :
+          configuration.governance.kind === 4 && configuration.governance.version === 3 ? "v3-template" : "UNSUPPORTED") &&
+      ((configuration.task === "OWNER_CONTROLLED_GOVERNANCE_SCHEDULE" && configuration.governance.phase === "schedule") ||
+      (configuration.task === "OWNER_CONTROLLED_GOVERNANCE_EXECUTE" && configuration.governance.phase === "execute" && configuration.governancePredecessor))),
+    "Unexpected governance transaction configuration.");
     sessionStorage.setItem(accessKey, code);
     element("access-code").value = "";
     element("access").hidden = true;
