@@ -17,7 +17,7 @@ const chosenAnchor = { number: "0x64", hash: anchor.hash, timestamp: "0x" + Math
 const [operations, reserve] = pinnedSafeCreationRows();
 const { safeProfile, owners, threshold, saltNonce, initializerHash } = operations.details;
 const packet = {
-  schemaVersion: 2, scope: "RMT_4663_OPERATIONS_SAFE_UNSIGNED_REVIEW", status: "BLOCKED_NO_BROADCAST",
+  schemaVersion: 3, scope: "RMT_4663_OPERATIONS_SAFE_UNSIGNED_REVIEW", status: "BLOCKED_NO_BROADCAST",
   broadcastAuthorized: false, chainId: 4663, sender: account, observedAt: new Date(observed).toISOString(),
   expiresAt: new Date(observed + 120_000).toISOString(), anchor, pendingNonce: "50", confirmedNonce: "50",
   balanceWei: "5000000000000000", delegation: delegate, planId: "0x" + "c".repeat(64),
@@ -27,7 +27,9 @@ const packet = {
     action: "createProxyWithNonce(address,bytes,uint256)", status: "UNSIGNED_OPERATIONS_APPROVAL_REQUIRED",
     expectedRuntimeHash: safeProxyRuntimeHash, owners, threshold, safeVersion: safeProfile, saltNonce, initializerHash,
     gas: { gasUnits: "313391", l2GasUnits: "313390", l1PosterGasUnits: "1", estimatedFeeWei: "6267820000000",
-      estimatedL2FeeWei: "6267800000000", estimatedL1FeeWei: "20000000", provenance: "CURRENT_4663_READ_ONLY_NITRO_GAS_COMPONENTS" },
+      estimatedL2FeeWei: "6267800000000", estimatedL1FeeWei: "20000000", rpcEstimateGas: "315001", l2BaseFeeWei: "20000000",
+      provenance: "CURRENT_4663_READ_ONLY_NITRO_GAS_COMPONENTS" },
+    feeCap: { gasLimit: "393752", maxFeePerGasWei: "40000000", maxPriorityFeePerGasWei: "0", maxNetworkFeeWei: "15750080000000" },
     checks: ["Confirm the expected Safe and its canonical receipt before advancing"],
   },
   terms: {
@@ -41,6 +43,7 @@ const expiry = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 const { html, accessCode } = buildPrivatePhoneReview(url, packet, expiry, { runtimeBytesForTest: Buffer.from("6000", "hex") });
 assert.ok(!html.includes(accessCode) && !html.includes(packet.planId) && !html.includes(packet.operation.inputHash),
   "Review contents and the access code cannot appear in the exported source");
+assert.ok(!html.includes("eth_requestAccounts"), "The deployed page cannot request wallet permission");
 assert.throws(() => buildPrivatePhoneReview(url, { ...packet, broadcastAuthorized: true }, expiry), /blocked Operations/);
 assert.throws(() => buildPrivatePhoneReview(url, { ...packet, rows: [packet.operation, reserve] }, expiry), /Unexpected review fields/);
 for (const unexpected of [{ calldata: "0x1234" }, { receiptHash: "0x" + "e".repeat(64) }]) {
@@ -55,6 +58,16 @@ assert.throws(() => buildPrivatePhoneReview(url, { ...packet, firstProject: { ..
   /approved first project/);
 assert.throws(() => buildPrivatePhoneReview(url, { ...packet, operation: { ...packet.operation,
   gas: { ...packet.operation.gas, estimatedL1FeeWei: "0" } } }, expiry), /Invalid Operations Safe fee evidence/);
+for (const invalid of [{ gasLimit: "393751" }, { maxFeePerGasWei: "1" }, { maxPriorityFeePerGasWei: "1" }, { maxNetworkFeeWei: "1" }]) {
+  assert.throws(() => buildPrivatePhoneReview(url, { ...packet, operation: { ...packet.operation,
+    feeCap: { ...packet.operation.feeCap, ...invalid } } }, expiry), /Invalid Operations Safe fee cap/);
+}
+const archivedPacket = structuredClone(packet);
+archivedPacket.schemaVersion = 2;
+delete archivedPacket.operation.feeCap;
+delete archivedPacket.operation.gas.rpcEstimateGas;
+delete archivedPacket.operation.gas.l2BaseFeeWei;
+const archivedReview = buildPrivatePhoneReview(url, archivedPacket, expiry);
 assert.throws(() => buildPrivatePhoneReview(url, { ...packet, expiresAt: expiry }, expiry), /quote window/);
 assert.throws(() => buildPrivatePhoneReview("http://review.example.test/", packet, expiry), /approved HTTPS/);
 assert.throws(() => buildPrivatePhoneReview("https://review.example.test/?copy=1", packet, expiry), /approved HTTPS/);
@@ -79,19 +92,18 @@ for (const [name, engine] of [["chromium", chromium], ["webkit", webkit]]) {
     let safeCode = "0x";
     let safeNonce = "0x0";
     let canonicalAnchor = anchor.hash;
-    let reject = false;
     let driftAtFinalNonceRead = false;
     let pendingReads = 0;
+    let servedHtml = html;
     await page.route("**/*", (route) => {
-      if (route.request().isNavigationRequest()) return route.fulfill({ contentType: "text/html", body: html });
+      if (route.request().isNavigationRequest()) return route.fulfill({ contentType: "text/html", body: servedHtml });
       unexpectedNetwork.push(route.request().url());
       return route.abort();
     });
     await page.exposeFunction("simulateWallet", ({ method, params }) => {
       calls.push(method);
       switch (method) {
-        case "eth_requestAccounts": return reject ? { rejected: true } : { value: [selected] };
-        case "eth_accounts": return { value: [selected] };
+        case "eth_accounts": return { value: selected ? [selected] : [] };
         case "eth_chainId": return { value: chain };
         case "eth_getBlockByNumber":
           assert.equal(params[1], false);
@@ -128,7 +140,6 @@ for (const [name, engine] of [["chromium", chromium], ["webkit", webkit]]) {
         on(event, callback) { listeners.set(event, callback); },
         async request(intent) {
           const reply = await window.simulateWallet(intent);
-          if (reply.rejected) throw Object.assign(new Error("Declined"), { code: 4001 });
           return reply.value;
         },
       };
@@ -137,9 +148,13 @@ for (const [name, engine] of [["chromium", chromium], ["webkit", webkit]]) {
     await page.goto(new URL("/moved.html", url).href);
     const code = page.getByLabel("Review access code");
     const unlock = page.getByRole("button", { name: "Unlock review" });
-    const connect = page.getByRole("button", { name: "Connect wallet and check nonce" });
     const status = (text) => page.getByRole("status").filter({ hasText: text }).waitFor();
     const review = page.getByRole("region", { name: "Unsigned Operations Safe creation" });
+    async function reopen(key = accessCode) {
+      await page.goto(url);
+      await code.fill(key);
+      await unlock.click();
+    }
     assert.equal(await unlock.isEnabled(), false, "Moving this file must disable the UI");
     await page.goto(url);
     assert.equal(await page.evaluate(() => window.isSecureContext), true);
@@ -150,69 +165,68 @@ for (const [name, engine] of [["chromium", chromium], ["webkit", webkit]]) {
     await code.fill(otherCode);
     await unlock.click();
     await status(/could not be unlocked/);
-    assert.equal(await connect.isVisible(), false);
+    assert.equal(await review.isVisible(), false);
     assert.deepEqual(calls, [], "No wallet permission on failed private access");
+    await page.evaluate(() => { window.ethereum = undefined; });
     await code.fill(accessCode);
     await unlock.click();
-    await status(/Review unlocked/);
-    assert.equal(await review.isVisible(), false);
-    assert.deepEqual(calls, [], "Unlocking doesn't request wallet access");
+    await status(/Current wallet state is unverified/);
+    assert.equal(await review.isVisible(), true);
+    assert.deepEqual(calls, [], "The review works in Safari without a wallet provider");
 
-    reject = true;
-    await connect.click();
-    await status(/connection was declined/);
-    reject = false;
+    selected = undefined;
+    await reopen();
+    await status(/This wallet has no existing review access/);
+    assert.equal(await review.isVisible(), true);
+    assert.deepEqual(calls, ["eth_accounts"], "A provider without existing permission cannot trigger wallet prompts");
     selected = alternative;
-    await connect.click();
-    await status(/Select the proposed deployment account/);
+    await reopen();
+    await status(/wallet account differs/);
+    assert.equal(await review.isVisible(), false);
     selected = account;
     chain = "0x1";
-    await connect.click();
-    await status(/Select Robinhood Chain 4663/);
-    assert.deepEqual(calls, ["eth_requestAccounts", "eth_requestAccounts", "eth_accounts",
-      "eth_requestAccounts", "eth_accounts", "eth_chainId"], "Wrong wallet or chain cannot start onchain reads");
+    await reopen();
+    await status(/chain differs from Robinhood Chain 4663/);
+    assert.equal(await review.isVisible(), false);
+    assert.deepEqual(calls, ["eth_accounts", "eth_accounts", "eth_accounts", "eth_chainId"],
+      "Wrong wallet or chain cannot start onchain reads");
     chain = "0x1237";
     canonicalAnchor = "0x" + "9".repeat(64);
-    await connect.click();
+    await reopen();
     await status(/observation block did not match/);
     canonicalAnchor = anchor.hash;
     pending = "0x33";
-    await connect.click();
+    await reopen();
     await status(/wallet nonce changed/);
     pending = "0x32";
     designator = "0x";
-    await connect.click();
+    await reopen();
     await status(/wallet delegation changed/);
     designator = delegate.designator;
     runtime = "0x6100";
-    await connect.click();
+    await reopen();
     await status(/runtime did not match/);
     runtime = "0x6000";
     safeCode = "0x6000";
-    await connect.click();
+    await reopen();
     await status(/Safe vacancy could not be verified/);
     safeCode = "0x";
     safeNonce = "0x1";
-    await connect.click();
+    await reopen();
     await status(/Safe vacancy could not be verified/);
     safeNonce = "0x0";
     pendingReads = 0;
     driftAtFinalNonceRead = true;
-    await connect.click();
+    await reopen();
     await status(/wallet nonce changed/);
     driftAtFinalNonceRead = false;
     assert.equal(await review.isVisible(), false);
 
-    const priorRequests = calls.filter((method) => method === "eth_requestAccounts").length;
-    await page.evaluate(() => {
-      const button = document.getElementById("connect");
-      button.onclick();
-      button.onclick();
-    });
-    await status(/pending nonce and Safe vacancy verified/);
-    assert.equal(calls.filter((method) => method === "eth_requestAccounts").length, priorRequests + 1);
+    await reopen();
+    await status(/Existing wallet selection, nonce and Safe vacancy matched/);
     assert.equal(await review.locator("details").count(), 3);
     assert.match(await review.innerText(), /0\.00000626782 ETH/);
+    assert.match(await review.innerText(), /Proposed fee cap\s+0\.00001575008 ETH/);
     assert.match(await review.innerText(), /0 ETH/);
     assert.match(await review.innerText(), /SafeL2 1\.4\.1 · 2 of 3/);
     assert.equal((await review.innerText()).includes(reserve.expectedAddress), false);
@@ -231,10 +245,14 @@ for (const [name, engine] of [["chromium", chromium], ["webkit", webkit]]) {
     await project.locator("summary").click();
     await page.evaluate((millis) => { Date.now = () => millis; }, Date.parse(packet.expiresAt) + 1);
     await page.getByText("Fee quote expired. Get a fresh quote before transaction approval.").waitFor();
-    assert.equal(await page.locator("#fee-value").textContent(), "Expired · see recorded estimate");
+    assert.equal(await page.locator("#fee-value").textContent(), "0.00000626782 ETH · recorded");
+    assert.equal(await page.locator("#fee-cap").textContent(), "0.00001575008 ETH · recorded");
     const evidence = review.locator("details").nth(1);
     await evidence.locator("summary").click();
     assert.match(await evidence.innerText(), /Recorded L1 posting cost\s+0\.00000000002 ETH/);
+    assert.match(await evidence.innerText(), /Proposed gas limit\s+393752/);
+    assert.match(await evidence.innerText(), /Max fee per gas\s+40000000 wei/);
+    assert.match(await evidence.innerText(), /Max priority fee per gas\s+0 wei/);
     await evidence.locator("summary").click();
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     const summaryBox = await review.boundingBox();
@@ -249,10 +267,15 @@ for (const [name, engine] of [["chromium", chromium], ["webkit", webkit]]) {
     await page.evaluate(() => window.simulateSelectionChange());
     await status(/Wallet selection changed/);
     assert.equal(await review.isVisible(), false);
+
+    servedHtml = archivedReview.html;
+    selected = undefined;
+    await reopen(archivedReview.accessCode);
+    await page.getByText(/Archived quote without a fee cap/).waitFor();
+    assert.equal(await page.locator("#fee-cap").textContent(), "Unavailable");
     await page.evaluate((millis) => { Date.now = () => millis; }, Date.parse(expiry) + 1);
-    await connect.click();
     await status(/private review copy has expired/);
-    assert.equal(await connect.isEnabled(), false);
+    assert.equal(await review.isVisible(), false);
   } finally {
     await browser.close();
   }

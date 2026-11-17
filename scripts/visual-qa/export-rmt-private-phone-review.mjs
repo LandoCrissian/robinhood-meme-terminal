@@ -27,7 +27,8 @@ const keys = (value, fields) => assert.deepEqual(Object.keys(value).sort(), fiel
 
 function validateReview(packet) {
   keys(packet, "schemaVersion scope status broadcastAuthorized chainId sender observedAt expiresAt anchor pendingNonce confirmedNonce balanceWei delegation planId operation terms firstProject");
-  assert.ok(packet.schemaVersion === 2 && packet.scope === scope && packet.status === blocked &&
+  const capped = packet.schemaVersion === 3;
+  assert.ok((capped || packet.schemaVersion === 2) && packet.scope === scope && packet.status === blocked &&
     packet.broadcastAuthorized === false && packet.chainId === 4663, "Expected a blocked Operations Safe review on 4663");
   assert.ok(matches(packet.sender, address) && sameHex(packet.sender, MOBILE_DEPLOYMENT_PAYER), "Unexpected proposed account");
   assert.ok(matches(packet.planId, digest) && matches(packet.balanceWei, decimal) &&
@@ -36,6 +37,7 @@ function validateReview(packet) {
   keys(packet.anchor, "number hash blockTimeUtc");
   assert.ok(matches(packet.anchor.number, decimal) && BigInt(packet.anchor.number) <= maxNonce && matches(packet.anchor.hash, digest) &&
     timestamp(packet.anchor.blockTimeUtc) && timestamp(packet.observedAt) && timestamp(packet.expiresAt) &&
+    Date.parse(packet.observedAt) >= Date.parse(packet.anchor.blockTimeUtc) &&
     Date.parse(packet.expiresAt) > Date.parse(packet.observedAt) &&
     Date.parse(packet.expiresAt) <= Date.parse(packet.anchor.blockTimeUtc) + maxQuoteAgeMs,
   "Invalid observation anchor or quote window");
@@ -49,7 +51,7 @@ function validateReview(packet) {
   const row = packet.operation;
   const [operations] = pinnedSafeCreationRows();
   const safe = operations.details;
-  keys(row, "id label dependsOn sender nonce destination predictedAddress valueWei inputHash action status gas checks expectedRuntimeHash owners threshold safeVersion saltNonce initializerHash");
+  keys(row, "id label dependsOn sender nonce destination predictedAddress valueWei inputHash action status gas checks expectedRuntimeHash owners threshold safeVersion saltNonce initializerHash" + (capped ? " feeCap" : ""));
   assert.ok(row.id === "operations-safe" && row.action === "createProxyWithNonce(address,bytes,uint256)" &&
     row.status === "UNSIGNED_OPERATIONS_APPROVAL_REQUIRED" && row.valueWei === "0" && row.nonce === packet.pendingNonce &&
     sameHex(row.sender, packet.sender) && sameHex(row.destination, operations.to) &&
@@ -64,12 +66,31 @@ function validateReview(packet) {
 
   const gas = row.gas;
   const gasFields = ["gasUnits", "l2GasUnits", "l1PosterGasUnits", "estimatedFeeWei", "estimatedL1FeeWei", "estimatedL2FeeWei"];
+  if (capped) gasFields.push("rpcEstimateGas", "l2BaseFeeWei");
   keys(gas, gasFields.join(" ") + " provenance");
   assert.ok(gasFields.every((name) => matches(gas[name], decimal)) &&
     gas.provenance === "CURRENT_4663_READ_ONLY_NITRO_GAS_COMPONENTS" && BigInt(gas.gasUnits) > 0n &&
     BigInt(gas.gasUnits) === BigInt(gas.l2GasUnits) + BigInt(gas.l1PosterGasUnits) &&
     BigInt(gas.estimatedFeeWei) === BigInt(gas.estimatedL2FeeWei) + BigInt(gas.estimatedL1FeeWei) &&
-    BigInt(gas.estimatedL2FeeWei) > 0n, "Invalid Operations Safe fee evidence");
+    BigInt(gas.l2GasUnits) > 0n && BigInt(gas.estimatedL2FeeWei) > 0n, "Invalid Operations Safe fee evidence");
+
+  if (!capped) return;
+  const feeCap = row.feeCap;
+  const feeCapFields = ["gasLimit", "maxFeePerGasWei", "maxPriorityFeePerGasWei", "maxNetworkFeeWei"];
+  keys(feeCap, feeCapFields.join(" "));
+  assert.ok(feeCapFields.every((name) => matches(feeCap[name], decimal)), "Invalid Operations Safe fee cap");
+  const gasLimit = BigInt(feeCap.gasLimit);
+  const maxFeePerGasWei = BigInt(feeCap.maxFeePerGasWei);
+  const maxNetworkFeeWei = BigInt(feeCap.maxNetworkFeeWei);
+  const l2BaseFee = BigInt(gas.l2BaseFeeWei);
+  const nitro = BigInt(gas.gasUnits);
+  const rpc = BigInt(gas.rpcEstimateGas);
+  const higherEstimate = nitro > rpc ? nitro : rpc;
+  assert.ok(l2BaseFee > 0n && rpc > 0n && BigInt(gas.estimatedL2FeeWei) === l2BaseFee * BigInt(gas.l2GasUnits) &&
+    BigInt(gas.estimatedL1FeeWei) === l2BaseFee * BigInt(gas.l1PosterGasUnits) &&
+    gasLimit === (5n * higherEstimate + 3n) / 4n && maxFeePerGasWei === 2n * l2BaseFee &&
+    feeCap.maxPriorityFeePerGasWei === "0" && maxNetworkFeeWei === gasLimit * maxFeePerGasWei &&
+    maxNetworkFeeWei <= BigInt(packet.balanceWei), "Invalid Operations Safe fee cap");
 }
 
 export function buildPrivatePhoneReview(endpoint, packet, expiry, { runtimeBytesForTest } = {}) {
@@ -84,7 +105,7 @@ export function buildPrivatePhoneReview(endpoint, packet, expiry, { runtimeBytes
     runtimeBytesForTest.length > 0 && runtimeBytesForTest.length <= 24576), "Runtime overrides are test-only");
   const key = randomBytes(32);
   const iv = randomBytes(12);
-  const binding = "RMT OPERATIONS PRIVATE PHONE REVIEW v2\n" + url.href + "\n" + expiry;
+  const binding = "RMT OPERATIONS PRIVATE PHONE REVIEW v3\n" + url.href + "\n" + expiry;
   const cipher = createCipheriv("aes-256-gcm", key, iv);
   cipher.setAAD(Buffer.from(binding));
   const payload = Buffer.concat([cipher.update(JSON.stringify(packet), "utf8"), cipher.final(), cipher.getAuthTag()]);
@@ -117,11 +138,10 @@ export function buildPrivatePhoneReview(endpoint, packet, expiry, { runtimeBytes
     '<meta http-equiv="Content-Security-Policy" content="' + policy + '">',
     '<title>RMT Operations Safe review</title><style>' + style + '</style></head>',
     '<body><main><h1>RMT Operations Safe review</h1><p>Robinhood Chain 4663 · Read-only</p>',
-    '<div id="unlock-panel"><p>Unlock the private review, then verify the selected MetaMask account through public wallet reads.</p>',
+    '<div id="unlock-panel"><p>Unlock to review the exact Operations Safe transaction and proposed fee limit.</p>',
     '<label for="unlock-key">Review access code</label>',
     '<input id="unlock-key" type="password" maxlength="43" autocomplete="off" autocapitalize="off" spellcheck="false" disabled>',
     '<button id="unlock" disabled>Unlock review</button></div>',
-    '<button id="connect" hidden disabled>Connect wallet and check nonce</button>',
     '<p id="status" role="status" aria-live="polite">Checking the review origin.</p>',
     '<section id="review" hidden aria-label="Unsigned Operations Safe creation"></section>',
     '<p><small>BLOCKED_NO_BROADCAST · Expires <time datetime="' + expiry + '">' + expiry + '</time>.</small></p>',

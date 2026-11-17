@@ -145,7 +145,7 @@ async function recheckPendingDelegation(witness, reader) {
 }
 
 export async function observeMobileSender({ readers = makeReaders(), now = Date.now, anchor,
-  allowPinnedDelegation = false } = {}) {
+  allowPinnedDelegation = false, includeCreateDestinations = true } = {}) {
   const providers = knownProviders.filter((name) => typeof readers[name] === "function");
   const initial = await Promise.all(providers.map(async (name) => {
     const read = readers[name];
@@ -188,7 +188,7 @@ export async function observeMobileSender({ readers = makeReaders(), now = Date.
   }));
   const sender = accountSummary(witnesses, anchor);
   const eligible = allowPinnedDelegation === true ? Boolean(pinnedDelegation(witnesses, anchor)) : sender.accountType === "CODE_EMPTY";
-  const predicted = sender.status === "OBSERVED" && eligible && sender.nonceSynchronized
+  const predicted = includeCreateDestinations && sender.status === "OBSERVED" && eligible && sender.nonceSynchronized
     ? deriveFutureCreateDestinations(sender.pendingNonce) : [];
   const createDestinations = [];
   const participants = witnesses.filter(({ name, before, after }) => readers[name] && sameBlock(anchor, before) && sameBlock(anchor, after));
@@ -258,14 +258,24 @@ async function summarizeSafes(report, readers, sender) {
 }
 
 export async function runMobileSenderProbe({ readers = makeReaders(), now = Date.now,
-  allowPinnedDelegation = false } = {}) {
-  const quote = await runSafeProbe({ readers, now, mobileSafePayer: true });
-  const observedSender = await observeMobileSender({ readers, now, anchor: quote.anchor, allowPinnedDelegation });
+  allowPinnedDelegation = false, operationsOnly = false } = {}) {
+  const quote = await runSafeProbe({ readers, now, mobileSafePayer: true, operationsOnly });
+  const observedSender = await observeMobileSender({
+    readers, now, anchor: quote.anchor, allowPinnedDelegation, includeCreateDestinations: !operationsOnly,
+  });
   const safes = await summarizeSafes(quote, readers, observedSender);
   // Recheck the pinned header and the pending account nonce after the independent Safe reads.
   const sender = observedSender;
   await Promise.all(sender.providers.map(async (peer) => {
     if (!sameBlock(peer.after, sender.anchor)) return;
+    if (operationsOnly && safes.probeStatus === "READ_ONLY_ESTIMATED") {
+      const address = safes.proposals[0].counterfactualAddress;
+      const [code, nonce] = await Promise.all([
+        readers[peer.name]("eth_getCode", [address, "pending"], codeOnly),
+        readers[peer.name]("eth_getTransactionCount", [address, "pending"], decimal),
+      ]);
+      peer.pendingSafeVacancy = { code: value(code), nonce: value(nonce) };
+    }
     await recheckPendingDelegation(peer, readers[peer.name]);
     peer.after = value(await readers[peer.name]("eth_getBlockByNumber", [hex(sender.anchor.number), false], header));
     peer.pendingAfter = value(await readers[peer.name]("eth_getTransactionCount", [MOBILE_DEPLOYMENT_PAYER, "pending"], decimal));
@@ -290,7 +300,9 @@ function admittedWitnessNames(rows) {
 }
 
 // An observation is admissible only for a blocked review. This validator never grants signing authority.
-export function assertCurrentMobileObservation(observation, nowMs = Date.now(), { allowPinnedDelegation = false } = {}) {
+export function assertCurrentMobileObservation(observation, nowMs = Date.now(), {
+  allowPinnedDelegation = false, operationsOnly = false,
+} = {}) {
   assert.ok(observation?.schemaVersion === 1 && observation.scope === scope && observation.status === blocked &&
     observation.broadcastAuthorized === false && observation.chainId === 4663, "Unrecognized or unblocked observation");
   assert.equal(observation.proposedSender, MOBILE_DEPLOYMENT_PAYER);
@@ -314,7 +326,7 @@ export function assertCurrentMobileObservation(observation, nowMs = Date.now(), 
   const fields = ["status", "accountType", "balanceWei", "confirmedNonce", "pendingNonce", "nonceSynchronized"];
   for (const field of fields) assert.equal(sender[field], summary[field], "Sender summary mismatch");
   for (const key of ["balanceWei", "confirmedNonce", "pendingNonce"]) assert.match(sender[key], decimalPattern);
-  const predicted = deriveFutureCreateDestinations(sender.pendingNonce);
+  const predicted = operationsOnly ? [] : deriveFutureCreateDestinations(sender.pendingNonce);
   assert.equal(sender.createDestinations.length, predicted.length);
   for (const [i, destination] of sender.createDestinations.entries()) {
     assert.equal(destination.address, predicted[i].address);
@@ -342,7 +354,7 @@ export function assertCurrentMobileObservation(observation, nowMs = Date.now(), 
     assert.deepEqual(corroborated(pin.witnesses, "observedHash"), { status: "CORROBORATED", value: pin.hash },
       "Safe infrastructure codehash missing or mismatched");
   }
-  assert.equal(safes.proposals.length, safeProposals.proposals.length);
+  assert.equal(safes.proposals.length, operationsOnly ? 1 : safeProposals.proposals.length);
   if (delegation) assert.equal(safes.probeStatus, "READ_ONLY_ESTIMATED", "Current exact Safe quotes required");
   for (const [i, proposal] of safes.proposals.entries()) {
     const pinned = safeProposals.proposals[i];
@@ -361,6 +373,15 @@ export function assertCurrentMobileObservation(observation, nowMs = Date.now(), 
         baseFee: BigInt(gas.l2BaseFeeWei), l1BaseFee: BigInt(gas.l1BaseFeeEstimateWei), estimateGas: BigInt(gas.rpcEstimateGas) }),
       "Safe quote arithmetic mismatch");
     }
+  }
+  if (operationsOnly) {
+    const pending = sender.providers.filter(({ before, after }) => sameBlock(before, sender.anchor) && sameBlock(after, sender.anchor))
+      .map(({ name, pendingSafeVacancy }) => ({ name, ...pendingSafeVacancy }));
+    // Reject a contradiction even if the contradicting provider returned only one of the two pending fields.
+    assert.deepEqual(corroborated(pending, "code"), { status: "CORROBORATED", value: "0x" },
+      "Safe pending code vacancy missing or mismatched");
+    assert.deepEqual(corroborated(pending, "nonce"), { status: "CORROBORATED", value: "0" },
+      "Safe pending nonce vacancy missing or mismatched");
   }
   const totalWei = safes.proposals.every(({ gas }) => gas)
     ? safes.proposals.reduce((total, { gas }) => total + BigInt(gas.estimatedTotalWei), 0n) : null;
