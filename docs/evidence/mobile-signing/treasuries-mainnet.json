@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "scope": "ACTUAL_4663_TREASURIES_FOR_PROTOCOL_CONSTRUCTOR_REVIEW",
+  "sourceCommit": "364d8b659e5b88a31b3d07a73e895ace352e52de",
+  "observedAt": "2026-11-17T18:49:18.461Z",
+  "status": "BOTH_SAFES_CANONICAL_AND_CURRENT_CONFIGURATION_VERIFIED",
+  "chainId": 4663,
+  "anchor": {
+    "number": "116800797",
+    "hash": "0x6ce301d89bdc8da1cea948ebfeee1c21b3e87ff7d2c8395ba540c85dfc308211",
+    "timestamp": "2026-11-17T18:49:14.000Z"
+  },
+  "initializationStateProvider": "pocket",
+  "canonicalReceiptCorroborator": "official",
+  "safes": [
+    {
+      "status": "L2_CREATION_VERIFIED",
+      "chainId": 4663,
+      "role": "RMT-OPERATIONS",
+      "safe": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+      "hash": "0x7306d15f2ffcab498bd2063615ddaa862b6ff956415e39e4d278f75de84cdad6",
+      "receiptBlock": "116763559",
+      "blockHash": "0x0858ef7c9b905b35f5e6080c85d6d3bfe8f6a8f23c9f7c026013e8ba436511e5",
+      "logIndex": "3",
+      "finality": "L1_UNVERIFIED",
+      "beneficiaryBinding": null,
+      "broadcastAuthorized": false,
+      "configuration": {
+        "runtimeKeccak256": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+        "singleton": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+        "version": "1.4.1",
+        "owners": [
+          "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+          "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+          "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697"
+        ],
+        "threshold": "2",
+        "nonce": "0",
+        "modules": [],
+        "moduleNext": "0x0000000000000000000000000000000000000001",
+        "handler": "0x000000000000000000000000fd0732dc9e303f09fcef3a7388ad10a83459ec99",
+        "guard": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "pendingConfigurationMatches": true,
+      "currentConfigurationProviders": [
+        "official",
+        "pocket"
+      ],
+      "actualNetworkCost": {
+        "gasUsed": "306195",
+        "effectiveGasPriceWei": "20278000",
+        "paidWei": "6209022210000",
+        "paidEth": "0.00000620902221",
+        "gasUsedForL1": "0"
+      }
+    },
+    {
+      "status": "L2_CREATION_VERIFIED",
+      "chainId": 4663,
+      "role": "RMT-RESERVE",
+      "safe": "0x8D44078642ce938Fd799b23087BcdD6114A302e5",
+      "hash": "0x3daa6a602b7b2f556c03e9ddf5c142b96111b4bbfd38345c8e1769d7b0611091",
+      "receiptBlock": "116797634",
+      "blockHash": "0xa8ee8c52a315c8eb49fc6ab6f5ac9dacb295b99453257f46256526d3fce0cd08",
+      "logIndex": "1",
+      "finality": "L1_UNVERIFIED",
+      "beneficiaryBinding": null,
+      "broadcastAuthorized": false,
+      "configuration": {
+        "runtimeKeccak256": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+        "singleton": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+        "version": "1.4.1",
+        "owners": [
+          "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+          "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+          "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697"
+        ],
+        "threshold": "2",
+        "nonce": "0",
+        "modules": [],
+        "moduleNext": "0x0000000000000000000000000000000000000001",
+        "handler": "0x000000000000000000000000fd0732dc9e303f09fcef3a7388ad10a83459ec99",
+        "guard": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      },
+      "pendingConfigurationMatches": true,
+      "currentConfigurationProviders": [
+        "official",
+        "pocket"
+      ],
+      "actualNetworkCost": {
+        "gasUsed": "306195",
+        "effectiveGasPriceWei": "20022000",
+        "paidWei": "6130636290000",
+        "paidEth": "0.00000613063629",
+        "gasUsedForL1": "0"
+      }
+    }
+  ],
+  "finality": "L1_UNVERIFIED",
+  "automaticSigning": false,
+  "automaticBroadcast": false,
+  "protocolDeployment": null,
+  "tokenCreation": null
+}

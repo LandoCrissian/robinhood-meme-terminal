@@ -23,6 +23,9 @@ export function ownerSafePage(encrypted) {
   let busy = false;
   let review;
   let journal;
+  const isCreation = () => configuration?.mode === "CREATE";
+  const destinationMatches = (actual, expected) => isCreation()
+    ? actual == null && expected == null : same(actual, expected);
 
   function invalidate(message) {
     revision++;
@@ -35,10 +38,11 @@ export function ownerSafePage(encrypted) {
   function storageRead() {
     const raw = localStorage.getItem(journalKey);
     if (raw === null) return undefined;
-    assert(raw.length < 20_000, "Stored transaction journal is too large. Preserve it and use recovery.");
+    assert(raw.length < (isCreation() ? 120_000 : 20_000), "Stored transaction journal is too large. Preserve it and use recovery.");
     const value = JSON.parse(raw);
     assert(value.schemaVersion === 1 && value.origin === encrypted.endpoint &&
-      same(value.request?.from, configuration.sender) && same(value.request?.to, configuration.operation.to) &&
+      same(value.request?.from, configuration.sender) && destinationMatches(value.request?.to, configuration.operation.to) &&
+      (!isCreation() || !Object.hasOwn(value.request, "to")) &&
       value.request?.data === configuration.operation.data && value.request?.value === "0x0" &&
       value.request?.chainId === configuration.chainId && value.request?.type === "0x2" &&
       ["nonce", "gas", "maxFeePerGas", "maxPriorityFeePerGas"].every((name) => quantity(value.request[name])) &&
@@ -92,8 +96,8 @@ export function ownerSafePage(encrypted) {
     assert(same(chain, configuration.chainId), "Select Robinhood Chain 4663.");
     return accounts[0];
   }
-  async function verifyOperations(tag) {
-    const proof = configuration.operationsVerification;
+  async function verifyOperations(tag, suppliedProof) {
+    const proof = suppliedProof ?? configuration.operationsVerification;
     if (!proof) return;
     const receiptTag = hex(proof.receiptBlock);
     const [block, receipt, tx, code] = await Promise.all([
@@ -112,10 +116,18 @@ export function ownerSafePage(encrypted) {
       same(log.data, proof.event.data) && quantity(log.logIndex) && BigInt(log.logIndex) === BigInt(proof.logIndex) &&
       same(log.transactionHash, proof.hash) && log.blockHash === proof.blockHash && log.blockNumber === receiptTag && !log.removed);
     assert(matches?.length === 1, "The approved Operations creation event is unavailable. Reserve remains blocked.");
-    await codeMatches(code, configuration.proxy);
-    for (const state of configuration.postState) {
+    await codeMatches(code, proof.proxy ?? configuration.proxy);
+    if (isCreation()) {
+      const pendingCode = await read("eth_getCode", [proof.safe, "pending"]);
+      assert(same(code, pendingCode), "A treasury's pending runtime differs from its canonical implementation.");
+    }
+    for (const state of proof.postState ?? configuration.postState) {
       const result = await read("eth_call", [{ to: proof.safe, data: state.data }, tag]);
       assert(same(result, state.expected), "Operations ownership, approvals or permissions changed. Reserve remains blocked.");
+      if (isCreation()) {
+        const pending = await read("eth_call", [{ to: proof.safe, data: state.data }, "pending"]);
+        assert(same(result, pending), "A treasury's pending permissions differ from its canonical configuration.");
+      }
     }
     const rechecked = await read("eth_getBlockByNumber", [receiptTag, false]);
     assert(rechecked?.hash === proof.blockHash, "The Operations receipt was reorganized during verification.");
@@ -127,7 +139,14 @@ export function ownerSafePage(encrypted) {
     const block = await read("eth_getBlockByNumber", ["latest", false]);
     assert(validBlock(block), "Current canonical block evidence is unavailable.");
     const tag = block.number;
-    await verifyOperations(tag);
+    if (isCreation()) {
+      assert(configuration.prerequisites?.length === 2, "Both verified treasury receipts are required.");
+      for (const proof of configuration.prerequisites) await verifyOperations(tag, proof);
+      for (const owner of configuration.operation.owners) {
+        const [code, pending] = await Promise.all([read("eth_getCode", [owner, tag]), read("eth_getCode", [owner, "pending"])]);
+        assert(code === "0x" && pending === "0x", "A governance signer is not an admitted EOA.");
+      }
+    } else await verifyOperations(tag);
     const [confirmedNonce, pendingNonce, balance, accountCode, pendingCode, vacancyCode, vacancyNonce, pendingVacancyCode, pendingVacancyNonce] = await Promise.all([
       read("eth_getTransactionCount", [configuration.sender, tag]), read("eth_getTransactionCount", [configuration.sender, "pending"]),
       read("eth_getBalance", [configuration.sender, tag]), read("eth_getCode", [configuration.sender, tag]),
@@ -137,6 +156,8 @@ export function ownerSafePage(encrypted) {
     ]);
     assert(quantity(confirmedNonce) && quantity(pendingNonce) && BigInt(confirmedNonce) === BigInt(pendingNonce),
       "The sender has a pending transaction. Recover it before preparing another.");
+    assert(!isCreation() || BigInt(pendingNonce) === BigInt(op.nonce),
+      "The prepared deployment nonce changed. Stop and rebind the exact constructor addresses; do not retry this packet.");
     assert(quantity(balance), "The available balance could not be verified.");
     assert(same(accountCode, configuration.delegate.designator) && same(pendingCode, accountCode),
       "The wallet delegation differs from the reviewed implementation.");
@@ -148,14 +169,15 @@ export function ownerSafePage(encrypted) {
       await codeMatches(code, pin);
       assert(same(code, pending), "A pending runtime differs from the reviewed implementation.");
     }
-    const request = { type: "0x2", chainId: configuration.chainId, from: configuration.sender, to: op.to,
+    const request = { type: "0x2", chainId: configuration.chainId, from: configuration.sender, ...(!isCreation() && { to: op.to }),
       data: op.data, value: "0x0", nonce: hex(pendingNonce) };
     const [simulated, estimatedGas, components, priority, gasPrice] = await Promise.all([
       read("eth_call", [request, tag]), read("eth_estimateGas", [request, tag]),
       read("eth_call", [{ from: configuration.sender, to: "0x00000000000000000000000000000000000000c8", value: "0x0", data: configuration.nitroData }, tag]),
       read("eth_maxPriorityFeePerGas"), read("eth_gasPrice"),
     ]);
-    assert(same(abiAddress(simulated), op.expectedAddress), "The exact Safe creation simulation returned a different address.");
+    if (isCreation()) await codeMatches(simulated, configuration.createdContract);
+    else assert(same(abiAddress(simulated), op.expectedAddress), "The exact Safe creation simulation returned a different address.");
     assert(quantity(estimatedGas) && quantity(priority) && quantity(gasPrice) &&
       typeof components === "string" && /^0x[0-9a-f]{256}$/i.test(components), "Live wallet fee evidence is unavailable.");
     const values = components.slice(2).match(/.{64}/g).map((word) => BigInt("0x" + word));
@@ -182,13 +204,13 @@ export function ownerSafePage(encrypted) {
     const target = element("facts");
     target.replaceChildren();
     const dl = document.createElement("dl");
-    const rows = [["Sender", configuration.sender], ["Action", "Create " + configuration.safeLabel + "L2 1.4.1"],
-      ["Value", "0 ETH"], ["Expected Safe", configuration.operation.expectedAddress],
+    const rows = [["Sender", configuration.sender], ["Action", isCreation() ? configuration.operation.label : "Create " + configuration.safeLabel + "L2 1.4.1"],
+      ["Value", "0 ETH"], [isCreation() ? "Expected contract" : "Expected Safe", configuration.operation.expectedAddress],
       ["Nonce", BigInt(next.request.nonce).toString()], ["Network estimate", ether(next.estimatedWei)],
       ["Maximum network cost", ether(next.maximumWei)], ["Included L1 posting estimate", ether(next.l1Wei)],
       ["Gas limit", BigInt(next.request.gas).toString()], ["Maximum fee per gas", BigInt(next.request.maxFeePerGas).toString() + " wei"],
       ["Priority fee per gas", BigInt(next.request.maxPriorityFeePerGas).toString() + " wei"],
-      ["Calldata hash", configuration.operation.dataHash], ["Owners", configuration.operation.owners.join(" · ")],
+      ["Calldata hash", configuration.operation.dataHash], ["Owners", configuration.operation.owners.join(" ; ")],
       ["Approvals", "2 of 3"]];
     for (const [label, value] of rows) {
       const dt = document.createElement("dt");
@@ -198,7 +220,7 @@ export function ownerSafePage(encrypted) {
       dl.append(dt, dd);
     }
     target.append(dl);
-    if (BigInt(next.maximumWei) > BigInt(configuration.earlierFeeCeilingWei)) {
+    if (configuration.earlierFeeCeilingWei && BigInt(next.maximumWei) > BigInt(configuration.earlierFeeCeilingWei)) {
       const p = document.createElement("p");
       p.textContent = "This maximum exceeds the earlier reviewed " + ether(configuration.earlierFeeCeilingWei) +
         " ceiling. Your new explicit approval below applies to the displayed cost.";
@@ -226,7 +248,8 @@ export function ownerSafePage(encrypted) {
       const next = await observe();
       const reviewedBlock = await read("eth_getBlockByNumber", [review.block.number, false]);
       const identityFields = ["type", "chainId", "from", "to", "data", "value", "nonce"];
-      const sameIdentity = identityFields.every((field) => same(next.request[field], review.request[field]));
+      const sameIdentity = identityFields.every((field) => field === "to"
+        ? destinationMatches(next.request.to, review.request.to) : same(next.request[field], review.request[field]));
       const fitsApprovedBounds = BigInt(next.request.gas) <= BigInt(review.request.gas) &&
         BigInt(next.currentBaseFeeWei) + BigInt(review.request.maxPriorityFeePerGas) <= BigInt(review.request.maxFeePerGas);
       if (!sameIdentity || !fitsApprovedBounds || reviewedBlock?.hash !== review.block.hash) {
@@ -259,7 +282,8 @@ export function ownerSafePage(encrypted) {
     });
   }
   function exactTransaction(tx, request) {
-    return tx && ["from", "to", "input", "chainId", "type", "value", "nonce", "gas", "maxFeePerGas", "maxPriorityFeePerGas"]
+    return tx && destinationMatches(tx.to, request.to) && (!isCreation() || !Object.hasOwn(request, "to")) &&
+      ["from", "input", "chainId", "type", "value", "nonce", "gas", "maxFeePerGas", "maxPriorityFeePerGas"]
       .every((key) => same(tx[key], request[key === "input" ? "data" : key])) &&
       !Object.hasOwn(tx, "authorizationList") && Array.isArray(tx.accessList) && tx.accessList.length === 0;
   }
@@ -294,7 +318,7 @@ export function ownerSafePage(encrypted) {
     storageWrite({ ...journal, hash: transactionHash, phase: "pending" });
     element("recovery-hash").value = transactionHash;
     if (!receipt) { status("The original transaction receipt is pending. No new request was sent."); return; }
-    assert(same(receipt.transactionHash, transactionHash) && same(receipt.from, journal.request.from) && same(receipt.to, journal.request.to) &&
+    assert(same(receipt.transactionHash, transactionHash) && same(receipt.from, journal.request.from) && destinationMatches(receipt.to, journal.request.to) &&
       receipt.blockHash === tx.blockHash && receipt.blockNumber === tx.blockNumber, "Receipt identity differs from the original request.");
     const canonical = await read("eth_getBlockByNumber", [receipt.blockNumber, false]);
     assert(canonical?.hash === receipt.blockHash, "The receipt is unverified or was reorganized. Keep the request pending.");
@@ -304,12 +328,16 @@ export function ownerSafePage(encrypted) {
       return;
     }
     assert(receipt.status === "0x1" && Array.isArray(receipt.logs), "Receipt settlement is unavailable.");
-    const matches = receipt.logs.filter((log) => same(log.address, configuration.operation.to) &&
+    const matches = isCreation() ? [] : receipt.logs.filter((log) => same(log.address, configuration.operation.to) &&
       log.topics?.[0] === configuration.creationEvent.topic && same(log.topics[1], configuration.creationEvent.proxyTopic) &&
       same(log.data, configuration.creationEvent.data) && !log.removed);
-    assert(matches.length === 1 && matches[0].transactionHash === receipt.transactionHash && matches[0].blockHash === receipt.blockHash,
+    if (isCreation()) {
+      assert(same(receipt.contractAddress, configuration.operation.expectedAddress), "The CREATE receipt deployed an unexpected contract address.");
+      assert(receipt.logs.length === 0, "Unexpected events were emitted by the reviewed Directory constructor.");
+    } else assert(matches.length === 1 && matches[0].transactionHash === receipt.transactionHash && matches[0].blockHash === receipt.blockHash,
       "The canonical Safe creation event does not match the reviewed address and singleton.");
-    await codeMatches(await read("eth_getCode", [configuration.operation.expectedAddress, receipt.blockNumber]), configuration.proxy);
+    await codeMatches(await read("eth_getCode", [configuration.operation.expectedAddress, receipt.blockNumber]),
+      isCreation() ? configuration.createdContract : configuration.proxy);
     for (const state of configuration.postState) {
       const result = await read("eth_call", [{ to: configuration.operation.expectedAddress, data: state.data }, receipt.blockNumber]);
       assert(same(result, state.expected), "Safe ownership, approvals or permissions differ from the approved setup.");
@@ -317,7 +345,7 @@ export function ownerSafePage(encrypted) {
     const rechecked = await read("eth_getBlockByNumber", [receipt.blockNumber, false]);
     assert(rechecked?.hash === receipt.blockHash, "The receipt block changed during verification.");
     storageWrite({ ...journal, phase: "confirmed" });
-    status(configuration.safeLabel + " has a verified wallet-observed L2 receipt. Independent RPC and L1 finality acceptance remain required before protocol deployment. Hash " + transactionHash);
+    status((isCreation() ? configuration.operation.label : configuration.safeLabel) + " has a verified wallet-observed L2 receipt. Independent RPC and L1 finality acceptance remain required before the next dependent deployment. Hash " + transactionHash);
   }
   async function unlock(code) {
     assert(location.href === encrypted.endpoint, "Use the exact approved deployment URL.");
@@ -329,8 +357,11 @@ export function ownerSafePage(encrypted) {
       additionalData: new TextEncoder().encode(encrypted.binding), tagLength: 128 }, key, decode(encrypted.payload));
     configuration = JSON.parse(new TextDecoder().decode(plaintext));
     assert(configuration.endpoint === encrypted.endpoint && configuration.task === encrypted.task &&
-      ["OWNER_CONTROLLED_OPERATIONS_SAFE_1", "OWNER_CONTROLLED_RESERVE_SAFE"].includes(configuration.task) &&
+      ["OWNER_CONTROLLED_OPERATIONS_SAFE_1", "OWNER_CONTROLLED_RESERVE_SAFE", "OWNER_CONTROLLED_PROTOCOL_DIRECTORY"].includes(configuration.task) &&
       (configuration.task === "OWNER_CONTROLLED_RESERVE_SAFE") === Boolean(configuration.operationsVerification), "Unexpected owner action.");
+    assert(!isCreation() || (configuration.task === "OWNER_CONTROLLED_PROTOCOL_DIRECTORY" && configuration.prerequisites?.length === 2 &&
+      configuration.operation.id === "directory" && configuration.operation.to == null && quantity(configuration.operation.nonce)),
+    "Unexpected constructor deployment configuration.");
     sessionStorage.setItem(accessKey, code);
     element("access-code").value = "";
     element("access").hidden = true;
