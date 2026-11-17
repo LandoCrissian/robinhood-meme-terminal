@@ -18,6 +18,7 @@ const setupAbi = viem.parseAbi([
   "function setup(address[],uint256,address,bytes,address,address,uint256,address)",
 ]);
 const blocked = "BLOCKED_NO_BROADCAST";
+const operationsTransactionType = "0x2";
 const observationOptions = { allowPinnedDelegation: true, operationsOnly: true };
 const maximumAgeMs = 120_000;
 const maxGas = (1n << 64n) - 1n;
@@ -98,6 +99,9 @@ function bindReviewedOperation(observation, sender) {
   const setup = viem.decodeFunctionData({ abi: setupAbi, data: initializer });
   const output = deriveSafeProxy(viem, pinned.to, initializer, decodedSalt, observation.safes.initcodeHash);
   const [sample] = observation.safes.proposals;
+  // An incomplete witness can still disprove vacancy with either of these fields.
+  assert.ok(sample.vacancy.every(({ code, nonce }) => (code === undefined || code === "0x") &&
+    (nonce === undefined || nonce === "0")), "Conflicting Safe vacancy at the canonical block");
   assert.equal(functionName, "createProxyWithNonce");
   if (sender.confirmedNonce !== baseline.nonce || sender.pendingNonce !== baseline.nonce) {
     throw new OperationsReviewStop("The confirmed or pending nonce has drifted from #648. Renew the transaction review and fee approval.");
@@ -124,7 +128,7 @@ function bindReviewedOperation(observation, sender) {
   return { pinned, sample };
 }
 
-export function prepareOperationsSafeReview(observation, nowMs = Date.now(), { reviewOnlyOverCap = false } = {}) {
+function validateOperationsSafeQuote(observation, nowMs) {
   const sender = assertCurrentMobileObservation(observation, nowMs, observationOptions);
   const { pinned, sample } = bindReviewedOperation(observation, sender);
   const anchor = { ...sender.anchor, blockTimeUtc: new Date(sender.anchor.blockTimeUtc).toISOString() };
@@ -143,13 +147,41 @@ export function prepareOperationsSafeReview(observation, nowMs = Date.now(), { r
   assert.equal(BigInt(feeCap.gasLimit) * BigInt(feeCap.maxFeePerGasWei), BigInt(feeCap.maxNetworkFeeWei));
   const freshRecommendation = recommendOperationsFeeCap({ nitroGas: gas.gasUnits, rpcGas: gas.rpcEstimateGas, l2BaseFee: gas.l2BaseFeeWei });
   const exceedsCap = overApprovedCap(freshRecommendation);
-  const signingDecision = exceedsCap ? operationsOverCapSigningDecision : operationsSigningDecision;
   const feeCapStatus = exceedsCap ? "OVER_APPROVED_CEILING" : "WITHIN_APPROVED_CEILING";
   const overage = exceedsCap && explainOverage(gas, freshRecommendation);
+  assert.ok(BigInt(sender.balanceWei) >= BigInt(feeCap.maxNetworkFeeWei), "The observed payer balance is below the approved cap");
+  return { sender, pinned, sample, anchor, observedAt, expiresAt, gas, feeCap, freshRecommendation, exceedsCap, feeCapStatus, overage };
+}
+
+// Reuse the exact quote checks without deriving unsigned transaction fields.
+export function verifyOperationsSafeEvidence(observation, nowMs = Date.now()) {
+  const { sender, pinned, sample, anchor, observedAt, expiresAt, gas, feeCap, freshRecommendation, feeCapStatus, overage } =
+    validateOperationsSafeQuote(observation, nowMs);
+  const { address, runtimeHash, designator } = sender.delegation;
+  return {
+    anchor, observedAt, expiresAt,
+    operation: { ...operationsSafeBaseline, action, transactionType: operationsTransactionType, create2Salt: sample.create2Salt,
+      singleton: pinned.details.singleton, fallbackHandler: pinned.details.fallbackHandler,
+      setupDelegateCall: false, initializerPaymentWei: "0", expectedProxyRuntimeHash: safeProxyRuntimeHash,
+      initcodeHash: observation.safes.initcodeHash },
+    sender: { pendingNonce: sender.pendingNonce, confirmedNonce: sender.confirmedNonce,
+      canCoverApprovedMaximumAtAnchor: true, delegation: { address, runtimeHash, designator } },
+    vacancy: { anchored: "VACANT", pending: "VACANT", simulatedAddress: sample.simulatedAddress },
+    infrastructure: observation.safes.runtimePins.map(({ address, hash, witnesses }) => ({
+      address, runtimeHash: hash, providers: witnesses.filter(({ observedHash }) => observedHash === hash).map(({ name }) => name),
+    })),
+    gas: { ...gas, l1BaseFeeEstimateWei: sample.gas.l1BaseFeeEstimateWei },
+    feeCap, freshRecommendation, feeCapStatus, ...(overage && { overage }),
+  };
+}
+
+export function prepareOperationsSafeReview(observation, nowMs = Date.now(), { reviewOnlyOverCap = false } = {}) {
+  const { sender, pinned, anchor, observedAt, expiresAt, gas, feeCap, freshRecommendation, exceedsCap, feeCapStatus, overage } =
+    validateOperationsSafeQuote(observation, nowMs);
+  const signingDecision = exceedsCap ? operationsOverCapSigningDecision : operationsSigningDecision;
   if (exceedsCap && !reviewOnlyOverCap) {
     throw new OperationsReviewStop(`${overage} Renew the fee approval before preparing an unsigned transaction.`);
   }
-  assert.ok(BigInt(sender.balanceWei) >= BigInt(feeCap.maxNetworkFeeWei), "The observed payer balance is below the approved cap");
   const operation = {
     id: pinned.id, label: "Operations Safe creation", dependsOn: [], sender: pinned.from,
     nonce: sender.pendingNonce, destination: pinned.to, predictedAddress: pinned.expectedAddress,
@@ -172,7 +204,7 @@ export function prepareOperationsSafeReview(observation, nowMs = Date.now(), { r
   };
   const protectedQuote = {
     source: operationsSafeBaseline, observation, signingDecision, transactionApproval: null,
-    unsignedFields: exceedsCap ? null : { type: "0x2", chainId: viem.toHex(observation.chainId), from: pinned.from, to: pinned.to,
+    unsignedFields: exceedsCap ? null : { type: operationsTransactionType, chainId: viem.toHex(observation.chainId), from: pinned.from, to: pinned.to,
       nonce: viem.toHex(BigInt(sender.pendingNonce)), value: "0x0", data: pinned.calldata, gas: viem.toHex(BigInt(feeCap.gasLimit)),
       maxFeePerGas: viem.toHex(BigInt(feeCap.maxFeePerGasWei)), maxPriorityFeePerGas: "0x0" },
   };

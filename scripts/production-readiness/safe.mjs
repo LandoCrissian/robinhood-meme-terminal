@@ -208,15 +208,22 @@ export async function runSafeProbe({
   const estimates = [];
   for (const proposal of proposals) {
     const address = proposal.counterfactualAddress;
-    const peer = witnesses.find(({ name, header: result }) => name !== "official" && toValue(result)?.hash === anchor.hash);
+    const peers = witnesses.filter(({ name, header: result }) =>
+      name !== "official" && toValue(result)?.hash === anchor.hash && toValue(result)?.number === anchor.number);
     const vacancy = (read) => Promise.all([read("eth_getCode", [address, tag]),
       read("eth_getTransactionCount", [address, tag], (value) => quantity(value).toString()),
       read("eth_getBalance", [address, tag], (value) => quantity(value).toString())]);
-    const [officialVacancy, peerVacancy] = await Promise.all([vacancy(rpc), vacancy(readers[peer.name])]);
-    const vacancyMatches = officialVacancy.every((item, i) => toValue(item) !== undefined && toValue(item) === toValue(peerVacancy[i]));
-    const vacant = vacancyMatches && toValue(officialVacancy[0]) === "0x" && toValue(officialVacancy[1]) === "0";
+    const participants = ["official", ...(operationsOnly ? peers : peers.slice(0, 1)).map(({ name }) => name)];
+    const vacancies = Object.fromEntries(await Promise.all(participants.map(async (name) => [name, await vacancy(readers[name])])));
+    const officialVacancy = vacancies.official.map(toValue);
+    const peerVacancies = participants.slice(1).map((name) => vacancies[name].map(toValue));
+    const vacancyMatches = officialVacancy.every((value) => value !== undefined) &&
+      peerVacancies.some((peer) => peer.every((value, i) => value === officialVacancy[i]));
+    const contradictsVacancy = peerVacancies.some(([code, nonce]) =>
+      (code !== undefined && code !== "0x") || (nonce !== undefined && nonce !== "0"));
+    const vacant = vacancyMatches && !contradictsVacancy && officialVacancy[0] === "0x" && officialVacancy[1] === "0";
     const observation = { ...proposal, vacancy: { status: vacant ? "VACANT" : "UNVERIFIED_OR_OCCUPIED",
-      [peer.name]: peerVacancy, official: officialVacancy }, gas: null };
+      ...vacancies }, gas: null };
     if (!vacant) { estimates.push(observation); continue; }
     const simulation = await call(rpc, tag, factory, factoryAbi, "createProxyWithNonce",
       [singleton, proposal.initializer, BigInt(proposal.saltNonce)], payer);
