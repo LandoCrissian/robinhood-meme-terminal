@@ -132,6 +132,51 @@ export function ownerSafePage(encrypted) {
     const rechecked = await read("eth_getBlockByNumber", [receiptTag, false]);
     assert(rechecked?.hash === proof.blockHash, "The Operations receipt was reorganized during verification.");
   }
+  async function verifyContractChecks(checks, tag, pendingRequired = false) {
+    for (const check of checks ?? []) {
+      const code = await read("eth_getCode", [check.address, tag]);
+      await codeMatches(code, check.runtime);
+      if (pendingRequired) assert(same(code, await read("eth_getCode", [check.address, "pending"])),
+        "A required contract's pending runtime changed.");
+      for (const state of check.postState ?? []) {
+        const result = await read("eth_call", [{ to: check.address, data: state.data }, tag]);
+        assert(same(result, state.expected), "A required contract's state differs from the reviewed binding.");
+        if (pendingRequired) assert(same(result, await read("eth_call", [{ to: check.address, data: state.data }, "pending"])),
+          "A required contract's pending state changed.");
+      }
+    }
+  }
+  async function verifyPredecessors(tag) {
+    for (const proof of configuration.protocolPrerequisites ?? []) {
+      const receiptTag = hex(proof.receiptBlock);
+      assert(BigInt(tag) >= BigInt(receiptTag), "The current observation precedes a required deployment receipt.");
+      const [block, receipt, tx] = await Promise.all([
+        read("eth_getBlockByNumber", [receiptTag, false]), read("eth_getTransactionReceipt", [proof.hash]),
+        read("eth_getTransactionByHash", [proof.hash]),
+      ]);
+      assert(block?.hash === proof.blockHash && block.number === receiptTag && receipt?.status === "0x1" &&
+        same(receipt.transactionHash, proof.hash) && receipt.blockHash === proof.blockHash && receipt.blockNumber === receiptTag &&
+        same(receipt.contractAddress, proof.address) && receipt.to === null && same(receipt.from, configuration.sender) &&
+        tx?.to === null && tx.type === "0x2" && same(tx.chainId, configuration.chainId) && same(tx.from, configuration.sender) &&
+        tx.value === "0x0" && tx.input === proof.input && tx.nonce === proof.nonce && same(tx.hash, proof.hash) &&
+        tx.blockHash === proof.blockHash && tx.blockNumber === receiptTag &&
+        !Object.hasOwn(tx, "authorizationList") && Array.isArray(tx.accessList) && tx.accessList.length === 0 &&
+        Array.isArray(receipt.logs) && receipt.logs.length === 0,
+      "A required predecessor's canonical CREATE receipt or exact transaction is unavailable or changed.");
+      await verifyContractChecks([proof], tag, true);
+      assert((await read("eth_getBlockByNumber", [receiptTag, false]))?.hash === proof.blockHash,
+        "A required predecessor receipt was reorganized.");
+    }
+    await verifyContractChecks(configuration.preflightContracts, tag, true);
+    for (const address of configuration.childVacancies ?? []) {
+      const [code, nonce, pendingCode, pendingNonce] = await Promise.all([
+        read("eth_getCode", [address, tag]), read("eth_getTransactionCount", [address, tag]),
+        read("eth_getCode", [address, "pending"]), read("eth_getTransactionCount", [address, "pending"]),
+      ]);
+      assert(code === "0x" && pendingCode === "0x" && nonce === "0x0" && pendingNonce === "0x0",
+        "A planned bootstrap child address is occupied or unverified.");
+    }
+  }
   async function observe() {
     const generation = revision;
     await identify();
@@ -142,6 +187,7 @@ export function ownerSafePage(encrypted) {
     if (isCreation()) {
       assert(configuration.prerequisites?.length === 2, "Both verified treasury receipts are required.");
       for (const proof of configuration.prerequisites) await verifyOperations(tag, proof);
+      await verifyPredecessors(tag);
       for (const owner of configuration.operation.owners) {
         const [code, pending] = await Promise.all([read("eth_getCode", [owner, tag]), read("eth_getCode", [owner, "pending"])]);
         assert(code === "0x" && pending === "0x", "A governance signer is not an admitted EOA.");
@@ -212,6 +258,7 @@ export function ownerSafePage(encrypted) {
       ["Priority fee per gas", BigInt(next.request.maxPriorityFeePerGas).toString() + " wei"],
       ["Calldata hash", configuration.operation.dataHash], ["Owners", configuration.operation.owners.join(" ; ")],
       ["Approvals", "2 of 3"]];
+    for (const field of configuration.operation.reviewFields ?? []) rows.push(field);
     for (const [label, value] of rows) {
       const dt = document.createElement("dt");
       const dd = document.createElement("dd");
@@ -333,7 +380,7 @@ export function ownerSafePage(encrypted) {
       same(log.data, configuration.creationEvent.data) && !log.removed);
     if (isCreation()) {
       assert(same(receipt.contractAddress, configuration.operation.expectedAddress), "The CREATE receipt deployed an unexpected contract address.");
-      assert(receipt.logs.length === 0, "Unexpected events were emitted by the reviewed Directory constructor.");
+      assert(receipt.logs.length === 0, "Unexpected events were emitted by the reviewed constructor.");
     } else assert(matches.length === 1 && matches[0].transactionHash === receipt.transactionHash && matches[0].blockHash === receipt.blockHash,
       "The canonical Safe creation event does not match the reviewed address and singleton.");
     await codeMatches(await read("eth_getCode", [configuration.operation.expectedAddress, receipt.blockNumber]),
@@ -342,6 +389,7 @@ export function ownerSafePage(encrypted) {
       const result = await read("eth_call", [{ to: configuration.operation.expectedAddress, data: state.data }, receipt.blockNumber]);
       assert(same(result, state.expected), "Safe ownership, approvals or permissions differ from the approved setup.");
     }
+    if (isCreation()) await verifyContractChecks(configuration.createdChildren, receipt.blockNumber);
     const rechecked = await read("eth_getBlockByNumber", [receipt.blockNumber, false]);
     assert(rechecked?.hash === receipt.blockHash, "The receipt block changed during verification.");
     storageWrite({ ...journal, phase: "confirmed" });
@@ -357,10 +405,12 @@ export function ownerSafePage(encrypted) {
       additionalData: new TextEncoder().encode(encrypted.binding), tagLength: 128 }, key, decode(encrypted.payload));
     configuration = JSON.parse(new TextDecoder().decode(plaintext));
     assert(configuration.endpoint === encrypted.endpoint && configuration.task === encrypted.task &&
-      ["OWNER_CONTROLLED_OPERATIONS_SAFE_1", "OWNER_CONTROLLED_RESERVE_SAFE", "OWNER_CONTROLLED_PROTOCOL_DIRECTORY"].includes(configuration.task) &&
+      ["OWNER_CONTROLLED_OPERATIONS_SAFE_1", "OWNER_CONTROLLED_RESERVE_SAFE", "OWNER_CONTROLLED_PROTOCOL_DIRECTORY", "OWNER_CONTROLLED_PROTOCOL_STAGE"].includes(configuration.task) &&
       (configuration.task === "OWNER_CONTROLLED_RESERVE_SAFE") === Boolean(configuration.operationsVerification), "Unexpected owner action.");
-    assert(!isCreation() || (configuration.task === "OWNER_CONTROLLED_PROTOCOL_DIRECTORY" && configuration.prerequisites?.length === 2 &&
-      configuration.operation.id === "directory" && configuration.operation.to == null && quantity(configuration.operation.nonce)),
+    assert(!isCreation() || (configuration.prerequisites?.length === 2 && configuration.operation.to == null && quantity(configuration.operation.nonce) &&
+      ((configuration.task === "OWNER_CONTROLLED_PROTOCOL_DIRECTORY" && configuration.operation.id === "directory") ||
+      (configuration.task === "OWNER_CONTROLLED_PROTOCOL_STAGE" && ["registry", "successor-v2", "successor-v3", "bootstrap"].includes(configuration.operation.id) &&
+      configuration.protocolPrerequisites?.length === ["directory", "registry", "successor-v2", "successor-v3", "bootstrap"].indexOf(configuration.operation.id)))),
     "Unexpected constructor deployment configuration.");
     sessionStorage.setItem(accessKey, code);
     element("access-code").value = "";
