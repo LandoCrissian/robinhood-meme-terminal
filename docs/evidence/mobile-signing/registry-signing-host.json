@@ -1,0 +1,88 @@
+{
+  "observedAt": "2026-11-17T19:15:43.859Z",
+  "endpoint": "https://owner-registry-066--rmt-wallet-check-056-f911548d.netlify.app/protocol-registry.html",
+  "sourceCommit": "d548b82046d7ff4dc48187ca5d72a9f07fefc892",
+  "htmlSha256": "aabca308594a75f9f09c1a658fc2761c8d60c9457d7fe3907f9f336569202127",
+  "status": 200,
+  "headers": {
+    "cache-control": "no-store",
+    "x-frame-options": "DENY",
+    "referrer-policy": "no-referrer",
+    "x-robots-tag": "noindex, nofollow",
+    "content-security-policy": "frame-ancestors 'none'"
+  },
+  "results": [
+    {
+      "browser": "chromium",
+      "portrait": true,
+      "landscape": true,
+      "reloadAccess": true,
+      "walletConnection": "MOCKED_ACCOUNT_ONLY",
+      "rpcReads": "ACTUAL_PUBLIC_OFFICIAL_RPC",
+      "callCount": 118,
+      "methods": [
+        "eth_requestAccounts",
+        "eth_accounts",
+        "eth_chainId",
+        "eth_getBlockByNumber",
+        "eth_getTransactionReceipt",
+        "eth_getTransactionByHash",
+        "eth_getCode",
+        "eth_call",
+        "eth_getTransactionCount",
+        "eth_getBalance",
+        "eth_estimateGas",
+        "eth_maxPriorityFeePerGas",
+        "eth_gasPrice"
+      ],
+      "facts": "Sender\n0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA\nAction\nDeploy RMTLaunchProjectRegistryV3\nValue\n0 ETH\nExpected contract\n0xf1113714Dda31f31532995D2525e034271425398\nNonce\n479\nNetwork estimate\n0.000073182276288 ETH\nMaximum network cost\n0.000182955710784 ETH\nIncluded L1 posting estimate\n0 ETH\nGas limit\n4559303\nMaximum fee per gas\n40128000 wei\nPriority fee per gas\n0 wei\nCalldata hash\n0xb8521e681298045055d5cd3d05f526248b9cfca71ef808733faa32a228940c1d\nOwners\n0xC447A378cFd8460Febc2eef67501D7a5473B9001 ; 0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51 ; 0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697\nApprovals\n2 of 3\nImmutable governance Directory\n0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C\nMigration notice / execution window\n2 days / 7 days",
+      "pageErrors": [],
+      "signatures": 0,
+      "submissions": 0
+    },
+    {
+      "browser": "webkit",
+      "portrait": true,
+      "landscape": true,
+      "reloadAccess": true,
+      "walletConnection": "MOCKED_ACCOUNT_ONLY",
+      "rpcReads": "ACTUAL_PUBLIC_OFFICIAL_RPC",
+      "callCount": 118,
+      "methods": [
+        "eth_requestAccounts",
+        "eth_accounts",
+        "eth_chainId",
+        "eth_getBlockByNumber",
+        "eth_getTransactionReceipt",
+        "eth_getTransactionByHash",
+        "eth_getCode",
+        "eth_call",
+        "eth_getTransactionCount",
+        "eth_getBalance",
+        "eth_estimateGas",
+        "eth_maxPriorityFeePerGas",
+        "eth_gasPrice"
+      ],
+      "facts": "Sender\n0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA\nAction\nDeploy RMTLaunchProjectRegistryV3\nValue\n0 ETH\nExpected contract\n0xf1113714Dda31f31532995D2525e034271425398\nNonce\n479\nNetwork estimate\n0.000073430302344 ETH\nMaximum network cost\n0.000183575775992 ETH\nIncluded L1 posting estimate\n0 ETH\nGas limit\n4559303\nMaximum fee per gas\n40264000 wei\nPriority fee per gas\n0 wei\nCalldata hash\n0xb8521e681298045055d5cd3d05f526248b9cfca71ef808733faa32a228940c1d\nOwners\n0xC447A378cFd8460Febc2eef67501D7a5473B9001 ; 0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51 ; 0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697\nApprovals\n2 of 3\nImmutable governance Directory\n0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C\nMigration notice / execution window\n2 days / 7 days\n",
+      "pageErrors": [],
+      "signatures": 0,
+      "submissions": 0
+    }
+  ],
+  "physicalIPhoneAcceptance": false,
+  "scope": "OWNER_CONTROLLED_REGISTRY_CREATE_ONLY",
+  "chainId": 4663,
+  "expectedAddress": "0xf1113714Dda31f31532995D2525e034271425398",
+  "nonce": "479",
+  "transactionHash": null,
+  "contractDeploymentStatus": "UNDEPLOYED_AWAITING_OWNER_CONFIRMATION",
+  "netlify": {
+    "siteId": "00f130a0-025d-4bd4-bd29-dab543edd1a7",
+    "deployId": "6afca7b5a9748088461108b2",
+    "alias": "owner-registry-066"
+  },
+  "accessCodeInRepository": false,
+  "productionWebsiteChanged": false,
+  "automaticSigning": false,
+  "automaticBroadcast": false
+}
