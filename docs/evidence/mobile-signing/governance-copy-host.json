@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-17T22:49:45.021Z",
+  "endpoint": "https://owner-governance-066--rmt-wallet-check-056-f911548d.netlify.app/governance-factory.html",
+  "sourceCommit": "fc4bfc92d3949091e1c4e9524ac9060135016ca9",
+  "htmlSha256": "5d5fc675a00d794a43afe3352c98fe26e716e50b7f4b45390ebc4ccafc67239b",
+  "originalEndpointAndKeyPreserved": true,
+  "originalEncryptedConfigurationPreserved": true,
+  "results": [
+    {
+      "browser": "chromium",
+      "syntheticStorageOnly": true,
+      "actualOwnerResponsesRead": false,
+      "completeJsonExport": true,
+      "clipboardDeniedFullSelection": true,
+      "lockClearsPlaintext": true,
+      "reloadPreservesCiphertext": true,
+      "portrait": true,
+      "landscape": true,
+      "walletOrRpcCalls": 0,
+      "signaturesRequested": 0,
+      "transactionsRequested": 0
+    },
+    {
+      "browser": "webkit",
+      "syntheticStorageOnly": true,
+      "actualOwnerResponsesRead": false,
+      "completeJsonExport": true,
+      "clipboardDeniedFullSelection": true,
+      "lockClearsPlaintext": true,
+      "reloadPreservesCiphertext": true,
+      "portrait": true,
+      "landscape": true,
+      "walletOrRpcCalls": 0,
+      "signaturesRequested": 0,
+      "transactionsRequested": 0
+    }
+  ],
+  "physicalRabbyClipboardAcceptance": false,
+  "cryptographicOwnerSignatureValidation": "PENDING_RAW_OWNER_JSON",
+  "productionWebsiteChanged": false,
+  "netlifySiteId": "00f130a0-025d-4bd4-bd29-dab543edd1a7",
+  "netlifyDeploymentId": "6afcd9bf6ca67ab06680d0ec",
+  "previousNetlifyDeploymentId": "6afcb52ae567cd8e4ed910b5",
+  "previousHtmlSha256": "922083bb00a4a4a04567ea569dc6d9534333eb1caad6654e9f8f598eb5abec58",
+  "sealedEnvelopeSha256": "782e7d48aec760418d1b5831dfa01e708b61f86ecd990f2c9541a89dc39a2cbd",
+  "sealedConfigurationPreserved": true,
+  "authenticationPreserved": true,
+  "currentAuthorityRecheckedByUiRefresh": false,
+  "originalPrivateArtifactUntouched": true,
+  "storedSignaturesInGit": false,
+  "accessCodeInGit": false,
+  "automatedSourceTests": {
+    "chromium": "PASS",
+    "webkit": "PASS",
+    "includes": [
+      "original encrypted response compatibility",
+      "genuine synthetic test-key signature verification",
+      "no-provider export",
+      "clipboard success/absent/denied",
+      "full manual selection",
+      "lock/reload/invalidation plaintext wipe",
+      "wrong key or tampered artifact rejection"
+    ]
+  }
+}
