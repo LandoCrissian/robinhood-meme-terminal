@@ -161,12 +161,13 @@ function validateSafeReceipt(plan, hash, approvedPayer, receipt, tx) {
 
 export async function runSafeProbe({
   mobileSafePayer = false,
+  operationsOnly = false,
   readers = Object.fromEntries(Object.entries(ROBINHOOD_SOURCES).map(([name, url]) => [name, makeReadOnlyRpc({ name, url }, { mobileSafePayer })])),
   now = Date.now,
 } = {}) {
   const payer = mobileSafePayer === true ? MOBILE_DEPLOYMENT_PAYER : owners[0];
   const observedAt = new Date(now()).toISOString();
-  const proposals = plans();
+  const proposals = plans().filter(({ role }) => !operationsOnly || role === "RMT-OPERATIONS");
   const base = { observedAt, chainId: 4663, safeVersion: "SafeL2 1.4.1", owners, threshold: 2, factory, singleton,
     proposedGasPayer: payer, gasPayerAuthority: "READ_ONLY_ESTIMATION_ONLY", deployments: null, broadcastAuthorized: false };
   const endpoints = Object.entries(readers);

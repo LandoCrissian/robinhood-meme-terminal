@@ -12,6 +12,19 @@ The first new token is `RMT` (`RMT`). The creator is the same existing personal 
 
 The phone reviews only transaction 1, the zero-value Operations Safe creation. Each Safe creation, protocol deployment, first funded acceptance and public activation requires its own approval. Reserve and the protocol queue wait for verified canonical receipts and the applicable release gates. [Safe preparations](../rmt-task046/treasury-safe-initializers.json)
 
+## Refresh Operations Safe transaction 1
+
+The owner completed the physical iPhone read-only review. The refresh prepares the same 4663 call for review and independently checks the confirmed and pending nonce, delegation, Safe infrastructure, owner set, calldata and vacant predicted address. A mismatch with the reviewed transaction stops the refresh. The quote and cap are proposals under `BLOCKED_NO_BROADCAST`. [Task 059](https://github.com/LandoCrissian/robinhood-meme-terminal/issues/649)
+
+```powershell
+pnpm prepare:operations-safe --out-private $privatePacket --out-review $reviewPacket
+pnpm export:private-phone-review --url $approvedPrivateHttpsUrl --review $reviewPacket --output $privateHtml --key-file $separateKeyFile --expires $expiryUtc
+```
+
+The proposed gas limit adds 25% headroom to the larger of `eth_estimateGas` and the Nitro total and rounds up. The Nitro total includes L1 posting in L2 gas units. The proposed maximum fee per gas is twice the observed L2 base fee, with zero priority fee. The network fee ceiling is the product of the proposed gas limit and maximum fee per gas. A larger gas requirement or fee change requires a fresh review. A zero quoted L1 component is a block-specific observation. [Arbitrum fee estimation](https://docs.arbitrum.io/arbitrum-essentials/how-to-estimate-gas) · [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559)
+
+Open the exact HTTPS review URL and enter its separate access code. The page can display corroborated quote evidence without asking for wallet permissions. It distinguishes an expired quote from a current quote. A later transaction decision must bind the fresh nonce, calldata hash and approved fee ceiling and remain subject to the release gates.
+
 | Safe | Predicted 4663 address | Pinned `saltNonce` |
 | --- | --- | --- |
 | Operations | `0xAF9F10258b091719618c19D057F9cDAB72eFFd8b` | `0x8094029c8a767b073fdbe606186b138b416682f2584ca87d38b3eaaa7af16cc2` |
@@ -38,7 +51,7 @@ pnpm prepare:unsigned-4663 --solc $solc --rehearsal $forkEvidenceFile --refresh 
 pnpm export:private-phone-review --url $approvedPrivateHttpsUrl --review $reviewPacket --output $privateHtml --key-file $separateKeyFile --expires $expiryUtc
 ```
 
-Open the exact review URL in MetaMask's browser, enter the separate access code and select **Connect wallet and check nonce**. The review verifies the selected account, chain, delegation, nonce and reference block through public wallet reads. If the fee estimate has expired, the page shows it as a historical quote. Before separate approval of transaction 1, refresh account, chain, nonce, runtime, vacancy and fee evidence. Review the exact destination, calldata hash and maximum network fee. Figures for later dependent transactions are fork observations until their exact live prerequisites exist.
+Use the Operations-only refresh for the current phone review and proposed fee cap. Figures for later dependent transactions are fork observations until their exact live prerequisites exist.
 
 ## Release evidence
 

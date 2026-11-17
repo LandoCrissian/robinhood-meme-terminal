@@ -17,6 +17,7 @@
     "probe:blockscout": "node packages/contracts/scripts/probe-blockscout-4663.mjs",
     "export:blockscout": "node packages/contracts/scripts/export-blockscout-4663.mjs",
     "prepare:unsigned-4663": "node packages/contracts/scripts/prepare-unsigned-4663.mjs",
+    "prepare:operations-safe": "node packages/contracts/scripts/prepare-operations-safe.mjs",
     "export:private-phone-review": "node scripts/visual-qa/export-rmt-private-phone-review.mjs",
     "audit:production": "pnpm audit --prod --audit-level high",
     "check:repo": "knip --include files,dependencies",
