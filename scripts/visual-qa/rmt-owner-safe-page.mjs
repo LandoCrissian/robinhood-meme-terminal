@@ -92,6 +92,34 @@ export function ownerSafePage(encrypted) {
     assert(same(chain, configuration.chainId), "Select Robinhood Chain 4663.");
     return accounts[0];
   }
+  async function verifyOperations(tag) {
+    const proof = configuration.operationsVerification;
+    if (!proof) return;
+    const receiptTag = hex(proof.receiptBlock);
+    const [block, receipt, tx, code] = await Promise.all([
+      read("eth_getBlockByNumber", [receiptTag, false]), read("eth_getTransactionReceipt", [proof.hash]),
+      read("eth_getTransactionByHash", [proof.hash]), read("eth_getCode", [proof.safe, tag]),
+    ]);
+    assert(block?.hash === proof.blockHash && block.number === receiptTag && receipt?.status === "0x1" &&
+      same(receipt.transactionHash, proof.hash) && receipt.blockHash === proof.blockHash && receipt.blockNumber === receiptTag &&
+      tx?.blockHash === proof.blockHash && tx.blockNumber === receiptTag && same(tx.hash, proof.hash) &&
+      same(tx.from, proof.transaction.from) && same(tx.to, proof.transaction.to) && tx.input === proof.transaction.input &&
+      tx.value === "0x0" && same(tx.chainId, configuration.chainId) &&
+      same(receipt.from, tx.from) && same(receipt.to, tx.to),
+    "The verified Operations receipt is unavailable or its canonical identity changed. Reserve remains blocked.");
+    const matches = receipt.logs?.filter((log) => same(log.address, proof.transaction.to) &&
+      log.topics?.[0] === proof.event.topic && same(log.topics?.[1], proof.event.proxyTopic) &&
+      same(log.data, proof.event.data) && quantity(log.logIndex) && BigInt(log.logIndex) === BigInt(proof.logIndex) &&
+      same(log.transactionHash, proof.hash) && log.blockHash === proof.blockHash && log.blockNumber === receiptTag && !log.removed);
+    assert(matches?.length === 1, "The approved Operations creation event is unavailable. Reserve remains blocked.");
+    await codeMatches(code, configuration.proxy);
+    for (const state of configuration.postState) {
+      const result = await read("eth_call", [{ to: proof.safe, data: state.data }, tag]);
+      assert(same(result, state.expected), "Operations ownership, approvals or permissions changed. Reserve remains blocked.");
+    }
+    const rechecked = await read("eth_getBlockByNumber", [receiptTag, false]);
+    assert(rechecked?.hash === proof.blockHash, "The Operations receipt was reorganized during verification.");
+  }
   async function observe() {
     const generation = revision;
     await identify();
@@ -99,6 +127,7 @@ export function ownerSafePage(encrypted) {
     const block = await read("eth_getBlockByNumber", ["latest", false]);
     assert(validBlock(block), "Current canonical block evidence is unavailable.");
     const tag = block.number;
+    await verifyOperations(tag);
     const [confirmedNonce, pendingNonce, balance, accountCode, pendingCode, vacancyCode, vacancyNonce, pendingVacancyCode, pendingVacancyNonce] = await Promise.all([
       read("eth_getTransactionCount", [configuration.sender, tag]), read("eth_getTransactionCount", [configuration.sender, "pending"]),
       read("eth_getBalance", [configuration.sender, tag]), read("eth_getCode", [configuration.sender, tag]),
@@ -153,7 +182,7 @@ export function ownerSafePage(encrypted) {
     const target = element("facts");
     target.replaceChildren();
     const dl = document.createElement("dl");
-    const rows = [["Sender", configuration.sender], ["Action", "Create Operations SafeL2 1.4.1"],
+    const rows = [["Sender", configuration.sender], ["Action", "Create " + configuration.safeLabel + "L2 1.4.1"],
       ["Value", "0 ETH"], ["Expected Safe", configuration.operation.expectedAddress],
       ["Nonce", BigInt(next.request.nonce).toString()], ["Network estimate", ether(next.estimatedWei)],
       ["Maximum network cost", ether(next.maximumWei)], ["Included L1 posting estimate", ether(next.l1Wei)],
@@ -288,7 +317,7 @@ export function ownerSafePage(encrypted) {
     const rechecked = await read("eth_getBlockByNumber", [receipt.blockNumber, false]);
     assert(rechecked?.hash === receipt.blockHash, "The receipt block changed during verification.");
     storageWrite({ ...journal, phase: "confirmed" });
-    status("Operations Safe has a verified wallet-observed L2 receipt. Independent RPC and L1 finality acceptance remain required before protocol deployment. Hash " + transactionHash);
+    status(configuration.safeLabel + " has a verified wallet-observed L2 receipt. Independent RPC and L1 finality acceptance remain required before protocol deployment. Hash " + transactionHash);
   }
   async function unlock(code) {
     assert(location.href === encrypted.endpoint, "Use the exact approved deployment URL.");
@@ -299,7 +328,9 @@ export function ownerSafePage(encrypted) {
     const plaintext = await crypto.subtle.decrypt({ name: "AES-GCM", iv: decode(encrypted.iv),
       additionalData: new TextEncoder().encode(encrypted.binding), tagLength: 128 }, key, decode(encrypted.payload));
     configuration = JSON.parse(new TextDecoder().decode(plaintext));
-    assert(configuration.endpoint === encrypted.endpoint && configuration.task === "OWNER_CONTROLLED_OPERATIONS_SAFE_1", "Unexpected owner action.");
+    assert(configuration.endpoint === encrypted.endpoint && configuration.task === encrypted.task &&
+      ["OWNER_CONTROLLED_OPERATIONS_SAFE_1", "OWNER_CONTROLLED_RESERVE_SAFE"].includes(configuration.task) &&
+      (configuration.task === "OWNER_CONTROLLED_RESERVE_SAFE") === Boolean(configuration.operationsVerification), "Unexpected owner action.");
     sessionStorage.setItem(accessKey, code);
     element("access-code").value = "";
     element("access").hidden = true;
