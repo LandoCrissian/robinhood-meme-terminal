@@ -267,6 +267,24 @@ contract AdversarialCurveToken is ERC20 {
     }
 }
 
+/// @dev Injects a manager balance change before the PositionManager starts settlement.
+contract PoolCreditDuringCurvePull is ERC20 {
+    address private immutable engine;
+    address private immutable manager;
+    address private immutable donor;
+
+    constructor(address engine_, address manager_, address donor_) ERC20("", "") {
+        engine = engine_;
+        manager = manager_;
+        donor = donor_;
+    }
+
+    function transferFrom(address from, address to, uint256 value) public override returns (bool) {
+        if (msg.sender == engine) _transfer(donor, manager, 1);
+        return super.transferFrom(from, to, value);
+    }
+}
+
 contract RejectNativeLpBeneficiary {
     function claim(RMTLaunchCurveLpFeeLedgerV1 ledger) external {
         ledger.claim();
@@ -579,6 +597,54 @@ contract RMTV4CurveGraduationV1Test is Test {
         curve.graduate(deadline);
         assertEq(positions.ownerOf(nextId), address(graduation));
         assertTrue(curve.graduated());
+    }
+
+    function testPoolBalancePerturbedDuringInventoryPullRollsBack() public {
+        (address token, RMTLaunchBondingCurveV1 curve, uint256 deadline) = _fundCurve();
+        IERC20 asset = IERC20(token);
+        vm.startPrank(buyer);
+        assertTrue(asset.transfer(address(graduation), 2));
+        assertTrue(asset.transfer(address(manager), 3));
+        vm.stopPrank();
+        vm.deal(address(manager), 5);
+
+        uint256 backing = curve.backingReserve();
+        uint256 inventory = asset.balanceOf(address(curve));
+        uint256 donorBalance = asset.balanceOf(buyer);
+        uint256 nextId = positions.nextTokenId();
+        PoolId pool = graduation.canonicalPoolKey(token).toId();
+        bytes memory canonicalCode = token.code;
+        PoolCreditDuringCurvePull injected = new PoolCreditDuringCurvePull(address(graduation), address(manager), buyer);
+        vm.etch(token, address(injected).code);
+
+        vm.expectCall(address(positions), abi.encodeWithSelector(ICurvePositionManagerV1.modifyLiquidities.selector));
+        vm.expectRevert(RMTV4CurveGraduationV1.SettlementMismatch.selector);
+        curve.graduate(deadline);
+        (uint160 price,,,) = manager.getSlot0(pool);
+        assertEq(price, 0);
+        assertEq(positions.nextTokenId(), nextId);
+        (uint256 lockedId, uint128 lockedLiquidity) = graduation.positions(token);
+        assertEq(lockedId, 0);
+        assertEq(lockedLiquidity, 0);
+        assertEq(address(graduation.lpFeeLedger(token)), address(0));
+        assertFalse(curve.graduated());
+        assertEq(curve.backingReserve(), backing);
+        assertEq(address(curve).balance, backing);
+        assertEq(asset.balanceOf(address(curve)), inventory);
+        assertEq(asset.balanceOf(buyer), donorBalance);
+        assertEq(asset.balanceOf(address(graduation)), 2);
+        assertEq(asset.balanceOf(address(manager)), 3);
+        assertEq(address(manager).balance, 5);
+        assertEq(asset.allowance(address(curve), address(graduation)), 0);
+        assertEq(asset.allowance(address(graduation), address(permit)), 0);
+        assertEq(permit.amount(address(graduation), token, address(positions)), 0);
+
+        vm.etch(token, canonicalCode);
+        curve.graduate(deadline);
+        assertEq(positions.ownerOf(nextId), address(graduation));
+        assertEq(asset.balanceOf(address(graduation)), 2);
+        assertEq(asset.balanceOf(address(manager)), 3 + inventory - curve.tokenDust());
+        assertEq(address(manager).balance, 5 + backing - curve.nativeDust());
     }
 
     function testPositionManagerHarvestRejectsReentryFeeDiversionAndPrincipalChange() public {

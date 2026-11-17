@@ -260,6 +260,34 @@ contract FundedMigrationCallbackProbe {
     }
 }
 
+/// @dev Fault injection for a pinned successor that disturbs a curve's token balance after accepting the backing.
+contract MigrationInventoryCallbackProbe {
+    address private immutable originalRuntime;
+    IERC20 private immutable token;
+    address private immutable donor;
+    address private immutable recipient;
+
+    constructor(address originalRuntime_, IERC20 token_, address donor_, address recipient_) {
+        originalRuntime = originalRuntime_;
+        token = token_;
+        donor = donor_;
+        recipient = recipient_;
+    }
+
+    fallback(bytes calldata input) external payable returns (bytes memory) {
+        (bool ok, bytes memory output) = originalRuntime.delegatecall(input);
+        if (!ok) {
+            assembly ("memory-safe") {
+                revert(add(output, 32), mload(output))
+            }
+        }
+        if (msg.sig == Curve.acceptMigration.selector && token.allowance(donor, address(this)) == 1) {
+            require(token.transferFrom(donor, recipient, 1), "inventory fault did not transfer");
+        }
+        return output;
+    }
+}
+
 contract RMTLaunchMigrationReadinessTest is Test {
     address private constant CREATOR = address(0x201);
     address private constant TREASURY = address(0x202);
@@ -619,6 +647,39 @@ contract RMTLaunchMigrationReadinessTest is Test {
         _assertIntact(before);
         registry.executeMigration(address(token));
         assertEq(keccak256(abi.encode(_snapshot(successor))), keccak256(abi.encode(before)));
+    }
+
+    function testFundedAcceptanceCannotChangePredecessorTokenDebit() external {
+        _rejectAcceptanceInventoryFault(address(origin));
+    }
+
+    function testFundedAcceptanceCannotChangeSuccessorTokenCredit() external {
+        _rejectAcceptanceInventoryFault(address(successor));
+    }
+
+    function _rejectAcceptanceInventoryFault(address recipient) private {
+        Snapshot memory before = _snapshot(origin);
+        address runtime = makeAddr("original successor runtime");
+        vm.etch(runtime, address(successor).code);
+        MigrationInventoryCallbackProbe wrapper = new MigrationInventoryCallbackProbe(runtime, token, HOLDER, recipient);
+        vm.etch(address(successor), address(wrapper).code);
+        vm.prank(HOLDER);
+        token.approve(address(successor), 1);
+        // Admit the injected runtime before scheduling to reach the settlement check past the codehash guard.
+        _schedule();
+
+        vm.expectCall(address(token), abi.encodeCall(token.transferFrom, (HOLDER, recipient, 1)));
+        vm.expectRevert(Curve.InvalidMigrationSettlement.selector);
+        registry.executeMigration(address(token));
+        _assertIntact(before);
+        assertEq(token.allowance(HOLDER, address(successor)), 1);
+        assertEq(registry.migrationNonce(address(token)), 0);
+
+        // Remove the fault and reuse the original proposal and runtime hash.
+        vm.prank(HOLDER);
+        token.approve(address(successor), 0);
+        registry.executeMigration(address(token));
+        _assertSettledHandoff(origin, successor, HOLDER, before, 1);
     }
 
     function testFundedAcceptanceHidesBothRoutesAndLateRotationRollsBackAssetsAndAuthority() external {
