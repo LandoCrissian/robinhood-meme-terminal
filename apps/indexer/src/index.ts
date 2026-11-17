@@ -50,6 +50,8 @@ import {
 import { resolveArchiveRpcUrl } from "./rpc-config.js";
 import { createHistoryReadBudget } from "./history-read-budget.js";
 import { IndexStoreError, initializeIndexStore, lockIndexWriter } from "./index-store.js";
+import { curveProductionConfig } from "./curve-production-config.js";
+import { createProductionCurveIndexer, parseProductionCurveQuery } from "./curve-production.js";
 
 const CHAIN_ID = 4663;
 const INDEXER_SCHEMA_VERSION = 5;
@@ -159,6 +161,21 @@ const pool = new Pool({
 pool.on("error", (error) => console.error(JSON.stringify({ event: "indexer_read_pool_error", errorType: errorType(error) })));
 const writer = new Client({ ...database, connectionTimeoutMillis: 10_000, keepAlive: true });
 const historyReadBudget = createHistoryReadBudget();
+const productionCurveConfigured = Boolean(process.env.RMT_CURVE_PRODUCTION_BINDING);
+let productionCurve: ReturnType<typeof createProductionCurveIndexer> | null = null;
+if (productionCurveConfigured) {
+  try {
+    const production = curveProductionConfig(process.env);
+    if (!production || !config.readToken) throw new Error("Production curve read authentication is required");
+    productionCurve = createProductionCurveIndexer(production, writer, rpc, distinctArchive);
+  } catch (error) {
+    console.error(JSON.stringify({ event: "production_curve_config_unavailable", errorType: errorType(error) }));
+  }
+}
+
+function productionCurveState() {
+  return productionCurve?.state() ?? { status: productionCurveConfigured ? "unavailable" : "undeployed", checkpoint: null };
+}
 
 let indexedThrough = config.startBlock - 1n;
 let lastSyncAt: string | null = null;
@@ -1342,7 +1359,8 @@ function startServer() {
       if (url.pathname === "/health") {
         const latest = latestObservedHead;
         const syncState = publicSyncState(initialSyncComplete, lastFailureKind);
-        const healthy = !stopping && latest !== null && syncState.available && !syncState.stale;
+        const healthy = !stopping && latest !== null && syncState.available && !syncState.stale
+          && (!productionCurveConfigured || productionCurveState().status === "ready");
         json(response, healthy ? 200 : 503, {
           ok: healthy,
           chainId: CHAIN_ID,
@@ -1359,6 +1377,7 @@ function startServer() {
           lagBlocks: latest === null ? null : latest > indexedThrough ? (latest - indexedThrough).toString() : "0",
           initialSyncComplete,
           lastSyncAt,
+          ...(productionCurveConfigured && { curveLaunchpad: productionCurveState() }),
           error: syncState.publicError
             ?? (lastFailureKind === "local" ? LOCAL_SYNC_FAILURE_MESSAGE : null)
             ?? (initialSyncComplete ? null : "Initial V6 backfill and invariants are still running")
@@ -1376,18 +1395,61 @@ function startServer() {
             errorType: errorType(error)
           }));
         }
-        const ready = !stopping && lastFailureKind !== "local" && databaseReady;
+        const ready = !stopping && lastFailureKind !== "local" && databaseReady
+          && (!productionCurveConfigured || productionCurveState().status === "ready");
         json(response, ready ? 200 : 503, {
           ok: ready,
           initialSyncComplete,
           indexedThrough: indexedThrough.toString(),
           lastSyncAt,
+          ...(productionCurveConfigured && { curveLaunchpad: productionCurveState() }),
           error: ready ? null : "Indexer data service is temporarily unavailable."
         });
         return;
       }
       if (stopping) {
         json(response, 503, { error: "Indexer data service is temporarily unavailable." });
+        return;
+      }
+      if (url.pathname === "/curve-launches" || url.pathname.startsWith("/curve-launches/")) {
+        if (!hasHistoricalReadAccess(config.readToken, request.headers.authorization)) {
+          response.setHeader("WWW-Authenticate", "Bearer");
+          json(response, 401, { error: "Unauthorized" });
+          return;
+        }
+        const query = parseProductionCurveQuery(url);
+        if (!query) { json(response, 400, { error: "Invalid production launch query" }); return; }
+        if (!productionCurveConfigured) {
+          json(response, 404, { chainId: CHAIN_ID, status: "undeployed", launches: [], checkpoint: null });
+          return;
+        }
+        const current = productionCurve;
+        if (!current || current.state().status === "unavailable") {
+          json(response, 503, { chainId: CHAIN_ID, status: "unavailable", checkpoint: null });
+          return;
+        }
+        const releaseRead = historyReadBudget.acquire();
+        if (!releaseRead) {
+          response.setHeader("Retry-After", "1");
+          json(response, 429, { error: "Launch requests are temporarily limited" });
+          return;
+        }
+        let db: PoolClient | undefined;
+        try {
+          db = await pool.connect();
+          await db.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+          await db.query("SET LOCAL statement_timeout = '1s'");
+          const result = await current.read(db, query);
+          await db.query("COMMIT");
+          json(response, query.token && result.launches.length === 0 && result.status === "ready" ? 404 : 200, result);
+        } catch (error) {
+          await db?.query("ROLLBACK").catch(() => undefined);
+          json(response, 503, { chainId: CHAIN_ID, status: "unavailable", checkpoint: null });
+          console.error(JSON.stringify({ event: "production_curve_read_unavailable", errorType: errorType(error) }));
+        } finally {
+          db?.release();
+          releaseRead();
+        }
         return;
       }
       if (url.pathname === "/historical-launches") {
@@ -1590,6 +1652,13 @@ async function run() {
           consecutiveFailures,
           retryInMs: delayMs
         }));
+      }
+      if (!stopping && productionCurve && lastFailureKind !== "local") {
+        try {
+          await productionCurve.syncOnce();
+        } catch (error) {
+          console.error(JSON.stringify({ event: "production_curve_sync_unavailable", errorType: errorType(error) }));
+        }
       }
       try {
         await wait(delayMs, undefined, { signal: stopSignal.signal });

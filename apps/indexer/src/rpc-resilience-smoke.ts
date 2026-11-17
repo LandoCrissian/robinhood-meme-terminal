@@ -3,6 +3,7 @@ import { testCurveFixtureConfig } from "./curve-fixture-config-smoke.js";
 import { testFixtureNativeProof } from "./curve-fixture-native-proof-smoke.js";
 import { testFixturePostGraduation } from "./curve-fixture-post-graduation-smoke.js";
 import { testCurveLaunchEvidence } from "./curve-launch-evidence-smoke.js";
+import { testCurveProduction } from "./curve-production-smoke.js";
 import { createHistoryReadBudget } from "./history-read-budget.js";
 import { testHistoricalResilience } from "./historical-launches-smoke.js";
 import {
@@ -87,6 +88,7 @@ assert.equal(budget.acquire(), null);
 await testHistoricalResilience();
 await testCurveLaunchEvidence();
 await testCurveFixtureConfig();
+await testCurveProduction();
 testFixtureNativeProof();
 testFixturePostGraduation();
 console.info("RPC resilience smoke test passed");

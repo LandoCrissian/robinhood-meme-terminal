@@ -1,5 +1,11 @@
 # Deployment and operations
 
+The Task 064 owner transaction page is published at [Operations Safe setup](https://owner-deployment-064--rmt-wallet-check-056-f911548d.netlify.app/owner-deployment.html) on the existing isolated Netlify project. Access credentials stay outside Git. Its tab session persists through reload. It reads current wallet fees and requires explicit approval of the displayed maximum before a MetaMask transaction request. A fresh check retains the exact approved fee fields while current requirements fit them. Each signature and broadcast belongs to the owner. The page saves the original request before calling the wallet and recovers receipts without resubmission. Reserve remains locked pending independent Operations verification.
+
+After each owner transaction, verify the exact canonical receipt with the existing `verifySafeCreation` or deployment verifier before preparing the next dependent transaction. Use the checksum-pinned transformed 4663 compiler input for protocol constructors. The Directory enforces its real two-day factory-publication notice. The separate migration-template admission has its own notice. No deployment transaction creates the RMT token.
+
+The new production registration adapter shares the existing Railway process, writer lease and read authentication. It requires actual canonical factory/registry deployment and runtime bindings through `RMT_CURVE_PRODUCTION_BINDING`. Its three namespaced tables are installed after verifying a current recoverable backup. Runtime performs no schema DDL. Missing configuration preserves historical discovery and reports the new engine as undeployed. This adapter publishes verified creations with L2 evidence and explicit unverified L1/payment/refund states. Full production lifecycle and frontend activation follow the actual deployed bindings and acceptance.
+
 ## Environments
 
 | Environment | Purpose |
