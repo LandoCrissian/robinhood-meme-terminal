@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import dynamic from "next/dynamic";
 import {
   creationReviewPath, emptyLaunchDraft, launchDraftLimits, projectTreasuryShareUnit, readStoredLaunchDraft,
   restoreLegacyLaunchDraft, reviewableFields, treasuryProjectPercent, validateLaunchDraft,
@@ -10,6 +11,9 @@ import { proposedCurveLifecycle } from "../../lib/curve-lifecycle";
 import { launchTerms, launchTokenDecimals, launchTokenSupply } from "../../lib/launch-terms";
 import { TestCreationWallet } from "./test-creation-wallet";
 import { TokenArtwork } from "./token-artwork";
+
+// The read-only build never mounts or loads the production wallet controller.
+const ProductionCreationWallet = dynamic(() => import("./production-creation-wallet").then((module) => module.ProductionCreationWallet), { ssr: false });
 
 const storageKey = "rmt:new-engine:creation-draft:v2";
 const legacyStorageKey = "rmt:new-engine:creation-draft:v1";
@@ -29,13 +33,14 @@ const number = new Intl.NumberFormat("en-US");
 const percent = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const fieldId = (field: LaunchDraftField) => "draft-" + field;
 
-function DraftTerms({ draft }: { draft?: ReviewedLaunchDraft }) {
+function DraftTerms({ draft, production }: { draft?: ReviewedLaunchDraft; production?: { operating: string; reserve: string } }) {
   return <section className="lpPanel lpForm" aria-label="Provisional launch terms">
-    <h2>Provisional launch terms</h2>
+    <h2>{production ? "Launch terms" : "Provisional launch terms"}</h2>
     <dl className="lpFacts">
       <dt>Creation fee</dt><dd>{launchTerms.creationFeeEth} ETH, plus network gas</dd>
       <dt>Illustrative value</dt><dd>About $1 at a fixed $2,500 per ETH reference</dd>
-      <dt>Creation fee recipient</dt><dd>RMT operations · production address pending approval</dd>
+      <dt>Creation fee recipient</dt><dd>{production ? <code className="lpAddress">{production.operating}</code> : "RMT operations · production address pending approval"}</dd>
+      {production && <><dt>Future reserve recipient</dt><dd><code className="lpAddress">{production.reserve}</code></dd></>}
       <dt>Creator token allocation</dt><dd>0 tokens</dd>
       <dt>Opening curve inventory</dt><dd>{number.format(launchTokenSupply)} tokens</dd>
       <dt>Opening real reserve</dt><dd>0 ETH · creators supply no liquidity</dd>
@@ -48,15 +53,17 @@ function DraftTerms({ draft }: { draft?: ReviewedLaunchDraft }) {
       </dd>
       <dt>Treasury share of project fees</dt><dd>{treasuryProjectPercent(draft?.treasuryShareBps ?? 0)}</dd>
       <dt>Rewards after graduation</dt><dd>Same recipients for ETH and token fees collected from the original locked position</dd>
-      <dt>Graduation target</dt><dd>{number.format(launchTokenSupply * launchTerms.curveAllocationPercent / 100)} tokens net sold ({launchTerms.curveAllocationPercent}%) and {launchTerms.graduationBackingEth} ETH of real backing in the review fixture</dd>
+      <dt>Graduation target</dt><dd>{number.format(launchTokenSupply * launchTerms.curveAllocationPercent / 100)} tokens net sold ({launchTerms.curveAllocationPercent}%) and {launchTerms.graduationBackingEth} ETH of real backing{production ? "" : " in the review fixture"}</dd>
       <dt>Original v4 position</dt><dd>{number.format(launchTokenSupply * launchTerms.liquidityAllocationPercent / 100)} tokens available before rounding ({launchTerms.liquidityAllocationPercent}%) · permanently locked principal</dd>
       <dt>v4 pool fee</dt><dd>{launchTerms.graduationPoolFeePercent}% · project earnings depend on fees earned by the locked position</dd>
     </dl>
-    <p>At the target, the reviewed engine permits a separate graduation transaction. Production terms require approval.</p>
+    <p>At the target, the reviewed engine permits a separate graduation transaction.{production ? " Trading and claims require their own activation acceptance." : " Production terms require approval."}</p>
   </section>;
 }
 
-export function CreatorDraft({ executionTest }: { executionTest?: { factory: string } }) {
+export function CreatorDraft({ executionTest, productionCreation }: {
+  executionTest?: { factory: string }; productionCreation?: { factory: string; operating: string; reserve: string };
+}) {
   const [draft, setDraft] = useState<LaunchDraft>(emptyLaunchDraft);
   const [restored, setRestored] = useState(false);
   const [reviewed, setReviewed] = useState<ReviewedLaunchDraft>();
@@ -254,12 +261,14 @@ export function CreatorDraft({ executionTest }: { executionTest?: { factory: str
       <p>Drafts are saved in this browser. Review sends the launch fields and fee choices for validation. Your description and artwork URL stay here.</p>
     </form>;
   return <div className="lpColumns">
-    {executionTest ? <div className="lpStack">
+    {executionTest || productionCreation ? <div className="lpStack">
       {draftPanel}
-      <TestCreationWallet factory={executionTest.factory}
+      {executionTest ? <TestCreationWallet factory={executionTest.factory}
         draft={reviewed}
         isCurrentDraft={(value) => value === currentDraft.current} />
+        : productionCreation && <ProductionCreationWallet factory={productionCreation.factory} draft={reviewed}
+          isCurrentDraft={(value) => value === currentDraft.current} />}
     </div> : draftPanel}
-    <DraftTerms draft={reviewed} />
+    <DraftTerms draft={reviewed} production={productionCreation} />
   </div>;
 }

@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 1,
+  "scope": "READ_ONLY_4663_PROTOCOL_CREATE_RECEIPT",
+  "chainId": 4663,
+  "id": "directory",
+  "contract": "RMTLaunchCurveDirectoryV2",
+  "expectedAddress": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+  "transactionHash": "0x3b218065370edc0e43190cb662a3ab576de19348fd6489e1ed5e4fd7e8149b34",
+  "planSha256": "c333d4f60e4815fb86a719a5678da91b5331635213f8026bd7d6bc3fdfdd43d8",
+  "initcodeHash": "0x8dc67390ae8f34d293894cec0067c9a053dcfbb7cf3ca09d4d5b9b077b9f336c",
+  "runtimeHash": "0x9534a4223eb7e50e2387a7e5486e256416b468980436852ce1a91624904e8735",
+  "archiveProvider": "pocket",
+  "canonicalProviders": [
+    "official",
+    "pocket"
+  ],
+  "finality": "L1_UNVERIFIED",
+  "broadcastAuthorized": false,
+  "status": "L2_DEPLOYMENT_VERIFIED",
+  "observedAt": "2026-11-17T19:07:54.390Z",
+  "receiptBlock": "116811205",
+  "blockHash": "0x4cd010ee14fa5f64d82a24e59c42c09558df703af6be0cea21f5cbde640c34c8",
+  "transaction": {
+    "transactionHash": "0x3b218065370edc0e43190cb662a3ab576de19348fd6489e1ed5e4fd7e8149b34",
+    "blockHash": "0x4cd010ee14fa5f64d82a24e59c42c09558df703af6be0cea21f5cbde640c34c8",
+    "blockNumber": "116811205",
+    "status": "success",
+    "gasLimit": "2995107",
+    "gasUsed": "2376060",
+    "effectiveGasPriceWei": "20000000",
+    "maxFeePerGasWei": "40044000",
+    "maxPriorityFeePerGasWei": "0"
+  },
+  "archiveRuntime": {
+    "address": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+    "runtimeHash": "0x9534a4223eb7e50e2387a7e5486e256416b468980436852ce1a91624904e8735",
+    "runtimeBytes": 10290
+  },
+  "initialState": {
+    "signerA": "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+    "signerB": "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+    "signerC": "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697",
+    "signerSetEpoch": "1",
+    "nonce": "0",
+    "rotationNonce": "0",
+    "publicationDelay": "172800",
+    "executionWindow": "604800",
+    "latestVersion": "0",
+    "suspended": false,
+    "pending": [
+      "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "0",
+      "0"
+    ],
+    "pendingRotation": [
+      "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "0",
+      "0"
+    ]
+  },
+  "archiveChildren": [],
+  "current": [
+    {
+      "provider": "official",
+      "block": {
+        "number": "116811589",
+        "hash": "0x2655922660cb2b7e4eabb844c1439373ede0a29800c3473a880e9fde29db7c36",
+        "timestamp": "1794942469"
+      },
+      "deployed": {
+        "address": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+        "runtimeHash": "0x9534a4223eb7e50e2387a7e5486e256416b468980436852ce1a91624904e8735",
+        "runtimeBytes": 10290
+      },
+      "state": {
+        "signerA": "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+        "signerB": "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+        "signerC": "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697",
+        "signerSetEpoch": "1",
+        "nonce": "0",
+        "rotationNonce": "0",
+        "publicationDelay": "172800",
+        "executionWindow": "604800",
+        "latestVersion": "0",
+        "suspended": false,
+        "pending": [
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "0",
+          "0"
+        ],
+        "pendingRotation": [
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "0",
+          "0"
+        ]
+      },
+      "children": []
+    },
+    {
+      "provider": "pocket",
+      "block": {
+        "number": "116811589",
+        "hash": "0x2655922660cb2b7e4eabb844c1439373ede0a29800c3473a880e9fde29db7c36",
+        "timestamp": "1794942469"
+      },
+      "deployed": {
+        "address": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+        "runtimeHash": "0x9534a4223eb7e50e2387a7e5486e256416b468980436852ce1a91624904e8735",
+        "runtimeBytes": 10290
+      },
+      "state": {
+        "signerA": "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+        "signerB": "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+        "signerC": "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697",
+        "signerSetEpoch": "1",
+        "nonce": "0",
+        "rotationNonce": "0",
+        "publicationDelay": "172800",
+        "executionWindow": "604800",
+        "latestVersion": "0",
+        "suspended": false,
+        "pending": [
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "0",
+          "0"
+        ],
+        "pendingRotation": [
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "0",
+          "0"
+        ]
+      },
+      "children": []
+    }
+  ],
+  "actualNetworkCostWei": "47521200000000",
+  "feeApprovalEvidence": "OWNER_WALLET_REVIEW_IS_SEPARATE_FROM_THIS_UNSIGNED_PACKET",
+  "sourceVerification": {
+    "observedAt": "2026-11-17T19:12:36.507Z",
+    "chainId": 4663,
+    "address": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+    "contract": "RMTLaunchCurveDirectoryV2",
+    "compiler": "v0.8.26+commit.8a97fa7a",
+    "compilerInputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+    "sourceSha256": "0bb4beb821652d079620050c228783647d865da6a05da4df1628cc84ca3c1531",
+    "constructorArguments": "0x000000000000000000000000c447a378cfd8460febc2eef67501d7a5473b9001000000000000000000000000c3600f2df60929d2ab9ab294cff42eedcb984f510000000000000000000000002bcc3fafce77ccc7fdbed46e0b5bb80ba3e76697",
+    "runtimeKeccak256": "0x9534a4223eb7e50e2387a7e5486e256416b468980436852ce1a91624904e8735",
+    "status": "FULLY_VERIFIED_SOURCE_AND_RUNTIME_MATCH",
+    "isFullyVerified": true,
+    "isPartiallyVerified": false,
+    "verifiedAt": "2026-11-17T19:11:35.762193Z",
+    "verificationFlags": {
+      "viaSourcify": false,
+      "viaBytecodeDb": false,
+      "viaAlliance": false
+    },
+    "legacyJobResponse": {
+      "message": "OK",
+      "result": "Fail - Unable to verify",
+      "status": "1"
+    },
+    "legacyStatusLimitation": "Legacy verification GUID reports failure while canonical contract metadata is fully verified. Preserve both; full source, compiler, constructor arguments and runtime independently match.",
+    "explorer": "https://robinhoodchain.blockscout.com/address/0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C?tab=contract",
+    "securityAuditClaim": false,
+    "broadcastAuthorized": false
+  },
+  "ownerReportedHash": true,
+  "physicalDeviceAttestation": false
+}

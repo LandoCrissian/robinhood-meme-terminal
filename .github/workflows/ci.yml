@@ -27,6 +27,9 @@ jobs:
       - run: pnpm test:release-evidence
       - run: pnpm test:production-readiness
       - run: pnpm test:protocol-continuation
+      - run: pnpm test:constructor-readiness
+      - run: pnpm test:governance-publication
+      - run: pnpm test:governance-transaction
       - run: pnpm test:release-policy
       - run: pnpm probe:production-readiness --fixture --output "$RUNNER_TEMP/readiness-fixture.json"
 

@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 1,
+  "chainId": 4663,
+  "observedAt": "2026-11-17T20:38:23.951Z",
+  "compilerInputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+  "accepted": [
+    {
+      "id": "directory",
+      "observedAt": "2026-11-17T19:12:36.507Z",
+      "chainId": 4663,
+      "address": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+      "contract": "RMTLaunchCurveDirectoryV2",
+      "compiler": "v0.8.26+commit.8a97fa7a",
+      "compilerInputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+      "sourceSha256": "0bb4beb821652d079620050c228783647d865da6a05da4df1628cc84ca3c1531",
+      "constructorArguments": "0x000000000000000000000000c447a378cfd8460febc2eef67501d7a5473b9001000000000000000000000000c3600f2df60929d2ab9ab294cff42eedcb984f510000000000000000000000002bcc3fafce77ccc7fdbed46e0b5bb80ba3e76697",
+      "runtimeKeccak256": "0x9534a4223eb7e50e2387a7e5486e256416b468980436852ce1a91624904e8735",
+      "status": "FULLY_VERIFIED_SOURCE_AND_RUNTIME_MATCH",
+      "isFullyVerified": true,
+      "isPartiallyVerified": false,
+      "verifiedAt": "2026-11-17T19:11:35.762193Z",
+      "verificationFlags": {
+        "viaSourcify": false,
+        "viaBytecodeDb": false,
+        "viaAlliance": false
+      },
+      "legacyJobResponse": {
+        "message": "OK",
+        "result": "Fail - Unable to verify",
+        "status": "1"
+      },
+      "legacyStatusLimitation": "Legacy verification GUID reports failure while canonical contract metadata is fully verified. Preserve both; full source, compiler, constructor arguments and runtime independently match.",
+      "explorer": "https://robinhoodchain.blockscout.com/address/0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C?tab=contract",
+      "securityAuditClaim": false,
+      "broadcastAuthorized": false
+    },
+    {
+      "id": "registry",
+      "observedAt": "2026-11-17T19:24:24.755Z",
+      "chainId": 4663,
+      "address": "0xf1113714Dda31f31532995D2525e034271425398",
+      "contract": "RMTLaunchProjectRegistryV3",
+      "compiler": "v0.8.26+commit.8a97fa7a",
+      "compilerInputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+      "sourceSha256": "8c92270751788af7acdbd6b4c18a4d0d5fbb399a876d974d55807489516e388c",
+      "constructorArguments": "0x000000000000000000000000e677a69a8124714dd0d88b73bdf1b89cc791ca9c",
+      "runtimeKeccak256": "0xd1b4756bcdabb6a8ee04c827b5a6a76079bedc996df39b76dffa24269a61f644",
+      "initcodeKeccak256": "0xb8521e681298045055d5cd3d05f526248b9cfca71ef808733faa32a228940c1d",
+      "status": "FULLY_VERIFIED_SOURCE_AND_RUNTIME_MATCH",
+      "isFullyVerified": true,
+      "isPartiallyVerified": false,
+      "verifiedAt": "2026-11-17T19:23:58.774595Z",
+      "optimization": {
+        "enabled": true,
+        "runs": 200,
+        "viaIR": true,
+        "evmVersion": "cancun"
+      },
+      "additionalSourcesChecked": 17,
+      "legacyJobResponse": {
+        "message": "OK",
+        "result": "Fail - Unable to verify",
+        "status": "1"
+      },
+      "legacyStatusLimitation": "Preserve the legacy job response separately; full canonical contract metadata, compiler, source, constructor arguments, initcode and runtime are independently matched.",
+      "explorer": "https://robinhoodchain.blockscout.com/address/0xf1113714Dda31f31532995D2525e034271425398?tab=contract",
+      "securityAuditClaim": false,
+      "broadcastAuthorized": false
+    },
+    {
+      "id": "successor-v2",
+      "observedAt": "2026-11-17T19:30:17.197Z",
+      "chainId": 4663,
+      "address": "0xcB25a3DF74729F7104C4f924Cb04F687F69391C6",
+      "contract": "RMTLaunchCurveSuccessorDeployerV1",
+      "compiler": "v0.8.26+commit.8a97fa7a",
+      "compilerInputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+      "sourceSha256": "ced2dd6ef8999c52f3f05c9d8a28124a665ebeac7e2696ebe75592ecafafdbb5",
+      "constructorArguments": "0x",
+      "reportedConstructorArguments": null,
+      "runtimeKeccak256": "0xc0894c78000f427a4a1c5b1ef9774dea3dcc53c93be42cdd196ef4b072bff0be",
+      "initcodeKeccak256": "0xef8c62038760eadaa5e7cf985febe23f9444e80710fbb3b30f5cf13d6513f3fa",
+      "status": "FULLY_VERIFIED_SOURCE_AND_RUNTIME_MATCH",
+      "isFullyVerified": true,
+      "isPartiallyVerified": false,
+      "verifiedAt": "2026-11-17T19:29:52.471708Z",
+      "optimization": {
+        "enabled": true,
+        "runs": 200,
+        "viaIR": true,
+        "evmVersion": "cancun"
+      },
+      "additionalSourcesChecked": 16,
+      "legacyJobResponse": {
+        "message": "OK",
+        "result": "Fail - Unable to verify",
+        "status": "1"
+      },
+      "legacyStatusLimitation": "Preserve the legacy job response separately; full canonical contract metadata, compiler, source, constructor arguments, initcode and runtime are independently matched.",
+      "explorer": "https://robinhoodchain.blockscout.com/address/0xcB25a3DF74729F7104C4f924Cb04F687F69391C6?tab=contract",
+      "securityAuditClaim": false,
+      "broadcastAuthorized": false
+    },
+    {
+      "id": "successor-v3",
+      "observedAt": "2026-11-17T20:33:01.576Z",
+      "chainId": 4663,
+      "address": "0x622D2f878B328406861DA18F4BBdD27E4730Cb65",
+      "contract": "RMTLaunchCurveSuccessorDeployerV2",
+      "compiler": "v0.8.26+commit.8a97fa7a",
+      "compilerInputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+      "sourceSha256": "5c5e13be8e978545c54771a27e6315315eb7e411f4f190daf01d9c397818fc93",
+      "constructorArguments": "0x",
+      "reportedConstructorArguments": null,
+      "runtimeKeccak256": "0x07efd03ff4ec2028d176deb6bfde1b77e3d5fd4d32c69851b59e7d78b1ac7fc9",
+      "initcodeKeccak256": "0x5492ddda03a48dd5718830b01043bfbfd5ea1862e2d2f370851d41a5840914e8",
+      "status": "FULLY_VERIFIED_SOURCE_AND_RUNTIME_MATCH",
+      "isFullyVerified": true,
+      "isPartiallyVerified": false,
+      "verifiedAt": "2026-11-17T20:31:53.290109Z",
+      "optimization": {
+        "enabled": true,
+        "runs": 200,
+        "viaIR": true,
+        "evmVersion": "cancun"
+      },
+      "additionalSourcesChecked": 0,
+      "legacyJobResponse": null,
+      "legacyStatusLimitation": "Preserve the legacy job response separately; full canonical contract metadata, compiler, source, constructor arguments, initcode and runtime are independently matched.",
+      "explorer": "https://robinhoodchain.blockscout.com/address/0x622D2f878B328406861DA18F4BBdD27E4730Cb65?tab=contract",
+      "securityAuditClaim": false,
+      "broadcastAuthorized": false
+    }
+  ],
+  "pending": [
+    "bootstrap",
+    "bootstrap-guard",
+    "bootstrap-engine",
+    "bootstrap-factory"
+  ],
+  "latestSubmissions": [
+    {
+      "id": "bootstrap",
+      "observedAt": "2026-11-17T20:33:28.811Z",
+      "httpStatus": 200,
+      "state": "VERIFICATION_STARTED_NOT_YET_ACCEPTED"
+    },
+    {
+      "id": "bootstrap-guard",
+      "observedAt": "2026-11-17T20:37:15.167Z",
+      "httpStatus": 429,
+      "retryAfter": null,
+      "state": "RATE_LIMITED_NO_FURTHER_POSTS"
+    }
+  ],
+  "paidAccountOrRateLimitBypass": false,
+  "sourceVerificationIsAudit": false,
+  "priorSourceEvidenceHashUnchanged": "bb08d7bc16b195ab92ed27ec30cd31751e17fa11bce7857ccc5008b933d264c5"
+}

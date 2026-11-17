@@ -87,23 +87,36 @@ export async function prepareTestCreation(fixture: CurveFixture, body: Record<st
   return reply({ status: "prepared", request, payouts: { operating, reserve, treasuryKind } });
 }
 
-export async function verifyTestCreation(fixture: CurveFixture, body: Record<string, unknown>, includeCurve = false) {
-  const request = preparedRequest(fixture, body.request);
-  if (!request || (body.transactionHash !== undefined && !fixtureHash(body.transactionHash))) return reply({ status: "invalid" }, 422);
-  const rpc = fixtureRpc(fixture);
-  const head = await verifyCurveFixture(fixture, rpc);
-  let hash = body.transactionHash as Hex | undefined;
+// The local wrapper retains its exact chain-31337 manifest/request validation.
+// This shared read-only receipt verifier does not select or enable a network.
+export async function verifyCanonicalCurveCreation(options: {
+  deployment: Pick<CurveFixture, "factory" | "registry" | "deploymentBlock" | "feeRecipient">;
+  chainId: 31337 | 4663;
+  request: TestCreationRequest | import("../production-creation").ProductionCreationRequest;
+  transactionHash?: Hex;
+  rpc: ReturnType<typeof fixtureRpc>;
+  head: Awaited<ReturnType<ReturnType<typeof fixtureRpc>["getBlock"]>>;
+  readIndexed(token: string, transactionHash: Hex, blockHash: Hex, logIndex: number): Promise<boolean>;
+  includeCurve?: boolean;
+}) {
+  const { deployment: fixture, chainId, request, transactionHash, rpc, head, readIndexed, includeCurve } = options;
+  if (head.number === null || !head.hash) return unavailable();
+  let hash = transactionHash;
   if (!hash) {
     const token = await rpc.readContract({ address: fixture.factory, abi: factoryAbi, functionName: "tokenForIntent", args: [request.from, request.intentId] });
     if (sameHex(token, zeroAddress)) return head.timestamp > BigInt(request.deadline) ? unavailable() : reply({ status: "pending" });
-    const fromBlock = head.number - fixture.deploymentBlock < recoveryRange ? fixture.deploymentBlock : head.number - recoveryRange;
-    const logs = await rpc.getLogs({ address: fixture.factory, event: created, args: { token, creator: request.from }, fromBlock, toBlock: head.number });
+    const fromBlock = chainId === 31337
+      ? (head.number - fixture.deploymentBlock < recoveryRange ? fixture.deploymentBlock : head.number - recoveryRange)
+      : BigInt(request.blockNumber);
+    const toBlock = chainId === 31337 || head.number <= fromBlock + 4096n ? head.number : fromBlock + 4096n;
+    const logs = await rpc.getLogs({ address: fixture.factory, event: created, args: { token, creator: request.from }, fromBlock, toBlock });
     if (logs.length !== 1 || logs[0].removed || !fixtureHash(logs[0].transactionHash)) return unavailable();
     hash = logs[0].transactionHash;
   }
   const tx = await rpc.getTransaction({ hash });
   if (!sameHex(tx.hash, hash) || !sameHex(tx.from, request.from) || !sameHex(tx.to, request.to) || !sameHex(tx.input, request.data)
-      || tx.value !== fixtureCreationFee || tx.chainId !== 31337) return unavailable();
+      || tx.value !== fixtureCreationFee || tx.chainId !== chainId
+      || ("nonce" in request && BigInt(tx.nonce) !== BigInt(request.nonce))) return unavailable();
   if (tx.blockNumber === null) return reply({ status: "pending", transactionHash: hash });
   const receipt = await rpc.getTransactionReceipt({ hash });
   const block = await rpc.getBlock({ blockNumber: receipt.blockNumber });
@@ -139,6 +152,17 @@ export async function verifyTestCreation(fixture: CurveFixture, body: Record<str
       || fee.fee !== fixtureCreationFee || fee.refund !== 0n
       || project.args.version !== 1 || !sameHex(project.args.token, c.token) || !sameHex(project.args.factory, fixture.factory) || !sameHex(project.args.curve, c.curve)
       || project.logIndex >= creation.logIndex || creation.logIndex >= charge.logIndex) return unavailable();
+  if (chainId === 4663) {
+    // Block-close balances can include another user's later trade. The exact
+    // creation receipt establishes mint/inventory without inventing a zero
+    // current reserve or rejecting a valid registration after same-block trades.
+    const transfers = parseEventLogs({ abi: erc20Abi, eventName: "Transfer", logs: receipt.logs.filter((log) => sameHex(log.address, c.token)), strict: true });
+    if (transfers.length !== 2 || !sameHex(transfers[0].args.from, zeroAddress)
+        || !sameHex(transfers[0].args.to, fixture.factory) || transfers[0].args.value !== launchTokenSupplyWei
+        || !sameHex(transfers[1].args.from, fixture.factory) || !sameHex(transfers[1].args.to, c.curve)
+        || transfers[1].args.value !== launchTokenSupplyWei || transfers[0].logIndex >= transfers[1].logIndex
+        || transfers[1].logIndex >= project.logIndex) return unavailable();
+  }
 
   const at = { blockNumber: receipt.blockNumber };
   const curve = { address: c.curve, abi: curveAbi, ...at } as const;
@@ -157,15 +181,27 @@ export async function verifyTestCreation(fixture: CurveFixture, body: Record<str
   ]);
   if (!sameHex(bound, c.curve) || !sameHex(curveFactory, fixture.factory) || !sameHex(curveToken, c.token) || !sameHex(creator, request.from)
       || !sameHex(curveTreasury, treasury) || curveShare !== share || !fixtureAddress(revenueLedger) || !sameHex(revenueLedger, c.revenueLedger)
-      || [curveSupply, tokenSupply, fixedSupply, inventory].some((amount) => amount !== launchTokenSupplyWei)
+      || [curveSupply, tokenSupply, fixedSupply].some((amount) => amount !== launchTokenSupplyWei)
       || decimals !== launchTokenDecimals || tokenName !== name || tokenSymbol !== symbol
-      || sold !== 0n || backing !== 0n || target !== 2n * 10n ** 18n) return unavailable();
-  const discovery = await readFixtureLaunches(fixture, c.token);
-  const indexed = discovery.status === "ready" && discovery.launches.some((launch) => sameHex(launch.creation.transactionHash, hash)
-    && sameHex(launch.creation.blockHash, receipt.blockHash) && launch.creation.logIndex === creation.logIndex);
+      || target !== 2n * 10n ** 18n
+      || (chainId === 31337 && (inventory !== launchTokenSupplyWei || sold !== 0n || backing !== 0n))) return unavailable();
+  const indexed = await readIndexed(c.token, hash, receipt.blockHash, creation.logIndex);
   const canonical = await rpc.getBlock({ blockNumber: receipt.blockNumber });
   if (!sameHex(canonical.hash, receipt.blockHash)) return unavailable();
   return reply({ status: "confirmed", transactionHash: hash, token: c.token, indexed, ...(includeCurve && { curve: c.curve }) });
+}
+
+export async function verifyTestCreation(fixture: CurveFixture, body: Record<string, unknown>, includeCurve = false) {
+  const request = preparedRequest(fixture, body.request);
+  if (!request || (body.transactionHash !== undefined && !fixtureHash(body.transactionHash))) return reply({ status: "invalid" }, 422);
+  const rpc = fixtureRpc(fixture);
+  const head = await verifyCurveFixture(fixture, rpc);
+  return verifyCanonicalCurveCreation({ deployment: fixture, chainId: 31337, request, transactionHash: body.transactionHash as Hex | undefined,
+    rpc, head, includeCurve, readIndexed: async (token, transactionHash, blockHash, logIndex) => {
+      const discovery = await readFixtureLaunches(fixture, token);
+      return discovery.status === "ready" && discovery.launches.some((launch) => sameHex(launch.creation.transactionHash, transactionHash)
+        && sameHex(launch.creation.blockHash, blockHash) && launch.creation.logIndex === logIndex);
+    } });
 }
 
 export async function handleTestCreation(request: Request) {

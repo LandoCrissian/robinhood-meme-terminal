@@ -1,0 +1,88 @@
+{
+  "observedAt": "2026-11-17T18:59:54.236Z",
+  "endpoint": "https://owner-protocol-066--rmt-wallet-check-056-f911548d.netlify.app/protocol-deployment.html",
+  "sourceCommit": "10b33444401d61317a98b4b589f0487ff1bafbfa",
+  "htmlSha256": "962453724afe1fa167a073754d44c0fc3c5c6c20b95c214fdd599a5279bc6110",
+  "status": 200,
+  "headers": {
+    "cache-control": "no-store",
+    "x-frame-options": "DENY",
+    "referrer-policy": "no-referrer",
+    "x-robots-tag": "noindex, nofollow",
+    "content-security-policy": "frame-ancestors 'none'"
+  },
+  "results": [
+    {
+      "browser": "chromium",
+      "portrait": true,
+      "landscape": true,
+      "reloadAccess": true,
+      "walletConnection": "MOCKED_ACCOUNT_ONLY",
+      "rpcReads": "ACTUAL_PUBLIC_OFFICIAL_RPC",
+      "callCount": 82,
+      "methods": [
+        "eth_requestAccounts",
+        "eth_accounts",
+        "eth_chainId",
+        "eth_getBlockByNumber",
+        "eth_getTransactionReceipt",
+        "eth_getTransactionByHash",
+        "eth_getCode",
+        "eth_call",
+        "eth_getTransactionCount",
+        "eth_getBalance",
+        "eth_estimateGas",
+        "eth_maxPriorityFeePerGas",
+        "eth_gasPrice"
+      ],
+      "facts": "Sender\n0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA\nAction\nDeploy RMTLaunchCurveDirectoryV2\nValue\n0 ETH\nExpected contract\n0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C\nNonce\n478\nNetwork estimate\n0.00004809901029 ETH\nMaximum network cost\n0.000120247555836 ETH\nIncluded L1 posting estimate\n0 ETH\nGas limit\n2995107\nMaximum fee per gas\n40148000 wei\nPriority fee per gas\n0 wei\nCalldata hash\n0x8dc67390ae8f34d293894cec0067c9a053dcfbb7cf3ca09d4d5b9b077b9f336c\nOwners\n0xC447A378cFd8460Febc2eef67501D7a5473B9001 ; 0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51 ; 0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697\nApprovals\n2 of 3",
+      "pageErrors": [],
+      "signatures": 0,
+      "submissions": 0
+    },
+    {
+      "browser": "webkit",
+      "portrait": true,
+      "landscape": true,
+      "reloadAccess": true,
+      "walletConnection": "MOCKED_ACCOUNT_ONLY",
+      "rpcReads": "ACTUAL_PUBLIC_OFFICIAL_RPC",
+      "callCount": 82,
+      "methods": [
+        "eth_requestAccounts",
+        "eth_accounts",
+        "eth_chainId",
+        "eth_getBlockByNumber",
+        "eth_getTransactionReceipt",
+        "eth_getTransactionByHash",
+        "eth_getCode",
+        "eth_call",
+        "eth_getTransactionCount",
+        "eth_getBalance",
+        "eth_estimateGas",
+        "eth_maxPriorityFeePerGas",
+        "eth_gasPrice"
+      ],
+      "facts": "Sender\n0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA\nAction\nDeploy RMTLaunchCurveDirectoryV2\nValue\n0 ETH\nExpected contract\n0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C\nNonce\n478\nNetwork estimate\n0.00004796482953 ETH\nMaximum network cost\n0.000119912103852 ETH\nIncluded L1 posting estimate\n0 ETH\nGas limit\n2995107\nMaximum fee per gas\n40036000 wei\nPriority fee per gas\n0 wei\nCalldata hash\n0x8dc67390ae8f34d293894cec0067c9a053dcfbb7cf3ca09d4d5b9b077b9f336c\nOwners\n0xC447A378cFd8460Febc2eef67501D7a5473B9001 ; 0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51 ; 0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697\nApprovals\n2 of 3\n",
+      "pageErrors": [],
+      "signatures": 0,
+      "submissions": 0
+    }
+  ],
+  "physicalIPhoneAcceptance": false,
+  "scope": "OWNER_CONTROLLED_DIRECTORY_CREATE_ONLY",
+  "chainId": 4663,
+  "expectedAddress": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+  "nonce": "478",
+  "transactionHash": null,
+  "contractDeploymentStatus": "UNDEPLOYED_AWAITING_OWNER_CONFIRMATION",
+  "netlify": {
+    "siteId": "00f130a0-025d-4bd4-bd29-dab543edd1a7",
+    "deployId": "6afca3d04cca87bf4aabf77b",
+    "alias": "owner-protocol-066"
+  },
+  "accessCodeInRepository": false,
+  "productionWebsiteChanged": false,
+  "automaticSigning": false,
+  "automaticBroadcast": false
+}

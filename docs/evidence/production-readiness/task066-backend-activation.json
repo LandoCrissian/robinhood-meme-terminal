@@ -1,0 +1,478 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-17T20:29:09.853Z",
+  "status": "EXISTING_RAILWAY_READ_ONLY_NEW_ENGINE_INDEXING_ACTIVE",
+  "resources": {
+    "project": "robust-ambition",
+    "projectId": "19587a6e-6f02-4cfa-b7db-f308934f697b",
+    "environmentId": "539a42da-fb60-420f-b9fa-8c29af25ebbe",
+    "workerServiceId": "27b1aa2c-77e5-4ed4-91a1-1951d68c488e",
+    "postgresServiceId": "a1ef7853-e21a-401e-87c9-c99002228507",
+    "volumeId": "bf6e7ddc-3be6-4ba7-ad53-8e7010e76c86",
+    "publicPostgresProxy": false,
+    "originalVolumeResizedOrReplaced": false
+  },
+  "deployment": {
+    "sourceCommit": "1ba67b6fdb1ebfe927876893e0fc086d7fab939a",
+    "indexerTree": "80f85f25ea63e72b7ae5f07787e9279b96945e35",
+    "deploymentId": "b48f0e6e-a34b-4a26-b95f-d4b978562282",
+    "status": "SUCCESS",
+    "successObservedAt": "2026-11-17T20:24:30.174Z",
+    "imageDigest": "sha256:610afd9efbab0d6ed72f55f49ca87a9cacae486826d1ee402d3a2efef53022f4",
+    "archiveSha256": "018c3a40734d334198ddb3a28f272da4e97fedee026fddf6917bcedeee42ae7c",
+    "archiveBytes": 8857600,
+    "hostedSourceConfigAndLockFilesMatched": 36,
+    "hostedFileSha256": {
+      "apps/indexer/package.json": "4161bd71b81f5ac01023218ea6a3e36fd264ba3fc4fbd9c85515582d8ee37e7c",
+      "apps/indexer/railway.json": "9f6ad36cc16ff1866e4b29cb758ff7974b48bcaeb407d3cb5945ad904f5b41e1",
+      "apps/indexer/src/abi.ts": "f19e66b2c7e9bc13ffa28b0615fd3aa26f98b32b8a075dfc9b832e7283c82e43",
+      "apps/indexer/src/curve-fixture-config-smoke.ts": "c0c0ee88841dc39cad1f8d78236b1559838d4f4a4828214a7cd671187558f272",
+      "apps/indexer/src/curve-fixture-config.ts": "d0d014c244b61faf71cb131075e81b783dbda47a3a1cbb2bb75f4c75f7fb6cf3",
+      "apps/indexer/src/curve-fixture-lifecycle.ts": "46596ec65ae91cbecf96a652a934ff25e7ee747b8ca06d0c2ae4851b70b860d9",
+      "apps/indexer/src/curve-fixture-native-proof-smoke.ts": "ecabd5a7c8a6a4433ab56ff83dc3714f478be2504db028eecfe7c43e78feedfb",
+      "apps/indexer/src/curve-fixture-native-proof.ts": "f519f553eaa660d7c587fde865fc42a0fa30c700401c543be2837784e9439a9d",
+      "apps/indexer/src/curve-fixture-post-graduation-smoke.ts": "b93b60624c4d75a30b63f3580c06915bb5d6a0e1f8f8f40fb917ec5efe27deca",
+      "apps/indexer/src/curve-fixture-post-graduation.ts": "cd4ea2ceebbf7fb9cde1756193a806ec2b46e798d85b3ad20e140bd102b2d940",
+      "apps/indexer/src/curve-fixture-store.ts": "ee9669f215200036d28a3189e90bd7f0268850dff745ce97646fd4ee330bd355",
+      "apps/indexer/src/curve-fixture-worker.ts": "669d3bd85e553139d76961623bf2dd8af21b0c6c3b7c7305797dde1203e859b8",
+      "apps/indexer/src/curve-launch-evidence-smoke.ts": "58bc1c819e962458af17c639e11eb0a0bc0e88e85e4e35d7ed036c88305aeaab",
+      "apps/indexer/src/curve-launch-evidence.ts": "15ef604d93ff50942c906bc49ae87f2d63a3625731b57890a014f58d938afad3",
+      "apps/indexer/src/curve-production-config.ts": "1d8be0cf4b3fde7c544dae0adfc84b8cfc45be7fab196887299b1f8b9936472c",
+      "apps/indexer/src/curve-production-postgres-smoke.ts": "7205126bd586106112d2b2f82b5e5711bb7a8d6fd5b201aa29071ee562c51c40",
+      "apps/indexer/src/curve-production-smoke.ts": "a687b4a873b3163025317128f7730d3eb469be4e264d5ebee70b8de43cc1ebd1",
+      "apps/indexer/src/curve-production-store.ts": "fa09ad6f39498ea1b1a512b0f121b63a249c7e01d43fc9b99ed792d649eb4b14",
+      "apps/indexer/src/curve-production.ts": "990e601b6151ebbeaf453e4dd5be6043e91fa3cbb60549af65d65046aab8cd94",
+      "apps/indexer/src/historical-launches-smoke.ts": "4405fe034c86edd3dce6681a6df901a6402dfcfe06f63176d38c0f49d976f993",
+      "apps/indexer/src/historical-launches.ts": "f8d6d7db8a91898951db684f92f0b08c117e5b2d56ae478a6f7250420d0d5a86",
+      "apps/indexer/src/history-read-budget.ts": "1775fc08c601a3e8753d5817c4b3b629befd4e0dc4131901dcc92b6c85272a70",
+      "apps/indexer/src/index-store-smoke.ts": "0ca4242c0b21b3dddbc792a401286db6374dd54d11f7eb8c7963caa9c453c4a7",
+      "apps/indexer/src/index-store.ts": "3d21e1ddfd71287a68c139c19656fa451b19983bd472671936cbd4ff2b33d634",
+      "apps/indexer/src/index.ts": "c2ccf56952ad755cf1ef050788929de8bb8be699928db937417e1b8c50014f30",
+      "apps/indexer/src/launch-rows-query.ts": "7aafc3e54089222406a863ca27222c374ae99a7584082e46c58ddbf05e9d4e45",
+      "apps/indexer/src/rpc-config.ts": "3b111a14e8abc7a02ce872352fe5453a4835f286fe6f8dd27db38c80823a8779",
+      "apps/indexer/src/rpc-resilience-smoke.ts": "9c185f9bebf18d7536f854f848ba10d843bdd6405a5acf9c6d9a1f19cbd7242f",
+      "apps/indexer/src/rpc-resilience.ts": "c9e759042dcaa6b73926d6301b271a8b4322518b80d6b03b825c5f50a9f625e5",
+      "apps/indexer/src/schema-smoke.ts": "8f8fab68b1727b5e0e0338e5230b3d0dbe1a39188f74f8be7944bb456af5a367",
+      "apps/indexer/src/schema.ts": "ecf678ea3199a2f624a28e0fa92cbd14c1b685278885102ca5bb62b495759ef4",
+      "apps/indexer/src/worker-http-smoke.ts": "f8e68bb8c37b427e17253be9049280cf1a63ccf47ec6fc95ec62eec893959b38",
+      "apps/indexer/tsconfig.json": "48131c9cf3bd60183f4fbd42f8bb12c716a52e49978d8df5ab5d9573345125ef",
+      "package.json": "a18c58ec3f361db25669e839d9c538df804f3fb4c474251a52e615d00a80945c",
+      "pnpm-lock.yaml": "ff2c5411cc872af253f2bb6f755826ec10176b2a4b43bb12ddb38f0caa6c3f3d",
+      "pnpm-workspace.yaml": "2d096ce4e19b778739fa76e2eb29f56b9aacd2125782ab0ba6bb404c295ee678"
+    },
+    "buildCommand": "pnpm install --frozen-lockfile && pnpm --filter indexer build",
+    "buildResult": "PASS: pinned pnpm10.12.1 frozen installation and TypeScript build",
+    "manualArchiveOnly": true,
+    "workingTreeOrUntrackedFilesUploaded": false,
+    "originalGitHubSourceConfiguration": {
+      "repo": "LandoCrissian/robinhood-meme-terminal",
+      "branch": "main",
+      "changed": false,
+      "limitation": "The existing main GitHub integration remains configured. A later qualifying main push may replace this manual archive deployment; no automatic merge or source-branch change was performed."
+    }
+  },
+  "sourceIdentity": {
+    "profile": "rmt-curve-fixed-supply-security-v2",
+    "compilerInputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+    "evidenceFile": "task066-source-correspondence.json",
+    "evidenceSha256": "bb08d7bc16b195ab92ed27ec30cd31751e17fa11bce7857ccc5008b933d264c5",
+    "meaning": "Exact frozen compiler-source correspondence, canonical owner-signed constructor receipts and materialized runtime identities. This is not an independent security audit or a claim that pending explorer publication succeeded."
+  },
+  "binding": {
+    "schemaVersion": 1,
+    "chainId": 4663,
+    "profile": "rmt-curve-fixed-supply-security-v2",
+    "evidence": "CANONICAL_DEPLOYMENT_AND_SOURCE_VERIFIED",
+    "factory": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+    "projectRegistry": "0xf1113714Dda31f31532995D2525e034271425398",
+    "operatingRecipient": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+    "reserveRecipient": "0x8D44078642ce938Fd799b23087BcdD6114A302e5",
+    "deploymentBlock": "116835102",
+    "deploymentBlockHash": "0x4a72961fb6649c1690fe4cf361ae6a6fbbdab39117a85604e2a11ba4646c7639",
+    "deploymentTransactionHash": "0x9c9b3fe869b9fa8ee41684630a7e9807c07362a768b9a5c3b2b362db1498f73a",
+    "factoryRuntimeHash": "0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091",
+    "registryRuntimeHash": "0xd1b4756bcdabb6a8ee04c827b5a6a76079bedc996df39b76dffa24269a61f644",
+    "creationFeeWei": "400000000000000",
+    "confirmations": 20,
+    "sourceVerificationEvidenceSha256": "bb08d7bc16b195ab92ed27ec30cd31751e17fa11bce7857ccc5008b933d264c5"
+  },
+  "backup": {
+    "status": "VERIFIED_ENCRYPTED_BACKUP_AND_ISOLATED_RESTORE",
+    "exportedAt": "2026-11-17T19:49:35Z",
+    "verifiedAt": "2026-11-17T19:57:11.218Z",
+    "format": "pg_dump custom",
+    "clientVersion": "pg_restore (PostgreSQL) 18.6",
+    "archiveBytes": 55976168,
+    "archiveSha256": "b04f475cf8720feb56ecdbd39f88794cc516540547a92a995d9253c913b537a0",
+    "encryption": "AES-256-GCM",
+    "keyProtection": "Windows DPAPI CurrentUser; no key or database contents published",
+    "storage": "Encrypted owner-controlled local private storage outside Railway, Git and public hosting",
+    "offDeviceCopyVerified": false,
+    "archiveTocTableDataEntries": 9,
+    "indexDefinitionsMatched": 21,
+    "tableCounts": [
+      {
+        "table": "creator_payout_events",
+        "count": 0
+      },
+      {
+        "table": "fee_splitter_events",
+        "count": 222
+      },
+      {
+        "table": "graduation_fee_collections",
+        "count": 0
+      },
+      {
+        "table": "graduations",
+        "count": 0
+      },
+      {
+        "table": "indexer_state",
+        "count": 1
+      },
+      {
+        "table": "launches",
+        "count": 2
+      },
+      {
+        "table": "liquidity_migrations",
+        "count": 0
+      },
+      {
+        "table": "sync_points",
+        "count": 620648
+      },
+      {
+        "table": "trades",
+        "count": 74
+      }
+    ],
+    "chainId": 4663,
+    "checkpoint": 116835508,
+    "checkpointHash": "0x6ddc167064501c005e9b0c91d7c324c9f1b9007c015dab8969280aeb2f777f8c",
+    "sourceFactory": "0x8e75c57079a01ce2094bc4187b78710887547651",
+    "checkpointCorroborators": [
+      "official",
+      "pocket"
+    ],
+    "isolatedRestoreEndpoint": "127.0.0.1:60666",
+    "isolatedRestoreServerStopped": true,
+    "temporaryPlaintextRemoved": true,
+    "originalDatabaseRestored": false,
+    "originalTableWrites": false,
+    "earlierOptionalValidationFailure": "An unnecessary full-row checksum/sort query exceeded temporary volume capacity. PostgreSQL aborted its read-only transaction and cleaned the temporary files; /health, /ready and normal capacity were verified before a new bounded export. Failed ciphertext retained as unusable; the successful archive above is separate.",
+    "newBackupRequiredBeforeFutureSchemaChanges": true
+  },
+  "schemaInstallation": {
+    "status": "APPROVED_NAMESPACED_SCHEMA_INSTALLED_ORIGINAL_INDEXER_PRESERVED",
+    "observedAt": "2026-11-17T20:12:47.808Z",
+    "sqlSha256": "a174c05cc8f8706e904b106e8a2d56a2c7bb842082ad884bca003a49518eb8ce",
+    "originalTables": [
+      "creator_payout_events",
+      "fee_splitter_events",
+      "graduation_fee_collections",
+      "graduations",
+      "indexer_state",
+      "launches",
+      "liquidity_migrations",
+      "sync_points",
+      "trades"
+    ],
+    "newTables": [
+      "rmt_curve_production_bindings",
+      "rmt_curve_production_checkpoints",
+      "rmt_curve_production_launches"
+    ],
+    "newColumns": [
+      {
+        "table": "rmt_curve_production_bindings",
+        "column": "scope",
+        "type": "text"
+      },
+      {
+        "table": "rmt_curve_production_bindings",
+        "column": "identity",
+        "type": "jsonb"
+      },
+      {
+        "table": "rmt_curve_production_bindings",
+        "column": "next_block",
+        "type": "bigint"
+      },
+      {
+        "table": "rmt_curve_production_checkpoints",
+        "column": "scope",
+        "type": "text"
+      },
+      {
+        "table": "rmt_curve_production_checkpoints",
+        "column": "block_number",
+        "type": "bigint"
+      },
+      {
+        "table": "rmt_curve_production_checkpoints",
+        "column": "block_hash",
+        "type": "text"
+      },
+      {
+        "table": "rmt_curve_production_checkpoints",
+        "column": "observed_at",
+        "type": "timestamp with time zone"
+      },
+      {
+        "table": "rmt_curve_production_launches",
+        "column": "scope",
+        "type": "text"
+      },
+      {
+        "table": "rmt_curve_production_launches",
+        "column": "token",
+        "type": "text"
+      },
+      {
+        "table": "rmt_curve_production_launches",
+        "column": "transaction_hash",
+        "type": "text"
+      },
+      {
+        "table": "rmt_curve_production_launches",
+        "column": "log_index",
+        "type": "integer"
+      },
+      {
+        "table": "rmt_curve_production_launches",
+        "column": "block_number",
+        "type": "bigint"
+      },
+      {
+        "table": "rmt_curve_production_launches",
+        "column": "block_hash",
+        "type": "text"
+      },
+      {
+        "table": "rmt_curve_production_launches",
+        "column": "payload",
+        "type": "jsonb"
+      }
+    ],
+    "oldHistoricalSchemaAltered": false,
+    "volumeDeletedResizedOrReplaced": false
+  },
+  "recovery": {
+    "firstDeployment": "21a49533-362d-4172-8da5-a942ab519f03",
+    "firstResult": "Image build passed; initial readiness timed out while bounded new-namespace catch-up was incomplete.",
+    "originalWriterStop": "Authorized controlled handoff, never disabled the advisory lease or readiness checks.",
+    "beforeSameImageResume": {
+      "observedAt": "2026-11-17T20:21:09.358Z",
+      "writerLeases": 0,
+      "newNextBlock": 116847102,
+      "newCheckpoint": 116847101
+    },
+    "resumeMethod": "deploymentRedeploy(firstDeployment,usePreviousImageTag:true); no GitHub source pull, rebuild, interval change or new service",
+    "afterResume": {
+      "observedAt": "2026-11-17T20:22:48.698Z",
+      "writerLeases": 1,
+      "newNextBlock": 116851102,
+      "newCheckpoint": 116851101
+    },
+    "stable": {
+      "observedAt": "2026-11-17T20:26:35.936Z",
+      "writerLeases": 1,
+      "newCheckpoint": 116857179,
+      "newCheckpointHash": "0x7573d734e5f32d83600544c779d4b5756c056ade0fd6a7fec179fe6c0706fa69",
+      "newLaunchRows": 0,
+      "historicalNextBlock": "116857158",
+      "historicalLaunchRows": 2
+    },
+    "readinessLeaseAndPollingUnchanged": true,
+    "websiteFallbackDuringHandoff": "HTTP200 with four stale-labeled historical registrations; public execution configuration disabled."
+  },
+  "providerAcceptance": {
+    "primary": "https://robinhood.api.pocket.network",
+    "corroborator": "https://robinhood.rpc.pinax.network",
+    "localRestoredCloneResult": "Actual deployment/runtime/binding/receipt and six bounded passes passed against both public providers.",
+    "officialRpcLimitation": "The official RPC rejected historical factory state at deploymentBlock-1=116835101. Exact failure retained; no archive evidence was fabricated.",
+    "temporaryHostedProviderFailure": "A ResourceUnavailableRpcError occurred during the first production pass, then subsequent unchanged retries verified bindings and progressed. A historical InvalidParamsRpcError was also observed and recovered; read freshness remained fail closed.",
+    "canonicalCheckpointCorroboration": [
+      {
+        "provider": "pocket",
+        "chainId": 4663,
+        "blockNumber": "116856494",
+        "blockHash": "0xe105cc3439815557d0dbbe10ff6d15f03e42667b7ddeb36f79072e0532cfc06e",
+        "timestamp": "0x6afcb82e"
+      },
+      {
+        "provider": "pinax",
+        "chainId": 4663,
+        "blockNumber": "116856494",
+        "blockHash": "0xe105cc3439815557d0dbbe10ff6d15f03e42667b7ddeb36f79072e0532cfc06e",
+        "timestamp": "0x6afcb82e"
+      }
+    ]
+  },
+  "apiAcceptance": {
+    "schemaVersion": 1,
+    "status": "LIVE_AUTHENTICATED_NEW_ENGINE_AND_HISTORICAL_READS_VERIFIED",
+    "observedAt": "2026-11-17T20:25:45.621Z",
+    "deploymentId": "b48f0e6e-a34b-4a26-b95f-d4b978562282",
+    "sourceCommit": "1ba67b6fdb1ebfe927876893e0fc086d7fab939a",
+    "publicReady": 200,
+    "newEngine": {
+      "chainId": 4663,
+      "profile": "rmt-curve-fixed-supply-security-v2",
+      "status": "ready",
+      "observedAt": "2026-11-17T20:25:36.807Z",
+      "deployment": {
+        "factory": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+        "registry": "0xf1113714Dda31f31532995D2525e034271425398",
+        "blockNumber": "116835102",
+        "blockHash": "0x4a72961fb6649c1690fe4cf361ae6a6fbbdab39117a85604e2a11ba4646c7639"
+      },
+      "checkpoint": {
+        "blockNumber": "116856494",
+        "blockHash": "0xe105cc3439815557d0dbbe10ff6d15f03e42667b7ddeb36f79072e0532cfc06e",
+        "timestamp": "2026-11-17T20:25:18.000Z",
+        "confirmations": 20,
+        "finality": "l2-confirmed",
+        "l1Finality": "unverified"
+      },
+      "launches": [],
+      "nextCursor": null
+    },
+    "checks": {
+      "noBearer": 401,
+      "invalidBearer": 401,
+      "duplicateQuery": 400,
+      "transactionMethod": 405
+    },
+    "boundedRateLimitProbe": {
+      "requests": 13,
+      "limit": 1,
+      "statusCounts": {
+        "200": 4,
+        "429": 9
+      },
+      "retryAfterVerified": true,
+      "credentialsExposed": false
+    },
+    "canonicalCheckpointCorroboration": [
+      {
+        "provider": "pocket",
+        "chainId": 4663,
+        "blockNumber": "116856494",
+        "blockHash": "0xe105cc3439815557d0dbbe10ff6d15f03e42667b7ddeb36f79072e0532cfc06e",
+        "timestamp": "0x6afcb82e"
+      },
+      {
+        "provider": "pinax",
+        "chainId": 4663,
+        "blockNumber": "116856494",
+        "blockHash": "0xe105cc3439815557d0dbbe10ff6d15f03e42667b7ddeb36f79072e0532cfc06e",
+        "timestamp": "0x6afcb82e"
+      }
+    ],
+    "historical": {
+      "status": 200,
+      "count": 2,
+      "checkpoint": {
+        "blockNumber": 116856471,
+        "blockHash": "0xe5adc8cad8104b0e0ef3e3c804aa28496219dfd24710b26398039a85c53c19e5",
+        "timestamp": "2026-11-17T20:25:15.000Z",
+        "observedAt": "2026-11-17T20:25:20.304Z",
+        "stale": false,
+        "finality": "l2-confirmed"
+      },
+      "identities": [
+        {
+          "contractAddress": "0xfe7e1595c757ce5f034ba3e3e002c7184df6075e"
+        },
+        {
+          "contractAddress": "0xdba33be56c89cc9fc014c4459028d7e5c7878671"
+        }
+      ]
+    },
+    "website": {
+      "launchCount": 4,
+      "status": "ready",
+      "checkpoint": {
+        "blockNumber": "116856471",
+        "blockHash": "0xe5adc8cad8104b0e0ef3e3c804aa28496219dfd24710b26398039a85c53c19e5",
+        "timestamp": "2026-11-17T20:25:15.000Z"
+      },
+      "executionConfig": {
+        "status": "disabled",
+        "reason": "Wallet signing and transactions are disabled in this read-only preview."
+      }
+    },
+    "contractTransactions": false,
+    "websiteChanged": false,
+    "plansChanged": false,
+    "paidServicesPurchased": false,
+    "knownSecurityFindingsCleared": false
+  },
+  "resourceAndBilling": {
+    "plan": "FREE",
+    "remainingUsageCreditBalanceDollars": 0.33124857933234564,
+    "hasExhaustedFreePlan": false,
+    "isWithdrawingToCredits": true,
+    "nextInvoiceCurrentTotal": 0,
+    "earlierObservedGrossUsageDollars": 0.6579436557209258,
+    "earlierEstimatedPeriodUsageDollars": 1.385852387488022,
+    "billingPeriod": {
+      "end": "2026-11-29T16:40:44+00:00",
+      "start": "2026-10-29T16:40:44+00:00"
+    },
+    "existingComputeHardLimitDollars": 20,
+    "computeHardLimitChanged": false,
+    "newServicesPlansOrTopups": false,
+    "volume": {
+      "measuredAt": "2026-11-17T20:26:35Z",
+      "totalBytes": 454299648,
+      "usedBytes": 222674944,
+      "availableBytes": 221560832,
+      "usedPercent": 51
+    },
+    "oneHourMeasurementsIncludingBackupAndStartup": {
+      "worker": {
+        "cpuAverage": 0.00457340218579235,
+        "memoryCurrentGB": 0.068087808,
+        "memoryAverageGB": 0.11615231999999995,
+        "memoryMaxGB": 0.181843968
+      },
+      "postgres": {
+        "cpuAverage": 0.009807518611111109,
+        "memoryCurrentGB": 0.228124672,
+        "memoryAverageGB": 0.18211754666666663,
+        "memoryMaxGB": 0.291106816
+      }
+    },
+    "limitation": "These mixed backup/startup measurements are not a steady-state forecast. Continuous service within Free allowance is not guaranteed; keep stale-labeled snapshot fallback. Existing $20 compute hard limit is not a $1 stop boundary. No plan upgrade, credit purchase or automatic top-up was enabled."
+  },
+  "temporaryAccess": {
+    "purpose": "Authorized private backup/schema install, writer-lease checks and bounded read-only worker diagnostics",
+    "technicalSshKeyWasWallet": false,
+    "keyRevoked": true,
+    "registeredKeysAfterRevocation": 0,
+    "privateMaterialPublished": false
+  },
+  "rollback": {
+    "originalDeploymentId": "77fc2159-a433-4177-9912-2c8534c26739",
+    "canRollbackObserved": true,
+    "originalDeploymentState": "REMOVED after successful replacement, rollback-capable at observation",
+    "supportedMutation": "deploymentRollback(id:\"77fc2159-a433-4177-9912-2c8534c26739\")",
+    "limitation": "Railway Free retains removed images for24hours; recheck canRollback before use. Prior source ca650badcccab407540b8fe4983c3e8584f3a23e remains available for rebuild. Never remove historical rows or the new namespace to roll back.",
+    "databaseRecovery": "Verified encrypted custom archive and isolated restore retained privately; never restore over the original database as an automatic rollback."
+  },
+  "releaseBoundaries": {
+    "websiteChanged": false,
+    "websiteWalletSigningOrTradingEnabled": false,
+    "tokenCreatedByAgent": false,
+    "contractTransactionsByAgent": false,
+    "knownContractSecurityFindingsCleared": false,
+    "sourceExplorerPublication": "Separate pending/accepted evidence; this backend activation does not waive remaining explorer publication requirements.",
+    "l1Finality": "UNVERIFIED",
+    "governanceNoticesBypassed": false,
+    "productionTokenCreationApproval": "SEPARATE_OWNER_DECISION"
+  }
+}

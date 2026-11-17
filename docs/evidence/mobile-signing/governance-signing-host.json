@@ -1,0 +1,65 @@
+{
+  "observedAt": "2026-11-17T20:26:35.808Z",
+  "endpoint": "https://owner-governance-066--rmt-wallet-check-056-f911548d.netlify.app/governance-factory.html",
+  "sourceCommit": "fa1a8c69156d7381e1faf33d1bba5c5e881a07a6",
+  "htmlSha256": "922083bb00a4a4a04567ea569dc6d9534333eb1caad6654e9f8f598eb5abec58",
+  "results": [
+    {
+      "browser": "chromium",
+      "callCount": 70,
+      "methods": [
+        "eth_requestAccounts",
+        "eth_accounts",
+        "eth_chainId",
+        "eth_getBlockByNumber",
+        "eth_getCode",
+        "eth_call",
+        "eth_getTransactionReceipt",
+        "eth_getTransactionByHash"
+      ],
+      "facts": "Action\npublish-factory\nNetwork\nRobinhood Chain 4663\nDirectory\n0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C\nTarget\n0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3\nTarget runtime hash\n0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091\nAction kind / version\n0 / 1\nGovernance nonce\n0\nSigner epoch\n1\nSigning deadline (UTC)\n2026-11-26T19:50:06.000Z\nRequired real notice\n2 days after the later schedule transaction\nAction digest\n0xad499113950f3410a60c6fe9fe40b4d1d98cf055eeafeb2b1736a5a38c5fea1e\nCurrent account\n0xC447A378cFd8460Febc2eef67501D7a5473B9001\nWallet responses collected\n0 of 2; operator cryptographic verification remains required",
+      "mockedAccountOnly": true,
+      "actualPublicRpcReads": true,
+      "signaturesRequested": 0,
+      "transactionsRequested": 0,
+      "portrait": true,
+      "landscape": true,
+      "reloadAccess": true
+    },
+    {
+      "browser": "webkit",
+      "callCount": 70,
+      "methods": [
+        "eth_requestAccounts",
+        "eth_accounts",
+        "eth_chainId",
+        "eth_getBlockByNumber",
+        "eth_getCode",
+        "eth_call",
+        "eth_getTransactionReceipt",
+        "eth_getTransactionByHash"
+      ],
+      "facts": "Action\npublish-factory\nNetwork\nRobinhood Chain 4663\nDirectory\n0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C\nTarget\n0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3\nTarget runtime hash\n0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091\nAction kind / version\n0 / 1\nGovernance nonce\n0\nSigner epoch\n1\nSigning deadline (UTC)\n2026-11-26T19:50:06.000Z\nRequired real notice\n2 days after the later schedule transaction\nAction digest\n0xad499113950f3410a60c6fe9fe40b4d1d98cf055eeafeb2b1736a5a38c5fea1e\nCurrent account\n0xC447A378cFd8460Febc2eef67501D7a5473B9001\nWallet responses collected\n0 of 2; operator cryptographic verification remains required\n",
+      "mockedAccountOnly": true,
+      "actualPublicRpcReads": true,
+      "signaturesRequested": 0,
+      "transactionsRequested": 0,
+      "portrait": true,
+      "landscape": true,
+      "reloadAccess": true
+    }
+  ],
+  "physicalRabbyAcceptance": false,
+  "netlifyDeploymentId": "6afcb52ae567cd8e4ed910b5",
+  "actionDigest": "0xad499113950f3410a60c6fe9fe40b4d1d98cf055eeafeb2b1736a5a38c5fea1e",
+  "directory": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+  "target": {
+    "address": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+    "runtimeHash": "0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091"
+  },
+  "noticeSeconds": 172800,
+  "signingDeadlineUtc": "2026-11-26T19:50:06.000Z",
+  "privateAccessCodeInGit": false,
+  "signaturesInGit": false,
+  "ownerPhysicalSigning": "NOT_YET_OBSERVED"
+}
