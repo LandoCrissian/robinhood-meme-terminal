@@ -2,7 +2,7 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "RAILPACK",
-    "buildCommand": "pnpm install --no-frozen-lockfile && pnpm --filter indexer build",
+    "buildCommand": "pnpm install --frozen-lockfile && pnpm --filter indexer build",
     "watchPatterns": [
       "apps/indexer/src/**",
       "apps/indexer/package.json",
