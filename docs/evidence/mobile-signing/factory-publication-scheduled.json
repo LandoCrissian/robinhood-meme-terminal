@@ -1,0 +1,207 @@
+{
+  "schemaVersion": 1,
+  "scope": "CONFIRMED_FACTORY_PUBLICATION_SCHEDULE_NO_TOKEN_ISSUANCE",
+  "transactionHash": "0x96bd234e49d766c73c66f9787f26736040b4fc64d91ed2ae888eca3f4c8afb65",
+  "status": "L2_GOVERNANCE_SCHEDULE_VERIFIED",
+  "receiptBlock": "116966133",
+  "blockHash": "0xba98e1e82b736a50c46dfae095f1f3fd3cc4932921938c7b2aa8d30f23ec9106",
+  "directory": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+  "digest": "0xad499113950f3410a60c6fe9fe40b4d1d98cf055eeafeb2b1736a5a38c5fea1e",
+  "signerSetEpoch": "1",
+  "actionNonce": "0",
+  "expectedAccountNonce": "485",
+  "noticeStartsUtc": "2026-11-17T23:32:28.000Z",
+  "noticeCompletesUtc": "2026-11-19T23:32:28.000Z",
+  "executeBeforeUtc": "2026-11-26T19:50:06.000Z",
+  "noticeStartsDenver": "Tuesday, November 17, 2026 at 4:32:28 PM MST",
+  "noticeCompletesDenver": "Thursday, November 19, 2026 at 4:32:28 PM MST",
+  "executeBeforeDenver": "Thursday, November 26, 2026 at 12:50:06 PM MST",
+  "actualNetworkCostWei": "2037681128000",
+  "actualNetworkCostEth": "0.000002037681128",
+  "currentStatus": "SCHEDULE_PENDING_REAL_NOTICE",
+  "finality": "L1_UNVERIFIED",
+  "observedAt": "2026-11-17T23:33:17.668Z",
+  "nextExecutionAuthorized": false,
+  "sourceProfile": "rmt-curve-fixed-supply-security-v2",
+  "sourcePlanSha256": "c333d4f60e4815fb86a719a5678da91b5331635213f8026bd7d6bc3fdfdd43d8",
+  "compilerInputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+  "authorization": {
+    "status": "TWO_DISTINCT_GOVERNANCE_SIGNATURES_VERIFIED",
+    "signers": [
+      "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+      "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51"
+    ],
+    "digest": "0xad499113950f3410a60c6fe9fe40b4d1d98cf055eeafeb2b1736a5a38c5fea1e",
+    "authorityRecheckedAt": "2026-11-17T23:20:48.063Z",
+    "authorityObservationBlock": {
+      "number": "116959271",
+      "hash": "0x5c85210b0efdcc59746ae2d5a84895eb956400a17abff36e90821227bd6102ae",
+      "timestamp": "1794957638"
+    },
+    "canonical65ByteLowS": true,
+    "chainBound": true,
+    "contractBound": true,
+    "rawSignaturesPublished": false
+  },
+  "transaction": {
+    "from": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+    "to": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+    "chainId": 4663,
+    "type": "eip1559",
+    "nonce": "485",
+    "valueWei": "0",
+    "calldataHash": "0x9cbb82bb500078ad9dc180e8d797eed04e8649c0f95ecb1652ccb5b3de9fb16e",
+    "calldataBytes": 548
+  },
+  "action": {
+    "kind": 0,
+    "nonce": "0",
+    "version": 1,
+    "factory": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+    "runtimeHash": "0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091",
+    "signerSetEpoch": "1",
+    "deadline": "1795722606"
+  },
+  "notice": {
+    "seconds": 172800,
+    "startsAt": "2026-11-17T23:32:28.000Z",
+    "executableAt": "2026-11-19T23:32:28.000Z",
+    "expiresAt": "2026-11-26T19:50:06.000Z",
+    "clock": "CANONICAL_SCHEDULE_BLOCK_TIMESTAMP",
+    "forkTimeAdvanceUsed": false
+  },
+  "currentDirectory": [
+    {
+      "provider": "official",
+      "block": {
+        "number": "116966565",
+        "hash": "0x59d434bcbd16c5fd22f8e4a4444a570ba1d762e820d03c5514ec98a389540cb7",
+        "timestamp": "1794958392"
+      },
+      "state": {
+        "signerA": "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+        "signerB": "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+        "signerC": "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697",
+        "signerSetEpoch": "1",
+        "nonce": "0",
+        "latestVersion": "0",
+        "suspended": false,
+        "pending": [
+          "0xad499113950f3410a60c6fe9fe40b4d1d98cf055eeafeb2b1736a5a38c5fea1e",
+          "1795131148",
+          "1795722606"
+        ],
+        "publicationDelay": "172800",
+        "executionWindow": "604800",
+        "mapping": [
+          "0x0000000000000000000000000000000000000000",
+          "0x0000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      }
+    },
+    {
+      "provider": "pocket",
+      "block": {
+        "number": "116966565",
+        "hash": "0x59d434bcbd16c5fd22f8e4a4444a570ba1d762e820d03c5514ec98a389540cb7",
+        "timestamp": "1794958392"
+      },
+      "state": {
+        "signerA": "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+        "signerB": "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+        "signerC": "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697",
+        "signerSetEpoch": "1",
+        "nonce": "0",
+        "latestVersion": "0",
+        "suspended": false,
+        "pending": [
+          "0xad499113950f3410a60c6fe9fe40b4d1d98cf055eeafeb2b1736a5a38c5fea1e",
+          "1795131148",
+          "1795722606"
+        ],
+        "publicationDelay": "172800",
+        "executionWindow": "604800",
+        "mapping": [
+          "0x0000000000000000000000000000000000000000",
+          "0x0000000000000000000000000000000000000000000000000000000000000000"
+        ]
+      }
+    }
+  ],
+  "observedProviders": [
+    "official",
+    "pocket"
+  ],
+  "archiveProvider": "pocket",
+  "signingInterface": {
+    "endpoint": "https://owner-schedule-factory-066--rmt-wallet-check-056-f911548d.netlify.app/governance-schedule-factory.html",
+    "netlifySiteId": "00f130a0-025d-4bd4-bd29-dab543edd1a7",
+    "netlifyDeploymentId": "6afce268b2556d5aecd303c7",
+    "sourceCommit": "d2d91ee32e63faf9db513925b3121554d274935b",
+    "htmlSha256": "ad239334e215ad0c0ced38c5354f6a3140f16bcb2db4196cf56d7067963b6d2a",
+    "hostedBrowserTests": [
+      {
+        "browser": "chromium",
+        "portrait": true,
+        "landscape": true,
+        "reloadAccess": true,
+        "connection": "MOCKED_ACCOUNT_ONLY",
+        "rpcReads": "ACTUAL_PUBLIC_OFFICIAL_RPC",
+        "callCount": 152,
+        "methods": [
+          "eth_requestAccounts",
+          "eth_accounts",
+          "eth_chainId",
+          "eth_getBlockByNumber",
+          "eth_getTransactionReceipt",
+          "eth_getTransactionByHash",
+          "eth_getCode",
+          "eth_call",
+          "eth_getTransactionCount",
+          "eth_getBalance",
+          "eth_estimateGas",
+          "eth_maxPriorityFeePerGas",
+          "eth_gasPrice"
+        ],
+        "facts": "Sender\n0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA\nAction\nSchedule publish-factory\nValue\n0 ETH\nGovernance Directory\n0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C\nNonce\n485\nNetwork estimate\n0.000002052571152 ETH\nMaximum network cost\n0.000005131447936 ETH\nIncluded L1 posting estimate\n0 ETH\nGas limit\n127928\nMaximum fee per gas\n40112000 wei\nPriority fee per gas\n0 wei\nCalldata hash\n0x9cbb82bb500078ad9dc180e8d797eed04e8649c0f95ecb1652ccb5b3de9fb16e\nOwners\n0xC447A378cFd8460Febc2eef67501D7a5473B9001 ; 0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51 ; 0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697\nApprovals\n2 of 3\nAction digest\n0xad499113950f3410a60c6fe9fe40b4d1d98cf055eeafeb2b1736a5a38c5fea1e\nTarget\n0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3\nTarget runtime hash\n0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091\nDirectory nonce / signer epoch\n0 / 1\nSigning deadline UTC\n2026-11-26T19:50:06.000Z\nNotice\nTwo real days from this transaction's canonical block",
+        "signatures": 0,
+        "submissions": 0
+      },
+      {
+        "browser": "webkit",
+        "portrait": true,
+        "landscape": true,
+        "reloadAccess": true,
+        "connection": "MOCKED_ACCOUNT_ONLY",
+        "rpcReads": "ACTUAL_PUBLIC_OFFICIAL_RPC",
+        "callCount": 152,
+        "methods": [
+          "eth_requestAccounts",
+          "eth_accounts",
+          "eth_chainId",
+          "eth_getBlockByNumber",
+          "eth_getTransactionReceipt",
+          "eth_getTransactionByHash",
+          "eth_getCode",
+          "eth_call",
+          "eth_getTransactionCount",
+          "eth_getBalance",
+          "eth_estimateGas",
+          "eth_maxPriorityFeePerGas",
+          "eth_gasPrice"
+        ],
+        "facts": "Sender\n0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA\nAction\nSchedule publish-factory\nValue\n0 ETH\nGovernance Directory\n0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C\nNonce\n485\nNetwork estimate\n0.000002050319628 ETH\nMaximum network cost\n0.000005125819104 ETH\nIncluded L1 posting estimate\n0 ETH\nGas limit\n127928\nMaximum fee per gas\n40068000 wei\nPriority fee per gas\n0 wei\nCalldata hash\n0x9cbb82bb500078ad9dc180e8d797eed04e8649c0f95ecb1652ccb5b3de9fb16e\nOwners\n0xC447A378cFd8460Febc2eef67501D7a5473B9001 ; 0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51 ; 0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697\nApprovals\n2 of 3\nAction digest\n0xad499113950f3410a60c6fe9fe40b4d1d98cf055eeafeb2b1736a5a38c5fea1e\nTarget\n0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3\nTarget runtime hash\n0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091\nDirectory nonce / signer epoch\n0 / 1\nSigning deadline UTC\n2026-11-26T19:50:06.000Z\nNotice\nTwo real days from this transaction's canonical block\n",
+        "signatures": 0,
+        "submissions": 0
+      }
+    ],
+    "physicalOwnerTransaction": "OWNER_REPORTED_HASH_AND_CANONICAL_RECEIPT_VERIFIED"
+  },
+  "independentReceiptCorroboration": "OFFICIAL_AND_POCKET_READ_ONLY_MATCH",
+  "factoryPublicationExecuted": false,
+  "tokenCreated": false,
+  "websiteExecution": "DISABLED",
+  "strictSecurityGate": "FAIL_HIGH_22_RETAINED",
+  "governanceMediumObservations": 7,
+  "automaticSignatureOrBroadcast": false
+}

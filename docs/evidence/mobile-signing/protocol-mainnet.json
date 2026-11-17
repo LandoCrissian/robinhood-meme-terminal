@@ -173,10 +173,20 @@
   "tokenCreation": null,
   "websiteExecution": "DISABLED_PENDING_GOVERNANCE_AND_ACCEPTANCE",
   "governance": {
-    "factoryPublication": "AWAITING_TWO_CURRENT_OWNER_SIGNATURES_AND_OWNER_SCHEDULE_TRANSACTION",
+    "factoryPublication": "SCHEDULE_CONFIRMED_WAITING_REAL_NOTICE",
     "factoryNoticeSeconds": 172800,
     "migrationTemplate": "AFTER_FACTORY_PUBLICATION_SEPARATE_SIGNATURE_SCHEDULE_AND_NOTICE",
-    "automaticSignOrBroadcast": false
+    "automaticSignOrBroadcast": false,
+    "factorySchedule": {
+      "transactionHash": "0x96bd234e49d766c73c66f9787f26736040b4fc64d91ed2ae888eca3f4c8afb65",
+      "receiptBlock": "116966133",
+      "blockHash": "0xba98e1e82b736a50c46dfae095f1f3fd3cc4932921938c7b2aa8d30f23ec9106",
+      "noticeStartsAt": "2026-11-17T23:32:28.000Z",
+      "executableAt": "2026-11-19T23:32:28.000Z",
+      "expiresAt": "2026-11-26T19:50:06.000Z",
+      "evidenceFile": "factory-publication-scheduled.json",
+      "executed": false
+    }
   },
   "strictSecurityGate": "FAIL_HIGH_22_RETAINED",
   "governanceMediumObservations": 7,
