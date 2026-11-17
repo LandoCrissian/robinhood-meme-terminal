@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "scope": "ACTUAL_MAINNET_SAFE_CREATION_READ_ONLY_VERIFICATION",
+  "sourceCommit": "ddf4c5b09b4e67fec5f0866f9a0b765193e282f6",
+  "observedAt": "2026-11-17T17:52:35.660Z",
+  "providers": [
+    "official",
+    "pocket"
+  ],
+  "status": "L2_CREATION_VERIFIED",
+  "chainId": 4663,
+  "role": "RMT-OPERATIONS",
+  "safe": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+  "hash": "0x7306d15f2ffcab498bd2063615ddaa862b6ff956415e39e4d278f75de84cdad6",
+  "receiptBlock": "116763559",
+  "blockHash": "0x0858ef7c9b905b35f5e6080c85d6d3bfe8f6a8f23c9f7c026013e8ba436511e5",
+  "logIndex": "3",
+  "finality": "L1_UNVERIFIED",
+  "beneficiaryBinding": null,
+  "broadcastAuthorized": false,
+  "currentConfiguration": {
+    "status": "APPROVED_INITIAL_CONFIGURATION_UNCHANGED",
+    "block": "116767733",
+    "blockHash": "0xa238caa7cdf5ede90d050a017a6b89a8f4c32f4e22fa27cb9ac1f7c24e365190",
+    "runtimeKeccak256": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+    "masterCopy": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+    "VERSION": "1.4.1",
+    "getOwners": [
+      "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+      "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+      "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697"
+    ],
+    "getThreshold": "2",
+    "nonce": "0",
+    "getModulesPaginated": [
+      [],
+      "0x0000000000000000000000000000000000000001"
+    ],
+    "fallbackHandlerStorage": "0x000000000000000000000000fd0732dc9e303f09fcef3a7388ad10a83459ec99",
+    "guardStorage": "0x0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "transaction": {
+    "payer": "0x7e8e7d3af28584a8b9eeddbe16cd3308bd1e76ca",
+    "nonce": "476",
+    "factory": "0x4e1dcf7ad4e460cfd30791ccc4f9c8a4f820ec67",
+    "valueWei": "0",
+    "type": "2",
+    "chainId": 4663,
+    "calldataKeccak256": "0x64c42b60490759e71c4777faab3ac157f5c565b6b379629bdaaec7e5352c2250",
+    "gasUsed": "306195",
+    "effectiveGasPriceWei": "20278000",
+    "paidWei": "6209022210000",
+    "paidEth": "0.00000620902221",
+    "l1FeeField": null,
+    "limits": "gasUsed includes Nitro L1-posting gas when charged; independent L1 finality remains unverified"
+  },
+  "limitations": [
+    "Independent L2 provider agreement is not independent Ethereum L1 finality.",
+    "Current configuration is an observation at the recorded block; recheck before dependent actions.",
+    "No signature or broadcast was performed by this verifier."
+  ]
+}
