@@ -25,6 +25,11 @@ on:
       - "scripts/visual-qa/test-rmt-owner-safe.mjs"
       - "scripts/visual-qa/export-rmt-owner-protocol.mjs"
       - "scripts/visual-qa/test-rmt-owner-protocol.mjs"
+      - "scripts/visual-qa/export-rmt-owner-protocol-stage.mjs"
+      - "scripts/visual-qa/test-rmt-owner-protocol-stage.mjs"
+      - "scripts/visual-qa/export-rmt-governance-review.mjs"
+      - "scripts/visual-qa/rmt-governance-review-page.mjs"
+      - "scripts/visual-qa/test-rmt-governance-review.mjs"
       - "scripts/visual-qa/rmt-netlify-website.mjs"
       - "docs/evidence/mobile-signing/**"
       - ".github/workflows/launch-website-review.yml"
@@ -66,6 +71,8 @@ jobs:
           node scripts/visual-qa/test-rmt-private-phone-review.mjs
           pnpm test:owner-wallet
           pnpm test:owner-protocol
+          pnpm test:owner-protocol-stage
+          pnpm test:governance-review
           node apps/launch-website/node_modules/next/dist/bin/next start apps/launch-website \
             --hostname 127.0.0.1 --port 3205 > "$RMT_WEBSITE_PREVIEW_ARTIFACTS/next.log" 2>&1 &
           child="$!"

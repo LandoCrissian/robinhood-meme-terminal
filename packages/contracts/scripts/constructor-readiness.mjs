@@ -82,6 +82,12 @@ function makeReader(name, fetcher) {
 /** Read-only, transaction-specific verification. No signature or send method is admitted. */
 export async function probeDirectoryConstructor(packet, { readers, fetcher = fetch, now = Date.now } = {}) {
   const candidate = directoryReviewCandidate(packet);
+  return probePreparedConstructor(candidate, { readers, fetcher, now });
+}
+
+// Shared transaction reads only. Callers must first bind a candidate to the frozen
+// compiler output and approved constructor inputs; this function never signs.
+export async function probePreparedConstructor(candidate, { readers, fetcher = fetch, now = Date.now } = {}) {
   const names = ["official", "pocket"];
   readers ??= Object.fromEntries(names.map((name) => [name, makeReader(name, fetcher)]));
   const heads = await Promise.all(names.map((name) => readers[name]("eth_getBlockByNumber", ["latest", false])));
@@ -134,7 +140,7 @@ export async function probeDirectoryConstructor(packet, { readers, fetcher = fet
     assert.equal(block?.hash, witnesses[0].block.hash, "Constructor anchor changed during the probe");
     assert.equal(pending, candidate.request.nonce, "Constructor nonce changed during the probe");
   }
-  return { review: { schemaVersion: 1, scope: "EXACT_DIRECTORY_CREATE_READ_ONLY_SIMULATION", chainId: 4663,
+  return { review: { schemaVersion: 1, scope: "EXACT_" + candidate.id.toUpperCase().replaceAll("-", "_") + "_CREATE_READ_ONLY_SIMULATION", chainId: 4663,
     observedAt: new Date(now()).toISOString(), status: "CORROBORATED_RUNTIME_SIMULATION", broadcastAuthorized: false,
     contract: candidate.contract, expectedAddress: candidate.address, nonce: candidate.nonce,
     initcodeHash: candidate.initcodeHash, runtimeHash: candidate.runtimeHash,
