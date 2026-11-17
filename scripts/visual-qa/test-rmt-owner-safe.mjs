@@ -155,6 +155,8 @@ for (const [name, browserType] of [["chromium", chromium], ["webkit", webkit]]) 
     await page.locator("#access-code").fill(built.accessCode);
     await page.locator("#unlock").click();
     await status(/Connect the approved/);
+    assert.equal(await page.locator("#approval-label").isVisible(), false,
+      "Cost approval must remain hidden until live costs have been reviewed");
     await page.locator("#connect").click();
     await status(/Wallet connected/);
     assert.equal(calls.filter((method) => method === "eth_sendTransaction").length, 0);
