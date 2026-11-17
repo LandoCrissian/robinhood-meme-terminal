@@ -42,11 +42,17 @@ test("website, docs and local examples do not trigger a Railway worker deploy", 
   }
 });
 
-test("the baseline worker build, startup, health endpoint and restart policy are preserved", () => {
+test("the worker build pins its lockfile and preserves startup, health endpoint and restart policy", () => {
   const { watchPatterns: priorPatterns, ...priorBuild } = baseline.build;
   const { watchPatterns: currentPatterns, ...currentBuild } = config.build;
   assert.ok(!priorPatterns.includes("pnpm-lock.yaml"));
   assert.ok(currentPatterns.includes("pnpm-lock.yaml"));
-  assert.deepEqual(currentBuild, priorBuild);
+  // Preserve the historical evidence; Task066 deliberately strengthens only
+  // installation reproducibility. Every other build/deployment field stays exact.
+  assert.equal(priorBuild.buildCommand, "pnpm install --no-frozen-lockfile && pnpm --filter indexer build");
+  assert.deepEqual(currentBuild, {
+    ...priorBuild,
+    buildCommand: "pnpm install --frozen-lockfile && pnpm --filter indexer build",
+  });
   assert.deepEqual(config.deploy, baseline.deploy);
 });
