@@ -3,16 +3,18 @@ import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import { runMobileSenderProbe } from "../../../scripts/production-readiness/mobile-sender.mjs";
-import { operationsFeeApprovalSource, verifyOperationsSafeEvidence } from "./prepare-operations-safe.mjs";
+import { operationsFeeApprovalSource, operationsSafePolicyApprovalSource, operationsSigningDecision,
+  verifyOperationsSafeEvidence } from "./prepare-operations-safe.mjs";
 import { privateOutputPath } from "./prepare-unsigned-4663.mjs";
 
 const status = "BLOCKED_NO_BROADCAST";
-const proposedPolicy = Object.freeze({
-  state: "OWNER_ADOPTION_REQUIRED",
+const approvedPolicy = Object.freeze({
+  state: "OWNER_APPROVED",
   scope: "OPERATIONS_SAFE_1_ONLY",
   proposal: "https://github.com/LandoCrissian/robinhood-meme-terminal/issues/654",
+  approval: operationsSafePolicyApprovalSource,
   conditionalFeeApproval: operationsFeeApprovalSource,
-  currentSigningDecision: "BLOCKED_RELEASE_GATES",
+  currentSigningDecision: operationsSigningDecision,
   launchProtocolReleaseEvaluated: false,
 });
 
@@ -22,15 +24,15 @@ function report(technicalStatus, details) {
     scope: "READ_ONLY_4663_OPERATIONS_SAFE_1_RELEASE_EVIDENCE",
     technicalStatus,
     status,
-    policy: proposedPolicy,
+    policy: approvedPolicy,
     transactionApproval: null,
-    signingReviewEligible: false,
+    signingReviewEligible: technicalStatus === "PASS",
     broadcastAuthorized: false,
     ...details,
   };
 }
 
-// Technical evidence does not adopt policy or change the owner's conditional fee approval.
+// The recorded owner policy permits review only. A technical pass never approves a transaction.
 // The only live entry point creates its own fresh read-only observation.
 export function evaluateOperationsSafeRelease(observation, nowMs = Date.now()) {
   const evidence = verifyOperationsSafeEvidence(observation, nowMs);
@@ -38,7 +40,7 @@ export function evaluateOperationsSafeRelease(observation, nowMs = Date.now()) {
   return report(withinFeeCeiling ? "PASS" : "BLOCKED_FEE_CEILING", {
     evidence,
     nextDecision: withinFeeCeiling
-      ? "Adopt the Operations Safe #1 release policy explicitly, then separately review a fresh matching transaction."
+      ? "Request separate authorization for the exact freshly reviewed Operations Safe #1 transaction."
       : "Wait for refreshed estimates to fit every approved fee field, or obtain a new exact fee approval.",
   });
 }

@@ -28,8 +28,9 @@ export const operationsFeeApprovalSource = "https://github.com/LandoCrissian/rob
 export const approvedOperationsFeeCap = Object.freeze({
   gasLimit: "391739", maxFeePerGasWei: "40020000", maxPriorityFeePerGasWei: "0", maxNetworkFeeWei: "15677394780000",
 });
-export const operationsSigningDecision = "BLOCKED_RELEASE_GATES";
-export const operationsOverCapSigningDecision = "BLOCKED_FEE_CEILING_AND_RELEASE_GATES";
+export const operationsSafePolicyApprovalSource = "https://github.com/LandoCrissian/robinhood-meme-terminal/issues/654#issuecomment-6939238277";
+export const operationsSigningDecision = "AWAITING_TRANSACTION_AUTHORIZATION";
+export const operationsOverCapSigningDecision = "BLOCKED_FEE_CEILING";
 
 class OperationsReviewStop extends Error {}
 
@@ -188,7 +189,7 @@ export function prepareOperationsSafeReview(observation, nowMs = Date.now(), { r
     valueWei: pinned.valueWei, inputHash: pinned.dataHash, action, status: "UNSIGNED_OPERATIONS_APPROVAL_REQUIRED",
     gas, feeCap, freshRecommendation, feeCapStatus, feeApproval: operationsFeeApprovalSource, expectedRuntimeHash: safeProxyRuntimeHash,
     checks: [exceedsCap ? "The refreshed recommendation exceeds an approved fee field. Renew fee approval before preparing a transaction." :
-      "The refreshed recommendation fits the approved fee fields. The release gates block signing approval.",
+      "The refreshed recommendation fits the approved fee fields. Separate exact-transaction authorization is required.",
       "Refresh stale or changed evidence before considering any transaction.",
       "Reserve and the protocol wait for a separately verified receipt and release approval."],
     owners: pinned.details.owners, threshold: pinned.details.threshold, safeVersion: pinned.details.safeProfile,
@@ -196,8 +197,8 @@ export function prepareOperationsSafeReview(observation, nowMs = Date.now(), { r
   };
   const { address, runtimeHash, designator } = sender.delegation;
   const summary = {
-    schemaVersion: 4, scope: "RMT_4663_OPERATIONS_SAFE_UNSIGNED_REVIEW", status: blocked, broadcastAuthorized: false,
-    signingDecision, transactionApproval: null,
+    schemaVersion: 5, scope: "RMT_4663_OPERATIONS_SAFE_UNSIGNED_REVIEW", status: blocked, broadcastAuthorized: false,
+    signingDecision, policyApproval: operationsSafePolicyApprovalSource, transactionApproval: null,
     chainId: observation.chainId, sender: pinned.from, observedAt, expiresAt, anchor,
     pendingNonce: sender.pendingNonce, confirmedNonce: sender.confirmedNonce, balanceWei: sender.balanceWei,
     delegation: { address, runtimeHash, designator }, operation, terms: approvedRmtTerms, firstProject: approvedFirstProject,

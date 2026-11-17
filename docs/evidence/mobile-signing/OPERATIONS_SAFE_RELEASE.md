@@ -1,6 +1,6 @@
-# Operations Safe #1 standalone release proposal
+# Operations Safe #1 approved standalone release policy
 
-**Owner policy adoption required.** The approval recorded in issue #649 sets the fee ceiling conditional on the existing release gates. Task 061 authorizes implementation and evaluation of this narrower gate. The evaluator records readiness evidence without granting transaction approval. [Fee-ceiling approval](https://github.com/LandoCrissian/robinhood-meme-terminal/issues/649#issuecomment-6936656732) · [Task 061](https://github.com/LandoCrissian/robinhood-meme-terminal/issues/654)
+**Owner policy approved.** The owner adopted the exact policy from PR #655 for Operations Safe #1. The evaluator can report eligibility for separate transaction review when current evidence passes. Transaction approval remains unassigned. [Policy approval](https://github.com/LandoCrissian/robinhood-meme-terminal/issues/654#issuecomment-6939238277) · [Preserved fee ceiling](https://github.com/LandoCrissian/robinhood-meme-terminal/issues/649#issuecomment-6936656732)
 
 ## Exact scope
 
@@ -12,11 +12,11 @@
 | Counterfactual Operations Safe | `0xAF9F10258b091719618c19D057F9cDAB72eFFd8b`, SafeL2 1.4.1, existing three governance owners, two approvals |
 | Fixed network fee ceiling | 15,677,394,780,000 wei, from 391,739 gas at 40,020,000 wei per gas, zero priority fee |
 
-The initializer verifies the pinned singleton and fallback handler, owner order, threshold and salt. The setup delegatecall target and data are empty and the payment fields are zero. The call reaches the pinned factory and standard Safe setup. Reserve, the RMT engine, fee activation, treasury funding and broader Safe actions are outside this proposal. The launch-engine release still requires both strict analysis jobs and the existing independent-review evidence. [Treasury configurations](../rmt-task046/treasury-safe-initializers.json) · [Launch-engine security](../../SECURITY.md)
+The initializer verifies the pinned singleton and fallback handler, owner order, threshold and salt. The setup delegatecall target and data are empty and the payment fields are zero. The call reaches the pinned factory and standard Safe setup. Reserve, the RMT engine, fee activation, treasury funding and broader Safe actions have separate gates. The engine policy retains both strict analysis results and requires explicit stage-specific acceptance of the internally reviewed findings. [Treasury configurations](../rmt-task046/treasury-safe-initializers.json) · [Launch-engine security](../../SECURITY.md)
 
 ## Before a separate transaction decision
 
-1. Obtain explicit adoption of this exact standalone policy for Operations Safe #1. The original fee ceiling and identities remain binding.
+1. Retain the owner's recorded policy approval for Operations Safe #1. The original fee ceiling and identities remain binding.
 2. Run `pnpm evaluate:operations-safe` when the owner is ready. Require fresh 4663 agreement on the sender, confirmed and pending nonce, delegation and runtime, infrastructure runtimes, decoded call, vacancy, fee components and approved ceiling. A mismatch, expired observation or over-ceiling recommendation stops consideration. An observed matching state has a short lifetime and can be refreshed when needed.
 3. Request separate authorization for that exact current transaction. A technical pass alone conveys no signing or broadcast authority. Any subsequent wallet request must bind the same type, chain, sender, nonce, calldata, value and fee fields without substitutions. Review the wallet's effective signing capability through the separately authorized path.
 4. After any separately authorized future execution, bind the canonical receipt to the original exact request. Check the pinned factory `ProxyCreation` log, predicted proxy, singleton, owners, threshold, module and guard state, and fallback handler. Keep the address as a prediction until verified receipt evidence is available. Keep the other queued operations under their own approvals.

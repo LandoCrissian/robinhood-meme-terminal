@@ -19,6 +19,8 @@
     "prepare:unsigned-4663": "node packages/contracts/scripts/prepare-unsigned-4663.mjs",
     "prepare:operations-safe": "node packages/contracts/scripts/prepare-operations-safe.mjs",
     "evaluate:operations-safe": "node packages/contracts/scripts/evaluate-operations-safe-release.mjs",
+    "evaluate:release": "node scripts/release/evaluate.mjs",
+    "test:release-policy": "node --test scripts/release/*.test.mjs",
     "export:private-phone-review": "node scripts/visual-qa/export-rmt-private-phone-review.mjs",
     "audit:production": "pnpm audit --prod --audit-level high",
     "check:repo": "knip --include files,dependencies",

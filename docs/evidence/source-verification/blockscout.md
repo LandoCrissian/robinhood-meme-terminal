@@ -14,6 +14,8 @@ The exporter checks the compiler profile, source pins, archived fork digests and
 
 The export covers 14 loopback contracts. Directory V2, Registry V3, the two successor deployers and bootstrap use top-level CREATE. Bootstrap uses CREATE2 for the guard and CREATE for the graduation engine and Factory V2. Factory V2 uses CREATE2 for Token V2, then CREATE for the original curve. The original curve creates its revenue ledger. The two reviewed successor helpers use scoped CREATE2. Graduation creates its LP fee ledger, whose reconstructed initcode hash matches the archived CREATE trace. These fixture addresses and arguments remain outside all live bindings.
 
+The current export's `deploymentScope` identifies eight infrastructure contracts and six later project-lifecycle examples. `tokenIssuanceIncluded` is false. First deploy and verify the infrastructure under separate approval. The owner later creates RMT through `/create-token`; those actual per-project receipts and constructor traces supply subsequent verification inputs. The 14 archived rows support reproduction of that test lifecycle.
+
 ## Bind verified production evidence after separate deployment approval
 
 1. Rebuild the exact profile and unsigned plan from approved beneficiary, deployer, nonce, project and governance inputs. Archive each transaction, canonical receipt, initcode, constructor suffix, runtime bytes and creation frame. Derive each internal address independently. The guard salt must retain permission bits `0x2000`. The token address must match the exact factory CREATE2 input, project registration and creation receipt. A missing or mismatched creation frame or runtime stays unresolved.

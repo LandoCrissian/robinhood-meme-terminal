@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import { chromium, devices, webkit } from "playwright";
 import { pinnedSafeCreationRows, safeProxyRuntimeHash } from "../../packages/contracts/scripts/mobile-review-plan.mjs";
-import { approvedOperationsFeeCap, operationsFeeApprovalSource, operationsSafeBaseline }
+import { approvedOperationsFeeCap, operationsFeeApprovalSource, operationsSafePolicyApprovalSource, operationsSafeBaseline }
   from "../../packages/contracts/scripts/prepare-operations-safe.mjs";
 import { MOBILE_DELEGATE_POLICY, MOBILE_DEPLOYMENT_PAYER } from "../production-readiness/mobile-sender.mjs";
 import { buildPrivatePhoneReview } from "./export-rmt-private-phone-review.mjs";
@@ -45,8 +45,8 @@ const nonce = operationsSafeBaseline.nonce;
 const nonceHex = "0x" + BigInt(nonce).toString(16);
 const nextNonceHex = "0x" + (BigInt(nonce) + 1n).toString(16);
 const packet = {
-  ...proposedPacket, schemaVersion: 4, pendingNonce: nonce, confirmedNonce: nonce,
-  signingDecision: "BLOCKED_RELEASE_GATES", transactionApproval: null,
+  ...proposedPacket, schemaVersion: 5, pendingNonce: nonce, confirmedNonce: nonce,
+  signingDecision: "AWAITING_TRANSACTION_AUTHORIZATION", policyApproval: operationsSafePolicyApprovalSource, transactionApproval: null,
   operation: {
     ...proposedPacket.operation, nonce,
     gas: { ...proposedPacket.operation.gas, rpcEstimateGas: "313391" },
@@ -55,7 +55,7 @@ const packet = {
   },
 };
 const overCapPacket = {
-  ...packet, signingDecision: "BLOCKED_FEE_CEILING_AND_RELEASE_GATES",
+  ...packet, signingDecision: "BLOCKED_FEE_CEILING",
   operation: { ...packet.operation, gas: proposedPacket.operation.gas, feeCapStatus: "OVER_APPROVED_CEILING",
     freshRecommendation: proposedPacket.operation.feeCap },
 };
@@ -83,6 +83,10 @@ for (const invalid of [{ gasLimit: "393751" }, { maxFeePerGasWei: "1" }, { maxPr
     feeCap: { ...packet.operation.feeCap, ...invalid } } }, expiry), /Invalid Operations Safe fee cap/);
 }
 assert.throws(() => buildPrivatePhoneReview(url, { ...packet, transactionApproval: "APPROVED" }, expiry), /signing to remain blocked/);
+assert.throws(() => buildPrivatePhoneReview(url, { ...packet, policyApproval: "APPROVED" }, expiry), /scoped owner policy/);
+const earlierPolicyPacket = { ...packet, schemaVersion: 4, signingDecision: "BLOCKED_RELEASE_GATES" };
+delete earlierPolicyPacket.policyApproval;
+buildPrivatePhoneReview(url, earlierPolicyPacket, expiry);
 assert.throws(() => buildPrivatePhoneReview(url, { ...packet, pendingNonce: "477", confirmedNonce: "477",
   operation: { ...packet.operation, nonce: "477" } }, expiry), /nonce has drifted/);
 assert.throws(() => buildPrivatePhoneReview(url, { ...packet, operation: { ...packet.operation, feeCap: {
@@ -261,7 +265,7 @@ for (const [name, engine] of [["chromium", chromium], ["webkit", webkit]]) {
     await status(/Existing wallet selection, nonce and Safe vacancy matched/);
     assert.equal(await review.locator("details").count(), 3);
     assert.match(await review.innerText(), /0\.00000626782 ETH/);
-    assert.match(await review.innerText(), /Signing blocked by unresolved security release gates\. 22 high and seven governance-medium findings remain/);
+    assert.match(await review.innerText(), /Operations Safe policy approved\. Separate authorization for this exact transaction is required/);
     assert.match(await review.innerText(), /Current fee bounds fit the approved ceiling/);
     assert.match(await review.innerText(), /Approved fee ceiling\s+0\.00001567739478 ETH/);
     assert.match(await review.innerText(), /0 ETH/);
@@ -311,7 +315,7 @@ for (const [name, engine] of [["chromium", chromium], ["webkit", webkit]]) {
     await reopen(overCapReview.accessCode);
     await status(/This wallet has no existing review access/);
     await page.getByText(/Current fee bounds exceed the approved ceiling/).waitFor();
-    assert.match(await review.innerText(), /Signing blocked by unresolved security release gates/);
+    assert.match(await review.innerText(), /Operations Safe policy approved\. Separate authorization for this exact transaction is required/);
     assert.equal(await page.locator("#fee-cap").textContent(), "0.00001567739478 ETH");
     assert.equal(await page.locator("#required-fee-cap").textContent(), "0.00001575008 ETH");
     assert.equal(await review.getByRole("button").count(), 0);

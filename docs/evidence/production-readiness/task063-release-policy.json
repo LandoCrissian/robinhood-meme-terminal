@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "profile": "rmt-curve-fixed-supply-security-v2",
+  "chainId": 4663,
+  "policySource": "https://github.com/LandoCrissian/robinhood-meme-terminal/issues/654#issuecomment-6951089522",
+  "launchSequenceSource": "https://github.com/LandoCrissian/robinhood-meme-terminal/issues/657#issuecomment-6951267519",
+  "operationsPolicySource": "https://github.com/LandoCrissian/robinhood-meme-terminal/issues/654#issuecomment-6939238277",
+  "independentAuditMandatory": false,
+  "signingAuthorized": false,
+  "broadcastAuthorized": false,
+  "maximumObservationSeconds": 120,
+  "stages": [
+    {
+      "id": "operations-safe-1",
+      "appliesEngineFindings": false,
+      "transactionRequired": true,
+      "policyAdopted": true,
+      "requirements": ["operations-safe-exact-preflight"],
+      "maximumValueWei": "0",
+      "maximumGasLimit": "391739",
+      "maximumFeePerGasWei": "40020000",
+      "maximumPriorityFeePerGasWei": "0",
+      "maximumNetworkFeeWei": "15677394780000"
+    },
+    {
+      "id": "reserve-safe",
+      "appliesEngineFindings": false,
+      "transactionRequired": true,
+      "policyAdopted": false,
+      "requirements": ["operations-safe-canonical-receipt", "reserve-safe-exact-preflight"],
+      "maximumValueWei": "0",
+      "maximumNetworkFeeWei": null
+    },
+    {
+      "id": "protocol-deployment",
+      "appliesEngineFindings": true,
+      "transactionRequired": true,
+      "policyAdopted": false,
+      "requirements": ["verified-treasury-recipients", "unsigned-protocol-plan", "exact-constructor-simulation", "governance-inputs", "nonce-and-dependency-runtime-preflight", "incident-operator"],
+      "maximumValueWei": "0",
+      "maximumNetworkFeeWei": null
+    },
+    {
+      "id": "infrastructure-verification",
+      "appliesEngineFindings": true,
+      "transactionRequired": false,
+      "policyAdopted": false,
+      "requirements": ["protocol-canonical-receipts", "materialized-runtime-identities", "blockscout-exact-source-verification", "mature-governance-publication", "durable-new-engine-indexer", "backup-and-restore", "l1-finality", "official-router-quoter-bindings", "synthetic-guarded-pool-compatibility", "physical-wallet-recovery", "incident-operator"],
+      "maximumValueWei": "0",
+      "maximumNetworkFeeWei": "0"
+    },
+    {
+      "id": "website-rmt-creation",
+      "appliesEngineFindings": true,
+      "transactionRequired": true,
+      "policyAdopted": false,
+      "requirements": ["verified-live-infrastructure", "actual-creator-form", "rmt-reviewed-project-defaults", "creator-account-chain-nonce", "exact-creation-simulation", "creation-recovery-ready"],
+      "maximumValueWei": "400000000000000",
+      "maximumNetworkFeeWei": null
+    },
+    {
+      "id": "controlled-acceptance",
+      "appliesEngineFindings": true,
+      "transactionRequired": true,
+      "policyAdopted": false,
+      "requirements": ["website-rmt-canonical-creation", "verified-live-infrastructure", "bounded-acceptance-plan", "current-wallet-quote", "incident-operator"],
+      "maximumValueWei": null,
+      "maximumNetworkFeeWei": null
+    },
+    {
+      "id": "public-trading",
+      "appliesEngineFindings": true,
+      "transactionRequired": false,
+      "policyAdopted": false,
+      "requirements": ["controlled-acceptance-canonical-results", "verified-live-infrastructure", "current-fees-and-routes", "indexer-finality-and-reorg-acceptance", "wallet-recovery-acceptance", "monitoring-and-incident-response", "public-release-config"],
+      "phases": ["CURVE", "GRADUATED_V4"],
+      "postGraduationRequirements": ["canonical-graduated-pool", "full-poolkey-observed-routing", "pool-receipt-finality"],
+      "maximumValueWei": "0",
+      "maximumNetworkFeeWei": "0"
+    }
+  ]
+}

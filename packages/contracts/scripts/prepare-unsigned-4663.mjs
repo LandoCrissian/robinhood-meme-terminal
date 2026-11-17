@@ -12,8 +12,10 @@ import { runMobileSenderProbe } from "../../../scripts/production-readiness/mobi
 import { attestDeploymentDependencies, makeReadOnlyRpc, ROBINHOOD_SOURCES } from "../../../scripts/production-readiness/rpc.mjs";
 import { deriveDelegatedConstructors } from "./delegated-mobile-constructors.mjs";
 import { buildFixedSupplyInput, compileFixedSupplyProfile, termEvidence } from "./fixed-supply-profile.mjs";
-import { buildMobileReviewPlan, mobilePayer, pinnedSafeCreationRows, reviewDelegatedMobileObservation, reviewSources,
+import { buildLaunchpadReviewPlan, mobilePayer, pinnedSafeCreationRows, reviewDelegatedMobileObservation, reviewSources,
   safeProxyRuntimeHash } from "./mobile-review-plan.mjs";
+import { approvedOperationsFeeCap, operationsFeeApprovalSource, operationsSafeBaseline, operationsSafePolicyApprovalSource,
+  recommendOperationsFeeCap } from "./prepare-operations-safe.mjs";
 
 const require = createRequire(new URL("../../../apps/launch-website/package.json", import.meta.url));
 const { encodeFunctionData, getAddress, isAddressEqual, keccak256, parseAbi, toHex, zeroAddress, zeroHash } = require("viem");
@@ -64,7 +66,8 @@ export function assertApprovedLaunchTerms(input, compiledTerms) {
 }
 
 const transactionApprovals = Object.freeze({
-  operationsSafe: null, reserveSafe: null, protocolDeployment: null, firstFundedAcceptance: null, publicActivation: null,
+  operationsSafe: null, reserveSafe: null, protocolDeployment: null, websiteRmtCreation: null,
+  firstFundedAcceptance: null, publicActivation: null,
 });
 
 const stopOnDrift = "Stop if the payer, chain, pending nonce, delegation runtime, fees, input hash or approved destination differs";
@@ -101,7 +104,7 @@ async function recheckGovernanceAt(anchor) {
     const provider = makeReadOnlyRpc({ name, url: ROBINHOOD_SOURCES[name] });
     return [name, async (method, params) => {
       const result = await provider(method, params);
-      assert.equal(result.status, "observed", "Governance provider unavailable");
+      assert.equal(result.status, "observed", `Governance ${name} ${method} unavailable`);
       return result.value;
     }];
   }));
@@ -125,10 +128,11 @@ export function assertUnsignedGovernanceEvidence(evidence, anchor, expectedOwner
   return evidence;
 }
 
-export function buildFirstProject(factory, safeAddresses) {
+export function buildFirstProject(safeAddresses) {
   const { name, symbol, projectURI, creator, treasuryShareBpsOfEligibleFees } = approvedFirstProject;
   return {
-    scope: "APPROVED_CONFIGURATION_CREATION_QUEUED",
+    scope: "OWNER_APPROVED_WEBSITE_DEFAULTS_ONLY",
+    method: "ORDINARY_WEBSITE_CREATOR_INTERFACE", path: "/create-token", creationEnabled: false, tokenAddress: null,
     name, symbol, projectURI, creator, projectTreasury: zeroAddress, treasuryShareBpsOfEligibleFees,
     projectShareRecipient: creator,
     revenueRecipients: {
@@ -136,12 +140,9 @@ export function buildFirstProject(factory, safeAddresses) {
       reserve: { predictedAddress: safeAddresses[1], beneficiary: null },
     },
     terms: approvedRmtTerms,
-    plannedCall: {
-      from: creator, predictedFactory: factory, valueWei: approvedRmtTerms.creationFeeWei,
-      function: "create(string,string,string,address,uint16,bytes32,uint256)",
-      args: [name, symbol, projectURI, zeroAddress, treasuryShareBpsOfEligibleFees, null, null],
-      nonce: null, intentId: null, deadline: null, calldata: null,
-    },
+    prerequisites: ["Verified launchpad deployment and Blockscout source/runtime",
+      "Production indexing, finality, v4 routing and wallet recovery acceptance",
+      "Separate owner approval to create through the website"],
     transactionApproval: null,
   };
 }
@@ -210,6 +211,21 @@ function safeGas(estimate) {
     estimatedL1FeeWei: l1PosterWei, estimatedL2FeeWei: l2ExecutionWei, provenance: "CURRENT_4663_READ_ONLY_NITRO_GAS_COMPONENTS" };
 }
 
+export function assertApprovedOperationsFees(estimate) {
+  const recommendation = recommendOperationsFeeCap({ nitroGas: estimate.nitroGasEstimate,
+    rpcGas: estimate.rpcEstimateGas, l2BaseFee: estimate.l2BaseFeeWei });
+  for (const field of ["gasLimit", "maxFeePerGasWei", "maxPriorityFeePerGasWei", "maxNetworkFeeWei"]) {
+    assert.ok(BigInt(recommendation[field]) <= BigInt(approvedOperationsFeeCap[field]),
+      "Operations Safe quote exceeds an approved fee limit");
+  }
+  return {
+    policyApproval: operationsSafePolicyApprovalSource, feeApproval: operationsFeeApprovalSource,
+    feeCap: approvedOperationsFeeCap, freshRecommendation: recommendation,
+    signingReviewEligible: false, transactionApproval: null,
+    prerequisite: "Run the standalone Operations Safe validator with fresh canonical and pending vacancy before separate signing authorization",
+  };
+}
+
 function actionTemplate({ observed, constructors, kind, contract, version }) {
   return {
     typedDataDomain: { ...governance.directory.domain, chainId,
@@ -237,7 +253,7 @@ export function prepareUnsignedDeployment({ compilation, input, rehearsal, first
   assert.equal(compilation.manifest.profile, profile);
   assertApprovedLaunchTerms(input, compilation.manifest.terms);
   assertUnsignedDependencyEvidence(dependencyEvidence, secondObservation, compilation.manifest.externalRuntimePins);
-  const prior = buildMobileReviewPlan(compilation, input, reviewSources(), {
+  const prior = buildLaunchpadReviewPlan(compilation, input, reviewSources(), {
     replay: rehearsal, delegatedObservation: secondObservation,
   });
   const scenario = prior.target.delegatedReview;
@@ -257,12 +273,18 @@ export function prepareUnsignedDeployment({ compilation, input, rehearsal, first
     signers: scenario.governanceSignerProposal, safeAddresses,
   }, { includePrivateInitcode: true });
   const [operations, reserve, ...projectedProtocol] = scenario.rows;
+  for (const [field, expected] of Object.entries({ sender: operationsSafeBaseline.sender, nonce: operationsSafeBaseline.nonce,
+    destination: operationsSafeBaseline.destination, inputHash: operationsSafeBaseline.inputHash,
+    predictedAddress: operationsSafeBaseline.predictedAddress, valueWei: operationsSafeBaseline.valueWei })) {
+    assert.equal(operations[field], expected, "Operations Safe identity differs from its scoped fee approval");
+  }
   const [operationsSafe, reserveSafe] = safes;
   const { owners, safeProfile: safeVersion, threshold, saltNonce, initializerHash } = operationsSafe.details;
   const signature = "createProxyWithNonce(address,bytes,uint256)";
   const operationsGas = safeGas(operations.estimate);
+  const operationsFeeBinding = assertApprovedOperationsFees(operations.estimate);
   const operationsChecks = [stopOnDrift, "Recheck the exact pinned Safe infrastructure and vacancy before separate transaction approval",
-    receiptRule, treasuryReceipt, "Verify Operations before preparing a separate Reserve review"];
+    receiptRule, treasuryReceipt, "Verify Operations before preparing a separate Reserve review", operationsFeeBinding.prerequisite];
   if (BigInt(observed.balanceWei) < BigInt(operationsGas.estimatedFeeWei)) {
     operationsChecks.push("The observed payer balance was below this Operations Safe estimate");
   }
@@ -272,10 +294,12 @@ export function prepareUnsignedDeployment({ compilation, input, rehearsal, first
   };
   const unsigned = {
     ...privateEnvelope(operations, operationsSafe.calldata),
+    gasLimit: approvedOperationsFeeCap.gasLimit, maxFeePerGas: approvedOperationsFeeCap.maxFeePerGasWei,
+    maxPriorityFeePerGas: approvedOperationsFeeCap.maxPriorityFeePerGasWei,
     setup: operationsSafe.details, gasAtObservedBlock: operations.estimate, syntheticReceipt: proof.safeReceipts[0],
-    transactionApproval: null,
+    ...operationsFeeBinding,
   };
-  const project = buildFirstProject(bootstrapChildren[2].address, safeAddresses);
+  const project = buildFirstProject(safeAddresses);
   const queue = [
     { ...makeReviewRow({ ...reserve, nonce: null }, signature, safeGas(reserve.estimate),
       "QUEUED_AWAITING_CANONICAL_OPERATIONS_SAFE_AND_SEPARATE_APPROVAL",
@@ -302,12 +326,7 @@ export function prepareUnsignedDeployment({ compilation, input, rehearsal, first
         [stopOnDrift, schedule ? "Bind exact runtime, directory EIP-712 domain, signer epoch, action nonce and deadline before two current signatures"
           : "Confirm the matching canonical scheduled action and enforce its two-day notice and execution deadline",
         receiptRule, "Confirm the exact publication event before moving to the next Directory action"]));
-    } else {
-      queue.push(makeReviewRow({ ...item, sender: project.creator, valueWei: project.plannedCall.valueWei },
-        project.plannedCall.function, forkGas(approvedRehearsal.creation), "QUEUED_AWAITING_PUBLISHED_FACTORY_AND_FUNDED_ACCEPTANCE",
-        [stopOnDrift, "Bind the verified factory, fresh intent and deadline to the approved creation configuration",
-          receiptRule, "Verify the created token and curve, registry row, exact creation fee and beneficiary policy on the canonical receipt"]));
-    }
+    } else assert.fail("Token issuance is outside the infrastructure deployment sequence");
   }
   const noncePair = { pendingNonce: observed.pendingNonce, confirmedNonce: observed.confirmedNonce };
   const summary = {
@@ -333,21 +352,21 @@ export function prepareUnsignedDeployment({ compilation, input, rehearsal, first
       protocolForkGasAtObservedL2BaseFeeWei: observedL2BaseFeeWei === null
         ? null : (protocolForkGas * BigInt(observedL2BaseFeeWei)).toString(),
       protocolPosterCost: "UNAVAILABLE_FOR_DEPENDENT_CREATIONS_AND_QUEUED_ACTIONS",
-      protocolModel: "Synthetic EVM gas times observed L2 base fee, excluding any L1 poster fee. No production fee caps are assigned." },
+      protocolModel: "Synthetic EVM gas times observed L2 base fee, excluding any L1 poster fee. Protocol deployment fee caps remain unassigned." },
     sourceVerification: {
       standardInputSha256: compilation.manifest.inputSha256,
       contracts: [...constructors, ...bootstrapChildren].map((item) => codeIdentity(compilation, item)),
       externalRuntimePins: compilation.manifest.externalRuntimePins,
       readiness: "POST_DEPLOYMENT_CANONICAL_RECEIPTS_AND_EXACT_RUNTIME_REQUIRED",
     },
-    configurationApproval, transactionApprovals,
+    configurationApproval, transactionApprovals, operationsFeeBinding,
     unsigned: [unsigned], queue,
     directoryTemplates: [
       actionTemplate({ observed: null, constructors, kind: 0, contract: bootstrapChildren[2], version: 1 }),
       actionTemplate({ observed: null, constructors, kind: 4, contract: constructors[3], version: 3 }),
     ],
     firstProject: project,
-    approvedFirstProjectRehearsal: approvedRehearsal,
+    syntheticCreatorFlowEvidence: approvedRehearsal,
     recovery: "Leave an unresolved original transaction pending and resolve its canonical hash/receipt. Never submit a replacement or advance from an unknown result.",
   };
   const planId = digest({ summary, protectedCandidate });
@@ -419,6 +438,8 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
   } catch (error) {
     // Do not log caught assertion values that could include unsigned inputs or raw RPC responses.
     console.error(gate + ": preparation failed while " + stage + ". " + (error.code ? "Error " + error.code + "." : ""));
+    const governanceFailure = error.message?.match(/^Governance (official|pinax) (eth_chainId|eth_getBlockByNumber|eth_getCode) unavailable$/);
+    if (governanceFailure) console.error("Required governance read unavailable at " + governanceFailure[1] + " for " + governanceFailure[2] + ".");
     process.exitCode = 1;
   }
 }

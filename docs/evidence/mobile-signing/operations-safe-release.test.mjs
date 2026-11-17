@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { evaluateOperationsSafeRelease } from "../../../packages/contracts/scripts/evaluate-operations-safe-release.mjs";
-import { approvedOperationsFeeCap, operationsFeeApprovalSource, operationsSafeBaseline }
+import { approvedOperationsFeeCap, operationsFeeApprovalSource, operationsSafePolicyApprovalSource, operationsSafeBaseline }
   from "../../../packages/contracts/scripts/prepare-operations-safe.mjs";
 import { summarizeGas } from "../../../scripts/production-readiness/safe.mjs";
 
@@ -28,17 +28,18 @@ function observation({ total = 313391n, baseFee = 20010000n, estimateGas = total
 
 function assertBlocked(report) {
   assert.equal(report.status, "BLOCKED_NO_BROADCAST");
-  assert.equal(report.policy.state, "OWNER_ADOPTION_REQUIRED");
+  assert.equal(report.policy.state, "OWNER_APPROVED");
+  assert.equal(report.policy.approval, operationsSafePolicyApprovalSource);
   assert.equal(report.policy.conditionalFeeApproval, operationsFeeApprovalSource);
-  assert.equal(report.policy.currentSigningDecision, "BLOCKED_RELEASE_GATES");
+  assert.equal(report.policy.currentSigningDecision, "AWAITING_TRANSACTION_AUTHORIZATION");
   assert.equal(report.policy.launchProtocolReleaseEvaluated, false);
   assert.equal(report.transactionApproval, null);
-  assert.equal(report.signingReviewEligible, false);
+  assert.equal(report.signingReviewEligible, report.technicalStatus === "PASS");
   assert.equal(report.broadcastAuthorized, false);
   assert.doesNotMatch(JSON.stringify(report), /unsignedFields|calldata"|0x1688f0b9|RMT-RESERVE|firstProject|balanceWei/);
 }
 
-test("an exact Operations-only technical pass cannot adopt policy or request signing", () => {
+test("the adopted Operations policy permits exact review without granting transaction authority", () => {
   const proof = observation();
   // Inputs from the launch protocol cannot clear or block this decision.
   proof.releaseGate = "FAILED";

@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import test from "node:test";
 import {
-  mobilePayer, reviewCurrentMobileObservation, verifyCreateVacancies,
+  launchpadDeploymentReview, mobilePayer, reviewCurrentMobileObservation, verifyCreateVacancies,
 } from "../../../packages/contracts/scripts/mobile-review-plan.mjs";
 
 const require = createRequire(new URL("../../../apps/launch-website/package.json", import.meta.url));
@@ -96,6 +96,30 @@ test("public-safe review exposes only transaction digests and leaves executable 
   const keys = (obj) => Object.entries(obj).flatMap(([name, value]) =>
     [name, ...(typeof value === "object" && value !== null ? keys(value) : [])]);
   assert.ok(!keys(plan).some((key) => /^(data|calldata|initcode|bytecode|constructorData|signature|signatures|rawTransaction)$/i.test(key)));
+});
+
+test("the active deployment review ends after infrastructure and leaves RMT creation in the ordinary website", () => {
+  const original = structuredClone(plan);
+  const deployment = launchpadDeploymentReview(plan);
+  assert.equal(deployment.scope, "RMT_LAUNCHPAD_INFRASTRUCTURE_REVIEW");
+  assert.deepEqual(deployment.fixture.rows.map(({ id }) => id), plan.fixture.rows.slice(0, -1).map(({ id }) => id));
+  assert.equal(deployment.fixture.rows.at(-1).id, "execute-migration-template");
+  assert.doesNotMatch(JSON.stringify(deployment), /first-rmt|firstProjectReceipt|FIRST_PROJECT_TERMS_AND_CREATOR_APPROVAL/);
+  assert.ok(Object.keys(deployment.target.productionInputs).every((name) => !name.startsWith("firstProject")));
+  assert.equal(deployment.creatorWorkflow.path, "/create-token");
+  assert.equal(deployment.creatorWorkflow.method, "ORDINARY_WEBSITE_CREATOR_INTERFACE");
+  assert.equal(deployment.creatorWorkflow.creationEnabled, false);
+  assert.equal(deployment.creatorWorkflow.transactionApproval, null);
+  assert.equal(deployment.creatorWorkflow.tokenAddress, null);
+  assert.deepEqual(deployment.target.transactions, []);
+  assert.equal(deployment.status, "BLOCKED_NO_BROADCAST");
+  assert.equal(deployment.releaseGate.status, "FAIL_HIGH");
+  assert.deepEqual(plan, original);
+  for (const replacement of [
+    { ...plan, broadcastAuthorized: true },
+    { ...plan, target: { ...plan.target, transactions: [{ id: "first-rmt" }] } },
+    { ...plan, fixture: { ...plan.fixture, rows: [...plan.fixture.rows, plan.fixture.rows.at(-1)] } },
+  ]) assert.throws(() => launchpadDeploymentReview(replacement));
 });
 
 function vacancies() {

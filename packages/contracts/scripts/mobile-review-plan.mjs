@@ -495,6 +495,51 @@ export function buildMobileReviewPlan(compilation, input, sources, { observation
   };
 }
 
+// Preserve the complete archived lifecycle as test evidence. The current release
+// prepares infrastructure only; token creation belongs to the ordinary website.
+export function launchpadDeploymentReview(archived) {
+  assert.equal(archived.status, "BLOCKED_NO_BROADCAST");
+  assert.equal(archived.broadcastAuthorized, false);
+  assert.deepEqual(archived.target.transactions, []);
+  const expected = ["operations-safe", "reserve-safe", ...constructorStages.map(([id]) => id),
+    "schedule-factory", "execute-factory", "schedule-migration-template", "execute-migration-template"];
+  assert.deepEqual(archived.fixture.rows.map(({ id }) => id), [...expected, "first-rmt"],
+    "Unexpected lifecycle stages in the reviewed source");
+  const plan = structuredClone(archived);
+  plan.scope = "RMT_LAUNCHPAD_INFRASTRUCTURE_REVIEW";
+  plan.terms.status = "OWNER_APPROVED_CONFIGURATION_ONLY";
+  plan.fixture.rows.pop();
+  for (const name of Object.keys(plan.target.productionInputs)) {
+    if (name.startsWith("firstProject")) delete plan.target.productionInputs[name];
+  }
+  const projected = plan.target.delegatedReview;
+  if (projected) {
+    assert.deepEqual(projected.rows.map(({ id }) => id), [...expected, "first-rmt"]);
+    projected.rows.pop();
+    const proof = plan.fixture.delegationProof;
+    const gas = BigInt(proof.firstProjectReceipt.gasUsed);
+    const cost = gas * BigInt(proof.firstProjectReceipt.effectiveGasPriceWei);
+    const costs = projected.costs;
+    costs.protocolObservedForkGasUnits = (BigInt(costs.protocolObservedForkGasUnits) - gas).toString();
+    costs.protocolPaidInSyntheticWei = (BigInt(costs.protocolPaidInSyntheticWei) - cost).toString();
+    costs.protocolForkGasAtObservedL2BaseFeeWei = costs.observedL2BaseFeeWei === null ? null
+      : (BigInt(costs.protocolObservedForkGasUnits) * BigInt(costs.observedL2BaseFeeWei)).toString();
+    delete proof.firstProjectReceipt;
+  }
+  plan.creatorWorkflow = {
+    method: "ORDINARY_WEBSITE_CREATOR_INTERFACE", path: "/create-token", creationEnabled: false,
+    transactionApproval: null, tokenAddress: null,
+    prerequisites: ["Verified launchpad deployment and Blockscout source/runtime",
+      "Production indexing, finality, v4 routing and wallet recovery acceptance",
+      "Separate owner approval to create through the website"],
+  };
+  return plan;
+}
+
+export function buildLaunchpadReviewPlan(compilation, input, sources, options) {
+  return launchpadDeploymentReview(buildMobileReviewPlan(compilation, input, sources, options));
+}
+
 export function reviewSources() {
   return {
     archive: read("fixed-supply-release/fork-4663.json.gz"),
@@ -508,7 +553,7 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
   const { values } = parseArgs({ options: {
     solc: { type: "string" }, lib: { type: "string" }, output: { type: "string" }, verify: { type: "string" },
     observation: { type: "string" }, rehearsal: { type: "string" }, "delegated-observation": { type: "string" },
-    "reconstruct-recorded-observation": { type: "boolean" },
+    "reconstruct-recorded-observation": { type: "boolean" }, "fixture-lifecycle": { type: "boolean" },
   } });
   assert.ok(values.solc, "Supply the pinned compiler with --solc");
   assert.ok(!values.verify || !values.output, "Select either --verify or --output");
@@ -523,7 +568,8 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
     const bytes = readFileSync(values.rehearsal);
     replay = { report: JSON.parse(bytes), sha256: sha256(bytes) };
   }
-  const review = buildMobileReviewPlan(compilation, input, reviewSources(), {
+  const builder = values["fixture-lifecycle"] === true ? buildMobileReviewPlan : buildLaunchpadReviewPlan;
+  const review = builder(compilation, input, reviewSources(), {
     observation, replay, delegatedObservation, reconstructRecordedObservation,
   });
   const result = JSON.stringify(review, null, 2) + "\n";

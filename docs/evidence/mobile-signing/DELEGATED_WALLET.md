@@ -31,7 +31,7 @@ Use the pinned tools and fresh output paths from the [deployment runbook](../../
 
 ```powershell
 pnpm test:fork-4663 --delegated --anvil $anvil --solc $solc --archive pocket --output $forkEvidenceFile
-node packages/contracts/scripts/mobile-review-plan.mjs --solc $solc --rehearsal $forkEvidenceFile --delegated-observation docs/evidence/mobile-signing/sender-delegation-4663.json --reconstruct-recorded-observation --output $newReviewFile
+node packages/contracts/scripts/mobile-review-plan.mjs --solc $solc --fixture-lifecycle --rehearsal $forkEvidenceFile --delegated-observation docs/evidence/mobile-signing/sender-delegation-4663.json --reconstruct-recorded-observation --output $newReviewFile
 node scripts/visual-qa/rmt-creator-integration.mjs --anvil $anvil --solc $solc --pg-bin $postgresBin --mobile-plan docs/evidence/mobile-signing/review-plan-4663.json --output $browserEvidenceDirectory
 ```
 

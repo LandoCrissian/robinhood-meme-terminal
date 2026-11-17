@@ -5,7 +5,8 @@ import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import { pinnedSafeCreationRows, safeProxyRuntimeHash } from "../../packages/contracts/scripts/mobile-review-plan.mjs";
-import { approvedOperationsFeeCap, operationsFeeApprovalSource, operationsSafeBaseline, recommendOperationsFeeCap }
+import { approvedOperationsFeeCap, operationsFeeApprovalSource, operationsSafeBaseline, operationsSafePolicyApprovalSource,
+  operationsSigningDecision, operationsOverCapSigningDecision, recommendOperationsFeeCap }
   from "../../packages/contracts/scripts/prepare-operations-safe.mjs";
 import { approvedFirstProject, approvedRmtTerms } from "../../packages/contracts/scripts/prepare-unsigned-4663.mjs";
 import { MOBILE_DELEGATE_POLICY, MOBILE_DEPLOYMENT_PAYER } from "../production-readiness/mobile-sender.mjs";
@@ -28,16 +29,20 @@ const timestamp = (value) => typeof value === "string" && Number.isFinite(Date.p
 const keys = (value, fields) => assert.deepEqual(Object.keys(value).sort(), fields.split(" ").sort(), "Unexpected review fields");
 
 function validateReview(packet) {
-  const approved = packet.schemaVersion === 4;
+  const currentPolicy = packet.schemaVersion === 5;
+  const approved = currentPolicy || packet.schemaVersion === 4;
   const capped = approved || packet.schemaVersion === 3;
   keys(packet, "schemaVersion scope status broadcastAuthorized chainId sender observedAt expiresAt anchor pendingNonce confirmedNonce balanceWei delegation planId operation terms firstProject"
-    + (approved ? " signingDecision transactionApproval" : ""));
+    + (approved ? " signingDecision transactionApproval" : "") + (currentPolicy ? " policyApproval" : ""));
   assert.ok((capped || packet.schemaVersion === 2) && packet.scope === scope && packet.status === blocked &&
     packet.broadcastAuthorized === false && packet.chainId === 4663, "Expected a blocked Operations Safe review on 4663");
   if (approved) {
-    assert.ok(["BLOCKED_RELEASE_GATES", "BLOCKED_FEE_CEILING_AND_RELEASE_GATES"].includes(packet.signingDecision) &&
+    const decisions = currentPolicy ? [operationsSigningDecision, operationsOverCapSigningDecision]
+      : ["BLOCKED_RELEASE_GATES", "BLOCKED_FEE_CEILING_AND_RELEASE_GATES"];
+    assert.ok(decisions.includes(packet.signingDecision) &&
       packet.transactionApproval === null,
       "Expected signing to remain blocked independently of the owner-approved fee ceiling");
+    if (currentPolicy) assert.equal(packet.policyApproval, operationsSafePolicyApprovalSource, "Missing scoped owner policy approval");
     assert.equal(packet.pendingNonce, operationsSafeBaseline.nonce, "The approved Operations Safe nonce has drifted");
   }
   assert.ok(matches(packet.sender, address) && sameHex(packet.sender, MOBILE_DEPLOYMENT_PAYER), "Unexpected proposed account");
@@ -107,7 +112,9 @@ function validateReview(packet) {
     const withinCeiling = BigInt(required.gasLimit) <= gasLimit && BigInt(required.maxFeePerGasWei) <= maxFeePerGasWei &&
       BigInt(gas.estimatedFeeWei) <= maxNetworkFeeWei;
     assert.equal(row.feeCapStatus, withinCeiling ? "WITHIN_APPROVED_CEILING" : "OVER_APPROVED_CEILING", "Invalid approved ceiling status");
-    assert.equal(packet.signingDecision, withinCeiling ? "BLOCKED_RELEASE_GATES" : "BLOCKED_FEE_CEILING_AND_RELEASE_GATES",
+    const withinDecision = currentPolicy ? operationsSigningDecision : "BLOCKED_RELEASE_GATES";
+    const overDecision = currentPolicy ? operationsOverCapSigningDecision : "BLOCKED_FEE_CEILING_AND_RELEASE_GATES";
+    assert.equal(packet.signingDecision, withinCeiling ? withinDecision : overDecision,
       "Signing decision does not match the approved ceiling evidence");
   } else {
     assert.deepEqual(feeCap, required, "Invalid Operations Safe fee cap");
