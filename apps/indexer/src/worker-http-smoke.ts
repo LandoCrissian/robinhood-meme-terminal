@@ -75,6 +75,7 @@ function startWorker(port: number, rpcPort: number) {
       RMT_FACTORY_ADDRESS: factory,
       RMT_FACTORY_START_BLOCK: String(start),
       RMT_INDEXER_READ_TOKEN: auth.Authorization.substring("Bearer ".length),
+      RMT_CURVE_PRODUCTION_BINDING: "",
       RMT_CONFIRMATION_DEPTH: "20",
       RMT_INDEXER_POLL_MS: "500",
       PGSSLMODE: "disable",
@@ -118,6 +119,13 @@ try {
   assert.equal((await fetch(url + "/historical-launches")).status, 401);
   assert.equal((await fetch(url + "/historical-launches", { headers: auth })).status, 503);
   assert.equal((await fetch(url + "/historical-launches", { method: "POST", headers: auth })).status, 405);
+  assert.equal((await fetch(url + "/curve-launches")).status, 401);
+  assert.equal((await fetch(url + "/curve-launches", { headers: { Authorization: "Bearer invalid" } })).status, 401);
+  assert.equal((await fetch(url + "/curve-launches", { method: "POST", headers: auth })).status, 405);
+  assert.equal((await fetch(url + "/curve-launches?limit=51", { headers: auth })).status, 400);
+  const undeployed = await fetch(url + "/curve-launches", { headers: auth });
+  assert.equal(undeployed.status, 404);
+  assert.equal((await undeployed.json() as { status: string }).status, "undeployed");
 
   headAvailable = true;
   const overlapping = startWorker(await freePort(), rpcPort);

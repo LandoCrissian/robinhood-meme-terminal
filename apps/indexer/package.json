@@ -11,6 +11,7 @@
     "test:schema": "tsx src/schema-smoke.ts",
     "test:resilience": "tsx src/rpc-resilience-smoke.ts",
     "test:worker-http": "node dist/worker-http-smoke.js",
+    "test:curve-production": "tsx src/curve-production-postgres-smoke.ts",
     "start:curve-fixture": "node dist/curve-fixture-worker.js"
   },
   "dependencies": {

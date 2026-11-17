@@ -1,5 +1,7 @@
 # Operations Safe #1 approved standalone release policy
 
+Task 064 authorizes direct owner approval of live wallet costs through the isolated owner deployment page. The earlier fixed-cap tooling and observations below remain reproducible review evidence. The active page keeps the same payer, chain, factory, initializer, owners, threshold and predicted address. It displays current maximum cost, asks the owner to approve it, rechecks the exact request, and opens MetaMask for the owner's signature and broadcast. It never increases approved transaction fields silently. Reserve and protocol steps retain separate receipt and approval gates.
+
 **Owner policy approved.** The owner adopted the exact policy from PR #655 for Operations Safe #1. The evaluator can report eligibility for separate transaction review when current evidence passes. Transaction approval remains unassigned. [Policy approval](https://github.com/LandoCrissian/robinhood-meme-terminal/issues/654#issuecomment-6939238277) · [Preserved fee ceiling](https://github.com/LandoCrissian/robinhood-meme-terminal/issues/649#issuecomment-6936656732)
 
 ## Exact scope

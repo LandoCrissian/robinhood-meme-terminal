@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { gunzipSync } from "node:zlib";
 import { parseArgs } from "node:util";
 import { chromium, devices, webkit } from "playwright";
 import { buildOwnerSafeReview, ownerSafeConfiguration } from "./export-rmt-owner-safe.mjs";
 
 const { values } = parseArgs({ options: { runtimes: { type: "string" } } });
-assert.ok(values.runtimes, "Supply the captured public runtime evidence with --runtimes");
-const evidence = JSON.parse(readFileSync(values.runtimes));
+const evidence = JSON.parse(values.runtimes ? readFileSync(values.runtimes)
+  : gunzipSync(readFileSync(new URL("../../docs/evidence/mobile-signing/safe-runtime-4663.json.gz", import.meta.url))));
 const endpoint = "https://owner-review.example.test/owner-deployment.html";
 const built = buildOwnerSafeReview(endpoint, evidence);
 const config = ownerSafeConfiguration(endpoint, evidence);

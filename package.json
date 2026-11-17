@@ -22,6 +22,8 @@
     "evaluate:release": "node scripts/release/evaluate.mjs",
     "test:release-policy": "node --test scripts/release/*.test.mjs",
     "export:private-phone-review": "node scripts/visual-qa/export-rmt-private-phone-review.mjs",
+    "export:owner-safe": "node scripts/visual-qa/export-rmt-owner-safe.mjs",
+    "test:owner-wallet": "node scripts/visual-qa/test-rmt-owner-safe.mjs",
     "audit:production": "pnpm audit --prod --audit-level high",
     "check:repo": "knip --include files,dependencies",
     "test:fork-4663": "node packages/contracts/scripts/rehearse-fixed-supply-4663.mjs"
