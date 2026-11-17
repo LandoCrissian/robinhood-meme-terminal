@@ -5,6 +5,8 @@ import { dirname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 import { pinnedSafeCreationRows, safeProxyRuntimeHash } from "../../packages/contracts/scripts/mobile-review-plan.mjs";
+import { approvedOperationsFeeCap, operationsFeeApprovalSource, operationsSafeBaseline, recommendOperationsFeeCap }
+  from "../../packages/contracts/scripts/prepare-operations-safe.mjs";
 import { approvedFirstProject, approvedRmtTerms } from "../../packages/contracts/scripts/prepare-unsigned-4663.mjs";
 import { MOBILE_DELEGATE_POLICY, MOBILE_DEPLOYMENT_PAYER } from "../production-readiness/mobile-sender.mjs";
 import { privateReviewPage } from "./rmt-private-phone-review-page.mjs";
@@ -26,10 +28,18 @@ const timestamp = (value) => typeof value === "string" && Number.isFinite(Date.p
 const keys = (value, fields) => assert.deepEqual(Object.keys(value).sort(), fields.split(" ").sort(), "Unexpected review fields");
 
 function validateReview(packet) {
-  keys(packet, "schemaVersion scope status broadcastAuthorized chainId sender observedAt expiresAt anchor pendingNonce confirmedNonce balanceWei delegation planId operation terms firstProject");
-  const capped = packet.schemaVersion === 3;
+  const approved = packet.schemaVersion === 4;
+  const capped = approved || packet.schemaVersion === 3;
+  keys(packet, "schemaVersion scope status broadcastAuthorized chainId sender observedAt expiresAt anchor pendingNonce confirmedNonce balanceWei delegation planId operation terms firstProject"
+    + (approved ? " signingDecision transactionApproval" : ""));
   assert.ok((capped || packet.schemaVersion === 2) && packet.scope === scope && packet.status === blocked &&
     packet.broadcastAuthorized === false && packet.chainId === 4663, "Expected a blocked Operations Safe review on 4663");
+  if (approved) {
+    assert.ok(["BLOCKED_RELEASE_GATES", "BLOCKED_FEE_CEILING_AND_RELEASE_GATES"].includes(packet.signingDecision) &&
+      packet.transactionApproval === null,
+      "Expected signing to remain blocked independently of the owner-approved fee ceiling");
+    assert.equal(packet.pendingNonce, operationsSafeBaseline.nonce, "The approved Operations Safe nonce has drifted");
+  }
   assert.ok(matches(packet.sender, address) && sameHex(packet.sender, MOBILE_DEPLOYMENT_PAYER), "Unexpected proposed account");
   assert.ok(matches(packet.planId, digest) && matches(packet.balanceWei, decimal) &&
     matches(packet.pendingNonce, decimal) && packet.pendingNonce === packet.confirmedNonce &&
@@ -51,7 +61,8 @@ function validateReview(packet) {
   const row = packet.operation;
   const [operations] = pinnedSafeCreationRows();
   const safe = operations.details;
-  keys(row, "id label dependsOn sender nonce destination predictedAddress valueWei inputHash action status gas checks expectedRuntimeHash owners threshold safeVersion saltNonce initializerHash" + (capped ? " feeCap" : ""));
+  keys(row, "id label dependsOn sender nonce destination predictedAddress valueWei inputHash action status gas checks expectedRuntimeHash owners threshold safeVersion saltNonce initializerHash"
+    + (capped ? " feeCap" : "") + (approved ? " feeApproval feeCapStatus freshRecommendation" : ""));
   assert.ok(row.id === "operations-safe" && row.action === "createProxyWithNonce(address,bytes,uint256)" &&
     row.status === "UNSIGNED_OPERATIONS_APPROVAL_REQUIRED" && row.valueWei === "0" && row.nonce === packet.pendingNonce &&
     sameHex(row.sender, packet.sender) && sameHex(row.destination, operations.to) &&
@@ -83,14 +94,24 @@ function validateReview(packet) {
   const maxFeePerGasWei = BigInt(feeCap.maxFeePerGasWei);
   const maxNetworkFeeWei = BigInt(feeCap.maxNetworkFeeWei);
   const l2BaseFee = BigInt(gas.l2BaseFeeWei);
-  const nitro = BigInt(gas.gasUnits);
-  const rpc = BigInt(gas.rpcEstimateGas);
-  const higherEstimate = nitro > rpc ? nitro : rpc;
-  assert.ok(l2BaseFee > 0n && rpc > 0n && BigInt(gas.estimatedL2FeeWei) === l2BaseFee * BigInt(gas.l2GasUnits) &&
+  assert.ok(l2BaseFee > 0n && BigInt(gas.rpcEstimateGas) > 0n &&
+    BigInt(gas.estimatedL2FeeWei) === l2BaseFee * BigInt(gas.l2GasUnits) &&
     BigInt(gas.estimatedL1FeeWei) === l2BaseFee * BigInt(gas.l1PosterGasUnits) &&
-    gasLimit === (5n * higherEstimate + 3n) / 4n && maxFeePerGasWei === 2n * l2BaseFee &&
     feeCap.maxPriorityFeePerGasWei === "0" && maxNetworkFeeWei === gasLimit * maxFeePerGasWei &&
     maxNetworkFeeWei <= BigInt(packet.balanceWei), "Invalid Operations Safe fee cap");
+  const required = recommendOperationsFeeCap({ nitroGas: gas.gasUnits, rpcGas: gas.rpcEstimateGas, l2BaseFee: gas.l2BaseFeeWei });
+  if (approved) {
+    assert.deepEqual(feeCap, approvedOperationsFeeCap, "The approved Operations Safe fee cap has changed");
+    assert.equal(row.feeApproval, operationsFeeApprovalSource, "Missing conditional fee-ceiling approval");
+    assert.deepEqual(row.freshRecommendation, required, "Invalid refreshed fee recommendation");
+    const withinCeiling = BigInt(required.gasLimit) <= gasLimit && BigInt(required.maxFeePerGasWei) <= maxFeePerGasWei &&
+      BigInt(gas.estimatedFeeWei) <= maxNetworkFeeWei;
+    assert.equal(row.feeCapStatus, withinCeiling ? "WITHIN_APPROVED_CEILING" : "OVER_APPROVED_CEILING", "Invalid approved ceiling status");
+    assert.equal(packet.signingDecision, withinCeiling ? "BLOCKED_RELEASE_GATES" : "BLOCKED_FEE_CEILING_AND_RELEASE_GATES",
+      "Signing decision does not match the approved ceiling evidence");
+  } else {
+    assert.deepEqual(feeCap, required, "Invalid Operations Safe fee cap");
+  }
 }
 
 export function buildPrivatePhoneReview(endpoint, packet, expiry, { runtimeBytesForTest } = {}) {
@@ -105,7 +126,7 @@ export function buildPrivatePhoneReview(endpoint, packet, expiry, { runtimeBytes
     runtimeBytesForTest.length > 0 && runtimeBytesForTest.length <= 24576), "Runtime overrides are test-only");
   const key = randomBytes(32);
   const iv = randomBytes(12);
-  const binding = "RMT OPERATIONS PRIVATE PHONE REVIEW v3\n" + url.href + "\n" + expiry;
+  const binding = "RMT OPERATIONS PRIVATE PHONE REVIEW v" + packet.schemaVersion + "\n" + url.href + "\n" + expiry;
   const cipher = createCipheriv("aes-256-gcm", key, iv);
   cipher.setAAD(Buffer.from(binding));
   const payload = Buffer.concat([cipher.update(JSON.stringify(packet), "utf8"), cipher.final(), cipher.getAuthTag()]);
@@ -123,7 +144,7 @@ export function buildPrivatePhoneReview(endpoint, packet, expiry, { runtimeBytes
     "button,input{box-sizing:border-box;max-width:100%;font:inherit;padding:.7rem;border-radius:.45rem}input{width:100%;margin:.35rem 0 .6rem}",
     "button{background:#2bdf4b;color:#071009;border:0;font-weight:700;min-height:44px}button:disabled{opacity:.55}",
     "#status{margin:.65rem 0;font-size:.9rem}section{border:1px solid #3a473e;border-radius:.6rem;padding:.65rem .75rem}",
-    "#fee-status{font-size:.9rem;margin:0 0 .45rem}#fee-status[data-expired=true]{color:#ffd689}",
+    "#fee-status,#signing-status{font-size:.9rem;margin:0 0 .45rem}#signing-status,#fee-status[data-expired=true]{color:#ffd689}",
     "details{border-top:1px solid #3a473e}summary{cursor:pointer;font-weight:700;min-height:44px;display:list-item;align-content:center}",
     "dl{display:grid;gap:.25rem .65rem;grid-template-columns:minmax(0,1fr) minmax(0,2.15fr);font-size:.85rem;margin:.3rem 0 .5rem}",
     "dt{font-weight:650;color:#c2d1c2}dd{margin:0;overflow-wrap:anywhere}p,li,summary{overflow-wrap:anywhere}ol{padding-inline-start:1.45em}",
@@ -138,7 +159,7 @@ export function buildPrivatePhoneReview(endpoint, packet, expiry, { runtimeBytes
     '<meta http-equiv="Content-Security-Policy" content="' + policy + '">',
     '<title>RMT Operations Safe review</title><style>' + style + '</style></head>',
     '<body><main><h1>RMT Operations Safe review</h1><p>Robinhood Chain 4663 · Read-only</p>',
-    '<div id="unlock-panel"><p>Unlock to review the exact Operations Safe transaction and proposed fee limit.</p>',
+    '<div id="unlock-panel"><p>Unlock to review the exact Operations Safe transaction and fee limit.</p>',
     '<label for="unlock-key">Review access code</label>',
     '<input id="unlock-key" type="password" maxlength="43" autocomplete="off" autocapitalize="off" spellcheck="false" disabled>',
     '<button id="unlock" disabled>Unlock review</button></div>',

@@ -14,16 +14,20 @@ The phone reviews only transaction 1, the zero-value Operations Safe creation. E
 
 ## Refresh Operations Safe transaction 1
 
-The owner completed the physical iPhone read-only review. The refresh prepares the same 4663 call for review and independently checks the confirmed and pending nonce, delegation, Safe infrastructure, owner set, calldata and vacant predicted address. A mismatch with the reviewed transaction stops the refresh. The quote and cap are proposals under `BLOCKED_NO_BROADCAST`. [Task 059](https://github.com/LandoCrissian/robinhood-meme-terminal/issues/649)
+The owner completed the physical iPhone read-only review. The refresh prepares the same 4663 call for review and independently checks the confirmed and pending nonce, delegation, Safe infrastructure, owner set, calldata and vacant predicted address. A mismatch with the reviewed transaction stops the refresh. [Read-only review evidence](https://github.com/LandoCrissian/robinhood-meme-terminal/issues/649)
+
+The conditional owner approval covers Operations Safe transaction 1 and fixes its ceiling at **0.00001567739478 ETH**, with gas limit **391,739**, max fee **40,020,000 wei/gas** and priority fee **zero**. The refresh compares current evidence with these exact limits and leaves them fixed. If the buffered recommendation exceeds the approved limits, the page shows the observed estimate and the separately calculated ceiling for review. The preparation stays stopped and requires fee approval before reconsideration. [Owner fee-ceiling approval](https://github.com/LandoCrissian/robinhood-meme-terminal/issues/649#issuecomment-6936656732) · [Task 060](https://github.com/LandoCrissian/robinhood-meme-terminal/issues/651)
 
 ```powershell
-pnpm prepare:operations-safe --out-private $privatePacket --out-review $reviewPacket
+pnpm prepare:operations-safe --out-private $privatePacket --out-review $reviewPacket --review-only-over-cap
 pnpm export:private-phone-review --url $approvedPrivateHttpsUrl --review $reviewPacket --output $privateHtml --key-file $separateKeyFile --expires $expiryUtc
 ```
 
+The review-only flag allows a blocked diagnostic sheet when the current recommendation exceeds the ceiling. In that case the packet contains no unsigned transaction envelope. Running without the flag stops without exporting the over-cap sheet.
+
 The proposed gas limit adds 25% headroom to the larger of `eth_estimateGas` and the Nitro total and rounds up. The Nitro total includes L1 posting in L2 gas units. The proposed maximum fee per gas is twice the observed L2 base fee, with zero priority fee. The network fee ceiling is the product of the proposed gas limit and maximum fee per gas. A larger gas requirement or fee change requires a fresh review. A zero quoted L1 component is a block-specific observation. [Arbitrum fee estimation](https://docs.arbitrum.io/arbitrum-essentials/how-to-estimate-gas) · [EIP-1559](https://eips.ethereum.org/EIPS/eip-1559)
 
-Open the exact HTTPS review URL and enter its separate access code. The page can display corroborated quote evidence without asking for wallet permissions. It distinguishes an expired quote from a current quote. A later transaction decision must bind the fresh nonce, calldata hash and approved fee ceiling and remain subject to the release gates.
+Open the exact HTTPS review URL and enter its separate access code. The page displays the signing decision and distinguishes an expired quote from a current estimate. Signing approval remains unavailable while the exact release gate fails, even when the transaction fits the approved fee ceiling. Use the existing finding matrix for independent disposition of the exact findings, correct confirmed defects and rerun the strict checks on the reviewed candidate. Revalidate this call and seek separate transaction approval only after release clearance. [Security findings and review inputs](../../SECURITY.md)
 
 | Safe | Predicted 4663 address | Pinned `saltNonce` |
 | --- | --- | --- |

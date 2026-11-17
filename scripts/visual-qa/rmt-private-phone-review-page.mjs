@@ -65,30 +65,44 @@ export function privateReviewPage(config) {
   }
   function renderReview() {
     const row = packet.operation;
+    const approved = packet.schemaVersion === 4;
+    const overCap = approved && row.feeCapStatus === "OVER_APPROVED_CEILING";
     const verifiedAt = performance.now();
     const verifiedBlockTime = Date.parse(packet.observedAt);
+    if (approved) {
+      insert(review, "p", "Signing blocked by unresolved security release gates. 22 high and seven governance-medium findings remain.")
+        .id = "signing-status";
+    }
     const quote = insert(review, "p");
     quote.id = "fee-status";
     quote.setAttribute("aria-live", "polite");
-    const archivedMessage = row.feeCap ? "Fee quote expired. Get a fresh quote before transaction approval."
-      : "Archived quote without a fee cap. Get a fresh quote before transaction approval.";
+    const archivedMessage = overCap ? "Fee quote expired. The recorded fee bounds exceeded the approved ceiling."
+      : row.feeCap ? "Fee quote expired. Get a fresh quote before transaction approval."
+        : "Archived quote without a fee cap. Get a fresh quote before transaction approval.";
+    const currentMessage = overCap ? "Current fee bounds exceed the approved ceiling. Revised fee approval is required."
+      : approved ? "Current fee bounds fit the approved ceiling."
+        : "Unsigned review. Separate transaction approval is required.";
     const updateQuote = () => {
       const now = Math.max(Date.now(), verifiedBlockTime + performance.now() - verifiedAt);
       const expired = !row.feeCap || now >= Date.parse(packet.expiresAt);
       if (quote.dataset.expired === String(expired)) return;
       quote.dataset.expired = String(expired);
-      quote.textContent = expired ? archivedMessage : "Unsigned review. Separate transaction approval is required.";
+      quote.textContent = expired ? archivedMessage : currentMessage;
       const recorded = expired ? " · recorded" : "";
       price.textContent = eth(row.gas.estimatedFeeWei) + recorded;
-      cap.textContent = row.feeCap ? eth(row.feeCap.maxNetworkFeeWei) + recorded : "Unavailable";
+      cap.textContent = row.feeCap ? eth(row.feeCap.maxNetworkFeeWei) + (approved ? "" : recorded) : "Unavailable";
+      if (recommendation) recommendation.textContent = eth(row.freshRecommendation.maxNetworkFeeWei) + recorded;
     };
     properties(review, [
       ["Sender", row.sender], ["Pending nonce", row.nonce], ["Proxy factory", row.destination], ["Value", eth(row.valueWei)],
-      ["Est. network cost", "", "fee-value"], ["Proposed fee cap", "", "fee-cap"], ["Expected Safe", row.predictedAddress],
+      ["Est. network cost", "", "fee-value"], [approved ? "Approved fee ceiling" : "Proposed fee cap", "", "fee-cap"],
+      ...(overCap ? [["Refreshed fee recommendation", "", "required-fee-cap"]] : []),
+      ["Expected Safe", row.predictedAddress],
       ["Safe setup", row.safeVersion + " · " + row.threshold + " of " + row.owners.length],
     ]);
     const price = field("fee-value");
     const cap = field("fee-cap");
+    const recommendation = field("required-fee-cap");
     updateQuote();
     const safeDetails = details(review, "Calldata hash and Safe owners");
     properties(safeDetails, [
@@ -109,10 +123,17 @@ export function privateReviewPage(config) {
     ]);
     if (row.feeCap) {
       properties(evidence, [
-        ["Proposed gas limit", row.feeCap.gasLimit], ["Max fee per gas", row.feeCap.maxFeePerGasWei + " wei"],
+        [approved ? "Approved gas limit" : "Proposed gas limit", row.feeCap.gasLimit],
+        ["Max fee per gas", row.feeCap.maxFeePerGasWei + " wei"],
         ["Max priority fee per gas", row.feeCap.maxPriorityFeePerGasWei + " wei"],
       ]);
-      insert(evidence, "p", "The gas limit adds 25% to the larger of the RPC and Nitro gas estimates. The gas estimate accounts for L1 posting gas. The fee per gas cap uses twice the sampled L2 base fee, with a zero priority fee.");
+      if (approved) {
+        properties(evidence, [
+          ["Refreshed gas limit recommendation", row.freshRecommendation.gasLimit],
+          ["Refreshed max fee per gas", row.freshRecommendation.maxFeePerGasWei + " wei"],
+        ]);
+      }
+      insert(evidence, "p", "The fee recommendation uses 25% gas headroom and twice the sampled L2 base fee with zero priority fee. The Nitro estimate includes L1 posting gas.");
     }
     const checks = insert(evidence, "ul");
     for (const check of row.checks) insert(checks, "li", check);
