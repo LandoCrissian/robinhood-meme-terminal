@@ -48,7 +48,7 @@ export function NewEngineLaunches({ directory }: { directory: NewEngineDirectory
     {launches.map((launch) => {
       const { registration } = launch;
       return <section className="lpPanel lpForm" key={`${registration.chainId}:${registration.factory}:${registration.token}`}>
-        <h3>{registration.name} · {registration.symbol}</h3>
+        <h3><Link href={`/launches/${registration.token}`} prefetch={false}>{registration.name} · {registration.symbol}</Link></h3>
         <p>{describeCurveLifecycle(launch).label}</p>
         <dl className="lpFacts lpProjectLink">
           <dt>New-engine token</dt><dd><a href={`${robinhoodExplorer}/address/${registration.token}`} className="lpAddress">{registration.token}</a></dd>

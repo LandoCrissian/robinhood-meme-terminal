@@ -5,6 +5,8 @@ import { isLaunchAddress } from "../../../lib/launch-data";
 import { FixtureLaunchDetails, FixtureTransactionRecovery } from "../../_components/fixture-launches";
 import { configuredCurveFixture } from "../../../lib/server/curve-fixture";
 import { readFixtureLaunches } from "../../../lib/server/fixture-discovery";
+import { configuredProductionDiscovery, productionDirectory, readProductionDiscovery } from "../../../lib/server/production-discovery";
+import { NewEngineLaunches } from "../../_components/new-engine-launches";
 
 export const dynamic = "force-dynamic";
 
@@ -12,8 +14,28 @@ export default async function LaunchPage({ params }: { params: Promise<{ token: 
   const { token } = await params;
   if (!isLaunchAddress(token)) notFound();
   const address = token.toLowerCase();
-  const fixture = configuredCurveFixture(await headers());
-  if (!fixture) notFound();
+  const requestHeaders = await headers();
+  const fixture = configuredCurveFixture(requestHeaders);
+  if (!fixture) {
+    if (!configuredProductionDiscovery(requestHeaders)) notFound();
+    const data = await readProductionDiscovery(address);
+    return <>
+      <Link className="lpBack" href="/" prefetch={false}>← Launches</Link>
+      <header className="lpPageHeading"><div><h1>{data.status === "unavailable" ? "New-engine evidence unavailable" : data.launches[0]?.name ?? "Indexing pending"}</h1><p>Robinhood Chain 4663 · verified creation evidence</p></div></header>
+      <p className="lpNotice" role="status">{data.status === "unavailable" ? "Registration cannot be verified right now. An unavailable read does not mean the token was never registered."
+        : data.status === "stale" ? "Stale registration checkpoint. Current lifecycle and trading are unverified."
+        : data.launches.length ? "Creation confirmed at the indexed checkpoint. Trading and claims remain separately gated." : "No registration at this verified checkpoint. A newly confirmed transaction may still be indexing."}</p>
+      <code className="lpAddress">{address}</code>
+      <NewEngineLaunches directory={productionDirectory(data)} />
+      {data.status !== "unavailable" && data.launches[0] && <dl className="lpFacts">
+        <dt>Creator</dt><dd className="lpAddress">{data.launches[0].creator}</dd>
+        <dt>Project treasury</dt><dd className="lpAddress">{data.launches[0].treasury ?? "None"}</dd>
+        <dt>Treasury allocation</dt><dd>{data.launches[0].treasuryShareBps / 100}% of total collected fees</dd>
+        <dt>Submitted project URI</dt><dd>{data.launches[0].projectURI || "None"}</dd>
+        <dt>Checkpoint</dt><dd>{data.checkpoint.blockNumber} · {data.checkpoint.timestamp}</dd>
+      </dl>}
+    </>;
+  }
   const directory = await readFixtureLaunches(fixture, address);
   if (directory.status === "ready" && directory.launches[0]) return <FixtureLaunchDetails launch={directory.launches[0]} fixture={fixture} />;
   return <>

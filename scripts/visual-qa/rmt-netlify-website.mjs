@@ -151,7 +151,7 @@ const unsupportedRoutes = [
   "/admin", "/admin/creator-applications", "/deploy-mainnet", "/deploy-testnet",
   "/activate-consent-testnet", "/mainnet-smoke", "/vnext", "/status", "/rmt",
   "/api/launchpad/curve", "/api/launchpad/public/list_launches?chainId=31337",
-  "/api/launchpad/test-creation", "/api/launchpad/test-lifecycle", "/api/launchpad/new-engine",
+  "/api/launchpad/test-creation", "/api/launchpad/test-lifecycle", "/api/launchpad/new-engine", "/api/launchpad/production-creation",
   "/wallet/mobile-review", "/api/launchpad/test-mobile-review",
   "/api/launchpad/new-engine/0x0000000000000000000000000000000000000001",
   "/api/trade/rmt-v4", "/api/vnext/authorize", "/api/vnext/native-settlement-trace",
