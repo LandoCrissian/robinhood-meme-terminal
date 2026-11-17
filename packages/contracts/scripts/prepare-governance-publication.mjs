@@ -12,6 +12,7 @@ import { protocolStageCandidate } from "./protocol-constructor-readiness.mjs";
 const require = createRequire(new URL("../../../apps/launch-website/package.json", import.meta.url));
 const { decodeFunctionResult, encodeFunctionData, encodeFunctionResult, hashTypedData, isAddressEqual, keccak256, parseAbi, toHex, zeroAddress, zeroHash } = require("viem");
 const policy = JSON.parse(readFileSync(new URL("../../../docs/evidence/rmt-task045/operations-safe-policy.json", import.meta.url))).operations;
+const sourcePublication = JSON.parse(readFileSync(new URL("../../../docs/evidence/mobile-signing/protocol-source-publication.json", import.meta.url)));
 export const publicationActionTypes = Object.freeze({ Action: [
   { name: "kind", type: "uint8" }, { name: "nonce", type: "uint64" }, { name: "version", type: "uint32" },
   { name: "factory", type: "address" }, { name: "runtimeHash", type: "bytes32" },
@@ -169,7 +170,9 @@ export async function prepareGovernancePublication({ packet, action = "publish-f
     protocolReceipts: verified.map((proof, index) => ({ id: ids[index], hash: proof.transactionHash, blockHash: proof.blockHash,
       blockNumber: proof.receiptBlock, address: plan.constructors[index].address, input: plan.constructors[index].initcode,
       nonce: toHex(BigInt(plan.constructors[index].nonce)), value: "0x0" })),
-    publicSourceVerification: { status: "INCOMPLETE_EXTERNAL_VERIFICATION", atPreparation: "Successor V3 and bootstrap child Blockscout verification remains pending or rate-limited (HTTP 429). Exact materialized compiler/runtime identity is separately verified.",
+    publicSourceVerification: { status: sourcePublication.pending.length ? "INCOMPLETE_EXTERNAL_VERIFICATION" : "FULL_EXTERNAL_SOURCE_CORRESPONDENCE_RECORDED",
+      recordedAt: sourcePublication.observedAt, accepted: sourcePublication.accepted.map((row) => row.id), pending: sourcePublication.pending,
+      atPreparation: "Status comes from the separately recorded Blockscout acceptance evidence, not a fresh explorer query. Exact materialized compiler/runtime identity is independently rechecked; source verification is not an audit.",
       independentAudit: false },
     finality: "L1_UNVERIFIED", strictSecurityGate: "FAIL_HIGH_22_RETAINED", governanceMediumObservations: 7 };
 }
