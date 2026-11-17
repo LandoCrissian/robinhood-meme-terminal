@@ -12,7 +12,14 @@ export function governanceReviewPage(encrypted) {
   const reads = new Set(["eth_accounts", "eth_chainId", "eth_getBlockByNumber", "eth_getCode", "eth_call", "eth_getTransactionReceipt", "eth_getTransactionByHash"]);
   let config, provider, cryptoKey, collection, review, busy = false;
   const aad = () => new TextEncoder().encode("RMT governance responses\n" + encrypted.endpoint + "\n" + config.digest);
-  function invalidate(message) { review = null; el("approve").checked = false; el("sign").disabled = true; el("download").disabled = true; status(message); }
+  function savedControls() {
+    const available = config && cryptoKey && collection?.signatureResponses.length === 2;
+    el("show-saved").disabled = busy || !available;
+    el("copy-json").disabled = busy || !available || !el("saved-authorization").value;
+    el("select-json").disabled = busy || !available || !el("saved-authorization").value;
+  }
+  function clearRevealed() { el("saved-authorization").value = ""; el("saved-export").hidden = true; savedControls(); }
+  function invalidate(message) { review = null; el("approve").checked = false; el("sign").disabled = true; el("download").disabled = true; clearRevealed(); status(message); }
   async function loadCollection() {
     const raw = localStorage.getItem(collectionKey);
     if (!raw) return { schemaVersion: 1, digest: config.digest, signatureResponses: [], invalidated: false };
@@ -33,7 +40,7 @@ export function governanceReviewPage(encrypted) {
   }
   async function run(task) {
     if (busy) return; busy = true;
-    for (const id of ["connect", "review", "sign", "download"]) el(id).disabled = true;
+    for (const id of ["connect", "review", "sign", "download", "show-saved", "copy-json", "select-json"]) el(id).disabled = true;
     try { await task(); } catch (error) {
       if (error.invalidateAll && collection && config) await saveCollection({ ...collection, invalidated: true, invalidationReason: error.message });
       invalidate(error.message || "Required evidence is unavailable. No signature was requested.");
@@ -42,6 +49,7 @@ export function governanceReviewPage(encrypted) {
       el("sign").disabled = !review || !el("approve").checked || collection?.invalidated || collection?.signatureResponses.length >= 2 ||
         collection?.signatureResponses.some((r) => equal(r.signer, review.account));
       el("download").disabled = !review || collection?.invalidated || collection?.signatureResponses.length !== 2;
+      savedControls();
     }
   }
   async function read(method, params = []) {
@@ -137,12 +145,40 @@ export function governanceReviewPage(encrypted) {
   }
   async function download() {
     review = await observe(); assert(collection.signatureResponses.length === 2 && !collection.invalidated, "Two current responses are required.");
-    const body = JSON.stringify({ schemaVersion: 1, scope: "OWNER_COLLECTED_DIRECTORY_TYPED_SIGNATURES", directory: config.directory,
-      digest: config.digest, typedData: config.typedData, signatureResponses: collection.signatureResponses }, null, 2) + "\n";
+    const body = savedAuthorizationBody();
     const url = URL.createObjectURL(new Blob([body], { type: "application/json" })), anchor = document.createElement("a");
     anchor.href = url; anchor.download = "rmt-publication-authorization-" + config.digest.slice(2, 10) + ".json"; anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     status("Private authorization JSON downloaded. Return that file for verification. Never send seed phrases or private keys.");
+  }
+  function savedAuthorizationBody() {
+    return JSON.stringify({ schemaVersion: 1, scope: "OWNER_COLLECTED_DIRECTORY_TYPED_SIGNATURES", directory: config.directory,
+      digest: config.digest, typedData: config.typedData, signatureResponses: collection.signatureResponses }, null, 2) + "\n";
+  }
+  async function showSavedAuthorization() {
+    assert(config && cryptoKey && location.href === encrypted.endpoint, "Unlock this exact page to recover saved responses.");
+    collection = await loadCollection();
+    assert(collection.signatureResponses.length === 2, "Two saved wallet responses are required. Nothing was uploaded or signed.");
+    el("saved-authorization").value = savedAuthorizationBody(); el("saved-export").hidden = false;
+    status((collection.invalidated ? "These saved responses were previously invalidated. " : "") +
+      "Saved responses only; validity is unverified. Tap Copy full JSON, then return the complete text rather than a screenshot. The operator must verify signatures and current authority before scheduling. No wallet connection is needed for this export.");
+  }
+  function selectSavedAuthorization() {
+    const area = el("saved-authorization");
+    if (!config || !cryptoKey || busy || !area.value) return;
+    area.focus(); area.select(); area.setSelectionRange(0, area.value.length);
+    status("The full JSON is selected. Use your phone's Copy command, or long-press this text and choose Select All then Copy. Return the complete JSON text; a screenshot cannot provide the full signature bytes. Responses remain unverified.");
+  }
+  async function copySavedAuthorization() {
+    const body = el("saved-authorization").value;
+    if (!config || !cryptoKey || busy || !body) return;
+    try {
+      // Invoke writeText directly in this click, before any decrypt/read await,
+      // so WebKit retains the owner's transient clipboard activation.
+      if (!navigator.clipboard || typeof navigator.clipboard.writeText !== "function") { selectSavedAuthorization(); return; }
+      await navigator.clipboard.writeText(body);
+      status("Copied the complete saved authorization JSON. Return the pasted text or a text file, not a screenshot. Signatures and current authority still require operator verification. Nothing was uploaded, signed or broadcast.");
+    } catch { selectSavedAuthorization(); }
   }
   async function unlock(code) {
     assert(location.href === encrypted.endpoint && /^[A-Za-z0-9_-]{43}$/.test(code), "Use the exact approved HTTPS URL and access code.");
@@ -153,7 +189,9 @@ export function governanceReviewPage(encrypted) {
     assert(config.endpoint === encrypted.endpoint && config.scope === "UNSIGNED_DIRECTORY_PUBLICATION_AUTHORIZATION" && config.chainId === 4663 && config.requiredSignatures === 2,
       "Unexpected governance authorization configuration.");
     sessionStorage.setItem(accessKey, code); el("access-code").value = ""; el("access").hidden = true; el("controls").hidden = false;
-    collection = await loadCollection(); invalidate(collection.invalidated ? "This exact action was invalidated. Fresh preparation is required." : "Connect one of the approved Rabby governance accounts. No signature is requested on connection.");
+    collection = await loadCollection(); invalidate(collection.signatureResponses.length === 2
+      ? "Two wallet responses are already saved. Tap Show saved authorization, then Copy full JSON. No wallet connection or new signature is needed to export; the saved responses remain unverified."
+      : collection.invalidated ? "This exact action was invalidated. Fresh preparation is required." : "Connect one of the approved Rabby governance accounts. No signature is requested on connection.");
   }
   el("unlock").onclick = () => run(() => unlock(el("access-code").value.trim()));
   el("connect").onclick = () => run(async () => {
@@ -165,6 +203,9 @@ export function governanceReviewPage(encrypted) {
     invalidate("Governance wallet connected. Review the exact action before any signature request.");
   });
   el("review").onclick = () => run(reviewAction); el("sign").onclick = () => run(sign); el("download").onclick = () => run(download);
+  el("show-saved").onclick = () => run(showSavedAuthorization);
+  el("copy-json").onclick = copySavedAuthorization;
+  el("select-json").onclick = selectSavedAuthorization;
   el("approve").onchange = () => { el("sign").disabled = busy || !review || !el("approve").checked || collection?.invalidated || collection?.signatureResponses.length >= 2 ||
     collection?.signatureResponses.some((r) => equal(r.signer, review.account)); };
   el("logout").onclick = () => { sessionStorage.removeItem(accessKey); config = null; provider = null; cryptoKey = null; invalidate("Session locked. Encrypted signature evidence is retained."); el("controls").hidden = true; el("access").hidden = false; };

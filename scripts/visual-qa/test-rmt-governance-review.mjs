@@ -6,7 +6,7 @@ import { createRequire } from "node:module";
 import { chromium, devices, webkit } from "playwright";
 import { buildPublicationAction, publicationActionTypes } from "../../packages/contracts/scripts/prepare-governance-publication.mjs";
 import { verifyGovernanceAuthorization } from "../../packages/contracts/scripts/verify-governance-authorization.mjs";
-import { buildGovernanceReview, governanceReviewConfiguration } from "./export-rmt-governance-review.mjs";
+import { buildGovernanceReview, governanceReviewConfiguration, refreshGovernanceReviewArtifact } from "./export-rmt-governance-review.mjs";
 const require = createRequire(new URL("../../apps/launch-website/package.json", import.meta.url));
 const { encodeFunctionData, encodeFunctionResult, keccak256, parseAbi, toHex, zeroHash } = require("viem");
 const { privateKeyToAccount } = require("viem/accounts");
@@ -38,16 +38,26 @@ assert.throws(() => governanceReviewConfiguration(endpoint, { ...publication, di
 const built = buildGovernanceReview(endpoint, publication, options);
 assert.ok(!built.html.includes(built.accessCode) && !built.html.includes(publication.digest));
 assert.ok(!built.html.includes("eth_sendTransaction") && !built.html.includes("eth_sendRawTransaction"));
+const envelope = (html) => { const script = html.match(/<script>([\s\S]*?)<\/script>/)[1].trim(); return JSON.parse(script.slice(script.lastIndexOf(")({") + 2, -2)); };
+const refreshed = refreshGovernanceReviewArtifact(built.html, built.accessCode, options);
+assert.deepEqual(envelope(refreshed.html), envelope(built.html)); assert.equal(refreshed.accessCode, built.accessCode);
+assert.equal(refreshed.manifest.digest, built.manifest.digest); assert.equal(refreshed.manifest.currentAuthorityRechecked, false);
+assert.notEqual(buildGovernanceReview(endpoint, publication, options).accessCode, built.accessCode);
+assert.throws(() => refreshGovernanceReviewArtifact(built.html, "A".repeat(43), options));
+const changedEnvelope = (patch) => built.html.replace(JSON.stringify(envelope(built.html)), JSON.stringify({ ...envelope(built.html), ...patch }));
+assert.throws(() => refreshGovernanceReviewArtifact(changedEnvelope({ endpoint: "https://other.example.test/governance-factory.html" }), built.accessCode, options));
+assert.throws(() => refreshGovernanceReviewArtifact(changedEnvelope({ payload: Buffer.from(envelope(built.html).payload, "base64").map((b, i) => i ? b : b ^ 1).toString("base64") }), built.accessCode, options));
+assert.throws(() => refreshGovernanceReviewArtifact(changedEnvelope({ iv: Array.from(Buffer.from(envelope(built.html).iv, "base64")) }), built.accessCode, options));
 
 for (const [name, engine] of [["chromium", chromium], ["webkit", webkit]]) {
   const browser = await engine.launch();
   try {
     const context = await browser.newContext({ ...devices["iPhone 13"], acceptDownloads: true, serviceWorkers: "block" });
     const page = await context.newPage(); page.setDefaultTimeout(10000);
-    const calls = [], external = []; let selected = 0, reject = true, unavailable = false, changedAuthority = false;
+    const calls = [], external = []; let selected = 0, reject = true, unavailable = false, changedAuthority = false, servedHtml = built.html;
     const head = { number: "0x100", hash: "0x" + "ab".repeat(32), timestamp: toHex(Math.floor(Date.now() / 1000)) };
     await page.route("**/*", (route) => {
-      if (route.request().isNavigationRequest() && route.request().url() === endpoint) return route.fulfill({ contentType: "text/html", body: built.html });
+      if (route.request().isNavigationRequest() && route.request().url() === endpoint) return route.fulfill({ contentType: "text/html", body: servedHtml });
       external.push(route.request().url()); return route.abort();
     });
     await page.exposeFunction("govWallet", async ({ method, params = [] }) => {
@@ -87,7 +97,36 @@ for (const [name, engine] of [["chromium", chromium], ["webkit", webkit]]) {
     selected = 1; await page.evaluate(() => window.govChanged("accountsChanged")); await status(/Saved responses/);
     await page.locator("#connect").click(); await status(/Governance wallet connected/); await review();
     assert.match(await page.locator("#facts").innerText(), /1 of 2/); await sign(); await status(/Two wallet responses/);
-    await page.reload(); await status(/Connect one/); await page.locator("#connect").click(); await status(/Governance wallet connected/); await review();
+    const responseKey = "rmt-gov-responses:" + endpoint;
+    const savedCipher = await page.evaluate((key) => localStorage.getItem(key), responseKey);
+    servedHtml = refreshed.html; await page.reload(); await status(/Two wallet responses are already saved/);
+    await page.evaluate(() => { window.ethereum = undefined; });
+    const callsBeforeExport = calls.length;
+    assert.equal(await page.locator("#download").isDisabled(), true); assert.equal(await page.locator("#sign").isDisabled(), true);
+    await page.locator("#show-saved").click(); await status(/Saved responses only; validity is unverified/);
+    const savedText = await page.locator("#saved-authorization").inputValue(), savedAuthorization = JSON.parse(savedText);
+    assert.equal(savedAuthorization.signatureResponses.length, 2);
+    for (const response of savedAuthorization.signatureResponses) assert.match(response.signature, /^0x[0-9a-f]{130}$/i);
+    assert.equal((await verifyGovernanceAuthorization(publication, savedAuthorization, options)).signers.length, 2);
+    await page.evaluate(() => { window.copiedJson = null; Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText(text) { window.copiedJson = text; return Promise.resolve(); } } }); });
+    await page.locator("#copy-json").click(); await status(/Copied the complete saved authorization JSON/);
+    assert.equal(await page.evaluate(() => window.copiedJson), savedText);
+    for (const clipboard of ["absent", "rejected"]) {
+      await page.evaluate((mode) => Object.defineProperty(navigator, "clipboard", { configurable: true, value: mode === "absent" ? undefined : { writeText() { return Promise.reject(new DOMException("Synthetic clipboard denial", "NotAllowedError")); } } }), clipboard);
+      await page.locator("#copy-json").click(); await status(/The full JSON is selected/);
+      assert.deepEqual(await page.locator("#saved-authorization").evaluate((area) => [area.selectionStart, area.selectionEnd]), [0, savedText.length]);
+      assert.doesNotMatch(await page.getByRole("status").innerText(), /Copied the complete/);
+    }
+    await page.locator("#select-json").click(); await status(/The full JSON is selected/);
+    assert.equal(calls.length, callsBeforeExport); assert.equal(await page.evaluate((key) => localStorage.getItem(key), responseKey), savedCipher);
+    await page.locator("#logout").click(); await status(/locked/i);
+    assert.equal(await page.locator("#saved-authorization").inputValue(), ""); assert.equal(await page.locator("#saved-export").isHidden(), true);
+    assert.equal(await page.locator("#copy-json").isDisabled(), true); assert.equal(await page.locator("#select-json").isDisabled(), true);
+    assert.equal(await page.evaluate((key) => localStorage.getItem(key), responseKey), savedCipher);
+    await page.locator("#access-code").fill(built.accessCode); await page.locator("#unlock").click(); await status(/Two wallet responses are already saved/);
+    await page.locator("#show-saved").click(); await status(/Saved responses only/); assert.equal(await page.locator("#saved-authorization").inputValue(), savedText);
+    assert.equal(calls.length, callsBeforeExport);
+    await page.reload(); await status(/Two wallet responses are already saved/); await page.locator("#connect").click(); await status(/Governance wallet connected/); await review();
     assert.match(await page.locator("#facts").innerText(), /2 of 2/); assert.equal(await page.locator("#sign").isDisabled(), true);
     const downloaded = page.waitForEvent("download"); await page.locator("#download").click(); const download = await downloaded;
     const authorization = JSON.parse(await readFile(await download.path(), "utf8"));
@@ -96,7 +135,8 @@ for (const [name, engine] of [["chromium", chromium], ["webkit", webkit]]) {
     assert.equal(calls.some((m) => /sendTransaction|sendRaw|personal_sign|^eth_sign$|Authorization/.test(m)), false);
     changedAuthority = true; await page.locator("#review").click(); await status(/All collected responses are invalidated/);
     assert.equal(await page.locator("#download").isDisabled(), true); assert.equal(await page.locator("#sign").isDisabled(), true);
+    assert.equal(await page.locator("#saved-authorization").inputValue(), ""); assert.equal(await page.locator("#saved-export").isHidden(), true);
     for (const size of [{ width: 390, height: 844 }, { width: 844, height: 390 }]) { await page.setViewportSize(size); assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true); }
-    assert.deepEqual(external, []); await context.close(); console.log("Offchain governance collection passed on " + name + "; synthetic signatures only, zero transaction methods.");
+    assert.deepEqual(external, []); await context.close(); console.log("Offchain governance collection and preserved-key saved-response export passed on " + name + "; synthetic signatures only, zero transaction methods. Physical Rabby clipboard acceptance remains unverified.");
   } finally { await browser.close(); }
 }
