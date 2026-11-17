@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { join } from "node:path";
 import { chromium, devices, webkit } from "playwright";
 import { pinnedSafeCreationRows, safeProxyRuntimeHash } from "../../packages/contracts/scripts/mobile-review-plan.mjs";
+import { approvedOperationsFeeCap, operationsFeeApprovalSource, operationsSafeBaseline }
+  from "../../packages/contracts/scripts/prepare-operations-safe.mjs";
 import { MOBILE_DELEGATE_POLICY, MOBILE_DEPLOYMENT_PAYER } from "../production-readiness/mobile-sender.mjs";
 import { buildPrivatePhoneReview } from "./export-rmt-private-phone-review.mjs";
 
@@ -16,7 +18,7 @@ const tip = { number: "0x65", hash: "0x" + "b".repeat(64), timestamp: "0x" + Mat
 const chosenAnchor = { number: "0x64", hash: anchor.hash, timestamp: "0x" + Math.floor(observed / 1000).toString(16) };
 const [operations, reserve] = pinnedSafeCreationRows();
 const { safeProfile, owners, threshold, saltNonce, initializerHash } = operations.details;
-const packet = {
+const proposedPacket = {
   schemaVersion: 3, scope: "RMT_4663_OPERATIONS_SAFE_UNSIGNED_REVIEW", status: "BLOCKED_NO_BROADCAST",
   broadcastAuthorized: false, chainId: 4663, sender: account, observedAt: new Date(observed).toISOString(),
   expiresAt: new Date(observed + 120_000).toISOString(), anchor, pendingNonce: "50", confirmedNonce: "50",
@@ -38,6 +40,24 @@ const packet = {
     graduationBackingWei: "2000000000000000000", curveFeeBps: 100, v4PoolFeeBps: 30,
   },
   firstProject: { name: "RMT", symbol: "RMT", projectURI: "", creator: account, treasuryShareBpsOfEligibleFees: 0 },
+};
+const nonce = operationsSafeBaseline.nonce;
+const nonceHex = "0x" + BigInt(nonce).toString(16);
+const nextNonceHex = "0x" + (BigInt(nonce) + 1n).toString(16);
+const packet = {
+  ...proposedPacket, schemaVersion: 4, pendingNonce: nonce, confirmedNonce: nonce,
+  signingDecision: "BLOCKED_RELEASE_GATES", transactionApproval: null,
+  operation: {
+    ...proposedPacket.operation, nonce,
+    gas: { ...proposedPacket.operation.gas, rpcEstimateGas: "313391" },
+    feeCap: approvedOperationsFeeCap, feeApproval: operationsFeeApprovalSource, feeCapStatus: "WITHIN_APPROVED_CEILING",
+    freshRecommendation: { gasLimit: "391739", maxFeePerGasWei: "40000000", maxPriorityFeePerGasWei: "0", maxNetworkFeeWei: "15669560000000" },
+  },
+};
+const overCapPacket = {
+  ...packet, signingDecision: "BLOCKED_FEE_CEILING_AND_RELEASE_GATES",
+  operation: { ...packet.operation, gas: proposedPacket.operation.gas, feeCapStatus: "OVER_APPROVED_CEILING",
+    freshRecommendation: proposedPacket.operation.feeCap },
 };
 const expiry = new Date(Date.now() + 60 * 60 * 1000).toISOString();
 const { html, accessCode } = buildPrivatePhoneReview(url, packet, expiry, { runtimeBytesForTest: Buffer.from("6000", "hex") });
@@ -62,7 +82,22 @@ for (const invalid of [{ gasLimit: "393751" }, { maxFeePerGasWei: "1" }, { maxPr
   assert.throws(() => buildPrivatePhoneReview(url, { ...packet, operation: { ...packet.operation,
     feeCap: { ...packet.operation.feeCap, ...invalid } } }, expiry), /Invalid Operations Safe fee cap/);
 }
-const archivedPacket = structuredClone(packet);
+assert.throws(() => buildPrivatePhoneReview(url, { ...packet, transactionApproval: "APPROVED" }, expiry), /signing to remain blocked/);
+assert.throws(() => buildPrivatePhoneReview(url, { ...packet, pendingNonce: "477", confirmedNonce: "477",
+  operation: { ...packet.operation, nonce: "477" } }, expiry), /nonce has drifted/);
+assert.throws(() => buildPrivatePhoneReview(url, { ...packet, operation: { ...packet.operation, feeCap: {
+  ...approvedOperationsFeeCap, gasLimit: "391740", maxNetworkFeeWei: "15677434800000" } } }, expiry), /approved Operations Safe fee cap has changed/);
+assert.throws(() => buildPrivatePhoneReview(url, { ...packet, operation: { ...packet.operation, feeApproval: "" } }, expiry),
+  /Missing conditional fee-ceiling approval/);
+assert.throws(() => buildPrivatePhoneReview(url, { ...overCapPacket, operation: { ...overCapPacket.operation,
+  feeCapStatus: "WITHIN_APPROVED_CEILING" } }, expiry), /Invalid approved ceiling status/);
+assert.throws(() => buildPrivatePhoneReview(url, { ...overCapPacket, signingDecision: packet.signingDecision }, expiry),
+  /Signing decision does not match/);
+assert.throws(() => buildPrivatePhoneReview(url, { ...overCapPacket, operation: { ...overCapPacket.operation,
+  freshRecommendation: packet.operation.freshRecommendation } }, expiry), /Invalid refreshed fee recommendation/);
+const overCapReview = buildPrivatePhoneReview(url, overCapPacket, expiry);
+const proposedReview = buildPrivatePhoneReview(url, proposedPacket, expiry);
+const archivedPacket = structuredClone(proposedPacket);
 archivedPacket.schemaVersion = 2;
 delete archivedPacket.operation.feeCap;
 delete archivedPacket.operation.gas.rpcEstimateGas;
@@ -86,7 +121,7 @@ for (const [name, engine] of [["chromium", chromium], ["webkit", webkit]]) {
     const calls = [];
     let selected = account;
     let chain = "0x1237";
-    let pending = "0x32";
+    let pending = nonceHex;
     let designator = delegate.designator;
     let runtime = "0x6000";
     let safeCode = "0x";
@@ -117,10 +152,10 @@ for (const [name, engine] of [["chromium", chromium], ["webkit", webkit]]) {
           assert.equal(params[0], account);
           if (params[1] === "pending") {
             pendingReads++;
-            return { value: driftAtFinalNonceRead && pendingReads > 1 ? "0x33" : pending };
+            return { value: driftAtFinalNonceRead && pendingReads > 1 ? nextNonceHex : pending };
           }
           assert.equal(params[1], tip.number);
-          return { value: "0x32" };
+          return { value: nonceHex };
         case "eth_getCode":
           if (params[0] === operations.expectedAddress) {
             assert.equal(params[1], "pending");
@@ -195,10 +230,10 @@ for (const [name, engine] of [["chromium", chromium], ["webkit", webkit]]) {
     await reopen();
     await status(/observation block did not match/);
     canonicalAnchor = anchor.hash;
-    pending = "0x33";
+    pending = nextNonceHex;
     await reopen();
     await status(/wallet nonce changed/);
-    pending = "0x32";
+    pending = nonceHex;
     designator = "0x";
     await reopen();
     await status(/wallet delegation changed/);
@@ -226,7 +261,9 @@ for (const [name, engine] of [["chromium", chromium], ["webkit", webkit]]) {
     await status(/Existing wallet selection, nonce and Safe vacancy matched/);
     assert.equal(await review.locator("details").count(), 3);
     assert.match(await review.innerText(), /0\.00000626782 ETH/);
-    assert.match(await review.innerText(), /Proposed fee cap\s+0\.00001575008 ETH/);
+    assert.match(await review.innerText(), /Signing blocked by unresolved security release gates\. 22 high and seven governance-medium findings remain/);
+    assert.match(await review.innerText(), /Current fee bounds fit the approved ceiling/);
+    assert.match(await review.innerText(), /Approved fee ceiling\s+0\.00001567739478 ETH/);
     assert.match(await review.innerText(), /0 ETH/);
     assert.match(await review.innerText(), /SafeL2 1\.4\.1 · 2 of 3/);
     assert.equal((await review.innerText()).includes(reserve.expectedAddress), false);
@@ -246,12 +283,12 @@ for (const [name, engine] of [["chromium", chromium], ["webkit", webkit]]) {
     await page.evaluate((millis) => { Date.now = () => millis; }, Date.parse(packet.expiresAt) + 1);
     await page.getByText("Fee quote expired. Get a fresh quote before transaction approval.").waitFor();
     assert.equal(await page.locator("#fee-value").textContent(), "0.00000626782 ETH · recorded");
-    assert.equal(await page.locator("#fee-cap").textContent(), "0.00001575008 ETH · recorded");
+    assert.equal(await page.locator("#fee-cap").textContent(), "0.00001567739478 ETH");
     const evidence = review.locator("details").nth(1);
     await evidence.locator("summary").click();
     assert.match(await evidence.innerText(), /Recorded L1 posting cost\s+0\.00000000002 ETH/);
-    assert.match(await evidence.innerText(), /Proposed gas limit\s+393752/);
-    assert.match(await evidence.innerText(), /Max fee per gas\s+40000000 wei/);
+    assert.match(await evidence.innerText(), /Approved gas limit\s+391739/);
+    assert.match(await evidence.innerText(), /Max fee per gas\s+40020000 wei/);
     assert.match(await evidence.innerText(), /Max priority fee per gas\s+0 wei/);
     await evidence.locator("summary").click();
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
@@ -268,8 +305,28 @@ for (const [name, engine] of [["chromium", chromium], ["webkit", webkit]]) {
     await status(/Wallet selection changed/);
     assert.equal(await review.isVisible(), false);
 
-    servedHtml = archivedReview.html;
+    servedHtml = overCapReview.html;
     selected = undefined;
+    await page.setViewportSize({ width: 390, height: 844 });
+    await reopen(overCapReview.accessCode);
+    await status(/This wallet has no existing review access/);
+    await page.getByText(/Current fee bounds exceed the approved ceiling/).waitFor();
+    assert.match(await review.innerText(), /Signing blocked by unresolved security release gates/);
+    assert.equal(await page.locator("#fee-cap").textContent(), "0.00001567739478 ETH");
+    assert.equal(await page.locator("#required-fee-cap").textContent(), "0.00001575008 ETH");
+    assert.equal(await review.getByRole("button").count(), 0);
+    const overCapBox = await review.boundingBox();
+    assert.ok(overCapBox.y + overCapBox.height <= 844, "Over-ceiling decision fits on one portrait screen");
+    if (artifacts) await page.screenshot({ path: join(artifacts, "private-review-" + name + "-over-cap.png"), fullPage: true });
+    await page.evaluate((millis) => { Date.now = () => millis; }, Date.parse(overCapPacket.expiresAt) + 1);
+    await page.getByText(/Fee quote expired. The recorded fee bounds exceeded the approved ceiling/).waitFor();
+    assert.equal(await page.locator("#required-fee-cap").textContent(), "0.00001575008 ETH · recorded");
+
+    servedHtml = proposedReview.html;
+    await reopen(proposedReview.accessCode);
+    assert.match(await review.innerText(), /Proposed fee cap\s+0\.00001575008 ETH/);
+
+    servedHtml = archivedReview.html;
     await reopen(archivedReview.accessCode);
     await page.getByText(/Archived quote without a fee cap/).waitFor();
     assert.equal(await page.locator("#fee-cap").textContent(), "Unavailable");

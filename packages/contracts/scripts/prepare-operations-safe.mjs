@@ -23,6 +23,15 @@ const maximumAgeMs = 120_000;
 const maxGas = (1n << 64n) - 1n;
 const maxUint256 = (1n << 256n) - 1n;
 
+export const operationsFeeApprovalSource = "https://github.com/LandoCrissian/robinhood-meme-terminal/issues/649#issuecomment-6936656732";
+export const approvedOperationsFeeCap = Object.freeze({
+  gasLimit: "391739", maxFeePerGasWei: "40020000", maxPriorityFeePerGasWei: "0", maxNetworkFeeWei: "15677394780000",
+});
+export const operationsSigningDecision = "BLOCKED_RELEASE_GATES";
+export const operationsOverCapSigningDecision = "BLOCKED_FEE_CEILING_AND_RELEASE_GATES";
+
+class OperationsReviewStop extends Error {}
+
 // Identity observed by the owner in #648 and bound by issue #649. The nonce
 // below is solely a drift comparator, never a substitute for the live reads.
 export const operationsSafeBaseline = Object.freeze({
@@ -63,6 +72,23 @@ export function recommendOperationsFeeCap({ nitroGas, rpcGas, l2BaseFee }) {
   };
 }
 
+function overApprovedCap(cap) {
+  return BigInt(cap.gasLimit) > BigInt(approvedOperationsFeeCap.gasLimit) ||
+    BigInt(cap.maxFeePerGasWei) > BigInt(approvedOperationsFeeCap.maxFeePerGasWei) ||
+    BigInt(cap.maxNetworkFeeWei) > BigInt(approvedOperationsFeeCap.maxNetworkFeeWei);
+}
+
+function explainOverage(gas, recommendation) {
+  const [nitroGas, rpcGas, baseFee] = [gas.gasUnits, gas.rpcEstimateGas, gas.l2BaseFeeWei].map(BigInt);
+  const observedGas = nitroGas > rpcGas ? nitroGas : rpcGas;
+  const actualFits = !overApprovedCap({ gasLimit: observedGas, maxFeePerGasWei: baseFee, maxNetworkFeeWei: observedGas * baseFee });
+  const explanation = actualFits ? "The unbuffered estimate fits the approved fields, but the refreshed headroom does not." :
+    "The unbuffered estimate exceeds at least one approved fee field.";
+  return explanation + ` The fresh proposal is ${recommendation.gasLimit} gas at ${recommendation.maxFeePerGasWei} wei/gas` +
+    ` (${recommendation.maxNetworkFeeWei} wei) versus the approved ${approvedOperationsFeeCap.gasLimit} gas at ` +
+    `${approvedOperationsFeeCap.maxFeePerGasWei} wei/gas (${approvedOperationsFeeCap.maxNetworkFeeWei} wei).`;
+}
+
 function bindReviewedOperation(observation, sender) {
   const baseline = operationsSafeBaseline;
   const [pinned] = pinnedSafeCreationRows({ includePrivateCalldata: true });
@@ -73,8 +99,9 @@ function bindReviewedOperation(observation, sender) {
   const output = deriveSafeProxy(viem, pinned.to, initializer, decodedSalt, observation.safes.initcodeHash);
   const [sample] = observation.safes.proposals;
   assert.equal(functionName, "createProxyWithNonce");
-  assert.equal(sender.confirmedNonce, baseline.nonce, "The confirmed nonce has drifted from #648");
-  assert.equal(sender.pendingNonce, baseline.nonce, "The pending nonce has drifted from #648");
+  if (sender.confirmedNonce !== baseline.nonce || sender.pendingNonce !== baseline.nonce) {
+    throw new OperationsReviewStop("The confirmed or pending nonce has drifted from #648. Renew the transaction review and fee approval.");
+  }
   assert.equal(observation.chainId, baseline.chainId, "The chain has drifted from #648");
   assert.equal(pinned.from, baseline.sender);
   assert.equal(pinned.to, baseline.destination);
@@ -97,7 +124,7 @@ function bindReviewedOperation(observation, sender) {
   return { pinned, sample };
 }
 
-export function prepareOperationsSafeReview(observation, nowMs = Date.now()) {
+export function prepareOperationsSafeReview(observation, nowMs = Date.now(), { reviewOnlyOverCap = false } = {}) {
   const sender = assertCurrentMobileObservation(observation, nowMs, observationOptions);
   const { pinned, sample } = bindReviewedOperation(observation, sender);
   const anchor = { ...sender.anchor, blockTimeUtc: new Date(sender.anchor.blockTimeUtc).toISOString() };
@@ -112,14 +139,24 @@ export function prepareOperationsSafeReview(observation, nowMs = Date.now()) {
     estimatedL1FeeWei: estimate.l1PosterWei, estimatedL2FeeWei: estimate.l2ExecutionWei,
     provenance: "CURRENT_4663_READ_ONLY_NITRO_GAS_COMPONENTS",
   };
-  const feeCap = recommendOperationsFeeCap({ nitroGas: gas.gasUnits, rpcGas: gas.rpcEstimateGas, l2BaseFee: gas.l2BaseFeeWei });
-  assert.ok(BigInt(sender.balanceWei) >= BigInt(feeCap.maxNetworkFeeWei), "The observed payer balance is below the proposed cap");
+  const feeCap = approvedOperationsFeeCap;
+  assert.equal(BigInt(feeCap.gasLimit) * BigInt(feeCap.maxFeePerGasWei), BigInt(feeCap.maxNetworkFeeWei));
+  const freshRecommendation = recommendOperationsFeeCap({ nitroGas: gas.gasUnits, rpcGas: gas.rpcEstimateGas, l2BaseFee: gas.l2BaseFeeWei });
+  const exceedsCap = overApprovedCap(freshRecommendation);
+  const signingDecision = exceedsCap ? operationsOverCapSigningDecision : operationsSigningDecision;
+  const feeCapStatus = exceedsCap ? "OVER_APPROVED_CEILING" : "WITHIN_APPROVED_CEILING";
+  const overage = exceedsCap && explainOverage(gas, freshRecommendation);
+  if (exceedsCap && !reviewOnlyOverCap) {
+    throw new OperationsReviewStop(`${overage} Renew the fee approval before preparing an unsigned transaction.`);
+  }
+  assert.ok(BigInt(sender.balanceWei) >= BigInt(feeCap.maxNetworkFeeWei), "The observed payer balance is below the approved cap");
   const operation = {
     id: pinned.id, label: "Operations Safe creation", dependsOn: [], sender: pinned.from,
     nonce: sender.pendingNonce, destination: pinned.to, predictedAddress: pinned.expectedAddress,
     valueWei: pinned.valueWei, inputHash: pinned.dataHash, action, status: "UNSIGNED_OPERATIONS_APPROVAL_REQUIRED",
-    gas, feeCap, expectedRuntimeHash: safeProxyRuntimeHash,
-    checks: ["Separate approval is required for the exact call and fee cap.",
+    gas, feeCap, freshRecommendation, feeCapStatus, feeApproval: operationsFeeApprovalSource, expectedRuntimeHash: safeProxyRuntimeHash,
+    checks: [exceedsCap ? "The refreshed recommendation exceeds an approved fee field. Renew fee approval before preparing a transaction." :
+      "The refreshed recommendation fits the approved fee fields. The release gates block signing approval.",
       "Refresh stale or changed evidence before considering any transaction.",
       "Reserve and the protocol wait for a separately verified receipt and release approval."],
     owners: pinned.details.owners, threshold: pinned.details.threshold, safeVersion: pinned.details.safeProfile,
@@ -127,23 +164,26 @@ export function prepareOperationsSafeReview(observation, nowMs = Date.now()) {
   };
   const { address, runtimeHash, designator } = sender.delegation;
   const summary = {
-    schemaVersion: 3, scope: "RMT_4663_OPERATIONS_SAFE_UNSIGNED_REVIEW", status: blocked, broadcastAuthorized: false,
+    schemaVersion: 4, scope: "RMT_4663_OPERATIONS_SAFE_UNSIGNED_REVIEW", status: blocked, broadcastAuthorized: false,
+    signingDecision, transactionApproval: null,
     chainId: observation.chainId, sender: pinned.from, observedAt, expiresAt, anchor,
     pendingNonce: sender.pendingNonce, confirmedNonce: sender.confirmedNonce, balanceWei: sender.balanceWei,
     delegation: { address, runtimeHash, designator }, operation, terms: approvedRmtTerms, firstProject: approvedFirstProject,
   };
   const protectedQuote = {
-    source: operationsSafeBaseline, observation, transactionApproval: null,
-    unsignedFields: { type: "0x2", chainId: viem.toHex(observation.chainId), from: pinned.from, to: pinned.to,
-      nonce: viem.toHex(BigInt(sender.pendingNonce)), value: "0x0", data: pinned.calldata },
+    source: operationsSafeBaseline, observation, signingDecision, transactionApproval: null,
+    unsignedFields: exceedsCap ? null : { type: "0x2", chainId: viem.toHex(observation.chainId), from: pinned.from, to: pinned.to,
+      nonce: viem.toHex(BigInt(sender.pendingNonce)), value: "0x0", data: pinned.calldata, gas: viem.toHex(BigInt(feeCap.gasLimit)),
+      maxFeePerGas: viem.toHex(BigInt(feeCap.maxFeePerGasWei)), maxPriorityFeePerGas: "0x0" },
   };
   const planId = "0x" + createHash("sha256").update(JSON.stringify({ summary, protectedQuote })).digest("hex");
   const review = { ...summary, planId };
-  return { review, privateQuote: { ...protectedQuote, status: blocked, broadcastAuthorized: false, review } };
+  return { review, privateQuote: { ...protectedQuote, status: blocked, broadcastAuthorized: false, review }, overage };
 }
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
-  const { values } = parseArgs({ options: { "out-private": { type: "string" }, "out-review": { type: "string" } } });
+  const { values } = parseArgs({ options: { "out-private": { type: "string" }, "out-review": { type: "string" },
+    "review-only-over-cap": { type: "boolean" } } });
   let stage = "checking private output paths";
   try {
     const privatePath = privateOutputPath(values["out-private"]);
@@ -152,13 +192,17 @@ if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.m
     stage = "refreshing the Operations Safe read-only observations";
     const observation = await runMobileSenderProbe(observationOptions);
     stage = "validating exact #648 identity, freshness, vacancy and cost";
-    const { review, privateQuote } = prepareOperationsSafeReview(observation);
+    const { review, privateQuote, overage } = prepareOperationsSafeReview(observation, Date.now(), {
+      reviewOnlyOverCap: values["review-only-over-cap"] === true,
+    });
     stage = "writing the blocked review files";
     writeFileSync(privatePath, JSON.stringify(privateQuote, null, 2) + "\n", { flag: "wx", mode: 0o600 });
     writeFileSync(reviewPath, JSON.stringify(review, null, 2) + "\n", { flag: "wx", mode: 0o600 });
-    console.log("Refreshed unsigned Operations review " + review.planId + ". " + blocked);
-  } catch {
-    console.error(blocked + ": refresh failed while " + stage + ".");
+    console.log("Refreshed Operations review " + review.planId + ". " + blocked);
+    if (overage) console.log(overage + " Review evidence only. No unsigned transaction was prepared.");
+  } catch (error) {
+    const reason = error instanceof OperationsReviewStop ? error.message : "Refresh failed while " + stage + ".";
+    console.error(blocked + ": " + reason);
     process.exitCode = 1;
   }
 }
