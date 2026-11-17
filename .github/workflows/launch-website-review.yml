@@ -20,6 +20,9 @@ on:
       - "scripts/visual-qa/export-rmt-private-phone-review.mjs"
       - "scripts/visual-qa/rmt-private-phone-review-page.mjs"
       - "scripts/visual-qa/test-rmt-private-phone-review.mjs"
+      - "scripts/visual-qa/export-rmt-owner-safe.mjs"
+      - "scripts/visual-qa/rmt-owner-safe-page.mjs"
+      - "scripts/visual-qa/test-rmt-owner-safe.mjs"
       - "scripts/visual-qa/rmt-netlify-website.mjs"
       - "docs/evidence/mobile-signing/**"
       - ".github/workflows/launch-website-review.yml"
@@ -59,6 +62,7 @@ jobs:
           mkdir "$RMT_WEBSITE_PREVIEW_ARTIFACTS"
           node scripts/visual-qa/rmt-mobile-connection-check.mjs
           node scripts/visual-qa/test-rmt-private-phone-review.mjs
+          pnpm test:owner-wallet
           node apps/launch-website/node_modules/next/dist/bin/next start apps/launch-website \
             --hostname 127.0.0.1 --port 3205 > "$RMT_WEBSITE_PREVIEW_ARTIFACTS/next.log" 2>&1 &
           child="$!"

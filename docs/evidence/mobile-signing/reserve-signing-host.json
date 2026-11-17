@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "scope": "OWNER_CONTROLLED_RESERVE_SAFE_CREATION_ONLY",
+  "observedAt": "2026-11-17T17:58:53.058Z",
+  "endpoint": "https://owner-reserve-065--rmt-wallet-check-056-f911548d.netlify.app/reserve-deployment.html",
+  "sourceCommit": "8d57c5d0960c33973c8af10f23bdf3adf06e41dd",
+  "htmlSha256": "3fbdbc7578b716eaf7c06524e93f18e542439c5b78f9926528dfcb7cb7eb1248",
+  "status": "AWAITING_OWNER_METAMASK_CONFIRMATION",
+  "headers": {
+    "cache-control": "no-store",
+    "x-frame-options": "DENY",
+    "referrer-policy": "no-referrer",
+    "x-robots-tag": "noindex, nofollow",
+    "content-security-policy": "frame-ancestors 'none'"
+  },
+  "results": [
+    {
+      "browser": "chromium",
+      "portrait": true,
+      "landscape": true,
+      "reloadAccess": true,
+      "walletCalls": 0,
+      "pageErrors": []
+    },
+    {
+      "browser": "webkit",
+      "portrait": true,
+      "landscape": true,
+      "reloadAccess": true,
+      "walletCalls": 0,
+      "pageErrors": []
+    }
+  ],
+  "physicalIPhoneAcceptance": false,
+  "netlify": {
+    "siteId": "00f130a0-025d-4bd4-bd29-dab543edd1a7",
+    "deployId": "6afc95bbcb46d0364fdd1e94",
+    "alias": "owner-reserve-065",
+    "productionWebsiteChanged": false
+  },
+  "role": "RMT-RESERVE",
+  "predictedAddress": "0x8D44078642ce938Fd799b23087BcdD6114A302e5",
+  "deployedAddress": null,
+  "transactionHash": null,
+  "calldataKeccak256": "0x6b13f3d79874ba9b1417f547170acf2e5bcf19fe5bab43f1ab0da6aede826604",
+  "factory": "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
+  "singleton": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+  "valueWei": "0",
+  "threshold": 2,
+  "accessCodeInRepository": false,
+  "automaticSignature": false,
+  "automaticBroadcast": false,
+  "fees": "LIVE_WALLET_ESTIMATE_AND_OWNER_APPROVAL_REQUIRED",
+  "operationsProof": "operations-safe-mainnet.json",
+  "finality": "L1_UNVERIFIED"
+}

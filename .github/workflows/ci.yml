@@ -26,6 +26,7 @@ jobs:
       - run: pnpm check:repo
       - run: pnpm test:release-evidence
       - run: pnpm test:production-readiness
+      - run: pnpm test:protocol-continuation
       - run: pnpm test:release-policy
       - run: pnpm probe:production-readiness --fixture --output "$RUNNER_TEMP/readiness-fixture.json"
 
