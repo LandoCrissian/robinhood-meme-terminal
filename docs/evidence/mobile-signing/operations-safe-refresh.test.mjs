@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { approvedOperationsFeeCap, operationsFeeApprovalSource, operationsOverCapSigningDecision, operationsSafeBaseline,
-  operationsSigningDecision, prepareOperationsSafeReview, recommendOperationsFeeCap }
+  operationsSigningDecision, operationsSafePolicyApprovalSource, prepareOperationsSafeReview, recommendOperationsFeeCap }
   from "../../../packages/contracts/scripts/prepare-operations-safe.mjs";
 import { summarizeGas } from "../../../scripts/production-readiness/safe.mjs";
 
@@ -34,7 +34,8 @@ test("Nitro ceiling includes posting gas, uses the larger estimate, and rounds t
 
 test("reconstructs only the fixed #648 Operations call and keeps exact calldata outside the phone projection", () => {
   const { privateQuote, review } = prepareOperationsSafeReview(proof({ baseFee: 20000000n }), testTime);
-  assert.equal(review.schemaVersion, 4);
+  assert.equal(review.schemaVersion, 5);
+  assert.equal(review.policyApproval, operationsSafePolicyApprovalSource);
   assert.equal(review.scope, "RMT_4663_OPERATIONS_SAFE_UNSIGNED_REVIEW");
   for (const key of ["nonce", "sender", "destination", "predictedAddress", "valueWei", "inputHash", "threshold",
     "owners", "initializerHash", "saltNonce", "safeVersion"]) {

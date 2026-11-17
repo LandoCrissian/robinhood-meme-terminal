@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import test from "node:test";
-import { buildMobileReviewPlan, reviewCurrentMobileObservation, reviewDelegatedMobileObservation }
+import { buildMobileReviewPlan, launchpadDeploymentReview, reviewCurrentMobileObservation, reviewDelegatedMobileObservation }
   from "../../../packages/contracts/scripts/mobile-review-plan.mjs";
 
 const require = createRequire(new URL("../../../apps/launch-website/package.json", import.meta.url));
@@ -60,4 +60,22 @@ test("the archived delegated plan preserves exact fork phases without assigning 
   const keys = (input) => Object.entries(input).flatMap(([key, child]) =>
     [key, ...(child !== null && typeof child === "object" ? keys(child) : [])]);
   assert.ok(!keys(archived).some((key) => /^(data|calldata|initcode|bytecode|constructorData|authorizationList|signature|rawTransaction)$/i.test(key)));
+});
+
+test("infrastructure cost and nonce projections exclude the later website token creation", () => {
+  const deployment = launchpadDeploymentReview(archived);
+  const { rows, costs } = deployment.target.delegatedReview;
+  assert.deepEqual(rows.map(({ id }) => id), deployment.fixture.rows.map(({ id }) => id));
+  assert.equal(rows.length, 11);
+  assert.equal(rows.at(-1).id, "execute-migration-template");
+  assert.doesNotMatch(JSON.stringify(deployment), /first-rmt|firstProjectReceipt|FIRST_PROJECT_TERMS_AND_CREATOR_APPROVAL/);
+  const proof = archived.fixture.delegationProof;
+  const gas = [...proof.constructorReceipts, ...proof.publicationReceipts].reduce((sum, item) => sum + BigInt(item.gasUsed), 0n);
+  const paid = [...proof.constructorReceipts, ...proof.publicationReceipts]
+    .reduce((sum, item) => sum + BigInt(item.gasUsed) * BigInt(item.effectiveGasPriceWei), 0n);
+  assert.equal(costs.protocolObservedForkGasUnits, gas.toString());
+  assert.equal(costs.protocolPaidInSyntheticWei, paid.toString());
+  assert.equal(BigInt(costs.protocolForkGasAtObservedL2BaseFeeWei), gas * BigInt(costs.observedL2BaseFeeWei));
+  assert.equal(deployment.fixture.delegationProof.firstProjectReceipt, undefined);
+  assert.ok(proof.firstProjectReceipt, "Archived synthetic creation proof remains available");
 });

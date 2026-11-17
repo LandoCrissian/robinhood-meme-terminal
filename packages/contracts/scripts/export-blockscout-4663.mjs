@@ -194,6 +194,14 @@ export function buildBlockscoutExport(compilation, input, { archive, release, pi
     input, archive, release, pinned, compiled: compilation.manifest, savedBundle,
   });
   assert.deepEqual(buildBundle(compilation, fork, rawSha256), bundle, "Reconstructed unsigned fixture differs");
+  const contracts = fixtureRows(compilation, fork, bundle);
+  const infrastructureNames = new Set([
+    "RMTLaunchCurveDirectoryV2", "RMTLaunchProjectRegistryV3", "RMTLaunchCurveSuccessorDeployerV1",
+    "RMTLaunchCurveSuccessorDeployerV2", "RMTLaunchCurveDeploymentV2", "RMTV4CurveInitializationGuardV1",
+    "RMTV4CurveGraduationV1", "RMTLaunchCurveFactoryV2",
+  ]);
+  const infrastructure = contracts.filter(({ fullyQualifiedName }) => infrastructureNames.has(fullyQualifiedName.split(":").at(-1)));
+  assert.equal(infrastructure.length, infrastructureNames.size, "Incomplete infrastructure verification scope");
   return {
     schemaVersion: 1, profile: pinned.profile, chainId: 4663, explorer,
     status: "BLOCKED_NO_BROADCAST", broadcastAuthorized: false, sourceVerificationSubmitted: false,
@@ -201,7 +209,14 @@ export function buildBlockscoutExport(compilation, input, { archive, release, pi
       settings: pinned.compilerSettings },
     evidence: { baseContractCommit: release.deployableSourceCommit, forkReportSha256: rawSha256,
       archivedBlock: release.fork.blockNumber, archivedBlockHash: release.fork.blockHash },
-    ownContracts: fixtureRows(compilation, fork, bundle),
+    deploymentScope: {
+      infrastructure: infrastructure.map(({ fullyQualifiedName }) => fullyQualifiedName),
+      laterProjectLifecycle: contracts.filter((row) => !infrastructure.includes(row)).map(({ fullyQualifiedName }) => fullyQualifiedName),
+      tokenIssuanceIncluded: false,
+      firstProjectEntryPoint: "/create-token", firstProjectApproval: null,
+      sequence: "VERIFY_INFRASTRUCTURE_THEN_OWNER_CREATES_RMT_THROUGH_WEBSITE",
+    },
+    ownContracts: contracts,
     externallyDeployed: pinned.externalRuntimePins,
     safe: safePins(fork),
   };

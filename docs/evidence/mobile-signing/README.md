@@ -17,7 +17,7 @@ For later physical acceptance, open the verified review origin inside the select
 Use the pinned compiler, Anvil and local PostgreSQL from the [deployment runbook](../../DEPLOYMENT.md). Supply fresh output paths and keep the loopback gateway private.
 
 ```powershell
-node packages/contracts/scripts/mobile-review-plan.mjs --solc $solc --verify docs/evidence/mobile-signing/review-plan-4663.json
+node packages/contracts/scripts/mobile-review-plan.mjs --solc $solc --fixture-lifecycle --verify docs/evidence/mobile-signing/review-plan-4663.json
 node scripts/production-readiness/mobile-sender.mjs --output $freshReadOnlyObservation
 pnpm test:fork-4663 --anvil $anvil --solc $solc --archive pinax --output $forkEvidenceFile
 node packages/contracts/scripts/mobile-review-plan.mjs --solc $solc --rehearsal $forkEvidenceFile --output $freshReviewPacket

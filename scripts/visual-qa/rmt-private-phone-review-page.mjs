@@ -65,12 +65,15 @@ export function privateReviewPage(config) {
   }
   function renderReview() {
     const row = packet.operation;
-    const approved = packet.schemaVersion === 4;
+    const currentPolicy = packet.schemaVersion === 5;
+    const approved = currentPolicy || packet.schemaVersion === 4;
     const overCap = approved && row.feeCapStatus === "OVER_APPROVED_CEILING";
     const verifiedAt = performance.now();
     const verifiedBlockTime = Date.parse(packet.observedAt);
     if (approved) {
-      insert(review, "p", "Signing blocked by unresolved security release gates. 22 high and seven governance-medium findings remain.")
+      insert(review, "p", currentPolicy
+        ? "Operations Safe policy approved. Separate authorization for this exact transaction is required."
+        : "Signing blocked by unresolved security release gates. 22 high and seven governance-medium findings remain.")
         .id = "signing-status";
     }
     const quote = insert(review, "p");

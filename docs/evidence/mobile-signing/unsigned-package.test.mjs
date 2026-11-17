@@ -6,11 +6,13 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { pinnedSafeCreationRows } from "../../../packages/contracts/scripts/mobile-review-plan.mjs";
-import { approvedFirstProject, approvedRmtTerms, assertApprovedLaunchTerms, assertApprovedProjectRehearsal, assertFreshUnsignedBinding,
+import { approvedFirstProject, approvedRmtTerms, assertApprovedLaunchTerms, assertApprovedOperationsFees, assertApprovedProjectRehearsal, assertFreshUnsignedBinding,
   assertUnsignedDependencyEvidence, assertUnsignedGovernanceEvidence, buildFirstProject, privateOutputPath }
   from "../../../packages/contracts/scripts/prepare-unsigned-4663.mjs";
 import { termEvidence } from "../../../packages/contracts/scripts/fixed-supply-profile.mjs";
 import { deriveFutureCreateDestinations } from "../../../scripts/production-readiness/mobile-sender.mjs";
+import { approvedOperationsFeeCap, operationsFeeApprovalSource, operationsSafePolicyApprovalSource }
+  from "../../../packages/contracts/scripts/prepare-operations-safe.mjs";
 
 const require = createRequire(new URL("../../../apps/launch-website/package.json", import.meta.url));
 const { decodeFunctionData, encodeFunctionData, keccak256, parseAbi, zeroAddress, zeroHash } = require("viem");
@@ -99,21 +101,37 @@ test("owner-approved fee terms match the frozen 4663 compile profile and v4 pool
   assert.equal(approvedRmtTerms.v4PoolFeeBps, 30);
 });
 
+test("the combined package preserves every approved Operations fee limit and requires the standalone pending recheck", () => {
+  const quote = { nitroGasEstimate: "313391", rpcEstimateGas: "313391", l2BaseFeeWei: "20000000" };
+  const binding = assertApprovedOperationsFees(quote);
+  assert.deepEqual(binding.feeCap, approvedOperationsFeeCap);
+  assert.equal(binding.policyApproval, operationsSafePolicyApprovalSource);
+  assert.equal(binding.feeApproval, operationsFeeApprovalSource);
+  assert.equal(binding.signingReviewEligible, false);
+  assert.equal(binding.transactionApproval, null);
+  assert.match(binding.prerequisite, /fresh canonical and pending vacancy/);
+  for (const change of [
+    { nitroGasEstimate: "313392" }, { rpcEstimateGas: "313392" }, { l2BaseFeeWei: "20010001" },
+    { nitroGasEstimate: "0" }, { rpcEstimateGas: "NaN" }, { l2BaseFeeWei: "-1" },
+  ]) assert.throws(() => assertApprovedOperationsFees({ ...quote, ...change }));
+});
+
 test("approved RMT configuration binds exactly the owner and zero treasury without authorizing a live creation", () => {
   const safeAddresses = pinnedSafeCreationRows().map(({ expectedAddress }) => expectedAddress);
-  const factory = "0x0000000000000000000000000000000000000001";
-  const project = buildFirstProject(factory, safeAddresses);
+  const project = buildFirstProject(safeAddresses);
   assert.deepEqual(approvedFirstProject, {
     name: "RMT", symbol: "RMT", projectURI: "", creator: recorded.proposedSender, treasuryShareBpsOfEligibleFees: 0,
   });
   assert.equal(project.projectShareRecipient, recorded.proposedSender);
   assert.equal(project.projectTreasury, zeroAddress);
-  assert.deepEqual(project.plannedCall, {
-    from: recorded.proposedSender, predictedFactory: factory, valueWei: "400000000000000",
-    function: "create(string,string,string,address,uint16,bytes32,uint256)",
-    args: ["RMT", "RMT", "", zeroAddress, 0, null, null],
-    nonce: null, intentId: null, deadline: null, calldata: null,
-  });
+  assert.equal(project.scope, "OWNER_APPROVED_WEBSITE_DEFAULTS_ONLY");
+  assert.equal(project.method, "ORDINARY_WEBSITE_CREATOR_INTERFACE");
+  assert.equal(project.path, "/create-token");
+  assert.equal(project.creationEnabled, false);
+  assert.equal(project.tokenAddress, null);
+  assert.deepEqual(project.terms, approvedRmtTerms);
+  assert.equal(project.prerequisites.length, 3);
+  assert.doesNotMatch(JSON.stringify(project), /plannedCall|intentId|calldata|predictedFactory|nonce/);
   assert.deepEqual(project.revenueRecipients, {
     operations: { predictedAddress: safeAddresses[0], beneficiary: null },
     reserve: { predictedAddress: safeAddresses[1], beneficiary: null },
