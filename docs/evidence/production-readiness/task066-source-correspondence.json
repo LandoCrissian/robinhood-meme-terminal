@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-17T20:01:42.123Z",
+  "chainId": 4663,
+  "profile": "rmt-curve-fixed-supply-security-v2",
+  "scope": "READ_ONLY_NEW_ENGINE_INDEXING_ONLY",
+  "status": "CANONICAL_DEPLOYMENT_AND_LOCAL_COMPILER_SOURCE_CORRESPONDENCE_VERIFIED",
+  "compiler": {
+    "profile": "rmt-curve-fixed-supply-security-v2",
+    "inputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+    "compilerVersion": "0.8.26+commit.8a97fa7a"
+  },
+  "deploymentPlanSha256": "c333d4f60e4815fb86a719a5678da91b5331635213f8026bd7d6bc3fdfdd43d8",
+  "contracts": [
+    {
+      "contract": "RMTLaunchCurveDirectoryV2",
+      "address": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+      "deploymentTransactionHash": "0x3b218065370edc0e43190cb662a3ab576de19348fd6489e1ed5e4fd7e8149b34",
+      "deploymentBlock": "116811205",
+      "deploymentBlockHash": "0x4cd010ee14fa5f64d82a24e59c42c09558df703af6be0cea21f5cbde640c34c8",
+      "initcodeKeccak256": "0x8dc67390ae8f34d293894cec0067c9a053dcfbb7cf3ca09d4d5b9b077b9f336c",
+      "materializedRuntimeKeccak256": "0x9534a4223eb7e50e2387a7e5486e256416b468980436852ce1a91624904e8735",
+      "receiptEvidenceFile": "directory-receipt.json",
+      "receiptEvidenceSha256": "91088069529ff805074b498463e7e25b41ddd6e96d81146a84bc15aeaf91254e",
+      "sourceCorrespondence": "FROZEN_COMPILER_INPUT_EXACT_INITCODE_AND_MATERIALIZED_RUNTIME_MATCH"
+    },
+    {
+      "contract": "RMTLaunchProjectRegistryV3",
+      "address": "0xf1113714Dda31f31532995D2525e034271425398",
+      "deploymentTransactionHash": "0xcc977ec3b176718fd90481c4fff0938416e32502ef9a55faebe88d11b24374b0",
+      "deploymentBlock": "116817979",
+      "deploymentBlockHash": "0x0329b6056601cc541cbe35e2102854cfe90994a68cb8a082e1482d8c83e81ace",
+      "initcodeKeccak256": "0xb8521e681298045055d5cd3d05f526248b9cfca71ef808733faa32a228940c1d",
+      "materializedRuntimeKeccak256": "0xd1b4756bcdabb6a8ee04c827b5a6a76079bedc996df39b76dffa24269a61f644",
+      "receiptEvidenceFile": "registry-receipt.json",
+      "receiptEvidenceSha256": "c4953233428adb93eb70fab3461414816f17209d437456ed79c873f1b1e5d869",
+      "sourceCorrespondence": "FROZEN_COMPILER_INPUT_EXACT_INITCODE_AND_MATERIALIZED_RUNTIME_MATCH"
+    },
+    {
+      "contract": "RMTLaunchCurveSuccessorDeployerV1",
+      "address": "0xcB25a3DF74729F7104C4f924Cb04F687F69391C6",
+      "deploymentTransactionHash": "0xfe6c88390a6ff19d75de65ea780643285b0d8c34107e4bc9a0c3ac41b58900fe",
+      "deploymentBlock": "116823009",
+      "deploymentBlockHash": "0x7f8e170e0d70e5f81e062ded805a6fbd9580a0bb90175ac7a516480a79489d36",
+      "initcodeKeccak256": "0xef8c62038760eadaa5e7cf985febe23f9444e80710fbb3b30f5cf13d6513f3fa",
+      "materializedRuntimeKeccak256": "0xc0894c78000f427a4a1c5b1ef9774dea3dcc53c93be42cdd196ef4b072bff0be",
+      "receiptEvidenceFile": "successor-v2-receipt.json",
+      "receiptEvidenceSha256": "c4e830d7f2e807e1cecb3c43f4f3ef0f344a9546040d54322bf8fe3d05b44eaf",
+      "sourceCorrespondence": "FROZEN_COMPILER_INPUT_EXACT_INITCODE_AND_MATERIALIZED_RUNTIME_MATCH"
+    },
+    {
+      "contract": "RMTLaunchCurveSuccessorDeployerV2",
+      "address": "0x622D2f878B328406861DA18F4BBdD27E4730Cb65",
+      "deploymentTransactionHash": "0x6c32862553fb97d67b75296e68682548e067aa75b356f3ce84c9b8ebb4bcbc95",
+      "deploymentBlock": "116826171",
+      "deploymentBlockHash": "0x672b3ae7d805d7d7f41d5fc4f3c3fb358384ae7b3f3e1b862f99d1edcb947fdb",
+      "initcodeKeccak256": "0x5492ddda03a48dd5718830b01043bfbfd5ea1862e2d2f370851d41a5840914e8",
+      "materializedRuntimeKeccak256": "0x07efd03ff4ec2028d176deb6bfde1b77e3d5fd4d32c69851b59e7d78b1ac7fc9",
+      "receiptEvidenceFile": "successor-v3-receipt.json",
+      "receiptEvidenceSha256": "b5ef757345a417d348b40533de10c3ed43393978891d4d16df6c740dcc8c9b3b",
+      "sourceCorrespondence": "FROZEN_COMPILER_INPUT_EXACT_INITCODE_AND_MATERIALIZED_RUNTIME_MATCH"
+    },
+    {
+      "contract": "RMTLaunchCurveDeploymentV2",
+      "address": "0xb65380aE9A452813c4e6b0fF391cfE34faE676A5",
+      "deploymentTransactionHash": "0x9c9b3fe869b9fa8ee41684630a7e9807c07362a768b9a5c3b2b362db1498f73a",
+      "deploymentBlock": "116835102",
+      "deploymentBlockHash": "0x4a72961fb6649c1690fe4cf361ae6a6fbbdab39117a85604e2a11ba4646c7639",
+      "initcodeKeccak256": "0xda021596047c40c0c35467e319385e87d95bd6781dbf407ec5cc7b8c3778c50a",
+      "materializedRuntimeKeccak256": "0xa42587c77a2e9002be762c26229a150eca01d9076463f1cd93f608080ad0b400",
+      "receiptEvidenceFile": "bootstrap-receipt.json",
+      "receiptEvidenceSha256": "006cbfd89e186dc1d2493cd6df33a41fa0aefc6081851546ec4f0432d743e578",
+      "sourceCorrespondence": "FROZEN_COMPILER_INPUT_EXACT_INITCODE_AND_MATERIALIZED_RUNTIME_MATCH"
+    },
+    {
+      "contract": "RMTV4CurveInitializationGuardV1",
+      "address": "0x998F3C0CE20cFF92655D495a159B1Ca37c162000",
+      "deploymentTransactionHash": "0x9c9b3fe869b9fa8ee41684630a7e9807c07362a768b9a5c3b2b362db1498f73a",
+      "deploymentBlock": "116835102",
+      "deploymentBlockHash": "0x4a72961fb6649c1690fe4cf361ae6a6fbbdab39117a85604e2a11ba4646c7639",
+      "initcodeKeccak256": "0x04dd135b023e29d4509f2e32ebb8cfbee5c7504111a6166f9522b995c5361551",
+      "materializedRuntimeKeccak256": "0xdb92a74276834e63bf191ffe23ae5925f8cd4aaac9b1aa6cf872ae8f55c38a3e",
+      "receiptEvidenceFile": "bootstrap-receipt.json",
+      "receiptEvidenceSha256": "006cbfd89e186dc1d2493cd6df33a41fa0aefc6081851546ec4f0432d743e578",
+      "sourceCorrespondence": "FROZEN_COMPILER_INPUT_EXACT_CHILD_RUNTIME_MATCH",
+      "childCreateTraceStatus": "NOT_REQUIRED_FOR_READ_ONLY_RUNTIME_BINDING"
+    },
+    {
+      "contract": "RMTV4CurveGraduationV1",
+      "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+      "deploymentTransactionHash": "0x9c9b3fe869b9fa8ee41684630a7e9807c07362a768b9a5c3b2b362db1498f73a",
+      "deploymentBlock": "116835102",
+      "deploymentBlockHash": "0x4a72961fb6649c1690fe4cf361ae6a6fbbdab39117a85604e2a11ba4646c7639",
+      "initcodeKeccak256": "0x7489e1c044eb7971f7cf148a747025539c61ef1b2f6d07b5776ce109691a62b7",
+      "materializedRuntimeKeccak256": "0x24f5b57ef0091e5830747efee6b8372abebe61226dbaadeb04860a4461ede849",
+      "receiptEvidenceFile": "bootstrap-receipt.json",
+      "receiptEvidenceSha256": "006cbfd89e186dc1d2493cd6df33a41fa0aefc6081851546ec4f0432d743e578",
+      "sourceCorrespondence": "FROZEN_COMPILER_INPUT_EXACT_CHILD_RUNTIME_MATCH",
+      "childCreateTraceStatus": "NOT_REQUIRED_FOR_READ_ONLY_RUNTIME_BINDING"
+    },
+    {
+      "contract": "RMTLaunchCurveFactoryV2",
+      "address": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+      "deploymentTransactionHash": "0x9c9b3fe869b9fa8ee41684630a7e9807c07362a768b9a5c3b2b362db1498f73a",
+      "deploymentBlock": "116835102",
+      "deploymentBlockHash": "0x4a72961fb6649c1690fe4cf361ae6a6fbbdab39117a85604e2a11ba4646c7639",
+      "initcodeKeccak256": "0xa9a337271cd3a91f9de691800b98526bd612de1cace33c3f18e41df0c1aabbfa",
+      "materializedRuntimeKeccak256": "0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091",
+      "receiptEvidenceFile": "bootstrap-receipt.json",
+      "receiptEvidenceSha256": "006cbfd89e186dc1d2493cd6df33a41fa0aefc6081851546ec4f0432d743e578",
+      "sourceCorrespondence": "FROZEN_COMPILER_INPUT_EXACT_CHILD_RUNTIME_MATCH",
+      "childCreateTraceStatus": "NOT_REQUIRED_FOR_READ_ONLY_RUNTIME_BINDING"
+    }
+  ],
+  "externalBlockscoutPublication": {
+    "accepted": [
+      {
+        "id": "directory",
+        "address": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+        "status": "FULLY_VERIFIED_SOURCE_AND_RUNTIME_MATCH",
+        "evidenceFile": "blockscout-directory-acceptance.json"
+      },
+      {
+        "id": "registry",
+        "address": "0xf1113714Dda31f31532995D2525e034271425398",
+        "status": "FULLY_VERIFIED_SOURCE_AND_RUNTIME_MATCH",
+        "evidenceFile": "blockscout-registry-acceptance.json"
+      },
+      {
+        "id": "successor-v2",
+        "address": "0xcB25a3DF74729F7104C4f924Cb04F687F69391C6",
+        "status": "FULLY_VERIFIED_SOURCE_AND_RUNTIME_MATCH",
+        "evidenceFile": "blockscout-successor-v2-acceptance.json"
+      }
+    ],
+    "pending": [
+      "successor-v3",
+      "bootstrap",
+      "initializationGuard",
+      "graduationEngine",
+      "factory"
+    ],
+    "pendingReason": "RATE_LIMITED_HTTP_429_RETAIN_UNTIL_EXPLORER_ACCEPTANCE",
+    "pendingIsVerified": false
+  },
+  "sourceVerificationMeaning": "Locally reproduced frozen Standard JSON input, exact owner-submitted constructor initcode and canonical materialized runtime hashes; does not claim pending explorer publication succeeded.",
+  "securityAuditClaim": false,
+  "l1Finality": "UNVERIFIED",
+  "websiteCreationOrTradingEnabled": false,
+  "allMutationsRequireParentReview": true
+}
