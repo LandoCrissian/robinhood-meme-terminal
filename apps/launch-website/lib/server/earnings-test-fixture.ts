@@ -15,7 +15,7 @@ export function earningsTestFixture(options: { overlap?: boolean; treasury?: boo
   const birth = eh(400), txHash = eh(401);
   const state = { head: 10n, activeCurve: origin, version: 1, migrated: false, pendingNonce: 0, traceAvailable: true, traceInvalid: false,
     reorgReview: false, reorgReceipt: false, wrongRuntime: false, wrongPolicy: false, wrongReceipt: false, wrongToken: false,
-    wrongPosition: false, wrongPool: false, failReads: false, rejectSimulation: false, contractBeneficiary: false, factoryFees: 400000000000000n, revertReceipt: false,
+    wrongPosition: false, wrongPool: false, failReads: false, rejectSimulation: false, contractBeneficiary: false, delegatedBeneficiary: false, factoryFees: 400000000000000n, revertReceipt: false,
     receiptNative: 75n, receiptToken: 0n, afterClaim: options.afterClaim ?? false, extraCurveFee: 0n, mined: false,
     afterCollection: false, request: null as EarningsClaimRequest | null,
     traceCalls: 0, contractCalls: 0 };
@@ -67,7 +67,8 @@ export function earningsTestFixture(options: { overlap?: boolean; treasury?: boo
     getChainId: async () => 31337,
     getBlock: async (arg: { blockNumber?: bigint; includeTransactions?: boolean }) => block(arg.blockNumber ?? state.head, arg.includeTransactions),
     getCode: async (arg: { address: string }) => [creator, operations, reserve].some(who => arg.address.toLowerCase() === who.toLowerCase())
-      ? state.contractBeneficiary && arg.address.toLowerCase() === creator.toLowerCase() ? fixtureCode : "0x"
+      ? state.delegatedBeneficiary && arg.address.toLowerCase() === creator.toLowerCase() ? "0xef0100" + ea(777777).slice(2)
+        : state.contractBeneficiary && arg.address.toLowerCase() === creator.toLowerCase() ? fixtureCode : "0x"
       : state.wrongRuntime && arg.address.toLowerCase() === factory.toLowerCase() ? "0x6002" : fixtureCode,
     getBalance: async (arg: { address: string; blockNumber: bigint }) => arg.address.toLowerCase() === ledger.toLowerCase()
       ? curveTotal(arg.blockNumber) - (state.afterClaim && arg.blockNumber >= 11n ? 95n : 20n)

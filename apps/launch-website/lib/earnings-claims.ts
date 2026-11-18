@@ -1,5 +1,6 @@
 import { isLaunchAddress } from "./launch-data";
 import { isTransactionHash } from "./test-creation";
+import type { EarningsContractSnapshot } from "./server/earnings-contracts";
 
 type Address = `0x${string}`;
 type Hex = `0x${string}`;
@@ -83,6 +84,31 @@ export async function encodeEarningsClaim(operation: EarningsClaimOperation, tok
 
 export async function claimCalldataMatches(request: EarningsClaimRequest) {
   return isEarningsClaimRequest(request) && same(request.data, await encodeEarningsClaim(request.operation, request.token, request.deadline));
+}
+
+/** Unsigned inner CALL only. The beneficiary contract's own owner policy must
+ * authorize a separate outer transaction. No EOA owner inherits these credits. */
+export async function describeContractWalletClaim(snapshot: EarningsContractSnapshot, operation: EarningsClaimOperation) {
+  if (snapshot.status !== "ready" || ![31337, 4663].includes(snapshot.chainId) || snapshot.rights.accountType !== "contract"
+    || !address(snapshot.beneficiary) || !address(snapshot.token) || !["curve-claim", "lp-claim", "lp-claim-native", "lp-claim-token"].includes(operation)) {
+    throw new Error("Verified contract beneficiary and ledger claim required");
+  }
+  const names = ["creator", "treasury", "operations", "reserve"] as const;
+  const recipients = [snapshot.rights.creator, snapshot.rights.treasury, snapshot.rights.operations, snapshot.rights.reserve];
+  const roles = recipients.flatMap((recipient, index) => recipient && same(recipient, snapshot.beneficiary) ? [names[index]] : []);
+  if (!roles.length || !Array.isArray(snapshot.rights.roles) || roles.length !== snapshot.rights.roles.length
+    || roles.some(role => !snapshot.rights.roles.includes(role))) throw new Error("Beneficiary policy does not match the wallet");
+  const source = operation === "curve-claim" ? snapshot.curve : snapshot.lp.status === "ready" ? snapshot.lp : null;
+  if (!source || !address(source.ledger) || !isTransactionHash(source.runtimeHash)
+    || !/^[1-9][0-9]{0,15}$/.test(snapshot.observed.blockNumber) || !isTransactionHash(snapshot.observed.blockHash)
+    || !Number.isFinite(Date.parse(snapshot.observed.timestamp))) throw new Error("Verified ledger runtime and observation required");
+  const requiredCaller = snapshot.beneficiary, token = snapshot.token, chainId = snapshot.chainId;
+  const to = source.ledger, runtimeHash = source.runtimeHash, observation = { ...snapshot.observed };
+  const data = await encodeEarningsClaim(operation, token, null);
+  return Object.freeze({ kind: "unsigned-beneficiary-inner-call" as const, chainId, token, operation, requiredCaller, to, value: "0x0" as const, data,
+    runtimeHash, observation: Object.freeze(observation), executionEnabled: false as const, requiresFreshVerification: true as const,
+    authorization: "Separate outer transaction under the beneficiary contract wallet's own owner and threshold policy" as const,
+    notice: "Only the beneficiary contract may call. Its EOA owners receive no separate claim entitlement. Production execution remains disabled." as const });
 }
 
 export function sameEarningsClaimRequest(left: EarningsClaimRequest, right: EarningsClaimRequest) {

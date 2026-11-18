@@ -100,6 +100,7 @@ export async function prepareEarningsClaim(input: {
       context.rpc.getTransactionCount({ address: account, blockNumber: head.number }), context.rpc.getTransactionCount({ address: account, blockTag: "pending" }),
       context.rpc.getCode({ address: account, blockNumber: head.number }), context.rpc.getGasPrice(), context.rpc.getBalance({ address: account, blockNumber: head.number }),
     ]);
+    if (accountCode && /^0xef0100[0-9a-f]{40}$/i.test(accountCode)) return { status: "invalid", reason: "delegation-profile-required" };
     if (accountCode && accountCode !== "0x") return { status: "invalid", reason: "contract-wallet-execution-required" };
     if (confirmedNonce !== pendingNonce) return { status: "invalid", reason: "pending-account-nonce" };
     let token: Address = zeroAddress, origin: Address = zeroAddress, to = context.factory, ledger = context.factory, beneficiary = input.beneficiary;

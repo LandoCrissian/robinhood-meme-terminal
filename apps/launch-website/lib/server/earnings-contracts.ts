@@ -25,7 +25,7 @@ export type EarningsContractSnapshot = {
   status: "ready"; chainId: 31337 | 4663; token: Address; beneficiary: Address; observed: EarningsPoint;
   originalCurve: Address; activeCurve: Address; engineVersion: number;
   rights: { creator: Address; treasury: Address | null; treasuryShareBps: number; operations: Address; reserve: Address;
-    roles: EarningsRole[]; accountType: "eoa" | "contract" };
+    roles: EarningsRole[]; accountType: "eoa" | "contract" | "delegated-eoa" };
   curve: { ledger: Address; runtimeHash: Hex; claimableNativeWei: string; accruedNativeWei: string; claimedNativeWei: string;
     totalAccruedNativeWei: string; totalClaimedNativeWei: string; claimedSource: "contract-cumulative-credit-difference" };
   lp: { status: "not-graduated" } | { status: "ready"; ledger: Address; runtimeHash: Hex; collectionContract: Address; collectionRuntimeHash: Hex; claimableNativeWei: string; claimableTokenWei: string;
@@ -186,7 +186,8 @@ async function readUnchecked(context: EarningsReadContext, registration: Earning
   const result: EarningsContractSnapshot = { status: "ready", chainId: context.chainId, token, beneficiary, observed: context.checkpoint,
     originalCurve: origin, activeCurve: addr(active), engineVersion: project[2],
     rights: { creator: addr(registration.creator), treasury: registration.treasury ? addr(registration.treasury) : null, treasuryShareBps: share,
-      operations: addr(operations), reserve: addr(reserve), roles: indices.map(index => allRoles[index]), accountType: beneficiaryCode && beneficiaryCode !== "0x" ? "contract" : "eoa" },
+      operations: addr(operations), reserve: addr(reserve), roles: indices.map(index => allRoles[index]),
+      accountType: beneficiaryCode && /^0xef0100[0-9a-f]{40}$/i.test(beneficiaryCode) ? "delegated-eoa" : beneficiaryCode && beneficiaryCode !== "0x" ? "contract" : "eoa" },
     curve: { ledger, runtimeHash: keccak256(ledgerNow!), claimableNativeWei: credit.toString(), accruedNativeWei: beneficiaryAccrued.toString(),
       claimedNativeWei: (beneficiaryAccrued - credit).toString(), totalAccruedNativeWei: accrued.toString(), totalClaimedNativeWei: claimed.toString(),
       claimedSource: "contract-cumulative-credit-difference" }, lp: { status: "not-graduated" } };

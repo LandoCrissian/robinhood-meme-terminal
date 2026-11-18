@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { claimCalldataMatches, encodeEarningsClaim, isEarningsClaimRequest, readEarningsClaimJournal, sendEarningsClaim,
+import { claimCalldataMatches, describeContractWalletClaim, encodeEarningsClaim, isEarningsClaimRequest, readEarningsClaimJournal, sendEarningsClaim,
   type EarningsPreparedClaim } from "../earnings-claims";
 import { prepareEarningsClaim } from "./earnings-claims";
+import { readEarningsContracts } from "./earnings-contracts";
 import { ea, eh, fixtureCode, earningsTestFixture } from "./earnings-test-fixture";
 
 async function prepared() {
@@ -92,4 +93,29 @@ test("wallet RPC corroborates current target runtime and pending nonce before jo
       now: () => p.request.reviewTimestamp * 1000, revalidate: async () => p }));
     assert.equal(sends, 0); assert.equal(readEarningsClaimJournal(storage, p.request), null);
   }
+});
+
+test("contract-wallet handoff fixes the credited caller, ledger and zero-value inner CALL without an execution capability", async () => {
+  const f = earningsTestFixture({ graduated: true }); f.state.contractBeneficiary = true;
+  const snapshot = await readEarningsContracts(f.context, f.registration, f.creator);
+  assert.equal(snapshot.status, "ready"); if (snapshot.status !== "ready") return;
+  for (const operation of ["curve-claim", "lp-claim", "lp-claim-native", "lp-claim-token"] as const) {
+    const described = await describeContractWalletClaim(snapshot, operation);
+    assert.equal(described.requiredCaller, f.creator); assert.equal(described.value, "0x0"); assert.equal(described.executionEnabled, false);
+    assert.equal(described.to.toLowerCase(), (operation === "curve-claim" ? f.ledger : f.lpLedger).toLowerCase());
+    assert.equal(described.data, await encodeEarningsClaim(operation, f.token, null));
+    assert.equal("nonce" in described, false, "A Safe nonce must not be replaced with its owner's EOA nonce");
+    assert.equal("from" in described, false, "No outer EOA transaction is proposed");
+    assert.equal(Object.isFrozen(described), true); assert.equal(Object.isFrozen(described.observation), true);
+  }
+});
+
+test("unsigned handoff rejects relayer operations, mixed recipient identity and delegated EOA profiles", async () => {
+  const f = earningsTestFixture({ graduated: true }); f.state.contractBeneficiary = true;
+  const snapshot = await readEarningsContracts(f.context, f.registration, f.creator);
+  assert.equal(snapshot.status, "ready"); if (snapshot.status !== "ready") return;
+  for (const operation of ["lp-collect", "creation-fees"] as const) await assert.rejects(describeContractWalletClaim(snapshot, operation));
+  await assert.rejects(describeContractWalletClaim({ ...snapshot, beneficiary: ea(999999) }, "curve-claim"));
+  await assert.rejects(describeContractWalletClaim({ ...snapshot, rights: { ...snapshot.rights, accountType: "delegated-eoa" } }, "curve-claim"));
+  await assert.rejects(describeContractWalletClaim({ ...snapshot, curve: { ...snapshot.curve, runtimeHash: "0x0" } }, "curve-claim"));
 });

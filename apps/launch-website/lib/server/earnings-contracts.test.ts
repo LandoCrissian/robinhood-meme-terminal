@@ -85,3 +85,9 @@ test("wrong chain and reorged canonical checkpoint return unavailable", async ()
   f.state.reorgReview = true;
   assert.deepEqual(await readEarningsContracts(f.context, f.registration, f.creator), { status: "unavailable" });
 });
+
+test("EIP-7702 code designators are disclosed as delegated EOAs rather than Safe accounts", async () => {
+  const f = earningsTestFixture(); f.state.delegatedBeneficiary = true;
+  const read = await readEarningsContracts(f.context, f.registration, f.creator);
+  assert.equal(read.status, "ready"); if (read.status === "ready") assert.equal(read.rights.accountType, "delegated-eoa");
+});

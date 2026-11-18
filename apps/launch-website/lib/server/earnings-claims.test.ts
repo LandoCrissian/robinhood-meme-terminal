@@ -36,6 +36,12 @@ test("Safe/contract beneficiary read compatibility never permits an EOA owner to
   assert.deepEqual(result, { status: "invalid", reason: "contract-wallet-execution-required" });
 });
 
+test("delegated EOAs require their separately verified execution profile without being mislabeled as Safes", async () => {
+  const f = earningsTestFixture(); f.state.delegatedBeneficiary = true;
+  const result = await prepareEarningsClaim({ context: f.context, registration: f.registration, beneficiary: f.creator, account: f.creator, operation: "curve-claim" });
+  assert.deepEqual(result, { status: "invalid", reason: "delegation-profile-required" });
+});
+
 test("permissionless LP collection and creation-fee release cannot redirect the receiving ledger or Operations", async () => {
   const f = earningsTestFixture({ graduated: true });
   const collection = await prepareEarningsClaim({ context: f.context, registration: f.registration, beneficiary: f.creator, account: f.reserve, operation: "lp-collect" });
