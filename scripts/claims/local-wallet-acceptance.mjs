@@ -309,7 +309,10 @@ export async function testClaimWalletProfiles({ rpcUrl, rpc, artifacts, deployed
     await settle(first, factoryReview, await sendReview(factoryReview));
     assert.equal(await client.getBalance({ address: operations }) - operationsBefore, factoryDue);
     evidence.checks.creationFeesPaidOnlyToImmutableOperations = true;
-    evidence.checks.productionFinalityNotClaimed = true; evidence.status = "passed"; save();
+    evidence.checks.productionFinalityNotClaimed = true;
+    // Subsequent same-page browser sends use the identical synthetic bridge and
+    // append their real receipts. Keep the completed core scope count distinct.
+    evidence.coreReceiptCount = evidence.receipts.length; evidence.status = "passed"; save();
     return { evidence, actors: { delegated: delegated.address, relayer: relayer.address, safe, owners: owners.map(o => o.address) }, projects,
       signSafeReview, sendReviewedTransaction: async envelope => send(accounts.get(envelope.from.toLowerCase()), envelope),
       checkPositionCustody: custody, client };
