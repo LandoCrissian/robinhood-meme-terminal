@@ -14,7 +14,7 @@ const stringify = value => JSON.stringify(value, (_, v) => typeof v === "bigint"
 const safeAbi = parseAbi(["function setup(address[] owners,uint256 threshold,address to,bytes data,address fallbackHandler,address paymentToken,uint256 payment,address paymentReceiver)",
   "function execTransaction(address to,uint256 value,bytes data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address refundReceiver,bytes signatures) payable returns(bool)",
   "function nonce() view returns(uint256)", "function getOwners() view returns(address[])", "function getThreshold() view returns(uint256)",
-  "event ExecutionSuccess(bytes32 indexed txHash,uint256 payment)"]);
+  "event ExecutionSuccess(bytes32 txHash,uint256 payment)"]);
 const safeFactoryAbi = parseAbi(["function createProxyWithNonce(address singleton,bytes initializer,uint256 saltNonce) returns(address proxy)",
   "event ProxyCreation(address indexed proxy,address singleton)"]);
 const permitAbi = parseAbi(["function approve(address token,address spender,uint160 amount,uint48 expiration)",
@@ -73,7 +73,16 @@ export async function testClaimWalletProfiles({ rpcUrl, rpc, artifacts, deployed
     assert.equal(review.chainId, 31337); assert.ok(review.outer);
     const signer = accounts.get(review.outer.from.toLowerCase()); assert.ok(signer);
     assert.equal(review.outer.chainId, "0x7a69"); assert.equal(review.outer.value, "0x0");
-    return send(signer, review.outer, expected);
+    const receipt = await send(signer, review.outer, expected);
+    if (review.kind === "safe-1.4.1") {
+      // Preserve the actual official Safe event layout and outer envelope before
+      // settlement assertions, so a failed proof remains independently inspectable.
+      evidence.safeExecutionReceipts ??= [];
+      evidence.safeExecutionReceipts.push({ reviewHash: review.reviewHash,
+        safeTransactionHash: review.wallet.safe.transactionHash, outer: review.outer,
+        receipt: { ...receiptEvidence(receipt), logs: receipt.logs } }); save();
+    }
+    return receipt;
   }
   function event(receipt, address, abi, eventName) {
     const logs = parseEventLogs({ abi, eventName, strict: true, logs: receipt.logs.filter(l => same(l.address, address)) });
