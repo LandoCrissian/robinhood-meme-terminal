@@ -2,6 +2,7 @@ import { type Address, type Hash, type Hex } from "viem";
 import { isClaimExecutionReview, type ClaimWalletKind, type ClaimExecutionReview } from "../claim-profiles";
 import { isEarningsClaimOperation } from "../earnings-claims";
 import { isTransactionHash } from "../test-creation";
+import { claimFinality, claimSettlementProfile, type ClaimSettlementResult } from "../production-claims";
 import { configuredCurveFixture, fixtureAddress, type CurveFixture } from "./curve-fixture";
 import { fixtureEarningsContext } from "./earnings-contracts";
 import { prepareClaimExecutionReview, revalidateClaimExecutionReview } from "./claim-profiles";
@@ -56,6 +57,7 @@ export async function handleTestClaimProfile(request: Request) {
   const length = request.headers.get("content-length");
   if (length && (!/^[0-9]+$/.test(length) || Number(length) > 32768)) return reply({ status: "invalid" }, 413);
   const release = acquire(); if (!release) return reply({ status: "unavailable", reason: "Local claim reads are limited" }, 429);
+  let recoveryReview: ClaimExecutionReview | undefined;
   try {
     if (!request.body) return reply({ status: "invalid" }, 400);
     const body = await readClaimProfileBody(request.body);
@@ -78,6 +80,7 @@ export async function handleTestClaimProfile(request: Request) {
       && isClaimExecutionReview(body.review) && body.review.chainId === 31337 && freshSyntheticActor(body.review.gasPayer)
       && (body.transactionHash === undefined || isTransactionHash(body.transactionHash))) {
       const review = body.review;
+      if (body.action === "verify") recoveryReview = review;
       const birth = review.inner.operation === "creation-fees" ? undefined : await readFixtureBirth(fixture, review.inner.token, review.inner.discoveryRecipient);
       const context = await fixtureEarningsContext(fixture);
       if (body.action === "revalidate") {
@@ -99,6 +102,19 @@ export async function handleTestClaimProfile(request: Request) {
         } }));
     }
     return reply({ status: "invalid", executionEnabled: false }, 400);
-  } catch { return reply({ status: "unavailable", reason: "Profile or canonical receipt evidence unavailable", executionEnabled: false }); }
+  } catch {
+    if (recoveryReview) {
+      // A missing index checkpoint/receipt is an operational outage, not a new
+      // request identity. Keep the original journal recoverable without binding
+      // an unproven pasted hash or inventing receipt/payment evidence.
+      const unavailable: ClaimSettlementResult = { schemaVersion: 1, profile: claimSettlementProfile,
+        chainId: recoveryReview.chainId, scope: "synthetic-local", stage: "unavailable", executionEnabled: false,
+        intentHash: recoveryReview.intentHash, reviewHash: recoveryReview.reviewHash, receiptObserved: false,
+        providers: { status: "unavailable", ids: [] }, finality: claimFinality(recoveryReview.chainId, undefined, undefined),
+        reason: "Canonical index checkpoint or receipt evidence unavailable; recover the original request without resubmitting" };
+      return reply(unavailable);
+    }
+    return reply({ status: "unavailable", reason: "Profile or canonical receipt evidence unavailable", executionEnabled: false });
+  }
   finally { release(); }
 }
