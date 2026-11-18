@@ -1,5 +1,5 @@
 import snapshot from "../../data/historical-launches-4663.json";
-import { indexerOrigin } from "./indexer-origin";
+import { indexerOrigin, railwayReadOnlyProfile } from "./indexer-origin";
 import {
   isLaunchAddress, launchDirectoryLimit, robinhoodChainId,
   type HistoricalLaunch, type LaunchBlock, type LaunchDirectoryData, type LaunchReceipt,
@@ -16,6 +16,7 @@ const maxCachedExactReads = 64;
 
 type Fields = Record<string, unknown>;
 type Evidence = Omit<LaunchDirectoryData, "chainId" | "future" | "finality">;
+type ReadFailure = { stage: "transport" | "http" | "body" | "evidence"; status?: number; code?: string };
 type ReaderOptions = {
   indexerUrl?: string;
   indexerReadToken?: string;
@@ -23,6 +24,7 @@ type ReaderOptions = {
   now?: () => number;
   snapshot?: unknown;
   env?: Record<string, string | undefined>;
+  onFailure?: (failure: ReadFailure) => void;
 };
 
 function requireValue(ok: unknown): asserts ok {
@@ -228,12 +230,23 @@ export function createLaunchDirectoryReader(options: ReaderOptions) {
   let pendingList: Promise<Evidence | null> | undefined;
   const pendingExact = new Map<string, Promise<Evidence | null>>();
   const cachedExact = new Map<string, { evidence: Evidence | null; expiresAt: number }>();
+  let lastReportedAt = -Infinity;
+  function reportFailure(failure: ReadFailure) {
+    // Operational evidence only: never log exception messages, URLs, headers,
+    // credentials, project metadata or response bodies. Bound noisy outages.
+    options.onFailure?.(failure);
+    if ((options.env ?? process.env).RMT_WEB_HOSTING === railwayReadOnlyProfile && now() - lastReportedAt >= 60_000) {
+      lastReportedAt = now();
+      console.warn(JSON.stringify({ event: "launch_history_read_degraded", ...failure }));
+    }
+  }
 
   async function fetchIndex(archived: Evidence, token?: string): Promise<Evidence | null> {
     if (!feed || !credential || !/^[\x21-\x7e]{1,512}$/.test(credential)) return null;
     const url = new URL(feed);
     if (token) url.searchParams.set("token", token);
     else url.searchParams.set("limit", String(launchDirectoryLimit));
+    let stage: ReadFailure["stage"] = "transport";
     try {
       const response = await fetchFeed(url, {
         headers: { Accept: "application/json", Authorization: "Bearer " + credential },
@@ -241,10 +254,17 @@ export function createLaunchDirectoryReader(options: ReaderOptions) {
       });
       if (!response.ok) {
         void response.body?.cancel().catch(() => undefined);
+        reportFailure({ stage: "http", status: response.status });
         return null;
       }
-      return mergeEvidence(readIndexedEvidence(await readBoundedJson(response), now(), token), archived, token);
-    } catch {
+      stage = "body";
+      const body = await readBoundedJson(response);
+      stage = "evidence";
+      return mergeEvidence(readIndexedEvidence(body, now(), token), archived, token);
+    } catch (error) {
+      const code = (error as { cause?: { code?: unknown } } | null)?.cause?.code;
+      const known = ["ECONNREFUSED", "ECONNRESET", "ENOTFOUND", "ETIMEDOUT", "EAI_AGAIN", "UND_ERR_SOCKET", "UND_ERR_CONNECT_TIMEOUT"];
+      reportFailure({ stage, ...(typeof code === "string" && known.includes(code) ? { code } : {}) });
       return null;
     }
   }

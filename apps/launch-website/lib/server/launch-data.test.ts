@@ -31,6 +31,24 @@ function withFeed(fetchFeed: typeof fetch, now = () => clock) {
   });
 }
 
+test("degraded reads expose bounded diagnostic categories without leaking backend data", async () => {
+  const failures: unknown[] = [];
+  let now = clock;
+  let mode = 0;
+  const read = createLaunchDirectoryReader({ now: () => now, indexerUrl: "https://history.example", indexerReadToken: "private-fixture-credential",
+    onFailure: (failure) => failures.push(failure), fetch: async () => {
+      if (mode === 0) return new Response("private-backend-message", { status: 503 });
+      if (mode === 1) return Response.json({ ...indexed(), chainId: 1, secret: "private-backend-message" });
+      throw new Error("private-fixture-credential", { cause: { code: "ECONNRESET" } });
+    } });
+  assert.equal((await read()).status, "stale");
+  await read(); assert.equal(failures.length, 1, "Negative cache bounds repeated backend reads");
+  mode = 1; now += 30_001; assert.equal((await read()).status, "stale");
+  mode = 2; now += 30_001; assert.equal((await read()).status, "stale");
+  assert.deepEqual(failures, [{ stage: "http", status: 503 }, { stage: "evidence" }, { stage: "transport", code: "ECONNRESET" }]);
+  assert.doesNotMatch(JSON.stringify(failures), /private-|history\.example/);
+});
+
 test("shipped historical evidence is a stale snapshot with no future or external registrations", async () => {
   const read = createLaunchDirectoryReader({ now: () => clock });
   const data = await read();
