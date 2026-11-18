@@ -3,6 +3,7 @@ import { Client } from "pg";
 import { curveProductionSchemaSql, initializeProductionCurveStore, commitProductionCurveRange,
   productionCurveScope, readProductionCurveLaunches, rollbackProductionCurve } from "./curve-production-store.js";
 import { syntheticProductionConfig as config, syntheticProductionRegistration } from "./curve-production-smoke.js";
+import { testCreatorEarningsPostgres } from "./creator-earnings-postgres-smoke.js";
 
 const text = process.env.DATABASE_URL;
 if (!text) throw new Error("A dedicated local production-adapter smoke database is required");
@@ -52,6 +53,7 @@ try {
   assert.equal((await reopened.query("SELECT next_block::text FROM rmt_curve_production_bindings")).rows[0]?.next_block, "100");
   await assert.rejects(readProductionCurveLaunches(reopened, scope, item.checkpoint, { limit: 25 }), /checkpoint changed/);
   assert.equal((await reopened.query("SELECT to_regclass('public.indexer_state') AS historical")).rows[0]?.historical, null);
+  await testCreatorEarningsPostgres(reopened, text, config, item);
   console.info("Production adapter PostgreSQL atomic rollback, duplicate replay, lease, restart and reorg smoke passed.");
 } finally {
   if (!firstClosed) await first.end().catch(() => undefined);

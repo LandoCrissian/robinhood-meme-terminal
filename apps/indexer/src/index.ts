@@ -52,6 +52,7 @@ import { createHistoryReadBudget } from "./history-read-budget.js";
 import { IndexStoreError, initializeIndexStore, lockIndexWriter } from "./index-store.js";
 import { curveProductionConfig } from "./curve-production-config.js";
 import { createProductionCurveIndexer, parseProductionCurveQuery } from "./curve-production.js";
+import { creatorEarningsProfile, parseEarningsDiscoveryQuery } from "./creator-earnings.js";
 
 const CHAIN_ID = 4663;
 const INDEXER_SCHEMA_VERSION = 5;
@@ -1409,6 +1410,38 @@ function startServer() {
       }
       if (stopping) {
         json(response, 503, { error: "Indexer data service is temporarily unavailable." });
+        return;
+      }
+      if (url.pathname === "/curve-earnings") {
+        if (!hasHistoricalReadAccess(config.readToken, request.headers.authorization)) {
+          response.setHeader("WWW-Authenticate", "Bearer");
+          json(response, 401, { error: "Unauthorized" });
+          return;
+        }
+        const query = parseEarningsDiscoveryQuery(url);
+        if (!query) { json(response, 400, { error: "Invalid earnings discovery query" }); return; }
+        const current = productionCurve;
+        if (!productionCurveConfigured || !current || current.state().status === "unavailable") {
+          json(response, 503, { schemaVersion: 1, profile: creatorEarningsProfile, chainId: CHAIN_ID,
+            recipient: query.recipient, status: "unavailable", checkpoint: null });
+          return;
+        }
+        const releaseRead = historyReadBudget.acquire();
+        if (!releaseRead) { response.setHeader("Retry-After", "1"); json(response, 429, { error: "Earnings requests are temporarily limited" }); return; }
+        let db: PoolClient | undefined;
+        try {
+          db = await pool.connect();
+          await db.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
+          await db.query("SET LOCAL statement_timeout = '1s'");
+          const result = await current.readEarnings(db, query);
+          await db.query("COMMIT");
+          json(response, 200, result);
+        } catch (error) {
+          await db?.query("ROLLBACK").catch(() => undefined);
+          json(response, 503, { schemaVersion: 1, profile: creatorEarningsProfile, chainId: CHAIN_ID,
+            recipient: query.recipient, status: "unavailable", checkpoint: null });
+          console.error(JSON.stringify({ event: "creator_earnings_read_unavailable", errorType: errorType(error) }));
+        } finally { db?.release(); releaseRead(); }
         return;
       }
       if (url.pathname === "/curve-launches" || url.pathname.startsWith("/curve-launches/")) {

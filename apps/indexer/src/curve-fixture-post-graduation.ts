@@ -254,8 +254,10 @@ export async function indexFixturePostTransaction(rpc: PublicClient, binding: Fi
       if (tx.value !== 0n) return;
       const claim = fixtureExternalClaim(tx.input);
       if (!claim) return;
-      cursor = cursors.find(item => item.lpLedger && item.launch.treasury && same(item.lpLedger, claim.ledger)
-        && same(item.launch.treasury, target));
+      // Exact credit/event/trace checks below prove the contract beneficiary.
+      // A Safe's rights are not restricted to the project's treasury role and
+      // never flow through to its EOA owners.
+      cursor = cursors.find(item => item.lpLedger && same(item.lpLedger, claim.ledger));
       externalCall = claim.calldata;
     }
   }
