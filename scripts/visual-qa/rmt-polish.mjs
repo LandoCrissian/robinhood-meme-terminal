@@ -238,7 +238,16 @@ async function checkAfter(browser, engine, layout, harness) {
   captures.push(await screenshot(page, `after-${engine}-${layout.name}-wallet-menu`));
   await noOverflow(page);
   await page.keyboard.press("Tab");
-  assert.equal(await walletMenu.evaluate(element => element.contains(document.activeElement)), true, "Keyboard focus reaches the wallet links");
+  // WebKit follows its platform's native link-tabbing setting. ArrowDown below
+  // must always reach Wallet; native Tab may move outside and close the menu.
+  const keyboard = await page.evaluate(() => {
+    const active = document.activeElement, menu = document.querySelector('nav[aria-label="Wallet and profile"]');
+    return { nativeTabInsideMenu: Boolean(menu?.contains(active)), nativeTabTarget: active?.getAttribute("aria-label") ?? active?.tagName,
+      expandedAfterTab: document.querySelector("button.lpAccountNav").getAttribute("aria-expanded") };
+  });
+  assert.equal(keyboard.expandedAfterTab, keyboard.nativeTabInsideMenu ? "true" : "false");
+  await trigger.press("ArrowDown");
+  await page.waitForFunction(() => document.activeElement?.matches('nav[aria-label="Wallet and profile"] a[aria-label="Wallet"]'));
   await page.keyboard.press("Escape");
   assert.equal(await trigger.getAttribute("aria-expanded"), "false");
   assert.equal(await trigger.evaluate(element => element === document.activeElement), true);
@@ -333,7 +342,7 @@ async function checkAfter(browser, engine, layout, harness) {
   assert.deepEqual(state.pageErrors, []);
   reports.push({ phase: "after", engine, layout: layout.name, viewport: layout.viewport, url: site.href,
     fixture: "Isolated local React harness, actual NewEngineLaunches component, canonical-shaped synthetic registrations; no live project claims",
-    focus, fixtureFocus, captures, ...state, walletCalls: [] });
+    focus, fixtureFocus, keyboard, captures, ...state, walletCalls: [] });
   await context.close();
 }
 
