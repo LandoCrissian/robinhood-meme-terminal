@@ -17,6 +17,7 @@ type Journal = { schemaVersion: 1; review: ProjectTreasuryReview; stage: "awaiti
   transactionHash: string | null; result: ProjectTreasuryVerification | null; createdAt: number; updatedAt: number };
 const key = (r: ProjectTreasuryReview) => `${namespace}:${r.reviewHash}`;
 const recordLimit = (r: ProjectTreasuryReview) => r.operation === "create-treasury" ? 160 * 1024 : 32768;
+const bytes = (raw: string) => new TextEncoder().encode(raw).byteLength;
 const terminal = (j: Journal) => j.stage === "confirmed" || j.stage === "reverted" || j.stage === "wallet-rejected";
 function validJournal(value: unknown): value is Journal {
   const j = value as Journal;
@@ -34,8 +35,8 @@ function readJournals(): Journal[] {
   const keys: unknown = JSON.parse(raw);
   if (!Array.isArray(keys) || keys.length > 32 || new Set(keys).size !== keys.length || keys.some(k => typeof k !== "string" || !/^rmt\.project-treasury\.pending\.v1:0x[0-9a-f]{64}$/i.test(k))) throw Error("Treasury recovery index is invalid.");
   return keys.map(k => {
-    const raw = localStorage.getItem(k); if (!raw || raw.length > 160 * 1024) throw Error("A treasury recovery record is unavailable.");
-    const value: unknown = JSON.parse(raw); if (!validJournal(value) || key(value.review) !== k || raw.length > recordLimit(value.review)) throw Error("A treasury recovery identity is invalid."); return value;
+    const raw = localStorage.getItem(k); if (!raw || raw.length > 160 * 1024 || bytes(raw) > 160 * 1024) throw Error("A treasury recovery record is unavailable.");
+    const value: unknown = JSON.parse(raw); if (!validJournal(value) || key(value.review) !== k || bytes(raw) > recordLimit(value.review)) throw Error("A treasury recovery identity is invalid."); return value;
   }).sort((a, b) => b.createdAt - a.createdAt);
 }
 function store(j: Journal) {
@@ -43,7 +44,7 @@ function store(j: Journal) {
   const all = readJournals(), old = all.find(entry => key(entry.review) === key(j.review));
   if (old && (old.review.reviewHash !== j.review.reviewHash || old.createdAt !== j.createdAt || old.transactionHash && old.transactionHash !== j.transactionHash)) throw Error("The original treasury request cannot be replaced.");
   if (!old && all.length >= 32) throw Error("The treasury recovery journal is full. Existing requests will not be evicted.");
-  const serialized = JSON.stringify(j); if (serialized.length > recordLimit(j.review)) throw Error("Treasury recovery record exceeds its bound.");
+  const serialized = JSON.stringify(j); if (bytes(serialized) > recordLimit(j.review)) throw Error("Treasury recovery record exceeds its bound.");
   localStorage.setItem(key(j.review), serialized);
   localStorage.setItem(indexKey, JSON.stringify(old ? all.map(entry => key(entry.review)) : [...all.map(entry => key(entry.review)), key(j.review)]));
   if (localStorage.getItem(key(j.review)) !== serialized || !readJournals().some(entry => entry.review.reviewHash === j.review.reviewHash)) throw Error("Treasury request could not be saved before wallet confirmation.");

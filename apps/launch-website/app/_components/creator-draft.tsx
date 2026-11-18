@@ -14,7 +14,7 @@ import { TokenArtwork } from "./token-artwork";
 import { useAccount } from "./account-provider";
 import { ProjectTreasurySetup } from "./project-treasury-setup";
 import type { ProjectTreasuryProof } from "../../lib/project-treasury";
-import type { ProjectTreasuryMode } from "../../lib/project-treasury-draft";
+import { projectTreasuryDraftKey, type ProjectTreasuryMode } from "../../lib/project-treasury-draft";
 
 // The read-only build never mounts or loads the production wallet controller.
 const ProductionCreationWallet = dynamic(() => import("./production-creation-wallet").then((module) => module.ProductionCreationWallet), { ssr: false });
@@ -101,6 +101,7 @@ export function CreatorDraft({ executionTest, productionCreation }: {
   const [pending, setPending] = useState(false);
   const [treasuryMode, setTreasuryMode] = useState<ProjectTreasuryMode>("none");
   const [treasuryProof, setTreasuryProof] = useState<ProjectTreasuryProof>();
+  const [treasurySetupVersion, setTreasurySetupVersion] = useState(0);
   const reviewing = useRef(false);
   const currentDraft = useRef<ReviewedLaunchDraft>(undefined);
   const liveAccountBinding = useRef(accountBinding), reviewedAccountBinding = useRef<string>(undefined);
@@ -290,7 +291,7 @@ export function CreatorDraft({ executionTest, productionCreation }: {
       <details className="lpDraftTreasury lpCreatorDisclosure">
         <summary><span><span>Optional project treasury</span><small>Allocate part of your project’s fee share</small></span></summary>
         <fieldset disabled={pending || !restored} aria-label="Project treasury settings">
-          {restored && <ProjectTreasurySetup creatorFields={{ name: draft.name, symbol: draft.symbol, projectURI: draft.projectURI }}
+          {restored && <ProjectTreasurySetup key={treasurySetupVersion} creatorFields={{ name: draft.name, symbol: draft.symbol, projectURI: draft.projectURI }}
             fixture={executionTest?.projectTreasury === true} initialExisting={Boolean(draft.treasury)}
             onModeChange={mode => {
               currentDraft.current = undefined; setReviewed(undefined); setTreasuryMode(mode); setTreasuryProof(undefined);
@@ -324,6 +325,9 @@ export function CreatorDraft({ executionTest, productionCreation }: {
         <button type="button" className="lpButton lpSecondary" disabled={pending || !restored} onClick={() => {
           setDraft(emptyLaunchDraft);
           setTreasuryProof(undefined);
+          setTreasuryMode("none");
+          try { localStorage.removeItem(projectTreasuryDraftKey); } catch { /* Submitted transaction journals remain independent. */ }
+          setTreasurySetupVersion(value => value + 1);
           setErrors({});
           setMessage("");
         }}>Clear draft</button>

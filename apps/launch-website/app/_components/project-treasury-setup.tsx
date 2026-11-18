@@ -15,8 +15,10 @@ export function ProjectTreasurySetup({ creatorFields, onVerified, onInvalidate, 
   const [draft, setDraft] = useState<ProjectTreasuryDraft>(emptyProjectTreasuryDraft), [restored, setRestored] = useState(false);
   const [errors, setErrors] = useState<ProjectTreasuryDraftErrors>({}), [preview, setPreview] = useState<ProjectTreasuryPreview | null>(null);
   const [notice, setNotice] = useState(""), [verified, setVerified] = useState<ProjectTreasuryProof | null>(null);
-  const settings = useRef(draft), revision = useRef(0); settings.current = draft;
+  const settings = useRef(draft), revision = useRef(0), mounted = useRef(true); settings.current = draft;
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; revision.current++; }; }, []);
   const verifiedProof = (proof: ProjectTreasuryProof) => {
+    if (!mounted.current) return;
     const current = validateProjectTreasuryDraft(settings.current);
     if (current.ok && current.draft.mode === "contract" && current.draft.controller && current.draft.intentId
       && same(proof.controller, current.draft.controller) && same(proof.intentId, current.draft.intentId)
@@ -112,10 +114,12 @@ export function ProjectTreasurySetup({ creatorFields, onVerified, onInvalidate, 
         {!preview.deployed && <button type="button" className="lpButton" disabled={execution.busy} onClick={() => void execution.run(reviewDeployment)}>Review synthetic treasury deployment</button>}
       </div>}
       {verified && <p className="lpInlineNotice" role="status">Project treasury verified at block {verified.deployment.blockNumber}. Token creation can use this intent only after its own review; no token has been created by this treasury step.</p>}
-      <TreasuryTransactionPanel execution={execution} />
-      <button type="button" className="lpTextButton" disabled={execution.busy} onClick={() => edit("intentId", newProjectTreasuryIntent())}>Start a new treasury intent</button>
+      <button type="button" className="lpTextButton" disabled={execution.busy} onClick={() => {
+        try { edit("intentId", newProjectTreasuryIntent()); } catch { setNotice("Secure project intent unavailable. No treasury request was changed."); }
+      }}>Start a new treasury intent</button>
       <p>Changing the intent never erases an earlier deployment or submitted transaction. Recover it above. Cancelling this optional step does not undo an already confirmed treasury.</p>
     </>}
+    <TreasuryTransactionPanel execution={execution} />
     {notice && <p className="lpInlineNotice" role="status">{notice}</p>}
   </div>;
 }
