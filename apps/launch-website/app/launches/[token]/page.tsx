@@ -7,6 +7,7 @@ import { configuredCurveFixture } from "../../../lib/server/curve-fixture";
 import { readFixtureLaunches } from "../../../lib/server/fixture-discovery";
 import { configuredProductionDiscovery, productionDirectory, readProductionDiscovery } from "../../../lib/server/production-discovery";
 import { NewEngineLaunches } from "../../_components/new-engine-launches";
+import { CreatorLink } from "../../_components/creator-link";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export default async function LaunchPage({ params }: { params: Promise<{ token: 
       <code className="lpAddress">{address}</code>
       <NewEngineLaunches directory={productionDirectory(data)} />
       {data.status !== "unavailable" && data.launches[0] && <dl className="lpFacts">
-        <dt>Creator</dt><dd className="lpAddress">{data.launches[0].creator}</dd>
+        <dt>Creator</dt><dd className="lpAddress"><CreatorLink wallet={data.launches[0].creator} label={data.launches[0].creator} /></dd>
         <dt>Project treasury</dt><dd className="lpAddress">{data.launches[0].treasury ?? "None"}</dd>
         <dt>Treasury allocation</dt><dd>{data.launches[0].treasuryShareBps / 100}% of total collected fees</dd>
         <dt>Submitted project URI</dt><dd>{data.launches[0].projectURI || "None"}</dd>

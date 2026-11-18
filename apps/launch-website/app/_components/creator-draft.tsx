@@ -11,6 +11,7 @@ import { proposedCurveLifecycle } from "../../lib/curve-lifecycle";
 import { launchTerms, launchTokenDecimals, launchTokenSupply } from "../../lib/launch-terms";
 import { TestCreationWallet } from "./test-creation-wallet";
 import { TokenArtwork } from "./token-artwork";
+import { useAccount } from "./account-provider";
 
 // The read-only build never mounts or loads the production wallet controller.
 const ProductionCreationWallet = dynamic(() => import("./production-creation-wallet").then((module) => module.ProductionCreationWallet), { ssr: false });
@@ -64,6 +65,9 @@ function DraftTerms({ draft, production }: { draft?: ReviewedLaunchDraft; produc
 export function CreatorDraft({ executionTest, productionCreation }: {
   executionTest?: { factory: string }; productionCreation?: { factory: string; operating: string; reserve: string };
 }) {
+  const account = useAccount();
+  const accountBinding = account.wallet ? `${account.wallet.address}:${account.wallet.chainId}`
+    : account.session.authenticated ? account.session.account.walletAddress : "anonymous";
   const [draft, setDraft] = useState<LaunchDraft>(emptyLaunchDraft);
   const [restored, setRestored] = useState(false);
   const [reviewed, setReviewed] = useState<ReviewedLaunchDraft>();
@@ -72,8 +76,16 @@ export function CreatorDraft({ executionTest, productionCreation }: {
   const [pending, setPending] = useState(false);
   const reviewing = useRef(false);
   const currentDraft = useRef<ReviewedLaunchDraft>(undefined);
+  const liveAccountBinding = useRef(accountBinding), reviewedAccountBinding = useRef<string>(undefined);
+  liveAccountBinding.current = accountBinding;
   const reviewHeading = useRef<HTMLHeadingElement>(null);
   const formHeading = useRef<HTMLHeadingElement>(null);
+  const priorAccount = useRef(accountBinding);
+  useEffect(() => {
+    if (priorAccount.current === accountBinding) return;
+    priorAccount.current = accountBinding; currentDraft.current = undefined; setReviewed(undefined);
+    setMessage("Wallet account or network changed. Review the saved token fields again before continuing.");
+  }, [accountBinding]);
 
   useEffect(() => {
     function storedDraft(key: string) {
@@ -136,6 +148,7 @@ export function CreatorDraft({ executionTest, productionCreation }: {
     }
     setErrors({});
     reviewing.current = true;
+    const boundAccount = liveAccountBinding.current;
     setPending(true);
     try {
       const { name, symbol, projectURI, treasury, treasuryShare } = draft;
@@ -155,6 +168,8 @@ export function CreatorDraft({ executionTest, productionCreation }: {
       const expected = Object.entries(reviewableFields(checked.draft));
       if (result.status !== "reviewed" || !result.draft || Object.keys(result.draft).length !== expected.length
         || !expected.every(([key, value]) => result.draft?.[key] === value)) throw new Error("Draft validation did not match");
+      if (liveAccountBinding.current !== boundAccount) throw new Error("Wallet identity changed during review");
+      reviewedAccountBinding.current = boundAccount;
       currentDraft.current = checked.draft;
       setReviewed(checked.draft);
     } catch {
@@ -265,9 +280,9 @@ export function CreatorDraft({ executionTest, productionCreation }: {
       {draftPanel}
       {executionTest ? <TestCreationWallet factory={executionTest.factory}
         draft={reviewed}
-        isCurrentDraft={(value) => value === currentDraft.current} />
+        isCurrentDraft={(value) => value === currentDraft.current && reviewedAccountBinding.current === liveAccountBinding.current} />
         : productionCreation && <ProductionCreationWallet factory={productionCreation.factory} draft={reviewed}
-          isCurrentDraft={(value) => value === currentDraft.current} />}
+          isCurrentDraft={(value) => value === currentDraft.current && reviewedAccountBinding.current === liveAccountBinding.current} />}
     </div> : draftPanel}
     <DraftTerms draft={reviewed} production={productionCreation} />
   </div>;

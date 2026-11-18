@@ -6,6 +6,7 @@ import { FixtureLifecycleEvidence } from "./fixture-lifecycle-evidence";
 import { TestLifecycleWallet } from "./test-lifecycle-wallet";
 import { ChainTime } from "./launch-freshness";
 import { TokenArtwork } from "./token-artwork";
+import { CreatorLink } from "./creator-link";
 
 export function FixtureLaunches({ directory }: { directory: FixtureDiscovery }) {
   return <section className="lpNotice lpProjectLink" aria-label="New RMT Launch engine">
@@ -32,7 +33,7 @@ export function FixtureLaunchDetails({ launch, fixture }: { launch: FixtureLaunc
           <h2>New-engine creation evidence</h2>
           <dl className="lpFacts">
             <dt>Token</dt><dd><code className="lpAddress">{launch.token}</code></dd>
-            <dt>Creator</dt><dd><code className="lpAddress">{launch.creator}</code></dd>
+            <dt>Creator</dt><dd><CreatorLink wallet={launch.creator} label={launch.creator} /></dd>
             <dt>Initial curve</dt><dd><code className="lpAddress">{launch.initialCurve}</code></dd>
             <dt>Fixed supply</dt><dd>{(BigInt(launch.totalSupplyWei) / 10n ** 18n).toLocaleString("en-US")} tokens</dd>
             <dt>Opening backing</dt><dd>{launch.opening.backingWei} ETH</dd>
