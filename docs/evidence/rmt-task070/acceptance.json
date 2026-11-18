@@ -47,7 +47,8 @@
         {
           "engine": "chromium",
           "mode": "firebase-emulators",
-          "syntheticWallet": "0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf",
+          "syntheticWallet": "0x5935897A39AFABbedA5a599D38236E7Df151C8b8",
+          "fixtureIsolation": "Per-browser deterministic synthetic identities, separate from server-suite accounts; durable limits unchanged",
           "signatureRequests": 6,
           "walletsAccepted": [
             "MetaMask",
@@ -64,7 +65,8 @@
         {
           "engine": "webkit",
           "mode": "firebase-emulators",
-          "syntheticWallet": "0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf",
+          "syntheticWallet": "0xe89476B7cc8fA1E503F2ae4A43e53EDa4bFBAC07",
+          "fixtureIsolation": "Per-browser deterministic synthetic identities, separate from server-suite accounts; durable limits unchanged",
           "signatureRequests": 6,
           "walletsAccepted": [
             "MetaMask",
@@ -79,7 +81,20 @@
           "transactions": 0
         }
       ],
-      "productionRecordsTouched": false
+      "productionRecordsTouched": false,
+      "browserFixtureCorrection": {
+        "failedSource": "dc4a33184332de0119c79e5b0a3aad9f7ac5e2e5",
+        "run": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44244993122",
+        "failure": "429 on same-file avatar reupload; per-user six-per-minute budget remained enforced",
+        "cause": "Server suite and both browsers shared test-key-1 identity; four server plus three browser avatar requests exceeded the same fixed-window budget depending on minute alignment",
+        "fix": "Per-browser deterministic synthetic identities disjoint from server test keys; await real mutation HTTP200, account binding and enabled controls",
+        "originalScreenshotSha256": "e4ee70873809b3ac24f734f63381f1e4242a7d8168891eef8f20ecc85e46582f",
+        "rateLimitsChanged": false,
+        "timeLimitsIncreased": false,
+        "assertionsRemoved": false,
+        "fullEmulatorRegression": "Passed: 4 rules, 13 Auth/Firestore test entries, 1 actual Next HTTP test, Chromium and WebKit full profile flows",
+        "resultSha256": "6fd6cb4ca4bff36b106a6128f6593ee656dc909f5ed0b6fa79381eeede7e3e7b"
+      }
     },
     "releaseTooling": {
       "node": 5,

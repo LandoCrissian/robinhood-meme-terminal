@@ -111,6 +111,21 @@ The public HTTP suite passed both engines, including 111 denied routes per
 engine and seven disabled profile mutations. These are automated results,
 not physical-device or independent-audit evidence.
 
+The subsequent CI run
+[`44244993122`](https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44244993122)
+caught a test-isolation defect: the server suite and browser suite reused the
+same synthetic wallet. Four server avatar requests plus three browser requests
+could cross the unchanged six-per-minute per-user budget. The preserved failure
+screenshot reports rate limiting, not a successful upload. Browser fixtures now
+use separate deterministic test-only identities for each engine and await actual
+mutation responses/account binding/completion. No counter is reset, timeout
+increased, rate limit relaxed or assertion removed. The original failure remains
+part of the review evidence; later CI status is reported against its exact head.
+The complete emulator regression passed again after this correction, including
+both browser engines. Reproduce with `pnpm test:profiles` using the existing
+isolated Java/Firebase test environment; the runner enforces loopback/emulator
+bindings and never uses production profile credentials.
+
 Reproduce the Linux package with the checked-in
 [Linux preflight workflow](../.github/workflows/website-release-linux.yml).
 Local focused checks use `node --test scripts/release/website-preflight.test.mjs`,
