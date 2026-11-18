@@ -11,6 +11,8 @@ import "./styles/token-detail.css";
 import "./launchpad.css";
 import { LaunchShell } from "./_components/launch-shell";
 import { configuredCurveFixture } from "../lib/server/curve-fixture";
+import { AccountProvider } from "./_components/account-provider";
+import "./profile-refinement.css";
 
 export const metadata: Metadata = {
   title: "RMT Launch | Token Launchpad",
@@ -28,5 +30,5 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   await connection();
-  return <html lang="en"><body><LaunchShell fixture={Boolean(configuredCurveFixture(await headers()))}>{children}</LaunchShell></body></html>;
+  return <html lang="en"><body><AccountProvider><LaunchShell fixture={Boolean(configuredCurveFixture(await headers()))}>{children}</LaunchShell></AccountProvider></body></html>;
 }

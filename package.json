@@ -11,6 +11,10 @@
     "build": "pnpm --filter @rmt/launch-website --filter indexer build",
     "typecheck": "pnpm --filter @rmt/launch-website --filter indexer typecheck",
     "test": "pnpm --filter @rmt/launch-website test:history && pnpm --filter indexer test:resilience && node --test scripts/railway-watch-scope.test.mjs",
+    "test:profiles": "node scripts/profiles/run-emulator-tests.mjs",
+    "test:profiles:server": "node scripts/profiles/run-emulator-tests.mjs --command \"pnpm --filter @rmt/launch-website exec tsx --test lib/server/profiles/core.test.ts lib/server/profiles/emulator.test.ts\"",
+    "test:profiles:browser": "node scripts/profiles/run-emulator-tests.mjs --command \"node apps/launch-website/scripts/profile-ui-smoke.mjs\"",
+    "test:profiles:http": "node scripts/profiles/run-emulator-tests.mjs --command \"node --test apps/launch-website/lib/server/profiles/next-http-acceptance.mjs\"",
     "test:release-evidence": "node --test \"docs/evidence/**/*.test.mjs\"",
     "test:production-readiness": "node --test scripts/production-readiness/*.test.mjs",
     "probe:production-readiness": "node scripts/production-readiness/run.mjs",
@@ -50,12 +54,18 @@
     "test:fork-4663": "node packages/contracts/scripts/rehearse-fixed-supply-4663.mjs"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "6.0.0",
+    "firebase": "13.4.0",
+    "firebase-tools": "15.36.0",
     "knip": "6.29.0",
     "playwright": "1.55.1"
   },
   "pnpm": {
     "overrides": {
-      "brace-expansion@<=5.0.8": "5.0.9",
+      "brace-expansion@<5.0.13": "5.0.13",
+      "smol-toml@<1.9.1": "1.9.1",
+      "@grpc/grpc-js@<1.14.7": "1.14.7",
+      "picomatch@>=4.0.0 <4.0.7": "4.0.7",
       "nanoid@<3.3.18": "3.3.18",
       "postcss@<=8.5.22": "8.5.23",
       "source-map-js@>=1.2.0 <1.2.2": "1.2.2",

@@ -189,8 +189,11 @@ test("the accepted first-owner preparation route rejects a different account bef
 });
 
 test("Netlify distributed limit configurations cover new-engine reads and the separately bounded preparation endpoint", () => {
-  assert.match("/api/launchpad/new-engine", new RegExp(discoveryLimit.pattern));
-  assert.match("/api/launchpad/new-engine/" + "0x" + "2".repeat(40), new RegExp(discoveryLimit.pattern));
-  assert.equal(creationLimit.path, "/api/launchpad/production-creation");
+  assert.ok(discoveryLimit.path.includes("/api/launchpad/new-engine"));
+  assert.ok(discoveryLimit.path.includes("/api/launchpad/new-engine/:token"));
+  assert.ok(creationLimit.path.includes("/api/launchpad/production-creation"));
+  for (const path of ["/api/account/nonce", "/api/account/verify", "/api/account/logout", "/api/account/profile", "/api/account/avatar"]) {
+    assert.ok(creationLimit.path.includes(path));
+  }
   assert.deepEqual(creationLimit.rateLimit, { windowSize: 60, windowLimit: 12, aggregateBy: ["ip", "domain"] });
 });

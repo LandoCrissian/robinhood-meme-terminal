@@ -1,7 +1,12 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import { describeCurveLifecycle, hasCurveRegistration, type CurveLaunch, type NewEngineDirectory } from "../../lib/curve-lifecycle";
 import { robinhoodExplorer } from "./launch-evidence";
 import { ChainTime } from "./launch-freshness";
+import { CreatorLink } from "./creator-link";
+import { TokenArtwork } from "./token-artwork";
 
 function units(wei: string) {
   const padded = wei.padStart(19, "0");
@@ -38,27 +43,34 @@ function LifecycleEvidence({ launch }: { launch: CurveLaunch }) {
 }
 
 export function NewEngineLaunches({ directory }: { directory: NewEngineDirectory }) {
+  const [query, setQuery] = useState("");
   const launches = directory.status === "ready"
     ? directory.launches.filter(({ registration }) => hasCurveRegistration(registration)) : [];
-  return <section className="lpNotice lpProjectLink" aria-label="New RMT Launch engine">
-    <span className="lpPill">{directory.status === "prelaunch" ? "Prelaunch" : "New engine"}</span>
-    {directory.status === "prelaunch" && <span>The new RMT Launch engine is in prelaunch. Prepare a token draft while creation is disabled.</span>}
-    {directory.status === "unavailable" && <span>New-engine evidence is unavailable.</span>}
-    {directory.status === "ready" && launches.length === 0 && <span>No verified new-engine launches.</span>}
-    {launches.map((launch) => {
+  const search = query.trim().toLowerCase();
+  const visible = launches.filter(({ registration }) => [registration.name, registration.symbol, registration.token, registration.creator]
+    .some((value) => value.toLowerCase().includes(search)));
+  return <section className="lpProjectLink" aria-label="New RMT Launch engine">
+    <div className="lpDiscoveryToolbar"><label className="rmtSearch lpSearch"><span aria-hidden="true">⌕</span>
+      <input type="search" aria-label="Search launches" placeholder="Search name, ticker or contract address" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
+      <span className="lpDiscoveryCount">{directory.status === "ready" ? `${launches.length} verified new-engine ${launches.length === 1 ? "launch" : "launches"}` : "New-engine launches"}</span></div>
+    {directory.status === "prelaunch" && <section className="lpEmpty lpForm"><span className="lpPill">Prelaunch</span><h2>No new launches yet</h2>
+      <p>The new RMT Launch engine is in prelaunch. Prepare a token draft while creation is disabled.</p><Link className="lpButton lpSecondary" href="/create-token" prefetch={false}>Prepare a token draft</Link></section>}
+    {directory.status === "unavailable" && <section className="lpEmpty lpForm"><h2>Launch evidence unavailable</h2><p>We could not verify the new-engine feed. An unavailable read does not mean a token was never created.</p><p>Try refreshing this page. Wallet transactions remain separate and disabled.</p></section>}
+    {directory.status === "ready" && launches.length === 0 && <section className="lpEmpty lpForm"><h2>No verified new-engine launches</h2><p>Confirmed registrations will appear here after canonical indexing. Historical tokens are shown separately.</p></section>}
+    {launches.length > 0 && visible.length === 0 && <section className="lpEmpty lpForm"><h2>No launches match your search</h2><p>Try an exact contract address, token name or ticker.</p><button type="button" className="lpButton lpSecondary" onClick={() => setQuery("")}>Clear search</button></section>}
+    <div className="lpCardGrid">{visible.map((launch) => {
       const { registration } = launch;
-      return <section className="lpPanel lpForm" key={`${registration.chainId}:${registration.factory}:${registration.token}`}>
-        <h3><Link href={`/launches/${registration.token}`} prefetch={false}>{registration.name} · {registration.symbol}</Link></h3>
-        <p>{describeCurveLifecycle(launch).label}</p>
+      return <article className="lpLaunchCard" key={`${registration.chainId}:${registration.factory}:${registration.token}`}>
+        <div className="lpTokenHeading"><TokenArtwork symbol={registration.symbol} /><div><h3><Link href={`/launches/${registration.token}`} prefetch={false}>{registration.name}</Link></h3><span className="lpCardSymbol">${registration.symbol}</span></div></div>
+        <span className="lpPill">{describeCurveLifecycle(launch).label}</span>
         <dl className="lpFacts lpProjectLink">
-          <dt>New-engine token</dt><dd><a href={`${robinhoodExplorer}/address/${registration.token}`} className="lpAddress">{registration.token}</a></dd>
-          <dt>Fixed supply</dt><dd>{units(registration.totalSupplyWei)} tokens · {registration.tokenDecimals} decimals</dd>
-          <dt>Factory registration</dt><dd><a href={`${robinhoodExplorer}/tx/${registration.creation.transactionHash}`}>Block {registration.creation.blockNumber} · log {registration.creation.logIndex}</a></dd>
-          <LifecycleEvidence launch={launch} />
-          <dt>Ethereum L1 finality</dt><dd>Unverified</dd>
+          <dt>Fixed supply</dt><dd>{units(registration.totalSupplyWei)} tokens</dd><dt>Creator</dt><dd><CreatorLink wallet={registration.creator} /></dd>
+          <dt>Created</dt><dd><ChainTime value={registration.creation.timestamp} /></dd>
         </dl>
-      </section>;
-    })}
-    {directory.status === "prelaunch" && <Link href="/create-token" prefetch={false}>Prepare a draft</Link>}
+        <details><summary>Verified launch evidence</summary><dl className="lpFacts"><dt>Token address</dt><dd><a href={`${robinhoodExplorer}/address/${registration.token}`} className="lpAddress">{registration.token}</a></dd>
+          <dt>Factory registration</dt><dd><a href={`${robinhoodExplorer}/tx/${registration.creation.transactionHash}`}>Block {registration.creation.blockNumber} · log {registration.creation.logIndex}</a></dd><LifecycleEvidence launch={launch} /><dt>Ethereum L1 finality</dt><dd>Unverified</dd></dl></details>
+        <div className="lpCardFooter"><span>Robinhood Chain 4663</span><Link href={`/launches/${registration.token}`} prefetch={false}>View token →</Link></div>
+      </article>;
+    })}</div>
   </section>;
 }

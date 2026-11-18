@@ -1,0 +1,18 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Emulator-only candidate. Every mutation belongs to the validated server.
+    // Private account documents must never appear in a public collection query.
+    match /rmtLaunchProfilesV1/{uid} {
+      allow get: if request.auth != null && request.auth.uid == uid;
+      allow list, create, update, delete: if false;
+    }
+    match /rmtLaunchPublicProfilesV1/{uid} {
+      allow get: if true;
+      allow list, create, update, delete: if false;
+    }
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
