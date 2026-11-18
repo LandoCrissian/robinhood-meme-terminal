@@ -25,7 +25,7 @@ export async function testClaimProfilesBrowser({ browserEngine, site, out, rpc, 
   const evidence = { schemaVersion: 1, profile: "rmt-claim-wallet-browser-v1", chainId: 31337,
     scope: "LOCAL_SYNTHETIC_BROWSER_NOT_PHYSICAL_IPHONE_OR_PRODUCTION", executionEnabled: false,
     actors: acceptance.actors, token: project.token, status: "incomplete", sends: [], reviews: [], recoveries: [],
-    screenshots: [], checks: {}, pageErrors: [], externalRequests: [], walletMethods: [] };
+    screenshots: [], layouts: [], checks: {}, pageErrors: [], externalRequests: [], walletMethods: [] };
   const save = () => writeFile(join(out, "claim-wallet-browser-evidence.json"), stringify(evidence));
   const context = await browserEngine.newContext(devices["iPhone 13"]);
   const page = await context.newPage(); page.setDefaultTimeout(30_000);
@@ -108,14 +108,31 @@ export async function testClaimProfilesBrowser({ browserEngine, site, out, rpc, 
     const path = join(out, name + ".png"); await page.screenshot({ path, fullPage: true }); evidence.screenshots.push(path); await save();
   }
   async function layouts(name) {
-    const inputs = await profile().locator("input:visible,select:visible").evaluateAll(items => items.map(el => ({
-      fontSize: parseFloat(getComputedStyle(el).fontSize), height: el.getBoundingClientRect().height,
-    })));
-    assert.ok(inputs.every(v => v.fontSize >= 16 && v.height >= 44), "Visible phone form controls retain 16px text and 44px height");
+    const viewport = async (width, height) => {
+      await page.setViewportSize({ width, height });
+      await page.waitForFunction(({ width, height }) => innerWidth === width && innerHeight === height
+        && matchMedia("(max-width: 900px)").matches === (width <= 900), { width, height });
+      // WebKit responsive viewport restoration and style recalculation must
+      // finish before measuring the next phone control. Never measure against
+      // the preceding desktop viewport's media-query state.
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    };
     for (const [suffix, width, height] of [["portrait", 390, 844], ["landscape", 844, 390], ["desktop-viewport", 1440, 900]]) {
-      await page.setViewportSize({ width, height }); await capture(name + "-" + suffix);
+      await viewport(width, height);
+      const fields = await profile().locator("input:visible,select:visible").evaluateAll(items => items.map(el => ({
+        label: el.getAttribute("aria-label"), tag: el.tagName, connected: el.isConnected,
+        fontSize: parseFloat(getComputedStyle(el).fontSize), font: getComputedStyle(el).font,
+        minHeight: getComputedStyle(el).minHeight, height: el.getBoundingClientRect().height,
+        width: el.getBoundingClientRect().width, transform: getComputedStyle(el).transform,
+      })));
+      const actual = await page.evaluate(() => ({ width: innerWidth, height: innerHeight, dpr: devicePixelRatio,
+        visualWidth: visualViewport?.width, visualScale: visualViewport?.scale, phoneMedia: matchMedia("(max-width: 900px)").matches }));
+      evidence.layouts.push({ name, suffix, requested: { width, height }, actual, fields }); await save();
+      assert.ok(fields.length >= 2 && fields.every(v => v.connected && v.height >= 44
+        && (width > 900 || v.fontSize >= 16)), "Visible phone form controls retain 16px text and 44px height: " + stringify({ actual, fields }));
+      await capture(name + "-" + suffix);
     }
-    await page.setViewportSize({ width: 390, height: 844 });
+    await viewport(390, 844);
   }
   async function lookup(beneficiary) {
     await page.getByLabel("Beneficiary wallet", { exact: true }).fill(beneficiary);
