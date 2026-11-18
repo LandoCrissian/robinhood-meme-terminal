@@ -169,8 +169,8 @@ async function walletFixture(kind: "metamask-7702" | "safe-1.4.1", operation: Ea
   const f = profileFixture(kind, operation.startsWith("lp-")); f.input.operation = operation;
   const rpc = f.context.rpc;
   let review: ClaimExecutionReview;
-  const state = { failure: false, outerReverted: false, revokeAtReceipt: false, replaceAfterReceipt: false, duplicateInner: false, wrongExecutionHash: false };
-  const safeAbi = parseAbi(["event ExecutionSuccess(bytes32 txHash,uint256 payment)", "event ExecutionFailure(bytes32 txHash,uint256 payment)",
+  const state = { failure: false, outerReverted: false, revokeAtReceipt: false, replaceAfterReceipt: false, duplicateInner: false, wrongExecutionHash: false, wrongExecutionLayout: false };
+  const safeAbi = parseAbi(["event ExecutionSuccess(bytes32 indexed txHash,uint256 payment)", "event ExecutionFailure(bytes32 indexed txHash,uint256 payment)",
     "function execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes) payable returns(bool)"]);
   const wrapped = new Proxy(rpc, { get(target, property) {
     if (property === "getTransaction") return async () => ({ ...await rpc.getTransaction({ hash: f.txHash }),
@@ -182,8 +182,12 @@ async function walletFixture(kind: "metamask-7702" | "safe-1.4.1", operation: Ea
       const logs = state.failure || state.outerReverted ? [] : receipt.logs;
       return { ...receipt, status: state.outerReverted ? "reverted" : "success", from: review.outer!.from, to: review.outer!.to, gasUsed: 28000n,
         logs: kind !== "safe-1.4.1" || state.outerReverted ? logs : [...logs, { address: review.actor,
-          topics: encodeEventTopics({ abi: safeAbi, eventName: state.failure ? "ExecutionFailure" : "ExecutionSuccess" }),
-          data: encodeAbiParameters([{ type: "bytes32" }, { type: "uint256" }], [state.wrongExecutionHash ? eh(99999) : review.wallet.safe!.transactionHash, 0n]),
+          topics: state.wrongExecutionLayout
+            ? [encodeEventTopics({ abi: safeAbi, eventName: state.failure ? "ExecutionFailure" : "ExecutionSuccess" })[0]]
+            : encodeEventTopics({ abi: safeAbi, eventName: state.failure ? "ExecutionFailure" : "ExecutionSuccess", args: { txHash: state.wrongExecutionHash ? eh(99999) : review.wallet.safe!.transactionHash } }),
+          data: state.wrongExecutionLayout
+            ? encodeAbiParameters([{ type: "bytes32" }, { type: "uint256" }], [review.wallet.safe!.transactionHash, 0n])
+            : encodeAbiParameters([{ type: "uint256" }], [0n]),
           blockNumber: 11n, blockHash: eh(11), transactionHash: f.txHash, transactionIndex: 0, logIndex: 4, removed: false }] };
     };
     if (property === "readContract") return async (arg: { address: Address; functionName: string; blockNumber?: bigint }) => {
@@ -247,6 +251,9 @@ test("Safe beneficiary settlement binds genuine two-owner outer execution and pr
     assert.equal(r.stage, "canonical-l2", r.reason); assert.equal(r.activity?.actor, f.f.creator);
     assert.equal(r.activity?.beneficiary, f.f.creator); assert.equal(r.activity?.gasPayer, f.review.gasPayer);
     assert.notEqual(r.activity?.gasPayer, r.activity?.actor);
+    f.state.wrongExecutionLayout = true;
+    assert.equal((await verifyProductionClaimSettlement(f.input)).stage, "unavailable", "Non-indexed fabricated execution logs must not pass the pinned Safe ABI");
+    f.state.wrongExecutionLayout = false;
     f.state.duplicateInner = true;
     assert.equal((await verifyProductionClaimSettlement(f.input)).stage, "receipt-observed", "A duplicated/reentrant inner call cannot be settled");
   }

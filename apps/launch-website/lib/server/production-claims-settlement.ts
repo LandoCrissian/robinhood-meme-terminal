@@ -9,7 +9,9 @@ import { recoverEarningsClaimHash, verifyProfiledEarningsClaim, type EarningsSet
 import { readEarningsContracts, readFactoryCreationFees, type EarningsReadContext, type EarningsRegistration, type EarningsRpc } from "./earnings-contracts";
 
 const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
-const safeEvents = parseAbi(["event ExecutionSuccess(bytes32 txHash,uint256 payment)", "event ExecutionFailure(bytes32 txHash,uint256 payment)"]);
+// Safe v1.4.1 contracts/Safe.sol indexes txHash. The payment is the sole
+// non-indexed argument. Match the pinned implementation's actual log layout.
+const safeEvents = parseAbi(["event ExecutionSuccess(bytes32 indexed txHash,uint256 payment)", "event ExecutionFailure(bytes32 indexed txHash,uint256 payment)"]);
 const productionSources = { official: "https://rpc.mainnet.chain.robinhood.com", pocket: "https://robinhood.api.pocket.network" } as const;
 const allowedMethods = new Set(["getChainId", "getBlock", "getCode", "getTransactionCount", "getTransaction", "getTransactionReceipt",
   "getBalance", "getStorageAt", "readContract", "call", "estimateGas", "getGasPrice", "estimateMaxPriorityFeePerGas", "request"]);
