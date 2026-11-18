@@ -115,9 +115,13 @@ export async function testClaimWalletProfiles({ rpcUrl, rpc, artifacts, deployed
   const projects = [await createProject(7501), await createProject(7502), await createProject(7503, relayer)]; evidence.projects = projects; await mine(); await ready();
   async function birthFor(project, beneficiary = delegated.address) {
     const url = new URL("/earnings", workerOrigin); url.searchParams.set("recipient", beneficiary); url.searchParams.set("token", project.token); url.searchParams.set("limit", "1");
-    const response = await fetch(url, { headers: { "X-RMT-Fixture-Key": indexReadKey }, signal: AbortSignal.timeout(10_000) });
-    assert.equal(response.status, 200); const d = await response.json(); assert.equal(d.status, "ready"); assert.equal(d.launches.length, 1);
-    return { registration: d.launches[0], checkpoint: d.checkpoint };
+    return waitFor("canonical beneficiary registration after checkpoint reconciliation", async () => {
+      const response = await fetch(url, { headers: { "X-RMT-Fixture-Key": indexReadKey }, signal: AbortSignal.timeout(10_000) });
+      if (response.status === 503) return null; // A transient checkpoint is unavailable, never an invented registration.
+      assert.equal(response.status, 200); const d = await response.json(); assert.equal(d.status, "ready"); assert.equal(d.launches.length, 1);
+      assert.ok(same(d.launches[0].token, project.token));
+      return { registration: d.launches[0], checkpoint: d.checkpoint };
+    });
   }
   async function context(project, beneficiary = delegated.address, rpcView = client) {
     const { registration, checkpoint } = await birthFor(project, beneficiary);
@@ -203,9 +207,11 @@ export async function testClaimWalletProfiles({ rpcUrl, rpc, artifacts, deployed
     const safeNonce = await call(client, safe, safeAbi, "nonce");
     evidence.oneOwnerRejection = receiptEvidence(await send(relayer, { to: safe, data: oneOwnerCall, gas: 400000n }, "reverted"));
     assert.equal(await call(client, safe, safeAbi, "nonce"), safeNonce);
+    await mine(); await ready(); // The reverted outer transaction still consumed its gas payer's EVM nonce.
     const approved = await safeReview(first, "curve-claim"); const safeReceipt = await sendReview(approved); await settle(first, approved, safeReceipt);
     const replay = await send(relayer, { ...approved.outer, nonce: undefined, gas: approved.outer.gas }, "reverted");
     evidence.safeReplayRejection = receiptEvidence(replay); evidence.checks.safeTwoOwnerExecutionAndOneOwnerRejection = true;
+    await mine(); await ready();
 
     const [tokens] = await call(client, first.curve, curveAbi, "quoteBuy", [3n * 10n ** 18n]);
     await send(delegated, { ...transact(first.curve, curveAbi, "buy", [tokens, await deadline()]), value: 3n * 10n ** 18n });
@@ -249,7 +255,10 @@ export async function testClaimWalletProfiles({ rpcUrl, rpc, artifacts, deployed
     const safeLp = await safeReview(first, "lp-claim"); await settle(first, safeLp, await sendReview(safeLp)); await custody();
     await restart();
     assert.equal((await verify(first, tokenReview, tokenReceipt.transactionHash)).stage, "canonical-l2");
-    assert.equal(await rpc("evm_revert", [snapshot]), true); await rpc("evm_increaseTime", [73]); await mine(); await ready();
+    assert.equal(await rpc("evm_revert", [snapshot]), true); await rpc("evm_increaseTime", [73]); await mine();
+    await waitFor("orphaned claim activity removed from durable store", async () =>
+      (await pg.query("SELECT count(*)::int AS n FROM rmt_curve_fixture_fee_activity WHERE transaction_hash=$1", [tokenReceipt.transactionHash.toLowerCase()])).rows[0].n === 0);
+    await ready();
     const orphan = await verify(first, tokenReview, tokenReceipt.transactionHash);
     assert.ok(["submitted", "unavailable"].includes(orphan.stage), stringify(orphan)); assert.notEqual(orphan.indexed, true);
     const restored = await call(client, lpLedger, lpAbi, "claimable", [delegated.address]); assert.deepEqual(restored, remaining); await custody();
