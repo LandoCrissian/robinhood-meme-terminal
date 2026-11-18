@@ -112,7 +112,7 @@ assert.equal(profileState.availability, "disabled");
 assert.equal(profileSession.headers.get("set-cookie"), null);
 assert.match(profileSession.headers.get("cache-control") ?? "", /no-store/);
 for (const [path, method] of [["/api/account/nonce", "POST"], ["/api/account/verify", "POST"], ["/api/account/logout", "POST"],
-  ["/api/account/profile", "PATCH"], ["/api/account/profile", "DELETE"], ["/api/account/avatar", "POST"]]) {
+  ["/api/account/profile", "PATCH"], ["/api/account/profile", "DELETE"], ["/api/account/avatar", "POST"], ["/api/account/avatar", "DELETE"]]) {
   const response = await request(path, { method, headers: { Origin: site.origin, "Content-Type": "application/json" }, body: "{}" });
   assert.equal(response.status, 404, `${method} ${path} must remain disabled`);
   assert.equal((await readPublicJson(response)).availability, "disabled");
