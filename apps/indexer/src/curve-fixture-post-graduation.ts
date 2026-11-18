@@ -3,7 +3,7 @@ import {
   parseAbiItem, parseEventLogs, toHex, zeroAddress, type Address, type Hash, type Hex, type PublicClient, type TransactionReceipt,
 } from "viem";
 import type { BlockEvidence } from "./curve-launch-evidence.js";
-import { fixtureTreasuryClaimInput } from "./curve-fixture-native-proof.js";
+import { assertFixtureInnerCallProof, assertFixtureNativeProof, fixtureTreasuryClaimInput } from "./curve-fixture-native-proof.js";
 import {
   feeBuckets, fixturePoolManagerAbi, fixtureQuoter, fixtureRouter, nativeProof, permit2, poolIdentity, poolManager, positionManager, receiptLogs,
   verifyFixtureV4Position, type FixtureCursor, type FixtureGraduation, type FixtureGraduationBinding, type FixtureTx, type LogProof,
@@ -161,7 +161,7 @@ async function swapSettlement(rpc: PublicClient, tx: FixtureTx, block: BlockEvid
 }
 
 async function collectSettlement(rpc: PublicClient, tx: FixtureTx, block: BlockEvidence, logs: TransactionReceipt["logs"],
-  token: Address, graduation: FixtureGraduation, ledger: Address, deadline: bigint) {
+  token: Address, graduation: FixtureGraduation, ledger: Address, deadline: bigint, externalCall?: Hex) {
   const [event] = parseEventLogs({ abi: [collectionEvent], strict: true, logs: logs.filter(log => same(log.address, graduation.owner)) });
   const [poke] = parseEventLogs({ abi: fixturePoolManagerAbi, eventName: "ModifyLiquidity", strict: true, logs: logs.filter(log => same(log.address, poolManager)) });
   requireProof(event && same(event.args.token, token) && same(event.args.ledger, ledger) && tx.value === 0n && deadline >= atTime(block)
@@ -175,7 +175,13 @@ async function collectSettlement(rpc: PublicClient, tx: FixtureTx, block: BlockE
   const { nativeAmount, tokenAmount } = event.args;
   requireProof(nativeAmount > 0n || tokenAmount > 0n, "empty fee collection");
   expectTokenTransfer(logs, token, poolManager, ledger, tokenAmount);
-  await nativeProof(rpc, tx, graduation.owner, [{ from: poolManager, to: ledger, amount: nativeAmount }]);
+  if (externalCall) {
+    requireProof(tx.to, "absent contract collector");
+    const raw = await rpc.request({ method: "debug_traceTransaction", params: [tx.hash, { tracer: "callTracer" }] } as never, { retryCount: 0 });
+    const outer = { from: tx.from, to: tx.to, input: tx.input, value: 0n };
+    assertFixtureInnerCallProof(raw, outer, { from: tx.to, to: graduation.owner, input: externalCall, value: 0n });
+    assertFixtureNativeProof(raw, outer, [{ from: poolManager, to: ledger, amount: nativeAmount }]);
+  } else await nativeProof(rpc, tx, graduation.owner, [{ from: poolManager, to: ledger, amount: nativeAmount }]);
   const preview = await rpc.readContract({ address: graduation.owner, abi: engineAbi, functionName: "previewLpFees",
     args: [token], blockNumber: BigInt(block.blockNumber) - 1n });
   requireProof(equal(preview, [nativeAmount, tokenAmount]), "position preview and collection disagree");
@@ -199,6 +205,23 @@ export function fixtureExternalClaim(input: Hex) {
     if (operation === 0 && value === 0n && gasPrice === 0n && same(gasToken, zeroAddress) && same(refundReceiver, zeroAddress)
         && claimAssetMode(calldata) && same(input, encodeFunctionData({ abi: safeAbi, ...decoded }))) return { ledger, calldata };
   } catch { /* Unrecognized external treasury transaction. */ }
+}
+
+/** Task075 extends only the two permissionless fee operations. A canonical
+ * single CALL is still proved through the real outer trace and exact events;
+ * no multisend, delegatecall, arbitrary destination or refund path is added. */
+export function fixtureExternalFeeCall(input: Hex) {
+  if (input.length > 3_202) return;
+  try {
+    const decoded = decodeFunctionData({ abi: safeAbi, data: input });
+    const [target, value, calldata, operation, safeTxGas, baseGas, gasPrice, gasToken, refundReceiver] = decoded.args;
+    if (operation !== 0 || value !== 0n || safeTxGas !== 0n || baseGas !== 0n || gasPrice !== 0n
+        || !same(gasToken, zeroAddress) || !same(refundReceiver, zeroAddress) || !same(input, encodeFunctionData({ abi: safeAbi, ...decoded }))) return;
+    const feeAbi = parseAbi(["function collectLpFees(address token,uint256 deadline)", "function claimCreationFees()"]);
+    const call = decodeFunctionData({ abi: feeAbi, data: calldata });
+    if (!same(calldata, encodeFunctionData({ abi: feeAbi, ...call }))) return;
+    return { target, calldata, operation: call.functionName };
+  } catch { return; }
 }
 
 async function claimSettlement(rpc: PublicClient, tx: FixtureTx, block: BlockEvidence, logs: TransactionReceipt["logs"],
@@ -235,16 +258,20 @@ export async function indexFixturePostTransaction(rpc: PublicClient, binding: Fi
   let decoded: ReturnType<typeof fixtureSwapInput>;
   let collectDeadline: bigint | undefined;
   let externalCall: Hex | undefined;
+  let externalCollection: Hex | undefined;
+  const externalFee = tx.value === 0n ? fixtureExternalFeeCall(tx.input) : undefined;
   if (same(target, fixtureRouter)) {
     decoded = fixtureSwapInput(tx.input);
     if (!decoded) return;
     cursor = cursors.find(item => item.graduation && same(item.graduation.poolId, decoded!.poolId));
-  } else if (same(target, binding.graduationEngine)) {
+  } else if (same(target, binding.graduationEngine) || externalFee && same(externalFee.target, binding.graduationEngine) && externalFee.operation === "collectLpFees") {
     try {
-      const call = decodeFunctionData({ abi: engineAbi, data: tx.input });
-      if (call.functionName !== "collectLpFees" || !same(tx.input, encodeFunctionData({ abi: engineAbi, ...call }))) return;
+      const actualInput = externalFee?.calldata ?? tx.input;
+      const call = decodeFunctionData({ abi: engineAbi, data: actualInput });
+      if (call.functionName !== "collectLpFees" || !same(actualInput, encodeFunctionData({ abi: engineAbi, ...call }))) return;
       collectDeadline = call.args[1];
       cursor = cursors.find(item => item.graduation && same(call.args[0], item.launch.token));
+      if (externalFee) externalCollection = actualInput;
     } catch { return; }
   } else {
     cursor = cursors.find(item => item.lpLedger && same(item.lpLedger, target));
@@ -271,10 +298,11 @@ export async function indexFixturePostTransaction(rpc: PublicClient, binding: Fi
   // Safe can report a reverted internal call in a successful outer receipt.
   // The range's independent ledger log scan still rejects a silently omitted claim.
   if (externalCall && !logs.some(log => same(log.address, cursor.lpLedger!) && same(log.topics[0] ?? "", fixturePostEventTopics.claim))) return;
+  if (externalCollection && !logs.some(log => same(log.address, binding.graduationEngine) && same(log.topics[0] ?? "", fixturePostEventTopics.collect))) return;
   const { graduation, lpLedger: ledger, launch: { token } } = cursor;
-  const account = externalCall ? target : tx.from;
+  const account = externalCall || externalCollection ? target : tx.from;
   const proof = decoded ? await swapSettlement(rpc, tx, block, receipt, logs, token, graduation, decoded)
-    : collectDeadline !== undefined ? await collectSettlement(rpc, tx, block, logs, token, graduation, ledger, collectDeadline)
+    : collectDeadline !== undefined ? await collectSettlement(rpc, tx, block, logs, token, graduation, ledger, collectDeadline, externalCollection)
       : await claimSettlement(rpc, tx, block, logs, token, ledger, account, externalCall);
   await verifyFixtureV4Position(rpc, binding, token, graduation, receipt.blockNumber);
   const event: FixturePostEvent = { ...block, transactionHash: tx.hash, account, ...proof };

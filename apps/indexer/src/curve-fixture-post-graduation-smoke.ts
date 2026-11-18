@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { encodeAbiParameters, encodeFunctionData, parseAbi, zeroAddress } from "viem";
-import { fixtureExternalClaim, fixtureSwapInput } from "./curve-fixture-post-graduation.js";
+import { fixtureExternalClaim, fixtureExternalFeeCall, fixtureSwapInput } from "./curve-fixture-post-graduation.js";
 import { poolIdentity, type PoolKey } from "./curve-fixture-lifecycle.js";
 
 const router = parseAbi(["function execute(bytes commands,bytes[] inputs,uint256 deadline) payable"]);
@@ -48,4 +48,13 @@ export function testFixturePostGraduation() {
   assert.equal(fixtureExternalClaim(external("0x")), undefined);
   assert.equal(fixtureExternalClaim(external(claim, 1)), undefined);
   assert.equal(fixtureExternalClaim(external(claim, 0, 1n)), undefined);
+  const feeAbi = parseAbi(["function collectLpFees(address,uint256)", "function claimCreationFees()"]);
+  for (const calldata of [encodeFunctionData({ abi: feeAbi, functionName: "collectLpFees", args: [key.currency1, 123n] }),
+    encodeFunctionData({ abi: feeAbi, functionName: "claimCreationFees" })]) {
+    assert.equal(fixtureExternalFeeCall(external(calldata))?.calldata, calldata);
+    assert.equal(fixtureExternalFeeCall(external(calldata, 1)), undefined);
+    assert.equal(fixtureExternalFeeCall(external(calldata, 0, 1n)), undefined);
+    assert.equal(fixtureExternalFeeCall(external((calldata + "00") as `0x${string}`)), undefined);
+  }
+  assert.equal(fixtureExternalFeeCall(external(claim)), undefined, "The extension admits only the two permissionless fee methods");
 }
