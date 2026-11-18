@@ -243,6 +243,11 @@ Retained limitations and original failures:
   rejected a local standalone-server start with “blocked by policy” and no
   further reason; that action was not retried. Authorized hosted and Linux CI
   evidence is separate. Physical iPhone acceptance was not performed.
+- The evidence-only `22d08473` commit triggered eight Gitleaks generic-api-key
+  matches: the same four public ERC-20 contract addresses in two JSON reports.
+  Both paths were added to the existing exact-four-address, AND-path allowance.
+  No new value pattern, directory exclusion, detector or severity change was
+  introduced. The full reachable-history scan remains enabled.
 
 No production database schema, backup restore, main indexer restart, additional
 writer, RPC subscription, DNS or Netlify deployment change was performed.
