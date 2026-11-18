@@ -97,6 +97,8 @@ node scripts/visual-qa/rmt-creator-integration.mjs --treasury-only \
 
 Repeat the final command with `--browser webkit` and a distinct output directory. It starts only disposable loopback processes, synthetic signers and a named isolated database; it never connects a production writer. Browser emulation is not physical iPhone acceptance. `.github/workflows/launch-website-review.yml` retains the original lifecycle and Task 075 profiles, then adds this treasury journey for both engines. The security workflow separately analyzes the complete new module without detector exclusions.
 
+The standalone capture-tool reproduction is `node docs/evidence/rmt-task076/capture-emulation-probe.mjs /absolute/unused-output.json`. It uses a synthetic local page, makes no network requests and refuses to overwrite retained evidence. Its explicit repository-tool entry keeps it separate from shipped application imports.
+
 ## Security and release holds
 
 The existing **22 core/dependency high findings and two failed strict gates remain**. Fresh Slither 0.11.5 runs all 101 detectors on the new complete closure: 25 findings, including **six new highs**, four medium, ten low and five informational. The new strict module gate fails. Original seven-high and current six-high reports are retained separately; explicit byte concatenation removed one encoding observation while exact settlement assertions were retained. The six remaining balance observations have internal safeguards and test evidence, not independent clearance. See [each finding and remaining uncertainty](PROJECT_TREASURY_SECURITY.md). Passing lifecycle tests is not an audit or production authorization.

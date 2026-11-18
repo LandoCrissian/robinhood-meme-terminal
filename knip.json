@@ -7,6 +7,7 @@
         "scripts/claims/fork-read-only-4663.mjs",
         "packages/launchpad-common/native-proof.d.mts",
         "packages/launchpad-common/project-treasury-runtime.d.mts",
+        "docs/evidence/rmt-task076/capture-emulation-probe.mjs",
         "docs/evidence/rmt-task039/probe-robinhood-4663.mjs",
         "docs/evidence/rmt-task039/verify-4663-bytecode.mjs",
         "docs/evidence/rmt-task040/curve-store-reorg.mjs",
