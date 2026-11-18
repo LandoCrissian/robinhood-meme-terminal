@@ -1,0 +1,24 @@
+{
+  "observedAt": "2026-11-18T20:49:53.19Z",
+  "status": "passed",
+  "version": "postgres (PostgreSQL) 18.6",
+  "port": 54217,
+  "cluster": "C:\\Users\\RMT\\AppData\\Local\\Temp\\rmt-task076-earnings-pg-Qk1Gl4",
+  "database": "rmt_curve_production_smoke_task076_f61ff0e6",
+  "fixtureDatabase": "rmt_curve_fixture_task074_smoke_014351e0",
+  "source": "isolated local synthetic PostgreSQL; no production connection or other project data",
+  "scope": "53 registrations; role discovery; checkpoint-bound pagination; exact token; duplicate replay; read-only restart; reorg/restore invalidation; existing writer lease and atomic rollback smoke; fixture53-project discovery/fee-activity persistence/conflict/reorg tests",
+  "credentialsIncluded": false,
+  "projectTreasury": {
+    "scope": "Canonical-shaped chain31337 PostgreSQL persistence, not onchain execution",
+    "checks": [
+      "extension failure rolls back core checkpoint and core fee activity plus treasury birth and events",
+      "existing writer lease rejects competing module writer",
+      "duplicate replay remains one birth and one event",
+      "conflicting stored event aborts",
+      "core checkpoint rollback cascades orphaned module rows",
+      "old checkpoint read refuses after reorg"
+    ],
+    "sourceCommit": "2b4c732d"
+  }
+}

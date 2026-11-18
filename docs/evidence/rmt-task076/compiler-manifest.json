@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "profile": "rmt-project-treasury-v1-review",
+  "status": "BLOCKED_NO_BROADCAST",
+  "broadcastAuthorized": false,
+  "coreModified": false,
+  "compilerVersion": "0.8.26+commit.8a97fa7a",
+  "executablePlatform": "win32-x64",
+  "executableSha256": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
+  "compilerSettings": {
+    "evmVersion": "cancun",
+    "viaIR": true,
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "metadata": {
+      "bytecodeHash": "ipfs",
+      "appendCBOR": true,
+      "useLiteralContent": false
+    },
+    "remappings": [
+      "@openzeppelin/=lib/v4-core/lib/openzeppelin-contracts/",
+      "@uniswap/v4-core/=lib/v4-core/",
+      "@uniswap/v4-periphery/=lib/v4-periphery/"
+    ]
+  },
+  "roots": [
+    "project-treasury/src/RMTProjectTreasuryFactoryV1.sol",
+    "project-treasury/src/RMTProjectTreasuryV1.sol",
+    "project-treasury/src/TreasuryInterfaces.sol"
+  ],
+  "sourceCount": 3,
+  "sourceSha256": [
+    [
+      "project-treasury/src/RMTProjectTreasuryFactoryV1.sol",
+      "ae4e43069cf61ae3887bb6db1f11eeb479705f1892adb29be1186dba180d7e7b"
+    ],
+    [
+      "project-treasury/src/RMTProjectTreasuryV1.sol",
+      "5d4c696cf8cc1caa98d696695164319b6da12fcb5003ad1edde84039d091c888"
+    ],
+    [
+      "project-treasury/src/TreasuryInterfaces.sol",
+      "3aa24a3b5b55550f9cd4bfdfa49ebe59c4aec00889069a7b0cf4339191a59f3d"
+    ]
+  ],
+  "inputSha256": "513609f57dea2fd706ac749999c47119955be16bb0b4f46a54b9fc4283683cf0",
+  "scope": "All new production module sources plus every reachable import; tests excluded unless imported by production source",
+  "transformations": [],
+  "dependencyPinManifest": "docs/evidence/rmt-task043/4663-rotation-profile.json",
+  "templates": {
+    "RMTProjectTreasuryFactoryV1": {
+      "file": "project-treasury/src/RMTProjectTreasuryFactoryV1.sol",
+      "creationBytes": 26100,
+      "runtimeBytes": 1881,
+      "creationSha256": "10553f04ce4364c37ea8b1cbc90b5bbb432661ce1545f50a3993980481e8e280",
+      "runtimeSha256": "e1248e830d3598bb65778cb912adb9346a1b8b74daf4edccfc26d1d6663ed5e4"
+    },
+    "RMTProjectTreasuryV1": {
+      "file": "project-treasury/src/RMTProjectTreasuryV1.sol",
+      "creationBytes": 23377,
+      "runtimeBytes": 22705,
+      "creationSha256": "51e835944594d1e69d1ec437c3fcbe6a10689995db23da97a6a762f0aa102de4",
+      "runtimeSha256": "0aa9b40a36ee2c4a98f00983458de54b06c5a30e27b4a7b2128e22a5208c6c3e"
+    }
+  }
+}
