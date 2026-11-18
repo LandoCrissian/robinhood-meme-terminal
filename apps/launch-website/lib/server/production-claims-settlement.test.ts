@@ -3,13 +3,30 @@ import test from "node:test";
 import { claimExecutionReviewHash, isClaimExecutionReview, type ClaimExecutionReview } from "../claim-profiles";
 import { claimFinality, type ClaimActivityIdentity, type ClaimIndexedEvidence } from "../production-claims";
 import { prepareClaimExecutionReview } from "./claim-profiles";
-import { boundedClaimVerificationRpc, verifyProductionClaimSettlement, type ClaimSettlementInput } from "./production-claims-settlement";
+import { boundedClaimVerificationRpc, readSafeClaimExecutionEvent, verifyProductionClaimSettlement, type ClaimSettlementInput } from "./production-claims-settlement";
 import { ea, eh, earningsTestFixture } from "./earnings-test-fixture";
 import type { EarningsClaimOperation } from "../earnings-claims";
 import type { EarningsRpc } from "./earnings-contracts";
-import { encodeAbiParameters, encodeEventTopics, encodeFunctionResult, parseAbi, type Address, type Hex } from "viem";
+import { encodeAbiParameters, encodeEventTopics, encodeFunctionResult, parseAbi, parseEventLogs, type Address, type Hex } from "viem";
+import { readFileSync } from "node:fs";
 import { fixture as profileFixture, owners } from "./claim-profile-test-fixture";
 import { claimDelegatePin, claimSafePins } from "./claim-profiles";
+
+test("genuine pinned Safe1.4.1 receipt replays indexed execution evidence and rejects the previous layout", () => {
+  const fixture = JSON.parse(readFileSync(new URL("./claim-safe-execution.test.json", import.meta.url), "utf8"));
+  assert.equal(fixture.scope, "LOCAL_SYNTHETIC_NOT_PHYSICAL_OR_PRODUCTION");
+  assert.equal(fixture.safeRuntimeHash, claimSafePins.proxyRuntimeHash);
+  const raw = fixture.log;
+  const logs = [{ ...raw, blockNumber: BigInt(raw.blockNumber) }] as Parameters<typeof readSafeClaimExecutionEvent>[0];
+  assert.equal(logs[0].topics.length, 2); assert.equal(logs[0].topics[1], fixture.safeTransactionHash);
+  const previous = parseAbi(["event ExecutionSuccess(bytes32 txHash,uint256 payment)"]);
+  assert.equal(parseEventLogs({ abi: previous, strict: true, logs }).length, 0, "The previous non-indexed ABI cannot decode the genuine receipt");
+  assert.equal(readSafeClaimExecutionEvent(logs, fixture.safe, fixture.safeTransactionHash), "success");
+  assert.equal(readSafeClaimExecutionEvent(logs, ea(99888), fixture.safeTransactionHash), null);
+  assert.equal(readSafeClaimExecutionEvent(logs, fixture.safe, eh(99999)), null);
+  assert.equal(readSafeClaimExecutionEvent([...logs, ...logs], fixture.safe, fixture.safeTransactionHash), null);
+  assert.equal(readSafeClaimExecutionEvent([{ ...logs[0], data: encodeAbiParameters([{ type: "uint256" }], [1n]) }], fixture.safe, fixture.safeTransactionHash), null);
+});
 
 async function fixture(operation: EarningsClaimOperation = "curve-claim") {
   const f = earningsTestFixture({ graduated: operation.startsWith("lp-") });

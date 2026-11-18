@@ -12,6 +12,11 @@ const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 // Safe v1.4.1 contracts/Safe.sol indexes txHash. The payment is the sole
 // non-indexed argument. Match the pinned implementation's actual log layout.
 const safeEvents = parseAbi(["event ExecutionSuccess(bytes32 indexed txHash,uint256 payment)", "event ExecutionFailure(bytes32 indexed txHash,uint256 payment)"]);
+export function readSafeClaimExecutionEvent(logs: Awaited<ReturnType<EarningsRpc["getTransactionReceipt"]>>["logs"], actor: string, digest: string) {
+  const executions = parseEventLogs({ abi: safeEvents, strict: true, logs: logs.filter(log => same(log.address, actor)) });
+  if (executions.length !== 1 || !same(executions[0].args.txHash, digest) || executions[0].args.payment !== 0n) return null;
+  return executions[0].eventName === "ExecutionFailure" ? "reverted" as const : "success" as const;
+}
 const productionSources = { official: "https://rpc.mainnet.chain.robinhood.com", pocket: "https://robinhood.api.pocket.network" } as const;
 const allowedMethods = new Set(["getChainId", "getBlock", "getCode", "getTransactionCount", "getTransaction", "getTransactionReceipt",
   "getBalance", "getStorageAt", "readContract", "call", "estimateGas", "getGasPrice", "estimateMaxPriorityFeePerGas", "request"]);
@@ -131,11 +136,11 @@ async function oneProvider(source: ClaimSettlementProvider, input: ClaimSettleme
     if (!await verifyClaimExecutionProfileAt(context, review, receipt.blockNumber, phase)) return { status: "unavailable", hash: found, reason: "historical-wallet-profile-conflict" };
     let innerFailed = false;
     if (review.kind === "safe-1.4.1" && receipt.status === "success") {
-      const executions = parseEventLogs({ abi: safeEvents, strict: true, logs: receipt.logs.filter(log => same(log.address, review.actor)) });
-      if (executions.length !== 1 || !same(executions[0].args.txHash, review.wallet.safe?.transactionHash ?? "") || executions[0].args.payment !== 0n) {
+      const execution = readSafeClaimExecutionEvent(receipt.logs, review.actor, review.wallet.safe?.transactionHash ?? "");
+      if (!execution) {
         return { status: "unavailable", hash: found, reason: "safe-execution-evidence-conflict" };
       }
-      innerFailed = executions[0].eventName === "ExecutionFailure";
+      innerFailed = execution === "reverted";
       // Safe may return success while its CALL failed. Such a receipt cannot
       // carry a fee event from this exact inner ledger at the same time.
       if (innerFailed && receipt.logs.some(log => same(log.address, r.to))) return { status: "unavailable", hash: found, reason: "safe-failure-with-fee-logs" };
