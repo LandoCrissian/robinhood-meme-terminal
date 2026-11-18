@@ -78,6 +78,7 @@ for (const [path, text] of pages) {
   const html = await response.text();
   assert.ok(html.includes(text), `${path} did not server-render its content`);
   assert.doesNotMatch(html, /Alder Example|Harbor Example/);
+  if (path === "/") assert.doesNotMatch(html, /Historical registrations|Historical V4\/V6 registrations/);
 }
 assert.equal((await request("/rmt")).status, 404);
 for (const launch of [v4, v6]) {
@@ -286,9 +287,11 @@ try {
       assert.equal((await page.goto(site.href)).status(), 200);
       await verifyReadOnly("Launches");
       const prelaunch = main.getByRole("region", { name: "New RMT Launch engine" });
-      await prelaunch.getByRole("heading", { name: "No new launches yet" }).waitFor();
+      await prelaunch.getByRole("heading", { name: "Launches coming soon", exact: true }).waitFor();
       assert.equal(await prelaunch.locator('a[href*="/launches/"]').count(), 0);
       assert.equal(await main.getByRole("region", { name: "Historical V4/V6 registrations" }).count(), 0);
+      assert.equal(await main.getByText(/Historical registrations/i).count(), 0);
+      assert.equal(await main.locator("details.lpArchive").count(), 0);
       assert.equal(await main.locator('a[href*="/launches/"]').count(), 0);
       assert.equal(await page.getByRole("link", { name: "Legacy RMT", exact: true }).count(), 0);
       await screenshot("discovery");

@@ -46,14 +46,16 @@
 .lpDiscoveryToolbar .lpSearch:focus-within { border-color: var(--rmt-accent); outline: 2px solid var(--rmt-accent); outline-offset: 2px; }
 .lpSearch > span { color: var(--rmt-text-soft); }
 .launchpad .lpDiscoveryToolbar .lpSearch input, .launchpad .lpDiscoveryToolbar .lpSearch input:focus-visible { width: 100%; min-width: 0; height: 44px; padding: 8px 10px 8px 0; border: 0; border-radius: 0; color: var(--rmt-text); background: transparent; font: inherit; font-size: 13px; outline: 0; box-shadow: none; }
+.launchpad .lpDiscoveryToolbar .lpSearch input::placeholder { color: var(--rmt-text-soft); opacity: 1; }
 .lpSearch input::-webkit-search-cancel-button { -webkit-appearance: none; }
 .lpSearchClear { display: grid; place-items: center; width: 44px; min-height: 44px; padding: 0; border: 0; border-radius: 5px; color: var(--rmt-text-soft); background: transparent; font-size: 23px !important; cursor: pointer; }
 .lpSearchClear:hover { color: var(--rmt-text); }
 .lpDiscoveryCount { color: var(--rmt-text-soft); font-size: 12px; }
 .lpEmpty.lpForm { min-height: 210px; align-content: center; gap: 12px; padding: 26px 20px; }
 .lpEmpty.lpForm p { max-width: 60ch; font-size: 13px; line-height: 1.6; }
+.lpEmpty.lpLaunchEmpty { min-height: 164px; gap: 8px; padding: 22px 18px; }
 .lpCardGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-.lpLaunchCard { display: grid; align-content: start; min-width: 0; gap: 16px; padding: 18px; border: 1px solid var(--rmt-border); border-radius: 8px; background: var(--rmt-surface); }
+.lpLaunchCard { display: flex; flex-direction: column; min-width: 0; gap: 16px; padding: 18px; border: 1px solid var(--rmt-border); border-radius: 8px; background: var(--rmt-surface); }
 .lpLaunchCard:hover { border-color: var(--rmt-border-strong); }
 .lpLaunchCard h3 { margin: 0; font-size: 16px; line-height: 1.35; overflow-wrap: anywhere; }
 .lpLaunchCard h3 a { color: var(--rmt-text); text-decoration: none; }
@@ -67,16 +69,10 @@
 .lpCardMetrics > div { min-width: 0; }
 .lpCardMetrics dt { color: var(--rmt-text-soft); font-size: 11px; }
 .lpCardMetrics dd { margin: 4px 0 0; color: var(--rmt-text); font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
-.lpCardFooter { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding-top: 11px; border-top: 1px solid var(--rmt-border); font-size: 12px; }
+.lpCardFooter { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 11px; border-top: 1px solid var(--rmt-border); font-size: 12px; }
 .lpCardFooter a, .lpCreatorLink, .lpProfileLinks a { color: var(--rmt-accent); }
-.lpArchive { margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--rmt-border); }
-.lpArchive > summary { width: fit-content; min-height: 44px; padding-block: 12px; color: var(--rmt-text-soft); cursor: pointer; font-size: 13px; }
-.lpArchive > p { color: var(--rmt-text-soft); font-size: 12px; }
-.lpArchiveGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
-.lpArchiveRecord { min-width: 0; padding: 13px; border: 1px solid var(--rmt-border); border-radius: 7px; }
-.lpArchiveRecord h3 { margin: 0 0 7px; font-size: 13px; }
-.lpArchiveRecord p { margin: 5px 0; color: var(--rmt-text-soft); font-size: 12px; }
-.lpArchiveRecord a { color: var(--rmt-accent); }
+.lpCardFooter a { display: inline-flex; align-items: center; min-height: 44px; }
+.lpCardFooter time { color: var(--rmt-text-soft); }
 .lpProfileLayout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(240px, .65fr); gap: 16px; max-width: 1120px; }
 .lpProfileForm textarea { width: 100%; min-height: 96px; padding: 10px; color: var(--rmt-text); background: var(--rmt-canvas); border: 1px solid var(--rmt-border-strong); border-radius: 6px; resize: vertical; font: inherit; }
 .lpProfileLinks { display: flex; flex-wrap: wrap; gap: 12px; margin: 0; padding: 0; list-style: none; font-size: 13px; }
@@ -90,8 +86,8 @@
 .lpProfileBanner .lpProfileIdentity { margin-bottom: 15px; }
 .lpSkeleton { min-height: 140px; display: grid; place-items: center; color: var(--rmt-text-soft); border: 1px solid var(--rmt-border); border-radius: 8px; }
 .launchpad[data-reduced-motion="true"] *, .launchpad[data-reduced-motion="true"] *::before, .launchpad[data-reduced-motion="true"] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
-.launchpad[data-theme="light"] { --rmt-canvas: #f5f8f5; --rmt-surface: #fff; --rmt-text: #14261a; --rmt-text-soft: #5b6c60; --rmt-border: #dce6dd; --rmt-border-strong: #bccfbe; --rmt-accent: #257d39; background: var(--rmt-canvas); }
-@media (prefers-color-scheme: light) { .launchpad[data-theme="system"] { --rmt-canvas: #f5f8f5; --rmt-surface: #fff; --rmt-text: #14261a; --rmt-text-soft: #5b6c60; --rmt-border: #dce6dd; --rmt-border-strong: #bccfbe; --rmt-accent: #257d39; background: var(--rmt-canvas); } }
+.launchpad[data-theme="light"] { --rmt-canvas: #f5f8f5; --rmt-surface: #fff; --rmt-text: #14261a; --rmt-text-soft: #5b6c60; --rmt-border: #dce6dd; --rmt-border-strong: #7b8d7e; --rmt-accent: #257d39; --rmt-negative: #b52236; --rmt-artwork-background: #f5f8f5; background: var(--rmt-canvas); }
+@media (prefers-color-scheme: light) { .launchpad[data-theme="system"] { --rmt-canvas: #f5f8f5; --rmt-surface: #fff; --rmt-text: #14261a; --rmt-text-soft: #5b6c60; --rmt-border: #dce6dd; --rmt-border-strong: #7b8d7e; --rmt-accent: #257d39; --rmt-negative: #b52236; --rmt-artwork-background: #f5f8f5; background: var(--rmt-canvas); } }
 @media (max-width: 1000px) { .lpCardGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 730px) {
   .lpBrandWord { font-size: 13px; }
@@ -109,7 +105,7 @@
   .lpDiscoveryToolbar .lpSearch { flex-basis: 100%; max-width: none; }
   .launchpad .lpDiscoveryToolbar .lpSearch input, .launchpad .lpDiscoveryToolbar .lpSearch input:focus-visible { font-size: 16px; }
   .lpLaunchCard { padding: 16px; }
-  .lpCardGrid, .lpArchiveGrid, .lpProfileLayout { grid-template-columns: minmax(0, 1fr); }
+  .lpCardGrid, .lpProfileLayout { grid-template-columns: minmax(0, 1fr); }
   .lpProfileForm textarea { font-size: 16px; }
   .lpProfileLinkRow { grid-template-columns: minmax(0, 1fr) auto; }
   .lpProfileLinkRow > label:first-child { grid-column: 1 / -1; }

@@ -9,7 +9,8 @@ import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 
 // Default: loopback checks only. RMT_POLISH_MODE=before captures the exact prior
-// preview, and =all explicitly includes both. RMT_POLISH_URL selects loopback;
+// preview, and =all explicitly includes both. RMT_POLISH_URL selects loopback
+// or an exact isolated Netlify Deploy Preview; never the production hostname.
 // RMT_POLISH_ARTIFACTS must be outside the repository. No dependency changes.
 // Fixture registrations below never enter the website, indexer, public API,
 // or a wallet provider. RMT_POLISH_DEPENDENCY_ROOT can reuse an existing install.
@@ -18,14 +19,16 @@ const dependencies = resolve(process.env.RMT_POLISH_DEPENDENCY_ROOT ?? root);
 const require = createRequire(join(dependencies, "package.json"));
 const { chromium, devices, webkit } = require("playwright");
 const site = new URL(process.env.RMT_POLISH_URL ?? "http://127.0.0.1:3268/");
-assert.equal(site.protocol, "http:");
-assert.equal(site.hostname, "127.0.0.1");
-assert.ok(site.port);
+const loopback = site.protocol === "http:" && site.hostname === "127.0.0.1" && Boolean(site.port);
+const isolatedPreview = site.protocol === "https:" && !site.port
+  && /^(?:deploy-preview-\d+|[0-9a-f]{24})--[a-z0-9][a-z0-9-]*\.netlify\.app$/.test(site.hostname);
+assert.ok(loopback || isolatedPreview, "Use explicit loopback or an isolated Netlify Deploy Preview, never production.");
+assert.equal(site.username + site.password, "");
 assert.equal(site.href, `${site.origin}/`);
 const before = new URL("https://6afd06ab371403bb3c26a81b--eclectic-valkyrie-16cb92.netlify.app/");
 const mode = process.env.RMT_POLISH_MODE ?? "after";
 assert.ok(["all", "before", "after"].includes(mode));
-const output = resolve(process.env.RMT_POLISH_ARTIFACTS ?? join(tmpdir(), "rmt-task068-evidence"));
+const output = resolve(process.env.RMT_POLISH_ARTIFACTS ?? join(tmpdir(), "rmt-launch-quality-evidence"));
 const outputRelative = relative(root, output);
 assert.ok(outputRelative.startsWith("..") || isAbsolute(outputRelative), "Keep screenshots and reports outside Git.");
 await mkdir(output, { recursive: true });
@@ -89,9 +92,15 @@ async function noOverflow(page) {
   const dimensions = await page.evaluate(() => ({
     viewport: innerWidth, document: document.documentElement.scrollWidth,
     body: document.body.scrollWidth,
+    clippedTargets: [...document.querySelectorAll(".lpHeader > nav a, .lpAccountNav, .lpAccountDropdown, .lpSearch, .lpLaunchCard")]
+      .filter(element => element.getClientRects().length).map(element => {
+        const rect = element.getBoundingClientRect();
+        return { label: element.getAttribute("aria-label") ?? element.className, left: rect.left, right: rect.right };
+      }).filter(rect => rect.left < -1 || rect.right > innerWidth + 1),
   }));
   assert.ok(dimensions.document <= dimensions.viewport + 1 && dimensions.body <= dimensions.viewport + 1,
     `Horizontal overflow: ${JSON.stringify(dimensions)}`);
+  assert.deepEqual(dimensions.clippedTargets, [], "Overflow clipping must not hide controls or cards outside the viewport");
   return dimensions;
 }
 
@@ -135,6 +144,11 @@ const fixtures = [
       positionId: "1", owner: addr("f"), liquidity: "4000000", nativeDepositedWei: "2000000000000000000", tokenDepositedWei: "400000000000000000000000000" } } },
   { registration: registration("Synthetic Unknown", "QAUNK", "d", "e"), state: "unknown" },
 ];
+const manyFixtures = [...fixtures, ...Array.from({ length: 10 }, (_, index) => {
+  const token = `0x${(index + 100).toString(16).padStart(40, "0")}`;
+  return { registration: { ...registration(`Synthetic additional project ${index + 1}`, `QA${index + 10}`, "4", "5"), token,
+    creation: { ...creation, logIndex: index + 10 } }, state: "created" };
+})];
 
 async function startFixtureHarness() {
   const appRequire = createRequire(join(dependencies, "apps/launch-website/package.json"));
@@ -150,23 +164,28 @@ async function startFixtureHarness() {
     import { LaunchProvenance } from ${JSON.stringify(provenance)};
     import { hasCurveRegistration, describeCurveLifecycle } from ${JSON.stringify(validation)};
     const fixtures = ${JSON.stringify(fixtures)};
-    for (const launch of fixtures) {
+    const manyFixtures = ${JSON.stringify(manyFixtures)};
+    for (const launch of manyFixtures) {
       if (!hasCurveRegistration(launch.registration) || describeCurveLifecycle(launch).stage !== launch.state)
         throw new Error('Synthetic fixture does not satisfy canonical lifecycle shape: ' + launch.registration.name);
     }
     window.__rmtPolishFixtureStages = fixtures.map(describeCurveLifecycle).map(({stage}) => stage);
     function Harness() {
       const [mode, setMode] = useState('ready');
+      const [theme, setTheme] = useState('dark');
       const directory = mode === 'prelaunch' || mode === 'unavailable' ? {status: mode}
-        : {status: 'ready', launches: mode === 'empty' ? [] : fixtures};
-      return <div className="rmtVnext rmtTerminal launchpad" data-theme="dark">
+        : {status: 'ready', launches: mode === 'empty' ? [] : mode === 'single' ? [fixtures[1]] : mode === 'many' ? manyFixtures : fixtures};
+      return <div className="rmtVnext rmtTerminal launchpad" data-theme={theme}>
         <main className="lpContent">
           <aside style={{border: '2px solid #f3c77e', padding: 12, marginBottom: 16, color: '#f3c77e'}}>
             <strong>SYNTHETIC QA FIXTURES — LOCAL HARNESS ONLY</strong><br/>
             Canonical-shaped browser test data. These are not live projects or metrics. No wallet, signing, transaction or indexer access.
           </aside>
           <nav aria-label="Synthetic fixture states" style={{display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16}}>
-            {['ready', 'prelaunch', 'unavailable', 'empty', 'stale', 'detail-created', 'detail-active', 'detail-graduated'].map(value => <button className="lpButton lpSecondary" key={value} onClick={() => setMode(value)}>{value}</button>)}
+            {['ready', 'single', 'many', 'prelaunch', 'unavailable', 'empty', 'stale', 'detail-created', 'detail-active', 'detail-graduated'].map(value => <button className="lpButton lpSecondary" key={value} onClick={() => setMode(value)}>{value}</button>)}
+          </nav>
+          <nav aria-label="Synthetic theme states" style={{display: 'flex', gap: 8, marginBottom: 16}}>
+            {['dark', 'light'].map(value => <button className="lpButton lpSecondary" key={value} onClick={() => setTheme(value)}>{value}</button>)}
           </nav>
           {mode === 'stale' && <details className="lpFeedStatus"><summary>Stale creation records</summary><p>Checkpoint 120 · synthetic observation. Current curve activity and Ethereum L1 finality are unverified.</p></details>}
           {mode.startsWith('detail-') ? <LaunchProvenance launch={fixtures[mode === 'detail-created' ? 0 : mode === 'detail-active' ? 1 : 3]}/>
@@ -183,7 +202,7 @@ async function startFixtureHarness() {
     } }], define: { "process.env.NODE_ENV": '"production"' } });
   const cssFiles = ["styles/styles.css", "styles/mobile-polish.css", "styles/desktop-polish.css", "styles/launch-theme.css", "styles/token-detail.css", "launchpad.css", "profile-refinement.css", "creator-polish.css"];
   const css = (await Promise.all(cssFiles.map(path => readFile(join(root, "apps/launch-website/app", path), "utf8")))).join("\n");
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Synthetic RMT polish QA harness</title><style>${css}</style></head><body><div id="root"></div><script src="/harness.js"></script></body></html>`;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Synthetic RMT polish QA harness</title><style>${css}</style></head><body><div id="root"></div><script src="/harness.js"></script></body></html>`;
   const server = createServer((request, response) => {
     if (request.method !== "GET") { response.writeHead(405).end(); return; }
     const js = request.url === "/harness.js";
@@ -210,6 +229,139 @@ async function checkSearchFocus(page) {
   return styles;
 }
 
+async function contrastEvidence(page, selectors) {
+  const results = await page.evaluate(selectors => {
+    const color = text => {
+      const numbers = text.match(/[\d.]+/g)?.map(Number);
+      if (!numbers || numbers.length < 3) throw new Error("Unsupported computed color format");
+      return [...numbers.slice(0, 3), numbers[3] ?? 1];
+    };
+    const over = (front, back) => {
+      const alpha = front[3] + back[3] * (1 - front[3]);
+      return [...front.slice(0, 3).map((channel, i) => (channel * front[3] + back[i] * back[3] * (1 - front[3])) / alpha), alpha];
+    };
+    const background = element => {
+      const colors = [];
+      for (let current = element; current; current = current.parentElement) colors.unshift(color(getComputedStyle(current).backgroundColor));
+      return colors.reduce((base, current) => over(current, base), [255, 255, 255, 1]);
+    };
+    const luminance = rgb => rgb.slice(0, 3).map(channel => {
+      const value = channel / 255;
+      return value <= .04045 ? value / 12.92 : ((value + .055) / 1.055) ** 2.4;
+    }).reduce((sum, value, i) => sum + value * [.2126, .7152, .0722][i], 0);
+    const ratio = (first, second) => {
+      const values = [luminance(first), luminance(second)].sort((a, b) => b - a);
+      return (values[0] + .05) / (values[1] + .05);
+    };
+    const measured = [];
+    for (const selector of selectors) for (const element of document.querySelectorAll(selector)) {
+      if (!element.getClientRects().length) continue;
+      const style = getComputedStyle(element), base = background(element), foreground = color(style.color);
+      foreground[3] *= Number(style.opacity);
+      measured.push({ selector, text: element.textContent.trim().slice(0, 70), ratio: ratio(over(foreground, base), base) });
+    }
+    const input = document.querySelector('input[aria-label="Search launches"]');
+    if (input) {
+      const placeholder = getComputedStyle(input, "::placeholder"), value = color(placeholder.color), base = background(input);
+      value[3] *= Number(placeholder.opacity);
+      measured.push({ selector: "Search placeholder", ratio: ratio(over(value, base), base) });
+      const container = input.closest(".lpSearch"), outline = getComputedStyle(container).outlineColor;
+      measured.push({ selector: "Search focus indicator", ratio: ratio(color(outline), background(container.parentElement)), minimum: 3 });
+    }
+    return measured;
+  }, selectors);
+  for (const result of results) assert.ok(result.ratio >= (result.minimum ?? 4.5),
+    `Insufficient contrast: ${JSON.stringify(result)}`);
+  return results;
+}
+
+async function settleVisualTransitions(page) {
+  await page.evaluate(async () => {
+    // Measure settled theme/inset styles, rather than comparing an old
+    // foreground or padding value with a newly changed background or inset.
+    async function settled() {
+      let quietFrames = 0;
+      while (quietFrames < 2) {
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        getComputedStyle(document.querySelector(".launchpad")).color;
+        const transitions = document.getAnimations().filter(animation => animation.constructor.name === "CSSTransition"
+          && (animation.playState === "running" || animation.pending));
+        quietFrames = transitions.length ? 0 : quietFrames + 1;
+        // Inherited child transitions can start after a parent's transition
+        // finishes, particularly in WebKit. Resample until two quiet frames.
+        await Promise.all(transitions.map(animation => animation.finished.catch(() => {})));
+      }
+    }
+    await Promise.race([settled(), new Promise((_, reject) => setTimeout(() => reject(new Error("Visual transitions did not settle")), 2000))]);
+  });
+}
+
+async function settleTheme(page, theme) {
+  await page.waitForFunction(theme => document.querySelector(".launchpad")?.dataset.theme === theme, theme);
+  await settleVisualTransitions(page);
+}
+
+async function touchEvidence(page, selectors) {
+  const results = await page.evaluate(selectors => selectors.flatMap(selector => [...document.querySelectorAll(selector)]
+    .filter(element => element.getClientRects().length).map(element => {
+      const rect = element.getBoundingClientRect();
+      return { selector, label: element.getAttribute("aria-label") ?? element.textContent.trim().slice(0, 50), width: rect.width, height: rect.height };
+    })), selectors);
+  for (const result of results) assert.ok(result.height >= 44 && result.width >= 44,
+    `Primary touch target is smaller than 44px: ${JSON.stringify(result)}`);
+  return results;
+}
+
+async function safeAreaEvidence(page) {
+  const result = await page.evaluate(() => {
+    const viewport = document.querySelector('meta[name="viewport"]')?.content ?? "";
+    const rules = [...document.styleSheets].flatMap(sheet => {
+      try { return [...sheet.cssRules].map(rule => rule.cssText); } catch { return []; }
+    }).join("\n");
+    const padding = selector => {
+      const element = document.querySelector(selector), style = getComputedStyle(element);
+      return { left: parseFloat(style.paddingLeft), right: parseFloat(style.paddingRight) };
+    };
+    return { viewport, declaredInsets: ["top", "right", "bottom", "left"].filter(side => rules.includes(`safe-area-inset-${side}`)),
+      contentPadding: padding(".lpContent"), headerPadding: padding(".lpHeader"),
+      boundary: "CSS and emulated viewport only; physical notch and VoiceOver acceptance are not established" };
+  });
+  assert.match(result.viewport, /viewport-fit=cover/);
+  assert.deepEqual(result.declaredInsets.sort(), ["bottom", "left", "right", "top"]);
+  for (const value of [result.contentPadding, result.headerPadding]) assert.ok(value.left >= 12 && value.right >= 12);
+  return result;
+}
+
+async function safeAreaStress(page) {
+  const evidence = await page.evaluate(() => {
+    const insets = { top: 0, right: 44, bottom: 20, left: 44 }, derived = [];
+    function inspect(rules) {
+      for (const rule of rules) {
+        if (rule.type === CSSRule.MEDIA_RULE && !matchMedia(rule.conditionText).matches) continue;
+        if (rule.style?.cssText.includes("safe-area-inset-")) derived.push(rule.cssText.replace(
+          /env\(\s*safe-area-inset-(top|right|bottom|left)(?:\s*,[^)]*)?\s*\)/g,
+          (_match, side) => `${insets[side]}px`));
+        if (rule.cssRules) inspect(rule.cssRules);
+      }
+    }
+    for (const sheet of document.styleSheets) { try { inspect(sheet.cssRules); } catch { /* cross-origin stylesheet unavailable */ } }
+    if (!derived.length) throw new Error("No actual safe-area rules to exercise");
+    const style = document.createElement("style"); style.id = "qa-derived-safe-area-stress";
+    style.textContent = derived.join("\n"); document.head.append(style);
+    return { insets, derivedRules: derived.length,
+      boundary: "Synthetic CSS inset substitution derived from actual active rules; not a physical device/notch result" };
+  });
+  try {
+    await settleVisualTransitions(page);
+    evidence.dimensions = await noOverflow(page);
+    evidence.contentPadding = await page.locator(".lpContent").evaluate(element => {
+      const style = getComputedStyle(element); return { left: parseFloat(style.paddingLeft), right: parseFloat(style.paddingRight) };
+    });
+    assert.ok(evidence.contentPadding.left >= 56 && evidence.contentPadding.right >= 56, JSON.stringify(evidence.contentPadding));
+    return evidence;
+  } finally { await page.locator("#qa-derived-safe-area-stress").evaluate(element => element.remove()); }
+}
+
 async function checkAfter(browser, engine, layout, harness) {
   const context = await browser.newContext({ ...layout, name: undefined, colorScheme: "dark", reducedMotion: "reduce" });
   const state = await instrument(context, [site.origin, harness.origin]);
@@ -221,9 +373,23 @@ async function checkAfter(browser, engine, layout, harness) {
   assert.equal(await navigation.getByRole("link", { name: "Wallet", exact: true }).count(), 0);
   assert.equal(await page.locator(".lpLaunchSteps, .lpOverview").count(), 0);
   assert.equal(await page.locator('a[href="/create-token"]:visible').count(), 1, "Homepage has one prominent Create action");
-  const archive = page.locator("details.lpArchive");
-  assert.equal(await archive.getAttribute("open"), null);
+  assert.equal(await page.locator("details.lpArchive, .lpArchiveRecord").count(), 0, "The homepage must not render historical registrations");
+  assert.equal(await page.getByText(/Historical registrations|archive below/i).count(), 0);
+  await page.getByRole("heading", { name: "Launches coming soon", exact: true }).waitFor();
   const focus = await checkSearchFocus(page);
+  const safeAreas = await safeAreaEvidence(page);
+  const primaryTargets = await touchEvidence(page, [".lpHeader > nav a", ".lpAccountNav", ".lpSearch input"]);
+  const appThemes = [];
+  for (const theme of ["dark", "light"]) {
+    // CSS-only DOM rendering exercise; this does not authenticate a profile or
+    // change saved preferences, server configuration or any public record.
+    await page.locator(".launchpad").evaluate((element, theme) => { element.dataset.theme = theme; }, theme);
+    await settleTheme(page, theme);
+    appThemes.push({ theme, scope: "CSS-only local DOM attribute; no saved preference or authentication change",
+      contrast: await contrastEvidence(page, [".lpHeader > nav a", ".lpAccountLabel", ".lpNetwork", ".lpDiscoveryHeading h1", ".lpDiscoveryChain", ".lpDiscoveryCount", ".lpEmpty h2", ".lpEmpty p"]) });
+    captures.push(await screenshot(page, `after-${engine}-${layout.name}-launches-${theme}`));
+  }
+  await page.locator(".launchpad").evaluate(element => { element.dataset.theme = "dark"; });
   captures.push(await screenshot(page, `after-${engine}-${layout.name}-launches-search-focus`));
   await noOverflow(page);
 
@@ -260,6 +426,7 @@ async function checkAfter(browser, engine, layout, harness) {
   await trigger.click();
   await page.getByRole("searchbox", { name: "Search launches" }).focus();
   assert.equal(await trigger.getAttribute("aria-expanded"), "false", "Moving focus outside closes the disclosure");
+  const insetStress = layout.name === "iphone-landscape" ? await safeAreaStress(page) : undefined;
   for (const [label, path, heading, shot] of [["Create", "/create-token", "Create Token", "create"], ["My Launches", "/my-launches", "My Launches", "my-launches"]]) {
     await navigation.getByRole("link", { name: label, exact: true }).click();
     await page.waitForURL(new URL(path, site).href);
@@ -288,9 +455,42 @@ async function checkAfter(browser, engine, layout, harness) {
   assert.equal(await cards.nth(2).getByText("2 / 2 ETH", { exact: true }).count(), 1);
   assert.equal(await cards.nth(3).getByText("2 ETH", { exact: true }).count(), 1);
   assert.equal(await cards.nth(3).getByText("0.3%", { exact: true }).count(), 1);
+  assert.equal(await cards.getByText("Fixed supply", { exact: true }).count(), 0, "Shared immutable economics belong on detail/review pages");
+  assert.equal(await cards.getByText("Robinhood Chain", { exact: true }).count(), 0, "The page already identifies its chain");
   const fixtureFocus = await checkSearchFocus(page);
   captures.push(await screenshot(page, `after-${engine}-${layout.name}-synthetic-cards`));
   await noOverflow(page);
+  const fixtureStates = page.getByRole("navigation", { name: "Synthetic fixture states" });
+  const themeStates = page.getByRole("navigation", { name: "Synthetic theme states" });
+  const cardStates = [];
+  for (const theme of ["dark", "light"]) {
+    await themeStates.getByRole("button", { name: theme, exact: true }).click();
+    await settleTheme(page, theme);
+    for (const [stateName, count] of [["empty", 0], ["single", 1], ["many", 15]]) {
+      await fixtureStates.getByRole("button", { name: stateName, exact: true }).click();
+      assert.equal(await cards.count(), count);
+      assert.equal(await page.locator(".lpDiscoveryCount").textContent(), `${count} ${count === 1 ? "launch" : "launches"}`);
+      await checkSearchFocus(page);
+      const contrast = await contrastEvidence(page, [".lpLaunchCard h3 a", ".lpCardSymbol", ".lpLifecycle", ".lpCardMetrics dt", ".lpCardMetrics dd", ".lpCardFooter time", ".lpCardFooter a", ".lpEmpty h2", ".lpEmpty p", ".lpDiscoveryCount"]);
+      const targets = count ? await touchEvidence(page, [".lpCardFooter a"]) : [];
+      const dimensions = await noOverflow(page);
+      const columns = await page.locator(".lpCardGrid").evaluate(element => getComputedStyle(element).gridTemplateColumns.split(" ").length);
+      if (count > 1) assert.ok(layout.viewport.width >= 1000 ? columns >= 2 : layout.viewport.width <= 730 ? columns === 1 : columns >= 1);
+      const footerRows = await cards.evaluateAll(elements => {
+        const rows = new Map();
+        for (const element of elements) {
+          const row = Math.round(element.getBoundingClientRect().top), footer = element.querySelector(".lpCardFooter").getBoundingClientRect();
+          rows.set(row, [...(rows.get(row) ?? []), footer.bottom]);
+        }
+        return [...rows].map(([top, bottoms]) => ({ top, count: bottoms.length, spread: Math.max(...bottoms) - Math.min(...bottoms) }));
+      });
+      for (const row of footerRows) assert.ok(row.spread <= 1, `Card actions must align within their row: ${JSON.stringify(row)}`);
+      cardStates.push({ theme, state: stateName, count, columns, contrast, targets, dimensions, footerRows });
+      captures.push(await screenshot(page, `after-${engine}-${layout.name}-synthetic-${theme}-${stateName}`));
+    }
+  }
+  await themeStates.getByRole("button", { name: "dark", exact: true }).click();
+  await fixtureStates.getByRole("button", { name: "ready", exact: true }).click();
   const search = page.getByRole("searchbox", { name: "Search launches" });
   for (const [query, name] of [["cedar", "Synthetic Cedar"], ["qatwo", "Synthetic Harbor"], [addr("a"), "Synthetic Orchard"], [addr("5"), "Synthetic Cedar"]]) {
     await search.fill(query);
@@ -306,11 +506,11 @@ async function checkAfter(browser, engine, layout, harness) {
   assert.equal(await search.inputValue(), "");
   assert.equal(await cards.count(), 5);
   assert.equal(await search.evaluate(element => element === document.activeElement), true);
-  const fixtureStates = page.getByRole("navigation", { name: "Synthetic fixture states" });
-  for (const [name, heading] of [["prelaunch", "No new launches yet"], ["unavailable", "Launch feed unavailable"], ["empty", "No verified launches yet"]]) {
+  for (const [name, heading] of [["prelaunch", "Launches coming soon"], ["unavailable", "Launch feed unavailable"], ["empty", "No launches yet"]]) {
     await fixtureStates.getByRole("button", { name, exact: true }).click();
     await page.getByRole("heading", { name: heading, exact: true }).waitFor();
     assert.equal(await cards.count(), 0);
+    assert.equal(await page.getByText(/Historical registrations|archive below/i).count(), 0);
     await noOverflow(page);
     captures.push(await screenshot(page, `after-${engine}-${layout.name}-synthetic-${name}`));
   }
@@ -342,7 +542,8 @@ async function checkAfter(browser, engine, layout, harness) {
   assert.deepEqual(state.pageErrors, []);
   reports.push({ phase: "after", engine, layout: layout.name, viewport: layout.viewport, url: site.href,
     fixture: "Isolated local React harness, actual NewEngineLaunches component, canonical-shaped synthetic registrations; no live project claims",
-    focus, fixtureFocus, keyboard, captures, ...state, walletCalls: [] });
+    focus, fixtureFocus, keyboard, safeAreas, insetStress, primaryTargets, appThemes, cardStates, captures, ...state, walletCalls: [],
+    physicalAcceptance: "Not performed: physical VoiceOver, notch/safe-area rendering, MetaMask/Rabby and Firebase acceptance remain separate" });
   await context.close();
 }
 

@@ -36,6 +36,7 @@ on:
       - "scripts/visual-qa/rmt-polish.mjs"
       - "docs/evidence/mobile-signing/**"
       - ".github/workflows/launch-website-review.yml"
+      - ".github/scripts/prepare-browser-apt.sh"
 
 permissions:
   contents: read
@@ -64,6 +65,8 @@ jobs:
       - run: pnpm install --frozen-lockfile --filter @rmt/launch-website... --filter robinhood-meme-terminal
       - run: pnpm --filter @rmt/launch-website test:history
       - run: pnpm --filter @rmt/launch-website build
+      - name: Use the signed Ubuntu archive over HTTPS for browser dependencies
+        run: bash .github/scripts/prepare-browser-apt.sh
       - run: pnpm exec playwright install --with-deps chromium webkit
       - name: Verify website navigation and read-only HTTP boundary
         run: |
@@ -122,6 +125,7 @@ jobs:
           version: "1.7.1"
       - name: Build the website and isolated worker
         run: |
+          bash .github/scripts/prepare-browser-apt.sh
           pnpm install --frozen-lockfile --filter @rmt/launch-website... --filter indexer --filter robinhood-meme-terminal
           pnpm --filter @rmt/launch-website build
           pnpm --filter indexer build

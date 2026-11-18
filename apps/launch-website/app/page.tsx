@@ -4,7 +4,6 @@ import { FixtureLaunches } from "./_components/fixture-launches";
 import { configuredCurveFixture } from "../lib/server/curve-fixture";
 import { readFixtureLaunches } from "../lib/server/fixture-discovery";
 import { configuredProductionDiscovery, productionDirectory, readProductionDiscovery } from "../lib/server/production-discovery";
-import { HistoricalArchive } from "./_components/historical-archive";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +25,5 @@ export default async function Home() {
   return <>
     <header className="lpDiscoveryHeading"><h1>Launches</h1><span className="lpDiscoveryChain">{fixture ? "Anvil 31337 · synthetic test only" : "Robinhood Chain · read-only"}</span></header>
     <NewEngineSection />
-    <HistoricalArchive />
   </>;
 }
