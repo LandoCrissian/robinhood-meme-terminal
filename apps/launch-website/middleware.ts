@@ -5,9 +5,9 @@ import { isProfileApiRoute } from "./lib/server/profiles/config";
 import { admitRailwayRequest, railwayHosting } from "./lib/server/railway-read-only";
 
 const publicRoutes = new Set([
-  "/", "/create-token", "/my-launches", "/my-launches/earnings", "/wallet",
+  "/", "/create-token", "/my-launches", "/my-launches/earnings", "/my-launches/treasury", "/wallet",
   "/terms", "/risks", "/privacy", "/robots.txt", "/api/launchpad/config",
-  "/api/launchpad/launches",
+  "/api/launchpad/launches", "/api/launchpad/project-treasury",
 ]);
 
 function isStaticAsset(path: string) {
@@ -48,7 +48,7 @@ export function middleware(request: NextRequest) {
   // These read-only handlers validate recipient/deployment/checkpoint context;
   // test claims repeat the explicit local fixture gate, production claims stay off.
   if ((["GET", "HEAD"].includes(request.method) && /^\/api\/launchpad\/earnings(?:\/(?:factory|history|0x[0-9a-fA-F]{40}))?$/.test(pathname))
-    || (request.method === "POST" && ["/api/launchpad/test-earnings", "/api/launchpad/test-claim-profiles", "/api/launchpad/production-earnings"].includes(pathname))) return NextResponse.next();
+    || (request.method === "POST" && ["/api/launchpad/test-earnings", "/api/launchpad/test-claim-profiles", "/api/launchpad/test-project-treasury", "/api/launchpad/production-earnings"].includes(pathname))) return NextResponse.next();
   if ((request.method === "GET" || request.method === "HEAD") &&
       (pathname === "/account/profile" || /^\/u\/[a-z][a-z0-9_]{2,23}$/.test(pathname) ||
        /^\/creator\/0x[0-9a-fA-F]{40}$/.test(pathname))) return NextResponse.next();
