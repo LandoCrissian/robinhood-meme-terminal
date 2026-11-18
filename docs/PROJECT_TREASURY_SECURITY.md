@@ -155,6 +155,33 @@ proof of absence. The six balance observations remain unresolved review items
 and the strict new-package gate remains blocked when those highs are reported.
 The original 22 highs and two failed core static-analysis gates remain separate.
 
+### Remaining medium, low and informational rows
+
+The same report also contains **four medium, ten low and five informational**
+rows. Here `F` is
+`packages/contracts/project-treasury/src/RMTProjectTreasuryFactoryV1.sol` and `T`
+is `packages/contracts/project-treasury/src/RMTProjectTreasuryV1.sol`. None of
+these observations is suppressed, waived or promoted to an audit conclusion.
+
+| Severity / rows / detector | Exact root and concern | Internal disposition, evidence and remaining assumptions |
+| --- | --- | --- |
+| Medium / 1 / `incorrect-equality` | `T.cancelAssetAdmission`, line 281: `n.epoch == controllerEpoch` in cancellation authorization. | Intentional exact authority-version equality, not a fragile balance or price equality. Current notices remain protected; stale or expired ones can be cleared. Controller/epoch/expiry tests support the rule. No confirmed defect; authorization changes still require fresh review. |
+| Medium / 1 / `reentrancy-no-eth` | `F.create`, lines 47–59: intent mapping is written after `initializeController`. | The exact hash-bound constructor makes no external call. The admitted initializer only performs its own initialization and read-only protocol/controller checks; those interfaces generate STATICCALLs. No mutable callback into `create` was identified. The CREATE2 address is already occupied during initialization, and failure rolls back deployment/mapping. Invalid-controller, repeated initialization and intent-collision tests pass. This assessment depends on the exact initializer and runtime pins; future templates need a new review. |
+| Medium / 1 / `reentrancy-no-eth` | `T.claimLp`, lines 191–202: token accounting follows the ledger claim. | Record only the actually received, exactly verified token amount. Guard, known ledger/token, native receive-only accounting and atomic rollback preserve credits; separate-asset/interruption/custody tests pass. It shares the six high balance observations' unresolved review boundary. |
+| Medium / 1 / `reentrancy-no-eth` | `T._depositToken`, lines 212–220: accounting follows transferFrom. | No credit is granted before exact incoming and sender deltas are established. Guard and registered noncallback Token V2 admission restrict the external call. Funding, unknown-token rejection and accounting tests pass; no claim is made for arbitrary external assets. |
+| Low / 1 / `reentrancy-events` | `F.create`, lines 47–59: `TreasuryCreated` is emitted after initialization. | Correctly emit completion only after initialization and mapping succeed. Same exact-callee/STATICCALL reasoning and rollback tests as the factory medium row. Event identity and canonical receipt inclusion are independently verified by the indexer. |
+| Low / 9 / `timestamp` | `T.cancelAssetAdmission` (279–283), `collectLpFees` (181–189), `acceptController` (297–304), `executeWithdrawal` (319–333), `_noticeExpiry` (264–267), `cancelWithdrawal` (314–318), `executeAssetAdmission` (274–278), `validatePurchase` (353–365), `cancelControllerChange` (292–296). | Time is deliberately used for two-day notices, bounded expiry, collection deadlines and quote freshness. Tests reject premature/expired actions and preserve authority and balances. Time is the chain's canonical block timestamp, not an independently proved wall clock. Validator/sequencer timestamp drift and unverified L1 finality remain chain-level assumptions; boundary-time cancellation/execution can race, but cannot redirect the fixed authorized recipient. Purchase timing cannot authorize a spend in this nonexecuting version. |
+| Informational / 1 / `assembly` | `F.create`, line 54: CREATE2 memory slice. | Uses only bounded, exact-hash-bound creation bytes plus fixed ABI arguments; zero return reverts. Prediction, wrong/oversized-template, constructor rollback and 512-input deployment/intent tests pass. Compiler, template and constructor hashes remain deployment-review inputs. |
+| Informational / 1 / `low-level-calls` | `T.executeWithdrawal`, line 325: zero-calldata native payment to the queued recipient. | Intended payment, with current epoch/notice/amount, effects before interaction, reentrancy guard and checked success. Rejected payment preserves reservations/held assets; callback/replay tests pass. It is not a general arbitrary-calldata executor. |
+| Informational / 1 / `low-level-calls` | `T._tokenCall`, line 245: ERC-20 transfer/transferFrom. | Private helper receives only the fixed transfer selectors from admitted code paths, checks the runtime and return bytes, and exposes no approval or arbitrary public call. Exact deltas are retained; the related six highs remain unresolved. |
+| Informational / 1 / `low-level-calls` | `T._locked`, line 166: constant `positionManagerRuntimeHash()` STATICCALL. | Target is the pinned graduation engine; success and exact 32-byte return are required before manager runtime/position custody checks. Failed/corrupt custody stays unavailable; there is no mutable call or fallback pin. |
+| Informational / 1 / `too-many-digits` | `F.constructor`, line 27: Keccak of the compiled treasury creation bytecode literal. | A compiler-produced byte string, not a mistyped token amount or economic constant. Its exact hash is the factory's immutable template admission rule; altered-template and byte-concatenation equivalence tests pass. Retain exact compiler/source provenance. |
+
+No additional concrete vulnerability was confirmed while reviewing these
+nineteen rows. Read-only transient observations and finite local tests do not
+justify certifying every warning harmless. The raw findings, exact pins and
+unresolved high gate remain part of the release handoff.
+
 ## Test scope and limits
 
 The new Foundry suite covers deterministic address/intent separation, wrong
