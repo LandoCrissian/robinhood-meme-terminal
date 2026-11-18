@@ -62,7 +62,7 @@ calldata, template, constructor arguments and canonical receipt must agree.
   cannot redirect an existing project.
 - A separate normal core `create` call preserves its actual `msg.sender` creator.
   Binding requires `tokenForIntent`, original curve and ledger, exact token
-  runtime, one billion tokens/18 decimals, controller-selected committed share,
+  runtime, one billion tokens/18 decimals, creator-selected committed share,
   and the pinned factory/engine relationships. At zero share the core beneficiary
   must remain zero; the sidecar may still accept donations.
 - The project's share uses the existing 0–9,000 denominator: 9,000 means 100% of
@@ -84,8 +84,12 @@ calldata, template, constructor arguments and canonical receipt must agree.
   exact supply/decimals. A controller-supplied hash cannot admit a random
   fee-on-transfer, rebasing, proxy, callback or counterfeit token. WETH, USDC and
   arbitrary external tokens are unsupported in this V1. Direct supported-token
-  transfers require balance-delta reconciliation. NFTs are unsupported; unsafe
-  forced NFT transfers may be unrecoverable and must not be sent here.
+  transfers require balance-delta reconciliation. Direct unsupported ERC-20
+  transfers cannot be prevented and have no rescue path in this version; do not
+  send them here. NFTs are unsupported; unsafe forced NFT transfers may also be
+  unrecoverable. Never change a collection's royalty recipient until its actual
+  payment currency is supported, the receiver is deployed/verified and a payment
+  test and that separate live recipient change have been authorized.
 - Asset admission requires two days' notice and a bounded execution window.
   At most eight tokens can be admitted, with one slot reserved for the project
   token while unbound. Disabling deposits never disables authorized withdrawals.
