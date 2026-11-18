@@ -1,0 +1,11 @@
+{
+  "sourceCommit": "ad41452b20d11910629495d7d917791646b97149",
+  "beforeSha256": "937680572aba1fee22a42aeb5cfe3580be027ed77e2e8321f24fd97fc85df01d",
+  "sha256": "d04b96ab196f7db0c6454d628374e8d31f8371fd91d2cf991fefdb42e82f7e63",
+  "bytes": 20927047,
+  "regularFilesChanged": [
+    "___netlify-server-handler.mjs: Windows paths to POSIX, identical to normalized generated source"
+  ],
+  "normalizedDirectoryLinks": 120,
+  "unrepresentedTargets": []
+}

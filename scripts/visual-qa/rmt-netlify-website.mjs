@@ -273,7 +273,7 @@ try {
     async function verifyReadOnly(heading, draftForm = false) {
       await main.getByRole("heading", { name: heading, exact: true }).waitFor();
       await page.getByText("Read-only", { exact: true }).first().waitFor();
-      assert.equal(await page.getByRole("button", { name: operationalControls }).count(), 0);
+      assert.equal(await main.getByRole("button", { name: operationalControls }).count(), 0);
       assert.equal(await page.getByRole("link", { name: operationalControls }).count(), 0);
       assert.equal(await page.locator("form").count(), Number(draftForm));
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${name} has horizontal overflow`);
@@ -286,7 +286,7 @@ try {
       assert.equal((await page.goto(site.href)).status(), 200);
       await verifyReadOnly("Launches");
       const prelaunch = main.getByRole("region", { name: "New RMT Launch engine" });
-      await prelaunch.getByText(/new RMT Launch engine is in prelaunch/i).waitFor();
+      await prelaunch.getByRole("heading", { name: "No new launches yet" }).waitFor();
       assert.equal(await prelaunch.locator('a[href*="/launches/"]').count(), 0);
       assert.equal(await main.getByRole("region", { name: "Historical V4/V6 registrations" }).count(), 0);
       assert.equal(await main.locator('a[href*="/launches/"]').count(), 0);
@@ -297,9 +297,10 @@ try {
       await nav.getByRole("link", { name: "Launches", exact: true }).click();
       await verifyReadOnly("Launches");
 
-      await nav.getByRole("link", { name: "Create Token", exact: true }).click();
+      await nav.getByRole("link", { name: "Create", exact: true }).click();
       await verifyReadOnly("Create Token", true);
       const terms = main.getByRole("region", { name: "Provisional launch terms" });
+      await terms.locator(".lpCreatorTermsDisclosure > summary").click();
       for (const disclosure of [/0\.0004 ETH/i, /\b2 ETH\b/i, /600,000,000 tokens net sold \(60%\)/,
         /400,000,000 tokens available before rounding \(40%\)/, /1%/, /90%/, /5% RMT operations/i, /5% RMT future reserve/i]) {
         await terms.getByText(disclosure).first().waitFor();
@@ -319,6 +320,7 @@ try {
       assert.equal(await fixedSupply.getAttribute("name"), null);
       await main.getByText("Set by the launch contract · 18 decimals").waitFor();
       assert.equal(await main.locator("select").count(), 0);
+      await main.locator(".lpCreatorMetadata > summary").click();
       await main.getByLabel("Project description").fill("This sample text stays on the device.");
       await main.getByLabel("Project or metadata URL").fill(draftFields.projectURI);
       await main.getByLabel("Artwork URL").fill("https://example.test/artwork.png");
@@ -353,10 +355,11 @@ try {
       await main.getByRole("button", { name: "Clear draft", exact: true }).click();
       assert.equal(await tokenName.inputValue(), "");
 
-      for (const destination of ["My Launches", "Wallet"]) {
-        await nav.getByRole("link", { name: destination, exact: true }).click();
-        await verifyReadOnly(destination);
-      }
+      await nav.getByRole("link", { name: "My Launches", exact: true }).click();
+      await verifyReadOnly("My Launches");
+      await page.getByRole("button", { name: "Connect wallet and profile", exact: true }).click();
+      await page.getByRole("navigation", { name: "Wallet and profile" }).getByRole("link", { name: /^Wallet/ }).click();
+      await verifyReadOnly("Wallet");
       const footer = page.getByRole("contentinfo");
       for (const [label, path, heading] of [
         ["Terms", "/terms", "Website Terms"],

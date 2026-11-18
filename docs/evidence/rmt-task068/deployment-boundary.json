@@ -1,0 +1,14 @@
+{
+  "site": "ebdf8492-ff86-452f-b4cc-45d7865c8311",
+  "productionDeploy": "6af86be73747ac95bd6d15ea",
+  "preview": {
+    "id": "6afd16c0224787428bbfa2c6",
+    "state": "ready",
+    "context": "deploy-preview",
+    "publishedAt": null,
+    "url": "https://6afd16c0224787428bbfa2c6--eclectic-valkyrie-16cb92.netlify.app",
+    "framework": "next"
+  },
+  "sourceCommit": "ad41452b20d11910629495d7d917791646b97149",
+  "recordedAt": "2026-11-18T03:10:03.253Z"
+}

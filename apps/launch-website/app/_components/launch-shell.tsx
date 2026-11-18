@@ -7,7 +7,7 @@ import logo from "../../public/brand/rmt-master-logo.png";
 import { AccountNav } from "./wallet-account";
 import { useAccount } from "./account-provider";
 
-const navigation = [["/", "Launches"], ["/create-token", "Create Token"], ["/my-launches", "My Launches"], ["/wallet", "Wallet"]] as const;
+const navigation = [["/", "Launches"], ["/create-token", "Create"], ["/my-launches", "My Launches"]] as const;
 
 export function LaunchShell({ children, fixture = false }: { children: ReactNode; fixture?: boolean }) {
   const path = usePathname();
@@ -22,9 +22,8 @@ export function LaunchShell({ children, fixture = false }: { children: ReactNode
       </Link>
       <nav aria-label="Launchpad navigation">
         {navigation.map(([href, label]) => {
-          const active = path === href || href === "/" && path.startsWith("/launches/")
-            || href === "/wallet" && (path.startsWith("/account/") || path.startsWith("/u/") || path.startsWith("/creator/"));
-          return <Link key={href} href={href} prefetch={false} className={active ? "isActive" : undefined} aria-current={active ? "page" : undefined}>{label}</Link>;
+          const active = path === href || href === "/" && path.startsWith("/launches/");
+          return <Link key={href} href={href} prefetch={false} className={[active ? "isActive" : "", href === "/create-token" ? "lpCreateLink" : ""].filter(Boolean).join(" ") || undefined} aria-current={active ? "page" : undefined}>{label}</Link>;
         })}
       </nav>
       <div className="lpHeaderRight">

@@ -33,6 +33,7 @@ on:
       - "scripts/visual-qa/export-rmt-owner-governance.mjs"
       - "scripts/visual-qa/test-rmt-owner-governance.mjs"
       - "scripts/visual-qa/rmt-netlify-website.mjs"
+      - "scripts/visual-qa/rmt-polish.mjs"
       - "docs/evidence/mobile-signing/**"
       - ".github/workflows/launch-website-review.yml"
 
@@ -92,6 +93,8 @@ jobs:
               RMT_WEBSITE_PREVIEW_ARTIFACTS="$RMT_WEBSITE_PREVIEW_ARTIFACTS/$engine" \
               node scripts/visual-qa/rmt-netlify-website.mjs
           done
+          RMT_POLISH_URL=http://127.0.0.1:3205/ \
+            RMT_POLISH_ARTIFACTS="$RMT_WEBSITE_PREVIEW_ARTIFACTS/polish" pnpm test:polish
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:

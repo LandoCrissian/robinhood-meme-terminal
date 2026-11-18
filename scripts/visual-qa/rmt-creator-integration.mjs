@@ -520,6 +520,7 @@ try {
     const forged = await post(prepareBody({ ...reviewFields, ...proposedSupply }));
     assert.notEqual((await forged.json()).status, "prepared", "The transaction API rejects supply overrides");
   }
+  await page.locator(".lpCreatorMetadata > summary").click();
   await page.getByLabel("Project description", { exact: true }).fill(draftOnly.description);
   await page.getByLabel("Project or metadata URL", { exact: true }).fill(project.projectURI);
   await page.getByLabel("Artwork URL", { exact: true }).fill(draftOnly.artwork);

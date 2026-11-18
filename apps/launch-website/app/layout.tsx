@@ -13,6 +13,7 @@ import { LaunchShell } from "./_components/launch-shell";
 import { configuredCurveFixture } from "../lib/server/curve-fixture";
 import { AccountProvider } from "./_components/account-provider";
 import "./profile-refinement.css";
+import "./creator-polish.css";
 
 export const metadata: Metadata = {
   title: "RMT Launch | Token Launchpad",

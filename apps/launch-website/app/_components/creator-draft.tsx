@@ -35,9 +35,8 @@ const percent = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 const fieldId = (field: LaunchDraftField) => "draft-" + field;
 
 function DraftTerms({ draft, production }: { draft?: ReviewedLaunchDraft; production?: { operating: string; reserve: string } }) {
-  return <section className="lpPanel lpForm" aria-label="Provisional launch terms">
-    <h2>{production ? "Launch terms" : "Provisional launch terms"}</h2>
-    <dl className="lpFacts">
+  const fullTerms = <>
+    <dl className="lpFacts lpCreatorTermsFacts">
       <dt>Creation fee</dt><dd>{launchTerms.creationFeeEth} ETH, plus network gas</dd>
       <dt>Illustrative value</dt><dd>About $1 at a fixed $2,500 per ETH reference</dd>
       <dt>Creation fee recipient</dt><dd>{production ? <code className="lpAddress">{production.operating}</code> : "RMT operations · production address pending approval"}</dd>
@@ -59,6 +58,29 @@ function DraftTerms({ draft, production }: { draft?: ReviewedLaunchDraft; produc
       <dt>v4 pool fee</dt><dd>{launchTerms.graduationPoolFeePercent}% · project earnings depend on fees earned by the locked position</dd>
     </dl>
     <p>At the target, the reviewed engine permits a separate graduation transaction.{production ? " Trading and claims require their own activation acceptance." : " Production terms require approval."}</p>
+  </>;
+  return <section className="lpPanel lpForm lpCreatorTerms" aria-label="Provisional launch terms">
+    <div className="lpCreatorSectionHeader">
+      <div><span className="lpEyebrow">Costs &amp; allocation</span><h2>{production ? "Launch terms" : "Provisional launch terms"}</h2></div>
+    </div>
+    {draft ? fullTerms : <>
+      <dl className="lpCreatorTermHighlights">
+        <div><dt>Creation fee</dt><dd>{launchTerms.creationFeeEth} ETH<small>Plus network gas</small></dd></div>
+        <div><dt>Fixed supply</dt><dd>{number.format(launchTokenSupply)}<small>Tokens · {launchTokenDecimals} decimals</small></dd></div>
+        <div><dt>Curve trading fee</dt><dd>{launchTerms.curveTradeFeePercent}%<small>Of gross ETH, plus gas</small></dd></div>
+        <div><dt>v4 pool fee</dt><dd>{launchTerms.graduationPoolFeePercent}%<small>After graduation</small></dd></div>
+      </dl>
+      <div className="lpCreatorTermsSummary">
+        <p><strong>{launchTerms.projectFeeSharePercent}% project</strong> · {launchTerms.operatingFeeSharePercent}% RMT operations · {launchTerms.futureReserveFeeSharePercent}% RMT future reserve</p>
+        <p>Applies to curve fees and fees earned by the original locked position. An optional treasury receives part of the project share.</p>
+        <p><strong>0 creator tokens.</strong> Creators supply no liquidity.</p>
+        <p>Graduation target: {number.format(launchTokenSupply * launchTerms.curveAllocationPercent / 100)} tokens net sold ({launchTerms.curveAllocationPercent}%) and {launchTerms.graduationBackingEth} ETH of real backing. The remaining {number.format(launchTokenSupply * launchTerms.liquidityAllocationPercent / 100)} tokens ({launchTerms.liquidityAllocationPercent}%) are available before rounding for the original v4 position, with permanently locked principal.</p>
+      </div>
+      <details className="lpCreatorDisclosure lpCreatorTermsDisclosure">
+        <summary><span>View full launch terms</span></summary>
+        <div className="lpCreatorDisclosureBody">{fullTerms}</div>
+      </details>
+    </>}
   </section>;
 }
 
@@ -196,14 +218,14 @@ export function CreatorDraft({ executionTest, productionCreation }: {
     return errors[key] && <span className="lpDraftFieldError" id={fieldId(key) + "-error"}>{errors[key]}</span>;
   }
 
-  const draftPanel = reviewed ? <section className="lpPanel lpForm lpDraft">
-      <h2 ref={reviewHeading} tabIndex={-1}>Review token draft</h2>
+  const draftPanel = reviewed ? <section className="lpPanel lpForm lpDraft lpCreatorDraft lpCreatorReviewed">
+      <div className="lpCreatorSectionHeader"><div><span className="lpEyebrow">Your draft</span><h2 ref={reviewHeading} tabIndex={-1}>Review token draft</h2></div></div>
       <div className="lpTokenHeading">
         <TokenArtwork symbol={reviewed.symbol} />
         <div className="lpTokenName"><strong>{reviewed.name}</strong><span>{reviewed.symbol}</span></div>
       </div>
       <div><span className="lpPill">{proposedCurveLifecycle.label}</span></div>
-      <dl className="lpFacts">
+      <dl className="lpFacts lpCreatorReviewFacts">
         <dt>Fixed total supply</dt><dd>{number.format(reviewed.supply)} tokens · {launchTokenDecimals} decimals</dd>
         {reviewed.description && <><dt>Project description</dt><dd className="lpDraftDescription">{reviewed.description}</dd></>}
         <dt>Project or metadata URL</dt><dd>{reviewed.projectURI || "None"}</dd>
@@ -211,16 +233,19 @@ export function CreatorDraft({ executionTest, productionCreation }: {
         <dt>Project treasury</dt><dd className={reviewed.treasury ? "lpAddress" : undefined}>{reviewed.treasury || "None"}</dd>
         <dt>Treasury share of project fees</dt><dd>{treasuryProjectPercent(reviewed.treasuryShareBps)} · {percent.format(reviewed.treasuryShareBps / 100)}% of all eligible fees</dd>
       </dl>
-      <p>The server verified the launch fields for this review. Your description and artwork URL stay in this browser.
+      <p className="lpCreatorHelp">The server verified the launch fields for this review. Your description and artwork URL stay in this browser.
         {executionTest ? " The test wallet signs only the transaction reviewed below." : " No token has been created."}</p>
       <button type="button" className="lpButton lpSecondary" onClick={() => {
         currentDraft.current = undefined;
         setReviewed(undefined);
         requestAnimationFrame(() => formHeading.current?.focus());
       }}>Edit draft</button>
-    </section> : <form className="lpPanel lpForm lpDraft" method="post" noValidate onSubmit={(event) => void review(event)}>
-      <h2 ref={formHeading} tabIndex={-1}>Token details</h2>
-      <fieldset disabled={pending || !restored}>
+    </section> : <form className="lpPanel lpForm lpDraft lpCreatorDraft" method="post" noValidate onSubmit={(event) => void review(event)}>
+      <div className="lpCreatorSectionHeader">
+        <div><span className="lpEyebrow">Your draft</span><h2 id="creator-token-details" ref={formHeading} tabIndex={-1}>Token details</h2></div>
+        <span className="lpCreatorOptional">Name &amp; ticker required</span>
+      </div>
+      <fieldset disabled={pending || !restored} aria-labelledby="creator-token-details">
         <div className="lpFormGrid">
           {controls.map(({ key, label, max, placeholder }) => <div className="lpDraftField" key={key}>
             <label htmlFor={fieldId(key)}>{label}</label>
@@ -229,32 +254,34 @@ export function CreatorDraft({ executionTest, productionCreation }: {
             {errorFor(key)}
           </div>)}
         </div>
-        <div className="lpDraftField">
+        <div className="lpDraftField lpCreatorSupply">
           <label htmlFor="draft-fixed-supply">Fixed supply</label>
           <input id="draft-fixed-supply" value={`${number.format(launchTokenSupply)} tokens`} readOnly aria-describedby="draft-fixed-supply-hint" />
           <small id="draft-fixed-supply-hint">Set by the launch contract · {launchTokenDecimals} decimals</small>
         </div>
       </fieldset>
-      <fieldset disabled={pending || !restored}>
-        <legend>Project information</legend>
-        <div className="lpDraftField">
-          <label htmlFor={fieldId("description")}>Project description</label>
-          <textarea {...inputProps("description", true)} maxLength={launchDraftLimits.description} rows={3} placeholder="What are you launching?" />
-          <small id={fieldId("description") + "-hint"}>Optional · up to 500 UTF-8 bytes · kept on this device</small>
-          {errorFor("description")}
-        </div>
-        {projectLinks.map(({ key, label, max }) => <div className="lpDraftField" key={key}>
-          <label htmlFor={fieldId(key)}>{label}</label>
-          <input {...inputProps(key, true)} type="url" maxLength={max} placeholder="https://" autoComplete="off" />
-          <small id={fieldId(key) + "-hint"}>{key === "projectURI" ? "Optional · candidate registration field" : "Optional · draft only · no upload or remote preview"}</small>
-          {errorFor(key)}
-        </div>)}
-      </fieldset>
-      <details className="lpDraftTreasury">
-        <summary>Optional project treasury</summary>
+      <details className="lpCreatorDisclosure lpCreatorMetadata">
+        <summary><span><span>Project information</span><small>Description, project URL and artwork</small></span><span className="lpCreatorOptional">Optional</span></summary>
+        <fieldset className="lpCreatorDisclosureBody" disabled={pending || !restored} aria-label="Project information">
+          <div className="lpDraftField">
+            <label htmlFor={fieldId("description")}>Project description</label>
+            <textarea {...inputProps("description", true)} maxLength={launchDraftLimits.description} rows={3} placeholder="What are you launching?" />
+            <small id={fieldId("description") + "-hint"}>Up to 500 UTF-8 bytes · kept on this device</small>
+            {errorFor("description")}
+          </div>
+          {projectLinks.map(({ key, label, max }) => <div className="lpDraftField" key={key}>
+            <label htmlFor={fieldId(key)}>{label}</label>
+            <input {...inputProps(key, true)} type="url" maxLength={max} placeholder="https://" autoComplete="off" />
+            <small id={fieldId(key) + "-hint"}>{key === "projectURI" ? "Included in the creation transaction’s registration fields" : "Kept on this device · no upload or remote preview"}</small>
+            {errorFor(key)}
+          </div>)}
+        </fieldset>
+      </details>
+      <details className="lpDraftTreasury lpCreatorDisclosure">
+        <summary><span><span>Optional project treasury</span><small>Allocate part of your project’s fee share</small></span></summary>
         <fieldset disabled={pending || !restored} aria-label="Project treasury settings">
-          <p>Choose 0–100% of the project’s 90% share. The creator receives the remaining project fees. Leave both fields empty to pay the creator directly.</p>
-          <p>Choose a wallet that can submit fee claims. The address is permanent. For a smart account, verify its claim support on the launch chain first.</p>
+          <p>Allocate 0–100% of the project’s 90% share. The creator receives the rest. Leave both fields empty to pay the creator directly.</p>
+          <p>The treasury address is permanent and must be able to claim fees. Verify smart-account claim support on the launch chain first.</p>
           {treasuryFields.map(({ key, label, max, placeholder }) => <div className="lpDraftField" key={key}>
             <label htmlFor={fieldId(key)}>{label}</label>
             <input {...inputProps(key, key === "treasuryShare")} maxLength={max} placeholder={placeholder} autoComplete="off"
@@ -265,7 +292,7 @@ export function CreatorDraft({ executionTest, productionCreation }: {
         </fieldset>
       </details>
       {message && <p className="lpNotice lpError" role="alert">{message}</p>}
-      <div className="lpDraftActions">
+      <div className="lpDraftActions lpCreatorActions">
         <button type="submit" className="lpButton" disabled={pending || !restored}>{pending ? "Reviewing draft…" : "Review draft"}</button>
         <button type="button" className="lpButton lpSecondary" disabled={pending || !restored} onClick={() => {
           setDraft(emptyLaunchDraft);
@@ -273,17 +300,17 @@ export function CreatorDraft({ executionTest, productionCreation }: {
           setMessage("");
         }}>Clear draft</button>
       </div>
-      <p>Drafts are saved in this browser. Review sends the launch fields and fee choices for validation. Your description and artwork URL stay here.</p>
+      <p className="lpCreatorHelp">Saved in this browser. Review validates your launch fields and fee choices. Your description and artwork URL stay on this device.</p>
     </form>;
-  return <div className="lpColumns">
-    {executionTest || productionCreation ? <div className="lpStack">
-      {draftPanel}
+  return <div className="lpColumns lpCreatorColumns">
+    {draftPanel}
+    <DraftTerms draft={reviewed} production={productionCreation} />
+    {(executionTest || productionCreation) && <div className="lpStack lpCreatorWallet">
       {executionTest ? <TestCreationWallet factory={executionTest.factory}
         draft={reviewed}
         isCurrentDraft={(value) => value === currentDraft.current && reviewedAccountBinding.current === liveAccountBinding.current} />
         : productionCreation && <ProductionCreationWallet factory={productionCreation.factory} draft={reviewed}
           isCurrentDraft={(value) => value === currentDraft.current && reviewedAccountBinding.current === liveAccountBinding.current} />}
-    </div> : draftPanel}
-    <DraftTerms draft={reviewed} production={productionCreation} />
+    </div>}
   </div>;
 }
