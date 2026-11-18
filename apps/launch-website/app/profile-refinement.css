@@ -71,14 +71,6 @@
 .lpCardFooter { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding-top: 11px; border-top: 1px solid var(--rmt-border); font-size: 12px; }
 .lpCardFooter a, .lpCreatorLink, .lpProfileLinks a { color: var(--rmt-accent); }
 .lpCardFooterAction { justify-content: flex-end; }
-.lpArchive { margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--rmt-border); }
-.lpArchive > summary { width: fit-content; min-height: 44px; padding-block: 12px; color: var(--rmt-text-soft); cursor: pointer; font-size: 13px; }
-.lpArchive > p { color: var(--rmt-text-soft); font-size: 12px; }
-.lpArchiveGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
-.lpArchiveRecord { min-width: 0; padding: 13px; border: 1px solid var(--rmt-border); border-radius: 7px; }
-.lpArchiveRecord h3 { margin: 0 0 7px; font-size: 13px; }
-.lpArchiveRecord p { margin: 5px 0; color: var(--rmt-text-soft); font-size: 12px; }
-.lpArchiveRecord a { color: var(--rmt-accent); }
 .lpProfileLayout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(240px, .65fr); gap: 16px; max-width: 1120px; }
 .lpProfileForm textarea { width: 100%; min-height: 96px; padding: 10px; color: var(--rmt-text); background: var(--rmt-canvas); border: 1px solid var(--rmt-border-strong); border-radius: 6px; resize: vertical; font: inherit; }
 .lpProfileLinks { display: flex; flex-wrap: wrap; gap: 12px; margin: 0; padding: 0; list-style: none; font-size: 13px; }
