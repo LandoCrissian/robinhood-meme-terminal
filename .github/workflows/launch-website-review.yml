@@ -39,6 +39,7 @@ on:
       - "scripts/visual-qa/rmt-netlify-website.mjs"
       - "scripts/visual-qa/rmt-earnings-public.mjs"
       - "scripts/claims/**"
+      - "scripts/treasury/**"
       - "scripts/visual-qa/rmt-polish.mjs"
       - "docs/evidence/mobile-signing/**"
       - ".github/workflows/launch-website-review.yml"
@@ -170,6 +171,13 @@ jobs:
             --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$(pg_config --bindir)" \
             --browser "${{ matrix.browser }}" \
             --output "$RUNNER_TEMP/rmt-claim-wallet-profiles"
+      - name: Verify optional project treasury creation, contract claims and canonical recovery
+        run: |
+          node scripts/visual-qa/rmt-creator-integration.mjs --treasury-only \
+            --anvil "$(command -v anvil)" \
+            --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$(pg_config --bindir)" \
+            --browser "${{ matrix.browser }}" \
+            --output "$RUNNER_TEMP/rmt-project-treasury"
       - name: Read local PostgreSQL diagnostics after failure
         if: failure()
         run: |
@@ -193,3 +201,8 @@ jobs:
             ${{ runner.temp }}/rmt-claim-wallet-profiles/claim-wallet-profile-manifest.json
             ${{ runner.temp }}/rmt-claim-wallet-profiles/claim-wallet-browser-evidence.json
             ${{ runner.temp }}/rmt-claim-wallet-profiles/claim-wallet-browser-failure.txt
+            ${{ runner.temp }}/rmt-project-treasury/*.png
+            ${{ runner.temp }}/rmt-project-treasury/project-treasury-acceptance.json
+            ${{ runner.temp }}/rmt-project-treasury/project-treasury-browser-evidence.json
+            ${{ runner.temp }}/rmt-project-treasury/project-treasury-compiler-manifest.json
+            ${{ runner.temp }}/rmt-project-treasury/project-treasury-deployment.json
