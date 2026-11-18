@@ -222,6 +222,10 @@ export async function testClaimProfilesBrowser({ browserEngine, site, out, rpc, 
     await layouts("claim-wallet-safe-native-review");
     hideNativeProof(true); const nativeObserved = await confirm();
     assert.equal(evidence.sends.length, 2); assert.notEqual(nativeObserved.stage, "canonical-l2"); assert.notEqual(nativeObserved.stage, "settled");
+    // Let the sole durable writer observe the mined receipt before isolating
+    // native-proof failure. A lagging checkpoint must not masquerade as the
+    // missing-trace condition this assertion is intended to exercise.
+    await mine(); await ready();
     await page.reload(); const pendingNative = await recover(nativeReview, ["receipt-observed"]);
     assert.equal(pendingNative.receiptObserved, true); assert.equal(pendingNative.activity, undefined); assert.equal(pendingNative.amounts, undefined);
     assert.equal(evidence.sends.length, 2); await capture("claim-wallet-safe-native-proof-pending");
