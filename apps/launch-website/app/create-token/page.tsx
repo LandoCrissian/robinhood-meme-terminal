@@ -21,11 +21,11 @@ export default async function CreateTokenPage() {
     } catch { /* Missing current evidence fails closed. */ }
   }
   return <>
-    <header className="lpPageHeading">
-      <div><h1>Create Token</h1><p>Prepare a token draft for the new bonding-curve engine.</p></div>
+    <header className="lpPageHeading lpCreatorPageHeading">
+      <div><span className="lpEyebrow">Token creator</span><h1>Create Token</h1><p>Set your token details, then review the launch terms.</p></div>
       <Link className="lpButton lpSecondary" href="/" prefetch={false}>Browse launches</Link>
     </header>
-    <p className="lpNotice">{accepted ? "Owner creation acceptance · Robinhood Chain 4663 · real ETH. Each transaction requires your explicit wallet confirmation."
+    <p className="lpNotice lpCreatorMode">{accepted ? "Owner creation acceptance · Robinhood Chain 4663 · real ETH. Each transaction requires your explicit wallet confirmation."
       : fixture ? "Isolated test mode · Anvil 31337 · synthetic funds only."
       : "Prelaunch · Read-only. Token creation is disabled. Drafts do not publish a listing."}</p>
     <CreatorDraft executionTest={fixture ? { factory: fixture.factory } : undefined}
