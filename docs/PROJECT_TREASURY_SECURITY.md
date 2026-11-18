@@ -33,6 +33,14 @@ and no guard. Its own Safe transaction requires its normal approvals. The
 delegated EOA profile admits only the already reviewed MetaMask designator and
 delegate runtime. A wallet address is not a private key or proof of backup.
 
+These checks admit a controller at initialization or rotation; they do not make
+an external wallet's own signer set, threshold, modules or delegation immutable.
+Those remain subject to that wallet's authority. The transaction-preparation
+profile must recheck its supported current configuration. An indexed economic
+receipt proves the actual treasury payment, not an independent assertion that a
+Safe still has a particular approval policy. No wallet-policy change grants RMT
+control of project funds or changes the core ledger's beneficiary address.
+
 Initial controller validation occurs through a one-use initializer invoked by
 the immutable deployment factory **inside the same CREATE2 transaction**. Every
 controller action requires that initialization. A failed initializer rolls back
