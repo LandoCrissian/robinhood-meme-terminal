@@ -210,6 +210,7 @@ try {
       await main.getByText("Read-only. The optional project treasury module is not deployed or activated for production.", { exact: true }).waitFor();
       const treasuryInput = main.getByLabel("Project treasury address", { exact: true }), treasurySubmit = main.getByRole("button", { name: "View treasury", exact: true });
       const treasuryForm = main.getByRole("form", { name: "Find project treasury", exact: true });
+      await main.locator('form[aria-label="Find project treasury"][data-treasury-ready="true"]').waitFor();
       assert.equal(await treasuryForm.getAttribute("data-treasury-ready"), "true");
       await treasuryInput.fill("invalid"); await treasurySubmit.click();
       await main.getByRole("status").filter({ hasText: "Enter the complete project treasury contract address." }).waitFor();
