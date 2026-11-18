@@ -6,7 +6,7 @@ import { claimCalldataMatches, encodeEarningsClaim, isEarningsClaimOperation, is
 import { isTransactionHash } from "../test-creation";
 import { configuredCurveFixture, fixtureAddress, type CurveFixture } from "./curve-fixture";
 import { earningsAbi, lpEarningsAbi, earningsUnavailable, fixtureEarningsContext, readEarningsContracts, readFactoryCreationFees, verifyEarningsContext,
-  type EarningsPoint, type EarningsReadContext, type EarningsRegistration, type EarningsRpc } from "./earnings-contracts";
+  productionEarningsContext, type EarningsPoint, type EarningsReadContext, type EarningsRegistration, type EarningsRpc } from "./earnings-contracts";
 import { readDraftBody } from "./launch-draft";
 
 const headers = { "Cache-Control": "private, no-store", "Netlify-CDN-Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow" };
@@ -22,7 +22,8 @@ const asPoint = (b: { number: bigint; hash: Hex | null; timestamp: bigint }): Ea
 
 // No environment value or caller-supplied approval can activate 4663 here.
 // Production release, scanner disposition and physical-wallet acceptance are
-// separate owner approvals. This task ships preparation/recovery for 31337 only.
+// separate owner approvals. HTTP preparation/recovery and the wallet sender are
+// 31337-only. The unsigned 4663 review below is an internal, non-executable artifact.
 export const productionEarningsExecutionEnabled = false;
 export function earningsClaimReadiness() {
   return { status: "blocked", chainId: 4663, executionEnabled: productionEarningsExecutionEnabled,
@@ -88,13 +89,49 @@ async function readFixtureClaimIndexed(fixture: CurveFixture, context: EarningsR
   } catch { return false; }
 }
 
-export async function prepareEarningsClaim(input: {
+type EarningsPreparationInput = {
   context: EarningsReadContext; registration?: EarningsRegistration; beneficiary: Address; account: Address;
   operation: EarningsClaimOperation; prior?: EarningsClaimRequest;
-}): Promise<EarningsPreparedClaim | { status: "invalid" | "unavailable"; reason?: string }> {
+};
+type EarningsPreparationResult = EarningsPreparedClaim | { status: "invalid" | "unavailable"; reason?: string };
+
+/** Local execution-test entry point. No environment flag enables 4663 here. */
+export async function prepareEarningsClaim(input: EarningsPreparationInput): Promise<EarningsPreparationResult> {
+  if (input.context.chainId !== 31337) return { status: "unavailable", reason: "production-disabled" };
+  return prepareEarningsClaimCore(input, 31337);
+}
+
+function exactProductionContext(context: EarningsReadContext) {
+  const expected = productionEarningsContext(context.rpc, context.checkpoint);
+  const pairs: Array<[string, string]> = [[context.factory, expected.factory], [context.factoryRuntimeHash, expected.factoryRuntimeHash],
+    [context.registry, expected.registry], [context.registryRuntimeHash, expected.registryRuntimeHash], [context.deploymentBlockHash, expected.deploymentBlockHash],
+    [context.graduation.address, expected.graduation.address], [context.graduation.runtimeHash, expected.graduation.runtimeHash],
+    [context.graduation.guard, expected.graduation.guard], [context.graduation.guardRuntimeHash, expected.graduation.guardRuntimeHash],
+    [context.poolManager.address, expected.poolManager.address], [context.poolManager.runtimeHash, expected.poolManager.runtimeHash],
+    [context.positionManager.address, expected.positionManager.address], [context.positionManager.runtimeHash, expected.positionManager.runtimeHash]];
+  return context.chainId === 4663 && !context.historicalReceipt && context.deploymentBlock === expected.deploymentBlock
+    && pairs.every(([value, pin]) => typeof value === "string" && same(value, pin));
+}
+
+/** Server-internal review only. Never routed over HTTP or accepted by the wallet
+ * sender. Uses the exact deployed 4663 manifest; no caller-supplied runtime pin,
+ * execution approval, release flag or alternate deployment can broaden it. */
+export async function prepareUnsignedProductionEarningsReview(input: EarningsPreparationInput) {
+  try {
+    if (!exactProductionContext(input.context)) return { status: "unavailable", reason: "production-manifest-mismatch", executionEnabled: false } as const;
+    const result = await prepareEarningsClaimCore(input, 4663);
+    if (result.status !== "prepared") return { ...result, executionEnabled: false } as const;
+    return { status: "review-only", executionEnabled: false, request: result.request, quote: result.quote,
+      holds: earningsClaimReadiness().holds,
+      feeEstimate: { scope: "execution-gas-estimate-only", l1DataFee: "unverified", totalNetworkCost: "unverified" },
+      notice: "Unsigned internal review only. Production signing, broadcast and settlement recovery remain unavailable." } as const;
+  } catch { return { status: "unavailable", executionEnabled: false } as const; }
+}
+
+async function prepareEarningsClaimCore(input: EarningsPreparationInput, expectedChain: 31337 | 4663): Promise<EarningsPreparationResult> {
   try {
     const { context, operation, account } = input;
-    if (context.chainId !== 31337) return { status: "unavailable", reason: "production-disabled" };
+    if (context.chainId !== expectedChain) return { status: "unavailable" };
     const head = await verifyEarningsContext(context);
     const [confirmedNonce, pendingNonce, accountCode, gasPrice, balance] = await Promise.all([
       context.rpc.getTransactionCount({ address: account, blockNumber: head.number }), context.rpc.getTransactionCount({ address: account, blockTag: "pending" }),
@@ -144,7 +181,7 @@ export async function prepareEarningsClaim(input: {
     const deadline = operation === "lp-collect" ? (review.timestamp + 180n).toString() : null;
     const data = await encodeEarningsClaim(operation, token, deadline);
     const request: EarningsClaimRequest = {
-      schemaVersion: 1, operation, chainId: "0x7a69", from: account, to, data, value: "0x0", nonce: toHex(pendingNonce), factory: context.factory,
+      schemaVersion: 1, operation, chainId: expectedChain === 31337 ? "0x7a69" : "0x1237", from: account, to, data, value: "0x0", nonce: toHex(pendingNonce), factory: context.factory,
       token, originCurve: origin, ledger, beneficiary, discoveryRecipient: operation === "creation-fees" ? beneficiary : input.beneficiary,
       factoryRuntimeHash: context.factoryRuntimeHash, targetRuntimeHash, deploymentBlockNumber: toHex(context.deploymentBlock), deploymentBlockHash: context.deploymentBlockHash,
       reviewBlockNumber: toHex(review.number), reviewBlockHash: review.hash!, reviewTimestamp: Number(review.timestamp), reviewExpiresAt: Number(review.timestamp) + 180,
