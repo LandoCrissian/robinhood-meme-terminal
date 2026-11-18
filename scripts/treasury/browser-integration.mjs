@@ -197,7 +197,10 @@ export async function createTreasuryProjectsFromForm({ browserEngine, site, out,
     await page.evaluate(() => window.treasuryFixtureWallet.decision("lose"));
     const pending = await response(api, "verify", () => button("Confirm synthetic treasury transaction").click());
     assert.ok(["pending", "unavailable"].includes(pending.status), json(pending)); assert.equal(evidence.sends.length, before + 1);
-    await page.reload(); await button("Connect synthetic treasury creator").click();
+    await page.reload();
+    const restoredTreasurySettings = page.locator("details.lpDraftTreasury");
+    if (!await restoredTreasurySettings.evaluate(el => el.open)) await restoredTreasurySettings.locator("summary").click();
+    await button("Connect synthetic treasury creator").click();
     hideReceipt(undefined); await mine(); await ready();
     const recovered = await response(api, "verify", () => button("Recover treasury receipt").click());
     assert.equal(recovered.status, "confirmed", json(recovered)); assert.equal(recovered.indexed, true);
