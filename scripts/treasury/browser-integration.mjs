@@ -84,10 +84,14 @@ export async function createTreasuryProjectsFromForm({ browserEngine, site, out,
       assert.ok(fields.every(field => field.height >= 44 && (width > 900 || field.fontSize >= 16)), json(fields));
       const readOnlyDisplays = await page.locator("main input[readonly]:visible").evaluateAll(items => items.map(el => ({ id: el.id,
         value: el.value, readOnly: el.readOnly, height: el.getBoundingClientRect().height, fontSize: parseFloat(getComputedStyle(el).fontSize) })));
+      const media = await page.evaluate(() => ({ coarse: matchMedia("(pointer: coarse)").matches,
+        width: innerWidth, height: innerHeight, mobile: matchMedia("(max-width:730px)").matches }));
+      evidence.layouts.push({ name, label, width, height, fields, readOnlyDisplays, media }); save();
       // The approved compact fixed-supply display is not an interactive touch
       // target. Keep its exact value/read-only and readable phone text checks.
-      assert.ok(readOnlyDisplays.every(field => field.readOnly && field.value === "1,000,000,000 tokens" && (width > 900 || field.fontSize >= 16)));
-      evidence.layouts.push({ name, label, width, height, fields, readOnlyDisplays }); await capture(name + "-" + label);
+      assert.ok(readOnlyDisplays.every(field => field.readOnly && field.value === "1,000,000,000 tokens" && (width > 900 || field.fontSize >= 16)),
+        json({ readOnlyDisplays, media }));
+      await capture(name + "-" + label);
     }
     await page.setViewportSize({ width: 390, height: 844 });
   }
