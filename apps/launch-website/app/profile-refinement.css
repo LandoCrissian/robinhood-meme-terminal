@@ -70,7 +70,7 @@
 .lpCardMetrics dd { margin: 4px 0 0; color: var(--rmt-text); font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
 .lpCardFooter { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding-top: 11px; border-top: 1px solid var(--rmt-border); font-size: 12px; }
 .lpCardFooter a, .lpCreatorLink, .lpProfileLinks a { color: var(--rmt-accent); }
-.lpCardFooterAction { justify-content: flex-end; }
+.lpCardFooter time { color: var(--rmt-text-soft); }
 .lpProfileLayout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(240px, .65fr); gap: 16px; max-width: 1120px; }
 .lpProfileForm textarea { width: 100%; min-height: 96px; padding: 10px; color: var(--rmt-text); background: var(--rmt-canvas); border: 1px solid var(--rmt-border-strong); border-radius: 6px; resize: vertical; font: inherit; }
 .lpProfileLinks { display: flex; flex-wrap: wrap; gap: 12px; margin: 0; padding: 0; list-style: none; font-size: 13px; }
