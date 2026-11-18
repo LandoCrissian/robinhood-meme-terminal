@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useId, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useAccount } from "./account-provider";
 
 export const shortWallet = (address: string) => address.slice(0, 6) + "…" + address.slice(-4);
@@ -15,12 +17,48 @@ export function ProfileAvatar({ name, url, size = 38 }: { name: string; url?: st
 export function AccountNav() {
   const { session, wallet, checking } = useAccount();
   const profile = session.authenticated ? session.account.profile : undefined;
-  return <Link className="lpAccountNav" href="/wallet" prefetch={false} aria-label={session.authenticated ? "Open your wallet account" : "Open wallet connection"}>
-    {profile ? <ProfileAvatar name={profile.displayName || profile.username || "R"} url={profile.avatarUrl} size={28} />
-      : <span className="lpAccountIcon" aria-hidden="true">◈</span>}
-    <span>{checking ? "Wallet" : profile?.username ? "@" + profile.username : session.authenticated ? shortWallet(session.account.walletAddress)
-      : wallet ? shortWallet(wallet.address) : "Connect wallet"}</span>
-  </Link>;
+  const [open, setOpen] = useState(false);
+  const container = useRef<HTMLDivElement>(null), trigger = useRef<HTMLButtonElement>(null);
+  const firstLink = useRef<HTMLAnchorElement>(null);
+  const menuId = useId(), path = usePathname();
+  useEffect(() => { setOpen(false); }, [path]);
+  useEffect(() => {
+    if (!open) return;
+    const outside = (event: Event) => {
+      if (event.target instanceof Node && !container.current?.contains(event.target)) setOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") { event.preventDefault(); setOpen(false); trigger.current?.focus(); }
+    };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("focusin", outside);
+    document.addEventListener("keydown", escape);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("focusin", outside);
+      document.removeEventListener("keydown", escape);
+    };
+  }, [open]);
+  return <div className="lpAccountMenu" ref={container}>
+    <button type="button" className="lpAccountNav" ref={trigger} aria-controls={menuId} aria-expanded={open}
+      aria-label={session.authenticated || wallet ? "Open wallet and profile" : "Connect wallet and profile"}
+      onClick={() => setOpen((current) => !current)} onKeyDown={(event) => {
+        if (event.key === "ArrowDown") { event.preventDefault(); setOpen(true); requestAnimationFrame(() => firstLink.current?.focus()); }
+      }}>
+      {profile ? <ProfileAvatar name={profile.displayName || profile.username || "R"} url={profile.avatarUrl} size={28} />
+        : <span className="lpAccountIcon" aria-hidden="true">◈</span>}
+      <span className="lpAccountLabel">{checking ? "Wallet" : profile?.username ? "@" + profile.username : session.authenticated ? shortWallet(session.account.walletAddress)
+        : wallet ? shortWallet(wallet.address) : "Connect wallet"}</span><span className="lpAccountChevron" aria-hidden="true">⌄</span>
+    </button>
+    {open && <div id={menuId} className="lpAccountDropdown">
+      <p>{session.authenticated ? "Signed in" : wallet ? "Connected · not signed in" : "Your wallet & profile"}</p>
+      <nav aria-label="Wallet and profile">
+        <Link ref={firstLink} href="/wallet" aria-label="Wallet" prefetch={false} onClick={() => setOpen(false)}>Wallet<span>Connection & sign-in</span></Link>
+        <Link href="/account/profile" aria-label="Profile" prefetch={false} onClick={() => setOpen(false)}>Profile<span>{profile ? "Edit your profile" : "Sign in to manage your profile"}</span></Link>
+        {profile?.username && <Link href={`/u/${profile.username}`} aria-label="Public profile" prefetch={false} onClick={() => setOpen(false)}>Public profile<span>@{profile.username}</span></Link>}
+      </nav>
+    </div>}
+  </div>;
 }
 
 export function WalletAccount({ compact = false }: { compact?: boolean }) {

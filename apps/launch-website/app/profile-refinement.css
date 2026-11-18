@@ -1,8 +1,23 @@
 .lpBrandWord { color: var(--rmt-text-soft); font-weight: 500; }
-.lpAccountNav { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; max-width: 210px; padding: 5px 10px; border: 1px solid var(--rmt-border-strong); border-radius: 7px; color: var(--rmt-text); text-decoration: none; font-size: 12px; font-weight: 650; }
-.lpAccountNav:hover { border-color: var(--rmt-accent); }
-.lpAccountNav > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.launchpad .lpHeader > nav { align-items: center; gap: 4px; }
+.launchpad .lpHeader > nav a { min-height: 44px; }
+.launchpad .lpHeader > nav a.lpCreateLink { align-self: center; min-height: 36px; padding: 0 17px; margin: 0 5px; border: 1px solid transparent; border-radius: 6px; color: #07130b; background: #31e45d; font-weight: 750; }
+.launchpad .lpHeader > nav a.lpCreateLink:hover { background: #79ee88; }
+.launchpad .lpHeader > nav a.lpCreateLink::after { display: none; }
+.launchpad .lpHeader > nav a.lpCreateLink[aria-current="page"] { border-color: var(--rmt-text); }
+.lpAccountMenu { position: relative; min-width: 0; }
+.launchpad .lpAccountNav { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; max-width: 210px; padding: 5px 10px; border: 1px solid var(--rmt-border-strong); border-radius: 7px; color: var(--rmt-text); background: var(--rmt-surface); cursor: pointer; font-size: 12px; font-weight: 650; }
+.lpAccountNav:hover, .lpAccountNav[aria-expanded="true"] { border-color: var(--rmt-accent); }
+.lpAccountLabel { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lpAccountChevron { color: var(--rmt-text-soft); font-size: 15px; }
 .lpAccountIcon { color: var(--rmt-accent); font-size: 21px; }
+.lpAccountDropdown { position: absolute; z-index: 60; top: calc(100% + 9px); right: 0; width: 260px; max-width: calc(100vw - 24px); padding: 6px; border: 1px solid var(--rmt-border-strong); border-radius: 8px; background: var(--rmt-surface); box-shadow: 0 14px 40px #0006; }
+.lpAccountDropdown > p { margin: 0; padding: 9px 10px; border-bottom: 1px solid var(--rmt-border); color: var(--rmt-text-soft); font-size: 11px; }
+.launchpad .lpHeader .lpAccountDropdown nav { display: grid; grid-template-columns: minmax(0, 1fr); grid-column: auto; grid-row: auto; min-height: 0; gap: 2px; padding-top: 5px; border: 0; }
+.launchpad .lpHeader .lpAccountDropdown nav a { display: grid; justify-items: start; align-content: center; gap: 2px; min-height: 58px; padding: 9px 10px; border-radius: 5px; color: var(--rmt-text); font-size: 13px; white-space: normal; }
+.launchpad .lpHeader .lpAccountDropdown nav a::after { display: none; }
+.launchpad .lpHeader .lpAccountDropdown nav a:hover { background: var(--rmt-canvas); }
+.lpAccountDropdown nav a span { color: var(--rmt-text-soft); font-size: 11px; }
 .lpEyebrow { display: block; margin-bottom: 5px; color: var(--rmt-accent); font-size: 11px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
 .lpInlineNotice { padding: 10px 12px; border: 1px solid var(--rmt-border); border-radius: 6px; font-size: 12px; line-height: 1.5; background: var(--rmt-canvas); }
 .lpProfileIdentity { display: flex; gap: 10px; align-items: center; min-width: 0; }
@@ -20,29 +35,38 @@
 .lpSectionHeading { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin: 24px 0 14px; }
 .lpSectionHeading h2 { margin: 0 0 4px; font-size: 18px; }
 .lpSectionHeading p { margin: 0; color: var(--rmt-text-soft); font-size: 13px; }
-.lpOverview { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 18px; margin-bottom: 22px; }
-.lpOverviewCopy { padding: 20px; border: 1px solid var(--rmt-border); border-radius: 8px; background: var(--rmt-surface); }
-.lpOverviewCopy h1 { max-width: 580px; margin: 0 0 9px; font-size: clamp(26px, 3.2vw, 38px); line-height: 1.12; letter-spacing: -.025em; }
-.lpOverviewCopy > p { max-width: 570px; margin: 0; color: var(--rmt-text-soft); font-size: 14px; line-height: 1.6; }
-.lpOverviewCopy .lpDraftActions { margin-top: 18px; }
-.lpLaunchSteps { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0; margin: 0; list-style: none; }
-.lpLaunchSteps li { min-width: 0; padding: 15px; border: 1px solid var(--rmt-border); border-radius: 8px; background: var(--rmt-surface); }
-.lpLaunchSteps span { display: block; margin-bottom: 10px; color: var(--rmt-accent); font-size: 11px; }
-.lpLaunchSteps strong { display: block; font-size: 13px; }
-.lpLaunchSteps p { margin: 5px 0 0; color: var(--rmt-text-soft); font-size: 12px; line-height: 1.45; }
+.lpDiscoveryHeading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; margin: 0 0 20px; }
+.lpDiscoveryHeading h1 { margin: 0; font-size: 26px; line-height: 1.2; letter-spacing: -.025em; }
+.lpDiscoveryChain { color: var(--rmt-text-soft); font-size: 12px; }
+.lpFeedStatus { margin: -7px 0 16px; color: var(--rmt-text-soft); font-size: 12px; }
+.lpFeedStatus > summary { width: fit-content; min-height: 30px; cursor: pointer; }
+.lpFeedStatus > p { max-width: 90ch; margin: 6px 0 0; line-height: 1.6; }
 .lpDiscoveryToolbar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin: 0 0 14px; }
-.lpDiscoveryToolbar .lpSearch { display: grid; align-items: center; flex: 1 1 260px; min-width: 0; margin: 0; border: 1px solid var(--rmt-border-strong); border-radius: 7px; background: var(--rmt-canvas); }
-.lpDiscoveryToolbar .lpSearch input { width: 100%; min-width: 0; height: 42px; padding: 8px 10px 8px 0; border: 0; color: var(--rmt-text); background: transparent; font: inherit; font-size: 13px; outline-offset: 2px; }
+.lpDiscoveryToolbar .lpSearch { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; align-items: center; flex: 1 1 260px; min-width: 0; margin: 0; border: 1px solid var(--rmt-border-strong); border-radius: 7px; background: var(--rmt-canvas); }
+.lpDiscoveryToolbar .lpSearch:focus-within { border-color: var(--rmt-accent); outline: 2px solid var(--rmt-accent); outline-offset: 2px; }
+.lpSearch > span { color: var(--rmt-text-soft); }
+.launchpad .lpDiscoveryToolbar .lpSearch input, .launchpad .lpDiscoveryToolbar .lpSearch input:focus-visible { width: 100%; min-width: 0; height: 42px; padding: 8px 10px 8px 0; border: 0; border-radius: 0; color: var(--rmt-text); background: transparent; font: inherit; font-size: 13px; outline: 0; box-shadow: none; }
+.lpSearch input::-webkit-search-cancel-button { -webkit-appearance: none; }
+.lpSearchClear { display: grid; place-items: center; width: 42px; min-height: 42px; padding: 0; border: 0; border-radius: 5px; color: var(--rmt-text-soft); background: transparent; font-size: 23px !important; cursor: pointer; }
+.lpSearchClear:hover { color: var(--rmt-text); }
 .lpDiscoveryCount { color: var(--rmt-text-soft); font-size: 12px; }
+.lpEmpty.lpForm { min-height: 210px; align-content: center; gap: 12px; padding: 26px 20px; }
+.lpEmpty.lpForm p { max-width: 60ch; font-size: 13px; line-height: 1.6; }
 .lpCardGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-.lpLaunchCard { display: grid; min-width: 0; gap: 13px; padding: 16px; border: 1px solid var(--rmt-border); border-radius: 8px; background: var(--rmt-surface); }
+.lpLaunchCard { display: grid; align-content: start; min-width: 0; gap: 16px; padding: 18px; border: 1px solid var(--rmt-border); border-radius: 8px; background: var(--rmt-surface); }
 .lpLaunchCard:hover { border-color: var(--rmt-border-strong); }
-.lpLaunchCard h3 { margin: 0; font-size: 15px; }
+.lpLaunchCard h3 { margin: 0; font-size: 16px; line-height: 1.35; overflow-wrap: anywhere; }
 .lpLaunchCard h3 a { color: var(--rmt-text); text-decoration: none; }
-.lpLaunchCard .lpTokenHeading { gap: 9px; }
-.lpLaunchCard .lpTokenHeading .lpArtwork { width: 38px; height: 38px; flex-basis: 38px; }
+.lpLaunchCard .lpTokenHeading { gap: 11px; }
+.lpLaunchCard .lpTokenHeading > div { min-width: 0; }
+.lpLaunchCard .lpTokenHeading .lpArtwork { width: 46px; height: 46px; flex-basis: 46px; font-size: 15px; }
 .lpCardSymbol { display: block; margin-top: 3px; color: var(--rmt-text-soft); font-size: 12px; }
-.lpLaunchCard .lpFacts { font-size: 12px; }
+.lpLaunchCard .lpLifecycle { width: fit-content; color: var(--rmt-text-soft); }
+.lpLaunchCard .lpLifecycle[data-stage="active"], .lpLaunchCard .lpLifecycle[data-stage="graduating"], .lpLaunchCard .lpLifecycle[data-stage="graduated"] { color: var(--rmt-accent); }
+.lpCardMetrics { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px 12px; margin: 0; }
+.lpCardMetrics > div { min-width: 0; }
+.lpCardMetrics dt { color: var(--rmt-text-soft); font-size: 11px; }
+.lpCardMetrics dd { margin: 4px 0 0; color: var(--rmt-text); font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
 .lpCardFooter { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding-top: 11px; border-top: 1px solid var(--rmt-border); font-size: 12px; }
 .lpCardFooter a, .lpCreatorLink, .lpProfileLinks a { color: var(--rmt-accent); }
 .lpArchive { margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--rmt-border); }
@@ -73,20 +97,21 @@
   .lpBrandWord { font-size: 13px; }
   .lpHeaderRight { gap: 6px; }
   .lpHeaderRight .lpNetwork { display: inline-flex; font-size: 10px; }
-  .lpAccountNav { max-width: 110px; min-height: 38px; font-size: 11px; }
-  .lpOverview { grid-template-columns: 1fr; gap: 12px; }
-  .lpOverviewCopy { padding: 16px; }
-  .lpOverviewCopy h1 { font-size: 28px; }
-  .lpLaunchSteps { gap: 8px; }
-  .lpLaunchSteps li { padding: 11px 12px; }
-  .lpLaunchSteps li span { margin-bottom: 6px; }
-  .lpLaunchSteps p { display: none; }
-  .lpOverviewCopy > p { font-size: 13px; line-height: 1.45; }
-  .lpOverviewCopy .lpDraftActions { margin-top: 13px; }
-  .lpDiscoveryToolbar .lpSearch input { font-size: 16px; }
+  .launchpad .lpHeader > nav { grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 5px 0; }
+  .launchpad .lpHeader > nav a { min-height: 38px; }
+  .launchpad .lpHeader > nav a.lpCreateLink { min-height: 36px; margin: 0 8px; }
+  .launchpad .lpAccountNav { max-width: 162px; min-height: 44px; gap: 6px; font-size: 11px; }
+  .lpAccountIcon { font-size: 18px; }
+  .lpDiscoveryHeading { margin-bottom: 16px; }
+  .lpDiscoveryHeading h1 { font-size: 24px; }
+  .lpDiscoveryChain { font-size: 11px; }
+  .lpDiscoveryToolbar { gap: 10px; }
+  .lpDiscoveryToolbar .lpSearch { flex-basis: 100%; max-width: none; }
+  .launchpad .lpDiscoveryToolbar .lpSearch input, .launchpad .lpDiscoveryToolbar .lpSearch input:focus-visible { font-size: 16px; }
+  .lpLaunchCard { padding: 16px; }
   .lpCardGrid, .lpArchiveGrid, .lpProfileLayout { grid-template-columns: minmax(0, 1fr); }
   .lpProfileForm textarea { font-size: 16px; }
   .lpProfileLinkRow { grid-template-columns: minmax(0, 1fr) auto; }
   .lpProfileLinkRow > label:first-child { grid-column: 1 / -1; }
 }
-@media (max-width: 380px) { .lpBrandWord { display: none; } }
+@media (max-width: 380px) { .lpBrandWord { display: none; } .launchpad .lpAccountNav { max-width: 132px; } .lpHeaderRight .lpNetwork { gap: 5px; } }
