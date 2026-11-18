@@ -1,13 +1,11 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import test from "node:test";
-import { gunzipSync } from "node:zlib";
-import { decodeFunctionData, encodeFunctionData, encodeFunctionResult, hashTypedData, keccak256, parseAbi, zeroAddress, type Address, type Hex } from "viem";
+import { decodeFunctionData, encodeFunctionData, encodeFunctionResult, keccak256, parseAbi, zeroAddress, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { claimExecutionIdentity, claimExecutionReviewHash, claimProfileDigest, isClaimExecutionReview, type ClaimExecutionReview } from "../claim-profiles";
-import { claimContextIsAllowed, claimDelegatePin, claimSafePins, claimSafeTypedData, prepareClaimExecutionReview,
+import { claimContextIsAllowed, claimDelegatePin, prepareClaimExecutionReview,
   prepareCorroboratedClaimExecutionReview, revalidateClaimExecutionReview, verifyClaimExecutionProfileAt, type ClaimPreparationInput } from "./claim-profiles";
-import { ea, eh, earningsTestFixture, fixtureCode } from "./earnings-test-fixture";
+import { ea, eh } from "./earnings-test-fixture";
 import { productionEarningsContext, type EarningsRpc } from "./earnings-contracts";
 import { curveProductionDeployment, curveProductionPins } from "./curve-production";
 import { fixture, owners, delegateArchive, productionArchive } from "./claim-profile-test-fixture";
