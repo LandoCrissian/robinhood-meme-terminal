@@ -409,6 +409,8 @@ try {
     browser = await ({ chromium, webkit })[args.browser].launch();
     await testProjectTreasuryJourney({ browserEngine: browser, rpcUrl, rpc, artifacts, deployed, anchor,
       treasuryCompilation, treasuryDeployment, creatorAccount: creator, operatorAccount: deploymentOperator,
+      sourceIdentity: { commit: candidateCommit, browser: args.browser, coreCompiler: manifest,
+        anchor: { block: anchor.block, blockHash: anchor.blockHash }, mode: "isolated-31337-project-treasury" },
       site, workerOrigin, indexReadKey, out, pg, waitFor,
       mine: () => rpc("anvil_mine", ["0x3"]), ready: () => workerReady(worker), restart: async () => {
         await stop(web); await stop(worker);

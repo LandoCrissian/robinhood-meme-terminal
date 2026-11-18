@@ -27,7 +27,7 @@ const positionAbi = parseAbi(["function ownerOf(uint256) view returns(address)",
  * as the creator/claims acceptance. No production account or key can submit. */
 export async function testProjectTreasuryJourney({ browserEngine, rpcUrl, rpc, artifacts, deployed, anchor, treasuryCompilation,
   treasuryDeployment, creatorAccount, operatorAccount, site, workerOrigin, indexReadKey, out, pg, waitFor, mine, ready, restart,
-  hideReceipt, hideNativeProof }) {
+  hideReceipt, hideNativeProof, sourceIdentity }) {
   const client = await localFixtureClient(rpcUrl, 31337);
   assert.equal(await client.getChainId(), 31337); assert.equal(new URL(site).hostname, "127.0.0.1");
   const creator = creatorAccount, relayer = privateKeyToAccount(generatePrivateKey());
@@ -36,6 +36,11 @@ export async function testProjectTreasuryJourney({ browserEngine, rpcUrl, rpc, a
   const evidence = { schemaVersion: 1, profile: "rmt-project-treasury-acceptance-v1", chainId: 31337,
     scope: "LOCAL_SYNTHETIC_NOT_PRODUCTION_OR_PHYSICAL_IPHONE", productionExecution: false, status: "incomplete",
     receipts: [], safeExecutions: [], checks: {}, purchaseTransactions: 0 };
+  evidence.sourceIdentity = sourceIdentity;
+  evidence.moduleCompiler = treasuryCompilation.manifest;
+  evidence.moduleDeployment = { treasuryFactory: treasuryDeployment.treasuryFactory, factoryRuntimeHash: treasuryDeployment.factoryRuntimeHash,
+    compilerInputSha256: treasuryDeployment.compilerInputSha256, treasuryCreationCodeHash: treasuryDeployment.treasuryCreationCodeHash,
+    deployment: treasuryDeployment.deployment };
   const save = () => writeFileSync(join(out, "project-treasury-acceptance.json"), json(evidence));
   const deadline = async seconds => (await client.getBlock()).timestamp + BigInt(seconds ?? 300);
   async function send(from, request, expected = "success") {

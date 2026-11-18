@@ -199,7 +199,7 @@ export async function createTreasuryProjectsFromForm({ browserEngine, site, out,
     assert.ok(["pending", "unavailable"].includes(pending.status), json(pending)); assert.equal(evidence.sends.length, before + 1);
     await page.reload();
     const restoredTreasurySettings = page.locator("details.lpDraftTreasury");
-    if (!await restoredTreasurySettings.evaluate(el => el.open)) await restoredTreasurySettings.locator("summary").click();
+    if (!await restoredTreasurySettings.evaluate(el => el.open)) await restoredTreasurySettings.locator(":scope > summary").click();
     await button("Connect synthetic treasury creator").click();
     hideReceipt(undefined); await mine(); await ready();
     const recovered = await response(api, "verify", () => button("Recover treasury receipt").click());
