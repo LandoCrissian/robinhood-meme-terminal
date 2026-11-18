@@ -54,6 +54,7 @@ interface EarningsSafeFactory {
 
 contract EarningsTestAsset is ERC20 {
     bool public failTransfer;
+    bool public malformedReturn;
     address public reentryLedger;
     bytes4 public reentryResult;
 
@@ -68,6 +69,10 @@ contract EarningsTestAsset is ERC20 {
         reentryLedger = ledger;
     }
 
+    function configureMalformedReturn(bool malformed) external {
+        malformedReturn = malformed;
+    }
+
     function transfer(address to, uint256 amount) public override returns (bool) {
         if (failTransfer) return false;
         if (reentryLedger != address(0)) {
@@ -75,7 +80,16 @@ contract EarningsTestAsset is ERC20 {
             require(!success, "unexpected nested claim");
             reentryResult = bytes4(reason);
         }
-        return super.transfer(to, amount);
+        bool sent = super.transfer(to, amount);
+        if (malformedReturn) {
+            // Exercise rollback after the token has already moved its balance.
+            // A nonempty short return is neither a valid ABI bool nor a no-return token.
+            assembly ("memory-safe") {
+                mstore(0, 1)
+                return(0, 31)
+            }
+        }
+        return sent;
     }
 }
 
@@ -258,6 +272,38 @@ contract RMTLaunchCreatorEarningsTest is Test {
         (n, t) = _lpPaid(ledger, CREATOR);
         assertEq(n, 90);
         assertEq(t, 90);
+    }
+
+    function testMalformedTokenReturnRollsBackMovedBalanceAndKeepsBothCredits() external {
+        LpLedger ledger = _lp(CREATOR, address(0), 0, OPERATIONS);
+        _record(ledger, 100, 100);
+        asset.configureMalformedReturn(true);
+        uint256 creatorBalance = CREATOR.balance;
+        // The test token moves its balance before returning 31 bytes. ABI
+        // decoding must still revert the entire claim, including that move.
+        vm.expectRevert();
+        vm.prank(CREATOR);
+        ledger.claim();
+        (uint256 nativeCredit, uint256 tokenCredit) = ledger.claimable(CREATOR);
+        assertEq(nativeCredit, 90);
+        assertEq(tokenCredit, 90);
+        (uint256 claimedNative, uint256 claimedToken) = ledger.totalClaimed();
+        assertEq(claimedNative, 0);
+        assertEq(claimedToken, 0);
+        assertEq(CREATOR.balance, creatorBalance);
+        assertEq(address(ledger).balance, 100);
+        assertEq(asset.balanceOf(CREATOR), 0);
+        assertEq(asset.balanceOf(address(ledger)), 100);
+        // One currency remains independently recoverable while token behavior
+        // is unavailable; the same token credit can be claimed after recovery.
+        vm.prank(CREATOR);
+        ledger.claimAsset(true);
+        asset.configureMalformedReturn(false);
+        vm.prank(CREATOR);
+        ledger.claimAsset(false);
+        (claimedNative, claimedToken) = _lpPaid(ledger, CREATOR);
+        assertEq(claimedNative, 90);
+        assertEq(claimedToken, 90);
     }
 
     function testRejectedNativeRollsBackTokenThenTokenOnlyAndRetryRemainPossible() external {
