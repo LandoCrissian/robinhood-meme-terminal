@@ -100,10 +100,19 @@ export async function testProjectTreasuryJourney({ browserEngine, rpcUrl, rpc, a
     const treasuryDue = await read(project.revenueLedger, ledgerAbi, "claimable", [treasury]);
     assert.equal(treasuryDue, 225_000_000_000_000n);
     const nonceBeforeGasRejection = await client.getTransactionCount({ address: creator.address, blockTag: "pending" });
-    await assert.rejects(send(creator.address, { ...transact(treasury, treasuryAbi, "claimCurve"), gas: 21_000n }), /gas|intrinsic/i);
-    assert.equal(await client.getTransactionCount({ address: creator.address, blockTag: "pending" }), nonceBeforeGasRejection);
+    const heldBeforeGasFailure = await client.getBalance({ address: treasury });
+    const claimRequest = transact(treasury, treasuryAbi, "claimCurve");
+    const claimGasEstimate = await client.estimateGas({ account: creator.address, ...claimRequest });
+    assert.ok(claimGasEstimate > 50_000n, "The bounded failure gas must be below the successful claim estimate");
+    const failedGasClaim = await send(creator.address, { ...claimRequest, gas: 50_000n }, "reverted");
+    assert.equal(failedGasClaim.gasUsed, 50_000n, "The isolated claim must exhaust its supplied gas");
+    assert.equal(await client.getTransactionCount({ address: creator.address, blockTag: "pending" }), nonceBeforeGasRejection + 1,
+      "A mined reverted transaction consumes exactly its own nonce");
     assert.equal(await read(project.revenueLedger, ledgerAbi, "claimable", [treasury]), treasuryDue);
-    evidence.checks.insufficientGasCannotConsumeClaimOrNonce = true;
+    assert.equal(await client.getBalance({ address: treasury }), heldBeforeGasFailure);
+    evidence.insufficientGas = { estimate: claimGasEstimate, limit: 50_000n, receipt: receiptEvidence(failedGasClaim),
+      nonceBefore: nonceBeforeGasRejection, nonceAfter: nonceBeforeGasRejection + 1, creditUnchanged: true, treasuryBalanceUnchanged: true };
+    evidence.checks.insufficientGasCannotConsumeClaimCredit = true;
     const uiClaim = await claimCurveThroughTreasuryPage({ session, treasury, ledger: project.revenueLedger, site, mine, ready, hideNativeProof });
     evidence.curveClaimFromDashboard = uiClaim;
     assert.equal(await read(project.revenueLedger, ledgerAbi, "claimable", [treasury]), 0n);
