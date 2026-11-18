@@ -22,6 +22,7 @@ import { testClaimProfilesBrowser } from "../claims/browser-wallet-acceptance.mj
 import { compileProjectTreasury } from "../treasury/compiler.mjs";
 import { deployProjectTreasuryFixture } from "../treasury/deploy-fixture.mjs";
 import { testProjectTreasuryJourney } from "../treasury/local-integration.mjs";
+import { observeOriginalReceipt } from "./receipt-observation.mjs";
 
 const repository = fileURLToPath(new URL("../../", import.meta.url));
 const require = createRequire(new URL("../../apps/indexer/package.json", import.meta.url));
@@ -266,7 +267,7 @@ let pgStarted = false;
 let browser;
 let page;
 const evidence = { candidateCommit, compilerProfile: manifest, browser: args.browser,
-  anchor: { block: anchor.block, blockHash: anchor.blockHash }, chainId: 31337, project };
+  anchor: { block: anchor.block, blockHash: anchor.blockHash }, chainId: 31337, project, receiptWaits: [] };
 try {
   const chain = start(anvil, ["--host", "127.0.0.1", "--port", new URL(rpcUrl).port, "--chain-id", "31337",
     ...(mobileCreator ? ["--hardfork", "prague"] : []),
@@ -792,7 +793,16 @@ try {
   const lastReceipt = async (operation) => {
     const submission = signatures.at(-1);
     assert.equal(submission.operation, operation);
-    const settled = await rpc("eth_getTransactionReceipt", [submission.transactionHash]);
+    const observation = { operation, transactionHash: submission.transactionHash, pendingObservations: 0, status: "waiting" };
+    evidence.receiptWaits.push(observation);
+    let settled;
+    try {
+      const result = await observeOriginalReceipt(rpc, submission.transactionHash, {
+        onPending: count => { observation.pendingObservations = count; },
+      });
+      settled = result.receipt; observation.status = "canonical-observed";
+    } catch (error) { observation.status = "failed"; throw error; }
+    finally { await writeFile(join(out, "receipt-observations.json"), JSON.stringify(evidence.receiptWaits, null, 2)); }
     const block = await rpc("eth_getBlockByNumber", [settled.blockNumber, false]);
     assert.equal(settled.status, "0x1");
     eq(settled.blockHash, block.hash);
