@@ -210,7 +210,7 @@ export async function createTreasuryProjectsFromForm({ browserEngine, site, out,
     await archiveProject(optedIn);
     assert.ok(same(await client.readContract({ address: preview.treasury, abi: treasuryAbi, functionName: "creator" }), creator));
     evidence.status = "created-and-indexed"; save();
-    return { context, page, evidence, optedOut, optedIn, capture, layouts, response, button,
+    return { browserEngine, context, page, evidence, optedOut, optedIn, capture, layouts, response, button,
       setReview: review => { currentReview = review; }, close: () => context.close(), save };
   } catch (error) { evidence.failure = error instanceof Error ? error.stack : String(error); evidence.failurePage = await page.locator("body").innerText();
     await capture("project-treasury-browser-failure"); save(); throw error; }
@@ -266,6 +266,41 @@ export async function exerciseTreasuryPage({ session, project, treasury, safe, s
   assert.ok(same(reviewed.actor, safe) && same(reviewed.treasury, treasury));
   assert.equal(await button("Confirm synthetic treasury transaction").count(), 0, "An EOA cannot impersonate its controller Safe");
   await layouts("project-treasury-safe-dashboard");
+  // A standard desktop browser context reads the very same canonical indexed
+  // treasury. The preceding 1440px measurement remains correctly labelled as
+  // an iPhone context with a desktop-sized viewport.
+  const desktop = await session.browserEngine.newContext({ viewport: { width: 1440, height: 900 } });
+  try {
+    const desktopPage = await desktop.newPage(), errors = [], external = [];
+    desktopPage.on("pageerror", error => errors.push(error.message));
+    await desktop.route("**/*", route => {
+      if (new URL(route.request().url()).origin !== new URL(site).origin) { external.push(route.request().url()); return route.abort(); }
+      return route.continue();
+    });
+    await desktopPage.goto(site + "/my-launches/treasury");
+    await desktopPage.getByLabel("Project treasury address", { exact: true }).fill(treasury);
+    const read = desktopPage.waitForResponse(result => new URL(result.url()).pathname === "/api/launchpad/project-treasury");
+    await desktopPage.getByRole("button", { name: "View treasury", exact: true }).click();
+    const result = await read, observedDesktop = await result.json();
+    assert.equal(result.status(), 200); assert.equal(observedDesktop.status, "ready", json(observedDesktop));
+    assert.ok(same(observedDesktop.treasury, treasury) && same(observedDesktop.controller, safe)
+      && same(observedDesktop.project.token, project.token));
+    assert.equal(await desktopPage.evaluate(() => typeof window.ethereum), "undefined", "The read-only desktop check must not inject or request a wallet");
+    const desktopFields = await desktopPage.locator("main input:visible:not([readonly]), main select:visible").evaluateAll(items =>
+      items.map(el => ({ label: el.getAttribute("aria-label") ?? el.id, height: el.getBoundingClientRect().height, fontSize: parseFloat(getComputedStyle(el).fontSize) })));
+    assert.ok(desktopFields.every(field => field.height >= 44), json(desktopFields));
+    const desktopMedia = await desktopPage.evaluate(() => ({ coarse: matchMedia("(pointer: coarse)").matches,
+      touch: navigator.maxTouchPoints, width: innerWidth, height: innerHeight, noOverflow: document.documentElement.scrollWidth <= innerWidth }));
+    assert.equal(desktopMedia.coarse, false); assert.equal(desktopMedia.noOverflow, true);
+    const screenshot = join(out, "project-treasury-standard-desktop.png");
+    await desktopPage.screenshot({ path: screenshot });
+    assert.deepEqual(errors, []); assert.deepEqual(external, []);
+    session.evidence.screenshots.push(screenshot);
+    session.evidence.layouts.push({ name: "project-treasury-safe-dashboard", label: "standard-desktop-context", browserMode: "desktop-read-only",
+      fields: desktopFields, media: desktopMedia });
+    session.evidence.desktopRead = { treasury, token: project.token, controller: safe, status: observedDesktop.status,
+      checkpoint: observedDesktop.indexed?.checkpoint ?? null, walletInjected: false, walletRequests: 0, pageErrors: errors, externalRequests: external };
+  } finally { await desktop.close(); }
   assert.deepEqual(session.evidence.pageErrors, [], "The actual treasury pages must not raise browser runtime errors");
   assert.deepEqual(session.evidence.externalRequests, [], "Treasury acceptance must not contact hosted services or metadata URLs");
   evidence.dashboard = snapshot; session.evidence.checks = { realFormTwoStep: true, missingHashNoDuplicate: true, safeInnerCallNotDirectEoa: true };
