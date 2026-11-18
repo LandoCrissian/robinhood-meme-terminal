@@ -1,0 +1,35 @@
+{
+  "scope": "READ_ONLY_EXISTING_PROJECT_METADATA_NOT_ACTIVATION",
+  "observedAt": "2026-11-18T00:26:34.017Z",
+  "projectId": "robinhood-meme-terminal",
+  "projectNumber": "737255919447",
+  "displayName": "Robinhood Meme Terminal",
+  "appId": "1:737255919447:web:8674f28ee2486a0b983812",
+  "authDomain": "robinhood-meme-terminal.firebaseapp.com",
+  "storageBucket": "robinhood-meme-terminal.firebasestorage.app",
+  "firestore": {
+    "database": "(default)",
+    "location": "nam5",
+    "type": "FIRESTORE_NATIVE",
+    "edition": "STANDARD",
+    "freeTier": true,
+    "pointInTimeRecovery": "DISABLED",
+    "deleteProtection": "DISABLED"
+  },
+  "productionProfileEnabled": false,
+  "productionUserRecordsInspected": false,
+  "rulesDeployed": false,
+  "billing": { "verified": true, "enabled": false },
+  "storage": { "configuredBucketExists": false, "httpStatus": 404, "bucketAvatarAvailable": false },
+  "publishedFirestoreRules": {
+    "updatedAt": "2026-08-02T01:30:11.277735Z",
+    "sha256": "11b3e1c33a3b542c6c5f57c3ccc6e763f62a5dbcb5da374c5e0f503f9b0a195d",
+    "bytes": 34960,
+    "hasPrivyProtectedUsers": true,
+    "hasLaunchProfilesV1": false,
+    "matchesPreCleanupTrackedRules": false
+  },
+  "providerConfigurationVerified": false,
+  "adminApplicationPermissionsVerified": false,
+  "emulatorProjectId": "demo-rmt-launch-profiles"
+}

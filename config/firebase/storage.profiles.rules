@@ -1,0 +1,11 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Avatars are decoded/re-encoded by the server and served by a bounded API.
+    // Browser SDKs cannot upload, list, read, retag or delete the bucket objects.
+    // Admin SDK access bypasses rules; its validation requires separate tests.
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
