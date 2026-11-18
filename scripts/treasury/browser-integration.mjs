@@ -133,6 +133,24 @@ export async function createTreasuryProjectsFromForm({ browserEngine, site, out,
     const outFields = await fill("Treasury opt-out 076", "OUT076");
     await page.getByRole("radio", { name: /Pay the creator directly/ }).check();
     const optedOut = await createCore(outFields);
+    const sendsBeforeArchive = evidence.sends.length;
+    const archivedCheck = await response(creationApi, "verify", () => button("Start another launch").click());
+    assert.equal(archivedCheck.status, "confirmed"); assert.equal(archivedCheck.indexed, true);
+    assert.ok(same(archivedCheck.transactionHash, optedOut.creation.transactionHash));
+    const completed = await page.evaluate(() => ({ active: localStorage.getItem("rmt:creation-test:31337:v1"),
+      history: JSON.parse(localStorage.getItem("rmt:creation-test:31337:completed:v1") ?? "null") }));
+    assert.equal(completed.active, null); assert.equal(completed.history.entries.length, 1);
+    assert.deepEqual(completed.history.entries[0].request, optedOut.reviewed);
+    assert.ok(same(completed.history.entries[0].transactionHash, optedOut.creation.transactionHash));
+    await page.reload();
+    const history = page.locator("details").filter({ has: page.getByText("Completed creation history", { exact: true }) });
+    await history.locator("summary").click();
+    assert.equal(await page.getByLabel("Archived creation", { exact: true }).inputValue(), optedOut.creation.transactionHash);
+    const recheckedArchive = await response(creationApi, "verify", () => button("Recheck archived creation").click());
+    assert.equal(recheckedArchive.status, "confirmed"); assert.equal(recheckedArchive.indexed, true);
+    assert.equal(evidence.sends.length, sendsBeforeArchive, "Archiving and rechecking never submits another transaction");
+    evidence.completedCreationArchive = { entry: completed.history.entries[0], recheck: recheckedArchive };
+    await capture("project-treasury-opt-out-archive-preserved");
     const fields = await fill("Treasury creator 076", "SIDE076");
     await page.getByRole("radio", { name: /Create a project treasury/ }).check();
     await page.getByLabel("Treasury project type", { exact: true }).selectOption("nft-community");
