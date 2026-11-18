@@ -37,7 +37,7 @@ function latestJournal(factory: string, account?: string): EarningsClaimJournal 
 }
 
 export function EarningsClaimWallet({ token, factory, beneficiary, snapshot, factoryFees, onSettled, recoveryOnly = false, showRecovery = true }: {
-  token?: string; factory?: string; beneficiary: string; snapshot?: EarningsContractSnapshot; factoryFees?: FactoryCreationFees; onSettled: () => void;
+  token?: string; factory?: string; beneficiary: string; snapshot?: EarningsContractSnapshot; factoryFees?: FactoryCreationFees; onSettled: (token?: string) => void;
   recoveryOnly?: boolean; showRecovery?: boolean;
 }) {
   const boundFactory = factoryFees?.factory ?? factory ?? "";
@@ -61,7 +61,8 @@ export function EarningsClaimWallet({ token, factory, beneficiary, snapshot, fac
       setMessage("The wallet account or network changed. Submitted requests retain their original account and recovery identity.");
     });
   }, [wallet]);
-  useEffect(() => { version.current++; setPrepared(null); }, [token, beneficiary, operation, snapshot?.observed.blockHash]);
+  useEffect(() => { version.current++; setPrepared(null); }, [boundFactory, token, beneficiary, operation, snapshot?.observed.blockHash,
+    snapshot?.rights.accountType, factoryFees?.observed.blockHash]);
   useEffect(() => {
     let cancelled = false;
     setHandoff(null);
@@ -95,7 +96,7 @@ export function EarningsClaimWallet({ token, factory, beneficiary, snapshot, fac
       await task();
     });
   }
-  async function recover(entry: EarningsClaimJournal, enteredHash?: string) {
+  async function recover(entry: EarningsClaimJournal, enteredHash?: string, refresh = true) {
     const value = enteredHash || entry.transactionHash;
     if (value && !isTransactionHash(value)) throw new Error("Enter the original complete transaction hash.");
     const r = await post({ action: "verify", request: entry.request, ...(value ? { transactionHash: value } : {}) }) as EarningsClaimVerification;
@@ -109,7 +110,7 @@ export function EarningsClaimWallet({ token, factory, beneficiary, snapshot, fac
       : r.settlementPending ? "Receipt observed; exact payment settlement is still unproven. Keep the original transaction pending."
       : r.status === "unavailable" ? "Receipt evidence is unavailable or invalidated. The original request remains recoverable."
       : "The original transaction is pending or its hash has not been recovered. It will not be resent automatically.");
-    if (r.status === "confirmed" || r.status === "reverted") onSettled();
+    if (refresh && (r.status === "confirmed" || r.status === "reverted")) onSettled(entry.request.operation === "creation-fees" ? undefined : entry.request.token);
     return r;
   }
   async function prepare() {
@@ -120,7 +121,9 @@ export function EarningsClaimWallet({ token, factory, beneficiary, snapshot, fac
       setJournal(saved);
       if (!["confirmed", "reverted"].includes(saved.state)) throw new Error("Recover the original pending transaction before reviewing another claim.");
       let verified: EarningsClaimVerification | undefined;
-      await withAccountLock(saved.request.from, async () => { verified = await recover(saved); });
+      // Validating an old terminal receipt must not start an asynchronous balance
+      // refresh that invalidates the fresh review being prepared immediately below.
+      await withAccountLock(saved.request.from, async () => { verified = await recover(saved, undefined, false); });
       if (verified?.status !== "confirmed" && verified?.status !== "reverted") throw new Error("The previous receipt must be reconciled before another claim.");
     }
     const current = version.current;

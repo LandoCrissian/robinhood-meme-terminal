@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { claimCalldataMatches, describeContractWalletClaim, encodeEarningsClaim, isEarningsClaimRequest, readEarningsClaimJournal, sendEarningsClaim,
+import { claimCalldataMatches, describeContractWalletClaim, encodeEarningsClaim, isEarningsClaimRequest, readEarningsClaimJournal, sendEarningsClaim, storeEarningsClaimJournal,
   type EarningsPreparedClaim } from "../earnings-claims";
 import { prepareEarningsClaim } from "./earnings-claims";
 import { readEarningsContracts } from "./earnings-contracts";
@@ -37,6 +37,27 @@ test("wallet rejection clears only the explicitly rejected request and allows a 
   await assert.rejects(sendEarningsClaim({ ...p, wallet, storage, location: { protocol: "http:", hostname: "127.0.0.1", port: "3456" },
     now: () => p.request.reviewTimestamp * 1000, revalidate: async () => p }), /rejected/);
   assert.equal(sends, 1); assert.equal(readEarningsClaimJournal(storage, p.request), null);
+});
+
+test("wrapped wallet rejection clears only the exact unsubmitted intent and bounds error traversal", async () => {
+  for (const mode of ["wrapped", "different-intent", "too-deep"] as const) {
+    const { f, p } = await prepared(), storage = memoryStorage();
+    const replacement = { ...p.request, nonce: "0x1" as const };
+    const wallet = { request: async ({ method }: { method: string }) => {
+      if (method === "eth_accounts") return [f.creator]; if (method === "eth_chainId") return "0x7a69";
+      if (method === "eth_getTransactionCount") return "0x0"; if (method === "eth_getCode") return fixtureCode;
+      if (mode === "different-intent") storeEarningsClaimJournal(storage, { schemaVersion: 1, request: replacement,
+        state: "awaiting-wallet", transactionHash: null, createdAt: 1, updatedAt: 1 });
+      let error: unknown = { code: 4001 };
+      for (let depth = 0; depth < (mode === "too-deep" ? 7 : 2); depth++) error = { cause: error };
+      throw error;
+    } };
+    await assert.rejects(sendEarningsClaim({ ...p, wallet, storage, location: { protocol: "http:", hostname: "127.0.0.1", port: "3456" },
+      now: () => p.request.reviewTimestamp * 1000, revalidate: async () => p }));
+    const retained = readEarningsClaimJournal(storage, p.request);
+    if (mode === "wrapped") assert.equal(retained, null);
+    else { assert.equal(retained?.state, "awaiting-wallet"); assert.equal(retained?.request.nonce, mode === "different-intent" ? "0x1" : "0x0"); }
+  }
 });
 
 test("a missing returned hash remains recoverable after refresh and prevents duplicate submission", async () => {

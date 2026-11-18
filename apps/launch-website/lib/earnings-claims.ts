@@ -1,5 +1,6 @@
 import { isLaunchAddress } from "./launch-data";
 import { isTransactionHash } from "./test-creation";
+import { testWalletErrorCode } from "./test-wallet";
 import type { EarningsContractSnapshot } from "./server/earnings-contracts";
 
 type Address = `0x${string}`;
@@ -200,7 +201,7 @@ export async function sendEarningsClaim(input: {
     journal.updatedAt = now(); storeEarningsClaimJournal(storage, journal);
     return journal;
   } catch (error) {
-    if ((error as { code?: unknown } | null)?.code === 4001) clearRejectedEarningsClaim(storage, request);
+    if (testWalletErrorCode(error) === 4001) clearRejectedEarningsClaim(storage, request);
     // Other errors may occur after broadcast. Keep the original journal and do
     // not ask the wallet again; nonce recovery determines what actually happened.
     throw error;
