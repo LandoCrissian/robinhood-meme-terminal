@@ -224,7 +224,7 @@ export async function prepareClaimExecutionReview(input: ClaimPreparationInput):
     const deadline = operation === "lp-collect" ? (anchor.timestamp + 180n).toString() : null;
     const inner: EarningsClaimRequest = { schemaVersion: 1, operation, chainId: context.chainId === 31337 ? "0x7a69" : "0x1237", from: actor, to,
       data: await encodeEarningsClaim(operation, token, deadline), value: "0x0", nonce: toHex(BigInt(payerEvidence.nonce)), factory: context.factory, token,
-      originCurve: origin, ledger, beneficiary, discoveryRecipient: operation === "creation-fees" ? beneficiary : input.beneficiary,
+      originCurve: origin, ledger, beneficiary, discoveryRecipient: operation === "creation-fees" ? beneficiary : normalize(input.beneficiary),
       factoryRuntimeHash: context.factoryRuntimeHash, targetRuntimeHash: targetHash, deploymentBlockNumber: toHex(context.deploymentBlock), deploymentBlockHash: context.deploymentBlockHash,
       reviewBlockNumber: toHex(anchor.number), reviewBlockHash: anchor.hash!, reviewTimestamp: Number(anchor.timestamp), reviewExpiresAt: Number(anchor.timestamp) + 180,
       deadline, expectedNativeWei: prior?.inner.expectedNativeWei ?? native.toString(), expectedTokenWei: prior?.inner.expectedTokenWei ?? erc20.toString(), positionTokenId, principalLiquidityWei };

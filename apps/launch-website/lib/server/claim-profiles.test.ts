@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { decodeFunctionData, encodeFunctionData, encodeFunctionResult, keccak256, parseAbi, zeroAddress, type Address, type Hex } from "viem";
+import { decodeFunctionData, encodeFunctionData, encodeFunctionResult, getAddress, keccak256, parseAbi, zeroAddress, type Address, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { claimExecutionIdentity, claimExecutionReviewHash, claimProfileDigest, isClaimExecutionReview, type ClaimExecutionReview } from "../claim-profiles";
 import { claimContextIsAllowed, claimDelegatePin, prepareClaimExecutionReview,
@@ -93,6 +93,21 @@ test("review refresh preserves reviewed identity while rejecting nonce, time, po
   f.state.payerNonce = 0; f.state.price = 100n; assert.equal((await revalidateClaimExecutionReview(f.context, f.registration, r)).status, "unavailable");
   f.state.price = 2n; f.state.gas = 100000n; assert.equal((await revalidateClaimExecutionReview(f.context, f.registration, r)).status, "unavailable");
   f.state.gas = 30000n; f.state.badDelegate = true; f.state.kind = "metamask-7702"; assert.equal((await revalidateClaimExecutionReview(f.context, f.registration, r)).status, "unavailable");
+});
+test("wallet and beneficiary address case is canonical before consent and revalidation in every profile", async () => {
+  for (const kind of ["eoa", "metamask-7702", "safe-1.4.1"] as const) for (const variant of ["lower", "upper"] as const) {
+    const f = fixture(kind);
+    const cased = (a: Address) => ("0x" + (variant === "lower" ? a.slice(2).toLowerCase() : a.slice(2).toUpperCase())) as Address;
+    f.input.account = cased(f.input.account); f.input.beneficiary = cased(f.input.beneficiary);
+    if (f.input.safeAddress) f.input.safeAddress = cased(f.input.safeAddress);
+    let { r } = await ready(f);
+    if (kind === "safe-1.4.1") { f.input.safeSignatures = await signatures(r); ({ r } = await ready(f)); }
+    assert.equal(r.inner.discoveryRecipient, getAddress(f.input.beneficiary.toLowerCase()));
+    assert.equal(r.gasPayer, getAddress(f.input.account.toLowerCase()));
+    const checked = await revalidateClaimExecutionReview(f.context, f.registration, r);
+    assert.ok(isClaimExecutionReview(checked), JSON.stringify({ kind, variant, checked }));
+    assert.equal(checked.intentHash, r.intentHash); assert.equal(checked.reviewHash, r.reviewHash);
+  }
 });
 test("fee growth and a newer checkpoint preserve the original consent, but expiry, policy drift and reorg do not", async () => {
   const f = fixture(), { r } = await ready(f);
