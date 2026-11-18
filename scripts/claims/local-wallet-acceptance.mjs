@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { gunzipSync } from "node:zlib";
 import { backing, creationFee, supply } from "../../packages/contracts/scripts/fixed-supply-profile.mjs";
 import { call, localFixtureClient, receiptEvidence, transact } from "../../packages/contracts/scripts/deploy-fixed-supply-fixture.mjs";
+import { proveFundedMigrations } from "../../packages/contracts/scripts/prove-fixed-supply-funded-migrations.mjs";
 
 const require = createRequire(new URL("../../apps/launch-website/package.json", import.meta.url));
 const { concatHex, encodeAbiParameters, encodeFunctionData, erc20Abi, isAddressEqual, keccak256, parseAbi,
@@ -14,7 +15,7 @@ const stringify = value => JSON.stringify(value, (_, v) => typeof v === "bigint"
 const safeAbi = parseAbi(["function setup(address[] owners,uint256 threshold,address to,bytes data,address fallbackHandler,address paymentToken,uint256 payment,address paymentReceiver)",
   "function execTransaction(address to,uint256 value,bytes data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address refundReceiver,bytes signatures) payable returns(bool)",
   "function nonce() view returns(uint256)", "function getOwners() view returns(address[])", "function getThreshold() view returns(uint256)",
-  "event ExecutionSuccess(bytes32 txHash,uint256 payment)"]);
+  "event ExecutionSuccess(bytes32 indexed txHash,uint256 payment)"]);
 const safeFactoryAbi = parseAbi(["function createProxyWithNonce(address singleton,bytes initializer,uint256 saltNonce) returns(address proxy)",
   "event ProxyCreation(address indexed proxy,address singleton)"]);
 const permitAbi = parseAbi(["function approve(address token,address spender,uint160 amount,uint48 expiration)",
@@ -220,6 +221,32 @@ export async function testClaimWalletProfiles({ rpcUrl, rpc, artifacts, deployed
     const approved = await safeReview(first, "curve-claim"); const safeReceipt = await sendReview(approved); await settle(first, approved, safeReceipt);
     const replay = await send(relayer, { ...approved.outer, nonce: undefined, gas: approved.outer.gas }, "reverted");
     evidence.safeReplayRejection = receiptEvidence(replay); evidence.checks.safeTwoOwnerExecutionAndOneOwnerRejection = true;
+    await mine(); await ready();
+
+    // Reuse the reviewed funded V1 -> V2 -> V3 proof, retaining the same token,
+    // original fee ledger and beneficiary credits. Only the original isolated
+    // fixture operator is temporarily unlocked for its existing scheduling
+    // closure; its two governor signatures are made by genuine ephemeral keys.
+    const fixtureDeployment = await client.getTransaction({ hash: deployed.deployment.transactionHash });
+    assert.equal(await client.getCode({ address: fixtureDeployment.from }), undefined);
+    assert.deepEqual(await client.request({ method: "eth_accounts" }), []);
+    const migrationDeployment = { ...deployed, scheduleFixtureMigration: async token => {
+      await rpc("anvil_impersonateAccount", [fixtureDeployment.from]);
+      try { return await deployed.scheduleFixtureMigration(token); }
+      finally { await rpc("anvil_stopImpersonatingAccount", [fixtureDeployment.from]); }
+    } };
+    const submitMigration = async (from, request, expected = "success") => {
+      const account = accounts.get(from.toLowerCase()); assert.ok(account, "Migration actor must be this synthetic fixture's signer");
+      return send(account, { ...request, ...(expected === "reverted" && { gas: 8_000_000n }) }, expected);
+    };
+    first.originalCurve = first.curve;
+    const migrated = await proveFundedMigrations(client, artifacts, migrationDeployment, submitMigration, transact,
+      { ...first, creator: delegated.address, beneficiaries: [delegated.address, safe,
+        deployed.deployment.operatingRecipient, deployed.deployment.futureReserveRecipient] });
+    assert.equal(migrated.transitions.length, 2); first.curve = migrated.curve;
+    assert.deepEqual(await client.request({ method: "eth_accounts" }), []);
+    evidence.fundedMigrations = migrated;
+    evidence.checks.fundedV1V2V3PreserveOriginalLedgerAndRecipients = true; save();
     await mine(); await ready();
 
     const [tokens] = await call(client, first.curve, curveAbi, "quoteBuy", [3n * 10n ** 18n]);
