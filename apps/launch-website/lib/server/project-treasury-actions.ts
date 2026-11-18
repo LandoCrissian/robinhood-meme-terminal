@@ -302,7 +302,9 @@ export async function verifyProjectTreasuryTransaction(config: ProjectTreasuryFi
       }
     }
     const snapshot = await readProjectTreasurySnapshot(config, review.treasury, { rpc, head });
-    return { ...base, status: "confirmed", transactionHash: found, canonical, indexed: indexedClaim ?? snapshot.history.indexed, proof, snapshot };
+    const indexed = indexedClaim ?? (snapshot.history.indexed && (review.operation === "create-treasury"
+      || snapshot.events.some(event => same(event.transactionHash, found!) && same(event.blockHash, receipt.blockHash))));
+    return { ...base, status: "confirmed", transactionHash: found, canonical, indexed, proof, snapshot };
   } catch { return { ...base, status: "unavailable", reason: "Canonical treasury transaction, runtime, transfer or indexing evidence unavailable; preserve the original request" }; }
 }
 
