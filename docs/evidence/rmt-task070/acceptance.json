@@ -1,0 +1,272 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-11-18T05:31:41.700Z",
+  "baseline": "c61696dfbf4ee563ca68aa9d7577969abd068f5d",
+  "validatedRuntimeSource": "4fdfbecdaaa5a846eae6441c224dc0be0de32e85",
+  "preview": {
+    "url": "https://6afd354283aa615cb75fbc63--eclectic-valkyrie-16cb92.netlify.app/",
+    "deployId": "6afd354283aa615cb75fbc63",
+    "context": "deploy-preview",
+    "productionPublished": false,
+    "profilesEnabled": false,
+    "transactionsEnabled": false,
+    "history": "Explicitly stale verified snapshot; no production Railway secret was supplied to this preview"
+  },
+  "linux": {
+    "workflow": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44242661917",
+    "source": "4fdfbecdaaa5a846eae6441c224dc0be0de32e85",
+    "bundleSha256": "6599a7e8f2470e89ff1b892cfff2dbc13c3a677bed6e516bbfd7f868724df916",
+    "bundleBytes": 35198139,
+    "functionArchiveSha256": "f8f7c3cd291bf95d9e088e71f0e5c1c4a617613e3c72c349c8c551f58800032d",
+    "functionArchive": {
+      "sha256": "f8f7c3cd291bf95d9e088e71f0e5c1c4a617613e3c72c349c8c551f58800032d",
+      "bytes": 32658931,
+      "entries": 3169,
+      "relativeLinks": 218,
+      "bootstrap": "parsed without path rewriting",
+      "modules": {
+        "sharp": "native encode/decode passed",
+        "firebaseAdmin": "modules loaded; zero initialized apps",
+        "network": "passive imports with HTTP/TCP/DNS APIs blocked"
+      }
+    },
+    "buildBoundary": "Actual offline Linux build. Later metadata-only clarification allows separately approved prebuilt publication without removing the automatic production-build guard."
+  },
+  "tests": {
+    "webUnit": {
+      "passed": 82,
+      "failed": 0,
+      "skipped": 0
+    },
+    "firebase": {
+      "isolated": true,
+      "rules": 4,
+      "authFirestore": 13,
+      "http": 1,
+      "browsers": [
+        {
+          "engine": "chromium",
+          "mode": "firebase-emulators",
+          "syntheticWallet": "0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf",
+          "signatureRequests": 6,
+          "walletsAccepted": [
+            "MetaMask",
+            "Rabby"
+          ],
+          "cookieHttpOnly": true,
+          "profiles": "saved/reloaded/public/deleted-after-fresh-proof",
+          "avatar": "uploaded/re-encoded/decoded/removed-with-profile-retained/reuploaded-versioned/header-editor-public-loaded",
+          "privatePreferences": "saved/not-public",
+          "logoutAndAccountChange": "verified-including-outage-retry",
+          "networkSwitch": "rejection-then-confirmed-switch",
+          "transactions": 0
+        },
+        {
+          "engine": "webkit",
+          "mode": "firebase-emulators",
+          "syntheticWallet": "0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf",
+          "signatureRequests": 6,
+          "walletsAccepted": [
+            "MetaMask",
+            "Rabby"
+          ],
+          "cookieHttpOnly": true,
+          "profiles": "saved/reloaded/public/deleted-after-fresh-proof",
+          "avatar": "uploaded/re-encoded/decoded/removed-with-profile-retained/reuploaded-versioned/header-editor-public-loaded",
+          "privatePreferences": "saved/not-public",
+          "logoutAndAccountChange": "verified-including-outage-retry",
+          "networkSwitch": "rejection-then-confirmed-switch",
+          "transactions": 0
+        }
+      ],
+      "productionRecordsTouched": false
+    },
+    "releaseTooling": {
+      "node": 5,
+      "python": 4
+    },
+    "governanceProbe": 4,
+    "hostedQuality": {
+      "status": "passed",
+      "recordedAt": "2026-11-18T05:22:10.403Z",
+      "combinations": 8,
+      "engines": [
+        "chromium",
+        "webkit"
+      ],
+      "viewports": [
+        "1440x1000",
+        "390x844",
+        "750x390",
+        "320x740"
+      ],
+      "cardThemeCases": 48,
+      "walletCalls": 0,
+      "pageErrors": 0
+    },
+    "publicBrowsers": [
+      {
+        "engine": "chromium",
+        "layouts": [
+          {
+            "name": "desktop",
+            "width": 1440,
+            "height": 900,
+            "walletCalls": 0,
+            "outsideRequests": 0,
+            "operationalRequests": 0,
+            "scripts": 17
+          },
+          {
+            "name": "portrait",
+            "width": 390,
+            "height": 664,
+            "walletCalls": 0,
+            "outsideRequests": 0,
+            "operationalRequests": 0,
+            "scripts": 17
+          },
+          {
+            "name": "landscape",
+            "width": 750,
+            "height": 342,
+            "walletCalls": 0,
+            "outsideRequests": 0,
+            "operationalRequests": 0,
+            "scripts": 17
+          }
+        ],
+        "deniedRoutes": 111,
+        "chain": {
+          "status": "stale",
+          "coverage": "verified-snapshot",
+          "checkpoint": {
+            "blockNumber": "113899119",
+            "blockHash": "0x0a20d4db277fe2c689ffd68763710c54a59d833dab097f2994c6aa7937ccc10c",
+            "timestamp": "2026-11-14T04:26:14.000Z"
+          },
+          "launches": 4
+        },
+        "config": "disabled",
+        "privateMarkerCheck": false
+      },
+      {
+        "engine": "webkit",
+        "layouts": [
+          {
+            "name": "desktop",
+            "width": 1440,
+            "height": 900,
+            "walletCalls": 0,
+            "outsideRequests": 0,
+            "operationalRequests": 0,
+            "scripts": 17
+          },
+          {
+            "name": "portrait",
+            "width": 390,
+            "height": 664,
+            "walletCalls": 0,
+            "outsideRequests": 0,
+            "operationalRequests": 0,
+            "scripts": 17
+          },
+          {
+            "name": "landscape",
+            "width": 750,
+            "height": 342,
+            "walletCalls": 0,
+            "outsideRequests": 0,
+            "operationalRequests": 0,
+            "scripts": 17
+          }
+        ],
+        "deniedRoutes": 111,
+        "chain": {
+          "status": "stale",
+          "coverage": "verified-snapshot",
+          "checkpoint": {
+            "blockNumber": "113899119",
+            "blockHash": "0x0a20d4db277fe2c689ffd68763710c54a59d833dab097f2994c6aa7937ccc10c",
+            "timestamp": "2026-11-14T04:26:14.000Z"
+          },
+          "launches": 4
+        },
+        "config": "disabled",
+        "privateMarkerCheck": false
+      }
+    ],
+    "physicalPhone": "Not performed; synthetic inset and browser evidence only"
+  },
+  "ci": {
+    "source": "4fdfbecdaaa5a846eae6441c224dc0be0de32e85",
+    "passing": [
+      "linux-netlify-artifact",
+      "web",
+      "isolated-firebase",
+      "isolated-lifecycle",
+      "repository",
+      "contracts",
+      "indexer",
+      "operations-safe",
+      "gitleaks"
+    ],
+    "failed": [
+      "slither",
+      "fixed-supply-4663"
+    ],
+    "allChecksPassed": false,
+    "failedStepScope": "Both are retained static-analysis failures; fixed-supply-4663 is not evidence of a fork execution failure."
+  },
+  "security": {
+    "inputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+    "analysisInputSha256": "f1ce76044a1d8816441bf5fda276cb9aec675ac3babee93e3fe5bf888f5c8e56",
+    "detectorCount": 101,
+    "sources": 66,
+    "findings": 233,
+    "impacts": {
+      "High": 22,
+      "Medium": 60,
+      "Low": 39,
+      "Informational": 110,
+      "Optimization": 2
+    },
+    "addedIds": 0,
+    "removedIds": 0,
+    "status": "Existing release holds retained; no detector or disposition changed; not an independent audit"
+  },
+  "credentialContinuity": {
+    "observedAt": "2026-11-18T05:25:21.9623607Z",
+    "project": "robust-ambition",
+    "service": "robinhood-meme-terminal",
+    "credentialSource": "Existing production service RMT_INDEXER_READ_TOKEN, read privately through authorized CLI",
+    "secretExported": false,
+    "configurationChanged": false,
+    "unauthenticatedHttp": 401,
+    "authenticatedHttp": 200,
+    "chainId": 4663,
+    "status": null,
+    "registrations": 2,
+    "checkpoint": {
+      "blockNumber": 117163402,
+      "blockHash": "0xa1828756525b03fd52e7a063c7cf5e7efbd65d30b5a6fac47c037d16382d55eb",
+      "timestamp": "2026-11-18T05:24:52Z",
+      "observedAt": "2026-11-18T05:24:57.142Z",
+      "stale": false,
+      "finality": "l2-confirmed"
+    }
+  },
+  "protectedPathsUnchanged": [
+    "packages/contracts",
+    "packages/indexer",
+    "pnpm-lock.yaml",
+    "package.json",
+    "netlify.toml",
+    "firebase.profiles.json"
+  ],
+  "screenshots": {
+    "wallet-mobile.png": "Actual HTTPS preview, WebKit portrait, visible keyboard disclosure focus",
+    "profile-emulator-mobile.png": "Real isolated Auth/Firestore browser flow with synthetic test-key wallet; not live Firebase or physical-phone evidence"
+  },
+  "nextApproval": "Website-only publication. Firebase activation, governance execution, funded/public execution and owner token creation each retain separate verification and approval."
+}

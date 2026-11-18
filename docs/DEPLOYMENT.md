@@ -1,5 +1,7 @@
 # Deployment and operations
 
+For the current website candidate, use the consolidated [release acceptance and five approval gates](RELEASE_ACCEPTANCE.md). It includes Linux packaging, credential continuity, physical-iPhone acceptance and fix-forward procedures; it grants no publication or transaction authority.
+
 Operations Safe creation is complete on L2: transaction `0x7306d15f2ffcab498bd2063615ddaa862b6ff956415e39e4d278f75de84cdad6` created `0xAF9F10258b091719618c19D057F9cDAB72eFFd8b`. Official Robinhood and Pocket RPCs corroborated the canonical receipt, exact initializer, SafeL2 1.4.1 runtime, three approved owners, threshold 2, handler, empty modules and guard. Current configuration was rechecked at block `116767733`. Actual network cost was 0.00000620902221 ETH. Independent Ethereum L1 finality remains unverified. [Recorded verification](evidence/mobile-signing/operations-safe-mainnet.json)
 
 Reserve creation is also complete on L2: transaction `0x3daa6a602b7b2f556c03e9ddf5c142b96111b4bbfd38345c8e1769d7b0611091`, block `116797634`, created `0x8D44078642ce938Fd799b23087BcdD6114A302e5`. Its exact initializer, SafeL2 1.4.1 runtime and configuration passed. Both treasuries' canonical and pending state matched on official/Pocket providers at block `116800797`: the approved three owners, threshold 2, nonce 0, correct singleton/handler, no modules or guard. Reserve's actual network cost was 0.00000613063629 ETH. [Both verified treasuries](evidence/mobile-signing/treasuries-mainnet.json)

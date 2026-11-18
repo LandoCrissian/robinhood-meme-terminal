@@ -45,7 +45,7 @@ export function checkWebsiteSource({ toml, packageManager, nextVersion, env = {}
     publication: "BLOCKED_OWNER_APPROVAL", execution: "BLOCKED_NO_BROADCAST",
     laterStages: { ownerCreation: "Separate approved-account adapter and canonical publication/operational acceptance required",
       generalTradingAndClaims: "No production adapter is enabled; fixture-only execution is not a production release switch" },
-    productionGuardChangeRequiredAfterApproval: "Review and replace only context.production.command for the approved website source; retain all separate application activation gates." };
+    productionBuildBoundary: "Normal production builds remain guarded. Separate owner approval may authorize publication of the exact verified prebuilt Linux artifact; changing the production build command requires a reviewed configuration change and fresh build. Neither action enables application execution." };
 }
 
 async function boundedFiles(directory, limit = 5000) {
