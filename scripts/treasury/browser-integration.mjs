@@ -128,6 +128,9 @@ export async function createTreasuryProjectsFromForm({ browserEngine, site, out,
     const optedOut = await createCore(outFields);
     const fields = await fill("Treasury creator 076", "SIDE076");
     await page.getByRole("radio", { name: /Create a project treasury/ }).check();
+    await page.getByLabel("Treasury project type", { exact: true }).selectOption("nft-community");
+    evidence.projectKinds = { optedOut: "standalone", optedIn: "nft-community",
+      collection: "Unassigned optional browser metadata; no NFT deployment, royalty read or royalty change" };
     await page.getByLabel("Project treasury controller", { exact: true }).fill(creator);
     await page.getByLabel("Contract treasury share of project fees", { exact: true }).fill("25");
     await button("Review draft").click();
