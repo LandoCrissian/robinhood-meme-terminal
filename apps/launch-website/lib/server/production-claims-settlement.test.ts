@@ -163,6 +163,8 @@ test("verification cannot broaden providers, activate writes or exceed bounded R
   await bounded.getChainId(); assert.throws(() => bounded.getChainId(), /budget/);
   const writes = boundedClaimVerificationRpc(f.f.context.rpc);
   assert.throws(() => writes.request({ method: "eth_sendRawTransaction", params: [] } as never), /read-only/);
+  const stalled = boundedClaimVerificationRpc({ ...f.f.context.rpc, getChainId: () => new Promise<number>(() => undefined) }, Date.now, 1, 10);
+  await assert.rejects(stalled.getChainId(), /budget/, "An unresolved provider promise must not keep recovery open indefinitely");
 });
 
 async function walletFixture(kind: "metamask-7702" | "safe-1.4.1", operation: EarningsClaimOperation = "curve-claim") {

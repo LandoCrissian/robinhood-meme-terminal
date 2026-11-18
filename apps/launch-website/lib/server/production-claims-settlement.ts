@@ -46,7 +46,13 @@ export function boundedClaimVerificationRpc(rpc: EarningsRpc, now = Date.now, ma
       if (property === "request" && (!args[0] || typeof args[0] !== "object" || !allowedRpc.has(String((args[0] as { method?: unknown }).method)))) {
         throw Error("Claim verification permits read-only RPC methods only");
       }
-      return Reflect.apply(value, target, args);
+      const result = Reflect.apply(value, target, args);
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      // Network clients retain their own short transport timeout. Bound our
+      // caller as well if an admitted provider never resolves a read promise.
+      return Promise.race([Promise.resolve(result), new Promise((_, reject) => {
+        timer = setTimeout(() => reject(Error("Claim verification read budget unavailable")), Math.max(1, deadline - now()));
+      })]).finally(() => { if (timer) clearTimeout(timer); });
     };
   } });
 }
