@@ -20,6 +20,15 @@ export async function lockIndexWriter(db: Database, chainId: number) {
   if (!result.rows[0]?.locked) throw new IndexStoreError("database_writer_conflict");
 }
 
+/** New evidence stores reuse the already-held authoritative writer lease;
+ * they cannot silently create a second writer or increment a separate lock. */
+export async function assertIndexWriterLease(db: Database, chainId: number) {
+  const result = await db.query<{ held: boolean }>(`SELECT EXISTS(SELECT 1 FROM pg_locks
+    WHERE locktype='advisory' AND pid=pg_backend_pid() AND classid=$1::oid AND objid=$2::oid
+      AND objsubid=2 AND granted) AS held`, [writerNamespace, chainId]);
+  if (result.rows[0]?.held !== true) throw new IndexStoreError("database_writer_conflict");
+}
+
 export async function initializeIndexStore(
   db: Database,
   config: { chainId: number; factory: string; startBlock: bigint; schemaVersion: number },
