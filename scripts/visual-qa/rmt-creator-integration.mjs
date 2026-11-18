@@ -910,7 +910,9 @@ try {
   // Persist only public synthetic transaction terms, never wallet private keys,
   // signed transactions or credentials. Keep the failing review reproducible.
   await writeFile(join(out, "graduation-review-evidence.json"), JSON.stringify({
-    candidateCommit, environment: "isolated-31337", binding, account: creator.address,
+    candidateCommit, environment: "isolated-31337",
+    binding: { factory: binding.factory, token, blockNumber: toHex(BigInt(binding.deployBlock)), blockHash: binding.deploymentBlockHash },
+    account: creator.address,
     httpStatus: graduationReviewHttp.status(), status: graduationReview.status, reason: graduationReview.reason,
     request: graduationReview.request, quote: graduationReview.quote, phase: graduationReview.state?.phase,
   }, null, 2));
