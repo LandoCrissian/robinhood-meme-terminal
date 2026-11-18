@@ -73,7 +73,7 @@ test("reviewed exact sources, including the new prototype and hostile tests, mat
 });
 
 test("retained actual Foundry output contains every new counterfactual test and 512 fuzz runs", () => {
-  const log = bytes(new URL("foundry-disposition.log", directory)).toString();
+  const log = bytes(new URL("foundry-disposition.txt", directory)).toString();
   for (const name of register.newFoundry.tests) assert.ok(log.includes("[PASS] " + name + "("), name);
   assert.match(log, /13 passed; 0 failed; 0 skipped/);
   assert.match(log, /runs: 512/);

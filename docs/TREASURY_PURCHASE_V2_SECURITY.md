@@ -13,7 +13,7 @@ artifact is **not** removal of the six findings in the asset-bearing V1.
 | Scope | Compiler input SHA-256 | Actual Slither result | Gate |
 | --- | --- | --- | --- |
 | Unchanged V1, all three production sources and every reachable import | `513609f57dea2fd706ac749999c47119955be16bb0b4f46a54b9fc4283683cf0` | 101 detectors; 25 findings: 6 high, 4 medium, 10 low, 5 informational. All six high IDs exactly match Task 076. | **Failed**, exit 1 |
-| V2 prototype, all three production sources and every reachable import | `39c67e76e2133da84939693c6f06e1eeea714cffdd6fd7264ca3026fbd944455` | 101 detectors; 3 findings: 0 high, 0 medium, 2 low, 1 informational. | New scope passed, exit 0; no release clearance |
+| V2 prototype, all three production sources and every reachable import | `02d430dc4018a9a75c9c69f204c4e94c57fa8b94722c90effc79293cad7fff7d` | 101 detectors; 3 findings: 0 high, 0 medium, 2 low, 1 informational. | New scope passed, exit 0; no release clearance |
 | Existing 4663 launch deployment closure | Retained separately in `docs/evidence/fixed-supply-security/slither-4663.json.gz` | Original **22 highs: 18 engine plus four dependencies**. No source or disposition changed here. | Existing gates remain failed |
 
 Fresh reproduction used **Slither 0.11.5**, **Crytic Compile 0.3.11**, native

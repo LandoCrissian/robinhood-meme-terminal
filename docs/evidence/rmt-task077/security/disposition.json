@@ -204,8 +204,8 @@
     ]
   },
   "v2Prototype": {
-    "inputSha256": "39c67e76e2133da84939693c6f06e1eeea714cffdd6fd7264ca3026fbd944455",
-    "analysisInputSha256": "38f456e81ee887aea06c2cc320595689ba59b3db81b4d3681a8c3e62d547a46d",
+    "inputSha256": "02d430dc4018a9a75c9c69f204c4e94c57fa8b94722c90effc79293cad7fff7d",
+    "analysisInputSha256": "eaa80cbcd9dd298d202025c012420ce4c858e2f18eefdf23446804e83a2a02ff",
     "detectorCount": 101,
     "sourceCount": 3,
     "findings": {
@@ -214,7 +214,7 @@
     },
     "strictGateExit": 0,
     "rawReport": "slither-v2-prototype.json.gz",
-    "rawSha256": "8e34a9736beedab5d38eeffa01a36ae3d41d0286249506c432dd3f66d4cf9034",
+    "rawSha256": "27a9cc437f82251a86e5053d6c9d6e64ec41ee130aa90603d2384775f6021927",
     "executable": false,
     "hasCustody": false,
     "canInheritV1Credits": false,
