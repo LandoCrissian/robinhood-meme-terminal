@@ -18,7 +18,7 @@ assert.equal(configuration.emulators.ui.enabled, false);
 const env = { ...process.env, GCLOUD_PROJECT: "demo-rmt-launch-profiles", GOOGLE_CLOUD_PROJECT: "demo-rmt-launch-profiles",
   CI: "true", FIREBASE_CLI_DISABLE_UPDATE_CHECK: "true" };
 // Neither application credentials nor a real project may leak into test startup.
-for (const key of Object.keys(env)) if (/^(GOOGLE_APPLICATION_CREDENTIALS|FIREBASE_CONFIG|FIREBASE_TOKEN|FIREBASE_ADMIN_.*|NEXT_PUBLIC_FIREBASE_.*)$/.test(key)) delete env[key];
+for (const key of Object.keys(env)) if (/^(GOOGLE_APPLICATION_CREDENTIALS|FIREBASE_CONFIG|FIREBASE_TOKEN|FIREBASE_SERVICE_ACCOUNT_JSON|FIREBASE_ADMIN_.*|RMT_FIREBASE_.*|RMT_PROFILES_(?:MODE|ORIGIN|ACTIVATION_APPROVAL)|NEXT_PUBLIC_FIREBASE_.*)$/.test(key)) delete env[key];
 for (const key of ["FIREBASE_AUTH_EMULATOR_HOST", "FIRESTORE_EMULATOR_HOST", "FIREBASE_STORAGE_EMULATOR_HOST", "FIREBASE_EMULATOR_HUB"]) delete env[key];
 const javaHome = process.env.RMT_PROFILE_JAVA_HOME;
 const pathKey = Object.keys(env).find((key) => key.toLowerCase() === "path"), inheritedPath = pathKey ? env[pathKey] : "";

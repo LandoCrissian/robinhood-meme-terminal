@@ -40,7 +40,7 @@ jobs:
       - name: Test rules, real Firebase sessions, profiles and mobile browser flow
         run: >-
           node scripts/profiles/run-emulator-tests.mjs --command
-          "node --test scripts/profiles/emulator-rules.test.mjs && pnpm --filter @rmt/launch-website exec tsx --test lib/server/profiles/emulator.test.ts && node apps/launch-website/scripts/profile-ui-smoke.mjs"
+          "node --test scripts/profiles/emulator-rules.test.mjs && pnpm --filter @rmt/launch-website exec tsx --test lib/server/profiles/emulator.test.ts && node --test apps/launch-website/lib/server/profiles/next-http-acceptance.mjs && node apps/launch-website/scripts/profile-ui-smoke.mjs"
         env:
           RMT_PROFILE_UI_ARTIFACTS: ${{ runner.temp }}/profile-browser-evidence
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

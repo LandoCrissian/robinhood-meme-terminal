@@ -25,6 +25,10 @@ pnpm install --frozen-lockfile
 # Optional: local JRE directory when java is not on PATH.
 $env:RMT_PROFILE_JAVA_HOME = '<local Java 21 home>'
 node scripts/profiles/run-emulator-tests.mjs
+pnpm --filter @rmt/launch-website build
+pnpm test:profiles:server
+pnpm test:profiles:http
+pnpm test:profiles:browser
 ```
 
 The harness fixes the demo project, validates loopback-only emulator bindings, removes production credential/configuration environment variables and starts no cloud resources. `--command '<test command>'` runs an additional server/browser suite under the same emulators. The host verification used a private portable Temurin JRE 21.0.13+9; its official archive SHA-256 was `2332c0b4cff6bed722da3567c91d5e47568bcba863fa4945d0a8d6fc76158628`. No global Java installation was changed.
@@ -45,7 +49,7 @@ Public responses select wallet, chain, username, display name, bio, project link
 
 Profile deletion requires the current session's CSRF token, a fresh wallet message specifically consenting to deletion, and separate confirmation. It removes this app's public profile, preferences, username reservation, avatar and indexed app sessions. It preserves a minimal identity/epoch tombstone to reject replay, the Firebase identity, legacy data and every blockchain/indexer record. Sign-in can establish a fresh profile afterward. Public material may already have been copied by visitors; deletion is not a claim to erase third-party copies.
 
-The server suite passed fourteen actual-emulator tests, including genuine Firebase custom-token exchange/session cookies, a separate Node process restoring the profile, single-consumption parallel proofs, wrong browser/domain/chain/expiry, CSRF, username contention, explicit linked-UID preservation, avatar byte/pixel bounds, logout write races, app-only deletion and bounded cleanup. Avatar HTTP responses use a 60-second cache with revalidation; already cached public images can remain visible briefly after removal. These results do not verify the inactive hosted provider/configuration or ERC-1271 wallets.
+The server suite includes five core tests and ten real-Firebase suite entries (including the suite parent), covering genuine custom-token exchange/session cookies, a separate Node process restoring the profile, single-consumption parallel proofs, wrong browser/domain/chain/expiry, CSRF, username contention, explicit linked-UID preservation, avatar byte/pixel bounds, logout write races, app-only deletion and bounded cleanup. A separate actual Next HTTP test verifies successful sign-in and six forged host/origin cases. Next internally normalizes `127.0.0.1` to `localhost`; only that internal emulator alias is allowed, with external Host, Origin, protocol and port still exact. Cloud binding is unchanged. Avatar responses use a 60-second cache with revalidation; already cached public images can remain briefly after removal. These results do not verify the inactive hosted provider/configuration or ERC-1271 wallets.
 
 ## Production activation still requires approval
 
@@ -65,3 +69,11 @@ Firebase Admin `14.5.1` and Sharp `0.35.5` are server dependencies. Firebase CLI
 The full development audit still reports one high (`picomatch`, `GHSA-fc5q-39xc-vjpf`) and four moderate advisories in the Firebase CLI dependency tree. Its upstream advisory currently offers no patched picomatch range; the current 4.x release remains flagged. This CLI is used with repository-controlled test configuration and is not shipped to Netlify Functions. The finding is retained, not suppressed. Do not process untrusted CLI glob patterns. These JavaScript results do not clear the existing contract-analysis findings or release gate.
 
 Two existing Netlify native rate rules are reused: 120 reads/minute per IP/domain across discovery and public profile reads, and 12 requests/minute for account mutation and production-preparation endpoints. Firestore transaction budgets independently bound sign-in and profile operations. Native enforcement may lag, is not a global quota, and deployment post-processing/429 behavior must be checked on the actual preview. These limits do not authorize production authentication.
+
+## Frontend verification
+
+Chromium and WebKit exercised the same pages with genuine test-key signatures and real Firebase emulators: connect alone remains unauthenticated; reject then approve a message; refresh a nonce without automatic signing; edit username/bio/links/preferences; upload and render sanitized WebP; restore a session without wallet calls; browse the public profile without private preferences; retry a failed logout; reject and switch networks; select MetaMask and Rabby separately; reauthenticate and remove profile data. No transaction method is allowed by the synthetic wallet harness. These are emulated browsers, not physical-device acceptance.
+
+The new-engine creator view filters the canonical feed's currently available page of up to 25 registrations. It discloses that limit and displays unavailable evidence separately from an empty result. Firestore never supplies project ownership or an invented launch. All four historical registrations remain in a separate expandable archive. No new launch was created for these profile tests.
+
+Selected [desktop](evidence/profiles-refinement/home-desktop.png), [phone](evidence/profiles-refinement/home-phone.png), [profile editor](evidence/profiles-refinement/editor-phone.png), [creator profile](evidence/profiles-refinement/creator-landscape.png) and [creation form](evidence/profiles-refinement/create-phone.png) captures show the implementation. The profile screenshots use explicitly synthetic local accounts and are not published user records. Full browser artifacts are generated by `test:profiles:browser` and the dedicated wallet-profile CI workflow.
