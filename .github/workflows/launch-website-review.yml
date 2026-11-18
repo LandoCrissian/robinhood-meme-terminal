@@ -197,6 +197,8 @@ jobs:
             ${{ runner.temp }}/rmt-creator-lifecycle/earnings-journey-evidence.json
             ${{ runner.temp }}/rmt-creator-lifecycle/successor-earnings-evidence.json
             ${{ runner.temp }}/rmt-creator-lifecycle/failure-page.txt
+            ${{ runner.temp }}/rmt-creator-lifecycle/website*.log
+            ${{ runner.temp }}/rmt-creator-lifecycle/worker*.log
             ${{ runner.temp }}/rmt-claim-wallet-profiles/*.png
             ${{ runner.temp }}/rmt-claim-wallet-profiles/claim-wallet-acceptance.json
             ${{ runner.temp }}/rmt-claim-wallet-profiles/claim-wallet-profile-manifest.json

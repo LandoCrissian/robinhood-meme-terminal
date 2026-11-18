@@ -157,7 +157,7 @@ function start(executable, params, name, { cwd = repository, env = childBase, di
     child.once("close", (code) => complete({ code, stdout, stderr }));
   }).then(async (result) => {
     if (!discard) await writeFile(join(out, `${name}.log`), (result.stdout + result.stderr)
-      .replaceAll(pgPass, "[redacted]").replaceAll(indexReadKey, "[redacted]"));
+      .replaceAll(pgPass, "[redacted]").replaceAll(indexReadKey, "[redacted]").slice(-128 * 1024));
     return result;
   });
   const job = { child, done, name };
@@ -1017,6 +1017,7 @@ try {
     binding: { factory: binding.factory, token, blockNumber: toHex(BigInt(binding.deployBlock)), blockHash: binding.deploymentBlockHash },
     account: creator.address,
     httpStatus: graduationReviewHttp.status(), status: graduationReview.status, reason: graduationReview.reason,
+    diagnostic: graduationReview.diagnostic,
     request: graduationReview.request, quote: graduationReview.quote, phase: graduationReview.state?.phase,
   }, null, 2));
   assert.equal(graduationReviewHttp.status(), 200, "Graduation review HTTP evidence");

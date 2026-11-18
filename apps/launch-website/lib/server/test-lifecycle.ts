@@ -11,6 +11,7 @@ import { readFixtureLaunches, type FixtureLaunch } from "./fixture-discovery";
 import { readDraftBody } from "./launch-draft";
 import { assertV4Binding, exactV4Approval, fixtureV4State, quoteFixtureV4 } from "./test-v4";
 import { testPoolFeePips, type TestLpAmounts, type TestV4Binding } from "../test-v4";
+import { atLifecycleStage, lifecycleFailureDiagnostic } from "./test-lifecycle-diagnostics";
 
 const deadlineWindow = 180n;
 const reviewWindow = 4n;
@@ -34,7 +35,8 @@ const maxBlockTransactions = 32;
 const maxReceiptLogs = 128;
 const headers = { "Cache-Control": "private, no-store", "Netlify-CDN-Cache-Control": "no-store" };
 const reply = (body: object, status = 200) => Response.json(body, { status, headers });
-const unavailable = (status = 200) => reply({ status: "unavailable" }, status);
+const unavailable = (status = 200, diagnostic?: ReturnType<typeof lifecycleFailureDiagnostic>) =>
+  reply({ status: "unavailable", ...(diagnostic && { diagnostic }) }, status);
 const invalid = (reason: string, status = 422) => reply({ status: "invalid", reason }, status);
 const address = (value: string) => getAddress(value.toLowerCase());
 const pickKeys = (record: Record<string, unknown>, names: string[], optional: string[] = []) =>
@@ -57,13 +59,16 @@ async function readCurveIdentity(rpc: Rpc, fixture: CurveFixture, token: Address
 }
 
 async function currentState(rpc: Rpc, fixture: CurveFixture, head: Head, token: Address, account?: Address) {
-  const discovery = await readFixtureLaunches(fixture, token);
-  if (discovery.status !== "ready" || discovery.launches.length !== 1) throw new Error("Indexed curve unavailable");
+  const discovery = await atLifecycleStage("indexed-discovery", async () => {
+    const value = await readFixtureLaunches(fixture, token);
+    if (value.status !== "ready" || value.launches.length !== 1) throw new Error("Indexed curve unavailable");
+    return value;
+  });
   const launch = discovery.launches[0];
   const lifecycle = launch.lifecycle;
   if (!lifecycle || BigInt(lifecycle.observed.blockNumber) > head.number) throw new Error("Canonical lifecycle unavailable");
   const at = { blockNumber: head.number };
-  const curveAddress = await readCurveIdentity(rpc, fixture, token, at.blockNumber);
+  const curveAddress = await atLifecycleStage("curve-identity", () => readCurveIdentity(rpc, fixture, token, at.blockNumber));
   if (!same(curveAddress, launch.initialCurve) || !same(curveAddress, lifecycle.activeCurve)) throw new Error("Curve identity mismatch");
   const curve = { address: curveAddress, abi: curveAbi, ...at } as const;
   const erc20 = { address: token, abi: erc20Abi, ...at } as const;
@@ -95,7 +100,7 @@ async function currentState(rpc: Rpc, fixture: CurveFixture, head: Head, token: 
       sold > graduationSold || backing > graduationBacking || ((!graduated) && inventory !== totalSupply - sold) ||
       (graduated !== (lifecycle.phase === "graduated"))) throw new Error("Curve state and indexed evidence disagree");
   const phase = graduated ? "graduated" : sold === graduationSold && backing === graduationBacking ? "eligible" : "curve";
-  const v4 = graduated ? await fixtureV4State(rpc, fixture, head, launch, account) : undefined;
+  const v4 = graduated ? await atLifecycleStage("v4-state", () => fixtureV4State(rpc, fixture, head, launch, account)) : undefined;
   const state: TestLifecycleState & { lifecycle: Lifecycle } = {
     factory: fixture.factory, token, curve: curveAddress, phase, blockNumber: toHex(head.number), blockHash: head.hash,
     inventoryWei: inventory.toString(), backingWei: backing.toString(), soldWei: sold.toString(), totalSupplyWei: totalSupply.toString(),
@@ -117,10 +122,10 @@ async function prepare(
       || BigInt(prior.blockNumber) !== fixture.deploymentBlock || !same(prior.token, token) || !same(prior.from, from) ||
       prior.operation !== operation || prior.amountWei !== amountWei || prior.slippageBps !== slippageBps)) return invalid("stale-review");
   const [{ state, v4 }, confirmedNonce, pendingNonce, code] = await Promise.all([
-    currentState(rpc, fixture, head, token, from),
-    rpc.getTransactionCount({ address: from, blockNumber: head.number }),
-    rpc.getTransactionCount({ address: from, blockTag: "pending" }),
-    rpc.getCode({ address: from, blockNumber: head.number }),
+    atLifecycleStage("curve-state", () => currentState(rpc, fixture, head, token, from)),
+    atLifecycleStage("wallet-nonce", () => rpc.getTransactionCount({ address: from, blockNumber: head.number })),
+    atLifecycleStage("wallet-nonce", () => rpc.getTransactionCount({ address: from, blockTag: "pending" })),
+    atLifecycleStage("wallet-code", () => rpc.getCode({ address: from, blockNumber: head.number })),
   ]);
   const v4Operation = isTestV4Operation(operation);
   const v4Trade = operation === "v4-buy" || operation === "v4-sell";
@@ -134,7 +139,7 @@ async function prepare(
   const nonce = toHex(pendingNonce);
   const reviewBlockNumber = prior ? BigInt(prior.reviewBlockNumber) : head.number;
   const deadline = prior ? BigInt(prior.deadline) : head.timestamp + deadlineWindow;
-  const reviewBlock = prior ? await rpc.getBlock({ blockNumber: reviewBlockNumber, includeTransactions: false }) : head;
+  const reviewBlock = prior ? await atLifecycleStage("review-block", () => rpc.getBlock({ blockNumber: reviewBlockNumber, includeTransactions: false })) : head;
   if (prior && (!same(prior.reviewBlockHash, reviewBlock.hash) || !same(prior.curve, state.curve) || !same(prior.nonce, nonce)
       || reviewBlockNumber > head.number || head.number - reviewBlockNumber > reviewWindow || deadline <= head.timestamp ||
       deadline !== reviewBlock.timestamp + deadlineWindow)) return invalid("stale-review");
@@ -170,14 +175,14 @@ async function prepare(
       if (!buy && (tokenAllowance !== amount || routerAllowance !== amount || BigInt(permit2Expiration) < deadline)) {
         return invalid("insufficient-allowance");
       }
-      output = await quoteFixtureV4(rpc, head, v4, from, buy, amount);
+      output = await atLifecycleStage("quote", () => quoteFixtureV4(rpc, head, v4, from, buy, amount));
       if (output >= 2n ** 127n) return invalid("amount-unavailable");
       // This is the quoted pool-rate estimate in the input currency, not measured LP earnings.
       fee = (amount * BigInt(testPoolFeePips) + 999_999n) / 1_000_000n;
     }
   } else if (operation === "buy") {
     if (BigInt(state.account.ethWei) <= amount) return invalid("insufficient-balance");
-    const [quoted, gross, charge, unused] = await rpc.readContract({ ...curve, functionName: "quoteBuy", args: [amount] });
+    const [quoted, gross, charge, unused] = await atLifecycleStage("quote", () => rpc.readContract({ ...curve, functionName: "quoteBuy", args: [amount] }));
     if (gross + unused !== amount || charge < 1n || feeFor(gross) !== charge || quoted + BigInt(state.soldWei) > BigInt(state.targetSoldWei)) {
       return invalid("amount-unavailable");
     }
@@ -185,7 +190,7 @@ async function prepare(
     fee = charge;
     refund = unused;
   } else if (operation === "sell" || operation === "approve") {
-    const [quoted, gross, charge] = await rpc.readContract({ ...curve, functionName: "quoteSell", args: [amount] });
+    const [quoted, gross, charge] = await atLifecycleStage("quote", () => rpc.readContract({ ...curve, functionName: "quoteSell", args: [amount] }));
     if (gross !== quoted + charge || quoted < 1n || charge < 1n || feeFor(gross) !== charge) return invalid("amount-unavailable");
     if (operation === "sell") {
       output = quoted;
@@ -198,18 +203,18 @@ async function prepare(
   const execution = v4Operation ? v4 : undefined;
   const to = lifecycleDestination(operation, token, state.curve, execution);
   if (!to) return unavailable();
-  const data = await encodeLifecycleCalldata(operation, token, state.curve, amount, minimum, deadline, execution);
+  const data = await atLifecycleStage("calldata", () => encodeLifecycleCalldata(operation, token, state.curve, amount, minimum, deadline, execution));
   const request: TestLifecycleRequest = { operation, token, curve: state.curve, factory: fixture.factory, from, to, data, value: toHex(value),
     chainId: testCreationChain, nonce, blockNumber: toHex(fixture.deploymentBlock), blockHash: fixture.deploymentBlockHash,
     reviewBlockNumber: toHex(reviewBlockNumber), reviewBlockHash: reviewBlock.hash, deadline: deadline.toString(), amountWei,
     minimumOutputWei: minimum.toString(), slippageBps, ...(execution && { v4: execution }) };
   if (prior && !sameTestLifecycleRequest(request, prior)) return invalid("stale-review");
   const [gas, gasPrice] = await Promise.all([
-    rpc.estimateGas({ account: from, to, data, value, blockNumber: head.number }),
-    rpc.getGasPrice(),
-    rpc.call({ account: from, to, data, value, blockNumber: head.number }),
+    atLifecycleStage("gas-estimate", () => rpc.estimateGas({ account: from, to, data, value, blockNumber: head.number })),
+    atLifecycleStage("gas-price", () => rpc.getGasPrice()),
+    atLifecycleStage("simulation", () => rpc.call({ account: from, to, data, value, blockNumber: head.number })),
   ]);
-  const latest = await rpc.getBlock({ blockTag: "latest", includeTransactions: false });
+  const latest = await atLifecycleStage("latest-block", () => rpc.getBlock({ blockTag: "latest", includeTransactions: false }));
   if (!same(latest.hash, head.hash)) return invalid("stale-review");
   if (BigInt(state.account.ethWei) < value + gas * gasPrice) return invalid("insufficient-balance");
   const quote: TestLifecycleQuote = { inputWei: amountWei, outputWei: output.toString(), minimumOutputWei: minimum.toString(),
@@ -369,25 +374,27 @@ export async function handleTestLifecycle(request: Request) {
     if (body.action === "state" && pickKeys(body, ["action", "token"], ["account"]) && fixtureAddress(body.token) &&
         (body.account === undefined || fixtureAddress(body.account))) {
       const rpc = fixtureRpc(fixture);
-      const head = await verifyCurveFixture(fixture, rpc);
-      const { state } = await currentState(rpc, fixture, head, address(body.token), body.account === undefined ? undefined : address(body.account));
+      const head = await atLifecycleStage("deployment-binding", () => verifyCurveFixture(fixture, rpc));
+      const token = address(body.token), account = body.account === undefined ? undefined : address(body.account);
+      const { state } = await atLifecycleStage("curve-state", () => currentState(rpc, fixture, head, token, account));
       return reply({ status: "ready", state });
     }
     if (body.action === "prepare" && pickKeys(body, ["action", "token", "account", "operation", "amountWei", "slippageBps"], ["prior"]) &&
         fixtureAddress(body.token) && fixtureAddress(body.account) && isLifecycleOperation(body.operation) &&
         isLifecycleAmount(body.operation, body.amountWei) && isLifecycleSlippage(body.operation, body.slippageBps)) {
       const rpc = fixtureRpc(fixture);
-      const head = await verifyCurveFixture(fixture, rpc);
+      const head = await atLifecycleStage("deployment-binding", () => verifyCurveFixture(fixture, rpc));
       return await prepare(rpc, fixture, head, body, address(body.token), address(body.account), body.operation, body.amountWei, body.slippageBps);
     }
     if (body.action === "verify" && pickKeys(body, ["action", "request"], ["transactionHash"]) && isTestLifecycleRequest(body.request) &&
         (body.transactionHash === undefined || isTransactionHash(body.transactionHash))) {
       const rpc = fixtureRpc(fixture);
-      const head = await verifyCurveFixture(fixture, rpc);
-      return reply(await verify(rpc, fixture, head, body.request, body.transactionHash));
+      const head = await atLifecycleStage("deployment-binding", () => verifyCurveFixture(fixture, rpc));
+      const original = body.request, transactionHash = body.transactionHash;
+      return reply(await atLifecycleStage("receipt-verification", () => verify(rpc, fixture, head, original, transactionHash)));
     }
-  } catch {
-    return unavailable();
+  } catch (error) {
+    return unavailable(200, lifecycleFailureDiagnostic(error));
   }
   return invalid("request", 400);
 }
