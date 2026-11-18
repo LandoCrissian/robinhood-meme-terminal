@@ -16,19 +16,43 @@
       "command": "pnpm --filter indexer test:curve-production",
       "result": "passed",
       "registrations": 53,
-      "coverage": ["creator, treasury, operations and reserve relations", "25-row checkpoint-bound pagination", "head advance and reader restart", "exact token lookup", "duplicate replay", "conflicting identity rejection", "read-only transaction enforcement", "single-writer lease", "atomic interruption rollback", "reorg and restored-backup cursor invalidation"]
+      "coverage": [
+        "creator, treasury, operations and reserve relations",
+        "25-row checkpoint-bound pagination",
+        "head advance and reader restart",
+        "exact token lookup",
+        "duplicate replay",
+        "conflicting identity rejection",
+        "read-only transaction enforcement",
+        "single-writer lease",
+        "atomic interruption rollback",
+        "reorg and restored-backup cursor invalidation"
+      ]
     },
     {
       "command": "pnpm --filter indexer exec tsx src/curve-fixture-earnings-postgres-smoke.ts",
       "result": "passed",
       "registrations": 53,
-      "coverage": ["independent recipient pagination", "exact token lookup", "canonical-shaped claim and factory payout persistence", "duplicate and conflicting receipt delivery", "reader restart", "single writer", "reorg cascading removal"]
+      "coverage": [
+        "independent recipient pagination",
+        "exact token lookup",
+        "canonical-shaped claim and factory payout persistence",
+        "duplicate and conflicting receipt delivery",
+        "reader restart",
+        "single writer",
+        "reorg cascading removal"
+      ]
     },
     {
       "command": "pnpm --filter indexer test:schema",
       "result": "passed",
       "historicalRecipientRecords": 30,
-      "coverage": ["existing indexer schema", "historical pagination beyond 25", "original/current creator and protocol treasury relations", "default response compatibility"]
+      "coverage": [
+        "existing indexer schema",
+        "historical pagination beyond 25",
+        "original/current creator and protocol treasury relations",
+        "default response compatibility"
+      ]
     }
   ],
   "linuxCiBeforeCorrection": {
@@ -41,7 +65,12 @@
     "schemaAndWorkerHttp": "skipped after the fixture failure",
     "correctionCommit": "1faea4bb0d59265a350772cf5525ebc48f8387ba",
     "correction": "Use a fresh native loopback-only fixture cluster; preserve the exact runtime identity guard",
-    "correctedLinuxRun": "pending"
+    "correctedLinuxRun": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44354118336/job/134977462879",
+    "correctedLinuxResult": "passed on9d1ee9ef: both PostgreSQL earnings smokes, schema/history and worker HTTP checks"
   },
-  "limits": ["These are synthetic database recovery tests, not mainnet earnings or independent audit evidence", "Large-cardinality production load and installed recipient expression indexes are not established", "Actual successor graduation and LP activity integration evidence is recorded separately"]
+  "limits": [
+    "These are synthetic database recovery tests, not mainnet earnings or independent audit evidence",
+    "Large-cardinality production load and installed recipient expression indexes are not established",
+    "Actual successor graduation and LP activity integration evidence is recorded separately"
+  ]
 }

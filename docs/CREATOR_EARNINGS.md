@@ -10,6 +10,8 @@ Each new-engine record carries chain, factory, registry, token, original curve/r
 
 On-demand reads verify birth receipts, runtime/deployment pins, policy and beneficiary credits at a canonical checkpoint. Production reads require matching independent provider results. Claimed totals use the beneficiary's accrued buckets minus current claimable credit, not a global claimed amount attributed to each recipient. ETH and token amounts stay separate. Unsupported evidence is unavailable, never an assumed zero.
 
+A recorded creation overpayment does not erase the project's beneficiary relations. Its refund event is registration evidence; independently proving payment/refund settlement still requires exact native-transfer evidence. Discovery never labels that refund settled.
+
 LP balances come from the ledger for the original locked position. Its complete PoolKey, position owner, permissions and principal liquidity are checked. Gross fees awaiting collection are distinct from distributed, claimable and already claimed credits. Other liquidity providers' fees are excluded. Creation fees have one factory-wide Operations payout; this amount is excluded from project totals and is never multiplied by project count.
 
 ## Read interfaces
@@ -38,7 +40,8 @@ New-engine cursors bind deployment, recipient and a retained canonical block/has
 - Production registration ingestion: at most 128 registrations in each bounded 2,000-block range. Exceeding this limit fails closed; it is not a 128-project product limit.
 - Local fixture lifecycle: at most 128 projects. Fee activity: at most 16 rows for one transaction hash.
 - Website upstream JSON: 192 KiB maximum, four-second fetch deadline. Website reads have a per-instance budget of 30/minute and two concurrent requests; the backend retains its separate authenticated budget. These are not a distributed visitor quota.
-- Contract snapshot: at most 128 intercepted RPC method calls. Projects are checked individually; the page's totals explicitly exclude unchecked projects, token balances and factory creation fees.
+- ABI reads: each reader helper permits at most 128 calls and four concurrent calls. Context verification uses its own reader plus a fixed number of code, block, balance and receipt reads; this is not a 128-total-RPC request cap. Measured successful fixture paths use 51 RPC methods for a curve snapshot, 77 for a graduated snapshot and 20 for a factory-wide balance, per provider. Production corroboration doubles these counts before discovery reads. Transport batching/caching may differ. Projects are checked individually; no eager all-project contract scan runs. Totals exclude unchecked projects, token balances and factory creation fees.
+- The phone UI retains at most 100 registrations per reading window. Continuing uses the canonical next cursor rather than silently ending discovery. Refresh returns to the beginning.
 
 The PostgreSQL tests exercise 53 new-engine registrations per store and 30 historical recipient matches. They do not establish production-scale performance. JSONB recipient filtering has no newly installed production expression index; larger cardinality/load acceptance and any reviewed index installation remain separate operational work. No polling worker or parallel scheduler was added. [Sanitized PostgreSQL evidence and CI correction](evidence/rmt-task074/indexer-postgres.json)
 
@@ -53,6 +56,8 @@ The local writer stores canonically verified curve/factory/LP fee activity in it
 Migration-aware fixture registration verification preserves original-ledger discovery and original-ledger claim ingestion after reviewed V2/V3 transitions. A separate bounded receipt verifier binds successor graduation to its current and previous canonical route, runtime history, original ledger, actual starting reserves, funded pool and locked position. It persists that actual graduation in the existing store so LP fee collection and claims use the same canonical activity path. It does **not** fabricate a V1 trading state for a successor: readiness still reports unsupported successor trading separately. Unsupported execution envelopes or missing proofs remain unavailable/indexing-pending.
 
 Safe beneficiary accounting is supported. A browser EOA claim cannot impersonate its Safe. Actual Safe outer transaction construction and EIP-7702 delegated-account execution require their own accepted profiles; the direct fixture claim adapter rejects them. Local Safe contract tests do not establish physical-phone acceptance.
+
+`prepareUnsignedProductionEarningsReview` is an internal, server-only, unsigned review adapter for the exact deployed 4663 manifest. It shares preparation arithmetic and simulation with the local adapter, rejects changed pins before making RPC calls, and returns `executionEnabled: false` with release holds. Its execution-gas estimate explicitly excludes unverified L1 data fees and total network cost. No HTTP route calls it, the production route remains 404, and the browser sender still rejects chain 4663. Production settlement and recovery remain unavailable. A positive unit test uses archived, dual-provider-verified deployed bytecode with **synthetic** balances, nonces and state for the factory-wide payout; it is not real 4663 execution or acceptance of every claim path.
 
 ## Reproducible checks and release status
 
@@ -71,14 +76,23 @@ The connected same-app browser command is:
 
 ```sh
 node scripts/visual-qa/rmt-creator-integration.mjs \
+  --browser chromium \
   --anvil /path/to/anvil --solc /path/to/checksum-verified-solc-0.8.26 \
   --pg-bin /path/to/postgresql/bin \
   --mobile-plan docs/evidence/mobile-signing/review-plan-4663.json \
   --output /new/isolated/evidence-directory
 ```
 
-It requires the website/indexer builds, pinned contract dependencies and existing historical evidence anchor. It creates synthetic assets and a disposable local PostgreSQL cluster. Actual browser evidence and CI are pending at this documentation revision; see the draft PR for final exact-head results. Recorded local evidence includes the 111-test Foundry regression, the 53/53-registration PostgreSQL checks, historical 30-registration recovery, 38 adapter tests, and nine website discovery/history tests. These are separate coverage boundaries, not an independent audit.
+Use `--browser webkit` for the other browser engine. An explicit `--successor-only` selects just the supplemental operator migration/LP proof for focused diagnostics; it does not establish browser acceptance. CI runs the complete journey for both engines.
+
+The command requires website/indexer builds, pinned contract dependencies and the existing historical evidence anchor. It creates synthetic assets and a disposable local PostgreSQL cluster. Recorded local evidence includes 112 Foundry tests, 140 website tests (including 42 focused adapter and ten discovery/history cases), 53/53-registration PostgreSQL checks, historical 30-registration recovery, and the connected 24-transaction browser lifecycle with separate mobile-review tests. Supplemental successor acceptance and final CI results are recorded in the draft PR and evidence below; an earlier failed run is not counted as passed. These are separate coverage boundaries, not an independent audit.
+
+The supplemental successor run passed with 19 separately identified fixture-operator receipts: genuine two-signature/timelocked V1→V2→V3 migration, original-ledger claims, V3 graduation, official 2.1.2 router buys/sells, LP collection/claim, durable restart and reorg restoration of fee credits, with principal unchanged. The actual run exposed a one-based registry-history reader bug, which was fixed along with its incorrect test model. A separate fixture deadline drift was fixed by binding Permit2 and the router to one deadline; the indexer's strict allowance checks were preserved.
+
+[Sanitized receipts, amounts and database identities](evidence/rmt-task074/acceptance.json) · [Unchanged compiler/source and security report proof](evidence/rmt-task074/frozen-source-and-slither-proof.json) · [Portrait](evidence/rmt-task074/earnings-portrait.png) · [Landscape](evidence/rmt-task074/earnings-landscape.png) · [Desktop](evidence/rmt-task074/earnings-desktop.png). These screenshots use synthetic data. Raw lifecycle JSON and screenshots are retained as CI artifacts; they contain no PostgreSQL cluster or private credentials.
 
 Production financial execution remains blocked. Preserve the 22 high static-analysis findings and failed release gate, governance notice, separate owner release approvals, provider/trace and L1-finality requirements. Production responses describe L2-confirmed observation with **L1 finality unverified**; local receipts are synthetic and have no L1-finality claim. Physical iPhone earnings acceptance is unverified. Website publication, production indexer rollout, Firebase activation and financial execution each retain their own authorization boundary. No contract, custody or economic change is included.
+
+The next acceptance stages are separate: review this draft and its evidence; authorize any website/indexer rollout within the existing hosting constraints; accept production provider/trace, finality, recovery and monitoring requirements; establish the exact EIP-7702/Safe execution profiles and physical-wallet results; then obtain independent, explicit financial activation approval with the retained security findings visible. No environment flag alone constitutes any of these approvals.
 
 [Treasury policy](CREATOR_TREASURIES.md) · [Release acceptance](RELEASE_ACCEPTANCE.md) · [Deployment](DEPLOYMENT.md) · [Security findings](SECURITY.md) · [Existing Railway migration boundary](RAILWAY_LAUNCHPAD_MIGRATION_AND_RETIREMENT.md)
