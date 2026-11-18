@@ -1,12 +1,38 @@
 import assert from "node:assert/strict";
 import { writeFile } from "node:fs/promises";
+import { request as httpRequest } from "node:http";
 const base = new URL(process.env.RMT_RAILWAY_SMOKE_URL ?? "http://127.0.0.1:3340/");
 assert.equal(base.protocol, "http:"); assert.equal(base.hostname, "127.0.0.1"); assert.ok(base.port); assert.equal(base.pathname, "/");
 const host = "rmt-launch-website-preview.up.railway.app";
 const environment = process.env.RMT_RAILWAY_SMOKE_MODE ?? "local-container";
 assert.ok(["local-container", "local-next-runtime"].includes(environment));
-const read = (path, init = {}) => fetch(new URL(path, base), { redirect: "manual", signal: AbortSignal.timeout(10_000),
-  ...init, headers: { Host: host, "X-Forwarded-Proto": "https", ...init.headers } });
+// Test an HTTPS proxy's public Host while connecting only to the local test
+// container. Native HTTP preserves Host explicitly; Fetch may normalize it to
+// the loopback URL. Never resolve or contact the real preview origin here.
+const read = (path, init = {}) => new Promise((resolve, reject) => {
+  const url = new URL(path, base);
+  assert.equal(url.origin, base.origin);
+  const request = httpRequest(url, { method: init.method ?? "GET", signal: AbortSignal.timeout(10_000),
+    headers: { Host: host, "X-Forwarded-Proto": "https", ...init.headers } }, response => {
+    const chunks = []; let size = 0;
+    response.on("data", chunk => {
+      size += chunk.length;
+      if (size > 2 * 1024 * 1024) request.destroy(new Error("Smoke response exceeded its bound"));
+      else chunks.push(chunk);
+    });
+    response.on("error", reject);
+    response.on("end", () => {
+      const headers = new Headers();
+      for (const [key, value] of Object.entries(response.headers)) {
+        for (const item of Array.isArray(value) ? value : value === undefined ? [] : [value]) headers.append(key, item);
+      }
+      resolve(new Response(init.method === "HEAD" ? null : Buffer.concat(chunks), { status: response.statusCode, headers }));
+    });
+  });
+  request.on("error", reject);
+  if (init.body !== undefined) request.write(init.body);
+  request.end();
+});
 for (let i = 0; ; i++) {
   try { if ((await read("/healthz")).status === 200) break; } catch { /* Wait for this local container only. */ }
   assert.ok(i < 59, "Standalone liveness did not become available"); await new Promise(resolve => setTimeout(resolve, 1000));
