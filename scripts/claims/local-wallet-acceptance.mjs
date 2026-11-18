@@ -311,6 +311,7 @@ export async function testClaimWalletProfiles({ rpcUrl, rpc, artifacts, deployed
     evidence.checks.creationFeesPaidOnlyToImmutableOperations = true;
     evidence.checks.productionFinalityNotClaimed = true; evidence.status = "passed"; save();
     return { evidence, actors: { delegated: delegated.address, relayer: relayer.address, safe, owners: owners.map(o => o.address) }, projects,
-      signSafeReview, sendReviewedTransaction: async envelope => send(accounts.get(envelope.from.toLowerCase()), envelope), client };
+      signSafeReview, sendReviewedTransaction: async envelope => send(accounts.get(envelope.from.toLowerCase()), envelope),
+      checkPositionCustody: custody, client };
   } catch (error) { evidence.failure = error instanceof Error ? error.message : "Acceptance failed"; save(); throw error; }
 }
