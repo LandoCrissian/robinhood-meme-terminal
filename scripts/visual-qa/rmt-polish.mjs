@@ -300,6 +300,35 @@ async function safeAreaEvidence(page) {
   return result;
 }
 
+async function safeAreaStress(page) {
+  const evidence = await page.evaluate(() => {
+    const insets = { top: 0, right: 44, bottom: 20, left: 44 }, derived = [];
+    function inspect(rules) {
+      for (const rule of rules) {
+        if (rule.type === CSSRule.MEDIA_RULE && !matchMedia(rule.conditionText).matches) continue;
+        if (rule.style?.cssText.includes("safe-area-inset-")) derived.push(rule.cssText.replace(
+          /env\(\s*safe-area-inset-(top|right|bottom|left)(?:\s*,[^)]*)?\s*\)/g,
+          (_match, side) => `${insets[side]}px`));
+        if (rule.cssRules) inspect(rule.cssRules);
+      }
+    }
+    for (const sheet of document.styleSheets) { try { inspect(sheet.cssRules); } catch { /* cross-origin stylesheet unavailable */ } }
+    if (!derived.length) throw new Error("No actual safe-area rules to exercise");
+    const style = document.createElement("style"); style.id = "qa-derived-safe-area-stress";
+    style.textContent = derived.join("\n"); document.head.append(style);
+    return { insets, derivedRules: derived.length,
+      boundary: "Synthetic CSS inset substitution derived from actual active rules; not a physical device/notch result" };
+  });
+  try {
+    evidence.dimensions = await noOverflow(page);
+    evidence.contentPadding = await page.locator(".lpContent").evaluate(element => {
+      const style = getComputedStyle(element); return { left: parseFloat(style.paddingLeft), right: parseFloat(style.paddingRight) };
+    });
+    assert.ok(evidence.contentPadding.left >= 56 && evidence.contentPadding.right >= 56);
+    return evidence;
+  } finally { await page.locator("#qa-derived-safe-area-stress").evaluate(element => element.remove()); }
+}
+
 async function checkAfter(browser, engine, layout, harness) {
   const context = await browser.newContext({ ...layout, name: undefined, colorScheme: "dark", reducedMotion: "reduce" });
   const state = await instrument(context, [site.origin, harness.origin]);
@@ -363,6 +392,7 @@ async function checkAfter(browser, engine, layout, harness) {
   await trigger.click();
   await page.getByRole("searchbox", { name: "Search launches" }).focus();
   assert.equal(await trigger.getAttribute("aria-expanded"), "false", "Moving focus outside closes the disclosure");
+  const insetStress = layout.name === "iphone-landscape" ? await safeAreaStress(page) : undefined;
   for (const [label, path, heading, shot] of [["Create", "/create-token", "Create Token", "create"], ["My Launches", "/my-launches", "My Launches", "my-launches"]]) {
     await navigation.getByRole("link", { name: label, exact: true }).click();
     await page.waitForURL(new URL(path, site).href);
@@ -468,7 +498,7 @@ async function checkAfter(browser, engine, layout, harness) {
   assert.deepEqual(state.pageErrors, []);
   reports.push({ phase: "after", engine, layout: layout.name, viewport: layout.viewport, url: site.href,
     fixture: "Isolated local React harness, actual NewEngineLaunches component, canonical-shaped synthetic registrations; no live project claims",
-    focus, fixtureFocus, keyboard, safeAreas, primaryTargets, appThemes, cardStates, captures, ...state, walletCalls: [],
+    focus, fixtureFocus, keyboard, safeAreas, insetStress, primaryTargets, appThemes, cardStates, captures, ...state, walletCalls: [],
     physicalAcceptance: "Not performed: physical VoiceOver, notch/safe-area rendering, MetaMask/Rabby and Firebase acceptance remain separate" });
   await context.close();
 }
