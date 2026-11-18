@@ -78,3 +78,8 @@
   .lpCreatorPageHeading > .lpButton { min-height: 44px; }
   .lpCreatorDraft input:not([type="checkbox"]), .lpCreatorDraft textarea { font-size: 16px; }
 }
+/* Mobile wallet browsers can report a fine pointer. Keep the compact immutable
+   supply display legible without relying on that device capability signal. */
+@media (max-width: 900px) {
+  .lpCreatorSupply input[readonly] { font-size: 16px; }
+}
