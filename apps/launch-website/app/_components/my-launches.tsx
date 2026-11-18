@@ -45,7 +45,7 @@ export function MyLaunches() {
         || result.launches.some(row => !hasCurveRegistration(row)) || (result.nextCursor !== null && !/^[A-Za-z0-9_-]{1,768}$/.test(result.nextCursor))) throw new Error("Page unavailable");
       if (version !== generation.current) return;
       const additions: CurveLaunch[] = result.launches.filter(row => sameAccount(row.creator, address)).map(registration => ({ registration, state: "created" }));
-      const all = [...directory.launches, ...additions];
+      const all = [...(directory.launches.length >= 100 ? [] : directory.launches), ...additions];
       if (new Set(all.map(row => row.registration.token.toLowerCase())).size !== all.length) throw new Error("Checkpoint changed");
       setDirectory({ status: "ready", launches: all }); setCursor(result.nextCursor); setStale(result.status === "stale");
     } catch { if (version === generation.current) setStale(true); }
@@ -59,9 +59,9 @@ export function MyLaunches() {
       <p className="lpNotice">Showing the authenticated creator <code className="lpAddress">{address}</code>. This account cannot claim another project&apos;s fees or change its recipients.</p>
       {loading ? <div className="lpSkeleton" role="status">Loading verified creator launches…</div> : <NewEngineLaunches directory={directory} />}
       <div className="lpDraftActions"><button type="button" className="lpButton lpSecondary" disabled={loading} onClick={() => setRevision((value) => value + 1)}>Refresh launches</button>
-        {cursor && <button type="button" className="lpButton lpSecondary" disabled={loading} onClick={() => void more()}>Load more projects</button>}
+        {cursor && <button type="button" className="lpButton lpSecondary" disabled={loading} onClick={() => void more()}>{directory.status === "ready" && directory.launches.length >= 100 ? "Next project window" : "Load more projects"}</button>}
         <Link className="lpButton lpSecondary" href="/account/profile" prefetch={false}>Edit creator profile</Link></div>
-      <p className="lpInlineNotice">{stale ? "The registration checkpoint is stale or a page could not be refreshed. " : ""}Projects use recipient-aware indexed pages; use Load more until the page set is complete. Historical V4/V6 tokens remain separate. Trading and fee claims remain disabled.</p>
+      <p className="lpInlineNotice">{stale ? "The registration checkpoint is stale or a page could not be refreshed. " : ""}Projects use recipient-aware indexed pages. Load more traverses all pages, retaining up to 100 projects per reading window. Refresh returns to the beginning. Historical V4/V6 tokens remain separate. Trading and fee claims remain disabled.</p>
     </>}
     <section className="lpPanel lpForm" style={{ marginTop: 18 }}><h2>Your draft stays with you</h2><p>Unsubmitted token details and artwork remain saved in this browser. Recover submitted transactions using their original account and transaction hash.</p><Link className="lpBack" href="/create-token" prefetch={false}>Continue your token draft →</Link></section>
   </>;

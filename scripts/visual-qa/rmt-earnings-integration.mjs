@@ -51,6 +51,8 @@ export async function testEarningsJourney({ page, site, out, pg, rpc, creator, t
     if (!await details.evaluate(el => el.open)) await summary.click();
     await button("Recover earnings receipt", details).click();
     await page.getByText("Test claim confirmed onchain. Canonical fee activity indexed.", { exact: true }).first().waitFor();
+    assert.equal(await article().getByText("Receipt evidence is unavailable or invalidated. The original request remains recoverable.", { exact: true }).count(), 0,
+      "A canonical recovery clears the same transaction's obsolete per-card error");
   };
   const claim = async (operation) => {
     await connect(); await select(operation); await review();

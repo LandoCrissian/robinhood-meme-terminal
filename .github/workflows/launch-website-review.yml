@@ -16,6 +16,7 @@ on:
       - "apps/indexer/tsconfig.json"
       - "scripts/visual-qa/rmt-creator-integration.mjs"
       - "scripts/visual-qa/rmt-earnings-integration.mjs"
+      - "scripts/visual-qa/rmt-successor-earnings-integration.mjs"
       - "scripts/visual-qa/rmt-mobile-review.mjs"
       - "scripts/visual-qa/rmt-mobile-connection-check.mjs"
       - "scripts/visual-qa/export-mobile-connection-check.mjs"
@@ -170,4 +171,6 @@ jobs:
             ${{ runner.temp }}/rmt-creator-lifecycle/*.png
             ${{ runner.temp }}/rmt-creator-lifecycle/creation-journey-evidence.json
             ${{ runner.temp }}/rmt-creator-lifecycle/graduation-review-evidence.json
+            ${{ runner.temp }}/rmt-creator-lifecycle/earnings-journey-evidence.json
+            ${{ runner.temp }}/rmt-creator-lifecycle/successor-earnings-evidence.json
             ${{ runner.temp }}/rmt-creator-lifecycle/failure-page.txt

@@ -16,6 +16,7 @@ import { deployFixedSupplyFixture, localFixtureClient }
   from "../../packages/contracts/scripts/deploy-fixed-supply-fixture.mjs";
 import { testMobileReview } from "./rmt-mobile-review.mjs";
 import { testEarningsJourney } from "./rmt-earnings-integration.mjs";
+import { testSuccessorEarningsJourney } from "./rmt-successor-earnings-integration.mjs";
 
 const repository = fileURLToPath(new URL("../../", import.meta.url));
 const require = createRequire(new URL("../../apps/indexer/package.json", import.meta.url));
@@ -270,7 +271,7 @@ try {
     const { poolManager, positionManager, permit2: allowanceTransfer, universalRouter212, quoter, stateView } = anchor;
     deployed = await deployFixedSupplyFixture(client, artifacts,
       { poolManager, positionManager, permit2: allowanceTransfer, universalRouter: universalRouter212, quoter, stateView },
-      { operator, operations, reserve });
+      { operator, operations, reserve, fixtureMigrationAuthority: true });
   } finally {
     for (const address of deploymentAccounts) await rpc("anvil_stopImpersonatingAccount", [address]);
   }
@@ -1258,7 +1259,14 @@ try {
   }
   assert.deepEqual(pageErrors, []);
   assert.deepEqual(offOrigin, []);
-  Object.assign(evidence, { earnings, reviewedTransaction: tx, receipt: { hash: receipt.transactionHash, blockNumber: receipt.blockNumber,
+  const successorEarnings = await testSuccessorEarningsJourney({ rpcUrl, rpc, artifacts, deployed, anchor,
+    creator: creator.address, treasury, operator: deploymentOperator.address, operations: payableOperations, reserve: payableReserve,
+    site, out, pg, waitFor, mine, ready: () => workerReady(worker), restart: async () => {
+      await stop(web); await stop(worker);
+      web = startWeb("website-after-successor-earnings"); worker = startWorker("worker-after-successor-earnings");
+      await webReady(web); await workerReady(worker);
+    } });
+  Object.assign(evidence, { earnings, successorEarnings, reviewedTransaction: tx, receipt: { hash: receipt.transactionHash, blockNumber: receipt.blockNumber,
     blockHash: receipt.blockHash, status: receipt.status }, indexed, postgresRow: row,
     initial: { backingWei: "0", soldWei: "0", inventoryWei: project.supplyWei, creatorInitialTokensWei: "0" },
     lifecycle: { buy, approval, sell, threshold, graduation: { receipt: graduationReceipt, verified: v4 },
