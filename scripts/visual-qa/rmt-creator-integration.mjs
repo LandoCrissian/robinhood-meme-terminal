@@ -394,6 +394,8 @@ try {
   const ownTreasury = await post(prepareBody({ ...reviewFields, treasury: creator.address.toLowerCase() }));
   assert.equal(ownTreasury.status, 422, "The creator cannot also be the project treasury");
   const reservedTreasury = await post(prepareBody({ ...reviewFields, treasury: binding.factory.toLowerCase() }));
+  await writeFile(join(out, "reserved-beneficiary-preflight.json"), JSON.stringify({ status: reservedTreasury.status,
+    body: await reservedTreasury.clone().json(), treasury: binding.factory }, null, 2));
   assert.equal(reservedTreasury.status, 422, "The factory cannot be committed as a project treasury");
   const unfunded = await post(prepareBody({ ...reviewFields, treasury: treasury.toLowerCase() }, alternate));
   assert.notEqual((await unfunded.json()).status, "prepared", "The fixture cannot simulate a creation without its fee");
