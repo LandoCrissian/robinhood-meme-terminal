@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "task": 77,
+  "scope": "Retained original CI observation; does not replace the final candidate checks",
+  "failures": [
+    {
+      "sourceHead": "4aec866181442a1437262520d37b771511e8198f",
+      "testMergeCommit": "3ce78f518c59c7b57298f35e702584968ec1bb6f",
+      "run": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44413366803",
+      "job": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44413366803/job/135187098831",
+      "browser": "webkit",
+      "step": "Verify the same-app lifecycle on synthetic chain 31337",
+      "observedFailureUtc": "2026-11-18T22:41:14.993Z",
+      "artifactName": "rmt-creator-lifecycle-webkit-4aec866181442a1437262520d37b771511e8198f",
+      "artifactFile": "rmt-creator-lifecycle/graduation-review-evidence.json",
+      "assertion": "Graduation must produce exact unsigned terms before wallet confirmation",
+      "expectedStatus": "prepared",
+      "actualHttpStatus": 200,
+      "actualStatus": "unavailable",
+      "diagnostic": {
+        "stage": "simulation",
+        "kind": "TimeoutError"
+      },
+      "existingLoopbackReadBudgetMs": 2500,
+      "classification": "Bounded read-only graduation simulation timed out; not evidence of an on-chain transaction revert",
+      "failedOperationSubmittedTransaction": false,
+      "automaticTransactionRetry": false,
+      "laterStepsSkipped": [
+        "Task 075 wallet-profile claims journey",
+        "Task 076 treasury and Task 077 V2 prototype journey"
+      ],
+      "timeoutOrAssertionWeakened": false,
+      "resolutionStatus": "Original failure preserved; final candidate CI must be assessed separately"
+    }
+  ],
+  "productionChanges": false,
+  "releaseStatus": "BLOCKED_NO_BROADCAST"
+}
