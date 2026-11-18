@@ -186,6 +186,8 @@ export async function exerciseTreasuryPage({ session, project, treasury, safe, s
   assert.ok(same(reviewed.actor, safe) && same(reviewed.treasury, treasury));
   assert.equal(await button("Confirm synthetic treasury transaction").count(), 0, "An EOA cannot impersonate its controller Safe");
   await layouts("project-treasury-safe-dashboard");
+  assert.deepEqual(session.evidence.pageErrors, [], "The actual treasury pages must not raise browser runtime errors");
+  assert.deepEqual(session.evidence.externalRequests, [], "Treasury acceptance must not contact hosted services or metadata URLs");
   evidence.dashboard = snapshot; session.evidence.checks = { realFormTwoStep: true, missingHashNoDuplicate: true, safeInnerCallNotDirectEoa: true };
   session.evidence.status = "passed"; session.save(); save();
 }
