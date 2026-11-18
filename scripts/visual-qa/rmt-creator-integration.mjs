@@ -17,6 +17,8 @@ import { deployFixedSupplyFixture, localFixtureClient }
 import { testMobileReview } from "./rmt-mobile-review.mjs";
 import { testEarningsJourney } from "./rmt-earnings-integration.mjs";
 import { testSuccessorEarningsJourney } from "./rmt-successor-earnings-integration.mjs";
+import { testClaimWalletProfiles } from "../claims/local-wallet-acceptance.mjs";
+import { testClaimProfilesBrowser } from "../claims/browser-wallet-acceptance.mjs";
 
 const repository = fileURLToPath(new URL("../../", import.meta.url));
 const require = createRequire(new URL("../../apps/indexer/package.json", import.meta.url));
@@ -29,9 +31,11 @@ const { values: args } = parseArgs({ options: {
   "pg-bin": { type: "string" }, output: { type: "string" }, "mobile-plan": { type: "string" },
   browser: { type: "string", default: "chromium" },
   "successor-only": { type: "boolean", default: false },
+  "profiles-only": { type: "boolean", default: false },
 } });
 for (const option of ["anvil", "solc", "pg-bin", "output"]) assert.ok(args[option], `Supply --${option}`);
 assert.ok(["chromium", "webkit"].includes(args.browser), "Use --browser chromium or --browser webkit");
+assert.ok(!(args["successor-only"] && args["profiles-only"]), "Select one focused acceptance scope");
 const out = resolve(args.output);
 const anvil = resolve(args.anvil);
 const solc = resolve(args.solc);
@@ -328,6 +332,7 @@ try {
   const env = { ...childBase, RMT_CURVE_FIXTURE: profile, RMT_CURVE_FIXTURE_RPC: rpcProxy,
     RMT_CURVE_FIXTURE_READ_KEY: indexReadKey,
     RMT_CURVE_FIXTURE_DEPLOYMENT: manifestPath, RMT_CURVE_FIXTURE_SITE_ORIGIN: site, RMT_CURVE_FIXTURE_INDEXER: workerOrigin + "/",
+    ...(args["profiles-only"] && { RMT_CLAIM_PROFILES_FIXTURE: "local-reviewed-claims-31337-v1" }),
     ...(mobileCreator && { RMT_MOBILE_REVIEW_FIXTURE: "local-reviewed-31337",
       RMT_MOBILE_REVIEW_FIXTURE_ACCOUNT: mobileCreator.address, RMT_MOBILE_REVIEW_TEST_DELEGATION: "synthetic-7702-v1",
       RMT_MOBILE_REVIEW_PLAN: mobilePlan }) };
@@ -377,7 +382,30 @@ try {
   const snapshot = await rpc("evm_snapshot");
   const beforeSnapshot = await rpc("eth_getBlockByNumber", ["latest", false]);
   const countBefore = BigInt(await rpc("eth_getTransactionCount", [creator.address, "latest"]));
-  if (args["successor-only"]) {
+  if (args["profiles-only"]) {
+    const { register } = require("tsx/cjs/api");
+    const unregister = register({ tsconfig: join(repository, "apps/launch-website/tsconfig.test.json") });
+    try {
+      const profiles = require(join(repository, "apps/launch-website/lib/server/claim-profiles.ts"));
+      const settlement = require(join(repository, "apps/launch-website/lib/server/production-claims-settlement.ts"));
+      let worker = startWorker("worker-wallet-profiles");
+      await rpc("anvil_mine", ["0x3"]); await workerReady(worker);
+      const mine = () => rpc("anvil_mine", ["0x3"]), ready = () => workerReady(worker);
+      const restart = async () => {
+          await stop(web); await stop(worker);
+          web = startWeb("website-wallet-profiles-restart"); worker = startWorker("worker-wallet-profiles-restart");
+          await webReady(web); await workerReady(worker);
+      };
+      const acceptance = await testClaimWalletProfiles({ rpcUrl, rpc, artifacts, deployed, anchor, creator: creator.address, site,
+        workerOrigin, indexReadKey, out, pg, waitFor, mine, ready, restart,
+        prepareClaimExecutionReview: profiles.prepareClaimExecutionReview, revalidateClaimExecutionReview: profiles.revalidateClaimExecutionReview,
+        verifyProductionClaimSettlement: settlement.verifyProductionClaimSettlement });
+      browser = await ({ chromium, webkit })[args.browser].launch();
+      await testClaimProfilesBrowser({ browserEngine: browser, site, out, rpc, acceptance, waitFor, mine, ready, restart,
+        hideReceipt: hash => { hideReceipt = hash ?? undefined; }, hideNativeProof: hidden => { hideTradeTrace = hidden; } });
+      console.log("Focused isolated claim wallet profiles passed. No production signature or broadcast occurred.");
+    } finally { unregister(); }
+  } else if (args["successor-only"]) {
     // Focused operator acceptance, not a replacement for the browser journey.
     // Use the identical deployment, process, database and cleanup boundaries.
     let worker = startWorker("worker-successor-focused");

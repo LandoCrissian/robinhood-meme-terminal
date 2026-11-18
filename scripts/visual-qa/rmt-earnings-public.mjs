@@ -72,7 +72,7 @@ for (const operation of ["curve-claim", "lp-collect", "lp-claim", "lp-claim-nati
   assert.equal(response.status, 404, `Public build admitted ${operation}`);
   denied.push({ path: "/api/launchpad/test-earnings", method: "POST", operation, status: response.status });
 }
-for (const [path, method] of [["/api/launchpad/production-earnings", "POST"],
+for (const [path, method] of [["/api/launchpad/production-earnings", "POST"], ["/api/launchpad/test-claim-profiles", "POST"],
   ["/api/launchpad/production-creation", "POST"], ["/api/account/nonce", "POST"],
   ["/api/account/verify", "POST"], ["/api/account/profile", "PATCH"], [earningsPath, "POST"]]) {
   const response = await request(path, { method, headers: { Origin: site.origin, "Content-Type": "application/json",
