@@ -6,6 +6,7 @@ on:
       - "packages/contracts/**"
       - "scripts/production-readiness/**"
       - "scripts/treasury/compiler.mjs"
+      - "scripts/treasury-v2/**"
       - ".github/workflows/security-analysis.yml"
   workflow_dispatch:
 
@@ -102,6 +103,48 @@ jobs:
             ${{ runner.temp }}/fixed-supply-4663.json
             ${{ runner.temp }}/4663-slither.json
             ${{ runner.temp }}/rmt-blockscout
+          retention-days: 7
+
+  treasury-purchase-v2-prototype:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.10"
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a
+        with:
+          version: "1.7.1"
+      - name: Compile every local-only prototype source and reachable dependency
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 2 \
+            'https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.26+commit.8a97fa7a' \
+            --output "$RUNNER_TEMP/solc"
+          chmod 700 "$RUNNER_TEMP/solc"
+          node scripts/treasury-v2/compiler.mjs --solc "$RUNNER_TEMP/solc" \
+            --standard-json "$RUNNER_TEMP/purchase-v2.json" --manifest "$RUNNER_TEMP/purchase-v2-manifest.json"
+      - name: Run prototype policy, invariant and exact V1 security regressions
+        run: forge test --root packages/contracts/treasury-purchase-v2 --use "$RUNNER_TEMP/solc" -vvv
+      - run: python -m pip install --disable-pip-version-check slither-analyzer==0.11.5 crytic-compile==0.3.11
+      - name: Analyze all prototype detectors without clearing retained custody findings
+        run: |
+          python docs/evidence/rmt-task043/analyze-rotation.py "$RUNNER_TEMP/purchase-v2.json" \
+            "$RUNNER_TEMP/solc" "$RUNNER_TEMP/purchase-v2-source" "$RUNNER_TEMP/purchase-v2-slither.json"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: treasury-purchase-v2-prototype-analysis
+          path: |
+            ${{ runner.temp }}/purchase-v2.json
+            ${{ runner.temp }}/purchase-v2-manifest.json
+            ${{ runner.temp }}/purchase-v2-slither.json
           retention-days: 7
 
   project-treasury-v1:

@@ -1,0 +1,1362 @@
+{
+  "schemaVersion": 1,
+  "scope": "READ_ONLY_4663_TREASURY_ROUTE_REFERENCE_OBSERVATION",
+  "observedAt": "2026-11-18T22:29:08.592Z",
+  "productionChanges": false,
+  "signingOrBroadcast": false,
+  "sourceUrls": {
+    "network": "https://docs.robinhood.com/chain/connecting/",
+    "robinhoodOracles": "https://docs.robinhood.com/chain/oracles-and-price-feeds/",
+    "uniswap": "https://developers.uniswap.org/docs/protocols/v4/deployments",
+    "router212": "https://developers.uniswap.org/docs/trading/swapping-api/supported-chains",
+    "deploymentRecord": "https://raw.githubusercontent.com/Uniswap/contracts/main/deployments/4663.md",
+    "oracleSemantics": "https://developers.uniswap.org/docs/protocols/v3/concepts/price-oracles",
+    "chainlinkCatalog": "https://reference-data-directory.vercel.app/feeds-robinhood-mainnet.json",
+    "chainlinkFeeds": "https://docs.chain.link/data-feeds/price-feeds/addresses?network=robinhood&page=1",
+    "chainlinkCatalogProvenance": "https://github.com/smartcontractkit/documentation/blob/805757ca9294eb1fa14bf9e4b6b3ae66bd03b5f9/src/features/data/chains.ts",
+    "sequencerFeeds": "https://docs.chain.link/data-feeds/l2-sequencer-feeds",
+    "pythContracts": "https://docs.pyth.network/pro/contract-addresses",
+    "pythFeedIdentities": "https://docs.pyth.network/pro/price-feed-ids"
+  },
+  "productionCompilerInputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+  "sourceBindings": [
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveFactoryV2.sol",
+      "sha256": "b7aff2888168b9b4d091fca46e5d17e5bd83f54f62ae2c57bc64439e42cdbdc8",
+      "sha256Encoding": "UTF8_CRLF_TO_LF_ONLY",
+      "recordedRawSha256": "a6a029fae5cc49501cf5fa1244f123fdcd5f7db5a724716e8202a39c2c97b01c"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveTokenV2.sol",
+      "sha256": "c0fc0358e4f0b46dca00ed264459896a42b52e256b19a0f8c412e91a31fd7d19",
+      "sha256Encoding": "UTF8_CRLF_TO_LF_ONLY",
+      "recordedRawSha256": "b6d6a993db1f42982653a00d73becb353d92795ea7f3e537d7a6ca2d7277b9c4"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveMathV1.sol",
+      "sha256": "2c1db3dd44aee9532188cf81f5085cecd0ebf049841357b25840e7b7be03fbb2",
+      "sha256Encoding": "UTF8_CRLF_TO_LF_ONLY",
+      "recordedRawSha256": "eb181a32c12ad7749d7d9af1574d3aac83eb1cac52c0a489e0cd3ef6797a9da9"
+    },
+    {
+      "path": "packages/contracts/src/RMTV4CurveGraduationV1.sol",
+      "sha256": "b633189372da00f1491908175b9af2f8b1f0ba21093e6df67ea66309921b601e",
+      "sha256Encoding": "UTF8_CRLF_TO_LF_ONLY",
+      "recordedRawSha256": "d43247f6c7eb428aeb50ef6807c6454e63243b58bdc41d4740d364a30f947db6"
+    },
+    {
+      "path": "packages/contracts/src/RMTV4CurveInitializationGuardV1.sol",
+      "sha256": "0c1498c636aae8954c6f47420cd7341eecbeb1eaaae9b3c743c22aa8907eb31f",
+      "sha256Encoding": "UTF8_CRLF_TO_LF_ONLY",
+      "recordedRawSha256": "34cd9e35fd18d23a1e9fe6130d56df44db3dfcfa9857004c5830da1c652a1a69"
+    }
+  ],
+  "catalog": {
+    "status": "OBSERVED_PUBLIC_CATALOG",
+    "url": "https://reference-data-directory.vercel.app/feeds-robinhood-mainnet.json",
+    "bytes": 90287,
+    "sha256": "9b21f1262fd333228743ce1987506ebfa9aa1296119db2a8aba93848db225339",
+    "count": 62,
+    "feeds": [
+      {
+        "name": "Robinhood TSLA (24/7)",
+        "proxy": "0x39eDf5ef54150A30d2C4F1b982FbB8f93050BC37",
+        "aggregator": "0x06701b4170749ba17BA20934b2335cf3376E2C01",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood SGOV-USD",
+        "proxy": "0xa0DF4ee0fFf975306345875E3548Fcc519577A11",
+        "aggregator": "0x0E96B7708487f91baAC09697593D3e8bf253f2d8",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood EWY / USD",
+        "proxy": "0xEFdf54610B62A7753Ec30bDc380847c12D32e1D1",
+        "aggregator": "0x105Cbe427BBD3225826a450f67EA80FeC6417F93",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood GOOGL / USD",
+        "proxy": "0xF6f373a037c30F0e5010d854385cA89185AE638b",
+        "aggregator": "0x11eD6d598eF565DDA86fAfE7E779303e7CC6b2Bd",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "BTC.B / USD",
+        "proxy": "0x5BB5e6a17a477d5B6Fec77b4322daD4A66bFb732",
+        "aggregator": "0x145dB0A26222934d32A0bd539863158AFb5eE30b",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood NVDA (24/7)",
+        "proxy": "0x321A36e441DfBadA01Aa6f9884F14a344E133D1F",
+        "aggregator": "0x1C28973bD1bAb2E34EFa5BFf5e94a95c6CAb72cC",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood GOOGL (24/7)",
+        "proxy": "0x53e040D2C8c9278cBc4b702328aC652068a0E063",
+        "aggregator": "0x22d3aC0c234d5C00E239671d0bb14A1084b73C32",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood QQQ / USD",
+        "proxy": "0x80901d846d5D7B030F26B480776EE3b29374C2ae",
+        "aggregator": "0x25e996ce8b3529885D429241156e83e7b7744049",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood TSM / USD",
+        "proxy": "0x874cF94aa8eC88Fd9560094dD065f2fB3E41Fc2F",
+        "aggregator": "0x2B3A9A18998e9464760658233ab093e6aEbF45d0",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "WEETH / USD",
+        "proxy": "0xf882e1D50352aecB0Ac85378378918BCf40511e7",
+        "aggregator": "0x2b65a9e1FF6b36A76e50a383A2d2702Cd9e78047",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood COIN / USD",
+        "proxy": "0xA3a468A452940B7D6b69991207B508c609a98Ef2",
+        "aggregator": "0x30398b0B0df82a009bB2D507BC7fE1dc6d3ca294",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood PLTR / USD",
+        "proxy": "0x820ABedFF239034956B7A9d2F0a331f9F075eB4c",
+        "aggregator": "0x315afd0f71D5407B99ad19ab001a67af40fbAAF4",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "LINK / USD",
+        "proxy": "0xe86e3422Aa9B5e8ee9f3E41a63975bC387A8bce9",
+        "aggregator": "0x3D2A8E2937F306D11829D95059DEdA9A290C74dA",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood RGTI / USD",
+        "proxy": "0x2A045cF1C49c61c166C036d2f06FA2D2d984f765",
+        "aggregator": "0x42B1C5174cE84Be751A23489d7DbDc969Bc17eA2",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "USDS / USD",
+        "proxy": "0x2D88D75b625633dCcd65d9d53BfDD3Aea2d8e84f",
+        "aggregator": "0x48f8CB1AbaD9f69c0BF3475bfC282e493f1C2Aa1",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood ORCL / USD",
+        "proxy": "0x0e6a64a2B58A6693a531E6c555f3A5d042eEA844",
+        "aggregator": "0x4a9aBC759e0B7b0ba98b5fd39c419A5D3e962aAf",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood MSTR / USD",
+        "proxy": "0x396118bdFB181e6240E74D243F266B061c0edc3D",
+        "aggregator": "0x55bd01F666c99E4590E084FdEfF88041BB50CCD1",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "USDT / USD",
+        "proxy": "0xbf3550B6fAe1671da7C238Af12e03Ac586BEf3B1",
+        "aggregator": "0x5644F992083C57aF913d5BdebA1D046c92Fb3424",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood SNDK (24/7)",
+        "proxy": "0x7FA2c251b345b8492C039a59a42b38603a05Ed9b",
+        "aggregator": "0x567f689b99F9f41F46cf60EAaF23c60a61e0FA27",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood RKLB / USD",
+        "proxy": "0x045477BF65Aef6f4F2386ad0164579e48381CC74",
+        "aggregator": "0x59aB60B1D63DE8b282852573D18a3a99c04C787c",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood SPCX / USD",
+        "proxy": "0xB265810950ba6c5C0Ff821c9963014a56fD8Bffb",
+        "aggregator": "0x5eaa223c585F40CDcA2D119ea91B97C491245631",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "ETH / USD",
+        "proxy": "0x78F3556b67E17Df817D51Ef5a990cDaF09E8d3A9",
+        "aggregator": "0x6091E64eb7138EEF066a80FD3A0d7427B91f2721",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "SYRUPUSDC / USDC Exchange Rate",
+        "proxy": "0x6317f016FA3e312C4625dee51d32b43a223011f8",
+        "aggregator": "0x6FCd854CcCDa17601D00D95e34980dd29EBfE029",
+        "decimals": 18,
+        "heartbeat": 86400
+      },
+      {
+        "name": "EURC / USD",
+        "proxy": "0xfF2B10c1973eD10c841434f98e456d8f3a0D7DD8",
+        "aggregator": "0x7035B3E2FF9621A6f97aAFE5A5E3E5bbe718BADf",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood USAR-USD",
+        "proxy": "0xA994d3684e8400A6c8078226925779FdeE682DD9",
+        "aggregator": "0x76ba75c6c362900B275D9D4d5C422F0275e85578",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood SPY / USD",
+        "proxy": "0x319724394D3A0e3669269846abE664Cd621f9f6A",
+        "aggregator": "0x78BCB218fA04B9b3a278eBc865Ed320BF8DEFBAc",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood TSLA / USD",
+        "proxy": "0x4A1166a659A55625345e9515b32adECea5547C38",
+        "aggregator": "0x7A6b81ba7FbCB90104d8C496158Cf383cD7233b1",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood SNDK / USD",
+        "proxy": "0xfb133Fa4B7b385802B693a293606682Df47109A3",
+        "aggregator": "0x7B2FdfcEa772f093DD33b3aCF8EE294B368f6c23",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "ENA / USD",
+        "proxy": "0x2A291496b3aa19d8948e442Ef28Ee952f3Ee97E8",
+        "aggregator": "0x815D23392A48bEE944c872CbBb4Bc47691ef710F",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood IONQ / USD",
+        "proxy": "0x22EfeC4919baf55F360E0EDee4AbEB26DE4971eb",
+        "aggregator": "0x886E11c1053289Eed882C734e1864EfE3430BC24",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "USDG / USD",
+        "proxy": "0x61B7e5650328764B076A108EFF5fa7282a1B9aD2",
+        "aggregator": "0x8bEeE3503F6860D5dac4cE26b5eEe92982951c2e",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood CRCL / USD",
+        "proxy": "0x6652eDf64bA3731C4F2D3ce821A0Fb1f1f6b482a",
+        "aggregator": "0x901D8DF245E48Dfc82D6483FC45b5BE6ddc5281a",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood AMZN / USD",
+        "proxy": "0xD5a1508ceD74c084eBf3cBe853e2C968fB2a651C",
+        "aggregator": "0x93503dFc97157cdB8aADcCaf70452621d598FDeb",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "WSTETH / USD",
+        "proxy": "0x3F5040B50FB37934573B210fE54B53a6F1A792E8",
+        "aggregator": "0x94201F15C0B7701d3f93f3c780042e6A76214104",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood INTC / USD",
+        "proxy": "0x3f390C5C24628Ac7C489515402235FeAD71D1913",
+        "aggregator": "0x95fB52f75aEcBCa8E12aA4403f840C8bc18CFbd4",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "WBTC / USD",
+        "proxy": "0x62107b0d3adA75fc1697fD342d99eed947a3aA5E",
+        "aggregator": "0x983F726BF320Cdc1fdaE041DbA782cD08a55842F",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood MU / USD",
+        "proxy": "0x425EEFdCf05ed6526C3cE61Af99429A228a6d596",
+        "aggregator": "0xA088FaD0A0A62693aF068E2EdB80B1578c8A9365",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood AAPL / USD",
+        "proxy": "0x6B22A786bAa607d76728168703a39Ea9C99f2cD0",
+        "aggregator": "0xBb11A21267cFDb63d4935d99a499133DD1744ACb",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "SYRUPUSDT / USDT Exchange Rate",
+        "proxy": "0xBB688c0184Ce03fEdac89D71ccE752Ab21bC2999",
+        "aggregator": "0xC234780e5fD127f2BB229366e0EE920507b0B913",
+        "decimals": 18,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood NVDA / USD",
+        "proxy": "0x379EC4f7C378F34a1B47E4F3cbeBCbAC3E8E9F15",
+        "aggregator": "0xC9d16E4f2569b9E3ea0468fD85844953713DC2a2",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "LBTC / USD",
+        "proxy": "0xa621344AdAEE699491597Fd8890E0C59a5BFBE59",
+        "aggregator": "0xD6Fe4540bdF692cBe147fe19f75f9fd542d733bD",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood DELL-USD",
+        "proxy": "0x1C6c8cADBe02E19129c39dDB92281cE4c0bf206b",
+        "aggregator": "0xD6ed4e7D4ABA1111EB42A349899b5c72EE1C9FEF",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "syrupUSDG / USDG Exchange Rate",
+        "proxy": "0xDd194C66aDcb422F188a04434e4824D70c151cF0",
+        "aggregator": "0xD972eB40C14C8aBA1c44c1DF6e0A6e1d592C1012",
+        "decimals": 18,
+        "heartbeat": 86400
+      },
+      {
+        "name": "USDC / USD",
+        "proxy": "0x9e6f4605992a899eE2999999F3Ec80C41F452546",
+        "aggregator": "0xDADD7441395913A7468FAC020709e86AEfC04Ef9",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood NBIS / USD",
+        "proxy": "0xE1D87B116Ba0fe898998f1D140339D1fA1E09705",
+        "aggregator": "0xE50c4775FeFc1E3C9206771dd0056AEe30F51b2F",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "WEETH / EETH Exchange Rate",
+        "proxy": "0xb63f44E40aA811Cc69Fc55da786a5F3834100B4A",
+        "aggregator": "0xED5E146Da45FA2C74A2dbB261c87d8b264f37194",
+        "decimals": 18,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood CLSK / USD",
+        "proxy": "0x810c12D3a554Bc47fd39597Fe3b3AAC4941F50eF",
+        "aggregator": "0xEff19B88E3c72f046e4a19A1E62544D5869d4275",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood ASML / USD",
+        "proxy": "0xB4106147E8cce40b7d46124090d373A71b70f87D",
+        "aggregator": "0xF795030a46ad6CA4b07Bf5fB704dC36039118c9F",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "CBBTC / USD",
+        "proxy": "0x0009cD492adf8167f9eEBf1293556A673530a21a",
+        "aggregator": "0xFaA5FDA549575E3B602ad70e4bd8020A28387F96",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood BABA / USD",
+        "proxy": "0x62Cc8F9b5f56a33c9C8A60c8B92779f523c4E984",
+        "aggregator": "0xFf5F85e4888782e66f1dd9cabaDF4822Fbeb1439",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood USO / USD",
+        "proxy": "0x75a9c76Ef439e2C7c2E5a34Ab105EcFe3766431c",
+        "aggregator": "0xa6aC45e27D19f91c55109191D71CfBA4A9f5fBe1",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "SYRUPUSDC / USD",
+        "proxy": "0x8765c3B9Cda41d1029E780D0c1C37C8200DC4675",
+        "aggregator": "0xb83364C22B67198e0190D644C6f09A9c84f26c72",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood META / USD",
+        "proxy": "0x7C38C00C30BEe9378381E7B6135d7283356D71b1",
+        "aggregator": "0xc190B6164B9e320A6400cdaB0085a2e0E2b9738e",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood MSFT / USD",
+        "proxy": "0x45C3C877C15E6BA2EBB19eA114Ea508d14C1Af2E",
+        "aggregator": "0xc3b117F52cf17Dd4369eaF5eaf7cF0E2f91b4E30",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "BTC / USD",
+        "proxy": "0xa2c5184bF03d373Dc9dE4876eb4Bce595B460251",
+        "aggregator": "0xc5845F87AD59a7a3D4bF9B90a0C19dbA38475EeC",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood SLV / USD",
+        "proxy": "0x209b73908e92Ae021826eD79609845451Ecba2ce",
+        "aggregator": "0xcdF6F7043b3aF6Afa0CAAACe1230B355096B5386",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood CRWV / USD",
+        "proxy": "0xe1b3aABCAFAd1c94708dc1367dcfF8Aa4407487C",
+        "aggregator": "0xd9C04B7353421fC4deb1614Ed13Fe10D90E586cc",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood AMD / USD",
+        "proxy": "0x943A29E7ae51A4798823ca9eEd2ed533B2A22C72",
+        "aggregator": "0xdAD54b8Ee51Af258e5A6Faa9a84a3300f4775f7d",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "GLD / USD",
+        "proxy": "0x470A51258068043bd43dC0a56245625C9fE86eB0",
+        "aggregator": "0xeA3F8E77a98d7877b6F8164569a8e82454cCcDB8",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "Robinhood GME / USD",
+        "proxy": "0x27C71df6A64fB476468EdF256CF72c038baB5B67",
+        "aggregator": "0xf83Cde62D1Cd90dE8d2Bf3332B90c590985aD679",
+        "decimals": 8,
+        "heartbeat": 86400
+      },
+      {
+        "name": "WSTETH / STETH Exchange Rate",
+        "proxy": "0x8E3Eb706B170c8FD1DdcD402932D952887736f9A",
+        "aggregator": "0xfCE34d502cc65c123e7E6587fC2EF299fD4e428e",
+        "decimals": 18,
+        "heartbeat": 86400
+      },
+      {
+        "name": "USDE / USD",
+        "proxy": "0xb9fB4e65744E4178894f7C61CF80E8a48A5f224a",
+        "aggregator": "0xfCa395953F9d4e53c2D61be67Ff5337dE6d8f06C",
+        "decimals": 8,
+        "heartbeat": 3600
+      }
+    ],
+    "ethUsd": {
+      "name": "ETH / USD",
+      "proxy": "0x78F3556b67E17Df817D51Ef5a990cDaF09E8d3A9",
+      "aggregator": "0x6091E64eb7138EEF066a80FD3A0d7427B91f2721",
+      "decimals": 8,
+      "heartbeat": 86400
+    },
+    "automaticAdmission": false,
+    "pricesUncreatedProjectToken": false
+  },
+  "anchor": {
+    "number": "117745635",
+    "hash": "0x89915491572d0a04a77d6d37c842b8742628e934eaee34f99ada478b2b50ce2f",
+    "parentHash": "0x1dfabffb131556b274787239ebe1589a9e3d02c0cf85b2c86ebfbf04e6f143af",
+    "timestamp": "1795040948",
+    "observedAgeSeconds": 1
+  },
+  "providers": {
+    "official": {
+      "chain": {
+        "status": "observed",
+        "observedAt": "2026-11-18T22:29:09.425Z",
+        "value": 4663
+      },
+      "anchor": {
+        "status": "observed",
+        "observedAt": "2026-11-18T22:29:09.570Z",
+        "value": {
+          "number": "117745635",
+          "hash": "0x89915491572d0a04a77d6d37c842b8742628e934eaee34f99ada478b2b50ce2f",
+          "parentHash": "0x1dfabffb131556b274787239ebe1589a9e3d02c0cf85b2c86ebfbf04e6f143af",
+          "timestamp": "1795040948"
+        }
+      },
+      "runtimes": {
+        "poolManager": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:09.657Z",
+          "value": {
+            "address": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+            "bytes": 24009,
+            "runtimeHash": "0xbd3881180b547f5fe817545743cfb4343e96b1bc6640dcd70c106b0066e95626",
+            "matches": true
+          }
+        },
+        "positionManager": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:09.773Z",
+          "value": {
+            "address": "0x58daec3116aae6d93017baaea7749052e8a04fa7",
+            "bytes": 23877,
+            "runtimeHash": "0xc873e135dc9aaec88489cfbad146b4cb49d6a32e0d80326377784b7ba17670b2",
+            "matches": true
+          }
+        },
+        "permit2": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:09.873Z",
+          "value": {
+            "address": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+            "bytes": 9152,
+            "runtimeHash": "0x5208783f52488f7d3493e5e38311ab707c1d75457fe472a19b0b4d57d66a7fca",
+            "matches": true
+          }
+        },
+        "quoter": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:10.004Z",
+          "value": {
+            "address": "0x8dc178efb8111bb0973dd9d722ebeff267c98f94",
+            "bytes": 6118,
+            "runtimeHash": "0xd707b1da8cb165e5ea35a3b4450d971eb562ec171e23492aa117036b78a868f6",
+            "matches": true
+          }
+        },
+        "stateView": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:10.114Z",
+          "value": {
+            "address": "0xf3334192d15450cdd385c8b70e03f9a6bd9e673b",
+            "bytes": 3531,
+            "runtimeHash": "0x7d9c591e0956fd89d98feb4ffcfe8bf1f7a62bd485edd979fa21d104b49878a6",
+            "matches": true
+          }
+        },
+        "universalRouter": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:10.239Z",
+          "value": {
+            "address": "0x204FAca1764B154221e35c0d20aBb3c525710498",
+            "bytes": 24380,
+            "runtimeHash": "0x76b92a5bba2dd32019a64eb421f1750e78c6ba044dbfa6840b722eb5ac63d296",
+            "matches": true
+          }
+        },
+        "directory": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:10.341Z",
+          "value": {
+            "address": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+            "bytes": 10290,
+            "runtimeHash": "0x9534a4223eb7e50e2387a7e5486e256416b468980436852ce1a91624904e8735",
+            "matches": true
+          }
+        },
+        "registry": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:10.428Z",
+          "value": {
+            "address": "0xf1113714Dda31f31532995D2525e034271425398",
+            "bytes": 16273,
+            "runtimeHash": "0xd1b4756bcdabb6a8ee04c827b5a6a76079bedc996df39b76dffa24269a61f644",
+            "matches": true
+          }
+        },
+        "factory": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:10.550Z",
+          "value": {
+            "address": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+            "bytes": 23843,
+            "runtimeHash": "0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091",
+            "matches": true
+          }
+        },
+        "graduation": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:10.676Z",
+          "value": {
+            "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+            "bytes": 19710,
+            "runtimeHash": "0x24f5b57ef0091e5830747efee6b8372abebe61226dbaadeb04860a4461ede849",
+            "matches": true
+          }
+        },
+        "guard": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:10.787Z",
+          "value": {
+            "address": "0x998F3C0CE20cFF92655D495a159B1Ca37c162000",
+            "bytes": 949,
+            "runtimeHash": "0xdb92a74276834e63bf191ffe23ae5925f8cd4aaac9b1aa6cf872ae8f55c38a3e",
+            "matches": true
+          }
+        }
+      },
+      "bindings": {
+        "positionManager.poolManager": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:10.904Z",
+          "value": "0x8366a39CC670B4001A1121B8F6A443A643e40951",
+          "matches": true
+        },
+        "positionManager.permit2": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:11.010Z",
+          "value": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+          "matches": true
+        },
+        "quoter.poolManager": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:11.130Z",
+          "value": "0x8366a39CC670B4001A1121B8F6A443A643e40951",
+          "matches": true
+        },
+        "stateView.poolManager": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:11.223Z",
+          "value": "0x8366a39CC670B4001A1121B8F6A443A643e40951",
+          "matches": true
+        },
+        "universalRouter.poolManager": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:11.346Z",
+          "value": "0x8366a39CC670B4001A1121B8F6A443A643e40951",
+          "matches": true
+        },
+        "factory.graduationEngine": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:11.456Z",
+          "value": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "matches": true
+        },
+        "factory.projectRegistry": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:11.557Z",
+          "value": "0xf1113714Dda31f31532995D2525e034271425398",
+          "matches": true
+        },
+        "registry.directory": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:11.652Z",
+          "value": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+          "matches": true
+        },
+        "graduation.factory": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:11.760Z",
+          "value": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+          "matches": true
+        },
+        "graduation.poolManager": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:11.882Z",
+          "value": "0x8366a39CC670B4001A1121B8F6A443A643e40951",
+          "matches": true
+        },
+        "graduation.positionManager": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:11.977Z",
+          "value": "0x58daec3116aae6D93017bAAea7749052E8a04fA7",
+          "matches": true
+        },
+        "graduation.permit2": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:12.077Z",
+          "value": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+          "matches": true
+        },
+        "graduation.initializationGuard": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:12.169Z",
+          "value": "0x998F3C0CE20cFF92655D495a159B1Ca37c162000",
+          "matches": true
+        },
+        "guard.poolManager": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:12.253Z",
+          "value": "0x8366a39CC670B4001A1121B8F6A443A643e40951",
+          "matches": true
+        },
+        "guard.graduationEngine": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:12.369Z",
+          "value": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "matches": true
+        },
+        "factory.tokenSupply": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:12.473Z",
+          "value": "1000000000000000000000000000",
+          "matches": true
+        },
+        "factory.creationFeeWei": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:12.563Z",
+          "value": "400000000000000",
+          "matches": true
+        },
+        "graduation.CHAIN_ID": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:12.674Z",
+          "value": "4663",
+          "matches": true
+        },
+        "graduation.POOL_FEE": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:12.797Z",
+          "value": 3000,
+          "matches": true
+        },
+        "graduation.TICK_SPACING": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:12.915Z",
+          "value": 60,
+          "matches": true
+        }
+      },
+      "directory": {
+        "suspended": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:12.988Z",
+          "value": false
+        },
+        "latestVersion": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:13.089Z",
+          "value": 0
+        },
+        "pending": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:13.239Z",
+          "value": [
+            "0xad499113950f3410a60c6fe9fe40b4d1d98cf055eeafeb2b1736a5a38c5fea1e",
+            1795131148,
+            1795722606
+          ]
+        },
+        "factories": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:13.343Z",
+          "value": [
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000000000000000000000000000"
+          ]
+        }
+      },
+      "ethUsd": {
+        "proxy": "0x78F3556b67E17Df817D51Ef5a990cDaF09E8d3A9",
+        "usage": "BASE_ASSET_OBSERVATION_ONLY_NOT_PROJECT_REFERENCE",
+        "description": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:13.439Z",
+          "value": "ETH / USD"
+        },
+        "decimals": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:13.538Z",
+          "value": 8
+        },
+        "aggregator": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:13.617Z",
+          "value": "0x6091E64eb7138EEF066a80FD3A0d7427B91f2721"
+        },
+        "latestRoundData": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:13.711Z",
+          "value": [
+            "18446744073709555197",
+            "176375354680",
+            "1795038411",
+            "1795038423",
+            "18446744073709555197"
+          ]
+        },
+        "runtime": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:13.793Z",
+          "value": {
+            "bytes": 9571,
+            "runtimeHash": "0xbd6f524cdc4268b6bd1bb6f77a8821faeea9c52ee9e0afa0b6d948ce82c966c2"
+          }
+        },
+        "aggregatorRuntime": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:13.920Z",
+          "value": {
+            "address": "0x6091E64eb7138EEF066a80FD3A0d7427B91f2721",
+            "bytes": 23186,
+            "runtimeHash": "0x8cbea1fd25321771256158fd6beb8689fe60cd36230b22c65e77c2a03c5972fd",
+            "catalogMatches": true
+          }
+        },
+        "assessment": {
+          "status": "OBSERVED_BASE_ASSET_ONLY",
+          "roundId": "18446744073709555197",
+          "answer": "176375354680",
+          "decimals": 8,
+          "startedAt": "1795038411",
+          "updatedAt": "1795038423",
+          "answeredInRound": "18446744073709555197",
+          "ageSeconds": "2525",
+          "pricesProjectToken": false,
+          "independentlyAdmittedProjectReference": false
+        }
+      },
+      "unadmittedReferenceCandidates": {
+        "pythPro": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:14.043Z",
+          "value": {
+            "address": "0xACeA761c27A909d4D3895128EBe6370FDE2dF481",
+            "bytes": 183,
+            "runtimeHash": "0xef41b6fae0a92ef125e99f23cab7dd4bbd4a29d9a16e6de418dd5851bb03b77e",
+            "source": "https://docs.pyth.network/pro/contract-addresses",
+            "acceptedProjectFeedId": null,
+            "independentlyReviewed": false,
+            "authorizesPurchases": false
+          }
+        },
+        "pythCore": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:14.135Z",
+          "value": {
+            "address": "0x8250f4aF4B972684F7b336503E2D6dFeDeB1487a",
+            "bytes": 177,
+            "runtimeHash": "0x7e693eea60500e1d5c5984a4cc54ec0b371d9ad29e8bb09c543cb7be447963df",
+            "source": "https://docs.pyth.network/pro/contract-addresses",
+            "acceptedProjectFeedId": null,
+            "independentlyReviewed": false,
+            "authorizesPurchases": false
+          }
+        }
+      },
+      "recheckedAnchor": {
+        "status": "observed",
+        "observedAt": "2026-11-18T22:29:14.242Z",
+        "value": {
+          "number": "117745635",
+          "hash": "0x89915491572d0a04a77d6d37c842b8742628e934eaee34f99ada478b2b50ce2f",
+          "parentHash": "0x1dfabffb131556b274787239ebe1589a9e3d02c0cf85b2c86ebfbf04e6f143af",
+          "timestamp": "1795040948"
+        }
+      },
+      "status": "ANCHORED_L2_OBSERVATION"
+    },
+    "pocket": {
+      "chain": {
+        "status": "observed",
+        "observedAt": "2026-11-18T22:29:14.945Z",
+        "value": 4663
+      },
+      "anchor": {
+        "status": "observed",
+        "observedAt": "2026-11-18T22:29:15.572Z",
+        "value": {
+          "number": "117745635",
+          "hash": "0x89915491572d0a04a77d6d37c842b8742628e934eaee34f99ada478b2b50ce2f",
+          "parentHash": "0x1dfabffb131556b274787239ebe1589a9e3d02c0cf85b2c86ebfbf04e6f143af",
+          "timestamp": "1795040948"
+        }
+      },
+      "runtimes": {
+        "poolManager": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:16.044Z",
+          "value": {
+            "address": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+            "bytes": 24009,
+            "runtimeHash": "0xbd3881180b547f5fe817545743cfb4343e96b1bc6640dcd70c106b0066e95626",
+            "matches": true
+          }
+        },
+        "positionManager": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:16.561Z",
+          "value": {
+            "address": "0x58daec3116aae6d93017baaea7749052e8a04fa7",
+            "bytes": 23877,
+            "runtimeHash": "0xc873e135dc9aaec88489cfbad146b4cb49d6a32e0d80326377784b7ba17670b2",
+            "matches": true
+          }
+        },
+        "permit2": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:16.719Z",
+          "value": {
+            "address": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+            "bytes": 9152,
+            "runtimeHash": "0x5208783f52488f7d3493e5e38311ab707c1d75457fe472a19b0b4d57d66a7fca",
+            "matches": true
+          }
+        },
+        "quoter": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:16.904Z",
+          "value": {
+            "address": "0x8dc178efb8111bb0973dd9d722ebeff267c98f94",
+            "bytes": 6118,
+            "runtimeHash": "0xd707b1da8cb165e5ea35a3b4450d971eb562ec171e23492aa117036b78a868f6",
+            "matches": true
+          }
+        },
+        "stateView": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:17.076Z",
+          "value": {
+            "address": "0xf3334192d15450cdd385c8b70e03f9a6bd9e673b",
+            "bytes": 3531,
+            "runtimeHash": "0x7d9c591e0956fd89d98feb4ffcfe8bf1f7a62bd485edd979fa21d104b49878a6",
+            "matches": true
+          }
+        },
+        "universalRouter": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:17.487Z",
+          "value": {
+            "address": "0x204FAca1764B154221e35c0d20aBb3c525710498",
+            "bytes": 24380,
+            "runtimeHash": "0x76b92a5bba2dd32019a64eb421f1750e78c6ba044dbfa6840b722eb5ac63d296",
+            "matches": true
+          }
+        },
+        "directory": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:17.660Z",
+          "value": {
+            "address": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+            "bytes": 10290,
+            "runtimeHash": "0x9534a4223eb7e50e2387a7e5486e256416b468980436852ce1a91624904e8735",
+            "matches": true
+          }
+        },
+        "registry": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:17.833Z",
+          "value": {
+            "address": "0xf1113714Dda31f31532995D2525e034271425398",
+            "bytes": 16273,
+            "runtimeHash": "0xd1b4756bcdabb6a8ee04c827b5a6a76079bedc996df39b76dffa24269a61f644",
+            "matches": true
+          }
+        },
+        "factory": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:18.150Z",
+          "value": {
+            "address": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+            "bytes": 23843,
+            "runtimeHash": "0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091",
+            "matches": true
+          }
+        },
+        "graduation": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:18.326Z",
+          "value": {
+            "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+            "bytes": 19710,
+            "runtimeHash": "0x24f5b57ef0091e5830747efee6b8372abebe61226dbaadeb04860a4461ede849",
+            "matches": true
+          }
+        },
+        "guard": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:18.489Z",
+          "value": {
+            "address": "0x998F3C0CE20cFF92655D495a159B1Ca37c162000",
+            "bytes": 949,
+            "runtimeHash": "0xdb92a74276834e63bf191ffe23ae5925f8cd4aaac9b1aa6cf872ae8f55c38a3e",
+            "matches": true
+          }
+        }
+      },
+      "bindings": {
+        "positionManager.poolManager": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:18.661Z",
+          "value": "0x8366a39CC670B4001A1121B8F6A443A643e40951",
+          "matches": true
+        },
+        "positionManager.permit2": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:18.822Z",
+          "value": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+          "matches": true
+        },
+        "quoter.poolManager": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:18.987Z",
+          "value": "0x8366a39CC670B4001A1121B8F6A443A643e40951",
+          "matches": true
+        },
+        "stateView.poolManager": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:19.153Z",
+          "value": "0x8366a39CC670B4001A1121B8F6A443A643e40951",
+          "matches": true
+        },
+        "universalRouter.poolManager": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:19.322Z",
+          "value": "0x8366a39CC670B4001A1121B8F6A443A643e40951",
+          "matches": true
+        },
+        "factory.graduationEngine": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:19.493Z",
+          "value": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "matches": true
+        },
+        "factory.projectRegistry": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:19.705Z",
+          "value": "0xf1113714Dda31f31532995D2525e034271425398",
+          "matches": true
+        },
+        "registry.directory": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:19.863Z",
+          "value": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+          "matches": true
+        },
+        "graduation.factory": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:20.035Z",
+          "value": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+          "matches": true
+        },
+        "graduation.poolManager": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:20.202Z",
+          "value": "0x8366a39CC670B4001A1121B8F6A443A643e40951",
+          "matches": true
+        },
+        "graduation.positionManager": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:20.503Z",
+          "value": "0x58daec3116aae6D93017bAAea7749052E8a04fA7",
+          "matches": true
+        },
+        "graduation.permit2": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:20.661Z",
+          "value": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+          "matches": true
+        },
+        "graduation.initializationGuard": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:20.818Z",
+          "value": "0x998F3C0CE20cFF92655D495a159B1Ca37c162000",
+          "matches": true
+        },
+        "guard.poolManager": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:20.990Z",
+          "value": "0x8366a39CC670B4001A1121B8F6A443A643e40951",
+          "matches": true
+        },
+        "guard.graduationEngine": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:21.159Z",
+          "value": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "matches": true
+        },
+        "factory.tokenSupply": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:21.327Z",
+          "value": "1000000000000000000000000000",
+          "matches": true
+        },
+        "factory.creationFeeWei": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:21.494Z",
+          "value": "400000000000000",
+          "matches": true
+        },
+        "graduation.CHAIN_ID": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:21.662Z",
+          "value": "4663",
+          "matches": true
+        },
+        "graduation.POOL_FEE": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:21.849Z",
+          "value": 3000,
+          "matches": true
+        },
+        "graduation.TICK_SPACING": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:22.373Z",
+          "value": 60,
+          "previousAttempt": {
+            "status": "unavailable",
+            "observedAt": "2026-11-18T22:29:22.014Z",
+            "reason": "http",
+            "httpStatus": 429
+          },
+          "matches": true
+        }
+      },
+      "directory": {
+        "suspended": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:22.568Z",
+          "value": false
+        },
+        "latestVersion": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:22.758Z",
+          "value": 0
+        },
+        "pending": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:22.920Z",
+          "value": [
+            "0xad499113950f3410a60c6fe9fe40b4d1d98cf055eeafeb2b1736a5a38c5fea1e",
+            1795131148,
+            1795722606
+          ]
+        },
+        "factories": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:23.087Z",
+          "value": [
+            "0x0000000000000000000000000000000000000000",
+            "0x0000000000000000000000000000000000000000000000000000000000000000"
+          ]
+        }
+      },
+      "ethUsd": {
+        "proxy": "0x78F3556b67E17Df817D51Ef5a990cDaF09E8d3A9",
+        "usage": "BASE_ASSET_OBSERVATION_ONLY_NOT_PROJECT_REFERENCE",
+        "description": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:23.247Z",
+          "value": "ETH / USD"
+        },
+        "decimals": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:23.413Z",
+          "value": 8
+        },
+        "aggregator": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:23.578Z",
+          "value": "0x6091E64eb7138EEF066a80FD3A0d7427B91f2721"
+        },
+        "latestRoundData": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:23.771Z",
+          "value": [
+            "18446744073709555197",
+            "176375354680",
+            "1795038411",
+            "1795038423",
+            "18446744073709555197"
+          ]
+        },
+        "runtime": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:24.097Z",
+          "value": {
+            "bytes": 9571,
+            "runtimeHash": "0xbd6f524cdc4268b6bd1bb6f77a8821faeea9c52ee9e0afa0b6d948ce82c966c2"
+          }
+        },
+        "aggregatorRuntime": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:24.710Z",
+          "value": {
+            "address": "0x6091E64eb7138EEF066a80FD3A0d7427B91f2721",
+            "bytes": 23186,
+            "runtimeHash": "0x8cbea1fd25321771256158fd6beb8689fe60cd36230b22c65e77c2a03c5972fd",
+            "catalogMatches": true
+          }
+        },
+        "assessment": {
+          "status": "OBSERVED_BASE_ASSET_ONLY",
+          "roundId": "18446744073709555197",
+          "answer": "176375354680",
+          "decimals": 8,
+          "startedAt": "1795038411",
+          "updatedAt": "1795038423",
+          "answeredInRound": "18446744073709555197",
+          "ageSeconds": "2525",
+          "pricesProjectToken": false,
+          "independentlyAdmittedProjectReference": false
+        }
+      },
+      "unadmittedReferenceCandidates": {
+        "pythPro": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:24.882Z",
+          "value": {
+            "address": "0xACeA761c27A909d4D3895128EBe6370FDE2dF481",
+            "bytes": 183,
+            "runtimeHash": "0xef41b6fae0a92ef125e99f23cab7dd4bbd4a29d9a16e6de418dd5851bb03b77e",
+            "source": "https://docs.pyth.network/pro/contract-addresses",
+            "acceptedProjectFeedId": null,
+            "independentlyReviewed": false,
+            "authorizesPurchases": false
+          }
+        },
+        "pythCore": {
+          "status": "observed",
+          "observedAt": "2026-11-18T22:29:25.056Z",
+          "value": {
+            "address": "0x8250f4aF4B972684F7b336503E2D6dFeDeB1487a",
+            "bytes": 177,
+            "runtimeHash": "0x7e693eea60500e1d5c5984a4cc54ec0b371d9ad29e8bb09c543cb7be447963df",
+            "source": "https://docs.pyth.network/pro/contract-addresses",
+            "acceptedProjectFeedId": null,
+            "independentlyReviewed": false,
+            "authorizesPurchases": false
+          }
+        }
+      },
+      "recheckedAnchor": {
+        "status": "observed",
+        "observedAt": "2026-11-18T22:29:25.232Z",
+        "value": {
+          "number": "117745635",
+          "hash": "0x89915491572d0a04a77d6d37c842b8742628e934eaee34f99ada478b2b50ce2f",
+          "parentHash": "0x1dfabffb131556b274787239ebe1589a9e3d02c0cf85b2c86ebfbf04e6f143af",
+          "timestamp": "1795040948"
+        }
+      },
+      "status": "ANCHORED_L2_OBSERVATION"
+    }
+  },
+  "corroboration": {
+    "status": "CORROBORATED",
+    "providers": [
+      "official",
+      "pocket"
+    ],
+    "value": {
+      "anchorHash": "0x89915491572d0a04a77d6d37c842b8742628e934eaee34f99ada478b2b50ce2f",
+      "runtimePins": 11,
+      "bindings": 20
+    },
+    "marketIndependence": false
+  },
+  "directoryCorroboration": {
+    "status": "CORROBORATED",
+    "providers": [
+      "official",
+      "pocket"
+    ],
+    "value": {
+      "suspended": false,
+      "latestVersion": 0,
+      "pending": [
+        "0xad499113950f3410a60c6fe9fe40b4d1d98cf055eeafeb2b1736a5a38c5fea1e",
+        1795131148,
+        1795722606
+      ],
+      "factories": [
+        "0x0000000000000000000000000000000000000000",
+        "0x0000000000000000000000000000000000000000000000000000000000000000"
+      ]
+    },
+    "marketIndependence": false
+  },
+  "baseAssetCorroboration": {
+    "status": "CORROBORATED",
+    "providers": [
+      "official",
+      "pocket"
+    ],
+    "value": {
+      "proxy": "0x78F3556b67E17Df817D51Ef5a990cDaF09E8d3A9",
+      "runtime": {
+        "bytes": 9571,
+        "runtimeHash": "0xbd6f524cdc4268b6bd1bb6f77a8821faeea9c52ee9e0afa0b6d948ce82c966c2"
+      },
+      "aggregatorRuntime": {
+        "address": "0x6091E64eb7138EEF066a80FD3A0d7427B91f2721",
+        "bytes": 23186,
+        "runtimeHash": "0x8cbea1fd25321771256158fd6beb8689fe60cd36230b22c65e77c2a03c5972fd",
+        "catalogMatches": true
+      },
+      "assessment": {
+        "status": "OBSERVED_BASE_ASSET_ONLY",
+        "roundId": "18446744073709555197",
+        "answer": "176375354680",
+        "decimals": 8,
+        "startedAt": "1795038411",
+        "updatedAt": "1795038423",
+        "answeredInRound": "18446744073709555197",
+        "ageSeconds": "2525",
+        "pricesProjectToken": false,
+        "independentlyAdmittedProjectReference": false
+      }
+    },
+    "marketIndependence": false
+  },
+  "purchaseReadiness": {
+    "status": "NO_GO",
+    "executable": false,
+    "token": null,
+    "poolIdentity": null,
+    "liquidity": "UNAVAILABLE_NO_ASSIGNED_PROJECT_TOKEN",
+    "projectReference": "UNAVAILABLE_NO_INDEPENDENT_PROJECT_MARKET_REFERENCE",
+    "hostedQuote": "UNOBSERVED",
+    "finality": "L1_UNVERIFIED",
+    "reasons": [
+      "No real new-engine project token is assigned; do not query an invented PoolKey or substitute a historical token.",
+      "ETH/USD prices ETH only, not the new project token; catalog presence does not admit an oracle.",
+      "The approved initialization-only v4 hook has no oracle callbacks; v4 core has no built-in observation oracle.",
+      "Same-pool spot/TWAP and multiple RPC copies are not independent project price evidence."
+    ]
+  }
+}

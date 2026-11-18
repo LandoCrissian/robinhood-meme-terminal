@@ -22,6 +22,7 @@ import { testClaimProfilesBrowser } from "../claims/browser-wallet-acceptance.mj
 import { compileProjectTreasury } from "../treasury/compiler.mjs";
 import { deployProjectTreasuryFixture } from "../treasury/deploy-fixture.mjs";
 import { testProjectTreasuryJourney } from "../treasury/local-integration.mjs";
+import { compileTreasuryPurchaseV2 } from "../treasury-v2/compiler.mjs";
 import { observeOriginalReceipt } from "./receipt-observation.mjs";
 
 const repository = fileURLToPath(new URL("../../", import.meta.url));
@@ -37,10 +38,12 @@ const { values: args } = parseArgs({ options: {
   "successor-only": { type: "boolean", default: false },
   "profiles-only": { type: "boolean", default: false },
   "treasury-only": { type: "boolean", default: false },
+  "treasury-v2": { type: "boolean", default: false },
 } });
 for (const option of ["anvil", "solc", "pg-bin", "output"]) assert.ok(args[option], `Supply --${option}`);
 assert.ok(["chromium", "webkit"].includes(args.browser), "Use --browser chromium or --browser webkit");
 assert.ok([args["successor-only"], args["profiles-only"], args["treasury-only"]].filter(Boolean).length <= 1, "Select one focused acceptance scope");
+assert.ok(!args["treasury-v2"] || args["treasury-only"], "V2 prototype acceptance requires the actual treasury journey");
 const out = resolve(args.output);
 const anvil = resolve(args.anvil);
 const solc = resolve(args.solc);
@@ -58,6 +61,7 @@ const historical = "8dca5773cbd4dc98f52a45616f420bce96b000f0";
 const candidateCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repository, encoding: "utf8" }).trim();
 const { artifacts, manifest } = compileFixedSupplyProfile({ solc, lib: args.lib, chainId: 31337 });
 const treasuryCompilation = args["treasury-only"] ? compileProjectTreasury({ solc }) : undefined;
+const purchaseV2Compilation = args["treasury-v2"] ? compileTreasuryPurchaseV2({ solc }) : undefined;
 const anchor = JSON.parse(execFileSync("git", ["show",
   historical + ":packages/contracts/test/fixtures/rmt-v4-deployment-identities.json",
 ], { cwd: repository, encoding: "utf8" })).baseSepolia;
@@ -409,7 +413,7 @@ try {
     await rpc("anvil_mine", ["0x3"]); await workerReady(worker);
     browser = await ({ chromium, webkit })[args.browser].launch();
     await testProjectTreasuryJourney({ browserEngine: browser, rpcUrl, rpc, artifacts, deployed, anchor,
-      treasuryCompilation, treasuryDeployment, creatorAccount: creator, operatorAccount: deploymentOperator,
+      treasuryCompilation, treasuryDeployment, purchaseV2Compilation, creatorAccount: creator, operatorAccount: deploymentOperator,
       sourceIdentity: { commit: candidateCommit, browser: args.browser, coreCompiler: manifest,
         anchor: { block: anchor.block, blockHash: anchor.blockHash }, mode: "isolated-31337-project-treasury" },
       site, workerOrigin, indexReadKey, out, pg, waitFor,

@@ -1,0 +1,318 @@
+{
+  "schemaVersion": 1,
+  "task": 77,
+  "baseCommit": "ecf3998f6e9b556c000de5c48908e4fb0b363fc8",
+  "status": "BLOCKED_NO_BROADCAST",
+  "independentAudit": false,
+  "broadcast": false,
+  "productionChanges": false,
+  "originalCoreBaseline": {
+    "artifact": "docs/evidence/fixed-supply-security/slither-4663.json.gz",
+    "compressedSha256": "55e2381bc551c89839b36429a6847ee583b11b185490171bd5787b0a2c393eb0",
+    "highCount": 22,
+    "highIds": [
+      "04dd86035f4ee7098c24bb34ee716fb14d25372ec3714df5c746a364f9aa83d9",
+      "090ec24d83d9e6ad807b554f60ae3f0da246d90f832ea7c7554ac361e893feed",
+      "096666f0be36ac0ff3aa789012f4f2a57e4f492e550c7d29355adb415b4b4e32",
+      "1dd97f6a638a2d49ef2776e94dbe4ca63a74e016c58d0412fd656f51548a6ab0",
+      "1e179df9a2b61d35bf108283a1433bf4e2e9a218fc9a7c8403a8ad369cd94608",
+      "1fdf2b7ea9c9f97d447984c8465928fb275e1762930f87972a33d2dedc10f9da",
+      "51cdba984170e6874af6770c211071a1f5e80c6351be45e94a5fcf3f0067b304",
+      "6e56005d266c4a8c0585c6256c43259ac2a3067695b32500be2c856d986bc5db",
+      "7f0d825327586187a4f0c915e12ad0b7ecb6555643bb51e223e5ec407788b16a",
+      "a6cd96c3ca39b7148d16fe1c70438ca96db2774a15ac6dba9e108caa550777a7",
+      "ae18440210b5bf82eeaef4a128724c083df85fe9236bec5a98bfaffeb5c25e4f",
+      "aed981db86d8898210985ae2ef6677507e125e0801d50fae7531dde65e6af4c8",
+      "be7b3e4ab44843109965a75e105e1eeda02e07c291640eecad1a6a313afdbdee",
+      "c161ac1c6b54242b7449fb6df62dcb4eacf5b0f9857b6896a08be1410c2fdc0c",
+      "c7bf2ac4fa4faa7416ab573d612269b829e795cf388551b323659cd99e12d48d",
+      "c87c792deb6a8d1b2cd802f5d698e711471eeec6436202d64d463d82af745826",
+      "cbb7601e1d47b36023a61dc771411d08d802e547da425ee330f9a610486257a0",
+      "d7b62a52dbdc751f89829f6663cbbdb7c775d05f9aa0b6364b707aaa531573fe",
+      "f02be6651ef27afaa0ea6c8c69a5b596575818c75d397e27b9bae568443a3aea",
+      "f8a4b705f57b6a14f785936a43d432b85f0f4cd1aa41906037d3c24a24a2e983",
+      "fae53a948b4211e780cefaa3873d9c7a251e243cbb72473bbd48df23c9a5cbf3",
+      "fe593a6c4b173403178cbf5681aacc3f3e9bc93b4b777c573c982f6db0a8108c"
+    ],
+    "sourceChanged": false,
+    "dispositionChanged": false
+  },
+  "v1": {
+    "inputSha256": "513609f57dea2fd706ac749999c47119955be16bb0b4f46a54b9fc4283683cf0",
+    "analysisInputSha256": "32be52b89cd34f18760d44d1de9aa79b41ee5c4be6b8c7b2e2a15bb433bbd322",
+    "detectorCount": 101,
+    "sourceCount": 3,
+    "findings": {
+      "High": 6,
+      "Medium": 4,
+      "Low": 10,
+      "Informational": 5
+    },
+    "sameHighIdsAs076": true,
+    "strictGateExit": 1,
+    "rawReport": "slither-v1-reproduced.json.gz",
+    "rawSha256": "ca41431b97e2b2e2adc366a202a4ceca43cddad8eb188721fd30af9fca337969",
+    "rows": [
+      {
+        "id": "9c16c8a3bc20706df6010ce0f3e59e2a2a48c0169c8de7fb1dc8ad2e14a75712",
+        "detector": "reentrancy-balance",
+        "severity": "High",
+        "source": "packages/contracts/project-treasury/src/RMTProjectTreasuryV1.sol",
+        "function": "_depositToken",
+        "balanceVariable": "beforeBalance",
+        "balanceReadLine": 214,
+        "externalCallLine": 216,
+        "assertionLines": [
+          217,
+          218
+        ],
+        "disposition": "INTERNALLY_DISPUTED_RETAINED_UNRESOLVED_GATE",
+        "confirmedDefect": false,
+        "cleared": false,
+        "concern": "A counterfactual admitted token short-credits the treasury. Exact incoming balance assertion must reject and roll back allowance, sender balance and accounting.",
+        "test": "packages/contracts/treasury-purchase-v2/test/V1SecurityDisposition.t.sol::testDepositRecipientShortCreditRollsBackAllowanceBalancesAndAccounting",
+        "sourceChanged": false,
+        "preconditions": [
+          "Exact registered TokenV2 and pinned graduation engine/ledger runtime premise would have to be broken or misconfigured to supply mutable callback behavior.",
+          "Counterfactual mocks deliberately use synthetic wrong pins, not real admitted token/engine."
+        ],
+        "remainingUncertainty": "No reachable loss path established under the exact admitted runtime. Tests and internal reasoning are not proof of absence or independent audit; gate remains failed."
+      },
+      {
+        "id": "e44f38f8b3bb8d421e2faa58327e04379319f0edfe26b9ab125bf6fd45f53ac6",
+        "detector": "reentrancy-balance",
+        "severity": "High",
+        "source": "packages/contracts/project-treasury/src/RMTProjectTreasuryV1.sol",
+        "function": "_depositToken",
+        "balanceVariable": "senderBefore",
+        "balanceReadLine": 215,
+        "externalCallLine": 216,
+        "assertionLines": [
+          217,
+          218
+        ],
+        "disposition": "INTERNALLY_DISPUTED_RETAINED_UNRESOLVED_GATE",
+        "confirmedDefect": false,
+        "cleared": false,
+        "concern": "A counterfactual admitted token over-debits the payer. Exact sender balance assertion must reject and roll back every movement.",
+        "test": "packages/contracts/treasury-purchase-v2/test/V1SecurityDisposition.t.sol::testDepositUnexpectedSenderDebitRollsBackAllowanceBalancesAndAccounting",
+        "sourceChanged": false,
+        "preconditions": [
+          "Exact registered TokenV2 and pinned graduation engine/ledger runtime premise would have to be broken or misconfigured to supply mutable callback behavior.",
+          "Counterfactual mocks deliberately use synthetic wrong pins, not real admitted token/engine."
+        ],
+        "remainingUncertainty": "No reachable loss path established under the exact admitted runtime. Tests and internal reasoning are not proof of absence or independent audit; gate remains failed."
+      },
+      {
+        "id": "9c89e25d6f7b221a5c1a3ead68d5db89de8eae2c77c20f605d272bd2234b8f38",
+        "detector": "reentrancy-balance",
+        "severity": "High",
+        "source": "packages/contracts/project-treasury/src/RMTProjectTreasuryV1.sol",
+        "function": "executeWithdrawal",
+        "balanceVariable": "beforeTreasury",
+        "balanceReadLine": 328,
+        "externalCallLine": 329,
+        "assertionLines": [
+          330
+        ],
+        "disposition": "INTERNALLY_DISPUTED_RETAINED_UNRESOLVED_GATE",
+        "confirmedDefect": false,
+        "cleared": false,
+        "concern": "A counterfactual admitted token over-debits held treasury assets. Exact debit assertion must revert, restoring the noticed request, reservation and withdrawn total.",
+        "test": "packages/contracts/treasury-purchase-v2/test/V1SecurityDisposition.t.sol::testWithdrawalUnexpectedTreasuryDebitRollsBackReservationAndTransfer",
+        "sourceChanged": false,
+        "preconditions": [
+          "Exact registered TokenV2 and pinned graduation engine/ledger runtime premise would have to be broken or misconfigured to supply mutable callback behavior.",
+          "Counterfactual mocks deliberately use synthetic wrong pins, not real admitted token/engine."
+        ],
+        "remainingUncertainty": "No reachable loss path established under the exact admitted runtime. Tests and internal reasoning are not proof of absence or independent audit; gate remains failed."
+      },
+      {
+        "id": "3795d593ed7ec3b946e081b78054531642e2db1d1d9dfab2bfe9fd8b117f7974",
+        "detector": "reentrancy-balance",
+        "severity": "High",
+        "source": "packages/contracts/project-treasury/src/RMTProjectTreasuryV1.sol",
+        "function": "executeWithdrawal",
+        "balanceVariable": "beforeRecipient",
+        "balanceReadLine": 327,
+        "externalCallLine": 329,
+        "assertionLines": [
+          330
+        ],
+        "disposition": "INTERNALLY_DISPUTED_RETAINED_UNRESOLVED_GATE",
+        "confirmedDefect": false,
+        "cleared": false,
+        "concern": "A counterfactual admitted token short-credits the fixed recipient. Exact destination assertion must revert all transfer and reservation changes.",
+        "test": "packages/contracts/treasury-purchase-v2/test/V1SecurityDisposition.t.sol::testWithdrawalRecipientShortCreditRollsBackReservationAndTransfer",
+        "sourceChanged": false,
+        "preconditions": [
+          "Exact registered TokenV2 and pinned graduation engine/ledger runtime premise would have to be broken or misconfigured to supply mutable callback behavior.",
+          "Counterfactual mocks deliberately use synthetic wrong pins, not real admitted token/engine."
+        ],
+        "remainingUncertainty": "No reachable loss path established under the exact admitted runtime. Tests and internal reasoning are not proof of absence or independent audit; gate remains failed."
+      },
+      {
+        "id": "f0d7abc79470e6d8ef3cc5f00d16645b4b3e4c28d072b382c7e20f8edf61d6da",
+        "detector": "reentrancy-balance",
+        "severity": "High",
+        "source": "packages/contracts/project-treasury/src/RMTProjectTreasuryV1.sol",
+        "function": "claimLp",
+        "balanceVariable": "beforeToken",
+        "balanceReadLine": 195,
+        "externalCallLine": 196,
+        "assertionLines": [
+          198,
+          199
+        ],
+        "disposition": "INTERNALLY_DISPUTED_RETAINED_UNRESOLVED_GATE",
+        "confirmedDefect": false,
+        "cleared": false,
+        "concern": "A counterfactual engine-created ledger reports an incorrect token payout during combined claim. Exact token/native assertions must restore both credits and all assets.",
+        "test": "packages/contracts/treasury-purchase-v2/test/V1SecurityDisposition.t.sol::testCombinedLpWrongTokenAmountRollsBackAllAssetsAndFeeCredits",
+        "sourceChanged": false,
+        "preconditions": [
+          "Exact registered TokenV2 and pinned graduation engine/ledger runtime premise would have to be broken or misconfigured to supply mutable callback behavior.",
+          "Counterfactual mocks deliberately use synthetic wrong pins, not real admitted token/engine."
+        ],
+        "remainingUncertainty": "No reachable loss path established under the exact admitted runtime. Tests and internal reasoning are not proof of absence or independent audit; gate remains failed."
+      },
+      {
+        "id": "ce5b86d1c1f6d10306fef6d1adced89492f2559b99cc24a912c7077c193a4bb2",
+        "detector": "reentrancy-balance",
+        "severity": "High",
+        "source": "packages/contracts/project-treasury/src/RMTProjectTreasuryV1.sol",
+        "function": "claimLp",
+        "balanceVariable": "beforeToken",
+        "balanceReadLine": 195,
+        "externalCallLine": 197,
+        "assertionLines": [
+          198,
+          199
+        ],
+        "disposition": "INTERNALLY_DISPUTED_RETAINED_UNRESOLVED_GATE",
+        "confirmedDefect": false,
+        "cleared": false,
+        "concern": "A counterfactual engine-created ledger misreports a single-asset token payout. Exact assertions must preserve original credits on rollback.",
+        "test": "packages/contracts/treasury-purchase-v2/test/V1SecurityDisposition.t.sol::testSingleAssetLpWrongTokenAmountRollsBackAllAssetsAndFeeCredits",
+        "sourceChanged": false,
+        "preconditions": [
+          "Exact registered TokenV2 and pinned graduation engine/ledger runtime premise would have to be broken or misconfigured to supply mutable callback behavior.",
+          "Counterfactual mocks deliberately use synthetic wrong pins, not real admitted token/engine."
+        ],
+        "remainingUncertainty": "No reachable loss path established under the exact admitted runtime. Tests and internal reasoning are not proof of absence or independent audit; gate remains failed."
+      }
+    ]
+  },
+  "v2Prototype": {
+    "inputSha256": "02d430dc4018a9a75c9c69f204c4e94c57fa8b94722c90effc79293cad7fff7d",
+    "analysisInputSha256": "eaa80cbcd9dd298d202025c012420ce4c858e2f18eefdf23446804e83a2a02ff",
+    "detectorCount": 101,
+    "sourceCount": 3,
+    "findings": {
+      "Low": 2,
+      "Informational": 1
+    },
+    "strictGateExit": 0,
+    "rawReport": "slither-v2-prototype.json.gz",
+    "rawSha256": "27a9cc437f82251a86e5053d6c9d6e64ec41ee130aa90603d2384775f6021927",
+    "executable": false,
+    "hasCustody": false,
+    "canInheritV1Credits": false,
+    "v1FindingsRemediated": false,
+    "observations": [
+      {
+        "id": "2e85f127abcf0e936df1df2b5b1bf739df63764af5ccb99ed6c91702e5bbc283",
+        "detector": "timestamp",
+        "severity": "Low",
+        "description": "PurchaseEvidenceV2.inspect(PurchaseEvidenceV2.Observation,PurchaseEvidenceV2.Context) (treasury-purchase-v2/src/PurchaseEvidenceV2.sol#27-40) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- o.blockNumber >= block.number || o.observedAt > block.timestamp (treasury-purchase-v2/src/PurchaseEvidenceV2.sol#30)\n\t- block.number - o.blockNumber > 64 || block.timestamp - o.observedAt > 60 (treasury-purchase-v2/src/PurchaseEvidenceV2.sol#31)\n"
+      },
+      {
+        "id": "dc1d578bd4625dfdcb10198f3991c6c2e774554c1f322f0016124f7e12b97cb7",
+        "detector": "timestamp",
+        "severity": "Low",
+        "description": "RMTTreasuryPurchaseV2Prototype.reviewRequest(RMTTreasuryPurchaseV2Prototype.Request) (treasury-purchase-v2/src/RMTTreasuryPurchaseV2Prototype.sol#113-121) uses timestamp for comparisons\n\tDangerous comparisons:\n\t- r.policyEpoch != policyEpoch || r.controllerEpoch != t.controllerEpoch() || r.amountWei < p.minimumWei || r.amountWei > p.perTransactionWei || r.amountWei > p.perPeriodWei || r.amountWei > t.available(address(0)) || r.minimumTokenOut == 0 || r.deadline < block.timestamp || r.deadline > block.timestamp + 300 || r.routeHash != curveRouteHash || r.quotedSlippageBps > p.maxSlippageBps || r.quotedImpactBps > p.maxImpactBps (treasury-purchase-v2/src/RMTTreasuryPurchaseV2Prototype.sol#116-119)\n"
+      },
+      {
+        "id": "bbc426db72bbab91bc24851b378a5a1159c11e1999d3247a02e28524fb0d104b",
+        "detector": "too-many-digits",
+        "severity": "Informational",
+        "description": "RMTTreasuryPurchaseV2PrototypeFactory.predict(RMTTreasuryPurchaseV2Prototype.Binding) (treasury-purchase-v2/src/RMTTreasuryPurchaseV2PrototypeFactory.sol#14-17) uses literals with too many digits:\n\t- initHash = keccak256(bytes)(bytes.concat(type()(RMTTreasuryPurchaseV2Prototype).creationCode,abi.encode(b))) (treasury-purchase-v2/src/RMTTreasuryPurchaseV2PrototypeFactory.sol#15)\n"
+      }
+    ]
+  },
+  "newFoundry": {
+    "testFile": "packages/contracts/treasury-purchase-v2/test/V1SecurityDisposition.t.sol",
+    "unitTests": 12,
+    "fuzzTests": 1,
+    "fuzzRuns": 512,
+    "passed": 13,
+    "failed": 0,
+    "skipped": 0,
+    "fixture": "isolated chain 31337, synthetic mismatched-token/ledger pins explicitly counterfactual",
+    "tests": [
+      "testDepositRecipientShortCreditRollsBackAllowanceBalancesAndAccounting",
+      "testDepositUnexpectedSenderDebitRollsBackAllowanceBalancesAndAccounting",
+      "testDepositFalseOrMalformedReturnRollsBackEvenIfTokenMovedAssets",
+      "testDepositCallbackCannotEnterReconciliationButNormalExactTransferCompletes",
+      "testWithdrawalUnexpectedTreasuryDebitRollsBackReservationAndTransfer",
+      "testWithdrawalRecipientShortCreditRollsBackReservationAndTransfer",
+      "testWithdrawalCallbackCannotReplayConsumedRequest",
+      "testCombinedLpWrongTokenAmountRollsBackAllAssetsAndFeeCredits",
+      "testSingleAssetLpWrongTokenAmountRollsBackAllAssetsAndFeeCredits",
+      "testLpWrongNativeAmountRollsBackReceiveAccountingAndClaimCredit",
+      "testLpCallbackCannotReenterWhileCorrectClaimAndPrincipalRemainValid",
+      "testChangedTokenRuntimeRejectedBeforeAnyNewDepositOrWithdrawal",
+      "testFuzz_ExactDepositWithdrawWithBlockedCallbacksPreservesConservation"
+    ],
+    "command": "forge test --root packages/contracts/treasury-purchase-v2 --use /absolute/pinned/solc --match-contract V1SecurityDispositionTest -vvv"
+  },
+  "tools": {
+    "slither": "0.11.5",
+    "cryticCompile": "0.3.11",
+    "solc": "0.8.26+8a97fa7a",
+    "solcWindowsSha256": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
+    "foundry": "1.7.1"
+  },
+  "sourceSha256": [
+    [
+      "packages/contracts/src/RMTLaunchCurveTokenV2.sol",
+      "c0fc0358e4f0b46dca00ed264459896a42b52e256b19a0f8c412e91a31fd7d19"
+    ],
+    [
+      "packages/contracts/src/RMTLaunchCurveLpFeeLedgerV1.sol",
+      "dff06312947d67835b9c313f0e68e26a3db989149477ec968663a86576b441f5"
+    ],
+    [
+      "packages/contracts/src/RMTV4CurveGraduationV1.sol",
+      "b633189372da00f1491908175b9af2f8b1f0ba21093e6df67ea66309921b601e"
+    ],
+    [
+      "packages/contracts/project-treasury/src/RMTProjectTreasuryV1.sol",
+      "5d4c696cf8cc1caa98d696695164319b6da12fcb5003ad1edde84039d091c888"
+    ],
+    [
+      "packages/contracts/project-treasury/src/RMTProjectTreasuryFactoryV1.sol",
+      "ae4e43069cf61ae3887bb6db1f11eeb479705f1892adb29be1186dba180d7e7b"
+    ],
+    [
+      "packages/contracts/project-treasury/src/TreasuryInterfaces.sol",
+      "3aa24a3b5b55550f9cd4bfdfa49ebe59c4aec00889069a7b0cf4339191a59f3d"
+    ],
+    [
+      "packages/contracts/treasury-purchase-v2/src/PurchaseEvidenceV2.sol",
+      "654423ffc7489285a6d238403af0431357195d67ee561f6d6aa89f928e9b8ae4"
+    ],
+    [
+      "packages/contracts/treasury-purchase-v2/src/RMTTreasuryPurchaseV2Prototype.sol",
+      "de7b6de01b74909152e1096effd3be9be6a48ca115f70e9e59b1102a4ac8791c"
+    ],
+    [
+      "packages/contracts/treasury-purchase-v2/src/RMTTreasuryPurchaseV2PrototypeFactory.sol",
+      "9f3394afa0779e752fde073ef8324e5220934bd80b11f8cbb884af589eb788f8"
+    ],
+    [
+      "packages/contracts/treasury-purchase-v2/test/V1SecurityDisposition.t.sol",
+      "68dc5a973c6d4df34d21eceb8e0ac90630ab5e8c8eeeb1ec6c8dc4ac4c9683d6"
+    ]
+  ]
+}

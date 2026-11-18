@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "scope": "actual-loopback-read-only-build",
+  "engine": "webkit",
+  "status": "PASS",
+  "physicalIPhoneAcceptance": false,
+  "capability": {
+    "status": "NOT_EXECUTABLE",
+    "reason": "INDEPENDENT_REFERENCE_NOT_ADMITTED",
+    "deployed": false,
+    "spendingAuthority": false
+  },
+  "missingEvidenceIsUnavailable": true,
+  "denied": [
+    {
+      "method": "POST",
+      "path": "/api/launchpad/test-project-treasury",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/api/launchpad/treasury-purchase-v2",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/api/launchpad/test-treasury-purchase-v2",
+      "status": 404
+    }
+  ],
+  "layouts": [
+    {
+      "name": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "screenshot": "webkit-desktop-purchase-unavailable.png",
+      "noOverflow": true,
+      "summaryHeight": 44,
+      "keyboardAccessible": true,
+      "capturePreservesEmulation": true,
+      "media": {
+        "touch": 0,
+        "coarse": false
+      },
+      "walletRequests": 0,
+      "externalRequests": 0,
+      "operationalRequests": 0,
+      "errors": []
+    },
+    {
+      "name": "portrait",
+      "viewport": {
+        "width": 390,
+        "height": 664
+      },
+      "screenshot": "webkit-portrait-purchase-unavailable.png",
+      "noOverflow": true,
+      "summaryHeight": 44,
+      "keyboardAccessible": true,
+      "capturePreservesEmulation": true,
+      "media": {
+        "touch": 0,
+        "coarse": true
+      },
+      "walletRequests": 0,
+      "externalRequests": 0,
+      "operationalRequests": 0,
+      "errors": []
+    },
+    {
+      "name": "landscape",
+      "viewport": {
+        "width": 750,
+        "height": 342
+      },
+      "screenshot": "webkit-landscape-purchase-unavailable.png",
+      "noOverflow": true,
+      "summaryHeight": 44,
+      "keyboardAccessible": true,
+      "capturePreservesEmulation": true,
+      "media": {
+        "touch": 0,
+        "coarse": true
+      },
+      "walletRequests": 0,
+      "externalRequests": 0,
+      "operationalRequests": 0,
+      "errors": []
+    }
+  ]
+}

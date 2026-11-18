@@ -1,0 +1,21 @@
+Compiling 10 files with Solc 0.8.26
+Solc 0.8.26 finished in 37.32s
+Compiler run successful!
+
+Ran 13 tests for test/V1SecurityDisposition.t.sol:V1SecurityDispositionTest
+[PASS] testChangedTokenRuntimeRejectedBeforeAnyNewDepositOrWithdrawal() (gas: 341698)
+[PASS] testCombinedLpWrongTokenAmountRollsBackAllAssetsAndFeeCredits() (gas: 328219)
+[PASS] testDepositCallbackCannotEnterReconciliationButNormalExactTransferCompletes() (gas: 224982)
+[PASS] testDepositFalseOrMalformedReturnRollsBackEvenIfTokenMovedAssets() (gas: 154872)
+[PASS] testDepositRecipientShortCreditRollsBackAllowanceBalancesAndAccounting() (gas: 105140)
+[PASS] testDepositUnexpectedSenderDebitRollsBackAllowanceBalancesAndAccounting() (gas: 106025)
+[PASS] testFuzz_ExactDepositWithdrawWithBlockedCallbacksPreservesConservation(uint96) (runs: 512, μ: 445789, ~: 445789)
+[PASS] testLpCallbackCannotReenterWhileCorrectClaimAndPrincipalRemainValid() (gas: 377885)
+[PASS] testLpWrongNativeAmountRollsBackReceiveAccountingAndClaimCredit() (gas: 327110)
+[PASS] testSingleAssetLpWrongTokenAmountRollsBackAllAssetsAndFeeCredits() (gas: 298036)
+[PASS] testWithdrawalCallbackCannotReplayConsumedRequest() (gas: 434586)
+[PASS] testWithdrawalRecipientShortCreditRollsBackReservationAndTransfer() (gas: 361675)
+[PASS] testWithdrawalUnexpectedTreasuryDebitRollsBackReservationAndTransfer() (gas: 360798)
+Suite result: ok. 13 passed; 0 failed; 0 skipped; finished in 61.12ms (82.10ms CPU time)
+
+Ran 1 test suite in 79.73ms (61.12ms CPU time): 13 tests passed, 0 failed, 0 skipped (13 total tests)

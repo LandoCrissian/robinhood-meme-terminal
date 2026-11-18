@@ -102,7 +102,7 @@ export function ProjectTreasurySetup({ creatorFields, onVerified, onInvalidate, 
         <label>Exact share of project fees (%)<input aria-label="Contract treasury share of project fees" value={draft.sharePercent} maxLength={6} inputMode="decimal" onChange={e => edit("sharePercent", e.target.value)} /></label>
         {errors.sharePercent && <p role="alert">{errors.sharePercent}</p>}
         <p>0–100% of the project&apos;s 90% allocation. The contract uses 0–9000 basis points of eligible fees; fractions round down. Creator receives the rest. A 0% allocation creates no treasury fee entitlement.</p>
-        <p className="lpInlineNotice"><strong>Purchases OFF by default.</strong> Incoming funding is independent of purchase permission. Purchases remain unavailable without verified independent price evidence; enabling a policy is not execution or a return guarantee.</p>
+        <p className="lpInlineNotice"><strong>Buy execution unavailable.</strong> Purchase intent starts OFF. V1 cannot execute buys, even after intent is recorded; it cannot gain swaps through a later switch. Incoming funding remains available independently.</p>
       </fieldset>
       {!fixture && <p className="lpInlineNotice">Read-only preview. Project treasury deployment, wallet connection and token creation are disabled. No treasury address is presented as deployed.</p>}
       <div className="lpDraftActions">{!execution.wallet ? <button type="button" className="lpButton lpSecondary" disabled={!fixture || execution.busy || !restored} onClick={() => void execution.connect()}>Connect synthetic treasury creator</button>
@@ -111,7 +111,7 @@ export function ProjectTreasurySetup({ creatorFields, onVerified, onInvalidate, 
       {errors.intentId && <p role="alert">{errors.intentId}</p>}
       {preview && <div className="lpReview lpForm" aria-label="Project treasury address preview"><h3>{preview.deployed ? "Verified treasury deployment" : "Predicted treasury address · not deployed"}</h3>
         <code className="lpAddress">{preview.treasury}</code><dl className="lpFacts"><dt>Creator</dt><dd className="lpAddress">{preview.creator}</dd><dt>Controller</dt><dd className="lpAddress">{preview.controller}</dd>
-          <dt>Exact treasury allocation</dt><dd>{preview.treasuryShareBps} / 10,000 of eligible fees · project denominator 9,000</dd><dt>Purchase permission</dt><dd>OFF</dd>
+          <dt>Exact treasury allocation</dt><dd>{preview.treasuryShareBps} / 10,000 of eligible fees · project denominator 9,000</dd><dt>Purchase intent</dt><dd>OFF · V1 cannot execute buys</dd>
           <dt>Creation sequence</dt><dd>1. Treasury deployment + gas. 2. Token creation + {launchTerms.creationFeeEth} ETH and gas. Separate reviews; the existing creator factory is unchanged.</dd></dl>
         {!preview.deployed && <button type="button" className="lpButton" disabled={execution.busy} onClick={() => void execution.run(reviewDeployment)}>Review synthetic treasury deployment</button>}
       </div>}
