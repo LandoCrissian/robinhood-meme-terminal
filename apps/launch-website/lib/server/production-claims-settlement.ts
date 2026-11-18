@@ -111,25 +111,32 @@ async function oneProvider(source: ClaimSettlementProvider, input: ClaimSettleme
     if (found === "pending") return { status: "submitted", reason: "original-payer-nonce-not-confirmed" };
     if (found === "unavailable") return { status: "unavailable", reason: "original-hash-outside-bounded-recovery-window" };
     const transaction = await rpc.getTransaction({ hash: found });
-    if (transaction.blockNumber === null) return { status: "submitted", hash: found };
+    // A lookup or wallet-provided hash is only a candidate. Bind the complete
+    // original envelope before publishing even an unmined transaction identity.
+    if (!same(transaction.hash, found) || !same(transaction.from, outer.from) || !same(transaction.to ?? "", outer.to)
+        || !same(transaction.input, outer.data) || transaction.value !== 0n || transaction.nonce !== Number(BigInt(outer.nonce))
+        || transaction.chainId !== review.chainId || transaction.type !== "eip1559"
+        || ("authorizationList" in transaction && transaction.authorizationList !== undefined)
+        || ("accessList" in transaction && transaction.accessList !== undefined && transaction.accessList.length !== 0)
+        || (outer.gas !== undefined && transaction.gas !== BigInt(outer.gas))
+        || (outer.maxFeePerGas !== undefined && transaction.maxFeePerGas !== BigInt(outer.maxFeePerGas))
+        || (outer.maxPriorityFeePerGas !== undefined && transaction.maxPriorityFeePerGas !== BigInt(outer.maxPriorityFeePerGas))) {
+      return { status: "unavailable", reason: "transaction-envelope-conflict" };
+    }
+    if (transaction.blockNumber === null) return transaction.blockHash === null && transaction.transactionIndex === null
+      ? { status: "submitted", hash: found } : { status: "unavailable", reason: "pending-transaction-identity-conflict" };
     const receipt = await rpc.getTransactionReceipt({ hash: found });
     if (receipt.status !== "success" && receipt.status !== "reverted") return { status: "unavailable", hash: found, reason: "receipt-status-unavailable" };
     const header = await rpc.getBlock({ blockNumber: receipt.blockNumber });
     const checkpoint = point(header);
-    if (!same(transaction.from, outer.from) || !same(transaction.to ?? "", outer.to) || !same(transaction.input, outer.data)
-        || transaction.value !== 0n || transaction.nonce !== Number(BigInt(outer.nonce)) || transaction.chainId !== review.chainId
-        || transaction.type !== "eip1559" || ("authorizationList" in transaction && transaction.authorizationList !== undefined)
-        || !same(receipt.transactionHash, found) || !same(receipt.from, outer.from) || !same(receipt.to ?? "", outer.to)
+    if (!same(receipt.transactionHash, found) || !same(receipt.from, outer.from) || !same(receipt.to ?? "", outer.to)
         || transaction.blockHash !== receipt.blockHash || transaction.blockNumber !== receipt.blockNumber
         || transaction.transactionIndex !== receipt.transactionIndex || !same(header.transactions[receipt.transactionIndex] as string, found)
         || receipt.blockNumber <= BigInt(r.reviewBlockNumber) || receipt.blockNumber > current.number
         || receipt.logs.length > 128 || new Set(receipt.logs.map(log => log.logIndex)).size !== receipt.logs.length
         || !receipt.logs.every(log => !log.removed && log.logIndex !== null && log.logIndex >= 0 && same(log.transactionHash!, found)
           && same(log.blockHash!, receipt.blockHash) && log.blockNumber === receipt.blockNumber && log.transactionIndex === receipt.transactionIndex && log.data.length <= 8194)
-        || !same(receipt.blockHash, checkpoint.blockHash) || receipt.gasUsed > transaction.gas
-        || (outer.gas !== undefined && transaction.gas !== BigInt(outer.gas))
-        || (outer.maxFeePerGas !== undefined && transaction.maxFeePerGas !== BigInt(outer.maxFeePerGas))
-        || (outer.maxPriorityFeePerGas !== undefined && transaction.maxPriorityFeePerGas !== BigInt(outer.maxPriorityFeePerGas))) {
+        || !same(receipt.blockHash, checkpoint.blockHash) || receipt.gasUsed > transaction.gas) {
       return { status: "unavailable", hash: found, reason: "receipt-or-reviewed-gas-conflict" };
     }
     const phase = receipt.status === "reverted" ? "reverted-receipt" : "receipt";
@@ -189,7 +196,7 @@ export async function verifyProductionClaimSettlement(input: ClaimSettlementInpu
     scope: chainId === 31337 ? "synthetic-local" : "production-read-only", stage: "unavailable", executionEnabled: false,
     intentHash: isTransactionHash(input.review?.intentHash) ? input.review.intentHash : zeroHash,
     reviewHash: isTransactionHash(input.review?.reviewHash) ? input.review.reviewHash : zeroHash,
-    ...(input.transactionHash && { transactionHash: input.transactionHash }), receiptObserved: false,
+    receiptObserved: false,
     providers: { status: "unavailable", ids: Array.isArray(input.contexts) ? input.contexts.map(source => source.id) : [] }, finality: claimFinality(chainId, undefined, undefined) };
   if (!isClaimExecutionReview(input.review) || !input.review.outer || input.review.status !== "review-only"
       || (input.transactionHash !== undefined && !isTransactionHash(input.transactionHash)) || !validSources(input)) {

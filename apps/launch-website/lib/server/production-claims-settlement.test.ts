@@ -33,15 +33,22 @@ async function fixture(operation: EarningsClaimOperation = "curve-claim") {
   const original = f.context.rpc;
   let review: ClaimExecutionReview;
   const knobs = { secondOffline: false, secondWrongEvent: false, secondNoTrace: false, reorgDuringTrace: false, traceRead: false,
-    feeMismatch: false, originalUnknown: false };
+    feeMismatch: false, originalUnknown: false, pending: false, wrongPending: "", claimReceiptReads: 0 };
   const rpc = new Proxy(original, { get(target, property) {
     if (property === "getTransaction") return async () => {
       if (knobs.originalUnknown) throw Error("provider lookup unavailable");
       return { ...await original.getTransaction({ hash: f.txHash }), gas: BigInt(review.outer!.gas!),
         maxFeePerGas: BigInt(review.outer!.maxFeePerGas!) + (knobs.feeMismatch ? 1n : 0n),
-        maxPriorityFeePerGas: BigInt(review.outer!.maxPriorityFeePerGas!) };
+        maxPriorityFeePerGas: BigInt(review.outer!.maxPriorityFeePerGas!),
+        ...(knobs.pending && { blockNumber: null, blockHash: null, transactionIndex: null }),
+        ...({ hash: { hash: eh(9911) }, from: { from: ea(99111) }, to: { to: ea(99112) }, nonce: { nonce: 99 },
+          value: { value: 1n }, chain: { chainId: 1 }, calldata: { input: "0x1234" }, type: { type: "eip7702", authorizationList: [] },
+          access: { accessList: [{ address: ea(99113), storageKeys: [] }] }, block: { blockHash: eh(9914) } }[knobs.wrongPending] ?? {}) };
     };
-    if (property === "getTransactionReceipt") return async (arg: { hash: `0x${string}` }) => ({ ...await original.getTransactionReceipt(arg), gasUsed: 28000n });
+    if (property === "getTransactionReceipt") return async (arg: { hash: `0x${string}` }) => {
+      if (arg.hash === f.txHash) knobs.claimReceiptReads++;
+      return { ...await original.getTransactionReceipt(arg), gasUsed: 28000n };
+    };
     if (property === "request") return async (...args: unknown[]) => { const value = await Reflect.apply(original.request, original, args); knobs.traceRead = true; return value; };
     if (property === "getBlock") return async (arg: { blockNumber?: bigint }) => {
       const block = await original.getBlock(arg);
@@ -136,6 +143,26 @@ test("missing hash recovery finds the original outer payer nonce without request
   const pending = await fixture();
   const p = await verifyProductionClaimSettlement({ ...pending.input, transactionHash: undefined });
   assert.equal(p.stage, "submitted", p.reason); assert.equal(p.transactionHash, undefined);
+});
+
+test("a candidate hash is published only after exact pending envelope validation, never echoed from failure", async () => {
+  const f = await fixture(); f.knobs.pending = true;
+  const pending = await verifyProductionClaimSettlement(f.input);
+  assert.equal(pending.stage, "submitted"); assert.equal(pending.transactionHash, f.f.txHash);
+  assert.equal(pending.receiptObserved, false); assert.equal(f.knobs.claimReceiptReads, 0);
+  for (const field of ["hash", "from", "to", "nonce", "value", "chain", "calldata", "type", "access", "block"]) {
+    f.knobs.wrongPending = field;
+    const rejected = await verifyProductionClaimSettlement(f.input);
+    assert.equal(rejected.stage, "unavailable", field + ": " + rejected.reason);
+    assert.equal(rejected.transactionHash, undefined, "An unbound candidate must not poison original no-hash recovery");
+    assert.equal(rejected.intentHash, f.review.intentHash); assert.equal(rejected.reviewHash, f.review.reviewHash);
+  }
+  f.knobs.wrongPending = ""; f.knobs.originalUnknown = true;
+  assert.equal((await verifyProductionClaimSettlement(f.input)).transactionHash, undefined);
+  const invalidReview = { ...f.review, reviewHash: eh(9991) };
+  const invalid = await verifyProductionClaimSettlement({ ...f.input, review: invalidReview });
+  assert.equal(invalid.stage, "unavailable"); assert.equal(invalid.transactionHash, undefined);
+  assert.equal(f.knobs.claimReceiptReads, 0);
 });
 
 test("reorgs, wrong gas, malformed receipts and provider failures never produce canonical earnings", async () => {
