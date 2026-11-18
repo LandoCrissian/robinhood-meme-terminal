@@ -34,6 +34,8 @@ ETH and explicitly admitted, actually registered fixed-supply Token V2 ERC-20 as
 
 Purchase permission starts OFF. Its policy stores caps, minimum accumulation, cooldown, period, slippage/impact bounds and revocable epochs. Requests validate deadline, quote age/block, reservations, minimum output and nonzero route/reference commitments. Those fields do **not** establish independent market evidence. V1 has no admitted independent reference or executable route, so `purchaseExecutionAvailable()` is false and `executePurchase` always reverts. There are no purchase transactions, fabricated success events or automatic burns/distributions. Funds remain held and withdrawal/funding controls remain available when permission is disabled.
 
+Local policy-review defaults are explicitly synthetic: 0.01 ETH per transaction, 0.02 ETH per 24-hour period, 0.001 ETH minimum, one-hour cooldown and 100 basis points each for stated slippage/impact. The controller reviews exact values before enabling intent. These are not approved production parameters or evidence of a working purchasing mechanism.
+
 This is an intentional implementation gap permitted by Task 076's fail-closed boundary. Actual purchase execution requires a separately reviewed version with accepted price/manipulation defenses and canonical route evidence. V1 is immutable: do not deploy it expecting a later switch to enable swaps. Future fee entitlements cannot be moved by merely forwarding settled assets.
 
 ## Website and indexing
@@ -44,7 +46,35 @@ The existing fixture worker remains the only writer. Additional tables are admit
 
 Local support requires every existing chain-31337 manifest/origin gate plus `RMT_PROJECT_TREASURY_FIXTURE=local-reviewed-project-treasury-v1` and an absolute reviewed module manifest. Hosted flags, malformed manifests, wrong origins and missing bindings fail closed. Public reads report unavailable, financial POSTs return 404, and hosted startup rejects private fixture variables. The public build never asks for wallet access. Native claims or withdrawals without independent transfer evidence remain pending. Recovery never automatically signs or resubmits.
 
-Fixture limits are explicit: treasury birth verification covers at most 4,096 blocks and 128 treasuries; reads return at most 100 events and 16 pending withdrawals. Recovery scans at most 256 blocks. These are local acceptance limits, not production-scale indexing readiness. Production activation requires a separately accepted durable deployment/indexing configuration and canonical finality/trace policy.
+Fixture limits are explicit: treasury birth verification covers at most 4,096 blocks and 128 treasuries; reads return at most 100 events and 16 pending withdrawals. Recovery scans at most 256 blocks. The token-withdrawal UI verifier requires a single-transaction block to corroborate both historical balance deltas; broader block profiles remain unavailable. These are local acceptance limits, not production-scale indexing readiness. Production activation requires a separately accepted durable deployment/indexing configuration and canonical finality/trace policy.
+
+## Observed verification
+
+Both complete local browser journeys passed at source `378f3c0a88ff06020854ea156bbf6fed7b874f44`, including the readiness/form-value correction. Each engine recorded 48 receipt observations (40 successes and eight expected reverts), nine genuine Safe executions, four explicit form/dashboard submissions, three recoveries, two preserved creation archives and seven layout observations. Receipts include an intentionally orphaned claim used to prove reorg rollback; they are not all current canonical transactions after rollback. The separate standard desktop context read the actual indexed treasury with no injected wallet or wallet requests.
+
+The sequence covers creator-only and two-step contract-treasury creation; exact 1B supply/zero opening backing; mined out-of-gas rollback with normal gas/nonce consumption; dashboard curve claims held pending during a native-proof outage; manual/declared/unsolicited funding; OFF/enable/disable intent without spending; original-ledger V1→V2→V3 continuity; Safe rotation and insufficient approvals; graduation and official v4-router buys/sells; LP collection and separate native/token claims; application/indexer restart; orphan removal/restored credits; and noticed token withdrawal with unchanged original LP principal. No treasury purchase transaction was executed.
+
+These are **local chain-31337 executions on the existing pinned Base Sepolia 84532 fixture**, upstream block 57,648,300, hash `0x5bb29976ce80ddede79f192c61eba8fe9d96f499f8bfa11e0820d11820e91d20`, provenance commit `8dca5773cbd4dc98f52a45616f420bce96b000f0`. They are not new 4663 financial-fork tests, mainnet receipts or physical-device acceptance. The unchanged core compiler input is `437fb783d7dce558a05317e8b15877f6d08b9571bc12aefec360382469d53648`, matching Task 075; the complete new-module compiler input is `513609f57dea2fd706ac749999c47119955be16bb0b4f46a54b9fc4283683cf0`.
+
+Local checks also passed: 224 website tests; 112 unchanged core and 23 treasury Foundry tests; four wrapper decoder and five receipt-observation tests; PostgreSQL 18.6 writer/conflict/rollback/restart/reorg checks; 110 release-evidence checks; 20 release-policy checks; 72 readiness checks; build/typecheck; repository dependency checks; and the production dependency audit. Final public Chromium/WebKit suites each checked desktop, portrait and landscape, including a deliberately dropped input event followed by exactly one real read-only request, blocked financial routes and zero wallet/external requests. The isolated Firebase profile browser suite passed all 12 profile mutations across both engines after capturing real response bodies promptly. No production profile data was used.
+
+Two initial WebKit financial-page lookups produced no observable request before their timeout. The exact original trigger remains unproven. Twenty immediate public lookups did not reproduce it; the defensive readiness/form-value correction and subsequent full runs passed without retries or relaxed assertions. An older Linux graduation review returned only `unavailable`; its original catch omitted the underlying failure. The retained loopback route now exposes bounded, sanitized stages/error kinds and CI retains bounded fixture logs. These observations remain in the failure register rather than being described as independently cleared defects.
+
+A later Linux default-lifecycle run observed a pending `null` sell receipt before the old helper dereferenced it. The helper now observes only that original hash, for at most 15 seconds/128 reads, then enforces hash/status/block/index membership. Malformed, reverted, conflicting or failed-provider evidence stops immediately. This is receipt observation, not transaction resubmission; five focused tests cover its boundaries. The original CI failure and initially skipped later stages remain recorded.
+
+Chromium's `fullPage` capture changed touch/pointer emulation in a separately reproduced Playwright 1.55.1 probe. Treasury phone acceptance now uses viewport captures and asserts pointer/touch preservation; 44px interactive targets and 16px phone input requirements remain intact. The compact immutable supply display is measured separately. The temporary CSS workaround was reverted; the approved core styling is unchanged.
+
+Raw [Chromium](evidence/rmt-task076/chromium-core.json) and [WebKit](evidence/rmt-task076/webkit-core.json) reports, [failure register](evidence/rmt-task076/original-failures.json), compiler/source manifests, public-read results and screenshots are retained under `docs/evidence/rmt-task076`. CI runs the default lifecycle, Task 075 profiles and Task 076 journey separately for both engines. Consult the draft PR's exact-head checks for final CI status; expected security failures remain real failures.
+
+The [runtime source manifest](evidence/rmt-task076/runtime-source-manifest.json) binds 190 shipped website/indexer/common files to the source exercised by both journeys. The [artifact checksums](evidence/rmt-task076/files.sha256.json) retain raw report and screenshot identities. CI's default pull-request checkout may be GitHub's synthetic merge commit; its recorded checkout is distinct from the PR head whose checks it reports. A repository or build pass does not clear either contract analysis scope.
+
+| Creator review | Verified treasury |
+| --- | --- |
+| ![Phone creator review](evidence/rmt-task076/screenshots/chromium-creation-portrait.png) | ![Phone treasury controls](evidence/rmt-task076/screenshots/webkit-treasury-portrait.png) |
+
+![Actual standard desktop treasury](evidence/rmt-task076/screenshots/webkit-treasury-desktop.png)
+
+The secret scanner initially identified four public synthetic ERC-20 addresses and the pinned public token runtime hash as generic API keys in these raw reports. Their canonical receipt/runtime evidence was checked. Only those exact values in six named evidence files have narrow credential-scanner allowances; no credential pattern, source analysis detector or contract finding is exempted. The raw reports remain unchanged and the complete evidence scan passed.
 
 ## Reproduce
 
@@ -52,6 +82,7 @@ Use Node 22, pnpm 10.12.1, Foundry 1.7.1, checksum-pinned solc 0.8.26, PostgreSQ
 
 ```sh
 pnpm install --frozen-lockfile
+(cd packages/contracts && bash scripts/install-v4-deps.sh)
 pnpm --filter indexer build
 pnpm --filter @rmt/launch-website build
 pnpm --filter @rmt/launch-website test:history
@@ -75,3 +106,5 @@ Separate prerequisites include review/disposition of those findings, independent
 ## Unexecuted integration example
 
 After a receiver is separately deployed and payment-tested, LAMMB Genesis could independently authorize royalties to its own dedicated treasury; that treasury could later buy its launched project token only after accepted liquidity/reference evidence and a reviewed purchasing version exist. Current Genesis royalties remain unchanged. Spending settled RMT creator revenue on LAMMB NFTs is a distinct future strategy requiring its own asset/payee/amount authorization; it is not enabled by a royalty deposit or purchase toggle. RMT Reclaim remains a separate unimplemented, manually funded module ($20 initial target and $0.05 per eligible NFT, later adjustable), not part of this treasury's purchase authority.
+
+Specifically, a treasury bound to the future RMT launch could receive independently authorized LAMMB Genesis payments and later purchase that same RMT token. A treasury bound to a different project token cannot use this policy to buy RMT. The payment currency must be supported before any royalty recipient is changed; unsupported direct ERC-20/NFT transfers may be unrecoverable in V1.

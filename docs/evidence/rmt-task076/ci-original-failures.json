@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "scope": "SYNTHETIC_GITHUB_ACTIONS_ACCEPTANCE_NOT_PRODUCTION",
+  "sourceCommit": "378f3c0a88ff06020854ea156bbf6fed7b874f44",
+  "runId": 44403062765,
+  "jobId": 135150940093,
+  "job": "isolated-lifecycle (webkit)",
+  "failedStep": "Verify the same-app lifecycle on synthetic chain 31337",
+  "observedAt": "2026-11-18T21:39:16Z",
+  "failure": {
+    "file": "scripts/visual-qa/rmt-creator-integration.mjs",
+    "function": "lastReceipt",
+    "line": 796,
+    "callerLine": 959,
+    "operation": "sell",
+    "reason": "A single eth_getTransactionReceipt read returned null before mining was observable; the helper dereferenced blockNumber instead of retaining pending state",
+    "error": "TypeError: Cannot read properties of null (reading 'blockNumber')"
+  },
+  "laterSteps": {
+    "profiledClaims": "skipped because the preceding step failed",
+    "projectTreasury": "skipped because the preceding step failed"
+  },
+  "requiredCorrection": "Bounded observation of the original transaction hash only; retain status and canonical block checks; fail on timeout; never rebroadcast or request a duplicate signature",
+  "correctionOwner": "parent-authorized isolated test harness change",
+  "followup": "Pending the corrected exact-head CI run"
+}

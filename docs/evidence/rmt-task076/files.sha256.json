@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "algorithm": "sha256",
+  "files": [
+    {
+      "path": ".gitattributes",
+      "sha256": "f376d40df80bd9fcd461a769182b41919207017a6bfed26b910924fc4159e0f0"
+    },
+    {
+      "path": "acceptance.json",
+      "sha256": "e4f04b9a0fb57c9edeec94a613efadbd392c9ede489dac59fca216410a1b2578"
+    },
+    {
+      "path": "acceptance.test.mjs",
+      "sha256": "062314168b171e3341b03607b243eaa9ccb09b3f967824331688c1413fbd5465"
+    },
+    {
+      "path": "capture-emulation-probe.json",
+      "sha256": "de10b1d434b41f00152d272557b57247637e16708a769ee18b18016d75cd295b"
+    },
+    {
+      "path": "capture-emulation-probe.mjs",
+      "sha256": "12e8ba27db3b7ec6d5541e686afc012c25c81e36df80e22924d2711582e1d180"
+    },
+    {
+      "path": "chromium-browser.json",
+      "sha256": "0944b93d9112bdff474b1e11ab045bd79b243288400f0bbf232ab27dbb85fbea"
+    },
+    {
+      "path": "chromium-core.json",
+      "sha256": "d40c211a48f22c592e0511179e86fbb2cfbfd21700d56248146905764bc7ab58"
+    },
+    {
+      "path": "chromium-deployment.json",
+      "sha256": "14bae795deee8150d47021eec7533eaf499babc39683ef71928f42ef2083726d"
+    },
+    {
+      "path": "ci-original-failures.json",
+      "sha256": "cd305c4909771b613499e39d447d7c2c6d7a0441fd42c39939aab3eee0ab055b"
+    },
+    {
+      "path": "compiler-input.json.gz",
+      "sha256": "00842833c42db59f195cacc637192d8192ff8cf5bab8e5c265ec65281063e93e"
+    },
+    {
+      "path": "compiler-manifest.json",
+      "sha256": "ac39d43cf4f7c63f40565b01d07ef173c9b60b20364630467ad7674127e1dedf"
+    },
+    {
+      "path": "core-source-boundary.json",
+      "sha256": "42983e02b7e9f05b907d85b317bff68767f72d2635f147cdaccd943855a0ff15"
+    },
+    {
+      "path": "firebase-ui.json",
+      "sha256": "5ba0ff6995659ae77ab78bf76c98dd0f9220670839002a6dcb6588a8ee748180"
+    },
+    {
+      "path": "frozen-source-manifest.json",
+      "sha256": "c87f0443d3ea633facf07a86d8797d1bfcc05ca23038cefaa8436fba663d97ed"
+    },
+    {
+      "path": "hydration-probe.json",
+      "sha256": "0f70c3fbf0568ae034cd1f4daa4a3a4becd9468c2f2ebd538d40028e125f6c7c"
+    },
+    {
+      "path": "original-failures.json",
+      "sha256": "ae093040448d8a6bd3bacb431e31b10462b66d8df473468dce15931c8adb836f"
+    },
+    {
+      "path": "postgres.json",
+      "sha256": "09c958b13d142dd8b3dd70c0ad93b6973685ec24c283b20ece731b55322541a5"
+    },
+    {
+      "path": "public-chromium.json",
+      "sha256": "e83298ea07f855b988608de1d708f8c3deff857bb9ac0e6e0449f03bb135556d"
+    },
+    {
+      "path": "public-webkit.json",
+      "sha256": "34f3ae143953ca27487ff07aa2eb445c378299dc4c4c9f981c9ec1a980f60557"
+    },
+    {
+      "path": "runtime-source-manifest.json",
+      "sha256": "b6da1eed3e3dcd286bcf4964180dcda59d6a49fe1581c7211f85e8447d9d4917"
+    },
+    {
+      "path": "screenshots/chromium-creation-landscape.png",
+      "sha256": "205d1ada5dde4bef7a9a417e18cd279868ac1fe5b0115e1ff0635532fe0bb880"
+    },
+    {
+      "path": "screenshots/chromium-creation-portrait.png",
+      "sha256": "adcb8e6744a76808405b335cac236c0da855a66c72e226770e15a655fa8fe5c5"
+    },
+    {
+      "path": "screenshots/chromium-treasury-desktop.png",
+      "sha256": "fafc874ad1f635108930dad00082e22f335aa9a986957b4f487a4b021dc2c523"
+    },
+    {
+      "path": "screenshots/chromium-treasury-portrait.png",
+      "sha256": "6da51ab15bb02e83ed6030b7c81fc27b6aff729dad031a05550d861ab213d4a1"
+    },
+    {
+      "path": "screenshots/public-desktop-unavailable.png",
+      "sha256": "69a7d3968fe745b5fe64684d36437bdccff061c00a52e4c4d39dfe1b3035be18"
+    },
+    {
+      "path": "screenshots/public-portrait-unavailable.png",
+      "sha256": "624a3896f98a5b7799e9745955331a9b6a43183d1381e8f3406b49b660681072"
+    },
+    {
+      "path": "screenshots/webkit-creation-landscape.png",
+      "sha256": "60c229f88fd0ee66802a6c57b95cb0639dbb914c263c0dff244367ed7d32efbe"
+    },
+    {
+      "path": "screenshots/webkit-creation-portrait.png",
+      "sha256": "57c3d24379b649eb50db6d550f3eb24fb83b7888334be5098d60a5a22bcbb390"
+    },
+    {
+      "path": "screenshots/webkit-treasury-desktop.png",
+      "sha256": "0522791811f4967f3ef68aabefe8ee44ca4e86d166780d5a56a724b7aa034c86"
+    },
+    {
+      "path": "screenshots/webkit-treasury-portrait.png",
+      "sha256": "f430fd44c0079ca84e66c80c6a69bdde2a1586c66ce88bde9045f565e7412d54"
+    },
+    {
+      "path": "slither-current.json.gz",
+      "sha256": "30da342d742eae7509df13cb588b3bdbccdc6ee24abf02883e05fd5aac9f81aa"
+    },
+    {
+      "path": "slither-initial.json.gz",
+      "sha256": "7064ff83eee195cd744d745290c8ec02da417d5b72b831a8e85784180dc25eba"
+    },
+    {
+      "path": "webkit-browser.json",
+      "sha256": "3862a65175eac1efa4fa46edfcbdeb0aad07038ee32ae1edf5501cf69817cf88"
+    },
+    {
+      "path": "webkit-core.json",
+      "sha256": "60935f6cb38c089e9220fefc20ea492b7f26c9c95cc96c71c0e8843124b0fec1"
+    },
+    {
+      "path": "webkit-deployment.json",
+      "sha256": "15fc390edb1150231df048bc8660a2fd83cf5301cb3e53fc90b2e7af3e30fd42"
+    }
+  ]
+}

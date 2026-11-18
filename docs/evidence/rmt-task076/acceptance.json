@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "task": 76,
+  "baseCommit": "51e0ee874b635f1e104a40ff6419af3b5659fb90",
+  "branch": "rmt-launch-project-treasury",
+  "draftPr": 670,
+  "status": "VERIFIED_ISOLATED_CANDIDATE_RELEASE_BLOCKED",
+  "broadcastAuthorized": false,
+  "productionChanges": false,
+  "hostedRedeployment": false,
+  "physicalIPhoneAcceptance": false,
+  "execution": {
+    "chainId": 31337,
+    "assets": "synthetic only",
+    "financialSource": "378f3c0a88ff06020854ea156bbf6fed7b874f44",
+    "upstream": {
+      "chainId": 84532,
+      "network": "Base Sepolia",
+      "provider": "https://sepolia.base.org",
+      "block": 57648300,
+      "blockHash": "0x5bb29976ce80ddede79f192c61eba8fe9d96f499f8bfa11e0820d11820e91d20",
+      "provenanceCommit": "8dca5773cbd4dc98f52a45616f420bce96b000f0"
+    }
+  },
+  "source": {
+    "existingSolidityFilesUnchanged": 36,
+    "coreCompilerInputSha256": "437fb783d7dce558a05317e8b15877f6d08b9571bc12aefec360382469d53648",
+    "moduleCompilerInputSha256": "513609f57dea2fd706ac749999c47119955be16bb0b4f46a54b9fc4283683cf0",
+    "runtimeManifest": "runtime-source-manifest.json"
+  },
+  "tests": {
+    "webUnit": 224,
+    "existingFoundry": 112,
+    "treasuryFoundry": 23,
+    "wrapperUnit": 4,
+    "receiptObservationUnit": 5,
+    "releaseEvidence": 110,
+    "releasePolicy": 20,
+    "productionReadiness": 72,
+    "postgres": "18.6 isolated persistence, forced atomic failure, lease, replay, conflict, restart and reorg",
+    "financialBrowsers": [
+      "chromium",
+      "webkit"
+    ],
+    "perBrowser": {
+      "receiptObservations": 48,
+      "successReceipts": 40,
+      "expectedReverts": 8,
+      "safeExecutions": 9,
+      "explicitUiSubmissions": 4,
+      "recoveries": 3,
+      "creationArchives": 2,
+      "layouts": 7,
+      "scope": "Includes intentionally orphaned reorg claim; not all receipt observations remain current after rollback"
+    },
+    "publicBrowsers": {
+      "engines": [
+        "chromium",
+        "webkit"
+      ],
+      "layoutsEach": 3,
+      "walletRequests": 0,
+      "financialSuccessMocked": false,
+      "droppedInputEvent": "Actual one-request read proved from visible FormData after hydration"
+    },
+    "firebase": "Auth/Firestore/Storage demo emulators; both browser engines and all 12 real profile mutations passed",
+    "dependencyAudit": "Current production lockfile audit passed with no known advisories",
+    "security": {
+      "originalHigh": 22,
+      "originalStrictGates": "FAILED (2)",
+      "newModuleDetectors": 101,
+      "newModuleFindings": 25,
+      "newModuleHigh": 6,
+      "newModuleStrictGate": "FAILED",
+      "independentAudit": false
+    }
+  },
+  "limitations": [
+    "Purchase execution is unavailable in immutable V1; a separate reviewed purchasing version and independent reference/route are needed before any purchasing deployment.",
+    "Supported currency scope is ETH and explicitly admitted registered TokenV2 assets; unsupported direct token/NFT transfers may be unrecoverable.",
+    "No production treasury module, schema, wallet execution or royalty change was activated.",
+    "Receipt/replay evidence is local synthetic execution, not 4663 financial-fork or physical-device acceptance.",
+    "Two initial WebKit no-request timeouts remain an unproven original trigger; defensive readiness/form binding and final full journeys passed.",
+    "Earlier Linux default graduation unavailable response remains precisely unclassified; sanitized stage diagnostics retained for subsequent CI.",
+    "Production index/trace/finality operations and all deployment/activation approvals remain separate."
+  ],
+  "recommendedNextTask": "Review an independent price/reference and canonical-route policy and a version that can enforce actual treasury purchases before production treasury deployment; retain all current release holds."
+}

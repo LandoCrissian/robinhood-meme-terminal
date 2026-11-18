@@ -49,3 +49,43 @@ test("all-detector reports retain the new highs and never represent a passing st
   assert.ok(initial.detectors.some(v => v.check === "encode-packed-collision"));
   assert.ok(!current.detectors.some(v => v.check === "encode-packed-collision"));
 });
+
+test("both real synthetic journeys preserve receipt, recovery, custody and source boundaries", () => {
+  const priorCompiler = JSON.parse(readFileSync(new URL("docs/evidence/rmt-task075/compiler-31337.json", root)));
+  for (const browser of ["chromium", "webkit"]) {
+    const core = json(browser + "-core.json"), ui = json(browser + "-browser.json");
+    assert.equal(core.status, "passed"); assert.equal(core.chainId, 31337); assert.equal(core.productionExecution, false);
+    assert.equal(core.sourceIdentity.commit, "378f3c0a88ff06020854ea156bbf6fed7b874f44");
+    assert.equal(core.sourceIdentity.coreCompiler.inputSha256, priorCompiler.inputSha256);
+    assert.equal(core.moduleCompiler.inputSha256, json("compiler-manifest.json").inputSha256);
+    assert.equal(core.receipts.length, 48); assert.equal(core.receipts.filter(r => r.status === "success").length, 40);
+    assert.equal(core.receipts.filter(r => r.status === "reverted").length, 8);
+    assert.equal(core.safeExecutions.length, 9); assert.equal(core.purchaseTransactions, 0);
+    assert.ok(Object.values(core.checks).every(value => value === true));
+    assert.equal(core.insufficientGas.receipt.status, "reverted"); assert.equal(core.insufficientGas.receipt.gasUsed, "50000");
+    assert.equal(core.insufficientGas.nonceAfter, core.insufficientGas.nonceBefore + 1);
+    assert.equal(core.insufficientGas.creditUnchanged, true); assert.equal(core.insufficientGas.treasuryBalanceUnchanged, true);
+    assert.equal(ui.status, "passed"); assert.equal(ui.sends.length, 4); assert.equal(ui.recoveries.length, 3);
+    assert.equal(ui.completedCreationArchives.length, 2); assert.equal(ui.layouts.length, 7);
+    assert.deepEqual(ui.pageErrors, []); assert.deepEqual(ui.externalRequests, []);
+    assert.equal(ui.desktopRead.status, "ready"); assert.equal(ui.desktopRead.indexed, true);
+    assert.equal(ui.desktopRead.walletInjected, false); assert.equal(ui.desktopRead.walletRequests, 0);
+    assert.equal(core.dashboard.project.graduated, true); assert.equal(core.dashboard.purchases.available, false);
+    assert.ok(BigInt(core.lpClaims.nativeWei) > 0n && BigInt(core.lpClaims.tokenWei) > 0n);
+  }
+});
+
+test("shipped runtime files still match the source exercised by both browser journeys", () => {
+  const manifest = json("runtime-source-manifest.json");
+  assert.equal(manifest.executionSource, "378f3c0a88ff06020854ea156bbf6fed7b874f44");
+  assert.equal(manifest.files.length, manifest.count); assert.ok(manifest.count > 100);
+  for (const file of manifest.files) {
+    const bytes = readFileSync(new URL(file.path, root));
+    const content = /\.(?:ts|tsx|mjs|mts|js|css|json)$/.test(file.path) ? Buffer.from(bytes.toString("utf8").replaceAll("\r\n", "\n")) : bytes;
+    assert.equal(digest(content), file.sha256, file.path);
+  }
+  for (const file of json("files.sha256.json").files) {
+    assert.ok(/^[a-zA-Z0-9._/-]+$/.test(file.path) && !file.path.startsWith("/") && !file.path.includes(".."));
+    assert.equal(digest(readFileSync(new URL(file.path, import.meta.url))), file.sha256, file.path);
+  }
+});

@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "scope": "LOCAL_SYNTHETIC_ACCEPTANCE_FAILURES_NOT_PRODUCTION",
+  "failures": [
+    {
+      "evidenceDirectory": "treasury-first-chromium",
+      "boundary": "Core creation preflight rejected a reserved protocol contract beneficiary as unavailable instead of a validation error",
+      "expected": "HTTP 422 before transaction preparation",
+      "observed": "HTTP 200 status unavailable",
+      "classification": "Confirmed server validation defect; no creator transaction was submitted",
+      "correction": "Explicitly reject factory, registry, graduation engine and guard before optional treasury admission",
+      "followup": "The second, third and fourth runs passed this preflight"
+    },
+    {
+      "evidenceDirectory": "treasury-second-chromium",
+      "boundary": "Layout selector treated the immutable supply read-only display as an interactive touch target",
+      "expected": "44px minimum for interactive inputs",
+      "observed": "The non-interactive fixed-supply display is 25px tall",
+      "classification": "Test selector error; on-chain token creation and indexed discovery had already passed",
+      "correction": "Exclude read-only fields from interactive target selection and separately assert exact 1-billion supply, read-only state and readable mobile font"
+    },
+    {
+      "evidenceDirectory": "treasury-third-chromium",
+      "boundary": "Read-only supply font check after full-page screenshot",
+      "observed": "Assertion failed before per-layout diagnostic fields were saved",
+      "classification": "Insufficient first-failure diagnostics; failure and screenshot preserved",
+      "correction": "Save exact value, read-only, font, viewport and pointer media evidence before assertion"
+    },
+    {
+      "evidenceDirectory": "treasury-fourth-chromium",
+      "boundary": "Read-only supply font check after full-page screenshot",
+      "expected": "Coarse pointer retained in the explicit iPhone emulation context; supply font 16px",
+      "observed": "Correct supply and read-only state; font 15px, coarse pointer false, touch disabled; interactive inputs remained 44–47px and 16px",
+      "classification": "Reproduced Playwright 1.55.1 Chromium fullPage screenshot emulation mutation, not a physical-phone observation",
+      "independentProbe": "capture-emulation-probe.json",
+      "correction": "Use viewport screenshots, assert unchanged pointer/touch state around capture, and retain all original 16px/44px acceptance requirements",
+      "followup": "The fifth run passed all strict 16px/44px layout assertions with coarse pointer retained across viewport captures"
+    },
+    {
+      "evidenceDirectory": "treasury-fifth-chromium",
+      "boundary": "Missing-hash recovery after a full page refresh",
+      "observed": "The optional treasury disclosure restored collapsed; the harness attempted to click the hidden reconnect button without reopening it",
+      "classification": "Test navigation error; original synthetic treasury deployment receipt was preserved and no duplicate was submitted",
+      "correction": "Explicitly reopen Optional project treasury after refresh, then reconnect and recover the original transaction",
+      "followup": "The seventh run passed this refresh recovery and archived both verified core creations"
+    },
+    {
+      "evidenceDirectory": "treasury-sixth-chromium",
+      "boundary": "Recovery disclosure selector after refresh",
+      "observed": "Descendant summary selector matched the outer Optional project treasury and nested Recover original treasury transaction summaries",
+      "classification": "Strict Playwright locator ambiguity; no duplicate transaction or runtime defect",
+      "correction": "Select the direct-child summary with :scope > summary",
+      "followup": "The seventh run passed missing-hash recovery and both creation archives"
+    },
+    {
+      "evidenceDirectory": "treasury-seventh-chromium",
+      "boundary": "Insufficient-gas negative test",
+      "observed": "Anvil accepted a 21000-gas transaction into its pending pool without mining; the harness expected an RPC gas error and instead timed out",
+      "classification": "Incorrect test expectation about intrinsic-gas admission; not evidence of a contract defect",
+      "correction": "Use a valid 50000-gas envelope and verify an actual mined out-of-gas revert, nonce consumption, exact unchanged claim credit and held funds",
+      "followup": "The eighth Chromium run passed an actual mined 50000-gas out-of-gas claim, nonce consumption and exact asset/credit rollback"
+    },
+    {
+      "evidenceDirectory": "treasury-first-webkit",
+      "boundary": "Dashboard read after the actual curve claim",
+      "observed": "View treasury produced no observed read API response within 30 seconds after navigation; the submitted claim receipt was preserved",
+      "classification": "Unresolved browser interaction observation; initial failure did not capture final DOM",
+      "correction": "Added bounded API request/response/failure records and exact form/input/hydration-state failure capture; no retry or assertion suppression",
+      "followup": "Both full Chromium and WebKit reruns passed at 378f3c0a after the targeted ready-state/FormData correction 45a36a54, without retries or weakened assertions. The exact original timeout cause was not established; original failures remain preserved."
+    },
+    {
+      "evidenceDirectory": "treasury-final-chromium",
+      "boundary": "New standard desktop screenshot save after all financial tests and successful read",
+      "observed": "ReferenceError: out is not defined in the new screenshot helper",
+      "classification": "Test helper argument omission; all 48 financial receipts and desktop read/identity/target checks had passed",
+      "correction": "Include the already-supplied output directory in the helper parameter destructuring (adee0899)"
+    },
+    {
+      "evidenceDirectory": "treasury-second-webkit",
+      "boundary": "Final dashboard read after migration, graduation, claims, restart and reorg",
+      "observed": "All 48 financial receipt checks passed; final View treasury click produced no API request; the four prior dashboard reads each returned HTTP 200",
+      "classification": "Repeated browser interaction observation; original default final lookup lacked DOM failure capture",
+      "correction": "Unified all lookup boundaries under exact failure diagnostics; narrow ready-state and actual-form-value fix under parent review, no retries or changed financial assertions",
+      "followup": "Both full Chromium and WebKit reruns passed at 378f3c0a after the targeted ready-state/FormData correction 45a36a54, without retries or weakened assertions. The exact original timeout cause was not established; original failures remain preserved."
+    }
+  ],
+  "verifiedFollowup": {
+    "candidateCommit": "378f3c0a88ff06020854ea156bbf6fed7b874f44",
+    "applicationCorrection": "45a36a54",
+    "compilerInputSha256": "513609f57dea2fd706ac749999c47119955be16bb0b4f46a54b9fc4283683cf0",
+    "runs": [
+      {
+        "evidenceDirectory": "treasury-verified-chromium",
+        "browser": "chromium",
+        "status": "passed",
+        "exitCode": 0,
+        "observedReceipts": 48,
+        "successfulReceipts": 40,
+        "expectedReverts": 8,
+        "genuineSafeExecutions": 9,
+        "browserSends": 4,
+        "browserRecoveries": 3,
+        "completedCreationArchives": 2,
+        "layouts": 7,
+        "standardDesktopReadIndexed": true
+      },
+      {
+        "evidenceDirectory": "treasury-verified-webkit",
+        "browser": "webkit",
+        "status": "passed",
+        "exitCode": 0,
+        "observedReceipts": 48,
+        "successfulReceipts": 40,
+        "expectedReverts": 8,
+        "genuineSafeExecutions": 9,
+        "browserSends": 4,
+        "browserRecoveries": 3,
+        "completedCreationArchives": 2,
+        "layouts": 7,
+        "standardDesktopReadIndexed": true
+      }
+    ],
+    "scope": "Synthetic local 31337 only; receipts include expected reverts and the deliberately orphaned reorg test transaction",
+    "productionChanges": false,
+    "physicalIPhoneAcceptance": false
+  }
+}
