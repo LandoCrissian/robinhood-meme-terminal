@@ -39,6 +39,13 @@ function readJournals(): Journal[] {
     const value: unknown = JSON.parse(raw); if (!validJournal(value) || key(value.review) !== k || bytes(raw) > recordLimit(value.review)) throw Error("A treasury recovery identity is invalid."); return value;
   }).sort((a, b) => b.createdAt - a.createdAt);
 }
+/** A new creator request must not strand another controller's uncertain wallet
+ * outcome. Canonically observed completed receipts remain recoverable history. */
+export function assertNoUnresolvedFinancialRequests(account: string) {
+  if (readJournals().some(j => same(j.review.actor, account) && !terminal(j))) throw Error("Recover the earlier treasury transaction before creating a token.");
+  if (listClaimJournals(localStorage).some(j => same(j.review.gasPayer, account)
+    && !["canonical-l2", "settled", "reverted", "wallet-rejected"].includes(j.stage))) throw Error("Recover the earlier profiled claim before creating a token.");
+}
 function store(j: Journal) {
   if (!validJournal(j)) throw Error("Invalid treasury recovery record");
   const all = readJournals(), old = all.find(entry => key(entry.review) === key(j.review));

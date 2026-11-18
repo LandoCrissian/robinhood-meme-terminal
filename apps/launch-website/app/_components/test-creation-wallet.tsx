@@ -8,6 +8,7 @@ import { launchTokenDecimals } from "../../lib/launch-terms";
 import { calldataMatchesTestCreation, isLocalTestWallet, isTestCreationPayouts, isTestCreationRequest, isTransactionHash, sameTestCreationRequest,
   testCreationPath, type TestCreationFields, type TestCreationPayouts, type TestCreationRequest, type TestCreationVerification } from "../../lib/test-creation";
 import { assertTestWalletBinding, connectTestWallet, sameWalletHex as same, subscribeTestWallet, testProviderAtWindow, testWalletErrorCode, type TestWallet as Wallet } from "../../lib/test-wallet";
+import { assertNoUnresolvedFinancialRequests } from "./treasury-wallet-controls";
 
 type Prepared = { draft: ReviewedLaunchDraft; wallet: Wallet; factory: string; request: TestCreationRequest; payouts: TestCreationPayouts };
 type Journal = { request: TestCreationRequest; transactionHash?: `0x${string}` };
@@ -41,10 +42,11 @@ async function post(body: object) {
   return payload;
 }
 
-async function prepare(draft: ReviewedLaunchDraft, account: string, factory: string, prior?: TestCreationRequest) {
+async function prepare(draft: ReviewedLaunchDraft, account: string, factory: string, prior?: TestCreationRequest, treasuryIntentId?: `0x${string}`) {
   const { name, symbol, projectURI, treasury, treasuryShareBps } = draft;
   const fields: TestCreationFields = { name, symbol, projectURI, treasury, treasuryShareBps };
-  const intentId = prior?.intentId ?? "0x" + Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  if (treasuryIntentId && (!isTransactionHash(treasuryIntentId) || prior && !same(prior.intentId, treasuryIntentId))) throw Error("The treasury's original creation intent changed");
+  const intentId = prior?.intentId ?? treasuryIntentId ?? "0x" + Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) => byte.toString(16).padStart(2, "0")).join("");
   const payload = await post({ action: "prepare", account, fields, intentId, ...(prior && { deadline: prior.deadline }) });
   const { request, payouts } = payload;
   if (payload.status !== "prepared" || !isTestCreationRequest(request) || !isTestCreationPayouts(payouts, !!treasury)
@@ -71,10 +73,11 @@ async function verify(entry: Journal, inputHash?: string): Promise<TestCreationV
   };
 }
 
-export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
+export function TestCreationWallet({ factory, draft, isCurrentDraft, treasuryIntentId }: {
   factory: string;
   draft?: ReviewedLaunchDraft;
   isCurrentDraft(draft: ReviewedLaunchDraft): boolean;
+  treasuryIntentId?: `0x${string}`;
 }) {
   const [ready, setReady] = useState(false);
   const [wallet, setWallet] = useState<Wallet>();
@@ -158,7 +161,7 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
       setMessage("Choose a project treasury address different from the creator.");
       return;
     }
-    const { request, payouts } = await prepare(draft, wallet.account, factory);
+    const { request, payouts } = await prepare(draft, wallet.account, factory, undefined, treasuryIntentId);
     await assertTestWalletBinding(wallet, request);
     if (!isCurrentDraft(draft) || selection.current !== generation) throw new Error("Review changed");
     setPrepared({ draft, wallet, factory, request, payouts });
@@ -180,18 +183,21 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
 
   async function confirm() {
     if (!prepared || !isCurrentDraft(prepared.draft) || !same(prepared.factory, factory)
-        || (prepared.draft.treasury && !treasuryAcknowledged)) return;
+        || (prepared.draft.treasury && !treasuryAcknowledged) || (treasuryIntentId && !same(prepared.request.intentId, treasuryIntentId))) return;
     const { request, payouts, wallet: bound, draft: candidate } = prepared;
     const generation = selection.current;
     setPrepared(undefined);
-    await navigator.locks.request(journalKey, { mode: "exclusive", ifAvailable: true }, async (lock) => {
+    await navigator.locks.request(`rmt.claim.execution.v1:31337:${bound.account.toLowerCase()}`, { mode: "exclusive", ifAvailable: true }, async payerLock => {
+      if (!payerLock) throw Error("Another tab is handling this wallet's original transaction");
+      await navigator.locks.request(journalKey, { mode: "exclusive", ifAvailable: true }, async (lock) => {
       if (!lock) throw new Error("Another tab is sending");
       const existing = readJournal();
       if (existing) {
         setJournal(existing);
         throw new Error("Creation already recorded");
       }
-      const current = await prepare(candidate, bound.account, factory, request);
+      assertNoUnresolvedFinancialRequests(bound.account);
+      const current = await prepare(candidate, bound.account, factory, request, treasuryIntentId);
       if (!sameTestCreationRequest(request, current.request) || !same(payouts.operating, current.payouts.operating)
           || !same(payouts.reserve, current.payouts.reserve) || payouts.treasuryKind !== current.payouts.treasuryKind) {
         throw new Error("Factory or reviewed terms changed");
@@ -200,6 +206,7 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
       if (!mounted.current || !isCurrentDraft(candidate) || selection.current !== generation || testProviderAtWindow() !== bound.provider
           || bound.provider.request !== bound.request) throw new Error("Review changed");
       let submitted: Journal = { request };
+      assertNoUnresolvedFinancialRequests(bound.account);
       // Record before the wallet call, even when the provider returns no hash.
       writeJournal(submitted);
       setJournal(submitted);
@@ -223,6 +230,7 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
           setMessage("The wallet result is uncertain. Check the original request before continuing.");
         }
       }
+      });
     });
   }
 
@@ -284,6 +292,8 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
               <dt>Treasury share of project fees</dt><dd>{treasuryProjectPercent(currentReview.draft.treasuryShareBps)}</dd>
               <dt>Treasury compatibility</dt><dd>{currentReview.payouts.treasuryKind === "safe-1.4.1"
                 ? "Verified Safe 1.4.1 configuration · submit claims through Safe"
+                : currentReview.payouts.treasuryKind === "project-treasury-v1"
+                ? "Verified per-project treasury contract · pinned treasury factory · controller-authorized claims"
                 : "No contract code detected · verify control of this wallet"}</dd>
             </>}
           </dl>
