@@ -41,7 +41,7 @@ jobs:
             --env RMT_INDEXER_SERVICE_ID=27b1aa2c-77e5-4ed4-91a1-1951d68c488e \
             --env RAILWAY_PUBLIC_DOMAIN=stale-provider-metadata.up.railway.app \
             --env RMT_WEB_ORIGIN=https://rmt-launch-website-preview.up.railway.app \
-            --env RMT_LAUNCH_HISTORY_INDEXER_URL=http://robinhood-meme-terminal.railway.internal:3001/ \
+            --env RMT_LAUNCH_HISTORY_INDEXER_URL=http://robinhood-meme-terminal.railway.internal:8080/ \
             --env RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN=synthetic-test-only-credential rmt-railway-ci
           RMT_RAILWAY_SMOKE_REPORT="$RUNNER_TEMP/railway-runtime.json" node scripts/release/railway-standalone-smoke.mjs
           docker restart rmt-railway-ci

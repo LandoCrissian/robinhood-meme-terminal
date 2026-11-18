@@ -3,6 +3,11 @@
   "projectId": "19587a6e-6f02-4cfa-b7db-f308934f697b",
   "environmentId": "539a42da-fb60-420f-b9fa-8c29af25ebbe",
   "serviceId": "8e9c1c15-74b5-4262-8851-72603a3dfc98",
+  "indexer": {
+    "serviceId": "27b1aa2c-77e5-4ed4-91a1-1951d68c488e",
+    "origin": "http://robinhood-meme-terminal.railway.internal:8080/",
+    "authentication": "Existing read token, server-only Railway reference"
+  },
   "dockerfilePath": "apps/launch-website/Dockerfile",
   "rootDirectory": "/",
   "startCommand": "node apps/launch-website/railway-start.mjs",

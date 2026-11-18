@@ -4,7 +4,7 @@ import { pathToFileURL } from "node:url";
 export const readOnlyProfile = "railway-read-only-v1";
 const project = "19587a6e-6f02-4cfa-b7db-f308934f697b";
 const environment = "539a42da-fb60-420f-b9fa-8c29af25ebbe";
-const indexer = "http://robinhood-meme-terminal.railway.internal:3001/";
+const indexer = "http://robinhood-meme-terminal.railway.internal:8080/";
 const previewOrigin = "https://rmt-launch-website-preview.up.railway.app";
 
 export function validateRailwayRuntime(env) {

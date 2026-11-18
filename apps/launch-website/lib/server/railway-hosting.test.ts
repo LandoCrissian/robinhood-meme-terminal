@@ -8,9 +8,10 @@ const env = { RMT_WEB_HOSTING: railwayReadOnlyProfile, RAILWAY_PROJECT_ID: railw
   RAILWAY_SERVICE_ID: "8e9c1c15-74b5-4262-8851-72603a3dfc98", RMT_INDEXER_SERVICE_ID: "27b1aa2c-77e5-4ed4-91a1-1951d68c488e" };
 test("private read origin requires the exact existing backend, port, project and environment", () => {
   assert.equal(indexerOrigin(railwayIndexerOrigin + "/", env)?.origin, railwayIndexerOrigin);
-  for (const url of ["http://127.0.0.1:3001/", "http://169.254.169.254/", "http://other.railway.internal:3001/",
-    "http://robinhood-meme-terminal.railway.internal:3000/", railwayIndexerOrigin + "/admin", railwayIndexerOrigin + "/?token=x",
-    "http://user:password@robinhood-meme-terminal.railway.internal:3001/", railwayIndexerOrigin + "/#x"]) assert.equal(indexerOrigin(url, env), null);
+  for (const url of ["http://127.0.0.1:8080/", "http://169.254.169.254/", "http://other.railway.internal:8080/",
+    "http://robinhood-meme-terminal.railway.internal:3000/", "http://robinhood-meme-terminal.railway.internal:3001/",
+    railwayIndexerOrigin + "/admin", railwayIndexerOrigin + "/?token=x",
+    "http://user:password@robinhood-meme-terminal.railway.internal:8080/", railwayIndexerOrigin + "/#x"]) assert.equal(indexerOrigin(url, env), null);
   for (const key of ["RMT_WEB_HOSTING", "RAILWAY_PROJECT_ID", "RAILWAY_ENVIRONMENT_ID", "RAILWAY_SERVICE_ID", "RMT_INDEXER_SERVICE_ID"]) assert.equal(indexerOrigin(railwayIndexerOrigin + "/", { ...env, [key]: "incorrect" }), null);
   assert.equal(indexerOrigin(railwayIndexerOrigin + "/", {}), null);
   assert.equal(indexerOrigin("https://history.example/")?.origin, "https://history.example");
