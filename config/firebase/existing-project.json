@@ -30,6 +30,13 @@
     "matchesPreCleanupTrackedRules": false
   },
   "providerConfigurationVerified": false,
+  "readOnlyAuthMetadata": {
+    "productionDomainAlreadyAuthorized": true,
+    "anonymousEnabled": true,
+    "emailEnabled": true,
+    "multiTenant": false,
+    "providersChanged": false
+  },
   "adminApplicationPermissionsVerified": false,
   "emulatorProjectId": "demo-rmt-launch-profiles"
 }
