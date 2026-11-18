@@ -1,0 +1,46 @@
+{
+  "observedAt": "2026-11-18T14:31:40.626Z",
+  "method": "Railway SSH read-only node fetch inside existing web container; public key temporary and revoked after checks",
+  "network": "same project and environment private DNS only",
+  "webService": "8e9c1c15-74b5-4262-8851-72603a3dfc98",
+  "indexerService": "27b1aa2c-77e5-4ed4-91a1-1951d68c488e",
+  "privateOrigin": "http://robinhood-meme-terminal.railway.internal:8080",
+  "runtimePort": {
+    "actual": 8080,
+    "sourceDefault": 3001,
+    "incorrectDefaultConnection": "ECONNREFUSED",
+    "sourceDefaultNotRuntimeAuthority": true
+  },
+  "checks": [
+    {
+      "path": "/health",
+      "status": 200
+    },
+    {
+      "path": "/ready",
+      "status": 200
+    },
+    {
+      "path": "/historical-launches?limit=25",
+      "authenticated": false,
+      "status": 401
+    },
+    {
+      "path": "/historical-launches?limit=25",
+      "authenticated": true,
+      "status": 200,
+      "registrations": 2,
+      "checkpoint": {
+        "blockNumber": 117468410,
+        "blockHash": "0xdf4ffeaf29580902850e0efd594bb1875cb5025f1b9a9269f189fe435f0de518",
+        "timestamp": "2026-11-18T14:31:35.000Z",
+        "observedAt": "2026-11-18T14:31:40.626Z",
+        "stale": false,
+        "finality": "l2-confirmed"
+      }
+    }
+  ],
+  "databaseWritten": false,
+  "indexerRestarted": false,
+  "credentialsIncluded": false
+}

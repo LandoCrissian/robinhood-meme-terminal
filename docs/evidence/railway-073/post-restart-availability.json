@@ -1,0 +1,62 @@
+[
+  {
+    "observedAt": "2026-11-18T14:41:03.178Z",
+    "http": 503,
+    "status": "degraded",
+    "discovery": "stale",
+    "checkpoint": {
+      "blockNumber": "113899119",
+      "blockHash": "0x0a20d4db277fe2c689ffd68763710c54a59d833dab097f2994c6aa7937ccc10c",
+      "timestamp": "2026-11-14T04:26:14.000Z"
+    },
+    "finality": "l1-unverified"
+  },
+  {
+    "observedAt": "2026-11-18T14:41:23.457Z",
+    "http": 503,
+    "status": "degraded",
+    "discovery": "stale",
+    "checkpoint": {
+      "blockNumber": "113899119",
+      "blockHash": "0x0a20d4db277fe2c689ffd68763710c54a59d833dab097f2994c6aa7937ccc10c",
+      "timestamp": "2026-11-14T04:26:14.000Z"
+    },
+    "finality": "l1-unverified"
+  },
+  {
+    "observedAt": "2026-11-18T14:41:44.404Z",
+    "http": 200,
+    "status": "ready",
+    "discovery": "ready",
+    "checkpoint": {
+      "blockNumber": "117474360",
+      "blockHash": "0xa788677b45b4ecb7dd01026d6e4f1cd461536f26558ee59bfe888fb6058ba2d1",
+      "timestamp": "2026-11-18T14:41:33.000Z"
+    },
+    "finality": "l1-unverified"
+  },
+  {
+    "observedAt": "2026-11-18T14:42:04.559Z",
+    "http": 200,
+    "status": "ready",
+    "discovery": "ready",
+    "checkpoint": {
+      "blockNumber": "117474360",
+      "blockHash": "0xa788677b45b4ecb7dd01026d6e4f1cd461536f26558ee59bfe888fb6058ba2d1",
+      "timestamp": "2026-11-18T14:41:33.000Z"
+    },
+    "finality": "l1-unverified"
+  },
+  {
+    "observedAt": "2026-11-18T14:42:25.473Z",
+    "http": 200,
+    "status": "ready",
+    "discovery": "ready",
+    "checkpoint": {
+      "blockNumber": "117474703",
+      "blockHash": "0x972b1a38ff6b6c3e25e623e417e039292697056da398d23bec6d6d3caf52e9bf",
+      "timestamp": "2026-11-18T14:42:08.000Z"
+    },
+    "finality": "l1-unverified"
+  }
+]

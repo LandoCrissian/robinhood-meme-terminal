@@ -1,0 +1,161 @@
+{
+  "url": "https://rmt-launch-website-preview.up.railway.app",
+  "observedAt": "2026-11-18T14:43:07.881Z",
+  "context": "after website-only in-place restart; same deployed image; no POST requests",
+  "browser": [
+    {
+      "engine": "chromium",
+      "layout": "desktop",
+      "getPages": 6,
+      "walletCalls": 0,
+      "operationalRequests": 0,
+      "browserErrors": 0,
+      "noHorizontalOverflow": true
+    },
+    {
+      "engine": "chromium",
+      "layout": "portrait",
+      "getPages": 6,
+      "walletCalls": 0,
+      "operationalRequests": 0,
+      "browserErrors": 0,
+      "noHorizontalOverflow": true
+    },
+    {
+      "engine": "chromium",
+      "layout": "landscape",
+      "getPages": 6,
+      "walletCalls": 0,
+      "operationalRequests": 0,
+      "browserErrors": 0,
+      "noHorizontalOverflow": true
+    },
+    {
+      "engine": "webkit",
+      "layout": "desktop",
+      "getPages": 6,
+      "walletCalls": 0,
+      "operationalRequests": 0,
+      "browserErrors": 0,
+      "noHorizontalOverflow": true
+    },
+    {
+      "engine": "webkit",
+      "layout": "portrait",
+      "getPages": 6,
+      "walletCalls": 0,
+      "operationalRequests": 0,
+      "browserErrors": 0,
+      "noHorizontalOverflow": true
+    },
+    {
+      "engine": "webkit",
+      "layout": "landscape",
+      "getPages": 6,
+      "walletCalls": 0,
+      "operationalRequests": 0,
+      "browserErrors": 0,
+      "noHorizontalOverflow": true
+    }
+  ],
+  "discoverySamples": [
+    {
+      "observedAt": "2026-11-18T14:42:45.355Z",
+      "status": "ready",
+      "coverage": "v6-indexed",
+      "checkpoint": {
+        "blockNumber": "117474703",
+        "blockHash": "0x972b1a38ff6b6c3e25e623e417e039292697056da398d23bec6d6d3caf52e9bf",
+        "timestamp": "2026-11-18T14:42:08.000Z"
+      },
+      "count": 4
+    },
+    {
+      "observedAt": "2026-11-18T14:42:50.589Z",
+      "status": "ready",
+      "coverage": "v6-indexed",
+      "checkpoint": {
+        "blockNumber": "117474703",
+        "blockHash": "0x972b1a38ff6b6c3e25e623e417e039292697056da398d23bec6d6d3caf52e9bf",
+        "timestamp": "2026-11-18T14:42:08.000Z"
+      },
+      "count": 4
+    },
+    {
+      "observedAt": "2026-11-18T14:42:56.514Z",
+      "status": "ready",
+      "coverage": "v6-indexed",
+      "checkpoint": {
+        "blockNumber": "117475044",
+        "blockHash": "0xf44ac8b6bb0a95d269d28d50f24e4d95e46a0e8ff9a23b02725af9ef29ffa420",
+        "timestamp": "2026-11-18T14:42:42.000Z"
+      },
+      "count": 4
+    },
+    {
+      "observedAt": "2026-11-18T14:43:01.714Z",
+      "status": "ready",
+      "coverage": "v6-indexed",
+      "checkpoint": {
+        "blockNumber": "117475044",
+        "blockHash": "0xf44ac8b6bb0a95d269d28d50f24e4d95e46a0e8ff9a23b02725af9ef29ffa420",
+        "timestamp": "2026-11-18T14:42:42.000Z"
+      },
+      "count": 4
+    },
+    {
+      "observedAt": "2026-11-18T14:43:06.934Z",
+      "status": "ready",
+      "coverage": "v6-indexed",
+      "checkpoint": {
+        "blockNumber": "117475044",
+        "blockHash": "0xf44ac8b6bb0a95d269d28d50f24e4d95e46a0e8ff9a23b02725af9ef29ffa420",
+        "timestamp": "2026-11-18T14:42:42.000Z"
+      },
+      "count": 4
+    }
+  ],
+  "exactLookups": [
+    {
+      "token": "0xfe7e1595c757ce5f034ba3e3e002c7184df6075e",
+      "status": "ready",
+      "coverage": "v6-indexed",
+      "checkpoint": {
+        "blockNumber": "117475044",
+        "blockHash": "0xf44ac8b6bb0a95d269d28d50f24e4d95e46a0e8ff9a23b02725af9ef29ffa420",
+        "timestamp": "2026-11-18T14:42:42.000Z"
+      }
+    },
+    {
+      "token": "0xdba33be56c89cc9fc014c4459028d7e5c7878671",
+      "status": "ready",
+      "coverage": "v6-indexed",
+      "checkpoint": {
+        "blockNumber": "117475044",
+        "blockHash": "0xf44ac8b6bb0a95d269d28d50f24e4d95e46a0e8ff9a23b02725af9ef29ffa420",
+        "timestamp": "2026-11-18T14:42:42.000Z"
+      }
+    },
+    {
+      "token": "0xab374d24afbd943a134adb381d9646e71c6f6c0c",
+      "status": "ready",
+      "coverage": "v6-indexed",
+      "checkpoint": {
+        "blockNumber": "117475044",
+        "blockHash": "0xf44ac8b6bb0a95d269d28d50f24e4d95e46a0e8ff9a23b02725af9ef29ffa420",
+        "timestamp": "2026-11-18T14:42:42.000Z"
+      }
+    },
+    {
+      "token": "0xbde596366551aacae3e7c397b72f53f2a524582a",
+      "status": "ready",
+      "coverage": "v6-indexed",
+      "checkpoint": {
+        "blockNumber": "117475044",
+        "blockHash": "0xf44ac8b6bb0a95d269d28d50f24e4d95e46a0e8ff9a23b02725af9ef29ffa420",
+        "timestamp": "2026-11-18T14:42:42.000Z"
+      }
+    }
+  ],
+  "physicalDevice": "not performed"
+}

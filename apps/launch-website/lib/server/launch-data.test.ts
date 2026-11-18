@@ -3,6 +3,7 @@ import test from "node:test";
 import snapshot from "../../data/historical-launches-4663.json";
 import { createLaunchHistoryHandler } from "./launch-api";
 import { createLaunchDirectoryReader } from "./launch-data";
+import { railwayEnvironment, railwayIndexerOrigin, railwayIndexerService, railwayProject, railwayReadOnlyProfile, railwayWebsiteService } from "./indexer-origin";
 
 const checkpoint = snapshot.verificationBlock;
 const v6 = snapshot.launches.filter(({ version }) => version === 6);
@@ -29,6 +30,24 @@ function withFeed(fetchFeed: typeof fetch, now = () => clock) {
     now, fetch: fetchFeed, indexerUrl: "https://history.example", indexerReadToken: "fixture",
   });
 }
+
+test("degraded reads expose bounded diagnostic categories without leaking backend data", async () => {
+  const failures: unknown[] = [];
+  let now = clock;
+  let mode = 0;
+  const read = createLaunchDirectoryReader({ now: () => now, indexerUrl: "https://history.example", indexerReadToken: "private-fixture-credential",
+    onFailure: (failure) => failures.push(failure), fetch: async () => {
+      if (mode === 0) return new Response("private-backend-message", { status: 503 });
+      if (mode === 1) return Response.json({ ...indexed(), chainId: 1, secret: "private-backend-message" });
+      throw new Error("private-fixture-credential", { cause: { code: "ECONNRESET" } });
+    } });
+  assert.equal((await read()).status, "stale");
+  await read(); assert.equal(failures.length, 1, "Negative cache bounds repeated backend reads");
+  mode = 1; now += 30_001; assert.equal((await read()).status, "stale");
+  mode = 2; now += 30_001; assert.equal((await read()).status, "stale");
+  assert.deepEqual(failures, [{ stage: "http", status: 503 }, { stage: "evidence" }, { stage: "transport", code: "ECONNRESET" }]);
+  assert.doesNotMatch(JSON.stringify(failures), /private-|history\.example/);
+});
 
 test("shipped historical evidence is a stale snapshot with no future or external registrations", async () => {
   const read = createLaunchDirectoryReader({ now: () => clock });
@@ -71,6 +90,25 @@ test("marks degraded or old worker observations stale", async () => {
   assert.equal((await withFeed(async () => Response.json(data))()).status, "stale");
   data.checkpoint.stale = false;
   assert.equal((await withFeed(async () => Response.json(data), () => clock + 600_000)()).status, "stale");
+});
+
+test("the existing private Railway origin preserves authenticated evidence checks and rejects a different service binding", async () => {
+  const env = { RMT_WEB_HOSTING: railwayReadOnlyProfile, RAILWAY_PROJECT_ID: railwayProject, RAILWAY_ENVIRONMENT_ID: railwayEnvironment,
+    RAILWAY_SERVICE_ID: railwayWebsiteService, RMT_INDEXER_SERVICE_ID: railwayIndexerService };
+  let calls = 0;
+  const fetchFeed: typeof fetch = async (url, init) => {
+    calls++;
+    assert.equal(String(url), railwayIndexerOrigin + "/historical-launches?limit=25");
+    assert.equal(new Headers(init?.headers).get("authorization"), "Bearer server-only-test");
+    assert.equal(init?.redirect, "error"); assert.equal(init?.cache, "no-store");
+    return Response.json(indexed());
+  };
+  const options = { indexerUrl: railwayIndexerOrigin + "/", indexerReadToken: "server-only-test", fetch: fetchFeed, now: () => clock };
+  const data = await createLaunchDirectoryReader({ ...options, env })();
+  assert.equal(data.status, "ready"); assert.equal(data.coverage, "v6-indexed"); assert.equal(data.launches.length, 4);
+  assert.doesNotMatch(JSON.stringify(data), /server-only-test|railway\.internal/);
+  assert.equal((await createLaunchDirectoryReader({ ...options, env: { ...env, RMT_INDEXER_SERVICE_ID: "wrong" } })()).coverage, "verified-snapshot");
+  assert.equal(calls, 1, "An incorrect private binding must not make any upstream request");
 });
 
 test("fails closed on wrong chain, substituted origins, missing receipts and duplicate registrations", async () => {

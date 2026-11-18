@@ -1,6 +1,7 @@
 import { hasCurveRegistration, type CurveRegistration, type NewEngineDirectory } from "../curve-lifecycle";
 import { fixtureHash } from "./curve-fixture";
 import { curveProductionDeployment, curveProductionPins, curveProductionProfile } from "./curve-production";
+import { indexerOrigin } from "./indexer-origin";
 
 export type ProductionRegistration = CurveRegistration & {
   projectURI: string; treasury: string | null; treasuryShareBps: number; revenueLedger: string;
@@ -71,8 +72,8 @@ export async function readProductionDiscovery(token?: string, options: { env?: R
   const credential = env.RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN;
   if (!endpoint || !credential || !/^[\x21-\x7e]{1,512}$/.test(credential) || (token && !address(token))) return unavailable;
   try {
-    const origin = new URL(endpoint);
-    if (origin.protocol !== "https:" || origin.username || origin.password || origin.pathname !== "/" || origin.search || origin.hash) return unavailable;
+    const origin = indexerOrigin(endpoint, env);
+    if (!origin) return unavailable;
     const url = new URL(token ? "/curve-launches/" + token.toLowerCase() : "/curve-launches?limit=25", origin);
     const response = await (options.fetch ?? fetch)(url, { headers: { Accept: "application/json", Authorization: "Bearer " + credential },
       redirect: "error", cache: "no-store", signal: AbortSignal.timeout(4_000) });

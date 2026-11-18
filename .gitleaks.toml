@@ -135,6 +135,8 @@ regexes = ['''(?i)^0x(?:bde596366551aacae3e7c397b72f53f2a524582a|ab374d24afbd943
 paths = [
   '''^apps/launch-website/data/historical-launches-4663\.json$''',
   '''^apps/launch-website/lib/server/verify-historical-launches\.ts$''',
+  '''^docs/evidence/railway-073/current-discovery\.json$''',
+  '''^docs/evidence/railway-073/postrestart-get-and-browser\.json$''',
 ]
 
 [[allowlists]]

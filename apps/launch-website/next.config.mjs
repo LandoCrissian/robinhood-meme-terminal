@@ -3,6 +3,9 @@ import { fileURLToPath } from "node:url";
 /** @type {import("next").NextConfig} */
 export default {
   poweredByHeader: false,
+  // Keep the existing Netlify build untouched; Railway uses the same app with
+  // its explicitly selected, separately checked Node standalone package.
+  ...(process.env.RMT_WEB_HOSTING === "railway-read-only-v1" ? { output: "standalone" } : {}),
   outputFileTracingRoot: fileURLToPath(new URL("../../", import.meta.url)),
   async headers() {
     return [{

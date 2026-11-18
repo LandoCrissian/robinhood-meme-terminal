@@ -1,0 +1,375 @@
+{
+  "url": "https://rmt-launch-website-preview.up.railway.app",
+  "observedAt": "2026-11-18T14:39:03.479Z",
+  "checked": [
+    {
+      "method": "GET",
+      "path": "/admin",
+      "status": 404
+    },
+    {
+      "method": "HEAD",
+      "path": "/admin",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/admin",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/admin/creator-applications",
+      "status": 404
+    },
+    {
+      "method": "HEAD",
+      "path": "/admin/creator-applications",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/admin/creator-applications",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/deploy-mainnet",
+      "status": 404
+    },
+    {
+      "method": "HEAD",
+      "path": "/deploy-mainnet",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/deploy-mainnet",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/deploy-testnet",
+      "status": 404
+    },
+    {
+      "method": "HEAD",
+      "path": "/deploy-testnet",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/deploy-testnet",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/api/launchpad/curve",
+      "status": 404
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/launchpad/curve",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/api/launchpad/curve",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/api/launchpad/test-creation",
+      "status": 404
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/launchpad/test-creation",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/api/launchpad/test-creation",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/api/launchpad/test-lifecycle",
+      "status": 404
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/launchpad/test-lifecycle",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/api/launchpad/test-lifecycle",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/api/launchpad/new-engine",
+      "status": 404
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/launchpad/new-engine",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/api/launchpad/new-engine",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/wallet/mobile-review",
+      "status": 404
+    },
+    {
+      "method": "HEAD",
+      "path": "/wallet/mobile-review",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/wallet/mobile-review",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/api/launchpad/test-mobile-review",
+      "status": 404
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/launchpad/test-mobile-review",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/api/launchpad/test-mobile-review",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/api/trade/rmt-v4",
+      "status": 404
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/trade/rmt-v4",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/api/trade/rmt-v4",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/api/vnext/authorize",
+      "status": 404
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/vnext/authorize",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/api/vnext/authorize",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/api/vnext/native-settlement-trace",
+      "status": 404
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/vnext/native-settlement-trace",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/api/vnext/native-settlement-trace",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/api/internal/position-guards/evaluate",
+      "status": 404
+    },
+    {
+      "method": "HEAD",
+      "path": "/api/internal/position-guards/evaluate",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/api/internal/position-guards/evaluate",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/mcp",
+      "status": 404
+    },
+    {
+      "method": "HEAD",
+      "path": "/mcp",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/mcp",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/preview-access",
+      "status": 404
+    },
+    {
+      "method": "HEAD",
+      "path": "/preview-access",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/preview-access",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/preview-rpc/fixture",
+      "status": 404
+    },
+    {
+      "method": "HEAD",
+      "path": "/preview-rpc/fixture",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/preview-rpc/fixture",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/.env",
+      "status": 404
+    },
+    {
+      "method": "HEAD",
+      "path": "/.env",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/.env",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/.git/config",
+      "status": 404
+    },
+    {
+      "method": "HEAD",
+      "path": "/.git/config",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/.git/config",
+      "status": 404
+    },
+    {
+      "method": "POST invalidNextAction",
+      "path": "/",
+      "status": 404
+    },
+    {
+      "method": "POST invalidNextAction",
+      "path": "/create-token",
+      "status": 404
+    },
+    {
+      "method": "POST invalidNextAction",
+      "path": "/wallet",
+      "status": 404
+    },
+    {
+      "method": "POST invalidNextAction",
+      "path": "/api/launchpad/config",
+      "status": 404
+    },
+    {
+      "method": "POST invalidNextAction",
+      "path": "/api/launchpad/launches",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/nonce",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/verify",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/logout",
+      "status": 404
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/account/profile",
+      "status": 404
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/account/profile",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/avatar",
+      "status": 404
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/account/avatar",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/api/launchpad/production-creation",
+      "status": 404
+    }
+  ],
+  "mutationRateLimit": {
+    "first12": "404 disabled",
+    "thirteenth": 429,
+    "retryAfterSeconds": 57,
+    "spoofedIPCannotBypass": true
+  },
+  "discoveryAfter": {
+    "status": "ready",
+    "coverage": "v6-indexed",
+    "checkpoint": {
+      "blockNumber": "117472543",
+      "blockHash": "0xaf045d5877500e82167d1eccf2ed4f3814d390cb9f228349ed13598039d28d2f",
+      "timestamp": "2026-11-18T14:38:32.000Z"
+    },
+    "registrations": 4,
+    "finality": "l1-unverified"
+  },
+  "walletSigning": "no request made",
+  "physicalDevice": "not performed"
+}

@@ -897,7 +897,27 @@ try {
   await openTradeWallet();
   assert.equal((await getIndexed()).lifecycle.phase, "eligible");
   await assert.rejects(testCall("buy", [1n, (await nowOnChain()) + 240n], firstBudget), /eth_call failed/, "Threshold closes curve purchases");
+  const graduationReviewResponse = page.waitForResponse((response) => {
+    if (new URL(response.url()).pathname !== "/api/launchpad/test-lifecycle") return false;
+    try {
+      const body = response.request().postDataJSON();
+      return body?.action === "prepare" && body.operation === "graduate";
+    } catch { return false; }
+  });
   await button("Review test graduation").click();
+  const graduationReviewHttp = await graduationReviewResponse;
+  const graduationReview = await graduationReviewHttp.json();
+  // Persist only public synthetic transaction terms, never wallet private keys,
+  // signed transactions or credentials. Keep the failing review reproducible.
+  await writeFile(join(out, "graduation-review-evidence.json"), JSON.stringify({
+    candidateCommit, environment: "isolated-31337",
+    binding: { factory: binding.factory, token, blockNumber: toHex(BigInt(binding.deployBlock)), blockHash: binding.deploymentBlockHash },
+    account: creator.address,
+    httpStatus: graduationReviewHttp.status(), status: graduationReview.status, reason: graduationReview.reason,
+    request: graduationReview.request, quote: graduationReview.quote, phase: graduationReview.state?.phase,
+  }, null, 2));
+  assert.equal(graduationReviewHttp.status(), 200, "Graduation review HTTP evidence");
+  assert.equal(graduationReview.status, "prepared", "Graduation must produce exact unsigned terms before wallet confirmation");
   await button("Confirm test graduation").waitFor();
   await capture("10-reviewed-test-graduation");
   await sendThroughPage("Confirm test graduation");

@@ -1,0 +1,13 @@
+**
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!apps/
+!apps/launch-website/
+!apps/launch-website/**
+apps/launch-website/node_modules
+apps/launch-website/.next
+apps/launch-website/.netlify
+apps/launch-website/.env*
+apps/launch-website/*.log
+apps/launch-website/*.tsbuildinfo

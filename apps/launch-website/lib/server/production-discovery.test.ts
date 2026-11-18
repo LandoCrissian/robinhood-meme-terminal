@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { configuredProductionDiscovery, parseProductionDiscovery, productionDirectory, readProductionDiscovery } from "./production-discovery";
 import { curveProductionDeployment, curveProductionPins, curveProductionProfile } from "./curve-production";
+import { railwayEnvironment, railwayIndexerOrigin, railwayIndexerService, railwayProject, railwayReadOnlyProfile, railwayWebsiteService } from "./indexer-origin";
 
 const hash = (digit: string) => "0x" + digit.repeat(64);
 const address = (digit: string) => "0x" + digit.repeat(40);
@@ -73,6 +74,22 @@ test("authentication failure, unavailable worker, oversized data and malformed r
     new Response("x".repeat(65_537), { headers: { "content-type": "application/json" } }), Response.json({ launches: [] })];
   for (const response of responses) assert.equal((await readProductionDiscovery(undefined, { env, fetch: async () => response, now })).status, "unavailable");
   assert.equal((await readProductionDiscovery(undefined, { env, fetch: async () => { throw new Error("Provider outage"); } })).status, "unavailable");
+});
+
+test("private new-engine reads use only the pinned existing indexer and do not activate the public route", async () => {
+  const env = { RMT_WEB_HOSTING: railwayReadOnlyProfile, RAILWAY_PROJECT_ID: railwayProject, RAILWAY_ENVIRONMENT_ID: railwayEnvironment,
+    RAILWAY_SERVICE_ID: railwayWebsiteService, RMT_INDEXER_SERVICE_ID: railwayIndexerService,
+    RMT_LAUNCH_HISTORY_INDEXER_URL: railwayIndexerOrigin + "/", RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN: "private-read-fixture" };
+  let calls = 0;
+  const fetcher: typeof fetch = async (url, init) => {
+    calls++; assert.equal(String(url), railwayIndexerOrigin + "/curve-launches?limit=25");
+    assert.equal(new Headers(init?.headers).get("authorization"), "Bearer private-read-fixture");
+    return Response.json(feed());
+  };
+  assert.equal((await readProductionDiscovery(undefined, { env, fetch: fetcher, now })).status, "ready");
+  assert.equal(configuredProductionDiscovery(new Headers({ host: "rmt-preview.up.railway.app", "x-forwarded-proto": "https" }), env), false);
+  assert.equal((await readProductionDiscovery(undefined, { env: { ...env, RAILWAY_PROJECT_ID: "wrong" }, fetch: fetcher, now })).status, "unavailable");
+  assert.equal(calls, 1);
 });
 
 test("discovery requires its own exact 4663 server profile and HTTPS host; fixture activation remains separate", () => {
