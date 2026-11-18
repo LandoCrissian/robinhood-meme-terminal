@@ -190,5 +190,6 @@ jobs:
             ${{ runner.temp }}/rmt-creator-lifecycle/failure-page.txt
             ${{ runner.temp }}/rmt-claim-wallet-profiles/*.png
             ${{ runner.temp }}/rmt-claim-wallet-profiles/claim-wallet-acceptance.json
+            ${{ runner.temp }}/rmt-claim-wallet-profiles/claim-wallet-profile-manifest.json
             ${{ runner.temp }}/rmt-claim-wallet-profiles/claim-wallet-browser-evidence.json
             ${{ runner.temp }}/rmt-claim-wallet-profiles/claim-wallet-browser-failure.txt

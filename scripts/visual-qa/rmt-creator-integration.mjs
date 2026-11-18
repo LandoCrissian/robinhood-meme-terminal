@@ -383,6 +383,9 @@ try {
   const beforeSnapshot = await rpc("eth_getBlockByNumber", ["latest", false]);
   const countBefore = BigInt(await rpc("eth_getTransactionCount", [creator.address, "latest"]));
   if (args["profiles-only"]) {
+    await writeFile(join(out, "claim-wallet-profile-manifest.json"), JSON.stringify({ schemaVersion: 1,
+      candidateCommit, scope: "LOCAL_SYNTHETIC_31337", compilerProfile: manifest,
+      anchor: evidence.anchor, financialAuthorization: false }, null, 2) + "\n");
     const { register } = require("tsx/cjs/api");
     const unregister = register({ tsconfig: join(repository, "apps/launch-website/tsconfig.test.json") });
     try {
