@@ -92,9 +92,15 @@ async function noOverflow(page) {
   const dimensions = await page.evaluate(() => ({
     viewport: innerWidth, document: document.documentElement.scrollWidth,
     body: document.body.scrollWidth,
+    clippedTargets: [...document.querySelectorAll(".lpHeader > nav a, .lpAccountNav, .lpAccountDropdown, .lpSearch, .lpLaunchCard")]
+      .filter(element => element.getClientRects().length).map(element => {
+        const rect = element.getBoundingClientRect();
+        return { label: element.getAttribute("aria-label") ?? element.className, left: rect.left, right: rect.right };
+      }).filter(rect => rect.left < -1 || rect.right > innerWidth + 1),
   }));
   assert.ok(dimensions.document <= dimensions.viewport + 1 && dimensions.body <= dimensions.viewport + 1,
     `Horizontal overflow: ${JSON.stringify(dimensions)}`);
+  assert.deepEqual(dimensions.clippedTargets, [], "Overflow clipping must not hide controls or cards outside the viewport");
   return dimensions;
 }
 
