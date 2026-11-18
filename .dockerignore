@@ -5,6 +5,10 @@
 !apps/
 !apps/launch-website/
 !apps/launch-website/**
+!packages/
+!packages/launchpad-common/
+!packages/launchpad-common/native-proof.mjs
+!packages/launchpad-common/native-proof.d.mts
 apps/launch-website/node_modules
 apps/launch-website/.next
 apps/launch-website/.netlify

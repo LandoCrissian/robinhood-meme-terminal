@@ -5,6 +5,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/launch-website/package.json ./apps/launch-website/package.json
 RUN pnpm install --frozen-lockfile --filter @rmt/launch-website...
 COPY apps/launch-website ./apps/launch-website
+COPY packages/launchpad-common ./packages/launchpad-common
 ENV NEXT_TELEMETRY_DISABLED=1 RMT_WEB_HOSTING=railway-read-only-v1
 RUN pnpm --filter @rmt/launch-website build
 
