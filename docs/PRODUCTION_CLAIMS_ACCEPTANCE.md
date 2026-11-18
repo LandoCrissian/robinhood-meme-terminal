@@ -15,7 +15,7 @@ Base: Task 074 draft PR #668 at `641464490283736bc7ce0cbb40da9382d90120fa`. The 
 | Production storage | A versioned schema and bounded ingestion hook for the existing leased writer, plus isolated PostgreSQL tests. | New DDL is **uninstalled**; no production writer/scheduler or schema migration was enabled. |
 | Browser and CI | Chromium and WebKit each passed the same-page journey: three actual synthetic claims, eleven recovery observations and no duplicate send. CI at `fe794fc4` passed eleven checks, including both existing lifecycle journeys and both new profile journeys. | Two unchanged static-analysis gates failed. Exact final-head checks are attached to draft PR #669; browser emulation is not physical-device acceptance. |
 | Physical wallet | Connection-only acceptance from earlier work remains separate evidence. | Physical iPhone **earnings**, Safe approvals and claims are unverified; no owner signature was requested here. |
-| Security release | Existing source, economics, custody and scanner configuration preserved. | The same **22 high findings** and **both failed static-analysis release gates** remain. This task does not waive them. |
+| Security release | Solidity sources, economics, custody and Slither configuration preserved. | The same **22 high findings** and **both failed static-analysis release gates** remain. This task does not waive them. |
 
 ## Transaction profiles
 
