@@ -19,6 +19,11 @@ export function projectTreasuryCreatorMatches(account: string, intentId?: string
   return intentId === undefined ? creator === undefined : intent(intentId) && !!creator && address(creator)
     && address(account) && creator.toLowerCase() === account.toLowerCase();
 }
+export function readTreasuryLookupAddress(form: Pick<FormData, "getAll">): string | null {
+  const values = form.getAll("treasuryAddress");
+  if (values.length !== 1 || typeof values[0] !== "string") return null;
+  const value = values[0].trim(); return address(value) ? value : null;
+}
 export function newProjectTreasuryIntent(random: Pick<Crypto, "getRandomValues"> = crypto): Hex {
   const bytes = random.getRandomValues(new Uint8Array(32));
   if (bytes.every(byte => byte === 0)) throw Error("Secure project intent unavailable");

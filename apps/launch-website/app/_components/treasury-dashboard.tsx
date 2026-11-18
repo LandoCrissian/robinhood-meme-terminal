@@ -6,6 +6,7 @@ import { isProjectTreasurySnapshot, projectTreasuryReadPath, treasuryAddress, ty
 import { earningsAmount } from "../../lib/earnings";
 import { MyLaunchesNav } from "./my-launches-nav";
 import { TreasuryWalletControls } from "./treasury-wallet-controls";
+import { readTreasuryLookupAddress } from "../../lib/project-treasury-draft";
 
 const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 const time = (value: string) => Number.isFinite(Date.parse(value)) ? new Date(value).toLocaleString() : "Timestamp unavailable";
@@ -13,7 +14,9 @@ const amount = (raw: string | null, native = true) => raw === null ? "Unavailabl
 export function TreasuryDashboard({ fixture = false, initialTreasury = "" }: { fixture?: boolean; initialTreasury?: string }) {
   const [input, setInput] = useState(initialTreasury), [snapshot, setSnapshot] = useState<ProjectTreasurySnapshot | null>(null);
   const [address, setAddress] = useState(""), [busy, setBusy] = useState(false), [message, setMessage] = useState(""), [stale, setStale] = useState(false);
-  const generation = useRef(0), active = useRef<AbortController | null>(null);
+  const [clientReady, setClientReady] = useState(false);
+  const generation = useRef(0), active = useRef<AbortController | null>(null), selectedAddress = useRef("");
+  useEffect(() => { setClientReady(true); }, []);
   useEffect(() => () => { generation.current++; active.current?.abort(); }, []);
   useEffect(() => { if (treasuryAddress(initialTreasury)) void load(initialTreasury); }, []);
   async function load(next: string) {
@@ -22,6 +25,7 @@ export function TreasuryDashboard({ fixture = false, initialTreasury = "" }: { f
     const version = ++generation.current; setBusy(true); setMessage("");
     if (!same(address, next)) { setSnapshot(null); setStale(false); }
     setAddress(next);
+    selectedAddress.current = next;
     try {
       const url = new URL(projectTreasuryReadPath, window.location.origin); url.searchParams.set("address", next);
       const response = await fetch(url.pathname + url.search, { cache: "no-store", redirect: "error",
@@ -33,14 +37,22 @@ export function TreasuryDashboard({ fixture = false, initialTreasury = "" }: { f
     } catch { if (version === generation.current) { setStale(true); setMessage("Verified treasury evidence is unavailable. A failed read does not establish a zero balance or a missing deployment."); } }
     finally { if (version === generation.current) setBusy(false); }
   }
-  function lookup(event: FormEvent) { event.preventDefault(); void load(input.trim()); }
+  function lookup(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); if (!clientReady) return;
+    // The submitted DOM value is authoritative for this interaction. In-app
+    // browser hydration/input-event loss must not silently submit older React
+    // state after the user has already entered a valid address.
+    const next = readTreasuryLookupAddress(new FormData(event.currentTarget));
+    if (!next) { setMessage("Enter the complete project treasury contract address."); return; }
+    setInput(next); void load(next);
+  }
   const purchases = snapshot?.events.filter(event => event.event === "PurchaseExecuted") ?? [];
   return <>
     <header className="lpPageHeading"><div><h1>Project Treasury</h1><p>Your project&apos;s funds, permissions and verified fee receipts.</p></div></header>
     <MyLaunchesNav active="treasury" />
-    <form className="lpPanel lpForm lpEarningsLookup" aria-label="Find project treasury" onSubmit={lookup}>
-      <label htmlFor="project-treasury-address">Project treasury address<input id="project-treasury-address" value={input} maxLength={42} placeholder="0x…" spellCheck={false} autoComplete="off" onChange={e => setInput(e.target.value)} /></label>
-      <button className="lpButton" type="submit" disabled={busy}>{busy ? "Checking evidence…" : "View treasury"}</button>
+    <form className="lpPanel lpForm lpEarningsLookup" aria-label="Find project treasury" data-treasury-ready={clientReady ? "true" : "false"} aria-busy={busy || !clientReady} onSubmit={lookup}>
+      <label htmlFor="project-treasury-address">Project treasury address<input id="project-treasury-address" name="treasuryAddress" value={input} disabled={!clientReady || busy} maxLength={42} placeholder="0x…" spellCheck={false} autoComplete="off" onChange={e => setInput(e.target.value)} /></label>
+      <button className="lpButton" type="submit" disabled={!clientReady || busy}>{busy ? "Checking evidence…" : "View treasury"}</button>
       <small>Public lookup. Wallet connection grants no treasury authority.</small>
     </form>
     <p className="lpInlineNotice">{fixture ? "Isolated chain 31337 · synthetic assets. No production financial execution."
@@ -87,7 +99,9 @@ export function TreasuryDashboard({ fixture = false, initialTreasury = "" }: { f
         <h3>Verified purchase history</h3>{!purchases.length ? <p>{snapshot.history.indexed ? "No purchase events at the indexed checkpoint." : "Purchase history is pending or unavailable; no activity is invented."}</p>
           : <ul className="lpTreasuryHistory">{purchases.map(event => <li key={`${event.transactionHash}:${event.logIndex}`}><span>{event.event} · {event.amountWei ?? "Unknown amount"} base units</span><code className="lpAddress">{event.transactionHash}</code></li>)}</ul>}
       </section>
-      <TreasuryWalletControls key={`${snapshot.treasury}:${snapshot.controllerEpoch}`} snapshot={snapshot} fixture={fixture} onChanged={() => void load(snapshot.treasury)} />
+      <TreasuryWalletControls key={`${snapshot.treasury}:${snapshot.controllerEpoch}`} snapshot={snapshot} fixture={fixture} onChanged={() => {
+        if (same(selectedAddress.current, snapshot.treasury)) void load(snapshot.treasury);
+      }} />
       <section className="lpPanel lpForm"><h2>Funding and controller history</h2><p>History: {snapshot.history.status}{snapshot.history.checkpoint ? ` · checkpoint ${snapshot.history.checkpoint.blockNumber}` : ""}. Events are observations from the named chain, not proof of royalty enforcement.</p>
         <ul className="lpTreasuryHistory">{snapshot.events.map(event => <li key={`${event.transactionHash}:${event.logIndex}`}><strong>{event.event}</strong><span>Block {event.blockNumber} · {time(event.timestamp)}</span>
           {event.amountWei !== undefined && <span>{event.amountWei} base units{event.asset ? ` · ${event.asset}` : ""}</span>}<code className="lpAddress">{event.transactionHash}</code></li>)}</ul>

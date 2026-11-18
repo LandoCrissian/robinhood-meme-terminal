@@ -52,6 +52,8 @@ assert.match(treasuryPageResponse.headers.get("content-type") ?? "", /^text\/htm
 assert.match(treasuryPageResponse.headers.get("x-robots-tag") ?? "", /noindex/i);
 const treasuryHtml = await treasuryPageResponse.text(); assert.match(treasuryHtml, /Project Treasury/);
 assert.match(treasuryHtml, /Project treasury address/); if (marker) assert.ok(!treasuryHtml.includes(marker));
+assert.match(treasuryHtml, /data-treasury-ready="false"/, "SSR treasury form must not pretend it is hydrated");
+assert.match(treasuryHtml, /<input(?=[^>]*id="project-treasury-address")(?=[^>]*disabled="")[^>]*>/, "SSR treasury input must wait for client readiness");
 const treasuryRead = await request(`${treasuryApi}?address=${beneficiary}`);
 assert.equal(treasuryRead.status, 200); assert.match(treasuryRead.headers.get("cache-control") ?? "", /no-store/);
 const treasuryUnavailable = await json(treasuryRead);
@@ -207,6 +209,8 @@ try {
       assert.equal(new URL(page.url()).pathname, treasuryPath);
       await main.getByText("Read-only. The optional project treasury module is not deployed or activated for production.", { exact: true }).waitFor();
       const treasuryInput = main.getByLabel("Project treasury address", { exact: true }), treasurySubmit = main.getByRole("button", { name: "View treasury", exact: true });
+      const treasuryForm = main.getByRole("form", { name: "Find project treasury", exact: true });
+      assert.equal(await treasuryForm.getAttribute("data-treasury-ready"), "true");
       await treasuryInput.fill("invalid"); await treasurySubmit.click();
       await main.getByRole("status").filter({ hasText: "Enter the complete project treasury contract address." }).waitFor();
       assert.equal(treasuryRequests.length, 0, "Invalid treasury address triggered a backend read");
@@ -220,7 +224,11 @@ try {
       assert.ok(treasuryInputBox?.height >= 44 && treasurySubmitBox?.height >= 44 && treasurySubmitBox?.width >= 44);
       if (name !== "desktop") assert.ok(parseFloat(treasuryFocus.fontSize) >= 16, `iPhone treasury input text is ${treasuryFocus.fontSize}`);
       await page.screenshot({ path: join(output, `treasury-${engine}-${name}-focus.png`), fullPage: true });
-      await treasuryInput.fill(beneficiary);
+      // Reproduce a dropped controlled-input event without mocking a balance,
+      // receipt or successful operation. FormData must still submit the exact
+      // address visibly entered in the native control.
+      await treasuryInput.evaluate((node, value) => Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(node, value), beneficiary);
+      assert.equal(await treasuryInput.inputValue(), beneficiary);
       const treasuryResponse = page.waitForResponse(r => new URL(r.url()).pathname === treasuryApi && r.request().method() === "GET");
       await treasurySubmit.click();
       await main.getByRole("status").filter({ hasText: "Verifying treasury runtime, controller, project and balances…" }).waitFor();
@@ -241,7 +249,7 @@ try {
         browserErrors: 0, noHorizontalOverflow: true, inputHeight: inputBox.height, submitHeight: submitBox.height,
         focus, earningsRequests: earningsRequests.length, lookupStatus: "actual server 503", mockedLatencyOnly: latencyUsed,
         treasury: { requests: treasuryRequests.length, lookupStatus: "actual unconfigured server unavailable", inputHeight: treasuryInputBox.height,
-          submitHeight: treasurySubmitBox.height, focus: treasuryFocus, mockedLatencyOnly: treasuryLatencyUsed } });
+          submitHeight: treasurySubmitBox.height, focus: treasuryFocus, mockedLatencyOnly: treasuryLatencyUsed, droppedInputEventRecovered: true } });
     } catch (error) {
       await page.screenshot({ path: join(output, `earnings-${engine}-${name}-failure.png`), fullPage: true }).catch(() => undefined);
       const inputState = await page.locator("#earnings-wallet").evaluateAll(nodes => nodes.map(node => ({

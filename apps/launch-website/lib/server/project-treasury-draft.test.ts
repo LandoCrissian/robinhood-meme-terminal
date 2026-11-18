@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { emptyProjectTreasuryDraft, newProjectTreasuryIntent, projectTreasuryCreatorMatches, readProjectTreasuryDraft, validateProjectTreasuryDraft } from "../project-treasury-draft";
+import { emptyProjectTreasuryDraft, newProjectTreasuryIntent, projectTreasuryCreatorMatches, readProjectTreasuryDraft, readTreasuryLookupAddress, validateProjectTreasuryDraft } from "../project-treasury-draft";
 
 const controller = "0x1234567890123456789012345678901234567890";
 const intentId = "0x" + "12".repeat(32);
@@ -47,4 +47,13 @@ test("zero project-fee allocation never erases the verified two-step creator ide
   assert.equal(projectTreasuryCreatorMatches(controller, intentId), false, "An intent alone is insufficient even when core fee fields are empty");
   assert.equal(projectTreasuryCreatorMatches(controller, undefined, controller), false);
   assert.equal(projectTreasuryCreatorMatches(controller), true, "Ordinary opted-out creation needs no optional treasury identity");
+});
+test("treasury lookup binds the submitted form value rather than a stale controlled-input event", () => {
+  const data = new FormData(); data.set("treasuryAddress", " " + controller + " ");
+  assert.equal(readTreasuryLookupAddress(data), controller);
+  data.append("treasuryAddress", "0x2234567890123456789012345678901234567890");
+  assert.equal(readTreasuryLookupAddress(data), null, "Duplicated submitted identities are ambiguous");
+  data.delete("treasuryAddress"); assert.equal(readTreasuryLookupAddress(data), null);
+  data.set("treasuryAddress", "invalid"); assert.equal(readTreasuryLookupAddress(data), null);
+  data.set("treasuryAddress", "0x" + "0".repeat(40)); assert.equal(readTreasuryLookupAddress(data), null);
 });
