@@ -12,6 +12,9 @@ import { launchTerms, launchTokenDecimals, launchTokenSupply } from "../../lib/l
 import { TestCreationWallet } from "./test-creation-wallet";
 import { TokenArtwork } from "./token-artwork";
 import { useAccount } from "./account-provider";
+import { ProjectTreasurySetup } from "./project-treasury-setup";
+import type { ProjectTreasuryProof } from "../../lib/project-treasury";
+import type { ProjectTreasuryMode } from "../../lib/project-treasury-draft";
 
 // The read-only build never mounts or loads the production wallet controller.
 const ProductionCreationWallet = dynamic(() => import("./production-creation-wallet").then((module) => module.ProductionCreationWallet), { ssr: false });
@@ -85,7 +88,7 @@ function DraftTerms({ draft, production }: { draft?: ReviewedLaunchDraft; produc
 }
 
 export function CreatorDraft({ executionTest, productionCreation }: {
-  executionTest?: { factory: string }; productionCreation?: { factory: string; operating: string; reserve: string };
+  executionTest?: { factory: string; projectTreasury?: boolean }; productionCreation?: { factory: string; operating: string; reserve: string };
 }) {
   const account = useAccount();
   const accountBinding = account.wallet ? `${account.wallet.address}:${account.wallet.chainId}`
@@ -96,6 +99,8 @@ export function CreatorDraft({ executionTest, productionCreation }: {
   const [errors, setErrors] = useState<LaunchDraftErrors>({});
   const [message, setMessage] = useState("");
   const [pending, setPending] = useState(false);
+  const [treasuryMode, setTreasuryMode] = useState<ProjectTreasuryMode>("none");
+  const [treasuryProof, setTreasuryProof] = useState<ProjectTreasuryProof>();
   const reviewing = useRef(false);
   const currentDraft = useRef<ReviewedLaunchDraft>(undefined);
   const liveAccountBinding = useRef(accountBinding), reviewedAccountBinding = useRef<string>(undefined);
@@ -163,6 +168,10 @@ export function CreatorDraft({ executionTest, productionCreation }: {
     event.preventDefault();
     if (reviewing.current) return;
     setMessage("");
+    if (treasuryMode === "contract" && !treasuryProof) {
+      setMessage("Verify the optional treasury deployment first, or choose creator-only fees. A predicted address is not a deployed beneficiary.");
+      return;
+    }
     const checked = validateLaunchDraft(draft);
     if (!checked.ok) {
       showErrors(checked.errors);
@@ -231,6 +240,7 @@ export function CreatorDraft({ executionTest, productionCreation }: {
         <dt>Project or metadata URL</dt><dd>{reviewed.projectURI || "None"}</dd>
         <dt>Artwork URL</dt><dd>{reviewed.artworkURL || "None"}</dd>
         <dt>Project treasury</dt><dd className={reviewed.treasury ? "lpAddress" : undefined}>{reviewed.treasury || "None"}</dd>
+        {treasuryProof && <><dt>Separate project treasury contract</dt><dd className="lpAddress">{treasuryProof.treasury}</dd><dt>Treasury deployment</dt><dd>Verified synthetic block {treasuryProof.deployment.blockNumber} · purchases OFF at creation</dd></>}
         <dt>Treasury share of project fees</dt><dd>{treasuryProjectPercent(reviewed.treasuryShareBps)} · {percent.format(reviewed.treasuryShareBps / 100)}% of all eligible fees</dd>
       </dl>
       <p className="lpCreatorHelp">The server verified the launch fields for this review. Your description and artwork URL stay in this browser.
@@ -280,6 +290,22 @@ export function CreatorDraft({ executionTest, productionCreation }: {
       <details className="lpDraftTreasury lpCreatorDisclosure">
         <summary><span><span>Optional project treasury</span><small>Allocate part of your project’s fee share</small></span></summary>
         <fieldset disabled={pending || !restored} aria-label="Project treasury settings">
+          {restored && <ProjectTreasurySetup creatorFields={{ name: draft.name, symbol: draft.symbol, projectURI: draft.projectURI }}
+            fixture={executionTest?.projectTreasury === true} initialExisting={Boolean(draft.treasury)}
+            onModeChange={mode => {
+              currentDraft.current = undefined; setReviewed(undefined); setTreasuryMode(mode); setTreasuryProof(undefined);
+              if (mode !== "existing") setDraft(previous => ({ ...previous, treasury: "", treasuryShare: "" }));
+            }} onInvalidate={() => {
+              currentDraft.current = undefined; setReviewed(undefined); setTreasuryProof(undefined);
+              if (treasuryMode === "contract") setDraft(previous => ({ ...previous, treasury: "", treasuryShare: "" }));
+            }} onVerified={proof => {
+              currentDraft.current = undefined; setReviewed(undefined); setTreasuryProof(proof);
+              // The first two-decimal project percentage that maps to the exact
+              // already-reviewed onchain allocation; never reinterpret 9000 as100% of total fees.
+              const share = (Math.ceil(proof.treasuryShareBps * 10_000 / 9000) / 100).toFixed(2);
+              setDraft(previous => ({ ...previous, treasury: proof.treasuryShareBps ? proof.treasury.toLowerCase() : "",
+                treasuryShare: proof.treasuryShareBps ? share : "" }));
+            }} existingChildren={<>
           <p>Allocate 0–100% of the project’s 90% share. The creator receives the rest. Leave both fields empty to pay the creator directly.</p>
           <p>The treasury address is permanent and must be able to claim fees. Verify smart-account claim support on the launch chain first.</p>
           {treasuryFields.map(({ key, label, max, placeholder }) => <div className="lpDraftField" key={key}>
@@ -289,6 +315,7 @@ export function CreatorDraft({ executionTest, productionCreation }: {
             {key === "treasuryShare" && <small id={fieldId(key) + "-hint"}>The contract rounds down to whole basis points of all fees. Review the exact split before confirming.</small>}
             {errorFor(key)}
           </div>)}
+            </>} />}
         </fieldset>
       </details>
       {message && <p className="lpNotice lpError" role="alert">{message}</p>}
@@ -296,6 +323,7 @@ export function CreatorDraft({ executionTest, productionCreation }: {
         <button type="submit" className="lpButton" disabled={pending || !restored}>{pending ? "Reviewing draft…" : "Review draft"}</button>
         <button type="button" className="lpButton lpSecondary" disabled={pending || !restored} onClick={() => {
           setDraft(emptyLaunchDraft);
+          setTreasuryProof(undefined);
           setErrors({});
           setMessage("");
         }}>Clear draft</button>
@@ -307,6 +335,7 @@ export function CreatorDraft({ executionTest, productionCreation }: {
     <DraftTerms draft={reviewed} production={productionCreation} />
     {(executionTest || productionCreation) && <div className="lpStack lpCreatorWallet">
       {executionTest ? <TestCreationWallet factory={executionTest.factory}
+        treasuryIntentId={treasuryProof?.intentId}
         draft={reviewed}
         isCurrentDraft={(value) => value === currentDraft.current && reviewedAccountBinding.current === liveAccountBinding.current} />
         : productionCreation && <ProductionCreationWallet factory={productionCreation.factory} draft={reviewed}
