@@ -39,7 +39,8 @@ jobs:
             --env RAILWAY_ENVIRONMENT_ID=539a42da-fb60-420f-b9fa-8c29af25ebbe \
             --env RAILWAY_SERVICE_ID=8e9c1c15-74b5-4262-8851-72603a3dfc98 \
             --env RMT_INDEXER_SERVICE_ID=27b1aa2c-77e5-4ed4-91a1-1951d68c488e \
-            --env RAILWAY_PUBLIC_DOMAIN=rmt-railway-ci.up.railway.app \
+            --env RAILWAY_PUBLIC_DOMAIN=stale-provider-metadata.up.railway.app \
+            --env RMT_WEB_ORIGIN=https://rmt-launch-website-preview.up.railway.app \
             --env RMT_LAUNCH_HISTORY_INDEXER_URL=http://robinhood-meme-terminal.railway.internal:3001/ \
             --env RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN=synthetic-test-only-credential rmt-railway-ci
           RMT_RAILWAY_SMOKE_REPORT="$RUNNER_TEMP/railway-runtime.json" node scripts/release/railway-standalone-smoke.mjs

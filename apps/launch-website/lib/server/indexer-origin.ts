@@ -3,6 +3,7 @@ export const railwayProject = "19587a6e-6f02-4cfa-b7db-f308934f697b";
 export const railwayEnvironment = "539a42da-fb60-420f-b9fa-8c29af25ebbe";
 export const railwayIndexerService = "27b1aa2c-77e5-4ed4-91a1-1951d68c488e";
 export const railwayWebsiteService = "8e9c1c15-74b5-4262-8851-72603a3dfc98";
+export const railwayWebsiteOrigin = "https://rmt-launch-website-preview.up.railway.app";
 export const railwayIndexerOrigin = "http://robinhood-meme-terminal.railway.internal:3001";
 
 /** Only the existing authenticated indexer's origin is admitted on the private

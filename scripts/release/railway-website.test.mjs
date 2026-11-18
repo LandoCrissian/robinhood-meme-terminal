@@ -3,15 +3,18 @@ import test from "node:test";
 import { readFile } from "node:fs/promises";
 import { validateRailwayRuntime } from "../../apps/launch-website/railway-start.mjs";
 const env = { RMT_WEB_HOSTING: "railway-read-only-v1", RAILWAY_PROJECT_ID: "19587a6e-6f02-4cfa-b7db-f308934f697b",
-  RAILWAY_ENVIRONMENT_ID: "539a42da-fb60-420f-b9fa-8c29af25ebbe", RAILWAY_PUBLIC_DOMAIN: "rmt-preview.up.railway.app",
+  RAILWAY_ENVIRONMENT_ID: "539a42da-fb60-420f-b9fa-8c29af25ebbe", RMT_WEB_ORIGIN: "https://rmt-launch-website-preview.up.railway.app",
   RAILWAY_SERVICE_ID: "8e9c1c15-74b5-4262-8851-72603a3dfc98", RMT_INDEXER_SERVICE_ID: "27b1aa2c-77e5-4ed4-91a1-1951d68c488e",
   RMT_LAUNCH_HISTORY_INDEXER_URL: "http://robinhood-meme-terminal.railway.internal:3001/",
   RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN: "synthetic-test-only-credential" };
 test("standalone start requires the existing project's private reader and preview identity", () => {
-  assert.deepEqual(validateRailwayRuntime(env), { origin: "https://rmt-preview.up.railway.app", port: 3000, profile: "railway-read-only-v1" });
+  assert.deepEqual(validateRailwayRuntime(env), { origin: "https://rmt-launch-website-preview.up.railway.app", port: 3000, profile: "railway-read-only-v1" });
   for (const key of Object.keys(env)) assert.throws(() => validateRailwayRuntime({ ...env, [key]: "incorrect" }));
   for (const port of ["0", "65536", "3000;bad", "-1"]) assert.throws(() => validateRailwayRuntime({ ...env, PORT: port }));
   assert.throws(() => validateRailwayRuntime({ ...env, RMT_WEB_ORIGIN: "https://www.rmtlaunch.fun" }));
+  assert.throws(() => validateRailwayRuntime({ ...env, RMT_WEB_ORIGIN: "https://other.up.railway.app" }));
+  assert.throws(() => validateRailwayRuntime({ ...env, RMT_WEB_ORIGIN: undefined }));
+  assert.equal(validateRailwayRuntime({ ...env, RAILWAY_PUBLIC_DOMAIN: "stale-provider-metadata.up.railway.app" }).origin, env.RMT_WEB_ORIGIN);
 });
 test("activation, emulator, signing and direct database configuration are not part of this read-only process", () => {
   for (const key of ["RMT_CURVE_PRODUCTION_EXECUTION", "RMT_CURVE_PRODUCTION_DISCOVERY", "RMT_PROFILES_MODE", "RMT_MOBILE_REVIEW_FIXTURE",

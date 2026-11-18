@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { writeFile } from "node:fs/promises";
 const base = new URL(process.env.RMT_RAILWAY_SMOKE_URL ?? "http://127.0.0.1:3340/");
 assert.equal(base.protocol, "http:"); assert.equal(base.hostname, "127.0.0.1"); assert.ok(base.port); assert.equal(base.pathname, "/");
-const host = "rmt-railway-ci.up.railway.app";
+const host = "rmt-launch-website-preview.up.railway.app";
 const environment = process.env.RMT_RAILWAY_SMOKE_MODE ?? "local-container";
 assert.ok(["local-container", "local-next-runtime"].includes(environment));
 const read = (path, init = {}) => fetch(new URL(path, base), { redirect: "manual", signal: AbortSignal.timeout(10_000),

@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { indexerOrigin, railwayEnvironment, railwayIndexerOrigin, railwayProject, railwayReadOnlyProfile } from "./indexer-origin";
+import { indexerOrigin, railwayEnvironment, railwayIndexerOrigin, railwayProject, railwayReadOnlyProfile, railwayWebsiteOrigin } from "./indexer-origin";
 import { createRailwayRequestBudget, railwayHosting } from "./railway-read-only";
 
 const env = { RMT_WEB_HOSTING: railwayReadOnlyProfile, RAILWAY_PROJECT_ID: railwayProject,
-  RAILWAY_ENVIRONMENT_ID: railwayEnvironment, RAILWAY_PUBLIC_DOMAIN: "rmt-launch-preview.up.railway.app",
+  RAILWAY_ENVIRONMENT_ID: railwayEnvironment, RAILWAY_PUBLIC_DOMAIN: "stale-provider-metadata.up.railway.app", RMT_WEB_ORIGIN: railwayWebsiteOrigin,
   RAILWAY_SERVICE_ID: "8e9c1c15-74b5-4262-8851-72603a3dfc98", RMT_INDEXER_SERVICE_ID: "27b1aa2c-77e5-4ed4-91a1-1951d68c488e" };
 test("private read origin requires the exact existing backend, port, project and environment", () => {
   assert.equal(indexerOrigin(railwayIndexerOrigin + "/", env)?.origin, railwayIndexerOrigin);
@@ -16,9 +16,12 @@ test("private read origin requires the exact existing backend, port, project and
   assert.equal(indexerOrigin("https://history.example/")?.origin, "https://history.example");
 });
 test("Railway request authority admits only the assigned preview origin", () => {
-  assert.deepEqual(railwayHosting(env), { origin: "https://rmt-launch-preview.up.railway.app" });
-  for (const field of ["RMT_WEB_HOSTING", "RAILWAY_PROJECT_ID", "RAILWAY_ENVIRONMENT_ID", "RAILWAY_PUBLIC_DOMAIN", "RMT_WEB_ORIGIN"]) assert.equal(railwayHosting({ ...env, [field]: "incorrect" }), null);
+  assert.deepEqual(railwayHosting(env), { origin: railwayWebsiteOrigin });
+  for (const field of ["RMT_WEB_HOSTING", "RAILWAY_PROJECT_ID", "RAILWAY_ENVIRONMENT_ID", "RAILWAY_SERVICE_ID", "RMT_WEB_ORIGIN"]) assert.equal(railwayHosting({ ...env, [field]: "incorrect" }), null);
   assert.equal(railwayHosting({ ...env, RMT_WEB_ORIGIN: "https://www.rmtlaunch.fun" }), null);
+  assert.equal(railwayHosting({ ...env, RMT_WEB_ORIGIN: undefined }), null);
+  assert.equal(railwayHosting({ ...env, RMT_WEB_ORIGIN: "https://other.up.railway.app" }), null);
+  assert.deepEqual(railwayHosting({ ...env, RAILWAY_PUBLIC_DOMAIN: "other.up.railway.app" }), { origin: railwayWebsiteOrigin });
 });
 test("single-process request budgets cannot be bypassed by changing IP headers, bound memory and expire", () => {
   let now = 120_000; const admit = createRailwayRequestBudget(() => now);

@@ -1,13 +1,15 @@
-import { railwayEnvironment, railwayProject, railwayReadOnlyProfile, railwayWebsiteService } from "./indexer-origin";
+import { railwayEnvironment, railwayProject, railwayReadOnlyProfile, railwayWebsiteOrigin, railwayWebsiteService } from "./indexer-origin";
 
 type Environment = Record<string, string | undefined>;
 export function railwayHosting(env: Environment = process.env): { origin: string } | null {
   if (env.RMT_WEB_HOSTING !== railwayReadOnlyProfile || env.RAILWAY_PROJECT_ID !== railwayProject
     || env.RAILWAY_ENVIRONMENT_ID !== railwayEnvironment
     || env.RAILWAY_SERVICE_ID !== railwayWebsiteService
-    || !/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.up\.railway\.app$/.test(env.RAILWAY_PUBLIC_DOMAIN ?? "")) return null;
-  const origin = "https://" + env.RAILWAY_PUBLIC_DOMAIN;
-  return !env.RMT_WEB_ORIGIN || env.RMT_WEB_ORIGIN === origin ? { origin } : null;
+    || env.RMT_WEB_ORIGIN !== railwayWebsiteOrigin) return null;
+  // Renaming a reused Railway service may leave its automatic public-domain
+  // variables stale. The separately verified, explicitly pinned origin is the
+  // request authority; automatic provider metadata never grants another host.
+  return { origin: railwayWebsiteOrigin };
 }
 
 /** Single-container aggregate limits, independent of spoofable client-IP headers.
