@@ -476,7 +476,16 @@ async function checkAfter(browser, engine, layout, harness) {
       const dimensions = await noOverflow(page);
       const columns = await page.locator(".lpCardGrid").evaluate(element => getComputedStyle(element).gridTemplateColumns.split(" ").length);
       if (count > 1) assert.ok(layout.viewport.width >= 1000 ? columns >= 2 : layout.viewport.width <= 730 ? columns === 1 : columns >= 1);
-      cardStates.push({ theme, state: stateName, count, columns, contrast, targets, dimensions });
+      const footerRows = await cards.evaluateAll(elements => {
+        const rows = new Map();
+        for (const element of elements) {
+          const row = Math.round(element.getBoundingClientRect().top), footer = element.querySelector(".lpCardFooter").getBoundingClientRect();
+          rows.set(row, [...(rows.get(row) ?? []), footer.bottom]);
+        }
+        return [...rows].map(([top, bottoms]) => ({ top, count: bottoms.length, spread: Math.max(...bottoms) - Math.min(...bottoms) }));
+      });
+      for (const row of footerRows) assert.ok(row.spread <= 1, `Card actions must align within their row: ${JSON.stringify(row)}`);
+      cardStates.push({ theme, state: stateName, count, columns, contrast, targets, dimensions, footerRows });
       captures.push(await screenshot(page, `after-${engine}-${layout.name}-synthetic-${theme}-${stateName}`));
     }
   }
