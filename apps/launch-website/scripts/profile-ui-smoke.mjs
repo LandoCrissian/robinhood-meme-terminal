@@ -99,7 +99,12 @@ try {
         assert.ok(metadata.width > 0 && metadata.width <= 256 && metadata.height > 0 && metadata.height <= 256);
       };
       await goto("/"); await page.getByRole("heading", { name: "Launches", exact: true }).waitFor();
-      await page.getByText(/Historical registrations.*4 records/).waitFor(); assert.equal(walletCalls.length, 0);
+      const discovery = page.getByRole("region", { name: "New RMT Launch engine", exact: true });
+      await discovery.getByRole("heading", { name: "Launches coming soon", exact: true }).waitFor();
+      await discovery.getByRole("searchbox", { name: "Search launches", exact: true }).waitFor();
+      assert.equal(await page.getByRole("main").getByText(/Historical registrations/i).count(), 0);
+      assert.equal(await page.locator("details.lpArchive").count(), 0);
+      assert.equal(walletCalls.length, 0);
       assert.equal(await page.evaluate(() => window.rmtDiscoveryCount), 0);
       await screenshot("home-portrait");
       const desktop = await browser.newContext({ viewport: { width: 1440, height: 1000 }, serviceWorkers: "block" });
