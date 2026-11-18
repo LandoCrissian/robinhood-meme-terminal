@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import sharp from "sharp";
+import { NextRequest } from "next/server";
 import { profileEdit, profileUsername } from "../../profiles";
 import { isProfileApiRoute, profileConfig, requireProfileRequest } from "./config";
 import { sanitizeAvatar } from "./avatar";
@@ -31,6 +32,17 @@ test("routing is bounded and origin checks reject cross-site or forwarded local 
   for (const headers of rejectedHeaders) {
     assert.throws(() => requireProfileRequest(new Request(config.origin + "/api/account/nonce", { method: "POST", headers }), config, true));
   }
+});
+test("real NextRequest loopback normalization preserves exact external host, port and origin binding", () => {
+  const config = profileConfig(local)!;
+  const headers = { host: "127.0.0.1:4319", origin: config.origin, "x-forwarded-host": "127.0.0.1:4319", "x-forwarded-proto": "http", "x-forwarded-port": "4319" };
+  const request = new NextRequest(config.origin + "/api/account/nonce", { method: "POST", headers });
+  assert.equal(new URL(request.url).origin, "http://localhost:4319");
+  requireProfileRequest(request, config, true);
+  for (const change of [{ host: "localhost:4319" }, { "x-forwarded-host": "localhost:4319" }, { "x-forwarded-port": "4320" }, { origin: "http://localhost:4319" }]) {
+    assert.throws(() => requireProfileRequest(new NextRequest(config.origin + "/api/account/nonce", { method: "POST", headers: { ...headers, ...change } }), config, true));
+  }
+  assert.throws(() => requireProfileRequest(new Request("http://localhost:4320/api/account/nonce", { method: "POST", headers }), config, true));
 });
 test("username, plain text, HTTPS links and private preferences reject untrusted field escalation", () => {
   assert.equal(profileUsername("Creator_One"), "creator_one");

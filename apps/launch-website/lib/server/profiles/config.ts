@@ -37,13 +37,18 @@ export function profileConfig(env: Record<string, string | undefined> = process.
 }
 export function requireProfileRequest(request: Request, config: ProfileConfig, mutation: boolean) {
   const url = new URL(request.url);
+  const expected = new URL(config.origin);
+  // NextRequest/NextURL canonicalize loopback IPv4 to "localhost" internally.
+  // Only that internal local alias is permitted; the actual external Host and Origin stay exact.
+  const nextLoopbackAlias = config.mode === "emulator" && expected.hostname === "127.0.0.1" && url.hostname === "localhost"
+    && url.protocol === expected.protocol && url.port === expected.port;
   const forwardedHost = request.headers.get("x-forwarded-host");
   const forwardedProtocol = request.headers.get("x-forwarded-proto");
   const forwardedPort = request.headers.get("x-forwarded-port");
-  if (url.origin !== config.origin || request.headers.get("host") !== url.host
-      || request.headers.has("forwarded") || (forwardedHost !== null && forwardedHost !== url.host)
-      || (forwardedProtocol !== null && forwardedProtocol !== url.protocol.slice(0, -1))
-      || (forwardedPort !== null && forwardedPort !== (url.port || (url.protocol === "https:" ? "443" : "80")))) {
+  if ((url.origin !== config.origin && !nextLoopbackAlias) || request.headers.get("host") !== expected.host
+      || request.headers.has("forwarded") || (forwardedHost !== null && forwardedHost !== expected.host)
+      || (forwardedProtocol !== null && forwardedProtocol !== expected.protocol.slice(0, -1))
+      || (forwardedPort !== null && forwardedPort !== (expected.port || (expected.protocol === "https:" ? "443" : "80")))) {
     throw new ProfileError(403, "profile_origin_rejected", "The profile origin does not match this local environment.");
   }
   const origin = request.headers.get("origin");
