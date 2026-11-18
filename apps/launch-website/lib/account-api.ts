@@ -37,6 +37,7 @@ export function accountErrorMessage(error: unknown) {
     if (error.status === 401) return "Your session ended. Connect and sign in again.";
     if (error.status === 409 && error.code === "profile_link_conflict") return "This wallet's profile needs authenticated account recovery. Your existing data has been preserved; changing the username will not resolve the ownership conflict.";
     if (error.status === 409 && error.code === "username_taken") return "That username is unavailable. Choose another one.";
+    if (error.status === 409 && error.code === "avatar_changed") return "Your avatar changed in another request. Refresh your profile before removing it.";
     if (error.status === 413) return "That image is too large. Choose a smaller JPG, PNG or WebP.";
     if (error.status === 403) return "This request could not be authorized. Refresh and sign in again.";
     if (error.status === 422 || error.status === 400) return "Check your profile fields and try again.";

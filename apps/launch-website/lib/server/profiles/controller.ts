@@ -1,6 +1,6 @@
 import { profileAddress, profileEdit, profileUsername, type AccountSession } from "../../profiles";
 import { authenticatedProfile, browserCookieName, issueChallenge, logOut, profileCookie, requireAuthentication, requireCsrf, sessionCookieName, verifyChallenge } from "./auth";
-import { readAvatar, sanitizeAvatar, saveAvatar, maximumAvatarUploadBytes } from "./avatar";
+import { readAvatar, removeAvatar, sanitizeAvatar, saveAvatar, maximumAvatarUploadBytes } from "./avatar";
 import { profileConfig, ProfileError, requireProfileRequest } from "./config";
 import { profileFirebase } from "./firebase";
 import { accountProfile, deleteProfile, profileBudget, profileCollections, publicProfile, updateProfile } from "./store";
@@ -42,7 +42,7 @@ function validated<T>(run: () => T): T {
   catch (error) { if (error instanceof ProfileError) throw error; throw new ProfileError(400, "invalid_profile_fields", error instanceof Error ? error.message : "Invalid profile fields."); }
 }
 const methods: Record<AccountAction, string[]> = { session: ["GET", "HEAD"], nonce: ["POST"], verify: ["POST"], logout: ["POST"],
-  profile: ["GET", "HEAD", "PATCH", "DELETE"], avatar: ["POST"], "public-wallet": ["GET", "HEAD"], "public-username": ["GET", "HEAD"], "public-avatar": ["GET", "HEAD"] };
+  profile: ["GET", "HEAD", "PATCH", "DELETE"], avatar: ["POST", "DELETE"], "public-wallet": ["GET", "HEAD"], "public-username": ["GET", "HEAD"], "public-avatar": ["GET", "HEAD"] };
 
 export async function accountHandler(request: Request, action: AccountAction, key?: string): Promise<Response> {
   try {
@@ -122,6 +122,12 @@ export async function accountHandler(request: Request, action: AccountAction, ke
       return response;
     }
     if (action === "avatar") {
+      if (request.method === "DELETE") {
+        const body = await jsonBody(request);
+        if (Object.keys(body).length !== 1 || !Object.hasOwn(body, "expectedAvatarUrl")) throw new ProfileError(400, "invalid_avatar_request", "Review the current avatar before removing it.");
+        const removed = await removeAvatar(firebase.db, auth.account, body.expectedAvatarUrl, guard);
+        return accountJson({ removed, profile: await accountProfile(firebase.db, auth.account) });
+      }
       const contentType = request.headers.get("content-type") ?? "";
       if (!contentType.startsWith("multipart/form-data;")) throw new ProfileError(415, "image_required", "Choose an image file.");
       const form = await new Response(await boundedBytes(request, maximumAvatarUploadBytes + 16_384), { headers: { "Content-Type": contentType } }).formData();

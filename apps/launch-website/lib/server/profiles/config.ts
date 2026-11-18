@@ -64,5 +64,6 @@ export function isProfileApiRoute(path: string, method: string) {
     || /^\/api\/account\/(?:creator|avatar)\/0x[0-9a-fA-F]{40}$/.test(path)
     || /^\/api\/account\/public\/[a-z][a-z0-9_]{2,23}$/.test(path);
   if (method === "POST") return ["/api/account/nonce", "/api/account/verify", "/api/account/logout", "/api/account/avatar"].includes(path);
-  return ["PATCH", "DELETE"].includes(method) && path === "/api/account/profile";
+  return method === "PATCH" && path === "/api/account/profile"
+    || method === "DELETE" && ["/api/account/profile", "/api/account/avatar"].includes(path);
 }

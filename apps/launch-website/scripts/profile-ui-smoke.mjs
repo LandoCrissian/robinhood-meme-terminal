@@ -153,6 +153,20 @@ try {
       const image = await sharp({ create: { width: 48, height: 48, channels: 4, background: "#31e45d" } }).png().toBuffer();
       await page.getByLabel("Upload image", { exact: true }).setInputFiles({ name: "synthetic-avatar.png", mimeType: "image/png", buffer: image }); await status(/Avatar updated/);
       await avatarLoaded();
+      const originalAvatar = (await (await context.request.get(new URL("/api/account/session", site).href)).json()).account.profile.avatarUrl;
+      await page.getByRole("button", { name: "Remove avatar", exact: true }).click(); await status(/Avatar removed/);
+      await page.waitForFunction(() => document.querySelectorAll(".lpProfileAvatar img").length === 0);
+      const afterRemoval = await (await context.request.get(new URL("/api/account/session", site).href)).json();
+      assert.equal(afterRemoval.authenticated, true); assert.equal(afterRemoval.account.profile.username, username);
+      assert.equal(afterRemoval.account.profile.avatarUrl, null); assert.equal(afterRemoval.account.profile.preferences.reducedMotion, true);
+      assert.equal((await context.request.get(new URL(originalAvatar, site).href)).status(), 404);
+      assert.equal(await page.getByRole("button", { name: "Remove avatar", exact: true }).count(), 0);
+      assert.equal(await page.getByRole("status").filter({ hasText: /Avatar removed/ }).count(), 1, "Avatar changes should produce one live status announcement");
+      await page.getByLabel("Upload image", { exact: true }).setInputFiles({ name: "synthetic-avatar.png", mimeType: "image/png", buffer: image }); await status(/Avatar updated/);
+      await avatarLoaded();
+      const replacementAvatar = (await (await context.request.get(new URL("/api/account/session", site).href)).json()).account.profile.avatarUrl;
+      assert.notEqual(replacementAvatar, originalAvatar, "Same-file reupload must have a fresh upload version");
+      assert.equal((await context.request.get(new URL(originalAvatar, site).href)).status(), 404);
       await screenshot("profile-portrait"); await page.setViewportSize({ width: 844, height: 390 }); await screenshot("profile-landscape");
       const callsBeforeReload = walletCalls.length; await page.reload(); await page.getByRole("form", { name: "Edit creator profile" }).waitFor();
       assert.equal(walletCalls.length, callsBeforeReload); assert.equal(await page.evaluate(() => window.rmtDiscoveryCount), 0); assert.equal(await page.getByLabel("Username", { exact: true }).inputValue(), username);
@@ -204,7 +218,7 @@ try {
       assert.deepEqual(errors, []); assert.deepEqual(outside, []);
       results.push({ engine: name, mode: "firebase-emulators", syntheticWallet: accounts[0].address,
         signatureRequests: walletCalls.filter(({ method }) => method === "personal_sign").length, walletsAccepted: ["MetaMask", "Rabby"],
-        cookieHttpOnly: sessionCookie.httpOnly, profiles: "saved/reloaded/public/deleted-after-fresh-proof", avatar: "uploaded/re-encoded/http200/decoded/header-editor-public-loaded", privatePreferences: "saved/not-public", logoutAndAccountChange: "verified-including-outage-retry", networkSwitch: "rejection-then-confirmed-switch", transactions: 0 });
+        cookieHttpOnly: sessionCookie.httpOnly, profiles: "saved/reloaded/public/deleted-after-fresh-proof", avatar: "uploaded/re-encoded/decoded/removed-with-profile-retained/reuploaded-versioned/header-editor-public-loaded", privatePreferences: "saved/not-public", logoutAndAccountChange: "verified-including-outage-retry", networkSwitch: "rejection-then-confirmed-switch", transactions: 0 });
       await context.close();
     } catch (error) {
       const failedPage = browser.contexts()[0]?.pages()[0];

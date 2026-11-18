@@ -25,7 +25,8 @@ export async function sanitizeAvatar(bytes: Uint8Array, contentType: string) {
 }
 export async function saveAvatar(db: Firestore, account: ProfileAccount, image: Awaited<ReturnType<typeof sanitizeAvatar>>, guard: WriteAuthorization) {
   const id = randomToken().slice(0, 32);
-  const url = "/api/account/avatar/" + account.walletAddress + "?v=" + image.sha256;
+  const version = createHash("sha256").update(id + ":" + image.sha256).digest("hex");
+  const url = "/api/account/avatar/" + account.walletAddress + "?v=" + version;
   await db.runTransaction(async tx => {
     const accountRef = db.collection(c.accounts).doc(account.uid);
     const publicRef = db.collection(c.public).doc(account.walletAddress.toLowerCase());
@@ -37,12 +38,52 @@ export async function saveAvatar(db: Firestore, account: ProfileAccount, image: 
     const oldRef = oldId ? db.collection(c.avatars).doc(oldId) : null;
     const old = oldRef ? await tx.get(oldRef) : null;
     if (old?.exists && old.data()?.uid !== account.uid) throw new Error("Avatar ownership mismatch");
-    tx.create(db.collection(c.avatars).doc(id), { ...image, uid: account.uid, walletAddress: account.walletAddress, createdAt: new Date().toISOString() });
+    tx.create(db.collection(c.avatars).doc(id), { ...image, version, uid: account.uid, walletAddress: account.walletAddress, createdAt: new Date().toISOString() });
     tx.set(accountRef, { avatarId: id }, { merge: true });
     tx.update(publicRef, { avatarUrl: url, updatedAt: new Date().toISOString() });
     if (oldRef) tx.delete(oldRef);
   });
   return url;
+}
+function storedAvatarVersion(image: Record<string, unknown>, id: string) {
+  if (typeof image.sha256 !== "string" || !/^[a-f0-9]{64}$/.test(image.sha256)) return null;
+  // Existing images remain readable without modifying any historical profile records.
+  if (image.version === undefined) return image.sha256;
+  const expected = createHash("sha256").update(id + ":" + image.sha256).digest("hex");
+  return image.version === expected ? expected : null;
+}
+/** Remove only the reviewed current avatar; a stale request cannot delete a replacement. */
+export async function removeAvatar(db: Firestore, account: ProfileAccount, expectedUrl: unknown, guard: WriteAuthorization) {
+  const prefix = "/api/account/avatar/" + account.walletAddress + "?v=";
+  if (typeof expectedUrl !== "string" || !expectedUrl.startsWith(prefix) || !/^[a-f0-9]{64}$/.test(expectedUrl.slice(prefix.length))) {
+    throw new ProfileError(400, "invalid_avatar_request", "Refresh your profile before removing its current avatar.");
+  }
+  // Import only after the route's configuration/session checks; disabled deployments never load the SDK.
+  const { FieldValue } = await import("firebase-admin/firestore");
+  return db.runTransaction(async tx => {
+    const accountRef = db.collection(c.accounts).doc(account.uid);
+    const publicRef = db.collection(c.public).doc(account.walletAddress.toLowerCase());
+    const [internal, visible] = await tx.getAll(accountRef, publicRef);
+    const current = internal.data();
+    if (current?.uid !== account.uid || current.walletAddress !== account.walletAddress || current.authEpoch !== account.authEpoch
+        || current.deletedAt || !visible.exists || visible.data()?.walletAddress !== account.walletAddress) {
+      throw new ProfileError(401, "profile_session_expired", "Sign in again.");
+    }
+    await assertWriteSession(tx, db, account, guard);
+    if (visible.data()?.avatarUrl === null && current.avatarId === undefined) return false;
+    if (visible.data()?.avatarUrl !== expectedUrl || typeof current.avatarId !== "string" || !/^[a-f0-9]{32}$/.test(current.avatarId)) {
+      throw new ProfileError(409, "avatar_changed", "The current avatar changed. Refresh the profile before trying again.");
+    }
+    const imageRef = db.collection(c.avatars).doc(current.avatarId);
+    const image = (await tx.get(imageRef)).data();
+    if (image && (image.uid !== account.uid || image.walletAddress !== account.walletAddress || prefix + storedAvatarVersion(image, current.avatarId) !== expectedUrl)) {
+      throw new ProfileError(409, "profile_link_conflict", "Avatar ownership needs recovery.");
+    }
+    tx.delete(imageRef);
+    tx.update(accountRef, { avatarId: FieldValue.delete() });
+    tx.update(publicRef, { avatarUrl: null, updatedAt: new Date().toISOString() });
+    return true;
+  });
 }
 export async function readAvatar(db: Firestore, address: string, version: string | null) {
   return db.runTransaction(async tx => {
@@ -52,10 +93,11 @@ export async function readAvatar(db: Firestore, address: string, version: string
     const account = (await tx.get(db.collection(c.accounts).doc(binding.uid))).data();
     if (!account?.avatarId || account.walletAddress !== address || !/^[a-f0-9]{32}$/.test(account.avatarId)) return null;
     const image = (await tx.get(db.collection(c.avatars).doc(account.avatarId))).data();
+    const expectedVersion = image ? storedAvatarVersion(image, account.avatarId) : null;
     if (!image || image.uid !== binding.uid || image.walletAddress !== address || image.mime !== "image/webp" || !Buffer.isBuffer(image.bytes)
         || image.bytes.length > maximumStoredAvatarBytes || !/^[a-f0-9]{64}$/.test(image.sha256) || image.width > 256 || image.height > 256
         || createHash("sha256").update(image.bytes).digest("hex") !== image.sha256
-        || visible.avatarUrl !== "/api/account/avatar/" + address + "?v=" + image.sha256 || (version && version !== image.sha256)) return null;
+        || !expectedVersion || visible.avatarUrl !== "/api/account/avatar/" + address + "?v=" + expectedVersion || (version && version !== expectedVersion)) return null;
     return { bytes: image.bytes as Buffer, sha256: image.sha256 as string };
   });
 }
