@@ -173,3 +173,10 @@ condition = "AND"
 targetRules = ["generic-api-key"]
 regexes = ['''^RMTLaunchBondingCurveV1$''']
 paths = ['''^packages/contracts/test/RMTV4CurveGraduationV1\.t\.sol$''']
+
+[[allowlists]]
+description = "Exact ordinary English phrase in the public oracle-admission discussion; no credential"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''^publisher/market$''']
+paths = ['''^docs/TREASURY_PURCHASE_V2_ROUTES\.md$''']
