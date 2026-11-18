@@ -108,11 +108,13 @@ export function useTreasuryExecution({ fixture, treasury, expected, onVerified, 
     if (!wallet) throw Error("Connect a synthetic controller or creator wallet first.");
     // A Safe inner CALL identifies its actual required caller. The connected
     // EOA is never represented as the Safe and no request can be submitted.
-    const requiredCaller = expected?.controllerKind === "safe-1.4.1" && operation !== "bind-project" ? expected.controller : wallet.account;
+    const controllerOnly = ["claim-curve", "collect-lp", "claim-lp", "claim-lp-native", "claim-lp-token", "set-purchases", "schedule-controller", "cancel-controller", "schedule-withdrawal"].includes(operation);
+    const requiredCaller = expected?.controllerKind === "safe-1.4.1" && controllerOnly ? expected.controller : wallet.account;
     const at = revision.current, result = await postProjectTreasury({ action: "prepare", account: requiredCaller, operation,
       ...(creation ? { controller: creation.controller, intentId: creation.intentId, treasuryShareBps: creation.treasuryShareBps } : { treasury, args }) });
     const unchangedArg = (a: unknown, b: unknown) => a === b || typeof a === "string" && typeof b === "string"
-      && (a.startsWith("0x") && b.startsWith("0x") ? same(a, b) : /^[0-9]+$/.test(a) && /^[0-9]+$/.test(b) && BigInt(a) === BigInt(b));
+      && (a.startsWith("0x") && b.startsWith("0x") && same(a, b)
+        || /^(?:0x[0-9a-f]+|[0-9]+)$/i.test(a) && /^(?:0x[0-9a-f]+|[0-9]+)$/i.test(b) && BigInt(a) === BigInt(b));
     const valid = at === revision.current && isProjectTreasuryReview(result) && result.operation === operation
       && (!treasury || same(result.treasury, treasury)) && same(result.actor, requiredCaller)
       && (!creation || same(result.controller, creation.controller) && same(result.intentId, creation.intentId) && same(result.creator, creation.creator)
