@@ -143,9 +143,6 @@ export async function testProjectTreasuryJourney({ browserEngine, rpcUrl, rpc, a
     await ownerCall(treasury, "depositNative", [], 7n);
     assert.equal(await client.getBalance({ address: treasury }), heldBefore[0] + 7n, "Disabled purchasing cannot freeze incoming funding");
     evidence.checks.purchaseToggleNeverSpendsAndUnsupportedPriceRefused = true;
-    const oldWithdrawal = await ownerCall(treasury, "queueWithdrawal", [project.token, creator.address, 10n ** 18n, await deadline(4 * 86400)]);
-    const queuedId = event(oldWithdrawal, treasury, treasuryAbi, "WithdrawalQueued").id;
-    await send(relayer.address, transact(treasury, treasuryAbi, "executeWithdrawal", [queuedId]), "reverted");
     const migrated = await proveFundedMigrations(client, artifacts, { ...deployed, scheduleFixtureMigration: async token => {
       await rpc("anvil_impersonateAccount", [operatorAccount.address]);
       try { return await deployed.scheduleFixtureMigration(token); }
@@ -155,6 +152,12 @@ export async function testProjectTreasuryJourney({ browserEngine, rpcUrl, rpc, a
     project.originalCurve = project.curve; project.curve = migrated.curve; evidence.migrations = migrated;
     assert.equal(await read(treasury, treasuryAbi, "curveLedger"), project.revenueLedger);
     assert.deepEqual(await rpc("eth_accounts"), []); evidence.checks.originalLedgerV1V2V3 = true;
+    // Queue after the migration time advances, so it is still unexpired after
+    // controller acceptance. Rejection then proves epoch invalidation rather
+    // than accidentally proving only an already expired withdrawal.
+    const oldWithdrawal = await ownerCall(treasury, "queueWithdrawal", [project.token, creator.address, 10n ** 18n, await deadline(4 * 86400)]);
+    const queuedId = event(oldWithdrawal, treasury, treasuryAbi, "WithdrawalQueued").id;
+    await send(relayer.address, transact(treasury, treasuryAbi, "executeWithdrawal", [queuedId]), "reverted");
 
     const safeRuntime = JSON.parse(readFileSync(new URL("../../packages/contracts/test/fixtures/safe-1.4.1/runtime.json", import.meta.url)));
     for (const item of Object.values(safeRuntime.contracts)) { assert.equal(keccak256(item.code), item.runtimeKeccak256); await rpc("anvil_setCode", [item.address, item.code]); }
