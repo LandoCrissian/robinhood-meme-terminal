@@ -267,7 +267,7 @@ export async function claimCurveThroughTreasuryPage({ session, treasury, ledger,
   session.evidence.recoveries.push(confirmed); session.save(); return { review, confirmed, receipt: sent.receipt };
 }
 
-export async function exerciseTreasuryPage({ session, project, treasury, safe, site, evidence, mine, ready, save }) {
+export async function exerciseTreasuryPage({ session, project, treasury, safe, site, out, evidence, mine, ready, save }) {
   const { page, button, layouts } = session;
   await mine(); await ready(); await page.goto(site + "/my-launches/treasury");
   await page.getByLabel("Project treasury address", { exact: true }).fill(treasury);
