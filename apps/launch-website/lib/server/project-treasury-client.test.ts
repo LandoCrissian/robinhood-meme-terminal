@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { treasuryVerificationMatches } from "../../app/_components/treasury-wallet-controls";
+import { assertNoUnresolvedFinancialRequests, treasuryVerificationMatches } from "../../app/_components/treasury-wallet-controls";
 import { isProjectTreasuryReview, projectTreasuryProfile, projectTreasuryReviewHash, type ProjectTreasuryReview, type ProjectTreasuryVerification } from "../project-treasury";
 import { ea, eh } from "./earnings-test-fixture";
+import { earningsTestFixture } from "./earnings-test-fixture";
+import { prepareClaimExecutionReview } from "./claim-profiles";
+import { isClaimExecutionReview } from "../claim-profiles";
+import { storeClaimJournal } from "../claim-recovery";
 
 function fixture() {
   const actor = ea(100001), treasury = ea(100002), factory = ea(100003), core = ea(100004), point = { blockNumber: "10", blockHash: eh(10), timestamp: "2026-11-18T12:00:00.000Z" };
@@ -44,4 +48,36 @@ test("unavailable or pending evidence remains explicitly incomplete, never a fab
   assert.equal(treasuryVerificationMatches(review, { ...base, status: "unavailable" }), true);
   assert.equal(treasuryVerificationMatches(review, { ...base, status: "confirmed" }), false);
   assert.equal(treasuryVerificationMatches(review, { ...base, chainId: 4663, status: "confirmed" }), false);
+});
+function memory() {
+  const map = new Map<string, string>(); return { getItem: (key: string) => map.get(key) ?? null,
+    setItem: (key: string, value: string) => { map.set(key, value); }, removeItem: (key: string) => { map.delete(key); } };
+}
+test("token creation cannot pass a same-wallet unresolved treasury outcome or silently discard malformed recovery", () => {
+  const original = Object.getOwnPropertyDescriptor(globalThis, "localStorage"), storage = memory();
+  Object.defineProperty(globalThis, "localStorage", { configurable: true, value: storage });
+  try {
+    const { review, result } = fixture(), key = "rmt.project-treasury.pending.v1:" + review.reviewHash;
+    const journal = { schemaVersion: 1, review, stage: "hash-missing", transactionHash: null, result: null, createdAt: 1, updatedAt: 1 };
+    storage.setItem("rmt.project-treasury.pending.v1:index", JSON.stringify([key])); storage.setItem(key, JSON.stringify(journal));
+    assert.throws(() => assertNoUnresolvedFinancialRequests(review.actor), /earlier treasury/);
+    assert.doesNotThrow(() => assertNoUnresolvedFinancialRequests(ea(120000)));
+    storage.setItem(key, JSON.stringify({ ...journal, stage: "wallet-rejected" }));
+    assert.doesNotThrow(() => assertNoUnresolvedFinancialRequests(review.actor), "A definite rejection is not an unknown broadcast");
+    storage.setItem(key, JSON.stringify({ ...journal, stage: "confirmed", transactionHash: result.transactionHash, result }));
+    assert.doesNotThrow(() => assertNoUnresolvedFinancialRequests(review.actor), "Canonical history stays available without blocking unrelated future nonce use");
+    storage.setItem(key, "corrupted-original-recovery"); assert.throws(() => assertNoUnresolvedFinancialRequests(review.actor));
+  } finally { if (original) Object.defineProperty(globalThis, "localStorage", original); else Reflect.deleteProperty(globalThis, "localStorage"); }
+});
+test("token creation also preserves an unresolved Task075 claim from the same wallet", async () => {
+  const original = Object.getOwnPropertyDescriptor(globalThis, "localStorage"), storage = memory();
+  Object.defineProperty(globalThis, "localStorage", { configurable: true, value: storage });
+  try {
+    const f = earningsTestFixture();
+    const review = await prepareClaimExecutionReview({ context: f.context, registration: f.registration, account: f.creator, beneficiary: f.creator, operation: "curve-claim", kind: "eoa" });
+    assert.ok(isClaimExecutionReview(review));
+    storeClaimJournal(storage, { schemaVersion: 1, profile: "rmt-claim-recovery-v1", review, stage: "hash-missing", transactionHash: null, verification: null, createdAt: 1, updatedAt: 1 });
+    assert.throws(() => assertNoUnresolvedFinancialRequests(f.creator), /earlier profiled claim/);
+    assert.doesNotThrow(() => assertNoUnresolvedFinancialRequests(ea(120000)));
+  } finally { if (original) Object.defineProperty(globalThis, "localStorage", original); else Reflect.deleteProperty(globalThis, "localStorage"); }
 });
