@@ -4,6 +4,8 @@ import {
 } from "viem";
 import type { BlockEvidence } from "./curve-launch-evidence.js";
 import { assertFixtureInnerCallProof, assertFixtureNativeProof, fixtureTreasuryClaimInput } from "./curve-fixture-native-proof.js";
+import { assertFixtureProjectTreasuryProof, resolveFixtureProjectTreasuryCall,
+  type FixtureProjectTreasuryAdmission, type FixtureProjectTreasuryCall } from "./curve-fixture-project-treasury-call.js";
 import {
   feeBuckets, fixturePoolManagerAbi, fixtureQuoter, fixtureRouter, nativeProof, permit2, poolIdentity, poolManager, positionManager, receiptLogs,
   verifyFixtureV4Position, type FixtureCursor, type FixtureGraduation, type FixtureGraduationBinding, type FixtureTx, type LogProof,
@@ -161,7 +163,7 @@ async function swapSettlement(rpc: PublicClient, tx: FixtureTx, block: BlockEvid
 }
 
 async function collectSettlement(rpc: PublicClient, tx: FixtureTx, block: BlockEvidence, logs: TransactionReceipt["logs"],
-  token: Address, graduation: FixtureGraduation, ledger: Address, deadline: bigint, externalCall?: Hex) {
+  token: Address, graduation: FixtureGraduation, ledger: Address, deadline: bigint, externalCall?: Hex, projectCall?: FixtureProjectTreasuryCall) {
   const [event] = parseEventLogs({ abi: [collectionEvent], strict: true, logs: logs.filter(log => same(log.address, graduation.owner)) });
   const [poke] = parseEventLogs({ abi: fixturePoolManagerAbi, eventName: "ModifyLiquidity", strict: true, logs: logs.filter(log => same(log.address, poolManager)) });
   requireProof(event && same(event.args.token, token) && same(event.args.ledger, ledger) && tx.value === 0n && deadline >= atTime(block)
@@ -179,8 +181,11 @@ async function collectSettlement(rpc: PublicClient, tx: FixtureTx, block: BlockE
     requireProof(tx.to, "absent contract collector");
     const raw = await rpc.request({ method: "debug_traceTransaction", params: [tx.hash, { tracer: "callTracer" }] } as never, { retryCount: 0 });
     const outer = { from: tx.from, to: tx.to, input: tx.input, value: 0n };
-    assertFixtureInnerCallProof(raw, outer, { from: tx.to, to: graduation.owner, input: externalCall, value: 0n });
-    assertFixtureNativeProof(raw, outer, [{ from: poolManager, to: ledger, amount: nativeAmount }]);
+    if (projectCall) assertFixtureProjectTreasuryProof(raw, tx, projectCall, [{ from: poolManager, to: ledger, amount: nativeAmount }]);
+    else {
+      assertFixtureInnerCallProof(raw, outer, { from: tx.to, to: graduation.owner, input: externalCall, value: 0n });
+      assertFixtureNativeProof(raw, outer, [{ from: poolManager, to: ledger, amount: nativeAmount }]);
+    }
   } else await nativeProof(rpc, tx, graduation.owner, [{ from: poolManager, to: ledger, amount: nativeAmount }]);
   const preview = await rpc.readContract({ address: graduation.owner, abi: engineAbi, functionName: "previewLpFees",
     args: [token], blockNumber: BigInt(block.blockNumber) - 1n });
@@ -225,15 +230,17 @@ export function fixtureExternalFeeCall(input: Hex) {
 }
 
 async function claimSettlement(rpc: PublicClient, tx: FixtureTx, block: BlockEvidence, logs: TransactionReceipt["logs"],
-  token: Address, ledger: Address, account: Address, externalCall?: Hex) {
+  token: Address, ledger: Address, account: Address, externalCall?: Hex, projectCall?: FixtureProjectTreasuryCall) {
   const events = parseEventLogs({ abi: [claimEvent], strict: true, logs: logs.filter(log => same(log.address, ledger)) });
   const [event] = events;
   requireProof(events.length === 1 && event && same(event.args.recipient, account) && tx.value === 0n, "claim recipient");
   const { nativeAmount, tokenAmount } = event.args;
-  const input = externalCall
+  const input = projectCall?.calldata ?? (externalCall
     ? fixtureTreasuryClaimInput(await rpc.request({ method: "debug_traceTransaction", params: [tx.hash, { tracer: "callTracer" }] } as never,
         { retryCount: 0 }), { ...tx, to: account }, ledger, nativeAmount)
-    : tx.input;
+    : tx.input);
+  if (projectCall) assertFixtureProjectTreasuryProof(await rpc.request({ method: "debug_traceTransaction", params: [tx.hash, { tracer: "callTracer" }] } as never,
+    { retryCount: 0 }), tx, projectCall, [{ from: ledger, to: account, amount: nativeAmount }]);
   requireProof(!externalCall || same(externalCall, input), "outer and inner claim calldata disagree");
   const mode = claimAssetMode(input);
   requireProof(mode, "exact claim calldata");
@@ -251,7 +258,7 @@ async function claimSettlement(rpc: PublicClient, tx: FixtureTx, block: BlockEvi
 }
 
 export async function indexFixturePostTransaction(rpc: PublicClient, binding: FixtureGraduationBinding, cursors: FixturePostCursor[],
-  tx: FixtureTx, block: BlockEvidence, index: number) {
+  tx: FixtureTx, block: BlockEvidence, index: number, admitProjectTreasury?: FixtureProjectTreasuryAdmission) {
   const target = tx.to;
   if (!target || cursors.every(cursor => !cursor.graduation)) return;
   let cursor: FixturePostCursor | undefined;
@@ -259,8 +266,16 @@ export async function indexFixturePostTransaction(rpc: PublicClient, binding: Fi
   let collectDeadline: bigint | undefined;
   let externalCall: Hex | undefined;
   let externalCollection: Hex | undefined;
+  const projectTreasury = await resolveFixtureProjectTreasuryCall(cursors, tx, block, admitProjectTreasury);
   const externalFee = tx.value === 0n ? fixtureExternalFeeCall(tx.input) : undefined;
-  if (same(target, fixtureRouter)) {
+  if (projectTreasury?.call.operation === "lp-collect") {
+    cursor = projectTreasury.cursor;
+    const call = decodeFunctionData({ abi: engineAbi, data: projectTreasury.call.calldata });
+    if (call.functionName !== "collectLpFees") return;
+    collectDeadline = call.args[1]; externalCollection = projectTreasury.call.calldata;
+  } else if (projectTreasury?.call.operation === "lp-claim") {
+    cursor = projectTreasury.cursor; externalCall = projectTreasury.call.calldata;
+  } else if (same(target, fixtureRouter)) {
     decoded = fixtureSwapInput(tx.input);
     if (!decoded) return;
     cursor = cursors.find(item => item.graduation && same(item.graduation.poolId, decoded!.poolId));
@@ -300,10 +315,10 @@ export async function indexFixturePostTransaction(rpc: PublicClient, binding: Fi
   if (externalCall && !logs.some(log => same(log.address, cursor.lpLedger!) && same(log.topics[0] ?? "", fixturePostEventTopics.claim))) return;
   if (externalCollection && !logs.some(log => same(log.address, binding.graduationEngine) && same(log.topics[0] ?? "", fixturePostEventTopics.collect))) return;
   const { graduation, lpLedger: ledger, launch: { token } } = cursor;
-  const account = externalCall || externalCollection ? target : tx.from;
+  const account = projectTreasury?.call.treasury ?? (externalCall || externalCollection ? target : tx.from);
   const proof = decoded ? await swapSettlement(rpc, tx, block, receipt, logs, token, graduation, decoded)
-    : collectDeadline !== undefined ? await collectSettlement(rpc, tx, block, logs, token, graduation, ledger, collectDeadline, externalCollection)
-      : await claimSettlement(rpc, tx, block, logs, token, ledger, account, externalCall);
+    : collectDeadline !== undefined ? await collectSettlement(rpc, tx, block, logs, token, graduation, ledger, collectDeadline, externalCollection, projectTreasury?.call)
+      : await claimSettlement(rpc, tx, block, logs, token, ledger, account, externalCall, projectTreasury?.call);
   await verifyFixtureV4Position(rpc, binding, token, graduation, receipt.blockNumber);
   const event: FixturePostEvent = { ...block, transactionHash: tx.hash, account, ...proof };
   cursor.postEvents ??= [];
