@@ -64,6 +64,17 @@ jobs:
       - run: pnpm install --frozen-lockfile --filter @rmt/launch-website... --filter robinhood-meme-terminal
       - run: pnpm --filter @rmt/launch-website test:history
       - run: pnpm --filter @rmt/launch-website build
+      - name: Use the signed Ubuntu archive over HTTPS for browser dependencies
+        # The EC2 HTTP mirror previously consumed the job limit before tests ran.
+        # Keep Ubuntu suites, signing keys and all Playwright dependencies intact.
+        run: |
+          set -euo pipefail
+          grep -q '^Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg' \
+            /etc/apt/sources.list.d/ubuntu.sources
+          sudo sed -E -i 's|^URIs:.*|URIs: https://archive.ubuntu.com/ubuntu|g' \
+            /etc/apt/sources.list.d/ubuntu.sources
+          echo 'Acquire::Retries "2"; Acquire::http::Timeout "30"; Acquire::https::Timeout "30";' \
+            | sudo tee /etc/apt/apt.conf.d/80rmt-ci-network > /dev/null
       - run: pnpm exec playwright install --with-deps chromium webkit
       - name: Verify website navigation and read-only HTTP boundary
         run: |
