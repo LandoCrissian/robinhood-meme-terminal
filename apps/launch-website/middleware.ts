@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { isLaunchAddress } from "./lib/launch-data";
 import { creationReviewPath } from "./lib/launch-draft";
+import { isProfileApiRoute } from "./lib/server/profiles/config";
 
 const publicRoutes = new Set([
   "/", "/create-token", "/my-launches", "/wallet",
@@ -28,6 +29,12 @@ function isLaunchDetail(path: string) {
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  // These handlers enforce their own backend availability, exact origin,
+  // session, CSRF and request budgets. This is only a narrow routing allowlist.
+  if (isProfileApiRoute(pathname, request.method)) return NextResponse.next();
+  if ((request.method === "GET" || request.method === "HEAD") &&
+      (pathname === "/account/profile" || /^\/u\/[a-z][a-z0-9_]{2,23}$/.test(pathname) ||
+       /^\/creator\/0x[0-9a-fA-F]{40}$/.test(pathname))) return NextResponse.next();
   if (process.env.RMT_MOBILE_REVIEW_FIXTURE === "local-reviewed-31337" &&
       !process.env.NETLIFY && !process.env.VERCEL && !process.env.DEPLOY_ID && !process.env.CONTEXT && !process.env.RAILWAY_ENVIRONMENT_ID &&
       request.nextUrl.protocol === "http:" && ["127.0.0.1", "localhost"].includes(request.nextUrl.hostname) &&

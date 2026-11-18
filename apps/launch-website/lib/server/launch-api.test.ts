@@ -59,16 +59,16 @@ test("invalid, missing, unavailable and write requests are never shared", async 
   }
 });
 
-test("native per-IP rule covers exact history routes and draft review", () => {
-  const path = new RegExp(edge.pattern);
-  assert.equal(path.test(url.pathname), true);
-  assert.equal(path.test(url.pathname + "/" + token), true);
-  assert.equal(path.test("/launches/" + token), true);
-  assert.equal(path.test("/"), true);
-  assert.equal(path.test(creationReviewPath), true);
-  for (const rejected of ["/rmt", "/wallet", "/api/launchpad/config", "/api/launchpad/launches/random", "/launches/" + token + "/admin",
+test("one native per-IP read rule covers history, draft review and public profiles", () => {
+  // Netlify URLPattern named segments also limit invalid address requests;
+  // middleware and handlers remain responsible for rejecting those identities.
+  const limited = (pathname: string) => edge.path.some((pattern) => new RegExp("^" + pattern.replace(/:[a-z]+/g, "[^/]+") + "/?$").test(pathname));
+  for (const pathname of [url.pathname, url.pathname + "/" + token, "/launches/" + token, "/", creationReviewPath,
+    "/u/creator_one", "/creator/" + token, "/api/account/public/creator_one", "/api/account/creator/" + token,
+    "/api/account/avatar/" + token, "/api/account/session", "/api/launchpad/launches/random"]) assert.equal(limited(pathname), true);
+  for (const rejected of ["/rmt", "/wallet", "/api/launchpad/config", "/launches/" + token + "/admin",
     creationReviewPath + "/extra", "/api/launchpad/curve"]) {
-    assert.equal(path.test(rejected), false);
+    assert.equal(limited(rejected), false);
   }
   assert.deepEqual(edge.rateLimit, { windowSize: 60, windowLimit: 120, aggregateBy: ["ip", "domain"] });
 });

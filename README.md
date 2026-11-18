@@ -25,3 +25,9 @@ node docs/evidence/rmt-task041-closeout/verify-release.mjs
 ~~~
 
 The [deployment guide](docs/DEPLOYMENT.md) covers the isolated wallet/indexer rehearsal, pinned Robinhood 4663 fork and unsigned deployment evidence.
+
+## Wallet profiles in development
+
+The refined launchpad includes wallet sign-in, editable creator profiles and public `/u/username` pages. Sign-in uses a gas-free, server-verified Ethereum message and a Firebase session; connecting a wallet alone does not authenticate it. Creator launch history comes from canonical indexed records. Profiles cannot change project ownership or transaction permissions.
+
+The [profile guide](docs/PROFILES.md) covers the existing Firebase project, isolated emulator setup, verification and separate production activation requirements. Hosted previews keep profile authentication and all transactions disabled. No production Firebase records or rules were changed.

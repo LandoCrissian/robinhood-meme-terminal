@@ -66,6 +66,9 @@ const pages = [
   ["/create-token", "Create Token"],
   ["/my-launches", "My Launches"],
   ["/wallet", "Wallet"],
+  ["/account/profile", "Edit profile"],
+  ["/u/review_creator", "Creator profile"],
+  ["/creator/0x0000000000000000000000000000000000000001", "Creator profile"],
 ];
 for (const [path, text] of pages) {
   const response = await request(path);
@@ -96,6 +99,23 @@ const config = await readPublicJson(configResponse);
 assert.equal(config.status, "disabled");
 for (const field of ["deployment", "rpcUrl", "curve", "factory", "chainId"]) {
   assert.equal(config[field], undefined, `Preview config must not disclose ${field}`);
+}
+
+// The frontend may ask about a cookie session, but an unconfigured hosted
+// preview cannot initialize Firebase, issue a nonce, sign in or change data.
+const profileSession = await request("/api/account/session");
+assert.equal(profileSession.status, 200);
+const profileState = await readPublicJson(profileSession);
+assert.equal(profileState.authenticated, false);
+assert.equal(profileState.availability, "disabled");
+assert.equal(profileSession.headers.get("set-cookie"), null);
+assert.match(profileSession.headers.get("cache-control") ?? "", /no-store/);
+for (const [path, method] of [["/api/account/nonce", "POST"], ["/api/account/verify", "POST"], ["/api/account/logout", "POST"],
+  ["/api/account/profile", "PATCH"], ["/api/account/profile", "DELETE"], ["/api/account/avatar", "POST"]]) {
+  const response = await request(path, { method, headers: { Origin: site.origin, "Content-Type": "application/json" }, body: "{}" });
+  assert.equal(response.status, 404, `${method} ${path} must remain disabled`);
+  assert.equal((await readPublicJson(response)).availability, "disabled");
+  assert.equal(response.headers.get("set-cookie"), null);
 }
 
 const creationReviewPath = "/api/launchpad/creation-review";
@@ -231,6 +251,7 @@ try {
         if (draftRequests === 1) return route.fulfill({ status: 503 });
         return route.continue();
       }
+      if (sent.method() === "GET" && url.pathname === "/api/account/session" && !url.search) return route.continue();
       if (sent.method() !== "GET" || /^(?:\/api\/|\/preview-|\/mcp(?:\/|$)|\/\.netlify\/)/.test(url.pathname)) {
         operationalRequests.push(`${sent.method()} ${url.pathname}`);
         return route.abort();

@@ -28,7 +28,8 @@
     "apps/launch-website": {
       "entry": [
         "scripts/refresh-historical-launches.ts",
-        "lib/server/*.test.ts",
+        "lib/server/**/*.test.ts",
+        "scripts/profile-ui-smoke.mjs",
         "netlify/edge-functions/*.ts"
       ]
     },

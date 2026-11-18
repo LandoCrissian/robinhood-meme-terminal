@@ -57,3 +57,11 @@ The server suite passed fourteen actual-emulator tests, including genuine Fireba
 6. Run physical iPhone MetaMask/Rabby acceptance personally after the isolated browser and emulator checks. A supported signer must review the exact site/chain/account sign-in message. Token creation, trading, governance, contract deployment and treasury spending retain their separate release approvals.
 
 The [Firebase emulator guide](https://firebase.google.com/docs/emulator-suite/install_and_configure) and [Security Rules test guide](https://firebase.google.com/docs/rules/unit-tests) describe the official tooling. Emulator results do not establish physical-iPhone acceptance or production provider availability.
+
+## Dependency and hosting boundaries
+
+Firebase Admin `14.5.1` and Sharp `0.35.5` are server dependencies. Firebase CLI `15.36.0`, Firebase test SDK `13.4.0` and rules testing `6.0.0` are development-only. The production dependency audit reports no known advisories. Narrow pinned patches address newly observed `smol-toml`, `brace-expansion` and gRPC findings; no Solidity dependency or compiler input changes.
+
+The full development audit still reports one high (`picomatch`, `GHSA-fc5q-39xc-vjpf`) and four moderate advisories in the Firebase CLI dependency tree. Its upstream advisory currently offers no patched picomatch range; the current 4.x release remains flagged. This CLI is used with repository-controlled test configuration and is not shipped to Netlify Functions. The finding is retained, not suppressed. Do not process untrusted CLI glob patterns. These JavaScript results do not clear the existing contract-analysis findings or release gate.
+
+Two existing Netlify native rate rules are reused: 120 reads/minute per IP/domain across discovery and public profile reads, and 12 requests/minute for account mutation and production-preparation endpoints. Firestore transaction budgets independently bound sign-in and profile operations. Native enforcement may lag, is not a global quota, and deployment post-processing/429 behavior must be checked on the actual preview. These limits do not authorize production authentication.
