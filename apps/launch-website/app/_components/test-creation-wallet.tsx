@@ -11,6 +11,7 @@ import { assertTestWalletBinding, connectTestWallet, sameWalletHex as same, subs
 import { assertNoUnresolvedFinancialRequests } from "./treasury-wallet-controls";
 import { activeTestCreationKey, archiveCompletedTestCreation, completedCreationEvidence, completedTestCreationsKey,
   currentArchivedCreationEvidence, readActiveTestCreation, readCompletedTestCreations, type ArchivedCreationCheck, type CompletedTestCreation } from "../../lib/test-creation-history";
+import { projectTreasuryCreatorMatches } from "../../lib/project-treasury-draft";
 
 type Prepared = { draft: ReviewedLaunchDraft; wallet: Wallet; factory: string; request: TestCreationRequest; payouts: TestCreationPayouts };
 type Journal = { request: TestCreationRequest; transactionHash?: `0x${string}` };
@@ -38,10 +39,10 @@ async function post(body: object) {
   return payload;
 }
 
-async function prepare(draft: ReviewedLaunchDraft, account: string, factory: string, prior?: TestCreationRequest, treasuryIntentId?: `0x${string}`) {
+async function prepare(draft: ReviewedLaunchDraft, account: string, factory: string, prior?: TestCreationRequest, treasuryIntentId?: `0x${string}`, treasuryCreator?: string) {
   const { name, symbol, projectURI, treasury, treasuryShareBps } = draft;
   const fields: TestCreationFields = { name, symbol, projectURI, treasury, treasuryShareBps };
-  if (treasuryIntentId && (!isTransactionHash(treasuryIntentId) || prior && !same(prior.intentId, treasuryIntentId))) throw Error("The treasury's original creation intent changed");
+  if (!projectTreasuryCreatorMatches(account, treasuryIntentId, treasuryCreator) || treasuryIntentId && prior && !same(prior.intentId, treasuryIntentId)) throw Error("The treasury's original creator or creation intent changed");
   const intentId = prior?.intentId ?? treasuryIntentId ?? "0x" + Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) => byte.toString(16).padStart(2, "0")).join("");
   const payload = await post({ action: "prepare", account, fields, intentId, ...(prior && { deadline: prior.deadline }) });
   const { request, payouts } = payload;
@@ -69,11 +70,12 @@ async function verify(entry: Journal, inputHash?: string): Promise<TestCreationV
   };
 }
 
-export function TestCreationWallet({ factory, draft, isCurrentDraft, treasuryIntentId }: {
+export function TestCreationWallet({ factory, draft, isCurrentDraft, treasuryIntentId, treasuryCreator }: {
   factory: string;
   draft?: ReviewedLaunchDraft;
   isCurrentDraft(draft: ReviewedLaunchDraft): boolean;
   treasuryIntentId?: `0x${string}`;
+  treasuryCreator?: string;
 }) {
   const [ready, setReady] = useState(false);
   const [wallet, setWallet] = useState<Wallet>();
@@ -127,6 +129,7 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft, treasuryInt
       setMessage("Test wallet account or network changed. Connect and review again.");
     });
   }, [wallet]);
+  useEffect(() => { selection.current++; setPrepared(undefined); }, [treasuryIntentId, treasuryCreator]);
 
   async function withOperation(action: () => Promise<void>, onFailure: string) {
     if (!ready || operation.current) return;
@@ -148,12 +151,18 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft, treasuryInt
   async function connect() {
     const connected = await connectTestWallet();
     selection.current++;
+    if (!projectTreasuryCreatorMatches(connected.account, treasuryIntentId, treasuryCreator)) {
+      setWallet(undefined); setPrepared(undefined);
+      setMessage("Reconnect the original project treasury creator before reviewing this two-step launch. A zero fee allocation does not transfer its creator identity.");
+      return;
+    }
     setWallet(connected);
     setPrepared(undefined);
   }
 
   async function reviewCreation() {
     if (!wallet || !draft) return;
+    if (!projectTreasuryCreatorMatches(wallet.account, treasuryIntentId, treasuryCreator)) throw Error("The optional treasury belongs to a different creator");
     setPrepared(undefined);
     setTreasuryAcknowledged(false);
     const generation = selection.current;
@@ -161,7 +170,7 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft, treasuryInt
       setMessage("Choose a project treasury address different from the creator.");
       return;
     }
-    const { request, payouts } = await prepare(draft, wallet.account, factory, undefined, treasuryIntentId);
+    const { request, payouts } = await prepare(draft, wallet.account, factory, undefined, treasuryIntentId, treasuryCreator);
     await assertTestWalletBinding(wallet, request);
     if (!isCurrentDraft(draft) || selection.current !== generation) throw new Error("Review changed");
     setPrepared({ draft, wallet, factory, request, payouts });
@@ -183,7 +192,8 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft, treasuryInt
 
   async function confirm() {
     if (!prepared || !isCurrentDraft(prepared.draft) || !same(prepared.factory, factory)
-        || (prepared.draft.treasury && !treasuryAcknowledged) || (treasuryIntentId && !same(prepared.request.intentId, treasuryIntentId))) return;
+        || (prepared.draft.treasury && !treasuryAcknowledged) || !projectTreasuryCreatorMatches(prepared.wallet.account, treasuryIntentId, treasuryCreator)
+        || (treasuryIntentId && !same(prepared.request.intentId, treasuryIntentId))) return;
     const { request, payouts, wallet: bound, draft: candidate } = prepared;
     const generation = selection.current;
     setPrepared(undefined);
@@ -197,14 +207,14 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft, treasuryInt
         throw new Error("Creation already recorded");
       }
       assertNoUnresolvedFinancialRequests(bound.account);
-      const current = await prepare(candidate, bound.account, factory, request, treasuryIntentId);
+      const current = await prepare(candidate, bound.account, factory, request, treasuryIntentId, treasuryCreator);
       if (!sameTestCreationRequest(request, current.request) || !same(payouts.operating, current.payouts.operating)
           || !same(payouts.reserve, current.payouts.reserve) || payouts.treasuryKind !== current.payouts.treasuryKind) {
         throw new Error("Factory or reviewed terms changed");
       }
       await assertTestWalletBinding(bound, request);
       if (!mounted.current || !isCurrentDraft(candidate) || selection.current !== generation || testProviderAtWindow() !== bound.provider
-          || bound.provider.request !== bound.request) throw new Error("Review changed");
+          || bound.provider.request !== bound.request || !projectTreasuryCreatorMatches(bound.account, treasuryIntentId, treasuryCreator)) throw new Error("Review changed");
       let submitted: Journal = { request };
       assertNoUnresolvedFinancialRequests(bound.account);
       // Record before the wallet call, even when the provider returns no hash.

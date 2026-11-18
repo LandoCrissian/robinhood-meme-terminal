@@ -13,6 +13,12 @@ export const emptyProjectTreasuryDraft: ProjectTreasuryDraft = {
 };
 const address = (value: string) => /^0x[0-9a-f]{40}$/i.test(value) && BigInt(value) > 0xffffn;
 const intent = (value: string) => /^0x[0-9a-f]{64}$/i.test(value) && BigInt(value) !== 0n;
+/** A 0% contract treasury intentionally becomes zero-address core fee fields.
+ * Its separately verified creator binding must survive that normalization. */
+export function projectTreasuryCreatorMatches(account: string, intentId?: string, creator?: string): boolean {
+  return intentId === undefined ? creator === undefined : intent(intentId) && !!creator && address(creator)
+    && address(account) && creator.toLowerCase() === account.toLowerCase();
+}
 export function newProjectTreasuryIntent(random: Pick<Crypto, "getRandomValues"> = crypto): Hex {
   const bytes = random.getRandomValues(new Uint8Array(32));
   if (bytes.every(byte => byte === 0)) throw Error("Secure project intent unavailable");

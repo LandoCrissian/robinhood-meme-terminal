@@ -340,6 +340,7 @@ export function CreatorDraft({ executionTest, productionCreation }: {
     {(executionTest || productionCreation) && <div className="lpStack lpCreatorWallet">
       {executionTest ? <TestCreationWallet factory={executionTest.factory}
         treasuryIntentId={treasuryProof?.intentId}
+        treasuryCreator={treasuryProof?.creator}
         draft={reviewed}
         isCurrentDraft={(value) => value === currentDraft.current && reviewedAccountBinding.current === liveAccountBinding.current} />
         : productionCreation && <ProductionCreationWallet factory={productionCreation.factory} draft={reviewed}

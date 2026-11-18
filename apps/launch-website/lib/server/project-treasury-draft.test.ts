@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { emptyProjectTreasuryDraft, newProjectTreasuryIntent, readProjectTreasuryDraft, validateProjectTreasuryDraft } from "../project-treasury-draft";
+import { emptyProjectTreasuryDraft, newProjectTreasuryIntent, projectTreasuryCreatorMatches, readProjectTreasuryDraft, validateProjectTreasuryDraft } from "../project-treasury-draft";
 
 const controller = "0x1234567890123456789012345678901234567890";
 const intentId = "0x" + "12".repeat(32);
@@ -36,4 +36,15 @@ test("project intent uses secure random bytes and rejects an all-zero source", (
   } });
   assert.equal(newProjectTreasuryIntent(source(18)), intentId);
   assert.throws(() => newProjectTreasuryIntent(source(0)));
+});
+test("zero project-fee allocation never erases the verified two-step creator identity", () => {
+  const terms = validateProjectTreasuryDraft({ ...emptyProjectTreasuryDraft, mode: "contract", controller, intentId, sharePercent: "0" }); assert.ok(terms.ok);
+  assert.equal(terms.draft.treasuryShareBps, 0);
+  const normalizedCoreFields = { treasury: "", treasuryShareBps: 0 };
+  assert.equal(normalizedCoreFields.treasury, "", "The core factory receives zero address at0%, not an invented fee beneficiary");
+  assert.equal(projectTreasuryCreatorMatches(controller.toLowerCase(), intentId, controller), true);
+  assert.equal(projectTreasuryCreatorMatches("0x2234567890123456789012345678901234567890", intentId, controller), false, "Switching wallets cannot reuse another creator's optional treasury proof");
+  assert.equal(projectTreasuryCreatorMatches(controller, intentId), false, "An intent alone is insufficient even when core fee fields are empty");
+  assert.equal(projectTreasuryCreatorMatches(controller, undefined, controller), false);
+  assert.equal(projectTreasuryCreatorMatches(controller), true, "Ordinary opted-out creation needs no optional treasury identity");
 });
