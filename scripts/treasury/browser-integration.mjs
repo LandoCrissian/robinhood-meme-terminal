@@ -79,10 +79,15 @@ export async function createTreasuryProjectsFromForm({ browserEngine, site, out,
       await page.waitForFunction(({ width, height }) => innerWidth === width && innerHeight === height
         && matchMedia("(max-width:900px)").matches === (width <= 900), { width, height });
       await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-      const fields = await page.locator("main input:visible:not([type=radio]):not([type=checkbox]):not([type=range]), main select:visible").evaluateAll(items =>
+      const fields = await page.locator("main input:visible:not([readonly]):not([type=radio]):not([type=checkbox]):not([type=range]), main select:visible").evaluateAll(items =>
         items.map(el => ({ label: el.getAttribute("aria-label") ?? el.id, height: el.getBoundingClientRect().height, fontSize: parseFloat(getComputedStyle(el).fontSize) })));
       assert.ok(fields.every(field => field.height >= 44 && (width > 900 || field.fontSize >= 16)), json(fields));
-      evidence.layouts.push({ name, label, width, height, fields }); await capture(name + "-" + label);
+      const readOnlyDisplays = await page.locator("main input[readonly]:visible").evaluateAll(items => items.map(el => ({ id: el.id,
+        value: el.value, readOnly: el.readOnly, height: el.getBoundingClientRect().height, fontSize: parseFloat(getComputedStyle(el).fontSize) })));
+      // The approved compact fixed-supply display is not an interactive touch
+      // target. Keep its exact value/read-only and readable phone text checks.
+      assert.ok(readOnlyDisplays.every(field => field.readOnly && field.value === "1,000,000,000 tokens" && (width > 900 || field.fontSize >= 16)));
+      evidence.layouts.push({ name, label, width, height, fields, readOnlyDisplays }); await capture(name + "-" + label);
     }
     await page.setViewportSize({ width: 390, height: 844 });
   }
@@ -90,6 +95,8 @@ export async function createTreasuryProjectsFromForm({ browserEngine, site, out,
     await page.goto(site + "/create-token");
     const edit = button("Edit draft"); if (await edit.isVisible()) await edit.click();
     await page.getByLabel("Token name", { exact: true }).fill(name); await page.getByLabel("Ticker", { exact: true }).fill(symbol);
+    const fixedSupply = page.getByLabel("Fixed supply", { exact: true });
+    assert.equal(await fixedSupply.inputValue(), "1,000,000,000 tokens"); assert.equal(await fixedSupply.getAttribute("readonly"), "");
     const details = page.locator("details.lpCreatorMetadata"); if (!await details.evaluate(el => el.open)) await details.locator("summary").click();
     await page.getByLabel("Project or metadata URL", { exact: true }).fill("https://example.test/" + symbol.toLowerCase());
     const settings = page.locator("details.lpDraftTreasury"); if (!await settings.evaluate(el => el.open)) await settings.locator("summary").click();
