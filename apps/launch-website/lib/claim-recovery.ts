@@ -1,5 +1,5 @@
 import { keccak256, type Hex } from "viem";
-import { claimDelegatePin, claimExecutionIdentity, isClaimExecutionReview, type ClaimExecutionReview } from "./claim-profiles";
+import { claimDelegatePin, claimExecutionIdentity, claimProfileDigest, isClaimExecutionReview, type ClaimExecutionReview } from "./claim-profiles";
 import { readEarningsClaimJournal } from "./earnings-claims";
 import { claimSettlementProfile, claimSettlementStages, type ClaimSettlementResult } from "./production-claims";
 import { isTransactionHash } from "./test-creation";
@@ -30,6 +30,17 @@ const terminal = (j: ClaimRecoveryJournal) => ["settled", "reverted"].includes(j
 const safeSlot = (r: ClaimExecutionReview) => r.wallet.safe ? `${r.chainId}:${r.actor.toLowerCase()}:${r.wallet.safe.nonce}` : null;
 const sameSafeProposal = (a: ClaimExecutionReview, b: ClaimExecutionReview) => !!a.wallet.safe && !!b.wallet.safe
   && safeSlot(a) === safeSlot(b) && same(a.wallet.safe.transactionHash, b.wallet.safe.transactionHash);
+function rejectedSafeRenewal(j: ClaimRecoveryJournal, review: ClaimExecutionReview) {
+  if (j.stage !== "wallet-rejected" || j.transactionHash !== null || j.verification !== null || !sameSafeProposal(j.review, review)) return false;
+  // A definite EIP-1193 rejection is different from an unknown wallet outcome.
+  // Renewal may refresh the read anchor and outer payer/fee review, but may not
+  // replace the Safe CALL, beneficiary, assets, amounts or custody commitment.
+  const terms = (r: ClaimExecutionReview) => {
+    const { reviewBlockNumber: _number, reviewBlockHash: _hash, reviewTimestamp: _time, reviewExpiresAt: _expires, ...immutable } = r.inner;
+    return claimProfileDigest(immutable);
+  };
+  return terms(j.review) === terms(review);
+}
 const provenSafeOuterRevert = (j: ClaimRecoveryJournal) => j.review.kind === "safe-1.4.1" && j.stage === "reverted" && !!j.transactionHash
   && j.verification?.providers.status === "agree" && j.verification.receiptObserved && !!j.verification.canonicalAt
   && j.verification.outerReceiptStatus === "reverted";
@@ -106,6 +117,10 @@ function matchingResult(j: Pick<ClaimRecoveryJournal, "review" | "transactionHas
     || ![null, "synthetic-local-v1"].includes(r.finality.policy) || typeof r.finality.reason !== "string" || r.finality.reason.length > 1024) return false;
   if (r.stage === "reverted" && (!r.receiptObserved || !r.transactionHash || !point(r.canonicalAt) || r.providers.status !== "agree"
     || r.providers.ids.length !== 2 || !["success", "reverted"].includes(r.outerReceiptStatus ?? "") || r.innerExecution !== "reverted")) return false;
+  if (r.stage === "receipt-observed" && (!r.receiptObserved || !r.transactionHash || !point(r.canonicalAt)
+    || r.providers.ids.length !== 2 || !["agree", "unavailable"].includes(r.providers.status)
+    || r.outerReceiptStatus !== "success" || r.innerExecution !== "unproven"
+    || BigInt(r.canonicalAt.blockNumber) <= BigInt(v.inner.reviewBlockNumber))) return false;
   if (["canonical-l2", "indexing-pending", "settled"].includes(r.stage)) {
     const a = r.activity;
     if (!r.receiptObserved || !point(r.canonicalAt) || !a || !r.transactionHash || r.providers.status !== "agree" || r.providers.ids.length !== 2
@@ -131,8 +146,15 @@ function matchingResult(j: Pick<ClaimRecoveryJournal, "review" | "transactionHas
 }
 export function applyClaimSettlement(storage: Storage, original: ClaimRecoveryJournal, result: ClaimSettlementResult, now = Date.now()) {
   if (!matchingResult(original, result)) throw new Error("Settlement response does not match the original claim");
+  // An entered recovery hash is only a candidate. An unavailable response or a
+  // pending transaction has not proved its exact receipt/envelope identity and
+  // must not permanently pin a typo as the immutable original transaction.
+  // A hash already returned by the submitting wallet is always retained.
+  const boundReceipt = result.receiptObserved && !!result.canonicalAt && result.providers.status === "agree"
+    && result.providers.ids.length === 2 && ["receipt-observed", "canonical-l2", "indexing-pending", "settled", "reverted"].includes(result.stage);
   const next: ClaimRecoveryJournal = { ...original, stage: result.stage,
-    transactionHash: result.transactionHash ?? original.transactionHash, verification: result, updatedAt: Math.max(now, original.updatedAt) };
+    transactionHash: original.transactionHash ?? (boundReceipt ? result.transactionHash ?? null : null),
+    verification: result, updatedAt: Math.max(now, original.updatedAt) };
   storeClaimJournal(storage, next); return next;
 }
 
@@ -158,9 +180,11 @@ export async function submitIsolatedClaim(input: { review: ClaimExecutionReview;
     }
     for (const j of listClaimJournals(storage)) {
       if (j.review.intentHash === review.intentHash) continue;
-      if (!terminal(j) && slot(j.review) === slot(review)) throw new Error("Another project or claim uses this wallet nonce. Recover it before continuing.");
+      const rejectedRenewal = rejectedSafeRenewal(j, review);
+      if (!terminal(j) && slot(j.review) === slot(review) && !rejectedRenewal) throw new Error("Another project or claim uses this wallet nonce. Recover it before continuing.");
       if (safeSlot(review) && safeSlot(j.review) === safeSlot(review)
         && (!terminal(j) || provenSafeOuterRevert(j))) {
+        if (rejectedRenewal) continue;
         if (!provenSafeOuterRevert(j) || !sameSafeProposal(j.review, review) || !safeRetryProofs.has(j.review.reviewHash)
           || same(j.review.gasPayer, review.gasPayer) && BigInt(review.gasPayerEvidence.nonce) <= BigInt(j.review.gasPayerEvidence.nonce)) {
           throw new Error("This Safe nonce has an earlier authorization. Recover it; only the same proven-reverted Safe proposal may receive a fresh payer review.");

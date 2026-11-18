@@ -164,7 +164,7 @@ export async function testClaimProfilesBrowser({ browserEngine, site, out, rpc, 
     await page.evaluate(value => window.fixtureClaimWallet.setDecision(value), decision); decisions++;
     if (decision === "reject") {
       const before = evidence.sends.length; await button("Confirm synthetic claim transaction", profile()).click();
-      await profile().getByText("Wallet request rejected. No retry or signature will be requested automatically.", { exact: true }).waitFor();
+      await profile().getByText("Wallet request rejected. The reviewed request is retained for an explicit retry. No signature will be requested automatically.", { exact: true }).waitFor();
       assert.equal(evidence.sends.length, before); return null;
     }
     const result = await responseFor("verify", () => button("Confirm synthetic claim transaction", profile()).click());
@@ -204,7 +204,8 @@ export async function testClaimProfilesBrowser({ browserEngine, site, out, rpc, 
     await button("Connect synthetic claim wallet", profile()).waitFor();
     assert.equal(await button("Confirm synthetic claim transaction", profile()).count(), 0);
     await connect(delegated); await review(); await layouts("claim-wallet-delegated-review");
-    await confirm("reject"); await review();
+    await confirm("reject");
+    assert.equal(await button("Confirm synthetic claim transaction", profile()).isVisible(), true, "A definite rejection retains the exact unsubmitted review");
     const delegatedReview = structuredClone(currentReview); await confirm("lose");
     assert.equal(evidence.sends.length, 1); await page.reload();
     await recover(delegatedReview, ["submitted", "unavailable"]);

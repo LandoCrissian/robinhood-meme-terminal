@@ -84,7 +84,7 @@ test("unknown wallet outcome and missing hash survive refresh without another si
     const original = readClaimJournal(memory, review)!; assert.equal(original.stage, "hash-missing"); assert.equal(original.transactionHash, null);
     const restored = listClaimJournals(memory)[0]; assert.deepEqual(restored, original);
     const recovered = applyClaimSettlement(memory, restored, pending(review), now(review)());
-    assert.equal(recovered.transactionHash, eh(401)); assert.equal(recovered.stage, "submitted");
+    assert.equal(recovered.transactionHash, null, "A candidate pending hash is not an independently bound receipt identity"); assert.equal(recovered.stage, "submitted");
     assert.equal(w.sends.length, 1);
   }
 });
@@ -96,6 +96,47 @@ test("wrapped rejection permits only a fresh explicit retry of the same unsubmit
   const retry = wallet(review, memory);
   await submitIsolatedClaim({ review, storage: memory, wallet: retry, location, revalidate: unchanged(review), now: now(review) });
   assert.equal(retry.sends.length, 1);
+});
+test("a wrong manually entered recovery hash remains replaceable until exact canonical binding", async () => {
+  const { review, memory } = await fixture(), w = wallet(review, memory, () => undefined);
+  const original = await submitIsolatedClaim({ review, storage: memory, wallet: w, location, revalidate: unchanged(review), now: now(review) });
+  assert.equal(original.transactionHash, null);
+  let recovered = original;
+  for (const stage of ["unavailable", "submitted"] as const) {
+    recovered = applyClaimSettlement(memory, recovered, { ...pending(review, eh(999)), stage,
+      providers: { status: stage === "submitted" ? "agree" : "unavailable", ids: ["synthetic-a", "synthetic-b"] } }, now(review)());
+    assert.equal(recovered.transactionHash, null); assert.equal(readClaimJournal(memory, review)?.transactionHash, null);
+  }
+  recovered = applyClaimSettlement(memory, recovered, canonical(review), now(review)());
+  assert.equal(recovered.transactionHash, eh(401)); assert.equal(recovered.stage, "settled");
+  assert.equal(w.sends.length, 1, "Correcting a candidate hash performs no second wallet request");
+});
+test("explicit Safe wallet rejection permits only the same approved claim terms on a fresh review", async () => {
+  const { review, memory } = await safeReview();
+  const rejected = wallet(review, memory, () => { throw { code: 4001 }; });
+  await assert.rejects(submitIsolatedClaim({ review, storage: memory, wallet: rejected, location, revalidate: unchanged(review), now: now(review) }));
+  const fresh = rehash({ ...structuredClone(review),
+    observed: { blockNumber: "12", blockHash: eh(12), timestamp: new Date((review.inner.reviewTimestamp + 2) * 1000).toISOString() },
+    inner: { ...review.inner, reviewBlockNumber: "0xc", reviewBlockHash: eh(12), reviewTimestamp: review.inner.reviewTimestamp + 2, reviewExpiresAt: review.expiresAt + 2 },
+    expiresAt: review.expiresAt + 2,
+    fees: review.fees.status === "unavailable" ? review.fees : { ...review.fees, observedBlockNumber: "12", observedBlockHash: eh(12) },
+  });
+  assert.equal(fresh.wallet.safe!.transactionHash, review.wallet.safe!.transactionHash);
+  const changedAmounts = rehash({ ...structuredClone(fresh), inner: { ...fresh.inner, expectedNativeWei: (BigInt(fresh.inner.expectedNativeWei) + 1n).toString() } });
+  const altered = wallet(changedAmounts, memory);
+  await assert.rejects(submitIsolatedClaim({ review: changedAmounts, storage: memory, wallet: altered, location,
+    revalidate: unchanged(changedAmounts), now: now(changedAmounts) }), /wallet nonce|Safe nonce/);
+  assert.equal(altered.sends.length, 0);
+  const retry = wallet(fresh, memory);
+  await submitIsolatedClaim({ review: fresh, storage: memory, wallet: retry, location, revalidate: unchanged(fresh), now: now(fresh) });
+  assert.equal(retry.sends.length, 1); assert.equal(listClaimJournals(memory).length, 2);
+  assert.equal(readClaimJournal(memory, review)?.stage, "wallet-rejected", "Original authorization evidence remains preserved");
+  const unknown = rehash({ ...structuredClone(fresh), inner: { ...fresh.inner, reviewTimestamp: fresh.inner.reviewTimestamp + 1,
+    reviewExpiresAt: fresh.expiresAt + 1 }, expiresAt: fresh.expiresAt + 1 });
+  const unknownRetry = wallet(unknown, memory);
+  await assert.rejects(submitIsolatedClaim({ review: unknown, storage: memory, wallet: unknownRetry, location,
+    revalidate: unchanged(unknown), now: now(unknown) }), /wallet nonce|Safe nonce/);
+  assert.equal(unknownRetry.sends.length, 0, "A subsequently submitted or unknown outcome remains reserved");
 });
 test("production, hosted origins, unavailable fees and expired reviews issue zero wallet calls", async () => {
   const { review, memory } = await fixture();
