@@ -7,6 +7,11 @@ type Storage = Pick<globalThis.Storage, "getItem" | "setItem" | "removeItem">;
 export type TestCreationJournal = { request: TestCreationRequest; transactionHash?: `0x${string}` };
 export type CompletedTestCreation = { schemaVersion: 1; request: TestCreationRequest; transactionHash: `0x${string}`;
   verification: TestCreationVerification; archivedAt: number };
+export type ArchivedCreationCheck = { transactionHash: `0x${string}`; verification: TestCreationVerification };
+export function currentArchivedCreationEvidence(archived: Pick<CompletedTestCreation, "transactionHash"> | undefined, checked: ArchivedCreationCheck | undefined) {
+  return archived && checked && archived.transactionHash.toLowerCase() === checked.transactionHash.toLowerCase()
+    && (!checked.verification.transactionHash || checked.verification.transactionHash.toLowerCase() === checked.transactionHash.toLowerCase()) ? checked.verification : undefined;
+}
 export function readActiveTestCreation(storage: Storage): TestCreationJournal | undefined {
   const raw = storage.getItem(activeTestCreationKey); if (raw === null) return;
   if (raw.length > 4096) throw Error("Invalid stored creation request");

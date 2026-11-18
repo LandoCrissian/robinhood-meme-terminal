@@ -10,7 +10,7 @@ import { calldataMatchesTestCreation, isLocalTestWallet, isTestCreationPayouts, 
 import { assertTestWalletBinding, connectTestWallet, sameWalletHex as same, subscribeTestWallet, testProviderAtWindow, testWalletErrorCode, type TestWallet as Wallet } from "../../lib/test-wallet";
 import { assertNoUnresolvedFinancialRequests } from "./treasury-wallet-controls";
 import { activeTestCreationKey, archiveCompletedTestCreation, completedCreationEvidence, completedTestCreationsKey,
-  readActiveTestCreation, readCompletedTestCreations, type CompletedTestCreation } from "../../lib/test-creation-history";
+  currentArchivedCreationEvidence, readActiveTestCreation, readCompletedTestCreations, type ArchivedCreationCheck, type CompletedTestCreation } from "../../lib/test-creation-history";
 
 type Prepared = { draft: ReviewedLaunchDraft; wallet: Wallet; factory: string; request: TestCreationRequest; payouts: TestCreationPayouts };
 type Journal = { request: TestCreationRequest; transactionHash?: `0x${string}` };
@@ -81,7 +81,7 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft, treasuryInt
   const [journal, setJournal] = useState<Journal>();
   const [result, setResult] = useState<TestCreationVerification>();
   const [history, setHistory] = useState<CompletedTestCreation[]>([]), [historySelection, setHistorySelection] = useState("");
-  const [historyResult, setHistoryResult] = useState<TestCreationVerification>();
+  const [historyCheck, setHistoryCheck] = useState<ArchivedCreationCheck>();
   const [message, setMessage] = useState("");
   const [treasuryAcknowledged, setTreasuryAcknowledged] = useState(false);
   const [recoveryHash, setRecoveryHash] = useState("");
@@ -107,6 +107,7 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft, treasuryInt
     const storageChanged = (event: StorageEvent) => {
       if (event.key !== journalKey && event.key !== completedTestCreationsKey && event.key !== null) return;
       setResult(undefined);
+      setHistoryCheck(undefined);
       setPrepared(undefined);
       restore();
     };
@@ -265,7 +266,13 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft, treasuryInt
     });
   }
   const archived = history.find(entry => entry.transactionHash === historySelection) ?? history[history.length - 1];
-  async function recheckHistory() { if (archived) setHistoryResult(await verify({ request: archived.request, transactionHash: archived.transactionHash })); }
+  const historyResult = currentArchivedCreationEvidence(archived, historyCheck);
+  async function recheckHistory() {
+    if (!archived) return;
+    const original = archived;
+    const verification = await verify({ request: original.request, transactionHash: original.transactionHash });
+    setHistoryCheck({ transactionHash: original.transactionHash, verification });
+  }
 
   if (!draft && !journal && !message && !history.length) return null;
   const currentReview = prepared && prepared.draft === draft && prepared.wallet === wallet && same(prepared.factory, factory)
@@ -328,7 +335,7 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft, treasuryInt
           onClick={() => void withOperation(reviewCreation, "The test deployment or wallet could not be verified. Try review again.")}>Review test creation</button>}
     </>}
     {archived && <details className="lpRecovery lpForm"><summary>Completed creation history</summary>
-      <label>Archived creation<select aria-label="Archived creation" value={archived.transactionHash} disabled={busy} onChange={event => { setHistorySelection(event.target.value); setHistoryResult(undefined); }}>
+      <label>Archived creation<select aria-label="Archived creation" value={archived.transactionHash} disabled={busy} onChange={event => { setHistorySelection(event.target.value); setHistoryCheck(undefined); }}>
         {history.map(entry => <option key={entry.transactionHash} value={entry.transactionHash}>{entry.verification.status === "confirmed" ? entry.verification.token : "Reverted creation"} · {entry.transactionHash.slice(0, 10)}</option>)}</select></label>
       <dl className="lpFacts"><dt>Original creator</dt><dd className="lpAddress">{archived.request.from}</dd><dt>Original factory</dt><dd className="lpAddress">{archived.request.to}</dd>
         <dt>Original intent</dt><dd className="lpAddress">{archived.request.intentId}</dd><dt>Original transaction</dt><dd className="lpAddress">{archived.transactionHash}</dd>

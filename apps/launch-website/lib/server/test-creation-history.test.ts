@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { encodeFunctionData, parseAbi, zeroAddress } from "viem";
-import { activeTestCreationKey, archiveCompletedTestCreation, completedTestCreationsKey, readActiveTestCreation, readCompletedTestCreations } from "../test-creation-history";
+import { activeTestCreationKey, archiveCompletedTestCreation, completedTestCreationsKey, currentArchivedCreationEvidence, readActiveTestCreation, readCompletedTestCreations } from "../test-creation-history";
 import { testCreationSignature, type TestCreationRequest, type TestCreationVerification } from "../test-creation";
 import { ea, eh } from "./earnings-test-fixture";
 function memory() { const map = new Map<string, string>(); return { getItem: (key: string) => map.get(key) ?? null,
@@ -40,4 +40,14 @@ test("bounded completed history never evicts an original transaction to start an
   const next = fixture(17); s.setItem(activeTestCreationKey, JSON.stringify(next.journal));
   assert.throws(() => archiveCompletedTestCreation(s, next.journal, next.verification, 2000), /history is full/);
   assert.deepEqual(readActiveTestCreation(s), next.journal); assert.equal(readCompletedTestCreations(s).length, 16);
+});
+test("an asynchronous archive check is never attributed to a newer selection from another tab", () => {
+  const a = fixture(1), b = fixture(2), checked = { transactionHash: a.journal.transactionHash, verification: a.verification };
+  assert.equal(currentArchivedCreationEvidence(a.journal, checked), a.verification);
+  assert.equal(currentArchivedCreationEvidence(b.journal, checked), undefined, "A newly appended/default-selected archive must not inherit an older response");
+  assert.equal(currentArchivedCreationEvidence(b.journal, { transactionHash: b.journal.transactionHash, verification: a.verification }), undefined);
+  assert.equal(currentArchivedCreationEvidence(b.journal, { transactionHash: b.journal.transactionHash, verification: b.verification }), b.verification);
+  const unavailable = { transactionHash: a.journal.transactionHash, verification: { status: "unavailable" as const } };
+  assert.equal(currentArchivedCreationEvidence(a.journal, unavailable)?.status, "unavailable");
+  assert.equal(currentArchivedCreationEvidence(b.journal, unavailable), undefined);
 });
