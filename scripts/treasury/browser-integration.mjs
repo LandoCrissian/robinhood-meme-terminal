@@ -17,11 +17,19 @@ export async function createTreasuryProjectsFromForm({ browserEngine, site, out,
   page.setDefaultTimeout(30_000);
   const evidence = { schemaVersion: 1, profile: "rmt-project-treasury-browser-v1", chainId: 31337,
     scope: "SYNTHETIC_BROWSER_NOT_PHYSICAL_IPHONE_OR_PRODUCTION", status: "incomplete", sends: [], reviews: [],
-    recoveries: [], screenshots: [], layouts: [], pageErrors: [], externalRequests: [], walletMethods: [] };
+    recoveries: [], screenshots: [], layouts: [], pageErrors: [], externalRequests: [], walletMethods: [], readNetwork: [] };
   const save = () => writeFileSync(join(out, "project-treasury-browser-evidence.json"), json(evidence));
   let currentReview;
   const button = (name, scope = page) => scope.getByRole("button", { name, exact: true });
   page.on("pageerror", error => evidence.pageErrors.push(error.message));
+  const readEvent = (request, state) => {
+    if (new URL(request.url()).pathname === "/api/launchpad/project-treasury" && evidence.readNetwork.length < 200) {
+      evidence.readNetwork.push({ path: new URL(request.url()).pathname, method: request.method(), state }); save();
+    }
+  };
+  page.on("request", request => readEvent(request, "requested"));
+  page.on("response", response => readEvent(response.request(), "response:" + response.status()));
+  page.on("requestfailed", request => readEvent(request, "failed:" + request.failure()?.errorText));
   await context.route("**/*", route => {
     if (new URL(route.request().url()).origin !== new URL(site).origin) { evidence.externalRequests.push(route.request().url()); return route.abort(); }
     return route.continue();
@@ -222,8 +230,16 @@ export async function claimCurveThroughTreasuryPage({ session, treasury, ledger,
     await page.goto(site + "/my-launches/treasury");
     await page.getByLabel("Project treasury address", { exact: true }).fill(treasury);
     const pending = page.waitForResponse(result => new URL(result.url()).pathname === "/api/launchpad/project-treasury");
-    await button("View treasury").click(); const result = await pending, snapshot = await result.json();
-    assert.equal(snapshot.status, "ready", json(snapshot)); return snapshot;
+    try {
+      await button("View treasury").click(); const result = await pending, snapshot = await result.json();
+      assert.equal(snapshot.status, "ready", json(snapshot)); return snapshot;
+    } catch (error) {
+      session.evidence.dashboardFailure = await page.evaluate(() => ({ url: location.href, readyState: document.readyState,
+        inputValue: document.querySelector("#project-treasury-address")?.value,
+        submitDisabled: document.querySelector('form[aria-label="Find project treasury"] button')?.disabled,
+        body: document.body.innerText }));
+      await session.capture("project-treasury-dashboard-read-failure"); session.save(); throw error;
+    }
   };
   await mine(); await ready(); const before = await open();
   assert.ok(BigInt(before.earnings.curveNativeWei) > 0n);
