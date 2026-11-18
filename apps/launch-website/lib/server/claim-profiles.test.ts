@@ -115,6 +115,7 @@ test("rehashing an unknown outer property or alternate Safe CALL never authorize
     const altered = changed(r, v => Object.assign(v.outer!, { [key]: [] })); assert.equal(isClaimExecutionReview(altered), false);
   }
   assert.equal(isClaimExecutionReview(changed(r, v => { v.outer!.nonce = "0x00"; })), false);
+  assert.equal(isClaimExecutionReview(changed(r, v => { v.wallet.actorNonce = "99"; })), false);
   assert.equal(isClaimExecutionReview(changed(r, v => {
     if (v.fees.status === "unavailable") throw Error("Ready fees required");
     v.fees.gasLimit = "30000001"; v.fees.proposedMaximumWei = (30000001n * BigInt(v.fees.maxFeePerGasWei)).toString(); v.outer!.gas = "0x1c9c381";
@@ -151,6 +152,9 @@ test("historical profile verification cryptographically rejects rehashed forged 
   });
   assert.equal(isClaimExecutionReview(forged), true, "Shape/digest validation is not signature authorization");
   assert.equal(await verifyClaimExecutionProfileAt(f.context, forged, 11n, "receipt"), false);
+  const wrongRuntimeRecord = changed(r, copy => { copy.wallet.safe!.singletonRuntimeHash = eh(999); });
+  assert.equal(isClaimExecutionReview(wrongRuntimeRecord), true);
+  assert.equal(await verifyClaimExecutionProfileAt(f.context, wrongRuntimeRecord, 11n, "receipt"), false);
 });
 test("canonical digest is independent of property insertion order and uses deterministic ordering", () => {
   assert.equal(claimProfileDigest({ z: 1, a: { k: 2, Z: 3 } }), claimProfileDigest({ a: { Z: 3, k: 2 }, z: 1 }));

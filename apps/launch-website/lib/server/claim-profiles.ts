@@ -270,6 +270,8 @@ export async function verifyClaimExecutionProfileAt(context: EarningsReadContext
       const before = review.wallet.safe, after = observed.safe!;
       must(same(observed.actorCodeHash, review.wallet.actorCodeHash) && observed.actorNonce === review.wallet.actorNonce
         && JSON.stringify(after.owners) === JSON.stringify(before.owners) && after.threshold === before.threshold);
+      must((["singleton", "singletonRuntimeHash", "proxyRuntimeHash", "fallbackHandler", "fallbackRuntimeHash"] as const)
+        .every(field => same(after[field], before[field])) && after.evmNonce === before.evmNonce, "Recorded Safe implementation or EVM nonce differs");
       must(phase === "receipt" ? BigInt(after.nonce) >= BigInt(before.nonce) + 1n : after.nonce === before.nonce);
       must(same(hashTypedData(claimSafeTypedData(context.chainId, review.actor, before.transaction)), before.transactionHash));
       if (before.approvalsCollected === 2) { must(before.signatures); await verifySafeSignatures(after.owners, before.transactionHash, before.signatures); }

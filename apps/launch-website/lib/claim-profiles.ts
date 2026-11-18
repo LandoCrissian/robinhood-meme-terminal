@@ -90,7 +90,9 @@ export function isClaimExecutionReview(value: unknown): value is ClaimExecutionR
       || !hash(r.intentHash) || !hash(r.reviewHash) || claimExecutionIdentity(r) !== r.intentHash || claimExecutionReviewHash(r) !== r.reviewHash) return false;
     const safe = r.wallet.safe;
     if (r.wallet.delegation !== null && (!shape(r.wallet.delegation, ["address", "designator", "runtimeHash"])
-      || !address(r.wallet.delegation.address) || !hash(r.wallet.delegation.runtimeHash) || !/^0xef0100[0-9a-f]{40}$/i.test(r.wallet.delegation.designator))) return false;
+      || !address(r.wallet.delegation.address) || !hash(r.wallet.delegation.runtimeHash) || !/^0xef0100[0-9a-f]{40}$/i.test(r.wallet.delegation.designator)
+      || !same(r.wallet.delegation.address, claimDelegatePin.address) || !same(r.wallet.delegation.designator, claimDelegatePin.designator)
+      || !same(r.wallet.delegation.runtimeHash, claimDelegatePin.runtimeHash))) return false;
     if ((r.kind === "metamask-7702") !== (r.wallet.delegation !== null)) return false;
     if (r.kind === "safe-1.4.1") {
       if (!safe || !shape(safe, ["address", "version", "singleton", "singletonRuntimeHash", "proxyRuntimeHash", "fallbackHandler", "fallbackRuntimeHash", "owners", "threshold", "nonce", "evmNonce", "transaction", "transactionHash", "signatures", "approvalsCollected", "expiryEnforcement"])
@@ -99,7 +101,7 @@ export function isClaimExecutionReview(value: unknown): value is ClaimExecutionR
         || safe.expiryEnforcement !== (r.inner.deadline ? "inner-contract-deadline" : "safe-nonce-only")
         || !same(safe.address, r.actor) || safe.version !== "1.4.1" || safe.threshold !== 2 || safe.owners.length !== 3
         || !safe.owners.every(address) || new Set(safe.owners.map(v => v.toLowerCase())).size !== 3
-        || !decimal(safe.nonce) || !decimal(safe.evmNonce) || !hash(safe.transactionHash)
+        || !decimal(safe.nonce) || !decimal(safe.evmNonce) || safe.evmNonce !== r.wallet.actorNonce || !hash(safe.transactionHash)
         || !same(safe.transaction.to, r.inner.to) || safe.transaction.data !== r.inner.data || safe.transaction.value !== "0"
         || safe.transaction.operation !== 0 || safe.transaction.safeTxGas !== "0" || safe.transaction.baseGas !== "0"
         || safe.transaction.gasPrice !== "0" || !/^0x0{40}$/i.test(safe.transaction.gasToken) || !/^0x0{40}$/i.test(safe.transaction.refundReceiver)
@@ -108,7 +110,7 @@ export function isClaimExecutionReview(value: unknown): value is ClaimExecutionR
         || ![0, 2].includes(safe.approvalsCollected) || (safe.approvalsCollected === 0 ? safe.signatures !== null || r.outer !== null
           : !safe.signatures || !/^0x[0-9a-f]{260}$/i.test(safe.signatures))) return false;
     } else if (safe !== null || r.authorizations.ownerApprovalsRequired !== 0 || r.authorizations.ownerApprovalsCollected !== 0
-      || !same(r.actor, r.gasPayer) || BigInt(r.inner.nonce) !== BigInt(r.gasPayerEvidence.nonce)) return false;
+      || !same(r.actor, r.gasPayer) || r.wallet.actorNonce !== r.gasPayerEvidence.nonce || BigInt(r.inner.nonce) !== BigInt(r.gasPayerEvidence.nonce)) return false;
     if (r.outer && (!shape(r.outer, ["type", "chainId", "from", "to", "value", "data", "nonce"], ["gas", "maxFeePerGas", "maxPriorityFeePerGas"])
       || r.outer.chainId !== r.inner.chainId || r.outer.type !== "0x2" || !same(r.outer.from, r.gasPayer)
       || !same(r.outer.to, safe ? safe.address : r.inner.to) || r.outer.value !== "0x0"
