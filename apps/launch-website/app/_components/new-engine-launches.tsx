@@ -40,8 +40,7 @@ export function NewEngineLaunches({ directory }: { directory: NewEngineDirectory
       return <article className="lpLaunchCard" key={`${registration.chainId}:${registration.factory}:${registration.token}`}>
         <div className="lpTokenHeading"><TokenArtwork symbol={registration.symbol} /><div><h3><Link href={`/launches/${registration.token}`} prefetch={false}>{registration.name}</Link></h3><span className="lpCardSymbol">${registration.symbol}</span></div></div>
         <span className="lpPill lpLifecycle" data-stage={lifecycle.stage}>{lifecycle.label}</span>
-        <dl className="lpCardMetrics">
-          <div><dt>Created · UTC</dt><dd><time dateTime={registration.creation.timestamp} title={registration.creation.timestamp}>{creationDate.format(new Date(registration.creation.timestamp))}</time></dd></div>
+        {(lifecycle.stage === "active" || lifecycle.stage === "graduating" || lifecycle.stage === "graduated") && <dl className="lpCardMetrics">
           {(lifecycle.stage === "active" || lifecycle.stage === "graduating") && <>
             <div><dt>Observed backing</dt><dd>{units(lifecycle.observation.backingWei)} / {units(lifecycle.observation.targetBackingWei)} ETH</dd></div>
             <div><dt>Curve tokens sold</dt><dd>{units(lifecycle.observation.soldWei)} / {units(lifecycle.observation.targetSoldWei)}</dd></div>
@@ -50,8 +49,8 @@ export function NewEngineLaunches({ directory }: { directory: NewEngineDirectory
             <div><dt>Initial ETH deposit</dt><dd>{units(lifecycle.observation.market.nativeDepositedWei)} ETH</dd></div>
             <div><dt>Pool fee</dt><dd>{lifecycle.observation.market.poolKey.fee / 10_000}%</dd></div>
           </>}
-        </dl>
-        <div className="lpCardFooter lpCardFooterAction"><Link href={`/launches/${registration.token}`} prefetch={false}>View token →</Link></div>
+        </dl>}
+        <div className="lpCardFooter"><time dateTime={registration.creation.timestamp} title={registration.creation.timestamp}>Created {creationDate.format(new Date(registration.creation.timestamp))} UTC</time><Link href={`/launches/${registration.token}`} prefetch={false}>View token →</Link></div>
       </article>;
     })}</div>
   </section>;
