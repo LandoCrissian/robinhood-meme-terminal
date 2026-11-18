@@ -39,6 +39,12 @@ export async function testHistoricalResilience() {
   assert.deepEqual(parseHistoricalQuery(new URLSearchParams(`token=${token}`)), { token });
   assert.deepEqual(parseHistoricalQuery(new URLSearchParams(`limit=2&cursor=${height}.1`)),
     { limit: 2, before: { blockNumber: Number(height), logIndex: 1 } });
+  const recipient = `0x${"f".repeat(40)}`;
+  assert.deepEqual(parseHistoricalQuery(new URLSearchParams(`recipient=${recipient}&limit=2&cursor=${height}.1`)),
+    { recipient, limit: 2, before: { blockNumber: Number(height), logIndex: 1 } });
+  for (const bad of [`recipient=${recipient}&recipient=${recipient}`, "recipient=invalid", `recipient=${recipient}&token=${token}`]) {
+    assert.equal(parseHistoricalQuery(new URLSearchParams(bad)), null);
+  }
   for (const query of [
     "unknown=1", "limit=0", "limit=26", "limit=1&limit=2", "cursor=9.3", "limit=1e1", "cursor=9007199254740992.0",
     `token=${token}&limit=1`, "token=not-an-address", `cursor=${height}.2147483648`
@@ -216,6 +222,40 @@ export async function testHistoricalSchema(db: PoolClient, pool: Pool, schema: s
   assert.equal(first?.launches[0]?.lifecycleEvidence?.transactionHash, hash(22));
   assert.equal(first?.launches[0]?.pool, null);
   assert.equal(first?.launches[0]?.custody, null);
+  const filtered = await readHistoricalLaunches(db, { limit: 25, recipient: creator }, verified, false, verified.verifiedAt);
+  assert.equal(filtered?.launches.length, 1);
+  assert.deepEqual(filtered?.launches[0]?.historicalRelationRoles, ["creator", "current-creator-fee-recipient"]);
+  assert.equal(filtered?.launches[0]?.feeEvidence, "unsupported-historical-adapter");
+  assert.equal(filtered?.earnings?.status, "unsupported");
+  assert.equal((await readHistoricalLaunches(db, { limit: 25, recipient: address(99) }, verified, false, verified.verifiedAt))?.launches.length, 0);
+  // Synthetic SQL records exercise discovery only; no legacy fee contract or
+  // new-engine fee policy is inferred from these historical relations.
+  await db.query("SAVEPOINT recipient_discovery_smoke");
+  const independent = `0x${"a".repeat(40)}`;
+  await db.query("UPDATE launches SET current_creator_fee_recipient=$1, protocol_treasury=$1 WHERE token=$2", [independent, token]);
+  const related = await readHistoricalLaunches(db, { limit: 25, recipient: independent }, verified, false, verified.verifiedAt);
+  assert.deepEqual(related?.launches[0]?.historicalRelationRoles, ["current-creator-fee-recipient", "protocol-treasury"]);
+  assert.equal(related?.launches.length, 1, "Two historical relation roles do not duplicate a project");
+  const many = `0x${"b".repeat(40)}`;
+  for (let i = 1; i <= 30; i++) {
+    await db.query(`INSERT INTO launches
+      (token,launch_id,creator,market,reward_vault,graduation_pool_id,name,symbol,supply,metadata_uri,
+       creator_bps,community_bps,trader_bps,liquidity_bps,platform_bps,transaction_hash,block_number,log_index,
+       protocol_version,original_creator,current_creator_fee_recipient,block_hash,created_at)
+      SELECT $1,l.launch_id,$2,$3,l.reward_vault,l.graduation_pool_id,l.name,l.symbol,l.supply,l.metadata_uri,
+        l.creator_bps,l.community_bps,l.trader_bps,l.liquidity_bps,l.platform_bps,$4,l.block_number,$5,
+        l.protocol_version,$2,$2,l.block_hash,l.created_at FROM launches l WHERE l.token=$6`,
+      [address(2000 + i), many, address(3000 + i), hash(4000 + i), i, token]);
+  }
+  const firstPage = await readHistoricalLaunches(db, { limit: 25, recipient: many }, verified, false, verified.verifiedAt);
+  assert.equal(firstPage?.launches.length, 25); assert.ok(firstPage.nextCursor);
+  const nextQuery = parseHistoricalQuery(new URLSearchParams(`recipient=${many}&cursor=${firstPage.nextCursor}`));
+  assert.ok(nextQuery);
+  const finalPage = await readHistoricalLaunches(db, nextQuery, verified, false, verified.verifiedAt);
+  assert.equal(finalPage?.launches.length, 5); assert.equal(finalPage.nextCursor, null);
+  assert.equal(new Set([...firstPage.launches, ...finalPage.launches].map(row => row.token)).size, 30);
+  await db.query("ROLLBACK TO SAVEPOINT recipient_discovery_smoke");
+  await db.query("RELEASE SAVEPOINT recipient_discovery_smoke");
   assert.equal(await lookup(db, { ...verified, blockTimestamp: verified.blockTimestamp - 1n }), null);
   assert.equal((await lookup(db, { ...verified, verifiedAt: verified.verifiedAt + 301_000 }))?.checkpoint.stale, true);
   assert.equal((await readHistoricalLaunches(db, { limit: 25 }, verified, false, verified.verifiedAt + 241_000))?.checkpoint.stale, true,

@@ -7,7 +7,9 @@ import { readWithArchive } from "./historical-launches.js";
 import { classifySyncFailure } from "./rpc-resilience.js";
 import type { CurveProductionConfig } from "./curve-production-config.js";
 import { commitProductionCurveRange, initializeProductionCurveStore, productionCurveCheckpoints,
-  productionCurveCursor, productionCurveScope, readProductionCurveLaunches, rollbackProductionCurve } from "./curve-production-store.js";
+  productionCurveCursor, productionCurveScope, readProductionCurveLaunches, readProductionCurveEarnings, rollbackProductionCurve } from "./curve-production-store.js";
+import { creatorEarningsProfile, decodeEarningsDiscoveryCursor, earningsBeneficiaryRoles, encodeEarningsDiscoveryCursor,
+  type EarningsDiscoveryQuery } from "./creator-earnings.js";
 
 type Database = Pick<Client, "query">;
 const maximumRange = 2_000n;
@@ -172,5 +174,36 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
     };
   }
 
-  return { syncOnce, state, read };
+  async function readEarnings(db: Database, query: EarningsDiscoveryQuery) {
+    if (!isAddress(query.recipient, { strict: false }) || !Number.isInteger(query.limit) || query.limit < 1 || query.limit > 50) {
+      throw new Error("Invalid bounded earnings discovery query");
+    }
+    const before = state();
+    if (before.status === "unavailable" || !before.checkpoint) throw new Error("Production earnings evidence unavailable");
+    const cursor = query.after ? decodeEarningsDiscoveryCursor(query.after) : undefined;
+    if (query.after && (!cursor || cursor.scope !== scope || cursor.recipient !== query.recipient.toLowerCase())) {
+      throw new Error("Earnings cursor belongs to another deployment or beneficiary");
+    }
+    const data = await readProductionCurveEarnings(db, scope, before.checkpoint, {
+      recipient: query.recipient, operatingRecipient: binding.creationFeeRecipient, reserveRecipient: config.reserveRecipient,
+      cursor: cursor ?? undefined, limit: query.limit + 1, token: query.token,
+    });
+    if (state().revision !== before.revision || state().status === "unavailable") throw new Error("Earnings evidence changed during read");
+    const launches = data.launches.slice(0, query.limit).map(launch => ({ ...launch,
+      beneficiaryRoles: earningsBeneficiaryRoles(launch, query.recipient, config), feeEvidence: "contract-read-required" as const }));
+    const last = launches.at(-1);
+    const stale = before.status === "stale" || now() - Date.parse(data.checkpoint.timestamp) > maximumCheckpointAgeMs;
+    return {
+      schemaVersion: 1 as const, chainId: 4663 as const, profile: creatorEarningsProfile,
+      status: stale ? "stale" as const : "ready" as const, recipient: query.recipient, observedAt: new Date(now()).toISOString(),
+      deployment: { factory: binding.factory, registry: binding.projectRegistry, blockNumber: binding.deploymentBlock.toString(),
+        blockHash: binding.deploymentBlockHash },
+      checkpoint: { ...data.checkpoint, confirmations: binding.confirmations, finality: "l2-confirmed" as const, l1Finality: "unverified" as const },
+      launches, nextCursor: !query.token && data.launches.length > query.limit && last ? encodeEarningsDiscoveryCursor({ scope,
+        recipient: query.recipient, blockNumber: data.checkpoint.blockNumber, blockHash: data.checkpoint.blockHash, after: last.token }) : null,
+      history: { status: "unsupported" as const, source: "historical-v4-v6", feeEvidence: "No verified compatible legacy fee adapter; historical registrations remain separate" },
+    };
+  }
+
+  return { syncOnce, state, read, readEarnings };
 }

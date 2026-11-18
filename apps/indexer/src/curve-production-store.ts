@@ -2,6 +2,7 @@ import type { Client } from "pg";
 import type { BlockEvidence, CurveLaunchRegistration } from "./curve-launch-evidence.js";
 import type { CurveProductionConfig } from "./curve-production-config.js";
 import { lockIndexWriter } from "./index-store.js";
+import type { EarningsDiscoveryCursor } from "./creator-earnings.js";
 
 type Database = Pick<Client, "query">;
 const encode = (value: unknown) => JSON.stringify(value, (_, item) => typeof item === "bigint" ? item.toString() : item);
@@ -149,4 +150,33 @@ export async function readProductionCurveLaunches(db: Database, scope: string, c
      ORDER BY l.token LIMIT $6`, [scope, checkpoint.blockNumber, checkpoint.blockHash,
       token?.toLowerCase() ?? null, after?.toLowerCase() ?? null, limit]);
   return result.rows.map(({ payload }) => payload);
+}
+
+/** Uses only the existing namespaced registrations/checkpoints. Pagination
+ * stays anchored while new blocks arrive, and fails closed after reorg/restore.
+ * Caller supplies a REPEATABLE READ READ ONLY transaction and checks revision. */
+export async function readProductionCurveEarnings(db: Database, scope: string, current: BlockEvidence,
+  query: { recipient: string; operatingRecipient: string; reserveRecipient: string; limit: number; cursor?: EarningsDiscoveryCursor; token?: string }) {
+  if (!Number.isInteger(query.limit) || query.limit < 1 || query.limit > 51) throw new Error("Earnings page exceeds its bound");
+  if (query.cursor && (query.cursor.scope !== scope || query.cursor.recipient !== query.recipient.toLowerCase())) {
+    throw new Error("Earnings cursor deployment or beneficiary mismatch");
+  }
+  const anchor = query.cursor ?? current;
+  const anchored = await db.query<{ block_number: string; block_hash: BlockEvidence["blockHash"]; observed_at: Date }>(
+    `SELECT c.block_number::text, c.block_hash, c.observed_at
+     FROM rmt_curve_production_checkpoints c JOIN rmt_curve_production_bindings b ON b.scope = c.scope
+     WHERE c.scope = $1 AND c.block_number = $2 AND c.block_hash = $3 AND b.next_block > c.block_number`,
+    [scope, anchor.blockNumber, anchor.blockHash]);
+  const point = anchored.rows[0];
+  if (!point) throw new Error("Earnings cursor checkpoint is unavailable, reorged or restored");
+  const checkpoint = { blockNumber: point.block_number, blockHash: point.block_hash, timestamp: point.observed_at.toISOString() };
+  const result = await db.query<{ payload: CurveLaunchRegistration }>(
+    `SELECT l.payload FROM rmt_curve_production_launches l
+     WHERE l.scope = $1 AND l.block_number <= $2 AND ($3::text IS NULL OR l.token > $3)
+       AND (lower(l.payload->>'creator') = $4 OR lower(l.payload->>'treasury') = $4 OR $4 = $5 OR $4 = $6)
+       AND ($8::text IS NULL OR l.token = $8)
+     ORDER BY l.token LIMIT $7`, [scope, checkpoint.blockNumber, query.cursor?.after ?? null,
+      query.recipient.toLowerCase(), query.operatingRecipient.toLowerCase(), query.reserveRecipient.toLowerCase(), query.limit,
+      query.token?.toLowerCase() ?? null]);
+  return { checkpoint, launches: result.rows.map(row => row.payload) };
 }

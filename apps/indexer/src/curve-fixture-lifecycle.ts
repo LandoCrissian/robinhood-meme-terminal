@@ -42,13 +42,14 @@ export const lifecycleCurveAbi = parseAbi([
   "event CurveTrade(address indexed account,bool indexed isBuy,uint256 tokenAmount,uint256 grossNative,uint256 fee,uint256 nativeRefund,uint256 sold,uint256 backingReserve)",
   "event CurveGraduated(bytes32 indexed poolId,uint256 indexed positionTokenId,uint256 nativeUsed,uint256 tokenUsed,uint256 nativeDust,uint256 tokenDust)",
 ]);
-const graduationAbi = parseAbi([
+export const fixtureGraduationAbi = parseAbi([
   "function factory() view returns (address)", "function poolManager() view returns (address)", "function positionManager() view returns (address)",
   "function permit2() view returns (address)", "function initializationGuard() view returns (address)",
   "function positions(address token) view returns (uint256 tokenId,uint128 liquidity)",
   "function canonicalPoolKey(address token) view returns ((address currency0,address currency1,uint24 fee,int24 tickSpacing,address hooks))",
   "event CurveGraduated(address indexed token,address indexed curve,bytes32 indexed poolId,(address currency0,address currency1,uint24 fee,int24 tickSpacing,address hooks) poolKey,uint160 sqrtPriceX96,uint256 positionTokenId,uint128 liquidity,uint128 nativeUsed,uint128 tokenUsed,uint128 nativeDust,uint128 tokenDust)",
 ]);
+const graduationAbi = fixtureGraduationAbi;
 const registryAbi = parseAbi(["function project(address token) view returns (address factory,address curve,uint32 version,address engine,uint64 migrations)"]);
 const guardAbi = parseAbi(["function poolManager() view returns (address)", "function graduationEngine() view returns (address)"]);
 const ledgerAbi = parseAbi([
@@ -175,8 +176,18 @@ export async function nativeProof(rpc: PublicClient, tx: FixtureTx, to: Address,
   assertFixtureNativeProof(raw, { ...tx, to }, payments);
 }
 
+/** Optional start values are used only by the separately route-verified
+ * successor graduation reader, from canonical previous-block contract state.
+ * Ordinary V1 ingestion retains its complete indexed-trade starting state. */
+export function assertFixtureCanonicalCurveStart(start: { sold: bigint; backing: bigint }) {
+  const virtualToken = curveFixedSupplyWei * 18n / 10n;
+  requireProof(start.sold >= 0n && start.sold <= curveGraduationSoldWei && start.backing >= 0n && start.backing <= threshold
+    && ceil(virtualEth * virtualToken, virtualToken - start.sold) - virtualEth === start.backing,
+    "canonical starting reserves disagree with immutable curve");
+}
+
 export async function indexFixtureCurveTransaction(rpc: PublicClient, binding: FixtureGraduationBinding, cursor: FixtureCursor,
-  transaction: FixtureTx, block: BlockEvidence, index: number) {
+  transaction: FixtureTx, block: BlockEvidence, index: number, canonicalStart?: { sold: bigint; backing: bigint }) {
   let call;
   try { call = decodeFunctionData({ abi: lifecycleCurveAbi, data: transaction.input }); }
   catch { return {}; }
@@ -207,8 +218,9 @@ export async function indexFixtureCurveTransaction(rpc: PublicClient, binding: F
   const assetTransfers = parseEventLogs({ abi: erc20Abi, eventName: "Transfer", logs: logs.filter((log) => same(log.address, launch.token)), strict: true });
   requireProof(launch.totalSupplyWei === curveFixedSupplyWei.toString() && launch.tokenDecimals === 18, "registration token supply");
   const soldTarget = curveGraduationSoldWei;
-  let sold = BigInt(cursor.latestTrade?.soldWei ?? "0");
-  let backing = BigInt(cursor.latestTrade?.backingWei ?? "0");
+  if (canonicalStart) assertFixtureCanonicalCurveStart(canonicalStart);
+  let sold = canonicalStart?.sold ?? BigInt(cursor.latestTrade?.soldWei ?? "0");
+  let backing = canonicalStart?.backing ?? BigInt(cursor.latestTrade?.backingWei ?? "0");
   if (isTrade) {
     const event = tradeLogs[0]!;
     const { account, isBuy, tokenAmount, grossNative, fee, nativeRefund, sold: updatedSold, backingReserve } = event.args;

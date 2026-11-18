@@ -2,6 +2,8 @@
 
 Each launch can direct its own project earnings to the creator and an independent treasury. The treasury may receive **0–100% of the project's 90% share**. On creation, review both public beneficiary addresses and the exact allocation. RMT does not take custody of project earnings.
 
+The development [creator earnings dashboard](CREATOR_EARNINGS.md) separates recipient-aware discovery, verified balances, original-ledger migration continuity and synthetic claim recovery. Production claims remain disabled.
+
 | Revenue | Project | RMT Operations | RMT Reserve |
 | --- | ---: | ---: | ---: |
 | Creation fee | — | 100% | — |

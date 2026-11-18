@@ -4,6 +4,8 @@ RMT Launch is a token launchpad for Robinhood Chain. Creators prepare a token, t
 
 [Open RMT Launch](https://www.rmtlaunch.fun) · [Architecture](docs/ARCHITECTURE.md) · [Creator treasuries](docs/CREATOR_TREASURIES.md) · [Deployment](docs/DEPLOYMENT.md) · [Security](docs/SECURITY.md)
 
+The development [creator earnings dashboard](docs/CREATOR_EARNINGS.md) discovers creator and treasury projects and checks their contract-backed fee credits. Production claims remain disabled.
+
 The hosted site is read-only. Both treasury Safes and all five protocol infrastructure constructors have owner-submitted, verified Robinhood Chain receipts. Factory publication still requires governance authorization and its two-day notice. No new RMT token has been issued. Website creation and trading remain disabled; the strict security gate still fails with 22 high findings. The creator, trading, graduation and claim flows have separate synthetic-asset evidence. [Actual deployment status](docs/evidence/mobile-signing/protocol-mainnet.json)
 
 ## Fixed-supply candidate

@@ -81,6 +81,29 @@ jobs:
       - run: pnpm --filter indexer typecheck
       - run: pnpm --filter indexer build
       - run: pnpm --filter indexer test:resilience
+      - name: Verify recipient-aware earnings pagination, restart and canonical rollback
+        run: |
+          docker exec "${{ job.services.postgres.id }}" createdb -U postgres rmt_curve_production_smoke_task074
+          pnpm --filter indexer test:curve-production
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/rmt_curve_production_smoke_task074
+      - name: Verify isolated fee activity and recipient discovery persistence
+        run: |
+          set -euo pipefail
+          # The fixture verifies the server's actual loopback address. A Docker
+          # port-forward reports its bridge address, so use an expendable native
+          # cluster rather than weakening the fixture database identity check.
+          pg_bin="$(pg_config --bindir)"
+          fixture_home="$(mktemp -d "$RUNNER_TEMP/rmt-earnings-pg.XXXXXX")"
+          fixture_cluster="$fixture_home/cluster"
+          fixture_port="$(node -e 'const s=require("node:net").createServer();s.listen(0,"127.0.0.1",()=>{console.log(s.address().port);s.close();});')"
+          "$pg_bin/initdb" -D "$fixture_cluster" -U postgres --auth=trust --no-locale --encoding=UTF8
+          "$pg_bin/pg_ctl" -D "$fixture_cluster" -l "$fixture_home/postgres.log" \
+            -o "-h 127.0.0.1 -p $fixture_port -k $fixture_home" -w start
+          trap '"$pg_bin/pg_ctl" -D "$fixture_cluster" -m fast -w stop' EXIT
+          "$pg_bin/createdb" -h 127.0.0.1 -p "$fixture_port" -U postgres rmt_curve_fixture_task074_smoke_ci
+          RMT_EARNINGS_SMOKE_DATABASE_URL="postgres://postgres@127.0.0.1:$fixture_port/rmt_curve_fixture_task074_smoke_ci" \
+            pnpm --filter indexer exec tsx src/curve-fixture-earnings-postgres-smoke.ts
       - run: pnpm --filter indexer test:schema
       - name: Check worker readiness, lease and restart over HTTP
         run: |

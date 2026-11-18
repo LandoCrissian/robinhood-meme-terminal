@@ -54,6 +54,7 @@ export function AccountNav() {
       <p>{session.authenticated ? "Signed in" : wallet ? "Connected · not signed in" : "Your wallet & profile"}</p>
       <nav aria-label="Wallet and profile">
         <Link ref={firstLink} href="/wallet" aria-label="Wallet" prefetch={false} onClick={() => setOpen(false)}>Wallet<span>Connection & sign-in</span></Link>
+        <Link href="/my-launches/earnings" aria-label="Earnings" prefetch={false} onClick={() => setOpen(false)}>Earnings<span>Creator & treasury fee credits</span></Link>
         <Link href="/account/profile" aria-label="Profile" prefetch={false} onClick={() => setOpen(false)}>Profile<span>{profile ? "Edit your profile" : "Sign in to manage your profile"}</span></Link>
         {profile?.username && <Link href={`/u/${profile.username}`} aria-label="Public profile" prefetch={false} onClick={() => setOpen(false)}>Public profile<span>@{profile.username}</span></Link>}
       </nav>

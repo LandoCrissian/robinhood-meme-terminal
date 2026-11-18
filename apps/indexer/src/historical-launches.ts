@@ -46,24 +46,27 @@ export async function observeHistoricalCheckpoint(
 
 export type HistoricalQuery =
   | { token: string }
-  | { limit: number; before?: { blockNumber: number; logIndex: number } };
+  | { limit: number; before?: { blockNumber: number; logIndex: number }; recipient?: string };
 
 export function parseHistoricalQuery(params: URLSearchParams): HistoricalQuery | null {
-  if (params.size > 2 || [...params.keys()].some((key) =>
-      !["token", "limit", "cursor"].includes(key) || params.getAll(key).length !== 1)) return null;
+  if (params.size > 3 || [...params.keys()].some((key) =>
+      !["token", "limit", "cursor", "recipient"].includes(key) || params.getAll(key).length !== 1)) return null;
   if (params.has("token")) {
     const token = params.get("token")!;
     return addressPattern.test(token) && params.size === 1 ? { token: token.toLowerCase() } : null;
   }
   const limit = params.get("limit") ?? historicalPageLimit.toString();
   if (!/^(?:[1-9]|1[0-9]|2[0-5])$/.test(limit)) return null;
-  if (!params.has("cursor")) return { limit: Number(limit) };
+  const recipient = params.get("recipient") ?? undefined;
+  if (recipient !== undefined && (!addressPattern.test(recipient) || BigInt(recipient) <= 0xffffn)) return null;
+  const matchRecipient = recipient ? { recipient: recipient.toLowerCase() } : {};
+  if (!params.has("cursor")) return { limit: Number(limit), ...matchRecipient };
   const cursor = /^(\d{1,16})\.(\d{1,10})$/.exec(params.get("cursor")!);
   if (!cursor) return null;
   const blockNumber = Number(cursor[1]);
   const logIndex = Number(cursor[2]);
   if (!Number.isSafeInteger(blockNumber) || blockNumber < Number(historicalStartBlock) || logIndex > 2_147_483_647) return null;
-  return { limit: Number(limit), before: { blockNumber, logIndex } };
+  return { limit: Number(limit), before: { blockNumber, logIndex }, ...matchRecipient };
 }
 
 export function hasHistoricalReadAccess(token: string | null, authorization: string | undefined) {
@@ -165,6 +168,9 @@ function evidence(row: ProofRow, blockHash: string | null, timestamp: Date | nul
 }
 
 type StoredHistorical = RegistrationRow & {
+  original_creator?: string;
+  current_creator_fee_recipient?: string;
+  protocol_treasury?: string | null;
   block_hash: string | null;
   created_at: Date | null;
   migration_block_number: string | null;
@@ -206,6 +212,7 @@ export async function readHistoricalLaunches(
   const before = isExact ? undefined : query.before;
   const rows = await db.query<StoredHistorical>(
     `SELECT l.token, l.creator, l.market, l.launch_id, l.name, l.symbol,
+            l.original_creator, l.current_creator_fee_recipient, l.protocol_treasury,
             l.transaction_hash, l.block_number, l.log_index, l.block_hash, l.created_at,
             m.transaction_hash AS migration_transaction_hash,
             m.block_number AS migration_block_number, m.log_index AS migration_log_index,
@@ -215,10 +222,12 @@ export async function readHistoricalLaunches(
      WHERE l.protocol_version = 6 AND l.block_number BETWEEN $2 AND $1
        AND ($3::text IS NULL OR l.token = $3)
        AND ($4::bigint IS NULL OR (l.block_number, l.log_index) < ($4, $5::integer))
+       AND ($7::text IS NULL OR lower(l.creator) = $7 OR lower(l.original_creator) = $7
+         OR lower(l.current_creator_fee_recipient) = $7 OR lower(l.protocol_treasury) = $7)
      ORDER BY l.block_number DESC, l.log_index DESC
      LIMIT $6`,
     [point.block_number, historicalStartBlock.toString(), isExact ? query.token : null,
-      before?.blockNumber ?? null, before?.logIndex ?? null, limit + 1]
+      before?.blockNumber ?? null, before?.logIndex ?? null, limit + 1, isExact ? null : query.recipient ?? null]
   );
 
   const launches = [];
@@ -236,6 +245,13 @@ export async function readHistoricalLaunches(
       if (lifecycleEvidence && (lifecycleEvidence.blockNumber < registration.blockNumber ||
           (lifecycleEvidence.blockNumber === registration.blockNumber && lifecycleEvidence.logIndex <= registration.logIndex))) return null;
     }
+    const recipient = !isExact ? query.recipient : undefined;
+    const historicalRelationRoles = recipient ? [
+      ...([row.creator, row.original_creator].some(value => value?.toLowerCase() === recipient) ? ["creator"] : []),
+      ...(row.current_creator_fee_recipient?.toLowerCase() === recipient ? ["current-creator-fee-recipient"] : []),
+      ...(row.protocol_treasury?.toLowerCase() === recipient ? ["protocol-treasury"] : []),
+    ] : [];
+    if (recipient && historicalRelationRoles.length === 0) return null;
     launches.push({
       token: row.token,
       creator: row.creator,
@@ -247,7 +263,8 @@ export async function readHistoricalLaunches(
       lifecycle: lifecycleEvidence ? "graduated" as const : "unknown" as const,
       lifecycleEvidence,
       pool: null,
-      custody: null
+      custody: null,
+      ...(recipient ? { historicalRelationRoles, feeEvidence: "unsupported-historical-adapter" as const } : {}),
     });
   }
   const last = launches.at(-1);
@@ -264,7 +281,9 @@ export async function readHistoricalLaunches(
       finality: "l2-confirmed" as const
     },
     launches,
-    nextCursor: rows.rows.length > limit && last ? `${last.registration.blockNumber}.${last.registration.logIndex}` : null
+    nextCursor: rows.rows.length > limit && last ? `${last.registration.blockNumber}.${last.registration.logIndex}` : null,
+    ...(!isExact && query.recipient ? { recipient: query.recipient,
+      earnings: { status: "unsupported", reason: "Historical fee policies and recipients are not the new-engine 90/5/5 ledger adapter" } } : {}),
   };
 }
 

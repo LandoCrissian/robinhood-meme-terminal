@@ -5,7 +5,7 @@ import { isProfileApiRoute } from "./lib/server/profiles/config";
 import { admitRailwayRequest, railwayHosting } from "./lib/server/railway-read-only";
 
 const publicRoutes = new Set([
-  "/", "/create-token", "/my-launches", "/wallet",
+  "/", "/create-token", "/my-launches", "/my-launches/earnings", "/wallet",
   "/terms", "/risks", "/privacy", "/robots.txt", "/api/launchpad/config",
   "/api/launchpad/launches",
 ]);
@@ -45,6 +45,10 @@ export function middleware(request: NextRequest) {
   // These handlers enforce their own backend availability, exact origin,
   // session, CSRF and request budgets. This is only a narrow routing allowlist.
   if (isProfileApiRoute(pathname, request.method)) return NextResponse.next();
+  // These read-only handlers validate recipient/deployment/checkpoint context;
+  // test claims repeat the explicit local fixture gate, production claims stay off.
+  if ((["GET", "HEAD"].includes(request.method) && /^\/api\/launchpad\/earnings(?:\/(?:factory|history|0x[0-9a-fA-F]{40}))?$/.test(pathname))
+    || (request.method === "POST" && ["/api/launchpad/test-earnings", "/api/launchpad/production-earnings"].includes(pathname))) return NextResponse.next();
   if ((request.method === "GET" || request.method === "HEAD") &&
       (pathname === "/account/profile" || /^\/u\/[a-z][a-z0-9_]{2,23}$/.test(pathname) ||
        /^\/creator\/0x[0-9a-fA-F]{40}$/.test(pathname))) return NextResponse.next();
