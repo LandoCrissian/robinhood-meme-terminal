@@ -28,6 +28,7 @@ const { values: args } = parseArgs({ options: {
   lib: { type: "string" }, anvil: { type: "string" }, solc: { type: "string" },
   "pg-bin": { type: "string" }, output: { type: "string" }, "mobile-plan": { type: "string" },
   browser: { type: "string", default: "chromium" },
+  "successor-only": { type: "boolean", default: false },
 } });
 for (const option of ["anvil", "solc", "pg-bin", "output"]) assert.ok(args[option], `Supply --${option}`);
 assert.ok(["chromium", "webkit"].includes(args.browser), "Use --browser chromium or --browser webkit");
@@ -376,6 +377,20 @@ try {
   const snapshot = await rpc("evm_snapshot");
   const beforeSnapshot = await rpc("eth_getBlockByNumber", ["latest", false]);
   const countBefore = BigInt(await rpc("eth_getTransactionCount", [creator.address, "latest"]));
+  if (args["successor-only"]) {
+    // Focused operator acceptance, not a replacement for the browser journey.
+    // Use the identical deployment, process, database and cleanup boundaries.
+    let worker = startWorker("worker-successor-focused");
+    await rpc("anvil_mine", ["0x3"]); await workerReady(worker);
+    await testSuccessorEarningsJourney({ rpcUrl, rpc, artifacts, deployed, anchor,
+      creator: creator.address, treasury, operator: deploymentOperator.address, operations: payableOperations, reserve: payableReserve,
+      site, out, pg, waitFor, mine: () => rpc("anvil_mine", ["0x3"]), ready: () => workerReady(worker), restart: async () => {
+        await stop(web); await stop(worker);
+        web = startWeb("website-successor-focused-restart"); worker = startWorker("worker-successor-focused-restart");
+        await webReady(web); await workerReady(worker);
+      } });
+    console.log("Focused synthetic successor earnings acceptance passed; browser acceptance was not selected.");
+  } else {
   browser = await ({ chromium, webkit })[args.browser].launch();
   const context = await browser.newContext(devices["iPhone 13"]);
   page = await context.newPage();
@@ -1285,6 +1300,7 @@ try {
       wrongRouterAndPoolKeyRejected: true, excessiveApprovalRejected: true, exactCustodyPreserved: true } });
   await writeFile(join(out, "creation-journey-evidence.json"), JSON.stringify(evidence, (_, value) => typeof value === "bigint" ? value.toString() : value, 2));
   console.log(`Same-app creation → curve trades → v4 swaps → fee collection and claims passed on 31337. ${join(out, "creation-journey-evidence.json")}`);
+  }
 } catch (error) {
   if (page && !page.isClosed()) {
     await page.screenshot({ path: join(out, "failure.png"), fullPage: true }).catch(() => undefined);
