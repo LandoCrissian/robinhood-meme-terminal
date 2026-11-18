@@ -1,0 +1,72 @@
+name: Linux website release preflight
+
+on:
+  pull_request:
+    paths:
+      - 'apps/launch-website/**'
+      - 'scripts/release/website-*'
+      - '.github/workflows/website-release-linux.yml'
+      - 'netlify.toml'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux-netlify-artifact:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CI: 'true'
+      NEXT_TELEMETRY_DISABLED: '1'
+      NETLIFY_TELEMETRY_DISABLED: '1'
+      RMT_PROFILES_MODE: ''
+      RMT_CURVE_PRODUCTION_EXECUTION: ''
+      RMT_WEBSITE_PREVIEW_SECRET_MARKER: rmt-linux-release-synthetic-marker-070
+      RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN: rmt-linux-release-synthetic-marker-070
+      RMT_LAUNCH_HISTORY_INDEXER_URL: https://indexer.invalid/
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile --filter @rmt/launch-website... --filter robinhood-meme-terminal
+      - name: Verify source publication and archive boundaries
+        run: |
+          node --test scripts/release/website-preflight.test.mjs
+          python3 scripts/release/website-archive.test.py
+          node scripts/release/website-preflight.mjs --output "$RUNNER_TEMP/website-source-preflight.json"
+      - name: Install reviewed build tools outside application dependencies
+        run: |
+          set -euo pipefail
+          tools="$RUNNER_TEMP/rmt-netlify-release-tools"
+          npm install --prefix "$tools" --save-exact --no-audit --no-fund netlify-cli@27.14.2 @netlify/plugin-nextjs@5.16.8
+          # Local resolution fixes the review input, without changing the app lockfile.
+          mkdir -p apps/launch-website/node_modules/@netlify
+          ln -s "$tools/node_modules/@netlify/plugin-nextjs" apps/launch-website/node_modules/@netlify/plugin-nextjs
+          node -e "const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'); const root=process.argv[1]; const names=['netlify-cli','@netlify/plugin-nextjs']; const versions=Object.fromEntries(names.map(n=>[n,JSON.parse(fs.readFileSync(path.join(root,'node_modules',n,'package.json'))).version])); if(versions['netlify-cli']!=='27.14.2'||versions['@netlify/plugin-nextjs']!=='5.16.8')throw Error('Tool version mismatch'); console.log(JSON.stringify({versions,lockSha256:crypto.createHash('sha256').update(fs.readFileSync(path.join(root,'package-lock.json'))).digest('hex')},null,2));" "$tools" > "$RUNNER_TEMP/website-build-tools.json"
+      - name: Build actual Netlify Linux server and edge artifacts without deployment
+        run: |
+          set -euo pipefail
+          # No token, site state, deployment id or production context is supplied.
+          test -z "${NETLIFY_AUTH_TOKEN:-}"
+          test ! -e .netlify/state.json
+          "$RUNNER_TEMP/rmt-netlify-release-tools/node_modules/.bin/netlify" build --offline --context deploy-preview --filter @rmt/launch-website
+          git diff --exit-code -- netlify.toml package.json pnpm-lock.yaml apps/launch-website/package.json
+          node scripts/release/website-preflight.mjs --artifacts --output "$RUNNER_TEMP/website-linux-artifact.json"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: website-linux-preflight-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            ${{ runner.temp }}/website-source-preflight.json
+            ${{ runner.temp }}/website-build-tools.json
+            ${{ runner.temp }}/website-linux-artifact.json
