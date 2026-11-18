@@ -32,6 +32,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
         with:
           version: 10.12.1
@@ -43,6 +44,7 @@ jobs:
         run: |
           node --test scripts/release/website-preflight.test.mjs
           python3 scripts/release/website-archive.test.py
+          python3 scripts/release/website-bundle.test.py
           node scripts/release/website-preflight.mjs --output "$RUNNER_TEMP/website-source-preflight.json"
       - name: Install reviewed build tools outside application dependencies
         run: |
@@ -62,6 +64,9 @@ jobs:
           "$RUNNER_TEMP/rmt-netlify-release-tools/node_modules/.bin/netlify" build --offline --context deploy-preview --filter @rmt/launch-website
           git diff --exit-code -- netlify.toml package.json pnpm-lock.yaml apps/launch-website/package.json
           node scripts/release/website-preflight.mjs --artifacts --output "$RUNNER_TEMP/website-linux-artifact.json"
+          python3 scripts/release/website-bundle.py collect --workspace "$GITHUB_WORKSPACE" \
+            --output "$RUNNER_TEMP/website-linux-bundle.zip" --report "$RUNNER_TEMP/website-linux-artifact.json" \
+            --tools "$RUNNER_TEMP/website-build-tools.json" > "$RUNNER_TEMP/website-linux-bundle.json"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
@@ -70,3 +75,5 @@ jobs:
             ${{ runner.temp }}/website-source-preflight.json
             ${{ runner.temp }}/website-build-tools.json
             ${{ runner.temp }}/website-linux-artifact.json
+            ${{ runner.temp }}/website-linux-bundle.zip
+            ${{ runner.temp }}/website-linux-bundle.json
