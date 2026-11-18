@@ -16,6 +16,9 @@ import { fixturePostEventTopics, indexFixturePostTransaction, loadFixtureLpLedge
 import { creatorEarningsProfile, decodeEarningsDiscoveryCursor, earningsBeneficiaryRoles, encodeEarningsDiscoveryCursor,
   parseFixtureEarningsDiscoveryQuery } from "./creator-earnings.js";
 import { fixtureMigratedRegistration } from "./curve-fixture-migration.js";
+import type { FixtureProjectTreasuryAdmission } from "./curve-fixture-project-treasury-call.js";
+import { configuredFixtureTreasuryModule, verifyFixtureTreasuryModule, projectTreasuryAdmission, projectTreasuryFixtureTables,
+  initializeProjectTreasuryFixtureStore, readProjectTreasuryFixtureRange, commitProjectTreasuryFixtureRange, readProjectTreasuryFixture } from "./project-treasury-fixture-store.js";
 import { indexFixtureSuccessorGraduation, verifyFixtureGraduationCoverage } from "./curve-fixture-successor-graduation.js";
 import { fixtureFeeActivityEventAbi, fixtureFeeActivityTopics, fixtureLpFeeActivity, indexFixtureFeeActivity,
   type FixtureFeeActivity } from "./curve-fixture-fee-activity.js";
@@ -86,7 +89,7 @@ async function openingState(rpc: PublicClient, registration: CurveLaunchRegistra
 
 async function readSegment(rpc: PublicClient, binding: CurveFixtureBinding, graduation: FixtureGraduationBinding,
   cursors: FixturePostCursor[], from: bigint, to: bigint, parent?: BlockEvidence,
-  unsupportedSuccessors = new Set<string>()): Promise<CurveFixtureRange> {
+  unsupportedSuccessors = new Set<string>(), treasuryAdmission?: FixtureProjectTreasuryAdmission): Promise<CurveFixtureRange> {
   const blocks: BlockEvidence[] = [];
   const transactions: { block: BlockEvidence; transaction: Parameters<typeof indexFixtureCurveTransaction>[3]; index: number }[] = [];
   const expectedLogs = new Set<string>();
@@ -177,10 +180,10 @@ async function readSegment(rpc: PublicClient, binding: CurveFixtureBinding, grad
         graduations.push(successor);
       }
     }
-    const post = await indexFixturePostTransaction(rpc, graduation, combined, transaction, block, index);
+    const post = await indexFixturePostTransaction(rpc, graduation, combined, transaction, block, index, treasuryAdmission);
     if (post) postEvents.push(post);
     const fee = post ? fixtureLpFeeActivity(post, combined)
-      : await indexFixtureFeeActivity(rpc, binding, combined, transaction, block, index);
+      : await indexFixtureFeeActivity(rpc, binding, combined, transaction, block, index, treasuryAdmission);
     if (fee) feeActivity.push(fee);
   }
   await verifyFixtureGraduationCoverage(rpc, graduation, combined, blocks, graduations);
@@ -298,6 +301,9 @@ async function main() {
   }), cacheTime: 0 });
   const anchor = await verifyCurveDeployment(binding, rpc);
   await verifyFixtureGraduationDeployment(rpc, binding, graduation);
+  const treasuryModule = configuredFixtureTreasuryModule(process.env, binding, graduation);
+  if (treasuryModule) await verifyFixtureTreasuryModule(rpc, treasuryModule);
+  const admitTreasury = treasuryModule ? projectTreasuryAdmission(rpc, treasuryModule) : undefined;
   const reserveRecipient = await rpc.readContract({ address: binding.factory,
     abi: parseAbi(["function futureReserveRecipient() view returns (address)"]), functionName: "futureReserveRecipient",
     blockNumber: binding.deploymentBlock });
@@ -328,8 +334,9 @@ async function main() {
     if (url.hash) return send(404, unavailable);
     const isEarnings = url.pathname === "/earnings";
     const isActivity = url.pathname === "/earnings/activity";
+    const isTreasury = url.pathname === "/project-treasuries" && !!treasuryModule;
     const token = path.startsWith("/curve-launches/") ? path.slice("/curve-launches/".length).toLowerCase() : undefined;
-    if (path !== "/ready" && path !== "/curve-launches" && !isEarnings && !isActivity && !(token && isAddress(token, { strict: false }))) {
+    if (path !== "/ready" && path !== "/curve-launches" && !isEarnings && !isActivity && !isTreasury && !(token && isAddress(token, { strict: false }))) {
       return send(404, unavailable);
     }
     if (req.method !== "GET" && req.method !== "HEAD") return send(405, unavailable);
@@ -345,6 +352,8 @@ async function main() {
       const earnings = isEarnings ? parseFixtureEarningsDiscoveryQuery(url) : null;
       if (isEarnings && !earnings) return send(400, unavailable);
       const activityHash = isActivity ? url.searchParams.get("transaction") : undefined;
+      const treasuryAddress = isTreasury ? url.searchParams.get("address") : undefined;
+      if (isTreasury && (url.searchParams.size !== 1 || !treasuryAddress || !isAddress(treasuryAddress, { strict: false }))) return send(400, unavailable);
       if (isActivity && (url.searchParams.size !== 1 || !hexHash(activityHash))) return send(400, unavailable);
       const cursor = earnings?.after ? decodeEarningsDiscoveryCursor(earnings.after, 31337) : undefined;
       if (earnings?.after && (!cursor || cursor.scope !== scope.join(":") || cursor.recipient !== earnings.recipient)) return send(503, unavailable);
@@ -353,7 +362,8 @@ async function main() {
         limit: earnings.limit + 1, cursor: cursor ?? undefined, token: earnings.token,
       }) : undefined;
       const activities = activityHash ? await readCurveFixtureFeeActivity(reader, scope, checkpoint, activityHash) : undefined;
-      const launches = path === "/ready" || isEarnings || isActivity ? [] : await readCurveFixtureRows(reader, scope, checkpoint, token);
+      const treasuries = isTreasury && treasuryModule && treasuryAddress ? await readProjectTreasuryFixture(reader, scope, treasuryModule, checkpoint, treasuryAddress as `0x${string}`) : undefined;
+      const launches = path === "/ready" || isEarnings || isActivity || isTreasury ? [] : await readCurveFixtureRows(reader, scope, checkpoint, token);
       const height = BigInt(checkpoint.blockNumber);
       const [canonical, head] = await Promise.all([
         rpc.getBlock({ blockNumber: height, includeTransactions: false }), rpc.getBlockNumber({ cacheTime: 0 }),
@@ -361,6 +371,7 @@ async function main() {
       const block = blockEvidence(canonical, height);
       if (!same(block.blockHash, checkpoint.blockHash) || head - BigInt(fixtureConfirmations) !== height
           || !verified || !same(verified.blockHash, checkpoint.blockHash) || storeFailed) return send(503, unavailable);
+      if (treasuries) return send(200, treasuries);
       if (activities) return send(200, { schemaVersion: 1, profile: creatorEarningsProfile, status: "ready", chainId: 31337,
         transactionHash: activityHash, activities, checkpoint: { ...checkpoint, confirmations: fixtureConfirmations,
           finality: "local-synthetic", l1Finality: "not-applicable" } });
@@ -401,7 +412,8 @@ async function main() {
   process.once("SIGTERM", stopping);
   try {
     await writer.connect();
-    await initializeCurveFixtureStore(writer, config.databaseName, binding, graduation);
+    await initializeCurveFixtureStore(writer, config.databaseName, binding, graduation, treasuryModule ? projectTreasuryFixtureTables : []);
+    if (treasuryModule) await initializeProjectTreasuryFixtureStore(writer, scope, treasuryModule);
     await new Promise<void>((resolve, reject) => {
       server.once("error", reject);
       server.listen(config.port, "127.0.0.1", resolve);
@@ -438,8 +450,10 @@ async function main() {
           const end = next + maxBlocks - 1n <= safe ? next + maxBlocks - 1n : safe;
           const cursors = await loadCurveFixtureCursors(writer, scope);
           const nextUnsupported = new Set<string>();
-          const range = await readSegment(rpc, binding, graduation, cursors, next, end, latest, nextUnsupported);
-          await commitCurveFixtureRange(writer, scope, range);
+          const range = await readSegment(rpc, binding, graduation, cursors, next, end, latest, nextUnsupported, admitTreasury);
+          const treasuryRange = treasuryModule ? await readProjectTreasuryFixtureRange(writer, scope, treasuryModule, rpc, range.blocks) : null;
+          await commitCurveFixtureRange(writer, scope, range, treasuryModule && treasuryRange
+            ? db => commitProjectTreasuryFixtureRange(db, scope, treasuryModule, treasuryRange) : undefined);
           unsupportedSuccessors = nextUnsupported;
           latest = range.blocks.at(-1);
         } else if (latest && (!verified || !same(latest.blockHash, verified.blockHash))) {
