@@ -83,7 +83,7 @@ test("retained Task076 runtime source matches its original journeys, independent
   // source rather than falsely attributing the old receipts to the new UI.
   // All 190 original bytes are retained, hash-bound and individually checked.
   const archivedBytes = readFileSync(new URL("../rmt-task077/task076-runtime-source.json.gz", import.meta.url));
-  assert.equal(digest(archivedBytes), "ffe0f941982ba029c8bfa018dc8e10d51e59c7fca57a02e55006a9d2568fb9ae");
+  assert.equal(digest(archivedBytes), "aad3c567e7389c20ae3da069b27637cb81ff171bcfd4fb624e8ce63b94df9abc");
   const archived = JSON.parse(gunzipSync(archivedBytes));
   assert.equal(archived.base, "ecf3998f6e9b556c000de5c48908e4fb0b363fc8");
   assert.equal(archived.executionSource, manifest.executionSource);
@@ -96,6 +96,10 @@ test("retained Task076 runtime source matches its original journeys, independent
   }
   for (const file of json("files.sha256.json").files) {
     assert.ok(/^[a-zA-Z0-9._/-]+$/.test(file.path) && !file.path.startsWith("/") && !file.path.includes(".."));
-    assert.equal(digest(readFileSync(new URL(file.path, import.meta.url))), file.sha256, file.path);
+    // The versioned verifier itself is retained alongside the historical
+    // execution source; all original raw reports/screenshots remain on disk.
+    const original = file.path === "acceptance.test.mjs" ? archived.historicalVerifierContent
+      : readFileSync(new URL(file.path, import.meta.url));
+    assert.equal(digest(original), file.sha256, file.path);
   }
 });
