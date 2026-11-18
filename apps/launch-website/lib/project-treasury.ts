@@ -40,7 +40,7 @@ export type ProjectTreasurySnapshot = {
     activeCurve: Address | null; curveLedger: Address | null; lpLedger: Address | null; graduated: boolean };
   assets: ProjectTreasuryAsset[];
   earnings: { status: "ready" | "unavailable" | "not-bound"; curveNativeWei: string | null; lpNativeWei: string | null; lpTokenWei: string | null };
-  purchases: { enabled: boolean; available: boolean; reason: string; rules: ProjectTreasuryRules; pendingAuthorization: "none" | "controller-review-required" };
+  purchases: { enabled: boolean; available: false; reason: string; rules: ProjectTreasuryRules; pendingAuthorization: "none" | "controller-review-required" };
   rotation: null | { incoming: Address; readyAt: string; expiresAt: string; epoch: string };
   withdrawals: Array<{ id: Hex; asset: Address; recipient: Address; amountWei: string; readyAt: string; expiresAt: string; epoch: string }>;
   events: ProjectTreasuryEvent[]; history: { indexed: boolean; status: "ready" | "pending" | "unavailable"; checkpoint?: ProjectTreasuryPoint };
@@ -110,10 +110,13 @@ export function isProjectTreasurySnapshot(value: unknown): value is ProjectTreas
       && ["unbound", "verified-unbound", "bound"].includes(s.project.status) && (s.project.token === null || treasuryAddress(s.project.token))
       && Array.isArray(s.assets) && s.assets.length <= 10 && s.assets.every(a => (a.address === null || treasuryAddress(a.address))
         && typeof a.symbol === "string" && a.symbol.length <= 32
-        && [a.heldWei, a.availableWei, a.unclassifiedWei, a.manualWei, a.declaredFundingWei, a.unsolicitedWei, a.feesReceivedWei, a.purchasedWei, a.withdrawnWei, a.reservedWei].every(uint))
-      && typeof s.purchases.enabled === "boolean" && typeof s.purchases.available === "boolean" && typeof s.purchases.reason === "string"
+        && [a.heldWei, a.availableWei, a.unclassifiedWei, a.manualWei, a.declaredFundingWei, a.unsolicitedWei, a.feesReceivedWei, a.withdrawnWei, a.reservedWei].every(uint)
+        && a.purchasedWei === "0")
+      // A data flag cannot add a purchase capability absent from immutable V1.
+      && typeof s.purchases.enabled === "boolean" && s.purchases.available === false && typeof s.purchases.reason === "string"
+      && s.purchases.rules.lastPurchaseAt === "0"
       && Array.isArray(s.events) && s.events.length <= 100 && s.events.every(e => treasuryHash(e.blockHash) && treasuryHash(e.transactionHash)
-        && Number.isSafeInteger(e.logIndex) && e.logIndex >= 0 && /^[1-9][0-9]{0,15}$/.test(e.blockNumber))
+        && Number.isSafeInteger(e.logIndex) && e.logIndex >= 0 && /^[1-9][0-9]{0,15}$/.test(e.blockNumber) && e.event !== "PurchaseExecuted")
       && Array.isArray(s.withdrawals) && s.withdrawals.length <= 16 && Array.isArray(s.notices) && s.notices.length <= 16;
   } catch { return false; }
 }

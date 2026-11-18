@@ -285,6 +285,14 @@ export async function exerciseTreasuryPage({ session, project, treasury, safe, s
   } });
   assert.ok(same(snapshot.treasury, treasury) && same(snapshot.controller, safe));
   assert.ok(same(snapshot.project.token, project.token)); assert.equal(snapshot.purchases.available, false);
+  const capability = page.getByRole("group", { name: "Treasury purchase capability", exact: true });
+  await capability.locator(":scope > summary").click();
+  assert.match(await capability.innerText(), /Buy execution unavailable/);
+  assert.match(await capability.innerText(), /NOT EXECUTABLE/);
+  assert.match(await capability.innerText(), /no treasury spending authority/);
+  await capability.locator(":scope > summary").click();
+  assert.equal(await button("Review recording intent only").count(), snapshot.purchases.enabled ? 0 : 1);
+  assert.equal(await button("Review revoking purchase intent").count(), snapshot.purchases.enabled ? 1 : 0);
   await button("Connect synthetic treasury controller").click();
   const reviewed = await session.response(api, "prepare", () => button("Review LP token claim").click());
   assert.equal(reviewed.status, "needs-safe-approvals", json(reviewed)); assert.equal(reviewed.request, null);

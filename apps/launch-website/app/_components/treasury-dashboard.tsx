@@ -7,6 +7,7 @@ import { earningsAmount } from "../../lib/earnings";
 import { MyLaunchesNav } from "./my-launches-nav";
 import { TreasuryWalletControls } from "./treasury-wallet-controls";
 import { readTreasuryLookupAddress } from "../../lib/project-treasury-draft";
+import { treasuryPurchaseIntentLabel, treasuryPurchaseV2Capability } from "../../lib/treasury-purchase-capability";
 
 const same = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
 const time = (value: string) => Number.isFinite(Date.parse(value)) ? new Date(value).toLocaleString() : "Timestamp unavailable";
@@ -57,6 +58,11 @@ export function TreasuryDashboard({ fixture = false, initialTreasury = "" }: { f
     </form>
     <p className="lpInlineNotice">{fixture ? "Isolated chain 31337 · synthetic assets. No production financial execution."
       : "Read-only. The optional project treasury module is not deployed or activated for production."}</p>
+    <details className="lpPanel lpForm lpEarningsHistory" aria-label="Treasury purchase capability"><summary>Buy execution unavailable</summary>
+      <p>V1 supports funding, fee claims and controlled withdrawals. It cannot buy tokens, including when its controller records purchase intent. This immutable version cannot gain swaps through a later switch.</p>
+      <p>V2 purchase prototype: <strong>{treasuryPurchaseV2Capability.status.replaceAll("_", " ")}</strong>. No independent project-token price reference is admitted. The prototype is not deployed and has no treasury spending authority.</p>
+      <p>ETH funding and held project tokens are separate. Token-denominated earnings do not supply ETH for buying that same token. No automatic swaps, NFT purchases or distributions are enabled.</p>
+    </details>
     {message && <p className="lpNotice lpError" role="status">{message}</p>}
     {busy && !snapshot && <div className="lpSkeleton" role="status">Verifying treasury runtime, controller, project and balances…</div>}
     {!snapshot && !busy && !message && <section className="lpEmpty"><div><h2>A treasury belongs to one project</h2><p>Enter its deployed contract address to inspect verified funds and controller permissions. Predicting an address does not deploy or fund it.</p><Link className="lpBack" href="/create-token" prefetch={false}>Optional treasury setup →</Link></div></section>}
@@ -72,9 +78,9 @@ export function TreasuryDashboard({ fixture = false, initialTreasury = "" }: { f
         <p className="lpInlineNotice">{stale ? "Stale retained observation. " : ""}Observed synthetic block {snapshot.observed.blockNumber} · {time(snapshot.observed.timestamp)}. These results do not establish production L1 finality.</p>
         <button type="button" className="lpButton lpSecondary" disabled={busy} onClick={() => void load(snapshot.treasury)}>Refresh treasury evidence</button>
       </section>
-      <div className="lpEarningsSummary"><section className="lpPanel"><span>Purchase permission</span><strong>{snapshot.purchases.enabled ? "Enabled" : "OFF"}</strong></section>
-        <section className="lpPanel"><span>Purchase execution</span><strong>{snapshot.purchases.available ? "Constrained" : "Unavailable"}</strong></section></div>
-      <p className="lpInlineNotice">{snapshot.purchases.reason} Purchase permission does not create a keeper, submit a trade, guarantee income or stop incoming funding when disabled.</p>
+      <div className="lpEarningsSummary"><section className="lpPanel"><span>Purchase intent only</span><strong>{treasuryPurchaseIntentLabel(snapshot.purchases.enabled)}</strong></section>
+        <section className="lpPanel"><span>Buy execution</span><strong>Unavailable</strong></section></div>
+      <p className="lpInlineNotice">{snapshot.purchases.reason} Recording intent does not authorize an executable route, create a keeper, submit a trade or guarantee income. Revoking intent never stops incoming funding.</p>
       <section className="lpPanel lpForm"><h2>Actual held assets</h2><p>Current balances and cumulative funding are separate. Token amounts remain in base units unless verified decimal information is available.</p>
         {snapshot.assets.map(asset => <article className="lpTreasuryAsset lpForm" key={asset.address ?? "native"} aria-label={`${asset.symbol} treasury accounting`}>
           <h3>{asset.symbol}</h3>{asset.address && <code className="lpAddress">{asset.address}</code>}
@@ -91,7 +97,7 @@ export function TreasuryDashboard({ fixture = false, initialTreasury = "" }: { f
           <dt>LP token claimable</dt><dd>{amount(snapshot.earnings.lpTokenWei, false)}</dd><dt>Credit evidence</dt><dd>{snapshot.earnings.status}</dd></dl>
         <p>Collection and claims are separate. Earned LP fees exclude other positions and never withdraw original liquidity principal.</p>
       </section>
-      <section className="lpPanel lpForm"><h2>Purchase policy</h2><dl className="lpFacts"><dt>Maximum per transaction</dt><dd>{earningsAmount(snapshot.purchases.rules.perTransactionWei)}</dd>
+      <section className="lpPanel lpForm"><h2>Purchase intent limits</h2><dl className="lpFacts"><dt>Maximum per transaction</dt><dd>{earningsAmount(snapshot.purchases.rules.perTransactionWei)}</dd>
         <dt>Maximum per period</dt><dd>{earningsAmount(snapshot.purchases.rules.perPeriodWei)}</dd><dt>Minimum accumulated ETH</dt><dd>{earningsAmount(snapshot.purchases.rules.minimumWei)}</dd>
         <dt>Cooldown / period</dt><dd>{snapshot.purchases.rules.cooldownSeconds}s / {snapshot.purchases.rules.periodSeconds}s</dd>
         <dt>Slippage / impact bounds</dt><dd>{snapshot.purchases.rules.maxSlippageBps} / {snapshot.purchases.rules.maxImpactBps} basis points</dd></dl>

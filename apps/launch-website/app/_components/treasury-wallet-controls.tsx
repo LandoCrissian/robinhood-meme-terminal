@@ -8,6 +8,7 @@ import { earningsAmount } from "../../lib/earnings";
 import { isLocalTestWallet, isTransactionHash } from "../../lib/test-creation";
 import { connectTestWallet, subscribeTestWallet, testProviderAtWindow, testWalletErrorCode, type TestWallet } from "../../lib/test-wallet";
 import { readActiveTestCreation } from "../../lib/test-creation-history";
+import { treasuryPurchaseIntentAction, treasuryPurchaseIntentLabel } from "../../lib/treasury-purchase-capability";
 import { isProjectTreasuryProof, isProjectTreasuryReview, isProjectTreasurySnapshot, projectTreasuryProfile, projectTreasuryTestPath,
   treasuryHash, type ProjectTreasuryOperation, type ProjectTreasuryProof, type ProjectTreasuryReview,
   type ProjectTreasuryPreview, type ProjectTreasurySnapshot, type ProjectTreasuryVerification } from "../../lib/project-treasury";
@@ -245,9 +246,9 @@ export function TreasuryWalletControls({ snapshot, onChanged, fixture = false }:
     <div className="lpDraftActions">{(["bind-project", "claim-curve", "collect-lp", "claim-lp", "claim-lp-native", "claim-lp-token"] as const).map(op => <button key={op} className="lpButton lpSecondary"
       disabled={!fixture || !execution.wallet || execution.busy || op === "bind-project" && snapshot.project.status === "bound"}
       onClick={() => prepare(op)}>{({ "bind-project": "Bind verified launch", "claim-curve": "Review curve claim", "collect-lp": "Review LP collection", "claim-lp": "Review LP ETH + token claim", "claim-lp-native": "Review LP ETH claim", "claim-lp-token": "Review LP token claim" })[op]}</button>)}</div>
-    <p className="lpInlineNotice">Purchase permission is {snapshot.purchases.enabled ? "enabled" : "OFF"}. Execution is {snapshot.purchases.available ? "available only under its reviewed constraints" : "unavailable"}. {snapshot.purchases.reason} No buy is submitted from this page.</p>
+    <p className="lpInlineNotice">Purchase intent: {treasuryPurchaseIntentLabel(snapshot.purchases.enabled)}. Buy execution unavailable. {snapshot.purchases.reason} This control only records or revokes intent; it cannot activate buys.</p>
     <button type="button" className="lpButton lpSecondary" disabled={!fixture || !execution.wallet || execution.busy} onClick={() => prepare("set-purchases", { enabled: !snapshot.purchases.enabled })}>
-      {snapshot.purchases.enabled ? "Review disabling purchases" : "Review purchase permission"}</button>
+      {treasuryPurchaseIntentAction(snapshot.purchases.enabled)}</button>
     <details className="lpForm"><summary>Controller recovery and delayed withdrawal</summary>
       <p>Rotation and withdrawals use separate onchain notices and exact recipients. None can remove the launchpad&apos;s permanently locked LP principal.</p>
       <label>Incoming controller<input aria-label="Incoming treasury controller" value={incoming} maxLength={42} onChange={e => { change(); setIncoming(e.target.value); }} spellCheck={false} /></label>
