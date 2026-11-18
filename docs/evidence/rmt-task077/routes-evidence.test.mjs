@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { createHash } from "node:crypto";
 import { test } from "node:test";
-import { routePins, validateRound } from "../../../scripts/treasury-v2/routes.mjs";
+import { routePins, validateRound, normalizedSourceSha256 } from "../../../scripts/treasury-v2/routes.mjs";
 
 const report = JSON.parse(readFileSync(new URL("routes-4663.json", import.meta.url)));
 const names = ["official", "pocket"];
@@ -29,7 +28,9 @@ test("dated mainnet reads retain exact approved runtimes, bindings, compiler and
   }
   for (const entry of report.sourceBindings) {
     const data = readFileSync(new URL(`../../../${entry.path}`, import.meta.url));
-    assert.equal(createHash("sha256").update(data).digest("hex"), entry.sha256, entry.path);
+    assert.equal(entry.sha256Encoding, "UTF8_CRLF_TO_LF_ONLY");
+    assert.match(entry.recordedRawSha256, /^[0-9a-f]{64}$/);
+    assert.equal(normalizedSourceSha256(data), entry.sha256, entry.path);
   }
 });
 

@@ -38,6 +38,12 @@ const unadmittedReferenceCandidates = Object.freeze({
 const feedProxy = "0x78F3556b67E17Df817D51Ef5a990cDaF09E8d3A9";
 const hash = /^0x[0-9a-f]{64}$/i, address = /^0x[0-9a-f]{40}$/i, quantity = /^0x(?:0|[1-9a-f][0-9a-f]*)$/i;
 const sha256 = (value) => createHash("sha256").update(value).digest("hex");
+export function normalizedSourceSha256(bytes) {
+  // Git checkouts may materialize CRLF on Windows. Pin the exact UTF-8 source
+  // content with only CRLF normalized to LF, not platform checkout bytes.
+  const source = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(Buffer.from(bytes));
+  return sha256(source.replace(/\r\n/g, "\n"));
+}
 const normalize = (value) => Array.isArray(value) ? value.map(normalize) : typeof value === "bigint" ? value.toString() : value;
 const abi = parseAbi([
   "function poolManager() view returns(address)", "function positionManager() view returns(address)", "function permit2() view returns(address)",
@@ -118,8 +124,11 @@ export async function probeTreasuryRoutes({ fetcher = fetch, clock = Date.now } 
   const readers = Object.fromEntries(["official", "pocket"].map((name) => [name, makeReadOnlyRpc({ name, url: ROBINHOOD_SOURCES[name] }, { fetcher })]));
   const report = { schemaVersion: 1, scope: "READ_ONLY_4663_TREASURY_ROUTE_REFERENCE_OBSERVATION", observedAt,
     productionChanges: false, signingOrBroadcast: false, sourceUrls: routeSourceUrls, productionCompilerInputSha256: deployed.compiler.inputSha256,
-    sourceBindings: sourceFiles.map((file) => ({ path: `packages/contracts/src/${file}`,
-      sha256: sha256(readFileSync(new URL(`../../packages/contracts/src/${file}`, import.meta.url))) })),
+    sourceBindings: sourceFiles.map((file) => {
+      const bytes = readFileSync(new URL(`../../packages/contracts/src/${file}`, import.meta.url));
+      return { path: `packages/contracts/src/${file}`, sha256: normalizedSourceSha256(bytes),
+        sha256Encoding: "UTF8_CRLF_TO_LF_ONLY", recordedRawSha256: sha256(bytes) };
+    }),
     catalog, anchor: null, providers: {}, corroboration: null, directoryCorroboration: null, baseAssetCorroboration: null,
     purchaseReadiness: { status: "NO_GO", executable: false, token: null, poolIdentity: null, liquidity: "UNAVAILABLE_NO_ASSIGNED_PROJECT_TOKEN",
       projectReference: "UNAVAILABLE_NO_INDEPENDENT_PROJECT_MARKET_REFERENCE", hostedQuote: "UNOBSERVED", finality: "L1_UNVERIFIED",

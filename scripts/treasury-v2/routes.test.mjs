@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createRequire } from "node:module";
-import { fullPoolIdentity, routePins, validateRound, fetchFeedCatalog, probeTreasuryRoutes, routeSourceUrls } from "./routes.mjs";
+import { fullPoolIdentity, routePins, validateRound, fetchFeedCatalog, probeTreasuryRoutes, routeSourceUrls, normalizedSourceSha256 } from "./routes.mjs";
 
 const require = createRequire(new URL("../../apps/launch-website/package.json", import.meta.url));
 const { encodeAbiParameters, parseAbiParameters, toFunctionSelector, zeroAddress } = require("viem");
@@ -11,6 +11,15 @@ const fixtureFeed = { name: "ETH / USD", proxyAddress, contractAddress, decimals
 const block = { number: "0x100", hash: `0x${"01".repeat(32)}`, parentHash: `0x${"02".repeat(32)}`, timestamp: "0x3e8" };
 const json = (id, result) => Response.json({ jsonrpc: "2.0", id, result });
 const encode = (types, values) => encodeAbiParameters(parseAbiParameters(types), values);
+
+test("source binding normalizes only CRLF and still detects every content change", () => {
+  const lf = Buffer.from("pragma solidity 0.8.26;\n// reviewed source\n", "utf8");
+  const crlf = Buffer.from(lf.toString("utf8").replace(/\n/g, "\r\n"));
+  assert.equal(normalizedSourceSha256(lf), normalizedSourceSha256(crlf));
+  assert.notEqual(normalizedSourceSha256(lf), normalizedSourceSha256(Buffer.from(lf.toString().replace("reviewed", "changed"))));
+  assert.notEqual(normalizedSourceSha256(lf), normalizedSourceSha256(Buffer.from(lf.toString().replace(/\n/g, "\r"))));
+  assert.throws(() => normalizedSourceSha256(Buffer.from([0xff])), /encoded data/i);
+});
 
 test("PoolId retains chain, manager and every PoolKey member; never a pair address", () => {
   const result = fullPoolIdentity("0x1111111111111111111111111111111111111111");
