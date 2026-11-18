@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "scope": "LOCAL_SYNTHETIC_NOT_PHYSICAL_OR_PRODUCTION",
+  "source": "scripts/claims/local-wallet-acceptance.mjs genuine test-key-signed 2-of-3 Safe claim",
+  "safeVersion": "1.4.1",
+  "safe": "0x9449ED981CBA39e5c9D2e08c6DF6D70CEFd64C7e",
+  "safeRuntimeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+  "safeTransactionHash": "0x47ed3da772f1d07af48d7338f45799bf4d5a10ce41efd91903a5f627a81e3e06",
+  "receiptStatus": "success",
+  "officialAbiSource": "https://github.com/safe-global/safe-smart-account/blob/v1.4.1/contracts/Safe.sol#L57-L58",
+  "log": {
+    "address": "0x9449ed981cba39e5c9d2e08c6df6d70cefd64c7e",
+    "topics": [
+      "0x442e715f626346e8c54381002da614f62bee8d27386535b2521ec8540898556e",
+      "0x47ed3da772f1d07af48d7338f45799bf4d5a10ce41efd91903a5f627a81e3e06"
+    ],
+    "data": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x51ae0cdf94778bb533596ae3bd5ba12e751eb51e809e299c3caf34e95fd1a407",
+    "blockNumber": "57648348",
+    "blockTimestamp": "1795027876",
+    "transactionHash": "0xee8a95d2d1f67f88d48119fffa063afaa4bd0243b821a12fb9b7540a2bf24dd5",
+    "transactionIndex": 0,
+    "logIndex": 3,
+    "removed": false
+  }
+}

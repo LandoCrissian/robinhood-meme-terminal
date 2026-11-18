@@ -2,6 +2,13 @@
 useDefault = true
 
 [[allowlists]]
+description = "Six exact public synthetic ERC20 addresses from Task075 canonical CurveCreated receipts; only the four raw claim reports, not credentials, keys or arbitrary token values"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''(?i)^0x(?:10455ed384fb667024fa5d45330bc201341f467e|90331684b0f4c55dc61c160d865e4d8c03c8587d|16c2228f80a3f854cd310a30a28f014ac4b86b67|a50f2d23d71d1b1cb5c1c7adbed99891bf1b26eb|56d88ce203829d90c4ec223fa33822ddaaef63b4|5c6e482b3fd0cf0456c407090e84449080999bb1)$''']
+paths = ['''^docs/evidence/rmt-task075/(?:chromium|webkit)-(?:browser|core)\.json$''']
+
+[[allowlists]]
 description = "Two exact public historical ERC20 contract addresses in Task066 API evidence, including its original committed token-key spelling; not API credentials"
 condition = "AND"
 targetRules = ["generic-api-key"]

@@ -2,8 +2,8 @@ import { encodeFunctionData, keccak256, parseAbi, parseEventLogs, toHex, type Ad
   type PublicClient } from "viem";
 import type { BlockEvidence, CurveFixtureBinding } from "./curve-launch-evidence.js";
 import { nativeProof, receiptLogs, type FixtureTx, type LogProof } from "./curve-fixture-lifecycle.js";
-import { fixtureExternalClaim, type FixturePostCursor, type FixturePostEvent } from "./curve-fixture-post-graduation.js";
-import { fixtureTreasuryClaimInput } from "./curve-fixture-native-proof.js";
+import { fixtureExternalClaim, fixtureExternalFeeCall, type FixturePostCursor, type FixturePostEvent } from "./curve-fixture-post-graduation.js";
+import { assertFixtureInnerCallProof, assertFixtureNativeProof, fixtureTreasuryClaimInput } from "./curve-fixture-native-proof.js";
 
 const curveAbi = parseAbi(["function claim() returns(uint256)", "function claimable(address) view returns(uint256)",
   "event CurveFeeClaimed(address indexed recipient,uint256 amount)"]);
@@ -23,7 +23,9 @@ function requireActivity(ok: unknown): asserts ok { if (!ok) throw new Error("Fi
 export async function indexFixtureFeeActivity(rpc: PublicClient, binding: CurveFixtureBinding, cursors: FixturePostCursor[],
   tx: FixtureTx, block: BlockEvidence, index: number): Promise<FixtureFeeActivity | undefined> {
   if (!tx.to || tx.value !== 0n) return;
-  const isFactory = same(tx.to, binding.factory) && same(tx.input, payoutInput);
+  const externalFee = fixtureExternalFeeCall(tx.input);
+  const isFactory = same(tx.to, binding.factory) && same(tx.input, payoutInput)
+    || externalFee && same(externalFee.target, binding.factory) && same(externalFee.calldata, payoutInput);
   let cursor = cursors.find(item => same(item.launch.revenueLedger, tx.to!) && same(tx.input, claimInput));
   let inner: Hex | undefined;
   if (!isFactory && !cursor) {
@@ -40,14 +42,20 @@ export async function indexFixtureFeeActivity(rpc: PublicClient, binding: CurveF
     const events = parseEventLogs({ abi: factoryAbi, eventName: "CreationFeesClaimed", strict: true,
       logs: logs.filter(log => same(log.address, binding.factory)) });
     const event = events[0];
+    if (externalFee && !events.length) return;
     requireActivity(events.length === 1 && event && same(event.args.recipient, binding.creationFeeRecipient) && event.args.amount > 0n);
     const base = { address: binding.factory, abi: factoryAbi, functionName: "creationFeesAccrued" } as const;
     const [before, after] = await Promise.all([rpc.readContract({ ...base, blockNumber: receipt.blockNumber - 1n }),
       rpc.readContract({ ...base, blockNumber: receipt.blockNumber })]);
     requireActivity(before === event.args.amount && after === 0n);
-    await nativeProof(rpc, tx, binding.factory, [{ from: binding.factory, to: binding.creationFeeRecipient, amount: event.args.amount }]);
+    if (externalFee) {
+      const raw = await rpc.request({ method: "debug_traceTransaction", params: [tx.hash, { tracer: "callTracer" }] } as never, { retryCount: 0 });
+      const outer = { from: tx.from, to: tx.to, input: tx.input, value: 0n };
+      assertFixtureInnerCallProof(raw, outer, { from: tx.to, to: binding.factory, input: payoutInput, value: 0n });
+      assertFixtureNativeProof(raw, outer, [{ from: binding.factory, to: binding.creationFeeRecipient, amount: event.args.amount }]);
+    } else await nativeProof(rpc, tx, binding.factory, [{ from: binding.factory, to: binding.creationFeeRecipient, amount: event.args.amount }]);
     return { ...block, transactionHash: tx.hash, logIndex: event.logIndex, kind: "creation-payout", token: null,
-      ledger: binding.factory, account: tx.from, recipient: binding.creationFeeRecipient, nativeWei: event.args.amount.toString(), tokenWei: "0" };
+      ledger: binding.factory, account: externalFee ? tx.to : tx.from, recipient: binding.creationFeeRecipient, nativeWei: event.args.amount.toString(), tokenWei: "0" };
   }
   requireActivity(cursor);
   const ledger = cursor.launch.revenueLedger, recipient = inner ? tx.to : tx.from;

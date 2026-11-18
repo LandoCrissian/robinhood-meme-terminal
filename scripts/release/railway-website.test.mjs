@@ -19,7 +19,7 @@ test("standalone start requires the existing project's private reader and previe
 });
 test("activation, emulator, signing and direct database configuration are not part of this read-only process", () => {
   for (const key of ["RMT_CURVE_PRODUCTION_EXECUTION", "RMT_CURVE_PRODUCTION_DISCOVERY", "RMT_PROFILES_MODE", "RMT_MOBILE_REVIEW_FIXTURE",
-    "RMT_EARNINGS_PRODUCTION_EXECUTION", "RMT_EARNINGS_TEST_EXECUTION",
+    "RMT_EARNINGS_PRODUCTION_EXECUTION", "RMT_EARNINGS_TEST_EXECUTION", "RMT_CLAIM_PROFILES_FIXTURE", "RMT_CLAIM_PRODUCTION_EXECUTION",
     "FIREBASE_SERVICE_ACCOUNT_JSON", "FIREBASE_AUTH_EMULATOR_HOST", "FIRESTORE_EMULATOR_HOST", "RMT_FIREBASE_WEB_API_KEY", "DATABASE_URL", "DEPLOYER_PRIVATE_KEY"]) {
     assert.throws(() => validateRailwayRuntime({ ...env, [key]: "sensitive-marker" }));
   }

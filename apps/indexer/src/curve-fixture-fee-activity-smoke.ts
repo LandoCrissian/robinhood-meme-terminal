@@ -21,9 +21,9 @@ export async function testFixtureFeeActivity() {
   let safe = false, factory = false, emitted = true;
   const safeWallet = account(500);
   const tx = (): FixtureTx => ({ hash: hash(201), chainId: 31337, from: launch.creator,
-    to: factory ? binding.factory : safe ? safeWallet : launch.revenueLedger,
-    input: factory ? payout : safe ? encodeFunctionData({ abi: safeAbi, functionName: "execTransaction",
-      args: [launch.revenueLedger, 0n, claim, 0, 0n, 0n, 0n, zeroAddress, zeroAddress, "0x"] }) : claim,
+    to: safe ? safeWallet : factory ? binding.factory : launch.revenueLedger,
+    input: safe ? encodeFunctionData({ abi: safeAbi, functionName: "execTransaction",
+      args: [factory ? binding.factory : launch.revenueLedger, 0n, factory ? payout : claim, 0, 0n, 0n, 0n, zeroAddress, zeroAddress, "0x"] }) : factory ? payout : claim,
     value: 0n, blockHash: block.blockHash, blockNumber: 200n, transactionIndex: 0 });
   const rpc = {
     async getTransactionReceipt() {
@@ -43,7 +43,7 @@ export async function testFixtureFeeActivity() {
       const ledger = factory ? binding.factory : launch.revenueLedger;
       const target = factory ? binding.creationFeeRecipient : recipient;
       const payment = { type: "CALL", from: ledger, to: target, value: "0xa", input: "0x", calls: [] };
-      const inner = { type: "CALL", from: safeWallet, to: ledger, value: "0x0", input: claim, calls: [payment] };
+      const inner = { type: "CALL", from: safeWallet, to: ledger, value: "0x0", input: factory ? payout : claim, calls: [payment] };
       return { type: "CALL", from: transaction.from, to: transaction.to, value: "0x0", input: transaction.input,
         calls: safe ? [inner] : [payment] };
     },
@@ -66,6 +66,12 @@ export async function testFixtureFeeActivity() {
   const paid = await read(); assert.equal(paid?.kind, "creation-payout"); assert.equal(paid?.token, null);
   assert.equal(paid?.recipient, binding.creationFeeRecipient); assert.equal(paid?.account, launch.creator);
   badRecipient = true; await assert.rejects(read(), /settlement proof/); badRecipient = false;
+  safe = true;
+  const outerPayout = await read();
+  assert.equal(outerPayout?.kind, "creation-payout"); assert.equal(outerPayout?.account, safeWallet);
+  assert.equal(outerPayout?.recipient, binding.creationFeeRecipient, "A contract relayer cannot redirect creation fees");
+  missingTrace = true; await assert.rejects(read(), /missing trace/); missingTrace = false;
+  emitted = false; assert.equal(await read(), undefined, "A Safe outer success is not a factory payout"); emitted = true;
   const lp = { ...block, transactionHash: hash(203), logIndex: 5, kind: "lp-claim" as const, account: safeWallet,
     nativeWei: "0", tokenWei: "3" };
   const indexed = fixtureLpFeeActivity({ token: launch.token, evidence: lp }, [{ ...cursor, lpLedger: account(505) }]);

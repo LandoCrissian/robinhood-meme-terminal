@@ -12,6 +12,7 @@ on:
       - "pnpm-lock.yaml"
       - "pnpm-workspace.yaml"
       - "apps/indexer/src/curve-*.ts"
+      - "apps/indexer/src/production-claim*.ts"
       - "apps/indexer/package.json"
       - "apps/indexer/tsconfig.json"
       - "scripts/visual-qa/rmt-creator-integration.mjs"
@@ -37,6 +38,7 @@ on:
       - "scripts/visual-qa/test-rmt-owner-governance.mjs"
       - "scripts/visual-qa/rmt-netlify-website.mjs"
       - "scripts/visual-qa/rmt-earnings-public.mjs"
+      - "scripts/claims/**"
       - "scripts/visual-qa/rmt-polish.mjs"
       - "docs/evidence/mobile-signing/**"
       - ".github/workflows/launch-website-review.yml"
@@ -161,6 +163,13 @@ jobs:
             --mobile-plan docs/evidence/mobile-signing/review-plan-4663.json \
             --browser "${{ matrix.browser }}" \
             --output "$RUNNER_TEMP/rmt-creator-lifecycle"
+      - name: Verify profiled claim preparation, Safe execution and canonical recovery in the same app
+        run: |
+          node scripts/visual-qa/rmt-creator-integration.mjs --profiles-only \
+            --anvil "$(command -v anvil)" \
+            --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$(pg_config --bindir)" \
+            --browser "${{ matrix.browser }}" \
+            --output "$RUNNER_TEMP/rmt-claim-wallet-profiles"
       - name: Read local PostgreSQL diagnostics after failure
         if: failure()
         run: |
@@ -179,3 +188,8 @@ jobs:
             ${{ runner.temp }}/rmt-creator-lifecycle/earnings-journey-evidence.json
             ${{ runner.temp }}/rmt-creator-lifecycle/successor-earnings-evidence.json
             ${{ runner.temp }}/rmt-creator-lifecycle/failure-page.txt
+            ${{ runner.temp }}/rmt-claim-wallet-profiles/*.png
+            ${{ runner.temp }}/rmt-claim-wallet-profiles/claim-wallet-acceptance.json
+            ${{ runner.temp }}/rmt-claim-wallet-profiles/claim-wallet-profile-manifest.json
+            ${{ runner.temp }}/rmt-claim-wallet-profiles/claim-wallet-browser-evidence.json
+            ${{ runner.temp }}/rmt-claim-wallet-profiles/claim-wallet-browser-failure.txt

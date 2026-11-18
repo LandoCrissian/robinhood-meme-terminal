@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "task": 75,
+  "scope": "READ_ONLY_LOCAL_4663_FORK_OF_DEPLOYED_INFRASTRUCTURE",
+  "observedAt": "2026-11-18T18:32:09.164Z",
+  "productionExecution": false,
+  "localTransactions": 0,
+  "localStateMutation": false,
+  "signaturesRequested": 0,
+  "upstream": "https://robinhood.api.pocket.network",
+  "requestedAnchor": {
+    "blockNumber": "116966133",
+    "blockHash": "0xba98e1e82b736a50c46dfae095f1f3fd3cc4932921938c7b2aa8d30f23ec9106"
+  },
+  "anvil": {
+    "version": "anvil Version: 1.7.1\nCommit SHA: 4072e48705af9d93e3c0f6e29e93b5e9a40caed8\nBuild Timestamp: 2026-05-08T07:54:39.315067700Z (1778226879)\nBuild Profile: dist",
+    "sha256": "5c2217d266135a6fbe5faaccccb1e9eb2ddc1d06f8aabeef5fdb16d9846e4880"
+  },
+  "attempts": [],
+  "finality": {
+    "ethereumL1": "unverified",
+    "productionPolicyAccepted": false
+  },
+  "upstreamBroadcastDenyVerified": true,
+  "requestedAnchorState": {
+    "status": "observed",
+    "factoryRuntimeMatched": true
+  },
+  "selectedAnchor": {
+    "blockNumber": "116966133",
+    "blockHash": "0xba98e1e82b736a50c46dfae095f1f3fd3cc4932921938c7b2aa8d30f23ec9106"
+  },
+  "status": "unavailable",
+  "failure": "An internal error was received.\n\nURL: http://127.0.0.1:62497/\nRequest body: {\"method\":\"eth_getCode\",\"params\":[\"0x000000000022D473030F116dDEE9F6B43aC78BA3\",\"0x6f8c2f5\"]}\n\nDetails: failed to get account for 0x000000000022D473030F116dDEE9F6B43aC78BA3: server returned an error response: error code -32000: Bounded read-only fork source unavailable\nVersion: viem@2.55.5",
+  "upstreamRequests": 25,
+  "deniedUpstreamMethods": 3,
+  "upstreamFinancialCalls": 0
+}

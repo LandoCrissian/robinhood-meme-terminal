@@ -37,6 +37,22 @@ export function assertNativeTransferProof(raw, origin, payments) {
   assertPayments(verifiedTrace(raw, origin), payments);
 }
 
+// A contract-wallet outer transaction is not the beneficiary's inner CALL.
+// Require one exact successful CALL with its own actor, target and zero value;
+// parsing shares the existing bounded/revert-aware trace rules above.
+export function assertInnerCallProof(raw, origin, inner) {
+  const trace = verifiedTrace(raw, origin);
+  const matching = [];
+  function visit(node) {
+    if (node.type === "CALL" && node.from === inner.from.toLowerCase() && node.to === inner.to.toLowerCase()) matching.push(node);
+    node.calls.forEach(visit);
+  }
+  trace.calls.forEach(visit);
+  if (matching.length !== 1 || matching[0].value !== inner.value || matching[0].input !== inner.input.toLowerCase()) {
+    throw new Error("Contract-wallet inner claim is not independently proven");
+  }
+}
+
 export function treasuryClaimInput(raw, origin, ledger, nativeAmount) {
   const trace = verifiedTrace(raw, origin);
   const wallet = origin.to.toLowerCase();

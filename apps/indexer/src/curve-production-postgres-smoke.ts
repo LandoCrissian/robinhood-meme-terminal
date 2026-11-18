@@ -4,6 +4,7 @@ import { curveProductionSchemaSql, initializeProductionCurveStore, commitProduct
   productionCurveScope, readProductionCurveLaunches, rollbackProductionCurve } from "./curve-production-store.js";
 import { syntheticProductionConfig as config, syntheticProductionRegistration } from "./curve-production-smoke.js";
 import { testCreatorEarningsPostgres } from "./creator-earnings-postgres-smoke.js";
+import { testProductionClaimStorePostgres } from "./production-claim-store-smoke.js";
 
 const text = process.env.DATABASE_URL;
 if (!text) throw new Error("A dedicated local production-adapter smoke database is required");
@@ -18,6 +19,7 @@ const second = new Client({ connectionString: text, connectionTimeoutMillis: 3_0
 const scope = productionCurveScope(config);
 const item = syntheticProductionRegistration();
 let firstClosed = false;
+let reopenedClosed = false;
 try {
   await first.connect();
   assert.equal((await first.query("SELECT count(*)::int AS count FROM information_schema.tables WHERE table_schema = 'public'")).rows[0]?.count, 0,
@@ -54,9 +56,10 @@ try {
   await assert.rejects(readProductionCurveLaunches(reopened, scope, item.checkpoint, { limit: 25 }), /checkpoint changed/);
   assert.equal((await reopened.query("SELECT to_regclass('public.indexer_state') AS historical")).rows[0]?.historical, null);
   await testCreatorEarningsPostgres(reopened, text, config, item);
+  await testProductionClaimStorePostgres(reopened, text, config, () => { reopenedClosed = true; });
   console.info("Production adapter PostgreSQL atomic rollback, duplicate replay, lease, restart and reorg smoke passed.");
 } finally {
   if (!firstClosed) await first.end().catch(() => undefined);
-  await reopened.end().catch(() => undefined);
+  if (!reopenedClosed) await reopened.end().catch(() => undefined);
   await second.end().catch(() => undefined);
 }

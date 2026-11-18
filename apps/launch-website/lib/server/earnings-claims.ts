@@ -1,5 +1,5 @@
 import { erc20Abi, getAddress, keccak256, parseAbi, parseEventLogs, toHex, zeroAddress, type Address, type Hash, type Hex } from "viem";
-import { assertNativeTransferProof } from "../../../../packages/launchpad-common/native-proof.mjs";
+import { assertInnerCallProof, assertNativeTransferProof } from "../../../../packages/launchpad-common/native-proof.mjs";
 import { claimCalldataMatches, encodeEarningsClaim, isEarningsClaimOperation, isEarningsClaimRequest, sameEarningsClaimRequest,
   type EarningsClaimAmounts,
   type EarningsClaimOperation, type EarningsClaimQuote, type EarningsClaimRequest, type EarningsClaimVerification, type EarningsPreparedClaim } from "../earnings-claims";
@@ -48,7 +48,7 @@ async function readFixturePayload(fixture: CurveFixture, url: URL): Promise<unkn
   return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(buffer.subarray(0, size)));
 }
 
-async function readFixtureBirth(fixture: CurveFixture, token: Address, recipient: Address) {
+export async function readFixtureBirth(fixture: CurveFixture, token: Address, recipient: Address) {
   const url = new URL("/earnings", fixture.indexerUrl);
   url.searchParams.set("recipient", recipient.toLowerCase()); url.searchParams.set("token", token.toLowerCase()); url.searchParams.set("limit", "1");
   const data = await readFixturePayload(fixture, url) as {
@@ -63,7 +63,7 @@ async function readFixtureBirth(fixture: CurveFixture, token: Address, recipient
   return { registration: data.launches[0], checkpoint: data.checkpoint };
 }
 
-async function readFixtureClaimIndexed(fixture: CurveFixture, context: EarningsReadContext, request: EarningsClaimRequest,
+export async function readFixtureClaimIndexed(fixture: CurveFixture, context: EarningsReadContext, request: EarningsClaimRequest,
   hash: Hash, blockHash: Hash, logIndex: number, amounts: EarningsClaimAmounts) {
   try {
     const url = new URL("/earnings/activity", fixture.indexerUrl); url.searchParams.set("transaction", hash);
@@ -201,7 +201,7 @@ async function prepareEarningsClaimCore(input: EarningsPreparationInput, expecte
   } catch { return { status: "unavailable" }; }
 }
 
-export async function recoverEarningsClaimHash(rpc: EarningsRpc, head: { number: bigint }, request: EarningsClaimRequest): Promise<Hash | "pending" | "unavailable"> {
+export async function recoverEarningsClaimHash(rpc: EarningsRpc, head: { number: bigint }, request: Pick<EarningsClaimRequest, "from" | "nonce" | "reviewBlockNumber">): Promise<Hash | "pending" | "unavailable"> {
   const nonce = Number(BigInt(request.nonce));
   if (await rpc.getTransactionCount({ address: request.from, blockNumber: head.number }) <= nonce) return "pending";
   let lower = BigInt(request.reviewBlockNumber), upper = head.number;
@@ -223,27 +223,50 @@ const claimEvents = parseAbi([
   "event CreationFeesClaimed(address indexed recipient,uint256 amount)",
 ]);
 
-export async function verifyEarningsClaim(input: { context: EarningsReadContext; registration?: EarningsRegistration; request: EarningsClaimRequest;
-  transactionHash?: Hash; indexed?: (hash: Hash, blockHash: Hash, logIndex: number, amounts: EarningsClaimAmounts) => Promise<boolean> }): Promise<EarningsClaimVerification> {
+export type EarningsSettlementInput = { context: EarningsReadContext; registration?: EarningsRegistration; request: EarningsClaimRequest;
+  transactionHash?: Hash; indexed?: (hash: Hash, blockHash: Hash, logIndex: number, amounts: EarningsClaimAmounts) => Promise<boolean>;
+  verifiedEvidence?: (evidence: { logIndex: number; block: EarningsPoint; pool: null | {
+    positionTokenId: string; principalLiquidityWei: string; poolId: Hex; custodian: Address;
+    poolKey: { currency0: Address; currency1: Address; fee: number; tickSpacing: number; hooks: Address } } }) => void };
+export type ClaimOuterEnvelope = { from: Address; to: Address; data: Hex; value: "0x0"; nonce: Hex; chainId: number; type: "0x2" };
+
+export async function verifyEarningsClaim(input: EarningsSettlementInput): Promise<EarningsClaimVerification> {
+  if (input.context.chainId !== 31337) return { status: "unavailable" };
+  return verifyEarningsClaimCore(input, 31337);
+}
+
+/** Internal read-only proof primitive. The production wrapper additionally
+ * verifies the wallet profile, quorum execution and independent providers.
+ * This is not an HTTP route and confers no signing/broadcast capability. */
+export async function verifyProfiledEarningsClaim(input: EarningsSettlementInput & { outer: ClaimOuterEnvelope }): Promise<EarningsClaimVerification> {
+  if ((input.context.chainId !== 31337 && input.context.chainId !== 4663)
+      || (input.context.chainId === 4663 && !exactProductionContext(input.context))) return { status: "unavailable" };
+  return verifyEarningsClaimCore(input, input.context.chainId, input.outer);
+}
+
+async function verifyEarningsClaimCore(input: EarningsSettlementInput, expectedChain: 31337 | 4663, outer?: ClaimOuterEnvelope): Promise<EarningsClaimVerification> {
   const { context, request } = input;
   try {
-    if (context.chainId !== 31337 || !isEarningsClaimRequest(request) || request.chainId !== "0x7a69" || !await claimCalldataMatches(request)
+    if (context.chainId !== expectedChain || !isEarningsClaimRequest(request) || request.chainId !== (expectedChain === 31337 ? "0x7a69" : "0x1237") || !await claimCalldataMatches(request)
       || !same(request.factory, context.factory) || !same(request.factoryRuntimeHash, context.factoryRuntimeHash)
       || BigInt(request.deploymentBlockNumber) !== context.deploymentBlock || !same(request.deploymentBlockHash, context.deploymentBlockHash)
       || (request.operation === "lp-collect" && (!same(request.to, context.graduation.address) || !same(request.targetRuntimeHash, context.graduation.runtimeHash)))) return { status: "unavailable" };
     const head = await verifyEarningsContext(context);
     const reviewed = await context.rpc.getBlock({ blockNumber: BigInt(request.reviewBlockNumber) });
     if (!same(reviewed.hash!, request.reviewBlockHash) || Number(reviewed.timestamp) !== request.reviewTimestamp) return { status: "unavailable", reason: "review-reorged" };
-    const found = input.transactionHash ?? await recoverEarningsClaimHash(context.rpc, head, request);
+    const actual = outer ?? { from: request.from, to: request.to, data: request.data, value: request.value, nonce: request.nonce, chainId: expectedChain };
+    if (actual.chainId !== expectedChain || actual.value !== "0x0") return { status: "unavailable" };
+    const found = input.transactionHash ?? await recoverEarningsClaimHash(context.rpc, head, { ...request, from: actual.from, nonce: actual.nonce });
     if (found === "pending" || found === "unavailable") return { status: found };
     const tx = await context.rpc.getTransaction({ hash: found });
     const bound = { transactionHash: found };
-    if (!same(tx.from, request.from) || !same(tx.to ?? "", request.to) || !same(tx.input, request.data) || tx.value !== 0n
-      || tx.chainId !== 31337 || tx.nonce !== Number(BigInt(request.nonce)) || !["legacy", "eip2930", "eip1559"].includes(tx.type)) return { status: "unavailable", ...bound };
+    if (!same(tx.from, actual.from) || !same(tx.to ?? "", actual.to) || !same(tx.input, actual.data) || tx.value !== 0n
+      || tx.chainId !== expectedChain || tx.nonce !== Number(BigInt(actual.nonce)) || !(outer ? ["eip1559"] : ["legacy", "eip2930", "eip1559"]).includes(tx.type)
+      || (outer && "authorizationList" in tx && tx.authorizationList !== undefined)) return { status: "unavailable", ...bound };
     if (tx.blockNumber === null) return { status: "pending", ...bound };
     const receipt = await context.rpc.getTransactionReceipt({ hash: found });
     const block = await context.rpc.getBlock({ blockNumber: receipt.blockNumber });
-    if (!same(receipt.transactionHash, found) || !same(receipt.from, request.from) || !same(receipt.to ?? "", request.to)
+    if (!same(receipt.transactionHash, found) || !same(receipt.from, actual.from) || !same(receipt.to ?? "", actual.to)
       || tx.blockNumber !== receipt.blockNumber || tx.transactionIndex !== receipt.transactionIndex || !same(tx.blockHash!, receipt.blockHash)
       || !same(block.hash!, receipt.blockHash) || !same(block.transactions[receipt.transactionIndex] as string, found)
       || receipt.blockNumber <= reviewed.number || receipt.blockNumber > head.number || receipt.logs.length > 128
@@ -259,19 +282,20 @@ export async function verifyEarningsClaim(input: { context: EarningsReadContext;
     const eventName = request.operation === "curve-claim" ? "CurveFeeClaimed" : request.operation === "creation-fees" ? "CreationFeesClaimed"
       : request.operation === "lp-collect" ? "LpFeesCollected" : "LpFeesClaimed";
     const events = parseEventLogs({ abi: claimEvents, eventName, strict: true, logs: receipt.logs.filter(log => same(log.address, request.to)) });
-    if (events.length !== 1) return { status: "unavailable", ...bound };
+    if (events.length !== 1) return { status: "unavailable", reason: "claim-event-count-conflict", ...bound };
     const event = events[0];
     const args = event.args as { recipient?: Address; amount?: bigint; nativeAmount?: bigint; tokenAmount?: bigint; token?: Address; positionTokenId?: bigint; ledger?: Address };
     const native = args.nativeAmount ?? args.amount ?? 0n, erc20 = args.tokenAmount ?? 0n;
     if (native < BigInt(request.expectedNativeWei) || erc20 < BigInt(request.expectedTokenWei)
       || (request.operation === "lp-claim-token" && native !== 0n) || (request.operation === "lp-claim-native" && erc20 !== 0n)
-      || (native === 0n && erc20 === 0n)) return { status: "unavailable", ...bound };
+      || (native === 0n && erc20 === 0n)) return { status: "unavailable", reason: "claim-asset-amount-conflict", ...bound };
     if (request.operation === "lp-collect") {
       if (!same(args.token ?? "", request.token) || !same(args.ledger ?? "", request.ledger) || args.positionTokenId?.toString() !== request.positionTokenId) return { status: "unavailable", ...bound };
-    } else if (!same(args.recipient ?? "", request.beneficiary)) return { status: "unavailable", ...bound };
+    } else if (!same(args.recipient ?? "", request.beneficiary)) return { status: "unavailable", reason: "claim-beneficiary-conflict", ...bound };
     // Re-read immutable policy, liabilities and permanent custody at the receipt
     // block, independent of current/indexed balance changes in later blocks.
     const receiptContext = { ...context, checkpoint: asPoint(block), historicalReceipt: true as const };
+    let poolProof: Parameters<NonNullable<EarningsSettlementInput["verifiedEvidence"]>>[0]["pool"] = null;
     if (request.operation === "creation-fees") {
       const fees = await readFactoryCreationFees(receiptContext, request.beneficiary);
       if (fees.status !== "ready" || !same(fees.recipient, request.beneficiary)) return { status: "unavailable", ...bound };
@@ -281,7 +305,10 @@ export async function verifyEarningsClaim(input: { context: EarningsReadContext;
       if (snapshot.status !== "ready" || !same(snapshot.originalCurve, request.originCurve) || !same(snapshot.token, request.token)
         || !same(snapshot.curve.ledger, request.operation === "curve-claim" ? request.ledger : snapshot.curve.ledger)
         || (request.operation.startsWith("lp-") && (snapshot.lp.status !== "ready" || !same(snapshot.lp.ledger, request.ledger)
-          || snapshot.lp.positionTokenId !== request.positionTokenId || snapshot.lp.liquidityWei !== request.principalLiquidityWei))) return { status: "unavailable", ...bound };
+          || snapshot.lp.positionTokenId !== request.positionTokenId || snapshot.lp.liquidityWei !== request.principalLiquidityWei))) return { status: "unavailable", reason: "claim-immutable-policy-or-custody-conflict", ...bound };
+      if (snapshot.lp.status === "ready" && request.operation.startsWith("lp-")) poolProof = {
+        positionTokenId: snapshot.lp.positionTokenId, principalLiquidityWei: snapshot.lp.liquidityWei,
+        poolId: snapshot.lp.poolId, custodian: context.graduation.address, poolKey: snapshot.lp.poolKey };
       if (request.operation === "lp-collect") {
         const [beforeAccrued, afterAccrued] = await Promise.all([reviewed.number, receipt.blockNumber].map(blockNumber => context.rpc.readContract({
           address: request.ledger, abi: lpEarningsAbi, functionName: "totalAccrued", blockNumber,
@@ -301,7 +328,7 @@ export async function verifyEarningsClaim(input: { context: EarningsReadContext;
         const paid = isCurve ? { native: snapshot.curve.claimedNativeWei, token: "0" }
           : snapshot.lp.status === "ready" ? { native: snapshot.lp.claimedNativeWei, token: snapshot.lp.claimedTokenWei } : undefined;
         if (!paid || priorPaidNative < 0n || priorPaidToken < 0n || BigInt(paid.native) < priorPaidNative + native || BigInt(paid.token) < priorPaidToken + erc20) {
-          return { status: "unavailable", ...bound };
+          return { status: "unavailable", reason: "claim-cumulative-entitlement-conflict", ...bound };
         }
       }
     }
@@ -309,17 +336,21 @@ export async function verifyEarningsClaim(input: { context: EarningsReadContext;
     const transfers = parseEventLogs({ abi: erc20Abi, eventName: "Transfer", strict: true, logs: receipt.logs.filter(log => same(log.address, request.token)) });
     const relevant = transfers.filter(event => same(event.args.from, payer));
     if ((erc20 === 0n && relevant.length !== 0) || (erc20 > 0n && (relevant.length !== 1 || !same(relevant[0].args.to, request.beneficiary) || relevant[0].args.value !== erc20))) {
-      return { status: "unavailable", ...bound };
+      return { status: "unavailable", reason: "claim-token-transfer-conflict", ...bound };
     }
-    if (native > 0n) {
+    const outerCall = !same(actual.from, request.from) || !same(actual.to, request.to) || !same(actual.data, request.data);
+    if (native > 0n || outerCall) {
       try {
         const trace = await context.rpc.request({ method: "debug_traceTransaction", params: [found, { tracer: "callTracer" }] } as never, { retryCount: 0 });
-        assertNativeTransferProof(trace, { from: request.from, to: request.to, value: 0n, input: request.data }, [{ from: payer, to: request.beneficiary, amount: native }]);
+        const traceOrigin = { from: actual.from, to: actual.to, value: 0n, input: actual.data };
+        if (outerCall) assertInnerCallProof(trace, traceOrigin, { from: request.from, to: request.to, value: 0n, input: request.data });
+        assertNativeTransferProof(trace, traceOrigin, [{ from: payer, to: request.beneficiary, amount: native }]);
       } catch { return { status: "pending", settlementPending: true, ...bound }; }
     }
     // An advancing launch checkpoint alone is not proof that a claim event was
     // durably indexed. The callback must match the exact canonical event identity.
     const amounts = { nativeWei: native.toString(), tokenWei: erc20.toString() };
+    input.verifiedEvidence?.({ logIndex: event.logIndex, block: asPoint(block), pool: poolProof });
     let indexed = false;
     try { indexed = input.indexed ? await input.indexed(found, receipt.blockHash, event.logIndex, amounts) : false; } catch { /* Onchain settlement remains distinct from an interrupted indexer read. */ }
     return { status: "confirmed", amounts, indexed, ...bound };

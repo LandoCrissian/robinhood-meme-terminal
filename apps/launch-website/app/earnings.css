@@ -24,6 +24,7 @@
 .lpEarningsClaim .lpRecovery { display: block; }
 .lpEarningsClaim .lpRecovery > summary { min-height: 44px; cursor: pointer; }
 .lpEarningsClaim .lpFacts dd, .lpEarningsProject .lpFacts dd { overflow-wrap: anywhere; min-width: 0; }
+.lpEarningsClaim pre { white-space: pre-wrap; overflow-wrap: anywhere; max-width: 100%; }
 .lpEarningsTabs { display: flex; gap: 10px; margin-bottom: 18px; }
 @media (max-width: 760px) { .lpEarningsProjects { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 900px) { .launchpad .lpEarningsLookup input, .launchpad .lpEarningsClaim :is(input, select) { font-size: 16px; } }

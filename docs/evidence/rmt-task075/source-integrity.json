@@ -1,0 +1,677 @@
+{
+  "schemaVersion": 1,
+  "profile": "rmt-task075-source-integrity-v1",
+  "scope": "READ_ONLY_SOURCE_AND_DEPENDENCY_IDENTITY_NO_SECURITY_CLEARANCE",
+  "observedAt": "2026-11-18T19:23:06.578Z",
+  "baseCommit": "641464490283736bc7ce0cbb40da9382d90120fa",
+  "candidateCommit": "573b2270f001d82c3ba6d41d37bd5e4fd350b1bf",
+  "gitObjectFormat": "sha1",
+  "trackedSolidityCount": 36,
+  "sameTrackedSolidityFileSet": true,
+  "allTrackedSolidityByteIdentical": true,
+  "trackedSolidity": [
+    {
+      "file": "docs/evidence/rmt-task040/foundry/RMTLaunchTask040Review.t.sol",
+      "baseGitBlob": "00fd90476f6999ae7e8e3533690d5684e3baec01",
+      "candidateGitBlob": "00fd90476f6999ae7e8e3533690d5684e3baec01",
+      "baseSha256": "3d4da11aa50859a60675546d64d56bd67284767c908f7281f216d7d5f01d0a64",
+      "candidateSha256": "3d4da11aa50859a60675546d64d56bd67284767c908f7281f216d7d5f01d0a64",
+      "identical": true
+    },
+    {
+      "file": "docs/evidence/rmt-task041/RejectingTreasury.sol",
+      "baseGitBlob": "0547a9888b3a7bab18d1daa1323bcba15b25060f",
+      "candidateGitBlob": "0547a9888b3a7bab18d1daa1323bcba15b25060f",
+      "baseSha256": "3ff4af02679fff778e5f1c4f6fdcec912fa12bd19b68b321a8d9cb9f52373a26",
+      "candidateSha256": "3ff4af02679fff778e5f1c4f6fdcec912fa12bd19b68b321a8d9cb9f52373a26",
+      "identical": true
+    },
+    {
+      "file": "docs/evidence/rmt-task042/foundry/RMTLaunchTreasuryReview.t.sol",
+      "baseGitBlob": "c04e26e4f0f6a764e074c3f43fd671fd4d31f71f",
+      "candidateGitBlob": "c04e26e4f0f6a764e074c3f43fd671fd4d31f71f",
+      "baseSha256": "9a8a7da35094731ca305a587af0fed3848c192b947351a771269b2290c69ef18",
+      "candidateSha256": "9a8a7da35094731ca305a587af0fed3848c192b947351a771269b2290c69ef18",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchBondingCurveV1.sol",
+      "baseGitBlob": "6dd4d524b7110d2b2e320868bf87b5ca37fa37d2",
+      "candidateGitBlob": "6dd4d524b7110d2b2e320868bf87b5ca37fa37d2",
+      "baseSha256": "1d5bfe45b49c81e5dfda76939251c3f56d42594bffb69da0cb5efc59bf9f7030",
+      "candidateSha256": "1d5bfe45b49c81e5dfda76939251c3f56d42594bffb69da0cb5efc59bf9f7030",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchBondingCurveV2.sol",
+      "baseGitBlob": "12c94e2ac10a3f18cd9f5c116aba91c58ee3eaaa",
+      "candidateGitBlob": "12c94e2ac10a3f18cd9f5c116aba91c58ee3eaaa",
+      "baseSha256": "ced2dd6ef8999c52f3f05c9d8a28124a665ebeac7e2696ebe75592ecafafdbb5",
+      "candidateSha256": "ced2dd6ef8999c52f3f05c9d8a28124a665ebeac7e2696ebe75592ecafafdbb5",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchBondingCurveV3.sol",
+      "baseGitBlob": "a3668cdb0a800f9ced44e00606fb7e09b9ef99a4",
+      "candidateGitBlob": "a3668cdb0a800f9ced44e00606fb7e09b9ef99a4",
+      "baseSha256": "5c5e13be8e978545c54771a27e6315315eb7e411f4f190daf01d9c397818fc93",
+      "candidateSha256": "5c5e13be8e978545c54771a27e6315315eb7e411f4f190daf01d9c397818fc93",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchCurveDeploymentV2.sol",
+      "baseGitBlob": "0d58dffd33d58cdd79961aa665d09d7905d5785d",
+      "candidateGitBlob": "0d58dffd33d58cdd79961aa665d09d7905d5785d",
+      "baseSha256": "31e3173f1999f8d68e4bbc6cd55196d618d02de7d9a2da37c53d76dfc7ccfb93",
+      "candidateSha256": "31e3173f1999f8d68e4bbc6cd55196d618d02de7d9a2da37c53d76dfc7ccfb93",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchCurveDirectoryV1.sol",
+      "baseGitBlob": "c0a21cfe57916a13b161c467d527bdc8df537f13",
+      "candidateGitBlob": "c0a21cfe57916a13b161c467d527bdc8df537f13",
+      "baseSha256": "cc8e4b76a3783b5422a309d0ed83a3346985e363e68fa2145b37cf0fba1fe3e0",
+      "candidateSha256": "cc8e4b76a3783b5422a309d0ed83a3346985e363e68fa2145b37cf0fba1fe3e0",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchCurveDirectoryV2.sol",
+      "baseGitBlob": "81fa6c65bbdffd8f53f086f1308df96e1dea7fc3",
+      "candidateGitBlob": "81fa6c65bbdffd8f53f086f1308df96e1dea7fc3",
+      "baseSha256": "0bb4beb821652d079620050c228783647d865da6a05da4df1628cc84ca3c1531",
+      "candidateSha256": "0bb4beb821652d079620050c228783647d865da6a05da4df1628cc84ca3c1531",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchCurveFactoryV2.sol",
+      "baseGitBlob": "bd46461d307ebf18ea6ea286ebb87ab7dcf7db8c",
+      "candidateGitBlob": "bd46461d307ebf18ea6ea286ebb87ab7dcf7db8c",
+      "baseSha256": "b7aff2888168b9b4d091fca46e5d17e5bd83f54f62ae2c57bc64439e42cdbdc8",
+      "candidateSha256": "b7aff2888168b9b4d091fca46e5d17e5bd83f54f62ae2c57bc64439e42cdbdc8",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchCurveLpFeeLedgerV1.sol",
+      "baseGitBlob": "b8c1fa3c07ec21c444647940d40297405ff8e3c7",
+      "candidateGitBlob": "b8c1fa3c07ec21c444647940d40297405ff8e3c7",
+      "baseSha256": "dff06312947d67835b9c313f0e68e26a3db989149477ec968663a86576b441f5",
+      "candidateSha256": "dff06312947d67835b9c313f0e68e26a3db989149477ec968663a86576b441f5",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchCurveMathV1.sol",
+      "baseGitBlob": "053e45510bfeb4f1451a67c16fed187dc703293e",
+      "candidateGitBlob": "053e45510bfeb4f1451a67c16fed187dc703293e",
+      "baseSha256": "2c1db3dd44aee9532188cf81f5085cecd0ebf049841357b25840e7b7be03fbb2",
+      "candidateSha256": "2c1db3dd44aee9532188cf81f5085cecd0ebf049841357b25840e7b7be03fbb2",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchCurveRevenueLedgerV1.sol",
+      "baseGitBlob": "a6e0b388e721be9ccc096fec14f9aa75eff89d78",
+      "candidateGitBlob": "a6e0b388e721be9ccc096fec14f9aa75eff89d78",
+      "baseSha256": "558c2ea7b7bae540d3c92d482cd9df2aa88b4b20d1da1c4ada1d986c0bc7bd54",
+      "candidateSha256": "558c2ea7b7bae540d3c92d482cd9df2aa88b4b20d1da1c4ada1d986c0bc7bd54",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchCurveTokenV2.sol",
+      "baseGitBlob": "a47038cd1b74dfcad764938f765e48852e4f6a7e",
+      "candidateGitBlob": "a47038cd1b74dfcad764938f765e48852e4f6a7e",
+      "baseSha256": "c0fc0358e4f0b46dca00ed264459896a42b52e256b19a0f8c412e91a31fd7d19",
+      "candidateSha256": "c0fc0358e4f0b46dca00ed264459896a42b52e256b19a0f8c412e91a31fd7d19",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchProjectRegistryV1.sol",
+      "baseGitBlob": "d4a34a9bdd9e73233fd2b1e3bb50b081aca0a366",
+      "candidateGitBlob": "d4a34a9bdd9e73233fd2b1e3bb50b081aca0a366",
+      "baseSha256": "48fa079c05c0cb840dc0c7027d407e54b1472ff0924c30d8e4dc4780a490e717",
+      "candidateSha256": "48fa079c05c0cb840dc0c7027d407e54b1472ff0924c30d8e4dc4780a490e717",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchProjectRegistryV2.sol",
+      "baseGitBlob": "490362499f6f442d94e4e99c6189a64f00ab3d17",
+      "candidateGitBlob": "490362499f6f442d94e4e99c6189a64f00ab3d17",
+      "baseSha256": "67f22eed981c6627ce6045001dbcfd23eff2e7d8b178c540b9f9979b7acee6ab",
+      "candidateSha256": "67f22eed981c6627ce6045001dbcfd23eff2e7d8b178c540b9f9979b7acee6ab",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchProjectRegistryV3.sol",
+      "baseGitBlob": "4a58fbc0821aba7f8a554827cdbf6a97fa560ca2",
+      "candidateGitBlob": "4a58fbc0821aba7f8a554827cdbf6a97fa560ca2",
+      "baseSha256": "8c92270751788af7acdbd6b4c18a4d0d5fbb399a876d974d55807489516e388c",
+      "candidateSha256": "8c92270751788af7acdbd6b4c18a4d0d5fbb399a876d974d55807489516e388c",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/src/RMTV4CurveGraduationV1.sol",
+      "baseGitBlob": "1395f0038f78a7b1e6dcc30990e68b0e7556102e",
+      "candidateGitBlob": "1395f0038f78a7b1e6dcc30990e68b0e7556102e",
+      "baseSha256": "b633189372da00f1491908175b9af2f8b1f0ba21093e6df67ea66309921b601e",
+      "candidateSha256": "b633189372da00f1491908175b9af2f8b1f0ba21093e6df67ea66309921b601e",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/src/RMTV4CurveInitializationGuardV1.sol",
+      "baseGitBlob": "fe6bae1b5a8b1b83b30cd087115f06138d299ab1",
+      "candidateGitBlob": "fe6bae1b5a8b1b83b30cd087115f06138d299ab1",
+      "baseSha256": "0c1498c636aae8954c6f47420cd7341eecbeb1eaaae9b3c743c22aa8907eb31f",
+      "candidateSha256": "0c1498c636aae8954c6f47420cd7341eecbeb1eaaae9b3c743c22aa8907eb31f",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/src/interfaces/IRMTLaunchCurveExecution.sol",
+      "baseGitBlob": "d989d71548c47f9c41f7120fd45be207f9ed89da",
+      "candidateGitBlob": "d989d71548c47f9c41f7120fd45be207f9ed89da",
+      "baseSha256": "9b5793ca3cfbffc912e53f6e26d6744aa49a1dfce913791e867e466a5bfa451c",
+      "candidateSha256": "9b5793ca3cfbffc912e53f6e26d6744aa49a1dfce913791e867e466a5bfa451c",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/src/interfaces/IRMTV4CurveGraduationV1.sol",
+      "baseGitBlob": "3c37f85cd2c9bf68c8b9e442032ce93b184188d6",
+      "candidateGitBlob": "3c37f85cd2c9bf68c8b9e442032ce93b184188d6",
+      "baseSha256": "d3fe566a9b14f907c5289860d96f26b58649027f0ea6d1718862c377839ebefe",
+      "candidateSha256": "d3fe566a9b14f907c5289860d96f26b58649027f0ea6d1718862c377839ebefe",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/test/RMTDependencyArithmeticReview.t.sol",
+      "baseGitBlob": "d131f4a7042b8f82432a4c159bf263366de329ef",
+      "candidateGitBlob": "d131f4a7042b8f82432a4c159bf263366de329ef",
+      "baseSha256": "030491f216ffeadde1e4c60715095fc5cb7dda79e25cbbd9923f462767a799ba",
+      "candidateSha256": "030491f216ffeadde1e4c60715095fc5cb7dda79e25cbbd9923f462767a799ba",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/test/RMTLaunchAdjacentMigrationProof.t.sol",
+      "baseGitBlob": "83b4ad7bd9033d48f416aefe97912dcf63bd17d0",
+      "candidateGitBlob": "83b4ad7bd9033d48f416aefe97912dcf63bd17d0",
+      "baseSha256": "72459d50784b0e7bc2631e68a23d68b7597b45ad2bc5e0b02e840669ed730853",
+      "candidateSha256": "72459d50784b0e7bc2631e68a23d68b7597b45ad2bc5e0b02e840669ed730853",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/test/RMTLaunchBondingCurveV1.t.sol",
+      "baseGitBlob": "621c25541c4119378fe9d0abc3806f0ae013d4a5",
+      "candidateGitBlob": "621c25541c4119378fe9d0abc3806f0ae013d4a5",
+      "baseSha256": "486e7fc0018a79261ad60b0d270adf3ea957039373df5cd6ebd658026f98f487",
+      "candidateSha256": "486e7fc0018a79261ad60b0d270adf3ea957039373df5cd6ebd658026f98f487",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/test/RMTLaunchCreatorEarnings.t.sol",
+      "baseGitBlob": "0dc96418572894677df835150fc77e661b0f2d1d",
+      "candidateGitBlob": "0dc96418572894677df835150fc77e661b0f2d1d",
+      "baseSha256": "b7c81e81b008ece8cab270d1cefd815745845933de46c4c50d0e80ba9f502401",
+      "candidateSha256": "b7c81e81b008ece8cab270d1cefd815745845933de46c4c50d0e80ba9f502401",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/test/RMTLaunchCurveAccountingInvariant.t.sol",
+      "baseGitBlob": "a0c74a06bd5dea8e0121f085c12d127a22190388",
+      "candidateGitBlob": "a0c74a06bd5dea8e0121f085c12d127a22190388",
+      "baseSha256": "367ff93c9cc30b8349098696522e6f5c914c401d3fb9bdcef7d7d90720005aa0",
+      "candidateSha256": "367ff93c9cc30b8349098696522e6f5c914c401d3fb9bdcef7d7d90720005aa0",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/test/RMTLaunchCurveCreationFeeV1.t.sol",
+      "baseGitBlob": "f4b73a33bff2daf4ada2eb8a4672bd100d76efd0",
+      "candidateGitBlob": "f4b73a33bff2daf4ada2eb8a4672bd100d76efd0",
+      "baseSha256": "db42861f5a55e8be52786720db3690e16e0e6d9a12585eb83cbc79a6e1e983c0",
+      "candidateSha256": "db42861f5a55e8be52786720db3690e16e0e6d9a12585eb83cbc79a6e1e983c0",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/test/RMTLaunchCurveDirectoryV1.t.sol",
+      "baseGitBlob": "b63cb4bc4346e4086dfccf328ca1166276933155",
+      "candidateGitBlob": "b63cb4bc4346e4086dfccf328ca1166276933155",
+      "baseSha256": "4606cf9e959c176af11fe3869ff0b63971e4b1056431300e049276b5231b9cef",
+      "candidateSha256": "4606cf9e959c176af11fe3869ff0b63971e4b1056431300e049276b5231b9cef",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/test/RMTLaunchCurveDirectoryV2.t.sol",
+      "baseGitBlob": "1767337cd7b07f66eef26c52ca85665c312e5f17",
+      "candidateGitBlob": "1767337cd7b07f66eef26c52ca85665c312e5f17",
+      "baseSha256": "3e08403cdd4801d32210198899c3e5c1249f20386c6f3b456db710f493838236",
+      "candidateSha256": "3e08403cdd4801d32210198899c3e5c1249f20386c6f3b456db710f493838236",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/test/RMTLaunchCurveSymbolic.t.sol",
+      "baseGitBlob": "051c1be153ba34f0815995a5cfd62c68bad336b2",
+      "candidateGitBlob": "051c1be153ba34f0815995a5cfd62c68bad336b2",
+      "baseSha256": "2c84db5a0dc7bba267d2ea39bf4f01b347006e35c7bbb680a035fe216c820764",
+      "candidateSha256": "2c84db5a0dc7bba267d2ea39bf4f01b347006e35c7bbb680a035fe216c820764",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/test/RMTLaunchMigrationReadiness.t.sol",
+      "baseGitBlob": "4ab4a812b90b445363f2853118d3a07487f96ae3",
+      "candidateGitBlob": "4ab4a812b90b445363f2853118d3a07487f96ae3",
+      "baseSha256": "7b811ac656f393d80b36cc639fbc1798d194ca7089697da5804a50efecd91901",
+      "candidateSha256": "7b811ac656f393d80b36cc639fbc1798d194ca7089697da5804a50efecd91901",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/test/RMTLaunchProjectRegistryV1.t.sol",
+      "baseGitBlob": "fe5b276c40f33926f0695dbe07ff8b6cb5da3e1c",
+      "candidateGitBlob": "fe5b276c40f33926f0695dbe07ff8b6cb5da3e1c",
+      "baseSha256": "f1ba0190be9ac82a0b128c302e543223cfde7ab1605a7febae22f1b4fcd0a6af",
+      "candidateSha256": "f1ba0190be9ac82a0b128c302e543223cfde7ab1605a7febae22f1b4fcd0a6af",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/test/RMTLaunchProjectRegistryV2.t.sol",
+      "baseGitBlob": "47efdba80376648dcd6c09090dde5e7289dc2fdc",
+      "candidateGitBlob": "47efdba80376648dcd6c09090dde5e7289dc2fdc",
+      "baseSha256": "9edb5b27502096dd78a17de26059debabf830197fbd6b48e0b8c6881bd30410d",
+      "candidateSha256": "9edb5b27502096dd78a17de26059debabf830197fbd6b48e0b8c6881bd30410d",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/test/RMTLaunchProjectRegistryV3.t.sol",
+      "baseGitBlob": "9a9702624e69993d9376f5aa005eef2a10ad30a8",
+      "candidateGitBlob": "9a9702624e69993d9376f5aa005eef2a10ad30a8",
+      "baseSha256": "91276bbb300a91625291af6a35d5a609d6dde1a8b1b04559133926122bb0b1e8",
+      "candidateSha256": "91276bbb300a91625291af6a35d5a609d6dde1a8b1b04559133926122bb0b1e8",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/test/RMTV4CurveGraduationV1.t.sol",
+      "baseGitBlob": "0c889db98321244e72c89d2c6da9243f4e81ba56",
+      "candidateGitBlob": "0c889db98321244e72c89d2c6da9243f4e81ba56",
+      "baseSha256": "efcbb6cbfa479f2c2c46d47b9b7c938e6dd64c20460a539acf44069c7fd6f832",
+      "candidateSha256": "efcbb6cbfa479f2c2c46d47b9b7c938e6dd64c20460a539acf44069c7fd6f832",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/test/RMTV4SharedPoolSettlement.t.sol",
+      "baseGitBlob": "df16751b25ed6b60849f15473984449fa87424e9",
+      "candidateGitBlob": "df16751b25ed6b60849f15473984449fa87424e9",
+      "baseSha256": "11393f4d11e2f024675ab35b3d33dc7cd6440eb24b7185311f3fe1f8d0e583ff",
+      "candidateSha256": "11393f4d11e2f024675ab35b3d33dc7cd6440eb24b7185311f3fe1f8d0e583ff",
+      "identical": true
+    }
+  ],
+  "pinnedInputs": [
+    {
+      "file": "packages/contracts/scripts/fixed-supply-profile.mjs",
+      "baseGitBlob": "59a74acaa4e616b85b1d1271255810ab8f7b1071",
+      "candidateGitBlob": "59a74acaa4e616b85b1d1271255810ab8f7b1071",
+      "sha256": "a41b188fe25891824e82ae345d611c6935737a720b84a1a1513418ec91a5882f",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/scripts/install-v4-deps.sh",
+      "baseGitBlob": "c35c5cd4fd099d8519a8e62626983e84c563e171",
+      "candidateGitBlob": "c35c5cd4fd099d8519a8e62626983e84c563e171",
+      "sha256": "de3f6bc2d48a648b08fbcc7160f212c471be0dedb8791f8e59956209287ab95a",
+      "identical": true
+    },
+    {
+      "file": "packages/contracts/foundry.toml",
+      "baseGitBlob": "8564fcab5da027ab5e510ed915355b7dfcb9e548",
+      "candidateGitBlob": "8564fcab5da027ab5e510ed915355b7dfcb9e548",
+      "sha256": "18a70f8b9e0ba83b4ee25916c7d45fbce6a90b5702dc70b70b73ac3407e33e01",
+      "identical": true
+    },
+    {
+      "file": "docs/evidence/rmt-task043/4663-rotation-profile.json",
+      "baseGitBlob": "45c2bd78bafa513704da0241501e7ac8587a10d6",
+      "candidateGitBlob": "45c2bd78bafa513704da0241501e7ac8587a10d6",
+      "sha256": "ac359af6ace7d9a4724e251889962c1328c1d2e9c297a06dd9bb164982d9e936",
+      "identical": true
+    },
+    {
+      "file": "pnpm-lock.yaml",
+      "baseGitBlob": "9c5f757054087af84fc2839d2ada2f443e2b2cf0",
+      "candidateGitBlob": "9c5f757054087af84fc2839d2ada2f443e2b2cf0",
+      "sha256": "d5e347f7d3926a2ff2a30c82a3deac1e85089fac662cb07a657d542e5510e3ae",
+      "identical": true
+    },
+    {
+      "file": "package.json",
+      "baseGitBlob": "0ad283f013d1f42840f3827e1b534a14b6edd79c",
+      "candidateGitBlob": "0ad283f013d1f42840f3827e1b534a14b6edd79c",
+      "sha256": "38c1edf2b072c1e3fe5e1eef45849636d7dd8d23bf528ad2e3a2fcc532846677",
+      "identical": true
+    },
+    {
+      "file": "apps/indexer/package.json",
+      "baseGitBlob": "4ac62f32602e1d8ec481ed993f11c43c5a04aafc",
+      "candidateGitBlob": "4ac62f32602e1d8ec481ed993f11c43c5a04aafc",
+      "sha256": "c625e1ca4167e269fd324007be408ec54b037fa1ff76e5c2124e1b0e91337428",
+      "identical": true
+    },
+    {
+      "file": "apps/launch-website/package.json",
+      "baseGitBlob": "85ed5f48316a5e600209c050d6033ffe09621341",
+      "candidateGitBlob": "85ed5f48316a5e600209c050d6033ffe09621341",
+      "sha256": "7a6feeb41bdf5ff1c1a161dad300cb1e0d850affb122a5137e1cbdfc36622c07",
+      "identical": true
+    }
+  ],
+  "allPinnedInputsUnchanged": true,
+  "dependencyPinManifest": "docs/evidence/rmt-task043/4663-rotation-profile.json",
+  "dependencyHashConvention": "SHA-256 of compiler source text after CRLF-to-LF normalization, identical to buildFixedSupplyInput.",
+  "dependencySourceCount": 50,
+  "allDependencyHashesMatch": true,
+  "dependencySources": [
+    {
+      "file": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol",
+      "expectedSha256": "4aea87243e6de38804bf8737bf86f750443d3b5e63dd0fd0b7ad92f77cdbd3e3",
+      "observedSha256": "4aea87243e6de38804bf8737bf86f750443d3b5e63dd0fd0b7ad92f77cdbd3e3",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol",
+      "expectedSha256": "2d874da1c1478ed22a2d30dcf1a6ec0d09a13f897ca680d55fb49fbcc0e0c5b1",
+      "observedSha256": "2d874da1c1478ed22a2d30dcf1a6ec0d09a13f897ca680d55fb49fbcc0e0c5b1",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol",
+      "expectedSha256": "6f2faae462e286e24e091d7718575179644dc60e79936ef0c92e2d1ab3ca3cee",
+      "observedSha256": "6f2faae462e286e24e091d7718575179644dc60e79936ef0c92e2d1ab3ca3cee",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol",
+      "expectedSha256": "1d079c20a192a135308e99fa5515c27acfbb071e6cdb0913b13634e630865939",
+      "observedSha256": "1d079c20a192a135308e99fa5515c27acfbb071e6cdb0913b13634e630865939",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol",
+      "expectedSha256": "912509e0e9bf74e0f8a8c92d031b5b26d2d35c6d4abf3f56251be1ea9ca946bf",
+      "observedSha256": "912509e0e9bf74e0f8a8c92d031b5b26d2d35c6d4abf3f56251be1ea9ca946bf",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol",
+      "expectedSha256": "471157c89111d7b9eab456b53ebe9042bc69504a64cb5cc980d38da9103379ae",
+      "observedSha256": "471157c89111d7b9eab456b53ebe9042bc69504a64cb5cc980d38da9103379ae",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/utils/Address.sol",
+      "expectedSha256": "b3710b1712637eb8c0df81912da3450da6ff67b0b3ed18146b033ed15b1aa3b9",
+      "observedSha256": "b3710b1712637eb8c0df81912da3450da6ff67b0b3ed18146b033ed15b1aa3b9",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/utils/Context.sol",
+      "expectedSha256": "847fda5460fee70f56f4200f59b82ae622bb03c79c77e67af010e31b7e2cc5b6",
+      "observedSha256": "847fda5460fee70f56f4200f59b82ae622bb03c79c77e67af010e31b7e2cc5b6",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol",
+      "expectedSha256": "8d0bac508a25133c9ff80206f65164cef959ec084645d1e7b06050c2971ae0fc",
+      "observedSha256": "8d0bac508a25133c9ff80206f65164cef959ec084645d1e7b06050c2971ae0fc",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/utils/math/Math.sol",
+      "expectedSha256": "a6ee779fc42e6bf01b5e6a963065706e882b016affbedfd8be19a71ea48e6e15",
+      "observedSha256": "a6ee779fc42e6bf01b5e6a963065706e882b016affbedfd8be19a71ea48e6e15",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/utils/math/SafeCast.sol",
+      "expectedSha256": "089488198de38548e4e8ee7940d307f18396e5b295de5bca7ff7567fd4142cc3",
+      "observedSha256": "089488198de38548e4e8ee7940d307f18396e5b295de5bca7ff7567fd4142cc3",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/interfaces/IExtsload.sol",
+      "expectedSha256": "9421ef4ba198d94058cd9a4c9fd2d663c61fc682f7dafa449a873456853f0025",
+      "observedSha256": "9421ef4ba198d94058cd9a4c9fd2d663c61fc682f7dafa449a873456853f0025",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/interfaces/IExttload.sol",
+      "expectedSha256": "c21643d2c7f48d2d2407438a64a3ff0f376324cf6a0c62608977713652308c9e",
+      "observedSha256": "c21643d2c7f48d2d2407438a64a3ff0f376324cf6a0c62608977713652308c9e",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/interfaces/IHooks.sol",
+      "expectedSha256": "6eb35c9c598eb932e963219f1ff180748bc4c30ac6a02d924893b3c29abb1d73",
+      "observedSha256": "6eb35c9c598eb932e963219f1ff180748bc4c30ac6a02d924893b3c29abb1d73",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/interfaces/IPoolManager.sol",
+      "expectedSha256": "a98405333567e4ab344489728014795721cf0071c151536377d2fcc986e0600c",
+      "observedSha256": "a98405333567e4ab344489728014795721cf0071c151536377d2fcc986e0600c",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/interfaces/IProtocolFees.sol",
+      "expectedSha256": "807d68adea106ec2aa51a8009155de09ebfe09e1ee7053d5a5ae448d7e840654",
+      "observedSha256": "807d68adea106ec2aa51a8009155de09ebfe09e1ee7053d5a5ae448d7e840654",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/interfaces/external/IERC20Minimal.sol",
+      "expectedSha256": "5e966a2d22b3b234a56af4b17e36bf7be90f9b29b1ddb6a15bfefc0b6dab4282",
+      "observedSha256": "5e966a2d22b3b234a56af4b17e36bf7be90f9b29b1ddb6a15bfefc0b6dab4282",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/interfaces/external/IERC6909Claims.sol",
+      "expectedSha256": "1cd65496c829036bc6aee67bc71363ab5fb6989c65e793087d0e1e2379f7d7d8",
+      "observedSha256": "1cd65496c829036bc6aee67bc71363ab5fb6989c65e793087d0e1e2379f7d7d8",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/libraries/BitMath.sol",
+      "expectedSha256": "e8a45eb3d57f9427fc47bbb2543c1a6a5f394113b378123ac7ca9f113a7502b4",
+      "observedSha256": "e8a45eb3d57f9427fc47bbb2543c1a6a5f394113b378123ac7ca9f113a7502b4",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/libraries/CustomRevert.sol",
+      "expectedSha256": "9d3dbe6b742cb1ac30f57df89d879ade9649389de1165fc637114bd062d39fca",
+      "observedSha256": "9d3dbe6b742cb1ac30f57df89d879ade9649389de1165fc637114bd062d39fca",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/libraries/FixedPoint96.sol",
+      "expectedSha256": "66ee26d4fb3ac639124bdfa27d3256d196970997fa127c09e9bf7154e30d4590",
+      "observedSha256": "66ee26d4fb3ac639124bdfa27d3256d196970997fa127c09e9bf7154e30d4590",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/libraries/FullMath.sol",
+      "expectedSha256": "a9607255a6fd604d9c92f6b7416811c38b9d86e5dfdb0c345a494ebd35f7a4a3",
+      "observedSha256": "a9607255a6fd604d9c92f6b7416811c38b9d86e5dfdb0c345a494ebd35f7a4a3",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/libraries/Hooks.sol",
+      "expectedSha256": "297d577998cdede64d48b47b12f15e4f442eea032fbb9676bb3c2f89da89b83c",
+      "observedSha256": "297d577998cdede64d48b47b12f15e4f442eea032fbb9676bb3c2f89da89b83c",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/libraries/LPFeeLibrary.sol",
+      "expectedSha256": "e96c3fa7deac991dc09b6c5e560a340d01d6c68ccba483d4b29f8a66e5aa44e0",
+      "observedSha256": "e96c3fa7deac991dc09b6c5e560a340d01d6c68ccba483d4b29f8a66e5aa44e0",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/libraries/ParseBytes.sol",
+      "expectedSha256": "6a6f3d1cec0143fd70ea68c34e6dce3bde72f368b213f1a225ada23dbfd99bb8",
+      "observedSha256": "6a6f3d1cec0143fd70ea68c34e6dce3bde72f368b213f1a225ada23dbfd99bb8",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/libraries/SafeCast.sol",
+      "expectedSha256": "c1a815a41607be5b4c86ca588a951f368156da8ee21bdfc18b5d51b58a0f27be",
+      "observedSha256": "c1a815a41607be5b4c86ca588a951f368156da8ee21bdfc18b5d51b58a0f27be",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/libraries/SqrtPriceMath.sol",
+      "expectedSha256": "42440c21bbab86c7eed4716b281ed5ca281cf14af8b5e06dc6dc3bc6864bcfdf",
+      "observedSha256": "42440c21bbab86c7eed4716b281ed5ca281cf14af8b5e06dc6dc3bc6864bcfdf",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/libraries/TickMath.sol",
+      "expectedSha256": "272d4f6d3ff9ae33596ebcdb84a71a3c2d4542ae8fb5c88ddf1aca8043f5d06b",
+      "observedSha256": "272d4f6d3ff9ae33596ebcdb84a71a3c2d4542ae8fb5c88ddf1aca8043f5d06b",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/libraries/UnsafeMath.sol",
+      "expectedSha256": "2de236e7ca0b9572a6b0184557565b6fd54e177224e202c727fe248785ede427",
+      "observedSha256": "2de236e7ca0b9572a6b0184557565b6fd54e177224e202c727fe248785ede427",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/types/BalanceDelta.sol",
+      "expectedSha256": "320d9c13dec135c3903729e66d3a1040fe86d537a7ee53728915012ca183af32",
+      "observedSha256": "320d9c13dec135c3903729e66d3a1040fe86d537a7ee53728915012ca183af32",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/types/BeforeSwapDelta.sol",
+      "expectedSha256": "6aee06f1553e879f5909e8f4c0eac26ec23dd4821a7e56e4d5077db39a227e12",
+      "observedSha256": "6aee06f1553e879f5909e8f4c0eac26ec23dd4821a7e56e4d5077db39a227e12",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/types/Currency.sol",
+      "expectedSha256": "ba6726fd24fbc66848208dfbb2899116c10729c505e6e5552316ac2444f1dfc3",
+      "observedSha256": "ba6726fd24fbc66848208dfbb2899116c10729c505e6e5552316ac2444f1dfc3",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/types/PoolId.sol",
+      "expectedSha256": "548424ac50ad58212545da70207283fb8990731578c115c85d5acbcb0e1d3c9f",
+      "observedSha256": "548424ac50ad58212545da70207283fb8990731578c115c85d5acbcb0e1d3c9f",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/types/PoolKey.sol",
+      "expectedSha256": "99e1afe285b5c614ebc9586ab5196db9d24a63fd924a449f5d99f490a6a6d6a9",
+      "observedSha256": "99e1afe285b5c614ebc9586ab5196db9d24a63fd924a449f5d99f490a6a6d6a9",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/types/PoolOperation.sol",
+      "expectedSha256": "cf72ad0c3e5e91662029e862acd841fabce8753040b0d4e802dee64ef1157232",
+      "observedSha256": "cf72ad0c3e5e91662029e862acd841fabce8753040b0d4e802dee64ef1157232",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-periphery/src/libraries/Actions.sol",
+      "expectedSha256": "404b842f30a05783b20eb37b20cc86e7a0df2730f6a7399229b46ae77f63e63a",
+      "observedSha256": "404b842f30a05783b20eb37b20cc86e7a0df2730f6a7399229b46ae77f63e63a",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-periphery/src/libraries/LiquidityAmounts.sol",
+      "expectedSha256": "dbfbef7aed94a6a56885124f0802b42adf7ee7bdd658f11fed40ffbb93fe6ba5",
+      "observedSha256": "dbfbef7aed94a6a56885124f0802b42adf7ee7bdd658f11fed40ffbb93fe6ba5",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/libraries/StateLibrary.sol",
+      "expectedSha256": "eebdbc1b6e431072ce5521b9e1b603d43831e3b6e062743e6665e070d5cf8a1a",
+      "observedSha256": "eebdbc1b6e431072ce5521b9e1b603d43831e3b6e062743e6665e070d5cf8a1a",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/libraries/Position.sol",
+      "expectedSha256": "3dc4e2ad1564fa94eddf3ff06ce9ac592c9d578ea64ca194050382da454c8fcb",
+      "observedSha256": "3dc4e2ad1564fa94eddf3ff06ce9ac592c9d578ea64ca194050382da454c8fcb",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/libraries/FixedPoint128.sol",
+      "expectedSha256": "1ca2f55160697b73bd66fd27c8724d79a57108121ce1e8a0ab8b79f38bb58fbb",
+      "observedSha256": "1ca2f55160697b73bd66fd27c8724d79a57108121ce1e8a0ab8b79f38bb58fbb",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/src/libraries/LiquidityMath.sol",
+      "expectedSha256": "67a39e58732340af4870342ba9230691f35501d89ed8725ca1b338deaa0eb26a",
+      "observedSha256": "67a39e58732340af4870342ba9230691f35501d89ed8725ca1b338deaa0eb26a",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-periphery/src/libraries/PositionInfoLibrary.sol",
+      "expectedSha256": "5c889e1d5f259291045413e28069101eba1e7b8b72df6586bf54e4de5e525099",
+      "observedSha256": "5c889e1d5f259291045413e28069101eba1e7b8b72df6586bf54e4de5e525099",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol",
+      "expectedSha256": "37828cb50b47bcc51c7b770bde15d5885d871ef1e67028057a0b788c3568726e",
+      "observedSha256": "37828cb50b47bcc51c7b770bde15d5885d871ef1e67028057a0b788c3568726e",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/utils/cryptography/EIP712.sol",
+      "expectedSha256": "27dac0732a0154f432c0a7a1d1f067ab51116105e157d0e5d68d040fd83954d5",
+      "observedSha256": "27dac0732a0154f432c0a7a1d1f067ab51116105e157d0e5d68d040fd83954d5",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol",
+      "expectedSha256": "2fd5c641cf452efd15f784827cb2835664970d7fbc166bf80824ed27011cc374",
+      "observedSha256": "2fd5c641cf452efd15f784827cb2835664970d7fbc166bf80824ed27011cc374",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol",
+      "expectedSha256": "ddd52921d2996abf2e3d9c1c4f6d00194a3e3b278a164948f995862371444a55",
+      "observedSha256": "ddd52921d2996abf2e3d9c1c4f6d00194a3e3b278a164948f995862371444a55",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/utils/Strings.sol",
+      "expectedSha256": "0519199dbc635f98ce2e4537986604ee618bca665c65e9a1738702dfacf72010",
+      "observedSha256": "0519199dbc635f98ce2e4537986604ee618bca665c65e9a1738702dfacf72010",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/utils/StorageSlot.sol",
+      "expectedSha256": "b4a5fb7ab93bfeda06509eafbd5f71fde0e0de84b6d9129553bd535a42166c15",
+      "observedSha256": "b4a5fb7ab93bfeda06509eafbd5f71fde0e0de84b6d9129553bd535a42166c15",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/utils/math/SignedMath.sol",
+      "expectedSha256": "768c28e3a33c3312e57ae8a1caaec2893bc89ac6e386621de018f85e9a2d6e99",
+      "observedSha256": "768c28e3a33c3312e57ae8a1caaec2893bc89ac6e386621de018f85e9a2d6e99",
+      "matched": true
+    },
+    {
+      "file": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/interfaces/IERC5267.sol",
+      "expectedSha256": "efd1ebd1e04b6ef9c3b8781a097588f83da954323f438d54a71dc06508e6c7b8",
+      "observedSha256": "efd1ebd1e04b6ef9c3b8781a097588f83da954323f438d54a71dc06508e6c7b8",
+      "matched": true
+    }
+  ],
+  "contractTreeChanges": [
+    "A\tpackages/contracts/test/fixtures/metamask-delegation-1.3.0/LICENSE-APACHE2.md",
+    "A\tpackages/contracts/test/fixtures/metamask-delegation-1.3.0/LICENSE-MIT.md",
+    "A\tpackages/contracts/test/fixtures/metamask-delegation-1.3.0/README.md"
+  ],
+  "limitations": [
+    "Source identity checks do not rerun a compiler or scanner and do not clear findings.",
+    "New contract-tree files contain only test-runtime fixture provenance and upstream license notices.",
+    "22 high findings and both failed static-analysis release gates remain; production deployment and financial activation are unchanged."
+  ]
+}

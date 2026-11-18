@@ -1,0 +1,2558 @@
+{
+  "schemaVersion": 1,
+  "profile": "rmt-claim-wallet-browser-v1",
+  "chainId": 31337,
+  "scope": "LOCAL_SYNTHETIC_BROWSER_NOT_PHYSICAL_IPHONE_OR_PRODUCTION",
+  "executionEnabled": false,
+  "actors": {
+    "delegated": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+    "relayer": "0xEBb1Def4cEcB16D1FB8747BC2339666608463984",
+    "safe": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+    "owners": [
+      "0x52288744EC4e906d1269C1C9951BDec8EbEc277B",
+      "0xD01e231a718aced28d597774486A67a7a0350C52",
+      "0xEc58cAFF9C16169Ba7DCfF2C3F3149a1B7f6a090"
+    ]
+  },
+  "token": "0xA50f2D23D71D1B1CB5c1c7adBed99891bF1B26Eb",
+  "status": "passed",
+  "sends": [
+    {
+      "review": {
+        "schemaVersion": 1,
+        "profile": "rmt-claim-execution-v1",
+        "chainId": 31337,
+        "scope": "isolated-local",
+        "status": "review-only",
+        "executionEnabled": false,
+        "kind": "metamask-7702",
+        "actor": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+        "beneficiary": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+        "gasPayer": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+        "inner": {
+          "schemaVersion": 1,
+          "operation": "lp-claim-token",
+          "chainId": "0x7a69",
+          "from": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+          "to": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+          "data": "0xd51867eb0000000000000000000000000000000000000000000000000000000000000000",
+          "value": "0x0",
+          "nonce": "0x15",
+          "factory": "0xa939cCF7c8F1c1d1EBE668d7E45c52DE1517065b",
+          "token": "0xA50f2D23D71D1B1CB5c1c7adBed99891bF1B26Eb",
+          "originCurve": "0x30EBB95d027e4c36DD1C0b7F8D134F4727A35830",
+          "ledger": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+          "beneficiary": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+          "discoveryRecipient": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+          "factoryRuntimeHash": "0x3b370dc5c69857c903292db4717a7e80a2fdd8fe1d36ec0eff2b15b65c1d5fc7",
+          "targetRuntimeHash": "0x6f519f5ef8248ab86e05d63f3df1ec9480326190e710f5b29417cc2da8caa609",
+          "deploymentBlockNumber": "0x36fa4b5",
+          "deploymentBlockHash": "0xc9d04f2abdf7f3260055033800225451e2fc5b905fe42edf37cb3faf2646d233",
+          "reviewBlockNumber": "0x36fa50d",
+          "reviewBlockHash": "0x85045d8cdf5b557358ebd3a4b8747c822899bc8b474e095917b574e60c18094c",
+          "reviewTimestamp": 1795375105,
+          "reviewExpiresAt": 1795375285,
+          "deadline": null,
+          "expectedNativeWei": "0",
+          "expectedTokenWei": "202500000000000000",
+          "positionTokenId": "33608",
+          "principalLiquidityWei": "28284271247461900976033"
+        },
+        "outer": {
+          "type": "0x2",
+          "chainId": "0x7a69",
+          "from": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+          "to": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+          "data": "0xd51867eb0000000000000000000000000000000000000000000000000000000000000000",
+          "value": "0x0",
+          "nonce": "0x15",
+          "gas": "0x1806e",
+          "maxFeePerGas": "0x7735940e",
+          "maxPriorityFeePerGas": "0x0"
+        },
+        "wallet": {
+          "kind": "metamask-7702",
+          "actorCodeHash": "0xb09ef517c48d2bf6eed05457ff56871b2596e3fc904fc6e9795882a870c2e993",
+          "actorNonce": "21",
+          "delegation": {
+            "address": "0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B",
+            "designator": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b",
+            "runtimeHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0"
+          },
+          "safe": null
+        },
+        "fees": {
+          "status": "synthetic-local",
+          "gasUnits": "78731",
+          "gasLimit": "98414",
+          "l2GasUnits": "78731",
+          "l1PosterGasUnits": "0",
+          "baseFeeWei": "1000000007",
+          "l1BaseFeeWei": "0",
+          "estimatedL2Wei": "78731000551117",
+          "estimatedL1Wei": "0",
+          "estimatedTotalWei": "78731000551117",
+          "maxFeePerGasWei": "2000000014",
+          "maxPriorityFeePerGasWei": "0",
+          "proposedMaximumWei": "196828001377796",
+          "observedBlockNumber": "57648397",
+          "observedBlockHash": "0x85045d8cdf5b557358ebd3a4b8747c822899bc8b474e095917b574e60c18094c",
+          "includesL1Data": false
+        },
+        "gasPayerEvidence": {
+          "kind": "metamask-7702",
+          "codeHash": "0xb09ef517c48d2bf6eed05457ff56871b2596e3fc904fc6e9795882a870c2e993",
+          "nonce": "21"
+        },
+        "authorizations": {
+          "ownerApprovalsRequired": 0,
+          "ownerApprovalsCollected": 0,
+          "walletTransactionConfirmations": 1
+        },
+        "observed": {
+          "blockNumber": "57648397",
+          "blockHash": "0x85045d8cdf5b557358ebd3a4b8747c822899bc8b474e095917b574e60c18094c",
+          "timestamp": "2026-11-22T19:18:25.000Z"
+        },
+        "expiresAt": 1795375285,
+        "holds": [
+          "22 retained high findings and failed security gates",
+          "separate owner transaction activation",
+          "production claim settlement/provider acceptance",
+          "physical wallet acceptance"
+        ],
+        "notices": [
+          "Unsigned preparation only; public financial execution is disabled.",
+          "Collection credits the ledger; claims pay only the immutable beneficiary. Each execution is a separate transaction.",
+          "Direct owner-controlled type-2 transaction only. No delegation authorization, session key, UserOperation or relayer execution is prepared."
+        ],
+        "intentHash": "0xa9f994ee25862f28fca2ba949262e14b27d1f60bcd5367ccbbc91125e68aaebb",
+        "reviewHash": "0x67848c9da4bf12594805a334de0d4ef816c8e17aaa144873f151dd978aaddd4a"
+      },
+      "outer": {
+        "type": "0x2",
+        "chainId": "0x7a69",
+        "from": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+        "to": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+        "data": "0xd51867eb0000000000000000000000000000000000000000000000000000000000000000",
+        "value": "0x0",
+        "nonce": "0x15",
+        "gas": "0x1806e",
+        "maxFeePerGas": "0x7735940e",
+        "maxPriorityFeePerGas": "0x0"
+      },
+      "receipt": {
+        "transactionHash": "0x4b8f21058cdaada2e0b4ee48a879ef0e05cd8ebc5564e4e2585738f8ba51a664",
+        "blockNumber": "57648398",
+        "blockHash": "0xb0d22516256fbd8d05967f16eacc1a891cde0c04eb8597c220247335842bdb18",
+        "status": "success",
+        "gasUsed": "68957",
+        "effectiveGasPrice": "7",
+        "logs": [
+          {
+            "address": "0xa50f2d23d71d1b1cb5c1c7adbed99891bf1b26eb",
+            "topics": [
+              "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+              "0x000000000000000000000000fa4d6628f0803eac176b7b0edf4be3d1ff9c2c08",
+              "0x00000000000000000000000089fb3fcef609bd7cabec0b6b812b46591caadcf3"
+            ],
+            "data": "0x00000000000000000000000000000000000000000000000002cf6cad57044000",
+            "blockHash": "0xb0d22516256fbd8d05967f16eacc1a891cde0c04eb8597c220247335842bdb18",
+            "blockNumber": "57648398",
+            "blockTimestamp": "1795375115",
+            "transactionHash": "0x4b8f21058cdaada2e0b4ee48a879ef0e05cd8ebc5564e4e2585738f8ba51a664",
+            "transactionIndex": 0,
+            "logIndex": 0,
+            "removed": false
+          },
+          {
+            "address": "0xfa4d6628f0803eac176b7b0edf4be3d1ff9c2c08",
+            "topics": [
+              "0x750d20b2c3ca36976cbc0e4d88e7b7e9a724491143ad7e6bec77d22b713718b2",
+              "0x00000000000000000000000089fb3fcef609bd7cabec0b6b812b46591caadcf3"
+            ],
+            "data": "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002cf6cad57044000",
+            "blockHash": "0xb0d22516256fbd8d05967f16eacc1a891cde0c04eb8597c220247335842bdb18",
+            "blockNumber": "57648398",
+            "blockTimestamp": "1795375115",
+            "transactionHash": "0x4b8f21058cdaada2e0b4ee48a879ef0e05cd8ebc5564e4e2585738f8ba51a664",
+            "transactionIndex": 0,
+            "logIndex": 1,
+            "removed": false
+          }
+        ]
+      },
+      "decision": "lose"
+    },
+    {
+      "review": {
+        "schemaVersion": 1,
+        "profile": "rmt-claim-execution-v1",
+        "chainId": 31337,
+        "scope": "isolated-local",
+        "status": "review-only",
+        "executionEnabled": false,
+        "kind": "safe-1.4.1",
+        "actor": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "beneficiary": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "gasPayer": "0xEBb1Def4cEcB16D1FB8747BC2339666608463984",
+        "inner": {
+          "schemaVersion": 1,
+          "operation": "lp-claim-native",
+          "chainId": "0x7a69",
+          "from": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+          "to": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+          "data": "0xd51867eb0000000000000000000000000000000000000000000000000000000000000001",
+          "value": "0x0",
+          "nonce": "0x1",
+          "factory": "0xa939cCF7c8F1c1d1EBE668d7E45c52DE1517065b",
+          "token": "0xA50f2D23D71D1B1CB5c1c7adBed99891bF1B26Eb",
+          "originCurve": "0x30EBB95d027e4c36DD1C0b7F8D134F4727A35830",
+          "ledger": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+          "beneficiary": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+          "discoveryRecipient": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+          "factoryRuntimeHash": "0x3b370dc5c69857c903292db4717a7e80a2fdd8fe1d36ec0eff2b15b65c1d5fc7",
+          "targetRuntimeHash": "0x6f519f5ef8248ab86e05d63f3df1ec9480326190e710f5b29417cc2da8caa609",
+          "deploymentBlockNumber": "0x36fa4b5",
+          "deploymentBlockHash": "0xc9d04f2abdf7f3260055033800225451e2fc5b905fe42edf37cb3faf2646d233",
+          "reviewBlockNumber": "0x36fa511",
+          "reviewBlockHash": "0x67b38d21a2052afd3a4ff2a3dc8bd83059e1db73614cb08d0639e1fbe15d6290",
+          "reviewTimestamp": 1795375116,
+          "reviewExpiresAt": 1795375296,
+          "deadline": null,
+          "expectedNativeWei": "6750000000000",
+          "expectedTokenWei": "0",
+          "positionTokenId": "33608",
+          "principalLiquidityWei": "28284271247461900976033"
+        },
+        "outer": {
+          "type": "0x2",
+          "chainId": "0x7a69",
+          "from": "0xEBb1Def4cEcB16D1FB8747BC2339666608463984",
+          "to": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+          "data": "0x6a761202000000000000000000000000fa4d6628f0803eac176b7b0edf4be3d1ff9c2c080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001a00000000000000000000000000000000000000000000000000000000000000024d51867eb0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000082526b8f5df859951a92db4a091f70a9fabf00066a6f7ee8763caba95f6ce1fb9c7ec8ebb449dc05657d1e39bb25152102cd452f0d3733cf75c1d8ca91d32a2de21bac5287c9f4ba038dd8e07f19818db4a998a0304368843fddce3fc0cbe72b7cbc10f408f22b1951d59c6b8c7c9e918377248de9d97d0388ef56383c98ddd32aab1c000000000000000000000000000000000000000000000000000000000000",
+          "value": "0x0",
+          "nonce": "0x9",
+          "gas": "0x1ee2b",
+          "maxFeePerGas": "0x7735940e",
+          "maxPriorityFeePerGas": "0x0"
+        },
+        "wallet": {
+          "kind": "safe-1.4.1",
+          "actorCodeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+          "actorNonce": "1",
+          "delegation": null,
+          "safe": {
+            "address": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+            "version": "1.4.1",
+            "singleton": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+            "singletonRuntimeHash": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+            "proxyRuntimeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+            "fallbackHandler": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+            "fallbackRuntimeHash": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9",
+            "owners": [
+              "0x52288744EC4e906d1269C1C9951BDec8EbEc277B",
+              "0xD01e231a718aced28d597774486A67a7a0350C52",
+              "0xEc58cAFF9C16169Ba7DCfF2C3F3149a1B7f6a090"
+            ],
+            "threshold": 2,
+            "nonce": "1",
+            "evmNonce": "1",
+            "transaction": {
+              "to": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+              "value": "0",
+              "data": "0xd51867eb0000000000000000000000000000000000000000000000000000000000000001",
+              "operation": 0,
+              "safeTxGas": "0",
+              "baseGas": "0",
+              "gasPrice": "0",
+              "gasToken": "0x0000000000000000000000000000000000000000",
+              "refundReceiver": "0x0000000000000000000000000000000000000000",
+              "nonce": "1"
+            },
+            "transactionHash": "0x8bdb96b306c852a9131dcb5a5826ba569515f5344bd171f52c5b318ed0a8b7ee",
+            "signatures": "0x526b8f5df859951a92db4a091f70a9fabf00066a6f7ee8763caba95f6ce1fb9c7ec8ebb449dc05657d1e39bb25152102cd452f0d3733cf75c1d8ca91d32a2de21bac5287c9f4ba038dd8e07f19818db4a998a0304368843fddce3fc0cbe72b7cbc10f408f22b1951d59c6b8c7c9e918377248de9d97d0388ef56383c98ddd32aab1c",
+            "approvalsCollected": 2,
+            "expiryEnforcement": "safe-nonce-only"
+          }
+        },
+        "fees": {
+          "status": "synthetic-local",
+          "gasUnits": "101205",
+          "gasLimit": "126507",
+          "l2GasUnits": "101205",
+          "l1PosterGasUnits": "0",
+          "baseFeeWei": "1000000007",
+          "l1BaseFeeWei": "0",
+          "estimatedL2Wei": "101205000708435",
+          "estimatedL1Wei": "0",
+          "estimatedTotalWei": "101205000708435",
+          "maxFeePerGasWei": "2000000014",
+          "maxPriorityFeePerGasWei": "0",
+          "proposedMaximumWei": "253014001771098",
+          "observedBlockNumber": "57648401",
+          "observedBlockHash": "0x67b38d21a2052afd3a4ff2a3dc8bd83059e1db73614cb08d0639e1fbe15d6290",
+          "includesL1Data": false
+        },
+        "gasPayerEvidence": {
+          "kind": "eoa",
+          "codeHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+          "nonce": "9"
+        },
+        "authorizations": {
+          "ownerApprovalsRequired": 2,
+          "ownerApprovalsCollected": 2,
+          "walletTransactionConfirmations": 1
+        },
+        "observed": {
+          "blockNumber": "57648401",
+          "blockHash": "0x67b38d21a2052afd3a4ff2a3dc8bd83059e1db73614cb08d0639e1fbe15d6290",
+          "timestamp": "2026-11-22T19:18:36.000Z"
+        },
+        "expiresAt": 1795375296,
+        "holds": [
+          "22 retained high findings and failed security gates",
+          "separate owner transaction activation",
+          "production claim settlement/provider acceptance",
+          "physical wallet acceptance"
+        ],
+        "notices": [
+          "Unsigned preparation only; public financial execution is disabled.",
+          "Collection credits the ledger; claims pay only the immutable beneficiary. Each execution is a separate transaction.",
+          "Safe owner signatures do not authorize a direct EOA claim. Two owner approvals and an external payer transaction are distinct.",
+          "Safe signatures have no encoded expiry for ordinary claims. Off-chain review expiry is not revocation; only Safe nonce consumption or an inner contract deadline bounds existing signatures."
+        ],
+        "intentHash": "0xe86f4e87774d1eb8ac8d0b0c5ef02b9387ef5f00c6e1e4641bdaa550677c362d",
+        "reviewHash": "0x5faf5e81dac5764f0e1a81f6f53caf102299ee0f55e001e8908c37e97d0eee8b"
+      },
+      "outer": {
+        "type": "0x2",
+        "chainId": "0x7a69",
+        "from": "0xEBb1Def4cEcB16D1FB8747BC2339666608463984",
+        "to": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "data": "0x6a761202000000000000000000000000fa4d6628f0803eac176b7b0edf4be3d1ff9c2c080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001a00000000000000000000000000000000000000000000000000000000000000024d51867eb0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000082526b8f5df859951a92db4a091f70a9fabf00066a6f7ee8763caba95f6ce1fb9c7ec8ebb449dc05657d1e39bb25152102cd452f0d3733cf75c1d8ca91d32a2de21bac5287c9f4ba038dd8e07f19818db4a998a0304368843fddce3fc0cbe72b7cbc10f408f22b1951d59c6b8c7c9e918377248de9d97d0388ef56383c98ddd32aab1c000000000000000000000000000000000000000000000000000000000000",
+        "value": "0x0",
+        "nonce": "0x9",
+        "gas": "0x1ee2b",
+        "maxFeePerGas": "0x7735940e",
+        "maxPriorityFeePerGas": "0x0"
+      },
+      "receipt": {
+        "transactionHash": "0x37900ac94d20ff16e933aea36a969967727510455b90089c88c25ae4b5ff2a63",
+        "blockNumber": "57648402",
+        "blockHash": "0x8a96bede57fb249b60766ab4b1e40fa59751bb523897cca713b8ea4d4e33af93",
+        "status": "success",
+        "gasUsed": "91720",
+        "effectiveGasPrice": "7",
+        "logs": [
+          {
+            "address": "0xbd7fd7b7b972a28c860b610508ccc1411cdc7e98",
+            "topics": [
+              "0x66753cd2356569ee081232e3be8909b950e0a76c1f8460c3a5e3c2be32b11bed"
+            ],
+            "data": "0x000000000000000000000000fa4d6628f0803eac176b7b0edf4be3d1ff9c2c080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000016000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001c000000000000000000000000000000000000000000000000000000000000002800000000000000000000000000000000000000000000000000000000000000024d51867eb0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000082526b8f5df859951a92db4a091f70a9fabf00066a6f7ee8763caba95f6ce1fb9c7ec8ebb449dc05657d1e39bb25152102cd452f0d3733cf75c1d8ca91d32a2de21bac5287c9f4ba038dd8e07f19818db4a998a0304368843fddce3fc0cbe72b7cbc10f408f22b1951d59c6b8c7c9e918377248de9d97d0388ef56383c98ddd32aab1c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000001000000000000000000000000ebb1def4cecb16d1fb8747bc23396666084639840000000000000000000000000000000000000000000000000000000000000002",
+            "blockHash": "0x8a96bede57fb249b60766ab4b1e40fa59751bb523897cca713b8ea4d4e33af93",
+            "blockNumber": "57648402",
+            "blockTimestamp": "1795375126",
+            "transactionHash": "0x37900ac94d20ff16e933aea36a969967727510455b90089c88c25ae4b5ff2a63",
+            "transactionIndex": 0,
+            "logIndex": 0,
+            "removed": false
+          },
+          {
+            "address": "0xbd7fd7b7b972a28c860b610508ccc1411cdc7e98",
+            "topics": [
+              "0x3d0ce9bfc3ed7d6862dbb28b2dea94561fe714a1b4d019aa8af39730d1ad7c3d",
+              "0x000000000000000000000000fa4d6628f0803eac176b7b0edf4be3d1ff9c2c08"
+            ],
+            "data": "0x000000000000000000000000000000000000000000000000000006239b5a2c00",
+            "blockHash": "0x8a96bede57fb249b60766ab4b1e40fa59751bb523897cca713b8ea4d4e33af93",
+            "blockNumber": "57648402",
+            "blockTimestamp": "1795375126",
+            "transactionHash": "0x37900ac94d20ff16e933aea36a969967727510455b90089c88c25ae4b5ff2a63",
+            "transactionIndex": 0,
+            "logIndex": 1,
+            "removed": false
+          },
+          {
+            "address": "0xfa4d6628f0803eac176b7b0edf4be3d1ff9c2c08",
+            "topics": [
+              "0x750d20b2c3ca36976cbc0e4d88e7b7e9a724491143ad7e6bec77d22b713718b2",
+              "0x000000000000000000000000bd7fd7b7b972a28c860b610508ccc1411cdc7e98"
+            ],
+            "data": "0x000000000000000000000000000000000000000000000000000006239b5a2c000000000000000000000000000000000000000000000000000000000000000000",
+            "blockHash": "0x8a96bede57fb249b60766ab4b1e40fa59751bb523897cca713b8ea4d4e33af93",
+            "blockNumber": "57648402",
+            "blockTimestamp": "1795375126",
+            "transactionHash": "0x37900ac94d20ff16e933aea36a969967727510455b90089c88c25ae4b5ff2a63",
+            "transactionIndex": 0,
+            "logIndex": 2,
+            "removed": false
+          },
+          {
+            "address": "0xbd7fd7b7b972a28c860b610508ccc1411cdc7e98",
+            "topics": [
+              "0x442e715f626346e8c54381002da614f62bee8d27386535b2521ec8540898556e",
+              "0x8bdb96b306c852a9131dcb5a5826ba569515f5344bd171f52c5b318ed0a8b7ee"
+            ],
+            "data": "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "blockHash": "0x8a96bede57fb249b60766ab4b1e40fa59751bb523897cca713b8ea4d4e33af93",
+            "blockNumber": "57648402",
+            "blockTimestamp": "1795375126",
+            "transactionHash": "0x37900ac94d20ff16e933aea36a969967727510455b90089c88c25ae4b5ff2a63",
+            "transactionIndex": 0,
+            "logIndex": 3,
+            "removed": false
+          }
+        ]
+      },
+      "decision": "normal"
+    },
+    {
+      "review": {
+        "schemaVersion": 1,
+        "profile": "rmt-claim-execution-v1",
+        "chainId": 31337,
+        "scope": "isolated-local",
+        "status": "review-only",
+        "executionEnabled": false,
+        "kind": "safe-1.4.1",
+        "actor": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "beneficiary": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "gasPayer": "0xEBb1Def4cEcB16D1FB8747BC2339666608463984",
+        "inner": {
+          "schemaVersion": 1,
+          "operation": "lp-claim-token",
+          "chainId": "0x7a69",
+          "from": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+          "to": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+          "data": "0xd51867eb0000000000000000000000000000000000000000000000000000000000000000",
+          "value": "0x0",
+          "nonce": "0x2",
+          "factory": "0xa939cCF7c8F1c1d1EBE668d7E45c52DE1517065b",
+          "token": "0xA50f2D23D71D1B1CB5c1c7adBed99891bF1B26Eb",
+          "originCurve": "0x30EBB95d027e4c36DD1C0b7F8D134F4727A35830",
+          "ledger": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+          "beneficiary": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+          "discoveryRecipient": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+          "factoryRuntimeHash": "0x3b370dc5c69857c903292db4717a7e80a2fdd8fe1d36ec0eff2b15b65c1d5fc7",
+          "targetRuntimeHash": "0x6f519f5ef8248ab86e05d63f3df1ec9480326190e710f5b29417cc2da8caa609",
+          "deploymentBlockNumber": "0x36fa4b5",
+          "deploymentBlockHash": "0xc9d04f2abdf7f3260055033800225451e2fc5b905fe42edf37cb3faf2646d233",
+          "reviewBlockNumber": "0x36fa518",
+          "reviewBlockHash": "0x60d610aebc0cc1d020f3eaed1fb37ba690941197a8805c7a832f09a020053a3d",
+          "reviewTimestamp": 1795375129,
+          "reviewExpiresAt": 1795375309,
+          "deadline": null,
+          "expectedNativeWei": "0",
+          "expectedTokenWei": "67500000000000000",
+          "positionTokenId": "33608",
+          "principalLiquidityWei": "28284271247461900976033"
+        },
+        "outer": {
+          "type": "0x2",
+          "chainId": "0x7a69",
+          "from": "0xEBb1Def4cEcB16D1FB8747BC2339666608463984",
+          "to": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+          "data": "0x6a761202000000000000000000000000fa4d6628f0803eac176b7b0edf4be3d1ff9c2c080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001a00000000000000000000000000000000000000000000000000000000000000024d51867eb0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000082c2895ff79eec948d38685b953e43fa9cb6127aba0a5433f20292d3fa1eec84867a03fcb539164c2826544087599b5629ac3ede6cc911ff9aaf90e9095cb5359a1bf7417ec65de002482c6a484ed7d758711705d697b5507e74b4fbdf8cbbc65dfc183f3a6856d78a43f2f14b355187f29534a3541288ef0b5aeb3b2115f60a26781c000000000000000000000000000000000000000000000000000000000000",
+          "value": "0x0",
+          "nonce": "0xa",
+          "gas": "0x26827",
+          "maxFeePerGas": "0x7735940e",
+          "maxPriorityFeePerGas": "0x0"
+        },
+        "wallet": {
+          "kind": "safe-1.4.1",
+          "actorCodeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+          "actorNonce": "1",
+          "delegation": null,
+          "safe": {
+            "address": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+            "version": "1.4.1",
+            "singleton": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+            "singletonRuntimeHash": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+            "proxyRuntimeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+            "fallbackHandler": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+            "fallbackRuntimeHash": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9",
+            "owners": [
+              "0x52288744EC4e906d1269C1C9951BDec8EbEc277B",
+              "0xD01e231a718aced28d597774486A67a7a0350C52",
+              "0xEc58cAFF9C16169Ba7DCfF2C3F3149a1B7f6a090"
+            ],
+            "threshold": 2,
+            "nonce": "2",
+            "evmNonce": "1",
+            "transaction": {
+              "to": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+              "value": "0",
+              "data": "0xd51867eb0000000000000000000000000000000000000000000000000000000000000000",
+              "operation": 0,
+              "safeTxGas": "0",
+              "baseGas": "0",
+              "gasPrice": "0",
+              "gasToken": "0x0000000000000000000000000000000000000000",
+              "refundReceiver": "0x0000000000000000000000000000000000000000",
+              "nonce": "2"
+            },
+            "transactionHash": "0x6ece240565837c17056d0788b76f3dd6d8c0cce68e0fd61bd305de41f34d2471",
+            "signatures": "0xc2895ff79eec948d38685b953e43fa9cb6127aba0a5433f20292d3fa1eec84867a03fcb539164c2826544087599b5629ac3ede6cc911ff9aaf90e9095cb5359a1bf7417ec65de002482c6a484ed7d758711705d697b5507e74b4fbdf8cbbc65dfc183f3a6856d78a43f2f14b355187f29534a3541288ef0b5aeb3b2115f60a26781c",
+            "approvalsCollected": 2,
+            "expiryEnforcement": "safe-nonce-only"
+          }
+        },
+        "fees": {
+          "status": "synthetic-local",
+          "gasUnits": "126188",
+          "gasLimit": "157735",
+          "l2GasUnits": "126188",
+          "l1PosterGasUnits": "0",
+          "baseFeeWei": "1000000007",
+          "l1BaseFeeWei": "0",
+          "estimatedL2Wei": "126188000883316",
+          "estimatedL1Wei": "0",
+          "estimatedTotalWei": "126188000883316",
+          "maxFeePerGasWei": "2000000014",
+          "maxPriorityFeePerGasWei": "0",
+          "proposedMaximumWei": "315470002208290",
+          "observedBlockNumber": "57648408",
+          "observedBlockHash": "0x60d610aebc0cc1d020f3eaed1fb37ba690941197a8805c7a832f09a020053a3d",
+          "includesL1Data": false
+        },
+        "gasPayerEvidence": {
+          "kind": "eoa",
+          "codeHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+          "nonce": "10"
+        },
+        "authorizations": {
+          "ownerApprovalsRequired": 2,
+          "ownerApprovalsCollected": 2,
+          "walletTransactionConfirmations": 1
+        },
+        "observed": {
+          "blockNumber": "57648408",
+          "blockHash": "0x60d610aebc0cc1d020f3eaed1fb37ba690941197a8805c7a832f09a020053a3d",
+          "timestamp": "2026-11-22T19:18:49.000Z"
+        },
+        "expiresAt": 1795375309,
+        "holds": [
+          "22 retained high findings and failed security gates",
+          "separate owner transaction activation",
+          "production claim settlement/provider acceptance",
+          "physical wallet acceptance"
+        ],
+        "notices": [
+          "Unsigned preparation only; public financial execution is disabled.",
+          "Collection credits the ledger; claims pay only the immutable beneficiary. Each execution is a separate transaction.",
+          "Safe owner signatures do not authorize a direct EOA claim. Two owner approvals and an external payer transaction are distinct.",
+          "Safe signatures have no encoded expiry for ordinary claims. Off-chain review expiry is not revocation; only Safe nonce consumption or an inner contract deadline bounds existing signatures."
+        ],
+        "intentHash": "0x748898d7f04b64f8e70a7262c1e49a417ea1a96ee276addc874489aa26745c27",
+        "reviewHash": "0x63dae9abcd9a1360fe175f7c6041e8a8c68aae4c6f353cd2764acd43b9c7c9b6"
+      },
+      "outer": {
+        "type": "0x2",
+        "chainId": "0x7a69",
+        "from": "0xEBb1Def4cEcB16D1FB8747BC2339666608463984",
+        "to": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "data": "0x6a761202000000000000000000000000fa4d6628f0803eac176b7b0edf4be3d1ff9c2c080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001a00000000000000000000000000000000000000000000000000000000000000024d51867eb0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000082c2895ff79eec948d38685b953e43fa9cb6127aba0a5433f20292d3fa1eec84867a03fcb539164c2826544087599b5629ac3ede6cc911ff9aaf90e9095cb5359a1bf7417ec65de002482c6a484ed7d758711705d697b5507e74b4fbdf8cbbc65dfc183f3a6856d78a43f2f14b355187f29534a3541288ef0b5aeb3b2115f60a26781c000000000000000000000000000000000000000000000000000000000000",
+        "value": "0x0",
+        "nonce": "0xa",
+        "gas": "0x26827",
+        "maxFeePerGas": "0x7735940e",
+        "maxPriorityFeePerGas": "0x0"
+      },
+      "receipt": {
+        "transactionHash": "0xa71c60f7aae806c15e69acabd30b065c5ad28c5fc4f3d85c8b14dc1f2edab1b5",
+        "blockNumber": "57648409",
+        "blockHash": "0x269e704caf388e53412f1e59fbb57f59acb65bfe06e7a64925f3067c293f87d5",
+        "status": "success",
+        "gasUsed": "115928",
+        "effectiveGasPrice": "7",
+        "logs": [
+          {
+            "address": "0xbd7fd7b7b972a28c860b610508ccc1411cdc7e98",
+            "topics": [
+              "0x66753cd2356569ee081232e3be8909b950e0a76c1f8460c3a5e3c2be32b11bed"
+            ],
+            "data": "0x000000000000000000000000fa4d6628f0803eac176b7b0edf4be3d1ff9c2c080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000016000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001c000000000000000000000000000000000000000000000000000000000000002800000000000000000000000000000000000000000000000000000000000000024d51867eb0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000082c2895ff79eec948d38685b953e43fa9cb6127aba0a5433f20292d3fa1eec84867a03fcb539164c2826544087599b5629ac3ede6cc911ff9aaf90e9095cb5359a1bf7417ec65de002482c6a484ed7d758711705d697b5507e74b4fbdf8cbbc65dfc183f3a6856d78a43f2f14b355187f29534a3541288ef0b5aeb3b2115f60a26781c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000002000000000000000000000000ebb1def4cecb16d1fb8747bc23396666084639840000000000000000000000000000000000000000000000000000000000000002",
+            "blockHash": "0x269e704caf388e53412f1e59fbb57f59acb65bfe06e7a64925f3067c293f87d5",
+            "blockNumber": "57648409",
+            "blockTimestamp": "1795375139",
+            "transactionHash": "0xa71c60f7aae806c15e69acabd30b065c5ad28c5fc4f3d85c8b14dc1f2edab1b5",
+            "transactionIndex": 0,
+            "logIndex": 0,
+            "removed": false
+          },
+          {
+            "address": "0xa50f2d23d71d1b1cb5c1c7adbed99891bf1b26eb",
+            "topics": [
+              "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+              "0x000000000000000000000000fa4d6628f0803eac176b7b0edf4be3d1ff9c2c08",
+              "0x000000000000000000000000bd7fd7b7b972a28c860b610508ccc1411cdc7e98"
+            ],
+            "data": "0x00000000000000000000000000000000000000000000000000efcee47256c000",
+            "blockHash": "0x269e704caf388e53412f1e59fbb57f59acb65bfe06e7a64925f3067c293f87d5",
+            "blockNumber": "57648409",
+            "blockTimestamp": "1795375139",
+            "transactionHash": "0xa71c60f7aae806c15e69acabd30b065c5ad28c5fc4f3d85c8b14dc1f2edab1b5",
+            "transactionIndex": 0,
+            "logIndex": 1,
+            "removed": false
+          },
+          {
+            "address": "0xfa4d6628f0803eac176b7b0edf4be3d1ff9c2c08",
+            "topics": [
+              "0x750d20b2c3ca36976cbc0e4d88e7b7e9a724491143ad7e6bec77d22b713718b2",
+              "0x000000000000000000000000bd7fd7b7b972a28c860b610508ccc1411cdc7e98"
+            ],
+            "data": "0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000efcee47256c000",
+            "blockHash": "0x269e704caf388e53412f1e59fbb57f59acb65bfe06e7a64925f3067c293f87d5",
+            "blockNumber": "57648409",
+            "blockTimestamp": "1795375139",
+            "transactionHash": "0xa71c60f7aae806c15e69acabd30b065c5ad28c5fc4f3d85c8b14dc1f2edab1b5",
+            "transactionIndex": 0,
+            "logIndex": 2,
+            "removed": false
+          },
+          {
+            "address": "0xbd7fd7b7b972a28c860b610508ccc1411cdc7e98",
+            "topics": [
+              "0x442e715f626346e8c54381002da614f62bee8d27386535b2521ec8540898556e",
+              "0x6ece240565837c17056d0788b76f3dd6d8c0cce68e0fd61bd305de41f34d2471"
+            ],
+            "data": "0x0000000000000000000000000000000000000000000000000000000000000000",
+            "blockHash": "0x269e704caf388e53412f1e59fbb57f59acb65bfe06e7a64925f3067c293f87d5",
+            "blockNumber": "57648409",
+            "blockTimestamp": "1795375139",
+            "transactionHash": "0xa71c60f7aae806c15e69acabd30b065c5ad28c5fc4f3d85c8b14dc1f2edab1b5",
+            "transactionIndex": 0,
+            "logIndex": 3,
+            "removed": false
+          }
+        ]
+      },
+      "decision": "normal"
+    }
+  ],
+  "reviews": [
+    {
+      "schemaVersion": 1,
+      "profile": "rmt-claim-execution-v1",
+      "chainId": 31337,
+      "scope": "isolated-local",
+      "status": "review-only",
+      "executionEnabled": false,
+      "kind": "metamask-7702",
+      "actor": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+      "beneficiary": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+      "gasPayer": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+      "inner": {
+        "schemaVersion": 1,
+        "operation": "lp-claim-token",
+        "chainId": "0x7a69",
+        "from": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+        "to": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+        "data": "0xd51867eb0000000000000000000000000000000000000000000000000000000000000000",
+        "value": "0x0",
+        "nonce": "0x15",
+        "factory": "0xa939cCF7c8F1c1d1EBE668d7E45c52DE1517065b",
+        "token": "0xA50f2D23D71D1B1CB5c1c7adBed99891bF1B26Eb",
+        "originCurve": "0x30EBB95d027e4c36DD1C0b7F8D134F4727A35830",
+        "ledger": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+        "beneficiary": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+        "discoveryRecipient": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+        "factoryRuntimeHash": "0x3b370dc5c69857c903292db4717a7e80a2fdd8fe1d36ec0eff2b15b65c1d5fc7",
+        "targetRuntimeHash": "0x6f519f5ef8248ab86e05d63f3df1ec9480326190e710f5b29417cc2da8caa609",
+        "deploymentBlockNumber": "0x36fa4b5",
+        "deploymentBlockHash": "0xc9d04f2abdf7f3260055033800225451e2fc5b905fe42edf37cb3faf2646d233",
+        "reviewBlockNumber": "0x36fa50d",
+        "reviewBlockHash": "0x85045d8cdf5b557358ebd3a4b8747c822899bc8b474e095917b574e60c18094c",
+        "reviewTimestamp": 1795375105,
+        "reviewExpiresAt": 1795375285,
+        "deadline": null,
+        "expectedNativeWei": "0",
+        "expectedTokenWei": "202500000000000000",
+        "positionTokenId": "33608",
+        "principalLiquidityWei": "28284271247461900976033"
+      },
+      "outer": {
+        "type": "0x2",
+        "chainId": "0x7a69",
+        "from": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+        "to": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+        "data": "0xd51867eb0000000000000000000000000000000000000000000000000000000000000000",
+        "value": "0x0",
+        "nonce": "0x15",
+        "gas": "0x1806e",
+        "maxFeePerGas": "0x7735940e",
+        "maxPriorityFeePerGas": "0x0"
+      },
+      "wallet": {
+        "kind": "metamask-7702",
+        "actorCodeHash": "0xb09ef517c48d2bf6eed05457ff56871b2596e3fc904fc6e9795882a870c2e993",
+        "actorNonce": "21",
+        "delegation": {
+          "address": "0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B",
+          "designator": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b",
+          "runtimeHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0"
+        },
+        "safe": null
+      },
+      "fees": {
+        "status": "synthetic-local",
+        "gasUnits": "78731",
+        "gasLimit": "98414",
+        "l2GasUnits": "78731",
+        "l1PosterGasUnits": "0",
+        "baseFeeWei": "1000000007",
+        "l1BaseFeeWei": "0",
+        "estimatedL2Wei": "78731000551117",
+        "estimatedL1Wei": "0",
+        "estimatedTotalWei": "78731000551117",
+        "maxFeePerGasWei": "2000000014",
+        "maxPriorityFeePerGasWei": "0",
+        "proposedMaximumWei": "196828001377796",
+        "observedBlockNumber": "57648397",
+        "observedBlockHash": "0x85045d8cdf5b557358ebd3a4b8747c822899bc8b474e095917b574e60c18094c",
+        "includesL1Data": false
+      },
+      "gasPayerEvidence": {
+        "kind": "metamask-7702",
+        "codeHash": "0xb09ef517c48d2bf6eed05457ff56871b2596e3fc904fc6e9795882a870c2e993",
+        "nonce": "21"
+      },
+      "authorizations": {
+        "ownerApprovalsRequired": 0,
+        "ownerApprovalsCollected": 0,
+        "walletTransactionConfirmations": 1
+      },
+      "observed": {
+        "blockNumber": "57648397",
+        "blockHash": "0x85045d8cdf5b557358ebd3a4b8747c822899bc8b474e095917b574e60c18094c",
+        "timestamp": "2026-11-22T19:18:25.000Z"
+      },
+      "expiresAt": 1795375285,
+      "holds": [
+        "22 retained high findings and failed security gates",
+        "separate owner transaction activation",
+        "production claim settlement/provider acceptance",
+        "physical wallet acceptance"
+      ],
+      "notices": [
+        "Unsigned preparation only; public financial execution is disabled.",
+        "Collection credits the ledger; claims pay only the immutable beneficiary. Each execution is a separate transaction.",
+        "Direct owner-controlled type-2 transaction only. No delegation authorization, session key, UserOperation or relayer execution is prepared."
+      ],
+      "intentHash": "0xa9f994ee25862f28fca2ba949262e14b27d1f60bcd5367ccbbc91125e68aaebb",
+      "reviewHash": "0x67848c9da4bf12594805a334de0d4ef816c8e17aaa144873f151dd978aaddd4a"
+    },
+    {
+      "schemaVersion": 1,
+      "profile": "rmt-claim-execution-v1",
+      "chainId": 31337,
+      "scope": "isolated-local",
+      "status": "review-only",
+      "executionEnabled": false,
+      "kind": "metamask-7702",
+      "actor": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+      "beneficiary": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+      "gasPayer": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+      "inner": {
+        "schemaVersion": 1,
+        "operation": "lp-claim-token",
+        "chainId": "0x7a69",
+        "from": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+        "to": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+        "data": "0xd51867eb0000000000000000000000000000000000000000000000000000000000000000",
+        "value": "0x0",
+        "nonce": "0x15",
+        "factory": "0xa939cCF7c8F1c1d1EBE668d7E45c52DE1517065b",
+        "token": "0xA50f2D23D71D1B1CB5c1c7adBed99891bF1B26Eb",
+        "originCurve": "0x30EBB95d027e4c36DD1C0b7F8D134F4727A35830",
+        "ledger": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+        "beneficiary": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+        "discoveryRecipient": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+        "factoryRuntimeHash": "0x3b370dc5c69857c903292db4717a7e80a2fdd8fe1d36ec0eff2b15b65c1d5fc7",
+        "targetRuntimeHash": "0x6f519f5ef8248ab86e05d63f3df1ec9480326190e710f5b29417cc2da8caa609",
+        "deploymentBlockNumber": "0x36fa4b5",
+        "deploymentBlockHash": "0xc9d04f2abdf7f3260055033800225451e2fc5b905fe42edf37cb3faf2646d233",
+        "reviewBlockNumber": "0x36fa50d",
+        "reviewBlockHash": "0x85045d8cdf5b557358ebd3a4b8747c822899bc8b474e095917b574e60c18094c",
+        "reviewTimestamp": 1795375105,
+        "reviewExpiresAt": 1795375285,
+        "deadline": null,
+        "expectedNativeWei": "0",
+        "expectedTokenWei": "202500000000000000",
+        "positionTokenId": "33608",
+        "principalLiquidityWei": "28284271247461900976033"
+      },
+      "outer": {
+        "type": "0x2",
+        "chainId": "0x7a69",
+        "from": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+        "to": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+        "data": "0xd51867eb0000000000000000000000000000000000000000000000000000000000000000",
+        "value": "0x0",
+        "nonce": "0x15",
+        "gas": "0x1806e",
+        "maxFeePerGas": "0x7735940e",
+        "maxPriorityFeePerGas": "0x0"
+      },
+      "wallet": {
+        "kind": "metamask-7702",
+        "actorCodeHash": "0xb09ef517c48d2bf6eed05457ff56871b2596e3fc904fc6e9795882a870c2e993",
+        "actorNonce": "21",
+        "delegation": {
+          "address": "0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B",
+          "designator": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b",
+          "runtimeHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0"
+        },
+        "safe": null
+      },
+      "fees": {
+        "status": "synthetic-local",
+        "gasUnits": "78731",
+        "gasLimit": "98414",
+        "l2GasUnits": "78731",
+        "l1PosterGasUnits": "0",
+        "baseFeeWei": "1000000007",
+        "l1BaseFeeWei": "0",
+        "estimatedL2Wei": "78731000551117",
+        "estimatedL1Wei": "0",
+        "estimatedTotalWei": "78731000551117",
+        "maxFeePerGasWei": "2000000014",
+        "maxPriorityFeePerGasWei": "0",
+        "proposedMaximumWei": "196828001377796",
+        "observedBlockNumber": "57648397",
+        "observedBlockHash": "0x85045d8cdf5b557358ebd3a4b8747c822899bc8b474e095917b574e60c18094c",
+        "includesL1Data": false
+      },
+      "gasPayerEvidence": {
+        "kind": "metamask-7702",
+        "codeHash": "0xb09ef517c48d2bf6eed05457ff56871b2596e3fc904fc6e9795882a870c2e993",
+        "nonce": "21"
+      },
+      "authorizations": {
+        "ownerApprovalsRequired": 0,
+        "ownerApprovalsCollected": 0,
+        "walletTransactionConfirmations": 1
+      },
+      "observed": {
+        "blockNumber": "57648397",
+        "blockHash": "0x85045d8cdf5b557358ebd3a4b8747c822899bc8b474e095917b574e60c18094c",
+        "timestamp": "2026-11-22T19:18:25.000Z"
+      },
+      "expiresAt": 1795375285,
+      "holds": [
+        "22 retained high findings and failed security gates",
+        "separate owner transaction activation",
+        "production claim settlement/provider acceptance",
+        "physical wallet acceptance"
+      ],
+      "notices": [
+        "Unsigned preparation only; public financial execution is disabled.",
+        "Collection credits the ledger; claims pay only the immutable beneficiary. Each execution is a separate transaction.",
+        "Direct owner-controlled type-2 transaction only. No delegation authorization, session key, UserOperation or relayer execution is prepared."
+      ],
+      "intentHash": "0xa9f994ee25862f28fca2ba949262e14b27d1f60bcd5367ccbbc91125e68aaebb",
+      "reviewHash": "0x67848c9da4bf12594805a334de0d4ef816c8e17aaa144873f151dd978aaddd4a"
+    },
+    {
+      "schemaVersion": 1,
+      "profile": "rmt-claim-execution-v1",
+      "chainId": 31337,
+      "scope": "isolated-local",
+      "status": "review-only",
+      "executionEnabled": false,
+      "kind": "metamask-7702",
+      "actor": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+      "beneficiary": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+      "gasPayer": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+      "inner": {
+        "schemaVersion": 1,
+        "operation": "lp-claim-token",
+        "chainId": "0x7a69",
+        "from": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+        "to": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+        "data": "0xd51867eb0000000000000000000000000000000000000000000000000000000000000000",
+        "value": "0x0",
+        "nonce": "0x15",
+        "factory": "0xa939cCF7c8F1c1d1EBE668d7E45c52DE1517065b",
+        "token": "0xA50f2D23D71D1B1CB5c1c7adBed99891bF1B26Eb",
+        "originCurve": "0x30EBB95d027e4c36DD1C0b7F8D134F4727A35830",
+        "ledger": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+        "beneficiary": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+        "discoveryRecipient": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+        "factoryRuntimeHash": "0x3b370dc5c69857c903292db4717a7e80a2fdd8fe1d36ec0eff2b15b65c1d5fc7",
+        "targetRuntimeHash": "0x6f519f5ef8248ab86e05d63f3df1ec9480326190e710f5b29417cc2da8caa609",
+        "deploymentBlockNumber": "0x36fa4b5",
+        "deploymentBlockHash": "0xc9d04f2abdf7f3260055033800225451e2fc5b905fe42edf37cb3faf2646d233",
+        "reviewBlockNumber": "0x36fa50d",
+        "reviewBlockHash": "0x85045d8cdf5b557358ebd3a4b8747c822899bc8b474e095917b574e60c18094c",
+        "reviewTimestamp": 1795375105,
+        "reviewExpiresAt": 1795375285,
+        "deadline": null,
+        "expectedNativeWei": "0",
+        "expectedTokenWei": "202500000000000000",
+        "positionTokenId": "33608",
+        "principalLiquidityWei": "28284271247461900976033"
+      },
+      "outer": {
+        "type": "0x2",
+        "chainId": "0x7a69",
+        "from": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+        "to": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+        "data": "0xd51867eb0000000000000000000000000000000000000000000000000000000000000000",
+        "value": "0x0",
+        "nonce": "0x15",
+        "gas": "0x1806e",
+        "maxFeePerGas": "0x7735940e",
+        "maxPriorityFeePerGas": "0x0"
+      },
+      "wallet": {
+        "kind": "metamask-7702",
+        "actorCodeHash": "0xb09ef517c48d2bf6eed05457ff56871b2596e3fc904fc6e9795882a870c2e993",
+        "actorNonce": "21",
+        "delegation": {
+          "address": "0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B",
+          "designator": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b",
+          "runtimeHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0"
+        },
+        "safe": null
+      },
+      "fees": {
+        "status": "synthetic-local",
+        "gasUnits": "78731",
+        "gasLimit": "98414",
+        "l2GasUnits": "78731",
+        "l1PosterGasUnits": "0",
+        "baseFeeWei": "1000000007",
+        "l1BaseFeeWei": "0",
+        "estimatedL2Wei": "78731000551117",
+        "estimatedL1Wei": "0",
+        "estimatedTotalWei": "78731000551117",
+        "maxFeePerGasWei": "2000000014",
+        "maxPriorityFeePerGasWei": "0",
+        "proposedMaximumWei": "196828001377796",
+        "observedBlockNumber": "57648397",
+        "observedBlockHash": "0x85045d8cdf5b557358ebd3a4b8747c822899bc8b474e095917b574e60c18094c",
+        "includesL1Data": false
+      },
+      "gasPayerEvidence": {
+        "kind": "metamask-7702",
+        "codeHash": "0xb09ef517c48d2bf6eed05457ff56871b2596e3fc904fc6e9795882a870c2e993",
+        "nonce": "21"
+      },
+      "authorizations": {
+        "ownerApprovalsRequired": 0,
+        "ownerApprovalsCollected": 0,
+        "walletTransactionConfirmations": 1
+      },
+      "observed": {
+        "blockNumber": "57648397",
+        "blockHash": "0x85045d8cdf5b557358ebd3a4b8747c822899bc8b474e095917b574e60c18094c",
+        "timestamp": "2026-11-22T19:18:25.000Z"
+      },
+      "expiresAt": 1795375285,
+      "holds": [
+        "22 retained high findings and failed security gates",
+        "separate owner transaction activation",
+        "production claim settlement/provider acceptance",
+        "physical wallet acceptance"
+      ],
+      "notices": [
+        "Unsigned preparation only; public financial execution is disabled.",
+        "Collection credits the ledger; claims pay only the immutable beneficiary. Each execution is a separate transaction.",
+        "Direct owner-controlled type-2 transaction only. No delegation authorization, session key, UserOperation or relayer execution is prepared."
+      ],
+      "intentHash": "0xa9f994ee25862f28fca2ba949262e14b27d1f60bcd5367ccbbc91125e68aaebb",
+      "reviewHash": "0x67848c9da4bf12594805a334de0d4ef816c8e17aaa144873f151dd978aaddd4a"
+    },
+    {
+      "schemaVersion": 1,
+      "profile": "rmt-claim-execution-v1",
+      "chainId": 31337,
+      "scope": "isolated-local",
+      "status": "awaiting-safe-approvals",
+      "executionEnabled": false,
+      "kind": "safe-1.4.1",
+      "actor": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+      "beneficiary": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+      "gasPayer": "0xEBb1Def4cEcB16D1FB8747BC2339666608463984",
+      "inner": {
+        "schemaVersion": 1,
+        "operation": "lp-claim-native",
+        "chainId": "0x7a69",
+        "from": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "to": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+        "data": "0xd51867eb0000000000000000000000000000000000000000000000000000000000000001",
+        "value": "0x0",
+        "nonce": "0x1",
+        "factory": "0xa939cCF7c8F1c1d1EBE668d7E45c52DE1517065b",
+        "token": "0xA50f2D23D71D1B1CB5c1c7adBed99891bF1B26Eb",
+        "originCurve": "0x30EBB95d027e4c36DD1C0b7F8D134F4727A35830",
+        "ledger": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+        "beneficiary": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "discoveryRecipient": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "factoryRuntimeHash": "0x3b370dc5c69857c903292db4717a7e80a2fdd8fe1d36ec0eff2b15b65c1d5fc7",
+        "targetRuntimeHash": "0x6f519f5ef8248ab86e05d63f3df1ec9480326190e710f5b29417cc2da8caa609",
+        "deploymentBlockNumber": "0x36fa4b5",
+        "deploymentBlockHash": "0xc9d04f2abdf7f3260055033800225451e2fc5b905fe42edf37cb3faf2646d233",
+        "reviewBlockNumber": "0x36fa511",
+        "reviewBlockHash": "0x67b38d21a2052afd3a4ff2a3dc8bd83059e1db73614cb08d0639e1fbe15d6290",
+        "reviewTimestamp": 1795375116,
+        "reviewExpiresAt": 1795375296,
+        "deadline": null,
+        "expectedNativeWei": "6750000000000",
+        "expectedTokenWei": "0",
+        "positionTokenId": "33608",
+        "principalLiquidityWei": "28284271247461900976033"
+      },
+      "outer": null,
+      "wallet": {
+        "kind": "safe-1.4.1",
+        "actorCodeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+        "actorNonce": "1",
+        "delegation": null,
+        "safe": {
+          "address": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+          "version": "1.4.1",
+          "singleton": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+          "singletonRuntimeHash": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+          "proxyRuntimeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+          "fallbackHandler": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+          "fallbackRuntimeHash": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9",
+          "owners": [
+            "0x52288744EC4e906d1269C1C9951BDec8EbEc277B",
+            "0xD01e231a718aced28d597774486A67a7a0350C52",
+            "0xEc58cAFF9C16169Ba7DCfF2C3F3149a1B7f6a090"
+          ],
+          "threshold": 2,
+          "nonce": "1",
+          "evmNonce": "1",
+          "transaction": {
+            "to": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+            "value": "0",
+            "data": "0xd51867eb0000000000000000000000000000000000000000000000000000000000000001",
+            "operation": 0,
+            "safeTxGas": "0",
+            "baseGas": "0",
+            "gasPrice": "0",
+            "gasToken": "0x0000000000000000000000000000000000000000",
+            "refundReceiver": "0x0000000000000000000000000000000000000000",
+            "nonce": "1"
+          },
+          "transactionHash": "0x8bdb96b306c852a9131dcb5a5826ba569515f5344bd171f52c5b318ed0a8b7ee",
+          "signatures": null,
+          "approvalsCollected": 0,
+          "expiryEnforcement": "safe-nonce-only"
+        }
+      },
+      "fees": {
+        "status": "unavailable",
+        "reason": "Two owner approvals are required before exact outer execution can be simulated"
+      },
+      "gasPayerEvidence": {
+        "kind": "eoa",
+        "codeHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+        "nonce": "9"
+      },
+      "authorizations": {
+        "ownerApprovalsRequired": 2,
+        "ownerApprovalsCollected": 0,
+        "walletTransactionConfirmations": 1
+      },
+      "observed": {
+        "blockNumber": "57648401",
+        "blockHash": "0x67b38d21a2052afd3a4ff2a3dc8bd83059e1db73614cb08d0639e1fbe15d6290",
+        "timestamp": "2026-11-22T19:18:36.000Z"
+      },
+      "expiresAt": 1795375296,
+      "holds": [
+        "22 retained high findings and failed security gates",
+        "separate owner transaction activation",
+        "production claim settlement/provider acceptance",
+        "physical wallet acceptance"
+      ],
+      "notices": [
+        "Unsigned preparation only; public financial execution is disabled.",
+        "Collection credits the ledger; claims pay only the immutable beneficiary. Each execution is a separate transaction.",
+        "Safe owner signatures do not authorize a direct EOA claim. Two owner approvals and an external payer transaction are distinct.",
+        "Safe signatures have no encoded expiry for ordinary claims. Off-chain review expiry is not revocation; only Safe nonce consumption or an inner contract deadline bounds existing signatures."
+      ],
+      "intentHash": "0xe86f4e87774d1eb8ac8d0b0c5ef02b9387ef5f00c6e1e4641bdaa550677c362d",
+      "reviewHash": "0xaad28a34c8e7fa46b8dd3aade0c290296e7602006741d773af660f39dc426022"
+    },
+    {
+      "schemaVersion": 1,
+      "profile": "rmt-claim-execution-v1",
+      "chainId": 31337,
+      "scope": "isolated-local",
+      "status": "review-only",
+      "executionEnabled": false,
+      "kind": "safe-1.4.1",
+      "actor": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+      "beneficiary": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+      "gasPayer": "0xEBb1Def4cEcB16D1FB8747BC2339666608463984",
+      "inner": {
+        "schemaVersion": 1,
+        "operation": "lp-claim-native",
+        "chainId": "0x7a69",
+        "from": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "to": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+        "data": "0xd51867eb0000000000000000000000000000000000000000000000000000000000000001",
+        "value": "0x0",
+        "nonce": "0x1",
+        "factory": "0xa939cCF7c8F1c1d1EBE668d7E45c52DE1517065b",
+        "token": "0xA50f2D23D71D1B1CB5c1c7adBed99891bF1B26Eb",
+        "originCurve": "0x30EBB95d027e4c36DD1C0b7F8D134F4727A35830",
+        "ledger": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+        "beneficiary": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "discoveryRecipient": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "factoryRuntimeHash": "0x3b370dc5c69857c903292db4717a7e80a2fdd8fe1d36ec0eff2b15b65c1d5fc7",
+        "targetRuntimeHash": "0x6f519f5ef8248ab86e05d63f3df1ec9480326190e710f5b29417cc2da8caa609",
+        "deploymentBlockNumber": "0x36fa4b5",
+        "deploymentBlockHash": "0xc9d04f2abdf7f3260055033800225451e2fc5b905fe42edf37cb3faf2646d233",
+        "reviewBlockNumber": "0x36fa511",
+        "reviewBlockHash": "0x67b38d21a2052afd3a4ff2a3dc8bd83059e1db73614cb08d0639e1fbe15d6290",
+        "reviewTimestamp": 1795375116,
+        "reviewExpiresAt": 1795375296,
+        "deadline": null,
+        "expectedNativeWei": "6750000000000",
+        "expectedTokenWei": "0",
+        "positionTokenId": "33608",
+        "principalLiquidityWei": "28284271247461900976033"
+      },
+      "outer": {
+        "type": "0x2",
+        "chainId": "0x7a69",
+        "from": "0xEBb1Def4cEcB16D1FB8747BC2339666608463984",
+        "to": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "data": "0x6a761202000000000000000000000000fa4d6628f0803eac176b7b0edf4be3d1ff9c2c080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001a00000000000000000000000000000000000000000000000000000000000000024d51867eb0000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000082526b8f5df859951a92db4a091f70a9fabf00066a6f7ee8763caba95f6ce1fb9c7ec8ebb449dc05657d1e39bb25152102cd452f0d3733cf75c1d8ca91d32a2de21bac5287c9f4ba038dd8e07f19818db4a998a0304368843fddce3fc0cbe72b7cbc10f408f22b1951d59c6b8c7c9e918377248de9d97d0388ef56383c98ddd32aab1c000000000000000000000000000000000000000000000000000000000000",
+        "value": "0x0",
+        "nonce": "0x9",
+        "gas": "0x1ee2b",
+        "maxFeePerGas": "0x7735940e",
+        "maxPriorityFeePerGas": "0x0"
+      },
+      "wallet": {
+        "kind": "safe-1.4.1",
+        "actorCodeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+        "actorNonce": "1",
+        "delegation": null,
+        "safe": {
+          "address": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+          "version": "1.4.1",
+          "singleton": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+          "singletonRuntimeHash": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+          "proxyRuntimeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+          "fallbackHandler": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+          "fallbackRuntimeHash": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9",
+          "owners": [
+            "0x52288744EC4e906d1269C1C9951BDec8EbEc277B",
+            "0xD01e231a718aced28d597774486A67a7a0350C52",
+            "0xEc58cAFF9C16169Ba7DCfF2C3F3149a1B7f6a090"
+          ],
+          "threshold": 2,
+          "nonce": "1",
+          "evmNonce": "1",
+          "transaction": {
+            "to": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+            "value": "0",
+            "data": "0xd51867eb0000000000000000000000000000000000000000000000000000000000000001",
+            "operation": 0,
+            "safeTxGas": "0",
+            "baseGas": "0",
+            "gasPrice": "0",
+            "gasToken": "0x0000000000000000000000000000000000000000",
+            "refundReceiver": "0x0000000000000000000000000000000000000000",
+            "nonce": "1"
+          },
+          "transactionHash": "0x8bdb96b306c852a9131dcb5a5826ba569515f5344bd171f52c5b318ed0a8b7ee",
+          "signatures": "0x526b8f5df859951a92db4a091f70a9fabf00066a6f7ee8763caba95f6ce1fb9c7ec8ebb449dc05657d1e39bb25152102cd452f0d3733cf75c1d8ca91d32a2de21bac5287c9f4ba038dd8e07f19818db4a998a0304368843fddce3fc0cbe72b7cbc10f408f22b1951d59c6b8c7c9e918377248de9d97d0388ef56383c98ddd32aab1c",
+          "approvalsCollected": 2,
+          "expiryEnforcement": "safe-nonce-only"
+        }
+      },
+      "fees": {
+        "status": "synthetic-local",
+        "gasUnits": "101205",
+        "gasLimit": "126507",
+        "l2GasUnits": "101205",
+        "l1PosterGasUnits": "0",
+        "baseFeeWei": "1000000007",
+        "l1BaseFeeWei": "0",
+        "estimatedL2Wei": "101205000708435",
+        "estimatedL1Wei": "0",
+        "estimatedTotalWei": "101205000708435",
+        "maxFeePerGasWei": "2000000014",
+        "maxPriorityFeePerGasWei": "0",
+        "proposedMaximumWei": "253014001771098",
+        "observedBlockNumber": "57648401",
+        "observedBlockHash": "0x67b38d21a2052afd3a4ff2a3dc8bd83059e1db73614cb08d0639e1fbe15d6290",
+        "includesL1Data": false
+      },
+      "gasPayerEvidence": {
+        "kind": "eoa",
+        "codeHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+        "nonce": "9"
+      },
+      "authorizations": {
+        "ownerApprovalsRequired": 2,
+        "ownerApprovalsCollected": 2,
+        "walletTransactionConfirmations": 1
+      },
+      "observed": {
+        "blockNumber": "57648401",
+        "blockHash": "0x67b38d21a2052afd3a4ff2a3dc8bd83059e1db73614cb08d0639e1fbe15d6290",
+        "timestamp": "2026-11-22T19:18:36.000Z"
+      },
+      "expiresAt": 1795375296,
+      "holds": [
+        "22 retained high findings and failed security gates",
+        "separate owner transaction activation",
+        "production claim settlement/provider acceptance",
+        "physical wallet acceptance"
+      ],
+      "notices": [
+        "Unsigned preparation only; public financial execution is disabled.",
+        "Collection credits the ledger; claims pay only the immutable beneficiary. Each execution is a separate transaction.",
+        "Safe owner signatures do not authorize a direct EOA claim. Two owner approvals and an external payer transaction are distinct.",
+        "Safe signatures have no encoded expiry for ordinary claims. Off-chain review expiry is not revocation; only Safe nonce consumption or an inner contract deadline bounds existing signatures."
+      ],
+      "intentHash": "0xe86f4e87774d1eb8ac8d0b0c5ef02b9387ef5f00c6e1e4641bdaa550677c362d",
+      "reviewHash": "0x5faf5e81dac5764f0e1a81f6f53caf102299ee0f55e001e8908c37e97d0eee8b"
+    },
+    {
+      "schemaVersion": 1,
+      "profile": "rmt-claim-execution-v1",
+      "chainId": 31337,
+      "scope": "isolated-local",
+      "status": "awaiting-safe-approvals",
+      "executionEnabled": false,
+      "kind": "safe-1.4.1",
+      "actor": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+      "beneficiary": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+      "gasPayer": "0xEBb1Def4cEcB16D1FB8747BC2339666608463984",
+      "inner": {
+        "schemaVersion": 1,
+        "operation": "lp-claim-token",
+        "chainId": "0x7a69",
+        "from": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "to": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+        "data": "0xd51867eb0000000000000000000000000000000000000000000000000000000000000000",
+        "value": "0x0",
+        "nonce": "0x2",
+        "factory": "0xa939cCF7c8F1c1d1EBE668d7E45c52DE1517065b",
+        "token": "0xA50f2D23D71D1B1CB5c1c7adBed99891bF1B26Eb",
+        "originCurve": "0x30EBB95d027e4c36DD1C0b7F8D134F4727A35830",
+        "ledger": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+        "beneficiary": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "discoveryRecipient": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "factoryRuntimeHash": "0x3b370dc5c69857c903292db4717a7e80a2fdd8fe1d36ec0eff2b15b65c1d5fc7",
+        "targetRuntimeHash": "0x6f519f5ef8248ab86e05d63f3df1ec9480326190e710f5b29417cc2da8caa609",
+        "deploymentBlockNumber": "0x36fa4b5",
+        "deploymentBlockHash": "0xc9d04f2abdf7f3260055033800225451e2fc5b905fe42edf37cb3faf2646d233",
+        "reviewBlockNumber": "0x36fa518",
+        "reviewBlockHash": "0x60d610aebc0cc1d020f3eaed1fb37ba690941197a8805c7a832f09a020053a3d",
+        "reviewTimestamp": 1795375129,
+        "reviewExpiresAt": 1795375309,
+        "deadline": null,
+        "expectedNativeWei": "0",
+        "expectedTokenWei": "67500000000000000",
+        "positionTokenId": "33608",
+        "principalLiquidityWei": "28284271247461900976033"
+      },
+      "outer": null,
+      "wallet": {
+        "kind": "safe-1.4.1",
+        "actorCodeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+        "actorNonce": "1",
+        "delegation": null,
+        "safe": {
+          "address": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+          "version": "1.4.1",
+          "singleton": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+          "singletonRuntimeHash": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+          "proxyRuntimeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+          "fallbackHandler": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+          "fallbackRuntimeHash": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9",
+          "owners": [
+            "0x52288744EC4e906d1269C1C9951BDec8EbEc277B",
+            "0xD01e231a718aced28d597774486A67a7a0350C52",
+            "0xEc58cAFF9C16169Ba7DCfF2C3F3149a1B7f6a090"
+          ],
+          "threshold": 2,
+          "nonce": "2",
+          "evmNonce": "1",
+          "transaction": {
+            "to": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+            "value": "0",
+            "data": "0xd51867eb0000000000000000000000000000000000000000000000000000000000000000",
+            "operation": 0,
+            "safeTxGas": "0",
+            "baseGas": "0",
+            "gasPrice": "0",
+            "gasToken": "0x0000000000000000000000000000000000000000",
+            "refundReceiver": "0x0000000000000000000000000000000000000000",
+            "nonce": "2"
+          },
+          "transactionHash": "0x6ece240565837c17056d0788b76f3dd6d8c0cce68e0fd61bd305de41f34d2471",
+          "signatures": null,
+          "approvalsCollected": 0,
+          "expiryEnforcement": "safe-nonce-only"
+        }
+      },
+      "fees": {
+        "status": "unavailable",
+        "reason": "Two owner approvals are required before exact outer execution can be simulated"
+      },
+      "gasPayerEvidence": {
+        "kind": "eoa",
+        "codeHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+        "nonce": "10"
+      },
+      "authorizations": {
+        "ownerApprovalsRequired": 2,
+        "ownerApprovalsCollected": 0,
+        "walletTransactionConfirmations": 1
+      },
+      "observed": {
+        "blockNumber": "57648408",
+        "blockHash": "0x60d610aebc0cc1d020f3eaed1fb37ba690941197a8805c7a832f09a020053a3d",
+        "timestamp": "2026-11-22T19:18:49.000Z"
+      },
+      "expiresAt": 1795375309,
+      "holds": [
+        "22 retained high findings and failed security gates",
+        "separate owner transaction activation",
+        "production claim settlement/provider acceptance",
+        "physical wallet acceptance"
+      ],
+      "notices": [
+        "Unsigned preparation only; public financial execution is disabled.",
+        "Collection credits the ledger; claims pay only the immutable beneficiary. Each execution is a separate transaction.",
+        "Safe owner signatures do not authorize a direct EOA claim. Two owner approvals and an external payer transaction are distinct.",
+        "Safe signatures have no encoded expiry for ordinary claims. Off-chain review expiry is not revocation; only Safe nonce consumption or an inner contract deadline bounds existing signatures."
+      ],
+      "intentHash": "0x748898d7f04b64f8e70a7262c1e49a417ea1a96ee276addc874489aa26745c27",
+      "reviewHash": "0x39ea96594572c112ededf0ef0296159be37ef95891cccf9cc77e713095f82742"
+    },
+    {
+      "schemaVersion": 1,
+      "profile": "rmt-claim-execution-v1",
+      "chainId": 31337,
+      "scope": "isolated-local",
+      "status": "review-only",
+      "executionEnabled": false,
+      "kind": "safe-1.4.1",
+      "actor": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+      "beneficiary": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+      "gasPayer": "0xEBb1Def4cEcB16D1FB8747BC2339666608463984",
+      "inner": {
+        "schemaVersion": 1,
+        "operation": "lp-claim-token",
+        "chainId": "0x7a69",
+        "from": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "to": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+        "data": "0xd51867eb0000000000000000000000000000000000000000000000000000000000000000",
+        "value": "0x0",
+        "nonce": "0x2",
+        "factory": "0xa939cCF7c8F1c1d1EBE668d7E45c52DE1517065b",
+        "token": "0xA50f2D23D71D1B1CB5c1c7adBed99891bF1B26Eb",
+        "originCurve": "0x30EBB95d027e4c36DD1C0b7F8D134F4727A35830",
+        "ledger": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+        "beneficiary": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "discoveryRecipient": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "factoryRuntimeHash": "0x3b370dc5c69857c903292db4717a7e80a2fdd8fe1d36ec0eff2b15b65c1d5fc7",
+        "targetRuntimeHash": "0x6f519f5ef8248ab86e05d63f3df1ec9480326190e710f5b29417cc2da8caa609",
+        "deploymentBlockNumber": "0x36fa4b5",
+        "deploymentBlockHash": "0xc9d04f2abdf7f3260055033800225451e2fc5b905fe42edf37cb3faf2646d233",
+        "reviewBlockNumber": "0x36fa518",
+        "reviewBlockHash": "0x60d610aebc0cc1d020f3eaed1fb37ba690941197a8805c7a832f09a020053a3d",
+        "reviewTimestamp": 1795375129,
+        "reviewExpiresAt": 1795375309,
+        "deadline": null,
+        "expectedNativeWei": "0",
+        "expectedTokenWei": "67500000000000000",
+        "positionTokenId": "33608",
+        "principalLiquidityWei": "28284271247461900976033"
+      },
+      "outer": {
+        "type": "0x2",
+        "chainId": "0x7a69",
+        "from": "0xEBb1Def4cEcB16D1FB8747BC2339666608463984",
+        "to": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "data": "0x6a761202000000000000000000000000fa4d6628f0803eac176b7b0edf4be3d1ff9c2c080000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000014000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001a00000000000000000000000000000000000000000000000000000000000000024d51867eb0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000082c2895ff79eec948d38685b953e43fa9cb6127aba0a5433f20292d3fa1eec84867a03fcb539164c2826544087599b5629ac3ede6cc911ff9aaf90e9095cb5359a1bf7417ec65de002482c6a484ed7d758711705d697b5507e74b4fbdf8cbbc65dfc183f3a6856d78a43f2f14b355187f29534a3541288ef0b5aeb3b2115f60a26781c000000000000000000000000000000000000000000000000000000000000",
+        "value": "0x0",
+        "nonce": "0xa",
+        "gas": "0x26827",
+        "maxFeePerGas": "0x7735940e",
+        "maxPriorityFeePerGas": "0x0"
+      },
+      "wallet": {
+        "kind": "safe-1.4.1",
+        "actorCodeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+        "actorNonce": "1",
+        "delegation": null,
+        "safe": {
+          "address": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+          "version": "1.4.1",
+          "singleton": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+          "singletonRuntimeHash": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+          "proxyRuntimeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+          "fallbackHandler": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+          "fallbackRuntimeHash": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9",
+          "owners": [
+            "0x52288744EC4e906d1269C1C9951BDec8EbEc277B",
+            "0xD01e231a718aced28d597774486A67a7a0350C52",
+            "0xEc58cAFF9C16169Ba7DCfF2C3F3149a1B7f6a090"
+          ],
+          "threshold": 2,
+          "nonce": "2",
+          "evmNonce": "1",
+          "transaction": {
+            "to": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+            "value": "0",
+            "data": "0xd51867eb0000000000000000000000000000000000000000000000000000000000000000",
+            "operation": 0,
+            "safeTxGas": "0",
+            "baseGas": "0",
+            "gasPrice": "0",
+            "gasToken": "0x0000000000000000000000000000000000000000",
+            "refundReceiver": "0x0000000000000000000000000000000000000000",
+            "nonce": "2"
+          },
+          "transactionHash": "0x6ece240565837c17056d0788b76f3dd6d8c0cce68e0fd61bd305de41f34d2471",
+          "signatures": "0xc2895ff79eec948d38685b953e43fa9cb6127aba0a5433f20292d3fa1eec84867a03fcb539164c2826544087599b5629ac3ede6cc911ff9aaf90e9095cb5359a1bf7417ec65de002482c6a484ed7d758711705d697b5507e74b4fbdf8cbbc65dfc183f3a6856d78a43f2f14b355187f29534a3541288ef0b5aeb3b2115f60a26781c",
+          "approvalsCollected": 2,
+          "expiryEnforcement": "safe-nonce-only"
+        }
+      },
+      "fees": {
+        "status": "synthetic-local",
+        "gasUnits": "126188",
+        "gasLimit": "157735",
+        "l2GasUnits": "126188",
+        "l1PosterGasUnits": "0",
+        "baseFeeWei": "1000000007",
+        "l1BaseFeeWei": "0",
+        "estimatedL2Wei": "126188000883316",
+        "estimatedL1Wei": "0",
+        "estimatedTotalWei": "126188000883316",
+        "maxFeePerGasWei": "2000000014",
+        "maxPriorityFeePerGasWei": "0",
+        "proposedMaximumWei": "315470002208290",
+        "observedBlockNumber": "57648408",
+        "observedBlockHash": "0x60d610aebc0cc1d020f3eaed1fb37ba690941197a8805c7a832f09a020053a3d",
+        "includesL1Data": false
+      },
+      "gasPayerEvidence": {
+        "kind": "eoa",
+        "codeHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+        "nonce": "10"
+      },
+      "authorizations": {
+        "ownerApprovalsRequired": 2,
+        "ownerApprovalsCollected": 2,
+        "walletTransactionConfirmations": 1
+      },
+      "observed": {
+        "blockNumber": "57648408",
+        "blockHash": "0x60d610aebc0cc1d020f3eaed1fb37ba690941197a8805c7a832f09a020053a3d",
+        "timestamp": "2026-11-22T19:18:49.000Z"
+      },
+      "expiresAt": 1795375309,
+      "holds": [
+        "22 retained high findings and failed security gates",
+        "separate owner transaction activation",
+        "production claim settlement/provider acceptance",
+        "physical wallet acceptance"
+      ],
+      "notices": [
+        "Unsigned preparation only; public financial execution is disabled.",
+        "Collection credits the ledger; claims pay only the immutable beneficiary. Each execution is a separate transaction.",
+        "Safe owner signatures do not authorize a direct EOA claim. Two owner approvals and an external payer transaction are distinct.",
+        "Safe signatures have no encoded expiry for ordinary claims. Off-chain review expiry is not revocation; only Safe nonce consumption or an inner contract deadline bounds existing signatures."
+      ],
+      "intentHash": "0x748898d7f04b64f8e70a7262c1e49a417ea1a96ee276addc874489aa26745c27",
+      "reviewHash": "0x63dae9abcd9a1360fe175f7c6041e8a8c68aae4c6f353cd2764acd43b9c7c9b6"
+    }
+  ],
+  "recoveries": [
+    {
+      "schemaVersion": 1,
+      "profile": "rmt-claim-settlement-v1",
+      "chainId": 31337,
+      "scope": "synthetic-local",
+      "stage": "unavailable",
+      "executionEnabled": false,
+      "intentHash": "0xa9f994ee25862f28fca2ba949262e14b27d1f60bcd5367ccbbc91125e68aaebb",
+      "reviewHash": "0x67848c9da4bf12594805a334de0d4ef816c8e17aaa144873f151dd978aaddd4a",
+      "receiptObserved": false,
+      "providers": {
+        "status": "unavailable",
+        "ids": []
+      },
+      "finality": {
+        "status": "unverified",
+        "policy": null,
+        "l1Finality": "not-applicable",
+        "productionPolicySupported": false,
+        "reason": "An exact synthetic-local checkpoint policy was not supplied"
+      },
+      "reason": "Canonical index checkpoint or receipt evidence unavailable; recover the original request without resubmitting"
+    },
+    {
+      "schemaVersion": 1,
+      "profile": "rmt-claim-settlement-v1",
+      "chainId": 31337,
+      "scope": "synthetic-local",
+      "stage": "unavailable",
+      "executionEnabled": false,
+      "intentHash": "0xa9f994ee25862f28fca2ba949262e14b27d1f60bcd5367ccbbc91125e68aaebb",
+      "reviewHash": "0x67848c9da4bf12594805a334de0d4ef816c8e17aaa144873f151dd978aaddd4a",
+      "receiptObserved": false,
+      "providers": {
+        "status": "unavailable",
+        "ids": []
+      },
+      "finality": {
+        "status": "unverified",
+        "policy": null,
+        "l1Finality": "not-applicable",
+        "productionPolicySupported": false,
+        "reason": "An exact synthetic-local checkpoint policy was not supplied"
+      },
+      "reason": "Canonical index checkpoint or receipt evidence unavailable; recover the original request without resubmitting"
+    },
+    {
+      "schemaVersion": 1,
+      "profile": "rmt-claim-settlement-v1",
+      "chainId": 31337,
+      "scope": "synthetic-local",
+      "stage": "canonical-l2",
+      "executionEnabled": false,
+      "intentHash": "0xa9f994ee25862f28fca2ba949262e14b27d1f60bcd5367ccbbc91125e68aaebb",
+      "reviewHash": "0x67848c9da4bf12594805a334de0d4ef816c8e17aaa144873f151dd978aaddd4a",
+      "receiptObserved": true,
+      "providers": {
+        "status": "agree",
+        "ids": [
+          "synthetic-a",
+          "synthetic-b"
+        ]
+      },
+      "finality": {
+        "status": "unverified",
+        "policy": null,
+        "l1Finality": "not-applicable",
+        "productionPolicySupported": false,
+        "reason": "An exact synthetic-local checkpoint policy was not supplied"
+      },
+      "transactionHash": "0x4b8f21058cdaada2e0b4ee48a879ef0e05cd8ebc5564e4e2585738f8ba51a664",
+      "canonicalAt": {
+        "blockNumber": "57648398",
+        "blockHash": "0xb0d22516256fbd8d05967f16eacc1a891cde0c04eb8597c220247335842bdb18",
+        "timestamp": "2026-11-22T19:18:35.000Z"
+      },
+      "outerReceiptStatus": "success",
+      "innerExecution": "success",
+      "reason": "An exact synthetic-local checkpoint policy was not supplied",
+      "amounts": {
+        "nativeWei": "0",
+        "tokenWei": "202500000000000000"
+      },
+      "activity": {
+        "schemaVersion": 1,
+        "chainId": 31337,
+        "factory": "0xa939cCF7c8F1c1d1EBE668d7E45c52DE1517065b",
+        "manager": "0x05e73354cfdd6745c338b50bcfdfa3aa6fa03408",
+        "registry": "0x9255e70cc1cd6C4BD1a7B4c45dc2e63993911fA6",
+        "deploymentBlockHash": "0xc9d04f2abdf7f3260055033800225451e2fc5b905fe42edf37cb3faf2646d233",
+        "token": "0xA50f2D23D71D1B1CB5c1c7adBed99891bF1B26Eb",
+        "ledger": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+        "actor": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+        "gasPayer": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+        "beneficiary": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+        "operation": "lp-claim-token",
+        "transactionHash": "0x4b8f21058cdaada2e0b4ee48a879ef0e05cd8ebc5564e4e2585738f8ba51a664",
+        "blockNumber": "57648398",
+        "blockHash": "0xb0d22516256fbd8d05967f16eacc1a891cde0c04eb8597c220247335842bdb18",
+        "logIndex": 1,
+        "nativeWei": "0",
+        "tokenWei": "202500000000000000",
+        "outerNonce": "21",
+        "innerNonce": "21",
+        "intentHash": "0xa9f994ee25862f28fca2ba949262e14b27d1f60bcd5367ccbbc91125e68aaebb",
+        "pool": {
+          "positionTokenId": "33608",
+          "principalLiquidityWei": "28284271247461900976033",
+          "poolId": "0xb57ae264eb8e34568bb08b0eaa878feb4821bf652cafc440fe988692ee97e846",
+          "custodian": "0xb3be327cfb99f760952c56e01bd81261C287F64b",
+          "poolKey": {
+            "currency0": "0x0000000000000000000000000000000000000000",
+            "currency1": "0xA50f2D23D71D1B1CB5c1c7adBed99891bF1B26Eb",
+            "fee": 3000,
+            "tickSpacing": 60,
+            "hooks": "0x8311AF33caA3a1e10b8Ee57608E93b44819C2000"
+          }
+        }
+      },
+      "indexed": true
+    },
+    {
+      "schemaVersion": 1,
+      "profile": "rmt-claim-settlement-v1",
+      "chainId": 31337,
+      "scope": "synthetic-local",
+      "stage": "unavailable",
+      "executionEnabled": false,
+      "intentHash": "0xe86f4e87774d1eb8ac8d0b0c5ef02b9387ef5f00c6e1e4641bdaa550677c362d",
+      "reviewHash": "0x5faf5e81dac5764f0e1a81f6f53caf102299ee0f55e001e8908c37e97d0eee8b",
+      "receiptObserved": false,
+      "providers": {
+        "status": "unavailable",
+        "ids": []
+      },
+      "finality": {
+        "status": "unverified",
+        "policy": null,
+        "l1Finality": "not-applicable",
+        "productionPolicySupported": false,
+        "reason": "An exact synthetic-local checkpoint policy was not supplied"
+      },
+      "reason": "Canonical index checkpoint or receipt evidence unavailable; recover the original request without resubmitting"
+    },
+    {
+      "schemaVersion": 1,
+      "profile": "rmt-claim-settlement-v1",
+      "chainId": 31337,
+      "scope": "synthetic-local",
+      "stage": "receipt-observed",
+      "executionEnabled": false,
+      "intentHash": "0xe86f4e87774d1eb8ac8d0b0c5ef02b9387ef5f00c6e1e4641bdaa550677c362d",
+      "reviewHash": "0x5faf5e81dac5764f0e1a81f6f53caf102299ee0f55e001e8908c37e97d0eee8b",
+      "receiptObserved": true,
+      "providers": {
+        "status": "agree",
+        "ids": [
+          "synthetic-a",
+          "synthetic-b"
+        ]
+      },
+      "finality": {
+        "status": "unverified",
+        "policy": null,
+        "l1Finality": "not-applicable",
+        "productionPolicySupported": false,
+        "reason": "An exact synthetic-local checkpoint policy was not supplied"
+      },
+      "transactionHash": "0x37900ac94d20ff16e933aea36a969967727510455b90089c88c25ae4b5ff2a63",
+      "canonicalAt": {
+        "blockNumber": "57648402",
+        "blockHash": "0x8a96bede57fb249b60766ab4b1e40fa59751bb523897cca713b8ea4d4e33af93",
+        "timestamp": "2026-11-22T19:18:46.000Z"
+      },
+      "outerReceiptStatus": "success",
+      "innerExecution": "unproven",
+      "reason": "independent-settlement-proof-incomplete"
+    },
+    {
+      "schemaVersion": 1,
+      "profile": "rmt-claim-settlement-v1",
+      "chainId": 31337,
+      "scope": "synthetic-local",
+      "stage": "canonical-l2",
+      "executionEnabled": false,
+      "intentHash": "0xe86f4e87774d1eb8ac8d0b0c5ef02b9387ef5f00c6e1e4641bdaa550677c362d",
+      "reviewHash": "0x5faf5e81dac5764f0e1a81f6f53caf102299ee0f55e001e8908c37e97d0eee8b",
+      "receiptObserved": true,
+      "providers": {
+        "status": "agree",
+        "ids": [
+          "synthetic-a",
+          "synthetic-b"
+        ]
+      },
+      "finality": {
+        "status": "unverified",
+        "policy": null,
+        "l1Finality": "not-applicable",
+        "productionPolicySupported": false,
+        "reason": "An exact synthetic-local checkpoint policy was not supplied"
+      },
+      "transactionHash": "0x37900ac94d20ff16e933aea36a969967727510455b90089c88c25ae4b5ff2a63",
+      "canonicalAt": {
+        "blockNumber": "57648402",
+        "blockHash": "0x8a96bede57fb249b60766ab4b1e40fa59751bb523897cca713b8ea4d4e33af93",
+        "timestamp": "2026-11-22T19:18:46.000Z"
+      },
+      "outerReceiptStatus": "success",
+      "innerExecution": "success",
+      "reason": "An exact synthetic-local checkpoint policy was not supplied",
+      "amounts": {
+        "nativeWei": "6750000000000",
+        "tokenWei": "0"
+      },
+      "activity": {
+        "schemaVersion": 1,
+        "chainId": 31337,
+        "factory": "0xa939cCF7c8F1c1d1EBE668d7E45c52DE1517065b",
+        "manager": "0x05e73354cfdd6745c338b50bcfdfa3aa6fa03408",
+        "registry": "0x9255e70cc1cd6C4BD1a7B4c45dc2e63993911fA6",
+        "deploymentBlockHash": "0xc9d04f2abdf7f3260055033800225451e2fc5b905fe42edf37cb3faf2646d233",
+        "token": "0xA50f2D23D71D1B1CB5c1c7adBed99891bF1B26Eb",
+        "ledger": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+        "actor": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "gasPayer": "0xEBb1Def4cEcB16D1FB8747BC2339666608463984",
+        "beneficiary": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "operation": "lp-claim-native",
+        "transactionHash": "0x37900ac94d20ff16e933aea36a969967727510455b90089c88c25ae4b5ff2a63",
+        "blockNumber": "57648402",
+        "blockHash": "0x8a96bede57fb249b60766ab4b1e40fa59751bb523897cca713b8ea4d4e33af93",
+        "logIndex": 2,
+        "nativeWei": "6750000000000",
+        "tokenWei": "0",
+        "outerNonce": "9",
+        "innerNonce": "1",
+        "intentHash": "0xe86f4e87774d1eb8ac8d0b0c5ef02b9387ef5f00c6e1e4641bdaa550677c362d",
+        "pool": {
+          "positionTokenId": "33608",
+          "principalLiquidityWei": "28284271247461900976033",
+          "poolId": "0xb57ae264eb8e34568bb08b0eaa878feb4821bf652cafc440fe988692ee97e846",
+          "custodian": "0xb3be327cfb99f760952c56e01bd81261C287F64b",
+          "poolKey": {
+            "currency0": "0x0000000000000000000000000000000000000000",
+            "currency1": "0xA50f2D23D71D1B1CB5c1c7adBed99891bF1B26Eb",
+            "fee": 3000,
+            "tickSpacing": 60,
+            "hooks": "0x8311AF33caA3a1e10b8Ee57608E93b44819C2000"
+          }
+        }
+      },
+      "indexed": true
+    },
+    {
+      "schemaVersion": 1,
+      "profile": "rmt-claim-settlement-v1",
+      "chainId": 31337,
+      "scope": "synthetic-local",
+      "stage": "unavailable",
+      "executionEnabled": false,
+      "intentHash": "0x748898d7f04b64f8e70a7262c1e49a417ea1a96ee276addc874489aa26745c27",
+      "reviewHash": "0x63dae9abcd9a1360fe175f7c6041e8a8c68aae4c6f353cd2764acd43b9c7c9b6",
+      "receiptObserved": false,
+      "providers": {
+        "status": "unavailable",
+        "ids": []
+      },
+      "finality": {
+        "status": "unverified",
+        "policy": null,
+        "l1Finality": "not-applicable",
+        "productionPolicySupported": false,
+        "reason": "An exact synthetic-local checkpoint policy was not supplied"
+      },
+      "reason": "Canonical index checkpoint or receipt evidence unavailable; recover the original request without resubmitting"
+    },
+    {
+      "schemaVersion": 1,
+      "profile": "rmt-claim-settlement-v1",
+      "chainId": 31337,
+      "scope": "synthetic-local",
+      "stage": "canonical-l2",
+      "executionEnabled": false,
+      "intentHash": "0x748898d7f04b64f8e70a7262c1e49a417ea1a96ee276addc874489aa26745c27",
+      "reviewHash": "0x63dae9abcd9a1360fe175f7c6041e8a8c68aae4c6f353cd2764acd43b9c7c9b6",
+      "receiptObserved": true,
+      "providers": {
+        "status": "agree",
+        "ids": [
+          "synthetic-a",
+          "synthetic-b"
+        ]
+      },
+      "finality": {
+        "status": "unverified",
+        "policy": null,
+        "l1Finality": "not-applicable",
+        "productionPolicySupported": false,
+        "reason": "An exact synthetic-local checkpoint policy was not supplied"
+      },
+      "transactionHash": "0xa71c60f7aae806c15e69acabd30b065c5ad28c5fc4f3d85c8b14dc1f2edab1b5",
+      "canonicalAt": {
+        "blockNumber": "57648409",
+        "blockHash": "0x269e704caf388e53412f1e59fbb57f59acb65bfe06e7a64925f3067c293f87d5",
+        "timestamp": "2026-11-22T19:18:59.000Z"
+      },
+      "outerReceiptStatus": "success",
+      "innerExecution": "success",
+      "reason": "An exact synthetic-local checkpoint policy was not supplied",
+      "amounts": {
+        "nativeWei": "0",
+        "tokenWei": "67500000000000000"
+      },
+      "activity": {
+        "schemaVersion": 1,
+        "chainId": 31337,
+        "factory": "0xa939cCF7c8F1c1d1EBE668d7E45c52DE1517065b",
+        "manager": "0x05e73354cfdd6745c338b50bcfdfa3aa6fa03408",
+        "registry": "0x9255e70cc1cd6C4BD1a7B4c45dc2e63993911fA6",
+        "deploymentBlockHash": "0xc9d04f2abdf7f3260055033800225451e2fc5b905fe42edf37cb3faf2646d233",
+        "token": "0xA50f2D23D71D1B1CB5c1c7adBed99891bF1B26Eb",
+        "ledger": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+        "actor": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "gasPayer": "0xEBb1Def4cEcB16D1FB8747BC2339666608463984",
+        "beneficiary": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "operation": "lp-claim-token",
+        "transactionHash": "0xa71c60f7aae806c15e69acabd30b065c5ad28c5fc4f3d85c8b14dc1f2edab1b5",
+        "blockNumber": "57648409",
+        "blockHash": "0x269e704caf388e53412f1e59fbb57f59acb65bfe06e7a64925f3067c293f87d5",
+        "logIndex": 2,
+        "nativeWei": "0",
+        "tokenWei": "67500000000000000",
+        "outerNonce": "10",
+        "innerNonce": "2",
+        "intentHash": "0x748898d7f04b64f8e70a7262c1e49a417ea1a96ee276addc874489aa26745c27",
+        "pool": {
+          "positionTokenId": "33608",
+          "principalLiquidityWei": "28284271247461900976033",
+          "poolId": "0xb57ae264eb8e34568bb08b0eaa878feb4821bf652cafc440fe988692ee97e846",
+          "custodian": "0xb3be327cfb99f760952c56e01bd81261C287F64b",
+          "poolKey": {
+            "currency0": "0x0000000000000000000000000000000000000000",
+            "currency1": "0xA50f2D23D71D1B1CB5c1c7adBed99891bF1B26Eb",
+            "fee": 3000,
+            "tickSpacing": 60,
+            "hooks": "0x8311AF33caA3a1e10b8Ee57608E93b44819C2000"
+          }
+        }
+      },
+      "indexed": true
+    },
+    {
+      "schemaVersion": 1,
+      "profile": "rmt-claim-settlement-v1",
+      "chainId": 31337,
+      "scope": "synthetic-local",
+      "stage": "canonical-l2",
+      "executionEnabled": false,
+      "intentHash": "0xa9f994ee25862f28fca2ba949262e14b27d1f60bcd5367ccbbc91125e68aaebb",
+      "reviewHash": "0x67848c9da4bf12594805a334de0d4ef816c8e17aaa144873f151dd978aaddd4a",
+      "receiptObserved": true,
+      "providers": {
+        "status": "agree",
+        "ids": [
+          "synthetic-a",
+          "synthetic-b"
+        ]
+      },
+      "finality": {
+        "status": "unverified",
+        "policy": null,
+        "l1Finality": "not-applicable",
+        "productionPolicySupported": false,
+        "reason": "An exact synthetic-local checkpoint policy was not supplied"
+      },
+      "transactionHash": "0x4b8f21058cdaada2e0b4ee48a879ef0e05cd8ebc5564e4e2585738f8ba51a664",
+      "canonicalAt": {
+        "blockNumber": "57648398",
+        "blockHash": "0xb0d22516256fbd8d05967f16eacc1a891cde0c04eb8597c220247335842bdb18",
+        "timestamp": "2026-11-22T19:18:35.000Z"
+      },
+      "outerReceiptStatus": "success",
+      "innerExecution": "success",
+      "reason": "An exact synthetic-local checkpoint policy was not supplied",
+      "amounts": {
+        "nativeWei": "0",
+        "tokenWei": "202500000000000000"
+      },
+      "activity": {
+        "schemaVersion": 1,
+        "chainId": 31337,
+        "factory": "0xa939cCF7c8F1c1d1EBE668d7E45c52DE1517065b",
+        "manager": "0x05e73354cfdd6745c338b50bcfdfa3aa6fa03408",
+        "registry": "0x9255e70cc1cd6C4BD1a7B4c45dc2e63993911fA6",
+        "deploymentBlockHash": "0xc9d04f2abdf7f3260055033800225451e2fc5b905fe42edf37cb3faf2646d233",
+        "token": "0xA50f2D23D71D1B1CB5c1c7adBed99891bF1B26Eb",
+        "ledger": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+        "actor": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+        "gasPayer": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+        "beneficiary": "0x89fb3fcef609Bd7CAbEc0B6b812b46591cAadcf3",
+        "operation": "lp-claim-token",
+        "transactionHash": "0x4b8f21058cdaada2e0b4ee48a879ef0e05cd8ebc5564e4e2585738f8ba51a664",
+        "blockNumber": "57648398",
+        "blockHash": "0xb0d22516256fbd8d05967f16eacc1a891cde0c04eb8597c220247335842bdb18",
+        "logIndex": 1,
+        "nativeWei": "0",
+        "tokenWei": "202500000000000000",
+        "outerNonce": "21",
+        "innerNonce": "21",
+        "intentHash": "0xa9f994ee25862f28fca2ba949262e14b27d1f60bcd5367ccbbc91125e68aaebb",
+        "pool": {
+          "positionTokenId": "33608",
+          "principalLiquidityWei": "28284271247461900976033",
+          "poolId": "0xb57ae264eb8e34568bb08b0eaa878feb4821bf652cafc440fe988692ee97e846",
+          "custodian": "0xb3be327cfb99f760952c56e01bd81261C287F64b",
+          "poolKey": {
+            "currency0": "0x0000000000000000000000000000000000000000",
+            "currency1": "0xA50f2D23D71D1B1CB5c1c7adBed99891bF1B26Eb",
+            "fee": 3000,
+            "tickSpacing": 60,
+            "hooks": "0x8311AF33caA3a1e10b8Ee57608E93b44819C2000"
+          }
+        }
+      },
+      "indexed": true
+    },
+    {
+      "schemaVersion": 1,
+      "profile": "rmt-claim-settlement-v1",
+      "chainId": 31337,
+      "scope": "synthetic-local",
+      "stage": "canonical-l2",
+      "executionEnabled": false,
+      "intentHash": "0xe86f4e87774d1eb8ac8d0b0c5ef02b9387ef5f00c6e1e4641bdaa550677c362d",
+      "reviewHash": "0x5faf5e81dac5764f0e1a81f6f53caf102299ee0f55e001e8908c37e97d0eee8b",
+      "receiptObserved": true,
+      "providers": {
+        "status": "agree",
+        "ids": [
+          "synthetic-a",
+          "synthetic-b"
+        ]
+      },
+      "finality": {
+        "status": "unverified",
+        "policy": null,
+        "l1Finality": "not-applicable",
+        "productionPolicySupported": false,
+        "reason": "An exact synthetic-local checkpoint policy was not supplied"
+      },
+      "transactionHash": "0x37900ac94d20ff16e933aea36a969967727510455b90089c88c25ae4b5ff2a63",
+      "canonicalAt": {
+        "blockNumber": "57648402",
+        "blockHash": "0x8a96bede57fb249b60766ab4b1e40fa59751bb523897cca713b8ea4d4e33af93",
+        "timestamp": "2026-11-22T19:18:46.000Z"
+      },
+      "outerReceiptStatus": "success",
+      "innerExecution": "success",
+      "reason": "An exact synthetic-local checkpoint policy was not supplied",
+      "amounts": {
+        "nativeWei": "6750000000000",
+        "tokenWei": "0"
+      },
+      "activity": {
+        "schemaVersion": 1,
+        "chainId": 31337,
+        "factory": "0xa939cCF7c8F1c1d1EBE668d7E45c52DE1517065b",
+        "manager": "0x05e73354cfdd6745c338b50bcfdfa3aa6fa03408",
+        "registry": "0x9255e70cc1cd6C4BD1a7B4c45dc2e63993911fA6",
+        "deploymentBlockHash": "0xc9d04f2abdf7f3260055033800225451e2fc5b905fe42edf37cb3faf2646d233",
+        "token": "0xA50f2D23D71D1B1CB5c1c7adBed99891bF1B26Eb",
+        "ledger": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+        "actor": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "gasPayer": "0xEBb1Def4cEcB16D1FB8747BC2339666608463984",
+        "beneficiary": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "operation": "lp-claim-native",
+        "transactionHash": "0x37900ac94d20ff16e933aea36a969967727510455b90089c88c25ae4b5ff2a63",
+        "blockNumber": "57648402",
+        "blockHash": "0x8a96bede57fb249b60766ab4b1e40fa59751bb523897cca713b8ea4d4e33af93",
+        "logIndex": 2,
+        "nativeWei": "6750000000000",
+        "tokenWei": "0",
+        "outerNonce": "9",
+        "innerNonce": "1",
+        "intentHash": "0xe86f4e87774d1eb8ac8d0b0c5ef02b9387ef5f00c6e1e4641bdaa550677c362d",
+        "pool": {
+          "positionTokenId": "33608",
+          "principalLiquidityWei": "28284271247461900976033",
+          "poolId": "0xb57ae264eb8e34568bb08b0eaa878feb4821bf652cafc440fe988692ee97e846",
+          "custodian": "0xb3be327cfb99f760952c56e01bd81261C287F64b",
+          "poolKey": {
+            "currency0": "0x0000000000000000000000000000000000000000",
+            "currency1": "0xA50f2D23D71D1B1CB5c1c7adBed99891bF1B26Eb",
+            "fee": 3000,
+            "tickSpacing": 60,
+            "hooks": "0x8311AF33caA3a1e10b8Ee57608E93b44819C2000"
+          }
+        }
+      },
+      "indexed": true
+    },
+    {
+      "schemaVersion": 1,
+      "profile": "rmt-claim-settlement-v1",
+      "chainId": 31337,
+      "scope": "synthetic-local",
+      "stage": "canonical-l2",
+      "executionEnabled": false,
+      "intentHash": "0x748898d7f04b64f8e70a7262c1e49a417ea1a96ee276addc874489aa26745c27",
+      "reviewHash": "0x63dae9abcd9a1360fe175f7c6041e8a8c68aae4c6f353cd2764acd43b9c7c9b6",
+      "receiptObserved": true,
+      "providers": {
+        "status": "agree",
+        "ids": [
+          "synthetic-a",
+          "synthetic-b"
+        ]
+      },
+      "finality": {
+        "status": "unverified",
+        "policy": null,
+        "l1Finality": "not-applicable",
+        "productionPolicySupported": false,
+        "reason": "An exact synthetic-local checkpoint policy was not supplied"
+      },
+      "transactionHash": "0xa71c60f7aae806c15e69acabd30b065c5ad28c5fc4f3d85c8b14dc1f2edab1b5",
+      "canonicalAt": {
+        "blockNumber": "57648409",
+        "blockHash": "0x269e704caf388e53412f1e59fbb57f59acb65bfe06e7a64925f3067c293f87d5",
+        "timestamp": "2026-11-22T19:18:59.000Z"
+      },
+      "outerReceiptStatus": "success",
+      "innerExecution": "success",
+      "reason": "An exact synthetic-local checkpoint policy was not supplied",
+      "amounts": {
+        "nativeWei": "0",
+        "tokenWei": "67500000000000000"
+      },
+      "activity": {
+        "schemaVersion": 1,
+        "chainId": 31337,
+        "factory": "0xa939cCF7c8F1c1d1EBE668d7E45c52DE1517065b",
+        "manager": "0x05e73354cfdd6745c338b50bcfdfa3aa6fa03408",
+        "registry": "0x9255e70cc1cd6C4BD1a7B4c45dc2e63993911fA6",
+        "deploymentBlockHash": "0xc9d04f2abdf7f3260055033800225451e2fc5b905fe42edf37cb3faf2646d233",
+        "token": "0xA50f2D23D71D1B1CB5c1c7adBed99891bF1B26Eb",
+        "ledger": "0xFA4d6628f0803EAC176b7b0eDF4BE3d1ff9C2C08",
+        "actor": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "gasPayer": "0xEBb1Def4cEcB16D1FB8747BC2339666608463984",
+        "beneficiary": "0xBD7FD7B7b972A28C860B610508ccc1411cDC7e98",
+        "operation": "lp-claim-token",
+        "transactionHash": "0xa71c60f7aae806c15e69acabd30b065c5ad28c5fc4f3d85c8b14dc1f2edab1b5",
+        "blockNumber": "57648409",
+        "blockHash": "0x269e704caf388e53412f1e59fbb57f59acb65bfe06e7a64925f3067c293f87d5",
+        "logIndex": 2,
+        "nativeWei": "0",
+        "tokenWei": "67500000000000000",
+        "outerNonce": "10",
+        "innerNonce": "2",
+        "intentHash": "0x748898d7f04b64f8e70a7262c1e49a417ea1a96ee276addc874489aa26745c27",
+        "pool": {
+          "positionTokenId": "33608",
+          "principalLiquidityWei": "28284271247461900976033",
+          "poolId": "0xb57ae264eb8e34568bb08b0eaa878feb4821bf652cafc440fe988692ee97e846",
+          "custodian": "0xb3be327cfb99f760952c56e01bd81261C287F64b",
+          "poolKey": {
+            "currency0": "0x0000000000000000000000000000000000000000",
+            "currency1": "0xA50f2D23D71D1B1CB5c1c7adBed99891bF1B26Eb",
+            "fee": 3000,
+            "tickSpacing": 60,
+            "hooks": "0x8311AF33caA3a1e10b8Ee57608E93b44819C2000"
+          }
+        }
+      },
+      "indexed": true
+    }
+  ],
+  "screenshots": [
+    "claim-wallet-delegated-review-portrait.png",
+    "claim-wallet-delegated-review-landscape.png",
+    "claim-wallet-delegated-review-desktop-viewport.png",
+    "claim-wallet-missing-hash-pending.png",
+    "claim-wallet-safe-native-review-portrait.png",
+    "claim-wallet-safe-native-review-landscape.png",
+    "claim-wallet-safe-native-review-desktop-viewport.png",
+    "claim-wallet-safe-native-proof-pending.png",
+    "claim-wallet-safe-token-review-portrait.png",
+    "claim-wallet-safe-token-review-landscape.png",
+    "claim-wallet-safe-token-review-desktop-viewport.png"
+  ],
+  "layouts": [
+    {
+      "name": "claim-wallet-delegated-review",
+      "suffix": "portrait",
+      "requested": {
+        "width": 390,
+        "height": 844
+      },
+      "actual": {
+        "width": 390,
+        "height": 844,
+        "dpr": 3,
+        "visualWidth": 390,
+        "visualScale": 1,
+        "phoneMedia": true
+      },
+      "fields": [
+        {
+          "label": "Claim profile operation",
+          "tag": "SELECT",
+          "connected": true,
+          "fontSize": 16,
+          "font": "",
+          "minHeight": "44px",
+          "height": 49,
+          "width": 338,
+          "transform": "none"
+        },
+        {
+          "label": "Claim wallet profile",
+          "tag": "SELECT",
+          "connected": true,
+          "fontSize": 16,
+          "font": "",
+          "minHeight": "44px",
+          "height": 49,
+          "width": 338,
+          "transform": "none"
+        }
+      ]
+    },
+    {
+      "name": "claim-wallet-delegated-review",
+      "suffix": "landscape",
+      "requested": {
+        "width": 844,
+        "height": 390
+      },
+      "actual": {
+        "width": 844,
+        "height": 390,
+        "dpr": 3,
+        "visualWidth": 844,
+        "visualScale": 1,
+        "phoneMedia": true
+      },
+      "fields": [
+        {
+          "label": "Claim profile operation",
+          "tag": "SELECT",
+          "connected": true,
+          "fontSize": 16,
+          "font": "",
+          "minHeight": "44px",
+          "height": 49,
+          "width": 357,
+          "transform": "none"
+        },
+        {
+          "label": "Claim wallet profile",
+          "tag": "SELECT",
+          "connected": true,
+          "fontSize": 16,
+          "font": "",
+          "minHeight": "44px",
+          "height": 49,
+          "width": 357,
+          "transform": "none"
+        }
+      ]
+    },
+    {
+      "name": "claim-wallet-delegated-review",
+      "suffix": "desktop-viewport",
+      "requested": {
+        "width": 1440,
+        "height": 900
+      },
+      "actual": {
+        "width": 1440,
+        "height": 900,
+        "dpr": 3,
+        "visualWidth": 1440,
+        "visualScale": 1,
+        "phoneMedia": false
+      },
+      "fields": [
+        {
+          "label": "Claim profile operation",
+          "tag": "SELECT",
+          "connected": true,
+          "fontSize": 13,
+          "font": "",
+          "minHeight": "44px",
+          "height": 45,
+          "width": 655,
+          "transform": "none"
+        },
+        {
+          "label": "Claim wallet profile",
+          "tag": "SELECT",
+          "connected": true,
+          "fontSize": 13,
+          "font": "",
+          "minHeight": "44px",
+          "height": 45,
+          "width": 655,
+          "transform": "none"
+        }
+      ]
+    },
+    {
+      "name": "claim-wallet-safe-native-review",
+      "suffix": "portrait",
+      "requested": {
+        "width": 390,
+        "height": 844
+      },
+      "actual": {
+        "width": 390,
+        "height": 844,
+        "dpr": 3,
+        "visualWidth": 390,
+        "visualScale": 1,
+        "phoneMedia": true
+      },
+      "fields": [
+        {
+          "label": "Claim profile operation",
+          "tag": "SELECT",
+          "connected": true,
+          "fontSize": 16,
+          "font": "",
+          "minHeight": "44px",
+          "height": 49,
+          "width": 338,
+          "transform": "none"
+        },
+        {
+          "label": "Claim wallet profile",
+          "tag": "SELECT",
+          "connected": true,
+          "fontSize": 16,
+          "font": "",
+          "minHeight": "44px",
+          "height": 49,
+          "width": 338,
+          "transform": "none"
+        },
+        {
+          "label": "Claim Safe address",
+          "tag": "INPUT",
+          "connected": true,
+          "fontSize": 16,
+          "font": "",
+          "minHeight": "44px",
+          "height": 44,
+          "width": 338,
+          "transform": "none"
+        }
+      ]
+    },
+    {
+      "name": "claim-wallet-safe-native-review",
+      "suffix": "landscape",
+      "requested": {
+        "width": 844,
+        "height": 390
+      },
+      "actual": {
+        "width": 844,
+        "height": 390,
+        "dpr": 3,
+        "visualWidth": 844,
+        "visualScale": 1,
+        "phoneMedia": true
+      },
+      "fields": [
+        {
+          "label": "Claim profile operation",
+          "tag": "SELECT",
+          "connected": true,
+          "fontSize": 16,
+          "font": "",
+          "minHeight": "44px",
+          "height": 49,
+          "width": 357,
+          "transform": "none"
+        },
+        {
+          "label": "Claim wallet profile",
+          "tag": "SELECT",
+          "connected": true,
+          "fontSize": 16,
+          "font": "",
+          "minHeight": "44px",
+          "height": 49,
+          "width": 357,
+          "transform": "none"
+        },
+        {
+          "label": "Claim Safe address",
+          "tag": "INPUT",
+          "connected": true,
+          "fontSize": 16,
+          "font": "",
+          "minHeight": "44px",
+          "height": 44,
+          "width": 357,
+          "transform": "none"
+        }
+      ]
+    },
+    {
+      "name": "claim-wallet-safe-native-review",
+      "suffix": "desktop-viewport",
+      "requested": {
+        "width": 1440,
+        "height": 900
+      },
+      "actual": {
+        "width": 1440,
+        "height": 900,
+        "dpr": 3,
+        "visualWidth": 1440,
+        "visualScale": 1,
+        "phoneMedia": false
+      },
+      "fields": [
+        {
+          "label": "Claim profile operation",
+          "tag": "SELECT",
+          "connected": true,
+          "fontSize": 13,
+          "font": "",
+          "minHeight": "44px",
+          "height": 45,
+          "width": 655,
+          "transform": "none"
+        },
+        {
+          "label": "Claim wallet profile",
+          "tag": "SELECT",
+          "connected": true,
+          "fontSize": 13,
+          "font": "",
+          "minHeight": "44px",
+          "height": 45,
+          "width": 655,
+          "transform": "none"
+        },
+        {
+          "label": "Claim Safe address",
+          "tag": "INPUT",
+          "connected": true,
+          "fontSize": 13,
+          "font": "",
+          "minHeight": "44px",
+          "height": 44,
+          "width": 655,
+          "transform": "none"
+        }
+      ]
+    },
+    {
+      "name": "claim-wallet-safe-token-review",
+      "suffix": "portrait",
+      "requested": {
+        "width": 390,
+        "height": 844
+      },
+      "actual": {
+        "width": 390,
+        "height": 844,
+        "dpr": 3,
+        "visualWidth": 390,
+        "visualScale": 1,
+        "phoneMedia": true
+      },
+      "fields": [
+        {
+          "label": "Claim profile operation",
+          "tag": "SELECT",
+          "connected": true,
+          "fontSize": 16,
+          "font": "",
+          "minHeight": "44px",
+          "height": 49,
+          "width": 338,
+          "transform": "none"
+        },
+        {
+          "label": "Claim wallet profile",
+          "tag": "SELECT",
+          "connected": true,
+          "fontSize": 16,
+          "font": "",
+          "minHeight": "44px",
+          "height": 49,
+          "width": 338,
+          "transform": "none"
+        },
+        {
+          "label": "Claim Safe address",
+          "tag": "INPUT",
+          "connected": true,
+          "fontSize": 16,
+          "font": "",
+          "minHeight": "44px",
+          "height": 44,
+          "width": 338,
+          "transform": "none"
+        }
+      ]
+    },
+    {
+      "name": "claim-wallet-safe-token-review",
+      "suffix": "landscape",
+      "requested": {
+        "width": 844,
+        "height": 390
+      },
+      "actual": {
+        "width": 844,
+        "height": 390,
+        "dpr": 3,
+        "visualWidth": 844,
+        "visualScale": 1,
+        "phoneMedia": true
+      },
+      "fields": [
+        {
+          "label": "Claim profile operation",
+          "tag": "SELECT",
+          "connected": true,
+          "fontSize": 16,
+          "font": "",
+          "minHeight": "44px",
+          "height": 49,
+          "width": 357,
+          "transform": "none"
+        },
+        {
+          "label": "Claim wallet profile",
+          "tag": "SELECT",
+          "connected": true,
+          "fontSize": 16,
+          "font": "",
+          "minHeight": "44px",
+          "height": 49,
+          "width": 357,
+          "transform": "none"
+        },
+        {
+          "label": "Claim Safe address",
+          "tag": "INPUT",
+          "connected": true,
+          "fontSize": 16,
+          "font": "",
+          "minHeight": "44px",
+          "height": 44,
+          "width": 357,
+          "transform": "none"
+        }
+      ]
+    },
+    {
+      "name": "claim-wallet-safe-token-review",
+      "suffix": "desktop-viewport",
+      "requested": {
+        "width": 1440,
+        "height": 900
+      },
+      "actual": {
+        "width": 1440,
+        "height": 900,
+        "dpr": 3,
+        "visualWidth": 1440,
+        "visualScale": 1,
+        "phoneMedia": false
+      },
+      "fields": [
+        {
+          "label": "Claim profile operation",
+          "tag": "SELECT",
+          "connected": true,
+          "fontSize": 13,
+          "font": "",
+          "minHeight": "44px",
+          "height": 45,
+          "width": 655,
+          "transform": "none"
+        },
+        {
+          "label": "Claim wallet profile",
+          "tag": "SELECT",
+          "connected": true,
+          "fontSize": 13,
+          "font": "",
+          "minHeight": "44px",
+          "height": 45,
+          "width": 655,
+          "transform": "none"
+        },
+        {
+          "label": "Claim Safe address",
+          "tag": "INPUT",
+          "connected": true,
+          "fontSize": 13,
+          "font": "",
+          "minHeight": "44px",
+          "height": 44,
+          "width": 655,
+          "transform": "none"
+        }
+      ]
+    }
+  ],
+  "checks": {
+    "delegatedAccountChainInvalidationRejectionAndMissingHash": true,
+    "safeNativeRequiresIndependentPaymentEvidence": true,
+    "safeSeparateNativeTokenClaimsAndPrincipal": true,
+    "restartRecoveryDurableIndexedOriginals": true,
+    "publicProfileSigningRequested": false,
+    "syntheticTransactionsOnly": true,
+    "walletConfirmationAttempts": 4
+  },
+  "pageErrors": [],
+  "externalRequests": [],
+  "walletMethods": [
+    "eth_getTransactionCount",
+    "eth_getCode",
+    "eth_getCode",
+    "eth_getBlockByNumber",
+    "eth_getCode",
+    "eth_getCode",
+    "eth_getTransactionCount",
+    "eth_getCode",
+    "eth_getCode",
+    "eth_getBlockByNumber",
+    "eth_getCode",
+    "eth_getCode",
+    "eth_getTransactionCount",
+    "eth_getCode",
+    "eth_getCode",
+    "eth_getBlockByNumber",
+    "eth_getCode",
+    "eth_getCode",
+    "eth_getTransactionCount",
+    "eth_getCode",
+    "eth_getCode",
+    "eth_getBlockByNumber",
+    "eth_getCode",
+    "eth_getCode",
+    "eth_getTransactionCount",
+    "eth_getCode",
+    "eth_getCode",
+    "eth_getBlockByNumber",
+    "eth_getCode",
+    "eth_getTransactionCount",
+    "eth_getCode",
+    "eth_getCode",
+    "eth_getBlockByNumber",
+    "eth_getCode",
+    "eth_getTransactionCount",
+    "eth_getCode",
+    "eth_getCode",
+    "eth_getBlockByNumber",
+    "eth_getCode",
+    "eth_getTransactionCount",
+    "eth_getCode",
+    "eth_getCode",
+    "eth_getBlockByNumber",
+    "eth_getCode"
+  ]
+}
