@@ -137,6 +137,10 @@ try {
       await page.evaluate((other) => window.profileWallets.Rabby.change(other), accounts[1].address);
       await page.getByText("Signed in", { exact: true }).waitFor();
       await page.getByRole("link", { name: "Edit profile", exact: true }).click();
+      const removalDisclosure = page.locator("summary").filter({ hasText: "Profile data and removal" });
+      await removalDisclosure.waitFor();
+      const removalBounds = await removalDisclosure.boundingBox();
+      assert.ok(removalBounds && removalBounds.height >= 44 && removalBounds.width >= 44, "Profile removal disclosure needs an accessible touch target");
       const username = "ui_" + name + "_" + Date.now().toString(36);
       await page.getByLabel("Username", { exact: true }).fill(username); await page.getByLabel("Display name", { exact: true }).fill("Synthetic Creator");
       await page.getByLabel("Bio", { exact: true }).fill("Isolated Firebase emulator profile. No real transactions.");
