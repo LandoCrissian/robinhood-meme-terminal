@@ -84,7 +84,7 @@ export function parseEarningsDirectory(raw: unknown, binding: EarningsBinding, r
         || r.checkpoint.confirmations < (binding.chainId === 4663 ? 20 : 2)
         || !earningsHash(r.creation.transactionHash) || !Number.isSafeInteger(r.creation.logIndex) || r.creation.logIndex < 0
         || !Number.isSafeInteger(r.projectRegistrationLogIndex) || r.projectRegistrationLogIndex < 0
-        || r.creationFee.amountWei !== "400000000000000" || r.creationFee.refundWei !== "0" || !same(r.creationFee.recipient, binding.operations)
+        || r.creationFee.amountWei !== "400000000000000" || !earningsWei(r.creationFee.refundWei) || !same(r.creationFee.recipient, binding.operations)
         || !Number.isSafeInteger(r.creationFee.logIndex) || r.creationFee.logIndex <= r.creation.logIndex
         || r.feeEvidence !== "contract-read-required" || seen.has(r.token.toLowerCase())) throw new Error("Unverified earnings registration");
       const roles = rolesForEarnings(recipient, r, binding);

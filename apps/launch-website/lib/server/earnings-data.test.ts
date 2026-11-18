@@ -59,6 +59,18 @@ test("stale observations remain stale; untrusted metadata and unknown properties
   assert.equal(parseEarningsDirectory(input, binding, wallet, clock), null);
 });
 
+test("a recorded creation refund does not erase beneficiary discovery or assert refund settlement", () => {
+  const input = page(); input.launches[0].creationFee.refundWei = "17";
+  const parsed = parseEarningsDirectory(input, binding, wallet, clock);
+  assert.equal(parsed?.launches[0].creationFee.refundWei, "17");
+  assert.equal(parsed?.launches[0].feeEvidence, "contract-read-required");
+  assert.equal((parsed?.launches[0] as unknown as Record<string, unknown>).settlementVerified, undefined);
+  for (const malformed of ["-1", "00", "1.2", (2n ** 256n).toString()]) {
+    input.launches[0].creationFee.refundWei = malformed;
+    assert.equal(parseEarningsDirectory(input, binding, wallet, clock), null);
+  }
+});
+
 test("synthetic chain time is separate from production freshness; arbitrary networks are never admitted", () => {
   const raw = page(); raw.chainId = 31337; raw.launches[0].chainId = 31337;
   Object.assign(raw.checkpoint, { finality: "local-synthetic", l1Finality: "not-applicable", confirmations: 2, timestamp: "2026-11-20T17:00:00.000Z" });
