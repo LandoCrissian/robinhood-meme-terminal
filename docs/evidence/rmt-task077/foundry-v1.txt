@@ -1,0 +1,51 @@
+Compiling 6 files with Solc 0.8.26
+Solc 0.8.26 finished in 34.95s
+Compiler run successful!
+
+Ran 22 tests for test/RMTProjectTreasuryV1.t.sol:RMTProjectTreasuryV1Test
+[PASS] testBindingRejectsWrongCreatorIntentShareAndUnregisteredClone() (gas: 4931004)
+[PASS] testBoundedPendingWithdrawalsExpiredCancellationAndNoBalanceFreezeWhenOff() (gas: 1536156)
+[PASS] testControllerNoticeIncomingAcceptanceExpiryAndStaleReservations() (gas: 355341)
+[PASS] testCurveAndLpClaimsCallAsTreasuryAndPreserveOriginalPrincipal() (gas: 485441)
+[PASS] testFactoryRejectsChangedOrOversizedCreationTemplateWithoutConsumingIntent() (gas: 4918462)
+[PASS] testFuzz_CreatorIntentAndControllerCannotCollide(uint256) (runs: 512, μ: 4899686, ~: 4899686)
+[PASS] testFuzz_ExplicitTemplateConcatenationPreservesExactInitBytes(bytes32,uint16) (runs: 512, μ: 44095, ~: 44095)
+[PASS] testFuzz_NativeConservationWithReservationAndCancellation(uint96,uint96) (runs: 512, μ: 274498, ~: 274502)
+[PASS] testInterruptedClaimsAndCustodyMismatchNeverCreditSuccess() (gas: 338094)
+[PASS] testNativeFundingKindsAndUnsolicitedAreNotGuaranteedRoyalties() (gas: 153874)
+[PASS] testPrecompileControllersAndWrongChainCannotAdmitNewTreasuries() (gas: 9678550)
+[PASS] testPredictAndCreatorIntentIsolationAndNoRepeatedInitialization() (gas: 4934647)
+[PASS] testPurchaseDefaultsOffThenValidatesBoundsButNeverSpendsWithoutIndependentReference() (gas: 321146)
+[PASS] testRejectedWithdrawalAndCallbackReentrancyPreserveReservationsAndConservation() (gas: 598221)
+[PASS] testStandardRegisteredTokenAdmissionRequiresNoticeAndExactImmutableRuntime() (gas: 1057807)
+[PASS] testTokenManualRoyaltyAndUnsolicitedDeltaAndDisableNeverFreezeAssets() (gas: 401984)
+[PASS] testUnboundAssetLimitReservesProjectTokenSlot() (gas: 13321074)
+[PASS] testUninitializedDirectDeploymentCannotUseControllerActionsOrBeHijacked() (gas: 4830770)
+[PASS] testUnknownHostileAndUnregisteredTokenAdmissionFailsEvenWithSuppliedHash() (gas: 321016)
+[PASS] testUnsupportedInitialControllerRollsBackCreateAndCanRetry() (gas: 9742708)
+[PASS] testZeroFeesAndChangedProjectRuntimeFailWithoutInventingReceipts() (gas: 357462)
+[PASS] testZeroShareSidecarUsesCoreZeroTreasury() (gas: 5968112)
+Suite result: ok. 22 passed; 0 failed; 0 skipped; finished in 90.85ms (258.70ms CPU time)
+
+Ran 1 test for test/RMTProjectTreasuryInvariant.t.sol:RMTProjectTreasuryInvariantTest
+[PASS] invariant_AssetConservationAndReservationBounds() (runs: 128, calls: 4096, reverts: 0)
+
+╭---------------------------+----------+-------+---------+----------╮
+| Contract                  | Selector | Calls | Reverts | Discards |
++===================================================================+
+| TreasuryAccountingHandler | cancel   | 694   | 0       | 0        |
+|---------------------------+----------+-------+---------+----------|
+| TreasuryAccountingHandler | deposit  | 686   | 0       | 0        |
+|---------------------------+----------+-------+---------+----------|
+| TreasuryAccountingHandler | disable  | 716   | 0       | 0        |
+|---------------------------+----------+-------+---------+----------|
+| TreasuryAccountingHandler | execute  | 675   | 0       | 0        |
+|---------------------------+----------+-------+---------+----------|
+| TreasuryAccountingHandler | queue    | 665   | 0       | 0        |
+|---------------------------+----------+-------+---------+----------|
+| TreasuryAccountingHandler | royalty  | 660   | 0       | 0        |
+╰---------------------------+----------+-------+---------+----------╯
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 670.82ms (668.15ms CPU time)
+
+Ran 2 test suites in 672.26ms (761.67ms CPU time): 23 tests passed, 0 failed, 0 skipped (23 total tests)

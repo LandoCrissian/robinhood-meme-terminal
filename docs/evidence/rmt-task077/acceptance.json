@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "task": 77,
+  "baseCommit": "ecf3998f6e9b556c000de5c48908e4fb0b363fc8",
+  "branch": "rmt-launch-treasury-purchase-v2",
+  "draftPr": 671,
+  "status": "NO_GO_NOT_EXECUTABLE",
+  "broadcastAuthorized": false,
+  "productionChanges": false,
+  "hostedRedeployment": false,
+  "purchases": 0,
+  "independentReferenceAdmitted": false,
+  "source": {
+    "financialSource": "dc6b3d6422245a5da8f631e2fd993a5a36c7c8a5",
+    "runtimeAndFinancialHarnessDiff": [],
+    "comparedPaths": [
+      "apps",
+      "packages/launchpad-common",
+      "packages/contracts/treasury-purchase-v2/src",
+      "scripts/treasury",
+      "scripts/treasury-v2/local-integration.mjs",
+      "scripts/visual-qa/rmt-creator-integration.mjs"
+    ],
+    "previousSolidityUnchanged": 42,
+    "newCompilerInputSha256": "02d430dc4018a9a75c9c69f204c4e94c57fa8b94722c90effc79293cad7fff7d"
+  },
+  "execution": {
+    "chainId": 31337,
+    "assets": "synthetic only",
+    "upstream": {
+      "chainId": 84532,
+      "block": 57648300,
+      "blockHash": "0x5bb29976ce80ddede79f192c61eba8fe9d96f499f8bfa11e0820d11820e91d20"
+    },
+    "physicalIPhoneAcceptance": false,
+    "robinhoodFinancialFork": false
+  },
+  "tests": {
+    "web": 228,
+    "coreFoundry": 112,
+    "v1Foundry": 23,
+    "newFoundry": 30,
+    "prototypeInvariant": {
+      "runs": 128,
+      "calls": 4096
+    },
+    "routeSecurityUnit": 15,
+    "releaseEvidence": 117,
+    "releasePolicy": 20,
+    "readiness": 72,
+    "browsers": [
+      "chromium",
+      "webkit"
+    ],
+    "each": {
+      "receiptObservations": 53,
+      "expectedReverts": 8,
+      "zeroValuePrototypeTransactions": 5,
+      "prototypeRejectionSimulations": 15,
+      "uiSubmissions": 4,
+      "recoveries": 3,
+      "archives": 2,
+      "layouts": 7,
+      "scope": "Includes deliberate reorg orphan; not all observations remain canonical after rollback"
+    },
+    "public": {
+      "layoutsEach": 3,
+      "walletRequests": 0,
+      "deniedFinancialRoutes": 3
+    },
+    "productionDependencyAudit": "PASS current production lockfile only",
+    "security": {
+      "retainedCoreHigh": 22,
+      "retainedV1High": 6,
+      "newPrototypeHigh": 0,
+      "newPrototypeLow": 2,
+      "newPrototypeInformational": 1,
+      "detectorsEach": 101,
+      "retainedStrictGatesFailed": 3,
+      "independentAudit": false
+    }
+  },
+  "limitations": [
+    "No actual project token/pool or admitted independent project-token reference exists. ETH/USD does not establish a project price.",
+    "V2 prototype is noncustodial, nonexecuting and deployable only on local31337; not an asset-bearing treasury or future-upgradable buyer.",
+    "No V1 beneficiary reassignment; its future fee credits remain at V1.",
+    "Only V1-supported ETH and registered TokenV2 assets; no WETH/USDC/arbitrary ERC20/NFT rescue.",
+    "Live deployment, reference/custody policy, production indexing/finality and physical-device acceptance remain separate release conditions."
+  ],
+  "recommendedNextTask": "Define a defensible actual-project reference-admission/funding-asset policy before a separately reviewed asset-bearing purchasing version; otherwise keep purchases unavailable."
+}

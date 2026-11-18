@@ -3,9 +3,7 @@
   "workspaces": {
     ".": {
       "entry": [
-        "scripts/treasury-v2/compiler.mjs",
         "scripts/treasury-v2/routes.mjs",
-        "scripts/treasury-v2/browser-capability.mjs",
         "scripts/claims/probe-read-only-4663.mjs",
         "scripts/claims/fork-read-only-4663.mjs",
         "packages/launchpad-common/native-proof.d.mts",

@@ -180,3 +180,17 @@ condition = "AND"
 targetRules = ["generic-api-key"]
 regexes = ['''^publisher/market$''']
 paths = ['''^docs/TREASURY_PURCHASE_V2_ROUTES\.md$''']
+
+[[allowlists]]
+description = "Four exact public synthetic Token V2 addresses corroborated by Task077 creation receipts"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''(?i)^0x(?:e23ddccafa91af878f68a0397feb614a5bcc46f7|a2ac799f114ad79732cbb10a04f23b8d09d16535|975cef54dc83a3ccf5d1390372cdfe8182ef46fb|cde71b700ddf6f6ecc94f49633bae94dcd752bf2)$''']
+paths = ['''^docs/evidence/rmt-task077/(?:chromium|webkit)-(?:core|browser|v2)\.json$''']
+
+[[allowlists]]
+description = "Exact public immutable Token V2 runtime Keccak in the two Task077 prototype binding reports"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''^0xbb1018a75a30c33d830a5ab203b0063c00d24853b69641472649262837f9cd42$''']
+paths = ['''^docs/evidence/rmt-task077/(?:chromium|webkit)-v2\.json$''']

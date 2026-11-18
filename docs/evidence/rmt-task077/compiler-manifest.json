@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "profile": "rmt-treasury-purchase-v2-prototype",
+  "status": "BLOCKED_NO_BROADCAST",
+  "broadcastAuthorized": false,
+  "coreModified": false,
+  "compilerVersion": "0.8.26+commit.8a97fa7a",
+  "executablePlatform": "win32-x64",
+  "executableSha256": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
+  "compilerSettings": {
+    "evmVersion": "cancun",
+    "viaIR": true,
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "metadata": {
+      "bytecodeHash": "ipfs",
+      "appendCBOR": true,
+      "useLiteralContent": false
+    },
+    "remappings": [
+      "@openzeppelin/=lib/v4-core/lib/openzeppelin-contracts/",
+      "@uniswap/v4-core/=lib/v4-core/",
+      "@uniswap/v4-periphery/=lib/v4-periphery/"
+    ]
+  },
+  "roots": [
+    "treasury-purchase-v2/src/PurchaseEvidenceV2.sol",
+    "treasury-purchase-v2/src/RMTTreasuryPurchaseV2Prototype.sol",
+    "treasury-purchase-v2/src/RMTTreasuryPurchaseV2PrototypeFactory.sol"
+  ],
+  "sourceCount": 3,
+  "sourceSha256": [
+    [
+      "treasury-purchase-v2/src/PurchaseEvidenceV2.sol",
+      "654423ffc7489285a6d238403af0431357195d67ee561f6d6aa89f928e9b8ae4"
+    ],
+    [
+      "treasury-purchase-v2/src/RMTTreasuryPurchaseV2Prototype.sol",
+      "de7b6de01b74909152e1096effd3be9be6a48ca115f70e9e59b1102a4ac8791c"
+    ],
+    [
+      "treasury-purchase-v2/src/RMTTreasuryPurchaseV2PrototypeFactory.sol",
+      "9f3394afa0779e752fde073ef8324e5220934bd80b11f8cbb884af589eb788f8"
+    ]
+  ],
+  "inputSha256": "02d430dc4018a9a75c9c69f204c4e94c57fa8b94722c90effc79293cad7fff7d",
+  "scope": "All new production module sources plus every reachable import; tests excluded unless imported by production source",
+  "transformations": [],
+  "dependencyPinManifest": "docs/evidence/rmt-task043/4663-rotation-profile.json",
+  "templates": {
+    "PurchaseEvidenceV2": {
+      "file": "treasury-purchase-v2/src/PurchaseEvidenceV2.sol",
+      "creationBytes": 85,
+      "runtimeBytes": 57,
+      "creationSha256": "d4e5ebb94c231e5725e63fc8733881033ed1aba2625efbad282a0f82f510474b",
+      "runtimeSha256": "25d5d7649ced6e36ca1b8aaae2b7dc5bb51d2f261718b7cd3b0e0509f7ea1ee6"
+    },
+    "RMTTreasuryPurchaseV2Prototype": {
+      "file": "treasury-purchase-v2/src/RMTTreasuryPurchaseV2Prototype.sol",
+      "creationBytes": 8118,
+      "runtimeBytes": 6254,
+      "creationSha256": "01c7fddc54ce0191aebccaacef5e0cb0467d963655b79f39a500a53fead1f9a5",
+      "runtimeSha256": "0c2fed52e66435014b151aeb1a1f0fbe1b640cde511b79d365e46b033c79ba61"
+    },
+    "RMTTreasuryPurchaseV2PrototypeFactory": {
+      "file": "treasury-purchase-v2/src/RMTTreasuryPurchaseV2PrototypeFactory.sol",
+      "creationBytes": 9554,
+      "runtimeBytes": 9505,
+      "creationSha256": "3108682f2d80819058cdd44cc7d76a680c3e94f37861f2b116e902979d496d95",
+      "runtimeSha256": "321899f77284687cf9fd49a750f97de2e4b4e44787b3eec8f6dc6c57030ae572"
+    }
+  }
+}
