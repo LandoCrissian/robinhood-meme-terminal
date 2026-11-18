@@ -1,8 +1,10 @@
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
+import {execFileSync} from "node:child_process";
 import {readFileSync} from "node:fs";
 import test from "node:test";
 import {gunzipSync} from "node:zlib";
+import {fileURLToPath} from "node:url";
 
 const root = new URL("../../../", import.meta.url);
 const json = name => JSON.parse(readFileSync(new URL(name, import.meta.url)));
@@ -57,5 +59,9 @@ test("public Chromium/WebKit expose no buy authority, wallet requests, fabricate
 });
 test("retained raw artifacts and screenshots keep exact, portable checksums", () => {
   const files=json("files.sha256.json").files;assert.ok(files.length>20);
+  const prefix="docs/evidence/rmt-task077/";
+  const tracked=execFileSync("git",["ls-files","--",prefix],{cwd:fileURLToPath(root),encoding:"utf8"})
+    .trim().split("\n").map(path=>path.slice(prefix.length)).filter(path=>!["files.sha256.json","acceptance.test.mjs"].includes(path)).sort();
+  assert.deepEqual(files.map(file=>file.path).sort(),tracked,"Checksum inventory must match tracked artifacts, never ignored logs or local files");
   for(const file of files){assert.match(file.path,/^[a-zA-Z0-9._/-]+$/);assert.ok(!file.path.startsWith("/")&&!file.path.includes(".."));assert.equal(sha(readFileSync(new URL(file.path,import.meta.url))),file.sha256,file.path);}
 });

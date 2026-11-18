@@ -31,6 +31,27 @@
       ],
       "timeoutOrAssertionWeakened": false,
       "resolutionStatus": "Original failure preserved; final candidate CI must be assessed separately"
+    },
+    {
+      "sourceHead": "448a8e233559c24587df7ea85caadf15abf39463",
+      "testMergeCommit": "6bc61016824293c45602fb547d3357bf2b190ba7",
+      "run": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44414900795",
+      "job": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44414900795/job/135192493731",
+      "step": "Repository release-evidence tests",
+      "observedFailureUtc": "2026-11-18T22:47:51.004Z",
+      "assertion": "retained raw artifacts and screenshots keep exact, portable checksums",
+      "diagnostic": {
+        "kind": "ENOENT",
+        "path": "docs/evidence/rmt-task077/security/foundry-disposition.log"
+      },
+      "classification": "Evidence-packaging defect: the checksum generator included an ignored local duplicate that was not tracked or present in Linux checkout",
+      "canonicalRetainedArtifact": "docs/evidence/rmt-task077/security/foundry-disposition.txt",
+      "canonicalArtifactSha256": "01e79b049928e9243d49d68298b7ce483ba530277305425486696c4c3ebebb49",
+      "canonicalArtifactContainsActualTestOutput": true,
+      "financialDefect": false,
+      "contractOrApplicationRuntimeChanged": false,
+      "correctiveBoundary": "Retain the tracked TXT evidence and derive the exact checksum inventory from tracked Git files; reject inventory mismatch instead of weakening checksum assertions",
+      "resolutionStatus": "Original failure preserved; final candidate CI must verify the corrected evidence inventory"
     }
   ],
   "productionChanges": false,

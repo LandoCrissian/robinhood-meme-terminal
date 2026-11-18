@@ -27,7 +27,7 @@
     },
     {
       "path": "ci-original-failures.json",
-      "sha256": "e22af41fa158a61ed8ae9e33261b01bef698d55c27a665f97c3fd5c923027c24"
+      "sha256": "950370ab9259217f82af0c6f63313b274b8b221377e19573370a3cd47b670123"
     },
     {
       "path": "compiler-input.json.gz",
@@ -120,10 +120,6 @@
     {
       "path": "security/disposition.json",
       "sha256": "8125360d20707c722b93720c633a773a9e2976f1ad1d7e89c9a6e1ddeecc3e9c"
-    },
-    {
-      "path": "security/foundry-disposition.log",
-      "sha256": "01e79b049928e9243d49d68298b7ce483ba530277305425486696c4c3ebebb49"
     },
     {
       "path": "security/foundry-disposition.txt",
