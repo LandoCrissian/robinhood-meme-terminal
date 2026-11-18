@@ -7,6 +7,7 @@ import { backing, supply } from "../../packages/contracts/scripts/fixed-supply-p
 import { call, localFixtureClient, receiptEvidence, transact } from "../../packages/contracts/scripts/deploy-fixed-supply-fixture.mjs";
 import { proveFundedMigrations } from "../../packages/contracts/scripts/prove-fixed-supply-funded-migrations.mjs";
 import { createTreasuryProjectsFromForm, claimCurveThroughTreasuryPage, exerciseTreasuryPage } from "./browser-integration.mjs";
+import { createPurchaseV2Review } from "../treasury-v2/local-integration.mjs";
 
 const require = createRequire(new URL("../../apps/launch-website/package.json", import.meta.url));
 const { concatHex, encodeAbiParameters, encodeFunctionData, erc20Abi, hashTypedData, keccak256,
@@ -26,7 +27,7 @@ const positionAbi = parseAbi(["function ownerOf(uint256) view returns(address)",
 /** This is the same website, chain, PostgreSQL and authoritative fixture writer
  * as the creator/claims acceptance. No production account or key can submit. */
 export async function testProjectTreasuryJourney({ browserEngine, rpcUrl, rpc, artifacts, deployed, anchor, treasuryCompilation,
-  treasuryDeployment, creatorAccount, operatorAccount, site, workerOrigin, indexReadKey, out, pg, waitFor, mine, ready, restart,
+  treasuryDeployment, purchaseV2Compilation, creatorAccount, operatorAccount, site, workerOrigin, indexReadKey, out, pg, waitFor, mine, ready, restart,
   hideReceipt, hideNativeProof, sourceIdentity }) {
   const client = await localFixtureClient(rpcUrl, 31337);
   assert.equal(await client.getChainId(), 31337); assert.equal(new URL(site).hostname, "127.0.0.1");
@@ -158,6 +159,8 @@ export async function testProjectTreasuryJourney({ browserEngine, rpcUrl, rpc, a
     await ownerCall(treasury, "depositNative", [], 7n);
     assert.equal(await client.getBalance({ address: treasury }), heldBefore[0] + 7n, "Disabled purchasing cannot freeze incoming funding");
     evidence.checks.purchaseToggleNeverSpendsAndUnsupportedPriceRefused = true;
+    const purchaseV2 = purchaseV2Compilation && await createPurchaseV2Review({ client, read, send, creator, project,
+      treasury, treasuryAbi, deployed, compilation: purchaseV2Compilation, out, sourceIdentity });
     const migrated = await proveFundedMigrations(client, artifacts, { ...deployed, scheduleFixtureMigration: async token => {
       await rpc("anvil_impersonateAccount", [operatorAccount.address]);
       try { return await deployed.scheduleFixtureMigration(token); }
@@ -165,6 +168,7 @@ export async function testProjectTreasuryJourney({ browserEngine, rpcUrl, rpc, a
     } }, send, transact, { ...project, beneficiaries: [creator.address, treasury,
       deployed.deployment.operatingRecipient, deployed.deployment.futureReserveRecipient] });
     project.originalCurve = project.curve; project.curve = migrated.curve; evidence.migrations = migrated;
+    if (purchaseV2) await purchaseV2.afterMigration(project);
     assert.equal(await read(treasury, treasuryAbi, "curveLedger"), project.revenueLedger);
     assert.deepEqual(await rpc("eth_accounts"), []); evidence.checks.originalLedgerV1V2V3 = true;
     // Queue after the migration time advances, so it is still unexpired after
@@ -201,6 +205,7 @@ export async function testProjectTreasuryJourney({ browserEngine, rpcUrl, rpc, a
     await safeCall("acceptController", [], 1, "reverted");
     await safeCall("acceptController");
     assert.ok(same(await read(treasury, treasuryAbi, "controller"), safe));
+    if (purchaseV2) await purchaseV2.afterControllerRotation(safe);
     const priorNotice = await read(treasury, treasuryAbi, "withdrawals", [queuedId]), rotationTime = (await client.getBlock()).timestamp;
     assert.ok(BigInt(priorNotice[3]) <= rotationTime && rotationTime <= BigInt(priorNotice[4]), "The original withdrawal is mature and unexpired");
     assert.notEqual(priorNotice[5], await read(treasury, treasuryAbi, "controllerEpoch"));
@@ -220,6 +225,7 @@ export async function testProjectTreasuryJourney({ browserEngine, rpcUrl, rpc, a
       assert.equal(await read(anchor.positionManager.address, positionAbi, "getPositionLiquidity", [position.positionTokenId]), position.liquidity); };
     await custody();
     await generateV4Fees({ client, send, creator, token: project.token, engine: deployed.graduationEngine, engineAbi, anchor, deadline });
+    if (purchaseV2) await purchaseV2.afterGraduation(project);
     await safeCall("collectLpFees", [await deadline()]);
     const lpLedger = await read(deployed.graduationEngine, engineAbi, "lpFeeLedger", [project.token]);
     const lpDue = await read(lpLedger, lpAbi, "claimable", [treasury]); assert.ok(lpDue[0] > 0n && lpDue[1] > 0n);

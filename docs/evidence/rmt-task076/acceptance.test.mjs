@@ -75,14 +75,24 @@ test("both real synthetic journeys preserve receipt, recovery, custody and sourc
   }
 });
 
-test("shipped runtime files still match the source exercised by both browser journeys", () => {
+test("retained Task076 runtime source matches its original journeys, independently of later authorized UI changes", () => {
   const manifest = json("runtime-source-manifest.json");
   assert.equal(manifest.executionSource, "378f3c0a88ff06020854ea156bbf6fed7b874f44");
   assert.equal(manifest.files.length, manifest.count); assert.ok(manifest.count > 100);
+  // Task077 changes capability wording/validation. Preserve the exact original
+  // source rather than falsely attributing the old receipts to the new UI.
+  // All 190 original bytes are retained, hash-bound and individually checked.
+  const archivedBytes = readFileSync(new URL("../rmt-task077/task076-runtime-source.json.gz", import.meta.url));
+  assert.equal(digest(archivedBytes), "ffe0f941982ba029c8bfa018dc8e10d51e59c7fca57a02e55006a9d2568fb9ae");
+  const archived = JSON.parse(gunzipSync(archivedBytes));
+  assert.equal(archived.base, "ecf3998f6e9b556c000de5c48908e4fb0b363fc8");
+  assert.equal(archived.executionSource, manifest.executionSource);
+  assert.equal(archived.files.length, manifest.count);
+  const retained = new Map(archived.files.map(file => [file.path, file.content]));
+  assert.equal(retained.size, manifest.count);
   for (const file of manifest.files) {
-    const bytes = readFileSync(new URL(file.path, root));
-    const content = /\.(?:ts|tsx|mjs|mts|js|css|json)$/.test(file.path) ? Buffer.from(bytes.toString("utf8").replaceAll("\r\n", "\n")) : bytes;
-    assert.equal(digest(content), file.sha256, file.path);
+    assert.ok(retained.has(file.path));
+    assert.equal(digest(retained.get(file.path)), file.sha256, file.path);
   }
   for (const file of json("files.sha256.json").files) {
     assert.ok(/^[a-zA-Z0-9._/-]+$/.test(file.path) && !file.path.startsWith("/") && !file.path.includes(".."));

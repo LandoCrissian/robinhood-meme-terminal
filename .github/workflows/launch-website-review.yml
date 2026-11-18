@@ -108,6 +108,8 @@ jobs:
             RMT_WEBSITE_BROWSER="$engine" \
               RMT_WEBSITE_PREVIEW_ARTIFACTS="$RMT_WEBSITE_PREVIEW_ARTIFACTS/$engine/earnings" \
               node scripts/visual-qa/rmt-earnings-public.mjs
+            node scripts/treasury-v2/browser-capability.mjs --url http://127.0.0.1:3205/ \
+              --browser "$engine" --output "$RMT_WEBSITE_PREVIEW_ARTIFACTS/$engine/purchase-capability"
           done
           RMT_POLISH_URL=http://127.0.0.1:3205/ \
             RMT_POLISH_ARTIFACTS="$RMT_WEBSITE_PREVIEW_ARTIFACTS/polish" pnpm test:polish
@@ -175,9 +177,9 @@ jobs:
             --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$(pg_config --bindir)" \
             --browser "${{ matrix.browser }}" \
             --output "$RUNNER_TEMP/rmt-claim-wallet-profiles"
-      - name: Verify optional project treasury creation, contract claims and canonical recovery
+      - name: Verify optional treasury lifecycle and hard-disabled V2 purchase boundary
         run: |
-          node scripts/visual-qa/rmt-creator-integration.mjs --treasury-only \
+          node scripts/visual-qa/rmt-creator-integration.mjs --treasury-only --treasury-v2 \
             --anvil "$(command -v anvil)" \
             --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$(pg_config --bindir)" \
             --browser "${{ matrix.browser }}" \
@@ -213,3 +215,4 @@ jobs:
             ${{ runner.temp }}/rmt-project-treasury/project-treasury-browser-evidence.json
             ${{ runner.temp }}/rmt-project-treasury/project-treasury-compiler-manifest.json
             ${{ runner.temp }}/rmt-project-treasury/project-treasury-deployment.json
+            ${{ runner.temp }}/rmt-project-treasury/purchase-v2-acceptance.json

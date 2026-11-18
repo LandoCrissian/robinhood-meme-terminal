@@ -25,6 +25,7 @@ jobs:
       - run: pnpm audit:production
       - run: pnpm check:repo
       - run: pnpm test:release-evidence
+      - run: node --test scripts/treasury-v2/*.test.mjs
       - run: pnpm test:production-readiness
       - run: pnpm test:protocol-continuation
       - run: pnpm test:constructor-readiness
