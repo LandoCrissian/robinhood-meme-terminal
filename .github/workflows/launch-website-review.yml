@@ -163,3 +163,5 @@ jobs:
           path: |
             ${{ runner.temp }}/rmt-creator-lifecycle/*.png
             ${{ runner.temp }}/rmt-creator-lifecycle/creation-journey-evidence.json
+            ${{ runner.temp }}/rmt-creator-lifecycle/graduation-review-evidence.json
+            ${{ runner.temp }}/rmt-creator-lifecycle/failure-page.txt
