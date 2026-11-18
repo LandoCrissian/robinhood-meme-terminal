@@ -315,7 +315,8 @@ export async function exerciseTreasuryPage({ session, project, treasury, safe, s
     session.evidence.layouts.push({ name: "project-treasury-safe-dashboard", label: "standard-desktop-context", browserMode: "desktop-read-only",
       fields: desktopFields, media: desktopMedia });
     session.evidence.desktopRead = { treasury, token: project.token, controller: safe, status: observedDesktop.status,
-      checkpoint: observedDesktop.indexed?.checkpoint ?? null, walletInjected: false, walletRequests: 0, pageErrors: errors, externalRequests: external };
+      checkpoint: observedDesktop.history.checkpoint ?? null, indexed: observedDesktop.history.indexed,
+      walletInjected: false, walletRequests: 0, pageErrors: errors, externalRequests: external };
   } finally { await desktop.close(); }
   assert.deepEqual(session.evidence.pageErrors, [], "The actual treasury pages must not raise browser runtime errors");
   assert.deepEqual(session.evidence.externalRequests, [], "Treasury acceptance must not contact hosted services or metadata URLs");
