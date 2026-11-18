@@ -9,6 +9,7 @@ import { projectTreasuryFixtureFlag, projectTreasuryProfile, treasuryAddress, tr
 import { claimDelegatePin } from "../claim-profiles";
 import { configuredCurveFixture, fixtureRpc, sameHex as same, verifyCurveFixture, type CurveFixture } from "./curve-fixture";
 import { classifyFixtureTreasury } from "./fixture-treasury";
+import { validateIndexedTreasuryHistory } from "./project-treasury-history";
 
 export const treasuryFactoryAbi = parseAbi(projectTreasuryFactorySignatures);
 export const treasuryAbi = parseAbi(projectTreasurySignatures);
@@ -71,15 +72,17 @@ export async function verifyProjectTreasuryContext(config: ProjectTreasuryFixtur
   const rpc = fixtureRpc(config.curve), rawHead = await verifyCurveFixture(config.curve, rpc);
   treasuryRequire(rawHead.number !== null && rawHead.hash);
   const head = rawHead as TreasuryHead, m = config.module;
-  const [code, birthCode, chain, pins, receipt, block, creationHash] = await Promise.all([
+  const [code, birthCode, chain, pins, receipt, block, creationHash, graduationCode] = await Promise.all([
     rpc.getCode({ address: m.treasuryFactory, blockNumber: head.number }),
     rpc.getCode({ address: m.treasuryFactory, blockNumber: BigInt(m.deployment.blockNumber) }),
     treasuryRead<bigint>(rpc, m.treasuryFactory, treasuryFactoryAbi, "deploymentChainId", [], head.number),
     treasuryRead<readonly [Address, Hex, Address, Hex, Hex]>(rpc, m.treasuryFactory, treasuryFactoryAbi, "pins", [], head.number),
     rpc.getTransactionReceipt({ hash: m.deployment.transactionHash }), rpc.getBlock({ blockNumber: BigInt(m.deployment.blockNumber) }),
     treasuryRead<Hex>(rpc, m.treasuryFactory, treasuryFactoryAbi, "treasuryCreationCodeHash", [], head.number),
+    rpc.getCode({ address: m.graduationEngine, blockNumber: head.number }),
   ]);
   treasuryRequire(code && birthCode && same(keccak256(code), m.factoryRuntimeHash) && same(keccak256(birthCode), m.factoryRuntimeHash)
+    && graduationCode && same(keccak256(graduationCode), m.graduationRuntimeHash)
     && chain === 31337n && same(creationHash, m.treasuryCreationCodeHash) && same(pins[0], m.coreFactory) && same(pins[1], m.coreFactoryRuntimeHash)
     && same(pins[2], m.graduationEngine) && same(pins[3], m.graduationRuntimeHash) && same(pins[4], m.tokenRuntimeHash)
     && receipt.status === "success" && receipt.to === null && same(receipt.contractAddress!, m.treasuryFactory)
@@ -138,17 +141,30 @@ export async function readProjectTreasuryProof(config: ProjectTreasuryFixture, r
 
 export async function projectTreasuryControllerKind(rpc: TreasuryRpc, controller: Address, block: bigint): Promise<ProjectTreasurySnapshot["controllerKind"]> {
   const code = await rpc.getCode({ address: controller, blockNumber: block });
-  if (!code || code === "0x") return "eoa";
+  if (code === undefined || code === "0x") return "eoa";
+  treasuryRequire(typeof code === "string" && /^0x(?:[0-9a-f]{2})+$/i.test(code));
   if (same(code, claimDelegatePin.designator)) {
     const delegate = await rpc.getCode({ address: claimDelegatePin.address, blockNumber: block });
     return delegate && same(keccak256(delegate), claimDelegatePin.runtimeHash) ? "metamask-7702" : "unsupported";
   }
-  return await classifyFixtureTreasury(rpc, controller, block) === "safe-1.4.1" ? "safe-1.4.1" : "unsupported";
+  if (await classifyFixtureTreasury(rpc, controller, block) !== "safe-1.4.1") return "unsupported";
+  // The legacy beneficiary profile deliberately admits more Safe shapes. New
+  // treasury admission must match its own exact contract rules instead.
+  const safe = parseAbi(["function getOwners() view returns(address[])", "function getThreshold() view returns(uint256)"]);
+  const [owners, threshold, handler] = await Promise.all([
+    treasuryRead<Address[]>(rpc, controller, safe, "getOwners", [], block),
+    treasuryRead<bigint>(rpc, controller, safe, "getThreshold", [], block),
+    rpc.getStorageAt({ address: controller, blockNumber: block, slot: "0x6c9a6c4a39284e37ed1cf53d337577d14212a4870fb976a4366c693b939918d5" }),
+  ]);
+  if (owners.length !== 3 || threshold !== 2n || new Set(owners.map(a => a.toLowerCase())).size !== 3
+    || handler?.toLowerCase() !== "0x" + "fd0732dc9e303f09fcef3a7388ad10a83459ec99".padStart(64, "0")) return "unsupported";
+  const ownerCodes = await Promise.all(owners.map(address => rpc.getCode({ address, blockNumber: block })));
+  return owners.every((address, index) => !zero(address) && (ownerCodes[index] === undefined || ownerCodes[index] === "0x")) ? "safe-1.4.1" : "unsupported";
 }
 
-async function indexedTreasuryHistory(config: ProjectTreasuryFixture, treasury: Address) {
+async function indexedTreasuryHistory(config: ProjectTreasuryFixture, proof: ProjectTreasuryProof, rpc: TreasuryRpc, head: TreasuryHead) {
   try {
-    const url = new URL("/project-treasuries", config.curve.indexerUrl); url.searchParams.set("address", treasury);
+    const url = new URL("/project-treasuries", config.curve.indexerUrl); url.searchParams.set("address", proof.treasury);
     const key = process.env.RMT_CURVE_FIXTURE_READ_KEY;
     treasuryRequire(key && /^[0-9a-f]{64}$/.test(key) && !/^0+$/.test(key));
     const response = await fetch(url, { headers: { "X-RMT-Fixture-Key": key }, redirect: "error", cache: "no-store", signal: AbortSignal.timeout(3000) });
@@ -158,13 +174,8 @@ async function indexedTreasuryHistory(config: ProjectTreasuryFixture, treasury: 
       for (;;) { const chunk = await reader.read(); if (chunk.done) break;
         treasuryRequire(length + chunk.value.length <= bytes.length); bytes.set(chunk.value, length); length += chunk.value.length; }
     } finally { await reader.cancel().catch(() => undefined); reader.releaseLock(); }
-    const data = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, length))) as {
-      chainId: number; profile: string; treasuryFactory: string; checkpoint: ProjectTreasuryPoint;
-      treasuries: Array<{ treasury: string }>; events: ProjectTreasuryEvent[];
-    };
-    treasuryRequire(data.chainId === 31337 && data.profile === projectTreasuryProfile && same(data.treasuryFactory, config.module.treasuryFactory)
-      && data.treasuries.length === 1 && same(data.treasuries[0].treasury, treasury) && data.events.length <= 100);
-    return { events: data.events, history: { indexed: true, status: "ready" as const, checkpoint: data.checkpoint } };
+    const data: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, length)));
+    return await validateIndexedTreasuryHistory(data, proof, head.number, height => rpc.getBlock({ blockNumber: height }));
   } catch { return { events: [], history: { indexed: false, status: "pending" as const } }; }
 }
 
@@ -245,7 +256,7 @@ export async function readProjectTreasurySnapshot(config: ProjectTreasuryFixture
       readyAt: String(w[3]), expiresAt: String(w[4]), epoch: w[5].toString() });
   }
   treasuryRequire(withdrawals.length <= 16);
-  const history = await indexedTreasuryHistory(config, treasury);
+  const history = await indexedTreasuryHistory(config, proof, rpc, head);
   const canonical = await rpc.getBlock({ blockNumber: head.number }); treasuryRequire(same(canonical.hash!, head.hash));
   return { status: "ready", schemaVersion: 1, profile: projectTreasuryProfile, chainId: 31337, scope: "isolated-local", executionEnabled: false,
     proof, treasury, creator: proof.creator, controller, controllerEpoch: epoch.toString(), intentId: proof.intentId, treasuryShareBps: proof.treasuryShareBps,

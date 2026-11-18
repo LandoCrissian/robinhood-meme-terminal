@@ -3,7 +3,8 @@ import test from "node:test";
 import type { Hex } from "viem";
 import { materializeProjectTreasuryRuntime } from "../../../../packages/launchpad-common/project-treasury-runtime.mjs";
 import { handleProjectTreasuryRead, handleProjectTreasuryTest, readTreasuryBody } from "./project-treasury-actions";
-import { configuredProjectTreasuryFixture } from "./project-treasury-fixture";
+import { configuredProjectTreasuryFixture, projectTreasuryControllerKind, type TreasuryRpc } from "./project-treasury-fixture";
+import { fixture as claimFixture } from "./claim-profile-test-fixture";
 
 const address = (digit: string): Hex => `0x${digit.repeat(40)}`;
 const hash = (digit: string): Hex => `0x${digit.repeat(64)}`;
@@ -11,6 +12,23 @@ const names = { "1": "creator", "2": "deploymentFactory", "3": "intentId", "4": 
 const refs = Object.fromEntries(Object.keys(names).map((id, i) => [id, [{ start: 32 * i, length: 32 }]]));
 const fields = { creator: address("1"), deploymentFactory: address("2"), intentId: hash("3"), treasuryShareBps: 2250, deploymentChainId: 31337 as const };
 const template = ("0x" + "00".repeat(160) + "deadbeef") as Hex;
+
+test("new-controller admission preserves the stricter three-owner two-approval Safe profile", async () => {
+  const f = claimFixture("safe-1.4.1"), rpc = f.context.rpc as unknown as TreasuryRpc;
+  assert.equal(await projectTreasuryControllerKind(rpc, f.creator, 10n), "safe-1.4.1");
+  f.state.threshold = 1n; assert.equal(await projectTreasuryControllerKind(rpc, f.creator, 10n), "unsupported");
+  f.state.threshold = 3n; assert.equal(await projectTreasuryControllerKind(rpc, f.creator, 10n), "unsupported");
+  f.state.threshold = 2n; f.state.badOwner = true;
+  assert.equal(await projectTreasuryControllerKind(rpc, f.creator, 10n), "unsupported");
+  f.state.badOwner = false; f.state.badHandler = true;
+  assert.equal(await projectTreasuryControllerKind(rpc, f.creator, 10n), "unsupported");
+});
+test("controller code unavailability is never inferred to be an eligible EOA", async () => {
+  const f = claimFixture(), rpc = f.context.rpc as unknown as TreasuryRpc;
+  assert.equal(await projectTreasuryControllerKind(rpc, f.creator, 10n), "eoa");
+  f.state.malformedCode = true; await assert.rejects(projectTreasuryControllerKind(rpc, f.creator, 10n));
+  f.state.malformedCode = false; f.state.throwCode = true; await assert.rejects(projectTreasuryControllerKind(rpc, f.creator, 10n));
+});
 
 test("runtime identity covers every constructor immutable and preserves executable bytes", () => {
   const actual = materializeProjectTreasuryRuntime(template, refs, names, fields);
