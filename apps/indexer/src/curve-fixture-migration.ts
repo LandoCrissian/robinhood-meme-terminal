@@ -52,10 +52,12 @@ export async function fixtureMigratedRegistration(rpc: PublicClient, binding: Cu
     && same(factoryOrigin, launch.initialCurve) && same(registryOrigin, launch.initialCurve)
     && same(ledgerOrigin, launch.initialCurve) && same(ledgerActive, current));
   let previous: Address = launch.initialCurve;
-  for (let index = 0n; index < project[4]; index++) {
+  // RegistryV3 increments item.migrations before writing its mapping entry;
+  // zero is deliberately not a migration record.
+  for (let index = 1n; index <= project[4]; index++) {
     const entry = await rpc.readContract({ address: binding.projectRegistry, abi: registryAbi,
       functionName: "migration", args: [launch.token, index], blockNumber });
-    requireRoute(entry[0] === Number(index + 1n) && entry[1] === Number(index + 2n)
+    requireRoute(entry[0] === Number(index) && entry[1] === Number(index + 1n)
       && same(entry[2], previous) && entry[5] <= blockNumber && entry[5] >= BigInt(launch.creation.blockNumber));
     const next = entry[3];
     const [code, source, destination, version, engine] = await Promise.all([

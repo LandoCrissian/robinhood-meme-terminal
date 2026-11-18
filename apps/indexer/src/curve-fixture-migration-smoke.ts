@@ -29,9 +29,11 @@ export async function testFixtureMigrationEarnings() {
       if (name === "curveForToken" || name === "activeCurve") return current();
       if (name === "project") return [binding.factory, current(), version, current(), BigInt(version - 1)];
       if (name === "originCurveForToken" || name === "originCurve" || name === "curve") return launch.initialCurve;
-      if (name === "migration") return args?.[1] === 0n
-        ? [1, 2, launch.initialCurve, second, keccak256("0x6003"), 101n, 1_000]
-        : [2, 3, second, third, keccak256("0x6004"), 102n, 1_001];
+      if (name === "migration") {
+        assert.ok(args?.[1] === 1n || args?.[1] === 2n, "RegistryV3 migration records are one-based; entry zero is absent");
+        return args[1] === 1n ? [1, 2, launch.initialCurve, second, keccak256("0x6003"), 101n, 1_000]
+          : [2, 3, second, third, keccak256("0x6004"), 102n, 1_001];
+      }
       if (name === "migrationCommitment") return word(44);
       if (name === "migrationSource") return target === second ? launch.initialCurve : second;
       if (name === "migratedTo") return target === launch.initialCurve ? second : version === 3 ? third : zeroAddress;
