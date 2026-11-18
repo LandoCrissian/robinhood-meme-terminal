@@ -40,7 +40,7 @@ New-engine cursors bind deployment, recipient and a retained canonical block/has
 - Website upstream JSON: 192 KiB maximum, four-second fetch deadline. Website reads have a per-instance budget of 30/minute and two concurrent requests; the backend retains its separate authenticated budget. These are not a distributed visitor quota.
 - Contract snapshot: at most 128 intercepted RPC method calls. Projects are checked individually; the page's totals explicitly exclude unchecked projects, token balances and factory creation fees.
 
-The PostgreSQL tests exercise 53 new-engine registrations per store and 30 historical recipient matches. They do not establish production-scale performance. JSONB recipient filtering has no newly installed production expression index; larger cardinality/load acceptance and any reviewed index installation remain separate operational work. No polling worker or parallel scheduler was added.
+The PostgreSQL tests exercise 53 new-engine registrations per store and 30 historical recipient matches. They do not establish production-scale performance. JSONB recipient filtering has no newly installed production expression index; larger cardinality/load acceptance and any reviewed index installation remain separate operational work. No polling worker or parallel scheduler was added. [Sanitized PostgreSQL evidence and CI correction](evidence/rmt-task074/indexer-postgres.json)
 
 ## Synthetic claims and recovery
 
@@ -50,7 +50,7 @@ Review binds signer, chain, deployment, target runtime, beneficiary, calldata, n
 
 The local writer stores canonically verified curve/factory/LP fee activity in its fixture-only table; duplicate receipts are idempotent, conflicting identities fail, and reorg rollback removes orphaned activity. Claim recovery reports `indexed` only after matching this exact activity identity, amounts and canonical checkpoint. An empty activity response is indexing-pending, not proof that no payment occurred.
 
-Migration-aware fixture registration verification preserves original-ledger discovery after reviewed V2/V3 transitions. It does **not** fabricate a V1 trading state for a successor. Unsupported successor trading/graduation event streams are reported separately by readiness; subsequent fee activity may remain indexing-pending even when receipt/trace settlement can be independently verified.
+Migration-aware fixture registration verification preserves original-ledger discovery and original-ledger claim ingestion after reviewed V2/V3 transitions. A separate bounded receipt verifier binds successor graduation to its current and previous canonical route, runtime history, original ledger, actual starting reserves, funded pool and locked position. It persists that actual graduation in the existing store so LP fee collection and claims use the same canonical activity path. It does **not** fabricate a V1 trading state for a successor: readiness still reports unsupported successor trading separately. Unsupported execution envelopes or missing proofs remain unavailable/indexing-pending.
 
 Safe beneficiary accounting is supported. A browser EOA claim cannot impersonate its Safe. Actual Safe outer transaction construction and EIP-7702 delegated-account execution require their own accepted profiles; the direct fixture claim adapter rejects them. Local Safe contract tests do not establish physical-phone acceptance.
 
