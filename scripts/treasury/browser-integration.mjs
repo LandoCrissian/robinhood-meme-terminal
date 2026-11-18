@@ -8,6 +8,28 @@ const json = value => JSON.stringify(value, (_, item) => typeof item === "bigint
 const api = "/api/launchpad/test-project-treasury", creationApi = "/api/launchpad/test-creation";
 const permittedReads = new Set(["eth_getCode", "eth_getBlockByNumber", "eth_getTransactionCount"]);
 
+async function readTreasuryDashboard({ page, site, treasury, onFailure }) {
+  await page.goto(site + "/my-launches/treasury");
+  await page.getByLabel("Project treasury address", { exact: true }).fill(treasury);
+  try {
+    const [response] = await Promise.all([
+      page.waitForResponse(result => new URL(result.url()).pathname === "/api/launchpad/project-treasury"),
+      page.getByRole("button", { name: "View treasury", exact: true }).click(),
+    ]);
+    const snapshot = await response.json();
+    assert.equal(response.status(), 200); assert.equal(snapshot.status, "ready", json(snapshot)); return snapshot;
+  } catch (error) {
+    const diagnostic = await page.evaluate(() => {
+      const input = document.querySelector("#project-treasury-address"), form = document.querySelector('form[aria-label="Find project treasury"]');
+      const props = element => { const key = element && Object.getOwnPropertyNames(element).find(name => name.startsWith("__reactProps$")); return key ? element[key] : null; };
+      return { url: location.href, readyState: document.readyState, inputValue: input?.value,
+        submitDisabled: form?.querySelector("button")?.disabled, inputOnChange: typeof props(input)?.onChange,
+        formOnSubmit: typeof props(form)?.onSubmit, activeElement: document.activeElement?.id, body: document.body.innerText };
+    });
+    await onFailure(diagnostic); throw error;
+  }
+}
+
 /** The real creator components and server review are used. Only the already
  * reviewed envelope is forwarded to an isolated signer held in Node memory. */
 export async function createTreasuryProjectsFromForm({ browserEngine, site, out, rpc, client, creator, treasuryDeployment,
@@ -226,21 +248,9 @@ export async function createTreasuryProjectsFromForm({ browserEngine, site, out,
 
 export async function claimCurveThroughTreasuryPage({ session, treasury, ledger, site, mine, ready, hideNativeProof }) {
   const { page, button, response } = session;
-  const open = async () => {
-    await page.goto(site + "/my-launches/treasury");
-    await page.getByLabel("Project treasury address", { exact: true }).fill(treasury);
-    const pending = page.waitForResponse(result => new URL(result.url()).pathname === "/api/launchpad/project-treasury");
-    try {
-      await button("View treasury").click(); const result = await pending, snapshot = await result.json();
-      assert.equal(snapshot.status, "ready", json(snapshot)); return snapshot;
-    } catch (error) {
-      session.evidence.dashboardFailure = await page.evaluate(() => ({ url: location.href, readyState: document.readyState,
-        inputValue: document.querySelector("#project-treasury-address")?.value,
-        submitDisabled: document.querySelector('form[aria-label="Find project treasury"] button')?.disabled,
-        body: document.body.innerText }));
-      await session.capture("project-treasury-dashboard-read-failure"); session.save(); throw error;
-    }
-  };
+  const open = () => readTreasuryDashboard({ page, site, treasury, onFailure: async diagnostic => {
+    session.evidence.dashboardFailure = diagnostic; await session.capture("project-treasury-dashboard-read-failure"); session.save();
+  } });
   await mine(); await ready(); const before = await open();
   assert.ok(BigInt(before.earnings.curveNativeWei) > 0n);
   await button("Connect synthetic treasury controller").click();
@@ -269,11 +279,10 @@ export async function claimCurveThroughTreasuryPage({ session, treasury, ledger,
 
 export async function exerciseTreasuryPage({ session, project, treasury, safe, site, out, evidence, mine, ready, save }) {
   const { page, button, layouts } = session;
-  await mine(); await ready(); await page.goto(site + "/my-launches/treasury");
-  await page.getByLabel("Project treasury address", { exact: true }).fill(treasury);
-  const observed = page.waitForResponse(response => new URL(response.url()).pathname === "/api/launchpad/project-treasury");
-  await button("View treasury").click(); const response = await observed, snapshot = await response.json();
-  assert.equal(response.status(), 200); assert.equal(snapshot.status, "ready", json(snapshot));
+  await mine(); await ready();
+  const snapshot = await readTreasuryDashboard({ page, site, treasury, onFailure: async diagnostic => {
+    session.evidence.dashboardFailure = diagnostic; await session.capture("project-treasury-dashboard-read-failure"); session.save();
+  } });
   assert.ok(same(snapshot.treasury, treasury) && same(snapshot.controller, safe));
   assert.ok(same(snapshot.project.token, project.token)); assert.equal(snapshot.purchases.available, false);
   await button("Connect synthetic treasury controller").click();
@@ -293,12 +302,9 @@ export async function exerciseTreasuryPage({ session, project, treasury, safe, s
       if (new URL(route.request().url()).origin !== new URL(site).origin) { external.push(route.request().url()); return route.abort(); }
       return route.continue();
     });
-    await desktopPage.goto(site + "/my-launches/treasury");
-    await desktopPage.getByLabel("Project treasury address", { exact: true }).fill(treasury);
-    const read = desktopPage.waitForResponse(result => new URL(result.url()).pathname === "/api/launchpad/project-treasury");
-    await desktopPage.getByRole("button", { name: "View treasury", exact: true }).click();
-    const result = await read, observedDesktop = await result.json();
-    assert.equal(result.status(), 200); assert.equal(observedDesktop.status, "ready", json(observedDesktop));
+    const observedDesktop = await readTreasuryDashboard({ page: desktopPage, site, treasury, onFailure: async diagnostic => {
+      session.evidence.desktopFailure = diagnostic; await desktopPage.screenshot({ path: join(out, "project-treasury-desktop-read-failure.png") }); session.save();
+    } });
     assert.ok(same(observedDesktop.treasury, treasury) && same(observedDesktop.controller, safe)
       && same(observedDesktop.project.token, project.token));
     assert.equal(await desktopPage.evaluate(() => typeof window.ethereum), "undefined", "The read-only desktop check must not inject or request a wallet");
