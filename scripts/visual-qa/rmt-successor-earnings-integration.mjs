@@ -116,7 +116,8 @@ export async function testSuccessorEarningsJourney({ rpcUrl, rpc, artifacts, dep
     };
     await custody();
     const key = await call(client, engine, engineAbi, "canonicalPoolKey", [token]);
-    const swap = async (buy, amount) => {
+    const swap = async (buy, amount, reviewedDeadline) => {
+      const swapDeadline = reviewedDeadline ?? await deadline();
       const params = { poolKey: key, zeroForOne: buy, exactAmount: amount, hookData: "0x" };
       const quoted = await client.simulateContract({ account: creator, address: anchor.quoter.address, abi: quoteAbi, functionName: "quoteExactInputSingle", args: [params] });
       const minimum = quoted.result[0] * 99n / 100n; assert.ok(minimum > 0n);
@@ -124,15 +125,23 @@ export async function testSuccessorEarningsJourney({ rpcUrl, rpc, artifacts, dep
       const encodedSwap = encodeAbiParameters(swapType, [{ poolKey: key, zeroForOne: buy, amountIn: amount, amountOutMinimum: minimum, minHopPriceX36, hookData: "0x" }]);
       const [input, output] = buy ? [key.currency0, key.currency1] : [key.currency1, key.currency0];
       const routes = encodeAbiParameters(routeType, ["0x060b0f", [encodedSwap, encodeAbiParameters(settleType, [input, amount, true]), encodeAbiParameters(takeType, [output, minimum])]]);
-      const request = { ...transact(anchor.universalRouter212.address, routerAbi, "execute", ["0x10", [routes], await deadline()]), value: buy ? amount : 0n };
+      const request = { ...transact(anchor.universalRouter212.address, routerAbi, "execute", ["0x10", [routes], swapDeadline]), value: buy ? amount : 0n };
       await client.call({ account: creator, ...request });
       return submit(creator, request);
     };
     evidence.v4Buy = receiptEvidence(await swap(true, 10n ** 16n));
     const sellAmount = 100n * 10n ** 18n;
+    // The allowance expiry must cover the exact reviewed router deadline.
+    // Recomputing the latter in a later block would incorrectly lengthen it.
+    const sellDeadline = await deadline();
     await submit(creator, transact(token, erc20Abi, "approve", [anchor.permit2.address, sellAmount]));
-    await submit(creator, transact(anchor.permit2.address, permitAbi, "approve", [token, anchor.universalRouter212.address, sellAmount, Number(await deadline())]));
-    evidence.v4Sell = receiptEvidence(await swap(false, sellAmount));
+    await submit(creator, transact(anchor.permit2.address, permitAbi, "approve", [token, anchor.universalRouter212.address, sellAmount, Number(sellDeadline)]));
+    const reviewedAllowance = await call(client, anchor.permit2.address, permitAbi, "allowance", [creator, token, anchor.universalRouter212.address]);
+    assert.equal(reviewedAllowance[0], sellAmount);
+    assert.equal(reviewedAllowance[1], Number(sellDeadline));
+    evidence.v4Sell = receiptEvidence(await swap(false, sellAmount, sellDeadline));
+    evidence.sellPermitDeadline = { permitExpiration: sellDeadline, routerDeadline: sellDeadline, amount: sellAmount };
+    await save();
     assert.equal(await call(client, token, erc20Abi, "allowance", [creator, anchor.permit2.address]), 0n);
     assert.equal((await call(client, anchor.permit2.address, permitAbi, "allowance", [creator, token, anchor.universalRouter212.address]))[0], 0n);
     await mine(); await ready();
