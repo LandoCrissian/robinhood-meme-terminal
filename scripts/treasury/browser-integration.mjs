@@ -71,7 +71,13 @@ export async function createTreasuryProjectsFromForm({ browserEngine, site, out,
   }
   async function capture(name) {
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, "No horizontal overflow");
-    const file = join(out, name + ".png"); await page.screenshot({ path: file, fullPage: true }); evidence.screenshots.push(file); save();
+    // Chromium's fullPage capture resets touch emulation in this pinned
+    // Playwright build. Viewport captures preserve the context being tested.
+    const before = await page.evaluate(() => ({ coarse: matchMedia("(pointer: coarse)").matches, touch: navigator.maxTouchPoints }));
+    const file = join(out, name + ".png"); await page.screenshot({ path: file });
+    assert.deepEqual(await page.evaluate(() => ({ coarse: matchMedia("(pointer: coarse)").matches, touch: navigator.maxTouchPoints })), before,
+      "Screenshot capture must preserve the browser's mobile input emulation");
+    evidence.screenshots.push(file); save();
   }
   async function layouts(name) {
     for (const [label, width, height] of [["portrait", 390, 844], ["landscape", 844, 390], ["desktop-viewport", 1440, 900]]) {
@@ -87,6 +93,7 @@ export async function createTreasuryProjectsFromForm({ browserEngine, site, out,
       const media = await page.evaluate(() => ({ coarse: matchMedia("(pointer: coarse)").matches,
         width: innerWidth, height: innerHeight, mobile: matchMedia("(max-width:730px)").matches }));
       evidence.layouts.push({ name, label, width, height, fields, readOnlyDisplays, media }); save();
+      assert.equal(media.coarse, true, "The iPhone simulation must retain its coarse primary pointer across captures");
       // The approved compact fixed-supply display is not an interactive touch
       // target. Keep its exact value/read-only and readable phone text checks.
       assert.ok(readOnlyDisplays.every(field => field.readOnly && field.value === "1,000,000,000 tokens" && (width > 900 || field.fontSize >= 16)),
