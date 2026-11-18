@@ -25,6 +25,7 @@ export async function deployProjectTreasuryFixture({ client, compilation, core, 
   const receipt = await sendFixture(client, operator, { data: initcode });
   const factory = receipt.contractAddress; assert.ok(factory);
   const factoryRuntimeHash = await verifyRuntime(client, factory, factoryArtifact);
+  const block = await client.getBlock({ blockNumber: receipt.blockNumber }); assert.equal(block.hash, receipt.blockHash);
   const treasuryCreationCodeHash = keccak256(treasuryArtifact.bytecode);
   assert.equal(await client.readContract({ address: factory, abi: factoryArtifact.abi, functionName: "treasuryCreationCodeHash" }), treasuryCreationCodeHash);
   const result = { schemaVersion: 1, profile: "rmt-project-treasury-v1", chainId: 31337,
@@ -35,7 +36,8 @@ export async function deployProjectTreasuryFixture({ client, compilation, core, 
     treasuryImmutableNames: Object.fromEntries(Object.keys(treasuryArtifact.immutableOffsets).map(id => {
       assert.ok(compilation.immutableNames[id], "Missing immutable AST name: " + id);
       return [id, compilation.immutableNames[id]];
-    })), deployment: { transactionHash: receipt.transactionHash, blockNumber: receipt.blockNumber.toString(), blockHash: receipt.blockHash },
+    })), deployment: { transactionHash: receipt.transactionHash, blockNumber: receipt.blockNumber.toString(), blockHash: receipt.blockHash,
+      timestamp: new Date(Number(block.timestamp) * 1000).toISOString() },
     compilerInputSha256: compilation.manifest.inputSha256 };
   writeFileSync(join(out, "project-treasury-deployment.json"), json(result));
   writeFileSync(join(out, "project-treasury-compiler-manifest.json"), json(compilation.manifest));
