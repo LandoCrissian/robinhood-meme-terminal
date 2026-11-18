@@ -1,0 +1,150 @@
+{
+  "url": "https://rmt-launch-website-preview.up.railway.app/",
+  "observedAt": "2026-11-18T14:34:53.373Z",
+  "checks": [
+    {
+      "engine": "chromium",
+      "layout": "desktop",
+      "keyboardSearchFocus": true,
+      "fullControlOutline": {
+        "innerOutline": "0px",
+        "outerOutline": "2px",
+        "outerStyle": "solid"
+      },
+      "clearTarget": {
+        "width": 44,
+        "height": 44
+      },
+      "noHorizontalOverflow": true
+    },
+    {
+      "engine": "chromium",
+      "layout": "portrait",
+      "keyboardSearchFocus": true,
+      "fullControlOutline": {
+        "innerOutline": "0px",
+        "outerOutline": "2px",
+        "outerStyle": "solid"
+      },
+      "clearTarget": {
+        "width": 44,
+        "height": 44
+      },
+      "noHorizontalOverflow": true
+    },
+    {
+      "engine": "chromium",
+      "layout": "landscape",
+      "keyboardSearchFocus": true,
+      "fullControlOutline": {
+        "innerOutline": "0px",
+        "outerOutline": "2px",
+        "outerStyle": "solid"
+      },
+      "clearTarget": {
+        "width": 44,
+        "height": 44
+      },
+      "noHorizontalOverflow": true
+    },
+    {
+      "engine": "webkit",
+      "layout": "desktop",
+      "keyboardSearchFocus": true,
+      "fullControlOutline": {
+        "innerOutline": "0px",
+        "outerOutline": "2px",
+        "outerStyle": "solid"
+      },
+      "clearTarget": {
+        "width": 44,
+        "height": 44
+      },
+      "noHorizontalOverflow": true
+    },
+    {
+      "engine": "webkit",
+      "layout": "portrait",
+      "keyboardSearchFocus": true,
+      "fullControlOutline": {
+        "innerOutline": "0px",
+        "outerOutline": "2px",
+        "outerStyle": "solid"
+      },
+      "clearTarget": {
+        "width": 44,
+        "height": 44
+      },
+      "noHorizontalOverflow": true
+    },
+    {
+      "engine": "webkit",
+      "layout": "landscape",
+      "keyboardSearchFocus": true,
+      "fullControlOutline": {
+        "innerOutline": "0px",
+        "outerOutline": "2px",
+        "outerStyle": "solid"
+      },
+      "clearTarget": {
+        "width": 44,
+        "height": 44
+      },
+      "noHorizontalOverflow": true
+    }
+  ],
+  "rsc": "passed",
+  "denied": [
+    {
+      "method": "GET",
+      "path": "/admin",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/.env",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/.git/config",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/preview-access",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/preview-rpc/fixture",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/wallet/mobile-review",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/api/launchpad/new-engine",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/api/launchpad/test-mobile-review",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/api/launchpad/production-creation",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/mcp",
+      "status": 404
+    }
+  ],
+  "physicalDevice": "not performed"
+}

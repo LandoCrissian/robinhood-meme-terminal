@@ -1,0 +1,213 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-18T14:52:36.100Z",
+  "pr": "https://github.com/LandoCrissian/robinhood-meme-terminal/pull/667",
+  "base": "a71b2dbd0044b5f30228bb60443f77f752a9adf7",
+  "testedCodeHead": "cbac3dea7c0adbb1ffbf9f017fb791f5e3431c0b",
+  "ciSyntheticMerge": "61d02a529113a2edb85f1270fed4f5b50e9ddceb",
+  "identicalGitTree": "1ddcb050ff20568b2c0b1ba5bba686888df84938",
+  "deployedSource": "484f6bb7b431c2f9eff278c08c14d9d3e57eb11f",
+  "deploymentId": "6d7863ad-02a0-4ef0-a7be-b3b645a450fa",
+  "image": "sha256:1ab4c9782f4bcb49817266ce6431e81c134273dd44b3563302c8a4f68e975d9d",
+  "startedAt": "2026-11-18T14:46:18.300Z",
+  "preview": "https://rmt-launch-website-preview.up.railway.app",
+  "codeHeadDelta": "Only JSON-safe synthetic lifecycle diagnostics/workflow; no application runtime changes after deployedSource",
+  "checks": [
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44327772974/job/134883588348",
+      "name": "repository",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44327772423/job/134883587788",
+      "name": "linux-netlify-artifact",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44327772822/job/134883586500",
+      "name": "railway-container",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44327772582/job/134883585498",
+      "name": "web",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44327772940/job/134883586557",
+      "name": "gitleaks",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44327772585/job/134883585926",
+      "name": "isolated-firebase",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44327772974/job/134883587864",
+      "name": "operations-safe",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44327772582/job/134883585995",
+      "name": "isolated-lifecycle",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44327772974/job/134883588178",
+      "name": "indexer",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44327772974/job/134883588014",
+      "name": "contracts",
+      "state": "SUCCESS"
+    }
+  ],
+  "local": {
+    "webTests": 88,
+    "focusedTestsSubset": 23,
+    "startupTests": 3,
+    "typecheck": "passed",
+    "normalBuild": "passed",
+    "standaloneWindowsCopy": "EPERM symlink limitation",
+    "standaloneLocalServer": "Automatic approval review rejected with blocked by policy; not retried"
+  },
+  "ci": {
+    "webTests": 88,
+    "foundryTests": 98,
+    "foundrySuites": 13,
+    "sourceBoundContainerRestart": "passed at 512 MiB and 1 CPU",
+    "postgresWorkerRestartAndLease": "passed in isolated CI database",
+    "firebaseEmulators": "passed; no production activation"
+  },
+  "hosted": {
+    "browserEngines": [
+      "Chromium",
+      "WebKit"
+    ],
+    "layouts": [
+      "desktop",
+      "iPhone portrait emulation",
+      "iPhone landscape emulation"
+    ],
+    "physicalDevice": "not tested",
+    "deniedRouteMethodCases": 70,
+    "financialAndAuthDenials": 8,
+    "aggregateMutationLimit": "12/min, 13th=429 despite spoofed IP",
+    "actualCredentialScan": {
+      "pages": 4,
+      "scriptsRead": 47,
+      "found": false
+    },
+    "restart": {
+      "deployment": "4957caac-08a0-4834-8243-0003d19d15ff",
+      "websiteOnly": true,
+      "indexerRestarted": false,
+      "databaseRestarted": false
+    },
+    "observations": "Some early 503 readiness windows correctly returned stale snapshot; later five consecutive post-restart discovery reads fresh with advancing checkpoint. Logs retain sanitized failure stage/status/network codes, at most once per minute per reader."
+  },
+  "production": {
+    "netlifyDeployment": "6afd4265956a469adeb55747",
+    "netlifyRetainedOlderDeployment": "6af86be73747ac95bd6d15ea",
+    "siteId": "ebdf8492-ff86-452f-b4cc-45d7865c8311",
+    "url": "https://www.rmtlaunch.fun",
+    "unchanged": true,
+    "auth": "disabled",
+    "transactions": "disabled",
+    "dnsChanged": false
+  },
+  "retirement": {
+    "workersDecommissioned": 2,
+    "neverDeployedServiceReused": 1,
+    "servicesCreated": 0,
+    "databasesDeleted": 0,
+    "volumesDeleted": 0,
+    "legacyDatabasePairsRetained": 4,
+    "backupExportOrRestorePerformed": false,
+    "temporaryDiagnosticSshAccess": "all registered keys revoked; temporary local key files removed"
+  },
+  "security": {
+    "retainedHighFindings": 22,
+    "contractScopeUnchanged": true,
+    "releaseGate": "still blocked; passing website CI is not contract clearance",
+    "l1Finality": "unverified"
+  },
+  "usage": {
+    "billingPeriod": {
+      "end": "2026-11-29T16:40:44+00:00",
+      "start": "2026-10-29T16:40:44+00:00"
+    },
+    "usedDollars": 0.7554817445466666,
+    "providerProjectionDollars": 1.5678161117480907,
+    "remainingUsageCreditDollars": 0.2445182554533334,
+    "plan": "FREE",
+    "hasExhaustedFreePlan": false,
+    "lineItems": [
+      {
+        "currentUsageDollars": 0.01568693578703704,
+        "label": "CPU"
+      },
+      {
+        "currentUsageDollars": 0.3513014869175309,
+        "label": "Memory"
+      },
+      {
+        "currentUsageDollars": 0.028450050650000003,
+        "label": "Egress"
+      },
+      {
+        "currentUsageDollars": 0.35480828970666667,
+        "label": "Volume"
+      },
+      {
+        "currentUsageDollars": 0.006128224426666666,
+        "label": "Backup"
+      }
+    ],
+    "limitsUnchanged": {
+      "hardLimit": 20,
+      "isOverLimit": false,
+      "softLimit": 5
+    },
+    "customDomainCapability": 0,
+    "estimateIsNotInvoiceOrContinuityGuarantee": true
+  },
+  "websiteMetrics": {
+    "service": {
+      "id": "8e9c1c15-74b5-4262-8851-72603a3dfc98",
+      "name": "rmt-launch-website"
+    },
+    "environment": {
+      "id": "539a42da-fb60-420f-b9fa-8c29af25ebbe",
+      "name": "production"
+    },
+    "metrics": [
+      {
+        "measurement": "CPU_USAGE",
+        "current": 0,
+        "average": 0.006157946174863386,
+        "min": 0,
+        "max": 0.056462566666666665,
+        "sampleCount": 61
+      },
+      {
+        "measurement": "MEMORY_USAGE_GB",
+        "current": 0.091992064,
+        "average": 0.047732198819672125,
+        "min": 0,
+        "max": 0.19347456,
+        "sampleCount": 61
+      },
+      {
+        "measurement": "NETWORK_TX_GB",
+        "current": 0,
+        "average": 0.0010223461639344263,
+        "min": 0,
+        "max": 0.022941733,
+        "sampleCount": 61
+      }
+    ]
+  }
+}

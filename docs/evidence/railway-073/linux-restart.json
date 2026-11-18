@@ -1,0 +1,33 @@
+{
+  "status": "passed",
+  "environment": "local-container",
+  "source": "cbac3dea7c0adbb1ffbf9f017fb791f5e3431c0b",
+  "checked": [
+    "/",
+    "/create-token",
+    "/my-launches",
+    "/wallet",
+    "/account/profile",
+    "/u/review_creator",
+    "/creator/0x0000000000000000000000000000000000000001"
+  ],
+  "history": {
+    "status": "stale",
+    "coverage": "verified-snapshot",
+    "registrations": 4
+  },
+  "readiness": "degraded without private fixture",
+  "authentication": "disabled",
+  "transactions": "disabled",
+  "blocked": [
+    "/admin",
+    "/.env",
+    "/preview-rpc/fixture",
+    "/wallet/mobile-review",
+    "/api/launchpad/new-engine",
+    "/api/launchpad/test-mobile-review"
+  ],
+  "mutations": 8,
+  "aggregateRateLimit": "12 mutations per minute per single container; spoofed client-IP header does not bypass",
+  "physicalDevice": "not performed"
+}

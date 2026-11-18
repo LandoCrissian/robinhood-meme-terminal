@@ -3,20 +3,33 @@
 Owner directive: [Task 073 on PR #666](https://github.com/LandoCrissian/robinhood-meme-terminal/pull/666#issuecomment-6980678273).
 Base: `a71b2dbd0044b5f30228bb60443f77f752a9adf7`. The approved visual design,
 contracts, economics, Firebase records and governance safeguards are preserved.
-This work prepares a read-only Railway website; it does not authorize a domain
+This work delivers a read-only Railway preview; it does not authorize a domain
 cutover, wallet authentication, token issuance or financial execution.
 
 ## Current acceptance boundary
 
 The Railway preview is `https://rmt-launch-website-preview.up.railway.app`.
-Its hosted acceptance is **in progress**: an available URL or a successful
-deployment alone is not proof of fresh data, restart recovery or browser safety.
-Record the final source SHA, deployment ID, actual checkpoint, CI links, hosted
-tests and usage observation in the draft PR before declaring it accepted.
+The preview is working. Deployment `6d7863ad-02a0-4ef0-a7be-b3b645a450fa`
+uses committed source `484f6bb7b431c2f9eff278c08c14d9d3e57eb11f`, image
+`sha256:1ab4c9782f4bcb49817266ce6431e81c134273dd44b3563302c8a4f68e975d9d`.
+It started at `2026-11-18T14:46:18Z`. Subsequent code-candidate changes through
+`cbac3dea7c0adbb1ffbf9f017fb791f5e3431c0b` affect synthetic CI diagnostics only;
+the deployed application/runtime files are identical.
+
+At `2026-11-18T14:53:15Z`, both discovery and readiness were HTTP 200.
+The verified history API returned four registrations, `v6-indexed`, checkpoint
+`117481251` / `2026-11-18T14:53:04Z`, with L1 finality explicitly unverified.
+Two V6 records come from the current indexer; two V4 records retain their
+reviewed snapshot provenance. These are historical registrations, not four new
+product launches. The private new-engine feed separately returned `ready`, zero
+launches, chain 4663; its public route and all execution remain disabled.
+See [source-bound evidence](evidence/railway-073/acceptance.json),
+[actual discovery](evidence/railway-073/current-discovery.json) and
+[draft PR #667](https://github.com/LandoCrissian/robinhood-meme-terminal/pull/667).
 
 `https://www.rmtlaunch.fun` remains on Netlify. Task 071's production deployment
-is `6afd4265956a469adeb55747`; its historical API uses an explicitly stale
-snapshot because the required runtime binding was not admitted. The earlier
+is `6afd4265956a469adeb55747`; its historical API was observed using an explicitly
+stale snapshot. No Netlify configuration was changed. The earlier
 deployment `6af86be73747ac95bd6d15ea` is separately retained recovery evidence.
 Recheck their availability before any future cutover. This task does not change
 either deployment, DNS, domains or TLS.
@@ -55,7 +68,7 @@ product infrastructure.
 
 ## Private read path and runtime packaging
 
-The intended path is:
+The verified path is:
 
 ```text
 Browser -> Railway Next.js read-only website
@@ -67,9 +80,16 @@ The web process receives no `DATABASE_URL`, signing key, Firebase administrative
 credential or public RPC execution gateway. Its read token references the
 existing indexer variable and remains server-only. Private HTTP is admitted only
 for the exact reviewed project, environment, website service, indexer service
-and origin `http://robinhood-meme-terminal.railway.internal:3001/`; arbitrary
+and origin `http://robinhood-meme-terminal.railway.internal:8080/`; arbitrary
 HTTP origins, ports, credentials, paths and user-supplied URLs are rejected.
 The public browser communicates only with its own website origin.
+Read-only inspection inside the existing containers established the actual
+indexer runtime `PORT=8080`; the source default 3001 was not the deployed port.
+The incorrect port returned `ECONNREFUSED`. On 8080, health/readiness returned
+200, history without a bearer returned 401 and the existing bearer returned
+200. Six later private reads completed in 310–348 ms. Temporary operator SSH
+access used for these diagnostics was revoked and local temporary key files
+removed; no database or indexer restart was performed.
 
 The same application uses the digest-pinned Node 22 Debian image and Next.js
 standalone output through [the Dockerfile](../apps/launch-website/Dockerfile).
@@ -94,6 +114,12 @@ minute, with `Retry-After`. Mutation endpoints remain disabled regardless of
 budget. Counters reset on a web restart; durable indexing, canonical receipts and
 transaction-recovery journals do not. This budget is not a distributed limiter;
 additional replicas require a separately reviewed configuration.
+The reader coalesces requests and caches list results for 30 seconds; exact
+reads are bounded to four concurrent requests and 64 cache entries. Railway
+does not honor Netlify-specific CDN headers as a shared API cache. The browser
+receives private/no-store responses; no Railway CDN hit or distributed budget is
+claimed. Failure telemetry contains only fixed stage names, HTTP status and
+allowlisted transport codes, bounded to once per minute per reader.
 
 ## Preservation, backups and deletion hold
 
@@ -145,32 +171,81 @@ buckets; report this as no recorded traffic, not proof of no external consumers.
 The observed plan remains **Free**: three-service and zero-custom-domain
 capabilities, with nine existing resource services retained/grandfathered.
 Reusing the existing web slot adds no service or volume. The observed remaining
-usage credit was **$0.251195**, used credit **$0.748805**, and provider monthly
-projection **$1.55154** before final preview measurements. The projection is not
-an invoice; new web usage changes it. Record final observed usage and sample
-duration in release evidence. No upgrade, credit purchase, paid add-on or
+usage credit initially was **$0.251195**. At final measurement it was
+**$0.244518**, with **$0.755482** metered in the current billing period and a
+provider period projection of **$1.567816**. The period ends November 29 at
+16:40:44 UTC. The projection is not an invoice or approval for spending beyond
+the Free allowance. The website's one-hour sample included build downtime:
+current memory 0.091992 GB, peak 0.193475 GB, peak CPU 0.056463 vCPU.
+Do not extrapolate the zero-inclusive average into a steady monthly bill.
+The separate Linux CI post-restart idle sample was 87.81 MiB / 512 MiB and
+0.04% CPU; it is not a Railway billing measurement.
+No upgrade, credit purchase, paid add-on or
 automatic spending authorization is implied. Continuous Free operation is not
 guaranteed when allowance is exhausted.
 
 ## Hosted acceptance and later domain cutover
 
-Do not mark the following checks passed until their actual results are recorded:
+Verified results:
 
-1. Fresh chain-4663 historical and new-engine feeds through the private indexer,
-   exact-address lookup, correct timestamps/finality and no fabricated projects.
-2. Railway failure/degraded feed produces the verified stale snapshot or explicit
-   unavailable state, never fresh-looking fallback or a false absence claim.
-3. Desktop and Chromium/WebKit phone emulation: approved navigation, search
-   outer focus, no historical homepage cards, creation/wallet/profile pages,
-   no overflow and no wallet/signing/external execution requests.
-4. Disabled profile/authentication and all transaction/admin/test mutations,
-   origin binding, private token absence from public responses/static scripts,
-   rate budgets, malformed requests and genuine server error handling.
-5. Controlled **web-only** restart: startup/readiness, resumed private reads and
-   preserved indexer checkpoint. No duplicate writer, production indexer restart
-   or production database schema operation is needed.
-6. Current source/deployment provenance, CI and actual web/worker/database
-   resource samples. Physical iPhone acceptance remains separate.
+- All ten PR checks passed on code candidate `cbac3dea`: repository, indexer,
+  contracts, Operations Safe, gitleaks, web, isolated lifecycle, isolated Firebase,
+  Linux Netlify artifact and Linux Railway container. Web tests: 88/88;
+  Foundry: 98/98 across 13 suites. This is the current cleaned suite, not a claim
+  to have rerun every historical frozen suite or cleared Slither.
+- The lifecycle job checked out synthetic merge `61d02a529113a2edb85f1270fed4f5b50e9ddceb`.
+  Its entire Git tree equals `cbac3dea`: `1ddcb050ff20568b2c0b1ba5bba686888df84938`.
+  The new container job explicitly checks out the PR head and binds its reports
+  to that source. [CI evidence](evidence/railway-073/acceptance.json) links each job.
+- The actual Linux standalone image served pages, enforced host binding,
+  disabled authentication/execution, returned stale fallback without its test
+  backend, enforced 429 and repeated acceptance after Docker restart at
+  512 MiB / 1 CPU. [Runtime](evidence/railway-073/linux-runtime.json) and
+  [restart](evidence/railway-073/linux-restart.json) reports are retained.
+- Actual Railway Chromium/WebKit desktop, portrait and landscape checks passed:
+  approved UI, search outer focus, draft validation/review/edit/refresh,
+  no horizontal overflow and zero wallet, external or operational requests.
+  [Desktop](evidence/railway-073/screenshots/desktop.png),
+  [portrait](evidence/railway-073/screenshots/portrait.png),
+  [landscape](evidence/railway-073/screenshots/landscape.png),
+  [review](evidence/railway-073/screenshots/creation-review.png).
+- Hosted route checks denied 70 route/method cases and eight disabled
+  account/creation mutations without cookies; the thirteenth aggregate mutation
+  returned 429 despite spoofed IP headers. The actual read credential was absent
+  from four HTML pages and 47 script reads. No secret value is in the report.
+- A controlled web-only restart of deployment `4957caac` resumed private reads.
+  Six browser layouts and five successive history samples passed; checkpoint
+  advanced from 117474703 to 117475044. Four exact-address lookups retained
+  their registration receipt identities. The subsequent deployment adds only
+  bounded failure diagnostics; its data/readiness were checked again above.
+
+Retained limitations and original failures:
+
+- Early hosted reads sometimes returned 503 readiness and the explicitly stale
+  snapshot. Both failure and recovery observations are retained in
+  [the availability sample](evidence/railway-073/post-restart-availability.json).
+  No specific transport/parser defect was established: actual payload replay
+  passed strict validation unchanged, and later private reads and final hosted
+  observations were healthy. This is not continuous-availability certification.
+- The first Linux smoke harness did not preserve Host through fetch; then native
+  HTTP DELETE requests lacked body framing. The harness was corrected, with
+  its status, host and security assertions retained. Original failed CI remains
+  accessible; subsequent container acceptance passed.
+- The `1757d153` isolated lifecycle run refused a graduation review. No cause was
+  established from its incomplete artifact. JSON-safe synthetic diagnostics were
+  added, correcting an intermediate diagnostics-only BigInt serialization bug.
+  The complete rerun passed unchanged client/server validators; this is an
+  unreproduced observation, not a claimed protocol fix or security clearance.
+- Rapid WebKit page replacement initially canceled an in-flight session GET.
+  Waiting for destination network completion passed the same assertions. The
+  original failure remains in the owner-local evidence directory.
+- Windows standalone copying hit symlink EPERM. Automatic approval review
+  rejected a local standalone-server start with “blocked by policy” and no
+  further reason; that action was not retried. Authorized hosted and Linux CI
+  evidence is separate. Physical iPhone acceptance was not performed.
+
+No production database schema, backup restore, main indexer restart, additional
+writer, RPC subscription, DNS or Netlify deployment change was performed.
 
 Domain migration is **not executable on the observed Free entitlement**, which
 admits zero custom domains. Do not promise a free custom-domain cutover or work

@@ -1,0 +1,142 @@
+[
+  {
+    "observedAt": "2026-11-18T14:40:06.282Z",
+    "origin": "https://robinhood-meme-terminal-production.up.railway.app",
+    "path": "/historical-launches?limit=25",
+    "http": 200,
+    "ms": 1076,
+    "checkpoint": {
+      "blockNumber": 117473237,
+      "blockHash": "0xbc1818b6f53f2d2517cb4a375afa2ed2a3c84bff07ead4dcb2293b8dd33ea24c",
+      "timestamp": "2026-11-18T14:39:42.000Z",
+      "observedAt": "2026-11-18T14:39:47.430Z",
+      "stale": false,
+      "finality": "l2-confirmed"
+    }
+  },
+  {
+    "observedAt": "2026-11-18T14:40:06.945Z",
+    "origin": "https://rmt-launch-website-preview.up.railway.app",
+    "path": "/readyz",
+    "http": 200,
+    "ms": 663,
+    "status": "ready",
+    "checkpoint": {
+      "blockNumber": "117473237",
+      "blockHash": "0xbc1818b6f53f2d2517cb4a375afa2ed2a3c84bff07ead4dcb2293b8dd33ea24c",
+      "timestamp": "2026-11-18T14:39:42.000Z"
+    }
+  },
+  {
+    "observedAt": "2026-11-18T14:40:12.557Z",
+    "origin": "https://robinhood-meme-terminal-production.up.railway.app",
+    "path": "/historical-launches?limit=25",
+    "http": 200,
+    "ms": 612,
+    "checkpoint": {
+      "blockNumber": 117473237,
+      "blockHash": "0xbc1818b6f53f2d2517cb4a375afa2ed2a3c84bff07ead4dcb2293b8dd33ea24c",
+      "timestamp": "2026-11-18T14:39:42.000Z",
+      "observedAt": "2026-11-18T14:39:47.430Z",
+      "stale": false,
+      "finality": "l2-confirmed"
+    }
+  },
+  {
+    "observedAt": "2026-11-18T14:40:12.820Z",
+    "origin": "https://rmt-launch-website-preview.up.railway.app",
+    "path": "/readyz",
+    "http": 200,
+    "ms": 263,
+    "status": "ready",
+    "checkpoint": {
+      "blockNumber": "117473237",
+      "blockHash": "0xbc1818b6f53f2d2517cb4a375afa2ed2a3c84bff07ead4dcb2293b8dd33ea24c",
+      "timestamp": "2026-11-18T14:39:42.000Z"
+    }
+  },
+  {
+    "observedAt": "2026-11-18T14:40:18.444Z",
+    "origin": "https://robinhood-meme-terminal-production.up.railway.app",
+    "path": "/historical-launches?limit=25",
+    "http": 200,
+    "ms": 613,
+    "checkpoint": {
+      "blockNumber": 117473237,
+      "blockHash": "0xbc1818b6f53f2d2517cb4a375afa2ed2a3c84bff07ead4dcb2293b8dd33ea24c",
+      "timestamp": "2026-11-18T14:39:42.000Z",
+      "observedAt": "2026-11-18T14:39:47.430Z",
+      "stale": false,
+      "finality": "l2-confirmed"
+    }
+  },
+  {
+    "observedAt": "2026-11-18T14:40:18.671Z",
+    "origin": "https://rmt-launch-website-preview.up.railway.app",
+    "path": "/readyz",
+    "http": 200,
+    "ms": 227,
+    "status": "ready",
+    "checkpoint": {
+      "blockNumber": "117473237",
+      "blockHash": "0xbc1818b6f53f2d2517cb4a375afa2ed2a3c84bff07ead4dcb2293b8dd33ea24c",
+      "timestamp": "2026-11-18T14:39:42.000Z"
+    }
+  },
+  {
+    "observedAt": "2026-11-18T14:40:24.284Z",
+    "origin": "https://robinhood-meme-terminal-production.up.railway.app",
+    "path": "/historical-launches?limit=25",
+    "http": 200,
+    "ms": 613,
+    "checkpoint": {
+      "blockNumber": 117473583,
+      "blockHash": "0x1f81d7498a0830ec1ca4e6d554168df4e86e0acfac08ac629883e8e8ddfcab74",
+      "timestamp": "2026-11-18T14:40:17.000Z",
+      "observedAt": "2026-11-18T14:40:22.525Z",
+      "stale": false,
+      "finality": "l2-confirmed"
+    }
+  },
+  {
+    "observedAt": "2026-11-18T14:40:24.498Z",
+    "origin": "https://rmt-launch-website-preview.up.railway.app",
+    "path": "/readyz",
+    "http": 200,
+    "ms": 214,
+    "status": "ready",
+    "checkpoint": {
+      "blockNumber": "117473237",
+      "blockHash": "0xbc1818b6f53f2d2517cb4a375afa2ed2a3c84bff07ead4dcb2293b8dd33ea24c",
+      "timestamp": "2026-11-18T14:39:42.000Z"
+    }
+  },
+  {
+    "observedAt": "2026-11-18T14:40:30.135Z",
+    "origin": "https://robinhood-meme-terminal-production.up.railway.app",
+    "path": "/historical-launches?limit=25",
+    "http": 200,
+    "ms": 627,
+    "checkpoint": {
+      "blockNumber": 117473583,
+      "blockHash": "0x1f81d7498a0830ec1ca4e6d554168df4e86e0acfac08ac629883e8e8ddfcab74",
+      "timestamp": "2026-11-18T14:40:17.000Z",
+      "observedAt": "2026-11-18T14:40:22.525Z",
+      "stale": false,
+      "finality": "l2-confirmed"
+    }
+  },
+  {
+    "observedAt": "2026-11-18T14:40:30.357Z",
+    "origin": "https://rmt-launch-website-preview.up.railway.app",
+    "path": "/readyz",
+    "http": 200,
+    "ms": 222,
+    "status": "ready",
+    "checkpoint": {
+      "blockNumber": "117473237",
+      "blockHash": "0xbc1818b6f53f2d2517cb4a375afa2ed2a3c84bff07ead4dcb2293b8dd33ea24c",
+      "timestamp": "2026-11-18T14:39:42.000Z"
+    }
+  }
+]
