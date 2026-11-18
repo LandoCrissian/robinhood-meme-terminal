@@ -186,6 +186,9 @@ export async function testProjectTreasuryJourney({ browserEngine, rpcUrl, rpc, a
     await safeCall("acceptController", [], 1, "reverted");
     await safeCall("acceptController");
     assert.ok(same(await read(treasury, treasuryAbi, "controller"), safe));
+    const priorNotice = await read(treasury, treasuryAbi, "withdrawals", [queuedId]), rotationTime = (await client.getBlock()).timestamp;
+    assert.ok(BigInt(priorNotice[3]) <= rotationTime && rotationTime <= BigInt(priorNotice[4]), "The original withdrawal is mature and unexpired");
+    assert.notEqual(priorNotice[5], await read(treasury, treasuryAbi, "controllerEpoch"));
     await send(relayer.address, transact(treasury, treasuryAbi, "executeWithdrawal", [queuedId]), "reverted");
     await safeCall("cancelWithdrawal", [queuedId]);
     assert.equal(await read(treasury, treasuryAbi, "reserved", [project.token]), 0n);
