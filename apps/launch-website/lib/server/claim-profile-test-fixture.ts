@@ -5,7 +5,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { claimDelegatePin, claimSafePins, claimSafeTypedData, type ClaimPreparationInput } from "./claim-profiles";
 import { ea, earningsTestFixture, fixtureCode } from "./earnings-test-fixture";
 import type { EarningsRpc } from "./earnings-contracts";
-const safeArchive = JSON.parse(gunzipSync(readFileSync(new URL("../../../../docs/evidence/mobile-signing/safe-runtime-4663.json.gz", import.meta.url))).toString());
+export const safeArchive = JSON.parse(gunzipSync(readFileSync(new URL("../../../../docs/evidence/mobile-signing/safe-runtime-4663.json.gz", import.meta.url))).toString());
 const safeRuntime = JSON.parse(readFileSync(new URL("../../../../packages/contracts/test/fixtures/safe-1.4.1/runtime.json", import.meta.url), "utf8"));
 export const delegateArchive = JSON.parse(gunzipSync(readFileSync(new URL("./claim-delegate-runtime.test.json.gz", import.meta.url))).toString());
 export const productionArchive = JSON.parse(gunzipSync(readFileSync(new URL("./earnings-production-runtime.test.json.gz", import.meta.url))).toString());
