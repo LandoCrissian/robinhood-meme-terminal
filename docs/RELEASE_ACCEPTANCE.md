@@ -122,9 +122,15 @@ mutation responses/account binding/completion. No counter is reset, timeout
 increased, rate limit relaxed or assertion removed. The original failure remains
 part of the review evidence; later CI status is reported against its exact head.
 The complete emulator regression passed again after this correction, including
-both browser engines. Reproduce with `pnpm test:profiles` using the existing
-isolated Java/Firebase test environment; the runner enforces loopback/emulator
-bindings and never uses production profile credentials.
+both browser engines. With the existing isolated Java/Firebase test environment,
+reproduce the full run with:
+
+```sh
+node scripts/profiles/run-emulator-tests.mjs --command "node --test scripts/profiles/emulator-rules.test.mjs && pnpm --filter @rmt/launch-website exec tsx --test lib/server/profiles/emulator.test.ts && node --test apps/launch-website/lib/server/profiles/next-http-acceptance.mjs && node apps/launch-website/scripts/profile-ui-smoke.mjs"
+```
+
+The runner enforces loopback/emulator bindings and never uses production profile
+credentials. `pnpm test:profiles` alone runs only the rules tests.
 
 Reproduce the Linux package with the checked-in
 [Linux preflight workflow](../.github/workflows/website-release-linux.yml).
