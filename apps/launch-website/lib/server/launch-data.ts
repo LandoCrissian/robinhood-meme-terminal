@@ -1,4 +1,5 @@
 import snapshot from "../../data/historical-launches-4663.json";
+import { indexerOrigin } from "./indexer-origin";
 import {
   isLaunchAddress, launchDirectoryLimit, robinhoodChainId,
   type HistoricalLaunch, type LaunchBlock, type LaunchDirectoryData, type LaunchReceipt,
@@ -21,6 +22,7 @@ type ReaderOptions = {
   fetch?: typeof fetch;
   now?: () => number;
   snapshot?: unknown;
+  env?: Record<string, string | undefined>;
 };
 
 function requireValue(ok: unknown): asserts ok {
@@ -185,15 +187,9 @@ function mergeEvidence(indexed: Evidence, archived: Evidence, token?: string): E
   return { ...indexed, launches, truncated: indexed.truncated || launches.length > launchDirectoryLimit };
 }
 
-function getFeedUrl(value: string | undefined): URL | null {
-  if (!value) return null;
-  try {
-    const url = new URL(value);
-    if (url.protocol !== "https:" || url.username || url.password || url.search || url.hash || url.pathname !== "/") return null;
-    return new URL("/historical-launches", url);
-  } catch {
-    return null;
-  }
+function getFeedUrl(value: string | undefined, env?: Record<string, string | undefined>): URL | null {
+  const origin = indexerOrigin(value, env);
+  return origin ? new URL("/historical-launches", origin) : null;
 }
 
 async function readBoundedJson(response: Response): Promise<unknown> {
@@ -224,7 +220,7 @@ const unavailable: Evidence = {
 export function createLaunchDirectoryReader(options: ReaderOptions) {
   const now = options.now ?? Date.now;
   const fetchFeed = options.fetch ?? fetch;
-  const feed = getFeedUrl(options.indexerUrl);
+  const feed = getFeedUrl(options.indexerUrl, options.env);
   const credential = options.indexerReadToken;
   const liveConfigured = Boolean(options.indexerUrl || credential);
   const input = options.snapshot === undefined ? snapshot : options.snapshot;

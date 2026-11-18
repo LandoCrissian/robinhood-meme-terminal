@@ -1,0 +1,17 @@
+{
+  "purpose": "Review inputs for the existing Railway service API; not a deprecated Config-as-Code file",
+  "projectId": "19587a6e-6f02-4cfa-b7db-f308934f697b",
+  "environmentId": "539a42da-fb60-420f-b9fa-8c29af25ebbe",
+  "serviceId": "8e9c1c15-74b5-4262-8851-72603a3dfc98",
+  "dockerfilePath": "apps/launch-website/Dockerfile",
+  "rootDirectory": "/",
+  "startCommand": "node apps/launch-website/railway-start.mjs",
+  "healthcheckPath": "/healthz",
+  "healthcheckTimeout": 120,
+  "restartPolicyType": "ON_FAILURE",
+  "restartPolicyMaxRetries": 3,
+  "numReplicas": 1,
+  "sleepApplication": true,
+  "drainingSeconds": 10,
+  "limits": { "memoryGB": 0.5, "vCPUs": 1 }
+}

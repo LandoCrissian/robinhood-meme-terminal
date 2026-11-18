@@ -1,0 +1,57 @@
+name: Railway standalone website
+on:
+  pull_request:
+    paths:
+      - "apps/launch-website/**"
+      - ".dockerignore"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - "scripts/release/railway-*"
+      - ".github/workflows/railway-website.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  railway-container:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - name: Verify startup guard and reviewed service settings
+        run: node --test scripts/release/railway-website.test.mjs
+      - name: Build the actual Linux image without credentials or deployment
+        run: docker build --file apps/launch-website/Dockerfile --tag rmt-railway-ci .
+      - name: Verify read-only runtime, fallback, host binding and request budgets at Free resource limits
+        run: |
+          docker run --detach --name rmt-railway-ci --memory=512m --cpus=1 \
+            --publish 127.0.0.1:3340:3000 \
+            --env PORT=3000 \
+            --env RAILWAY_PROJECT_ID=19587a6e-6f02-4cfa-b7db-f308934f697b \
+            --env RAILWAY_ENVIRONMENT_ID=539a42da-fb60-420f-b9fa-8c29af25ebbe \
+            --env RAILWAY_SERVICE_ID=8e9c1c15-74b5-4262-8851-72603a3dfc98 \
+            --env RMT_INDEXER_SERVICE_ID=27b1aa2c-77e5-4ed4-91a1-1951d68c488e \
+            --env RAILWAY_PUBLIC_DOMAIN=rmt-railway-ci.up.railway.app \
+            --env RMT_LAUNCH_HISTORY_INDEXER_URL=http://robinhood-meme-terminal.railway.internal:3001/ \
+            --env RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN=synthetic-test-only-credential rmt-railway-ci
+          RMT_RAILWAY_SMOKE_REPORT="$RUNNER_TEMP/railway-runtime.json" node scripts/release/railway-standalone-smoke.mjs
+          docker restart rmt-railway-ci
+          RMT_RAILWAY_SMOKE_REPORT="$RUNNER_TEMP/railway-restart.json" node scripts/release/railway-standalone-smoke.mjs
+          docker stats --no-stream --format '{{json .}}' rmt-railway-ci > "$RUNNER_TEMP/railway-container-metrics.json"
+      - name: Retain failed-container diagnostics
+        if: failure()
+        run: docker logs rmt-railway-ci || true
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: railway-website-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            ${{ runner.temp }}/railway-runtime.json
+            ${{ runner.temp }}/railway-restart.json
+            ${{ runner.temp }}/railway-container-metrics.json

@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { isLaunchAddress } from "./lib/launch-data";
 import { creationReviewPath } from "./lib/launch-draft";
 import { isProfileApiRoute } from "./lib/server/profiles/config";
+import { admitRailwayRequest, railwayHosting } from "./lib/server/railway-read-only";
 
 const publicRoutes = new Set([
   "/", "/create-token", "/my-launches", "/wallet",
@@ -29,6 +30,18 @@ function isLaunchDetail(path: string) {
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  if (process.env.RAILWAY_ENVIRONMENT_ID || process.env.RMT_WEB_HOSTING === "railway-read-only-v1") {
+    const hosting = railwayHosting();
+    if (!hosting) return new NextResponse("Read-only hosting configuration unavailable", { status: 503, headers: { "Cache-Control": "no-store" } });
+    // Railway's health probe uses its own Host, but receives only public liveness
+    // or freshness status. Other routes bind the exact assigned preview origin.
+    if (["/healthz", "/readyz"].includes(pathname) && ["GET", "HEAD"].includes(request.method)) return NextResponse.next();
+    if (request.headers.get("host") !== new URL(hosting.origin).host) return new NextResponse("Misdirected Request", { status: 421, headers: { "Cache-Control": "no-store" } });
+    const budget = admitRailwayRequest(pathname, request.method);
+    if (!budget.allowed) return NextResponse.json({ error: "rate_limited" }, { status: 429, headers: {
+      "Cache-Control": "private, no-store", "Retry-After": String(budget.retryAfter),
+    } });
+  }
   // These handlers enforce their own backend availability, exact origin,
   // session, CSRF and request budgets. This is only a narrow routing allowlist.
   if (isProfileApiRoute(pathname, request.method)) return NextResponse.next();
