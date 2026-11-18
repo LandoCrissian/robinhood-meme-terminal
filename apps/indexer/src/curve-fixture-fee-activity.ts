@@ -4,6 +4,7 @@ import type { BlockEvidence, CurveFixtureBinding } from "./curve-launch-evidence
 import { nativeProof, receiptLogs, type FixtureTx, type LogProof } from "./curve-fixture-lifecycle.js";
 import { fixtureExternalClaim, fixtureExternalFeeCall, type FixturePostCursor, type FixturePostEvent } from "./curve-fixture-post-graduation.js";
 import { assertFixtureInnerCallProof, assertFixtureNativeProof, fixtureTreasuryClaimInput } from "./curve-fixture-native-proof.js";
+import { assertFixtureProjectTreasuryProof, resolveFixtureProjectTreasuryCall, type FixtureProjectTreasuryAdmission } from "./curve-fixture-project-treasury-call.js";
 
 const curveAbi = parseAbi(["function claim() returns(uint256)", "function claimable(address) view returns(uint256)",
   "event CurveFeeClaimed(address indexed recipient,uint256 amount)"]);
@@ -21,19 +22,24 @@ function requireActivity(ok: unknown): asserts ok { if (!ok) throw new Error("Fi
 /** Exact successful direct factory/ledger calls, or a traced single Safe curve
  * claim. Missing traces/receipts never become a completed indexed operation. */
 export async function indexFixtureFeeActivity(rpc: PublicClient, binding: CurveFixtureBinding, cursors: FixturePostCursor[],
-  tx: FixtureTx, block: BlockEvidence, index: number): Promise<FixtureFeeActivity | undefined> {
+  tx: FixtureTx, block: BlockEvidence, index: number, admitProjectTreasury?: FixtureProjectTreasuryAdmission): Promise<FixtureFeeActivity | undefined> {
   if (!tx.to || tx.value !== 0n) return;
   const externalFee = fixtureExternalFeeCall(tx.input);
   const isFactory = same(tx.to, binding.factory) && same(tx.input, payoutInput)
     || externalFee && same(externalFee.target, binding.factory) && same(externalFee.calldata, payoutInput);
   let cursor = cursors.find(item => same(item.launch.revenueLedger, tx.to!) && same(tx.input, claimInput));
   let inner: Hex | undefined;
+  let projectTreasury: Awaited<ReturnType<typeof resolveFixtureProjectTreasuryCall>>;
   if (!isFactory && !cursor) {
-    const external = fixtureExternalClaim(tx.input);
-    if (!external || !same(external.calldata, claimInput)) return;
-    cursor = cursors.find(item => same(item.launch.revenueLedger, external.ledger));
-    if (!cursor) return;
-    inner = external.calldata;
+    projectTreasury = await resolveFixtureProjectTreasuryCall(cursors, tx, block, admitProjectTreasury);
+    if (projectTreasury?.call.operation === "curve-claim") { cursor = projectTreasury.cursor; inner = projectTreasury.call.calldata; }
+    else {
+      const external = fixtureExternalClaim(tx.input);
+      if (!external || !same(external.calldata, claimInput)) return;
+      cursor = cursors.find(item => same(item.launch.revenueLedger, external.ledger));
+      if (!cursor) return;
+      inner = external.calldata;
+    }
   }
   const receipt = await rpc.getTransactionReceipt({ hash: tx.hash });
   const logs = receiptLogs(tx, receipt, block, index, tx.to);
@@ -58,7 +64,7 @@ export async function indexFixtureFeeActivity(rpc: PublicClient, binding: CurveF
       ledger: binding.factory, account: externalFee ? tx.to : tx.from, recipient: binding.creationFeeRecipient, nativeWei: event.args.amount.toString(), tokenWei: "0" };
   }
   requireActivity(cursor);
-  const ledger = cursor.launch.revenueLedger, recipient = inner ? tx.to : tx.from;
+  const ledger = cursor.launch.revenueLedger, recipient = projectTreasury?.call.treasury ?? (inner ? tx.to : tx.from);
   const events = parseEventLogs({ abi: curveAbi, eventName: "CurveFeeClaimed", strict: true, logs: logs.filter(log => same(log.address, ledger)) });
   // Safe may return a successful outer receipt for a reverted internal call.
   if (inner && events.length === 0) return;
@@ -70,11 +76,14 @@ export async function indexFixtureFeeActivity(rpc: PublicClient, binding: CurveF
   requireActivity(before === event.args.amount && after === 0n);
   if (inner) {
     const raw = await rpc.request({ method: "debug_traceTransaction", params: [tx.hash, { tracer: "callTracer" }] } as never, { retryCount: 0 });
-    const actualInput = fixtureTreasuryClaimInput(raw, { ...tx, to: recipient }, ledger, event.args.amount);
-    requireActivity(same(actualInput, inner));
+    if (projectTreasury) assertFixtureProjectTreasuryProof(raw, tx, projectTreasury.call, [{ from: ledger, to: recipient, amount: event.args.amount }]);
+    else {
+      const actualInput = fixtureTreasuryClaimInput(raw, { ...tx, to: recipient }, ledger, event.args.amount);
+      requireActivity(same(actualInput, inner));
+    }
   } else await nativeProof(rpc, tx, ledger, [{ from: ledger, to: recipient, amount: event.args.amount }]);
   return { ...block, transactionHash: tx.hash, logIndex: event.logIndex, kind: "curve-claim", token: cursor.launch.token,
-    ledger, account: inner ? tx.to : tx.from, recipient, nativeWei: event.args.amount.toString(), tokenWei: "0" };
+    ledger, account: projectTreasury?.call.treasury ?? (inner ? tx.to : tx.from), recipient, nativeWei: event.args.amount.toString(), tokenWei: "0" };
 }
 
 export function fixtureLpFeeActivity(post: { token: string; evidence: FixturePostEvent }, cursors: FixturePostCursor[]): FixtureFeeActivity | undefined {

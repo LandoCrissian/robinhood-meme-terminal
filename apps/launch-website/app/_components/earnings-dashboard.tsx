@@ -8,6 +8,7 @@ import { earningsAddress, earningsAmount, earningsReadPath, earningsWei, sameEar
 import type { EarningsContractSnapshot, FactoryCreationFees } from "../../lib/server/earnings-contracts";
 import { useAccount } from "./account-provider";
 import { shortWallet } from "./wallet-account";
+import { MyLaunchesNav } from "./my-launches-nav";
 
 const TestEarningsClaimWallet = dynamic(() => import("./earnings-claim-wallet").then(m => m.EarningsClaimWallet), { ssr: false });
 const ProfileEarningsClaimWallet = dynamic(() => import("./earnings-profile-wallet").then(m => m.EarningsProfileWallet), { ssr: false });
@@ -115,6 +116,7 @@ export function EarningsDashboard({ fixture = false, fixtureFactory, profileFixt
   const claimedEth = verified.reduce((sum, s) => sum + BigInt(s.curve.claimedNativeWei) + (s.lp.status === "ready" ? BigInt(s.lp.claimedNativeWei) : 0n), 0n);
   return <>
     <header className="lpPageHeading"><div><Link href="/my-launches" className="lpBack" prefetch={false}>My Launches</Link><h1>Earnings</h1><p>Verified fee credits, paid to the wallet entitled to them.</p></div></header>
+    <MyLaunchesNav active="earnings" />
     <form className="lpPanel lpForm lpEarningsLookup" onSubmit={lookup} aria-label="Find beneficiary earnings">
       <label htmlFor="earnings-wallet">Beneficiary wallet<input id="earnings-wallet" value={input} onChange={e => setInput(e.target.value)} spellCheck={false} autoComplete="off" placeholder="0x…" maxLength={42} /></label>
       <button className="lpButton" type="submit" disabled={loading}>{loading ? "Checking evidence…" : "View earnings"}</button>

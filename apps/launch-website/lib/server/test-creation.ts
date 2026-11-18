@@ -1,11 +1,12 @@
 import { decodeFunctionData, encodeFunctionData, erc20Abi, getAddress, parseAbi, parseAbiItem, parseEventLogs, toHex, zeroAddress, type Hex } from "viem";
 import { emptyLaunchDraft, totalTreasuryFeePercent, validateLaunchDraft } from "../launch-draft";
 import { launchTokenDecimals, launchTokenSupplyWei } from "../launch-terms";
-import { isTestCreationRequest, testCreationChain, type TestCreationRequest } from "../test-creation";
+import { isTestCreationRequest, testCreationChain, type TestCreationRequest, type TestCreationPayouts } from "../test-creation";
 import { configuredCurveFixture, factoryAbi, fixtureAddress, fixtureCreationFee, fixtureHash, fixtureRpc, sameHex, verifyCurveFixture, type CurveFixture } from "./curve-fixture";
 import { readDraftBody } from "./launch-draft";
 import { readFixtureLaunches } from "./fixture-discovery";
 import { classifyFixtureTreasury } from "./fixture-treasury";
+import { configuredProjectTreasuryFixture, readProjectTreasuryProof, verifyProjectTreasuryContext } from "./project-treasury-fixture";
 
 const maxDeadlineSeconds = 300n;
 const recoveryRange = 256n;
@@ -68,10 +69,21 @@ export async function prepareTestCreation(fixture: CurveFixture, body: Record<st
     rpc.readContract({ address: fixture.factory, abi: factoryAbi, functionName: "futureReserveRecipient", blockNumber: head.number }),
   ]);
   if (!sameHex(operating, fixture.feeRecipient) || !fixtureAddress(reserve) || sameHex(operating, reserve)) return unavailable();
-  if (draft.treasury && [operating, reserve].some((address) => sameHex(address, toTreasury))) {
+  if (draft.treasury && [operating, reserve, fixture.factory, fixture.registry, fixture.graduation?.engine, fixture.graduation?.guard]
+    .some((address) => address && sameHex(address, toTreasury))) {
     return reply({ status: "treasury-unsupported" }, 422);
   }
-  const treasuryKind = draft.treasury ? await classifyFixtureTreasury(rpc, toTreasury, head.number) : "none";
+  let treasuryKind: TestCreationPayouts["treasuryKind"] | null = draft.treasury ? await classifyFixtureTreasury(rpc, toTreasury, head.number) : "none";
+  if (!treasuryKind) {
+    const module = configuredProjectTreasuryFixture(new Headers({ Host: new URL(fixture.origin).host }));
+    if (module) {
+      const context = await verifyProjectTreasuryContext(module);
+      const proof = await readProjectTreasuryProof(module, context.rpc, toTreasury, context.head);
+      if (sameHex(proof.creator, from) && sameHex(proof.intentId, body.intentId) && proof.treasuryShareBps === draft.treasuryShareBps) {
+        treasuryKind = "project-treasury-v1";
+      }
+    }
+  }
   if (!treasuryKind) return reply({ status: "treasury-unsupported" }, 422);
 
   const deadline = body.deadline === undefined ? head.timestamp + maxDeadlineSeconds : BigInt(body.deadline as string);

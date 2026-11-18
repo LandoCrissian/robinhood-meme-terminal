@@ -22,6 +22,7 @@ const marker = process.env.RMT_WEBSITE_PREVIEW_SECRET_MARKER;
 await mkdir(output, { recursive: true });
 const beneficiary = "0x1000000000000000000000000000000000000740";
 const earningsPath = "/my-launches/earnings", api = "/api/launchpad/earnings";
+const treasuryPath = "/my-launches/treasury", treasuryApi = "/api/launchpad/project-treasury";
 
 async function request(path, init = {}) {
   const response = await fetch(new URL(path, site), { redirect: "error", signal: AbortSignal.timeout(20_000), ...init });
@@ -45,6 +46,19 @@ assert.match(pageResponse.headers.get("x-robots-tag") ?? "", /noindex/i);
 const html = await pageResponse.text();
 assert.match(html, /Earnings/); assert.match(html, /Beneficiary wallet/);
 if (marker) assert.ok(!html.includes(marker));
+const treasuryPageResponse = await request(treasuryPath);
+assert.equal(treasuryPageResponse.status, 200);
+assert.match(treasuryPageResponse.headers.get("content-type") ?? "", /^text\/html\b/);
+assert.match(treasuryPageResponse.headers.get("x-robots-tag") ?? "", /noindex/i);
+const treasuryHtml = await treasuryPageResponse.text(); assert.match(treasuryHtml, /Project Treasury/);
+assert.match(treasuryHtml, /Project treasury address/); if (marker) assert.ok(!treasuryHtml.includes(marker));
+assert.match(treasuryHtml, /data-treasury-ready="false"/, "SSR treasury form must not pretend it is hydrated");
+assert.match(treasuryHtml, /<input(?=[^>]*id="project-treasury-address")(?=[^>]*disabled="")[^>]*>/, "SSR treasury input must wait for client readiness");
+const treasuryRead = await request(`${treasuryApi}?address=${beneficiary}`);
+assert.equal(treasuryRead.status, 200); assert.match(treasuryRead.headers.get("cache-control") ?? "", /no-store/);
+const treasuryUnavailable = await json(treasuryRead);
+assert.equal(treasuryUnavailable.status, "unavailable"); assert.equal(treasuryUnavailable.executionEnabled, false);
+for (const field of ["assets", "proof", "controller", "project", "earnings", "events", "purchases", "withdrawals"]) assert.equal(treasuryUnavailable[field], undefined, `Unavailable treasury fabricated ${field}`);
 
 const realReads = [];
 for (const path of [`${api}?recipient=${beneficiary}`, `${api}/factory?recipient=${beneficiary}`,
@@ -73,10 +87,11 @@ for (const operation of ["curve-claim", "lp-collect", "lp-claim", "lp-claim-nati
   denied.push({ path: "/api/launchpad/test-earnings", method: "POST", operation, status: response.status });
 }
 for (const [path, method] of [["/api/launchpad/production-earnings", "POST"], ["/api/launchpad/test-claim-profiles", "POST"],
+  ["/api/launchpad/test-project-treasury", "POST"], [treasuryPath, "POST"],
   ["/api/launchpad/production-creation", "POST"], ["/api/account/nonce", "POST"],
   ["/api/account/verify", "POST"], ["/api/account/profile", "PATCH"], [earningsPath, "POST"]]) {
   const response = await request(path, { method, headers: { Origin: site.origin, "Content-Type": "application/json",
-    ...(path === earningsPath ? { "Next-Action": "invalid" } : {}) }, body: "{}" });
+    ...([earningsPath, treasuryPath].includes(path) ? { "Next-Action": "invalid" } : {}) }, body: "{}" });
   assert.equal(response.status, 404, `${method} ${path}`);
   denied.push({ path, method, status: response.status });
 }
@@ -90,7 +105,7 @@ try {
     { name: "landscape", options: devices["iPhone 13 landscape"] },
   ]) {
     const context = await browser.newContext({ ...options, serviceWorkers: "block" });
-    const walletCalls = [], externalRequests = [], operationalRequests = [], errors = [], earningsRequests = [];
+    const walletCalls = [], externalRequests = [], operationalRequests = [], errors = [], earningsRequests = [], treasuryRequests = [];
     await context.exposeBinding("recordEarningsWalletAccess", (_source, value) => walletCalls.push(value));
     await context.addInitScript(() => {
       const record = value => void window.recordEarningsWalletAccess(value);
@@ -99,7 +114,7 @@ try {
       Object.defineProperty(window, "ethereum", { configurable: true, get() { record("injected wallet access"); return provider; } });
       window.addEventListener("eip6963:requestProvider", () => record("wallet discovery"));
     });
-    let latencyUsed = false;
+    let latencyUsed = false, treasuryLatencyUsed = false;
     await context.route("**/*", async route => {
       const sent = route.request(), url = new URL(sent.url());
       if (url.origin !== site.origin) { externalRequests.push(url.origin); return route.abort(); }
@@ -108,6 +123,11 @@ try {
         // Explicit latency injection only; the real server still returns 503.
         // No balances, registration or financial success are mocked.
         if (!latencyUsed) { latencyUsed = true; await new Promise(resolve => setTimeout(resolve, 700)); }
+        return route.continue();
+      }
+      if (sent.method() === "GET" && url.pathname === treasuryApi) {
+        treasuryRequests.push(url.pathname + url.search);
+        if (!treasuryLatencyUsed) { treasuryLatencyUsed = true; await new Promise(resolve => setTimeout(resolve, 700)); }
         return route.continue();
       }
       if (sent.method() === "GET" && ["/api/account/session", "/api/launchpad/config"].includes(url.pathname)) return route.continue();
@@ -183,13 +203,54 @@ try {
       assert.equal(new URL(page.url()).pathname, earningsPath);
       const nav = page.getByRole("navigation", { name: "Launchpad navigation" });
       for (const label of ["Launches", "Create", "My Launches"]) assert.equal(await nav.getByRole("link", { name: label, exact: true }).count(), 1);
+
+      const views = main.getByRole("navigation", { name: "My Launches views" });
+      await views.getByRole("link", { name: "Treasury", exact: true }).click(); await settled("Project Treasury");
+      assert.equal(new URL(page.url()).pathname, treasuryPath);
+      await main.getByText("Read-only. The optional project treasury module is not deployed or activated for production.", { exact: true }).waitFor();
+      const treasuryInput = main.getByLabel("Project treasury address", { exact: true }), treasurySubmit = main.getByRole("button", { name: "View treasury", exact: true });
+      const treasuryForm = main.getByRole("form", { name: "Find project treasury", exact: true });
+      await main.locator('form[aria-label="Find project treasury"][data-treasury-ready="true"]').waitFor();
+      assert.equal(await treasuryForm.getAttribute("data-treasury-ready"), "true");
+      await treasuryInput.fill("invalid"); await treasurySubmit.click();
+      await main.getByRole("status").filter({ hasText: "Enter the complete project treasury contract address." }).waitFor();
+      assert.equal(treasuryRequests.length, 0, "Invalid treasury address triggered a backend read");
+      await treasuryInput.fill(""); await treasurySubmit.focus(); await page.keyboard.press("Shift+Tab");
+      assert.equal(await treasuryInput.evaluate(node => document.activeElement === node), true);
+      const treasuryFocus = await treasuryInput.evaluate(node => {
+        const s = getComputedStyle(node); return { outlineStyle: s.outlineStyle, outlineWidth: s.outlineWidth, boxShadow: s.boxShadow, fontSize: s.fontSize };
+      });
+      assert.ok(treasuryFocus.outlineStyle !== "none" && parseFloat(treasuryFocus.outlineWidth) > 0 || treasuryFocus.boxShadow !== "none", "Treasury keyboard focus is not visible");
+      const treasuryInputBox = await treasuryInput.boundingBox(), treasurySubmitBox = await treasurySubmit.boundingBox();
+      assert.ok(treasuryInputBox?.height >= 44 && treasurySubmitBox?.height >= 44 && treasurySubmitBox?.width >= 44);
+      if (name !== "desktop") assert.ok(parseFloat(treasuryFocus.fontSize) >= 16, `iPhone treasury input text is ${treasuryFocus.fontSize}`);
+      await page.screenshot({ path: join(output, `treasury-${engine}-${name}-focus.png`), fullPage: true });
+      // Reproduce a dropped controlled-input event without mocking a balance,
+      // receipt or successful operation. FormData must still submit the exact
+      // address visibly entered in the native control.
+      await treasuryInput.evaluate((node, value) => Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(node, value), beneficiary);
+      assert.equal(await treasuryInput.inputValue(), beneficiary);
+      const treasuryResponse = page.waitForResponse(r => new URL(r.url()).pathname === treasuryApi && r.request().method() === "GET");
+      await treasurySubmit.click();
+      await main.getByRole("status").filter({ hasText: "Verifying treasury runtime, controller, project and balances…" }).waitFor();
+      const actualTreasuryResponse = await treasuryResponse; assert.equal(actualTreasuryResponse.status(), 200);
+      const actualTreasury = await actualTreasuryResponse.json(); assert.equal(actualTreasury.status, "unavailable"); assert.equal(actualTreasury.executionEnabled, false);
+      await main.getByRole("status").filter({ hasText: "Verified treasury evidence is unavailable. A failed read does not establish a zero balance or a missing deployment." }).waitFor();
+      assert.equal(treasuryRequests.length, 1); assert.equal(await treasurySubmit.isEnabled(), true);
+      assert.equal(await main.getByRole("region", { name: "Verified project treasury", exact: true }).count(), 0);
+      assert.equal(await main.getByRole("region", { name: "Treasury controller actions", exact: true }).count(), 0);
+      assert.equal(await main.getByRole("button", { name: /^(?:Connect synthetic|Review |Confirm synthetic|Recover treasury)/ }).count(), 0);
+      await settled("Project Treasury"); await page.screenshot({ path: join(output, `treasury-${engine}-${name}-unavailable.png`), fullPage: true });
+      assert.equal((await page.reload()).status(), 200); await settled("Project Treasury");
       assert.deepEqual(walletCalls, [], "Read-only earnings accessed a wallet");
       assert.deepEqual(externalRequests, [], "Read-only earnings connected outside its origin");
       assert.deepEqual(operationalRequests, [], "Read-only earnings attempted execution or a private API");
       assert.deepEqual(errors, [], "Read-only earnings raised browser errors");
       checked.push({ name, viewport: page.viewportSize(), walletCalls: 0, externalRequests: 0, operationalRequests: 0,
         browserErrors: 0, noHorizontalOverflow: true, inputHeight: inputBox.height, submitHeight: submitBox.height,
-        focus, earningsRequests: earningsRequests.length, lookupStatus: "actual server 503", mockedLatencyOnly: latencyUsed });
+        focus, earningsRequests: earningsRequests.length, lookupStatus: "actual server 503", mockedLatencyOnly: latencyUsed,
+        treasury: { requests: treasuryRequests.length, lookupStatus: "actual unconfigured server unavailable", inputHeight: treasuryInputBox.height,
+          submitHeight: treasurySubmitBox.height, focus: treasuryFocus, mockedLatencyOnly: treasuryLatencyUsed, droppedInputEventRecovered: true } });
     } catch (error) {
       await page.screenshot({ path: join(output, `earnings-${engine}-${name}-failure.png`), fullPage: true }).catch(() => undefined);
       const inputState = await page.locator("#earnings-wallet").evaluateAll(nodes => nodes.map(node => ({
@@ -209,7 +270,7 @@ try {
 } finally { await browser.close(); }
 const result = { status: "passed", observedAt: new Date().toISOString(), url: site.href, engine,
   environment: loopback ? "unconfigured-loopback-public-build" : "isolated-HTTPS-public-build", realReads,
-  invalidQueries: invalid.length, denied, checked, financialSuccessMocked: false, syntheticExecutionPerformed: false,
+  invalidQueries: invalid.length, denied, checked, treasuryRead: { status: treasuryRead.status, evidence: treasuryUnavailable }, financialSuccessMocked: false, syntheticExecutionPerformed: false,
   physicalDevice: "not performed", privateMarkerCheck: Boolean(marker) };
 await writeFile(join(output, `earnings-${engine}-public.json`), JSON.stringify(result, null, 2) + "\n");
 console.log(JSON.stringify({ status: result.status, engine, layouts: checked.length, evidence: output }));

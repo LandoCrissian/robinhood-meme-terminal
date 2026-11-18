@@ -24,7 +24,7 @@ export type TestCreationRequest = {
 export type TestCreationPayouts = {
   operating: `0x${string}`;
   reserve: `0x${string}`;
-  treasuryKind: "none" | "no-code" | "safe-1.4.1";
+  treasuryKind: "none" | "no-code" | "safe-1.4.1" | "project-treasury-v1";
 };
 
 export function isTestCreationPayouts(value: unknown, hasTreasury: boolean): value is TestCreationPayouts {
@@ -33,7 +33,7 @@ export function isTestCreationPayouts(value: unknown, hasTreasury: boolean): val
   return isLaunchAddress(input.operating) && isLaunchAddress(input.reserve)
     && !/^0x0{40}$/i.test(input.operating) && !/^0x0{40}$/i.test(input.reserve)
     && input.operating.toLowerCase() !== input.reserve.toLowerCase()
-    && (hasTreasury ? input.treasuryKind === "no-code" || input.treasuryKind === "safe-1.4.1" : input.treasuryKind === "none");
+    && (hasTreasury ? input.treasuryKind === "no-code" || input.treasuryKind === "safe-1.4.1" || input.treasuryKind === "project-treasury-v1" : input.treasuryKind === "none");
 }
 
 export type TestCreationVerification = {

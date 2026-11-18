@@ -116,7 +116,9 @@ async function inTransaction<T>(db: Database, task: () => Promise<T>) {
 }
 
 /** The expendable named database must explicitly opt in before any DDL. */
-export async function initializeCurveFixtureStore(writer: Database, databaseName: string, binding: CurveFixtureBinding, graduation: FixtureGraduationBinding) {
+export async function initializeCurveFixtureStore(writer: Database, databaseName: string, binding: CurveFixtureBinding, graduation: FixtureGraduationBinding,
+  extensionTables: readonly string[] = []) {
+  const admittedTables = new Set([...approvedTables, ...extensionTables]);
   const identity = await writer.query<{ name: string; host: string; relations: { name: string; kind: string }[] }>(
     `SELECT current_database() AS name, host(inet_server_addr()) AS host,
             coalesce((SELECT json_agg(json_build_object('name', c.relname, 'kind', c.relkind))
@@ -125,7 +127,7 @@ export async function initializeCurveFixtureStore(writer: Database, databaseName
   );
   const db = identity.rows[0];
   if (!db || db.name !== databaseName || db.host !== "127.0.0.1" || !db.relations.some(({ name }) => name === markerTable)
-      || db.relations.some(({ name, kind }) => kind !== "r" || !approvedTables.has(name))) throw new Error("Fixture database identity mismatch");
+      || db.relations.some(({ name, kind }) => kind !== "r" || !admittedTables.has(name))) throw new Error("Fixture database identity mismatch");
   const legacy = await writer.query<{ present: boolean }>(
     `SELECT EXISTS (SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
        WHERE n.nspname NOT IN ('pg_catalog', 'information_schema') AND c.relname IN ('indexer_state','sync_points','launches')) AS present`,
@@ -209,7 +211,7 @@ export async function loadCurveFixtureCursors(db: Database, scope: Scope): Promi
   });
 }
 
-export async function commitCurveFixtureRange(db: Database, scope: Scope, range: CurveFixtureRange) {
+export async function commitCurveFixtureRange(db: Database, scope: Scope, range: CurveFixtureRange, extension?: (db: Database) => Promise<void>) {
   await inTransaction(db, async () => {
     for (const block of range.blocks) {
       await db.query(`INSERT INTO rmt_curve_fixture_checkpoints
@@ -256,6 +258,7 @@ export async function commitCurveFixtureRange(db: Database, scope: Scope, range:
           event.blockNumber, event.blockHash.toLowerCase(), event.transactionHash.toLowerCase(), event.logIndex, JSON.stringify(event)]);
       if (stored.rowCount !== 1) throw new Error("Fixture fee activity conflicts with canonical receipt");
     }
+    await extension?.(db);
   });
 }
 

@@ -1,0 +1,238 @@
+{
+  "status": "passed",
+  "observedAt": "2026-11-18T21:35:04.944Z",
+  "url": "http://127.0.0.1:3205/",
+  "engine": "chromium",
+  "environment": "unconfigured-loopback-public-build",
+  "realReads": [
+    {
+      "path": "/api/launchpad/earnings?recipient=0x1000000000000000000000000000000000000740",
+      "status": 503,
+      "evidence": "actual unconfigured server response"
+    },
+    {
+      "path": "/api/launchpad/earnings/factory?recipient=0x1000000000000000000000000000000000000740",
+      "status": 503,
+      "evidence": "actual unconfigured server response"
+    },
+    {
+      "path": "/api/launchpad/earnings/history?recipient=0x1000000000000000000000000000000000000740",
+      "status": 503,
+      "evidence": "actual unconfigured server response"
+    },
+    {
+      "path": "/api/launchpad/earnings/0x1000000000000000000000000000000000000740?recipient=0x1000000000000000000000000000000000000740",
+      "status": 503,
+      "evidence": "actual unconfigured server response"
+    }
+  ],
+  "invalidQueries": 7,
+  "denied": [
+    {
+      "path": "/api/launchpad/test-earnings",
+      "method": "POST",
+      "operation": "curve-claim",
+      "status": 404
+    },
+    {
+      "path": "/api/launchpad/test-earnings",
+      "method": "POST",
+      "operation": "lp-collect",
+      "status": 404
+    },
+    {
+      "path": "/api/launchpad/test-earnings",
+      "method": "POST",
+      "operation": "lp-claim",
+      "status": 404
+    },
+    {
+      "path": "/api/launchpad/test-earnings",
+      "method": "POST",
+      "operation": "lp-claim-native",
+      "status": 404
+    },
+    {
+      "path": "/api/launchpad/test-earnings",
+      "method": "POST",
+      "operation": "lp-claim-token",
+      "status": 404
+    },
+    {
+      "path": "/api/launchpad/test-earnings",
+      "method": "POST",
+      "operation": "creation-fees",
+      "status": 404
+    },
+    {
+      "path": "/api/launchpad/production-earnings",
+      "method": "POST",
+      "status": 404
+    },
+    {
+      "path": "/api/launchpad/test-claim-profiles",
+      "method": "POST",
+      "status": 404
+    },
+    {
+      "path": "/api/launchpad/test-project-treasury",
+      "method": "POST",
+      "status": 404
+    },
+    {
+      "path": "/my-launches/treasury",
+      "method": "POST",
+      "status": 404
+    },
+    {
+      "path": "/api/launchpad/production-creation",
+      "method": "POST",
+      "status": 404
+    },
+    {
+      "path": "/api/account/nonce",
+      "method": "POST",
+      "status": 404
+    },
+    {
+      "path": "/api/account/verify",
+      "method": "POST",
+      "status": 404
+    },
+    {
+      "path": "/api/account/profile",
+      "method": "PATCH",
+      "status": 404
+    },
+    {
+      "path": "/my-launches/earnings",
+      "method": "POST",
+      "status": 404
+    }
+  ],
+  "checked": [
+    {
+      "name": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "walletCalls": 0,
+      "externalRequests": 0,
+      "operationalRequests": 0,
+      "browserErrors": 0,
+      "noHorizontalOverflow": true,
+      "inputHeight": 44,
+      "submitHeight": 44,
+      "focus": {
+        "outlineStyle": "solid",
+        "outlineWidth": "2px",
+        "boxShadow": "rgba(56, 237, 103, 0.01) 0px 0px 0px 0.301961px",
+        "fontSize": "13px"
+      },
+      "earningsRequests": 1,
+      "lookupStatus": "actual server 503",
+      "mockedLatencyOnly": true,
+      "treasury": {
+        "requests": 1,
+        "lookupStatus": "actual unconfigured server unavailable",
+        "inputHeight": 44,
+        "submitHeight": 44,
+        "focus": {
+          "outlineStyle": "solid",
+          "outlineWidth": "2px",
+          "boxShadow": "rgba(56, 237, 103, 0.03) 0px 0px 0px 0.941531px",
+          "fontSize": "13px"
+        },
+        "mockedLatencyOnly": true,
+        "droppedInputEventRecovered": true
+      }
+    },
+    {
+      "name": "portrait",
+      "viewport": {
+        "width": 390,
+        "height": 664
+      },
+      "walletCalls": 0,
+      "externalRequests": 0,
+      "operationalRequests": 0,
+      "browserErrors": 0,
+      "noHorizontalOverflow": true,
+      "inputHeight": 44,
+      "submitHeight": 44,
+      "focus": {
+        "outlineStyle": "solid",
+        "outlineWidth": "2px",
+        "boxShadow": "rgba(56, 237, 103, 0.03) 0px 0px 0px 0.945735px",
+        "fontSize": "16px"
+      },
+      "earningsRequests": 1,
+      "lookupStatus": "actual server 503",
+      "mockedLatencyOnly": true,
+      "treasury": {
+        "requests": 1,
+        "lookupStatus": "actual unconfigured server unavailable",
+        "inputHeight": 44,
+        "submitHeight": 44,
+        "focus": {
+          "outlineStyle": "solid",
+          "outlineWidth": "2px",
+          "boxShadow": "rgba(56, 237, 103, 0.03) 0px 0px 0px 0.942904px",
+          "fontSize": "16px"
+        },
+        "mockedLatencyOnly": true,
+        "droppedInputEventRecovered": true
+      }
+    },
+    {
+      "name": "landscape",
+      "viewport": {
+        "width": 750,
+        "height": 342
+      },
+      "walletCalls": 0,
+      "externalRequests": 0,
+      "operationalRequests": 0,
+      "browserErrors": 0,
+      "noHorizontalOverflow": true,
+      "inputHeight": 44,
+      "submitHeight": 44,
+      "focus": {
+        "outlineStyle": "solid",
+        "outlineWidth": "2px",
+        "boxShadow": "rgba(56, 237, 103, 0.09) 0px 0px 0px 2.7041px",
+        "fontSize": "16px"
+      },
+      "earningsRequests": 1,
+      "lookupStatus": "actual server 503",
+      "mockedLatencyOnly": true,
+      "treasury": {
+        "requests": 1,
+        "lookupStatus": "actual unconfigured server unavailable",
+        "inputHeight": 44,
+        "submitHeight": 44,
+        "focus": {
+          "outlineStyle": "solid",
+          "outlineWidth": "2px",
+          "boxShadow": "rgba(56, 237, 103, 0.01) 0px 0px 0px 0.301961px",
+          "fontSize": "16px"
+        },
+        "mockedLatencyOnly": true,
+        "droppedInputEventRecovered": true
+      }
+    }
+  ],
+  "treasuryRead": {
+    "status": 200,
+    "evidence": {
+      "status": "unavailable",
+      "executionEnabled": false,
+      "reason": "Project treasury production discovery is not activated"
+    }
+  },
+  "financialSuccessMocked": false,
+  "syntheticExecutionPerformed": false,
+  "physicalDevice": "not performed",
+  "privateMarkerCheck": false
+}

@@ -4,6 +4,8 @@ Each launch can direct its own project earnings to the creator and an independen
 
 The development [creator earnings dashboard](CREATOR_EARNINGS.md) separates recipient-aware discovery, verified balances, original-ledger migration continuity and synthetic claim recovery. Production claims remain disabled.
 
+The isolated [per-project treasury candidate](PROJECT_TREASURY_ACCEPTANCE.md) offers a unique deterministic contract address as an optional beneficiary. It preserves the existing core factory and uses two separate creator-confirmed transactions. A previewed address is never treated as deployed. Its controller can claim as the beneficiary contract, receive supported funding, notice withdrawals and rotate control. Purchase settings record intent only: the V1 contract has no executable purchase route. See its [separate security scope](PROJECT_TREASURY_SECURITY.md), including six new unresolved high findings in addition to the existing core findings.
+
 | Revenue | Project | RMT Operations | RMT Reserve |
 | --- | ---: | ---: | ---: |
 | Creation fee | — | 100% | — |

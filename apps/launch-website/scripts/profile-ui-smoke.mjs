@@ -20,7 +20,7 @@ const child = spawn(process.execPath, [require.resolve("next/dist/bin/next"), "s
     GCLOUD_PROJECT: "demo-rmt-launch-profiles" } : { RMT_PROFILES_MODE: "" }) }, stdio: ["ignore", "pipe", "pipe"],
 });
 let output = ""; for (const stream of [child.stdout, child.stderr]) stream.on("data", (chunk) => { output = (output + chunk).slice(-32_000); });
-const results = [];
+const results = [], mutationDiagnostics = [];
 try {
   const until = Date.now() + 40_000;
   for (;;) {
@@ -43,6 +43,7 @@ try {
       const context = await browser.newContext({ ...devices["iPhone 13"], serviceWorkers: "block" });
       const page = await context.newPage(); page.setDefaultTimeout(15_000);
       const walletCalls = [], errors = [], outside = []; let reject = true, rejectSwitch = true;
+      const mutations = []; mutationDiagnostics.push({ engine: name, entries: mutations });
       page.on("pageerror", (error) => errors.push(error.message));
       page.on("request", (request) => { if (new URL(request.url()).origin !== site.origin) outside.push(request.url()); });
       await page.exposeFunction("syntheticProfileWallet", async ({ name: walletName, address, chain, method, params = [] }) => {
@@ -93,12 +94,23 @@ try {
       });
       const profileMutation = async (method, path, act) => {
         await profileIdle();
-        const [response] = await Promise.all([
-          page.waitForResponse((response) => new URL(response.url()).pathname === path && response.request().method() === method),
+        const [{ status: responseStatus, body }] = await Promise.all([
+          page.waitForResponse((response) => new URL(response.url()).pathname === path && response.request().method() === method)
+            .then(async (response) => {
+              const observation = { method, path, status: response.status(), observedAt: new Date().toISOString(), bodyCaptured: false };
+              mutations.push(observation);
+              try {
+                // Consume the real response as soon as it arrives. Do not wait
+                // for the input/click action to finish before retaining its body.
+                const body = await response.json(); observation.bodyCaptured = true;
+                return { status: response.status(), body };
+              } catch (error) {
+                observation.bodyError = String(error?.message ?? error).slice(0, 1000); throw error;
+              }
+            }),
           act(),
         ]);
-        const body = await response.json();
-        assert.equal(response.status(), 200, `${method} ${path}: ${typeof body.code === "string" ? body.code : "unexpected response"}`);
+        assert.equal(responseStatus, 200, `${method} ${path}: ${typeof body.code === "string" ? body.code : "unexpected response"}`);
         assert.equal(body.profile?.walletAddress.toLowerCase(), accounts[0].address.toLowerCase());
         await profileIdle();
         return body;
@@ -254,10 +266,12 @@ try {
     } catch (error) {
       const failedPage = browser.contexts()[0]?.pages()[0];
       if (failedPage) await failedPage.screenshot({ path: join(artifacts, name + "-failure.png"), fullPage: true }).catch(() => undefined);
+      await writeFile(join(artifacts, name + "-failure.json"), JSON.stringify({ engine: name, url: failedPage?.url(),
+        error: String(error?.message ?? error), mutations: mutationDiagnostics.find((entry) => entry.engine === name)?.entries ?? [] }, null, 2));
       throw error;
     } finally { await browser.close(); }
   }
-  await writeFile(join(artifacts, "profile-ui-results.json"), JSON.stringify({ environment: "loopback", emulator, url: site.href, results,
+  await writeFile(join(artifacts, "profile-ui-results.json"), JSON.stringify({ environment: "loopback", emulator, url: site.href, results, mutationDiagnostics,
     physicalWalletAcceptance: "not performed", productionActivation: false }, null, 2));
   console.log("Profile UI passed " + (emulator ? "real Firebase-emulator authentication" : "disabled-service checks") + " in Chromium/WebKit. Evidence: " + artifacts);
 } finally { child.kill(); await writeFile(join(artifacts, "next.log"), output); }

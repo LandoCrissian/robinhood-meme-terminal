@@ -13,9 +13,12 @@ on:
       - "pnpm-workspace.yaml"
       - "apps/indexer/src/curve-*.ts"
       - "apps/indexer/src/production-claim*.ts"
+      - "apps/indexer/src/project-treasury*.ts"
       - "apps/indexer/package.json"
       - "apps/indexer/tsconfig.json"
       - "scripts/visual-qa/rmt-creator-integration.mjs"
+      - "scripts/visual-qa/receipt-observation.mjs"
+      - "scripts/visual-qa/receipt-observation.test.mjs"
       - "scripts/visual-qa/rmt-earnings-integration.mjs"
       - "scripts/visual-qa/rmt-successor-earnings-integration.mjs"
       - "scripts/visual-qa/rmt-mobile-review.mjs"
@@ -39,6 +42,7 @@ on:
       - "scripts/visual-qa/rmt-netlify-website.mjs"
       - "scripts/visual-qa/rmt-earnings-public.mjs"
       - "scripts/claims/**"
+      - "scripts/treasury/**"
       - "scripts/visual-qa/rmt-polish.mjs"
       - "docs/evidence/mobile-signing/**"
       - ".github/workflows/launch-website-review.yml"
@@ -157,6 +161,7 @@ jobs:
             --fixture-lifecycle --verify docs/evidence/mobile-signing/review-plan-4663.json
       - name: Verify the same-app lifecycle on synthetic chain 31337
         run: |
+          node --test scripts/visual-qa/receipt-observation.test.mjs
           node scripts/visual-qa/rmt-creator-integration.mjs \
             --anvil "$(command -v anvil)" \
             --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$(pg_config --bindir)" \
@@ -170,6 +175,13 @@ jobs:
             --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$(pg_config --bindir)" \
             --browser "${{ matrix.browser }}" \
             --output "$RUNNER_TEMP/rmt-claim-wallet-profiles"
+      - name: Verify optional project treasury creation, contract claims and canonical recovery
+        run: |
+          node scripts/visual-qa/rmt-creator-integration.mjs --treasury-only \
+            --anvil "$(command -v anvil)" \
+            --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$(pg_config --bindir)" \
+            --browser "${{ matrix.browser }}" \
+            --output "$RUNNER_TEMP/rmt-project-treasury"
       - name: Read local PostgreSQL diagnostics after failure
         if: failure()
         run: |
@@ -185,11 +197,19 @@ jobs:
             ${{ runner.temp }}/rmt-creator-lifecycle/*.png
             ${{ runner.temp }}/rmt-creator-lifecycle/creation-journey-evidence.json
             ${{ runner.temp }}/rmt-creator-lifecycle/graduation-review-evidence.json
+            ${{ runner.temp }}/rmt-creator-lifecycle/receipt-observations.json
             ${{ runner.temp }}/rmt-creator-lifecycle/earnings-journey-evidence.json
             ${{ runner.temp }}/rmt-creator-lifecycle/successor-earnings-evidence.json
             ${{ runner.temp }}/rmt-creator-lifecycle/failure-page.txt
+            ${{ runner.temp }}/rmt-creator-lifecycle/website*.log
+            ${{ runner.temp }}/rmt-creator-lifecycle/worker*.log
             ${{ runner.temp }}/rmt-claim-wallet-profiles/*.png
             ${{ runner.temp }}/rmt-claim-wallet-profiles/claim-wallet-acceptance.json
             ${{ runner.temp }}/rmt-claim-wallet-profiles/claim-wallet-profile-manifest.json
             ${{ runner.temp }}/rmt-claim-wallet-profiles/claim-wallet-browser-evidence.json
             ${{ runner.temp }}/rmt-claim-wallet-profiles/claim-wallet-browser-failure.txt
+            ${{ runner.temp }}/rmt-project-treasury/*.png
+            ${{ runner.temp }}/rmt-project-treasury/project-treasury-acceptance.json
+            ${{ runner.temp }}/rmt-project-treasury/project-treasury-browser-evidence.json
+            ${{ runner.temp }}/rmt-project-treasury/project-treasury-compiler-manifest.json
+            ${{ runner.temp }}/rmt-project-treasury/project-treasury-deployment.json

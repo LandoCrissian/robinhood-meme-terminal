@@ -8,19 +8,17 @@ import { launchTokenDecimals } from "../../lib/launch-terms";
 import { calldataMatchesTestCreation, isLocalTestWallet, isTestCreationPayouts, isTestCreationRequest, isTransactionHash, sameTestCreationRequest,
   testCreationPath, type TestCreationFields, type TestCreationPayouts, type TestCreationRequest, type TestCreationVerification } from "../../lib/test-creation";
 import { assertTestWalletBinding, connectTestWallet, sameWalletHex as same, subscribeTestWallet, testProviderAtWindow, testWalletErrorCode, type TestWallet as Wallet } from "../../lib/test-wallet";
+import { assertNoUnresolvedFinancialRequests } from "./treasury-wallet-controls";
+import { activeTestCreationKey, archiveCompletedTestCreation, completedCreationEvidence, completedTestCreationsKey,
+  currentArchivedCreationEvidence, readActiveTestCreation, readCompletedTestCreations, type ArchivedCreationCheck, type CompletedTestCreation } from "../../lib/test-creation-history";
+import { projectTreasuryCreatorMatches } from "../../lib/project-treasury-draft";
 
 type Prepared = { draft: ReviewedLaunchDraft; wallet: Wallet; factory: string; request: TestCreationRequest; payouts: TestCreationPayouts };
 type Journal = { request: TestCreationRequest; transactionHash?: `0x${string}` };
 
-const journalKey = "rmt:creation-test:31337:v1";
+const journalKey = activeTestCreationKey;
 function readJournal(): Journal | undefined {
-  const raw = localStorage.getItem(journalKey);
-  if (!raw) return;
-  if (raw.length > 4096) throw new Error("Invalid stored creation request");
-  const entry = JSON.parse(raw) as Partial<Journal> | null;
-  if (!entry || !isTestCreationRequest(entry.request)
-      || (entry.transactionHash !== undefined && !isTransactionHash(entry.transactionHash))) throw new Error("Invalid stored creation request");
-  return { request: entry.request, transactionHash: entry.transactionHash };
+  return readActiveTestCreation(localStorage);
 }
 
 function writeJournal(entry: Journal) {
@@ -41,10 +39,11 @@ async function post(body: object) {
   return payload;
 }
 
-async function prepare(draft: ReviewedLaunchDraft, account: string, factory: string, prior?: TestCreationRequest) {
+async function prepare(draft: ReviewedLaunchDraft, account: string, factory: string, prior?: TestCreationRequest, treasuryIntentId?: `0x${string}`, treasuryCreator?: string) {
   const { name, symbol, projectURI, treasury, treasuryShareBps } = draft;
   const fields: TestCreationFields = { name, symbol, projectURI, treasury, treasuryShareBps };
-  const intentId = prior?.intentId ?? "0x" + Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) => byte.toString(16).padStart(2, "0")).join("");
+  if (!projectTreasuryCreatorMatches(account, treasuryIntentId, treasuryCreator) || treasuryIntentId && prior && !same(prior.intentId, treasuryIntentId)) throw Error("The treasury's original creator or creation intent changed");
+  const intentId = prior?.intentId ?? treasuryIntentId ?? "0x" + Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) => byte.toString(16).padStart(2, "0")).join("");
   const payload = await post({ action: "prepare", account, fields, intentId, ...(prior && { deadline: prior.deadline }) });
   const { request, payouts } = payload;
   if (payload.status !== "prepared" || !isTestCreationRequest(request) || !isTestCreationPayouts(payouts, !!treasury)
@@ -71,16 +70,20 @@ async function verify(entry: Journal, inputHash?: string): Promise<TestCreationV
   };
 }
 
-export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
+export function TestCreationWallet({ factory, draft, isCurrentDraft, treasuryIntentId, treasuryCreator }: {
   factory: string;
   draft?: ReviewedLaunchDraft;
   isCurrentDraft(draft: ReviewedLaunchDraft): boolean;
+  treasuryIntentId?: `0x${string}`;
+  treasuryCreator?: string;
 }) {
   const [ready, setReady] = useState(false);
   const [wallet, setWallet] = useState<Wallet>();
   const [prepared, setPrepared] = useState<Prepared>();
   const [journal, setJournal] = useState<Journal>();
   const [result, setResult] = useState<TestCreationVerification>();
+  const [history, setHistory] = useState<CompletedTestCreation[]>([]), [historySelection, setHistorySelection] = useState("");
+  const [historyCheck, setHistoryCheck] = useState<ArchivedCreationCheck>();
   const [message, setMessage] = useState("");
   const [treasuryAcknowledged, setTreasuryAcknowledged] = useState(false);
   const [recoveryHash, setRecoveryHash] = useState("");
@@ -95,6 +98,7 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
     function restore() {
       try {
         setJournal(readJournal());
+        setHistory(readCompletedTestCreations(localStorage));
         setReady(true);
       } catch {
         setReady(false);
@@ -103,8 +107,9 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
     }
     restore();
     const storageChanged = (event: StorageEvent) => {
-      if (event.key !== journalKey && event.key !== null) return;
+      if (event.key !== journalKey && event.key !== completedTestCreationsKey && event.key !== null) return;
       setResult(undefined);
+      setHistoryCheck(undefined);
       setPrepared(undefined);
       restore();
     };
@@ -124,6 +129,7 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
       setMessage("Test wallet account or network changed. Connect and review again.");
     });
   }, [wallet]);
+  useEffect(() => { selection.current++; setPrepared(undefined); }, [treasuryIntentId, treasuryCreator]);
 
   async function withOperation(action: () => Promise<void>, onFailure: string) {
     if (!ready || operation.current) return;
@@ -145,12 +151,18 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
   async function connect() {
     const connected = await connectTestWallet();
     selection.current++;
+    if (!projectTreasuryCreatorMatches(connected.account, treasuryIntentId, treasuryCreator)) {
+      setWallet(undefined); setPrepared(undefined);
+      setMessage("Reconnect the original project treasury creator before reviewing this two-step launch. A zero fee allocation does not transfer its creator identity.");
+      return;
+    }
     setWallet(connected);
     setPrepared(undefined);
   }
 
   async function reviewCreation() {
     if (!wallet || !draft) return;
+    if (!projectTreasuryCreatorMatches(wallet.account, treasuryIntentId, treasuryCreator)) throw Error("The optional treasury belongs to a different creator");
     setPrepared(undefined);
     setTreasuryAcknowledged(false);
     const generation = selection.current;
@@ -158,7 +170,7 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
       setMessage("Choose a project treasury address different from the creator.");
       return;
     }
-    const { request, payouts } = await prepare(draft, wallet.account, factory);
+    const { request, payouts } = await prepare(draft, wallet.account, factory, undefined, treasuryIntentId, treasuryCreator);
     await assertTestWalletBinding(wallet, request);
     if (!isCurrentDraft(draft) || selection.current !== generation) throw new Error("Review changed");
     setPrepared({ draft, wallet, factory, request, payouts });
@@ -180,26 +192,31 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
 
   async function confirm() {
     if (!prepared || !isCurrentDraft(prepared.draft) || !same(prepared.factory, factory)
-        || (prepared.draft.treasury && !treasuryAcknowledged)) return;
+        || (prepared.draft.treasury && !treasuryAcknowledged) || !projectTreasuryCreatorMatches(prepared.wallet.account, treasuryIntentId, treasuryCreator)
+        || (treasuryIntentId && !same(prepared.request.intentId, treasuryIntentId))) return;
     const { request, payouts, wallet: bound, draft: candidate } = prepared;
     const generation = selection.current;
     setPrepared(undefined);
-    await navigator.locks.request(journalKey, { mode: "exclusive", ifAvailable: true }, async (lock) => {
+    await navigator.locks.request(`rmt.claim.execution.v1:31337:${bound.account.toLowerCase()}`, { mode: "exclusive", ifAvailable: true }, async payerLock => {
+      if (!payerLock) throw Error("Another tab is handling this wallet's original transaction");
+      await navigator.locks.request(journalKey, { mode: "exclusive", ifAvailable: true }, async (lock) => {
       if (!lock) throw new Error("Another tab is sending");
       const existing = readJournal();
       if (existing) {
         setJournal(existing);
         throw new Error("Creation already recorded");
       }
-      const current = await prepare(candidate, bound.account, factory, request);
+      assertNoUnresolvedFinancialRequests(bound.account);
+      const current = await prepare(candidate, bound.account, factory, request, treasuryIntentId, treasuryCreator);
       if (!sameTestCreationRequest(request, current.request) || !same(payouts.operating, current.payouts.operating)
           || !same(payouts.reserve, current.payouts.reserve) || payouts.treasuryKind !== current.payouts.treasuryKind) {
         throw new Error("Factory or reviewed terms changed");
       }
       await assertTestWalletBinding(bound, request);
       if (!mounted.current || !isCurrentDraft(candidate) || selection.current !== generation || testProviderAtWindow() !== bound.provider
-          || bound.provider.request !== bound.request) throw new Error("Review changed");
+          || bound.provider.request !== bound.request || !projectTreasuryCreatorMatches(bound.account, treasuryIntentId, treasuryCreator)) throw new Error("Review changed");
       let submitted: Journal = { request };
+      assertNoUnresolvedFinancialRequests(bound.account);
       // Record before the wallet call, even when the provider returns no hash.
       writeJournal(submitted);
       setJournal(submitted);
@@ -223,6 +240,7 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
           setMessage("The wallet result is uncertain. Check the original request before continuing.");
         }
       }
+      });
     });
   }
 
@@ -241,7 +259,32 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
     });
   }
 
-  if (!draft && !journal && !message) return null;
+  async function startAnotherLaunch() {
+    const original = readJournal(); if (!original) throw Error("The original request is unavailable");
+    await navigator.locks.request(`rmt.claim.execution.v1:31337:${original.request.from.toLowerCase()}`, { mode: "exclusive", ifAvailable: true }, async payer => {
+      if (!payer) throw Error("Another tab is handling this wallet");
+      await navigator.locks.request(journalKey, { mode: "exclusive", ifAvailable: true }, async lock => {
+        if (!lock) throw Error("Another tab is recovering the original creation");
+        // The previous UI status or archive is not a substitute for a fresh
+        // canonical receipt, payment and durable-indexing check.
+        const current = await verify(original);
+        if (!completedCreationEvidence(current)) { setResult(current); throw Error("The original creation still needs verification"); }
+        setHistory(archiveCompletedTestCreation(localStorage, original, current));
+        selection.current++; setJournal(undefined); setResult(undefined); setPrepared(undefined); setTreasuryAcknowledged(false);
+        setMessage("Original creation preserved in completed history. Review the next draft separately; no transaction was submitted.");
+      });
+    });
+  }
+  const archived = history.find(entry => entry.transactionHash === historySelection) ?? history[history.length - 1];
+  const historyResult = currentArchivedCreationEvidence(archived, historyCheck);
+  async function recheckHistory() {
+    if (!archived) return;
+    const original = archived;
+    const verification = await verify({ request: original.request, transactionHash: original.transactionHash });
+    setHistoryCheck({ transactionHash: original.transactionHash, verification });
+  }
+
+  if (!draft && !journal && !message && !history.length) return null;
   const currentReview = prepared && prepared.draft === draft && prepared.wallet === wallet && same(prepared.factory, factory)
     ? prepared : undefined;
   const state = result?.status ?? "pending";
@@ -267,6 +310,8 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
         <button type="button" className="lpButton lpSecondary" disabled={busy || !ready}
           onClick={() => void withOperation(() => recover(true), "The hash could not be matched to the original request.")}>Recover transaction</button>
       </>}
+      {result && completedCreationEvidence(result) && <button type="button" className="lpButton" disabled={busy || !ready}
+        onClick={() => void withOperation(startAnotherLaunch, "The original creation could not be freshly verified and preserved. Recover it before starting another launch.")}>Start another launch</button>}
     </> : draft && <>
       {!ready && <p>Test wallet operations require the exact local origin and secure browser request locking.</p>}
       {!wallet ? <button type="button" className="lpButton lpSecondary" disabled={busy || !ready}
@@ -284,6 +329,8 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
               <dt>Treasury share of project fees</dt><dd>{treasuryProjectPercent(currentReview.draft.treasuryShareBps)}</dd>
               <dt>Treasury compatibility</dt><dd>{currentReview.payouts.treasuryKind === "safe-1.4.1"
                 ? "Verified Safe 1.4.1 configuration · submit claims through Safe"
+                : currentReview.payouts.treasuryKind === "project-treasury-v1"
+                ? "Verified per-project treasury contract · pinned treasury factory · controller-authorized claims"
                 : "No contract code detected · verify control of this wallet"}</dd>
             </>}
           </dl>
@@ -297,6 +344,16 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft }: {
         </> : <button type="button" className="lpButton lpSecondary" disabled={busy || !ready}
           onClick={() => void withOperation(reviewCreation, "The test deployment or wallet could not be verified. Try review again.")}>Review test creation</button>}
     </>}
+    {archived && <details className="lpRecovery lpForm"><summary>Completed creation history</summary>
+      <label>Archived creation<select aria-label="Archived creation" value={archived.transactionHash} disabled={busy} onChange={event => { setHistorySelection(event.target.value); setHistoryCheck(undefined); }}>
+        {history.map(entry => <option key={entry.transactionHash} value={entry.transactionHash}>{entry.verification.status === "confirmed" ? entry.verification.token : "Reverted creation"} · {entry.transactionHash.slice(0, 10)}</option>)}</select></label>
+      <dl className="lpFacts"><dt>Original creator</dt><dd className="lpAddress">{archived.request.from}</dd><dt>Original factory</dt><dd className="lpAddress">{archived.request.to}</dd>
+        <dt>Original intent</dt><dd className="lpAddress">{archived.request.intentId}</dd><dt>Original transaction</dt><dd className="lpAddress">{archived.transactionHash}</dd>
+        <dt>Archived verification</dt><dd>{archived.verification.status} · {new Date(archived.archivedAt).toLocaleString()}</dd></dl>
+      <p>Archive evidence records the earlier check. Recheck current canonical evidence after a restart or possible reorg; nothing is resubmitted.</p>
+      <button type="button" className="lpButton lpSecondary" disabled={busy || !ready} onClick={() => void withOperation(recheckHistory, "Archived creation evidence is unavailable; the original request remains preserved.")}>Recheck archived creation</button>
+      {historyResult && <p role="status">Current archived-transaction evidence: {historyResult.status}{historyResult.status === "confirmed" ? historyResult.indexed ? " · indexed and verified" : " · indexing pending" : ""}.</p>}
+    </details>}
     {message && <p role="alert">{message}</p>}
   </section>;
 }

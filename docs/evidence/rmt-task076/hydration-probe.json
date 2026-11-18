@@ -1,0 +1,686 @@
+{
+  "scope": "actual unconfigured loopback Next app; no mocks, financial execution or wallet",
+  "loops": [
+    {
+      "n": 0,
+      "startedAt": "2026-11-18T21:22:34.712Z",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:3205/api/launchpad/project-treasury?address=0x1000000000000000000000000000000000000760",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "pageStatus": 200,
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "unavailable",
+          "executionEnabled": false,
+          "reason": "Project treasury production discovery is not activated"
+        }
+      },
+      "dom": {
+        "readyState": "complete",
+        "inputValue": "0x1000000000000000000000000000000000000760",
+        "disabled": true,
+        "buttonText": "Checking evidence…",
+        "reactOnChange": "function",
+        "width": 390,
+        "height": 664,
+        "touch": 0,
+        "coarse": true,
+        "statuses": [
+          "Verifying treasury runtime, controller, project and balances…"
+        ]
+      }
+    },
+    {
+      "n": 1,
+      "startedAt": "2026-11-18T21:22:35.290Z",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:3205/api/launchpad/project-treasury?address=0x1000000000000000000000000000000000000760",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "pageStatus": 200,
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "unavailable",
+          "executionEnabled": false,
+          "reason": "Project treasury production discovery is not activated"
+        }
+      },
+      "dom": {
+        "readyState": "complete",
+        "inputValue": "0x1000000000000000000000000000000000000760",
+        "disabled": true,
+        "buttonText": "Checking evidence…",
+        "reactOnChange": "function",
+        "width": 390,
+        "height": 664,
+        "touch": 0,
+        "coarse": true,
+        "statuses": [
+          "Verifying treasury runtime, controller, project and balances…"
+        ]
+      }
+    },
+    {
+      "n": 2,
+      "startedAt": "2026-11-18T21:22:35.739Z",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:3205/api/launchpad/project-treasury?address=0x1000000000000000000000000000000000000760",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "pageStatus": 200,
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "unavailable",
+          "executionEnabled": false,
+          "reason": "Project treasury production discovery is not activated"
+        }
+      },
+      "dom": {
+        "readyState": "complete",
+        "inputValue": "0x1000000000000000000000000000000000000760",
+        "disabled": true,
+        "buttonText": "Checking evidence…",
+        "reactOnChange": "function",
+        "width": 390,
+        "height": 664,
+        "touch": 0,
+        "coarse": true,
+        "statuses": [
+          "Verifying treasury runtime, controller, project and balances…"
+        ]
+      }
+    },
+    {
+      "n": 3,
+      "startedAt": "2026-11-18T21:22:36.170Z",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:3205/api/launchpad/project-treasury?address=0x1000000000000000000000000000000000000760",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "pageStatus": 200,
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "unavailable",
+          "executionEnabled": false,
+          "reason": "Project treasury production discovery is not activated"
+        }
+      },
+      "dom": {
+        "readyState": "complete",
+        "inputValue": "0x1000000000000000000000000000000000000760",
+        "disabled": true,
+        "buttonText": "Checking evidence…",
+        "reactOnChange": "function",
+        "width": 390,
+        "height": 664,
+        "touch": 0,
+        "coarse": true,
+        "statuses": [
+          "Verifying treasury runtime, controller, project and balances…"
+        ]
+      }
+    },
+    {
+      "n": 4,
+      "startedAt": "2026-11-18T21:22:36.593Z",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:3205/api/launchpad/project-treasury?address=0x1000000000000000000000000000000000000760",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "pageStatus": 200,
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "unavailable",
+          "executionEnabled": false,
+          "reason": "Project treasury production discovery is not activated"
+        }
+      },
+      "dom": {
+        "readyState": "complete",
+        "inputValue": "0x1000000000000000000000000000000000000760",
+        "disabled": true,
+        "buttonText": "Checking evidence…",
+        "reactOnChange": "function",
+        "width": 390,
+        "height": 664,
+        "touch": 0,
+        "coarse": true,
+        "statuses": [
+          "Verifying treasury runtime, controller, project and balances…"
+        ]
+      }
+    },
+    {
+      "n": 5,
+      "startedAt": "2026-11-18T21:22:36.998Z",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:3205/api/launchpad/project-treasury?address=0x1000000000000000000000000000000000000760",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "pageStatus": 200,
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "unavailable",
+          "executionEnabled": false,
+          "reason": "Project treasury production discovery is not activated"
+        }
+      },
+      "dom": {
+        "readyState": "complete",
+        "inputValue": "0x1000000000000000000000000000000000000760",
+        "disabled": true,
+        "buttonText": "Checking evidence…",
+        "reactOnChange": "function",
+        "width": 390,
+        "height": 664,
+        "touch": 0,
+        "coarse": true,
+        "statuses": [
+          "Verifying treasury runtime, controller, project and balances…"
+        ]
+      }
+    },
+    {
+      "n": 6,
+      "startedAt": "2026-11-18T21:22:37.396Z",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:3205/api/launchpad/project-treasury?address=0x1000000000000000000000000000000000000760",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "pageStatus": 200,
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "unavailable",
+          "executionEnabled": false,
+          "reason": "Project treasury production discovery is not activated"
+        }
+      },
+      "dom": {
+        "readyState": "complete",
+        "inputValue": "0x1000000000000000000000000000000000000760",
+        "disabled": true,
+        "buttonText": "Checking evidence…",
+        "reactOnChange": "function",
+        "width": 390,
+        "height": 664,
+        "touch": 0,
+        "coarse": true,
+        "statuses": [
+          "Verifying treasury runtime, controller, project and balances…"
+        ]
+      }
+    },
+    {
+      "n": 7,
+      "startedAt": "2026-11-18T21:22:37.805Z",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:3205/api/launchpad/project-treasury?address=0x1000000000000000000000000000000000000760",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "pageStatus": 200,
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "unavailable",
+          "executionEnabled": false,
+          "reason": "Project treasury production discovery is not activated"
+        }
+      },
+      "dom": {
+        "readyState": "complete",
+        "inputValue": "0x1000000000000000000000000000000000000760",
+        "disabled": true,
+        "buttonText": "Checking evidence…",
+        "reactOnChange": "function",
+        "width": 390,
+        "height": 664,
+        "touch": 0,
+        "coarse": true,
+        "statuses": [
+          "Verifying treasury runtime, controller, project and balances…"
+        ]
+      }
+    },
+    {
+      "n": 8,
+      "startedAt": "2026-11-18T21:22:38.195Z",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:3205/api/launchpad/project-treasury?address=0x1000000000000000000000000000000000000760",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "pageStatus": 200,
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "unavailable",
+          "executionEnabled": false,
+          "reason": "Project treasury production discovery is not activated"
+        }
+      },
+      "dom": {
+        "readyState": "complete",
+        "inputValue": "0x1000000000000000000000000000000000000760",
+        "disabled": true,
+        "buttonText": "Checking evidence…",
+        "reactOnChange": "function",
+        "width": 390,
+        "height": 664,
+        "touch": 0,
+        "coarse": true,
+        "statuses": [
+          "Verifying treasury runtime, controller, project and balances…"
+        ]
+      }
+    },
+    {
+      "n": 9,
+      "startedAt": "2026-11-18T21:22:38.587Z",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:3205/api/launchpad/project-treasury?address=0x1000000000000000000000000000000000000760",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "pageStatus": 200,
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "unavailable",
+          "executionEnabled": false,
+          "reason": "Project treasury production discovery is not activated"
+        }
+      },
+      "dom": {
+        "readyState": "complete",
+        "inputValue": "0x1000000000000000000000000000000000000760",
+        "disabled": true,
+        "buttonText": "Checking evidence…",
+        "reactOnChange": "function",
+        "width": 390,
+        "height": 664,
+        "touch": 0,
+        "coarse": true,
+        "statuses": [
+          "Verifying treasury runtime, controller, project and balances…"
+        ]
+      }
+    },
+    {
+      "n": 10,
+      "startedAt": "2026-11-18T21:22:38.998Z",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:3205/api/launchpad/project-treasury?address=0x1000000000000000000000000000000000000760",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "pageStatus": 200,
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "unavailable",
+          "executionEnabled": false,
+          "reason": "Project treasury production discovery is not activated"
+        }
+      },
+      "dom": {
+        "readyState": "complete",
+        "inputValue": "0x1000000000000000000000000000000000000760",
+        "disabled": true,
+        "buttonText": "Checking evidence…",
+        "reactOnChange": "function",
+        "width": 390,
+        "height": 664,
+        "touch": 0,
+        "coarse": true,
+        "statuses": [
+          "Verifying treasury runtime, controller, project and balances…"
+        ]
+      }
+    },
+    {
+      "n": 11,
+      "startedAt": "2026-11-18T21:22:39.391Z",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:3205/api/launchpad/project-treasury?address=0x1000000000000000000000000000000000000760",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "pageStatus": 200,
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "unavailable",
+          "executionEnabled": false,
+          "reason": "Project treasury production discovery is not activated"
+        }
+      },
+      "dom": {
+        "readyState": "complete",
+        "inputValue": "0x1000000000000000000000000000000000000760",
+        "disabled": true,
+        "buttonText": "Checking evidence…",
+        "reactOnChange": "function",
+        "width": 390,
+        "height": 664,
+        "touch": 0,
+        "coarse": true,
+        "statuses": [
+          "Verifying treasury runtime, controller, project and balances…"
+        ]
+      }
+    },
+    {
+      "n": 12,
+      "startedAt": "2026-11-18T21:22:39.797Z",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:3205/api/launchpad/project-treasury?address=0x1000000000000000000000000000000000000760",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "pageStatus": 200,
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "unavailable",
+          "executionEnabled": false,
+          "reason": "Project treasury production discovery is not activated"
+        }
+      },
+      "dom": {
+        "readyState": "complete",
+        "inputValue": "0x1000000000000000000000000000000000000760",
+        "disabled": true,
+        "buttonText": "Checking evidence…",
+        "reactOnChange": "function",
+        "width": 390,
+        "height": 664,
+        "touch": 0,
+        "coarse": true,
+        "statuses": [
+          "Verifying treasury runtime, controller, project and balances…"
+        ]
+      }
+    },
+    {
+      "n": 13,
+      "startedAt": "2026-11-18T21:22:40.168Z",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:3205/api/launchpad/project-treasury?address=0x1000000000000000000000000000000000000760",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "pageStatus": 200,
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "unavailable",
+          "executionEnabled": false,
+          "reason": "Project treasury production discovery is not activated"
+        }
+      },
+      "dom": {
+        "readyState": "complete",
+        "inputValue": "0x1000000000000000000000000000000000000760",
+        "disabled": true,
+        "buttonText": "Checking evidence…",
+        "reactOnChange": "function",
+        "width": 390,
+        "height": 664,
+        "touch": 0,
+        "coarse": true,
+        "statuses": [
+          "Verifying treasury runtime, controller, project and balances…"
+        ]
+      }
+    },
+    {
+      "n": 14,
+      "startedAt": "2026-11-18T21:22:40.576Z",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:3205/api/launchpad/project-treasury?address=0x1000000000000000000000000000000000000760",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "pageStatus": 200,
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "unavailable",
+          "executionEnabled": false,
+          "reason": "Project treasury production discovery is not activated"
+        }
+      },
+      "dom": {
+        "readyState": "complete",
+        "inputValue": "0x1000000000000000000000000000000000000760",
+        "disabled": true,
+        "buttonText": "Checking evidence…",
+        "reactOnChange": "function",
+        "width": 390,
+        "height": 664,
+        "touch": 0,
+        "coarse": true,
+        "statuses": [
+          "Verifying treasury runtime, controller, project and balances…"
+        ]
+      }
+    },
+    {
+      "n": 15,
+      "startedAt": "2026-11-18T21:22:41.002Z",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:3205/api/launchpad/project-treasury?address=0x1000000000000000000000000000000000000760",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "pageStatus": 200,
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "unavailable",
+          "executionEnabled": false,
+          "reason": "Project treasury production discovery is not activated"
+        }
+      },
+      "dom": {
+        "readyState": "complete",
+        "inputValue": "0x1000000000000000000000000000000000000760",
+        "disabled": true,
+        "buttonText": "Checking evidence…",
+        "reactOnChange": "function",
+        "width": 390,
+        "height": 664,
+        "touch": 0,
+        "coarse": true,
+        "statuses": [
+          "Verifying treasury runtime, controller, project and balances…"
+        ]
+      }
+    },
+    {
+      "n": 16,
+      "startedAt": "2026-11-18T21:22:41.386Z",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:3205/api/launchpad/project-treasury?address=0x1000000000000000000000000000000000000760",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "pageStatus": 200,
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "unavailable",
+          "executionEnabled": false,
+          "reason": "Project treasury production discovery is not activated"
+        }
+      },
+      "dom": {
+        "readyState": "complete",
+        "inputValue": "0x1000000000000000000000000000000000000760",
+        "disabled": true,
+        "buttonText": "Checking evidence…",
+        "reactOnChange": "function",
+        "width": 390,
+        "height": 664,
+        "touch": 0,
+        "coarse": true,
+        "statuses": [
+          "Verifying treasury runtime, controller, project and balances…"
+        ]
+      }
+    },
+    {
+      "n": 17,
+      "startedAt": "2026-11-18T21:22:41.765Z",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:3205/api/launchpad/project-treasury?address=0x1000000000000000000000000000000000000760",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "pageStatus": 200,
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "unavailable",
+          "executionEnabled": false,
+          "reason": "Project treasury production discovery is not activated"
+        }
+      },
+      "dom": {
+        "readyState": "complete",
+        "inputValue": "0x1000000000000000000000000000000000000760",
+        "disabled": true,
+        "buttonText": "Checking evidence…",
+        "reactOnChange": "function",
+        "width": 390,
+        "height": 664,
+        "touch": 0,
+        "coarse": true,
+        "statuses": [
+          "Verifying treasury runtime, controller, project and balances…"
+        ]
+      }
+    },
+    {
+      "n": 18,
+      "startedAt": "2026-11-18T21:22:42.168Z",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:3205/api/launchpad/project-treasury?address=0x1000000000000000000000000000000000000760",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "pageStatus": 200,
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "unavailable",
+          "executionEnabled": false,
+          "reason": "Project treasury production discovery is not activated"
+        }
+      },
+      "dom": {
+        "readyState": "complete",
+        "inputValue": "0x1000000000000000000000000000000000000760",
+        "disabled": true,
+        "buttonText": "Checking evidence…",
+        "reactOnChange": "function",
+        "width": 390,
+        "height": 664,
+        "touch": 0,
+        "coarse": true,
+        "statuses": [
+          "Verifying treasury runtime, controller, project and balances…"
+        ]
+      }
+    },
+    {
+      "n": 19,
+      "startedAt": "2026-11-18T21:22:42.565Z",
+      "requests": [
+        {
+          "url": "http://127.0.0.1:3205/api/launchpad/project-treasury?address=0x1000000000000000000000000000000000000760",
+          "method": "GET"
+        }
+      ],
+      "errors": [],
+      "pageStatus": 200,
+      "response": {
+        "status": 200,
+        "body": {
+          "status": "unavailable",
+          "executionEnabled": false,
+          "reason": "Project treasury production discovery is not activated"
+        }
+      },
+      "dom": {
+        "readyState": "complete",
+        "inputValue": "0x1000000000000000000000000000000000000760",
+        "disabled": true,
+        "buttonText": "Checking evidence…",
+        "reactOnChange": "function",
+        "width": 390,
+        "height": 664,
+        "touch": 0,
+        "coarse": true,
+        "statuses": [
+          "Verifying treasury runtime, controller, project and balances…"
+        ]
+      }
+    }
+  ],
+  "failures": 0
+}

@@ -1,0 +1,141 @@
+{
+  "environment": "loopback",
+  "emulator": true,
+  "url": "http://127.0.0.1:3242/",
+  "results": [
+    {
+      "engine": "chromium",
+      "mode": "firebase-emulators",
+      "syntheticWallet": "0x5935897A39AFABbedA5a599D38236E7Df151C8b8",
+      "fixtureIsolation": "Per-browser deterministic synthetic identities, separate from server-suite accounts; durable limits unchanged",
+      "signatureRequests": 6,
+      "walletsAccepted": [
+        "MetaMask",
+        "Rabby"
+      ],
+      "cookieHttpOnly": true,
+      "profiles": "saved/reloaded/public/deleted-after-fresh-proof",
+      "avatar": "uploaded/re-encoded/decoded/removed-with-profile-retained/reuploaded-versioned/header-editor-public-loaded",
+      "privatePreferences": "saved/not-public",
+      "logoutAndAccountChange": "verified-including-outage-retry",
+      "networkSwitch": "rejection-then-confirmed-switch",
+      "transactions": 0
+    },
+    {
+      "engine": "webkit",
+      "mode": "firebase-emulators",
+      "syntheticWallet": "0xe89476B7cc8fA1E503F2ae4A43e53EDa4bFBAC07",
+      "fixtureIsolation": "Per-browser deterministic synthetic identities, separate from server-suite accounts; durable limits unchanged",
+      "signatureRequests": 6,
+      "walletsAccepted": [
+        "MetaMask",
+        "Rabby"
+      ],
+      "cookieHttpOnly": true,
+      "profiles": "saved/reloaded/public/deleted-after-fresh-proof",
+      "avatar": "uploaded/re-encoded/decoded/removed-with-profile-retained/reuploaded-versioned/header-editor-public-loaded",
+      "privatePreferences": "saved/not-public",
+      "logoutAndAccountChange": "verified-including-outage-retry",
+      "networkSwitch": "rejection-then-confirmed-switch",
+      "transactions": 0
+    }
+  ],
+  "mutationDiagnostics": [
+    {
+      "engine": "chromium",
+      "entries": [
+        {
+          "method": "PATCH",
+          "path": "/api/account/profile",
+          "status": 200,
+          "observedAt": "2026-11-18T21:38:36.148Z",
+          "bodyCaptured": true
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/account/profile",
+          "status": 200,
+          "observedAt": "2026-11-18T21:38:36.392Z",
+          "bodyCaptured": true
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/account/profile",
+          "status": 200,
+          "observedAt": "2026-11-18T21:38:36.591Z",
+          "bodyCaptured": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/account/avatar",
+          "status": 200,
+          "observedAt": "2026-11-18T21:38:36.774Z",
+          "bodyCaptured": true
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/account/avatar",
+          "status": 200,
+          "observedAt": "2026-11-18T21:38:37.239Z",
+          "bodyCaptured": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/account/avatar",
+          "status": 200,
+          "observedAt": "2026-11-18T21:38:37.562Z",
+          "bodyCaptured": true
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "entries": [
+        {
+          "method": "PATCH",
+          "path": "/api/account/profile",
+          "status": 200,
+          "observedAt": "2026-11-18T21:38:47.842Z",
+          "bodyCaptured": true
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/account/profile",
+          "status": 200,
+          "observedAt": "2026-11-18T21:38:48.242Z",
+          "bodyCaptured": true
+        },
+        {
+          "method": "PATCH",
+          "path": "/api/account/profile",
+          "status": 200,
+          "observedAt": "2026-11-18T21:38:48.640Z",
+          "bodyCaptured": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/account/avatar",
+          "status": 200,
+          "observedAt": "2026-11-18T21:38:48.858Z",
+          "bodyCaptured": true
+        },
+        {
+          "method": "DELETE",
+          "path": "/api/account/avatar",
+          "status": 200,
+          "observedAt": "2026-11-18T21:38:49.532Z",
+          "bodyCaptured": true
+        },
+        {
+          "method": "POST",
+          "path": "/api/account/avatar",
+          "status": 200,
+          "observedAt": "2026-11-18T21:38:49.869Z",
+          "bodyCaptured": true
+        }
+      ]
+    }
+  ],
+  "physicalWalletAcceptance": "not performed",
+  "productionActivation": false
+}

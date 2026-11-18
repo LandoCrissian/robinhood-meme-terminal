@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 1,
+  "baseline": "51e0ee874b635f1e104a40ff6419af3b5659fb90",
+  "scope": "Every existing tracked Solidity source at Task075 base; normalized checkout line endings only",
+  "count": 36,
+  "files": [
+    {
+      "path": "docs/evidence/rmt-task040/foundry/RMTLaunchTask040Review.t.sol",
+      "sha256": "3d4da11aa50859a60675546d64d56bd67284767c908f7281f216d7d5f01d0a64"
+    },
+    {
+      "path": "docs/evidence/rmt-task041/RejectingTreasury.sol",
+      "sha256": "3ff4af02679fff778e5f1c4f6fdcec912fa12bd19b68b321a8d9cb9f52373a26"
+    },
+    {
+      "path": "docs/evidence/rmt-task042/foundry/RMTLaunchTreasuryReview.t.sol",
+      "sha256": "9a8a7da35094731ca305a587af0fed3848c192b947351a771269b2290c69ef18"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchBondingCurveV1.sol",
+      "sha256": "1d5bfe45b49c81e5dfda76939251c3f56d42594bffb69da0cb5efc59bf9f7030"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchBondingCurveV2.sol",
+      "sha256": "ced2dd6ef8999c52f3f05c9d8a28124a665ebeac7e2696ebe75592ecafafdbb5"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchBondingCurveV3.sol",
+      "sha256": "5c5e13be8e978545c54771a27e6315315eb7e411f4f190daf01d9c397818fc93"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveDeploymentV2.sol",
+      "sha256": "31e3173f1999f8d68e4bbc6cd55196d618d02de7d9a2da37c53d76dfc7ccfb93"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveDirectoryV1.sol",
+      "sha256": "cc8e4b76a3783b5422a309d0ed83a3346985e363e68fa2145b37cf0fba1fe3e0"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveDirectoryV2.sol",
+      "sha256": "0bb4beb821652d079620050c228783647d865da6a05da4df1628cc84ca3c1531"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveFactoryV2.sol",
+      "sha256": "b7aff2888168b9b4d091fca46e5d17e5bd83f54f62ae2c57bc64439e42cdbdc8"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveLpFeeLedgerV1.sol",
+      "sha256": "dff06312947d67835b9c313f0e68e26a3db989149477ec968663a86576b441f5"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveMathV1.sol",
+      "sha256": "2c1db3dd44aee9532188cf81f5085cecd0ebf049841357b25840e7b7be03fbb2"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveRevenueLedgerV1.sol",
+      "sha256": "558c2ea7b7bae540d3c92d482cd9df2aa88b4b20d1da1c4ada1d986c0bc7bd54"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveTokenV2.sol",
+      "sha256": "c0fc0358e4f0b46dca00ed264459896a42b52e256b19a0f8c412e91a31fd7d19"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchProjectRegistryV1.sol",
+      "sha256": "48fa079c05c0cb840dc0c7027d407e54b1472ff0924c30d8e4dc4780a490e717"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchProjectRegistryV2.sol",
+      "sha256": "67f22eed981c6627ce6045001dbcfd23eff2e7d8b178c540b9f9979b7acee6ab"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchProjectRegistryV3.sol",
+      "sha256": "8c92270751788af7acdbd6b4c18a4d0d5fbb399a876d974d55807489516e388c"
+    },
+    {
+      "path": "packages/contracts/src/RMTV4CurveGraduationV1.sol",
+      "sha256": "b633189372da00f1491908175b9af2f8b1f0ba21093e6df67ea66309921b601e"
+    },
+    {
+      "path": "packages/contracts/src/RMTV4CurveInitializationGuardV1.sol",
+      "sha256": "0c1498c636aae8954c6f47420cd7341eecbeb1eaaae9b3c743c22aa8907eb31f"
+    },
+    {
+      "path": "packages/contracts/src/interfaces/IRMTLaunchCurveExecution.sol",
+      "sha256": "9b5793ca3cfbffc912e53f6e26d6744aa49a1dfce913791e867e466a5bfa451c"
+    },
+    {
+      "path": "packages/contracts/src/interfaces/IRMTV4CurveGraduationV1.sol",
+      "sha256": "d3fe566a9b14f907c5289860d96f26b58649027f0ea6d1718862c377839ebefe"
+    },
+    {
+      "path": "packages/contracts/test/RMTDependencyArithmeticReview.t.sol",
+      "sha256": "030491f216ffeadde1e4c60715095fc5cb7dda79e25cbbd9923f462767a799ba"
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchAdjacentMigrationProof.t.sol",
+      "sha256": "72459d50784b0e7bc2631e68a23d68b7597b45ad2bc5e0b02e840669ed730853"
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchBondingCurveV1.t.sol",
+      "sha256": "486e7fc0018a79261ad60b0d270adf3ea957039373df5cd6ebd658026f98f487"
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchCreatorEarnings.t.sol",
+      "sha256": "b7c81e81b008ece8cab270d1cefd815745845933de46c4c50d0e80ba9f502401"
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchCurveAccountingInvariant.t.sol",
+      "sha256": "367ff93c9cc30b8349098696522e6f5c914c401d3fb9bdcef7d7d90720005aa0"
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchCurveCreationFeeV1.t.sol",
+      "sha256": "db42861f5a55e8be52786720db3690e16e0e6d9a12585eb83cbc79a6e1e983c0"
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchCurveDirectoryV1.t.sol",
+      "sha256": "4606cf9e959c176af11fe3869ff0b63971e4b1056431300e049276b5231b9cef"
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchCurveDirectoryV2.t.sol",
+      "sha256": "3e08403cdd4801d32210198899c3e5c1249f20386c6f3b456db710f493838236"
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchCurveSymbolic.t.sol",
+      "sha256": "2c84db5a0dc7bba267d2ea39bf4f01b347006e35c7bbb680a035fe216c820764"
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchMigrationReadiness.t.sol",
+      "sha256": "7b811ac656f393d80b36cc639fbc1798d194ca7089697da5804a50efecd91901"
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchProjectRegistryV1.t.sol",
+      "sha256": "f1ba0190be9ac82a0b128c302e543223cfde7ab1605a7febae22f1b4fcd0a6af"
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchProjectRegistryV2.t.sol",
+      "sha256": "9edb5b27502096dd78a17de26059debabf830197fbd6b48e0b8c6881bd30410d"
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchProjectRegistryV3.t.sol",
+      "sha256": "91276bbb300a91625291af6a35d5a609d6dde1a8b1b04559133926122bb0b1e8"
+    },
+    {
+      "path": "packages/contracts/test/RMTV4CurveGraduationV1.t.sol",
+      "sha256": "efcbb6cbfa479f2c2c46d47b9b7c938e6dd64c20460a539acf44069c7fd6f832"
+    },
+    {
+      "path": "packages/contracts/test/RMTV4SharedPoolSettlement.t.sol",
+      "sha256": "11393f4d11e2f024675ab35b3d33dc7cd6440eb24b7185311f3fe1f8d0e583ff"
+    }
+  ]
+}

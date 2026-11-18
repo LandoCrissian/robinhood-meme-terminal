@@ -19,6 +19,10 @@ import { testEarningsJourney } from "./rmt-earnings-integration.mjs";
 import { testSuccessorEarningsJourney } from "./rmt-successor-earnings-integration.mjs";
 import { testClaimWalletProfiles } from "../claims/local-wallet-acceptance.mjs";
 import { testClaimProfilesBrowser } from "../claims/browser-wallet-acceptance.mjs";
+import { compileProjectTreasury } from "../treasury/compiler.mjs";
+import { deployProjectTreasuryFixture } from "../treasury/deploy-fixture.mjs";
+import { testProjectTreasuryJourney } from "../treasury/local-integration.mjs";
+import { observeOriginalReceipt } from "./receipt-observation.mjs";
 
 const repository = fileURLToPath(new URL("../../", import.meta.url));
 const require = createRequire(new URL("../../apps/indexer/package.json", import.meta.url));
@@ -32,10 +36,11 @@ const { values: args } = parseArgs({ options: {
   browser: { type: "string", default: "chromium" },
   "successor-only": { type: "boolean", default: false },
   "profiles-only": { type: "boolean", default: false },
+  "treasury-only": { type: "boolean", default: false },
 } });
 for (const option of ["anvil", "solc", "pg-bin", "output"]) assert.ok(args[option], `Supply --${option}`);
 assert.ok(["chromium", "webkit"].includes(args.browser), "Use --browser chromium or --browser webkit");
-assert.ok(!(args["successor-only"] && args["profiles-only"]), "Select one focused acceptance scope");
+assert.ok([args["successor-only"], args["profiles-only"], args["treasury-only"]].filter(Boolean).length <= 1, "Select one focused acceptance scope");
 const out = resolve(args.output);
 const anvil = resolve(args.anvil);
 const solc = resolve(args.solc);
@@ -52,6 +57,7 @@ for (const item of ["apps/launch-website/.next/BUILD_ID", "apps/indexer/dist/cur
 const historical = "8dca5773cbd4dc98f52a45616f420bce96b000f0";
 const candidateCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repository, encoding: "utf8" }).trim();
 const { artifacts, manifest } = compileFixedSupplyProfile({ solc, lib: args.lib, chainId: 31337 });
+const treasuryCompilation = args["treasury-only"] ? compileProjectTreasury({ solc }) : undefined;
 const anchor = JSON.parse(execFileSync("git", ["show",
   historical + ":packages/contracts/test/fixtures/rmt-v4-deployment-identities.json",
 ], { cwd: repository, encoding: "utf8" })).baseSepolia;
@@ -152,7 +158,7 @@ function start(executable, params, name, { cwd = repository, env = childBase, di
     child.once("close", (code) => complete({ code, stdout, stderr }));
   }).then(async (result) => {
     if (!discard) await writeFile(join(out, `${name}.log`), (result.stdout + result.stderr)
-      .replaceAll(pgPass, "[redacted]").replaceAll(indexReadKey, "[redacted]"));
+      .replaceAll(pgPass, "[redacted]").replaceAll(indexReadKey, "[redacted]").slice(-128 * 1024));
     return result;
   });
   const job = { child, done, name };
@@ -253,7 +259,7 @@ const rpcProxy = loopback(proxy.address().port) + "/";
 // outage. Both proxies are read-only, loopback-only facades of the same synthetic
 // chain; neither is claimed as an independent production provider. The worker
 // must prove its own rows rather than receiving fabricated indexed evidence.
-const claimProofProxy = args["profiles-only"] ? createServer(proxyHandler(true)) : undefined;
+const claimProofProxy = args["profiles-only"] || args["treasury-only"] ? createServer(proxyHandler(true)) : undefined;
 if (claimProofProxy) await new Promise((done, fail) => { claimProofProxy.once("error", fail); claimProofProxy.listen(0, "127.0.0.1", done); });
 const claimRpcProxy = claimProofProxy ? loopback(claimProofProxy.address().port) + "/" : rpcProxy;
 
@@ -261,7 +267,7 @@ let pgStarted = false;
 let browser;
 let page;
 const evidence = { candidateCommit, compilerProfile: manifest, browser: args.browser,
-  anchor: { block: anchor.block, blockHash: anchor.blockHash }, chainId: 31337, project };
+  anchor: { block: anchor.block, blockHash: anchor.blockHash }, chainId: 31337, project, receiptWaits: [] };
 try {
   const chain = start(anvil, ["--host", "127.0.0.1", "--port", new URL(rpcUrl).port, "--chain-id", "31337",
     ...(mobileCreator ? ["--hardfork", "prague"] : []),
@@ -281,13 +287,15 @@ try {
     await rpc("anvil_setBalance", [address, toHex(20n * 10n ** 18n)]);
     await rpc("anvil_impersonateAccount", [address]);
   }
-  let deployed;
+  let deployed, treasuryDeployment;
   try {
     const client = await localFixtureClient(rpcUrl, 31337);
     const { poolManager, positionManager, permit2: allowanceTransfer, universalRouter212, quoter, stateView } = anchor;
     deployed = await deployFixedSupplyFixture(client, artifacts,
       { poolManager, positionManager, permit2: allowanceTransfer, universalRouter: universalRouter212, quoter, stateView },
       { operator, operations, reserve, fixtureMigrationAuthority: true });
+    if (treasuryCompilation) treasuryDeployment = await deployProjectTreasuryFixture({ client, compilation: treasuryCompilation,
+      core: deployed, coreArtifacts: artifacts, operator, out });
   } finally {
     for (const address of deploymentAccounts) await rpc("anvil_stopImpersonatingAccount", [address]);
   }
@@ -342,6 +350,8 @@ try {
     RMT_CURVE_FIXTURE_READ_KEY: indexReadKey,
     RMT_CURVE_FIXTURE_DEPLOYMENT: manifestPath, RMT_CURVE_FIXTURE_SITE_ORIGIN: site, RMT_CURVE_FIXTURE_INDEXER: workerOrigin + "/",
     ...(args["profiles-only"] && { RMT_CLAIM_PROFILES_FIXTURE: "local-reviewed-claims-31337-v1" }),
+    ...(args["treasury-only"] && { RMT_PROJECT_TREASURY_FIXTURE: "local-reviewed-project-treasury-v1",
+      RMT_PROJECT_TREASURY_DEPLOYMENT: join(out, "project-treasury-deployment.json") }),
     ...(mobileCreator && { RMT_MOBILE_REVIEW_FIXTURE: "local-reviewed-31337",
       RMT_MOBILE_REVIEW_FIXTURE_ACCOUNT: mobileCreator.address, RMT_MOBILE_REVIEW_TEST_DELEGATION: "synthetic-7702-v1",
       RMT_MOBILE_REVIEW_PLAN: mobilePlan }) };
@@ -385,13 +395,31 @@ try {
   const ownTreasury = await post(prepareBody({ ...reviewFields, treasury: creator.address.toLowerCase() }));
   assert.equal(ownTreasury.status, 422, "The creator cannot also be the project treasury");
   const reservedTreasury = await post(prepareBody({ ...reviewFields, treasury: binding.factory.toLowerCase() }));
+  await writeFile(join(out, "reserved-beneficiary-preflight.json"), JSON.stringify({ status: reservedTreasury.status,
+    body: await reservedTreasury.clone().json(), treasury: binding.factory }, null, 2));
   assert.equal(reservedTreasury.status, 422, "The factory cannot be committed as a project treasury");
   const unfunded = await post(prepareBody({ ...reviewFields, treasury: treasury.toLowerCase() }, alternate));
   assert.notEqual((await unfunded.json()).status, "prepared", "The fixture cannot simulate a creation without its fee");
   const snapshot = await rpc("evm_snapshot");
   const beforeSnapshot = await rpc("eth_getBlockByNumber", ["latest", false]);
   const countBefore = BigInt(await rpc("eth_getTransactionCount", [creator.address, "latest"]));
-  if (args["profiles-only"]) {
+  if (args["treasury-only"]) {
+    assert.ok(treasuryDeployment && treasuryCompilation);
+    let worker = startWorker("worker-project-treasury");
+    await rpc("anvil_mine", ["0x3"]); await workerReady(worker);
+    browser = await ({ chromium, webkit })[args.browser].launch();
+    await testProjectTreasuryJourney({ browserEngine: browser, rpcUrl, rpc, artifacts, deployed, anchor,
+      treasuryCompilation, treasuryDeployment, creatorAccount: creator, operatorAccount: deploymentOperator,
+      sourceIdentity: { commit: candidateCommit, browser: args.browser, coreCompiler: manifest,
+        anchor: { block: anchor.block, blockHash: anchor.blockHash }, mode: "isolated-31337-project-treasury" },
+      site, workerOrigin, indexReadKey, out, pg, waitFor,
+      mine: () => rpc("anvil_mine", ["0x3"]), ready: () => workerReady(worker), restart: async () => {
+        await stop(web); await stop(worker);
+        web = startWeb("website-project-treasury-restart"); worker = startWorker("worker-project-treasury-restart");
+        await webReady(web); await workerReady(worker);
+      }, hideReceipt: hash => { hideReceipt = hash ?? undefined; }, hideNativeProof: hidden => { hideClaimTrace = hidden; } });
+    console.log("Same-app optional treasury creation, contract claims and custody acceptance passed on synthetic31337. No production execution occurred.");
+  } else if (args["profiles-only"]) {
     await writeFile(join(out, "claim-wallet-profile-manifest.json"), JSON.stringify({ schemaVersion: 1,
       candidateCommit, scope: "LOCAL_SYNTHETIC_31337", compilerProfile: manifest,
       anchor: evidence.anchor, financialAuthorization: false }, null, 2) + "\n");
@@ -599,6 +627,7 @@ try {
   await page.getByLabel("Project or metadata URL", { exact: true }).fill(project.projectURI);
   await page.getByLabel("Artwork URL", { exact: true }).fill(draftOnly.artwork);
   await page.getByText("Optional project treasury", { exact: true }).click();
+  await page.getByRole("radio", { name: /Use an existing beneficiary/ }).check();
   await page.getByLabel("Treasury address", { exact: true }).fill(treasury);
   await page.getByLabel("Treasury share of project fees (%)", { exact: true }).fill("25");
   await button("Review draft").click();
@@ -764,7 +793,16 @@ try {
   const lastReceipt = async (operation) => {
     const submission = signatures.at(-1);
     assert.equal(submission.operation, operation);
-    const settled = await rpc("eth_getTransactionReceipt", [submission.transactionHash]);
+    const observation = { operation, transactionHash: submission.transactionHash, pendingObservations: 0, status: "waiting" };
+    evidence.receiptWaits.push(observation);
+    let settled;
+    try {
+      const result = await observeOriginalReceipt(rpc, submission.transactionHash, {
+        onPending: count => { observation.pendingObservations = count; },
+      });
+      settled = result.receipt; observation.status = "canonical-observed";
+    } catch (error) { observation.status = "failed"; throw error; }
+    finally { await writeFile(join(out, "receipt-observations.json"), JSON.stringify(evidence.receiptWaits, null, 2)); }
     const block = await rpc("eth_getBlockByNumber", [settled.blockNumber, false]);
     assert.equal(settled.status, "0x1");
     eq(settled.blockHash, block.hash);
@@ -989,6 +1027,7 @@ try {
     binding: { factory: binding.factory, token, blockNumber: toHex(BigInt(binding.deployBlock)), blockHash: binding.deploymentBlockHash },
     account: creator.address,
     httpStatus: graduationReviewHttp.status(), status: graduationReview.status, reason: graduationReview.reason,
+    diagnostic: graduationReview.diagnostic,
     request: graduationReview.request, quote: graduationReview.quote, phase: graduationReview.state?.phase,
   }, null, 2));
   assert.equal(graduationReviewHttp.status(), 200, "Graduation review HTTP evidence");

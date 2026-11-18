@@ -7,6 +7,7 @@ import { sameAccount } from "../../lib/profile-wallet";
 import { useAccount } from "./account-provider";
 import { NewEngineLaunches } from "./new-engine-launches";
 import { WalletAccount } from "./wallet-account";
+import { MyLaunchesNav } from "./my-launches-nav";
 
 export function MyLaunches() {
   const { session, checking } = useAccount();
@@ -54,7 +55,7 @@ export function MyLaunches() {
   return <>
     <header className="lpPageHeading"><div><h1>My Launches</h1><p>Your creator identity and verified new-engine projects.</p></div>
       <Link className="lpButton" href="/create-token" prefetch={false}>Create token</Link></header>
-    <nav className="lpEarningsTabs" aria-label="My Launches views"><Link href="/my-launches" aria-current="page" className="lpBack" prefetch={false}>Projects</Link><Link className="lpBack" href="/my-launches/earnings" prefetch={false}>Earnings →</Link></nav>
+    <MyLaunchesNav active="projects" />
     {checking ? <div className="lpSkeleton" role="status">Checking your account…</div> : !session.authenticated ? <WalletAccount compact /> : <>
       <p className="lpNotice">Showing the authenticated creator <code className="lpAddress">{address}</code>. This account cannot claim another project&apos;s fees or change its recipients.</p>
       {loading ? <div className="lpSkeleton" role="status">Loading verified creator launches…</div> : <NewEngineLaunches directory={directory} />}

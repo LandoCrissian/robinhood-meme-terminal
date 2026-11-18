@@ -1,0 +1,100 @@
+{
+  "schemaVersion": 1,
+  "scope": "LOCAL_BROWSER_EMULATION_TOOL_PROBE_NOT_PHYSICAL_DEVICE",
+  "playwrightVersion": "1.55.1",
+  "observedAt": "2026-11-18T21:04:22.366Z",
+  "cases": [
+    {
+      "browser": "chromium",
+      "browserVersion": "140.0.7339.186",
+      "fullPage": true,
+      "before": {
+        "coarse": true,
+        "touch": 1,
+        "width": 390,
+        "height": 664
+      },
+      "after": {
+        "coarse": false,
+        "touch": 0,
+        "width": 390,
+        "height": 664
+      },
+      "afterResize": {
+        "coarse": false,
+        "touch": 0,
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "browser": "chromium",
+      "browserVersion": "140.0.7339.186",
+      "fullPage": false,
+      "before": {
+        "coarse": true,
+        "touch": 1,
+        "width": 390,
+        "height": 664
+      },
+      "after": {
+        "coarse": true,
+        "touch": 1,
+        "width": 390,
+        "height": 664
+      },
+      "afterResize": {
+        "coarse": true,
+        "touch": 1,
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "browser": "webkit",
+      "browserVersion": "26.0",
+      "fullPage": true,
+      "before": {
+        "coarse": true,
+        "touch": 0,
+        "width": 390,
+        "height": 664
+      },
+      "after": {
+        "coarse": true,
+        "touch": 0,
+        "width": 390,
+        "height": 664
+      },
+      "afterResize": {
+        "coarse": true,
+        "touch": 0,
+        "width": 390,
+        "height": 844
+      }
+    },
+    {
+      "browser": "webkit",
+      "browserVersion": "26.0",
+      "fullPage": false,
+      "before": {
+        "coarse": true,
+        "touch": 0,
+        "width": 390,
+        "height": 664
+      },
+      "after": {
+        "coarse": true,
+        "touch": 0,
+        "width": 390,
+        "height": 664
+      },
+      "afterResize": {
+        "coarse": true,
+        "touch": 0,
+        "width": 390,
+        "height": 844
+      }
+    }
+  ]
+}

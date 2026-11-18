@@ -6,6 +6,7 @@ import { configuredCurveFixture } from "../../lib/server/curve-fixture";
 import { configuredCurveProductionRelease, curveProductionDeployment, curveProductionPins, verifyCurveProduction } from "../../lib/server/curve-production";
 import { productionCreationEnabled } from "../../lib/server/production-creation";
 import { configuredProductionDiscovery, readProductionDiscovery } from "../../lib/server/production-discovery";
+import { configuredProjectTreasuryFixture } from "../../lib/server/project-treasury-fixture";
 
 export const metadata: Metadata = { title: "Create Token | RMT Launch" };
 
@@ -28,7 +29,7 @@ export default async function CreateTokenPage() {
     <p className="lpNotice lpCreatorMode">{accepted ? "Owner creation acceptance · Robinhood Chain 4663 · real ETH. Each transaction requires your explicit wallet confirmation."
       : fixture ? "Isolated test mode · Anvil 31337 · synthetic funds only."
       : "Prelaunch · Read-only. Token creation is disabled. Drafts do not publish a listing."}</p>
-    <CreatorDraft executionTest={fixture ? { factory: fixture.factory } : undefined}
+    <CreatorDraft executionTest={fixture ? { factory: fixture.factory, projectTreasury: !!configuredProjectTreasuryFixture(requestHeaders) } : undefined}
       productionCreation={accepted ? { factory: curveProductionPins.factory[0], operating: curveProductionDeployment.operating,
         reserve: curveProductionDeployment.reserve } : undefined} />
   </>;

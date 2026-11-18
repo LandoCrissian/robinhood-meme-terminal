@@ -2,6 +2,20 @@
 useDefault = true
 
 [[allowlists]]
+description = "Four exact public synthetic ERC20 addresses proven by Task076 CurveCreated receipts; only the four raw browser/core reports, never credentials"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''(?i)^0x(?:f87b173127cc98079169a17191a126df0bdc5583|68f77de2010f5ebde45bfceaefbf899e307f10d8|f0c8b1244e8e41f3e1c2a3c1f21728ae3e896227|e6d40edab17b60e5942a68a5cd303324cb40849f)$''']
+paths = ['''^docs/evidence/rmt-task076/(?:chromium|webkit)-(?:browser|core)\.json$''']
+
+[[allowlists]]
+description = "Exact public Keccak-256 runtime identity of reviewed fixed-supply TokenV2; only Task076 deployment manifests"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''^0xbb1018a75a30c33d830a5ab203b0063c00d24853b69641472649262837f9cd42$''']
+paths = ['''^docs/evidence/rmt-task076/(?:chromium|webkit)-deployment\.json$''']
+
+[[allowlists]]
 description = "Six exact public synthetic ERC20 addresses from Task075 canonical CurveCreated receipts; only the four raw claim reports, not credentials, keys or arbitrary token values"
 condition = "AND"
 targetRules = ["generic-api-key"]
