@@ -55,8 +55,9 @@ export function EarningsDashboard({ fixture = false, fixtureFactory }: { fixture
         || result.launches.length > 50 || !Array.isArray(result.launches)
         || result.chainId !== (fixture ? 31337 : 4663)) throw new Error("Discovery unavailable");
       if (current !== generation.current) return;
+      if (after && rows.length >= 100) { setChecks({}); setRevision(value => value + 1); }
       setDirectory(result); setRows(previous => {
-        const combined = after ? [...previous, ...result.launches] : result.launches;
+        const combined = after && previous.length < 100 ? [...previous, ...result.launches] : result.launches;
         if (new Set(combined.map(row => row.token.toLowerCase())).size !== combined.length) { setMessage("The indexing page changed. Refresh the original lookup."); return previous; }
         return combined;
       });
@@ -131,7 +132,7 @@ export function EarningsDashboard({ fixture = false, fixtureFactory }: { fixture
         <section className="lpPanel"><span>Available in checked projects</span><strong>{verified.length ? earningsAmount(availableEth.toString()) : "Not checked"}</strong></section>
         <section className="lpPanel"><span>Claimed in checked projects</span><strong>{verified.length ? earningsAmount(claimedEth.toString()) : "Not checked"}</strong></section>
       </div>
-      <p className="lpInlineNotice">{verified.length} of {rows.length} loaded projects checked. Totals exclude unchecked projects, token-denominated fees and factory creation fees. {directory.nextCursor ? "More projects are available." : "End of this registration page set."}</p>
+      <p className="lpInlineNotice">{verified.length} of {rows.length} loaded projects checked. Totals exclude unchecked projects, token-denominated fees and factory creation fees. {directory.nextCursor ? "More projects are available. Each reading window retains up to 100 projects; the next window continues at the verified cursor." : "End of this registration page set."}</p>
       <div className="lpEarningsCheckpoint"><span>{directory.status === "ready" ? "Indexed registrations" : "Stale indexing checkpoint"}</span><span>Block {directory.checkpoint.blockNumber} · {new Date(directory.checkpoint.timestamp).toLocaleString()}</span><span>{fixture ? "Local synthetic evidence" : "L2 observed · L1 finality unverified"}</span></div>
       {!rows.length && <section className="lpEmpty"><div><h2>No matching new-engine registrations at this checkpoint</h2><p>This is not a statement about unindexed launches or historical fee rights.</p></div></section>}
       <div className="lpEarningsProjects">{rows.map(row => {
@@ -166,7 +167,7 @@ export function EarningsDashboard({ fixture = false, fixtureFactory }: { fixture
           </div></details>
         </article>;
       })}</div>
-      <div className="lpDraftActions">{directory.nextCursor && <button className="lpButton lpSecondary" disabled={loading} onClick={() => void load(recipient, directory.nextCursor!)}>Load more projects</button>}
+      <div className="lpDraftActions">{directory.nextCursor && <button className="lpButton lpSecondary" disabled={loading} onClick={() => void load(recipient, directory.nextCursor!)}>{rows.length >= 100 ? "Next project window" : "Load more projects"}</button>}
         <button className="lpTextButton" disabled={loading} onClick={() => void load(recipient)}>Refresh verified lookup</button></div>
       <details className="lpPanel lpEarningsFactory"><summary>Operations creation-fee payout</summary><div className="lpForm">
         <p>One factory-wide balance, paid only to immutable RMT Operations. It is separate from project revenue and is never multiplied by the number of projects. Anyone may trigger its release.</p>

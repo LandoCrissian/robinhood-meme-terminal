@@ -15,6 +15,7 @@ import { backing as backingWei, compileFixedSupplyProfile, creationFee as feeWei
 import { deployFixedSupplyFixture, localFixtureClient }
   from "../../packages/contracts/scripts/deploy-fixed-supply-fixture.mjs";
 import { testMobileReview } from "./rmt-mobile-review.mjs";
+import { testEarningsJourney } from "./rmt-earnings-integration.mjs";
 
 const repository = fileURLToPath(new URL("../../", import.meta.url));
 const require = createRequire(new URL("../../apps/indexer/package.json", import.meta.url));
@@ -70,6 +71,7 @@ const factoryAbi = parseAbi([
   "function operatingRecipient() view returns (address)",
   "function creationFeeWei() view returns (uint256)",
   "function creationFeesAccrued() view returns (uint256)",
+  "function claimCreationFees() returns (uint256)",
 ]);
 const curveAbi = parseAbi([
   "function backingReserve() view returns (uint256)", "function sold() view returns (uint256)",
@@ -81,6 +83,7 @@ const curveAbi = parseAbi([
   "function sell(uint256 amountIn,uint256 minimumEthOut,uint256 deadline) returns (uint256)",
   "function graduate(uint256 deadline)",
   "function graduated() view returns (bool)", "function graduationEngine() view returns (address)",
+  "function revenueLedger() view returns (address)",
   "event CurveTrade(address indexed account,bool indexed isBuy,uint256 tokenAmount,uint256 grossNative,uint256 fee,uint256 nativeRefund,uint256 sold,uint256 backingReserve)",
 ]);
 const nativeCurrency = "0x0000000000000000000000000000000000000000";
@@ -93,7 +96,9 @@ const feesAbi = parseAbi(["function collectLpFees(address token,uint256 deadline
   "function previewLpFees(address token) view returns (uint256,uint256)", "function lpFeeLedger(address token) view returns (address)",
   "event LpFeesCollected(address indexed token,uint256 indexed positionTokenId,address indexed ledger,uint256 nativeAmount,uint256 tokenAmount)"]);
 const ledgerAbi = parseAbi(["function claim() returns (uint256,uint256)", "function claimable(address) view returns (uint256,uint256)",
+  "function claimAsset(bool nativeAsset) returns (uint256)",
   "event LpFeesClaimed(address indexed recipient,uint256 nativeAmount,uint256 tokenAmount)"]);
+const curveLedgerAbi = parseAbi(["function claim() returns (uint256)", "function claimable(address) view returns (uint256)"]);
 const v4Routes = parseAbiParameters("bytes actions,bytes[] inputs");
 const v4Swap = parseAbiParameters("(address currency0,address currency1,uint24 fee,int24 tickSpacing,address hooks) poolKey,bool zeroForOne,uint128 amountIn,uint128 amountOutMinimum,uint256 minHopPriceX36,bytes hookData");
 const routerSwap = [{ type: "tuple", components: v4Swap }];
@@ -377,6 +382,7 @@ try {
   let currentCurve;
   let currentGraduation;
   let currentLedger;
+  let currentCurveLedger;
   const signerFor = new Map([creator, treasurySigner, operationsSigner, reserveSigner].map((account) => [account.address.toLowerCase(), account]));
   const pageErrors = [];
   const offOrigin = [];
@@ -386,7 +392,7 @@ try {
     return route.continue();
   });
   await page.exposeFunction("localCreationWallet", async (method, params = []) => {
-    if (method === "eth_getBlockByNumber" || method === "eth_getTransactionCount") return rpc(method, params);
+    if (["eth_getBlockByNumber", "eth_getTransactionCount", "eth_getCode"].includes(method)) return rpc(method, params);
     assert.equal(method, "eth_sendTransaction");
     assert.equal(params.length, 1);
     const [request] = params;
@@ -400,9 +406,13 @@ try {
     let intentId, deadline;
     if (request.to.toLowerCase() === binding.factory.toLowerCase()) {
       decoded = decodeFunctionData({ abi: factoryAbi, data: request.data });
+      assert.ok(["create", "claimCreationFees"].includes(decoded.functionName));
+      if (decoded.functionName === "claimCreationFees") {
+        assert.equal(transactionValue, 0n);
+        decoded.functionName = "creation-fees";
+      } else {
       assert.equal(transactionValue, feeWei);
       eq(request.from, creator.address);
-      assert.equal(decoded.functionName, "create");
       const [name, symbol, projectURI, toTreasury, share, intent, expires] = decoded.args;
       assert.deepEqual({ name, symbol, projectURI, share }, { name: project.name, symbol: project.symbol,
         projectURI: project.projectURI, share: project.treasuryShareBps });
@@ -410,6 +420,7 @@ try {
       assert.match(intent, /^0x[0-9a-f]{64}$/i);
       intentId = intent;
       deadline = expires;
+      }
     } else {
       assert.ok(currentToken && currentCurve);
       if (request.to.toLowerCase() === currentToken.toLowerCase()) {
@@ -455,9 +466,14 @@ try {
         decoded.functionName = "lp-collect";
       } else if (currentLedger && request.to.toLowerCase() === currentLedger.toLowerCase()) {
         decoded = decodeFunctionData({ abi: ledgerAbi, data: request.data });
+        assert.ok(["claim", "claimAsset"].includes(decoded.functionName));
+        assert.equal(transactionValue, 0n);
+        decoded.functionName = decoded.functionName === "claim" ? "lp-claim" : decoded.args[0] ? "lp-claim-native" : "lp-claim-token";
+      } else if (currentCurveLedger && request.to.toLowerCase() === currentCurveLedger.toLowerCase()) {
+        decoded = decodeFunctionData({ abi: curveLedgerAbi, data: request.data });
         assert.equal(decoded.functionName, "claim");
         assert.equal(transactionValue, 0n);
-        decoded.functionName = "lp-claim";
+        decoded.functionName = "curve-claim";
       } else {
         eq(request.to, currentCurve);
         decoded = decodeFunctionData({ abi: curveAbi, data: request.data });
@@ -566,6 +582,7 @@ try {
   const curve = contractAddress(await call(deployed.factory, factoryAbi, "originCurveForToken", [token], receipt.blockNumber));
   currentToken = token;
   currentCurve = curve;
+  currentCurveLedger = contractAddress(await call(curve, curveAbi, "revenueLedger"));
   assert.match(token, /^(?!0x0{40}$)0x[0-9a-f]{40}$/i);
   const getCurve = (method) => call(curve, curveAbi, method, [], receipt.blockNumber);
   assert.equal(BigInt(await getCurve("backingReserve")), 0n);
@@ -1167,6 +1184,18 @@ try {
   await workerReady(worker);
   assert.deepEqual(await postState(), settledPost);
 
+  const earnings = await testEarningsJourney({ page, site, out, pg, rpc, creator: creator.address, token, project,
+    factory: deployed.factory, operations: payableOperations, signatures, waitFor, mine,
+    ready: () => workerReady(worker), openToken, openTradeWallet, reviewed, executeReviewed, checkSettlement,
+    checkPosition, expectedFees, lastReceipt, curveLedger: currentCurveLedger,
+    hideNativeProof: active => { hideTradeTrace = active; },
+    restart: async () => {
+      await stop(web); await stop(worker);
+      web = startWeb("website-after-earnings"); worker = startWorker("worker-after-earnings");
+      await webReady(web); await workerReady(worker);
+    } });
+  assert.equal(signatures.length, 24, "The earnings journey adds exactly nine explicitly approved synthetic transactions");
+
   interruptLogScan = true;
   assert.equal(await rpc("evm_revert", [postSnapshot]), true);
   await rpc("evm_setNextBlockTimestamp", [Number((await nowOnChain()) + 73n)]);
@@ -1177,6 +1206,8 @@ try {
   await workerReady(worker);
   await checkPosition();
   const rolledBack = await postState();
+  assert.equal((await pg.query("SELECT COUNT(*)::int AS count FROM rmt_curve_fixture_fee_activity")).rows[0].count, 0,
+    "Reorg removes orphaned claims and collection evidence as well as LP activity");
   assert.deepEqual(rolledBack, startPost, "Replacing v4 transactions must roll back fees while preserving graduation");
   assert.equal(await rpc("eth_getTransactionReceipt", [v4SellReceipt.hash]), null);
   assert.equal(await rpc("eth_getTransactionReceipt", [collectProof.hash]), null);
@@ -1215,7 +1246,7 @@ try {
   assert.equal(reorg.status, 404, "Once rebuilt, a reorged registration cannot remain verified");
   const after = await fetchAt(site, "/api/launchpad/new-engine").then((response) => response.json());
   assert.deepEqual(after.launches, []);
-  assert.equal(signatures.length, 15, "Reorg and outages must not rebroadcast transactions");
+  assert.equal(signatures.length, 24, "Reorg and outages must not rebroadcast transactions");
   if (mobileCreator) {
     await rpc("anvil_setBalance", [mobileCreator.address, toHex(20n * 10n ** 18n)]);
     evidence.mobileReview = await testMobileReview({
@@ -1227,7 +1258,7 @@ try {
   }
   assert.deepEqual(pageErrors, []);
   assert.deepEqual(offOrigin, []);
-  Object.assign(evidence, { reviewedTransaction: tx, receipt: { hash: receipt.transactionHash, blockNumber: receipt.blockNumber,
+  Object.assign(evidence, { earnings, reviewedTransaction: tx, receipt: { hash: receipt.transactionHash, blockNumber: receipt.blockNumber,
     blockHash: receipt.blockHash, status: receipt.status }, indexed, postgresRow: row,
     initial: { backingWei: "0", soldWei: "0", inventoryWei: project.supplyWei, creatorInitialTokensWei: "0" },
     lifecycle: { buy, approval, sell, threshold, graduation: { receipt: graduationReceipt, verified: v4 },
