@@ -7,6 +7,7 @@ import { listClaimJournals } from "../../lib/claim-recovery";
 import { earningsAmount } from "../../lib/earnings";
 import { isLocalTestWallet, isTransactionHash } from "../../lib/test-creation";
 import { connectTestWallet, subscribeTestWallet, testProviderAtWindow, testWalletErrorCode, type TestWallet } from "../../lib/test-wallet";
+import { readActiveTestCreation } from "../../lib/test-creation-history";
 import { isProjectTreasuryProof, isProjectTreasuryReview, isProjectTreasurySnapshot, projectTreasuryProfile, projectTreasuryTestPath,
   treasuryHash, type ProjectTreasuryOperation, type ProjectTreasuryProof, type ProjectTreasuryReview,
   type ProjectTreasuryPreview, type ProjectTreasurySnapshot, type ProjectTreasuryVerification } from "../../lib/project-treasury";
@@ -178,9 +179,11 @@ export function useTreasuryExecution({ fixture, treasury, expected, onVerified, 
           && j.review.request?.nonce === original.request!.nonce)) throw Error("Another treasury request reserves this wallet nonce.");
         if (listClaimJournals(localStorage).some(j => !["settled", "reverted", "wallet-rejected"].includes(j.stage)
           && same(j.review.gasPayer, original.actor) && BigInt(j.review.gasPayerEvidence.nonce) === BigInt(original.request!.nonce))) throw Error("Recover the earlier profiled claim before continuing.");
-        const creation = localStorage.getItem("rmt:creation-test:31337:v1");
-        if (creation) { const previous = JSON.parse(creation); if (!previous || typeof previous !== "object" || !previous.request) throw Error("Earlier creation recovery is invalid.");
-          if (same(String(previous.request.from), original.actor) && BigInt(String(previous.request.nonce)) === BigInt(original.request!.nonce)) throw Error("Recover the earlier creation transaction first."); }
+        // The existing core journal deliberately has no EVM nonce. Its active
+        // slot is released only by explicit verified archival, never by parsing
+        // a nonexistent nonce or inferring that an earlier call completed.
+        const creation = readActiveTestCreation(localStorage);
+        if (creation && same(creation.request.from, original.actor)) throw Error("Recover and archive the earlier creation transaction first.");
         return old;
       };
       available(); await walletRead();
