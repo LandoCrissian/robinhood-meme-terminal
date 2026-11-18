@@ -279,10 +279,20 @@ async function settleVisualTransitions(page) {
   await page.evaluate(async () => {
     // Measure settled theme/inset styles, rather than comparing an old
     // foreground or padding value with a newly changed background or inset.
-    getComputedStyle(document.querySelector(".launchpad")).color;
-    const transitions = document.getAnimations().filter(animation => animation.constructor.name === "CSSTransition");
-    await Promise.race([Promise.all(transitions.map(animation => animation.finished.catch(() => {}))),
-      new Promise((_, reject) => setTimeout(() => reject(new Error("Theme transitions did not settle")), 2000))]);
+    async function settled() {
+      let quietFrames = 0;
+      while (quietFrames < 2) {
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        getComputedStyle(document.querySelector(".launchpad")).color;
+        const transitions = document.getAnimations().filter(animation => animation.constructor.name === "CSSTransition"
+          && (animation.playState === "running" || animation.pending));
+        quietFrames = transitions.length ? 0 : quietFrames + 1;
+        // Inherited child transitions can start after a parent's transition
+        // finishes, particularly in WebKit. Resample until two quiet frames.
+        await Promise.all(transitions.map(animation => animation.finished.catch(() => {})));
+      }
+    }
+    await Promise.race([settled(), new Promise((_, reject) => setTimeout(() => reject(new Error("Visual transitions did not settle")), 2000))]);
   });
 }
 
