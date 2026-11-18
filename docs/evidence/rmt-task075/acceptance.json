@@ -1,0 +1,213 @@
+{
+  "schemaVersion": 1,
+  "task": 75,
+  "base": "641464490283736bc7ce0cbb40da9382d90120fa",
+  "validationCommit": "573b2270f001d82c3ba6d41d37bd5e4fd350b1bf",
+  "branch": "rmt-launch-production-claims",
+  "pullRequest": 669,
+  "release": "BLOCKED_NO_BROADCAST",
+  "productionExecution": false,
+  "productionChanged": false,
+  "physicalIphoneClaims": "not performed",
+  "solidityAndDependencyPinsUnchanged": true,
+  "compilerInputSha256": "437fb783d7dce558a05317e8b15877f6d08b9571bc12aefec360382469d53648",
+  "browserRuns": {
+    "chromium": {
+      "scope": "SYNTHETIC_31337_NOT_PHYSICAL",
+      "status": "passed",
+      "coreUniqueTransactions": 34,
+      "coreProfileProofs": 9,
+      "browserTransactions": 3,
+      "explicitWalletAttempts": 4,
+      "coreChecks": {
+        "directEoaBeneficiaryClaim": true,
+        "delegationRevokedOrReplacedRejected": true,
+        "multiTokenNonceConflictRequiresFreshReview": true,
+        "safeTwoOwnerExecutionAndOneOwnerRejection": true,
+        "fundedV1V2V3PreserveOriginalLedgerAndRecipients": true,
+        "missingHashRecoveredWithoutSend": true,
+        "missingTraceAndDisagreementFailClosed": true,
+        "restartAndReorgRestoredCredits": true,
+        "principalUnchanged": true,
+        "creationFeesPaidOnlyToImmutableOperations": true,
+        "productionFinalityNotClaimed": true
+      },
+      "browserChecks": {
+        "delegatedAccountChainInvalidationRejectionAndMissingHash": true,
+        "safeNativeRequiresIndependentPaymentEvidence": true,
+        "safeSeparateNativeTokenClaimsAndPrincipal": true,
+        "restartRecoveryDurableIndexedOriginals": true,
+        "publicProfileSigningRequested": false,
+        "syntheticTransactionsOnly": true,
+        "walletConfirmationAttempts": 4
+      },
+      "screenshots": [
+        "chromium-claim-wallet-safe-native-review-landscape.png",
+        "chromium-claim-wallet-safe-token-review-portrait.png"
+      ],
+      "fullScreenshotSet": "Retained in matching CI artifacts, not duplicated into this source package"
+    },
+    "webkit": {
+      "scope": "SYNTHETIC_31337_NOT_PHYSICAL",
+      "status": "passed",
+      "coreUniqueTransactions": 34,
+      "coreProfileProofs": 9,
+      "browserTransactions": 3,
+      "explicitWalletAttempts": 4,
+      "coreChecks": {
+        "directEoaBeneficiaryClaim": true,
+        "delegationRevokedOrReplacedRejected": true,
+        "multiTokenNonceConflictRequiresFreshReview": true,
+        "safeTwoOwnerExecutionAndOneOwnerRejection": true,
+        "fundedV1V2V3PreserveOriginalLedgerAndRecipients": true,
+        "missingHashRecoveredWithoutSend": true,
+        "missingTraceAndDisagreementFailClosed": true,
+        "restartAndReorgRestoredCredits": true,
+        "principalUnchanged": true,
+        "creationFeesPaidOnlyToImmutableOperations": true,
+        "productionFinalityNotClaimed": true
+      },
+      "browserChecks": {
+        "delegatedAccountChainInvalidationRejectionAndMissingHash": true,
+        "safeNativeRequiresIndependentPaymentEvidence": true,
+        "safeSeparateNativeTokenClaimsAndPrincipal": true,
+        "restartRecoveryDurableIndexedOriginals": true,
+        "publicProfileSigningRequested": false,
+        "syntheticTransactionsOnly": true,
+        "walletConfirmationAttempts": 4
+      },
+      "screenshots": [
+        "webkit-claim-wallet-safe-native-review-landscape.png",
+        "webkit-claim-wallet-safe-token-review-portrait.png"
+      ],
+      "fullScreenshotSet": "Retained in matching CI artifacts, not duplicated into this source package"
+    }
+  },
+  "tests": {
+    "website": {
+      "passed": 193,
+      "failed": 0,
+      "skipped": 0
+    },
+    "foundry": {
+      "passed": 112,
+      "failed": 0,
+      "skipped": 0
+    },
+    "postgres": "passed on isolated PostgreSQL18.6",
+    "productionDependencyAudit": "no known vulnerabilities in current pinned production dependency graph",
+    "knip": "passed",
+    "gitleaks": "passed",
+    "publicReadOnlyChromium": "passed, three layouts, zero wallet calls",
+    "publicReadOnlyWebKit": "passed, three layouts, zero wallet calls",
+    "ci": {
+      "source": "fe794fc4ebf27aadbe0f533c101514f887f1e794",
+      "passed": 11,
+      "failed": 2,
+      "gatesNotCleared": [
+        "slither",
+        "fixed-supply-4663"
+      ],
+      "websiteRun": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44377640381",
+      "finalHead": "Read exact-head PR checks; no passing result is inferred for later revisions"
+    }
+  },
+  "retainedSecurity": {
+    "highFindings": 22,
+    "failedStaticGates": [
+      "slither",
+      "fixed-supply-4663"
+    ],
+    "independentAudit": false
+  },
+  "productionLimits": [
+    "Public transaction endpoints hard-disabled",
+    "New claim evidence DDL uninstalled",
+    "Production writer integration, backup/schema authorization and operational acceptance pending",
+    "No implemented accepted Ethereum L1 execution-finality policy; chain4663 cannot return settled",
+    "Official historical archive/trace gaps; Pocket historical capability observed, not a guarantee",
+    "Physical-wallet claims unverified",
+    "Separate owner release approvals required"
+  ],
+  "evidenceHashes": [
+    {
+      "file": "chromium-browser.json",
+      "sha256": "729ba17d6e8e3ec145b13a99eb3fb9b3e6ecb241e5128e4bcb2ce48ea68b1008"
+    },
+    {
+      "file": "chromium-claim-wallet-safe-native-review-landscape.png",
+      "sha256": "f2fa378afb97846d11763c898077bc850b0b3b3bbafe528db2d83c7200673d71"
+    },
+    {
+      "file": "chromium-claim-wallet-safe-token-review-portrait.png",
+      "sha256": "3f0bf6432b77d04b0437c589dcd13ca5fda78d985d7df5f3091d4973ee16da47"
+    },
+    {
+      "file": "chromium-core.json",
+      "sha256": "b1b844727d66a9b14a422013635afbff4f764f0d37ccdaf919f17aade49d4446"
+    },
+    {
+      "file": "chromium-deployment.json",
+      "sha256": "d564afa0132e5e1eb9b712abe1be6a3b2c156ce1edb7ba8a7287700096a70b17"
+    },
+    {
+      "file": "compiler-31337.json",
+      "sha256": "f6b67f57a06470e2853baf22538f8083a0e27ddf7b3370758798fdda7e8b7498"
+    },
+    {
+      "file": "original-failures.json",
+      "sha256": "60ee0b09d10d174af8e8535f742dcdc5d7a6306b3d5be3c804c5d53a44af0e55"
+    },
+    {
+      "file": "postgres.json",
+      "sha256": "05b54ef2c08d573a32d03492265abd5b378032266817cce3e1b860976f212ab4"
+    },
+    {
+      "file": "provider-observations.json",
+      "sha256": "bb41320989acd2c70c0798f014bb749735db4ce91a2367d374ad688f12f9891f"
+    },
+    {
+      "file": "read-only-fork-4663.json",
+      "sha256": "069698499138fd3f7abff840e54702347e0c54e952540295fbe90595ce827105"
+    },
+    {
+      "file": "read-only-fork-initial-unavailable.json",
+      "sha256": "41650a498d21c2200cdd820638b2482dda65f136f7bd9decdc42dd7d6daf35e9"
+    },
+    {
+      "file": "read-only-fork-rate-limited.json",
+      "sha256": "1cebbd1ab2639872472be3e1272c60cd75eb105f41abb74b87441dfc7ec1526f"
+    },
+    {
+      "file": "source-integrity.json",
+      "sha256": "25aeb01c855daafac87231327686d399f3a591a3c43446f386c22c9e54645bc1"
+    },
+    {
+      "file": "webkit-browser.json",
+      "sha256": "8d0599b57bbdd733b6ef9359192eba5dcbb781df617d2dcb5e52c7136b0e675a"
+    },
+    {
+      "file": "webkit-claim-wallet-safe-native-review-landscape.png",
+      "sha256": "ded3a5bf1245dbb311d9e2405cc60a84bd389d61f03dd1a4c9056e059c408fe6"
+    },
+    {
+      "file": "webkit-claim-wallet-safe-token-review-portrait.png",
+      "sha256": "9249c59d2df040ab50cbf626578962632194e2f8267be0e9c18eed259d5b2179"
+    },
+    {
+      "file": "webkit-core.json",
+      "sha256": "66ee9e13ee29ea53c122a2eaec79a3997506fb26d93dedc63d8abd8bad00f644"
+    },
+    {
+      "file": "webkit-deployment.json",
+      "sha256": "e04865545c1e14f5eb284aa22dee6801b12b591a39ab395db79028d2cc7a5500"
+    }
+  ],
+  "productionCompilerInputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+  "sourceIntegrity": {
+    "solidityFiles": 36,
+    "pinnedDependencySources": 50,
+    "report": "source-integrity.json",
+    "unchanged": true
+  }
+}

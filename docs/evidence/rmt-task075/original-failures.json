@@ -1,0 +1,167 @@
+{
+  "schemaVersion": 1,
+  "profile": "rmt-claim-original-failures-v1",
+  "task": 75,
+  "observedAt": "2026-11-18T19:14:14.026Z",
+  "releaseGate": "BLOCKED_NO_BROADCAST",
+  "purpose": "Preserve failed-before evidence without claiming unverified scenarios passed.",
+  "base": "641464490283736bc7ce0cbb40da9382d90120fa",
+  "initialCi": {
+    "run": 44376257579,
+    "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44376257579",
+    "head": "4998cab8323b78d82af58e57235de51b6c621a76",
+    "checkoutMerge": "286e99785aca3eade78708e73a0708d8e128dd1f",
+    "mergeTreeEqualsHead": true,
+    "jobs": [
+      {
+        "name": "isolated-lifecycle (chromium)",
+        "jobId": 135056114945,
+        "defaultTask074Lifecycle": "passed",
+        "profileTask075Lifecycle": "failed",
+        "failure": "Browser confirm expected original intentHash; received an unavailable response without intentHash during no-hash/native-proof recovery.",
+        "source": "scripts/claims/browser-wallet-acceptance.mjs:172",
+        "candidateCorrections": [
+          "faaff675",
+          "fe794fc4"
+        ],
+        "status": "Correction implemented; new exact-head CI result must be recorded separately."
+      },
+      {
+        "name": "isolated-lifecycle (webkit)",
+        "jobId": 135056114440,
+        "defaultTask074Lifecycle": "failed",
+        "profileTask075Lifecycle": "skipped",
+        "failure": "Graduation preparation returned HTTP 200 status unavailable, expected prepared.",
+        "source": "scripts/visual-qa/rmt-creator-integration.mjs:983",
+        "artifactObservation": "Page showed eligible 2 ETH backing and 400M inventory, state block 57648339 versus indexed 57648337; the saved response supplied no reason.",
+        "status": "Original exact cause unresolved; later default WebKit lifecycle passed in run44377640381 atfe794. Original failed run and skipped075 step remain retained."
+      }
+    ],
+    "retainedLogs": [
+      {
+        "file": "ci-4998-chromium.log",
+        "bytes": 313103,
+        "sha256": "18b26808873ef0eabd0a2bd8f337ff505a68ea961d41020ff287d8bd1832f3f7"
+      },
+      {
+        "file": "ci-4998-webkit.log",
+        "bytes": 304963,
+        "sha256": "f9effcc446f79ad44598f2d9eebd2cb65497904adb20c074e905b60f6a2a492a"
+      }
+    ]
+  },
+  "localFailures": [
+    {
+      "id": "core-checkpoint-readiness",
+      "evidence": {
+        "file": "profiles-initial.log",
+        "bytes": 1216,
+        "sha256": "eae5b1a383eb002ba811e9dcc895c19528ae8bb92a92a814a9056bc1d1dc9908"
+      },
+      "failure": "HTTP503 canonical beneficiary registration after a reverted one-owner Safe outer transaction.",
+      "explanation": "The outer transaction consumed its gas-payer nonce although Safe execution reverted. The test advanced before confirmation/checkpoint readiness.",
+      "correction": "b86420ca waits actual confirmations/readiness and retries only bounded read-only503; no fabricated registration or weakened assertion.",
+      "after": "profiles-verified core acceptance passed."
+    },
+    {
+      "id": "safe-indexed-digest-layout",
+      "evidence": {
+        "file": "profiles-core.log",
+        "bytes": 1718,
+        "sha256": "fd3b03f6e4a5ad3c64f79e590f6dbb1fff71b6e639b51b32eecce737f62877ae"
+      },
+      "failure": "A real successful Safe curve claim returned safe-execution-evidence-conflict.",
+      "explanation": "New verifier initially described the Safe1.4.1 ExecutionSuccess digest as non-indexed. Exact official source and genuine receipt index the digest.",
+      "correction": "3a1a677f corrects ABI;081b9603 replays the genuine receipt and rejects old layout, actor/digest/payment conflicts and duplicates.",
+      "after": "Actual core acceptance and real-log regression passed; no deployed contract changed."
+    },
+    {
+      "id": "browser-recipient-casing",
+      "evidence": {
+        "file": "profiles-chromium.log",
+        "bytes": 917,
+        "sha256": "3413220798d0df05f3730bbf611c5913bde1de417d5fd994ca5a25a65a1db89e"
+      },
+      "failure": "Wallet-rejection state did not appear while the review could not reconcile equivalent beneficiary address casing.",
+      "correction": "54fc83b7 normalizes discovery recipient before intent binding; comparisons remain exact by address bytes.",
+      "after": "Subsequent browser advanced beyond review/rejection; complete final result recorded separately."
+    },
+    {
+      "id": "browser-original-identity-unavailable",
+      "evidence": {
+        "file": "profiles-chromium-final.log",
+        "bytes": 895,
+        "sha256": "55cb7cf179a7e2500452ef6e16b1b0e4e96e521dc9cdad864031c813f087f31a"
+      },
+      "failure": "Recovery during an unavailable checkpoint returned no intentHash, causing exact original-request response binding to reject it.",
+      "correction": "faaff675 preserves validated intent/review identity in typed unavailable responses without reporting settlement.",
+      "after": "Latest local Chromium proof passed; CI result remains a separate exact-head check."
+    },
+    {
+      "id": "shared-trace-outage",
+      "evidence": {
+        "file": "profiles-chromium-accepted.log",
+        "bytes": 551,
+        "sha256": "7679113eb3af28af12b9b3c68f298df42318810c6e0d38fc5114e555fffa4057"
+      },
+      "failure": "Waiting for the durable indexer timed out because the synthetic trace outage also removed the worker proof it needed.",
+      "correction": "fe794fc4 isolates app-read and worker-read loopback facades. Both remain the same synthetic chain; the worker must obtain real canonical rows.",
+      "after": "Latest local Chromium proof passed; no fabricated indexed record or independent-provider claim."
+    },
+    {
+      "id": "local-webkit-concurrent-build-invalidated-run",
+      "evidence": {
+        "file": "profiles-webkit-final.log",
+        "bytes": 955,
+        "sha256": "9af0cf8979b15d818335f59648e92e3f898a89988aaae2a9f2a00e0766e113fd"
+      },
+      "detailEvidence": {
+        "file": "profiles-webkit-final/website-wallet-profiles-restart.log",
+        "bytes": 335,
+        "sha256": "6a715e5b5b8777896e16905373e48b32e2062fe1f9e82aa3d364e039c0eb008c"
+      },
+      "failure": "Website restart failed because its .next production build/BUILD_ID was absent during a concurrent rebuild.",
+      "classification": "Local test-operator/environment invalidation, not evidence that candidate settlement passed or failed.",
+      "correction": "Build once before isolated browser sessions; do not rebuild a .next directory used by a live test."
+    },
+    {
+      "id": "local-webkit-safe-control-size",
+      "evidence": {
+        "file": "profiles-webkit-proof.log",
+        "bytes": 731,
+        "sha256": "1525805bbcb51ef69aebb5d8ac438f749dc873da84e904aab55fe92197faaa5c"
+      },
+      "failure": "Visible phone form controls must retain16px text and44px height; assertion failed during Safe review layout.",
+      "status": "Test measurement raced asynchronous viewport/media style update: desktop13px style was sampled before phone16px style applied.573b retains strict16px/44px assertions and waits viewport/media/two animation frames; fresh full WebKit verification pending at this observation."
+    }
+  ],
+  "security": "22 retained high-severity findings and both failing static-analysis gates are unchanged; these diagnostic corrections do not clear either gate.",
+  "production": "No deployment, owner signature, broadcast, financial activation, database migration or hosting change.",
+  "retention": "Raw logs/artifacts remain outside Git under rmt-task075-evidence; this manifest contains only bounded public synthetic observations and hashes.",
+  "followupCi": {
+    "run": 44377640381,
+    "head": "fe794fc4ebf27aadbe0f533c101514f887f1e794",
+    "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44377640381",
+    "observedAt": "2026-11-18T19:18:50.491Z",
+    "defaultTask074": {
+      "chromium": {
+        "jobId": 135060955283,
+        "status": "passed"
+      },
+      "webkit": {
+        "jobId": 135060955142,
+        "status": "passed"
+      }
+    },
+    "task075Profiles": {
+      "chromium": "passed",
+      "webkit": "passed"
+    },
+    "scope": "All three website-workflow jobs passed, including the separate normal074 and profile075 lifecycle steps in both browsers. This does not clear static-analysis gates, establish physical phone acceptance, or explain the exact cause of the original unavailable graduation review.",
+    "conclusion": "success"
+  },
+  "localFollowup": {
+    "chromium": "Root-reported latest local proof passed3UI transactions and11recoveries; final acceptance manifest carries detailed output.",
+    "webkit": "Passed on source573b2270: three UI transactions, eleven recovery observations, nine responsive review measurements. No CSS threshold was lowered."
+  }
+}

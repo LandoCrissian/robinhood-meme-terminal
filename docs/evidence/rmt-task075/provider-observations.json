@@ -1,0 +1,305 @@
+{
+  "schemaVersion": 1,
+  "task": 75,
+  "scope": "READ_ONLY_PUBLIC_4663_PROVIDER_OBSERVATIONS",
+  "observedAt": "2026-11-18T18:16:49.576Z",
+  "financialExecution": false,
+  "signing": false,
+  "chainId": 4663,
+  "sample": {
+    "transactionHash": "0x7306d15f2ffcab498bd2063615ddaa862b6ff956415e39e4d278f75de84cdad6",
+    "kind": "Operations Safe creation, not a fee claim"
+  },
+  "forkAnchor": {
+    "blockNumber": "114549452",
+    "blockHash": "0xf9a8ca5d8e26ebb426ebd2e663ad82afc878c16d8bba5f5542f6341890cf7710"
+  },
+  "finality": {
+    "l2Observation": "provider-correlated",
+    "ethereumL1": "unverified",
+    "acceptedPolicy": null
+  },
+  "providers": [
+    {
+      "name": "official",
+      "source": "https://rpc.mainnet.chain.robinhood.com",
+      "checkpoint": {
+        "blockNumber": "117601397",
+        "blockHash": "0x31afb21d824e4cfbb437cf59a4f5a49448304631afc0538f2162fa441f6d5903",
+        "timestamp": "2026-11-18T18:16:48.000Z"
+      },
+      "account": {
+        "address": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+        "code": {
+          "status": "observed",
+          "value": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b"
+        },
+        "expectedDelegation": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b",
+        "nonce": {
+          "status": "observed",
+          "value": "0x1e8"
+        },
+        "pendingNonce": {
+          "status": "observed",
+          "value": "0x1e8"
+        },
+        "delegate": {
+          "address": "0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B",
+          "runtimeHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0",
+          "observedHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0",
+          "status": "observed"
+        }
+      },
+      "safes": [
+        {
+          "address": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+          "runtimeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+          "runtimeMatches": true,
+          "views": {
+            "VERSION": {
+              "status": "observed",
+              "value": "1.4.1"
+            },
+            "masterCopy": {
+              "status": "observed",
+              "value": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762"
+            },
+            "getOwners": {
+              "status": "observed",
+              "value": [
+                "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+                "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+                "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697"
+              ]
+            },
+            "getThreshold": {
+              "status": "observed",
+              "value": "2"
+            },
+            "nonce": {
+              "status": "observed",
+              "value": "0"
+            }
+          }
+        },
+        {
+          "address": "0x8D44078642ce938Fd799b23087BcdD6114A302e5",
+          "runtimeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+          "runtimeMatches": true,
+          "views": {
+            "VERSION": {
+              "status": "observed",
+              "value": "1.4.1"
+            },
+            "masterCopy": {
+              "status": "observed",
+              "value": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762"
+            },
+            "getOwners": {
+              "status": "observed",
+              "value": [
+                "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+                "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+                "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697"
+              ]
+            },
+            "getThreshold": {
+              "status": "observed",
+              "value": "2"
+            },
+            "nonce": {
+              "status": "observed",
+              "value": "0"
+            }
+          }
+        }
+      ],
+      "archive": {
+        "header": {
+          "status": "observed",
+          "value": {
+            "blockNumber": "114549452",
+            "blockHash": "0xf9a8ca5d8e26ebb426ebd2e663ad82afc878c16d8bba5f5542f6341890cf7710",
+            "timestamp": "2026-11-15T00:02:45.000Z"
+          }
+        },
+        "state": {
+          "status": "unavailable",
+          "reason": "RPC -32000: historical state c9b051b09f2399988057f4610ffece80f896ed95afedd7c8cf083592a98005f3 is not available"
+        }
+      },
+      "trace": {
+        "receipt": {
+          "status": "observed",
+          "value": {
+            "transactionHash": "0x7306d15f2ffcab498bd2063615ddaa862b6ff956415e39e4d278f75de84cdad6",
+            "blockNumber": "116763559",
+            "blockHash": "0x0858ef7c9b905b35f5e6080c85d6d3bfe8f6a8f23c9f7c026013e8ba436511e5",
+            "status": "0x1",
+            "logCount": 2
+          }
+        },
+        "callTracer": {
+          "status": "unavailable",
+          "reason": "RPC -32601: the method debug_traceTransaction does not exist/is not available"
+        }
+      },
+      "checkpointAfter": {
+        "blockNumber": "117601397",
+        "blockHash": "0x31afb21d824e4cfbb437cf59a4f5a49448304631afc0538f2162fa441f6d5903",
+        "timestamp": "2026-11-18T18:16:48.000Z"
+      }
+    },
+    {
+      "name": "pocket",
+      "source": "https://robinhood.api.pocket.network",
+      "checkpoint": {
+        "blockNumber": "117601397",
+        "blockHash": "0x31afb21d824e4cfbb437cf59a4f5a49448304631afc0538f2162fa441f6d5903",
+        "timestamp": "2026-11-18T18:16:48.000Z"
+      },
+      "account": {
+        "address": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+        "code": {
+          "status": "observed",
+          "value": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b"
+        },
+        "expectedDelegation": "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b",
+        "nonce": {
+          "status": "observed",
+          "value": "0x1e8"
+        },
+        "pendingNonce": {
+          "status": "observed",
+          "value": "0x1e8"
+        },
+        "delegate": {
+          "address": "0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B",
+          "runtimeHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0",
+          "observedHash": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0",
+          "status": "observed"
+        }
+      },
+      "safes": [
+        {
+          "address": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+          "runtimeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+          "runtimeMatches": true,
+          "views": {
+            "VERSION": {
+              "status": "observed",
+              "value": "1.4.1"
+            },
+            "masterCopy": {
+              "status": "observed",
+              "value": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762"
+            },
+            "getOwners": {
+              "status": "observed",
+              "value": [
+                "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+                "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+                "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697"
+              ]
+            },
+            "getThreshold": {
+              "status": "observed",
+              "value": "2"
+            },
+            "nonce": {
+              "status": "observed",
+              "value": "0"
+            }
+          }
+        },
+        {
+          "address": "0x8D44078642ce938Fd799b23087BcdD6114A302e5",
+          "runtimeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+          "runtimeMatches": true,
+          "views": {
+            "VERSION": {
+              "status": "observed",
+              "value": "1.4.1"
+            },
+            "masterCopy": {
+              "status": "observed",
+              "value": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762"
+            },
+            "getOwners": {
+              "status": "observed",
+              "value": [
+                "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+                "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+                "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697"
+              ]
+            },
+            "getThreshold": {
+              "status": "observed",
+              "value": "2"
+            },
+            "nonce": {
+              "status": "observed",
+              "value": "0"
+            }
+          }
+        }
+      ],
+      "archive": {
+        "header": {
+          "status": "observed",
+          "value": {
+            "blockNumber": "114549452",
+            "blockHash": "0xf9a8ca5d8e26ebb426ebd2e663ad82afc878c16d8bba5f5542f6341890cf7710",
+            "timestamp": "2026-11-15T00:02:45.000Z"
+          }
+        },
+        "state": {
+          "status": "observed",
+          "value": {
+            "runtimeMatches": true
+          }
+        }
+      },
+      "trace": {
+        "receipt": {
+          "status": "observed",
+          "value": {
+            "transactionHash": "0x7306d15f2ffcab498bd2063615ddaa862b6ff956415e39e4d278f75de84cdad6",
+            "blockNumber": "116763559",
+            "blockHash": "0x0858ef7c9b905b35f5e6080c85d6d3bfe8f6a8f23c9f7c026013e8ba436511e5",
+            "status": "0x1",
+            "logCount": 2
+          }
+        },
+        "callTracer": {
+          "status": "observed",
+          "value": {
+            "rootType": "CALL",
+            "from": "0x7e8e7d3af28584a8b9eeddbe16cd3308bd1e76ca",
+            "to": "0x4e1dcf7ad4e460cfd30791ccc4f9c8a4f820ec67",
+            "nodes": 4,
+            "rawDigestSha256": "905737d1e9d966cb4a5fae780770a83ab3cdc08d73e45e07a2499c513b17963a",
+            "settlementOfClaimProven": false
+          }
+        }
+      },
+      "checkpointAfter": {
+        "blockNumber": "117601397",
+        "blockHash": "0x31afb21d824e4cfbb437cf59a4f5a49448304631afc0538f2162fa441f6d5903",
+        "timestamp": "2026-11-18T18:16:48.000Z"
+      }
+    }
+  ],
+  "rpcRequests": 50,
+  "claimSpecificGas": "unavailable: no issued new-engine claimant/fee transaction; unrelated no-op estimates are not claim evidence",
+  "scopeLimits": [
+    "Live reads do not prove wallet control, claim execution or production readiness",
+    "Historical provider capability can differ from current reads",
+    "Two L2 RPCs are not independent Ethereum L1 finality evidence",
+    "A historical Safe creation trace is not a new-engine claim settlement"
+  ],
+  "publicRuntimeArchive": {
+    "sha256": "ebd57af74a614f103cece18d4ebcae1c8b50817712a9c24445bec276ad022e03",
+    "bytes": 6277
+  }
+}
