@@ -9,7 +9,7 @@ import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { chromium, devices } from "playwright";
+import { chromium, webkit, devices } from "playwright";
 import { backing as backingWei, compileFixedSupplyProfile, creationFee as feeWei, profile, rmtFixture, supply }
   from "../../packages/contracts/scripts/fixed-supply-profile.mjs";
 import { deployFixedSupplyFixture, localFixtureClient }
@@ -27,8 +27,10 @@ const { Pool } = require("pg");
 const { values: args } = parseArgs({ options: {
   lib: { type: "string" }, anvil: { type: "string" }, solc: { type: "string" },
   "pg-bin": { type: "string" }, output: { type: "string" }, "mobile-plan": { type: "string" },
+  browser: { type: "string", default: "chromium" },
 } });
 for (const option of ["anvil", "solc", "pg-bin", "output"]) assert.ok(args[option], `Supply --${option}`);
+assert.ok(["chromium", "webkit"].includes(args.browser), "Use --browser chromium or --browser webkit");
 const out = resolve(args.output);
 const anvil = resolve(args.anvil);
 const solc = resolve(args.solc);
@@ -244,7 +246,7 @@ const rpcProxy = loopback(proxy.address().port) + "/";
 let pgStarted = false;
 let browser;
 let page;
-const evidence = { candidateCommit, compilerProfile: manifest,
+const evidence = { candidateCommit, compilerProfile: manifest, browser: args.browser,
   anchor: { block: anchor.block, blockHash: anchor.blockHash }, chainId: 31337, project };
 try {
   const chain = start(anvil, ["--host", "127.0.0.1", "--port", new URL(rpcUrl).port, "--chain-id", "31337",
@@ -374,7 +376,7 @@ try {
   const snapshot = await rpc("evm_snapshot");
   const beforeSnapshot = await rpc("eth_getBlockByNumber", ["latest", false]);
   const countBefore = BigInt(await rpc("eth_getTransactionCount", [creator.address, "latest"]));
-  browser = await chromium.launch();
+  browser = await ({ chromium, webkit })[args.browser].launch();
   const context = await browser.newContext(devices["iPhone 13"]);
   page = await context.newPage();
   page.setDefaultTimeout(20_000);

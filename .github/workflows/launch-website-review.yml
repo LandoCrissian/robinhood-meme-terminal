@@ -114,6 +114,10 @@ jobs:
   isolated-lifecycle:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
     env:
       NEXT_TELEMETRY_DISABLED: "1"
       HISTORICAL_ANCHOR_SHA: 8dca5773cbd4dc98f52a45616f420bce96b000f0
@@ -136,7 +140,7 @@ jobs:
           pnpm install --frozen-lockfile --filter @rmt/launch-website... --filter indexer --filter robinhood-meme-terminal
           pnpm --filter @rmt/launch-website build
           pnpm --filter indexer build
-          pnpm exec playwright install --with-deps chromium
+          pnpm exec playwright install --with-deps chromium webkit
       - name: Prepare the fixed-supply candidate and local tools
         run: |
           set -euo pipefail
@@ -155,6 +159,7 @@ jobs:
             --anvil "$(command -v anvil)" \
             --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$(pg_config --bindir)" \
             --mobile-plan docs/evidence/mobile-signing/review-plan-4663.json \
+            --browser "${{ matrix.browser }}" \
             --output "$RUNNER_TEMP/rmt-creator-lifecycle"
       - name: Read local PostgreSQL diagnostics after failure
         if: failure()
@@ -166,7 +171,7 @@ jobs:
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
-          name: rmt-creator-lifecycle-${{ github.event.pull_request.head.sha }}
+          name: rmt-creator-lifecycle-${{ matrix.browser }}-${{ github.event.pull_request.head.sha }}
           path: |
             ${{ runner.temp }}/rmt-creator-lifecycle/*.png
             ${{ runner.temp }}/rmt-creator-lifecycle/creation-journey-evidence.json
