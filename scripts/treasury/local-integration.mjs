@@ -6,7 +6,7 @@ import { gunzipSync } from "node:zlib";
 import { backing, supply } from "../../packages/contracts/scripts/fixed-supply-profile.mjs";
 import { call, localFixtureClient, receiptEvidence, transact } from "../../packages/contracts/scripts/deploy-fixed-supply-fixture.mjs";
 import { proveFundedMigrations } from "../../packages/contracts/scripts/prove-fixed-supply-funded-migrations.mjs";
-import { createTreasuryProjectsFromForm, exerciseTreasuryPage } from "./browser-integration.mjs";
+import { createTreasuryProjectsFromForm, claimCurveThroughTreasuryPage, exerciseTreasuryPage } from "./browser-integration.mjs";
 
 const require = createRequire(new URL("../../apps/launch-website/package.json", import.meta.url));
 const { concatHex, encodeAbiParameters, encodeFunctionData, erc20Abi, hashTypedData, keccak256,
@@ -99,7 +99,8 @@ export async function testProjectTreasuryJourney({ browserEngine, rpcUrl, rpc, a
     assert.equal(await client.getTransactionCount({ address: creator.address, blockTag: "pending" }), nonceBeforeGasRejection);
     assert.equal(await read(project.revenueLedger, ledgerAbi, "claimable", [treasury]), treasuryDue);
     evidence.checks.insufficientGasCannotConsumeClaimOrNonce = true;
-    await ownerCall(treasury, "claimCurve");
+    const uiClaim = await claimCurveThroughTreasuryPage({ session, treasury, ledger: project.revenueLedger, site, mine, ready, hideNativeProof });
+    evidence.curveClaimFromDashboard = uiClaim;
     assert.equal(await read(project.revenueLedger, ledgerAbi, "claimable", [treasury]), 0n);
     assert.equal((await read(treasury, treasuryAbi, "totals", [zeroAddress]))[3], treasuryDue);
     await ownerCall(treasury, "depositNative", [], 5n * 10n ** 15n);

@@ -129,27 +129,32 @@ export async function createTreasuryProjectsFromForm({ browserEngine, site, out,
       treasury: treasury ?? "0x0000000000000000000000000000000000000000", intentId: sent.review.request.intentId,
       creation: sent.receipt, fields, reviewed: sent.review.request };
   }
+  async function archiveProject(project) {
+    const sendsBefore = evidence.sends.length;
+    const check = await response(creationApi, "verify", () => button("Start another launch").click());
+    assert.equal(check.status, "confirmed"); assert.equal(check.indexed, true); assert.ok(same(check.transactionHash, project.creation.transactionHash));
+    await waitFor("explicit completed creation archival", async () => page.evaluate(hash => {
+      const history = JSON.parse(localStorage.getItem("rmt:creation-test:31337:completed:v1") ?? "null");
+      return localStorage.getItem("rmt:creation-test:31337:v1") === null && history?.entries?.some(entry => entry.transactionHash === hash);
+    }, project.creation.transactionHash));
+    const history = await page.evaluate(() => JSON.parse(localStorage.getItem("rmt:creation-test:31337:completed:v1")));
+    const entry = history.entries.find(item => same(item.transactionHash, project.creation.transactionHash));
+    assert.deepEqual(entry.request, project.reviewed);
+    await page.reload();
+    const region = page.locator("details").filter({ has: page.getByText("Completed creation history", { exact: true }) });
+    await region.locator("summary").click();
+    await page.getByLabel("Archived creation", { exact: true }).selectOption(project.creation.transactionHash);
+    const recheck = await response(creationApi, "verify", () => button("Recheck archived creation").click());
+    assert.equal(recheck.status, "confirmed"); assert.equal(recheck.indexed, true);
+    assert.equal(evidence.sends.length, sendsBefore, "Archival and rechecking never submits a transaction");
+    evidence.completedCreationArchives ??= []; evidence.completedCreationArchives.push({ entry, recheck }); save();
+    return entry;
+  }
   try {
     const outFields = await fill("Treasury opt-out 076", "OUT076");
     await page.getByRole("radio", { name: /Pay the creator directly/ }).check();
     const optedOut = await createCore(outFields);
-    const sendsBeforeArchive = evidence.sends.length;
-    const archivedCheck = await response(creationApi, "verify", () => button("Start another launch").click());
-    assert.equal(archivedCheck.status, "confirmed"); assert.equal(archivedCheck.indexed, true);
-    assert.ok(same(archivedCheck.transactionHash, optedOut.creation.transactionHash));
-    const completed = await page.evaluate(() => ({ active: localStorage.getItem("rmt:creation-test:31337:v1"),
-      history: JSON.parse(localStorage.getItem("rmt:creation-test:31337:completed:v1") ?? "null") }));
-    assert.equal(completed.active, null); assert.equal(completed.history.entries.length, 1);
-    assert.deepEqual(completed.history.entries[0].request, optedOut.reviewed);
-    assert.ok(same(completed.history.entries[0].transactionHash, optedOut.creation.transactionHash));
-    await page.reload();
-    const history = page.locator("details").filter({ has: page.getByText("Completed creation history", { exact: true }) });
-    await history.locator("summary").click();
-    assert.equal(await page.getByLabel("Archived creation", { exact: true }).inputValue(), optedOut.creation.transactionHash);
-    const recheckedArchive = await response(creationApi, "verify", () => button("Recheck archived creation").click());
-    assert.equal(recheckedArchive.status, "confirmed"); assert.equal(recheckedArchive.indexed, true);
-    assert.equal(evidence.sends.length, sendsBeforeArchive, "Archiving and rechecking never submits another transaction");
-    evidence.completedCreationArchive = { entry: completed.history.entries[0], recheck: recheckedArchive };
+    await archiveProject(optedOut);
     await capture("project-treasury-opt-out-archive-preserved");
     const fields = await fill("Treasury creator 076", "SIDE076");
     await page.getByRole("radio", { name: /Create a project treasury/ }).check();
@@ -188,12 +193,48 @@ export async function createTreasuryProjectsFromForm({ browserEngine, site, out,
     assert.ok(same(recovered.proof.treasury, preview.treasury)); assert.equal(evidence.sends.length, before + 1);
     evidence.recoveries.push(recovered); await capture("project-treasury-deployment-recovered");
     const optedIn = await createCore(fields, preview.treasury, preview.intentId);
+    await archiveProject(optedIn);
     assert.ok(same(await client.readContract({ address: preview.treasury, abi: treasuryAbi, functionName: "creator" }), creator));
     evidence.status = "created-and-indexed"; save();
     return { context, page, evidence, optedOut, optedIn, capture, layouts, response, button,
       setReview: review => { currentReview = review; }, close: () => context.close(), save };
   } catch (error) { evidence.failure = error instanceof Error ? error.stack : String(error); evidence.failurePage = await page.locator("body").innerText();
     await capture("project-treasury-browser-failure"); save(); throw error; }
+}
+
+export async function claimCurveThroughTreasuryPage({ session, treasury, ledger, site, mine, ready, hideNativeProof }) {
+  const { page, button, response } = session;
+  const open = async () => {
+    await page.goto(site + "/my-launches/treasury");
+    await page.getByLabel("Project treasury address", { exact: true }).fill(treasury);
+    const pending = page.waitForResponse(result => new URL(result.url()).pathname === "/api/launchpad/project-treasury");
+    await button("View treasury").click(); const result = await pending, snapshot = await result.json();
+    assert.equal(snapshot.status, "ready", json(snapshot)); return snapshot;
+  };
+  await mine(); await ready(); const before = await open();
+  assert.ok(BigInt(before.earnings.curveNativeWei) > 0n);
+  await button("Connect synthetic treasury controller").click();
+  const review = await response(api, "prepare", () => button("Review curve claim").click());
+  assert.equal(review.status, "prepared", json(review)); assert.equal(review.operation, "claim-curve");
+  assert.ok(same(review.request.to, treasury)); assert.ok(same(review.earningsRequest.from, treasury) && same(review.earningsRequest.to, ledger));
+  session.setReview(review); session.evidence.reviews.push(review); session.save();
+  const count = session.evidence.sends.length;
+  hideNativeProof(true);
+  try {
+    const initial = await response(api, "verify", () => button("Confirm synthetic treasury transaction").click());
+    assert.equal(initial.status, "pending", json(initial)); assert.equal(session.evidence.sends.length, count + 1);
+    await mine(); await ready(); await open();
+    const pending = await response(api, "verify", () => button("Recover treasury receipt").click());
+    assert.equal(pending.status, "pending", json(pending));
+    assert.equal(pending.reason, "Treasury claim payment evidence is incomplete");
+    session.evidence.recoveries.push(pending); await session.capture("project-treasury-native-proof-pending");
+  } finally { hideNativeProof(false); }
+  await mine(); await ready(); await open();
+  const confirmed = await response(api, "verify", () => button("Recover treasury receipt").click());
+  assert.equal(confirmed.status, "confirmed", json(confirmed)); assert.equal(confirmed.indexed, true);
+  assert.equal(session.evidence.sends.length, count + 1, "Treasury recovery must never submit another claim");
+  const sent = session.evidence.sends.at(-1); assert.ok(same(confirmed.transactionHash, sent.receipt.transactionHash));
+  session.evidence.recoveries.push(confirmed); session.save(); return { review, confirmed, receipt: sent.receipt };
 }
 
 export async function exerciseTreasuryPage({ session, project, treasury, safe, site, evidence, mine, ready, save }) {

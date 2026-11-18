@@ -13,6 +13,7 @@ on:
       - "pnpm-workspace.yaml"
       - "apps/indexer/src/curve-*.ts"
       - "apps/indexer/src/production-claim*.ts"
+      - "apps/indexer/src/project-treasury*.ts"
       - "apps/indexer/package.json"
       - "apps/indexer/tsconfig.json"
       - "scripts/visual-qa/rmt-creator-integration.mjs"
