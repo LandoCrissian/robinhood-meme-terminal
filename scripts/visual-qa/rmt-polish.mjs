@@ -434,6 +434,18 @@ async function checkAfter(browser, engine, layout, harness) {
     await noOverflow(page);
     captures.push(await screenshot(page, `after-${engine}-${layout.name}-${shot}`));
   }
+  await page.goto(new URL("/wallet", site).href, { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "Wallet", exact: true }).waitFor();
+  const supportedWallets = page.locator("summary").filter({ hasText: "Supported sign-in wallets" });
+  const disclosureBounds = await supportedWallets.boundingBox();
+  assert.ok(disclosureBounds && disclosureBounds.height >= 44 && disclosureBounds.width >= 44, "Wallet disclosure must have a 44px touch target");
+  await supportedWallets.focus();
+  await page.keyboard.press("Enter");
+  assert.equal(await supportedWallets.locator("..").getAttribute("open"), "");
+  await page.keyboard.press("Space");
+  assert.equal(await supportedWallets.locator("..").getAttribute("open"), null);
+  await noOverflow(page);
+  captures.push(await screenshot(page, `after-${engine}-${layout.name}-wallet-disclosure`));
   assert.deepEqual(await page.evaluate(() => window.__rmtPolishWalletCalls), []);
   await page.goto(`${harness.origin}/`, { waitUntil: "networkidle" });
   await page.getByText("SYNTHETIC QA FIXTURES — LOCAL HARNESS ONLY", { exact: true }).waitFor();

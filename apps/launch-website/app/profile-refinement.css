@@ -80,6 +80,7 @@
 .lpProfileLinkRow { display: grid; grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr) auto; gap: 8px; align-items: end; }
 .lpDanger { border-color: #6e383c; }
 .lpDanger > summary { cursor: pointer; font-size: 13px; color: var(--rmt-text-soft); }
+.launchpad :where(.lpPanel details, details.lpPanel) > summary { min-height: 44px; padding-block: 12px; }
 .lpDanger .lpForm { margin-top: 14px; }
 .lpDangerButton { background: #ffbdbe; color: #351113; }
 .lpProfileBanner { padding-bottom: 20px; border-bottom: 1px solid var(--rmt-border); margin-bottom: 20px; }

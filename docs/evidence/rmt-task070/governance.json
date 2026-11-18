@@ -1,0 +1,238 @@
+{
+  "schemaVersion": 1,
+  "scope": "READ_ONLY_FACTORY_GOVERNANCE_NOTICE_ACCEPTANCE",
+  "chainId": 4663,
+  "transactionHash": "0x96bd234e49d766c73c66f9787f26736040b4fc64d91ed2ae888eca3f4c8afb65",
+  "directory": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+  "factory": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+  "digest": "0xad499113950f3410a60c6fe9fe40b4d1d98cf055eeafeb2b1736a5a38c5fea1e",
+  "signerSetEpoch": "1",
+  "actionNonce": "0",
+  "sourcePlanSha256": "c333d4f60e4815fb86a719a5678da91b5331635213f8026bd7d6bc3fdfdd43d8",
+  "compilerInputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+  "signingAuthorized": false,
+  "broadcastAuthorized": false,
+  "productionActivationAuthorized": false,
+  "finality": "L1_UNVERIFIED",
+  "status": "SCHEDULE_VERIFIED_NOTICE_PENDING",
+  "timeEligible": false,
+  "secondsUntilEligible": "153646",
+  "observedAt": "2026-11-18T04:51:55.219Z",
+  "receipt": {
+    "blockNumber": "116966133",
+    "blockHash": "0xba98e1e82b736a50c46dfae095f1f3fd3cc4932921938c7b2aa8d30f23ec9106",
+    "timestamp": "2026-11-17T23:32:28.000Z",
+    "existingAuthorization": "Two original on-chain signatures cryptographically verified by the reused canonical schedule verifier; no raw signatures or calldata exported"
+  },
+  "notice": {
+    "startsAt": "2026-11-17T23:32:28.000Z",
+    "eligibleAt": "2026-11-19T23:32:28.000Z",
+    "expiresAt": "2026-11-26T19:50:06.000Z",
+    "seconds": 172800,
+    "eligibleDenver": "Thursday, November 19, 2026 at 4:32:28 PM MST",
+    "expiresDenver": "Thursday, November 26, 2026 at 12:50:06 PM MST"
+  },
+  "current": [
+    {
+      "provider": "official",
+      "block": {
+        "number": "117145570",
+        "hash": "0xa6a4e3997020e73bc40b0f687d3b90866f554532f7b0c4e3007cd532f516f0ab",
+        "timestamp": "1794977502"
+      },
+      "state": {
+        "signerA": "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+        "signerB": "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+        "signerC": "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697",
+        "signerSetEpoch": "1",
+        "nonce": "0",
+        "latestVersion": "0",
+        "suspended": false,
+        "pending": [
+          "0xad499113950f3410a60c6fe9fe40b4d1d98cf055eeafeb2b1736a5a38c5fea1e",
+          "1795131148",
+          "1795722606"
+        ],
+        "pendingRotation": [
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "0",
+          "0"
+        ],
+        "publicationDelay": "172800",
+        "executionWindow": "604800",
+        "factoryMapping": [
+          "0x0000000000000000000000000000000000000000",
+          "0x0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        "v3Mapping": [
+          "0x0000000000000000000000000000000000000000",
+          "0x0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        "actionDigest": "0xad499113950f3410a60c6fe9fe40b4d1d98cf055eeafeb2b1736a5a38c5fea1e"
+      },
+      "runtimePins": [
+        {
+          "id": "directory",
+          "contract": "RMTLaunchCurveDirectoryV2",
+          "address": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+          "runtimeHash": "0x9534a4223eb7e50e2387a7e5486e256416b468980436852ce1a91624904e8735",
+          "bytes": 10290
+        },
+        {
+          "id": "registry",
+          "contract": "RMTLaunchProjectRegistryV3",
+          "address": "0xf1113714Dda31f31532995D2525e034271425398",
+          "runtimeHash": "0xd1b4756bcdabb6a8ee04c827b5a6a76079bedc996df39b76dffa24269a61f644",
+          "bytes": 16273
+        },
+        {
+          "id": "successor-v2",
+          "contract": "RMTLaunchCurveSuccessorDeployerV1",
+          "address": "0xcB25a3DF74729F7104C4f924Cb04F687F69391C6",
+          "runtimeHash": "0xc0894c78000f427a4a1c5b1ef9774dea3dcc53c93be42cdd196ef4b072bff0be",
+          "bytes": 15226
+        },
+        {
+          "id": "successor-v3",
+          "contract": "RMTLaunchCurveSuccessorDeployerV2",
+          "address": "0x622D2f878B328406861DA18F4BBdD27E4730Cb65",
+          "runtimeHash": "0x07efd03ff4ec2028d176deb6bfde1b77e3d5fd4d32c69851b59e7d78b1ac7fc9",
+          "bytes": 15430
+        },
+        {
+          "id": "bootstrap",
+          "contract": "RMTLaunchCurveDeploymentV2",
+          "address": "0xb65380aE9A452813c4e6b0fF391cfE34faE676A5",
+          "runtimeHash": "0xa42587c77a2e9002be762c26229a150eca01d9076463f1cd93f608080ad0b400",
+          "bytes": 320
+        },
+        {
+          "id": "RMTV4CurveInitializationGuardV1",
+          "contract": "RMTV4CurveInitializationGuardV1",
+          "address": "0x998F3C0CE20cFF92655D495a159B1Ca37c162000",
+          "runtimeHash": "0xdb92a74276834e63bf191ffe23ae5925f8cd4aaac9b1aa6cf872ae8f55c38a3e",
+          "bytes": 949
+        },
+        {
+          "id": "RMTV4CurveGraduationV1",
+          "contract": "RMTV4CurveGraduationV1",
+          "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "runtimeHash": "0x24f5b57ef0091e5830747efee6b8372abebe61226dbaadeb04860a4461ede849",
+          "bytes": 19710
+        },
+        {
+          "id": "RMTLaunchCurveFactoryV2",
+          "contract": "RMTLaunchCurveFactoryV2",
+          "address": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+          "runtimeHash": "0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091",
+          "bytes": 23843
+        }
+      ]
+    },
+    {
+      "provider": "pocket",
+      "block": {
+        "number": "117145570",
+        "hash": "0xa6a4e3997020e73bc40b0f687d3b90866f554532f7b0c4e3007cd532f516f0ab",
+        "timestamp": "1794977502"
+      },
+      "state": {
+        "signerA": "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+        "signerB": "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+        "signerC": "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697",
+        "signerSetEpoch": "1",
+        "nonce": "0",
+        "latestVersion": "0",
+        "suspended": false,
+        "pending": [
+          "0xad499113950f3410a60c6fe9fe40b4d1d98cf055eeafeb2b1736a5a38c5fea1e",
+          "1795131148",
+          "1795722606"
+        ],
+        "pendingRotation": [
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+          "0",
+          "0"
+        ],
+        "publicationDelay": "172800",
+        "executionWindow": "604800",
+        "factoryMapping": [
+          "0x0000000000000000000000000000000000000000",
+          "0x0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        "v3Mapping": [
+          "0x0000000000000000000000000000000000000000",
+          "0x0000000000000000000000000000000000000000000000000000000000000000"
+        ],
+        "actionDigest": "0xad499113950f3410a60c6fe9fe40b4d1d98cf055eeafeb2b1736a5a38c5fea1e"
+      },
+      "runtimePins": [
+        {
+          "id": "directory",
+          "contract": "RMTLaunchCurveDirectoryV2",
+          "address": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+          "runtimeHash": "0x9534a4223eb7e50e2387a7e5486e256416b468980436852ce1a91624904e8735",
+          "bytes": 10290
+        },
+        {
+          "id": "registry",
+          "contract": "RMTLaunchProjectRegistryV3",
+          "address": "0xf1113714Dda31f31532995D2525e034271425398",
+          "runtimeHash": "0xd1b4756bcdabb6a8ee04c827b5a6a76079bedc996df39b76dffa24269a61f644",
+          "bytes": 16273
+        },
+        {
+          "id": "successor-v2",
+          "contract": "RMTLaunchCurveSuccessorDeployerV1",
+          "address": "0xcB25a3DF74729F7104C4f924Cb04F687F69391C6",
+          "runtimeHash": "0xc0894c78000f427a4a1c5b1ef9774dea3dcc53c93be42cdd196ef4b072bff0be",
+          "bytes": 15226
+        },
+        {
+          "id": "successor-v3",
+          "contract": "RMTLaunchCurveSuccessorDeployerV2",
+          "address": "0x622D2f878B328406861DA18F4BBdD27E4730Cb65",
+          "runtimeHash": "0x07efd03ff4ec2028d176deb6bfde1b77e3d5fd4d32c69851b59e7d78b1ac7fc9",
+          "bytes": 15430
+        },
+        {
+          "id": "bootstrap",
+          "contract": "RMTLaunchCurveDeploymentV2",
+          "address": "0xb65380aE9A452813c4e6b0fF391cfE34faE676A5",
+          "runtimeHash": "0xa42587c77a2e9002be762c26229a150eca01d9076463f1cd93f608080ad0b400",
+          "bytes": 320
+        },
+        {
+          "id": "RMTV4CurveInitializationGuardV1",
+          "contract": "RMTV4CurveInitializationGuardV1",
+          "address": "0x998F3C0CE20cFF92655D495a159B1Ca37c162000",
+          "runtimeHash": "0xdb92a74276834e63bf191ffe23ae5925f8cd4aaac9b1aa6cf872ae8f55c38a3e",
+          "bytes": 949
+        },
+        {
+          "id": "RMTV4CurveGraduationV1",
+          "contract": "RMTV4CurveGraduationV1",
+          "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "runtimeHash": "0x24f5b57ef0091e5830747efee6b8372abebe61226dbaadeb04860a4461ede849",
+          "bytes": 19710
+        },
+        {
+          "id": "RMTLaunchCurveFactoryV2",
+          "contract": "RMTLaunchCurveFactoryV2",
+          "address": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+          "runtimeHash": "0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091",
+          "bytes": 23843
+        }
+      ]
+    }
+  ],
+  "methodsUsed": [
+    "eth_chainId",
+    "eth_getTransactionByHash",
+    "eth_getTransactionReceipt",
+    "eth_getBlockByNumber",
+    "eth_getCode",
+    "eth_call"
+  ],
+  "nextStage": "Separate owner-controlled execution after real notice and fresh transaction-specific checks; no token issuance or V3 admission prepared"
+}

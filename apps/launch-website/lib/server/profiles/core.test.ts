@@ -22,6 +22,8 @@ test("disabled account handlers do not load the Firebase Admin SDK or initialize
     assert.deepEqual(await session.json(), { authenticated: false, availability: "disabled" });
     const blocked = await accountHandler(new Request("https://www.rmtlaunch.fun/api/account/nonce", { method: "POST", headers: { host: "www.rmtlaunch.fun", origin: "https://www.rmtlaunch.fun" } }), "nonce");
     assert.equal(blocked.status, 404);
+    const avatarRemoval = await accountHandler(new Request("https://www.rmtlaunch.fun/api/account/avatar", { method: "DELETE", headers: { host: "www.rmtlaunch.fun", origin: "https://www.rmtlaunch.fun" } }), "avatar");
+    assert.equal(avatarRemoval.status, 404);
     assert.deepEqual(loadedSdk(), []);
   } finally { if (originalMode === undefined) delete process.env.RMT_PROFILES_MODE; else process.env.RMT_PROFILES_MODE = originalMode; }
 });
@@ -41,6 +43,9 @@ test("routing is bounded and origin checks reject cross-site or forwarded local 
   assert.equal(isProfileApiRoute("/api/account/session", "GET"), true);
   assert.equal(isProfileApiRoute("/api/account/admin", "POST"), false);
   assert.equal(isProfileApiRoute("/api/account/nonce", "GET"), false);
+  assert.equal(isProfileApiRoute("/api/account/avatar", "DELETE"), true);
+  assert.equal(isProfileApiRoute("/api/account/avatar/0x" + "1".repeat(40), "DELETE"), false);
+  assert.equal(isProfileApiRoute("/api/account/avatar", "PATCH"), false);
   const config = profileConfig(local)!;
   requireProfileRequest(new Request(config.origin + "/api/account/nonce", { method: "POST", headers: { host: "127.0.0.1:4319", origin: config.origin } }), config, true);
   requireProfileRequest(new Request(config.origin + "/api/account/nonce", { method: "POST", headers: { host: "127.0.0.1:4319", origin: config.origin,

@@ -9,7 +9,6 @@ import { chromium, webkit, devices } from "playwright";
 
 const require = createRequire(new URL("../package.json", import.meta.url));
 const { privateKeyToAccount } = require("viem/accounts"), { hexToString } = require("viem"), sharp = require("sharp");
-const accounts = [1, 2].map((n) => privateKeyToAccount("0x" + n.toString(16).padStart(64, "0")));
 const site = new URL(process.env.RMT_PROFILE_UI_URL ?? "http://127.0.0.1:3242/");
 assert.equal(site.origin + "/", site.href); assert.equal(site.protocol, "http:"); assert.equal(site.hostname, "127.0.0.1"); assert.ok(site.port);
 const emulator = process.env.RMT_PROFILE_UI_MODE !== "disabled" && Boolean(process.env.FIREBASE_AUTH_EMULATOR_HOST && process.env.FIRESTORE_EMULATOR_HOST);
@@ -35,6 +34,10 @@ try {
   assert.equal(readiness.status, 200, "Account session preflight failed: " + JSON.stringify(readinessData));
   assert.equal(readinessData.availability, emulator ? "available" : "disabled", "Account mode preflight: " + JSON.stringify(readinessData));
   for (const [name, engine] of [["chromium", chromium], ["webkit", webkit]]) {
+    // The server suite uses deterministic keys 1/2/3. Its durable per-user budgets
+    // must not leak into this journey or between browsers, and must not be reset.
+    const fixtureStart = name === "chromium" ? 1001 : 2001;
+    const accounts = [fixtureStart, fixtureStart + 1].map((n) => privateKeyToAccount("0x" + n.toString(16).padStart(64, "0")));
     const browser = await engine.launch();
     try {
       const context = await browser.newContext({ ...devices["iPhone 13"], serviceWorkers: "block" });
@@ -83,6 +86,23 @@ try {
       }, { initialAddress: accounts[0].address });
       const goto = async (path) => { const response = await page.goto(new URL(path, site).href); assert.equal(response.status(), 200, path); };
       const status = (pattern) => page.getByRole("status").filter({ hasText: pattern }).first().waitFor();
+      const profileIdle = () => page.waitForFunction(() => {
+        const save = document.querySelector('form[aria-label="Edit creator profile"] button[type="submit"]');
+        const upload = document.querySelector('input[type="file"]');
+        return save instanceof HTMLButtonElement && !save.disabled && upload instanceof HTMLInputElement && !upload.disabled;
+      });
+      const profileMutation = async (method, path, act) => {
+        await profileIdle();
+        const [response] = await Promise.all([
+          page.waitForResponse((response) => new URL(response.url()).pathname === path && response.request().method() === method),
+          act(),
+        ]);
+        const body = await response.json();
+        assert.equal(response.status(), 200, `${method} ${path}: ${typeof body.code === "string" ? body.code : "unexpected response"}`);
+        assert.equal(body.profile?.walletAddress.toLowerCase(), accounts[0].address.toLowerCase());
+        await profileIdle();
+        return body;
+      };
       const noOverflow = async () => assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
       const screenshot = async (suffix) => { await noOverflow(); await page.screenshot({ path: join(artifacts, name + "-" + suffix + ".png"), fullPage: true }); };
       const avatarLoaded = async () => {
@@ -137,22 +157,46 @@ try {
       await page.evaluate((other) => window.profileWallets.Rabby.change(other), accounts[1].address);
       await page.getByText("Signed in", { exact: true }).waitFor();
       await page.getByRole("link", { name: "Edit profile", exact: true }).click();
+      const removalDisclosure = page.locator("summary").filter({ hasText: "Profile data and removal" });
+      await removalDisclosure.waitFor();
+      const removalBounds = await removalDisclosure.boundingBox();
+      assert.ok(removalBounds && removalBounds.height >= 44 && removalBounds.width >= 44, "Profile removal disclosure needs an accessible touch target");
       const username = "ui_" + name + "_" + Date.now().toString(36);
       await page.getByLabel("Username", { exact: true }).fill(username); await page.getByLabel("Display name", { exact: true }).fill("Synthetic Creator");
       await page.getByLabel("Bio", { exact: true }).fill("Isolated Firebase emulator profile. No real transactions.");
       await page.getByRole("button", { name: "Add HTTPS link" }).click(); await page.getByLabel("Label", { exact: true }).fill("Project");
       await page.getByLabel("HTTPS URL", { exact: true }).fill("https://example.invalid/project");
       await page.getByLabel("Reduce motion", { exact: true }).check();
-      await page.getByRole("button", { name: "Save profile", exact: true }).click(); await status(/Profile saved/);
+      const saved = await profileMutation("PATCH", "/api/account/profile", () => page.getByRole("button", { name: "Save profile", exact: true }).click());
+      assert.equal(saved.profile.username, username); await status(/Profile saved/);
       await page.getByLabel("Appearance", { exact: true }).selectOption("light");
-      await page.getByRole("button", { name: "Save profile", exact: true }).click(); await status(/Profile saved/);
+      const light = await profileMutation("PATCH", "/api/account/profile", () => page.getByRole("button", { name: "Save profile", exact: true }).click());
+      assert.equal(light.profile.preferences.theme, "light"); await status(/Profile saved/);
       await page.waitForFunction(() => document.querySelector(".launchpad")?.getAttribute("data-theme") === "light");
       assert.equal(await page.locator(".launchpad").evaluate((element) => getComputedStyle(element).getPropertyValue("--rmt-surface").trim()), "#fff");
       await page.getByLabel("Appearance", { exact: true }).selectOption("dark");
-      await page.getByRole("button", { name: "Save profile", exact: true }).click(); await status(/Profile saved/);
+      const dark = await profileMutation("PATCH", "/api/account/profile", () => page.getByRole("button", { name: "Save profile", exact: true }).click());
+      assert.equal(dark.profile.preferences.theme, "dark"); await status(/Profile saved/);
       const image = await sharp({ create: { width: 48, height: 48, channels: 4, background: "#31e45d" } }).png().toBuffer();
-      await page.getByLabel("Upload image", { exact: true }).setInputFiles({ name: "synthetic-avatar.png", mimeType: "image/png", buffer: image }); await status(/Avatar updated/);
+      const uploadAvatar = () => profileMutation("POST", "/api/account/avatar", () => page.getByLabel("Upload image", { exact: true })
+        .setInputFiles({ name: "synthetic-avatar.png", mimeType: "image/png", buffer: image }));
+      await uploadAvatar(); await status(/Avatar updated/);
       await avatarLoaded();
+      const originalAvatar = (await (await context.request.get(new URL("/api/account/session", site).href)).json()).account.profile.avatarUrl;
+      const removed = await profileMutation("DELETE", "/api/account/avatar", () => page.getByRole("button", { name: "Remove avatar", exact: true }).click());
+      assert.equal(removed.profile.avatarUrl, null); await status(/Avatar removed/);
+      await page.waitForFunction(() => document.querySelectorAll(".lpProfileAvatar img").length === 0);
+      const afterRemoval = await (await context.request.get(new URL("/api/account/session", site).href)).json();
+      assert.equal(afterRemoval.authenticated, true); assert.equal(afterRemoval.account.profile.username, username);
+      assert.equal(afterRemoval.account.profile.avatarUrl, null); assert.equal(afterRemoval.account.profile.preferences.reducedMotion, true);
+      assert.equal((await context.request.get(new URL(originalAvatar, site).href)).status(), 404);
+      assert.equal(await page.getByRole("button", { name: "Remove avatar", exact: true }).count(), 0);
+      assert.equal(await page.getByRole("status").filter({ hasText: /Avatar removed/ }).count(), 1, "Avatar changes should produce one live status announcement");
+      await uploadAvatar(); await status(/Avatar updated/);
+      await avatarLoaded();
+      const replacementAvatar = (await (await context.request.get(new URL("/api/account/session", site).href)).json()).account.profile.avatarUrl;
+      assert.notEqual(replacementAvatar, originalAvatar, "Same-file reupload must have a fresh upload version");
+      assert.equal((await context.request.get(new URL(originalAvatar, site).href)).status(), 404);
       await screenshot("profile-portrait"); await page.setViewportSize({ width: 844, height: 390 }); await screenshot("profile-landscape");
       const callsBeforeReload = walletCalls.length; await page.reload(); await page.getByRole("form", { name: "Edit creator profile" }).waitFor();
       assert.equal(walletCalls.length, callsBeforeReload); assert.equal(await page.evaluate(() => window.rmtDiscoveryCount), 0); assert.equal(await page.getByLabel("Username", { exact: true }).inputValue(), username);
@@ -203,8 +247,9 @@ try {
       assert.equal(walletCalls.some(({ method }) => /sendTransaction|sendRawTransaction|wallet_sendCalls|approve/.test(method)), false);
       assert.deepEqual(errors, []); assert.deepEqual(outside, []);
       results.push({ engine: name, mode: "firebase-emulators", syntheticWallet: accounts[0].address,
+        fixtureIsolation: "Per-browser deterministic synthetic identities, separate from server-suite accounts; durable limits unchanged",
         signatureRequests: walletCalls.filter(({ method }) => method === "personal_sign").length, walletsAccepted: ["MetaMask", "Rabby"],
-        cookieHttpOnly: sessionCookie.httpOnly, profiles: "saved/reloaded/public/deleted-after-fresh-proof", avatar: "uploaded/re-encoded/http200/decoded/header-editor-public-loaded", privatePreferences: "saved/not-public", logoutAndAccountChange: "verified-including-outage-retry", networkSwitch: "rejection-then-confirmed-switch", transactions: 0 });
+        cookieHttpOnly: sessionCookie.httpOnly, profiles: "saved/reloaded/public/deleted-after-fresh-proof", avatar: "uploaded/re-encoded/decoded/removed-with-profile-retained/reuploaded-versioned/header-editor-public-loaded", privatePreferences: "saved/not-public", logoutAndAccountChange: "verified-including-outage-retry", networkSwitch: "rejection-then-confirmed-switch", transactions: 0 });
       await context.close();
     } catch (error) {
       const failedPage = browser.contexts()[0]?.pages()[0];

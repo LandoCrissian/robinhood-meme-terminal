@@ -25,14 +25,15 @@ export function ProfileEditor() {
 function AuthenticatedEditor({ profile, csrfToken }: { profile: AccountProfile; csrfToken: string }) {
   const account = useAccount();
   const [draft, setDraft] = useState(() => editable(profile)), [pending, setPending] = useState(false), [message, setMessage] = useState("");
+  const [noticeArea, setNoticeArea] = useState<"profile" | "avatar" | "removal">("profile");
   const [removal, setRemoval] = useState<ProfileChallenge>(), [reauthenticated, setReauthenticated] = useState(false), [confirmed, setConfirmed] = useState(false);
   const busy = useRef(false), mounted = useRef(true), generation = useRef(0), fileInput = useRef<HTMLInputElement>(null);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; generation.current++; }; }, []);
   useEffect(() => { generation.current++; setRemoval(undefined); setReauthenticated(false); setConfirmed(false); }, [account.wallet]);
 
-  async function run(action: () => Promise<void>) {
+  async function run(action: () => Promise<void>, area: "profile" | "avatar" | "removal" = "profile") {
     if (busy.current) return;
-    busy.current = true; setPending(true); setMessage("");
+    busy.current = true; setPending(true); setMessage(""); setNoticeArea(area);
     try { await action(); }
     catch (error) { if (mounted.current) setMessage(testWalletErrorCode(error) === 4001 ? "You declined the wallet message. No profile deletion occurred."
       : error instanceof Error && !("status" in error) ? error.message : accountErrorMessage(error)); }
@@ -56,7 +57,22 @@ function AuthenticatedEditor({ profile, csrfToken }: { profile: AccountProfile; 
       if (!mounted.current) return;
       account.updateProfile(result.profile); setMessage("Avatar updated. The uploaded image was resized and re-encoded for your profile.");
       if (fileInput.current) fileInput.current.value = "";
-    });
+    }, "avatar");
+  }
+  async function removeCurrentAvatar() {
+    const expectedAvatarUrl = profile.avatarUrl;
+    if (!expectedAvatarUrl) return;
+    const current = generation.current;
+    await run(async () => {
+      const result = await accountApi<{ profile: AccountProfile }>("/api/account/avatar", {
+        method: "DELETE", body: { expectedAvatarUrl }, csrfToken,
+      });
+      if (!mounted.current || current !== generation.current || !sameAccount(result.profile.walletAddress, profile.walletAddress)) return;
+      account.updateProfile(result.profile);
+      setMessage(result.profile.avatarUrl ? "The reviewed avatar was removed. A newer upload is now current; review it before removing it."
+        : "Avatar removed. Your profile and private preferences are unchanged. Previously cached images may remain visible for up to 60 seconds.");
+      if (fileInput.current) fileInput.current.value = "";
+    }, "avatar");
   }
   function sameSigningWallet() {
     const wallet = account.wallet;
@@ -72,7 +88,7 @@ function AuthenticatedEditor({ profile, csrfToken }: { profile: AccountProfile; 
       assertAccountChallenge(challenge, wallet, window.location);
       if (!mounted.current || current !== generation.current) throw new Error("Wallet changed. Review removal again.");
       setRemoval(challenge); setReauthenticated(false); setConfirmed(false);
-    });
+    }, "removal");
   }
   async function signRemoval() {
     await run(async () => {
@@ -85,14 +101,14 @@ function AuthenticatedEditor({ profile, csrfToken }: { profile: AccountProfile; 
       const signature = await signAccountMessage(wallet, removal.message, assertCurrent);
       await accountApi("/api/account/verify", { method: "POST", body: { message: removal.message, signature }, csrfToken });
       assertCurrent(); setReauthenticated(true); setMessage("Wallet control confirmed. Review the removal checkbox before deleting profile data.");
-    });
+    }, "removal");
   }
   async function removeProfile() {
     if (!confirmed || !reauthenticated) return;
     await run(async () => {
       await accountApi("/api/account/profile", { method: "DELETE", csrfToken });
       account.notify("Profile data removed. On-chain launch history remains public."); await account.refresh();
-    });
+    }, "removal");
   }
   return <div className="lpProfileLayout">
     <div className="lpStack">
@@ -115,7 +131,7 @@ function AuthenticatedEditor({ profile, csrfToken }: { profile: AccountProfile; 
           <small>Preferences are private and apply after saving.</small>
         </fieldset>
         <button className="lpButton" type="submit" disabled={pending}>{pending ? "Saving…" : "Save profile"}</button>
-        {message && <p role="status">{message}</p>}
+        {noticeArea === "profile" && message && <p role="status">{message}</p>}
       </form>
       <details className="lpPanel lpDanger"><summary>Profile data and removal</summary><div className="lpForm">
         <p>Remove your profile, uploaded avatar and private preferences. On-chain transactions and launch history remain public. A fresh wallet message and a separate confirmation are required.</p>
@@ -124,14 +140,16 @@ function AuthenticatedEditor({ profile, csrfToken }: { profile: AccountProfile; 
           : !reauthenticated ? <><details className="lpSiweReview"><summary>Exact removal message</summary><pre>{removal.message}</pre></details><button type="button" className="lpButton lpSecondary" disabled={pending} onClick={() => void signRemoval()}>Confirm wallet for removal</button></>
           : <><label className="lpCheck"><input type="checkbox" checked={confirmed} onChange={(event) => setConfirmed(event.target.checked)} />I want to remove my RMT Launch profile data.</label>
             <button type="button" className="lpButton lpDangerButton" disabled={pending || !confirmed} onClick={() => void removeProfile()}>Delete profile data</button></>}
-        {message && <p role="status">{message}</p>}
+        {noticeArea === "removal" && message && <p role="status">{message}</p>}
       </div></details>
     </div>
     <aside className="lpPanel lpForm">
       <div className="lpProfileIdentity"><ProfileAvatar name={profile.displayName || profile.username || "R"} url={profile.avatarUrl} size={64} />
         <div><h2>Your avatar</h2><p>Used on your public creator profile</p></div></div>
       <label className="lpForm">Upload image<input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" disabled={pending} onChange={(event) => void upload(event.target.files?.[0])} /></label>
+      {profile.avatarUrl && <button type="button" className="lpButton lpSecondary" disabled={pending} onClick={() => void removeCurrentAvatar()}>Remove avatar</button>}
       <p>JPG, PNG or WebP · up to 2 MiB. Images are resized and re-encoded; external image URLs are not fetched.</p>
+      {noticeArea === "avatar" && message && <p role="status">{message}</p>}
       <dl className="lpFacts"><dt>Wallet</dt><dd className="lpAddress">{profile.walletAddress}</dd><dt>Network</dt><dd>Robinhood Chain 4663</dd></dl>
       <Link className="lpBack" href={profile.username ? `/u/${profile.username}` : `/creator/${profile.walletAddress}`} prefetch={false}>Open public profile</Link>
     </aside>
