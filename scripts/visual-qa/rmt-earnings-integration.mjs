@@ -165,4 +165,3 @@ export async function testEarningsJourney({ page, site, out, pg, rpc, creator, t
   await writeFile(join(out, "earnings-journey-evidence.json"), JSON.stringify(evidence, null, 2));
   return evidence;
 }
-
