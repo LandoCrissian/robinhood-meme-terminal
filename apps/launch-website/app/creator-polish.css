@@ -74,3 +74,7 @@
   .lpCreatorReviewFacts { grid-template-columns: minmax(0, 1fr); gap: 4px; }
   .lpCreatorReviewFacts > dd { margin-bottom: 10px; }
 }
+@media (pointer: coarse) {
+  .lpCreatorPageHeading > .lpButton { min-height: 44px; }
+  .lpCreatorDraft input:not([type="checkbox"]), .lpCreatorDraft textarea { font-size: 16px; }
+}

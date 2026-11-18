@@ -1,7 +1,7 @@
 .lpBrandWord { color: var(--rmt-text-soft); font-weight: 500; }
 .launchpad .lpHeader > nav { align-items: center; gap: 4px; }
 .launchpad .lpHeader > nav a { min-height: 44px; }
-.launchpad .lpHeader > nav a.lpCreateLink { align-self: center; min-height: 36px; padding: 0 17px; margin: 0 5px; border: 1px solid transparent; border-radius: 6px; color: #07130b; background: #31e45d; font-weight: 750; }
+.launchpad .lpHeader > nav a.lpCreateLink { align-self: center; min-height: 44px; padding: 0 17px; margin: 0 5px; border: 1px solid transparent; border-radius: 6px; color: #07130b; background: #31e45d; font-weight: 750; }
 .launchpad .lpHeader > nav a.lpCreateLink:hover { background: #79ee88; }
 .launchpad .lpHeader > nav a.lpCreateLink::after { display: none; }
 .launchpad .lpHeader > nav a.lpCreateLink[aria-current="page"] { border-color: var(--rmt-text); }
@@ -115,3 +115,7 @@
   .lpProfileLinkRow > label:first-child { grid-column: 1 / -1; }
 }
 @media (max-width: 380px) { .lpBrandWord { display: none; } .launchpad .lpAccountNav { max-width: 132px; } .lpHeaderRight .lpNetwork { gap: 5px; } }
+@media (pointer: coarse) {
+  .launchpad .lpDiscoveryToolbar .lpSearch input, .launchpad .lpDiscoveryToolbar .lpSearch input:focus-visible { font-size: 16px; }
+  .lpTextButton { min-height: 44px; }
+}
