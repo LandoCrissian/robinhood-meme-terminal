@@ -68,7 +68,9 @@ const { createRequire } = require('node:module');
 const path = require('node:path');
 const deny = () => { throw Error('Network access is forbidden in packaged-module acceptance'); };
 for (const name of ['http','https']) { const module = require('node:' + name); module.request=deny; module.get=deny; }
-require('node:net').connect=deny; require('node:net').createConnection=deny; require('node:tls').connect=deny; globalThis.fetch=deny;
+require('node:net').connect=deny; require('node:net').createConnection=deny; require('node:net').Socket.prototype.connect=deny;
+require('node:tls').connect=deny; globalThis.fetch=deny;
+for(const key of ['lookup','resolve','resolve4','resolve6','reverse']) require('node:dns')[key]=deny;
 const app = createRequire(path.join(__dirname,'apps/launch-website/package.json'));
 (async () => {
   const sharp=app('sharp');
@@ -76,7 +78,7 @@ const app = createRequire(path.join(__dirname,'apps/launch-website/package.json'
   assert.equal((await sharp(image).metadata()).width,1);
   const admin=app('firebase-admin/app'); app('firebase-admin/auth'); app('firebase-admin/firestore');
   assert.equal(admin.getApps().length,0);
-  console.log(JSON.stringify({sharp:'native encode/decode passed',firebaseAdmin:'modules loaded; zero initialized apps',network:'forbidden'}));
+  console.log(JSON.stringify({sharp:'native encode/decode passed',firebaseAdmin:'modules loaded; zero initialized apps',network:'passive imports with HTTP/TCP/DNS APIs blocked'}));
 })().catch(error=>{console.error(error.message);process.exitCode=1;});
 """, encoding="utf8")
         imported = subprocess.run(["node", str(probe)], capture_output=True, text=True, timeout=30)
