@@ -5,6 +5,7 @@
     "buildCommand": "pnpm install --frozen-lockfile && pnpm --filter indexer build",
     "watchPatterns": [
       "apps/indexer/src/**",
+      "packages/launchpad-common/**",
       "apps/indexer/package.json",
       "apps/indexer/tsconfig.json",
       "apps/indexer/railway.json",

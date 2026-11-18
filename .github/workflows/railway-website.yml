@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - "apps/launch-website/**"
+      - "packages/launchpad-common/**"
       - ".dockerignore"
       - "package.json"
       - "pnpm-lock.yaml"

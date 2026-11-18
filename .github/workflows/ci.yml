@@ -81,6 +81,18 @@ jobs:
       - run: pnpm --filter indexer typecheck
       - run: pnpm --filter indexer build
       - run: pnpm --filter indexer test:resilience
+      - name: Verify recipient-aware earnings pagination, restart and canonical rollback
+        run: |
+          docker exec "${{ job.services.postgres.id }}" createdb -U postgres rmt_curve_production_smoke_task074
+          pnpm --filter indexer test:curve-production
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/rmt_curve_production_smoke_task074
+      - name: Verify isolated fee activity and recipient discovery persistence
+        run: |
+          docker exec "${{ job.services.postgres.id }}" createdb -U postgres rmt_curve_fixture_task074_smoke_ci
+          pnpm --filter indexer exec tsx src/curve-fixture-earnings-postgres-smoke.ts
+        env:
+          RMT_EARNINGS_SMOKE_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/rmt_curve_fixture_task074_smoke_ci
       - run: pnpm --filter indexer test:schema
       - name: Check worker readiness, lease and restart over HTTP
         run: |

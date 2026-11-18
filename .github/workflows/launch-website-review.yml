@@ -5,6 +5,7 @@ on:
     paths:
       - "apps/launch-website/**"
       - "packages/contracts/**"
+      - "packages/launchpad-common/**"
       - "scripts/production-readiness/**"
       - "netlify.toml"
       - "package.json"
@@ -14,6 +15,7 @@ on:
       - "apps/indexer/package.json"
       - "apps/indexer/tsconfig.json"
       - "scripts/visual-qa/rmt-creator-integration.mjs"
+      - "scripts/visual-qa/rmt-earnings-integration.mjs"
       - "scripts/visual-qa/rmt-mobile-review.mjs"
       - "scripts/visual-qa/rmt-mobile-connection-check.mjs"
       - "scripts/visual-qa/export-mobile-connection-check.mjs"
@@ -33,6 +35,7 @@ on:
       - "scripts/visual-qa/export-rmt-owner-governance.mjs"
       - "scripts/visual-qa/test-rmt-owner-governance.mjs"
       - "scripts/visual-qa/rmt-netlify-website.mjs"
+      - "scripts/visual-qa/rmt-earnings-public.mjs"
       - "scripts/visual-qa/rmt-polish.mjs"
       - "docs/evidence/mobile-signing/**"
       - ".github/workflows/launch-website-review.yml"
@@ -95,6 +98,9 @@ jobs:
             RMT_WEBSITE_BROWSER="$engine" \
               RMT_WEBSITE_PREVIEW_ARTIFACTS="$RMT_WEBSITE_PREVIEW_ARTIFACTS/$engine" \
               node scripts/visual-qa/rmt-netlify-website.mjs
+            RMT_WEBSITE_BROWSER="$engine" \
+              RMT_WEBSITE_PREVIEW_ARTIFACTS="$RMT_WEBSITE_PREVIEW_ARTIFACTS/$engine/earnings" \
+              node scripts/visual-qa/rmt-earnings-public.mjs
           done
           RMT_POLISH_URL=http://127.0.0.1:3205/ \
             RMT_POLISH_ARTIFACTS="$RMT_WEBSITE_PREVIEW_ARTIFACTS/polish" pnpm test:polish

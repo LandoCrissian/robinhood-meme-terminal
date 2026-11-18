@@ -26,7 +26,7 @@ test("the surviving indexer watches its source and each dependency input", () =>
     "apps/indexer/package.json", "apps/indexer/tsconfig.json", "apps/indexer/railway.json",
     "package.json", "pnpm-workspace.yaml", "pnpm-lock.yaml",
   ];
-  for (const file of [...inputs, ...tracked.filter((file) => file.startsWith("apps/indexer/src/"))]) {
+  for (const file of [...inputs, ...tracked.filter((file) => file.startsWith("apps/indexer/src/") || file.startsWith("packages/launchpad-common/"))]) {
     assert.ok(watched(file), "Indexer misses " + file);
   }
   assert.deepEqual(read("apps/indexer/tsconfig.json").include, ["src/**/*.ts"]);

@@ -1,0 +1,37 @@
+.lpEarningsLookup { grid-template-columns: minmax(0, 1fr) auto; align-items: end; margin-bottom: 12px; }
+.lpEarningsLookup small { grid-column: 1 / -1; color: var(--rmt-text-soft); }
+.lpEarningsSummary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 18px 0 8px; }
+.lpEarningsSummary section { display: grid; gap: 8px; }
+.lpEarningsSummary span { color: var(--rmt-text-soft); font-size: 12px; }
+.lpEarningsSummary strong { font-size: clamp(19px, 3vw, 28px); overflow-wrap: anywhere; }
+.lpEarningsCheckpoint { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--rmt-text-soft); font-size: 11px; margin: 16px 0; }
+.lpEarningsProjects { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin: 16px 0; }
+.lpEarningsProject { display: grid; gap: 14px; align-content: start; }
+.lpEarningsProject > header { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.lpEarningsProject > header > div { display: grid; gap: 4px; min-width: 0; }
+.lpEarningsProject > header a { color: var(--rmt-text); font-weight: 700; text-decoration: none; overflow-wrap: anywhere; }
+.lpEarningsProject > header span, .lpEarningsRecipient { color: var(--rmt-text-soft); font-size: 12px; }
+.lpEarningsRecipient { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.lpEarningsProject details, .lpEarningsFactory, .lpEarningsHistory { min-width: 0; }
+.lpEarningsProject summary, .lpEarningsFactory summary, .lpEarningsHistory summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; gap: 8px; }
+.lpEarningsProject summary::before, .lpEarningsFactory summary::before, .lpEarningsHistory summary::before { content: "+"; color: var(--rmt-accent); }
+.lpEarningsProject details[open] > summary::before, .lpEarningsFactory[open] > summary::before, .lpEarningsHistory[open] > summary::before { content: "−"; }
+.lpEarningsFactory, .lpEarningsHistory { margin-top: 16px; }
+.lpEarningsHistory ul { display: grid; gap: 12px; padding: 0; list-style: none; }
+.lpEarningsHistory li { display: grid; gap: 5px; padding-top: 10px; border-top: 1px solid var(--rmt-border); }
+.lpEarningsHistory li > span { color: var(--rmt-text-soft); font-size: 12px; }
+.lpEarningsClaim { border-top: 1px solid var(--rmt-border); padding-top: 14px; }
+.lpEarningsClaim .lpRecovery { display: block; }
+.lpEarningsClaim .lpRecovery > summary { min-height: 44px; cursor: pointer; }
+.lpEarningsClaim .lpFacts dd, .lpEarningsProject .lpFacts dd { overflow-wrap: anywhere; min-width: 0; }
+.lpEarningsTabs { display: flex; gap: 10px; margin-bottom: 18px; }
+@media (max-width: 760px) { .lpEarningsProjects { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 900px) { .launchpad .lpEarningsLookup input, .launchpad .lpEarningsClaim :is(input, select) { font-size: 16px; } }
+@media (max-width: 480px) {
+  .lpEarningsLookup { grid-template-columns: minmax(0, 1fr); }
+  .lpEarningsLookup .lpButton { width: 100%; }
+  .lpEarningsSummary { gap: 8px; }
+  .lpEarningsSummary section { padding: 12px; }
+  .lpEarningsProject .lpFacts { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .lpEarningsProject .lpFacts dd { margin-bottom: 7px; }
+}
