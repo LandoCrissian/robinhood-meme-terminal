@@ -16,6 +16,7 @@ export function ProjectTreasurySetup({ creatorFields, onVerified, onInvalidate, 
   const [errors, setErrors] = useState<ProjectTreasuryDraftErrors>({}), [preview, setPreview] = useState<ProjectTreasuryPreview | null>(null);
   const [notice, setNotice] = useState(""), [verified, setVerified] = useState<ProjectTreasuryProof | null>(null);
   const settings = useRef(draft), revision = useRef(0), mounted = useRef(true); settings.current = draft;
+  const previousWallet = useRef<string | null>(null);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; revision.current++; }; }, []);
   const verifiedProof = (proof: ProjectTreasuryProof) => {
     if (!mounted.current) return;
@@ -42,10 +43,11 @@ export function ProjectTreasurySetup({ creatorFields, onVerified, onInvalidate, 
   }, [draft, restored]);
   useEffect(() => { revision.current++; setPreview(null); execution.invalidate(); }, [creatorFields.name, creatorFields.symbol, creatorFields.projectURI]);
   useEffect(() => {
-    if (verified && (!execution.wallet || !same(verified.creator, execution.wallet.account))) {
+    if (verified && (execution.wallet ? !same(verified.creator, execution.wallet.account) : previousWallet.current !== null)) {
       setVerified(null); setPreview(null); onInvalidate();
       setNotice("Wallet identity changed. Recover and verify the original treasury before continuing token creation.");
     }
+    previousWallet.current = execution.wallet?.account ?? null;
   }, [execution.wallet, verified]);
   function edit<K extends keyof ProjectTreasuryDraft>(field: K, value: ProjectTreasuryDraft[K]) {
     revision.current++; execution.invalidate(); setPreview(null); setVerified(null); onInvalidate(); setErrors({}); setNotice("");
