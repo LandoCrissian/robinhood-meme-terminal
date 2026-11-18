@@ -7,6 +7,7 @@ import { commitCurveFixtureRange, curveScope, fixtureCheckpoint, initializeCurve
   readCurveFixtureEarnings, readCurveFixtureFeeActivity, rollbackCurveFixture } from "./curve-fixture-store.js";
 import { syntheticProductionConfig, syntheticProductionRegistration } from "./curve-production-smoke.js";
 import type { FixtureFeeActivity } from "./curve-fixture-fee-activity.js";
+import { testProjectTreasuryFixturePostgres } from "./project-treasury-fixture-postgres-smoke.js";
 
 const address = (id: number): Address => `0x${((1n << 156n) + BigInt(id)).toString(16).padStart(40, "0")}`;
 const hash = (id: number): Hash => `0x${id.toString(16).padStart(64, "0")}`;
@@ -51,6 +52,7 @@ try {
   assert.equal((await readCurveFixtureFeeActivity(writer, scope, checkpoint, event.transactionHash))[0]?.nativeWei, "10");
   assert.equal((await readCurveFixtureFeeActivity(writer, scope, checkpoint, factoryEvent.transactionHash))[0]?.token, null);
   await assert.rejects(readCurveFixtureFeeActivity(writer, scope, { ...checkpoint, blockHash: hash(999) }, event.transactionHash), /checkpoint unavailable/);
+  await testProjectTreasuryFixturePostgres(writer, competing, binding, graduation, checkpoint);
   await reader.connect();
   await reader.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
   const options = { recipient: treasury, operatingRecipient: binding.creationFeeRecipient,
