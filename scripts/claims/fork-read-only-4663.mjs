@@ -38,14 +38,16 @@ async function port() { const s = socket(); await new Promise(resolve => s.liste
 let upstreamReads = 0, denied = 0, rateLimited = false;
 let serial = Promise.resolve(), lastRead = 0;
 async function upstreamRead(method, params, id = 1) {
-  assert.ok(allowed.has(method)); assert.ok(++upstreamReads <= 256, "Bounded fork upstream request budget");
+  assert.ok(allowed.has(method)); assert.ok(upstreamReads < 256, "Bounded fork upstream request budget");
   assert.ok(!rateLimited, "Pocket rate limit already observed; no further upstream request is permitted in this run");
   const prior = serial; let release;
   serial = new Promise(resolve => { release = resolve; });
   await prior;
+  try {
+  assert.ok(!rateLimited, "Pocket rate limit already observed; queued read cancelled");
   const pause = 1000 - (Date.now() - lastRead); if (pause > 0) await new Promise(resolve => setTimeout(resolve, pause));
   lastRead = Date.now();
-  try {
+  assert.ok(++upstreamReads <= 256, "Bounded fork upstream request budget");
   const response = await fetch(upstream, { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id, method, params }), redirect: "error", signal: AbortSignal.timeout(8_000) });
   if (response.status === 429) { rateLimited = true; report.rateLimit = { status: 429, retryAfter: response.headers.get("retry-after"), action: "Stopped upstream reads; no purchase, alternate credential or bypass" }; }
