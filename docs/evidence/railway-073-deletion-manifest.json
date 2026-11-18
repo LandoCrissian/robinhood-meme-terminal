@@ -1,0 +1,201 @@
+{
+  "schemaVersion": 1,
+  "task": "RMT Task 073",
+  "purpose": "Review-only exact legacy database/volume deletion candidates; not an executable or approved deletion request",
+  "projectId": "19587a6e-6f02-4cfa-b7db-f308934f697b",
+  "environmentId": "539a42da-fb60-420f-b9fa-8c29af25ebbe",
+  "approvedForDeletion": false,
+  "executionEnabled": false,
+  "ownerApproval": null,
+  "observedDependencyMapAt": "2026-11-18T14:07:31.101Z",
+  "observedBackupMetadataAt": "2026-11-18T14:18:44.360Z",
+  "requiredBeforeAnyDeletion": [
+    "Fresh dependency and external-consumer review against the exact service/volume IDs",
+    "Consistent PostgreSQL 18 custom-format logical export without public database exposure",
+    "Encrypted export in owner-controlled storage outside Railway; preserve encryption recovery materials securely",
+    "Record archive SHA-256, bytes and UTC timestamp",
+    "Successful pg_restore --list of the exported archive",
+    "Restore to a separate isolated PostgreSQL instance; never overwrite original",
+    "Compare schemas, indexes, row counts and chain/contract/checkpoint/transaction/log identities",
+    "Preserve unique historical, accounting and recovery records with a documented recovery procedure",
+    "Owner reviews backup/restore evidence and explicitly approves this exact manifest hash and resource IDs",
+    "Reconfirm live indexer, original Postgres and website remain excluded immediately before execution"
+  ],
+  "protectedResources": [
+    {
+      "kind": "service",
+      "id": "27b1aa2c-77e5-4ed4-91a1-1951d68c488e",
+      "name": "robinhood-meme-terminal",
+      "reason": "Authoritative current launchpad indexer"
+    },
+    {
+      "kind": "service",
+      "id": "a1ef7853-e21a-401e-87c9-c99002228507",
+      "name": "Postgres",
+      "reason": "Actual current indexer production database"
+    },
+    {
+      "kind": "volume",
+      "id": "bf6e7ddc-3be6-4ba7-ad53-8e7010e76c86",
+      "name": "postgres-volume",
+      "reason": "Original production data"
+    },
+    {
+      "kind": "service",
+      "id": "8e9c1c15-74b5-4262-8851-72603a3dfc98",
+      "name": "rmt-launch-website",
+      "formerName": "rmt-nft-marketplace-indexer",
+      "reason": "Existing stateless service slot reused for the current website"
+    }
+  ],
+  "candidates": [
+    {
+      "serviceId": "96ace991-4c71-404f-af95-323415b0a45d",
+      "serviceName": "rmt-market-indexer-shadow-db",
+      "volumeId": "d37c99b1-eb7e-40b5-9e19-d8c0680057f1",
+      "volumeName": "postgres-volume-VgRk",
+      "provisionedMB": 5000,
+      "measuredDiskGB": 0.489406464,
+      "formerConsumerServiceId": null,
+      "dependencyFinding": "No cross-service consumer found in current audited explicit reference map; the old shadow worker actually references Postgres-EHZZ",
+      "backupMetadata": [
+        {
+          "id": "4d37cdf7-a265-4441-a56d-66c07478dcb7",
+          "createdAt": "2026-08-27T13:25:35.216Z",
+          "expiresAt": null,
+          "name": "Online resize to 5000MB",
+          "currentRecoveryVerified": false
+        }
+      ],
+      "region": "sfo",
+      "mountPath": "/var/lib/postgresql/data",
+      "disposition": "RETAIN_PENDING_EXPORT_RESTORE_AND_EXACT_OWNER_APPROVAL",
+      "dataOwnership": "UNCLASSIFIED_PRESERVE",
+      "currentLogicalExport": {
+        "path": null,
+        "encrypted": false,
+        "sha256": null,
+        "bytes": null,
+        "createdAtUtc": null,
+        "pgRestoreListVerified": false,
+        "isolatedRestoreVerified": false,
+        "schemaCountsAndIdentityComparisonVerified": false
+      },
+      "deleteServiceApproved": false,
+      "deleteVolumeApproved": false
+    },
+    {
+      "serviceId": "d7c33990-12e7-4762-85a5-f43e748bc48d",
+      "serviceName": "rmt-nft-indexer-db",
+      "volumeId": "8700d5ea-06c2-4f9f-8c5c-bec2b2bf1d2a",
+      "volumeName": "postgres-volume-U6ae",
+      "provisionedMB": 5000,
+      "measuredDiskGB": 0.343457792,
+      "formerConsumerServiceId": "a883fe02-583b-493e-b2ef-6acd87d775b9",
+      "dependencyFinding": "Former NFT indexer database; the current launchpad indexer refers to original Postgres instead",
+      "backupMetadata": [],
+      "region": "sfo",
+      "mountPath": "/var/lib/postgresql/data",
+      "disposition": "RETAIN_PENDING_EXPORT_RESTORE_AND_EXACT_OWNER_APPROVAL",
+      "dataOwnership": "UNCLASSIFIED_PRESERVE",
+      "currentLogicalExport": {
+        "path": null,
+        "encrypted": false,
+        "sha256": null,
+        "bytes": null,
+        "createdAtUtc": null,
+        "pgRestoreListVerified": false,
+        "isolatedRestoreVerified": false,
+        "schemaCountsAndIdentityComparisonVerified": false
+      },
+      "deleteServiceApproved": false,
+      "deleteVolumeApproved": false
+    },
+    {
+      "serviceId": "46619727-f4fb-4e44-a4d3-9c2a0d56b873",
+      "serviceName": "rmt-nft-marketplace-indexer-db",
+      "volumeId": "581e6040-c1a6-4008-a5a0-971c51a94f97",
+      "volumeName": "postgres-volume-vL_k",
+      "provisionedMB": 5000,
+      "measuredDiskGB": 0.137797632,
+      "formerConsumerServiceId": "8e9c1c15-74b5-4262-8851-72603a3dfc98",
+      "dependencyFinding": "Former marketplace connection. Reused website service must not carry this database credential or become its writer",
+      "backupMetadata": [],
+      "region": "sfo",
+      "mountPath": "/var/lib/postgresql/data",
+      "disposition": "RETAIN_PENDING_EXPORT_RESTORE_AND_EXACT_OWNER_APPROVAL",
+      "dataOwnership": "UNCLASSIFIED_PRESERVE",
+      "currentLogicalExport": {
+        "path": null,
+        "encrypted": false,
+        "sha256": null,
+        "bytes": null,
+        "createdAtUtc": null,
+        "pgRestoreListVerified": false,
+        "isolatedRestoreVerified": false,
+        "schemaCountsAndIdentityComparisonVerified": false
+      },
+      "deleteServiceApproved": false,
+      "deleteVolumeApproved": false
+    },
+    {
+      "serviceId": "d51260ff-3651-41f9-b888-d62d49e25fd2",
+      "serviceName": "Postgres-EHZZ",
+      "volumeId": "c8d861b2-ac76-4299-948b-19d02cf2bfcf",
+      "volumeName": "postgres-volume-8kqG",
+      "provisionedMB": 5000,
+      "measuredDiskGB": 2.323668992,
+      "formerConsumerServiceId": "9ea9a7d3-34d8-4229-a7ff-e3326c67ceef",
+      "dependencyFinding": "Actual former shadow indexer database; do not substitute similarly named shadow DB",
+      "backupMetadata": [
+        {
+          "id": "f014af1d-589b-4fc7-883f-ea0814e2326b",
+          "createdAt": "2026-10-02T22:41:45.032Z",
+          "expiresAt": "2026-10-23T22:41:44.962Z",
+          "name": "Online resize to 1000MB",
+          "currentRecoveryVerified": false
+        },
+        {
+          "id": "fb67b07a-53f1-42fe-8a0e-a65eb19269be",
+          "createdAt": "2026-10-02T22:42:46.039Z",
+          "expiresAt": "2026-10-23T22:42:45.975Z",
+          "name": "Online resize to 5000MB",
+          "currentRecoveryVerified": false
+        }
+      ],
+      "region": "sfo",
+      "mountPath": "/var/lib/postgresql/data",
+      "disposition": "RETAIN_PENDING_EXPORT_RESTORE_AND_EXACT_OWNER_APPROVAL",
+      "dataOwnership": "UNCLASSIFIED_PRESERVE",
+      "currentLogicalExport": {
+        "path": null,
+        "encrypted": false,
+        "sha256": null,
+        "bytes": null,
+        "createdAtUtc": null,
+        "pgRestoreListVerified": false,
+        "isolatedRestoreVerified": false,
+        "schemaCountsAndIdentityComparisonVerified": false
+      },
+      "deleteServiceApproved": false,
+      "deleteVolumeApproved": false
+    }
+  ],
+  "configurationArchive": {
+    "format": "Windows current-user DPAPI",
+    "bytes": 20582,
+    "sha256": "c6dba765ecd51e8e2dd26c8d2d855363222f097d8c6eec5dbd346990c53e50dd",
+    "roundtripVerified": true,
+    "databaseBackup": false,
+    "offDeviceRecoveryVerified": false
+  },
+  "noDatabaseOrVolumeDeleted": true,
+  "doesNotAuthorizePlanUpgrade": true,
+  "deletionDoesNotEnableCustomDomains": true,
+  "limits": [
+    "Measured nonzero disk use is not table-count or logical data ownership evidence.",
+    "Historical resize-backup metadata is not a current verified logical export or restore.",
+    "No SQL, database contents, connection strings, passwords or tokens belong in this manifest.",
+    "This manifest cannot trigger deletion. Any future execution must bind separately reviewed owner approval and fresh evidence."
+  ]
+}
