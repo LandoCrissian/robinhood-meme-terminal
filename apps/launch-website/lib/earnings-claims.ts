@@ -161,6 +161,9 @@ export async function sendEarningsClaim(input: {
   if (typeof runtime !== "string" || runtime.length > 49154 || !/^0x(?:[0-9a-f]{2}){1,24576}$/i.test(runtime)
     || !same(keccak256(runtime as Hex), request.targetRuntimeHash)) throw new Error("Wallet contract runtime changed");
   await readWallet();
+  const pending = readEarningsClaimJournal(storage, request);
+  if (pending && !["confirmed", "reverted"].includes(pending.state)) throw new Error("Recover the existing earnings transaction first");
+  if (now() >= request.reviewExpiresAt * 1000) throw new Error("Earnings review is stale");
   const journal: EarningsClaimJournal = { schemaVersion: 1, request, state: "awaiting-wallet", transactionHash: null, createdAt: now(), updatedAt: now() };
   storeEarningsClaimJournal(storage, journal);
   try {

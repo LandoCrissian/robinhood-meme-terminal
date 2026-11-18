@@ -135,7 +135,7 @@ export async function prepareEarningsClaim(input: {
     if (prior) {
       if (!isEarningsClaimRequest(prior) || !await claimCalldataMatches(prior)) return { status: "invalid", reason: "stale-review" };
       review = await context.rpc.getBlock({ blockNumber: BigInt(prior.reviewBlockNumber) });
-      if (!review.hash || !same(review.hash, prior.reviewBlockHash) || head.number < review.number || head.number - review.number > 12n
+      if (!review.hash || !same(review.hash, prior.reviewBlockHash) || head.number < review.number
         || Number(head.timestamp) >= prior.reviewExpiresAt || native < BigInt(prior.expectedNativeWei) || erc20 < BigInt(prior.expectedTokenWei)) {
         return { status: "invalid", reason: "stale-review" };
       }
