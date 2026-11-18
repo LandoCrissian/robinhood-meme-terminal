@@ -70,6 +70,7 @@
 .lpCardMetrics dd { margin: 4px 0 0; color: var(--rmt-text); font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
 .lpCardFooter { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding-top: 11px; border-top: 1px solid var(--rmt-border); font-size: 12px; }
 .lpCardFooter a, .lpCreatorLink, .lpProfileLinks a { color: var(--rmt-accent); }
+.lpCardFooter a { display: inline-flex; align-items: center; min-height: 44px; }
 .lpCardFooter time { color: var(--rmt-text-soft); }
 .lpProfileLayout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(240px, .65fr); gap: 16px; max-width: 1120px; }
 .lpProfileForm textarea { width: 100%; min-height: 96px; padding: 10px; color: var(--rmt-text); background: var(--rmt-canvas); border: 1px solid var(--rmt-border-strong); border-radius: 6px; resize: vertical; font: inherit; }
@@ -84,8 +85,8 @@
 .lpProfileBanner .lpProfileIdentity { margin-bottom: 15px; }
 .lpSkeleton { min-height: 140px; display: grid; place-items: center; color: var(--rmt-text-soft); border: 1px solid var(--rmt-border); border-radius: 8px; }
 .launchpad[data-reduced-motion="true"] *, .launchpad[data-reduced-motion="true"] *::before, .launchpad[data-reduced-motion="true"] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
-.launchpad[data-theme="light"] { --rmt-canvas: #f5f8f5; --rmt-surface: #fff; --rmt-text: #14261a; --rmt-text-soft: #5b6c60; --rmt-border: #dce6dd; --rmt-border-strong: #bccfbe; --rmt-accent: #257d39; background: var(--rmt-canvas); }
-@media (prefers-color-scheme: light) { .launchpad[data-theme="system"] { --rmt-canvas: #f5f8f5; --rmt-surface: #fff; --rmt-text: #14261a; --rmt-text-soft: #5b6c60; --rmt-border: #dce6dd; --rmt-border-strong: #bccfbe; --rmt-accent: #257d39; background: var(--rmt-canvas); } }
+.launchpad[data-theme="light"] { --rmt-canvas: #f5f8f5; --rmt-surface: #fff; --rmt-text: #14261a; --rmt-text-soft: #5b6c60; --rmt-border: #dce6dd; --rmt-border-strong: #7b8d7e; --rmt-accent: #257d39; --rmt-negative: #b52236; --rmt-artwork-background: #f5f8f5; background: var(--rmt-canvas); }
+@media (prefers-color-scheme: light) { .launchpad[data-theme="system"] { --rmt-canvas: #f5f8f5; --rmt-surface: #fff; --rmt-text: #14261a; --rmt-text-soft: #5b6c60; --rmt-border: #dce6dd; --rmt-border-strong: #7b8d7e; --rmt-accent: #257d39; --rmt-negative: #b52236; --rmt-artwork-background: #f5f8f5; background: var(--rmt-canvas); } }
 @media (max-width: 1000px) { .lpCardGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 730px) {
   .lpBrandWord { font-size: 13px; }
@@ -103,7 +104,7 @@
   .lpDiscoveryToolbar .lpSearch { flex-basis: 100%; max-width: none; }
   .launchpad .lpDiscoveryToolbar .lpSearch input, .launchpad .lpDiscoveryToolbar .lpSearch input:focus-visible { font-size: 16px; }
   .lpLaunchCard { padding: 16px; }
-  .lpCardGrid, .lpArchiveGrid, .lpProfileLayout { grid-template-columns: minmax(0, 1fr); }
+  .lpCardGrid, .lpProfileLayout { grid-template-columns: minmax(0, 1fr); }
   .lpProfileForm textarea { font-size: 16px; }
   .lpProfileLinkRow { grid-template-columns: minmax(0, 1fr) auto; }
   .lpProfileLinkRow > label:first-child { grid-column: 1 / -1; }

@@ -4,7 +4,13 @@ body .launchpad {
 }
 .launchpad .lpHeader {
   grid-template-columns: auto minmax(0, 1fr) auto;
+  min-height: calc(56px + env(safe-area-inset-top, 0px));
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: calc(20px + env(safe-area-inset-left, 0px));
+  padding-right: calc(20px + env(safe-area-inset-right, 0px));
+  background: var(--rmt-canvas);
 }
+.launchpad :is(button, a, input, select, textarea, summary):focus-visible { outline: 2px solid var(--rmt-accent); outline-offset: 3px; }
 .launchpad .lpHeader nav a.isActive { color: var(--rmt-text); }
 .launchpad .lpHeader nav a.isActive::after { background: var(--rmt-accent); }
 .lpHeaderRight, .lpNetwork, .lpWalletOptions {
@@ -29,7 +35,7 @@ body .launchpad {
   max-width: 1460px;
   min-height: min(62svh, 650px);
   margin: 0 auto;
-  padding: 24px;
+  padding: 24px calc(24px + env(safe-area-inset-right, 0px)) 24px calc(24px + env(safe-area-inset-left, 0px));
 }
 .lpPageHeading {
   display: flex;
@@ -46,7 +52,7 @@ body .launchpad {
   align-items: center;
   justify-content: center;
   width: fit-content;
-  min-height: 42px;
+  min-height: 44px;
   max-width: 100%;
   padding: 8px 14px;
   border: 1px solid transparent;
@@ -72,7 +78,7 @@ body .launchpad {
 .lpTokenName { display: grid; min-width: 0; }
 .lpTokenName strong { color: var(--rmt-text); font-size: 13px; }
 .lpTokenName small { overflow: hidden; color: var(--rmt-text-soft); text-overflow: ellipsis; }
-.lpArtwork { background: #13231a; color: var(--rmt-accent); font-weight: 800; }
+.lpArtwork { background: var(--rmt-artwork-background, #13231a); color: var(--rmt-accent); font-weight: 800; }
 .lpEmpty, .lpPanel, .lpNotice, .lpRecovery {
   min-width: 0;
   padding: 16px;
@@ -86,7 +92,7 @@ body .launchpad {
 .lpEmpty .rmtIcon { color: var(--rmt-accent); }
 .lpNotice, .lpRecovery { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 0 0 14px; color: var(--rmt-text-soft); }
 .lpNotice code, .lpRecovery code { overflow-wrap: anywhere; }
-.lpNotice.lpError { border-color: #71363b; color: #ffb1b4; }
+.lpNotice.lpError { border-color: var(--rmt-negative); color: var(--rmt-negative); }
 .lpColumns { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: start; gap: 16px; max-width: 1080px; }
 .lpTokenColumns { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); }
 .lpStack, .lpForm, .lpReview { display: grid; min-width: 0; gap: 14px; }
@@ -99,7 +105,7 @@ body .launchpad {
 .lpForm input:not([type="checkbox"]), .lpForm select, .lpDraft textarea, .lpRecovery input {
   width: 100%;
   min-width: 0;
-  min-height: 42px;
+  min-height: 44px;
   margin: 0;
   padding: 8px 10px;
   font-weight: 500;
@@ -111,8 +117,8 @@ body .launchpad {
 .lpDraft textarea { resize: vertical; font-family: inherit; }
 .lpDraftField { display: grid; min-width: 0; gap: 4px; }
 .lpDraftField small { color: var(--rmt-text-soft); }
-.lpDraftFieldError { color: #ffb1b4; font-size: 13px; }
-.lpDraft [aria-invalid="true"] { border-color: #ffb1b4; }
+.lpDraftFieldError { color: var(--rmt-negative); font-size: 13px; }
+.lpDraft [aria-invalid="true"] { border-color: var(--rmt-negative); }
 .lpDraftDescription { white-space: pre-wrap; }
 .lpDraftTreasury fieldset { margin-top: 8px; }
 .lpDraftActions { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -132,12 +138,12 @@ body .launchpad {
 .lpCheck a, .lpBack, .lpProjectLink a, .lpRecovery a, .lpFooter a { color: var(--rmt-accent); }
 .lpExamples summary, .lpPanel details summary { cursor: pointer; color: var(--rmt-accent); }
 .lpExamples p, .lpPanel details dl { margin-top: 8px; }
-.lpBack { display: inline-block; margin-bottom: 12px; }
+.lpBack { display: inline-flex; align-items: center; min-height: 44px; margin-bottom: 12px; }
 .lpPageHeading:has(.lpTokenHeading) { max-width: 1080px; }
 .lpTokenHeading { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .lpTokenHeading .lpArtwork { width: 44px; height: 44px; flex-basis: 44px; }
 .lpPill, .lpCheckState { display: inline-flex; padding: 3px 8px; border: 1px solid var(--rmt-border-strong); border-radius: 5px; color: var(--rmt-accent); font-size: 11px; }
-.lpCheckState.lp-failed { color: #ffb1b4; }
+.lpCheckState.lp-failed { color: var(--rmt-negative); }
 .lpCheckState.lp-unknown, .lpCheckState.lp-unsupported { color: var(--rmt-text-soft); }
 .lpChecks { display: grid; gap: 8px; padding: 0; margin: 0; list-style: none; }
 .lpChecks li { padding: 8px 0; border-bottom: 1px solid var(--rmt-border); }
@@ -148,20 +154,21 @@ body .launchpad {
 .lpCopied { display: none; position: absolute; top: -18px; right: 0; background: var(--rmt-canvas); color: var(--rmt-accent); }
 .lpIdentity[data-copied="true"] .lpCopied { display: block; }
 .lpTabs { display: grid; grid-template-columns: 1fr 1fr; border-bottom: 1px solid var(--rmt-border); }
-.lpTabs button { min-height: 40px; border: 0; border-bottom: 2px solid transparent; color: var(--rmt-text-soft); background: transparent; cursor: pointer; }
+.lpTabs button { min-height: 44px; border: 0; border-bottom: 2px solid transparent; color: var(--rmt-text-soft); background: transparent; cursor: pointer; }
 .lpTabs button.isActive { border-color: var(--rmt-accent); color: var(--rmt-text); }
-.lpFooter { display: flex; gap: 16px; flex-wrap: wrap; margin: 0 auto; max-width: 1460px; padding: 16px 24px 24px; border-top: 1px solid var(--rmt-border); font-size: 12px; }
+.lpFooter { display: flex; gap: 16px; flex-wrap: wrap; margin: 0 auto; max-width: 1460px; padding: 16px calc(24px + env(safe-area-inset-right, 0px)) calc(24px + env(safe-area-inset-bottom, 0px)) calc(24px + env(safe-area-inset-left, 0px)); border-top: 1px solid var(--rmt-border); font-size: 12px; }
+.lpFooter a { display: inline-flex; align-items: center; min-height: 44px; min-width: 44px; }
 .lpChart .priceChart { margin: 0; min-height: auto; }
 
 @media (max-width: 730px) {
-  .launchpad .lpHeader { position: relative; grid-template-columns: 1fr auto; gap: 0 8px; padding: 0 12px; }
+  .launchpad .lpHeader { position: relative; grid-template-columns: 1fr auto; gap: 0 8px; padding: env(safe-area-inset-top, 0px) calc(12px + env(safe-area-inset-right, 0px)) 0 calc(12px + env(safe-area-inset-left, 0px)); }
   .lpHeaderRight { gap: 8px; }
   .launchpad .lpHeader nav { grid-column: 1 / -1; grid-row: 2; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); min-height: 42px; border-top: 1px solid var(--rmt-border); }
   .launchpad .lpHeader nav a { min-width: 0; padding: 0 2px; white-space: nowrap; }
   .lpHeader .rmtTerminalBrand { min-height: 52px; }
-  .lpContent { padding: 16px 12px; }
+  .lpContent { padding: 16px calc(12px + env(safe-area-inset-right, 0px)) 16px calc(12px + env(safe-area-inset-left, 0px)); }
   .lpPageHeading { margin-bottom: 14px; }
-  .lpFooter { padding-inline: 12px; }
+  .lpFooter { padding-left: calc(12px + env(safe-area-inset-left, 0px)); padding-right: calc(12px + env(safe-area-inset-right, 0px)); }
   .lpColumns, .lpTokenColumns { grid-template-columns: minmax(0, 1fr); gap: 12px; }
   .lpTradeColumn { grid-row: 1; }
   .lpTable { border-radius: 0; border-inline: 0; background: transparent; }
