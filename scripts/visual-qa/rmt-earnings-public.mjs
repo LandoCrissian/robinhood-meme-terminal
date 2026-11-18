@@ -147,7 +147,7 @@ try {
       const inputBox = await input.boundingBox(), submitBox = await submit.boundingBox();
       assert.ok(inputBox && inputBox.height >= 44, "Beneficiary input is too small to touch");
       assert.ok(submitBox && submitBox.height >= 44 && submitBox.width >= 44, "Lookup button is too small to touch");
-      if (name !== "desktop") assert.ok(parseFloat(focus.fontSize) >= 16, "iPhone input text would trigger automatic zoom");
+      if (name !== "desktop") assert.ok(parseFloat(focus.fontSize) >= 16, `iPhone input text is ${focus.fontSize}; expected at least 16px to avoid automatic zoom`);
       await page.screenshot({ path: join(output, `earnings-${engine}-${name}-focus.png`), fullPage: true });
 
       await input.fill(beneficiary);
@@ -190,6 +190,20 @@ try {
       checked.push({ name, viewport: page.viewportSize(), walletCalls: 0, externalRequests: 0, operationalRequests: 0,
         browserErrors: 0, noHorizontalOverflow: true, inputHeight: inputBox.height, submitHeight: submitBox.height,
         focus, earningsRequests: earningsRequests.length, lookupStatus: "actual server 503", mockedLatencyOnly: latencyUsed });
+    } catch (error) {
+      await page.screenshot({ path: join(output, `earnings-${engine}-${name}-failure.png`), fullPage: true }).catch(() => undefined);
+      const inputState = await page.locator("#earnings-wallet").evaluateAll(nodes => nodes.map(node => ({
+        fontSize: getComputedStyle(node).fontSize, height: node.getBoundingClientRect().height,
+        focused: node === document.activeElement,
+      }))).catch(() => []);
+      await writeFile(join(output, `earnings-${engine}-${name}-failure.json`), JSON.stringify({
+        status: "failed", engine, layout: name, url: page.url(), viewport: page.viewportSize(),
+        reason: String(error.message).slice(0, 1000), inputState,
+        walletCalls: walletCalls.length, externalRequests: externalRequests.length,
+        operationalRequests: operationalRequests.length, earningsRequests: earningsRequests.length,
+        physicalDevice: "not performed",
+      }, null, 2) + "\n");
+      throw error;
     } finally { await context.close(); }
   }
 } finally { await browser.close(); }
