@@ -55,7 +55,7 @@
 .lpEmpty.lpForm p { max-width: 60ch; font-size: 13px; line-height: 1.6; }
 .lpEmpty.lpLaunchEmpty { min-height: 164px; gap: 8px; padding: 22px 18px; }
 .lpCardGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-.lpLaunchCard { display: grid; align-content: start; min-width: 0; gap: 16px; padding: 18px; border: 1px solid var(--rmt-border); border-radius: 8px; background: var(--rmt-surface); }
+.lpLaunchCard { display: flex; flex-direction: column; min-width: 0; gap: 16px; padding: 18px; border: 1px solid var(--rmt-border); border-radius: 8px; background: var(--rmt-surface); }
 .lpLaunchCard:hover { border-color: var(--rmt-border-strong); }
 .lpLaunchCard h3 { margin: 0; font-size: 16px; line-height: 1.35; overflow-wrap: anywhere; }
 .lpLaunchCard h3 a { color: var(--rmt-text); text-decoration: none; }
@@ -69,7 +69,7 @@
 .lpCardMetrics > div { min-width: 0; }
 .lpCardMetrics dt { color: var(--rmt-text-soft); font-size: 11px; }
 .lpCardMetrics dd { margin: 4px 0 0; color: var(--rmt-text); font-size: 13px; font-weight: 600; overflow-wrap: anywhere; }
-.lpCardFooter { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding-top: 11px; border-top: 1px solid var(--rmt-border); font-size: 12px; }
+.lpCardFooter { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 11px; border-top: 1px solid var(--rmt-border); font-size: 12px; }
 .lpCardFooter a, .lpCreatorLink, .lpProfileLinks a { color: var(--rmt-accent); }
 .lpCardFooter a { display: inline-flex; align-items: center; min-height: 44px; }
 .lpCardFooter time { color: var(--rmt-text-soft); }
