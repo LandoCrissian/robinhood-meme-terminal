@@ -63,6 +63,14 @@ contract RMTProjectTreasuryV1Test {
         direct.initializeController(); vm.prank(CREATOR); direct.disablePurchases();
         vm.expectRevert(); direct.initializeController();
     }
+    function testPrecompileControllersAndWrongChainCannotAdmitNewTreasuries() public {
+        bytes32 intent=keccak256("chain-bound");
+        vm.prank(CREATOR); vm.expectRevert(); factory.create(intent,address(1),0,type(RMTProjectTreasuryV1).creationCode);
+        vm.chainId(4663); vm.prank(CREATOR); vm.expectRevert(); factory.create(intent,CREATOR,0,type(RMTProjectTreasuryV1).creationCode);
+        vm.expectRevert(); treasury.bindProject(); vm.chainId(31337);
+        require(factory.treasuryForIntent(CREATOR,intent)==address(0));
+        vm.prank(CREATOR); require(factory.create(intent,CREATOR,0,type(RMTProjectTreasuryV1).creationCode).code.length!=0);
+    }
     function testBindingRejectsWrongCreatorIntentShareAndUnregisteredClone() public {
         vm.prank(CREATOR); RMTProjectTreasuryV1 side=RMTProjectTreasuryV1(payable(factory.create(keccak256("unbound"),CREATOR,9000,type(RMTProjectTreasuryV1).creationCode)));
         vm.expectRevert(); side.bindProject();
@@ -106,6 +114,13 @@ contract RMTProjectTreasuryV1Test {
         vm.prank(CREATOR); treasury.disableAsset(address(token)); vm.expectRevert(); treasury.depositToken(address(token),1);
         uint64 id=_queue(address(token),OTHER,30 ether); vm.warp(vm.getBlockTimestamp()+2 days); treasury.executeWithdrawal(id);
         require(token.balanceOf(OTHER)==30 ether && treasury.accountedHeld(address(token))==0 && treasury.pendingWithdrawals()==0);
+    }
+    function testZeroFeesAndChangedProjectRuntimeFailWithoutInventingReceipts() public {
+        vm.prank(CREATOR); vm.expectRevert(); treasury.claimCurve();
+        vm.prank(CREATOR); vm.expectRevert(); treasury.claimLp(0);
+        curveFees.credit{value:1 ether}(); vm.etch(address(token),hex"600160005500");
+        vm.prank(CREATOR); vm.expectRevert(); treasury.claimCurve();
+        require(curveFees.nativeCredit()==1 ether && treasury.accountedHeld(address(0))==0);
     }
     function testUnknownHostileAndUnregisteredTokenAdmissionFailsEvenWithSuppliedHash() public {
         TreasuryHostileTokenMock hostile=new TreasuryHostileTokenMock();
@@ -190,5 +205,10 @@ contract RMTProjectTreasuryV1Test {
         address expected=factory.predict(CREATOR,intent,CREATOR,0,type(RMTProjectTreasuryV1).creationCode); vm.prank(CREATOR); address deployed=factory.create(intent,CREATOR,0,type(RMTProjectTreasuryV1).creationCode);
         require(expected==deployed && deployed!=address(treasury) && factory.treasuryForIntent(OTHER,intent)==address(0));
     }
+    function testFuzz_ExplicitTemplateConcatenationPreservesExactInitBytes(bytes32 intent,uint16 shareRaw) public view {
+        uint16 share=shareRaw%9001;
+        bytes memory code=type(RMTProjectTreasuryV1).creationCode;
+        bytes memory args=abi.encode(CREATOR,intent,CREATOR,share,pins);
+        require(keccak256(abi.encodePacked(code,args))==keccak256(bytes.concat(code,args)));
+    }
 }
-

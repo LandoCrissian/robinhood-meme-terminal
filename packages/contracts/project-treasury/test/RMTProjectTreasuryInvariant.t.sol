@@ -52,4 +52,3 @@ contract RMTProjectTreasuryInvariantTest {
         require(!treasury.purchasesEnabled() && !treasury.purchaseExecutionAvailable());
     }
 }
-

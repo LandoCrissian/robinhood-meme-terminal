@@ -41,7 +41,7 @@ contract RMTProjectTreasuryFactoryV1 {
         // its public bytes avoids embedding >23KB inside the factory runtime.
         // This is not an arbitrary-code or arbitrary-call deployment facility.
         if (creationCode.length == 0 || creationCode.length > 32_768 || keccak256(creationCode) != treasuryCreationCodeHash) revert InvalidConfiguration();
-        return abi.encodePacked(creationCode, abi.encode(creator, intentId, controller, treasuryShareBps, pins));
+        return bytes.concat(creationCode, abi.encode(creator, intentId, controller, treasuryShareBps, pins));
     }
 
     function create(bytes32 intentId, address controller, uint16 treasuryShareBps, bytes calldata creationCode) external returns (address treasury) {
