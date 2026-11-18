@@ -16,6 +16,7 @@ import { fixturePostEventTopics, indexFixturePostTransaction, loadFixtureLpLedge
 import { creatorEarningsProfile, decodeEarningsDiscoveryCursor, earningsBeneficiaryRoles, encodeEarningsDiscoveryCursor,
   parseFixtureEarningsDiscoveryQuery } from "./creator-earnings.js";
 import { fixtureMigratedRegistration } from "./curve-fixture-migration.js";
+import { indexFixtureSuccessorGraduation, verifyFixtureGraduationCoverage } from "./curve-fixture-successor-graduation.js";
 import { fixtureFeeActivityEventAbi, fixtureFeeActivityTopics, fixtureLpFeeActivity, indexFixtureFeeActivity,
   type FixtureFeeActivity } from "./curve-fixture-fee-activity.js";
 
@@ -168,6 +169,13 @@ async function readSegment(rpc: PublicClient, binding: CurveFixtureBinding, grad
         await loadFixtureLpLedger(rpc, graduation, cursor);
         graduations.push({ token: cursor.launch.token, evidence: result.graduation });
       }
+    } else {
+      const successor = await indexFixtureSuccessorGraduation(rpc, binding, graduation, combined, transaction, block, index);
+      if (successor) {
+        const migratedCursor = combined.find(item => same(item.launch.token, successor.token))!;
+        await loadFixtureLpLedger(rpc, graduation, migratedCursor);
+        graduations.push(successor);
+      }
     }
     const post = await indexFixturePostTransaction(rpc, graduation, combined, transaction, block, index);
     if (post) postEvents.push(post);
@@ -175,6 +183,7 @@ async function readSegment(rpc: PublicClient, binding: CurveFixtureBinding, grad
       : await indexFixtureFeeActivity(rpc, binding, combined, transaction, block, index);
     if (fee) feeActivity.push(fee);
   }
+  await verifyFixtureGraduationCoverage(rpc, graduation, combined, blocks, graduations);
   await verifyPostEventCoverage(rpc, graduation, combined, blocks, postEvents);
   await verifyFeeActivityCoverage(rpc, binding, combined, blocks, feeActivity);
   const states = await readLifecycleStates(rpc, binding, graduation, combined, end, unsupportedSuccessors);

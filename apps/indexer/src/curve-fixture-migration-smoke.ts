@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
-import { keccak256, zeroAddress, type Address, type Hash, type PublicClient } from "viem";
+import { encodeAbiParameters, encodeEventTopics, encodeFunctionData, keccak256, zeroAddress, type Address, type Hash, type PublicClient } from "viem";
 import { fixtureMigratedRegistration } from "./curve-fixture-migration.js";
+import { assertFixtureCanonicalCurveStart, fixtureGraduationAbi, lifecycleCurveAbi } from "./curve-fixture-lifecycle.js";
+import { indexFixtureSuccessorGraduation } from "./curve-fixture-successor-graduation.js";
 import { syntheticProductionConfig as production, syntheticProductionRegistration } from "./curve-production-smoke.js";
 
 const address = (id: number): Address => `0x${((1n << 156n) + BigInt(id)).toString(16).padStart(40, "0")}`;
@@ -69,6 +71,32 @@ export async function testFixtureMigrationEarnings() {
     ["project", [binding.factory, current(), 4, current(), 3n]], ["code:" + third, "0x6005"]] as const) {
     overrides.set(field, value);
     await assert.rejects(fixtureMigratedRegistration(rpc, binding, graduation, launch, observed), /route or immutable policy proof failed/, field);
+    overrides.clear();
+  }
+  for (const start of [{ sold: 0n, backing: 0n }, { sold: 600_000_000n * 10n ** 18n, backing: 2n * 10n ** 18n }]) {
+    assert.doesNotThrow(() => assertFixtureCanonicalCurveStart(start));
+  }
+  for (const start of [{ sold: -1n, backing: 0n }, { sold: 0n, backing: 1n },
+    { sold: 600_000_000n * 10n ** 18n, backing: 1n }, { sold: 600_000_001n * 10n ** 18n, backing: 2n * 10n ** 18n }]) {
+    assert.throws(() => assertFixtureCanonicalCurveStart(start), /canonical starting reserves/);
+  }
+  const tx = { from: launch.creator, to: third, value: 0n, hash: word(200), chainId: 31337,
+    input: encodeFunctionData({ abi: lifecycleCurveAbi, functionName: "graduate", args: [1_800_000_000n] }),
+    blockNumber: 105n, blockHash: observed.blockHash, transactionIndex: 0 };
+  const poolKey = { currency0: zeroAddress, currency1: launch.token, fee: 3000, tickSpacing: 60, hooks: graduation.guard };
+  const data = encodeAbiParameters([{ type: "tuple", components: [
+    { type: "address", name: "currency0" }, { type: "address", name: "currency1" }, { type: "uint24", name: "fee" },
+    { type: "int24", name: "tickSpacing" }, { type: "address", name: "hooks" },
+  ] }, { type: "uint160" }, { type: "uint256" }, ...Array.from({ length: 5 }, () => ({ type: "uint128" as const }))],
+  [poolKey, 1n, 1n, 1n, 1n, 1n, 0n, 0n]);
+  Object.assign(rpc, { async getTransactionReceipt() { return { from: tx.from, to: tx.to, transactionHash: tx.hash,
+    blockNumber: tx.blockNumber, blockHash: tx.blockHash, transactionIndex: 0, status: "success",
+    logs: [{ address: graduation.graduationEngine, blockNumber: tx.blockNumber, blockHash: tx.blockHash,
+      transactionHash: tx.hash, transactionIndex: 0, removed: false, logIndex: 1, data,
+      topics: encodeEventTopics({ abi: fixtureGraduationAbi, eventName: "CurveGraduated", args: { token: launch.token, curve: third, poolId: word(300) } }) }] }; } });
+  for (const [field, value] of [["activeCurve", second], ["revenueLedger", second], ["code:" + third, "0x6005"]] as const) {
+    overrides.set(field, value);
+    await assert.rejects(indexFixtureSuccessorGraduation(rpc, binding, graduation, [{ launch, grossFees: 0n }], tx, observed, 0), /route or immutable policy proof failed/);
     overrides.clear();
   }
 }
