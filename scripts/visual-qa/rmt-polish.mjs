@@ -275,6 +275,22 @@ async function contrastEvidence(page, selectors) {
   return results;
 }
 
+async function settleVisualTransitions(page) {
+  await page.evaluate(async () => {
+    // Measure settled theme/inset styles, rather than comparing an old
+    // foreground or padding value with a newly changed background or inset.
+    getComputedStyle(document.querySelector(".launchpad")).color;
+    const transitions = document.getAnimations().filter(animation => animation.constructor.name === "CSSTransition");
+    await Promise.race([Promise.all(transitions.map(animation => animation.finished.catch(() => {}))),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Theme transitions did not settle")), 2000))]);
+  });
+}
+
+async function settleTheme(page, theme) {
+  await page.waitForFunction(theme => document.querySelector(".launchpad")?.dataset.theme === theme, theme);
+  await settleVisualTransitions(page);
+}
+
 async function touchEvidence(page, selectors) {
   const results = await page.evaluate(selectors => selectors.flatMap(selector => [...document.querySelectorAll(selector)]
     .filter(element => element.getClientRects().length).map(element => {
@@ -326,11 +342,12 @@ async function safeAreaStress(page) {
       boundary: "Synthetic CSS inset substitution derived from actual active rules; not a physical device/notch result" };
   });
   try {
+    await settleVisualTransitions(page);
     evidence.dimensions = await noOverflow(page);
     evidence.contentPadding = await page.locator(".lpContent").evaluate(element => {
       const style = getComputedStyle(element); return { left: parseFloat(style.paddingLeft), right: parseFloat(style.paddingRight) };
     });
-    assert.ok(evidence.contentPadding.left >= 56 && evidence.contentPadding.right >= 56);
+    assert.ok(evidence.contentPadding.left >= 56 && evidence.contentPadding.right >= 56, JSON.stringify(evidence.contentPadding));
     return evidence;
   } finally { await page.locator("#qa-derived-safe-area-stress").evaluate(element => element.remove()); }
 }
@@ -357,6 +374,7 @@ async function checkAfter(browser, engine, layout, harness) {
     // CSS-only DOM rendering exercise; this does not authenticate a profile or
     // change saved preferences, server configuration or any public record.
     await page.locator(".launchpad").evaluate((element, theme) => { element.dataset.theme = theme; }, theme);
+    await settleTheme(page, theme);
     appThemes.push({ theme, scope: "CSS-only local DOM attribute; no saved preference or authentication change",
       contrast: await contrastEvidence(page, [".lpHeader > nav a", ".lpAccountLabel", ".lpNetwork", ".lpDiscoveryHeading h1", ".lpDiscoveryChain", ".lpDiscoveryCount", ".lpEmpty h2", ".lpEmpty p"]) });
     captures.push(await screenshot(page, `after-${engine}-${layout.name}-launches-${theme}`));
@@ -437,6 +455,7 @@ async function checkAfter(browser, engine, layout, harness) {
   const cardStates = [];
   for (const theme of ["dark", "light"]) {
     await themeStates.getByRole("button", { name: theme, exact: true }).click();
+    await settleTheme(page, theme);
     for (const [stateName, count] of [["empty", 0], ["single", 1], ["many", 15]]) {
       await fixtureStates.getByRole("button", { name: stateName, exact: true }).click();
       assert.equal(await cards.count(), count);
