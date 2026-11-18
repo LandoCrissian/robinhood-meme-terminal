@@ -199,12 +199,13 @@ let omittedCreationReads = 0;
 let interruptLogScan = false;
 let interruptedLogReads = 0;
 let hideTradeTrace = false;
+let hideClaimTrace = false;
 let hiddenTradeTraces = 0;
 let rpcOutage = false;
 const readProxyMethods = new Set(["eth_chainId", "eth_blockNumber", "eth_getBlockByNumber", "eth_getBlockByHash", "eth_getCode",
   "eth_getStorageAt", "eth_getLogs", "eth_getTransactionByHash", "eth_getTransactionReceipt", "eth_getTransactionCount", "eth_getBalance", "eth_call", "eth_estimateGas", "eth_gasPrice", "eth_maxPriorityFeePerGas", "web3_clientVersion",
   "debug_traceTransaction"]);
-const proxy = createServer(async (request, response) => {
+const proxyHandler = (claimReader = false) => async (request, response) => {
   const write = (result, status = 200) => {
     response.writeHead(status, { "Content-Type": "application/json" });
     response.end(JSON.stringify(result));
@@ -229,7 +230,7 @@ const proxy = createServer(async (request, response) => {
         missingReceiptReads++;
         return { id, jsonrpc: "2.0", result: null };
       }
-      if (method === "debug_traceTransaction" && hideTradeTrace) {
+      if (method === "debug_traceTransaction" && (hideTradeTrace || claimReader && hideClaimTrace)) {
         hiddenTradeTraces++;
         return { id, jsonrpc: "2.0", error: { code: -32000, message: "Fixture paused transaction proof" } };
       }
@@ -244,9 +245,17 @@ const proxy = createServer(async (request, response) => {
     };
     write(Array.isArray(incoming) ? await Promise.all(incoming.map(route)) : await route(incoming));
   } catch { write({ error: "Invalid fixture RPC request" }, 400); }
-});
+};
+const proxy = createServer(proxyHandler());
 await new Promise((done, fail) => { proxy.once("error", fail); proxy.listen(0, "127.0.0.1", done); });
 const rpcProxy = loopback(proxy.address().port) + "/";
+// Distinguish an app receipt-provider trace outage from a simultaneous worker
+// outage. Both proxies are read-only, loopback-only facades of the same synthetic
+// chain; neither is claimed as an independent production provider. The worker
+// must prove its own rows rather than receiving fabricated indexed evidence.
+const claimProofProxy = args["profiles-only"] ? createServer(proxyHandler(true)) : undefined;
+if (claimProofProxy) await new Promise((done, fail) => { claimProofProxy.once("error", fail); claimProofProxy.listen(0, "127.0.0.1", done); });
+const claimRpcProxy = claimProofProxy ? loopback(claimProofProxy.address().port) + "/" : rpcProxy;
 
 let pgStarted = false;
 let browser;
@@ -329,14 +338,14 @@ try {
   await pg.query(`CREATE TABLE rmt_curve_fixture_marker (identity text PRIMARY KEY CHECK (identity = '${profile}'));
     INSERT INTO rmt_curve_fixture_marker VALUES ('${profile}');`);
 
-  const env = { ...childBase, RMT_CURVE_FIXTURE: profile, RMT_CURVE_FIXTURE_RPC: rpcProxy,
+  const env = { ...childBase, RMT_CURVE_FIXTURE: profile, RMT_CURVE_FIXTURE_RPC: claimRpcProxy,
     RMT_CURVE_FIXTURE_READ_KEY: indexReadKey,
     RMT_CURVE_FIXTURE_DEPLOYMENT: manifestPath, RMT_CURVE_FIXTURE_SITE_ORIGIN: site, RMT_CURVE_FIXTURE_INDEXER: workerOrigin + "/",
     ...(args["profiles-only"] && { RMT_CLAIM_PROFILES_FIXTURE: "local-reviewed-claims-31337-v1" }),
     ...(mobileCreator && { RMT_MOBILE_REVIEW_FIXTURE: "local-reviewed-31337",
       RMT_MOBILE_REVIEW_FIXTURE_ACCOUNT: mobileCreator.address, RMT_MOBILE_REVIEW_TEST_DELEGATION: "synthetic-7702-v1",
       RMT_MOBILE_REVIEW_PLAN: mobilePlan }) };
-  const workerEnv = { ...env, RMT_CURVE_FIXTURE_DATABASE: databaseUrl, RMT_CURVE_FIXTURE_PORT: new URL(workerOrigin).port };
+  const workerEnv = { ...env, RMT_CURVE_FIXTURE_RPC: rpcProxy, RMT_CURVE_FIXTURE_DATABASE: databaseUrl, RMT_CURVE_FIXTURE_PORT: new URL(workerOrigin).port };
   const webArgs = ["apps/launch-website/node_modules/next/dist/bin/next", "start", "apps/launch-website", "--hostname", "127.0.0.1", "--port", new URL(site).port];
   const startWeb = (name, config = env) => start(process.execPath, webArgs, name, { env: config });
   const webReady = (web) => waitFor("Next.js site", async () => (await fetchAt(site, "/create-token")).ok, web);
@@ -405,7 +414,7 @@ try {
         verifyProductionClaimSettlement: settlement.verifyProductionClaimSettlement });
       browser = await ({ chromium, webkit })[args.browser].launch();
       await testClaimProfilesBrowser({ browserEngine: browser, site, out, rpc, acceptance, waitFor, mine, ready, restart,
-        hideReceipt: hash => { hideReceipt = hash ?? undefined; }, hideNativeProof: hidden => { hideTradeTrace = hidden; } });
+        hideReceipt: hash => { hideReceipt = hash ?? undefined; }, hideNativeProof: hidden => { hideClaimTrace = hidden; } });
       console.log("Focused isolated claim wallet profiles passed. No production signature or broadcast occurred.");
     } finally { unregister(); }
   } else if (args["successor-only"]) {
@@ -1347,4 +1356,5 @@ try {
     await successful(start(pgExecutable("pg_ctl"), ["-D", cluster, "-w", "-m", "fast", "stop"], "postgres-stop"));
   }
   await new Promise((done) => proxy.close(done));
+  if (claimProofProxy) await new Promise((done) => claimProofProxy.close(done));
 }
