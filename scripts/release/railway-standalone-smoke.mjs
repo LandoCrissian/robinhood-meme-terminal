@@ -12,8 +12,10 @@ assert.ok(["local-container", "local-next-runtime"].includes(environment));
 const read = (path, init = {}) => new Promise((resolve, reject) => {
   const url = new URL(path, base);
   assert.equal(url.origin, base.origin);
+  const body = init.body === undefined ? null : Buffer.from(init.body);
   const request = httpRequest(url, { method: init.method ?? "GET", signal: AbortSignal.timeout(10_000),
-    headers: { Host: host, "X-Forwarded-Proto": "https", ...init.headers } }, response => {
+    headers: { Host: host, "X-Forwarded-Proto": "https", ...init.headers,
+      ...(body === null ? {} : { "Content-Length": String(body.length) }) } }, response => {
     const chunks = []; let size = 0;
     response.on("data", chunk => {
       size += chunk.length;
@@ -30,8 +32,9 @@ const read = (path, init = {}) => new Promise((resolve, reject) => {
     });
   });
   request.on("error", reject);
-  if (init.body !== undefined) request.write(init.body);
-  request.end();
+  // Explicit framing also covers DELETE, for which Node's HTTP client does not
+  // automatically select chunked encoding when a body is written.
+  request.end(body);
 });
 for (let i = 0; ; i++) {
   try { if ((await read("/healthz")).status === 200) break; } catch { /* Wait for this local container only. */ }
@@ -57,7 +60,10 @@ for (const path of blocked) assert.equal((await read(path)).status, 404, path);
 const mutations = [["/api/account/nonce", "POST"], ["/api/account/verify", "POST"], ["/api/account/logout", "POST"],
   ["/api/account/profile", "PATCH"], ["/api/account/profile", "DELETE"], ["/api/account/avatar", "POST"], ["/api/account/avatar", "DELETE"],
   ["/api/launchpad/production-creation", "POST"]];
-for (const [path, method] of mutations) assert.equal((await read(path, { method, headers: { Origin: "https://" + host, "Content-Type": "application/json" }, body: "{}" })).status, 404, path);
+for (const [path, method] of mutations) {
+  const response = await read(path, { method, headers: { Origin: "https://" + host, "Content-Type": "application/json" }, body: "{}" });
+  assert.equal(response.status, 404, `${method} ${path}: ${await response.text()}`);
+}
 for (let i = mutations.length; i < 12; i++) assert.equal((await read("/api/account/nonce", { method: "POST" })).status, 404);
 const limited = await read("/api/account/nonce", { method: "POST", headers: { "X-Real-IP": "198.51.100.42" } });
 assert.equal(limited.status, 429); assert.ok(Number(limited.headers.get("retry-after")) > 0);
