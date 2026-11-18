@@ -115,6 +115,7 @@ body .launchpad {
   background: var(--rmt-canvas);
 }
 .lpDraft textarea { resize: vertical; font-family: inherit; }
+.launchpad .lpForm input::placeholder, .launchpad .lpForm textarea::placeholder, .launchpad .lpRecovery input::placeholder { color: var(--rmt-text-soft); opacity: 1; }
 .lpDraftField { display: grid; min-width: 0; gap: 4px; }
 .lpDraftField small { color: var(--rmt-text-soft); }
 .lpDraftFieldError { color: var(--rmt-negative); font-size: 13px; }
