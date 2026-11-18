@@ -53,7 +53,7 @@ export async function accountHandler(request: Request, action: AccountAction, ke
     requireProfileRequest(request, config, !["GET", "HEAD"].includes(request.method));
     const search = new URL(request.url).searchParams;
     if ((action !== "public-avatar" && search.size !== 0) || (action === "public-avatar" && (search.size > 1 || (search.size === 1 && (!search.has("v") || !/^[a-f0-9]{64}$/.test(search.get("v")!)))))) throw new ProfileError(400, "invalid_profile_query", "Invalid profile query.");
-    const firebase = profileFirebase(config);
+    const firebase = await profileFirebase(config);
     if (!["GET", "HEAD"].includes(request.method)) {
       try { await cleanupExpiredProfileState(firebase.db); }
       catch { console.warn(JSON.stringify({ event: "profile_retention_deferred" })); }

@@ -19,7 +19,7 @@ process.env.RMT_PROFILES_ORIGIN = "http://127.0.0.1:4319";
 const config = profileConfig()!;
 assert.equal(config.projectId, "demo-rmt-launch-profiles", "Real Firebase projects must never run these write tests");
 assert.equal(config.mode, "emulator");
-const firebase = profileFirebase(config);
+let firebase: Awaited<ReturnType<typeof profileFirebase>>;
 const alice = privateKeyToAccount("0x" + "1".padStart(64, "0") as `0x${string}`);
 const bob = privateKeyToAccount("0x" + "2".padStart(64, "0") as `0x${string}`);
 type Jar = Map<string, string>;
@@ -58,6 +58,7 @@ async function signIn(jar: Jar, account = alice) {
 const edit = (username: string) => profileEdit({ username, displayName: "Synthetic creator", bio: "Test-only creator profile", links: [{ label: "Project", url: "https://example.test/" }], preferences: { theme: "dark", reducedMotion: true } });
 
 test("real Firebase Auth sessions and durable Firestore profiles complete the isolated wallet lifecycle", async t => {
+  firebase = await profileFirebase(config);
   t.after(async () => { await firebase.db.terminate(); await Promise.all(getApps().map(deleteApp)); });
   await fetch(`http://${config.authHost}/emulator/v1/projects/${config.projectId}/accounts`, { method: "DELETE" });
   await fetch(`http://${config.firestoreHost}/emulator/v1/projects/${config.projectId}/databases/(default)/documents`, { method: "DELETE" });

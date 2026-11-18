@@ -6,7 +6,7 @@ import { ProfileError, type ProfileConfig } from "./config";
 import type { profileFirebase } from "./firebase";
 import { digest, ensureWalletProfile, profileBudget, profileCollections as c, randomToken, walletKey, type ProfileAccount, type StoredSession } from "./store";
 
-type Firebase = ReturnType<typeof profileFirebase>;
+type Firebase = Awaited<ReturnType<typeof profileFirebase>>;
 export const sessionCookieName = "rmt_launch_session_v1";
 export const browserCookieName = "rmt_launch_browser_v1";
 const sessionLifetime = 24 * 60 * 60 * 1_000;

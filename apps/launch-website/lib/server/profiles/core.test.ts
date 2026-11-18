@@ -2,12 +2,29 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import sharp from "sharp";
 import { NextRequest } from "next/server";
+import { createRequire } from "node:module";
 import { profileEdit, profileUsername } from "../../profiles";
 import { isProfileApiRoute, profileConfig, requireProfileRequest } from "./config";
 import { sanitizeAvatar } from "./avatar";
 
 const local = { RMT_PROFILES_MODE: "local-firebase-emulators-v1", RMT_PROFILES_ORIGIN: "http://127.0.0.1:4319", GCLOUD_PROJECT: "demo-rmt-launch-profiles",
   FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:9099", FIRESTORE_EMULATOR_HOST: "127.0.0.1:8080" };
+test("disabled account handlers do not load the Firebase Admin SDK or initialize profile services", async () => {
+  const require = createRequire(import.meta.url);
+  const loadedSdk = () => Object.keys(require.cache).filter(path => /[\\/]firebase-admin[\\/]/.test(path));
+  assert.deepEqual(loadedSdk(), []);
+  const originalMode = process.env.RMT_PROFILES_MODE;
+  process.env.RMT_PROFILES_MODE = "";
+  try {
+    const { accountHandler } = await import("./controller");
+    const session = await accountHandler(new Request("https://www.rmtlaunch.fun/api/account/session", { headers: { host: "www.rmtlaunch.fun" } }), "session");
+    assert.equal(session.status, 200);
+    assert.deepEqual(await session.json(), { authenticated: false, availability: "disabled" });
+    const blocked = await accountHandler(new Request("https://www.rmtlaunch.fun/api/account/nonce", { method: "POST", headers: { host: "www.rmtlaunch.fun", origin: "https://www.rmtlaunch.fun" } }), "nonce");
+    assert.equal(blocked.status, 404);
+    assert.deepEqual(loadedSdk(), []);
+  } finally { if (originalMode === undefined) delete process.env.RMT_PROFILES_MODE; else process.env.RMT_PROFILES_MODE = originalMode; }
+});
 test("profile configuration is disabled by default and local-only unless exact cloud approval exists", () => {
   assert.equal(profileConfig({}), null);
   assert.equal(profileConfig(local)?.mode, "emulator");
