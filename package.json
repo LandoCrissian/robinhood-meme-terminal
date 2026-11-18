@@ -12,6 +12,7 @@
     "typecheck": "pnpm --filter @rmt/launch-website --filter indexer typecheck",
     "test": "pnpm --filter @rmt/launch-website test:history && pnpm --filter indexer test:resilience && node --test scripts/railway-watch-scope.test.mjs",
     "test:profiles": "node scripts/profiles/run-emulator-tests.mjs",
+    "test:polish": "node scripts/visual-qa/rmt-polish.mjs",
     "test:profiles:server": "node scripts/profiles/run-emulator-tests.mjs --command \"pnpm --filter @rmt/launch-website exec tsx --test lib/server/profiles/core.test.ts lib/server/profiles/emulator.test.ts\"",
     "test:profiles:browser": "node scripts/profiles/run-emulator-tests.mjs --command \"node apps/launch-website/scripts/profile-ui-smoke.mjs\"",
     "test:profiles:http": "node scripts/profiles/run-emulator-tests.mjs --command \"node --test apps/launch-website/lib/server/profiles/next-http-acceptance.mjs\"",

@@ -6,7 +6,7 @@ import { FixtureLaunchDetails, FixtureTransactionRecovery } from "../../_compone
 import { configuredCurveFixture } from "../../../lib/server/curve-fixture";
 import { readFixtureLaunches } from "../../../lib/server/fixture-discovery";
 import { configuredProductionDiscovery, productionDirectory, readProductionDiscovery } from "../../../lib/server/production-discovery";
-import { NewEngineLaunches } from "../../_components/new-engine-launches";
+import { LaunchProvenance } from "../../_components/launch-provenance";
 import { CreatorLink } from "../../_components/creator-link";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +20,7 @@ export default async function LaunchPage({ params }: { params: Promise<{ token: 
   if (!fixture) {
     if (!configuredProductionDiscovery(requestHeaders)) notFound();
     const data = await readProductionDiscovery(address);
+    const directory = productionDirectory(data);
     return <>
       <Link className="lpBack" href="/" prefetch={false}>← Launches</Link>
       <header className="lpPageHeading"><div><h1>{data.status === "unavailable" ? "New-engine evidence unavailable" : data.launches[0]?.name ?? "Indexing pending"}</h1><p>Robinhood Chain 4663 · verified creation evidence</p></div></header>
@@ -27,7 +28,7 @@ export default async function LaunchPage({ params }: { params: Promise<{ token: 
         : data.status === "stale" ? "Stale registration checkpoint. Current lifecycle and trading are unverified."
         : data.launches.length ? "Creation confirmed at the indexed checkpoint. Trading and claims remain separately gated." : "No registration at this verified checkpoint. A newly confirmed transaction may still be indexing."}</p>
       <code className="lpAddress">{address}</code>
-      <NewEngineLaunches directory={productionDirectory(data)} />
+      {directory.status === "ready" && directory.launches[0] && <LaunchProvenance launch={directory.launches[0]} />}
       {data.status !== "unavailable" && data.launches[0] && <dl className="lpFacts">
         <dt>Creator</dt><dd className="lpAddress"><CreatorLink wallet={data.launches[0].creator} label={data.launches[0].creator} /></dd>
         <dt>Project treasury</dt><dd className="lpAddress">{data.launches[0].treasury ?? "None"}</dd>

@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describeCurveLifecycle, hasCurveRegistration, proposedCurveLifecycle, type CurveLaunch, type CurveRegistration } from "../curve-lifecycle";
+import { LaunchProvenance } from "../../app/_components/launch-provenance";
 
 const address = (digit: string) => "0x" + digit.repeat(40);
 const hash = (digit: string) => "0x" + digit.repeat(64);
@@ -61,4 +64,23 @@ test("graduation display requires a receipt, a complete v4 pool key and positive
   assert.equal(describeCurveLifecycle({ ...launch, observation: { ...graduatedObservation, market: {
     ...graduatedObservation.market, poolKey: { ...graduatedObservation.market.poolKey, currency1: address("f") },
   } } }).stage, "unknown");
+});
+
+test("detail evidence retains complete identities and never promotes an invalid lifecycle to funded liquidity", () => {
+  const markup = renderToStaticMarkup(createElement(LaunchProvenance, { launch: { registration, state: "graduated", observation: graduatedObservation } }));
+  for (const value of [registration.factory, registration.projectRegistry, registration.initialCurve, registration.token,
+    registration.creation.transactionHash, registration.creation.blockHash, registration.checkpoint.blockHash,
+    graduatedObservation.receipt.transactionHash, graduatedObservation.market.poolManager, graduatedObservation.market.positionManager,
+    graduatedObservation.market.poolId, graduatedObservation.market.poolKey.currency0, graduatedObservation.market.poolKey.currency1,
+    graduatedObservation.market.poolKey.hooks, graduatedObservation.market.owner]) assert.ok(markup.includes(value));
+  assert.match(markup, /Ethereum L1 finality/); assert.match(markup, /Unverified/);
+  const invalid = renderToStaticMarkup(createElement(LaunchProvenance, { launch: { registration, state: "graduated", observation: {
+    ...graduatedObservation, market: { ...graduatedObservation.market, liquidity: "0" },
+  } } }));
+  assert.match(invalid, /Lifecycle unverified/);
+  assert.doesNotMatch(invalid, /Starting funded deposits|Observed position owner/);
+  const wrongChain = renderToStaticMarkup(createElement(LaunchProvenance, { launch: {
+    registration: { ...registration, chainId: 1 } as unknown as CurveRegistration, state: "created",
+  } }));
+  assert.match(wrongChain, /evidence is unavailable/); assert.ok(!wrongChain.includes(registration.token));
 });

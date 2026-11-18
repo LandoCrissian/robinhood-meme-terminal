@@ -54,7 +54,7 @@
   .lpCreatorPageHeading { gap: 16px; }
   .lpCreatorPageHeading h1 { font-size: 28px; }
   .lpCreatorPageHeading p { max-width: 290px; font-size: 13px; }
-  .lpCreatorPageHeading > .lpButton { min-height: 36px; padding: 6px 10px; font-size: 12px; }
+  .lpCreatorPageHeading > .lpButton { min-height: 44px; padding: 6px 10px; font-size: 12px; }
   .lpCreatorMode { padding: 11px 13px; }
   .lpCreatorColumns { grid-template-columns: minmax(0, 1fr); gap: 14px; }
   .lpCreatorDraft, .lpCreatorTerms { gap: 18px; padding: 18px 16px; }
