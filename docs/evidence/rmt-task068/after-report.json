@@ -1,0 +1,347 @@
+{
+  "status": "passed",
+  "mode": "after",
+  "candidate": {
+    "commit": "ad41452b20d11910629495d7d917791646b97149",
+    "sources": {
+      "app/_components/new-engine-launches.tsx": "3129fcdee1499bac83214338517883fa242ae4575636c08bbea9e92c29b3dbce",
+      "app/_components/launch-provenance.tsx": "b24eaa4f245c6aa023ad5185c703cef84f8198eb86114f6846df2c2b4a56bffd",
+      "app/_components/wallet-account.tsx": "301c48f67bf15ff6f56ca47fc5da7ef26197256be4cc5070015061fb724828c2",
+      "app/_components/launch-shell.tsx": "c0eeb46b812102037e76c56491cd2fced9781ee70688ed50cfe1480c3867e092",
+      "app/page.tsx": "27c2442500e25a021950d7244cb4452c4b6ed0f2428bed78142b8930e4bc9461",
+      "app/profile-refinement.css": "1922976fd8f61b52b6926c967fc0b0975eca299f34e91b6d58dd407fdd127855",
+      "app/creator-polish.css": "5ea946c1ce1931eeb84d85ed08916865843b26563f232c86f1c7fdbd7a582d57"
+    }
+  },
+  "recordedAt": "2026-11-18T03:11:19.884Z",
+  "reports": [
+    {
+      "phase": "after",
+      "engine": "chromium",
+      "layout": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "url": "http://127.0.0.1:3268/",
+      "fixture": "Isolated local React harness, actual NewEngineLaunches component, canonical-shaped synthetic registrations; no live project claims",
+      "focus": {
+        "innerWidth": "0px",
+        "outerWidth": "2px",
+        "outerStyle": "solid"
+      },
+      "fixtureFocus": {
+        "innerWidth": "0px",
+        "outerWidth": "2px",
+        "outerStyle": "solid"
+      },
+      "keyboard": {
+        "nativeTabInsideMenu": true,
+        "nativeTabTarget": "Wallet",
+        "expandedAfterTab": "true"
+      },
+      "captures": [
+        "after-chromium-desktop-launches-search-focus.png",
+        "after-chromium-desktop-wallet-menu.png",
+        "after-chromium-desktop-create.png",
+        "after-chromium-desktop-my-launches.png",
+        "after-chromium-desktop-synthetic-cards.png",
+        "after-chromium-desktop-synthetic-no-results.png",
+        "after-chromium-desktop-synthetic-prelaunch.png",
+        "after-chromium-desktop-synthetic-unavailable.png",
+        "after-chromium-desktop-synthetic-empty.png",
+        "after-chromium-desktop-synthetic-detail-evidence.png"
+      ],
+      "operations": [],
+      "pageErrors": [],
+      "walletCalls": []
+    },
+    {
+      "phase": "after",
+      "engine": "chromium",
+      "layout": "iphone-portrait",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "url": "http://127.0.0.1:3268/",
+      "fixture": "Isolated local React harness, actual NewEngineLaunches component, canonical-shaped synthetic registrations; no live project claims",
+      "focus": {
+        "innerWidth": "0px",
+        "outerWidth": "2px",
+        "outerStyle": "solid"
+      },
+      "fixtureFocus": {
+        "innerWidth": "0px",
+        "outerWidth": "2px",
+        "outerStyle": "solid"
+      },
+      "keyboard": {
+        "nativeTabInsideMenu": true,
+        "nativeTabTarget": "Wallet",
+        "expandedAfterTab": "true"
+      },
+      "captures": [
+        "after-chromium-iphone-portrait-launches-search-focus.png",
+        "after-chromium-iphone-portrait-wallet-menu.png",
+        "after-chromium-iphone-portrait-create.png",
+        "after-chromium-iphone-portrait-my-launches.png",
+        "after-chromium-iphone-portrait-synthetic-cards.png",
+        "after-chromium-iphone-portrait-synthetic-no-results.png",
+        "after-chromium-iphone-portrait-synthetic-prelaunch.png",
+        "after-chromium-iphone-portrait-synthetic-unavailable.png",
+        "after-chromium-iphone-portrait-synthetic-empty.png",
+        "after-chromium-iphone-portrait-synthetic-detail-evidence.png"
+      ],
+      "operations": [],
+      "pageErrors": [],
+      "walletCalls": []
+    },
+    {
+      "phase": "after",
+      "engine": "chromium",
+      "layout": "iphone-landscape",
+      "viewport": {
+        "width": 750,
+        "height": 390
+      },
+      "url": "http://127.0.0.1:3268/",
+      "fixture": "Isolated local React harness, actual NewEngineLaunches component, canonical-shaped synthetic registrations; no live project claims",
+      "focus": {
+        "innerWidth": "0px",
+        "outerWidth": "2px",
+        "outerStyle": "solid"
+      },
+      "fixtureFocus": {
+        "innerWidth": "0px",
+        "outerWidth": "2px",
+        "outerStyle": "solid"
+      },
+      "keyboard": {
+        "nativeTabInsideMenu": true,
+        "nativeTabTarget": "Wallet",
+        "expandedAfterTab": "true"
+      },
+      "captures": [
+        "after-chromium-iphone-landscape-launches-search-focus.png",
+        "after-chromium-iphone-landscape-wallet-menu.png",
+        "after-chromium-iphone-landscape-create.png",
+        "after-chromium-iphone-landscape-my-launches.png",
+        "after-chromium-iphone-landscape-synthetic-cards.png",
+        "after-chromium-iphone-landscape-synthetic-no-results.png",
+        "after-chromium-iphone-landscape-synthetic-prelaunch.png",
+        "after-chromium-iphone-landscape-synthetic-unavailable.png",
+        "after-chromium-iphone-landscape-synthetic-empty.png",
+        "after-chromium-iphone-landscape-synthetic-detail-evidence.png"
+      ],
+      "operations": [],
+      "pageErrors": [],
+      "walletCalls": []
+    },
+    {
+      "phase": "after",
+      "engine": "chromium",
+      "layout": "narrow",
+      "viewport": {
+        "width": 320,
+        "height": 740
+      },
+      "url": "http://127.0.0.1:3268/",
+      "fixture": "Isolated local React harness, actual NewEngineLaunches component, canonical-shaped synthetic registrations; no live project claims",
+      "focus": {
+        "innerWidth": "0px",
+        "outerWidth": "2px",
+        "outerStyle": "solid"
+      },
+      "fixtureFocus": {
+        "innerWidth": "0px",
+        "outerWidth": "2px",
+        "outerStyle": "solid"
+      },
+      "keyboard": {
+        "nativeTabInsideMenu": true,
+        "nativeTabTarget": "Wallet",
+        "expandedAfterTab": "true"
+      },
+      "captures": [
+        "after-chromium-narrow-launches-search-focus.png",
+        "after-chromium-narrow-wallet-menu.png",
+        "after-chromium-narrow-create.png",
+        "after-chromium-narrow-my-launches.png",
+        "after-chromium-narrow-synthetic-cards.png",
+        "after-chromium-narrow-synthetic-no-results.png",
+        "after-chromium-narrow-synthetic-prelaunch.png",
+        "after-chromium-narrow-synthetic-unavailable.png",
+        "after-chromium-narrow-synthetic-empty.png",
+        "after-chromium-narrow-synthetic-detail-evidence.png"
+      ],
+      "operations": [],
+      "pageErrors": [],
+      "walletCalls": []
+    },
+    {
+      "phase": "after",
+      "engine": "webkit",
+      "layout": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "url": "http://127.0.0.1:3268/",
+      "fixture": "Isolated local React harness, actual NewEngineLaunches component, canonical-shaped synthetic registrations; no live project claims",
+      "focus": {
+        "innerWidth": "0px",
+        "outerWidth": "2px",
+        "outerStyle": "solid"
+      },
+      "fixtureFocus": {
+        "innerWidth": "0px",
+        "outerWidth": "2px",
+        "outerStyle": "solid"
+      },
+      "keyboard": {
+        "nativeTabInsideMenu": false,
+        "nativeTabTarget": "Search launches",
+        "expandedAfterTab": "false"
+      },
+      "captures": [
+        "after-webkit-desktop-launches-search-focus.png",
+        "after-webkit-desktop-wallet-menu.png",
+        "after-webkit-desktop-create.png",
+        "after-webkit-desktop-my-launches.png",
+        "after-webkit-desktop-synthetic-cards.png",
+        "after-webkit-desktop-synthetic-no-results.png",
+        "after-webkit-desktop-synthetic-prelaunch.png",
+        "after-webkit-desktop-synthetic-unavailable.png",
+        "after-webkit-desktop-synthetic-empty.png",
+        "after-webkit-desktop-synthetic-detail-evidence.png"
+      ],
+      "operations": [],
+      "pageErrors": [],
+      "walletCalls": []
+    },
+    {
+      "phase": "after",
+      "engine": "webkit",
+      "layout": "iphone-portrait",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "url": "http://127.0.0.1:3268/",
+      "fixture": "Isolated local React harness, actual NewEngineLaunches component, canonical-shaped synthetic registrations; no live project claims",
+      "focus": {
+        "innerWidth": "0px",
+        "outerWidth": "2px",
+        "outerStyle": "solid"
+      },
+      "fixtureFocus": {
+        "innerWidth": "0px",
+        "outerWidth": "2px",
+        "outerStyle": "solid"
+      },
+      "keyboard": {
+        "nativeTabInsideMenu": false,
+        "nativeTabTarget": "Search launches",
+        "expandedAfterTab": "false"
+      },
+      "captures": [
+        "after-webkit-iphone-portrait-launches-search-focus.png",
+        "after-webkit-iphone-portrait-wallet-menu.png",
+        "after-webkit-iphone-portrait-create.png",
+        "after-webkit-iphone-portrait-my-launches.png",
+        "after-webkit-iphone-portrait-synthetic-cards.png",
+        "after-webkit-iphone-portrait-synthetic-no-results.png",
+        "after-webkit-iphone-portrait-synthetic-prelaunch.png",
+        "after-webkit-iphone-portrait-synthetic-unavailable.png",
+        "after-webkit-iphone-portrait-synthetic-empty.png",
+        "after-webkit-iphone-portrait-synthetic-detail-evidence.png"
+      ],
+      "operations": [],
+      "pageErrors": [],
+      "walletCalls": []
+    },
+    {
+      "phase": "after",
+      "engine": "webkit",
+      "layout": "iphone-landscape",
+      "viewport": {
+        "width": 750,
+        "height": 390
+      },
+      "url": "http://127.0.0.1:3268/",
+      "fixture": "Isolated local React harness, actual NewEngineLaunches component, canonical-shaped synthetic registrations; no live project claims",
+      "focus": {
+        "innerWidth": "0px",
+        "outerWidth": "2px",
+        "outerStyle": "solid"
+      },
+      "fixtureFocus": {
+        "innerWidth": "0px",
+        "outerWidth": "2px",
+        "outerStyle": "solid"
+      },
+      "keyboard": {
+        "nativeTabInsideMenu": false,
+        "nativeTabTarget": "Search launches",
+        "expandedAfterTab": "false"
+      },
+      "captures": [
+        "after-webkit-iphone-landscape-launches-search-focus.png",
+        "after-webkit-iphone-landscape-wallet-menu.png",
+        "after-webkit-iphone-landscape-create.png",
+        "after-webkit-iphone-landscape-my-launches.png",
+        "after-webkit-iphone-landscape-synthetic-cards.png",
+        "after-webkit-iphone-landscape-synthetic-no-results.png",
+        "after-webkit-iphone-landscape-synthetic-prelaunch.png",
+        "after-webkit-iphone-landscape-synthetic-unavailable.png",
+        "after-webkit-iphone-landscape-synthetic-empty.png",
+        "after-webkit-iphone-landscape-synthetic-detail-evidence.png"
+      ],
+      "operations": [],
+      "pageErrors": [],
+      "walletCalls": []
+    },
+    {
+      "phase": "after",
+      "engine": "webkit",
+      "layout": "narrow",
+      "viewport": {
+        "width": 320,
+        "height": 740
+      },
+      "url": "http://127.0.0.1:3268/",
+      "fixture": "Isolated local React harness, actual NewEngineLaunches component, canonical-shaped synthetic registrations; no live project claims",
+      "focus": {
+        "innerWidth": "0px",
+        "outerWidth": "2px",
+        "outerStyle": "solid"
+      },
+      "fixtureFocus": {
+        "innerWidth": "0px",
+        "outerWidth": "2px",
+        "outerStyle": "solid"
+      },
+      "keyboard": {
+        "nativeTabInsideMenu": false,
+        "nativeTabTarget": "Search launches",
+        "expandedAfterTab": "false"
+      },
+      "captures": [
+        "after-webkit-narrow-launches-search-focus.png",
+        "after-webkit-narrow-wallet-menu.png",
+        "after-webkit-narrow-create.png",
+        "after-webkit-narrow-my-launches.png",
+        "after-webkit-narrow-synthetic-cards.png",
+        "after-webkit-narrow-synthetic-no-results.png",
+        "after-webkit-narrow-synthetic-prelaunch.png",
+        "after-webkit-narrow-synthetic-unavailable.png",
+        "after-webkit-narrow-synthetic-empty.png",
+        "after-webkit-narrow-synthetic-detail-evidence.png"
+      ],
+      "operations": [],
+      "pageErrors": [],
+      "walletCalls": []
+    }
+  ]
+}

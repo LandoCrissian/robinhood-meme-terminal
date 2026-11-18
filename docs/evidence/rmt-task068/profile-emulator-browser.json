@@ -1,0 +1,43 @@
+{
+  "environment": "loopback",
+  "emulator": true,
+  "url": "http://127.0.0.1:3242/",
+  "results": [
+    {
+      "engine": "chromium",
+      "mode": "firebase-emulators",
+      "syntheticWallet": "0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf",
+      "signatureRequests": 6,
+      "walletsAccepted": [
+        "MetaMask",
+        "Rabby"
+      ],
+      "cookieHttpOnly": true,
+      "profiles": "saved/reloaded/public/deleted-after-fresh-proof",
+      "avatar": "uploaded/re-encoded/http200/decoded/header-editor-public-loaded",
+      "privatePreferences": "saved/not-public",
+      "logoutAndAccountChange": "verified-including-outage-retry",
+      "networkSwitch": "rejection-then-confirmed-switch",
+      "transactions": 0
+    },
+    {
+      "engine": "webkit",
+      "mode": "firebase-emulators",
+      "syntheticWallet": "0x7E5F4552091A69125d5DfCb7b8C2659029395Bdf",
+      "signatureRequests": 6,
+      "walletsAccepted": [
+        "MetaMask",
+        "Rabby"
+      ],
+      "cookieHttpOnly": true,
+      "profiles": "saved/reloaded/public/deleted-after-fresh-proof",
+      "avatar": "uploaded/re-encoded/http200/decoded/header-editor-public-loaded",
+      "privatePreferences": "saved/not-public",
+      "logoutAndAccountChange": "verified-including-outage-retry",
+      "networkSwitch": "rejection-then-confirmed-switch",
+      "transactions": 0
+    }
+  ],
+  "physicalWalletAcceptance": "not performed",
+  "productionActivation": false
+}

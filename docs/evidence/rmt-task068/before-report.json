@@ -1,0 +1,143 @@
+{
+  "status": "passed",
+  "mode": "before",
+  "recordedAt": "2026-11-18T03:04:19.827Z",
+  "reports": [
+    {
+      "phase": "before",
+      "engine": "chromium",
+      "layout": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "url": "https://6afd06ab371403bb3c26a81b--eclectic-valkyrie-16cb92.netlify.app/",
+      "captures": [
+        "before-chromium-desktop-launches.png",
+        "before-chromium-desktop-create.png",
+        "before-chromium-desktop-my-launches.png"
+      ],
+      "operations": [],
+      "pageErrors": []
+    },
+    {
+      "phase": "before",
+      "engine": "chromium",
+      "layout": "iphone-portrait",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "url": "https://6afd06ab371403bb3c26a81b--eclectic-valkyrie-16cb92.netlify.app/",
+      "captures": [
+        "before-chromium-iphone-portrait-launches.png",
+        "before-chromium-iphone-portrait-create.png",
+        "before-chromium-iphone-portrait-my-launches.png"
+      ],
+      "operations": [],
+      "pageErrors": []
+    },
+    {
+      "phase": "before",
+      "engine": "chromium",
+      "layout": "iphone-landscape",
+      "viewport": {
+        "width": 750,
+        "height": 390
+      },
+      "url": "https://6afd06ab371403bb3c26a81b--eclectic-valkyrie-16cb92.netlify.app/",
+      "captures": [
+        "before-chromium-iphone-landscape-launches.png",
+        "before-chromium-iphone-landscape-create.png",
+        "before-chromium-iphone-landscape-my-launches.png"
+      ],
+      "operations": [],
+      "pageErrors": []
+    },
+    {
+      "phase": "before",
+      "engine": "chromium",
+      "layout": "narrow",
+      "viewport": {
+        "width": 320,
+        "height": 740
+      },
+      "url": "https://6afd06ab371403bb3c26a81b--eclectic-valkyrie-16cb92.netlify.app/",
+      "captures": [
+        "before-chromium-narrow-launches.png",
+        "before-chromium-narrow-create.png",
+        "before-chromium-narrow-my-launches.png"
+      ],
+      "operations": [],
+      "pageErrors": []
+    },
+    {
+      "phase": "before",
+      "engine": "webkit",
+      "layout": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "url": "https://6afd06ab371403bb3c26a81b--eclectic-valkyrie-16cb92.netlify.app/",
+      "captures": [
+        "before-webkit-desktop-launches.png",
+        "before-webkit-desktop-create.png",
+        "before-webkit-desktop-my-launches.png"
+      ],
+      "operations": [],
+      "pageErrors": []
+    },
+    {
+      "phase": "before",
+      "engine": "webkit",
+      "layout": "iphone-portrait",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "url": "https://6afd06ab371403bb3c26a81b--eclectic-valkyrie-16cb92.netlify.app/",
+      "captures": [
+        "before-webkit-iphone-portrait-launches.png",
+        "before-webkit-iphone-portrait-create.png",
+        "before-webkit-iphone-portrait-my-launches.png"
+      ],
+      "operations": [],
+      "pageErrors": []
+    },
+    {
+      "phase": "before",
+      "engine": "webkit",
+      "layout": "iphone-landscape",
+      "viewport": {
+        "width": 750,
+        "height": 390
+      },
+      "url": "https://6afd06ab371403bb3c26a81b--eclectic-valkyrie-16cb92.netlify.app/",
+      "captures": [
+        "before-webkit-iphone-landscape-launches.png",
+        "before-webkit-iphone-landscape-create.png",
+        "before-webkit-iphone-landscape-my-launches.png"
+      ],
+      "operations": [],
+      "pageErrors": []
+    },
+    {
+      "phase": "before",
+      "engine": "webkit",
+      "layout": "narrow",
+      "viewport": {
+        "width": 320,
+        "height": 740
+      },
+      "url": "https://6afd06ab371403bb3c26a81b--eclectic-valkyrie-16cb92.netlify.app/",
+      "captures": [
+        "before-webkit-narrow-launches.png",
+        "before-webkit-narrow-create.png",
+        "before-webkit-narrow-my-launches.png"
+      ],
+      "operations": [],
+      "pageErrors": []
+    }
+  ]
+}
