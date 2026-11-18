@@ -65,7 +65,7 @@ export async function testClaimWalletProfiles({ rpcUrl, rpc, artifacts, deployed
     assert.equal(result.status, expected); assert.equal((await client.getBlock({ blockNumber: result.blockNumber })).hash, result.blockHash);
     const transaction = await client.getTransaction({ hash });
     assert.equal(transaction.type, "eip1559"); assert.equal(transaction.authorizationList, undefined);
-    assert.equal(transaction.from, account.address); assert.equal(transaction.nonce, nonce);
+    assert.ok(same(transaction.from, account.address)); assert.equal(transaction.nonce, nonce);
     evidence.receipts.push(receiptEvidence(result)); save(); return result;
   }
   async function sendReview(review, expected = "success") {
