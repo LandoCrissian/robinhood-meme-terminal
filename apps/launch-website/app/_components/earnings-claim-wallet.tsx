@@ -50,10 +50,24 @@ export function EarningsClaimWallet({ token, factory, beneficiary, snapshot, fac
   const locked = useRef(false), version = useRef(0);
   useEffect(() => () => { version.current++; }, []);
   useEffect(() => {
-    const load = () => { try { setJournal(latestJournal(boundFactory)); } catch { setMessage("Browser storage is unavailable. A transaction cannot be safely submitted."); } };
+    const load = () => {
+      try {
+        const latest = latestJournal(boundFactory);
+        setJournal(latest);
+        if (latest && ["confirmed", "reverted"].includes(latest.state)
+          && (recoveryOnly || latest.request.operation === operation)
+          && (token ? same(latest.request.token, token) : recoveryOnly || latest.request.operation === "creation-fees")
+          && (!wallet || same(latest.request.from, wallet.account))) {
+          // Another card can reconcile the same original request. Remove the
+          // superseded local error, without inferring indexed activity or new
+          // payment evidence from a browser journal alone.
+          setMessage("");
+        }
+      } catch { setMessage("Browser storage is unavailable. A transaction cannot be safely submitted."); }
+    };
     load(); window.addEventListener("rmt:earnings-journal", load);
     return () => window.removeEventListener("rmt:earnings-journal", load);
-  }, [boundFactory]);
+  }, [boundFactory, token, operation, recoveryOnly, wallet]);
   useEffect(() => {
     if (!wallet) return;
     return subscribeTestWallet(wallet, () => {
