@@ -16,6 +16,8 @@ jobs:
   railway-container:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    env:
+      RMT_RAILWAY_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:

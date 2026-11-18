@@ -35,7 +35,7 @@ for (const [path, method] of mutations) assert.equal((await read(path, { method,
 for (let i = mutations.length; i < 12; i++) assert.equal((await read("/api/account/nonce", { method: "POST" })).status, 404);
 const limited = await read("/api/account/nonce", { method: "POST", headers: { "X-Real-IP": "198.51.100.42" } });
 assert.equal(limited.status, 429); assert.ok(Number(limited.headers.get("retry-after")) > 0);
-const report = { status: "passed", environment, source: process.env.GITHUB_SHA ?? "local", checked,
+const report = { status: "passed", environment, source: process.env.RMT_RAILWAY_SOURCE_SHA ?? "local", checked,
   history: { status: history.status, coverage: history.coverage, registrations: history.launches.length }, readiness: "degraded without private fixture",
   authentication: "disabled", transactions: "disabled", blocked, mutations: mutations.length,
   aggregateRateLimit: "12 mutations per minute per single container; spoofed client-IP header does not bypass", physicalDevice: "not performed" };
