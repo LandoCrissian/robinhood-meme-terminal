@@ -3,7 +3,7 @@ import {createHash} from "node:crypto";
 import {readFileSync,writeFileSync,mkdirSync,existsSync} from "node:fs";
 import {gunzipSync} from "node:zlib";
 import {createRequire} from "node:module";
-import {resolve,join} from "node:path";
+import {resolve,join,posix} from "node:path";
 import {fileURLToPath} from "node:url";
 import {parseArgs} from "node:util";
 import {execFileSync} from "node:child_process";
@@ -17,10 +17,19 @@ const sha=b=>createHash("sha256").update(b).digest("hex"),json=v=>JSON.stringify
 const root=new URL("../../docs/evidence/rmt-task082/seaport-marketplace/",import.meta.url);
 const paymentCompilerPins={implementation:{version:"0.8.16+commit.07a7930e",win32:"84976fb1fc2b29267020d2ca0a3a877f0ec6f88018307d32bfbb43bece865767",linux:"1632786c6c1f856a4a899232ec975a12f305118f43cce90e724ed0b2eebfeee1"},admin:{version:"0.8.19+commit.7dd6d404",win32:"00d3b5ca64b097964ed6d70d9805a63fdd27113b07c1b2559dbfdd579f994508",linux:"7a5c1d3dc9a8eba62bb2ec37192c9178ae5fe8a54a56e5573fd3c9c17cd9eb48"}};
 paymentCompilerPins.proxy=paymentCompilerPins.implementation;
+export function validatePaymentInput(input){
+ const portable=p=>typeof p==="string"&&p.length>0&&!p.includes("\\")&&!p.includes(":")&&!p.startsWith("/")&&!p.split("/").includes("..");
+ assert.equal(input.language,"Solidity");assert.ok(input.sources&&Object.keys(input.sources).length<=64);
+ const mappings=(input.settings.remappings??[]).map(r=>{const i=r.indexOf("=");assert.ok(i>0&&portable(r.slice(0,i))&&portable(r.slice(i+1)));return[r.slice(0,i),r.slice(i+1)];}).sort((a,b)=>b[0].length-a[0].length);
+ for(const [file,unit]of Object.entries(input.sources)){assert.ok(portable(file)&&file.endsWith(".sol"));assert.deepEqual(Object.keys(unit),["content"],"Source URLs/import callbacks are forbidden");assert.equal(typeof unit.content,"string");const declarations=unit.content.replace(/\/\*[\s\S]*?\*\//g,"").replace(/\/\/[^\n]*/g,"");for(const match of declarations.matchAll(/\bimport\s+(?:[^;]*?\bfrom\s+)?["']([^"']+)["']\s*;/g)){const path=match[1];assert.ok(!path.includes(":")&&!path.startsWith("/")&&!path.includes("\\"));let target=path.startsWith(".")?posix.normalize(posix.join(posix.dirname(file),path)):path;const mapping=mappings.find(([prefix])=>target.startsWith(prefix));if(mapping)target=mapping[1]+target.slice(mapping[0].length);assert.ok(portable(target)&&Object.hasOwn(input.sources,target),"All imports must be present in the explicit source closure: "+target);}}
+ return true;
+}
 export function reproducePaymentSource(name,source,executable){
  const pin=paymentCompilerPins[name];assert.ok(pin);assert.equal(source.compilation.compilerVersion,pin.version);assert.equal(sha(readFileSync(executable)),pin[process.platform],"Exact payment compiler checksum");
- const input=structuredClone(source.stdJsonInput);input.settings.outputSelection={"*":{"*":["evm.deployedBytecode","metadata"]}};const serialized=JSON.stringify(input);
- const output=JSON.parse(execFileSync(executable,["--standard-json","--no-import-callback"],{input:serialized,maxBuffer:8*1024*1024,timeout:120000,windowsHide:true}));assert.deepEqual((output.errors??[]).filter(e=>e.severity==="error"),[]);
+ const input=structuredClone(source.stdJsonInput);input.settings.outputSelection={"*":{"*":["evm.deployedBytecode","metadata"]}};validatePaymentInput(input);const serialized=JSON.stringify(input);
+ // solc0.8.16 predates --no-import-callback. Reject URL-based sources, paths
+ // outside the source unit namespace and every unresolved import beforehand.
+ const output=JSON.parse(execFileSync(executable,["--standard-json"],{input:serialized,maxBuffer:8*1024*1024,timeout:120000,windowsHide:true}));assert.deepEqual((output.errors??[]).filter(e=>e.severity==="error"),[]);
  const [file,contract]=source.compilation.fullyQualifiedName.split(":"),compiled="0x"+output.contracts[file][contract].evm.deployedBytecode.object;
  assert.equal(compiled,source.runtimeBytecode.recompiledBytecode,"Independent compiler/source reproduction differs");
  let materialized=compiled;const metadata=[];for(const change of source.runtimeBytecode.transformations){assert.equal(change.reason,"cborAuxdata","No executable substitution admitted");const value=source.runtimeBytecode.transformationValues.cborAuxdata[change.id];assert.match(value,/^0xa2646970667358221220[0-9a-f]{64}64736f6c6343[0-9a-f]{6}0033$/);materialized=materialized.slice(0,2+change.offset*2)+value.slice(2)+materialized.slice(2+change.offset*2+value.length-2);metadata.push({offset:change.offset,bytes:(value.length-2)/2,originalCbor:value});}
