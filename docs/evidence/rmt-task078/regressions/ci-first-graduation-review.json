@@ -1,0 +1,17 @@
+{
+  "candidateCommit": "0c0ae75aefa7925b456c1c3eee7f712bee72755f",
+  "environment": "isolated-31337",
+  "binding": {
+    "factory": "0xf5BCc2A3713693e5fB6253bAcC9AB15965AF8de0",
+    "token": "0x40cb4dd41c8af32ecd5c8e0d19fb3f6d06b4c9ac",
+    "blockNumber": "0x36fa4b5",
+    "blockHash": "0x0e3fbd2dfcde356090c3a18a06764e696f86aec0ee4e30657903857628f7f118"
+  },
+  "account": "0x8A6850f2015c446bd7a7Ee9610c6b7aD760EbDe0",
+  "httpStatus": 200,
+  "status": "unavailable",
+  "diagnostic": {
+    "stage": "simulation",
+    "kind": "TimeoutError"
+  }
+}

@@ -1,0 +1,370 @@
+{
+  "schemaVersion": 1,
+  "scope": "LOCAL_SYNTHETIC_31337_SAFE_TEST_KEYS_ONLY",
+  "profile": "SafeL2-1.4.1",
+  "status": "passed",
+  "owners": [
+    "0xe6C529622a6118db7B693E19553421a28e9ac4F8",
+    "0xdb671f08357936A537AD3554d9fF4A4F58Aea6Fd",
+    "0x8F29e8817631a3d92343AFB1601AB0c4e48EABaa"
+  ],
+  "threshold": 2,
+  "gasPayer": "0x27aB974Dc5673f5d2475a4D27e3836A576aAfc21",
+  "pinProvenance": "Existing pinned archived runtime installed only where absent in the isolated chain",
+  "productionActivation": false,
+  "checks": {
+    "twoDayNoticeAndGenuineSafeIncomingAcceptance": true,
+    "insufficientSignaturesAndReplayRejected": true,
+    "safeBeneficiaryRemainsSafeAndReturnRequiresExactReward": true,
+    "immutablePrincipalAndNoIOU": true,
+    "authenticatedDurableSafeActorEvidence": true
+  },
+  "receipts": [
+    {
+      "label": "controller-notice",
+      "transactionHash": "0xef8e1c2039d782875595c4b281acb42adeea717b4090e05410915a6c74ba6285",
+      "blockNumber": "57648520",
+      "blockHash": "0x2be006fba0032c092713f8b70f9bb489ed6fd0c016b3092d3e3bcbfd4327f3ee",
+      "gasUsed": "76909",
+      "status": "success"
+    },
+    {
+      "label": "early-controller-acceptance-rejected",
+      "safeNonce": "0",
+      "safeTransactionHash": "0x385498990999f1d54145b2160c96896f5c5d6916f4d68823d2a6eefd4133a8d3",
+      "innerTo": "0xC469691210ff2c7Ef279BFbd57eDde0e243F47d5",
+      "innerCalldataHash": "0xb9cf7de8afa99bcf82b8c148e750283a6fe99f3270801458591ebc265dca8b2a",
+      "signers": [
+        "0xdb671f08357936A537AD3554d9fF4A4F58Aea6Fd",
+        "0xe6C529622a6118db7B693E19553421a28e9ac4F8"
+      ],
+      "transactionHash": "0x9280d59d83fa98ce3b48a9b7311ee3aa629854f3725b699925f6f4848ab06c4d",
+      "blockNumber": "57648521",
+      "blockHash": "0xd5df0e5a0211577e7235469cc310ad94911d05de569ad2af1de8e9af1facb363",
+      "gasUsed": "98790",
+      "status": "reverted"
+    },
+    {
+      "label": "controller-accepted-after-notice",
+      "safeNonce": "0",
+      "safeTransactionHash": "0x385498990999f1d54145b2160c96896f5c5d6916f4d68823d2a6eefd4133a8d3",
+      "innerTo": "0xC469691210ff2c7Ef279BFbd57eDde0e243F47d5",
+      "innerCalldataHash": "0xb9cf7de8afa99bcf82b8c148e750283a6fe99f3270801458591ebc265dca8b2a",
+      "signers": [
+        "0xdb671f08357936A537AD3554d9fF4A4F58Aea6Fd",
+        "0xe6C529622a6118db7B693E19553421a28e9ac4F8"
+      ],
+      "transactionHash": "0xdcfab82f892041426e322f50354948b49e07a32a4fcc0ae2b446471dbc11ea8d",
+      "blockNumber": "57648528",
+      "blockHash": "0x9a5762a2bdc598b70090b214560bbcd9c893c3785a7301c650abee9ec585cfb0",
+      "gasUsed": "105708",
+      "status": "success"
+    },
+    {
+      "label": "accepted-safe-authorization-replay-rejected",
+      "transactionHash": "0x1238916701a0e86c03db5acb6557af844c7f05cf00e88b9228eab8deeac3ace6",
+      "blockNumber": "57648532",
+      "blockHash": "0x6621ee2d0e0184f2f8faa706efa3fa225f416358bbb4fc8cc35c1476d9fe4969",
+      "gasUsed": "54521",
+      "status": "reverted"
+    },
+    {
+      "label": "one-signature-rejected",
+      "safeNonce": "1",
+      "safeTransactionHash": "0x2e0a8c4d99beee4058daf77a0da48f0a5dc432125d57696913194a804acfc3a6",
+      "innerTo": "0xC469691210ff2c7Ef279BFbd57eDde0e243F47d5",
+      "innerCalldataHash": "0x7c85f13cbc00e94f65b56843fd4599d9ebf4603adcd733a14a54c28d66dd332e",
+      "signers": [
+        "0xe6C529622a6118db7B693E19553421a28e9ac4F8"
+      ],
+      "transactionHash": "0x6d2ef607912804602e950a7d946331e8d53092ca25a8f304249a5d3038a33ddd",
+      "blockNumber": "57648536",
+      "blockHash": "0xaf2196e8a4e97166d2195fe0ae1953f5c820c2e312e3b4c157fa92a9440ba11c",
+      "gasUsed": "46836",
+      "status": "reverted"
+    },
+    {
+      "label": "safe-controller-resume",
+      "safeNonce": "1",
+      "safeTransactionHash": "0x67610d97cf7d3dbfa78359882275f6e40dace6b365f4c1aff411f376a91a1513",
+      "innerTo": "0xC469691210ff2c7Ef279BFbd57eDde0e243F47d5",
+      "innerCalldataHash": "0x56a6ed4e12c53252a5732f8a84eadebabb68e0dd84eb7015d3e16053e01701a0",
+      "signers": [
+        "0xdb671f08357936A537AD3554d9fF4A4F58Aea6Fd",
+        "0xe6C529622a6118db7B693E19553421a28e9ac4F8"
+      ],
+      "transactionHash": "0xb7097692ba3342708aff73cea50211a37151401558e5020f6f2c97ef1da94c6e",
+      "blockNumber": "57648540",
+      "blockHash": "0x7736c9fba4e34185d49e13b136dd1a8a4c189afed06450b12cca31be4dcf0fe1",
+      "gasUsed": "86006",
+      "status": "success"
+    },
+    {
+      "label": "manual-synthetic-owner-funding",
+      "transactionHash": "0xf380df83a837d819500620b1318ea045ff1d46229ccbfa53a49c51f61558d81c",
+      "blockNumber": "57648544",
+      "blockHash": "0xe349a1d4f7f65ecdfc3aa1bbd5a398a0e384c8b68b8a2d5ebec7581e044b6233",
+      "gasUsed": "51240",
+      "status": "success"
+    },
+    {
+      "label": "safe-bounded-funding-approval",
+      "safeNonce": "2",
+      "safeTransactionHash": "0xc9adb6c7ceacdeb6754fc183951f43fa150af96c2d7e4aaa4ef85afb2956dc6f",
+      "innerTo": "0x607d55e9A5aD5e0E65DfCBB24543Aa5b2C8EF138",
+      "innerCalldataHash": "0xeca9370110304ce5856869b4c7c19c7718708476395cb9a32c3545cf930ea930",
+      "signers": [
+        "0xdb671f08357936A537AD3554d9fF4A4F58Aea6Fd",
+        "0xe6C529622a6118db7B693E19553421a28e9ac4F8"
+      ],
+      "transactionHash": "0xe9c507c14cbf02c5eacc752268f9154ed9b2cceed722a6016eeaae9dacb2bd4c",
+      "blockNumber": "57648545",
+      "blockHash": "0x94f551854a5e84dbbe4ff5b86547077d9e4cf86c984309572b577f355d9f1128",
+      "gasUsed": "93184",
+      "status": "success"
+    },
+    {
+      "label": "safe-manual-campaign-funding",
+      "safeNonce": "3",
+      "safeTransactionHash": "0xe543e1b45d072388ef47a26f4ef566ffeddef856d36f83db9ee93f335d264175",
+      "innerTo": "0xC469691210ff2c7Ef279BFbd57eDde0e243F47d5",
+      "innerCalldataHash": "0xcbecd3890391c559c626f0695e360c082a93bba15fbdd3b427d2258049ccedb1",
+      "signers": [
+        "0xdb671f08357936A537AD3554d9fF4A4F58Aea6Fd",
+        "0xe6C529622a6118db7B693E19553421a28e9ac4F8"
+      ],
+      "transactionHash": "0x12f0cbb46fe0af88dded415b979084f0bc6bc40df7974caf02b293f088764f5b",
+      "blockNumber": "57648549",
+      "blockHash": "0xb76a7ab03bef9d8992881c5f96a4e70ff9eeeb9f742e0441a1bf3d75eca265ee",
+      "gasUsed": "104979",
+      "status": "success"
+    },
+    {
+      "label": "erc721-safe-handler-receive",
+      "transactionHash": "0xc82e8a90807fd0264d9576d5f8b0326d5f620c67a2fa29e61c015628a52ce643",
+      "blockNumber": "57648553",
+      "blockHash": "0xd0c2f28b48eab4ff12fd41158c1663e976640e259bb4052be0b49070306b6965",
+      "gasUsed": "74216",
+      "status": "success"
+    },
+    {
+      "label": "safe-exact-nft-approval",
+      "safeNonce": "4",
+      "safeTransactionHash": "0xd1cccc8b983bd379b6a10316eeb7ac49d61b421577246da32ea8e44750dc0401",
+      "innerTo": "0x1825af92eac58b412bb1091b49fb118e0721c3f4",
+      "innerCalldataHash": "0xfbf23a0f8342d792ad2e8443f87aca7adb147293970bbabdd6ea07d72462d7ec",
+      "signers": [
+        "0xdb671f08357936A537AD3554d9fF4A4F58Aea6Fd",
+        "0xe6C529622a6118db7B693E19553421a28e9ac4F8"
+      ],
+      "transactionHash": "0xd4f1afa6661a7dda408356375cd2a8b10e1b81090027cbb4827fdcb1852d9782",
+      "blockNumber": "57648557",
+      "blockHash": "0xeab94fcfd972892d2127778643a7bc361cef7cf0fe92118b15267a47e366c064",
+      "gasUsed": "95680",
+      "status": "success"
+    },
+    {
+      "label": "safe-owned-nft-redeemed",
+      "safeNonce": "5",
+      "safeTransactionHash": "0x804fe8f837aeb9680d1620672118560f328f9a555a628da88656693ef34c5fd5",
+      "innerTo": "0xC469691210ff2c7Ef279BFbd57eDde0e243F47d5",
+      "innerCalldataHash": "0x085b4e6e1dee0e0d3b18c7c88bed7a581a9f1b1c1555ef34b6209bf0e19e0dff",
+      "signers": [
+        "0xdb671f08357936A537AD3554d9fF4A4F58Aea6Fd",
+        "0xe6C529622a6118db7B693E19553421a28e9ac4F8"
+      ],
+      "transactionHash": "0xfb9f12723a5436028eeaa126a9389f4915ddfa5de4066d9ffae79c9f7be9d8fe",
+      "blockNumber": "57648561",
+      "blockHash": "0xf3ab3abffe90c6e8593985d9d119add8679cb7d0a53495a26a2039751f28c7e8",
+      "gasUsed": "513743",
+      "status": "success"
+    },
+    {
+      "label": "safe-original-reward-return-approval",
+      "safeNonce": "6",
+      "safeTransactionHash": "0x0da7ea42c9f346fda888b6d915e05b8f295db4b300c1cc4406e93122a79fb823",
+      "innerTo": "0x607d55e9A5aD5e0E65DfCBB24543Aa5b2C8EF138",
+      "innerCalldataHash": "0xb7eecfe0352e3e8b7c174938a2838626d7132cd7bc113ff94ca43acb9a60bed4",
+      "signers": [
+        "0xdb671f08357936A537AD3554d9fF4A4F58Aea6Fd",
+        "0xe6C529622a6118db7B693E19553421a28e9ac4F8"
+      ],
+      "transactionHash": "0x381496c42d0ad3ad156765eb1e2ca2015877474f062d64fd03d4ce4086f7aaa7",
+      "blockNumber": "57648565",
+      "blockHash": "0xb186959b4b44f85541a5cc9d2753ef8e2068b516c5ba91b93c925ce7e2db4ad3",
+      "gasUsed": "93208",
+      "status": "success"
+    },
+    {
+      "label": "safe-original-nft-returned",
+      "safeNonce": "7",
+      "safeTransactionHash": "0x95cd2ea8ca363b0e125d3805b070186fc8ef503e0c5c476a1a25ae89ed7bd0fe",
+      "innerTo": "0xC469691210ff2c7Ef279BFbd57eDde0e243F47d5",
+      "innerCalldataHash": "0x3e47ed6c3ce1838065deaea0cbb69125a67291d08acb86cc3a1dff45c84f9cc2",
+      "signers": [
+        "0xdb671f08357936A537AD3554d9fF4A4F58Aea6Fd",
+        "0xe6C529622a6118db7B693E19553421a28e9ac4F8"
+      ],
+      "transactionHash": "0x859f30ec22f51ec1f89ea0c774943477f73457dce20323f9c5b527fd14d4c646",
+      "blockNumber": "57648569",
+      "blockHash": "0x24371d6ec79c7a49b5c0acb81e4a94e67e855d6a86ab2829fa5c0bf4b9f6a547",
+      "gasUsed": "174031",
+      "status": "success"
+    }
+  ],
+  "safe": "0xF482a24b87c89F14526192000921714b9bD52B7F",
+  "creation": {
+    "transactionHash": "0xaa4af41448c2cd7a528b8307c058a45dfcb5438d83c75dc0886b39b1b2529dd3",
+    "blockNumber": "57648519",
+    "blockHash": "0xeb4e16b3624fc2e38465cd779d99120235ed58391951e7e83f1f66f30238a28e",
+    "gasUsed": "306195",
+    "status": "success",
+    "initializerHash": "0x9fac432b45373bd4519430b1139d93ced017a8b92c1bc247e31f8de523726e1f",
+    "salt": "72572862351336634758922442339139815567081047145694185250320140364893703671596",
+    "owners": [
+      "0xe6C529622a6118db7B693E19553421a28e9ac4F8",
+      "0xdb671f08357936A537AD3554d9fF4A4F58Aea6Fd",
+      "0x8F29e8817631a3d92343AFB1601AB0c4e48EABaa"
+    ],
+    "threshold": 2
+  },
+  "indexed": [
+    {
+      "args": {
+        "amount": "100000000000000000000",
+        "controller": "0xF482a24b87c89F14526192000921714b9bD52B7F"
+      },
+      "campaign": "0xc469691210ff2c7ef279bfbd57edde0e243f47d5",
+      "logIndex": 2,
+      "blockHash": "0xb76a7ab03bef9d8992881c5f96a4e70ff9eeeb9f742e0441a1bf3d75eca265ee",
+      "eventName": "Funded",
+      "timestamp": "2026-12-03T00:53:12.000Z",
+      "settlement": {
+        "to": "0xc469691210ff2c7ef279bfbd57edde0e243f47d5",
+        "from": "0xF482a24b87c89F14526192000921714b9bD52B7F",
+        "kind": "fund",
+        "amount": "100000000000000000000",
+        "origin": {
+          "actor": "0xf482a24b87c89f14526192000921714b9bd52b7f",
+          "profile": "safe-1.4.1",
+          "signers": [
+            "0xdb671f08357936A537AD3554d9fF4A4F58Aea6Fd",
+            "0xe6C529622a6118db7B693E19553421a28e9ac4F8"
+          ],
+          "gasPayer": "0x27ab974dc5673f5d2475a4d27e3836a576aafc21",
+          "safeNonce": "3",
+          "safeTransactionHash": "0xe543e1b45d072388ef47a26f4ef566ffeddef856d36f83db9ee93f335d264175"
+        },
+        "evidence": "exact-receipt-transfer-and-single-transaction-block-deltas",
+        "rewardToken": "0x607d55e9A5aD5e0E65DfCBB24543Aa5b2C8EF138"
+      },
+      "blockNumber": "57648549",
+      "transactionHash": "0x12f0cbb46fe0af88dded415b979084f0bc6bc40df7974caf02b293f088764f5b"
+    },
+    {
+      "args": {
+        "ids": [
+          "11"
+        ],
+        "reward": "7000000000000000000",
+        "claimant": "0xF482a24b87c89F14526192000921714b9bD52B7F",
+        "standard": 1,
+        "receiptId": "3",
+        "collection": "0x1825af92EaC58b412Bb1091b49FB118e0721c3F4",
+        "quantities": [
+          "1"
+        ],
+        "policyEpoch": "10",
+        "claimantNonce": "0"
+      },
+      "campaign": "0xc469691210ff2c7ef279bfbd57edde0e243f47d5",
+      "logIndex": 3,
+      "blockHash": "0xf3ab3abffe90c6e8593985d9d119add8679cb7d0a53495a26a2039751f28c7e8",
+      "eventName": "TradeInAccepted",
+      "timestamp": "2026-12-03T00:53:20.000Z",
+      "settlement": {
+        "to": "0xF482a24b87c89F14526192000921714b9bD52B7F",
+        "from": "0xc469691210ff2c7ef279bfbd57edde0e243f47d5",
+        "kind": "trade-in",
+        "amount": "7000000000000000000",
+        "origin": {
+          "actor": "0xf482a24b87c89f14526192000921714b9bd52b7f",
+          "profile": "safe-1.4.1",
+          "signers": [
+            "0xdb671f08357936A537AD3554d9fF4A4F58Aea6Fd",
+            "0xe6C529622a6118db7B693E19553421a28e9ac4F8"
+          ],
+          "gasPayer": "0x27ab974dc5673f5d2475a4d27e3836a576aafc21",
+          "safeNonce": "5",
+          "safeTransactionHash": "0x804fe8f837aeb9680d1620672118560f328f9a555a628da88656693ef34c5fd5"
+        },
+        "claimant": "0xF482a24b87c89F14526192000921714b9bD52B7F",
+        "evidence": "exact-receipt-transfer-and-single-transaction-block-deltas",
+        "standard": 1,
+        "tokenIds": [
+          "11"
+        ],
+        "receiptId": "3",
+        "collection": "0x1825af92EaC58b412Bb1091b49FB118e0721c3F4",
+        "quantities": [
+          "1"
+        ],
+        "rewardToken": "0x607d55e9A5aD5e0E65DfCBB24543Aa5b2C8EF138"
+      },
+      "blockNumber": "57648561",
+      "transactionHash": "0xfb9f12723a5436028eeaa126a9389f4915ddfa5de4066d9ffae79c9f7be9d8fe"
+    },
+    {
+      "args": {
+        "claimant": "0xF482a24b87c89F14526192000921714b9bD52B7F",
+        "receiptId": "3",
+        "rewardRepaid": "7000000000000000000"
+      },
+      "campaign": "0xc469691210ff2c7ef279bfbd57edde0e243f47d5",
+      "logIndex": 3,
+      "blockHash": "0x24371d6ec79c7a49b5c0acb81e4a94e67e855d6a86ab2829fa5c0bf4b9f6a547",
+      "eventName": "TradeInReturned",
+      "timestamp": "2026-12-03T00:53:24.000Z",
+      "settlement": {
+        "to": "0xc469691210ff2c7ef279bfbd57edde0e243f47d5",
+        "from": "0xF482a24b87c89F14526192000921714b9bD52B7F",
+        "kind": "return",
+        "amount": "7000000000000000000",
+        "origin": {
+          "actor": "0xf482a24b87c89f14526192000921714b9bd52b7f",
+          "profile": "safe-1.4.1",
+          "signers": [
+            "0xdb671f08357936A537AD3554d9fF4A4F58Aea6Fd",
+            "0xe6C529622a6118db7B693E19553421a28e9ac4F8"
+          ],
+          "gasPayer": "0x27ab974dc5673f5d2475a4d27e3836a576aafc21",
+          "safeNonce": "7",
+          "safeTransactionHash": "0x95cd2ea8ca363b0e125d3805b070186fc8ef503e0c5c476a1a25ae89ed7bd0fe"
+        },
+        "claimant": "0xF482a24b87c89F14526192000921714b9bD52B7F",
+        "evidence": "exact-receipt-transfer-and-single-transaction-block-deltas",
+        "standard": 1,
+        "tokenIds": [
+          "11"
+        ],
+        "receiptId": "3",
+        "collection": "0x1825af92EaC58b412Bb1091b49FB118e0721c3F4",
+        "quantities": [
+          "1"
+        ],
+        "rewardToken": "0x607d55e9A5aD5e0E65DfCBB24543Aa5b2C8EF138"
+      },
+      "blockNumber": "57648569",
+      "transactionHash": "0x859f30ec22f51ec1f89ea0c774943477f73457dce20323f9c5b527fd14d4c646"
+    }
+  ],
+  "final": {
+    "campaignController": "0xF482a24b87c89F14526192000921714b9bD52B7F",
+    "safeNonce": "8",
+    "safeTokenBalance": "0",
+    "nftOwner": "0xF482a24b87c89F14526192000921714b9bD52B7F",
+    "rewardReturned": "7000000000000000000",
+    "reserve": "2100000000000000000000",
+    "outstandingLiability": "0"
+  }
+}

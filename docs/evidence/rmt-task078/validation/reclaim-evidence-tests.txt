@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: both all-detector reports bind exact complete compiler inputs and preserve all four unresolved high IDs
+ok 1 - both all-detector reports bind exact complete compiler inputs and preserve all four unresolved high IDs
+  ---
+  duration_ms: 7.579
+  type: 'test'
+  ...
+# Subtest: production closure and hostile tests match the exact reviewed source with no suppression annotation
+ok 2 - production closure and hostile tests match the exact reviewed source with no suppression annotation
+  ---
+  duration_ms: 2.2916
+  type: 'test'
+  ...
+# Subtest: every high retains dataflow, actual targeted test and explicit unresolved status
+ok 3 - every high retains dataflow, actual targeted test and explicit unresolved status
+  ---
+  duration_ms: 1.004
+  type: 'test'
+  ...
+# Subtest: all 28 current findings and the 22 plus six prior highs remain present and separate
+ok 4 - all 28 current findings and the 22 plus six prior highs remain present and separate
+  ---
+  duration_ms: 18.2172
+  type: 'test'
+  ...
+# Subtest: actual Foundry evidence includes every test, fuzz runs and stateful funding/custody transitions
+ok 5 - actual Foundry evidence includes every test, fuzz runs and stateful funding/custody transitions
+  ---
+  duration_ms: 0.4212
+  type: 'test'
+  ...
+# Subtest: custody, fixed-unit and size boundaries never claim burn, live USD conversion or independent clearance
+ok 6 - custody, fixed-unit and size boundaries never claim burn, live USD conversion or independent clearance
+  ---
+  duration_ms: 0.1185
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 104.0504

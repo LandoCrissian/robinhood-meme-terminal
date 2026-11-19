@@ -7,6 +7,10 @@ import { isTransactionHash, testCreationFeeWei, testCreationSignature } from "..
 const fixtureProfile = "rmt-curve-fixed-supply-security-v2";
 export const fixtureChainId = 31337;
 export const fixtureCreationFee = testCreationFeeWei;
+// Local fork simulations may fetch cold archive state through Anvil. Keep this
+// below the fixture proxy's 12-second read cap, with no transport retries. This
+// client is separate from production RPC clients and never submits transactions.
+export const fixtureRpcTimeoutMs = 10_000;
 export const factoryAbi = parseAbi([
   testCreationSignature,
   "function engineVersion() view returns (uint32)",
@@ -99,7 +103,7 @@ export function configuredCurveFixture(headers: Headers): CurveFixture | null {
 
 export function fixtureRpc(fixture: CurveFixture) {
   return createPublicClient({ transport: http(fixture.rpcUrl, {
-    timeout: 2_500, retryCount: 0, fetchOptions: { redirect: "error", cache: "no-store" },
+    timeout: fixtureRpcTimeoutMs, retryCount: 0, fetchOptions: { redirect: "error", cache: "no-store" },
   }) });
 }
 

@@ -1,0 +1,7 @@
+{
+  "scope": "isolated-loopback-postgresql-no-production-or-worker",
+  "postgres": "postgres (PostgreSQL) 18.6",
+  "database": "rmt_curve_fixture_task074_smoke_task078_mwmsc818",
+  "status": "PASS",
+  "exitCode": 0
+}

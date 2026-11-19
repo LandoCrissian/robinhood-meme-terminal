@@ -8,6 +8,8 @@ import { testCreatorEarnings } from "./creator-earnings-smoke.js";
 import { testFixtureMigrationEarnings } from "./curve-fixture-migration-smoke.js";
 import { testFixtureFeeActivity } from "./curve-fixture-fee-activity-smoke.js";
 import { testProjectTreasuryFixtureStoreProofs } from "./project-treasury-fixture-store-smoke.js";
+import { testReclaimFixtureProofs } from "./reclaim-fixture-evidence-smoke.js";
+import { testReclaimFixtureOrigins } from "./reclaim-fixture-origin-smoke.js";
 import { createHistoryReadBudget } from "./history-read-budget.js";
 import { testHistoricalResilience } from "./historical-launches-smoke.js";
 import {
@@ -97,6 +99,8 @@ testCreatorEarnings();
 await testFixtureMigrationEarnings();
 await testFixtureFeeActivity();
 await testProjectTreasuryFixtureStoreProofs();
+await testReclaimFixtureProofs();
+await testReclaimFixtureOrigins();
 testFixtureNativeProof();
 testFixturePostGraduation();
 console.info("RPC resilience smoke test passed");

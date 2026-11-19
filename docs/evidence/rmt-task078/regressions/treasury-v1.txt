@@ -1,0 +1,69 @@
+Compiling 6 files with Solc 0.8.26
+Solc 0.8.26 finished in 37.59s
+Compiler run successful!
+2026-11-19T00:23:40.575566Z  WARN forge::test: failed calling "targetArtifactSelectors()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:23:40.576056Z  WARN forge::test: failed calling "targetArtifacts()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:23:40.576088Z  WARN forge::test: failed calling "excludeArtifacts()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:23:40.576134Z  WARN forge::test: failed calling "targetSenders()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:23:40.576164Z  WARN forge::test: failed calling "excludeSenders()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:23:40.577032Z  WARN forge::test: failed calling "excludeContracts()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:23:40.577116Z  WARN forge::test: failed calling "targetInterfaces()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:23:40.577143Z  WARN forge::test: failed calling "targetSelectors()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:23:40.577162Z  WARN forge::test: failed calling "excludeSelectors()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:23:40.595908Z  WARN forge::test: failed calling "targetArtifactSelectors()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:23:40.596016Z  WARN forge::test: failed calling "targetArtifacts()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:23:40.596111Z  WARN forge::test: failed calling "excludeArtifacts()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:23:40.596197Z  WARN forge::test: failed calling "targetSenders()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:23:40.596262Z  WARN forge::test: failed calling "excludeSenders()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:23:40.596400Z  WARN forge::test: failed calling "excludeContracts()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:23:40.596508Z  WARN forge::test: failed calling "targetInterfaces()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:23:40.596604Z  WARN forge::test: failed calling "targetSelectors()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:23:40.596717Z  WARN forge::test: failed calling "excludeSelectors()": execution reverted: EvmError: Revert (gas: 21199)
+
+Ran 22 tests for test/RMTProjectTreasuryV1.t.sol:RMTProjectTreasuryV1Test
+[PASS] testBindingRejectsWrongCreatorIntentShareAndUnregisteredClone() (gas: 4931004)
+[PASS] testBoundedPendingWithdrawalsExpiredCancellationAndNoBalanceFreezeWhenOff() (gas: 1536156)
+[PASS] testControllerNoticeIncomingAcceptanceExpiryAndStaleReservations() (gas: 355341)
+[PASS] testCurveAndLpClaimsCallAsTreasuryAndPreserveOriginalPrincipal() (gas: 485441)
+[PASS] testFactoryRejectsChangedOrOversizedCreationTemplateWithoutConsumingIntent() (gas: 4918462)
+[PASS] testFuzz_CreatorIntentAndControllerCannotCollide(uint256) (runs: 512, μ: 4899686, ~: 4899686)
+[PASS] testFuzz_ExplicitTemplateConcatenationPreservesExactInitBytes(bytes32,uint16) (runs: 512, μ: 44095, ~: 44095)
+[PASS] testFuzz_NativeConservationWithReservationAndCancellation(uint96,uint96) (runs: 512, μ: 274498, ~: 274502)
+[PASS] testInterruptedClaimsAndCustodyMismatchNeverCreditSuccess() (gas: 338094)
+[PASS] testNativeFundingKindsAndUnsolicitedAreNotGuaranteedRoyalties() (gas: 153874)
+[PASS] testPrecompileControllersAndWrongChainCannotAdmitNewTreasuries() (gas: 9678550)
+[PASS] testPredictAndCreatorIntentIsolationAndNoRepeatedInitialization() (gas: 4934647)
+[PASS] testPurchaseDefaultsOffThenValidatesBoundsButNeverSpendsWithoutIndependentReference() (gas: 321146)
+[PASS] testRejectedWithdrawalAndCallbackReentrancyPreserveReservationsAndConservation() (gas: 598221)
+[PASS] testStandardRegisteredTokenAdmissionRequiresNoticeAndExactImmutableRuntime() (gas: 1057807)
+[PASS] testTokenManualRoyaltyAndUnsolicitedDeltaAndDisableNeverFreezeAssets() (gas: 401984)
+[PASS] testUnboundAssetLimitReservesProjectTokenSlot() (gas: 13321074)
+[PASS] testUninitializedDirectDeploymentCannotUseControllerActionsOrBeHijacked() (gas: 4830770)
+[PASS] testUnknownHostileAndUnregisteredTokenAdmissionFailsEvenWithSuppliedHash() (gas: 321016)
+[PASS] testUnsupportedInitialControllerRollsBackCreateAndCanRetry() (gas: 9742708)
+[PASS] testZeroFeesAndChangedProjectRuntimeFailWithoutInventingReceipts() (gas: 357462)
+[PASS] testZeroShareSidecarUsesCoreZeroTreasury() (gas: 5968112)
+Suite result: ok. 22 passed; 0 failed; 0 skipped; finished in 123.19ms (368.58ms CPU time)
+
+Ran 1 test for test/RMTProjectTreasuryInvariant.t.sol:RMTProjectTreasuryInvariantTest
+[PASS] invariant_AssetConservationAndReservationBounds() (runs: 128, calls: 4096, reverts: 0)
+
+╭---------------------------+----------+-------+---------+----------╮
+| Contract                  | Selector | Calls | Reverts | Discards |
++===================================================================+
+| TreasuryAccountingHandler | cancel   | 689   | 0       | 0        |
+|---------------------------+----------+-------+---------+----------|
+| TreasuryAccountingHandler | deposit  | 666   | 0       | 0        |
+|---------------------------+----------+-------+---------+----------|
+| TreasuryAccountingHandler | disable  | 682   | 0       | 0        |
+|---------------------------+----------+-------+---------+----------|
+| TreasuryAccountingHandler | execute  | 726   | 0       | 0        |
+|---------------------------+----------+-------+---------+----------|
+| TreasuryAccountingHandler | queue    | 653   | 0       | 0        |
+|---------------------------+----------+-------+---------+----------|
+| TreasuryAccountingHandler | royalty  | 680   | 0       | 0        |
+╰---------------------------+----------+-------+---------+----------╯
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 825.64ms (809.48ms CPU time)
+
+Ran 2 test suites in 835.26ms (948.83ms CPU time): 23 tests passed, 0 failed, 0 skipped (23 total tests)

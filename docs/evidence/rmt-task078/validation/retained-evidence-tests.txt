@@ -1,0 +1,734 @@
+
+> robinhood-meme-terminal@ test:release-evidence C:\Users\RMT\Documents\Codex\2026-11-11\rmt-task078
+> node --test "docs/evidence/**/*.test.mjs"
+
+TAP version 13
+# Subtest: unsigned package pins compiler and failing security evidence without binding live transactions
+ok 1 - unsigned package pins compiler and failing security evidence without binding live transactions
+  ---
+  duration_ms: 3.291
+  type: 'test'
+  ...
+# Subtest: pinned loopback fork preserves migration and settles all three projects with exact principal
+ok 2 - pinned loopback fork preserves migration and settles all three projects with exact principal
+  ---
+  duration_ms: 0.4663
+  type: 'test'
+  ...
+# Subtest: keeps all ordinary call edges while omitting admitted static reads
+ok 3 - keeps all ordinary call edges while omitting admitted static reads
+  ---
+  duration_ms: 5.2438
+  type: 'test'
+  ...
+# Subtest: rejects unexpected static targets and static descendants
+ok 4 - rejects unexpected static targets and static descendants
+  ---
+  duration_ms: 4.0867
+  type: 'test'
+  ...
+# Subtest: rejects delegatecalls, failed frames, and disconnected caller identities
+ok 5 - rejects delegatecalls, failed frames, and disconnected caller identities
+  ---
+  duration_ms: 2.0065
+  type: 'test'
+  ...
+# Subtest: active release evidence binds the exact failing compiler closure and empty live inputs
+ok 6 - active release evidence binds the exact failing compiler closure and empty live inputs
+  ---
+  duration_ms: 32.6045
+  type: 'test'
+  ...
+# Subtest: the same closure was rehearsed with unsigned constructors and only read-only upstream RPC
+ok 7 - the same closure was rehearsed with unsigned constructors and only read-only upstream RPC
+  ---
+  duration_ms: 1.7159
+  type: 'test'
+  ...
+# Subtest: the observed sender is eligible for delegated preparation only under the explicit pinned-runtime policy
+ok 8 - the observed sender is eligible for delegated preparation only under the explicit pinned-runtime policy
+  ---
+  duration_ms: 19.8068
+  type: 'test'
+  ...
+# Subtest: a read-only observation alone never produces a qualified delegated review packet
+ok 9 - a read-only observation alone never produces a qualified delegated review packet
+  ---
+  duration_ms: 0.8985
+  type: 'test'
+  ...
+# Subtest: the archived delegated plan preserves exact fork phases without assigning live executable roles
+ok 10 - the archived delegated plan preserves exact fork phases without assigning live executable roles
+  ---
+  duration_ms: 2.6225
+  type: 'test'
+  ...
+# Subtest: infrastructure cost and nonce projections exclude the later website token creation
+ok 11 - infrastructure cost and nonce projections exclude the later website token creation
+  ---
+  duration_ms: 3.6635
+  type: 'test'
+  ...
+# Subtest: the loopback type-2 formatter emits an ordinary call or top-level CREATE without authorization
+ok 12 - the loopback type-2 formatter emits an ordinary call or top-level CREATE without authorization
+  ---
+  duration_ms: 13.7589
+  type: 'test'
+  ...
+# Subtest: type 2 top-level CREATE binds the exact observed sender, nonce, type, input and derived receipt address
+ok 13 - type 2 top-level CREATE binds the exact observed sender, nonce, type, input and derived receipt address
+  ---
+  duration_ms: 1.1647
+  type: 'test'
+  ...
+# Subtest: type 4, an authorization list, a different chain, destination, sender or nonce all fail closed
+ok 14 - type 4, an authorization list, a different chain, destination, sender or nonce all fail closed
+  ---
+  duration_ms: 3.5489
+  type: 'test'
+  ...
+# Subtest: mobile review follows both Safe proposals, exact constructor order, notice pairs and first RMT project
+ok 15 - mobile review follows both Safe proposals, exact constructor order, notice pairs and first RMT project
+  ---
+  duration_ms: 12.4131
+  type: 'test'
+  ...
+# Subtest: personal payer stays outside Safe ownership and both predicted beneficiaries stay unassigned
+ok 16 - personal payer stays outside Safe ownership and both predicted beneficiaries stay unassigned
+  ---
+  duration_ms: 0.3771
+  type: 'test'
+  ...
+# Subtest: governance intent binds exact chain, directory, action and runtime, withholding authorization calldata
+ok 17 - governance intent binds exact chain, directory, action and runtime, withholding authorization calldata
+  ---
+  duration_ms: 9.4845
+  type: 'test'
+  ...
+# Subtest: public-safe review exposes only transaction digests and leaves executable mainnet inputs empty
+ok 18 - public-safe review exposes only transaction digests and leaves executable mainnet inputs empty
+  ---
+  duration_ms: 1.3346
+  type: 'test'
+  ...
+# Subtest: the active deployment review ends after infrastructure and leaves RMT creation in the ordinary website
+ok 19 - the active deployment review ends after infrastructure and leaves RMT creation in the ordinary website
+  ---
+  duration_ms: 5.2227
+  type: 'test'
+  ...
+# Subtest: constructor predictions consume both Safe-stage nonces using the proposed sender only
+ok 20 - constructor predictions consume both Safe-stage nonces using the proposed sender only
+  ---
+  duration_ms: 1.6972
+  type: 'test'
+  ...
+# Subtest: nonce drift, overflow, wrong sender, malformed nonce, wrong address and occupied CREATE destinations fail closed
+ok 21 - nonce drift, overflow, wrong sender, malformed nonce, wrong address and occupied CREATE destinations fail closed
+  ---
+  duration_ms: 2.5831
+  type: 'test'
+  ...
+# Subtest: code-empty synthetic proof yields sanitized metadata only, while the observed delegated payer is blocked
+ok 22 - code-empty synthetic proof yields sanitized metadata only, while the observed delegated payer is blocked
+  ---
+  duration_ms: 5.8604
+  type: 'test'
+  ...
+# Subtest: Nitro ceiling includes posting gas, uses the larger estimate, and rounds the gas limit up
+ok 23 - Nitro ceiling includes posting gas, uses the larger estimate, and rounds the gas limit up
+  ---
+  duration_ms: 3.6352
+  type: 'test'
+  ...
+# Subtest: reconstructs only the fixed \#648 Operations call and keeps exact calldata outside the phone projection
+ok 24 - reconstructs only the fixed \#648 Operations call and keeps exact calldata outside the phone projection
+  ---
+  duration_ms: 67.5696
+  type: 'test'
+  ...
+# Subtest: withdraws transaction preparation when fee headroom exceeds the conditional owner approval
+ok 25 - withdraws transaction preparation when fee headroom exceeds the conditional owner approval
+  ---
+  duration_ms: 107.9111
+  type: 'test'
+  ...
+# Subtest: rejects excess approved component gas even when the aggregate recommendation is smaller
+ok 26 - rejects excess approved component gas even when the aggregate recommendation is smaller
+  ---
+  duration_ms: 65.9859
+  type: 'test'
+  ...
+# Subtest: stops on expired blocks, changed nonce, conflicting delegation or factory, and absent Safe vacancy
+ok 27 - stops on expired blocks, changed nonce, conflicting delegation or factory, and absent Safe vacancy
+  ---
+  duration_ms: 89.7665
+  type: 'test'
+  ...
+# Subtest: the adopted Operations policy permits exact review without granting transaction authority
+ok 28 - the adopted Operations policy permits exact review without granting transaction authority
+  ---
+  duration_ms: 72.6494
+  type: 'test'
+  ...
+# Subtest: fresh headroom above any approved dimension blocks the technical gate
+ok 29 - fresh headroom above any approved dimension blocks the technical gate
+  ---
+  duration_ms: 76.7934
+  type: 'test'
+  ...
+# Subtest: rejects stale, mismatched, and contradictory identity, gas, or provider evidence
+ok 30 - rejects stale, mismatched, and contradictory identity, gas, or provider evidence
+  ---
+  duration_ms: 119.8166
+  type: 'test'
+  ...
+# Subtest: the CLI exposes no approval or caller-supplied observation override
+ok 31 - the CLI exposes no approval or caller-supplied observation override
+  ---
+  duration_ms: 1868.4384
+  type: 'test'
+  ...
+# Subtest: unsigned package binds two current observations and rejects staleness, reuse and nonce drift
+ok 32 - unsigned package binds two current observations and rejects staleness, reuse and nonce drift
+  ---
+  duration_ms: 22.8714
+  type: 'test'
+  ...
+# Subtest: dependency attestation must match the exact sender anchor and frozen runtime pins
+ok 33 - dependency attestation must match the exact sender anchor and frozen runtime pins
+  ---
+  duration_ms: 8.7816
+  type: 'test'
+  ...
+# Subtest: governance evidence requires all three exact accounts code-empty on both pinned providers and the same block
+ok 34 - governance evidence requires all three exact accounts code-empty on both pinned providers and the same block
+  ---
+  duration_ms: 55.0721
+  type: 'test'
+  ...
+# Subtest: only explicitly private Safe rows contain exact initializer calldata
+ok 35 - only explicitly private Safe rows contain exact initializer calldata
+  ---
+  duration_ms: 72.0563
+  type: 'test'
+  ...
+# Subtest: owner-approved fee terms match the frozen 4663 compile profile and v4 pool fee
+ok 36 - owner-approved fee terms match the frozen 4663 compile profile and v4 pool fee
+  ---
+  duration_ms: 2.3316
+  type: 'test'
+  ...
+# Subtest: the combined package preserves every approved Operations fee limit and requires the standalone pending recheck
+ok 37 - the combined package preserves every approved Operations fee limit and requires the standalone pending recheck
+  ---
+  duration_ms: 1.1335
+  type: 'test'
+  ...
+# Subtest: approved RMT configuration binds exactly the owner and zero treasury without authorizing a live creation
+ok 38 - approved RMT configuration binds exactly the owner and zero treasury without authorizing a live creation
+  ---
+  duration_ms: 36.1683
+  type: 'test'
+  ...
+# Subtest: production preparation requires approved configuration in the full synthetic rehearsal
+ok 39 - production preparation requires approved configuration in the full synthetic rehearsal
+  ---
+  duration_ms: 36.5855
+  type: 'test'
+  ...
+# Subtest: the generator requires fresh absolute paths outside source control
+ok 40 - the generator requires fresh absolute paths outside source control
+  ---
+  duration_ms: 9.4814
+  type: 'test'
+  ...
+# Subtest: live observations keep historical checkpoint finality and exact hosted routing separate from deployment
+ok 41 - live observations keep historical checkpoint finality and exact hosted routing separate from deployment
+  ---
+  duration_ms: 2.6672
+  type: 'test'
+  ...
+# Subtest: live Safe observations retain separate proposals and exact estimates with no beneficiary approval
+ok 42 - live Safe observations retain separate proposals and exact estimates with no beneficiary approval
+  ---
+  duration_ms: 0.418
+  type: 'test'
+  ...
+# Subtest: review packet pins release inputs and carries no approval or live transaction
+ok 43 - review packet pins release inputs and carries no approval or live transaction
+  ---
+  duration_ms: 24.0071
+  type: 'test'
+  ...
+# Subtest: tracked deployable sources and every deliberate 4663 transformation match the reviewed closure
+ok 44 - tracked deployable sources and every deliberate 4663 transformation match the reviewed closure
+  ---
+  duration_ms: 4.1279
+  type: 'test'
+  ...
+# Subtest: each in-scope High and governance Medium is individually bound to the archived report and review matrix
+ok 45 - each in-scope High and governance Medium is individually bound to the archived report and review matrix
+  ---
+  duration_ms: 2.8348
+  type: 'test'
+  ...
+# Subtest: closure report is bound to the pinned 4663 compiler and remains failed
+ok 46 - closure report is bound to the pinned 4663 compiler and remains failed
+  ---
+  duration_ms: 33.0545
+  type: 'test'
+  ...
+# Subtest: profile or report substitution and CI-based clearance are rejected
+ok 47 - profile or report substitution and CI-based clearance are rejected
+  ---
+  duration_ms: 73.5646
+  type: 'test'
+  ...
+# Subtest: owner sheet makes incomplete roles and explicit economic approval visible
+ok 48 - owner sheet makes incomplete roles and explicit economic approval visible
+  ---
+  duration_ms: 5.3764
+  type: 'test'
+  ...
+# Subtest: an unsigned binding accepts a single agreeing observation and rejects nonce or role drift
+ok 49 - an unsigned binding accepts a single agreeing observation and rejects nonce or role drift
+  ---
+  duration_ms: 3.2832
+  type: 'test'
+  ...
+# Subtest: binds direct latest, pending and numbered nonce reads to one rechecked canonical block
+ok 50 - binds direct latest, pending and numbered nonce reads to one rechecked canonical block
+  ---
+  duration_ms: 13.7579
+  type: 'test'
+  ...
+# Subtest: rejects missing approvals, missing roles and unexpected networks before inspecting an account
+ok 51 - rejects missing approvals, missing roles and unexpected networks before inspecting an account
+  ---
+  duration_ms: 4.8388
+  type: 'test'
+  ...
+# Subtest: rejects the known incoming rotation fixture key without inspecting an account
+ok 52 - rejects the known incoming rotation fixture key without inspecting an account
+  ---
+  duration_ms: 5.4707
+  type: 'test'
+  ...
+# Subtest: rejects pending transactions, a lagging snapshot, and drift against an unsigned plan
+ok 53 - rejects pending transactions, a lagging snapshot, and drift against an unsigned plan
+  ---
+  duration_ms: 4.0192
+  type: 'test'
+  ...
+# Subtest: rejects nonce drift and a changed canonical block during the preflight
+ok 54 - rejects nonce drift and a changed canonical block during the preflight
+  ---
+  duration_ms: 7.5135
+  type: 'test'
+  ...
+# Subtest: fails unsupported governance or deployer accounts and changed dependency pins
+ok 55 - fails unsupported governance or deployer accounts and changed dependency pins
+  ---
+  duration_ms: 4.5269
+  type: 'test'
+  ...
+# Subtest: keeps smart treasury claim eligibility unverified, checks eight vacancies, and separates cost boundaries
+ok 56 - keeps smart treasury claim eligibility unverified, checks eight vacancies, and separates cost boundaries
+  ---
+  duration_ms: 4.8241
+  type: 'test'
+  ...
+# Subtest: rejects existing code and an otherwise code-empty account with a nonzero CREATE destination nonce
+ok 57 - rejects existing code and an otherwise code-empty account with a nonzero CREATE destination nonce
+  ---
+  duration_ms: 13.2534
+  type: 'test'
+  ...
+# Subtest: CLI rejects an unassigned owner sheet without trying the official RPC
+ok 58 - CLI rejects an unassigned owner sheet without trying the official RPC
+  ---
+  duration_ms: 1166.0885
+  type: 'test'
+  ...
+# Subtest: CLI rejects an unsigned plan with a substituted release-gate identity before compilation
+ok 59 - CLI rejects an unsigned plan with a substituted release-gate identity before compilation
+  ---
+  duration_ms: 762.9757
+  type: 'test'
+  ...
+# Subtest: the checked-in template has explicitly unassigned owner inputs
+ok 60 - the checked-in template has explicitly unassigned owner inputs
+  ---
+  duration_ms: 113.4916
+  type: 'test'
+  ...
+# Subtest: assignments stay exact and compilation does not require an approval claim
+ok 61 - assignments stay exact and compilation does not require an approval claim
+  ---
+  duration_ms: 13.3571
+  type: 'test'
+  ...
+# Subtest: addresses require checksum and exclude known fixture, system and pin addresses
+ok 62 - addresses require checksum and exclude known fixture, system and pin addresses
+  ---
+  duration_ms: 2.0574
+  type: 'test'
+  ...
+# Subtest: independent beneficiaries and three distinct signers are required
+ok 63 - independent beneficiaries and three distinct signers are required
+  ---
+  duration_ms: 1.3256
+  type: 'test'
+  ...
+# Subtest: economic controls and fee denominators must exactly match the pinned profile
+ok 64 - economic controls and fee denominators must exactly match the pinned profile
+  ---
+  duration_ms: 2.3748
+  type: 'test'
+  ...
+# Subtest: nonce is exact and must leave the full nine transaction slots
+ok 65 - nonce is exact and must leave the full nine transaction slots
+  ---
+  duration_ms: 2.9421
+  type: 'test'
+  ...
+# Subtest: partial inputs and fixture mode cannot produce a plan file
+ok 66 - partial inputs and fixture mode cannot produce a plan file
+  ---
+  duration_ms: 237.1401
+  type: 'test'
+  ...
+# Subtest: owner allocations stay unassigned and direct output is blocked
+ok 67 - owner allocations stay unassigned and direct output is blocked
+  ---
+  duration_ms: 322.4996
+  type: 'test'
+  ...
+# Subtest: action and migration bind to distinct domains and signer epochs
+ok 68 - action and migration bind to distinct domains and signer epochs
+  ---
+  duration_ms: 16.0821
+  type: 'test'
+  ...
+# Subtest: rotation, acceptance and cancellation carry different complete typed data
+ok 69 - rotation, acceptance and cancellation carry different complete typed data
+  ---
+  duration_ms: 2.147
+  type: 'test'
+  ...
+# Subtest: typed data rejects another chain field, noncanonical numbers and the old migration schema
+ok 70 - typed data rejects another chain field, noncanonical numbers and the old migration schema
+  ---
+  duration_ms: 2.5888
+  type: 'test'
+  ...
+# Subtest: exact owner bytes produce three distinct EIP-55 addresses
+ok 71 - exact owner bytes produce three distinct EIP-55 addresses
+  ---
+  duration_ms: 4.6258
+  type: 'test'
+  ...
+# Subtest: matching code-empty observations establish policy eligibility with key control unverified
+ok 72 - matching code-empty observations establish policy eligibility with key control unverified
+  ---
+  duration_ms: 3.2995
+  type: 'test'
+  ...
+# Subtest: contract code, delegated EOAs and low reserved addresses are ineligible
+ok 73 - contract code, delegated EOAs and low reserved addresses are ineligible
+  ---
+  duration_ms: 1.7867
+  type: 'test'
+  ...
+# Subtest: mixed chains, anchor changes and code disagreement fail closed
+ok 74 - mixed chains, anchor changes and code disagreement fail closed
+  ---
+  duration_ms: 3.2908
+  type: 'test'
+  ...
+# Subtest: wallet preparation carries the same frozen blocked release and all 22 highs
+ok 75 - wallet preparation carries the same frozen blocked release and all 22 highs
+  ---
+  duration_ms: 1.2724
+  type: 'test'
+  ...
+# Subtest: the proposal binds only the three checksummed governance addresses
+ok 76 - the proposal binds only the three checksummed governance addresses
+  ---
+  duration_ms: 6.2043
+  type: 'test'
+  ...
+# Subtest: the provisional overlay cannot be submitted as approved preflight input
+ok 77 - the provisional overlay cannot be submitted as approved preflight input
+  ---
+  duration_ms: 1158.2619
+  type: 'test'
+  ...
+# Subtest: the two proposed Safe configurations preserve separate unassigned roles and the exact fee shares
+ok 78 - the two proposed Safe configurations preserve separate unassigned roles and the exact fee shares
+  ---
+  duration_ms: 0.3044
+  type: 'test'
+  ...
+# Subtest: creation release and beneficiary-led claims use the existing exact call shapes
+ok 79 - creation release and beneficiary-led claims use the existing exact call shapes
+  ---
+  duration_ms: 0.2001
+  type: 'test'
+  ...
+# Subtest: Safe infrastructure evidence binds both factory simulations and gas estimates to the recorded runtime pins
+ok 80 - Safe infrastructure evidence binds both factory simulations and gas estimates to the recorded runtime pins
+  ---
+  duration_ms: 0.4718
+  type: 'test'
+  ...
+# Subtest: the exact owner policy produces a deterministic setup digest and leaves the destination and salt unassigned
+ok 81 - the exact owner policy produces a deterministic setup digest and leaves the destination and salt unassigned
+  ---
+  duration_ms: 95.3978
+  type: 'test'
+  ...
+# Subtest: unsigned Operations preparation remains outside the canonical approval input
+ok 82 - unsigned Operations preparation remains outside the canonical approval input
+  ---
+  duration_ms: 4.9337
+  type: 'test'
+  ...
+# Subtest: changed owners, threshold, profile, chain, or approval fail the policy check
+ok 83 - changed owners, threshold, profile, chain, or approval fail the policy check
+  ---
+  duration_ms: 246.0468
+  type: 'test'
+  ...
+# Subtest: setup cannot add a delegatecall, different handler, payment, module, or guard
+ok 84 - setup cannot add a delegatecall, different handler, payment, module, or guard
+  ---
+  duration_ms: 173.7163
+  type: 'test'
+  ...
+# Subtest: fixture data cannot populate either treasury, assign Reserve, or change the economics
+ok 85 - fixture data cannot populate either treasury, assign Reserve, or change the economics
+  ---
+  duration_ms: 191.3334
+  type: 'test'
+  ...
+# Subtest: illustrative CREATE2 derivation matches the read-only 4663 simulation and vacant address
+ok 86 - illustrative CREATE2 derivation matches the read-only 4663 simulation and vacant address
+  ---
+  duration_ms: 19.7605
+  type: 'test'
+  ...
+# Subtest: synthetic fork receipts preserve the fee allocations, independent spending, and signature rejection
+ok 87 - synthetic fork receipts preserve the fee allocations, independent spending, and signature rejection
+  ---
+  duration_ms: 1.5867
+  type: 'test'
+  ...
+# Subtest: the exact three existing owners use independently scoped 2-of-3 preparation policies
+ok 88 - the exact three existing owners use independently scoped 2-of-3 preparation policies
+  ---
+  duration_ms: 63.9687
+  type: 'test'
+  ...
+# Subtest: the full Safe setup has a shared initializer and two distinct unapproved CREATE2 derivations
+ok 89 - the full Safe setup has a shared initializer and two distinct unapproved CREATE2 derivations
+  ---
+  duration_ms: 36.1422
+  type: 'test'
+  ...
+# Subtest: Reserve cannot substitute different accounts, a new threshold, chain, or setup permissions
+ok 90 - Reserve cannot substitute different accounts, a new threshold, chain, or setup permissions
+  ---
+  duration_ms: 254.354
+  type: 'test'
+  ...
+# Subtest: preparation keeps canonical inputs unassigned and rejects attaching previews, salt decisions or broadcast approval
+ok 91 - preparation keeps canonical inputs unassigned and rejects attaching previews, salt decisions or broadcast approval
+  ---
+  duration_ms: 130.7152
+  type: 'test'
+  ...
+# Subtest: the fork receipts bind independent proxy domains and owner rotations to each 2-of-3 Safe
+ok 92 - the fork receipts bind independent proxy domains and owner rotations to each 2-of-3 Safe
+  ---
+  duration_ms: 2.2654
+  type: 'test'
+  ...
+# Subtest: the triage covers exactly the frozen closure highs and governance mediums
+ok 93 - the triage covers exactly the frozen closure highs and governance mediums
+  ---
+  duration_ms: 32.8732
+  type: 'test'
+  ...
+# Subtest: live preparation yields a blocked result with no unsigned executable call
+ok 94 - live preparation yields a blocked result with no unsigned executable call
+  ---
+  duration_ms: 1.8982
+  type: 'test'
+  ...
+# Subtest: Ops reviews an exact transfer of the bound ERC-20 to its approved LAMMB payee
+ok 95 - Ops reviews an exact transfer of the bound ERC-20 to its approved LAMMB payee
+  ---
+  duration_ms: 10.1778
+  type: 'test'
+  ...
+# Subtest: LAMMB support is an independent zero-calldata ETH transfer using its own approval and Safe domain
+ok 96 - LAMMB support is an independent zero-calldata ETH transfer using its own approval and Safe domain
+  ---
+  duration_ms: 1.3269
+  type: 'test'
+  ...
+# Subtest: rejects role conflation and circular Safe-to-Safe or Reserve payment routes
+ok 97 - rejects role conflation and circular Safe-to-Safe or Reserve payment routes
+  ---
+  duration_ms: 1.9937
+  type: 'test'
+  ...
+# Subtest: rejects unapproved purpose, changed amount, substituted token or arbitrary calldata
+ok 98 - rejects unapproved purpose, changed amount, substituted token or arbitrary calldata
+  ---
+  duration_ms: 1.9687
+  type: 'test'
+  ...
+# Subtest: checks nonce, exact sender, chain and available balance
+ok 99 - checks nonce, exact sender, chain and available balance
+  ---
+  duration_ms: 0.5747
+  type: 'test'
+  ...
+# Subtest: Task075 evidence hashes match the complete Git-normalized review package
+ok 100 - Task075 evidence hashes match the complete Git-normalized review package
+  ---
+  duration_ms: 23.2873
+  type: 'test'
+  ...
+# Subtest: Task075 reported acceptance remains synthetic and cannot clear production release holds
+ok 101 - Task075 reported acceptance remains synthetic and cannot clear production release holds
+  ---
+  duration_ms: 5.5204
+  type: 'test'
+  ...
+# Subtest: Task076 preserves every Task075 Solidity source and adds a separate complete module closure
+ok 102 - Task076 preserves every Task075 Solidity source and adds a separate complete module closure
+  ---
+  duration_ms: 16.2676
+  type: 'test'
+  ...
+# Subtest: new-module size evidence stays separate from unchanged core bootstrap measurements
+ok 103 - new-module size evidence stays separate from unchanged core bootstrap measurements
+  ---
+  duration_ms: 0.5389
+  type: 'test'
+  ...
+# Subtest: all-detector reports retain the new highs and never represent a passing strict gate
+ok 104 - all-detector reports retain the new highs and never represent a passing strict gate
+  ---
+  duration_ms: 11.1404
+  type: 'test'
+  ...
+# Subtest: both real synthetic journeys preserve receipt, recovery, custody and source boundaries
+ok 105 - both real synthetic journeys preserve receipt, recovery, custody and source boundaries
+  ---
+  duration_ms: 16.8759
+  type: 'test'
+  ...
+# Subtest: retained Task076 runtime source matches its original journeys, independently of later authorized UI changes
+ok 106 - retained Task076 runtime source matches its original journeys, independently of later authorized UI changes
+  ---
+  duration_ms: 39.5506
+  type: 'test'
+  ...
+# Subtest: Task077 preserves all 42 prior Solidity files and keeps V1/core compiler identities separate
+ok 107 - Task077 preserves all 42 prior Solidity files and keeps V1/core compiler identities separate
+  ---
+  duration_ms: 17.6177
+  type: 'test'
+  ...
+# Subtest: the complete nonspending prototype compiler closure matches fresh all-detector analysis
+ok 108 - the complete nonspending prototype compiler closure matches fresh all-detector analysis
+  ---
+  duration_ms: 4.1549
+  type: 'test'
+  ...
+# Subtest: both actual synthetic journeys bind nonspending refusals to real treasury, migration, Safe and v4 evidence
+ok 109 - both actual synthetic journeys bind nonspending refusals to real treasury, migration, Safe and v4 evidence
+  ---
+  duration_ms: 10.7022
+  type: 'test'
+  ...
+# Subtest: public Chromium/WebKit expose no buy authority, wallet requests, fabricated assets or successful financial routes
+ok 110 - public Chromium/WebKit expose no buy authority, wallet requests, fabricated assets or successful financial routes
+  ---
+  duration_ms: 1.415
+  type: 'test'
+  ...
+# Subtest: retained raw artifacts and screenshots keep exact, portable checksums
+ok 111 - retained raw artifacts and screenshots keep exact, portable checksums
+  ---
+  duration_ms: 78.7568
+  type: 'test'
+  ...
+# Subtest: dated mainnet reads retain exact approved runtimes, bindings, compiler and canonical anchor
+ok 112 - dated mainnet reads retain exact approved runtimes, bindings, compiler and canonical anchor
+  ---
+  duration_ms: 2.7278
+  type: 'test'
+  ...
+# Subtest: base-asset feeds and deployed oracle proxies do not substitute for project-token evidence
+ok 113 - base-asset feeds and deployed oracle proxies do not substitute for project-token evidence
+  ---
+  duration_ms: 0.3661
+  type: 'test'
+  ...
+# Subtest: Reclaim preserves all 47 prior Solidity files and the separate compiler boundaries
+ok 114 - Reclaim preserves all 47 prior Solidity files and the separate compiler boundaries
+  ---
+  duration_ms: 13.8181
+  type: 'test'
+  ...
+# Subtest: all three Reclaim roots bind exact source/compiler/static inputs and honest size limits
+ok 115 - all three Reclaim roots bind exact source/compiler/static inputs and honest size limits
+  ---
+  duration_ms: 4.5666
+  type: 'test'
+  ...
+# Subtest: the separate strict Reclaim gate preserves every prior security job and all browser regressions
+ok 116 - the separate strict Reclaim gate preserves every prior security job and all browser regressions
+  ---
+  duration_ms: 1.5793
+  type: 'test'
+  ...
+# Subtest: rejects different compiler settings, source input bytes or a changed release gate
+ok 117 - rejects different compiler settings, source input bytes or a changed release gate
+  ---
+  duration_ms: 5.8453
+  type: 'test'
+  ...
+# Subtest: rejects tampered fork archive and constructor evidence before deriving an address
+ok 118 - rejects tampered fork archive and constructor evidence before deriving an address
+  ---
+  duration_ms: 5.0248
+  type: 'test'
+  ...
+# Subtest: derives exact reviewed bootstrap and token CREATE2 children separately from live bindings
+ok 119 - derives exact reviewed bootstrap and token CREATE2 children separately from live bindings
+  ---
+  duration_ms: 4.6681
+  type: 'test'
+  ...
+# Subtest: Blockscout probe uses bounded public GET and leaves 403 or partial records unapproved
+ok 120 - Blockscout probe uses bounded public GET and leaves 403 or partial records unapproved
+  ---
+  duration_ms: 23.7934
+  type: 'test'
+  ...
+1..120
+# tests 120
+# suites 0
+# pass 120
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 4596.4161

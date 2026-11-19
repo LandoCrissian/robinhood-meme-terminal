@@ -1,0 +1,64 @@
+TAP version 13
+# Subtest: Reclaim preserves all 47 prior Solidity files and the separate compiler boundaries
+ok 1 - Reclaim preserves all 47 prior Solidity files and the separate compiler boundaries
+  ---
+  duration_ms: 10.6711
+  type: 'test'
+  ...
+# Subtest: all three Reclaim roots bind exact source/compiler/static inputs and honest size limits
+ok 2 - all three Reclaim roots bind exact source/compiler/static inputs and honest size limits
+  ---
+  duration_ms: 3.2826
+  type: 'test'
+  ...
+# Subtest: the separate strict Reclaim gate preserves every prior security job and all browser regressions
+ok 3 - the separate strict Reclaim gate preserves every prior security job and all browser regressions
+  ---
+  duration_ms: 1.0583
+  type: 'test'
+  ...
+# Subtest: both all-detector reports bind exact complete compiler inputs and preserve all four unresolved high IDs
+ok 4 - both all-detector reports bind exact complete compiler inputs and preserve all four unresolved high IDs
+  ---
+  duration_ms: 10.7126
+  type: 'test'
+  ...
+# Subtest: production closure and hostile tests match the exact reviewed source with no suppression annotation
+ok 5 - production closure and hostile tests match the exact reviewed source with no suppression annotation
+  ---
+  duration_ms: 3.2753
+  type: 'test'
+  ...
+# Subtest: every high retains dataflow, actual targeted test and explicit unresolved status
+ok 6 - every high retains dataflow, actual targeted test and explicit unresolved status
+  ---
+  duration_ms: 1.3255
+  type: 'test'
+  ...
+# Subtest: all 28 current findings and the 22 plus six prior highs remain present and separate
+ok 7 - all 28 current findings and the 22 plus six prior highs remain present and separate
+  ---
+  duration_ms: 26.639
+  type: 'test'
+  ...
+# Subtest: actual Foundry evidence includes every test, fuzz runs and stateful funding/custody transitions
+ok 8 - actual Foundry evidence includes every test, fuzz runs and stateful funding/custody transitions
+  ---
+  duration_ms: 0.6261
+  type: 'test'
+  ...
+# Subtest: custody, fixed-unit and size boundaries never claim burn, live USD conversion or independent clearance
+ok 9 - custody, fixed-unit and size boundaries never claim burn, live USD conversion or independent clearance
+  ---
+  duration_ms: 0.1478
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 156.3486

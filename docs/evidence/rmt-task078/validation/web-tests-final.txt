@@ -1,0 +1,1496 @@
+
+> @rmt/launch-website@0.1.0 test:history C:\Users\RMT\Documents\Codex\2026-11-11\rmt-task078\apps\launch-website
+> tsx --tsconfig tsconfig.test.json --test lib/server/*.test.ts lib/server/profiles/core.test.ts
+
+TAP version 13
+# Subtest: sign-in review binds exact site, account, chain, nonce, purpose and bounded expiry
+ok 1 - sign-in review binds exact site, account, chain, nonce, purpose and bounded expiry
+  ---
+  duration_ms: 7.9927
+  type: 'test'
+  ...
+# Subtest: connecting requests only account permission and reads network; it never signs or submits
+ok 2 - connecting requests only account permission and reads network; it never signs or submits
+  ---
+  duration_ms: 1.5394
+  type: 'test'
+  ...
+# Subtest: explicit message signing preserves review binding across wallet rejection, account changes and asynchronous review invalidation
+ok 3 - explicit message signing preserves review binding across wallet rejection, account changes and asynchronous review invalidation
+  ---
+  duration_ms: 16.7074
+  type: 'test'
+  ...
+# Subtest: wrong network or replaced provider cannot request a sign-in signature
+ok 4 - wrong network or replaced provider cannot request a sign-in signature
+  ---
+  duration_ms: 0.6911
+  type: 'test'
+  ...
+# Subtest: EIP-6963 discovery is bounded, deduplicated, makes no wallet calls and ignores remote icons
+ok 5 - EIP-6963 discovery is bounded, deduplicated, makes no wallet calls and ignores remote icons
+  ---
+  duration_ms: 2.2257
+  type: 'test'
+  ...
+# Subtest: account API requests keep cookies same-origin and CSRF out of URLs and reject malformed/oversized responses
+ok 6 - account API requests keep cookies same-origin and CSRF out of URLs and reject malformed/oversized responses
+  ---
+  duration_ms: 40.2099
+  type: 'test'
+  ...
+# Subtest: profile fixture stays unavailable without its complete local manifest and hosted environments cannot activate it
+ok 7 - profile fixture stays unavailable without its complete local manifest and hosted environments cannot activate it
+  ---
+  duration_ms: 48.9791
+  type: 'test'
+  ...
+# Subtest: profile body reader bounds bytes, JSON type and UTF-8 without accepting supplied execution authority
+ok 8 - profile body reader bounds bytes, JSON type and UTF-8 without accepting supplied execution authority
+  ---
+  duration_ms: 10.5357
+  type: 'test'
+  ...
+# Subtest: all six EOA operations preserve exact assets, targets, recipients and separate fees
+ok 9 - all six EOA operations preserve exact assets, targets, recipients and separate fees
+  ---
+  duration_ms: 3104.5568
+  type: 'test'
+  ...
+# Subtest: viem empty-code undefined is admitted, but null and failed reads are unavailable
+ok 10 - viem empty-code undefined is admitted, but null and failed reads are unavailable
+  ---
+  duration_ms: 21.7403
+  type: 'test'
+  ...
+# Subtest: MetaMask profile binds actual archived delegate runtime and rejects replacement/revocation
+ok 11 - MetaMask profile binds actual archived delegate runtime and rejects replacement/revocation
+  ---
+  duration_ms: 23.6209
+  type: 'test'
+  ...
+# Subtest: Safe proposal retains beneficiary custody and separates three nonce meanings
+ok 12 - Safe proposal retains beneficiary custody and separates three nonce meanings
+  ---
+  duration_ms: 36.0026
+  type: 'test'
+  ...
+# Subtest: two genuine sorted Safe owner signatures produce only the exact inner CALL outer execution
+ok 13 - two genuine sorted Safe owner signatures produce only the exact inner CALL outer execution
+  ---
+  duration_ms: 149.0374
+  type: 'test'
+  ...
+# Subtest: insufficient, duplicate, outsider, cross-domain and stale Safe approvals are rejected
+ok 14 - insufficient, duplicate, outsider, cross-domain and stale Safe approvals are rejected
+  ---
+  duration_ms: 179.8124
+  type: 'test'
+  ...
+# Subtest: Safe handler, modules, threshold, owner types, runtime and count are strictly pinned
+ok 15 - Safe handler, modules, threshold, owner types, runtime and count are strictly pinned
+  ---
+  duration_ms: 193.8671
+  type: 'test'
+  ...
+# Subtest: review refresh preserves reviewed identity while rejecting nonce, time, policy and code changes
+ok 16 - review refresh preserves reviewed identity while rejecting nonce, time, policy and code changes
+  ---
+  duration_ms: 99.754
+  type: 'test'
+  ...
+# Subtest: wallet and beneficiary address case is canonical before consent and revalidation in every profile
+ok 17 - wallet and beneficiary address case is canonical before consent and revalidation in every profile
+  ---
+  duration_ms: 601.8655
+  type: 'test'
+  ...
+# Subtest: fee growth and a newer checkpoint preserve the original consent, but expiry, policy drift and reorg do not
+ok 18 - fee growth and a newer checkpoint preserve the original consent, but expiry, policy drift and reorg do not
+  ---
+  duration_ms: 95.9241
+  type: 'test'
+  ...
+# Subtest: rehashing an unknown outer property or alternate Safe CALL never authorizes it
+ok 19 - rehashing an unknown outer property or alternate Safe CALL never authorizes it
+  ---
+  duration_ms: 138.7385
+  type: 'test'
+  ...
+# Subtest: historical identity verification never confuses a mined nonce with the old review's pending nonce
+ok 20 - historical identity verification never confuses a mined nonce with the old review's pending nonce
+  ---
+  duration_ms: 19.4711
+  type: 'test'
+  ...
+# Subtest: Safe reverted outer transaction preserves Safe nonce while successful execution consumes it
+ok 21 - Safe reverted outer transaction preserves Safe nonce while successful execution consumes it
+  ---
+  duration_ms: 135.8233
+  type: 'test'
+  ...
+# Subtest: historical profile verification cryptographically rejects rehashed forged Safe signatures
+ok 22 - historical profile verification cryptographically rejects rehashed forged Safe signatures
+  ---
+  duration_ms: 117.9073
+  type: 'test'
+  ...
+# Subtest: canonical digest is independent of property insertion order and uses deterministic ordering
+ok 23 - canonical digest is independent of property insertion order and uses deterministic ordering
+  ---
+  duration_ms: 0.5049
+  type: 'test'
+  ...
+# Subtest: pinned unsigned4663 preparation requires transaction-specific positive L1 fee evidence
+ok 24 - pinned unsigned4663 preparation requires transaction-specific positive L1 fee evidence
+  ---
+  duration_ms: 130.6282
+  type: 'test'
+  ...
+# Subtest: production preparation rejects altered deployment pins before RPC and never admits arbitrary networks
+ok 25 - production preparation rejects altered deployment pins before RPC and never admits arbitrary networks
+  ---
+  duration_ms: 1.4143
+  type: 'test'
+  ...
+# Subtest: two-provider preparation refuses missing, conflicting or duplicated observations
+ok 26 - two-provider preparation refuses missing, conflicting or duplicated observations
+  ---
+  duration_ms: 67.948
+  type: 'test'
+  ...
+# Subtest: profile submission persists the immutable intent before one explicit synthetic wallet request
+ok 27 - profile submission persists the immutable intent before one explicit synthetic wallet request
+  ---
+  duration_ms: 3020.1941
+  type: 'test'
+  ...
+# Subtest: unknown wallet outcome and missing hash survive refresh without another signature
+ok 28 - unknown wallet outcome and missing hash survive refresh without another signature
+  ---
+  duration_ms: 66.8548
+  type: 'test'
+  ...
+# Subtest: wrapped rejection permits only a fresh explicit retry of the same unsubmitted intent
+ok 29 - wrapped rejection permits only a fresh explicit retry of the same unsubmitted intent
+  ---
+  duration_ms: 44.3492
+  type: 'test'
+  ...
+# Subtest: a wrong manually entered recovery hash remains replaceable until exact canonical binding
+ok 30 - a wrong manually entered recovery hash remains replaceable until exact canonical binding
+  ---
+  duration_ms: 36.0044
+  type: 'test'
+  ...
+# Subtest: explicit Safe wallet rejection permits only the same approved claim terms on a fresh review
+ok 31 - explicit Safe wallet rejection permits only the same approved claim terms on a fresh review
+  ---
+  duration_ms: 193.2021
+  type: 'test'
+  ...
+# Subtest: production, hosted origins, unavailable fees and expired reviews issue zero wallet calls
+ok 32 - production, hosted origins, unavailable fees and expired reviews issue zero wallet calls
+  ---
+  duration_ms: 29.7479
+  type: 'test'
+  ...
+# Subtest: account, network, nonce, code and canonical checkpoint changes invalidate review before send
+ok 33 - account, network, nonce, code and canonical checkpoint changes invalidate review before send
+  ---
+  duration_ms: 97.5193
+  type: 'test'
+  ...
+# Subtest: revalidation cannot silently replace reviewed fees, policy or request hash
+ok 34 - revalidation cannot silently replace reviewed fees, policy or request hash
+  ---
+  duration_ms: 16.1463
+  type: 'test'
+  ...
+# Subtest: multi-project nonce collision is blocked while independent payer journals remain intact
+ok 35 - multi-project nonce collision is blocked while independent payer journals remain intact
+  ---
+  duration_ms: 59.3322
+  type: 'test'
+  ...
+# Subtest: storage failure and legacy pending intents block before wallet confirmation
+ok 36 - storage failure and legacy pending intents block before wallet confirmation
+  ---
+  duration_ms: 32.9051
+  type: 'test'
+  ...
+# Subtest: cross-intent, cross-chain, replaced hashes and unproven canonical success cannot alter a journal
+ok 37 - cross-intent, cross-chain, replaced hashes and unproven canonical success cannot alter a journal
+  ---
+  duration_ms: 40.9675
+  type: 'test'
+  ...
+# Subtest: bounded journal refuses new records rather than evicting unknown broadcasts
+ok 38 - bounded journal refuses new records rather than evicting unknown broadcasts
+  ---
+  duration_ms: 441.1872
+  type: 'test'
+  ...
+# Subtest: wallet target runtime and delegated implementation are corroborated independently of actor code
+ok 39 - wallet target runtime and delegated implementation are corroborated independently of actor code
+  ---
+  duration_ms: 40.1714
+  type: 'test'
+  ...
+# Subtest: Safe nonce reservation spans gas payers and resource locks cover both authorities
+ok 40 - Safe nonce reservation spans gas payers and resource locks cover both authorities
+  ---
+  duration_ms: 128.5178
+  type: 'test'
+  ...
+# Subtest: a nonce claimed during asynchronous preflight is rechecked before durable write and send
+ok 41 - a nonce claimed during asynchronous preflight is rechecked before durable write and send
+  ---
+  duration_ms: 36.0604
+  type: 'test'
+  ...
+# Subtest: Safe outer-revert retry needs fresh proof, the same proposal and a new payer nonce
+ok 42 - Safe outer-revert retry needs fresh proof, the same proposal and a new payer nonce
+  ---
+  duration_ms: 199.7061
+  type: 'test'
+  ...
+# Subtest: canonical activity identity and amounts cannot be changed by a matching top-level request hash
+ok 43 - canonical activity identity and amounts cannot be changed by a matching top-level request hash
+  ---
+  duration_ms: 67.7912
+  type: 'test'
+  ...
+# Subtest: a malformed legacy recovery record cannot be silently replaced by the new controller
+ok 44 - a malformed legacy recovery record cannot be silently replaced by the new controller
+  ---
+  duration_ms: 18.6252
+  type: 'test'
+  ...
+# Subtest: loopback simulation accepts a three-second read without retrying or broadcasting
+ok 45 - loopback simulation accepts a three-second read without retrying or broadcasting
+  ---
+  duration_ms: 3326.3846
+  type: 'test'
+  ...
+# Subtest: loopback simulation retains a finite timeout, fails closed and does not retry
+ok 46 - loopback simulation retains a finite timeout, fails closed and does not retry
+  ---
+  duration_ms: 10020.1207
+  type: 'test'
+  ...
+# Subtest: test execution is unreachable unless all loopback inputs and the pinned fixture profile match
+ok 47 - test execution is unreachable unless all loopback inputs and the pinned fixture profile match
+  ---
+  duration_ms: 4.9554
+  type: 'test'
+  ...
+# Subtest: server fixture reads the manifest only for the exact bound Host and HTTP transport
+ok 48 - server fixture reads the manifest only for the exact bound Host and HTTP transport
+  ---
+  duration_ms: 47.9922
+  type: 'test'
+  ...
+# Subtest: keeps proposed, created and observed curve states distinct
+ok 49 - keeps proposed, created and observed curve states distinct
+  ---
+  duration_ms: 9.0961
+  type: 'test'
+  ...
+# Subtest: rejects historical, immature and conflicting registration observations
+ok 50 - rejects historical, immature and conflicting registration observations
+  ---
+  duration_ms: 0.5309
+  type: 'test'
+  ...
+# Subtest: graduation display requires a receipt, a complete v4 pool key and positive position evidence
+ok 51 - graduation display requires a receipt, a complete v4 pool key and positive position evidence
+  ---
+  duration_ms: 1.0152
+  type: 'test'
+  ...
+# Subtest: detail evidence retains complete identities and never promotes an invalid lifecycle to funded liquidity
+ok 52 - detail evidence retains complete identities and never promotes an invalid lifecycle to funded liquidity
+  ---
+  duration_ms: 24.5377
+  type: 'test'
+  ...
+# Subtest: a distinct 4663 preparation profile fails closed without exact release acceptance and origin
+ok 53 - a distinct 4663 preparation profile fails closed without exact release acceptance and origin
+  ---
+  duration_ms: 32.6737
+  type: 'test'
+  ...
+# Subtest: readiness rejects unpublished, suspended, stale, reorged, foreign or changed immutable/runtime observations
+ok 54 - readiness rejects unpublished, suspended, stale, reorged, foreign or changed immutable/runtime observations
+  ---
+  duration_ms: 2.7421
+  type: 'test'
+  ...
+# Subtest: production calls preserve fixed-supply ABI, project-share denominator, fields and exact fee without weakening 31337 requests
+ok 55 - production calls preserve fixed-supply ABI, project-share denominator, fields and exact fee without weakening 31337 requests
+  ---
+  duration_ms: 35.3623
+  type: 'test'
+  ...
+# Subtest: explicit wallet submission persists identity/hash and refuses duplicate submission after refresh
+ok 56 - explicit wallet submission persists identity/hash and refuses duplicate submission after refresh
+  ---
+  duration_ms: 4.1451
+  type: 'test'
+  ...
+# Subtest: missing hash and interrupted provider retain the original intent; rejection alone permits a new review
+ok 57 - missing hash and interrupted provider retain the original intent; rejection alone permits a new review
+  ---
+  duration_ms: 10.6696
+  type: 'test'
+  ...
+# Subtest: changed account, chain, nonce, reviewed block or provider cannot send
+ok 58 - changed account, chain, nonce, reviewed block or provider cannot send
+  ---
+  duration_ms: 3.9507
+  type: 'test'
+  ...
+# Subtest: editing the draft during final asynchronous wallet reads invalidates the review before persistence or send
+ok 59 - editing the draft during final asynchronous wallet reads invalidates the review before persistence or send
+  ---
+  duration_ms: 6.7569
+  type: 'test'
+  ...
+# Subtest: the public POST route remains server-blocked with missing release inputs
+ok 60 - the public POST route remains server-blocked with missing release inputs
+  ---
+  duration_ms: 8.2563
+  type: 'test'
+  ...
+# Subtest: the accepted first-owner preparation route rejects a different account before any provider read
+ok 61 - the accepted first-owner preparation route rejects a different account before any provider read
+  ---
+  duration_ms: 11.6703
+  type: 'test'
+  ...
+# Subtest: Netlify distributed limit configurations cover new-engine reads and the separately bounded preparation endpoint
+ok 62 - Netlify distributed limit configurations cover new-engine reads and the separately bounded preparation endpoint
+  ---
+  duration_ms: 0.7302
+  type: 'test'
+  ...
+# Subtest: claim calldata encodes no recipient override, and only collect includes an on-chain deadline
+ok 63 - claim calldata encodes no recipient override, and only collect includes an on-chain deadline
+  ---
+  duration_ms: 3377.6461
+  type: 'test'
+  ...
+# Subtest: wallet rejection clears only the explicitly rejected request and allows a fresh review
+ok 64 - wallet rejection clears only the explicitly rejected request and allows a fresh review
+  ---
+  duration_ms: 92.133
+  type: 'test'
+  ...
+# Subtest: wrapped wallet rejection clears only the exact unsubmitted intent and bounds error traversal
+ok 65 - wrapped wallet rejection clears only the exact unsubmitted intent and bounds error traversal
+  ---
+  duration_ms: 91.464
+  type: 'test'
+  ...
+# Subtest: a missing returned hash remains recoverable after refresh and prevents duplicate submission
+ok 66 - a missing returned hash remains recoverable after refresh and prevents duplicate submission
+  ---
+  duration_ms: 112.7979
+  type: 'test'
+  ...
+# Subtest: RPC interruption after broadcast retains the original request without another signature
+ok 67 - RPC interruption after broadcast retains the original request without another signature
+  ---
+  duration_ms: 35.1966
+  type: 'test'
+  ...
+# Subtest: account/network changes, stale reviews and refreshed costs block the wallet send
+ok 68 - account/network changes, stale reviews and refreshed costs block the wallet send
+  ---
+  duration_ms: 189.3351
+  type: 'test'
+  ...
+# Subtest: hosted origins and 4663 never request account permission, signatures or transactions
+ok 69 - hosted origins and 4663 never request account permission, signatures or transactions
+  ---
+  duration_ms: 17.113
+  type: 'test'
+  ...
+# Subtest: wallet RPC corroborates current target runtime and pending nonce before journaling or signing
+ok 70 - wallet RPC corroborates current target runtime and pending nonce before journaling or signing
+  ---
+  duration_ms: 126.0949
+  type: 'test'
+  ...
+# Subtest: contract-wallet handoff fixes the credited caller, ledger and zero-value inner CALL without an execution capability
+ok 71 - contract-wallet handoff fixes the credited caller, ledger and zero-value inner CALL without an execution capability
+  ---
+  duration_ms: 95.0123
+  type: 'test'
+  ...
+# Subtest: unsigned handoff rejects relayer operations, mixed recipient identity and delegated EOA profiles
+ok 72 - unsigned handoff rejects relayer operations, mixed recipient identity and delegated EOA profiles
+  ---
+  duration_ms: 4.5862
+  type: 'test'
+  ...
+# Subtest: curve claim preparation binds original ledger and requires the actual beneficiary account
+ok 73 - curve claim preparation binds original ledger and requires the actual beneficiary account
+  ---
+  duration_ms: 3146.0141
+  type: 'test'
+  ...
+# Subtest: creator migration does not substitute the old ledger or its existing fee credit
+ok 74 - creator migration does not substitute the old ledger or its existing fee credit
+  ---
+  duration_ms: 34.2534
+  type: 'test'
+  ...
+# Subtest: Safe/contract beneficiary read compatibility never permits an EOA owner to send a beneficiary claim
+ok 75 - Safe/contract beneficiary read compatibility never permits an EOA owner to send a beneficiary claim
+  ---
+  duration_ms: 1.7055
+  type: 'test'
+  ...
+# Subtest: delegated EOAs require their separately verified execution profile without being mislabeled as Safes
+ok 76 - delegated EOAs require their separately verified execution profile without being mislabeled as Safes
+  ---
+  duration_ms: 1.2113
+  type: 'test'
+  ...
+# Subtest: permissionless LP collection and creation-fee release cannot redirect the receiving ledger or Operations
+ok 77 - permissionless LP collection and creation-fee release cannot redirect the receiving ledger or Operations
+  ---
+  duration_ms: 28.2362
+  type: 'test'
+  ...
+# Subtest: native-only and token-only LP claims encode distinct calls with exact asset scope
+ok 78 - native-only and token-only LP claims encode distinct calls with exact asset scope
+  ---
+  duration_ms: 33.7463
+  type: 'test'
+  ...
+# Subtest: fee growth preserves the reviewed minimum and original identity while reporting the new current credit
+ok 79 - fee growth preserves the reviewed minimum and original identity while reporting the new current credit
+  ---
+  duration_ms: 139.7575
+  type: 'test'
+  ...
+# Subtest: pending nonces, reverted simulation and stale review context fail closed
+ok 80 - pending nonces, reverted simulation and stale review context fail closed
+  ---
+  duration_ms: 11.641
+  type: 'test'
+  ...
+# Subtest: verified claim settlement accepts actual fee growth with canonical event, cumulative accounting and exact trace
+ok 81 - verified claim settlement accepts actual fee growth with canonical event, cumulative accounting and exact trace
+  ---
+  duration_ms: 26.215
+  type: 'test'
+  ...
+# Subtest: missing or malformed native settlement proof keeps receipt-only claims pending
+ok 82 - missing or malformed native settlement proof keeps receipt-only claims pending
+  ---
+  duration_ms: 67.3384
+  type: 'test'
+  ...
+# Subtest: an event and payment cannot contradict the beneficiary's cumulative claim accounting
+ok 83 - an event and payment cannot contradict the beneficiary's cumulative claim accounting
+  ---
+  duration_ms: 52.9675
+  type: 'test'
+  ...
+# Subtest: token-only claims recover without unavailable native traces and require the exact ERC-20 transfer
+ok 84 - token-only claims recover without unavailable native traces and require the exact ERC-20 transfer
+  ---
+  duration_ms: 33.6831
+  type: 'test'
+  ...
+# Subtest: LP collection proves the actual ledger credit and unchanged principal before accepting payment
+ok 85 - LP collection proves the actual ledger credit and unchanged principal before accepting payment
+  ---
+  duration_ms: 36.4814
+  type: 'test'
+  ...
+# Subtest: a reverted original transaction is terminal without attributing fees or automatically retrying
+ok 86 - a reverted original transaction is terminal without attributing fees or automatically retrying
+  ---
+  duration_ms: 23.7419
+  type: 'test'
+  ...
+# Subtest: indexer outage never undoes independently verified settlement or fabricates indexed activity
+ok 87 - indexer outage never undoes independently verified settlement or fabricates indexed activity
+  ---
+  duration_ms: 37.1306
+  type: 'test'
+  ...
+# Subtest: review/receipt reorgs and a redirected request invalidate settlement instead of reporting success
+ok 88 - review/receipt reorgs and a redirected request invalidate settlement instead of reporting success
+  ---
+  duration_ms: 56.2127
+  type: 'test'
+  ...
+# Subtest: missing-hash nonce recovery identifies the original transaction without a scan or resend
+ok 89 - missing-hash nonce recovery identifies the original transaction without a scan or resend
+  ---
+  duration_ms: 32.5368
+  type: 'test'
+  ...
+# Subtest: known transaction hashes retain bounded archive recovery beyond the missing-hash search window
+ok 90 - known transaction hashes retain bounded archive recovery beyond the missing-hash search window
+  ---
+  duration_ms: 19.2969
+  type: 'test'
+  ...
+# Subtest: production adapter and hosted test routes remain disabled even with permissive-looking flags
+ok 91 - production adapter and hosted test routes remain disabled even with permissive-looking flags
+  ---
+  duration_ms: 38.9709
+  type: 'test'
+  ...
+# Subtest: Next's internal localhost URL preserves exact loopback Host/Origin and rejects other origins
+ok 92 - Next's internal localhost URL preserves exact loopback Host/Origin and rejects other origins
+  ---
+  duration_ms: 96.4238
+  type: 'test'
+  ...
+# Subtest: curve earnings use exact contract credits and beneficiary-specific cumulative paid amounts
+ok 93 - curve earnings use exact contract credits and beneficiary-specific cumulative paid amounts
+  ---
+  duration_ms: 40.3164
+  type: 'test'
+  ...
+# Subtest: overlapping immutable roles are summed without allocating another wallet's credits
+ok 94 - overlapping immutable roles are summed without allocating another wallet's credits
+  ---
+  duration_ms: 5.2318
+  type: 'test'
+  ...
+# Subtest: independent treasury credits are read from their own ledger address, including contract wallets
+ok 95 - independent treasury credits are read from their own ledger address, including contract wallets
+  ---
+  duration_ms: 3.5555
+  type: 'test'
+  ...
+# Subtest: V2 and V3 routing preserve discovery and the original curve ledger rights
+ok 96 - V2 and V3 routing preserve discovery and the original curve ledger rights
+  ---
+  duration_ms: 4.8782
+  type: 'test'
+  ...
+# Subtest: LP earnings distinguish gross uncollected position fees from beneficiary credits and principal
+ok 97 - LP earnings distinguish gross uncollected position fees from beneficiary credits and principal
+  ---
+  duration_ms: 5.0644
+  type: 'test'
+  ...
+# Subtest: missing or conflicting provider, policy, runtime, asset and custody evidence never fabricates zero earnings
+ok 98 - missing or conflicting provider, policy, runtime, asset and custody evidence never fabricates zero earnings
+  ---
+  duration_ms: 15.1758
+  type: 'test'
+  ...
+# Subtest: creation fees are one factory-global amount and are readable with zero indexed projects
+ok 99 - creation fees are one factory-global amount and are readable with zero indexed projects
+  ---
+  duration_ms: 1.8757
+  type: 'test'
+  ...
+# Subtest: wrong chain and reorged canonical checkpoint return unavailable
+ok 100 - wrong chain and reorged canonical checkpoint return unavailable
+  ---
+  duration_ms: 0.9274
+  type: 'test'
+  ...
+# Subtest: EIP-7702 code designators are disclosed as delegated EOAs rather than Safe accounts
+ok 101 - EIP-7702 code designators are disclosed as delegated EOAs rather than Safe accounts
+  ---
+  duration_ms: 2.0943
+  type: 'test'
+  ...
+# Subtest: earnings discovery preserves chain/deployment/canonical receipt and immutable recipient policy
+ok 102 - earnings discovery preserves chain/deployment/canonical receipt and immutable recipient policy
+  ---
+  duration_ms: 5.8974
+  type: 'test'
+  ...
+# Subtest: stale observations remain stale; untrusted metadata and unknown properties are not forwarded
+ok 103 - stale observations remain stale; untrusted metadata and unknown properties are not forwarded
+  ---
+  duration_ms: 0.6648
+  type: 'test'
+  ...
+# Subtest: a recorded creation refund does not erase beneficiary discovery or assert refund settlement
+ok 104 - a recorded creation refund does not erase beneficiary discovery or assert refund settlement
+  ---
+  duration_ms: 1.1361
+  type: 'test'
+  ...
+# Subtest: synthetic chain time is separate from production freshness; arbitrary networks are never admitted
+ok 105 - synthetic chain time is separate from production freshness; arbitrary networks are never admitted
+  ---
+  duration_ms: 0.3465
+  type: 'test'
+  ...
+# Subtest: bounded server reads authenticate privately and paginate recipients without enabling execution
+ok 106 - bounded server reads authenticate privately and paginate recipients without enabling execution
+  ---
+  duration_ms: 44.5341
+  type: 'test'
+  ...
+# Subtest: unavailable, wrong-chain, oversized and malformed reads never fabricate zero earnings
+ok 107 - unavailable, wrong-chain, oversized and malformed reads never fabricate zero earnings
+  ---
+  duration_ms: 5.2669
+  type: 'test'
+  ...
+# Subtest: invalid recipient/cursor requests fail before RPC and financial mutation remains disabled
+ok 108 - invalid recipient/cursor requests fail before RPC and financial mutation remains disabled
+  ---
+  duration_ms: 1.6141
+  type: 'test'
+  ...
+# Subtest: read budgets bound concurrency and per-minute cost independent of IP or wallet count
+ok 109 - read budgets bound concurrency and per-minute cost independent of IP or wallet count
+  ---
+  duration_ms: 0.3983
+  type: 'test'
+  ...
+# Subtest: tiny amounts are never formatted as a false zero and token assets remain distinct
+ok 110 - tiny amounts are never formatted as a false zero and token assets remain distinct
+  ---
+  duration_ms: 0.7329
+  type: 'test'
+  ...
+# Subtest: historical relations require bounded L2 checkpoint and registration evidence; fees stay unsupported
+ok 111 - historical relations require bounded L2 checkpoint and registration evidence; fees stay unsupported
+  ---
+  duration_ms: 11.7663
+  type: 'test'
+  ...
+# Subtest: archived public runtime preimages match every exact production manifest pin
+ok 112 - archived public runtime preimages match every exact production manifest pin
+  ---
+  duration_ms: 28.3602
+  type: 'test'
+  ...
+# Subtest: unsigned 4663 review uses synthetic state and real runtime pins without exposing execution or complete-fee claims
+ok 113 - unsigned 4663 review uses synthetic state and real runtime pins without exposing execution or complete-fee claims
+  ---
+  duration_ms: 3140.32
+  type: 'test'
+  ...
+# Subtest: unsigned production review rejects alternate manifests before RPC and fails closed on runtime, chain and delegated actors
+ok 114 - unsigned production review rejects alternate manifests before RPC and fails closed on runtime, chain and delegated actors
+  ---
+  duration_ms: 17.7098
+  type: 'test'
+  ...
+# Subtest: classifies absent code and rejects contracts without the exact pinned proxy runtime
+ok 115 - classifies absent code and rejects contracts without the exact pinned proxy runtime
+  ---
+  duration_ms: 7.988
+  type: 'test'
+  ...
+# Subtest: rejects reserved addresses before an empty code result could classify them as wallets
+ok 116 - rejects reserved addresses before an empty code result could classify them as wallets
+  ---
+  duration_ms: 0.7325
+  type: 'test'
+  ...
+# Subtest: CDN caching is short, public, query-sensitive and separate from client caching
+ok 117 - CDN caching is short, public, query-sensitive and separate from client caching
+  ---
+  duration_ms: 33.892
+  type: 'test'
+  ...
+# Subtest: cache expires before uncertain freshness and serves the checked snapshot with stale label
+ok 118 - cache expires before uncertain freshness and serves the checked snapshot with stale label
+  ---
+  duration_ms: 2.284
+  type: 'test'
+  ...
+# Subtest: invalid, missing, unavailable and write requests are never shared
+ok 119 - invalid, missing, unavailable and write requests are never shared
+  ---
+  duration_ms: 1.8392
+  type: 'test'
+  ...
+# Subtest: one native per-IP read rule covers history, draft review and public profiles
+ok 120 - one native per-IP read rule covers history, draft review and public profiles
+  ---
+  duration_ms: 1.1087
+  type: 'test'
+  ...
+# Subtest: degraded reads expose bounded diagnostic categories without leaking backend data
+ok 121 - degraded reads expose bounded diagnostic categories without leaking backend data
+  ---
+  duration_ms: 43.0654
+  type: 'test'
+  ...
+# Subtest: shipped historical evidence is a stale snapshot with no future or external registrations
+ok 122 - shipped historical evidence is a stale snapshot with no future or external registrations
+  ---
+  duration_ms: 1.2943
+  type: 'test'
+  ...
+# Subtest: current authenticated V6 evidence merges with V4 history and keeps prior classifications
+ok 123 - current authenticated V6 evidence merges with V4 history and keeps prior classifications
+  ---
+  duration_ms: 2.3816
+  type: 'test'
+  ...
+# Subtest: marks degraded or old worker observations stale
+ok 124 - marks degraded or old worker observations stale
+  ---
+  duration_ms: 1.9022
+  type: 'test'
+  ...
+# Subtest: the existing private Railway origin preserves authenticated evidence checks and rejects a different service binding
+ok 125 - the existing private Railway origin preserves authenticated evidence checks and rejects a different service binding
+  ---
+  duration_ms: 1.4856
+  type: 'test'
+  ...
+# Subtest: fails closed on wrong chain, substituted origins, missing receipts and duplicate registrations
+ok 126 - fails closed on wrong chain, substituted origins, missing receipts and duplicate registrations
+  ---
+  duration_ms: 5.9701
+  type: 'test'
+  ...
+# Subtest: rejects oversized and failed reads with a bounded negative cache
+ok 127 - rejects oversized and failed reads with a bounded negative cache
+  ---
+  duration_ms: 5.7632
+  type: 'test'
+  ...
+# Subtest: publishes unavailable when the snapshot cannot be verified
+ok 128 - publishes unavailable when the snapshot cannot be verified
+  ---
+  duration_ms: 0.3177
+  type: 'test'
+  ...
+# Subtest: uses address-bound indexed lookup for an older result outside a truncated list
+ok 129 - uses address-bound indexed lookup for an older result outside a truncated list
+  ---
+  duration_ms: 2.0142
+  type: 'test'
+  ...
+# Subtest: serves snapshot during an outage and resumes fresh reads after the cache window
+ok 130 - serves snapshot during an outage and resumes fresh reads after the cache window
+  ---
+  duration_ms: 2.2226
+  type: 'test'
+  ...
+# Subtest: a stale or unavailable worker cannot establish absence for an exact token
+ok 131 - a stale or unavailable worker cannot establish absence for an exact token
+  ---
+  duration_ms: 4.7441
+  type: 'test'
+  ...
+# Subtest: ages out a previously ready checkpoint even within its local cache window
+ok 132 - ages out a previously ready checkpoint even within its local cache window
+  ---
+  duration_ms: 0.7
+  type: 'test'
+  ...
+# Subtest: coalesces exact reads and invalidates them when the list checkpoint changes
+ok 133 - coalesces exact reads and invalidates them when the list checkpoint changes
+  ---
+  duration_ms: 1.8376
+  type: 'test'
+  ...
+# Subtest: authenticates over a real HTTP connection and recovers from an interrupted response
+ok 134 - authenticates over a real HTTP connection and recovers from an interrupted response
+  ---
+  duration_ms: 68.1156
+  type: 'test'
+  ...
+# Subtest: validates a fixed-supply draft and normalizes project terms
+ok 135 - validates a fixed-supply draft and normalizes project terms
+  ---
+  duration_ms: 3.2777
+  type: 'test'
+  ...
+# Subtest: rejects invalid strings, noncanonical options and unpaired treasury data
+ok 136 - rejects invalid strings, noncanonical options and unpaired treasury data
+  ---
+  duration_ms: 1.3051
+  type: 'test'
+  ...
+# Subtest: uses the same one-billion review on every origin and rejects client-supplied supply
+ok 137 - uses the same one-billion review on every origin and rejects client-supplied supply
+  ---
+  duration_ms: 43.2777
+  type: 'test'
+  ...
+# Subtest: restores editable text from an earlier draft without restoring its supply option
+ok 138 - restores editable text from an earlier draft without restoring its supply option
+  ---
+  duration_ms: 0.2863
+  type: 'test'
+  ...
+# Subtest: accepts only a same-origin JSON review and returns only contract-relevant fields
+ok 139 - accepts only a same-origin JSON review and returns only contract-relevant fields
+  ---
+  duration_ms: 4.2855
+  type: 'test'
+  ...
+# Subtest: converts project percentages to contract bps and displays the actual encoded fraction
+ok 140 - converts project percentages to contract bps and displays the actual encoded fraction
+  ---
+  duration_ms: 0.6522
+  type: 'test'
+  ...
+# Subtest: restores all 9001 encoded legacy splits without changing their committed bps
+ok 141 - restores all 9001 encoded legacy splits without changing their committed bps
+  ---
+  duration_ms: 108.29
+  type: 'test'
+  ...
+# Subtest: keeps the legacy HTTP unit and rejects unknown or spoofed units
+ok 142 - keeps the legacy HTTP unit and rejects unknown or spoofed units
+  ---
+  duration_ms: 2.5353
+  type: 'test'
+  ...
+# Subtest: bounds declared and streamed draft payloads and rejects malformed UTF-8
+ok 143 - bounds declared and streamed draft payloads and rejects malformed UTF-8
+  ---
+  duration_ms: 1.5165
+  type: 'test'
+  ...
+# Subtest: binds the real browser authority through Next's loopback URL and ignores forwarded authority
+ok 144 - binds the real browser authority through Next's loopback URL and ignores forwarded authority
+  ---
+  duration_ms: 1.6472
+  type: 'test'
+  ...
+# Subtest: mobile review requires explicit loopback mode, exact origin and an authorized synthetic account
+ok 145 - mobile review requires explicit loopback mode, exact origin and an authorized synthetic account
+  ---
+  duration_ms: 75.1321
+  type: 'test'
+  ...
+# Subtest: local offline review has only unsigned 4663 evidence and display fields
+ok 146 - local offline review has only unsigned 4663 evidence and display fields
+  ---
+  duration_ms: 5.9426
+  type: 'test'
+  ...
+# Subtest: genuine pinned Safe1.4.1 receipt replays indexed execution evidence and rejects the previous layout
+ok 147 - genuine pinned Safe1.4.1 receipt replays indexed execution evidence and rejects the previous layout
+  ---
+  duration_ms: 52.4521
+  type: 'test'
+  ...
+# Subtest: canonical production-shaped recovery preserves original identities, amounts and index separation
+ok 148 - canonical production-shaped recovery preserves original identities, amounts and index separation
+  ---
+  duration_ms: 2930.1216
+  type: 'test'
+  ...
+# Subtest: production cannot become settled through caller flags, report hashes, posted batches or local policy
+ok 149 - production cannot become settled through caller flags, report hashes, posted batches or local policy
+  ---
+  duration_ms: 0.5049
+  type: 'test'
+  ...
+# Subtest: missing native traces retain receipt-observed and never invent settlement or fee zeros
+ok 150 - missing native traces retain receipt-observed and never invent settlement or fee zeros
+  ---
+  duration_ms: 35.2135
+  type: 'test'
+  ...
+# Subtest: asset-specific LP receipts preserve token identity, full pool/custody and exact independent transfers
+ok 151 - asset-specific LP receipts preserve token identity, full pool/custody and exact independent transfers
+  ---
+  duration_ms: 170.4487
+  type: 'test'
+  ...
+# Subtest: missing hash recovery finds the original outer payer nonce without requesting another signature
+ok 152 - missing hash recovery finds the original outer payer nonce without requesting another signature
+  ---
+  duration_ms: 70.8259
+  type: 'test'
+  ...
+# Subtest: a candidate hash is published only after exact pending envelope validation, never echoed from failure
+ok 153 - a candidate hash is published only after exact pending envelope validation, never echoed from failure
+  ---
+  duration_ms: 163.1866
+  type: 'test'
+  ...
+# Subtest: reorgs, wrong gas, malformed receipts and provider failures never produce canonical earnings
+ok 154 - reorgs, wrong gas, malformed receipts and provider failures never produce canonical earnings
+  ---
+  duration_ms: 119.7441
+  type: 'test'
+  ...
+# Subtest: a forged indexed row, wrong checkpoint or advanced cursor is not durable fee evidence
+ok 155 - a forged indexed row, wrong checkpoint or advanced cursor is not durable fee evidence
+  ---
+  duration_ms: 167.7329
+  type: 'test'
+  ...
+# Subtest: outer-chain revert is distinct from success and preserves entitlement without claiming fees
+ok 156 - outer-chain revert is distinct from success and preserves entitlement without claiming fees
+  ---
+  duration_ms: 33.6966
+  type: 'test'
+  ...
+# Subtest: verification cannot broaden providers, activate writes or exceed bounded RPC dispatch
+ok 157 - verification cannot broaden providers, activate writes or exceed bounded RPC dispatch
+  ---
+  duration_ms: 35.7152
+  type: 'test'
+  ...
+# Subtest: delegation revoked before a receipt invalidates the profile; later changes do not erase historical settlement
+ok 158 - delegation revoked before a receipt invalidates the profile; later changes do not erase historical settlement
+  ---
+  duration_ms: 94.8283
+  type: 'test'
+  ...
+# Subtest: Safe beneficiary settlement binds genuine two-owner outer execution and preserves distinct gas payer
+ok 159 - Safe beneficiary settlement binds genuine two-owner outer execution and preserves distinct gas payer
+  ---
+  duration_ms: 760.0202
+  type: 'test'
+  ...
+# Subtest: Safe ExecutionFailure is logical failure despite outer success, with no fee success or amount fabricated
+ok 160 - Safe ExecutionFailure is logical failure despite outer success, with no fee success or amount fabricated
+  ---
+  duration_ms: 234.555
+  type: 'test'
+  ...
+# Subtest: a reverted Safe outer transaction leaves its Safe nonce unchanged without implying an inner claim
+ok 161 - a reverted Safe outer transaction leaves its Safe nonce unchanged without implying an inner claim
+  ---
+  duration_ms: 144.6278
+  type: 'test'
+  ...
+# Subtest: synthetic 4663 creation receipt binds exact form calldata, nonce, minted supply, initial inventory, registry and fee evidence
+ok 162 - synthetic 4663 creation receipt binds exact form calldata, nonce, minted supply, initial inventory, registry and fee evidence
+  ---
+  duration_ms: 79.2962
+  type: 'test'
+  ...
+# Subtest: missing-hash recovery reuses the original intent and canonical receipt without submitting
+ok 163 - missing-hash recovery reuses the original intent and canonical receipt without submitting
+  ---
+  duration_ms: 4.8294
+  type: 'test'
+  ...
+# Subtest: chain, nonce, reorg, interrupted receipt and malformed mint evidence fail closed
+ok 164 - chain, nonce, reorg, interrupted receipt and malformed mint evidence fail closed
+  ---
+  duration_ms: 15.2315
+  type: 'test'
+  ...
+# Subtest: production discovery binds the actual new engine and current index cursor without historical feed blending
+ok 165 - production discovery binds the actual new engine and current index cursor without historical feed blending
+  ---
+  duration_ms: 13.6878
+  type: 'test'
+  ...
+# Subtest: stale observations remain stale and untrusted extra fields never leave public responses
+ok 166 - stale observations remain stale and untrusted extra fields never leave public responses
+  ---
+  duration_ms: 0.8846
+  type: 'test'
+  ...
+# Subtest: authenticated Railway reads use exact-address paths and never expose credentials or follow redirects
+ok 167 - authenticated Railway reads use exact-address paths and never expose credentials or follow redirects
+  ---
+  duration_ms: 49.2874
+  type: 'test'
+  ...
+# Subtest: authentication failure, unavailable worker, oversized data and malformed responses never become 'not registered'
+ok 168 - authentication failure, unavailable worker, oversized data and malformed responses never become 'not registered'
+  ---
+  duration_ms: 3.1778
+  type: 'test'
+  ...
+# Subtest: private new-engine reads use only the pinned existing indexer and do not activate the public route
+ok 169 - private new-engine reads use only the pinned existing indexer and do not activate the public route
+  ---
+  duration_ms: 1.8204
+  type: 'test'
+  ...
+# Subtest: discovery requires its own exact 4663 server profile and HTTPS host; fixture activation remains separate
+ok 170 - discovery requires its own exact 4663 server profile and HTTPS host; fixture activation remains separate
+  ---
+  duration_ms: 0.8843
+  type: 'test'
+  ...
+# Subtest: disabled account handlers do not load the Firebase Admin SDK or initialize profile services
+ok 171 - disabled account handlers do not load the Firebase Admin SDK or initialize profile services
+  ---
+  duration_ms: 191.4682
+  type: 'test'
+  ...
+# Subtest: profile configuration is disabled by default and local-only unless exact cloud approval exists
+ok 172 - profile configuration is disabled by default and local-only unless exact cloud approval exists
+  ---
+  duration_ms: 1.4215
+  type: 'test'
+  ...
+# Subtest: routing is bounded and origin checks reject cross-site or forwarded local requests
+ok 173 - routing is bounded and origin checks reject cross-site or forwarded local requests
+  ---
+  duration_ms: 2.1974
+  type: 'test'
+  ...
+# Subtest: real NextRequest loopback normalization preserves exact external host, port and origin binding
+ok 174 - real NextRequest loopback normalization preserves exact external host, port and origin binding
+  ---
+  duration_ms: 3.997
+  type: 'test'
+  ...
+# Subtest: username, plain text, HTTPS links and private preferences reject untrusted field escalation
+ok 175 - username, plain text, HTTPS links and private preferences reject untrusted field escalation
+  ---
+  duration_ms: 2.0176
+  type: 'test'
+  ...
+# Subtest: avatar decoding strips metadata, bounds pixels/storage and rejects SVG or mismatched bytes
+ok 176 - avatar decoding strips metadata, bounds pixels/storage and rejects SVG or mismatched bytes
+  ---
+  duration_ms: 166.1308
+  type: 'test'
+  ...
+# Subtest: new-controller admission preserves the stricter three-owner two-approval Safe profile
+ok 177 - new-controller admission preserves the stricter three-owner two-approval Safe profile
+  ---
+  duration_ms: 50.0997
+  type: 'test'
+  ...
+# Subtest: controller code unavailability is never inferred to be an eligible EOA
+ok 178 - controller code unavailability is never inferred to be an eligible EOA
+  ---
+  duration_ms: 2.0672
+  type: 'test'
+  ...
+# Subtest: runtime identity covers every constructor immutable and preserves executable bytes
+ok 179 - runtime identity covers every constructor immutable and preserves executable bytes
+  ---
+  duration_ms: 7.1408
+  type: 'test'
+  ...
+# Subtest: runtime materialization rejects overlapping, partial, unknown and oversized layouts
+ok 180 - runtime materialization rejects overlapping, partial, unknown and oversized layouts
+  ---
+  duration_ms: 2.0237
+  type: 'test'
+  ...
+# Subtest: request reader bounds UTF-8 bytes, closes streams, and rejects invalid encodings
+ok 181 - request reader bounds UTF-8 bytes, closes streams, and rejects invalid encodings
+  ---
+  duration_ms: 22.217
+  type: 'test'
+  ...
+# Subtest: missing, malformed and hosted fixture flags fail closed without RPC or wallet access
+ok 182 - missing, malformed and hosted fixture flags fail closed without RPC or wallet access
+  ---
+  duration_ms: 48.922
+  type: 'test'
+  ...
+# Subtest: treasury recovery shape binds the exact reviewed creation and canonical proof without claiming indexing
+ok 183 - treasury recovery shape binds the exact reviewed creation and canonical proof without claiming indexing
+  ---
+  duration_ms: 13.5016
+  type: 'test'
+  ...
+# Subtest: cross-project, source, controller, share, receipt and indexing mutations cannot become creation success
+ok 184 - cross-project, source, controller, share, receipt and indexing mutations cannot become creation success
+  ---
+  duration_ms: 13.8888
+  type: 'test'
+  ...
+# Subtest: unavailable or pending evidence remains explicitly incomplete, never a fabricated confirmed treasury
+ok 185 - unavailable or pending evidence remains explicitly incomplete, never a fabricated confirmed treasury
+  ---
+  duration_ms: 2.0338
+  type: 'test'
+  ...
+# Subtest: token creation cannot pass a same-wallet unresolved treasury outcome or silently discard malformed recovery
+ok 186 - token creation cannot pass a same-wallet unresolved treasury outcome or silently discard malformed recovery
+  ---
+  duration_ms: 6.0749
+  type: 'test'
+  ...
+# Subtest: token creation also preserves an unresolved Task075 claim from the same wallet
+ok 187 - token creation also preserves an unresolved Task075 claim from the same wallet
+  ---
+  duration_ms: 2654.3956
+  type: 'test'
+  ...
+# Subtest: per-project draft storage restores only known versioned bounded fields
+ok 188 - per-project draft storage restores only known versioned bounded fields
+  ---
+  duration_ms: 2.694
+  type: 'test'
+  ...
+# Subtest: no opt-in requires neither deployment nor a treasury fee beneficiary
+ok 189 - no opt-in requires neither deployment nor a treasury fee beneficiary
+  ---
+  duration_ms: 0.6578
+  type: 'test'
+  ...
+# Subtest: 0–100 percent is exclusively the project's unchanged 9000 basis-point share
+ok 190 - 0–100 percent is exclusively the project's unchanged 9000 basis-point share
+  ---
+  duration_ms: 2.8854
+  type: 'test'
+  ...
+# Subtest: controller, creation intent and optional collection are explicit validated public identities
+ok 191 - controller, creation intent and optional collection are explicit validated public identities
+  ---
+  duration_ms: 0.3494
+  type: 'test'
+  ...
+# Subtest: project intent uses secure random bytes and rejects an all-zero source
+ok 192 - project intent uses secure random bytes and rejects an all-zero source
+  ---
+  duration_ms: 0.5832
+  type: 'test'
+  ...
+# Subtest: zero project-fee allocation never erases the verified two-step creator identity
+ok 193 - zero project-fee allocation never erases the verified two-step creator identity
+  ---
+  duration_ms: 0.5577
+  type: 'test'
+  ...
+# Subtest: treasury lookup binds the submitted form value rather than a stale controlled-input event
+ok 194 - treasury lookup binds the submitted form value rather than a stale controlled-input event
+  ---
+  duration_ms: 73.1898
+  type: 'test'
+  ...
+# Subtest: indexed history independently corroborates the current checkpoint, exact birth and each event block
+ok 195 - indexed history independently corroborates the current checkpoint, exact birth and each event block
+  ---
+  duration_ms: 5.7751
+  type: 'test'
+  ...
+# Subtest: wrong chain, factory, birth, duplicated and malformed events never become indexed evidence
+ok 196 - wrong chain, factory, birth, duplicated and malformed events never become indexed evidence
+  ---
+  duration_ms: 3.631
+  type: 'test'
+  ...
+# Subtest: provider failure, orphan hashes, future checkpoints and inconsistent block timestamps fail closed
+ok 197 - provider failure, orphan hashes, future checkpoints and inconsistent block timestamps fail closed
+  ---
+  duration_ms: 1.1811
+  type: 'test'
+  ...
+# Subtest: private read origin requires the exact existing backend, port, project and environment
+ok 198 - private read origin requires the exact existing backend, port, project and environment
+  ---
+  duration_ms: 1.562
+  type: 'test'
+  ...
+# Subtest: Railway request authority admits only the assigned preview origin
+ok 199 - Railway request authority admits only the assigned preview origin
+  ---
+  duration_ms: 1.4641
+  type: 'test'
+  ...
+# Subtest: single-process request budgets cannot be bypassed by changing IP headers, bound memory and expire
+ok 200 - single-process request budgets cannot be bypassed by changing IP headers, bound memory and expire
+  ---
+  duration_ms: 1.0475
+  type: 'test'
+  ...
+# Subtest: Reclaim fixture admission fails closed for hosted flags, proxy origin, malformed identity, public RPC and oversized manifests
+ok 201 - Reclaim fixture admission fails closed for hosted flags, proxy origin, malformed identity, public RPC and oversized manifests
+  ---
+  duration_ms: 77.3355
+  type: 'test'
+  ...
+# Subtest: public Reclaim never prepares execution and local endpoints reject foreign origins, malformed methods and unbounded bodies without RPC calls
+ok 202 - public Reclaim never prepares execution and local endpoints reject foreign origins, malformed methods and unbounded bodies without RPC calls
+  ---
+  duration_ms: 43.7891
+  type: 'test'
+  ...
+# Subtest: indexed Reclaim history binds event name, complete normalized args, claimant campaign, timestamp and exact canonical receipt identity
+ok 203 - indexed Reclaim history binds event name, complete normalized args, claimant campaign, timestamp and exact canonical receipt identity
+  ---
+  duration_ms: 29.6565
+  type: 'test'
+  ...
+# Subtest: Reclaim fields are operation-specific with bounded sorted NFT quantities, no arbitrary calldata or decimal rounding
+ok 204 - Reclaim fields are operation-specific with bounded sorted NFT quantities, no arbitrary calldata or decimal rounding
+  ---
+  duration_ms: 1.7772
+  type: 'test'
+  ...
+# Subtest: Reclaim field digest ignores property order/hex case while retaining every economic and NFT term
+ok 205 - Reclaim field digest ignores property order/hex case while retaining every economic and NFT term
+  ---
+  duration_ms: 3.8493
+  type: 'test'
+  ...
+# Subtest: every supported operation matches canonical contract calldata and exact reviewed fields
+ok 206 - every supported operation matches canonical contract calldata and exact reviewed fields
+  ---
+  duration_ms: 326.8496
+  type: 'test'
+  ...
+# Subtest: exact review rejects wrong chain, actor, target, fee envelope, custody, NFT context and changed digest
+ok 207 - exact review rejects wrong chain, actor, target, fee envelope, custody, NFT context and changed digest
+  ---
+  duration_ms: 59.739
+  type: 'test'
+  ...
+# Subtest: Safe review is unsigned inner CALL only and cannot become an EOA wallet submission
+ok 208 - Safe review is unsigned inner CALL only and cannot become an EOA wallet submission
+  ---
+  duration_ms: 8.5832
+  type: 'test'
+  ...
+# Subtest: campaign reads reject fake liabilities/reserves and candidate collection eligibility
+ok 209 - campaign reads reject fake liabilities/reserves and candidate collection eligibility
+  ---
+  duration_ms: 1.5869
+  type: 'test'
+  ...
+# Subtest: canonical settlement binds original NFT IDs, claimant, reward, receipt and custody separately from indexing
+ok 210 - canonical settlement binds original NFT IDs, claimant, reward, receipt and custody separately from indexing
+  ---
+  duration_ms: 5.8555
+  type: 'test'
+  ...
+# Subtest: NFT return uses exact original receipt reward and cannot silently swap receipt identity
+ok 211 - NFT return uses exact original receipt reward and cannot silently swap receipt identity
+  ---
+  duration_ms: 8.0196
+  type: 'test'
+  ...
+# Subtest: pending, unavailable and reorged recovery preserve original identity without inventing success
+ok 212 - pending, unavailable and reorged recovery preserve original identity without inventing success
+  ---
+  duration_ms: 3.1068
+  type: 'test'
+  ...
+# Subtest: recovery retains original request/hash, blocks new submissions and never evicts completed history
+ok 213 - recovery retains original request/hash, blocks new submissions and never evicts completed history
+  ---
+  duration_ms: 62.1434
+  type: 'test'
+  ...
+# Subtest: wallet rejection is distinct from ambiguous hash loss and malformed storage fails closed
+ok 214 - wallet rejection is distinct from ambiguous hash loss and malformed storage fails closed
+  ---
+  duration_ms: 20.2601
+  type: 'test'
+  ...
+# Subtest: a separate campaign requires explicit intent release after canonical indexed creation and retains every original journal
+ok 215 - a separate campaign requires explicit intent release after canonical indexed creation and retains every original journal
+  ---
+  duration_ms: 66.9089
+  type: 'test'
+  ...
+# Subtest: Reclaim submission respects the original lifecycle request and bounds storage inspection
+ok 216 - Reclaim submission respects the original lifecycle request and bounds storage inspection
+  ---
+  duration_ms: 3.0279
+  type: 'test'
+  ...
+# Subtest: journal enforces 32 records and 64KiB without dropping original transactions
+ok 217 - journal enforces 32 records and 64KiB without dropping original transactions
+  ---
+  duration_ms: 2416.9083
+  type: 'test'
+  ...
+# Subtest: explicit completed-creation archival preserves original identity before releasing the active slot
+ok 218 - explicit completed-creation archival preserves original identity before releasing the active slot
+  ---
+  duration_ms: 7.9664
+  type: 'test'
+  ...
+# Subtest: unknown, unindexed and conflicting evidence cannot clear the original creation
+ok 219 - unknown, unindexed and conflicting evidence cannot clear the original creation
+  ---
+  duration_ms: 2.5031
+  type: 'test'
+  ...
+# Subtest: archive write failure preserves active recovery; interrupted release is idempotently recoverable
+ok 220 - archive write failure preserves active recovery; interrupted release is idempotently recoverable
+  ---
+  duration_ms: 1.8251
+  type: 'test'
+  ...
+# Subtest: bounded completed history never evicts an original transaction to start another launch
+ok 221 - bounded completed history never evicts an original transaction to start another launch
+  ---
+  duration_ms: 23.0838
+  type: 'test'
+  ...
+# Subtest: an asynchronous archive check is never attributed to a newer selection from another tab
+ok 222 - an asynchronous archive check is never attributed to a newer selection from another tab
+  ---
+  duration_ms: 0.8069
+  type: 'test'
+  ...
+# Subtest: binds reviewed test calldata to each committed field and creator
+ok 223 - binds reviewed test calldata to each committed field and creator
+  ---
+  duration_ms: 1969.0169
+  type: 'test'
+  ...
+# Subtest: tests exact execution request format, fee, chain, and stable review
+ok 224 - tests exact execution request format, fee, chain, and stable review
+  ---
+  duration_ms: 0.787
+  type: 'test'
+  ...
+# Subtest: rejects an archived preset transaction as a new review or recovery request
+ok 225 - rejects an archived preset transaction as a new review or recovery request
+  ---
+  duration_ms: 2.9123
+  type: 'test'
+  ...
+# Subtest: requires an exact HTTP loopback origin and explicit port for the test wallet
+ok 226 - requires an exact HTTP loopback origin and explicit port for the test wallet
+  ---
+  duration_ms: 0.2223
+  type: 'test'
+  ...
+# Subtest: fixture diagnostics preserve the exact inner stage and allowlisted invariant only
+ok 227 - fixture diagnostics preserve the exact inner stage and allowlisted invariant only
+  ---
+  duration_ms: 3.1735
+  type: 'test'
+  ...
+# Subtest: fixture gas diagnostics identify a nested RPC timeout without exposing its request
+ok 228 - fixture gas diagnostics identify a nested RPC timeout without exposing its request
+  ---
+  duration_ms: 0.7472
+  type: 'test'
+  ...
+# Subtest: fixture diagnostics disclose only a four-byte revert selector, never encoded arguments
+ok 229 - fixture diagnostics disclose only a four-byte revert selector, never encoded arguments
+  ---
+  duration_ms: 0.4669
+  type: 'test'
+  ...
+# Subtest: fixture diagnostics bound malformed, cyclic and oversized upstream data
+ok 230 - fixture diagnostics bound malformed, cyclic and oversized upstream data
+  ---
+  duration_ms: 0.3846
+  type: 'test'
+  ...
+# Subtest: diagnostic wrapping does not retry, alter return values or convert failures to success
+ok 231 - diagnostic wrapping does not retry, alter return values or convert failures to success
+  ---
+  duration_ms: 0.3572
+  type: 'test'
+  ...
+# Subtest: the reviewed curve buy envelope matches the wallet's exact calldata
+ok 232 - the reviewed curve buy envelope matches the wallet's exact calldata
+  ---
+  duration_ms: 1862.4722
+  type: 'test'
+  ...
+# Subtest: admits token amounts up to the fixed supply while preserving the native input cap
+ok 233 - admits token amounts up to the fixed supply while preserving the native input cap
+  ---
+  duration_ms: 0.3192
+  type: 'test'
+  ...
+# Subtest: v4 quote calldata uses exact single-hop amount, minimum, deadline and guarded PoolKey
+ok 234 - v4 quote calldata uses exact single-hop amount, minimum, deadline and guarded PoolKey
+  ---
+  duration_ms: 1855.2048
+  type: 'test'
+  ...
+# Subtest: Permit2 approval is exact and the claim encodes no destination override
+ok 235 - Permit2 approval is exact and the claim encodes no destination override
+  ---
+  duration_ms: 6.246
+  type: 'test'
+  ...
+# Subtest: V2 prototype capability is an immutable no-go policy, not a deployed or spending-enabled observation
+ok 236 - V2 prototype capability is an immutable no-go policy, not a deployed or spending-enabled observation
+  ---
+  duration_ms: 2.372
+  type: 'test'
+  ...
+# Subtest: V1 may record revocable intent without accepting an executable capability or invented purchase evidence
+ok 237 - V1 may record revocable intent without accepting an executable capability or invented purchase evidence
+  ---
+  duration_ms: 2.2639
+  type: 'test'
+  ...
+# Subtest: controller buttons describe recording or revoking intent, never activating buys
+ok 238 - controller buttons describe recording or revoking intent, never activating buys
+  ---
+  duration_ms: 16.5705
+  type: 'test'
+  ...
+# Subtest: public treasury page reports V1 immutable limitation and V2 no-go without fabricating assets or requiring a wallet
+ok 239 - public treasury page reports V1 immutable limitation and V2 no-go without fabricating assets or requiring a wallet
+  ---
+  duration_ms: 5.4656
+  type: 'test'
+  ...
+# Subtest: public historical evidence uses the exact registered token, label, and receipt
+ok 240 - public historical evidence uses the exact registered token, label, and receipt
+  ---
+  duration_ms: 15.2339
+  type: 'test'
+  ...
+# Subtest: rejects missing, reverted, and noncanonical receipts
+ok 241 - rejects missing, reverted, and noncanonical receipts
+  ---
+  duration_ms: 3.0281
+  type: 'test'
+  ...
+# Subtest: rejects a same-name token from the wrong address and an event from the wrong factory
+ok 242 - rejects a same-name token from the wrong address and an event from the wrong factory
+  ---
+  duration_ms: 2.8342
+  type: 'test'
+  ...
+# Subtest: rejects duplicate, removed, and receipt-unbound log data
+ok 243 - rejects duplicate, removed, and receipt-unbound log data
+  ---
+  duration_ms: 2.0288
+  type: 'test'
+  ...
+# Subtest: does not accept poisoned Unicode metadata or truncated ABI event data
+ok 244 - does not accept poisoned Unicode metadata or truncated ABI event data
+  ---
+  duration_ms: 2.7976
+  type: 'test'
+  ...
+# Subtest: an RPC chain mismatch and duplicate identity do not silently fail over
+ok 245 - an RPC chain mismatch and duplicate identity do not silently fail over
+  ---
+  duration_ms: 0.7969
+  type: 'test'
+  ...
+# Subtest: RPC body is bounded and an HTTP rate limit is represented as failure
+ok 246 - RPC body is bounded and an HTTP rate limit is represented as failure
+  ---
+  duration_ms: 37.9151
+  type: 'test'
+  ...
+# Subtest: injection of wrong JSON-RPC message ID fails closed
+ok 247 - injection of wrong JSON-RPC message ID fails closed
+  ---
+  duration_ms: 1.2671
+  type: 'test'
+  ...
+1..247
+# tests 247
+# suites 0
+# pass 247
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 15797.4425

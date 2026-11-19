@@ -164,6 +164,8 @@ export async function sendEarningsClaim(input: {
   const now = input.now ?? Date.now;
   if (request.chainId !== "0x7a69" || location.protocol !== "http:" || location.hostname !== "127.0.0.1" || !location.port
     || !await claimCalldataMatches(request)) throw new Error("Earnings execution is unavailable outside the isolated fixture");
+  const { assertNoPendingReclaim } = await import("./reclaim-recovery");
+  assertNoPendingReclaim(storage, request.from);
   const existing = readEarningsClaimJournal(storage, request);
   if (existing && !["confirmed", "reverted"].includes(existing.state)) throw new Error("Recover the existing earnings transaction first");
   if (!uint(input.quote.gasUnits) || BigInt(input.quote.gasUnits) < 21000n || BigInt(input.quote.gasUnits) > 30_000_000n
@@ -189,6 +191,7 @@ export async function sendEarningsClaim(input: {
     || !same(keccak256(runtime as Hex), request.targetRuntimeHash)) throw new Error("Wallet contract runtime changed");
   await readWallet();
   const pending = readEarningsClaimJournal(storage, request);
+  assertNoPendingReclaim(storage, request.from);
   if (pending && !["confirmed", "reverted"].includes(pending.state)) throw new Error("Recover the existing earnings transaction first");
   if (now() >= request.reviewExpiresAt * 1000) throw new Error("Earnings review is stale");
   const journal: EarningsClaimJournal = { schemaVersion: 1, request, state: "awaiting-wallet", transactionHash: null, createdAt: now(), updatedAt: now() };

@@ -23,6 +23,10 @@ import { compileProjectTreasury } from "../treasury/compiler.mjs";
 import { deployProjectTreasuryFixture } from "../treasury/deploy-fixture.mjs";
 import { testProjectTreasuryJourney } from "../treasury/local-integration.mjs";
 import { compileTreasuryPurchaseV2 } from "../treasury-v2/compiler.mjs";
+import { compileReclaim } from "../reclaim/compiler.mjs";
+import { compileReclaimFixtureAssets } from "../reclaim/fixture-assets.mjs";
+import { deployReclaimFixture } from "../reclaim/deploy-fixture.mjs";
+import { testReclaimJourney } from "../reclaim/local-integration.mjs";
 import { observeOriginalReceipt } from "./receipt-observation.mjs";
 
 const repository = fileURLToPath(new URL("../../", import.meta.url));
@@ -39,10 +43,11 @@ const { values: args } = parseArgs({ options: {
   "profiles-only": { type: "boolean", default: false },
   "treasury-only": { type: "boolean", default: false },
   "treasury-v2": { type: "boolean", default: false },
+  "reclaim-only": { type: "boolean", default: false },
 } });
 for (const option of ["anvil", "solc", "pg-bin", "output"]) assert.ok(args[option], `Supply --${option}`);
 assert.ok(["chromium", "webkit"].includes(args.browser), "Use --browser chromium or --browser webkit");
-assert.ok([args["successor-only"], args["profiles-only"], args["treasury-only"]].filter(Boolean).length <= 1, "Select one focused acceptance scope");
+assert.ok([args["successor-only"], args["profiles-only"], args["treasury-only"],args["reclaim-only"]].filter(Boolean).length <= 1, "Select one focused acceptance scope");
 assert.ok(!args["treasury-v2"] || args["treasury-only"], "V2 prototype acceptance requires the actual treasury journey");
 const out = resolve(args.output);
 const anvil = resolve(args.anvil);
@@ -62,6 +67,8 @@ const candidateCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: reposi
 const { artifacts, manifest } = compileFixedSupplyProfile({ solc, lib: args.lib, chainId: 31337 });
 const treasuryCompilation = args["treasury-only"] ? compileProjectTreasury({ solc }) : undefined;
 const purchaseV2Compilation = args["treasury-v2"] ? compileTreasuryPurchaseV2({ solc }) : undefined;
+const reclaimCompilation=args["reclaim-only"]?compileReclaim({solc}):undefined;
+const reclaimAssets=args["reclaim-only"]?compileReclaimFixtureAssets({solc}):undefined;
 const anchor = JSON.parse(execFileSync("git", ["show",
   historical + ":packages/contracts/test/fixtures/rmt-v4-deployment-identities.json",
 ], { cwd: repository, encoding: "utf8" })).baseSepolia;
@@ -263,7 +270,7 @@ const rpcProxy = loopback(proxy.address().port) + "/";
 // outage. Both proxies are read-only, loopback-only facades of the same synthetic
 // chain; neither is claimed as an independent production provider. The worker
 // must prove its own rows rather than receiving fabricated indexed evidence.
-const claimProofProxy = args["profiles-only"] || args["treasury-only"] ? createServer(proxyHandler(true)) : undefined;
+const claimProofProxy = args["profiles-only"] || args["treasury-only"] || args["reclaim-only"] ? createServer(proxyHandler(true)) : undefined;
 if (claimProofProxy) await new Promise((done, fail) => { claimProofProxy.once("error", fail); claimProofProxy.listen(0, "127.0.0.1", done); });
 const claimRpcProxy = claimProofProxy ? loopback(claimProofProxy.address().port) + "/" : rpcProxy;
 
@@ -291,7 +298,7 @@ try {
     await rpc("anvil_setBalance", [address, toHex(20n * 10n ** 18n)]);
     await rpc("anvil_impersonateAccount", [address]);
   }
-  let deployed, treasuryDeployment;
+  let deployed, treasuryDeployment,reclaimDeployment;
   try {
     const client = await localFixtureClient(rpcUrl, 31337);
     const { poolManager, positionManager, permit2: allowanceTransfer, universalRouter212, quoter, stateView } = anchor;
@@ -304,6 +311,8 @@ try {
     for (const address of deploymentAccounts) await rpc("anvil_stopImpersonatingAccount", [address]);
   }
   assert.deepEqual(await rpc("eth_accounts"), []);
+  if(reclaimCompilation)reclaimDeployment=await deployReclaimFixture({client:await localFixtureClient(rpcUrl,31337),rpc,
+    compilation:reclaimCompilation,assetCompilation:reclaimAssets,core:deployed,coreArtifacts:artifacts,creator,out});
   assert.equal(deployed.chainId, 31337);
   assert.equal(deployed.creationFeeWei, feeWei.toString());
   assert.equal(deployed.terms.backingWei, backingWei.toString());
@@ -356,6 +365,7 @@ try {
     ...(args["profiles-only"] && { RMT_CLAIM_PROFILES_FIXTURE: "local-reviewed-claims-31337-v1" }),
     ...(args["treasury-only"] && { RMT_PROJECT_TREASURY_FIXTURE: "local-reviewed-project-treasury-v1",
       RMT_PROJECT_TREASURY_DEPLOYMENT: join(out, "project-treasury-deployment.json") }),
+    ...(args["reclaim-only"]&&{RMT_RECLAIM_FIXTURE:"local-reviewed-reclaim-v1",RMT_RECLAIM_DEPLOYMENT:join(out,"reclaim-deployment.json")}),
     ...(mobileCreator && { RMT_MOBILE_REVIEW_FIXTURE: "local-reviewed-31337",
       RMT_MOBILE_REVIEW_FIXTURE_ACCOUNT: mobileCreator.address, RMT_MOBILE_REVIEW_TEST_DELEGATION: "synthetic-7702-v1",
       RMT_MOBILE_REVIEW_PLAN: mobilePlan }) };
@@ -407,7 +417,16 @@ try {
   const snapshot = await rpc("evm_snapshot");
   const beforeSnapshot = await rpc("eth_getBlockByNumber", ["latest", false]);
   const countBefore = BigInt(await rpc("eth_getTransactionCount", [creator.address, "latest"]));
-  if (args["treasury-only"]) {
+  if(args["reclaim-only"]){
+    let worker=startWorker("worker-reclaim");await rpc("anvil_mine",["0x3"]);await workerReady(worker);
+    browser=await({chromium,webkit})[args.browser].launch();
+    await testReclaimJourney({browserEngine:browser,rpcUrl,rpc,reclaimCompilation,reclaimDeployment,creatorAccount:creator,
+      sourceIdentity:{commit:candidateCommit,browser:args.browser,coreCompiler:manifest,anchor:{block:anchor.block,blockHash:anchor.blockHash},mode:"isolated-31337-reclaim"},
+      site,workerOrigin,indexReadKey,out,pg,waitFor,mine:()=>rpc("anvil_mine",["0x3"]),ready:()=>workerReady(worker),restart:async()=>{
+        await stop(web);await stop(worker);web=startWeb("website-reclaim-restart");worker=startWorker("worker-reclaim-restart");await webReady(web);await workerReady(worker);
+      },hideReceipt:hash=>{hideReceipt=hash??undefined;}});
+    console.log("Same-app manually funded Reclaim escrow, exact reward settlement and durable recovery passed on synthetic 31337. No production execution occurred.");
+  }else if (args["treasury-only"]) {
     assert.ok(treasuryDeployment && treasuryCompilation);
     let worker = startWorker("worker-project-treasury");
     await rpc("anvil_mine", ["0x3"]); await workerReady(worker);

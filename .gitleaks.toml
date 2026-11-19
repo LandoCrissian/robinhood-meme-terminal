@@ -2,6 +2,27 @@
 useDefault = true
 
 [[allowlists]]
+description = "Exact public 20-byte synthetic ERC20 address in the original Task078 CI graduation diagnostic; not an RPC token or signing key"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''(?i)^0x40cb4dd41c8af32ecd5c8e0d19fb3f6d06b4c9ac$''']
+paths = ['''^docs/evidence/rmt-task078/regressions/ci-first-graduation-review\.json$''']
+
+[[allowlists]]
+description = "Two exact public synthetic TokenV2 reward addresses proven by Task078 normal-factory CREATE receipts; only the twelve raw local acceptance/setup/deployment reports"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''(?i)^0x(?:f853695617e406f37fac9f67221abfe3befefe68|607d55e9a5ad5e0e65dfcbb24543aa5b2c8ef138)$''']
+paths = ['''^docs/evidence/rmt-task078/(?:chromium|webkit)/(?:reclaim-(?:safe-acceptance|setup|deployment|acceptance|browser-evidence)|budget-browser/reclaim-browser-evidence)\.json$''']
+
+[[allowlists]]
+description = "Exact public reviewed TokenV2 runtime Keccak identity, already proven in Task076 and rechecked in Task078; only four raw Reclaim deployment/core reports"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''^0xbb1018a75a30c33d830a5ab203b0063c00d24853b69641472649262837f9cd42$''']
+paths = ['''^docs/evidence/rmt-task078/(?:chromium|webkit)/reclaim-(?:deployment|acceptance)\.json$''']
+
+[[allowlists]]
 description = "Four exact public synthetic ERC20 addresses proven by Task076 CurveCreated receipts; only the four raw browser/core reports, never credentials"
 condition = "AND"
 targetRules = ["generic-api-key"]

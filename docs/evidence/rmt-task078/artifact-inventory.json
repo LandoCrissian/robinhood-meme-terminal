@@ -1,0 +1,422 @@
+{
+  "schemaVersion": 1,
+  "scope": "TRACKED_TASK078_ARTIFACTS_EXCLUDING_SELF",
+  "productionAuthorization": false,
+  "artifacts": [
+    {
+      "path": "docs/evidence/rmt-task078/.gitattributes",
+      "bytes": 107,
+      "sha256": "1d18bfb7099cac51627e558b8f47d828bc3d66b7d1a10a7a1500709b12c551db"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/artifact-inventory.test.mjs",
+      "bytes": 1329,
+      "sha256": "0730a298f3d0a163f5acc9aab61725d7ca745fc7448833ddd4bd13c6cee3e89e"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/chromium/budget-browser/reclaim-browser-evidence.json",
+      "bytes": 235294,
+      "sha256": "8ab8c9ad74b7dfef168600a3ad17ba7bb21a733ee45673156e0a58924a627f1d"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/chromium/budget-browser/reclaim-budget-exhausted.png",
+      "bytes": 198997,
+      "sha256": "45fdeeeffeb2652cabe9252093ee6ed032544133d0c1fffdfd864ef80e002cd0"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/chromium/budget-browser/reclaim-closed-reserve-recovered.png",
+      "bytes": 198997,
+      "sha256": "45fdeeeffeb2652cabe9252093ee6ed032544133d0c1fffdfd864ef80e002cd0"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/chromium/reclaim-acceptance.json",
+      "bytes": 244291,
+      "sha256": "d23c18e84278ca5654701308179259d4b58d1b797cc22f3809f7d677e1af1d36"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/chromium/reclaim-active-desktop-viewport.png",
+      "bytes": 355186,
+      "sha256": "0f0c62bb08fb68c881f81350879cd449f44b6e0f3ab54150b67ff2e9d15ab536"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/chromium/reclaim-active-landscape.png",
+      "bytes": 153145,
+      "sha256": "10253c124cf24d5e08159814b4081edafa610f06e35ba00c660ac1293a3cb07f"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/chromium/reclaim-active-portrait.png",
+      "bytes": 231903,
+      "sha256": "16320952423a6d51605b93227f668bba2b650b44373c323dc082f926e1ae5f26"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/chromium/reclaim-browser-evidence.json",
+      "bytes": 467223,
+      "sha256": "1c675f511912ee63d1ae1d150d9cda64c5eaee048805deb9327567d30057a597"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/chromium/reclaim-compiler-manifest.json",
+      "bytes": 2673,
+      "sha256": "c03e6de33ca63c6cac14b417789b96f25b67490ff8762060a04019c0c7554e6e"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/chromium/reclaim-complete-desktop-viewport.png",
+      "bytes": 358581,
+      "sha256": "4f20c9ca8790c7c4cf1ca1360734120877eee2e120fbfa2420ecf39cd233e032"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/chromium/reclaim-complete-landscape.png",
+      "bytes": 153145,
+      "sha256": "10253c124cf24d5e08159814b4081edafa610f06e35ba00c660ac1293a3cb07f"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/chromium/reclaim-complete-portrait.png",
+      "bytes": 231945,
+      "sha256": "c97045daba47f32a5848509ec25d23db1fbdcf7e5e81c51ce920882f97cbfadf"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/chromium/reclaim-deployment.json",
+      "bytes": 91115,
+      "sha256": "fac2fe56d17f10c5012ff31b0901d24255f51f0b5b38d51bb08c5f4c1dcf87b5"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/chromium/reclaim-safe-acceptance.json",
+      "bytes": 15622,
+      "sha256": "650424e47c43afb36651f2c1fe79109d061365f3077798c7d1597642585c9ca7"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/chromium/reclaim-setup.json",
+      "bytes": 21720,
+      "sha256": "ecae85f681e74a08e8a4040da0b25dd6e992e254461920b80ec6fe28693c8d24"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/chromium/reclaim-standard-desktop.png",
+      "bytes": 68367,
+      "sha256": "5ca3c0357e6e7a9887223bccfd189c0710bc25139951d27d9680de60606bf489"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/compiler-input.json.gz",
+      "bytes": 5853,
+      "sha256": "8ee90fe6e282e2a8ed5504ec903d7c5bf838ae2631e7c1b3e7ed07d7e5912dbc"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/compiler-manifest.json",
+      "bytes": 2673,
+      "sha256": "c03e6de33ca63c6cac14b417789b96f25b67490ff8762060a04019c0c7554e6e"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/frozen-source-manifest.json",
+      "bytes": 14328,
+      "sha256": "b2fa39c541f3fb7ae8002642c0be3eebe57280195ccc996eb3223f8f5759779b"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/postgres-smoke.json",
+      "bytes": 217,
+      "sha256": "9e5081500c60e0d29549b8622c3606ae6225c757c026b06d36d43be05700afc7"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/prior-local-failures.json",
+      "bytes": 3079,
+      "sha256": "bd48946c65eaa6515c0d301548916c4fc1509d0f2cb4c2b024214f762feb7bb3"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/public-chromium/chromium-desktop-reclaim-read-only.png",
+      "bytes": 63326,
+      "sha256": "61b68fc1b20b64bc86b6e460212510195d77213b3c262c773d09abfc6116a5ff"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/public-chromium/chromium-landscape-reclaim-read-only.png",
+      "bytes": 95786,
+      "sha256": "706d11ba46b3fff70858c01f5f6dc42cae3dba2c62d216791a5f0c737f45c045"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/public-chromium/chromium-portrait-reclaim-read-only.png",
+      "bytes": 204951,
+      "sha256": "1f355dd16380f77e367b05f5edb3c88639ee4b06645a6b6637f67d74db6f3d66"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/public-chromium/reclaim-public.json",
+      "bytes": 3057,
+      "sha256": "64f4dc6d95610187b07b72aa45af078335dc619e458839a1b3812c8924a5267b"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/public-webkit/reclaim-public.json",
+      "bytes": 3028,
+      "sha256": "f1cacf4db02e7fd3fc23132d58902297a250c699081560f0e1096fe3a1ff53ad"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/public-webkit/webkit-desktop-reclaim-read-only.png",
+      "bytes": 59079,
+      "sha256": "e6556deca33a9dfa160efcc2107d5e62d73fa78acc2b825beb534ffa45b5ed67"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/public-webkit/webkit-landscape-reclaim-read-only.png",
+      "bytes": 97482,
+      "sha256": "a63fa3fe1eea3c529db81b3ec0e4275da070cfb27f939d02b930f90167cf15fa"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/public-webkit/webkit-portrait-reclaim-read-only.png",
+      "bytes": 170149,
+      "sha256": "987804fcdaee0d44df9a5237483cebecb74a0d46f95a782957bdc56af922b712"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/read-only-4663.json",
+      "bytes": 21373,
+      "sha256": "30fcfba0374612308c83d99938ee65698b9d8bc9ca71427a70e502746706c5a6"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/regressions/ci-first-graduation-review.json",
+      "bytes": 544,
+      "sha256": "f183c10a72c7d7f0e48513e3b4e59bbde94e0d4460fe8872425b0f43c5b81f63"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/regressions/ci-first-knip-excerpt.txt",
+      "bytes": 341,
+      "sha256": "a7e85517c1c664ae8f9f52908f4920f7825e1e62575e54c2bd8de76c51fdbb4b"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/regressions/ci-knip-disposition.json",
+      "bytes": 870,
+      "sha256": "3d7740d59a21e2e97cd5bf2bfc60ae51ea1b784878c3b58fdbe839edbd813aef"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/regressions/core-result.json",
+      "bytes": 133,
+      "sha256": "eccae1b5904c0f611fefd3ec0583bd79a3db1dde0e476296fe4b49b5da18c3b6"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/regressions/core.txt",
+      "bytes": 14376,
+      "sha256": "998bd7732f540f4ec14ca2c3f6e990d493bcedbd138fd9e264cdf7b90f754aca"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/regressions/fixture-transport-disposition.json",
+      "bytes": 2298,
+      "sha256": "ebf48e017545896d63cf40dc0924c9e9bd7fc8dc3f385f094ccea3ce9888018c"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/regressions/fixture-transport-typecheck.txt",
+      "bytes": 126,
+      "sha256": "5e97587ffd30614e2c0bb5ff1467381397bdb13759ea27350c1f9c99de10d040"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/regressions/fixture-transport.txt",
+      "bytes": 2224,
+      "sha256": "51c32dc5f1caf80a45b3be3fb1bd01fbc6dc23f751b721dd9295ea16f48ac8f5"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/regressions/pnpm-audit-full-result.json",
+      "bytes": 68,
+      "sha256": "b8ea579b4a04d9d8ae9be54a99021d2306daf9ee0f5eba3cd46b4324773704ec"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/regressions/pnpm-audit-full.json",
+      "bytes": 16053,
+      "sha256": "1ff664115fe772ec6cc1522419f3f2d6e6ae4ea1e87456cd972977254313ef1a"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/regressions/pnpm-audit-production.json",
+      "bytes": 310,
+      "sha256": "50de61d6989e35c2d28efc5d57c49a504c6a918571582e700cfe9c75fec3f9ef"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/regressions/pnpm-audit-result.json",
+      "bytes": 68,
+      "sha256": "372d43d89d8b9e2ed14b0512bf0854d512669f3e55d9de6c71f8fea4ebd82a2c"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/regressions/reclaim-source-evidence.txt",
+      "bytes": 2392,
+      "sha256": "fff459ec5a4b6e4404e9d7d01d24c5cb89212d8cfeec7db1a2c28d2b4634ea24"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/regressions/summary.json",
+      "bytes": 3212,
+      "sha256": "df8600bc8a4c86a21a272669fb00e6510e3d4838aa610fa528af11da59a3f887"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/regressions/treasury-v1-result.json",
+      "bytes": 140,
+      "sha256": "9d3f00e58e77ad98888fbe41500072c4a0c43724955aa1a516e6d4c4b84c8339"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/regressions/treasury-v1.txt",
+      "bytes": 6138,
+      "sha256": "b110180210a04e02c6928060df7d3db584bd898fdd8d31ed945281c1345b9657"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/regressions/treasury-v2-result.json",
+      "bytes": 140,
+      "sha256": "15f7718b39d080f85ee38d288c2bab42ff97c5029e3f2a045dab2c9739e3516f"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/regressions/treasury-v2.txt",
+      "bytes": 6969,
+      "sha256": "afae2ddbd470c36b477b1421c7c97bb11cdbe7fe7bef1861b274039f4aa2c17b"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/secret-scan-disposition.json",
+      "bytes": 4136,
+      "sha256": "18510b4b4c8b1859360cc0d82d61005af7c25d52c42331d7b494a595bf84a0f0"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/security/compiler-current.json.gz",
+      "bytes": 5853,
+      "sha256": "8ee90fe6e282e2a8ed5504ec903d7c5bf838ae2631e7c1b3e7ed07d7e5912dbc"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/security/compiler-initial.json.gz",
+      "bytes": 5855,
+      "sha256": "07bd15407df3c6d0e2077138e8543ecff05731962c446951fbd9578d7feb7371"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/security/disposition.json",
+      "bytes": 36431,
+      "sha256": "114b771e1b9bdd1e1594a55f7e56d7f89916429d5da3856c51872e49bb00bca5"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/security/foundry-final.txt",
+      "bytes": 7277,
+      "sha256": "9d5bd4a02d917956a99d6f659c030301f8282018caccf97c5ec6bb3b67e72285"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/security/slither-current.json.gz",
+      "bytes": 23572,
+      "sha256": "aa37638e3cf2c185c748c6f52adfa23afd7496a2807dfd5ec115a65b185e0f2e"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/security/slither-initial.json.gz",
+      "bytes": 30661,
+      "sha256": "93a4aac59d320b5408591b8983b6d3431d580f8e7a5d0b96c8935ae9dfb0ceb3"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/source-boundary.test.mjs",
+      "bytes": 4451,
+      "sha256": "674f17a2f571edf40181591917d72d6f2ecbe8bdd9fa08983d05399c9be189db"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/validation/ci-601-observed.json",
+      "bytes": 3751,
+      "sha256": "cf34571206f08867508534b7c1c8064f3b1373813fddc3af2d0a72581dc5ac0c"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/validation/indexer-resilience.txt",
+      "bytes": 396,
+      "sha256": "37c532d6ba2cc2a1c18d7655c2278e9baf84f6ff5bb86924c578ac9ad841da2a"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/validation/readiness-tests.txt",
+      "bytes": 23114,
+      "sha256": "30da222244f6dcb8b68a50028702e0304553e2e8f6d4505f38633ea0e7935b1f"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/validation/reclaim-evidence-tests.txt",
+      "bytes": 1654,
+      "sha256": "6c92753afc092b55f78ed70f5915f88de3ead2a32c7c9f486cd9241554e9ee8c"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/validation/retained-evidence-tests.txt",
+      "bytes": 29098,
+      "sha256": "34bfa548cc460cf90f2c1682a26252d19dfe07457f8aeaba61eda394efb87107"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/validation/retained-evidence-with-inventory.txt",
+      "bytes": 29335,
+      "sha256": "c7f2eaaf84880c0080936cc7b42121f26930dde9e7bd70f37efeab0b380967ba"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/validation/web-build-final.txt",
+      "bytes": 4291,
+      "sha256": "190fcbfc55866e0447400575292649a1bd3c95aab4bf54c7746e7a0da99b9aee"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/validation/web-tests-final.txt",
+      "bytes": 61545,
+      "sha256": "7a284ed5e8300a8f7188ca92a2eace4d9665d27f8671332ee09007b07819d7ab"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/webkit/budget-browser/reclaim-browser-evidence.json",
+      "bytes": 235294,
+      "sha256": "bed29cb2e530ebee7cc0cc4bd3e6e9327012d2151c3701dfedf00faa00e33225"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/webkit/budget-browser/reclaim-budget-exhausted.png",
+      "bytes": 163759,
+      "sha256": "9a4b814377e57d53084c410b6f3b334f44513be49613a7d406ad31d813dafae4"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/webkit/budget-browser/reclaim-closed-reserve-recovered.png",
+      "bytes": 163759,
+      "sha256": "9a4b814377e57d53084c410b6f3b334f44513be49613a7d406ad31d813dafae4"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/webkit/reclaim-acceptance.json",
+      "bytes": 244290,
+      "sha256": "d79b739d0ac0e51db1fb807daf8aad61e040ad42690cdba2ef659a563675728a"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/webkit/reclaim-active-desktop-viewport.png",
+      "bytes": 318533,
+      "sha256": "1ce3b81ddbc8866a0b9e277a00872a1bf3f5350249d0af8927ed6071104e9213"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/webkit/reclaim-active-landscape.png",
+      "bytes": 128145,
+      "sha256": "e7a5b888c38886f8f7a0427515cdf405478c78ad1caf8ac53c9521bef9cccffa"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/webkit/reclaim-active-portrait.png",
+      "bytes": 194760,
+      "sha256": "52ef076d53a694d2cc4156604a266216ecd1a3240bf14b343aed1637096ee7de"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/webkit/reclaim-browser-evidence.json",
+      "bytes": 467013,
+      "sha256": "5cef9b637feb3de10045825f69a3e4ae0523b469341761a05ed876cda0da7d7c"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/webkit/reclaim-compiler-manifest.json",
+      "bytes": 2673,
+      "sha256": "c03e6de33ca63c6cac14b417789b96f25b67490ff8762060a04019c0c7554e6e"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/webkit/reclaim-complete-desktop-viewport.png",
+      "bytes": 326441,
+      "sha256": "187fd81d46ce854d864f66c02c5d9690b19ef8495e1e80cef4ab471a796a51c1"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/webkit/reclaim-complete-landscape.png",
+      "bytes": 128145,
+      "sha256": "e7a5b888c38886f8f7a0427515cdf405478c78ad1caf8ac53c9521bef9cccffa"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/webkit/reclaim-complete-portrait.png",
+      "bytes": 194896,
+      "sha256": "efab021785aa46692bfdd1aefd6dca83bf430a16d723464f6f9052f6b0d439c2"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/webkit/reclaim-deployment.json",
+      "bytes": 91115,
+      "sha256": "e0a65d6150075b0a6476946de30c05dbf76ee9ecbc46c74a0e88d91763298e89"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/webkit/reclaim-safe-acceptance.json",
+      "bytes": 15623,
+      "sha256": "840260a7a5e6ae30bc1d379b97fb80d09e56ac60858fc01570019bf2b20f6ef7"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/webkit/reclaim-setup.json",
+      "bytes": 21720,
+      "sha256": "423e66d397886ff33f43ec0d26c91a3bd6b0bfc1f89e4e7e83725382d129f467"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/webkit/reclaim-standard-desktop.png",
+      "bytes": 64976,
+      "sha256": "d68bd7447a70f0c039d2b673255abf9df29380bca579ad0c35e2fa059cbcbbe9"
+    },
+    {
+      "path": "docs/evidence/rmt-task078/workflow-validation.json",
+      "bytes": 1358,
+      "sha256": "a2ce6b5fb0d78cd3fb220fe93a7885919e494685c4c66322bfe8796e8c0f3da2"
+    }
+  ]
+}

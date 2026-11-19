@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "scope": "SANITIZED_PRIOR_LOCAL_FAILURE_DISPOSITION_NOT_CREDENTIAL_OR_DATABASE_ARCHIVE",
+  "originalLogsRetainedOutsideGit": "Owner workspace rmt-task078-evidence; original runs, worker diagnostics and isolated clusters were not deleted",
+  "productionChanges": false,
+  "items": [
+    {
+      "originalLogProofs": [
+        {
+          "file": "chromium-01.txt",
+          "sha256": "7a870b3a31e56e5df8aa4e8252f8dffbf26fd763f248cb321a63db5cd1ebabca",
+          "bytes": 655
+        }
+      ],
+      "observedFailure": "worker-reclaim exited before durable indexer",
+      "correction": "c97dd79d retains exact asset-birth pins and validates dependency deployment ordering",
+      "status": "PASS_IN_LATER_CLEAN_RUNS",
+      "case": "nft-collection-birth-order"
+    },
+    {
+      "originalLogProofs": [
+        {
+          "file": "chromium-02.txt",
+          "sha256": "a37e7a8a6252c8e8227037efd732b930b7517ec0b7b4b8c91ac503eb42ec02aa",
+          "bytes": 761
+        }
+      ],
+      "observedFailure": "exact Original Reclaim request label could not resolve select control",
+      "correction": "ff439337 binds exact select labels and retains failure diagnostics",
+      "status": "PASS_IN_LATER_CLEAN_RUNS",
+      "case": "recovery-select-label"
+    },
+    {
+      "originalLogProofs": [
+        {
+          "file": "chromium-03.txt",
+          "sha256": "a44d1fe7e4bb885ccd6fa185ec35db9033e0d59570330fa212fd60bb68bdaced",
+          "bytes": 922
+        }
+      ],
+      "observedFailure": "expected one decoded execution outcome but decoded zero",
+      "correction": "db305ef2 matches actual Safe 1.4.1 indexed ExecutionSuccess/ExecutionFailure ABI in harness and indexer",
+      "status": "PASS_IN_LATER_CLEAN_RUNS",
+      "case": "safe-execution-event-abi"
+    },
+    {
+      "originalLogProofs": [
+        {
+          "file": "webkit-01.txt",
+          "sha256": "4ef7a3d45fd2b0e3456e738d594d5c569a5c31542f5095e2c2c021fb89274156",
+          "bytes": 801
+        }
+      ],
+      "observedFailure": "Safe execution succeeded but durable indexer wait timed out against stale built worker",
+      "correction": "Rebuilt existing indexer after Safe event-decoder source correction; no verifier weakened",
+      "status": "PASS_IN_LATER_CLEAN_RUNS",
+      "case": "stale-built-worker"
+    },
+    {
+      "originalLogProofs": [
+        {
+          "file": "chromium-04.txt",
+          "sha256": "580a0c5367b7d8563d2b698c3b32be6a8df6d2ddc193946fde8d27344c0b41c7",
+          "bytes": 666
+        },
+        {
+          "file": "webkit-02.txt",
+          "sha256": "580a0c5367b7d8563d2b698c3b32be6a8df6d2ddc193946fde8d27344c0b41c7",
+          "bytes": 666
+        }
+      ],
+      "observedFailure": "negative assertion expected 401 but actual concealed unauthorized endpoint correctly returned 404 with no records",
+      "correction": "60185daa verifies existing concealed 404/unavailable/no-records policy, matching its security boundary",
+      "status": "PASS_IN_LATER_CLEAN_RUNS",
+      "case": "concealed-history-status-expectation"
+    }
+  ]
+}

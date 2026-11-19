@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "scope": "RETAINED_LOCAL_FIXTURE_CI_TRANSPORT_REMEDIATION_NOT_PRODUCTION_OR_ARCHIVE_CLEARANCE",
+  "failedCiHead": "8e2ca659b1d12d88f166415418d1b279a97b3795",
+  "failedCiCandidate": "0c0ae75aefa7925b456c1c3eee7f712bee72755f",
+  "job": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44429436225/job/135242716171",
+  "artifact": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44429436225/artifacts/14485374456",
+  "observedFailure": {
+    "scope": "graduation unsigned eth_call simulation before any Reclaim phase or signing",
+    "status": "unavailable",
+    "diagnostic": {
+      "stage": "simulation",
+      "kind": "TimeoutError"
+    },
+    "httpStatus": 200
+  },
+  "identifiedBoundary": {
+    "retryCount": 0,
+    "originalFixtureTimeoutMs": 2500,
+    "upstream": "read-only Base Sepolia archive fork at block 57648300",
+    "harnessProxyReadTimeoutMs": 12000,
+    "actualReceiptOrContractRevert": "NOT_REPORTED_BY_THIS_FAILURE",
+    "preciseArchiveOrProviderCause": "UNKNOWN_ANVIL_SILENT_NO_RPC_TIMINGS_OR_UPSTREAM_ERROR",
+    "correctedFixtureTimeoutMs": 10000
+  },
+  "verification": {
+    "observedMethods": [
+      "eth_call"
+    ],
+    "typecheckExitCode": 0,
+    "focusedTestsPassed": 9,
+    "focusedTestsSkipped": 0,
+    "positiveReadObservedMs": 3274.5166,
+    "threeSecondReadDelayMs": 3200,
+    "focusedTestsFailed": 0,
+    "unavailableReadObservedMs": 10020.6138,
+    "fullLifecycleCiRerun": "BOTH_LINUX_JOBS_PASSED_AT_60185DAA_NOT_LATEST_HEAD",
+    "eachCaseRpcRequests": 1
+  },
+  "unchanged": [
+    "production RPC budgets",
+    "retryCount 0",
+    "loopback-only fixture admission",
+    "signer/chain/runtime/nonce binding",
+    "simulation and settlement assertions",
+    "Solidity and economics",
+    "security gates"
+  ],
+  "signing": false,
+  "broadcast": false,
+  "productionChanges": false,
+  "originalFailureEvidence": {
+    "file": "graduation-review-evidence.json",
+    "originalDownloadSha256": "f183c10a72c7d7f0e48513e3b4e59bbde94e0d4460fe8872425b0f43c5b81f63",
+    "originalDownloadBytes": 544,
+    "preservedCopy": "ci-first-graduation-review.json",
+    "preservedCopySha256": "f183c10a72c7d7f0e48513e3b4e59bbde94e0d4460fe8872425b0f43c5b81f63",
+    "normalization": "UTF8_CRLF_TO_LF_ONLY"
+  }
+}

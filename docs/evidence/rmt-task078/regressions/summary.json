@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "status": "REGRESSIONS_COMPLETE_STATIC_HOLDS_UNCHANGED",
+  "sourceSnapshot": "306f8f1b3d7ebd60db1906d92a283d43849bfd86",
+  "platform": "Windows",
+  "forgeVersion": "1.7.1",
+  "solcVersion": "0.8.26+commit.8a97fa7a.Windows.msvc",
+  "solcSha256": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
+  "pnpmVersion": "10.12.1",
+  "frozenSourceEvidence": {
+    "passed": 9,
+    "unchangedPriorSolidity": 47,
+    "skipped": 0,
+    "failed": 0,
+    "log": "reclaim-source-evidence.txt"
+  },
+  "treasuryV1": {
+    "fuzzRunsPerTest": 512,
+    "fuzzTests": 3,
+    "skipped": 0,
+    "log": "treasury-v1.txt",
+    "passed": 23,
+    "failed": 0,
+    "invariantCalls": 4096,
+    "invariantRuns": 128
+  },
+  "treasuryPurchaseV2": {
+    "fuzzRunsPerTest": 512,
+    "fuzzTests": 3,
+    "skipped": 0,
+    "log": "treasury-v2.txt",
+    "passed": 30,
+    "failed": 0,
+    "invariantCalls": 4096,
+    "invariantRuns": 128
+  },
+  "productionDependencyAudit": {
+    "low": 0,
+    "log": "pnpm-audit-production.json",
+    "high": 0,
+    "critical": 0,
+    "moderate": 0,
+    "exitCode": 0,
+    "dependencies": 226
+  },
+  "fullDependencyAudit": {
+    "moderate": 4,
+    "exitCode": 1,
+    "low": 0,
+    "dependencies": 843,
+    "affectedDevelopmentRoot": "firebase-tools",
+    "modules": [
+      "uuid",
+      "@opentelemetry/core",
+      "glob",
+      "minimatch"
+    ],
+    "log": "pnpm-audit-full.json",
+    "high": 0,
+    "critical": 0
+  },
+  "retainedWarnings": [
+    "Forge optional invariant-target introspection warnings retained",
+    "V2 test-only mutability suggestions retained",
+    "Core test-only selfdestruct deprecation and mutability suggestion retained"
+  ],
+  "securityGateCleared": false,
+  "dependencyChanges": false,
+  "broadcastAuthorized": false,
+  "core": {
+    "passed": 112,
+    "failed": 0,
+    "skipped": 0,
+    "suites": 14,
+    "fuzzTests": 5,
+    "fuzzRunsPerTest": 512,
+    "invariantRuns": 64,
+    "invariantCalls": 2048,
+    "compileSeconds": 259.05,
+    "testSeconds": 1.54,
+    "log": "core.txt"
+  },
+  "logSha256": {
+    "core-result.json": "eccae1b5904c0f611fefd3ec0583bd79a3db1dde0e476296fe4b49b5da18c3b6",
+    "core.txt": "998bd7732f540f4ec14ca2c3f6e990d493bcedbd138fd9e264cdf7b90f754aca",
+    "pnpm-audit-full-result.json": "b8ea579b4a04d9d8ae9be54a99021d2306daf9ee0f5eba3cd46b4324773704ec",
+    "pnpm-audit-full.json": "1ff664115fe772ec6cc1522419f3f2d6e6ae4ea1e87456cd972977254313ef1a",
+    "pnpm-audit-production.json": "50de61d6989e35c2d28efc5d57c49a504c6a918571582e700cfe9c75fec3f9ef",
+    "pnpm-audit-result.json": "372d43d89d8b9e2ed14b0512bf0854d512669f3e55d9de6c71f8fea4ebd82a2c",
+    "reclaim-source-evidence.txt": "fff459ec5a4b6e4404e9d7d01d24c5cb89212d8cfeec7db1a2c28d2b4634ea24",
+    "treasury-v1-result.json": "9d3f00e58e77ad98888fbe41500072c4a0c43724955aa1a516e6d4c4b84c8339",
+    "treasury-v1.txt": "b110180210a04e02c6928060df7d3db584bd898fdd8d31ed945281c1345b9657",
+    "treasury-v2-result.json": "15f7718b39d080f85ee38d288c2bab42ff97c5029e3f2a045dab2c9739e3516f",
+    "treasury-v2.txt": "afae2ddbd470c36b477b1421c7c97bb11cdbe7fe7bef1861b274039f4aa2c17b"
+  },
+  "textEncoding": "UTF8_CRLF_TO_LF_ONLY_NO_CREDENTIALS_OR_DATABASE_FILES"
+}

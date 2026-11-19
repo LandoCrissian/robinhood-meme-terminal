@@ -1,0 +1,78 @@
+
+> @rmt/launch-website@0.1.0 build C:\Users\RMT\Documents\Codex\2026-11-11\rmt-task078\apps\launch-website
+> next build
+
+   ▲ Next.js 15.5.29
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 9.2s
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/14) ...
+   Generating static pages (3/14)
+   Generating static pages (6/14)
+   Generating static pages (10/14)
+ ✓ Generating static pages (14/14)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                  Size  First Load JS
+┌ ƒ /                                       202 B         148 kB
+├ ƒ /_not-found                             997 B         103 kB
+├ ƒ /account/profile                         6 kB         125 kB
+├ ƒ /api/account/avatar                     221 B         102 kB
+├ ƒ /api/account/avatar/[wallet]            221 B         102 kB
+├ ƒ /api/account/creator/[wallet]           221 B         102 kB
+├ ƒ /api/account/logout                     221 B         102 kB
+├ ƒ /api/account/nonce                      221 B         102 kB
+├ ƒ /api/account/profile                    221 B         102 kB
+├ ƒ /api/account/public/[username]          221 B         102 kB
+├ ƒ /api/account/session                    221 B         102 kB
+├ ƒ /api/account/verify                     221 B         102 kB
+├ ƒ /api/launchpad/config                   221 B         102 kB
+├ ƒ /api/launchpad/creation-review          221 B         102 kB
+├ ƒ /api/launchpad/earnings                 221 B         102 kB
+├ ƒ /api/launchpad/earnings/[token]         221 B         102 kB
+├ ƒ /api/launchpad/earnings/factory         221 B         102 kB
+├ ƒ /api/launchpad/earnings/history         221 B         102 kB
+├ ƒ /api/launchpad/launches                 221 B         102 kB
+├ ƒ /api/launchpad/launches/[token]         221 B         102 kB
+├ ƒ /api/launchpad/new-engine               221 B         102 kB
+├ ƒ /api/launchpad/new-engine/[token]       221 B         102 kB
+├ ƒ /api/launchpad/production-creation      221 B         102 kB
+├ ƒ /api/launchpad/production-earnings      221 B         102 kB
+├ ƒ /api/launchpad/project-treasury         221 B         102 kB
+├ ƒ /api/launchpad/reclaim                  221 B         102 kB
+├ ƒ /api/launchpad/test-claim-profiles      221 B         102 kB
+├ ƒ /api/launchpad/test-creation            221 B         102 kB
+├ ƒ /api/launchpad/test-earnings            221 B         102 kB
+├ ƒ /api/launchpad/test-lifecycle           221 B         102 kB
+├ ƒ /api/launchpad/test-mobile-review       221 B         102 kB
+├ ƒ /api/launchpad/test-project-treasury    221 B         102 kB
+├ ƒ /api/launchpad/test-reclaim             221 B         102 kB
+├ ƒ /create-token                         14.9 kB         173 kB
+├ ƒ /creator/[wallet]                       139 B         127 kB
+├ ƒ /healthz                                221 B         102 kB
+├ ƒ /launches/[token]                     1.19 kB         145 kB
+├ ƒ /my-launches                          3.95 kB         127 kB
+├ ƒ /my-launches/earnings                 5.87 kB         129 kB
+├ ƒ /my-launches/treasury                 7.66 kB         155 kB
+├ ƒ /privacy                                221 B         102 kB
+├ ƒ /readyz                                 221 B         102 kB
+├ ƒ /reclaim                                12 kB         159 kB
+├ ƒ /risks                                  221 B         102 kB
+├ ○ /robots.txt                             221 B         102 kB
+├ ƒ /terms                                  221 B         102 kB
+├ ƒ /u/[username]                           140 B         127 kB
+├ ƒ /wallet                               2.66 kB         122 kB
+└ ƒ /wallet/mobile-review                 8.44 kB         118 kB
++ First Load JS shared by all              102 kB
+  ├ chunks/9957-b58ecdb28878e755.js       45.7 kB
+  ├ chunks/ce80f294-321f028c95440c54.js   54.2 kB
+  └ other shared chunks (total)           2.14 kB
+
+
+ƒ Middleware                              36.5 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand

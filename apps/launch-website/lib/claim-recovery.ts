@@ -4,6 +4,7 @@ import { readEarningsClaimJournal } from "./earnings-claims";
 import { claimSettlementProfile, claimSettlementStages, type ClaimSettlementResult } from "./production-claims";
 import { isTransactionHash } from "./test-creation";
 import { testWalletErrorCode } from "./test-wallet";
+import { assertNoPendingReclaim } from "./reclaim-recovery";
 
 const namespace = "rmt.claim.execution.v1";
 export const claimProfileApiPath = "/api/launchpad/test-claim-profiles";
@@ -174,6 +175,7 @@ export async function submitIsolatedClaim(input: { review: ClaimExecutionReview;
   if (now() >= review.expiresAt * 1000 || claimExecutionIdentity(review) !== review.intentHash) throw new Error("The claim review has expired");
   const safeRetryProofs = new Set<string>();
   const assertAvailable = () => {
+    assertNoPendingReclaim(storage, review.gasPayer);
     const existing = readClaimJournal(storage, review);
     if (existing && !(existing.stage === "wallet-rejected" && !existing.transactionHash && existing.review.reviewHash === review.reviewHash)) {
       throw new Error("Recover the original claim; it cannot be submitted again");

@@ -1,0 +1,7 @@
+
+> indexer@0.1.0 test:resilience C:\Users\RMT\Documents\Codex\2026-11-11\rmt-task078\apps\indexer
+> tsx src/rpc-resilience-smoke.ts
+
+Reclaim canonical receipt, NFT/reward settlement, archive/chain/reorg failures, duplicate and Merkle/runtime smoke passed.
+Reclaim Safe origin, actual ECDSA owner signatures, envelope/nonce/custody-profile rejection smoke passed.
+RPC resilience smoke test passed

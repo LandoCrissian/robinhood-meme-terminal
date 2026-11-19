@@ -13,6 +13,7 @@ import { testPermit2Lifetime } from "../../lib/test-v4";
 import { assertTestWalletBinding, connectTestWallet, subscribeTestWallet, testProviderAtWindow,
   sameWalletHex, testWalletErrorCode, type TestWallet } from "../../lib/test-wallet";
 import { formatTestAmount, formatTestPercent } from "./fixture-lifecycle-evidence";
+import { assertNoPendingReclaim } from "../../lib/reclaim-recovery";
 
 type Binding = { factory: string; token: string; blockNumber: string; blockHash: string };
 type Prepared = { request: TestLifecycleRequest; quote: TestLifecycleQuote; wallet: TestWallet; formRevision: number };
@@ -363,8 +364,11 @@ export function TestLifecycleWallet({ factory, token, blockNumber, blockHash, sy
     const { wallet: bound, request, quote } = review;
     const generation = walletGeneration.current;
     setReview(undefined);
+    await navigator.locks.request(`rmt.claim.execution.v1:31337:${bound.account.toLowerCase()}`, { mode: "exclusive", ifAvailable: true }, async payerLock => {
+      if (!payerLock) throw new Error("Another page is handling this wallet. Recover its original transaction before retrying.");
     await navigator.locks.request(key, { mode: "exclusive", ifAvailable: true }, async (lock) => {
       if (!lock) throw new Error("Another tab is handling the original test request.");
+      assertNoPendingReclaim(localStorage, bound.account);
       const current = readTestTradeJournal(key);
       if (current.pending) {
         setJournal(current);
@@ -388,6 +392,7 @@ export function TestLifecycleWallet({ factory, token, blockNumber, blockHash, sy
         throw new Error("The wallet or reviewed terms changed. Review again.");
       }
       let entry: TestTradeJournalEntry = { request };
+      assertNoPendingReclaim(localStorage, bound.account);
       const record = { ...current, pending: entry };
       writeTestTradeJournal(key, record);
       setJournal(record);
@@ -413,6 +418,7 @@ export function TestLifecycleWallet({ factory, token, blockNumber, blockHash, sy
           setMessage("The wallet result is uncertain. Check the original transaction before continuing.");
         }
       }
+    });
     });
   }
 

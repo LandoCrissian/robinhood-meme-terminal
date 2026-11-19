@@ -105,9 +105,12 @@ export function EarningsClaimWallet({ token, factory, beneficiary, snapshot, fac
   async function withAccountLock(account: string, task: () => Promise<void>) {
     if (!navigator.locks?.request) throw new Error("This browser cannot safely coordinate earnings transactions. Use a compatible wallet browser; no signature was requested.");
     const name = `rmt.earnings.pending.v1:0x7a69:${boundFactory.toLowerCase()}:${account.toLowerCase()}`;
-    await navigator.locks.request(name, { mode: "exclusive", ifAvailable: true }, async lock => {
-      if (!lock) throw new Error("Another card or tab is handling this account. Recover its original transaction before retrying.");
-      await task();
+    await navigator.locks.request(`rmt.claim.execution.v1:31337:${account.toLowerCase()}`, { mode: "exclusive", ifAvailable: true }, async payerLock => {
+      if (!payerLock) throw new Error("Another page is handling this wallet. Recover its original transaction before retrying.");
+      await navigator.locks.request(name, { mode: "exclusive", ifAvailable: true }, async lock => {
+        if (!lock) throw new Error("Another card or tab is handling this account. Recover its original transaction before retrying.");
+        await task();
+      });
     });
   }
   async function recover(entry: EarningsClaimJournal, enteredHash?: string, refresh = true) {
