@@ -186,7 +186,13 @@ export async function testReclaimJourney({browserEngine,rpcUrl,rpc,reclaimCompil
   const delegate=JSON.parse(gunzipSync(readFileSync(new URL("../../apps/launch-website/lib/server/claim-delegate-runtime.test.json.gz",import.meta.url)))).delegate;
   assert.equal(keccak256(delegate.code),delegate.runtimeHash);await rpc("anvil_setCode",[delegate.address,delegate.code]);await rpc("anvil_setCode",[creator,"0xef0100"+delegate.address.slice(2).toLowerCase()]);await mine();await ready();await session.lookup(campaign);
   const delegated=await complete("redeem",{collection:burn721.address,tokenIds:["2"],quantities:["1"]});assert.equal(delegated.review.kind,"metamask-7702");evidence.delegatedWallet={stateFixtureOnly:true,actualPermanentBurnAndExactReward:true};
+  await session.page.getByRole("button",{name:"pause",exact:true,includeHidden:true}).waitFor({state:"detached"});
   await rpc("anvil_setCode",[creator,"0x"]);await mine();await ready();
+  // Restoring fixture code does not update a previously unavailable UI
+  // authority snapshot. Obtain fresh actual on-chain evidence before admin.
+  await session.lookup(campaign);
+  await session.page.getByRole("button",{name:"pause",exact:true,includeHidden:true}).waitFor({state:"attached"});
+  Object.assign(evidence.administration,{runtimeMismatchBlocksAdmin:true,restoredRuntimeRequiresFreshOnchainSnapshot:true});save();
   // Same website, genuine 2-of-3 test-key signatures, actual Safe outer execution.
   await complete("propose-controller",{next:reclaimDeployment.safe});
   await session.account(reclaimDeployment.owners[0].address);await session.configureSafe(reclaimDeployment.safe,creator);await session.lookup(campaign);
