@@ -48,6 +48,8 @@ New administration preparation/revalidation requires a bounded, server-only `RMT
 
 The UI uses verified authority to expose the existing controls. A connected Safe gas payer is not a Safe owner. Safe administration requires an actual current owner for proposal preparation; two owner approvals remain required, while the separately bound outer gas payer can execute the approved call. Public eligibility, the participant's own surrender and historical transaction recovery are retained. Revoking dashboard admission blocks new preparation/revalidation but does not delete journals or invent a failed canonical receipt.
 
+Controller handoff requires both outgoing and incoming identities to remain admitted until completion. Removing the outgoing policy entry early blocks new handoff preparation until explicit policy restoration; it does not affect historical reconciliation or create a platform override. The incoming accept button stays unavailable before the actual notice matures, and the server independently enforces that boundary.
+
 Unsigned `eth_call` or a JSON actor address is **not authentication of ownership**. The wallet still binds the account/chain/runtime and explicitly signs the exact transaction; Safe calls require their two valid owner approvals. The server never signs. This policy restricts RMT's dashboard; it does not claim to change the immutable factory's permissionless creation or raw permissionless execute/cancel semantics.
 
 ### Transaction-envelope admission

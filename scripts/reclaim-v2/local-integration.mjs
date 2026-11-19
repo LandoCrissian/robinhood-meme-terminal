@@ -47,7 +47,8 @@ export async function testReclaimJourney({browserEngine,rpcUrl,rpc,reclaimCompil
  }
  async function safeComplete(operation,fields={},decision="normal"){
   await session.account(reclaimDeployment.owners[0].address);
-  await session.configureSafe(reclaimDeployment.safe,creator);const inner=await session.action(operation,fields);assert.equal(inner.review.status,"needs-safe-approvals");assert.equal(inner.review.request,null);
+  await session.configureSafe(reclaimDeployment.safe,creator);await session.lookup(campaign);
+  const inner=await session.action(operation,fields);assert.equal(inner.review.status,"needs-safe-approvals");assert.equal(inner.review.request,null);
   const proposal=await session.safePropose(),owners=proposal.owners;
   if(!evidence.checks.safeOwnerWalletRejectionNoSubmission){await session.safeApprove(owners[0],"reject");evidence.checks.safeOwnerWalletRejectionNoSubmission=true;save();}
   await session.safeApprove(owners[0]);
@@ -187,8 +188,19 @@ export async function testReclaimJourney({browserEngine,rpcUrl,rpc,reclaimCompil
   const delegated=await complete("redeem",{collection:burn721.address,tokenIds:["2"],quantities:["1"]});assert.equal(delegated.review.kind,"metamask-7702");evidence.delegatedWallet={stateFixtureOnly:true,actualPermanentBurnAndExactReward:true};
   await rpc("anvil_setCode",[creator,"0x"]);await mine();await ready();
   // Same website, genuine 2-of-3 test-key signatures, actual Safe outer execution.
-  await complete("propose-controller",{next:reclaimDeployment.safe});await advance();
-  await safeComplete("accept-controller");await safeComplete("pause");await safeComplete("resume");
+  await complete("propose-controller",{next:reclaimDeployment.safe});
+  await session.account(reclaimDeployment.owners[0].address);await session.configureSafe(reclaimDeployment.safe,creator);await session.lookup(campaign);
+  await session.page.getByRole("button",{name:"accept controller",exact:true,includeHidden:true}).waitFor({state:"detached"});
+  const earlyAcceptance=await post({action:"prepare",operation:"accept-controller",account:reclaimDeployment.safe,campaign,fields:{}});
+  assert.equal(earlyAcceptance.body.status,"unavailable");await advance();
+  await safeComplete("accept-controller");
+  assert.ok(same(await read(campaign,campaignAbi,"controller"),reclaimDeployment.safe));
+  const formerController=await post({action:"prepare",operation:"pause",account:creator,campaign,fields:{}});assert.equal(formerController.body.status,"unavailable");
+  await session.account(creator);await session.configureSafe("",creator);await session.lookup(campaign);
+  await session.page.getByRole("button",{name:"pause",exact:true,includeHidden:true}).waitFor({state:"detached"});
+  Object.assign(evidence.administration,{incomingControllerBlockedBeforeNotice:true,formerControllerBlockedAfterHandoff:true,
+    safeOwnerDistinctFromGasPayer:true});save();
+  await safeComplete("pause");await safeComplete("resume");
   await safeComplete("approve-funding",{amountWei:units(50)});await safeComplete("fund",{amountWei:units(50)});
   await safeComplete("approve-721",{collection:burn721.address,tokenId:"11"});
   const safeBefore=await read(m.rewardToken,erc20Abi,"balanceOf",[reclaimDeployment.safe]);
