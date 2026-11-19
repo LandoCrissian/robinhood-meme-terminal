@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "35933d4d",
+  "job": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44536740892/job/135604050576",
+  "status": "FAILED_BEFORE_DECLARATION_ENTRY_REGISTRATION",
+  "cause": "Knip treats three new companion .d.mts files as independent roots; they are consumed by TypeScript .mjs imports and must follow existing explicit declaration entry conventions",
+  "correction": "Add only the three consumed public declaration files to existing entry list; no unused dependency/file detector excluded",
+  "declarations": [
+    "packages/launchpad-common/nft-acquisition-proof.d.mts",
+    "packages/launchpad-common/nft-acquisition-runtime.d.mts",
+    "packages/launchpad-common/nft-collection-resolver.d.mts"
+  ],
+  "rawJobSha256": "325c9cacd4d4c45c77477f9783421e0da0ee270dba9ab3939605d985413896e7",
+  "fragmentRawSha256": "e21fc75ce81120b629f011bc4c2baea524ebe439b9b0cd1f03a5a5bf2bca0a64",
+  "fragment": "initial-knip-failure.txt.gz",
+  "securityClearance": false
+}
