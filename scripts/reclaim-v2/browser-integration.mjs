@@ -50,6 +50,7 @@ export async function createReclaimBrowserSession({ browserEngine, site, out, rp
     return signTypedData(account, typedData);
   });
   await context.exposeBinding("syntheticReclaimSend", async (_source, request, decision) => {
+    try {
     const reviewed = currentSafeOuter ?? currentReview;
     assert.ok(reviewed && reviewed.status === "prepared" && reviewed.request, "A real prepared server review must precede submission");
     assert.equal(reviewed.profile, "rmt-reclaim-v2-permanent"); assert.equal(reviewed.chainId, 31337); assert.equal(request.chainId, "0x7a69");
@@ -62,6 +63,25 @@ export async function createReclaimBrowserSession({ browserEngine, site, out, rp
     evidence.sends.push(entry); save();
     if (decision === "lose") hideReceipt?.(receipt.transactionHash);
     return receipt.transactionHash;
+    } catch (issue) {
+      // Preserve the exact failing synthetic-wallet callsite without dumping
+      // signed payloads, account objects, URLs or unrestricted error stacks.
+      const allowed = new Set(["browser-integration.mjs", "deploy-fixture.mjs", "deploy-fixed-supply-fixture.mjs"]);
+      const frames = [...String(issue?.stack ?? "").matchAll(/(?:[/\\]|^)([A-Za-z0-9_.-]+\.mjs):(\d+):(\d+)/g)]
+        .filter(match => allowed.has(match[1])).slice(0, 6).map(match => `${match[1]}:${match[2]}:${match[3]}`);
+      evidence.submissionFailures ??= [];
+      if (evidence.submissionFailures.length < 8) evidence.submissionFailures.push({
+        reviewHash: (currentSafeOuter ?? currentReview)?.reviewHash ?? null,
+        operation: (currentSafeOuter?.proposal.innerReview ?? currentReview)?.operation ?? null,
+        name: typeof issue?.name === "string" && /^[A-Za-z]{1,40}$/.test(issue.name) ? issue.name : "Error",
+        ...(typeof issue?.code === "string" && /^[A-Z0-9_]{1,40}$/.test(issue.code) && { code: issue.code }),
+        ...(issue?.actual === null && { actual: null }),
+        ...(typeof issue?.expected === "string" && /^0x[0-9a-f]{64}$/i.test(issue.expected) && { expectedHash: issue.expected }),
+        sourceFrames: frames,
+      });
+      try { save(); } catch { /* Diagnostic persistence cannot replace the original failure. */ }
+      throw issue;
+    }
   });
   await context.addInitScript(({ creator }) => {
     let chain = "0x7a69", decision = "normal", account = creator.toLowerCase(); const listeners = new Map();
