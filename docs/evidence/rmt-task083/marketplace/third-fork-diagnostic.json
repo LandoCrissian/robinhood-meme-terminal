@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "status": "INCOMPLETE_ACTUAL_FORK_RECEIPT_UNAVAILABLE",
+  "runId": "44578474936",
+  "jobId": "135752323982",
+  "artifactId": "14558865394",
+  "sourceCommit": "3bd97a0ec1b9b452bfc56ba5afcc649ce30191f2",
+  "sourceEvidenceSha256": "1adbab72d5e85aa156953a62d9aac14e9075794da63756440e39261a240bf50e",
+  "completedCases": [
+    "actual-Seaport-V2-721-native-custody-accounted-replay-denied",
+    "actual-Seaport-V2-1155-native-custody-accounted-replay-denied",
+    "actual-Seaport-V2-721-ERC20-custody-accounted-replay-denied",
+    "actual-Seaport-V2-1155-ERC20-custody-accounted-replay-denied",
+    "actual-cancellation-atomic-no-payment"
+  ],
+  "receiptUnavailable": {
+    "transactionHash": "0xea5bb4698d6a9864391ba6f1d5e3aa60a710ca1c8fa152763471a648c9e72b42",
+    "operation": "expected-revert malformed ERC1155 delivery purchase",
+    "stage": "waitForTransactionReceipt",
+    "timeoutMilliseconds": 30000,
+    "subsequentReceiptObserved": false,
+    "pendingNonceObserved": false,
+    "anvilProcessStateObserved": false
+  },
+  "lastCanonicalReceipt": {
+    "transactionHash": "0x09cb6befdffc8a3e83cc055ee75ddbe4c0db9e7d63a9a65b6c870af5cde96039",
+    "blockNumber": "118398199",
+    "blockHash": "0x3036db27601b67e39b0e861656159c8ba1670bf9b858eeb1e3a7640822063541",
+    "status": "success",
+    "accountNonce": "33",
+    "selector": "0x0e41800e",
+    "operation": "configureFault(1,feeRecipient)"
+  },
+  "cause": "UNRESOLVED_NO_PROVIDER_OR_PROTOCOL_DIAGNOSIS_FROM_TIMEOUT_ALONE",
+  "correction": "Use the existing bounded90s receipt-read budget; journal the exact local intent/hash/nonce/gas/head before broadcast and preserve bounded transaction/receipt/head/pending-nonce/process diagnostics on timeout. No automatic resubmission.",
+  "expectedRevertAssertionRetained": true,
+  "fullForkPassed": false,
+  "productionStatus": "NO_GO"
+}
