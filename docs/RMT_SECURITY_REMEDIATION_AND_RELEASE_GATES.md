@@ -1,6 +1,6 @@
 # RMT security remediation and release gates
 
-**Task 080 Â· BLOCKED_NO_BROADCAST Â· internal engineering, not an independent audit.**
+**Task 080 · BLOCKED_NO_BROADCAST · internal engineering, not an independent audit.**
 
 Baseline: draft PR#673, `526cf004d267596f6203f977be40439825f1204b`. The [original security task](https://github.com/LandoCrissian/robinhood-meme-terminal/pull/673#issuecomment-6999758673) is narrowed by [the owner clarification](https://github.com/LandoCrissian/robinhood-meme-terminal/pull/673#issuecomment-7000394798). Reclaim's permanent-surrender V2 is a **frozen trial**. Security corrections and tests are permitted; new Reclaim features, a dashboard redesign or production activation are not. NFT collection purchasing is the next separate bounded feature proposal, below. No real campaign, collection, reward token, reserve funding or production controller is approved here.
 
@@ -8,13 +8,13 @@ Baseline: draft PR#673, `526cf004d267596f6203f977be40439825f1204b`. The [origina
 
 The reproducible [cross-module register](evidence/rmt-task080/findings-register.json) binds source/template/runtime references, compiler inputs, distinct analyzer inputs, exact detector IDs, external calls, protected assets, preconditions, existing mitigations/tests, uncertainty, owner decisions and release gates. Deduplication uses **analysis-input SHA256 + detector + exact finding ID**, never a shared description or presumed root cause.
 
-| Scope | Lifecycle | Raw findings / High | Before â†’ after High | Strict gate |
+| Scope | Lifecycle | Raw findings / High | Before → after High | Strict gate |
 | --- | --- | ---: | ---: | --- |
-| Fixed-supply4663 core and dependencies | Deployment-pinned; existing contracts unchanged |233 /22 |22 â†’22 | Failed |
-| Project Treasury V1 | Asset-bearing, predeployment candidate |25 /6 |6 â†’6 | Failed |
-| Reclaim V1 | Rejected historical escrow; not the active feature |28 /4 |4 â†’4 | Failed, retained |
-| Permanent Reclaim V2 | Frozen, isolated trial |45 /7 |7 â†’7 | Failed |
-| Treasury purchase V2 prototype | Nonspending reference/route model |3 /0 |0 â†’0 | Narrow analysis passes; execution remains NO-GO |
+| Fixed-supply4663 core and dependencies | Deployment-pinned; existing contracts unchanged |233 /22 |22 →22 | Failed |
+| Project Treasury V1 | Asset-bearing, predeployment candidate |25 /6 |6 →6 | Failed |
+| Reclaim V1 | Rejected historical escrow; not the active feature |28 /4 |4 →4 | Failed, retained |
+| Permanent Reclaim V2 | Frozen, isolated trial |45 /7 |7 →7 | Failed |
+| Treasury purchase V2 prototype | Nonspending reference/route model |3 /0 |0 →0 | Narrow analysis passes; execution remains NO-GO |
 
 There are **334 raw rows**,39 exact scoped High observations and49 detailed records, including seven previously assessed governance Mediums and the prototype's three lower observations. The remaining285 lower rows stay indexed and explicitly undispositioned, including59 Mediums. Four of the39 Highs concern rejected historical Reclaim V1. Warning counts are not exploit counts; **no High is independently cleared**. The repository-tree security job is retained separately; a gate pass in a narrower scope cannot clear another artifact or the known parser gaps.
 
@@ -46,7 +46,7 @@ Previously, the local dashboard exposed administrative preparation too broadly, 
 
 New administration preparation/revalidation requires a bounded, server-only `RMT_RECLAIM_ADMIN_POLICY` file with exact chain31337, factory/runtime and explicitly admitted controller/runtime identities. Missing, malformed or mismatched policy fails closed for administration. No production address is inferred from the personal deployer, governance owners or fee beneficiaries. Current campaign controller and runtime are read onchain; proposed/incoming controllers require admission, and acceptance checks the actual pending controller, epoch and notice window.
 
-The UI uses verified authority to expose the existing controls. A connected Safe gas payer is not a Safe owner. Safe administration requires an actual current owner for proposal preparation; two owner approvals remain required, while the separately bound outer gas payer can execute the approved call. Public eligibility, the participant's own surrender and historical transaction recovery are retained. Revoking dashboard admission blocks new preparation/revalidation but does not delete journals or invent a failed canonical receipt.
+The UI uses verified authority to expose the existing controls. Connecting a gas payer does not grant Safe owner authority; a payer may separately also be an owner. The dashboard exposes administrative proposal preparation only for a current on-chain Safe owner. These unsigned preparation checks are application policy, not cryptographic server authentication. Two valid owner approvals remain required, while the separately bound outer gas payer can execute the approved call. Public eligibility, the participant's own surrender and historical transaction recovery are retained. Revoking dashboard admission blocks new preparation/revalidation but does not delete journals or invent a failed canonical receipt.
 
 Controller handoff requires both outgoing and incoming identities to remain admitted until completion. Removing the outgoing policy entry early blocks new handoff preparation until explicit policy restoration; it does not affect historical reconciliation or create a platform override. The incoming accept button stays unavailable before the actual notice matures, and the server independently enforces that boundary.
 
