@@ -155,6 +155,7 @@ jobs:
       - name: Build the existing app and isolated indexer
         run: |
           set -euo pipefail
+          git fetch --no-tags --depth=1 origin 8dca5773cbd4dc98f52a45616f420bce96b000f0
           bash .github/scripts/prepare-browser-apt.sh
           pnpm install --frozen-lockfile --filter @rmt/launch-website... --filter indexer --filter robinhood-meme-terminal
           pnpm --filter @rmt/launch-website build
