@@ -41,6 +41,29 @@ The new same-block case queues an unrelated native fee-recipient payment first, 
 
 The [third fork diagnostic](third-fork-diagnostic.json) retains a different failure: all four normal fill groups and cancellation completed, then the malformed ERC1155 delivery test's expected-revert transaction had no observed receipt within30s. This does not establish a provider or protocol cause. The helper now uses the existing90s fixture receipt-read budget, journals exact hash/intent/nonce/gas/head before submission, and records bounded local transaction/receipt/head/pending-nonce/Anvil diagnostics if evidence stays unavailable. It never automatically resubmits or converts that failure into a full fork pass.
 
+## Successful actual Seaport fork execution
+
+[Run44580175875, job135758378850](https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44580175875) passed all **11** fork cases at exact source `b928ce2219dbef8c2c252a481ed06629d6a8cc1e`. The [artifact](https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44580175875/artifacts/14557064283) is retained byte-for-byte as [full receipt/trace evidence](fork-success-evidence.json.gz) and [deployment bindings](fork-success-deployment.json.gz), with exact hashes and every scanner disposition in [fork-success-manifest.json](fork-success-manifest.json). Prior failures above remain separate.
+
+The read-only upstream anchor was Robinhood4663 block **118403040**, hash `0xbea5dc56b7e529c0d4667333882fad49603c3f365c1d7c3900c70ad95f76bdb1`. Execution occurred entirely on private Anvil **chain31337**. The actual canonical Seaport runtime retained its original4663 immutable bindings; `information()` and signed test orders correctly used the local31337 EIP712 domain. Seaport code was not overwritten. NFT collections, currency, project token and core-binding stub were synthetic. This fork run does **not** establish an actual fixed-supply project/core deployment on Robinhood, a live4663 signed listing, mainnet custody or production acceptance. The independent default fixture's genuine fixed-supply core remains a separate test scope.
+
+There are **63 retained receipts**, comprising **62 canonical local receipts** (54 successful, eight reverted) and one intentionally orphaned receipt. The package includes60 confirmed local submission journals, three separately queued same-block transactions and10 bounded call traces. Six canonical purchases completed:
+
+| Genuine Seaport purchase case | Local gas used |
+| --- | ---: |
+| ERC721 / native | 495,038 |
+| ERC1155 / native | 466,110 |
+| ERC721 / synthetic ERC20 | 491,172 |
+| ERC1155 / synthetic ERC20 | 447,097 |
+| Canonical Safe1.4.1 EIP1271 seller / native | 501,677 |
+| Same-block attribution purchase / native | 391,742 |
+
+Canonical local transactions used17,620,103 gas across setup, funding, configuration, positive and negative cases. Including the deliberately retained orphan gives18,009,833 gas. These are **Anvil execution measurements**, not a live Robinhood fee quote: effective gas prices and Nitro L1 data charges are not retained, funding came from synthetic balances, and no owner funds or real NFT price was used.
+
+The three-transaction block was local block118403105, hash `0xb169946c979f9f5ae0f18caa5e6bcf9aa209e251bc38bc814472ba0ae6edee34`. An unrelated7e12 payment preceded the valid purchase at transaction index1; the third order reverted under the unchanged cooldown. Exact receipt/trace proof attributed only the signed25e12 fee, while the block-global fee-recipient delta was32e12. The valid purchase retained custody and accounting; the rejected order stayed unconsumed. The source-bound Safe seller used two distinct synthetic owners and a separate gas payer; Task082's proxy rejection remained intact.
+
+Raw evidence was privacy-scanned **before** compression. Gitleaks8.30.1 retained exit1 and all **25** observations. Every observation binds to a synthetic CREATE-derived contract address, an independently reproduced synthetic-currency runtime hash or an unchanged public-source response hash. Exact source lines, values, compiler/deployment bindings and hashes remain in the manifest; unknown findings are zero. [The original redacted scanner report](fork-success-raw-gitleaks.json.gz) is preserved without suppressions or history changes. This successful local fork leaves the current-listing, source-metadata, upgrade-policy, security, finality and owner-release holds unchanged: **production NO-GO**.
+
 ## Reproduction and privacy
 
 Portable solc 0.8.16 and 0.8.19 were fetched from the official [solc-bin repository](https://github.com/ethereum/solc-bin) outside the worktree and checked against its exact official SHA-256 pins. Windows hashes are `84976fb1fc2b29267020d2ca0a3a877f0ec6f88018307d32bfbb43bece865767` and `00d3b5ca64b097964ed6d70d9805a63fdd27113b07c1b2559dbfdd579f994508`; Linux hashes are `1632786c6c1f856a4a899232ec975a12f305118f43cce90e724ed0b2eebfeee1` and `7a5c1d3dc9a8eba62bb2ec37192c9178ae5fe8a54a56e5573fd3c9c17cd9eb48`. Exact versions/inputs/compiler hashes and metadata offsets are in the raw evidence.

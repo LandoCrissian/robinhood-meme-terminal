@@ -1,0 +1,533 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS_LOCAL_FORK_ONLY_PRODUCTION_NO_GO",
+  "source": {
+    "commit": "b928ce2219dbef8c2c252a481ed06629d6a8cc1e",
+    "runId": "44580175875",
+    "jobId": "135758378850",
+    "artifactId": "14557064283",
+    "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44580175875/artifacts/14557064283"
+  },
+  "scope": "ACTUAL_PINNED_4663_SEAPORT_ON_LOCAL31337_FORK_SYNTHETIC_PROJECT_AND_NFTS",
+  "localChainId": 31337,
+  "upstream": {
+    "url": "https://rpc.mainnet.chain.robinhood.com",
+    "chainId": 4663,
+    "blockNumber": "118403040",
+    "blockHash": "0xbea5dc56b7e529c0d4667333882fad49603c3f365c1d7c3900c70ad95f76bdb1",
+    "readOnly": true,
+    "anchorSelection": "Official RPC with harness-enforced Pocket header agreement; upstream requests read-only"
+  },
+  "caseCount": 11,
+  "caseNames": [
+    "actual-Seaport-V2-721-native-custody-accounted-replay-denied",
+    "actual-Seaport-V2-1155-native-custody-accounted-replay-denied",
+    "actual-Seaport-V2-721-ERC20-custody-accounted-replay-denied",
+    "actual-Seaport-V2-1155-ERC20-custody-accounted-replay-denied",
+    "actual-cancellation-atomic-no-payment",
+    "malicious-wrong1155-delivery-rolls-back",
+    "disable-at-mining-invalidates-old-epoch",
+    "orphaned-fill-custody-and-accounting-rollback-no-resubmit",
+    "read-only-provider-outage-fails-closed",
+    "genuine-Safe1.4.1-two-owner-1271-seller-native-keeper-distinct",
+    "actual-same-block-native-payment-attribution"
+  ],
+  "receiptCounts": {
+    "retained": 63,
+    "retainedSuccess": 55,
+    "retainedReverted": 8,
+    "canonicalLocal": 62,
+    "canonicalLocalSuccess": 54,
+    "canonicalLocalReverted": 8,
+    "orphanedLocal": 1,
+    "mainnetTransactions": 0
+  },
+  "submissionJournalCount": 60,
+  "batchedTransactionCount": 3,
+  "traceCount": 10,
+  "orphanTransactionHash": "0xd29ee2a91b1b17819d68593865e3d7a8cd39cb288151ac3fa44170f5b17e1482",
+  "orphanGasUsed": "389730",
+  "gas": {
+    "canonicalLocalGasUsed": "17620103",
+    "includingRetainedOrphanGasUsed": "18009833",
+    "successfulCanonicalPurchaseGasUsed": "2792836",
+    "effectiveGasPriceRetained": false,
+    "feeQuote": false,
+    "model": "Synthetic local EIP1559 gasUsed only; no live Robinhood/Nitro L1 data-fee quote, no owner funds or real collection price"
+  },
+  "purchases": [
+    {
+      "case": "actual-Seaport-V2-721-native-custody-accounted-replay-denied",
+      "transactionHash": "0x495bd783b11c3bca4a779d155c9e503cd6f8c10c66e5fcd325f742e1add0f848",
+      "blockNumber": "118403057",
+      "blockHash": "0x97aa521d180618b3f81b6fab555b04485f9c6691df8e1ff21138ea4e1039fe6b",
+      "gasUsed": "495038",
+      "syntheticSignedConsiderationWei": "1000000000000000"
+    },
+    {
+      "case": "actual-Seaport-V2-1155-native-custody-accounted-replay-denied",
+      "transactionHash": "0x33d48240aa15fd70c00e67907cf5cb758206928fe594654fcee0433422101496",
+      "blockNumber": "118403063",
+      "blockHash": "0x721efa00f10addf999422433b2e8546d3b10ccfeb31607c7ae6bb05dbeec413a",
+      "gasUsed": "466110",
+      "syntheticSignedConsiderationWei": "1000000000000000"
+    },
+    {
+      "case": "actual-Seaport-V2-721-ERC20-custody-accounted-replay-denied",
+      "transactionHash": "0x3add53c7af8e9d22b68f63d92d0daf05afba1856aecdba907e8c19a9e1646384",
+      "blockNumber": "118403069",
+      "blockHash": "0xa7d24876a888bfba50a230ba06ad9cc0cb8c85aaaf13578113bddba4792abfa6",
+      "gasUsed": "491172",
+      "syntheticSignedConsiderationWei": "1000000000000000"
+    },
+    {
+      "case": "actual-Seaport-V2-1155-ERC20-custody-accounted-replay-denied",
+      "transactionHash": "0x114b15761b4695ae52a177bf883a901fdd5dab997d2777d8cdd70bb6da1bb28b",
+      "blockNumber": "118403075",
+      "blockHash": "0x6be5d5492bd62529cca736c5251126b38d37cbbac5a44a73208d18da16dbaa85",
+      "gasUsed": "447097",
+      "syntheticSignedConsiderationWei": "1000000000000000"
+    },
+    {
+      "case": "genuine-Safe1.4.1-two-owner-1271-seller-native-keeper-distinct",
+      "transactionHash": "0x28033b21647e2e0ee6137df547734f987478bdbf99b8bf747da35a29b3384410",
+      "blockNumber": "118403098",
+      "blockHash": "0x7a489639c1d25ca9081cd8ad7f964d3e1bf92e750ef4861e2138d823df6e265f",
+      "gasUsed": "501677",
+      "syntheticSignedConsiderationWei": "1000000000000000"
+    },
+    {
+      "case": "actual-same-block-native-payment-attribution",
+      "transactionHash": "0xa0683afd0df7e9d37291cdbeca9670803637d646cad4f3f7085f0e04511363c9",
+      "blockNumber": "118403105",
+      "blockHash": "0xb169946c979f9f5ae0f18caa5e6bcf9aa209e251bc38bc814472ba0ae6edee34",
+      "gasUsed": "391742",
+      "syntheticSignedConsiderationWei": "1000000000000000"
+    }
+  ],
+  "sameBlock": {
+    "validTransactionHash": "0xa0683afd0df7e9d37291cdbeca9670803637d646cad4f3f7085f0e04511363c9",
+    "unrelatedTransactionHash": "0xd9f9acf87c2959e39ffb313554ef7a41611123ab72bf7bc2b5bc013a9238989e",
+    "revertedTransactionHash": "0x18818470726b57c85a67a2fe27c5f1f53da900b7e754d295b643c6a653acbb68",
+    "orderHash": "0x9a5558c58057c2497dccd1cb31c3e56e7026832748d676992cb2e92a580d6d44",
+    "feeRecipient": "0xC34bC92420B2E3A183327f67A1d7Ea36359f9cA0",
+    "feeAmount": "25000000000000",
+    "blockFeeDelta": "32000000000000",
+    "blockNumber": "118403105",
+    "blockHash": "0xb169946c979f9f5ae0f18caa5e6bcf9aa209e251bc38bc814472ba0ae6edee34",
+    "validTransactionIndex": 1,
+    "exactProof": {
+      "evidence": "canonical-receipt-and-exact-local-call-trace",
+      "frames": 67,
+      "nativeTransfers": 4
+    }
+  },
+  "safeSeller": {
+    "proxy": true,
+    "oldVerifierStatus": "unavailable",
+    "oldVerifierCode": "UNSUPPORTED_CONTRACT_SIGNATURE",
+    "v2Admission": "SYNTHETIC31337_EXACT_SAFE1_4_1_PROFILE_NOT_GENERAL_PROXY_ADMISSION",
+    "threshold": 2,
+    "ownerCount": 3,
+    "distinctGasPayer": true,
+    "sourceRecompiled": false
+  },
+  "core": {
+    "actualFixedSupplyCore": false,
+    "syntheticCoreBindingStub": true,
+    "reason": "Candidate requires chain31337; existing exact core31337 dependencies are BaseSepolia-bound, not silently repinned to Robinhood."
+  },
+  "contractBindings": [
+    {
+      "role": "synthetic-payment-currency",
+      "address": "0xb368b7e7b72acf9da64f078464a0db5ecccb32ad",
+      "runtimeHash": "0x455ae76a53b7abbf0152dc938cfbe6f877bdd1d069ac378b7d9d3b1715dea02e",
+      "derivedCreateAddress": "0xB368B7E7B72AcF9DA64F078464a0dB5EccCb32ad",
+      "creationTransactionHash": "0xfb5d0a15f4c2d71c612d1fac4bf86aa1a9cd6a8df5ccbf3221c27c84dae7f233",
+      "creationNonce": "2",
+      "creationInputSha256": "1b21e71ee0084cf2b2116ed725bf075c4a91c8cb2aab66e95668d3ef5959048f",
+      "compilerInputSha256": "38d9efeabcf0f317b4eb797a8ca88c842622b3841cf7e56c8fa458dd1aba9bf2"
+    },
+    {
+      "role": "synthetic-project-binding-currency",
+      "address": "0xfe4949b721dee84e66e201f5b6b1337d1ef0d53e",
+      "runtimeHash": "0x455ae76a53b7abbf0152dc938cfbe6f877bdd1d069ac378b7d9d3b1715dea02e",
+      "derivedCreateAddress": "0xFE4949B721dEE84E66E201F5B6b1337D1ef0d53E",
+      "creationTransactionHash": "0xd0d06a146d42e56acf75f774a1207efd5089a0916b7609a82478549ff86c4e48",
+      "creationNonce": "4",
+      "creationInputSha256": "1b21e71ee0084cf2b2116ed725bf075c4a91c8cb2aab66e95668d3ef5959048f",
+      "compilerInputSha256": "38d9efeabcf0f317b4eb797a8ca88c842622b3841cf7e56c8fa458dd1aba9bf2"
+    },
+    {
+      "role": "synthetic-ERC721-collection",
+      "address": "0x1b839ddb89b035f6c06982e45c8cd493814b3407",
+      "runtimeHash": "0x9f9f9f9a49cde3aef97f5524cbbe8288e1b17e4570beeef3f0e5cab9760ebeeb",
+      "derivedCreateAddress": "0x1b839dDb89b035f6C06982E45c8cD493814b3407",
+      "creationTransactionHash": "0x6cca52858d51c3952c89151d38ac31bb73ed84acb40832ac7cba759ce53003f7",
+      "creationNonce": "0",
+      "creationInputSha256": "41d50dc81cd2aaad56c3720f8d87365c1189bbb0386e200497a53e72a0ec70ea",
+      "compilerInputSha256": "38d9efeabcf0f317b4eb797a8ca88c842622b3841cf7e56c8fa458dd1aba9bf2"
+    },
+    {
+      "role": "synthetic-ERC1155-collection",
+      "address": "0x5b9771fc84e5e8b47dbaa5c6b807530640eddb33",
+      "runtimeHash": "0x879373b8690401782d1b59a12c172ed6b105e91396b5cc42e64351cdcae0821e",
+      "derivedCreateAddress": "0x5B9771fC84e5e8b47DBaA5C6b807530640EDDb33",
+      "creationTransactionHash": "0x5e9e70a87a804c7834cf298621db5b363becd84b7d8c385ccf4fd025f7f36324",
+      "creationNonce": "1",
+      "creationInputSha256": "1f72baef53912ded606ca57bc7ee8a2c565c560d2169fe78ed8be4112dc62870",
+      "compilerInputSha256": "38d9efeabcf0f317b4eb797a8ca88c842622b3841cf7e56c8fa458dd1aba9bf2"
+    }
+  ],
+  "seaport": {
+    "address": "0x0000000000000068F116a894984e2DB1123eB395",
+    "runtimeHash": "0x95809b70c9659c30188db5fdd87103e24b1a55379af8c851fca393aba0224a00",
+    "domainChainId": 31337,
+    "originalRuntimeImmutableChainId": 4663,
+    "codeOverwritten": false
+  },
+  "candidate": {
+    "address": "0x7ebf7c5f0699809f27a797cd83b57feb9a0a1d05",
+    "runtimeHash": "0x21f13c0ddd7824058c2c4e03067602a920f2b00e13bd098e24e1ef8c64e89e56",
+    "checksAddress": "0xE308973Fea82FbcFfC13dc95C14beD6332800D5f",
+    "checksRuntimeHash": "0xb05dd7dfb1b1ab9b1cd294d21a355558654aecdbc4b454bc074e6c8d26703150",
+    "compilerInputSha256": "3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5",
+    "compilerVersion": "0.8.26+commit.8a97fa7a",
+    "runtimeBytes": 24071,
+    "encodedConstructorBytes": 38532
+  },
+  "archives": {
+    "fork-success-evidence.json.gz": {
+      "originalFile": "seaport-acquisition-fixture-evidence.json",
+      "bytes": 906782,
+      "sha256": "cf7f87cc15e5e603d8551b61e8dd6302bd3ad214db8fca82f5b7762af38b7cbd"
+    },
+    "fork-success-deployment.json.gz": {
+      "originalFile": "seaport-acquisition-deployment.json",
+      "bytes": 6129,
+      "sha256": "7bbb4c1ec17dd9663277ecaf70c2ef26577ab820cc1ba535a31e95a3ea0cd2dc"
+    }
+  },
+  "rawScanner": {
+    "name": "Gitleaks",
+    "version": "8.30.1",
+    "configurationSha256": "682c4983b955469645ca36b3145f10bd9baa6e3011ac4f8d82cc4de6b49be8cc",
+    "reportSha256": "074184dc450907821d6b91e6696f6f18cd41ae772f9b08b3165e3d4cfc012cd1",
+    "exitCode": 1,
+    "findings": 25,
+    "unclassified": 0,
+    "suppressionsAdded": false,
+    "historyRewritten": false
+  },
+  "classifications": [
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-deployment.json",
+      "line": 9,
+      "lineSha256": "25fb88b793941460d1ebb14d0434407a8064de60df0417cb106c25f7dcc65325",
+      "field": "paymentToken",
+      "publicValue": "0xb368b7e7b72acf9da64f078464a0db5ecccb32ad",
+      "publicValueSha256": "d2f02a75d43e9645e95a4b294f52b01cba036279952abaa30c66629c03882320",
+      "disposition": "PUBLIC_SYNTHETIC31337_CREATE_ADDRESS",
+      "binding": "synthetic-payment-currency",
+      "creationTransactionHash": "0xfb5d0a15f4c2d71c612d1fac4bf86aa1a9cd6a8df5ccbf3221c27c84dae7f233"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-deployment.json",
+      "line": 10,
+      "lineSha256": "220053c71e51ded10ec53a0797e7038762df05ea6b0188b7ed4deeeedc801332",
+      "field": "paymentTokenRuntimeHash",
+      "publicValue": "0x455ae76a53b7abbf0152dc938cfbe6f877bdd1d069ac378b7d9d3b1715dea02e",
+      "publicValueSha256": "a842c7f048f6372887c91cece875f2c3e30076072efb3c7507640532d47386c0",
+      "disposition": "PUBLIC_INDEPENDENTLY_RECOMPILED_SYNTHETIC_ERC20_RUNTIME_HASH",
+      "binding": "synthetic-payment-currency",
+      "compilerInputSha256": "38d9efeabcf0f317b4eb797a8ca88c842622b3841cf7e56c8fa458dd1aba9bf2"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-deployment.json",
+      "line": 11,
+      "lineSha256": "2766d303e0f860161f63f2b34b64ac87028bf791b2a3250ea51e8cf77f617344",
+      "field": "projectToken",
+      "publicValue": "0xfe4949b721dee84e66e201f5b6b1337d1ef0d53e",
+      "publicValueSha256": "ef0f145ccbb815f171af1329c3d97e28a3f7f575df3f6b67a6c5175cfc44a239",
+      "disposition": "PUBLIC_SYNTHETIC31337_CREATE_ADDRESS",
+      "binding": "synthetic-project-binding-currency",
+      "creationTransactionHash": "0xd0d06a146d42e56acf75f774a1207efd5089a0916b7609a82478549ff86c4e48"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-fixture-evidence.json",
+      "line": 41,
+      "lineSha256": "826dd9a3eb993dbc317f0f5fa1b1c64425281c6b306e3c4367c1d32044ce0334",
+      "field": "token",
+      "publicValue": "0x1b839ddb89b035f6c06982e45c8cd493814b3407",
+      "publicValueSha256": "212e33e252778fb4ea3522bd030b7262370287703a1c8bc2ac830e0aa1a1887b",
+      "disposition": "PUBLIC_SYNTHETIC31337_CREATE_ADDRESS",
+      "binding": "synthetic-ERC721-collection",
+      "creationTransactionHash": "0x6cca52858d51c3952c89151d38ac31bb73ed84acb40832ac7cba759ce53003f7"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-fixture-evidence.json",
+      "line": 889,
+      "lineSha256": "4ca28271cd4802d5da6c0b44a0c37a6d176a49701ae93fe58329ca2e373ac4f5",
+      "field": "token",
+      "publicValue": "0x5b9771fc84e5e8b47dbaa5c6b807530640eddb33",
+      "publicValueSha256": "e60d6c29db08e858fcf963d890569d1941c0dd99dc8eca9c07a80824b1c73158",
+      "disposition": "PUBLIC_SYNTHETIC31337_CREATE_ADDRESS",
+      "binding": "synthetic-ERC1155-collection",
+      "creationTransactionHash": "0x5e9e70a87a804c7834cf298621db5b363becd84b7d8c385ccf4fd025f7f36324"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-fixture-evidence.json",
+      "line": 1731,
+      "lineSha256": "826dd9a3eb993dbc317f0f5fa1b1c64425281c6b306e3c4367c1d32044ce0334",
+      "field": "token",
+      "publicValue": "0x1b839ddb89b035f6c06982e45c8cd493814b3407",
+      "publicValueSha256": "212e33e252778fb4ea3522bd030b7262370287703a1c8bc2ac830e0aa1a1887b",
+      "disposition": "PUBLIC_SYNTHETIC31337_CREATE_ADDRESS",
+      "binding": "synthetic-ERC721-collection",
+      "creationTransactionHash": "0x6cca52858d51c3952c89151d38ac31bb73ed84acb40832ac7cba759ce53003f7"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-fixture-evidence.json",
+      "line": 1740,
+      "lineSha256": "0b25426a122ebd975195cca187bed082405d9b8a7825b424bf79e2e8cd8ab7f9",
+      "field": "token",
+      "publicValue": "0xb368b7e7b72acf9da64f078464a0db5ecccb32ad",
+      "publicValueSha256": "d2f02a75d43e9645e95a4b294f52b01cba036279952abaa30c66629c03882320",
+      "disposition": "PUBLIC_SYNTHETIC31337_CREATE_ADDRESS",
+      "binding": "synthetic-payment-currency",
+      "creationTransactionHash": "0xfb5d0a15f4c2d71c612d1fac4bf86aa1a9cd6a8df5ccbf3221c27c84dae7f233"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-fixture-evidence.json",
+      "line": 1748,
+      "lineSha256": "0b25426a122ebd975195cca187bed082405d9b8a7825b424bf79e2e8cd8ab7f9",
+      "field": "token",
+      "publicValue": "0xb368b7e7b72acf9da64f078464a0db5ecccb32ad",
+      "publicValueSha256": "d2f02a75d43e9645e95a4b294f52b01cba036279952abaa30c66629c03882320",
+      "disposition": "PUBLIC_SYNTHETIC31337_CREATE_ADDRESS",
+      "binding": "synthetic-payment-currency",
+      "creationTransactionHash": "0xfb5d0a15f4c2d71c612d1fac4bf86aa1a9cd6a8df5ccbf3221c27c84dae7f233"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-fixture-evidence.json",
+      "line": 1756,
+      "lineSha256": "0b25426a122ebd975195cca187bed082405d9b8a7825b424bf79e2e8cd8ab7f9",
+      "field": "token",
+      "publicValue": "0xb368b7e7b72acf9da64f078464a0db5ecccb32ad",
+      "publicValueSha256": "d2f02a75d43e9645e95a4b294f52b01cba036279952abaa30c66629c03882320",
+      "disposition": "PUBLIC_SYNTHETIC31337_CREATE_ADDRESS",
+      "binding": "synthetic-payment-currency",
+      "creationTransactionHash": "0xfb5d0a15f4c2d71c612d1fac4bf86aa1a9cd6a8df5ccbf3221c27c84dae7f233"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-fixture-evidence.json",
+      "line": 2782,
+      "lineSha256": "4ca28271cd4802d5da6c0b44a0c37a6d176a49701ae93fe58329ca2e373ac4f5",
+      "field": "token",
+      "publicValue": "0x5b9771fc84e5e8b47dbaa5c6b807530640eddb33",
+      "publicValueSha256": "e60d6c29db08e858fcf963d890569d1941c0dd99dc8eca9c07a80824b1c73158",
+      "disposition": "PUBLIC_SYNTHETIC31337_CREATE_ADDRESS",
+      "binding": "synthetic-ERC1155-collection",
+      "creationTransactionHash": "0x5e9e70a87a804c7834cf298621db5b363becd84b7d8c385ccf4fd025f7f36324"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-fixture-evidence.json",
+      "line": 2791,
+      "lineSha256": "0b25426a122ebd975195cca187bed082405d9b8a7825b424bf79e2e8cd8ab7f9",
+      "field": "token",
+      "publicValue": "0xb368b7e7b72acf9da64f078464a0db5ecccb32ad",
+      "publicValueSha256": "d2f02a75d43e9645e95a4b294f52b01cba036279952abaa30c66629c03882320",
+      "disposition": "PUBLIC_SYNTHETIC31337_CREATE_ADDRESS",
+      "binding": "synthetic-payment-currency",
+      "creationTransactionHash": "0xfb5d0a15f4c2d71c612d1fac4bf86aa1a9cd6a8df5ccbf3221c27c84dae7f233"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-fixture-evidence.json",
+      "line": 2799,
+      "lineSha256": "0b25426a122ebd975195cca187bed082405d9b8a7825b424bf79e2e8cd8ab7f9",
+      "field": "token",
+      "publicValue": "0xb368b7e7b72acf9da64f078464a0db5ecccb32ad",
+      "publicValueSha256": "d2f02a75d43e9645e95a4b294f52b01cba036279952abaa30c66629c03882320",
+      "disposition": "PUBLIC_SYNTHETIC31337_CREATE_ADDRESS",
+      "binding": "synthetic-payment-currency",
+      "creationTransactionHash": "0xfb5d0a15f4c2d71c612d1fac4bf86aa1a9cd6a8df5ccbf3221c27c84dae7f233"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-fixture-evidence.json",
+      "line": 2807,
+      "lineSha256": "0b25426a122ebd975195cca187bed082405d9b8a7825b424bf79e2e8cd8ab7f9",
+      "field": "token",
+      "publicValue": "0xb368b7e7b72acf9da64f078464a0db5ecccb32ad",
+      "publicValueSha256": "d2f02a75d43e9645e95a4b294f52b01cba036279952abaa30c66629c03882320",
+      "disposition": "PUBLIC_SYNTHETIC31337_CREATE_ADDRESS",
+      "binding": "synthetic-payment-currency",
+      "creationTransactionHash": "0xfb5d0a15f4c2d71c612d1fac4bf86aa1a9cd6a8df5ccbf3221c27c84dae7f233"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-fixture-evidence.json",
+      "line": 3827,
+      "lineSha256": "826dd9a3eb993dbc317f0f5fa1b1c64425281c6b306e3c4367c1d32044ce0334",
+      "field": "token",
+      "publicValue": "0x1b839ddb89b035f6c06982e45c8cd493814b3407",
+      "publicValueSha256": "212e33e252778fb4ea3522bd030b7262370287703a1c8bc2ac830e0aa1a1887b",
+      "disposition": "PUBLIC_SYNTHETIC31337_CREATE_ADDRESS",
+      "binding": "synthetic-ERC721-collection",
+      "creationTransactionHash": "0x6cca52858d51c3952c89151d38ac31bb73ed84acb40832ac7cba759ce53003f7"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-fixture-evidence.json",
+      "line": 3883,
+      "lineSha256": "4ca28271cd4802d5da6c0b44a0c37a6d176a49701ae93fe58329ca2e373ac4f5",
+      "field": "token",
+      "publicValue": "0x5b9771fc84e5e8b47dbaa5c6b807530640eddb33",
+      "publicValueSha256": "e60d6c29db08e858fcf963d890569d1941c0dd99dc8eca9c07a80824b1c73158",
+      "disposition": "PUBLIC_SYNTHETIC31337_CREATE_ADDRESS",
+      "binding": "synthetic-ERC1155-collection",
+      "creationTransactionHash": "0x5e9e70a87a804c7834cf298621db5b363becd84b7d8c385ccf4fd025f7f36324"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-fixture-evidence.json",
+      "line": 3939,
+      "lineSha256": "826dd9a3eb993dbc317f0f5fa1b1c64425281c6b306e3c4367c1d32044ce0334",
+      "field": "token",
+      "publicValue": "0x1b839ddb89b035f6c06982e45c8cd493814b3407",
+      "publicValueSha256": "212e33e252778fb4ea3522bd030b7262370287703a1c8bc2ac830e0aa1a1887b",
+      "disposition": "PUBLIC_SYNTHETIC31337_CREATE_ADDRESS",
+      "binding": "synthetic-ERC721-collection",
+      "creationTransactionHash": "0x6cca52858d51c3952c89151d38ac31bb73ed84acb40832ac7cba759ce53003f7"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-fixture-evidence.json",
+      "line": 3995,
+      "lineSha256": "826dd9a3eb993dbc317f0f5fa1b1c64425281c6b306e3c4367c1d32044ce0334",
+      "field": "token",
+      "publicValue": "0x1b839ddb89b035f6c06982e45c8cd493814b3407",
+      "publicValueSha256": "212e33e252778fb4ea3522bd030b7262370287703a1c8bc2ac830e0aa1a1887b",
+      "disposition": "PUBLIC_SYNTHETIC31337_CREATE_ADDRESS",
+      "binding": "synthetic-ERC721-collection",
+      "creationTransactionHash": "0x6cca52858d51c3952c89151d38ac31bb73ed84acb40832ac7cba759ce53003f7"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-fixture-evidence.json",
+      "line": 4773,
+      "lineSha256": "826dd9a3eb993dbc317f0f5fa1b1c64425281c6b306e3c4367c1d32044ce0334",
+      "field": "token",
+      "publicValue": "0x1b839ddb89b035f6c06982e45c8cd493814b3407",
+      "publicValueSha256": "212e33e252778fb4ea3522bd030b7262370287703a1c8bc2ac830e0aa1a1887b",
+      "disposition": "PUBLIC_SYNTHETIC31337_CREATE_ADDRESS",
+      "binding": "synthetic-ERC721-collection",
+      "creationTransactionHash": "0x6cca52858d51c3952c89151d38ac31bb73ed84acb40832ac7cba759ce53003f7"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-fixture-evidence.json",
+      "line": 6244,
+      "lineSha256": "826dd9a3eb993dbc317f0f5fa1b1c64425281c6b306e3c4367c1d32044ce0334",
+      "field": "token",
+      "publicValue": "0x1b839ddb89b035f6c06982e45c8cd493814b3407",
+      "publicValueSha256": "212e33e252778fb4ea3522bd030b7262370287703a1c8bc2ac830e0aa1a1887b",
+      "disposition": "PUBLIC_SYNTHETIC31337_CREATE_ADDRESS",
+      "binding": "synthetic-ERC721-collection",
+      "creationTransactionHash": "0x6cca52858d51c3952c89151d38ac31bb73ed84acb40832ac7cba759ce53003f7"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-fixture-evidence.json",
+      "line": 6296,
+      "lineSha256": "826dd9a3eb993dbc317f0f5fa1b1c64425281c6b306e3c4367c1d32044ce0334",
+      "field": "token",
+      "publicValue": "0x1b839ddb89b035f6c06982e45c8cd493814b3407",
+      "publicValueSha256": "212e33e252778fb4ea3522bd030b7262370287703a1c8bc2ac830e0aa1a1887b",
+      "disposition": "PUBLIC_SYNTHETIC31337_CREATE_ADDRESS",
+      "binding": "synthetic-ERC721-collection",
+      "creationTransactionHash": "0x6cca52858d51c3952c89151d38ac31bb73ed84acb40832ac7cba759ce53003f7"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-fixture-evidence.json",
+      "line": 9430,
+      "lineSha256": "de4f3f25dbb3732dbccab3b8042b1363884a228beb6c67bdbfcd1d429e651c0d",
+      "field": "sourceApiRawSha256",
+      "publicValue": "de24d38618d36b27f65cf79e28b9cd487a3780999bb3fe01eb881ef6ccb409f8",
+      "publicValueSha256": "8d460aefa35ecabbb98539a0680ec74a2e826a0911a256b5c464d0afce613eb4",
+      "disposition": "PUBLIC_PRESERVED_SOURCE_RESPONSE_SHA256",
+      "binding": "seaport",
+      "sourceFile": "docs/evidence/rmt-task082/seaport-marketplace/sourcify-seaport-4663.json.gz",
+      "uncompressedSourceSha256": "de24d38618d36b27f65cf79e28b9cd487a3780999bb3fe01eb881ef6ccb409f8"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-fixture-evidence.json",
+      "line": 9803,
+      "lineSha256": "ea2c785549334f8156406b19647741ea5d32ca6a5e6a16460af39e3ef9f78a52",
+      "field": "sourceApiRawSha256",
+      "publicValue": "34b19b88980f7f3d125ae2fbb695842242264ffdd8c7610b4a2e090f225e96f3",
+      "publicValueSha256": "251dcb38a610603e24f3d1e2ac50c98e1c7be42a6c2ebb2a2f19e522bcc83540",
+      "disposition": "PUBLIC_PRESERVED_SOURCE_RESPONSE_SHA256",
+      "binding": "controller",
+      "sourceFile": "docs/evidence/rmt-task082/seaport-marketplace/controller-mainnet.json.gz",
+      "uncompressedSourceSha256": "34b19b88980f7f3d125ae2fbb695842242264ffdd8c7610b4a2e090f225e96f3"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-fixture-evidence.json",
+      "line": 11348,
+      "lineSha256": "3f3e17018fce4660d8a458829fe5eb07eea3bc2f02a220340477ae8723f427b5",
+      "field": "paymentToken",
+      "publicValue": "0xb368b7e7b72acf9da64f078464a0db5ecccb32ad",
+      "publicValueSha256": "d2f02a75d43e9645e95a4b294f52b01cba036279952abaa30c66629c03882320",
+      "disposition": "PUBLIC_SYNTHETIC31337_CREATE_ADDRESS",
+      "binding": "synthetic-payment-currency",
+      "creationTransactionHash": "0xfb5d0a15f4c2d71c612d1fac4bf86aa1a9cd6a8df5ccbf3221c27c84dae7f233"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-fixture-evidence.json",
+      "line": 11349,
+      "lineSha256": "3c8a6b950a33334f98f541218d878ddac971a17218f7f9702c9dea667529fb5e",
+      "field": "paymentTokenRuntimeHash",
+      "publicValue": "0x455ae76a53b7abbf0152dc938cfbe6f877bdd1d069ac378b7d9d3b1715dea02e",
+      "publicValueSha256": "a842c7f048f6372887c91cece875f2c3e30076072efb3c7507640532d47386c0",
+      "disposition": "PUBLIC_INDEPENDENTLY_RECOMPILED_SYNTHETIC_ERC20_RUNTIME_HASH",
+      "binding": "synthetic-payment-currency",
+      "compilerInputSha256": "38d9efeabcf0f317b4eb797a8ca88c842622b3841cf7e56c8fa458dd1aba9bf2"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "file": "seaport-acquisition-fixture-evidence.json",
+      "line": 11350,
+      "lineSha256": "5d6f9422e87470e20c53c6b0e221b7e4a700d0d55ad8ac45dfd731c9aef423ea",
+      "field": "projectToken",
+      "publicValue": "0xfe4949b721dee84e66e201f5b6b1337d1ef0d53e",
+      "publicValueSha256": "ef0f145ccbb815f171af1329c3d97e28a3f7f575df3f6b67a6c5175cfc44a239",
+      "disposition": "PUBLIC_SYNTHETIC31337_CREATE_ADDRESS",
+      "binding": "synthetic-project-binding-currency",
+      "creationTransactionHash": "0xd0d06a146d42e56acf75f774a1207efd5089a0916b7609a82478549ff86c4e48"
+    }
+  ],
+  "currentLiveOrderVerified": false,
+  "productionChanged": false,
+  "ownerSignatures": false,
+  "productionBroadcast": false,
+  "productionStatus": "NO_GO",
+  "syntheticSignatures": true,
+  "realOwnerSignaturesRequested": false
+}
