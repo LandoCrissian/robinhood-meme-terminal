@@ -14,19 +14,26 @@ export async function startSeaportAcquisitionIndexer({db,rpc,manifest:m,readKey,
   let status:"ready"|"pending"="pending",running=false,closed=false;
   async function sync(){if(running||closed)return;running=true;status="pending";try{
     const tip=await rpc.getBlockNumber(),target=tip-2n;if(target<BigInt(m.deployment.blockNumber))return;
+    await verifySeaportVaultRuntime(rpc,m,target);
     const checkpoints=await db.query("SELECT block_number,block_hash FROM rmt_seaport_v2_blocks ORDER BY block_number DESC LIMIT 64");
-    let divergent:bigint|undefined;for(const p of checkpoints.rows){if(BigInt(p.block_number)>tip){divergent=BigInt(p.block_number);continue;}const h=await rpc.getBlock({blockNumber:BigInt(p.block_number)});if(h.hash?.toLowerCase()!==p.block_hash.toLowerCase())divergent=BigInt(p.block_number);else break;}
+    let divergent:bigint|undefined,common=false;for(const p of checkpoints.rows){if(BigInt(p.block_number)>tip){divergent=BigInt(p.block_number);continue;}const h=await rpc.getBlock({blockNumber:BigInt(p.block_number)});if(h.hash?.toLowerCase()!==p.block_hash.toLowerCase())divergent=BigInt(p.block_number);else{common=true;break;}}
+    // A deeper fixture reorg rebuilds this private read model from its exact
+    // birth. Never retain an unprobed older branch as a canonical ancestor.
+    if(divergent!==undefined&&!common)divergent=BigInt(m.deployment.blockNumber);
     if(divergent!==undefined)await rollbackSeaportVaultStore(db,divergent);
     const saved=await readSeaportVaultStore(db),from=saved.checkpoint?BigInt(saved.checkpoint.blockNumber)+1n:BigInt(m.deployment.blockNumber);
     if(target-from>4096n)throw Error("Seaport V2 fixture span exceeded");
+    let parent=saved.checkpoint?.blockHash;
     for(let height=from;height<=target;height++){
       const h=await rpc.getBlock({blockNumber:height});if(!h.hash)throw Error("Seaport V2 header unavailable");
+      if(parent&&h.parentHash.toLowerCase()!==parent.toLowerCase())throw Error("Seaport V2 canonical ancestry mismatch");
       const logs=await rpc.getLogs({address:m.vault,fromBlock:height,toBlock:height});if(logs.length>128)throw Error("Seaport V2 log bound exceeded");
       const events=parseEventLogs({abi:seaportVaultAbi,eventName:"PurchaseExecuted",strict:true,logs}),rows:SeaportVaultSettlement[]=[];
       const hashes=[...new Set(events.map(e=>e.transactionHash))];if(hashes.length>32)throw Error("Seaport V2 transaction bound exceeded");
       for(const hash of hashes){if(!hash)throw Error("Seaport V2 log identity unavailable");rows.push(await verifySeaportVaultReceipt(rpc,m,hash as Hash));}
       const canonical=await rpc.getBlock({blockNumber:height});if(canonical.hash!==h.hash)throw Error("Seaport V2 reorg during indexing");
       await commitSeaportVaultBlock(db,{blockNumber:String(height),blockHash:h.hash,timestamp:new Date(Number(h.timestamp)*1000).toISOString()},rows);
+      parent=h.hash;
     }
     status="ready";
   }finally{running=false;}}
