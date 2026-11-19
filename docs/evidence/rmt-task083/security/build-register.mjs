@@ -63,7 +63,7 @@ export function buildRegister(){
  assert.equal(prior.currentHighs,22);assert.equal(prior.originalRows,23);
  const rows=highs.map(assessment);
  for(const row of rows)for(const t of row.applicableRegressionTests)assert.ok(readFileSync(resolve(repository,t.source),"utf8").includes("function "+t.name+"("),"Missing named regression "+t.name);
- const register={schemaVersion:1,status:"BLOCKED_NO_BROADCAST",sourceCommit:"f66154ef",productionInputSha256:manifest.inputSha256,analysisInputSha256:report.analysisInputSha256,
+ const register={schemaVersion:1,status:"BLOCKED_NO_BROADCAST",sourceCommit:"f66154eff50a0c7956452a22a8b3d4dc27c6f16d",productionInputSha256:manifest.inputSha256,analysisInputSha256:report.analysisInputSha256,
   tool:report.tool,cryticCompile:report.cryticCompile,detectorCount:101,detectorFilters:[],sourceFilters:[],severityOverrides:[],strictExit:1,
   counts:report.detectors.reduce((r,x)=>(r[x.impact]=(r[x.impact]??0)+1,r),{}),highRows:rows.length,independentAudit:false,
   preliminary:{inputSha256:preliminary.inputSha256,highs:23,exactIdsUnchanged:preliminaryMapping.filter(x=>x.identicalId).length,relocatedTemporaryIds:preliminaryMapping.filter(x=>!x.identicalId).length,removed:0,cleared:0,mapping:preliminaryMapping},

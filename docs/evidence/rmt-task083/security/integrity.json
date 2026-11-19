@@ -17,8 +17,8 @@
     },
     {
       "path": "build-register.mjs",
-      "bytes": 14083,
-      "sha256": "b1f84611e5194f1080442b0a954132780dd9fe7e57f8cc0d0abec293f2ec53f6",
+      "bytes": 14115,
+      "sha256": "f2d99ee89cc8ccdb5568a09ec3f5349a07c3274b39413a066a14ac084e3819d8",
       "textNormalization": "LF"
     },
     {
@@ -36,8 +36,8 @@
     },
     {
       "path": "findings.json",
-      "bytes": 184583,
-      "sha256": "286b1289b910b2ef108ba93be916cb48601da65e38520e8872507359c244439f",
+      "bytes": 184615,
+      "sha256": "0bf7f6f9f60a3da8b9f72c2c0e246df90b65114587df5f22afd1d2de7fd74641",
       "textNormalization": "LF"
     },
     {
