@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "status": "FAILED_RUN_PRESERVED_NO_APPLICATION_DEFECT_ESTABLISHED",
+  "sourceCommit": "3ad0491c6d0ebe8b8afaa31cdfc03fbb7757a4c1",
+  "job": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44453491221/job/135322848594",
+  "artifactId": "14496413245",
+  "artifactSha256": "9cb1ff5cbc99eeada6ea9487a887cf2e47cb3fb7cb8d41a52c5f56e0db5e2c4c",
+  "originalFullJobLogSha256": "27c1ac21e109d145f8a527b12bec18f1bb0f3a8a41d85be1aa33b8c412b97df5",
+  "failedAssertion": "scripts/visual-qa/rmt-creator-integration.mjs:1388 pageErrors must equal[]",
+  "actualPageErrors": [
+    "/127.0.0.1:37663/api/launchpad/test-lifecycle due to access control checks."
+  ],
+  "reclaimStep": "PASS on actual PostgreSQL18.6/UTF8 with permanent retirement and genuine two-owner Safe approvals",
+  "remainingSteps": "older WebKit creator lifecycle ended at final pageErrors assertion before successor-earnings and separate profiles/treasury steps; do not count skipped steps as passed",
+  "sameHeadChromium": "all lifecycle groups passed",
+  "previousVerifiedHead": "14440d3bb06fe309e4d281f83c34308ac09c834a:both full browser groups passed",
+  "runtimeSourceChangedSincePreviousHead": false,
+  "gateOrAssertionsChanged": false,
+  "independentDiagnostic": "PinnedPlaywright1.55.1 WindowsWebKit reproduces identical handled-fetch pageerror under held document replacement, with noPOST dispatched; no-navigation control200/noerrors. This does not establish exact full Linux overlap timing.",
+  "upstream": "https://github.com/microsoft/playwright/issues/43120",
+  "causality": "INFERENCE_NOT_FULL_RUN_PROOF",
+  "productionAuthorization": false,
+  "files": [
+    {
+      "file": "linux-webkit-lifecycle-error.txt.gz",
+      "rawBytes": 1404,
+      "rawSha256": "4cf432ec2151394bb1fe8f3d8fb1d672fefa87ea0f8dff47394a0ad293f770d5"
+    },
+    {
+      "file": "linux-webkit-lifecycle-page.txt.gz",
+      "rawBytes": 2028,
+      "rawSha256": "24e58d3077b265e56c063733f243d95696f86e1485247ab1577caba4842ef316"
+    }
+  ]
+}

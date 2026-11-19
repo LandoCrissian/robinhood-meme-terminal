@@ -11,8 +11,8 @@
     },
     {
       "path": "docs/evidence/rmt-task079/README.md",
-      "bytes": 3254,
-      "sha256": "33db11263ec92ac9984e0a9a07c802189229d639ac4147d21d87be082e926125",
+      "bytes": 3867,
+      "sha256": "406b18567dde0edf5ba64c3a5fba06aa16dce38bb015d4ffc5aeb7bdf0ba1e41",
       "normalization": "canonical-lf"
     },
     {
@@ -274,6 +274,30 @@
       "normalization": "canonical-lf"
     },
     {
+      "path": "docs/evidence/rmt-task079/diagnostics/original-probe.mjs.gz",
+      "bytes": 1500,
+      "sha256": "a4c9a2dc9dc3e97e1673c59f3ca122948ce4bb7859c0905a3b18ccd2c172e8e1",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/diagnostics/original-windows-result.json",
+      "bytes": 1175,
+      "sha256": "a9528b09619ad89e912a353beffdbb12a353055960f7645841b6cceb780d7193",
+      "normalization": "canonical-lf"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/diagnostics/provenance.json",
+      "bytes": 1043,
+      "sha256": "0d713d44deff15c870a65fc65a9053aca492999d3165f8d96576b540499eedb0",
+      "normalization": "canonical-lf"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/diagnostics/webkit-document-replacement-probe.mjs",
+      "bytes": 5178,
+      "sha256": "6d02bdbea83c108d028caf599714e7dafd10cbfb8248cf2f936dda59b23fb854",
+      "normalization": "canonical-lf"
+    },
+    {
       "path": "docs/evidence/rmt-task079/failed-before/linux-first-reclaim-acceptance.json.gz",
       "bytes": 35337,
       "sha256": "3ec608befba5f043b67f6305f7f958cf58343707f33d43798f0e729a88e60551",
@@ -307,6 +331,24 @@
       "path": "docs/evidence/rmt-task079/failed-before/linux-native-burn-worker.log.gz",
       "bytes": 71,
       "sha256": "90bc830e2aac2d55d7dc2fa35de00e3eadb54f3375c3e7a737924214692aa2e9",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/failed-before/linux-webkit-lifecycle-error.txt.gz",
+      "bytes": 572,
+      "sha256": "2511b83422e74ea09cb6cd1816cbd7772a90c42786acf6e5d96ae9a7cf4f10bf",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/failed-before/linux-webkit-lifecycle-failure.json",
+      "bytes": 2027,
+      "sha256": "de682d896403ce02f54c636aade815c81006bac2af0ba1278b392062d83958f8",
+      "normalization": "canonical-lf"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/failed-before/linux-webkit-lifecycle-page.txt.gz",
+      "bytes": 1152,
+      "sha256": "b78ebe64378bd3badba452d0e235292f7c7a7577f413f994f0a731b7b3805a1b",
       "normalization": "binary"
     },
     {
