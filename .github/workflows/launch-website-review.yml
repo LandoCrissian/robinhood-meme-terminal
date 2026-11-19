@@ -233,3 +233,10 @@ jobs:
             ${{ runner.temp }}/rmt-reclaim/reclaim-browser-evidence.json
             ${{ runner.temp }}/rmt-reclaim/reclaim-compiler-manifest.json
             ${{ runner.temp }}/rmt-reclaim/reclaim-deployment.json
+            ${{ runner.temp }}/rmt-reclaim/reclaim-safe-acceptance.json
+            ${{ runner.temp }}/rmt-reclaim/reclaim-setup.json
+            ${{ runner.temp }}/rmt-reclaim/budget-browser/*.png
+            ${{ runner.temp }}/rmt-reclaim/budget-browser/reclaim-browser-evidence.json
+            ${{ runner.temp }}/rmt-reclaim/reclaim-browser-failure.txt
+            ${{ runner.temp }}/rmt-reclaim/website*.log
+            ${{ runner.temp }}/rmt-reclaim/worker*.log
