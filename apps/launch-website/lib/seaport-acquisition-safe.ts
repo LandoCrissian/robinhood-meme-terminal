@@ -58,3 +58,12 @@ export function seaportSafeVerificationMatches(r:SeaportSafeOuterReview,value:un
  &&(v.transactionHash===undefined||hash(v.transactionHash)&&(!knownHash||same(v.transactionHash,knownHash)))
  &&(!["confirmed","reverted"].includes(v.status)||hash(v.transactionHash)&&!!v.canonical&&hash(v.canonical.blockHash)&&uint(v.canonical.blockNumber));
 }catch{return false;}}
+
+/** Local review freshness is bound to canonical time. This does not give
+ * standard SafeTx signatures an onchain expiry or revoke collected approvals. */
+export function seaportSafeObservationMatches(p:SeaportSafeProposal,head:{number:bigint|null;timestamp:bigint},observed:{number:bigint|null;hash:Hex|null;timestamp:bigint}){
+ try{return observed.number!==null&&head.number!==null&&observed.number===BigInt(p.observed.blockNumber)&&head.number>=observed.number
+  &&same(observed.hash,p.observed.blockHash)&&Date.parse(p.observed.timestamp)===Number(observed.timestamp)*1000
+  &&BigInt(p.expiresAt)>observed.timestamp&&BigInt(p.expiresAt)<=observed.timestamp+300n&&head.timestamp>=observed.timestamp&&head.timestamp<BigInt(p.expiresAt);}
+ catch{return false;}
+}
