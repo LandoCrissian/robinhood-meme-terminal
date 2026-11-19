@@ -9,7 +9,8 @@ import { assertTestWalletBinding, connectTestWallet, subscribeTestWallet, testWa
 import { assertNoUnresolvedFinancialRequests } from "./treasury-wallet-controls";
 import { isReclaimReview, isReclaimSnapshot, reclaimAddress, reclaimHash, reclaimReadPath, reclaimTestPath, reclaimVerificationMatches,
   reclaimFieldsDigest, sameReclaimHex, type ReclaimFields, type ReclaimOperation, type ReclaimReview, type ReclaimSnapshot, type ReclaimVerification } from "../../lib/reclaim";
-import { assertNoPendingLifecycleForReclaim, listReclaimJournals, reclaimJournalTerminal, storeReclaimJournal, type ReclaimJournal } from "../../lib/reclaim-recovery";
+import { assertNoPendingLifecycleForReclaim, canStartAnotherReclaimCampaign, listReclaimJournals, reclaimCampaignIntentKey, reclaimJournalTerminal,
+  startAnotherReclaimCampaign, storeReclaimJournal, type ReclaimJournal } from "../../lib/reclaim-recovery";
 import { MyLaunchesNav } from "./my-launches-nav";
 
 const amount = (value: string) => {
@@ -32,7 +33,7 @@ async function post(body: object) {
   return payload;
 }
 function intentFor(account: string) {
-  const key = "rmt.reclaim.intent.v1:" + account.toLowerCase(), saved = localStorage.getItem(key);
+  const key = reclaimCampaignIntentKey(account), saved = localStorage.getItem(key);
   if (saved !== null) { if (!reclaimHash(saved)) throw Error("The campaign intent is invalid. Preserve its original recovery records."); return saved; }
   const bytes = crypto.getRandomValues(new Uint8Array(32)); const next = "0x" + [...bytes].map(value => value.toString(16).padStart(2, "0")).join("");
   if (!reclaimHash(next)) throw Error("Campaign intent unavailable."); localStorage.setItem(key, next);
@@ -47,14 +48,16 @@ export function ReclaimDashboard({ fixture = false, initialCampaign = "" }: { fi
   const [safeActor, setSafeActor] = useState(""), [collection, setCollection] = useState(""), [tokenIds, setTokenIds] = useState(""), [quantities, setQuantities] = useState("1");
   const [controller, setController] = useState(""), [rewardUnits, setRewardUnits] = useState("5"), [walletCap, setWalletCap] = useState("4"), [fundUnits, setFundUnits] = useState("2000");
   const [collectionCap, setCollectionCap] = useState("32"), [collectionWalletCap, setCollectionWalletCap] = useState("4"), [nextController, setNextController] = useState("");
+  const [creationIntent, setCreationIntent] = useState<string | null>(null);
   const generation = useRef(0), revision = useRef(0), lock = useRef(false), active = useRef<AbortController | null>(null);
   const selected = useRef("");
   const actor = safeActor || wallet?.account || "";
   const invalidate = () => { revision.current++; setReview(null); setMessage(""); };
-  const refreshJournals = () => { if (fixture) setJournals(listReclaimJournals(localStorage)); };
+  const refreshJournals = () => { if (fixture) { setJournals(listReclaimJournals(localStorage)); setCreationIntent(reclaimAddress(actor) ? localStorage.getItem(reclaimCampaignIntentKey(actor)) : null); } };
   useEffect(() => { setReady(true); if (fixture) { try { refreshJournals(); } catch (error) { setMessage(error instanceof Error ? error.message : "Recovery unavailable."); } } }, []);
   useEffect(() => () => { generation.current++; revision.current++; active.current?.abort(); }, []);
   useEffect(() => { if (reclaimAddress(initialCampaign)) void load(initialCampaign); }, []);
+  useEffect(() => { if (fixture) { try { refreshJournals(); } catch (error) { setMessage(error instanceof Error ? error.message : "Recovery unavailable."); } } }, [actor]);
   useEffect(() => {
     if (!wallet) return;
     return subscribeTestWallet(wallet, () => { revision.current++; setWallet(null); setReview(null); setMessage("Wallet account or network changed. Original submitted requests remain recoverable."); });
@@ -100,6 +103,7 @@ export function ReclaimDashboard({ fixture = false, initialCampaign = "" }: { fi
       await assertTestWalletBinding(wallet);
       if (!reclaimAddress(actor)) throw Error("Choose a valid acting wallet or Safe address.");
       const fieldDigest = reclaimFieldsDigest(operation, fields);
+      if (operation === "create-campaign") setCreationIntent(fields.intentId!);
       const version = ++revision.current; setReview(null);
       const payload = await post({ action: "prepare", operation, account: actor, ...(operation !== "create-campaign" && { campaign: selectedCampaign }), fields });
       if (!isReclaimReview(payload) || payload.operation !== operation || !sameReclaimHex(payload.actor, actor)
@@ -172,9 +176,25 @@ export function ReclaimDashboard({ fixture = false, initialCampaign = "" }: { fi
     });
   }
   function change(setter: (value: string) => void) { return (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => { setter(event.target.value); invalidate(); }; }
+  async function startAnother(entry: ReclaimJournal) {
+    await run(async () => {
+      if (!wallet || !sameReclaimHex(wallet.account, actor) || !navigator.locks?.request) throw Error("Connect the original test creator in a browser that coordinates wallet requests.");
+      await navigator.locks.request(`rmt.claim.execution.v1:31337:${actor.toLowerCase()}`, { mode: "exclusive", ifAvailable: true }, async acquired => {
+        if (!acquired) throw Error("Another transaction is using this wallet. Preserve its recovery record.");
+        assertNoUnresolvedFinancialRequests(actor); assertNoPendingLifecycleForReclaim(localStorage, actor);
+        const creation = readActiveTestCreation(localStorage);
+        if (creation && sameReclaimHex(creation.request.from, actor)) throw Error("Recover and archive the earlier token creation first.");
+        startAnotherReclaimCampaign(localStorage, entry, actor);
+        active.current?.abort(); generation.current++; selected.current = "";
+        setCreationIntent(null); setCampaignInput(""); setSelectedCampaign(""); setSnapshot(null); setStale(false); setCollection(""); invalidate(); refreshJournals();
+        setMessage("Ready for a separate campaign review. Every prior request and transaction hash remains in recovery history.");
+      });
+    });
+  }
   const collectionData = snapshot?.collections.find(item => sameReclaimHex(item.address, collection));
   const localDisabled = !fixture || !ready || busy;
   const selectedJournal = journals.find(entry => entry.review.reviewHash === journalKey);
+  const completedCreation = journals.find(entry => entry.review.fields.intentId === creationIntent && sameReclaimHex(entry.review.actor, actor) && canStartAnotherReclaimCampaign(entry));
   return <>
     <header className="lpPageHeading"><div><h1>RMT Reclaim</h1><p>Eligible NFT trade-ins. Separate funding, explicit custody and exact rewards.</p></div></header>
     <MyLaunchesNav active="reclaim" />
@@ -225,6 +245,7 @@ export function ReclaimDashboard({ fixture = false, initialCampaign = "" }: { fi
         <h3>Create an isolated campaign</h3><label htmlFor="reclaim-controller">Controller address<input id="reclaim-controller" value={controller} disabled={localDisabled} onChange={change(setController)} placeholder={wallet?.account ?? "0x…"} /></label>
         <div className="lpReclaimGrid"><label htmlFor="reclaim-reward">Fixed reward per NFT (synthetic RMT)<input id="reclaim-reward" value={rewardUnits} disabled={localDisabled} onChange={change(setRewardUnits)} inputMode="decimal" /></label><label htmlFor="reclaim-wallet-cap">Campaign units per wallet<input id="reclaim-wallet-cap" value={walletCap} disabled={localDisabled} onChange={change(setWalletCap)} inputMode="numeric" /></label></div>
         <button className="lpButton lpButtonSecondary" disabled={localDisabled || !wallet} onClick={() => { try { if (!wallet) throw Error("Connect a test wallet."); void prepare("create-campaign", { intentId: intentFor(actor), controller: controller || actor, rewardPerUnit: tokens(rewardUnits), walletCap }); } catch (error) { setMessage(error instanceof Error ? error.message : "Invalid campaign terms."); } }}>Review campaign creation</button>
+        {completedCreation && <><button type="button" className="lpButton lpButtonSecondary" disabled={localDisabled || !wallet} onClick={() => void startAnother(completedCreation)}>Start another campaign</button><small>Available only after the original creation is confirmed and indexed. This releases its creation intent; all transaction recovery records remain intact.</small></>}
         <h3>Manual funding and reserve</h3><label htmlFor="reclaim-funding">Amount (synthetic RMT)<input id="reclaim-funding" value={fundUnits} disabled={localDisabled} onChange={change(setFundUnits)} inputMode="decimal" /></label><div className="lpReclaimActions">
           <button className="lpButton lpButtonSecondary" disabled={localDisabled || !wallet || !snapshot} onClick={() => { try { void prepare("approve-funding", { amountWei: tokens(fundUnits) }); } catch (error) { setMessage(error instanceof Error ? error.message : "Invalid amount."); } }}>Review exact funding approval</button>
           <button className="lpButton lpButtonSecondary" disabled={localDisabled || !wallet || !snapshot} onClick={() => { try { void prepare("fund", { amountWei: tokens(fundUnits) }); } catch (error) { setMessage(error instanceof Error ? error.message : "Invalid amount."); } }}>Review manual funding</button></div>

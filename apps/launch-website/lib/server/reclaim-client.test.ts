@@ -4,7 +4,8 @@ import { encodeFunctionData, parseAbi } from "viem";
 import { reclaimCampaignSignatures, reclaimFactorySignatures } from "../../../../packages/launchpad-common/reclaim-runtime.mjs";
 import { isReclaimReview, isReclaimSnapshot, reclaimFieldsDigest, reclaimOperations, reclaimProfile, reclaimReviewHash, reclaimVerificationMatches, validReclaimFields,
   type ReclaimFields, type ReclaimOperation, type ReclaimReview, type ReclaimSnapshot, type ReclaimVerification } from "../reclaim";
-import { assertNoPendingLifecycleForReclaim, assertNoPendingReclaim, listReclaimJournals, reclaimJournalNamespace, storeReclaimJournal, validReclaimJournal, type ReclaimJournal } from "../reclaim-recovery";
+import { assertNoPendingLifecycleForReclaim, assertNoPendingReclaim, canStartAnotherReclaimCampaign, listReclaimJournals, reclaimCampaignIntentKey, reclaimJournalNamespace,
+  startAnotherReclaimCampaign, storeReclaimJournal, validReclaimJournal, type ReclaimJournal } from "../reclaim-recovery";
 import { curveBuySignature, isTestLifecycleRequest, type TestLifecycleRequest } from "../test-lifecycle";
 
 const address = (n: number) => ("0x" + BigInt(n).toString(16).padStart(40, "0")) as `0x${string}`;
@@ -43,7 +44,7 @@ function snapshot(): ReclaimSnapshot {
     receipts: [], pending: [], history: { status: "pending", indexed: false }, observed, notices: [] };
 }
 function memory() { const records = new Map<string, string>(); return { records, get length() { return records.size; }, key: (index: number) => [...records.keys()][index] ?? null,
-  getItem: (key: string) => records.get(key) ?? null, setItem: (key: string, value: string) => { records.set(key, value); } }; }
+  getItem: (key: string) => records.get(key) ?? null, setItem: (key: string, value: string) => { records.set(key, value); }, removeItem: (key: string) => { records.delete(key); } }; }
 function journal(r = review()): ReclaimJournal { return { schemaVersion: 1, review: r, stage: "awaiting-wallet", transactionHash: null, result: null, createdAt: 1, updatedAt: 1 }; }
 test("Reclaim fields are operation-specific with bounded sorted NFT quantities, no arbitrary calldata or decimal rounding", () => {
   assert.ok(validReclaimFields("create-campaign", { intentId: hash(77), controller: actor, rewardPerUnit: "5000000000000000000", walletCap: "4" }));
@@ -151,6 +152,30 @@ test("wallet rejection is distinct from ambiguous hash loss and malformed storag
   storeReclaimJournal(storage, { ...entry, stage: "hash-missing", updatedAt: 2 }); assert.throws(() => assertNoPendingReclaim(storage, actor));
   const key = reclaimJournalNamespace + ":" + entry.review.reviewHash; storage.setItem(key, "corrupted-original"); assert.throws(() => listReclaimJournals(storage), /malformed/);
   assert.equal(validReclaimJournal({ ...entry, stage: "confirmed" }), false);
+});
+test("a separate campaign requires explicit intent release after canonical indexed creation and retains every original journal", () => {
+  const r = review(); r.operation = "create-campaign"; r.fields = { intentId: hash(77), controller: actor, rewardPerUnit: r.rewardWei, walletCap: "4" };
+  delete r.nft; delete r.transfer; r.innerCall.to = factory; r.request!.to = factory; r.targetRuntimeHash = r.factoryRuntimeHash;
+  setData(r, calldata("create", [hash(77), actor, BigInt(r.rewardWei), 4])); assert.ok(isReclaimReview(r));
+  const s = snapshot(); s.observed = canonical; s.history = { status: "ready", indexed: true, checkpoint: canonical };
+  const result = verification(r); delete result.settlement; result.indexed = true; result.snapshot = s;
+  const completed: ReclaimJournal = { ...journal(r), stage: "confirmed", transactionHash: result.transactionHash!, result, updatedAt: 2 };
+  assert.ok(canStartAnotherReclaimCampaign(completed));
+  assert.equal(canStartAnotherReclaimCampaign({ ...completed, result: { ...result, indexed: false } }), false);
+  assert.equal(canStartAnotherReclaimCampaign({ ...completed, stage: "pending", result: null }), false);
+  const storage = memory(), intentKey = reclaimCampaignIntentKey(actor); storage.setItem(intentKey, hash(77)); storeReclaimJournal(storage, completed);
+  assert.equal(storage.getItem(intentKey), hash(77), "receipt verification does not clear an intent automatically");
+  const originals = JSON.stringify(listReclaimJournals(storage));
+  assert.throws(() => startAnotherReclaimCampaign(storage, completed, factory), /original campaign/);
+  const unresolved = journal(); storeReclaimJournal(storage, unresolved);
+  assert.throws(() => startAnotherReclaimCampaign(storage, completed, actor), /Recover the earlier/);
+  storeReclaimJournal(storage, { ...unresolved, stage: "wallet-rejected", updatedAt: 2 });
+  const retained = JSON.stringify(listReclaimJournals(storage));
+  startAnotherReclaimCampaign(storage, completed, actor); assert.equal(storage.getItem(intentKey), null);
+  assert.equal(JSON.stringify(listReclaimJournals(storage)), retained); assert.ok(retained.includes(result.transactionHash!));
+  assert.ok(originals.includes(result.transactionHash!));
+  storage.setItem(intentKey, hash(78)); assert.throws(() => startAnotherReclaimCampaign(storage, completed, actor), /no longer matches/);
+  assert.equal(storage.getItem(intentKey), hash(78), "an old receipt cannot erase a new campaign intent");
 });
 test("Reclaim submission respects the original lifecycle request and bounds storage inspection", () => {
   const storage = memory(), key = `rmt:test-trades:31337:v1:${hash(44)}`;

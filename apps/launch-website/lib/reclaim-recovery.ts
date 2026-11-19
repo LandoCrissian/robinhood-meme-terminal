@@ -1,4 +1,4 @@
-import { isReclaimReview, reclaimHash, reclaimVerificationMatches, sameReclaimHex, type ReclaimReview, type ReclaimVerification } from "./reclaim";
+import { isReclaimReview, reclaimAddress, reclaimHash, reclaimVerificationMatches, sameReclaimHex, type ReclaimReview, type ReclaimVerification } from "./reclaim";
 import { isTestLifecycleRequest } from "./test-lifecycle";
 
 export const reclaimJournalNamespace = "rmt.reclaim.pending.v1";
@@ -8,6 +8,10 @@ export type ReclaimJournal = { schemaVersion: 1; review: ReclaimReview; stage: "
   transactionHash: string | null; result: ReclaimVerification | null; createdAt: number; updatedAt: number };
 const keyFor = (review: ReclaimReview) => `${reclaimJournalNamespace}:${review.reviewHash}`;
 const byteLength = (value: string) => new TextEncoder().encode(value).byteLength;
+export function reclaimCampaignIntentKey(account: string): string {
+  if (!reclaimAddress(account)) throw Error("A valid campaign creator is required.");
+  return "rmt.reclaim.intent.v1:" + account.toLowerCase();
+}
 export const reclaimJournalTerminal = (entry: ReclaimJournal) => ["confirmed", "reverted", "wallet-rejected"].includes(entry.stage);
 export function validReclaimJournal(value: unknown): value is ReclaimJournal {
   try {
@@ -49,6 +53,27 @@ export function assertNoPendingReclaim(storage: StoragePort, account: string): v
   if (listReclaimJournals(storage).some(entry => sameReclaimHex(entry.review.actor, account) && !reclaimJournalTerminal(entry))) {
     throw Error("Recover the earlier Reclaim transaction before requesting another wallet submission.");
   }
+}
+
+export function canStartAnotherReclaimCampaign(entry: ReclaimJournal): boolean {
+  if (!validReclaimJournal(entry) || entry.review.operation !== "create-campaign" || entry.stage !== "confirmed" || entry.result?.status !== "confirmed"
+    || entry.result.indexed !== true || !entry.result.snapshot || !entry.result.canonical) return false;
+  const snapshot = entry.result.snapshot;
+  return snapshot.history.indexed && snapshot.history.status === "ready" && sameReclaimHex(snapshot.creator, entry.review.actor)
+    && sameReclaimHex(snapshot.controller, entry.review.fields.controller!) && BigInt(snapshot.observed.blockNumber) >= BigInt(entry.result.canonical.blockNumber);
+}
+
+/** Explicit user action only. Release the matching creation intent after
+ * canonical indexing, while preserving every original transaction and hash. */
+export function startAnotherReclaimCampaign(storage: StoragePort & Pick<Storage, "removeItem">, entry: ReclaimJournal, account: string): void {
+  if (!sameReclaimHex(entry.review.actor, account) || !canStartAnotherReclaimCampaign(entry)) throw Error("Verify and index the original campaign creation first.");
+  const stored = listReclaimJournals(storage).find(item => item.review.reviewHash === entry.review.reviewHash);
+  if (!stored || !canStartAnotherReclaimCampaign(stored)) throw Error("The original campaign creation must remain verified in recovery history.");
+  assertNoPendingReclaim(storage, account);
+  const intentKey = reclaimCampaignIntentKey(account);
+  if (storage.getItem(intentKey) !== stored.review.fields.intentId) throw Error("The current campaign intent no longer matches this confirmed creation.");
+  storage.removeItem(intentKey);
+  if (storage.getItem(intentKey) !== null) throw Error("The confirmed intent could not be released. Preserve the original requests.");
 }
 
 /** The older lifecycle journal has no shared index. Enumerate only this known
