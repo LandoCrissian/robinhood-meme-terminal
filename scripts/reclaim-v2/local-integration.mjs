@@ -50,6 +50,12 @@ export async function testReclaimJourney({browserEngine,rpcUrl,rpc,reclaimCompil
   const proposal=await session.safePropose(),owners=proposal.owners;
   if(!evidence.checks.safeOwnerWalletRejectionNoSubmission){await session.safeApprove(owners[0],"reject");evidence.checks.safeOwnerWalletRejectionNoSubmission=true;save();}
   await session.safeApprove(owners[0]);
+  if(!evidence.checks.oneCurrentOwnerCannotPrepareSafeExecution){
+   const approvals=await session.page.evaluate(key=>JSON.parse(localStorage.getItem("rmt.reclaim.safe.v2:"+key)).approvals,proposal.proposalHash);
+   assert.equal(approvals.length,1);const before=session.evidence.sends.length;
+   const denied=await post({action:"safe-prepare",proposal,approvals});assert.equal(denied.status,200);assert.equal(denied.body.status,"unavailable");assert.equal(denied.body.executionEnabled,false);
+   assert.equal(session.evidence.sends.length,before);evidence.checks.oneCurrentOwnerCannotPrepareSafeExecution=true;save();
+  }
   assert.equal(await session.page.getByRole("button",{name:"Review Safe execution costs",exact:true}).isEnabled(),false,"One owner cannot execute");
   await session.safeApprove(owners[1]);const outer=await session.safePrepare();
   if(!evidence.checks.safeOuterWalletRejectionNoSubmission){await session.safeConfirm("reject");evidence.checks.safeOuterWalletRejectionNoSubmission=true;save();}
