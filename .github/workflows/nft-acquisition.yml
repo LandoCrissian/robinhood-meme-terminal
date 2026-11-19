@@ -51,7 +51,7 @@ jobs:
           node-version: 22
       - run: pnpm install --frozen-lockfile --filter @rmt/launch-website... --filter indexer --filter robinhood-meme-terminal
       - name: Verify collection identity and bounded settlement traces without live orders
-        run: node --test packages/launchpad-common/nft-collection-resolver.test.mjs packages/launchpad-common/seaport-*.test.mjs scripts/nft-marketplace/*.test.mjs scripts/nft-acquisition/*.test.mjs
+        run: node --test packages/launchpad-common/nft-collection-resolver.test.mjs packages/launchpad-common/seaport-*.test.mjs scripts/nft-marketplace/*.test.mjs scripts/nft-acquisition/*.test.mjs scripts/seaport-verification/*.test.mjs
       - name: Verify indexer configuration, canonical receipt and provider failure boundaries
         run: |
           pnpm --filter indexer typecheck

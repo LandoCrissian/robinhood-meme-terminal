@@ -5,6 +5,7 @@
       "entry": [
         "scripts/reclaim-v2/probe-revert-transport.mjs",
         "scripts/seaport-verification/provenance-proxy.mjs",
+        "scripts/seaport-verification/replay-historical.mjs",
         "scripts/treasury-v2/routes.mjs",
         "scripts/claims/probe-read-only-4663.mjs",
         "scripts/claims/fork-read-only-4663.mjs",

@@ -100,8 +100,8 @@ const signature65=(signature)=>{
 };
 
 /** Read operations only. Pins and reviewed terms are trusted application input,
- * never copied from marketplace/API request JSON. Verification does not create
- * calldata, request a signature, approve assets or authorize execution. */
+ * never copied from marketplace/API request JSON. Verification never returns
+ * executable calldata, requests a signature, approves assets or authorizes execution. */
 async function verifySeaportOrder(input,options){
   const base={schemaVersion:1,profile:options?.profile??null,status:"unavailable",code:"EVIDENCE_UNAVAILABLE",chainId:null,orderVerified:false,listingVerified:false,routeSupported:false,custodyCompatible:false,purchasesEnabled:false,executionAvailable:false,executionEnabled:false,currentListingStatus:"not-assessed",finality:"unverified",limitations:["Read-only order acceptance never authorizes execution.","An open observation can change before a separately approved fulfillment.","Seaport does not enforce the RMT royalty admission policy."]};
   let reads=0;const started=Date.now();
